@@ -29,11 +29,15 @@ export function DeltaFunctional({ model, settings }: WidgetRendererProps<DeltaVi
       </div>}
       {statusText && model.status !== "stale" && <p className="vf-status" role="status">{statusText}</p>}
       {model.statusMessage && model.status !== "stale" && <p className="vf-detail">{model.statusMessage}</p>}
-      <strong className="vf-delta-value">{model.deltaText}</strong>
+      <strong className="vf-delta-value">
+        <span className="vf-delta-arrow" aria-hidden="true">{model.tone === "gaining" ? "▲" : model.tone === "losing" ? "▼" : ""}</span>
+        {model.deltaText}
+      </strong>
       <div className="vf-delta-track" aria-hidden="true">
         <span className="vf-delta-center" />
         <span className="vf-delta-fill" style={fill} />
       </div>
+      <div className="vf-delta-scale" aria-hidden="true"><span>-2</span><span>0</span><span>+2</span></div>
     </section>
   );
 }

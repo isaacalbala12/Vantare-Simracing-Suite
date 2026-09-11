@@ -140,14 +140,25 @@
 .vf-delta .vf-brand { font-size: 10px; }
 .vf-delta-last { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; min-width: 0; }
 .vf-delta-last .vf-clock { font-size: 12px; }
-.vf-delta-value { display: block; padding: 2px 12px 0; text-align: center; font-size: 24px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; color: var(--vf-ink); }
+.vf-delta-value { display: flex; align-items: baseline; justify-content: center; gap: 8px; padding: 5px 12px 0; font-size: 27px; font-weight: 700; letter-spacing: -.025em; font-variant-numeric: tabular-nums; color: var(--vf-ink); }
+.vf-delta-arrow { width: 12px; font-size: 13px; text-align: center; }
 .vf-delta[data-tone="gaining"] .vf-delta-value { color: var(--vf-gain); }
 .vf-delta[data-tone="losing"] .vf-delta-value { color: var(--vf-loss); }
-.vf-delta-track { position: relative; height: 3px; margin: 7px 12px 8px; border-radius: 2px; background: rgb(245 245 245 / 8%); overflow: hidden; }
-.vf-delta-center { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: rgb(245 245 245 / 35%); }
-.vf-delta-fill { position: absolute; top: 0; bottom: 0; border-radius: 2px; background: var(--vf-muted); }
-.vf-delta[data-tone="gaining"] .vf-delta-fill { background: var(--vf-gain); }
-.vf-delta[data-tone="losing"] .vf-delta-fill { background: var(--vf-loss); }
+/* Escala de instrumento ±2 s: topes en los extremos, marcas en ±1 s,
+   centro más alto y relleno que crece desde el cero con degradado al tono. */
+.vf-delta-track { position: relative; height: 5px; margin: 9px 16px 3px; border-radius: 3px; overflow: visible;
+  background:
+    linear-gradient(90deg,
+      rgb(245 245 245 / 22%) 0 1px, transparent 1px calc(25% - .5px),
+      rgb(245 245 245 / 16%) calc(25% - .5px) calc(25% + .5px), transparent calc(25% + .5px) calc(75% - .5px),
+      rgb(245 245 245 / 16%) calc(75% - .5px) calc(75% + .5px), transparent calc(75% + .5px) calc(100% - 1px),
+      rgb(245 245 245 / 22%) calc(100% - 1px)),
+    rgb(245 245 245 / 8%); }
+.vf-delta-center { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: rgb(245 245 245 / 50%); }
+.vf-delta-fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: var(--vf-muted); }
+.vf-delta[data-tone="gaining"] .vf-delta-fill { background: linear-gradient(90deg, rgb(127 182 134 / 30%), var(--vf-gain)); box-shadow: 0 0 7px rgb(127 182 134 / 40%); }
+.vf-delta[data-tone="losing"] .vf-delta-fill { background: linear-gradient(90deg, var(--vf-loss), rgb(217 83 96 / 30%)); box-shadow: 0 0 7px rgb(217 83 96 / 40%); }
+.vf-delta-scale { display: flex; justify-content: space-between; margin: 2px 16px 8px; font-family: "JetBrains Mono", monospace; font-size: 7px; letter-spacing: .04em; color: var(--vf-faint); }
 
 /* Pedals: tres canales finos, colores semánticos apagados. */
 .vf-pedals { --vf-throttle: #6fae7d; --vf-brake: #d95360; --vf-clutch: #c9a15c; display: flex; flex-direction: column; }

@@ -16,7 +16,8 @@ describe("Functional Delta", () => {
   it("shows the delta value with its tone, the last lap in the header and a fill that grows from center", () => {
     const { container } = render(<DeltaFunctional model={model} settings={{}} renderMode="harness" />);
     expect(container.querySelector(".vf-delta")?.getAttribute("data-tone")).toBe("gaining");
-    expect(container.querySelector(".vf-delta-value")?.textContent).toBe("-0.280");
+    expect(container.querySelector(".vf-delta-value")?.textContent).toBe("▲-0.280");
+    expect(container.querySelector(".vf-delta-arrow")?.textContent).toBe("▲");
     expect(container.querySelector(".vf-delta-last .vf-clock")?.textContent).toBe("1:31.234");
     const fill = container.querySelector<HTMLElement>(".vf-delta-fill");
     expect(fill?.style.right).toBe("50%");

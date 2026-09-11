@@ -11,6 +11,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/weather"
 )
 
 // Section names the parts of FrameV2 that can be regulated independently.
@@ -622,6 +623,13 @@ type dirtySignals struct {
 	sessionType schema.Field[session.Type]
 	maximumLaps schema.Field[session.MaximumLaps]
 	remaining   schema.Field[session.RemainingTime]
+	// ambientTemp and trackTemp fingerprint exactly what BuildWeather
+	// projects for the session (ISA-1106, B4): value and quality both
+	// decide, following the fuel/standings signal pattern. Rain, wetness,
+	// wind and pressure stay missing with no admitted source, so they need
+	// no signal.
+	ambientTemp schema.Field[weather.Temperature]
+	trackTemp   schema.Field[weather.Temperature]
 
 	playerFuel schema.Field[energy.Fuel]
 	fuelPerLap schema.Field[energy.FuelAmount]
@@ -659,6 +667,8 @@ func observeDirtySignals(header envelope.Header, final derive.FinalState, source
 		sessionType:         final.Observed.SessionType,
 		maximumLaps:         final.Observed.MaximumLaps,
 		remaining:           final.Derived.SessionRemaining,
+		ambientTemp:         final.Observed.AmbientTemp,
+		trackTemp:           final.Observed.TrackTemp,
 		gapsFreshness:       final.Derived.Gaps.Freshness,
 		deltaFreshness:      final.Derived.Delta.Freshness,
 		fuelPerLap:          final.Derived.Fuel.PerLap,
@@ -698,6 +708,9 @@ func (signals dirtySignals) diff(previous dirtySignals) DirtySet {
 	if signals.track != previous.track || signals.sessionType != previous.sessionType ||
 		signals.maximumLaps != previous.maximumLaps || signals.remaining != previous.remaining {
 		dirty = dirty.Mark(SectionSession)
+	}
+	if signals.ambientTemp != previous.ambientTemp || signals.trackTemp != previous.trackTemp {
+		dirty = dirty.Mark(SectionWeather)
 	}
 	// Standings depends only on its own fingerprint: the derived gap set feeds
 	// relative, not the classification rows.

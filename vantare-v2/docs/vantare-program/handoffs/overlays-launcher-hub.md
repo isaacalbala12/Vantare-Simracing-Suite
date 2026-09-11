@@ -292,7 +292,14 @@ física nueva, retirada V1, merge o release en este corte documental.
   las filas y la columna "Mejor vuelta" pintaba solo `—`; como no es un
   hueco declarado, la capa demo lo deriva de lastLap con mejora determinista.
   Evidencia `relative-rows-only.png`, `relative-bars.png` y
-  `standings-no-brand.png`.
+  `standings-no-brand.png`. **Harness síncrono (decisión de Isaac, análisis
+  completo):** el widget ya no es producto de cuatro capas de parcheo ni de
+  un `prepared` diferido — `buildWorkshopWidget(query)` es el único punto
+  que decide la forma (forma → diseño → dev → sesión → marca → módulos, en
+  orden fijo) y corre síncrono en el render; el runtime es otra función
+  pura de la selección + playhead cuantizado. Los módulos del estudio
+  viven en la URL (`modules=…`) y todo estado es compartible. Fixture
+  inválido → error visible con controles vivos.
   Sin merge, push, PR, promoción ni release.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde

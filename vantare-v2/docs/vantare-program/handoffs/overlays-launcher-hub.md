@@ -283,8 +283,13 @@ física nueva, retirada V1, merge o release en este corte documental.
   remainingText, trackText, playerBadgeText (P·clase) y clima — solo cuando
   el frame V2 los entrega; el renderer pinta barra superior (pista · badge
   del jugador) e inferior (sesión+reloj · ambiente) reutilizando el lenguaje
-  del footer de Standings. Evidencia `relative-rows-only.png` y
-  `relative-bars.png`.
+  del footer de Standings. **Selector de marca (decisión de Isaac):** los
+  renderers de standings/delta/pedals leen `settings.brandVisible` — la
+  decisión inyectable del contrato ISA-1105 — y el Workshop expone
+  `brand=off` con el segmento "Marca" en el panel (autoridad local mientras
+  la política nativa con licencia llega por ISA-1098/1105, aún sin mergear
+  en nightly). Evidencia `relative-rows-only.png`, `relative-bars.png` y
+  `standings-no-brand.png`.
   Sin merge, push, PR, promoción ni release.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde

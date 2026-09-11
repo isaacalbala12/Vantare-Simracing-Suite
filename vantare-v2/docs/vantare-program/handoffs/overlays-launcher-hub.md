@@ -273,7 +273,13 @@ física nueva, retirada V1, merge o release en este corte documental.
   en el Workshop, sin tocar el golden ni producción; stale/error siguen
   vacíos y honestos. Capturas del estudio en
   `design-evidence/functional/study-{standings,relative,delta,pedals}.png`,
-  `harness-*.png` y `demo-*.png`. Sin merge, push, PR, promoción ni release.
+  `harness-*.png` y `demo-*.png`. **Relative Eficiencia solo-filas (decisión
+  de Isaac, referencia iRacing):** sin cabecera de marca, sin fila de
+  etiquetas, sin decoración de esquina; `showHeader` deja de existir en
+  relative (delta/pedals lo conservan) y la variante dev
+  `relative-multiclass` recorta columnas a posición/clase/nombre/gap para no
+  pintar huecos declarados. Evidencia `relative-rows-only.png`.
+  Sin merge, push, PR, promoción ni release.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde
   `4864b5c6`, SHA `cb69a4d5…878faba`, muestra Pedals sobre LMU con freno real

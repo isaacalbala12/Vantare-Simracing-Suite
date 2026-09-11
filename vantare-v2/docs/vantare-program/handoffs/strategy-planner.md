@@ -1,6 +1,22 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12j7 aceptado; J8a preparado
+## Estado vigente — T12j8a aceptado; J8b preparado
+
+J8a aceptado localmente y guardado en `59b9c870`: cinco paths, 368
+inserciones/26 borrados. El contrato TypeScript acepta snapshot v4 y seis
+campos wire con referencia/target coherentes; la UI sigue iterando sólo los
+dos campos legacy. Fixture JSON producida por constructor J2 y contrastada
+por test Go. RED válido `snapshot.contractVersion`; después 606 focales y
+suite completa 445 archivos/3719 tests PASS, typecheck/lint/i18n/build,
+global Go 126 paquetes y vet EXIT0. Intentos de runner y primer lint fallidos
+se conservan separados y no se presentan como gates verdes. No GUI/Wails.
+
+Root cierra J8b en cuatro paths: parser de target reutilizable, helper puro de
+reemplazo atómico de las cuatro identidades desde metadata OPEN y
+`session.combination`, más correlación Save/Resolve v4. Sin React ni selección
+de catálogo; el selector visual/controlador será J8c.
+
+## Historial — J7 aceptado y preparación de J8a
 
 J7 aceptado localmente y guardado en `e315c9f8`: un path,
 21 inserciones/12 borrados (el encabezado del informe Devin estimó

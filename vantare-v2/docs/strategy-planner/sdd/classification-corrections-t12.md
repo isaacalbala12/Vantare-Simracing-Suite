@@ -1165,3 +1165,43 @@ Gates: fixture Go, focales de contrato y UI legacy, typecheck/lint/i18n,
 suite frontend y build, global Go/vet por test Go añadido. Mantener logs
 literales nuevos isa1104-t12j8a-*, nunca sobrescribir. No GUI/app/LMU.
 Cliente/correlación v4 J8b y selector atómico de identidad serán posteriores.
+
+## Continuación cerrada por root — J8b
+
+Tras J8a, construir la decisión atómica de identidad fuera de React y cerrar
+la correlación del cliente. Cuatro paths máximos:
+
+- `frontend/src/strategy/analysis-contract.ts`
+- `frontend/src/strategy/analysis-client.test.ts`
+- `frontend/src/hub/strategy-orbit/strategy-recorded-corrections.ts`
+- `frontend/src/hub/strategy-orbit/strategy-recorded-corrections.test.ts`
+
+Exponer el parser de forma del target canónico ya implementado en J8a, sin
+duplicarlo ni añadir autorización/hash en JS. Añadir un helper puro para
+reemplazar como una unidad las cuatro decisiones de identidad: recibe el set
+activo, la sesión OPEN, su revisión actual, un `AnalysisCombination` target y
+el motivo. Valida target y base; conserva decisiones legacy; elimina todas las
+identidades anteriores; compara el target con `session.combination` canónica y
+crea sólo los campos que cambian, todos con el mismo target.id. Si el target
+es la combinación original, retira la identidad y deja legacy intacto.
+
+Cada campo cambiado obtiene `expectedOriginal` RAW de la metadata OPEN con
+las mismas puertas de presencia/calidad/privacidad/ambigüedad. Un campo no
+cambiado no exige metadata y no bloquea la operación. La ausencia de
+`session.combination`, target inválido, base ajena, motivo inválido, original
+necesario no utilizable, duplicados o cuota conjunta se rechazan antes de
+devolver el nuevo set. No mutar entradas ni derivar del valor efectivo de una
+revisión. No Save, Project, selección de catálogo o estado React en el helper.
+
+Añadir pruebas del cliente para Save y Resolve v4: una respuesta con la misma
+referencia se correlaciona; referencia retirada/cambiada o target no coherente
+se rechaza como mismatch/protocolo sin retry. Probar el helper con uno, varios
+y cuatro campos cambiados; cambio de coche con categoría; vuelta al original;
+legacy preservado; referencia común; RAW Unicode; campos sin cambio ausentes;
+guardas y cuota. Mantener intactos los helpers legacy públicos.
+
+Gates: RED conductual si hay comportamiento anterior observable, focales de
+contrato/cliente/correcciones, typecheck, lint, i18n, suite frontend y build.
+Sin Go nuevo, GUI/app/LMU ni build de escritorio. Logs nuevos
+`isa1104-t12j8b-*` e informe local completo. El selector visual que consume
+`sessionCombinations` y su controlador quedan para J8c.

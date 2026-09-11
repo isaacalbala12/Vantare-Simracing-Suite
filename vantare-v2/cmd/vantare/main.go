@@ -47,12 +47,14 @@ import (
 	"github.com/vantare/overlays/v2/internal/storage"
 	strategyapplication "github.com/vantare/overlays/v2/internal/strategy/application"
 	strategycatalog "github.com/vantare/overlays/v2/internal/strategy/catalog"
+	"github.com/vantare/overlays/v2/internal/strategy/coldstart"
 	"github.com/vantare/overlays/v2/internal/strategy/curation"
 	strategymanual "github.com/vantare/overlays/v2/internal/strategy/manual"
 	strategyrepository "github.com/vantare/overlays/v2/internal/strategy/repository"
 	strategysolver "github.com/vantare/overlays/v2/internal/strategy/solver"
 	strategytyres "github.com/vantare/overlays/v2/internal/strategy/tyres"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
 	"github.com/vantare/overlays/v2/internal/testingcenter/reportdraft"
 	"github.com/vantare/overlays/v2/internal/tts"
 	"github.com/vantare/overlays/v2/internal/updater"
@@ -1817,6 +1819,22 @@ func main() {
 		licenseSvc.EmitCachedState()
 	})
 	wailsApp.RegisterService(application.NewService(licenseSvc))
+	var strategyRepo *strategyrepository.Repository[json.RawMessage]
+	var sessionCatalog *telemetryanalysis.SessionCatalog
+	var coldStart *coldstart.Service
+	if strategyRootErr != nil {
+		log.Printf("warning: Strategy repository is unavailable")
+	} else if repo, openErr := strategyrepository.Open[json.RawMessage](strategyRoot, strategyrepository.Options{}); openErr != nil {
+		log.Printf("warning: Strategy repository could not be opened: %v", openErr)
+	} else {
+		strategyRepo = repo
+		executable, executableErr := os.Executable()
+		executableDir := ""
+		if executableErr == nil {
+			executableDir = filepath.Dir(executable)
+		}
+		sessionCatalog, coldStart = strategyTelemetrySources(strategyRoot, executableDir)
+	}
 	telemetryAnalysisCfg, telemetryAnalysisCfgErr := telemetryAnalysisBackendConfig()
 	if telemetryAnalysisCfgErr != nil {
 		log.Printf("warning: Telemetry Analysis backend configuration is unavailable")
@@ -1824,6 +1842,7 @@ func main() {
 		if strategyRootErr == nil {
 			telemetryAnalysisCfg.CorrectionRoot = filepath.Join(filepath.Dir(strategyRoot), "telemetry-analysis")
 		}
+		telemetryAnalysisCfg.SessionCatalog = sessionCatalog
 		analysisService, analysisServiceErr := app.NewTelemetryAnalysisService(telemetryAnalysisCfg, licenseSvc)
 		if analysisServiceErr != nil {
 			log.Printf("warning: Telemetry Analysis service is unavailable")
@@ -1837,19 +1856,9 @@ func main() {
 	}
 	// Analysis and its license boundary must exist before Strategy consumes pinned revisions.
 	var strategyBridge strategyCommandExecutor
-	if strategyRootErr != nil {
-		log.Printf("warning: Strategy repository is unavailable")
-	} else if repo, openErr := strategyrepository.Open[json.RawMessage](strategyRoot, strategyrepository.Options{}); openErr != nil {
-		log.Printf("warning: Strategy repository could not be opened: %v", openErr)
-	} else {
+	if strategyRepo != nil {
 		referenceCatalog := strategycatalog.NewConsumer(strategyReferenceCatalogOptions(strategyRoot))
-		executable, executableErr := os.Executable()
-		executableDir := ""
-		if executableErr == nil {
-			executableDir = filepath.Dir(executable)
-		}
-		sessionCatalog, coldStart := strategyTelemetrySources(strategyRoot, executableDir)
-		strategyService := strategyapplication.NewServiceWithSourcesAndColdStart(repo, app.NewStrategyRevisionCatalog(sessionCatalog, telemetryAnalysisSvc), nil, referenceCatalog, coldStart)
+		strategyService := strategyapplication.NewServiceWithSourcesAndColdStart(strategyRepo, app.NewStrategyRevisionCatalog(sessionCatalog, telemetryAnalysisSvc), nil, referenceCatalog, coldStart)
 		strategyBridge = strategyapplication.NewJSONBridge(strategyService)
 	}
 	app.NewStrategyApplicationBridge(ctx, strategyBridge, emitter).RegisterHandlers(wailsApp)

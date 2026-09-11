@@ -11,7 +11,7 @@ import { DesignSection } from "../../hub/overlay-studio/inspector/DesignSection"
 import { ActionsSection } from "../../hub/overlay-studio/inspector/ActionsSection";
 import { resolveInspectorSections } from "../../hub/overlay-studio/inspector/inspector-sections";
 import { createWailsWidgetDesignClient } from "../../hub/overlay-studio/designs/widget-design-client";
-import { useStudioDocument } from "../../hub/overlay-studio/state/studio-store";
+import { useStudioActions, useStudioDirty, useStudioSelector } from "../../hub/overlay-studio/state/studio-store";
 import { useI18n } from "../../i18n/I18nProvider";
 import { useInplaceAutosave } from "./use-inplace-autosave";
 
@@ -81,7 +81,12 @@ export function InPlaceInspectorPanel(props: InPlaceInspectorPanelProps): React.
     autosave,
   } = props;
   const { t } = useI18n();
-  const { canUndo, canRedo, dirty, saveState, savedDocument, discardAll } = useStudioDocument();
+  const canUndo = useStudioSelector((s) => (s.history?.past.length ?? 0) > 0);
+  const canRedo = useStudioSelector((s) => (s.history?.future.length ?? 0) > 0);
+  const dirty = useStudioDirty();
+  const saveState = useStudioSelector((s) => s.saveState);
+  const savedDocument = useStudioSelector((s) => s.history?.saved ?? null);
+  const { discardAll } = useStudioActions();
   const runtimeContext = useOverlayRuntimeContext(telemetry);
   const disabled = licenseLoading || autosave.paused !== null;
   const [hidden, setHidden] = useState(false);

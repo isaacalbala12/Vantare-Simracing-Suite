@@ -17,7 +17,7 @@ import {
   readStageGeometryCache,
   writeStageGeometryCache,
 } from '../canvas/stage-geometry-cache';
-import { useStudioDocument, useStudioPreview } from '../state/studio-store';
+import { useStudioWidgetPolicy, useStudioActions, useStudioActiveLayout, useStudioPreview, useStudioSelector } from '../state/studio-store';
 import { placeSelectionTag, type TagAnchor } from './selection-tag-placement';
 import { fill, widgetLabel } from './studio-orbit-model';
 
@@ -45,16 +45,12 @@ export type StudioOrbitStageProps = {
 export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactElement {
   const { diagnostics, onPointer } = props;
   const { t } = useI18n();
-  const {
-    widgetPolicy,
-    document,
-    activeLayout,
-    activeSession,
-    selectedWidgetId,
-    selectWidget,
-    dispatch,
-    notifyAccessDenied,
-  } = useStudioDocument();
+  const widgetPolicy = useStudioWidgetPolicy();
+  const document = useStudioSelector((s) => s.history?.present ?? null);
+  const activeLayout = useStudioActiveLayout();
+  const activeSession = useStudioSelector((s) => s.activeSession);
+  const selectedWidgetId = useStudioSelector((s) => s.selectedWidgetId);
+  const { selectWidget, dispatch, notifyAccessDenied } = useStudioActions();
   const { preview } = useStudioPreview();
   // Los widgets pintan texto con metricas criticas: sin este gate, el swap de
   // fuentes reflowea las filas justo tras el primer pintado (el 'salto

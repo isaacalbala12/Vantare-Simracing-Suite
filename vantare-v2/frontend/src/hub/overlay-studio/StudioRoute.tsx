@@ -43,7 +43,7 @@ import {
   createWailsStudioEventTransport,
   type StudioProfileClient,
 } from './state/studio-profile-client';
-import { ConnectedStudioProvider, useStudioDocument } from './state/studio-store';
+import { ConnectedStudioProvider, useStudioActions, useStudioDirty, useStudioSelector } from './state/studio-store';
 import { StudioAutosave } from './state/studio-autosave';
 import type { StudioProfileEntry } from './studio-profile-entry';
 
@@ -190,7 +190,8 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
     onNavigationCancel,
   } = props;
   const { t } = useI18n();
-  const { document, lastError } = useStudioDocument();
+  const document = useStudioSelector((s) => s.history?.present ?? null);
+  const lastError = useStudioSelector((s) => s.loadError);
 
   if (!document) {
     return (
@@ -307,13 +308,14 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
 type StudioRouteNavigationBridgeProps = {
   onDirtyChange(dirty: boolean): void;
   onBindActions(actions: {
-    save(): ReturnType<ReturnType<typeof useStudioDocument>['save']>;
+    save(): ReturnType<ReturnType<typeof useStudioActions>['save']>;
     discardAll(): void;
   }): void;
 };
 
 function StudioRouteNavigationBridge(props: StudioRouteNavigationBridgeProps): null {
-  const { dirty, save, discardAll } = useStudioDocument();
+  const dirty = useStudioDirty();
+  const { save, discardAll } = useStudioActions();
   const { onDirtyChange, onBindActions } = props;
 
   useEffect(() => {
@@ -448,7 +450,7 @@ function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactEl
   const dirtyRef = useRef(false);
   const pendingCreateNameRef = useRef<string | null>(null);
   const studioActionsRef = useRef<{
-    save(): ReturnType<ReturnType<typeof useStudioDocument>['save']>;
+    save(): ReturnType<ReturnType<typeof useStudioActions>['save']>;
     discardAll(): void;
   } | null>(null);
   const navigationResolverRef = useRef<((decision: 'save' | 'discard' | 'cancel') => void) | null>(

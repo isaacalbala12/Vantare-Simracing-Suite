@@ -11,7 +11,7 @@ import {
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import { useOverlayRuntimeContext } from "../runtime/use-rate-limited-telemetry";
 import { resolveRuntimeLayout } from "../runtime/resolve-runtime-layout";
-import { StudioProvider, useStudioDocument } from "../../hub/overlay-studio/state/studio-store";
+import { StudioProvider, useStudioActions, useStudioSelector } from "../../hub/overlay-studio/state/studio-store";
 import type { StudioPolicy } from "../../hub/overlay-studio/access/studio-access";
 import { InPlaceWidgetEditFrame } from "./InPlaceWidgetEditFrame";
 import { MemoInPlaceInspectorPanel } from "./InPlaceInspectorPanel";
@@ -93,17 +93,17 @@ export function InPlaceEditOverlay(props: InPlaceEditOverlayProps): React.ReactE
 function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revision">): React.ReactElement {
   const { document, layoutOrigin, telemetry, policy, licenseLoading, raceSchedule } = props;
   const { t } = useI18n();
+  const storeDocument = useStudioSelector((s) => s.history?.present ?? null);
+  const savedDocument = useStudioSelector((s) => s.history?.saved ?? null);
+  const saveState = useStudioSelector((s) => s.saveState);
+  const accessNotice = useStudioSelector((s) => s.accessNotice);
   const {
-    document: storeDocument,
-    savedDocument,
     dispatch,
     selectWidget,
     save,
     undo,
     redo,
-    saveState,
-    accessNotice,
-  } = useStudioDocument();
+  } = useStudioActions();
   const [selectedWidgetIdLocal, setSelectedWidgetIdLocal] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<WidgetContextMenuState | null>(null);
   const surfaceRef = useRef<HTMLDivElement>(null);

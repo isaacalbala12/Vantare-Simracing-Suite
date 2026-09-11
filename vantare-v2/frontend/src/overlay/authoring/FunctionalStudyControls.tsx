@@ -1,12 +1,19 @@
-import type { OverlayWorkshopQuery } from "./overlay-workshop-query";
-import { FUNCTIONAL_STUDY_MODULES, FUNCTIONAL_STUDY_STYLES } from "./functional-study-options";
+import { ALL_WIDGET_TYPES, type WidgetType } from "../core/profile-document";
 import { designSystemRegistry } from "../core/design-system-registry";
 import { listOfficialDesigns } from "../design-systems/official-designs";
-import type { WidgetType } from "../core/profile-document";
+import { listAnimationScenes } from "./fixtures/animation-scenes";
+import { projectionGapsFor } from "./fixtures/projection-gaps";
+import { WORKSHOP_V2_VARIANTS } from "./fixtures/authoring-v2-workshop-frame";
+import { serializeOverlayWorkshopQuery, type OverlayWorkshopQuery } from "./overlay-workshop-query";
+import { FUNCTIONAL_STUDY_MODULES, FUNCTIONAL_STUDY_STYLES } from "./functional-study-options";
 
-const FUNCTIONAL_WIDGETS = designSystemRegistry
-  .get("vantare-functional", 1)
-  .widgets.map((entry) => entry.widgetType);
+const SYSTEM_LABELS: Record<string, string> = {
+  "vantare-functional": "Eficiencia",
+  "vantare-crystal": "Crystal",
+  "vantare-endurance": "Endurance",
+  "vantare-original": "Original",
+};
+const systemLabel = (id: string) => SYSTEM_LABELS[id] ?? id;
 
 const WIDGET_LABELS: Partial<Record<WidgetType, string>> = {
   standings: "Standings",
@@ -14,10 +21,11 @@ const WIDGET_LABELS: Partial<Record<WidgetType, string>> = {
   delta: "Delta",
   pedals: "Pedals",
 };
+const widgetLabel = (widget: WidgetType) => WIDGET_LABELS[widget] ?? widget;
 
-// Al cambiar de widget dentro del estudio se aterriza en la variante con los
-// datos más expresivos disponibles; el resto de la selección ligada al widget
-// anterior (escena, diseño, piel) no sobrevive porque la haría inválida.
+// Cada widget aterriza en la fixture más expresiva disponible para juzgar el
+// diseño; el resto de la selección ligada al widget anterior (escena, diseño,
+// piel de estudio) no sobrevive porque convertiría la query en inválida.
 const STUDY_LANDING: Partial<Record<WidgetType, Pick<OverlayWorkshopQuery, "variant" | "sceneId" | "sceneFrame">>> = {
   standings: { variant: "standings-functional-study" },
   relative: { variant: "relative-multiclass" },
@@ -25,54 +33,149 @@ const STUDY_LANDING: Partial<Record<WidgetType, Pick<OverlayWorkshopQuery, "vari
   pedals: { variant: "pedals-full" },
 };
 
-export function FunctionalStudyControls({ query, update, modules, onModules }: {
+const STATE_OPTIONS = [["ready", "Recibiendo"], ["stale", "Datos antiguos"], ["disconnected", "Desconectado"], ["error", "Error"]] as const;
+const SESSION_OPTIONS = [["race", "Carrera"], ["qualifying", "Clasificación"], ["practice", "Práctica"]] as const;
+const LOCATION_OPTIONS = [["track", "Pista"], ["pits", "Boxes"]] as const;
+const BACKGROUND_OPTIONS = [["context", "Mixto"], ["solid", "Oscuro"], ["transparent", "Claro"]] as const;
+const SURFACE_OPTIONS = [["studio", "Studio"], ["desktop", "Desktop"], ["obs", "OBS"], ["harness", "Harness"]] as const;
+const SCALE_OPTIONS = [["0.5", "0.5×"], ["1", "1×"], ["1.5", "1.5×"], ["2", "2×"]] as const;
+
+function Select(props: { label: string; value: string; onChange(value: string): void; children: React.ReactNode }) {
+  return <label className="functional-study-select"><span>{props.label}</span><select value={props.value} onChange={(event) => props.onChange(event.target.value)}>{props.children}</select></label>;
+}
+
+function Segments(props: { options: readonly (readonly [string, string])[]; value: string; onChange(value: string): void }) {
+  return <div className="functional-study-segments">{props.options.map(([id, label]) => <button type="button" key={id} aria-pressed={props.value === id} onClick={() => props.onChange(id)}>{label}</button>)}</div>;
+}
+
+export function FunctionalStudyControls({ query, update, modules, onModules, onRunScene, onReset }: {
   query: OverlayWorkshopQuery;
   update: (query: OverlayWorkshopQuery) => void;
   modules: readonly string[];
   onModules: (modules: string[]) => void;
+  onRunScene: (sceneId: string) => void;
+  onReset: () => void;
 }) {
-  const isStandings = query.widget === "standings";
   const systems = designSystemRegistry
     .list()
     .filter((system) => system.widgets.some((entry) => entry.widgetType === query.widget))
     .map((system) => system.id);
-  const designs = listOfficialDesigns(query.widget).filter((design) => design.systemId === "vantare-functional");
+  const designs = listOfficialDesigns(query.widget).filter((design) => design.systemId === query.system);
   const defaultDesign = designs.find((design) => design.isDefault) ?? designs[0];
-  const chooseWidget = (widget: WidgetType) => update({
-    ...query,
-    widget,
-    designId: undefined,
-    studyStyle: undefined,
-    sceneId: undefined,
-    sceneFrame: undefined,
-    ...(STUDY_LANDING[widget] ?? { variant: "default" }),
-  });
+  // Cada variante declarada pertenece a un widget por su prefijo; el resto
+  // produciría una query inválida.
+  const variants = WORKSHOP_V2_VARIANTS.filter((variant) => variant === "default" || variant.startsWith(`${query.widget}-`));
+  const scenes = listAnimationScenes(query.widget);
+  const gaps = projectionGapsFor(query.widget);
+  const isFunctional = query.system === "vantare-functional";
+  const isStandings = query.widget === "standings";
+
+  const chooseWidget = (widget: WidgetType) => {
+    const nextSystems = designSystemRegistry.list().filter((system) => system.widgets.some((entry) => entry.widgetType === widget)).map((system) => system.id);
+    const system = nextSystems.includes(query.system) ? query.system : nextSystems[0]!;
+    const landing = STUDY_LANDING[widget] ?? { variant: "default" as const };
+    // La variante de estudio de Standings solo existe dentro de Eficiencia;
+    // con otro sistema el aterrizaje es la multiclass, igual de expresiva.
+    const safeLanding = landing.variant === "standings-functional-study" && system !== "vantare-functional"
+      ? { variant: "standings-multiclass" as const }
+      : landing;
+    update({
+      ...query,
+      widget,
+      system,
+      designId: undefined,
+      studyStyle: undefined,
+      sceneId: undefined,
+      sceneFrame: undefined,
+      ...safeLanding,
+    });
+  };
   const chooseSystem = (system: string) => update({
     ...query,
     system: system as OverlayWorkshopQuery["system"],
     designId: undefined,
     studyStyle: undefined,
-    sceneId: undefined,
-    sceneFrame: undefined,
+    // La variante de estudio de Standings solo existe dentro de Eficiencia.
+    ...(system === "vantare-functional" || query.variant !== "standings-functional-study" ? {} : { variant: "default" as const }),
   });
+  const chooseDesign = (value: string) => update({ ...query, ...(value ? { designId: value } : { designId: undefined }) });
+  const chooseVariant = (value: string) => {
+    const variant = value as OverlayWorkshopQuery["variant"];
+    update({ ...query, variant, studyStyle: variant === "standings-functional-study" ? query.studyStyle : undefined });
+  };
+  const chooseScene = (value: string) => update({ ...query, sceneId: value || undefined, sceneFrame: value ? 0 : undefined });
+  const chooseScale = (value: string) => update({ ...query, scale: Number(value) });
 
   return <aside className="functional-study-controls" aria-label={`Diseño de ${query.widget}`}>
-    <div className="functional-study-title"><span>VANTARE / WORKSHOP</span><h1>Eficiencia.</h1><p>{WIDGET_LABELS[query.widget] ?? query.widget} · Sistema Efficiency</p></div>
-    <fieldset><legend>Widget</legend><div className="functional-study-segments">
-      {FUNCTIONAL_WIDGETS.map((widget) => <button type="button" key={widget} aria-pressed={query.widget === widget} onClick={() => chooseWidget(widget)}>{WIDGET_LABELS[widget] ?? widget}</button>)}
-    </div></fieldset>
-    <fieldset><legend>Sistema</legend><label className="functional-study-select"><span>Sistema de diseño</span><select value={query.system} onChange={(event) => chooseSystem(event.target.value)}>{systems.map((system) => <option key={system} value={system}>{system === "vantare-functional" ? "Eficiencia" : system}</option>)}</select></label></fieldset>
-    {designs.length > 1 && <fieldset><legend>Estilo</legend><div className="functional-study-segments">{designs.map((design) => <button type="button" key={design.id} aria-pressed={(query.designId ?? defaultDesign?.id) === design.id} onClick={() => update({ ...query, designId: design.id })}>{design.name}</button>)}</div></fieldset>}
-    {isStandings && <fieldset><legend>Dirección v2</legend><div className="functional-study-segments">
+    <div className="functional-study-title"><span>VANTARE / WORKSHOP</span><h1>{systemLabel(query.system)}.</h1><p>{widgetLabel(query.widget)} · Sistema {systemLabel(query.system)}</p></div>
+
+    <fieldset><legend>Widget</legend>
+      <Select label="Widget" value={query.widget} onChange={(value) => chooseWidget(value as WidgetType)}>
+        {ALL_WIDGET_TYPES.map((widget) => <option key={widget} value={widget}>{widgetLabel(widget)}</option>)}
+      </Select>
+      <Select label="Sistema de diseño" value={query.system} onChange={chooseSystem}>
+        {systems.map((system) => <option key={system} value={system}>{systemLabel(system)}</option>)}
+      </Select>
+      <Select label="Diseño" value={query.designId ?? ""} onChange={chooseDesign}>
+        <option value="">Ajustes por defecto del renderer</option>
+        {designs.map((design) => <option key={design.id} value={design.id}>{design.name}</option>)}
+      </Select>
+      <Select label="Variante" value={query.variant} onChange={chooseVariant}>
+        {variants.map((variant) => <option key={variant} value={variant}>{variant}</option>)}
+      </Select>
+    </fieldset>
+
+    {isFunctional && designs.length > 1 && <fieldset><legend>Estilo</legend><div className="functional-study-segments">{designs.map((design) => <button type="button" key={design.id} aria-pressed={(query.designId ?? defaultDesign?.id) === design.id} onClick={() => update({ ...query, designId: design.id })}>{design.name}</button>)}</div></fieldset>}
+    {isFunctional && isStandings && <fieldset><legend>Dirección v2</legend><div className="functional-study-segments">
       <button type="button" aria-pressed={!query.studyStyle} onClick={() => update({ ...query, studyStyle: undefined })}>V1</button>
       {FUNCTIONAL_STUDY_STYLES.map((style) => <button type="button" key={style.id} aria-pressed={query.studyStyle === style.id} onClick={() => update({ ...query, designId: style.designId, studyStyle: style.id })}>{style.label}</button>)}
     </div></fieldset>}
-    {isStandings && <fieldset><legend>Módulos</legend><p className="functional-study-note">Posición y piloto siempre visibles.</p>
+    {isFunctional && isStandings && <fieldset><legend>Módulos</legend><p className="functional-study-note">Posición y piloto siempre visibles.</p>
       {FUNCTIONAL_STUDY_MODULES.map((item) => <label key={item.id} className="functional-study-toggle"><span>{item.label}</span><input type="checkbox" checked={modules.includes(item.id)} onChange={() => onModules(modules.includes(item.id) ? modules.filter((id) => id !== item.id) : [...modules, item.id])} /></label>)}
     </fieldset>}
-    <fieldset><legend>Sesión</legend><div className="functional-study-segments">{([['race', 'Carrera'], ['practice', 'Práctica']] as const).map(([id, label]) => <button type="button" key={id} aria-pressed={query.session === id} onClick={() => update({ ...query, session: id })}>{label}</button>)}</div></fieldset>
-    <fieldset><legend>Fondo</legend><div className="functional-study-segments">{([['context', 'Mixto'], ['solid', 'Oscuro'], ['transparent', 'Claro']] as const).map(([id, label]) => <button type="button" key={id} aria-pressed={query.background === id} onClick={() => update({ ...query, background: id })}>{label}</button>)}</div></fieldset>
-    <fieldset><legend>Datos</legend><label className="functional-study-select"><span>Estado de la fuente</span><select value={query.state} onChange={(e) => update({ ...query, state: e.target.value as OverlayWorkshopQuery['state'] })}><option value="ready">Recibiendo</option><option value="stale">Datos antiguos</option><option value="disconnected">Desconectado</option></select></label></fieldset>
-    <div className="functional-study-provenance"><span className="functional-study-dot" />Escenario de diseño<p>Datos de demostración. El widget usa el mismo componente que la aplicación.</p></div>
+
+    <fieldset><legend>Animación</legend>
+      {scenes.length === 0 ? <p className="functional-study-note">Este widget todavía no tiene animaciones declaradas.</p> : (
+        <div className="functional-study-scene">
+          <Select label="Escena" value={query.sceneId ?? ""} onChange={chooseScene}>
+            <option value="">Sin animación</option>
+            {scenes.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
+          </Select>
+          {query.sceneId && <button type="button" className="functional-study-play" onClick={() => onRunScene(query.sceneId!)} data-testid="workshop-scene-run">▶ Reproducir</button>}
+        </div>
+      )}
+      {gaps.length > 0 && <div className="functional-study-gaps"><strong>Más de lo que llega en carrera.</strong><ul>{gaps.map((gap) => <li key={gap.field}><code>{gap.field}</code> — {gap.consequence}</li>)}</ul></div>}
+    </fieldset>
+
+    <fieldset><legend>Datos</legend>
+      <Select label="Estado de la fuente" value={query.state} onChange={(value) => update({ ...query, state: value as OverlayWorkshopQuery["state"] })}>
+        {STATE_OPTIONS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+      </Select>
+      <Select label="Sesión" value={query.session} onChange={(value) => update({ ...query, session: value as OverlayWorkshopQuery["session"] })}>
+        {SESSION_OPTIONS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+      </Select>
+      <Select label="Ubicación" value={query.location} onChange={(value) => update({ ...query, location: value as OverlayWorkshopQuery["location"] })}>
+        {LOCATION_OPTIONS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+      </Select>
+    </fieldset>
+
+    <fieldset><legend>Presentación</legend>
+      <p className="functional-study-note">Fondo</p>
+      <Segments options={BACKGROUND_OPTIONS} value={query.background} onChange={(value) => update({ ...query, background: value as OverlayWorkshopQuery["background"] })} />
+      <Select label="Superficie" value={query.surface} onChange={(value) => update({ ...query, surface: value as OverlayWorkshopQuery["surface"] })}>
+        {SURFACE_OPTIONS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+      </Select>
+      <Select label="Comparar con" value={query.compare ?? ""} onChange={(value) => update({ ...query, ...(value ? { compare: value as OverlayWorkshopQuery["compare"] } : { compare: undefined }) })}>
+        <option value="">Sin comparar</option>
+        {SURFACE_OPTIONS.filter(([id]) => id !== query.surface).map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+      </Select>
+      <p className="functional-study-note">Escala</p>
+      <Segments options={SCALE_OPTIONS} value={String(query.scale)} onChange={chooseScale} />
+    </fieldset>
+
+    <div className="functional-study-provenance"><span className="functional-study-dot" />Escenario de diseño<p>Datos de demostración. El widget usa el mismo componente que la aplicación.</p>
+      <code className="functional-study-query" data-overlay-workshop-query>{serializeOverlayWorkshopQuery(query)}</code>
+      <button type="button" className="functional-study-reset" onClick={onReset}>Restablecer selección</button>
+    </div>
   </aside>;
 }

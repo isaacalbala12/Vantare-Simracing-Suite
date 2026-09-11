@@ -3,6 +3,7 @@ import type { WidgetRendererProps } from "../../core/design-system-definition";
 import { FUNCTIONAL_IDENTITY_METRICS as IDENTITY, resolveFunctionalColumnWidth, resolveFunctionalIdentitySpan } from "../../widget-types/standings/functional-standings-layout";
 import { resolveStandingsCellValue, type StandingsViewModel } from "../../widget-types/standings/standings-view-model";
 import { functionalLabels } from "./labels";
+import { resolveFunctionalFooterSlots } from "./footer-slots";
 import vantareMark from "../../../assets/orbit/vantare-mark.png";
 
 export function StandingsFunctional({ model, settings }: WidgetRendererProps<StandingsViewModel>) {
@@ -19,7 +20,9 @@ export function StandingsFunctional({ model, settings }: WidgetRendererProps<Sta
   // política nativa y la preferencia del documento. Sin ella se conserva el
   // comportamiento previo (marca con cabecera).
   const brandVisible = (settings.brandVisible as boolean | undefined) ?? hasHeader;
-  const hasFooter = Boolean(model.trackTempText || model.ambientTempText || model.windText);
+  const footerSlots = Array.isArray(settings.footerSlots) ? (settings.footerSlots as unknown[]).filter((s): s is string => typeof s === "string") : [];
+  const slots = footerSlots.length > 0 ? resolveFunctionalFooterSlots(model, footerSlots, labels) : [];
+  const hasFooter = slots.length === 0 && Boolean(model.trackTempText || model.ambientTempText || model.windText);
   const unavailable = model.status === "disconnected" || model.status === "missing" || model.status === "error";
   const statusText = model.status !== "ready" ? labels[model.status] : model.rows.length === 0 ? labels.missing : undefined;
   const labelFor = (metric: string) => metric === "gap" && paceSession ? labels.paceGap : labels[metric as keyof typeof labels] ?? metric;
@@ -58,6 +61,11 @@ export function StandingsFunctional({ model, settings }: WidgetRendererProps<Sta
             </tr>
           ))}</tbody>
         </table>
+      )}
+      {slots.length > 0 && !unavailable && (
+        <div className="vf-slots" data-footer-slots>
+          {slots.map((slot) => <span key={slot.id} className="vf-slot" data-slot={slot.id}><span className="vf-slot-label">{slot.label}</span><b className="vf-slot-value">{slot.value}</b></span>)}
+        </div>
       )}
       {hasFooter && !unavailable && (
         <div className="vf-footer" data-session-footer>

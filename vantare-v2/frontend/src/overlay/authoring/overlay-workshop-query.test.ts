@@ -95,4 +95,15 @@ describe("Overlay Workshop query", () => {
       "widget=relative&system=vantare-original&state=ready&surface=studio&variant=relative-fill&session=race&location=track&background=grid&scale=1&preset=1080p",
     );
   });
+
+  it("parses footer slots for functional standings/relative, capped at five, and drops them elsewhere", () => {
+    const standings = parseOverlayWorkshopQuery("?widget=standings&system=vantare-functional&slots=time,lap,gap,track,wind,ambient");
+    expect(standings).not.toHaveProperty("error");
+    if (!("error" in standings)) expect(standings.slots).toEqual(["time", "lap", "gap", "track", "wind"]);
+    const relative = parseOverlayWorkshopQuery("?widget=relative&system=vantare-functional&slots=bestLap");
+    if (!("error" in relative)) expect(relative.slots).toEqual(["bestLap"]);
+    expect(parseOverlayWorkshopQuery("?widget=delta&system=vantare-functional&slots=gap")).not.toHaveProperty("slots");
+    expect(parseOverlayWorkshopQuery("?widget=standings&system=vantare-original&slots=gap")).not.toHaveProperty("slots");
+    expect(parseOverlayWorkshopQuery("?widget=standings&system=vantare-functional&slots=unknown")).toHaveProperty("error");
+  });
 });

@@ -26,6 +26,8 @@ export const vantareFunctionalManifest: DesignSystemDefinition = {
           // en el Workshop la escribe el selector de marca.
           showBrand: value.showBrand === true,
           ...(typeof value.brandVisible === "boolean" ? { brandVisible: value.brandVisible } : {}),
+          // Huecos de datos del pie (máx. 5 ids conocidos).
+          ...(Array.isArray(value.footerSlots) ? { footerSlots: value.footerSlots.filter((s): s is string => typeof s === "string").slice(0, 5) } : {}),
         };
       },
       inspector: { appearance: [{ kind: "toggle", id: "show-session-header", labelKey: "overlay.inspector.standings.showSessionHeader", path: "showSessionHeader", defaultValue: true }] },

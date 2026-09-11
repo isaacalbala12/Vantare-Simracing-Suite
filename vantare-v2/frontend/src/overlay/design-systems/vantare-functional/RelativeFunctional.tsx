@@ -6,6 +6,7 @@ import { RELATIVE_COLUMN_TEMPLATES } from "../../widget-types/relative/relative-
 import { resolveRelativeClassColor } from "../../widget-types/relative/relative-renderer-helpers";
 import { resolveRelativeCellValue, type RelativeViewModel } from "../../widget-types/relative/relative-view-model";
 import { functionalLabels } from "./labels";
+import { resolveFunctionalFooterSlots } from "./footer-slots";
 
 const CENTERED = new Set(["position", "class", "carNumber", "gap"]);
 const LAP_METRICS = new Set(["bestLap", "lastLap"]);
@@ -17,7 +18,9 @@ export function RelativeFunctional({ model, settings }: WidgetRendererProps<Rela
   const unavailable = model.status === "disconnected" || model.status === "missing" || model.status === "error";
   const statusText = model.status !== "ready" ? labels[model.status] : model.rows.length === 0 ? labels.missing : undefined;
   const hasMeta = Boolean(model.trackText || model.playerBadgeText);
-  const hasFooter = Boolean(model.sessionLabel || model.remainingText || model.ambientTempText || model.trackTempText || model.windText);
+  const footerSlots = Array.isArray(settings.footerSlots) ? (settings.footerSlots as unknown[]).filter((s): s is string => typeof s === "string") : [];
+  const slots = footerSlots.length > 0 ? resolveFunctionalFooterSlots(model, footerSlots, labels) : [];
+  const hasFooter = slots.length === 0 && Boolean(model.sessionLabel || model.remainingText || model.ambientTempText || model.trackTempText || model.windText);
   const labelFor = (metricId: string) =>
     metricId === "gap" ? labels.playerGap
       : metricId === "carNumber" ? labels.driverNumber
@@ -53,6 +56,11 @@ export function RelativeFunctional({ model, settings }: WidgetRendererProps<Rela
             </tr>
           ))}</tbody>
         </table>
+      )}
+      {slots.length > 0 && !unavailable && (
+        <div className="vf-slots" data-footer-slots>
+          {slots.map((slot) => <span key={slot.id} className="vf-slot" data-slot={slot.id}><span className="vf-slot-label">{slot.label}</span><b className="vf-slot-value">{slot.value}</b></span>)}
+        </div>
       )}
       {hasFooter && (
         <div className="vf-footer" data-session-footer>

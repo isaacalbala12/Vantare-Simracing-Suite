@@ -69,6 +69,13 @@
 .vf-meta, .vf-footer { position: relative; z-index: 1; display: flex; align-items: center; gap: 16px; height: 30px; padding: 0 12px; }
 .vf-meta { border-bottom: 1px solid var(--vf-line); }
 .vf-footer { border-top: 1px solid var(--vf-line); }
+
+/* Huecos de datos del pie: hasta 5 celdas etiqueta+valor repartidas. */
+.vf-slots { position: relative; z-index: 1; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; border-top: 1px solid var(--vf-line); }
+.vf-slot { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 5px 8px 6px; min-width: 0; }
+.vf-slot + .vf-slot { border-left: 1px solid var(--vf-line); }
+.vf-slot-label { font-size: 7px; font-weight: 600; letter-spacing: .07em; color: var(--vf-faint); text-transform: uppercase; white-space: nowrap; }
+.vf-slot-value { font-size: 11px; font-weight: 700; letter-spacing: -.01em; color: var(--vf-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .vf-footer-item { display: flex; align-items: baseline; gap: 6px; font: 600 9px/1 Inter, Arial, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: var(--vf-muted); }
 .vf-footer-item b { font: 650 11px/1 Inter, Arial, sans-serif; letter-spacing: -.01em; text-transform: none; font-variant-numeric: tabular-nums; color: var(--vf-ink); }
 .vf-footer-item--end { margin-left: auto; }

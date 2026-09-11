@@ -55,6 +55,16 @@ describe("Functional Standings", () => {
     expect(footer?.textContent).toContain("18 km/h");
   });
 
+  it("renders up to five data slots under the rows and they replace the ambient footer", () => {
+    const withWeather = { ...model, trackTempText: "28°", windText: "18 km/h" };
+    const { container } = render(<StandingsFunctional model={withWeather} settings={{ footerSlots: ["time", "position", "gap", "track", "wind", "lap"] }} renderMode="harness" />);
+    const slotEls = container.querySelectorAll(".vf-slot");
+    expect(slotEls).toHaveLength(5);
+    expect(container.querySelector('[data-slot="gap"] .vf-slot-value')?.textContent).toBe("+2.106s");
+    expect(container.querySelector('[data-slot="track"] .vf-slot-value')?.textContent).toBe("28°");
+    expect(container.querySelector(".vf-footer")).toBeNull();
+  });
+
   it("preserves disabled columns, custom order and configured name without inventing identifiers", () => {
     const custom = { ...model, columns: [model.columns[3]!, model.columns[1]!], rows: [{ ...model.rows[0]!, configuredDriverName: "M. Costa" }] };
     const { container } = render(<StandingsFunctional model={custom} settings={{}} renderMode="harness" />);

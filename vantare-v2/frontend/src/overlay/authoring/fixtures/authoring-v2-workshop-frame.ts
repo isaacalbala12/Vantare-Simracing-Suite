@@ -137,6 +137,7 @@ export function buildWorkshopWidget(input: {
   sceneId?: string;
   brand?: "off";
   modules?: readonly string[];
+  slots?: readonly string[];
 }): WidgetInstanceV3 {
   let widget = createScenarioWidget({
     widget: input.widget,
@@ -185,6 +186,18 @@ export function buildWorkshopWidget(input: {
       : content.columns;
     // El estudio enseña siempre al menos 15 pilotos (decisión de Isaac).
     widget = { ...widget, content: { ...content, columns, rowCount: 15 } };
+  }
+
+  // Huecos de datos del pie (hasta 5) en standings/relative de Eficiencia.
+  if (input.slots && input.slots.length > 0 && input.system === "vantare-functional"
+    && (input.widget === "standings" || input.widget === "relative")) {
+    widget = {
+      ...widget,
+      visual: {
+        ...widget.visual,
+        appearanceOverrides: { ...(widget.visual.appearanceOverrides ?? {}), footerSlots: [...input.slots] },
+      },
+    };
   }
 
   return widget;

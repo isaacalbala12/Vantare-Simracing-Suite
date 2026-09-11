@@ -24,3 +24,23 @@ export type FunctionalStudyStyleId = (typeof FUNCTIONAL_STUDY_STYLES)[number]["i
 export const FUNCTIONAL_STUDY_STYLE_IDS = new Set<string>(
   FUNCTIONAL_STUDY_STYLES.map((style) => style.id),
 );
+
+/** Huecos de datos del pie (máx. 5): vocabulario compartido de standings y
+ * relative. Cada id resuelve desde el VM; lo ausente se pinta "—". */
+export const FUNCTIONAL_STUDY_SLOTS = [
+  { id: "time", label: "Tiempo" },
+  { id: "lap", label: "Vuelta" },
+  { id: "position", label: "Posición" },
+  { id: "gap", label: "Diferencia" },
+  { id: "bestLap", label: "Mejor vuelta" },
+  { id: "lastLap", label: "Última vuelta" },
+  { id: "track", label: "Pista" },
+  { id: "ambient", label: "Aire" },
+  { id: "wind", label: "Viento" },
+] as const;
+
+export const FUNCTIONAL_STUDY_SLOT_IDS = new Set<string>(
+  FUNCTIONAL_STUDY_SLOTS.map((slot) => slot.id),
+);
+
+export const FUNCTIONAL_STUDY_MAX_SLOTS = 5;

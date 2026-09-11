@@ -5,7 +5,7 @@ import { getAnimationScene } from "./fixtures/animation-scenes";
 import { getOfficialDesign } from "../design-systems/official-designs";
 import { designSystemRegistry } from "../core/design-system-registry";
 import { WIDGET_TYPES } from "../core/profile-document";
-import { FUNCTIONAL_STUDY_MODULE_IDS, FUNCTIONAL_STUDY_STYLE_IDS, type FunctionalStudyStyleId } from "./functional-study-options";
+import { FUNCTIONAL_STUDY_MAX_SLOTS, FUNCTIONAL_STUDY_MODULE_IDS, FUNCTIONAL_STUDY_SLOT_IDS, FUNCTIONAL_STUDY_STYLE_IDS, type FunctionalStudyStyleId } from "./functional-study-options";
 
 export type OverlayWorkshopQuery = {
   widget: WidgetType;
@@ -17,6 +17,8 @@ export type OverlayWorkshopQuery = {
   /** Columnas opcionales del estudio (gap/bestLap/lastLap/pit). Misma regla:
    *  solo dentro de `standings-functional-study`. */
   modules?: readonly string[];
+  /** Huecos de datos del pie (máx. 5) en standings/relative de Eficiencia. */
+  slots?: readonly string[];
   state: AuthoringV2Scenario["state"];
   surface: "studio" | "desktop" | "obs" | "harness";
   variant: WorkshopV2Variant;
@@ -174,9 +176,22 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
     }
   }
 
+  // Slots del pie: cualquier variante funcional de standings/relative;
+  // id desconocido es error honesto, fuera de esos widgets se descarta.
+  const slotsRaw = params.get("slots");
+  let slots: readonly string[] | undefined;
+  if (slotsRaw !== null) {
+    const list = slotsRaw.split(",").filter(Boolean).slice(0, FUNCTIONAL_STUDY_MAX_SLOTS);
+    const unknown = list.find((id) => !FUNCTIONAL_STUDY_SLOT_IDS.has(id));
+    if (unknown) return { error: `invalid slots parameter: ${slotsRaw}` };
+    if (system === "vantare-functional" && (widget === "standings" || widget === "relative") && list.length > 0) {
+      slots = list;
+    }
+  }
+
   return { widget, system, state, surface, variant, session, location, background, scale, preset,
     ...(designId ? { designId } : {}), ...(studyStyle ? { studyStyle } : {}), ...(parsedWidth ? { width: parsedWidth } : {}), ...(parsedHeight ? { height: parsedHeight } : {}), ...(compare ? { compare } : {}),
-    ...(sceneId ? { sceneId } : {}), ...(sceneFrame !== undefined ? { sceneFrame } : {}), ...(brand === "off" ? { brand } : {}), ...(modules ? { modules } : {}) };
+    ...(sceneId ? { sceneId } : {}), ...(sceneFrame !== undefined ? { sceneFrame } : {}), ...(brand === "off" ? { brand } : {}), ...(modules ? { modules } : {}), ...(slots ? { slots } : {}) };
 }
 
 export function isOverlayWorkshopPath(pathname: string, isDevelopment = import.meta.env.DEV): boolean {
@@ -205,5 +220,6 @@ export function serializeOverlayWorkshopQuery(query: OverlayWorkshopQuery): stri
   if (query.sceneFrame !== undefined) params.set("frame", String(query.sceneFrame));
   if (query.brand) params.set("brand", query.brand);
   if (query.modules) params.set("modules", query.modules.join(","));
+  if (query.slots) params.set("slots", query.slots.join(","));
   return params.toString();
 }

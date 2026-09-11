@@ -1,5 +1,36 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1129 — editor in-place C2: panel colapsable, layout numérico y fixes (2026-09-11)
+
+Segundo corte de la paridad comprimida, apilado sobre la rama de ISA-1123
+(`02f266d8`). Issue
+[#1129](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1129),
+rama `vantareapp/isa-1129-inplace-editor-c2`, worktree `vantare-isa1129`.
+
+El panel in-place ahora reutiliza `LayoutSection` del Studio (X/Y/W/H
+numérico, bloqueo de proporción, orden z, centrar y restablecer — todas las
+acciones pasan por `StudioCommand`/`executeWidgetAction` existentes), se
+pliega a su cabecera con un chevron, y salta a la izquierda cuando el widget
+seleccionado ocupa la mitad derecha del overlay, de modo que nunca tapa lo
+que se edita.
+
+Fixes incluidos que ya eran defectos antes de este corte: los títulos de
+sección del panel usaban claves i18n inexistentes
+(`overlay.studio.inspector.sections.*`) — corregido a
+`studio.inspector.section.*` con nueva clave `content` en los cuatro locales;
+`WidgetContextMenu` no clampeaba su posición al viewport (desbordaba en
+clicks cerca del borde, también en Studio — ahora mide y recoloca en
+`useLayoutEffect`); el comparador de `memo` del panel ignoraba
+`autosave.paused` y congelaba los chips de conflicto/reintento.
+
+Verificación: suite frontend completa PASS (3346 tests tras el fix de
+`progreso: 78` → escala válida en `plan.md`, corregido también en la rama de
+C1 como `02f266d8`), typecheck, build, lint y `git diff --check` limpios.
+Capturas locales en `/tmp/vantare-shots/c2-*.png` sobre harness
+`inplace-edit-harness.html` (localhost:5200). Pendiente: commit, push y PR
+draft; sin prueba física LMU. Cortes siguientes: añadir widget y selector de
+sesión (C3), diseños y restauración (C4).
+
 ## ISA-1123 — editor in-place C1: teclado, acciones y salida (2026-09-11)
 
 Isaac pidió iterar el editor in-place del overlay desktop (`Ctrl+Shift+E`)

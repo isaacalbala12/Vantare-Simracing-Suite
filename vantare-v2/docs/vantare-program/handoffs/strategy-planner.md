@@ -1,6 +1,23 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12j6 aceptado; J7 preparado
+## Estado vigente — T12j7 aceptado; J8a preparado
+
+J7 aceptado localmente y guardado en `e315c9f8`: un path,
+21 inserciones/12 borrados (el encabezado del informe Devin estimó
+20/10; el diff y el commit dan el conteo correcto). La composición abre el
+repositorio y fuentes una sola vez tras la licencia y comparte el mismo puntero
+SessionCatalog con Analysis y Strategy. Se preservan las rutas de error sin
+abrir fuentes, los logs y cold-start. Cinco pruebas focales PASS; global 126
+paquetes ok/cero FAIL/EXIT0; vet y gofmt EXIT0. Es evidencia de composición y
+compilación, no de arranque Wails. Informe:
+`frontend/.tmp/isa1104-t12j7-devin-report.md`.
+
+Siguiente corte ejecutable: J8a, cinco paths ya cerrados, para contrato
+TypeScript v4 y fixture JSON contrastada con el constructor Go. El editor
+actual debe continuar mostrando sólo campos legacy hasta tener selector
+atómico de catálogo; cliente/correlación v4 siguen como corte posterior.
+
+## Historial — J6 aceptado y preparación de J7
 
 J6 aceptado localmente y guardado en `5608902d`: tres paths, 352
 inserciones/5 borrados. `SaveCorrections` entrega el method value del catálogo

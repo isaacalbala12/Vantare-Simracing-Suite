@@ -6,7 +6,13 @@ import { functionalLabels } from "./labels";
 import { resolveFunctionalFooterSlots } from "./footer-slots";
 import vantareMark from "../../../assets/orbit/vantare-mark.png";
 
-export function StandingsFunctional({ model, settings }: WidgetRendererProps<StandingsViewModel>) {
+const SLOT_ROW_PX = 14;
+const SLOT_PAD_PX = 15;
+const SLOT_GAP_PX = 14;
+/** Ancho estimado de un hueco: etiqueta en caps fina + valor bold + aire. */
+const slotItemWidth = (label: string, value: string) => label.length * 5.5 + value.length * 7.5 + 12;
+
+export function StandingsFunctional({ model, settings, layout }: WidgetRendererProps<StandingsViewModel>) {
   const { locale } = useI18n();
   const labels = functionalLabels[locale];
   const broadcast = settings.templateId === "broadcast";
@@ -27,6 +33,22 @@ export function StandingsFunctional({ model, settings }: WidgetRendererProps<Sta
   const statusText = model.status !== "ready" ? labels[model.status] : model.rows.length === 0 ? labels.missing : undefined;
   const labelFor = (metric: string) => metric === "gap" && paceSession ? labels.paceGap : labels[metric as keyof typeof labels] ?? metric;
 
+  // Presupuesto de filas: el pie nunca se corta y la tabla cede en filas
+  // completas — una media fila colgando es peor que una fila menos.
+  // Sin layout (tests, hosts antiguos) no se recorta nada.
+  const innerWidth = Math.max(80, (layout?.w ?? 0) - 24);
+  const slotsTotal = slots.reduce((sum, slot) => sum + slotItemWidth(slot.label, slot.value), 0) + Math.max(0, slots.length - 1) * SLOT_GAP_PX;
+  const slotRows = slots.length > 0 ? Math.max(1, Math.ceil(slotsTotal / innerWidth)) : 0;
+  const slotsHeight = slotRows > 0 ? SLOT_PAD_PX + slotRows * SLOT_ROW_PX : 0;
+  const ambientHeight = slots.length === 0 && hasFooter ? 30 : 0;
+  const brandBandHeight = !hasHeader && brandVisible ? 24 : 0;
+  // La cabecera suelta (broadcast / sin bloque de identidad) vive fuera de
+  // la tabla y también resta espacio a las filas.
+  const looseHeaderHeight = (!identitySpan || unavailable || broadcast) && hasHeader ? 49 : 0;
+  const tableSpace = layout?.h === undefined ? Number.POSITIVE_INFINITY : layout.h - looseHeaderHeight - slotsHeight - ambientHeight - brandBandHeight;
+  const rowsFit = Math.max(0, Math.floor((tableSpace - 50) / 30));
+  const visibleRows = Number.isFinite(tableSpace) ? model.rows.slice(0, rowsFit) : model.rows;
+
   const sessionHeader = <div className={`vf-session${brandVisible ? "" : " vf-session--bare"}`} title={`${sessionLabel} · ${labels.remaining}`}>
     {brandVisible ? <span className="vf-brand" aria-label="Vantare"><img src={vantareMark} alt="" />VANTARE</span> : null}
     <span className="vf-session-context"><span className="vf-session-type" role={model.status === "stale" ? "status" : undefined}>{model.status === "stale" ? labels.stale : sessionLabel}</span><span className="vf-clock">{model.remainingText}</span></span>
@@ -39,7 +61,7 @@ export function StandingsFunctional({ model, settings }: WidgetRendererProps<Sta
       {(!identitySpan || unavailable || broadcast) && hasHeader && sessionHeader}
       {statusText && model.status !== "stale" && <p className="vf-status" role="status">{statusText}</p>}
       {model.statusMessage && model.status !== "stale" && <p className="vf-detail">{model.statusMessage}</p>}
-      {!unavailable && model.rows.length > 0 && (
+      {!unavailable && visibleRows.length > 0 && (
         <div className="vf-table-wrap">
         <table className="vf-table" aria-label={`${sessionLabel} · ${model.activeClass}`}>
           <colgroup>{columns.map((column) => <col key={column.id} style={{ width: resolveFunctionalColumnWidth(column, broadcast) }} />)}</colgroup>
@@ -49,7 +71,7 @@ export function StandingsFunctional({ model, settings }: WidgetRendererProps<Sta
             {columns.slice(broadcast ? 0 : identitySpan).map((column) => <th key={column.id} scope="col" data-metric={column.metricId} title={labelFor(column.metricId)}><span className="vf-column-label">{labelFor(column.metricId)}</span></th>)}
             </>}
           </tr></thead>
-          <tbody>{model.rows.map((row) => (
+          <tbody>{visibleRows.map((row) => (
             <tr key={row.id} data-standings-row={row.id} data-player={row.isPlayer || undefined}>
               {columns.map((column) => {
                 const value = column.metricId === "driverName" ? row.configuredDriverName ?? row.driverName : resolveStandingsCellValue(row, column.metricId);

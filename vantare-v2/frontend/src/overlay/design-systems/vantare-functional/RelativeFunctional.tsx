@@ -11,7 +11,13 @@ import { resolveFunctionalFooterSlots } from "./footer-slots";
 const CENTERED = new Set(["position", "class", "carNumber", "gap"]);
 const LAP_METRICS = new Set(["bestLap", "lastLap"]);
 
-export function RelativeFunctional({ model, settings }: WidgetRendererProps<RelativeViewModel>) {
+const SLOT_ROW_PX = 14;
+const SLOT_PAD_PX = 15;
+const SLOT_GAP_PX = 14;
+const RELATIVE_ROW_PX = 26;
+const slotItemWidth = (label: string, value: string) => label.length * 5.5 + value.length * 7.5 + 12;
+
+export function RelativeFunctional({ model, settings, layout }: WidgetRendererProps<RelativeViewModel>) {
   const { locale } = useI18n();
   const labels = functionalLabels[locale];
   const columns = model.columns;
@@ -26,6 +32,18 @@ export function RelativeFunctional({ model, settings }: WidgetRendererProps<Rela
       : metricId === "carNumber" ? labels.driverNumber
         : labels[metricId as keyof typeof labels] ?? metricId;
 
+  // Mismo presupuesto que standings: el pie nunca se corta y la tabla cede
+  // en filas completas. Sin layout no se recorta nada.
+  const innerWidth = Math.max(80, (layout?.w ?? 0) - 24);
+  const slotsTotal = slots.reduce((sum, slot) => sum + slotItemWidth(slot.label, slot.value), 0) + Math.max(0, slots.length - 1) * SLOT_GAP_PX;
+  const slotRows = slots.length > 0 ? Math.max(1, Math.ceil(slotsTotal / innerWidth)) : 0;
+  const slotsHeight = slotRows > 0 ? SLOT_PAD_PX + slotRows * SLOT_ROW_PX : 0;
+  const tableSpace = layout?.h === undefined
+    ? Number.POSITIVE_INFINITY
+    : layout.h - (hasMeta ? 30 : 0) - slotsHeight - (slots.length === 0 && hasFooter ? 30 : 0);
+  const rowsFit = Math.max(0, Math.floor(tableSpace / RELATIVE_ROW_PX));
+  const visibleRows = Number.isFinite(tableSpace) ? model.rows.slice(0, rowsFit) : model.rows;
+
   return (
     // Estructura de la referencia: barra de meta arriba (pista + posición del
     // jugador), lista de filas, barra inferior (sesión/reloj + ambiente). Cada
@@ -39,11 +57,11 @@ export function RelativeFunctional({ model, settings }: WidgetRendererProps<Rela
       )}
       {statusText && <p className="vf-status" role="status">{statusText}</p>}
       {model.statusMessage && <p className="vf-detail">{model.statusMessage}</p>}
-      {!unavailable && model.rows.length > 0 && (
+      {!unavailable && visibleRows.length > 0 && (
         <div className="vf-table-wrap">
         <table className="vf-table" aria-label={labels.relative}>
           <colgroup>{columns.map((column) => <col key={column.id} style={{ width: resolveColumnWidthPixels(column, RELATIVE_COLUMN_TEMPLATES.find((template) => template.metricId === column.metricId)?.defaultWidth ?? 60) }} />)}</colgroup>
-          <tbody>{model.rows.map((row) => (
+          <tbody>{visibleRows.map((row) => (
             <tr key={row.id} data-relative-row={row.id} data-player={row.isPlayer || undefined} data-side={row.side}>
               {columns.map((column) => {
                 const value = column.metricId === "gap" && row.isPlayer ? "—" : resolveRelativeCellValue(row, column.metricId);

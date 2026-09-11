@@ -9,10 +9,13 @@ import { initialSection } from './orbit/initial-view';
 import { viewToSection } from './orbit/views';
 import { resolveTestingCenterChannel } from './testing-center/channel-access';
 import {
-  UPDATER_CHANNEL_EVENT,
   buildChannelOf,
   type UpdaterChannelEvent,
 } from './settings/updater-channel';
+import {
+  subscribeUpdaterChannel,
+  subscribeUpdaterSettings,
+} from './settings/updater-events';
 import type { VantareBuildChannel } from './testing-center/contracts';
 import { type Section, isSection } from './navigation';
 import { LicenseProvider, useLicense } from '../lib/license';
@@ -171,22 +174,20 @@ function HubShell() {
       applySettings(settingsStore.getSnapshot());
     });
     // Ajustes emite este evento al confirmar el canal (y al releerlo del
-    // backend): la shell se entera sin recargar.
-    const unsubChannel = Events.On(
-      UPDATER_CHANNEL_EVENT,
-      (event: { data: UpdaterChannelEvent }) => {
-        const channel = event.data?.channel;
-        setPreferredChannel(channel ? buildChannelOf(channel) : null);
-      },
-    );
+    // backend): la shell se entera sin recargar. Ambos canales updater pasan
+    // por el fanout de updater-events.ts; el listener recibe `event.data`
+    // desenvuelto.
+    const unsubChannel = subscribeUpdaterChannel((data) => {
+      const channel = (data as UpdaterChannelEvent | undefined)?.channel;
+      setPreferredChannel(channel ? buildChannelOf(channel) : null);
+    });
     // Y al arrancar, directo del backend: Ajustes puede no haberse abierto nunca.
-    const unsubUpdaterSettings = Events.On(
-      'updater:settings',
-      (event: { data: { settings?: { channel?: UpdaterChannelEvent['channel'] } } }) => {
-        const channel = event.data?.settings?.channel;
-        if (channel) setPreferredChannel(buildChannelOf(channel));
-      },
-    );
+    const unsubUpdaterSettings = subscribeUpdaterSettings((data) => {
+      const channel = (
+        data as { settings?: { channel?: UpdaterChannelEvent['channel'] } } | undefined
+      )?.settings?.channel;
+      if (channel) setPreferredChannel(buildChannelOf(channel));
+    });
     const unsubReminder = Events.On(
       'calendar:reminder',
       (event: { data: CalendarReminderPayload }) => {

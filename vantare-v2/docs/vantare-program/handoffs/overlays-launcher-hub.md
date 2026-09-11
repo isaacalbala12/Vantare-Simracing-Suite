@@ -309,7 +309,10 @@ física nueva, retirada V1, merge o release en este corte documental.
   el diseño oficial por defecto, como en producto), cabecera sin marca
   rediseñada como banda de información, y 15 pilotos mínimo en el estudio.
   Pendiente: opción de Studio para máximo de pilotos con ventana
-  top-3 + jugador.
+  top-3 + jugador. **Delta rehecho** (Isaac: "el diseño es malo"): valor
+  con glifo de dirección ▲/▼, escala de instrumento ±2 s con marcas y
+  etiquetas, relleno degradado con brillo por tono. Evidencia
+  `delta-instrument.png` / `delta-instrument-nobrand.png`.
   Sin merge, push, PR, promoción ni release.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde

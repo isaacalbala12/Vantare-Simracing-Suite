@@ -169,6 +169,71 @@ sin prueba física LMU en este corte. Cortes siguientes no entregados: panel
 colapsable/reubicable y layout numérico (C2), añadir widget y selector de
 sesión (C3), diseños y acciones de restauración (C4).
 
+## ISA-1127 — ciclo de vida de la ventana overlay de escritorio (2026-09-11, en rama)
+
+Issue [#1127](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1127)
+(`area:overlays-runtime`, `roadmap:required` → `milestones:overlay-tester-feedback`),
+rama `vantareapp/isa-1127-overlay-lifecycle`, worktree
+`C:/tmp/vantare-isa1127-overlay-lifecycle`, PR draft
+[#1169](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1169) a
+`nightly`. Origen: en la comprobación física de ISA-1098 (Efficiency PR1107 +
+REST 1106) la app se cerró al abrir overlay + edición y los overlays no
+reaparecieron; la reproducción física no se consiguió y este corte **no
+afirma** cerrar ese crash. Lo que sí demuestran los tests con fakes son tres
+defectos reales del controlador, presentes también en Nightly:
+
+- Dos `Start` concurrentes crean dos ventanas nativas y la perdedora queda
+  huérfana (siempre encima, inalcanzable por `Stop`). En producción ya hay
+  Starts concurrentes: `refreshActiveOverlayAfterSave` recrea la ventana en
+  cada guardado de Studio mientras el usuario puede pulsar abrir.
+- `Stop` durante la creación en vuelo devuelve `running=false`, pero la
+  ventana creada se instala después y reaparece como fantasma.
+- `Close()` se invocaba bajo `c.mu`: un runtime nativo que despache el evento
+  de cierre en la pila del caller bloquearía `HandleWindowClosed` en deadlock
+  (el callback real de Wails en `main.go` ya lanza goroutine, así que el test
+  síncrono prueba robustez del contrato, no el crash físico).
+
+Corte mínimo: `internal/app/overlay_controller.go` añade `startMu` que
+serializa `Start`/`Stop` y cierra la ventana anterior fuera de `c.mu` en todos
+los caminos. `HandleWindowClosed` no cambia. Sin dependencias ni arquitectura
+nueva.
+
+Evidencia: 3 regresiones nuevas (`overlay_controller_lifecycle_test.go`)
+**rojas en base** `131471ff` (worktree temporal detached, 3/3 corridas:
+huérfana `closed=0`, fantasma `Running:true`, deadlock 2 s) y **verdes con el
+fix** bajo `-race`; los 8 tests existentes del controlador pasan. `go test
+./...` completo exit 0 (requirió `pnpm install --frozen-lockfile` + `pnpm
+build` para el embed de `frontend/dist`). `plan.md` actualizado
+(`overlay-tester-feedback`) y `roadmap.json` regenerado con
+`roadmap_digest.py --ref origin/nightly`. Fragmento de changelog
+`ISA-1127.json`.
+
+La rama quedó reconciliada con `origin/nightly` `dc5e7ae1` mediante merge en
+la propia rama de issue (el PR nació CONFLICTING porque nightly había sumado
+ISA-1162/1152/1123; ninguno toca `overlay_controller.go`). Conflictos solo en
+docs derivados: handoff (orden de entradas) y `roadmap.json` (regenerado).
+Validación física local completada con `bin/vantare.exe`, reconstruido por el
+procedimiento documentado (`wails3 task -f build`, canal `nightly`) desde el
+`.env.local` original autorizado: URL Supabase, anon key y registro público de
+licencia se cargaron solo en memoria y las tres coincidencias embebidas dieron
+`EMBED_MATCH=True`, sin imprimir valores. SHA256
+`FA10F5326052B115AF767B7AAB3A3E5090789F64855012D70C3821A3EFA55B8F`.
+
+En un arranque limpio, con una sola instancia y el servidor OBS escuchando en
+`127.0.0.1:39261`, se activó `Clean Overlay` y se reprodujo abrir overlay desde
+Hub → abrir Studio: Hub siguió respondiendo y Studio abrió en 189 ms, sin cierre
+de la app. Al entrar en Studio el overlay pasó a detenido, comportamiento
+observable que no equivale a una ventana huérfana. Desde Studio se abrió de
+nuevo el overlay y se realizaron dos guardados reales moviendo el widget
+`delta` y devolviéndolo: ambos alcanzaron `Guardado automáticamente`, cada uno
+creó un nuevo entorno WebView2 y el proceso siguió respondiendo. `Detener
+overlay` volvió a `Abrir overlay`; no hubo `panic`, `fatal` ni fallo de escucha
+en el log limpio. Los perfiles y el calendario tocados durante el smoke se
+restauraron después y el árbol tracked quedó limpio. Esta evidencia valida el
+flujo probado con `Clean Overlay`; no demuestra aún paridad de Efficiency+REST,
+Pro/Owner ni todos los perfiles. Sin promoción a nightly, testers, master ni
+release.
+
 ## ISA-1101 — integración inicial autorizada a nightly (2026-09-10)
 
 Isaac solicita «antes de continuar mergea tu trabajo a nightly». Este corte

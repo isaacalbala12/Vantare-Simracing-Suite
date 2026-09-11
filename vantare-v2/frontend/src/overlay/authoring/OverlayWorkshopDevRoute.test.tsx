@@ -107,6 +107,23 @@ describe("OverlayWorkshopDevRoute", () => {
   // class alone and the best-lap column off: the fastest-lap scene handed the
   // crown between two cars that were not on screen, and no glyph could ever
   // appear.
+  // Regresión ISA-1128: el swap de columnas por sesión solo aplica a
+  // Standings — Delta/Pedals no llevan content.columns y antes explotaban.
+  it("renders every functional widget in every session without fixture errors", async () => {
+    for (const widget of ["standings", "relative", "delta", "pedals"] as const) {
+      for (const session of ["practice", "qualifying", "race"] as const) {
+        cleanup();
+        render(
+          <OverlayWorkshopDevRoute search={`?widget=${widget}&system=vantare-functional&variant=default&session=${session}&state=ready&surface=obs`} />,
+        );
+        await waitFor(() =>
+          expect(document.querySelector(`.vf-${widget}`)).toBeTruthy(),
+        );
+        expect(document.querySelector("[data-overlay-workshop-fixture-error]")).toBeNull();
+      }
+    }
+  });
+
   it("builds the widget from the scene, not just the telemetry", async () => {
     render(
       <OverlayWorkshopDevRoute search="?widget=standings&system=vantare-endurance&design=standings-endurance-redline&state=ready&surface=obs&scene=standings-fastest-lap" />,

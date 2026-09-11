@@ -5,21 +5,6 @@ import { PedalsFunctional } from "./PedalsFunctional";
 import { RelativeFunctional } from "./RelativeFunctional";
 import { StandingsFunctional } from "./StandingsFunctional";
 
-function parseShowHeader(input: unknown): Record<string, unknown> {
-  const value = input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {};
-  return {
-    showHeader: value.showHeader !== false,
-    // brandVisible es la decisión inyectada por la política nativa
-    // (ISA-1105) — o por el selector de marca del Workshop, que hace de
-    // autoridad local. Los demás campos se ignoran aquí.
-    ...(typeof value.brandVisible === "boolean" ? { brandVisible: value.brandVisible } : {}),
-  };
-}
-
-function headerInspector(labelKey: string) {
-  return { appearance: [{ kind: "toggle", id: "show-header", labelKey, path: "showHeader", defaultValue: true }] } as const;
-}
-
 export const vantareFunctionalManifest: DesignSystemDefinition = {
   id: "vantare-functional",
   version: 1,
@@ -76,10 +61,14 @@ export const vantareFunctionalManifest: DesignSystemDefinition = {
     {
       widgetType: "pedals",
       configVersion: 1,
-      defaultSettings: { showHeader: true },
+      // Los pedales de Eficiencia son solo las barras: no hay cabecera que
+      // conmutar.
+      defaultSettings: {},
       configMigrations: { 0: (settings) => ({ ...settings }) },
-      parseSettings: parseShowHeader,
-      inspector: headerInspector("overlay.inspector.pedals.showHeader"),
+      parseSettings(input: unknown) {
+        return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
+      },
+      inspector: { appearance: [] },
       Renderer: PedalsFunctional as ComponentType<WidgetRendererProps>,
     },
   ],

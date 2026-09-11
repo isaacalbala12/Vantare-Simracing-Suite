@@ -69,8 +69,8 @@
 .vf-meta, .vf-footer { position: relative; z-index: 1; display: flex; align-items: center; gap: 16px; height: 30px; padding: 0 12px; }
 .vf-meta { border-bottom: 1px solid var(--vf-line); }
 .vf-footer { border-top: 1px solid var(--vf-line); }
-.vf-footer-item { display: flex; align-items: baseline; gap: 6px; font: 600 6px/1 "JetBrains Mono", ui-monospace, monospace; letter-spacing: .16em; text-transform: uppercase; color: var(--vf-muted); }
-.vf-footer-item b { font: 650 11px/1 Inter, Arial, sans-serif; letter-spacing: 0; text-transform: none; color: var(--vf-ink); }
+.vf-footer-item { display: flex; align-items: baseline; gap: 6px; font: 600 9px/1 Inter, Arial, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: var(--vf-muted); }
+.vf-footer-item b { font: 650 11px/1 Inter, Arial, sans-serif; letter-spacing: -.01em; text-transform: none; font-variant-numeric: tabular-nums; color: var(--vf-ink); }
 .vf-footer-item--end { margin-left: auto; }
 .vf-detail { color: var(--vf-muted); }
 .vf-session-type[role="status"] { color: #e2c568; letter-spacing: 0; }

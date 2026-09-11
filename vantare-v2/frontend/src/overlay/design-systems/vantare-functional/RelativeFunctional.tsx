@@ -56,7 +56,7 @@ export function RelativeFunctional({ model, settings }: WidgetRendererProps<Rela
       )}
       {hasFooter && (
         <div className="vf-footer" data-session-footer>
-          {model.sessionLabel ? <span className="vf-footer-item"><b>{model.sessionLabel}</b>{model.remainingText ? ` ${model.remainingText}` : ""}</span> : model.remainingText ? <span className="vf-footer-item"><b>{model.remainingText}</b></span> : null}
+          {model.sessionLabel ? <span className="vf-footer-item"><b>{model.sessionLabel}{model.remainingText ? ` ${model.remainingText}` : ""}</b></span> : model.remainingText ? <span className="vf-footer-item"><b>{model.remainingText}</b></span> : null}
           {model.ambientTempText ? <span className="vf-footer-item vf-footer-item--end">{labels.ambientTemp} <b>{model.ambientTempText}</b></span> : null}
           {model.trackTempText ? <span className="vf-footer-item">{labels.trackTemp} <b>{model.trackTempText}</b></span> : null}
           {model.windText ? <span className="vf-footer-item">{labels.wind} <b>{model.windText}</b></span> : null}

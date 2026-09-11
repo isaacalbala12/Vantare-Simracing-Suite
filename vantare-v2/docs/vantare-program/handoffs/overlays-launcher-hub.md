@@ -1,5 +1,31 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1152 — editor in-place C5: rediseño toolbar/frames, pestañas y panel ocultable (2026-09-11)
+
+Quinto corte, apilado sobre la rama de ISA-1143 (`a8d8db1a`). Issue
+[#1152](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1152),
+rama `vantareapp/isa-1152-inplace-editor-c5`, worktree `vantare-isa1152`.
+Feedback visual de Isaac sobre las capturas de C2–C4.
+
+- **Frames**: outline no seleccionado pasa de rojo suave a gris fino; el
+  seleccionado conserva el acento con glow exterior y los handles de resize
+  son circulares.
+- **Toolbar**: chip + sesión + "+ Widget" + Hecho dentro de una pill con
+  blur (`inplace-toolbar*`), sin estilos inline dispersos.
+- **Panel con pestañas**: una pestaña por sección resuelta
+  (`resolveInspectorSections`), solo un cuerpo visible; pestaña por
+  defecto = layout, la elección muere con el widget.
+- **No tapa widgets**: botón de ocultar deja una pestaña de borde
+  (reabre al click o al hover) y el panel se vuelve fantasma
+  (`--ghost`, `pointer-events: none`) mientras `interaction.isInteractionActive`.
+- **Modo flotante**: toggle en la cabecera; el panel se arrastra por su
+  header y persiste `{mode, x, y}` en `localStorage` (`vantare.inplace.panel.v1`).
+
+Verificación: tests focales 36 PASS (nuevos: ocultar→pestaña, ghost en
+drag, flotante + drag de header, pestañas cambian sección), lint,
+typecheck y `diff --check` limpios. Capturas `/tmp/vantare-shots/c5-*.png`.
+Pendiente: commit, push y PR draft; sin prueba física LMU.
+
 ## ISA-1143 — editor in-place C4: secciones de diseño y acciones (2026-09-11)
 
 Cuarto corte, apilado sobre la rama de ISA-1141 (`dfa24d18`). Issue

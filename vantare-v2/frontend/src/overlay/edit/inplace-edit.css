@@ -6,31 +6,215 @@
   pointer-events: auto;
   max-height: calc(100vh - 32px);
   overflow-y: auto;
-  width: 280px;
+  width: 292px;
   box-sizing: border-box;
-  padding: 12px;
-  border-radius: 8px;
-  background: rgba(10, 10, 14, 0.92);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(13, 13, 17, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
   color: #e5e7eb;
   font-family: "Segoe UI", system-ui, sans-serif;
   font-size: 12px;
   user-select: none;
+  transition: opacity 140ms ease, transform 140ms ease;
 }
 
-.inplace-session-select {
-  padding: 4px 8px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+/* Fantasma mientras se arrastra o redimensiona un widget: no tapa ni captura. */
+.inplace-inspector-panel--ghost {
+  opacity: 0.08;
+  pointer-events: none;
+}
+
+.inplace-inspector-panel--floating {
+  top: auto;
+  right: auto;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+}
+
+.inplace-inspector-panel__header[data-draggable="true"] {
+  cursor: grab;
+}
+
+.inplace-inspector-panel__header[data-draggable="true"]:active {
+  cursor: grabbing;
+}
+
+/* Pestañas de seccion: una fila compacta, scroll horizontal si no caben. */
+.inplace-inspector-panel__tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 8px;
+  padding: 2px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.inplace-inspector-panel__tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.inplace-inspector-panel__tab {
+  flex: 0 0 auto;
+  padding: 4px 9px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #9ca3af;
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.inplace-inspector-panel__tab:hover {
   color: #e5e7eb;
-  font-family: ui-monospace, monospace;
-  font-size: 10px;
-  letter-spacing: 0.08em;
+}
+
+.inplace-inspector-panel__tab--active {
+  background: rgba(230, 57, 70, 0.16);
+  color: #fca5a5;
+}
+
+.inplace-inspector-panel__tab:focus-visible {
+  outline: 1px solid rgba(230, 57, 70, 0.8);
+  outline-offset: 1px;
+}
+
+/* Pestaña de borde cuando el panel esta oculto: reabre al click o al hover. */
+.inplace-panel-edge-tab {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 5100;
+  width: 22px;
+  height: 72px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-right: none;
+  border-radius: 8px 0 0 8px;
+  background: rgba(13, 13, 17, 0.82);
+  backdrop-filter: blur(10px);
+  color: #9ca3af;
   cursor: pointer;
 }
 
-.inplace-session-select:focus-visible {
+.inplace-panel-edge-tab:hover {
+  color: #fca5a5;
+  background: rgba(230, 57, 70, 0.18);
+}
+
+.inplace-panel-edge-tab--left {
+  right: auto;
+  left: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+}
+
+/* Barra superior: una sola pill con blur; cada pieza es parte del grupo. */
+.inplace-toolbar {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 5000;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 10px;
+  background: rgba(13, 13, 17, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px);
+  user-select: none;
+}
+
+.inplace-toolbar__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 8px;
+  border-radius: 7px;
+  color: #e63946;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  pointer-events: none;
+}
+
+.inplace-toolbar__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #e63946;
+  box-shadow: 0 0 6px rgba(230, 57, 70, 0.9);
+}
+
+.inplace-toolbar__divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.inplace-toolbar__select {
+  padding: 3px 6px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #e5e7eb;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.inplace-toolbar__select:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.inplace-toolbar__select option {
+  background: #131318;
+  color: #e5e7eb;
+}
+
+.inplace-toolbar__btn {
+  padding: 3px 10px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #e5e7eb;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.inplace-toolbar__btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.inplace-toolbar__btn--accent {
+  background: rgba(230, 57, 70, 0.9);
+  color: #fff;
+  font-weight: 700;
+}
+
+.inplace-toolbar__btn--accent:hover {
+  background: #e63946;
+}
+
+.inplace-toolbar__select:focus-visible,
+.inplace-toolbar__btn:focus-visible {
   outline: 1px solid rgba(230, 57, 70, 0.8);
   outline-offset: 1px;
 }
@@ -38,10 +222,6 @@
 .inplace-inspector-panel--left {
   right: auto;
   left: 16px;
-}
-
-.inplace-inspector-panel--collapsed {
-  width: 220px;
 }
 
 .inplace-inspector-panel fieldset {
@@ -133,27 +313,6 @@
   font-size: 10px;
 }
 
-.inplace-inspector-panel__sections section {
-  margin-bottom: 12px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.inplace-inspector-panel__sections section:last-child {
-  border-bottom: none;
-}
-
-.inplace-inspector-panel__section-title {
-  margin: 0 0 6px;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: #9ca3af;
-}
-
-.inplace-inspector-panel fieldset {
-  border: none;
-  margin: 0;
-  padding: 0;
+.inplace-inspector-panel__sections {
+  min-height: 40px;
 }

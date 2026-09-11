@@ -483,38 +483,19 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
         </div>
       ) : null}
       <div
-        style={{
-          position: "fixed",
-          top: 12,
-          left: 12,
-          zIndex: 5000,
-          display: "flex",
-          gap: 8,
-          alignItems: "center",
-          userSelect: "none",
-        }}
+        className="inplace-toolbar"
+        data-testid="edit-mode-toolbar"
         onPointerDown={(event) => event.stopPropagation()}
       >
-        <span
-          data-testid="edit-mode-chip"
-          style={{
-            padding: "4px 10px",
-            borderRadius: 4,
-            background: "rgba(0, 0, 0, 0.6)",
-            border: "1px solid rgba(255, 255, 255, 0.12)",
-            color: "#e63946",
-            fontFamily: "ui-monospace, monospace",
-            fontSize: 10,
-            letterSpacing: "0.08em",
-            pointerEvents: "none",
-          }}
-        >
+        <span className="inplace-toolbar__chip" data-testid="edit-mode-chip">
+          <span className="inplace-toolbar__dot" />
           {t("overlay.editMode.chip")}
         </span>
+        <span className="inplace-toolbar__divider" />
         <select
           aria-label={t("overlay.editMode.sessionAria")}
           data-testid="edit-mode-session"
-          className="inplace-session-select"
+          className="inplace-toolbar__select"
           value={editingSession}
           onChange={handleSessionChange}
         >
@@ -524,40 +505,21 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
             </option>
           ))}
         </select>
+        <span className="inplace-toolbar__divider" />
         <button
           type="button"
+          className="inplace-toolbar__btn"
           data-testid="edit-mode-add"
           title={t("overlay.editMode.add")}
           onClick={() => setAddDialogOpen(true)}
-          style={{
-            padding: "4px 10px",
-            borderRadius: 4,
-            background: "rgba(0, 0, 0, 0.6)",
-            border: "1px solid rgba(255, 255, 255, 0.12)",
-            color: "#e5e7eb",
-            fontFamily: "ui-monospace, monospace",
-            fontSize: 10,
-            letterSpacing: "0.08em",
-            cursor: "pointer",
-          }}
         >
           {t("overlay.editMode.add")}
         </button>
         <button
           type="button"
+          className="inplace-toolbar__btn inplace-toolbar__btn--accent"
           data-testid="edit-mode-done"
           onClick={() => Events.Emit("overlay:toggle-edit-mode")}
-          style={{
-            padding: "4px 10px",
-            borderRadius: 4,
-            background: "rgba(230, 57, 70, 0.85)",
-            border: "1px solid rgba(255, 255, 255, 0.18)",
-            color: "#fff",
-            fontFamily: "ui-monospace, monospace",
-            fontSize: 10,
-            letterSpacing: "0.08em",
-            cursor: "pointer",
-          }}
         >
           {t("overlay.editMode.done")}
         </button>
@@ -607,6 +569,7 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
         layoutViewport={layoutViewport}
         selectWidget={handleSelect}
         side={panelSide}
+        ghosted={interaction.isInteractionActive}
         access={access}
         licenseLoading={licenseLoading}
         autosave={autosave}

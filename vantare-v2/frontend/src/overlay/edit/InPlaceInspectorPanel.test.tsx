@@ -126,16 +126,30 @@ describe('InPlaceInspectorPanel', () => {
     expect(screen.getByTestId('inplace-inspector-empty')).toBeTruthy();
   });
 
-  it('renders the three property sections for a selected widget', async () => {
+  it('renders tabs for the resolved sections and switches between them', async () => {
     render(<Harness widget={buildDeltaWidget()} />);
     await waitFor(() => expect(screen.getByTestId('inplace-inspector-panel')).toBeTruthy());
+
+    // Todas las secciones del widget como pestañas; layout es la activa por defecto.
+    for (const id of ['design', 'appearance', 'content', 'behavior', 'layout', 'actions']) {
+      expect(screen.getByTestId(`inplace-tab-${id}`)).toBeTruthy();
+    }
+    expect(screen.getByTestId('inplace-inspector-section-layout')).toBeTruthy();
+    expect(screen.queryByTestId('inplace-inspector-section-appearance')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('inplace-tab-appearance'));
     expect(screen.getByTestId('inplace-inspector-section-appearance')).toBeTruthy();
-    expect(screen.getByTestId('inplace-inspector-section-content')).toBeTruthy();
+    expect(screen.queryByTestId('inplace-inspector-section-layout')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('inplace-tab-behavior'));
     expect(screen.getByTestId('inplace-inspector-section-behavior')).toBeTruthy();
+    expect(screen.queryByTestId('inplace-inspector-section-appearance')).toBeNull();
   });
 
   it('dispatches widget/visual when toggling an appearance control', async () => {
     render(<Harness widget={buildDeltaWidget()} />);
+    await waitFor(() => expect(screen.getByTestId('inplace-tab-appearance')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('inplace-tab-appearance'));
     const toggle = await screen.findByRole('button', { name: 'Mostrar cabecera' });
     fireEvent.click(toggle);
 
@@ -153,6 +167,7 @@ describe('InPlaceInspectorPanel', () => {
     expect(redo.disabled).toBe(true);
 
     // Un cambio de apariencia habilita undo.
+    fireEvent.click(screen.getByTestId('inplace-tab-appearance'));
     fireEvent.click(await screen.findByRole('button', { name: 'Mostrar cabecera' }));
     await waitFor(() =>
       expect((screen.getByTestId('inplace-undo') as HTMLButtonElement).disabled).toBe(false),

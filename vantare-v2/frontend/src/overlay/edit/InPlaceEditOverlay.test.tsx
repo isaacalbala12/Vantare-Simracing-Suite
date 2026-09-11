@@ -517,22 +517,69 @@ describe("InPlaceEditOverlay", () => {
     expect(payload.document.layouts.general.widgets[0].layout.x).toBe(250);
   });
 
-  it("collapses the panel to its header and expands it back", async () => {
+  it("hides the panel to an edge tab and reopens it", async () => {
     renderOverlay(buildDocument());
     await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
 
     const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
     fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
     fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
-    await waitFor(() => expect(screen.getByTestId("inplace-inspector-section-appearance")).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId("inplace-inspector-panel")).toBeTruthy());
 
-    fireEvent.click(screen.getByTestId("inplace-panel-collapse"));
-    expect(screen.queryByTestId("inplace-inspector-section-appearance")).toBeNull();
-    expect(screen.queryByTestId("inplace-inspector-section-layout")).toBeNull();
+    fireEvent.click(screen.getByTestId("inplace-panel-hide"));
+    expect(screen.queryByTestId("inplace-inspector-panel")).toBeNull();
+    expect(screen.getByTestId("inplace-panel-edge-tab")).toBeTruthy();
 
-    fireEvent.click(screen.getByTestId("inplace-panel-collapse"));
-    await waitFor(() => expect(screen.getByTestId("inplace-inspector-section-appearance")).toBeTruthy());
-    expect(screen.getByTestId("inplace-inspector-section-layout")).toBeTruthy();
+    fireEvent.click(screen.getByTestId("inplace-panel-edge-tab"));
+    await waitFor(() => expect(screen.getByTestId("inplace-inspector-panel")).toBeTruthy());
+  });
+
+  it("ghosts the panel while dragging a widget", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerMove(window, { pointerId: 1, clientX: 140, clientY: 140, bubbles: true });
+
+    const panel = screen.getByTestId("inplace-inspector-panel") as HTMLElement;
+    await waitFor(() =>
+      expect(panel.className).toContain("inplace-inspector-panel--ghost"),
+    );
+
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+    await waitFor(() =>
+      expect(panel.className).not.toContain("inplace-inspector-panel--ghost"),
+    );
+  });
+
+  it("switches the panel to floating mode and drags it by the header", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+    await waitFor(() => expect(screen.getByTestId("inplace-inspector-panel")).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId("inplace-panel-mode"));
+    const panel = screen.getByTestId("inplace-inspector-panel") as HTMLElement;
+    expect(panel.dataset.mode).toBe("floating");
+    expect(panel.className).toContain("inplace-inspector-panel--floating");
+    expect(panel.style.left).toBeTruthy();
+
+    const header = panel.querySelector(".inplace-inspector-panel__header") as HTMLElement;
+    const startLeft = Number.parseFloat(panel.style.left);
+    fireEvent.pointerDown(header, { pointerId: 9, button: 0, clientX: 200, clientY: 100, bubbles: true });
+    fireEvent.pointerMove(header, { pointerId: 9, clientX: 300, clientY: 160, bubbles: true });
+    fireEvent.pointerUp(header, { pointerId: 9, bubbles: true });
+    await waitFor(() =>
+      expect(Number.parseFloat(panel.style.left)).toBe(startLeft + 100),
+    );
+
+    // Vuelve a anclado.
+    fireEvent.click(screen.getByTestId("inplace-panel-mode"));
+    expect(panel.dataset.mode).toBe("docked");
   });
 
   it("moves the panel to the left when the selected widget sits on the right half", async () => {
@@ -646,17 +693,22 @@ describe("InPlaceEditOverlay", () => {
     fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
     fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
 
-    await waitFor(() => expect(screen.getByTestId("inplace-inspector-section-design")).toBeTruthy());
-    expect(screen.getByTestId("inplace-inspector-section-actions")).toBeTruthy();
-    expect(screen.getByTestId("studio-inspector-section-design")).toBeTruthy();
+    // Las secciones viven en pestañas: diseño y acciones existen como tabs.
+    await waitFor(() => expect(screen.getByTestId("inplace-tab-design")).toBeTruthy());
+    expect(screen.getByTestId("inplace-tab-actions")).toBeTruthy();
 
-    // Ninguna cabecera debe mostrar una clave i18n cruda.
-    const titles = screen
+    fireEvent.click(screen.getByTestId("inplace-tab-design"));
+    await waitFor(() => expect(screen.getByTestId("studio-inspector-section-design")).toBeTruthy());
+    fireEvent.click(screen.getByTestId("inplace-tab-actions"));
+    await waitFor(() => expect(screen.getByTestId("studio-inspector-section-actions")).toBeTruthy());
+
+    // Ninguna pestaña debe mostrar una clave i18n cruda.
+    const tabs = screen
       .getByTestId("inplace-inspector-panel")
-      .querySelectorAll(".inplace-inspector-panel__section-title");
-    for (const title of titles) {
-      expect(title.textContent).not.toContain("INSPECTOR.SECTIONS");
-      expect(title.textContent).not.toContain("OVERLAY.STUDIO");
+      .querySelectorAll(".inplace-inspector-panel__tab");
+    for (const tab of tabs) {
+      expect(tab.textContent).not.toContain("INSPECTOR.SECTION");
+      expect(tab.textContent).not.toContain("OVERLAY.STUDIO");
     }
   });
 
@@ -669,11 +721,13 @@ describe("InPlaceEditOverlay", () => {
     fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
 
     // Cambia una propiedad visual primero: sin cambio no hay nada que restaurar.
+    fireEvent.click(screen.getByTestId("inplace-tab-appearance"));
     const headerToggle = await screen.findByRole("button", { name: "Mostrar cabecera" });
     fireEvent.click(headerToggle);
     await waitFor(() => expect(saveCalls()).toHaveLength(1));
     resolveSave(0, "rev-2", (saveCalls()[0][1] as { document: ProfileDocumentV3 }).document);
 
+    fireEvent.click(screen.getByTestId("inplace-tab-actions"));
     fireEvent.click(screen.getByTestId("studio-action-restore-defaults"));
     await waitFor(() => expect(saveCalls()).toHaveLength(2));
 
@@ -698,6 +752,7 @@ describe("InPlaceEditOverlay", () => {
     fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
     await waitFor(() => expect(saveCalls()).toHaveLength(1));
 
+    fireEvent.click(screen.getByTestId("inplace-tab-actions"));
     await waitFor(() => expect(screen.getByTestId("studio-action-discard-all")).toBeTruthy());
     fireEvent.click(screen.getByTestId("studio-action-discard-all"));
 

@@ -500,6 +500,87 @@ describe("InPlaceEditOverlay", () => {
     );
   });
 
+  it("commits numeric X/Y/W/H edits from the layout section", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+
+    const input = await screen.findByTestId("studio-layout-x") as HTMLInputElement;
+    fireEvent.input(input, { target: { value: "250" } });
+    fireEvent.blur(input);
+
+    await waitFor(() => expect(saveCalls()).toHaveLength(1));
+    const payload = saveCalls()[0][1] as { document: ProfileDocumentV3 };
+    expect(payload.document.layouts.general.widgets[0].layout.x).toBe(250);
+  });
+
+  it("collapses the panel to its header and expands it back", async () => {
+    renderOverlay(buildDocument());
+    await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");
+
+    const frame = screen.getByTestId("inplace-edit-frame-delta-main") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 100, clientY: 100, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+    await waitFor(() => expect(screen.getByTestId("inplace-inspector-section-appearance")).toBeTruthy());
+
+    fireEvent.click(screen.getByTestId("inplace-panel-collapse"));
+    expect(screen.queryByTestId("inplace-inspector-section-appearance")).toBeNull();
+    expect(screen.queryByTestId("inplace-inspector-section-layout")).toBeNull();
+
+    fireEvent.click(screen.getByTestId("inplace-panel-collapse"));
+    await waitFor(() => expect(screen.getByTestId("inplace-inspector-section-appearance")).toBeTruthy());
+    expect(screen.getByTestId("inplace-inspector-section-layout")).toBeTruthy();
+  });
+
+  it("moves the panel to the left when the selected widget sits on the right half", async () => {
+    const base = buildDocument();
+    const right = pedalsDefinition.createDefault("pedals-right");
+    right.layout = { x: 1500, y: 600, w: 280, h: 96, zIndex: 1, aspectLocked: true };
+    const doc: ProfileDocumentV3 = {
+      ...base,
+      layouts: {
+        general: { type: "general", widgets: [...base.layouts.general.widgets, right] },
+      },
+    };
+    renderOverlay(doc);
+    await mockSceneAndWaitForFrame("inplace-edit-frame-pedals-right");
+
+    const frame = screen.getByTestId("inplace-edit-frame-pedals-right") as HTMLElement;
+    fireEvent.pointerDown(frame, { pointerId: 1, button: 0, clientX: 1550, clientY: 650, bubbles: true });
+    fireEvent.pointerUp(window, { pointerId: 1, bubbles: true });
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId("inplace-inspector-panel").className,
+      ).toContain("inplace-inspector-panel--left"),
+    );
+  });
+
+  it("clamps the context menu inside the viewport when opened near the edge", async () => {
+    const base = buildDocument();
+    const right = pedalsDefinition.createDefault("pedals-right");
+    right.layout = { x: 1500, y: 600, w: 280, h: 96, zIndex: 1, aspectLocked: true };
+    const doc: ProfileDocumentV3 = {
+      ...base,
+      layouts: {
+        general: { type: "general", widgets: [...base.layouts.general.widgets, right] },
+      },
+    };
+    renderOverlay(doc);
+    await mockSceneAndWaitForFrame("inplace-edit-frame-pedals-right");
+
+    const scene = screen.getByTestId("inplace-edit-scene") as HTMLElement;
+    fireEvent.contextMenu(scene, { clientX: 1550, clientY: 650, bubbles: true });
+
+    const menu = await screen.findByTestId("studio-widget-context-menu");
+    const left = Number.parseFloat(menu.style.left);
+    expect(left).toBeLessThanOrEqual(window.innerWidth - 8);
+    expect(Number.parseFloat(menu.style.top)).toBeGreaterThanOrEqual(8);
+  });
+
   it("keeps imperative preview and frozen telemetry across StudioProvider rerenders during drag", async () => {
     renderOverlay(buildDocument());
     await mockSceneAndWaitForFrame("inplace-edit-frame-delta-main");

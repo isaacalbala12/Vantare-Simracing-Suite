@@ -18,6 +18,26 @@
   user-select: none;
 }
 
+.inplace-inspector-panel--left {
+  right: auto;
+  left: 16px;
+}
+
+.inplace-inspector-panel--collapsed {
+  width: 220px;
+}
+
+.inplace-inspector-panel fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.inplace-inspector-panel fieldset:disabled {
+  opacity: 0.55;
+}
+
 .inplace-inspector-panel__header {
   display: flex;
   align-items: center;

@@ -98,12 +98,14 @@ function Inner({
   return (
     <InPlaceInspectorPanel
       widget={widget}
+      widgets={widget ? [widget] : []}
       session="race"
       telemetry={telemetry}
+      layoutViewport={{ width: 1920, height: 1080 }}
+      selectWidget={() => undefined}
       access={suiteAccess}
       licenseLoading={false}
       autosave={autosave}
-      selectedWidgetId={widget?.id ?? null}
     />
   );
 }

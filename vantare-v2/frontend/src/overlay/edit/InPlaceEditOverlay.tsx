@@ -213,6 +213,16 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
     ? widgets.find((widget) => widget.id === selectedWidgetIdLocal) ?? null
     : null;
 
+  // El panel salta a la izquierda cuando el widget seleccionado ocupa la mitad
+  // derecha del overlay: asi nunca tapa lo que se esta editando.
+  const panelSide: "left" | "right" =
+    selectedWidget && transform && outputViewport
+      ? transform.offsetX + (selectedWidget.layout.x + selectedWidget.layout.w / 2) * transform.scale >
+        outputViewport.width / 2
+        ? "left"
+        : "right"
+      : "right";
+
   const deleteConfirm = useDeleteWidgetConfirm();
   const confirmDelete = useCallback((message: string) => window.confirm(message), []);
   const closeContextMenu = useCallback(() => setContextMenu(null), []);
@@ -508,8 +518,12 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
       ) : null}
       <MemoInPlaceInspectorPanel
         widget={selectedWidget}
+        widgets={widgets}
         session={editingSession}
         telemetry={telemetry}
+        layoutViewport={layoutViewport}
+        selectWidget={handleSelect}
+        side={panelSide}
         access={access}
         licenseLoading={licenseLoading}
         autosave={autosave}

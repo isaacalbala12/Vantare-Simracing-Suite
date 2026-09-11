@@ -97,6 +97,8 @@ export const pt: Record<string, string> = {
   "overlay.editMode.panel.retry": "Tentar novamente",
   "overlay.editMode.panel.conflict": "Conflito - recarregue para continuar",
   "overlay.editMode.panel.saving": "Salvando...",
+  "overlay.editMode.panel.collapse": "Recolher painel",
+  "overlay.editMode.panel.expand": "Expandir painel",
 
   // Widget Config Sections
 

@@ -263,9 +263,17 @@ física nueva, retirada V1, merge o release en este corte documental.
   Standings. El transporte de escena vive superpuesto abajo-izquierda del
   escenario. Se corrigió el desbordamiento del select de escena (fieldset
   min-content) y el aterrizaje `standings-functional-study` solo aplica con
-  Eficiencia (con otro sistema cae a `standings-multiclass`). Capturas del
-  estudio en `design-evidence/functional/study-{standings,relative,delta,pedals}.png`
-  y `harness-*.png`. Sin merge, push, PR, promoción ni release.
+  Eficiencia (con otro sistema cae a `standings-multiclass`). **Capa demo del
+  Workshop:** el golden nombra a sus 20 coches `Driver 0NN` y deja delta,
+  embrague, dirección, history y clima sin valor; `buildWorkshopFrameV2`
+  aplica ahora una parrilla de muestra (20 nombres de resistencia sobre las
+  posiciones canónicas, asientos de escena conservados, nombres espejo en
+  relative/relativeSettled, delta +0.214, pedales completos, history de un
+  sector con frenada, clima de muestra) antes de variantes y escenas — solo
+  en el Workshop, sin tocar el golden ni producción; stale/error siguen
+  vacíos y honestos. Capturas del estudio en
+  `design-evidence/functional/study-{standings,relative,delta,pedals}.png`,
+  `harness-*.png` y `demo-*.png`. Sin merge, push, PR, promoción ni release.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde
   `4864b5c6`, SHA `cb69a4d5…878faba`, muestra Pedals sobre LMU con freno real

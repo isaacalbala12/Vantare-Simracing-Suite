@@ -218,6 +218,34 @@ física nueva, retirada V1, merge o release en este corte documental.
   fuente. Traducir Foco a diseño oficial es otra entrega. Sin merge,
   promoción ni release.
 
+- **ISA-1128 — Eficiencia ampliada a Relative, Delta y Pedals (2026-09-11):**
+  Isaac pide llevar el lenguaje Eficiencia al resto de widgets para evaluarlo
+  en el Workshop antes de catálogo. Rama `vantareapp/isa-1128-functional-widgets`
+  sobre `origin/vantareapp/isa-1120-efficiency-v2`, worktree
+  `~/Desktop/vantare-isa1128`. Tres renderers nuevos en
+  `design-systems/vantare-functional/` (`RelativeFunctional`,
+  `DeltaFunctional`, `PedalsFunctional`) sobre los ViewModels productivos:
+  Relative reutiliza cabecera+tabla con badge de posición del jugador, tick de
+  clase, hueco «A TI» en la fila del jugador y separador de columna de
+  vuelta; Delta cabe en el aspecto bloqueado 280×96 con la última vuelta a la
+  derecha de la cabecera (como el reloj de Standings), valor grande por tono y
+  pista de centro; Pedals dibuja tres canales C/B/T con rellenos y
+  porcentajes. El manifest funcional declara los cuatro widgets y la query
+  del Workshop (`system=vantare-functional`) deriva la compatibilidad del
+  manifest en vez de una lista duplicada. **Desviación de alcance
+  documentada:** el contrato del catálogo exige exactamente un diseño
+  oficial por par widget:sistema registrado, así que los tres pares llevan
+  diseño `Signature` (`isDefault`) y Eficiencia aparece en el selector de
+  sistemas de Studio **en esta rama** — sin merge ni promoción, la oferta al
+  usuario final sigue pendiente de la decisión de Isaac en la integración.
+  Fix lindante: `buildStandingsViewModelV2` leía `frame.weather` sin guardia
+  y reventaba en frames sin clima (fixture de host y cualquier frame V2 sin
+  el bloque); ahora es opcional. Checks: typecheck PASS, lint PASS, build
+  PASS, suite 427 ficheros / 3389 tests PASS (incluye los 4 tests de
+  caracterización de catálogo actualizados), `git diff --check` limpio.
+  Evidencia en `design-evidence/functional/efficiency-{relative,delta,pedals}.png`.
+  Sin merge, push, PR, promoción ni release.
+
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde
   `4864b5c6`, SHA `cb69a4d5…878faba`, muestra Pedals sobre LMU con freno real
   al 100%, contenido y sin halo/recorte. Captura aislada posterior al 46% y

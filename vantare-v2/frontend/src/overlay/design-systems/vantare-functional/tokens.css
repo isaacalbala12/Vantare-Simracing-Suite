@@ -1,4 +1,4 @@
-[data-widget-system="vantare-functional"].vf-standings {
+[data-widget-system="vantare-functional"]:is(.vf-standings, .vf-relative, .vf-delta, .vf-pedals) {
   --vf-line: rgb(245 245 245 / 10%);
   --vf-ink: #f5f5f5;
   --vf-muted: #b9b9bd;
@@ -18,10 +18,10 @@
   backdrop-filter: blur(4px);
   box-shadow: 0 8px 18px -12px rgb(0 0 0 / 36%);
 }
-.vf-standings * { box-sizing: border-box; }
-.vf-standings::before { content: ""; position: absolute; z-index: -1; top: 0; right: 0; width: 130px; height: 50px; pointer-events: none; background: linear-gradient(131deg, transparent 0 37%, rgb(193 18 31 / 23%) 37% 54%, transparent 54% 62%, rgb(193 18 31 / 15%) 62% 79%, transparent 79%); }
-.vf-standings::after { content: ""; position: absolute; inset: 0; border: 1px solid rgb(255 255 255 / 12%); border-top-color: rgb(255 255 255 / 24%); border-radius: inherit; pointer-events: none; }
-.vf-standings[data-session-header="false"]::before { display: none; }
+.vf-standings *, .vf-relative *, .vf-delta *, .vf-pedals * { box-sizing: border-box; }
+.vf-standings::before, .vf-relative::before, .vf-delta::before, .vf-pedals::before { content: ""; position: absolute; z-index: -1; top: 0; right: 0; width: 130px; height: 50px; pointer-events: none; background: linear-gradient(131deg, transparent 0 37%, rgb(193 18 31 / 23%) 37% 54%, transparent 54% 62%, rgb(193 18 31 / 15%) 62% 79%, transparent 79%); }
+.vf-standings::after, .vf-relative::after, .vf-delta::after, .vf-pedals::after { content: ""; position: absolute; inset: 0; border: 1px solid rgb(255 255 255 / 12%); border-top-color: rgb(255 255 255 / 24%); border-radius: inherit; pointer-events: none; }
+:is(.vf-standings, .vf-relative, .vf-delta, .vf-pedals)[data-session-header="false"]::before { display: none; }
 .vf-standings .vf-table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; margin: 0; }
 .vf-standings .vf-table :is(th, td) { position: relative; border: 0; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vf-standings .vf-table thead th { height: 50px; color: #bdbfc4; font-size: 8px; font-weight: 600; letter-spacing: .14em; text-align: right; vertical-align: middle; border-bottom: 1px solid var(--vf-line); background: linear-gradient(180deg, rgb(255 255 255 / 2%), transparent); }
@@ -85,3 +85,61 @@
 .vf-standings[data-template="broadcast"] .vf-table td:is([data-metric="lastLap"], [data-metric="bestLap"]) .vf-cell-value { display: block; padding: 4px 5px; line-height: 18px; border-radius: 6px; background: linear-gradient(145deg, rgb(255 255 255 / 9%), rgb(255 255 255 / 3%) 65%); box-shadow: inset 0 1px rgb(255 255 255 / 5%), inset 0 -1px rgb(0 0 0 / 12%); }
 .vf-standings[data-template="broadcast"] .vf-table tr[data-player="true"] td:first-child { border-radius: 6px 0 0 6px; }
 .vf-standings[data-template="broadcast"] .vf-table tr[data-player="true"] td:last-child { border-radius: 0 6px 6px 0; }
+
+/* ── Eficiencia en el resto del sistema: Relative, Delta y Pedals ──
+   Mismo cristal, misma cabecera, misma tipografía; solo cambia el cuerpo. */
+
+/* Relative: tabla compacta centrada en el jugador. */
+.vf-relative .vf-table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; margin: 0; }
+.vf-relative .vf-table :is(th, td) { position: relative; border: 0; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vf-relative .vf-table :is(th, td):is([data-metric="position"], [data-metric="class"], [data-metric="carNumber"]) { padding: 0 4px; }
+.vf-relative .vf-table thead th { height: 30px; color: #bdbfc4; font-size: 7px; font-weight: 600; letter-spacing: .16em; text-align: right; vertical-align: middle; border-bottom: 1px solid var(--vf-line); background: linear-gradient(180deg, rgb(255 255 255 / 2%), transparent); }
+.vf-relative .vf-table thead th:is([data-metric="position"], [data-metric="class"], [data-metric="carNumber"], [data-metric="gap"]) { text-align: center; }
+.vf-relative .vf-table thead th[data-metric="driverName"] { text-align: left; }
+.vf-relative .vf-table td { height: 28px; box-shadow: inset 0 -1px var(--vf-line); font-size: 13px; font-weight: 650; letter-spacing: -.02em; }
+.vf-relative .vf-table td[data-metric="position"] { font-weight: 600; color: #b9bbc1; }
+.vf-relative .vf-table td[data-metric="carNumber"] { color: #a5a5ab; font-size: 11px; font-weight: 600; }
+.vf-relative .vf-table td[data-metric="driverName"] { padding-left: 8px; }
+.vf-relative .vf-table td:is([data-metric="lastLap"], [data-metric="bestLap"]) { font-weight: 600; color: #e6e5e9; }
+.vf-relative .vf-table td:is([data-metric="lastLap"], [data-metric="bestLap"]) .vf-lap-value { position: relative; }
+.vf-relative .vf-table td:is([data-metric="lastLap"], [data-metric="bestLap"]) .vf-lap-value::before { content: ""; position: absolute; left: -9px; top: 50%; transform: translateY(-50%); width: 1px; height: 12px; background: rgb(245 245 245 / 24%); }
+.vf-relative .vf-class-tick { display: block; width: 3px; height: 14px; margin: 0 auto; border-radius: 1px; }
+.vf-relative .vf-table tr[data-player="true"] td { background-color: var(--vf-player); background-image: linear-gradient(180deg, rgb(255 255 255 / 4%), transparent 60%); box-shadow: inset 0 1px rgb(255 255 255 / 13%), inset 0 -1px rgb(255 255 255 / 8%); }
+.vf-relative .vf-table tr[data-player="true"] td:is([data-metric="lastLap"], [data-metric="bestLap"]) .vf-lap-value::before { display: none; }
+.vf-relative .vf-table tr[data-player="true"] td:first-child { color: #ffffff; }
+.vf-relative .vf-table tr:last-child td { box-shadow: none; }
+.vf-relative .vf-table td[data-metric="gap"] { text-align: center; }
+
+/* Delta: valor único y pista de centro; la última vuelta ocupa la derecha de
+   la cabecera como el reloj en Standings. Sin pie: el widget es aspect-locked
+   a ~2,9:1 y una banda extra lo desbordaría. */
+.vf-delta { --vf-gain: #7fb686; --vf-loss: #d95360; }
+.vf-delta::before { width: 90px; height: 34px; }
+.vf-delta .vf-session { height: 34px; gap: 8px; }
+.vf-delta .vf-brand img { width: 16px; height: 16px; }
+.vf-delta .vf-brand { font-size: 10px; }
+.vf-delta-last { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; min-width: 0; }
+.vf-delta-last .vf-clock { font-size: 12px; }
+.vf-delta-value { display: block; padding: 2px 12px 0; text-align: center; font-size: 24px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; color: var(--vf-ink); }
+.vf-delta[data-tone="gaining"] .vf-delta-value { color: var(--vf-gain); }
+.vf-delta[data-tone="losing"] .vf-delta-value { color: var(--vf-loss); }
+.vf-delta-track { position: relative; height: 3px; margin: 7px 12px 8px; border-radius: 2px; background: rgb(245 245 245 / 8%); overflow: hidden; }
+.vf-delta-center { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: rgb(245 245 245 / 35%); }
+.vf-delta-fill { position: absolute; top: 0; bottom: 0; border-radius: 2px; background: var(--vf-muted); }
+.vf-delta[data-tone="gaining"] .vf-delta-fill { background: var(--vf-gain); }
+.vf-delta[data-tone="losing"] .vf-delta-fill { background: var(--vf-loss); }
+
+/* Pedals: tres canales finos, colores semánticos apagados. */
+.vf-pedals { --vf-throttle: #6fae7d; --vf-brake: #d95360; --vf-clutch: #c9a15c; display: flex; flex-direction: column; }
+.vf-pedals::before { width: 90px; height: 34px; }
+.vf-pedals .vf-session { height: 34px; gap: 8px; }
+.vf-pedals .vf-brand img { width: 16px; height: 16px; }
+.vf-pedals-bars { display: flex; gap: 10px; align-items: stretch; justify-content: center; padding: 8px 12px 10px; flex: 1; min-height: 0; }
+.vf-pedal { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; min-width: 0; }
+.vf-pedal-track { position: relative; width: 14px; flex: 1; min-height: 40px; border-radius: 3px; background: rgb(245 245 245 / 7%); overflow: hidden; }
+.vf-pedal-fill { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 3px 3px 0 0; background: var(--vf-muted); }
+.vf-pedal[data-pedal="throttle"] .vf-pedal-fill { background: var(--vf-throttle); }
+.vf-pedal[data-pedal="brake"] .vf-pedal-fill { background: var(--vf-brake); }
+.vf-pedal[data-pedal="clutch"] .vf-pedal-fill { background: var(--vf-clutch); }
+.vf-pedal-label { font: 600 6px/1 "JetBrains Mono", ui-monospace, monospace; letter-spacing: .18em; color: var(--vf-muted); }
+.vf-pedal-value { font: 650 10px/1 Inter, Arial, sans-serif; font-variant-numeric: tabular-nums; color: var(--vf-ink); }

@@ -149,6 +149,7 @@ export const studioOrbitEs: Record<string, string> = {
   "overlay.inspector.standings.classLmp3Color": "Color LMP3",
   "overlay.inspector.standings.classGt3Color": "Color GT3",
   "overlay.inspector.standings.classUnknownColor": "Color sin clase",
+  "overlay.inspector.pedals.showHeader": "Mostrar cabecera",
   "overlay.inspector.pedals.transparentBackground": "Fondo transparente",
   "overlay.inspector.pedals.pedalThrottleColor": "Color del acelerador",
   "overlay.inspector.pedals.pedalBrakeColor": "Color del freno",

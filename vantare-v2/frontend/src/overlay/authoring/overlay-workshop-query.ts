@@ -3,6 +3,7 @@ import type { AuthoringV2Scenario } from "./fixtures/authoring-v2-scenario-fixtu
 import { isWorkshopV2Variant, type WorkshopV2Variant } from "./fixtures/authoring-v2-workshop-frame";
 import { getAnimationScene } from "./fixtures/animation-scenes";
 import { getOfficialDesign } from "../design-systems/official-designs";
+import { designSystemRegistry } from "../core/design-system-registry";
 import { WIDGET_TYPES } from "../core/profile-document";
 import { FUNCTIONAL_STUDY_STYLE_IDS, type FunctionalStudyStyleId } from "./functional-study-options";
 
@@ -70,7 +71,11 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
 
   if (!WIDGET_TYPES.has(widget)) return { error: `invalid widget parameter: ${widget}` };
   if (!DESIGN_SYSTEMS.has(system)) return { error: `invalid system parameter: ${system}` };
-  if (system === "vantare-functional" && widget !== "standings") return { error: "vantare-functional requires widget=standings" };
+  // Eficiencia se ofrece en los widgets que declara su manifest — la lista no
+  // se duplica aquí; el registro es la fuente de verdad.
+  if (system === "vantare-functional" && !designSystemRegistry.get("vantare-functional", 1).widgets.some((entry) => entry.widgetType === widget)) {
+    return { error: `vantare-functional does not support widget=${widget}` };
+  }
   if (!STATES.has(state)) return { error: `invalid state parameter: ${state}` };
   if (!SURFACES.has(surface)) return { error: `invalid surface parameter: ${surface}` };
   if (!isWorkshopV2Variant(variant)) return { error: `invalid variant parameter: ${variant}` };

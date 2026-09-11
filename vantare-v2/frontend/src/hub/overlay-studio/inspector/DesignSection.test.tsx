@@ -54,10 +54,12 @@ describe("Studio Efficiency selection", () => {
     expect(getWidget().visual.provenance?.designId).toBe("standings-functional-broadcast");
   });
 
-  it("does not offer the Standings-only system for Pedals", async () => {
-    renderDesignSection(pedalsDefinition.createDefault("pedals-main"));
+  it("offers Efficiency for Pedals and applies its Signature design", async () => {
+    const getWidget = renderDesignSection(pedalsDefinition.createDefault("pedals-main"));
     await waitFor(() => expect(screen.queryByTestId("studio-design-user-loading")).toBeNull());
     fireEvent.click(document.getElementById("orbit-design-system")!);
-    expect(screen.queryByRole("option", { name: /Efficiency|Eficiencia|Eficiência|Efficienza/ })).toBeNull();
+    fireEvent.click(screen.getByRole("option", { name: /Efficiency|Eficiencia|Eficiência|Efficienza/ }));
+    expect(getWidget().visual.systemId).toBe("vantare-functional");
+    expect(getWidget().visual.provenance?.designId).toBe("pedals-functional-signature");
   });
 });

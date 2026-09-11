@@ -17,6 +17,7 @@ import { getAnimationScene, listAnimationScenes } from "./fixtures/animation-sce
 import { interpolateSceneAt, sampleAtRate, sceneDurationMs } from "./fixtures/scene-interpolation";
 import { projectionGapsFor } from "./fixtures/projection-gaps";
 import { listOfficialDesigns } from "../design-systems/official-designs";
+import { designSystemRegistry } from "../core/design-system-registry";
 import {
   parseOverlayWorkshopQuery,
   serializeOverlayWorkshopQuery,
@@ -110,8 +111,9 @@ function DimensionField(props: { label: string; value: string; onChange(value: s
 }
 
 function compatibleSystems(widget: WidgetType): readonly DesignSystemId[] {
-  if (widget === "standings") return [...SYSTEMS, "vantare-functional"];
-  return widget === "engineer-radio" ? ["vantare-crystal"] : SYSTEMS;
+  if (widget === "engineer-radio") return ["vantare-crystal"];
+  const functional = designSystemRegistry.get("vantare-functional", 1).widgets.some((entry) => entry.widgetType === widget);
+  return functional ? [...SYSTEMS, "vantare-functional"] : SYSTEMS;
 }
 
 function defaultSystem(widget: WidgetType): DesignSystemId {

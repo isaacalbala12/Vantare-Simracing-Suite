@@ -70,9 +70,9 @@ export function buildStandingsViewModelV2(
     activeClass,
     sessionLabel: displayedText(frame.session.phase)?.toUpperCase() ?? PLACEHOLDER,
     remainingText: formatRemainingTime(displayedNumber(frame.session.remaining)),
-    ambientTempText: formatTemp(displayedNumber(weather.ambientC)),
-    trackTempText: formatTemp(displayedNumber(weather.trackC)),
-    windText: formatWind(displayedNumber(weather.windKph)),
+    ambientTempText: formatTemp(displayedNumber(weather?.ambientC)),
+    trackTempText: formatTemp(displayedNumber(weather?.trackC)),
+    windText: formatWind(displayedNumber(weather?.windKph)),
     columns,
     rows: limited.map((row, index) => buildRow(row, index, playerId, paceSession, sessionBestLap)),
   }, `${frame.sessionId}:${frame.epoch}`, frame.sequence);
@@ -191,8 +191,8 @@ function resolveActiveClass(
   return chosen === "" ? PLACEHOLDER : chosen.toUpperCase();
 }
 
-function displayedNumber(value: OverlayQValue<number>): number | undefined {
-  if (value.q === "missing" || value.q === "invalid") return undefined;
+function displayedNumber(value: OverlayQValue<number> | undefined): number | undefined {
+  if (!value || value.q === "missing" || value.q === "invalid") return undefined;
   // Go omitempty elides legitimate zeroes. Quality is the presence bit.
   return value.v ?? 0;
 }

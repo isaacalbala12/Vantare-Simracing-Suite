@@ -2212,3 +2212,17 @@ aislada a `nightly` (pendiente review/merge):
   en path crítico (correcto), #1137 greeting (trivial), #1138 barrels
   (tree-shaking ya funcionaba), #1139 (ya resuelta por #1122). Hallazgos Go
   revisados: la mayoría eran diseño deliberado; los reales quedan en #1160.
+
+### Continuación (mismo día)
+
+- #1168 ampliada con fase 2: fanout del dominio updater (14 suscripciones
+  directas → máx. 9). El inventario del resto de Events.On confirmó que no
+  hay más dominios con duplicación que valga la pena — los de 2 sitios son
+  marginales.
+- #1170 (ISA-1160): los dos únicos hallazgos Go verificados — mapper sin
+  slice por vehículo (era stack-alloc; ahorro real es el trabajo por
+  vehículo, no GC) y AllSections alias del array de paquete (sí escapaba
+  a heap por tick; benchmark -1 alloc/op).
+- Review SWE-2 de #1163 encontró un bug preexistente: error de carga de
+  Studio inalcanzable tras spinner (guard !document ganaba a lastError).
+  Corregido con test de regresión.

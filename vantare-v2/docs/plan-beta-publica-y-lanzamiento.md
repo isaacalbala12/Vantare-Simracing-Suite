@@ -501,17 +501,17 @@ Este PR introduce en `plan.md`:
   future) y **Lanzamiento 1.0** (`v1.0.0.0`, future).
 - `engineer` y `ecosystem` solo renumeran su etiqueta de fase (5 y 8); su
   contenido no cambia.
-- Diecinueve hitos de tipo `plan` en español con traducciones en/pt/it: las
+- Veinte hitos de tipo `plan` en español con traducciones en/pt/it: las
   puertas de cada etapa (producto usable, widgets core, builds testers,
   documentación reiniciada, instalador, Polar, presencia pública, apertura,
   iteraciones, RC, lanzamiento) más los hitos de producto que el usuario
-  percibe — cuenta e identidad renovadas, Overlay Studio V3, Telemetry Core
-  V2 estable, Calendario completo, análisis de telemetría, Strategy Planner y
-  Engineer Beta completos para la 1.0 — y multisimulador como futuro
-  explícito.
+  percibe — cuenta e identidad renovadas, Hub Orbit v1.12, Overlay Studio V3,
+  Telemetry Core V2 estable, Calendario completo, análisis de telemetría,
+  Strategy Planner y Engineer Beta completos para la 1.0 — y multisimulador
+  como futuro explícito.
 
 Secuencia de hitos acordada con Isaac (2026-09-11): identidad → producto
-usable → Studio V3 → Telemetry Core V2 → widgets core → Calendario → builds
-testers → documentación → instalador → Polar → presencia pública → apertura
-de beta pública → Telemetría/Strategy/Engineer completos → iteraciones →
-candidata → 1.0 → multisimulador.
+usable → Hub Orbit v1.12 → Studio V3 → Telemetry Core V2 → widgets core →
+Calendario → builds testers → documentación → instalador → Polar → presencia
+pública → apertura de beta pública → Telemetría/Strategy/Engineer completos →
+iteraciones → candidata → 1.0 → multisimulador.

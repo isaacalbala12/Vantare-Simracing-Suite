@@ -407,6 +407,21 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - etiqueta.pt: Plano
 - etiqueta.it: Piano
 
+### Hub Orbit v1.12
+
+- id: orbit-v1-12
+- tipo: plan
+- titulo.en: Hub Orbit v1.12
+- titulo.pt: Hub Orbit v1.12
+- titulo.it: Hub Orbit v1.12
+- cuerpo: Nuevo lenguaje visual global del shell: tipografía única, rojo racing, vidrio fino, Inicio con héroe de la próxima carrera, strip seleccionable y columna contextual, consolidado sin regresiones visuales.
+- cuerpo.en: New global shell visual language: unique typography, racing red, fine glass, Home with the next race hero, selectable strip and contextual column, consolidated without visual regressions.
+- cuerpo.pt: Nova linguagem visual global do shell: tipografia única, vermelho racing, vidro fino, Início com herói da próxima corrida, strip selecionável e coluna contextual, consolidado sem regressões visuais.
+- cuerpo.it: Nuovo linguaggio visivo globale della shell: tipografia unica, rosso racing, vetro fine, Home con l'eroe della prossima gara, strip selezionabile e colonna contestuale, consolidato senza regressioni visive.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
 ### Overlay Studio V3 cerrado
 
 - id: overlay-studio-v3-complete

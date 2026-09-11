@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-11T23:40:09Z",
+  "generatedAt": "2026-09-11T23:41:14Z",
   "digest": {
     "lastCommit": "e13756ef4505e4012f3012c5ac0773040257d1e3"
   },
@@ -587,6 +587,28 @@
         "en": "The insiders programme clears this gate when a tester opens Vantare, moves and resizes widgets, saves their profile, reopens the app and uses the desktop overlay without technical help. It includes the in-place editor, robust profiles and editable recommended profiles.",
         "pt": "O programa de insiders fecha esta porta quando uma pessoa de teste abre o Vantare, move e redimensiona widgets, grava o seu perfil, reabre a app e usa o overlay de desktop sem ajuda técnica. Inclui o editor in-place, perfis robustos e recomendados editáveis.",
         "it": "Il programma insiders supera questa porta quando un tester apre Vantare, sposta e ridimensiona i widget, salva il profilo, riapre l'app e usa l'overlay desktop senza aiuto tecnico. Include l'editor in-place, profili robusti e profili consigliati modificabili."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "orbit-v1-12",
+      "type": "plan",
+      "title": {
+        "es": "Hub Orbit v1.12",
+        "en": "Hub Orbit v1.12",
+        "pt": "Hub Orbit v1.12",
+        "it": "Hub Orbit v1.12"
+      },
+      "body": {
+        "es": "Nuevo lenguaje visual global del shell: tipografía única, rojo racing, vidrio fino, Inicio con héroe de la próxima carrera, strip seleccionable y columna contextual, consolidado sin regresiones visuales.",
+        "en": "New global shell visual language: unique typography, racing red, fine glass, Home with the next race hero, selectable strip and contextual column, consolidated without visual regressions.",
+        "pt": "Nova linguagem visual global do shell: tipografia única, vermelho racing, vidro fino, Início com herói da próxima corrida, strip selecionável e coluna contextual, consolidado sem regressões visuais.",
+        "it": "Nuovo linguaggio visivo globale della shell: tipografia unica, rosso racing, vetro fine, Home con l'eroe della prossima gara, strip selezionabile e colonna contestuale, consolidato senza regressioni visive."
       },
       "label": {
         "es": "Plan",

@@ -74,8 +74,15 @@
    divisores entre celdas. Cada par comparte la tipografía de
    .vf-footer-item (etiqueta uppercase pequeña + valor en negrita en la
    misma línea); solo queda la línea superior sobre toda la fila. */
-.vf-slots { position: relative; z-index: 1; display: flex; align-items: baseline; gap: 7px 16px; padding: 8px 12px; border-top: 1px solid var(--vf-line); overflow: hidden; white-space: nowrap; }
-.vf-slots .vf-slot { flex-shrink: 0; }
+/* Huecos de datos: una fila que puede doblar a dos; el tamaño de letra
+   escala con el ancho del widget (container query) para que quepan más. */
+.vf-standings, .vf-relative { container-type: inline-size; }
+.vf-standings, .vf-relative { display: flex; flex-direction: column; height: 100%; }
+.vf-standings .vf-table, .vf-relative .vf-table { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.vf-slots { position: relative; z-index: 1; flex: 0 0 auto; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; padding: 7px 12px 8px; border-top: 1px solid var(--vf-line); }
+.vf-slots .vf-slot { flex: 0 1 auto; min-width: 0; }
+.vf-slots .vf-slot .vf-slot-label { font-size: clamp(7px, 2cqi, 9px); }
+.vf-slots .vf-slot .vf-slot-value { font-size: clamp(9px, 2.9cqi, 11px); }
 .vf-slot, .vf-footer-item { display: flex; align-items: baseline; gap: 6px; font: 600 9px/1 Inter, Arial, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: var(--vf-muted); }
 .vf-slot-label { white-space: nowrap; }
 .vf-slot-value, .vf-footer-item b { font: 650 11px/1 Inter, Arial, sans-serif; letter-spacing: -.01em; text-transform: none; font-variant-numeric: tabular-nums; color: var(--vf-ink); }

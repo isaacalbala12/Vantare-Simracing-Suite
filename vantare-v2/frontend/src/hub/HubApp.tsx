@@ -73,9 +73,9 @@ function LicenseGate({ children }: { children: ReactNode }) {
       return (
         <div
           data-testid="license-loading"
-          className="flex h-screen items-center justify-center bg-[#0a0a0a] text-white"
+          className="flex h-screen items-center justify-center bg-orbit-canvas text-orbit-ink"
         >
-          <p className="font-mono text-xs uppercase tracking-widest text-vantare-textDim">
+          <p className="font-mono text-xs uppercase tracking-widest text-orbit-ink-3">
             Cargando licencia...
           </p>
         </div>
@@ -93,7 +93,7 @@ function LicenseGate({ children }: { children: ReactNode }) {
       {blocking ? (
         <div
           data-testid="license-blocked-overlay"
-          className="fixed inset-0 z-[9999] overflow-auto bg-[#0a0a0a]"
+          className="fixed inset-0 z-[9999] overflow-auto bg-orbit-canvas"
         >
           {blocking}
         </div>

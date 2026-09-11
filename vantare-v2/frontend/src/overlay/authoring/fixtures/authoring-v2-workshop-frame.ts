@@ -538,6 +538,12 @@ function applyScene(
     if (scene.widget === "relative") {
       relative = patchRelativeSection(frame.relative, state.cars, quality);
       settled = patchRelativeSection(frame.relativeSettled, state.cars, quality);
+      // La VM confía en el orden canónico del frame: tras un cruce hay que
+      // reordenar como haría Go — gap a jugador descendente (delante arriba,
+      // jugador en medio, detrás abajo), si no el cambio de lado no se ve.
+      const byGapDesc = (a: OverlayRelativeRowV2, b: OverlayRelativeRowV2) => (b.gap.v ?? 0) - (a.gap.v ?? 0);
+      relative = [...relative].sort(byGapDesc);
+      settled = [...settled].sort(byGapDesc);
     } else {
       standings = standings.flatMap((row) => {
         const key = (row.driver && state.cars![row.driver] ? row.driver : undefined) ?? seatNameAt(STANDINGS_DEV_SEAT_BY_DRIVER, row.position);
@@ -616,7 +622,11 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
     case "standings-functional-study": {
       // Explicit visual-study data, never live telemetry. The original V2
       // golden remains untouched; only this named development variant uses it.
-      const names = ["Renan Azeredo", "Marco Acunto", "Fabian Seischegg", "Adaildo Vieira", "Neil Cooper", "Rick Zwieten", "Istvan Fodor", "Alexandr Fescov", "Marius Rick", "Preston Perlmutter", "Tommaso Mosca", "Luca Ghiotto", "Dennis Marschall", "Frederik Schandorff", "Ulysse De Pauw"];
+      // Las escenas se dirigen por nombre de piloto: los asientos ancla
+      // (Bovy 7, Bruni 10…) llevan los nombres de la parrilla de escenas
+      // para que los overrides resuelvan sus filas; el resto conserva la
+      // parrilla GT3 del estudio.
+      const names = ["Renan Azeredo", "Ben Hanley", "Fabian Seischegg", "Adaildo Vieira", "Filipe Albuquerque", "Rick Zwieten", "Sarah Bovy", "Martin Berry", "Michael Birch", "Gianmaria Bruni", "Tommaso Mosca", "Luca Ghiotto", "Duncan Cameron", "Frederik Schandorff", "Ulysse De Pauw"];
       const gaps = [0, .8, 11.3, 32.1, 35.2, 44.5, 47.3, 52.2, 53.6, 59.4, 62.8, 68.1, 74.6, 81.2, 88.7];
       const laps = [102.198, 102.089, 103.702, 102.278, 104.002, 104.059, 105.035, 104.822, 104.754, 103.111, 103.942, 104.316, 103.687, 104.501, 105.229];
       const rows = frame.standings.slice(0, names.length).map((row, index) => ({

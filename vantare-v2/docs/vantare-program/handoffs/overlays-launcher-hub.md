@@ -331,6 +331,28 @@ física nueva, retirada V1, merge o release en este corte documental.
   **Auditoría del motor de animaciones**: `docs/analysis/ISA-1128-motion-engine-audit.md`
   — la política de rendimiento Go llega al scheduler pero no a los
   renderers; propuesta de MotionLevel + effects en el host.
+  **Pie adaptable (Isaac: "se desborda"):** la fila única con clip quedó
+  descartada — ahora los huecos doblan a segunda fila con letra escalada al
+  ancho (container query + clamp) y el renderer presupuesta filas sobre
+  `layout.h` real: la tabla cede en filas completas y el pie nunca se corta
+  (constantes espejo de `resolveFunctionalStandingsSize`; sin layout no se
+  recorta nada — tests y hosts antiguos intactos). **Motion Eficiencia +
+  eficiencia del motor:** `core/widget-motion.ts` comparte el patrón
+  prevRef+timers+layout-effect (`useWidgetMotion`, `MotionLevel`,
+  `resolveMotionLevel`); el host resuelve el presupuesto desde
+  `capabilities.performance` + prefers-reduced-motion y lo pasa a los
+  renderers como props `motion`/`effects` (niveles 4→reduced, 5→minimal).
+  `useDeltaMotion` migrado al helper (standings/relative de Endurance
+  conservan su orquestación con estado propio). Los tres renderers
+  funcionales animan: FLIP por índice renderizado, flash rise/fall
+  discreto en cambios de posición, cruce de cero y nueva referencia en
+  delta, fills con transición en pedales. `data-effects` (noBlur/flat)
+  apaga blur/sombras según política. **Harness corregido:** la parrilla del
+  estudio conserva los asientos de escena (Bovy 7, Bruni 10…) y
+  `applyScene` reordena el relative por gap tras un cruce — antes la
+  escena movía el dato pero la VM mantenía el orden viejo y nada se
+  animaba. Verificado en navegador: overtake/battle destellan y deslizan,
+  delta-cross-zero pulsa, relative-cross reordena con FLIP.
   Sin merge, push, PR, promoción ni release.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde

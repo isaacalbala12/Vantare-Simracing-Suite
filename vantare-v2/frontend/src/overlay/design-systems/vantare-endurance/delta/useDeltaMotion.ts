@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
+import type { RefObject } from "react";
+import { useWidgetMotion } from "../../../core/widget-motion";
 import type { DeltaViewModel } from "../../../widget-types/delta/delta-view-model";
 import { deriveDeltaEvents } from "./delta-motion";
 
@@ -19,40 +20,8 @@ export function useDeltaMotion(
   enabled: boolean,
   rootRef: RefObject<HTMLElement | null>,
 ): void {
-  const prevRef = useRef<DeltaViewModel | null>(null);
-  const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
-
-  useEffect(() => {
-    const timers = timersRef.current;
-    return () => {
-      for (const timer of timers) {
-        clearTimeout(timer);
-      }
-      timers.clear();
-    };
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!enabled || model.status !== "ready") {
-      prevRef.current = model.status === "ready" ? model : null;
-      return;
-    }
-    const prev = prevRef.current;
-    prevRef.current = model;
-    const root = rootRef.current;
-    if (!prev || !root) {
-      return;
-    }
-
-    const schedule = (durationMs: number, run: () => void) => {
-      const timer = setTimeout(() => {
-        timersRef.current.delete(timer);
-        run();
-      }, durationMs);
-      timersRef.current.add(timer);
-    };
-
-    for (const event of deriveDeltaEvents(prev, model)) {
+  useWidgetMotion(model, enabled, rootRef, ({ prev, next, root, schedule }) => {
+    for (const event of deriveDeltaEvents(prev, next)) {
       if (event.kind === "cross-zero") {
         // The anchor pulses in the direction just taken, so the crossing reads
         // as an event rather than as the fill happening to pass the middle.
@@ -68,5 +37,5 @@ export function useDeltaMotion(
         });
       }
     }
-  }, [enabled, model, rootRef]);
+  });
 }

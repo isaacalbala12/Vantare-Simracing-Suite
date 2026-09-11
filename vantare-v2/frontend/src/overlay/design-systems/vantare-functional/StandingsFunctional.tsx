@@ -1,5 +1,8 @@
+import { useRef } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { WidgetRendererProps } from "../../core/design-system-definition";
+import { useWidgetMotion } from "../../core/widget-motion";
+import { deriveIndexOffsets, deriveOvertakes } from "./functional-motion";
 import { FUNCTIONAL_IDENTITY_METRICS as IDENTITY, resolveFunctionalColumnWidth, resolveFunctionalIdentitySpan } from "../../widget-types/standings/functional-standings-layout";
 import { resolveStandingsCellValue, type StandingsViewModel } from "../../widget-types/standings/standings-view-model";
 import { functionalLabels } from "./labels";
@@ -12,8 +15,29 @@ const SLOT_GAP_PX = 14;
 /** Ancho estimado de un hueco: etiqueta en caps fina + valor bold + aire. */
 const slotItemWidth = (label: string, value: string) => label.length * 5.5 + value.length * 7.5 + 12;
 
-export function StandingsFunctional({ model, settings, layout }: WidgetRendererProps<StandingsViewModel>) {
+export function StandingsFunctional({ model, settings, layout, motion = "full", effects }: WidgetRendererProps<StandingsViewModel>) {
   const { locale } = useI18n();
+  const rootRef = useRef<HTMLElement | null>(null);
+  // Eficiencia: las filas se deslizan a su posición (FLIP) y los cambios de
+  // posición parpadean una vez. En "reduced" solo queda el deslizamiento.
+  useWidgetMotion(model, motion !== "minimal", rootRef, ({ prev, next, root, schedule }) => {
+    for (const [id, delta] of deriveIndexOffsets(prev.rows, next.rows)) {
+      const row = root.querySelector<HTMLElement>(`[data-standings-row="${CSS.escape(id)}"]`);
+      row?.animate(
+        [{ transform: `translateY(${delta * 30}px)` }, { transform: "translateY(0)" }],
+        { duration: Math.min(460, 260 + Math.abs(delta) * 50), easing: "cubic-bezier(0.22, 0.9, 0.3, 1)" },
+      );
+    }
+    if (motion === "full") {
+      const { gained, lost } = deriveOvertakes(prev.rows, next.rows);
+      for (const [id, direction] of [...gained.map((id) => [id, "rise"] as const), ...lost.map((id) => [id, "fall"] as const)]) {
+        const row = root.querySelector<HTMLElement>(`[data-standings-row="${CSS.escape(id)}"]`);
+        if (!row) continue;
+        row.dataset.motion = direction;
+        schedule(650, () => { delete row.dataset.motion; });
+      }
+    }
+  });
   const labels = functionalLabels[locale];
   const broadcast = settings.templateId === "broadcast";
   const session = model.sessionLabel.toLowerCase();
@@ -42,11 +66,16 @@ export function StandingsFunctional({ model, settings, layout }: WidgetRendererP
   const slotsHeight = slotRows > 0 ? SLOT_PAD_PX + slotRows * SLOT_ROW_PX : 0;
   const ambientHeight = slots.length === 0 && hasFooter ? 30 : 0;
   const brandBandHeight = !hasHeader && brandVisible ? 24 : 0;
-  // La cabecera suelta (broadcast / sin bloque de identidad) vive fuera de
-  // la tabla y también resta espacio a las filas.
-  const looseHeaderHeight = (!identitySpan || unavailable || broadcast) && hasHeader ? 49 : 0;
+  // Constantes espejo de resolveFunctionalStandingsSize: broadcast lleva la
+  // cabecera suelta (46) + thead de columnas (24); signature lleva la
+  // cabecera dentro del thead (50) salvo que no haya bloque de identidad,
+  // que entonces vive suelta encima (49).
+  const theadHeight = broadcast ? 24 : 50;
+  const looseHeaderHeight = broadcast
+    ? (hasHeader ? 46 : 0)
+    : ((!identitySpan || unavailable) && hasHeader ? 49 : 0);
   const tableSpace = layout?.h === undefined ? Number.POSITIVE_INFINITY : layout.h - looseHeaderHeight - slotsHeight - ambientHeight - brandBandHeight;
-  const rowsFit = Math.max(0, Math.floor((tableSpace - 50) / 30));
+  const rowsFit = Math.max(0, Math.floor((tableSpace - theadHeight) / 30));
   const visibleRows = Number.isFinite(tableSpace) ? model.rows.slice(0, rowsFit) : model.rows;
 
   const sessionHeader = <div className={`vf-session${brandVisible ? "" : " vf-session--bare"}`} title={`${sessionLabel} · ${labels.remaining}`}>
@@ -56,7 +85,7 @@ export function StandingsFunctional({ model, settings, layout }: WidgetRendererP
   </div>;
 
   return (
-    <section className="vf-standings" data-widget-system="vantare-functional" data-widget-renderer="standings" data-template={broadcast ? "broadcast" : "signature"} data-session-header={hasHeader} data-status={model.status} data-session={session}>
+    <section ref={rootRef} className="vf-standings" data-widget-system="vantare-functional" data-widget-renderer="standings" data-template={broadcast ? "broadcast" : "signature"} data-session-header={hasHeader} data-status={model.status} data-session={session} data-effects={effects}>
       {!hasHeader && brandVisible && <div className="vf-brand-band"><span className="vf-brand" aria-label="Vantare"><img src={vantareMark} alt="" />VANTARE</span></div>}
       {(!identitySpan || unavailable || broadcast) && hasHeader && sessionHeader}
       {statusText && model.status !== "stale" && <p className="vf-status" role="status">{statusText}</p>}

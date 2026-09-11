@@ -7,6 +7,7 @@ import { WidgetRenderBoundary } from "./WidgetRenderBoundary";
 import type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagnostics";
 import type { WidgetRuntimeInput } from "./widget-definition";
 import { getOverlayV2ViewModelEntry } from "./overlay-v2-view-models";
+import { resolveMotionLevel } from "./widget-motion";
 import { buildSettledRelativeViewModelV2 } from "../widget-types/relative/relative-view-model-v2";
 import { isRelativeRedlineTemplateId } from "../design-systems/vantare-endurance/relative/relative-endurance-settings";
 import type { RelativeViewModel } from "../widget-types/relative/relative-view-model";
@@ -137,6 +138,11 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
     registration.systemId === "vantare-endurance" &&
     isRelativeRedlineTemplateId(settings.templateId);
   const Renderer = registration.Renderer;
+  // La política de rendimiento llega a los renderers como presupuesto de
+  // motion/effects — antes solo el scheduler la obedecía.
+  const performance = frame?.capabilities.performance;
+  const motion = resolveMotionLevel(performance);
+  const effects = performance?.effects;
   if (v2Entry && frame && source && relativeRedline) {
     return (
       <CommittedRedlineRelative
@@ -150,7 +156,7 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
             systemId={widget.visual.systemId}
             onError={(error) => reportDiagnostic(props, "renderer-exception", error.message)}
           >
-            <Renderer model={model} settings={settings} renderMode={renderMode} layout={widget.layout} />
+            <Renderer model={model} settings={settings} renderMode={renderMode} layout={widget.layout} motion={motion} effects={effects} />
           </WidgetRenderBoundary>
         )}
       />
@@ -197,7 +203,7 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
         systemId={widget.visual.systemId}
         onError={(error) => reportDiagnostic(props, "renderer-exception", error.message)}
       >
-        <Renderer model={model} settings={settings} renderMode={renderMode} layout={widget.layout} />
+        <Renderer model={model} settings={settings} renderMode={renderMode} layout={widget.layout} motion={motion} effects={effects} />
       </WidgetRenderBoundary>
     </>
   );

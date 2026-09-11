@@ -18,6 +18,11 @@
   backdrop-filter: blur(4px);
   box-shadow: 0 8px 18px -12px rgb(0 0 0 / 36%);
 }
+/* Presupuesto de efectos publicado por Go: noBlur quita el blur del panel,
+   flat además apaga brillos y gradientes. */
+[data-effects="noBlur"]:is(.vf-standings, .vf-relative, .vf-delta, .vf-pedals) { backdrop-filter: none; }
+[data-effects="flat"]:is(.vf-standings, .vf-relative, .vf-delta, .vf-pedals) { backdrop-filter: none; box-shadow: none; background: rgb(16 17 19 / 92%); }
+[data-effects="flat"]:is(.vf-standings, .vf-relative, .vf-delta, .vf-pedals)::before { display: none; }
 .vf-standings *, .vf-relative *, .vf-delta *, .vf-pedals * { box-sizing: border-box; }
 .vf-standings::before, .vf-relative::before, .vf-delta::before, .vf-pedals::before { content: ""; position: absolute; z-index: -1; top: 0; right: 0; width: 130px; height: 50px; pointer-events: none; background: linear-gradient(131deg, transparent 0 37%, rgb(193 18 31 / 23%) 37% 54%, transparent 54% 62%, rgb(193 18 31 / 15%) 62% 79%, transparent 79%); }
 .vf-standings::after, .vf-relative::after, .vf-delta::after, .vf-pedals::after { content: ""; position: absolute; inset: 0; border: 1px solid rgb(255 255 255 / 12%); border-top-color: rgb(255 255 255 / 24%); border-radius: inherit; pointer-events: none; }
@@ -168,7 +173,14 @@
       rgb(245 245 245 / 22%) calc(100% - 1px)),
     rgb(245 245 245 / 8%); }
 .vf-delta-center { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: rgb(245 245 245 / 50%); }
-.vf-delta-fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: var(--vf-muted); }
+.vf-delta-fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: var(--vf-muted); transition: width 140ms linear, left 140ms linear, right 140ms linear, background-color 300ms ease; }
+.vf-delta-capsule-fill { transition: width 140ms linear, left 140ms linear, right 140ms linear, background-color 300ms ease; }
+.vf-delta[data-cross] .vf-delta-center, .vf-delta[data-cross] .vf-delta-capsule-center { background: var(--vf-ink); box-shadow: 0 0 8px rgb(245 245 245 / 60%); transition: background-color 350ms ease, box-shadow 350ms ease; }
+.vf-delta[data-cross] .vf-delta-value, .vf-delta[data-cross] .vf-delta-capsule-value { transform: scale(1.04); transition: transform 180ms ease-out; }
+.vf-delta[data-newBest] .vf-delta-foot, .vf-delta[data-newBest] .vf-delta-capsule-lap { color: var(--vf-ink); }
+.vf-standings [data-standings-row][data-motion], .vf-relative [data-relative-row][data-cross] { transition: background-color 500ms ease-out; }
+.vf-standings [data-standings-row][data-motion="rise"], .vf-relative [data-relative-row][data-cross="rise"] { background-color: rgb(127 182 134 / 12%); }
+.vf-standings [data-standings-row][data-motion="fall"], .vf-relative [data-relative-row][data-cross="fall"] { background-color: rgb(217 83 96 / 12%); }
 .vf-delta[data-tone="gaining"] .vf-delta-fill { background: linear-gradient(90deg, rgb(127 182 134 / 30%), var(--vf-gain)); box-shadow: 0 0 7px rgb(127 182 134 / 40%); }
 .vf-delta[data-tone="losing"] .vf-delta-fill { background: linear-gradient(90deg, var(--vf-loss), rgb(217 83 96 / 30%)); box-shadow: 0 0 7px rgb(217 83 96 / 40%); }
 .vf-delta-scale { display: flex; justify-content: space-between; margin: 1px 16px 0; font-family: "JetBrains Mono", monospace; font-size: 7px; letter-spacing: .04em; color: var(--vf-faint); }
@@ -204,7 +216,7 @@
 .vf-pedals-bars { display: flex; gap: 10px; align-items: stretch; justify-content: center; padding: 8px 12px 10px; flex: 1; min-height: 0; }
 .vf-pedal { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; min-width: 0; }
 .vf-pedal-track { position: relative; width: 14px; flex: 1; min-height: 40px; border-radius: 3px; background: rgb(245 245 245 / 7%); overflow: hidden; }
-.vf-pedal-fill { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 3px 3px 0 0; background: var(--vf-muted); }
+.vf-pedal-fill { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 3px 3px 0 0; background: var(--vf-muted); transition: height 80ms linear; }
 .vf-pedal[data-pedal="throttle"] .vf-pedal-fill { background: var(--vf-throttle); }
 .vf-pedal[data-pedal="brake"] .vf-pedal-fill { background: var(--vf-brake); }
 .vf-pedal[data-pedal="clutch"] .vf-pedal-fill { background: var(--vf-clutch); }

@@ -96,10 +96,10 @@ describe("Overlay Workshop query", () => {
     );
   });
 
-  it("parses footer slots for functional standings/relative, capped at five, and drops them elsewhere", () => {
+  it("parses footer slots for functional standings/relative without a cap and drops them elsewhere", () => {
     const standings = parseOverlayWorkshopQuery("?widget=standings&system=vantare-functional&slots=time,lap,gap,track,wind,ambient");
     expect(standings).not.toHaveProperty("error");
-    if (!("error" in standings)) expect(standings.slots).toEqual(["time", "lap", "gap", "track", "wind"]);
+    if (!("error" in standings)) expect(standings.slots).toEqual(["time", "lap", "gap", "track", "wind", "ambient"]);
     const relative = parseOverlayWorkshopQuery("?widget=relative&system=vantare-functional&slots=bestLap");
     if (!("error" in relative)) expect(relative.slots).toEqual(["bestLap"]);
     expect(parseOverlayWorkshopQuery("?widget=delta&system=vantare-functional&slots=gap")).not.toHaveProperty("slots");

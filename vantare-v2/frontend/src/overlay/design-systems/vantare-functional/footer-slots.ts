@@ -6,8 +6,6 @@ type Labels = (typeof functionalLabels)["en"];
 
 export type FooterSlotCell = { id: string; label: string; value: string };
 
-const MAX_SLOTS = 5;
-
 /** Resuelve el vocabulario de huecos del pie sobre los VMs de standings y
  * relative. Lo que el VM no transporta se pinta "—": nunca se inventa. */
 export function resolveFunctionalFooterSlots(
@@ -39,7 +37,7 @@ export function resolveFunctionalFooterSlots(
     ambient: labels.ambientTemp,
     wind: labels.wind,
   };
-  return slotIds.slice(0, MAX_SLOTS).map((id) => ({
+  return slotIds.map((id) => ({
     id,
     label: labelFor[id] ?? id.toUpperCase(),
     value: values[id] ?? "—",

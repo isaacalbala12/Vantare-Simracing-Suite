@@ -5,7 +5,7 @@ import { getAnimationScene } from "./fixtures/animation-scenes";
 import { getOfficialDesign } from "../design-systems/official-designs";
 import { designSystemRegistry } from "../core/design-system-registry";
 import { WIDGET_TYPES } from "../core/profile-document";
-import { FUNCTIONAL_STUDY_MAX_SLOTS, FUNCTIONAL_STUDY_MODULE_IDS, FUNCTIONAL_STUDY_SLOT_IDS, FUNCTIONAL_STUDY_STYLE_IDS, type FunctionalStudyStyleId } from "./functional-study-options";
+import { FUNCTIONAL_STUDY_MODULE_IDS, FUNCTIONAL_STUDY_SLOT_IDS, FUNCTIONAL_STUDY_STYLE_IDS, type FunctionalStudyStyleId } from "./functional-study-options";
 
 export type OverlayWorkshopQuery = {
   widget: WidgetType;
@@ -17,7 +17,7 @@ export type OverlayWorkshopQuery = {
   /** Columnas opcionales del estudio (gap/bestLap/lastLap/pit). Misma regla:
    *  solo dentro de `standings-functional-study`. */
   modules?: readonly string[];
-  /** Huecos de datos del pie (máx. 5) en standings/relative de Eficiencia. */
+  /** Huecos de datos del pie en standings/relative de Eficiencia. */
   slots?: readonly string[];
   state: AuthoringV2Scenario["state"];
   surface: "studio" | "desktop" | "obs" | "harness";
@@ -181,7 +181,7 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   const slotsRaw = params.get("slots");
   let slots: readonly string[] | undefined;
   if (slotsRaw !== null) {
-    const list = slotsRaw.split(",").filter(Boolean).slice(0, FUNCTIONAL_STUDY_MAX_SLOTS);
+    const list = slotsRaw.split(",").filter(Boolean);
     const unknown = list.find((id) => !FUNCTIONAL_STUDY_SLOT_IDS.has(id));
     if (unknown) return { error: `invalid slots parameter: ${slotsRaw}` };
     if (system === "vantare-functional" && (widget === "standings" || widget === "relative") && list.length > 0) {

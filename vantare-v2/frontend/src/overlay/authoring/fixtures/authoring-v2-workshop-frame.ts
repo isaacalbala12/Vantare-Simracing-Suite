@@ -188,7 +188,7 @@ export function buildWorkshopWidget(input: {
     widget = { ...widget, content: { ...content, columns, rowCount: 15 } };
   }
 
-  // Huecos de datos del pie (hasta 5) en standings/relative de Eficiencia.
+  // Huecos de datos del pie en standings/relative de Eficiencia.
   if (input.slots && input.slots.length > 0 && input.system === "vantare-functional"
     && (input.widget === "standings" || input.widget === "relative")) {
     widget = {

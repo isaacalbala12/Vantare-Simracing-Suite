@@ -5,7 +5,7 @@ import { listAnimationScenes } from "./fixtures/animation-scenes";
 import { projectionGapsFor } from "./fixtures/projection-gaps";
 import { WORKSHOP_V2_VARIANTS } from "./fixtures/authoring-v2-workshop-frame";
 import { serializeOverlayWorkshopQuery, type OverlayWorkshopQuery } from "./overlay-workshop-query";
-import { FUNCTIONAL_STUDY_DEFAULT_MODULES, FUNCTIONAL_STUDY_MAX_SLOTS, FUNCTIONAL_STUDY_MODULES, FUNCTIONAL_STUDY_SLOTS, FUNCTIONAL_STUDY_STYLES } from "./functional-study-options";
+import { FUNCTIONAL_STUDY_DEFAULT_MODULES, FUNCTIONAL_STUDY_MODULES, FUNCTIONAL_STUDY_SLOTS, FUNCTIONAL_STUDY_STYLES } from "./functional-study-options";
 
 const SYSTEM_LABELS: Record<string, string> = {
   "vantare-functional": "Eficiencia",
@@ -150,11 +150,11 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
         return <label key={item.id} className="functional-study-toggle"><span>{item.label}</span><input type="checkbox" checked={modules.includes(item.id)} onChange={() => update({ ...query, modules: modules.includes(item.id) ? modules.filter((id) => id !== item.id) : [...modules, item.id] })} /></label>;
       })}
     </fieldset>}
-    {isFunctional && (isStandings || query.widget === "relative") && <fieldset><legend>Pie de datos</legend><p className="functional-study-note">Hasta {FUNCTIONAL_STUDY_MAX_SLOTS} huecos, en orden de selección.</p>
+    {isFunctional && (isStandings || query.widget === "relative") && <fieldset><legend>Pie de datos</legend><p className="functional-study-note">Datos bajo las filas, en orden de selección.</p>
       {FUNCTIONAL_STUDY_SLOTS.map((slot) => {
         const slots = query.slots ?? [];
         const on = slots.includes(slot.id);
-        return <label key={slot.id} className="functional-study-toggle"><span>{slot.label}</span><input type="checkbox" checked={on} disabled={!on && slots.length >= FUNCTIONAL_STUDY_MAX_SLOTS} onChange={() => update({ ...query, slots: on ? slots.filter((id) => id !== slot.id) : [...slots, slot.id] })} /></label>;
+        return <label key={slot.id} className="functional-study-toggle"><span>{slot.label}</span><input type="checkbox" checked={on} onChange={() => update({ ...query, slots: on ? slots.filter((id) => id !== slot.id) : [...slots, slot.id] })} /></label>;
       })}
     </fieldset>}
 

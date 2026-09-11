@@ -25,8 +25,9 @@ export const FUNCTIONAL_STUDY_STYLE_IDS = new Set<string>(
   FUNCTIONAL_STUDY_STYLES.map((style) => style.id),
 );
 
-/** Huecos de datos del pie (máx. 5): vocabulario compartido de standings y
- * relative. Cada id resuelve desde el VM; lo ausente se pinta "—". */
+/** Huecos de datos del pie: vocabulario compartido de standings y relative.
+ * Sin tope — la selección final la acota el usuario en Overlay Studio.
+ * Cada id resuelve desde el VM; lo ausente se pinta "—". */
 export const FUNCTIONAL_STUDY_SLOTS = [
   { id: "time", label: "Tiempo" },
   { id: "lap", label: "Vuelta" },
@@ -42,5 +43,3 @@ export const FUNCTIONAL_STUDY_SLOTS = [
 export const FUNCTIONAL_STUDY_SLOT_IDS = new Set<string>(
   FUNCTIONAL_STUDY_SLOTS.map((slot) => slot.id),
 );
-
-export const FUNCTIONAL_STUDY_MAX_SLOTS = 5;

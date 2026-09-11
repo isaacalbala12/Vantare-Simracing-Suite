@@ -55,11 +55,16 @@ describe("Functional Standings", () => {
     expect(footer?.textContent).toContain("18 km/h");
   });
 
-  it("renders up to five data slots under the rows and they replace the ambient footer", () => {
+  it("renders every selected data slot under the rows and they replace the ambient footer", () => {
     const withWeather = { ...model, trackTempText: "28°", windText: "18 km/h" };
     const { container } = render(<StandingsFunctional model={withWeather} settings={{ footerSlots: ["time", "position", "gap", "track", "wind", "lap"] }} renderMode="harness" />);
     const slotEls = container.querySelectorAll(".vf-slot");
-    expect(slotEls).toHaveLength(5);
+    expect(slotEls).toHaveLength(6);
+    expect([...slotEls].map((el) => el.getAttribute("data-slot"))).toEqual(["time", "position", "gap", "track", "wind", "lap"]);
+    // Cada hueco es un par plano etiqueta+valor: sin elementos separadores.
+    for (const el of slotEls) {
+      expect([...el.children].map((child) => child.className)).toEqual(["vf-slot-label", "vf-slot-value"]);
+    }
     expect(container.querySelector('[data-slot="gap"] .vf-slot-value')?.textContent).toBe("+2.106s");
     expect(container.querySelector('[data-slot="track"] .vf-slot-value')?.textContent).toBe("28°");
     expect(container.querySelector(".vf-footer")).toBeNull();

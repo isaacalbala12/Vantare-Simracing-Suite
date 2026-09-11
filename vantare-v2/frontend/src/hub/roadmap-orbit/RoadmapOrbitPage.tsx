@@ -16,9 +16,12 @@ import {
   type RoadmapSection,
   type RoadmapSourceState,
 } from "./roadmap-orbit-model";
+import { ROADMAP_CONTEXT_SLOT_ID } from "../components/orbit/orbit-slot-ids";
 import "../../styles/orbit-roadmap.css";
 
-export const ROADMAP_CONTEXT_SLOT_ID = "orbit-roadmap-context-slot";
+/** Hueco que la shell reserva para Roadmap. El id vive en `orbit-slot-ids`
+    para que la shell no importe la página entera. */
+export { ROADMAP_CONTEXT_SLOT_ID };
 
 /** Canal de actualización activo. La shell solo conoce testers/nightly. */
 export type RoadmapChannel = "stable" | "testers" | "nightly";

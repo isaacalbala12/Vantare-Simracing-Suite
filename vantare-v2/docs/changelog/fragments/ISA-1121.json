@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1121",
+  "type": "change",
+  "summary": "El Hub arranca y navega más ligero: cada pantalla carga bajo demanda en vez de descargarse toda la aplicación al abrir.",
+  "technicalNotes": [
+    "Las diez páginas Orbit y el Studio pasan a React.lazy con Suspense: el JS que el Hub descarga al arrancar baja de ~2.263 kB a ~1.241 kB medidos en build (el chunk de la shell, de 1.054 a 69 kB).",
+    "El CSS de cada página viaja en su propio chunk (lo separa Vite automáticamente) y los chunks de página se precargan en idle tras el primer pintado, así que la navegación posterior es instantánea.",
+    "Una frontera de error por pestaña ofrece reintento si un chunk no se puede cargar, y el Studio conserva su keep-alive: el estado y la pausa de telemetría se mantienen al ocultarse."
+  ],
+  "testing": [
+    "Abrir el Hub y comprobar que la vista inicial aparece con normalidad; el chrome (rail, topbar, columna) pinta antes que el contenido de la página.",
+    "Navegar entre todas las secciones: la primera apertura puede mostrar un hueco breve; las siguientes deben ser instantáneas.",
+    "Entrar en Studio, cambiar algo, ir a otra sección y volver: el documento y el estado del Studio se conservan.",
+    "Forzar un fallo de carga de chunk (p. ej. borrar un asset y recargar la vista) y comprobar que aparece el aviso con Reintentar en esa pestaña."
+  ],
+  "knownLimitations": [
+    "La cifra publicada es de bytes del bundle medidos en build; el ahorro real de CPU y memoria se certifica en el banco Windows de la campaña.",
+    "Los stores compartidos (calendario, overlays) siguen cargándose al arrancar el Hub; su revisión pertenece a otra issue."
+  ]
+}

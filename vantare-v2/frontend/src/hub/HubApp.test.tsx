@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
@@ -141,6 +141,13 @@ describe('HubApp gate (production)', () => {
     // Default to "no session" so the bridge does not blow up tests that do
     // not explicitly set the session token.
     getSessionMock.mockResolvedValue(null);
+  });
+
+  afterEach(async () => {
+    cleanup();
+    // Las páginas Orbit se cargan en lazy: espera a que los import() pendientes
+    // resuelvan antes de que Vitest desmonte el entorno (EnvironmentTeardownError).
+    await vi.dynamicImportSettled();
   });
 
   it('shows loading screen while license is loading', () => {

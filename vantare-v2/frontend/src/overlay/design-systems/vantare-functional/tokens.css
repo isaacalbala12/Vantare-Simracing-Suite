@@ -90,12 +90,13 @@
    Mismo cristal, misma cabecera, misma tipografía; solo cambia el cuerpo. */
 
 /* Relative: tabla compacta centrada en el jugador. */
+/* Relative sigue la referencia: solo la lista de filas, sin cabecera de marca
+   ni fila de etiquetas. La decoración de esquina dejaría ruido sobre la
+   primera fila, así que también queda fuera. */
+.vf-relative::before { display: none; }
 .vf-relative .vf-table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; margin: 0; }
-.vf-relative .vf-table :is(th, td) { position: relative; border: 0; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.vf-relative .vf-table :is(th, td):is([data-metric="position"], [data-metric="class"], [data-metric="carNumber"]) { padding: 0 4px; }
-.vf-relative .vf-table thead th { height: 30px; color: #bdbfc4; font-size: 7px; font-weight: 600; letter-spacing: .16em; text-align: right; vertical-align: middle; border-bottom: 1px solid var(--vf-line); background: linear-gradient(180deg, rgb(255 255 255 / 2%), transparent); }
-.vf-relative .vf-table thead th:is([data-metric="position"], [data-metric="class"], [data-metric="carNumber"], [data-metric="gap"]) { text-align: center; }
-.vf-relative .vf-table thead th[data-metric="driverName"] { text-align: left; }
+.vf-relative .vf-table td { position: relative; border: 0; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vf-relative .vf-table td:is([data-metric="position"], [data-metric="class"], [data-metric="carNumber"]) { padding: 0 4px; }
 .vf-relative .vf-table td { height: 28px; box-shadow: inset 0 -1px var(--vf-line); font-size: 13px; font-weight: 650; letter-spacing: -.02em; }
 .vf-relative .vf-table td[data-metric="position"] { font-weight: 600; color: #b9bbc1; }
 .vf-relative .vf-table td[data-metric="carNumber"] { color: #a5a5ab; font-size: 11px; font-weight: 600; }

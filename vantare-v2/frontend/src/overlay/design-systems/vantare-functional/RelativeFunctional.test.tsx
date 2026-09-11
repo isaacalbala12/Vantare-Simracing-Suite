@@ -24,10 +24,11 @@ const model: RelativeViewModel = {
 };
 
 describe("Functional Relative", () => {
-  it("renders the player badge, configured headers and the player row without a gap value", () => {
+  it("renders rows only — no brand header, no column-label row — with the player band", () => {
     const { container } = render(<RelativeFunctional model={model} settings={{}} renderMode="harness" />);
-    expect(container.querySelector(".vf-session .vf-class")?.textContent).toBe("P3");
-    expect([...container.querySelectorAll("thead th")].map((cell) => cell.getAttribute("data-metric")))
+    expect(container.querySelector(".vf-session")).toBeNull();
+    expect(container.querySelector("thead")).toBeNull();
+    expect([...container.querySelectorAll("tbody tr:first-child td")].map((cell) => cell.getAttribute("data-metric")))
       .toEqual(["position", "carNumber", "driverName", "gap", "bestLap"]);
     const playerRow = container.querySelector('tr[data-player="true"]');
     expect(playerRow?.getAttribute("data-side")).toBe("player");
@@ -39,7 +40,7 @@ describe("Functional Relative", () => {
   it("keeps configured column order and omits disabled columns", () => {
     const custom: RelativeViewModel = { ...model, columns: [model.columns[3]!, model.columns[2]!] };
     const { container } = render(<RelativeFunctional model={custom} settings={{}} renderMode="harness" />);
-    expect([...container.querySelectorAll("thead th")].map((cell) => cell.getAttribute("data-metric")))
+    expect([...container.querySelectorAll("tbody tr:first-child td")].map((cell) => cell.getAttribute("data-metric")))
       .toEqual(["gap", "driverName"]);
     expect(container.querySelector('td[data-metric="position"]')).toBeNull();
   });

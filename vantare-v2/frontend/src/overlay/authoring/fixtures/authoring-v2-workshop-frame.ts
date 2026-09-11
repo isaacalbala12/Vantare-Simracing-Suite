@@ -88,6 +88,17 @@ export function createScenarioWidget(input: {
 }): WidgetInstanceV3 {
   const shape = shapeVariantFor(input);
   let widget = buildAuthoringV2ScenarioWidget({ widget: input.widget, system: input.system, variant: shape });
+  // La ventana dev multiclass del relative se presenta como en la referencia:
+  // solo posición, clase, nombre y gap — driverNumber y bestLap son huecos
+  // declarados de la proyección y dibujarían columnas permanentes de "—".
+  if (input.widget === "relative" && input.variant === "relative-multiclass") {
+    const content = widget.content as Record<string, unknown>;
+    const keep = new Set(["position", "class", "driverName", "gap"]);
+    const columns = Array.isArray(content.columns)
+      ? (content.columns as Record<string, unknown>[]).map((column) => ({ ...column, enabled: keep.has(String(column.metricId)) }))
+      : content.columns;
+    widget = { ...widget, content: { ...content, columns } };
+  }
   if (!input.designId) return widget;
   const official = getOfficialDesign(input.designId);
   if (!official) {

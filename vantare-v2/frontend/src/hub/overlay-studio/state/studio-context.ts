@@ -89,6 +89,47 @@ export function useStudioSelector<T>(selector: (state: ReturnType<StudioStore["g
 }
 
 /**
+ * Acciones estables sin suscripcion: un consumidor que solo despacha
+ * (botones de undo, selectores de sesion) no repinta nunca por estado.
+ */
+export function useStudioActions(): Pick<
+  StudioStore,
+  | "dispatch"
+  | "selectWidget"
+  | "selectSession"
+  | "save"
+  | "undo"
+  | "redo"
+  | "discardAll"
+  | "acceptRecovery"
+  | "dismissAccessNotice"
+  | "notifyAccessDenied"
+> {
+  return useStudioStoreInstance();
+}
+
+export function useStudioAccess(): AccessContext {
+  const access = useContext(StudioAccessContext);
+  if (!access) {
+    throw new Error("useStudioAccess must be used inside StudioProvider");
+  }
+  return access;
+}
+
+export function useStudioDirty(): boolean {
+  return useStudioSelector((s) => (s.history ? isStudioHistoryDirty(s.history) : false));
+}
+
+export function useStudioActiveLayout(): SessionLayoutV3 | null {
+  const document = useStudioSelector((s) => s.history?.present ?? null);
+  const activeSession = useStudioSelector((s) => s.activeSession);
+  return useMemo(
+    () => (document ? resolveSessionLayout(document, activeSession) : null),
+    [document, activeSession],
+  );
+}
+
+/**
  * Shim de compatibilidad: devuelve la forma completa del contexto historico
  * para consumidores no migrados. Suscribe al estado entero — mismo
  * comportamiento que el documentValue anterior. Migrar a useStudioSelector

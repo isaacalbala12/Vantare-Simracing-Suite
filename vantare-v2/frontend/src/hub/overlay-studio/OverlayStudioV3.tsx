@@ -12,7 +12,7 @@ import { StudioConfirmProvider } from './components/StudioConfirmProvider';
 import { DirtyChangesDialog } from './components/DirtyChangesDialog';
 import { RecoveryDialog } from './components/RecoveryDialog';
 import { createStudioRecoveryStore, type StudioRecoveryRecord } from './state/studio-recovery';
-import { useStudioDocument } from './state/studio-store';
+import { useStudioActions, useStudioDirty, useStudioSelector } from './state/studio-store';
 import { StudioOrbitLayout } from './orbit/StudioOrbitLayout';
 import type { StudioProfileEntry } from './studio-profile-entry';
 
@@ -53,16 +53,11 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
     recoveryStorageProp ?? (typeof window !== 'undefined' ? window.sessionStorage : null);
   const diagnostics = useMemo(() => createWidgetDiagnosticCollector(), []);
 
-  const {
-    dirty,
-    save,
-    discardAll,
-    acceptRecovery,
-    document,
-    revision,
-    accessNotice,
-    dismissAccessNotice,
-  } = useStudioDocument();
+  const dirty = useStudioDirty();
+  const document = useStudioSelector((s) => s.history?.present ?? null);
+  const revision = useStudioSelector((s) => s.revision);
+  const accessNotice = useStudioSelector((s) => s.accessNotice);
+  const { save, discardAll, acceptRecovery, dismissAccessNotice } = useStudioActions();
 
   const [pendingProfileFile, setPendingProfileFile] = useState<string | null>(null);
   const [dirtyDialogOpen, setDirtyDialogOpen] = useState(false);

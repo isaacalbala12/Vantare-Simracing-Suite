@@ -135,18 +135,13 @@
    a ~2,9:1 y una banda extra lo desbordaría. */
 .vf-delta { --vf-gain: #7fb686; --vf-loss: #d95360; }
 .vf-delta::before { width: 90px; height: 34px; }
-.vf-delta .vf-session { height: 34px; gap: 8px; }
-.vf-delta .vf-brand img { width: 16px; height: 16px; }
-.vf-delta .vf-brand { font-size: 10px; }
-.vf-delta-last { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; gap: 3px; min-width: 0; }
-.vf-delta-last .vf-clock { font-size: 12px; }
-.vf-delta-value { display: flex; align-items: baseline; justify-content: center; gap: 8px; padding: 5px 12px 0; font-size: 27px; font-weight: 700; letter-spacing: -.025em; font-variant-numeric: tabular-nums; color: var(--vf-ink); }
+.vf-delta-value { display: flex; align-items: baseline; justify-content: center; gap: 8px; padding: 6px 12px 0; font-size: 27px; font-weight: 700; letter-spacing: -.025em; font-variant-numeric: tabular-nums; color: var(--vf-ink); }
 .vf-delta-arrow { width: 12px; font-size: 13px; text-align: center; }
 .vf-delta[data-tone="gaining"] .vf-delta-value { color: var(--vf-gain); }
 .vf-delta[data-tone="losing"] .vf-delta-value { color: var(--vf-loss); }
 /* Escala de instrumento ±2 s: topes en los extremos, marcas en ±1 s,
    centro más alto y relleno que crece desde el cero con degradado al tono. */
-.vf-delta-track { position: relative; height: 5px; margin: 9px 16px 3px; border-radius: 3px; overflow: visible;
+.vf-delta-track { position: relative; height: 5px; margin: 7px 16px 3px; border-radius: 3px; overflow: visible;
   background:
     linear-gradient(90deg,
       rgb(245 245 245 / 22%) 0 1px, transparent 1px calc(25% - .5px),
@@ -158,7 +153,9 @@
 .vf-delta-fill { position: absolute; top: 0; bottom: 0; border-radius: 3px; background: var(--vf-muted); }
 .vf-delta[data-tone="gaining"] .vf-delta-fill { background: linear-gradient(90deg, rgb(127 182 134 / 30%), var(--vf-gain)); box-shadow: 0 0 7px rgb(127 182 134 / 40%); }
 .vf-delta[data-tone="losing"] .vf-delta-fill { background: linear-gradient(90deg, var(--vf-loss), rgb(217 83 96 / 30%)); box-shadow: 0 0 7px rgb(217 83 96 / 40%); }
-.vf-delta-scale { display: flex; justify-content: space-between; margin: 2px 16px 8px; font-family: "JetBrains Mono", monospace; font-size: 7px; letter-spacing: .04em; color: var(--vf-faint); }
+.vf-delta-scale { display: flex; justify-content: space-between; margin: 1px 16px 0; font-family: "JetBrains Mono", monospace; font-size: 7px; letter-spacing: .04em; color: var(--vf-faint); }
+.vf-delta-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; padding: 5px 16px 7px; border-top: 1px solid rgb(245 245 245 / 10%); }
+.vf-delta-foot .vf-clock { font-size: 12px; }
 
 /* Pedals: tres canales finos, colores semánticos apagados. */
 .vf-pedals { --vf-throttle: #6fae7d; --vf-brake: #d95360; --vf-clutch: #c9a15c; display: flex; flex-direction: column; }

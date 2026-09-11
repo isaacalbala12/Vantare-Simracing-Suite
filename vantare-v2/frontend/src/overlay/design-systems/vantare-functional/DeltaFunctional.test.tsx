@@ -18,7 +18,7 @@ describe("Functional Delta", () => {
     expect(container.querySelector(".vf-delta")?.getAttribute("data-tone")).toBe("gaining");
     expect(container.querySelector(".vf-delta-value")?.textContent).toBe("▲-0.280");
     expect(container.querySelector(".vf-delta-arrow")?.textContent).toBe("▲");
-    expect(container.querySelector(".vf-delta-last .vf-clock")?.textContent).toBe("1:31.234");
+    expect(container.querySelector(".vf-delta-foot .vf-clock")?.textContent).toBe("1:31.234");
     const fill = container.querySelector<HTMLElement>(".vf-delta-fill");
     expect(fill?.style.right).toBe("50%");
     expect(fill?.style.width).toBe("25%");
@@ -41,7 +41,7 @@ describe("Functional Delta", () => {
     expect(getByRole("status").textContent).toBeTruthy();
   });
 
-  it("labels stale data in the header", () => {
+  it("labels stale data", () => {
     const { getByRole } = render(<DeltaFunctional model={{ ...model, status: "stale" }} settings={{}} renderMode="harness" />);
     expect(getByRole("status").textContent).toBeTruthy();
   });

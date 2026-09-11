@@ -62,10 +62,14 @@ export const vantareFunctionalManifest: DesignSystemDefinition = {
     {
       widgetType: "delta",
       configVersion: 1,
-      defaultSettings: { showHeader: true },
+      // El delta de Eficiencia es un instrumento sin cabecera: no hay nada
+      // que conmutar, así que no ofrece ajustes de apariencia.
+      defaultSettings: {},
       configMigrations: { 0: (settings) => ({ ...settings }) },
-      parseSettings: parseShowHeader,
-      inspector: headerInspector("overlay.inspector.delta.showHeader"),
+      parseSettings(input: unknown) {
+        return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
+      },
+      inspector: { appearance: [] },
       Renderer: DeltaFunctional as ComponentType<WidgetRendererProps>,
     },
     {

@@ -660,3 +660,30 @@ func TestJSONBridgeDispatchesOrbitCalculation(t *testing.T) {
 		t.Fatalf("result = %#v", result)
 	}
 }
+
+func TestOrbitSolverBudgetScalesWithRaceSize(t *testing.T) {
+	t.Parallel()
+	for _, tc := range []struct {
+		name       string
+		raceLaps   int64
+		candidates int
+		iterations int
+	}{
+		{name: "short race keeps solver defaults", raceLaps: 13, candidates: 10_000_000, iterations: 100_000_000},
+		{name: "endurance floor", raceLaps: 50, candidates: 10_000_000, iterations: 100_000_000},
+		{name: "four hour race scales", raceLaps: 139, candidates: 13_900_000, iterations: 139_000_000},
+		{name: "ultra endurance scales", raceLaps: 600, candidates: 60_000_000, iterations: 600_000_000},
+		{name: "absurd laps clamp", raceLaps: 50_000, candidates: 200_000_000, iterations: 1_000_000_000},
+		{name: "zero laps keeps floors", raceLaps: 0, candidates: 10_000_000, iterations: 100_000_000},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			budget := orbitSolverBudget(tc.raceLaps)
+			if budget.MaxCandidates != tc.candidates || budget.MaxIterations != tc.iterations {
+				t.Fatalf("budget = %+v", budget)
+			}
+			if budget.P95Millis != 10_000 {
+				t.Fatalf("p95 budget = %d", budget.P95Millis)
+			}
+		})
+	}
+}

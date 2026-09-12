@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Events } from "@wailsio/runtime";
+import { getSettingsStore } from "../settings/settings-store";
 import type { OverlayStatus, ProfileEntry } from "../state/overlay-workbench";
 
 export interface OrbitOverlayState {
@@ -23,20 +24,21 @@ export interface OrbitOverlayState {
  */
 export function useOverlayState(): OrbitOverlayState {
   const [profiles, setProfiles] = useState<ProfileEntry[]>([]);
-  const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
+  // Semilla lazy: si otro consumidor ya pidio settings, el store trae el
+  // ultimo id conocido; el canal granular solo notifica en cambios reales.
+  const [activeProfileId, setActiveProfileId] = useState<string | null>(
+    () => getSettingsStore().getActiveOverlayProfileId(),
+  );
   const [status, setStatus] = useState<OverlayStatus | null>(null);
 
   useEffect(() => {
     const unsubProfiles = Events.On("hub:profiles", (event: { data?: { profiles?: ProfileEntry[] } }) => {
       setProfiles(Array.isArray(event.data?.profiles) ? event.data.profiles : []);
     });
-    const unsubSettings = Events.On(
-      "settings",
-      (event: { data?: { activeOverlayProfileId?: string } }) => {
-        const next = event.data?.activeOverlayProfileId;
-        setActiveProfileId(next && next.length > 0 ? next : null);
-      },
-    );
+    const settingsStore = getSettingsStore();
+    const unsubSettings = settingsStore.subscribeActiveOverlayProfileId(() => {
+      setActiveProfileId(settingsStore.getActiveOverlayProfileId());
+    });
     const unsubStatus = Events.On("overlay:status", (event: { data?: OverlayStatus }) => {
       setStatus(event.data ?? null);
     });

@@ -6,7 +6,7 @@ import { useRecordedCorrections } from "./use-recorded-corrections";
 import { StrategyRecordedData, type RecordedDataView } from "./StrategyRecordedData";
 import { StrategyRecordedWorkflow } from "./StrategyRecordedWorkflow";
 import { openRecordedSession, type RecordedSession } from "./strategy-recorded-session";
-import { createRecordedWizardDraft } from "./strategy-recorded-wizard";
+import { createRecordedWizardDraft, type RecordedCombination } from "./strategy-recorded-wizard";
 import type { AnalysisClient, AnalysisSaveRequest } from "../../strategy/analysis-client";
 import { analysisCorrectableFamilies, parseAnalysisLapPage, parseAnalysisOpenedSession, parseAnalysisPage, parseCorrectionStoreResult } from "../../strategy/analysis-contract";
 import type { StoredRecordedDraft } from "./strategy-recorded-persistence";
@@ -339,6 +339,7 @@ describe("recorded classification screen", () => {
     expect(bodyCells()).toEqual([
       ["strategy.classification.field.SessionType", "practice", "race", "practice"],
       ["strategy.classification.field.WeatherConditions", "Dry", "Dry", "strategy.data.unchanged"],
+      ["strategy.journey.step.combination", "Imola · GP — LMP2 · Car", "Imola · GP — LMP2 · Car", "strategy.data.unchanged"],
     ]);
     unmount();
     const confirmed = { ...f.controller, editor: { ...f.controller.editor!, current: f.current, classifications: [f.request] } };
@@ -347,6 +348,7 @@ describe("recorded classification screen", () => {
     expect(bodyCells()).toEqual([
       ["strategy.classification.field.SessionType", "practice", "race", "strategy.data.unchanged"],
       ["strategy.classification.field.WeatherConditions", "Dry", "Dry", "strategy.data.unchanged"],
+      ["strategy.journey.step.combination", "Imola · GP — LMP2 · Car", "Imola · GP — LMP2 · Car", "strategy.data.unchanged"],
     ]);
   });
   it("hides a sensitive original while keeping the other field editable", () => {
@@ -482,5 +484,135 @@ describe("recorded classification through a real controller", () => {
     expect(session.opened.session.metadata).toEqual(metadataBefore);
     expect(client.project).not.toHaveBeenCalled();
     expect(onAdopt).not.toHaveBeenCalled();
+  });
+});
+
+const identityCombination = { id: `lmu:${"1".repeat(64)}`, simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Oreca 07", carClass: "LMP2" } as const;
+const catalogCombination: RecordedCombination = { combinationId: `lmu:${"2".repeat(64)}`, simId: "lmu", trackName: "Monza", trackLayout: "GP", carName: "Oreca 07", carClass: "LMP2" };
+// The stored outsider differs from the session original only in TrackName, so
+// a single identity entry referencing it is a coherent atomic set.
+const outsiderCombination = { id: `lmu:${"4".repeat(64)}`, simId: "lmu", trackName: "Portimao", trackLayout: "GP", carName: "Oreca 07", carClass: "LMP2" } as const;
+function identityScreenFixture(catalog: RecordedCombination[] = [catalogCombination]) {
+  const f = fixture();
+  const metadata = [
+    { key: "SessionType", present: true, quality: "valid" as const, sensitive: false, value: "practice" },
+    { key: "WeatherConditions", present: true, quality: "valid" as const, sensitive: false, value: "Dry" },
+    { key: "TrackName", present: true, quality: "valid" as const, sensitive: false, value: "Imola" },
+    { key: "TrackLayout", present: true, quality: "valid" as const, sensitive: false, value: "GP" },
+    { key: "CarName", present: true, quality: "valid" as const, sensitive: false, value: "Oreca 07" },
+    { key: "CarClass", present: true, quality: "valid" as const, sensitive: false, value: "LMP2" },
+  ];
+  const session: RecordedSession = { ...f.session, combinationId: identityCombination.id, combination: { ...identityCombination }, opened: { ...f.session.opened, session: { ...f.session.opened.session, metadata } } };
+  const methods = { ...f.methods, editIdentity: vi.fn().mockReturnValue(true) };
+  const controller = { ...f.controller, ...methods, editor: { ...f.controller.editor!, session } };
+  return { ...f, session, methods, controller, catalog };
+}
+function identitySavedFixture() {
+  const f = identityScreenFixture();
+  const b = "b".repeat(64), c = "c".repeat(64), d = "d".repeat(64);
+  const request = { base: f.session.base, field: "TrackName" as const, expectedOriginal: "Imola", replacement: "Portimao", reason: "Identity review", provenance: "manual" as const, canonicalCombinationId: outsiderCombination.id };
+  const current = parseCorrectionStoreResult({ headId: b, revision: { revisionId: b, parentRevisionId: "a".repeat(64), command: { expectedRevision: "a".repeat(64), commandId: "classify", reason: "Reviewed", localAuthorId: "local" }, commandDigest: c, createdAt: "2026-09-10T00:00:00Z", snapshot: { contractVersion: "analysis.mixed-snapshot.v4", base: f.session.base, snapshotId: b, corrections: [], familyUses: [], classifications: [{ baseId: "a".repeat(64), correctionId: d, request, original: "Imola", corrected: "Portimao" }], canonicalCombination: { ...outsiderCombination } } } });
+  const controller = { ...f.controller, editor: { ...f.controller.editor!, current } };
+  return { ...f, current, controller };
+}
+describe("recorded identity selector", () => {
+  it("stages one catalog destination as a single atomic proposal with the common reason", () => {
+    const f = identityScreenFixture(), pending = vi.fn();
+    render(<HostedData controller={f.controller} sessions={[f.session]} catalog={f.catalog} busy={false} onSources={vi.fn()} onPendingChange={pending} t={t} />);
+    openClassification();
+    fireEvent.click(screen.getByRole("button", { name: "strategy.journey.step.combination" }));
+    fireEvent.change(screen.getByLabelText("strategy.journey.step.combination"), { target: { value: catalogCombination.combinationId } });
+    expect((screen.getByLabelText("strategy.data.source") as HTMLSelectElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("strategy.data.reason"), { target: { value: "Identity review" } });
+    expect(pending).toHaveBeenLastCalledWith(true);
+    fireEvent.click(screen.getByRole("button", { name: "strategy.data.apply" }));
+    expect(f.methods.editIdentity).toHaveBeenCalledExactlyOnceWith({ id: catalogCombination.combinationId, simId: "lmu", trackName: "Monza", trackLayout: "GP", carName: "Oreca 07", carClass: "LMP2" }, "Identity review");
+    expect(screen.queryByLabelText("strategy.data.reason")).toBeNull();
+    expect(pending).toHaveBeenLastCalledWith(false);
+    expect(f.methods.save).not.toHaveBeenCalled();
+  });
+  it("restores the recorded original through the same atomic call", () => {
+    const f = identitySavedFixture();
+    render(<HostedData controller={f.controller} sessions={[f.session]} catalog={f.catalog} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    openClassification();
+    fireEvent.click(screen.getByRole("button", { name: "strategy.journey.step.combination" }));
+    expect((screen.getByLabelText("strategy.laps.proposal") as HTMLSelectElement).value).toBe("original");
+    fireEvent.change(screen.getByLabelText("strategy.data.reason"), { target: { value: "Return to recorded identity" } });
+    fireEvent.click(screen.getByRole("button", { name: "strategy.data.apply" }));
+    expect(f.methods.editIdentity).toHaveBeenCalledExactlyOnceWith(identityCombination, "Return to recorded identity");
+  });
+  it("retains the identity form when the proposal is rejected", () => {
+    const f = identityScreenFixture();
+    f.methods.editIdentity.mockReturnValue(false);
+    render(<HostedData controller={f.controller} sessions={[f.session]} catalog={f.catalog} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    openClassification();
+    fireEvent.click(screen.getByRole("button", { name: "strategy.journey.step.combination" }));
+    fireEvent.change(screen.getByLabelText("strategy.journey.step.combination"), { target: { value: catalogCombination.combinationId } });
+    fireEvent.change(screen.getByLabelText("strategy.data.reason"), { target: { value: "Identity review" } });
+    fireEvent.click(screen.getByRole("button", { name: "strategy.data.apply" }));
+    expect(f.methods.editIdentity).toHaveBeenCalledOnce();
+    expect((screen.getByLabelText("strategy.data.reason") as HTMLTextAreaElement).value).toBe("Identity review");
+    expect((screen.getByLabelText("strategy.journey.step.combination") as HTMLSelectElement).value).toBe(catalogCombination.combinationId);
+  });
+  it("keeps only the original reachable on an empty catalog and withdraws a stored identity", () => {
+    const f = identitySavedFixture();
+    render(<HostedData controller={f.controller} sessions={[f.session]} catalog={[]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    openClassification();
+    expect(screen.getByText("Portimao · GP — LMP2 · Oreca 07")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "strategy.journey.step.combination" }));
+    expect(screen.getByText("strategy.journey.catalog.empty")).toBeTruthy();
+    expect(screen.getByText("strategy.laps.saved: Portimao · GP — LMP2 · Oreca 07")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("strategy.laps.proposal"), { target: { value: "correct" } });
+    const select = screen.getByLabelText("strategy.journey.step.combination") as HTMLSelectElement;
+    expect([...select.options].map(item => item.value)).toEqual([""]);
+    expect(select.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("strategy.laps.proposal"), { target: { value: "original" } });
+    fireEvent.change(screen.getByLabelText("strategy.data.reason"), { target: { value: "Withdraw identity" } });
+    fireEvent.click(screen.getByRole("button", { name: "strategy.data.apply" }));
+    expect(f.methods.editIdentity).toHaveBeenCalledExactlyOnceWith(identityCombination, "Withdraw identity");
+  });
+  it("keeps identity hidden when the session has no combination while legacy stays editable", () => {
+    const f = identityScreenFixture();
+    const session: RecordedSession = { ...f.session, combinationId: undefined, combination: undefined, projectionUnavailableReason: "metadata_unavailable" };
+    const controller = { ...f.controller, editor: { ...f.controller.editor!, session } };
+    render(<HostedData controller={controller} sessions={[session]} catalog={f.catalog} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    openClassification();
+    expect(screen.queryByRole("button", { name: "strategy.journey.step.combination" })).toBeNull();
+    expect(screen.getByText("strategy.recorded.metadataUnavailable")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "strategy.classification.field.SessionType" }));
+    expect(screen.getByLabelText("strategy.data.correctedValue")).toBeTruthy();
+  });
+  it("blocks the identity row while a command is uncertain", () => {
+    const f = identityScreenFixture();
+    const { rerender } = render(<HostedData controller={f.controller} sessions={[f.session]} catalog={f.catalog} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    openClassification();
+    const request = { sessionId: "handle", base: f.session.base, corrections: [], command: { expectedRevision: "a".repeat(64), commandId: "uncertain", reason: "Review", localAuthorId: "local" } };
+    rerender(<HostedData controller={{ ...f.controller, editor: { ...f.controller.editor!, request } }} sessions={[f.session]} catalog={f.catalog} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    expect((screen.getByRole("button", { name: "strategy.journey.step.combination" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "strategy.data.resolve" })).toBeTruthy();
+  });
+  it("feeds the page catalog to the identity selector, not the merged workflow choices", async () => {
+    const f = identityScreenFixture();
+    const candidate = { id: "candidate", displayName: "Imola_R.duckdb", state: "ready", size: 10, modifiedAt: "2026-09-10T00:00:00Z", walPresent: false };
+    vi.mocked(openRecordedSession).mockResolvedValue(f.session);
+    const analysis = { discover: vi.fn().mockResolvedValue([candidate]), load: vi.fn().mockResolvedValue(f.current), page: vi.fn().mockResolvedValue(f.page), close: vi.fn().mockResolvedValue(undefined) } as unknown as AnalysisClient;
+    const draft = { ...createRecordedWizardDraft(), step: "sessions" as const, combination: { combinationId: identityCombination.id, simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Oreca 07", carClass: "LMP2" }, sessions: [f.session.revision] };
+    const initial = { repositoryVersion: 1, document: { payload: { contractVersion: "strategy.recorded.draft.v1", eventId: "event", draft } } } as StoredRecordedDraft;
+    const application = { execute: vi.fn(), dispose: vi.fn(), cancel: vi.fn() } as StrategyApplicationClient<RecordedDraftPayload>;
+    render(<StrategyRecordedWorkflow eventId="event" initial={initial} catalog={[catalogCombination]} catalogState="available" calendar={null} application={application} analysis={analysis} onExit={vi.fn()} onCleanupError={vi.fn()} t={t} />);
+    fireEvent.click(screen.getByRole("tab", { name: "strategy.data.tab.data" }));
+    fireEvent.click(screen.getByRole("button", { name: "strategy.data.sources" }));
+    const drawer = screen.getByRole("dialog");
+    fireEvent.click(within(drawer).getByRole("button", { name: "strategy.recorded.discover" }));
+    fireEvent.click(await within(drawer).findByRole("button", { name: "strategy.recorded.open" }));
+    fireEvent.click(await within(drawer).findByRole("button", { name: "strategy.recorded.apply" }));
+    await within(drawer).findByText("strategy.recorded.applied");
+    fireEvent.click(within(drawer).getAllByRole("button", { name: "strategy.recorded.close" })[0]);
+    fireEvent.change(screen.getByLabelText("strategy.data.source"), { target: { value: "handle" } });
+    await screen.findByRole("button", { name: "strategy.laps.load" });
+    fireEvent.click(await screen.findByRole("button", { name: "strategy.classification.tab" }));
+    fireEvent.click(await screen.findByRole("button", { name: "strategy.journey.step.combination" }));
+    const select = screen.getByLabelText("strategy.journey.step.combination") as HTMLSelectElement;
+    expect([...select.options].map(item => item.value)).toEqual(["", catalogCombination.combinationId]);
   });
 });

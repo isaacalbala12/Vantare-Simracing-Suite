@@ -1,26 +1,31 @@
 import { useState } from "react";
-import { analysisCanonicalSessionType, analysisValue, type AnalysisClassificationField, type AnalysisCorrectableFamily, type AnalysisScalar, type AnalysisValue } from "../../strategy/analysis-contract";
+import { analysisCanonicalSessionType, analysisValue, type AnalysisClassificationField, type AnalysisCombination, type AnalysisCorrectableFamily, type AnalysisScalar, type AnalysisValue } from "../../strategy/analysis-contract";
 import type { StrategyAnalysisRevisionRef } from "../../strategy/strategy-application-client";
 import { Button, Icon } from "../../ui/orbit";
 import type { RecordedSession } from "./strategy-recorded-session";
 import type { RecordedCorrectionsController } from "./use-recorded-corrections";
 import { recordedClassificationOriginal } from "./strategy-recorded-corrections";
-import { RecordedClassificationDetail, RecordedClassificationList, type RecordedClassificationForm } from "./StrategyRecordedClassification";
+import type { RecordedCombination } from "./strategy-recorded-wizard";
+import { RecordedClassificationDetail, RecordedClassificationList, RecordedIdentityDetail, type RecordedClassificationForm, type RecordedIdentityForm } from "./StrategyRecordedClassification";
 import { RecordedLapDetail, RecordedLapList, type RecordedFamilyForm } from "./StrategyRecordedLaps";
 import "./strategy-recorded-data.css";
 
 type Form = { sampleIndex: number; column: string; original: AnalysisValue; value: string; reason: string };
 export type RecordedDataView = "laps" | "samples" | "classification";
-export function StrategyRecordedData({ controller, sessions, sessionLabels = {}, selectedRevisions = [], busy, onSources, onPendingChange, view, onViewChange, t }: {
+export function StrategyRecordedData({ controller, sessions, sessionLabels = {}, selectedRevisions = [], catalog = [], busy, onSources, onPendingChange, view, onViewChange, t }: {
   readonly controller: RecordedCorrectionsController; readonly sessions: readonly RecordedSession[]; readonly busy: boolean;
   readonly sessionLabels?: Readonly<Record<string, string>>;
   readonly selectedRevisions?: readonly StrategyAnalysisRevisionRef[];
+  // The identity destinations are the page's session catalog itself — never
+  // the wizard's merged choices, which may carry historical entries.
+  readonly catalog?: readonly RecordedCombination[];
   readonly onSources: () => void; readonly onPendingChange: (pending: boolean) => void;
   readonly view: RecordedDataView; readonly onViewChange: (view: RecordedDataView) => void; readonly t: (key: string) => string;
 }) {
   const [family, setFamily] = useState<AnalysisCorrectableFamily>("combined_stint_pace_curve");
   const [familyForm, setFamilyForm] = useState<RecordedFamilyForm | null>(null);
   const [classForm, setClassForm] = useState<RecordedClassificationForm | null>(null);
+  const [identityForm, setIdentityForm] = useState<RecordedIdentityForm | null>(null);
   const [column, setColumn] = useState("");
   const [form, setForm] = useState<Form | null>(null);
   const [formDirty, setFormDirty] = useState(false);
@@ -41,7 +46,37 @@ export function StrategyRecordedData({ controller, sessions, sessionLabels = {},
   const locked = busy || controller.busy;
   const editable = Boolean(channel && editor?.session.editableChannelIds?.includes(channel.id));
   const display = (value: AnalysisValue) => { const scalar = analysisValue(value); return scalar === null ? t("strategy.data.absent") : typeof scalar === "boolean" ? t(scalar ? "strategy.data.true" : "strategy.data.false") : String(scalar); };
-  function clearForm() { setFamilyForm(null); setClassForm(null); setForm(null); setFormDirty(false); setFormError(false); onPendingChange(false); }
+  function clearForm() { setFamilyForm(null); setClassForm(null); setIdentityForm(null); setForm(null); setFormDirty(false); setFormError(false); onPendingChange(false); }
+  // One identity proposal replaces the whole combination through the same
+  // common reason; the controller validates the target and stays atomic.
+  function openIdentity() {
+    if (!editor || locked || formDirty || editor.request || !editor.session.combination) return;
+    // A parsed classification carries canonicalCombinationId iff it is an
+    // identity decision; legacy fields can never hold the reference.
+    const active = editor.classifications.filter(item => item.canonicalCombinationId !== undefined);
+    const saved = (editor.current.revision.snapshot.classifications ?? []).map(item => item.request).filter(item => item.canonicalCombinationId !== undefined);
+    const reference = active[0]?.canonicalCombinationId;
+    clearForm();
+    setIdentityForm({
+      choice: active.length > 0 || saved.length === 0 ? "correct" : "original",
+      targetId: reference !== undefined && catalog.some(item => item.combinationId === reference) ? reference : "",
+      reason: active[0]?.reason ?? saved[0]?.reason ?? "",
+    });
+  }
+  function applyIdentity() {
+    if (!identityForm || locked || !editor?.session.combination) return;
+    if (!identityForm.reason.trim()) return;
+    const original = editor.session.combination;
+    if (identityForm.choice === "original") {
+      if (controller.editIdentity(original, identityForm.reason)) { setSaveReason(identityForm.reason); clearForm(); }
+      return;
+    }
+    const selected = catalog.find(item => item.combinationId === identityForm.targetId);
+    if (!selected) return;
+    const { combinationId, simId, trackName, trackLayout, carName, carClass } = selected;
+    const target: AnalysisCombination = { id: combinationId, simId, trackName, trackLayout, carName, carClass };
+    if (controller.editIdentity(target, identityForm.reason)) { setSaveReason(identityForm.reason); clearForm(); }
+  }
   function openClassification(field: AnalysisClassificationField) {
     if (!editor || locked || formDirty || editor.request) return;
     let original: string;
@@ -76,6 +111,10 @@ export function StrategyRecordedData({ controller, sessions, sessionLabels = {},
   }
   function apply() {
     if (locked) return;
+    if (identityForm) {
+      applyIdentity();
+      return;
+    }
     if (classForm) {
       applyClassification();
       return;
@@ -121,10 +160,10 @@ export function StrategyRecordedData({ controller, sessions, sessionLabels = {},
             </tr>;
           })}</tbody></table></div>{page.samples.length === 0 ? <p role="status">{t("strategy.data.noSamples")}</p> : null}
           <div className="strategy-recorded-data__pages"><Button size="sm" variant="ghost" disabled={locked || formDirty || page.start === 0} onClick={() => { clearForm(); void controller.page(page.channel_id, Math.max(0, page.start - 50)); }}>{t("strategy.recorded.previous")}</Button><span>{t("strategy.data.samplesShown")} {page.samples.length}</span><Button size="sm" variant="ghost" disabled={locked || formDirty || page.samples.length < 50} onClick={() => { clearForm(); void controller.page(page.channel_id, page.start + 50); }}>{t("strategy.recorded.next")}</Button></div></> : <p className="strategy-recorded-data__empty">{t("strategy.data.chooseChannel")}</p>}
-        </> : <RecordedClassificationList session={editor.session} current={editor.current} proposals={editor.classifications} selected={classForm?.field} locked={locked || formDirty || Boolean(editor.request)} onSelect={openClassification} t={t} />}
+        </> : <RecordedClassificationList session={editor.session} current={editor.current} proposals={editor.classifications} selected={classForm?.field} selectedIdentity={identityForm !== null} locked={locked || formDirty || Boolean(editor.request)} onSelect={openClassification} onSelectIdentity={openIdentity} t={t} />}
       </section>
       <aside className="strategy-recorded-data__detail"><h3>{t("strategy.data.review")}</h3><p className="strategy-recorded-data__muted">{t("strategy.data.reviewHint")}</p>
-        {classForm ? <RecordedClassificationDetail form={classForm} dirty={formDirty} locked={locked || Boolean(editor?.request)} onChange={next => { setClassForm(next); setFormDirty(true); onPendingChange(true); }} onApply={apply} onCancel={clearForm} t={t} /> : familyForm ? <RecordedLapDetail form={familyForm} dirty={formDirty} locked={locked || Boolean(editor?.request)} t={t} onChange={next => { setFamilyForm(next); setFormDirty(true); onPendingChange(true); }} onApply={apply} onCancel={clearForm} /> : form ? <form onSubmit={event => { event.preventDefault(); apply(); }}>
+        {identityForm && editor?.session.combination ? <RecordedIdentityDetail form={identityForm} original={editor.session.combination} saved={editor.current.revision.snapshot.canonicalCombination} catalog={catalog} dirty={formDirty} locked={locked || Boolean(editor?.request)} onChange={next => { setIdentityForm(next); setFormDirty(true); onPendingChange(true); }} onApply={apply} onCancel={clearForm} t={t} /> : classForm ? <RecordedClassificationDetail form={classForm} dirty={formDirty} locked={locked || Boolean(editor?.request)} onChange={next => { setClassForm(next); setFormDirty(true); onPendingChange(true); }} onApply={apply} onCancel={clearForm} t={t} /> : familyForm ? <RecordedLapDetail form={familyForm} dirty={formDirty} locked={locked || Boolean(editor?.request)} t={t} onChange={next => { setFamilyForm(next); setFormDirty(true); onPendingChange(true); }} onApply={apply} onCancel={clearForm} /> : form ? <form onSubmit={event => { event.preventDefault(); apply(); }}>
           <label>{t("strategy.data.originalReadOnly")}<output>{display(form.original)} {channel?.unit.symbol ?? ""}</output></label>
           <label>{t("strategy.data.correctedValue")}{form.original.scalar.kind === "boolean" ? <select value={form.value} disabled={locked || Boolean(editor?.request)} onChange={event => field("value", event.target.value)}><option value="true">{t("strategy.data.true")}</option><option value="false">{t("strategy.data.false")}</option></select> : <input value={form.value} type={form.original.scalar.kind === "text" ? "text" : "number"} step="any" disabled={locked || Boolean(editor?.request)} onChange={event => field("value", event.target.value)} />}</label>
           <label>{t("strategy.data.reason")}<textarea value={form.reason} maxLength={1024} disabled={locked || Boolean(editor?.request)} onChange={event => field("reason", event.target.value)} /></label>

@@ -95,8 +95,10 @@ precedencia; no se modifican decisiones técnicas ajenas a la transición.
 
 ## Controles que deben adaptarse antes de ACTIVO
 
-Estos archivos se inspeccionaron para descubrir dependencias, **no se modifican
-ni se deshabilitan en #1189**. El futuro corte técnico debe leerlos íntegramente,
+Estas superficies se inspeccionaron para descubrir dependencias. Su comportamiento
+ejecutable **no se modifica ni se deshabilita en #1189**; las plantillas reciben
+avisos y CODEOWNERS amplía cobertura documental, como detalla la tabla anterior.
+El futuro corte técnico debe leer los controles íntegramente,
 fijar diseño, probarlo y mantener compatibilidad con el histórico.
 
 | Superficie exacta | Dependencia actual y condición de sustitución |

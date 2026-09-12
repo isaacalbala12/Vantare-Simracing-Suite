@@ -338,6 +338,7 @@ const STANDINGS_DEV_SEAT_BY_DRIVER: Readonly<Record<string, number>> = {
   "Ben Hanley": 2,
   "Filipe Albuquerque": 5,
   "Conrad Laursen": 16,
+  "Alessandro Pier Guidi": 6,
 };
 
 // Tabla posicional separada para relative: el que cruza al jugador (detrás
@@ -503,15 +504,38 @@ function seatNameAt(table: Readonly<Record<string, number>>, position: number): 
   return undefined;
 }
 
+// Una escena cuyo parche no resuelve ninguna fila — el piloto no está en la
+// parrilla y su asiento declarado tampoco tiene dueño — se descartaba en
+// silencio: el parche resbalaba a un asiento equivocado o no aterrizaba. El
+// aviso sale una vez por escena y piloto, no por frame muestreado.
+const warnedScenePatches = new Set<string>();
+function warnDroppedScenePatches(
+  sceneId: string,
+  keys: readonly string[],
+  resolved: ReadonlySet<string>,
+): void {
+  for (const key of keys) {
+    if (resolved.has(key)) continue;
+    const tag = `${sceneId}${key}`;
+    if (warnedScenePatches.has(tag)) continue;
+    warnedScenePatches.add(tag);
+    console.warn(
+      `[workshop] escena "${sceneId}": el parche de "${key}" no resolvió ninguna fila (ni por nombre ni por asiento) — se descarta.`,
+    );
+  }
+}
+
 function patchRelativeSection(
   rows: readonly OverlayRelativeRowV2[],
   cars: Record<string, { timeGapToPlayer?: number; absent?: boolean }>,
   quality: OverlayQualityV2,
+  resolved?: Set<string>,
 ): OverlayRelativeRowV2[] {
   return rows.flatMap((row) => {
     const key = (row.name && cars[row.name] ? row.name : undefined) ?? seatNameAt(RELATIVE_DEV_SEAT_BY_DRIVER, row.position);
-    const patch = key ? cars[key] : undefined;
-    if (!patch) return [row];
+    const patch = key === undefined ? undefined : cars[key];
+    if (key === undefined || !patch) return [row];
+    resolved?.add(key);
     // lapDistanceMeters no tiene campo en la fila V2: se ignora sin fingirlo.
     if (patch.absent) return [];
     if (patch.timeGapToPlayer === undefined) return [row];
@@ -540,9 +564,10 @@ function applyScene(
     standings = patchStandings(standings, { 3: { bestLap: 86.408 } }, quality);
   }
   if (state.cars) {
+    const resolved = new Set<string>();
     if (scene.widget === "relative") {
-      relative = patchRelativeSection(frame.relative, state.cars, quality);
-      settled = patchRelativeSection(frame.relativeSettled, state.cars, quality);
+      relative = patchRelativeSection(frame.relative, state.cars, quality, resolved);
+      settled = patchRelativeSection(frame.relativeSettled, state.cars, quality, resolved);
       // La VM confía en el orden canónico del frame: tras un cruce hay que
       // reordenar como haría Go — gap a jugador descendente (delante arriba,
       // jugador en medio, detrás abajo), si no el cambio de lado no se ve.
@@ -552,8 +577,9 @@ function applyScene(
     } else {
       standings = standings.flatMap((row) => {
         const key = (row.driver && state.cars![row.driver] ? row.driver : undefined) ?? seatNameAt(STANDINGS_DEV_SEAT_BY_DRIVER, row.position);
-        const patch = key ? state.cars![key] : undefined;
-        if (!patch) return [row];
+        const patch = key === undefined ? undefined : state.cars![key];
+        if (key === undefined || !patch) return [row];
+        resolved.add(key);
         // tireCompound no tiene campo en la fila V2: se ignora sin fingirlo.
         if (patch.absent) return [];
         return [
@@ -567,6 +593,7 @@ function applyScene(
       });
       standings = [...standings].sort((left, right) => left.position - right.position);
     }
+    warnDroppedScenePatches(scene.id, Object.keys(state.cars), resolved);
   }
   let player = frame.player;
   let delta = frame.delta;

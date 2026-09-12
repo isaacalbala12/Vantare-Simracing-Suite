@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-12T17:56:59Z",
+  "generatedAt": "2026-09-12T23:00:03Z",
   "digest": {
-    "lastCommit": "119d10f21338cc8c48820c3d808929e461bd8486"
+    "lastCommit": "d29fcdd766c59ac40b5d137f0497209cde027c07"
   },
   "phases": [
     {
@@ -2072,6 +2072,16 @@
   ],
   "delivered": [
     {
+      "date": "2026-09-13",
+      "entries": [
+        {
+          "kind": "fix",
+          "scope": "estrategia",
+          "text": "Presupuesto de trabajo por tamaño en Orbit en vez de deadline de pared"
+        }
+      ]
+    },
+    {
       "date": "2026-09-12",
       "entries": [
         {
@@ -2673,16 +2683,6 @@
           "kind": "change",
           "scope": "",
           "text": "HUD-ORBIT — porte completo de Command Orbit v0.3 al hub"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-17",
-      "entries": [
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "HUD-ORBIT-00 — Command Orbit v0.3: prototipo aprobado + paquete de diseño para el porte"
         }
       ]
     }

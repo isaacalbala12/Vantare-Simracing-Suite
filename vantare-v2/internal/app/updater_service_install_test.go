@@ -308,7 +308,17 @@ func TestAThrottledCheckWithNothingKnownStillSaysSo(t *testing.T) {
 		t.Fatalf("CheckUpdatesManual: %v", err)
 	}
 	// Un servicio nuevo sobre los mismos ajustes: hereda el enfriamiento del
-	// disco, pero no la cache en memoria.
+	// disco, pero no la cache en memoria. El tag visto se limpia a proposito:
+	// una instalacion que viene de una build anterior al campo no registro
+	// nunca release alguna, y sin ese recuerdo tampoco hay nada que anunciar.
+	settings, err := updater.LoadSettings(settingsPath)
+	if err != nil {
+		t.Fatalf("LoadSettings: %v", err)
+	}
+	settings.LastSeenTag = ""
+	if err := updater.SaveSettings(settingsPath, settings); err != nil {
+		t.Fatalf("SaveSettings: %v", err)
+	}
 	fresh, err := app.NewUpdaterService("v0.1.0.1", settingsPath, &spyEmitter{})
 	if err != nil {
 		t.Fatalf("NewUpdaterService: %v", err)

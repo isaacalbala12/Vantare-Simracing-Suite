@@ -1,10 +1,20 @@
 # Documentacion de Vantare v2
 
+> **Tracker y continuidad (2026-09-12):** leer primero
+> [la transición a Notion](vantare-program/notion-transition.md). Mientras su estado sea PREPARACIÓN,
+> las reglas GitHub/ISA de este documento rigen el cierre del lote existente
+> y la preparación técnica. El trabajo nuevo fuera del lote se captura en Notion
+> sin ejecutarlo todavía. Después del corte verificado, Notion será la autoridad
+> operativa y GitHub conservará código, PR, CI y releases.
+
+
 Este indice ayuda a agentes y reviewers a saber que leer antes de tocar el repo.
 
 ## Lectura rapida
 
 - `../AGENTS.md`: reglas obligatorias para cualquier agente.
+- `vantare-program/notion-transition.md`: tracker por fase, lote y corte aprobado.
+- `vantare-program/README.md`: expediente canonico y handoffs vigentes.
 - `roadmap/plan.md`: fuente publica de fases, areas, hitos y entregas del roadmap.
 - `master-feature-plan.md`: mapa de producto y contexto historico.
 - `current-plan.md`: registro historico de ejecucion; no es fuente de planificacion.
@@ -69,4 +79,4 @@ El proyecto historicamente tiene planes y documentacion fuera de `vantare-v2`, e
 
 ## Estado de roadmap
 
-La planificacion publica actual vive en `roadmap/plan.md` y sus datos generados en `roadmap/roadmap.json`. El estado operativo de una issue vive en GitHub Issues y la continuidad tecnica en el handoff vivo correspondiente. `master-feature-plan.md`, `current-plan.md` y `roadmap-execution-board.md` se conservan como mapa o contexto historico; `release-roadmap-execution-index.md` mantiene la ejecucion especifica del release.
+La planificacion publica actual vive en `roadmap/plan.md` y sus datos generados en `roadmap/roadmap.json`. El estado operativo de una issue vive en GitHub Issues y la continuidad tecnica en el handoff vivo correspondiente. `master-feature-plan.md`, `current-plan.md` y `roadmap-execution-board.md` se conservan como mapa o contexto historico; `release-roadmap-execution-index.md` es historico; las etapas vigentes se consultan en `plan-beta-publica-y-lanzamiento.md` y el expediente canonico.

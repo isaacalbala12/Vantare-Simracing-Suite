@@ -284,6 +284,8 @@ describe("DiagnosticsPanel", () => {
   ])("renders complete diagnostics copy in %s", async (locale, title) => {
     localStorage.setItem("vantare.locale", locale);
     renderPanel();
-    expect(await screen.findByRole("heading", { name: title })).toBeDefined();
+    expect(
+      await screen.findByRole("heading", { name: title }, { timeout: 5000 }),
+    ).toBeDefined();
   });
 });

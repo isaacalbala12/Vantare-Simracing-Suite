@@ -1,5 +1,10 @@
 # Vantare Overlays
 
+> **Entrada de desarrollo vigente:** [workflow de transición y lote activo](vantare-v2/docs/vantare-program/notion-transition.md).
+> Leer las reglas de `vantare-v2/AGENTS.md` y el expediente canónico antes de
+> ejecutar instrucciones antiguas de desarrollo enlazadas desde esta página.
+
+
 > **Alpha v0.1.0-alpha.1:** el desarrollo activo está en [`vantare-v2/`](vantare-v2/) con Go + Wails v3 + React 19.
 > `apps/desktop/` es la versión Electron v1 heredada y no representa la alpha v2 actual.
 

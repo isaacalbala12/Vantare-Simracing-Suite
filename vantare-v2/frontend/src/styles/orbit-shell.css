@@ -753,6 +753,29 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
   display: none;
 }
 
+/* Placeholder de carga de página lazy: sin spinner ni animación, el chrome de
+   la shell (rail, topbar, columna) ya comunica dónde está el usuario y el
+   hueco solo reserva altura hasta que llega el chunk. */
+.orbit-page-loading {
+  min-height: 240px;
+}
+
+/* Frontera de error del slot lazy (`OrbitPageBoundary`): aviso quieto con la
+   salida de reintento, en el tono apagado del kit. */
+.orbit-page-error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 20px 24px;
+  color: var(--orbit-ink-3);
+  font-size: var(--orbit-fs-secondary);
+}
+
+.orbit-page-error p {
+  margin: 0;
+}
+
 /* Huecos que la shell reserva para que la pantalla activa porte contenido a la
    columna contextual y a la topbar (briefings 04 y 05). */
 .orbit-column__slot {

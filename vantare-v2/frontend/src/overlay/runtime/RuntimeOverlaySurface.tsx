@@ -19,6 +19,11 @@ import {
 } from "../core/responsive-layout";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import { createWidgetDiagnosticCollector, type WidgetDiagnostic, type WidgetDiagnosticCollector } from "../core/widget-diagnostics";
+import {
+  isWidgetTypeAllowed,
+  resolveWidgetBrandVisible,
+  type WidgetPolicyWire,
+} from "../core/widget-policy";
 import { RuntimeWidgetFrame } from "./RuntimeWidgetFrame";
 import { resolveRuntimeLayout, selectRuntimeWidgets } from "./resolve-runtime-layout";
 import { useOverlayRuntimeContext } from "./use-rate-limited-telemetry";
@@ -29,7 +34,7 @@ import {
   EMPTY_RACE_SCHEDULE_SNAPSHOT,
   type RaceScheduleStore,
 } from "../core/race-schedule-store";
-import { resolveStandingsRedlineFrameLayout } from "../widget-types/standings/standings-redline-layout";
+import { resolveStandingsFrameLayout } from "../widget-types/standings/standings-frame-layout";
 
 export type RuntimeOverlaySurfaceProps = {
   document: ProfileDocumentV3;
@@ -40,13 +45,20 @@ export type RuntimeOverlaySurfaceProps = {
   diagnostics?: WidgetDiagnosticCollector;
   engineerPresentations?: EngineerPresentationStore;
   raceSchedule?: RaceScheduleStore;
+  /**
+   * Política nativa vigente o null antes del primer snapshot (fail-safe
+   * Free). Los widgets bloqueados se filtran AQUÍ, antes de crear
+   * RuntimeWidgetFrame y suscribir telemetría: nunca se ejecutan, pero el
+   * documento se conserva íntegro fuera del runtime.
+   */
+  widgetPolicy?: WidgetPolicyWire | null;
 };
 
 const subscribeToNothing = () => () => undefined;
 const noPresentation = () => null;
 
 export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.ReactElement {
-  const { document, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics: diagnosticsProp, engineerPresentations, raceSchedule } = props;
+  const { document, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics: diagnosticsProp, engineerPresentations, raceSchedule, widgetPolicy = null } = props;
   const diagnostics = useMemo(() => diagnosticsProp ?? createWidgetDiagnosticCollector(), [diagnosticsProp]);
   const runtimeContext = useOverlayRuntimeContext(telemetry);
   const [contextMemory, setContextMemory] = useState<{
@@ -76,7 +88,7 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
   // unico mensaje accionable para Desktop y OBS.
   const widgets = selectRuntimeWidgets(layout, layoutContext, {
     bypassVisibility: authorityUnavailable,
-  });
+  }).filter((widget) => isWidgetTypeAllowed(widgetPolicy, widget.type));
   const layoutViewport = resolveLayoutViewport(document);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const [outputViewport, setOutputViewport] = useState<ViewportSize | null>(null);
@@ -167,10 +179,13 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
       x: widget.layout.x - origin.x,
       y: widget.layout.y - origin.y,
     };
-    const effectiveLayout = resolveStandingsRedlineFrameLayout(
+    const brandVisible = resolveWidgetBrandVisible(widgetPolicy, widget);
+    const effectiveLayout = resolveStandingsFrameLayout(
       widget,
       localLayout,
       layoutViewport.width,
+      layoutViewport.height,
+      brandVisible,
     );
     return {
       ...widget,
@@ -228,6 +243,7 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
               profileId={document.id}
               telemetry={telemetry}
               renderMode={renderMode}
+              brandVisible={resolveWidgetBrandVisible(widgetPolicy, widget)}
               onDiagnostic={onDiagnostic}
               diagnostics={diagnostics}
               engineerPresentation={engineerPresentation}

@@ -91,9 +91,12 @@ import {
   resolveSettingsSection,
   searchSettings,
 } from "./settings-orbit-model";
+import { SETTINGS_CONTEXT_SLOT_ID } from "../components/orbit/orbit-slot-ids";
 import "../../styles/orbit-settings.css";
 
-export const SETTINGS_CONTEXT_SLOT_ID = "orbit-settings-context-slot";
+/** Hueco que la shell reserva para Ajustes. El id vive en `orbit-slot-ids`
+    para que la shell no importe la página entera. */
+export { SETTINGS_CONTEXT_SLOT_ID };
 
 const THEME_SWATCHES: { id: ThemeId; g1: string; g2: string }[] = [
   { id: "vantare-orbit", g1: "#0d0e11", g2: "#d52f49" },
@@ -1282,6 +1285,10 @@ function EventLogSurface() {
   const [copied, setCopied] = useState(false);
   const visible = useVisibleLogEntries(log.entries, filter);
   const counts = useMemo(() => countByLevel(log.entries), [log.entries]);
+  const mounted = useRef(true);
+  useEffect(() => () => {
+    mounted.current = false;
+  }, []);
 
   // El aviso de copiado se retira solo; sin esto quedaría fijo para siempre.
   useEffect(() => {
@@ -1293,8 +1300,12 @@ function EventLogSurface() {
   const copy = useCallback(() => {
     void navigator.clipboard
       ?.writeText(formatLogForClipboard(visible))
-      .then(() => setCopied(true))
-      .catch(() => setCopied(false));
+      .then(() => {
+        if (mounted.current) setCopied(true);
+      })
+      .catch(() => {
+        if (mounted.current) setCopied(false);
+      });
   }, [visible]);
 
   const timeFormat = useMemo(

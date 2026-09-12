@@ -16,9 +16,12 @@ import {
   type RoadmapSection,
   type RoadmapSourceState,
 } from "./roadmap-orbit-model";
+import { ROADMAP_CONTEXT_SLOT_ID } from "../components/orbit/orbit-slot-ids";
 import "../../styles/orbit-roadmap.css";
 
-export const ROADMAP_CONTEXT_SLOT_ID = "orbit-roadmap-context-slot";
+/** Hueco que la shell reserva para Roadmap. El id vive en `orbit-slot-ids`
+    para que la shell no importe la página entera. */
+export { ROADMAP_CONTEXT_SLOT_ID };
 
 /** Canal de actualización activo. La shell solo conoce testers/nightly. */
 export type RoadmapChannel = "stable" | "testers" | "nightly";
@@ -74,14 +77,21 @@ export function RoadmapOrbitPage({
 
   useEffect(() => {
     if (seeded) return;
+    let active = true;
     const controller = new AbortController();
     loadRoadmapSource(controller.signal)
       .then((result) => {
+        if (!active) return;
         setLoaded(result.dataset);
         setState(result.state);
       })
-      .catch(() => setState("fallback"));
-    return () => controller.abort();
+      .catch(() => {
+        if (active) setState("fallback");
+      });
+    return () => {
+      active = false;
+      controller.abort();
+    };
   }, [seeded]);
 
   useEffect(

@@ -193,6 +193,310 @@ sin prueba física LMU en este corte. Cortes siguientes no entregados: panel
 colapsable/reubicable y layout numérico (C2), añadir widget y selector de
 sesión (C3), diseños y acciones de restauración (C4).
 
+## ISA-1098 — Efficiency integrada en Nightly (2026-09-12)
+
+Integración autorizada por Isaac el 2026-09-12. El smoke físico final usó la
+build diagnóstica Wails generada por `scripts/bench/build-measurement.ps1` con
+el `.env.local` externo autorizado, sin copiar ni mostrar valores. El binario
+`bin/vantare-isa1098-smoke.exe` mide 33.310.720 bytes y tiene SHA-256
+`F7064850C77B2BCB4716F391AAD869F601300213748B983BEEB2C14EFFAFB50C`.
+En la sesión Free, Studio guardó Efficiency Broadcast, lo pintó mediante el
+renderer productivo y restauró Signature. Dos ciclos reales abrir/detener
+acabaron en 394/52 ms y 366/56 ms, sin cierre de Vantare; Ajustes, Carreras y
+el regreso a Studio cargaron correctamente. El overlay montó sus tres frames,
+pero LMU no estaba emitiendo y mostró el diagnóstico canónico
+`Overlay V2 frame unavailable`: esta prueba no acredita bandera ni temperatura
+en sesión activa. La rama se reconcilia con `origin/nightly@9651733f`, que ya
+contiene #1165 y #1168; se conservan las implementaciones compartidas y
+granulares ya revisadas del candidato. Este mismo PR registra la integración
+a Nightly; no promociona a testers/master ni publica una release.
+
+Extensión de integración del 2026-09-12 autorizada por Isaac: el candidato
+incorpora las mejores implementaciones vigentes de #1157, #1168, #1163,
+#1161, #1118, #1170, #1117, #1122, #1158 y #1165 como bloques
+independientes. El runtime reutiliza el contexto y sus firmas cuando no cambia
+su contenido; settings, licencia y updater tienen un único fanout Wails por
+canal; Studio usa un store externo con selectores granulares; las rutas
+desmontables cancelan trabajo pendiente; SideRaces reduce su cadencia cuando
+la salida está lejos; y el mapper evita el slice temporal de calidad por
+vehículo. El Hub comparte una sola suscripción para overlays y calendario,
+carga sus páginas y los idiomas secundarios bajo demanda y obedece el
+presupuesto de efectos `noBlur`/`flat` publicado por Go. La adaptación de #1163 conserva
+`WidgetPolicyWire` como única autoridad Free/Pro y no recupera
+`AccessContext`. La variante de #1170 que exponía un slice global mutable se
+reemplazó por un array devuelto por valor con regresión específica. Se excluyen
+la conversión de fuente ya superada de #1118, el componente `ObsSetup` ya
+retirado y el PR #1132 por duplicar esos bloques. #1180 y #1182 permanecen
+separados porque cambian la apariencia de otras pantallas y no son una mejora
+del candidato Efficiency.
+
+Gate completo de la extensión ampliada: frontend 448 archivos, 3557 pruebas
+PASS y 2 omitidas; typecheck, lint y build web PASS; `go test ./...` PASS. El
+`AbortError` de happy-dom conserva exit 0. La división por página deja la shell
+principal en 69,48 kB y Studio en un chunk bajo demanda de 81,05 kB; no se
+declara todavía ahorro físico de CPU, GPU o memoria. Build Wails forzada con
+canal `nightly` desde el `.env.local` original autorizado: URL, anon key y
+registro público de licencia coinciden embebidos mediante su representación
+base64, sin copiar ni mostrar valores. `bin/vantare.exe` mide 29.957.632 bytes
+y tiene SHA-256
+`465444F142848FD2AFD4B4FD0B1DF05E535631170D25C43CE8CE351EF5049344`.
+La base se actualizó a `origin/nightly@079fbfe3`; su nuevo roadmap de beta y
+la integración oficial de #1170 se conservaron. La resolución mantiene
+`AllSections` devuelto por valor para no exponer el array global mutable del
+PR original, y el digest se regeneró desde `plan.md`. Esta build todavía requiere
+el smoke manual conjunto antes de integrar a Nightly y no acredita la
+equivalencia de bandera durante una sesión LMU activa.
+
+Actualización vigente: la rama se reconcilió con `origin/nightly@e13756ef`
+en `a8eedecf`, conservando el editor in-place actual y adaptando su inspector,
+catálogo y guardado a `WidgetPolicy`. Después incorporó la rama completa y
+validada de #1127 en `d9a2c56d` y las señales REST LMU revisadas de #1106 en
+`0168a2a9`. El candidato reúne por tanto #1083, #1103, #1097, #1105, #1106 y
+#1127; no crea otro renderer, autoridad de licencia ni lector LMU.
+
+La resolución productiva del editor in-place pasó typecheck y 46 pruebas
+focales. El conjunto reconciliado pasa 104 pruebas focales de Efficiency,
+marca, política, transporte y edición; 3515 pruebas frontend (440 archivos,
+2 omitidas), `go test ./...`, typecheck, lint y build web. El ruido
+`AbortError` de happy-dom conserva exit 0 y la build mantiene el aviso ya
+inventariado de chunks mayores de 500 kB. `plan.md` declara los cuatro hitos
+afectados (`functional-widget-design`, `widget-access-branding`,
+`telemetry-live`, `overlay-tester-feedback`) y `roadmap.json` se regenera
+desde la base Nightly confiable.
+
+La build Wails configurada pasó con el procedimiento oficial y las tres
+variables públicas de `.env.local` quedaron embebidas (comparación booleana,
+sin imprimir valores). El ejecutable resultante mide 29.903.360 bytes y tiene
+SHA-256 `1854A0EA2FC723B8F16BADDFEDF5DF7B359F8DCA84800F2E06BF5BF53B55C3C4`.
+Sobre esa unidad se comprobó físicamente Efficiency Signature y Broadcast en
+Studio con la política paga vigente: marca apagada por defecto, cabecera y pie
+configurables y persistencia de Broadcast. Con el overlay abierto se hicieron
+dos guardados reales Signature -> Broadcast; ambos registraron
+`studio profile saved`, recrearon WebView2 y la app siguió respondiendo. El
+ciclo detener -> abrir -> detener acabó en `Abrir overlay`, también estable.
+El recorrido exacto Home `Abrir overlay` -> `Abrir Studio` detuvo el overlay y
+abrió el editor sin cierre ni bloqueo. Los perfiles y calendario tocados por
+el smoke se restauraron y el árbol tracked quedó limpio.
+
+La política Free permanece cubierta por regresiones automatizadas, pero no se
+presenta como prueba física: dos intentos portables sin `license-cache.json`
+continuaron viendo la sesión paga del perfil WebView2 compartido de producción.
+Aislarla exigiría cerrar sesión o mover datos reales del usuario, acciones que
+se descartaron. Durante el smoke se descubrió además un fallo separado: si el
+Hub está descargado, detener el último overlay cierra Vantare tras agotar dos
+segundos al apagar HTTP; queda aislado en #1178 y no se mezcla en #1098.
+
+Siguiente gate: una sesión LMU activa debe confirmar temperaturas y
+equivalencia de bandera REST. Ausencia, invalidez o caducidad permanecen
+neutras. PR #1107 continúa en draft; sin merge a Nightly, testers/master ni
+release.
+
+Rama `vantareapp/isa-1098-efficiency-integration`, worktree `C:/tmp/vantare-isa1098`,
+base reconciliada `e13756ef` (= `origin/nightly` verificado). Solo se
+reúnen commits aprobados, conservando historia con merges locales. Candidato
+preparado en rama de issue; el estado de publicación, PR y CI del SHA actual
+se consulta en la issue #1098. Sin merge a Nightly, testers/master ni release;
+comprobación física LMU activa pendiente.
+
+Merges locales: `205fa091` <- `87cef39a` (#1083 Signature/Broadcast),
+`ec9d6d19` <- `6ae58f6e` (#1103 banderas y slots de sesión),
+`85f739ba` <- `3b490906` (#1097 política nativa, guards y transportes) y el
+merge de `cd334d14` (#1105 acceso y marca en React: nativa `3b490906`,
+frontend `cd334d14`). Policy, guards y cableado Wails/SSE de #1097 intactos;
+#1105 migra por completo a WidgetPolicy los 6 archivos access/catalog/orbit/store
+(sus versiones, sin declaraciones legacy huérfanas; denegaciones Free,
+delta/premium y delete/move preservadas). `WidgetVisualHost` une AMBAS props
+`authoringModel` (solo dev) y `brandVisible`; el renderer usa `visualModel` +
+`presentationSettings`, preservando Tower de autoría y marca. Plan elige solo
+el hunk actualizado de #1105, resto de Nightly intacto; handoff conserva AMBAS
+secciones. Los conflictos de este último merge los resolvió el padre; Muse no
+rediseñó ni arregló producto.
+
+Cruces resueltos semánticamente, sin copiar versiones enteras: Redline Tower y
+dorsales canónicos de PR #1102 preservados (cero ficheros borrados); ambos
+estilos Efficiency y pie/cabecera nuevos conservados; `WidgetVisualHost`
+sigue frontera única con ViewModels puros; canvas conserva preview DOM
+imperativa; IDs estables `vantare-functional`,
+`standings-functional-compact`, `standings-functional-broadcast`. Detalle:
+Workshop une overrides Redline + columna funcional y controles de estudio con
+aside de laboratorio; viewport une geometría Tower (482) con fluidez
+Redline/Functional; caracterización pasa a 67 diseños (Tower + 2 Functional);
+ViewModel une `trackName`/`totalRows` con `flag`/`sessionInfo`; golden une
+metadato Tower e información de sesión.
+
+Adaptación test-only detectada por focales: #1083 retiró
+`resolveStandingsRedlineFrameLayout/MoveLayout` y el test Tower de #1102 lo
+importaba (4 fallos). El test usa ahora el patrón vigente
+`resolveMinimumWidthFrameLayout(layout, resolveStandingsRedlineMinimumWidth(widget))`,
+misma aserción y mismos valores; sin cambios de producto ni tolerancias.
+
+Roadmap: `plan.md` solo añade los dos hitos exactos de #1098
+(`milestones:functional-widget-design` como feature,
+`milestones:widget-access-branding` como feature con el hunk actualizado de
+#1105: política nativa por widget, marca Free obligatoria y comprobación
+física/integración pendientes); ningún otro hito de la base cambia.
+`roadmap.json` regenerado con
+`.github/scripts/roadmap_digest.py --repo . --ref origin/nightly`, nunca a mano.
+
+Límite #1106 confirmado por revisión: BuildSession (bandera) y BuildWeather
+(temperaturas) publican missing porque no hay fuente canónica admitida;
+Efficiency muestra neutro/`—`; circuito/remaining/fuel.sessionLaps sí reales.
+No se arregla con otro lector ni se inventan datos. Sin animación.
+
+Evidencia del candidato final (logs en `vantare-v2/.task/isa-1098-evidence/`,
+carpeta ignorada; base `a9b8dd36`, código revisado `426f75b4`): React 439
+archivos / 3483 PASS / 2 omitidos (exit 0; ruido happy-dom heredado en
+stderr); tipos, build (aviso heredado de chunks >500 kB), lint, Go completo
+(cero FAIL) y build nativo PASS — 6 exit 0 confirmados por el padre. Gate de
+coherencia roadmap PASS, digest idempotente y gate de contrato de PR PASS
+(exactamente los dos IDs declarados). Revisión final aprobada sin hallazgos.
+Señal #1106 (bandera/temperaturas missing) y comprobación física conjunta
+Studio/guardado/Desktop/OBS pendientes; el harness no acredita Wails/LMU ni
+licencia real. Sin probar Wails/LMU aquí.
+
+## ISA-1105 — Acceso y marca por widget en React (cierre frontend 2026-09-10)
+
+Hijo de #1097 aprobado por Isaac. Rama
+`vantareapp/isa-1105-widget-access-branding-ui`, worktree
+`C:/tmp/vantare-isa1105/vantare-v2`, base `6ae58f6e` (#1103 sobre
+#1083@87cef39a); nativa #1097 en commit `3b490906`. Roles vigentes: Codex
+implementa, Muse mecánica/revisión acotada. Inicio dirty intencionado del
+primer corte #1097 (Delta advanced, borrar/mover/conservar bloqueados)
+preservado y completado.
+
+Consumo frontend de la política nativa `WidgetPolicyWire` (sin PII) con una
+sola autoridad: sin snapshot vigente rige Free básica, sin fallback legacy.
+Wails `widget-policy:get` → `widget-policy:snapshot` + `widget-policy:changed`
+(suscribir antes de pedir); OBS SSE `/api/widget-policy/stream` con snapshot
+autoritativo y `changed` solo mayor. Revisión menor solo tras reconexión
+reconocida; caducidad con temporizador acotado por tramos (2^31-1) que
+notifica, pide snapshot fresco y nunca prolonga premium. Studio filtra en
+catálogo/inspector/dispatch/guardado; Desktop/OBS filtran antes de crear
+`RuntimeWidgetFrame`/suscribir telemetría. Marca integrada Crystal/Efficiency
+obligatoria en Free (banda propia con cabecera oculta, dentro del marco
+calculado y sin recortes; Pedals lleva micro-chip discreto sin intersección
+con canales), oculta por defecto en pago con opt-in `showBrand`. Original sin
+cambios. Guardado nativo denegado (`code: widget-access-denied`) se mapea al
+aviso traducido existente, también en InPlace.
+
+Evidencia: 326 tests del bloque de lógica PASS (focales + consumo Desktop/OBS
+con downgrade vivo); P1 candado de marca y P2 aviso InPlace cerrados con
+33/33 focales (Appearance 8/8, InPlace 11/11, profile-client 14/14);
+typecheck PASS; geometría Chromium real Signature/Broadcast/Crystal con
+cabecera/pie ocultos y doctype fiel; 4 capturas auténticas en
+`C:/tmp/vantare-isa1105-captures/` (las 4 primeras descartadas por fixture en
+quirks; visual 9/10 en SSR/harness, prueba física pendiente); hito roadmap en
+`feature` con `roadmap.json` regenerado. Full, build y lint, una sola vez
+sobre el candidato conjunto #1098. Sin push/PR/merge, sin testers/master/
+release, sin LMU físico ni licencia real afirmados.
+
+## ISA-1103 — Información de sesión en Efficiency (2026-09-10)
+
+Petición adicional de Isaac: diagonales según bandera, sin transición; dos datos
+configurables en cabecera y pie opcional fino. Implementación aislada sobre
+`87cef39a`, rama `vantareapp/isa-1103-efficiency-session-info`, worktree
+`C:/tmp/vantare-isa1103`. Signature mantiene 50 px de cabecera y Broadcast 46;
+el pie añade 22 px al marco compartido. Inspector y Workshop usan el manifest.
+El refresco de Standings reconoce también cambios de información sin posiciones.
+
+Límite confirmado: BuildSession/BuildWeather todavía publican flags/temperaturas
+como missing. No se crea otra fuente de LMU. Bandera desconocida/antigua neutra;
+datos ausentes «—». Vueltas estimadas desde `fuel.sessionLaps` canónico, nunca
+autonomía ni un cálculo nuevo en React. El escenario de diseño invalida la
+estimación del golden al sobrescribir su tiempo para no mostrar datos incoherentes.
+
+51 tests focales y 120 regresiones de host/marco/Studio pasan. Primera suite
+completa detectó 9 fallos explicados por la nueva altura, fixture sin weather y
+snapshot previo al nuevo VM; los 120 tests incluyen sus correcciones y la
+repetición completa posterior es verde (3377 PASS). Revisión independiente Muse
+1.3 Contributor aprobada sin bloqueantes; P2 238/258 cerrado. Detalle en
+[microplan ISA-1103](../../analysis/ISA-1103-efficiency-session-info.md).
+
+P2 cerrado: Signature estrecha (Posición+Piloto, 238 px) ocultaba los datos de
+cabecera. `resolveFunctionalHeaderInfoPlacement` (`inline`/`split`/`band`/`none`)
+desvía la información a una franja de 22 px reservada en el marco cuando no cabe
+en la zona libre; Signature conserva 50 px y Broadcast 46 px en ancho habitual,
+y slots `none` o cabecera oculta no añaden franja. Evidencia: focales 9/180
+PASS, suite 425 archivos con 3377 PASS y 2 omitidos (exit 0), typecheck/build/
+lint PASS con exit 0; logs en `C:/tmp/vantare-isa1103-*.log`. Navegador del
+orquestador sobre harness (no físico): Signature Pos+Nombre 238x394 con banda
+22 px (Sebring/20:03 sin solape), Broadcast Pos+Nombre 258x414 con banda, y sin
+banda (0 nodos, 392 px) con ambos datos en Ninguno. Sin cambios Go.
+No es aceptación física de Isaac. Pendientes prueba física conjunta e
+integración a Nightly.
+
+ISA-1097 continúa en su propio worktree: Delta premium y eliminación tras
+downgrade corregidos con 4 RED → 23 PASS. Política nativa/marca aún pendiente;
+la revisión identifica transporte sin PII para OBS y conservación de vencimientos
+verificados para expirar derechos en vivo. No se incluye ese código aquí.
+ISA-1083 tiene CI PASS en `87cef39a`, run 34431634439. Isaac ha pospuesto la
+comprobación física e integración hasta comprobar el conjunto. Sin merge/release.
+
+## ISA-1127 — ciclo de vida de la ventana overlay de escritorio (2026-09-11, en rama)
+
+Issue [#1127](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1127)
+(`area:overlays-runtime`, `roadmap:required` → `milestones:overlay-tester-feedback`),
+rama `vantareapp/isa-1127-overlay-lifecycle`, worktree
+`C:/tmp/vantare-isa1127-overlay-lifecycle`, PR draft
+[#1169](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1169) a
+`nightly`. Origen: en la comprobación física de ISA-1098 (Efficiency PR1107 +
+REST 1106) la app se cerró al abrir overlay + edición y los overlays no
+reaparecieron; la reproducción física no se consiguió y este corte **no
+afirma** cerrar ese crash. Lo que sí demuestran los tests con fakes son tres
+defectos reales del controlador, presentes también en Nightly:
+
+- Dos `Start` concurrentes crean dos ventanas nativas y la perdedora queda
+  huérfana (siempre encima, inalcanzable por `Stop`). En producción ya hay
+  Starts concurrentes: `refreshActiveOverlayAfterSave` recrea la ventana en
+  cada guardado de Studio mientras el usuario puede pulsar abrir.
+- `Stop` durante la creación en vuelo devuelve `running=false`, pero la
+  ventana creada se instala después y reaparece como fantasma.
+- `Close()` se invocaba bajo `c.mu`: un runtime nativo que despache el evento
+  de cierre en la pila del caller bloquearía `HandleWindowClosed` en deadlock
+  (el callback real de Wails en `main.go` ya lanza goroutine, así que el test
+  síncrono prueba robustez del contrato, no el crash físico).
+
+Corte mínimo: `internal/app/overlay_controller.go` añade `startMu` que
+serializa `Start`/`Stop` y cierra la ventana anterior fuera de `c.mu` en todos
+los caminos. `HandleWindowClosed` no cambia. Sin dependencias ni arquitectura
+nueva.
+
+Evidencia: 3 regresiones nuevas (`overlay_controller_lifecycle_test.go`)
+**rojas en base** `131471ff` (worktree temporal detached, 3/3 corridas:
+huérfana `closed=0`, fantasma `Running:true`, deadlock 2 s) y **verdes con el
+fix** bajo `-race`; los 8 tests existentes del controlador pasan. `go test
+./...` completo exit 0 (requirió `pnpm install --frozen-lockfile` + `pnpm
+build` para el embed de `frontend/dist`). `plan.md` actualizado
+(`overlay-tester-feedback`) y `roadmap.json` regenerado con
+`roadmap_digest.py --ref origin/nightly`. Fragmento de changelog
+`ISA-1127.json`.
+
+La rama quedó reconciliada con `origin/nightly` `dc5e7ae1` mediante merge en
+la propia rama de issue (el PR nació CONFLICTING porque nightly había sumado
+ISA-1162/1152/1123; ninguno toca `overlay_controller.go`). Conflictos solo en
+docs derivados: handoff (orden de entradas) y `roadmap.json` (regenerado).
+Validación física local completada con `bin/vantare.exe`, reconstruido por el
+procedimiento documentado (`wails3 task -f build`, canal `nightly`) desde el
+`.env.local` original autorizado: URL Supabase, anon key y registro público de
+licencia se cargaron solo en memoria y las tres coincidencias embebidas dieron
+`EMBED_MATCH=True`, sin imprimir valores. SHA256
+`FA10F5326052B115AF767B7AAB3A3E5090789F64855012D70C3821A3EFA55B8F`.
+
+En un arranque limpio, con una sola instancia y el servidor OBS escuchando en
+`127.0.0.1:39261`, se activó `Clean Overlay` y se reprodujo abrir overlay desde
+Hub → abrir Studio: Hub siguió respondiendo y Studio abrió en 189 ms, sin cierre
+de la app. Al entrar en Studio el overlay pasó a detenido, comportamiento
+observable que no equivale a una ventana huérfana. Desde Studio se abrió de
+nuevo el overlay y se realizaron dos guardados reales moviendo el widget
+`delta` y devolviéndolo: ambos alcanzaron `Guardado automáticamente`, cada uno
+creó un nuevo entorno WebView2 y el proceso siguió respondiendo. `Detener
+overlay` volvió a `Abrir overlay`; no hubo `panic`, `fatal` ni fallo de escucha
+en el log limpio. Los perfiles y el calendario tocados durante el smoke se
+restauraron después y el árbol tracked quedó limpio. Esta evidencia valida el
+flujo probado con `Clean Overlay`; no demuestra aún paridad de Efficiency+REST,
+Pro/Owner ni todos los perfiles. Sin promoción a nightly, testers, master ni
+release.
+
 ## ISA-1101 — integración inicial autorizada a nightly (2026-09-10)
 
 Isaac solicita «antes de continuar mergea tu trabajo a nightly». Este corte

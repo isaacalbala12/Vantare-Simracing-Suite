@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useSyncExternalStore } from "react";
 import { requestCalendar, requestCalendarRefreshStatus, subscribeToCalendar, subscribeToCalendarErrors, subscribeToCalendarRefresh, type CalendarRefreshState } from "../../calendar/calendar-store";
 import type { Calendar } from "../../calendar/calendar-types";
 import { buildRaceStarts, dialTarget, type RaceStart } from "./race-starts";
@@ -29,6 +29,102 @@ export interface OrbitRacesState {
   target: RaceStart | null;
 }
 
+const EMPTY_SNAPSHOT: OrbitRacesState = {
+  refreshState: "idle",
+  calendarError: false,
+  calendar: null,
+  starts: [],
+  target: null,
+};
+
+/**
+ * Store de módulo con una única suscripción al calendario compartida por
+ * todos los consumidores (`OrbitShell`, `ScheduleImportSection`,
+ * `StrategyOrbitPage`). Antes cada instancia abría sus ~4 suscripciones,
+ * repetía `calendar:get` + `calendar:refresh:status:get` y mantenía su propio
+ * `setInterval` de 15 s (auditoría ISA-1111): hasta 3 instancias simultáneas
+ * triplicaban el trabajo.
+ *
+ * `starts`/`target` se derivan aquí una vez por cambio (`buildRaceStarts` +
+ * `dialTarget`, lógica intacta), así que N consumidores comparten el mismo
+ * cálculo y la misma referencia de array en cada tick.
+ *
+ * Refcount: la suscripción y el reloj se instalan con el primer oyente y se
+ * liberan con el último —montar = suscribir y pedir, desmontar = liberar,
+ * igual que hacía cada instancia—; un always-on seguiría tickeando en
+ * ventanas sin Hub (overlay, tests) sin ningún beneficio. Frescura: mientras
+ * el store está activo la suscripción viva y el tick mantienen los datos al
+ * día, así que un segundo consumidor no re-emite las peticiones iniciales.
+ * Si llega a desactivarse (cero oyentes), el estado se reinicia y la
+ * siguiente activación vuelve a pedirlos, igual que un montaje nuevo.
+ */
+let snapshot: OrbitRacesState = EMPTY_SNAPSHOT;
+const listeners = new Set<() => void>();
+let releaseWails: (() => void) | null = null;
+
+function notify(): void {
+  for (const listener of listeners) listener();
+}
+
+function deriveStarts(calendar: Calendar | null): { starts: RaceStart[]; target: RaceStart | null } {
+  const starts = buildRaceStarts(calendar, new Date(), {
+    limit: POOL,
+    perSeries: PER_SERIES,
+  });
+  return { starts, target: dialTarget(starts) };
+}
+
+function activate(): void {
+  if (releaseWails) return;
+  const unsubscribe = subscribeToCalendar((state) => {
+    if (state.kind === "loaded") {
+      snapshot = { ...snapshot, calendar: state.calendar, calendarError: false, ...deriveStarts(state.calendar) };
+      notify();
+    }
+  });
+  const stopRefresh = subscribeToCalendarRefresh((refreshState) => {
+    snapshot = { ...snapshot, refreshState };
+    notify();
+  });
+  const stopErrors = subscribeToCalendarErrors(() => {
+    snapshot = { ...snapshot, calendarError: true };
+    notify();
+  });
+  const interval = window.setInterval(() => {
+    snapshot = { ...snapshot, ...deriveStarts(snapshot.calendar) };
+    notify();
+  }, REFRESH_MS);
+  releaseWails = () => {
+    unsubscribe();
+    stopRefresh();
+    stopErrors();
+    window.clearInterval(interval);
+  };
+  // Las peticiones iniciales se emiten una vez por activación del store, no
+  // por consumidor: el siguiente montaje lee la instantánea ya poblada.
+  requestCalendarRefreshStatus();
+  requestCalendar();
+}
+
+function deactivate(): void {
+  releaseWails?.();
+  releaseWails = null;
+  snapshot = EMPTY_SNAPSHOT;
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  activate();
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size === 0) deactivate();
+  };
+}
+
+function getSnapshot(): OrbitRacesState {
+  return snapshot;
+}
+
 /**
  * Próximas salidas reales del hub. Es la misma fuente que la página de
  * Carreras (`calendar:loaded` con `series`, `seriesPreviews` y
@@ -36,36 +132,5 @@ export interface OrbitRacesState {
  * dial y la columna sin ninguna copia intermedia.
  */
 export function useCalendarStarts(): OrbitRacesState {
-  const [calendar, setCalendar] = useState<Calendar | null>(null);
-  const [refreshState, setRefreshState] = useState<CalendarRefreshState>("idle");
-  const [calendarError, setCalendarError] = useState(false);
-  const [tick, setTick] = useState(() => Date.now());
-
-  useEffect(() => {
-    const unsubscribe = subscribeToCalendar((state) => {
-      if (state.kind === "loaded") {
-        setCalendar(state.calendar);
-        setCalendarError(false);
-      }
-    });
-    const stopRefresh = subscribeToCalendarRefresh(setRefreshState);
-    const stopErrors = subscribeToCalendarErrors(() => setCalendarError(true));
-    requestCalendarRefreshStatus();
-    requestCalendar();
-    return () => { unsubscribe(); stopRefresh(); stopErrors(); };
-  }, []);
-
-  useEffect(() => {
-    const id = window.setInterval(() => setTick(Date.now()), REFRESH_MS);
-    return () => window.clearInterval(id);
-  }, []);
-
-  const races = useMemo(() => {
-    const starts = buildRaceStarts(calendar, new Date(tick), {
-      limit: POOL,
-      perSeries: PER_SERIES,
-    });
-    return { calendar, starts, target: dialTarget(starts) };
-  }, [calendar, tick]);
-  return { ...races, refreshState, calendarError };
+  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 }

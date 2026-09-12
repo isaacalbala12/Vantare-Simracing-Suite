@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { WidgetRendererProps } from "../../../core/design-system-definition";
+import { CrystalBrand } from "../crystal-primitives";
 import {
   buildPedalsAppearanceStyle,
   resolvePedalColor,
@@ -12,6 +13,9 @@ function pedalHeight(value: number): string {
 
 export function PedalsCrystal({ model, settings }: WidgetRendererProps<PedalsViewModel>) {
   const transparentBackground = settings.transparentBackground !== false;
+  // Decisión pura de presentación (ISA-1105): la inyecta WidgetVisualHost.
+  // Pedals nunca tuvo marca, así que sin decisión se conserva tal cual.
+  const brandVisible = settings.brandVisible === true;
 
   return (
     <section
@@ -23,6 +27,11 @@ export function PedalsCrystal({ model, settings }: WidgetRendererProps<PedalsVie
       style={buildPedalsAppearanceStyle(settings)}
     >
       <div className="vc-pedals-frame">
+        {brandVisible ? (
+          <div className="vc-brand-band">
+            <CrystalBrand>VANTARE</CrystalBrand>
+          </div>
+        ) : null}
         {model.statusMessage ? (
           <p className="vc-pedals-status-message" role="status">
             {model.statusMessage}

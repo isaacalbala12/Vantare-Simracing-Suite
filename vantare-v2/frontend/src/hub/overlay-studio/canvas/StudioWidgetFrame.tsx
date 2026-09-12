@@ -10,14 +10,15 @@ import type { WidgetDiagnosticCollector } from '../../../overlay/core/widget-dia
 import { WidgetVisualHost } from '../../../overlay/core/WidgetVisualHost';
 import { WidgetVisualViewport } from '../../../overlay/core/WidgetVisualViewport';
 import { widgetTypeRegistry } from '../../../overlay/core/widget-registry';
+import { resolveWidgetBrandVisible, type WidgetPolicyWire } from '../../../overlay/core/widget-policy';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { ResizeHandle } from './canvas-resize';
 import { useSelectionFit } from './useSelectionFit';
 import { useStudioTelemetryRuntime } from './studio-telemetry';
 import {
-  resolveStandingsRedlineFrameLayout,
-  resolveStandingsRedlineMinimumWidth,
-} from '../../../overlay/widget-types/standings/standings-redline-layout';
+  resolveStandingsFrameLayout,
+  resolveStandingsMinimumSize,
+} from '../../../overlay/widget-types/standings/standings-frame-layout';
 import { DEFAULT_LAYOUT_VIEWPORT } from '../../../overlay/core/layout-viewport';
 
 const MemoWidgetVisualHost = memo(WidgetVisualHost);
@@ -51,12 +52,19 @@ export type StudioWidgetFrameProps = {
   onLostPointerCapture?(event: PointerEvent): void;
   diagnostics?: WidgetDiagnosticCollector;
   /**
+   * Live native policy or null (fail-safe Free). Passed by StudioCanvas and
+   * StudioOrbitStage from context; the frame stays pure and mountable
+   * without a provider in geometry tests.
+   */
+  widgetPolicy?: WidgetPolicyWire | null;
+  /**
    * Cine el marco de seleccion y los tiradores a la caja realmente pintada por
    * el widget en vez de a la del documento (`briefing 04 · A1`). Lo activa la
    * piel Orbit; el lienzo V3 clasico lo deja apagado y no cambia.
    */
   fitSelectionToContent?: boolean;
   layoutViewportWidth?: number;
+  layoutViewportHeight?: number;
 };
 
 function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactElement {
@@ -71,10 +79,13 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
     onResizePointerDown,
     onLostPointerCapture,
     diagnostics,
+    widgetPolicy = null,
     fitSelectionToContent = false,
     layoutViewportWidth = DEFAULT_LAYOUT_VIEWPORT.width,
+    layoutViewportHeight = DEFAULT_LAYOUT_VIEWPORT.height,
   } = props;
   const { t } = useI18n();
+  const brandVisible = resolveWidgetBrandVisible(widgetPolicy, widget);
   const runtime = useStudioTelemetryRuntime(widget.type);
   const widgetRuntime = useMemo(() => ({
     ...runtime,
@@ -82,13 +93,19 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
   }), [profileId, runtime, widget.id]);
   const frameRef = useRef<HTMLDivElement>(null);
   const selectionRef = useRef<HTMLDivElement>(null);
-  const frameGeometry = resolveStandingsRedlineFrameLayout(
+  const frameGeometry = resolveStandingsFrameLayout(
     widget,
     resolveStudioFrameGeometry(widget.id, layout, previewActive),
     layoutViewportWidth,
+    layoutViewportHeight,
+    brandVisible,
   );
-  const effectiveMinimumWidth = resolveStandingsRedlineMinimumWidth(widget);
-  const layoutWasNormalized = effectiveMinimumWidth !== undefined && layout.w < effectiveMinimumWidth;
+  const effectiveMinimum = resolveStandingsMinimumSize(widget, brandVisible);
+  const effectiveMinimumWidth = effectiveMinimum?.width;
+  const effectiveMinimumHeight = effectiveMinimum?.height;
+  const layoutWasNormalized =
+    (effectiveMinimumWidth !== undefined && layout.w < effectiveMinimumWidth) ||
+    (effectiveMinimumHeight !== undefined && layout.h < effectiveMinimumHeight);
   const resizeHandles =
     widgetTypeRegistry.get(widget.type).capabilities.resizeMode === 'horizontal-only'
       ? (['e', 'w'] as const)
@@ -147,8 +164,10 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
       data-testid={`studio-widget-frame-${widget.id}`}
       data-preview-active={previewActive ? 'true' : undefined}
       data-effective-minimum-width={effectiveMinimumWidth}
+      data-effective-minimum-height={effectiveMinimumHeight}
       data-layout-normalized={layoutWasNormalized ? 'true' : undefined}
       data-layout-viewport-width={layoutViewportWidth}
+      data-layout-viewport-height={layoutViewportHeight}
       className={frameClassName}
       style={frameStyle}
       role="button"
@@ -218,6 +237,7 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
           <MemoWidgetVisualHost
             widget={widget}
             renderMode="studio"
+            brandVisible={brandVisible}
             diagnostics={diagnostics}
             runtime={widgetRuntime}
           />
@@ -240,6 +260,8 @@ export const StudioWidgetFrame = memo(
     previous.onResizePointerDown === next.onResizePointerDown &&
     previous.onLostPointerCapture === next.onLostPointerCapture &&
     previous.diagnostics === next.diagnostics &&
+    previous.widgetPolicy === next.widgetPolicy &&
     previous.fitSelectionToContent === next.fitSelectionToContent &&
-    previous.layoutViewportWidth === next.layoutViewportWidth,
+    previous.layoutViewportWidth === next.layoutViewportWidth &&
+    previous.layoutViewportHeight === next.layoutViewportHeight,
 );

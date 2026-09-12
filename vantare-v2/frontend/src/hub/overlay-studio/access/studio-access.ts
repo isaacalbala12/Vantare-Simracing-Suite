@@ -1,21 +1,12 @@
 import {
-  getFeatureGate,
-  type AccessContext,
-  type FeatureGate,
-  type FeatureId,
-} from '../../../lib/access-policy';
+  isFeatureAllowed,
+  isWidgetTypeAllowed,
+  type WidgetPolicyWire,
+} from '../../../overlay/core/widget-policy';
 import {
   STUDIO_PREMIUM_SAVE_DENIED_KEY,
   STUDIO_WIDGET_ACCESS_MESSAGE_KEY,
 } from '../studio-v3-i18n';
-
-export const DEFAULT_STUDIO_ACCESS: AccessContext = {
-  planLabel: 'free',
-  planStatus: 'active',
-  roles: [],
-  isBlocked: false,
-  isUnconfigured: false,
-};
 import type {
   ProfileDocumentV3,
   SessionLayoutType,
@@ -26,6 +17,7 @@ import {
   type WidgetDesignV1,
 } from '../../../overlay/core/widget-design';
 import { getWidgetRequiredFeature } from '../../../overlay/core/widget-definition';
+import type { FeatureGate, FeatureId } from '../../../lib/access-policy';
 import type { StudioCommand } from '../state/studio-command';
 import { resolveSessionLayout } from '../state/session-layouts';
 
@@ -53,6 +45,13 @@ export class StudioAccessError extends Error {
   }
 }
 
+/**
+ * Live widget policy in Studio. It is the native snapshot
+ * (`WidgetPolicyWire`) or null before the first snapshot: without a valid
+ * decision the basic Free matrix applies, with no legacy license fallback.
+ */
+export type StudioPolicy = WidgetPolicyWire | null;
+
 const SESSION_LAYOUT_TYPES: readonly SessionLayoutType[] = [
   'general',
   'practice',
@@ -73,8 +72,8 @@ function collectRequiredFeatures(widget?: WidgetInstanceV3, design?: WidgetDesig
   return [...features];
 }
 
-function hasFullWidgetAccess(access: AccessContext, widget: WidgetInstanceV3): boolean {
-  return getFeatureGate(access, getWidgetRequiredFeature(widget.type)).allowed;
+function hasFullWidgetAccess(policy: StudioPolicy, widget: WidgetInstanceV3): boolean {
+  return isWidgetTypeAllowed(policy, widget.type);
 }
 
 function widgetNonLayoutEqual(left: WidgetInstanceV3, right: WidgetInstanceV3): boolean {
@@ -86,27 +85,29 @@ function widgetNonLayoutEqual(left: WidgetInstanceV3, right: WidgetInstanceV3): 
 }
 
 export function getStudioMutationGate(input: {
-  access: AccessContext;
+  policy: StudioPolicy;
   mutation: StudioMutation;
   widget?: WidgetInstanceV3;
   design?: WidgetDesignV1;
 }): FeatureGate {
-  if (input.mutation === 'save' || input.mutation === 'layout') {
+  // Moving, keeping and deleting blocked widgets is always allowed: the
+  // document stays whole and settings come back when rights return. Saving
+  // also passes the gate; the draft content check validates the rest.
+  if (input.mutation === 'save' || input.mutation === 'layout' || input.mutation === 'delete') {
     return { allowed: true };
   }
 
   for (const feature of collectRequiredFeatures(input.widget, input.design)) {
-    const gate = getFeatureGate(input.access, feature);
-    if (!gate.allowed) {
-      return gate;
+    if (!isFeatureAllowed(input.policy, feature)) {
+      return { allowed: false, reason: 'upgrade' };
     }
   }
 
   return { allowed: true };
 }
 
-export function canMutateWidget(access: AccessContext, widget: WidgetInstanceV3): boolean {
-  return getStudioMutationGate({ access, mutation: 'layout', widget }).allowed;
+export function canMutateWidget(policy: StudioPolicy, widget: WidgetInstanceV3): boolean {
+  return getStudioMutationGate({ policy, mutation: 'layout', widget }).allowed;
 }
 
 function widgetsEqual(left: WidgetInstanceV3, right: WidgetInstanceV3): boolean {
@@ -114,7 +115,7 @@ function widgetsEqual(left: WidgetInstanceV3, right: WidgetInstanceV3): boolean 
 }
 
 export function validateDraftAccess(
-  access: AccessContext,
+  policy: StudioPolicy,
   saved: ProfileDocumentV3,
   draft: ProfileDocumentV3,
 ): { allowed: true } | { allowed: false; widgetIds: string[]; reason: string } {
@@ -127,7 +128,7 @@ export function validateDraftAccess(
     for (const widget of draftLayout.widgets) {
       const savedWidget = savedLayout.widgets.find((entry) => entry.id === widget.id);
       if (!savedWidget) {
-        if (!hasFullWidgetAccess(access, widget)) {
+        if (!hasFullWidgetAccess(policy, widget)) {
           blockedIds.add(widget.id);
         }
         continue;
@@ -135,7 +136,7 @@ export function validateDraftAccess(
       if (widgetsEqual(widget, savedWidget)) {
         continue;
       }
-      if (hasFullWidgetAccess(access, widget)) {
+      if (hasFullWidgetAccess(policy, widget)) {
         continue;
       }
       if (widgetNonLayoutEqual(widget, savedWidget)) {
@@ -144,15 +145,6 @@ export function validateDraftAccess(
       blockedIds.add(widget.id);
     }
 
-    for (const widget of savedLayout.widgets) {
-      const draftWidget = draftLayout.widgets.find((entry) => entry.id === widget.id);
-      if (draftWidget) {
-        continue;
-      }
-      if (!hasFullWidgetAccess(access, widget)) {
-        blockedIds.add(widget.id);
-      }
-    }
   }
 
   if (blockedIds.size === 0) {
@@ -242,7 +234,7 @@ function findWidgetsForCommand(
 }
 
 export function assertCommandAccess(
-  access: AccessContext,
+  policy: StudioPolicy,
   command: StudioCommand,
   document: ProfileDocumentV3,
   design?: WidgetDesignV1,
@@ -253,7 +245,7 @@ export function assertCommandAccess(
 
   for (const mutation of mutations) {
     for (const widget of widgets) {
-      const gate = getStudioMutationGate({ access, mutation, widget, design });
+      const gate = getStudioMutationGate({ policy, mutation, widget, design });
       if (!gate.allowed) {
         throw new StudioAccessError(mutation, widgetIds, STUDIO_WIDGET_ACCESS_MESSAGE_KEY);
       }

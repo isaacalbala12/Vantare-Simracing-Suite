@@ -42,11 +42,15 @@ import {
   type LauncherOrbitApp,
 } from "./launcher-orbit-model";
 import { AppChainStep, AppMonogram } from "./AppMonogram";
+import {
+  LAUNCHER_CONTEXT_SLOT_ID,
+  LAUNCHER_TOPBAR_SLOT_ID,
+} from "../components/orbit/orbit-slot-ids";
 import "../../styles/orbit-launcher.css";
 
-/** Huecos que la shell reserva para el Launcher (briefing 05). */
-export const LAUNCHER_CONTEXT_SLOT_ID = "orbit-launcher-context-slot";
-export const LAUNCHER_TOPBAR_SLOT_ID = "orbit-launcher-topbar-slot";
+/** Huecos que la shell reserva para el Launcher (briefing 05). Los ids viven
+    en `orbit-slot-ids` para que la shell no importe la página entera. */
+export { LAUNCHER_CONTEXT_SLOT_ID, LAUNCHER_TOPBAR_SLOT_ID };
 
 /** Lápiz de editar: el sprite Orbit no lo trae (precedente D-47). */
 function PencilMark() {

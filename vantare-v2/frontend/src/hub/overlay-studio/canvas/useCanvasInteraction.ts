@@ -9,7 +9,15 @@ import {
   type LayoutViewport,
 } from '../../../overlay/core/layout-viewport';
 import { widgetTypeRegistry } from '../../../overlay/core/widget-registry';
-import { resolveStandingsRedlineMoveLayout } from '../../../overlay/widget-types/standings/standings-redline-layout';
+import {
+  resolveWidgetBrandVisible,
+  type WidgetPolicyWire,
+} from '../../../overlay/core/widget-policy';
+import {
+  resolveStandingsFrameLayout,
+  resolveStandingsMinimumSize,
+  resolveStandingsMoveLayout,
+} from '../../../overlay/widget-types/standings/standings-frame-layout';
 import type { StudioCommand } from '../state/studio-command';
 import {
   applyStudioFrameLayoutPreview,
@@ -67,6 +75,7 @@ export type UseCanvasInteractionInput = {
   selectWidget(widgetId: string | null): void;
   canMutateLayout?(widget: WidgetInstanceV3): boolean;
   onLayoutBlocked?(): void;
+  widgetPolicy?: WidgetPolicyWire | null;
 };
 
 export type UseCanvasInteractionResult = {
@@ -201,18 +210,30 @@ export function applyResizePreview(input: {
   siblings: readonly WidgetLayoutV3[];
   disableSnap: boolean;
   layoutViewport: LayoutViewport;
+  brandVisible?: boolean;
 }): { layout: WidgetLayoutV3; guides: SnapGuide[] } {
   const definition = widgetTypeRegistry.get(input.widget.type);
+  const brandVisible = input.brandVisible ?? false;
+  const functionalMinimum = input.widget.visual.systemId === 'vantare-functional'
+    ? resolveStandingsMinimumSize(input.widget, brandVisible)
+    : undefined;
+  const start = functionalMinimum
+    ? resolveStandingsFrameLayout(input.widget, input.start, input.layoutViewport.width, input.layoutViewport.height, brandVisible)
+    : input.start;
+  const minSize = {
+    width: Math.max(definition.capabilities.minimumSize.width, functionalMinimum?.width ?? 0),
+    height: Math.max(definition.capabilities.minimumSize.height, functionalMinimum?.height ?? 0),
+  };
   const pointerDelta = {
     dx: input.pointerCurrent.x - input.pointerOrigin.x,
     dy: input.pointerCurrent.y - input.pointerOrigin.y,
   };
   const resize = (delta: { dx: number; dy: number }) =>
     resizeWidgetLayout({
-      startLayout: input.start,
+      startLayout: start,
       handle: input.handle,
       pointerDelta: delta,
-      minSize: definition.capabilities.minimumSize,
+      minSize,
       supportsAspectUnlock: definition.capabilities.supportsAspectUnlock,
       resizeMode: definition.capabilities.resizeMode,
     });
@@ -229,11 +250,11 @@ export function applyResizePreview(input: {
   const movesEast = input.handle === 'e' || input.handle === 'ne' || input.handle === 'se';
   const movesNorth = input.handle === 'n' || input.handle === 'nw' || input.handle === 'ne';
   const movesSouth = input.handle === 's' || input.handle === 'sw' || input.handle === 'se';
-  const locksAspect = input.start.aspectLocked || !definition.capabilities.supportsAspectUnlock;
+  const locksAspect = start.aspectLocked || !definition.capabilities.supportsAspectUnlock;
 
   const edgePoint = {
-    x: movesWest ? resized.x : movesEast ? resized.x + resized.w : input.start.x,
-    y: movesNorth ? resized.y : movesSouth ? resized.y + resized.h : input.start.y,
+    x: movesWest ? resized.x : movesEast ? resized.x + resized.w : start.x,
+    y: movesNorth ? resized.y : movesSouth ? resized.y + resized.h : start.y,
   };
   const snappedEdge = snapPoint(edgePoint, {
     size: { w: 0, h: 0 },
@@ -244,15 +265,15 @@ export function applyResizePreview(input: {
 
   const snappedDelta = { ...pointerDelta };
   if (movesWest) {
-    snappedDelta.dx = snappedEdge.layout.x - input.start.x;
+    snappedDelta.dx = snappedEdge.layout.x - start.x;
   } else if (movesEast) {
-    snappedDelta.dx = snappedEdge.layout.x - (input.start.x + input.start.w);
+    snappedDelta.dx = snappedEdge.layout.x - (start.x + start.w);
   }
   if (!locksAspect || (!movesWest && !movesEast)) {
     if (movesNorth) {
-      snappedDelta.dy = snappedEdge.layout.y - input.start.y;
+      snappedDelta.dy = snappedEdge.layout.y - start.y;
     } else if (movesSouth) {
-      snappedDelta.dy = snappedEdge.layout.y - (input.start.y + input.start.h);
+      snappedDelta.dy = snappedEdge.layout.y - (start.y + start.h);
     }
   }
 
@@ -362,11 +383,12 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
     }
     const widget = inputRef.current.widgets.find((entry) => entry.id === current.widgetId);
     const committedPreview = current.kind === 'move' && widget
-      ? resolveStandingsRedlineMoveLayout(
+      ? resolveStandingsMoveLayout(
           widget,
           current.start,
           current.preview,
           inputRef.current.layoutViewport.width,
+          inputRef.current.layoutViewport.height,
         )
       : current.preview;
     const patch = buildLayoutPatch(current.start, committedPreview);
@@ -433,6 +455,7 @@ export function useCanvasInteraction(input: UseCanvasInteractionInput): UseCanva
         siblings,
         disableSnap,
         layoutViewport: inputRef.current.layoutViewport,
+        brandVisible: resolveWidgetBrandVisible(inputRef.current.widgetPolicy ?? null, widget),
       });
       interactionRef.current = {
         ...current,

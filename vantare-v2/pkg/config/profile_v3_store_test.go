@@ -181,6 +181,37 @@ func TestProfileDocumentStoreVantareEnduranceMemoryRoundTrip(t *testing.T) {
 	}
 }
 
+func TestProfileDocumentStoreFunctionalStandingsRoundTrip(t *testing.T) {
+	for _, template := range []string{"signature", "broadcast"} {
+		t.Run(template, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "functional.json")
+			widget := validWidget("standings-main", WidgetTypeStandings)
+			widget.Visual.SystemID = DesignSystemID("vantare-functional")
+			widget.Visual.BaseSettings = map[string]any{"templateId": template}
+			widget.Visual.AppearanceOverrides = map[string]any{"showSessionHeader": false}
+			widget.Visual.SystemMemories = map[DesignSystemID]WidgetVisualSelectionV3{
+				DesignSystemVantareOriginal: {SystemVersion: 1, ConfigVersion: 1, BaseSettings: map[string]any{"compactRows": true}},
+			}
+			doc := ConvertProfileV3ToV4(validProfileV3(widget))
+			store := ProfileDocumentStore{}
+			revision, err := store.SaveV4(path, "", doc, ProfileSchemaVersionV4)
+			if err != nil {
+				t.Fatal(err)
+			}
+			loaded, err := store.LoadV4(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := loaded.Document.Layouts[LayoutGeneral].Widgets[0]
+			if loaded.Revision != revision || got.Visual.SystemID != widget.Visual.SystemID ||
+				got.Visual.BaseSettings["templateId"] != template || got.Visual.AppearanceOverrides["showSessionHeader"] != false ||
+				got.Visual.SystemMemories[DesignSystemVantareOriginal].BaseSettings["compactRows"] != true {
+				t.Fatalf("functional selection or prior system memory lost: %+v", got.Visual)
+			}
+		})
+	}
+}
+
 func TestProfileDocumentStoreEngineerRadioRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "engineer-radio.json")

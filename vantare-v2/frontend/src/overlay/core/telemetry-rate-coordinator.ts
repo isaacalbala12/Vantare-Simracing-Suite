@@ -115,7 +115,14 @@ export function createTelemetryRateCoordinator(
       case "input-telemetry": return overlayFrame.controls;
       case "delta": case "delta-advanced": case "delta-trace": return overlayFrame.delta;
       case "relative": case "multiclass-relative": case "head-to-head": return overlayFrame.relative;
-      case "standings": case "broadcast-tower": case "track-map": return overlayFrame.standings;
+      case "standings": return {
+        rows: overlayFrame.standings,
+        session: overlayFrame.session,
+        weather: overlayFrame.weather,
+        sessionLaps: overlayFrame.fuel?.sessionLaps,
+        units: overlayFrame.units,
+      };
+      case "broadcast-tower": case "track-map": return overlayFrame.standings;
       case "fuel-strategy": return overlayFrame.fuel;
       case "car-damage-numbers": case "car-damage-visual": return overlayFrame.damage;
       case "track-weather": return overlayFrame.weather;
@@ -126,13 +133,42 @@ export function createTelemetryRateCoordinator(
     }
   };
 
-  const signature = (widgetType: string): string => JSON.stringify({
-    section: sectionValue(widgetType),
-    source: overlaySource
-      ? { state: overlaySource.state, retry: overlaySource.retry, reason: overlaySource.reason }
-      : undefined,
-    failure: overlayFailure,
-  });
+  // La firma se calcula por versión de publicación: todos los inputs
+  // (sección del frame, source, failure) solo cambian cuando version sube,
+  // así la serialización se comparte entre suscripciones del mismo tipo.
+  let signatureCache: { version: number; byType: Map<string, string> } | null = null;
+  const signature = (widgetType: string): string => {
+    if (signatureCache?.version !== version) {
+      signatureCache = { version, byType: new Map() };
+    }
+    let cached = signatureCache.byType.get(widgetType);
+    if (cached === undefined) {
+      cached = JSON.stringify({
+        section: sectionValue(widgetType),
+        source: overlaySource
+          ? { state: overlaySource.state, retry: overlaySource.retry, reason: overlaySource.reason }
+          : undefined,
+        failure: overlayFailure,
+      });
+      signatureCache.byType.set(widgetType, cached);
+    }
+    return cached;
+  };
+
+  // overlayContext alimenta RuntimeOverlaySurface vía useSyncExternalStore:
+  // si los campos no cambian se reutiliza la referencia y el padre no
+  // repinta a la cadencia de la fuente aunque lleguen frames nuevos.
+  const sameRuntimeContext = (
+    a: OverlayRuntimeContext,
+    b: OverlayRuntimeContext,
+  ): boolean =>
+    a.sourceState === b.sourceState &&
+    a.sourceReason === b.sourceReason &&
+    a.sessionType === b.sessionType &&
+    a.playerPresent === b.playerPresent &&
+    a.playerInPit === b.playerInPit &&
+    a.vehicleCount === b.vehicleCount &&
+    JSON.stringify(a.capabilities) === JSON.stringify(b.capabilities);
 
   const intervalFor = (subscription: Subscription): number => {
     const performancePolicy = overlayFrame?.capabilities.performance;
@@ -249,7 +285,10 @@ export function createTelemetryRateCoordinator(
       overlaySource = source;
       overlayRevision = Math.max(overlayRevision, nextRevision);
       overlayFrameRevision = Math.max(overlayFrameRevision, nextFrameRevision);
-      overlayContext = buildOverlayRuntimeContext(frame, source);
+      const nextContext = buildOverlayRuntimeContext(frame, source);
+      if (!sameRuntimeContext(overlayContext, nextContext)) {
+        overlayContext = nextContext;
+      }
       if (clearsFailure) {
         overlayFailure = undefined;
         overlayFailureFrameRevision = undefined;

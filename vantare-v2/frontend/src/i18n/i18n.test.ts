@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   SUPPORTED_LOCALES,
   DEFAULT_LOCALE,
+  isDictionaryLoaded,
   isLocale,
+  loadDictionary,
   normalizeLocale,
   translate,
   type Locale,
@@ -54,9 +56,16 @@ describe("i18n pure module", () => {
   });
 
   describe("translate", () => {
-    it("translates a key in the requested locale", () => {
+    it("translates a key in the requested locale once loaded", async () => {
+      await loadDictionary("en");
       const result = translate("en", "onboarding.welcome");
       expect(result).toBe("Welcome to Vantare");
+    });
+
+    it("falls back to es while a locale is not loaded", () => {
+      expect(isDictionaryLoaded("it")).toBe(false);
+      const result = translate("it", "onboarding.welcome");
+      expect(result).toBe("Bienvenido a Vantare");
     });
 
     it("translates the same key in Spanish", () => {
@@ -69,7 +78,8 @@ describe("i18n pure module", () => {
       expect(result).toBe("Bienvenido a Vantare");
     });
 
-    it("falls back to the key itself when translation is missing", () => {
+    it("falls back to the key itself when translation is missing", async () => {
+      await loadDictionary("en");
       const result = translate("en", "nonexistent.key");
       expect(result).toBe("nonexistent.key");
     });

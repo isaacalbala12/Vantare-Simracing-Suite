@@ -55,9 +55,10 @@ const (
 type DesignSystemID string
 
 const (
-	DesignSystemVantareOriginal  DesignSystemID = "vantare-original"
-	DesignSystemVantareCrystal   DesignSystemID = "vantare-crystal"
-	DesignSystemVantareEndurance DesignSystemID = "vantare-endurance"
+	DesignSystemVantareOriginal   DesignSystemID = "vantare-original"
+	DesignSystemVantareCrystal    DesignSystemID = "vantare-crystal"
+	DesignSystemVantareEndurance  DesignSystemID = "vantare-endurance"
+	DesignSystemVantareFunctional DesignSystemID = "vantare-functional"
 )
 
 type ProfileDocumentV3 struct {

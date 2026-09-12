@@ -17,7 +17,7 @@ import {
   readStageGeometryCache,
   writeStageGeometryCache,
 } from '../canvas/stage-geometry-cache';
-import { useStudioDocument, useStudioPreview } from '../state/studio-store';
+import { useStudioWidgetPolicy, useStudioActions, useStudioActiveLayout, useStudioPreview, useStudioSelector } from '../state/studio-store';
 import { placeSelectionTag, type TagAnchor } from './selection-tag-placement';
 import { fill, widgetLabel } from './studio-orbit-model';
 
@@ -45,16 +45,12 @@ export type StudioOrbitStageProps = {
 export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactElement {
   const { diagnostics, onPointer } = props;
   const { t } = useI18n();
-  const {
-    access,
-    document,
-    activeLayout,
-    activeSession,
-    selectedWidgetId,
-    selectWidget,
-    dispatch,
-    notifyAccessDenied,
-  } = useStudioDocument();
+  const widgetPolicy = useStudioWidgetPolicy();
+  const document = useStudioSelector((s) => s.history?.present ?? null);
+  const activeLayout = useStudioActiveLayout();
+  const activeSession = useStudioSelector((s) => s.activeSession);
+  const selectedWidgetId = useStudioSelector((s) => s.selectedWidgetId);
+  const { selectWidget, dispatch, notifyAccessDenied } = useStudioActions();
   const { preview } = useStudioPreview();
   // Los widgets pintan texto con metricas criticas: sin este gate, el swap de
   // fuentes reflowea las filas justo tras el primer pintado (el 'salto
@@ -109,8 +105,8 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
   );
 
   const canMutateLayout = useCallback(
-    (widget: WidgetInstanceV3) => canMutateWidget(access, widget),
-    [access],
+    (widget: WidgetInstanceV3) => canMutateWidget(widgetPolicy, widget),
+    [widgetPolicy],
   );
   const onLayoutBlocked = useCallback(() => {
     notifyAccessDenied(t(STUDIO_WIDGET_ACCESS_MESSAGE_KEY));
@@ -127,6 +123,7 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
     selectWidget,
     canMutateLayout,
     onLayoutBlocked,
+    widgetPolicy,
   });
   const interacting = interaction.interaction.kind !== 'idle';
 
@@ -305,6 +302,7 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
                   previewActive={interaction.isWidgetPreviewActive(widget.id)}
                   selected={selectedWidgetId === widget.id}
                   widget={widget}
+                  widgetPolicy={widgetPolicy}
                   fitSelectionToContent
                 />
               ))

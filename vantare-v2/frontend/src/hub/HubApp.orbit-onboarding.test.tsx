@@ -86,9 +86,12 @@ describe('HubApp con Orbit: onboarding sobre Inicio', () => {
     window.localStorage.clear();
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     cleanup();
     window.localStorage.clear();
+    // Las páginas Orbit se cargan en lazy: espera a que los import() pendientes
+    // resuelvan antes de que Vitest desmonte el entorno (EnvironmentTeardownError).
+    await vi.dynamicImportSettled();
   });
 
   it('primer arranque sin preferencia: shell Orbit en Inicio con la bienvenida encima', async () => {

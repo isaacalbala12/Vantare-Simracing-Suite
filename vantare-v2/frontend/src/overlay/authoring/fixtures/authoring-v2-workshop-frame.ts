@@ -23,6 +23,7 @@ import type { SceneFrame } from "./animation-scenes";
 // acotadas sobre el golden canónico. La variante en sí declara el artificio;
 // nada aquí pretende ser telemetría real.
 export const WORKSHOP_V2_DEV_VARIANTS = [
+  "standings-functional-study",
   "standings-stress60",
   "standings-replay",
   "relative-multiclass",
@@ -48,6 +49,7 @@ export const STANDINGS_REPLAY_FRAME_COUNT = 10;
 
 // Las variantes dev no dan forma: se dibujan con la shape equivalente mínima.
 const DEV_SHAPE_VARIANT: Record<WorkshopV2DevVariant, AuthoringV2Variant> = {
+  "standings-functional-study": "default",
   "standings-stress60": "default",
   "standings-replay": "standings-multiclass",
   "relative-multiclass": "default",
@@ -415,6 +417,25 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
   const quality: OverlayQualityV2 = source.state === "live" ? "fresh" : "stale";
   let frame = base.overlayV2Frame!;
   switch (scenario.variant) {
+    case "standings-functional-study": {
+      // Explicit visual-study data, never live telemetry. The original V2
+      // golden remains untouched; only this named development variant uses it.
+      const names = ["Renan Azeredo", "Marco Acunto", "Fabian Seischegg", "Adaildo Vieira", "Neil Cooper", "Rick Zwieten", "Istvan Fodor", "Alexandr Fescov", "Marius Rick", "Preston Perlmutter"];
+      const gaps = [0, .8, 11.3, 32.1, 35.2, 44.5, 47.3, 52.2, 53.6, 59.4];
+      const laps = [102.198, 102.089, 103.702, 102.278, 104.002, 104.059, 105.035, 104.822, 104.754, 103.111];
+      const rows = frame.standings.slice(0, names.length).map((row, index) => ({
+        ...row, driver: names[index]!, position: index + 1, classPosition: index + 1,
+        classId: "GT3", gap: qualityValue(gaps[index]!, quality),
+        bestLap: qualityValue(laps[index]!, quality), lastLap: qualityValue(laps[index]! + .284, quality),
+        pit: index === 5 ? "pit" : "track",
+      }));
+      frame = { ...frame, standings: rows, player: { ...frame.player, id: rows[6]!.id },
+        // The study overrides remaining time; the golden's session estimate
+        // no longer describes this frame. Only Go supplies that estimate.
+        fuel: { ...frame.fuel, sessionLaps: { q: "missing" } },
+        session: { ...frame.session, remaining: qualityValue(20 * 60 + 3, quality) } };
+      break;
+    }
     case "standings-stress60":
       frame = { ...frame, standings: stressStandings(frame.standings) };
       break;

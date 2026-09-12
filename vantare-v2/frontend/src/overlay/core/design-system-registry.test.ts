@@ -7,11 +7,12 @@ import {
 } from "./design-system-registry";
 
 describe("designSystemRegistry", () => {
-  it("registers Original, Crystal and Endurance at version 1", () => {
+  it("registers Original, Crystal, Endurance and Functional at version 1", () => {
     expect(designSystemRegistry.list().map((system) => system.id)).toEqual([
       "vantare-original",
       "vantare-crystal",
       "vantare-endurance",
+      "vantare-functional",
     ]);
     expect(designSystemRegistry.list().every((system) => system.version === 1)).toBe(true);
   });

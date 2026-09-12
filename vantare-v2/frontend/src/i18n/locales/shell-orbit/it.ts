@@ -86,4 +86,8 @@ export const shellOrbitIt: Record<string, string> = {
   "shell.access.unavailable": "Accesso non disponibile",
   "shell.access.requiresPlan": "Richiede il piano {{plan}} · piano attuale {{current}}",
   "shell.access.requiresPlanShort": "Richiede {{plan}}",
+
+  "shell.pageLoading": "Caricamento…",
+  "shell.pageError": "Impossibile caricare questa schermata.",
+  "shell.pageRetry": "Riprova",
 };

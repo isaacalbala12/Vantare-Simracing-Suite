@@ -1,5 +1,11 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+> **Continuidad del tracker:** [transición aprobada](../notion-transition.md).
+> PREPARACIÓN conserva este handoff y las issues del lote; tras el corte, un
+> único handoff Notion lo sustituirá con enlace y snapshot. Las entradas fechadas
+> de abajo conservan su evidencia; no implican que esas PR sigan abiertas hoy.
+
+
 ## ISA-1162 — enlace OBS restaurado al pie del dock del Studio (2026-09-11)
 
 Issue [#1162](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1162),

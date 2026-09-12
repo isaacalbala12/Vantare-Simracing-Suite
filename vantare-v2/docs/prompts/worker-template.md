@@ -3,6 +3,11 @@
 Usa este prompt para Aider u otro agente implementador.
 
 ```markdown
+Lee primero docs/vantare-program/notion-transition.md y confirma su estado.
+Tarea autoritativa: [URL REAL]; ID Notion/GitHub/historico: [SEPARADOS].
+En PREPARACIÓN solo ejecutar el lote vigente o preparación técnica trazada;
+lo nuevo se captura pendiente en Notion. No confundir integración con publicación.
+
 Actua como worker disciplinado en el repo `vantare-v2`.
 
 Objetivo:
@@ -38,7 +43,7 @@ Reglas:
 - No limpies codigo no relacionado.
 - Si necesitas tocar mas archivos de los previstos, para y explica.
 - Si cambias comportamiento, anade o actualiza tests.
-- Si algo no esta claro, deja `Open questions` en la issue de GitHub o en el handoff vivo, o pregunta.
+- Si algo no esta claro, deja `Open questions` en la tarea autoritativa o en el handoff vivo, o pregunta.
 
 Checks esperados:
 - [COMANDOS CONCRETOS]

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-12T00:11:08Z",
+  "generatedAt": "2026-09-12T23:00:03Z",
   "digest": {
-    "lastCommit": "e13756ef4505e4012f3012c5ac0773040257d1e3"
+    "lastCommit": "d29fcdd766c59ac40b5d137f0497209cde027c07"
   },
   "phases": [
     {
@@ -2046,9 +2046,71 @@
         "pt": "Plano",
         "it": "Piano"
       }
+    },
+    {
+      "id": "development-continuity",
+      "type": "plan",
+      "title": {
+        "es": "Continuidad de documentación y seguimiento",
+        "en": "Documentation and development continuity",
+        "pt": "Continuidade da documentação e acompanhamento",
+        "it": "Continuità della documentazione e del monitoraggio"
+      },
+      "body": {
+        "es": "Centralizar la documentación y el seguimiento del desarrollo conservando el historial y distinguiendo trabajo pendiente, validado y publicado.",
+        "en": "Centralize documentation and development tracking while preserving history and distinguishing pending, validated and published work.",
+        "pt": "Centralizar a documentação e o acompanhamento do desenvolvimento, preservando o histórico e distinguindo trabalho pendente, validado e publicado.",
+        "it": "Centralizzare la documentazione e il monitoraggio dello sviluppo, conservando lo storico e distinguendo lavoro in attesa, verificato e pubblicato."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
     }
   ],
   "delivered": [
+    {
+      "date": "2026-09-13",
+      "entries": [
+        {
+          "kind": "fix",
+          "scope": "estrategia",
+          "text": "Presupuesto de trabajo por tamaño en Orbit en vez de deadline de pared"
+        }
+      ]
+    },
+    {
+      "date": "2026-09-12",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Store externo con selectores bajo el contexto documento (ISA-1149 B1)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Fanout Wails por dominio — settings y license"
+        },
+        {
+          "kind": "perf",
+          "scope": "hub",
+          "text": "Blur condicional por nivel de rendimiento en la shell"
+        },
+        {
+          "kind": "perf",
+          "scope": "telemetry",
+          "text": "Sin allocs por tick en mapper y AllSections"
+        },
+        {
+          "kind": "docs",
+          "scope": "roadmap",
+          "text": "Etapas hacia beta pública, versiones y lanzamiento"
+        }
+      ]
+    },
     {
       "date": "2026-09-11",
       "entries": [
@@ -2621,61 +2683,6 @@
           "kind": "change",
           "scope": "",
           "text": "HUD-ORBIT — porte completo de Command Orbit v0.3 al hub"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-17",
-      "entries": [
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "HUD-ORBIT-00 — Command Orbit v0.3: prototipo aprobado + paquete de diseño para el porte"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-16",
-      "entries": [
-        {
-          "kind": "fix",
-          "scope": "overlay",
-          "text": "Spatial capability, collapsing relative ghost and real FLIP motion"
-        },
-        {
-          "kind": "feat",
-          "scope": "ui",
-          "text": "Escala proporcional de escritorio 1080p a 32:9 4K (overlay + hub)"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "TM-04 posición de cada coche sobre el mapa"
-        },
-        {
-          "kind": "feat",
-          "scope": "transport",
-          "text": "TM/TC medir el ahorro real de publicar deltas de Overlay"
-        },
-        {
-          "kind": "feat",
-          "scope": "overlay",
-          "text": "Modo edicion in-place por hotkey (Ctrl+Shift+E) - isa-401"
-        },
-        {
-          "kind": "fix",
-          "scope": "relative",
-          "text": "Seleccionar vecinos físicos 2+2"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Persistencia privada de capturas del Testing Center"
-        },
-        {
-          "kind": "docs",
-          "scope": "release",
-          "text": "Add Nightly 9 canonical manifest"
         }
       ]
     }

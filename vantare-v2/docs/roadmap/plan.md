@@ -110,7 +110,7 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 - id: insiders-program
 - estado: planned
-- progreso: 15
+- progreso: 10
 - etiqueta: Fase 3
 - etiqueta.en: Phase 3
 - objetivo: v0.2.x - v0.5.x
@@ -142,7 +142,7 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 - id: public-beta
 - estado: planned
-- progreso: 5
+- progreso: 0
 - etiqueta: Fase 4
 - etiqueta.en: Phase 4
 - objetivo: v0.6.x - v0.8.x
@@ -577,8 +577,8 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - id: telemetry-analysis-complete
 - tipo: plan
 - titulo.en: Complete telemetry analysis
-- titulo.pt: Análise de telemetria completa
-- titulo.it: Analisi di telemetria completa
+- titulo.pt: Análise completa de telemetria
+- titulo.it: Analisi completa di telemetria
 - cuerpo: La herramienta post-sesión responde «¿cómo puedo ser más rápido?» con comparaciones sincronizadas, métricas y recomendaciones explicables, leyendo las sesiones grabadas en local.
 - cuerpo.en: The post-session tool answers "how can I be faster?" with synchronized comparisons, metrics and explainable recommendations, reading locally recorded sessions.
 - cuerpo.pt: A ferramenta pós-sessão responde «como posso ser mais rápido?» com comparações sincronizadas, métricas e recomendações explicáveis, lendo as sessões gravadas localmente.

@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-11T23:41:14Z",
+  "generatedAt": "2026-09-12T00:04:21Z",
   "digest": {
     "lastCommit": "e13756ef4505e4012f3012c5ac0773040257d1e3"
   },
@@ -142,7 +142,7 @@
         "pt": "v0.2.x - v0.5.x",
         "it": "v0.2.x - v0.5.x"
       },
-      "progress": 15,
+      "progress": 10,
       "summary": {
         "es": "Pruebas cerradas en los canales Nightly y Testers: producto usable de extremo a extremo, widgets core completos y builds compartibles con feedback real.",
         "en": "Closed testing on the Nightly and Testers channels: an end-to-end usable product, complete core widgets and shareable builds with real feedback.",
@@ -197,7 +197,7 @@
         "pt": "v0.6.x - v0.8.x",
         "it": "v0.6.x - v0.8.x"
       },
-      "progress": 5,
+      "progress": 0,
       "summary": {
         "es": "Relanzamiento abierto de la beta: documentación reiniciada, pagos con Polar, onboarding guiado y versiones iterativas.",
         "en": "Open relaunch of the beta: restarted documentation, Polar payments, guided onboarding and iterative versions.",
@@ -843,8 +843,8 @@
       "title": {
         "es": "Análisis de telemetría completo",
         "en": "Complete telemetry analysis",
-        "pt": "Análise de telemetria completa",
-        "it": "Analisi di telemetria completa"
+        "pt": "Análise completa de telemetria",
+        "it": "Analisi completa di telemetria"
       },
       "body": {
         "es": "La herramienta post-sesión responde «¿cómo puedo ser más rápido?» con comparaciones sincronizadas, métricas y recomendaciones explicables, leyendo las sesiones grabadas en local.",

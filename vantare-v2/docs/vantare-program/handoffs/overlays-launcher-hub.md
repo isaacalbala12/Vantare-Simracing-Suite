@@ -837,9 +837,25 @@ física nueva, retirada V1, merge o release en este corte documental.
   normalizar), queda eliminado junto a sus tests: la plantilla Redline
   Relative decidió no usar FLIP y nadie lo importaba. Checks: typecheck
   PASS, lint PASS, build PASS, suite 3396/3397 (mismo i18n-audit
-  preexistente). Listo para que Isaac mergee a `nightly` y retome la
-  rama actualizada.
-  Sin merge, push, PR, promoción ni release.
+  preexistente).
+  **PROMOCIONADO a nightly (2026-09-12, PR #1194, squash `1567a263`):**
+  revisión del diff completo previa al merge corrigió tres hallazgos
+  propios — clave i18n huérfana `overlay.inspector.pedals.showHeader`
+  retirada de los 4 locales studio-orbit (i18n-audit vuelve a verde),
+  `vantare-iracing` añadido al contrato Go V3
+  (`IsSupportedDesignSystemID` + round-trip de perfil) y lint de
+  `orbit-outside-harness.tsx` (fast-refresh, roto en ISA-1185). La
+  fusión con `nightly` integró el laboratorio tower de Redline
+  (ISA-1071): overrides `redline*` por `buildWorkshopWidget`, canvas de
+  referencia en `WorkshopSurface` y fieldset en
+  `FunctionalStudyControls`; `resolveStandingsRedlineMinimumWidth`
+  devuelve `undefined` en tema tower (marco físico fijo). CI completo
+  verde en ambos ciclos (suite 3476, Go, build Windows, Testing Center).
+  Preexistentes en nightly verificados en checkout limpio y ajenos:
+  `internal/app/launcher` solo compila en Windows y 2 tests de
+  DiagnosticsBridge fallan en macOS. Pendiente: validación física en
+  OBS/WebView2 y la traducción de Foco a diseño oficial. Sin release
+  ni promoción a `testers`/`master`.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde
   `4864b5c6`, SHA `cb69a4d5…878faba`, muestra Pedals sobre LMU con freno real

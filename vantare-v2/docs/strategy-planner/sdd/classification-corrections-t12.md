@@ -1233,3 +1233,48 @@ completa y build. Logs nuevos `isa1104-t12j8c1-*`, nunca sobrescribir, e informe
 local final. Sin React visual nuevo, CSS, traducciones, Go, app, GUI, Wails, LMU,
 push, PR, CI remota o promoción. J8c2 montará el selector usando el catálogo ya
 cargado por `StrategyRecordedPage`/`StrategyRecordedWorkflow`.
+
+## Continuación cerrada por root — J8c2
+
+Montar el selector canónico en la vista Clasificación del panel A4 Datos, sin
+crear otro paso del asistente ni otro catálogo. Cinco paths máximos:
+
+1. `frontend/src/hub/strategy-orbit/StrategyRecordedClassification.tsx`
+2. `frontend/src/hub/strategy-orbit/StrategyRecordedClassification.test.tsx`
+3. `frontend/src/hub/strategy-orbit/StrategyRecordedData.tsx`
+4. `frontend/src/hub/strategy-orbit/StrategyRecordedData.test.tsx`
+5. `frontend/src/hub/strategy-orbit/StrategyRecordedWorkflow.tsx`
+
+`StrategyRecordedWorkflow` pasa el `catalog` original recibido de
+`StrategyRecordedPage`, que procede de `sessionCombinations`; no usar
+`flow.choices` como autoridad porque puede incluir opciones históricas o de
+sesiones abiertas. El componente convierte únicamente una opción seleccionada
+de `RecordedCombination` a `AnalysisCombination` (`combinationId` -> `id`), sin
+calcular hashes, normalizar nombres ni aceptar texto libre.
+
+Clasificación muestra en el mismo panel: combinación ORIGINAL de la sesión,
+destino GUARDADO de snapshot v4 si existe y PROPUESTA solo cuando el conjunto
+activo difiere semánticamente del guardado. El formulario ofrece la combinación
+original como restauración coherente y los destinos presentes en el catálogo;
+un target histórico ausente del catálogo se puede leer y retirar, no volver a
+inventar ni seleccionar como destino nuevo. Cada opción enseña circuito/layout
+y coche/clase; el motivo común es obligatorio. Aplicar llama una sola vez a
+`controller.editIdentity(target, reason)` y conserva el formulario si falla.
+
+Sin `session.combination`, la identidad queda no editable con causa, mientras
+SessionType/WeatherConditions y los otros grupos siguen disponibles. Con
+catálogo vacío se muestra indisponibilidad y solo se permite retirar una
+identidad guardada hacia el original conocido; no se fabrican opciones. Busy,
+formulario pendiente, cambio de fuente/vista y comando incierto comparten los
+bloqueos actuales. Abrir/cancelar/aplicar participa en `onPendingChange`; al
+aplicar con éxito actualiza el motivo de revisión y cierra el formulario.
+
+Preservar jerarquía, tokens, tabla y controles A4/Orbit existentes; no añadir
+CSS ni traducciones en este corte: reutilizar clases y claves ya presentes. Los
+cuatro campos no aparecen como inputs independientes. Tests accesibles cubren
+original/guardado/propuesta, catálogo cerrado, target histórico ausente,
+restauración, motivo, fallo que retiene formulario, bloqueos y conexión exacta
+Workflow -> Datos. Focales de Classification/Data/Workflow/controller,
+typecheck, lint, i18n, suite frontend y build. Logs nuevos
+`isa1104-t12j8c2-*` con EXIT, sin sobrescribir, e informe local. Sin Go, app,
+GUI, Wails, LMU, build escritorio, push, PR, CI remota o promoción.

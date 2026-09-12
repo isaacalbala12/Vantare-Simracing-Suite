@@ -202,7 +202,7 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
         data-testid="studio-route-load-error"
         className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[720px] flex-col px-6 py-8"
       >
-        <div className="rounded-xl border border-vantare-red-500/30 bg-vantare-red-950/20 p-6 text-sm text-vantare-red-300">
+        <div className="orbit-alert orbit-alert--danger p-6">
           {lastError}
         </div>
       </div>
@@ -215,7 +215,7 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
         data-testid="studio-route-loading"
         className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1200px] flex-col px-6 py-8"
       >
-        <div className="glass-panel rounded-xl p-8 text-sm text-vantare-textMuted">
+        <div className="rounded-orbit border border-orbit-line bg-orbit-surface-1 p-8 text-sm text-orbit-ink-2">
           {t('studio.v3.route.loadingProfile')}
         </div>
       </div>
@@ -253,7 +253,7 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
           <div className="mx-auto mt-4 max-w-[1800px] px-6">
             <div
               data-testid="recommended-error-banner"
-              className="rounded-lg border border-vantare-red-500/30 bg-vantare-red-950/20 px-4 py-3 text-sm text-vantare-red-300"
+              className="orbit-alert orbit-alert--danger"
             >
               {notice}
             </div>
@@ -747,7 +747,7 @@ function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactEl
           data-testid="studio-route-loading"
           className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1200px] flex-col px-6 py-8"
         >
-          <div className="glass-panel rounded-xl p-8 text-sm text-vantare-textMuted">
+          <div className="rounded-orbit border border-orbit-line bg-orbit-surface-1 p-8 text-sm text-orbit-ink-2">
             {t('studio.v3.route.loadingProfiles')}
           </div>
         </div>
@@ -765,7 +765,7 @@ function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactEl
               <div className="mx-auto mt-4 max-w-[1800px] px-6">
                 <div
                   data-testid="recommended-error-banner"
-                  className="rounded-lg border border-vantare-red-500/30 bg-vantare-red-950/20 px-4 py-3 text-sm text-vantare-red-300"
+                  className="orbit-alert orbit-alert--danger"
                 >
                   {notice}
                 </div>
@@ -812,7 +812,7 @@ function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactEl
               <div className="mx-auto mt-4 max-w-[1800px] px-6">
                 <div
                   data-testid="recommended-error-banner"
-                  className="rounded-lg border border-vantare-red-500/30 bg-vantare-red-950/20 px-4 py-3 text-sm text-vantare-red-300"
+                  className="orbit-alert orbit-alert--danger"
                 >
                   {notice}
                 </div>

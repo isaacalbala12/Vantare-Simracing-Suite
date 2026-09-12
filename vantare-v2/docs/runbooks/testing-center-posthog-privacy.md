@@ -1,5 +1,12 @@
 # Testing Center — frontera de privacidad PostHog
 
+> **Alcance de tracker:** las instrucciones de Linear de abajo son históricas
+> y no se ejecutan; Linear ya está retirado. Leer [la transición a Notion](../vantare-program/notion-transition.md).
+> Se preservan los contratos técnicos y de privacidad aplicables. Esta decisión
+> no activa Testing Center ni implementa un adaptador Notion; esos cambios exigen
+> su propio corte técnico verificado. No sustituir IDs o campos persistidos por texto.
+
+
 Estado: contrato local validado en ISA-253 / TAU-07H1. No hay SDK, proyecto
 PostHog, endpoint, secreto, captura de red ni session replay activados.
 

@@ -3,6 +3,11 @@
 Usa este prompt para un agente auditor. No debe editar codigo.
 
 ```markdown
+Lee primero docs/vantare-program/notion-transition.md y confirma su estado.
+Tarea autoritativa: [URL REAL]; ID Notion/GitHub/historico: [SEPARADOS].
+En PREPARACIÓN solo ejecutar el lote vigente o preparación técnica trazada;
+lo nuevo se captura pendiente en Notion. No confundir integración con publicación.
+
 Actua como reviewer adversarial del repo `vantare-v2`.
 
 No edites archivos.

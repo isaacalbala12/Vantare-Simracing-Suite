@@ -132,7 +132,7 @@ describe("Functional Standings", () => {
 
   it("accepts the implemented Workshop pairs and rejects unsupported widgets", () => {
     expect(parseOverlayWorkshopQuery("?widget=standings&system=vantare-functional&design=standings-functional-compact")).not.toHaveProperty("error");
-    for (const widget of ["relative", "delta", "pedals", "pedals-telemetry", "track-weather", "track-map"] as const) {
+    for (const widget of ["relative", "delta", "pedals", "pedals-telemetry", "track-weather", "track-map", "fuel-strategy", "car-damage-numbers", "input-telemetry"] as const) {
       expect(parseOverlayWorkshopQuery(`?widget=${widget}&system=vantare-functional`)).not.toHaveProperty("error");
     }
     expect(parseOverlayWorkshopQuery("?widget=engineer-radio&system=vantare-functional")).toHaveProperty("error");

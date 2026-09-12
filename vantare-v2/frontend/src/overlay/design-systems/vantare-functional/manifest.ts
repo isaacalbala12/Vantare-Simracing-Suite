@@ -1,6 +1,9 @@
 import type { ComponentType } from "react";
 import type { DesignSystemDefinition, WidgetRendererProps } from "../../core/design-system-definition";
+import { CarDamageNumbersFunctional } from "./CarDamageNumbersFunctional";
 import { DeltaFunctional } from "./DeltaFunctional";
+import { FuelStrategyFunctional } from "./FuelStrategyFunctional";
+import { InputTelemetryFunctional } from "./InputTelemetryFunctional";
 import { PedalsFunctional } from "./PedalsFunctional";
 import { PedalsTelemetryFunctional } from "./PedalsTelemetryFunctional";
 import { RelativeFunctional } from "./RelativeFunctional";
@@ -110,6 +113,39 @@ export const vantareFunctionalManifest: DesignSystemDefinition = {
       },
       inspector: { appearance: [] },
       Renderer: TrackMapFunctional as ComponentType<WidgetRendererProps>,
+    },
+    {
+      widgetType: "fuel-strategy",
+      configVersion: 1,
+      defaultSettings: {},
+      configMigrations: { 0: (settings) => ({ ...settings }) },
+      parseSettings(input: unknown) {
+        return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
+      },
+      inspector: { appearance: [] },
+      Renderer: FuelStrategyFunctional as ComponentType<WidgetRendererProps>,
+    },
+    {
+      widgetType: "car-damage-numbers",
+      configVersion: 1,
+      defaultSettings: {},
+      configMigrations: { 0: (settings) => ({ ...settings }) },
+      parseSettings(input: unknown) {
+        return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
+      },
+      inspector: { appearance: [] },
+      Renderer: CarDamageNumbersFunctional as ComponentType<WidgetRendererProps>,
+    },
+    {
+      widgetType: "input-telemetry",
+      configVersion: 1,
+      defaultSettings: {},
+      configMigrations: { 0: (settings) => ({ ...settings }) },
+      parseSettings(input: unknown) {
+        return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
+      },
+      inspector: { appearance: [] },
+      Renderer: InputTelemetryFunctional as ComponentType<WidgetRendererProps>,
     },
   ],
 };

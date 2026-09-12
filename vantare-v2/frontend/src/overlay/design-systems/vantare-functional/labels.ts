@@ -10,6 +10,9 @@ const en = {
   rain: "RAIN", wetness: "WET", dry: "DRY", pressure: "PRESS",
   relative: "RELATIVE", delta: "DELTA", pedals: "PEDALS", playerGap: "TO YOU",
   clutch: "CLUTCH", brake: "BRAKE", throttle: "THROTTLE",
+  fuel: "FUEL", avg: "AVG", laps: "LAPS", required: "REQ", history: "HISTORY",
+  aero: "AERO", body: "BODY", suspension: "SUSP", tyre: "TYRE", damage: "DAMAGE",
+  speed: "SPEED", rpm: "RPM", gear: "GEAR",
 };
 
 export const functionalLabels: Record<Locale, typeof en> = {

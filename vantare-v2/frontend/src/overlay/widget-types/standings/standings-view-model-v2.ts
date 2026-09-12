@@ -63,6 +63,7 @@ export function buildStandingsViewModelV2(
   const paceSession = phase === "practice" || phase === "qualifying";
   const sessionBestLap = paceSession ? fastestLap(scoped) : undefined;
   const limited = scoped.slice(0, content.rowCount ?? 20);
+  const weather = frame.weather;
 
   return withStandingsMotionIdentity({
     type: "standings",
@@ -71,6 +72,9 @@ export function buildStandingsViewModelV2(
     activeClass,
     sessionLabel: displayedText(frame.session.phase)?.toUpperCase() ?? PLACEHOLDER,
     remainingText: formatRemainingTime(displayedNumber(frame.session.remaining)),
+    ambientTempText: formatTemp(displayedNumber(weather?.ambientC)),
+    trackTempText: formatTemp(displayedNumber(weather?.trackC)),
+    windText: formatWind(displayedNumber(weather?.windKph)),
     trackName: displayedText(frame.session.track),
     totalRows: scoped.length,
     columns,
@@ -86,6 +90,9 @@ export function standingsDisplayedValues(
     sessionLabel: model.sessionLabel,
     activeClass: model.activeClass,
     remainingText: model.remainingText,
+    ambientTemp: model.ambientTempText ?? PLACEHOLDER,
+    trackTemp: model.trackTempText ?? PLACEHOLDER,
+    wind: model.windText ?? PLACEHOLDER,
     rowCount: String(model.rows.length),
     rows: model.rows
       .map((row) => [
@@ -172,6 +179,14 @@ function formatLapTime(seconds: number | undefined): string {
   return `${Math.floor(seconds / 60)}:${(seconds % 60).toFixed(3).padStart(6, "0")}`;
 }
 
+function formatTemp(value: number | undefined): string | undefined {
+  return value === undefined ? undefined : `${Math.round(value)}°`;
+}
+
+function formatWind(value: number | undefined): string | undefined {
+  return value === undefined ? undefined : `${Math.round(value)} km/h`;
+}
+
 function resolveActiveClass(
   rows: readonly OverlayStandingRowV2[],
   playerId: string | undefined,
@@ -181,8 +196,8 @@ function resolveActiveClass(
   return chosen === "" ? PLACEHOLDER : chosen.toUpperCase();
 }
 
-function displayedNumber(value: OverlayQValue<number>): number | undefined {
-  if (value.q === "missing" || value.q === "invalid") return undefined;
+function displayedNumber(value: OverlayQValue<number> | undefined): number | undefined {
+  if (!value || value.q === "missing" || value.q === "invalid") return undefined;
   // Go omitempty elides legitimate zeroes. Quality is the presence bit.
   return value.v ?? 0;
 }

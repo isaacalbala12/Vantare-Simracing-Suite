@@ -3,13 +3,23 @@ import type { AuthoringV2Scenario } from "./fixtures/authoring-v2-scenario-fixtu
 import { isWorkshopV2Variant, type WorkshopV2Variant } from "./fixtures/authoring-v2-workshop-frame";
 import { getAnimationScene } from "./fixtures/animation-scenes";
 import { getOfficialDesign } from "../design-systems/official-designs";
+import { designSystemRegistry } from "../core/design-system-registry";
 import { parseStandingsEnduranceSettings } from "../design-systems/vantare-endurance/standings/standings-endurance-settings";
 import { WIDGET_TYPES } from "../core/profile-document";
+import { FUNCTIONAL_STUDY_MODULE_IDS, FUNCTIONAL_STUDY_SLOT_IDS, FUNCTIONAL_STUDY_STYLE_IDS, type FunctionalStudyStyleId } from "./functional-study-options";
 
 export type OverlayWorkshopQuery = {
   widget: WidgetType;
   system: DesignSystemId;
   designId?: string;
+  /** Piel de estudio Eficiencia v2 (ISA-1120); solo aplica en la variante
+   * `standings-functional-study` y nunca se persiste en perfiles. */
+  studyStyle?: FunctionalStudyStyleId;
+  /** Columnas opcionales del estudio (gap/bestLap/lastLap/pit). Misma regla:
+   *  solo dentro de `standings-functional-study`. */
+  modules?: readonly string[];
+  /** Huecos de datos del pie en standings/relative de Eficiencia. */
+  slots?: readonly string[];
   state: AuthoringV2Scenario["state"];
   surface: "studio" | "desktop" | "obs" | "harness";
   variant: WorkshopV2Variant;
@@ -24,6 +34,9 @@ export type OverlayWorkshopQuery = {
   /** Named animation scene being previewed, and where its transport is parked. */
   sceneId?: string;
   sceneFrame?: number;
+  /** Marca integrada: el selector del Workshop hace de autoridad local
+   *  (ISA-1105: en producción la decisión la inyecta la política nativa). */
+  brand?: "off";
   /**
    * Redline tower lab (ISA-1071, dev only). Applied as appearanceOverrides on
    * the scenario widget, so they travel the productive visual/settings
@@ -50,7 +63,7 @@ export const DEFAULT_OVERLAY_WORKSHOP_QUERY: OverlayWorkshopQuery = {
   preset: "1080p",
 };
 
-const DESIGN_SYSTEMS = new Set<DesignSystemId>(["vantare-original", "vantare-crystal", "vantare-endurance"]);
+const DESIGN_SYSTEMS = new Set<DesignSystemId>(["vantare-original", "vantare-crystal", "vantare-endurance", "vantare-functional", "vantare-iracing"]);
 const STATES = new Set<AuthoringV2Scenario["state"]>(["ready", "stale", "disconnected", "error"]);
 const SURFACES = new Set<OverlayWorkshopQuery["surface"]>(["studio", "desktop", "obs", "harness"]);
 const SESSIONS = new Set<AuthoringV2Scenario["session"]>(["practice", "qualifying", "race"]);
@@ -81,9 +94,15 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
 
   if (!WIDGET_TYPES.has(widget)) return { error: `invalid widget parameter: ${widget}` };
   if (!DESIGN_SYSTEMS.has(system)) return { error: `invalid system parameter: ${system}` };
+  // Eficiencia se ofrece en los widgets que declara su manifest — la lista no
+  // se duplica aquí; el registro es la fuente de verdad.
+  if (system === "vantare-functional" && !designSystemRegistry.get("vantare-functional", 1).widgets.some((entry) => entry.widgetType === widget)) {
+    return { error: `vantare-functional does not support widget=${widget}` };
+  }
   if (!STATES.has(state)) return { error: `invalid state parameter: ${state}` };
   if (!SURFACES.has(surface)) return { error: `invalid surface parameter: ${surface}` };
   if (!isWorkshopV2Variant(variant)) return { error: `invalid variant parameter: ${variant}` };
+  if (variant === "standings-functional-study" && (widget !== "standings" || system !== "vantare-functional")) return { error: "standings-functional-study requires Functional Standings" };
   if (!SESSIONS.has(session)) return { error: `invalid session parameter: ${session}` };
   if (!LOCATIONS.has(location)) return { error: `invalid location parameter: ${location}` };
   if (!BACKGROUNDS.has(background)) return { error: `invalid background parameter: ${background}` };
@@ -145,6 +164,46 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
     return { error: `invalid frame parameter: ${sceneFrameRaw}` };
   }
 
+  // La piel de estudio solo tiene sentido dentro del estudio Eficiencia: un
+  // valor desconocido es un error honesto, pero uno válido que sobrevive un
+  // cambio de variante se descarta en silencio en vez de romper la página.
+  const studyStyleRaw = params.get("study");
+  if (studyStyleRaw !== null && !FUNCTIONAL_STUDY_STYLE_IDS.has(studyStyleRaw)) {
+    return { error: `invalid study parameter: ${studyStyleRaw}` };
+  }
+  const studyStyle = studyStyleRaw !== null && variant === "standings-functional-study" && system === "vantare-functional"
+    ? studyStyleRaw as FunctionalStudyStyleId
+    : undefined;
+
+  const brand = params.get("brand");
+  if (brand !== null && brand !== "off") return { error: `invalid brand parameter: ${brand}` };
+
+  // Módulos del estudio: misma regla que studyStyle — valor desconocido es
+  // error honesto, uno válido fuera del estudio se descarta en silencio.
+  const modulesRaw = params.get("modules");
+  let modules: readonly string[] | undefined;
+  if (modulesRaw !== null) {
+    const list = modulesRaw.split(",").filter(Boolean);
+    const unknown = list.find((id) => !FUNCTIONAL_STUDY_MODULE_IDS.has(id));
+    if (unknown) return { error: `invalid modules parameter: ${modulesRaw}` };
+    if (variant === "standings-functional-study" && system === "vantare-functional") {
+      modules = list;
+    }
+  }
+
+  // Slots del pie: cualquier variante funcional de standings/relative;
+  // id desconocido es error honesto, fuera de esos widgets se descarta.
+  const slotsRaw = params.get("slots");
+  let slots: readonly string[] | undefined;
+  if (slotsRaw !== null) {
+    const list = slotsRaw.split(",").filter(Boolean);
+    const unknown = list.find((id) => !FUNCTIONAL_STUDY_SLOT_IDS.has(id));
+    if (unknown) return { error: `invalid slots parameter: ${slotsRaw}` };
+    if (system === "vantare-functional" && (widget === "standings" || widget === "relative") && list.length > 0) {
+      slots = list;
+    }
+  }
+
   // Tower lab options are validated here and applied as appearanceOverrides;
   // the productive settings parser re-validates them before rendering.
   const designSettings = parseStandingsEnduranceSettings(designId ? getOfficialDesign(designId)?.visual ?? {} : {});
@@ -170,8 +229,8 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   }
 
   return { widget, system, state, surface, variant, session, location, background, scale, preset,
-    ...(designId ? { designId } : {}), ...(parsedWidth ? { width: parsedWidth } : {}), ...(parsedHeight ? { height: parsedHeight } : {}), ...(compare ? { compare } : {}),
-    ...(sceneId ? { sceneId } : {}), ...(sceneFrame !== undefined ? { sceneFrame } : {}),
+    ...(designId ? { designId } : {}), ...(studyStyle ? { studyStyle } : {}), ...(parsedWidth ? { width: parsedWidth } : {}), ...(parsedHeight ? { height: parsedHeight } : {}), ...(compare ? { compare } : {}),
+    ...(sceneId ? { sceneId } : {}), ...(sceneFrame !== undefined ? { sceneFrame } : {}), ...(brand === "off" ? { brand } : {}), ...(modules ? { modules } : {}), ...(slots ? { slots } : {}),
     ...(redlineThemeRaw ? { redlineTheme: redlineThemeRaw as OverlayWorkshopQuery["redlineTheme"] } : {}),
     ...(redlineData ? { redlineData } : {}),
     ...(redlineSelectionRaw ? { redlineSelection: redlineSelectionRaw as OverlayWorkshopQuery["redlineSelection"] } : {}),
@@ -197,11 +256,15 @@ export function serializeOverlayWorkshopQuery(query: OverlayWorkshopQuery): stri
     preset: query.preset,
   });
   if (query.designId) params.set("design", query.designId);
+  if (query.studyStyle) params.set("study", query.studyStyle);
   if (query.width) params.set("width", String(query.width));
   if (query.height) params.set("height", String(query.height));
   if (query.compare) params.set("compare", query.compare);
   if (query.sceneId) params.set("scene", query.sceneId);
   if (query.sceneFrame !== undefined) params.set("frame", String(query.sceneFrame));
+  if (query.brand) params.set("brand", query.brand);
+  if (query.modules) params.set("modules", query.modules.join(","));
+  if (query.slots) params.set("slots", query.slots.join(","));
   if (query.redlineTheme) params.set("redlineTheme", query.redlineTheme);
   if (query.redlineData) params.set("redlineData", query.redlineData);
   if (query.redlineSelection) params.set("redlineSelection", query.redlineSelection);

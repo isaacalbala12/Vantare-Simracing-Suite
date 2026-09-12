@@ -279,6 +279,7 @@ function templateBody(
   model: StandingsViewModel,
   settings: Readonly<Record<string, unknown>>,
   showSessionHeader: boolean,
+  motion: "full" | "reduced" | "minimal",
 ) {
   switch (templateId) {
     case "standings-f1":
@@ -313,6 +314,7 @@ function templateBody(
           model={model}
           settings={settings}
           showSessionHeader={showSessionHeader}
+          motion={motion}
         />
       );
     case "standings-tower":
@@ -328,7 +330,7 @@ function templateBody(
   }
 }
 
-export function StandingsEndurance({ model, settings, layout }: WidgetRendererProps<StandingsViewModel>) {
+export function StandingsEndurance({ model, settings, layout, motion = "full" }: WidgetRendererProps<StandingsViewModel>) {
   const parsed = parseStandingsEnduranceSettings(settings);
   const isReferenceTower = parsed.templateId === "standings-redline" && parsed.redlineTheme === "tower";
   const viewportHeight = layout === undefined
@@ -357,13 +359,14 @@ export function StandingsEndurance({ model, settings, layout }: WidgetRendererPr
       data-widget-renderer="standings"
       data-status={model.status}
       data-template={parsed.templateId}
+      data-motion-level={motion}
       data-redline-theme={parsed.templateId === "standings-redline" ? parsed.redlineTheme : undefined}
       data-redline-selection={parsed.templateId === "standings-redline" ? parsed.redlineSelection : undefined}
       data-redline-header={parsed.templateId === "standings-redline" ? parsed.redlineHeader : undefined}
       className="ven-root ven-standings"
       style={buildStandingsAppearanceStyle(settings)}
     >
-      {templateBody(parsed.templateId, fittedModel, settings, parsed.showSessionHeader)}
+      {templateBody(parsed.templateId, fittedModel, settings, parsed.showSessionHeader, motion)}
     </section>
   );
 }

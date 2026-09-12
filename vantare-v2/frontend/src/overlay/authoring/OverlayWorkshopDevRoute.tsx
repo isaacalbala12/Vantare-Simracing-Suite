@@ -1,23 +1,17 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { WidgetVisualHost } from "../core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../core/WidgetVisualViewport";
-import { ALL_WIDGET_TYPES, type DesignSystemId, type WidgetInstanceV3, type WidgetType } from "../core/profile-document";
+import type { WidgetInstanceV3 } from "../core/profile-document";
 import { buildEngineerPresentationFixture } from "../../engineer/engineer-presentation-fixtures";
 import {
   buildWorkshopFrameV2,
-  createScenarioWidget,
+  buildWorkshopWidget,
   STANDINGS_REPLAY_FRAME_COUNT,
-  WORKSHOP_V2_VARIANTS,
-  type WorkshopV2Scenario,
-  type WorkshopV2Variant,
 } from "./fixtures/authoring-v2-workshop-frame";
 import type { WidgetRuntimeInput } from "../core/widget-definition";
-import { getAnimationScene, listAnimationScenes } from "./fixtures/animation-scenes";
+import { getAnimationScene } from "./fixtures/animation-scenes";
 import { interpolateSceneAt, sampleAtRate, sceneDurationMs } from "./fixtures/scene-interpolation";
-import { projectionGapsFor } from "./fixtures/projection-gaps";
 import { REDLINE_TOWER_REFERENCE } from "./fixtures/redline-tower-reference";
-import { listOfficialDesigns } from "../design-systems/official-designs";
 import {
   parseOverlayWorkshopQuery,
   serializeOverlayWorkshopQuery,
@@ -25,141 +19,70 @@ import {
   type OverlayWorkshopQuery,
 } from "./overlay-workshop-query";
 import "./overlay-workshop.css";
+import { FunctionalStudyControls } from "./FunctionalStudyControls";
+import { resolveStandingsMinimumSize } from "../widget-types/standings/standings-frame-layout";
 
-const SYSTEMS: readonly DesignSystemId[] = ["vantare-original", "vantare-crystal", "vantare-endurance"];
-const STATES = ["ready", "stale", "disconnected", "error"] as const;
-const SURFACES = ["studio", "desktop", "obs", "harness"] as const;
 export const OVERLAY_WORKSHOP_PROFILE_ID = "workshop-fixture";
-const VARIANTS: readonly WorkshopV2Variant[] = WORKSHOP_V2_VARIANTS;
-
-function createRouteScenarioWidget(query: OverlayWorkshopQuery): WidgetInstanceV3 {
-  const widget = createScenarioWidget({
-    widget: query.widget,
-    system: query.system,
-    variant: query.variant,
-    ...(query.designId ? { designId: query.designId } : {}),
-    ...(query.sceneId ? { sceneId: query.sceneId } : {}),
-  });
-  if (query.widget !== "standings" || query.system !== "vantare-endurance") return widget;
-  return { ...widget, visual: { ...widget.visual, appearanceOverrides: {
-    ...widget.visual.appearanceOverrides,
-    ...(query.redlineTheme ? { redlineTheme: query.redlineTheme } : {}),
-    ...(query.redlineSelection ? { redlineSelection: query.redlineSelection } : {}),
-    ...(query.redlineHeader ? { redlineHeader: query.redlineHeader } : {}),
-    ...(query.redlineOpacity !== undefined ? { redlineSurfaceOpacity: query.redlineOpacity } : {}),
-  } } };
-}
-
-type PreparedFixture = {
-  key: string;
-  widget: WidgetInstanceV3;
-  base: {
-    session: WorkshopV2Scenario["session"];
-    location: WorkshopV2Scenario["location"];
-    state: WorkshopV2Scenario["state"];
-    widget: WidgetType;
-    system: DesignSystemId;
-    variant: WorkshopV2Variant;
-  };
-  runtime: WidgetRuntimeInput;
-};
-
-function prepareFixture(query: OverlayWorkshopQuery): PreparedFixture {
-  const widget = createRouteScenarioWidget(query);
-  const base = {
-    session: query.session,
-    location: query.location,
-    state: query.state,
-    widget: query.widget,
-    system: query.system,
-    variant: query.variant,
-  };
-  const runtime = buildWorkshopFrameV2(base);
-  // Keyed without the frame, matching fixtureKey: stepping a scene must not
-  // count as a different fixture.
-  return { key: serializeOverlayWorkshopQuery({ ...query, sceneFrame: undefined }), widget, base, runtime };
-}
-
-const PRESET_DIMENSIONS = { "720p": [1280, 720], "1080p": [1920, 1080], "1440p": [2560, 1440] } as const;
 
 function setSearch(query: OverlayWorkshopQuery): void {
   window.history.replaceState(null, "", `/workshop?${serializeOverlayWorkshopQuery(query)}`);
 }
 
-function SelectField(props: {
-  label: string;
-  value: string;
-  onChange(value: string): void;
-  children: ReactNode;
-}): React.ReactElement {
-  return (
-    <label className="overlay-workshop-control">
-      <span>{props.label}</span>
-      <select aria-label={props.label} value={props.value} onChange={(event) => props.onChange(event.target.value)}>
-        {props.children}
-      </select>
-    </label>
-  );
-}
-
-function DimensionField(props: { label: string; value: string; onChange(value: string): void }): React.ReactElement {
-  const max = props.label === "Width" ? 3840 : 2160;
-  return <label className="overlay-workshop-control"><span>{props.label}</span><input type="number" min="64" max={max} step="1" value={props.value} onChange={(event) => props.onChange(event.target.value)} /></label>;
-}
-
-function compatibleSystems(widget: WidgetType): readonly DesignSystemId[] {
-  return widget === "engineer-radio" ? ["vantare-crystal"] : SYSTEMS;
-}
-
-function defaultSystem(widget: WidgetType): DesignSystemId {
-  return compatibleSystems(widget)[0]!;
-}
-
-function WorkshopSurface({ prepared, profileId, surface, query, comparison = false }: { prepared: PreparedFixture; profileId: string; surface: OverlayWorkshopQuery["surface"]; query: OverlayWorkshopQuery; comparison?: boolean }): React.ReactElement {
-  const width = query.width ?? prepared.widget.layout.w;
-  const height = query.height ?? prepared.widget.layout.h;
+function WorkshopSurface({ widget, runtime, profileId, surface, query, comparison = false }: { widget: WidgetInstanceV3; runtime: WidgetRuntimeInput; profileId: string; surface: OverlayWorkshopQuery["surface"]; query: OverlayWorkshopQuery; comparison?: boolean }): React.ReactElement {
+  const width = query.width ?? widget.layout.w;
+  const height = query.height ?? widget.layout.h;
+  // Tower reference mode (ISA-1071): the productive renderer runs against the
+  // static HTML study's fixture instead of telemetry, on a labeled canvas.
   const reference = query.redlineData === "reference" && query.widget === "standings" && query.redlineTheme === "tower" && query.state === "ready" && !query.sceneId;
   const margin = reference ? 80 : 0;
-  const runtime = {
-    ...prepared.runtime,
-    relativeViewModelInstanceKey: `${profileId}:${prepared.widget.id}`,
+  const runtimeInput = {
+    ...runtime,
+    relativeViewModelInstanceKey: `${profileId}:${widget.id}`,
   };
-  return <div className="overlay-workshop-surface" data-overlay-workshop-surface={surface} data-overlay-workshop-comparison={comparison || undefined}>
-    {surface !== "obs" && <span className="overlay-workshop-surface-label">{surface}</span>}
-    <div style={{ width: (width + margin * 2) * query.scale, height: (height + margin * 2) * query.scale }}>
-    <div className={reference ? `overlay-workshop-reference-canvas overlay-workshop-reference-canvas--${query.background}` : undefined} style={{ width: reference ? width + margin * 2 : width * query.scale, height: reference ? height + margin * 2 : height * query.scale, padding: margin, transform: reference ? `scale(${query.scale})` : undefined, transformOrigin: "top left" }}>
-    <div className="overlay-workshop-widget-root" data-overlay-workshop-widget-root style={{ width, height, transform: reference ? undefined : `scale(${query.scale})`, transformOrigin: "top left" }}>
-      <WidgetVisualViewport widgetType={prepared.widget.type} visual={prepared.widget.visual} layout={{ ...prepared.widget.layout, w: width, h: height }} testId="overlay-workshop-viewport">
-        <WidgetVisualHost widget={{ ...prepared.widget, layout: { ...prepared.widget.layout, w: width, h: height } }} renderMode={surface}
+  const host = (
+    <div className="overlay-workshop-widget-root" data-overlay-workshop-widget-root style={{ width, height, transform: reference ? undefined : `scale(${query.scale})`, transformOrigin: reference ? "top left" : "center" }}>
+      <WidgetVisualViewport widgetType={widget.type} visual={widget.visual} layout={{ ...widget.layout, w: width, h: height }} testId="overlay-workshop-viewport">
+        <WidgetVisualHost widget={{ ...widget, layout: { ...widget.layout, w: width, h: height } }} renderMode={surface}
           authoringModel={reference ? REDLINE_TOWER_REFERENCE : undefined}
-          runtime={prepared.widget.type === "engineer-radio" ? { ...runtime, engineerPresentation: query.state === "ready" ? buildEngineerPresentationFixture() : null } : runtime} />
+          runtime={widget.type === "engineer-radio" ? { ...runtimeInput, engineerPresentation: query.state === "ready" ? buildEngineerPresentationFixture() : null } : runtimeInput} />
       </WidgetVisualViewport>
     </div>
-    </div>
-    </div>
+  );
+  return <div className="overlay-workshop-surface" data-overlay-workshop-surface={surface} data-overlay-workshop-comparison={comparison || undefined}>
+    {surface !== "obs" && <span className="overlay-workshop-surface-label">{surface}</span>}
+    {reference ? (
+      <div style={{ width: (width + margin * 2) * query.scale, height: (height + margin * 2) * query.scale }}>
+        <div className={`overlay-workshop-reference-canvas overlay-workshop-reference-canvas--${query.background}`} style={{ width: width + margin * 2, height: height + margin * 2, padding: margin, transform: `scale(${query.scale})`, transformOrigin: "top left" }}>
+          {host}
+        </div>
+      </div>
+    ) : host}
   </div>;
 }
 
-function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: OverlayWorkshopQuery; profileId: string }): React.ReactElement {
+function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initialQuery: OverlayWorkshopQuery; initialError?: string; profileId: string }): React.ReactElement {
   const [parsed, setQuery] = useState<OverlayWorkshopQuery>(initialQuery);
-  const [prepared, setPrepared] = useState<PreparedFixture | null>(null);
-  const [dimensionDraft, setDimensionDraft] = useState({
-    width: initialQuery.width?.toString() ?? "",
-    height: initialQuery.height?.toString() ?? "",
-  });
-  const [scaleDraft, setScaleDraft] = useState(String(initialQuery.scale));
   const update = (next: OverlayWorkshopQuery) => {
     setSearch(next);
     setQuery(next);
   };
 
-  const designs = listOfficialDesigns(parsed.widget).filter((design) => design.systemId === parsed.system);
-  // The frame is deliberately excluded: it changes the snapshot, not the
-  // fixture. Including it remounted the widget on every step, which threw away
-  // the previous ViewModel the motion engines diff against — so discrete
-  // animations (overtake flash, crown flight, relative crossing) could never
-  // fire in the Workshop, which is the one place they need to be visible.
-  const fixtureKey = serializeOverlayWorkshopQuery({ ...parsed, sceneFrame: undefined });
+  // El widget es una función pura de la selección completa: buildWorkshopWidget
+  // es el ÚNICO lugar que decide su forma (variante → diseño → sesión → marca
+  // → módulos → laboratorio tower). Sin preparación diferida — lo que la URL
+  // dice es lo que se renderiza, y una combinación inválida cae al error
+  // visible con los controles vivos.
+  const built = useMemo(() => {
+    try {
+      return { widget: buildWorkshopWidget(parsed), error: null as string | null };
+    } catch (error) {
+      return { widget: null, error: error instanceof Error ? error.message : "invalid workshop widget" };
+    }
+  }, [parsed]);
+  const widget = built.widget;
+  const fixtureError = built.error;
+  // La mesa de módulos/tamaño del estudio es solo de Standings.
+  const isStudyTable = parsed.system === "vantare-functional" && parsed.widget === "standings" && parsed.variant === "standings-functional-study";
 
   const [replayFrame, setReplayFrame] = useState(0);
   useEffect(() => {
@@ -171,7 +94,7 @@ function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: Overla
       1400,
     );
     return () => clearInterval(timer);
-  }, [parsed.variant, fixtureKey]);
+  }, [parsed.variant]);
 
   // Scene transport. The frame lives in local state while playing so the URL is
   // not rewritten sixty times a minute; pausing or stepping parks it in the
@@ -187,11 +110,29 @@ function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: Overla
       (initialQuery.sceneId ? (getAnimationScene(initialQuery.sceneId)?.frameMs ?? 0) : 0),
   );
   const elapsedRef = useRef(0);
-  const scenesForWidget = listAnimationScenes(parsed.widget);
+  // Última muestra cuantizada ya empujada al estado — el reloj corre a ritmo
+  // de rAF pero el widget solo debe re-renderizar cuando cambia SU muestra
+  // (updateHz), no a los 120 Hz del monitor.
+  const lastSampledRef = useRef(-1);
+
+  const updateHz = widget?.behavior.updateHz ?? 30;
 
   useEffect(() => {
     elapsedRef.current = elapsedMs;
-  }, [elapsedMs]);
+    // Un seek/cambio de escena aparca el playhead fuera del tick: hay que
+    // re-sincronizar la muestra empujada o el siguiente tick la saltaría.
+    lastSampledRef.current = sampleAtRate(elapsedMs, updateHz);
+  }, [elapsedMs, updateHz]);
+
+  // Una escena que llega desde la URL o desde un aterrizaje de estudio aparca
+  // el playhead en su fotograma declarado. Se ajusta durante el render (no en
+  // un efecto) y solo cuando cambia la escena: el transporte interno ya
+  // mantiene elapsedMs al moverse entre fotogramas de la misma animación.
+  const [elapsedScene, setElapsedScene] = useState(initialQuery.sceneId);
+  if (elapsedScene !== parsed.sceneId) {
+    setElapsedScene(parsed.sceneId);
+    setElapsedMs(scene ? (parsed.sceneFrame ?? 0) * scene.frameMs : 0);
+  }
 
   // Playhead in milliseconds, advanced on every animation frame. The scene's
   // frames are keyframes; what plays between them is interpolated, so a gap
@@ -210,25 +151,53 @@ function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: Overla
       }
       const next = offset + (now - start);
       if (!loop && next >= total) {
+        lastSampledRef.current = sampleAtRate(total, updateHz);
         setElapsedMs(total);
         setPlaying(false);
         return;
       }
-      setElapsedMs(next);
+      const sampled = sampleAtRate(next, updateHz);
+      if (sampled !== lastSampledRef.current) {
+        lastSampledRef.current = sampled;
+        setElapsedMs(next);
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [scene, playing, loop]);
+  }, [scene, playing, loop, updateHz]);
 
   // In a race the world is continuous but telemetry is sampled: a widget only
   // sees a new snapshot at its own updateHz (standings 15, delta 30). Playing
   // the interpolation straight at 60fps made the Workshop four times smoother
   // than the product, which is the wrong thing to judge a design against.
   // The clock advances at frame rate; the data is quantised to the widget's rate.
-  const updateHz = prepared?.widget.behavior.updateHz ?? 30;
-  const playhead = scene ? interpolateSceneAt(scene, sampleAtRate(elapsedMs, updateHz), loop) : null;
+  const sampledMs = scene ? sampleAtRate(elapsedMs, updateHz) : 0;
+  const playhead = scene ? interpolateSceneAt(scene, sampledMs, loop) : null;
   const currentKeyframe = playhead?.keyframe ?? 0;
+
+  // El runtime también es una función pura: selección + posición del playhead.
+  // Estable mientras está aparcado (mismo objeto, mismo frame); se recalcula
+  // por muestra cuantizada durante la reproducción, igual que antes — el host
+  // nunca remonta por ello porque el widget memoizado no cambia.
+  const runtime = useMemo<WidgetRuntimeInput | null>(() => {
+    if (!widget) return null;
+    try {
+      const head = scene ? interpolateSceneAt(scene, sampledMs, loop) : null;
+      return buildWorkshopFrameV2({
+        session: parsed.session,
+        location: parsed.location,
+        state: parsed.state,
+        widget: parsed.widget,
+        system: parsed.system,
+        variant: parsed.variant,
+        ...(head && scene ? { sceneId: scene.id, sceneState: head.frame } : {}),
+        ...(parsed.variant === "standings-replay" ? { replayFrame } : {}),
+      });
+    } catch {
+      return null;
+    }
+  }, [parsed, widget, sampledMs, replayFrame, scene, loop]);
 
   const parkFrame = (frame: number) => {
     setPlaying(false);
@@ -240,12 +209,6 @@ function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: Overla
     const count = scene.frames.length;
     parkFrame((((currentKeyframe + delta) % count) + count) % count);
   };
-  /** Selects an animation and leaves it at rest, without playing anything. */
-  const chooseScene = (value: string) => {
-    setPlaying(false);
-    setElapsedMs(0);
-    update({ ...parsed, sceneId: value || undefined, sceneFrame: value ? 0 : undefined });
-  };
   /** One click: this animation, from the top, once, at frame rate. */
   const runScene = (sceneId: string) => {
     setElapsedMs(0);
@@ -253,221 +216,28 @@ function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: Overla
     setPlaying(true);
   };
 
-  useLayoutEffect(() => {
-    const fixtureQuery = parseOverlayWorkshopQuery(fixtureKey);
-    if ("error" in fixtureQuery) {
-      throw new Error(`invalid serialized fixture query: ${fixtureQuery.error}`);
-    }
-    const next = prepareFixture(fixtureQuery);
-    let active = true;
-    queueMicrotask(() => {
-      if (active) setPrepared(next);
-    });
-    return () => {
-      active = false;
-    };
-  }, [fixtureKey]);
-
-  const preparedForRender = !prepared
-    ? prepared
-    : scene && playhead
-      ? {
-          ...prepared,
-          runtime: buildWorkshopFrameV2({
-            ...prepared.base,
-            sceneId: scene.id,
-            sceneState: playhead.frame,
-          }),
-        }
-      : parsed.variant === "standings-replay"
-        ? {
-            ...prepared,
-            runtime: buildWorkshopFrameV2({ ...prepared.base, replayFrame }),
-          }
-        : prepared;
-
-  const chooseWidget = (value: string) => {
-    const widgetType = value as WidgetType;
-    const system = compatibleSystems(widgetType).includes(parsed.system) ? parsed.system : defaultSystem(widgetType);
-    update({ ...parsed, widget: widgetType, system, designId: undefined, variant: "default" });
-  };
-  const chooseSystem = (value: string) => update({ ...parsed, system: value as DesignSystemId, designId: undefined });
-  const chooseDesign = (value: string) => {
-    const next = parseOverlayWorkshopQuery(serializeOverlayWorkshopQuery({ ...parsed, designId: value || undefined,
-      redlineTheme: undefined, redlineSelection: undefined, redlineHeader: undefined, redlineOpacity: undefined }));
-    if (!("error" in next)) update(next);
-  };
-  const chooseState = (value: string) => update({ ...parsed, state: value as OverlayWorkshopQuery["state"] });
-  const chooseSurface = (value: string) => update({ ...parsed, surface: value as OverlayWorkshopQuery["surface"] });
-  const chooseVariant = (value: string) => update({ ...parsed, variant: value as WorkshopV2Variant });
-  const chooseSession = (value: string) => update({ ...parsed, session: value as OverlayWorkshopQuery["session"] });
-  const chooseLocation = (value: string) => update({ ...parsed, location: value as OverlayWorkshopQuery["location"] });
-  const chooseBackground = (value: string) => update({ ...parsed, background: value as OverlayWorkshopQuery["background"] });
-  const chooseScale = (value: string) => {
-    setScaleDraft(value);
-    const scale = Number(value);
-    if (value !== "" && Number.isFinite(scale) && scale >= 0.25 && scale <= 2) update({ ...parsed, scale });
-  };
-  const choosePreset = (value: string) => update({ ...parsed, preset: value as OverlayWorkshopQuery["preset"] });
-  const chooseCompare = (value: string) => update({ ...parsed, ...(value ? { compare: value as OverlayWorkshopQuery["surface"] } : { compare: undefined }) });
   const reset = () => {
-    setDimensionDraft({ width: "", height: "" });
-    setScaleDraft(String(DEFAULT_OVERLAY_WORKSHOP_QUERY.scale));
+    setPlaying(false);
     update({ ...DEFAULT_OVERLAY_WORKSHOP_QUERY });
   };
-  const applyPreset = () => {
-    const [width, height] = PRESET_DIMENSIONS[parsed.preset];
-    setDimensionDraft({ width: String(width), height: String(height) });
-    update({ ...parsed, width, height });
-  };
-  const chooseDimension = (field: "width" | "height", value: string) => {
-    const next = { ...dimensionDraft, [field]: value };
-    setDimensionDraft(next);
-    const width = Number(next.width);
-    const height = Number(next.height);
-    const widthValid = next.width !== "" && Number.isInteger(width) && width >= 64 && width <= 3840;
-    const heightValid = next.height !== "" && Number.isInteger(height) && height >= 64 && height <= 2160;
-    if (widthValid && heightValid) update({ ...parsed, width, height });
-  };
+
+  const studySize = isStudyTable && widget?.type === "standings" ? resolveStandingsMinimumSize(widget) : undefined;
+  // La banda ambiental opcional (~30 px) no entra en el mínimo del contenido:
+  // el estudio la añade a la altura para que no recorte la última fila.
+  const displayQuery = studySize ? { ...parsed, width: studySize.width, height: studySize.height === undefined ? undefined : studySize.height + 34, scale: 1 } : parsed;
 
   return (
-    <main className="overlay-workshop" data-overlay-workshop-page>
-      <aside className="overlay-workshop-sidebar" aria-label="Laboratorio visual">
-      <header className="overlay-workshop-header">
-        <div className="overlay-workshop-header__title">
-          <span className="overlay-workshop-badge">solo desarrollo</span>
-          <h1>Overlay Workshop</h1>
-        </div>
-        <p>Diseño en vivo · renderer compartido</p>
-        <details><summary>Enlace reproducible</summary><span data-overlay-workshop-query>{serializeOverlayWorkshopQuery(parsed)}</span></details>
-      </header>
-      {/* Three groups, in the order the questions actually get asked: what am I
-          looking at, what is it being fed, and how is it being presented. */}
-      <section className="overlay-workshop-controls" aria-label="Selección del Workshop">
-        {parsed.widget === "standings" && parsed.system === "vantare-endurance" && (!parsed.designId || parsed.designId === "standings-endurance-redline" || parsed.designId === "standings-endurance-redline-tower") ? (
-          <fieldset className="overlay-workshop-group overlay-workshop-lab">
-            <legend>Redline · Estudio visual</legend>
-            <button type="button" onClick={() => {
-              setDimensionDraft({ width: "482", height: "1087" }); setScaleDraft("0.65");
-              update({ ...parsed, designId: "standings-endurance-redline-tower", redlineTheme: "tower", redlineSelection: "glow", redlineHeader: "current", redlineOpacity: .95, redlineData: "reference", width: 482, height: 1087, scale: .65, state: "ready", sceneId: undefined, sceneFrame: undefined });
-            }}>Aplicar estudio azul · luz roja</button>
-            <SelectField label="Datos de comparación" value={parsed.redlineData ?? "telemetry"} onChange={(value) => update({ ...parsed, redlineData: value as OverlayWorkshopQuery["redlineData"] })}>
-              <option value="reference">Referencia HTML · 12 pilotos de ejemplo</option><option value="telemetry">Escenario V2 · sin datos inventados</option>
-            </SelectField>
-            {parsed.redlineData === "reference" && parsed.state === "ready" && !parsed.sceneId && <p className="overlay-workshop-note" role="note">REFERENCIA VISUAL: datos de ejemplo, no telemetría de LMU. Mismo renderer productivo. 482 × 1087 px.</p>}
-            {parsed.redlineTheme === "tower" && <p className="overlay-workshop-note">Copia estática del HTML. Las animaciones y columnas configurables de esta composición aún no están validadas.</p>}
-            <SelectField label="Tratamiento" value={parsed.redlineTheme ?? "classic"} onChange={(value) => update({ ...parsed, redlineTheme: value as OverlayWorkshopQuery["redlineTheme"] })}>
-              <option value="classic">Redline actual</option><option value="tower">Azul grafito</option>
-            </SelectField>
-            <SelectField label="Fila del jugador" value={parsed.redlineSelection ?? "legacy"} onChange={(value) => update({ ...parsed, redlineSelection: value as OverlayWorkshopQuery["redlineSelection"] })}>
-              <option value="glow">Fila de luz roja · sin línea</option><option value="frame">Marco fino</option><option value="plate">Placa de nombre</option><option value="legacy">Resaltado actual</option>
-            </SelectField>
-            <SelectField label="Cabecera" value={parsed.redlineHeader ?? "current"} onChange={(value) => update({ ...parsed, redlineHeader: value as OverlayWorkshopQuery["redlineHeader"] })}>
-              <option value="signature">Firma Redline</option><option value="session">Sesión protagonista</option><option value="compact">Marca compacta</option><option value="current">Cabecera actual</option>
-            </SelectField>
-            <label className="overlay-workshop-control"><span>Opacidad del fondo · {Math.round((parsed.redlineOpacity ?? 1) * 100)}%</span><input aria-label="Opacidad del fondo" type="range" min="45" max="100" value={Math.round((parsed.redlineOpacity ?? 1) * 100)} onChange={(event) => update({ ...parsed, redlineOpacity: Number(event.target.value) / 100 })} /></label>
-            <p className="overlay-workshop-note">Variantes exploratorias. Sin guardar perfiles. El contrato actual no aporta emblemas de fabricante.</p>
-          </fieldset>
-        ) : null}
-        <fieldset className="overlay-workshop-group">
-          <legend>Qué</legend>
-          <SelectField label="Widget" value={parsed.widget} onChange={chooseWidget}>
-            {ALL_WIDGET_TYPES.map((widgetType) => <option key={widgetType} value={widgetType}>{widgetType}</option>)}
-          </SelectField>
-          <SelectField label="Sistema" value={parsed.system} onChange={chooseSystem}>
-            {compatibleSystems(parsed.widget).map((system) => <option key={system} value={system}>{system}</option>)}
-          </SelectField>
-          <SelectField label="Diseño" value={parsed.designId ?? ""} onChange={chooseDesign}>
-            <option value="">Ajustes por defecto del renderer</option>
-            {designs.map((design) => <option key={design.id} value={design.id}>{design.name}</option>)}
-          </SelectField>
-        </fieldset>
-
-        <fieldset className="overlay-workshop-group">
-          <legend>Datos</legend>
-          <SelectField label="Estado" value={parsed.state} onChange={chooseState}>
-            {STATES.map((state) => <option key={state} value={state}>{state}</option>)}
-          </SelectField>
-          <SelectField label="Sesión" value={parsed.session} onChange={chooseSession}>
-            {(["practice", "qualifying", "race"] as const).map((session) => <option key={session} value={session}>{session}</option>)}
-          </SelectField>
-          <SelectField label="Ubicación" value={parsed.location} onChange={chooseLocation}>
-            {(["track", "pits"] as const).map((location) => <option key={location} value={location}>{location}</option>)}
-          </SelectField>
-          <SelectField label="Variante" value={parsed.variant} onChange={chooseVariant}>
-            {VARIANTS.map((variant) => <option key={variant} value={variant}>{variant}</option>)}
-          </SelectField>
-        </fieldset>
-
-        <fieldset className="overlay-workshop-group">
-          <legend>Presentación</legend>
-          <SelectField label="Superficie" value={parsed.surface} onChange={chooseSurface}>
-            {SURFACES.map((surface) => <option key={surface} value={surface}>{surface}</option>)}
-          </SelectField>
-          <SelectField label="Comparar con" value={parsed.compare ?? ""} onChange={chooseCompare}>
-            <option value="">Sin comparar</option>{SURFACES.filter((surface) => surface !== parsed.surface).map((surface) => <option key={surface} value={surface}>{surface}</option>)}
-          </SelectField>
-          <SelectField label="Fondo" value={parsed.background} onChange={chooseBackground}>
-            {(["transparent", "grid", "solid", "context"] as const).map((background) => <option key={background} value={background}>{background}</option>)}
-          </SelectField>
-          <label className="overlay-workshop-control"><span>Escala</span><input type="number" min="0.25" max="2" step="0.05" value={scaleDraft} onChange={(event) => chooseScale(event.target.value)} /></label>
-          <SelectField label="Resolución" value={parsed.preset} onChange={choosePreset}>
-            {(["720p", "1080p", "1440p"] as const).map((preset) => <option key={preset} value={preset}>{preset}</option>)}
-          </SelectField>
-          <DimensionField label="Ancho" value={dimensionDraft.width} onChange={(value) => chooseDimension("width", value)} />
-          <DimensionField label="Alto" value={dimensionDraft.height} onChange={(value) => chooseDimension("height", value)} />
-          <div className="overlay-workshop-group__actions">
-            <button type="button" onClick={applyPreset}>Aplicar tamaño declarado</button>
-            <button type="button" className="overlay-workshop-button--quiet" onClick={reset}>Restablecer</button>
-          </div>
-        </fieldset>
-      </section>
-      <section className="overlay-workshop-scenes" aria-label="Animaciones" data-overlay-workshop-scenes>
-        <div className="overlay-workshop-scenes__head">
-          <h2>Animaciones de {parsed.widget}</h2>
-          <p>Pulsa una para reproducirla una vez.</p>
-        </div>
-        {projectionGapsFor(parsed.widget).length > 0 ? (
-          <div className="overlay-workshop-scenes__gaps" data-testid="workshop-projection-gaps">
-            <strong>Aquí se ve más de lo que llega en carrera.</strong> La telemetría real no entrega:
-            <ul>
-              {projectionGapsFor(parsed.widget).map((gap) => (
-                <li key={gap.field}>
-                  <code>{gap.field}</code> — {gap.consequence}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-        <div className="overlay-workshop-scenes__list" data-testid="workshop-scene-list">
-          {scenesForWidget.length === 0 ? (
-            <p className="overlay-workshop-scenes__empty">Este widget todavía no tiene animaciones declaradas.</p>
-          ) : (
-            scenesForWidget.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                className="overlay-workshop-scenes__item"
-                data-active={item.id === parsed.sceneId ? "true" : undefined}
-                data-testid={`workshop-scene-run-${item.id}`}
-                onClick={() => runScene(item.id)}
-              >
-                <span className="overlay-workshop-scenes__play" aria-hidden="true">▶</span>
-                {item.label}
-              </button>
-            ))
-          )}
-          {scene ? (
-            <button
-              type="button"
-              className="overlay-workshop-scenes__item overlay-workshop-scenes__item--clear"
-              onClick={() => chooseScene("")}
-              data-testid="workshop-scene-clear"
-            >
-              Salir de la animación
-            </button>
-          ) : null}
-        </div>
+    // La vista de estudio es el único harness: no hay chrome genérico que se
+    // pueda mezclar; todas las selecciones viven en el panel lateral.
+    <main className="overlay-workshop functional-study" data-overlay-workshop-page data-study-style={parsed.studyStyle}>
+      <FunctionalStudyControls query={parsed} update={update} onRunScene={runScene} onReset={reset} />
+      <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage data-stage-label={`${parsed.widget.toUpperCase().replace(/-/g, " ")} / ESTUDIO 01`}>
+        {initialError && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-rejected>URL rechazada ({initialError}) — se cargaron los valores por defecto.</p>}
+        {fixtureError && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-fixture-error>Selección inválida: {fixtureError}</p>}
+        {!fixtureError && widget && runtime && (
+          <><WorkshopSurface widget={widget} runtime={runtime} profileId={profileId} surface={parsed.surface} query={displayQuery} />
+          {parsed.compare && <WorkshopSurface widget={widget} runtime={runtime} profileId={profileId} surface={parsed.compare} query={displayQuery} comparison />}</>
+        )}
         {scene ? (
           <div className="overlay-workshop-transport" data-overlay-workshop-transport>
             <div className="overlay-workshop-transport__buttons">
@@ -521,14 +291,6 @@ function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: Overla
           </div>
         ) : null}
       </section>
-      <p className="overlay-workshop-note">Datos de ejemplo V2, no telemetría en vivo. El escenario no forma parte del widget.</p>
-      </aside>
-      <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage>
-        {prepared?.key === fixtureKey && (
-          <><WorkshopSurface prepared={preparedForRender ?? prepared} profileId={profileId} surface={parsed.surface} query={parsed} />
-          {parsed.compare && <WorkshopSurface prepared={preparedForRender ?? prepared} profileId={profileId} surface={parsed.compare} query={parsed} comparison />}</>
-        )}
-      </section>
     </main>
   );
 }
@@ -536,11 +298,9 @@ function OverlayWorkshopPage({ initialQuery, profileId }: { initialQuery: Overla
 export function OverlayWorkshopDevRoute({ search = window.location.search, profileId = OVERLAY_WORKSHOP_PROFILE_ID }: { search?: string; profileId?: string }): React.ReactElement {
   const parsed = parseOverlayWorkshopQuery(search);
   if ("error" in parsed) {
-    return (
-      <main className="overlay-workshop-error" data-overlay-workshop-error role="alert">
-        Workshop selection rejected: {parsed.error}
-      </main>
-    );
+    // Una URL vieja o mal editada ya no deja la página muerta: se abre el
+    // estado por defecto con el motivo visible y todos los controles vivos.
+    return <OverlayWorkshopPage initialQuery={DEFAULT_OVERLAY_WORKSHOP_QUERY} initialError={parsed.error} profileId={profileId} />;
   }
   return <OverlayWorkshopPage initialQuery={parsed} profileId={profileId} />;
 }

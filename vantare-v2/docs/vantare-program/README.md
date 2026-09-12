@@ -1,5 +1,13 @@
 # Vantare — expediente canónico del programa
 
+> **Tracker y continuidad (2026-09-12):** leer primero
+> [la transición a Notion](notion-transition.md). Mientras su estado sea PREPARACIÓN,
+> las reglas GitHub/ISA de este documento rigen el cierre del lote existente
+> y la preparación técnica. El trabajo nuevo fuera del lote se captura en Notion
+> sin ejecutarlo todavía. Después del corte verificado, Notion será la autoridad
+> operativa y GitHub conservará código, PR, CI y releases.
+
+
 Estado: vigente desde ISA-120; revisado el 2026-08-05.
 
 Este directorio concentra las decisiones confirmadas por Isaac y el contexto
@@ -10,7 +18,7 @@ sigue vigente y registra el estado operativo.
 ## Orden de lectura obligatorio
 
 1. `AGENTS.md`.
-2. Este documento.
+2. Este documento y `notion-transition.md` (estado real del corte).
 3. `product-contract.md`.
 4. `project-map.md`.
 5. `execution-policy.md`.
@@ -23,13 +31,16 @@ Si dos documentos se contradicen:
 1. prevalecen las decisiones más recientes de este directorio;
 2. después, la evidencia comprobable del código y del runtime;
 3. después, ADR y planes vigentes;
-4. GitHub Issues decide estado, dependencias, rama y entrega;
+4. el tracker vigente segun `notion-transition.md` decide estado, dependencias, rama y entrega;
 5. los documentos históricos se conservan como contexto, no como orden de
    ejecución.
 
 No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad.
 
 ## Documentos
+
+- `notion-transition.md`: decision aprobada, lote, destino y puertas de activacion.
+- `notion-document-audit.md`: revision individual de documentos y controles del corte.
 
 - `product-contract.md`: alcance, experiencia, licencias, privacidad e idiomas.
 - `project-map.md`: módulos, fronteras, dependencias y estado.
@@ -58,7 +69,8 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
   autorizacion expresa y acotada del orquestador.
 - El comentario final de la issue de GitHub enlaza el handoff y enumera evidencia real.
 - Mocks, capturas y tests no pueden presentarse como prueba de runtime real.
-- Los hallazgos fuera de alcance se registran como issues de GitHub.
+- Los hallazgos fuera del lote de cierre se capturan en Notion como pendientes,
+  segun `notion-transition.md`; no se ejecutan ni amplian el lote automaticamente.
 - Contenido pertenece a Isaac y queda fuera de la ejecución autónoma. Los
   agentes solo preparan borradores cuando se les solicita.
 

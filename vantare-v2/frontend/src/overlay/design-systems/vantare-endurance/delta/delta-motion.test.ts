@@ -40,6 +40,14 @@ describe("delta motion events", () => {
     expect(deriveDeltaEvents(model({ tone: "neutral" }), model({ tone: "losing" }))).toEqual([]);
   });
 
+  it("reports a crossing that passed through neutral using the remembered side", () => {
+    expect(deriveDeltaEvents(model({ tone: "neutral" }), model({ tone: "gaining" }), "losing")).toEqual([
+      { kind: "cross-zero", to: "gaining" },
+    ]);
+    // The remembered side matching the new one means no crossing happened.
+    expect(deriveDeltaEvents(model({ tone: "neutral" }), model({ tone: "gaining" }), "gaining")).toEqual([]);
+  });
+
   it("reports a new reference lap", () => {
     const events = deriveDeltaEvents(
       model({ bestLapText: "1:38.031" }),

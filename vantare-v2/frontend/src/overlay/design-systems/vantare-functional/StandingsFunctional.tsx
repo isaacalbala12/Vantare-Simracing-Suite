@@ -1,14 +1,14 @@
 import { useRef, type CSSProperties } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { WidgetRendererProps } from "../../core/design-system-definition";
-import { useWidgetMotion } from "../../core/widget-motion";
+import { flipRows, useWidgetMotion } from "../../core/widget-motion";
+import { deriveOvertakes } from "./functional-motion";
 import { FUNCTIONAL_IDENTITY_METRICS as IDENTITY, resolveFunctionalColumnWidth, resolveFunctionalIdentitySpan, resolveFunctionalHeaderInfoPlacement } from "../../widget-types/standings/functional-standings-layout";
 import { resolveStandingsCellValue, type StandingsViewModel } from "../../widget-types/standings/standings-view-model";
 import { functionalLabels } from "./labels";
 import vantareMark from "../../../assets/orbit/vantare-mark.png";
 import { parseFunctionalSettings } from "./session-info-settings";
 import { SessionInfo } from "./SessionInfo";
-import { deriveIndexOffsets, deriveOvertakes } from "./functional-motion";
 import {
   FOOTER_SLOT_GAP_PX,
   FOOTER_SLOT_PAD_PX,
@@ -20,24 +20,30 @@ import {
 export function StandingsFunctional({ model, settings, layout, motion = "full", effects }: WidgetRendererProps<StandingsViewModel>) {
   const { locale } = useI18n();
   const rootRef = useRef<HTMLElement | null>(null);
-  useWidgetMotion(model, motion !== "minimal", rootRef, ({ prev, next, root, schedule }) => {
-    const stride = root.querySelector<HTMLElement>("[data-standings-row]")?.getBoundingClientRect().height ?? 30;
-    for (const [id, delta] of deriveIndexOffsets(prev.rows, next.rows)) {
-      const row = root.querySelector<HTMLElement>(`[data-standings-row="${CSS.escape(id)}"]`);
-      row?.animate(
-        [{ transform: `translateY(${delta * stride}px)` }, { transform: "translateY(0)" }],
-        { duration: Math.min(460, 260 + Math.abs(delta) * 50), easing: "cubic-bezier(0.22, 0.9, 0.3, 1)" },
-      );
-    }
+  // Eficiencia: las filas se deslizan a su posición (FLIP) y los cambios de
+  // posición parpadean una vez. En "reduced" solo queda el deslizamiento.
+  useWidgetMotion(model, motion !== "minimal", rootRef, ({ prev, next, root, schedule, persist }) => {
+    // FLIP medido por id: la fila desliza desde su posición visual actual
+    // (incluido el resto de una animación en vuelo) hasta su nuevo sitio —
+    // no desde un stride por índice que teletransporta al re-target.
+    flipRows(root, persist, {
+      rows: "[data-standings-row]",
+      id: (row) => row.dataset.standingsRow,
+      duration: (from) => Math.min(460, 260 + (Math.abs(from) / 30) * 50),
+    });
     if (motion === "full") {
       const { gained, lost } = deriveOvertakes(prev.rows, next.rows);
       for (const [id, direction] of [...gained.map((id) => [id, "rise"] as const), ...lost.map((id) => [id, "fall"] as const)]) {
         const row = root.querySelector<HTMLElement>(`[data-standings-row="${CSS.escape(id)}"]`);
         if (!row) continue;
         row.dataset.motion = direction;
-        schedule(650, () => { delete row.dataset.motion; });
+        // La clave cancela el borrado anterior del mismo attr — sin ella el
+        // timer de un evento viejo apagaba el flash del siguiente.
+        schedule(650, () => { delete row.dataset.motion; }, `motion-${id}`);
       }
     }
+  }, (root) => {
+    root.querySelectorAll<HTMLElement>("[data-motion]").forEach((el) => { delete el.dataset.motion; });
   });
   const labels = functionalLabels[locale];
   const config = parseFunctionalSettings(settings);

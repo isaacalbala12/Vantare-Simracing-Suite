@@ -10,7 +10,7 @@ import { Button, Chip, Select } from '../../../ui/orbit';
 import { profileTarget } from '../../state/overlay-workbench';
 import { useOverlayState } from '../../orbit/use-overlay-state';
 import type { StudioProfileEntry } from '../studio-profile-entry';
-import { useStudioDocument } from '../state/studio-store';
+import { useStudioActions, useStudioDirty, useStudioSelector } from '../state/studio-store';
 
 /** Ancho del selector de perfil en la topbar (`06 § Overlays Studio`). */
 const PROFILE_SELECT_WIDTH = 260;
@@ -32,7 +32,9 @@ export type StudioTopbarControlsProps = {
 export function StudioTopbarControls(props: StudioTopbarControlsProps): React.ReactElement {
   const { profiles, activeFile, onRequestProfileChange } = props;
   const { t } = useI18n();
-  const { dirty, saveState, save } = useStudioDocument();
+  const dirty = useStudioDirty();
+  const saveState = useStudioSelector((s) => s.saveState);
+  const { save } = useStudioActions();
   const overlay = useOverlayState();
   const activeProfile = useMemo(
     () => profiles.find((profile) => profile.file === activeFile),

@@ -8,7 +8,7 @@ import { useI18n } from '../../../i18n/I18nProvider';
 import { STUDIO_WIDGET_ACCESS_MESSAGE_KEY } from '../studio-v3-i18n';
 import { getStudioHotkey } from '../state/studio-hotkeys';
 import { listStudioMonitors, type StudioMonitor } from '../state/studio-monitor-client';
-import { useStudioDocument, useStudioPreview } from '../state/studio-store';
+import { useStudioAccess, useStudioActions, useStudioActiveLayout, useStudioPreview, useStudioSelector } from '../state/studio-store';
 import { clientToLogical, resolveCanvasScale } from './canvas-geometry';
 import { resolveCanvasBackground, safeAreaInsets } from './canvas-backgrounds';
 import { CanvasActionBar } from './CanvasActionBar';
@@ -40,17 +40,13 @@ export type StudioCanvasProps = {
 export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement {
   const { onOpenBrowserView, diagnostics, listMonitors = listStudioMonitors } = props;
   const { t } = useI18n();
-  const {
-    access,
-    document,
-    activeLayout,
-    activeSession,
-    selectedWidgetId,
-    savedDocument,
-    selectWidget,
-    dispatch,
-    notifyAccessDenied,
-  } = useStudioDocument();
+  const access = useStudioAccess();
+  const document = useStudioSelector((s) => s.history?.present ?? null);
+  const activeLayout = useStudioActiveLayout();
+  const activeSession = useStudioSelector((s) => s.activeSession);
+  const selectedWidgetId = useStudioSelector((s) => s.selectedWidgetId);
+  const savedDocument = useStudioSelector((s) => s.history?.saved ?? null);
+  const { selectWidget, dispatch, notifyAccessDenied } = useStudioActions();
   const { preview, setPreview } = useStudioPreview();
   const liveAvailable = useStudioTelemetryLiveAvailable();
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -411,6 +407,7 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
                 profileId={document?.id ?? 'studio-unloaded'}
                 layout={interaction.resolveLayout(widget)}
                 layoutViewportWidth={layoutViewport.width}
+                layoutViewportHeight={layoutViewport.height}
                 previewActive={interaction.isWidgetPreviewActive(widget.id)}
                 selected={selectedWidgetId === widget.id}
                 onSelect={selectWidget}

@@ -38,7 +38,9 @@ configuración propietaria. Assets y sound packs se licencian por separado.
 - HTML interactivo;
 - plan por microcortes;
 - handoff vivo;
-- backlog de GitHub Issues.
+- backlog en el tracker definido por [notion-transition.md](notion-transition.md);
+  durante PREPARACIÓN, nuevos hallazgos fuera del lote se capturan en Notion
+  como pendientes, sin iniciar su implementación.
 
 Conclusiones funcionales similares son legítimas cuando el problema y las
 matemáticas coinciden. Código, contratos, UI, textos, audio y assets son propios.

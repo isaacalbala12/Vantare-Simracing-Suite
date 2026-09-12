@@ -77,7 +77,7 @@ function NeoTemplate({
   );
 }
 
-export function RelativeEndurance({ model, settings }: WidgetRendererProps<RelativeViewModel>) {
+export function RelativeEndurance({ model, settings, motion = "full" }: WidgetRendererProps<RelativeViewModel>) {
   const parsed = parseRelativeEnduranceSettings(settings);
 
   const redlineVariant = REDLINE_VARIANTS[parsed.templateId];
@@ -89,6 +89,7 @@ export function RelativeEndurance({ model, settings }: WidgetRendererProps<Relat
         data-status={model.status}
         data-template={parsed.templateId}
         data-row-height={model.rowHeightMode}
+        data-motion-level={motion}
         className="ven-root ven-relative ven-rel"
       >
         <RelativeRedlineTemplate
@@ -109,6 +110,7 @@ export function RelativeEndurance({ model, settings }: WidgetRendererProps<Relat
         data-status={model.status}
         data-template="relative-neo"
         data-row-height={model.rowHeightMode}
+        data-motion-level={motion}
         className="ven-root ven-relative ven-neor"
       >
         <NeoTemplate model={model} settings={settings} showHeader={parsed.showHeader} />
@@ -125,6 +127,7 @@ export function RelativeEndurance({ model, settings }: WidgetRendererProps<Relat
       data-status={model.status}
       data-template={parsed.templateId}
       data-row-height={model.rowHeightMode}
+      data-motion-level={motion}
       className="ven-root ven-relative"
       style={{ width: "100%" }}
     >

@@ -66,6 +66,18 @@ describe("createTelemetryRateCoordinator", () => {
     coordinator.dispose();
   });
 
+  it("reuses the runtime context reference when only the sequence advances", () => {
+    const coordinator = createTelemetryRateCoordinator();
+    coordinator.setOverlayFrame(performanceFrame(1, null, {}), { state: "live" });
+    const first = coordinator.getOverlayRuntimeContext();
+    coordinator.setOverlayFrame(performanceFrame(2, null, {}), { state: "live" });
+    expect(coordinator.getOverlayRuntimeContext()).toBe(first);
+    coordinator.setOverlayFrame(performanceFrame(3, null, {}, [], 1, "qualifying"), { state: "live" });
+    expect(coordinator.getOverlayRuntimeContext()).not.toBe(first);
+    expect(coordinator.getOverlayRuntimeContext().sessionType).toBe("qualifying");
+    coordinator.dispose();
+  });
+
   it("keeps invalid V2 failures observable until a valid frame arrives", () => {
     const coordinator = createTelemetryRateCoordinator();
     const retained = performanceFrame(1, null, { "racing-flags": "event" });

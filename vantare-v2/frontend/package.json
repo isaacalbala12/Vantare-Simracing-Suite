@@ -42,6 +42,8 @@
     "i18n:audit": "node scripts/i18n-audit.mjs"
   },
   "dependencies": {
+    "@clerk/clerk-js": "6.31.0",
+    "@clerk/ui": "1.32.2",
     "@supabase/supabase-js": "^2.45.0",
     "@wailsio/runtime": "3.0.0-alpha.79",
     "motion": "^12.42.2",

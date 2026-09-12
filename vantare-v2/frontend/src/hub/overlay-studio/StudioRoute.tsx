@@ -32,7 +32,7 @@ import {
   type OverlayStatus,
   type ProfileEntry,
 } from '../state/overlay-workbench';
-import type { AppSettings } from '../settings/settings-contract';
+import { getSettingsStore } from '../settings/settings-store';
 import { DirtyChangesDialog } from './components/DirtyChangesDialog';
 import { ProfileNameDialog } from './components/ProfileNameDialog';
 import { NoActiveProfileState } from './NoActiveProfileState';
@@ -43,7 +43,7 @@ import {
   createWailsStudioEventTransport,
   type StudioProfileClient,
 } from './state/studio-profile-client';
-import { ConnectedStudioProvider, useStudioDocument } from './state/studio-store';
+import { ConnectedStudioProvider, useStudioActions, useStudioDirty, useStudioSelector } from './state/studio-store';
 import { StudioAutosave } from './state/studio-autosave';
 import type { StudioProfileEntry } from './studio-profile-entry';
 
@@ -190,7 +190,24 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
     onNavigationCancel,
   } = props;
   const { t } = useI18n();
-  const { document, lastError } = useStudioDocument();
+  const document = useStudioSelector((s) => s.history?.present ?? null);
+  const lastError = useStudioSelector((s) => s.loadError);
+
+  // El error va primero: cuando la carga falla history queda a null y
+  // `document` nunca llega — con el orden inverso la UI de error era
+  // inalcanzable y el usuario veia un spinner eterno.
+  if (lastError) {
+    return (
+      <div
+        data-testid="studio-route-load-error"
+        className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[720px] flex-col px-6 py-8"
+      >
+        <div className="orbit-alert orbit-alert--danger p-6">
+          {lastError}
+        </div>
+      </div>
+    );
+  }
 
   if (!document) {
     return (
@@ -200,19 +217,6 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
       >
         <div className="rounded-orbit border border-orbit-line bg-orbit-surface-1 p-8 text-sm text-orbit-ink-2">
           {t('studio.v3.route.loadingProfile')}
-        </div>
-      </div>
-    );
-  }
-
-  if (lastError) {
-    return (
-      <div
-        data-testid="studio-route-load-error"
-        className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[720px] flex-col px-6 py-8"
-      >
-        <div className="orbit-alert orbit-alert--danger p-6">
-          {lastError}
         </div>
       </div>
     );
@@ -307,13 +311,14 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
 type StudioRouteNavigationBridgeProps = {
   onDirtyChange(dirty: boolean): void;
   onBindActions(actions: {
-    save(): ReturnType<ReturnType<typeof useStudioDocument>['save']>;
+    save(): ReturnType<ReturnType<typeof useStudioActions>['save']>;
     discardAll(): void;
   }): void;
 };
 
 function StudioRouteNavigationBridge(props: StudioRouteNavigationBridgeProps): null {
-  const { dirty, save, discardAll } = useStudioDocument();
+  const dirty = useStudioDirty();
+  const { save, discardAll } = useStudioActions();
   const { onDirtyChange, onBindActions } = props;
 
   useEffect(() => {
@@ -415,7 +420,9 @@ function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactEl
 
   const [profiles, setProfiles] = useState<ProfileEntry[]>([]);
   const [profilesLoaded, setProfilesLoaded] = useState(false);
-  const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
+  const [activeProfileId, setActiveProfileId] = useState<string | null>(
+    () => getSettingsStore().getActiveOverlayProfileId(),
+  );
   const [editorFile, setEditorFile] = useState<string | null>(null);
   const [mode, setMode] = useState<StudioRouteMode>(() => modeFromTarget(target) ?? 'editor');
   // La shell puede pedir Mis perfiles sin desmontar la ruta: navigate a studio
@@ -446,7 +453,7 @@ function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactEl
   const dirtyRef = useRef(false);
   const pendingCreateNameRef = useRef<string | null>(null);
   const studioActionsRef = useRef<{
-    save(): ReturnType<ReturnType<typeof useStudioDocument>['save']>;
+    save(): ReturnType<ReturnType<typeof useStudioActions>['save']>;
     discardAll(): void;
   } | null>(null);
   const navigationResolverRef = useRef<((decision: 'save' | 'discard' | 'cancel') => void) | null>(
@@ -482,10 +489,11 @@ function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactEl
     const unsubOverlayStatus = Events.On('overlay:status', (event: { data: unknown }) => {
       setOverlayStatus(event.data as OverlayStatus);
     });
-    const unsubSettings = Events.On('settings', (event: { data: AppSettings }) => {
-      if (event.data?.activeOverlayProfileId) {
-        setActiveProfileId(event.data.activeOverlayProfileId);
-      }
+    const settingsStore = getSettingsStore();
+    // Igual que antes: solo un id valido reemplaza; null/empty no borra.
+    const unsubSettings = settingsStore.subscribeActiveOverlayProfileId(() => {
+      const next = settingsStore.getActiveOverlayProfileId();
+      if (next) setActiveProfileId(next);
     });
     const unsubActivated = Events.On('hub:profile-activated', (event: { data: unknown }) => {
       const payload = getPayload<{ activeProfileId?: string }>(event);

@@ -55,13 +55,17 @@ func (section Section) String() string {
 	return sectionNames[section]
 }
 
+// allSections backs AllSections; every consumer only reads it.
+var allSections = [sectionCount]Section{
+	SectionPlayer, SectionControls, SectionDelta, SectionRelative, SectionSpotter,
+	SectionSession, SectionStandings, SectionFuel, SectionDamage, SectionWeather, SectionCapabilities,
+}
+
 // AllSections is ordered by tier and then by declaration so every traversal is
-// deterministic; tests and metrics depend on that order.
+// deterministic; tests and metrics depend on that order. The slice aliases the
+// shared allSections array, so callers must not mutate it.
 func AllSections() []Section {
-	return []Section{
-		SectionPlayer, SectionControls, SectionDelta, SectionRelative, SectionSpotter,
-		SectionSession, SectionStandings, SectionFuel, SectionDamage, SectionWeather, SectionCapabilities,
-	}
+	return allSections[:]
 }
 
 // SectionTier groups sections that share one cadence budget.

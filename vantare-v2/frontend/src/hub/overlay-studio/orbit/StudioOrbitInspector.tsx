@@ -12,7 +12,7 @@ import { DesignSection } from '../inspector/DesignSection';
 import { LayoutSection } from '../inspector/LayoutSection';
 import { WidgetPropertyInspectorView } from '../inspector/WidgetPropertyInspectorView';
 import { resolveInspectorSections } from '../inspector/inspector-sections';
-import { useStudioDocument } from '../state/studio-store';
+import { useStudioAccess, useStudioActions, useStudioActiveLayout, useStudioSelector } from '../state/studio-store';
 import {
   appearanceSummary,
   behaviorSummary,
@@ -97,17 +97,13 @@ function HeaderAction(props: {
  * controles de apariencia) no se pintan: la resolucion sigue siendo suya.
  */
 export function StudioOrbitInspector(): React.ReactElement {
-  const {
-    access,
-    activeLayout,
-    activeSession,
-    selectedWidgetId,
-    document,
-    savedDocument,
-    dispatch,
-    selectWidget,
-    discardAll,
-  } = useStudioDocument();
+  const access = useStudioAccess();
+  const activeLayout = useStudioActiveLayout();
+  const activeSession = useStudioSelector((s) => s.activeSession);
+  const selectedWidgetId = useStudioSelector((s) => s.selectedWidgetId);
+  const document = useStudioSelector((s) => s.history?.present ?? null);
+  const savedDocument = useStudioSelector((s) => s.history?.saved ?? null);
+  const { dispatch, selectWidget, discardAll } = useStudioActions();
   const { t } = useI18n();
   const runtimeContext = useStudioOverlayRuntimeContext();
   const deleteConfirm = useDeleteWidgetConfirm();

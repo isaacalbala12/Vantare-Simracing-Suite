@@ -56,7 +56,10 @@ export function useWidgetMotion<TModel extends { status: string }>(
   const prevRef = useRef<TModel | null>(null);
   const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
   const applyRef = useRef(apply);
-  applyRef.current = apply;
+
+  useLayoutEffect(() => {
+    applyRef.current = apply;
+  });
 
   useEffect(() => {
     const timers = timersRef.current;

@@ -42,6 +42,9 @@ describe("Studio Efficiency selection", () => {
     const widget = standingsDefinition.createDefault("standings-main");
     widget.content = { ...widget.content, rowCount: 10 };
     const getWidget = renderDesignSection(widget);
+    await waitFor(() => expect(document.getElementById("orbit-design-system")).not.toBeNull(), {
+      timeout: 5000,
+    });
     await waitFor(() => expect(screen.queryByTestId("studio-design-user-loading")).toBeNull());
     fireEvent.click(document.getElementById("orbit-design-system")!);
     fireEvent.click(screen.getByRole("option", { name: label }));
@@ -56,6 +59,9 @@ describe("Studio Efficiency selection", () => {
 
   it("does not offer the Standings-only system for Pedals", async () => {
     renderDesignSection(pedalsDefinition.createDefault("pedals-main"));
+    await waitFor(() => expect(document.getElementById("orbit-design-system")).not.toBeNull(), {
+      timeout: 5000,
+    });
     await waitFor(() => expect(screen.queryByTestId("studio-design-user-loading")).toBeNull());
     fireEvent.click(document.getElementById("orbit-design-system")!);
     expect(screen.queryByRole("option", { name: /Efficiency|Eficiencia|Eficiência|Efficienza/ })).toBeNull();

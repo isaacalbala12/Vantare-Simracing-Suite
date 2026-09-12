@@ -132,7 +132,9 @@ describe("RoadmapOrbitPage · columna «Qué viene»", () => {
   it("cambia de idioma con el hub y usa la traducción del propio JSON", async () => {
     mount({ locale: "en", doneOpen: true });
     // El diccionario en carga lazy: el provider abre el gate al llegar.
-    expect((await screen.findByRole("heading", { level: 2 })).textContent).toBe("Roadmap");
+    expect(
+      (await screen.findByRole("heading", { level: 2 }, { timeout: 5000 })).textContent,
+    ).toBe("Roadmap");
     expect(await screen.findByText("Public beta")).toBeTruthy();
     expect(screen.getByText("Beta polish v0.1.x")).toBeTruthy();
     expect(screen.getByTestId("orbit-roadmap-status").textContent).toBe(

@@ -1,5 +1,11 @@
 # Handoff vivo — Telemetry Core
 
+> **Continuidad del tracker:** [transición aprobada](../notion-transition.md).
+> PREPARACIÓN conserva este handoff y las issues del lote; tras el corte, un
+> único handoff Notion lo sustituirá con enlace y snapshot. Las entradas fechadas
+> de abajo conservan su evidencia; no implican que esas PR sigan abiertas hoy.
+
+
 ## Integración autorizada ISA-1002 — 2026-09-06
 
 Preparación sobre nightly `c18f2e6e` (#1001 ya integrado), fuente ISA-996

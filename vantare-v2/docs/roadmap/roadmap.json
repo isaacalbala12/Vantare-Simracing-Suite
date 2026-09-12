@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-12T00:11:08Z",
+  "generatedAt": "2026-09-12T23:16:15Z",
   "digest": {
-    "lastCommit": "e13756ef4505e4012f3012c5ac0773040257d1e3"
+    "lastCommit": "8bcdcced8048c51951c282e0753591acaf9e7df7"
   },
   "phases": [
     {
@@ -2026,6 +2026,50 @@
       }
     },
     {
+      "id": "functional-widget-design",
+      "type": "feature",
+      "title": {
+        "es": "Sistema de diseño Eficiencia",
+        "en": "Efficiency widget design system",
+        "pt": "Sistema de design Eficiência",
+        "it": "Sistema di design Efficienza"
+      },
+      "body": {
+        "es": "Eficiencia ofrece los estilos Signature y Broadcast para Standings desde Studio, con transparencia suave, identidad Vantare, tipografía unificada y selección neutra. Los perfiles y diseños guardan esta selección; el marco adapta columnas y filas en Studio, Desktop y OBS. Entrega opt-in en rama de issue, pendiente de validación física e integración a Nightly. La política de marca según licencia se desarrolla por separado. En ISA-1120 se compararon seis direcciones v2 dentro del Workshop y Isaac eligió Foco como dirección a seguir junto al diseño vigente, pendiente de pasar al catálogo. En ISA-1128 el lenguaje se extiende a Relative, Delta y Pedals con diseño Signature en la rama de issue, en evaluación dentro del Workshop.",
+        "en": "Efficiency offers Signature and Broadcast styles for Standings in Studio, with subtle transparency, Vantare identity, unified typography and neutral selection. Profiles and designs preserve this choice; the frame fits columns and rows across Studio, Desktop and OBS. Opt-in delivery on an issue branch, pending physical validation and Nightly integration. License-based branding is a separate delivery. ISA-1120 compared six v2 directions inside the Workshop and Isaac chose Foco as the direction to pursue alongside the current design, pending catalogue delivery. ISA-1128 extends the language to Relative, Delta and Pedals with a Signature design on the issue branch, under evaluation inside the Workshop.",
+        "pt": "Eficiência oferece os estilos Signature e Broadcast para Standings no Studio, com transparência suave, identidade Vantare, tipografia unificada e seleção neutra. Perfis e desenhos preservam a escolha; o quadro adapta colunas e filas no Studio, Desktop e OBS. Entrega opcional numa branch de issue, pendente de validação física e integração em Nightly. A marca por licença será entregue separadamente. A ISA-1120 comparou seis direções v2 dentro do Workshop e Isaac escolheu Foco como direção a seguir junto ao desenho vigente, pendente de entrar no catálogo. A ISA-1128 estende a linguagem a Relative, Delta e Pedals com design Signature na branch da issue, em avaliação dentro do Workshop.",
+        "it": "Efficienza offre gli stili Signature e Broadcast per Standings in Studio, con trasparenza lieve, identità Vantare, tipografia unificata e selezione neutra. Profili e design conservano la scelta; il riquadro adatta colonne e righe in Studio, Desktop e OBS. Consegna opzionale su branch di issue, in attesa di validazione fisica e integrazione Nightly. Il marchio per licenza sarà consegnato separatamente. ISA-1120 ha confrontato sei direzioni v2 dentro il Workshop e Isaac ha scelto Foco come direzione da seguire insieme al disegno vigente, in attesa di entrare nel catalogo. ISA-1128 estende il linguaggio a Relative, Delta e Pedals con design Signature nel branch della issue, in valutazione dentro il Workshop."
+      },
+      "label": {
+        "es": "ISA-1083",
+        "en": "ISA-1083",
+        "pt": "ISA-1083",
+        "it": "ISA-1083"
+      }
+    },
+    {
+      "id": "widget-access-branding",
+      "type": "plan",
+      "title": {
+        "es": "Acceso y marca por widget",
+        "en": "Widget access and branding",
+        "pt": "Acesso e marca por widget",
+        "it": "Accesso e marchio per widget"
+      },
+      "body": {
+        "es": "Tras completar Standings Eficiencia, unificar los widgets disponibles y la marca integrada según licencia en Studio, Desktop y OBS. Los perfiles se conservarán al cambiar de plan; la marca será obligatoria en los diseños gratuitos que corresponda y opcional en pago. Delta será de pago. Desarrollo separado en ISA-1097.",
+        "en": "After completing Efficiency Standings, unify widget availability and integrated branding by license across Studio, Desktop and OBS. Profiles will survive plan changes; branding will be required on applicable free designs and optional with paid access. Delta will require paid access. Separate delivery in ISA-1097.",
+        "pt": "Após concluir Standings Eficiência, unificar os widgets disponíveis e a marca integrada por licença no Studio, Desktop e OBS. Os perfis serão preservados ao mudar de plano; a marca será obrigatória nos desenhos gratuitos aplicáveis e opcional nos pagos. Delta exigirá acesso pago. Entrega separada em ISA-1097.",
+        "it": "Dopo Standings Efficienza, unificare disponibilità dei widget e marchio integrato per licenza in Studio, Desktop e OBS. I profili saranno conservati al cambio di piano; marchio obbligatorio nei design gratuiti previsti e facoltativo a pagamento. Delta richiederà accesso a pagamento. Consegna separata in ISA-1097."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
       "id": "telemetry-timeline-export",
       "type": "plan",
       "title": {
@@ -2046,9 +2090,71 @@
         "pt": "Plano",
         "it": "Piano"
       }
+    },
+    {
+      "id": "development-continuity",
+      "type": "plan",
+      "title": {
+        "es": "Continuidad de documentación y seguimiento",
+        "en": "Documentation and development continuity",
+        "pt": "Continuidade da documentação e acompanhamento",
+        "it": "Continuità della documentazione e del monitoraggio"
+      },
+      "body": {
+        "es": "Centralizar la documentación y el seguimiento del desarrollo conservando el historial y distinguiendo trabajo pendiente, validado y publicado.",
+        "en": "Centralize documentation and development tracking while preserving history and distinguishing pending, validated and published work.",
+        "pt": "Centralizar a documentação e o acompanhamento do desenvolvimento, preservando o histórico e distinguindo trabalho pendente, validado e publicado.",
+        "it": "Centralizzare la documentazione e il monitoraggio dello sviluppo, conservando lo storico e distinguendo lavoro in attesa, verificato e pubblicato."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
     }
   ],
   "delivered": [
+    {
+      "date": "2026-09-13",
+      "entries": [
+        {
+          "kind": "fix",
+          "scope": "estrategia",
+          "text": "Presupuesto de trabajo por tamaño en Orbit en vez de deadline de pared"
+        }
+      ]
+    },
+    {
+      "date": "2026-09-12",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Store externo con selectores bajo el contexto documento (ISA-1149 B1)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Fanout Wails por dominio — settings y license"
+        },
+        {
+          "kind": "perf",
+          "scope": "hub",
+          "text": "Blur condicional por nivel de rendimiento en la shell"
+        },
+        {
+          "kind": "perf",
+          "scope": "telemetry",
+          "text": "Sin allocs por tick en mapper y AllSections"
+        },
+        {
+          "kind": "docs",
+          "scope": "roadmap",
+          "text": "Etapas hacia beta pública, versiones y lanzamiento"
+        }
+      ]
+    },
     {
       "date": "2026-09-11",
       "entries": [
@@ -2621,61 +2727,6 @@
           "kind": "change",
           "scope": "",
           "text": "HUD-ORBIT — porte completo de Command Orbit v0.3 al hub"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-17",
-      "entries": [
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "HUD-ORBIT-00 — Command Orbit v0.3: prototipo aprobado + paquete de diseño para el porte"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-16",
-      "entries": [
-        {
-          "kind": "fix",
-          "scope": "overlay",
-          "text": "Spatial capability, collapsing relative ghost and real FLIP motion"
-        },
-        {
-          "kind": "feat",
-          "scope": "ui",
-          "text": "Escala proporcional de escritorio 1080p a 32:9 4K (overlay + hub)"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "TM-04 posición de cada coche sobre el mapa"
-        },
-        {
-          "kind": "feat",
-          "scope": "transport",
-          "text": "TM/TC medir el ahorro real de publicar deltas de Overlay"
-        },
-        {
-          "kind": "feat",
-          "scope": "overlay",
-          "text": "Modo edicion in-place por hotkey (Ctrl+Shift+E) - isa-401"
-        },
-        {
-          "kind": "fix",
-          "scope": "relative",
-          "text": "Seleccionar vecinos físicos 2+2"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Persistencia privada de capturas del Testing Center"
-        },
-        {
-          "kind": "docs",
-          "scope": "release",
-          "text": "Add Nightly 9 canonical manifest"
         }
       ]
     }

@@ -7,6 +7,7 @@
  * la capa Orbit es presentacion y nada mas.
  */
 import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import { getOfficialDesign } from "../../../overlay/design-systems/official-designs";
 import type { StudioPreviewState } from "../state/studio-store";
 import { ORBIT_KEYS, orbitStore } from "../../orbit/orbit-store";
 
@@ -30,9 +31,19 @@ export function systemLabel(widget: WidgetInstanceV3, t: Translate): string {
   return label === key ? widget.visual.systemId : label;
 }
 
+function designLabel(widget: WidgetInstanceV3): string | undefined {
+  const provenance = widget.visual.provenance;
+  const official = provenance?.origin === "vantare" ? getOfficialDesign(provenance.designId) : undefined;
+  if (official?.widgetType === widget.type && official.systemId === widget.visual.systemId &&
+      official.systemVersion === widget.visual.systemVersion && official.configVersion === widget.visual.configVersion) {
+    return official.name;
+  }
+  return provenance?.designName?.trim();
+}
+
 /** "Vantare Crystal · Crystal Bar" — el diseno solo aparece si hay procedencia. */
 export function designSummary(widget: WidgetInstanceV3, t: Translate): string {
-  const design = widget.visual.provenance?.designName?.trim();
+  const design = designLabel(widget);
   return [systemLabel(widget, t), design].filter(Boolean).join(" · ");
 }
 
@@ -96,7 +107,7 @@ export function layoutSummary(widget: WidgetInstanceV3, t: Translate): string {
  * unico que se sabe del widget.
  */
 export function inspectorMeta(widget: WidgetInstanceV3, t: Translate): string {
-  const design = widget.visual.provenance?.designName?.trim() || systemLabel(widget, t);
+  const design = designLabel(widget) || systemLabel(widget, t);
   return fill(t("studio.inspector.meta"), {
     design,
     w: Math.round(widget.layout.w),

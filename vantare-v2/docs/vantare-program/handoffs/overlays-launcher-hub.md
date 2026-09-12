@@ -224,8 +224,10 @@ registro público de licencia coinciden embebidos mediante su representación
 base64, sin copiar ni mostrar valores. `bin/vantare.exe` mide 29.957.632 bytes
 y tiene SHA-256
 `465444F142848FD2AFD4B4FD0B1DF05E535631170D25C43CE8CE351EF5049344`.
-La base se actualizó a `origin/nightly@5fa9450b`; su nuevo roadmap de beta se
-conservó y el digest se regeneró desde `plan.md`. Esta build todavía requiere
+La base se actualizó a `origin/nightly@079fbfe3`; su nuevo roadmap de beta y
+la integración oficial de #1170 se conservaron. La resolución mantiene
+`AllSections` devuelto por valor para no exponer el array global mutable del
+PR original, y el digest se regeneró desde `plan.md`. Esta build todavía requiere
 el smoke manual conjunto antes de integrar a Nightly y no acredita la
 equivalencia de bandera durante una sesión LMU activa.
 

@@ -1,5 +1,6 @@
 /** Catalogo `studio.*` di Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
 export const studioOrbitIt: Record<string, string> = {
+  "studio.inspector.content.towerPreview": "Tower Preview: composizione fissa, ancora senza animazioni né modifica delle colonne. Le colonne vengono conservate per gli altri design. Marca e numero appaiono solo se forniti dalla fonte. Regola le dimensioni sulla tela e il numero di righe qui.",
   "studio.column.eyebrow": "Widget",
   "studio.column.search": "Cerca widget…",
   "studio.column.searchAria": "Cerca widget del profilo",
@@ -64,7 +65,9 @@ export const studioOrbitIt: Record<string, string> = {
   "studio.inspector.section.design": "Design",
   "studio.inspector.section.appearance": "Aspetto",
   "studio.inspector.section.behavior": "Comportamento",
+  "studio.inspector.section.content": "Contenuto",
   "studio.inspector.section.layout": "Layout",
+  "studio.inspector.section.actions": "Azioni",
   "studio.inspector.section.design.help":
     "Scegli il sistema visivo e il design con cui viene disegnato questo widget.",
   "studio.inspector.section.appearance.help":
@@ -182,4 +185,13 @@ export const studioOrbitIt: Record<string, string> = {
   "studio.topbar.performanceInherit": "Eredita dall'app",
   "studio.topbar.performanceLevel": "Livello del profilo",
   "studio.topbar.performanceEffective": "Livello effettivo",
+  "studio.obs.eyebrow": "OBS",
+  "studio.obs.title": "OBS Browser Source",
+  "studio.obs.hint": "Incolla questo URL in una sorgente «Browser» di OBS Studio per trasmettere l'overlay che stai modificando.",
+  "studio.obs.url": "URL dell'overlay per OBS",
+  "studio.obs.copy": "Copia URL",
+  "studio.obs.copied": "Copiato",
+  "studio.obs.copyInstructions": "Copia istruzioni",
+  "studio.obs.copiedInstructions": "Istruzioni copiate",
+  "studio.obs.instructions": "1. Apri OBS Studio e aggiungi una sorgente «Browser».\n2. Incolla questo URL: {{url}}\n3. Larghezza 1920, Altezza 1080 (o la risoluzione del tuo canvas).\n4. Tieni Vantare aperto perché l'overlay riceva dati live.",
 };

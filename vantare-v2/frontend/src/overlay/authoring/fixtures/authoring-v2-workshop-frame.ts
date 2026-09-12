@@ -138,6 +138,12 @@ export function buildWorkshopWidget(input: {
   brand?: "off";
   modules?: readonly string[];
   slots?: readonly string[];
+  /** Laboratorio tower de Redline (ISA-1071, dev): viaja por el contrato
+   *  visual/settings como appearanceOverrides, igual que en producción. */
+  redlineTheme?: "classic" | "tower";
+  redlineSelection?: "legacy" | "glow" | "frame" | "plate";
+  redlineHeader?: "current" | "signature" | "session" | "compact";
+  redlineOpacity?: number;
 }): WidgetInstanceV3 {
   let widget = createScenarioWidget({
     widget: input.widget,
@@ -196,6 +202,24 @@ export function buildWorkshopWidget(input: {
       visual: {
         ...widget.visual,
         appearanceOverrides: { ...(widget.visual.appearanceOverrides ?? {}), footerSlots: [...input.slots] },
+      },
+    };
+  }
+
+  // Laboratorio tower de Redline: solo standings Endurance — el renderer lo
+  // re-valida en parseStandingsEnduranceSettings antes de dibujar.
+  if (input.widget === "standings" && input.system === "vantare-endurance") {
+    widget = {
+      ...widget,
+      visual: {
+        ...widget.visual,
+        appearanceOverrides: {
+          ...(widget.visual.appearanceOverrides ?? {}),
+          ...(input.redlineTheme ? { redlineTheme: input.redlineTheme } : {}),
+          ...(input.redlineSelection ? { redlineSelection: input.redlineSelection } : {}),
+          ...(input.redlineHeader ? { redlineHeader: input.redlineHeader } : {}),
+          ...(input.redlineOpacity !== undefined ? { redlineSurfaceOpacity: input.redlineOpacity } : {}),
+        },
       },
     };
   }

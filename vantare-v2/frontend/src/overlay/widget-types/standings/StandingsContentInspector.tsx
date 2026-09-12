@@ -14,6 +14,7 @@ import {
 } from './standings-content';
 import {
   isStandingsRedlineWidget,
+  isStandingsRedlineTowerVisual,
   resolveStandingsRedlineRequiredWidth,
 } from './standings-redline-layout';
 
@@ -110,7 +111,8 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
   const { widget, disabled, onContentChange } = props;
   const { t } = useI18n();
   const content = parseStandingsContent(widget.content);
-  const redline = isStandingsRedlineWidget(widget);
+  const tower = isStandingsRedlineTowerVisual(widget.type, widget.visual);
+  const redline = !tower && isStandingsRedlineWidget(widget);
   const requiredWidth = redline ? resolveStandingsRedlineRequiredWidth(content) : 0;
   const flexibleColumns = redline
     ? content.columns.filter((column) => !REDLINE_FIXED_METRICS.has(column.metricId))
@@ -163,7 +165,7 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
           </p>
         ) : null}
 
-        <ul className="orbit-studio-cols" data-testid="studio-standings-columns">
+        {tower ? <p role="status" data-testid="studio-standings-tower-preview">{t('studio.inspector.content.towerPreview')}</p> : <ul className="orbit-studio-cols" data-testid="studio-standings-columns">
           {content.columns.map((column, index) => {
             const name = templateLabel(column.id);
             const align = (column.style?.align ?? 'left') as AlignOption;
@@ -276,7 +278,7 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
               </li>
             );
           })}
-        </ul>
+        </ul>}
       </div>
     );
   }

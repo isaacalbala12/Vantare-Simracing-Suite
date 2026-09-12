@@ -11,6 +11,7 @@ import {
 import type { WidgetRuntimeInput } from "../core/widget-definition";
 import { getAnimationScene } from "./fixtures/animation-scenes";
 import { interpolateSceneAt, sampleAtRate, sceneDurationMs } from "./fixtures/scene-interpolation";
+import { REDLINE_TOWER_REFERENCE } from "./fixtures/redline-tower-reference";
 import {
   parseOverlayWorkshopQuery,
   serializeOverlayWorkshopQuery,
@@ -30,18 +31,32 @@ function setSearch(query: OverlayWorkshopQuery): void {
 function WorkshopSurface({ widget, runtime, profileId, surface, query, comparison = false }: { widget: WidgetInstanceV3; runtime: WidgetRuntimeInput; profileId: string; surface: OverlayWorkshopQuery["surface"]; query: OverlayWorkshopQuery; comparison?: boolean }): React.ReactElement {
   const width = query.width ?? widget.layout.w;
   const height = query.height ?? widget.layout.h;
+  // Tower reference mode (ISA-1071): the productive renderer runs against the
+  // static HTML study's fixture instead of telemetry, on a labeled canvas.
+  const reference = query.redlineData === "reference" && query.widget === "standings" && query.redlineTheme === "tower" && query.state === "ready" && !query.sceneId;
+  const margin = reference ? 80 : 0;
   const runtimeInput = {
     ...runtime,
     relativeViewModelInstanceKey: `${profileId}:${widget.id}`,
   };
-  return <div className="overlay-workshop-surface" data-overlay-workshop-surface={surface} data-overlay-workshop-comparison={comparison || undefined}>
-    {surface !== "obs" && <span className="overlay-workshop-surface-label">{surface}</span>}
-    <div className="overlay-workshop-widget-root" data-overlay-workshop-widget-root style={{ width, height, transform: `scale(${query.scale})`, transformOrigin: "center" }}>
+  const host = (
+    <div className="overlay-workshop-widget-root" data-overlay-workshop-widget-root style={{ width, height, transform: reference ? undefined : `scale(${query.scale})`, transformOrigin: reference ? "top left" : "center" }}>
       <WidgetVisualViewport widgetType={widget.type} visual={widget.visual} layout={{ ...widget.layout, w: width, h: height }} testId="overlay-workshop-viewport">
         <WidgetVisualHost widget={{ ...widget, layout: { ...widget.layout, w: width, h: height } }} renderMode={surface}
+          authoringModel={reference ? REDLINE_TOWER_REFERENCE : undefined}
           runtime={widget.type === "engineer-radio" ? { ...runtimeInput, engineerPresentation: query.state === "ready" ? buildEngineerPresentationFixture() : null } : runtimeInput} />
       </WidgetVisualViewport>
     </div>
+  );
+  return <div className="overlay-workshop-surface" data-overlay-workshop-surface={surface} data-overlay-workshop-comparison={comparison || undefined}>
+    {surface !== "obs" && <span className="overlay-workshop-surface-label">{surface}</span>}
+    {reference ? (
+      <div style={{ width: (width + margin * 2) * query.scale, height: (height + margin * 2) * query.scale }}>
+        <div className={`overlay-workshop-reference-canvas overlay-workshop-reference-canvas--${query.background}`} style={{ width: width + margin * 2, height: height + margin * 2, padding: margin, transform: `scale(${query.scale})`, transformOrigin: "top left" }}>
+          {host}
+        </div>
+      </div>
+    ) : host}
   </div>;
 }
 
@@ -54,9 +69,9 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
 
   // El widget es una función pura de la selección completa: buildWorkshopWidget
   // es el ÚNICO lugar que decide su forma (variante → diseño → sesión → marca
-  // → módulos). Sin preparación diferida — lo que la URL dice es lo que se
-  // renderiza, y una combinación inválida cae al error visible con los
-  // controles vivos.
+  // → módulos → laboratorio tower). Sin preparación diferida — lo que la URL
+  // dice es lo que se renderiza, y una combinación inválida cae al error
+  // visible con los controles vivos.
   const built = useMemo(() => {
     try {
       return { widget: buildWorkshopWidget(parsed), error: null as string | null };

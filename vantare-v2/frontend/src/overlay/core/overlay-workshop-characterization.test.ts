@@ -47,11 +47,12 @@ describe("Overlay Workshop characterization", () => {
     expect(designSystemRegistry.list().map((system) => [system.id, system.widgets.length])).toEqual([
       ["vantare-original", 18], ["vantare-crystal", 19], ["vantare-endurance", 5], ["vantare-functional", 4], ["vantare-iracing", 1],
     ]);
-    expect(designs).toHaveLength(71);
+    expect(designs).toHaveLength(72);
     expect(designs.filter((design) => design.systemId === "vantare-functional").map((design) => design.id)).toEqual([
       "standings-functional-compact", "standings-functional-broadcast",
       "relative-functional-signature", "delta-functional-signature", "delta-functional-capsule", "pedals-functional-signature",
     ]);
+    expect(designs.find((design) => design.id === "standings-endurance-redline-tower")?.isDefault).not.toBe(true);
     expect(crystal).toHaveLength(22);
     expect(new Set(crystal.map((design) => design.widgetType)).size).toBe(19);
     expect(crystal.find((design) => design.id === "engineer-radio-crystal")?.widgetType).toBe("engineer-radio");

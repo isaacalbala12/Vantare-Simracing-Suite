@@ -6,7 +6,7 @@ import { useLicense } from '../../../lib/license';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { TelemetrySourceStatus } from '../../../telemetry-transport/source-status';
 import type { TestingCenterChannel } from '../../testing-center/contracts';
-import { useLauncherSnapshot } from '../../launcher/launcher-store';
+import { useLauncherProfiles } from '../../launcher/launcher-store';
 import { profileLabel, profileTarget, type ProfileEntry } from '../../state/overlay-workbench';
 import { type Section } from '../../navigation';
 import { formatMessage } from '../../orbit/format-message';
@@ -17,6 +17,7 @@ import { ScheduleReviewNotice } from '../../settings-orbit/ScheduleReviewNotice'
 import { useCalendarStarts } from '../../orbit/use-calendar-starts';
 import { OrbitSimStatusContext } from '../../orbit/sim-status-context';
 import { useOverlayState } from '../../orbit/use-overlay-state';
+import { useOrbitPerfEffects } from '../../orbit/use-orbit-perf-effects';
 import { useOrbitResponsiveZoom } from '../../orbit/use-orbit-responsive-zoom';
 import {
   canSeeView,
@@ -35,6 +36,13 @@ import {
   useNotificationPreferences,
 } from '../../settings/notification-preferences';
 import type { UpdateInfo } from '../../settings/settings-contract';
+import {
+  subscribeUpdaterAvailable,
+  subscribeUpdaterError,
+  subscribeUpdaterInstalled,
+  subscribeUpdaterNotify,
+  subscribeUpdaterProgress,
+} from '../../settings/updater-events';
 import { CommandPalette, type PaletteItem } from './CommandPalette';
 import { ContextColumn, type ContextColumnBlock } from './ContextColumn';
 import { OrbitKeepAlive } from './OrbitKeepAlive';
@@ -130,7 +138,7 @@ function OrbitShellBody({
   const { result: license } = useLicense();
   const overlay = useOverlayState();
   const races = useCalendarStarts();
-  const launcher = useLauncherSnapshot();
+  const launcherProfiles = useLauncherProfiles();
   const notificationPreferences = useNotificationPreferences();
 
   const activeView = sectionToView(activeSection);
@@ -159,14 +167,21 @@ function OrbitShellBody({
   // escala. Como el tema, vive y muere con la shell.
   useOrbitResponsiveZoom();
 
+  // El presupuesto de efectos que publica Go (`performance:level`) llega a la
+  // CSS como `:root[data-orbit-perf-effects]`: con "noBlur"/"flat" la shell
+  // deja de difuminar fondos (ISA-1150). Imperativo, sin re-render.
+  useOrbitPerfEffects();
+
   // El tema Orbit solo se aplica mientras la shell está montada y **no** se
   // guarda como preferencia: al apagar el flag vuelve el tema del usuario.
   useEffect(() => applyOrbitThemeWhileMounted(), []);
 
-  // Actualización: misma señal que UpdateBanner, sin duplicar su UI.
+  // Actualización: misma señal que UpdateBanner, sin duplicar su UI. Los
+  // canales pasan por el fanout de updater-events.ts (un Events.On de Wails
+  // por canal); cada listener recibe `event.data` ya desenvuelto.
   useEffect(() => {
-    const unsubNotify = Events.On('updater:notify', (event: { data?: { tag?: string } }) => {
-      const tag = event.data?.tag ?? '';
+    const unsubNotify = subscribeUpdaterNotify((data) => {
+      const tag = (data as { tag?: string } | undefined)?.tag ?? '';
       tagRef.current = tag;
       setUpdateTag(tag);
       setUpdate('available');
@@ -175,26 +190,22 @@ function OrbitShellBody({
     // completa, que es donde vienen las notas de cada release pendiente. Sin
     // esto habría que pedir otra comprobación solo para poder contar qué trae
     // la versión, es decir, una llamada de red por pasar el ratón.
-    const unsubAvailable = Events.On(
-      'updater:available',
-      (event: { data?: { info?: UpdateInfo } }) => {
-        if (event.data?.info) setUpdateInfo(event.data.info);
-      },
-    );
+    const unsubAvailable = subscribeUpdaterAvailable((data) => {
+      const info = (data as { info?: UpdateInfo } | undefined)?.info;
+      if (info) setUpdateInfo(info);
+    });
     // El porcentaje llega en el evento y antes se tiraba: el pill anunciaba
     // «Descargando… 0%» durante toda la descarga.
-    const unsubProgress = Events.On(
-      'updater:progress',
-      (event: { data?: { percent?: number } }) => {
-        setUpdatePercent(Math.max(0, Math.min(100, Math.round(event.data?.percent ?? 0))));
-        setUpdate('downloading');
-      },
-    );
+    const unsubProgress = subscribeUpdaterProgress((data) => {
+      const percent = (data as { percent?: number } | undefined)?.percent;
+      setUpdatePercent(Math.max(0, Math.min(100, Math.round(percent ?? 0))));
+      setUpdate('downloading');
+    });
     // El instalador ya corre y va a cerrar la app. Nadie emitia `updater:ready`,
     // asi que sin esto el pill se quedaba en «Descargando…» hasta el final.
-    const unsubInstalled = Events.On('updater:installed', () => setUpdate('installing'));
+    const unsubInstalled = subscribeUpdaterInstalled(() => setUpdate('installing'));
     // Una descarga que falla no puede dejar el aviso descargando para siempre.
-    const unsubError = Events.On('updater:error', () => {
+    const unsubError = subscribeUpdaterError(() => {
       setUpdatePercent(0);
       // Se vuelve a «disponible» solo si sabemos que version anunciar: la
       // etiqueta es «v{{v}}» y sin tag quedaba una «v» suelta.
@@ -320,15 +331,6 @@ function OrbitShellBody({
     },
     [t, toast],
   );
-
-  const launcherProfiles = useMemo(() => {
-    const all = [...(launcher?.userProfiles ?? []), ...(launcher?.vantareProfiles ?? [])];
-    return all.map((profile) => ({
-      id: profile.id,
-      name: profile.name,
-      steps: profile.steps?.length ?? 0,
-    }));
-  }, [launcher]);
 
   const blocks: ContextColumnBlock[] = useMemo(
     () => [

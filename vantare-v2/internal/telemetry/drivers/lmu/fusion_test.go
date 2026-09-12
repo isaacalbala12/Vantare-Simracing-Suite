@@ -352,7 +352,7 @@ func TestFusionPreferredFallbackPartialRecoveryAndZero(t *testing.T) {
 	if batch.CompletedLaps.Freshness() != schema.FreshnessMissing {
 		t.Fatalf("REST created completed laps without SHM player identity: %v", batch.CompletedLaps.Freshness())
 	}
-	if batch.Source != SourceCanonical || len(batch.Decisions) != len(AuthorityMatrix()) || batch.REST != (RESTObservation{}) {
+	if batch.Source != SourceCanonical || len(batch.Decisions) != len(AuthorityMatrix()) || !reflect.DeepEqual(batch.REST, RESTObservation{}) {
 		t.Fatalf("canonical metadata = %#v", batch)
 	}
 
@@ -510,7 +510,7 @@ func TestOverlapNormalizationsAreEquivalent(t *testing.T) {
 			if present {
 				rows = []restStanding{{Player: true, Position: 1}}
 			}
-			updateStandingsFields(&cache, rows, time.Time{}, monotonicStamp{elapsed: 0, set: true})
+			updateStandingsFields(&cache, rows, restResponse{receivedUTC: time.Time{}, receivedMono: monotonicStamp{elapsed: 0, set: true}})
 			restValue, _ := cache.playerPresent.Field.Value()
 			shmValue, _ := observed(present).Value()
 			if shmValue != restValue {

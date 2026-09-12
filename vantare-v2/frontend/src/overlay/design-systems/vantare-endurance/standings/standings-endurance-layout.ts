@@ -111,3 +111,5 @@ export function measureStandingsFlowHeight(options: Readonly<{
     + Math.max(0, groups - 1) * metrics.extraGroupHeight
     + Math.max(0, Math.trunc(options.battleBoxCount ?? 0)) * REDLINE_BATTLE_BOX_EXTRA_HEIGHT_PX;
 }
+// Measured row rhythm of the approved HTML tower, distinct from the 30px table.
+export const REDLINE_TOWER_ROW_HEIGHTS = [73, 71, 72, 73, 73, 73, 73, 74, 76, 74, 74, 76] as const;

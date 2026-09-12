@@ -5,6 +5,7 @@ import {
   LauncherStoreProvider,
   createLauncherStore,
   type LauncherBridgeLike,
+  useLauncherProfiles,
   useLauncherSnapshot,
 } from "./launcher-store";
 
@@ -91,5 +92,61 @@ describe("launcher store", () => {
     const store = createLauncherStore(bridge);
     store.discoverApps();
     expect(bridge.dispatchLauncherCommand).toHaveBeenCalledTimes(1);
+  });
+
+  it("useLauncherProfiles no repinta cuando solo cambian otros campos", () => {
+    let receiveSnapshot: ((value: LauncherSnapshot) => void) | undefined;
+    const bridge: LauncherBridgeLike = {
+      subscribeSnapshot: vi.fn((listener) => {
+        receiveSnapshot = listener;
+        return vi.fn();
+      }),
+      requestSnapshot: vi.fn(),
+      dispatchLauncherCommand: vi.fn(),
+    };
+    const store = createLauncherStore(bridge);
+    let renders = 0;
+
+    function Consumer() {
+      renders += 1;
+      const profiles = useLauncherProfiles();
+      return <output data-testid="count">{profiles.length}</output>;
+    }
+
+    render(
+      <LauncherStoreProvider store={store}>
+        <Consumer />
+      </LauncherStoreProvider>,
+    );
+    const afterMount = renders;
+    // Snapshot con perfiles nuevos: notifica.
+    act(() =>
+      receiveSnapshot?.({
+        ...snapshot,
+        userProfiles: [{ id: "p1", name: "GT3", steps: [] } as never],
+      }),
+    );
+    expect(renders).toBeGreaterThan(afterMount);
+    expect(screen.getByTestId("count").textContent).toBe("1");
+    const afterProfiles = renders;
+    // Mismos perfiles proyectados (refs nuevas), apps cambiaron: no repinta.
+    act(() =>
+      receiveSnapshot?.({
+        ...snapshot,
+        revision: 9,
+        apps: [{ id: "x" } as never],
+        userProfiles: [{ id: "p1", name: "GT3", steps: [] } as never],
+      }),
+    );
+    expect(renders).toBe(afterProfiles);
+    // Cadena activa no repinta al consumidor de perfiles.
+    act(() =>
+      receiveSnapshot?.({
+        ...snapshot,
+        activeChains: [{ profileId: "p1", status: "running" } as never],
+        userProfiles: [{ id: "p1", name: "GT3", steps: [] } as never],
+      }),
+    );
+    expect(renders).toBe(afterProfiles);
   });
 });

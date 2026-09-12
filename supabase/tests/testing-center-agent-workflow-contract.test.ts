@@ -128,6 +128,22 @@ Deno.test("workflow exposes only the two approved triggers with read-only conten
   ) assertNotMatch(workflow, forbidden);
 });
 
+Deno.test("job environments do not resolve runner context before dispatch", async () => {
+  const workflow = normalize(await Deno.readTextFile(workflowPath));
+  // GitHub validates job env before a runner exists, including disabled jobs.
+  // Step env can use runner.temp; only inspect the job-level env mappings here.
+  const jobEnvironments = workflow.matchAll(
+    /^    env:\n((?: {6,}.*\n|\n)*)/gm,
+  );
+  for (const [, environment] of jobEnvironments) {
+    for (
+      const [, expression] of environment.matchAll(/\$\{\{([\s\S]*?)\}\}/g)
+    ) {
+      assertNotMatch(expression, /\brunner\s*(?:\.|\[)/);
+    }
+  }
+});
+
 Deno.test("manual fixture is isolated allowlisted and runs only the local cached contract", async () => {
   const workflow = normalize(await Deno.readTextFile(workflowPath));
   const fixture = jobBlock(workflow, "fixture");

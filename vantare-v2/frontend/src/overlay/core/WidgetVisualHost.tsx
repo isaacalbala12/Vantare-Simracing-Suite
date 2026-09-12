@@ -5,7 +5,7 @@ import { widgetTypeRegistry } from "./widget-registry";
 import { prepareWidgetVisualSettings } from "./widget-visual-settings";
 import { WidgetRenderBoundary } from "./WidgetRenderBoundary";
 import type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagnostics";
-import type { WidgetRuntimeInput } from "./widget-definition";
+import type { WidgetRuntimeInput, WidgetViewModelBase } from "./widget-definition";
 import { getOverlayV2ViewModelEntry } from "./overlay-v2-view-models";
 import { resolveMotionLevel, useReducedMotion } from "./widget-motion";
 import { buildSettledRelativeViewModelV2 } from "../widget-types/relative/relative-view-model-v2";
@@ -20,6 +20,8 @@ export type WidgetVisualHostProps = {
   onDiagnostic?: (diagnostic: WidgetDiagnostic) => void;
   diagnostics?: WidgetDiagnosticCollector;
   runtime?: WidgetRuntimeInput;
+  /** Explicit visual-authoring fixture. Never accepted by a production build. */
+  authoringModel?: WidgetViewModelBase;
 };
 
 function reportDiagnostic(
@@ -196,6 +198,9 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
     reportDiagnostic(props, "overlay-v2-stale", staleMessage);
   }
 
+  const visualModel = import.meta.env.DEV && props.authoringModel?.type === widget.type
+    ? props.authoringModel
+    : model;
   return (
     <>
       {staleMessage
@@ -207,7 +212,7 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
         systemId={widget.visual.systemId}
         onError={(error) => reportDiagnostic(props, "renderer-exception", error.message)}
       >
-        <Renderer model={model} settings={settings} renderMode={renderMode} layout={widget.layout} motion={motion} effects={effects} />
+        <Renderer model={visualModel} settings={settings} renderMode={renderMode} layout={widget.layout} motion={motion} effects={effects} />
       </WidgetRenderBoundary>
     </>
   );

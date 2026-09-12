@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
 import { ListRow } from "../../../ui/orbit/ListRow";
 import { formatMessage } from "../../orbit/format-message";
 import { formatCountdown, formatStartTime } from "../../orbit/next-starts";
+import { useNow } from "../../orbit/use-now";
 import type { RaceStart } from "../../orbit/race-starts";
 
 /** Salidas que caben en el bloque persistente de la columna. */
@@ -27,15 +27,7 @@ export function SideRaces({
   now,
   className,
 }: SideRacesProps) {
-  const [tick, setTick] = useState(() => (now ?? new Date()).getTime());
-
-  useEffect(() => {
-    if (now) return;
-    const id = window.setInterval(() => setTick(Date.now()), 1000);
-    return () => window.clearInterval(id);
-  }, [now]);
-
-  const reference = new Date(now ? now.getTime() : tick);
+  const reference = useNow(now);
   const rows = starts.filter((start) => start.at.getTime() >= reference.getTime()).slice(0, ROWS);
 
   return (

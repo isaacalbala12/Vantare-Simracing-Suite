@@ -36,6 +36,13 @@ import {
   useNotificationPreferences,
 } from '../../settings/notification-preferences';
 import type { UpdateInfo } from '../../settings/settings-contract';
+import {
+  subscribeUpdaterAvailable,
+  subscribeUpdaterError,
+  subscribeUpdaterInstalled,
+  subscribeUpdaterNotify,
+  subscribeUpdaterProgress,
+} from '../../settings/updater-events';
 import { CommandPalette, type PaletteItem } from './CommandPalette';
 import { ContextColumn, type ContextColumnBlock } from './ContextColumn';
 import { OrbitKeepAlive } from './OrbitKeepAlive';
@@ -169,10 +176,12 @@ function OrbitShellBody({
   // guarda como preferencia: al apagar el flag vuelve el tema del usuario.
   useEffect(() => applyOrbitThemeWhileMounted(), []);
 
-  // Actualización: misma señal que UpdateBanner, sin duplicar su UI.
+  // Actualización: misma señal que UpdateBanner, sin duplicar su UI. Los
+  // canales pasan por el fanout de updater-events.ts (un Events.On de Wails
+  // por canal); cada listener recibe `event.data` ya desenvuelto.
   useEffect(() => {
-    const unsubNotify = Events.On('updater:notify', (event: { data?: { tag?: string } }) => {
-      const tag = event.data?.tag ?? '';
+    const unsubNotify = subscribeUpdaterNotify((data) => {
+      const tag = (data as { tag?: string } | undefined)?.tag ?? '';
       tagRef.current = tag;
       setUpdateTag(tag);
       setUpdate('available');
@@ -181,26 +190,22 @@ function OrbitShellBody({
     // completa, que es donde vienen las notas de cada release pendiente. Sin
     // esto habría que pedir otra comprobación solo para poder contar qué trae
     // la versión, es decir, una llamada de red por pasar el ratón.
-    const unsubAvailable = Events.On(
-      'updater:available',
-      (event: { data?: { info?: UpdateInfo } }) => {
-        if (event.data?.info) setUpdateInfo(event.data.info);
-      },
-    );
+    const unsubAvailable = subscribeUpdaterAvailable((data) => {
+      const info = (data as { info?: UpdateInfo } | undefined)?.info;
+      if (info) setUpdateInfo(info);
+    });
     // El porcentaje llega en el evento y antes se tiraba: el pill anunciaba
     // «Descargando… 0%» durante toda la descarga.
-    const unsubProgress = Events.On(
-      'updater:progress',
-      (event: { data?: { percent?: number } }) => {
-        setUpdatePercent(Math.max(0, Math.min(100, Math.round(event.data?.percent ?? 0))));
-        setUpdate('downloading');
-      },
-    );
+    const unsubProgress = subscribeUpdaterProgress((data) => {
+      const percent = (data as { percent?: number } | undefined)?.percent;
+      setUpdatePercent(Math.max(0, Math.min(100, Math.round(percent ?? 0))));
+      setUpdate('downloading');
+    });
     // El instalador ya corre y va a cerrar la app. Nadie emitia `updater:ready`,
     // asi que sin esto el pill se quedaba en «Descargando…» hasta el final.
-    const unsubInstalled = Events.On('updater:installed', () => setUpdate('installing'));
+    const unsubInstalled = subscribeUpdaterInstalled(() => setUpdate('installing'));
     // Una descarga que falla no puede dejar el aviso descargando para siempre.
-    const unsubError = Events.On('updater:error', () => {
+    const unsubError = subscribeUpdaterError(() => {
       setUpdatePercent(0);
       // Se vuelve a «disponible» solo si sabemos que version anunciar: la
       // etiqueta es «v{{v}}» y sin tag quedaba una «v» suelta.

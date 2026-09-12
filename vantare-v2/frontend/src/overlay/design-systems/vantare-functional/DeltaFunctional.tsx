@@ -5,15 +5,19 @@ import type { WidgetRendererProps } from "../../core/design-system-definition";
 import { useWidgetMotion } from "../../core/widget-motion";
 import type { DeltaViewModel } from "../../widget-types/delta/delta-view-model";
 import { functionalLabels } from "./labels";
-import { deriveDeltaCross } from "./functional-motion";
+import { deltaSide, deriveDeltaCross } from "./functional-motion";
 
 export function DeltaFunctional({ model, settings, motion = "full", effects }: WidgetRendererProps<DeltaViewModel>) {
   const { locale } = useI18n();
   const rootRef = useRef<HTMLElement | null>(null);
   // La barra ya transiciona por CSS; el motor solo marca el cruce de cero y
   // la nueva referencia — los dos momentos que un cambio de ancho no dice.
-  useWidgetMotion(model, motion === "full", rootRef, ({ prev, next, root, schedule }) => {
-    const cross = deriveDeltaCross(prev, next);
+  useWidgetMotion(model, motion === "full", rootRef, ({ prev, next, root, schedule, persist }) => {
+    // Memoria del último lado no neutro: perder→neutro→ganar debe marcar el
+    // cruce igual que perder→ganar — el par (neutro, ganar) solo no basta.
+    const lastSide = (persist.get("deltaSide") as "gaining" | "losing" | null | undefined) ?? null;
+    const cross = deriveDeltaCross(prev, next, lastSide);
+    persist.set("deltaSide", deltaSide(next.tone) ?? lastSide);
     if (cross) {
       root.dataset.cross = cross;
       schedule(700, () => { delete root.dataset.cross; }, "cross");

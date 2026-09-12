@@ -2,8 +2,8 @@ import type { CSSProperties } from "react";
 import { useRef } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { WidgetRendererProps } from "../../core/design-system-definition";
-import { useWidgetMotion } from "../../core/widget-motion";
-import { deriveIndexOffsets, deriveOvertakes } from "./functional-motion";
+import { flipRows, useWidgetMotion } from "../../core/widget-motion";
+import { deriveOvertakes } from "./functional-motion";
 import { FUNCTIONAL_IDENTITY_METRICS as IDENTITY, resolveFunctionalColumnWidth, resolveFunctionalIdentitySpan } from "../../widget-types/standings/functional-standings-layout";
 import { resolveStandingsCellValue, type StandingsViewModel } from "../../widget-types/standings/standings-view-model";
 import { functionalLabels } from "./labels";
@@ -16,26 +16,15 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
   const rootRef = useRef<HTMLElement | null>(null);
   // Eficiencia: las filas se deslizan a su posición (FLIP) y los cambios de
   // posición parpadean una vez. En "reduced" solo queda el deslizamiento.
-  useWidgetMotion(model, motion !== "minimal", rootRef, ({ prev, next, root, schedule }) => {
-    // offsetHeight da px de layout sin escalar — getBoundingClientRect
-    // devuelve px YA escalados por el transform del viewport, y usarlo como
-    // distancia de translateY aplicaba la escala dos veces.
-    const stride = root.querySelector<HTMLElement>("[data-standings-row]")?.offsetHeight ?? 30;
-    for (const [id, delta] of deriveIndexOffsets(prev.rows, next.rows)) {
-      const row = root.querySelector<HTMLElement>(`[data-standings-row="${CSS.escape(id)}"]`);
-      if (!row) continue;
-      // Un apply nuevo sustituye a las animaciones en vuelo de la fila —
-      // sin el cancel se apilan en el effect stack hasta expirar. Solo las
-      // WAAPI nuestras: una CSSTransition (el fade del flash) se gestiona
-      // sola y cancelarla truncaría el flash a mitad de fundido.
-      row.getAnimations().forEach((animation) => {
-        if (typeof CSSTransition === "undefined" || !(animation instanceof CSSTransition)) animation.cancel();
-      });
-      row.animate(
-        [{ transform: `translateY(${delta * stride}px)` }, { transform: "translateY(0)" }],
-        { duration: Math.min(460, 260 + Math.abs(delta) * 50), easing: "cubic-bezier(0.22, 0.9, 0.3, 1)" },
-      );
-    }
+  useWidgetMotion(model, motion !== "minimal", rootRef, ({ prev, next, root, schedule, persist }) => {
+    // FLIP medido por id: la fila desliza desde su posición visual actual
+    // (incluido el resto de una animación en vuelo) hasta su nuevo sitio —
+    // no desde un stride por índice que teletransporta al re-target.
+    flipRows(root, persist, {
+      rows: "[data-standings-row]",
+      id: (row) => row.dataset.standingsRow,
+      duration: (from) => Math.min(460, 260 + (Math.abs(from) / 30) * 50),
+    });
     if (motion === "full") {
       const { gained, lost } = deriveOvertakes(prev.rows, next.rows);
       for (const [id, direction] of [...gained.map((id) => [id, "rise"] as const), ...lost.map((id) => [id, "fall"] as const)]) {

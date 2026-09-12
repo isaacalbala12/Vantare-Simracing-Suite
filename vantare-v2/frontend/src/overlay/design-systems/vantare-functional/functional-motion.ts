@@ -8,25 +8,6 @@
 export type MotionRow = { readonly id: string };
 
 /**
- * Cambio de índice renderizado por fila entre dos modelos. El FLIP desliza
- * cada fila desde su posición anterior hasta la actual.
- */
-export function deriveIndexOffsets(
-  prevRows: readonly MotionRow[],
-  nextRows: readonly MotionRow[],
-): Map<string, number> {
-  const offsets = new Map<string, number>();
-  const prevIndex = new Map(prevRows.map((row, index) => [row.id, index]));
-  nextRows.forEach((row, index) => {
-    const before = prevIndex.get(row.id);
-    if (before !== undefined && before !== index) {
-      offsets.set(row.id, before - index);
-    }
-  });
-  return offsets;
-}
-
-/**
  * Adelantamientos en el orden renderizado: una fila que sube posiciones
  * frente a otra que baja. Devuelve los ids por dirección — el renderer
  * decide cómo marcarlo.
@@ -72,13 +53,24 @@ export function deriveSideCrosses(
   return { gained, lost };
 }
 
-/** Cruce de cero del delta: la vuelta pasa de perder a ganar o al revés. */
+/** Lado del cero al que pertenece un tono; neutral no es lado. */
+export function deltaSide(tone: string): "gaining" | "losing" | null {
+  return tone === "gaining" || tone === "losing" ? tone : null;
+}
+
+/**
+ * Cruce de cero del delta: la vuelta pasa de perder a ganar o al revés.
+ * Dos snapshots no bastan — con perder→neutro→ganar el par (neutro, ganar)
+ * es idéntico a arrancar en neutro, pero el evento difiere. `lastSide` es
+ * la memoria del último lado no neutro, mantenida por el renderer y
+ * reiniciada cuando la fuente pierde continuidad.
+ */
 export function deriveDeltaCross(
   prev: { tone: string } | null,
   next: { tone: string },
+  lastSide: "gaining" | "losing" | null = null,
 ): "gaining" | "losing" | null {
-  const side = (tone: string) => (tone === "gaining" || tone === "losing" ? tone : null);
-  const from = prev ? side(prev.tone) : null;
-  const to = side(next.tone);
+  const from = (prev ? deltaSide(prev.tone) : null) ?? lastSide;
+  const to = deltaSide(next.tone);
   return from && to && from !== to ? to : null;
 }

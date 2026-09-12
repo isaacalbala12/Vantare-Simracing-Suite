@@ -2,8 +2,8 @@ import type { CSSProperties } from "react";
 import { useRef } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { WidgetRendererProps } from "../../core/design-system-definition";
-import { useWidgetMotion } from "../../core/widget-motion";
-import { deriveIndexOffsets, deriveSideCrosses } from "./functional-motion";
+import { flipRows, useWidgetMotion } from "../../core/widget-motion";
+import { deriveSideCrosses } from "./functional-motion";
 import { resolveColumnWidthPixels } from "../../widget-types/shared/widget-column";
 import { RELATIVE_COLUMN_TEMPLATES } from "../../widget-types/relative/relative-content";
 import { resolveRelativeClassColor } from "../../widget-types/relative/relative-renderer-helpers";
@@ -24,20 +24,14 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
   const rootRef = useRef<HTMLElement | null>(null);
   // Eficiencia: las filas se deslizan al cruzarse; los cruces parpadean una
   // vez en "full".
-  useWidgetMotion(model, motion !== "minimal", rootRef, ({ prev, next, root, schedule }) => {
-    // offsetHeight = px de layout sin escalar (ver standings).
-    const stride = root.querySelector<HTMLElement>("[data-relative-row]")?.offsetHeight ?? RELATIVE_ROW_PX;
-    for (const [id, delta] of deriveIndexOffsets(prev.rows, next.rows)) {
-      const row = root.querySelector<HTMLElement>(`[data-relative-row="${CSS.escape(id)}"]`);
-      if (!row) continue;
-      row.getAnimations().forEach((animation) => {
-        if (typeof CSSTransition === "undefined" || !(animation instanceof CSSTransition)) animation.cancel();
-      });
-      row.animate(
-        [{ transform: `translateY(${delta * stride}px)` }, { transform: "translateY(0)" }],
-        { duration: Math.min(400, 240 + Math.abs(delta) * 45), easing: "cubic-bezier(0.22, 0.9, 0.3, 1)" },
-      );
-    }
+  useWidgetMotion(model, motion !== "minimal", rootRef, ({ prev, next, root, schedule, persist }) => {
+    // FLIP medido por id (ver standings): correcto también cuando la ventana
+    // rota miembros — un stride por índice mentía al entrar/salir filas.
+    flipRows(root, persist, {
+      rows: "[data-relative-row]",
+      id: (row) => row.dataset.relativeRow,
+      duration: (from) => Math.min(400, 240 + (Math.abs(from) / RELATIVE_ROW_PX) * 45),
+    });
     if (motion === "full") {
       const { gained, lost } = deriveSideCrosses(prev.rows, next.rows);
       for (const [id, direction] of [...gained.map((id) => [id, "rise"] as const), ...lost.map((id) => [id, "fall"] as const)]) {

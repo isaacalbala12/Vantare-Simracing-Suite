@@ -1278,3 +1278,37 @@ Workflow -> Datos. Focales de Classification/Data/Workflow/controller,
 typecheck, lint, i18n, suite frontend y build. Logs nuevos
 `isa1104-t12j8c2-*` con EXIT, sin sobrescribir, e informe local. Sin Go, app,
 GUI, Wails, LMU, build escritorio, push, PR, CI remota o promoción.
+
+## Cierre de evidencia definido por root — J9
+
+Extender el banco real opt-in ya autorizado para demostrar identidad v4 entre
+dos combinaciones LMU distintas y realmente presentes en el catálogo Analysis.
+Máximo dos paths de test existentes:
+
+1. `internal/app/strategy_recorded_real_integration_test.go`
+2. `internal/app/strategy_recorded_real_classification_test.go`
+
+El banco recibe una fuente primaria mediante `ISA1088_REAL_SOURCE`, un segundo
+DuckDB mediante `ISA1104_REAL_TARGET_SOURCE` y el runtime confiado existente
+mediante `ISA1088_RUNTIME_APP`. Sin cualquiera de los tres hace SKIP honesto.
+Ambos archivos se descubren/importan por los readers y autorizadores existentes;
+el mismo `SessionCatalog` se entrega a Analysis y Strategy. No se construye un
+target sintético, no se acepta un ID externo y no se añade otro lector.
+
+Sobre la sesión primaria, construir sólo las correcciones de identidad cuyos
+valores RAW difieran de la combinación clasificada de la segunda fuente. Todas
+comparten la referencia canónica exacta de ese target, procedencia manual y un
+motivo común. Guardar debe producir snapshot v4 con target completo, resolver y
+reproducir el mismo comando, proyectar la combinación de destino sin alterar
+magnitudes físicas, cerrar/reabrir y recuperar revisión e historial exactos.
+Después, una retirada explícita debe volver al original y conservar la historia
+v4. La cabeza resultante alimenta el banco familiar existente.
+
+Antes y después se calcula SHA-256 de ambos DuckDB originales; cualquier cambio
+falla el test. La fuente objetivo no se exporta ni se escribe. Ejecutar primero
+el banco sin opt-in (SKIP), después con los bancos completos Imola y Monza ya
+autorizados, en ambas direcciones si sus metadatos permiten el conjunto cerrado.
+Gates: focal app, global Go `-p 1 ./...`, vet de alcance y gofmt/diff. Logs nuevos
+`frontend/.tmp/isa1104-t12j9-*`, sin sobrescribir. Sin app, GUI, Wails, LMU en
+ejecución, build de escritorio, fuentes reservadas, push, PR, CI, promoción ni
+release.

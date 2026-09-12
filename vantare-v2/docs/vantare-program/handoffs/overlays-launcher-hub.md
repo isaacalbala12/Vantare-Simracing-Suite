@@ -195,6 +195,22 @@ sesión (C3), diseños y acciones de restauración (C4).
 
 ## ISA-1098 — candidato conjunto Efficiency (2026-09-11, sin integrar)
 
+Extensión de integración del 2026-09-12 autorizada por Isaac: el candidato
+incorpora las mejores implementaciones vigentes de #1157, #1168, #1163,
+#1161, #1118 y #1170 como bloques independientes. El runtime reutiliza el
+contexto y sus firmas cuando no cambia su contenido; settings, licencia y
+updater tienen un único fanout Wails por canal; Studio usa un store externo
+con selectores granulares; las rutas desmontables cancelan trabajo pendiente;
+SideRaces reduce su cadencia cuando la salida está lejos; y el mapper evita el
+slice temporal de calidad por vehículo. La adaptación de #1163 conserva
+`WidgetPolicyWire` como única autoridad Free/Pro y no recupera
+`AccessContext`. La variante de #1170 que exponía un slice global mutable se
+reemplazó por un array devuelto por valor con regresión específica. Se excluyen
+la conversión de fuente ya superada de #1118, el componente `ObsSetup` ya
+retirado y el PR #1132 por duplicar esos bloques. Cada corte pasó sus pruebas
+focales y typecheck antes del siguiente; la suite y builds completos se
+ejecutan sobre el candidato documental definitivo.
+
 Actualización vigente: la rama se reconcilió con `origin/nightly@e13756ef`
 en `a8eedecf`, conservando el editor in-place actual y adaptando su inspector,
 catálogo y guardado a `WidgetPolicy`. Después incorporó la rama completa y

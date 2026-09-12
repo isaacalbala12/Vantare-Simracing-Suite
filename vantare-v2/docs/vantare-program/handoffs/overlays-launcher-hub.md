@@ -193,7 +193,23 @@ sin prueba física LMU en este corte. Cortes siguientes no entregados: panel
 colapsable/reubicable y layout numérico (C2), añadir widget y selector de
 sesión (C3), diseños y acciones de restauración (C4).
 
-## ISA-1098 — candidato conjunto Efficiency (2026-09-11, sin integrar)
+## ISA-1098 — Efficiency integrada en Nightly (2026-09-12)
+
+Integración autorizada por Isaac el 2026-09-12. El smoke físico final usó la
+build diagnóstica Wails generada por `scripts/bench/build-measurement.ps1` con
+el `.env.local` externo autorizado, sin copiar ni mostrar valores. El binario
+`bin/vantare-isa1098-smoke.exe` mide 33.310.720 bytes y tiene SHA-256
+`F7064850C77B2BCB4716F391AAD869F601300213748B983BEEB2C14EFFAFB50C`.
+En la sesión Free, Studio guardó Efficiency Broadcast, lo pintó mediante el
+renderer productivo y restauró Signature. Dos ciclos reales abrir/detener
+acabaron en 394/52 ms y 366/56 ms, sin cierre de Vantare; Ajustes, Carreras y
+el regreso a Studio cargaron correctamente. El overlay montó sus tres frames,
+pero LMU no estaba emitiendo y mostró el diagnóstico canónico
+`Overlay V2 frame unavailable`: esta prueba no acredita bandera ni temperatura
+en sesión activa. La rama se reconcilia con `origin/nightly@9651733f`, que ya
+contiene #1165 y #1168; se conservan las implementaciones compartidas y
+granulares ya revisadas del candidato. Este mismo PR registra la integración
+a Nightly; no promociona a testers/master ni publica una release.
 
 Extensión de integración del 2026-09-12 autorizada por Isaac: el candidato
 incorpora las mejores implementaciones vigentes de #1157, #1168, #1163,

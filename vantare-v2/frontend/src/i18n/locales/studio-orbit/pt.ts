@@ -184,4 +184,13 @@ export const studioOrbitPt: Record<string, string> = {
   "studio.topbar.performanceInherit": "Herdar da aplicação",
   "studio.topbar.performanceLevel": "Nível do perfil",
   "studio.topbar.performanceEffective": "Nível efetivo",
+  "studio.obs.eyebrow": "OBS",
+  "studio.obs.title": "OBS Browser Source",
+  "studio.obs.hint": "Cola este URL numa fonte «Navegador» do OBS Studio para transmitir o overlay que estás a editar.",
+  "studio.obs.url": "URL do overlay para o OBS",
+  "studio.obs.copy": "Copiar URL",
+  "studio.obs.copied": "Copiado",
+  "studio.obs.copyInstructions": "Copiar instruções",
+  "studio.obs.copiedInstructions": "Instruções copiadas",
+  "studio.obs.instructions": "1. Abre o OBS Studio e adiciona uma fonte «Navegador».\n2. Cola este URL: {{url}}\n3. Largura 1920, Altura 1080 (ou a resolução do teu canvas).\n4. Mantém o Vantare aberto para o overlay receber dados ao vivo.",
 };

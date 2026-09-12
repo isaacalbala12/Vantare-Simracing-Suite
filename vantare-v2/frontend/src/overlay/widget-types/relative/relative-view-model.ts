@@ -25,6 +25,16 @@ export type RelativeViewModel = WidgetViewModelBase & {
   columns: readonly WidgetColumnV3[];
   rowHeightMode: RelativeContent["rowHeightMode"];
   rows: readonly RelativeRowViewModel[];
+  /** Datos extra opcionales para las barras de información (estructura de la
+   *  referencia: meta arriba, reloj/ambiente abajo). Solo existen cuando la
+   *  fuente V2 los entrega — lo ausente se omite, nunca se inventa. */
+  sessionLabel?: string;
+  remainingText?: string;
+  trackText?: string;
+  playerBadgeText?: string;
+  ambientTempText?: string;
+  trackTempText?: string;
+  windText?: string;
 };
 
 export function resolveRelativeCellValue(row: RelativeRowViewModel, metricId: string): string {

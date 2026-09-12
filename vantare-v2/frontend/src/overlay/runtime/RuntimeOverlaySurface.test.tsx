@@ -118,6 +118,28 @@ function buildMaximumRedlineContent(): StandingsContent {
 }
 
 describe("RuntimeOverlaySurface", () => {
+  it.each(["desktop", "obs"] as const)("fits Functional modules and twenty rows from a legacy frame in %s", (renderMode) => {
+    const coordinator = createBaseTelemetryRateCoordinator();
+    const update = JSON.parse(goldenV2TwentyRaw) as OverlayUpdateV2;
+    coordinator.setOverlayFrame(update.frame ?? undefined, update.source);
+    const document = buildDocument();
+    const widget = standingsDefinition.createDefault("functional");
+    widget.visual = { ...widget.visual, systemId: "vantare-functional", baseSettings: { templateId: "broadcast" } };
+    widget.content = { ...widget.content, rowCount: 20, classScope: "all-classes" };
+    widget.layout = { ...widget.layout, x: 1560, y: 660, w: 340, h: 420 };
+    document.layouts.general.widgets = [widget];
+    const view = render(<RuntimeOverlaySurface document={document} telemetry={coordinator} renderMode={renderMode} />);
+    const frame = view.getByTestId("runtime-widget-frame");
+    const viewport = view.getByTestId("runtime-widget-viewport-functional");
+    expect(Number.parseFloat(frame.style.width)).toBeGreaterThan(340);
+    expect(frame.style.height).toBe("670px");
+    expect(frame.style.top).toBe("410px");
+    expect(viewport.style.transform).toBe("scale(1)");
+    expect(view.container.querySelectorAll('[data-widget-system="vantare-functional"] [data-standings-row]')).toHaveLength(20);
+    expect(widget.layout.w).toBe(340);
+    coordinator.dispose();
+  });
+
   it.each([
     ["desktop", "source-missing"],
     ["obs", "source-missing"],

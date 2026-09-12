@@ -1,5 +1,16 @@
 # Runbook de Operaciones de Release y Beta Publica v0.1.0.0 (OPS1)
 
+> **Tracker y continuidad (2026-09-12):** leer primero
+> [la transición a Notion](vantare-program/notion-transition.md). Mientras su estado sea PREPARACIÓN,
+> las reglas GitHub/ISA de este documento rigen el cierre del lote existente
+> y la preparación técnica. El trabajo nuevo fuera del lote se captura en Notion
+> sin ejecutarlo todavía. Después del corte verificado, Notion será la autoridad
+> operativa y GitHub conservará código, PR, CI y releases.
+> Los estados/versiones y recetas comerciales fechados de abajo son contexto.
+> Para decisiones vigentes prevalecen los contratos y handoffs del programa;
+> esta cabecera no certifica que el runtime o una release estén actualizados.
+
+
 Documento operativo interno. Describe el procedimiento para llevar un cambio desde "feature terminada" hasta "build publicada para testers en Discord", minimizando errores de version, inconsistencias en el changelog, problemas con tags de Git y fallos en la ejecucion de los workflows automatizados.
 
 > **Cambio de linea de versionado**: la linea publica es ahora `v0.1.0.0`. Las builds internas previas `v0.3.*` se mantienen como rastro historico **no anunciado**. No publiques tags `v0.3.*` en Discord ni en docs publicos; remiten a builds internas.
@@ -78,7 +89,7 @@ Vantare cuenta con workflows en `.github/workflows/` que publican anuncios en Di
 | Release estable | tag `v*` verificado en `master`, tras subir artefactos | `DISCORD_RELEASE_WEBHOOK_URL` | canal de lanzamientos configurado |
 | Nightly/Testers | pre-release verificada desde la rama homónima | `DISCORD_PROGRESS_WEBHOOK_URL` | testers (`1519752249977340168`) |
 | Changelog | después de publicar la misma pre-release | `DISCORD_BUILD_WEBHOOK_URL` | changelog (`1519747444315914512`) |
-| Desarrollo activo | diario o manual, desde proyectos Linear con opt-in | `DISCORD_KNOWN_ISSUES_WEBHOOK_URL` | desarrollo-vantare (`1519752544753291305`) |
+| Desarrollo activo | diario o manual, desde roadmap editorial y fallback de milestones GitHub; adaptar el fallback antes del corte Notion | `DISCORD_KNOWN_ISSUES_WEBHOOK_URL` | desarrollo-vantare (`1519752544753291305`) |
 
 > Los canales exactos (`#beta-*`) son los publicos de la Beta Publica. Las builds internas previas (`v0.3.*`) que pudieran haber quedado apuntando a `#alpha-*` no se usan ya para esta linea.
 

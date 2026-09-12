@@ -1,5 +1,11 @@
 # Handoff vivo — Testing Center
 
+> **Continuidad del tracker:** [transición aprobada](../notion-transition.md).
+> PREPARACIÓN conserva este handoff y las issues del lote; tras el corte, un
+> único handoff Notion lo sustituirá con enlace y snapshot. Las entradas fechadas
+> de abajo conservan su evidencia; no implican que esas PR sigan abiertas hoy.
+
+
 Última actualización: 2026-09-10, ISA-728 integrada en Nightly, Codex con verificación de Muse Spark 1.3 Contributor.
 
 ## Autoridad y alcance

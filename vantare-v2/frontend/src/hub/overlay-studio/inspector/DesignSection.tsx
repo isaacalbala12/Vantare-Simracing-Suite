@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { AccessContext } from '../../../lib/access-policy';
 import { listOfficialDesigns } from '../../../overlay/design-systems/official-designs';
+import { designSystemRegistry } from '../../../overlay/core/design-system-registry';
 import type {
   DesignSystemId,
   SessionLayoutType,
@@ -34,11 +35,12 @@ export type DesignSectionProps = {
   promptRename?: (currentName: string) => string | null;
 };
 
-const VISUAL_SYSTEM_OPTIONS: readonly { id: DesignSystemId; labelKey: string }[] = [
-  { id: 'vantare-original', labelKey: 'studio.v3.design.system.original' },
-  { id: 'vantare-crystal', labelKey: 'studio.v3.design.system.crystal' },
-  { id: 'vantare-endurance', labelKey: 'studio.v3.design.system.endurance' },
-];
+const VISUAL_SYSTEM_LABELS: Partial<Record<DesignSystemId, string>> = {
+  'vantare-original': 'studio.v3.design.system.original',
+  'vantare-crystal': 'studio.v3.design.system.crystal',
+  'vantare-endurance': 'studio.v3.design.system.endurance',
+  'vantare-functional': 'studio.v3.design.system.efficiency',
+};
 
 export function DesignSection(props: DesignSectionProps): React.ReactElement {
   const {
@@ -260,10 +262,12 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
               id="orbit-design-system"
               label={t('studio.inspector.design.system')}
               onChange={(next) => selectAndApplySystem(next as DesignSystemId)}
-              options={VISUAL_SYSTEM_OPTIONS.map((option) => ({
-                value: option.id,
-                label: t(option.labelKey),
-              }))}
+              options={designSystemRegistry.list()
+                .filter((system) => system.widgets.some((entry) => entry.widgetType === widget.type))
+                .map((system) => ({
+                  value: system.id,
+                  label: VISUAL_SYSTEM_LABELS[system.id] ? t(VISUAL_SYSTEM_LABELS[system.id]!) : system.label,
+                }))}
               value={selectedSystemId}
             />
           </Field>

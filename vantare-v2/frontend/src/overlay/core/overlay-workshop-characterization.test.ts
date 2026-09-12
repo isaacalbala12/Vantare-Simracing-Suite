@@ -45,14 +45,15 @@ describe("Overlay Workshop characterization", () => {
 
     expect(ALL_WIDGET_TYPES).toHaveLength(20);
     expect(designSystemRegistry.list().map((system) => [system.id, system.widgets.length])).toEqual([
-      ["vantare-original", 18], ["vantare-crystal", 19], ["vantare-endurance", 5], ["vantare-functional", 10], ["vantare-iracing", 1],
+      ["vantare-original", 18], ["vantare-crystal", 19], ["vantare-endurance", 5], ["vantare-functional", 12], ["vantare-iracing", 1],
     ]);
-    expect(designs).toHaveLength(77);
+    expect(designs).toHaveLength(79);
     expect(designs.filter((design) => design.systemId === "vantare-functional").map((design) => design.id)).toEqual([
       "standings-functional-compact", "standings-functional-broadcast",
       "relative-functional-signature", "delta-functional-signature", "delta-functional-capsule", "pedals-functional-signature",
       "track-weather-functional-signature", "track-map-functional-signature", "pedals-telemetry-functional-signature",
       "fuel-strategy-functional-signature", "car-damage-numbers-functional-signature", "input-telemetry-functional-signature",
+      "racing-flags-functional-signature", "race-schedule-functional-signature",
     ]);
     expect(crystal).toHaveLength(22);
     expect(new Set(crystal.map((design) => design.widgetType)).size).toBe(19);

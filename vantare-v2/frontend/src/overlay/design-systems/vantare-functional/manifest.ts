@@ -6,6 +6,8 @@ import { FuelStrategyFunctional } from "./FuelStrategyFunctional";
 import { InputTelemetryFunctional } from "./InputTelemetryFunctional";
 import { PedalsFunctional } from "./PedalsFunctional";
 import { PedalsTelemetryFunctional } from "./PedalsTelemetryFunctional";
+import { RacingFlagsFunctional } from "./RacingFlagsFunctional";
+import { RaceScheduleFunctional } from "./RaceScheduleFunctional";
 import { RelativeFunctional } from "./RelativeFunctional";
 import { StandingsFunctional } from "./StandingsFunctional";
 import { TrackMapFunctional } from "./TrackMapFunctional";
@@ -146,6 +148,28 @@ export const vantareFunctionalManifest: DesignSystemDefinition = {
       },
       inspector: { appearance: [] },
       Renderer: InputTelemetryFunctional as ComponentType<WidgetRendererProps>,
+    },
+    {
+      widgetType: "racing-flags",
+      configVersion: 1,
+      defaultSettings: {},
+      configMigrations: { 0: (settings) => ({ ...settings }) },
+      parseSettings(input: unknown) {
+        return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
+      },
+      inspector: { appearance: [] },
+      Renderer: RacingFlagsFunctional as ComponentType<WidgetRendererProps>,
+    },
+    {
+      widgetType: "race-schedule",
+      configVersion: 1,
+      defaultSettings: {},
+      configMigrations: { 0: (settings) => ({ ...settings }) },
+      parseSettings(input: unknown) {
+        return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
+      },
+      inspector: { appearance: [] },
+      Renderer: RaceScheduleFunctional as ComponentType<WidgetRendererProps>,
     },
   ],
 };

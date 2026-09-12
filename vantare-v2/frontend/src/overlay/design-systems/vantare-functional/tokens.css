@@ -1,4 +1,4 @@
-[data-widget-system="vantare-functional"]:is(.vf-standings, .vf-relative, .vf-delta, .vf-pedals, .vf-pedals-telemetry, .vf-track-weather, .vf-track-map, .vf-fuel-strategy, .vf-car-damage-numbers, .vf-input-telemetry) {
+[data-widget-system="vantare-functional"]:is(.vf-standings, .vf-relative, .vf-delta, .vf-pedals, .vf-pedals-telemetry, .vf-track-weather, .vf-track-map, .vf-fuel-strategy, .vf-car-damage-numbers, .vf-input-telemetry, .vf-racing-flags, .vf-race-schedule) {
   --vf-line: rgb(245 245 245 / 10%);
   --vf-ink: #f5f5f5;
   --vf-muted: #b9b9bd;
@@ -20,13 +20,13 @@
 }
 /* Presupuesto de efectos publicado por Go: noBlur quita el blur del panel,
    flat además apaga brillos y gradientes. */
-[data-effects="noBlur"]:is(.vf-standings, .vf-relative, .vf-delta, .vf-pedals, .vf-pedals-telemetry, .vf-track-weather, .vf-track-map, .vf-fuel-strategy, .vf-car-damage-numbers, .vf-input-telemetry) { backdrop-filter: none; }
-[data-effects="flat"]:is(.vf-standings, .vf-relative, .vf-delta, .vf-pedals, .vf-pedals-telemetry, .vf-track-weather, .vf-track-map, .vf-fuel-strategy, .vf-car-damage-numbers, .vf-input-telemetry) { backdrop-filter: none; box-shadow: none; background: rgb(16 17 19 / 92%); }
-[data-effects="flat"]:is(.vf-standings, .vf-relative, .vf-delta, .vf-pedals, .vf-pedals-telemetry, .vf-track-weather, .vf-track-map, .vf-fuel-strategy, .vf-car-damage-numbers, .vf-input-telemetry)::before { display: none; }
-.vf-standings *, .vf-relative *, .vf-delta *, .vf-pedals *, .vf-pedals-telemetry *, .vf-track-weather *, .vf-track-map *, .vf-fuel-strategy *, .vf-car-damage-numbers *, .vf-input-telemetry * { box-sizing: border-box; }
-.vf-standings::before, .vf-relative::before, .vf-delta::before, .vf-pedals::before, .vf-pedals-telemetry::before, .vf-track-weather::before, .vf-track-map::before, .vf-fuel-strategy::before, .vf-car-damage-numbers::before, .vf-input-telemetry::before { content: ""; position: absolute; z-index: -1; top: 0; right: 0; width: 130px; height: 50px; pointer-events: none; background: linear-gradient(131deg, transparent 0 37%, rgb(193 18 31 / 23%) 37% 54%, transparent 54% 62%, rgb(193 18 31 / 15%) 62% 79%, transparent 79%); }
-.vf-standings::after, .vf-relative::after, .vf-delta::after, .vf-pedals::after, .vf-pedals-telemetry::after, .vf-track-weather::after, .vf-track-map::after, .vf-fuel-strategy::after, .vf-car-damage-numbers::after, .vf-input-telemetry::after { content: ""; position: absolute; inset: 0; border: 1px solid rgb(255 255 255 / 12%); border-top-color: rgb(255 255 255 / 24%); border-radius: inherit; pointer-events: none; }
-:is(.vf-standings, .vf-relative, .vf-delta, .vf-pedals, .vf-pedals-telemetry, .vf-track-weather, .vf-track-map, .vf-fuel-strategy, .vf-car-damage-numbers, .vf-input-telemetry)[data-session-header="false"]::before { display: none; }
+[data-effects="noBlur"]:is(.vf-standings, .vf-relative, .vf-delta, .vf-pedals, .vf-pedals-telemetry, .vf-track-weather, .vf-track-map, .vf-fuel-strategy, .vf-car-damage-numbers, .vf-input-telemetry, .vf-racing-flags, .vf-race-schedule) { backdrop-filter: none; }
+[data-effects="flat"]:is(.vf-standings, .vf-relative, .vf-delta, .vf-pedals, .vf-pedals-telemetry, .vf-track-weather, .vf-track-map, .vf-fuel-strategy, .vf-car-damage-numbers, .vf-input-telemetry, .vf-racing-flags, .vf-race-schedule) { backdrop-filter: none; box-shadow: none; background: rgb(16 17 19 / 92%); }
+[data-effects="flat"]:is(.vf-standings, .vf-relative, .vf-delta, .vf-pedals, .vf-pedals-telemetry, .vf-track-weather, .vf-track-map, .vf-fuel-strategy, .vf-car-damage-numbers, .vf-input-telemetry, .vf-racing-flags, .vf-race-schedule)::before { display: none; }
+.vf-standings *, .vf-relative *, .vf-delta *, .vf-pedals *, .vf-pedals-telemetry *, .vf-track-weather *, .vf-track-map *, .vf-fuel-strategy *, .vf-car-damage-numbers *, .vf-input-telemetry *, .vf-racing-flags *, .vf-race-schedule * { box-sizing: border-box; }
+.vf-standings::before, .vf-relative::before, .vf-delta::before, .vf-pedals::before, .vf-pedals-telemetry::before, .vf-track-weather::before, .vf-track-map::before, .vf-fuel-strategy::before, .vf-car-damage-numbers::before, .vf-input-telemetry::before, .vf-racing-flags::before, .vf-race-schedule::before { content: ""; position: absolute; z-index: -1; top: 0; right: 0; width: 130px; height: 50px; pointer-events: none; background: linear-gradient(131deg, transparent 0 37%, rgb(193 18 31 / 23%) 37% 54%, transparent 54% 62%, rgb(193 18 31 / 15%) 62% 79%, transparent 79%); }
+.vf-standings::after, .vf-relative::after, .vf-delta::after, .vf-pedals::after, .vf-pedals-telemetry::after, .vf-track-weather::after, .vf-track-map::after, .vf-fuel-strategy::after, .vf-car-damage-numbers::after, .vf-input-telemetry::after, .vf-racing-flags::after, .vf-race-schedule::after { content: ""; position: absolute; inset: 0; border: 1px solid rgb(255 255 255 / 12%); border-top-color: rgb(255 255 255 / 24%); border-radius: inherit; pointer-events: none; }
+:is(.vf-standings, .vf-relative, .vf-delta, .vf-pedals, .vf-pedals-telemetry, .vf-track-weather, .vf-track-map, .vf-fuel-strategy, .vf-car-damage-numbers, .vf-input-telemetry, .vf-racing-flags, .vf-race-schedule)[data-session-header="false"]::before { display: none; }
 .vf-standings .vf-table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; margin: 0; }
 .vf-standings .vf-table :is(th, td) { position: relative; border: 0; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vf-standings .vf-table thead th { height: 50px; color: #bdbfc4; font-size: 8px; font-weight: 600; letter-spacing: .14em; text-align: right; vertical-align: middle; border-bottom: 1px solid var(--vf-line); background: linear-gradient(180deg, rgb(255 255 255 / 2%), transparent); }
@@ -304,3 +304,34 @@
 .vf-input-telemetry-label { font: 600 6px/1 "JetBrains Mono", ui-monospace, monospace; letter-spacing: .18em; color: var(--vf-muted); }
 .vf-input-telemetry-trace { display: flex; align-items: flex-end; gap: 1px; height: 28px; margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--vf-line); }
 .vf-input-telemetry-sample { flex: 1; min-width: 2px; background: rgb(111 174 125 / 55%); border-radius: 1px 1px 0 0; }
+
+/* Racing flags: aviso compacto con bandera global y sectores. */
+.vf-racing-flags { display: flex; flex-direction: column; align-items: stretch; justify-content: center; min-height: 100%; padding: 10px 12px; }
+.vf-racing-flags--hidden { display: none; }
+.vf-racing-flags-banner { display: flex; flex-direction: column; gap: 3px; text-align: center; }
+.vf-racing-flags-banner small { font: 600 8px/1 Inter, Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--vf-muted); }
+.vf-racing-flags-banner strong { font: 700 18px/1 Inter, Arial, sans-serif; letter-spacing: -.02em; color: var(--vf-ink); }
+.vf-racing-flags[data-flag="yellow"] .vf-racing-flags-banner strong { color: #e2c568; }
+.vf-racing-flags[data-flag="green"] .vf-racing-flags-banner strong { color: #7fb686; }
+.vf-racing-flags[data-flag="red"] .vf-racing-flags-banner strong { color: #ff2a3b; }
+.vf-racing-flags[data-flag="blue"] .vf-racing-flags-banner strong { color: #5b8bd6; }
+.vf-racing-flags-sectors { display: flex; justify-content: center; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--vf-line); }
+.vf-racing-flags-sector { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 3px; background: rgb(245 245 255 / 8%); font: 700 9px/1 Inter, Arial, sans-serif; color: var(--vf-ink); }
+.vf-racing-flags-sector[data-flag="yellow"] { background: rgb(226 197 104 / 25%); color: #e2c568; }
+.vf-racing-flags-sector[data-flag="red"] { background: rgb(255 42 59 / 22%); color: #ff2a3b; }
+.vf-racing-flags-sector[data-flag="green"] { background: rgb(127 182 134 / 22%); color: #7fb686; }
+
+/* Race schedule: lista compacta de eventos. */
+.vf-race-schedule { display: flex; flex-direction: column; justify-content: flex-start; min-height: 100%; padding: 10px 12px; }
+.vf-race-schedule-header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--vf-line); }
+.vf-race-schedule-title { font: 700 12px/1 Inter, Arial, sans-serif; letter-spacing: .02em; color: var(--vf-ink); }
+.vf-race-schedule-tz { font: 600 8px/1 Inter, Arial, sans-serif; letter-spacing: .1em; color: var(--vf-muted); text-transform: uppercase; }
+.vf-race-schedule-list { display: flex; flex-direction: column; gap: 6px; }
+.vf-race-schedule-item { display: flex; flex-direction: column; gap: 3px; padding: 6px 8px; border-radius: 4px; background: rgb(255 255 255 / 4%); }
+.vf-race-schedule-main { display: flex; flex-direction: column; gap: 2px; }
+.vf-race-schedule-license { font: 600 7px/1 Inter, Arial, sans-serif; letter-spacing: .1em; color: var(--vf-accent); text-transform: uppercase; }
+.vf-race-schedule-name { font: 650 12px/1.2 Inter, Arial, sans-serif; color: var(--vf-ink); }
+.vf-race-schedule-track { font: 600 9px/1.2 Inter, Arial, sans-serif; color: var(--vf-muted); }
+.vf-race-schedule-meta { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 2px; }
+.vf-race-schedule-classes { font: 600 7px/1 Inter, Arial, sans-serif; letter-spacing: .08em; color: var(--vf-muted); text-transform: uppercase; }
+.vf-race-schedule-duration { font: 650 10px/1 Inter, Arial, sans-serif; color: var(--vf-ink); }

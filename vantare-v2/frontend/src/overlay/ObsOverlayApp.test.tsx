@@ -230,7 +230,10 @@ describe("ObsOverlayApp", () => {
     render(<ObsOverlayApp />);
     await flush();
 
-    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/profile-v3?profile="));
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/profile-v3?profile="),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
     expect(MockEventSource.instances.map((source) => source.url)).toEqual([
       "/telemetry/overlay-v2/projection",
       "/engineer/stream",

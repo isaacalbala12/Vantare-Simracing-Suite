@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-12T00:04:21Z",
+  "generatedAt": "2026-09-12T00:11:08Z",
   "digest": {
     "lastCommit": "e13756ef4505e4012f3012c5ac0773040257d1e3"
   },
@@ -2063,16 +2063,6 @@
           "text": "Editor in-place — teclado, acciones de widget y salida visible"
         },
         {
-          "kind": "fix",
-          "scope": "studio",
-          "text": "Restaurar enlace OBS al pie del dock de ajustes"
-        },
-        {
-          "kind": "perf",
-          "scope": "fonts",
-          "text": "Subset WOFF2 de Cascadia Code"
-        },
-        {
           "kind": "perf",
           "scope": "hub",
           "text": "Canal granular de perfiles en launcher-store"
@@ -2086,6 +2076,16 @@
           "kind": "perf",
           "scope": "hub",
           "text": "Reloj compartido useNow para cuentas atrás de 1 s"
+        },
+        {
+          "kind": "perf",
+          "scope": "fonts",
+          "text": "Subset WOFF2 de Cascadia Code"
+        },
+        {
+          "kind": "fix",
+          "scope": "studio",
+          "text": "Restaurar enlace OBS al pie del dock de ajustes"
         }
       ]
     },

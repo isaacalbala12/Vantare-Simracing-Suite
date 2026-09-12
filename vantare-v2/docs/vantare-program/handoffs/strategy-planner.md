@@ -3095,3 +3095,22 @@ Siguiente corte J8c pendiente de cerrar por el orquestador: selector visual de
 combinación canónica y estado de propuesta, consumiendo `sessionCombinations`
 y el helper J8b sin duplicar catálogo, lector ni aritmética. Debe preservar el
 diseño A4/Orbit y mantener guardado y adopción explícitos.
+
+## T12 J8c1 — identidad conectada al controlador
+
+Aceptado en `3284cb24` tras el plan `596b95fd`, dos paths frontend,
+`+195/-3`. `editIdentity` aplica el reemplazo atómico J8b dentro del propietario
+de estado existente, con los mismos bloqueos, cuota conjunta, estado dirty y
+retirada de proyección; conserva escalares, familias y legacy. Fallos dejan el
+editor intacto y exponen la causa. Guardado, retry y Resolve congelan la misma
+referencia canónica. La revisión root corrigió una simulación falsa: cuando la
+identidad guardada cambia de combinación, la proyección nativa con el nuevo ID
+se rechaza frente a la selección original (`recorded_revision_mismatch`); la
+revisión durable se conserva y no se proyecta ni adopta silenciosamente.
+
+Evidencia final: 2 archivos/69 tests focales PASS tras la corrección; typecheck
+y lint PASS. Antes de la corrección exclusivamente de test, suite frontend
+445/3735, i18n y build PASS; no se repitieron porque producción quedó idéntica.
+Un `resource_exhausted` interrumpió la telemetría del ejecutor, pero el proceso
+de suite dejó resumen final completo. Sin app/GUI/Wails/LMU, push, PR, CI remota,
+merge o promoción. Sigue J8c2: selector visual desde el catálogo ya cargado.

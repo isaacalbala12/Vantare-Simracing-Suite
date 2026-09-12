@@ -320,7 +320,7 @@ export function parseAnalysisPreparation(value: unknown): AnalysisPreparation {
   return r as unknown as AnalysisPreparation;
 }
 const canonicalCombinationKeys = ["id", "simId", "trackName", "trackLayout", "carName", "carClass"] as const;
-const identityTargetField: Record<AnalysisIdentityClassificationField, keyof AnalysisCombination> = {
+export const analysisIdentityCombinationKey: Record<AnalysisIdentityClassificationField, keyof AnalysisCombination> = {
   TrackName: "trackName",
   TrackLayout: "trackLayout",
   CarName: "carName",
@@ -330,7 +330,7 @@ const identityTargetField: Record<AnalysisIdentityClassificationField, keyof Ana
 // set, lmu sim, reference-shaped id and Unicode-valid trimmed non-empty tuple
 // fields. Membership and digest authority stay on the Go side; this is shape
 // validation only, so non-corrected fields carry no invented limits.
-function canonicalCombinationTarget(value: unknown): AnalysisCombination {
+export function parseAnalysisCanonicalCombination(value: unknown): AnalysisCombination {
   const r = record(value, "snapshot.canonicalCombination");
   for (const key of Object.keys(r)) {
     if (!(canonicalCombinationKeys as readonly string[]).includes(key)) {
@@ -358,7 +358,7 @@ function snapshot(value: unknown): AnalysisSnapshot {
   if (!isV4 && r.canonicalCombination !== undefined) {
     throw new AnalysisProtocolError("snapshot.canonicalCombination");
   }
-  const target = isV4 ? canonicalCombinationTarget(r.canonicalCombination) : undefined;
+  const target = isV4 ? parseAnalysisCanonicalCombination(r.canonicalCombination) : undefined;
   const base = parseAnalysisBase(r.base);
   digest(r.snapshotId, "snapshot.snapshotId");
   const corrections = list(r.corrections, "snapshot.corrections");
@@ -426,7 +426,7 @@ function snapshot(value: unknown): AnalysisSnapshot {
       }
       identityActive = true;
     }
-    if (isIdentityClassificationField(parsed.request.field) && (target === undefined || parsed.corrected !== target[identityTargetField[parsed.request.field]])) {
+    if (isIdentityClassificationField(parsed.request.field) && (target === undefined || parsed.corrected !== target[analysisIdentityCombinationKey[parsed.request.field]])) {
       throw new AnalysisProtocolError("classification.corrected");
     }
   }
@@ -680,6 +680,23 @@ export function analysisClassificationFieldForMetadataKey(value: string): Analys
   }
   return undefined;
 }
+// Identity originals share the native lower(trim(key)) lookup against the four
+// canonical metadata keys; kept separate from the legacy pair so callers that
+// only expose the UI-correctable fields keep their closed mapping.
+export function analysisIdentityFieldForMetadataKey(value: string): AnalysisIdentityClassificationField | undefined {
+  switch (goLowerSimple(goTrim(value))) {
+    case "trackname":
+      return "TrackName";
+    case "tracklayout":
+      return "TrackLayout";
+    case "carname":
+      return "CarName";
+    case "carclass":
+      return "CarClass";
+    default:
+      return undefined;
+  }
+}
 function unicodeValid(value: string, field: string): void {
   if (/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(value)) {
     throw new AnalysisProtocolError(field);
@@ -738,6 +755,14 @@ export function parseAnalysisClassificationOriginal(field: AnalysisClassificatio
   return original;
 }
 const canonicalCombinationIdPattern = /^lmu:[a-f0-9]{64}$/;
+// The closed reason rule every classification request enforces, exported so a
+// caller can gate on it even when the operation builds no request at all
+// (an atomic identity set that retires without creating one still rejects a
+// bad reason).
+export function parseAnalysisClassificationReason(value: unknown): string {
+  classificationText(value, "classification.reason", 1024, false);
+  return value;
+}
 function isIdentityClassificationField(field: string): field is AnalysisIdentityClassificationField {
   return (analysisIdentityClassificationFields as readonly string[]).includes(field);
 }

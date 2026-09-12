@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import { Call } from "@wailsio/runtime";
 import { createAnalysisClient, createNativeAnalysisTransport, type AnalysisSaveRequest } from "./analysis-client";
+import { parseAnalysisClassificationCorrection } from "./analysis-contract";
 import type { AnalysisBase, AnalysisClassificationCorrection, AnalysisCorrection, AnalysisFamilyCorrection, AnalysisPreparedClassificationCorrection, AnalysisPreparedCorrection, AnalysisPreparedFamilyCorrection, AnalysisRevision, AnalysisSaveCommand, AnalysisSnapshot } from "./analysis-contract";
+import snapshotV4 from "./testdata/analysis-identity-snapshot-v4.json";
 vi.mock("@wailsio/runtime", () => ({ Call: { ByName: vi.fn() } }));
 describe("native Analysis client", () => {
   it("resolves an exact command without replay and rejects another command or source", async () => {
@@ -363,6 +365,45 @@ describe("classification command transport", () => {
 
     const malformed = createAnalysisClient({ call: async () => ({ found: true, headId: "b".repeat(64), revision: null }) });
     await expect(malformed.resolve(request)).rejects.toThrow();
+  });
+  it("correlates v4 identity commands by their shared reference and rejects incoherent targets without retry", async () => {
+    const base: AnalysisBase = snapshotV4.base;
+    const command = freshCommand();
+    const classifications = snapshotV4.classifications.map(item => parseAnalysisClassificationCorrection(structuredClone(item.request)));
+    const request: AnalysisSaveRequest = { sessionId: "handle", base, corrections: [], familyUses: [], command, classifications };
+    const revisionFor = (snapshot: unknown): AnalysisRevision => ({ revisionId: "b".repeat(64), parentRevisionId: command.expectedRevision, command: structuredClone(command), commandDigest: "b".repeat(64), createdAt: "2026-09-10T00:00:00Z", snapshot: snapshot as unknown as AnalysisSnapshot });
+    const stored = (mutate: (snapshot: { canonicalCombination?: Record<string, unknown>; classifications: { request: Record<string, unknown> }[] }) => void): AnalysisRevision => {
+      const snapshot = structuredClone(snapshotV4) as unknown as { canonicalCombination?: Record<string, unknown>; classifications: { request: Record<string, unknown> }[] };
+      mutate(snapshot);
+      return revisionFor(snapshot);
+    };
+    const divergent = `lmu:${"9".repeat(64)}`;
+    for (const method of ["save", "resolve"] as const) {
+      const invoke = (payload: AnalysisSaveRequest, revision: AnalysisRevision) => {
+        const call = vi.fn().mockResolvedValue(method === "save" ? { headId: "b".repeat(64), revision } : { found: true, headId: "b".repeat(64), revision });
+        return { call, result: createAnalysisClient({ call })[method](payload) };
+      };
+      const accepted = invoke(request, revisionFor(structuredClone(snapshotV4)));
+      await expect(accepted.result).resolves.toMatchObject(method === "save" ? { headId: "b".repeat(64) } : { found: true });
+      expect(accepted.call).toHaveBeenCalledTimes(1);
+      for (const revision of [
+        stored(snapshot => { delete snapshot.classifications[1].request.canonicalCombinationId; }),
+        stored(snapshot => { snapshot.classifications[1].request.canonicalCombinationId = divergent; }),
+        stored(snapshot => { delete snapshot.canonicalCombination; }),
+        stored(snapshot => { snapshot.canonicalCombination!.trackName = "Other"; }),
+      ]) {
+        const rejected = invoke(request, revision);
+        await expect(rejected.result).rejects.toThrow();
+        expect(rejected.call).toHaveBeenCalledTimes(1);
+      }
+      const coherent = stored(snapshot => { snapshot.canonicalCombination!.id = divergent; snapshot.classifications[1].request.canonicalCombinationId = divergent; });
+      const mismatched = invoke(request, coherent);
+      await expect(mismatched.result).rejects.toThrow(`${method}.requestMismatch`);
+      expect(mismatched.call).toHaveBeenCalledTimes(1);
+      const changed = invoke({ ...request, classifications: classifications.map(item => item.field === "TrackName" ? { ...item, canonicalCombinationId: divergent } : item) }, revisionFor(structuredClone(snapshotV4)));
+      await expect(changed.result).rejects.toThrow(`${method}.requestMismatch`);
+      expect(changed.call).toHaveBeenCalledTimes(1);
+    }
   });
 });
 

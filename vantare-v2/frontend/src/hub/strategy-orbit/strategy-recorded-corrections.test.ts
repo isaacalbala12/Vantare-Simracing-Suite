@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AnalysisClient } from "../../strategy/analysis-client";
 import { parseCorrectionStoreResult } from "../../strategy/analysis-contract";
-import type { AnalysisClassificationCorrection, AnalysisFamilyCorrection, AnalysisLapPage, AnalysisBase, AnalysisMetadata, AnalysisPage, AnalysisScalar, AnalysisStoreResult } from "../../strategy/analysis-contract";
+import type { AnalysisClassificationCorrection, AnalysisCombination, AnalysisFamilyCorrection, AnalysisLapPage, AnalysisBase, AnalysisMetadata, AnalysisPage, AnalysisScalar, AnalysisStoreResult } from "../../strategy/analysis-contract";
 import type { RecordedSession } from "./strategy-recorded-session";
-import { loadRecordedLapPage, recordedClassificationCorrection, recordedClassificationOriginal, recordedFamilyCorrection, removeRecordedClassificationCorrection, replaceRecordedClassificationCorrection, replaceRecordedFamilyCorrection, removeRecordedFamilyCorrection, loadRecordedCorrection, projectRecordedCorrection, recordedCorrectionSave, recordedSampleCorrection, replaceRecordedCorrection } from "./strategy-recorded-corrections";
+import { loadRecordedLapPage, recordedClassificationCorrection, recordedClassificationOriginal, recordedFamilyCorrection, removeRecordedClassificationCorrection, replaceRecordedClassificationCorrection, replaceRecordedFamilyCorrection, removeRecordedFamilyCorrection, replaceRecordedIdentityClassifications, loadRecordedCorrection, projectRecordedCorrection, recordedCorrectionSave, recordedSampleCorrection, replaceRecordedCorrection } from "./strategy-recorded-corrections";
 
 const base: AnalysisBase = { sessionId: "source", contentSha256: "a".repeat(64), sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "lap-validity.v1", segmentationDigest: "b".repeat(64) };
 const initial = "c".repeat(64), next = "d".repeat(64), digest = "e".repeat(64);
@@ -338,5 +338,126 @@ describe("recorded classification original query", () => {
     const lone = { ...f.session, opened: { ...f.session.opened, session: { ...f.session.opened.session, metadata: [{ key: "SessionType", present: true, quality: "valid" as const, sensitive: false, value: "practice" }] } } };
     expect(recordedClassificationOriginal(lone, f.loaded, "SessionType")).toBe("practice");
     expect(() => recordedClassificationOriginal(lone, f.loaded, "WeatherConditions")).toThrow("recorded_target_unavailable");
+  });
+});
+
+const recordedIdentityCombination: AnalysisCombination = { id: `lmu:${"1".repeat(64)}`, simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Oreca 07", carClass: "LMP2" };
+const recordedIdentityMetadata = (): AnalysisMetadata[] => [
+  { key: "SessionType", present: true, quality: "valid", sensitive: false, value: "practice" },
+  { key: "WeatherConditions", present: true, quality: "valid", sensitive: false, value: "Dry" },
+  { key: "TrackName", present: true, quality: "valid", sensitive: false, value: "Imola" },
+  { key: "TrackLayout", present: true, quality: "valid", sensitive: false, value: "GP" },
+  { key: "CarName", present: true, quality: "valid", sensitive: false, value: "Oreca 07" },
+  { key: "CarClass", present: true, quality: "valid", sensitive: false, value: "LMP2" },
+];
+function identityFixture(metadata: AnalysisMetadata[] = recordedIdentityMetadata(), combination: AnalysisCombination = recordedIdentityCombination) {
+  const f = fixture();
+  const session: RecordedSession = { ...f.session, combinationId: combination.id, combination, opened: { ...f.session.opened, session: { ...f.session.opened.session, metadata } } };
+  return { ...f, session, combination };
+}
+const retarget = (changes: Partial<AnalysisCombination>, id = `lmu:${"2".repeat(64)}`): AnalysisCombination => ({ ...recordedIdentityCombination, ...changes, id });
+const legacyDecision = (overrides: Partial<AnalysisClassificationCorrection> = {}): AnalysisClassificationCorrection => ({ base, field: "SessionType", expectedOriginal: "practice", replacement: "race", reason: "Legacy review", provenance: "manual", ...overrides });
+const priorIdentity = (field: "TrackName" | "TrackLayout" | "CarName" | "CarClass", expectedOriginal: string, reference = `lmu:${"9".repeat(64)}`): AnalysisClassificationCorrection => ({ base, field, expectedOriginal, replacement: "Monza", reason: "Prior identity", provenance: "manual", canonicalCombinationId: reference });
+
+describe("recorded canonical identity replacement", () => {
+  it("creates a decision only for the changed field with the RAW original and shared reference", () => {
+    const f = identityFixture();
+    const target = retarget({ trackName: "Monza" });
+    const result = replaceRecordedIdentityClassifications([], f.session, f.loaded, target, "Reviewed identity");
+    expect(result).toEqual([{ base, field: "TrackName", expectedOriginal: "Imola", replacement: "Monza", reason: "Reviewed identity", provenance: "manual", canonicalCombinationId: target.id }]);
+  });
+  it("creates several and all four decisions in canonical field order, car change carrying its class", () => {
+    const f = identityFixture();
+    const car = replaceRecordedIdentityClassifications([], f.session, f.loaded, retarget({ carName: "Ligier JS P320", carClass: "LMP3" }), "Reviewed");
+    expect(car.map(item => item.field)).toEqual(["CarName", "CarClass"]);
+    expect(car.map(item => item.replacement)).toEqual(["Ligier JS P320", "LMP3"]);
+    const all = replaceRecordedIdentityClassifications([], f.session, f.loaded, retarget({ trackName: "Monza", trackLayout: "National", carName: "Ligier JS P320", carClass: "LMP3" }), "Reviewed");
+    expect(all.map(item => item.field)).toEqual(["TrackName", "TrackLayout", "CarName", "CarClass"]);
+    expect(all.map(item => item.expectedOriginal)).toEqual(["Imola", "GP", "Oreca 07", "LMP2"]);
+    expect(new Set(all.map(item => item.canonicalCombinationId))).toEqual(new Set([`lmu:${"2".repeat(64)}`]));
+  });
+  it("retires every earlier identity and keeps legacy when the target is the original combination", () => {
+    const f = identityFixture();
+    const legacy = [legacyDecision(), legacyDecision({ field: "WeatherConditions", expectedOriginal: "Dry", replacement: "Overcast" })];
+    const active = [...legacy, priorIdentity("TrackName", "Imola"), priorIdentity("CarClass", "LMP2")];
+    const result = replaceRecordedIdentityClassifications(active, f.session, f.loaded, structuredClone(f.combination), "Retire identity");
+    expect(result).toEqual(legacy);
+    expect(result[0]).not.toBe(legacy[0]);
+    const sameTuple = retarget({}, `lmu:${"8".repeat(64)}`);
+    expect(replaceRecordedIdentityClassifications(active, f.session, f.loaded, sameTuple, "Retire identity")).toEqual(legacy);
+    expect(replaceRecordedIdentityClassifications([], f.session, f.loaded, f.combination, "Retire identity")).toEqual([]);
+  });
+  it("drops earlier identity entries whatever their reference and preserves legacy order", () => {
+    const f = identityFixture();
+    const legacy = [legacyDecision(), legacyDecision({ field: "WeatherConditions", expectedOriginal: "Dry", replacement: "Overcast" })];
+    const prior = [priorIdentity("TrackName", "Imola"), priorIdentity("CarName", "Oreca 07")];
+    const target = retarget({ trackLayout: "National" });
+    const result = replaceRecordedIdentityClassifications([...legacy, ...prior], f.session, f.loaded, target, "Reviewed");
+    expect(result.map(item => item.field)).toEqual(["SessionType", "WeatherConditions", "TrackLayout"]);
+    expect(result[2].canonicalCombinationId).toBe(target.id);
+    expect(result[2].expectedOriginal).toBe("GP");
+    expect(result[2].replacement).toBe("National");
+  });
+  it("keeps RAW Unicode originals and resolves normalized identity metadata keys", () => {
+    const metadata = recordedIdentityMetadata().map(item => item.key === "TrackName" ? { ...item, key: " TRACKNAME ", value: "Imola " } : item);
+    const f = identityFixture(metadata);
+    const result = replaceRecordedIdentityClassifications([], f.session, f.loaded, retarget({ trackName: "Monza" }), "Reviewed");
+    expect(result).toHaveLength(1);
+    expect(result[0].expectedOriginal).toBe("Imola ");
+    expect(result[0].replacement).toBe("Monza");
+  });
+  it("never consults metadata of unchanged fields, even absent or unusable ones", () => {
+    const f = identityFixture([
+      { key: "TrackName", present: true, quality: "valid", sensitive: true, value: "Imola" },
+      { key: "CarClass", present: true, quality: "valid", sensitive: false, value: "LMP2" },
+    ]);
+    const result = replaceRecordedIdentityClassifications([], f.session, f.loaded, retarget({ carClass: "LMP3" }), "Reviewed");
+    expect(result.map(item => item.field)).toEqual(["CarClass"]);
+    expect(result[0].expectedOriginal).toBe("LMP2");
+  });
+  it("rejects missing combination, invalid target, foreign base, bad reason and unusable needed originals without mutating", () => {
+    const f = identityFixture();
+    const target = retarget({ trackName: "Monza" });
+    const empty: readonly AnalysisClassificationCorrection[] = [];
+    expect(() => replaceRecordedIdentityClassifications(empty, { ...f.session, combination: undefined }, f.loaded, target, "ok")).toThrow("recorded_combination_unavailable");
+    for (const bad of [{ ...target, simId: "acc" }, { ...target, trackName: " Monza" }, { ...target, carClass: "" }, { ...target, id: "lmu:zz" }, { ...target, extra: 1 } as unknown as AnalysisCombination]) {
+      expect(() => replaceRecordedIdentityClassifications(empty, f.session, f.loaded, bad, "ok")).toThrow();
+    }
+    const foreign = { ...f.loaded, revision: { ...f.loaded.revision, snapshot: { ...f.loaded.revision.snapshot, base: { ...base, sessionId: "foreign" } } } };
+    expect(() => replaceRecordedIdentityClassifications(empty, f.session, foreign, target, "ok")).toThrow("recorded_correction_base_mismatch");
+    expect(() => replaceRecordedIdentityClassifications(empty, f.session, f.loaded, target, "  ")).toThrow("classification.reason");
+    expect(() => replaceRecordedIdentityClassifications(empty, f.session, f.loaded, f.combination, "  ")).toThrow("classification.reason");
+    const missing = identityFixture(recordedIdentityMetadata().filter(item => item.key !== "TrackName"));
+    expect(() => replaceRecordedIdentityClassifications(empty, missing.session, missing.loaded, target, "ok")).toThrow("recorded_target_unavailable");
+    const ambiguous = identityFixture([...recordedIdentityMetadata(), { key: " trackname ", present: true, quality: "valid", sensitive: false, value: "Imola" }]);
+    expect(() => replaceRecordedIdentityClassifications(empty, ambiguous.session, ambiguous.loaded, target, "ok")).toThrow("recorded_classification_ambiguous");
+    const unusable: AnalysisMetadata[] = [
+      { key: "TrackName", present: false, quality: "valid", sensitive: false, value: "Imola" },
+      { key: "TrackName", present: true, quality: "stale", sensitive: false, value: "Imola" },
+      { key: "TrackName", present: true, quality: "valid", sensitive: true, value: "Imola" },
+      { key: "TrackName", present: true, quality: "valid", sensitive: false, redacted: true, value: "Imola" },
+      { key: "TrackName", present: true, quality: "valid", sensitive: false },
+      { key: "TrackName", present: true, quality: "valid", sensitive: false, value: "   " },
+    ];
+    for (const entry of unusable) {
+      const bad = identityFixture(recordedIdentityMetadata().map(item => item.key === "TrackName" ? entry : item));
+      expect(() => replaceRecordedIdentityClassifications(empty, bad.session, bad.loaded, target, "ok")).toThrow();
+    }
+  });
+  it("rejects duplicate, foreign-base or oversized active sets and never aliases inputs", () => {
+    const f = identityFixture();
+    const target = retarget({ trackName: "Monza" });
+    const legacy = legacyDecision();
+    expect(() => replaceRecordedIdentityClassifications([legacy, legacy], f.session, f.loaded, target, "ok")).toThrow("classificationCorrections.duplicate");
+    expect(() => replaceRecordedIdentityClassifications([legacyDecision({ base: { ...base, sessionId: "foreign" } })], f.session, f.loaded, target, "ok")).toThrow("classificationCorrections.base");
+    const oversized = Array.from({ length: 257 }, () => structuredClone(legacy));
+    expect(() => replaceRecordedIdentityClassifications(oversized, f.session, f.loaded, target, "ok")).toThrow("classificationCorrections.limit");
+    const active = [legacy, priorIdentity("TrackName", "Imola")];
+    const snapshot = structuredClone([active, f.session, f.loaded, target]);
+    const result = replaceRecordedIdentityClassifications(active, f.session, f.loaded, target, "ok");
+    expect(result.map(item => item.field)).toEqual(["SessionType", "TrackName"]);
+    expect(result[0]).not.toBe(legacy);
+    expect(result[1].canonicalCombinationId).toBe(target.id);
+    expect([active, f.session, f.loaded, target]).toEqual(snapshot);
   });
 });

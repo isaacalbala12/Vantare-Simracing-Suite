@@ -1,5 +1,5 @@
 import type { AnalysisClient, AnalysisSaveRequest } from "../../strategy/analysis-client";
-import { analysisClassificationFieldForMetadataKey, analysisLapInstant, parseAnalysisClassificationCorrection, parseAnalysisClassificationCorrections, parseAnalysisClassificationOriginal, parseAnalysisFamilyCorrection, parseAnalysisFamilyCorrections, parseAnalysisLapTarget, type AnalysisClassificationCorrection, type AnalysisClassificationField, type AnalysisCorrectableFamily, type AnalysisFamilyCorrection, type AnalysisLapPage, type AnalysisLapTarget, parseAnalysisCorrection, parseAnalysisSaveCommand, sameAnalysisBase, type AnalysisCorrection, type AnalysisPage, type AnalysisScalar, type AnalysisStoreResult } from "../../strategy/analysis-contract";
+import { analysisClassificationFieldForMetadataKey, analysisIdentityClassificationFields, analysisIdentityCombinationKey, analysisIdentityFieldForMetadataKey, analysisLapInstant, parseAnalysisCanonicalCombination, parseAnalysisClassificationCorrection, parseAnalysisClassificationCorrections, parseAnalysisClassificationOriginal, parseAnalysisClassificationReason, parseAnalysisFamilyCorrection, parseAnalysisFamilyCorrections, parseAnalysisLapTarget, type AnalysisClassificationCorrection, type AnalysisClassificationField, type AnalysisCombination, type AnalysisCorrectableFamily, type AnalysisFamilyCorrection, type AnalysisLapPage, type AnalysisLapTarget, parseAnalysisCorrection, parseAnalysisSaveCommand, sameAnalysisBase, type AnalysisCorrection, type AnalysisPage, type AnalysisScalar, type AnalysisStoreResult } from "../../strategy/analysis-contract";
 import type { RecordedSession } from "./strategy-recorded-session";
 
 /** Explicit revision only. Reading a historical parent never changes the plan. */
@@ -59,6 +59,18 @@ export function recordedCorrectionSave(session: RecordedSession, current: Analys
   return structuredClone({ sessionId: session.opened.sessionId, base: session.base, corrections, familyUses, classifications, command });
 }
 
+// RAW original for one field from the OPEN session metadata: same presence,
+// quality, privacy and uniqueness gates the native builder enforces; the
+// value comes back untrimmed because the wire precondition compares exactly.
+function recordedMetadataOriginal(session: RecordedSession, field: AnalysisClassificationField): string {
+  const matches = session.opened.session.metadata.filter(item => (analysisClassificationFieldForMetadataKey(item.key) ?? analysisIdentityFieldForMetadataKey(item.key)) === field);
+  if (matches.length === 0) throw new Error("recorded_target_unavailable");
+  if (matches.length > 1) throw new Error("recorded_classification_ambiguous");
+  const original = matches[0];
+  if (original.present !== true || original.quality !== "valid" || original.sensitive !== false || original.redacted === true || typeof original.value !== "string") throw new Error("recorded_classification_read_only");
+  return original.value;
+}
+
 /** Read the correctable original for one field from the OPEN session, never
  * from a revision's effective value; another missing metadata entry does not
  * block this field. Throws the same gates the builder enforces, without
@@ -66,12 +78,7 @@ export function recordedCorrectionSave(session: RecordedSession, current: Analys
 export function recordedClassificationOriginal(session: RecordedSession, current: AnalysisStoreResult, field: AnalysisClassificationField): string {
   if (field !== "SessionType" && field !== "WeatherConditions") throw new Error("recorded_classification_invalid");
   if (!sameAnalysisBase(current.revision.snapshot.base, session.base)) throw new Error("recorded_correction_base_mismatch");
-  const matches = session.opened.session.metadata.filter(item => analysisClassificationFieldForMetadataKey(item.key) === field);
-  if (matches.length === 0) throw new Error("recorded_target_unavailable");
-  if (matches.length > 1) throw new Error("recorded_classification_ambiguous");
-  const original = matches[0];
-  if (original.present !== true || original.quality !== "valid" || original.sensitive !== false || original.redacted === true || typeof original.value !== "string") throw new Error("recorded_classification_read_only");
-  return parseAnalysisClassificationOriginal(field, original.value);
+  return parseAnalysisClassificationOriginal(field, recordedMetadataOriginal(session, field));
 }
 
 /** Build one classification decision from the OPEN session's original metadata,
@@ -100,6 +107,31 @@ export function removeRecordedClassificationCorrection(active: readonly Analysis
   if (items.length === 0) return [];
   const validated = parseAnalysisClassificationCorrections(items, items[0].base);
   return structuredClone(validated.filter(item => item.field !== field));
+}
+
+/** Replaces the four canonical identity decisions as one unit. Legacy
+ * decisions stay untouched; every prior identity entry is dropped, then each
+ * field whose canonical target differs from session.combination gets a new
+ * decision with the RAW OPEN original and the shared target.id reference. A
+ * target equal to the original combination retires identity entirely. An
+ * unchanged field never requires its metadata entry. Inputs are never
+ * mutated and nothing here derives from a revision's effective value; native
+ * Save revalidates and authorizes the whole proposal before writing. */
+export function replaceRecordedIdentityClassifications(active: readonly AnalysisClassificationCorrection[], session: RecordedSession, current: AnalysisStoreResult, target: AnalysisCombination, reason: string): readonly AnalysisClassificationCorrection[] {
+  if (!session.combination) throw new Error("recorded_combination_unavailable");
+  const resolved = parseAnalysisCanonicalCombination(target);
+  if (!sameAnalysisBase(current.revision.snapshot.base, session.base)) throw new Error("recorded_correction_base_mismatch");
+  const parsed = parseAnalysisClassificationCorrections(active, session.base);
+  parseAnalysisClassificationReason(reason);
+  const created: AnalysisClassificationCorrection[] = [];
+  for (const field of analysisIdentityClassificationFields) {
+    const key = analysisIdentityCombinationKey[field];
+    if (resolved[key] === session.combination[key]) continue;
+    created.push({ base: session.base, field, expectedOriginal: recordedMetadataOriginal(session, field), replacement: resolved[key], reason, provenance: "manual", canonicalCombinationId: resolved.id });
+  }
+  const next = [...parsed.filter(item => item.field === "SessionType" || item.field === "WeatherConditions"), ...created];
+  if (next.length > 256) throw new Error("recorded_correction_limit");
+  return structuredClone(parseAnalysisClassificationCorrections(next, session.base));
 }
 
 /** Saving and projection are separate: failure here must retain the durable

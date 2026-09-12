@@ -14,11 +14,19 @@ var (
 	ErrInvalidStoredSessionRemoved = errors.New("invalid protected auth session removed")
 )
 
-// Session is the minimum Supabase session material needed to restore login.
+// Session is the minimum session material needed to restore login.
 // It must only be persisted by an OS-protected implementation.
+//
+// A Supabase session persists the access/refresh pair needed to restore the
+// client. An external-provider session (Clerk) persists only the stable
+// session identifier (`sid` claim): it is an identifier, not a credential —
+// it cannot authenticate anything by itself and only authorizes the offline
+// license cache when a later JWT declares the same session. JWTs from
+// external providers are never stored here.
 type Session struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
+	AccessToken  string `json:"access_token,omitempty"`
+	RefreshToken string `json:"refresh_token,omitempty"`
+	SessionID    string `json:"session_id,omitempty"`
 }
 
 // Store adapts the shared OS-protected byte store to the typed Supabase
@@ -59,8 +67,10 @@ func (s *Store) Delete() error {
 }
 
 func (s Session) validate() error {
-	if s.AccessToken == "" || s.RefreshToken == "" {
-		return fmt.Errorf("%w: access and refresh tokens are required", ErrInvalidSession)
+	hasPair := s.AccessToken != "" && s.RefreshToken != "" && s.SessionID == ""
+	hasExternalID := s.SessionID != "" && s.AccessToken == "" && s.RefreshToken == ""
+	if !hasPair && !hasExternalID {
+		return fmt.Errorf("%w: an access/refresh pair or an external session id is required", ErrInvalidSession)
 	}
 	return nil
 }

@@ -123,22 +123,31 @@ func (s *Service) AllowsUpdateChannel(channel string) bool {
 	}
 }
 
+// TrustedSession identifies the session previously accepted into protected
+// storage. Supabase sessions are pinned to the exact access token; external
+// providers (Clerk) rotate their JWT on every getToken(), so only the stable
+// session identifier is persisted — an identifier, never a credential.
+type TrustedSession struct {
+	Token     string
+	SessionID string
+}
+
 func (s *Service) Validate(ctx context.Context, sessionToken string) (*Result, error) {
-	return s.ValidateWithTrustedSession(ctx, sessionToken, "")
+	return s.ValidateWithTrustedSession(ctx, sessionToken, TrustedSession{})
 }
 
 // ValidateWithTrustedSession allows offline fallback only when the presented
-// token is exactly the session previously accepted into protected native
+// token belongs to the session previously accepted into protected native
 // storage. The JWT payload supplied by the WebView is never offline authority.
-func (s *Service) ValidateWithTrustedSession(ctx context.Context, sessionToken, trustedSessionToken string) (*Result, error) {
-	res, err := s.validate(ctx, sessionToken, trustedSessionToken)
+func (s *Service) ValidateWithTrustedSession(ctx context.Context, sessionToken string, trusted TrustedSession) (*Result, error) {
+	res, err := s.validate(ctx, sessionToken, trusted)
 	if err == nil && res != nil {
 		s.EmitChanged(res)
 	}
 	return res, err
 }
 
-func (s *Service) validate(ctx context.Context, sessionToken, trustedSessionToken string) (*Result, error) {
+func (s *Service) validate(ctx context.Context, sessionToken string, trusted TrustedSession) (*Result, error) {
 	if sessionToken == "" {
 		return &Result{State: StateAnonymous, Error: ErrMissingSession}, nil
 	}
@@ -146,7 +155,12 @@ func (s *Service) validate(ctx context.Context, sessionToken, trustedSessionToke
 	if err != nil {
 		return &Result{State: StateAnonymous, Error: fmt.Errorf("%w: invalid session subject", ErrValidationFailed)}, nil
 	}
-	cacheAuthorized := trustedSessionToken != "" && sessionToken == trustedSessionToken
+	cacheAuthorized := trusted.Token != "" && sessionToken == trusted.Token
+	if !cacheAuthorized && trusted.SessionID != "" {
+		if sid := sessionIDFromJWT(sessionToken); sid != "" {
+			cacheAuthorized = sid == trusted.SessionID
+		}
+	}
 	fingerprint, err := s.fingerprint()
 	if err != nil {
 		return nil, fmt.Errorf("fingerprint: %w", err)
@@ -284,7 +298,7 @@ func (s *Service) ResetDevice(ctx context.Context, sessionToken string) error {
 	if err := s.client.ResetDevice(ctx, sessionToken, fingerprint); err != nil {
 		return err
 	}
-	res, validateErr := s.validate(ctx, sessionToken, "")
+	res, validateErr := s.validate(ctx, sessionToken, TrustedSession{})
 	if validateErr == nil && res != nil {
 		s.EmitChanged(res)
 	}
@@ -352,4 +366,31 @@ func subjectFromJWT(token string) (string, error) {
 		return "", ErrMissingSession
 	}
 	return claims.Subject, nil
+}
+
+// sessionIDFromJWT extracts the external provider session id (`sid` claim).
+// Supabase access tokens carry `session_id` instead, so only an external JWT
+// can match a persisted external session.
+func sessionIDFromJWT(token string) string {
+	parts := strings.Split(token, ".")
+	if len(parts) != 3 {
+		return ""
+	}
+	payload, err := base64.RawURLEncoding.DecodeString(parts[1])
+	if err != nil {
+		return ""
+	}
+	var claims struct {
+		SessionID string `json:"sid"`
+	}
+	if err := json.Unmarshal(payload, &claims); err != nil {
+		return ""
+	}
+	return strings.TrimSpace(claims.SessionID)
+}
+
+// SessionIDFromJWT exposes the external-provider session id so the caller can
+// persist the stable identifier of a validated session — never the JWT.
+func SessionIDFromJWT(token string) string {
+	return sessionIDFromJWT(token)
 }

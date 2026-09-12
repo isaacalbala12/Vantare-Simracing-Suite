@@ -129,6 +129,14 @@ func testJWT(subject string) string {
 	return header + "." + base64.RawURLEncoding.EncodeToString(payload) + ".signature"
 }
 
+func testClerkJWT(subject, sessionID string) string {
+	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"none"}`))
+	payload, _ := json.Marshal(map[string]string{
+		"sub": subject, "sid": sessionID, "iss": "https://clerk.vantare.test",
+	})
+	return header + "." + base64.RawURLEncoding.EncodeToString(payload) + ".signature"
+}
+
 func TestSubjectFromJWTAllowsExternalIdentityButRejectsInvalidSubjects(t *testing.T) {
 	if got, err := subjectFromJWT(testJWT("user_isa909_clerk")); err != nil || got != "user_isa909_clerk" {
 		t.Fatalf("external subject = %q, %v", got, err)
@@ -283,7 +291,7 @@ func TestRejectedClerkSessionNeverFallsBackToTrustedCache(t *testing.T) {
 	service.WithCache(cache)
 	token := testJWT("user_isa909_clerk")
 
-	result, err := service.ValidateWithTrustedSession(context.Background(), token, token)
+	result, err := service.ValidateWithTrustedSession(context.Background(), token, TrustedSession{Token: token})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -321,7 +329,7 @@ func TestValidateOfflineFallbackRequiresExactTrustedSession(t *testing.T) {
 		{name: "exact protected session", trusted: token, want: StateGrace},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := service.ValidateWithTrustedSession(context.Background(), token, tc.trusted)
+			result, err := service.ValidateWithTrustedSession(context.Background(), token, TrustedSession{Token: tc.trusted})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -329,6 +337,71 @@ func TestValidateOfflineFallbackRequiresExactTrustedSession(t *testing.T) {
 				t.Fatalf("state = %s, want %s", result.State, tc.want)
 			}
 		})
+	}
+}
+
+// A persisted Clerk session id authorizes the offline cache when a rotated
+// JWT declares the same sid. The JWT itself is never stored; a different sid,
+// a missing sid or a Supabase-shaped token (no `sid` claim) never authorize.
+func TestValidateOfflineFallbackClerkSessionID(t *testing.T) {
+	now := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
+	client := &mockSupabaseClient{fetchErr: errors.New("network unavailable")}
+	service, private := newTestService(t, now, client)
+	cache := NewLicenseCache(t.TempDir() + "/license.json")
+	credential := signTestCredential(t, private, now.Add(-time.Minute), []OfflineCapability{{Key: CapabilityPro, PaidThrough: now.Add(time.Hour).Format(time.RFC3339)}}, testSubject, "device-1")
+	if _, err := service.verifier.verifyOnline(credential, "device-1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cache.Write(credential); err != nil {
+		t.Fatal(err)
+	}
+	service.WithCache(cache)
+
+	trusted := TrustedSession{SessionID: "sess_clerk_1"}
+	for _, tc := range []struct {
+		name  string
+		token string
+		want  State
+	}{
+		{name: "rotated jwt same sid", token: testClerkJWT("user_clerk_a", "sess_clerk_1"), want: StateGrace},
+		{name: "different sid", token: testClerkJWT("user_clerk_a", "sess_clerk_2"), want: StateAuthenticatedNoEntitlement},
+		{name: "supabase token without sid", token: testJWT(testSubject), want: StateAuthenticatedNoEntitlement},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			result, err := service.ValidateWithTrustedSession(context.Background(), tc.token, trusted)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result.State != tc.want {
+				t.Fatalf("state = %s, want %s", result.State, tc.want)
+			}
+		})
+	}
+}
+
+// The trusted token path still wins over an unrelated sid, and a trusted sid
+// never rescues a token whose own sid is empty.
+func TestValidateOfflineFallbackTrustedSessionPrecedence(t *testing.T) {
+	now := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
+	client := &mockSupabaseClient{fetchErr: errors.New("network unavailable")}
+	service, private := newTestService(t, now, client)
+	cache := NewLicenseCache(t.TempDir() + "/license.json")
+	credential := signTestCredential(t, private, now.Add(-time.Minute), []OfflineCapability{{Key: CapabilityPro, PaidThrough: now.Add(time.Hour).Format(time.RFC3339)}}, testSubject, "device-1")
+	if _, err := service.verifier.verifyOnline(credential, "device-1"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cache.Write(credential); err != nil {
+		t.Fatal(err)
+	}
+	service.WithCache(cache)
+
+	token := testClerkJWT("user_clerk_a", "sess_other")
+	result, err := service.ValidateWithTrustedSession(context.Background(), token, TrustedSession{Token: token, SessionID: "sess_clerk_1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.State != StateGrace {
+		t.Fatalf("exact token should authorize regardless of sid: %s", result.State)
 	}
 }
 
@@ -345,7 +418,7 @@ func TestValidateOfflineExpiredCredentialStaysExpired(t *testing.T) {
 	}
 	service.WithCache(cache)
 	token := testJWT(testSubject)
-	result, err := service.ValidateWithTrustedSession(context.Background(), token, token)
+	result, err := service.ValidateWithTrustedSession(context.Background(), token, TrustedSession{Token: token})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -404,7 +477,7 @@ func TestValidateUnconfiguredFailsClosedWithoutTrustedCache(t *testing.T) {
 	}
 
 	service.WithCache(NewLicenseCache(t.TempDir() + "/missing.json"))
-	result, err = service.ValidateWithTrustedSession(context.Background(), testJWT(testSubject), testJWT(testSubject))
+	result, err = service.ValidateWithTrustedSession(context.Background(), testJWT(testSubject), TrustedSession{Token: testJWT(testSubject)})
 	if err != nil || result.State != StateUnconfigured || !errors.Is(result.Error, ErrUnconfigured) {
 		t.Fatalf("missing cache result = %#v, %v", result, err)
 	}
@@ -419,7 +492,7 @@ func TestValidateRejectsLegacyCacheForPremiumFallback(t *testing.T) {
 	}
 	service.WithCache(NewLicenseCache(path))
 	token := testJWT(testSubject)
-	result, err := service.ValidateWithTrustedSession(context.Background(), token, token)
+	result, err := service.ValidateWithTrustedSession(context.Background(), token, TrustedSession{Token: token})
 	if err != nil || result.State != StateAuthenticatedNoEntitlement || !errors.Is(result.Error, ErrLegacyCache) {
 		t.Fatalf("result = %#v, %v", result, err)
 	}

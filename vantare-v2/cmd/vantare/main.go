@@ -1920,9 +1920,12 @@ func main() {
 			delete(licenseValidateInFlight, payload.SessionToken)
 			licenseValidateMu.Unlock()
 		}()
-		trustedSessionToken := ""
+		var trusted license.TrustedSession
 		if protectedSession, restoreErr := authManager.Restore(); restoreErr == nil {
-			trustedSessionToken = protectedSession.AccessToken
+			trusted = license.TrustedSession{
+				Token:     protectedSession.AccessToken,
+				SessionID: protectedSession.SessionID,
+			}
 		} else if !errors.Is(restoreErr, authsession.ErrNotFound) &&
 			!errors.Is(restoreErr, authsession.ErrInvalidStoredSessionRemoved) {
 			log.Printf("auth session restore for license fallback failed: %v", restoreErr)
@@ -1930,7 +1933,7 @@ func main() {
 		res, verr := licenseSvc.ValidateWithTrustedSession(
 			context.Background(),
 			payload.SessionToken,
-			trustedSessionToken,
+			trusted,
 		)
 		if verr != nil {
 			log.Printf("license:validate error: %v", verr)
@@ -1943,17 +1946,28 @@ func main() {
 		}
 		// Persist only sessions that have been accepted by the backend. Windows
 		// Credential Manager owns persistence; the WebView only keeps memory.
+		// A Supabase session persists its refreshable pair. An external provider
+		// (Clerk) rotates its JWT on every getToken() and never persists it:
+		// only the stable session id authorizes the offline license cache.
 		if shouldPersistValidatedSession(res, payload.SessionToken, payload.RefreshToken) {
-			if err := authManager.AcceptValidated(authsession.Session{
-				AccessToken: payload.SessionToken, RefreshToken: payload.RefreshToken,
-			}); err != nil {
+			var session authsession.Session
+			if payload.RefreshToken != "" {
+				session = authsession.Session{
+					AccessToken: payload.SessionToken, RefreshToken: payload.RefreshToken,
+				}
+			} else {
+				session = authsession.Session{SessionID: license.SessionIDFromJWT(payload.SessionToken)}
+			}
+			if err := authManager.AcceptValidated(session); err != nil {
 				log.Printf("auth session save failed: %v", err)
 			}
-			emitter.Emit("auth:session", map[string]any{
-				"access_token":  payload.SessionToken,
-				"refresh_token": payload.RefreshToken,
-				"source":        "validated",
-			})
+			if payload.RefreshToken != "" {
+				emitter.Emit("auth:session", map[string]any{
+					"access_token":  payload.SessionToken,
+					"refresh_token": payload.RefreshToken,
+					"source":        "validated",
+				})
+			}
 		}
 	})
 
@@ -1967,6 +1981,12 @@ func main() {
 				log.Printf("auth session restore failed: %v", err)
 				emitter.Emit("auth:session:error", map[string]any{"code": "restore_failed"})
 			}
+			return
+		}
+		// An external-provider record only holds a session id: there is no
+		// token pair to hand back to the frontend, which restores its own
+		// session through the provider SDK.
+		if session.AccessToken == "" {
 			return
 		}
 		emitter.Emit("auth:session", map[string]any{
@@ -3558,7 +3578,12 @@ func main() {
 }
 
 func shouldPersistValidatedSession(res *license.Result, sessionToken, refreshToken string) bool {
-	return res != nil && res.OnlineValidated && res.UserID != "" && sessionToken != "" && refreshToken != ""
+	if res == nil || !res.OnlineValidated || res.UserID == "" || sessionToken == "" {
+		return false
+	}
+	// Supabase sessions persist the refreshable pair; an external provider
+	// persists only the session id declared by the validated JWT itself.
+	return refreshToken != "" || license.SessionIDFromJWT(sessionToken) != ""
 }
 
 func resolveLicensePublicKeys(embedded, developmentOverride string) string {

@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -44,6 +46,21 @@ func TestShouldPersistValidatedSessionRequiresCurrentOnlineValidation(t *testing
 	if !shouldPersistValidatedSession(&license.Result{UserID: "user", OnlineValidated: true}, "access", "refresh") {
 		t.Fatal("online-validated session was rejected")
 	}
+	// A Clerk session has no refresh token: only its stable `sid` claim makes
+	// the validated session persistable — never the rotating JWT itself.
+	clerkToken := testSessionJWT(map[string]string{"sub": "user_clerk", "sid": "sess_1"})
+	if !shouldPersistValidatedSession(&license.Result{UserID: "user", OnlineValidated: true}, clerkToken, "") {
+		t.Fatal("online-validated Clerk session id was rejected")
+	}
+	if shouldPersistValidatedSession(&license.Result{UserID: "user", OnlineValidated: true}, testSessionJWT(map[string]string{"sub": "user_clerk"}), "") {
+		t.Fatal("token without refresh pair nor sid must not persist")
+	}
+}
+
+func testSessionJWT(claims map[string]string) string {
+	header := base64.RawURLEncoding.EncodeToString([]byte(`{"alg":"none"}`))
+	payload, _ := json.Marshal(claims)
+	return header + "." + base64.RawURLEncoding.EncodeToString(payload) + ".sig"
 }
 
 func TestResolveLicensePublicKeysCannotOverrideEmbeddedTrustRoot(t *testing.T) {

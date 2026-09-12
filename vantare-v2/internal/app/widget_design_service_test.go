@@ -145,6 +145,31 @@ func TestWidgetDesignServiceSavesVantareEnduranceDesign(t *testing.T) {
 	}
 }
 
+func TestWidgetDesignServiceFunctionalStandingsRoundTrip(t *testing.T) {
+	for _, template := range []string{"signature", "broadcast"} {
+		t.Run(template, func(t *testing.T) {
+			dir := t.TempDir()
+			svc := NewWidgetDesignService(dir, nil)
+			design := WidgetDesignV1{
+				Name: "Functional " + template, WidgetType: "standings", SystemID: "vantare-functional",
+				SystemVersion: 1, ConfigVersion: 1, Origin: "user",
+				Visual: map[string]any{"templateId": template, "showSessionHeader": false},
+			}
+			if err := svc.Save(&design); err != nil {
+				t.Fatal(err)
+			}
+			reopened := NewWidgetDesignService(dir, nil)
+			if err := reopened.Load(); err != nil {
+				t.Fatal(err)
+			}
+			got := reopened.List()
+			if len(got) != 1 || got[0].SystemID != design.SystemID || got[0].Visual["templateId"] != template || got[0].Visual["showSessionHeader"] != false {
+				t.Fatalf("functional design did not survive reopening: %+v", got)
+			}
+		})
+	}
+}
+
 func TestWidgetDesignServiceDeleteDoesNotMutateProfileWidgets(t *testing.T) {
 	dir := t.TempDir()
 	svc := NewWidgetDesignService(dir, nil)

@@ -2,8 +2,11 @@ import type { ComponentType } from "react";
 import type { DesignSystemDefinition, WidgetRendererProps } from "../../core/design-system-definition";
 import { DeltaFunctional } from "./DeltaFunctional";
 import { PedalsFunctional } from "./PedalsFunctional";
+import { PedalsTelemetryFunctional } from "./PedalsTelemetryFunctional";
 import { RelativeFunctional } from "./RelativeFunctional";
 import { StandingsFunctional } from "./StandingsFunctional";
+import { TrackMapFunctional } from "./TrackMapFunctional";
+import { TrackWeatherFunctional } from "./TrackWeatherFunctional";
 
 export const vantareFunctionalManifest: DesignSystemDefinition = {
   id: "vantare-functional",
@@ -74,6 +77,39 @@ export const vantareFunctionalManifest: DesignSystemDefinition = {
       },
       inspector: { appearance: [] },
       Renderer: PedalsFunctional as ComponentType<WidgetRendererProps>,
+    },
+    {
+      widgetType: "pedals-telemetry",
+      configVersion: 1,
+      defaultSettings: {},
+      configMigrations: { 0: (settings) => ({ ...settings }) },
+      parseSettings(input: unknown) {
+        return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
+      },
+      inspector: { appearance: [] },
+      Renderer: PedalsTelemetryFunctional as ComponentType<WidgetRendererProps>,
+    },
+    {
+      widgetType: "track-weather",
+      configVersion: 1,
+      defaultSettings: {},
+      configMigrations: { 0: (settings) => ({ ...settings }) },
+      parseSettings(input: unknown) {
+        return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
+      },
+      inspector: { appearance: [] },
+      Renderer: TrackWeatherFunctional as ComponentType<WidgetRendererProps>,
+    },
+    {
+      widgetType: "track-map",
+      configVersion: 1,
+      defaultSettings: {},
+      configMigrations: { 0: (settings) => ({ ...settings }) },
+      parseSettings(input: unknown) {
+        return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
+      },
+      inspector: { appearance: [] },
+      Renderer: TrackMapFunctional as ComponentType<WidgetRendererProps>,
     },
   ],
 };

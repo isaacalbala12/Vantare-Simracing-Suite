@@ -25,12 +25,8 @@ function ease(t: number): number {
 }
 
 function blendCar(from: SceneOverride | undefined, to: SceneOverride | undefined, t: number): SceneOverride | undefined {
-  // Un override que solo existe en el keyframe destino aterriza AL LLEGAR
-  // (t=1), no al empezar el intervalo — devolver `to` antes de tiempo
-  // adelantaba el evento toda la duración del tramo (P7 a 1 ms cuando el
-  // cambio de posición correspondía a 1600 ms).
   if (!from) {
-    return t >= 1 ? to : undefined;
+    return to;
   }
   if (!to) {
     return from;
@@ -55,7 +51,7 @@ function blendPlayer(
   to: ScenePlayerOverride | undefined,
   t: number,
 ): ScenePlayerOverride | undefined {
-  if (!from) return t >= 1 ? to : undefined;
+  if (!from) return to;
   if (!to) return from;
   const blended: ScenePlayerOverride = { ...from };
   for (const field of CONTINUOUS_PLAYER_FIELDS) {

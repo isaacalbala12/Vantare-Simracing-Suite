@@ -158,32 +158,6 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
       })}
     </fieldset>}
 
-    {/* Laboratorio tower de Redline (ISA-1071): solo sobre los diseños Redline
-        de standings Endurance — con otro diseño la selección no aplicaría. */}
-    {query.widget === "standings" && query.system === "vantare-endurance" && (!query.designId || query.designId === "standings-endurance-redline" || query.designId === "standings-endurance-redline-tower") ? (
-      <fieldset><legend>Redline · Estudio visual</legend>
-        <button type="button" className="functional-study-play" onClick={() => update({
-          ...query, designId: "standings-endurance-redline-tower", redlineTheme: "tower", redlineSelection: "glow", redlineHeader: "current", redlineOpacity: .95, redlineData: "reference", width: 482, height: 1087, scale: .65, state: "ready", sceneId: undefined, sceneFrame: undefined,
-        })}>Aplicar estudio azul · luz roja</button>
-        <Select label="Datos de comparación" value={query.redlineData ?? "telemetry"} onChange={(value) => update({ ...query, redlineData: value as OverlayWorkshopQuery["redlineData"] })}>
-          <option value="reference">Referencia HTML · 12 pilotos de ejemplo</option><option value="telemetry">Escenario V2 · sin datos inventados</option>
-        </Select>
-        {query.redlineData === "reference" && query.state === "ready" && !query.sceneId && <p className="functional-study-note" role="note">REFERENCIA VISUAL: datos de ejemplo, no telemetría de LMU. Mismo renderer productivo. 482 × 1087 px.</p>}
-        {query.redlineTheme === "tower" && <p className="functional-study-note">Copia estática del HTML. Las animaciones y columnas configurables de esta composición aún no están validadas.</p>}
-        <Select label="Tratamiento" value={query.redlineTheme ?? "classic"} onChange={(value) => update({ ...query, redlineTheme: value as OverlayWorkshopQuery["redlineTheme"] })}>
-          <option value="classic">Redline actual</option><option value="tower">Azul grafito</option>
-        </Select>
-        <Select label="Fila del jugador" value={query.redlineSelection ?? "legacy"} onChange={(value) => update({ ...query, redlineSelection: value as OverlayWorkshopQuery["redlineSelection"] })}>
-          <option value="glow">Fila de luz roja · sin línea</option><option value="frame">Marco fino</option><option value="plate">Placa de nombre</option><option value="legacy">Resaltado actual</option>
-        </Select>
-        <Select label="Cabecera" value={query.redlineHeader ?? "current"} onChange={(value) => update({ ...query, redlineHeader: value as OverlayWorkshopQuery["redlineHeader"] })}>
-          <option value="signature">Firma Redline</option><option value="session">Sesión protagonista</option><option value="compact">Marca compacta</option><option value="current">Cabecera actual</option>
-        </Select>
-        <label className="functional-study-toggle"><span>Opacidad del fondo · {Math.round((query.redlineOpacity ?? 1) * 100)}%</span><input aria-label="Opacidad del fondo" type="range" min="45" max="100" value={Math.round((query.redlineOpacity ?? 1) * 100)} onChange={(event) => update({ ...query, redlineOpacity: Number(event.target.value) / 100 })} /></label>
-        <p className="functional-study-note">Variantes exploratorias. Sin guardar perfiles. El contrato actual no aporta emblemas de fabricante.</p>
-      </fieldset>
-    ) : null}
-
     <fieldset><legend>Animación</legend>
       {scenes.length === 0 ? <p className="functional-study-note">Este widget todavía no tiene animaciones declaradas.</p> : (
         <div className="functional-study-scene">

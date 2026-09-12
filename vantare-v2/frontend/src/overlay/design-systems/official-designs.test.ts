@@ -115,10 +115,10 @@ describe("official-designs", () => {
     );
     const expectedPairs = widgetTypeRegistry.list().flatMap((definition) => {
       if (definition.type === "engineer-radio") {
-        return [`${definition.type}:vantare-crystal`];
+        return [`${definition.type}:vantare-crystal`, `${definition.type}:vantare-functional`];
       }
       if (definition.type === "track-map") {
-        return [`${definition.type}:vantare-endurance`];
+        return [`${definition.type}:vantare-endurance`, `${definition.type}:vantare-functional`];
       }
       const pairs = [`${definition.type}:vantare-crystal`, `${definition.type}:vantare-original`];
       if (functionalTypes.has(definition.type)) pairs.push(`${definition.type}:vantare-functional`);

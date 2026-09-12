@@ -148,8 +148,8 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   if ((variant === "pedals-zero" || variant === "pedals-full") && widget !== "pedals") {
     return { error: `${variant} variant requires widget=pedals` };
   }
-  if (widget === "engineer-radio" && system !== "vantare-crystal") {
-    return { error: "engineer-radio requires system=vantare-crystal" };
+  if (widget === "engineer-radio" && !["vantare-crystal", "vantare-functional"].includes(system)) {
+    return { error: "engineer-radio requires system=vantare-crystal or vantare-functional" };
   }
 
   const sceneId = params.get("scene") ?? undefined;

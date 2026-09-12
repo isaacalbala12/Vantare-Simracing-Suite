@@ -7,8 +7,12 @@ const en = {
   you: "YOU", remaining: "REMAINING", race: "RACE", practice: "PRACTICE", qualifying: "QUALIFYING",
   stale: "DATA OUT OF DATE", disconnected: "DISCONNECTED", missing: "NO DATA", error: "DATA ERROR",
   trackTemp: "TRACK", ambientTemp: "AIR", wind: "WIND", track: "TRACK",
+  rain: "RAIN", wetness: "WET", dry: "DRY", pressure: "PRESS",
   relative: "RELATIVE", delta: "DELTA", pedals: "PEDALS", playerGap: "TO YOU",
   clutch: "CLUTCH", brake: "BRAKE", throttle: "THROTTLE",
+  fuel: "FUEL", avg: "AVG", laps: "LAPS", required: "REQ", history: "HISTORY",
+  aero: "AERO", body: "BODY", suspension: "SUSP", tyre: "TYRE", damage: "DAMAGE",
+  speed: "SPEED", rpm: "RPM", gear: "GEAR",
 };
 
 export const functionalLabels: Record<Locale, typeof en> = {
@@ -18,6 +22,7 @@ export const functionalLabels: Record<Locale, typeof en> = {
     tireCompound: "NEUM.", you: "TÚ", remaining: "RESTANTE", race: "CARRERA", practice: "PRÁCTICA",
     qualifying: "CLASIFICACIÓN", stale: "DATOS ANTIGUOS", disconnected: "DESCONECTADO", missing: "SIN DATOS", error: "ERROR DE DATOS",
     trackTemp: "PISTA", ambientTemp: "AIRE", wind: "VIENTO", track: "PISTA",
+    rain: "LLUVIA", wetness: "HÚMEDO", dry: "SECO", pressure: "PRES",
     relative: "RELATIVO", pedals: "PEDALES", playerGap: "A TI",
     clutch: "EMBRAGUE", brake: "FRENO", throttle: "ACELERADOR" },
   pt: { ...en, driverName: "PILOTO", vehicleClass: "CLASSE", gap: "AO LÍDER", paceGap: "AO MELHOR",

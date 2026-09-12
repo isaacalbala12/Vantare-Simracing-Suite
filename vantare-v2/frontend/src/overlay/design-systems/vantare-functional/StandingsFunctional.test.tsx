@@ -132,9 +132,8 @@ describe("Functional Standings", () => {
 
   it("accepts the implemented Workshop pairs and rejects unsupported widgets", () => {
     expect(parseOverlayWorkshopQuery("?widget=standings&system=vantare-functional&design=standings-functional-compact")).not.toHaveProperty("error");
-    for (const widget of ["relative", "delta", "pedals"] as const) {
+    for (const widget of ["relative", "delta", "pedals", "pedals-telemetry", "track-weather", "track-map", "fuel-strategy", "car-damage-numbers", "input-telemetry", "racing-flags", "race-schedule", "broadcast-tower", "multiclass-relative", "car-damage-visual", "delta-trace", "head-to-head", "engineer-radio"] as const) {
       expect(parseOverlayWorkshopQuery(`?widget=${widget}&system=vantare-functional`)).not.toHaveProperty("error");
     }
-    expect(parseOverlayWorkshopQuery("?widget=track-map&system=vantare-functional")).toHaveProperty("error");
   });
 });

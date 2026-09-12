@@ -138,12 +138,6 @@ export function buildWorkshopWidget(input: {
   brand?: "off";
   modules?: readonly string[];
   slots?: readonly string[];
-  /** Laboratorio tower de Redline (ISA-1071, dev): viaja por el contrato
-   *  visual/settings como appearanceOverrides, igual que en producción. */
-  redlineTheme?: "classic" | "tower";
-  redlineSelection?: "legacy" | "glow" | "frame" | "plate";
-  redlineHeader?: "current" | "signature" | "session" | "compact";
-  redlineOpacity?: number;
 }): WidgetInstanceV3 {
   let widget = createScenarioWidget({
     widget: input.widget,
@@ -202,24 +196,6 @@ export function buildWorkshopWidget(input: {
       visual: {
         ...widget.visual,
         appearanceOverrides: { ...(widget.visual.appearanceOverrides ?? {}), footerSlots: [...input.slots] },
-      },
-    };
-  }
-
-  // Laboratorio tower de Redline: solo standings Endurance — el renderer lo
-  // re-valida en parseStandingsEnduranceSettings antes de dibujar.
-  if (input.widget === "standings" && input.system === "vantare-endurance") {
-    widget = {
-      ...widget,
-      visual: {
-        ...widget.visual,
-        appearanceOverrides: {
-          ...(widget.visual.appearanceOverrides ?? {}),
-          ...(input.redlineTheme ? { redlineTheme: input.redlineTheme } : {}),
-          ...(input.redlineSelection ? { redlineSelection: input.redlineSelection } : {}),
-          ...(input.redlineHeader ? { redlineHeader: input.redlineHeader } : {}),
-          ...(input.redlineOpacity !== undefined ? { redlineSurfaceOpacity: input.redlineOpacity } : {}),
-        },
       },
     };
   }
@@ -324,13 +300,8 @@ function withWorkshopDemo(frame: OverlayFrameV2, quality: OverlayQualityV2): Ove
         : row.bestLap;
       return { ...row, driver: nameAt(row.position) ?? row.driver, bestLap };
     }),
-    // En relative las escenas apuntan a los asientos declarados en
-    // RELATIVE_DEV_SEAT_BY_DRIVER (Bruni 20, Birch 19): hay que NOMBRAR
-    // esas filas, si no el parche resbala por fallback posicional a la
-    // fila que ocupe el asiento (los parches de Bruni/Birch aterrizaban
-    // sobre Pino/Jensen).
-    relative: frame.relative.map((row) => ({ ...row, name: seatNameAt(RELATIVE_DEV_SEAT_BY_DRIVER, row.position) ?? nameAt(row.position) ?? row.name })),
-    relativeSettled: frame.relativeSettled.map((row) => ({ ...row, name: seatNameAt(RELATIVE_DEV_SEAT_BY_DRIVER, row.position) ?? nameAt(row.position) ?? row.name })),
+    relative: frame.relative.map((row) => ({ ...row, name: nameAt(row.position) ?? row.name })),
+    relativeSettled: frame.relativeSettled.map((row) => ({ ...row, name: nameAt(row.position) ?? row.name })),
     player: {
       ...frame.player,
       clutch: qualityValue(0.06, quality),
@@ -362,7 +333,6 @@ const STANDINGS_DEV_SEAT_BY_DRIVER: Readonly<Record<string, number>> = {
   "Ben Hanley": 2,
   "Filipe Albuquerque": 5,
   "Conrad Laursen": 16,
-  "Alessandro Pier Guidi": 6,
 };
 
 // Tabla posicional separada para relative: el que cruza al jugador (detrás
@@ -528,38 +498,15 @@ function seatNameAt(table: Readonly<Record<string, number>>, position: number): 
   return undefined;
 }
 
-// Una escena cuyo parche no resuelve ninguna fila — el piloto no está en la
-// parrilla y su asiento declarado tampoco tiene dueño — se descartaba en
-// silencio: el parche resbalaba a un asiento equivocado o no aterrizaba. El
-// aviso sale una vez por escena y piloto, no por frame muestreado.
-const warnedScenePatches = new Set<string>();
-function warnDroppedScenePatches(
-  sceneId: string,
-  keys: readonly string[],
-  resolved: ReadonlySet<string>,
-): void {
-  for (const key of keys) {
-    if (resolved.has(key)) continue;
-    const tag = `${sceneId}${key}`;
-    if (warnedScenePatches.has(tag)) continue;
-    warnedScenePatches.add(tag);
-    console.warn(
-      `[workshop] escena "${sceneId}": el parche de "${key}" no resolvió ninguna fila (ni por nombre ni por asiento) — se descarta.`,
-    );
-  }
-}
-
 function patchRelativeSection(
   rows: readonly OverlayRelativeRowV2[],
   cars: Record<string, { timeGapToPlayer?: number; absent?: boolean }>,
   quality: OverlayQualityV2,
-  resolved?: Set<string>,
 ): OverlayRelativeRowV2[] {
   return rows.flatMap((row) => {
     const key = (row.name && cars[row.name] ? row.name : undefined) ?? seatNameAt(RELATIVE_DEV_SEAT_BY_DRIVER, row.position);
-    const patch = key === undefined ? undefined : cars[key];
-    if (key === undefined || !patch) return [row];
-    resolved?.add(key);
+    const patch = key ? cars[key] : undefined;
+    if (!patch) return [row];
     // lapDistanceMeters no tiene campo en la fila V2: se ignora sin fingirlo.
     if (patch.absent) return [];
     if (patch.timeGapToPlayer === undefined) return [row];
@@ -588,10 +535,9 @@ function applyScene(
     standings = patchStandings(standings, { 3: { bestLap: 86.408 } }, quality);
   }
   if (state.cars) {
-    const resolved = new Set<string>();
     if (scene.widget === "relative") {
-      relative = patchRelativeSection(frame.relative, state.cars, quality, resolved);
-      settled = patchRelativeSection(frame.relativeSettled, state.cars, quality, resolved);
+      relative = patchRelativeSection(frame.relative, state.cars, quality);
+      settled = patchRelativeSection(frame.relativeSettled, state.cars, quality);
       // La VM confía en el orden canónico del frame: tras un cruce hay que
       // reordenar como haría Go — gap a jugador descendente (delante arriba,
       // jugador en medio, detrás abajo), si no el cambio de lado no se ve.
@@ -601,9 +547,8 @@ function applyScene(
     } else {
       standings = standings.flatMap((row) => {
         const key = (row.driver && state.cars![row.driver] ? row.driver : undefined) ?? seatNameAt(STANDINGS_DEV_SEAT_BY_DRIVER, row.position);
-        const patch = key === undefined ? undefined : state.cars![key];
-        if (key === undefined || !patch) return [row];
-        resolved.add(key);
+        const patch = key ? state.cars![key] : undefined;
+        if (!patch) return [row];
         // tireCompound no tiene campo en la fila V2: se ignora sin fingirlo.
         if (patch.absent) return [];
         return [
@@ -617,7 +562,6 @@ function applyScene(
       });
       standings = [...standings].sort((left, right) => left.position - right.position);
     }
-    warnDroppedScenePatches(scene.id, Object.keys(state.cars), resolved);
   }
   let player = frame.player;
   let delta = frame.delta;
@@ -681,12 +625,10 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
       // Las escenas se dirigen por nombre de piloto: los asientos ancla
       // (Bovy 7, Bruni 10…) llevan los nombres de la parrilla de escenas
       // para que los overrides resuelvan sus filas; el resto conserva la
-      // parrilla GT3 del estudio. Laursen va en P15 — su escena de entrada/
-      // retirada cambia la membresía en una fila visible; en P16 el
-      // presupuesto de filas lo dejaría fuera de cuadro.
-      const names = ["Renan Azeredo", "Ben Hanley", "Fabian Seischegg", "Adaildo Vieira", "Filipe Albuquerque", "Rick Zwieten", "Sarah Bovy", "Martin Berry", "Michael Birch", "Gianmaria Bruni", "Tommaso Mosca", "Luca Ghiotto", "Duncan Cameron", "Frederik Schandorff", "Conrad Laursen", "Ulysse De Pauw"];
-      const gaps = [0, .8, 11.3, 32.1, 35.2, 44.5, 47.3, 52.2, 53.6, 59.4, 62.8, 68.1, 74.6, 81.2, 88.7, 95.4];
-      const laps = [102.198, 102.089, 103.702, 102.278, 104.002, 104.059, 105.035, 104.822, 104.754, 103.111, 103.942, 104.316, 103.687, 104.501, 105.229, 105.913];
+      // parrilla GT3 del estudio.
+      const names = ["Renan Azeredo", "Ben Hanley", "Fabian Seischegg", "Adaildo Vieira", "Filipe Albuquerque", "Rick Zwieten", "Sarah Bovy", "Martin Berry", "Michael Birch", "Gianmaria Bruni", "Tommaso Mosca", "Luca Ghiotto", "Duncan Cameron", "Frederik Schandorff", "Ulysse De Pauw"];
+      const gaps = [0, .8, 11.3, 32.1, 35.2, 44.5, 47.3, 52.2, 53.6, 59.4, 62.8, 68.1, 74.6, 81.2, 88.7];
+      const laps = [102.198, 102.089, 103.702, 102.278, 104.002, 104.059, 105.035, 104.822, 104.754, 103.111, 103.942, 104.316, 103.687, 104.501, 105.229];
       const rows = frame.standings.slice(0, names.length).map((row, index) => ({
         ...row, driver: names[index]!, position: index + 1, classPosition: index + 1,
         classId: "GT3", gap: qualityValue(gaps[index]!, quality),

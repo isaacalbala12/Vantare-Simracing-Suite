@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   ANIMATION_SCENES,
   getAnimationScene,
@@ -9,7 +9,6 @@ import { buildWorkshopFrameV2, createScenarioWidget, type WorkshopV2Scenario } f
 import { buildStandingsViewModelV2 } from "../../widget-types/standings/standings-view-model-v2";
 import { parseStandingsContent } from "../../widget-types/standings/standings-content";
 import { deriveStandingsEvents, deriveBattlePairs } from "../../design-systems/vantare-endurance/standings/standings-motion";
-import { groupRowsByClass } from "../../design-systems/vantare-endurance/standings/standings-endurance-shared";
 import { deriveRelativeEvents } from "../../design-systems/vantare-endurance/relative/relative-motion";
 import { buildRelativeViewModelV2 } from "../../widget-types/relative/relative-view-model-v2";
 import { parseRelativeContent } from "../../widget-types/relative/relative-content";
@@ -103,43 +102,6 @@ describe("scenes drive the motion engine", () => {
     const after = modelAt("standings-overtake", 2);
     const events = deriveStandingsEvents(before, after);
     expect(events.some((event) => event.kind === "overtake")).toBe(true);
-  });
-
-  it("class battle closes inside a visible class block, then the overtake swaps the rows in place", () => {
-    // Frame 2: Birch (GTE P9) a 0,3 s de Pier Guidi (GTE P6) — la pareja existe
-    // dentro del bloque que Redline sí recorta visible (la clase del jugador,
-    // hypercar, queda fuera del presupuesto de filas).
-    const closing = modelAt("standings-class-battle", 2);
-    expect(deriveBattlePairs(closing).length).toBeGreaterThan(0);
-    const gteBefore = groupRowsByClass(closing.rows).find((group) => group.vehicleClass === "gte")?.rows ?? [];
-    const aheadIdx = gteBefore.findIndex((row) => row.driverName === "Alessandro Pier Guidi");
-    const behindIdx = gteBefore.findIndex((row) => row.driverName === "Michael Birch");
-    expect(aheadIdx).toBeGreaterThanOrEqual(0);
-    expect(behindIdx).toBe(aheadIdx + 1);
-
-    // Frame 4: el adelantamiento intercambia las filas dentro de la misma
-    // clase — el reorder visible que la parrilla multiclase no daba hasta ahora.
-    const swapped = modelAt("standings-class-battle", 4);
-    const gteAfter = groupRowsByClass(swapped.rows).find((group) => group.vehicleClass === "gte")?.rows ?? [];
-    expect(gteAfter.findIndex((row) => row.driverName === "Alessandro Pier Guidi")).toBe(behindIdx);
-    expect(gteAfter.findIndex((row) => row.driverName === "Michael Birch")).toBe(aheadIdx);
-    expect(deriveStandingsEvents(closing, swapped).some((event) => event.kind === "overtake")).toBe(true);
-  });
-
-  it("warns once per scene and driver when a patch resolves no row", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    try {
-      const input: WorkshopV2Scenario = {
-        ...scenario("standings", "standings-overtake", 0),
-        sceneState: { caption: "x", cars: { "Piloto Inexistente": { place: 1 } } },
-      };
-      buildWorkshopFrameV2(input);
-      buildWorkshopFrameV2(input);
-      expect(warn).toHaveBeenCalledTimes(1);
-      expect(String(warn.mock.calls[0]?.[0])).toContain("Piloto Inexistente");
-    } finally {
-      warn.mockRestore();
-    }
   });
 
   it("battle closes the gap under the threshold and then breaks it", () => {

@@ -198,6 +198,31 @@ export function deriveBattlePairs(
   return candidates[0] ? [candidates[0].pair] : [];
 }
 
+/**
+ * FLIP offsets: for every row whose in-class index changed, the vertical pixel
+ * offset from where it used to be. The renderer applies the offset instantly
+ * (First+Invert) and lets a CSS transition play it back to zero.
+ */
+export function deriveFlipOffsets(
+  prev: StandingsViewModel | null,
+  next: StandingsViewModel,
+  rowStridePx: number,
+): Map<string, number> {
+  const offsets = new Map<string, number>();
+  if (!prev || prev.status !== "ready" || next.status !== "ready") {
+    return offsets;
+  }
+  const prevPositions = classPositionsById(prev);
+  const nextPositions = classPositionsById(next);
+  for (const [id, after] of nextPositions) {
+    const before = prevPositions.get(id);
+    if (before !== undefined && before !== after) {
+      offsets.set(id, (before - after) * rowStridePx);
+    }
+  }
+  return offsets;
+}
+
 export type RosterChange = {
   /** Rows present now that were absent before. */
   entered: string[];

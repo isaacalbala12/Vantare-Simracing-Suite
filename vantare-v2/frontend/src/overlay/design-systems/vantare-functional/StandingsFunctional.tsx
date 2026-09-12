@@ -2,8 +2,8 @@ import type { CSSProperties } from "react";
 import { useRef } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { WidgetRendererProps } from "../../core/design-system-definition";
-import { flipRows, useWidgetMotion } from "../../core/widget-motion";
-import { deriveOvertakes } from "./functional-motion";
+import { useWidgetMotion } from "../../core/widget-motion";
+import { deriveIndexOffsets, deriveOvertakes } from "./functional-motion";
 import { FUNCTIONAL_IDENTITY_METRICS as IDENTITY, resolveFunctionalColumnWidth, resolveFunctionalIdentitySpan } from "../../widget-types/standings/functional-standings-layout";
 import { resolveStandingsCellValue, type StandingsViewModel } from "../../widget-types/standings/standings-view-model";
 import { functionalLabels } from "./labels";
@@ -16,28 +16,24 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
   const rootRef = useRef<HTMLElement | null>(null);
   // Eficiencia: las filas se deslizan a su posición (FLIP) y los cambios de
   // posición parpadean una vez. En "reduced" solo queda el deslizamiento.
-  useWidgetMotion(model, motion !== "minimal", rootRef, ({ prev, next, root, schedule, persist }) => {
-    // FLIP medido por id: la fila desliza desde su posición visual actual
-    // (incluido el resto de una animación en vuelo) hasta su nuevo sitio —
-    // no desde un stride por índice que teletransporta al re-target.
-    flipRows(root, persist, {
-      rows: "[data-standings-row]",
-      id: (row) => row.dataset.standingsRow,
-      duration: (from) => Math.min(460, 260 + (Math.abs(from) / 30) * 50),
-    });
+  useWidgetMotion(model, motion !== "minimal", rootRef, ({ prev, next, root, schedule }) => {
+    const stride = root.querySelector<HTMLElement>("[data-standings-row]")?.getBoundingClientRect().height ?? 30;
+    for (const [id, delta] of deriveIndexOffsets(prev.rows, next.rows)) {
+      const row = root.querySelector<HTMLElement>(`[data-standings-row="${CSS.escape(id)}"]`);
+      row?.animate(
+        [{ transform: `translateY(${delta * stride}px)` }, { transform: "translateY(0)" }],
+        { duration: Math.min(460, 260 + Math.abs(delta) * 50), easing: "cubic-bezier(0.22, 0.9, 0.3, 1)" },
+      );
+    }
     if (motion === "full") {
       const { gained, lost } = deriveOvertakes(prev.rows, next.rows);
       for (const [id, direction] of [...gained.map((id) => [id, "rise"] as const), ...lost.map((id) => [id, "fall"] as const)]) {
         const row = root.querySelector<HTMLElement>(`[data-standings-row="${CSS.escape(id)}"]`);
         if (!row) continue;
         row.dataset.motion = direction;
-        // La clave cancela el borrado anterior del mismo attr — sin ella el
-        // timer de un evento viejo apagaba el flash del siguiente.
-        schedule(650, () => { delete row.dataset.motion; }, `motion-${id}`);
+        schedule(650, () => { delete row.dataset.motion; });
       }
     }
-  }, (root) => {
-    root.querySelectorAll<HTMLElement>("[data-motion]").forEach((el) => { delete el.dataset.motion; });
   });
   const labels = functionalLabels[locale];
   const broadcast = settings.templateId === "broadcast";
@@ -89,7 +85,7 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
   </div>;
 
   return (
-    <section ref={rootRef} className="vf-standings" data-widget-system="vantare-functional" data-widget-renderer="standings" data-template={broadcast ? "broadcast" : "signature"} data-session-header={hasHeader} data-status={model.status} data-session={session} data-effects={effects} data-motion-level={motion}>
+    <section ref={rootRef} className="vf-standings" data-widget-system="vantare-functional" data-widget-renderer="standings" data-template={broadcast ? "broadcast" : "signature"} data-session-header={hasHeader} data-status={model.status} data-session={session} data-effects={effects}>
       {!hasHeader && brandVisible && <div className="vf-brand-band"><span className="vf-brand" aria-label="Vantare"><img src={vantareMark} alt="" />VANTARE</span></div>}
       {(!identitySpan || unavailable || broadcast) && hasHeader && sessionHeader}
       {statusText && model.status !== "stale" && <p className="vf-status" role="status">{statusText}</p>}

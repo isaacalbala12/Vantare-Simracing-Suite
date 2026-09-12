@@ -359,7 +359,6 @@ export function StandingsEndurance({ model, settings, layout, motion = "full" }:
       data-widget-renderer="standings"
       data-status={model.status}
       data-template={parsed.templateId}
-      data-motion-level={motion}
       data-redline-theme={parsed.templateId === "standings-redline" ? parsed.redlineTheme : undefined}
       data-redline-selection={parsed.templateId === "standings-redline" ? parsed.redlineSelection : undefined}
       data-redline-header={parsed.templateId === "standings-redline" ? parsed.redlineHeader : undefined}

@@ -2294,3 +2294,23 @@ aislada a `nightly` (pendiente review/merge):
 - Review SWE-2 de #1163 encontró un bug preexistente: error de carga de
   Studio inalcanzable tras spinner (guard !document ganaba a lastError).
   Corregido con test de regresión.
+
+## ISA-1149/1140/1147/1150/1160 + ISA-1179/1181/1185 — Optimización y reestilo Orbit (2026-09-12)
+
+- PROMOCIONADO a nightly (verificado en origin/nightly, HEAD d2450cc5):
+  #1164 subset Cascadia WOFF2 (380→74KB), #1170 allocs Go en path caliente,
+  #1165 blur condicional por nivel de rendimiento, #1168 fanout Wails
+  settings+license+updater, #1163 store externo Studio con selectores
+  granulares (B1+B2) y fix de error de carga inalcanzable en StudioRouteEditor.
+- Reestilo Orbit entregado como drafts pendientes de autorización: #1180
+  (BetaWelcome, recordatorios calendario, globales, DowngradeModal sobre
+  ConfirmDialog del kit), #1182 (estados auxiliares Studio/Perfiles +
+  primitiva .orbit-alert), #1186 (editor in-place, subtítulos ingeniero,
+  HubToast, LanguageSelector + harness orbit-outside). Capturas de
+  verificación en el escritorio de Isaac.
+- Tras estas PRs los únicos consumidores legacy restantes son auth/*
+  (bloqueado por migración a Clerk) y settings/diagnostics/* (interno).
+  El overlay en juego queda como decisión de producto: es UI de widgets,
+  no de gestión.
+- Fase C del shim Studio documentada como opcional sin fecha: cero ganancia
+  de runtime hoy; los tests antiguos la ejercitan deliberadamente.

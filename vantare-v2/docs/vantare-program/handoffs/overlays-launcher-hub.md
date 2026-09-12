@@ -211,6 +211,20 @@ retirado y el PR #1132 por duplicar esos bloques. Cada corte pasó sus pruebas
 focales y typecheck antes del siguiente; la suite y builds completos se
 ejecutan sobre el candidato documental definitivo.
 
+Gate completo de la extensión: frontend 446 archivos, 3544 pruebas PASS y 2
+omitidas; typecheck incluido en build, lint y build web PASS; `go test ./...`
+PASS; digest de roadmap idempotente, `git diff --check` y búsqueda de
+marcadores PASS. El `AbortError` de happy-dom conserva exit 0 y el build web
+mantiene el aviso heredado de chunks mayores de 500 kB. Build Wails forzada
+con canal `nightly` desde el `.env.local` original autorizado: URL, anon key y
+registro público de licencia coinciden embebidos mediante su representación
+base64, sin copiar ni mostrar valores. `bin/vantare.exe` mide 29.910.016 bytes
+y tiene SHA-256
+`B0924BBB7AEB4896584911F39E67D5D47A7C33D116AB4F9194905AB6EA6A86CA`;
+el archivo generado de configuración se retiró al terminar. Esta build todavía
+requiere el smoke manual conjunto antes de integrar a Nightly y no acredita la
+equivalencia de bandera durante una sesión LMU activa.
+
 Actualización vigente: la rama se reconcilió con `origin/nightly@e13756ef`
 en `a8eedecf`, conservando el editor in-place actual y adaptando su inspector,
 catálogo y guardado a `WidgetPolicy`. Después incorporó la rama completa y

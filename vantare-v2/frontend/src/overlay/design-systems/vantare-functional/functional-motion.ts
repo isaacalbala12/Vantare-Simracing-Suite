@@ -38,13 +38,12 @@ export function deriveOvertakes(
   const prevIndex = new Map(prevRows.map((row, index) => [row.id, index]));
   const gained: string[] = [];
   const lost: string[] = [];
-  for (const row of nextRows) {
+  nextRows.forEach((row, after) => {
     const before = prevIndex.get(row.id);
-    if (before === undefined) continue;
-    const after = nextRows.indexOf(row);
+    if (before === undefined) return;
     if (after < before) gained.push(row.id);
     else if (after > before) lost.push(row.id);
-  }
+  });
   return { gained, lost };
 }
 

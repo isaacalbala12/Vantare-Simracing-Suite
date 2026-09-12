@@ -174,21 +174,25 @@ function RedlineRow({
 export function StandingsRedlineTemplate({
   model,
   showSessionHeader,
+  motion = "full",
 }: {
   model: StandingsViewModel;
   settings: Readonly<Record<string, unknown>>;
   showSessionHeader: boolean;
+  motion?: "full" | "reduced" | "minimal";
 }) {
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const motion = useStandingsMotion(model, model.status === "ready", rootRef);
+  // El motor Redline es el más pesado (FLIP sobre todas las filas + battles +
+  // ghosts): solo corre cuando la política da presupuesto completo.
+  const motionEffects = useStandingsMotion(model, model.status === "ready" && motion === "full", rootRef);
   const sessionBest = findSessionBestLapSeconds(model.rows);
   const groups = groupRowsByClass(model.rows);
-  const battleByAhead = new Map(motion.battles.map((battle) => [battle.aheadId, battle]));
+  const battleByAhead = new Map(motionEffects.battles.map((battle) => [battle.aheadId, battle]));
   const remainingSeconds = remainingSecondsFromText(model.remainingText);
   const isFinalMinutes =
     remainingSeconds !== null && remainingSeconds > 0 && remainingSeconds <= FINAL_MINUTES_SECONDS;
-  const ghostsByClass = new Map<string, typeof motion.ghosts[number][]>();
-  for (const ghost of motion.ghosts) {
+  const ghostsByClass = new Map<string, typeof motionEffects.ghosts[number][]>();
+  for (const ghost of motionEffects.ghosts) {
     const bucket = ghostsByClass.get(ghost.vehicleClass) ?? [];
     bucket.push(ghost);
     ghostsByClass.set(ghost.vehicleClass, bucket);
@@ -221,8 +225,8 @@ export function StandingsRedlineTemplate({
                 classPosition={position}
                 columns={model.columns}
                 isSessionBest={sessionBest !== null && bestSeconds === sessionBest}
-                positionDelta={motion.positionDeltas.get(target.id) ?? 0}
-                tire={motion.tires.get(target.id)}
+                positionDelta={motionEffects.positionDeltas.get(target.id) ?? 0}
+                tire={motionEffects.tires.get(target.id)}
                 battle={battle && battle.behindId === target.id ? battle : undefined}
               />
             );

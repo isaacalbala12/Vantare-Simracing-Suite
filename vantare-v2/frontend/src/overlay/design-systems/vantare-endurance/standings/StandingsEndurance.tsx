@@ -278,6 +278,7 @@ function templateBody(
   model: StandingsViewModel,
   settings: Readonly<Record<string, unknown>>,
   showSessionHeader: boolean,
+  motion: "full" | "reduced" | "minimal",
 ) {
   switch (templateId) {
     case "standings-f1":
@@ -312,6 +313,7 @@ function templateBody(
           model={model}
           settings={settings}
           showSessionHeader={showSessionHeader}
+          motion={motion}
         />
       );
     case "standings-tower":
@@ -327,7 +329,7 @@ function templateBody(
   }
 }
 
-export function StandingsEndurance({ model, settings, layout }: WidgetRendererProps<StandingsViewModel>) {
+export function StandingsEndurance({ model, settings, layout, motion = "full" }: WidgetRendererProps<StandingsViewModel>) {
   const parsed = parseStandingsEnduranceSettings(settings);
   const viewportHeight = layout === undefined
     ? Number.POSITIVE_INFINITY
@@ -355,7 +357,7 @@ export function StandingsEndurance({ model, settings, layout }: WidgetRendererPr
       className="ven-root ven-standings"
       style={buildStandingsAppearanceStyle(settings)}
     >
-      {templateBody(parsed.templateId, fittedModel, settings, parsed.showSessionHeader)}
+      {templateBody(parsed.templateId, fittedModel, settings, parsed.showSessionHeader, motion)}
     </section>
   );
 }

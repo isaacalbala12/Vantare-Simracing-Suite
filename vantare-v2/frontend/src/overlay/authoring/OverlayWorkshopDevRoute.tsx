@@ -95,10 +95,19 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
       (initialQuery.sceneId ? (getAnimationScene(initialQuery.sceneId)?.frameMs ?? 0) : 0),
   );
   const elapsedRef = useRef(0);
+  // Última muestra cuantizada ya empujada al estado — el reloj corre a ritmo
+  // de rAF pero el widget solo debe re-renderizar cuando cambia SU muestra
+  // (updateHz), no a los 120 Hz del monitor.
+  const lastSampledRef = useRef(-1);
+
+  const updateHz = widget?.behavior.updateHz ?? 30;
 
   useEffect(() => {
     elapsedRef.current = elapsedMs;
-  }, [elapsedMs]);
+    // Un seek/cambio de escena aparca el playhead fuera del tick: hay que
+    // re-sincronizar la muestra empujada o el siguiente tick la saltaría.
+    lastSampledRef.current = sampleAtRate(elapsedMs, updateHz);
+  }, [elapsedMs, updateHz]);
 
   // Una escena que llega desde la URL o desde un aterrizaje de estudio aparca
   // el playhead en su fotograma declarado. Se ajusta durante el render (no en
@@ -127,23 +136,27 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
       }
       const next = offset + (now - start);
       if (!loop && next >= total) {
+        lastSampledRef.current = sampleAtRate(total, updateHz);
         setElapsedMs(total);
         setPlaying(false);
         return;
       }
-      setElapsedMs(next);
+      const sampled = sampleAtRate(next, updateHz);
+      if (sampled !== lastSampledRef.current) {
+        lastSampledRef.current = sampled;
+        setElapsedMs(next);
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [scene, playing, loop]);
+  }, [scene, playing, loop, updateHz]);
 
   // In a race the world is continuous but telemetry is sampled: a widget only
   // sees a new snapshot at its own updateHz (standings 15, delta 30). Playing
   // the interpolation straight at 60fps made the Workshop four times smoother
   // than the product, which is the wrong thing to judge a design against.
   // The clock advances at frame rate; the data is quantised to the widget's rate.
-  const updateHz = widget?.behavior.updateHz ?? 30;
   const sampledMs = scene ? sampleAtRate(elapsedMs, updateHz) : 0;
   const playhead = scene ? interpolateSceneAt(scene, sampledMs, loop) : null;
   const currentKeyframe = playhead?.keyframe ?? 0;

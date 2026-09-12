@@ -300,8 +300,13 @@ function withWorkshopDemo(frame: OverlayFrameV2, quality: OverlayQualityV2): Ove
         : row.bestLap;
       return { ...row, driver: nameAt(row.position) ?? row.driver, bestLap };
     }),
-    relative: frame.relative.map((row) => ({ ...row, name: nameAt(row.position) ?? row.name })),
-    relativeSettled: frame.relativeSettled.map((row) => ({ ...row, name: nameAt(row.position) ?? row.name })),
+    // En relative las escenas apuntan a los asientos declarados en
+    // RELATIVE_DEV_SEAT_BY_DRIVER (Bruni 20, Birch 19): hay que NOMBRAR
+    // esas filas, si no el parche resbala por fallback posicional a la
+    // fila que ocupe el asiento (los parches de Bruni/Birch aterrizaban
+    // sobre Pino/Jensen).
+    relative: frame.relative.map((row) => ({ ...row, name: seatNameAt(RELATIVE_DEV_SEAT_BY_DRIVER, row.position) ?? nameAt(row.position) ?? row.name })),
+    relativeSettled: frame.relativeSettled.map((row) => ({ ...row, name: seatNameAt(RELATIVE_DEV_SEAT_BY_DRIVER, row.position) ?? nameAt(row.position) ?? row.name })),
     player: {
       ...frame.player,
       clutch: qualityValue(0.06, quality),
@@ -625,10 +630,12 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
       // Las escenas se dirigen por nombre de piloto: los asientos ancla
       // (Bovy 7, Bruni 10…) llevan los nombres de la parrilla de escenas
       // para que los overrides resuelvan sus filas; el resto conserva la
-      // parrilla GT3 del estudio.
-      const names = ["Renan Azeredo", "Ben Hanley", "Fabian Seischegg", "Adaildo Vieira", "Filipe Albuquerque", "Rick Zwieten", "Sarah Bovy", "Martin Berry", "Michael Birch", "Gianmaria Bruni", "Tommaso Mosca", "Luca Ghiotto", "Duncan Cameron", "Frederik Schandorff", "Ulysse De Pauw"];
-      const gaps = [0, .8, 11.3, 32.1, 35.2, 44.5, 47.3, 52.2, 53.6, 59.4, 62.8, 68.1, 74.6, 81.2, 88.7];
-      const laps = [102.198, 102.089, 103.702, 102.278, 104.002, 104.059, 105.035, 104.822, 104.754, 103.111, 103.942, 104.316, 103.687, 104.501, 105.229];
+      // parrilla GT3 del estudio. Laursen va en P15 — su escena de entrada/
+      // retirada cambia la membresía en una fila visible; en P16 el
+      // presupuesto de filas lo dejaría fuera de cuadro.
+      const names = ["Renan Azeredo", "Ben Hanley", "Fabian Seischegg", "Adaildo Vieira", "Filipe Albuquerque", "Rick Zwieten", "Sarah Bovy", "Martin Berry", "Michael Birch", "Gianmaria Bruni", "Tommaso Mosca", "Luca Ghiotto", "Duncan Cameron", "Frederik Schandorff", "Conrad Laursen", "Ulysse De Pauw"];
+      const gaps = [0, .8, 11.3, 32.1, 35.2, 44.5, 47.3, 52.2, 53.6, 59.4, 62.8, 68.1, 74.6, 81.2, 88.7, 95.4];
+      const laps = [102.198, 102.089, 103.702, 102.278, 104.002, 104.059, 105.035, 104.822, 104.754, 103.111, 103.942, 104.316, 103.687, 104.501, 105.229, 105.913];
       const rows = frame.standings.slice(0, names.length).map((row, index) => ({
         ...row, driver: names[index]!, position: index + 1, classPosition: index + 1,
         classId: "GT3", gap: qualityValue(gaps[index]!, quality),

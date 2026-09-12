@@ -8,6 +8,11 @@ import (
 	"time"
 )
 
+// testWaitTimeout acota las esperas dirigidas por señal del archivo: la cota
+// solo detecta bloqueos reales, asi que se fija muy por encima del trabajo
+// legitimo en un runner cargado (ISA-939, ISA-812).
+const testWaitTimeout = 30 * time.Second
+
 func TestPollerTranslatesDeviceAndButtonTransitions(t *testing.T) {
 	binding := testBinding()
 	reader := &scriptedReader{samples: []DeviceSample{
@@ -196,7 +201,7 @@ func TestPollerRunCancelsAndCanRestart(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Run() error = %v", err)
 			}
-		case <-time.After(time.Second):
+		case <-time.After(testWaitTimeout):
 			t.Fatal("Run() did not stop after cancellation")
 		}
 	}
@@ -216,7 +221,7 @@ func TestPollerRunCancellationReleasesCapturingOwnership(t *testing.T) {
 	go func() { done <- poller.Run(ctx) }()
 	select {
 	case <-port.beginSignal:
-	case <-time.After(time.Second):
+	case <-time.After(testWaitTimeout):
 		t.Fatal("capture did not start")
 	}
 	cancel()
@@ -225,7 +230,7 @@ func TestPollerRunCancellationReleasesCapturingOwnership(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Run() error = %v", err)
 		}
-	case <-time.After(time.Second):
+	case <-time.After(testWaitTimeout):
 		t.Fatal("Run() did not stop")
 	}
 	if port.active.ID != "" || port.cancelCalls != 1 || controller.Snapshot().Reason != ReasonUserCancelled {
@@ -253,7 +258,7 @@ func TestPollerRunCancellationReleasesProcessingOwnership(t *testing.T) {
 	go func() { done <- poller.Run(ctx) }()
 	select {
 	case <-port.finishSignal:
-	case <-time.After(time.Second):
+	case <-time.After(testWaitTimeout):
 		t.Fatal("capture did not enter processing")
 	}
 	cancel()
@@ -262,7 +267,7 @@ func TestPollerRunCancellationReleasesProcessingOwnership(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Run() error = %v", err)
 		}
-	case <-time.After(time.Second):
+	case <-time.After(testWaitTimeout):
 		t.Fatal("Run() did not stop")
 	}
 	if port.processing.ID != "" || port.cancelCalls != 1 || controller.Snapshot().Reason != ReasonUserCancelled {
@@ -284,7 +289,7 @@ func TestPollerRunCancellationFailureIsVisibleAndAllowsExternalRetry(t *testing.
 	go func() { done <- poller.Run(ctx) }()
 	select {
 	case <-port.beginSignal:
-	case <-time.After(time.Second):
+	case <-time.After(testWaitTimeout):
 		t.Fatal("capture did not start")
 	}
 	cancel()
@@ -293,7 +298,7 @@ func TestPollerRunCancellationFailureIsVisibleAndAllowsExternalRetry(t *testing.
 		if err == nil {
 			t.Fatal("Run() hid cancellation failure")
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(testWaitTimeout):
 		t.Fatal("Run() did not return bounded cancellation failure")
 	}
 	failed := controller.Snapshot()
@@ -325,12 +330,12 @@ func TestPollerCancellationDuringReadStillReleasesOwnership(t *testing.T) {
 	go func() { done <- poller.Run(ctx) }()
 	select {
 	case <-port.beginSignal:
-	case <-time.After(time.Second):
+	case <-time.After(testWaitTimeout):
 		t.Fatal("capture did not start")
 	}
 	select {
 	case <-reader.blocked:
-	case <-time.After(time.Second):
+	case <-time.After(testWaitTimeout):
 		t.Fatal("reader did not enter cancellable read")
 	}
 	cancel()
@@ -339,7 +344,7 @@ func TestPollerCancellationDuringReadStillReleasesOwnership(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Run() error = %v", err)
 		}
-	case <-time.After(time.Second):
+	case <-time.After(testWaitTimeout):
 		t.Fatal("Run() did not stop")
 	}
 	if port.active.ID != "" || port.cancelCalls != 1 {
@@ -368,7 +373,7 @@ func TestPollerRejectsConcurrentRun(t *testing.T) {
 		if err != nil {
 			t.Fatalf("first Run() error = %v", err)
 		}
-	case <-time.After(time.Second):
+	case <-time.After(testWaitTimeout):
 		t.Fatal("first Run() did not stop")
 	}
 }
@@ -392,7 +397,7 @@ func TestPollerOneThousandStartStopCyclesJoin(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Run() cycle %d error = %v", cycle, err)
 			}
-		case <-time.After(time.Second):
+		case <-time.After(testWaitTimeout):
 			t.Fatalf("Run() cycle %d did not join", cycle)
 		}
 	}

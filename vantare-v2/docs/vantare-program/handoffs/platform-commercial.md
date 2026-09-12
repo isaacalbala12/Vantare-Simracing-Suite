@@ -845,8 +845,10 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
 1. Revisar el PR draft #913 de ISA-909 y no hacer merge ni apply remoto sin
    autorización separada.
-2. Revisar ISA-911 antes de habilitar UI Clerk: lifecycle al borrar usuarios,
-   Billing, Testing Center, policies `auth.uid()` y logout/cache.
+2. ISA-915 queda implementada en rama: verificar SignIn en Wails real con clave
+   de desarrollo, push y PR draft. ISA-911 sigue pendiente para lifecycle al
+   borrar usuarios, Billing, Testing Center y policies `auth.uid()` — bloquea la
+   retirada de Supabase Auth (ISA-1177), no la UI ya cortada.
 3. Completar gates locales y review de BIL-10C / ISA-247.
 4. Presentar dry-run, backup y rollback antes de cualquier apply remoto.
 5. Recoger feedback Nightly de BIL-01..10C sin habilitar venta.
@@ -909,6 +911,38 @@ carrera de primer login. El roadmap ya describe la frontera entregada como
   En el HEAD `6738902a`, GitGuardian, ruta de promoción y gates bloqueantes
   terminaron verdes (run 33176001927; gate principal 11m01s). Schema/Edge remotos
   siguen intactos y no hubo merge.
+
+2026-09-12, ISA-915 implementa en la rama `vantareapp/isa-915-clerk-login`
+(worktree `vantare-isa915`, base = HEAD de ISA-909) el login visible Clerk y la
+sesión Wails mínima. Frontend: `frontend/src/lib/clerk-auth.ts` carga
+`@clerk/clerk-js@6.31.0` con `@clerk/ui@1.32.2` embebido y
+`standardBrowser:false` (cookies rotas en el origen `wails://`); `LoginScreen`
+monta el `SignIn` oficial con `routing:"hash"` y tema oscuro, con estados de
+carga, error de configuración ausente y reintento; `AuthSessionBridge` añade el
+listener de sesión Clerk en la raíz — una sesión nueva obtiene `getToken()` y
+emite `license:validate` con `refreshToken` vacío, deduplicada por `session.id`,
+y la transición a `null` limpia la credencial protegida; `SettingsOrbitPage`
+cierra también la sesión Clerk antes del flujo Supabase existente. Backend:
+`authsession.Session` admite, en XOR estricto, el par access/refresh de Supabase
+o solo el `sid` externo; `license.TrustedSession` autoriza la caché offline por
+token exacto (Supabase) o por `sid` coincidente del JWT presentado (Clerk);
+`main.go` persiste el `sid` solo tras validación online y nunca devuelve JWT al
+frontend. Ningún JWT de Clerk se escribe en archivos, localStorage propio ni
+Credential Manager. Dependencia nueva justificada: `@clerk/ui` es obligatoria
+para `mountSignIn` en clerk-js v6 (headless por defecto); la alternativa CDN
+rompería offline y CSP. Checks: `pnpm test` 3358 PASS (2 skip preexistentes),
+`typecheck`, `build`, `lint` y `i18n:audit` verdes; `gofmt` limpio;
+`go test ./internal/authsession ./internal/license` PASS y
+`GOOS=windows go vet ./cmd/vantare` limpio — `go test ./cmd/vantare` no corre en
+macOS por `FlushIconDiskCache` (fallo preexistente de plataforma en la base, no
+de este corte); `internal/telemetry/diagnostics` y `recording/sqlite` fallan en
+esta máquina por permisos/configuración de diagnóstico, también preexistentes.
+Pendiente: push de la rama, PR draft hacia `nightly`, prueba real en Wails
+empaquetado con una `VITE_CLERK_PUBLISHABLE_KEY` de desarrollo (verificar que
+`standardBrowser:false` + header FAPI mantienen la sesión en WebView2) y la UI
+responsive 375-1440px que exige la issue; OAuth social dentro del WebView sigue
+siendo riesgo conocido (`__internal_oauthTransport` queda para un corte
+posterior). No hubo merge, promoción ni deploy remoto.
 
 2026-08-04, ISA-243/287 completaron el piloto remoto con un caso sintético
 nuevo. ISA-288 se creó exactamente una vez, el binding quedó `completed` sin

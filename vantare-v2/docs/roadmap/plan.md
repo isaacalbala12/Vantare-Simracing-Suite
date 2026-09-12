@@ -70,7 +70,7 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 - id: beta-iteration
 - estado: in-progress
-- progreso: 75
+- progreso: 78
 - etiqueta: Fase 2
 - etiqueta.en: Phase 2
 - objetivo: v0.1.x
@@ -97,10 +97,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - item.en: Licensing with offline credentials and cache-first startup
 - item.pt: Licenças com credencial offline e arranque a partir da cache
 - item.it: Licenze con credenziale offline e avvio dalla cache
-- item: Identidad Clerk con bootstrap seguro hacia la cuenta interna de Vantare
-- item.en: Clerk identity with secure bootstrap into the internal Vantare account
-- item.pt: Identidade Clerk com bootstrap seguro para a conta interna da Vantare
-- item.it: Identità Clerk con bootstrap sicuro verso l'account interno Vantare
+- item: Acceso e identidad Clerk con bootstrap seguro hacia la cuenta interna de Vantare
+- item.en: Clerk sign-in and identity with secure bootstrap into the internal Vantare account
+- item.pt: Acesso e identidade Clerk com bootstrap seguro para a conta interna da Vantare
+- item.it: Accesso e identità Clerk con bootstrap sicuro verso l'account interno Vantare
 - item: Launcher con detección de apps y cadenas de lanzamiento
 - item.en: Launcher with app detection and launch chains
 - item.pt: Launcher com deteção de apps e cadeias de lançamento
@@ -241,7 +241,7 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 - id: licensing
 - estado: in-progress
-- progreso: 50
+- progreso: 60
 - titulo.en: Licensing and account
 - titulo.pt: Licenças e conta
 - titulo.it: Licenze e account
@@ -762,17 +762,17 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - cuerpo.it: L'app parte dalla credenziale in cache e verifica offline, così un guasto del servizio non chiude la sessione.
 - etiqueta: Feature
 
-### Cuenta interna desde Clerk
+### Acceso y cuenta interna con Clerk
 
 - id: clerk-account-bootstrap
 - tipo: feature
-- titulo.en: Internal account from Clerk
-- titulo.pt: Conta interna via Clerk
-- titulo.it: Account interno da Clerk
-- cuerpo: La frontera de identidad acepta una sesión Clerk validada por Supabase TPA, crea o recupera un UUID interno idempotente y emite la credencial de licencia firmada con ese UUID. Email no enlaza cuentas; la UI Clerk y los demás servicios ligados a Supabase Auth siguen pendientes.
-- cuerpo.en: The identity boundary accepts a Clerk session validated by Supabase TPA, creates or retrieves an idempotent internal UUID and issues the signed licence credential with that UUID. Email does not link accounts; Clerk UI and other Supabase Auth-bound services remain pending.
-- cuerpo.pt: A fronteira de identidade aceita uma sessão Clerk validada pelo Supabase TPA, cria ou recupera um UUID interno idempotente e emite a credencial de licença assinada com esse UUID. O email não liga contas; a UI Clerk e os restantes serviços ligados ao Supabase Auth continuam pendentes.
-- cuerpo.it: Il confine di identità accetta una sessione Clerk validata da Supabase TPA, crea o recupera un UUID interno idempotente ed emette la credenziale di licenza firmata con tale UUID. L'email non collega gli account; la UI Clerk e gli altri servizi legati a Supabase Auth restano in sospeso.
+- titulo.en: Clerk sign-in and internal account
+- titulo.pt: Acesso Clerk e conta interna
+- titulo.it: Accesso Clerk e account interno
+- cuerpo: El acceso de Vantare es el SignIn oficial de Clerk; la sesión se valida por Supabase TPA, crea o recupera un UUID interno idempotente y emite la credencial de licencia firmada con ese UUID. Solo se persiste el identificador de sesión (sid), nunca el JWT. Email no enlaza cuentas; los demás servicios ligados a Supabase Auth siguen pendientes.
+- cuerpo.en: Vantare sign-in is Clerk's official SignIn; the session is validated by Supabase TPA, creates or retrieves an idempotent internal UUID and issues the signed licence credential with that UUID. Only the session id (sid) is persisted, never the JWT. Email does not link accounts; other Supabase Auth-bound services remain pending.
+- cuerpo.pt: O acesso do Vantare é o SignIn oficial do Clerk; a sessão é validada pelo Supabase TPA, cria ou recupera um UUID interno idempotente e emite a credencial de licença assinada com esse UUID. Só o identificador de sessão (sid) é persistido, nunca o JWT. O email não liga contas; os restantes serviços ligados ao Supabase Auth continuam pendentes.
+- cuerpo.it: L'accesso di Vantare è il SignIn ufficiale di Clerk; la sessione è validata da Supabase TPA, crea o recupera un UUID interno idempotente ed emette la credenziale di licenza firmata con tale UUID. Si persiste solo l'identificatore di sessione (sid), mai il JWT. L'email non collega gli account; gli altri servizi legati a Supabase Auth restano in sospeso.
 - etiqueta: Feature
 
 ### Canales nightly y testers

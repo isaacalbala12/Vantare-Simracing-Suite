@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-11T16:42:27Z",
+  "generatedAt": "2026-09-12T02:13:16Z",
   "digest": {
-    "lastCommit": "dc5e7ae118b98e1143010a894672cda8e83a3766"
+    "lastCommit": "9651733f5b957c80fdb8b1245ce28c79b9ce7b76"
   },
   "phases": [
     {
@@ -75,7 +75,7 @@
         "pt": "v0.1.x",
         "it": "v0.1.x"
       },
-      "progress": 75,
+      "progress": 78,
       "summary": {
         "es": "Command Orbit como única shell, Overlay Studio V3, telemetría LMU en vivo, licencias con credencial offline y Launcher con cadenas de lanzamiento.",
         "en": "Command Orbit as the only shell, Overlay Studio V3, live LMU telemetry, offline-credential licensing and a Launcher with launch chains.",
@@ -108,10 +108,10 @@
           "it": "Licenze con credenziale offline e avvio dalla cache"
         },
         {
-          "es": "Identidad Clerk con bootstrap seguro hacia la cuenta interna de Vantare",
-          "en": "Clerk identity with secure bootstrap into the internal Vantare account",
-          "pt": "Identidade Clerk com bootstrap seguro para a conta interna da Vantare",
-          "it": "Identità Clerk con bootstrap sicuro verso l'account interno Vantare"
+          "es": "Acceso e identidad Clerk con bootstrap seguro hacia la cuenta interna de Vantare",
+          "en": "Clerk sign-in and identity with secure bootstrap into the internal Vantare account",
+          "pt": "Acesso e identidade Clerk com bootstrap seguro para a conta interna da Vantare",
+          "it": "Accesso e identità Clerk con bootstrap sicuro verso l'account interno Vantare"
         },
         {
           "es": "Launcher con detección de apps y cadenas de lanzamiento",
@@ -326,7 +326,7 @@
         "pt": "Licenças e conta",
         "it": "Licenze e account"
       },
-      "progress": 50,
+      "progress": 60,
       "status": "in-progress",
       "projects": [
         "billing"
@@ -1167,16 +1167,16 @@
       "id": "clerk-account-bootstrap",
       "type": "feature",
       "title": {
-        "es": "Cuenta interna desde Clerk",
-        "en": "Internal account from Clerk",
-        "pt": "Conta interna via Clerk",
-        "it": "Account interno da Clerk"
+        "es": "Acceso y cuenta interna con Clerk",
+        "en": "Clerk sign-in and internal account",
+        "pt": "Acesso Clerk e conta interna",
+        "it": "Accesso Clerk e account interno"
       },
       "body": {
-        "es": "La frontera de identidad acepta una sesión Clerk validada por Supabase TPA, crea o recupera un UUID interno idempotente y emite la credencial de licencia firmada con ese UUID. Email no enlaza cuentas; la UI Clerk y los demás servicios ligados a Supabase Auth siguen pendientes.",
-        "en": "The identity boundary accepts a Clerk session validated by Supabase TPA, creates or retrieves an idempotent internal UUID and issues the signed licence credential with that UUID. Email does not link accounts; Clerk UI and other Supabase Auth-bound services remain pending.",
-        "pt": "A fronteira de identidade aceita uma sessão Clerk validada pelo Supabase TPA, cria ou recupera um UUID interno idempotente e emite a credencial de licença assinada com esse UUID. O email não liga contas; a UI Clerk e os restantes serviços ligados ao Supabase Auth continuam pendentes.",
-        "it": "Il confine di identità accetta una sessione Clerk validata da Supabase TPA, crea o recupera un UUID interno idempotente ed emette la credenziale di licenza firmata con tale UUID. L'email non collega gli account; la UI Clerk e gli altri servizi legati a Supabase Auth restano in sospeso."
+        "es": "El acceso de Vantare es el SignIn oficial de Clerk; la sesión se valida por Supabase TPA, crea o recupera un UUID interno idempotente y emite la credencial de licencia firmada con ese UUID. Solo se persiste el identificador de sesión (sid), nunca el JWT. Email no enlaza cuentas; los demás servicios ligados a Supabase Auth siguen pendientes.",
+        "en": "Vantare sign-in is Clerk's official SignIn; the session is validated by Supabase TPA, creates or retrieves an idempotent internal UUID and issues the signed licence credential with that UUID. Only the session id (sid) is persisted, never the JWT. Email does not link accounts; other Supabase Auth-bound services remain pending.",
+        "pt": "O acesso do Vantare é o SignIn oficial do Clerk; a sessão é validada pelo Supabase TPA, cria ou recupera um UUID interno idempotente e emite a credencial de licença assinada com esse UUID. Só o identificador de sessão (sid) é persistido, nunca o JWT. O email não liga contas; os restantes serviços ligados ao Supabase Auth continuam pendentes.",
+        "it": "L'accesso di Vantare è il SignIn ufficiale di Clerk; la sessione è validata da Supabase TPA, crea o recupera un UUID interno idempotente ed emette la credenziale di licenza firmata con tale UUID. Si persiste solo l'identificatore di sessione (sid), mai il JWT. L'email non collega gli account; gli altri servizi legati a Supabase Auth restano in sospeso."
       },
       "label": {
         "es": "Feature",
@@ -1430,6 +1430,31 @@
   ],
   "delivered": [
     {
+      "date": "2026-09-12",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Fanout Wails por dominio — settings y license"
+        },
+        {
+          "kind": "perf",
+          "scope": "hub",
+          "text": "Blur condicional por nivel de rendimiento en la shell"
+        },
+        {
+          "kind": "perf",
+          "scope": "telemetry",
+          "text": "Sin allocs por tick en mapper y AllSections"
+        },
+        {
+          "kind": "docs",
+          "scope": "roadmap",
+          "text": "Etapas hacia beta pública, versiones y lanzamiento"
+        }
+      ]
+    },
+    {
       "date": "2026-09-11",
       "entries": [
         {
@@ -1446,6 +1471,26 @@
           "kind": "feat",
           "scope": "overlay",
           "text": "Editor in-place — teclado, acciones de widget y salida visible"
+        },
+        {
+          "kind": "perf",
+          "scope": "hub",
+          "text": "Canal granular de perfiles en launcher-store"
+        },
+        {
+          "kind": "perf",
+          "scope": "hub",
+          "text": "Elimina suscripción muerta al strategy-store"
+        },
+        {
+          "kind": "perf",
+          "scope": "hub",
+          "text": "Reloj compartido useNow para cuentas atrás de 1 s"
+        },
+        {
+          "kind": "perf",
+          "scope": "fonts",
+          "text": "Subset WOFF2 de Cascadia Code"
         }
       ]
     },
@@ -1991,51 +2036,6 @@
           "kind": "change",
           "scope": "",
           "text": "HUD-ORBIT-00 — Command Orbit v0.3: prototipo aprobado + paquete de diseño para el porte"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-16",
-      "entries": [
-        {
-          "kind": "fix",
-          "scope": "overlay",
-          "text": "Spatial capability, collapsing relative ghost and real FLIP motion"
-        },
-        {
-          "kind": "feat",
-          "scope": "ui",
-          "text": "Escala proporcional de escritorio 1080p a 32:9 4K (overlay + hub)"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "TM-04 posición de cada coche sobre el mapa"
-        },
-        {
-          "kind": "feat",
-          "scope": "transport",
-          "text": "TM/TC medir el ahorro real de publicar deltas de Overlay"
-        },
-        {
-          "kind": "feat",
-          "scope": "overlay",
-          "text": "Modo edicion in-place por hotkey (Ctrl+Shift+E) - isa-401"
-        },
-        {
-          "kind": "fix",
-          "scope": "relative",
-          "text": "Seleccionar vecinos físicos 2+2"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Persistencia privada de capturas del Testing Center"
-        },
-        {
-          "kind": "docs",
-          "scope": "release",
-          "text": "Add Nightly 9 canonical manifest"
         }
       ]
     }

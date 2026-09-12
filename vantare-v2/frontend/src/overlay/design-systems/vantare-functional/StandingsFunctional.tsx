@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { useRef } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { WidgetRendererProps } from "../../core/design-system-definition";
@@ -6,14 +7,9 @@ import { deriveIndexOffsets, deriveOvertakes } from "./functional-motion";
 import { FUNCTIONAL_IDENTITY_METRICS as IDENTITY, resolveFunctionalColumnWidth, resolveFunctionalIdentitySpan } from "../../widget-types/standings/functional-standings-layout";
 import { resolveStandingsCellValue, type StandingsViewModel } from "../../widget-types/standings/standings-view-model";
 import { functionalLabels } from "./labels";
-import { resolveFunctionalFooterSlots } from "./footer-slots";
+import { FOOTER_SLOT_GAP_PX, FOOTER_SLOT_PAD_PX, FOOTER_SLOT_ROW_PX, footerSlotItemWidth, resolveFunctionalFooterSlots } from "./footer-slots";
 import vantareMark from "../../../assets/orbit/vantare-mark.png";
 
-const SLOT_ROW_PX = 14;
-const SLOT_PAD_PX = 15;
-const SLOT_GAP_PX = 14;
-/** Ancho estimado de un hueco: etiqueta en caps fina + valor bold + aire. */
-const slotItemWidth = (label: string, value: string) => label.length * 5.5 + value.length * 7.5 + 12;
 
 export function StandingsFunctional({ model, settings, layout, motion = "full", effects }: WidgetRendererProps<StandingsViewModel>) {
   const { locale } = useI18n();
@@ -21,10 +17,11 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
   // Eficiencia: las filas se deslizan a su posición (FLIP) y los cambios de
   // posición parpadean una vez. En "reduced" solo queda el deslizamiento.
   useWidgetMotion(model, motion !== "minimal", rootRef, ({ prev, next, root, schedule }) => {
+    const stride = root.querySelector<HTMLElement>("[data-standings-row]")?.getBoundingClientRect().height ?? 30;
     for (const [id, delta] of deriveIndexOffsets(prev.rows, next.rows)) {
       const row = root.querySelector<HTMLElement>(`[data-standings-row="${CSS.escape(id)}"]`);
       row?.animate(
-        [{ transform: `translateY(${delta * 30}px)` }, { transform: "translateY(0)" }],
+        [{ transform: `translateY(${delta * stride}px)` }, { transform: "translateY(0)" }],
         { duration: Math.min(460, 260 + Math.abs(delta) * 50), easing: "cubic-bezier(0.22, 0.9, 0.3, 1)" },
       );
     }
@@ -61,9 +58,12 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
   // completas — una media fila colgando es peor que una fila menos.
   // Sin layout (tests, hosts antiguos) no se recorta nada.
   const innerWidth = Math.max(80, (layout?.w ?? 0) - 24);
-  const slotsTotal = slots.reduce((sum, slot) => sum + slotItemWidth(slot.label, slot.value), 0) + Math.max(0, slots.length - 1) * SLOT_GAP_PX;
-  const slotRows = slots.length > 0 ? Math.max(1, Math.ceil(slotsTotal / innerWidth)) : 0;
-  const slotsHeight = slotRows > 0 ? SLOT_PAD_PX + slotRows * SLOT_ROW_PX : 0;
+  const slotsTotal = slots.reduce((sum, slot) => sum + footerSlotItemWidth(slot.label, slot.value), 0) + Math.max(0, slots.length - 1) * FOOTER_SLOT_GAP_PX;
+  // Regla de Isaac: hasta 5 huecos siempre caben en una fila (la letra se
+  // reduce); con más de 5 se permite una segunda fila a tamaño normal.
+  const slotScale = layout?.w !== undefined && slots.length > 0 && slots.length <= 5 ? Math.min(1, (innerWidth * 0.97) / slotsTotal) : 1;
+  const slotRows = slots.length <= 5 ? (slots.length > 0 ? 1 : 0) : Math.ceil(slotsTotal / innerWidth);
+  const slotsHeight = slotRows > 0 ? FOOTER_SLOT_PAD_PX + slotRows * FOOTER_SLOT_ROW_PX : 0;
   const ambientHeight = slots.length === 0 && hasFooter ? 30 : 0;
   const brandBandHeight = !hasHeader && brandVisible ? 24 : 0;
   // Constantes espejo de resolveFunctionalStandingsSize: broadcast lleva la
@@ -116,7 +116,7 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
         </div>
       )}
       {slots.length > 0 && !unavailable && (
-        <div className="vf-slots" data-footer-slots>
+        <div className="vf-slots" data-footer-slots data-fit={slots.length <= 5 ? "one-line" : undefined} style={{ "--vf-slot-scale": slotScale.toFixed(3) } as CSSProperties}>
           {slots.map((slot) => <span key={slot.id} className="vf-slot" data-slot={slot.id}><span className="vf-slot-label">{slot.label}</span><b className="vf-slot-value">{slot.value}</b></span>)}
         </div>
       )}

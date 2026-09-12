@@ -9,16 +9,12 @@ import { RELATIVE_COLUMN_TEMPLATES } from "../../widget-types/relative/relative-
 import { resolveRelativeClassColor } from "../../widget-types/relative/relative-renderer-helpers";
 import { resolveRelativeCellValue, type RelativeViewModel } from "../../widget-types/relative/relative-view-model";
 import { functionalLabels } from "./labels";
-import { resolveFunctionalFooterSlots } from "./footer-slots";
+import { FOOTER_SLOT_GAP_PX, FOOTER_SLOT_PAD_PX, FOOTER_SLOT_ROW_PX, footerSlotItemWidth, resolveFunctionalFooterSlots } from "./footer-slots";
 
 const CENTERED = new Set(["position", "class", "carNumber", "gap"]);
 const LAP_METRICS = new Set(["bestLap", "lastLap"]);
 
-const SLOT_ROW_PX = 14;
-const SLOT_PAD_PX = 15;
-const SLOT_GAP_PX = 14;
-const RELATIVE_ROW_PX = 26;
-const slotItemWidth = (label: string, value: string) => label.length * 5.5 + value.length * 7.5 + 12;
+const RELATIVE_ROW_PX = 19.8;
 
 export function RelativeFunctional({ model, settings, layout, motion = "full", effects }: WidgetRendererProps<RelativeViewModel>) {
   const { locale } = useI18n();
@@ -26,10 +22,11 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
   // Eficiencia: las filas se deslizan al cruzarse; los cruces parpadean una
   // vez en "full".
   useWidgetMotion(model, motion !== "minimal", rootRef, ({ prev, next, root, schedule }) => {
+    const stride = root.querySelector<HTMLElement>("[data-relative-row]")?.getBoundingClientRect().height ?? 20;
     for (const [id, delta] of deriveIndexOffsets(prev.rows, next.rows)) {
       const row = root.querySelector<HTMLElement>(`[data-relative-row="${CSS.escape(id)}"]`);
       row?.animate(
-        [{ transform: `translateY(${delta * 26}px)` }, { transform: "translateY(0)" }],
+        [{ transform: `translateY(${delta * stride}px)` }, { transform: "translateY(0)" }],
         { duration: Math.min(400, 240 + Math.abs(delta) * 45), easing: "cubic-bezier(0.22, 0.9, 0.3, 1)" },
       );
     }
@@ -59,9 +56,12 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
   // Mismo presupuesto que standings: el pie nunca se corta y la tabla cede
   // en filas completas. Sin layout no se recorta nada.
   const innerWidth = Math.max(80, (layout?.w ?? 0) - 24);
-  const slotsTotal = slots.reduce((sum, slot) => sum + slotItemWidth(slot.label, slot.value), 0) + Math.max(0, slots.length - 1) * SLOT_GAP_PX;
-  const slotRows = slots.length > 0 ? Math.max(1, Math.ceil(slotsTotal / innerWidth)) : 0;
-  const slotsHeight = slotRows > 0 ? SLOT_PAD_PX + slotRows * SLOT_ROW_PX : 0;
+  const slotsTotal = slots.reduce((sum, slot) => sum + footerSlotItemWidth(slot.label, slot.value), 0) + Math.max(0, slots.length - 1) * FOOTER_SLOT_GAP_PX;
+  // Misma regla que standings: hasta 5 en una fila (letra reducida), más
+  // de 5 permite segunda fila.
+  const slotScale = layout?.w !== undefined && slots.length > 0 && slots.length <= 5 ? Math.min(1, (innerWidth * 0.97) / slotsTotal) : 1;
+  const slotRows = slots.length <= 5 ? (slots.length > 0 ? 1 : 0) : Math.ceil(slotsTotal / innerWidth);
+  const slotsHeight = slotRows > 0 ? FOOTER_SLOT_PAD_PX + slotRows * FOOTER_SLOT_ROW_PX : 0;
   const tableSpace = layout?.h === undefined
     ? Number.POSITIVE_INFINITY
     : layout.h - (hasMeta ? 30 : 0) - slotsHeight - (slots.length === 0 && hasFooter ? 30 : 0);
@@ -102,7 +102,7 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
         </div>
       )}
       {slots.length > 0 && !unavailable && (
-        <div className="vf-slots" data-footer-slots>
+        <div className="vf-slots" data-footer-slots data-fit={slots.length <= 5 ? "one-line" : undefined} style={{ "--vf-slot-scale": slotScale.toFixed(3) } as CSSProperties}>
           {slots.map((slot) => <span key={slot.id} className="vf-slot" data-slot={slot.id}><span className="vf-slot-label">{slot.label}</span><b className="vf-slot-value">{slot.value}</b></span>)}
         </div>
       )}

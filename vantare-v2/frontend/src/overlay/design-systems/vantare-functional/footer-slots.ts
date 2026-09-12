@@ -43,3 +43,11 @@ export function resolveFunctionalFooterSlots(
     value: values[id] ?? "—",
   }));
 }
+
+export const FOOTER_SLOT_ROW_PX = 14;
+export const FOOTER_SLOT_PAD_PX = 15;
+export const FOOTER_SLOT_GAP_PX = 14;
+
+/** Ancho estimado de un hueco: etiqueta en caps fina + valor bold + aire. */
+export const footerSlotItemWidth = (label: string, value: string) =>
+  label.length * 5.5 + value.length * 7.5 + 12;

@@ -41,7 +41,7 @@ describe("Overlay Workshop query", () => {
       error: "design delta-crystal-simple requires widget=delta",
     });
     expect(parseOverlayWorkshopQuery("?widget=engineer-radio&system=vantare-original")).toEqual({
-      error: "engineer-radio requires system=vantare-crystal",
+      error: "engineer-radio requires system=vantare-crystal or vantare-functional",
     });
   });
 

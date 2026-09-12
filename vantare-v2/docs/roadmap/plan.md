@@ -1365,3 +1365,19 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 - etiqueta: Plan
 - etiqueta.pt: Plano
 - etiqueta.it: Piano
+
+### Continuidad de documentación y seguimiento
+
+- id: development-continuity
+- tipo: plan
+- titulo.en: Documentation and development continuity
+- titulo.pt: Continuidade da documentação e acompanhamento
+- titulo.it: Continuità della documentazione e del monitoraggio
+- cuerpo: Centralizar la documentación y el seguimiento del desarrollo conservando el historial y distinguiendo trabajo pendiente, validado y publicado.
+- cuerpo.en: Centralize documentation and development tracking while preserving history and distinguishing pending, validated and published work.
+- cuerpo.pt: Centralizar a documentação e o acompanhamento do desenvolvimento, preservando o histórico e distinguindo trabalho pendente, validado e publicado.
+- cuerpo.it: Centralizzare la documentazione e il monitoraggio dello sviluppo, conservando lo storico e distinguendo lavoro in attesa, verificato e pubblicato.
+- etiqueta: Plan
+- etiqueta.en: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano

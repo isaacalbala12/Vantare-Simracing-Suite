@@ -1,5 +1,13 @@
 # Canales de ramas y promociones
 
+> **Tracker y continuidad (2026-09-12):** leer primero
+> [la transición a Notion](vantare-program/notion-transition.md). Mientras su estado sea PREPARACIÓN,
+> las reglas GitHub/ISA de este documento rigen el cierre del lote existente
+> y la preparación técnica. El trabajo nuevo fuera del lote se captura en Notion
+> sin ejecutarlo todavía. Después del corte verificado, Notion será la autoridad
+> operativa y GitHub conservará código, PR, CI y releases.
+
+
 ## Contrato canónico
 
 ```text
@@ -142,7 +150,7 @@ inventariada.
   en cualquier otro test bloquea la promoción.
 - Los PR a `testers` solo pueden proceder de `nightly`.
 - Los PR a `master` solo pueden proceder de `testers`.
-- En los gates de canal de CI, las ramas Linear `isa-*` y `hotfix-isa-*` usan
+- En los gates de canal de CI, las ramas GitHub `isa-*` y `hotfix-isa-*` usan
   segmentos separados por guiones; un guion bajo solo es válido entre dos
   tokens alfanuméricos dentro del mismo segmento (por ejemplo, `merge_group`).
 - La única excepción es un hotfix crítico aprobado expresamente por Isaac:

@@ -151,6 +151,7 @@ export function prepareRelativeViewModelV2(
         columns,
         rowHeightMode: content.rowHeightMode,
         rows: retainedRows.map(buildRow),
+        ...buildRelativeMeta(frame),
       },
     };
   }
@@ -188,6 +189,7 @@ export function prepareRelativeViewModelV2(
     columns,
     rowHeightMode: content.rowHeightMode,
     rows: window.map(buildRow),
+    ...buildRelativeMeta(frame),
     },
   };
 }
@@ -222,6 +224,11 @@ export function relativeDisplayedValues(
 ): Readonly<Record<string, string>> {
   return Object.freeze({
     status: model.status,
+    sessionLabel: model.sessionLabel ?? "",
+    remainingText: model.remainingText ?? "",
+    trackText: model.trackText ?? "",
+    playerBadgeText: model.playerBadgeText ?? "",
+    env: [model.ambientTempText, model.trackTempText, model.windText].filter(Boolean).join("·"),
     rowCount: String(model.rows.length),
     rows: model.rows
       .map((row) => [
@@ -481,8 +488,50 @@ function formatLapTime(seconds: number | undefined): string {
   return `${Math.floor(seconds / 60)}:${(seconds % 60).toFixed(3).padStart(6, "0")}`;
 }
 
-function displayedNumber(value: OverlayQValue<number>): number | undefined {
-  if (value.q === "missing" || value.q === "invalid") return undefined;
+function formatRemainingTime(seconds: number | undefined): string | undefined {
+  if (seconds === undefined || !Number.isFinite(seconds) || seconds < 0) return undefined;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+}
+
+// Las barras de info rellenan solo lo que la fuente entrega: fase/pista/reloj
+// de session, posición y clase del jugador desde su fila relative, y clima
+// cuando existe (en LMU no existe — hueco declarado honesto).
+function buildRelativeMeta(frame: OverlayFrameV2): Pick<
+  RelativeViewModel,
+  "sessionLabel" | "remainingText" | "trackText" | "playerBadgeText" | "ambientTempText" | "trackTempText" | "windText"
+> {
+  const meta: ReturnType<typeof buildRelativeMeta> = {};
+  const phase = displayedText(frame.session.phase);
+  if (phase) meta.sessionLabel = phase.toUpperCase();
+  const remaining = formatRemainingTime(displayedNumber(frame.session.remaining));
+  if (remaining !== undefined) meta.remainingText = remaining;
+  const track = displayedText(frame.session.track);
+  if (track) meta.trackText = track.toUpperCase();
+  const player = frame.relative.find((row) => row.side === "player");
+  if (player) {
+    meta.playerBadgeText = `P${player.position}${player.classId ? ` · ${player.classId.toUpperCase()}` : ""}`;
+  }
+  const weather = frame.weather;
+  const ambient = displayedNumber(weather?.ambientC);
+  const trackC = displayedNumber(weather?.trackC);
+  const wind = displayedNumber(weather?.windKph);
+  if (ambient !== undefined) meta.ambientTempText = `${Math.round(ambient)}°`;
+  if (trackC !== undefined) meta.trackTempText = `${Math.round(trackC)}°`;
+  if (wind !== undefined) meta.windText = `${Math.round(wind)} km/h`;
+  return meta;
+}
+
+function displayedNumber(value: OverlayQValue<number> | undefined): number | undefined {
+  if (!value || value.q === "missing" || value.q === "invalid") return undefined;
   // Go omitempty elides legitimate zeroes. Quality is the presence bit.
   return value.v ?? 0;
+}
+
+function displayedText(value: OverlayQValue<string> | undefined): string | undefined {
+  if (!value || value.q === "missing" || value.q === "invalid") return undefined;
+  return value.v;
 }

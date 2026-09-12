@@ -41,7 +41,7 @@ export const studioV3It: Record<string, string> = {
   "studio.v3.widgetTypes.pedalsTelemetry": "Pedali + telemetria",
   "studio.v3.inspector.pedalsTelemetry.showPosition": "Mostra posizione",
   "studio.v3.inspector.pedalsTelemetry.showClutch": "Mostra frizione",
-  "studio.v3.widgetTypes.pedalsTelemetryCompact": "Pedali compatti + telemetria",
+  "studio.v3.widgetTypes.pedalsTelemetryCompact": "Pedali avanzati",
   "studio.v3.inspector.pedalsTelemetryCompact.showSpeed": "Mostra velocità",
   "studio.v3.inspector.pedalsTelemetryCompact.showRpm": "Mostra RPM",
   "studio.v3.inspector.pedalsTelemetryCompact.showClutch": "Mostra frizione",
@@ -124,6 +124,7 @@ export const studioV3It: Record<string, string> = {
   "studio.v3.design.system.original": "Vantare Original",
   "studio.v3.design.system.crystal": "Vantare Crystal",
   "studio.v3.design.system.endurance": "Vantare Endurance",
+  "studio.v3.design.system.efficiency": "Efficienza",
   "studio.v3.design.lock.generic": "Non hai accesso per applicare questo design.",
   "studio.v3.design.loadFailed": "Impossibile caricare i design salvati.",
   "studio.v3.design.applyAll.confirm":

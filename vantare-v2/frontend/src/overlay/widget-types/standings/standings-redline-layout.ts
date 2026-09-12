@@ -109,33 +109,3 @@ export function resolveMinimumWidthFrameLayout(
     w: effectiveWidth,
   };
 }
-
-export function resolveStandingsRedlineFrameLayout(
-  widget: WidgetInstanceV3,
-  layout: WidgetLayoutV3,
-  viewportWidth?: number,
-): WidgetLayoutV3 {
-  return resolveMinimumWidthFrameLayout(
-    layout,
-    resolveStandingsRedlineMinimumWidth(widget),
-    viewportWidth,
-  );
-}
-
-export function resolveStandingsRedlineMoveLayout(
-  widget: WidgetInstanceV3,
-  start: WidgetLayoutV3,
-  preview: WidgetLayoutV3,
-  viewportWidth?: number,
-): WidgetLayoutV3 {
-  const effectiveStart = resolveStandingsRedlineFrameLayout(widget, start, viewportWidth);
-  return resolveStandingsRedlineFrameLayout(
-    widget,
-    {
-      ...effectiveStart,
-      x: effectiveStart.x + preview.x - start.x,
-      y: effectiveStart.y + preview.y - start.y,
-    },
-    viewportWidth,
-  );
-}

@@ -1323,6 +1323,34 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 - cuerpo.it: Le Impostazioni consentono di ingrandire o ridurre tutta l'app in sei passaggi, ripristinare la dimensione predefinita e usare Ctrl +, Ctrl −, Ctrl 0 o Ctrl + rotellina; la preferenza resta memorizzata su questo dispositivo e convive con l'adattamento responsive della finestra.
 - etiqueta: Feature
 
+### Sistema de diseño Eficiencia
+
+- id: functional-widget-design
+- tipo: feature
+- titulo.en: Efficiency widget design system
+- titulo.pt: Sistema de design Eficiência
+- titulo.it: Sistema di design Efficienza
+- cuerpo: Eficiencia ofrece los estilos Signature y Broadcast para Standings desde Studio, con transparencia suave, identidad Vantare, tipografía unificada y selección neutra. Los perfiles y diseños guardan esta selección; el marco adapta columnas y filas en Studio, Desktop y OBS. Entrega opt-in en rama de issue, pendiente de validación física e integración a Nightly. La política de marca según licencia se desarrolla por separado. En ISA-1120 se compararon seis direcciones v2 dentro del Workshop y Isaac eligió Foco como dirección a seguir junto al diseño vigente, pendiente de pasar al catálogo. En ISA-1128 el lenguaje se extiende a Relative, Delta y Pedals con diseño Signature en la rama de issue, en evaluación dentro del Workshop.
+- cuerpo.en: Efficiency offers Signature and Broadcast styles for Standings in Studio, with subtle transparency, Vantare identity, unified typography and neutral selection. Profiles and designs preserve this choice; the frame fits columns and rows across Studio, Desktop and OBS. Opt-in delivery on an issue branch, pending physical validation and Nightly integration. License-based branding is a separate delivery. ISA-1120 compared six v2 directions inside the Workshop and Isaac chose Foco as the direction to pursue alongside the current design, pending catalogue delivery. ISA-1128 extends the language to Relative, Delta and Pedals with a Signature design on the issue branch, under evaluation inside the Workshop.
+- cuerpo.pt: Eficiência oferece os estilos Signature e Broadcast para Standings no Studio, com transparência suave, identidade Vantare, tipografia unificada e seleção neutra. Perfis e desenhos preservam a escolha; o quadro adapta colunas e filas no Studio, Desktop e OBS. Entrega opcional numa branch de issue, pendente de validação física e integração em Nightly. A marca por licença será entregue separadamente. A ISA-1120 comparou seis direções v2 dentro do Workshop e Isaac escolheu Foco como direção a seguir junto ao desenho vigente, pendente de entrar no catálogo. A ISA-1128 estende a linguagem a Relative, Delta e Pedals com design Signature na branch da issue, em avaliação dentro do Workshop.
+- cuerpo.it: Efficienza offre gli stili Signature e Broadcast per Standings in Studio, con trasparenza lieve, identità Vantare, tipografia unificata e selezione neutra. Profili e design conservano la scelta; il riquadro adatta colonne e righe in Studio, Desktop e OBS. Consegna opzionale su branch di issue, in attesa di validazione fisica e integrazione Nightly. Il marchio per licenza sarà consegnato separatamente. ISA-1120 ha confrontato sei direzioni v2 dentro il Workshop e Isaac ha scelto Foco come direzione da seguire insieme al disegno vigente, in attesa di entrare nel catalogo. ISA-1128 estende il linguaggio a Relative, Delta e Pedals con design Signature nel branch della issue, in valutazione dentro il Workshop.
+- etiqueta: ISA-1083
+
+### Acceso y marca por widget
+
+- id: widget-access-branding
+- tipo: plan
+- titulo.en: Widget access and branding
+- titulo.pt: Acesso e marca por widget
+- titulo.it: Accesso e marchio per widget
+- cuerpo: Tras completar Standings Eficiencia, unificar los widgets disponibles y la marca integrada según licencia en Studio, Desktop y OBS. Los perfiles se conservarán al cambiar de plan; la marca será obligatoria en los diseños gratuitos que corresponda y opcional en pago. Delta será de pago. Desarrollo separado en ISA-1097.
+- cuerpo.en: After completing Efficiency Standings, unify widget availability and integrated branding by license across Studio, Desktop and OBS. Profiles will survive plan changes; branding will be required on applicable free designs and optional with paid access. Delta will require paid access. Separate delivery in ISA-1097.
+- cuerpo.pt: Após concluir Standings Eficiência, unificar os widgets disponíveis e a marca integrada por licença no Studio, Desktop e OBS. Os perfis serão preservados ao mudar de plano; a marca será obrigatória nos desenhos gratuitos aplicáveis e opcional nos pagos. Delta exigirá acesso pago. Entrega separada em ISA-1097.
+- cuerpo.it: Dopo Standings Efficienza, unificare disponibilità dei widget e marchio integrato per licenza in Studio, Desktop e OBS. I profili saranno conservati al cambio di piano; marchio obbligatorio nei design gratuiti previsti e facoltativo a pagamento. Delta richiederà accesso a pagamento. Consegna separata in ISA-1097.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
 ### Eje temporal en Telemetría y exportar radio
 
 - id: telemetry-timeline-export

@@ -29,7 +29,7 @@ import {
   EMPTY_RACE_SCHEDULE_SNAPSHOT,
   type RaceScheduleStore,
 } from "../core/race-schedule-store";
-import { resolveStandingsRedlineFrameLayout } from "../widget-types/standings/standings-redline-layout";
+import { resolveStandingsFrameLayout } from "../widget-types/standings/standings-frame-layout";
 
 export type RuntimeOverlaySurfaceProps = {
   document: ProfileDocumentV3;
@@ -167,10 +167,11 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
       x: widget.layout.x - origin.x,
       y: widget.layout.y - origin.y,
     };
-    const effectiveLayout = resolveStandingsRedlineFrameLayout(
+    const effectiveLayout = resolveStandingsFrameLayout(
       widget,
       localLayout,
       layoutViewport.width,
+      layoutViewport.height,
     );
     return {
       ...widget,

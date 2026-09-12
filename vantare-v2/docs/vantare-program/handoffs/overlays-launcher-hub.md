@@ -498,6 +498,349 @@ física nueva, retirada V1, merge o release en este corte documental.
 
 ## Estado
 
+- **ISA-1083 — Efficiency / Eficiencia (2026-09-10):**
+  **Decisiones actuales:** Efficiency es un sistema con estilos Signature y
+  Broadcast. Studio lo traduce como Eficiencia (ES), Efficiency (EN), Eficiência
+  (PT) y Efficienza (IT). IDs persistidos conservados por compatibilidad.
+  Delta es de pago, confirmado por Isaac; su aplicación pertenece a ISA-1097.
+  CI del head `dd6a2c36` falló exclusivamente en el presupuesto temporal de
+  OverlayFrameV2: 1,5 ms frente a límite estricto <1,5 ms, test no modificado.
+  No se cambia el umbral; los checks del siguiente head siguen siendo necesarios.
+  **Revisión de nomenclatura:** P2 detectado y cerrado con regresión RED/GREEN:
+  los perfiles previos mostraban `Functional Signature/Broadcast · Preview` en
+  Orbit. La presentación ahora resuelve el catálogo oficial compatible; conserva
+  nombres de usuario, IDs y documentos. 31 tests focales PASS. Revisor independiente
+  sin bloqueantes. Suite final: 424 archivos, 3356 PASS y 2 omitidos, exit 0;
+  lint y build canónico Windows (incluye frontend/tipos) PASS. Binario local
+  sin configuración de servicios añadida; no certifica licencia real.
+  **Entrega del ajuste:** código en `5db70a08`, push verificado en PR #1100.
+  CI remota `34430760576` SUCCESS sobre ese código: Go, frontend, tipos y
+  Windows/Wails incluidos. El paso advisory de contrato roadmap señaló campos
+  ausentes en la ficha; #1083 y #1097 ya usan las secciones canónicas, y el
+  validador local contra el mismo HEAD y la issue viva pasa los dos IDs exactos.
+  Falta la prueba física antes de integrar; Nightly sigue en `b6b5754e`.
+  Workshop verificado en navegador con ambos estilos. Las herramientas de esta
+  sesión no controlan ventanas nativas; no confundir esta evidencia con la prueba
+  física pendiente de Studio/Desktop.
+  **Entrega 2026-09-10:** implementación `d5255acd`, push verificado y PR draft
+  [#1100](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1100)
+  hacia Nightly. CI remota inicialmente pendiente al abrir; el resultado
+  actualizado está indicado arriba. Issue en `state:in-review`.
+  Worktree propio limpio. No hay merge ni release; #1098 registra la integración
+  y #1097 la política comercial posterior. Las notas de iteraciones inferiores
+  conservan su estado histórico y no sustituyen este corte.
+  **Ejecución aprobada 2026-09-10:** cerrar el widget y su integración a Nightly
+  por partes, luego unificar acceso y marca en ISA-1097. Plan vigente:
+  `docs/analysis/ISA-1083-delivery-plan.md`. Primero contrato Go de guardado y
+  selector normal de Studio; Workshop por sí solo no certifica estos recorridos.
+  La autorización sustituye las notas históricas sin merge autorizado; siguen
+  pendientes validación física y evidencia de integración (#1098). Revisión
+  independiente terminada sin bloqueantes tras corregir tres P2: cabecera tras
+  reordenación, anchos S/M/L y expansión junto al borde inferior. Expediente:
+  `design-evidence/functional/integration-review.md`. Suite completa posterior:
+  3345 PASS / 2 omitidos, exit 0; 22 focales tras el último ajuste de cabecera.
+  Persistencia
+  Go y selector normal de Studio terminados con regresiones RED/GREEN. Se corrige
+  el marco de perfiles de 340 px mediante geometría compartida, conservando el
+  preview DOM imperativo. 145 tests focales de geometría PASS; Go completo,
+  frontend previo a geometría (3330 PASS / 2 omitidos), build/tipos y lint PASS.
+  Isaac confirma disponibilidad sin pruebas concurrentes. La app abierta
+  procede de ISA-1072, no de esta entrega: no atribuirle la nueva implementación.
+  La segunda parte está trazada en #1097 con Delta de pago ya decidido.
+  **Ajuste posterior:** Isaac rechaza las marcas rojas junto a los pilotos de
+  Broadcast y valora positivamente el resto. Se elimina ese adorno CSS;
+  las dimensiones, textos, cápsulas, cabecera y Principal se conservan.
+  Ajuste verificado: 13 tests focales y build/typecheck PASS; navegador confirma
+  10 filas sin marcas, con los cuatro módulos a 594 × 370 px. Evidencia nueva:
+  `design-evidence/functional/standings-broadcast-clean.png`. Sin commit ni PR.
+  **Última decisión:** Isaac elige la opción Images 3 como principal y la 2 como
+  secundaria, ambas derivadas de la captura real de Joined01. Se trasladan al
+  renderer compartido como Signature y Broadcast. Signature conserva el ID
+  `standings-functional-compact`; Broadcast añade `standings-functional-broadcast`
+  al catálogo. Selector en Workshop, módulos conservados y mismo ViewModel.
+  Inter, filas de 30 px y selección neutra. Aceptación del React pendiente.
+  Principal 238–574 px / 350 px alto; Broadcast 258–594 px / 370 px alto.
+  Las 32 combinaciones y los estados de fuente pasan en navegador integrado.
+  Revisión final: 9,0/10 en ambas; se refinan motivo compacto y cápsulas de
+  Broadcast. Suite completa 3328 PASS / 2 omitidos, 51 focales posteriores,
+  build/typecheck y lint PASS. Guard de sistemas: tres fallos Endurance
+  heredados, sin ocultar. Sin Wails/LMU, commit, push, PR, CI remota o promoción.
+  Detalles, referencias elegidas y evidencia en el informe ISA-1083.
+  **Decisión previa:** Isaac prefiere el widget unido y rechaza la fila roja de
+  Fodor y la placa del 7. Joined01 reúne las columnas sin hueco ni rebaje de
+  cabecera; selección gris neutra continua y marca roja fina en el borde.
+  El 7 queda sin placa. Se conserva Inter y cristal suave; no cambian datos,
+  módulos ni otros renderizadores. Aceptación visual pendiente.
+  Revisor Joined01: **9,0/10**, las tres correcciones resueltas en React.
+  Navegador: 16 combinaciones y estados PASS, sin errores JS; Inter confirmado.
+  Suite completa: 3325 PASS, 2 fallos de espera y 2 omitidos; repetición de
+  ambos tests junto al estudio: 41 PASS. Se conservan ambos resultados en
+  el informe; la repetición focal no equivale a una suite completa verde.
+  Build/typecheck, lint y diff check PASS. Rama/base/HEAD sin cambios;
+  entrega local sin commit, push, PR, CI remota ni promoción.
+  **Corte anterior:** Isaac rechaza cifras desconectadas y aspecto plano.
+  Depth03 unifica todo en Inter y compone núcleo y extensión con una separación
+  de4px y cabecera secundaria rebajada7px; el jugador une ambas como una fila
+  vino continua. Mantiene carbón/blanco/rojo y glass suave. Revisor **9,0/10**;
+  aceptación de Isaac pendiente. Suite3327 PASS/2 omitidos,36 focales posteriores,
+  build/typecheck/lint PASS y16 combinaciones en navegador sin errores. Altura344px,
+  anchuras238–574px y nombres completos14px. Capturas finales e informe en
+  `docs/analysis/ISA-1083-functional-design.md`. Sin commit, push, PR o promoción.
+  Las notas y la incidencia CPU siguientes pertenecen al historial anterior.
+  **Última corrección:** Isaac considera React07 un avance, pero sus colores y
+  lenguaje no representan Vantare. Vantare01 sustituye azul/gris por carbón
+  neutro, blanco y rojo `#C1121F`; firma compacta de marca, posición del jugador
+  oblicua roja, lavado vino y nombres uppercase. Conserva cristal suave y módulos.
+  Vantare02 añade el isotipo real existente a la cabecera. Revisor: 8,825 global,
+  9 en identidad de marca; identificación resuelta y aceptación de Isaac pendiente.
+  Navegador16 combinaciones PASS, 238–574px, altura342px y nombres completos14px.
+  Build/lint PASS. Suite completa3326 PASS/2 omitidos/1 fallo de presupuesto CPU
+  del decoder V2 (1,562 frente a1,5ms), sin cambios en dicho decoder/test.
+  Repetición aislada del decoder junto al widget:14 PASS; no se declara suite
+  completa verde ni mejora de rendimiento. Typecheck final comprobado aparte.
+  **Decisión vigente:** Isaac rechaza las bases Images y pide diseñar directamente
+  en React desde la referencia de cristal suave; Images queda para detalles
+  posteriores. Se prioriza taste, funcionalidad y modularidad visual.
+  Rama `vantareapp/isa-1083-functional-standings`, base `b6b5754e`, worktree
+  `C:/tmp/vantare-isa1083`. Sistema opt-in registrado con un solo Standings sobre
+  WidgetVisualHost. Vista de estudio dentro de Workshop, cuatro módulos reales,
+  carrera/práctica, tres fondos y estados de fuente. Variante dev explícita con
+  datos de demostración; no altera golden ni perfiles. Anchura fluida sin escalar
+  texto: las 16 combinaciones conservan nombres íntegros y filas a tamaño nativo.
+  Tarea de revisión `01a08756-30ab-7682-af63-1df81364debe`: React01 7,4; React02
+  8,0; React03 8,275; React04 8,3; React05 8,6; React06/07 **8,675**. Historial
+  anterior a la corrección de marca: núcleo posición/piloto/GAP en carrera, vueltas/PIT como
+  extensión, tipografía híbrida y mejor vuelta protagonista en práctica.
+  No alcanza 9 y queda pendiente de aceptación visual de Isaac.
+  Suite frontend 3322 PASS/2 omitidos, build y lint PASS; 36 focales posteriores
+  y navegador sin errores. Guard de sistemas sigue señalando tres referencias
+  heredadas en tests Endurance; no se ocultan. Sin commit, push, PR, promoción,
+  merge o release ni evidencia física Wails/LMU. Detalles y límites en
+  `docs/analysis/ISA-1083-functional-design.md`.
+
+- **ISA-1120 — Eficiencia v2, direcciones en el Workshop (2026-09-11):**
+  Isaac pide iterar el diseño Eficiencia hacia una v2 a través del harness.
+  Rama `vantareapp/isa-1120-efficiency-v2` sobre
+  `origin/vantareapp/isa-1083-functional-standings` (Eficiencia aún no está en
+  Nightly), worktree `~/Desktop/vantare-isa1120` (macOS). Tres direcciones de
+  estudio conmutables en el Workshop —Torre, Podio y Foco— como piel
+  `data-study-style` enlazable por `study=` en la query; viven solo en
+  `overlay-workshop.css` y los controles del estudio, sobre el renderer
+  productivo compartido. Sin diseños oficiales, persistencia, tokens
+  productivos ni cambios de #1097/#1098/#1103. Typecheck, 18/18 tests focales
+  del parser/ruta, lint y diff-check PASS. Capturas y detalle en
+  `design-evidence/functional/v2-directions.md` (`efficiency-v2-*.png`).
+  Se añadieron tres direcciones más diferenciadas: Papel (piel CSS de
+  atmósfera clara), Muro y Escalera (renderers de estudio propios sobre el
+  mismo ViewModel). **Decisión de Isaac 2026-09-11: V1 y Foco son las dos
+  direcciones vigentes;** Torre, Podio, Papel, Muro y Escalera quedaron
+  descartadas y retiradas del harness (las capturas quedan como evidencia en
+  `design-evidence/functional/`). Además, a petición de Isaac, la v1
+  productiva dejó de marcar al jugador con el tick rojo y el texto «TÚ» — la
+  banda neutra (algo más marcada) es el único marcador — y Foco agranda las
+  etiquetas de columna. También: sombra del panel suavizada, separadores de
+  vuelta reanclados al número, y nueva banda inferior `.vf-footer` (pista/
+  aire/viento) que solo aparece cuando el frame V2 entrega esos campos — hoy
+  LMU no los soporta, así que la producción queda igual hasta que exista la
+  fuente. Traducir Foco a diseño oficial es otra entrega. Sin merge,
+  promoción ni release.
+
+- **ISA-1128 — Eficiencia ampliada a Relative, Delta y Pedals (2026-09-11):**
+  Isaac pide llevar el lenguaje Eficiencia al resto de widgets para evaluarlo
+  en el Workshop antes de catálogo. Rama `vantareapp/isa-1128-functional-widgets`
+  sobre `origin/vantareapp/isa-1120-efficiency-v2`, worktree
+  `~/Desktop/vantare-isa1128`. Tres renderers nuevos en
+  `design-systems/vantare-functional/` (`RelativeFunctional`,
+  `DeltaFunctional`, `PedalsFunctional`) sobre los ViewModels productivos:
+  Relative reutiliza cabecera+tabla con badge de posición del jugador, tick de
+  clase, hueco «A TI» en la fila del jugador y separador de columna de
+  vuelta; Delta cabe en el aspecto bloqueado 280×96 con la última vuelta a la
+  derecha de la cabecera (como el reloj de Standings), valor grande por tono y
+  pista de centro; Pedals dibuja tres canales C/B/T con rellenos y
+  porcentajes. El manifest funcional declara los cuatro widgets y la query
+  del Workshop (`system=vantare-functional`) deriva la compatibilidad del
+  manifest en vez de una lista duplicada. **Desviación de alcance
+  documentada:** el contrato del catálogo exige exactamente un diseño
+  oficial por par widget:sistema registrado, así que los tres pares llevan
+  diseño `Signature` (`isDefault`) y Eficiencia aparece en el selector de
+  sistemas de Studio **en esta rama** — sin merge ni promoción, la oferta al
+  usuario final sigue pendiente de la decisión de Isaac en la integración.
+  Fix lindante: `buildStandingsViewModelV2` leía `frame.weather` sin guardia
+  y reventaba en frames sin clima (fixture de host y cualquier frame V2 sin
+  el bloque); ahora es opcional. Checks: typecheck PASS, lint PASS, build
+  PASS, suite 427 ficheros / 3389 tests PASS (incluye los 4 tests de
+  caracterización de catálogo actualizados), `git diff --check` limpio.
+  Evidencia en `design-evidence/functional/efficiency-{relative,delta,pedals}.png`.
+  Además, el Workshop dejó de ser frágil: una URL rechazada ya no deja una
+  página muerta (abre el estado por defecto con el motivo visible), cambiar
+  de widget limpia escena/diseño/piel heredados y el selector de variantes
+  solo ofrece las del widget activo. La vista de estudio se generalizó:
+  cualquier selección `system=vantare-functional` abre el panel enfocado
+  (widget conmutable entre Standings/Relative/Delta/Pedals con aterrizaje en
+  la fixture más expresiva de cada uno, selector de sistema para salir de
+  Eficiencia, rótulo del escenario derivado del widget); Estilo, Dirección
+  v2 y Módulos siguen siendo solo de Standings. El playhead de escena se
+  reancla al cambiar de escena (ajuste en render, no efecto) para que el
+  `frame=` de la URL sea honesto. **Decisión de Isaac 2026-09-11: la vista de
+  estudio pasa a ser el único harness del Workshop.** El panel genérico
+  (header + fieldsets + sección de escenas) desaparece: el lateral cubre
+  widget, sistema, diseño, variante por widget, escena, estado, sesión,
+  ubicación, fondo, superficie, comparación y escala para cualquier sistema;
+  los bloques de Eficiencia (Estilo, Dirección v2, Módulos) solo aparecen en
+  Standings. El transporte de escena vive superpuesto abajo-izquierda del
+  escenario. Se corrigió el desbordamiento del select de escena (fieldset
+  min-content) y el aterrizaje `standings-functional-study` solo aplica con
+  Eficiencia (con otro sistema cae a `standings-multiclass`). **Capa demo del
+  Workshop:** el golden nombra a sus 20 coches `Driver 0NN` y deja delta,
+  embrague, dirección, history y clima sin valor; `buildWorkshopFrameV2`
+  aplica ahora una parrilla de muestra (20 nombres de resistencia sobre las
+  posiciones canónicas, asientos de escena conservados, nombres espejo en
+  relative/relativeSettled, delta +0.214, pedales completos, history de un
+  sector con frenada, clima de muestra) antes de variantes y escenas — solo
+  en el Workshop, sin tocar el golden ni producción; stale/error siguen
+  vacíos y honestos. Capturas del estudio en
+  `design-evidence/functional/study-{standings,relative,delta,pedals}.png`,
+  `harness-*.png` y `demo-*.png`. **Relative Eficiencia solo-filas (decisión
+  de Isaac, referencia iRacing):** sin cabecera de marca, sin fila de
+  etiquetas, sin decoración de esquina; `showHeader` deja de existir en
+  relative (delta/pedals lo conservan) y la variante dev
+  `relative-multiclass` recorta columnas a posición/clase/nombre/gap para no
+  pintar huecos declarados. **Barras de info (siguiente decisión de
+  Isaac):** el VM de relative publica campos meta opcionales — sessionLabel,
+  remainingText, trackText, playerBadgeText (P·clase) y clima — solo cuando
+  el frame V2 los entrega; el renderer pinta barra superior (pista · badge
+  del jugador) e inferior (sesión+reloj · ambiente) reutilizando el lenguaje
+  del footer de Standings. **Selector de marca (decisión de Isaac):** los
+  renderers de standings/delta/pedals leen `settings.brandVisible` — la
+  decisión inyectable del contrato ISA-1105 — y el Workshop expone
+  `brand=off` con el segmento "Marca" en el panel (autoridad local mientras
+  la política nativa con licencia llega por ISA-1098/1105, aún sin mergear
+  en nightly). **bestLap en la demo:** el golden lo trae `missing` en todas
+  las filas y la columna "Mejor vuelta" pintaba solo `—`; como no es un
+  hueco declarado, la capa demo lo deriva de lastLap con mejora determinista.
+  Evidencia `relative-rows-only.png`, `relative-bars.png` y
+  `standings-no-brand.png`. **Harness síncrono (decisión de Isaac, análisis
+  completo):** el widget ya no es producto de cuatro capas de parcheo ni de
+  un `prepared` diferido — `buildWorkshopWidget(query)` es el único punto
+  que decide la forma (forma → diseño → dev → sesión → marca → módulos, en
+  orden fijo) y corre síncrono en el render; el runtime es otra función
+  pura de la selección + playhead cuantizado. Los módulos del estudio
+  viven en la URL (`modules=…`) y todo estado es compartible. Fixture
+  inválido → error visible con controles vivos. Bug arrastrado resuelto: el
+  swap de columnas por sesión corría sobre cualquier widget funcional y
+  explotaba en Delta/Pedals (sin `content.columns`); ahora es solo de
+  Standings y hay regresión cubriendo los 12 combos widget×sesión.
+  **Panel simplificado:** una sola variante de standings funcional
+  (`standings-functional-study` — los módulos siempre aplican), fuera la
+  pseudo-opción "Ajustes por defecto del renderer" (sin designId se aplica
+  el diseño oficial por defecto, como en producto), cabecera sin marca
+  rediseñada como banda de información, y 15 pilotos mínimo en el estudio.
+  Pendiente: opción de Studio para máximo de pilotos con ventana
+  top-3 + jugador. **Delta rehecho** (Isaac: "el diseño es malo"): valor
+  con glifo de dirección ▲/▼, escala de instrumento ±2 s con marcas y
+  etiquetas, relleno degradado con brillo por tono. Evidencia
+  `delta-instrument.png` / `delta-instrument-nobrand.png`. Tras verlo,
+  Isaac pidió fuera la cabecera entera: el delta es instrumento puro
+  (valor + escala + pie ÚLT. VUELTA), `showHeader` retirado del
+  manifiesto; evidencia `delta-noheader.png`. **Segunda dirección Delta:**
+  `templateId: "capsule"` (tipo Crystal — fila en píldora, pista gruesa,
+  píldora de valor) junto a `instrument` por defecto; diseño oficial
+  `delta-functional-capsule`, elegible en Estilo. Evidencia
+  `delta-capsule.png`. **Sistema "iRacing"** (`vantare-iracing`, dev):
+  referencia clásica de sim racing. Primer widget:
+  `pedals-telemetry-compact` renombrado "Pedales avanzados" (4 locales) —
+  marcha ámbar, km/h + rpm, 3 barras verticales y volante que gira con
+  `player.steering` (recién mapeado al VM compacto). Diseño
+  `pedals-advanced-iracing`; evidencia `iracing-pedals-adv.png`.
+  **Slots de pie** (hasta 5) en standings/relative de Eficiencia vía
+  `footerSlots` + `slots=` en la URL — vocabulario compartido, resuelto
+  desde el VM (jugador + sesión + ambiente); reemplazan el pie ambiental.
+  **Auditoría del motor de animaciones**: `docs/analysis/ISA-1128-motion-engine-audit.md`
+  — la política de rendimiento Go llega al scheduler pero no a los
+  renderers; propuesta de MotionLevel + effects en el host.
+  **Pie adaptable (Isaac: "se desborda"):** la fila única con clip quedó
+  descartada — ahora los huecos doblan a segunda fila con letra escalada al
+  ancho (container query + clamp) y el renderer presupuesta filas sobre
+  `layout.h` real: la tabla cede en filas completas y el pie nunca se corta
+  (constantes espejo de `resolveFunctionalStandingsSize`; sin layout no se
+  recorta nada — tests y hosts antiguos intactos). **Motion Eficiencia +
+  eficiencia del motor:** `core/widget-motion.ts` comparte el patrón
+  prevRef+timers+layout-effect (`useWidgetMotion`, `MotionLevel`,
+  `resolveMotionLevel`); el host resuelve el presupuesto desde
+  `capabilities.performance` + prefers-reduced-motion y lo pasa a los
+  renderers como props `motion`/`effects` (niveles 4→reduced, 5→minimal).
+  `useDeltaMotion` migrado al helper (standings/relative de Endurance
+  conservan su orquestación con estado propio). Los tres renderers
+  funcionales animan: FLIP por índice renderizado, flash rise/fall
+  discreto en cambios de posición, cruce de cero y nueva referencia en
+  delta, fills con transición en pedales. `data-effects` (noBlur/flat)
+  apaga blur/sombras según política. **Harness corregido:** la parrilla del
+  estudio conserva los asientos de escena (Bovy 7, Bruni 10…) y
+  `applyScene` reordena el relative por gap tras un cruce — antes la
+  escena movía el dato pero la VM mantenía el orden viejo y nada se
+  animaba. Verificado en navegador: overtake/battle destellan y deslizan,
+  delta-cross-zero pulsa, relative-cross reordena con FLIP.
+  **Primera revisión adversarial del motor (10 P2, todos corregidos en
+  `c3f68d43`/`9918ec6f`/`7642df46`):** doble escala en el stride medido
+  (`getBoundingClientRect` devuelve px escalados; corregido con
+  `offsetHeight` y `RELATIVE_ROW_PX` 19.8→28), `data-motion-level` en las
+  raíces + gate CSS `transition/animation:none` en minimal, cancelación de
+  WAAPI/timers/attrs al bajar el nivel, cruce de relative por cambio de
+  `side` (no por delta de índice), timers con clave para no apagar el
+  flash siguiente, `flat` cubre efectos interiores del delta, tick del
+  transporte sin re-render cuando la muestra cuantizada no cambia,
+  interpolación de overrides discretos aterrizando en `t>=1`, y la
+  parrilla del estudio recupera el asiento visible de Laursen (P15).
+  **Segunda revisión adversarial (arquitectura, 4 P2, corregidos):**
+  `flipRows` compartido en `widget-motion.ts` — FLIP medido por id de
+  fila estable (rects normalizados por la escala del root, `from =
+  prevTop − top + inFlight`) que retargetea desde la posición visual en
+  vuelo y sobrevive a remounts de nodo (batalla Redline
+  block↔battle-box); `persist` en el contexto del hook se limpia al
+  romper la continuidad; memoria del último lado no neutro del delta
+  (perder→neutro→ganar marca el cruce) en functional y Endurance;
+  `useStandingsMotion` usa `flipRows`, cancela WAAPI/timers/attrs al
+  deshabilitarse y sus timers llevan clave (stepDeltas ya no apila
+  cadenas); `PedalsEndurance` emite `data-motion-level`; y el host se
+  suscribe a `prefers-reduced-motion` vía `useSyncExternalStore` — un
+  cambio en caliente baja a `minimal` en el mismo render sin esperar otro
+  frame. Fix colateral: los 3 errores preexistentes de `react-hooks/refs`
+  en `widget-motion.ts` (escrituras de ref en render) quedan dentro de un
+  layout effect. Verificado en Chromium: re-target con keyframes no-stride
+  (49.6px/23.6px), delta marca gaining y losing, relative marca fall+rise
+  sobre Bruni, y reduced-motion emulado a mitad de vuelo deja 0 WAAPI
+  corriendo y restaura `full` al quitarlo. En la parrilla golden
+  multiclase las escenas de estudio no producen reorden dentro de clase
+  (los asientos 7↔10 son de clases distintas), así que el FLIP de
+  Endurance queda cubierto por los tests de `flipRows` (remount por id,
+  retarget con transform en vuelo) más el teardown del hook — la escena
+  correcta para demostrarlo en navegador sigue pendiente. Checks:
+  typecheck PASS, lint PASS (archivo ya sin errores), build PASS, suite
+  3403/3404 (el único fallo es el i18n-audit preexistente por una clave
+  huérfana en studio-orbit, confirmado en HEAD limpio).
+  **Cierre de la auditoría (dos cabos sueltos, corregidos):**
+  escena nueva `standings-class-battle` — Birch (GTE P9) se pega a Pier
+  Guidi (GTE P6), la costura cristaliza en caja (2,5 s sostenidos) y el
+  adelantamiento intercambia las filas dentro de la misma clase con la
+  caja viva. Es la primera escena que reordena filas visibles en la
+  parrilla multiclase: el bloque hypercar (clase del jugador, siempre el
+  último) queda recortado por `fitStandingsRowsToHeight` a la altura
+  oficial (~620 px), así que las parejas antiguas eran invisibles y, sin
+  fila de jugador en el modelo recortado, `deriveBattlePairs` no podía
+  derivar nada. Verificado en Chromium con `height=940`: seam → box →
+  dissolve → swap dentro del wrapper con FLIP medido (6,3 px, retarget
+  1,4 px) → nueva costura invertida. Además `applyScene` ahora avisa una
+  vez por escena/piloto cuando un parche no resuelve ninguna fila (ni por
+  nombre ni por asiento) — el resbalón silencioso del hallazgo 10 deja
+  de ser silencioso. Y `useRelativeMotion` de Endurance, código muerto
+  con el bug de doble escala latente (medía `getBoundingClientRect` sin
+  normalizar), queda eliminado junto a sus tests: la plantilla Redline
+  Relative decidió no usar FLIP y nadie lo importaba. Checks: typecheck
+  PASS, lint PASS, build PASS, suite 3396/3397 (mismo i18n-audit
+  preexistente). Listo para que Isaac mergee a `nightly` y retome la
+  rama actualizada.
+  Sin merge, push, PR, promoción ni release.
+
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde
   `4864b5c6`, SHA `cb69a4d5…878faba`, muestra Pedals sobre LMU con freno real
   al 100%, contenido y sin halo/recorte. Captura aislada posterior al 46% y

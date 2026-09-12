@@ -43,7 +43,7 @@ import {
   createWailsStudioEventTransport,
   type StudioProfileClient,
 } from './state/studio-profile-client';
-import { ConnectedStudioProvider, useStudioDocument } from './state/studio-store';
+import { ConnectedStudioProvider, useStudioActions, useStudioDirty, useStudioSelector } from './state/studio-store';
 import { StudioAutosave } from './state/studio-autosave';
 import type { StudioProfileEntry } from './studio-profile-entry';
 
@@ -190,7 +190,24 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
     onNavigationCancel,
   } = props;
   const { t } = useI18n();
-  const { document, lastError } = useStudioDocument();
+  const document = useStudioSelector((s) => s.history?.present ?? null);
+  const lastError = useStudioSelector((s) => s.loadError);
+
+  // El error va primero: cuando la carga falla history queda a null y
+  // `document` nunca llega — con el orden inverso la UI de error era
+  // inalcanzable y el usuario veia un spinner eterno.
+  if (lastError) {
+    return (
+      <div
+        data-testid="studio-route-load-error"
+        className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[720px] flex-col px-6 py-8"
+      >
+        <div className="rounded-xl border border-vantare-red-500/30 bg-vantare-red-950/20 p-6 text-sm text-vantare-red-300">
+          {lastError}
+        </div>
+      </div>
+    );
+  }
 
   if (!document) {
     return (
@@ -200,19 +217,6 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
       >
         <div className="glass-panel rounded-xl p-8 text-sm text-vantare-textMuted">
           {t('studio.v3.route.loadingProfile')}
-        </div>
-      </div>
-    );
-  }
-
-  if (lastError) {
-    return (
-      <div
-        data-testid="studio-route-load-error"
-        className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[720px] flex-col px-6 py-8"
-      >
-        <div className="rounded-xl border border-vantare-red-500/30 bg-vantare-red-950/20 p-6 text-sm text-vantare-red-300">
-          {lastError}
         </div>
       </div>
     );
@@ -307,13 +311,14 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
 type StudioRouteNavigationBridgeProps = {
   onDirtyChange(dirty: boolean): void;
   onBindActions(actions: {
-    save(): ReturnType<ReturnType<typeof useStudioDocument>['save']>;
+    save(): ReturnType<ReturnType<typeof useStudioActions>['save']>;
     discardAll(): void;
   }): void;
 };
 
 function StudioRouteNavigationBridge(props: StudioRouteNavigationBridgeProps): null {
-  const { dirty, save, discardAll } = useStudioDocument();
+  const dirty = useStudioDirty();
+  const { save, discardAll } = useStudioActions();
   const { onDirtyChange, onBindActions } = props;
 
   useEffect(() => {
@@ -448,7 +453,7 @@ function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactEl
   const dirtyRef = useRef(false);
   const pendingCreateNameRef = useRef<string | null>(null);
   const studioActionsRef = useRef<{
-    save(): ReturnType<ReturnType<typeof useStudioDocument>['save']>;
+    save(): ReturnType<ReturnType<typeof useStudioActions>['save']>;
     discardAll(): void;
   } | null>(null);
   const navigationResolverRef = useRef<((decision: 'save' | 'discard' | 'cancel') => void) | null>(

@@ -11,9 +11,16 @@ import (
 	"github.com/vantare/overlays/v2/internal/engineer/ptt"
 )
 
+// testWaitTimeout acota las esperas dirigidas por señal del archivo. Las
+// esperas ya dependen de canales/estado, no del reloj; la cota solo existe
+// para que un bloqueo real falle en vez de colgar la suite, asi que se fija
+// muy por encima de cualquier trabajo legitimo en un runner cargado
+// (ISA-939, ISA-812).
+const testWaitTimeout = 30 * time.Second
+
 func waitRuntimeState(t *testing.T, voiceRuntime *Runtime, state State) {
 	t.Helper()
-	deadline := time.Now().Add(time.Second)
+	deadline := time.Now().Add(testWaitTimeout)
 	for time.Now().Before(deadline) {
 		if voiceRuntime.Health().State == state {
 			return
@@ -25,7 +32,7 @@ func waitRuntimeState(t *testing.T, voiceRuntime *Runtime, state State) {
 
 func waitControllerState(t *testing.T, controller *ptt.Controller, state ptt.State) {
 	t.Helper()
-	deadline := time.Now().Add(time.Second)
+	deadline := time.Now().Add(testWaitTimeout)
 	for time.Now().Before(deadline) {
 		if controller.Snapshot().State == state {
 			return
@@ -94,7 +101,7 @@ func TestRuntimeClearsTranscriptBufferAfterPublishing(t *testing.T) {
 	_, _ = runtime.controller.Handle(ctx, ptt.Input{Kind: ptt.InputReleased, Binding: binding})
 	select {
 	case <-publisher.turns:
-	case <-time.After(time.Second):
+	case <-time.After(testWaitTimeout):
 		t.Fatal("turn was not published")
 	}
 	if err := runtime.Stop(context.Background()); err != nil {
@@ -201,21 +208,21 @@ func TestRuntimeStartNeverWaitsForHostAndStartsPTTPoller(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-	case <-time.After(50 * time.Millisecond):
+	case <-time.After(testWaitTimeout):
 		close(host.releaseStart)
 		<-startDone
 		t.Fatal("Runtime.Start blocked on host readiness")
 	}
 	select {
 	case <-reader.ready:
-	case <-time.After(50 * time.Millisecond):
+	case <-time.After(testWaitTimeout):
 		close(host.releaseStart)
 		t.Fatal("PTT poller did not start while host readiness was pending")
 	}
 	close(host.releaseStart)
 	select {
 	case <-host.startEntered:
-	case <-time.After(time.Second):
+	case <-time.After(testWaitTimeout):
 		t.Fatal("host start was not attempted asynchronously")
 	}
 	if err := runtime.Stop(context.Background()); err != nil {
@@ -246,7 +253,7 @@ func TestRuntimeFinishAlwaysCarriesTranscriptionDeadline(t *testing.T) {
 		if !bounded {
 			t.Fatal("Host.Finish received an unbounded context")
 		}
-	case <-time.After(time.Second):
+	case <-time.After(testWaitTimeout):
 		t.Fatal("Host.Finish was not called")
 	}
 	if err := runtime.Stop(context.Background()); err != nil {
@@ -274,12 +281,12 @@ func TestRuntimeTranscriptionDeadlineReleasesPTTOwnership(t *testing.T) {
 	_, _ = runtime.controller.Handle(ctx, ptt.Input{Kind: ptt.InputReleased, Binding: binding})
 	select {
 	case <-host.finishEntered:
-	case <-time.After(time.Second):
+	case <-time.After(testWaitTimeout):
 		t.Fatal("Host.Finish was not called")
 	}
 	select {
 	case <-host.finishReturned:
-	case <-time.After(time.Second):
+	case <-time.After(testWaitTimeout):
 		t.Fatal("Host.Finish did not stop at its transcription deadline")
 	}
 	waitControllerState(t, runtime.controller, ptt.StateListening)
@@ -357,7 +364,7 @@ func TestRuntimePTTTranscribesQueryAndPublishesOnlyRouterTurn(t *testing.T) {
 		if turn.Outcome != commands.OutcomeQueryAnswered || turn.IntentID != "query.fuel" || turn.Values["litres"] != "12" {
 			t.Fatalf("turn = %+v", turn)
 		}
-	case <-time.After(time.Second):
+	case <-time.After(testWaitTimeout):
 		t.Fatal("query turn was not published")
 	}
 	health := runtime.Health()
@@ -387,12 +394,12 @@ func TestRuntimeWakePlaceholderAndMaximumWindowAreBounded(t *testing.T) {
 	host.wake <- "  INGENIERO "
 	select {
 	case <-host.finish:
-	case <-time.After(time.Second):
+	case <-time.After(testWaitTimeout):
 		t.Fatal("wake capture did not close at its maximum window")
 	}
 	select {
 	case <-publisher.turns:
-	case <-time.After(time.Second):
+	case <-time.After(testWaitTimeout):
 		t.Fatal("wake query turn was not published")
 	}
 	if health := runtime.Health(); health.WakeCaptures != 1 || health.Transcriptions != 1 {
@@ -424,7 +431,7 @@ func TestRuntimePTTTimeoutBeforeReleaseCompletesControllerCycle(t *testing.T) {
 	_, _ = runtime.controller.Handle(ctx, ptt.Input{Kind: ptt.InputPressed, Binding: binding, Focused: true})
 	select {
 	case <-publisher.turns:
-	case <-time.After(time.Second):
+	case <-time.After(testWaitTimeout):
 		t.Fatal("timed capture was not transcribed")
 	}
 	waitRuntimeState(t, runtime, StateIdle)
@@ -470,7 +477,7 @@ func TestRuntimeRoutesActionsButKeepsThemDisabled(t *testing.T) {
 		if turn.IntentID != "action.pit.request" || turn.Outcome != commands.OutcomeUnavailable || turn.Reason != commands.ReasonActionUnavailable {
 			t.Fatalf("action turn = %+v", turn)
 		}
-	case <-time.After(time.Second):
+	case <-time.After(testWaitTimeout):
 		t.Fatal("disabled action result was not published")
 	}
 	if health := runtime.Health(); health.RejectedActions != 1 {

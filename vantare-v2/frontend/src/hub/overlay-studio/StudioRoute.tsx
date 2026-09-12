@@ -19,7 +19,6 @@ import { ProfilesOrbitPage } from '../profiles-orbit/ProfilesOrbitPage';
 import { setHubStudioDirty } from '../hub-suspend-guard';
 import { RecommendedProfilesView } from '../overlays/RecommendedProfilesView';
 import { CommunityComingSoonView } from '../overlays/CommunityComingSoonView';
-import { ObsOverlaySetupView } from '../overlays/ObsOverlaySetupView';
 import { RecommendedSuccessBanner } from '../overlays/RecommendedSuccessBanner';
 import {
   RECOMMENDED_PROFILES,
@@ -266,10 +265,6 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
     );
   } else if (mode === 'community') {
     secondaryView = <CommunityComingSoonView onBack={() => onSetMode('editor')} />;
-  } else if (mode === 'obs') {
-    const obsProfileRef = activeProfileId ?? editorFile;
-    const obsUrl = `${window.location.origin}/overlay?profile=${encodeURIComponent(obsProfileRef)}`;
-    secondaryView = <ObsOverlaySetupView url={obsUrl} onBack={() => onSetMode('editor')} />;
   }
 
   const editorActive = mode === 'editor';

@@ -6,7 +6,7 @@ import { useLicense } from '../../../lib/license';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { TelemetrySourceStatus } from '../../../telemetry-transport/source-status';
 import type { TestingCenterChannel } from '../../testing-center/contracts';
-import { useLauncherSnapshot } from '../../launcher/launcher-store';
+import { useLauncherProfiles } from '../../launcher/launcher-store';
 import { profileLabel, profileTarget, type ProfileEntry } from '../../state/overlay-workbench';
 import { type Section } from '../../navigation';
 import { formatMessage } from '../../orbit/format-message';
@@ -17,6 +17,7 @@ import { ScheduleReviewNotice } from '../../settings-orbit/ScheduleReviewNotice'
 import { useCalendarStarts } from '../../orbit/use-calendar-starts';
 import { OrbitSimStatusContext } from '../../orbit/sim-status-context';
 import { useOverlayState } from '../../orbit/use-overlay-state';
+import { useOrbitPerfEffects } from '../../orbit/use-orbit-perf-effects';
 import { useOrbitResponsiveZoom } from '../../orbit/use-orbit-responsive-zoom';
 import {
   canSeeView,
@@ -137,7 +138,7 @@ function OrbitShellBody({
   const { result: license } = useLicense();
   const overlay = useOverlayState();
   const races = useCalendarStarts();
-  const launcher = useLauncherSnapshot();
+  const launcherProfiles = useLauncherProfiles();
   const notificationPreferences = useNotificationPreferences();
 
   const activeView = sectionToView(activeSection);
@@ -165,6 +166,11 @@ function OrbitShellBody({
   // (D-R4-3): primero pliegan las media queries, y solo lo que aún no cabe se
   // escala. Como el tema, vive y muere con la shell.
   useOrbitResponsiveZoom();
+
+  // El presupuesto de efectos que publica Go (`performance:level`) llega a la
+  // CSS como `:root[data-orbit-perf-effects]`: con "noBlur"/"flat" la shell
+  // deja de difuminar fondos (ISA-1150). Imperativo, sin re-render.
+  useOrbitPerfEffects();
 
   // El tema Orbit solo se aplica mientras la shell está montada y **no** se
   // guarda como preferencia: al apagar el flag vuelve el tema del usuario.
@@ -325,15 +331,6 @@ function OrbitShellBody({
     },
     [t, toast],
   );
-
-  const launcherProfiles = useMemo(() => {
-    const all = [...(launcher?.userProfiles ?? []), ...(launcher?.vantareProfiles ?? [])];
-    return all.map((profile) => ({
-      id: profile.id,
-      name: profile.name,
-      steps: profile.steps?.length ?? 0,
-    }));
-  }, [launcher]);
 
   const blocks: ContextColumnBlock[] = useMemo(
     () => [

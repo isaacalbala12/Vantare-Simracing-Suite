@@ -4,6 +4,7 @@
 Actualiza el calendario oficial LMU semanal para un hotfix.
 
 Lee primero:
+- docs/vantare-program/notion-transition.md; confirma tarea autoritativa y permiso de ejecución según la fase. No amplíes el lote de cierre.
 - AGENTS.md
 - docs/roadmap/plan.md
 - docs/calendar-weekly-hotfix/README.md
@@ -68,7 +69,7 @@ UI esperada:
 Archivos permitidos normalmente:
 - internal/calendar/seed/lmu-weekly-schedule.json
 - internal/calendar/official_schedule_test.go
-- la issue de GitHub y el handoff vivo correspondiente
+- la tarea autoritativa según la transición y el handoff vivo correspondiente
 - changelog existente, si aplica
 
 Si necesitas tocar estos archivos, reporta por que antes de hacerlo salvo bug claro:

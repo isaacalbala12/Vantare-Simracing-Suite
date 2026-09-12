@@ -1,5 +1,12 @@
 # Master Feature Plan
 
+> **Referencia histórica; no usar como workflow vigente.** Para iniciar trabajo
+> leer [la transición a Notion](vantare-program/notion-transition.md) y el expediente canónico
+> de `vantare-v2/docs/vantare-program/`. Se conservan las decisiones y evidencias
+> fechadas de abajo; sus órdenes de ejecución, tracker y prioridades no prevalecen
+> sobre esas fuentes actuales.
+
+
 Plan maestro de features de Vantare Suite, con Overlays Studio e Ingeniero como modulos internos.
 
 > Actualizacion 2026-08-21: este documento queda como mapa de producto y contexto historico. La planificacion publica vive en `docs/roadmap/plan.md`; el estado operativo de cada issue vive en GitHub Issues y la continuidad tecnica en el handoff vivo. La ejecucion especifica hacia release oficial sigue siendo `docs/release-roadmap-execution-index.md`.

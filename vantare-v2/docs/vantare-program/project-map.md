@@ -1,7 +1,17 @@
 # Mapa de proyectos y dependencias
 
-Estado: 2026-08-21. GitHub Issues es la fuente del estado operativo; el roadmap
-publico se mantiene en `roadmap/plan.md`.
+> **Tracker y continuidad (2026-09-12):** leer primero
+> [la transición a Notion](notion-transition.md). Mientras su estado sea PREPARACIÓN,
+> las reglas GitHub/ISA de este documento rigen el cierre del lote existente
+> y la preparación técnica. El trabajo nuevo fuera del lote se captura en Notion
+> sin ejecutarlo todavía. Después del corte verificado, Notion será la autoridad
+> operativa y GitHub conservará código, PR, CI y releases.
+
+
+Mapa de fronteras con snapshot de estado del 2026-08-21. Las tablas de issues
+y el orden global de abajo son historicos, no el lote actual ni una cola de
+ejecucion. Consultar el tracker por fase y los handoffs vivos para elegir trabajo.
+El roadmap publico se mantiene en `roadmap/plan.md`.
 
 ## Grafo principal
 

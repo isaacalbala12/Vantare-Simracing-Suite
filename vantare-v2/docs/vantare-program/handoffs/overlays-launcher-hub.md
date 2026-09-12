@@ -391,6 +391,27 @@ física nueva, retirada V1, merge o release en este corte documental.
   typecheck PASS, lint PASS (archivo ya sin errores), build PASS, suite
   3403/3404 (el único fallo es el i18n-audit preexistente por una clave
   huérfana en studio-orbit, confirmado en HEAD limpio).
+  **Cierre de la auditoría (dos cabos sueltos, corregidos):**
+  escena nueva `standings-class-battle` — Birch (GTE P9) se pega a Pier
+  Guidi (GTE P6), la costura cristaliza en caja (2,5 s sostenidos) y el
+  adelantamiento intercambia las filas dentro de la misma clase con la
+  caja viva. Es la primera escena que reordena filas visibles en la
+  parrilla multiclase: el bloque hypercar (clase del jugador, siempre el
+  último) queda recortado por `fitStandingsRowsToHeight` a la altura
+  oficial (~620 px), así que las parejas antiguas eran invisibles y, sin
+  fila de jugador en el modelo recortado, `deriveBattlePairs` no podía
+  derivar nada. Verificado en Chromium con `height=940`: seam → box →
+  dissolve → swap dentro del wrapper con FLIP medido (6,3 px, retarget
+  1,4 px) → nueva costura invertida. Además `applyScene` ahora avisa una
+  vez por escena/piloto cuando un parche no resuelve ninguna fila (ni por
+  nombre ni por asiento) — el resbalón silencioso del hallazgo 10 deja
+  de ser silencioso. Y `useRelativeMotion` de Endurance, código muerto
+  con el bug de doble escala latente (medía `getBoundingClientRect` sin
+  normalizar), queda eliminado junto a sus tests: la plantilla Redline
+  Relative decidió no usar FLIP y nadie lo importaba. Checks: typecheck
+  PASS, lint PASS, build PASS, suite 3396/3397 (mismo i18n-audit
+  preexistente). Listo para que Isaac mergee a `nightly` y retome la
+  rama actualizada.
   Sin merge, push, PR, promoción ni release.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde

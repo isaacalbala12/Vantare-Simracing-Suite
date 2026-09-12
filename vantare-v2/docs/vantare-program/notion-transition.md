@@ -65,7 +65,7 @@ congela el HEAD de los candidatos. Cada cierre registra su SHA real y evidencia.
 | Efficiency, política común y runtime | #1098 / #1107 | Cerrar el candidato conjunto; reconciliar dependencias absorbidas por alcance y evidencia |
 | Orbit: pantallas auxiliares Hub | #1179 / #1180 | Entrega separada del candidato Efficiency |
 | Orbit: estados Studio/Perfiles | #1181 / #1182 | Integrada en nightly en `576a4663` durante la preparación; reconciliar registro de aceptación y remanentes |
-| Orbit fuera del Hub | #1185 / #1186 | Entrega separada |
+| Orbit fuera del Hub | #1185 / #1186 | Integrada en nightly en `c3dba271` durante la preparación; reconciliar registro de aceptación y remanentes |
 | Avisos del actualizador | #840 / #1184 | Corregir/verificar el fallo de CI del candidato antes de aceptar |
 | Vueltas, fuel y paginación | #822 / #1188 | Corregir/verificar el fallo de CI antes de aceptar |
 | Clerk: cuenta interna | #909 / #913 | Dependencia de login; conservar sus criterios de aceptación |

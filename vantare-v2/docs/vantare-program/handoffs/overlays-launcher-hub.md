@@ -197,32 +197,36 @@ sesión (C3), diseños y acciones de restauración (C4).
 
 Extensión de integración del 2026-09-12 autorizada por Isaac: el candidato
 incorpora las mejores implementaciones vigentes de #1157, #1168, #1163,
-#1161, #1118 y #1170 como bloques independientes. El runtime reutiliza el
-contexto y sus firmas cuando no cambia su contenido; settings, licencia y
-updater tienen un único fanout Wails por canal; Studio usa un store externo
-con selectores granulares; las rutas desmontables cancelan trabajo pendiente;
-SideRaces reduce su cadencia cuando la salida está lejos; y el mapper evita el
-slice temporal de calidad por vehículo. La adaptación de #1163 conserva
+#1161, #1118, #1170, #1117, #1122, #1158 y #1165 como bloques
+independientes. El runtime reutiliza el contexto y sus firmas cuando no cambia
+su contenido; settings, licencia y updater tienen un único fanout Wails por
+canal; Studio usa un store externo con selectores granulares; las rutas
+desmontables cancelan trabajo pendiente; SideRaces reduce su cadencia cuando
+la salida está lejos; y el mapper evita el slice temporal de calidad por
+vehículo. El Hub comparte una sola suscripción para overlays y calendario,
+carga sus páginas y los idiomas secundarios bajo demanda y obedece el
+presupuesto de efectos `noBlur`/`flat` publicado por Go. La adaptación de #1163 conserva
 `WidgetPolicyWire` como única autoridad Free/Pro y no recupera
 `AccessContext`. La variante de #1170 que exponía un slice global mutable se
 reemplazó por un array devuelto por valor con regresión específica. Se excluyen
 la conversión de fuente ya superada de #1118, el componente `ObsSetup` ya
-retirado y el PR #1132 por duplicar esos bloques. Cada corte pasó sus pruebas
-focales y typecheck antes del siguiente; la suite y builds completos se
-ejecutan sobre el candidato documental definitivo.
+retirado y el PR #1132 por duplicar esos bloques. #1180 y #1182 permanecen
+separados porque cambian la apariencia de otras pantallas y no son una mejora
+del candidato Efficiency.
 
-Gate completo de la extensión: frontend 446 archivos, 3544 pruebas PASS y 2
-omitidas; typecheck incluido en build, lint y build web PASS; `go test ./...`
-PASS; digest de roadmap idempotente, `git diff --check` y búsqueda de
-marcadores PASS. El `AbortError` de happy-dom conserva exit 0 y el build web
-mantiene el aviso heredado de chunks mayores de 500 kB. Build Wails forzada
-con canal `nightly` desde el `.env.local` original autorizado: URL, anon key y
+Gate completo de la extensión ampliada: frontend 448 archivos, 3557 pruebas
+PASS y 2 omitidas; typecheck, lint y build web PASS; `go test ./...` PASS. El
+`AbortError` de happy-dom conserva exit 0. La división por página deja la shell
+principal en 69,48 kB y Studio en un chunk bajo demanda de 81,05 kB; no se
+declara todavía ahorro físico de CPU, GPU o memoria. Build Wails forzada con
+canal `nightly` desde el `.env.local` original autorizado: URL, anon key y
 registro público de licencia coinciden embebidos mediante su representación
-base64, sin copiar ni mostrar valores. `bin/vantare.exe` mide 29.910.016 bytes
+base64, sin copiar ni mostrar valores. `bin/vantare.exe` mide 29.957.632 bytes
 y tiene SHA-256
-`B0924BBB7AEB4896584911F39E67D5D47A7C33D116AB4F9194905AB6EA6A86CA`;
-el archivo generado de configuración se retiró al terminar. Esta build todavía
-requiere el smoke manual conjunto antes de integrar a Nightly y no acredita la
+`465444F142848FD2AFD4B4FD0B1DF05E535631170D25C43CE8CE351EF5049344`.
+La base se actualizó a `origin/nightly@5fa9450b`; su nuevo roadmap de beta se
+conservó y el digest se regeneró desde `plan.md`. Esta build todavía requiere
+el smoke manual conjunto antes de integrar a Nightly y no acredita la
 equivalencia de bandera durante una sesión LMU activa.
 
 Actualización vigente: la rama se reconcilió con `origin/nightly@e13756ef`

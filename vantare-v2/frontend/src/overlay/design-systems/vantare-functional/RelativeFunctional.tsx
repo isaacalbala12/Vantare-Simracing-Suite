@@ -10,11 +10,10 @@ import { resolveRelativeClassColor } from "../../widget-types/relative/relative-
 import { resolveRelativeCellValue, type RelativeViewModel } from "../../widget-types/relative/relative-view-model";
 import { functionalLabels } from "./labels";
 import { FOOTER_SLOT_GAP_PX, FOOTER_SLOT_PAD_PX, FOOTER_SLOT_ROW_PX, footerSlotItemWidth, resolveFunctionalFooterSlots } from "./footer-slots";
+import { resolveWidgetVisualGeometryForType } from "../../core/widget-visual-geometry";
 
 const CENTERED = new Set(["position", "class", "carNumber", "gap"]);
 const LAP_METRICS = new Set(["bestLap", "lastLap"]);
-
-const RELATIVE_ROW_PX = 19.8;
 
 export function RelativeFunctional({ model, settings, layout, motion = "full", effects }: WidgetRendererProps<RelativeViewModel>) {
   const { locale } = useI18n();
@@ -55,6 +54,10 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
 
   // Mismo presupuesto que standings: el pie nunca se corta y la tabla cede
   // en filas completas. Sin layout no se recorta nada.
+  const geometry = layout && Number.isFinite(layout.w) && Number.isFinite(layout.h) && layout.w > 0 && layout.h > 0
+    ? resolveWidgetVisualGeometryForType(layout, model.type)
+    : undefined;
+  const scale = geometry?.scale ?? 1;
   const innerWidth = Math.max(80, (layout?.w ?? 0) - 24);
   const slotsTotal = slots.reduce((sum, slot) => sum + footerSlotItemWidth(slot.label, slot.value), 0) + Math.max(0, slots.length - 1) * FOOTER_SLOT_GAP_PX;
   // Misma regla que standings: hasta 5 en una fila (letra reducida), más
@@ -62,10 +65,13 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
   const slotScale = layout?.w !== undefined && slots.length > 0 && slots.length <= 5 ? Math.min(1, (innerWidth * 0.97) / slotsTotal) : 1;
   const slotRows = slots.length <= 5 ? (slots.length > 0 ? 1 : 0) : Math.ceil(slotsTotal / innerWidth);
   const slotsHeight = slotRows > 0 ? FOOTER_SLOT_PAD_PX + slotRows * FOOTER_SLOT_ROW_PX : 0;
+  const ambientReserve = 30 * scale;
+  const slotsReserve = slotsHeight * scale;
   const tableSpace = layout?.h === undefined
     ? Number.POSITIVE_INFINITY
-    : layout.h - (hasMeta ? 30 : 0) - slotsHeight - (slots.length === 0 && hasFooter ? 30 : 0);
-  const rowsFit = Math.max(0, Math.floor(tableSpace / RELATIVE_ROW_PX));
+    : layout.h - (hasMeta ? ambientReserve : 0) - slotsReserve - (slots.length === 0 && hasFooter ? ambientReserve : 0);
+  const rowMin = 28 * scale;
+  const rowsFit = Number.isFinite(tableSpace) ? Math.max(0, Math.floor(tableSpace / rowMin)) : Number.POSITIVE_INFINITY;
   const visibleRows = Number.isFinite(tableSpace) ? model.rows.slice(0, rowsFit) : model.rows;
 
   return (

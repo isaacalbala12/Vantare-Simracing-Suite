@@ -1,9 +1,15 @@
 import type { ComponentType } from "react";
 import type { DesignSystemDefinition, WidgetRendererProps } from "../../core/design-system-definition";
+import { BroadcastTowerFunctional } from "./BroadcastTowerFunctional";
 import { CarDamageNumbersFunctional } from "./CarDamageNumbersFunctional";
+import { CarDamageVisualFunctional } from "./CarDamageVisualFunctional";
 import { DeltaFunctional } from "./DeltaFunctional";
+import { DeltaTraceFunctional } from "./DeltaTraceFunctional";
+import { EngineerRadioFunctional } from "./EngineerRadioFunctional";
+import { HeadToHeadFunctional } from "./HeadToHeadFunctional";
 import { FuelStrategyFunctional } from "./FuelStrategyFunctional";
 import { InputTelemetryFunctional } from "./InputTelemetryFunctional";
+import { MulticlassRelativeFunctional } from "./MulticlassRelativeFunctional";
 import { PedalsFunctional } from "./PedalsFunctional";
 import { PedalsTelemetryFunctional } from "./PedalsTelemetryFunctional";
 import { RacingFlagsFunctional } from "./RacingFlagsFunctional";
@@ -170,6 +176,76 @@ export const vantareFunctionalManifest: DesignSystemDefinition = {
       },
       inspector: { appearance: [] },
       Renderer: RaceScheduleFunctional as ComponentType<WidgetRendererProps>,
+    },
+    {
+      widgetType: "broadcast-tower",
+      configVersion: 1,
+      defaultSettings: {},
+      configMigrations: { 0: (settings) => ({ ...settings }) },
+      parseSettings(input: unknown) {
+        return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
+      },
+      inspector: { appearance: [] },
+      Renderer: BroadcastTowerFunctional as ComponentType<WidgetRendererProps>,
+    },
+    {
+      widgetType: "multiclass-relative",
+      configVersion: 1,
+      defaultSettings: {},
+      configMigrations: { 0: (settings) => ({ ...settings }) },
+      parseSettings(input: unknown) {
+        return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
+      },
+      inspector: { appearance: [] },
+      Renderer: MulticlassRelativeFunctional as ComponentType<WidgetRendererProps>,
+    },
+    {
+      widgetType: "car-damage-visual",
+      configVersion: 1,
+      defaultSettings: {},
+      configMigrations: { 0: (settings) => ({ ...settings }) },
+      parseSettings(input: unknown) {
+        return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
+      },
+      inspector: { appearance: [] },
+      Renderer: CarDamageVisualFunctional as ComponentType<WidgetRendererProps>,
+    },
+    {
+      widgetType: "delta-trace",
+      configVersion: 1,
+      defaultSettings: {},
+      configMigrations: { 0: (settings) => ({ ...settings }) },
+      parseSettings(input: unknown) {
+        return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
+      },
+      inspector: { appearance: [] },
+      Renderer: DeltaTraceFunctional as ComponentType<WidgetRendererProps>,
+    },
+    {
+      widgetType: "head-to-head",
+      configVersion: 1,
+      defaultSettings: { target: "ahead" },
+      configMigrations: { 0: (settings) => ({ ...settings }) },
+      parseSettings(input: unknown) {
+        const value = input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {};
+        return {
+          ...value,
+          target: value.target === "behind" ? "behind" : "ahead",
+        };
+      },
+      inspector: { appearance: [] },
+      Renderer: HeadToHeadFunctional as ComponentType<WidgetRendererProps>,
+    },
+    {
+      widgetType: "engineer-radio",
+      configVersion: 1,
+      defaultSettings: {},
+      configMigrations: { 0: (settings) => ({ ...settings }) },
+      parseSettings(input: unknown) {
+        return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
+      },
+      inspector: { appearance: [] },
+      Renderer: EngineerRadioFunctional as ComponentType<WidgetRendererProps>,
     },
   ],
 };

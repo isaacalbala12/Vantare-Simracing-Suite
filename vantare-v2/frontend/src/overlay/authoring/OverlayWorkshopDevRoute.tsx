@@ -196,7 +196,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
   const studySize = isStudyTable && widget?.type === "standings" ? resolveStandingsMinimumSize(widget) : undefined;
   // La banda ambiental opcional (~30 px) no entra en el mínimo del contenido:
   // el estudio la añade a la altura para que no recorte la última fila.
-  const displayQuery = studySize ? { ...parsed, width: studySize.width, height: studySize.height === undefined ? undefined : studySize.height + 34, scale: 1 } : parsed;
+  const displayQuery = studySize ? { ...parsed, width: studySize.width, height: studySize.height === undefined ? undefined : studySize.height + 30, scale: 1 } : parsed;
 
   return (
     // La vista de estudio es el único harness: no hay chrome genérico que se

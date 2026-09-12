@@ -115,7 +115,7 @@ describe("official-designs", () => {
     );
     const expectedPairs = widgetTypeRegistry.list().flatMap((definition) => {
       if (definition.type === "engineer-radio") {
-        return [`${definition.type}:vantare-crystal`];
+        return [`${definition.type}:vantare-crystal`, `${definition.type}:vantare-functional`];
       }
       if (definition.type === "track-map") {
         return [`${definition.type}:vantare-endurance`, `${definition.type}:vantare-functional`];

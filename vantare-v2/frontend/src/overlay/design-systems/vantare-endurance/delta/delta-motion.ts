@@ -11,21 +11,25 @@ export type DeltaMotionEvent =
   | { kind: "new-best" };
 
 /** A tone only counts as a side of zero when it is not the neutral band. */
-function side(model: DeltaViewModel): "gaining" | "losing" | null {
+export function deltaSideOf(model: DeltaViewModel): "gaining" | "losing" | null {
   return model.tone === "gaining" || model.tone === "losing" ? model.tone : null;
 }
 
 export function deriveDeltaEvents(
   prev: DeltaViewModel | null,
   next: DeltaViewModel,
+  lastSide: "gaining" | "losing" | null = null,
 ): DeltaMotionEvent[] {
   if (!prev || prev.status !== "ready" || next.status !== "ready") {
     return [];
   }
   const events: DeltaMotionEvent[] = [];
 
-  const from = side(prev);
-  const to = side(next);
+  // Two snapshots cannot see a crossing that passed through neutral:
+  // losing→neutral→gaining ends on the same (neutral, gaining) pair as a
+  // fresh start, so `lastSide` carries the last non-neutral side.
+  const from = deltaSideOf(prev) ?? lastSide;
+  const to = deltaSideOf(next);
   if (from && to && from !== to) {
     events.push({ kind: "cross-zero", to });
   }

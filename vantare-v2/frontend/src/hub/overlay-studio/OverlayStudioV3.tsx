@@ -13,6 +13,7 @@ import { DirtyChangesDialog } from './components/DirtyChangesDialog';
 import { RecoveryDialog } from './components/RecoveryDialog';
 import { createStudioRecoveryStore, type StudioRecoveryRecord } from './state/studio-recovery';
 import { useStudioActions, useStudioDirty, useStudioSelector } from './state/studio-store';
+import { useObsBaseUrl } from './orbit/obs-url';
 import { StudioOrbitLayout } from './orbit/StudioOrbitLayout';
 import type { StudioProfileEntry } from './studio-profile-entry';
 
@@ -67,6 +68,9 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
   const [browserViewDialogOpen, setBrowserViewDialogOpen] = useState(false);
   const [browserViewSaving, setBrowserViewSaving] = useState(false);
   const [browserViewError, setBrowserViewError] = useState<string | null>(null);
+  // El navegador del sistema no resuelve el origen del WebView: la vista de
+  // navegador abre contra el servidor HTTP real de overlays (ISA-1162).
+  const obsBaseUrl = useObsBaseUrl();
   const recoveryCheckedProfileIdRef = useRef<string | null>(null);
   const browserViewDecideRef = useRef<((decision: BrowserViewDecision) => void) | null>(null);
 
@@ -185,7 +189,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
     const result = await openBrowserView({
       dirty,
       profileFile: activeFile,
-      baseUrl: window.location.origin,
+      baseUrl: obsBaseUrl,
       studioPreview: browserViewStudioPreview,
       decide: () =>
         new Promise<BrowserViewDecision>((resolve) => {
@@ -209,7 +213,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
 
     setBrowserViewDialogOpen(true);
     setBrowserViewError('studio.v3.browserView.saveFailed');
-  }, [activeFile, browserViewStudioPreview, dirty, save]);
+  }, [activeFile, browserViewStudioPreview, dirty, obsBaseUrl, save]);
 
   const handleBrowserViewSave = useCallback(() => {
     setBrowserViewSaving(true);
@@ -244,6 +248,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
           <StudioOrbitLayout
             activeFile={activeFile}
             diagnostics={diagnostics}
+            obsBaseUrl={obsBaseUrl}
             onOpenBrowserView={() => void handleOpenBrowserView()}
             onRequestProfileChange={guardedProfileChange}
             profiles={profiles}

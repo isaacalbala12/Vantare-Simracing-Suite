@@ -13,7 +13,7 @@ El servidor HTTP local de Vantare expone dos endpoints relacionados con Engineer
 | `GET /engineer/stream` | SSE | Stream de notificaciones en vivo (lo que consume el widget en OBS). |
 | `GET /api/engineer/health` | JSON | Snapshot de salud del servicio (diagnóstico). |
 
-La URL base es la misma que usa el overlay (ej. `http://localhost:34115` por defecto). Ver `docs/obs-local-setup.md` para los detalles del setup general de OBS.
+La URL base es la misma que usa el overlay (ej. `http://127.0.0.1:39261` por defecto). Ver `docs/obs-local-setup.md` para los detalles del setup general de OBS.
 
 ## 2. Stream SSE `/engineer/stream`
 
@@ -67,7 +67,7 @@ Cuando un cliente SSE está saturado (canal lleno), el servicio descarta notific
 ## 4. Configuración recomendada en OBS
 
 1. Crear `Browser Source` en OBS.
-2. URL del overlay: `http://localhost:34115/overlay?profile=tu-perfil`.
+2. URL del overlay: `http://127.0.0.1:39261/overlay?profile=tu-perfil`.
 3. Tamaño: el que tenga el widget `engineer-notifications` en el perfil.
 4. Refresh: el del perfil (no necesita ajustes adicionales).
 5. Si el widget no aparece, verificar:
@@ -78,10 +78,10 @@ Cuando un cliente SSE está saturado (canal lleno), el servicio descarta notific
 ## 5. Checklist de verificación manual
 
 - [ ] Abrir la app, ir a `Ingeniero`, activar `Simulador`.
-- [ ] En OBS, añadir Browser Source con `http://localhost:34115/overlay?profile=...`.
+- [ ] En OBS, añadir Browser Source con `http://127.0.0.1:39261/overlay?profile=...`.
 - [ ] Verificar que las notificaciones del spotter aparecen en OBS (ej. `Coche a la izquierda`).
 - [ ] Desconectar la red del PC de OBS unos segundos y reconectar. El stream debe reanudarse.
-- [ ] Verificar `GET http://localhost:34115/api/engineer/health` en navegador: JSON con `ok: true`.
+- [ ] Verificar `GET http://127.0.0.1:39261/api/engineer/health` en navegador: JSON con `ok: true`.
 - [ ] Forzar muchos mensajes seguidos: `dropCount` puede crecer levemente (≤ unos pocos) y volver a 0 entre sesiones.
 - [ ] Cerrar OBS y volver a abrir: el stream debe reconectarse sin reiniciar la app.
 

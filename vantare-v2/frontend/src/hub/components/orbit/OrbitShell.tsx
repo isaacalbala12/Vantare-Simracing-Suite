@@ -6,7 +6,7 @@ import { useLicense } from '../../../lib/license';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { TelemetrySourceStatus } from '../../../telemetry-transport/source-status';
 import type { TestingCenterChannel } from '../../testing-center/contracts';
-import { useLauncherSnapshot } from '../../launcher/launcher-store';
+import { useLauncherProfiles } from '../../launcher/launcher-store';
 import { profileLabel, profileTarget, type ProfileEntry } from '../../state/overlay-workbench';
 import { type Section } from '../../navigation';
 import { formatMessage } from '../../orbit/format-message';
@@ -130,7 +130,7 @@ function OrbitShellBody({
   const { result: license } = useLicense();
   const overlay = useOverlayState();
   const races = useCalendarStarts();
-  const launcher = useLauncherSnapshot();
+  const launcherProfiles = useLauncherProfiles();
   const notificationPreferences = useNotificationPreferences();
 
   const activeView = sectionToView(activeSection);
@@ -320,15 +320,6 @@ function OrbitShellBody({
     },
     [t, toast],
   );
-
-  const launcherProfiles = useMemo(() => {
-    const all = [...(launcher?.userProfiles ?? []), ...(launcher?.vantareProfiles ?? [])];
-    return all.map((profile) => ({
-      id: profile.id,
-      name: profile.name,
-      steps: profile.steps?.length ?? 0,
-    }));
-  }, [launcher]);
 
   const blocks: ContextColumnBlock[] = useMemo(
     () => [

@@ -22,8 +22,8 @@ var (
 
 type windowsAPI struct {
 	open    func(*uint16) (uintptr, error)
-	mapView func(uintptr) (uintptr, error)
-	unmap   func(uintptr) (uintptr, error)
+	mapView func(uintptr) (unsafe.Pointer, error)
+	unmap   func(unsafe.Pointer) (uintptr, error)
 	close   func(uintptr) (uintptr, error)
 }
 
@@ -33,12 +33,14 @@ func systemWindowsAPI() windowsAPI {
 			result, _, err := openFileMappingW.Call(fileMapRead, 0, uintptr(unsafe.Pointer(name)))
 			return result, err
 		},
-		mapView: func(handle uintptr) (uintptr, error) {
+		mapView: func(handle uintptr) (unsafe.Pointer, error) {
 			result, _, err := mapViewOfFile.Call(handle, fileMapRead, 0, 0, ObjectOutSize)
-			return result, err
+			// La direccion mapeada llega como uintptr: unsafe.Add sobre la base
+			// nil la expresa como puntero sin la conversion que vet marca (ISA-950).
+			return unsafe.Add(unsafe.Pointer(nil), result), err
 		},
-		unmap: func(address uintptr) (uintptr, error) {
-			result, _, err := unmapViewOfFile.Call(address)
+		unmap: func(address unsafe.Pointer) (uintptr, error) {
+			result, _, err := unmapViewOfFile.Call(uintptr(address))
 			return result, err
 		},
 		close: func(handle uintptr) (uintptr, error) {
@@ -51,7 +53,7 @@ func systemWindowsAPI() windowsAPI {
 type windowsReader struct {
 	mu     sync.Mutex
 	handle syscall.Handle
-	addr   uintptr
+	addr   unsafe.Pointer
 	data   []byte
 	closed bool
 	api    windowsAPI
@@ -61,7 +63,7 @@ func openSharedMemory() (memoryReader, error) {
 	return openSharedMemoryWithAPI(systemWindowsAPI(), mappedBytes)
 }
 
-func openSharedMemoryWithAPI(api windowsAPI, view func(uintptr) []byte) (memoryReader, error) {
+func openSharedMemoryWithAPI(api windowsAPI, view func(unsafe.Pointer) []byte) (memoryReader, error) {
 	name, err := syscall.UTF16PtrFromString(MemoryName)
 	if err != nil {
 		return nil, fmt.Errorf("encode mapping name: %w", err)
@@ -71,7 +73,7 @@ func openSharedMemoryWithAPI(api windowsAPI, view func(uintptr) []byte) (memoryR
 		return nil, fmt.Errorf("%w: %v", ErrMappingUnavailable, callErr)
 	}
 	addr, callErr := api.mapView(handle)
-	if addr == 0 {
+	if addr == nil {
 		closed, closeErr := api.close(handle)
 		if closed == 0 {
 			return nil, errors.Join(fmt.Errorf("map %s: %w", MemoryName, callErr), fmt.Errorf("close handle: %w", closeErr))
@@ -81,8 +83,8 @@ func openSharedMemoryWithAPI(api windowsAPI, view func(uintptr) []byte) (memoryR
 	return &windowsReader{handle: syscall.Handle(handle), addr: addr, data: view(addr), api: api}, nil
 }
 
-func mappedBytes(address uintptr) []byte {
-	return unsafe.Slice((*byte)(unsafe.Pointer(address)), ObjectOutSize)
+func mappedBytes(address unsafe.Pointer) []byte {
+	return unsafe.Slice((*byte)(address), ObjectOutSize)
 }
 
 func (reader *windowsReader) Snapshot(destination []byte) error {
@@ -106,11 +108,11 @@ func (reader *windowsReader) Close() error {
 	}
 	reader.closed = true
 	var closeErr error
-	if reader.addr != 0 {
+	if reader.addr != nil {
 		if result, callErr := reader.api.unmap(reader.addr); result == 0 {
 			closeErr = errors.Join(closeErr, fmt.Errorf("unmap %s: %w", MemoryName, callErr))
 		}
-		reader.addr = 0
+		reader.addr = nil
 	}
 	if reader.handle != 0 {
 		if result, callErr := reader.api.close(uintptr(reader.handle)); result == 0 {

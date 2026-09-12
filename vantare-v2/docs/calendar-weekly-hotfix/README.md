@@ -1,5 +1,13 @@
 # LMU weekly calendar hotfix flow
 
+> **Tracker y continuidad (2026-09-12):** leer primero
+> [la transición a Notion](../vantare-program/notion-transition.md). Mientras su estado sea PREPARACIÓN,
+> las reglas GitHub/ISA de este documento rigen el cierre del lote existente
+> y la preparación técnica. El trabajo nuevo fuera del lote se captura en Notion
+> sin ejecutarlo todavía. Después del corte verificado, Notion será la autoridad
+> operativa y GitHub conservará código, PR, CI y releases.
+
+
 Carpeta operativa para actualizar el calendario oficial semanal de LMU sin redisenar la app.
 
 ## Objetivo

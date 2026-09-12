@@ -3061,3 +3061,37 @@ JSON en su PR). Primer corte propuesto: T12a validación pura en
 internal/telemetryanalysis/classification_corrections.go +
 classification_corrections_test.go (2 paths). Sin implementación, dependencias,
 push/PR/merge/promoción en este encargo.
+
+## T12 J6-J8b — identidad canónica conectada hasta propuesta frontend
+
+J6 aceptado en `5608902d`: Save nativo resuelve destinos de identidad mediante
+el `SessionCatalog` autorizado y conserva lectura histórica aunque el destino
+deje de estar disponible. J7 aceptado en `e315c9f8`: Analysis y Strategy reciben
+la misma instancia del catálogo desde la composición nativa. J8a aceptado en
+`59b9c870`: contrato TypeScript v4 y fixture producida por Go validan referencia
+y target canónicos; el editor visible continúa limitado a los dos campos legacy.
+Commits de documentación intermedios: `9e0fe508`, `293ba6f6`, `b8322b4f` y
+`53d0e7c7`.
+
+J8b aceptado en `1aaca264` sobre `53d0e7c7`, cuatro paths frontend,
+`+232/-13`. El parser canónico y el mapa identidad-combinación de J8a quedan
+reutilizables. Un helper puro sustituye como una unidad las cuatro correcciones
+de identidad, conserva las dos legacy, toma originales RAW exclusivamente de
+la metadata OPEN y solo exige metadata de los campos modificados. Volver a la
+combinación original retira toda identidad sin borrar legacy. Motivo, base,
+target, duplicados, cuota y puertas de calidad/privacidad se validan antes de
+devolver el nuevo conjunto. No hay hash, autorización, persistencia ni cálculo
+de dominio en React/TypeScript. Save y Resolve v4 conservan correlación exacta
+por referencia y rechazan respuesta retirada, cambiada o incoherente sin retry.
+
+Evidencia J8b: 4 archivos/199 tests focales PASS y repetición del orquestador
+`EXIT=0`; suite frontend 445 archivos/3728 tests PASS; `typecheck`, lint,
+auditoría i18n y build PASS. El build solo mantiene avisos heredados de tamaño
+de chunks. Informe y logs locales nuevos en
+`frontend/.tmp/isa1104-t12j8b-*`. Sin Go, app, GUI, Wails, LMU, datos reales,
+push, PR, CI remota, merge o promoción.
+
+Siguiente corte J8c pendiente de cerrar por el orquestador: selector visual de
+combinación canónica y estado de propuesta, consumiendo `sessionCombinations`
+y el helper J8b sin duplicar catálogo, lector ni aritmética. Debe preservar el
+diseño A4/Orbit y mantener guardado y adopción explícitos.

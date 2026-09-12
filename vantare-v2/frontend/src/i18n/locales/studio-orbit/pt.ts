@@ -149,7 +149,6 @@ export const studioOrbitPt: Record<string, string> = {
   "overlay.inspector.standings.classLmp3Color": "Cor LMP3",
   "overlay.inspector.standings.classGt3Color": "Cor GT3",
   "overlay.inspector.standings.classUnknownColor": "Cor sem classe",
-  "overlay.inspector.pedals.showHeader": "Mostrar cabeçalho",
   "overlay.inspector.pedals.transparentBackground": "Fundo transparente",
   "overlay.inspector.pedals.pedalThrottleColor": "Cor do acelerador",
   "overlay.inspector.pedals.pedalBrakeColor": "Cor do travão",

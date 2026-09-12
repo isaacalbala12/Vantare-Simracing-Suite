@@ -23,6 +23,23 @@
 [data-effects="noBlur"]:is(.vf-standings, .vf-relative, .vf-delta, .vf-pedals) { backdrop-filter: none; }
 [data-effects="flat"]:is(.vf-standings, .vf-relative, .vf-delta, .vf-pedals) { backdrop-filter: none; box-shadow: none; background: rgb(16 17 19 / 92%); }
 [data-effects="flat"]:is(.vf-standings, .vf-relative, .vf-delta, .vf-pedals)::before { display: none; }
+/* Flat también alcanza los efectos interiores: brillo de los fills del
+   delta, sombra interior de la pista capsule — el panel solo no basta. */
+[data-effects="flat"] .vf-delta-fill, [data-effects="flat"] .vf-delta-capsule-fill,
+[data-effects="flat"] .vf-delta-capsule-track, [data-effects="flat"] .vf-pedal-fill { box-shadow: none; }
+[data-effects="flat"] .vf-delta[data-tone="gaining"] .vf-delta-fill,
+[data-effects="flat"] .vf-delta-capsule-track[data-tone="gaining"] .vf-delta-capsule-fill { background: var(--vf-gain); }
+[data-effects="flat"] .vf-delta[data-tone="losing"] .vf-delta-fill,
+[data-effects="flat"] .vf-delta-capsule-track[data-tone="losing"] .vf-delta-capsule-fill { background: var(--vf-loss); }
+/* Nivel minimal: nada transiciona ni anima — los valores saltan al
+   instante. Cubre cualquier descendiente (fill del delta, pedals, flashes
+   de fila); el nombre data-motion-level evita colisionar con el
+   data-motion="rise|fall" de las filas. */
+[data-motion-level="minimal"], [data-motion-level="minimal"] *,
+[data-motion-level="minimal"] *::before, [data-motion-level="minimal"] *::after {
+  transition: none !important;
+  animation: none !important;
+}
 .vf-standings *, .vf-relative *, .vf-delta *, .vf-pedals * { box-sizing: border-box; }
 .vf-standings::before, .vf-relative::before, .vf-delta::before, .vf-pedals::before { content: ""; position: absolute; z-index: -1; top: 0; right: 0; width: 130px; height: 50px; pointer-events: none; background: linear-gradient(131deg, transparent 0 37%, rgb(193 18 31 / 23%) 37% 54%, transparent 54% 62%, rgb(193 18 31 / 15%) 62% 79%, transparent 79%); }
 .vf-standings::after, .vf-relative::after, .vf-delta::after, .vf-pedals::after { content: ""; position: absolute; inset: 0; border: 1px solid rgb(255 255 255 / 12%); border-top-color: rgb(255 255 255 / 24%); border-radius: inherit; pointer-events: none; }

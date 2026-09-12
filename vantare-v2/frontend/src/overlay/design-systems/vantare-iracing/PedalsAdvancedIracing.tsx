@@ -10,11 +10,11 @@ const CHANNELS = [
 /** Rotación del volante: steering normalizado -1..1 → ±450° (un giro GT). */
 const WHEEL_LOCK_DEG = 450;
 
-export function PedalsAdvancedIracing({ model, effects }: WidgetRendererProps<PedalsTelemetryCompactViewModel>) {
+export function PedalsAdvancedIracing({ model, motion = "full", effects }: WidgetRendererProps<PedalsTelemetryCompactViewModel>) {
   const values = { clutch: model.clutch, brake: model.brake, throttle: model.throttle };
   const steeringDeg = (model.steering ?? 0) * WHEEL_LOCK_DEG;
   return (
-    <section className="vi-pedals-adv" data-widget-system="vantare-iracing" data-widget-renderer="pedals-telemetry-compact" data-status={model.status} data-effects={effects}>
+    <section className="vi-pedals-adv" data-widget-system="vantare-iracing" data-widget-renderer="pedals-telemetry-compact" data-status={model.status} data-effects={effects} data-motion-level={motion}>
       {model.status !== "ready" && <p className="vi-status" role="status">{model.statusMessage ?? model.status}</p>}
       <div className="vi-gear">
         <strong className="vi-gear-letter">{model.gearText}</strong>

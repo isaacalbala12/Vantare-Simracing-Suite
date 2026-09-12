@@ -28,14 +28,17 @@ export function useDeltaMotion(
         root.dataset.cross = event.to;
         schedule(CROSS_MS, () => {
           delete root.dataset.cross;
-        });
+        }, "cross");
       }
       if (event.kind === "new-best") {
         root.dataset.newBest = "true";
         schedule(BEST_MS, () => {
           delete root.dataset.newBest;
-        });
+        }, "newBest");
       }
     }
+  }, (root) => {
+    delete root.dataset.cross;
+    delete root.dataset.newBest;
   });
 }

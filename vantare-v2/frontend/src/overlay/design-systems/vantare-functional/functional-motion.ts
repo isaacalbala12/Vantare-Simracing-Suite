@@ -47,6 +47,31 @@ export function deriveOvertakes(
   return { gained, lost };
 }
 
+export type RelativeMotionRow = { readonly id: string; readonly side?: string };
+
+/**
+ * Cruces reales en relative: una fila cambia de lado respecto al jugador
+ * (delante↔detrás). El delta de índice NO basta — una fila que entra en la
+ * ventana sin cruzar al jugador no es un adelantamiento, y marcaba cruces
+ * inexistentes. La dirección es el resultado para el jugador: un rival que
+ * pasa de detrás a delante te ha adelantado → "lost" (rojo), no verde.
+ */
+export function deriveSideCrosses(
+  prevRows: readonly RelativeMotionRow[],
+  nextRows: readonly RelativeMotionRow[],
+): { gained: string[]; lost: string[] } {
+  const prevSide = new Map(prevRows.map((row) => [row.id, row.side]));
+  const gained: string[] = [];
+  const lost: string[] = [];
+  for (const row of nextRows) {
+    const before = prevSide.get(row.id);
+    if (before === undefined || before === row.side || row.side === "player") continue;
+    if (before === "ahead" && row.side === "behind") gained.push(row.id);
+    else if (before === "behind" && row.side === "ahead") lost.push(row.id);
+  }
+  return { gained, lost };
+}
+
 /** Cruce de cero del delta: la vuelta pasa de perder a ganar o al revés. */
 export function deriveDeltaCross(
   prev: { tone: string } | null,

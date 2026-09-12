@@ -17,10 +17,21 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
   // Eficiencia: las filas se deslizan a su posición (FLIP) y los cambios de
   // posición parpadean una vez. En "reduced" solo queda el deslizamiento.
   useWidgetMotion(model, motion !== "minimal", rootRef, ({ prev, next, root, schedule }) => {
-    const stride = root.querySelector<HTMLElement>("[data-standings-row]")?.getBoundingClientRect().height ?? 30;
+    // offsetHeight da px de layout sin escalar — getBoundingClientRect
+    // devuelve px YA escalados por el transform del viewport, y usarlo como
+    // distancia de translateY aplicaba la escala dos veces.
+    const stride = root.querySelector<HTMLElement>("[data-standings-row]")?.offsetHeight ?? 30;
     for (const [id, delta] of deriveIndexOffsets(prev.rows, next.rows)) {
       const row = root.querySelector<HTMLElement>(`[data-standings-row="${CSS.escape(id)}"]`);
-      row?.animate(
+      if (!row) continue;
+      // Un apply nuevo sustituye a las animaciones en vuelo de la fila —
+      // sin el cancel se apilan en el effect stack hasta expirar. Solo las
+      // WAAPI nuestras: una CSSTransition (el fade del flash) se gestiona
+      // sola y cancelarla truncaría el flash a mitad de fundido.
+      row.getAnimations().forEach((animation) => {
+        if (typeof CSSTransition === "undefined" || !(animation instanceof CSSTransition)) animation.cancel();
+      });
+      row.animate(
         [{ transform: `translateY(${delta * stride}px)` }, { transform: "translateY(0)" }],
         { duration: Math.min(460, 260 + Math.abs(delta) * 50), easing: "cubic-bezier(0.22, 0.9, 0.3, 1)" },
       );
@@ -31,9 +42,13 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
         const row = root.querySelector<HTMLElement>(`[data-standings-row="${CSS.escape(id)}"]`);
         if (!row) continue;
         row.dataset.motion = direction;
-        schedule(650, () => { delete row.dataset.motion; });
+        // La clave cancela el borrado anterior del mismo attr — sin ella el
+        // timer de un evento viejo apagaba el flash del siguiente.
+        schedule(650, () => { delete row.dataset.motion; }, `motion-${id}`);
       }
     }
+  }, (root) => {
+    root.querySelectorAll<HTMLElement>("[data-motion]").forEach((el) => { delete el.dataset.motion; });
   });
   const labels = functionalLabels[locale];
   const broadcast = settings.templateId === "broadcast";
@@ -85,7 +100,7 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
   </div>;
 
   return (
-    <section ref={rootRef} className="vf-standings" data-widget-system="vantare-functional" data-widget-renderer="standings" data-template={broadcast ? "broadcast" : "signature"} data-session-header={hasHeader} data-status={model.status} data-session={session} data-effects={effects}>
+    <section ref={rootRef} className="vf-standings" data-widget-system="vantare-functional" data-widget-renderer="standings" data-template={broadcast ? "broadcast" : "signature"} data-session-header={hasHeader} data-status={model.status} data-session={session} data-effects={effects} data-motion-level={motion}>
       {!hasHeader && brandVisible && <div className="vf-brand-band"><span className="vf-brand" aria-label="Vantare"><img src={vantareMark} alt="" />VANTARE</span></div>}
       {(!identitySpan || unavailable || broadcast) && hasHeader && sessionHeader}
       {statusText && model.status !== "stale" && <p className="vf-status" role="status">{statusText}</p>}

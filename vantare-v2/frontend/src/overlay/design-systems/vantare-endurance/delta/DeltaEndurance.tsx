@@ -15,6 +15,7 @@ export function DeltaEndurance({ model, settings, motion = "full" }: WidgetRende
         data-status={model.status}
         data-tone={model.tone}
         data-template="delta-redline"
+        data-motion-level={motion}
         className="ven-root ven-delta ven-dred"
         style={{ "--ven-delta-loss": parsed.lossColor } as CSSProperties}
       >
@@ -32,6 +33,7 @@ export function DeltaEndurance({ model, settings, motion = "full" }: WidgetRende
         data-status={model.status}
         data-tone={model.tone}
         data-template="delta-neo"
+        data-motion-level={motion}
         className="ven-root ven-delta ven-neod"
         style={{ "--ven-delta-loss": parsed.lossColor } as CSSProperties}
       >
@@ -82,6 +84,7 @@ export function DeltaEndurance({ model, settings, motion = "full" }: WidgetRende
       data-status={model.status}
       data-tone={model.tone}
       data-template={parsed.templateId}
+      data-motion-level={motion}
       className="ven-root ven-delta"
       style={{ "--ven-delta-loss": parsed.lossColor } as CSSProperties}
     >

@@ -3,7 +3,7 @@ import { useRef } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { WidgetRendererProps } from "../../core/design-system-definition";
 import { useWidgetMotion } from "../../core/widget-motion";
-import { deriveIndexOffsets, deriveOvertakes } from "./functional-motion";
+import { deriveIndexOffsets, deriveSideCrosses } from "./functional-motion";
 import { resolveColumnWidthPixels } from "../../widget-types/shared/widget-column";
 import { RELATIVE_COLUMN_TEMPLATES } from "../../widget-types/relative/relative-content";
 import { resolveRelativeClassColor } from "../../widget-types/relative/relative-renderer-helpers";
@@ -14,7 +14,10 @@ import { FOOTER_SLOT_GAP_PX, FOOTER_SLOT_PAD_PX, FOOTER_SLOT_ROW_PX, footerSlotI
 const CENTERED = new Set(["position", "class", "carNumber", "gap"]);
 const LAP_METRICS = new Set(["bestLap", "lastLap"]);
 
-const RELATIVE_ROW_PX = 19.8;
+// Alto de fila en px CSS sin escalar (tokens.css: td height 28px). Medirlo
+// con getBoundingClientRect devuelve px YA escalados por el viewport — con
+// eso el presupuesto admitía ~40% más filas de las que caben.
+const RELATIVE_ROW_PX = 28;
 
 export function RelativeFunctional({ model, settings, layout, motion = "full", effects }: WidgetRendererProps<RelativeViewModel>) {
   const { locale } = useI18n();
@@ -22,23 +25,30 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
   // Eficiencia: las filas se deslizan al cruzarse; los cruces parpadean una
   // vez en "full".
   useWidgetMotion(model, motion !== "minimal", rootRef, ({ prev, next, root, schedule }) => {
-    const stride = root.querySelector<HTMLElement>("[data-relative-row]")?.getBoundingClientRect().height ?? 20;
+    // offsetHeight = px de layout sin escalar (ver standings).
+    const stride = root.querySelector<HTMLElement>("[data-relative-row]")?.offsetHeight ?? RELATIVE_ROW_PX;
     for (const [id, delta] of deriveIndexOffsets(prev.rows, next.rows)) {
       const row = root.querySelector<HTMLElement>(`[data-relative-row="${CSS.escape(id)}"]`);
-      row?.animate(
+      if (!row) continue;
+      row.getAnimations().forEach((animation) => {
+        if (typeof CSSTransition === "undefined" || !(animation instanceof CSSTransition)) animation.cancel();
+      });
+      row.animate(
         [{ transform: `translateY(${delta * stride}px)` }, { transform: "translateY(0)" }],
         { duration: Math.min(400, 240 + Math.abs(delta) * 45), easing: "cubic-bezier(0.22, 0.9, 0.3, 1)" },
       );
     }
     if (motion === "full") {
-      const { gained, lost } = deriveOvertakes(prev.rows, next.rows);
+      const { gained, lost } = deriveSideCrosses(prev.rows, next.rows);
       for (const [id, direction] of [...gained.map((id) => [id, "rise"] as const), ...lost.map((id) => [id, "fall"] as const)]) {
         const row = root.querySelector<HTMLElement>(`[data-relative-row="${CSS.escape(id)}"]`);
         if (!row) continue;
         row.dataset.cross = direction;
-        schedule(600, () => { delete row.dataset.cross; });
+        schedule(600, () => { delete row.dataset.cross; }, `cross-${id}`);
       }
     }
+  }, (root) => {
+    root.querySelectorAll<HTMLElement>("[data-cross]").forEach((el) => { delete el.dataset.cross; });
   });
   const labels = functionalLabels[locale];
   const columns = model.columns;
@@ -72,7 +82,7 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
     // Estructura de la referencia: barra de meta arriba (pista + posición del
     // jugador), lista de filas, barra inferior (sesión/reloj + ambiente). Cada
     // hueco solo se pinta cuando la fuente entrega el dato.
-    <section ref={rootRef} className="vf-relative" data-widget-system="vantare-functional" data-widget-renderer="relative" data-status={model.status} data-effects={effects}>
+    <section ref={rootRef} className="vf-relative" data-widget-system="vantare-functional" data-widget-renderer="relative" data-status={model.status} data-effects={effects} data-motion-level={motion}>
       {hasMeta && (
         <div className="vf-meta">
           {model.trackText ? <span className="vf-footer-item">{labels.track} <b>{model.trackText}</b></span> : null}

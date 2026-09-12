@@ -3196,3 +3196,13 @@
 [data-widget-system="vantare-endurance"] .ven-neo-card {
   margin-inline: 2px;
 }
+
+/* Motion budget "minimal" (performance level 4-5 / prefers-reduced-motion):
+   nothing transitions or animates — values snap. Covers descendants
+   (redline bars, approach fills, row flashes). Named data-motion-level to
+   avoid clashing with the per-row data-motion="rise|fall". */
+[data-motion-level="minimal"], [data-motion-level="minimal"] *,
+[data-motion-level="minimal"] *::before, [data-motion-level="minimal"] *::after {
+  transition: none !important;
+  animation: none !important;
+}

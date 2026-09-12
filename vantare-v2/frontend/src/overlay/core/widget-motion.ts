@@ -30,17 +30,35 @@ export function resolveMotionLevel(
   return "full";
 }
 
-export type MotionSchedule = (durationMs: number, run: () => void) => void;
+/**
+ * Programa trabajo diferido de presentación (retirar un data-attr, un
+ * siguiente paso de una coreografía). Con `key`, programar de nuevo la
+ * misma clave cancela el timer anterior — sin la clave, el borrado de un
+ * flash viejo llegaba después de que el siguiente evento lo hubiera
+ * vuelto a encender y lo apagaba antes de tiempo.
+ */
+export type MotionSchedule = (durationMs: number, run: () => void, key?: string) => void;
+
+function cancelAnimations(root: HTMLElement): void {
+  if (typeof root.getAnimations === "function") {
+    root.getAnimations({ subtree: true }).forEach((animation) => animation.cancel());
+  }
+}
 
 /**
  * Patrón común de los motores de motion: el ViewModel anterior vive en un
  * ref (estado de presentación efímero), las animaciones discretas se
  * aplican de forma imperativa dentro de un layout effect (React nunca
- * re-renderiza porque algo se movió) y los timers se acumulan en un set
- * que se limpia al desmontar.
+ * re-renderiza porque algo se movió) y los timers se acumulan para
+ * limpiarse al desmontar.
  *
  * Un único render nunca anima — no hay modelo previo contra el que
  * comparar — que es lo que mantiene determinista la puerta visual.
+ *
+ * Al deshabilitarse (bajada de nivel, reduced-motion) el hook cancela las
+ * animaciones WAAPI en vuelo y los timers pendientes, y `teardown` retira
+ * los data-attrs que el apply hubiera encendido — bajar el presupuesto no
+ * puede dejar un flash congelado ni una fila a mitad de deslizamiento.
  */
 export function useWidgetMotion<TModel extends { status: string }>(
   model: TModel,
@@ -52,24 +70,48 @@ export function useWidgetMotion<TModel extends { status: string }>(
     root: HTMLElement;
     schedule: MotionSchedule;
   }) => void,
+  teardown?: (root: HTMLElement) => void,
 ): void {
   const prevRef = useRef<TModel | null>(null);
   const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  const keyedRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  // true solo cuando un apply dejó trabajo visual vivo — evita llamar a
+  // getAnimations(subtree) en cada tick deshabilitado.
+  const effectsActiveRef = useRef(false);
   const applyRef = useRef(apply);
   applyRef.current = apply;
+  const teardownRef = useRef(teardown);
+  teardownRef.current = teardown;
+
+  const stopAll = () => {
+    if (!effectsActiveRef.current) {
+      return;
+    }
+    effectsActiveRef.current = false;
+    for (const timer of timersRef.current) {
+      clearTimeout(timer);
+    }
+    timersRef.current.clear();
+    keyedRef.current.clear();
+    const root = rootRef.current;
+    if (root) {
+      cancelAnimations(root);
+      teardownRef.current?.(root);
+    }
+  };
+  const stopAllRef = useRef(stopAll);
+  stopAllRef.current = stopAll;
 
   useEffect(() => {
-    const timers = timersRef.current;
-    return () => {
-      for (const timer of timers) {
-        clearTimeout(timer);
-      }
-      timers.clear();
-    };
+    return () => stopAllRef.current();
   }, []);
 
   useLayoutEffect(() => {
     if (!enabled || model.status !== "ready") {
+      // Mientras está deshabilitado el modelo sigue registrándose para que
+      // al reactivar el diff sea contra el estado actual, no uno viejo —
+      // pero nada visual del apply anterior puede seguir corriendo.
+      stopAllRef.current();
       prevRef.current = model.status === "ready" ? model : null;
       return;
     }
@@ -79,11 +121,23 @@ export function useWidgetMotion<TModel extends { status: string }>(
     if (!prev || !root) {
       return;
     }
-    const schedule: MotionSchedule = (durationMs, run) => {
+    effectsActiveRef.current = true;
+    const schedule: MotionSchedule = (durationMs, run, key) => {
       const timer = setTimeout(() => {
         timersRef.current.delete(timer);
+        if (key !== undefined && keyedRef.current.get(key) === timer) {
+          keyedRef.current.delete(key);
+        }
         run();
       }, durationMs);
+      if (key !== undefined) {
+        const previous = keyedRef.current.get(key);
+        if (previous !== undefined) {
+          clearTimeout(previous);
+          timersRef.current.delete(previous);
+        }
+        keyedRef.current.set(key, timer);
+      }
       timersRef.current.add(timer);
     };
     applyRef.current({ prev, next: model, root, schedule });

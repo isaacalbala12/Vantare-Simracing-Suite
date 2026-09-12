@@ -3,7 +3,7 @@ import type { WidgetRendererProps } from "../../core/design-system-definition";
 import type { PedalsViewModel } from "../../widget-types/pedals/pedals-view-model";
 import { functionalLabels } from "./labels";
 
-export function PedalsFunctional({ model, effects }: WidgetRendererProps<PedalsViewModel>) {
+export function PedalsFunctional({ model, motion = "full", effects }: WidgetRendererProps<PedalsViewModel>) {
   const { locale } = useI18n();
   const labels = functionalLabels[locale];
   const statusText = model.status !== "ready" ? labels[model.status] : undefined;
@@ -15,7 +15,7 @@ export function PedalsFunctional({ model, effects }: WidgetRendererProps<PedalsV
 
   // Sin cabecera: las barras son el widget entero (decisión de Isaac).
   return (
-    <section className="vf-pedals" data-widget-system="vantare-functional" data-widget-renderer="pedals" data-status={model.status} data-session-header="false" data-effects={effects}>
+    <section className="vf-pedals" data-widget-system="vantare-functional" data-widget-renderer="pedals" data-status={model.status} data-session-header="false" data-effects={effects} data-motion-level={motion}>
       {statusText && <p className="vf-status" role="status">{statusText}</p>}
       {model.statusMessage && model.status !== "stale" && <p className="vf-detail">{model.statusMessage}</p>}
       <div className="vf-pedals-bars" role="group" aria-label={labels.pedals}>

@@ -16,12 +16,15 @@ export function DeltaFunctional({ model, settings, motion = "full", effects }: W
     const cross = deriveDeltaCross(prev, next);
     if (cross) {
       root.dataset.cross = cross;
-      schedule(700, () => { delete root.dataset.cross; });
+      schedule(700, () => { delete root.dataset.cross; }, "cross");
     }
     if (next.bestLapText !== prev.bestLapText && next.bestLapText.trim() !== "" && next.bestLapText !== "—") {
       root.dataset.newBest = "true";
-      schedule(1100, () => { delete root.dataset.newBest; });
+      schedule(1100, () => { delete root.dataset.newBest; }, "newBest");
     }
+  }, (root) => {
+    delete root.dataset.cross;
+    delete root.dataset.newBest;
   });
   const labels = functionalLabels[locale];
   const statusText = model.status !== "ready" ? labels[model.status] : undefined;
@@ -38,7 +41,7 @@ export function DeltaFunctional({ model, settings, motion = "full", effects }: W
   // Sin cabecera de sesión: el delta es un instrumento — valor, escala y la
   // última vuelta como pie. La marca no vive aquí (decisión de Isaac).
   return (
-    <section ref={rootRef} className="vf-delta" data-widget-system="vantare-functional" data-widget-renderer="delta" data-status={model.status} data-tone={model.tone} data-session-header="false" data-template={capsule ? "capsule" : "instrument"} data-effects={effects}>
+    <section ref={rootRef} className="vf-delta" data-widget-system="vantare-functional" data-widget-renderer="delta" data-status={model.status} data-tone={model.tone} data-session-header="false" data-template={capsule ? "capsule" : "instrument"} data-effects={effects} data-motion-level={motion}>
       {statusText && <p className="vf-status" role="status">{statusText}</p>}
       {model.statusMessage && model.status !== "stale" && <p className="vf-detail">{model.statusMessage}</p>}
       {capsule ? (

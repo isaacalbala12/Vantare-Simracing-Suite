@@ -354,6 +354,7 @@ export function StandingsEndurance({ model, settings, layout, motion = "full" }:
       data-widget-renderer="standings"
       data-status={model.status}
       data-template={parsed.templateId}
+      data-motion-level={motion}
       className="ven-root ven-standings"
       style={buildStandingsAppearanceStyle(settings)}
     >

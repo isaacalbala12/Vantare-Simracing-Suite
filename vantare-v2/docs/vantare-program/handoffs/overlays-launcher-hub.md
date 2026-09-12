@@ -1,5 +1,426 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## ISA-1162 — enlace OBS restaurado al pie del dock del Studio (2026-09-11)
+
+Issue [#1162](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1162),
+rama `vantareapp/isa-1162-obs-studio-link`, worktree `vantare-isa1162`,
+PR draft [#1166](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1166)
+hacia `nightly` (base `origin/nightly` 1487ec2e).
+
+- El backend publica su dirección bound: `obs:url:get` → `obs:url` con
+  `{baseUrl: "http://<addr>"}` desde `server.Addr()` (`cmd/vantare/obs_url.go`),
+  registrado en `main.go` tras `httpSrv.Start()`.
+- `useObsBaseUrl()` (`overlay-studio/orbit/obs-url.ts`) hace la petición y
+  cae a `http://127.0.0.1:39261` hasta que responde; `buildObsOverlayUrl`
+  arma `/overlay?profile=<fichero>` (fallback `example-streaming.json`).
+- `StudioObsLink` vive como pie fijo del dock derecho del Studio (bajo el
+  inspector, siempre visible con el dock abierto), con copiar URL e
+  instrucciones. Una sola suscripción por árbol: la base se resuelve en
+  `OverlayStudioV3` y baja por props (el test de StrictMode exige un
+  listener por evento).
+- Browser View ya no usa `window.location.origin` (wails:// en prod):
+  abre contra el mismo origen real.
+- Retirado el modo `obs` huérfano: `ObsOverlaySetupView`, `ObsSetup` y el
+  target de la unión `studio-route-target`.
+- i18n `studio.obs.*` en es/en/pt/it. Ojo: el boundary test de
+  `overlay-studio` prohíbe tildes/ñ entre comillas o backticks en fuentes
+  productivas — los docstrings van sin caracteres de cita.
+- Docs: `obs-local-setup.md` apunta al nuevo punto (la sección Ajustes que
+  anunciaba ya no existe); `engineer-obs-setup.md` corrige el puerto
+  34115 → 39261. Hito `obs-browser-source-link` en `plan.md` +
+  `roadmap.json` regenerado + fragmento `ISA-1162.json`.
+
+Verificación: tests focales 54 PASS, `pnpm test` 3360 PASS, lint,
+typecheck y build limpios; `GOOS=windows go build`/`vet` de
+`cmd/vantare` limpios. Runtime real comprobado en este equipo con el
+servidor levantado a mano: `/health` 200, `/overlay?profile=` 200 HTML,
+`/api/profile-v3` 200 por filename/stem/id documental. Sin prueba en OBS
+real (requiere la app Wails completa). Hallazgo aparte: el paquete
+launcher no compila en darwin — issue #1167.
+
+## ISA-1140 — Cascadia Code a subset WOFF2 latino (2026-09-11)
+
+Issue
+[#1140](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1140),
+rama `vantareapp/isa-1140-fuente-subset`, worktree
+`/Users/isaacalbala/Desktop/vantare-isa1140`. Cierra la limitación que dejó
+ISA-940: aquella máquina no tenía `pyftsubset` y la fuente siguió como TTF.
+
+- `pyftsubset` (fontTools 4.65 + brotli en venv `/tmp`, sin dependencias del
+  proyecto) genera `CascadiaCode-subset.woff2` de 74 KB: Latin, Latin-1,
+  Extended-A/B, puntuación general, flechas, operadores matemáticos,
+  misceláneos técnicos, box-drawing/geométricos y Dingbats. Conserva el eje
+  variable `wght` 200–700 y las ligaduras `calt` (`=>`, `->`, `<=`, `!=`).
+- `fonts.css` apunta el `@font-face` al woff2. `CascadiaCode.ttf` queda en
+  el repo como fuente de regeneración, sin entrar al bundle: Vite solo emite
+  `dist/assets/CascadiaCode-subset-*.woff2` (74,17 kB).
+- Verificación: cmap cubre U+00C0–U+017F completo; todo carácter no-ASCII
+  usado en `src` que exista en la TTF sigue cubierto (los que no existían —
+  emoji, ⚙, ⚠, ↵ — caen al fallback como antes); 267 glifos de ligadura
+  conservados. Typecheck, lint, 3355 tests y build PASS.
+- Nota de contrato: la issue declara `roadmap:not-required` pero el diff es
+  código productivo; el validador en modo `audit` lo marcará sin bloquear.
+- Sin merge ni promoción; PR draft a `nightly`.
+
+## ISA-1152 — editor in-place C5: rediseño toolbar/frames, pestañas y panel ocultable (2026-09-11)
+
+Quinto corte, apilado sobre la rama de ISA-1143 (`a8d8db1a`). Issue
+[#1152](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1152),
+rama `vantareapp/isa-1152-inplace-editor-c5`, worktree `vantare-isa1152`.
+Feedback visual de Isaac sobre las capturas de C2–C4.
+
+- **Frames**: outline no seleccionado pasa de rojo suave a gris fino; el
+  seleccionado conserva el acento con glow exterior y los handles de resize
+  son circulares.
+- **Toolbar**: chip + sesión + "+ Widget" + Hecho dentro de una pill con
+  blur (`inplace-toolbar*`), sin estilos inline dispersos.
+- **Panel con pestañas**: una pestaña por sección resuelta
+  (`resolveInspectorSections`), solo un cuerpo visible; pestaña por
+  defecto = layout, la elección muere con el widget.
+- **No tapa widgets**: botón de ocultar deja una pestaña de borde
+  (reabre al click o al hover) y el panel se vuelve fantasma
+  (`--ghost`, `pointer-events: none`) mientras `interaction.isInteractionActive`.
+- **Modo flotante**: toggle en la cabecera; el panel se arrastra por su
+  header y persiste `{mode, x, y}` en `localStorage` (`vantare.inplace.panel.v1`).
+
+Verificación: tests focales 36 PASS (nuevos: ocultar→pestaña, ghost en
+drag, flotante + drag de header, pestañas cambian sección), lint,
+typecheck y `diff --check` limpios. Capturas `/tmp/vantare-shots/c5-*.png`.
+Pendiente: commit, push y PR draft; sin prueba física LMU.
+
+## ISA-1143 — editor in-place C4: secciones de diseño y acciones (2026-09-11)
+
+Cuarto corte, apilado sobre la rama de ISA-1141 (`dfa24d18`). Issue
+[#1143](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1143),
+rama `vantareapp/isa-1143-inplace-editor-c4`, worktree `vantare-isa1143`.
+
+El panel in-place deja de hardcodear secciones: ahora las resuelve con
+`resolveInspectorSections` (mismo orden y gating por widget que el Studio)
+y renderiza `DesignSection` (sistema/variante, aplicar a todos con
+confirmación Studio, guardar como diseño, gates de licencia) y
+`ActionsSection` (restaurar valores —conserva layout— y descartar todo,
+vía `discardAll` del store). Nueva clave `studio.inspector.section.actions`
+en los 4 locales.
+
+Verificación: tests focales 34 PASS (3 nuevos: secciones diseño+acciones
+con títulos traducidos, restaurar defaults conservando layout, descartar
+todo vuelve al documento guardado), lint, typecheck y `diff --check`
+limpios. Capturas `/tmp/vantare-shots/c4-*.png`. Pendiente: commit, push
+y PR draft; sin prueba física LMU.
+
+## ISA-1141 — editor in-place C3: catálogo de widgets y selector de sesión (2026-09-11)
+
+Tercer corte, apilado sobre la rama de ISA-1129 (`6bb5e9a0`). Issue
+[#1141](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1141),
+rama `vantareapp/isa-1141-inplace-editor-c3`, worktree `vantare-isa1141`.
+
+La barra del editor in-place gana dos piezas del Studio sin capas nuevas:
+el diálogo `AddWidgetDialog` (botón `+ Widget`) reutilizado tal cual —gates
+de licencia, delta único por layout y `buildAddWidgetCommand` con su
+posicionamiento por defecto— y un selector de sesión
+(general/práctica/clasificación/carrera/resistencia). Sin override se edita
+la sesión que el runtime muestra; con override se previsualiza
+`resolveSessionLayout` (clon de general si la sesión no existe aún) y el
+primer comando la materializa vía `withSessionLayout`, idéntico a Studio.
+Cambiar de sesión deselecciona y cierra el menú contextual.
+
+Cambio transversal: `DEFAULT_ACCESS` del panel pasa a `FREE_ACCESS` en
+`lib/access-policy.ts` — el `export` de constante en un archivo de
+componente rompía la regla `react-refresh/only-export-components` y el
+fallback de acceso queda en el hogar natural del tipo.
+
+Verificación: tests focales 31 PASS (3 nuevos: materialización de sesión al
+primer edit, añadir desde catálogo, cancelar el diálogo), lint, typecheck y
+`diff --check` limpios. Capturas locales `/tmp/vantare-shots/c3-*.png`.
+Pendiente: commit, push y PR draft; sin prueba física LMU. Siguiente: C4
+(diseños + acciones de restauración).
+
+## ISA-1129 — editor in-place C2: panel colapsable, layout numérico y fixes (2026-09-11)
+
+Segundo corte de la paridad comprimida, apilado sobre la rama de ISA-1123
+(`02f266d8`). Issue
+[#1129](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1129),
+rama `vantareapp/isa-1129-inplace-editor-c2`, worktree `vantare-isa1129`.
+
+El panel in-place ahora reutiliza `LayoutSection` del Studio (X/Y/W/H
+numérico, bloqueo de proporción, orden z, centrar y restablecer — todas las
+acciones pasan por `StudioCommand`/`executeWidgetAction` existentes), se
+pliega a su cabecera con un chevron, y salta a la izquierda cuando el widget
+seleccionado ocupa la mitad derecha del overlay, de modo que nunca tapa lo
+que se edita.
+
+Fixes incluidos que ya eran defectos antes de este corte: los títulos de
+sección del panel usaban claves i18n inexistentes
+(`overlay.studio.inspector.sections.*`) — corregido a
+`studio.inspector.section.*` con nueva clave `content` en los cuatro locales;
+`WidgetContextMenu` no clampeaba su posición al viewport (desbordaba en
+clicks cerca del borde, también en Studio — ahora mide y recoloca en
+`useLayoutEffect`); el comparador de `memo` del panel ignoraba
+`autosave.paused` y congelaba los chips de conflicto/reintento.
+
+Verificación: suite frontend completa PASS (3346 tests tras el fix de
+`progreso: 78` → escala válida en `plan.md`, corregido también en la rama de
+C1 como `02f266d8`), typecheck, build, lint y `git diff --check` limpios.
+Capturas locales en `/tmp/vantare-shots/c2-*.png` sobre harness
+`inplace-edit-harness.html` (localhost:5200). Pendiente: commit, push y PR
+draft; sin prueba física LMU. Cortes siguientes: añadir widget y selector de
+sesión (C3), diseños y restauración (C4).
+
+## ISA-1123 — editor in-place C1: teclado, acciones y salida (2026-09-11)
+
+Isaac pidió iterar el editor in-place del overlay desktop (`Ctrl+Shift+E`)
+hacia paridad comprimida con Overlay Studio; se aprobó el Corte 1 de cuatro
+(teclado + acciones de widget + salida visible). Issue
+[#1123](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1123),
+rama `vantareapp/isa-1123-inplace-editor-c1`, worktree propio
+`vantare-isa1123`, base `origin/nightly@131471ff`.
+
+Implementado reutilizando el modelo de comandos del Studio sin capas nuevas:
+`getStudioHotkey` cableado en la rama de edición (undo/redo, `Ctrl+D`,
+`Delete` con `StudioConfirmProvider`, flechas 1/8 px, `Esc` deselecciona en
+idle, `Tab` cicla, `Ctrl+S` guarda), menú contextual `WidgetContextMenu` por
+click derecho, toggle de visibilidad en la cabecera del inspector
+(`widget/behavior`/`enabled`), botón Done que emite `overlay:toggle-edit-mode`,
+deselect al pulsar el fondo y `interactionActive` real en el autosave. Fix
+incluido: `useInplaceAutosave` ahora vacía `coalesced` al terminar el gesto —
+sin ese flush, un save diferido por gesto activo nunca llegaba. También se
+cargan `orbit-kit.css`/`orbit-studio.css` en la ventana overlay: el panel
+in-place existía desde F2 pero sin el CSS del inspector compartido.
+
+Verificación: 3343 tests frontend PASS (424 archivos), typecheck, build y
+lint focal PASS, `git diff --check` limpio. Pendiente de PR draft a nightly;
+sin prueba física LMU en este corte. Cortes siguientes no entregados: panel
+colapsable/reubicable y layout numérico (C2), añadir widget y selector de
+sesión (C3), diseños y acciones de restauración (C4).
+
+## ISA-1101 — integración inicial autorizada a nightly (2026-09-10)
+
+Isaac solicita «antes de continuar mergea tu trabajo a nightly». Este corte
+reúne exclusivamente ISA-1071 hasta `83eb38fc` (PR #1076) e ISA-1072 hasta
+`7129f2a2` (código revisado `7f721def`), sobre nightly `b6b5754e`.
+Rama `vantareapp/isa-1101-redline-nightly`, worktree limpio propio
+`C:/tmp/vantare-isa1101`. El contenido productivo es idéntico al revisado:
+solo se actualizan aquí roadmap, digest, changelog y continuidad.
+La issue [#1101](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1101)
+registra la PR de integración, los controles sobre su SHA y el resultado
+remoto del merge. #1076 será sustituida por esa PR, sin duplicar su entrega.
+
+Entregable inicial: Tower Preview opt-in y dorsal canónico compartido para
+todos los standings. No cambia defaults ni migra perfiles. Evidencia previa:
+CI de #1076 verde, revisión independiente de ambos cortes, suite frontend
+424 archivos / 3333 tests y `go test ./...` PASS; la integración exige sus
+propios gates antes del merge. No se deduce aceptación física de estos tests.
+
+Excluidos y preservados: SVG experimental y extracción IA rechazada del
+logo, fabricante sin fuente, configuración y datos locales de la apertura
+en ISA-1072, cambios de otros agentes y archivos de entorno. El último EXE
+configurado se abrió desde `bin`, pero la sesión fue interrumpida después
+de mostrar «Cargando perfiles»; no se certificaron dorsales en juego ni se
+confirmó el cierre de aquel proceso. No se relanza la app durante el merge.
+
+Siguiente paso tras verificar el merge: retomar la prueba de la build
+canónica con configuración autorizada; confirmar dorsales en LMU sin
+inventar marcas. Logo, fabricante, animaciones y personalización modular
+siguen abiertos. Integrar código en nightly no autoriza publicar recursos,
+release ni promocionar a testers/master. Rollback: PR que revierta esta
+integración en nightly, sin reescribir el canal.
+
+## ISA-1072 — reconstruccion desde env.local original (2026-09-09)
+
+Por indicacion de Isaac, reconstruccion forzada con `wails3 task -f build`
+desde el `.env.local` original autorizado del checkout principal, cargando
+solo las tres entradas publicas en memoria, sin copiar ni mostrar valores.
+Canal explicito nightly. Frontend y Go build PASS. Comprobacion del EXE:
+las tres cadenas que genera el procedimiento canonico coinciden con las
+del archivo original (`EMBED_MATCH=True` para URL, anon key y registro
+publico de licencia). SHA256 actual:
+`F27704C64F073C1145C40C9E6D7EE1207C42EB5F9E4674B2DB6FDD681F0D1C84`.
+Sustituye el artefacto previo; no se ha abierto esta nueva build ni se
+extrapola a ella el resultado de acceso anterior. Sin promocion o release.
+
+## ISA-1072 — build configurada y bloqueo de acceso (2026-09-09)
+
+Build local desde `e1220286`, codigo revisado `7f721def`, mediante
+`wails3 task -f build` con `VANTARE_BUILD_CHANNEL=nightly`. El entorno del
+orquestador hereda las tres variables publicas Supabase/licencia SET;
+el entorno de OpenCode no heredaba el registro. No se copiaron ni mostraron
+valores. Frontend y Go build PASS. EXE `bin/vantare.exe`, SHA256
+`0101ED981F800C6A71AD30F6E85652958E489AE586801A25518466A6A4DDEDA6`.
+
+Prueba nativa: ejecutable y PID verificados. Arrancar desde el directorio
+`bin` usa configuracion habitual, sin copiar credenciales; arrancar desde
+la raiz del worktree usaba configs de desarrollo y abria onboarding.
+Perfil habitual `Prueba Redline Tower ISA-1071` reconocido, canal NIGHTLY.
+Cuenta muestra FREE/Activo y Studio sin acceso. `Comprobar acceso` termina
+con `NO SE PUDO ACTUALIZAR EL ACCESO`. No hay PASS de dorsales fisicos ni
+licencia de pago. No se modifico cuenta, permisos ni LMU. Instancia de
+prueba cerrada y runtime liberado a Strategy. La primera apertura desde
+raiz genero datos locales y actualizo calendar-lmu.json: preservados,
+fuera del commit de evidencia.
+
+Fabricante: auditoria confirma que no existe fuente integrada explicita.
+Probe de solo lectura `/rest/multiplayer/teams` no produjo filas en esta
+sesion; no demuestra ausencia en todos los escenarios. Hace falta decidir
+fuente antes de implementar. Logo transparente pendiente; no aceptar el
+SVG redibujado ni la extraccion IA opaca. Sin push, merge o release.
+
+## ISA-1072 — dorsal canónico en todos los standings (2026-09-09, en rama)
+
+Isaac autoriza implementar el 2026-09-09 y extiende el alcance a TODOS los
+diseños de standings: corte compartido driver LMU -> Core -> Overlay V2 ->
+ViewModel, sin lectores por widget ni datos inventados. Base apilada ISA-1071
+`83eb38fc`, rama `vantareapp/isa-1072-standings-identities`, worktree
+`C:/tmp/vantare-isa1072`. Sin subdelegación; ningún otro worker edita el
+worktree.
+
+Causa raíz: el lector REST de LMU descartaba el `carNumber` real
+(`restStanding` solo conservaba player/position/laps/pitstops) y el builder
+dejaba el número vacío a propósito porque `VehicleState` no tenía la señal.
+
+Corte mínimo (solo dorsal; el fabricante queda detenido abajo):
+`schema/standings.CarNumber` (string: `007` nunca se convierte a entero) ->
+`rest.go` captura la rejilla por poll (slotID explícito `*int32` para no
+confundir ausente con slot 0 válido, número 1-4 dígitos, duplicados contados
+antes de validar) con el mismo presupuesto de polling (2 endpoints, 250 ms,
+TTL 2 s, sin lector nuevo) -> `fusion.go` la une a la rejilla SHM por slot
+más vehículo coincidente, solo con rejilla dentro de su TTL, sin identidad
+ausente, y con suelo de sesión desde las dos señales existentes (cambio
+fresco de firma pista/tipo y `ClockReset` del driver): una rejilla anterior
+al límite no publica aunque el slot y la etiqueta coincidan; el join es
+O(vehículos+rejilla) -> `batch_mapper.go` la traslada -> `core.VehicleState`
+-> `builder_standings.go` la proyecta verbatim solo si está fresca (el wire
+no lleva calidad para el dorsal). `frame.go` ya tenía `number` opcional y la
+VM compartida ya mapeaba `row.number`: todos los diseños se benefician sin
+cambios frontend. Sin offsets SHM inventados (el layout no tiene dorsal).
+Catálogo: señal `standings.car_number` añadida como ID 52 `appended` (el
+catálogo ya cubre señales REST); sin regla de matriz porque no hay escalar
+que arbitrar — la autoridad es el endpoint REST acotado por su TTL.
+Inventario `strategy_signal_audit` y golden `signal-catalog.md` actualizados
+por procedimiento.
+
+Fabricante DETENIDO (sin adivinar): ni el REST (`slotID, carId,
+vehicleFilename, vehicleName, carNumber` observados; pitmanager confirma la
+forma) ni la SHM (solo `VehicleLabel`/`VehicleClass`, etiquetas de muestra,
+no autoridad) exponen marca. Resolverla exige metadatos autorizados de
+vehículo (catálogo externo o lectura de `.veh`/equivalente) = dependencia
+externa + decisión de arquitectura. Propuesta precisa: issue nueva para
+`standings.manufacturer` como señal opcional con fuente declarada
+(REST extendido si LMU lo expone, o tabla vehículo->marca versionada y
+auditada), con sus tests de ausencia/correspondencia; hasta entonces la VM
+mantiene `manufacturer` ausente y ningún renderer la inventa.
+
+Tests (rojo antes, verde después): validación/`007`/stale en REST, join por
+slot+vehículo, mismatch, identidad ausente, duplicados x2/x3, slot ausente
+frente a slot 0, TTL, frontera de sesión por firma y por `ClockReset`,
+passthrough del mapper con turnover de sesión, proyección fresca/stale/
+invalid del builder y auditoría de superficies. Foco frontend 12/12 PASS
+(VM `007` y gaps sin cambios).
+
+Limitación residual honesta: un reinicio que conserve pista, tipo y reloj
+continuo no levanta frontera aquí; ese caso queda acotado solo por el TTL
+REST de 2 s. Sin merge, PR, promoción ni release. Sin probation física
+Wails/LMU (sin control del juego en este corte).
+
+## ISA-1072 follow-up — sello de rejilla al inicio de la petición (2026-09-09)
+
+Review de calidad bloqueante sobre `77d5c616`: la rejilla se sellaba al
+final de la respuesta REST, así que una petición enviada antes de la
+frontera de sesión y respondida después pasaba el suelo con filas viejas
+(repro: inicio 9.9 s, frontera 10 s, respuesta 10.1 s, mismo slot y
+etiqueta). Fix mínimo en el mismo corte: `fetchREST` guarda `startedMono`
+al iniciar y solo la rejilla lo usa (los escalares conservan el sello de
+respuesta); la fusión no cambia. Regresión con sellos reales de fetch
+(`TestRESTGridUsesRequestStartStamp`,
+`TestFusionSessionFloorRejectsGridStartedBeforeBoundary`): falla sin el fix
+con el `007` filtrado tal cual, pasa con él. Intenciones existentes fijadas
+sin cambiar comportamiento: el match de nombre SHM mira validez, no
+frescura (pin con test), y el check de fusión usa `defaultRESTTTL` mientras
+`markRESTStale` aplica el `cfg.ttl` en cada poll. Sin merge, PR, promoción
+ni release.
+
+Cierre documental (2026-09-09): el reviewer acepta `7f721def` sin
+bloqueantes por inspección (cierre del in-flight y TTL conservador); no
+ejecutó tests. El orquestador verificó por su cuenta `go test ./...` con
+exit 0 y los focos lmu/overlayv2/catalog en PASS. Siguiente paso: build
+canónica y prueba física Wails/LMU pendientes. No se afirma integración en
+`nightly`, y marca/logo siguen sin resolver según la propuesta ISA-1072.
+
+## ISA-1071 — aceptación visual y corte productivo (2026-09-08)
+
+Isaac acepta la torre y elige `redlineHeader=current`, luz roja y alpha .95.
+Autoriza continuar para probarla en nightly. El siguiente corte registra un
+diseño opt-in (sin migraciones), adapta su escala al marco persistido y conecta
+los campos V2 disponibles. Marca y dorsal no emitidos por Core no se inventan.
+No cambia la arquitectura ni absorbe #1068/#1069/#1070. Verificar tamaños,
+filas completas, nombres largos, datos ausentes y sesiones; después suite,
+build y revisión independiente. No hay todavía integración ni build nightly.
+
+Implementado localmente: diseño `standings-endurance-redline-tower` (Preview),
+sin cambiar el default; viewport de base 482 escalado al tamaño persistido,
+filas completas y campos V2 de pista, total, posición de clase y dorsal si
+existe. Inspector conserva filas y explica columnas fijas sin borrar ajustes.
+La procedencia de fabricante/dorsal no emitidos vive en #1072; no tocar Core
+desde #1071. Los recursos raster/fuentes del prototipo requieren cerrar su
+trazabilidad para distribución antes de declarar candidato publicable.
+Muse `ses_f7d72ab5cffeq7KpWw1XtUF8Z0` se abortó tras quedar sin avance,
+sin cambios; el orquestador completó el microcorte. No hay workers editando.
+Pruebas focales 32/32 y Chromium (280/340/482/650, gaps largos y señal atrasada)
+PASS. Código guardado en `d8efd680`. Typecheck, build productivo, lint y digest
+PASS. La última suite pasó 423 archivos/3332 tests y falló por el texto `95%`
+del roadmap, corregido sin alterar la prueba; focal posterior 27/27 PASS.
+Suite final **424 archivos / 3333 tests PASS, 2 omitidos**, exit 0, cuatro
+workers; avisos heredados de teardown happy-dom sin fallos finales.
+Código `d8efd680` y documentación `84589e00` subidos a la rama de issue.
+Muse revisó el snapshot aislado
+`C:/tmp/vantare-isa1071-review` (sesión `ses_f7d5791bcffebtSNgcFt1CvUs8`),
+solo lectura. Su permiso para leer Ponytail ya está aprobado. La llamada
+inicial expiró, pero la sesión siguió activa y entregó veredicto: apto para
+PR draft, sin P1. Dos observaciones menores atendidas: `trim()` en la etiqueta
+de sesión y documentación que distingue dorsal opcional del contrato frente
+a la carencia del productor Core actual. No se retira ese gap sin datos reales.
+La revisión no acredita Wails/LMU ni permite promoción/release.
+
+Entrega preparada en [PR #1076](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1076),
+**draft a nightly**, código `de1239a5` subido. Ajustes finales: 33 focales y
+typecheck PASS. CI remoto pendiente; no auto-merge, promoción ni release.
+Siguiente corte: cerrar recursos de distribución y #1072, después binario
+configurado y comprobación física del diseño; solicitar integración solo
+con los gates aplicables cerrados. No certificarlo usando el fixture HTML.
+
+## ISA-1071 — reproducción HTML Redline en React (2026-09-08, aislado)
+
+- Rama `vantareapp/isa-1071-workshop-redline-lab`, base/HEAD sin commit
+  `b6b5754eee059bc239fce18c08b39adae8c553fa`, worktree `C:/tmp/vantare-isa1071`.
+- Worker Muse inició settings/CSS; quedó sin avance y se detuvo antes de que
+  el orquestador completara controles, URL, sidebar y comprobaciones.
+- Isaac rechazó la primera aproximación: restilizaba la tabla compacta y no
+  reproducía el HTML. Esa entrega queda sustituida por la composición Tower
+  productiva de 482 × 1087: cabecera 99, categoría 38, doce filas con su ritmo
+  exacto y pie 67. Perfiles anteriores mantienen `classic` por defecto.
+- `WidgetVisualHost` sigue siendo la frontera única. Workshop puede entregarle
+  una ViewModel de referencia explícita, solo aceptada en desarrollo; los
+  escenarios V2 mantienen su autoridad y no reciben marcas/dorsales inventados.
+- Fuentes y sprites son los mismos archivos del HTML aprobado. Las marcas
+  solo aparecen con identidad explícita en la ViewModel; no se infieren de
+  nombres. El fixture de 12 pilotos no forma parte del bundle productivo.
+- Escenario `context` reutiliza la imagen del estudio, solo en la ruta de
+  desarrollo. No se incorpora al widget ni a sus capturas de paridad.
+- Browser: 16 combinaciones de cuatro cabeceras y cuatro selecciones, 74 nodos
+  por combinación con geometría, textos y estilos medidos iguales al HTML.
+  Dos instancias Desktop/OBS: 12 filas, 482 × 1087, clips independientes,
+  fondo rgba(16,23,27,.95), pseudo-línea del jugador ausente.
+- El estudio Tower reproduce el HTML estático: no reutiliza las animaciones
+  de tabla basadas en 30px. Su adaptación modular/dinámica sigue pendiente,
+  y la validación Wails/LMU. La aceptación visual posterior consta arriba. #1069 conserva
+  el hallazgo de columnas de la tabla clásica; no se mezcla aquí.
+- Evidencia detallada, archivos y checks: [ISA-1071](../../analysis/ISA-1071-redline-html-parity.md).
+- Cierre: 422 archivos / 3324 tests PASS, 2 omitidos; typecheck, build, lint
+  y diff check PASS. Fixture/escenario ausentes de dist. Avisos heredados de
+  chunks grandes y teardown happy-dom registrados. Vista final abierta con
+  firma, luz roja, 95%, referencia de 12 pilotos, 482 × 1087 y escala 0.65.
+- Estado histórico anterior a la aceptación: valoración visual con Isaac. No commit,
+  push, PR, CI remoto, merge, promoción ni release para este corte.
+
 ## ISA-1004 — Dense y Broadcast tras validación Windows (2026-09-06)
 
 Isaac autoriza corregir ambos hallazgos y mergear a nightly. Base c18f2e6e;
@@ -2110,3 +2531,64 @@ Evidencia Task 4 y cierre acumulado:
   frontend 441/441 archivos y 3.418/3.418 pruebas, Go completo, build y lint
   PASS; revisión adversarial de la rama ISA-968 APPROVE. S3 físico sigue
   pendiente sobre el nuevo HEAD.
+
+## Optimización UI Orbit — estado 2026-09-08
+
+Serie de issues de rendimiento tras la auditoría ISA-1111. Entregadas en rama
+aislada a `nightly` (pendiente review/merge):
+
+- #1153 useNow compartido (NextRaceCard/SideRaces), #1154 suscripción muerta
+  StrategyOrbitPage, #1156 canal granular launcher profiles, #1157 contexto
+  overlay estable + memo frames, #1158 i18n lazy (~102KB gzip), #1161 higiene
+  de desmontaje/timers/fetch.
+- #1164 (ISA-1140): subset Cascadia Code 379KB→~74KB woff2, TTF conservado
+  como fuente de regeneración.
+- #1165 (ISA-1150): la shell honra `performance:level` — `noBlur`/`flat`
+  apagan backdrop-filter y (flat) animaciones infinitas y sombras grandes
+  vía `:root[data-orbit-perf-effects]`, sin re-render.
+- #1168 (ISA-1147): fanout Wails por dominio fase 1 — `settings` (5→1
+  suscripción, store con canales granulares y dedup por valor en
+  notifications; ChainRunnerProvider dejaba de repintar el Hub entero por
+  evento) y `license` (4→1). Resto de dominios pendiente si aporta.
+- #1163 (ISA-1149): Studio con store externo + `useSyncExternalStore`.
+  B1: provider 506→~170 líneas, shim `useStudioDocument()` intacto. B2: los
+  10 consumidores de producción migrados a selectores granulares; el shim
+  queda para tests/consumidores futuros. 640 tests del área Studio verdes.
+- Descartadas tras verificación manual: #1134 manualChunks, #1135 Supabase
+  en path crítico (correcto), #1137 greeting (trivial), #1138 barrels
+  (tree-shaking ya funcionaba), #1139 (ya resuelta por #1122). Hallazgos Go
+  revisados: la mayoría eran diseño deliberado; los reales quedan en #1160.
+
+### Continuación (mismo día)
+
+- #1168 ampliada con fase 2: fanout del dominio updater (14 suscripciones
+  directas → máx. 9). El inventario del resto de Events.On confirmó que no
+  hay más dominios con duplicación que valga la pena — los de 2 sitios son
+  marginales.
+- #1170 (ISA-1160): los dos únicos hallazgos Go verificados — mapper sin
+  slice por vehículo (era stack-alloc; ahorro real es el trabajo por
+  vehículo, no GC) y AllSections alias del array de paquete (sí escapaba
+  a heap por tick; benchmark -1 alloc/op).
+- Review SWE-2 de #1163 encontró un bug preexistente: error de carga de
+  Studio inalcanzable tras spinner (guard !document ganaba a lastError).
+  Corregido con test de regresión.
+
+## ISA-1149/1140/1147/1150/1160 + ISA-1179/1181/1185 — Optimización y reestilo Orbit (2026-09-12)
+
+- PROMOCIONADO a nightly (verificado en origin/nightly, HEAD d2450cc5):
+  #1164 subset Cascadia WOFF2 (380→74KB), #1170 allocs Go en path caliente,
+  #1165 blur condicional por nivel de rendimiento, #1168 fanout Wails
+  settings+license+updater, #1163 store externo Studio con selectores
+  granulares (B1+B2) y fix de error de carga inalcanzable en StudioRouteEditor.
+- Reestilo Orbit entregado como drafts pendientes de autorización: #1180
+  (BetaWelcome, recordatorios calendario, globales, DowngradeModal sobre
+  ConfirmDialog del kit), #1182 (estados auxiliares Studio/Perfiles +
+  primitiva .orbit-alert), #1186 (editor in-place, subtítulos ingeniero,
+  HubToast, LanguageSelector + harness orbit-outside). Capturas de
+  verificación en el escritorio de Isaac.
+- Tras estas PRs los únicos consumidores legacy restantes son auth/*
+  (bloqueado por migración a Clerk) y settings/diagnostics/* (interno).
+  El overlay en juego queda como decisión de producto: es UI de widgets,
+  no de gestión.
+- Fase C del shim Studio documentada como opcional sin fecha: cero ganancia
+  de runtime hoy; los tests antiguos la ejercitan deliberadamente.

@@ -43,6 +43,7 @@ type VehicleState struct {
 	DriverName       schema.Field[identity.DriverName]
 	Name             schema.Field[vehicle.VehicleName]
 	VehicleClass     schema.Field[standings.VehicleClass]
+	CarNumber        schema.Field[standings.CarNumber]
 	Player           schema.Field[bool]
 	Sector           schema.Field[standings.Sector]
 	LapDistance      schema.Field[standings.LapDistance]

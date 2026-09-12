@@ -28,8 +28,8 @@ Los overlays se generan dinámicamente según el perfil de configuración selecc
     *   `http://127.0.0.1:39261/overlay?profile=custom-hfg`
 
 > [!TIP]
-> **URL lista para copiar desde Ajustes (Settings)**:
-> La sección de **Ajustes → OBS Browser Source** en el Hub ahora detecta de forma reactiva el perfil que tienes seleccionado y activo. Puedes simplemente hacer clic en **"Copiar URL"** para obtener la URL exacta y válida del perfil activo en tu portapapeles. Si no hay ningún perfil activo en ese momento, el sistema generará automáticamente la URL con el perfil predeterminado `example-racing.json`.
+> **URL lista para copiar desde Overlays Studio**:
+> La sección **OBS** al final del panel de ajustes (dock derecho) de Overlays Studio muestra la URL real del servidor interno con el perfil abierto en el editor. Haz clic en **"Copiar URL"** para obtener la URL exacta y válida en tu portapapeles, o en **"Copiar instrucciones"** para llevarte la guía paso a paso. Si no hay ningún perfil abierto, la URL usa el perfil predeterminado `example-streaming.json`.
 
 
 

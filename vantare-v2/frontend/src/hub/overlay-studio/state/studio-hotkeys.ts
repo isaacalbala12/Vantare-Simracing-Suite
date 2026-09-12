@@ -12,7 +12,7 @@ export type StudioHotkey =
 
 type HotkeyTarget = EventTarget | null | undefined;
 
-function isEditableTarget(target: HotkeyTarget): boolean {
+export function isEditableTarget(target: HotkeyTarget): boolean {
   if (!(target instanceof HTMLElement)) {
     return false;
   }

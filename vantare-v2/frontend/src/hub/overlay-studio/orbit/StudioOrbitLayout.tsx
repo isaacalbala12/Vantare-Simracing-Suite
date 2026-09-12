@@ -4,9 +4,10 @@ import { useI18n } from '../../../i18n/I18nProvider';
 import { resolveLayoutViewport } from '../../../overlay/core/layout-viewport';
 import type { WidgetDiagnosticCollector } from '../../../overlay/core/widget-diagnostics';
 import type { StudioProfileEntry } from '../studio-profile-entry';
-import { useStudioDocument, useStudioPreview } from '../state/studio-store';
+import { useStudioActiveLayout, useStudioPreview, useStudioSelector } from '../state/studio-store';
 import { useStudioTelemetryLiveAvailable } from '../canvas/studio-telemetry';
 import { useOrbitSimStatus } from '../../orbit/sim-status-context';
+import { StudioObsLink } from './StudioObsLink';
 import { StudioOrbitInspector } from './StudioOrbitInspector';
 import { StudioOrbitStage } from './StudioOrbitStage';
 import { StudioOrbitToolbar } from './StudioOrbitToolbar';
@@ -26,6 +27,8 @@ export type StudioOrbitLayoutProps = {
   activeFile: string;
   onRequestProfileChange(file: string): void;
   onOpenBrowserView?(): void;
+  /** Origen real del servidor de overlays para el enlace OBS (ISA-1162). */
+  obsBaseUrl?: string;
   diagnostics?: WidgetDiagnosticCollector;
 };
 
@@ -38,9 +41,11 @@ export type StudioOrbitLayoutProps = {
  * lienzo/statusbar en el workspace e inspector plegable a la derecha—.
  */
 export function StudioOrbitLayout(props: StudioOrbitLayoutProps): React.ReactElement {
-  const { profiles, activeFile, onRequestProfileChange, onOpenBrowserView, diagnostics } = props;
+  const { profiles, activeFile, onRequestProfileChange, onOpenBrowserView, obsBaseUrl, diagnostics } = props;
   const { t } = useI18n();
-  const { document: profileDocument, activeLayout, selectedWidgetId } = useStudioDocument();
+  const profileDocument = useStudioSelector((s) => s.history?.present ?? null);
+  const activeLayout = useStudioActiveLayout();
+  const selectedWidgetId = useStudioSelector((s) => s.selectedWidgetId);
   const { preview, setPreview } = useStudioPreview();
   // El sim tiene una sola fuente: la de la shell, que es la que pinta el Pill
   // LMU al pie de la columna. Solo cuando el Studio se monta fuera de la shell
@@ -145,6 +150,7 @@ export function StudioOrbitLayout(props: StudioOrbitLayoutProps): React.ReactEle
         id="orbit-studio-right-dock"
       >
         <StudioOrbitInspector />
+        <StudioObsLink baseUrl={obsBaseUrl} profileFile={activeFile} />
       </aside>
 
       {contextSlot ? createPortal(<StudioWidgetList />, contextSlot) : null}

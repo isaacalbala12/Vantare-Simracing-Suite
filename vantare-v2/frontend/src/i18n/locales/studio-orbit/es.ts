@@ -1,5 +1,6 @@
 /** Catálogo `studio.*` de Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
 export const studioOrbitEs: Record<string, string> = {
+  "studio.inspector.content.towerPreview": "Tower Preview: composición fija, sin animaciones ni edición de columnas todavía. Se conservan tus columnas para otros diseños. Marca y dorsal solo aparecen cuando la fuente los proporciona. Ajusta el tamaño en el lienzo y el número de filas aquí.",
   "studio.column.eyebrow": "Widgets",
   "studio.column.search": "Buscar widget…",
   "studio.column.searchAria": "Buscar widgets del perfil",
@@ -64,7 +65,9 @@ export const studioOrbitEs: Record<string, string> = {
   "studio.inspector.section.design": "Diseño",
   "studio.inspector.section.appearance": "Apariencia",
   "studio.inspector.section.behavior": "Comportamiento",
+  "studio.inspector.section.content": "Contenido",
   "studio.inspector.section.layout": "Layout",
+  "studio.inspector.section.actions": "Acciones",
   "studio.inspector.section.design.help":
     "Elige el sistema visual y el diseño con el que se pinta este widget.",
   "studio.inspector.section.appearance.help":
@@ -182,4 +185,13 @@ export const studioOrbitEs: Record<string, string> = {
   "studio.topbar.performanceInherit": "Heredar de la aplicación",
   "studio.topbar.performanceLevel": "Nivel del perfil",
   "studio.topbar.performanceEffective": "Nivel efectivo",
+  "studio.obs.eyebrow": "OBS",
+  "studio.obs.title": "OBS Browser Source",
+  "studio.obs.hint": "Pega esta URL en una fuente «Navegador» de OBS Studio para emitir el overlay que estás editando.",
+  "studio.obs.url": "URL del overlay para OBS",
+  "studio.obs.copy": "Copiar URL",
+  "studio.obs.copied": "Copiada",
+  "studio.obs.copyInstructions": "Copiar instrucciones",
+  "studio.obs.copiedInstructions": "Instrucciones copiadas",
+  "studio.obs.instructions": "1. Abre OBS Studio y añade una fuente «Navegador».\n2. Pega esta URL: {{url}}\n3. Ancho 1920, Alto 1080 (o la resolución de tu lienzo).\n4. Mantén Vantare abierto para que el overlay reciba datos en vivo.",
 };

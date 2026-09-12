@@ -4,6 +4,7 @@ import { isWorkshopV2Variant, type WorkshopV2Variant } from "./fixtures/authorin
 import { getAnimationScene } from "./fixtures/animation-scenes";
 import { getOfficialDesign } from "../design-systems/official-designs";
 import { designSystemRegistry } from "../core/design-system-registry";
+import { parseStandingsEnduranceSettings } from "../design-systems/vantare-endurance/standings/standings-endurance-settings";
 import { WIDGET_TYPES } from "../core/profile-document";
 import { FUNCTIONAL_STUDY_MODULE_IDS, FUNCTIONAL_STUDY_SLOT_IDS, FUNCTIONAL_STUDY_STYLE_IDS, type FunctionalStudyStyleId } from "./functional-study-options";
 
@@ -36,6 +37,17 @@ export type OverlayWorkshopQuery = {
   /** Marca integrada: el selector del Workshop hace de autoridad local
    *  (ISA-1105: en producción la decisión la inyecta la política nativa). */
   brand?: "off";
+  /**
+   * Redline tower lab (ISA-1071, dev only). Applied as appearanceOverrides on
+   * the scenario widget, so they travel the productive visual/settings
+   * contract. Absent means historic rendering.
+   */
+  redlineTheme?: "classic" | "tower";
+  redlineSelection?: "legacy" | "glow" | "frame" | "plate";
+  redlineHeader?: "current" | "signature" | "session" | "compact";
+  /** Background-surface alpha, 0.45..1. Absent means historic (opaque). */
+  redlineOpacity?: number;
+  redlineData?: "telemetry" | "reference";
 };
 
 export const DEFAULT_OVERLAY_WORKSHOP_QUERY: OverlayWorkshopQuery = {
@@ -58,6 +70,9 @@ const SESSIONS = new Set<AuthoringV2Scenario["session"]>(["practice", "qualifyin
 const LOCATIONS = new Set<AuthoringV2Scenario["location"]>(["track", "pits"]);
 const BACKGROUNDS = new Set<OverlayWorkshopQuery["background"]>(["transparent", "grid", "solid", "context"]);
 const PRESETS = new Set<OverlayWorkshopQuery["preset"]>(["720p", "1080p", "1440p"]);
+const REDLINE_THEMES = new Set(["classic", "tower"]);
+const REDLINE_SELECTIONS = new Set(["legacy", "glow", "frame", "plate"]);
+const REDLINE_HEADERS = new Set(["current", "signature", "session", "compact"]);
 
 export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery | { error: string } {
   const params = new URLSearchParams(search.startsWith("?") ? search : `?${search}`);
@@ -189,9 +204,38 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
     }
   }
 
+  // Tower lab options are validated here and applied as appearanceOverrides;
+  // the productive settings parser re-validates them before rendering.
+  const designSettings = parseStandingsEnduranceSettings(designId ? getOfficialDesign(designId)?.visual ?? {} : {});
+  const towerDefaults = designSettings.redlineTheme === "tower" ? designSettings : undefined;
+  const redlineThemeRaw = params.get("redlineTheme") ?? towerDefaults?.redlineTheme ?? null;
+  const redlineData = params.get("redlineData");
+  if (redlineData !== null && redlineData !== "telemetry" && redlineData !== "reference") return { error: `invalid redlineData parameter: ${redlineData}` };
+  if (redlineThemeRaw !== null && !REDLINE_THEMES.has(redlineThemeRaw)) {
+    return { error: `invalid redlineTheme parameter: ${redlineThemeRaw}` };
+  }
+  const redlineSelectionRaw = params.get("redlineSelection") ?? towerDefaults?.redlineSelection ?? null;
+  if (redlineSelectionRaw !== null && !REDLINE_SELECTIONS.has(redlineSelectionRaw)) {
+    return { error: `invalid redlineSelection parameter: ${redlineSelectionRaw}` };
+  }
+  const redlineHeaderRaw = params.get("redlineHeader") ?? towerDefaults?.redlineHeader ?? null;
+  if (redlineHeaderRaw !== null && !REDLINE_HEADERS.has(redlineHeaderRaw)) {
+    return { error: `invalid redlineHeader parameter: ${redlineHeaderRaw}` };
+  }
+  const redlineOpacityRaw = params.get("redlineOpacity");
+  const redlineOpacity = redlineOpacityRaw === null ? towerDefaults?.redlineSurfaceOpacity : Number(redlineOpacityRaw);
+  if (redlineOpacity !== undefined && (!Number.isFinite(redlineOpacity) || redlineOpacity < 0.45 || redlineOpacity > 1)) {
+    return { error: `invalid redlineOpacity parameter: ${redlineOpacityRaw}` };
+  }
+
   return { widget, system, state, surface, variant, session, location, background, scale, preset,
     ...(designId ? { designId } : {}), ...(studyStyle ? { studyStyle } : {}), ...(parsedWidth ? { width: parsedWidth } : {}), ...(parsedHeight ? { height: parsedHeight } : {}), ...(compare ? { compare } : {}),
-    ...(sceneId ? { sceneId } : {}), ...(sceneFrame !== undefined ? { sceneFrame } : {}), ...(brand === "off" ? { brand } : {}), ...(modules ? { modules } : {}), ...(slots ? { slots } : {}) };
+    ...(sceneId ? { sceneId } : {}), ...(sceneFrame !== undefined ? { sceneFrame } : {}), ...(brand === "off" ? { brand } : {}), ...(modules ? { modules } : {}), ...(slots ? { slots } : {}),
+    ...(redlineThemeRaw ? { redlineTheme: redlineThemeRaw as OverlayWorkshopQuery["redlineTheme"] } : {}),
+    ...(redlineData ? { redlineData } : {}),
+    ...(redlineSelectionRaw ? { redlineSelection: redlineSelectionRaw as OverlayWorkshopQuery["redlineSelection"] } : {}),
+    ...(redlineHeaderRaw ? { redlineHeader: redlineHeaderRaw as OverlayWorkshopQuery["redlineHeader"] } : {}),
+    ...(redlineOpacity !== undefined ? { redlineOpacity } : {}) };
 }
 
 export function isOverlayWorkshopPath(pathname: string, isDevelopment = import.meta.env.DEV): boolean {
@@ -221,5 +265,10 @@ export function serializeOverlayWorkshopQuery(query: OverlayWorkshopQuery): stri
   if (query.brand) params.set("brand", query.brand);
   if (query.modules) params.set("modules", query.modules.join(","));
   if (query.slots) params.set("slots", query.slots.join(","));
+  if (query.redlineTheme) params.set("redlineTheme", query.redlineTheme);
+  if (query.redlineData) params.set("redlineData", query.redlineData);
+  if (query.redlineSelection) params.set("redlineSelection", query.redlineSelection);
+  if (query.redlineHeader) params.set("redlineHeader", query.redlineHeader);
+  if (query.redlineOpacity !== undefined) params.set("redlineOpacity", String(query.redlineOpacity));
   return params.toString();
 }

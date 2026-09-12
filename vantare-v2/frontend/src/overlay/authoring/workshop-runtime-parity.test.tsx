@@ -48,7 +48,8 @@ function rendererMarkup(root: ParentNode, widgetType: string): string {
   if (!node) {
     throw new Error(`no renderer markup for ${widgetType}`);
   }
-  return node.outerHTML;
+  // Clip definitions are identical, but useId must remain unique per mount.
+  return node.outerHTML.replace(/_r_\w+_(?=-(?:brand|header))/g, "INSTANCE");
 }
 
 async function workshopMarkup(search: string, widgetType: string): Promise<string> {
@@ -72,6 +73,10 @@ async function runtimeMarkup(parsed: {
   session: WorkshopV2Scenario["session"];
   location: WorkshopV2Scenario["location"];
   state: WorkshopV2Scenario["state"];
+  redlineTheme?: string;
+  redlineSelection?: string;
+  redlineHeader?: string;
+  redlineOpacity?: number;
 }): Promise<string> {
   const widget = createScenarioWidget({
     widget: parsed.widget,
@@ -79,6 +84,12 @@ async function runtimeMarkup(parsed: {
     variant: parsed.variant,
     ...(parsed.designId ? { designId: parsed.designId } : {}),
   });
+  if (parsed.redlineTheme) {
+    widget.visual.appearanceOverrides = { ...widget.visual.appearanceOverrides,
+      redlineTheme: parsed.redlineTheme, redlineSelection: parsed.redlineSelection,
+      redlineHeader: parsed.redlineHeader, redlineSurfaceOpacity: parsed.redlineOpacity,
+    };
+  }
   const frame = buildWorkshopFrameV2({
     session: parsed.session,
     location: parsed.location,
@@ -353,6 +364,11 @@ describe("the Workshop renders what the runtime renders", () => {
   });
 
   const cases = [
+    {
+      widget: "standings" as const,
+      template: "standings-redline",
+      search: "?widget=standings&system=vantare-endurance&design=standings-endurance-redline&surface=obs&redlineTheme=tower&redlineSelection=glow&redlineHeader=signature&redlineOpacity=0.95",
+    },
     {
       widget: "standings" as const,
       template: "standings-redline",

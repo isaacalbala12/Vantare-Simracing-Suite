@@ -107,11 +107,14 @@ type VehicleSourceID int32
 
 // VehicleObservation owns the admitted values for one scoring row. Fast
 // telemetry and fuel are present only on the scoring-selected player row.
+// CarNumber is never parsed here: shared memory exposes no car-number offset
+// (see lmu13Layout), so fusion overlays the REST-sourced identity instead.
 type VehicleObservation struct {
 	SourceID         VehicleSourceID
 	DriverName       schema.Field[identity.DriverName]
 	VehicleName      schema.Field[vehicle.VehicleName]
 	VehicleClass     schema.Field[standings.VehicleClass]
+	CarNumber        schema.Field[standings.CarNumber]
 	Player           schema.Field[bool]
 	Position         schema.Field[standings.Position]
 	CompletedLaps    schema.Field[standings.CompletedLaps]

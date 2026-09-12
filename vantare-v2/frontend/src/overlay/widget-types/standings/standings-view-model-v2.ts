@@ -27,8 +27,10 @@ const PLACEHOLDER = "—";
  *
  * Fields the canonical state does not carry stay at the placeholder and are
  * declared unsupported for the shadow comparator rather than invented:
- * driverNumber, teamCode, teamBrandColor, tireCompound and the
+ * teamCode, teamBrandColor, tireCompound and the
  * interval to the car ahead (the frame carries the gap to the leader only).
+ * The optional wire number is displayed if supplied; the current Core
+ * producer does not emit it, tracked separately in ISA-1072.
  */
 export function buildStandingsViewModelV2(
   frame: OverlayFrameV2,
@@ -70,6 +72,8 @@ export function buildStandingsViewModelV2(
     activeClass,
     sessionLabel: displayedText(frame.session.phase)?.toUpperCase() ?? PLACEHOLDER,
     remainingText: formatRemainingTime(displayedNumber(frame.session.remaining)),
+    trackName: displayedText(frame.session.track),
+    totalRows: scoped.length,
     ambientTempText: formatTemp(displayedNumber(weather?.ambientC)),
     trackTempText: formatTemp(displayedNumber(weather?.trackC)),
     windText: formatWind(displayedNumber(weather?.windKph)),
@@ -106,7 +110,7 @@ export function standingsDisplayedValues(
   });
 }
 
-/** Fields the V2 presentation cannot fill from canonical telemetry. */
+/** Gaps of the current Core producer, not a ban on optional wire values. */
 export const OVERLAY_V2_STANDINGS_DECLARED_GAPS: readonly string[] = Object.freeze([
   "rows[].driverNumber",
   "rows[].teamCode",
@@ -126,7 +130,8 @@ function buildRow(
   return {
     id: row.id,
     position: row.position,
-    driverNumber: "",
+    classPosition: row.classPosition,
+    driverNumber: row.number ?? "",
     driverName,
     configuredDriverName: driverName,
     vehicleClass: row.classId ?? "",

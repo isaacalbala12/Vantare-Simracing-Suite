@@ -3114,3 +3114,29 @@ y lint PASS. Antes de la corrección exclusivamente de test, suite frontend
 Un `resource_exhausted` interrumpió la telemetría del ejecutor, pero el proceso
 de suite dejó resumen final completo. Sin app/GUI/Wails/LMU, push, PR, CI remota,
 merge o promoción. Sigue J8c2: selector visual desde el catálogo ya cargado.
+
+## T12 J8c2 — selector canónico visible en Datos
+
+Aceptado en `a6cb87f0` sobre el plan `477c208a`, cinco paths frontend,
+`+392/-14`. La vista Clasificación muestra combinación original, destino v4
+guardado y propuesta sólo si el subconjunto de identidad activo difiere del
+guardado. El formulario restaura el original o selecciona exclusivamente una
+entrada del `sessionCombinations` recibido por Workflow; un destino histórico
+ya ausente queda legible y retirable, pero no seleccionable de nuevo. No hay
+texto libre, hashes, normalización ni segundo catálogo en React. Aplicar hace
+una única llamada atómica a `editIdentity`; fallo conserva el formulario y
+éxito comparte los bloqueos y estado pendiente del editor existente.
+
+La revisión root detectó y corrigió dos falsos positivos antes del commit: la
+propuesta de identidad comparaba también los campos legacy, y varias fixtures
+describían tuples imposibles para su referencia canónica. Quedó una regresión
+explícita que demuestra que cambiar sólo SessionType no crea propuesta de
+identidad. Focal final 3 archivos/89 tests PASS; suite frontend 445 archivos/
+3752 tests PASS; typecheck, lint, auditor i18n y build web EXIT0. Logs e informe
+en `frontend/.tmp/isa1104-t12j8c2-*`. Avisos heredados de hydration/AbortError,
+telemetría simulada y chunks permanecen dentro de una suite verde.
+
+Sin app, GUI, Wails, LMU, build de escritorio, push, PR, CI remota, merge o
+promoción. Falta el contraste v4 de identidad contra más de una combinación
+real autorizada y reflejar la entrega visible en roadmap; la paridad Wails
+sigue separada por `ERROR_INVALID_STATE` ya reproducido, sin causa demostrada.

@@ -1,5 +1,6 @@
 import { useEffect, type PropsWithChildren } from "react";
 import { Events } from "@wailsio/runtime";
+import { isClerkConfigured, loadClerk } from "./clerk-auth";
 import {
 	clearProtectedAuthSession,
 	onSupabaseAuthStateChange,
@@ -58,6 +59,56 @@ export function AuthSessionBridge({ children }: PropsWithChildren) {
 			active = false;
 			offBackend?.();
 			offSupabase();
+		};
+	}, []);
+
+	// Clerk session feed, mounted at the root so sign-in detection and token
+	// rotation never depend on LoginScreen. The listener fires on every token
+	// refresh (~50s), so license:validate is deduped by session id; the backend
+	// persists only the Clerk sid when refreshToken is empty.
+	useEffect(() => {
+		if (!isClerkConfigured()) return;
+		let active = true;
+		let lastSessionId: string | null = null;
+		let unsubscribe: (() => void) | undefined;
+		loadClerk()
+			.then((clerk) => {
+				if (!active) return;
+				unsubscribe = clerk.addListener(({ session }) => {
+					if (session === undefined) return; // still loading
+					if (session === null) {
+						// Only a real signed-in -> signed-out transition clears the
+						// stored credential; a boot-time null must not race the
+						// Supabase restore above.
+						if (lastSessionId) void clearProtectedAuthSession();
+						lastSessionId = null;
+						return;
+					}
+					if (session.id === lastSessionId) return;
+					lastSessionId = session.id;
+					session
+						.getToken()
+						.then((token) => {
+							if (!active || !token || session.id !== lastSessionId) return;
+							Events.Emit("license:validate", {
+								sessionToken: token,
+								refreshToken: "",
+							});
+						})
+						.catch(() => {
+							// Offline getToken: the license cache covers it. Allow the
+							// next listener emission of this session to retry.
+							if (lastSessionId === session.id) lastSessionId = null;
+						});
+				});
+			})
+			.catch(() => {
+				// A failed Clerk load is surfaced by LoginScreen; the bridge
+				// stays silent.
+			});
+		return () => {
+			active = false;
+			unsubscribe?.();
 		};
 	}, []);
 

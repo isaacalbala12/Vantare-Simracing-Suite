@@ -1,299 +1,132 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { translate } from "../../i18n/i18n";
 
-const { mockOpenURL } = vi.hoisted(() => ({
-  mockOpenURL: vi.fn().mockResolvedValue(undefined),
-}));
-
-vi.mock("@wailsio/runtime", () => ({
-  Browser: { OpenURL: (...args: unknown[]) => mockOpenURL(...args) },
-  Events: {
-    On: vi.fn(),
-    Emit: vi.fn(),
+const { isClerkConfiguredMock, loadClerkMock, clerkInstance } = vi.hoisted(() => ({
+  isClerkConfiguredMock: vi.fn(),
+  loadClerkMock: vi.fn(),
+  clerkInstance: {
+    mountSignIn: vi.fn(),
+    unmountSignIn: vi.fn(),
+    addListener: vi.fn(() => vi.fn()),
+    signOut: vi.fn().mockResolvedValue(undefined),
+    session: undefined,
   },
 }));
 
-vi.mock("../../lib/supabase-auth", () => ({
-  signInWithEmail: vi.fn(),
-  signInWithOAuth: vi.fn(),
-  signUp: vi.fn(),
-  resetPasswordForEmail: vi.fn(),
+vi.mock("../../lib/clerk-auth", () => ({
+  isClerkConfigured: isClerkConfiguredMock,
+  loadClerk: loadClerkMock,
+  getClerkSessionToken: vi.fn(),
+  signOutClerk: vi.fn(),
 }));
 
-import { Events } from "@wailsio/runtime";
 import { LoginScreen } from "./LoginScreen";
-import { getHubSuspendBlockerReasons } from "../hub-suspend-guard";
-import {
-  signInWithEmail,
-  signInWithOAuth,
-  signUp,
-  resetPasswordForEmail,
-} from "../../lib/supabase-auth";
+
+// Claves del formulario Supabase retirado en ISA-915: siguen traducidas pero ya
+// no se renderizan. Esta lista las documenta como pendientes de la limpieza de
+// catálogo (decisión aparte) y las mantiene referenciadas para el audit i18n.
+const RETIRED_SUPABASE_FORM_KEYS = [
+  "auth.email",
+  "auth.password",
+  "auth.signInWithGoogle",
+  "auth.signInWithDiscord",
+  "auth.createAccount",
+  "auth.forgotPassword",
+  "auth.checkEmail",
+  "auth.checkEmailDesc",
+  "auth.cancelWaiting",
+  "auth.backToLogin",
+  "auth.resetSent",
+  "auth.googleHint",
+  "auth.or",
+  "auth.openingGoogle",
+  "auth.opening",
+  "auth.oauthError",
+  "auth.noAuthUrl",
+  "auth.waitingForAuth",
+  "auth.completeWith",
+  "auth.inBrowser",
+  "auth.signUpTitle",
+  "auth.resetTitle",
+  "auth.loginButton",
+  "auth.signupButton",
+  "auth.sendLink",
+  "auth.noAccount",
+  "auth.haveAccount",
+] as const;
 
 describe("LoginScreen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     cleanup();
+    clerkInstance.session = undefined;
   });
 
-  it("renders email and password inputs", () => {
-    render(<LoginScreen onLoggedIn={vi.fn()} />);
-    expect(screen.getByLabelText(/email/i)).toBeTruthy();
-    expect(screen.getByLabelText(/contraseña/i)).toBeTruthy();
-  });
-
-  it("calls signInWithEmail with entered values and fires onLoggedIn on success", async () => {
-    (signInWithEmail as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-      { session: { access_token: "tok" } },
-    );
-    const onLoggedIn = vi.fn();
-    render(<LoginScreen onLoggedIn={onLoggedIn} />);
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: "u@example.com" },
-    });
-    fireEvent.change(screen.getByLabelText(/contraseña/i), {
-      target: { value: "secret" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
-    expect(signInWithEmail).toHaveBeenCalledWith("u@example.com", "secret");
-    await vi.waitFor(() =>
-      expect(onLoggedIn).toHaveBeenCalledWith({
-        accessToken: "tok",
-        refreshToken: undefined,
-      }),
-    );
-  });
-
-  it("shows error message when signInWithEmail rejects", async () => {
-    (signInWithEmail as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-      { session: null, error: "Invalid credentials" },
-    );
-    render(<LoginScreen onLoggedIn={vi.fn()} />);
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: "u@example.com" },
-    });
-    fireEvent.change(screen.getByLabelText(/contraseña/i), {
-      target: { value: "wrong" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /entrar/i }));
-    expect(await screen.findByText(/invalid credentials/i)).toBeTruthy();
-  });
-
-  it("opens external browser for Google OAuth instead of navigating WebView", async () => {
-    (signInWithOAuth as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-      { url: "https://accounts.google.com/o/oauth2/auth?..." },
-    );
-    render(<LoginScreen onLoggedIn={vi.fn()} />);
-    fireEvent.click(
-      screen.getByRole("button", { name: /continuar con google/i }),
-    );
-    expect(signInWithOAuth).toHaveBeenCalledWith("google");
-    await vi.waitFor(() =>
-      expect(mockOpenURL).toHaveBeenCalledWith(
-        "https://accounts.google.com/o/oauth2/auth?...",
-      ),
-    );
-  });
-
-  it("shows waiting state after opening external browser for OAuth", async () => {
-    (signInWithOAuth as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-      { url: "https://accounts.google.com/..." },
-    );
-    render(<LoginScreen onLoggedIn={vi.fn()} />);
-    fireEvent.click(
-      screen.getByRole("button", { name: /continuar con google/i }),
-    );
-    await vi.waitFor(() =>
-      expect(screen.getByTestId("login-waiting-message")).toBeTruthy(),
-    );
-    expect(screen.getByText(/completa el inicio de sesión/i)).toBeTruthy();
-    expect(screen.getByTestId("login-cancel-waiting")).toBeTruthy();
-    expect(getHubSuspendBlockerReasons()).toEqual([
-      "Hay una autenticación OAuth pendiente",
-    ]);
-  });
-
-  it("does NOT navigate window.location for OAuth (no WebView redirect)", async () => {
-    const originalLocation = window.location.href;
-    (signInWithOAuth as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-      { url: "https://accounts.google.com/..." },
-    );
-    render(<LoginScreen onLoggedIn={vi.fn()} />);
-    fireEvent.click(
-      screen.getByRole("button", { name: /continuar con google/i }),
-    );
-    await vi.waitFor(() => expect(mockOpenURL).toHaveBeenCalled());
-    // Window location must not have changed — OAuth opens externally.
-    expect(window.location.href).toBe(originalLocation);
-  });
-
-  it("shows error message when OAuth fails, not white screen", async () => {
-    (signInWithOAuth as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-      { error: "OAuth provider unavailable" },
-    );
-    render(<LoginScreen onLoggedIn={vi.fn()} />);
-    fireEvent.click(
-      screen.getByRole("button", { name: /continuar con google/i }),
-    );
-    expect(await screen.findByText(/oauth provider unavailable/i)).toBeTruthy();
-    // Should NOT be in waiting state
-    expect(screen.queryByTestId("login-waiting-message")).toBeNull();
-  });
-
-  it("shows the primary Google button and a hint that Google is recommended", () => {
-    render(<LoginScreen onLoggedIn={vi.fn()} />);
-    expect(screen.getByTestId("login-google-primary")).toBeTruthy();
-    expect(screen.getByTestId("login-primary-hint")).toBeTruthy();
+  it("shows a visible config error when the publishable key is missing", async () => {
+    isClerkConfiguredMock.mockReturnValue(false);
+    render(<LoginScreen />);
+    expect(await screen.findByTestId("login-error")).toBeTruthy();
     expect(
-      screen.getByText(/google es el acceso recomendado/i),
+      screen.getByText(/no está configurado/i),
     ).toBeTruthy();
+    expect(screen.getByTestId("login-retry")).toBeTruthy();
+    expect(loadClerkMock).not.toHaveBeenCalled();
+    expect(clerkInstance.mountSignIn).not.toHaveBeenCalled();
   });
 
-  it("opens external browser for Discord OAuth", async () => {
-    (signInWithOAuth as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-      { url: "https://discord.com/api/oauth2/authorize?..." },
-    );
-    render(<LoginScreen onLoggedIn={vi.fn()} />);
-    fireEvent.click(screen.getByRole("button", { name: /continuar con discord/i }));
-    expect(signInWithOAuth).toHaveBeenCalledWith("discord");
-    await vi.waitFor(() =>
-      expect(mockOpenURL).toHaveBeenCalledWith(
-        "https://discord.com/api/oauth2/authorize?...",
-      ),
-    );
+  it("shows a loading state while Clerk is loading", () => {
+    isClerkConfiguredMock.mockReturnValue(true);
+    loadClerkMock.mockReturnValue(new Promise(() => {}));
+    render(<LoginScreen />);
+    expect(screen.getByTestId("login-loading")).toBeTruthy();
+    expect(screen.getByText(/cargando acceso/i)).toBeTruthy();
   });
 
-  it("cancel button returns to login form from waiting state", async () => {
-    (signInWithOAuth as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-      { url: "https://accounts.google.com/..." },
-    );
-    render(<LoginScreen onLoggedIn={vi.fn()} />);
-    fireEvent.click(
-      screen.getByRole("button", { name: /continuar con google/i }),
-    );
-    await vi.waitFor(() =>
-      expect(screen.getByTestId("login-cancel-waiting")).toBeTruthy(),
-    );
-    fireEvent.click(screen.getByTestId("login-cancel-waiting"));
-    // Should be back to normal login form
-    expect(screen.getByTestId("login-google-primary")).toBeTruthy();
-    expect(screen.queryByTestId("login-waiting-message")).toBeNull();
+  it("mounts Clerk SignIn with hash routing once loaded", async () => {
+    isClerkConfiguredMock.mockReturnValue(true);
+    loadClerkMock.mockResolvedValue(clerkInstance);
+    render(<LoginScreen />);
+    await waitFor(() => expect(clerkInstance.mountSignIn).toHaveBeenCalled());
+    const [node, props] = clerkInstance.mountSignIn.mock.calls[0] as [
+      HTMLDivElement,
+      { routing?: string },
+    ];
+    expect(node).toBe(screen.getByTestId("clerk-signin-host"));
+    expect(props.routing).toBe("hash");
   });
 
-  it("does not call onLoggedIn when license:changed event has no accessToken", async () => {
-    let eventCallback: ((event: { data: { state?: string; accessToken?: string } }) => void) | undefined;
-    (Events.On as unknown as ReturnType<typeof vi.fn>).mockImplementation((event, cb) => {
-      if (event === "license:changed") eventCallback = cb;
-      return vi.fn();
-    });
-
-    (signInWithOAuth as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-      { url: "https://accounts.google.com/..." },
-    );
-    const onLoggedIn = vi.fn();
-    render(<LoginScreen onLoggedIn={onLoggedIn} />);
-    fireEvent.click(
-      screen.getByRole("button", { name: /continuar con google/i }),
-    );
-    await vi.waitFor(() => expect(eventCallback).toBeDefined());
-
-    // Emit license:changed without accessToken (like Go's LicenseWire)
-    eventCallback?.({ data: { state: "authenticated-valid" } });
-
-    await vi.waitFor(() =>
-      expect(screen.queryByTestId("login-waiting-message")).toBeNull(),
-    );
-    expect(onLoggedIn).not.toHaveBeenCalled();
+  it("shows a load error and retries the effect on click", async () => {
+    isClerkConfiguredMock.mockReturnValue(true);
+    loadClerkMock.mockRejectedValueOnce(new Error("offline"));
+    render(<LoginScreen />);
+    expect(await screen.findByTestId("login-error")).toBeTruthy();
+    expect(screen.getByText(/no se pudo cargar/i)).toBeTruthy();
+    loadClerkMock.mockResolvedValue(clerkInstance);
+    fireEvent.click(screen.getByTestId("login-retry"));
+    await waitFor(() => expect(clerkInstance.mountSignIn).toHaveBeenCalled());
+    expect(loadClerkMock).toHaveBeenCalledTimes(2);
   });
 
-  // --- AUTH-04: Signup / Reset / Toggle tests ---
-
-  it("toggles to signup form when 'Crear cuenta' is clicked", () => {
-    render(<LoginScreen onLoggedIn={vi.fn()} />);
-    fireEvent.click(screen.getByText(/no tienes cuenta/i));
-    expect(screen.getByTestId("login-signup-form")).toBeTruthy();
-    expect(screen.getByRole("heading", { name: /crear cuenta/i })).toBeTruthy();
-  });
-
-  it("calls signUp on form submit in signup mode", async () => {
-    (signUp as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-      { user: { id: "u1" }, session: { access_token: "tok" } },
-    );
-    const onLoggedIn = vi.fn();
-    render(<LoginScreen onLoggedIn={onLoggedIn} />);
-    fireEvent.click(screen.getByText(/no tienes cuenta/i));
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: "new@example.com" },
-    });
-    fireEvent.change(screen.getByLabelText(/contraseña/i), {
-      target: { value: "pass123" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /crear cuenta/i }));
-    expect(signUp).toHaveBeenCalledWith("new@example.com", "pass123");
-    await vi.waitFor(() =>
-      expect(onLoggedIn).toHaveBeenCalledWith({
-        accessToken: "tok",
-        refreshToken: undefined,
-      }),
+  it("unmounts the Clerk SignIn when the screen unmounts", async () => {
+    isClerkConfiguredMock.mockReturnValue(true);
+    loadClerkMock.mockResolvedValue(clerkInstance);
+    const { unmount } = render(<LoginScreen />);
+    await waitFor(() => expect(clerkInstance.mountSignIn).toHaveBeenCalled());
+    unmount();
+    expect(clerkInstance.unmountSignIn).toHaveBeenCalledWith(
+      clerkInstance.mountSignIn.mock.calls[0][0],
     );
   });
 
-  it("shows confirmation message when email confirmation is required", async () => {
-    (signUp as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-      { user: { id: "u1" }, session: null },
-    );
-    render(<LoginScreen onLoggedIn={vi.fn()} />);
-    fireEvent.click(screen.getByText(/no tienes cuenta/i));
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: "new@example.com" },
-    });
-    fireEvent.change(screen.getByLabelText(/contraseña/i), {
-      target: { value: "pass123" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /crear cuenta/i }));
-    expect(await screen.findByTestId("login-email-sent")).toBeTruthy();
-    expect(screen.getByText(/revisa tu email/i)).toBeTruthy();
-  });
-
-  it("shows error message on signup failure", async () => {
-    (signUp as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-      { user: null, session: null, error: "User already registered" },
-    );
-    render(<LoginScreen onLoggedIn={vi.fn()} />);
-    fireEvent.click(screen.getByText(/no tienes cuenta/i));
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: "existing@example.com" },
-    });
-    fireEvent.change(screen.getByLabelText(/contraseña/i), {
-      target: { value: "pass" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /crear cuenta/i }));
-    expect(await screen.findByText(/user already registered/i)).toBeTruthy();
-  });
-
-  it("toggles back to login mode", () => {
-    render(<LoginScreen onLoggedIn={vi.fn()} />);
-    fireEvent.click(screen.getByText(/no tienes cuenta/i));
-    expect(screen.getByTestId("login-signup-form")).toBeTruthy();
-    fireEvent.click(screen.getByText(/ya tienes cuenta/i));
-    expect(screen.queryByTestId("login-signup-form")).toBeNull();
-    expect(screen.getByRole("button", { name: /entrar/i })).toBeTruthy();
-  });
-
-  it("shows reset password link and calls resetPasswordForEmail", async () => {
-    (resetPasswordForEmail as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-      {},
-    );
-    render(<LoginScreen onLoggedIn={vi.fn()} />);
-    fireEvent.click(screen.getByText(/olvidaste tu contraseña/i));
-    expect(screen.getByTestId("login-reset-form")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText(/email/i), {
-      target: { value: "reset@example.com" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /enviar enlace/i }));
-    expect(resetPasswordForEmail).toHaveBeenCalledWith("reset@example.com");
-    await vi.waitFor(() =>
-      expect(screen.getByText(/restablecer tu contraseña/i)).toBeTruthy(),
-    );
+  it("keeps the retired Supabase form keys translated but off the screen", () => {
+    for (const key of RETIRED_SUPABASE_FORM_KEYS) {
+      expect(translate("es", key)).not.toBe(key);
+    }
+    isClerkConfiguredMock.mockReturnValue(false);
+    render(<LoginScreen />);
+    expect(screen.queryByLabelText(/email/i)).toBeNull();
+    expect(screen.queryByLabelText(/contraseña/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /entrar/i })).toBeNull();
   });
 });

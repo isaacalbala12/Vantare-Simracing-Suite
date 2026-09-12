@@ -24,6 +24,7 @@ import { useLicense } from "../../lib/license";
 import { allowedUpdateChannels } from "../../lib/access-policy";
 import { buildSummary, PLAN_LABELS, PLAN_STATUS_LABELS } from "../../lib/plan";
 import { signOut } from "../../lib/supabase-auth";
+import { isClerkConfigured, signOutClerk } from "../../lib/clerk-auth";
 import {
   isPremiumUnlocked,
   refreshCurrentUserEntitlements,
@@ -313,6 +314,11 @@ function AccountSection() {
   }, []);
 
   const doSignOut = useCallback(async () => {
+    // Clerk primero: al cerrar su sesión el listener del bridge limpia el sid
+    // protegido. Un fallo de red no debe impedir el sign-out local de Supabase.
+    if (isClerkConfigured()) {
+      await signOutClerk().catch(() => {});
+    }
     const outcome = await signOut();
     if (!outcome.localCleared) {
       setProblem(outcome.localError ?? "");

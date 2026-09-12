@@ -32,8 +32,8 @@ import {
 } from '../telemetry-transport/source-status';
 
 // LicenseGate is the production blocker for the beta pública: no se permite
-// uso normal de la app sin sesión válida. Google OAuth es el acceso mínimo
-// recomendado y está promovido a botón principal en LoginScreen.
+// uso normal de la app sin sesión válida. LoginScreen monta el SignIn de
+// Clerk; AuthSessionBridge emite license:validate al detectar la sesión.
 function LicenseGate({ children }: { children: ReactNode }) {
   const { result, loading } = useLicense();
   // Una vez que el Hub se ha renderizado, no se desmonta jamas por un cambio de
@@ -48,15 +48,7 @@ function LicenseGate({ children }: { children: ReactNode }) {
   // Pantalla bloqueante que corresponde al estado actual, o null si se puede
   // usar la aplicacion.
   const blocking = loading ? null : !result || result.state === 'anonymous' ? (
-    <LoginScreen
-      onLoggedIn={(tokens) => {
-        if (!tokens?.accessToken) return;
-        Events.Emit('license:validate', {
-          sessionToken: tokens.accessToken,
-          refreshToken: tokens.refreshToken ?? '',
-        });
-      }}
-    />
+    <LoginScreen />
   ) : // Unconfigured is a backend configuration error (missing Supabase env
   // vars in the release build). It must never block the user behind a
   // paywall. Show an actionable message instead.

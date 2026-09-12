@@ -87,10 +87,11 @@ func (l AnalyzedLap) HasLabel(wanted LapLabel) bool {
 }
 
 type LapValidityDiagnostics struct {
-	ReconciledLaps    int `json:"reconciledLaps"`
-	LapEventRows      int `json:"lapEventRows"`
-	UsableLapTimeRows int `json:"usableLapTimeRows"`
-	LapDistResets     int `json:"lapDistResets"`
+	ReconciledLaps     int `json:"reconciledLaps"`
+	LapEventRows       int `json:"lapEventRows"`
+	DuplicateLapEvents int `json:"duplicateLapEvents,omitempty"`
+	UsableLapTimeRows  int `json:"usableLapTimeRows"`
+	LapDistResets      int `json:"lapDistResets"`
 }
 
 type LapValidityAnalysis struct {
@@ -130,7 +131,7 @@ func AnalyzeLapValidity(session HistoricalSession, pages []HistoricalPage) (LapV
 		return LapValidityAnalysis{}, err
 	}
 
-	lapEvents := readLapEvents(grouped["lap"])
+	lapEvents, duplicateLapEvents := readLapEvents(grouped["lap"])
 	resetIndices, lapDistFrequency, lapDistEnd := readLapDistResets(grouped["lap dist"])
 	continuousEnd := continuousCoverageEnd(
 		grouped["ambient temperature"],
@@ -156,6 +157,7 @@ func AnalyzeLapValidity(session HistoricalSession, pages []HistoricalPage) (LapV
 		Laps: []AnalyzedLap{},
 	}
 	result.Diagnostics.LapEventRows = len(lapEvents)
+	result.Diagnostics.DuplicateLapEvents = duplicateLapEvents
 	result.Diagnostics.LapDistResets = len(resetIndices)
 	if len(lapEvents) > 1 {
 		for index := 1; index < len(lapEvents); index++ {
@@ -231,7 +233,7 @@ func groupPagesBySource(session HistoricalSession, pages []HistoricalPage) (map[
 	return grouped, nil
 }
 
-func readLapEvents(pages []HistoricalPage) []observedLapEvent {
+func readLapEvents(pages []HistoricalPage) ([]observedLapEvent, int) {
 	var events []observedLapEvent
 	for _, page := range pages {
 		for _, sample := range page.Samples {
@@ -250,7 +252,18 @@ func readLapEvents(pages []HistoricalPage) []observedLapEvent {
 		}
 		return events[i].seconds < events[j].seconds
 	})
-	return events
+	// El mismo numero de vuelta dos veces es una reobservacion del evento
+	// (frontera de pagina o timestamp repetido), no una vuelta nueva.
+	deduped := events[:0]
+	duplicates := 0
+	for index, event := range events {
+		if index > 0 && event.lapNumber == events[index-1].lapNumber {
+			duplicates++
+			continue
+		}
+		deduped = append(deduped, event)
+	}
+	return deduped, duplicates
 }
 
 func readEvents(pages []HistoricalPage) []observedEvent {
@@ -545,8 +558,11 @@ func inferStintBoundaries(
 			presence: strategyprojection.PresenceValid, sampleSize: 2,
 		})
 	}
-	fuelByLap := continuousLapEndValues(fuelPages, resetIndices, lapDistFrequency)
+	fuelByLap, fuelPresent := continuousLapEndValues(fuelPages, resetIndices, lapDistFrequency)
 	for index := 1; index < len(fuelByLap); index++ {
+		if !fuelPresent[index-1] || !fuelPresent[index] {
+			continue
+		}
 		delta := fuelByLap[index] - fuelByLap[index-1]
 		if delta <= fuelJumpMinimumLitres {
 			continue
@@ -677,9 +693,13 @@ func appendStateExclusions(reasons []LapExclusionReason, lap AnalyzedLap, paceOu
 	return reasons
 }
 
-func continuousLapEndValues(pages []HistoricalPage, resets []int64, lapDistFrequency int) []float64 {
+// continuousLapEndValues devuelve un valor por frontera (cada reset y la ultima
+// muestra). present[i] marca si la frontera i tiene muestra numerica: sin ella el
+// resultado quedaria compactado y una frontera sin muestra desplazaria los
+// siguientes valores a vueltas que no les corresponden.
+func continuousLapEndValues(pages []HistoricalPage, resets []int64, lapDistFrequency int) ([]float64, []bool) {
 	if lapDistFrequency <= 0 {
-		return nil
+		return nil, nil
 	}
 	var samples []HistoricalSample
 	frequency := 0
@@ -691,12 +711,13 @@ func continuousLapEndValues(pages []HistoricalPage, resets []int64, lapDistFrequ
 		samples = append(samples, page.Samples...)
 	}
 	if frequency <= 0 || len(samples) == 0 {
-		return nil
+		return nil, nil
 	}
 	sort.Slice(samples, func(i, j int) bool { return samples[i].Index < samples[j].Index })
-	values := make([]float64, 0, len(resets)+1)
 	ends := append(append([]int64(nil), resets...), math.MaxInt64)
-	for _, lapDistEnd := range ends {
+	values := make([]float64, len(ends))
+	present := make([]bool, len(ends))
+	for index, lapDistEnd := range ends {
 		target := lapDistEnd
 		if target != math.MaxInt64 {
 			target = target * int64(frequency) / int64(lapDistFrequency)
@@ -709,10 +730,11 @@ func continuousLapEndValues(pages []HistoricalPage, resets []int64, lapDistFrequ
 			continue
 		}
 		if value, ok := firstNumber(samples[position].Values); ok {
-			values = append(values, value)
+			values[index] = value
+			present[index] = true
 		}
 	}
-	return values
+	return values, present
 }
 
 func addStintCandidate(candidates map[int]stintCandidate, candidate stintCandidate) {

@@ -127,7 +127,7 @@ func (importer *LMUImporter) Import(ctx context.Context, candidate telemetryanal
 	if err != nil {
 		return telemetryanalysis.AuthorizedSessionModel{}, fmt.Errorf("inspect LMU DuckDB session: %w", err)
 	}
-	pages, err := readAllPages(ctx, parser, session)
+	pages, err := readAllPages(ctx, parser.ReadPage, session)
 	if err != nil {
 		return telemetryanalysis.AuthorizedSessionModel{}, fmt.Errorf("read LMU DuckDB session pages: %w", err)
 	}
@@ -159,25 +159,50 @@ func enrichCatalogableModel(model telemetryanalysis.AuthorizedSessionModel, page
 	return model, nil
 }
 
-func readAllPages(ctx context.Context, parser *telemetryanalysis.LMUDuckDBParser, session telemetryanalysis.HistoricalSession) ([]telemetryanalysis.HistoricalPage, error) {
+type historicalPageReader func(context.Context, string, int64, int) (telemetryanalysis.HistoricalPage, error)
+
+func readAllPages(ctx context.Context, readPage historicalPageReader, session telemetryanalysis.HistoricalSession) ([]telemetryanalysis.HistoricalPage, error) {
 	pages := []telemetryanalysis.HistoricalPage{}
 	for _, channel := range requiredChannelsForSession(session) {
-		for start := int64(0); ; {
-			page, err := parser.ReadPage(ctx, channel.ID, start, telemetryanalysis.MaxLMUDuckDBPageRows)
-			if err != nil {
-				return nil, err
-			}
-			if len(page.Samples) == 0 {
-				break
-			}
-			pages = append(pages, page)
-			start += int64(len(page.Samples))
-			if len(page.Samples) < telemetryanalysis.MaxLMUDuckDBPageRows {
-				break
-			}
+		channelPages, err := readChannelPages(ctx, readPage, channel.ID)
+		if err != nil {
+			return nil, err
 		}
+		pages = append(pages, channelPages...)
 	}
 	return pages, nil
+}
+
+func readChannelPages(ctx context.Context, readPage historicalPageReader, channelID string) ([]telemetryanalysis.HistoricalPage, error) {
+	var pages []telemetryanalysis.HistoricalPage
+	for start := int64(0); ; {
+		page, err := readPage(ctx, channelID, start, telemetryanalysis.MaxLMUDuckDBPageRows)
+		if err != nil {
+			return nil, err
+		}
+		if len(page.Samples) == 0 {
+			return pages, nil
+		}
+		pages = append(pages, page)
+		if len(page.Samples) == telemetryanalysis.MaxLMUDuckDBPageRows {
+			start += int64(len(page.Samples))
+			continue
+		}
+		// Una pagina corta en un canal continuo puede ser fin de datos o un hueco
+		// de rowid que la ventana fija [start, start+limit) salto en silencio:
+		// se sondea la ventana siguiente antes de aceptar el fin.
+		if page.Sampling.Kind != telemetryanalysis.SamplingContinuousImplicitFrequency {
+			return pages, nil
+		}
+		probe, err := readPage(ctx, channelID, start+telemetryanalysis.MaxLMUDuckDBPageRows, telemetryanalysis.MaxLMUDuckDBPageRows)
+		if err != nil {
+			return nil, err
+		}
+		if len(probe.Samples) > 0 {
+			return nil, fmt.Errorf("%w: filas de origen no densas", telemetryanalysis.ErrHistoricalSource)
+		}
+		return pages, nil
+	}
 }
 
 func requiredChannelsForSession(session telemetryanalysis.HistoricalSession) []telemetryanalysis.HistoricalChannel {

@@ -2,7 +2,7 @@ import { act, cleanup, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisClient, AnalysisSaveRequest } from "../../strategy/analysis-client";
 import { parseCorrectionStoreResult } from "../../strategy/analysis-contract";
-import type { AnalysisClassificationCorrection, AnalysisFamilyCorrection, AnalysisLapPage, AnalysisMetadata, AnalysisPage, AnalysisStoreResult } from "../../strategy/analysis-contract";
+import type { AnalysisClassificationCorrection, AnalysisCombination, AnalysisFamilyCorrection, AnalysisLapPage, AnalysisMetadata, AnalysisPage, AnalysisStoreResult } from "../../strategy/analysis-contract";
 import type { RecordedSession } from "./strategy-recorded-session";
 import { useRecordedCorrections } from "./use-recorded-corrections";
 afterEach(cleanup);
@@ -573,6 +573,193 @@ describe("recorded inspection save without auto projection (T12g3e2)", () => {
     expect(f.result.current.editor?.saved?.revision.revisionId).toBe(b);
     expect(f.client.project).not.toHaveBeenCalled();
     expect(f.result.current.error).toBe("");
+    expect(f.onAdopt).not.toHaveBeenCalled();
+  });
+});
+
+const identityOriginal: AnalysisCombination = { id: `lmu:${"1".repeat(64)}`, simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Oreca 07", carClass: "LMP2" };
+const identityTarget = (changes: Partial<AnalysisCombination>, id = `lmu:${"2".repeat(64)}`): AnalysisCombination => ({ ...identityOriginal, ...changes, id });
+function identityMetadata(): AnalysisMetadata[] {
+  return [
+    { key: "SessionType", present: true, quality: "valid", sensitive: false, value: "practice" },
+    { key: "WeatherConditions", present: true, quality: "valid", sensitive: false, value: "Dry" },
+    { key: "TrackName", present: true, quality: "valid", sensitive: false, value: "Imola" },
+    { key: "TrackLayout", present: true, quality: "valid", sensitive: false, value: "GP" },
+    { key: "CarName", present: true, quality: "valid", sensitive: false, value: "Oreca 07" },
+    { key: "CarClass", present: true, quality: "valid", sensitive: false, value: "LMP2" },
+  ];
+}
+function identitySession(session: RecordedSession, metadata: AnalysisMetadata[] = identityMetadata()): RecordedSession {
+  return { ...sessionWithMetadata(session, metadata), combinationId: identityOriginal.id, combination: identityOriginal };
+}
+// A coherent v4 save: the same echo as savedAfter plus the resolved canonical
+// target; every identity request keeps the shared reference.
+function savedIdentity(base: ReturnType<typeof fixture>["session"]["base"], request: AnalysisSaveRequest, revisionId: string, target: AnalysisCombination): AnalysisStoreResult {
+  const stored = savedAfter(base, request, revisionId);
+  return { ...stored, revision: { ...stored.revision, snapshot: { ...stored.revision.snapshot, contractVersion: "analysis.mixed-snapshot.v4" as const, canonicalCombination: target } } };
+}
+
+describe("recorded identity proposal", () => {
+  it("proposes one or several fields as a single atomic set", async () => {
+    const f = fixture();
+    const session = identitySession(f.session);
+    await act(() => f.result.current.load(session));
+    const target = identityTarget({ trackName: "Monza" });
+    act(() => expect(f.result.current.editIdentity(target, "Reviewed identity")).toBe(true));
+    expect(f.result.current.editor?.classifications).toEqual([{ base: f.session.base, field: "TrackName", expectedOriginal: "Imola", replacement: "Monza", reason: "Reviewed identity", provenance: "manual", canonicalCombinationId: target.id }]);
+    expect(f.result.current.editor?.dirty).toBe(true);
+    expect(f.result.current.editor?.projected).toBeUndefined();
+    const wider = identityTarget({ trackName: "Monza", carName: "Ligier JS P320", carClass: "LMP3" });
+    act(() => expect(f.result.current.editIdentity(wider, "Wider change")).toBe(true));
+    expect(f.result.current.editor?.classifications?.map(item => item.field)).toEqual(["TrackName", "CarName", "CarClass"]);
+    expect(f.result.current.editor?.classifications?.map(item => item.expectedOriginal)).toEqual(["Imola", "Oreca 07", "LMP2"]);
+    expect(f.result.current.editor?.classifications?.every(item => item.canonicalCombinationId === wider.id)).toBe(true);
+  });
+  it("preserves scalars, families and legacy, and retires identity at the original combination", async () => {
+    const f = fixture(), lap = lapFixture(f);
+    const session = identitySession(f.session);
+    await act(() => f.result.current.load(session));
+    await act(() => f.result.current.page("fuel", 0));
+    act(() => f.result.current.edit(4, "value", { kind: "number", number: 0 }, "Checked sample"));
+    await act(() => f.result.current.laps());
+    act(() => expect(f.result.current.editFamily(lap.target, lap.family, false, "Reviewed pace")).toBe(true));
+    act(() => expect(f.result.current.editClassification("SessionType", "race", "Stewards bulletin")).toBe(true));
+    act(() => expect(f.result.current.editIdentity(identityTarget({ trackName: "Monza" }), "Reviewed identity")).toBe(true));
+    expect(f.result.current.editor?.classifications?.map(item => item.field)).toEqual(["SessionType", "TrackName"]);
+    expect(f.result.current.editor?.corrections).toHaveLength(1);
+    expect(f.result.current.editor?.familyUses).toEqual([lap.correction]);
+    act(() => expect(f.result.current.editIdentity(identityOriginal, "Back to original")).toBe(true));
+    expect(f.result.current.editor?.classifications?.map(item => item.field)).toEqual(["SessionType"]);
+    expect(f.result.current.editor?.corrections).toHaveLength(1);
+    expect(f.result.current.editor?.familyUses).toEqual([lap.correction]);
+    expect(f.result.current.editor?.dirty).toBe(true);
+  });
+  it("keeps the whole editor and exposes the existing cause on failure", async () => {
+    const f = fixture();
+    const session = identitySession(f.session);
+    await act(() => f.result.current.load(session));
+    act(() => expect(f.result.current.editClassification("SessionType", "race", "Stewards bulletin")).toBe(true));
+    const before = f.result.current.editor!;
+    const target = identityTarget({ trackName: "Monza" });
+    act(() => expect(f.result.current.editIdentity({ ...target, simId: "acc" }, "ok")).toBe(false));
+    expect(f.result.current.error).toContain("snapshot.canonicalCombination");
+    expect(f.result.current.editor).toBe(before);
+    act(() => expect(f.result.current.editIdentity(target, "  ")).toBe(false));
+    expect(f.result.current.error).toContain("classification.reason");
+    expect(f.result.current.editor).toBe(before);
+    act(() => expect(f.result.current.editIdentity(target, "ok")).toBe(true));
+    expect(f.result.current.editor?.classifications?.map(item => item.field)).toEqual(["SessionType", "TrackName"]);
+    const noCombination = fixture();
+    await act(() => noCombination.result.current.load(noCombination.session));
+    act(() => expect(noCombination.result.current.editIdentity(target, "ok")).toBe(false));
+    expect(noCombination.result.current.error).toBe("recorded_combination_unavailable");
+    expect(noCombination.result.current.editor?.classifications).toEqual([]);
+    const sparse = fixture();
+    await act(() => sparse.result.current.load(identitySession(sparse.session, identityMetadata().filter(item => item.key !== "TrackName"))));
+    act(() => expect(sparse.result.current.editIdentity(target, "ok")).toBe(false));
+    expect(sparse.result.current.error).toBe("recorded_target_unavailable");
+  });
+  it("shares the joint quota and the external blocking gate", async () => {
+    const f = fixture(), lap = lapFixture(f);
+    const decision = classDecision(f.session.base, "SessionType", "practice", "race");
+    const preparedFamily = { baseId: c, correctionId: b, request: lap.correction, original: lap.correction.expected, corrected: { ...lap.correction.expected, included: false, exclusionReasons: ["manual_exclusion"] } };
+    const full: AnalysisStoreResult = { headId: b, revision: { revisionId: b, parentRevisionId: a, command: { expectedRevision: a, commandId: "bulk", reason: "Reviewed", localAuthorId: "local" }, commandDigest: c, createdAt: "2026-09-10T00:00:00Z", snapshot: { contractVersion: "analysis.mixed-snapshot.v3", base: f.session.base, snapshotId: b, corrections: scalarPreparations(f.session.base, 254), familyUses: [preparedFamily], classifications: [preparedClass(decision, "race")] } } };
+    expect(parseCorrectionStoreResult(full)).toBe(full);
+    f.client.load.mockResolvedValue(full);
+    await act(() => f.result.current.load(identitySession(f.session), b));
+    const before = f.result.current.editor!;
+    act(() => expect(f.result.current.editIdentity(identityTarget({ trackName: "Monza" }), "ok")).toBe(false));
+    expect(f.result.current.error).toBe("recorded_correction_limit");
+    expect(f.result.current.editor).toBe(before);
+    const other = fixture();
+    let blocked = false;
+    const hook = renderHook(() => useRecordedCorrections(other.client as unknown as AnalysisClient, other.onAdopt, () => blocked));
+    await act(() => hook.result.current.load(identitySession(other.session)));
+    blocked = true;
+    act(() => expect(hook.result.current.editIdentity(identityTarget({ trackName: "Monza" }), "ok")).toBe(false));
+    expect(hook.result.current.editor?.classifications).toEqual([]);
+    expect(hook.result.current.error).toBe("");
+  });
+  it("discards an identity proposal back to the saved v4 set", async () => {
+    const f = fixture();
+    const session = identitySession(f.session);
+    const savedTarget = identityTarget({ trackName: "Monza" }, `lmu:${"3".repeat(64)}`);
+    const savedDecision: AnalysisClassificationCorrection = { base: f.session.base, field: "TrackName", expectedOriginal: "Imola", replacement: "Monza", reason: "Saved review", provenance: "manual", canonicalCombinationId: savedTarget.id };
+    const currentV4: AnalysisStoreResult = { headId: a, revision: { revisionId: a, parentRevisionId: c, command: { expectedRevision: c, commandId: "identity", reason: "Reviewed", localAuthorId: "local" }, commandDigest: c, createdAt: "2026-09-10T00:00:00Z", snapshot: { contractVersion: "analysis.mixed-snapshot.v4", base: f.session.base, snapshotId: a, corrections: [], familyUses: [], classifications: [preparedClass(savedDecision, "Monza")], canonicalCombination: savedTarget } } };
+    expect(parseCorrectionStoreResult(currentV4)).toBe(currentV4);
+    f.client.load.mockResolvedValue(currentV4);
+    await act(() => f.result.current.load(session));
+    expect(f.result.current.editor?.classifications).toEqual([savedDecision]);
+    const target = identityTarget({ carClass: "LMP3" }, `lmu:${"4".repeat(64)}`);
+    act(() => expect(f.result.current.editIdentity(target, "Different class")).toBe(true));
+    expect(f.result.current.editor?.classifications?.map(item => item.field)).toEqual(["CarClass"]);
+    act(() => f.result.current.discard());
+    expect(f.result.current.editor?.classifications).toEqual([savedDecision]);
+    expect(f.result.current.editor?.dirty).toBe(false);
+  });
+  it("saves with one shared reference and retries the frozen uncertain command identically", async () => {
+    const f = fixture();
+    const session = identitySession(f.session);
+    const target = identityTarget({ trackName: "Monza", carName: "Ligier JS P320" });
+    // The stored identity changes the combination: an honest Project reports
+    // the corrected target, which no longer matches the original selection.
+    f.client.project.mockResolvedValue({ combinationId: target.id, sourceRevisions: [{ ...session.revision, revisionId: b, snapshotId: b }] });
+    let fail!: (error: unknown) => void;
+    f.client.save.mockImplementationOnce(() => new Promise((_resolve, reject) => { fail = reject; }));
+    f.client.save.mockImplementation(async (request: AnalysisSaveRequest) => {
+      const response = savedIdentity(f.session.base, request, b, target);
+      expect(parseCorrectionStoreResult(response)).toBe(response);
+      return response;
+    });
+    await act(() => f.result.current.load(session));
+    act(() => expect(f.result.current.editIdentity(target, "Reviewed identity")).toBe(true));
+    let pendingSave!: Promise<void>;
+    act(() => { pendingSave = f.result.current.save("Checked"); });
+    act(() => expect(f.result.current.editIdentity(identityOriginal, "during save")).toBe(false));
+    await act(async () => { fail(new Error("confirmation lost")); await pendingSave; });
+    const request = f.result.current.editor!.request!;
+    expect(request.classifications?.map(item => item.canonicalCombinationId)).toEqual([target.id, target.id]);
+    const frozen = structuredClone(request);
+    act(() => expect(f.result.current.editIdentity(identityOriginal, "still frozen")).toBe(false));
+    act(() => expect(f.result.current.discard()).toBe(false));
+    expect(f.result.current.editor?.request).toEqual(frozen);
+    await act(() => f.result.current.retrySave());
+    expect(f.client.save).toHaveBeenCalledTimes(2);
+    expect(f.client.save.mock.calls[0][0]).toBe(f.client.save.mock.calls[1][0]);
+    expect(f.result.current.editor?.request).toBeUndefined();
+    expect(f.result.current.editor?.saved?.revision.revisionId).toBe(b);
+    expect(f.result.current.editor?.current.revision.snapshot.contractVersion).toBe("analysis.mixed-snapshot.v4");
+    expect(f.result.current.editor?.current.revision.snapshot.canonicalCombination?.id).toBe(target.id);
+    expect(f.result.current.editor?.classifications?.map(item => item.canonicalCombinationId)).toEqual([target.id, target.id]);
+    expect(f.result.current.editor?.dirty).toBe(false);
+    // The saved v4 revision is durable, but its changed combination makes the
+    // open session's plan obsolete: no silent projection, cause exposed.
+    expect(f.result.current.editor?.projected).toBeUndefined();
+    expect(f.result.current.error).toBe("recorded_revision_mismatch");
+    expect(f.onAdopt).not.toHaveBeenCalled();
+  });
+  it("resolves a found v4 command without replaying the save", async () => {
+    const f = fixture();
+    const session = identitySession(f.session);
+    const target = identityTarget({ trackName: "Monza" });
+    f.client.project.mockResolvedValue({ combinationId: target.id, sourceRevisions: [{ ...session.revision, revisionId: b, snapshotId: b }] });
+    f.client.save.mockRejectedValueOnce(new Error("confirmation lost"));
+    await act(() => f.result.current.load(session));
+    act(() => expect(f.result.current.editIdentity(target, "Reviewed identity")).toBe(true));
+    await act(() => f.result.current.save("Checked"));
+    const request = f.result.current.editor!.request!;
+    const stored = savedIdentity(f.session.base, request, b, target);
+    expect(parseCorrectionStoreResult(stored)).toBe(stored);
+    f.client.resolve.mockResolvedValue({ found: true, headId: c, revision: stored.revision });
+    await act(() => f.result.current.resolveSave());
+    expect(f.client.save).toHaveBeenCalledTimes(1);
+    expect(f.client.resolve).toHaveBeenCalledWith(request, expect.any(AbortSignal));
+    expect(f.result.current.editor?.request).toBeUndefined();
+    expect(f.result.current.editor?.current.headId).toBe(c);
+    expect(f.result.current.editor?.current.revision.snapshot.contractVersion).toBe("analysis.mixed-snapshot.v4");
+    expect(f.result.current.editor?.classifications?.[0]?.canonicalCombinationId).toBe(target.id);
+    expect(f.result.current.editor?.projected).toBeUndefined();
+    expect(f.result.current.error).toBe("recorded_revision_mismatch");
     expect(f.onAdopt).not.toHaveBeenCalled();
   });
 });

@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { AnalysisClient, AnalysisSaveRequest } from "../../strategy/analysis-client";
-import type { AnalysisClassificationCorrection, AnalysisClassificationField, AnalysisCorrectableFamily, AnalysisCorrection, AnalysisFamilyCorrection, AnalysisLapPage, AnalysisLapTarget, AnalysisPage, AnalysisScalar, AnalysisStoreResult, AnalysisTarget } from "../../strategy/analysis-contract";
+import type { AnalysisClassificationCorrection, AnalysisClassificationField, AnalysisCombination, AnalysisCorrectableFamily, AnalysisCorrection, AnalysisFamilyCorrection, AnalysisLapPage, AnalysisLapTarget, AnalysisPage, AnalysisScalar, AnalysisStoreResult, AnalysisTarget } from "../../strategy/analysis-contract";
 import type { RecordedSession } from "./strategy-recorded-session";
-import { loadRecordedCorrection, loadRecordedLapPage, projectRecordedCorrection, recordedClassificationCorrection, recordedFamilyCorrection, removeRecordedClassificationCorrection, removeRecordedFamilyCorrection, replaceRecordedClassificationCorrection, replaceRecordedFamilyCorrection, recordedCorrectionSave, recordedSampleCorrection, replaceRecordedCorrection } from "./strategy-recorded-corrections";
+import { loadRecordedCorrection, loadRecordedLapPage, projectRecordedCorrection, recordedClassificationCorrection, recordedFamilyCorrection, removeRecordedClassificationCorrection, removeRecordedFamilyCorrection, replaceRecordedClassificationCorrection, replaceRecordedFamilyCorrection, replaceRecordedIdentityClassifications, recordedCorrectionSave, recordedSampleCorrection, replaceRecordedCorrection } from "./strategy-recorded-corrections";
 
 type Editor = Readonly<{
   session: RecordedSession;
@@ -107,6 +107,11 @@ export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session
     }),
     removeClassification: (field: AnalysisClassificationField) => change(current => ({ ...current,
       classifications: removeRecordedClassificationCorrection(current.classifications, field), dirty: true, projected: undefined })),
+    // One atomic identity proposal: the whole four-field set is replaced at
+    // once against the catalog-supplied combination, preserving legacy
+    // decisions. No catalog lookup, ID/hash work, save or projection here.
+    editIdentity: (target: AnalysisCombination, reason: string) => change(current => ({ ...current,
+      classifications: replaceRecordedIdentityClassifications(current.classifications, current.session, current.current, target, reason), dirty: true, projected: undefined })),
     editFamily: (target: AnalysisLapTarget, family: AnalysisCorrectableFamily, included: boolean, reason: string) => change(current => {
       if (!current.lapPage) throw new Error("recorded_target_unavailable");
       const correction = recordedFamilyCorrection(current.session, current.current, current.lapPage, target, family, included, reason);

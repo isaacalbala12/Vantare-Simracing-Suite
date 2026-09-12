@@ -1205,3 +1205,31 @@ contrato/cliente/correcciones, typecheck, lint, i18n, suite frontend y build.
 Sin Go nuevo, GUI/app/LMU ni build de escritorio. Logs nuevos
 `isa1104-t12j8b-*` e informe local completo. El selector visual que consume
 `sessionCombinations` y su controlador quedan para J8c.
+
+## Continuación cerrada por root — J8c1
+
+Después de aceptar J8b, conectar su propuesta atómica al propietario de estado
+sin montar todavía controles visuales. Dos paths exclusivos:
+
+1. `frontend/src/hub/strategy-orbit/use-recorded-corrections.ts`
+2. `frontend/src/hub/strategy-orbit/use-recorded-corrections.test.tsx`
+
+El controlador añade una única operación de identidad que recibe un
+`AnalysisCombination` completo procedente del catálogo y un motivo. Debe llamar
+`replaceRecordedIdentityClassifications` sobre el conjunto activo y conservar
+escalares, familias y las dos clasificaciones legacy. El cambio deja `dirty`,
+retira cualquier proyección y comparte los bloqueos actuales: operación en
+curso, formulario externo bloqueante o comando incierto no permiten editar.
+Un fallo de target, base, metadata, motivo o cuota conserva todo el editor y
+expone la causa existente. No calcular IDs, buscar catálogo, guardar, proyectar
+ni adoptar dentro de esta operación.
+
+Tests: uno/varios campos como una sola propuesta, vuelta a combinación original,
+legacy/escalares/familias preservados, fallo sin mutación, discard desde snapshot
+v4, save con referencia común y congelación/retry/Resolve de comando incierto.
+Reutilizar fixtures contractuales del propio test; sin datos sintéticos usados
+como prueba física. Focal del hook y helper, typecheck, lint, i18n, suite frontend
+completa y build. Logs nuevos `isa1104-t12j8c1-*`, nunca sobrescribir, e informe
+local final. Sin React visual nuevo, CSS, traducciones, Go, app, GUI, Wails, LMU,
+push, PR, CI remota o promoción. J8c2 montará el selector usando el catálogo ya
+cargado por `StrategyRecordedPage`/`StrategyRecordedWorkflow`.

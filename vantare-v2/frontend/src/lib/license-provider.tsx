@@ -6,6 +6,7 @@ import {
 } from "react";
 import type { ReactNode } from "react";
 import { Events } from "@wailsio/runtime";
+import { subscribeLicenseChanged, subscribeLicenseError } from "./license-events";
 import type { LicenseResult } from "./license-types";
 import { licenseDebug } from "./license-debug";
 import { LicenseContext, type LicenseContextValue } from "./license-context";
@@ -74,12 +75,10 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
     // un usuario realmente sin sesion si debe ver LoginScreen.
     let settled = false;
 
-    const unsubChanged = Events.On(
-      "license:changed",
-      (event: unknown) => {
+    const unsubChanged = subscribeLicenseChanged((raw: unknown) => {
         if (cancelled) return;
         const data = normaliseLicense(
-          (event as { data?: LicenseResult | null })?.data ?? null,
+          (raw as LicenseResult | null) ?? null,
         );
         licenseDebug("LicenseProvider", "license:changed", {
           state: data?.state ?? "null",
@@ -109,14 +108,10 @@ export function LicenseProvider({ children }: { children: ReactNode }) {
         }
         settled = true;
         setLoading(false);
-      },
-    );
-    const unsubError = Events.On(
-      "license:error",
-      () => {
-        if (!cancelled) setLoading(false);
-      },
-    );
+    });
+    const unsubError = subscribeLicenseError(() => {
+      if (!cancelled) setLoading(false);
+    });
 
     // Cache primero: Go responde con el estado guardado, verificado offline y
     // atado a este dispositivo, sin tocar la red. El Hub puede pintar de

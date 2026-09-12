@@ -68,7 +68,7 @@ export function ProfilePreview({ profile, previewDocument }: ProfilePreviewProps
     return (
       <div
         data-testid="profile-preview"
-        className="flex aspect-video items-center justify-center rounded-lg border border-white/10 bg-black/45 text-xs text-vantare-textMuted"
+        className="flex aspect-video items-center justify-center rounded-orbit border border-orbit-line bg-orbit-surface-1 text-xs text-orbit-ink-3"
       >
         Preview no disponible
       </div>
@@ -79,7 +79,7 @@ export function ProfilePreview({ profile, previewDocument }: ProfilePreviewProps
     <div
       ref={containerRef}
       data-testid="profile-preview"
-      className="relative overflow-hidden rounded-lg border border-white/10 bg-black/45"
+      className="relative overflow-hidden rounded-orbit border border-orbit-line bg-orbit-surface-1"
       style={{ aspectRatio: `${LOGICAL_WIDTH} / ${LOGICAL_HEIGHT}` }}
     >
       <div

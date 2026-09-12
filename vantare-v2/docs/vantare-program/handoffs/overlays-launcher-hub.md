@@ -2247,3 +2247,44 @@ Evidencia Task 4 y cierre acumulado:
   frontend 441/441 archivos y 3.418/3.418 pruebas, Go completo, build y lint
   PASS; revisión adversarial de la rama ISA-968 APPROVE. S3 físico sigue
   pendiente sobre el nuevo HEAD.
+
+## Optimización UI Orbit — estado 2026-09-08
+
+Serie de issues de rendimiento tras la auditoría ISA-1111. Entregadas en rama
+aislada a `nightly` (pendiente review/merge):
+
+- #1153 useNow compartido (NextRaceCard/SideRaces), #1154 suscripción muerta
+  StrategyOrbitPage, #1156 canal granular launcher profiles, #1157 contexto
+  overlay estable + memo frames, #1158 i18n lazy (~102KB gzip), #1161 higiene
+  de desmontaje/timers/fetch.
+- #1164 (ISA-1140): subset Cascadia Code 379KB→~74KB woff2, TTF conservado
+  como fuente de regeneración.
+- #1165 (ISA-1150): la shell honra `performance:level` — `noBlur`/`flat`
+  apagan backdrop-filter y (flat) animaciones infinitas y sombras grandes
+  vía `:root[data-orbit-perf-effects]`, sin re-render.
+- #1168 (ISA-1147): fanout Wails por dominio fase 1 — `settings` (5→1
+  suscripción, store con canales granulares y dedup por valor en
+  notifications; ChainRunnerProvider dejaba de repintar el Hub entero por
+  evento) y `license` (4→1). Resto de dominios pendiente si aporta.
+- #1163 (ISA-1149): Studio con store externo + `useSyncExternalStore`.
+  B1: provider 506→~170 líneas, shim `useStudioDocument()` intacto. B2: los
+  10 consumidores de producción migrados a selectores granulares; el shim
+  queda para tests/consumidores futuros. 640 tests del área Studio verdes.
+- Descartadas tras verificación manual: #1134 manualChunks, #1135 Supabase
+  en path crítico (correcto), #1137 greeting (trivial), #1138 barrels
+  (tree-shaking ya funcionaba), #1139 (ya resuelta por #1122). Hallazgos Go
+  revisados: la mayoría eran diseño deliberado; los reales quedan en #1160.
+
+### Continuación (mismo día)
+
+- #1168 ampliada con fase 2: fanout del dominio updater (14 suscripciones
+  directas → máx. 9). El inventario del resto de Events.On confirmó que no
+  hay más dominios con duplicación que valga la pena — los de 2 sitios son
+  marginales.
+- #1170 (ISA-1160): los dos únicos hallazgos Go verificados — mapper sin
+  slice por vehículo (era stack-alloc; ahorro real es el trabajo por
+  vehículo, no GC) y AllSections alias del array de paquete (sí escapaba
+  a heap por tick; benchmark -1 alloc/op).
+- Review SWE-2 de #1163 encontró un bug preexistente: error de carga de
+  Studio inalcanzable tras spinner (guard !document ganaba a lastError).
+  Corregido con test de regresión.

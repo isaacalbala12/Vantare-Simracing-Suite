@@ -58,23 +58,25 @@ func (m *Mapper) Payload(
 		}
 		sample := RecordingVehicleV1{
 			SessionSlot: slot,
-			Quality:     QualityUnknown,
+			// Sin campo presente la calidad es Missing, como fijaba
+			// worstQuality sobre un slice vacio.
+			Quality: QualityMissing,
 		}
-		qualities := make([]Quality, 0, 5)
+		worst := QualityCurrent
 		if value, ok := vehicle.SpeedMPS.Value(); ok {
 			sample.SpeedMS = value
 			sample.Presence |= PresenceSpeed
-			qualities = append(qualities, mapQuality(vehicle.SpeedMPS.Freshness()))
+			worst = worstQuality(worst, mapQuality(vehicle.SpeedMPS.Freshness()))
 		}
 		if value, ok := vehicle.Throttle.Value(); ok {
 			sample.Throttle = float32(value)
 			sample.Presence |= PresenceThrottle
-			qualities = append(qualities, mapQuality(vehicle.Throttle.Freshness()))
+			worst = worstQuality(worst, mapQuality(vehicle.Throttle.Freshness()))
 		}
 		if value, ok := vehicle.Brake.Value(); ok {
 			sample.Brake = float32(value)
 			sample.Presence |= PresenceBrake
-			qualities = append(qualities, mapQuality(vehicle.Brake.Freshness()))
+			worst = worstQuality(worst, mapQuality(vehicle.Brake.Freshness()))
 		}
 		if value, ok := vehicle.Gear.Value(); ok {
 			if value < math.MinInt16 || value > math.MaxInt16 {
@@ -82,14 +84,16 @@ func (m *Mapper) Payload(
 			}
 			sample.Gear = int16(value)
 			sample.Presence |= PresenceGear
-			qualities = append(qualities, mapQuality(vehicle.Gear.Freshness()))
+			worst = worstQuality(worst, mapQuality(vehicle.Gear.Freshness()))
 		}
 		if value, ok := vehicle.InPit.Value(); ok {
 			sample.InPit = bool(value)
 			sample.Presence |= PresencePit
-			qualities = append(qualities, mapQuality(vehicle.InPit.Freshness()))
+			worst = worstQuality(worst, mapQuality(vehicle.InPit.Freshness()))
 		}
-		sample.Quality = worstQuality(qualities)
+		if sample.Presence != 0 {
+			sample.Quality = worst
+		}
 		payload.Vehicles = append(payload.Vehicles, sample)
 	}
 	if err := payload.Validate(); err != nil {
@@ -197,15 +201,13 @@ func mapQuality(freshness schema.Freshness) Quality {
 	}
 }
 
-func worstQuality(values []Quality) Quality {
-	if len(values) == 0 {
-		return QualityMissing
-	}
-	worst := QualityCurrent
-	for _, value := range values {
-		if qualitySeverity(value) > qualitySeverity(worst) {
-			worst = value
-		}
+// worstQuality folds one observed field quality into the running worst;
+// qualitySeverity defines the order (current < stale < missing < invalid <
+// unknown). The caller seeds the fold with QualityCurrent and keeps
+// QualityMissing when no field was present.
+func worstQuality(worst, next Quality) Quality {
+	if qualitySeverity(next) > qualitySeverity(worst) {
+		return next
 	}
 	return worst
 }

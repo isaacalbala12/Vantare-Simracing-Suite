@@ -34,6 +34,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/authsession"
 	"github.com/vantare/overlays/v2/internal/calendar"
 	"github.com/vantare/overlays/v2/internal/calendar/discordbot"
+	"github.com/vantare/overlays/v2/internal/clerkproxy"
 	engineeraudio "github.com/vantare/overlays/v2/internal/engineer/audio"
 	"github.com/vantare/overlays/v2/internal/engineer/commands"
 	"github.com/vantare/overlays/v2/internal/engineer/ptt"
@@ -1368,10 +1369,19 @@ func main() {
 	stopCPUProfile := startCPUProfile()
 	defer stopCPUProfile()
 
+	// Clerk FAPI traffic goes through the same-origin /clerk prefix because
+	// WebView POSTs always carry Origin and FAPI rejects Origin+Authorization
+	// together; the proxy hop is what lets the embedded SignIn use Clerk's
+	// native channel. The host is decoded from the same publishable key the
+	// frontend uses; unset, the middleware passes everything through inert.
+	clerkFapiHost := clerkproxy.FapiHost(os.Getenv("VANTARE_CLERK_PUBLISHABLE_KEY"))
 	appOptions := application.Options{
 		Name: "Vantare Simracing Suite",
 		Assets: application.AssetOptions{
-			Handler: application.BundledAssetFileServer(distFS),
+			Handler: clerkproxy.NewHandler(
+				application.BundledAssetFileServer(distFS),
+				clerkFapiHost,
+			),
 		},
 	}
 	// Gancho de diagnostico: `VANTARE_WEBVIEW_DEBUG_PORT=9222` abre el protocolo

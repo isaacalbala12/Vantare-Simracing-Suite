@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-12T02:13:16Z",
+  "generatedAt": "2026-09-12T22:52:18Z",
   "digest": {
-    "lastCommit": "9651733f5b957c80fdb8b1245ce28c79b9ce7b76"
+    "lastCommit": "119d10f21338cc8c48820c3d808929e461bd8486"
   },
   "phases": [
     {
@@ -75,7 +75,7 @@
         "pt": "v0.1.x",
         "it": "v0.1.x"
       },
-      "progress": 78,
+      "progress": 75,
       "summary": {
         "es": "Command Orbit como única shell, Overlay Studio V3, telemetría LMU en vivo, licencias con credencial offline y Launcher con cadenas de lanzamiento.",
         "en": "Command Orbit as the only shell, Overlay Studio V3, live LMU telemetry, offline-credential licensing and a Launcher with launch chains.",
@@ -326,7 +326,7 @@
         "pt": "Licenças e conta",
         "it": "Licenze e account"
       },
-      "progress": 60,
+      "progress": 50,
       "status": "in-progress",
       "projects": [
         "billing"
@@ -1451,6 +1451,11 @@
           "kind": "docs",
           "scope": "roadmap",
           "text": "Etapas hacia beta pública, versiones y lanzamiento"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Store externo con selectores bajo el contexto documento (ISA-1149 B1)"
         }
       ]
     },

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { dark } from "@clerk/ui/themes";
 import { useI18n } from "../../i18n/I18nProvider";
-import { isClerkConfigured, loadClerk } from "../../lib/clerk-auth";
+import { CLERK_SIGNIN_PATH, isClerkConfigured, loadClerk } from "../../lib/clerk-auth";
 
 type LoadState = "loading" | "ready" | "error";
 
@@ -27,10 +27,30 @@ export function LoginScreen() {
         const node = hostRef.current;
         if (cancelled || !node) return;
         clerk.mountSignIn(node, {
-          routing: "hash",
+          // Path routing pinned under /sign-in: the app owns `location.hash`
+          // (`#/hub`), so hash routing would redirect to the hosted Account
+          // Portal. clerkRouterNavigate keeps every step inside /sign-in
+          // without touching the hash.
+          routing: "path",
+          path: CLERK_SIGNIN_PATH,
+          fallbackRedirectUrl: "/",
+          // Combined sign-in-or-up keeps the "Sign up" link inside the
+          // component instead of navigating the WebView to the hosted portal.
+          withSignUp: true,
           appearance: { theme: dark },
         });
-        unmountRef.current = () => clerk.unmountSignIn(node);
+        unmountRef.current = () => {
+          clerk.unmountSignIn(node);
+          // Restore the pathname Clerk's path router moved under /sign-in;
+          // the app only reads location.hash, so this is cosmetic.
+          if (window.location.pathname.startsWith(CLERK_SIGNIN_PATH)) {
+            window.history.replaceState(
+              null,
+              "",
+              "/" + window.location.search + window.location.hash,
+            );
+          }
+        };
         setLoadState("ready");
       })
       .catch(() => {

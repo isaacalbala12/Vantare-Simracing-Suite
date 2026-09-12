@@ -1,5 +1,5 @@
 /// <reference types="vitest/config" />
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath } from "node:url";
@@ -14,6 +14,19 @@ const topbarMockPath = path.resolve(
   "../src/lib/wails-runtime-topbar-mock.ts",
 );
 
+// The Clerk publishable key encodes the instance's FAPI host as base64
+// (trailing `$`). The dev proxy decodes it so `/clerk` forwards to the right
+// instance without duplicating the host in another variable.
+function clerkFapiHost(publishableKey: string): string {
+  const encoded = publishableKey.replace(/^pk_(test|live)_/, "");
+  if (!encoded) return "";
+  try {
+    return Buffer.from(encoded, "base64").toString("utf8").replace(/\$$/, "");
+  } catch {
+    return "";
+  }
+}
+
 export default defineConfig(({ mode }) => {
   const runtimeMock = process.env.VITE_RUNTIME_MOCK;
   const useTopbarMock = runtimeMock === "topbar";
@@ -25,9 +38,36 @@ export default defineConfig(({ mode }) => {
   if (!isProduction && (useTopbarMock || useWailsMock)) {
     alias["@wailsio/runtime"] = useTopbarMock ? topbarMockPath : wailsMockPath;
   }
+  // clerk-js runs its native channel through the same-origin /clerk prefix
+  // (proxyUrl in clerk-auth.ts). The WebView always sends Origin on POSTs and
+  // FAPI rejects Origin+Authorization together, so the hop through this proxy
+  // is what lets the client JWT travel as a header — the forwarded request
+  // carries no Origin.
+  const fapiHost = clerkFapiHost(
+    loadEnv(mode, __dirname).VITE_CLERK_PUBLISHABLE_KEY ?? "",
+  );
   return {
     plugins: [react(), tailwindcss()],
-    server: { strictPort: true, port: 5173 },
+    server: {
+      strictPort: true,
+      port: 5173,
+      proxy: fapiHost
+        ? {
+            "/clerk": {
+              target: `https://${fapiHost}`,
+              changeOrigin: true,
+              rewrite: (urlPath) => urlPath.replace(/^\/clerk/, ""),
+              configure: (proxy) => {
+                proxy.on("proxyReq", (proxyReq) => {
+                  proxyReq.removeHeader("origin");
+                  proxyReq.removeHeader("referer");
+                  proxyReq.removeHeader("cookie");
+                });
+              },
+            },
+          }
+        : undefined,
+    },
     build: {
       outDir: "dist",
       emptyOutDir: true,

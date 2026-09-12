@@ -845,10 +845,12 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
 1. Revisar el PR draft #913 de ISA-909 y no hacer merge ni apply remoto sin
    autorización separada.
-2. ISA-915 queda implementada en rama: verificar SignIn en Wails real con clave
-   de desarrollo, push y PR draft. ISA-911 sigue pendiente para lifecycle al
-   borrar usuarios, Billing, Testing Center y policies `auth.uid()` — bloquea la
-   retirada de Supabase Auth (ISA-1177), no la UI ya cortada.
+2. ISA-915 verificada E2E en navegador contra instancia dev real (SignIn
+   embebido, OTP de dispositivo, `license:validate` con JWT): queda la prueba
+   en Wails empaquetado sobre Windows y la review del PR draft #1187. ISA-911
+   sigue pendiente para lifecycle al borrar usuarios, Billing, Testing Center
+   y policies `auth.uid()` — bloquea la retirada de Supabase Auth (ISA-1177),
+   no la UI ya cortada.
 3. Completar gates locales y review de BIL-10C / ISA-247.
 4. Presentar dry-run, backup y rollback antes de cualquier apply remoto.
 5. Recoger feedback Nightly de BIL-01..10C sin habilitar venta.
@@ -943,6 +945,34 @@ empaquetado con una `VITE_CLERK_PUBLISHABLE_KEY` de desarrollo (verificar que
 responsive 375-1440px que exige la issue; OAuth social dentro del WebView sigue
 siendo riesgo conocido (`__internal_oauthTransport` queda para un corte
 posterior). No hubo merge, promoción ni deploy remoto.
+
+2026-09-13, ISA-915 cierra el transporte FAPI y queda verificada E2E contra la
+instancia de desarrollo real (PR draft #1187, rama `vantareapp/isa-915-clerk-login`).
+Dos hallazgos estructurales resueltos: (1) el router hash de Clerk interpretaba
+el `#/hub` propio de la app y redirigía al Account Portal hospedado — el SignIn
+monta ahora con `routing:"path"` fijado a `/sign-in`, `withSignUp` y
+`routerPush`/`routerReplace` que preservan siempre el hash de la app; (2) el
+canal nativo de FAPI (`_is_native=1`, obligatorio porque el modo navegador exige
+CAPTCHA y dev-browser) identifica al client únicamente por un JWT rotado que
+debe reenviarse en `Authorization`, y FAPI rechaza cualquier request con
+`Origin`+`Authorization` a la vez — como el WebView siempre envía `Origin` en
+POST, todo el tráfico FAPI va por `proxyUrl:"/clerk"` del constructor de Clerk:
+mismo-origen hacia un proxy que reenvía servidor-a-servidor sin `Origin`
+(`server.proxy` de Vite en dev; `internal/clerkproxy`, middleware sobre el
+asset handler con host fijo decodificado de `VANTARE_CLERK_PUBLISHABLE_KEY`, en
+builds). El JWT de client vive solo en memoria de clerk-js y se limpia en
+sign-out/nueva instancia; nada se persiste (localStorage/sessionStorage/cookies
+verificados vacíos). Evidencia E2E real en Chromium sobre el dev server: SignIn
+embebido en los 5 anchos (375/414/768/1024/1440) con tema oscuro, flujo
+identifier → password → `needs_client_trust` (OTP 424242 de dispositivo nuevo)
+completado, sesión creada y `license:validate` emitido con `sessionToken` JWT
+hacia el backend. Sign-up transfiere `/sign-in`→`/sign-in/create`→verificación
+embebido; la instancia dev prefiere `email_link` para registro (el OTP de
+sign-up necesita buzón real — limitación de config de la instancia, no de la
+app). Checks: `pnpm test` 3359 PASS, `typecheck`/`build`/`lint` verdes,
+`internal/clerkproxy` 4/4 tests, `GOOS=windows go build ./cmd/vantare` compila.
+Pendiente real: prueba en Wails empaquetado (Windows), deploy/promoción y
+retirada de Supabase Auth (ISA-911/1177). Sin merge ni acciones remotas.
 
 2026-08-04, ISA-243/287 completaron el piloto remoto con un caso sintético
 nuevo. ISA-288 se creó exactamente una vez, el binding quedó `completed` sin

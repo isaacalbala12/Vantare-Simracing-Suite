@@ -15,6 +15,7 @@ const { isClerkConfiguredMock, loadClerkMock, clerkInstance } = vi.hoisted(() =>
 }));
 
 vi.mock("../../lib/clerk-auth", () => ({
+  CLERK_SIGNIN_PATH: "/sign-in",
   isClerkConfigured: isClerkConfiguredMock,
   loadClerk: loadClerkMock,
   getClerkSessionToken: vi.fn(),
@@ -83,17 +84,20 @@ describe("LoginScreen", () => {
     expect(screen.getByText(/cargando acceso/i)).toBeTruthy();
   });
 
-  it("mounts Clerk SignIn with hash routing once loaded", async () => {
+  it("mounts Clerk SignIn with path routing pinned under /sign-in once loaded", async () => {
     isClerkConfiguredMock.mockReturnValue(true);
     loadClerkMock.mockResolvedValue(clerkInstance);
     render(<LoginScreen />);
     await waitFor(() => expect(clerkInstance.mountSignIn).toHaveBeenCalled());
     const [node, props] = clerkInstance.mountSignIn.mock.calls[0] as [
       HTMLDivElement,
-      { routing?: string },
+      { routing?: string; path?: string },
     ];
     expect(node).toBe(screen.getByTestId("clerk-signin-host"));
-    expect(props.routing).toBe("hash");
+    // Hash routing is impossible: the app owns location.hash (#/hub), so Clerk
+    // must route by pathname under /sign-in instead.
+    expect(props.routing).toBe("path");
+    expect(props.path).toBe("/sign-in");
   });
 
   it("shows a load error and retries the effect on click", async () => {

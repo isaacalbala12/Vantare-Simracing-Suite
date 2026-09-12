@@ -70,7 +70,7 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 - id: beta-iteration
 - estado: in-progress
-- progreso: 78
+- progreso: 75
 - etiqueta: Fase 2
 - etiqueta.en: Phase 2
 - objetivo: v0.1.x
@@ -241,7 +241,7 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 - id: licensing
 - estado: in-progress
-- progreso: 60
+- progreso: 50
 - titulo.en: Licensing and account
 - titulo.pt: Licenças e conta
 - titulo.it: Licenze e account

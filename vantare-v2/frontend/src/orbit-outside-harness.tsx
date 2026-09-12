@@ -18,12 +18,12 @@ initializeDensity();
 const params = new URLSearchParams(location.search);
 const scene = params.get('scene') ?? 'toast-error';
 
-function Presentation(text: string, severity: EngineerPresentation['severity']): EngineerPresentation {
+function presentationFixture(text: string, severity: EngineerPresentation['severity']): EngineerPresentation {
   const fixture = buildEngineerPresentationFixture('es', severity);
   return { ...fixture, id: 'msg-1', text, voiceText: text };
 }
 
-function Scene() {
+function sceneContent() {
   switch (scene) {
     case 'toast-success':
       return <HubToast variant="success" message="Perfil «GT3 Sprint» aplicado a OBS" profileId="p1" onClose={() => {}} />;
@@ -32,11 +32,11 @@ function Scene() {
     case 'toast-error':
       return <HubToast variant="error" message="No se pudo aplicar el perfil «Endurance»" profileId="p1" onClose={() => {}} />;
     case 'subtitles-info':
-      return <EngineerSubtitles presentation={Presentation('Box box. Entramos a boxes esta vuelta.', 'info')} />;
+      return <EngineerSubtitles presentation={presentationFixture('Box box. Entramos a boxes esta vuelta.', 'info')} />;
     case 'subtitles-warning':
-      return <EngineerSubtitles presentation={Presentation('Cuidado: tráfico delante en la curva 3.', 'warning')} />;
+      return <EngineerSubtitles presentation={presentationFixture('Cuidado: tráfico delante en la curva 3.', 'warning')} />;
     case 'subtitles-critical':
-      return <EngineerSubtitles presentation={Presentation('¡Bandera amarilla! Accidente en sector 2.', 'critical')} />;
+      return <EngineerSubtitles presentation={presentationFixture('¡Bandera amarilla! Accidente en sector 2.', 'critical')} />;
     case 'language':
       return (
         <div style={{ padding: 24 }}>
@@ -81,7 +81,7 @@ function Scene() {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <I18nProvider>
-      <Scene />
+      {sceneContent()}
     </I18nProvider>
   </StrictMode>,
 );

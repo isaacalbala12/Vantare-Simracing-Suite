@@ -1,5 +1,12 @@
 # Documentación del proyecto Vantare Overlays
 
+> **Referencia histórica; no usar como workflow vigente.** Para iniciar trabajo
+> leer [la transición a Notion](../../vantare-v2/docs/vantare-program/notion-transition.md) y el expediente canónico
+> de `vantare-v2/docs/vantare-program/`. Se conservan las decisiones y evidencias
+> fechadas de abajo; sus órdenes de ejecución, tracker y prioridades no prevalecen
+> sobre esas fuentes actuales.
+
+
 > **Carpeta canónica** para entender qué es el producto, cómo está construido, en qué fase vamos y cómo continuar el desarrollo.  
 > **Última actualización:** 2026-06-11
 

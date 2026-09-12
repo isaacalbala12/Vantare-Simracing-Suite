@@ -1,5 +1,15 @@
 # Inventario de documentacion
 
+> **Tracker y continuidad (2026-09-12):** leer primero
+> [la transición a Notion](vantare-program/notion-transition.md). Mientras su estado sea PREPARACIÓN,
+> las reglas GitHub/ISA de este documento rigen el cierre del lote existente
+> y la preparación técnica. El trabajo nuevo fuera del lote se captura en Notion
+> sin ejecutarlo todavía. Después del corte verificado, Notion será la autoridad
+> operativa y GitHub conservará código, PR, CI y releases.
+> Para esta transición, consultar el [inventario individual](vantare-program/notion-document-audit.md).
+> El índice de ejecución de release antiguo es histórico, no autoridad operativa.
+
+
 Ultima actualizacion: 2026-08-21.
 
 Este inventario clasifica la documentacion conocida dentro de `vantare-v2`.

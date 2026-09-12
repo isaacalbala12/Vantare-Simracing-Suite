@@ -1,5 +1,10 @@
 ## Issue primaria
 
+<!-- PREPARACIÓN: leer vantare-v2/docs/vantare-program/notion-transition.md.
+Solo lote activo o preparación técnica. Notion no sustituye aún la issue viva
+que CI consulta. No reutilizar números VAN como ISA. -->
+
+
 ISA-<!-- numero extraido tambien de la rama vantareapp/isa-N-* -->
 
 ## Resultado

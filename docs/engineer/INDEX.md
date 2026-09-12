@@ -1,5 +1,12 @@
 # Índice del paquete — `docs/engineer/`
 
+> **Referencia histórica; no usar como workflow vigente.** Para iniciar trabajo
+> leer [la transición a Notion](../../vantare-v2/docs/vantare-program/notion-transition.md) y el expediente canónico
+> de `vantare-v2/docs/vantare-program/`. Se conservan las decisiones y evidencias
+> fechadas de abajo; sus órdenes de ejecución, tracker y prioridades no prevalecen
+> sobre esas fuentes actuales.
+
+
 > **Última actualización:** 2026-06-27 (pase editorial: alineación de
 > rutas y comandos en `operations.md`, `manual-verification.md`,
 > `testing-strategy.md`, `master-plan-go.md`, `current-work-go.md`).

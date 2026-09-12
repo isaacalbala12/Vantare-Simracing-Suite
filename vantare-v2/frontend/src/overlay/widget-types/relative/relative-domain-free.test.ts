@@ -553,7 +553,9 @@ describe("relative v2 view model", () => {
     const displayed = relativeDisplayedValues(
       buildRelativeViewModelV2(goldenFrame(44), { state: "live" }, CONTENT),
     );
-    expect(Object.keys(displayed).sort()).toEqual(["rowCount", "rows", "status"]);
+    expect(Object.keys(displayed).sort()).toEqual([
+      "env", "playerBadgeText", "remainingText", "rowCount", "rows", "sessionLabel", "status", "trackText",
+    ]);
     expect(displayed.rows.split("|")).toHaveLength(Number(displayed.rowCount));
   });
 });

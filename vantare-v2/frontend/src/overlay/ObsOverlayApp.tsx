@@ -98,9 +98,12 @@ export function ObsOverlayApp() {
 
   useEffect(() => {
     const { profileName } = readOverlayRouteParams(window.location.search);
+    const controller = new AbortController();
     let disposed = false;
 
-    fetch(`/api/profile-v3?profile=${encodeURIComponent(profileName)}`)
+    fetch(`/api/profile-v3?profile=${encodeURIComponent(profileName)}`, {
+      signal: controller.signal,
+    })
       .then((res) => {
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
@@ -116,7 +119,7 @@ export function ObsOverlayApp() {
         setError(null);
       })
       .catch((err: Error) => {
-        if (disposed) {
+        if (disposed || controller.signal.aborted) {
           return;
         }
         setError(`Failed to load profile: ${err.message}`);
@@ -124,6 +127,9 @@ export function ObsOverlayApp() {
 
     return () => {
       disposed = true;
+      // Cancela el fetch en vuelo: si no, queda pendiente al desmontar y el
+      // entorno lo aborta en teardown (AbortError de happy-dom) (ISA-949).
+      controller.abort();
     };
   }, []);
 

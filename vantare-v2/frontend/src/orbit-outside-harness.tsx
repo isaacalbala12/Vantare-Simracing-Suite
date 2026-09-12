@@ -10,6 +10,7 @@ import { LanguageSelector } from './i18n/LanguageSelector';
 import { HubToast } from './hub/launcher/HubToast';
 import { EngineerSubtitles } from './engineer/EngineerSubtitles';
 import type { EngineerPresentation } from './engineer/engineer-presentation-store';
+import { buildEngineerPresentationFixture } from './engineer/engineer-presentation-fixtures';
 
 applyTheme(orbitThemeJson as unknown as VantareTheme);
 initializeDensity();
@@ -18,14 +19,8 @@ const params = new URLSearchParams(location.search);
 const scene = params.get('scene') ?? 'toast-error';
 
 function Presentation(text: string, severity: EngineerPresentation['severity']): EngineerPresentation {
-  return {
-    messageId: 'msg-1',
-    severity,
-    speaker: 'INGENIERO',
-    locale: 'es',
-    text,
-    audio: null,
-  } as EngineerPresentation;
+  const fixture = buildEngineerPresentationFixture('es', severity);
+  return { ...fixture, id: 'msg-1', text, voiceText: text };
 }
 
 function Scene() {

@@ -107,6 +107,12 @@ describe("official-designs", () => {
       }
     }
     const enduranceTypes = new Set(["delta", "standings", "relative", "pedals"]);
+    const functionalTypes = new Set(
+      designSystemRegistry.get("vantare-functional", 1).widgets.map((entry) => entry.widgetType),
+    );
+    const iracingTypes = new Set(
+      designSystemRegistry.get("vantare-iracing", 1).widgets.map((entry) => entry.widgetType),
+    );
     const expectedPairs = widgetTypeRegistry.list().flatMap((definition) => {
       if (definition.type === "engineer-radio") {
         return [`${definition.type}:vantare-crystal`];
@@ -115,7 +121,8 @@ describe("official-designs", () => {
         return [`${definition.type}:vantare-endurance`];
       }
       const pairs = [`${definition.type}:vantare-crystal`, `${definition.type}:vantare-original`];
-      if (definition.type === "standings") pairs.push("standings:vantare-functional");
+      if (functionalTypes.has(definition.type)) pairs.push(`${definition.type}:vantare-functional`);
+      if (iracingTypes.has(definition.type)) pairs.push(`${definition.type}:vantare-iracing`);
       if (enduranceTypes.has(definition.type)) {
         pairs.push(`${definition.type}:vantare-endurance`);
       }

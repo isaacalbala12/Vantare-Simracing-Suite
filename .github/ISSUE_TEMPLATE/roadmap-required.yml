@@ -7,6 +7,10 @@ body:
   - type: markdown
     attributes:
       value: |
+        Transición aprobada: consulta vantare-v2/docs/vantare-program/notion-transition.md
+        en nightly. Este formulario queda para el lote activo y preparación técnica;
+        el producto nuevo se captura pendiente en Notion. No iniciar otro lote aquí.
+
         Usa este formulario cuando el resultado de la issue deba cambiar el
         roadmap publico. Las respuestas quedan en el cuerpo de la issue y son
         el contrato que leen los agentes y valida CI.

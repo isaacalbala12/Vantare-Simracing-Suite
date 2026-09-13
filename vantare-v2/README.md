@@ -1,5 +1,10 @@
 # Vantare Overlays v2
 
+> **Entrada de desarrollo vigente:** [workflow de transición y lote activo](docs/vantare-program/notion-transition.md).
+> Leer las reglas de `vantare-v2/AGENTS.md` y el expediente canónico antes de
+> ejecutar instrucciones antiguas de desarrollo enlazadas desde esta página.
+
+
 Pre-alpha `v0.1.1-prealpha` del reinicio del proyecto con **Go + Wails + React**.
 
 Estado actual: Hub principal + Preview Workbench + overlay desktop fullscreen transparente bajo demanda + telemetría live de Le Mans Ultimate. `apps/desktop/` es v1 legado y no forma parte de esta pre-alpha.

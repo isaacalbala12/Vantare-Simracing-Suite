@@ -1,5 +1,12 @@
 # Vantare Simracing Suite — Repository Technical Context
 
+> **Referencia histórica; no usar como workflow vigente.** Para iniciar trabajo
+> leer [la transición a Notion](vantare-v2/docs/vantare-program/notion-transition.md) y el expediente canónico
+> de `vantare-v2/docs/vantare-program/`. Se conservan las decisiones y evidencias
+> fechadas de abajo; sus órdenes de ejecución, tracker y prioridades no prevalecen
+> sobre esas fuentes actuales.
+
+
 > **Purpose**: Complete technical context package for a subsequent code review. This document describes what exists in the repository, where things are, and how they connect — without analysis, recommendations, or quality judgments.
 
 ---

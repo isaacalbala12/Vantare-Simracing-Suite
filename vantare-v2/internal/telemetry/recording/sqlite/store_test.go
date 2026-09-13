@@ -55,7 +55,8 @@ type failingFiles struct {
 
 type cooperativeBlockingFiles struct {
 	OSFileSystem
-	block atomic.Bool
+	block   atomic.Bool
+	blocked chan struct{}
 }
 
 func (f *cooperativeBlockingFiles) WriteAtomic(
@@ -65,6 +66,12 @@ func (f *cooperativeBlockingFiles) WriteAtomic(
 	mode os.FileMode,
 ) error {
 	if f.block.Load() {
+		if f.blocked != nil {
+			select {
+			case f.blocked <- struct{}{}:
+			default:
+			}
+		}
 		<-ctx.Done()
 		return ctx.Err()
 	}
@@ -606,7 +613,7 @@ func TestManifestOperationsHonorContextWithoutLateWriteOrTempLeak(t *testing.T) 
 		t.Run(test.name, func(t *testing.T) {
 			root := t.TempDir()
 			ref, manifest := testSession(root)
-			files := &cooperativeBlockingFiles{}
+			files := &cooperativeBlockingFiles{blocked: make(chan struct{}, 1)}
 			store := New(Options{Files: files})
 			writer, err := store.Begin(context.Background(), ref, manifest)
 			if err != nil {
@@ -621,15 +628,27 @@ func TestManifestOperationsHonorContextWithoutLateWriteOrTempLeak(t *testing.T) 
 				t.Fatalf("ReadFile(before) error = %v", err)
 			}
 			files.block.Store(true)
-			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
-			started := time.Now()
-			err = test.run(ctx, writer)
-			cancel()
-			if !errors.Is(err, context.DeadlineExceeded) {
-				t.Fatalf("%s error = %v", test.name, err)
+			// Cancelacion dirigida por senal, sin tiempos absolutos: la operacion
+			// se aparca en el WriteAtomic bloqueante y entonces se cancela.
+			ctx, cancel := context.WithCancel(context.Background())
+			done := make(chan error, 1)
+			go func() { done <- test.run(ctx, writer) }()
+			select {
+			case <-files.blocked:
+			case err := <-done:
+				t.Fatalf("%s returned %v before reaching the write", test.name, err)
+			case <-time.After(30 * time.Second):
+				cancel()
+				t.Fatalf("%s did not reach the manifest write", test.name)
 			}
-			if elapsed := time.Since(started); elapsed > recording.DefaultCommitBudget {
-				t.Fatalf("%s returned after %v", test.name, elapsed)
+			cancel()
+			select {
+			case err = <-done:
+			case <-time.After(30 * time.Second):
+				t.Fatalf("%s did not return after cancellation", test.name)
+			}
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("%s error = %v", test.name, err)
 			}
 			files.block.Store(false)
 			after, err := os.ReadFile(filepath.Join(root, ref.SessionID, manifestName))

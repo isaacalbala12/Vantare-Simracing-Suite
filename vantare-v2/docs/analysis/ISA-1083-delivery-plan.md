@@ -38,10 +38,7 @@ No migrar los perfiles existentes al nuevo diseño ni introducir marcas comercia
 
 ## Parte 2 — Política unificada, ISA-1097
 
-Isaac autoriza continuar apilado y comprobar todo junto después (2026-09-10).
-La parte 2 usa rama/worktree propios desde `87cef39a`, sin integrar la parte 1
-antes de esa comprobación. Plan concreto: `ISA-1097-widget-access-branding.md`.
-Las promociones conservan su orden tras la validación conjunta.
+Depende de completar la parte 1. Rama y worktree propios desde su base integrada.
 
 ### 2A. Contrato de permisos y marca
 - [ ] Matriz explícita por tipo/sistema, a partir de la licencia verificada existente. Original conserva su política; Functional/Crystal permiten marca obligatoria en Free y opcional en pago.

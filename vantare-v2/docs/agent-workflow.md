@@ -1,8 +1,16 @@
 # Workflow de agentes
 
-> **Nota (2026-08-20):** Linear fue retirado; donde este documento diga
-> Linear, lease GitHub Issues (`ISA-N` = numero de issue de GitHub). El
-> resto del flujo sigue vigente.
+> **Tracker y continuidad (2026-09-12):** leer primero
+> [la transición a Notion](vantare-program/notion-transition.md). Mientras su estado sea PREPARACIÓN,
+> las reglas GitHub/ISA de este documento rigen el cierre del lote existente
+> y la preparación técnica. El trabajo nuevo fuera del lote se captura en Notion
+> sin ejecutarlo todavía. Después del corte verificado, Notion será la autoridad
+> operativa y GitHub conservará código, PR, CI y releases.
+
+
+> Linear fue retirado el 2026-08-20. Los IDs migrados se resuelven por su
+> enlace GitHub; no hay equivalencia universal entre un ISA historico y el
+> numero GitHub. No reactivar Linear ni reemplazar identificadores a ciegas.
 
 > Estado del checkout principal (2026-08-10): el worktree principal
 > `C:\Users\isaac\Desktop\Vantare-Overlays` esta alineado con `origin/nightly`

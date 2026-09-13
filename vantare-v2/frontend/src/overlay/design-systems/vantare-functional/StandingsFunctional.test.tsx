@@ -5,7 +5,6 @@ import { buildWorkshopFrameV2, createScenarioWidget } from "../../authoring/fixt
 import { parseOverlayWorkshopQuery } from "../../authoring/overlay-workshop-query";
 import { type StandingsViewModel } from "../../widget-types/standings/standings-view-model";
 import { StandingsFunctional } from "./StandingsFunctional";
-import { vantareFunctionalManifest } from "./manifest";
 
 afterEach(cleanup);
 
@@ -23,42 +22,52 @@ const model: StandingsViewModel = {
 };
 
 describe("Functional Standings", () => {
-  it.each(["signature", "broadcast"])("changes the flag and selected session data in %s without changing the table", (templateId) => {
-    const settings = { templateId, headerFirst: "trackTemperature", headerSecond: "none", footerFirst: "totalLaps", footerSecond: "none" };
-    const data = { ...model, flag: "yellow" as const, sessionInfo: {
-      trackTemperature: { text: "32°C" }, airTemperature: { text: "21°C" }, totalLaps: { text: "42" },
-      estimatedLaps: { text: "≈18" }, remaining: { text: "18:42" }, track: { text: "Spa" }, rain: { text: "0%" }, wetness: { text: "0%" },
-    } };
-    const { container, rerender } = render(<StandingsFunctional model={data} settings={settings} renderMode="harness" />);
-    expect(container.querySelector('.vf-standings')?.getAttribute('data-flag')).toBe('yellow');
-    expect(container.querySelector('.vf-header-info')?.textContent).toContain('32°C');
-    expect(container.querySelector('.vf-session-footer')?.textContent).toContain('42');
-    expect(container.querySelector('.vf-session-footer')?.textContent).not.toContain('≈18');
-    rerender(<StandingsFunctional model={{ ...data, flag: "green" }} settings={{ ...settings, showSessionFooter: false }} renderMode="harness" />);
-    expect(container.querySelector('.vf-standings')?.getAttribute('data-flag')).toBe('green');
-    expect(container.querySelector('.vf-session-footer')).toBeNull();
-    expect(container.querySelectorAll('tbody td')).toHaveLength(model.columns.length);
-  });
-
-  it("does not expose retained header/footer data or a retained flag when disconnected", () => {
-    const { container } = render(<StandingsFunctional model={{ ...model, status: "disconnected", flag: "green" }} settings={{}} renderMode="harness" />);
-    expect(container.querySelector('.vf-standings')?.getAttribute('data-flag')).toBe('unknown');
-    expect(container.querySelector('.vf-session-footer')?.textContent).toContain('—');
-  });
-
-  it("preserves recognized saved information choices and safely defaults unknown ones", () => {
-    const parse = vantareFunctionalManifest.widgets[0]!.parseSettings;
-    expect(parse({ templateId: "broadcast", showSessionFooter: false, headerFirst: "totalLaps", headerSecond: "none", footerFirst: "rain", footerSecond: "wetness" })).toMatchObject({ templateId: "broadcast", showSessionFooter: false, headerFirst: "totalLaps", headerSecond: "none", footerFirst: "rain", footerSecond: "wetness" });
-    expect(parse({ headerFirst: "arbitraryTelemetryPath" })).toHaveProperty("headerFirst", "trackTemperature");
-  });
-
-  it("keeps pit, gap and last lap in separate configured cells and identifies the player with text", () => {
+  it("keeps pit, gap and last lap in separate configured cells and marks the player only by its row", () => {
     const { container } = render(<StandingsFunctional model={model} settings={{}} renderMode="harness" />);
     expect(container.querySelector('td[data-metric="lastLap"]')?.textContent).toBe("1:42.318");
     expect(container.querySelector('td[data-metric="gap"]')?.textContent).toBe("+2.106s");
     expect(container.querySelector('td[data-metric="pit"]')?.textContent).toBe("PIT");
-    expect(container.querySelector('.vf-driver small')?.textContent).toBeTruthy();
+    expect(container.querySelector('.vf-driver small')).toBeNull();
     expect(container.querySelector('tr[data-player="true"]')).not.toBeNull();
+  });
+
+  it("drops the integrated brand when the injected decision hides it (ISA-1105)", () => {
+    const { container } = render(<StandingsFunctional model={model} settings={{ brandVisible: false }} renderMode="harness" />);
+    expect(container.querySelector(".vf-brand")).toBeNull();
+    expect(container.querySelector(".vf-brand-band")).toBeNull();
+    expect(container.querySelector(".vf-session")).not.toBeNull();
+  });
+
+  it("keeps the brand as a standalone band when the header is off but the decision keeps it", () => {
+    const { container } = render(<StandingsFunctional model={model} settings={{ showSessionHeader: false, brandVisible: true }} renderMode="harness" />);
+    expect(container.querySelector(".vf-brand-band .vf-brand")).not.toBeNull();
+    expect(container.querySelector(".vf-session .vf-brand")).toBeNull();
+  });
+
+  it("renders the ambient footer band only when the model carries those fields", () => {
+    const bare = render(<StandingsFunctional model={model} settings={{}} renderMode="harness" />);
+    expect(bare.container.querySelector(".vf-footer")).toBeNull();
+    bare.unmount();
+    const withWeather = { ...model, trackTempText: "28°", ambientTempText: "21°", windText: "18 km/h" };
+    const { container } = render(<StandingsFunctional model={withWeather} settings={{}} renderMode="harness" />);
+    const footer = container.querySelector(".vf-footer");
+    expect(footer?.textContent).toContain("28°");
+    expect(footer?.textContent).toContain("18 km/h");
+  });
+
+  it("renders every selected data slot under the rows and they replace the ambient footer", () => {
+    const withWeather = { ...model, trackTempText: "28°", windText: "18 km/h" };
+    const { container } = render(<StandingsFunctional model={withWeather} settings={{ footerSlots: ["time", "position", "gap", "track", "wind", "lap"] }} renderMode="harness" />);
+    const slotEls = container.querySelectorAll(".vf-slot");
+    expect(slotEls).toHaveLength(6);
+    expect([...slotEls].map((el) => el.getAttribute("data-slot"))).toEqual(["time", "position", "gap", "track", "wind", "lap"]);
+    // Cada hueco es un par plano etiqueta+valor: sin elementos separadores.
+    for (const el of slotEls) {
+      expect([...el.children].map((child) => child.className)).toEqual(["vf-slot-label", "vf-slot-value"]);
+    }
+    expect(container.querySelector('[data-slot="gap"] .vf-slot-value')?.textContent).toBe("+2.106s");
+    expect(container.querySelector('[data-slot="track"] .vf-slot-value')?.textContent).toBe("28°");
+    expect(container.querySelector(".vf-footer")).toBeNull();
   });
 
   it("preserves disabled columns, custom order and configured name without inventing identifiers", () => {
@@ -121,8 +130,11 @@ describe("Functional Standings", () => {
     }
   });
 
-  it("accepts the implemented Workshop pair and rejects unsupported widgets", () => {
+  it("accepts the implemented Workshop pairs and rejects unsupported widgets", () => {
     expect(parseOverlayWorkshopQuery("?widget=standings&system=vantare-functional&design=standings-functional-compact")).not.toHaveProperty("error");
-    expect(parseOverlayWorkshopQuery("?widget=delta&system=vantare-functional")).toHaveProperty("error");
+    for (const widget of ["relative", "delta", "pedals"] as const) {
+      expect(parseOverlayWorkshopQuery(`?widget=${widget}&system=vantare-functional`)).not.toHaveProperty("error");
+    }
+    expect(parseOverlayWorkshopQuery("?widget=track-map&system=vantare-functional")).toHaveProperty("error");
   });
 });

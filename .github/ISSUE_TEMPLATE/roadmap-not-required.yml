@@ -7,6 +7,10 @@ body:
   - type: markdown
     attributes:
       value: |
+        Transición aprobada: consulta vantare-v2/docs/vantare-program/notion-transition.md
+        en nightly. Este formulario queda para el lote activo y preparación técnica;
+        el producto nuevo se captura pendiente en Notion. No iniciar otro lote aquí.
+
         Esta exencion no se concede solo por elegir el formulario. CI acepta
         unicamente rutas internas de su allowlist cerrada y rechaza cualquier
         cambio en plan.md, roadmap.json o codigo productivo.

@@ -17,7 +17,7 @@ import {
   readStageGeometryCache,
   writeStageGeometryCache,
 } from '../canvas/stage-geometry-cache';
-import { useStudioWidgetPolicy, useStudioActions, useStudioActiveLayout, useStudioPreview, useStudioSelector } from '../state/studio-store';
+import { useStudioActions, useStudioActiveLayout, useStudioPreview, useStudioSelector, useStudioWidgetPolicy } from '../state/studio-store';
 import { placeSelectionTag, type TagAnchor } from './selection-tag-placement';
 import { fill, widgetLabel } from './studio-orbit-model';
 
@@ -123,7 +123,6 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
     selectWidget,
     canMutateLayout,
     onLayoutBlocked,
-    widgetPolicy,
   });
   const interacting = interaction.interaction.kind !== 'idle';
 
@@ -302,7 +301,6 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
                   previewActive={interaction.isWidgetPreviewActive(widget.id)}
                   selected={selectedWidgetId === widget.id}
                   widget={widget}
-                  widgetPolicy={widgetPolicy}
                   fitSelectionToContent
                 />
               ))

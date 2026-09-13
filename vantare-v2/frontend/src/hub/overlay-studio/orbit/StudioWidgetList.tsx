@@ -6,7 +6,7 @@ import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
 import { Button, Input, ListRow } from "../../../ui/orbit";
 import { AddWidgetDialog } from "../catalog/AddWidgetDialog";
 import { buildAddWidgetCommand } from "../catalog/studio-catalog";
-import { useStudioWidgetPolicy, useStudioActions, useStudioActiveLayout, useStudioSelector } from "../state/studio-store";
+import { useStudioActions, useStudioActiveLayout, useStudioSelector, useStudioWidgetPolicy } from "../state/studio-store";
 import { fill, systemLabel, widgetLabel } from "./studio-orbit-model";
 
 /** Tirador de arrastre del prototipo (`.witem .grip`). */

@@ -1,5 +1,13 @@
 # Skill: gestión del roadmap
 
+> **Tracker y continuidad (2026-09-12):** leer primero
+> [la transición a Notion](../../../vantare-program/notion-transition.md). Mientras su estado sea PREPARACIÓN,
+> las reglas GitHub/ISA de este documento rigen el cierre del lote existente
+> y la preparación técnica. El trabajo nuevo fuera del lote se captura en Notion
+> sin ejecutarlo todavía. Después del corte verificado, Notion será la autoridad
+> operativa y GitHub conservará código, PR, CI y releases.
+
+
 ## Fuente vigente
 
 La planificación pública vive en `docs/roadmap/plan.md` y el artefacto que

@@ -1,5 +1,16 @@
 # Telemetry Core — autoridad y fronteras
 
+> **Tracker y continuidad (2026-09-12):** leer primero
+> [la transición a Notion](../vantare-program/notion-transition.md). Mientras su estado sea PREPARACIÓN,
+> las reglas GitHub/ISA de este documento rigen el cierre del lote existente
+> y la preparación técnica. El trabajo nuevo fuera del lote se captura en Notion
+> sin ejecutarlo todavía. Después del corte verificado, Notion será la autoridad
+> operativa y GitHub conservará código, PR, CI y releases.
+> Los estados/versiones y recetas comerciales fechados de abajo son contexto.
+> Para decisiones vigentes prevalecen los contratos y handoffs del programa;
+> esta cabecera no certifica que el runtime o una release estén actualizados.
+
+
 Estado de esta guía: vigente desde ISA-100 sobre `develop@f492007`.
 
 ## Propósito
@@ -39,7 +50,8 @@ sin wiring. Guías:
 2. Los documentos de evidencia de `docs/telemetry-core/` describen lo ya observado e integrado.
 3. El plan maestro describe el resultado y el orden global.
 4. Un microplan solo es ejecutable cuando su cabecera lo indica.
-5. Linear refleja el estado operativo y la rama de cada issue.
+5. El tracker definido en `../vantare-program/notion-transition.md` refleja
+   el estado operativo y la rama. Linear está retirado.
 
 Si dos documentos contradicen evidencia más reciente, prevalece la evidencia actual y se detiene la ejecución hasta reconciliar el plan.
 
@@ -79,7 +91,7 @@ Strategy Product B no forma parte de este paquete documental. Puede ser consumid
 - Mock, simulator y replay solo mediante test o harness explícito.
 - Ningún renderer de widgets conoce fuentes, transporte o persistencia.
 - No se elimina funcionalidad Engineer; solo infraestructura duplicada demostrada sin consumidores.
-- Cada issue ejecutable parte de la base aprobada indicada en Linear y usa su propia rama, worktree y chat.
+- Cada issue ejecutable parte de la base aprobada indicada en la tarea autoritativa y usa su propia rama, worktree y chat.
 - Ninguna rama de issue se promueve a `nightly` sin aprobación inicial de Isaac;
   `master` requiere siempre su validación final.
 

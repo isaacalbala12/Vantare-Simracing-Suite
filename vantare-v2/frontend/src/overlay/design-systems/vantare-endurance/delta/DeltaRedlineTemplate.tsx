@@ -17,14 +17,16 @@ const FILL_OPACITY_SPAN = 0.55;
 export function DeltaRedlineTemplate({
   model,
   showReference,
+  motion = "full",
 }: {
   model: DeltaViewModel;
   showReference: boolean;
+  motion?: "full" | "reduced" | "minimal";
 }) {
   const magnitude = Math.min(1, Math.abs(model.progress));
   const direction = model.progress < 0 ? "gain" : model.progress > 0 ? "loss" : undefined;
   const rootRef = useRef<HTMLDivElement | null>(null);
-  useDeltaMotion(model, model.status === "ready", rootRef);
+  useDeltaMotion(model, model.status === "ready" && motion !== "minimal", rootRef);
 
   return (
     <div className="ven-dred-root" ref={rootRef}>

@@ -1,5 +1,13 @@
 # Plan de etapas: beta pública, versiones iterativas y lanzamiento
 
+> **Tracker y continuidad (2026-09-12):** leer primero
+> [la transición a Notion](vantare-program/notion-transition.md). Mientras su estado sea PREPARACIÓN,
+> las reglas GitHub/ISA de este documento rigen el cierre del lote existente
+> y la preparación técnica. El trabajo nuevo fuera del lote se captura en Notion
+> sin ejecutarlo todavía. Después del corte verificado, Notion será la autoridad
+> operativa y GitHub conservará código, PR, CI y releases.
+
+
 Documento interno de planificación. Orquesta el camino de Vantare desde el
 formato de desarrollo actual hasta la beta pública reiniciada, las versiones
 iterativas dentro de la beta y la fase de lanzamiento estable.
@@ -271,6 +279,12 @@ Reglas:
   base de la que cuelgan.
 
 ### Instrumento: la Gate Review
+
+El soporte de esta revisión sigue el tracker de `vantare-program/notion-transition.md`:
+en PREPARACIÓN se conservan las issues/milestones de GitHub; tras el corte, la
+Gate Review y sus hitos viven en Notion con enlaces a PR, CI, canal y release.
+Las referencias GitHub del procedimiento de abajo describen el soporte anterior,
+no obligan a crear issues espejo después de activar Notion.
 
 Cada transición de fase se evalúa con una issue de GitHub
 `roadmap:required` titulada `Gate review vX.Y.0.0`, cuyo cuerpo es la

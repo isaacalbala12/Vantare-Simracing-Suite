@@ -107,6 +107,44 @@ const BATTLE_SCENE: AnimationScene = {
   ],
 };
 
+/**
+ * Same-class battle inside a visible block: Birch (GTE, P9) closes on Pier
+ * Guidi (GTE, P6), the box crystallises, and the overtake swaps the two rows
+ * while the wrapper is alive — the block↔battle remount the FLIP memory
+ * exists for. Tuned on the golden grid's GTE gaps (Pier Guidi +6.2, Birch
+ * +9.9); on the single-class study grid the seats 6↔9 resolve by fallback.
+ */
+const CLASS_BATTLE_SCENE: AnimationScene = {
+  id: "standings-class-battle",
+  widget: "standings",
+  label: "Batalla y adelantamiento en clase",
+  watchFor:
+    "Birch se pega a Pier Guidi dentro del bloque GTE, la costura cristaliza en caja, y el adelantamiento intercambia las filas con la caja viva: deslizan sin saltar aunque React las remonte entre contenedor normal y caja. La batalla solo existe si la fila del jugador cabe en el widget — con la altura oficial (~620 px) el bloque Hypercar queda recortado; pruébalo con height=940 en la URL.",
+  frameMs: 1400,
+  frames: [
+    { caption: "Birch a 3,7 s de Pier Guidi (GTE)" },
+    { caption: "Se pega: 0,4 s — costura", cars: { "Michael Birch": { timeBehindLeader: 6.6 } } },
+    { caption: "Duelo sostenido: 0,3 s — la caja cristaliza", cars: { "Michael Birch": { timeBehindLeader: 6.5 } } },
+    // La caja necesita 2,5 s sostenidos: este fotograma la mantiene viva el
+    // tiempo suficiente para que el adelantamiento llegue con la caja puesta.
+    { caption: "Sigue en el rebufo: 0,2 s — caja cristalizada", cars: { "Michael Birch": { timeBehindLeader: 6.4 } } },
+    {
+      caption: "Adelanta con la caja viva — las filas se intercambian deslizándose",
+      cars: {
+        "Michael Birch": { place: 6, timeBehindLeader: 6.05 },
+        "Alessandro Pier Guidi": { place: 9, timeBehindLeader: 6.4 },
+      },
+    },
+    {
+      caption: "Consolida; la caja se disuelve",
+      cars: {
+        "Michael Birch": { place: 6, timeBehindLeader: 5.9 },
+        "Alessandro Pier Guidi": { place: 9, timeBehindLeader: 7.1 },
+      },
+    },
+  ],
+};
+
 const FASTEST_LAP_SCENE: AnimationScene = {
   id: "standings-fastest-lap",
   widget: "standings",
@@ -387,6 +425,7 @@ const PEDALS_CLUTCH_SCENE: AnimationScene = {
 export const ANIMATION_SCENES: readonly AnimationScene[] = [
   OVERTAKE_SCENE,
   BATTLE_SCENE,
+  CLASS_BATTLE_SCENE,
   FASTEST_LAP_SCENE,
   TIRE_CHANGE_SCENE,
   DELTA_CHIP_SCENE,

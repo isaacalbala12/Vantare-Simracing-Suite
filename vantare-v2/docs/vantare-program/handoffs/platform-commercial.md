@@ -1,5 +1,32 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+> **Continuidad del tracker:** [transición aprobada](../notion-transition.md).
+> PREPARACIÓN conserva este handoff y las issues del lote; tras el corte, un
+> único handoff Notion lo sustituirá con enlace y snapshot. Las entradas fechadas
+> de abajo conservan su evidencia; no implican que esas PR sigan abiertas hoy.
+
+
+## ISA-1189 — transición a Notion (2026-09-12)
+
+Isaac aprueba Notion como autoridad de desarrollo después de cerrar las entregas
+activas aceptadas e integradas en nightly, sin esperar testers/release. Autoriza
+mergear esta preparación documental a nightly. Estado del corte y lote único:
+[notion-transition.md](../notion-transition.md). Revisión documental individual:
+[notion-document-audit.md](../notion-document-audit.md).
+
+Se prepara la entrada raíz de agentes, se enrutan los documentos normativos y
+prompts al contrato por fases, se distinguen guías históricas y se retiran
+referencias operativas residuales a Linear. No se renumeran IDs históricos.
+Notion tiene portada y cuatro bases iniciales enlazadas en el contrato; no hay
+importación completa ni sincronización activa. Gates productivos sin cambios.
+
+Siguiente agente: cerrar/reconciliar el lote y, en paralelo mediante tareas de
+migración trazadas, importar y verificar el histórico, completar esquemas/vistas
+y adaptar controles de tareas, ramas y releases antes del corte. No ampliar
+programas de producto ni cerrar PR ajenas por su etiqueta. Registrar SHA/CI y
+nivel realmente alcanzado en la PR de #1189, que es la evidencia remota de esta
+entrega; su merge no cumple las puertas pendientes de activación.
+
 ## ISA-1171 - Roadmap de etapas hacia beta pública y lanzamiento
 
 Decisión de Isaac 2026-09-11: la beta pública es un reinicio de la línea

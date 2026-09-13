@@ -4,7 +4,7 @@ import type { DeltaViewModel } from "../../../widget-types/delta/delta-view-mode
 import { parseDeltaEnduranceSettings } from "./delta-endurance-settings";
 import { DeltaRedlineTemplate } from "./DeltaRedlineTemplate";
 
-export function DeltaEndurance({ model, settings }: WidgetRendererProps<DeltaViewModel>) {
+export function DeltaEndurance({ model, settings, motion = "full" }: WidgetRendererProps<DeltaViewModel>) {
   const parsed = parseDeltaEnduranceSettings(settings);
 
   if (parsed.templateId === "delta-redline") {
@@ -15,11 +15,12 @@ export function DeltaEndurance({ model, settings }: WidgetRendererProps<DeltaVie
         data-status={model.status}
         data-tone={model.tone}
         data-template="delta-redline"
+        data-motion-level={motion}
         className="ven-root ven-delta ven-dred"
         style={{ "--ven-delta-loss": parsed.lossColor } as CSSProperties}
       >
         {/* showHeader drives the reference row: the expanded state of the design. */}
-        <DeltaRedlineTemplate model={model} showReference={parsed.showHeader} />
+        <DeltaRedlineTemplate model={model} showReference={parsed.showHeader} motion={motion} />
       </section>
     );
   }
@@ -32,6 +33,7 @@ export function DeltaEndurance({ model, settings }: WidgetRendererProps<DeltaVie
         data-status={model.status}
         data-tone={model.tone}
         data-template="delta-neo"
+        data-motion-level={motion}
         className="ven-root ven-delta ven-neod"
         style={{ "--ven-delta-loss": parsed.lossColor } as CSSProperties}
       >
@@ -82,6 +84,7 @@ export function DeltaEndurance({ model, settings }: WidgetRendererProps<DeltaVie
       data-status={model.status}
       data-tone={model.tone}
       data-template={parsed.templateId}
+      data-motion-level={motion}
       className="ven-root ven-delta"
       style={{ "--ven-delta-loss": parsed.lossColor } as CSSProperties}
     >

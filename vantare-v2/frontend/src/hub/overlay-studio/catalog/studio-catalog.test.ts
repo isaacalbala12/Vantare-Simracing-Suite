@@ -131,6 +131,7 @@ describe("deriveStudioCatalog", () => {
       requiredFeature: "overlays.advanced",
     });
     expect(catalog[0]?.compatibleSystems).toEqual([
+      { systemId: "vantare-functional", systemVersion: 1, label: "Efficiency" },
       { systemId: "vantare-crystal", systemVersion: 1, label: "Vantare Crystal" },
       { systemId: "vantare-endurance", systemVersion: 1, label: "Vantare Endurance" },
       { systemId: "vantare-original", systemVersion: 1, label: "Vantare Original" },

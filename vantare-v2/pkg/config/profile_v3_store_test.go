@@ -212,6 +212,26 @@ func TestProfileDocumentStoreFunctionalStandingsRoundTrip(t *testing.T) {
 	}
 }
 
+func TestProfileDocumentStoreIracingPedalsRoundTrip(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "iracing.json")
+	widget := validWidget("pedals-telemetry-main", WidgetTypePedalsTelemetryCompact)
+	widget.Visual.SystemID = DesignSystemVantareIracing
+	doc := ConvertProfileV3ToV4(validProfileV3(widget))
+	store := ProfileDocumentStore{}
+	revision, err := store.SaveV4(path, "", doc, ProfileSchemaVersionV4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := store.LoadV4(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := loaded.Document.Layouts[LayoutGeneral].Widgets[0]
+	if loaded.Revision != revision || got.Visual.SystemID != DesignSystemVantareIracing {
+		t.Fatalf("iracing selection did not survive reopening: %+v", got.Visual)
+	}
+}
+
 func TestProfileDocumentStoreEngineerRadioRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "engineer-radio.json")

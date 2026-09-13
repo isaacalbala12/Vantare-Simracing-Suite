@@ -1,5 +1,11 @@
 # Handoff vivo — Strategy Planner
 
+> **Continuidad del tracker:** [transición aprobada](../notion-transition.md).
+> PREPARACIÓN conserva este handoff y las issues del lote; tras el corte, un
+> único handoff Notion lo sustituirá con enlace y snapshot. Las entradas fechadas
+> de abajo conservan su evidencia; no implican que esas PR sigan abiertas hoy.
+
+
 ## Resultado
 
 Un único producto que crea, compara, guarda, ejecuta y adapta planes para

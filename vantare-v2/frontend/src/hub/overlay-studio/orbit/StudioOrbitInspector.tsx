@@ -12,7 +12,7 @@ import { DesignSection } from '../inspector/DesignSection';
 import { LayoutSection } from '../inspector/LayoutSection';
 import { WidgetPropertyInspectorView } from '../inspector/WidgetPropertyInspectorView';
 import { resolveInspectorSections } from '../inspector/inspector-sections';
-import { useStudioWidgetPolicy, useStudioActions, useStudioActiveLayout, useStudioSelector } from '../state/studio-store';
+import { useStudioActions, useStudioActiveLayout, useStudioSelector, useStudioWidgetPolicy } from '../state/studio-store';
 import {
   appearanceSummary,
   behaviorSummary,

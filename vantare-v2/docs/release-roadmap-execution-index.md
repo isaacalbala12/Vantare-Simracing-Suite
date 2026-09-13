@@ -1,5 +1,12 @@
 # Release Roadmap Execution Index
 
+> **Referencia histórica; no usar como workflow vigente.** Para iniciar trabajo
+> leer [la transición a Notion](vantare-program/notion-transition.md) y el expediente canónico
+> de `vantare-v2/docs/vantare-program/`. Se conservan las decisiones y evidencias
+> fechadas de abajo; sus órdenes de ejecución, tracker y prioridades no prevalecen
+> sobre esas fuentes actuales.
+
+
 Fuente de verdad operativa para llevar Vantare Simracing Suite desde la beta publica `v0.1.x` hasta el release oficial.
 
 Este indice consolida:

@@ -8,7 +8,7 @@ import { useI18n } from '../../../i18n/I18nProvider';
 import { STUDIO_WIDGET_ACCESS_MESSAGE_KEY } from '../studio-v3-i18n';
 import { getStudioHotkey } from '../state/studio-hotkeys';
 import { listStudioMonitors, type StudioMonitor } from '../state/studio-monitor-client';
-import { useStudioWidgetPolicy, useStudioActions, useStudioActiveLayout, useStudioPreview, useStudioSelector } from '../state/studio-store';
+import { useStudioActions, useStudioActiveLayout, useStudioPreview, useStudioSelector, useStudioWidgetPolicy } from '../state/studio-store';
 import { clientToLogical, resolveCanvasScale } from './canvas-geometry';
 import { resolveCanvasBackground, safeAreaInsets } from './canvas-backgrounds';
 import { CanvasActionBar } from './CanvasActionBar';
@@ -166,7 +166,6 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
     selectWidget,
     canMutateLayout,
     onLayoutBlocked,
-    widgetPolicy,
   });
 
   const deleteConfirm = useDeleteWidgetConfirm();
@@ -416,7 +415,6 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
                 onResizePointerDown={interaction.onResizePointerDown}
                 onLostPointerCapture={interaction.onLostPointerCapture}
                 diagnostics={diagnostics}
-                widgetPolicy={widgetPolicy}
               />
             ))}
           </div>

@@ -4,14 +4,15 @@ ISA-1104, hija de #1091 y #1033; continúa #1099 (capacidad y banco T11 PASS;
 T11i visual/nativo pendiente, sin certificar recorrido/capturas).
 SDD R08/R07, aceptación A08/A09. Continúa ADR 0010 y
 [corrections-contract-v1](../corrections-contract-v1.md) operación 2
-`set_classification` (implementación parcial descrita aquí); no crea otra custodia,
+`set_classification` (implementación completa descrita aquí); no crea otra custodia,
 lector, formato, motor ni dependencia. Este documento fija el contrato
-implementable y los microcortes. A–G3 y Ha/Hb/Hc/Hc2/Hd/I/J1/J2/J3 están implementados
-y revisados localmente; I pasó Imola/Monza, J1/J2/J3 pasaron global/vet.
-J3 guardado en 4d5c3178; J4 en d9dc43c8 aplica/proyecta v4 con global/vet
-PASS. J5 resuelve catálogo en c9f85a9f, global/vet PASS; J6 conecta comandos
-nativos, todavía sin montaje de la instancia en Wails.
-Estos cortes no cierran T12 ni los gates visual/nativo/empírico.
+implementable y los microcortes. Todos los cortes A–J9 están implementados y
+revisados localmente. J9, en `fc57eb9a`, contrasta identidad v4 con dos DuckDB
+LMU completos y autorizados en ambas direcciones Imola↔Monza, conserva historial
+y restauración exactos, ejecuta después el banco familiar y mantiene idénticos
+los SHA-256 de ambos originales. T12 queda cerrado en código, frontend web y
+banco real. La aceptación visual/nativa Wails de T11i continúa como gate separado,
+sin atribuirla a este cierre.
 
 ## 1. Conjunto cerrado de campos y tipos
 
@@ -95,8 +96,7 @@ configuración y cierre de instancias propias; aquí no se mueve ni copia dato a
 
 ## 5. Referencia canónica y cambio de combinación
 
-Contrato cerrado por el orquestador para la continuación de T12; pendiente de
-implementación. Complementa ADR 0010 mediante ADR 0011. Conserva owners,
+Contrato cerrado e implementado en T12. Complementa ADR 0010 mediante ADR 0011. Conserva owners,
 lector, catálogo, custodia y tres grupos existentes. No amplía el simulador.
 
 La identidad de combinación procede del catálogo de sesiones autorizado
@@ -1312,3 +1312,15 @@ Gates: focal app, global Go `-p 1 ./...`, vet de alcance y gofmt/diff. Logs nuev
 `frontend/.tmp/isa1104-t12j9-*`, sin sobrescribir. Sin app, GUI, Wails, LMU en
 ejecución, build de escritorio, fuentes reservadas, push, PR, CI, promoción ni
 release.
+
+### Resultado J9
+
+Implementado en `fc57eb9a` sobre dos rutas de test existentes. El banco sin
+opt-in hace SKIP; Imola→Monza y Monza→Imola pasan con snapshot v4, destino
+canónico resuelto desde el único catálogo Analysis/Strategy, replay, cierre y
+reapertura, proyección histórica, retirada a v1 y banco familiar posterior.
+Las magnitudes físicas permanecen iguales; sólo cambia la referencia de
+procedencia `aggregate:<combinationId>` al destino canónico esperado. Los dos
+DuckDB conservan exactamente sus SHA-256 originales. Focal, `go test -p 1
+./...`, vet, gofmt y diff pasan. No se abrió la app ni LMU, no hubo exportación,
+build de escritorio, datos reservados ni acción remota.

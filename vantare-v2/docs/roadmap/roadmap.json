@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-10T03:31:11Z",
+  "generatedAt": "2026-09-13T01:10:57Z",
   "digest": {
-    "lastCommit": "a9b8dd3695c66856e931d73650d54c4f6cb9e828"
+    "lastCommit": "d2e784c0f9aee15ffe434b6bc2f1ce87aae7e7d5"
   },
   "phases": [
     {
@@ -859,10 +859,10 @@
         "it": "Procedura guidata ed editor della telemetria registrata"
       },
       "body": {
-        "es": "Dirección visual aceptada: asistente de cinco pasos (Inicio, Combinación, Reglas, Pilotos y Sesiones) y editor A4/Orbit con Carrera, Datos, Plan, Revisiones, stint y parada. Combinación reúne simulador, evento personalizado o calendario Vantare, coche/categoría y circuito. En desarrollo local, Analysis valida y guarda conjuntos de correcciones escalares con historial, conflictos, reintentos y recuperación; los aplica sobre una vista separada y recalcula sus derivaciones conservando originales y calidad. Las proyecciones admiten referencias completas de sesión/base/revisión/snapshot; Analysis deriva desde la revisión guardada exacta y el cliente valida estas referencias. El servicio prepara, guarda, consulta y proyecta correcciones desde una sesión abierta revalidada, con custodia persistente y clasificación recalculada. El cliente nativo valida las respuestas y propaga cancelación sin reintentos automáticos. Documento y cliente conservan revisiones exactas y rechazan proyecciones discordantes; cambiar selección descarta derivados anteriores conservando ajustes. El adaptador autorizado proyecta conjuntamente revisiones exactas de sesiones abiertas. Strategy ya solicita esas revisiones al adaptador y valida su respuesta sin sustituciones. El contrato de cálculo admite reglas explícitas de evento y las conserva al optimizar y revalidar la decisión; el documento y cliente ya conservan reglas con procedencia y versión compatible; falta conectarlas al recorrido visible. La búsqueda del solver reutiliza costes de servicios idénticos dentro de cada cálculo sin reducir alternativas; el caso de regresión de Imola vuelve a completar el cálculo en pruebas locales. El descubrimiento nativo admite hasta 1024 archivos sin confundir exceso de límite con formato incompatible. El panel productivo de Sesiones permite apertura explícita, preparación y selección de revisiones; el recorrido nativo se contrasta con carreras reales conservando sus originales. La sección Estrategia abre el asistente A4 de cinco pasos con combinación unificada, reglas, pilotos y sesiones. Permite descubrir y aceptar una fuente explícita, guardar configuración en el repositorio nativo y reabrirla desde Mis estrategias. El resumen conserva los datos ausentes y no presenta un cálculo como completado. Faltan conectar las operaciones avanzadas y el cálculo del nuevo recorrido, cerrar la paridad visual y validar Wails. LMU/DuckDB es el primer adapter; otros simuladores usarán sus formatos. Las fuentes originales permanecen intactas, con copia opcional. Se mantienen resultados parciales, Fuel y energía virtual separados, estimaciones de pilotos y revisiones reproducibles. El inventario inicial cubre 367 archivos; siguen pendientes anotación independiente, calibración de criterios y carreras completas reservadas. El solver ya distingue factibilidad y optimalidad y comprueba recursos, reservas y horizonte temporal; su precisión física y aceptación Wails requieren evidencia real. Live e investigación OSS/Monte Carlo quedan para después de completar el flujo registrado. La entrega se organiza en un SDD integral con tareas dependientes, criterios de aceptación y continuidad entre cortes; sólo las decisiones reales de producto y promociones requieren nueva intervención. La biblioteca permite buscar nombres locales saneados, filtrar disponibilidad, ordenar por fecha y recorrer páginas de 25 archivos sin abrir contenido automáticamente. Datos ya permite consultar muestras originales por páginas y preparar correcciones con motivo, guardarlas por separado, comprobar una confirmación incierta y adoptar la revisión explícitamente. La ampliación a otras operaciones de edición y el historial completo del plan siguen pendientes. Revisiones permite consultar la revisión exacta de una fuente, recorrer sus padres, restaurar como nueva revisión con motivo y elegir explícitamente sus datos para la carrera. Datos distingue señales consultables de señales con correcciones verificables. El historial completo del plan y la recuperación de comandos entre reinicios siguen pendientes. La vista principal de Datos consulta vueltas de una revisión exacta, agrupadas por límites de stint registrados. Permite proponer uso por ritmo, Fuel, VE, neumáticos o ahorro con motivo, sin eliminar datos sanos de otras familias; las muestras quedan en vista avanzada. Guardado, descarte y restauración conservan el conjunto mixto completo. Clasificación, edición de límites y validación visual y nativa final siguen pendientes.",
-        "en": "Visual direction accepted: a five-step wizard (Start, Combination, Rules, Drivers and Sessions) and A4/Orbit editor with Race, Data, Plan, Revisions, stint and pit-stop details. Combination includes simulator, custom event or Vantare calendar, car/category and track. Local development now validates, stores and applies scalar correction sets with history, conflicts, retries and recovery, then recomputes derivatives while preserving original files and quality. Projections support complete session/base/revision/snapshot references; Analysis derives from an exact stored revision and the client validates its references. The service prepares, saves, loads and projects corrections from a revalidated open session, with persistent custody and recomputed classification. The native client validates responses and propagates cancellation without automatic retries. Document and client preserve exact revisions and reject mismatched projections; selection changes discard prior derivatives while preserving overrides. An authorized adapter jointly projects exact revisions of open sessions. Strategy now requests those revisions through the adapter and validates its response without substitutions. The calculation contract accepts explicit event rules and preserves them through optimization and final validation; document and client now preserve sourced rules with compatible versioning; connection to the visible workflow remains pending. The solver reuses identical service costs within each calculation without reducing alternatives; the Imola regression completes in local tests. Native discovery supports up to 1024 files and distinguishes limit overflow from incompatible format. The production Sessions panel supports explicit opening, preparation and revision selection; the native path is checked against real races with original files preserved. Strategy now opens the five-step A4 wizard with unified combination, rules, drivers and sessions. It supports discovering and explicitly accepting a source, saving configuration in the native repository and reopening it from My strategies. The overview preserves missing inputs without presenting a completed calculation. Advanced editing and calculation wiring, final visual parity and Wails validation remain pending. LMU/DuckDB is the first adapter; future simulators use their own formats. Original files stay unchanged, with an optional copy. Partial results, separate Fuel/Virtual Energy, driver estimates and reproducible revisions remain required. The 367-file inventory still needs independent annotation, criteria calibration and held-out complete races. The solver checks feasibility, optimality, resources, reserves and race horizon; physical accuracy and Wails acceptance still require real evidence. Live and OSS/Monte Carlo research follow the recorded workflow. Delivery follows an integrated SDD with dependent tasks, acceptance criteria and continuous execution between slices; only actual product decisions and promotions require further intervention. The library supports sanitized local filename search, availability filters, date ordering and pages of 25 files without automatically opening content. Data now supports paged original samples, reasoned corrections, separate saves, uncertain-save resolution and explicit revision adoption. Additional editing operations and complete plan history remain pending. Revisions can inspect an exact source revision, visit its parents, restore it as a new revision with a reason and explicitly select its data for the race. Data distinguishes readable signals from signals supporting verified corrections. Full plan history and command recovery across restarts remain pending. The main Data view inspects laps from an exact revision, grouped by recorded stint boundaries. It stages reasoned usage decisions for pace, Fuel, VE, tyres or saving while preserving other families; samples remain in an advanced view. Save, discard and restore retain the complete mixed set. Classification, boundary editing and final visual and native validation remain pending.",
-        "pt": "Visão visual aprovada: assistente de cinco passos (Início, Combinação, Regras, Pilotos e Sessões) e editor A4/Orbit com Corrida, Dados, Plano, Revisões, stint e paragem. Combinação reúne simulador, evento personalizado ou calendário Vantare, carro/categoria e circuito. O desenvolvimento local valida, guarda e aplica correções escalares com histórico, conflitos, repetição e recuperação, recalculando derivados sem alterar originais ou qualidade. As projeções aceitam referências completas de sessão/base/revisão/snapshot; Analysis deriva a revisão guardada exata e o cliente valida as referências. O serviço prepara, guarda, consulta e projeta correções de uma sessão aberta revalidada, com custódia persistente e classificação recalculada. O cliente nativo valida respostas e propaga cancelamento sem repetições automáticas. Documento e cliente conservam revisões exatas e rejeitam projeções divergentes; alterar a seleção descarta derivados anteriores preservando ajustes. O adaptador autorizado projeta em conjunto revisões exatas de sessões abertas. Strategy já solicita essas revisões ao adaptador e valida a resposta sem substituições. O contrato de cálculo aceita regras explícitas do evento e mantém-nas na otimização e validação final; documento e cliente já preservam regras com origem e versão compatível; falta ligá-las ao percurso visível. O solver reutiliza custos de serviços idênticos em cada cálculo sem reduzir alternativas; a regressão de Imola conclui nos testes locais. A descoberta nativa admite até 1024 ficheiros e distingue excesso de limite de formato incompatível. O painel produtivo de Sessões permite abertura explícita, preparação e seleção de revisões; o percurso nativo é verificado com corridas reais preservando os originais. A secção Estratégia abre o assistente A4 de cinco passos com combinação unificada, regras, pilotos e sessões. Permite descobrir e aceitar uma fonte explícita, guardar a configuração no repositório nativo e reabri-la em Minhas estratégias. O resumo preserva dados ausentes sem apresentar um cálculo concluído. Faltam as operações avançadas, a ligação do cálculo, a paridade visual final e a validação Wails. LMU/DuckDB é o primeiro adapter; outros simuladores terão formatos próprios. Originais intactos e cópia opcional; resultados parciais, Fuel/energia virtual separados, estimativas entre pilotos e revisões reproduzíveis. O inventário de 367 ficheiros aguarda anotação independente, calibração e corridas completas reservadas. O solver verifica viabilidade, optimalidade, recursos, reservas e horizonte; precisão física e aceitação Wails exigem evidência real. Live e pesquisa OSS/Monte Carlo ficam para depois. A entrega segue um SDD integral com tarefas dependentes, critérios de aceitação e execução contínua entre etapas; só decisões reais de produto e promoções exigem nova intervenção. A biblioteca permite procurar nomes locais saneados, filtrar disponibilidade, ordenar por data e percorrer páginas de 25 ficheiros sem abrir conteúdo automaticamente. Dados já permite consultar amostras originais por páginas, preparar correções com motivo, guardá-las separadamente, verificar confirmações incertas e adotar revisões explicitamente. Operações adicionais de edição e o histórico completo do plano continuam pendentes. Revisões permite consultar uma revisão exata da fonte, visitar as anteriores, restaurá-la como nova revisão com motivo e escolher explicitamente os seus dados para a corrida. Dados distingue sinais consultáveis de sinais que permitem correções verificadas. O histórico completo do plano e a recuperação de comandos após reinício continuam pendentes. A vista principal de Dados consulta voltas de uma revisão exata, agrupadas por limites de stint registados. Permite propor utilização para ritmo, Fuel, VE, pneus ou poupança com motivo, preservando as outras famílias; as amostras ficam na vista avançada. Guardar, descartar e restaurar conservam o conjunto misto completo. Classificação, edição de limites e validação visual e nativa final continuam pendentes.",
-        "it": "Direzione visiva approvata: procedura in cinque passaggi (Inizio, Combinazione, Regole, Piloti e Sessioni) ed editor A4/Orbit con Gara, Dati, Piano, Revisioni, stint e sosta. Combinazione riunisce simulatore, evento personalizzato o calendario Vantare, auto/categoria e circuito. Lo sviluppo locale valida, conserva e applica correzioni scalari con cronologia, conflitti, ripetizioni e recupero, ricalcolando i derivati senza modificare originali o qualità. Le proiezioni supportano riferimenti completi di sessione/base/revisione/snapshot; Analysis deriva la revisione salvata esatta e il client valida i riferimenti. Il servizio prepara, salva, consulta e proietta correzioni di una sessione aperta rivalidata, con custodia persistente e classificazione ricalcolata. Il client nativo valida le risposte e propaga la cancellazione senza tentativi automatici. Documento e client conservano revisioni esatte e rifiutano proiezioni discordanti; cambiare selezione elimina i derivati precedenti mantenendo le impostazioni. Un adattatore autorizzato proietta insieme revisioni esatte di sessioni aperte. Strategy richiede ora tali revisioni tramite adattatore e verifica la risposta senza sostituzioni. Il contratto di calcolo accetta regole esplicite dell’evento e le conserva nell’ottimizzazione e validazione finale; documento e client conservano già regole con provenienza e versione compatibile; resta da collegarle al percorso visibile. Il solver riutilizza costi di servizi identici in ogni calcolo senza ridurre le alternative; la regressione di Imola termina nei test locali. La ricerca nativa supporta fino a 1024 file e distingue il superamento del limite da un formato incompatibile. Il pannello Sessioni consente apertura esplicita, preparazione e selezione delle revisioni; il percorso nativo viene verificato con gare reali conservando gli originali. La sezione Strategia apre la procedura A4 in cinque passaggi con combinazione unificata, regole, piloti e sessioni. Consente di trovare e accettare una fonte esplicita, salvare la configurazione nel repository nativo e riaprirla da Le mie strategie. Il riepilogo conserva i dati mancanti senza presentare un calcolo completato. Restano le operazioni avanzate, il collegamento del calcolo, la parità visiva finale e la validazione Wails. LMU/DuckDB è il primo adapter; altri simulatori avranno formati propri. Originali intatti e copia facoltativa; risultati parziali, Fuel/energia virtuale separati, stime tra piloti e revisioni riproducibili. L’inventario di 367 file richiede annotazione indipendente, calibrazione e gare complete riservate. Il solver verifica fattibilità, ottimalità, risorse, riserve e orizzonte; precisione fisica e accettazione Wails richiedono prove reali. Live e ricerca OSS/Monte Carlo seguiranno il flusso registrato. La consegna segue un SDD integrato con attività dipendenti, criteri di accettazione ed esecuzione continua; solo decisioni reali di prodotto e promozioni richiedono un nuovo intervento. La libreria permette di cercare nomi locali sicuri, filtrare la disponibilità, ordinare per data e sfogliare pagine di 25 file senza aprire automaticamente i contenuti. Dati permette di consultare campioni originali per pagina, preparare correzioni motivate, salvarle separatamente, verificare conferme incerte e adottare revisioni esplicitamente. Restano da completare ulteriori operazioni di modifica e la cronologia completa del piano. Revisioni permette di consultare una revisione esatta della fonte, visitare le precedenti, ripristinarla come nuova revisione con motivo e sceglierne esplicitamente i dati per la gara. Dati distingue i segnali consultabili da quelli che supportano correzioni verificate. Cronologia completa del piano e recupero dei comandi dopo il riavvio restano da completare. La vista principale Dati consulta i giri di una revisione esatta, raggruppati per limiti di stint registrati. Permette proposte motivate di utilizzo per passo, Fuel, VE, pneumatici o risparmio, preservando le altre famiglie; i campioni restano nella vista avanzata. Salvataggio, annullamento e ripristino conservano il set misto completo. Classificazione, modifica dei limiti e validazione visiva e nativa finale restano da completare."
+        "es": "Dirección visual aceptada: asistente de cinco pasos (Inicio, Combinación, Reglas, Pilotos y Sesiones) y editor A4/Orbit con Carrera, Datos, Plan, Revisiones, stint y parada. Combinación reúne simulador, evento personalizado o calendario Vantare, coche/categoría y circuito. En desarrollo local, Analysis valida y guarda conjuntos de correcciones escalares con historial, conflictos, reintentos y recuperación; los aplica sobre una vista separada y recalcula sus derivaciones conservando originales y calidad. Las proyecciones admiten referencias completas de sesión/base/revisión/snapshot; Analysis deriva desde la revisión guardada exacta y el cliente valida estas referencias. El servicio prepara, guarda, consulta y proyecta correcciones desde una sesión abierta revalidada, con custodia persistente y clasificación recalculada. El cliente nativo valida las respuestas y propaga cancelación sin reintentos automáticos. Documento y cliente conservan revisiones exactas y rechazan proyecciones discordantes; cambiar selección descarta derivados anteriores conservando ajustes. El adaptador autorizado proyecta conjuntamente revisiones exactas de sesiones abiertas. Strategy ya solicita esas revisiones al adaptador y valida su respuesta sin sustituciones. El contrato de cálculo admite reglas explícitas de evento y las conserva al optimizar y revalidar la decisión; el documento y cliente ya conservan reglas con procedencia y versión compatible; falta conectarlas al recorrido visible. La búsqueda del solver reutiliza costes de servicios idénticos dentro de cada cálculo sin reducir alternativas; el caso de regresión de Imola vuelve a completar el cálculo en pruebas locales. El descubrimiento nativo admite hasta 1024 archivos sin confundir exceso de límite con formato incompatible. El panel productivo de Sesiones permite apertura explícita, preparación y selección de revisiones; el recorrido nativo se contrasta con carreras reales conservando sus originales. La sección Estrategia abre el asistente A4 de cinco pasos con combinación unificada, reglas, pilotos y sesiones. Permite descubrir y aceptar una fuente explícita, guardar configuración en el repositorio nativo y reabrirla desde Mis estrategias. El resumen conserva los datos ausentes y no presenta un cálculo como completado. Faltan conectar las operaciones avanzadas y el cálculo del nuevo recorrido, cerrar la paridad visual y validar Wails. LMU/DuckDB es el primer adapter; otros simuladores usarán sus formatos. Las fuentes originales permanecen intactas, con copia opcional. Se mantienen resultados parciales, Fuel y energía virtual separados, estimaciones de pilotos y revisiones reproducibles. El inventario inicial cubre 367 archivos; siguen pendientes anotación independiente, calibración de criterios y carreras completas reservadas. El solver ya distingue factibilidad y optimalidad y comprueba recursos, reservas y horizonte temporal; su precisión física y aceptación Wails requieren evidencia real. Live e investigación OSS/Monte Carlo quedan para después de completar el flujo registrado. La entrega se organiza en un SDD integral con tareas dependientes, criterios de aceptación y continuidad entre cortes; sólo las decisiones reales de producto y promociones requieren nueva intervención. La biblioteca permite buscar nombres locales saneados, filtrar disponibilidad, ordenar por fecha y recorrer páginas de 25 archivos sin abrir contenido automáticamente. Datos ya permite consultar muestras originales por páginas y preparar correcciones con motivo, guardarlas por separado, comprobar una confirmación incierta y adoptar la revisión explícitamente. La ampliación a otras operaciones de edición y el historial completo del plan siguen pendientes. Revisiones permite consultar la revisión exacta de una fuente, recorrer sus padres, restaurar como nueva revisión con motivo y elegir explícitamente sus datos para la carrera. Datos distingue señales consultables de señales con correcciones verificables. El historial completo del plan y la recuperación de comandos entre reinicios siguen pendientes. La vista principal de Datos consulta vueltas de una revisión exacta, agrupadas por límites de stint registrados. Permite proponer uso por ritmo, Fuel, VE, neumáticos o ahorro con motivo, sin eliminar datos sanos de otras familias; las muestras quedan en vista avanzada. Guardado, descarte y restauración conservan el conjunto mixto completo. Clasificación muestra original, guardado y propuesta y permite corregir tipo, clima e identidad canónica de simulador/coche/clase/circuito mediante el catálogo autorizado, con historial v4 reversible. Un banco real bidireccional Imola↔Monza confirma la proyección y restauración sin alterar los DuckDB originales. Siguen pendientes la edición de límites y la validación visual y nativa final.",
+        "en": "Visual direction accepted: a five-step wizard (Start, Combination, Rules, Drivers and Sessions) and A4/Orbit editor with Race, Data, Plan, Revisions, stint and pit-stop details. Combination includes simulator, custom event or Vantare calendar, car/category and track. Local development now validates, stores and applies scalar correction sets with history, conflicts, retries and recovery, then recomputes derivatives while preserving original files and quality. Projections support complete session/base/revision/snapshot references; Analysis derives from an exact stored revision and the client validates its references. The service prepares, saves, loads and projects corrections from a revalidated open session, with persistent custody and recomputed classification. The native client validates responses and propagates cancellation without automatic retries. Document and client preserve exact revisions and reject mismatched projections; selection changes discard prior derivatives while preserving overrides. An authorized adapter jointly projects exact revisions of open sessions. Strategy now requests those revisions through the adapter and validates its response without substitutions. The calculation contract accepts explicit event rules and preserves them through optimization and final validation; document and client now preserve sourced rules with compatible versioning; connection to the visible workflow remains pending. The solver reuses identical service costs within each calculation without reducing alternatives; the Imola regression completes in local tests. Native discovery supports up to 1024 files and distinguishes limit overflow from incompatible format. The production Sessions panel supports explicit opening, preparation and revision selection; the native path is checked against real races with original files preserved. Strategy now opens the five-step A4 wizard with unified combination, rules, drivers and sessions. It supports discovering and explicitly accepting a source, saving configuration in the native repository and reopening it from My strategies. The overview preserves missing inputs without presenting a completed calculation. Advanced editing and calculation wiring, final visual parity and Wails validation remain pending. LMU/DuckDB is the first adapter; future simulators use their own formats. Original files stay unchanged, with an optional copy. Partial results, separate Fuel/Virtual Energy, driver estimates and reproducible revisions remain required. The 367-file inventory still needs independent annotation, criteria calibration and held-out complete races. The solver checks feasibility, optimality, resources, reserves and race horizon; physical accuracy and Wails acceptance still require real evidence. Live and OSS/Monte Carlo research follow the recorded workflow. Delivery follows an integrated SDD with dependent tasks, acceptance criteria and continuous execution between slices; only actual product decisions and promotions require further intervention. The library supports sanitized local filename search, availability filters, date ordering and pages of 25 files without automatically opening content. Data now supports paged original samples, reasoned corrections, separate saves, uncertain-save resolution and explicit revision adoption. Additional editing operations and complete plan history remain pending. Revisions can inspect an exact source revision, visit its parents, restore it as a new revision with a reason and explicitly select its data for the race. Data distinguishes readable signals from signals supporting verified corrections. Full plan history and command recovery across restarts remain pending. The main Data view inspects laps from an exact revision, grouped by recorded stint boundaries. It stages reasoned usage decisions for pace, Fuel, VE, tyres or saving while preserving other families; samples remain in an advanced view. Save, discard and restore retain the complete mixed set. Classification now shows original, saved and proposed values and supports editing type, weather and canonical simulator/car/class/track identity through the authorized catalog, with reversible v4 history. A bidirectional real Imola↔Monza bank verifies projection and restoration without changing the original DuckDB files. Boundary editing and final visual and native validation remain pending.",
+        "pt": "Visão visual aprovada: assistente de cinco passos (Início, Combinação, Regras, Pilotos e Sessões) e editor A4/Orbit com Corrida, Dados, Plano, Revisões, stint e paragem. Combinação reúne simulador, evento personalizado ou calendário Vantare, carro/categoria e circuito. O desenvolvimento local valida, guarda e aplica correções escalares com histórico, conflitos, repetição e recuperação, recalculando derivados sem alterar originais ou qualidade. As projeções aceitam referências completas de sessão/base/revisão/snapshot; Analysis deriva a revisão guardada exata e o cliente valida as referências. O serviço prepara, guarda, consulta e projeta correções de uma sessão aberta revalidada, com custódia persistente e classificação recalculada. O cliente nativo valida respostas e propaga cancelamento sem repetições automáticas. Documento e cliente conservam revisões exatas e rejeitam projeções divergentes; alterar a seleção descarta derivados anteriores preservando ajustes. O adaptador autorizado projeta em conjunto revisões exatas de sessões abertas. Strategy já solicita essas revisões ao adaptador e valida a resposta sem substituições. O contrato de cálculo aceita regras explícitas do evento e mantém-nas na otimização e validação final; documento e cliente já preservam regras com origem e versão compatível; falta ligá-las ao percurso visível. O solver reutiliza custos de serviços idênticos em cada cálculo sem reduzir alternativas; a regressão de Imola conclui nos testes locais. A descoberta nativa admite até 1024 ficheiros e distingue excesso de limite de formato incompatível. O painel produtivo de Sessões permite abertura explícita, preparação e seleção de revisões; o percurso nativo é verificado com corridas reais preservando os originais. A secção Estratégia abre o assistente A4 de cinco passos com combinação unificada, regras, pilotos e sessões. Permite descobrir e aceitar uma fonte explícita, guardar a configuração no repositório nativo e reabri-la em Minhas estratégias. O resumo preserva dados ausentes sem apresentar um cálculo concluído. Faltam as operações avançadas, a ligação do cálculo, a paridade visual final e a validação Wails. LMU/DuckDB é o primeiro adapter; outros simuladores terão formatos próprios. Originais intactos e cópia opcional; resultados parciais, Fuel/energia virtual separados, estimativas entre pilotos e revisões reproduzíveis. O inventário de 367 ficheiros aguarda anotação independente, calibração e corridas completas reservadas. O solver verifica viabilidade, optimalidade, recursos, reservas e horizonte; precisão física e aceitação Wails exigem evidência real. Live e pesquisa OSS/Monte Carlo ficam para depois. A entrega segue um SDD integral com tarefas dependentes, critérios de aceitação e execução contínua entre etapas; só decisões reais de produto e promoções exigem nova intervenção. A biblioteca permite procurar nomes locais saneados, filtrar disponibilidade, ordenar por data e percorrer páginas de 25 ficheiros sem abrir conteúdo automaticamente. Dados já permite consultar amostras originais por páginas, preparar correções com motivo, guardá-las separadamente, verificar confirmações incertas e adotar revisões explicitamente. Operações adicionais de edição e o histórico completo do plano continuam pendentes. Revisões permite consultar uma revisão exata da fonte, visitar as anteriores, restaurá-la como nova revisão com motivo e escolher explicitamente os seus dados para a corrida. Dados distingue sinais consultáveis de sinais que permitem correções verificadas. O histórico completo do plano e a recuperação de comandos após reinício continuam pendentes. A vista principal de Dados consulta voltas de uma revisão exata, agrupadas por limites de stint registados. Permite propor utilização para ritmo, Fuel, VE, pneus ou poupança com motivo, preservando as outras famílias; as amostras ficam na vista avançada. Guardar, descartar e restaurar conservam o conjunto misto completo. A classificação mostra agora os valores original, guardado e proposto e permite corrigir tipo, clima e identidade canónica de simulador/carro/classe/circuito através do catálogo autorizado, com histórico v4 reversível. Um banco real bidirecional Imola↔Monza confirma a projeção e a restauração sem alterar os DuckDB originais. A edição de limites e a validação visual e nativa final continuam pendentes.",
+        "it": "Direzione visiva approvata: procedura in cinque passaggi (Inizio, Combinazione, Regole, Piloti e Sessioni) ed editor A4/Orbit con Gara, Dati, Piano, Revisioni, stint e sosta. Combinazione riunisce simulatore, evento personalizzato o calendario Vantare, auto/categoria e circuito. Lo sviluppo locale valida, conserva e applica correzioni scalari con cronologia, conflitti, ripetizioni e recupero, ricalcolando i derivati senza modificare originali o qualità. Le proiezioni supportano riferimenti completi di sessione/base/revisione/snapshot; Analysis deriva la revisione salvata esatta e il client valida i riferimenti. Il servizio prepara, salva, consulta e proietta correzioni di una sessione aperta rivalidata, con custodia persistente e classificazione ricalcolata. Il client nativo valida le risposte e propaga la cancellazione senza tentativi automatici. Documento e client conservano revisioni esatte e rifiutano proiezioni discordanti; cambiare selezione elimina i derivati precedenti mantenendo le impostazioni. Un adattatore autorizzato proietta insieme revisioni esatte di sessioni aperte. Strategy richiede ora tali revisioni tramite adattatore e verifica la risposta senza sostituzioni. Il contratto di calcolo accetta regole esplicite dell’evento e le conserva nell’ottimizzazione e validazione finale; documento e client conservano già regole con provenienza e versione compatibile; resta da collegarle al percorso visibile. Il solver riutilizza costi di servizi identici in ogni calcolo senza ridurre le alternative; la regressione di Imola termina nei test locali. La ricerca nativa supporta fino a 1024 file e distingue il superamento del limite da un formato incompatibile. Il pannello Sessioni consente apertura esplicita, preparazione e selezione delle revisioni; il percorso nativo viene verificato con gare reali conservando gli originali. La sezione Strategia apre la procedura A4 in cinque passaggi con combinazione unificata, regole, piloti e sessioni. Consente di trovare e accettare una fonte esplicita, salvare la configurazione nel repository nativo e riaprirla da Le mie strategie. Il riepilogo conserva i dati mancanti senza presentare un calcolo completato. Restano le operazioni avanzate, il collegamento del calcolo, la parità visiva finale e la validazione Wails. LMU/DuckDB è il primo adapter; altri simulatori avranno formati propri. Originali intatti e copia facoltativa; risultati parziali, Fuel/energia virtuale separati, stime tra piloti e revisioni riproducibili. L’inventario di 367 file richiede annotazione indipendente, calibrazione e gare complete riservate. Il solver verifica fattibilità, ottimalità, risorse, riserve e orizzonte; precisione fisica e accettazione Wails richiedono prove reali. Live e ricerca OSS/Monte Carlo seguiranno il flusso registrato. La consegna segue un SDD integrato con attività dipendenti, criteri di accettazione ed esecuzione continua; solo decisioni reali di prodotto e promozioni richiedono un nuovo intervento. La libreria permette di cercare nomi locali sicuri, filtrare la disponibilità, ordinare per data e sfogliare pagine di 25 file senza aprire automaticamente i contenuti. Dati permette di consultare campioni originali per pagina, preparare correzioni motivate, salvarle separatamente, verificare conferme incerte e adottare revisioni esplicitamente. Restano da completare ulteriori operazioni di modifica e la cronologia completa del piano. Revisioni permette di consultare una revisione esatta della fonte, visitare le precedenti, ripristinarla come nuova revisione con motivo e sceglierne esplicitamente i dati per la gara. Dati distingue i segnali consultabili da quelli che supportano correzioni verificate. Cronologia completa del piano e recupero dei comandi dopo il riavvio restano da completare. La vista principale Dati consulta i giri di una revisione esatta, raggruppati per limiti di stint registrati. Permette proposte motivate di utilizzo per passo, Fuel, VE, pneumatici o risparmio, preservando le altre famiglie; i campioni restano nella vista avanzata. Salvataggio, annullamento e ripristino conservano il set misto completo. La classificazione mostra ora valori originali, salvati e proposti e permette di correggere tipo, meteo e identità canonica di simulatore/auto/classe/circuito tramite il catalogo autorizzato, con cronologia v4 reversibile. Un banco reale bidirezionale Imola↔Monza verifica proiezione e ripristino senza modificare i DuckDB originali. Restano da completare la modifica dei limiti e la validazione visiva e nativa finale."
       },
       "label": {
         "es": "Plan",
@@ -1028,12 +1028,127 @@
   ],
   "delivered": [
     {
+      "date": "2026-09-13",
+      "entries": [
+        {
+          "kind": "fix",
+          "scope": "estrategia",
+          "text": "Presupuesto de memoria en importación de sesiones LMU"
+        },
+        {
+          "kind": "fix",
+          "scope": "telemetria",
+          "text": "Dedup de vueltas, fronteras de fuel alineadas y deteccion de huecos rowid"
+        },
+        {
+          "kind": "fix",
+          "scope": "config",
+          "text": "Readmite vantare-iracing en el contrato de perfiles V3"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-1183 · Integrar widgets Eficiencia y corrección Foco"
+        },
+        {
+          "kind": "feat",
+          "scope": "widgets",
+          "text": "Sistema de diseno Eficiencia + motor de animacion"
+        },
+        {
+          "kind": "fix",
+          "scope": "estrategia",
+          "text": "Presupuesto de trabajo por tamaño en Orbit en vez de deadline de pared"
+        }
+      ]
+    },
+    {
+      "date": "2026-09-12",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Store externo con selectores bajo el contexto documento (ISA-1149 B1)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Fanout Wails por dominio — settings y license"
+        },
+        {
+          "kind": "perf",
+          "scope": "hub",
+          "text": "Blur condicional por nivel de rendimiento en la shell"
+        },
+        {
+          "kind": "perf",
+          "scope": "telemetry",
+          "text": "Sin allocs por tick en mapper y AllSections"
+        },
+        {
+          "kind": "docs",
+          "scope": "roadmap",
+          "text": "Etapas hacia beta pública, versiones y lanzamiento"
+        }
+      ]
+    },
+    {
+      "date": "2026-09-11",
+      "entries": [
+        {
+          "kind": "perf",
+          "scope": "hub",
+          "text": "Canal granular de perfiles en launcher-store"
+        },
+        {
+          "kind": "perf",
+          "scope": "hub",
+          "text": "Elimina suscripción muerta al strategy-store"
+        },
+        {
+          "kind": "perf",
+          "scope": "hub",
+          "text": "Reloj compartido useNow para cuentas atrás de 1 s"
+        },
+        {
+          "kind": "perf",
+          "scope": "fonts",
+          "text": "Subset WOFF2 de Cascadia Code"
+        },
+        {
+          "kind": "fix",
+          "scope": "studio",
+          "text": "Restaurar enlace OBS al pie del dock de ajustes"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlay",
+          "text": "Editor in-place C5 — toolbar pill, pestañas y panel ocultable"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlay",
+          "text": "Editor in-place — teclado, acciones de widget y salida visible"
+        }
+      ]
+    },
+    {
       "date": "2026-09-10",
       "entries": [
         {
           "kind": "change",
           "scope": "",
           "text": "ISA-1101 · Integrar Redline Tower y dorsales canónicos"
+        },
+        {
+          "kind": "docs",
+          "scope": "ci",
+          "text": "Registrar integración Nightly de ISA-728"
+        },
+        {
+          "kind": "fix",
+          "scope": "ci",
+          "text": "Corregir validación del workflow inerte"
         }
       ]
     },
@@ -1549,86 +1664,6 @@
           "kind": "change",
           "scope": "",
           "text": "HUD-ORBIT — porte completo de Command Orbit v0.3 al hub"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-17",
-      "entries": [
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "HUD-ORBIT-00 — Command Orbit v0.3: prototipo aprobado + paquete de diseño para el porte"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-16",
-      "entries": [
-        {
-          "kind": "fix",
-          "scope": "overlay",
-          "text": "Spatial capability, collapsing relative ghost and real FLIP motion"
-        },
-        {
-          "kind": "feat",
-          "scope": "ui",
-          "text": "Escala proporcional de escritorio 1080p a 32:9 4K (overlay + hub)"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "TM-04 posición de cada coche sobre el mapa"
-        },
-        {
-          "kind": "feat",
-          "scope": "transport",
-          "text": "TM/TC medir el ahorro real de publicar deltas de Overlay"
-        },
-        {
-          "kind": "feat",
-          "scope": "overlay",
-          "text": "Modo edicion in-place por hotkey (Ctrl+Shift+E) - isa-401"
-        },
-        {
-          "kind": "fix",
-          "scope": "relative",
-          "text": "Seleccionar vecinos físicos 2+2"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Persistencia privada de capturas del Testing Center"
-        },
-        {
-          "kind": "docs",
-          "scope": "release",
-          "text": "Add Nightly 9 canonical manifest"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-15",
-      "entries": [
-        {
-          "kind": "docs",
-          "scope": "overlay",
-          "text": "Record ISA-363 nightly promotion"
-        },
-        {
-          "kind": "fix",
-          "scope": "overlay",
-          "text": "Preserve stale frame during telemetry recovery"
-        },
-        {
-          "kind": "docs",
-          "scope": "overlays",
-          "text": "Record ISA-364 nightly promotion"
-        },
-        {
-          "kind": "fix",
-          "scope": "overlays",
-          "text": "List pure V3 profiles"
         }
       ]
     }

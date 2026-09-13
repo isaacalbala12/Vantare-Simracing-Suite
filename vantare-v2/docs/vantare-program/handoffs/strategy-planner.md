@@ -3140,3 +3140,29 @@ Sin app, GUI, Wails, LMU, build de escritorio, push, PR, CI remota, merge o
 promoción. Falta el contraste v4 de identidad contra más de una combinación
 real autorizada y reflejar la entrega visible en roadmap; la paridad Wails
 sigue separada por `ERROR_INVALID_STATE` ya reproducido, sin causa demostrada.
+
+## T12 J9 — cierre real bidireccional de identidad v4
+
+Aceptado en `fc57eb9a`, dos paths de test existentes, `+227/-21`. El banco opt-in
+requiere fuente primaria, fuente destino y runtime confiado; sin cualquiera hace
+SKIP honesto. Descubre e importa ambos DuckDB mediante las rutas de producto,
+los autoriza en un único `SessionCatalog` compartido por Analysis y Strategy y
+selecciona cada candidato por `DisplayName` exacto, nunca por orden o hash
+externo. Conserva primero el banco v3, guarda después sólo las diferencias RAW
+de identidad contra la segunda combinación autorizada como snapshot v4,
+resuelve/reproduce el comando, proyecta el destino, reabre el historial exacto,
+retira a v1 y alimenta con la cabeza restaurada el banco familiar existente.
+
+Imola→Monza PASS 23.99s y Monza→Imola PASS 35.98s. En ambas direcciones se
+conservan magnitudes físicas completas; cambia únicamente la referencia de
+procedencia agregada asociada a la combinación. SHA-256 finales idénticos:
+Imola `35438326ecddd6ab660ed3aad70b076a73e3290236c0292f30657594c38c1eb0` y
+Monza `08a1e626d7154becd493aa84addbf146cc7f0f229c8a7aa39664766813495538`.
+Focal sin opt-in SKIP/PASS, focal de alcance, `go vet` y `go test -p 1 ./...`
+EXIT0; gofmt/diff limpios. Logs `frontend/.tmp/isa1104-t12j9-*`.
+
+T12 queda cerrado localmente en código, frontend web y banco real. Pendiente
+separado: aceptación visual/nativa Wails T11i por `ERROR_INVALID_STATE`, edición
+de límites y cálculo avanzado del SDD principal. Sin app/GUI/LMU en ejecución,
+exportación, build de escritorio, fuente reservada, push, PR, CI remota, merge,
+promoción ni release.

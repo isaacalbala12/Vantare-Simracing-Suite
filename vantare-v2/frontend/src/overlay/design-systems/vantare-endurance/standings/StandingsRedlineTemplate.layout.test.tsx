@@ -3,8 +3,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
-import { chromium } from "playwright";
-import { describe, expect, it } from "vitest";
+import { chromium, type Browser, type Page } from "playwright";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { OverlayUpdateV2 } from "../../../../generated/telemetry";
 import type { WidgetRuntimeInput } from "../../../core/widget-definition";
 import { createTelemetryRateCoordinator } from "../../../core/telemetry-rate-coordinator";
@@ -152,19 +152,48 @@ function renderSurface(surface: Surface, state: State, width: number): string {
   return markup;
 }
 
+// Los combos de superficie x anchura son E/S de Chromium serializada: bajo
+// un runner cargado el bucle supera el presupuesto del test. El pool de
+// paginas reparte esa E/S sin tocar ninguna asercion (ISA-1025).
+async function forEachCombo<T>(
+  browser: Browser,
+  combos: readonly T[],
+  run: (page: Page, combo: T) => Promise<void>,
+): Promise<void> {
+  const pages = await Promise.all(
+    Array.from({ length: 4 }, () => browser.newPage({ viewport: { width: 1400, height: 700 } })),
+  );
+  try {
+    let next = 0;
+    await Promise.all(pages.map(async (page) => {
+      while (next < combos.length) {
+        const combo = combos[next]!;
+        next += 1;
+        await run(page, combo);
+      }
+    }));
+  } finally {
+    await Promise.all(pages.map((page) => page.close()));
+  }
+}
+
 describe("Standings Redline narrow production geometry", () => {
+  let browser: Browser;
+  beforeAll(async () => {
+    browser = await chromium.launch({ headless: true });
+  });
+  afterAll(async () => {
+    await browser?.close();
+  });
+
   it("keeps the maximum configured columns legible through productive frames at 280-420 px", async () => {
     const enduranceCss = readFileSync(join(__dirname, "..", "tokens.css"), "utf8");
     const studioCss = readFileSync(
       join(__dirname, "..", "..", "..", "..", "hub", "overlay-studio", "overlay-studio-v3.css"),
       "utf8",
     );
-    const browser = await chromium.launch({ headless: true });
-
-    try {
-      const page = await browser.newPage({ viewport: { width: 1400, height: 700 } });
-      for (const surface of surfaces) {
-        for (const width of widths) {
+    const combos = surfaces.flatMap((surface) => widths.map((width) => ({ surface, width })));
+    await forEachCombo(browser, combos, async (page, { surface, width }) => {
           await page.setContent(
             `<style>html,body{margin:0;background:transparent}*,*::before,*::after{box-sizing:border-box}${enduranceCss}${studioCss}</style>`
               + renderSurface(surface, "ready", width),
@@ -236,11 +265,7 @@ describe("Standings Redline narrow production geometry", () => {
           expect(result.completeRows, `${context} complete configured rows`).toBe(true);
           expect(result.clipped, `${context} clipped values`).toEqual([]);
           expect(result.outside, `${context} visible descendants outside frame`).toEqual([]);
-        }
-      }
-    } finally {
-      await browser.close();
-    }
+    });
   });
 
   it("keeps missing diagnostics inside productive Desktop, Studio and OBS frames", async () => {
@@ -248,11 +273,8 @@ describe("Standings Redline narrow production geometry", () => {
       join(__dirname, "..", "..", "..", "..", "hub", "overlay-studio", "overlay-studio-v3.css"),
       "utf8",
     );
-    const browser = await chromium.launch({ headless: true });
-    try {
-      const page = await browser.newPage({ viewport: { width: 1400, height: 700 } });
-      for (const surface of surfaces) {
-        for (const width of widths) {
+    const combos = surfaces.flatMap((surface) => widths.map((width) => ({ surface, width })));
+    await forEachCombo(browser, combos, async (page, { surface, width }) => {
           await page.setContent(`<style>${studioCss}</style>${renderSurface(surface, "missing", width)}`);
           const result = await page.evaluate(() => {
             const alert = document.querySelector<HTMLElement>('[role="alert"]');
@@ -270,10 +292,6 @@ describe("Standings Redline narrow production geometry", () => {
           expect(result.frameWidth, `${surface}/${width}px physical missing width`).toBeCloseTo(expectedEffectiveWidth, 1);
           expect(result.code, `${surface}/${width}px missing code`).toBe("overlay-v2-frame-missing");
           expect(result.inside, `${surface}/${width}px missing geometry`).toBe(true);
-        }
-      }
-    } finally {
-      await browser.close();
-    }
+    });
   });
 });

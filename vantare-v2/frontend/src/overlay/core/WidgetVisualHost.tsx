@@ -22,6 +22,8 @@ export type WidgetVisualHostProps = {
   runtime?: WidgetRuntimeInput;
   /** Explicit visual-authoring fixture. Never accepted by a production build. */
   authoringModel?: WidgetViewModelBase;
+  /** Pure presentation decision resolved by the native widget policy. */
+  brandVisible?: boolean;
 };
 
 function reportDiagnostic(
@@ -140,6 +142,9 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
     registration.systemId === "vantare-endurance" &&
     isRelativeRedlineTemplateId(settings.templateId);
   const Renderer = registration.Renderer;
+  const presentationSettings = props.brandVisible === undefined
+    ? settings
+    : { ...settings, brandVisible: props.brandVisible };
   // La política de rendimiento llega a los renderers como presupuesto de
   // motion/effects — antes solo el scheduler la obedecía.
   const performance = frame?.capabilities.performance;
@@ -158,7 +163,7 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
             systemId={widget.visual.systemId}
             onError={(error) => reportDiagnostic(props, "renderer-exception", error.message)}
           >
-            <Renderer model={model} settings={settings} renderMode={renderMode} layout={widget.layout} motion={motion} effects={effects} />
+            <Renderer model={model} settings={presentationSettings} renderMode={renderMode} layout={widget.layout} motion={motion} effects={effects} />
           </WidgetRenderBoundary>
         )}
       />
@@ -208,7 +213,7 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
         systemId={widget.visual.systemId}
         onError={(error) => reportDiagnostic(props, "renderer-exception", error.message)}
       >
-        <Renderer model={visualModel} settings={settings} renderMode={renderMode} layout={widget.layout} motion={motion} effects={effects} />
+        <Renderer model={visualModel} settings={presentationSettings} renderMode={renderMode} layout={widget.layout} motion={motion} effects={effects} />
       </WidgetRenderBoundary>
     </>
   );

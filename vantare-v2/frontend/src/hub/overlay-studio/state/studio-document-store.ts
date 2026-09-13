@@ -1,11 +1,10 @@
-import type { AccessContext } from "../../../lib/access-policy";
+import type { WidgetPolicyWire } from "../../../overlay/core/widget-policy";
 import type {
   ProfileDocumentV3,
   SessionLayoutType,
 } from "../../../overlay/core/profile-document";
 import {
   assertCommandAccess,
-  DEFAULT_STUDIO_ACCESS,
   StudioAccessError,
   validateDraftAccess,
 } from "../access/studio-access";
@@ -49,7 +48,7 @@ export type StudioRecoveryStore = ReturnType<typeof createStudioRecoveryStore>;
 
 /** Dependencias que llegan por props/memos del provider y pueden cambiar. */
 export type StudioStoreDeps = {
-  access: AccessContext;
+  widgetPolicy: WidgetPolicyWire | null;
   client: StudioProfileClient;
   initialFile: string;
   recoveryStore: StudioRecoveryStore | null;
@@ -104,7 +103,7 @@ export function createStudioStore(seed: StudioSeed): StudioStore {
   // configure() se llama en el primer render del provider, antes de que
   // cualquier accion pueda dispararse.
   let deps: StudioStoreDeps = {
-    access: DEFAULT_STUDIO_ACCESS,
+    widgetPolicy: null,
     client: {
       load: () => Promise.reject(new Error("studio store not configured")),
       save: () => Promise.reject(new Error("studio store not configured")),
@@ -204,7 +203,7 @@ export function createStudioStore(seed: StudioSeed): StudioStore {
       }
       try {
         assertCommandAccess(
-          deps.access,
+          deps.widgetPolicy,
           command,
           history.present,
           command.type === "widget/apply-design" ? command.design : undefined,
@@ -323,7 +322,7 @@ export function createStudioStore(seed: StudioSeed): StudioStore {
           }
 
           const draftValidation = validateDraftAccess(
-            deps.access,
+            deps.widgetPolicy,
             currentHistory.saved,
             currentDocument,
           );

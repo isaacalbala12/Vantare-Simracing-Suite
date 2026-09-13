@@ -263,7 +263,7 @@ func validateWidgetVisualSelectionV3(path string, visual WidgetVisualSelectionV3
 // IsSupportedDesignSystemID reports whether systemID belongs to the profile V3 contract.
 func IsSupportedDesignSystemID(systemID DesignSystemID) bool {
 	switch systemID {
-	case DesignSystemVantareOriginal, DesignSystemVantareCrystal, DesignSystemVantareEndurance, DesignSystemVantareFunctional, DesignSystemVantareIracing:
+	case DesignSystemVantareOriginal, DesignSystemVantareCrystal, DesignSystemVantareEndurance, DesignSystemVantareFunctional:
 		return true
 	default:
 		return false

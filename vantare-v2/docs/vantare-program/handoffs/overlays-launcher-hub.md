@@ -851,11 +851,26 @@ física nueva, retirada V1, merge o release en este corte documental.
   `FunctionalStudyControls`; `resolveStandingsRedlineMinimumWidth`
   devuelve `undefined` en tema tower (marco físico fijo). CI completo
   verde en ambos ciclos (suite 3476, Go, build Windows, Testing Center).
-  Preexistentes en nightly verificados en checkout limpio y ajenos:
-  `internal/app/launcher` solo compila en Windows y 2 tests de
+  **Divergencia tras el squash de ISA-1183 (`eee3b99e`, #1191):** esa
+  rama se había separado tras la primera revisión adversarial y al
+  integrarse conservó sus versiones en los archivos compartidos —
+  nightly quedó autoconsistente y verde, pero sin la segunda/tercera
+  ronda descrita arriba: `flipRows` (retarget en vuelo, identidad por
+  `data-standings-row`), `persist`/memoria de lado del delta, teardown
+  y timers con clave de `useStandingsMotion`, `data-motion-level` en
+  `PedalsEndurance`, suscripción reactiva a `prefers-reduced-motion` en
+  el host, escena `standings-class-battle` + aviso de parches sin
+  resolver, retirada de `useRelativeMotion` muerto, el caso
+  `vantare-iracing` en `IsSupportedDesignSystemID` (frontend lo sigue
+  registrando → perfiles con pedales iRacing no persisten) y el lint de
+  `orbit-outside-harness.tsx`. El fix del contrato Go se reaplica en un
+  PR dedicado; re-aterrizar el resto de la segunda/tercera ronda queda
+  a decisión de Isaac sobre la nueva base. Preexistentes en nightly
+  verificados en checkout limpio y ajenos: `internal/app/launcher` solo
+  compila en Windows (corregido luego por ISA-1183) y 2 tests de
   DiagnosticsBridge fallan en macOS. Pendiente: validación física en
-  OBS/WebView2 y la traducción de Foco a diseño oficial. Sin release
-  ni promoción a `testers`/`master`.
+  OBS/WebView2 y la traducción de Foco a diseño oficial (ISA-1183 ya
+  entrega parte). Sin release ni promoción a `testers`/`master`.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde
   `4864b5c6`, SHA `cb69a4d5…878faba`, muestra Pedals sobre LMU con freno real

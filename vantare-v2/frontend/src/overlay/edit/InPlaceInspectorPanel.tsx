@@ -4,7 +4,7 @@ import type { InspectorSectionId } from "../core/widget-definition";
 import type { LayoutViewport } from "../core/layout-viewport";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import { useOverlayRuntimeContext } from "../runtime/use-rate-limited-telemetry";
-import { FREE_ACCESS, type AccessContext } from "../../lib/access-policy";
+import type { StudioPolicy } from "../../hub/overlay-studio/access/studio-access";
 import { WidgetPropertyInspectorView, type WidgetPropertySectionId } from "../../hub/overlay-studio/inspector/WidgetPropertyInspectorView";
 import { LayoutSection } from "../../hub/overlay-studio/inspector/LayoutSection";
 import { DesignSection } from "../../hub/overlay-studio/inspector/DesignSection";
@@ -25,7 +25,7 @@ export type InPlaceInspectorPanelProps = {
   side?: "left" | "right";
   /** True mientras se arrastra o redimensiona un widget: el panel se vuelve fantasma. */
   ghosted?: boolean;
-  access?: AccessContext;
+  policy: StudioPolicy;
   licenseLoading?: boolean;
   autosave: ReturnType<typeof useInplaceAutosave>;
 };
@@ -76,7 +76,7 @@ export function InPlaceInspectorPanel(props: InPlaceInspectorPanelProps): React.
     selectWidget,
     side = "right",
     ghosted = false,
-    access,
+    policy,
     licenseLoading = false,
     autosave,
   } = props;
@@ -183,7 +183,7 @@ export function InPlaceInspectorPanel(props: InPlaceInspectorPanelProps): React.
           widget={widget}
           session={session}
           widgets={widgets}
-          access={access ?? FREE_ACCESS}
+          policy={policy}
           dispatch={autosave.dispatch}
           designClient={designClient}
         />
@@ -221,7 +221,7 @@ export function InPlaceInspectorPanel(props: InPlaceInspectorPanelProps): React.
         widget={widget}
         session={session}
         runtimeContext={runtimeContext}
-        access={access ?? FREE_ACCESS}
+        policy={policy}
         disabled={disabled}
         dispatch={autosave.dispatch}
       />
@@ -447,6 +447,6 @@ export const MemoInPlaceInspectorPanel = memo(InPlaceInspectorPanel, (prev, next
   && prev.side === next.side
   && prev.ghosted === next.ghosted
   && prev.autosave.paused === next.autosave.paused
-  && prev.access === next.access
+  && prev.policy === next.policy
   && prev.licenseLoading === next.licenseLoading
 ));

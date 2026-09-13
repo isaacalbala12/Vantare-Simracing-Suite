@@ -8,6 +8,7 @@ import { pedalsDefinition } from "../../../overlay/widget-types/pedals/pedals-de
 import type { WidgetDesignClient } from "../designs/widget-design-client";
 import { applyStudioCommand } from "../state/studio-command";
 import { DesignSection } from "./DesignSection";
+import type { StudioPolicy } from "../access/studio-access";
 
 afterEach(() => { cleanup(); localStorage.removeItem("vantare.locale"); });
 
@@ -16,6 +17,16 @@ const client: WidgetDesignClient = {
   save: vi.fn(async (design) => design),
   delete: vi.fn(async () => undefined),
   rename: vi.fn(async () => undefined),
+};
+
+const paidPolicy: StudioPolicy = {
+  revision: 1,
+  overlaysBasic: true,
+  overlaysAdvanced: true,
+  engineerAI: true,
+  brandCrystal: "optional",
+  brandEfficiency: "optional",
+  brandOriginal: "none",
 };
 
 function renderDesignSection(initial: WidgetInstanceV3) {
@@ -28,7 +39,7 @@ function renderDesignSection(initial: WidgetInstanceV3) {
     const widgets = document.layouts.general.widgets;
     return <I18nProvider><DesignSection
       widget={widgets[0]} widgets={widgets} session="general" designClient={client}
-      access={{ planLabel: "suite", planStatus: "active", roles: [], isBlocked: false, isUnconfigured: false }}
+      policy={paidPolicy}
       dispatch={(command) => { latest = applyStudioCommand(document, command); setDocument(latest); }}
     /></I18nProvider>;
   }
@@ -42,7 +53,7 @@ describe("Studio Efficiency selection", () => {
     const widget = standingsDefinition.createDefault("standings-main");
     widget.content = { ...widget.content, rowCount: 10 };
     const getWidget = renderDesignSection(widget);
-    await waitFor(() => expect(screen.queryByTestId("studio-design-user-loading")).toBeNull());
+    await waitFor(() => expect(document.getElementById("orbit-design-system")).not.toBeNull());
     fireEvent.click(document.getElementById("orbit-design-system")!);
     fireEvent.click(screen.getByRole("option", { name: label }));
     expect(getWidget().visual.systemId).toBe("vantare-functional");
@@ -56,7 +67,7 @@ describe("Studio Efficiency selection", () => {
 
   it("offers Efficiency for Pedals and applies its Signature design", async () => {
     const getWidget = renderDesignSection(pedalsDefinition.createDefault("pedals-main"));
-    await waitFor(() => expect(screen.queryByTestId("studio-design-user-loading")).toBeNull());
+    await waitFor(() => expect(document.getElementById("orbit-design-system")).not.toBeNull());
     fireEvent.click(document.getElementById("orbit-design-system")!);
     fireEvent.click(screen.getByRole("option", { name: /Efficiency|Eficiencia|Eficiência|Efficienza/ }));
     expect(getWidget().visual.systemId).toBe("vantare-functional");

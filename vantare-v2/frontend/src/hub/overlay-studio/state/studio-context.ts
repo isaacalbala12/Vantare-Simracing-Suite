@@ -4,7 +4,7 @@ import {
   useMemo,
   useSyncExternalStore,
 } from "react";
-import type { AccessContext } from "../../../lib/access-policy";
+import type { WidgetPolicyWire } from "../../../overlay/core/widget-policy";
 import type {
   ProfileDocumentV3,
   SessionLayoutType,
@@ -15,7 +15,7 @@ import type { StudioCommand } from "./studio-command";
 import type { StudioSaveResult } from "./studio-profile-client";
 import { isStudioHistoryDirty } from "./studio-history";
 import { resolveSessionLayout } from "./session-layouts";
-import type { StudioStore } from "./studio-store";
+import type { StudioStore } from "./studio-document-store";
 
 export type StudioSaveState = "idle" | "saving" | "saved" | "error" | "conflict";
 
@@ -29,7 +29,8 @@ export type StudioPreviewState = {
 };
 
 export type StudioDocumentContextValue = {
-  access: AccessContext;
+  /** Live native snapshot, or null before the first one: basic Free applies. */
+  widgetPolicy: WidgetPolicyWire | null;
   document: ProfileDocumentV3 | null;
   savedDocument: ProfileDocumentV3 | null;
   revision: string;
@@ -63,7 +64,7 @@ export type StudioPreviewContextValue = {
 // El contexto entrega la instancia del store (referencia estable: nunca
 // repinta). Los datos viven dentro y se leen con useStudioSelector.
 export const StudioStoreContext = createContext<StudioStore | null>(null);
-export const StudioAccessContext = createContext<AccessContext | null>(null);
+export const StudioWidgetPolicyContext = createContext<WidgetPolicyWire | null>(null);
 export const StudioPreviewContext = createContext<StudioPreviewContextValue | null>(null);
 
 export function useStudioStoreInstance(): StudioStore {
@@ -108,12 +109,8 @@ export function useStudioActions(): Pick<
   return useStudioStoreInstance();
 }
 
-export function useStudioAccess(): AccessContext {
-  const access = useContext(StudioAccessContext);
-  if (!access) {
-    throw new Error("useStudioAccess must be used inside StudioProvider");
-  }
-  return access;
+export function useStudioWidgetPolicy(): WidgetPolicyWire | null {
+  return useContext(StudioWidgetPolicyContext);
 }
 
 export function useStudioDirty(): boolean {
@@ -137,16 +134,13 @@ export function useStudioActiveLayout(): SessionLayoutV3 | null {
  */
 export function useStudioDocument(): StudioDocumentContextValue {
   const store = useStudioStoreInstance();
-  const access = useContext(StudioAccessContext);
-  if (!access) {
-    throw new Error("useStudioDocument must be used inside StudioProvider");
-  }
+  const widgetPolicy = useContext(StudioWidgetPolicyContext);
   const state = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
 
   return useMemo<StudioDocumentContextValue>(() => {
     const document = state.history?.present ?? null;
     return {
-      access,
+      widgetPolicy,
       document,
       savedDocument: state.history?.saved ?? null,
       revision: state.revision,
@@ -171,7 +165,7 @@ export function useStudioDocument(): StudioDocumentContextValue {
       dismissAccessNotice: store.dismissAccessNotice,
       notifyAccessDenied: store.notifyAccessDenied,
     };
-  }, [access, state, store]);
+  }, [widgetPolicy, state, store]);
 }
 
 export function useStudioPreview(): StudioPreviewContextValue {

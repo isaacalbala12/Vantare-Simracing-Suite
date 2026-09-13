@@ -11,6 +11,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/weather"
 )
 
 // Section names the parts of FrameV2 that can be regulated independently.
@@ -55,17 +56,15 @@ func (section Section) String() string {
 	return sectionNames[section]
 }
 
-// allSections backs AllSections; every consumer only reads it.
-var allSections = [sectionCount]Section{
-	SectionPlayer, SectionControls, SectionDelta, SectionRelative, SectionSpotter,
-	SectionSession, SectionStandings, SectionFuel, SectionDamage, SectionWeather, SectionCapabilities,
-}
-
 // AllSections is ordered by tier and then by declaration so every traversal is
-// deterministic; tests and metrics depend on that order. The slice aliases the
-// shared allSections array, so callers must not mutate it.
-func AllSections() []Section {
-	return allSections[:]
+// deterministic; tests and metrics depend on that order. Returning the array
+// by value keeps the zero-allocation traversal without exposing mutable global
+// storage to callers.
+func AllSections() [sectionCount]Section {
+	return [sectionCount]Section{
+		SectionPlayer, SectionControls, SectionDelta, SectionRelative, SectionSpotter,
+		SectionSession, SectionStandings, SectionFuel, SectionDamage, SectionWeather, SectionCapabilities,
+	}
 }
 
 // SectionTier groups sections that share one cadence budget.
@@ -626,6 +625,13 @@ type dirtySignals struct {
 	sessionType schema.Field[session.Type]
 	maximumLaps schema.Field[session.MaximumLaps]
 	remaining   schema.Field[session.RemainingTime]
+	// ambientTemp and trackTemp fingerprint exactly what BuildWeather
+	// projects for the session (ISA-1106, B4): value and quality both
+	// decide, following the fuel/standings signal pattern. Rain, wetness,
+	// wind and pressure stay missing with no admitted source, so they need
+	// no signal.
+	ambientTemp schema.Field[weather.Temperature]
+	trackTemp   schema.Field[weather.Temperature]
 
 	playerFuel schema.Field[energy.Fuel]
 	fuelPerLap schema.Field[energy.FuelAmount]
@@ -663,6 +669,8 @@ func observeDirtySignals(header envelope.Header, final derive.FinalState, source
 		sessionType:         final.Observed.SessionType,
 		maximumLaps:         final.Observed.MaximumLaps,
 		remaining:           final.Derived.SessionRemaining,
+		ambientTemp:         final.Observed.AmbientTemp,
+		trackTemp:           final.Observed.TrackTemp,
 		gapsFreshness:       final.Derived.Gaps.Freshness,
 		deltaFreshness:      final.Derived.Delta.Freshness,
 		fuelPerLap:          final.Derived.Fuel.PerLap,
@@ -702,6 +710,9 @@ func (signals dirtySignals) diff(previous dirtySignals) DirtySet {
 	if signals.track != previous.track || signals.sessionType != previous.sessionType ||
 		signals.maximumLaps != previous.maximumLaps || signals.remaining != previous.remaining {
 		dirty = dirty.Mark(SectionSession)
+	}
+	if signals.ambientTemp != previous.ambientTemp || signals.trackTemp != previous.trackTemp {
+		dirty = dirty.Mark(SectionWeather)
 	}
 	// Standings depends only on its own fingerprint: the derived gap set feeds
 	// relative, not the classification rows.

@@ -2506,22 +2506,23 @@ func main() {
 	)
 	profileHkMgr = launcher.NewHotkeyManager()
 
+	// updater:notify enciende el pill de actualizacion de la shell. Lo
+	// emite cualquier chequeo que confirma una version pendiente — el
+	// silencioso del arranque y tambien los manuales de Ajustes, que antes
+	// solo publicaban updater:available y dejaban el aviso apagado.
+	emitUpdateNotify := func(info *updater.UpdateInfo) {
+		if info.HasUpdate && info.LatestRelease.TagName != "" {
+			emitter.Emit("updater:notify", map[string]any{
+				"tag":         info.LatestRelease.TagName,
+				"name":        info.LatestRelease.Name,
+				"prerelease":  info.LatestRelease.Prerelease,
+				"downloadURL": installerURL(info.LatestRelease),
+			})
+		}
+	}
+
 	// Silent update check on startup (after a short delay so the UI is ready).
 	if updaterSvc != nil {
-		// updater:notify enciende el pill de actualizacion de la shell. Lo
-		// emite cualquier chequeo que confirma una version pendiente — el
-		// silencioso del arranque y tambien los manuales de Ajustes, que antes
-		// solo publicaban updater:available y dejaban el aviso apagado.
-		emitUpdateNotify := func(info *updater.UpdateInfo) {
-			if info.HasUpdate && info.LatestRelease.TagName != "" {
-				emitter.Emit("updater:notify", map[string]any{
-					"tag":         info.LatestRelease.TagName,
-					"name":        info.LatestRelease.Name,
-					"prerelease":  info.LatestRelease.Prerelease,
-					"downloadURL": installerURL(info.LatestRelease),
-				})
-			}
-		}
 		go func() {
 			select {
 			case <-ctx.Done():

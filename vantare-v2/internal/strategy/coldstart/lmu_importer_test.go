@@ -180,3 +180,28 @@ func TestReadAllPagesStopsAtShortEventPageWithoutProbe(t *testing.T) {
 		t.Fatalf("pages = %d reads = %d, want 1 page and no probe read", len(pages), reads)
 	}
 }
+
+func TestReadAllPagesFailsClosedBeyondSessionBudget(t *testing.T) {
+	previous := maxImportedSessionSamples
+	maxImportedSessionSamples = 3
+	defer func() { maxImportedSessionSamples = previous }()
+
+	sampling := telemetryanalysis.HistoricalSampling{Kind: telemetryanalysis.SamplingContinuousImplicitFrequency, FrequencyHz: 100}
+	session := sparseTestSession(telemetryanalysis.SamplingContinuousImplicitFrequency)
+	read := func(_ context.Context, _ string, start int64, _ int) (telemetryanalysis.HistoricalPage, error) {
+		if start > 0 {
+			return telemetryanalysis.HistoricalPage{Sampling: sampling}, nil
+		}
+		return telemetryanalysis.HistoricalPage{
+			Sampling: sampling,
+			Samples: []telemetryanalysis.HistoricalSample{
+				{Index: 0}, {Index: 1}, {Index: 2}, {Index: 3},
+			},
+		}, nil
+	}
+
+	_, err := readAllPages(context.Background(), read, session)
+	if !errors.Is(err, ErrImportSessionTooLarge) {
+		t.Fatalf("readAllPages() error = %v, want ErrImportSessionTooLarge", err)
+	}
+}

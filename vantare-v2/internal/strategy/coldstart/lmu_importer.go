@@ -159,12 +159,23 @@ func enrichCatalogableModel(model telemetryanalysis.AuthorizedSessionModel, page
 	return model, nil
 }
 
+// maxImportedSessionSamples acota la memoria retenida por sesion: cada muestra
+// normalizada cuesta ~200 B entre el struct y sus valores, asi que el limite
+// mantiene el pico por sesion en ~3 GiB en lugar de dejar que un archivo
+// grande agote la memoria del proceso entero (un OOM no es recuperable).
+var maxImportedSessionSamples = int64(16_000_000)
+
+// ErrImportSessionTooLarge clasifica sesiones que exceden el presupuesto de
+// memoria de importacion: el candidato se rechaza en lugar de arriesgar OOM.
+var ErrImportSessionTooLarge = errors.New("historical session exceeds import memory budget")
+
 type historicalPageReader func(context.Context, string, int64, int) (telemetryanalysis.HistoricalPage, error)
 
 func readAllPages(ctx context.Context, readPage historicalPageReader, session telemetryanalysis.HistoricalSession) ([]telemetryanalysis.HistoricalPage, error) {
 	pages := []telemetryanalysis.HistoricalPage{}
+	imported := int64(0)
 	for _, channel := range requiredChannelsForSession(session) {
-		channelPages, err := readChannelPages(ctx, readPage, channel.ID)
+		channelPages, err := readChannelPages(ctx, readPage, channel.ID, &imported)
 		if err != nil {
 			return nil, err
 		}
@@ -173,7 +184,7 @@ func readAllPages(ctx context.Context, readPage historicalPageReader, session te
 	return pages, nil
 }
 
-func readChannelPages(ctx context.Context, readPage historicalPageReader, channelID string) ([]telemetryanalysis.HistoricalPage, error) {
+func readChannelPages(ctx context.Context, readPage historicalPageReader, channelID string, sampleTotal *int64) ([]telemetryanalysis.HistoricalPage, error) {
 	var pages []telemetryanalysis.HistoricalPage
 	for start := int64(0); ; {
 		page, err := readPage(ctx, channelID, start, telemetryanalysis.MaxLMUDuckDBPageRows)
@@ -182,6 +193,10 @@ func readChannelPages(ctx context.Context, readPage historicalPageReader, channe
 		}
 		if len(page.Samples) == 0 {
 			return pages, nil
+		}
+		*sampleTotal += int64(len(page.Samples))
+		if *sampleTotal > maxImportedSessionSamples {
+			return nil, fmt.Errorf("%w: %d samples", ErrImportSessionTooLarge, *sampleTotal)
 		}
 		pages = append(pages, page)
 		if len(page.Samples) == telemetryanalysis.MaxLMUDuckDBPageRows {

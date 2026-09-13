@@ -195,10 +195,21 @@ describe("Endurance transparent production shells", () => {
     const browser = await chromium.launch({ headless: true });
     const violations: string[] = [];
     try {
-      const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
-      for (const surface of ["desktop", "obs"] as const) {
-        for (const entry of catalog) {
-          for (const templateId of entry.templateIds) {
+      // Los 46 combos son E/S de Chromium serializada en una sola pagina:
+      // bajo un runner cargado el bucle completo supera el presupuesto del
+      // test. Un pool de paginas del mismo browser reparte esa E/S sin tocar
+      // ni una sola asercion (ISA-1018).
+      const pages = await Promise.all(
+        Array.from({ length: 4 }, () => browser.newPage({ viewport: { width: 800, height: 600 } })),
+      );
+      const combos = (["desktop", "obs"] as const).flatMap((surface) =>
+        catalog.flatMap((entry) => entry.templateIds.map((templateId) => ({ surface, entry, templateId }))),
+      );
+      let next = 0;
+      await Promise.all(pages.map(async (page) => {
+        while (next < combos.length) {
+          const { surface, entry, templateId } = combos[next]!;
+          next += 1;
             await page.setContent(
               `<style>html,body{margin:0;background:transparent}${css}</style>`
                 + renderWidget(entry, templateId, surface),
@@ -333,9 +344,8 @@ describe("Endurance transparent production shells", () => {
               }
               violations.push(...region.failures.map((failure) => `${context} ${failure}`));
             }
-          }
         }
-      }
+      }));
     } finally {
       await browser.close();
     }

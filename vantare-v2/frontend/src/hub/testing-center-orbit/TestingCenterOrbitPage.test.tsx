@@ -104,10 +104,13 @@ function fill() {
   }
 }
 
-afterEach(() => {
+afterEach(async () => {
   cleanup();
   vi.useRealTimers();
   vi.restoreAllMocks();
+  // Las páginas Orbit se cargan en lazy: espera a que los import() pendientes
+  // resuelvan antes de que Vitest desmonte el entorno (EnvironmentTeardownError).
+  await vi.dynamicImportSettled();
 });
 
 describe("TestingCenterOrbitPage", () => {

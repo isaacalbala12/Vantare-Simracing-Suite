@@ -286,6 +286,9 @@ func (state *batchMapperState) mapObservation(observation Observation) (telemetr
 			SessionType:   observation.SessionType,
 			VehicleCount:  observation.VehicleCount,
 			PlayerPresent: observation.PlayerPresent,
+			AmbientTemp:   observation.AmbientTemp,
+			TrackTemp:     observation.TrackTemp,
+			SessionFlag:   observation.SessionFlag,
 			Vehicles:      vehicles,
 		},
 	}, nil

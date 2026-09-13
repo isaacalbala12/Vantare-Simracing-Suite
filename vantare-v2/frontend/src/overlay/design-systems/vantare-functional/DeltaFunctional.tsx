@@ -5,30 +5,23 @@ import type { WidgetRendererProps } from "../../core/design-system-definition";
 import { useWidgetMotion } from "../../core/widget-motion";
 import type { DeltaViewModel } from "../../widget-types/delta/delta-view-model";
 import { functionalLabels } from "./labels";
-import { deltaSide, deriveDeltaCross } from "./functional-motion";
+import { deriveDeltaCross } from "./functional-motion";
 
 export function DeltaFunctional({ model, settings, motion = "full", effects }: WidgetRendererProps<DeltaViewModel>) {
   const { locale } = useI18n();
   const rootRef = useRef<HTMLElement | null>(null);
   // La barra ya transiciona por CSS; el motor solo marca el cruce de cero y
   // la nueva referencia — los dos momentos que un cambio de ancho no dice.
-  useWidgetMotion(model, motion === "full", rootRef, ({ prev, next, root, schedule, persist }) => {
-    // Memoria del último lado no neutro: perder→neutro→ganar debe marcar el
-    // cruce igual que perder→ganar — el par (neutro, ganar) solo no basta.
-    const lastSide = (persist.get("deltaSide") as "gaining" | "losing" | null | undefined) ?? null;
-    const cross = deriveDeltaCross(prev, next, lastSide);
-    persist.set("deltaSide", deltaSide(next.tone) ?? lastSide);
+  useWidgetMotion(model, motion === "full", rootRef, ({ prev, next, root, schedule }) => {
+    const cross = deriveDeltaCross(prev, next);
     if (cross) {
       root.dataset.cross = cross;
-      schedule(700, () => { delete root.dataset.cross; }, "cross");
+      schedule(700, () => { delete root.dataset.cross; });
     }
     if (next.bestLapText !== prev.bestLapText && next.bestLapText.trim() !== "" && next.bestLapText !== "—") {
       root.dataset.newBest = "true";
-      schedule(1100, () => { delete root.dataset.newBest; }, "newBest");
+      schedule(1100, () => { delete root.dataset.newBest; });
     }
-  }, (root) => {
-    delete root.dataset.cross;
-    delete root.dataset.newBest;
   });
   const labels = functionalLabels[locale];
   const statusText = model.status !== "ready" ? labels[model.status] : undefined;
@@ -45,7 +38,7 @@ export function DeltaFunctional({ model, settings, motion = "full", effects }: W
   // Sin cabecera de sesión: el delta es un instrumento — valor, escala y la
   // última vuelta como pie. La marca no vive aquí (decisión de Isaac).
   return (
-    <section ref={rootRef} className="vf-delta" data-widget-system="vantare-functional" data-widget-renderer="delta" data-status={model.status} data-tone={model.tone} data-session-header="false" data-template={capsule ? "capsule" : "instrument"} data-effects={effects} data-motion-level={motion}>
+    <section ref={rootRef} className="vf-delta" data-widget-system="vantare-functional" data-widget-renderer="delta" data-status={model.status} data-tone={model.tone} data-session-header="false" data-template={capsule ? "capsule" : "instrument"} data-effects={effects}>
       {statusText && <p className="vf-status" role="status">{statusText}</p>}
       {model.statusMessage && model.status !== "stale" && <p className="vf-detail">{model.statusMessage}</p>}
       {capsule ? (

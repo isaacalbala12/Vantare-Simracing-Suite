@@ -225,6 +225,16 @@ func (state *Fusion) Merge(receivedUTC time.Time, elapsed time.Duration, inputs 
 	result.TrackName = chooseField(elapsed, ruleFor(catalog.SignalSessionTrackName), shm.TrackName, shmStamp, rest.TrackName.Field, timedStamp(rest.TrackName, restStamp), &result)
 	result.SessionType = chooseField(elapsed, ruleFor(catalog.SignalSessionType), shm.SessionType, shmStamp, rest.SessionType.Field, timedStamp(rest.SessionType, restStamp), &result)
 	result.VehicleCount = chooseField(elapsed, ruleFor(catalog.SignalSessionVehicleCount), shm.VehicleCount, shmStamp, rest.VehicleCount.Field, timedStamp(rest.VehicleCount, restStamp), &result)
+	// Session signals admitted by ISA-1106 are REST-joined like the car-number
+	// grid: shared memory exposes no admitted source, so the REST field flows
+	// with its own TTL and per-field quality, without a matrix rule.
+	// Correction B3: each field is scoped by the fusion session floor, like
+	// the car-number grid: values polled before the last session boundary go
+	// missing even within the REST TTL, without touching timestamps or
+	// widening the TTL.
+	result.AmbientTemp = scopedSessionField(rest.AmbientTemp, restStamp, elapsed, state.sessionFloor)
+	result.TrackTemp = scopedSessionField(rest.TrackTemp, restStamp, elapsed, state.sessionFloor)
+	result.SessionFlag = scopedSessionField(rest.SessionFlag, restStamp, elapsed, state.sessionFloor)
 	result.Vehicles = ageVehicleGrid(elapsed, shmStamp, shm.SourceTime, shm.Vehicles)
 	overlayCarNumbers(result.Vehicles, rest, elapsed, state.sessionFloor)
 	playerIndex := playerVehicleIndex(result.Vehicles)
@@ -543,6 +553,18 @@ func decisionFromField[T comparable](rule AuthorityRule, field schema.Field[T]) 
 		return FieldDecision{Signal: rule.Signal, Source: SourceUnknown, Freshness: schema.FreshnessMissing}
 	}
 	return FieldDecision{Signal: rule.Signal, Source: SourceSharedMemory, Freshness: field.Freshness()}
+}
+
+// scopedSessionField carries one REST-joined session signal with its own TTL
+// like fieldAt, and additionally scopes it by the fusion session floor like
+// the car-number grid: a value polled before the last session boundary is
+// previous-session data and publishes missing, even within the TTL.
+func scopedSessionField[T comparable](field TimedField[T], fallback monotonicStamp, elapsed time.Duration, floor monotonicStamp) schema.Field[T] {
+	stamp := timedStamp(field, fallback)
+	if floor.set && stamp.set && stamp.elapsed < floor.elapsed {
+		return schema.MissingField[T]()
+	}
+	return fieldAt(elapsed, stamp, defaultRESTTTL, field.Field)
 }
 
 func timedStamp[T comparable](field TimedField[T], fallback monotonicStamp) monotonicStamp {

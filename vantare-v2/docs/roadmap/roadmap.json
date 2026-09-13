@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-12T23:16:15Z",
+  "generatedAt": "2026-09-13T01:15:20Z",
   "digest": {
-    "lastCommit": "8bcdcced8048c51951c282e0753591acaf9e7df7"
+    "lastCommit": "1aea57118f972c04144dc4546ff8cc16705e6e79"
   },
   "phases": [
     {
@@ -2035,10 +2035,10 @@
         "it": "Sistema di design Efficienza"
       },
       "body": {
-        "es": "Eficiencia ofrece los estilos Signature y Broadcast para Standings desde Studio, con transparencia suave, identidad Vantare, tipografía unificada y selección neutra. Los perfiles y diseños guardan esta selección; el marco adapta columnas y filas en Studio, Desktop y OBS. Entrega opt-in en rama de issue, pendiente de validación física e integración a Nightly. La política de marca según licencia se desarrolla por separado. En ISA-1120 se compararon seis direcciones v2 dentro del Workshop y Isaac eligió Foco como dirección a seguir junto al diseño vigente, pendiente de pasar al catálogo. En ISA-1128 el lenguaje se extiende a Relative, Delta y Pedals con diseño Signature en la rama de issue, en evaluación dentro del Workshop.",
-        "en": "Efficiency offers Signature and Broadcast styles for Standings in Studio, with subtle transparency, Vantare identity, unified typography and neutral selection. Profiles and designs preserve this choice; the frame fits columns and rows across Studio, Desktop and OBS. Opt-in delivery on an issue branch, pending physical validation and Nightly integration. License-based branding is a separate delivery. ISA-1120 compared six v2 directions inside the Workshop and Isaac chose Foco as the direction to pursue alongside the current design, pending catalogue delivery. ISA-1128 extends the language to Relative, Delta and Pedals with a Signature design on the issue branch, under evaluation inside the Workshop.",
-        "pt": "Eficiência oferece os estilos Signature e Broadcast para Standings no Studio, com transparência suave, identidade Vantare, tipografia unificada e seleção neutra. Perfis e desenhos preservam a escolha; o quadro adapta colunas e filas no Studio, Desktop e OBS. Entrega opcional numa branch de issue, pendente de validação física e integração em Nightly. A marca por licença será entregue separadamente. A ISA-1120 comparou seis direções v2 dentro do Workshop e Isaac escolheu Foco como direção a seguir junto ao desenho vigente, pendente de entrar no catálogo. A ISA-1128 estende a linguagem a Relative, Delta e Pedals com design Signature na branch da issue, em avaliação dentro do Workshop.",
-        "it": "Efficienza offre gli stili Signature e Broadcast per Standings in Studio, con trasparenza lieve, identità Vantare, tipografia unificata e selezione neutra. Profili e design conservano la scelta; il riquadro adatta colonne e righe in Studio, Desktop e OBS. Consegna opzionale su branch di issue, in attesa di validazione fisica e integrazione Nightly. Il marchio per licenza sarà consegnato separatamente. ISA-1120 ha confrontato sei direzioni v2 dentro il Workshop e Isaac ha scelto Foco come direzione da seguire insieme al disegno vigente, in attesa di entrare nel catalogo. ISA-1128 estende il linguaggio a Relative, Delta e Pedals con design Signature nel branch della issue, in valutazione dentro il Workshop."
+        "es": "Eficiencia ofrece los estilos Signature y Broadcast para Standings, con transparencia suave, identidad Vantare, tipografía unificada y selección neutra. Cabecera y pie fino permiten elegir información de sesión; las diagonales reflejan la bandera sin animación cuando existe una señal vigente. La fuente REST LMU aporta temperaturas con calidad y caducidad y una bandera fail-closed; su equivalencia de códigos exige comprobación en sesión activa. Los perfiles conservan la selección y el marco adapta columnas, filas y pie en Studio, Desktop y OBS. La entrega conjunta quedó validada físicamente e integrada en Nightly mediante PR #1107; la equivalencia de bandera y temperatura sigue pendiente de una sesión LMU activa.",
+        "en": "Efficiency offers Signature and Broadcast Standings styles, with subtle transparency, Vantare identity, unified typography and neutral selection. The header and thin footer offer selectable session information; diagonal accents reflect the flag without animation when a current signal exists. The LMU REST source supplies temperatures with quality and expiry plus a fail-closed flag; its code mapping requires an active-session check. Profiles retain selections and the frame fits columns, rows and footer across Studio, Desktop and OBS. The joint delivery was physically validated and integrated into Nightly through PR #1107; flag and temperature equivalence still awaits an active LMU session.",
+        "pt": "Eficiência oferece os estilos Signature e Broadcast para Standings, com transparência suave, identidade Vantare, tipografia unificada e seleção neutra. Cabeçalho e rodapé fino permitem escolher informação da sessão; as diagonais refletem a bandeira sem animação quando existe um sinal atual. A fonte REST LMU fornece temperaturas com qualidade e expiração e uma bandeira fail-closed; o mapeamento dos códigos exige verificação numa sessão ativa. Os perfis preservam a seleção e o quadro adapta colunas, filas e rodapé no Studio, Desktop e OBS. A entrega conjunta foi validada fisicamente e integrada na Nightly através do PR #1107; a equivalência da bandeira e da temperatura continua pendente de uma sessão LMU ativa.",
+        "it": "Efficienza offre gli stili Signature e Broadcast per Standings, con trasparenza lieve, identità Vantare, tipografia unificata e selezione neutra. Intestazione e piè sottile permettono di scegliere informazioni di sessione; le diagonali riflettono la bandiera senza animazione quando esiste un segnale attuale. La fonte REST LMU fornisce temperature con qualità e scadenza e una bandiera fail-closed; la mappatura dei codici richiede una verifica in sessione attiva. I profili conservano la selezione e il riquadro adatta colonne, righe e piè in Studio, Desktop e OBS. La consegna congiunta è stata verificata fisicamente e integrata in Nightly tramite la PR #1107; l'equivalenza di bandiera e temperatura resta in attesa di una sessione LMU attiva."
       },
       "label": {
         "es": "ISA-1083",
@@ -2049,7 +2049,7 @@
     },
     {
       "id": "widget-access-branding",
-      "type": "plan",
+      "type": "feature",
       "title": {
         "es": "Acceso y marca por widget",
         "en": "Widget access and branding",
@@ -2057,16 +2057,16 @@
         "it": "Accesso e marchio per widget"
       },
       "body": {
-        "es": "Tras completar Standings Eficiencia, unificar los widgets disponibles y la marca integrada según licencia en Studio, Desktop y OBS. Los perfiles se conservarán al cambiar de plan; la marca será obligatoria en los diseños gratuitos que corresponda y opcional en pago. Delta será de pago. Desarrollo separado en ISA-1097.",
-        "en": "After completing Efficiency Standings, unify widget availability and integrated branding by license across Studio, Desktop and OBS. Profiles will survive plan changes; branding will be required on applicable free designs and optional with paid access. Delta will require paid access. Separate delivery in ISA-1097.",
-        "pt": "Após concluir Standings Eficiência, unificar os widgets disponíveis e a marca integrada por licença no Studio, Desktop e OBS. Os perfis serão preservados ao mudar de plano; a marca será obrigatória nos desenhos gratuitos aplicáveis e opcional nos pagos. Delta exigirá acesso pago. Entrega separada em ISA-1097.",
-        "it": "Dopo Standings Efficienza, unificare disponibilità dei widget e marchio integrato per licenza in Studio, Desktop e OBS. I profili saranno conservati al cambio di piano; marchio obbligatorio nei design gratuiti previsti e facoltativo a pagamento. Delta richiederà accesso a pagamento. Consegna separata in ISA-1097."
+        "es": "Studio, Desktop y OBS aplican la misma política nativa por widget desde la licencia verificada, sin autoridad de licencia en renderizadores. Standings y Pedals siguen disponibles en Free y con cualquier pago; Delta y los demás premium exigen Overlays; engineer-radio exige Engineer y Overlays no lo concede. Los perfiles conservan los widgets bloqueados al importar, mover o eliminar y recuperan sus ajustes al volver los derechos. Crystal y Efficiency muestran la marca Vantare obligatoria en Free, también con cabecera o pie ocultos o ajustes importados, y la ocultan por defecto con pago con preferencia explícita para activarla. La entrega conjunta quedó validada e integrada en Nightly mediante PR #1107. Sin testers/master ni release.",
+        "en": "Studio, Desktop and OBS enforce the same native per-widget policy from the verified license, with no licensing authority inside renderers. Standings and Pedals stay available on Free and any paid plan; Delta and other premium widgets require Overlays; engineer-radio requires Engineer and Overlays never grants it. Profiles keep blocked widgets across import, move or delete and restore their settings when rights return. Crystal and Efficiency show the mandatory Vantare brand on Free, even with hidden header or footer or imported settings, and hide it by default on paid plans with an explicit opt-in. The joint delivery was validated and integrated into Nightly through PR #1107. No testers/master or release.",
+        "pt": "Studio, Desktop e OBS aplicam a mesma política nativa por widget a partir da licença verificada, sem autoridade de licença nos renderers. Standings e Pedals continuam disponíveis no Free e em qualquer plano pago; Delta e os restantes premium exigem Overlays; engineer-radio exige Engineer e Overlays nunca o concede. Os perfis conservam os widgets bloqueados ao importar, mover ou eliminar e recuperam os ajustes quando os direitos voltam. Crystal e Efficiency mostram a marca Vantare obrigatória no Free, mesmo com cabeçalho ou rodapé ocultos ou ajustes importados, e ocultam-na por defeito nos pagos com ativação explícita. A entrega conjunta foi validada e integrada na Nightly através do PR #1107. Sem testers/master nem release.",
+        "it": "Studio, Desktop e OBS applicano la stessa policy nativa per widget dalla licenza verificata, senza autorità di licenza nei renderer. Standings e Pedals restano disponibili su Free e qualsiasi piano a pagamento; Delta e gli altri premium richiedono Overlays; engineer-radio richiede Engineer e Overlays non lo concede mai. I profili conservano i widget bloccati tra importazione, spostamento o eliminazione e ne ripristinano le impostazioni al ritorno dei diritti. Crystal ed Efficiency mostrano il marchio Vantare obbligatorio su Free, anche con intestazione o piè nascosti o impostazioni importate, e lo nascondono di default sui piani a pagamento con attivazione esplicita. La consegna congiunta è stata verificata e integrata in Nightly tramite la PR #1107. Nessun testers/master né release."
       },
       "label": {
-        "es": "Plan",
-        "en": "Plan",
-        "pt": "Plano",
-        "it": "Piano"
+        "es": "ISA-1105",
+        "en": "ISA-1105",
+        "pt": "ISA-1105",
+        "it": "ISA-1105"
       }
     },
     {
@@ -2122,6 +2122,31 @@
           "kind": "fix",
           "scope": "estrategia",
           "text": "Presupuesto de trabajo por tamaño en Orbit en vez de deadline de pared"
+        },
+        {
+          "kind": "feat",
+          "scope": "widgets",
+          "text": "Sistema de diseno Eficiencia + motor de animacion"
+        },
+        {
+          "kind": "fix",
+          "scope": "estrategia",
+          "text": "Presupuesto de memoria en importación de sesiones LMU"
+        },
+        {
+          "kind": "fix",
+          "scope": "telemetria",
+          "text": "Dedup de vueltas, fronteras de fuel alineadas y deteccion de huecos rowid"
+        },
+        {
+          "kind": "fix",
+          "scope": "config",
+          "text": "Readmite vantare-iracing en el contrato de perfiles V3"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-1183 · Integrar widgets Eficiencia y corrección Foco"
         }
       ]
     },

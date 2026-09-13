@@ -807,14 +807,16 @@ func TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles(t *testing.T) {
 	// Bajo carga paralela el commit puede tardar; espera acotada a que el
 	// coordinator vacíe la cola por el camino normal antes de Stop, evitando
 	// que el drain de Stop tenga que hacer todo el trabajo bajo CommitBudget.
-	deadline := time.Now().Add(5 * time.Second)
+	// La cota solo detecta un bloqueo real de la cola, no limita commits
+	// lentos en un runner cargado (ISA-708).
+	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
 		if coordinator.Status().CommittedBatches == 100 {
 			break
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	stopCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	stopCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if err := coordinator.Stop(stopCtx); err != nil {
 		t.Fatalf("Stop() error = %v", err)
@@ -835,10 +837,11 @@ func TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles(t *testing.T) {
 	original := filepath.Join(root, ref.SessionID)
 	moved := filepath.Join(root, "released-session")
 	// En Windows el handle de SQLite/lease puede liberarse de forma
-	// eventualmente consistente. Reintento acotado sin sleep arbitrario
-	// largo: polling 1s para distinguir fuga real de cierre tardío.
+	// eventualmente consistente y bajo carga paralela el cierre puede tardar
+	// mas. Reintento acotado a 10s: una fuga real nunca libera, asi que la
+	// ventana solo distingue fuga de cierre tardio (ISA-708).
 	var renameErr error
-	for attempt := 0; attempt < 50; attempt++ {
+	for attempt := 0; attempt < 500; attempt++ {
 		renameErr = os.Rename(original, moved)
 		if renameErr == nil {
 			break

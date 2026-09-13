@@ -30,9 +30,10 @@ func (fixedOpsSampler) Sample() ops.MetricsSnapshot {
 }
 
 type captureEmitter struct {
-	mu     sync.Mutex
-	events []string
-	data   []any
+	mu      sync.Mutex
+	events  []string
+	data    []any
+	emitted chan struct{}
 }
 
 func (e *captureEmitter) Emit(name string, data any) {
@@ -40,14 +41,32 @@ func (e *captureEmitter) Emit(name string, data any) {
 	defer e.mu.Unlock()
 	e.events = append(e.events, name)
 	e.data = append(e.data, data)
+	if e.emitted != nil {
+		select {
+		case e.emitted <- struct{}{}:
+		default:
+		}
+	}
+}
+
+// waitEmission espera por señal la siguiente emision del bridge; la cota solo
+// detecta un bloqueo real, no limita trabajo legitimo en un runner cargado
+// (ISA-748).
+func waitEmission(t *testing.T, emitter *captureEmitter) {
+	t.Helper()
+	select {
+	case <-emitter.emitted:
+	case <-time.After(30 * time.Second):
+		t.Fatal("ops bridge did not emit")
+	}
 }
 
 func TestOpsBridgeEmitsMetrics(t *testing.T) {
-	emitter := &captureEmitter{}
+	emitter := &captureEmitter{emitted: make(chan struct{}, 1)}
 	bridge := NewOpsBridge(fixedOpsSampler{}, emitter, 10*time.Millisecond)
 
 	bridge.Start()
-	time.Sleep(35 * time.Millisecond)
+	waitEmission(t, emitter)
 	bridge.Stop()
 
 	emitter.mu.Lock()
@@ -73,18 +92,20 @@ func TestOpsBridgeStopBeforeStartReturns(t *testing.T) {
 
 	select {
 	case <-done:
-	case <-time.After(100 * time.Millisecond):
+	case <-time.After(30 * time.Second):
 		t.Fatal("Stop blocked before Start")
 	}
 }
 
 func TestOpsBridgeStartTwiceDoesNotDuplicateEmissions(t *testing.T) {
-	emitter := &captureEmitter{}
-	bridge := NewOpsBridge(fixedOpsSampler{}, emitter, 25*time.Millisecond)
+	emitter := &captureEmitter{emitted: make(chan struct{}, 1)}
+	// Intervalo enorme: ningun tick puede disparar dentro de la vida del test,
+	// asi que una segunda emision solo puede venir de un segundo loop (ISA-748).
+	bridge := NewOpsBridge(fixedOpsSampler{}, emitter, time.Hour)
 
 	bridge.Start()
 	bridge.Start()
-	time.Sleep(10 * time.Millisecond)
+	waitEmission(t, emitter)
 	bridge.Stop()
 
 	emitter.mu.Lock()

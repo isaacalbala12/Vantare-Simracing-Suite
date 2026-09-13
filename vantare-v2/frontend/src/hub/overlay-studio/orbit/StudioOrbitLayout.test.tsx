@@ -28,6 +28,7 @@ vi.mock("@wailsio/runtime", () => ({
 }));
 
 import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import type { StudioPolicy } from "../access/studio-access";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import { standingsDefinition } from "../../../overlay/widget-types/standings/standings-definition";
 import { I18nProvider } from "../../../i18n/I18nProvider";
@@ -81,9 +82,21 @@ function renderStudio(
   topbar.id = STUDIO_TOPBAR_SLOT_ID;
   window.document.body.append(context, topbar);
 
+  // Studio mechanics tests run with overlays rights; denial itself is
+  // covered by the dedicated policy suites.
+  const paidPolicy: StudioPolicy = {
+    revision: 2,
+    overlaysBasic: true,
+    overlaysAdvanced: true,
+    engineerAI: false,
+    brandCrystal: "optional",
+    brandEfficiency: "optional",
+    brandOriginal: "none",
+  };
+
   const tree = (
     <I18nProvider>
-      <StudioProvider client={createClient(document)} initialFile="profile.json">
+      <StudioProvider client={createClient(document)} initialFile="profile.json" widgetPolicy={paidPolicy}>
         <StudioTelemetryProvider coordinator={createTestTelemetryCoordinator()} liveAvailable={false}>
           <StudioConfirmProvider>
             <StudioOrbitLayout

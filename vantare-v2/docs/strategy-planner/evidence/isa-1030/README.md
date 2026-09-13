@@ -3,6 +3,19 @@
 Estado: banco y revisión estática completados; gate empírico F0 pendiente.
 Fecha: 2026-09-08. #1030 continúa abierta; no se implementó el editor.
 
+## Auditoría temporal T19a (2026-09-14)
+
+Ver [temporal-anchors-t19a.md](temporal-anchors-t19a.md) y
+[t19a-temporal-audit.json](t19a-temporal-audit.json): matriz de anclas
+temporales sobre tres carreras reales autorizadas (S125 Imola, S266
+Algarve, S026 Monza; hashes verificados antes/después, sin `.wal`), banco
+nativo real PASS y propuesta T13a para `set_stint_boundary` sin
+implementar. Hallazgo central: el eje de eventos (`ts`) es un dominio de
+anclaje determinista; el eje continuo no lo es (deriva por archivo, sin
+puente declarado); la causa `fuel_jump` deriva límites por join ordinal
+desfasado una vuelta en ambos sentidos (stints fantasma demostrados en
+S125 y S266 sobre el modelo exportado real).
+
 ## Corrección posterior del banco
 
 Ver [clock-correction.md](clock-correction.md): el desfase del spike histórico
@@ -54,6 +67,10 @@ frente a relojes ambiguos, cobertura insuficiente y visitas parciales.
 - `training-observations.json`: agregados de cuatro fuentes; no verdad causal.
 - `next-slices.md`: microplanes #819/#821/#803 y nuevo contrato #1033.
 - `instrumentation-plan.md` y `audit_corpus.py`: instrumento aislado de auditoría.
+- `temporal-anchors-t19a.md`: matriz de anclas, casos válidos/rechazables y
+  propuesta T13a para `set_stint_boundary`.
+- `t19a-temporal-audit.json`: agregados sanitizados por sesión (sin rutas
+  ni metadata sensible) y resultados del banco.
 
 Las propuestas numéricas requieren datos de preparación y anotación independiente;
 no se adoptan las constantes actuales como umbrales aprobados del nuevo editor.

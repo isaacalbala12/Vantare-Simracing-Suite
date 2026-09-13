@@ -14,11 +14,14 @@ El [plan SDD v1.1](../../strategy-planner/sdd/execution.md) sustituye la cola de
 «siguientes» de los apuntes históricos de este archivo. T00–T12 **no** se
 consideran todos completos: quedan entradas/perfiles/inventario/servicios y
 estados de T02/T03/T06/T07. Se ha contrastado con matriz #1092 y UI actual.
-Primero T19a valida anclas temporales de preparación y T13a cierra microplan e
-issue; después límites T13, entradas/reglas/pilotos/estados y revisiones T14,
-cálculo T15, stint/parada T16/T17. Anotación/calibración y preflight nativo pueden
-adelantarse entre cortes. T18/T21/T22 cierran visual, empírico y distribución;
-T23 entrega aceptable. T24 OSS/Monte Carlo sólo tras aceptación recorded.
+T19a ya está auditado (ver historial abajo): el eje de eventos es anclable,
+pero el producto mezcla ese reloj con el continuo y genera límites fantasma.
+Antes de T13a se necesita una issue propia que corrija esa alineación y sus
+joins con pruebas de regresión reales. Después T13a/límites T13, entradas/reglas/pilotos/estados y
+revisiones T14, cálculo T15, stint/parada T16/T17. Anotación/calibración y
+preflight nativo pueden adelantarse entre cortes. T18/T21/T22 cierran visual,
+empírico y distribución; T23 entrega aceptable. T24 OSS/Monte Carlo sólo tras
+aceptación recorded.
 
 Orquestador conserva dirección/planes/docs/aceptación y comprueba diff/evidencia;
 Devin MCP SWE-2 Max implementa/revisa cortes con modelo confirmado. Ante bloqueo
@@ -31,6 +34,58 @@ Persisten: T11i/T22 `ERROR_INVALID_STATE` sin causa probada, reserva de carreras
 completas insuficiente y umbrales/N sin aprobar. Estos gates no bloquean tareas
 independientes ni se transforman en PASS para declarar terminado el producto.
 #1091 cubre revisión SDD; las futuras implementaciones necesitan issue/base propias.
+
+## Historial — T19a auditado: anclas temporales y propuesta T13a
+
+Auditoría de semántica temporal sobre rama
+`vantareapp/isa-1030-strategy-temporal-semantics`, base/HEAD `c53b8a19`,
+worktree aislado `C:/tmp/vantare-isa1030-t19a`. Entrega: sólo documentación
+y evidencia bajo `docs/strategy-planner/evidence/isa-1030/`
+(`temporal-anchors-t19a.md` + `t19a-temporal-audit.json`); cero cambios de
+código, tests, SDD o roadmap. Banco real opt-in PASS en cuatro pases
+(19.73/29.46/31.03/19.84 s, dos con exportación aislada) sobre las tres carreras
+autorizadas de la reserva #1030 (S125 Imola, S266 Algarve, S026 Monza);
+hashes SHA-256 idénticos antes/después, sin `.wal`.
+
+Resultado material para T13a:
+
+- **Dominio de anclaje válido: el eje de eventos `ts`** — monótono, sin
+  duplicados, compartido por las 42 tablas de eventos. `Lap` (ts, número)
+  es ancla determinista de borde de vuelta; `In Pits` da intervalos de
+  boxes verificables. La fila inicial de cada tabla es el estado al grabar,
+  no una transición.
+- **El eje continuo no es anclable**: `index/freq` deriva hasta +0.94 s
+  por archivo y ninguna familia lee `GPS Time` (puente empírico presente
+  en la fuente, no autorizado). Fuel/VE miden volumen pero no instante.
+- **Stints fantasma demostrados en producto real**: la causa `fuel_jump`
+  une resets de `Lap Dist` con vueltas por orden ordinal; la fase varía
+  por archivo y desplaza el límite una vuelta antes (S266: stint fantasma
+  = in-lap 137) o después (S125: stint fantasma = out-lap 30). S026 sale
+  correcto por coincidencia de fase. Verificado contra el modelo exportado
+  del propio banco, no sólo simulación.
+- **Cobertura publicada mezcla ejes**: `addCoverage` compara fin continuo
+  con ts de eventos; S266 publica un "hueco" de ~10078 s que es puro
+  desfase de orígenes y deja 0/71 vueltas con métricas; S125 computa 25/39
+  vueltas sobre ventanas desplazadas ~25 s sin marca. Degradación honesta
+  en un caso, error silencioso en el otro.
+- **No soportado**: driver swap, garaje vs pit lane, reloj absoluto,
+  anclas intra-vuelta. `TyresCompound` constante ⇒ `tyre_change`
+  indetectable. `Finish Status` sin transición ≠ carrera no terminada.
+- **Prohibición explícita**: una vuelta lenta/inválida (`LapTime=0`,
+  `pace_outlier`) o un impacto nunca son prueba de incidente/spin ni
+  justifican un límite; el ancla exige `LapBoundary` verificable.
+
+El siguiente corte obligatorio es corregir la mezcla de relojes, la cobertura
+y el join ordinal que origina límites falsos; se hará bajo issue propia antes
+de editar el contrato o implementar T13. T13a queda propuesto en §8 del informe:
+`set_stint_boundary` ancla a
+`LapBoundary` de la base (nunca a `lap_dist_reset` ni a ejes continuos),
+con errores tipados (`unresolved_target`, `anchor_wrong_clock`,
+`anchor_outside_coverage`, `boundary_ordering_violation`, …), invariantes
+de orden estricto y dominio discreto de bordes de vuelta. Pendiente de
+decisión del orquestador: semántica de retirar un límite espurio (el
+contrato actual sólo nombra reemplazo) y si el check de cobertura se
+endurece. Sin push/PR/CI/Wails/LMU; originales intactos.
 
 ## Historial — T12j8a aceptado; J8b preparado
 

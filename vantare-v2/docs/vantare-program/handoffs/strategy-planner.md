@@ -1,6 +1,27 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1208 cortes A y B cerrados localmente
+## Estado vigente — #1208 cortes A, B y C1 cerrados localmente
+
+C1 elimina el último uso de tiempo relativo al cruzar recursos continuos con
+vueltas. Los lectores escalares y vectoriales sólo consumen timestamps finitos
+con origen acreditado; Fuel, energía virtual y desgaste quedan no calculables
+sin puente. Coldstart y la ruta de correcciones construyen una vista por
+operación y la comparten con validez, consumo y curvas. No cambian fórmulas,
+buckets, exclusiones o umbrales. Las versiones de cálculo pasan a
+`consumption-pace.v5` y `derived-curves.v4`.
+
+RED C1 observado: los casos nuevos recibían segundo 7 desde el tiempo relativo
+en vez de 1007 desde el reloj de fuente y una fuente sin alinear aún producía
+Fuel/VE. GREEN: regresiones de reloj escalar/vectorial, offset, fail-closed y
+desgaste; paquetes Telemetry Analysis y coldstart PASS; `internal/...` PASS.
+Las fixtures representan vistas alineadas y no sustituyen el banco DuckDB real.
+Astra high aceptó el corte y no encontró P0/P1 ni simplificación material.
+
+Siguiente corte: C2 valida recursos dentro de los intervalos `In Pits` con el
+mismo reloj y sin doble conteo. Sin DuckDB real, app, Wails o LMU; no hay push,
+PR, CI remota, integración ni release.
+
+## Historial — #1208 corte B cerrado localmente
 
 El corte B hace que `ReadCorrectionInput` construya una sola vista temporal
 alineada y la entregue tanto a validez como al modelo de correcciones. El

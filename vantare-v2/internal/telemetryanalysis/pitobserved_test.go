@@ -309,14 +309,19 @@ func pitEventPage(id string, values []pitEventValue) HistoricalPage {
 func pitContinuousPage(id string, origin TimeOrigin, values []float64) HistoricalPage {
 	samples := make([]HistoricalSample, 0, len(values))
 	for index, value := range values {
-		samples = append(samples, HistoricalSample{
+		sample := HistoricalSample{
 			Index: int64(index), RelativeTimeSeconds: float64(index) / 2,
 			Values: []HistoricalValue{{
 				Present: true,
 				Quality: QualityValid,
 				Scalar:  HistoricalScalar{Kind: ScalarNumber, Number: value},
 			}},
-		})
+		}
+		if origin == TimeOriginSourceTimestamp {
+			seconds := sample.RelativeTimeSeconds
+			sample.TimestampSeconds = &seconds
+		}
+		samples = append(samples, sample)
 	}
 	return HistoricalPage{
 		ChannelID: id,
@@ -350,6 +355,10 @@ func pitWearPage(id string, origin TimeOrigin) HistoricalPage {
 	for index := range page.Samples {
 		page.Samples[index].Index = int64(index)
 		page.Samples[index].RelativeTimeSeconds = float64(index)
+		if origin == TimeOriginSourceTimestamp {
+			seconds := float64(index)
+			page.Samples[index].TimestampSeconds = &seconds
+		}
 		value := page.Samples[index].Values[0]
 		page.Samples[index].Values = []HistoricalValue{value, value, value, value}
 	}
@@ -366,6 +375,10 @@ func pitLapDistancePage(id string, origin TimeOrigin) HistoricalPage {
 	for index := range page.Samples {
 		page.Samples[index].Index = int64(index)
 		page.Samples[index].RelativeTimeSeconds = float64(index)
+		if origin == TimeOriginSourceTimestamp {
+			seconds := float64(index)
+			page.Samples[index].TimestampSeconds = &seconds
+		}
 	}
 	return page
 }

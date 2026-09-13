@@ -135,10 +135,12 @@ type stintCandidate struct {
 // normalized pages. It never opens DuckDB and never assumes a shared clock
 // between event and continuous channels.
 func AnalyzeLapValidity(session HistoricalSession, pages []HistoricalPage) (LapValidityAnalysis, error) {
-	return analyzeAlignedLapValidity(BuildTemporalAlignment(session, pages))
+	return AnalyzeAlignedLapValidity(BuildTemporalAlignment(session, pages))
 }
 
-func analyzeAlignedLapValidity(alignment TemporalAlignmentResult) (LapValidityAnalysis, error) {
+// AnalyzeAlignedLapValidity reuses one already validated temporal view across
+// validity and downstream derivations.
+func AnalyzeAlignedLapValidity(alignment TemporalAlignmentResult) (LapValidityAnalysis, error) {
 	session, pages := alignment.Session, alignment.Pages
 	if strings.TrimSpace(session.ID) == "" {
 		return LapValidityAnalysis{}, fmt.Errorf("%w: session id", ErrInvalidLapValidityInput)

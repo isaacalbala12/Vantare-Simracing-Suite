@@ -11,7 +11,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
-const consumptionPaceComputationVersion = "consumption-pace.v4"
+const consumptionPaceComputationVersion = "consumption-pace.v5"
 
 const reasonNoCleanCompleteLapsForRepresentativePace = "no_clean_complete_laps_for_representative_pace"
 
@@ -344,33 +344,17 @@ type timedMetricSample struct {
 }
 
 func continuousSeries(pages []HistoricalPage) []timedMetricSample {
-	var result []timedMetricSample
-	for _, page := range pages {
-		if page.Sampling.Kind != SamplingContinuousImplicitFrequency || page.Sampling.FrequencyHz <= 0 {
-			continue
-		}
-		for _, sample := range page.Samples {
-			seconds := sample.RelativeTimeSeconds
-			if seconds == 0 && sample.Index != 0 {
-				seconds = float64(sample.Index) / float64(page.Sampling.FrequencyHz)
-			}
-			if value, presence, ok := numericValue(sample.Values); ok {
-				result = append(result, timedMetricSample{seconds: seconds, value: value, presence: presence})
-			}
-		}
-	}
-	sort.SliceStable(result, func(i, j int) bool { return result[i].seconds < result[j].seconds })
-	return result
+	return timestampedSeries(pages)
 }
 
 func timestampedSeries(pages []HistoricalPage) []timedMetricSample {
 	var result []timedMetricSample
 	for _, page := range pages {
-		if page.Sampling.Kind != SamplingEventTimestamped {
+		if page.Sampling.Origin != TimeOriginSourceTimestamp {
 			continue
 		}
 		for _, sample := range page.Samples {
-			if sample.TimestampSeconds == nil {
+			if sample.TimestampSeconds == nil || math.IsNaN(*sample.TimestampSeconds) || math.IsInf(*sample.TimestampSeconds, 0) {
 				continue
 			}
 			if value, presence, ok := numericValue(sample.Values); ok {

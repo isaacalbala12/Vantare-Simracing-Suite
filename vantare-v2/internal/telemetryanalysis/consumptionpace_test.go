@@ -286,7 +286,7 @@ func consumptionPaceFixtureInput(fixture consumptionPaceFixture) (HistoricalSess
 
 func fixtureContinuousChannel(id, name string) HistoricalChannel {
 	return HistoricalChannel{ID: id, SourceName: name, Sampling: HistoricalSampling{
-		Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 1, Origin: TimeOriginUnknown,
+		Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 1, Origin: TimeOriginSourceTimestamp,
 	}}
 }
 
@@ -297,7 +297,83 @@ func fixtureEventChannel(id, name string) HistoricalChannel {
 }
 
 func fixtureContinuousSample(seconds, value float64) HistoricalSample {
-	return HistoricalSample{Index: int64(seconds), RelativeTimeSeconds: seconds, Values: []HistoricalValue{fixtureNumber(value)}}
+	return HistoricalSample{Index: int64(seconds), RelativeTimeSeconds: seconds, TimestampSeconds: floatPointer(seconds), Values: []HistoricalValue{fixtureNumber(value)}}
+}
+
+func TestContinuousSeriesRequiresAlignedSourceTimestamp(t *testing.T) {
+	aligned := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 1, Origin: TimeOriginSourceTimestamp}
+	page := HistoricalPage{Sampling: aligned, Samples: []HistoricalSample{{
+		Index: 7, RelativeTimeSeconds: 7, TimestampSeconds: floatPointer(1007), Values: []HistoricalValue{fixtureNumber(42)},
+	}}}
+
+	got := continuousSeries([]HistoricalPage{page})
+	if len(got) != 1 || got[0].seconds != 1007 || got[0].value != 42 {
+		t.Fatalf("aligned series = %+v", got)
+	}
+	page.Sampling.Origin = TimeOriginUnknown
+	if got := continuousSeries([]HistoricalPage{page}); len(got) != 0 {
+		t.Fatalf("unaligned series = %+v", got)
+	}
+	page.Sampling.Origin = TimeOriginSourceTimestamp
+	page.Samples[0].TimestampSeconds = nil
+	if got := continuousSeries([]HistoricalPage{page}); len(got) != 0 {
+		t.Fatalf("missing timestamp series = %+v", got)
+	}
+	for _, invalid := range []float64{math.NaN(), math.Inf(1)} {
+		page.Samples[0].TimestampSeconds = &invalid
+		if got := continuousSeries([]HistoricalPage{page}); len(got) != 0 {
+			t.Fatalf("non-finite timestamp series = %+v", got)
+		}
+	}
+}
+
+func TestDeriveSessionConsumptionPaceFailsClosedForUnalignedResources(t *testing.T) {
+	fixture := loadConsumptionPaceFixture(t, "consumption-pace-dry-v1.json")
+	session, pages, classified, validity := consumptionPaceFixtureInput(fixture)
+	for index := 0; index < 2; index++ {
+		session.Channels[index].Sampling.Origin = TimeOriginUnknown
+		pages[index].Sampling.Origin = TimeOriginUnknown
+	}
+
+	got, err := DeriveSessionConsumptionPace(session, pages, classified, validity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, lap := range got.Laps {
+		if lap.FuelConsumption != nil || lap.VirtualEnergyConsumption != nil {
+			t.Fatalf("unaligned resources produced metrics: %+v", lap)
+		}
+	}
+}
+
+func TestDeriveSessionConsumptionPaceUsesAlignedClockOffset(t *testing.T) {
+	fixture := loadConsumptionPaceFixture(t, "consumption-pace-dry-v1.json")
+	session, pages, classified, validity := consumptionPaceFixtureInput(fixture)
+	const offset = 1000.0
+	for pageIndex := range pages {
+		for sampleIndex := range pages[pageIndex].Samples {
+			timestamp := *pages[pageIndex].Samples[sampleIndex].TimestampSeconds + offset
+			pages[pageIndex].Samples[sampleIndex].TimestampSeconds = &timestamp
+		}
+	}
+	for index := range validity.Laps {
+		start := validity.Laps[index].Start.Add(time.Duration(offset * float64(time.Second)))
+		validity.Laps[index].Start = &start
+		validity.Laps[index].End = validity.Laps[index].End.Add(time.Duration(offset * float64(time.Second)))
+	}
+	for index := range validity.Temporal.LapBoundaries {
+		validity.Temporal.LapBoundaries[index].Timestamp = validity.Temporal.LapBoundaries[index].Timestamp.Add(time.Duration(offset * float64(time.Second)))
+	}
+	validity.Temporal.Segments[0].SessionStartTs = validity.Temporal.Segments[0].SessionStartTs.Add(time.Duration(offset * float64(time.Second)))
+	validity.Temporal.Segments[0].SessionEndTs = validity.Temporal.Segments[0].SessionEndTs.Add(time.Duration(offset * float64(time.Second)))
+
+	got, err := DeriveSessionConsumptionPace(session, pages, classified, validity)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bucket := got.ByClimateBucket[fixture.Expected.Bucket]
+	assertResourceFamily(t, bucket.FuelConsumption, fixture.Expected.FuelSampleSize, fixture.Expected.FuelMean, fixture.Expected.FuelVariance)
+	assertResourceFamily(t, bucket.VirtualEnergyConsumption, fixture.Expected.VESampleSize, fixture.Expected.VEMean, fixture.Expected.VEVariance)
 }
 
 func fixtureEventSample(seconds, value float64) HistoricalSample {

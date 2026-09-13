@@ -30,10 +30,12 @@ func DeriveCorrectedSession(base SourceAnalysisRef, session HistoricalSession, p
 	if session.SchemaVersion != HistoricalSchemaVersion || session.Provenance.Parser.ID != base.ParserID || session.Provenance.Parser.Version != base.ParserVersion || session.Provenance.SchemaFingerprint != base.SchemaFingerprint {
 		return empty, ErrCorrectionInterpretationChanged
 	}
+	alignment := BuildTemporalAlignment(session, pages)
+	session, pages = alignment.Session, alignment.Pages
 	var original LapValidityAnalysis
 	if len(snapshot.FamilyUses) > 0 {
 		var err error
-		original, err = AnalyzeLapValidity(session, pages)
+		original, err = AnalyzeAlignedLapValidity(alignment)
 		if err != nil {
 			return empty, fmt.Errorf("original validity: %w", err)
 		}
@@ -42,7 +44,8 @@ func DeriveCorrectedSession(base SourceAnalysisRef, session HistoricalSession, p
 	if err != nil {
 		return empty, err
 	}
-	validity, err := AnalyzeLapValidity(session, view.Pages)
+	alignment.Pages = view.Pages
+	validity, err := AnalyzeAlignedLapValidity(alignment)
 	if err != nil {
 		return empty, fmt.Errorf("corrected validity: %w", err)
 	}

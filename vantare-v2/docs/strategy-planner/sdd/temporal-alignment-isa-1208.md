@@ -26,8 +26,19 @@ Base: `e3b637082bcbf84aa608ec75eccb926ae0324c86`. Rama:
 - RED observado en B: los tests nuevos no compilaban antes de exponer el
   diagnóstico temporal. GREEN: siete regresiones dirigidas, paquete completo
   de Telemetry Analysis y todos los paquetes `internal/...`.
-- Sigue **C1**: aplicar la misma vista a Fuel, energía virtual y ritmo sin
-  ampliar los criterios físicos existentes.
+- **C1 — cerrado localmente.** Coldstart y cada derivación corregida construyen
+  una sola vista alineada y la comparten con vueltas, Fuel, energía virtual,
+  ritmo y curvas. Los lectores escalares y vectoriales sólo aceptan timestamps
+  finitos con origen `source_timestamp`; se retiró el fallback a tiempo
+  relativo o `index/frequency`. Las fórmulas, buckets, exclusiones y umbrales
+  permanecen intactos. Las versiones persistibles avanzan a
+  `consumption-pace.v5` y `derived-curves.v4`.
+- RED observado en C1: los lectores elegían el tiempo relativo y las fuentes
+  sin puente todavía producían métricas. GREEN: regresiones de offset, deriva,
+  ausencia de puente y desgaste, más Telemetry Analysis, coldstart e
+  `internal/...` completos.
+- Sigue **C2**: validar cantidades y tasas de parada sobre intervalos alineados,
+  incluido intervalo abierto y ausencia de puente.
 
 ## Problema demostrado
 

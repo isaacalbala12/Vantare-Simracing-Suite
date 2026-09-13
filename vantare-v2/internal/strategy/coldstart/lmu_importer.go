@@ -136,8 +136,9 @@ func (importer *LMUImporter) Import(ctx context.Context, candidate telemetryanal
 }
 
 func enrichCatalogableModel(model telemetryanalysis.AuthorizedSessionModel, pages []telemetryanalysis.HistoricalPage) (telemetryanalysis.AuthorizedSessionModel, error) {
-	session := model.Session
-	validity, validityErr := telemetryanalysis.AnalyzeLapValidity(session, pages)
+	alignment := telemetryanalysis.BuildTemporalAlignment(model.Session, pages)
+	model.Session, pages = alignment.Session, alignment.Pages
+	validity, validityErr := telemetryanalysis.AnalyzeAlignedLapValidity(alignment)
 	if validityErr != nil {
 		return telemetryanalysis.AuthorizedSessionModel{}, fmt.Errorf("analyze LMU lap validity: %w", validityErr)
 	}

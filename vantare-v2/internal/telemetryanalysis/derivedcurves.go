@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	derivedCurvesComputationVersion = "derived-curves.v3"
+	derivedCurvesComputationVersion = "derived-curves.v4"
 	wearLifeThresholdPercent        = 20.0
 	identifiabilityMinimumStints    = 3
 	identifiabilityMinimumSamples   = 15
@@ -759,35 +759,17 @@ func AggregateDerivedCurves(current SessionDerivedCurves, history []SessionDeriv
 }
 
 func continuousVectorSeries(pages []HistoricalPage) []vectorMetricSample {
-	var result []vectorMetricSample
-	for _, page := range pages {
-		if page.Sampling.Kind != SamplingContinuousImplicitFrequency || page.Sampling.FrequencyHz <= 0 {
-			continue
-		}
-		for _, sample := range page.Samples {
-			values, presence, ok := numericVector(sample.Values)
-			if !ok {
-				continue
-			}
-			seconds := sample.RelativeTimeSeconds
-			if seconds == 0 && sample.Index != 0 {
-				seconds = float64(sample.Index) / float64(page.Sampling.FrequencyHz)
-			}
-			result = append(result, vectorMetricSample{seconds: seconds, values: values, presence: presence})
-		}
-	}
-	sort.SliceStable(result, func(i, j int) bool { return result[i].seconds < result[j].seconds })
-	return result
+	return timestampedVectorSeries(pages)
 }
 
 func timestampedVectorSeries(pages []HistoricalPage) []vectorMetricSample {
 	var result []vectorMetricSample
 	for _, page := range pages {
-		if page.Sampling.Kind != SamplingEventTimestamped {
+		if page.Sampling.Origin != TimeOriginSourceTimestamp {
 			continue
 		}
 		for _, sample := range page.Samples {
-			if sample.TimestampSeconds == nil {
+			if sample.TimestampSeconds == nil || math.IsNaN(*sample.TimestampSeconds) || math.IsInf(*sample.TimestampSeconds, 0) {
 				continue
 			}
 			values, presence, ok := numericVector(sample.Values)

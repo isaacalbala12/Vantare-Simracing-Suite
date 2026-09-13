@@ -101,7 +101,7 @@ func ReadCorrectionInput(ctx context.Context, reader CorrectionInputReader, arti
 		return empty, err
 	}
 	alignment := BuildTemporalAlignment(session, pages)
-	validity, err := analyzeAlignedLapValidity(alignment)
+	validity, err := AnalyzeAlignedLapValidity(alignment)
 	if err != nil {
 		return empty, err
 	}

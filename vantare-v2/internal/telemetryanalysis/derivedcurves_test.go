@@ -337,7 +337,51 @@ func cleanFixtureFamilyUses() []LapFamilyUse {
 }
 
 func fixtureVectorContinuousSample(seconds float64, frequency int, values []float64) HistoricalSample {
-	return HistoricalSample{Index: int64(math.Round(seconds * float64(frequency))), RelativeTimeSeconds: seconds, Values: fixtureVectorValues(values)}
+	return HistoricalSample{Index: int64(math.Round(seconds * float64(frequency))), RelativeTimeSeconds: seconds, TimestampSeconds: floatPointer(seconds), Values: fixtureVectorValues(values)}
+}
+
+func TestContinuousVectorSeriesRequiresAlignedSourceTimestamp(t *testing.T) {
+	aligned := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 10, Origin: TimeOriginSourceTimestamp}
+	page := HistoricalPage{Sampling: aligned, Samples: []HistoricalSample{{
+		Index: 70, RelativeTimeSeconds: 7, TimestampSeconds: floatPointer(1007), Values: fixtureVectorValues([]float64{1, 2, 3, 4}),
+	}}}
+
+	got := continuousVectorSeries([]HistoricalPage{page})
+	if len(got) != 1 || got[0].seconds != 1007 || got[0].values != [4]float64{1, 2, 3, 4} {
+		t.Fatalf("aligned vector series = %+v", got)
+	}
+	page.Sampling.Origin = TimeOriginUnknown
+	if got := continuousVectorSeries([]HistoricalPage{page}); len(got) != 0 {
+		t.Fatalf("unaligned vector series = %+v", got)
+	}
+	page.Sampling.Origin = TimeOriginSourceTimestamp
+	invalid := math.NaN()
+	page.Samples[0].TimestampSeconds = &invalid
+	if got := continuousVectorSeries([]HistoricalPage{page}); len(got) != 0 {
+		t.Fatalf("non-finite vector series = %+v", got)
+	}
+}
+
+func TestDeriveTyreDegradationUsesAlignedClock(t *testing.T) {
+	start, end := fixtureTime(1000), fixtureTime(1010)
+	validity := LapValidityAnalysis{Laps: []AnalyzedLap{{
+		Number: 1, Start: &start, End: end, Complete: true,
+		FamilyUse: []LapFamilyUse{{Family: FamilyTyreDegradation, Included: true}},
+	}}}
+	sampling := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 1, Origin: TimeOriginSourceTimestamp}
+	pages := []HistoricalPage{{Sampling: sampling, Samples: []HistoricalSample{
+		{Index: 0, RelativeTimeSeconds: 0, TimestampSeconds: floatPointer(1000), Values: fixtureVectorValues([]float64{100, 100, 100, 100})},
+		{Index: 10, RelativeTimeSeconds: 10, TimestampSeconds: floatPointer(1010), Values: fixtureVectorValues([]float64{99, 99, 99, 99})},
+	}}}
+
+	got := deriveTyreDegradation("aligned-wear", validity, pages)
+	if got.Presence != strategyprojection.PresenceValid || got.ByWheel[strategyprojection.TyreWheelFL] != 1 {
+		t.Fatalf("aligned wear = %+v", got)
+	}
+	pages[0].Sampling.Origin = TimeOriginUnknown
+	if got := deriveTyreDegradation("unaligned-wear", validity, pages); got.Presence != strategyprojection.PresenceMissing {
+		t.Fatalf("unaligned wear = %+v", got)
+	}
 }
 
 func fixtureVectorEventSample(seconds float64, values []float64) HistoricalSample {

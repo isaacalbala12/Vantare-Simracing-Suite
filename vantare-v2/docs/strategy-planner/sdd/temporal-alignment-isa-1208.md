@@ -4,6 +4,21 @@ Estado: plan de ejecución aprobado por continuidad del SDD. Fecha: 2026-09-14.
 Base: `e3b637082bcbf84aa608ec75eccb926ae0324c86`. Rama:
 `vantareapp/isa-1208-strategy-temporal-alignment`.
 
+## Estado de ejecución
+
+- **A — cerrado localmente.** `BuildTemporalAlignment` produce una copia
+  profunda, valida `GPS Time` como puente de fuente y alinea por canal mediante
+  índices/frecuencias exactamente coincidentes. No interpola ni reescribe la
+  procedencia. El importador ya solicita el canal puente desde la unión
+  canónica.
+- RED observado: el focal falló por `undefined: BuildTemporalAlignment` antes
+  de existir producción. GREEN: focal y paquete completo de Telemetry Analysis.
+- El gate `go test ./...` sólo quedó rojo en `cmd/vantare` y `frontend` por
+  ausencia de `frontend/dist` en el worktree; todos los demás paquetes
+  ejecutados pasaron. Este corte no genera el embed al no tocar frontend.
+- Sigue **B**: consumir esta vista una sola vez en vueltas/correcciones y
+  reemplazar la unión ordinal de `fuel_jump` por el timestamp alineado.
+
 ## Problema demostrado
 
 T19a (#1030) prueba con S125 Imola, S266 Algarve y S026 Monza que LMU

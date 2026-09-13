@@ -1,6 +1,32 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12 cerrado localmente; plan restante reconciliado
+## Estado vigente — #1208 corte A cerrado localmente
+
+El corte A de #1208 implementa el puente temporal puro `GPS Time` en
+`internal/telemetryanalysis/temporal_alignment.go`. La vista resultante clona
+sesión y páginas, valida el reloj por fuente, alinea cada canal sólo mediante
+muestras exactamente coincidentes y conserva intacta la procedencia declarada.
+Ausencia, valores no finitos, retrocesos/duplicados, frecuencia incompatible,
+índices inválidos o cobertura truncada fallan cerrados con diagnóstico estable;
+un canal rechazado no invalida otro compatible. `GPS Time` forma parte de la
+unión canónica de canales que debe leer el importador.
+
+TDD observado: el focal falló primero por `undefined: BuildTemporalAlignment`.
+Después pasaron el focal y `go test ./internal/telemetryanalysis -count=1`.
+`go test ./...` ejecutó el resto de paquetes, incluido Telemetry Analysis, pero
+su resultado global fue FAIL exclusivamente porque este worktree aislado no
+contiene `frontend/dist` requerido por `go:embed`; no se generó ese artefacto
+porque el corte no toca frontend y la ejecución acordada no abre ni construye
+la app de escritorio. Dos intentos con Devin SWE-2 Max fueron cancelados antes
+de cualquier edición: el primero quedó deliberando y el segundo permaneció
+activo sin emitir trabajo; root hizo el relevo local previsto por este handoff.
+
+Siguiente corte: B aplica una única vista alineada a vueltas y entradas de
+corrección, corrige cobertura y elimina la asociación ordinal de `fuel_jump`.
+No se ha abierto DuckDB real, app, Wails o LMU; no hay push, PR, CI remota,
+integración ni release.
+
+## Historial — T12 cerrado localmente; plan restante reconciliado
 
 Auditoría de continuidad al 2026-09-13 sobre `c2d5b45b43bbf8ff0efb2cd16f1598f7a4925eff`,
 rama `vantareapp/isa-1104-recorded-classification`, worktree

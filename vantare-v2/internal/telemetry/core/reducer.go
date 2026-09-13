@@ -18,6 +18,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/weather"
 )
 
 var (
@@ -78,6 +79,9 @@ type VehicleState struct {
 // ObservedState is the complete state replaced by one atomic batch. The
 // catalog remains outside the runtime hot path by architecture; these typed
 // fields are the runtime counterparts of its canonical signal definitions.
+// AmbientTemp, TrackTemp and SessionFlag arrive REST-joined from the LMU
+// sessionInfo signal (ISA-1106, CarNumber precedent): they own presence and
+// freshness per field and never default to a usable value.
 type ObservedState struct {
 	SourceTime    schema.Field[time.Duration]
 	EndTime       schema.Field[session.EndTime]
@@ -86,6 +90,9 @@ type ObservedState struct {
 	SessionType   schema.Field[session.Type]
 	VehicleCount  schema.Field[schema.Count]
 	PlayerPresent schema.Field[bool]
+	AmbientTemp   schema.Field[weather.Temperature]
+	TrackTemp     schema.Field[weather.Temperature]
+	SessionFlag   schema.Field[session.Flag]
 	Vehicles      []VehicleState
 }
 

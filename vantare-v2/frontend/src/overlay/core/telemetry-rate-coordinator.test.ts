@@ -66,6 +66,18 @@ describe("createTelemetryRateCoordinator", () => {
     coordinator.dispose();
   });
 
+  it("reuses the runtime context reference when only the sequence advances", () => {
+    const coordinator = createTelemetryRateCoordinator();
+    coordinator.setOverlayFrame(performanceFrame(1, null, {}), { state: "live" });
+    const first = coordinator.getOverlayRuntimeContext();
+    coordinator.setOverlayFrame(performanceFrame(2, null, {}), { state: "live" });
+    expect(coordinator.getOverlayRuntimeContext()).toBe(first);
+    coordinator.setOverlayFrame(performanceFrame(3, null, {}, [], 1, "qualifying"), { state: "live" });
+    expect(coordinator.getOverlayRuntimeContext()).not.toBe(first);
+    expect(coordinator.getOverlayRuntimeContext().sessionType).toBe("qualifying");
+    coordinator.dispose();
+  });
+
   it("keeps invalid V2 failures observable until a valid frame arrives", () => {
     const coordinator = createTelemetryRateCoordinator();
     const retained = performanceFrame(1, null, { "racing-flags": "event" });
@@ -236,6 +248,21 @@ describe("createTelemetryRateCoordinator", () => {
     coordinator.setOverlayFrame(performanceFrame(4, 40, { standings: "dirty" }, [{ id: "car-1" }]));
     harness.tick();
     expect(listener).toHaveBeenCalledTimes(2);
+    coordinator.dispose();
+  });
+
+  it.each(["session", "weather", "fuel", "units"] as const)("updates Standings when %s changes without a position change", (section) => {
+    const harness = controllableScheduler();
+    let time = 0;
+    const coordinator = createTelemetryRateCoordinator({ createScheduler: harness.create, now: () => time });
+    const frame = performanceFrame(1, 40, { standings: "dirty" }, [{ id: "car-1" }]);
+    coordinator.setOverlayFrame(frame);
+    const listener = vi.fn();
+    coordinator.subscribe("standings", listener);
+    coordinator.setOverlayFrame({ ...frame, sequence: 2, [section]: section === "session" ? { ...frame.session, flag: { q: "fresh", v: "yellow" } } : section === "fuel" ? { sessionLaps: { q: "fresh", v: 18 } } : section === "units" ? { temperature: "fahrenheit" } : { trackC: { q: "fresh", v: 35 } } });
+    time = 50;
+    harness.tick();
+    expect(listener).toHaveBeenCalledTimes(1);
     coordinator.dispose();
   });
 

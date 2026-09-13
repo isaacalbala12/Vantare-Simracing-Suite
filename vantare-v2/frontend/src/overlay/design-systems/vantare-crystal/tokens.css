@@ -226,6 +226,37 @@
   gap: 0.5rem;
 }
 
+/* Franja de marca obligatoria con cabecera oculta (ISA-1105): mismo borde
+   que la cabecera, sin efectos ni animación nuevos. */
+[data-widget-system="vantare-crystal"] .vc-brand-band {
+  display: flex;
+  align-items: center;
+  padding: 0.35rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* En Pedals el frame productivo es display:contents dentro de una fila y los
+   canales de 135px ocupan todo el alto util: la marca es un micro-chip
+   absoluto en la franja de padding superior, sin brillo, que no ocupa flujo,
+   no mueve los canales ni se superpone con su informacion. */
+[data-widget-system="vantare-crystal"].vc-pedals .vc-brand-band {
+  position: absolute;
+  top: 1px;
+  left: 14px;
+  padding: 0;
+  border-bottom: 0;
+}
+[data-widget-system="vantare-crystal"].vc-pedals .vc-brand-band .crystal-brand {
+  font-size: 7px;
+  letter-spacing: 0.12em;
+  gap: 3px;
+}
+[data-widget-system="vantare-crystal"].vc-pedals .vc-brand-band .crystal-brand-mark {
+  width: 10px;
+  height: 9px;
+  filter: none;
+}
+
 [data-widget-system="vantare-crystal"] .vc-standings-remaining {
   color: var(--vc-accent);
   font-family: var(--vc-font-mono);

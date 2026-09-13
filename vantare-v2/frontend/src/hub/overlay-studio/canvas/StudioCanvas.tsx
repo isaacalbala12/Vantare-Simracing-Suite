@@ -8,7 +8,7 @@ import { useI18n } from '../../../i18n/I18nProvider';
 import { STUDIO_WIDGET_ACCESS_MESSAGE_KEY } from '../studio-v3-i18n';
 import { getStudioHotkey } from '../state/studio-hotkeys';
 import { listStudioMonitors, type StudioMonitor } from '../state/studio-monitor-client';
-import { useStudioAccess, useStudioActions, useStudioActiveLayout, useStudioPreview, useStudioSelector } from '../state/studio-store';
+import { useStudioActions, useStudioActiveLayout, useStudioPreview, useStudioSelector, useStudioWidgetPolicy } from '../state/studio-store';
 import { clientToLogical, resolveCanvasScale } from './canvas-geometry';
 import { resolveCanvasBackground, safeAreaInsets } from './canvas-backgrounds';
 import { CanvasActionBar } from './CanvasActionBar';
@@ -40,7 +40,7 @@ export type StudioCanvasProps = {
 export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement {
   const { onOpenBrowserView, diagnostics, listMonitors = listStudioMonitors } = props;
   const { t } = useI18n();
-  const access = useStudioAccess();
+  const widgetPolicy = useStudioWidgetPolicy();
   const document = useStudioSelector((s) => s.history?.present ?? null);
   const activeLayout = useStudioActiveLayout();
   const activeSession = useStudioSelector((s) => s.activeSession);
@@ -148,8 +148,8 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
   const safeInsets = safeAreaInsets(layoutViewport.width, layoutViewport.height);
 
   const canMutateLayout = useCallback(
-    (widget: WidgetInstanceV3) => canMutateWidget(access, widget),
-    [access],
+    (widget: WidgetInstanceV3) => canMutateWidget(widgetPolicy, widget),
+    [widgetPolicy],
   );
   const onLayoutBlocked = useCallback(() => {
     notifyAccessDenied(t(STUDIO_WIDGET_ACCESS_MESSAGE_KEY));

@@ -35,6 +35,14 @@ completas insuficiente y umbrales/N sin aprobar. Estos gates no bloquean tareas
 independientes ni se transforman en PASS para declarar terminado el producto.
 #1091 cubre revisión SDD; las futuras implementaciones necesitan issue/base propias.
 
+#1208 ya cubre el bloqueo temporal hallado en T19a. Root fijó el microplan
+[temporal-alignment-isa-1208.md](../../strategy-planner/sdd/temporal-alignment-isa-1208.md)
+sobre `e3b63708`, rama `vantareapp/isa-1208-strategy-temporal-alignment`.
+Orden obligatorio: A reproducción/puente puro → B vueltas/cobertura/límites →
+C1 recursos/ritmo → C2 parada → D banco real y gates. T13a no empieza hasta
+que S125/S266 pierdan los stints fantasma, S026 no regrese y una fuente sin
+puente falle cerrada. Sin app/Wails/LMU, push, PR, integración o release.
+
 ## Historial — T19a auditado: anclas temporales y propuesta T13a
 
 Auditoría de semántica temporal sobre rama

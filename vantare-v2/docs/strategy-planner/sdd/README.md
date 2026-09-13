@@ -82,7 +82,7 @@ Estado de referencia, no certificación permanente: revalidar al empezar cada co
 | Lectura/correcciones | Valor, uso por familia, clasificación y catálogo canónico v4 #1096/#1099/#1104. Banco J9 bidireccional Imola↔Monza conserva hashes originales. | Límites T13, comandos tras reinicio y revisiones completas de plan T14, gates nativos/visuales. |
 | Selección exacta | Documento/cliente/adapter #1084–1088 y adopción explícita desde Datos/Revisiones. | Plan aceptado reproducible con todas las entradas/versiones y consulta sin fuente; T14/T22. |
 | Motor/entradas | SolverV2, replay final y corrección local del coste repetido #1089; transporte de reglas #1092. | T02/T03/T06/T07 no completos: perfiles, disponibilidad, inventario, servicios/formación, recursos/horizonte y estados; conexión productiva T15. |
-| Criterios | Inventario/protocolo #1030; Imola/Monza son preparación expuesta. | T19a temporal antes de límites; anotación independiente, calibración y reserva suficiente T19–T21. |
+| Criterios | Inventario/protocolo #1030; Imola/Monza son preparación expuesta. | T19a demostró mezcla de relojes; #1208 alinea LMU antes de límites. Anotación independiente, calibración y reserva suficiente T19–T21. |
 | Calidad | Gates locales y bancos por corte; T12 local cerrado en c2d5b45b. | WebView2 ERROR_INVALID_STATE sin causa demostrada, aceptación visual/nativa/distribución y precisión empírica. |
 
 Las notas antiguas «falta cliente/selección/productor» quedan superadas por

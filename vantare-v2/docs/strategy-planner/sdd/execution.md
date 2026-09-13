@@ -27,8 +27,8 @@ Evidencia de los gaps: [matriz T02](../evidence/isa-1092/README.md),
 `StrategyRecordedWorkflow.tsx` bajo `frontend/src/hub/strategy-orbit/`.
 No repetir T12 ni declarar terminadas las entradas sólo por su posición en el DAG.
 
-**Siguiente corte elegible:** T19a (semántica temporal mínima para T13), bajo el
-alcance de auditoría #1030 o una hija ligada si requiere tooling distinto. Después
+**Siguiente corte elegible:** #1208 corrige la mezcla de relojes demostrada por
+T19a antes de T13. Con el puente temporal, cobertura y límites verificados,
 T13a fija el microplan/compatibilidad y la issue de implementación antes de código.
 En paralelo lógico, preparar inventario T02 restante y preflight documental T22a;
 la ejecución física sigue siendo de un único escritor por worktree.
@@ -118,7 +118,7 @@ No inventar un timeout de espera que transforme silencio en aprobación.
 
 ```text
 BASE local T12 c2d5b45b + capacidades previas (no aceptación integral)
-  -> T19a semántica temporal -> T13a contrato -> T13b..e límites
+  -> T19a semántica temporal -> #1208 alineación LMU -> T13a contrato -> T13b..e límites
   -> T14a..c revisiones reproducibles
 
 T02 restante -> T06 reglas completas / T07 perfiles y conducción -> T03 estados
@@ -134,7 +134,7 @@ T18 + flujo funcional -> T22b..c Wails/distribución
 T18/T21/T22 -> T23 entrega y aceptación -> T24 investigación live
 ```
 
-Prioridad: T19a→T13, después completar entradas/reglas/pilotos/estados pendientes
+Prioridad: T19a→#1208→T13, después completar entradas/reglas/pilotos/estados pendientes
 antes de conectar T15; la mecánica T14 puede avanzar desde T10, pero su cierre
 integra las operaciones T13 soportadas. Adelantar
 preparación/anotación y diagnóstico del gate nativo entre cortes para no descubrir
@@ -194,6 +194,7 @@ archivos a ciegas ni ampliar el alcance de una issue histórica documental.
 | Orden / corte | Entrega concreta | Gate para pasar al siguiente |
 |---|---|---|
 | 1 · T19a | Auditar en preparación el eje temporal de muestra/vuelta/stint: unidad, origen, resets, segmentos, duplicados, límites inclusivos/exclusivos y correspondencia con boxes. Producir matriz de anclas soportadas y casos desconocidos. | Al menos caso válido y rechazo por discontinuidad/ambigüedad con identidad exacta; no etiqueta de trompo deducida de lentitud. Si la señal no soporta una edición, esa capacidad queda no disponible, con causa. |
+| 1b · #1208 | Alinear canales continuos LMU al reloj de eventos mediante `GPS Time`, corregir cobertura y sustituir el join ordinal de `fuel_jump`. | RED/GREEN S125/S266/S026; sin stints fantasma ni muestreo desplazado; ausencia o puente inválido fallan cerrados; banco real con hashes intactos. |
 | 2 · T13a | Microplan de `set_stint_boundary`: reemplazo de un límite y su causa sólo donde el contrato y ancla lo permitan, precondiciones, consistencia con vueltas, snapshot/versión y rollback. Distinguir límite observado Analysis de restricción de stint del plan T16. | Issue hija de #1033 fijada; compatibilidad v1–v4 y consumidores inventariados; decisión cerrada sobre qué operación concreta se soporta, sin convertir todo el segmentador en otro motor. |
 | 3 · T13b→c | Constructor/validación y representación/custodia en cortes separados. Guardado mixto con valor/uso/clasificación, replay/Resolve/Restore, cuota y guardado incierto. | Rechazo atómico de target inexistente, cruce de reloj, solape/hueco ilegal y conflicto; snapshots anteriores sin cambio de digest; rollback preserva historial. |
 | 4 · T13d→e | Vista/derivación por familia y servicio; después contrato/cliente/UI avanzada y banco real de preparación. | Mover límite recalcula sólo dependientes y mantiene totales/invariantes respaldados; adopción explícita, referencias exactas, cancelar/respuesta tardía y original intacto. A08 local; visual/nativo en T18/T22. |
@@ -214,8 +215,9 @@ archivos a ciegas ni ampliar el alcance de una issue histórica documental.
 
 ## 3.2 Checkpoints de orquestación
 
-- **C0 — listo para límites:** T19a aporta anclas comprobadas y T13a cierra
-  contrato/issue. Si no hay ancla defendible, declarar capacidad no disponible
+- **C0 — listo para límites:** T19a aporta anclas comprobadas, #1208 elimina
+  la mezcla de relojes y T13a cierra contrato/issue. Si no hay ancla
+  defendible, declarar capacidad no disponible
   y continuar entradas/revisiones; no fabricar timestamps para desbloquear UI.
 - **C1 — listo para calcular:** T13/T14 y matriz T02/T06/T07/T03 cerrados
   localmente. El orquestador contrasta payload real, persistencia y replay antes

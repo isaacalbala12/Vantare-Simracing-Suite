@@ -6,7 +6,7 @@ import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
 import { Button, Input, ListRow } from "../../../ui/orbit";
 import { AddWidgetDialog } from "../catalog/AddWidgetDialog";
 import { buildAddWidgetCommand } from "../catalog/studio-catalog";
-import { useStudioAccess, useStudioActions, useStudioActiveLayout, useStudioSelector } from "../state/studio-store";
+import { useStudioActions, useStudioActiveLayout, useStudioSelector, useStudioWidgetPolicy } from "../state/studio-store";
 import { fill, systemLabel, widgetLabel } from "./studio-orbit-model";
 
 /** Tirador de arrastre del prototipo (`.witem .grip`). */
@@ -83,7 +83,7 @@ function sortWidgets(widgets: readonly WidgetInstanceV3[]): WidgetInstanceV3[] {
  * navegable con teclado (`08-accesibilidad.md`).
  */
 export function StudioWidgetList(): React.ReactElement {
-  const access = useStudioAccess();
+  const widgetPolicy = useStudioWidgetPolicy();
   const document = useStudioSelector((s) => s.history?.present ?? null);
   const activeLayout = useStudioActiveLayout();
   const activeSession = useStudioSelector((s) => s.activeSession);
@@ -201,7 +201,7 @@ export function StudioWidgetList(): React.ReactElement {
       </div>
 
       <AddWidgetDialog
-        access={access}
+        policy={widgetPolicy}
         onAdd={handleAddWidget}
         onClose={() => setAddDialogOpen(false)}
         open={addDialogOpen}

@@ -41,6 +41,7 @@ type OverlayWindowFactory interface {
 // It creates a fresh window on Start and closes it on Stop.
 type OverlayController struct {
 	mu      sync.Mutex
+	startMu sync.Mutex
 	factory OverlayWindowFactory
 	current OverlayWindow
 	status  OverlayStatus
@@ -54,29 +55,48 @@ func NewOverlayController(factory OverlayWindowFactory) *OverlayController {
 // Start loads the profile, closes any existing overlay window, and creates a clean one.
 // For streaming profiles it returns a non-running status without creating a desktop window.
 func (c *OverlayController) Start(document *config.ProfileDocumentV3) (OverlayStatus, error) {
-	// Close previous window and decide whether a desktop window is needed.
-	// Keep the critical section short; window creation can be slow.
+	// Serialize Start/Stop so a slow native window creation cannot interleave
+	// with another Start: the loser would keep an orphaned always-on-top window
+	// that no later Stop can reach. A Stop issued during creation must also
+	// observe the created window instead of letting it resurrect afterwards.
+	c.startMu.Lock()
+	defer c.startMu.Unlock()
+
+	// Detach the previous window and decide whether a desktop window is
+	// needed. Keep the critical section short; window creation can be slow.
 	c.mu.Lock()
-	if c.current != nil {
-		c.current.Close()
-		c.current = nil
-	}
+	previous := c.current
+	c.current = nil
 
 	if document == nil {
 		c.status = OverlayStatus{}
+		status := c.status
 		c.mu.Unlock()
-		return c.status, nil
+		if previous != nil {
+			previous.Close()
+		}
+		return status, nil
 	}
 
 	mode := document.DisplayMode
 	if mode == config.ModeStreaming {
 		c.status = OverlayStatus{Running: false, ProfileID: document.ID, Mode: config.ModeStreaming}
+		status := c.status
 		c.mu.Unlock()
-		return c.status, nil
+		if previous != nil {
+			previous.Close()
+		}
+		return status, nil
 	}
 
 	c.status = OverlayStatus{Running: false, ProfileID: document.ID, Mode: mode}
 	c.mu.Unlock()
+
+	// Close outside the controller lock: the native runtime may dispatch the
+	// closing event on the caller's stack, and HandleWindowClosed needs c.mu.
+	if previous != nil {
+		previous.Close()
+	}
 
 	// Create the window outside the lock so concurrent Status() calls are not blocked.
 	bounds := config.Rect{}
@@ -97,15 +117,20 @@ func (c *OverlayController) Start(document *config.ProfileDocumentV3) (OverlaySt
 
 // Stop closes the current overlay window.
 func (c *OverlayController) Stop() OverlayStatus {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.startMu.Lock()
+	defer c.startMu.Unlock()
 
-	if c.current != nil {
-		c.current.Close()
-		c.current = nil
-	}
+	c.mu.Lock()
+	previous := c.current
+	c.current = nil
 	c.status.Running = false
-	return c.status
+	status := c.status
+	c.mu.Unlock()
+
+	if previous != nil {
+		previous.Close()
+	}
+	return status
 }
 
 // HandleWindowClosed forgets a window that the native runtime has already

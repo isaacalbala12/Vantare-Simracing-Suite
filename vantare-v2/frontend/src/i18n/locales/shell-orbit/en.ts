@@ -86,4 +86,8 @@ export const shellOrbitEn: Record<string, string> = {
   "shell.access.unavailable": "Access not available",
   "shell.access.requiresPlan": "Requires the {{plan}} plan · current plan {{current}}",
   "shell.access.requiresPlanShort": "Requires {{plan}}",
+
+  "shell.pageLoading": "Loading…",
+  "shell.pageError": "This screen could not be loaded.",
+  "shell.pageRetry": "Retry",
 };

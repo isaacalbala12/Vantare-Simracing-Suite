@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"reflect"
 	"sort"
 	"strings"
@@ -213,6 +215,123 @@ func verifyRecordedRealClassificationRevision(t *testing.T, ctx context.Context,
 	return reopened.SessionID, restored.HeadID
 }
 
+// verifyRecordedRealIdentityRevision retargets only the native identity fields
+// that differ from a second, authorized LMU combination. The target tuple and
+// ID come from the shared Analysis catalog; neither is supplied as free text.
+func verifyRecordedRealIdentityRevision(t *testing.T, ctx context.Context, svc *TelemetryAnalysisService, opened TelemetryAnalysisOpenedSession, base telemetryanalysis.SourceAnalysisRef, head, candidateID string, target telemetryanalysis.CombinationIdentity) (string, string) {
+	t.Helper()
+	if target.SimID != telemetryanalysis.SimIDLMU {
+		t.Skipf("real target simulator %q is outside the LMU identity bank", target.SimID)
+	}
+	baseLoaded, err := svc.LoadCorrection(ctx, TelemetryAnalysisCorrectionRevisionRequest{SessionID: opened.SessionID, Base: base, RevisionID: head})
+	if err != nil {
+		t.Fatalf("real identity base load: %v", err)
+	}
+	baseProjection := recordedRealClassificationProject(t, ctx, svc, opened.SessionID, base, head)
+	baseDigest, err := base.Digest()
+	if err != nil {
+		t.Fatalf("real identity base digest: %v", err)
+	}
+	assertRecordedRealProjectionRef(t, "identity base", baseProjection, base, baseDigest, head, baseLoaded.Revision.Snapshot.SnapshotID)
+	if baseProjection.CombinationID == target.ID {
+		t.Skip("real primary and target sources have the same canonical combination; identity bank needs two distinct combinations")
+	}
+
+	type identityField struct {
+		field        telemetryanalysis.ClassificationField
+		key, display string
+		replacement  string
+	}
+	fields := []identityField{
+		{telemetryanalysis.ClassificationFieldTrackName, "trackname", "TrackName", target.TrackName},
+		{telemetryanalysis.ClassificationFieldTrackLayout, "tracklayout", "TrackLayout", target.TrackLayout},
+		{telemetryanalysis.ClassificationFieldCarName, "carname", "CarName", target.CarName},
+		{telemetryanalysis.ClassificationFieldCarClass, "carclass", "CarClass", target.CarClass},
+	}
+	const reason = "retarget real recorded identity to an authorized LMU combination"
+	corrections := make([]telemetryanalysis.ClassificationCorrection, 0, len(fields))
+	for _, field := range fields {
+		original := recordedRealClassificationOriginal(t, opened.Session.Metadata, field.key, field.display)
+		if strings.TrimSpace(original) == field.replacement {
+			continue
+		}
+		corrections = append(corrections, telemetryanalysis.ClassificationCorrection{
+			Base: base, Field: field.field, ExpectedOriginal: original, Replacement: field.replacement,
+			Reason: reason, Provenance: telemetryanalysis.ClassificationProvenanceManual, CanonicalCombinationID: target.ID,
+		})
+	}
+	if len(corrections) == 0 {
+		t.Skip("real primary and target sources expose no differing identity fields")
+	}
+
+	request := TelemetryAnalysisCorrectionSaveRequest{
+		SessionID: opened.SessionID, Base: base,
+		Corrections: []telemetryanalysis.SampleValueCorrection{}, FamilyUses: []telemetryanalysis.LapFamilyUseCorrection{}, Classifications: corrections,
+		Command: telemetryanalysis.CorrectionSaveCommand{ExpectedRevision: head, CommandID: "real-classification-identity", Reason: reason, LocalAuthorID: "local-validation"},
+	}
+	saved := recordedRealClassificationSave(t, ctx, svc, request, "analysis.mixed-snapshot.v4")
+	if saved.HeadID == head || saved.Revision.Snapshot.CanonicalCombination == nil || !reflect.DeepEqual(*saved.Revision.Snapshot.CanonicalCombination, target) {
+		t.Fatalf("real identity save lost exact canonical target: %+v", saved.Revision.Snapshot.CanonicalCombination)
+	}
+	if len(saved.Revision.Snapshot.Classifications) != len(corrections) {
+		t.Fatalf("real identity save retained %d decisions, want %d", len(saved.Revision.Snapshot.Classifications), len(corrections))
+	}
+	resolved, err := svc.ResolveCorrectionCommand(ctx, request)
+	if err != nil || !resolved.Found || resolved.Revision == nil || !reflect.DeepEqual(*resolved.Revision, saved.Revision) {
+		t.Fatalf("real identity resolve: %+v, %v", resolved, err)
+	}
+	replayed, err := svc.SaveCorrections(ctx, request)
+	if err != nil || !reflect.DeepEqual(replayed, saved) {
+		t.Fatalf("real identity replay: %+v, %v", replayed, err)
+	}
+	projected := recordedRealClassificationProject(t, ctx, svc, opened.SessionID, base, saved.Revision.RevisionID)
+	assertRecordedRealProjectionRef(t, "identity", projected, base, baseDigest, saved.Revision.RevisionID, saved.Revision.Snapshot.SnapshotID)
+	if projected.CombinationID != target.ID || projected.SessionClassification.TrackName != target.TrackName || projected.SessionClassification.TrackLayout != target.TrackLayout || projected.SessionClassification.CarName != target.CarName || projected.SessionClassification.CarClass != target.CarClass {
+		t.Fatalf("real identity projection is not the exact target: %+v", projected.SessionClassification)
+	}
+	assertRecordedRealIdentityProjectionEqual(t, "identity", baseProjection, projected)
+
+	if err := svc.CloseSession(opened.SessionID); err != nil {
+		t.Fatal(err)
+	}
+	reopened, err := svc.Open(ctx, TelemetryAnalysisOpenRequest{CandidateID: candidateID, UserApproved: true})
+	if err != nil {
+		t.Fatalf("real identity reopen: %v", err)
+	}
+	if !reflect.DeepEqual(reopened.Session.Metadata, opened.Session.Metadata) {
+		t.Fatal("real original metadata changed after identity revision and reopen")
+	}
+	loaded, err := svc.LoadCorrection(ctx, TelemetryAnalysisCorrectionRevisionRequest{SessionID: reopened.SessionID, Base: base, RevisionID: saved.Revision.RevisionID})
+	if err != nil || loaded.HeadID != saved.HeadID || !reflect.DeepEqual(loaded.Revision, saved.Revision) {
+		t.Fatalf("real identity history changed after reopen: %+v, %v", loaded, err)
+	}
+	again := recordedRealClassificationProject(t, ctx, svc, reopened.SessionID, base, saved.Revision.RevisionID)
+	again.GeneratedAt = projected.GeneratedAt
+	if !reflect.DeepEqual(again, projected) {
+		t.Fatal("real identity historical projection changed after reopen")
+	}
+
+	restoreRequest := TelemetryAnalysisCorrectionSaveRequest{
+		SessionID: reopened.SessionID, Base: base,
+		Corrections: []telemetryanalysis.SampleValueCorrection{}, FamilyUses: []telemetryanalysis.LapFamilyUseCorrection{}, Classifications: []telemetryanalysis.ClassificationCorrection{},
+		Command: telemetryanalysis.CorrectionSaveCommand{ExpectedRevision: saved.HeadID, CommandID: "real-classification-identity-restore", Reason: "restore original recorded identity", LocalAuthorID: "local-validation"},
+	}
+	restored := recordedRealClassificationSave(t, ctx, svc, restoreRequest, "analysis.sample-snapshot.v1")
+	if restored.HeadID == saved.HeadID || restored.Revision.Snapshot.CanonicalCombination != nil || len(restored.Revision.Snapshot.Classifications) != 0 {
+		t.Fatalf("real identity restore retained identity state: %+v", restored.Revision.Snapshot)
+	}
+	restoredProjection := recordedRealClassificationProject(t, ctx, svc, reopened.SessionID, base, restored.Revision.RevisionID)
+	assertRecordedRealProjectionRef(t, "identity restore", restoredProjection, base, baseDigest, restored.Revision.RevisionID, restored.Revision.Snapshot.SnapshotID)
+	assertRecordedRealClassificationPreserved(t, "identity restore", baseProjection, restoredProjection)
+	assertRecordedRealClassificationProjectionEqual(t, "identity restore", baseProjection, restoredProjection, false, false)
+	historic, err := svc.LoadCorrection(ctx, TelemetryAnalysisCorrectionRevisionRequest{SessionID: reopened.SessionID, Base: base, RevisionID: saved.Revision.RevisionID})
+	if err != nil || historic.HeadID != restored.HeadID || !reflect.DeepEqual(historic.Revision, saved.Revision) {
+		t.Fatalf("real identity v4 history lost after restore: %+v, %v", historic, err)
+	}
+	t.Logf("real identity v4 roundtrip verified: target %s, revision %s, restore %s", target.ID, saved.Revision.RevisionID, restored.Revision.RevisionID)
+	return reopened.SessionID, restored.HeadID
+}
+
 // recordedRealClassificationOriginal consulta el original nativo exacto de un
 // campo: una sola entrada válida, no sensible ni redactada, con valor en bruto
 // sin recortar. Si la fuente no ofrece esa condición, expone el límite sin
@@ -340,5 +459,27 @@ func assertRecordedRealClassificationProjectionEqual(t *testing.T, stage string,
 	}
 	if !reflect.DeepEqual(baseCopy, gotCopy) {
 		t.Fatalf("real %s projection differs outside the intended classification change", stage)
+	}
+}
+
+func assertRecordedRealIdentityProjectionEqual(t *testing.T, stage string, base, got strategyprojection.StrategyInputProjectionV2) {
+	t.Helper()
+	baseCopy, gotCopy := base, got
+	baseAggregate, gotAggregate := "aggregate:"+baseCopy.CombinationID, "aggregate:"+gotCopy.CombinationID
+	gotCopy.GeneratedAt = baseCopy.GeneratedAt
+	gotCopy.SourceRevisions = baseCopy.SourceRevisions
+	gotCopy.CombinationID = baseCopy.CombinationID
+	gotCopy.SessionClassification.TrackName = baseCopy.SessionClassification.TrackName
+	gotCopy.SessionClassification.TrackLayout = baseCopy.SessionClassification.TrackLayout
+	gotCopy.SessionClassification.CarName = baseCopy.SessionClassification.CarName
+	gotCopy.SessionClassification.CarClass = baseCopy.SessionClassification.CarClass
+	baseJSON, baseErr := json.Marshal(baseCopy)
+	gotJSON, gotErr := json.Marshal(gotCopy)
+	if baseErr != nil || gotErr != nil {
+		t.Fatalf("real %s projection comparison encoding: %v", stage, errors.Join(baseErr, gotErr))
+	}
+	gotJSON = []byte(strings.ReplaceAll(string(gotJSON), gotAggregate, baseAggregate))
+	if string(baseJSON) != string(gotJSON) {
+		t.Fatalf("real %s projection differs outside the intended identity change", stage)
 	}
 }

@@ -31,7 +31,7 @@ func (repo recordedRealRepository) Commit(context.Context, uint64, repository.Ch
 // controlled eligible-license authorizer. This is not a Wails/login acceptance.
 type selectedRealMetadata struct {
 	telemetryanalysis.OSMetadataSource
-	name string
+	names map[string]struct{}
 }
 
 func (source selectedRealMetadata) ReadDir(ctx context.Context, root string) ([]telemetryanalysis.MetadataEntry, error) {
@@ -39,12 +39,13 @@ func (source selectedRealMetadata) ReadDir(ctx context.Context, root string) ([]
 	if err != nil {
 		return nil, err
 	}
+	selected := make([]telemetryanalysis.MetadataEntry, 0, len(source.names))
 	for _, entry := range entries {
-		if entry.Name == source.name {
-			return []telemetryanalysis.MetadataEntry{entry}, nil
+		if _, ok := source.names[entry.Name]; ok {
+			selected = append(selected, entry)
 		}
 	}
-	return nil, os.ErrNotExist
+	return selected, nil
 }
 func realSourceHash(t *testing.T, path string) string {
 	t.Helper()
@@ -61,24 +62,36 @@ func realSourceHash(t *testing.T, path string) string {
 	return hex.EncodeToString(hash.Sum(nil))
 }
 func TestRecordedStrategyRealDuckDB(t *testing.T) {
-	source, runtimeApp := os.Getenv("ISA1088_REAL_SOURCE"), os.Getenv("ISA1088_RUNTIME_APP")
-	if source == "" || runtimeApp == "" {
-		t.Skip("requires explicit real source and trusted runtime application directory")
+	source, targetSource, runtimeApp := os.Getenv("ISA1088_REAL_SOURCE"), os.Getenv("ISA1104_REAL_TARGET_SOURCE"), os.Getenv("ISA1088_RUNTIME_APP")
+	if source == "" || targetSource == "" || runtimeApp == "" {
+		t.Skip("requires explicit primary and target real sources plus trusted runtime application directory")
 	}
-	source, runtimeApp = filepath.Clean(source), filepath.Clean(runtimeApp)
-	before := realSourceHash(t, source)
+	source, targetSource, runtimeApp = filepath.Clean(source), filepath.Clean(targetSource), filepath.Clean(runtimeApp)
+	if filepath.Base(source) == filepath.Base(targetSource) {
+		t.Fatal("primary and target real sources have ambiguous equal basenames")
+	}
+	before, targetBefore := realSourceHash(t, source), realSourceHash(t, targetSource)
 	t.Cleanup(func() {
 		if after := realSourceHash(t, source); after != before {
 			t.Errorf("original changed: %s != %s", after, before)
 		} else {
 			t.Logf("original hash unchanged: %s", before)
 		}
+		if after := realSourceHash(t, targetSource); after != targetBefore {
+			t.Errorf("target original changed: %s != %s", after, targetBefore)
+		} else {
+			t.Logf("target original hash unchanged: %s", targetBefore)
+		}
 	})
 	root := t.TempDir()
+	lmuRoots := []string{filepath.Dir(source)}
+	if filepath.Dir(targetSource) != filepath.Dir(source) {
+		lmuRoots = append(lmuRoots, filepath.Dir(targetSource))
+	}
 	svc, err := NewTelemetryAnalysisService(TelemetryAnalysisConfig{
-		LMURoots: []string{filepath.Dir(source)}, ApplicationDirectory: runtimeApp,
+		LMURoots: lmuRoots, ApplicationDirectory: runtimeApp,
 		StagingRoot: filepath.Join(root, "staging"), CorrectionRoot: filepath.Join(root, "corrections"),
-		StabilityWindow: time.Second, MaxCandidates: 1, MaxSourceBytes: 2 << 30, MaxPageRows: 4096,
+		StabilityWindow: time.Second, MaxCandidates: 2, MaxSourceBytes: 2 << 30, MaxPageRows: 4096,
 	}, telemetryAnalysisAuthorizerStub{allowed: true})
 	if err != nil {
 		t.Fatal(err)
@@ -91,9 +104,9 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 	if !svc.runtimeReady {
 		t.Fatal("production trusted runtime unavailable")
 	}
-	// Limit discovery to the explicitly named original, using real OS metadata.
-	svc.metadata = selectedRealMetadata{name: filepath.Base(source)}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	// Limit discovery to the two explicitly named originals, using real OS metadata.
+	svc.metadata = selectedRealMetadata{names: map[string]struct{}{filepath.Base(source): {}, filepath.Base(targetSource): {}}}
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 	defer cancel()
 	if _, err := svc.Discover(ctx); err != nil {
 		t.Fatal(err)
@@ -107,10 +120,47 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 		t.Fatal(ctx.Err())
 	}
 	candidates, err := svc.Discover(ctx)
-	if err != nil || len(candidates) != 1 {
+	if err != nil || len(candidates) != 2 {
 		t.Fatalf("discover: %v, count %d", err, len(candidates))
 	}
-	opened, err := svc.Open(ctx, TelemetryAnalysisOpenRequest{CandidateID: candidates[0].ID, UserApproved: true})
+	primaryCandidate := recordedRealCandidateByDisplayName(t, candidates, filepath.Base(source))
+	targetCandidate := recordedRealCandidateByDisplayName(t, candidates, filepath.Base(targetSource))
+	if primaryCandidate.ID == targetCandidate.ID {
+		t.Fatal("primary and target discovery resolved to the same candidate")
+	}
+	importer, err := coldstart.NewLMUImporter(runtimeApp, filepath.Join(root, "catalog-staging"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	store, err := telemetryanalysis.OpenAuthorizedSessionStore(filepath.Join(root, "authorized-sessions.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	models := make(map[string]telemetryanalysis.AuthorizedSessionModel, 2)
+	for _, candidate := range []TelemetryAnalysisCandidate{primaryCandidate, targetCandidate} {
+		record := svc.currentCandidate(candidate.ID)
+		if record == nil {
+			t.Fatalf("candidate %q no longer available", candidate.DisplayName)
+		}
+		model, importErr := importer.Import(ctx, record.candidate)
+		if importErr != nil {
+			t.Fatalf("import %q: %v", candidate.DisplayName, importErr)
+		}
+		if addErr := store.Add(ctx, model); addErr != nil {
+			t.Fatalf("authorize %q: %v", candidate.DisplayName, addErr)
+		}
+		models[candidate.DisplayName] = model
+	}
+	sessionCatalog := telemetryanalysis.NewSessionCatalog(store)
+	svc.cfg.SessionCatalog = sessionCatalog
+	targetClassified, err := telemetryanalysis.ClassifyHistoricalSession(models[targetCandidate.DisplayName].Session)
+	if err != nil {
+		t.Fatalf("classify target: %v", err)
+	}
+	if resolved, resolveErr := sessionCatalog.ResolveCanonicalCombination(ctx, targetClassified.Combination.ID); resolveErr != nil || resolved != targetClassified.Combination {
+		t.Fatalf("resolve real target combination: %+v, %v", resolved, resolveErr)
+	}
+	opened, err := svc.Open(ctx, TelemetryAnalysisOpenRequest{CandidateID: primaryCandidate.ID, UserApproved: true})
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -134,7 +184,7 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 	if saved.HeadID == prepared.BaseRevisionID {
 		t.Fatal("head did not advance")
 	}
-	catalog := NewStrategyRevisionCatalog(telemetryanalysis.NewSessionCatalog(nil), svc)
+	catalog := NewStrategyRevisionCatalog(sessionCatalog, svc)
 	exact, err := catalog.ProjectStrategyRevisionInputs(ctx, projection.CombinationID, projection.SourceRevisions, time.Now().UTC().Truncate(time.Millisecond))
 	if err != nil {
 		t.Fatalf("joint producer: %v", err)
@@ -165,7 +215,7 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 	if _, err := strategy.GetEventPlanningInputs(ctx, command); !errors.Is(err, ErrTelemetryAnalysisSessionUnknown) {
 		t.Fatalf("Strategy closed source: %v", err)
 	}
-	reopened, err := svc.Open(ctx, TelemetryAnalysisOpenRequest{CandidateID: candidates[0].ID, UserApproved: true})
+	reopened, err := svc.Open(ctx, TelemetryAnalysisOpenRequest{CandidateID: primaryCandidate.ID, UserApproved: true})
 	if err != nil {
 		t.Fatalf("reopen: %v", err)
 	}
@@ -175,8 +225,9 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 		t.Fatalf("exact revision after reopen: %v", err)
 	}
 	t.Log("prepare, projection, saved head, exact prior revision, Strategy inputs, closed-source rejection and explicit reopen verified")
-	classifiedSessionID, classifiedHead := verifyRecordedRealClassificationRevision(t, ctx, svc, reopened, prepared.Base, saved.HeadID, candidates[0].ID)
-	verifyRecordedRealFamilyRevision(t, ctx, svc, classifiedSessionID, candidates[0].ID, prepared.Base, classifiedHead)
+	classifiedSessionID, classifiedHead := verifyRecordedRealClassificationRevision(t, ctx, svc, reopened, prepared.Base, saved.HeadID, primaryCandidate.ID)
+	identitySessionID, identityHead := verifyRecordedRealIdentityRevision(t, ctx, svc, TelemetryAnalysisOpenedSession{SessionID: classifiedSessionID, Session: opened.Session}, prepared.Base, classifiedHead, primaryCandidate.ID, targetClassified.Combination)
+	verifyRecordedRealFamilyRevision(t, ctx, svc, identitySessionID, primaryCandidate.ID, prepared.Base, identityHead)
 	// Optional explicit export to an isolated diagnostic application's catalog.
 	// This uses the existing importer, not handcrafted observed data.
 	if exportPath := os.Getenv("ISA1088_EXPORT_CATALOG"); exportPath != "" {
@@ -184,7 +235,7 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		candidate := svc.currentCandidate(candidates[0].ID)
+		candidate := svc.currentCandidate(primaryCandidate.ID)
 		if candidate == nil {
 			t.Fatal("candidate no longer available")
 		}
@@ -204,4 +255,18 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 		}
 		t.Log("exported real observed model through existing importer")
 	}
+}
+
+func recordedRealCandidateByDisplayName(t *testing.T, candidates []TelemetryAnalysisCandidate, displayName string) TelemetryAnalysisCandidate {
+	t.Helper()
+	var matched []TelemetryAnalysisCandidate
+	for _, candidate := range candidates {
+		if candidate.DisplayName == displayName {
+			matched = append(matched, candidate)
+		}
+	}
+	if len(matched) != 1 {
+		t.Fatalf("discover display name %q matched %d candidates", displayName, len(matched))
+	}
+	return matched[0]
 }

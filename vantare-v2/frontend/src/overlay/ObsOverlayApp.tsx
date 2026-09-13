@@ -17,6 +17,8 @@ import {
   createOverlayFrameV2Store,
 } from "../telemetry-transport/overlay-frame-v2-store";
 import { createHttpRaceScheduleStore } from "./core/race-schedule-store";
+import type { WidgetPolicyWire } from "./core/widget-policy";
+import { useSseWidgetPolicy } from "./core/use-widget-policy";
 
 type ProfileV3ApiResponse = {
   document: ProfileDocumentV3;
@@ -42,6 +44,8 @@ export function ObsOverlayApp() {
   const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
 
   const [generation, setGeneration] = useState<ObsGeneration | null>(null);
+  // Única conexión de política de la ventana OBS (ISA-1105, SSE).
+  const { policy: widgetPolicy } = useSseWidgetPolicy();
   useEffect(() => applyOverlayDocumentMode(), []);
 
   useEffect(() => {
@@ -98,8 +102,8 @@ export function ObsOverlayApp() {
 
   useEffect(() => {
     const { profileName } = readOverlayRouteParams(window.location.search);
-    const controller = new AbortController();
     let disposed = false;
+    const controller = new AbortController();
 
     fetch(`/api/profile-v3?profile=${encodeURIComponent(profileName)}`, {
       signal: controller.signal,
@@ -119,7 +123,7 @@ export function ObsOverlayApp() {
         setError(null);
       })
       .catch((err: Error) => {
-        if (disposed || controller.signal.aborted) {
+        if (disposed) {
           return;
         }
         setError(`Failed to load profile: ${err.message}`);
@@ -127,8 +131,6 @@ export function ObsOverlayApp() {
 
     return () => {
       disposed = true;
-      // Cancela el fetch en vuelo: si no, queda pendiente al desmontar y el
-      // entorno lo aborta en teardown (AbortError de happy-dom) (ISA-949).
       controller.abort();
     };
   }, []);
@@ -156,6 +158,7 @@ export function ObsOverlayApp() {
       revision={revision}
       reminder={reminder}
       studioPreview={studioPreview}
+      widgetPolicy={widgetPolicy}
       onCloseReminder={() => setReminder(null)}
     />
   );
@@ -167,11 +170,12 @@ type ObsGenerationViewProps = Readonly<{
   revision: string;
   reminder: CalendarReminderPayload | null;
   studioPreview: boolean;
+  widgetPolicy: WidgetPolicyWire | null;
   onCloseReminder(): void;
 }>;
 
 function ObsGenerationView(props: ObsGenerationViewProps) {
-  const { generation, document, revision, reminder, studioPreview, onCloseReminder } = props;
+  const { generation, document, revision, reminder, studioPreview, widgetPolicy, onCloseReminder } = props;
   const runtime = (
     <ObsOverlayRuntime
       key={revision}
@@ -180,6 +184,7 @@ function ObsGenerationView(props: ObsGenerationViewProps) {
       telemetry={generation.coordinator}
       engineerPresentations={generation.engineerPresentations}
       raceSchedule={generation.raceSchedule}
+      widgetPolicy={widgetPolicy}
     />
   );
 

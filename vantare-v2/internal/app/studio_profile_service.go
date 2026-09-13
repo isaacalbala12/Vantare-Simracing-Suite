@@ -41,6 +41,10 @@ type StudioProfileService struct {
 	beforePersist func(string)
 	profilesDir   string
 	mgr           *window.Manager
+	// policySource is the native widget-policy authority for save guards.
+	// Nil keeps the legacy behavior (no policy gate); production wires the
+	// license service via SetWidgetPolicySource.
+	policySource WidgetPolicySource
 }
 
 // NewStudioProfileService creates a parallel Studio profile service.
@@ -127,6 +131,23 @@ func (s *StudioProfileService) savePath(requestID, path, expectedRevision string
 		}
 		migratedFrom = loaded.MigratedFrom
 		currentV4 = loaded.Document
+	}
+	// Native policy gate (ISA-1097): the incoming document is compared
+	// against the native baseline resolved above -- the in-memory loaded
+	// document or the file at path -- never against a client-claimed
+	// snapshot. Blocked premium widgets can be preserved, moved or deleted,
+	// but not added or edited beyond layout.
+	if source := s.widgetPolicySource(); source != nil {
+		var savedV3 *config.ProfileDocumentV3
+		if path == activePath && activeLoaded != nil {
+			savedV3 = activeLoaded.Document
+		} else if currentV4 != nil {
+			savedV3 = config.ConvertProfileV4ToV3(currentV4)
+		}
+		if err := checkStudioProfileSave(source.CurrentWidgetPolicy(), savedV3, doc); err != nil {
+			s.emitError(requestID, "save", err)
+			return err
+		}
 	}
 	updatedV4 := config.ConvertProfileV3ToV4(doc)
 	if currentV4 != nil {
@@ -433,11 +454,21 @@ func (s *StudioProfileService) emitError(requestID, operation string, err error)
 	if s.emitter == nil || err == nil {
 		return
 	}
-	s.emitter.Emit("studio:profile:error", map[string]any{
+	payload := map[string]any{
 		"requestId": requestID,
 		"operation": operation,
 		"message":   err.Error(),
-	})
+	}
+	// Typed denial for ISA-1097: the frontend (#1105) keys its existing
+	// localized notice off code instead of matching message strings.
+	// requestId/operation/message stay untouched for diagnostics.
+	var denied *WidgetPolicyDeniedError
+	if errors.As(err, &denied) {
+		ids := append([]string{}, denied.WidgetIDs...)
+		payload["code"] = "widget-access-denied"
+		payload["widgetIds"] = ids
+	}
+	s.emitter.Emit("studio:profile:error", payload)
 }
 
 func (s *StudioProfileService) logFailure(operation, requestID string, err error) {

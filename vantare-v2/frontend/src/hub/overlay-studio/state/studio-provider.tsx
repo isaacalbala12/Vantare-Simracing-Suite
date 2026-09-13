@@ -6,16 +6,15 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { useAccess } from "../../../lib/access";
-import type { AccessContext } from "../../../lib/access-policy";
-import { DEFAULT_STUDIO_ACCESS } from "../access/studio-access";
+import type { WidgetPolicyWire } from "../../../overlay/core/widget-policy";
+import { useWailsWidgetPolicy } from "../../../overlay/core/use-widget-policy";
 import {
   readCachedStudioDocument,
 } from "./studio-doc-cache";
 import type { StudioProfileClient } from "./studio-profile-client";
 import { createStudioRecoveryStore } from "./studio-recovery";
 import {
-  StudioAccessContext,
+  StudioWidgetPolicyContext,
   StudioPreviewContext,
   StudioStoreContext,
   type StudioPreviewContextValue,
@@ -46,7 +45,7 @@ export function StudioProvider(props: {
   children: ReactNode;
   recoveryStorage?: Storage | null;
   recoveryWriteDelayMs?: number;
-  access?: AccessContext;
+  widgetPolicy?: WidgetPolicyWire | null;
 }): React.ReactElement {
   const {
     client,
@@ -54,9 +53,8 @@ export function StudioProvider(props: {
     children,
     recoveryStorage = null,
     recoveryWriteDelayMs = 300,
-    access: accessOverride,
+    widgetPolicy = null,
   } = props;
-  const access = accessOverride ?? DEFAULT_STUDIO_ACCESS;
   // Stale-while-revalidate: the local cache of the last known document seeds
   // history in the state initializer (once per mount) so widgets paint
   // instantly while the fresh load travels over IPC.
@@ -69,7 +67,7 @@ export function StudioProvider(props: {
     () => (recoveryStorage ? createStudioRecoveryStore(recoveryStorage) : null),
     [recoveryStorage],
   );
-  store.configure({ access, client, initialFile, recoveryStore });
+  store.configure({ widgetPolicy, client, initialFile, recoveryStore });
   const [preview, setPreviewState] = useState<StudioPreviewState>(DEFAULT_PREVIEW_STATE);
 
   useEffect(() => {
@@ -134,11 +132,11 @@ export function StudioProvider(props: {
 
   return (
     <StudioStoreContext.Provider value={store}>
-      <StudioAccessContext.Provider value={access}>
+      <StudioWidgetPolicyContext.Provider value={widgetPolicy}>
         <StudioPreviewContext.Provider value={previewValue}>
           {children}
         </StudioPreviewContext.Provider>
-      </StudioAccessContext.Provider>
+      </StudioWidgetPolicyContext.Provider>
     </StudioStoreContext.Provider>
   );
 }
@@ -149,7 +147,9 @@ export function ConnectedStudioProvider(props: {
   children: ReactNode;
   recoveryStorage?: Storage | null;
   recoveryWriteDelayMs?: number;
+  widgetPolicy?: WidgetPolicyWire | null;
 }): React.ReactElement {
-  const access = useAccess();
-  return <StudioProvider {...props} access={access} />;
+  const { widgetPolicy: policyOverride, ...rest } = props;
+  const { policy: livePolicy } = useWailsWidgetPolicy();
+  return <StudioProvider {...rest} widgetPolicy={policyOverride ?? livePolicy} />;
 }

@@ -12,7 +12,7 @@ import { DesignSection } from '../inspector/DesignSection';
 import { LayoutSection } from '../inspector/LayoutSection';
 import { WidgetPropertyInspectorView } from '../inspector/WidgetPropertyInspectorView';
 import { resolveInspectorSections } from '../inspector/inspector-sections';
-import { useStudioAccess, useStudioActions, useStudioActiveLayout, useStudioSelector } from '../state/studio-store';
+import { useStudioActions, useStudioActiveLayout, useStudioSelector, useStudioWidgetPolicy } from '../state/studio-store';
 import {
   appearanceSummary,
   behaviorSummary,
@@ -97,7 +97,7 @@ function HeaderAction(props: {
  * controles de apariencia) no se pintan: la resolucion sigue siendo suya.
  */
 export function StudioOrbitInspector(): React.ReactElement {
-  const access = useStudioAccess();
+  const widgetPolicy = useStudioWidgetPolicy();
   const activeLayout = useStudioActiveLayout();
   const activeSession = useStudioSelector((s) => s.activeSession);
   const selectedWidgetId = useStudioSelector((s) => s.selectedWidgetId);
@@ -160,7 +160,7 @@ export function StudioOrbitInspector(): React.ReactElement {
     if (id === 'design') {
       return (
         <DesignSection
-          access={access}
+          policy={widgetPolicy}
           designClient={designClient}
           dispatch={dispatch}
           session={activeSession}
@@ -172,7 +172,7 @@ export function StudioOrbitInspector(): React.ReactElement {
     if (id === 'appearance') {
       return (
         <WidgetPropertyInspectorView
-          access={access}
+          policy={widgetPolicy}
           dispatch={dispatch}
           sectionId="appearance"
           session={activeSession}
@@ -186,7 +186,7 @@ export function StudioOrbitInspector(): React.ReactElement {
         <>
           {has('behavior') ? (
             <WidgetPropertyInspectorView
-              access={access}
+              policy={widgetPolicy}
               dispatch={dispatch}
               sectionId="behavior"
               session={activeSession}
@@ -196,7 +196,7 @@ export function StudioOrbitInspector(): React.ReactElement {
           ) : null}
           {has('content') ? (
             <WidgetPropertyInspectorView
-              access={access}
+              policy={widgetPolicy}
               dispatch={dispatch}
               sectionId="content"
               session={activeSession}

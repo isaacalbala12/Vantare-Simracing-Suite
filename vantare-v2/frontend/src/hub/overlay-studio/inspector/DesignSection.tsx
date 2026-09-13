@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useI18n } from '../../../i18n/I18nProvider';
-import type { AccessContext } from '../../../lib/access-policy';
+import type { StudioPolicy } from '../access/studio-access';
 import { listOfficialDesigns } from '../../../overlay/design-systems/official-designs';
 import { designSystemRegistry } from '../../../overlay/core/design-system-registry';
 import type {
@@ -27,7 +27,7 @@ export type DesignSectionProps = {
   widget: WidgetInstanceV3;
   session: SessionLayoutType;
   widgets: readonly WidgetInstanceV3[];
-  access: AccessContext;
+  policy: StudioPolicy;
   dispatch(command: StudioCommand): void;
   designClient: WidgetDesignClient;
   confirmApplyAll?: (message: string) => boolean;
@@ -47,7 +47,7 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
     widget,
     session,
     widgets,
-    access,
+    policy,
     dispatch,
     designClient,
     confirmApplyAll = (message) => window.confirm(message),
@@ -109,12 +109,12 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
     [selectedSystemId, userDesigns, widget],
   );
 
-  const canApply = getStudioMutationGate({ access, mutation: 'apply-design', widget }).allowed;
-  const canApplyAll = getStudioMutationGate({ access, mutation: 'apply-all', widget }).allowed;
+  const canApply = getStudioMutationGate({ policy, mutation: 'apply-design', widget }).allowed;
+  const canApplyAll = getStudioMutationGate({ policy, mutation: 'apply-all', widget }).allowed;
   const canSave = canApply;
 
   const applyDesign = (design: WidgetDesignV1, widgetIds: readonly string[]) => {
-    const gate = getStudioMutationGate({ access, mutation: 'apply-design', widget, design });
+    const gate = getStudioMutationGate({ policy, mutation: 'apply-design', widget, design });
     if (!gate.allowed) {
       return;
     }
@@ -222,7 +222,7 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
     // `Select` no puede ofrecer algo que el gate va a rechazar.
     const catalogue = [...officialDesigns, ...compatibleUserDesigns].filter(
       (design) =>
-        getStudioMutationGate({ access, mutation: 'apply-design', widget, design }).allowed,
+        getStudioMutationGate({ policy, mutation: 'apply-design', widget, design }).allowed,
     );
     const lockedCount = officialDesigns.length + compatibleUserDesigns.length - catalogue.length;
     // El valor del `Select` es el diseno que el widget lleva puesto, no solo el

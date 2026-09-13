@@ -1,6 +1,25 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1208 cortes A, B y C1 cerrados localmente
+## Estado vigente — #1208 A/B/C1/C2 cerrados; sigue banco real D
+
+C2 conserva visitas `In Pits` cerradas y abiertas sin fabricar el final. Una
+visita abierta lleva inicio observado, final ausente, duración no disponible y
+motivo `open_pit_lane_interval`; queda fuera de tasas, medias y paradas
+completas. La primera fila sigue siendo estado inicial. En visitas cerradas,
+Fuel/VE usan los timestamps acreditados y la tasa mide el intervalo real de los
+pares que prueban la subida. Wear se compara directamente en finales de vueltas
+consecutivas y publica el número real, sin resets ordinales. El contrato acepta
+duración cero únicamente para ese caso abierto sin recursos finales. Versiones:
+`pit-observation.v2` y `observed-strategy.v2`.
+
+RED C2: el contrato rechazó el abierto y el test de wear no compiló con la
+forma correcta basada en vueltas. GREEN focal y paquete Telemetry Analysis.
+Astra high detectó dos P2 acotados en el agregado sólo-abierto y el validador
+de recursos finales; ambos están corregidos. Sigue D con banco real
+S125/S266/S026 y gates. Sin app/Wails/LMU, push, PR, CI remota, integración ni
+release.
+
+## Historial — #1208 corte C1 cerrado localmente
 
 C1 elimina el último uso de tiempo relativo al cruzar recursos continuos con
 vueltas. Los lectores escalares y vectoriales sólo consumen timestamps finitos

@@ -212,18 +212,19 @@ type ObservedRateFamily struct {
 }
 
 type ObservedPitLaneInterval struct {
-	PitNumber       int        `json:"pitNumber"`
-	StartTimestamp  *time.Time `json:"startTimestamp,omitempty"`
-	EndTimestamp    *time.Time `json:"endTimestamp,omitempty"`
-	DurationSeconds float64    `json:"durationSeconds"`
-	FuelAddedLiters *float64   `json:"fuelAddedLiters,omitempty"`
-	VEAddedPercent  *float64   `json:"veAddedPercent,omitempty"`
-	FuelRateLPerS   *float64   `json:"fuelRateLPerS,omitempty"`
-	VERatePPerS     *float64   `json:"veRatePPerS,omitempty"`
-	HasFuelRise     bool       `json:"hasFuelRise"`
-	HasVERise       bool       `json:"hasVERise"`
-	Ambiguous       bool       `json:"ambiguous"`
-	AmbiguityReason string     `json:"ambiguityReason,omitempty"`
+	PitNumber      int        `json:"pitNumber"`
+	StartTimestamp *time.Time `json:"startTimestamp,omitempty"`
+	EndTimestamp   *time.Time `json:"endTimestamp,omitempty"`
+	// Zero means unavailable only for an explicit open_pit_lane_interval.
+	DurationSeconds float64  `json:"durationSeconds"`
+	FuelAddedLiters *float64 `json:"fuelAddedLiters,omitempty"`
+	VEAddedPercent  *float64 `json:"veAddedPercent,omitempty"`
+	FuelRateLPerS   *float64 `json:"fuelRateLPerS,omitempty"`
+	VERatePPerS     *float64 `json:"veRatePPerS,omitempty"`
+	HasFuelRise     bool     `json:"hasFuelRise"`
+	HasVERise       bool     `json:"hasVERise"`
+	Ambiguous       bool     `json:"ambiguous"`
+	AmbiguityReason string   `json:"ambiguityReason,omitempty"`
 }
 
 // SavingCostFamily: A5 INVALID -> procedencia manual, derivable solo via protocolo A/B.
@@ -333,8 +334,14 @@ func (p StrategyInputProjectionV2) Validate() error {
 		return contractError("invalid_document", "pit.presence", "unknown presence")
 	}
 	for _, interval := range p.Pit.ObservedIntervals {
-		if interval.DurationSeconds <= 0 {
+		open := interval.EndTimestamp == nil && interval.DurationSeconds == 0 &&
+			interval.Ambiguous && interval.AmbiguityReason == "open_pit_lane_interval" && interval.StartTimestamp != nil
+		if interval.DurationSeconds <= 0 && !open {
 			return contractError("invalid_document", "pit.observedIntervals", "duration must be positive")
+		}
+		if open && (interval.HasFuelRise || interval.HasVERise || interval.FuelAddedLiters != nil ||
+			interval.VEAddedPercent != nil || interval.FuelRateLPerS != nil || interval.VERatePPerS != nil) {
+			return contractError("invalid_document", "pit.observedIntervals", "open pit cannot publish final resources")
 		}
 		if !interval.HasFuelRise && !interval.HasVERise && !interval.Ambiguous {
 			return contractError("invalid_document", "pit.observedIntervals", "pit without resource rise must be ambiguous")

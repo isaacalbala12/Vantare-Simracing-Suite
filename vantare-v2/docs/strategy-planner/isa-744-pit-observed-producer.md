@@ -4,20 +4,27 @@ Estado: implementado en rama de issue; pendiente de review.
 
 ## Frontera de pit
 
-El derivador conserva cada intervalo cerrado de `In Pits` como
-`ObservedPitLaneInterval`. `In Pits` cubre todo el carril, por lo que la salida
-no publica ni estima tránsito, cajón o duración de servicio.
+El derivador conserva cada entrada observada de `In Pits` como
+`ObservedPitLaneInterval`. Una visita cerrada lleva inicio, fin y duración. Si
+la grabación termina antes de observar la salida, conserva el inicio con final
+ausente, duración no disponible (`0`) y motivo `open_pit_lane_interval`; esa
+visita no aporta tasas, medias ni una parada completa. La primera fila es el
+estado inicial y no se convierte por sí sola en una entrada. `In Pits` cubre
+todo el carril, por lo que la salida no publica ni estima tránsito, cajón o
+duración de servicio.
 
 Fuel y Virtual Energy solo se asocian al intervalo cuando el canal continuo
 declara `TimeOriginSourceTimestamp`. El algoritmo suma incrementos positivos
 mayores de `0,01` dentro del intervalo y calcula la tasa sobre el episodio de
-subida (`último incremento - primer incremento + un periodo de muestra`). No
+subida, desde la muestra anterior al primer incremento hasta el último. No
 estima offsets entre relojes.
 
 - reloj desconocido: `ambiguous=true`, motivo `resource_clock_unaligned`;
 - reloj común sin subida: `ambiguous=true`, motivo
   `no_resource_rise_detected`;
-- subida observable: delta y tasa presentes, con calidad de familia `unknown`
+- intervalo abierto: `ambiguous=true`, motivo `open_pit_lane_interval` y
+  cantidad/tasa final ausentes;
+- subida observable en intervalo cerrado: delta y tasa presentes, con calidad de familia `unknown`
   porque A4 sigue degradada.
 
 La agregación acepta solo la misma combinación, elimina sesiones repetidas y
@@ -35,8 +42,8 @@ Los cambios observables publicados son:
 
 - salto de Fuel ya identificado por F3-a2;
 - cambio de neumático indicado por la frontera de stint;
-- subida de desgaste mayor de 2 pp entre fronteras `Lap Dist` del mismo reloj
-  continuo.
+- subida de desgaste mayor de 2 pp entre finales de vueltas consecutivas del
+  reloj de eventos, muestreada sólo desde wear alineado.
 
 El resultado incluye número de vueltas completadas y la suma de sus tiempos.
 `completed` solo se activa con un `Finish Status` observable; la posición queda

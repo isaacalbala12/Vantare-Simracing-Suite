@@ -37,8 +37,17 @@ Base: `e3b637082bcbf84aa608ec75eccb926ae0324c86`. Rama:
   sin puente todavía producían métricas. GREEN: regresiones de offset, deriva,
   ausencia de puente y desgaste, más Telemetry Analysis, coldstart e
   `internal/...` completos.
-- Sigue **C2**: validar cantidades y tasas de parada sobre intervalos alineados,
-  incluido intervalo abierto y ausencia de puente.
+- **C2 — cerrado localmente.** Las visitas cerradas calculan Fuel/VE con el
+  reloj alineado y la duración real de las muestras que demuestran la subida.
+  Una entrada sin salida conserva inicio, final ausente y duración no
+  disponible, con motivo explícito; no alimenta tasas, medias ni paradas
+  completas. La primera fila `In Pits` permanece estado inicial. El cambio de
+  desgaste se compara en finales de vueltas consecutivas reales, sin resets ni
+  ordinales. Versiones: `pit-observation.v2` y `observed-strategy.v2`.
+- RED observado en C2: el contrato rechazaba el intervalo abierto y el helper
+  de wear aún exigía resets ordinales. GREEN: casos de abierto, estado inicial,
+  tasa con deriva, agregado mixto/abierto, número real de vuelta y contrato.
+- Sigue **D**: banco real S125/S266/S026, hashes/WAL, compatibilidad y gates.
 
 ## Problema demostrado
 

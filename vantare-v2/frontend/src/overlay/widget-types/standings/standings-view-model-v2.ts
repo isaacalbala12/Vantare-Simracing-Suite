@@ -72,11 +72,11 @@ export function buildStandingsViewModelV2(
     activeClass,
     sessionLabel: displayedText(frame.session.phase)?.toUpperCase() ?? PLACEHOLDER,
     remainingText: formatRemainingTime(displayedNumber(frame.session.remaining)),
+    trackName: displayedText(frame.session.track),
+    totalRows: scoped.length,
     ambientTempText: formatTemp(displayedNumber(weather?.ambientC)),
     trackTempText: formatTemp(displayedNumber(weather?.trackC)),
     windText: formatWind(displayedNumber(weather?.windKph)),
-    trackName: displayedText(frame.session.track),
-    totalRows: scoped.length,
     columns,
     rows: limited.map((row, index) => buildRow(row, index, playerId, paceSession, sessionBestLap)),
   }, `${frame.sessionId}:${frame.epoch}`, frame.sequence);

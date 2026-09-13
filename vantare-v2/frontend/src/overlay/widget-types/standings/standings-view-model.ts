@@ -34,13 +34,13 @@ export type StandingsViewModel = WidgetViewModelBase & {
   sessionLabel: string;
   remainingText: string;
   lapText?: string;
+  trackName?: string;
+  totalRows?: number;
   /** Datos ambientales opcionales para la banda inferior; solo existen cuando
    *  la fuente V2 los entrega (hoy LMU no los soporta — declared gap). */
   ambientTempText?: string;
   trackTempText?: string;
   windText?: string;
-  trackName?: string;
-  totalRows?: number;
   columns: readonly WidgetColumnV3[];
   rows: readonly StandingsRowViewModel[];
   /** Productive stream identity used only to discard ephemeral motion state. */

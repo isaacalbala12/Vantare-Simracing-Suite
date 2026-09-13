@@ -18,12 +18,12 @@ initializeDensity();
 const params = new URLSearchParams(location.search);
 const scene = params.get('scene') ?? 'toast-error';
 
-function presentationFixture(text: string, severity: EngineerPresentation['severity']): EngineerPresentation {
+function buildPresentation(text: string, severity: EngineerPresentation['severity']): EngineerPresentation {
   const fixture = buildEngineerPresentationFixture('es', severity);
   return { ...fixture, id: 'msg-1', text, voiceText: text };
 }
 
-function sceneContent() {
+export function Scene() {
   switch (scene) {
     case 'toast-success':
       return <HubToast variant="success" message="Perfil «GT3 Sprint» aplicado a OBS" profileId="p1" onClose={() => {}} />;
@@ -32,11 +32,11 @@ function sceneContent() {
     case 'toast-error':
       return <HubToast variant="error" message="No se pudo aplicar el perfil «Endurance»" profileId="p1" onClose={() => {}} />;
     case 'subtitles-info':
-      return <EngineerSubtitles presentation={presentationFixture('Box box. Entramos a boxes esta vuelta.', 'info')} />;
+      return <EngineerSubtitles presentation={buildPresentation('Box box. Entramos a boxes esta vuelta.', 'info')} />;
     case 'subtitles-warning':
-      return <EngineerSubtitles presentation={presentationFixture('Cuidado: tráfico delante en la curva 3.', 'warning')} />;
+      return <EngineerSubtitles presentation={buildPresentation('Cuidado: tráfico delante en la curva 3.', 'warning')} />;
     case 'subtitles-critical':
-      return <EngineerSubtitles presentation={presentationFixture('¡Bandera amarilla! Accidente en sector 2.', 'critical')} />;
+      return <EngineerSubtitles presentation={buildPresentation('¡Bandera amarilla! Accidente en sector 2.', 'critical')} />;
     case 'language':
       return (
         <div style={{ padding: 24 }}>
@@ -81,7 +81,7 @@ function sceneContent() {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <I18nProvider>
-      {sceneContent()}
+      <Scene />
     </I18nProvider>
   </StrictMode>,
 );

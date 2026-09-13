@@ -142,22 +142,19 @@ func alignContinuousPages(result *TemporalAlignmentResult, channelIndex int, pag
 	}
 	ratio := int64(gpsHz / channelHz)
 	const maxInt64 = int64(^uint64(0) >> 1)
-	timestamps := make(map[int]map[int]float64, len(pageIndexes))
 	for _, pageIndex := range pageIndexes {
 		page := &result.Pages[pageIndex]
 		if page.Sampling.Kind != SamplingContinuousImplicitFrequency || page.Sampling.FrequencyHz != channelHz {
 			return TemporalAlignmentStatus{Reason: "invalid_frequency"}
 		}
-		timestamps[pageIndex] = make(map[int]float64, len(page.Samples))
-		for sampleIndex, sample := range page.Samples {
+		for _, sample := range page.Samples {
 			if sample.Index < 0 || sample.Index > maxInt64/ratio {
 				return TemporalAlignmentStatus{Reason: "invalid_sample_index"}
 			}
-			timestamp, exists := clock[sample.Index*ratio]
+			_, exists := clock[sample.Index*ratio]
 			if !exists {
 				return TemporalAlignmentStatus{Reason: "truncated_coverage"}
 			}
-			timestamps[pageIndex][sampleIndex] = timestamp
 		}
 	}
 
@@ -166,7 +163,7 @@ func alignContinuousPages(result *TemporalAlignmentResult, channelIndex int, pag
 		page := &result.Pages[pageIndex]
 		page.Sampling.Origin = TimeOriginSourceTimestamp
 		for sampleIndex := range page.Samples {
-			timestamp := timestamps[pageIndex][sampleIndex]
+			timestamp := clock[page.Samples[sampleIndex].Index*ratio]
 			page.Samples[sampleIndex].TimestampSeconds = &timestamp
 		}
 	}

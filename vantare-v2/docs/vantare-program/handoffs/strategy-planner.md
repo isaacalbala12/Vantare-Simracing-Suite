@@ -1,6 +1,31 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1208 corte A cerrado localmente
+## Estado vigente — #1208 cortes A y B cerrados localmente
+
+El corte B hace que `ReadCorrectionInput` construya una sola vista temporal
+alineada y la entregue tanto a validez como al modelo de correcciones. El
+análisis deja de reconciliar por orden los resets de `Lap Dist` con eventos:
+vueltas, tráfico, cobertura y repostajes cruzan dominios sólo mediante el
+timestamp acreditado por el puente. La cobertura declara una única serie con
+índices contiguos y reloj creciente, usando `Lap Dist` sólo cuando ningún canal
+meteorológico lo demuestra. El repostaje gradual se acumula por tramo y se
+resuelve contra la vuelta o la visita a boxes correspondiente; `pit` conserva
+prioridad y el estado inicial no crea una parada.
+
+RED B observado: los tests nuevos fallaron al compilar porque todavía no
+existía `LapValidityDiagnostics.TemporalBridge`. Después pasaron siete
+regresiones dirigidas, `go test ./internal/telemetryanalysis -count=1` y
+`go test ./internal/... -count=1`; `git diff --check` también pasó. Astra high
+revisó el planteamiento y el diff final en modo sólo lectura: señaló el estado
+inicial y la continuidad de cobertura, ambos corregidos, y no encontró otro
+P0/P1 ni una simplificación material. No es todavía evidencia sobre DuckDB
+real: esa comprobación pertenece al corte D.
+
+Siguiente corte: C1 aplica los timestamps alineados a Fuel, energía virtual y
+ritmo, manteniendo las familias y umbrales actuales. No se ha abierto DuckDB
+real, app, Wails o LMU; no hay push, PR, CI remota, integración ni release.
+
+## Historial — #1208 corte A cerrado localmente
 
 El corte A de #1208 implementa el puente temporal puro `GPS Time` en
 `internal/telemetryanalysis/temporal_alignment.go`. La vista resultante clona

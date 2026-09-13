@@ -59,6 +59,9 @@ func TestCorrectionInputReadsBoundedRecordedSource(t *testing.T) {
 	}
 	pages = completePages
 	model.Session.Channels = completeChannels
+	gpsChannel := HistoricalChannel{ID: "gps-time", SourceName: "GPS Time", Sampling: HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 1, Origin: TimeOriginUnknown}, Columns: []HistoricalColumn{{Name: "GPS Time", Type: ScalarNumber}}}
+	model.Session.Channels = append(model.Session.Channels, gpsChannel)
+	pages = append(pages, HistoricalPage{ChannelID: gpsChannel.ID, Sampling: gpsChannel.Sampling, Samples: []HistoricalSample{{Index: 0, Values: []HistoricalValue{numberValue("GPS Time", 1000)}}}})
 	validity, err := AnalyzeLapValidity(model.Session, pages)
 	if err != nil {
 		t.Fatal(err)
@@ -76,6 +79,9 @@ func TestCorrectionInputReadsBoundedRecordedSource(t *testing.T) {
 	}
 	if got.Base != want || reader.calls < 2 {
 		t.Fatal("lost base or did not page")
+	}
+	if got.Session.Channels[len(got.Session.Channels)-1].Sampling.Origin != TimeOriginSourceTimestamp || reader.session.Channels[len(reader.session.Channels)-1].Sampling.Origin != TimeOriginUnknown {
+		t.Fatal("correction input did not return an isolated aligned view")
 	}
 	for _, name := range []string{"samples", "values", "text"} {
 		t.Run(name, func(t *testing.T) {

@@ -100,16 +100,17 @@ func ReadCorrectionInput(ctx context.Context, reader CorrectionInputReader, arti
 	if err := ctx.Err(); err != nil {
 		return empty, err
 	}
-	validity, err := AnalyzeLapValidity(session, pages)
+	alignment := BuildTemporalAlignment(session, pages)
+	validity, err := analyzeAlignedLapValidity(alignment)
 	if err != nil {
 		return empty, err
 	}
-	base, err := CorrectionSourceFromModel(AuthorizedSessionModel{Artifact: artifact, Session: session, Validity: &validity})
+	base, err := CorrectionSourceFromModel(AuthorizedSessionModel{Artifact: artifact, Session: alignment.Session, Validity: &validity})
 	if err != nil {
 		return empty, err
 	}
 	if err := ctx.Err(); err != nil {
 		return empty, err
 	}
-	return CorrectionInput{Base: base, Session: session, Pages: pages, Validity: validity}, nil
+	return CorrectionInput{Base: base, Session: alignment.Session, Pages: alignment.Pages, Validity: validity}, nil
 }

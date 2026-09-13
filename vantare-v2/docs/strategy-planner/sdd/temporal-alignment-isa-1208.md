@@ -16,8 +16,18 @@ Base: `e3b637082bcbf84aa608ec75eccb926ae0324c86`. Rama:
 - El gate `go test ./...` sólo quedó rojo en `cmd/vantare` y `frontend` por
   ausencia de `frontend/dist` en el worktree; todos los demás paquetes
   ejecutados pasaron. Este corte no genera el embed al no tocar frontend.
-- Sigue **B**: consumir esta vista una sola vez en vueltas/correcciones y
-  reemplazar la unión ordinal de `fuel_jump` por el timestamp alineado.
+- **B — cerrado localmente.** `ReadCorrectionInput` construye una sola vista
+  alineada y la comparte con validez y correcciones. Vueltas, tráfico,
+  cobertura y repostajes sólo cruzan dominios mediante timestamps acreditados.
+  La cobertura usa una única secuencia continua demostrada y `Lap Dist` como
+  último respaldo alineado. Un repostaje gradual publica una sola frontera; si
+  coincide con una visita a boxes, `pit` conserva prioridad. Estado inicial,
+  fuentes sin puente y resets sin timestamp fallan cerrados.
+- RED observado en B: los tests nuevos no compilaban antes de exponer el
+  diagnóstico temporal. GREEN: siete regresiones dirigidas, paquete completo
+  de Telemetry Analysis y todos los paquetes `internal/...`.
+- Sigue **C1**: aplicar la misma vista a Fuel, energía virtual y ritmo sin
+  ampliar los criterios físicos existentes.
 
 ## Problema demostrado
 
@@ -91,6 +101,15 @@ Aplicar la vista alineada una sola vez antes de derivar. Cambiar cobertura a
 un único dominio. Sustituir `continuousLapEndValues` ordinal por detección de
 subida con timestamp alineado y resolución inequívoca al borde de vuelta. Si
 el puente o la resolución fallan, no publicar `fuel_jump`.
+
+Precisión incorporada tras consejo de simplicidad: una subida acumula un tramo
+ascendente contiguo y emite un único candidato sólo cuando el total supera el
+umbral vigente; no exige que una muestra individual supere 3 L. Si ocurre
+dentro de una visita `In Pits`, comparte la frontera de entrada de esa visita,
+por lo que la prioridad existente de `pit` evita duplicados. Los resets de
+`Lap Dist` se conservan como diagnóstico, pero no se convierten por ordinal en
+anclas de evento. Tráfico sólo se atribuye mediante timestamp alineado. No se
+tocan incidentes, outliers, consumo, curvas ni el análisis detallado de parada.
 
 Gate B: RED/GREEN explícito para S125/S266 reducido; sin hueco de origen, sin
 stint de una vuelta y sin regresión del caso S026. Las filas iniciales de

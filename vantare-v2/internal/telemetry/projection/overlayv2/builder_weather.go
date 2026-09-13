@@ -1,19 +1,22 @@
 package overlayv2
 
-import "github.com/vantare/overlays/v2/internal/telemetry/derive"
+import (
+	"github.com/vantare/overlays/v2/internal/telemetry/derive"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/weather"
+)
 
 // BuildWeather projects the weather slice of the Overlay v2 contract.
 //
-// The canonical LMU state has no admitted weather source today (the strategy
-// audit declares every weather.ambient_temperature/track_temperature/rain/wetness
-// unsupported and the overlay adapter marks environment as
-// unsupported-by-projection). The builder therefore publishes every field as
-// missing rather than inventing a default. When a future driver admits a
-// weather signal the builder will read it here without changing the wire shape.
-func BuildWeather(_ derive.FinalState) WeatherV2 {
+// AmbientC and TrackC read the canonical REST-joined sessionInfo temperatures
+// admitted from the LMU driver (ISA-1106), preserving missing/stale/invalid
+// per field. The forecast nodes of /rest/sessions/weather are configuration,
+// never a current reading, so they stay out of this builder. Rain, wetness,
+// wind and pressure remain missing until a demonstrated source exists; the
+// wire shape does not change when they arrive.
+func BuildWeather(final derive.FinalState) WeatherV2 {
 	return WeatherV2{
-		AmbientC:    missingValue[float64](),
-		TrackC:      missingValue[float64](),
+		AmbientC:    qualityValue(final.Observed.AmbientTemp, func(value weather.Temperature) float64 { return float64(value) }),
+		TrackC:      qualityValue(final.Observed.TrackTemp, func(value weather.Temperature) float64 { return float64(value) }),
 		RainPercent: missingValue[float64](),
 		WetnessPct:  missingValue[float64](),
 		WindKph:     missingValue[float64](),

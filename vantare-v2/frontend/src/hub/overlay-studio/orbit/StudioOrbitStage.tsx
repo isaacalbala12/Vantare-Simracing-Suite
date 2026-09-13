@@ -17,7 +17,7 @@ import {
   readStageGeometryCache,
   writeStageGeometryCache,
 } from '../canvas/stage-geometry-cache';
-import { useStudioAccess, useStudioActions, useStudioActiveLayout, useStudioPreview, useStudioSelector } from '../state/studio-store';
+import { useStudioActions, useStudioActiveLayout, useStudioPreview, useStudioSelector, useStudioWidgetPolicy } from '../state/studio-store';
 import { placeSelectionTag, type TagAnchor } from './selection-tag-placement';
 import { fill, widgetLabel } from './studio-orbit-model';
 
@@ -45,7 +45,7 @@ export type StudioOrbitStageProps = {
 export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactElement {
   const { diagnostics, onPointer } = props;
   const { t } = useI18n();
-  const access = useStudioAccess();
+  const widgetPolicy = useStudioWidgetPolicy();
   const document = useStudioSelector((s) => s.history?.present ?? null);
   const activeLayout = useStudioActiveLayout();
   const activeSession = useStudioSelector((s) => s.activeSession);
@@ -105,8 +105,8 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
   );
 
   const canMutateLayout = useCallback(
-    (widget: WidgetInstanceV3) => canMutateWidget(access, widget),
-    [access],
+    (widget: WidgetInstanceV3) => canMutateWidget(widgetPolicy, widget),
+    [widgetPolicy],
   );
   const onLayoutBlocked = useCallback(() => {
     notifyAccessDenied(t(STUDIO_WIDGET_ACCESS_MESSAGE_KEY));

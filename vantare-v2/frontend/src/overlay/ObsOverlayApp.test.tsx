@@ -108,6 +108,51 @@ function buildApiResponse(document: ProfileDocumentV3, layoutOrigin = { x: 0, y:
   };
 }
 
+// Native widget policy over SSE (ISA-1105): delta is premium, so generation
+// tests feed a paid snapshot on the policy stream before expecting frames.
+const paidPolicyWire = {
+  revision: 2,
+  overlaysBasic: true,
+  overlaysAdvanced: true,
+  engineerAI: false,
+  brandCrystal: "optional",
+  brandEfficiency: "optional",
+  brandOriginal: "none",
+};
+
+const freePolicyWire = {
+  revision: 3,
+  overlaysBasic: true,
+  overlaysAdvanced: false,
+  engineerAI: false,
+  brandCrystal: "required",
+  brandEfficiency: "required",
+  brandOriginal: "none",
+};
+
+function policyStream(): MockEventSource {
+  const streams = MockEventSource.instances.filter(
+    (source) => source.url === "/api/widget-policy/stream",
+  );
+  const stream = streams.at(-1);
+  if (!stream) {
+    throw new Error("widget policy SSE stream not connected");
+  }
+  return stream;
+}
+
+function dispatchPolicySnapshot(wire: Record<string, unknown>): void {
+  act(() => {
+    policyStream().dispatch("widget-policy:snapshot", JSON.stringify(wire));
+  });
+}
+
+function dispatchPolicyChanged(wire: Record<string, unknown>): void {
+  act(() => {
+    policyStream().dispatch("widget-policy:changed", JSON.stringify(wire));
+  });
+}
+
 describe("ObsOverlayApp", () => {
   beforeEach(() => {
     runtimeMock.handlers.clear();
@@ -137,6 +182,7 @@ describe("ObsOverlayApp", () => {
     await flush();
 
     expect(MockEventSource.instances.map((source) => source.url)).toEqual([
+      "/api/widget-policy/stream",
       "/telemetry/overlay-v2/projection",
       "/engineer/stream",
     ]);
@@ -147,6 +193,7 @@ describe("ObsOverlayApp", () => {
     const overlayV2 = MockEventSource.instances.find(
       (source) => source.url === "/telemetry/overlay-v2/projection",
     );
+    dispatchPolicySnapshot(paidPolicyWire);
     act(() => overlayV2?.dispatch("telemetry:overlay-v2:snapshot", goldenV2Raw));
 
     expect(screen.getAllByTestId("runtime-widget-frame")).toHaveLength(1);
@@ -156,7 +203,7 @@ describe("ObsOverlayApp", () => {
     expect(diagnostics).not.toHaveProperty("shadow");
 
     view.unmount();
-    expect(MockEventSource.instances).toHaveLength(2);
+    expect(MockEventSource.instances).toHaveLength(3);
     for (const source of MockEventSource.instances) {
       expect(source.close).toHaveBeenCalledTimes(1);
     }
@@ -194,6 +241,7 @@ describe("ObsOverlayApp", () => {
     const activeV2 = MockEventSource.instances
       .filter((source) => source.url === "/telemetry/overlay-v2/projection")
       .at(-1);
+    dispatchPolicySnapshot(paidPolicyWire);
     act(() => activeV2?.dispatch("telemetry:overlay-v2:snapshot", goldenV2Raw));
 
     expect(screen.getAllByTestId("runtime-widget-frame")).toHaveLength(1);
@@ -206,8 +254,8 @@ describe("ObsOverlayApp", () => {
       overlay_v2_parse_duration: { count: 1 },
     });
     expect(diagnostics).not.toHaveProperty("shadow");
-    expect(MockEventSource.instances.filter((source) => !source.close.mock.calls.length)).toHaveLength(2);
-    expect(MockEventSource.instances.filter((source) => source.close.mock.calls.length)).toHaveLength(2);
+    expect(MockEventSource.instances.filter((source) => !source.close.mock.calls.length)).toHaveLength(3);
+    expect(MockEventSource.instances.filter((source) => source.close.mock.calls.length)).toHaveLength(3);
   });
 
   it("loads profile-v3 and starts canonical V2 plus Engineer SSE adapters without V1", async () => {
@@ -230,8 +278,12 @@ describe("ObsOverlayApp", () => {
     render(<ObsOverlayApp />);
     await flush();
 
-    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/profile-v3?profile="));
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining("/api/profile-v3?profile="),
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
     expect(MockEventSource.instances.map((source) => source.url)).toEqual([
+      "/api/widget-policy/stream",
       "/telemetry/overlay-v2/projection",
       "/engineer/stream",
     ]);
@@ -358,6 +410,7 @@ describe("ObsOverlayApp", () => {
 
     render(<ObsOverlayApp />);
     await flush();
+    dispatchPolicySnapshot(paidPolicyWire);
 
     expect(screen.getByTestId("obs-studio-preview")).toBeTruthy();
     const previewScene = screen.getByTestId("obs-studio-preview-scene") as HTMLElement;
@@ -451,6 +504,7 @@ describe("ObsOverlayApp", () => {
 
     render(<ObsOverlayApp />);
     await flush();
+    dispatchPolicySnapshot(paidPolicyWire);
 
     expect(screen.queryByTestId("obs-studio-preview")).toBeNull();
     const runtimeScene = screen.getByTestId("runtime-overlay-scene") as HTMLElement;
@@ -458,6 +512,43 @@ describe("ObsOverlayApp", () => {
     expect(runtimeScene.style.transform).toBe("translate(0px, 0px) scale(0.9)");
     expect(frame.style.left).toBe("218.666667px");
     expect(frame.style.top).toBe("87px");
+  });
+
+  it("blocks premium without a snapshot and applies live downgrade without losing the document", async () => {
+    const delta = deltaDefinition.createDefault("delta-policy");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(buildApiResponse({
+          schemaVersion: 3,
+          id: "obs-policy",
+          name: "OBS Policy",
+          displayMode: "streaming",
+          monitorIndex: 0,
+          layouts: { general: { type: "general", widgets: [delta] } },
+        })),
+      } as Response),
+    );
+
+    render(<ObsOverlayApp />);
+    await flush();
+
+    expect(screen.getByTestId("runtime-overlay-surface")).toBeTruthy();
+    expect(screen.queryAllByTestId("runtime-widget-frame")).toHaveLength(0);
+
+    dispatchPolicySnapshot(paidPolicyWire);
+    expect(screen.getAllByTestId("runtime-widget-frame")).toHaveLength(1);
+
+    dispatchPolicyChanged({ ...freePolicyWire, revision: 4 });
+    expect(screen.queryAllByTestId("runtime-widget-frame")).toHaveLength(0);
+    expect(screen.getByTestId("runtime-overlay-surface")).toBeTruthy();
+
+    dispatchPolicyChanged({ ...paidPolicyWire, revision: 5 });
+    expect(screen.getAllByTestId("runtime-widget-frame")).toHaveLength(1);
+    expect(screen.getByTestId("runtime-widget-frame").getAttribute("data-widget-id")).toBe(
+      "delta-policy",
+    );
   });
 
   it("skips preserved legacy widgets at runtime", async () => {

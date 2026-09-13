@@ -1,10 +1,22 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import type { ProfileDocumentV3 } from "../core/profile-document";
+import type { WidgetPolicyWire } from "../core/widget-policy";
 import { createTestTelemetryCoordinator } from "../../hub/overlay-studio/test-helpers";
 import { deltaDefinition } from "../widget-types/delta/delta-definition";
 import { DesktopOverlayRuntime } from "./DesktopOverlayRuntime";
 import { ObsOverlayRuntime } from "./ObsOverlayRuntime";
+
+// Delta is premium: geometry tests run with overlays rights so the widget executes.
+const paidPolicy: WidgetPolicyWire = {
+  revision: 2,
+  overlaysBasic: true,
+  overlaysAdvanced: true,
+  engineerAI: false,
+  brandCrystal: "optional",
+  brandEfficiency: "optional",
+  brandOriginal: "none",
+};
 
 const originalResizeObserver = globalThis.ResizeObserver;
 
@@ -61,6 +73,7 @@ describe("DesktopOverlayRuntime", () => {
         revision="rev-1"
         telemetry={coordinator}
         layoutOrigin={{ x: 0, y: 0 }}
+        widgetPolicy={paidPolicy}
       />,
     );
 
@@ -85,6 +98,7 @@ describe("DesktopOverlayRuntime", () => {
         revision="rev-parity"
         telemetry={coordinator}
         layoutOrigin={layoutOrigin}
+        widgetPolicy={paidPolicy}
       />,
     );
     const desktopSceneStyle = (desktop.getByTestId("runtime-overlay-scene") as HTMLElement).style.cssText;
@@ -97,6 +111,7 @@ describe("DesktopOverlayRuntime", () => {
         revision="rev-parity"
         telemetry={coordinator}
         layoutOrigin={layoutOrigin}
+        widgetPolicy={paidPolicy}
       />,
     );
     expect((obs.getByTestId("runtime-overlay-scene") as HTMLElement).style.cssText).toBe(desktopSceneStyle);

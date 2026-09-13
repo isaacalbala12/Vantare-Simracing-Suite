@@ -150,10 +150,12 @@ import { StrategyReferencePanel } from "./StrategyReferencePanel";
 import { StrategyAnalysisPanel } from "./StrategyAnalysisPanel";
 import { loadValidatedExamples } from "./strategy-validated-examples";
 import { EMPTY_WEATHER_SCENARIOS, persistStrategyWeatherScenarios, selectedWeatherScenarios } from "./strategy-weather-scenarios";
+import { STRATEGY_CONTEXT_SLOT_ID } from "../components/orbit/orbit-slot-ids";
 import "../../styles/orbit-strategy.css";
 
-/** Hueco que la shell reserva para la columna de Estrategia (briefing 07). */
-export const STRATEGY_CONTEXT_SLOT_ID = "orbit-strategy-context-slot";
+/** Hueco que la shell reserva para la columna de Estrategia (briefing 07). El
+    id vive en `orbit-slot-ids` para que la shell no importe la página entera. */
+export { STRATEGY_CONTEXT_SLOT_ID };
 
 type StrategyTab = "overview" | "analysis" | "strategies" | "availability";
 /** Camino elegido en el último paso del asistente (`00-decisiones.md`, D-W4-2). */

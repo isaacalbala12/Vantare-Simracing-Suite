@@ -45,12 +45,17 @@ describe("Overlay Workshop characterization", () => {
 
     expect(ALL_WIDGET_TYPES).toHaveLength(20);
     expect(designSystemRegistry.list().map((system) => [system.id, system.widgets.length])).toEqual([
-      ["vantare-original", 18], ["vantare-crystal", 19], ["vantare-endurance", 5], ["vantare-functional", 4], ["vantare-iracing", 1],
+      ["vantare-original", 18], ["vantare-crystal", 19], ["vantare-endurance", 5], ["vantare-functional", 18], ["vantare-iracing", 1],
     ]);
-    expect(designs).toHaveLength(72);
+    expect(designs).toHaveLength(86);
     expect(designs.filter((design) => design.systemId === "vantare-functional").map((design) => design.id)).toEqual([
       "standings-functional-compact", "standings-functional-broadcast",
       "relative-functional-signature", "delta-functional-signature", "delta-functional-capsule", "pedals-functional-signature",
+      "track-weather-functional-signature", "track-map-functional-signature", "pedals-telemetry-functional-signature",
+      "fuel-strategy-functional-signature", "car-damage-numbers-functional-signature", "input-telemetry-functional-signature",
+      "racing-flags-functional-signature", "race-schedule-functional-signature",
+      "broadcast-tower-functional-signature", "multiclass-relative-functional-signature", "car-damage-visual-functional-signature",
+      "delta-trace-functional-signature", "head-to-head-functional-signature", "engineer-radio-functional-signature",
     ]);
     expect(designs.find((design) => design.id === "standings-endurance-redline-tower")?.isDefault).not.toBe(true);
     expect(crystal).toHaveLength(22);

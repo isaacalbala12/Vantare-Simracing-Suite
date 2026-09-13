@@ -3161,6 +3161,14 @@ Monza `08a1e626d7154becd493aa84addbf146cc7f0f229c8a7aa39664766813495538`.
 Focal sin opt-in SKIP/PASS, focal de alcance, `go vet` y `go test -p 1 ./...`
 EXIT0; gofmt/diff limpios. Logs `frontend/.tmp/isa1104-t12j9-*`.
 
+Primer Imola→Monza FAIL: la aserción inicial consideró el cambio esperado de
+`Provenance.SourceID` `aggregate:<origen>`→`aggregate:<destino>` como cambio
+físico, aunque vueltas y valores eran idénticos. Se corrigió normalizando sólo
+esa referencia canónica y manteniendo comparación completa del resto; el
+reintento anterior es el PASS registrado. El `Tee-Object` del reintento
+sobrescribió por error el log R1 al reutilizar el nombre; la salida cruda sigue
+en el registro de herramienta y no se reconstruye ni se presenta como archivo.
+
 T12 queda cerrado localmente en código, frontend web y banco real. Pendiente
 separado: aceptación visual/nativa Wails T11i por `ERROR_INVALID_STATE`, edición
 de límites y cálculo avanzado del SDD principal. Sin app/GUI/LMU en ejecución,

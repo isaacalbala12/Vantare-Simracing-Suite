@@ -78,8 +78,8 @@ export function createWailsRaceScheduleStore(): RaceScheduleStore {
 }
 
 export function createHttpRaceScheduleStore(
-  fetchCalendar: () => Promise<Calendar> = async () => {
-    const response = await fetch("/api/calendar", { cache: "no-store" });
+  fetchCalendar: (signal?: AbortSignal) => Promise<Calendar> = async (signal) => {
+    const response = await fetch("/api/calendar", { cache: "no-store", signal });
     if (!response.ok) throw new Error(`calendar HTTP ${response.status}`);
     return response.json() as Promise<Calendar>;
   },
@@ -87,10 +87,14 @@ export function createHttpRaceScheduleStore(
   return createRaceScheduleStore({
     start(onCalendar, onError) {
       let active = true;
+      let controller: AbortController | undefined;
       const load = () => {
-        void fetchCalendar().then(
+        controller?.abort();
+        const current = new AbortController();
+        controller = current;
+        void fetchCalendar(current.signal).then(
           (calendar) => { if (active) onCalendar(calendar); },
-          () => { if (active) onError(); },
+          () => { if (active && !current.signal.aborted) onError(); },
         );
       };
       load();
@@ -98,6 +102,9 @@ export function createHttpRaceScheduleStore(
       return () => {
         active = false;
         window.clearInterval(timer);
+        // Cancela el fetch en vuelo: si no, queda pendiente al desmontar y el
+        // entorno lo aborta en teardown (AbortError de happy-dom) (ISA-949).
+        controller?.abort();
       };
     },
   });

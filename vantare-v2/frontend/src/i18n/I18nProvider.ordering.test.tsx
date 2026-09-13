@@ -39,7 +39,8 @@ describe("shared language selection", () => {
       </>,
     );
     expect(screen.getByTestId("outside-welcome").textContent).toBe("Bienvenido a Vantare");
-    expect(screen.getByTestId("inside-welcome").textContent).toBe("Welcome to Vantare");
+    // El provider espera al diccionario lazy antes de montar el interior.
+    expect((await screen.findByTestId("inside-welcome")).textContent).toBe("Welcome to Vantare");
   });
 
   it("preserves the last language choice after all pending work settles", async () => {
@@ -61,8 +62,10 @@ describe("shared language selection", () => {
     act(() => screen.getByRole("button", { name: "English" }).click());
     first.unmount();
     render(<I18nProvider><Consumer id="second" /></I18nProvider>);
+    // El segundo provider arranca con "en" guardado: gate hasta que carga.
+    const esButton = await screen.findByRole("button", { name: "Español" });
     await act(async () => {
-      screen.getByRole("button", { name: "Español" }).click();
+      esButton.click();
       await vi.dynamicImportSettled();
     });
     expect(screen.getByTestId("second-locale").textContent).toBe("es");

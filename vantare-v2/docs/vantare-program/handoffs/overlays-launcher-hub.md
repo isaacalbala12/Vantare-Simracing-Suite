@@ -2906,7 +2906,7 @@ aislada a `nightly` (pendiente review/merge):
 ## ISA-1098 — cierre conciliado de Efficiency y política común (2026-09-13)
 
 - Candidato `vantareapp/isa-1098-efficiency-integration`, PR #1107 a
-  `nightly`, conciliado con `origin/nightly@d2e784c0f9aee15ffe434b6bc2f1ce87aae7e7d5`.
+  `nightly`, conciliado con `origin/nightly@1aea57118f972c04144dc4546ff8cc16705e6e79`.
   Isaac autorizó la integración a Nightly; testers, master y release quedan fuera.
 - La conciliación conserva el Standings Signature/Broadcast aprobado, cabecera
   y pie configurables y acentos de bandera sin transición de color. Incorpora

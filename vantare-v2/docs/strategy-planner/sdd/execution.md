@@ -1,14 +1,45 @@
-# Plan ejecutable y continuidad — SDD v1.0
+# Plan ejecutable y continuidad — SDD v1.1
 
 [Especificación](README.md) · [Aceptación](acceptance.md) · ISA-1091.
+
+## 0. Punto de reanudación comprobado — 2026-09-13
+
+Corte auditado: `c2d5b45b43bbf8ff0efb2cd16f1598f7a4925eff`, rama
+`vantareapp/isa-1104-recorded-classification`, worktree `C:/tmp/vantare-isa1104`.
+T12 está cerrado **localmente**; esto no significa que T00–T12 estén aceptados
+como conjunto. La cabecera del [handoff](../../vantare-program/handoffs/strategy-planner.md)
+prevalece sobre sus notas históricas de «siguiente corte».
+
+| Paquete | Estado comprobado y trabajo que se conserva | Cierre restante |
+|---|---|---|
+| T00/T01 | SDD y corrección local del coste repetido de pit #1089; regresión Imola existente. | Revalidación nativa y presupuesto del modelo completo en T22; no reabrir el algoritmo sin reproducción. |
+| T02/T03/T06/T07 | Reglas transportadas en #1092; asistente con duración, Fuel/VE, min/max paradas, nombres y delta de piloto. | Matriz completa de entradas, perfiles antes de optimizar, disponibilidad/conducción, inventario, servicios/formación, horizonte por vueltas y estados finales. Una pantalla presente no cierra la familia. |
+| T04/T05/T08/T09 | Shell/asistente unificado, biblioteca paginada, apertura explícita, configuración guardada/reabierta. | Paridad final T18, recuperación/copia y reinicio real T22; reutilizar servicios existentes y resolver sólo gaps observados. |
+| T10/T11 | Valor, uso por familia e historial de fuente implementados; bancos reales previos. | T11i visual/nativo pendiente; recuperación duradera de comandos y revisión completa del plan en T14/T22. |
+| T12 | Clasificación tipada e identidad canónica v4; J9 Imola→Monza 23.99 s y Monza→Imola 35.98 s, hashes intactos. | Gate visual/nativo compartido T18/T22; J9 no demuestra precisión empírica ni cálculo completo. |
+| T13–T18 | Contratos y referencias visuales disponibles; no cierre integral. | Límites, revisiones del plan, cálculo, stint/parada y paridad. |
+| T19–T21 | Inventario y protocolo #1030; preparación expuesta identificada. | Semántica/anotación, calibración y reserva suficiente de carreras completas; A19 sigue pendiente. |
+| T22/T23 | Bancos nativos sin GUI existen; WebView2 `ERROR_INVALID_STATE` reproducido en T11i. | Diagnóstico acotado, recorrido de distribución, aceptación y entrega verificable. |
+| T24 | Aplazado por decisión de producto. | Investigación live sólo tras aceptación del registrado; no implementación live. |
+
+Evidencia de los gaps: [matriz T02](../evidence/isa-1092/README.md),
+`StrategyRecordedRules.tsx`, `StrategyRecordedDrivers.tsx` y el panel Plan de
+`StrategyRecordedWorkflow.tsx` bajo `frontend/src/hub/strategy-orbit/`.
+No repetir T12 ni declarar terminadas las entradas sólo por su posición en el DAG.
+
+**Siguiente corte elegible:** T19a (semántica temporal mínima para T13), bajo el
+alcance de auditoría #1030 o una hija ligada si requiere tooling distinto. Después
+T13a fija el microplan/compatibilidad y la issue de implementación antes de código.
+En paralelo lógico, preparar inventario T02 restante y preflight documental T22a;
+la ejecución física sigue siendo de un único escritor por worktree.
 
 ## 1. Regla de avance
 
 Al reanudar la implementación, recorrer las tareas siguientes en orden de
 dependencia. Terminar un corte, un commit, un test, una review o una issue **no
 es motivo para devolver el trabajo pidiendo permiso para continuar**. Informar
-avance, registrar evidencia y pasar a la siguiente tarea autorizada. La petición
-de consolidación no reactiva por sí sola la implementación pausada.
+avance, registrar evidencia y pasar a la siguiente tarea autorizada. Isaac ya
+autorizó iniciar el alcance y continuar su ejecución; no existe pausa por corte.
 
 El flujo conserva pequeñas unidades de cambio sin convertirlas en pequeñas
 unidades de aprobación. Spec, plan y tareas se consolidan en este paquete;
@@ -43,19 +74,28 @@ de alcance se propone con evidencia antes de ejecutar la parte nueva.
 
 - Implementación, documentación, bugs necesarios del recorrido, pruebas,
   investigaciones acotadas, issues, ramas/worktrees y commits del alcance.
-- Push/PR draft/CI permitidos por política dentro de issue; no son requisito
-  para cada corte ni permiso de integrar. Mantener estado remoto verificable.
-- PC/build/app/banco autorizados por Isaac, coordinando exclusividad vigente.
-  Usar build/configuración canónicos; no leer/copiar .env ni secretos.
-- LMU permanece intacto. Cerrar sólo instancias propias identificadas.
-- La instrucción posterior de Isaac autoriza delegar código y pruebas en
-  `opencode-go/muse-spark-1.3-contributor`, variante `xhigh`, mediante OpenCode.
-  El orquestador conserva planes, decisiones de producto/arquitectura,
-  documentación, issues, reparto de cortes y revisión personal. El ejecutor
-  sólo edita los paths de código/tests asignados; no cambia planes ni delega.
-  Un único ejecutor por worktree, sin ediciones concurrentes del orquestador.
-  La revisión adversarial exclusivamente visual sigue siendo un gate distinto:
-  si no está disponible, dejarlo pendiente, sin fingir nota.
+- Push/PR draft/CI se rigen por la autorización vigente del chat y AGENTS.md;
+  este plan no amplía permisos. El corte auditado no tiene push/PR/CI remota.
+- Los bancos sin GUI con fuentes de preparación y runtime confiado están
+  autorizados. Para app/build de escritorio, respetar la coordinación e
+  instrucción vigente del PC; en la revisión documental actual no se ejecutan.
+  No leer/copiar .env ni secretos. LMU permanece intacto y sólo se cierran
+  procesos propios identificados.
+- El proveedor de ejecución es una elección operativa, no un contrato de
+  producto. Actualmente Isaac pide **Devin MCP, SWE-2 Max**: confirmar modelo
+  efectivo `swe-2-max` antes de asignar un corte. No usar OpenCode ni sustituir
+  silenciosamente modelo/modo. El orquestador mantiene dirección, planes,
+  documentación, issues y aceptación basada en diff/evidencia; Devin implementa,
+  prueba y revisa el alcance asignado. La auditoría documental Astra high está
+  autorizada específicamente; no concede subdelegación general.
+- Ante `resource_exhausted`, sesión perdida o adaptador no disponible, conservar
+  archivos/logs y comprobar estado antes de reintentar. No lanzar bucles de
+  sesiones ni duplicar trabajo. El orquestador puede ejecutar localmente el
+  corte ya cerrado si el adaptador bloquea, registrando el relevo y comprobando
+  que el ejecutor anterior está detenido. No cambia el contrato ni los gates.
+- Un único escritor por worktree, sin ediciones concurrentes de orquestador y
+  ejecutor. La revisión adversarial exclusivamente visual sigue siendo un gate
+  distinto: si no está disponible, dejarlo pendiente, sin fingir nota.
 
 ### Detener sólo lo afectado
 
@@ -77,25 +117,30 @@ No inventar un timeout de espera que transforme silencio en aprobación.
 ## 2. Orden y dependencias
 
 ```text
-T00 baseline y matriz
- -> T01 reproducir/corregir timeout -> T02 entradas -> T03 estados/resultados
- -> T04 shell A4 -> T05 combinación -> T06 reglas -> T07 pilotos
- -> T08 biblioteca -> T09 copia/reapertura
- -> T10 valor/historial -> T11 usos -> T12 clasificación -> T13 límites
- -> T14 revisiones del plan -> T15 cálculo/resultado -> T16 stint -> T17 parada
- -> T18 integración visual -> T22 recorrido Wails -> T23 entrega
+BASE local T12 c2d5b45b + capacidades previas (no aceptación integral)
+  -> T19a semántica temporal -> T13a contrato -> T13b..e límites
+  -> T14a..c revisiones reproducibles
 
-T00 -> T19 semántica/anotación -> T20 calibración -> T21 reserva/evaluación
-T02/T03/T11/T12/T13/T15/T16/T17 -> T21
-T18/T21/T22 -> T23 -> T24 investigación live (sin implementarla)
+T02 restante -> T06 reglas completas / T07 perfiles y conducción -> T03 estados
+T14 + T02/T03/T06/T07 cerrados -> T15a..c cálculo/plan
+T15 -> T16a..b stint -> T17a..b parada -> T18 paridad completa
+
+T19a -> T19b anotación -> T20a preparación -> decisión umbrales/N
+  -> T20b congelación -> T21a..b evaluación reservada del modelo final
+T13/T15/T16/T17 cerrados -> T21b
+
+T22a diagnóstico/preflight temprano (sin bloquear implementación independiente)
+T18 + flujo funcional -> T22b..c Wails/distribución
+T18/T21/T22 -> T23 entrega y aceptación -> T24 investigación live
 ```
 
-Ejecución secuencial por worktree, con el reparto de responsabilidades anterior. T19 puede
-adelantarse entre cortes si necesita preparar datos o una decisión con antelación;
-no abrir la reserva antes de T20. Si T01 necesita una decisión de presupuesto,
-continuar T04–T14 con estados de cálculo honestos; no inventar resultados para UI.
-Prioridad práctica: una reproducción acotada del bloqueo, después completar el
-frente visual aprobado y su conexión. No posponer A4 detrás de refactors generales.
+Prioridad: T19a→T13, después completar entradas/reglas/pilotos/estados pendientes
+antes de conectar T15; la mecánica T14 puede avanzar desde T10, pero su cierre
+integra las operaciones T13 soportadas. Adelantar
+preparación/anotación y diagnóstico del gate nativo entre cortes para no descubrir
+esos bloqueos al final. No abrir resultados de reserva antes de congelar T20 y
+el modelo final que se evalúa. Si falta adjudicación/umbral, continuar UI,
+integridad y pruebas matemáticas; la certificación empírica queda pendiente.
 
 ## 3. Backlog con salida comprobable
 
@@ -108,33 +153,85 @@ traducciones y evidencia asociadas no justifican ampliar silenciosamente lógica
 |---|---|---|---|---|
 | T00 / #1091 y sucesora de ejecución | — | Inventario del stack, contratos y gates. `docs/strategy-planner/sdd/`, handoffs; lectura de código. | A17/A21: localizar implementado vs pendiente, verificar estado GitHub y registrar base. No rehacer #1066–1090. | S |
 | T01 / #1089 | T00 | `application/orbit_calculation.go`, `solver/compute_budget.go` y ruta culpable demostrada; fixture/test Imola saneado. | RED del deadline; perfil y corrección con igual semántica, factibilidad/objetivo comparados, cancelación real. A12/A19. | M por corte |
-| T02 / hijas #694 | T01 o baseline explicado | Adapter `orbitSolverInput` en aplicación, tipos/cliente y tests, por familia en cortes distintos. | Inventario campo a campo de reglas/pilotos/neumáticos/Fuel/VE; no defaults perdidos. A10/A11. | M por familia |
+| T02 / #1092 y cortes ligados | T01 o baseline explicado | Adapter `orbitSolverInput` en aplicación, tipos/cliente y tests, por familia en cortes distintos. | Inventario campo a campo de reglas/pilotos/neumáticos/Fuel/VE; no defaults perdidos. A10/A11. | M por familia |
 | T03 / hijas #694 | T02 | Resultado/evaluación final y bridge; TS separado si >5. | A12/A13: estados óptimo/factible/parcial/inviable/timeout y obsolescencia inequívocos; no éxito transitorio falso. | M |
-| T04 / continuación #1063 | T00 | `StrategyOrbitPage.tsx`, componentes/styles Orbit por pantalla. | A04/A06: estructura A4 y sidebar comprimido; navegación real, vacíos/errores, referencias visuales mapeadas. Capturas antes de conectar más lógica. | M por pantalla |
-| T05 / hija #1028 | T04 | `strategy-calendar-selection.ts`, eventos/selector y tests; persistencia aparte si falta snapshot. | A03/A05: calendario/personalizada en una Combinación, identidad correcta, volver conserva selección; sin feed no inventa evento. | M |
+| T04 / #1093; referencia visual #1063 | T00 | `StrategyOrbitPage.tsx`, componentes/styles Orbit por pantalla. | A04/A06: estructura A4 y sidebar comprimido; navegación real, vacíos/errores, referencias visuales mapeadas. Capturas antes de conectar más lógica. | M por pantalla |
+| T05 / #1094 | T04 | `strategy-calendar-selection.ts`, eventos/selector y tests; persistencia aparte si falta snapshot. | A03/A05: calendario/personalizada en una Combinación, identidad correcta, volver conserva selección; sin feed no inventa evento. | M |
 | T06 / hija #1028 | T05/T02 | UI reglas + contratos/application sólo donde inventario T02 muestre hueco. | A10: todas las reglas aplicables llegan al solver; ausencias y procedencia visibles; duración/vueltas distintas. | M por grupo |
 | T07 / hija #1028 | T06/T02 | UI pilotos, perfiles/estimación y persistencia. | A11: delta s/vuelta versionado, disponibilidad/límites, ningún consumo/desgaste fabricado. | M |
-| T08 / continuación #1088 | T05 | `StrategyRecordedSessions.tsx`, `strategy-recorded-session.ts`, cliente Analysis/catalog cuando necesario. | A01/A03: búsqueda automática de metadatos autorizados, propuestas compatibles, filtros, apertura explícita ≤4, cientos de filas usables y cancellation. | M por corte |
+| T08 / #1095; base #1088 | T05 | `StrategyRecordedSessions.tsx`, `strategy-recorded-session.ts`, cliente Analysis/catalog cuando necesario. | A01/A03: búsqueda automática de metadatos autorizados, propuestas compatibles, filtros, apertura explícita ≤4, cientos de filas usables y cancellation. | M por corte |
 | T09 / fiabilidad existente #819/#821/#803 según hueco | T08 | Analysis source/store/service y UI en cortes separados. | A02/A15: copia opcional verificada, original ausente/cambiado, reapertura explícita/reinicio, runtime y permisos con causa. Reutilizar recuperación ya implementada. | M |
-| T10 / continuación #1033 | T08 | UI Datos/Revisiones, `analysis-client.ts`, comandos escalares existentes. | A07/A08: cambiar valor real con motivo, guardar/cargar/restaurar, conflicto/guardado incierto, original y calidad intactos. | M por vista |
-| T11 / hija #1033 | T10 | `corrections*`, clasificación/derivación por familia, servicio/cliente/UI en cortes. | A08/A09: excluir una vuelta de ritmo conserva Fuel/VE sanos; restaurar y propagar dependientes. No nuevo umbral. | M por capa |
-| T12 / hija #1033 | T11 | Correcciones tipadas de clasificación y consumidores. | A08/A09: tipos/campos permitidos, cambio de identidad canónica invalida combinación; no autoriza datos ni cambia reloj. | M por capa |
+| T10 / #1096; contrato #1033 | T08 | UI Datos/Revisiones, `analysis-client.ts`, comandos escalares existentes. | A07/A08: cambiar valor real con motivo, guardar/cargar/restaurar, conflicto/guardado incierto, original y calidad intactos. | M por vista |
+| T11 / #1099; contrato #1033 | T10 | `corrections*`, clasificación/derivación por familia, servicio/cliente/UI en cortes. | A08/A09: excluir una vuelta de ritmo conserva Fuel/VE sanos; restaurar y propagar dependientes. No nuevo umbral. | M por capa |
+| T12 / #1104; contrato #1033 | T11 | Correcciones tipadas de clasificación y consumidores. | A08/A09: tipos/campos permitidos, cambio de identidad canónica invalida combinación; no autoriza datos ni cambia reloj. | M por capa |
 | T13 / hija #1033 | T12/T19 semántica necesaria | Corrección de límite, segmentos/derivados y UI avanzada. | A08: anclajes temporales reales, rechazar ambigüedad/solape, recomputar familias, restaurar sin mutar fuente. | M por capa |
-| T14 / continuación C7 #1033 | T10 y operaciones presentes | `document/`, `repository/`, aplicación y vista Revisiones en cortes. | A15/A16: aceptar snapshot completo, editar genera borrador desactualizado, reiniciar reproduce revisión exacta; fuente ausente sólo bloquea derivación. | M por corte |
-| T15 / hija #1028 | T03/T06/T07/T14 | Carrera/Cálculo/Plan A4 y cliente cálculo. | A12/A13: propuesta real, explicación de entradas/recursos/incertidumbre, cancelación y guardado explícito. Sin escenarios generales de ahorro. | M por pantalla |
+| T14 / continuación C7 #1033 | T10; cierre integral con T13 y operaciones presentes | `document/`, `repository/`, aplicación y vista Revisiones en cortes. | A15/A16: aceptar snapshot completo, editar genera borrador desactualizado, reiniciar reproduce revisión exacta; fuente ausente sólo bloquea derivación. | M por corte |
+| T15 / hija #1028 | T02/T03/T06/T07/T14 | Carrera/Cálculo/Plan A4 y cliente cálculo. | A12/A13: propuesta real, explicación de entradas/recursos/incertidumbre, cancelación y guardado explícito. Sin escenarios generales de ahorro. | M por pantalla |
 | T16 / hija #1028 | T15 | Detalle stint, constraints y tests solver/cliente separados. | A14: fijar piloto/duración/arrastrar límite, validar, recalcular y mostrar coste frente a óptimo comparable. Alternativa accesible al arrastre. | M por corte |
 | T17 / hija #1028 | T16 | Detalle parada, servicio y evaluación final existente. | A14: cantidades y reservas reales, paralelismo/secuencia según reglas, no doble conteo de tránsito/servicio, ventana obligatoria. | M por corte |
-| T18 / continuación #1063 | T04–T17 | Capturas y revisión visual de cada pantalla/estado; fixes acotados productivos. | A06: >9/10 individual en revisión adversarial visual y evidencia comparable; i18n/teclado/resoluciones. Solicitud agrupada de revisión humana al completar recorrido. | M por corrección |
+| T18 / nueva issue de validación; referencia #1063 | T04–T17 | Capturas y revisión visual de cada pantalla/estado; fixes acotados productivos. | A06: >9/10 individual en revisión adversarial visual y evidencia comparable; i18n/teclado/resoluciones. Solicitud agrupada de revisión humana al completar recorrido. | M por corrección |
 | T19 / #1030 | T00 | Corpus de preparación, relojes, anotaciones y protocolo existentes. | A09/A19: matriz señal/familia/condición, casos adjudicados independientes, desconocidos explícitos; fuentes reservadas intactas. | S por informe/caso |
-| T20 / #1030 | T19 | Informe de calibración, criterios y regresiones de Analysis por familia. | A19: medir contaminación/descarte/errores; propuesta agrupada de umbrales/N a Isaac; congelar antes de evaluar. Ajustes implementados sólo tras decisión aplicable. | M por criterio |
+| T20 / auditoría #1030; ajuste productivo en hija | T19 | Informe de calibración, criterios y regresiones de Analysis por familia. | A19: medir contaminación/descarte/errores; propuesta agrupada de umbrales/N a Isaac; congelar antes de evaluar. Ajustes implementados sólo tras decisión aplicable. | M por criterio |
 | T21 / #1030 | T20 + modelo final | Backtests/replay/evaluación con carreras completas reservadas, sin fuga futura. | A19: métricas preregistradas y suficiente muestra; separar matemáticas/empírico; FAIL/inconcluso no se convierte en PASS. | M por banco |
-| T22 / hija de gate #439 | T18 y flujo funcional | E2E/Wails real, runtime/cuenta de distribución y casos de fallo; medir coste. | A01–A18: recorrido, guardar/reiniciar, copia/error, hashes, cancelación, memoria/tiempo; fixture/CDP/diagnóstico separados de producción. | M por escenario |
+| T22 / nueva issue de validación recorded | Preflight desde T00; cierre tras T18 y flujo funcional | E2E/Wails real, runtime/cuenta de distribución y casos de fallo; medir coste. | A01–A18: recorrido, guardar/reiniciar, copia/error, hashes, cancelación, memoria/tiempo; fixture/CDP/diagnóstico separados de producción. | M por escenario |
 | T23 / issue de entrega | T18/T21/T22 | Informe final, handoffs, roadmap, PR draft/CI si procede. | Todos los gates con artefacto; revisión humana visual y autorización de integración pendientes separadas. Sin merge automático. | S |
-| T24 / seguimiento live #436 y diseño posterior | T23 aceptación del registrado | Investigación OSS y SDD live, no código live. | A20: comparación extensa con fuentes primarias, licencias y experimentos, recomendación sobre incertidumbre/Monte Carlo; nueva decisión de arquitectura. | S por informe |
+| T24 / nueva issue de investigación tras aceptación | T23 aceptación del registrado | Investigación OSS y SDD live, no código live. | A20: comparación extensa con fuentes primarias, licencias y experimentos, recomendación sobre incertidumbre/Monte Carlo; nueva decisión de arquitectura. | S por informe |
 
 T24 no bloquea entregar el editor registrado y no se marca completado por una
-búsqueda superficial. Los números históricos del programa live deben verificarse
-en GitHub antes de elegir la issue; no abrir duplicadas usando títulos antiguos.
+búsqueda superficial. GitHub verificado al 13-09: #439 (gate integral antiguo) y
+#436 (replanificación live) están cerradas y no autorizan estos nuevos cortes.
+#1063 es prototipo, #1033 es contrato documental y #1030 es auditoría/tooling:
+reutilizar su evidencia, no ejecutar producto bajo un alcance incompatible.
+Buscar sucesoras vigentes antes de crear las issues T13–T24 que falten.
+
+## 3.1 Cortes restantes y condiciones de salida
+
+Las letras son subcortes de los IDs estables, no nuevas fases. Cada uno recibe
+issue vigente, base exacta y hasta cinco paths de lógica/tests confirmados tras
+leer consumidores. Esta tabla fija comportamiento y orden; no autoriza elegir
+archivos a ciegas ni ampliar el alcance de una issue histórica documental.
+
+| Orden / corte | Entrega concreta | Gate para pasar al siguiente |
+|---|---|---|
+| 1 · T19a | Auditar en preparación el eje temporal de muestra/vuelta/stint: unidad, origen, resets, segmentos, duplicados, límites inclusivos/exclusivos y correspondencia con boxes. Producir matriz de anclas soportadas y casos desconocidos. | Al menos caso válido y rechazo por discontinuidad/ambigüedad con identidad exacta; no etiqueta de trompo deducida de lentitud. Si la señal no soporta una edición, esa capacidad queda no disponible, con causa. |
+| 2 · T13a | Microplan de `set_stint_boundary`: reemplazo de un límite y su causa sólo donde el contrato y ancla lo permitan, precondiciones, consistencia con vueltas, snapshot/versión y rollback. Distinguir límite observado Analysis de restricción de stint del plan T16. | Issue hija de #1033 fijada; compatibilidad v1–v4 y consumidores inventariados; decisión cerrada sobre qué operación concreta se soporta, sin convertir todo el segmentador en otro motor. |
+| 3 · T13b→c | Constructor/validación y representación/custodia en cortes separados. Guardado mixto con valor/uso/clasificación, replay/Resolve/Restore, cuota y guardado incierto. | Rechazo atómico de target inexistente, cruce de reloj, solape/hueco ilegal y conflicto; snapshots anteriores sin cambio de digest; rollback preserva historial. |
+| 4 · T13d→e | Vista/derivación por familia y servicio; después contrato/cliente/UI avanzada y banco real de preparación. | Mover límite recalcula sólo dependientes y mantiene totales/invariantes respaldados; adopción explícita, referencias exactas, cancelar/respuesta tardía y original intacto. A08 local; visual/nativo en T18/T22. |
+| 5 · T02d→g + T06/T07 | Cerrar matriz campo→origen→documento→adapter→solver→replay→UI. Cortes separados: horizonte/recursos; inventario/curvas; servicios/formación; perfiles/disponibilidad/conducción. Conectar cada grupo a reglas/pilotos del asistente. | Cada campo respaldado llega al solve y evaluación final o se rechaza con razón; cero/ausente/no aplicable distintos. Delta entre pilotos sólo altera ritmo. No promedio que elimine límites, inventario o perfiles antes de optimizar. |
+| 6 · T03 | Contrato único de resultado, readiness, obsolescencia/correlación y errores. Reutilizar evaluación final; reproducir huecos reales de estados. | Casos óptimo demostrado, factible no probado, parcial, inviable, cancelado y presupuesto agotado; respuesta antigua no pasa a vigente; cálculo pendiente de carga no anuncia éxito. |
+| 7 · T14a→c | Inventario de snapshot de plan y recuperación de comando tras reinicio; persistencia/compatibilidad; luego cliente y Revisiones distinguiendo fuente y plan. | A15/A16: aceptar A, crear B, cerrar/reabrir A exacta con reglas/pilotos/constraints/versiones/resultado; fuente ausente conserva consulta, no derivación. Sin sustituir por HEAD/base ni reintentar escritura incierta a ciegas. |
+| 8 · T15a→c | Conectar Carrera→Cálculo→Plan productivos: entrada exacta/readiness; ciclo calcular/cancelar; resultado explicable y aceptar/guardar separados. | A12/A13 y E01/E02 controlados: propuesta real, unidades/recursos y procedencia, incertidumbre y límites; no tarjeta decorativa ni fórmula alternativa en React. Comparación matemática acotada y replay. |
+| 9 · T16a→b | Constraints y evaluación de stint; después detalle/arrastre/teclado con obsolescencia y selección sincronizada. | Mismo cambio por drag/teclado produce mismo constraint, respeta piloto/tiempo/Fuel/VE/neumático; comparación sólo con mismo modelo/fuentes/reglas y causa de inviabilidad visible. |
+| 10 · T17a→b | Servicios y recursos de parada; después detalle productivo y recálculo. | Tránsito separado de servicio, concurrencia o secuencia según reglas, cantidades/inventario/ventanas y reservas validadas sin doble conteo. E07 sobre decisión final, no sólo preview. |
+| Transversal · T19b | Anotar preparación de forma independiente para invalidada sana, incidente, lentitud sana, pits y condiciones; conservar desconocidos y procedencia por familia. | Matriz señal/familia/condición y acuerdo/incertidumbre; no consumir holdout para explicar o ajustar casos. Puede avanzar mientras se completa UI. |
+| Transversal · T20a→b | Medir criterio actual y candidatos; informe con contaminación/descarte/cobertura/error, coste y propuesta agrupada de umbrales/N. Tras decisión aplicable, implementar sólo el ajuste aprobado y congelar versiones. | Una propuesta concreta para Isaac; baseline, intervalos por carrera y límites. Antes de evaluación: hashes, split/deduplicación, selección, versiones, métricas y N registrados. Sin umbral aprobado, seguir resto y conservar A19 inconcluso. |
+| 11 · T21a→b | Primero verificar reserva suficiente sin mirar sus resultados; después ejecutar modelo final congelado, replay y backtests sin fuga futura. | A19 con informe de métricas/N/intervalos y fallos; no contar Imola/Monza expuestos como holdout. Muestra insuficiente es inconclusa; si se ajusta tras evaluar, nueva reserva antes de volver a certificar. |
+| 12 · T18 | Capturas comparables de asistente, Carrera, Datos avanzado, Cálculo, Plan, Revisiones, Stint y Parada en estados obligatorios; corregir y repetir. | >9/10 **cada pantalla**, revisión exclusivamente visual separada, teclado/escalado/ES-EN-PT-IT; conjunto ordenado para Isaac. Sin nota agregada que esconda fallo. |
+| Transversal · T22a | Inventariar bloqueo WebView2 con logs/PID/configuración ya disponibles, procedimiento canónico y plan de reproducción acotado. La reproducción GUI se ejecuta sólo cuando la instrucción vigente del PC lo permita. | Causa demostrada o diagnóstico inconcluso con siguiente prueba; no declarar solucionado por cambiar puerto/perfil sin comparación, no cerrar procesos ajenos. Las correcciones fuera de Strategy reciben issue propia. |
+| 13 · T22b→c | Recorrer E01–E08 en Wails real: primero diagnóstico autorizado y luego configuración de distribución/licencia; guardar/reiniciar, copia/original ausente, cancelación, errores y volumen. | A01–A18 aplicables con hashes, logs/capturas saneados, recursos liberados y tiempos/memoria; tres repeticiones si se compara rendimiento. Un banco de reader o fake de authorizer no cierra distribución. |
+| 14 · T23 | Consolidar informe de A01–A19/A21 y E01–E08, diff/reviews/handoff/roadmap/issues; preparar entrega aislada y, cuando esté autorizado, PR/CI. | Sin P0/P1 del recorrido ni criterios pendientes ocultos; aceptación visual y empírica registradas. Reconciliar stack con base remota actual sin reescritura destructiva; gates sobre SHA final. No marcar integrado/publicado por cierre local. |
+| Posterior · T24a→c | Inventario OSS con fuentes primarias y licencias; comparar algoritmos/replay/Monte Carlo/calibración/coste y experimentos reproducibles; informe y propuesta SDD live. | Recorded aceptado antes de iniciar. Separar permiso de estudiar, reutilizar código y cambiar arquitectura; no código live ni nueva dependencia antes de decisión. Investigación extensa con límites y recomendación, no lista de enlaces. |
+
+## 3.2 Checkpoints de orquestación
+
+- **C0 — listo para límites:** T19a aporta anclas comprobadas y T13a cierra
+  contrato/issue. Si no hay ancla defendible, declarar capacidad no disponible
+  y continuar entradas/revisiones; no fabricar timestamps para desbloquear UI.
+- **C1 — listo para calcular:** T13/T14 y matriz T02/T06/T07/T03 cerrados
+  localmente. El orquestador contrasta payload real, persistencia y replay antes
+  de asignar T15; no basta el aspecto del asistente.
+- **C2 — recorrido funcional:** T15/T16/T17 pasan casos observables y
+  matemáticos; las vistas finales están listas para T18 y E2E.
+- **C3 — evidencia de aceptación:** T18, T21 y T22 con artefactos del mismo
+  corte aplicable. Bloqueos de muestra, WebView2 o distribución siguen visibles;
+  trabajo local implementado puede revisarse sin llamarlo producto terminado.
+- **C4 — entrega:** T23 distingue listo para aceptación, aceptado, PR/CI,
+  integración y publicación. Una aprobación de visuales no autoriza promoción.
+
+Tras cada corte: informe del ejecutor → comprobar diff y logs → actualizar único
+handoff/issue → commit acotado → elegir siguiente corte elegible. No detener el
+programa por completar una casilla. Consultas humanas agrupadas sólo para
+umbrales/N, incidentes realmente indeterminados, aceptación final y promociones.
 
 ## 4. Comandos verificables
 

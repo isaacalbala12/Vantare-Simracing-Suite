@@ -1,4 +1,4 @@
-# Aceptación, trazabilidad y cierre — SDD v1.0
+# Aceptación, trazabilidad y cierre — SDD v1.1
 
 [Especificación](README.md) · [Tareas](execution.md).
 
@@ -33,7 +33,7 @@ algunos casos individuales ya pasaron. El handoff/issue conserva su estado actua
 | A14 | R15 | Stint/parada editables con recursos, ventanas, inventario y coste válidos; drag y teclado equivalentes. No doble conteo de servicio ni reserva negativa. | Tests solver final + interacción y capturas; T16/T17. |
 | A15 | R16 | Aceptar, modificar corrección, guardar, cerrar, reiniciar y reabrir reproduce revisión exacta. Plan aceptado permanece consultable sin original; derivación exige fuente/revisión válida. | E2E real + tests archivo cambiado/head avanzada/revisión perdida; T09/T14/T22. |
 | A16 | R17 | Nuevo flujo no exige migración legacy; tampoco borra datos reales ni utiliza estrategias de ejemplo como evidencia de telemetría. | Revisión consumidores/cutover y arranque aislado; T14/T22. |
-| A17 | R18/R19 | Revisión personal de código y Ponytail por bloque, pruebas pertinentes, sin ocultar fallos. Planes/docs a cargo del orquestador; ejecutor Muse vía OpenCode según R19, sin subdelegación ni ediciones concurrentes. | Diffs e informes de revisión, issues hallazgos, gates completos; todos los cortes. |
+| A17 | R18/R19 | Revisión personal de código y Ponytail por bloque, pruebas pertinentes, sin ocultar fallos. Planes/docs y aceptación a cargo del orquestador; ejecutor según el reparto operativo vigente en execution.md, sin subdelegación implícita ni ediciones concurrentes. | Diffs e informes de revisión, issues hallazgos, gates completos; todos los cortes. |
 | A18 | R20 | Wails real en build/configuración aplicable, autorizado, recursos liberados y originales intactos; LMU no intervenido. | PID/path propios, versiones/runtime/configuración saneada y logs/capturas; T22. |
 | A19 | R21 | Corrección matemática y error empírico medidos por separado con corpus reservado suficiente y protocolo congelado. | Informes T19–T21, métricas/N/intervalos y límites, no fuga futura. |
 | A20 | R22 | Editor registrado validado antes de implementar live; investigación compara OSS y decide Monte Carlo con licencias/evidencia. | Informe posterior T24, sin código live anticipado. |
@@ -154,7 +154,7 @@ inconcluso aunque el software pueda probarse. No anunciar el conjunto terminado.
 canal y gates correspondientes; **publicado** requiere release verificable y
 autorizada. Ninguno se deduce de tests locales ni de escribir este SDD.
 
-## 7. Revisión documental de esta versión
+## 7. Revisión documental histórica v1.0
 
 ISA-1091, base 0240bc78. Revisados chat, spec/maestro #1028, contrato/ADR 0010,
 protocolo #1030, prototipo #1063, handoffs, código de correcciones/adapter/cálculo
@@ -168,3 +168,24 @@ A01–A21 y T00–T24, referencias cruzadas, JSON de roadmap regenerado y diff c
 No Go/React/tests/build/app en esta entrega exclusivamente documental. La
 revisión es personal; no se atribuye revisión adversarial independiente del SDD.
 Las mediciones/test del código citados son evidencia previa, no nuevas ejecuciones.
+
+## 8. Revisión de continuidad v1.1 — 2026-09-13
+
+Base auditada `c2d5b45b`, stack ISA-1104. Revisión documental independiente
+solicitada a Astra high: contrastados SDD, handoff, roadmap, issues #1091/#1104/
+#1030/#1033/#1092/#1089/#1028/#1063/#439/#436, matriz #1092 y componentes/adapter actuales. Se conservan R01–R23,
+A01–A21 y T00–T24. La numeración de T12 no prueba que todas las tareas anteriores
+estén cerradas: T02/T03/T06/T07 requieren cierre explícito antes de T15; T11i
+sigue en T18/T22. T19a temporal precede a T13 y no exige certificar incidentes.
+
+El plan ahora desglosa subcortes, dependencias y checkpoints C0–C4. T14 incluye
+recuperación de comandos tras reinicio y distingue historial de fuente/plan.
+T21 exige modelo final congelado y reserva suficiente; T22 tiene preflight
+temprano para no posponer el bloqueo nativo hasta el final. T23 no puede cerrar
+A19 inconcluso ni sustituir distribución por authorizer controlado. T24 comienza
+tras aceptación recorded y continúa siendo investigación sin código live.
+
+T12 PASS local y los bancos J9 se citan como evidencia previa, no ejecuciones
+nuevas de esta revisión. Verificación documental: referencias relativas/IDs,
+diff y regeneración canónica del roadmap. No se ejecutan Go/frontend/build ni
+Wails porque sólo se actualiza documentación de planificación.

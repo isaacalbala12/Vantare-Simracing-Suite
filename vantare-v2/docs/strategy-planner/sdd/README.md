@@ -1,6 +1,6 @@
 # SDD — Strategy sobre telemetría registrada
 
-Versión 1.0 · 2026-09-09 · ISA-1091 · continuación de ISA-694/1028.
+Versión 1.1 · revisión de continuidad 2026-09-13 · ISA-1091 · continuación de ISA-694/1028.
 
 ## Autoridad y propósito
 
@@ -16,9 +16,11 @@ Las decisiones de producto y ejecución del chat se conservan; seguir
 [execution.md](execution.md) de principio a fin sin preguntar «¿continúo?»
 entre tareas. El reparto vigente entre orquestador y ejecutor está en R19.
 
-Base comprobada: `0240bc7806570be17832aea6153300631f392170`, stack local hasta
-ISA-1090. Rama documental `vantareapp/isa-1091-strategy-sdd`; worktree aislado
-`C:/tmp/vantare-isa1091`. Ninguna evidencia local equivale a integración Nightly.
+Base histórica del SDD: `0240bc7806570be17832aea6153300631f392170` (ISA-1090).
+Revisión de continuidad contrastada en `c2d5b45b43bbf8ff0efb2cd16f1598f7a4925eff`,
+stack local ISA-1104. [execution.md §0](execution.md#0-punto-de-reanudación-comprobado--2026-09-13)
+identifica capacidades presentes y cierres restantes. No se da T00–T12 por
+completo por haber cerrado T12. Ninguna evidencia local equivale a integración Nightly.
 
 **Lectura operativa:** este archivo → [ejecución](execution.md) →
 [aceptación](acceptance.md) → sección técnica necesaria. El único estado vivo de
@@ -64,7 +66,7 @@ spec aprobada #1028 para recuperar su significado.
 | R16 | Plan aceptado fija fuentes, correcciones, selección, reglas y versión del cálculo. Cambiar la cabeza de una sesión no lo altera. | A15 |
 | R17 | No se exige migrar estrategias antiguas no usadas; no autoriza borrar originales ni datos reales. | A16 |
 | R18 | Auditoría Ponytail + revisión de código antes de nuevos bloques; tests, evidencia real y revisión visual iterativa. | A17 |
-| R19 | El orquestador mantiene planes, producto/arquitectura, documentación y revisión personal. Isaac autoriza código/tests en Muse Spark 1.3 Contributor vía OpenCode, xhigh, un ejecutor por worktree y sin subdelegación. Revisión adversarial exclusivamente visual separada, >9/10 por pantalla antes de pedir revisión humana. | A06, A17 |
+| R19 | El orquestador mantiene planes, producto/arquitectura, documentación y aceptación basada en revisión del diff y evidencia. Un ejecutor por worktree, sin subdelegación implícita; proveedor/modo vigentes se fijan operativamente en execution.md. Revisión adversarial exclusivamente visual separada, >9/10 por pantalla antes de pedir revisión humana. | A06, A17 |
 | R20 | PC autorizado para bancos/builds/app cuando esté libre; coordinar otras mediciones. LMU no se inicia ni se cierra. | A18 |
 | R21 | Seguridad sobre el cálculo sin incidentes: demostrar modelo y medir error empírico; no prometer infalibilidad ni contrafactuales observados. | A19 |
 | R22 | Live, investigación OSS extensa y posible Monte Carlo después del editor registrado validado. Monte Carlo es hipótesis, no arquitectura aprobada. | A20 |
@@ -74,22 +76,22 @@ spec aprobada #1028 para recuperar su significado.
 
 Estado de referencia, no certificación permanente: revalidar al empezar cada corte.
 
-| Capacidad | Evidencia local al 09-09 | Pendiente real |
+| Capacidad | Evidencia local al 13-09 | Pendiente real |
 |---|---|---|
-| Diseño | Prototipo A4, recorrido unificado, stint/parada y revisiones visuales #1063. | Porte a React productivo y paridad de todo el recorrido. |
-| Lectura | Reader nativo autorizado; discovery corregido #1090 descubre 416 candidatas. | Biblioteca usable, propuestas automáticas y recuperación/copia en recorrido completo. |
-| Correcciones escalares | Base, precondición, snapshot, custodia, vista efectiva y derivados #1066–1082. | UI de edición; otras operaciones del contrato y sus derivaciones. |
-| Selección exacta | Documento, cliente, adaptador y consumo #1084–1088; Wails guarda Imola exacta. | Reapertura/reinicio y plan aceptado completo, varias fuentes en UI y errores. |
-| Motor | SolverV2, evaluación final #1041 y horizonte #1042; tests existentes. | #1089 timeout real 8 s; auditoría de todas las entradas y prueba integral. |
-| Criterios | Inventario/protocolo #1030; señales y límites identificados. | Anotación independiente, umbrales/muestra preregistrados y carreras completas reservadas. |
-| Calidad local | #1090: 420 archivos/3308 tests frontend, Go/vet/build/lint; hashes intactos. | Nueva evidencia tras cada cambio; CI, build de distribución y aceptación integral. |
+| Diseño y entrada | Asistente A4 unificado y biblioteca productiva #1093–1095; configuración guardada/reabierta. | Completar reglas/pilotos y paneles cálculo/plan/stint/parada; paridad T18 y recorrido Wails T22. |
+| Lectura/correcciones | Valor, uso por familia, clasificación y catálogo canónico v4 #1096/#1099/#1104. Banco J9 bidireccional Imola↔Monza conserva hashes originales. | Límites T13, comandos tras reinicio y revisiones completas de plan T14, gates nativos/visuales. |
+| Selección exacta | Documento/cliente/adapter #1084–1088 y adopción explícita desde Datos/Revisiones. | Plan aceptado reproducible con todas las entradas/versiones y consulta sin fuente; T14/T22. |
+| Motor/entradas | SolverV2, replay final y corrección local del coste repetido #1089; transporte de reglas #1092. | T02/T03/T06/T07 no completos: perfiles, disponibilidad, inventario, servicios/formación, recursos/horizonte y estados; conexión productiva T15. |
+| Criterios | Inventario/protocolo #1030; Imola/Monza son preparación expuesta. | T19a temporal antes de límites; anotación independiente, calibración y reserva suficiente T19–T21. |
+| Calidad | Gates locales y bancos por corte; T12 local cerrado en c2d5b45b. | WebView2 ERROR_INVALID_STATE sin causa demostrada, aceptación visual/nativa/distribución y precisión empírica. |
 
 Las notas antiguas «falta cliente/selección/productor» quedan superadas por
-#1082–1088. Las frases antiguas «no implementado» del ADR 0010 describen su
-fecha de redacción, no el estado actual de la mecánica escalar. No rehacerla.
-Las restricciones temporales anteriores «sin app/build» fueron levantadas por
-Isaac; sigue vigente la coordinación del PC. La prueba diagnóstica no certifica
-licencia ni distribución. El timeout es un bloqueo real, no un resultado válido.
+#1082–1088. Las frases «no implementado» del ADR 0010 describen su fecha de
+redacción; no rehacer la mecánica ya existente. Las autorizaciones del PC y de
+acciones remotas se comprueban con la instrucción vigente del chat: el SDD no
+levanta restricciones posteriores. Esta revisión no abre app ni genera build
+de escritorio. Prueba diagnóstica, banco nativo y distribución son evidencias
+distintas. El estado vivo y sus artefactos permanecen en el handoff único.
 
 ## 4. Contrato de experiencia
 
@@ -270,11 +272,11 @@ y marca el resultado desactualizado. Recálculo conserva restricciones y muestra
 coste frente a propuesta comparable con mismas fuentes/reglas. Inviabilidad
 se explica; nunca se altera una regla/recurso para ocultarla.
 
-Timeout actual #1089: reproducir, perfilar y corregir causa antes de aumentar
-presupuesto. Mantener cancelación real y UI disponible. Objetivo inmediato:
-resolver el caso Imola controlado dentro del presupuesto existente con misma
-semántica; si no es posible, documentar evidencia y opciones de producto, sin
-presentar una heurística como óptimo. No iniciar un motor alternativo.
+#1089 corrigió localmente el coste repetido de paradas sin cambiar alternativas.
+Conservar esa regresión y revalidar presupuesto/cancelación con el modelo final
+y runtime aplicable en T22. Si reaparece un timeout, reproducir y perfilar antes
+de aumentar presupuesto; no presentar una heurística como óptimo ni iniciar un
+motor alternativo. El tiempo del banco de reader J9 no es tiempo del solver.
 
 ## 8. Arquitectura y código reutilizable
 
@@ -347,7 +349,7 @@ forecast; escenarios generales hipotéticos; editor SQL/fórmulas/interpolación
 publicación comunitaria/tienda; Engineer/Spotter/widgets live nuevos; reescritura
 de arquitectura; promoción/release automáticas. Preservar módulos existentes.
 
-Después de A01–A19: investigación OSS extensa (algoritmos, licencias, costes,
+Después de la aceptación del registrado (A01–A19/A21 y T23): investigación OSS extensa (algoritmos, licencias, costes,
 supuestos, replay, calibración, incertidumbre y Monte Carlo), informe comparativo
 y propuesta de arquitectura propia. Su resultado decide el diseño live; no se
 promete copiar código ni una licencia compatible antes de revisarla.

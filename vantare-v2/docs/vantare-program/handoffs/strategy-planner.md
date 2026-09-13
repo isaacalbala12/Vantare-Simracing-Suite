@@ -1,6 +1,38 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — T12j8a aceptado; J8b preparado
+## Estado vigente — T12 cerrado localmente; plan restante reconciliado
+
+Auditoría de continuidad al 2026-09-13 sobre `c2d5b45b43bbf8ff0efb2cd16f1598f7a4925eff`,
+rama `vantareapp/isa-1104-recorded-classification`, worktree
+`C:/tmp/vantare-isa1104`. El cierre J9 está documentado al final de este mismo
+handoff: código `fc57eb9a`, cierre `10105058`, corrección de evidencia `c2d5b45b`.
+T12 local cerrado en código, frontend web y banco real Imola→Monza 23.99 s /
+Monza→Imola 35.98 s; hashes intactos. Esas duraciones son del banco, no del solver.
+Sin push/PR/CI remota/integración ni aceptación Wails/visual/empírica.
+
+El [plan SDD v1.1](../../strategy-planner/sdd/execution.md) sustituye la cola de
+«siguientes» de los apuntes históricos de este archivo. T00–T12 **no** se
+consideran todos completos: quedan entradas/perfiles/inventario/servicios y
+estados de T02/T03/T06/T07. Se ha contrastado con matriz #1092 y UI actual.
+Primero T19a valida anclas temporales de preparación y T13a cierra microplan e
+issue; después límites T13, entradas/reglas/pilotos/estados y revisiones T14,
+cálculo T15, stint/parada T16/T17. Anotación/calibración y preflight nativo pueden
+adelantarse entre cortes. T18/T21/T22 cierran visual, empírico y distribución;
+T23 entrega aceptable. T24 OSS/Monte Carlo sólo tras aceptación recorded.
+
+Orquestador conserva dirección/planes/docs/aceptación y comprueba diff/evidencia;
+Devin MCP SWE-2 Max implementa/revisa cortes con modelo confirmado. Ante bloqueo
+del adaptador puede haber relevo local documentado, deteniendo primero cualquier
+ejecutor anterior. No OpenCode, subdelegación implícita ni dos escritores en
+un worktree. Astra high revisa únicamente el plan por petición expresa.
+Esta revisión documental no abre app/Wails/LMU ni genera build de escritorio.
+
+Persisten: T11i/T22 `ERROR_INVALID_STATE` sin causa probada, reserva de carreras
+completas insuficiente y umbrales/N sin aprobar. Estos gates no bloquean tareas
+independientes ni se transforman en PASS para declarar terminado el producto.
+#1091 cubre revisión SDD; las futuras implementaciones necesitan issue/base propias.
+
+## Historial — T12j8a aceptado; J8b preparado
 
 J8a aceptado localmente y guardado en `59b9c870`: cinco paths, 368
 inserciones/26 borrados. El contrato TypeScript acepta snapshot v4 y seis

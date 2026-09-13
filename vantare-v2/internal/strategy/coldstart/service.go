@@ -22,7 +22,56 @@ type Decision string
 const (
 	defaultImportConcurrency = 4
 	maximumImportConcurrency = 4
+
+	// La representacion normalizada infla el fichero de origen ~16x: acotar la
+	// tanda a 4 GiB estimados mantiene el pico conjunto controlado incluso con
+	// el maximo de importaciones en paralelo.
+	maxImportBatchEstimatedBytes = int64(4 << 30)
+	importMemoryExpansionFactor  = int64(16)
+	// Candidatos sin tamano declarado cuentan ~1 GiB: el presupuesto de tanda
+	// reproduce entonces el limite historico de 4 importaciones paralelas.
+	defaultImportMemoryEstimate = int64(1 << 30)
 )
+
+// importMemoryEstimate estima el heap retenido al importar un candidato.
+func importMemoryEstimate(candidate telemetryanalysis.Candidate) int64 {
+	if candidate.Size <= 0 {
+		return defaultImportMemoryEstimate
+	}
+	return candidate.Size * importMemoryExpansionFactor
+}
+
+// selectPendingBatch elige la siguiente tanda de importacion acotada por
+// memoria estimada, no solo por numero de ficheros: varias sesiones grandes en
+// paralelo multiplicarian el pico de heap. Un candidato que solo no cabe sigue
+// pudiendo importarse a solas en su propia tanda.
+func selectPendingBatch(
+	candidates []telemetryanalysis.Candidate,
+	imported map[string]struct{},
+	failed map[string]struct{},
+	limit int,
+) []telemetryanalysis.Candidate {
+	pending := make([]telemetryanalysis.Candidate, 0, limit)
+	var batchEstimate int64
+	for _, candidate := range candidates {
+		if _, exists := imported[candidate.Locator]; exists {
+			continue
+		}
+		if _, exists := failed[candidate.Locator]; exists {
+			continue
+		}
+		estimate := importMemoryEstimate(candidate)
+		if len(pending) > 0 && batchEstimate+estimate > maxImportBatchEstimatedBytes {
+			continue
+		}
+		pending = append(pending, candidate)
+		batchEstimate += estimate
+		if len(pending) == limit {
+			break
+		}
+	}
+	return pending
+}
 
 const (
 	DecisionPending  Decision = "pending"
@@ -157,19 +206,7 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 	for _, failure := range state.Failures {
 		failed[failure.Locator] = struct{}{}
 	}
-	pending := make([]telemetryanalysis.Candidate, 0, service.importConcurrency())
-	for _, candidate := range service.candidates {
-		if _, exists := imported[candidate.Locator]; exists {
-			continue
-		}
-		if _, exists := failed[candidate.Locator]; exists {
-			continue
-		}
-		pending = append(pending, candidate)
-		if len(pending) == cap(pending) {
-			break
-		}
-	}
+	pending := selectPendingBatch(service.candidates, imported, failed, service.importConcurrency())
 	if len(pending) > 0 {
 		results := make([]candidateImportResult, len(pending))
 		var wait sync.WaitGroup

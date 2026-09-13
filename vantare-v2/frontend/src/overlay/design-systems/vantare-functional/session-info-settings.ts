@@ -31,5 +31,9 @@ export function parseFunctionalSettings(input: unknown) {
     // Preferencia explícita de marca integrada (ISA-1105): solo preferencia,
     // nunca autoridad. El renderer la combina con la decisión de marca.
     showBrand: value.showBrand === true,
+    ...(typeof value.brandVisible === "boolean" ? { brandVisible: value.brandVisible } : {}),
+    ...(Array.isArray(value.footerSlots)
+      ? { footerSlots: value.footerSlots.filter((slot): slot is string => typeof slot === "string") }
+      : {}),
   };
 }

@@ -213,9 +213,10 @@ func TestProfileDocumentStoreFunctionalStandingsRoundTrip(t *testing.T) {
 }
 
 func TestProfileDocumentStoreIracingPedalsRoundTrip(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "iracing.json")
-	widget := validWidget("pedals-telemetry-main", WidgetTypePedalsTelemetryCompact)
+	path := filepath.Join(t.TempDir(), "iracing-pedals.json")
+	widget := validWidget("pedals-advanced-main", WidgetTypePedalsTelemetryCompact)
 	widget.Visual.SystemID = DesignSystemVantareIracing
+	widget.Visual.BaseSettings = map[string]any{"templateId": "iracing"}
 	doc := ConvertProfileV3ToV4(validProfileV3(widget))
 	store := ProfileDocumentStore{}
 	revision, err := store.SaveV4(path, "", doc, ProfileSchemaVersionV4)
@@ -227,8 +228,9 @@ func TestProfileDocumentStoreIracingPedalsRoundTrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := loaded.Document.Layouts[LayoutGeneral].Widgets[0]
-	if loaded.Revision != revision || got.Visual.SystemID != DesignSystemVantareIracing {
-		t.Fatalf("iracing selection did not survive reopening: %+v", got.Visual)
+	if loaded.Revision != revision || got.Visual.SystemID != DesignSystemVantareIracing ||
+		got.Visual.BaseSettings["templateId"] != "iracing" {
+		t.Fatalf("iracing selection lost: %+v", got.Visual)
 	}
 }
 

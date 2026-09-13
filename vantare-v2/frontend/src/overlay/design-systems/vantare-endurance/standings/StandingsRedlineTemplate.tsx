@@ -192,10 +192,9 @@ export function StandingsRedlineTemplate({
   const rootRef = useRef<HTMLDivElement | null>(null);
   const parsed = parseStandingsEnduranceSettings(settings);
   // El motor Redline es el más pesado (FLIP sobre todas las filas + battles +
-  // ghosts): solo corre cuando la política da presupuesto completo, y nunca
-  // en el tema tower — la geometría de movimiento de la tabla compacta (30px)
-  // no aplica a filas de 73px. Historic profiles retain their motion engine.
-  const motionEffects = useStandingsMotion(model, model.status === "ready" && motion === "full" && parsed.redlineTheme !== "tower", rootRef);
+  // ghosts): solo corre cuando la política da presupuesto completo, y nunca en
+  // la torre estática de estudio.
+  const motionEffects = useStandingsMotion(model, model.status === "ready" && parsed.redlineTheme !== "tower" && motion === "full", rootRef);
   const sessionBest = findSessionBestLapSeconds(model.rows);
   const groups = groupRowsByClass(model.rows);
   const battleByAhead = new Map(motionEffects.battles.map((battle) => [battle.aheadId, battle]));

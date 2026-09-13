@@ -34,8 +34,8 @@ export function WidgetVisualViewport(props: {
   const geometry = tower
     ? resolveWidgetVisualGeometry(props.layout, REDLINE_TOWER_BASE_WIDTH)
     : fluidWidth
-    ? resolveWidgetVisualGeometry(props.layout, props.visualBaseWidth ?? props.layout.w)
-    : resolveWidgetVisualGeometryForType(props.layout, props.widgetType);
+      ? resolveWidgetVisualGeometry(props.layout, props.visualBaseWidth ?? props.layout.w)
+      : resolveWidgetVisualGeometryForType(props.layout, props.widgetType);
   return (
     <div
       data-testid={props.testId}

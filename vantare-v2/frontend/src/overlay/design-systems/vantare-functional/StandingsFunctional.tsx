@@ -1,16 +1,18 @@
 import { useRef, type CSSProperties } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { WidgetRendererProps } from "../../core/design-system-definition";
-import { flipRows, useWidgetMotion } from "../../core/widget-motion";
+import { useWidgetMotion } from "../../core/widget-motion";
 import { FUNCTIONAL_IDENTITY_METRICS as IDENTITY, resolveFunctionalColumnWidth, resolveFunctionalIdentitySpan, resolveFunctionalHeaderInfoPlacement } from "../../widget-types/standings/functional-standings-layout";
 import { resolveStandingsCellValue, type StandingsViewModel } from "../../widget-types/standings/standings-view-model";
 import { functionalLabels } from "./labels";
 import vantareMark from "../../../assets/orbit/vantare-mark.png";
 import { parseFunctionalSettings } from "./session-info-settings";
 import { SessionInfo } from "./SessionInfo";
-import { deriveOvertakes } from "./functional-motion";
+import { deriveIndexOffsets, deriveOvertakes } from "./functional-motion";
 import {
   FOOTER_SLOT_GAP_PX,
+  FOOTER_SLOT_PAD_PX,
+  FOOTER_SLOT_ROW_PX,
   footerSlotItemWidth,
   resolveFunctionalFooterSlots,
 } from "./footer-slots";
@@ -18,23 +20,24 @@ import {
 export function StandingsFunctional({ model, settings, layout, motion = "full", effects }: WidgetRendererProps<StandingsViewModel>) {
   const { locale } = useI18n();
   const rootRef = useRef<HTMLElement | null>(null);
-  useWidgetMotion(model, motion !== "minimal", rootRef, ({ prev, next, root, schedule, persist }) => {
-    flipRows(root, persist, {
-      rows: "[data-standings-row]",
-      id: (row) => row.dataset.standingsRow,
-      duration: (from) => Math.min(460, 260 + (Math.abs(from) / 30) * 50),
-    });
+  useWidgetMotion(model, motion !== "minimal", rootRef, ({ prev, next, root, schedule }) => {
+    const stride = root.querySelector<HTMLElement>("[data-standings-row]")?.getBoundingClientRect().height ?? 30;
+    for (const [id, delta] of deriveIndexOffsets(prev.rows, next.rows)) {
+      const row = root.querySelector<HTMLElement>(`[data-standings-row="${CSS.escape(id)}"]`);
+      row?.animate(
+        [{ transform: `translateY(${delta * stride}px)` }, { transform: "translateY(0)" }],
+        { duration: Math.min(460, 260 + Math.abs(delta) * 50), easing: "cubic-bezier(0.22, 0.9, 0.3, 1)" },
+      );
+    }
     if (motion === "full") {
       const { gained, lost } = deriveOvertakes(prev.rows, next.rows);
       for (const [id, direction] of [...gained.map((id) => [id, "rise"] as const), ...lost.map((id) => [id, "fall"] as const)]) {
         const row = root.querySelector<HTMLElement>(`[data-standings-row="${CSS.escape(id)}"]`);
         if (!row) continue;
         row.dataset.motion = direction;
-        schedule(650, () => { delete row.dataset.motion; }, `motion-${id}`);
+        schedule(650, () => { delete row.dataset.motion; });
       }
     }
-  }, (root) => {
-    root.querySelectorAll<HTMLElement>("[data-motion]").forEach((element) => { delete element.dataset.motion; });
   });
   const labels = functionalLabels[locale];
   const config = parseFunctionalSettings(settings);
@@ -70,6 +73,20 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
   const labelFor = (metric: string) => metric === "gap" && paceSession ? labels.paceGap : labels[metric as keyof typeof labels] ?? metric;
   const headerInfo = <SessionInfo className="vf-header-info" choices={[config.headerFirst, config.headerSecond]} model={model} labels={labels} />;
 
+  const slotRows = footerSlots.length <= 5 ? (footerSlots.length > 0 ? 1 : 0) : Math.ceil(slotsTotal / innerWidth);
+  const slotsHeight = slotRows > 0 ? FOOTER_SLOT_PAD_PX + slotRows * FOOTER_SLOT_ROW_PX : 0;
+  const footerHeight = slotsHeight || (hasAmbientFooter ? 30 : config.showSessionFooter ? 22 : 0);
+  const brandBandHeight = !hasHeader && brandVisible ? 22 : 0;
+  const looseHeaderHeight = externalHeader && hasHeader ? (broadcast ? 46 : 49) : 0;
+  const externalInfoHeight = externalHeader && infoPlacement === "band" ? 22 : 0;
+  const tableHeaderHeight = broadcast ? 24 : 50;
+  const internalInfoHeight = !externalHeader && infoPlacement === "band" ? 22 : 0;
+  const tableSpace = layout?.h === undefined
+    ? Number.POSITIVE_INFINITY
+    : layout.h - footerHeight - brandBandHeight - looseHeaderHeight - externalInfoHeight;
+  const rowsFit = Math.max(0, Math.floor((tableSpace - tableHeaderHeight - internalInfoHeight) / 30));
+  const visibleRows = Number.isFinite(tableSpace) ? model.rows.slice(0, rowsFit) : model.rows;
+
   const sessionHeader = <div className="vf-session" title={`${sessionLabel} · ${labels.remaining}`}>
     {brandVisible ? <span className="vf-brand" aria-label="Vantare"><img src={vantareMark} alt="" />VANTARE</span> : null}
     <span className="vf-session-context"><span className="vf-session-type" role={model.status === "stale" ? "status" : undefined}>{model.status === "stale" ? labels.stale : sessionLabel}</span><span className="vf-clock">{model.remainingText}</span></span>
@@ -84,7 +101,8 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
       {externalHeader && infoPlacement === "band" && <div className="vf-info-band">{headerInfo}</div>}
       {statusText && model.status !== "stale" && <p className="vf-status" role="status">{statusText}</p>}
       {model.statusMessage && model.status !== "stale" && <p className="vf-detail">{model.statusMessage}</p>}
-      {!unavailable && model.rows.length > 0 && (
+      {!unavailable && visibleRows.length > 0 && (
+        <div className="vf-table-wrap">
         <table className="vf-table" aria-label={`${sessionLabel} · ${model.activeClass}`}>
           <colgroup>{columns.map((column) => <col key={column.id} style={{ width: resolveFunctionalColumnWidth(column, broadcast) }} />)}</colgroup>
           <thead>{splitHeader ? <>
@@ -96,7 +114,7 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
             {columns.slice(broadcast ? 0 : identitySpan).map((column) => <th key={column.id} scope="col" data-metric={column.metricId} title={labelFor(column.metricId)}><span className="vf-column-label">{labelFor(column.metricId)}</span></th>)}
             </>}
           </tr>}{!externalHeader && infoPlacement === "band" && <tr><th colSpan={columns.length} className="vf-info-band">{headerInfo}</th></tr>}</thead>
-          <tbody>{model.rows.map((row) => (
+          <tbody>{visibleRows.map((row) => (
             <tr key={row.id} data-standings-row={row.id} data-player={row.isPlayer || undefined}>
               {columns.map((column) => {
                 const value = column.metricId === "driverName" ? row.configuredDriverName ?? row.driverName : resolveStandingsCellValue(row, column.metricId);
@@ -109,6 +127,7 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
             </tr>
           ))}</tbody>
         </table>
+        </div>
       )}
       {footerSlots.length > 0 && !unavailable ? (
         <div className="vf-slots" data-footer-slots data-fit={footerSlots.length <= 5 ? "one-line" : undefined} style={{ "--vf-slot-scale": slotScale.toFixed(3) } as CSSProperties}>

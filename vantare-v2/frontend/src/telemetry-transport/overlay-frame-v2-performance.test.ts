@@ -7,22 +7,26 @@ describe("OverlayFrame v2 parse budget", () => {
     for (let index = 0; index < 100; index += 1) decodeOverlayUpdateV2(encoded);
     // Three trials isolate the decoder from transient work in the shared test
     // runner. As in Go benchmarks, the best stable trial is the gate value.
-    const operationsPerSample = 500;
+    const operationsPerSample = 250;
     const trials = Array.from({ length: 3 }, () => measureTrial(encoded, operationsPerSample));
-    const selected = [...trials].sort((left, right) => left.cpuP99 - right.cpuP99)[0]!;
-    console.info(`OverlayFrame v2 Node JSON.parse+decode best-of-3 CPU p99/op=${selected.cpuP99.toFixed(3)}ms wall=${selected.wallP99.toFixed(3)}ms bytes=${encoded.length}`);
+    const selected = [...trials].sort((left, right) => left.cpuMedian - right.cpuMedian)[0]!;
+    console.info(`OverlayFrame v2 Node JSON.parse+decode best-of-3 CPU median/op=${selected.cpuMedian.toFixed(3)}ms worstBatch=${selected.cpuWorst.toFixed(3)}ms wall=${selected.wallMedian.toFixed(3)}ms bytes=${encoded.length}`);
     // Presupuesto: 1,5 ms por frame sintético completo @104 (~46 KB tras
     // añadir weather, damage y posición por coche en ISA-696/ISA-781; antes
     // ~36 KB y 1 ms). El runner de CI de Windows es ~1,5x más lento que un
     // equipo de desarrollo. El frame real de LMU @104 ronda la mitad de bytes.
-    expect(selected.cpuP99).toBeLessThan(1.5);
+    // La puerta es la mediana de los 8 lotes: el "p99" anterior era el max de
+    // 4 muestras, el estimador mas ruidoso posible — un solo lote con pausa
+    // de GC o rescheduling lo violaba sin regresion real (ISA-1019). Una
+    // regresion de coste real infla todos los lotes y rompe la mediana igual.
+    expect(selected.cpuMedian).toBeLessThan(1.5);
   }, 60_000);
 });
 
 function measureTrial(encoded: string, operationsPerSample: number) {
   const cpuSamples: number[] = [];
   const wallSamples: number[] = [];
-  for (let index = 0; index < 4; index += 1) {
+  for (let index = 0; index < 8; index += 1) {
     const wallStarted = performance.now();
     const cpuStarted = process.cpuUsage();
     for (let operation = 0; operation < operationsPerSample; operation += 1) {
@@ -34,11 +38,16 @@ function measureTrial(encoded: string, operationsPerSample: number) {
   }
   cpuSamples.sort((left, right) => left - right);
   wallSamples.sort((left, right) => left - right);
-  return { cpuP99: percentile99(cpuSamples), wallP99: percentile99(wallSamples) };
+  return {
+    cpuMedian: median(cpuSamples),
+    cpuWorst: cpuSamples[cpuSamples.length - 1]!,
+    wallMedian: median(wallSamples),
+  };
 }
 
-function percentile99(samples: readonly number[]): number {
-  return samples[Math.ceil(samples.length * 0.99) - 1]!;
+function median(samples: readonly number[]): number {
+  const middle = samples.length / 2;
+  return (samples[middle - 1]! + samples[middle]!) / 2;
 }
 
 function syntheticFullUpdate(vehicles: number) {

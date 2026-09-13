@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import { cleanup, render, screen, act } from "@testing-library/react";
+import { cleanup, render, screen, act, waitFor } from "@testing-library/react";
 import { I18nProvider, useI18n } from "./I18nProvider";
 
 const STORAGE_KEY = "vantare.locale";
@@ -37,14 +37,17 @@ describe("I18nProvider", () => {
     expect(screen.getByTestId("current-locale").textContent).toBe("es");
   });
 
-  it("loads saved locale from localStorage", () => {
+  it("loads saved locale from localStorage", async () => {
     localStorage.setItem(STORAGE_KEY, "en");
     render(
       <I18nProvider>
         <TestConsumer />
       </I18nProvider>,
     );
-    expect(screen.getByTestId("current-locale").textContent).toBe("en");
+    expect((await screen.findByTestId("current-locale")).textContent).toBe("en");
+    expect(screen.getByTestId("translated-welcome").textContent).toBe(
+      "Welcome to Vantare",
+    );
   });
 
   it("persists locale change to localStorage", () => {
@@ -60,7 +63,7 @@ describe("I18nProvider", () => {
     expect(screen.getByTestId("current-locale").textContent).toBe("en");
   });
 
-  it("t() returns translated text that updates when locale changes", () => {
+  it("t() returns translated text that updates when locale changes", async () => {
     render(
       <I18nProvider>
         <TestConsumer />
@@ -72,8 +75,11 @@ describe("I18nProvider", () => {
     act(() => {
       screen.getByTestId("set-en").click();
     });
-    expect(screen.getByTestId("translated-welcome").textContent).toBe(
-      "Welcome to Vantare",
+    // El diccionario en carga bajo demanda: hasta que llega, t() cae a es.
+    await waitFor(() =>
+      expect(screen.getByTestId("translated-welcome").textContent).toBe(
+        "Welcome to Vantare",
+      ),
     );
   });
 
@@ -119,7 +125,7 @@ describe("cross-component language persistence", () => {
     localStorage.clear();
   });
 
-  it("locale set in one provider is visible in a subsequent provider", () => {
+  it("locale set in one provider is visible in a subsequent provider", async () => {
     // Simulate: user changes locale in OnboardingFlow
     const { unmount } = render(
       <I18nProvider>
@@ -132,18 +138,21 @@ describe("cross-component language persistence", () => {
     expect(screen.getByTestId("current-locale").textContent).toBe("en");
     unmount();
 
-    // Simulate: user navigates to SettingsPage (new mount)
+    // Simulate: user navigates to SettingsPage (new mount); el dict lazy
+    // abre el gate del provider en cuanto llega.
     render(
       <I18nProvider>
         <TestConsumer />
       </I18nProvider>,
     );
-    expect(screen.getByTestId("current-locale").textContent).toBe("en");
-    expect(screen.getByTestId("translated-welcome").textContent).toBe(
-      "Welcome to Vantare",
+    expect((await screen.findByTestId("current-locale")).textContent).toBe("en");
+    await waitFor(() =>
+      expect(screen.getByTestId("translated-welcome").textContent).toBe(
+        "Welcome to Vantare",
+      ),
     );
   });
-  it("locale persists after multiple mount/unmount cycles", () => {
+  it("locale persists after multiple mount/unmount cycles", async () => {
     // Cycle through available locales
     const { unmount: unmount1 } = render(
       <I18nProvider>
@@ -159,7 +168,8 @@ describe("cross-component language persistence", () => {
         <TestConsumer />
       </I18nProvider>,
     );
-    act(() => { screen.getByTestId("set-en").click(); });
+    const setEn = await screen.findByTestId("set-en");
+    act(() => { setEn.click(); });
     expect(screen.getByTestId("current-locale").textContent).toBe("en");
     unmount2();
 
@@ -169,7 +179,7 @@ describe("cross-component language persistence", () => {
         <TestConsumer />
       </I18nProvider>,
     );
-    expect(screen.getByTestId("current-locale").textContent).toBe("en");
+    expect((await screen.findByTestId("current-locale")).textContent).toBe("en");
   });
 });
 

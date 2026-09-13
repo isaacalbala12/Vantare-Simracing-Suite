@@ -190,3 +190,13 @@ func TestTierMapCoversEverySection(t *testing.T) {
 		}
 	}
 }
+
+func TestAllSectionsReturnsIndependentValue(t *testing.T) {
+	t.Parallel()
+
+	sections := AllSections()
+	sections[0] = SectionCapabilities
+	if got := AllSections()[0]; got != SectionPlayer {
+		t.Fatalf("AllSections shared mutable storage: first section = %s", got)
+	}
+}

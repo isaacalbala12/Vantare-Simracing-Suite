@@ -59,6 +59,7 @@ const (
 	DesignSystemVantareCrystal    DesignSystemID = "vantare-crystal"
 	DesignSystemVantareEndurance  DesignSystemID = "vantare-endurance"
 	DesignSystemVantareFunctional DesignSystemID = "vantare-functional"
+	DesignSystemVantareIracing    DesignSystemID = "vantare-iracing"
 )
 
 type ProfileDocumentV3 struct {

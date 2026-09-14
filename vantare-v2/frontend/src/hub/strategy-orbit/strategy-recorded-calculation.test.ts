@@ -144,8 +144,15 @@ describe("recordedCalculationVariant", () => {
     });
   });
 
+  it("maps unique free candidates for a timed race", () => {
+    const source = draft({ drivers, driverOrder: { mode: "free", ids: ["alex", "sam"] } });
+    expect(recordedCalculationVariant(source, "dry")).toMatchObject({
+      driverOrderMode: "free",
+      order: ["alex", "sam"],
+    });
+  });
+
   it.each([
-    ["timed free mode", { drivers, driverOrder: { mode: "free", ids: ["alex", "sam"] } }],
     ["duplicate", { race: { format: "laps", laps: 50 }, drivers, driverOrder: { mode: "free", ids: ["alex", "alex"] } }],
     ["foreign", { race: { format: "laps", laps: 50 }, drivers, driverOrder: { mode: "fixed", ids: ["alex", "other"] } }],
     ["missing", { race: { format: "laps", laps: 50 }, drivers, driverOrder: { mode: "fixed", ids: ["alex"] } }],

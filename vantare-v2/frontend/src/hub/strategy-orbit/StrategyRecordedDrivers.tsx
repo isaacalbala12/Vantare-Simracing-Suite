@@ -109,10 +109,9 @@ export function StrategyRecordedDrivers({ draft, onChange, onAdd, t }: {
         <span>{t("strategy.journey.driver.order.mode")}</span>
         <select aria-label={t("strategy.journey.driver.order.mode")} value={driverOrder.mode} onChange={event => setOrder(event.target.value as "fixed" | "free")}>
           <option value="fixed">{t("strategy.journey.driver.order.fixed")}</option>
-          <option value="free" disabled={draft.race.format === "timed"}>{t("strategy.journey.driver.order.free")}</option>
+          <option value="free">{t("strategy.journey.driver.order.free")}</option>
         </select>
       </label>
-      {draft.race.format === "timed" ? <p className="strategy-recorded-drivers__order-note">{t("strategy.journey.driver.order.timedBlocked")}</p> : null}
       <ol>{driverOrder.ids.map((id, index) => {
         const driver = drivers.find(candidate => candidate.id === id);
         const name = driver?.name || t("strategy.journey.unconfirmed");

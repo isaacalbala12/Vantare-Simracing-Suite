@@ -233,9 +233,6 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 	if !fixedDriverOrder && len(variant.Overrides) > 0 {
 		return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, fmt.Sprintf("input.variants.%d.overrides", variantIndex), ErrCalculationInvalid)
 	}
-	if !fixedDriverOrder && event.RaceKind != string(manual.RaceByLaps) {
-		return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, fmt.Sprintf("input.variants.%d.driverOrderMode", variantIndex), fmt.Errorf("free driver order is not supported for timed races: %w", ErrCalculationInvalid))
-	}
 	paceTotal, fuelTotal := 0.0, 0.0
 	for orderIndex, driverID := range variant.Order {
 		driver, ok := drivers[driverID]
@@ -305,6 +302,9 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 	if event.FormationSeconds != nil {
 		formationSeconds = *event.FormationSeconds
 	}
+	if !fixedDriverOrder {
+		return calculateOrbitLapPlan(ctx, event, drivers, variant, variantIndex, planning, solver.MaxRaceLapsV2, averagePace, averageFuel)
+	}
 	estimateInput := raceInput
 	estimateInput.Duration.Value, err = contract.NewDurationSeconds(duration.Value() - formationSeconds)
 	if err != nil {
@@ -325,6 +325,10 @@ func calculateOrbitLapPlan(ctx context.Context, event OrbitCalculationEvent, dri
 	if err != nil {
 		return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, fmt.Sprintf("input.variants.%d.order", variantIndex), err)
 	}
+	if event.RaceKind != string(manual.RaceByLaps) && variant.DriverOrderMode == "free" {
+		durationSeconds := event.DurationMinutes * 60
+		solverInput.RaceDurationSeconds = &durationSeconds
+	}
 	optimised, err := solver.SolveV2Context(ctx, solverInput)
 	if err != nil {
 		return OrbitCalculationPlan{}, mapOrbitCalculationError(err, fmt.Sprintf("input.variants.%d", variantIndex))
@@ -341,6 +345,9 @@ func calculateOrbitLapPlan(ctx context.Context, event OrbitCalculationEvent, dri
 			}
 		}
 		return OrbitCalculationPlan{}, calculationApplicationError(code, fmt.Sprintf("input.variants.%d", variantIndex), cause)
+	}
+	if solverInput.RaceDurationSeconds != nil {
+		raceLaps = orbitDecisionLaps(optimised.Best)
 	}
 
 	stintCount := len(optimised.Best.Stints)
@@ -438,6 +445,14 @@ func calculateOrbitLapPlan(ctx context.Context, event OrbitCalculationEvent, dri
 		return OrbitCalculationPlan{}, mapOrbitCalculationError(err, fmt.Sprintf("input.variants.%d", variantIndex))
 	}
 	return plan, nil
+}
+
+func orbitDecisionLaps(decision solver.DecisionVector) int64 {
+	var laps int64
+	for _, stint := range decision.Stints {
+		laps += stint.Laps
+	}
+	return laps
 }
 
 const orbitLegacyAllInServiceRate = 1e12

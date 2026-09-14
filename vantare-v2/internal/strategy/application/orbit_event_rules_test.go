@@ -175,10 +175,45 @@ func TestOrbitFreeDriverOrderLetsSolverChooseWithoutArtificialStop(t *testing.T)
 		t.Fatalf("explicit fixed rotation = %+v, err=%v", explicit.Plans["base"], err)
 	}
 
-	input.Event = OrbitCalculationEvent{DurationMinutes: 4, TankLiters: 10, PitLossSeconds: 10}
+	input.Event = OrbitCalculationEvent{RaceKind: "time", DurationMinutes: 4, TankLiters: 10, PitLossSeconds: 10}
 	input.Variants[0].DriverOrderMode = "free"
-	if _, err := calculateOrbitContext(context.Background(), input); !errors.Is(err, ErrCalculationInvalid) {
+	timed, err := calculateOrbitContext(context.Background(), input)
+	if err != nil {
 		t.Fatalf("free timed race error = %v", err)
+	}
+	if timed.Plans["base"].TotalLaps != 4 || len(timed.Plans["base"].Stints) != 1 || timed.Plans["base"].Stints[0].DriverID != "fast" {
+		t.Fatalf("free timed plan = %+v", timed.Plans["base"])
+	}
+}
+
+func TestOrbitTimedFreeOrderUsesDecisionClockAcrossPit(t *testing.T) {
+	oneLap := int64(1)
+	minimumStops := 1
+	input := OrbitCalculationInput{
+		Event: OrbitCalculationEvent{
+			RaceKind: "time", DurationMinutes: 4, TankLiters: 10, PitLossSeconds: 100,
+			Rules: &solver.EventRules{
+				MinPitStops: &minimumStops,
+				DriverLimits: map[string]solver.DriverLimit{
+					"fast": {MaxLaps: &oneLap},
+					"slow": {MaxLaps: &oneLap},
+				},
+			},
+		},
+		Drivers: []OrbitCalculationDriver{
+			{ID: "fast", Name: "Fast", Dry: OrbitCalculationPace{PaceSeconds: 60, FuelLitersPerLap: 1}},
+			{ID: "slow", Name: "Slow", Dry: OrbitCalculationPace{PaceSeconds: 120, FuelLitersPerLap: 1}},
+		},
+		Variants:        []OrbitCalculationVariant{{ID: "base", Mode: "dry", DriverOrderMode: "free", Order: []string{"fast", "slow"}}},
+		ActiveVariantID: "base",
+	}
+	result, err := calculateOrbitContext(context.Background(), input)
+	if err != nil {
+		t.Fatalf("calculateOrbitContext: %v", err)
+	}
+	plan := result.Plans["base"]
+	if plan.TotalLaps != 2 || plan.Stops != 1 || math.Abs(plan.TotalSeconds-280) > 1e-9 || plan.FinalLapStartSeconds >= 240 {
+		t.Fatalf("timed free pit plan = %+v", plan)
 	}
 }
 

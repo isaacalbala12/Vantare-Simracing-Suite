@@ -76,7 +76,7 @@ export function recordedCalculationVariant(
   const expected = new Set(driverIds);
   const actual = new Set(order.ids);
   if (driverIds.length === 0 || actual.size !== order.ids.length || actual.size !== expected.size
-    || order.ids.some(id => !expected.has(id)) || (draft.race.format === "timed" && order.mode === "free")) {
+    || order.ids.some(id => !expected.has(id))) {
     throw new Error("Invalid recorded calculation variant");
   }
   return {

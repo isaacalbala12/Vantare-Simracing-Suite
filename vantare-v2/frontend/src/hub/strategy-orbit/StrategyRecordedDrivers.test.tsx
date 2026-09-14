@@ -49,11 +49,13 @@ it("edits and reorders the fixed driver sequence explicitly", () => {
   expect(changed.mock.lastCall?.[0].driverOrder).toEqual({ mode: "free", ids: ["relay", "primary"] });
 });
 
-it("keeps free order visible but unavailable for timed races", () => {
-  render(<Editor changed={vi.fn()} />);
+it("allows free order for timed races", () => {
+  const changed = vi.fn();
+  render(<Editor changed={changed} />);
   const selector = screen.getByRole("combobox", { name: "strategy.journey.driver.order.mode" });
-  expect((within(selector).getByRole("option", { name: "strategy.journey.driver.order.free" }) as HTMLOptionElement).disabled).toBe(true);
-  expect(screen.getByText("strategy.journey.driver.order.timedBlocked")).toBeTruthy();
+  expect((within(selector).getByRole("option", { name: "strategy.journey.driver.order.free" }) as HTMLOptionElement).disabled).toBe(false);
+  fireEvent.change(selector, { target: { value: "free" } });
+  expect(changed.mock.lastCall?.[0].driverOrder).toEqual({ mode: "free", ids: ["primary", "relay"] });
 });
 
 it("removes dependent estimates when their reference driver is removed", () => {

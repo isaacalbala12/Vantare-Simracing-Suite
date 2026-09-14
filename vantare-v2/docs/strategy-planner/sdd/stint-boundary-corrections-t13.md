@@ -1,6 +1,7 @@
 # T13 — correcciones de límites de stint registrados
 
-Estado: contrato T13a cerrado localmente en #1211. Implementación pendiente.
+Estado: contrato T13a cerrado localmente en #1211 y validación pura T13b
+cerrada localmente en #1212. Persistencia, aplicación y UI pendientes.
 Depende de la segmentación temporal corregida por #1208 y de la evidencia T19a
 de #1030.
 
@@ -128,19 +129,17 @@ comandos, autoridad e historial son distintos.
 
 ## Cortes de implementación
 
-### T13b — tipos y validación pura
+### T13b — tipos y validación pura — cerrado localmente en #1212
 
-Hasta cuatro paths nuevos:
+La solución final usa sólo dos paths:
 
 - `internal/telemetryanalysis/stint_corrections.go`
 - `internal/telemetryanalysis/stint_corrections_test.go`
-- `internal/telemetryanalysis/stint_correction_set.go`
-- `internal/telemetryanalysis/stint_correction_set_test.go`
 
-RED mínimo: mover válido; eliminar y fusionar; target obsoleto o ambiguo; primera
-fila `Lap` o ancla sin `lap_event`; ancla fuera de cobertura; dos operaciones
-sobre el mismo target; colisión entre reemplazos; frontera terminal intacta;
-resultado independiente del orden; original intacto.
+El constructor prepara una copia canónica y valida el resultado completo. Cubre
+mover, retirar, target obsoleto o ambiguo, primera fila, reloj, cobertura, vuelta
+de duración nula, operación inerte, duplicados, colisiones, inversiones, frontera
+terminal, stint de una vuelta, orden determinista e inmutabilidad del original.
 
 ### T13c — snapshot y custodia
 

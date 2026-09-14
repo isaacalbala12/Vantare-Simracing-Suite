@@ -426,3 +426,18 @@ Este panel usa el kit productivo Orbit; no es todavía el porte completo de las
 pantallas A4 aprobadas. El banco opt-in usa DuckDB reales con lector nativo,
 licencia controlada de test y originales verificados por hash: no certifica
 login real Wails, exactitud física ni optimalidad de una carrera.
+
+## Validación pura de límites de stint — #1212
+
+`PrepareStintBoundaryCorrectionSet` prepara `set_stint_boundary` y
+`remove_stint_boundary` contra una base original exacta. Sólo acepta finales de
+vuelta `lap_event` posteriores a la fila inicial y con cobertura acreditada.
+Ordena el conjunto de forma canónica y lo rechaza entero ante targets ambiguos,
+duplicados, colisiones o inversiones. No excluye una vuelta por estar invalidada
+si su intervalo temporal es real; conserva stints de una vuelta y fronteras
+terminales originales.
+
+La implementación reutiliza errores, cuota y geometría de cobertura existentes,
+devuelve copias separadas y no persiste, aplica, recalcula ni autoriza datos.
+Snapshot/custodia v5, vista efectiva, derivados, servicio y UI continúan en
+T13c-e según el [contrato T13](sdd/stint-boundary-corrections-t13.md).

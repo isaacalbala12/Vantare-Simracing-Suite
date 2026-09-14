@@ -1,6 +1,20 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1211 T13a cerrado localmente; T13b listo
+## Estado vigente — #1212 T13b cerrado localmente; T13c listo
+
+T13b implementa en dos archivos los tipos y la validación pura de
+`set_stint_boundary` y `remove_stint_boundary`. El conjunto se prepara contra la
+base original, queda ordenado de forma canónica y se rechaza entero ante target
+ambiguo, fila inicial, reloj/cobertura no acreditados, operación inerte, target
+duplicado, colisión o inversión. Una vuelta invalidada sigue siendo ancla si
+tiene intervalo real; un stint de una vuelta y la frontera terminal observada
+siguen permitidos. La validación reutiliza la cobertura existente y conserva
+intactos modelo, peticiones y punteros. Telemetry Analysis completo y vet focal
+pasan. Astra high no encontró P0/P1; sus dos P2 y simplificaciones se aplicaron.
+Siguiente corte: T13c snapshot/custodia, sin mezclar derivados o UI. Sin
+app/Wails/LMU, push, PR, CI remota, integración ni release.
+
+## Historial — #1211 T13a cerrado localmente; T13b listo
 
 El contrato mínimo de edición de límites de stint queda fijado en
 `docs/strategy-planner/sdd/stint-boundary-corrections-t13.md`. Hay dos operaciones

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cx } from "./cx";
 
 export interface SubtleStatusProps {
   children: ReactNode;
@@ -7,13 +8,7 @@ export interface SubtleStatusProps {
 }
 
 export function SubtleStatus({ children, tone = "neutral", className }: SubtleStatusProps) {
-  const classes = [
-    "orbit-substatus",
-    tone === "neutral" ? null : `orbit-substatus--${tone}`,
-    className,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const classes = cx("orbit-substatus", tone === "neutral" ? null : `orbit-substatus--${tone}`, className);
 
   return <span className={classes}>{children}</span>;
 }

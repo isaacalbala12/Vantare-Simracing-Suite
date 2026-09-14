@@ -11,6 +11,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { layoutViewport, orbitZoomFactor, toLayoutPx } from "./layout-scale";
+import { cx } from "./cx";
 
 export interface SelectOption<T extends string> {
   value: T;
@@ -246,7 +247,7 @@ export function Select<T extends string>({
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
       if (!open) {
-        openList(event.key === "ArrowDown" ? "selected" : "selected");
+        openList("selected");
         return;
       }
       setActive((current) => nextEnabled(options, current, event.key === "ArrowDown" ? 1 : -1));
@@ -281,7 +282,7 @@ export function Select<T extends string>({
     return (
       <select
         aria-label={label}
-        className={["orbit-select", className].filter(Boolean).join(" ")}
+        className={cx("orbit-select", className)}
         disabled={disabled}
         id={id}
         onChange={(event) => onChange(event.target.value as T)}
@@ -359,7 +360,7 @@ export function Select<T extends string>({
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-label={label}
-        className={["orbit-select", className].filter(Boolean).join(" ")}
+        className={cx("orbit-select", className)}
         data-open={open ? "true" : undefined}
         disabled={disabled}
         id={id}

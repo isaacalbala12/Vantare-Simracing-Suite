@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Icon, type IconName } from "./Icon";
 import type { Tone } from "./Button";
+import { cx } from "./cx";
 
 export interface ChipProps {
   children: ReactNode;
@@ -13,15 +14,7 @@ export interface ChipProps {
 }
 
 export function Chip({ children, tier, tone, caseNormal, icon, className }: ChipProps) {
-  const classes = [
-    "orbit-chip",
-    tier ? `orbit-chip--${tier}` : null,
-    tone && tone !== "neutral" ? `orbit-chip--${tone}` : null,
-    caseNormal ? "orbit-chip--case-normal" : null,
-    className,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const classes = cx("orbit-chip", tier ? `orbit-chip--${tier}` : null, tone && tone !== "neutral" ? `orbit-chip--${tone}` : null, caseNormal ? "orbit-chip--case-normal" : null, className);
 
   return (
     <span className={classes}>

@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { cx } from "./cx";
 
 export interface MonogramProps {
   text: string;
@@ -25,14 +26,7 @@ export function Monogram({
   onSrcError,
   className,
 }: MonogramProps) {
-  const classes = [
-    "orbit-monogram",
-    `orbit-monogram--${size}`,
-    src ? "orbit-monogram--icon" : null,
-    className,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const classes = cx("orbit-monogram", `orbit-monogram--${size}`, src ? "orbit-monogram--icon" : null, className);
 
   // Sin degradado declarado no se escriben las variables: así manda el valor de
   // reserva del kit en lugar de dejar la losa transparente.

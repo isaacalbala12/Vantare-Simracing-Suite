@@ -571,6 +571,23 @@ describe("createStrategyApplicationClient", () => {
     } satisfies Partial<StrategyApplicationError>);
   });
 
+  it("exposes backend calculation cancellation without calling it a deadline", async () => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const pending = client.execute(openCommand());
+    emit(transport, "strategy:application:error", {
+      commandId: "open-1",
+      code: "calculation_cancelled",
+      field: "input.variants.0",
+      message: "The Strategy calculation was cancelled.",
+    });
+
+    await expect(pending).rejects.toMatchObject({
+      name: "StrategyApplicationError",
+      code: "calculation_cancelled",
+      field: "input.variants.0",
+    } satisfies Partial<StrategyApplicationError>);
+  });
+
   it("fails closed on a future result protocol", async () => {
     const client = createStrategyApplicationClient<Payload>(transport);
     const pending = client.execute(openCommand());

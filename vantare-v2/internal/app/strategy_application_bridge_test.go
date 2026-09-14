@@ -79,6 +79,7 @@ func TestStrategyApplicationBridgePropagatesEveryTypedDocumentError(t *testing.T
 		{name: "calculation invalid", code: strategyapplication.ErrorCalculationInvalid},
 		{name: "calculation infeasible", code: strategyapplication.ErrorCalculationInfeasible},
 		{name: "calculation overflow", code: strategyapplication.ErrorCalculationOverflow},
+		{name: "calculation cancelled", code: strategyapplication.ErrorCalculationCancelled},
 		{name: "calculation timeout", code: strategyapplication.ErrorCalculationTimeout},
 	}
 	for _, test := range tests {

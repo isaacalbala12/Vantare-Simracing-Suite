@@ -1,6 +1,15 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1246 T02g3 cerrado localmente; selector en T15
+## Estado vigente — #1248 T03a cerrado localmente; cancelación distinta de timeout
+
+`CalculateOrbit` distingue `context.Canceled` como `calculation_cancelled` y
+reserva `calculation_timeout` para deadlines. Application conserva ambas causas;
+el bridge publica un mensaje saneado y el cliente mantiene código, campo y
+correlación. No cambia la cancelación local ni se añade una máquina de estados.
+T03 continúa con readiness, obsolescencia y estados de resultado. Sin
+app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release.
+
+## Historial — #1246 T02g3 cerrado localmente; selector en T15
 
 CalculateOrbit acepta `driverOrderMode`: ausente o `fixed` conserva la rotación
 cíclica legacy; `free` trata `order` como candidatos, transporta todos sus

@@ -132,6 +132,19 @@ func TestCalculateOrbitBackendDeadlineIsTyped(t *testing.T) {
 	}
 }
 
+func TestCalculateOrbitCancellationIsDistinctFromDeadline(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := NewService[json.RawMessage](nil).CalculateOrbit(ctx, CalculateOrbitCommand{
+		CommandHeader: CommandHeader{ProtocolVersion: ProtocolVersionV1, CommandID: "t03-cancelled", Operation: OperationCalculateOrbit},
+		Input:         isa825OrbitInput(),
+	})
+	var applicationErr *ApplicationError
+	if !errors.As(err, &applicationErr) || applicationErr.Code != ErrorCalculationCancelled || !errors.Is(err, ErrCalculationCancelled) || !errors.Is(err, context.Canceled) {
+		t.Fatalf("error = %#v", err)
+	}
+}
+
 func TestOrbitReserveDefaultsToProductDecisionAndEventOverrideWins(t *testing.T) {
 	input := orbitSolverInput(4, OrbitCalculationEvent{TankLiters: 4, PitLossSeconds: 10}, 60, 1, strategyprojection.ClimateBucketDry, nil)
 	if input.FuelReserve.Laps.Value != orbitDefaultReserveLaps || input.VirtualEnergyReserve.Laps.Value != orbitDefaultReserveLaps ||

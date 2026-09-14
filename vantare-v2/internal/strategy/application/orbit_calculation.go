@@ -981,7 +981,10 @@ func compareOrbitPlans(activeID string, active OrbitCalculationPlan, otherID str
 }
 
 func mapOrbitCalculationError(err error, field string) error {
-	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+	if errors.Is(err, context.Canceled) {
+		return calculationApplicationError(ErrorCalculationCancelled, field, errors.Join(ErrCalculationCancelled, err))
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
 		return calculationApplicationError(ErrorCalculationTimeout, field, errors.Join(ErrCalculationTimeout, err))
 	}
 	var manualErr *manual.CalculationError

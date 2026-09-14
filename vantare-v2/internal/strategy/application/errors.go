@@ -30,6 +30,7 @@ const (
 	ErrorCalculationInvalid      ErrorCode = "calculation_invalid"
 	ErrorCalculationInfeasible   ErrorCode = "calculation_infeasible"
 	ErrorCalculationOverflow     ErrorCode = "calculation_overflow"
+	ErrorCalculationCancelled    ErrorCode = "calculation_cancelled"
 	ErrorCalculationTimeout      ErrorCode = "calculation_timeout"
 	// ErrorImportRefused means the package was readable and intact but would
 	// have collided with what is already stored. Nothing was written.
@@ -57,6 +58,7 @@ var (
 	ErrCalculationInvalid      = errors.New("strategy calculation input is invalid")
 	ErrCalculationInfeasible   = errors.New("strategy calculation is infeasible")
 	ErrCalculationOverflow     = errors.New("strategy calculation overflowed")
+	ErrCalculationCancelled    = errors.New("strategy calculation was cancelled")
 	ErrCalculationTimeout      = errors.New("strategy calculation reached its deadline")
 	ErrImportRefused           = errors.New("strategy package import refused")
 )

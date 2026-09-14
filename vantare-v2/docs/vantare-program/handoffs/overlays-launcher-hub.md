@@ -1084,25 +1084,109 @@ física nueva, retirada V1, merge o release en este corte documental.
   escena movía el dato pero la VM mantenía el orden viejo y nada se
   animaba. Verificado en navegador: overtake/battle destellan y deslizan,
   delta-cross-zero pulsa, relative-cross reordena con FLIP.
-  **Promovido a nightly como `1567a263` (PR #1194)** tras revisión del diff
-  completo: corregidos clave i18n huérfana `pedals.showHeader`, contrato Go
-  `vantare-iracing` (recuperado después en `257b5fe6`, PR #1206, al
-  revertirlo #1191) y conflicto de merges con tower/SessionInfo de ISA-1185.
-  ISA-1183 (#1191, `eee3b99e`) divergió de ISA-1128 tras la primera revisión
-  adversarial y al integrarse dejó fuera la segunda/tercera ronda de
-  revisión. **Reaterrizaje en rama `vantareapp/isa-1128-motion-review-rounds`,
-  PR #1209**: `flipRows` por identidad de fila con retarget desde posición
-  visual y medidas normalizadas a la escala, `ctx.persist`, reduced-motion
-  reactivo vía `useSyncExternalStore`, teardown + timers con clave, memoria
-  de último lado no neutro del delta, `data-motion-level` en Pedals
-  Endurance, escena `standings-class-battle` + aviso de parches sin
-  resolver, y retirada de `useRelativeMotion` muerto. `37b455be` omitido
-  (nightly resolvió el lint del harness orbit por otro camino). En
-  `StandingsFunctional` se conserva el nightly actual (SessionInfo,
-  `infoPlacement`); en `RelativeFunctional` se conserva el presupuesto
-  escalado por `resolveWidgetVisualGeometryForType`. Gates: typecheck/lint/
-  build PASS, suite 452 archivos / 3598 tests verdes. Auto-merge a nightly
-  armado; pendiente CI y verificación física OBS/WebView2.
+  **Primera revisión adversarial del motor (10 P2, todos corregidos en
+  `c3f68d43`/`9918ec6f`/`7642df46`):** doble escala en el stride medido
+  (`getBoundingClientRect` devuelve px escalados; corregido con
+  `offsetHeight` y `RELATIVE_ROW_PX` 19.8→28), `data-motion-level` en las
+  raíces + gate CSS `transition/animation:none` en minimal, cancelación de
+  WAAPI/timers/attrs al bajar el nivel, cruce de relative por cambio de
+  `side` (no por delta de índice), timers con clave para no apagar el
+  flash siguiente, `flat` cubre efectos interiores del delta, tick del
+  transporte sin re-render cuando la muestra cuantizada no cambia,
+  interpolación de overrides discretos aterrizando en `t>=1`, y la
+  parrilla del estudio recupera el asiento visible de Laursen (P15).
+  **Segunda revisión adversarial (arquitectura, 4 P2, corregidos):**
+  `flipRows` compartido en `widget-motion.ts` — FLIP medido por id de
+  fila estable (rects normalizados por la escala del root, `from =
+  prevTop − top + inFlight`) que retargetea desde la posición visual en
+  vuelo y sobrevive a remounts de nodo (batalla Redline
+  block↔battle-box); `persist` en el contexto del hook se limpia al
+  romper la continuidad; memoria del último lado no neutro del delta
+  (perder→neutro→ganar marca el cruce) en functional y Endurance;
+  `useStandingsMotion` usa `flipRows`, cancela WAAPI/timers/attrs al
+  deshabilitarse y sus timers llevan clave (stepDeltas ya no apila
+  cadenas); `PedalsEndurance` emite `data-motion-level`; y el host se
+  suscribe a `prefers-reduced-motion` vía `useSyncExternalStore` — un
+  cambio en caliente baja a `minimal` en el mismo render sin esperar otro
+  frame. Fix colateral: los 3 errores preexistentes de `react-hooks/refs`
+  en `widget-motion.ts` (escrituras de ref en render) quedan dentro de un
+  layout effect. Verificado en Chromium: re-target con keyframes no-stride
+  (49.6px/23.6px), delta marca gaining y losing, relative marca fall+rise
+  sobre Bruni, y reduced-motion emulado a mitad de vuelo deja 0 WAAPI
+  corriendo y restaura `full` al quitarlo. En la parrilla golden
+  multiclase las escenas de estudio no producen reorden dentro de clase
+  (los asientos 7↔10 son de clases distintas), así que el FLIP de
+  Endurance queda cubierto por los tests de `flipRows` (remount por id,
+  retarget con transform en vuelo) más el teardown del hook — la escena
+  correcta para demostrarlo en navegador sigue pendiente. Checks:
+  typecheck PASS, lint PASS (archivo ya sin errores), build PASS, suite
+  3403/3404 (el único fallo es el i18n-audit preexistente por una clave
+  huérfana en studio-orbit, confirmado en HEAD limpio).
+  **Cierre de la auditoría (dos cabos sueltos, corregidos):**
+  escena nueva `standings-class-battle` — Birch (GTE P9) se pega a Pier
+  Guidi (GTE P6), la costura cristaliza en caja (2,5 s sostenidos) y el
+  adelantamiento intercambia las filas dentro de la misma clase con la
+  caja viva. Es la primera escena que reordena filas visibles en la
+  parrilla multiclase: el bloque hypercar (clase del jugador, siempre el
+  último) queda recortado por `fitStandingsRowsToHeight` a la altura
+  oficial (~620 px), así que las parejas antiguas eran invisibles y, sin
+  fila de jugador en el modelo recortado, `deriveBattlePairs` no podía
+  derivar nada. Verificado en Chromium con `height=940`: seam → box →
+  dissolve → swap dentro del wrapper con FLIP medido (6,3 px, retarget
+  1,4 px) → nueva costura invertida. Además `applyScene` ahora avisa una
+  vez por escena/piloto cuando un parche no resuelve ninguna fila (ni por
+  nombre ni por asiento) — el resbalón silencioso del hallazgo 10 deja
+  de ser silencioso. Y `useRelativeMotion` de Endurance, código muerto
+  con el bug de doble escala latente (medía `getBoundingClientRect` sin
+  normalizar), queda eliminado junto a sus tests: la plantilla Redline
+  Relative decidió no usar FLIP y nadie lo importaba. Checks: typecheck
+  PASS, lint PASS, build PASS, suite 3396/3397 (mismo i18n-audit
+  preexistente).
+  **PROMOCIONADO a nightly (2026-09-12, PR #1194, squash `1567a263`):**
+  revisión del diff completo previa al merge corrigió tres hallazgos
+  propios — clave i18n huérfana `overlay.inspector.pedals.showHeader`
+  retirada de los 4 locales studio-orbit (i18n-audit vuelve a verde),
+  `vantare-iracing` añadido al contrato Go V3
+  (`IsSupportedDesignSystemID` + round-trip de perfil) y lint de
+  `orbit-outside-harness.tsx` (fast-refresh, roto en ISA-1185). La
+  fusión con `nightly` integró el laboratorio tower de Redline
+  (ISA-1071): overrides `redline*` por `buildWorkshopWidget`, canvas de
+  referencia en `WorkshopSurface` y fieldset en
+  `FunctionalStudyControls`; `resolveStandingsRedlineMinimumWidth`
+  devuelve `undefined` en tema tower (marco físico fijo). CI completo
+  verde en ambos ciclos (suite 3476, Go, build Windows, Testing Center).
+  **Divergencia tras el squash de ISA-1183 (`eee3b99e`, #1191):** esa
+  rama se había separado tras la primera revisión adversarial y al
+  integrarse conservó sus versiones en los archivos compartidos —
+  nightly quedó autoconsistente y verde, pero sin la segunda/tercera
+  ronda descrita arriba: `flipRows` (retarget en vuelo, identidad por
+  `data-standings-row`), `persist`/memoria de lado del delta, teardown
+  y timers con clave de `useStandingsMotion`, `data-motion-level` en
+  `PedalsEndurance`, suscripción reactiva a `prefers-reduced-motion` en
+  el host, escena `standings-class-battle` + aviso de parches sin
+  resolver, retirada de `useRelativeMotion` muerto, el caso
+  `vantare-iracing` en `IsSupportedDesignSystemID` (frontend lo sigue
+  registrando → perfiles con pedales iRacing no persisten) y el lint de
+  `orbit-outside-harness.tsx`. **Divergencia resuelta:** el contrato Go
+  volvió a nightly en `257b5fe6` (PR #1206) y la segunda/tercera ronda se
+  reaterrizó en `6160caf8` (PR #1209) — `flipRows` por identidad de fila
+  con retarget desde posición visual y medidas normalizadas a la escala,
+  `ctx.persist`, reduced-motion reactivo vía `useSyncExternalStore`,
+  teardown + timers con clave, memoria de último lado no neutro del delta,
+  `data-motion-level` en Pedals Endurance, escena `standings-class-battle`
+  + aviso de parches sin resolver, y retirada de `useRelativeMotion`
+  muerto. `37b455be` se omitió (nightly resolvió el lint del harness orbit
+  por otro camino). En la resolución se conservó el nightly actual:
+  `StandingsFunctional` mantiene SessionInfo/`infoPlacement` y
+  `RelativeFunctional` el presupuesto escalado por
+  `resolveWidgetVisualGeometryForType`. Gates del reaterrizaje:
+  typecheck/lint/build PASS, suite 452 archivos / 3598 tests verdes.
+  Preexistentes en nightly verificados en checkout limpio y ajenos:
+  `internal/app/launcher` solo compila en Windows (corregido luego por
+  ISA-1183) y 2 tests de DiagnosticsBridge fallan en macOS. Pendiente:
+  validación física en OBS/WebView2 y la traducción de Foco a diseño
+  oficial (ISA-1183 ya entrega parte). Sin release ni promoción a
+  `testers`/`master`.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde
   `4864b5c6`, SHA `cb69a4d5…878faba`, muestra Pedals sobre LMU con freno real

@@ -911,7 +911,7 @@ Cerrado sin pago real (sin presupuesto test). Ver `docs/current-plan.md` nota **
 
 ## 21. Gap crítico en código actual (Fase 1.6)
 
-[`billing-client.ts`](../../frontend/src/lib/billing-client.ts) hoy:
+[`billing-client.ts`](../../../frontend/src/lib/billing-client.ts) hoy:
 
 - No envía `Authorization: Bearer JWT`
 - Checkout envía `email` del cliente (debe ignorarse en EF)

@@ -1,5 +1,9 @@
 # Stripe Webhook Deployment
 
+> **Ámbito documental (2026-09-14):** Procedimiento histórico de Stripe; no usar como receta de despliegue vigente.
+> [Referencia vigente](vantare-program/handoffs/platform-commercial.md).
+
+
 > Scope: Release 02 — Supabase Edge Function that receives Stripe webhooks and
 > updates Supabase entitlements.
 

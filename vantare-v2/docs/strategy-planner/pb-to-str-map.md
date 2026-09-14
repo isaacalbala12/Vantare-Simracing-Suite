@@ -1,5 +1,9 @@
 # Mapa de sustitución PB -> STR
 
+> **Ámbito documental (2026-09-14):** Mapa histórico de sustitución; no reactivar Product B ni su tracker a partir de esta tabla.
+> [Referencia vigente](../vantare-program/handoffs/strategy-planner.md).
+
+
 **Fecha:** 2026-08-01
 **Regla:** las issues PB se conservan en Linear con título, descripción,
 milestone y comentarios históricos. Se marcan `Canceled` por sustitución y se

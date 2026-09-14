@@ -43,7 +43,7 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
 - `notion-document-audit.md`: revision individual de documentos y controles del corte.
 
 - `product-contract.md`: alcance, experiencia, licencias, privacidad e idiomas.
-- `project-map.md`: módulos, fronteras, dependencias y estado.
+- `project-map.md`: módulos, fronteras y caminos de datos; el estado operativo vive en Notion.
 - `execution-policy.md`: flujo Notion/Git, autonomía, reviews y promoción.
 - `../roadmap/plan.md`: fuente manual del planning y del roadmap público.
 - `research-policy.md`: investigación de productos, repositorios y apps.

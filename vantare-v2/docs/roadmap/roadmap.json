@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-14T00:47:42Z",
+  "generatedAt": "2026-09-14T20:26:34Z",
   "digest": {
-    "lastCommit": "837a03d1457e4c675ff8a44977baf79ab294f5e3"
+    "lastCommit": "60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c"
   },
   "phases": [
     {
@@ -737,10 +737,10 @@
         "it": "Documentazione pubblica riavviata"
       },
       "body": {
-        "es": "La documentación de usuario se reorganiza y reescribe para la apertura: guía de instalación, primeros pasos, problemas conocidos y soporte. Las guías internas dejan de ser requisito para usar el producto.",
-        "en": "User documentation is reorganised and rewritten for the opening: installation guide, first steps, known issues and support. Internal guides stop being a requirement to use the product.",
-        "pt": "A documentação de utilizador é reorganizada e reescrita para a abertura: guia de instalação, primeiros passos, problemas conhecidos e suporte. As guias internas deixam de ser requisito para usar o produto.",
-        "it": "La documentazione utente viene riorganizzata e riscritta per l'apertura: guida all'installazione, primi passi, problemi noti e supporto. Le guide interne smettono di essere un requisito per usare il prodotto."
+        "es": "La documentación de usuario se reorganiza y reescribe para la apertura: guía de instalación, primeros pasos, problemas conocidos y soporte. Las guías internas dejan de ser requisito para usar el producto. La depuración del repositorio distingue guías vigentes, contratos y evidencia histórica; no cierra por sí sola las guías públicas ni su validación con testers.",
+        "en": "User documentation is reorganised and rewritten for the opening: installation guide, first steps, known issues and support. Internal guides stop being a requirement to use the product. Repository cleanup separates current guides, contracts and historical evidence; it does not by itself complete public guides or tester validation.",
+        "pt": "A documentação de utilizador é reorganizada e reescrita para a abertura: guia de instalação, primeiros passos, problemas conhecidos e suporte. As guias internas deixam de ser requisito para usar o produto. A depuração do repositório separa guias atuais, contratos e evidência histórica; não conclui por si só os guias públicos nem a validação com testers.",
+        "it": "La documentazione utente viene riorganizzata e riscritta per l'apertura: guida all'installazione, primi passi, problemi noti e supporto. Le guide interne smettono di essere un requisito per usare il prodotto. La pulizia del repository distingue guide attuali, contratti ed evidenze storiche; da sola non completa le guide pubbliche né la validazione con i tester."
       },
       "label": {
         "es": "Plan",
@@ -2127,6 +2127,11 @@
           "kind": "fix",
           "scope": "motion",
           "text": "Reaterrizaje de las rondas de revisión adversarial"
+        },
+        {
+          "kind": "docs",
+          "scope": "workflow",
+          "text": "Notion como entrada y seguimiento obligatorio"
         }
       ]
     },

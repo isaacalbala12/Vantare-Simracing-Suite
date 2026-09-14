@@ -44,6 +44,8 @@ una afirmación de estado actual.
 
 ## Preparación
 
+Ejecutar desde `vantare-v2/`. Sustituir `<user_uuid>` y los identificadores de ejemplo `notion:van-n`/`van-n-*` por los datos de la tarea autorizada. El actor técnico acepta minúsculas, números y `._:-` (3–80 caracteres); no pasar una URL Notion como actor. Los identificadores históricos ya auditados no se reescriben.
+
 1. Aplicar la migración en una base desechable y ejecutar clean, upgrade y
    restore.
 2. Configurar `SUPABASE_URL` y `SUPABASE_SERVICE_ROLE_KEY` solo en la consola
@@ -54,8 +56,8 @@ una afirmación de estado actual.
 ```powershell
 go run ./cmd/vantare-admin operational-access preview <user_uuid>
 go run ./cmd/vantare-admin operational-access legacy-preview <user_uuid>
-go run ./cmd/vantare-admin operational-access grant <user_uuid> owner linear:isa-247 "Owner Vantare aprobado" isa-247-owner
-go run ./cmd/vantare-admin operational-access legacy-retire <user_uuid> linear:isa-247 "Legacy clasificado y retirado" isa-247-legacy
+go run ./cmd/vantare-admin operational-access grant <user_uuid> owner notion:van-n "Owner Vantare aprobado" van-n-owner
+go run ./cmd/vantare-admin operational-access legacy-retire <user_uuid> notion:van-n "Legacy clasificado y retirado" van-n-legacy
 ```
 
 La salida debe indicar `mode=dry-run writes=0`, el rol propuesto, un sufijo
@@ -72,7 +74,7 @@ Antes de cualquier apply remoto, crear un backup cifrado y restringido de:
 - versión exacta de migración y SHA del código desplegable.
 
 Verificar que el backup puede restaurarse en una base desechable y registrar
-solo conteos y checksum en Linear. No adjuntar filas, emails o UUIDs.
+solo conteos y checksum en Notion. No adjuntar filas, emails o UUIDs.
 
 ## Apply controlado
 
@@ -87,8 +89,8 @@ reduce la ventana sin acceso:
 6. Repetir preview y smoke.
 
 ```powershell
-go run ./cmd/vantare-admin operational-access grant <user_uuid> owner linear:isa-247 "Owner Vantare aprobado" isa-247-owner --apply
-go run ./cmd/vantare-admin operational-access legacy-retire <user_uuid> linear:isa-247 "Legacy clasificado y retirado" isa-247-legacy --apply
+go run ./cmd/vantare-admin operational-access grant <user_uuid> owner notion:van-n "Owner Vantare aprobado" van-n-owner --apply
+go run ./cmd/vantare-admin operational-access legacy-retire <user_uuid> notion:van-n "Legacy clasificado y retirado" van-n-legacy --apply
 ```
 
 Para testers, sustituir `owner` por `tester` o `nightly_tester`. Una cuenta no
@@ -110,7 +112,7 @@ puede conservar dos roles operativos activos.
 La revocación normal no es un rollback comercial:
 
 ```powershell
-go run ./cmd/vantare-admin operational-access revoke <user_uuid> owner linear:isa-247 "Revocación aprobada" isa-247-owner-revoke --apply
+go run ./cmd/vantare-admin operational-access revoke <user_uuid> owner notion:van-n "Revocación aprobada" van-n-owner-revoke --apply
 ```
 
 Si el retiro legacy fue incorrecto, detener despliegues y restaurar únicamente

@@ -1,16 +1,7 @@
-# Authoring visual systems V3
+# Autoría de sistemas visuales
 
-Este kit convierte un HTML de referencia en un sistema visual V3 sin acoplarlo a telemetría, persistencia o permisos.
+La guía vigente es [Workshop: autoría directa](overlays-studio/overlay-workshop-authoring-guide.md) y su [contrato](overlays-studio/os-09-overlay-workshop-contract.md).
 
-1. Copia `frontend/src/overlay/design-systems/_template` a una carpeta kebab-case.
-2. Define un ID estable y versión 1; declara migraciones secuenciales para versiones futuras.
-3. Completa la worksheet HTML y separa ViewModel, settings visuales y contenido funcional.
-4. Sustituye fuentes y assets remotos por archivos locales.
-5. Crea un renderer puro que reciba `model`, `settings` y `renderMode`.
-6. Scopea todo CSS bajo `[data-widget-system="..."]`.
-7. Declara defaults, parser, controles y compatibilidad explícita por widget.
-8. Añade estados ready, missing, stale, disconnected y error.
-9. Añade snapshots/parity para Studio, Desktop y OBS.
-10. Ejecuta `pnpm --dir frontend test -- design-systems` y `pnpm --dir frontend design-system:check`.
+Editar el TSX/CSS productivo que consume `WidgetVisualHost`; Workshop lo refleja mediante HMR. Un HTML es referencia visual, no otro renderer ni un compilador. No copiar automáticamente un scaffold antiguo ni crear un registro genérico sin una decisión de la tarea.
 
-Está prohibido que un renderer lea Wails, SSE, perfiles, permisos, posición o referencias mutables de telemetría. El host V3 es el único punto de selección del sistema.
+Mantener renderizadores puros, assets locales, CSS acotado, estados de datos explícitos y comprobación por superficie. No acceder desde el renderer a Wails, SSE, persistencia, permisos o posición. Los checks y la URL reproducible pertenecen al protocolo de Workshop.

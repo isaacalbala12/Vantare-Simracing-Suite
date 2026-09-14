@@ -1,5 +1,9 @@
 # Publicar deltas de Overlay: por qué hoy no ahorra nada
 
+> **Ámbito documental (2026-09-14):** Evidencia histórica ISA-354. BuildMergePatch/RFC 7396 se retiraron; los comandos y porcentajes de abajo no aplican a Overlay V2.
+> [Referencia vigente](projection-transport.md).
+
+
 Medición ISA-354. Reproducible con:
 
 ```

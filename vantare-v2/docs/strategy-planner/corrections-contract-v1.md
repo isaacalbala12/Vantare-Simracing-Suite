@@ -74,8 +74,11 @@ Operaciones cerradas:
    con su tipo; conservar original, corregido y motivo. No cambia hash, autorización,
    origen temporal ni parser. Cambios de coche/circuito requieren identidad canónica
    explícita y dejan obsoleta la selección de combinación del plan afectado.
-3. `set_stint_boundary`: reemplazar un límite y su causa con anclaje verificable;
-   mantener orden temporal, cobertura y ausencia de solapes imposibles.
+3. `set_stint_boundary` y `remove_stint_boundary`: mover un límite existente a
+   un final de vuelta acreditado o retirarlo de la vista efectiva; mantener orden,
+   cobertura y ausencia de solapes imposibles. Ambas comparten validación y nunca
+   crean límites nuevos. El [contrato T13](sdd/stint-boundary-corrections-t13.md)
+   fija la representación y compatibilidad.
 4. `set_sample_value`: sustituir un escalar concreto con tipo/unidad compatibles,
    finito cuando sea numérico. Conservar original y marca corregida; no crear muestras
    ausentes, cambiar unidades a ciegas ni editar series mediante fórmulas masivas.

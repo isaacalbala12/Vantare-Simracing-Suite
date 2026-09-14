@@ -1,6 +1,17 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1208 cerrado localmente; T13a desbloqueado
+## Estado vigente — #1211 T13a cerrado localmente; T13b listo
+
+El contrato mínimo de edición de límites de stint queda fijado en
+`docs/strategy-planner/sdd/stint-boundary-corrections-t13.md`. Hay dos operaciones
+explícitas sobre límites originales: mover a un final de vuelta `lap_event` y
+retirar de la vista efectiva. Comparten tipo y validador; no crean límites ni
+otro segmentador. La base, sus archivos y `SegmentationDigest` permanecen
+intactos. T13b se limita a tipos/validación pura y cuatro paths nuevos; snapshot,
+custodia, derivados y UI quedan en T13c-e. Sin código productivo, app/Wails/LMU,
+push, PR, CI remota, integración ni release.
+
+## Historial — #1208 cerrado localmente; T13a desbloqueado
 
 El banco real D pasa sobre S125 Imola, S266 Algarve y S026 Monza con el runtime
 confiado DuckDB v1.5.5. Los tres puentes quedan alineados. S125 publica sólo

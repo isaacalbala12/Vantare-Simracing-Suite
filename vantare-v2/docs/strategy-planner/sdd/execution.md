@@ -2,7 +2,7 @@
 
 [Especificación](README.md) · [Aceptación](acceptance.md) · ISA-1091.
 
-## 0. Punto de reanudación comprobado — 2026-09-13
+## 0. Punto de reanudación comprobado — 2026-09-14
 
 Corte auditado: `c2d5b45b43bbf8ff0efb2cd16f1598f7a4925eff`, rama
 `vantareapp/isa-1104-recorded-classification`, worktree `C:/tmp/vantare-isa1104`.
@@ -27,9 +27,9 @@ Evidencia de los gaps: [matriz T02](../evidence/isa-1092/README.md),
 `StrategyRecordedWorkflow.tsx` bajo `frontend/src/hub/strategy-orbit/`.
 No repetir T12 ni declarar terminadas las entradas sólo por su posición en el DAG.
 
-**Siguiente corte elegible:** #1208 corrige la mezcla de relojes demostrada por
-T19a antes de T13. Con el puente temporal, cobertura y límites verificados,
-T13a fija el microplan/compatibilidad y la issue de implementación antes de código.
+**Siguiente corte elegible:** T13b implementa tipos y validación pura según el
+contrato T13a de #1211. #1208 ya cerró localmente la mezcla de relojes demostrada
+por T19a; snapshot, custodia, derivados y UI permanecen separados en T13c-e.
 En paralelo lógico, preparar inventario T02 restante y preflight documental T22a;
 la ejecución física sigue siendo de un único escritor por worktree.
 
@@ -134,7 +134,7 @@ T18 + flujo funcional -> T22b..c Wails/distribución
 T18/T21/T22 -> T23 entrega y aceptación -> T24 investigación live
 ```
 
-Prioridad: T19a→#1208→T13, después completar entradas/reglas/pilotos/estados pendientes
+Prioridad: T13b-e, después completar entradas/reglas/pilotos/estados pendientes
 antes de conectar T15; la mecánica T14 puede avanzar desde T10, pero su cierre
 integra las operaciones T13 soportadas. Adelantar
 preparación/anotación y diagnóstico del gate nativo entre cortes para no descubrir
@@ -195,7 +195,7 @@ archivos a ciegas ni ampliar el alcance de una issue histórica documental.
 |---|---|---|
 | 1 · T19a | Auditar en preparación el eje temporal de muestra/vuelta/stint: unidad, origen, resets, segmentos, duplicados, límites inclusivos/exclusivos y correspondencia con boxes. Producir matriz de anclas soportadas y casos desconocidos. | Al menos caso válido y rechazo por discontinuidad/ambigüedad con identidad exacta; no etiqueta de trompo deducida de lentitud. Si la señal no soporta una edición, esa capacidad queda no disponible, con causa. |
 | 1b · #1208 | Alinear canales continuos LMU al reloj de eventos mediante `GPS Time`, corregir cobertura y sustituir el join ordinal de `fuel_jump`. | RED/GREEN S125/S266/S026; sin stints fantasma ni muestreo desplazado; ausencia o puente inválido fallan cerrados; banco real con hashes intactos. |
-| 2 · T13a | Microplan de `set_stint_boundary`: reemplazo de un límite y su causa sólo donde el contrato y ancla lo permitan, precondiciones, consistencia con vueltas, snapshot/versión y rollback. Distinguir límite observado Analysis de restricción de stint del plan T16. | Issue hija de #1033 fijada; compatibilidad v1–v4 y consumidores inventariados; decisión cerrada sobre qué operación concreta se soporta, sin convertir todo el segmentador en otro motor. |
+| 2 · T13a / #1211 · cerrado localmente | Contrato mínimo de `set_stint_boundary` y `remove_stint_boundary`: sólo límites originales, ancla directa `lap_event`, validación compartida, snapshot/versión y rollback. Distingue límite observado Analysis de restricción del plan T16. | Decisión, compatibilidad v1–v4, consumidores y RED de T13b fijados en `stint-boundary-corrections-t13.md`; sin otro motor de segmentación. |
 | 3 · T13b→c | Constructor/validación y representación/custodia en cortes separados. Guardado mixto con valor/uso/clasificación, replay/Resolve/Restore, cuota y guardado incierto. | Rechazo atómico de target inexistente, cruce de reloj, solape/hueco ilegal y conflicto; snapshots anteriores sin cambio de digest; rollback preserva historial. |
 | 4 · T13d→e | Vista/derivación por familia y servicio; después contrato/cliente/UI avanzada y banco real de preparación. | Mover límite recalcula sólo dependientes y mantiene totales/invariantes respaldados; adopción explícita, referencias exactas, cancelar/respuesta tardía y original intacto. A08 local; visual/nativo en T18/T22. |
 | 5 · T02d→g + T06/T07 | Cerrar matriz campo→origen→documento→adapter→solver→replay→UI. Cortes separados: horizonte/recursos; inventario/curvas; servicios/formación; perfiles/disponibilidad/conducción. Conectar cada grupo a reglas/pilotos del asistente. | Cada campo respaldado llega al solve y evaluación final o se rechaza con razón; cero/ausente/no aplicable distintos. Delta entre pilotos sólo altera ritmo. No promedio que elimine límites, inventario o perfiles antes de optimizar. |

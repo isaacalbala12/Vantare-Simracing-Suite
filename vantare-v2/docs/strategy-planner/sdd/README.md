@@ -1,6 +1,6 @@
 # SDD — Strategy sobre telemetría registrada
 
-Versión 1.1 · revisión de continuidad 2026-09-13 · ISA-1091 · continuación de ISA-694/1028.
+Versión 1.2 · contrato T13a 2026-09-14 · ISA-1091/1211 · continuación de ISA-694/1028.
 
 ## Autoridad y propósito
 
@@ -23,7 +23,8 @@ identifica capacidades presentes y cierres restantes. No se da T00–T12 por
 completo por haber cerrado T12. Ninguna evidencia local equivale a integración Nightly.
 
 **Lectura operativa:** este archivo → [ejecución](execution.md) →
-[aceptación](acceptance.md) → sección técnica necesaria. El único estado vivo de
+[aceptación](acceptance.md) → sección técnica necesaria. Para límites registrados,
+usar el [contrato T13](stint-boundary-corrections-t13.md). El único estado vivo de
 Strategy sigue en [su handoff](../../vantare-program/handoffs/strategy-planner.md);
 Analysis mantiene [el suyo](../../vantare-program/handoffs/telemetry-analysis.md).
 No crear otro handoff. Las tareas de este paquete conservan IDs estables y
@@ -76,13 +77,13 @@ spec aprobada #1028 para recuperar su significado.
 
 Estado de referencia, no certificación permanente: revalidar al empezar cada corte.
 
-| Capacidad | Evidencia local al 13-09 | Pendiente real |
+| Capacidad | Evidencia local al 14-09 | Pendiente real |
 |---|---|---|
 | Diseño y entrada | Asistente A4 unificado y biblioteca productiva #1093–1095; configuración guardada/reabierta. | Completar reglas/pilotos y paneles cálculo/plan/stint/parada; paridad T18 y recorrido Wails T22. |
-| Lectura/correcciones | Valor, uso por familia, clasificación y catálogo canónico v4 #1096/#1099/#1104. Banco J9 bidireccional Imola↔Monza conserva hashes originales. | Límites T13, comandos tras reinicio y revisiones completas de plan T14, gates nativos/visuales. |
+| Lectura/correcciones | Valor, uso por familia, clasificación y catálogo canónico v4 #1096/#1099/#1104. Banco J9 bidireccional Imola↔Monza conserva hashes originales. Contrato de límites T13a cerrado en #1211. | Implementar límites T13b-e, comandos tras reinicio y revisiones completas de plan T14, gates nativos/visuales. |
 | Selección exacta | Documento/cliente/adapter #1084–1088 y adopción explícita desde Datos/Revisiones. | Plan aceptado reproducible con todas las entradas/versiones y consulta sin fuente; T14/T22. |
 | Motor/entradas | SolverV2, replay final y corrección local del coste repetido #1089; transporte de reglas #1092. | T02/T03/T06/T07 no completos: perfiles, disponibilidad, inventario, servicios/formación, recursos/horizonte y estados; conexión productiva T15. |
-| Criterios | Inventario/protocolo #1030; Imola/Monza son preparación expuesta. | T19a demostró mezcla de relojes; #1208 alinea LMU antes de límites. Anotación independiente, calibración y reserva suficiente T19–T21. |
+| Criterios | Inventario/protocolo #1030; #1208 alinea LMU y cierra localmente la mezcla de relojes sobre S125/S266/S026. Imola/Monza son preparación expuesta. | Anotación independiente, calibración y reserva suficiente T19–T21. |
 | Calidad | Gates locales y bancos por corte; T12 local cerrado en c2d5b45b. | WebView2 ERROR_INVALID_STATE sin causa demostrada, aceptación visual/nativa/distribución y precisión empírica. |
 
 Las notas antiguas «falta cliente/selección/productor» quedan superadas por

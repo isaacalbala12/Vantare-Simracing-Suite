@@ -239,6 +239,11 @@ vecino o rechazarse.
 
 ## 8. Propuesta T13a — `set_stint_boundary` (sin implementar)
 
+> Esta propuesta histórica queda sustituida por el
+> [contrato T13 cerrado en #1211](../../sdd/stint-boundary-corrections-t13.md).
+> El contrato final añade retirada explícita, limita v1 a `lap_event` y conserva
+> `SourceAnalysisRef.SegmentationDigest` como identidad de la base original.
+
 Propuesta de microplan; todo lo siguiente es diseño pendiente de cierre en
 la issue, no código.
 

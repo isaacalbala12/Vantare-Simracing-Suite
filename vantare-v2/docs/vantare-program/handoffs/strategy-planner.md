@@ -1,6 +1,21 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1265 T15a2a cerrado localmente; inputs recorded exactos
+## Estado vigente — #1268 T15a2b cerrado localmente; delta de ritmo por piloto
+
+El contrato Orbit acepta un único delta aditivo de ritmo por piloto. Strategy
+resuelve primero el ritmo común observado y suma después ese delta, por lo que
+una entrada 60/62 ya no se aplana a 60/60. La misma función alimenta la
+optimización y la evaluación final; Fuel, VE, neumáticos, inventario y límites
+no cambian. El mapper TypeScript transporta el campo y el borrador recorded
+resuelve de forma determinista cadenas de referencias, rechazando referencias
+ausentes, ciclos y valores no finitos. Siguiente: T15a2c debe llevar la
+condición de finalización temporal al solver antes de habilitar el orden libre.
+Pasan el paquete Go focal de aplicación, frontend focal 4/108, frontend
+completo 450/3879, typecheck, lint, i18n, build, Go global y 259 checks
+documentales. El build conserva el aviso heredado de chunks superiores a
+500 kB. Sin app/Wails, LMU, DuckDB, push, PR, CI remota, integración ni release.
+
+## Historial — #1265 T15a2a cerrado localmente; inputs recorded exactos
 
 Strategy expone una consulta read-only que recibe la combinación y las
 referencias completas del borrador recorded. Reutiliza el productor conjunto

@@ -362,7 +362,18 @@ type OrbitCalculationEvent struct {
 	VirtualEnergy     *OrbitCalculationVirtualEnergy `json:"virtualEnergy,omitempty"`
 	TyreInventory     *solver.TyreInventoryInput     `json:"tyreInventory,omitempty"`
 	CompoundPace      []solver.CompoundPaceParameter `json:"compoundPace,omitempty"`
+	PitServices       *OrbitCalculationPitServices   `json:"pitServices,omitempty"`
 	PitLossSeconds    float64                        `json:"pitLossSeconds"`
+}
+
+// OrbitCalculationPitServices is the complete product-level pit model. When
+// present it replaces the legacy all-in pitLossSeconds value.
+type OrbitCalculationPitServices struct {
+	TransitSeconds  *float64 `json:"transitSeconds"`
+	RefuelRateLPerS *float64 `json:"refuelRateLPerS"`
+	VERatePPerS     *float64 `json:"veRatePPerS"`
+	TyreSeconds     *float64 `json:"tyreSeconds"`
+	ServiceMode     string   `json:"serviceMode"`
 }
 
 type OrbitCalculationVirtualEnergy struct {

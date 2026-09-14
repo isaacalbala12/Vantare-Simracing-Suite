@@ -72,7 +72,9 @@ func calculateOrbitContext(ctx context.Context, input OrbitCalculationInput) (Or
 		Comparisons: make(map[string]OrbitCalculationComparison),
 	}
 	input.Event.TankLiters = effectivePlanningValue(input.PlanningInputs, strategydocument.PlanningInputTank, input.Event.TankLiters)
-	input.Event.PitLossSeconds = effectivePlanningValue(input.PlanningInputs, strategydocument.PlanningInputPitLoss, input.Event.PitLossSeconds)
+	if input.Event.PitServices == nil {
+		input.Event.PitLossSeconds = effectivePlanningValue(input.PlanningInputs, strategydocument.PlanningInputPitLoss, input.Event.PitLossSeconds)
+	}
 	if err := validateOrbitEventResources(input.Event); err != nil {
 		return OrbitCalculationResult{}, err
 	}
@@ -105,7 +107,7 @@ func calculateOrbitContext(ctx context.Context, input OrbitCalculationInput) (Or
 			active,
 			variant.ID,
 			result.Plans[variant.ID],
-			input.Event.PitLossSeconds,
+			input.Event,
 			input.Drivers,
 		)
 	}
@@ -424,13 +426,7 @@ func orbitSolverInput(
 		BaseLapSeconds:       orbitScalarInput(planning, strategydocument.PlanningInputPace, averagePace, "strategy.orbit.base-pace"),
 		BaseLapClimateBucket: paceBucket,
 		Projection:           orbitProjection(planning),
-		PitCost: solver.PitCostModel{
-			TransitSeconds:  orbitScalarInput(planning, strategydocument.PlanningInputPitLoss, event.PitLossSeconds, "strategy.orbit.legacy-all-in-pit"),
-			RefuelRateLPerS: solver.NewFallbackScalar(orbitLegacyAllInServiceRate, "strategy.orbit.legacy-all-in-pit"),
-			VERatePPerS:     solver.NewFallbackScalar(orbitLegacyAllInServiceRate, "strategy.orbit.legacy-all-in-pit"),
-			TyreSeconds:     solver.NewFallbackScalar(0, "strategy.orbit.legacy-all-in-pit"),
-			ServiceMode:     manual.PitServiceParallel,
-		},
+		PitCost:              orbitPitCost(event, planning),
 		Formation:            solver.Formation{Seconds: solver.NewFallbackScalar(0, "strategy.orbit.no-formation"), Presence: string(strategyprojection.PresenceValid)},
 		Budget:               solver.ComputeBudget{P95Millis: 10_000},
 		FuelCapacityLiters:   orbitScalarInput(planning, strategydocument.PlanningInputTank, event.TankLiters, "strategy.orbit.tank"),
@@ -630,6 +626,14 @@ func orbitProjectionWithoutVirtualEnergy(planning *strategydocument.PlanningInpu
 }
 
 func validateOrbitEventResources(event OrbitCalculationEvent) error {
+	if services := event.PitServices; services != nil {
+		if services.TransitSeconds == nil || services.RefuelRateLPerS == nil || services.VERatePPerS == nil || services.TyreSeconds == nil {
+			return calculationApplicationError(ErrorCalculationInvalid, "input.event.pitServices", ErrCalculationInvalid)
+		}
+		if err := orbitPitCost(event, nil).Validate(); err != nil {
+			return calculationApplicationError(ErrorCalculationInvalid, "input.event.pitServices", err)
+		}
+	}
 	if event.InitialFuelLiters != nil {
 		initial, err := contract.NewFuelLiters(*event.InitialFuelLiters)
 		if err != nil || initial.Value() > event.TankLiters {
@@ -672,6 +676,25 @@ func validateOrbitEventResources(event OrbitCalculationEvent) error {
 		}
 	}
 	return nil
+}
+
+func orbitPitCost(event OrbitCalculationEvent, planning *strategydocument.PlanningInputs) solver.PitCostModel {
+	if services := event.PitServices; services != nil {
+		return solver.PitCostModel{
+			TransitSeconds:  orbitExplicitScalar(*services.TransitSeconds, "strategy.orbit.pit-transit"),
+			RefuelRateLPerS: orbitExplicitScalar(*services.RefuelRateLPerS, "strategy.orbit.refuel-rate"),
+			VERatePPerS:     orbitExplicitScalar(*services.VERatePPerS, "strategy.orbit.virtual-energy-rate"),
+			TyreSeconds:     orbitExplicitScalar(*services.TyreSeconds, "strategy.orbit.tyre-service"),
+			ServiceMode:     manual.PitServiceMode(services.ServiceMode),
+		}
+	}
+	return solver.PitCostModel{
+		TransitSeconds:  orbitScalarInput(planning, strategydocument.PlanningInputPitLoss, event.PitLossSeconds, "strategy.orbit.legacy-all-in-pit"),
+		RefuelRateLPerS: solver.NewFallbackScalar(orbitLegacyAllInServiceRate, "strategy.orbit.legacy-all-in-pit"),
+		VERatePPerS:     solver.NewFallbackScalar(orbitLegacyAllInServiceRate, "strategy.orbit.legacy-all-in-pit"),
+		TyreSeconds:     solver.NewFallbackScalar(0, "strategy.orbit.legacy-all-in-pit"),
+		ServiceMode:     manual.PitServiceParallel,
+	}
 }
 
 func orbitProjection(planning *strategydocument.PlanningInputs) *strategyprojection.StrategyInputProjectionV2 {
@@ -817,7 +840,7 @@ func effectivePlanningValueForBucket(
 	return fallback
 }
 
-func compareOrbitPlans(activeID string, active OrbitCalculationPlan, otherID string, other OrbitCalculationPlan, pitLoss float64, drivers []OrbitCalculationDriver) OrbitCalculationComparison {
+func compareOrbitPlans(activeID string, active OrbitCalculationPlan, otherID string, other OrbitCalculationPlan, event OrbitCalculationEvent, drivers []OrbitCalculationDriver) OrbitCalculationComparison {
 	winnerID, loserID := activeID, otherID
 	winnerLaps, loserLaps := active.TotalLaps, other.TotalLaps
 	if other.TotalLaps > active.TotalLaps {
@@ -825,7 +848,10 @@ func compareOrbitPlans(activeID string, active OrbitCalculationPlan, otherID str
 		winnerLaps, loserLaps = other.TotalLaps, active.TotalLaps
 	}
 	savedStops := active.Stops - other.Stops
-	savedSeconds := float64(savedStops) * pitLoss
+	savedSeconds := float64(savedStops) * event.PitLossSeconds
+	if event.PitServices != nil {
+		savedSeconds = active.PitSeconds - other.PitSeconds
+	}
 	costSeconds := (other.AveragePace - active.AveragePace) * float64(other.TotalLaps)
 	doubles := make([]string, 0)
 	for _, driver := range drivers {

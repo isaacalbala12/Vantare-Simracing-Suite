@@ -1,6 +1,18 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1230 T02e4 cerrado localmente; T02f listo
+## Estado vigente — #1231 T02f1 cerrado localmente; T02f2 listo
+
+T02f1 añade al evento de cálculo un desglose opcional y completo de servicios
+de parada. El adaptador único lo convierte al `PitCostModel` existente y marca
+sus cuatro valores como explícitos, por lo que ni `pitLossSeconds` ni una
+proyección histórica pueden pisarlos. El mismo replay acredita 28 s en paralelo
+y 33 s en secuencial; sin el objeto nuevo se conserva exactamente el modelo
+all-in anterior. No se ha añadido otro solver, validador o modelo de coste.
+Astra high no encontró P0/P1/P2 ni complejidad eliminable. Siguiente: T02f2
+tiempo de formación y su encaje en el horizonte de carrera. Sin TypeScript, UI,
+app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release.
+
+## Historial — #1230 T02e4 cerrado localmente; T02f listo
 
 T02e4 amplía el mismo borrador recorded v1 con inventario físico y ritmo por
 compuesto opcionales. La custodia exige ambas partes juntas, valida la forma

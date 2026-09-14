@@ -1,6 +1,21 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1260 T14e cerrado localmente; historial consultable
+## Estado vigente — #1261 T14f1; intención incierta durable en Analysis
+
+`CorrectionStore` puede custodiar antes de Save un único comando mixto completo
+por base: correcciones escalares, uso por familia, clasificación y límites,
+incluidos conjuntos vacíos explícitos. El documento privado sella el contenido
+con el digest canónico existente, lo valida al reabrir y conserva la intención
+si otra escritura avanza la cabeza. Cargar no abre fuentes ni concede autoridad;
+reconocer retira sólo el commandId exacto y es idempotente. Se reutilizan lease,
+backup y escritura atómica. Cuatro regresiones nuevas cubren reinicio, pérdida
+de confirmación al preparar, commit confirmado, ausencia con HEAD posterior,
+conflicto, reconocimiento y corrupción;
+`go test ./internal/telemetryanalysis` pasa. Continúa T14f2: operación del
+servicio/bridge y cliente, todavía sin UI ni cierre integral de T14f. Sin
+app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release.
+
+## Historial — #1260 T14e cerrado localmente; historial consultable
 
 Mis estrategias muestra planes guardados aunque ya no tengan borrador y abre un
 historial lateral sin cargar revisiones automáticamente. La persona elige una

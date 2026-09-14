@@ -45,6 +45,18 @@ type CorrectionCommandResolution struct {
 	Revision *CorrectionRevision `json:"revision,omitempty"`
 }
 
+// PendingCorrectionCommand is the exact write intent retained before Save.
+// Every slice is explicit: nil is invalid, while an empty slice means the
+// caller intentionally supplied an empty complete set.
+type PendingCorrectionCommand struct {
+	Corrections     []SampleValueCorrection    `json:"corrections"`
+	FamilyUses      []LapFamilyUseCorrection   `json:"familyUses"`
+	Classifications []ClassificationCorrection `json:"classifications"`
+	StintBoundaries []StintBoundaryCorrection  `json:"stintBoundaries"`
+	Command         CorrectionSaveCommand      `json:"command"`
+	CommandDigest   string                     `json:"commandDigest"`
+}
+
 // ObservationCorrectionInput is assembled by Analysis from authorized original
 // data and scalar reanalysis. It is not a client DTO. Non-nil FamilyUses denotes
 // an explicit complete set, including explicit removal of all family decisions.
@@ -71,10 +83,11 @@ type ObservationCorrectionInput struct {
 	ResolveCanonicalCombination func(context.Context, string) (CombinationIdentity, error)
 }
 type correctionDocument struct {
-	Version   int                  `json:"version"`
-	Base      SourceAnalysisRef    `json:"base"`
-	HeadID    string               `json:"headId"`
-	Revisions []CorrectionRevision `json:"revisions"`
+	Version   int                       `json:"version"`
+	Base      SourceAnalysisRef         `json:"base"`
+	HeadID    string                    `json:"headId"`
+	Revisions []CorrectionRevision      `json:"revisions"`
+	Pending   *PendingCorrectionCommand `json:"pending,omitempty"`
 }
 
 // CorrectionStore owns only private revision custody. The Analysis service must
@@ -161,6 +174,98 @@ func (s *CorrectionStore) SaveObservations(ctx context.Context, base SourceAnaly
 		return CorrectionStoreResult{}, err
 	}
 	return s.saveValidated(ctx, base, input, command, digest)
+}
+
+// StagePendingCommand durably retains one exact current-format intent before
+// the caller dispatches SaveObservations. Repeating the same intent is a no-op;
+// replacing it requires first resolving and acknowledging the existing one.
+func (s *CorrectionStore) StagePendingCommand(ctx context.Context, base SourceAnalysisRef, pending PendingCorrectionCommand) (result PendingCorrectionCommand, err error) {
+	if pending.CommandDigest != "" {
+		return result, ErrInvalidCorrection
+	}
+	digest, err := pendingCorrectionCommandDigest(base, pending)
+	if err != nil {
+		return result, err
+	}
+	path, lease, err := s.lock(ctx, base)
+	if err != nil {
+		return result, err
+	}
+	defer func() { err = errors.Join(err, lease.Close()) }()
+	doc, previous, err := s.read(path, base)
+	if err != nil {
+		return result, err
+	}
+	if doc.Pending != nil {
+		existingDigest, validationErr := validateStoredPendingCorrectionCommand(base, *doc.Pending)
+		if validationErr != nil {
+			return result, validationErr
+		}
+		if existingDigest != digest {
+			return result, ErrCorrectionConflict
+		}
+		return *doc.Pending, nil
+	}
+	if doc.HeadID != pending.Command.ExpectedRevision {
+		return result, ErrCorrectionConflict
+	}
+	pending.CommandDigest = digest
+	doc.Pending = &pending
+	if err := s.commitDocument(ctx, path, previous, doc); err != nil {
+		return result, err
+	}
+	return pending, nil
+}
+
+func (s *CorrectionStore) LoadPendingCommand(ctx context.Context, base SourceAnalysisRef) (result *PendingCorrectionCommand, err error) {
+	path, lease, err := s.lock(ctx, base)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { err = errors.Join(err, lease.Close()) }()
+	doc, _, err := s.read(path, base)
+	if err != nil || doc.Pending == nil {
+		return nil, err
+	}
+	pending := *doc.Pending
+	return &pending, nil
+}
+
+// AcknowledgePendingCommand removes only the named intent. Absence is
+// idempotent; another pending identity is a conflict.
+func (s *CorrectionStore) AcknowledgePendingCommand(ctx context.Context, base SourceAnalysisRef, commandID string) (err error) {
+	if !correctionText(commandID, 256) {
+		return ErrInvalidCorrection
+	}
+	path, lease, err := s.lock(ctx, base)
+	if err != nil {
+		return err
+	}
+	defer func() { err = errors.Join(err, lease.Close()) }()
+	doc, previous, err := s.read(path, base)
+	if err != nil || doc.Pending == nil {
+		return err
+	}
+	if doc.Pending.Command.CommandID != commandID {
+		return ErrCorrectionConflict
+	}
+	doc.Pending = nil
+	return s.commitDocument(ctx, path, previous, doc)
+}
+
+func pendingCorrectionCommandDigest(base SourceAnalysisRef, pending PendingCorrectionCommand) (string, error) {
+	if pending.Corrections == nil || pending.FamilyUses == nil || pending.Classifications == nil || pending.StintBoundaries == nil {
+		return "", ErrInvalidCorrection
+	}
+	return validatedStintMixedCommandDigest(base, pending.Command, pending.Corrections, pending.FamilyUses, pending.Classifications, pending.StintBoundaries)
+}
+
+func validateStoredPendingCorrectionCommand(base SourceAnalysisRef, pending PendingCorrectionCommand) (string, error) {
+	digest, err := pendingCorrectionCommandDigest(base, pending)
+	if err != nil || digest != pending.CommandDigest {
+		return "", ErrCorruptCorrections
+	}
+	return digest, nil
 }
 
 // ResolveCommand checks the exact command without another write. The same lease
@@ -394,12 +499,19 @@ func (s *CorrectionStore) saveValidated(ctx context.Context, base SourceAnalysis
 	}
 	doc.Revisions = append(doc.Revisions, revision)
 	doc.HeadID = revision.RevisionID
-	data, err := encodeCorrectionDocument(doc)
-	if err != nil {
+	if err := s.commitDocument(ctx, path, previous, doc); err != nil {
 		return result, err
 	}
+	return CorrectionStoreResult{revision, doc.HeadID}, nil
+}
+
+func (s *CorrectionStore) commitDocument(ctx context.Context, path string, previous []byte, doc correctionDocument) error {
+	data, err := encodeCorrectionDocument(doc)
+	if err != nil {
+		return err
+	}
 	if err := ctx.Err(); err != nil {
-		return result, err
+		return err
 	}
 	// Keep a validated recovery generation. First commit's backup is itself a
 	// durable candidate: failure after it is written must report uncertainty.
@@ -409,14 +521,14 @@ func (s *CorrectionStore) saveValidated(ctx context.Context, base SourceAnalysis
 	}
 	if err := s.writeFile(path+".bak", previous); err != nil {
 		if first {
-			return result, fmt.Errorf("%w: correction backup: %w", ErrCorrectionCommitUncertain, err)
+			return fmt.Errorf("%w: correction backup: %w", ErrCorrectionCommitUncertain, err)
 		}
-		return result, fmt.Errorf("correction backup: %w", err)
+		return fmt.Errorf("correction backup: %w", err)
 	}
 	if err := s.writeFile(path, data); err != nil {
-		return result, fmt.Errorf("%w: %w", ErrCorrectionCommitUncertain, err)
+		return fmt.Errorf("%w: %w", ErrCorrectionCommitUncertain, err)
 	}
-	return CorrectionStoreResult{revision, doc.HeadID}, nil
+	return nil
 }
 func (s *CorrectionStore) read(path string, base SourceAnalysisRef) (correctionDocument, []byte, error) {
 	primary, primaryErr := readCorrectionFile(path)

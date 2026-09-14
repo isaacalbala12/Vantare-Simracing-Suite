@@ -266,7 +266,14 @@ func decodeCorrectionDocument(data []byte, base SourceAnalysisRef) (correctionDo
 		return invalid()
 	}
 	head := initial.SnapshotID
-	commands := make(map[string]bool, len(doc.Revisions))
+	commands := make(map[string]string, len(doc.Revisions))
+	pendingDigest := ""
+	if doc.Pending != nil {
+		pendingDigest, err = validateStoredPendingCorrectionCommand(base, *doc.Pending)
+		if err != nil {
+			return invalid()
+		}
+	}
 	// Bounded presence preflight for canonicalCombination, using the same
 	// case-insensitive matching as the decoder itself: a typed RawMessage
 	// field observes the key in any capitalization, so v1/v2/v3 reject the
@@ -285,7 +292,7 @@ func decodeCorrectionDocument(data []byte, base SourceAnalysisRef) (correctionDo
 	}
 	for n, revision := range doc.Revisions {
 		cmd := revision.Command
-		if revision.ParentRevisionID != head || cmd.ExpectedRevision != head || commands[cmd.CommandID] || !correctionText(cmd.CommandID, 256) || !correctionText(cmd.LocalAuthorID, 256) || !correctionText(cmd.Reason, 1024) {
+		if revision.ParentRevisionID != head || cmd.ExpectedRevision != head || commands[cmd.CommandID] != "" || !correctionText(cmd.CommandID, 256) || !correctionText(cmd.LocalAuthorID, 256) || !correctionText(cmd.Reason, 1024) {
 			return invalid()
 		}
 		created, err := time.Parse(time.RFC3339Nano, revision.CreatedAt)
@@ -413,11 +420,16 @@ func decodeCorrectionDocument(data []byte, base SourceAnalysisRef) (correctionDo
 		if err != nil || id != revision.RevisionID {
 			return invalid()
 		}
-		commands[cmd.CommandID] = true
+		commands[cmd.CommandID] = revision.CommandDigest
 		head = revision.RevisionID
 	}
 	if head != doc.HeadID {
 		return invalid()
+	}
+	if doc.Pending != nil {
+		if committedDigest := commands[doc.Pending.Command.CommandID]; committedDigest != "" && committedDigest != pendingDigest {
+			return invalid()
+		}
 	}
 	return doc, nil
 }

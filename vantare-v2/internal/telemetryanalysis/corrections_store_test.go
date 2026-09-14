@@ -66,6 +66,151 @@ func TestObservationStoreRestartRestoreAndLegacyProtection(t *testing.T) {
 	}
 }
 
+func pendingCommandExample(t *testing.T) (SourceAnalysisRef, ObservationCorrectionInput, PendingCorrectionCommand) {
+	t.Helper()
+	base, input, command := observationStoreExample(t)
+	input.Classifications = []ClassificationCorrection{}
+	input.StintBoundaries = []StintBoundaryCorrection{}
+	pending := PendingCorrectionCommand{
+		Corrections:     []SampleValueCorrection{input.Samples[0].Request},
+		FamilyUses:      append([]LapFamilyUseCorrection{}, input.FamilyUses...),
+		Classifications: []ClassificationCorrection{},
+		StintBoundaries: []StintBoundaryCorrection{},
+		Command:         command,
+	}
+	return base, input, pending
+}
+
+func TestCorrectionStorePendingCommandSurvivesRestartAndAcknowledgesExactly(t *testing.T) {
+	ctx := context.Background()
+	base, input, pending := pendingCommandExample(t)
+	root := t.TempDir()
+	store := NewCorrectionStore(root)
+	staged, err := store.StagePendingCommand(ctx, base, pending)
+	if err != nil || staged.CommandDigest == "" {
+		t.Fatal("pending command was not staged", err)
+	}
+	current, err := store.Load(ctx, base, "")
+	if err != nil || current.HeadID != pending.Command.ExpectedRevision {
+		t.Fatal("staging changed the correction head", err)
+	}
+	restarted := NewCorrectionStore(root)
+	loaded, err := restarted.LoadPendingCommand(ctx, base)
+	if err != nil || loaded == nil || loaded.Command.CommandID != pending.Command.CommandID || len(loaded.Corrections) != 1 || loaded.FamilyUses == nil || loaded.Classifications == nil || loaded.StintBoundaries == nil {
+		t.Fatal("restart lost the exact pending command", err)
+	}
+	if _, err := restarted.SaveObservations(ctx, base, input, pending.Command); err != nil {
+		t.Fatal("cannot commit staged command", err)
+	}
+	resolved, err := NewCorrectionStore(root).ResolveStintMixedCommand(ctx, base, pending.Corrections, pending.FamilyUses, pending.Classifications, pending.StintBoundaries, pending.Command)
+	if err != nil || !resolved.Found || resolved.Revision == nil {
+		t.Fatal("restart cannot resolve committed pending command", err)
+	}
+	if err := NewCorrectionStore(root).AcknowledgePendingCommand(ctx, base, pending.Command.CommandID); err != nil {
+		t.Fatal("cannot acknowledge pending command", err)
+	}
+	if loaded, err := NewCorrectionStore(root).LoadPendingCommand(ctx, base); err != nil || loaded != nil {
+		t.Fatal("acknowledged command remained pending", err)
+	}
+	if err := NewCorrectionStore(root).AcknowledgePendingCommand(ctx, base, pending.Command.CommandID); err != nil {
+		t.Fatal("repeated acknowledgement was not idempotent", err)
+	}
+}
+
+func TestCorrectionStorePendingCommandRecoversLostStageAcknowledgement(t *testing.T) {
+	ctx := context.Background()
+	base, _, pending := pendingCommandExample(t)
+	root := t.TempDir()
+	store := NewCorrectionStore(root)
+	store.writeFile = func(path string, data []byte) error {
+		if err := writeAuthorizedSessionFile(path, data); err != nil {
+			return err
+		}
+		if !strings.HasSuffix(path, ".bak") {
+			return errors.New("lost acknowledgement")
+		}
+		return nil
+	}
+	if _, err := store.StagePendingCommand(ctx, base, pending); !errors.Is(err, ErrCorrectionCommitUncertain) {
+		t.Fatal("uncertain stage reported success", err)
+	}
+	restarted := NewCorrectionStore(root)
+	replayed, err := restarted.StagePendingCommand(ctx, base, pending)
+	if err != nil || replayed.CommandDigest == "" {
+		t.Fatal("restart did not recover exact staged command", err)
+	}
+	loaded, err := restarted.LoadPendingCommand(ctx, base)
+	if err != nil || loaded == nil || loaded.CommandDigest != replayed.CommandDigest {
+		t.Fatal("recovered stage was duplicated or lost", err)
+	}
+}
+
+func TestCorrectionStorePendingCommandPreservesAbsenceConflictAndCurrentHead(t *testing.T) {
+	ctx := context.Background()
+	base, input, pending := pendingCommandExample(t)
+	root := t.TempDir()
+	store := NewCorrectionStore(root)
+	if _, err := store.StagePendingCommand(ctx, base, pending); err != nil {
+		t.Fatal(err)
+	}
+	changed := pending
+	changed.Command.Reason = "changed"
+	if _, err := store.StagePendingCommand(ctx, base, changed); !errors.Is(err, ErrCorrectionConflict) {
+		t.Fatal("replaced pending payload under the same identity", err)
+	}
+	other := input
+	otherCommand := pending.Command
+	otherCommand.CommandID = "other-writer"
+	if _, err := store.SaveObservations(ctx, base, other, otherCommand); err != nil {
+		t.Fatal("other writer could not advance head", err)
+	}
+	resolution, err := NewCorrectionStore(root).ResolveStintMixedCommand(ctx, base, pending.Corrections, pending.FamilyUses, pending.Classifications, pending.StintBoundaries, pending.Command)
+	if err != nil || resolution.Found || resolution.HeadID == pending.Command.ExpectedRevision {
+		t.Fatal("pending absence hid the newer head", resolution, err)
+	}
+	loaded, err := NewCorrectionStore(root).LoadPendingCommand(ctx, base)
+	if err != nil || loaded == nil || loaded.Command.CommandID != pending.Command.CommandID {
+		t.Fatal("conflict discarded pending intent", err)
+	}
+	if err := store.AcknowledgePendingCommand(ctx, base, "different"); !errors.Is(err, ErrCorrectionConflict) {
+		t.Fatal("acknowledged a different command", err)
+	}
+}
+
+func TestCorrectionStoreRejectsTamperedOrImplicitPendingCommand(t *testing.T) {
+	ctx := context.Background()
+	base, _, pending := pendingCommandExample(t)
+	root := t.TempDir()
+	store := NewCorrectionStore(root)
+	implicit := pending
+	implicit.Classifications = nil
+	if _, err := store.StagePendingCommand(ctx, base, implicit); !errors.Is(err, ErrInvalidCorrection) {
+		t.Fatal("accepted an implicit correction set", err)
+	}
+	if _, err := store.StagePendingCommand(ctx, base, pending); err != nil {
+		t.Fatal(err)
+	}
+	digest, err := base.Digest()
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(root, "corrections", digest+".json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data = []byte(strings.Replace(string(data), pending.Command.Reason, "tampered", 1))
+	if err := os.WriteFile(path, data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path+".bak", data, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.LoadPendingCommand(ctx, base); !errors.Is(err, ErrCorruptCorrections) {
+		t.Fatal("tampered pending command was accepted", err)
+	}
+}
+
 func TestObservationStoreResolvesFullPayloadWithoutAnotherWrite(t *testing.T) {
 	ctx := context.Background()
 	base, input, command := observationStoreExample(t)

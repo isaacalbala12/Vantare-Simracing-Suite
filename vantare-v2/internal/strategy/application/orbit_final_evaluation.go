@@ -14,7 +14,10 @@ import (
 func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInputV2, solved solver.SolverResultV2, drivers map[string]OrbitCalculationDriver, variant OrbitCalculationVariant, planning *document.PlanningInputs) error {
 	decision := solver.DecisionVector{Stints: make([]solver.StintDecision, len(plan.Stints)), PitStops: make([]solver.PitStopDecision, 0, len(plan.Stints)-1)}
 	seen := make(map[string]bool)
-	differingDrivers := false
+	keepDriverProfiles := len(input.DriverProfiles) > 0
+	for _, profile := range input.DriverProfiles {
+		seen[profile.DriverID] = true
+	}
 	veLoads := make([]float64, len(plan.Stints))
 	for index := range plan.Stints {
 		stint := &plan.Stints[index]
@@ -23,17 +26,16 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 			return err
 		}
 		if pace.PaceSeconds != solved.ResolvedInputs.BaseLapSeconds.Value || pace.FuelLitersPerLap != solved.ResolvedInputs.FuelPerLapLiters.Value {
-			differingDrivers = true
+			keepDriverProfiles = true
 		}
 		// The plan already carries the effective pace and fuel, including the
 		// original projection retained in input. Per-driver configuration only
-		// overrides differing manual driver values for this fixed evaluation.
+		// overrides differing driver values for this fixed evaluation.
 		if !seen[stint.DriverID] {
-			input.DriverProfiles = append(input.DriverProfiles, solver.DriverProfileInput{DriverID: stint.DriverID, Manual: &solver.ManualDriverProfile{
-				BaseLapSeconds: pace.PaceSeconds, FuelPerLapLiters: pace.FuelLitersPerLap, VEPerLapPercent: solved.ResolvedInputs.VEPerLapPercent.Value,
-				Provenance: sp.Provenance{Kind: sp.ProvenanceManual, SourceID: "strategy.orbit.driver-configuration:" + stint.DriverID},
-				Confidence: sp.Confidence{SampleSize: 1, ComputationVersion: "orbit-adapter.v2"},
-			}})
+			input.DriverProfiles = append(input.DriverProfiles, orbitDriverProfile(
+				stint.DriverID, pace, solved.ResolvedInputs.VEPerLapPercent.Value,
+				sp.Provenance{Kind: sp.ProvenanceManual, SourceID: "strategy.orbit.driver-configuration:" + stint.DriverID},
+			))
 			seen[stint.DriverID] = true
 		}
 		choice := solver.StintDecision{Index: index, Laps: stint.Laps, Driver: stint.DriverID, SavingLevel: solver.SavingNone}
@@ -50,9 +52,9 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 			decision.PitStops = append(decision.PitStops, stop)
 		}
 	}
-	// Keep the original scalar/projection provenance when the drivers share
-	// the same inputs. Profiles are only needed for actual driver differences.
-	if !differingDrivers {
+	// Keep a profile supplied to optimisation. Otherwise preserve the original
+	// scalar/projection provenance when every driver shares those inputs.
+	if !keepDriverProfiles {
 		input.DriverProfiles = nil
 		for index := range decision.Stints {
 			decision.Stints[index].Driver = ""
@@ -163,4 +165,12 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 		}
 	}
 	return nil
+}
+
+func orbitDriverProfile(driverID string, pace OrbitCalculationPace, vePerLap float64, provenance sp.Provenance) solver.DriverProfileInput {
+	return solver.DriverProfileInput{DriverID: driverID, Manual: &solver.ManualDriverProfile{
+		BaseLapSeconds: pace.PaceSeconds, FuelPerLapLiters: pace.FuelLitersPerLap, VEPerLapPercent: vePerLap,
+		Provenance: provenance,
+		Confidence: sp.Confidence{SampleSize: 1, ComputationVersion: "orbit-adapter.v2"},
+	}}
 }

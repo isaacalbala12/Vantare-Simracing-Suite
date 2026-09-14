@@ -157,7 +157,7 @@ func calculateOrbitWeather(ctx context.Context, input OrbitCalculationInput, dri
 	}
 	solved, err := solver.SolveWeatherScenariosContext(
 		ctx,
-		orbitSolverInput(comparisonLaps, input.Event, effectivePace, effectiveFuel, strategyprojection.ClimateBucketDry, input.PlanningInputs),
+		orbitVariantSolverInput(comparisonLaps, input.Event, variant, effectivePace, effectiveFuel, strategyprojection.ClimateBucketDry, input.PlanningInputs),
 		solver.WeatherScenarioSet{Scenarios: weighted, BucketParameters: parameters},
 	)
 	if err != nil {
@@ -306,9 +306,8 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 }
 
 func calculateOrbitLapPlan(ctx context.Context, event OrbitCalculationEvent, drivers map[string]OrbitCalculationDriver, variant OrbitCalculationVariant, variantIndex int, planning *strategydocument.PlanningInputs, raceLaps int64, averagePace, averageFuel float64) (OrbitCalculationPlan, error) {
-	optimised, err := solver.SolveV2Context(ctx, orbitSolverInput(
-		raceLaps, event, averagePace, averageFuel, orbitClimateBucket(variant.Mode), planning,
-	))
+	solverInput := orbitVariantSolverInput(raceLaps, event, variant, averagePace, averageFuel, orbitClimateBucket(variant.Mode), planning)
+	optimised, err := solver.SolveV2Context(ctx, solverInput)
 	if err != nil {
 		return OrbitCalculationPlan{}, mapOrbitCalculationError(err, fmt.Sprintf("input.variants.%d", variantIndex))
 	}
@@ -411,7 +410,7 @@ func calculateOrbitLapPlan(ctx context.Context, event OrbitCalculationEvent, dri
 			delete(byDriver, driverID)
 		}
 	}
-	if err := evaluateFinalOrbitPlan(&plan, orbitSolverInput(raceLaps, event, averagePace, averageFuel, orbitClimateBucket(variant.Mode), planning), optimised, drivers, variant, planning); err != nil {
+	if err := evaluateFinalOrbitPlan(&plan, solverInput, optimised, drivers, variant, planning); err != nil {
 		if errors.Is(err, ErrCalculationInfeasible) {
 			return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInfeasible, fmt.Sprintf("input.variants.%d", variantIndex), err)
 		}
@@ -478,6 +477,27 @@ func orbitSolverInput(
 			}
 		}
 	}
+	return input
+}
+
+func orbitVariantSolverInput(
+	raceLaps int64,
+	event OrbitCalculationEvent,
+	variant OrbitCalculationVariant,
+	averagePace, averageFuel float64,
+	paceBucket strategyprojection.ClimateBucket,
+	planning *strategydocument.PlanningInputs,
+) solver.SolverInputV2 {
+	input := orbitSolverInput(raceLaps, event, averagePace, averageFuel, paceBucket, planning)
+	if len(variant.Order) != 1 || event.Rules == nil || len(event.Rules.DriverLimits) == 0 {
+		return input
+	}
+	vePerLap := input.ResolveScalarInputs().VEPerLapPercent.Value
+	driverID := variant.Order[0]
+	input.DriverProfiles = []solver.DriverProfileInput{orbitDriverProfile(
+		driverID, OrbitCalculationPace{PaceSeconds: averagePace, FuelLitersPerLap: averageFuel}, vePerLap,
+		strategyprojection.Provenance{Kind: strategyprojection.ProvenanceReference, SourceID: "strategy.orbit.driver-configuration:" + driverID},
+	)}
 	return input
 }
 

@@ -613,6 +613,11 @@ type ResolvedScalarInputs struct {
 	PitCost            PitCostModel `json:"pitCost"`
 }
 
+// ResolveScalarInputs applies the solver's source precedence without solving.
+func (in SolverInputV2) ResolveScalarInputs() ResolvedScalarInputs {
+	return in.resolvedScalarInputs()
+}
+
 func (in SolverInputV2) resolvedScalarInputs() ResolvedScalarInputs {
 	return ResolvedScalarInputs{
 		BaseLapSeconds:     in.baseLapSource(),

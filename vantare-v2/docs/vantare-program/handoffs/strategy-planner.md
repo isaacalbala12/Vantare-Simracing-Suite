@@ -1,6 +1,19 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1234 T02f3b cerrado localmente; T02g listo
+## Estado vigente — #1235 T02g1 cerrado localmente; contrato multipiloto pendiente
+
+T02g1 crea el perfil efectivo antes de optimizar únicamente cuando el evento
+tiene un piloto y límites de conducción. Solve, meteorología y evaluación final
+comparten el mismo input; Fuel y VE conservan la precedencia única de SolverV2,
+incluidos cero no aplicable y proyecciones que prevalecen sobre referencias. El
+camino sin límites conserva su comportamiento y coste. RED reprodujo la ausencia
+del perfil, la pérdida de VE proyectada y el hueco meteorológico; focales,
+application/solver, `go test ./...`, vet, build web y diff-check pasan. Astra high
+no encontró P0/P1/P2 ni complejidad productiva que retirar. Siguiente: fijar la
+semántica multipiloto sin reinterpretar todavía `variant.Order`. Sin UI,
+app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release.
+
+## Historial — #1234 T02f3b cerrado localmente; T02g listo
 
 T02f3b añade servicios explícitos y tiempo de formación como dos campos
 opcionales del borrador recorded v1. El parser existente valida su forma sin

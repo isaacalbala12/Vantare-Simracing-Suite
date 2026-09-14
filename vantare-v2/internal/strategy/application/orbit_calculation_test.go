@@ -252,6 +252,7 @@ func TestOrbitMissingOrEmptyDerivedFamiliesDegradeWithCause(t *testing.T) {
 
 func TestCalculateOrbitWeatherChangesPlanAndPublishesRobustMetrics(t *testing.T) {
 	now := time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC)
+	maxDrivingSeconds := 10_000.0
 	scenario := func(id string, rain [5]float64, weight float64) strategydocument.WeightedWeatherScenario {
 		progress := [5]weather.WeatherNodeProgress{weather.NodeStart, weather.Node25, weather.Node50, weather.Node75, weather.NodeFinish}
 		nodes := [5]weather.WeatherNode{}
@@ -265,7 +266,9 @@ func TestCalculateOrbitWeatherChangesPlanAndPublishesRobustMetrics(t *testing.T)
 		}}
 	}
 	result, err := calculateOrbit(OrbitCalculationInput{
-		Event: OrbitCalculationEvent{DurationMinutes: 10, TankLiters: 6, PitLossSeconds: 90},
+		Event: OrbitCalculationEvent{DurationMinutes: 10, TankLiters: 6, PitLossSeconds: 90, Rules: &solver.EventRules{DriverLimits: map[string]solver.DriverLimit{
+			"driver-1": {MaxTotalTimeSeconds: &maxDrivingSeconds},
+		}}},
 		Drivers: []OrbitCalculationDriver{{
 			ID: "driver-1", Name: "Driver",
 			Dry: OrbitCalculationPace{PaceSeconds: 60, FuelLitersPerLap: 1},

@@ -1,6 +1,17 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1228 T02e backend cerrado localmente; T02e3 listo
+## Estado vigente — #1229 T02e3 cerrado localmente; T02e4 listo
+
+T02e3 alinea el cliente TypeScript con el contrato físico Go sin otra
+representación: reutiliza `StrategyTyre`, transporta inventario y parámetros de
+compuesto, y valida compuesto/montaje/cambio en resultados. `changeTyres: false`
+conserva presencia; respuestas legacy sin campos físicos siguen válidas. Go
+mantiene la validación completa del inventario. El siguiente corte T02e4 conecta
+custodia y borrador recorded sin derivar individuos desde conteos. Focales 62,
+typecheck y lint pasan; Astra high no encontró P0/P1/P2 ni complejidad eliminable.
+Sin UI, app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release.
+
+## Historial — #1228 T02e backend cerrado localmente; T02e3 listo
 
 T02e acredita que `PlanningInputs` ya lleva curva combinada y vida útil derivada
 al cálculo, y añade únicamente el transporte de inventario físico explícito y

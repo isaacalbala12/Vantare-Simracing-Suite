@@ -1,5 +1,12 @@
 import { Events } from "@wailsio/runtime";
 import { validateStrategyEventRules, type StrategyEventRules } from "./strategy-event-rules";
+import {
+  STRATEGY_COMPOUNDS,
+  parseStrategyTyreFitment,
+  type StrategyCompound,
+  type StrategyTyre,
+  type StrategyTyreFitment,
+} from "./strategy-tyre";
 
 import {
   decodePlanRevisionV1,
@@ -365,6 +372,19 @@ type StrategyOrbitCalculationEventV1 = {
       readonly initialPercent?: number;
       readonly reservePercent?: number;
     };
+  readonly tyreInventory?: {
+    readonly maximum: number;
+    readonly tyres: readonly StrategyTyre[];
+  };
+  readonly compoundPace?: readonly {
+    readonly compound: StrategyCompound;
+    readonly presence: "valid";
+    readonly provenance: StrategyProjectionFamilyV2["provenance"] & { readonly kind: "manual" | "reference" };
+    readonly confidence: StrategyProjectionConfidenceV2;
+    readonly paceDeltaSeconds: number;
+    readonly degradationPerLapSeconds: number;
+    readonly curve?: readonly { readonly lapInStint: number; readonly deltaSeconds: number }[];
+  }[];
   readonly pitLossSeconds: number;
 } & (
   | {
@@ -421,6 +441,8 @@ export type StrategyOrbitCalculatedStintV1 = {
   readonly savingLevel: string;
   readonly fuelSavedPerLap: number;
   readonly savingCostSeconds: number;
+  readonly compound?: StrategyCompound;
+  readonly tyreFitment?: StrategyTyreFitment;
 };
 
 export type StrategyOrbitCalculatedPlanV1 = {
@@ -456,6 +478,9 @@ export type StrategyOrbitCalculatedPlanV1 = {
     readonly pitServiceSeconds: number;
     readonly pitOverlapSeconds: number;
     readonly pitBreakdownAvailable: boolean;
+    readonly changeTyres?: boolean;
+    readonly compound?: StrategyCompound;
+    readonly tyreFitment?: StrategyTyreFitment;
   }[];
   readonly savingApplied: boolean;
 };
@@ -1699,6 +1724,7 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
       if (typeof stint.over !== "boolean" || typeof stint.manual !== "boolean") {
         throw new Error(`Invalid Strategy orbitCalculation.plans.${id}.stints.${index}`);
       }
+      parseOrbitTyreDecision(stint, `orbitCalculation.plans.${id}.stints.${index}`, false);
       return stint as StrategyOrbitCalculatedStintV1;
     });
     const distribution = plan.distribution.map((entry, index) => {
@@ -1718,6 +1744,7 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
         strategyNumber(stop[field], `orbitCalculation.plans.${id}.stopDetails.${index}.${field}`);
       }
       if (typeof stop.pitBreakdownAvailable !== "boolean") throw new Error(`Invalid Strategy orbitCalculation.plans.${id}.stopDetails.${index}.pitBreakdownAvailable`);
+      parseOrbitTyreDecision(stop, `orbitCalculation.plans.${id}.stopDetails.${index}`, true);
       return stop as StrategyOrbitCalculatedPlanV1["stopDetails"][number];
     });
     plans[id] = {
@@ -1762,6 +1789,22 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
   }
   const weather = calculation.weather === undefined ? undefined : parseOrbitWeather(calculation.weather);
   return { plans, comparisons, ...(weather ? { weather } : {}) };
+}
+
+function parseOrbitTyreDecision(value: Record<string, unknown>, field: string, requireChange: boolean): void {
+  const physical = value.compound !== undefined || value.tyreFitment !== undefined || value.changeTyres !== undefined;
+  if (!physical) return;
+  if (typeof value.compound !== "string" || !(STRATEGY_COMPOUNDS as readonly string[]).includes(value.compound)) {
+    throw new Error(`Invalid Strategy ${field}.compound`);
+  }
+  try {
+    parseStrategyTyreFitment(value.tyreFitment);
+  } catch {
+    throw new Error(`Invalid Strategy ${field}.tyreFitment`);
+  }
+  if (requireChange && typeof value.changeTyres !== "boolean") {
+    throw new Error(`Invalid Strategy ${field}.changeTyres`);
+  }
 }
 
 function parseOrbitWeather(value: unknown): StrategyOrbitWeatherResultV1 {

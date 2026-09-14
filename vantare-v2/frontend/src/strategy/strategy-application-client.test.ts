@@ -8,6 +8,7 @@ import {
 } from "./strategy-application-client";
 import orbitGolden from "../hub/strategy-orbit/testdata/orbit-go-golden.json";
 import projectionGolden from "../../../internal/telemetryanalysis/strategyprojection/testdata/strategyinputprojection_v2_new.json";
+import { defaultTyreCondition } from "./strategy-tyre";
 
 describe("event rules document transport", () => {
   it.each([
@@ -146,6 +147,85 @@ describe("createStrategyApplicationClient", () => {
     });
     client.cancel(command.commandId);
     await expect(pending).rejects.toThrow(/cancelled/i);
+  });
+
+  it("transports the canonical physical inventory and compound pace unchanged", async () => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const corners = ["FL", "FR", "RL", "RR"] as const;
+    const tyres = corners.map((corner) => ({
+      id: `H-${corner}`,
+      compound: "hard" as const,
+      origin: "event_allocation" as const,
+      condition: defaultTyreCondition("event_allocation"),
+      state: "free" as const,
+      stints: 0,
+    }));
+    const command: StrategyApplicationCommandV1<Payload> = {
+      protocolVersion: "strategy.application.v1", commandId: "orbit-tyres", operation: "calculate_orbit", expectedRepositoryVersion: 0,
+      input: {
+        event: {
+          durationMinutes: 10, tankLiters: 60, pitLossSeconds: 20,
+          tyreInventory: { maximum: 4, tyres },
+          compoundPace: [{
+            compound: "hard", presence: "valid",
+            provenance: { kind: "reference", sourceId: "catalog:test" },
+            confidence: { sampleSize: 1, computationVersion: "test.v1" },
+            paceDeltaSeconds: 0, degradationPerLapSeconds: 0,
+          }],
+        },
+        drivers: [{ id: "d1", name: "D", dry: { paceSeconds: 60, fuelLitersPerLap: 1 }, wet: { paceSeconds: 66, fuelLitersPerLap: 1 }, eco: { paceSeconds: 61, fuelLitersPerLap: 0.9 } }],
+        variants: [{ id: "s1", mode: "dry", order: ["d1"], overrides: {} }], activeVariantId: "s1",
+      },
+    };
+
+    const pending = client.execute(command);
+    expect(transport.emitted[0]).toEqual({ name: "strategy:application:command", payload: command });
+    client.cancel(command.commandId);
+    await expect(pending).rejects.toThrow(/cancelled/i);
+  });
+
+  it("preserves complete physical tyre decisions including false", async () => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const command: StrategyApplicationCommandV1<Payload> = {
+      protocolVersion: "strategy.application.v1", commandId: "orbit-tyre-result", operation: "calculate_orbit", expectedRepositoryVersion: 0,
+      input: { event: { durationMinutes: 10, tankLiters: 60, pitLossSeconds: 20 }, drivers: [{ id: "d1", name: "D", dry: { paceSeconds: 60, fuelLitersPerLap: 1 }, wet: { paceSeconds: 66, fuelLitersPerLap: 1 }, eco: { paceSeconds: 61, fuelLitersPerLap: 0.9 } }], variants: [{ id: "s1", mode: "dry", order: ["d1"], overrides: {} }], activeVariantId: "s1" },
+    };
+    const fitment = { frontLeft: "H-FL", frontRight: "H-FR", rearLeft: "H-RL", rearRight: "H-RR" };
+    const pending = client.execute(command);
+    emit(transport, "strategy:application:result", {
+      protocolVersion: "strategy.application.v1", commandId: command.commandId, repositoryVersion: 0, recoveredFromBackup: false, closed: false,
+      orbitCalculation: {
+        ...orbitGolden,
+        plans: { s1: {
+          ...orbitGolden.plans.s1,
+          stints: orbitGolden.plans.s1.stints.map((stint) => ({ ...stint, compound: "hard", tyreFitment: fitment })),
+          stopDetails: orbitGolden.plans.s1.stopDetails.map((stop) => ({ ...stop, changeTyres: false, compound: "hard", tyreFitment: fitment })),
+        } },
+      },
+    });
+
+    const result = await pending;
+    expect(result.orbitCalculation?.plans.s1.stopDetails[0]).toMatchObject({
+      changeTyres: false, compound: "hard", tyreFitment: fitment,
+    });
+  });
+
+  it.each([
+    ["missing fitment", { changeTyres: false, compound: "hard" }],
+    ["invalid compound", { changeTyres: false, compound: "dry", tyreFitment: { frontLeft: "H-FL", frontRight: "H-FR", rearLeft: "H-RL", rearRight: "H-RR" } }],
+    ["missing change", { compound: "hard", tyreFitment: { frontLeft: "H-FL", frontRight: "H-FR", rearLeft: "H-RL", rearRight: "H-RR" } }],
+  ])("rejects an incomplete physical stop: %s", async (_name, physical) => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const command: StrategyApplicationCommandV1<Payload> = {
+      protocolVersion: "strategy.application.v1", commandId: `orbit-invalid-${_name.replace(" ", "-")}`, operation: "calculate_orbit", expectedRepositoryVersion: 0,
+      input: { event: { durationMinutes: 10, tankLiters: 60, pitLossSeconds: 20 }, drivers: [{ id: "d1", name: "D", dry: { paceSeconds: 60, fuelLitersPerLap: 1 }, wet: { paceSeconds: 66, fuelLitersPerLap: 1 }, eco: { paceSeconds: 61, fuelLitersPerLap: 0.9 } }], variants: [{ id: "s1", mode: "dry", order: ["d1"], overrides: {} }], activeVariantId: "s1" },
+    };
+    const pending = client.execute(command);
+    emit(transport, "strategy:application:result", {
+      protocolVersion: "strategy.application.v1", commandId: command.commandId, repositoryVersion: 0, recoveredFromBackup: false, closed: false,
+      orbitCalculation: { ...orbitGolden, plans: { s1: { ...orbitGolden.plans.s1, stopDetails: [{ ...orbitGolden.plans.s1.stopDetails[0], ...physical }] } } },
+    });
+    await expect(pending).rejects.toThrow(/Strategy.*stopDetails/);
   });
 
   it("correlates and validates a versioned Wails-array result", async () => {

@@ -31,17 +31,17 @@ type ReplayStintV1 struct {
 // ReplayDecisionV2 evaluates a fixed plan without searching or changing its
 // pit laps, service quantities, compounds, drivers or saving levels.
 func ReplayDecisionV2(input SolverInputV2, decision DecisionVector) (ReplayResultV1, error) {
-	return replayDecisionV2(input, decision, nil)
+	return replayDecisionV2(input, decision, nil, true)
 }
 
 // ReplayDecisionV2WithResources evaluates the exact initial load selected by
 // an editor. Unlike ReplayDecisionV2 it never raises that load to make a plan
 // feasible. Service quantities still mean amounts added, not target levels.
 func ReplayDecisionV2WithResources(input SolverInputV2, decision DecisionVector, fuelLiters, vePercent float64) (ReplayResultV1, error) {
-	return replayDecisionV2(input, decision, &[2]float64{fuelLiters, vePercent})
+	return replayDecisionV2(input, decision, &[2]float64{fuelLiters, vePercent}, true)
 }
 
-func replayDecisionV2(input SolverInputV2, decision DecisionVector, initial *[2]float64) (ReplayResultV1, error) {
+func replayDecisionV2(input SolverInputV2, decision DecisionVector, initial *[2]float64, enforceCompletion bool) (ReplayResultV1, error) {
 	if err := input.Validate(); err != nil {
 		return ReplayResultV1{}, solveError(ErrorInvalidInput, "input", err.Error())
 	}
@@ -185,13 +185,13 @@ func replayDecisionV2(input SolverInputV2, decision DecisionVector, initial *[2]
 			if reserveErr != nil {
 				return ReplayResultV1{}, reserveErr
 			}
-			if !reserveStatus.Satisfied {
+			if enforceCompletion && !reserveStatus.Satisfied {
 				code, message := reserveFailure(reserveStatus)
 				result := infeasibleReplay(decision, input.Formation.Seconds.Value, node, code, message)
 				result.Reserve = reserveStatus
 				return result, nil
 			}
-			if allowed, code, message := input.completedAllowed(node, tyreModel); !allowed {
+			if allowed, code, message := input.completedAllowed(node, tyreModel); enforceCompletion && !allowed {
 				return infeasibleReplay(decision, input.Formation.Seconds.Value, node, code, message), nil
 			}
 			continue
@@ -226,7 +226,7 @@ func replayDecisionV2(input SolverInputV2, decision DecisionVector, initial *[2]
 	if err != nil {
 		return ReplayResultV1{}, err
 	}
-	return ReplayResultV1{
+	result := ReplayResultV1{
 		FinalLapStartSeconds: finalLapStart,
 		ContractVersion:      ReplayContractVersionV1,
 		Decision:             cloneDecision(node.decision),
@@ -235,7 +235,11 @@ func replayDecisionV2(input SolverInputV2, decision DecisionVector, initial *[2]
 		Reserve:              reserveStatus,
 		Feasible:             true,
 		Reasons:              []SolverReason{},
-	}, nil
+	}
+	if enforceCompletion && input.RaceDurationSeconds != nil && !timedHorizonComplete(result.FinalLapStartSeconds, result.Evaluation.TotalSeconds, *input.RaceDurationSeconds) {
+		return infeasibleReplay(decision, input.Formation.Seconds.Value, node, "timed_horizon", "la ultima vuelta no cruza correctamente el limite temporal"), nil
+	}
+	return result, nil
 }
 
 func evaluationDelta(before, after searchNode, formation float64) ScenarioEvaluation {
@@ -266,10 +270,21 @@ func validateReplayShape(input SolverInputV2, decision DecisionVector) error {
 			return fmt.Errorf("pitStops[%d].lap must equal the preceding stint boundary", index)
 		}
 	}
-	if lap != input.RaceLaps {
+	if input.RaceDurationSeconds == nil && lap != input.RaceLaps {
 		return fmt.Errorf("stint laps total %d, want raceLaps %d", lap, input.RaceLaps)
 	}
+	if input.RaceDurationSeconds != nil && lap > input.RaceLaps {
+		return fmt.Errorf("stint laps total %d exceeds raceLaps limit %d", lap, input.RaceLaps)
+	}
 	return nil
+}
+
+func timedHorizonComplete(finalLapStart, total, duration float64) bool {
+	return timedFinalLapMayStart(finalLapStart, duration) && compareTotalSeconds(total, duration) >= 0
+}
+
+func timedFinalLapMayStart(finalLapStart, duration float64) bool {
+	return compareTotalSeconds(finalLapStart, duration) < 0
 }
 
 func replayInitialTyre(model tyreDecisionModel, stint StintDecision) (tyreChoice, bool) {

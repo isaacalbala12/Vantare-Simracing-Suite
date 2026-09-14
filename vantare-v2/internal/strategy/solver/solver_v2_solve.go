@@ -244,7 +244,7 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 
 	var simpleDecisions []DecisionVector
 	simple := false
-	if input.InitialFuelLiters == nil && input.InitialVEPercent == nil {
+	if input.RaceDurationSeconds == nil && input.InitialFuelLiters == nil && input.InitialVEPercent == nil {
 		simpleDecisions, simple = simpleResourceDecisions(input, fuel, ve, paceCost, compoundPace, fuelWeight, saving, drivers, weatherCost)
 	}
 	if simple {
@@ -270,9 +270,9 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 				if riskActive && !worstFeasible {
 					continue
 				}
-				completed = insertRanked(completed, node, input.Formation.Seconds.Value)
+				completed = insertCompletedRanked(input, completed, node)
 				if worstFeasible {
-					completedWorstFeasible = insertRanked(completedWorstFeasible, node, input.Formation.Seconds.Value)
+					completedWorstFeasible = insertCompletedRanked(input, completedWorstFeasible, node)
 				}
 				evaluated++
 			}
@@ -333,7 +333,36 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 							result.addRejected(afterStint, input, code, message)
 							continue
 						}
-						if afterStint.lap == input.RaceLaps {
+						if input.RaceDurationSeconds != nil {
+							replayed, replayErr := replayDecisionV2(input, afterStint.decision, nil, false)
+							if replayErr != nil {
+								return SolverResultV2{}, replayErr
+							}
+							if !replayed.Feasible {
+								continue
+							}
+							if !timedFinalLapMayStart(replayed.FinalLapStartSeconds, *input.RaceDurationSeconds) {
+								result.addRejected(afterStint, input, "timed_horizon", "la ultima vuelta empezaria despues del limite temporal")
+								continue
+							}
+							if compareTotalSeconds(replayed.Evaluation.TotalSeconds, *input.RaceDurationSeconds) >= 0 {
+								if !replayed.Reserve.Satisfied {
+									code, message := reserveFailure(replayed.Reserve)
+									result.addRejected(afterStint, input, code, message)
+								} else if allowed, code, message := input.completedAllowed(afterStint, tyreModel); allowed {
+									canonical := nodeFromEvaluation(replayed.Decision, replayed.Evaluation)
+									canonical.worstFeasible = afterStint.worstFeasible
+									completed = insertCompletedRanked(input, completed, canonical)
+									if afterStint.worstFeasible {
+										completedWorstFeasible = insertCompletedRanked(input, completedWorstFeasible, canonical)
+									}
+								} else {
+									result.addRejected(afterStint, input, code, message)
+								}
+								continue
+							}
+						}
+						if input.RaceDurationSeconds == nil && afterStint.lap == input.RaceLaps {
 							reserveStatus, reserveErr := reserveStatusForNode(input, afterStint, fuel, ve, weatherCost, drivers, saving)
 							if reserveErr != nil {
 								return SolverResultV2{}, reserveErr
@@ -342,9 +371,9 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 								code, message := reserveFailure(reserveStatus)
 								result.addRejected(afterStint, input, code, message)
 							} else if allowed, code, message := input.completedAllowed(afterStint, tyreModel); allowed {
-								completed = insertRanked(completed, afterStint, input.Formation.Seconds.Value)
+								completed = insertCompletedRanked(input, completed, afterStint)
 								if afterStint.worstFeasible {
-									completedWorstFeasible = insertRanked(completedWorstFeasible, afterStint, input.Formation.Seconds.Value)
+									completedWorstFeasible = insertCompletedRanked(input, completedWorstFeasible, afterStint)
 								}
 							} else {
 								result.addRejected(afterStint, input, code, message)
@@ -396,6 +425,7 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 										len(input.EventRules.MandatoryCompounds) > 0,
 										drivers.enabled,
 										riskActive,
+										input.RaceDurationSeconds != nil,
 										&iterations,
 										maxIterations,
 									)
@@ -473,7 +503,7 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 	}
 
 	best := completed[0]
-	rankedCompleted := mergeRankedCandidates(completed, completedWorstFeasible, input.Formation.Seconds.Value)
+	rankedCompleted := mergeRankedCandidates(input, completed, completedWorstFeasible)
 	result.Feasible = true
 	result.Best = cloneDecision(best.decision)
 	result.Reserve, err = reserveStatusForNode(input, best, fuel, ve, weatherCost, drivers, saving)
@@ -592,7 +622,7 @@ func canonicalizeCompletedResources(input SolverInputV2, candidates []searchNode
 			return nil, err
 		}
 		node.worstFeasible = candidate.worstFeasible
-		canonical = insertRanked(canonical, node, input.Formation.Seconds.Value)
+		canonical = insertCompletedRanked(input, canonical, node)
 	}
 	return canonical, nil
 }
@@ -943,6 +973,7 @@ func insertNondominated(
 	mandatoryCompoundsActive bool,
 	driversActive bool,
 	riskActive bool,
+	timed bool,
 	iterations *int,
 	maxIterations int,
 ) ([]searchNode, int, error) {
@@ -950,7 +981,7 @@ func insertNondominated(
 		if err := consumeSearchIteration(ctx, iterations, maxIterations); err != nil {
 			return nodes, 0, err
 		}
-		if dominates(existing, candidate, formation, stopRulesActive, fuelWeightActive, tyresActive, windowsActive, mandatoryCompoundsActive, driversActive, riskActive) {
+		if dominates(existing, candidate, formation, stopRulesActive, fuelWeightActive, tyresActive, windowsActive, mandatoryCompoundsActive, driversActive, riskActive, timed) {
 			return nodes, 1, nil
 		}
 	}
@@ -960,7 +991,7 @@ func insertNondominated(
 		if err := consumeSearchIteration(ctx, iterations, maxIterations); err != nil {
 			return nodes, 0, err
 		}
-		if !dominates(candidate, existing, formation, stopRulesActive, fuelWeightActive, tyresActive, windowsActive, mandatoryCompoundsActive, driversActive, riskActive) {
+		if !dominates(candidate, existing, formation, stopRulesActive, fuelWeightActive, tyresActive, windowsActive, mandatoryCompoundsActive, driversActive, riskActive, timed) {
 			kept = append(kept, existing)
 		} else {
 			pruned++
@@ -983,8 +1014,11 @@ func consumeSearchIteration(ctx context.Context, iterations *int, maxIterations 
 func dominates(
 	left, right searchNode,
 	formation float64,
-	stopRulesActive, fuelWeightActive, tyresActive, windowsActive, mandatoryCompoundsActive, driversActive, riskActive bool,
+	stopRulesActive, fuelWeightActive, tyresActive, windowsActive, mandatoryCompoundsActive, driversActive, riskActive, timed bool,
 ) bool {
+	if timed && compareTotalSeconds(left.total(formation), right.total(formation)) != 0 {
+		return false
+	}
 	leftStops, rightStops := len(left.decision.PitStops), len(right.decision.PitStops)
 	if stopRulesActive && leftStops != rightStops {
 		return false
@@ -1095,7 +1129,31 @@ func insertRanked(nodes []searchNode, candidate searchNode, formation float64) [
 	return nodes
 }
 
-func mergeRankedCandidates(expected, worstFeasible []searchNode, formation float64) []searchNode {
+func insertCompletedRanked(input SolverInputV2, nodes []searchNode, candidate searchNode) []searchNode {
+	index := len(nodes)
+	for current, existing := range nodes {
+		if betterCompletedNode(input, candidate, existing) {
+			index = current
+			break
+		}
+	}
+	nodes = append(nodes, searchNode{})
+	copy(nodes[index+1:], nodes[index:])
+	nodes[index] = candidate
+	if len(nodes) > maxRankedCandidates {
+		nodes = nodes[:maxRankedCandidates]
+	}
+	return nodes
+}
+
+func betterCompletedNode(input SolverInputV2, left, right searchNode) bool {
+	if input.RaceDurationSeconds != nil && left.lap != right.lap {
+		return left.lap > right.lap
+	}
+	return betterNode(left, right, input.Formation.Seconds.Value)
+}
+
+func mergeRankedCandidates(input SolverInputV2, expected, worstFeasible []searchNode) []searchNode {
 	result := append([]searchNode(nil), expected...)
 	seen := make(map[string]bool, len(result)+len(worstFeasible))
 	for _, node := range result {
@@ -1109,7 +1167,7 @@ func mergeRankedCandidates(expected, worstFeasible []searchNode, formation float
 		seen[key] = true
 		index := len(result)
 		for current, existing := range result {
-			if betterNode(node, existing, formation) {
+			if betterCompletedNode(input, node, existing) {
 				index = current
 				break
 			}

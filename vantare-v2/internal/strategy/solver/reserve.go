@@ -46,11 +46,12 @@ func reserveStatusForNode(
 	if !ok {
 		return ReserveStatus{}, solveError(ErrorInvalidInput, "reserve.savingLevel", "last stint saving level is unavailable")
 	}
-	terminalFuel, terminalVE, err := weather.usage(input.RaceLaps, 1, driver, level)
+	raceLapsValue := node.lap
+	terminalFuel, terminalVE, err := weather.usage(raceLapsValue, 1, driver, level)
 	if err != nil {
 		return ReserveStatus{}, solveError(ErrorInvalidInput, "reserve.weather", err.Error())
 	}
-	raceLaps, err := contract.NewLapCount(input.RaceLaps)
+	raceLaps, err := contract.NewLapCount(raceLapsValue)
 	if err != nil {
 		return ReserveStatus{}, err
 	}
@@ -216,6 +217,7 @@ func minimumResourcePlanForDecision(
 	if len(decision.Stints) == 0 {
 		return decisionResourcePlan{}, nil
 	}
+	raceLapsValue := lap
 	last := decision.Stints[len(decision.Stints)-1]
 	lastDriverID := last.Driver
 	if lastDriverID == "" && len(drivers.order) == 1 {
@@ -233,11 +235,11 @@ func minimumResourcePlanForDecision(
 	if !ok {
 		return decisionResourcePlan{}, solveError(ErrorInvalidInput, "decision.start.savingLevel", "last stint saving level is unavailable")
 	}
-	terminalFuel, terminalVE, err := weather.usage(input.RaceLaps, 1, lastDriver, lastLevel)
+	terminalFuel, terminalVE, err := weather.usage(raceLapsValue, 1, lastDriver, lastLevel)
 	if err != nil {
 		return decisionResourcePlan{}, solveError(ErrorInvalidInput, "decision.start.weather", err.Error())
 	}
-	raceLaps, err := contract.NewLapCount(input.RaceLaps)
+	raceLaps, err := contract.NewLapCount(raceLapsValue)
 	if err != nil {
 		return decisionResourcePlan{}, err
 	}

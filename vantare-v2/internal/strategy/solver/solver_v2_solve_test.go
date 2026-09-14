@@ -1130,7 +1130,7 @@ func TestV2RankingTreatsFloatNoiseAsTieBeforeDocumentedRules(t *testing.T) {
 	if !betterNode(preferred, laterPit, 0) {
 		t.Fatalf("earlier pit changed after reversing accumulation noise: forward=%.15f reverse=%.15f", forward, reverse)
 	}
-	if !dominates(preferred, laterPit, 0, false, false, false, false, false, false, false) {
+	if !dominates(preferred, laterPit, 0, false, false, false, false, false, false, false, false) {
 		t.Fatal("dominance did not preserve the documented tie-break inside the time tolerance")
 	}
 	for _, insertionOrder := range [][]searchNode{{preferred, laterPit}, {laterPit, preferred}} {
@@ -1175,10 +1175,10 @@ func TestV2DominancePreservesStopCountStateRequiredByEventRules(t *testing.T) {
 		fuel: 2 * serviceScale, ve: 2 * serviceScale, green: 10,
 		decision: DecisionVector{PitStops: []PitStopDecision{{Lap: 2}}},
 	}
-	if dominates(equalWithMoreStops, equalWithFewerStops, 0, true, false, false, false, false, false, false) {
+	if dominates(equalWithMoreStops, equalWithFewerStops, 0, true, false, false, false, false, false, false, false) {
 		t.Fatal("a state with no remaining stop allowance cannot dominate one that can still pit")
 	}
-	if dominates(equalWithMoreStops, equalWithFewerStops, 0, false, false, false, false, false, false, false) {
+	if dominates(equalWithMoreStops, equalWithFewerStops, 0, false, false, false, false, false, false, false, false) {
 		t.Fatal("a cheaper tie path with more stops cannot erase the fewer-stop tie breaker")
 	}
 }

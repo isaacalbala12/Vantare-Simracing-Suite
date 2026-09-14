@@ -229,6 +229,7 @@ func (b ComputeBudget) Validate() error {
 type SolverInputV2 struct {
 	ContractVersion      ContractVersion               `json:"contractVersion"`
 	RaceLaps             int64                         `json:"raceLaps"`
+	RaceDurationSeconds  *float64                      `json:"raceDurationSeconds,omitempty"`
 	BaseLapSeconds       ScalarInput                   `json:"baseLapSeconds"`
 	BaseLapClimateBucket sp.ClimateBucket              `json:"baseLapClimateBucket,omitempty"`
 	Projection           *sp.StrategyInputProjectionV2 `json:"projection"`
@@ -409,6 +410,14 @@ func (in SolverInputV2) Validate() error {
 	}
 	if in.RaceLaps <= 0 || in.RaceLaps > 100000 {
 		return fmt.Errorf("raceLaps out of range")
+	}
+	if in.RaceDurationSeconds != nil {
+		if math.IsNaN(*in.RaceDurationSeconds) || math.IsInf(*in.RaceDurationSeconds, 0) || *in.RaceDurationSeconds <= 0 {
+			return fmt.Errorf("raceDurationSeconds invalid")
+		}
+		if in.Formation.Seconds.Value >= *in.RaceDurationSeconds {
+			return fmt.Errorf("formation.seconds must be below raceDurationSeconds")
+		}
 	}
 	if in.BaseLapClimateBucket != "" && !in.BaseLapClimateBucket.Valid() {
 		return fmt.Errorf("baseLapClimateBucket invalid")

@@ -26,6 +26,8 @@ export const engineerOrbitEs: Record<string, string> = {
 
   "engineer.spotterUnavailable.title": "Spotter no disponible",
   "engineer.spotterUnavailable.capability": "LMU no está entregando la telemetría espacial necesaria.",
+  "engineer.spotterUnavailable.capability_unsupported": "LMU no entrega telemetría espacial en esta sesión.",
+  "engineer.spotterUnavailable.capability_degraded": "La telemetría espacial llega degradada y el Spotter no puede evaluar con fiabilidad.",
   "engineer.spotterUnavailable.player": "No se puede identificar el coche del jugador en la sesión.",
   "engineer.spotterUnavailable.spatial": "Faltan datos de posición fiables para detectar coches alrededor.",
 

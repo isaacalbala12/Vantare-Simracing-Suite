@@ -6,7 +6,16 @@ export type EngineerOutputMode = "audio" | "visual" | "both" | "disabled";
 
 export type SpotterAvailability = {
   state: "disabled" | "waiting" | "ready" | "unavailable";
-  reason?: "source" | "context" | "capability" | "player" | "spatial" | "pit_lane" | "low_speed";
+  reason?:
+    | "source"
+    | "context"
+    | "capability"
+    | "capability_unsupported"
+    | "capability_degraded"
+    | "player"
+    | "spatial"
+    | "pit_lane"
+    | "low_speed";
 };
 
 export type EngineerStatus = {

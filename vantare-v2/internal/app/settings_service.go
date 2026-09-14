@@ -715,6 +715,7 @@ func (s *SettingsService) GetLauncherApps() map[string]LauncherAppEntry {
 // SetLauncherApps replaces the entire LauncherApps map and persists the change.
 func (s *SettingsService) SetLauncherApps(apps map[string]LauncherAppEntry) error {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.settings == nil {
 		s.settings = DefaultAppSettings()
 	}
@@ -722,16 +723,11 @@ func (s *SettingsService) SetLauncherApps(apps map[string]LauncherAppEntry) erro
 	for k, v := range apps {
 		s.settings.LauncherApps[k] = v
 	}
-	// Marshal under lock for data consistency, then persist without the lock.
 	data, err := json.MarshalIndent(s.settings, "", "  ")
 	if err != nil {
-		s.mu.Unlock()
 		return fmt.Errorf("marshal: %w", err)
 	}
-	settings := s.settings
-	s.mu.Unlock()
-
-	return s.saveWithRetry(settings, data, 0)
+	return s.saveWithRetry(s.settings, data, 0)
 }
 
 // GetLauncherProfiles returns the current launch profiles slice with a read lock.
@@ -747,71 +743,58 @@ func (s *SettingsService) GetLauncherProfiles() []LaunchProfile {
 // SetLauncherProfiles replaces the entire LaunchProfiles slice and persists the change.
 func (s *SettingsService) SetLauncherProfiles(profiles []LaunchProfile) error {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.settings == nil {
 		s.settings = DefaultAppSettings()
 	}
 	s.settings.LauncherProfiles = normalizeProfiles(profiles)
-	// Marshal under lock for data consistency, then persist without the lock.
 	data, err := json.MarshalIndent(s.settings, "", "  ")
 	if err != nil {
-		s.mu.Unlock()
 		return fmt.Errorf("marshal: %w", err)
 	}
-	settings := s.settings
-	s.mu.Unlock()
-
-	return s.saveWithRetry(settings, data, 0)
+	return s.saveWithRetry(s.settings, data, 0)
 }
 
 // UpdateLauncherAppArgs updates the Args field of a launcher app entry and
 // persists the change. It returns ErrAppNotFound if the app ID does not exist.
 func (s *SettingsService) UpdateLauncherAppArgs(id, args string) error {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.settings == nil {
-		s.mu.Unlock()
 		return ErrSettingsNotLoaded
 	}
 	entry, ok := s.settings.LauncherApps[id]
 	if !ok {
-		s.mu.Unlock()
 		return ErrAppNotFound
 	}
 	entry.Args = args
 	s.settings.LauncherApps[id] = entry
 	data, err := json.MarshalIndent(s.settings, "", "  ")
 	if err != nil {
-		s.mu.Unlock()
 		return fmt.Errorf("marshal: %w", err)
 	}
-	settings := s.settings
-	s.mu.Unlock()
-
-	return s.saveWithRetry(settings, data, 0)
+	return s.saveWithRetry(s.settings, data, 0)
 }
 
 // SetLauncherAppFavorite updates the IsFavorite field of a launcher app entry
 // and persists the change. Returns ErrAppNotFound if the app ID does not exist.
 func (s *SettingsService) SetLauncherAppFavorite(id string, favorite bool) error {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.settings == nil {
-		s.mu.Unlock()
 		return ErrSettingsNotLoaded
 	}
 	entry, ok := s.settings.LauncherApps[id]
 	if !ok {
-		s.mu.Unlock()
 		return ErrAppNotFound
 	}
 	entry.IsFavorite = favorite
 	s.settings.LauncherApps[id] = entry
 	data, err := json.MarshalIndent(s.settings, "", "  ")
 	if err != nil {
-		s.mu.Unlock()
 		return fmt.Errorf("marshal: %w", err)
 	}
-	settings := s.settings
-	s.mu.Unlock()
-	return s.saveWithRetry(settings, data, 0)
+	return s.saveWithRetry(s.settings, data, 0)
 }
 
 // Load reads settings from disk with tolerance for corruption.
@@ -961,18 +944,16 @@ func (s *SettingsService) EngineerSettings() *EngineerSettings {
 func (s *SettingsService) SetEngineerSettings(settings *EngineerSettings) error {
 	normalized := normalizeEngineerSettings(settings)
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.settings == nil {
 		s.settings = DefaultAppSettings()
 	}
 	s.settings.Engineer = normalized
 	data, err := json.MarshalIndent(s.settings, "", "  ")
 	if err != nil {
-		s.mu.Unlock()
 		return fmt.Errorf("marshal engineer settings: %w", err)
 	}
-	snapshot := cloneAppSettings(s.settings)
-	s.mu.Unlock()
-	return s.saveWithRetry(snapshot, data, 0)
+	return s.saveWithRetry(s.settings, data, 0)
 }
 
 // EffectivePerformancePolicy resolves the same canonical policy published in
@@ -1004,9 +985,8 @@ func (s *SettingsService) persistSidecarApplied() error {
 }
 
 // Save persists settings to disk atomically with retry+backoff and .bak rotation.
-// It marshals the settings under the write lock for data consistency, then
-// releases the lock before I/O and sleep so the mutex is never held during
-// backoff delays.
+// The whole capture-marshal-write runs under s.mu so a slower saver can never
+// land an older full-settings snapshot over a newer one.
 func (s *SettingsService) Save(settings *AppSettings) error {
 	if settings == nil {
 		return fmt.Errorf("settings cannot be nil")
@@ -1014,6 +994,8 @@ func (s *SettingsService) Save(settings *AppSettings) error {
 	if s.path == "" {
 		return ErrSettingsPathEmpty
 	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	snapshot := cloneAppSettings(settings)
 	if snapshot.Performance.Mode == string(performancepolicy.ModeAuto) {
 		snapshot.CpuSampling = true
@@ -1027,8 +1009,10 @@ func (s *SettingsService) Save(settings *AppSettings) error {
 }
 
 // saveWithRetry attempts to persist data atomically, retrying with backoff
-// on failure. The caller must NOT hold s.mu — this function takes the lock
-// only briefly to update s.settings after a successful write.
+// on failure. The caller MUST hold s.mu: mutation, marshal and write share
+// one critical section so persisted snapshots are applied in mutation order
+// and an older snapshot can never overwrite a newer state, in memory or on
+// disk. s.mu is a write mutex here; readers wait for the duration of the I/O.
 func (s *SettingsService) saveWithRetry(settings *AppSettings, data []byte, attempt int) error {
 	if dir := filepath.Dir(s.path); dir != "" && dir != "." {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -1038,9 +1022,7 @@ func (s *SettingsService) saveWithRetry(settings *AppSettings, data []byte, atte
 	err := s.atomicWrite(data)
 	if err == nil {
 		_ = os.Remove(s.path + ".failed")
-		s.mu.Lock()
 		s.settings = cloneAppSettings(settings)
-		s.mu.Unlock()
 		return nil
 	}
 	if attempt+1 < len(saveBackoffs) {

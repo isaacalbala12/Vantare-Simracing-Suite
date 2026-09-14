@@ -982,6 +982,51 @@ func TestSettingsNotificationChoicesRoundTrip(t *testing.T) {
 	}
 }
 
+// ISA-928 review: concurrent setters share one critical section for
+// mutation, marshal and write, so a slower writer can never land an older
+// full-settings snapshot over a newer one. Run under -race.
+func TestConcurrentSettingsWritesNeverLoseSections(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	svc := app.NewSettingsService(path, &spyEmitter{}, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatal(err)
+	}
+
+	var wg sync.WaitGroup
+	for i := 0; i < 16; i++ {
+		wg.Add(3)
+		go func(i int) {
+			defer wg.Done()
+			_ = svc.SetEngineerSettings(&app.EngineerSettings{
+				Enabled: true, SpotterEnabled: i%2 == 0, SubtitlesEnabled: true,
+				Sensitivity: "normal", OutputModes: map[string]string{"fuel": "both"},
+			})
+		}(i)
+		go func(i int) {
+			defer wg.Done()
+			_ = svc.SetLauncherAppFavorite("lmu", i%2 == 0)
+		}(i)
+		go func(i int) {
+			defer wg.Done()
+			_ = svc.Save(app.DefaultAppSettings())
+		}(i)
+	}
+	wg.Wait()
+
+	reloaded := app.NewSettingsService(path, &spyEmitter{}, nil)
+	if err := reloaded.Load(); err != nil {
+		t.Fatal(err)
+	}
+	got := reloaded.EngineerSettings()
+	if got == nil || got.Sensitivity != "normal" {
+		t.Fatalf("engineer section lost under concurrent writes: %+v", got)
+	}
+	if _, ok := reloaded.Settings().LauncherApps["lmu"]; !ok {
+		t.Fatal("launcher section lost under concurrent writes")
+	}
+}
+
 func TestEngineerSettingsMigrateAndRoundTripWithoutClobberingOtherSettings(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")

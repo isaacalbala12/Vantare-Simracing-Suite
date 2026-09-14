@@ -21,10 +21,15 @@ type UnavailableReason string
 const (
 	UnavailableContext    UnavailableReason = "context"
 	UnavailableCapability UnavailableReason = "capability"
-	UnavailablePlayer     UnavailableReason = "player"
-	UnavailableSpatial    UnavailableReason = "spatial"
-	UnavailablePitLane    UnavailableReason = "pit_lane"
-	UnavailableLowSpeed   UnavailableReason = "low_speed"
+	// UnavailableCapabilityUnsupported and UnavailableCapabilityDegraded keep
+	// the manifest's Unsupported and Degraded states distinguishable from an
+	// undeclared (Unknown) capability in the public Spotter status.
+	UnavailableCapabilityUnsupported UnavailableReason = "capability_unsupported"
+	UnavailableCapabilityDegraded    UnavailableReason = "capability_degraded"
+	UnavailablePlayer                UnavailableReason = "player"
+	UnavailableSpatial               UnavailableReason = "spatial"
+	UnavailablePitLane               UnavailableReason = "pit_lane"
+	UnavailableLowSpeed              UnavailableReason = "low_speed"
 )
 
 // ObservationNotReadyError carries only a bounded reason code. It never
@@ -130,7 +135,13 @@ func (producer *Producer) AcknowledgeStarted(message radio.RadioMessage, atMS in
 }
 
 func classify(snapshot engineer.ObservationSnapshotV1, sensitivity geometry.Sensitivity, activeLeft, activeRight bool) (bool, bool, UnavailableReason) {
-	if snapshot.Manifest.State(engineer.CapabilitySpatial) != engineer.CapabilitySupported {
+	switch snapshot.Manifest.State(engineer.CapabilitySpatial) {
+	case engineer.CapabilitySupported:
+	case engineer.CapabilityUnsupported:
+		return false, false, UnavailableCapabilityUnsupported
+	case engineer.CapabilityDegraded:
+		return false, false, UnavailableCapabilityDegraded
+	default:
 		return false, false, UnavailableCapability
 	}
 	present, ok := usable(snapshot.PlayerPresent)

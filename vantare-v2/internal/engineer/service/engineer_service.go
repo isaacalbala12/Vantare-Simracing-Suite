@@ -635,6 +635,7 @@ func (s *EngineerService) Stop() {
 	}
 	s.running = false
 	s.connected = false
+	s.resetSpotterAvailabilityLocked()
 	s.advancePresentationLifecycleLocked()
 	s.emitStatusLocked()
 
@@ -757,6 +758,15 @@ func (s *EngineerService) SetSubtitlesEnabled(enabled bool) {
 	s.emitStatusLocked()
 }
 
+// SubtitlesPreference returns the configured subtitle toggle, before the
+// performance visual gate is applied. Status().SubtitlesEnabled is the
+// effective value and must not be persisted as the user's preference.
+func (s *EngineerService) SubtitlesPreference() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.subtitlesEnabled
+}
+
 // advancePresentationLifecycleLocked invalidates visual output without
 // inventing a frontend TTL. Every status transport carries the generation so
 // Desktop and OBS clear the same canonical presentation at source/session
@@ -856,11 +866,7 @@ func (s *EngineerService) SetEnabled(enabled bool) error {
 	defer s.mu.Unlock()
 
 	s.enabled = enabled
-	if !enabled {
-		s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityDisabled}
-	} else if s.spotterEnabled {
-		s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityWaiting, Reason: "source"}
-	}
+	s.resetSpotterAvailabilityLocked()
 	s.syncLegacyRuntimeLocked()
 	if !enabled {
 		s.connected = false
@@ -882,11 +888,7 @@ func (s *EngineerService) SetSpotterEnabled(enabled bool) error {
 	defer s.mu.Unlock()
 
 	s.spotterEnabled = enabled
-	if !enabled || !s.enabled {
-		s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityDisabled}
-	} else {
-		s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityWaiting, Reason: "source"}
-	}
+	s.resetSpotterAvailabilityLocked()
 	s.syncLegacyRuntimeLocked()
 	if !enabled {
 		if s.activeDelivery != nil && s.activeDelivery.isSpotter() {
@@ -1061,9 +1063,7 @@ func (s *EngineerService) ConsumeSourceStatus(status engineerprojection.SourceSt
 		return nil
 	}
 	if !status.State.Available() || reconnectBoundary {
-		if s.spotterEnabled {
-			s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityWaiting, Reason: "source"}
-		}
+		s.resetSpotterAvailabilityLocked()
 		s.markReconnectBoundaryLocked()
 		s.connected = false
 		s.advancePresentationLifecycleLocked()
@@ -1273,6 +1273,17 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 	return nil
 }
 
+// resetSpotterAvailabilityLocked invalidates availability evidence at a
+// lifecycle boundary: a disabled Engineer or Spotter keeps the disabled state,
+// otherwise the service waits for fresh spatial evidence from the source.
+func (s *EngineerService) resetSpotterAvailabilityLocked() {
+	if !s.enabled || !s.spotterEnabled {
+		s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityDisabled}
+		return
+	}
+	s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityWaiting, Reason: "source"}
+}
+
 func (s *EngineerService) setSpotterUnavailableLocked(err error) {
 	var notReady *radiospotter.ObservationNotReadyError
 	if !errors.As(err, &notReady) {
@@ -1318,6 +1329,7 @@ func (s *EngineerService) ConsumeFact(fact engineerprojection.FactEnvelopeV1) er
 
 	switch fact.Fact.Kind {
 	case engineerprojection.FactSessionStarted, engineerprojection.FactDriverChanged:
+		s.resetSpotterAvailabilityLocked()
 		s.advancePresentationLifecycleLocked()
 		s.runtime.Reset()
 		s.queue.Clear()
@@ -1327,6 +1339,7 @@ func (s *EngineerService) ConsumeFact(fact engineerprojection.FactEnvelopeV1) er
 		}
 		s.cancelDeliveryLocked(delivery.ErrLifecycleBoundary)
 	case engineerprojection.FactSessionEnded, engineerprojection.FactConnectionLost:
+		s.resetSpotterAvailabilityLocked()
 		s.markReconnectBoundaryLocked()
 		s.connected = false
 		s.advancePresentationLifecycleLocked()
@@ -1339,6 +1352,7 @@ func (s *EngineerService) ConsumeFact(fact engineerprojection.FactEnvelopeV1) er
 		s.cancelDeliveryLocked(delivery.ErrLifecycleBoundary)
 	case engineerprojection.FactConnectionRecovered:
 		// A recovery fact is not proof that a usable observation exists.
+		s.resetSpotterAvailabilityLocked()
 		s.connected = false
 	}
 	s.emitStatusLocked()

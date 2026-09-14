@@ -17,7 +17,11 @@ type EngineerBridge struct {
 	service  *service.EngineerService
 	settings *SettingsService
 	mu       sync.Mutex
-	unsubs   []func()
+	// settingsMu serialises each mutate-read-persist cycle: Wails event
+	// callbacks may run concurrently, and without it a slower callback could
+	// persist a status captured before another callback's mutation landed.
+	settingsMu sync.Mutex
+	unsubs     []func()
 }
 
 // SetSettingsService enables persistence of accepted Engineer UI changes.
@@ -52,11 +56,7 @@ func (b *EngineerBridge) Start() {
 			log.Printf("EngineerBridge: error parsing enabled data: %v", err)
 			return
 		}
-		if err := b.service.SetEnabled(enabled); err != nil {
-			log.Printf("EngineerBridge: error setting enabled: %v", err)
-			return
-		}
-		b.persistSettings()
+		b.mutateAndPersist("enabled", func() error { return b.service.SetEnabled(enabled) })
 	}))
 
 	unsubs = append(unsubs, b.wailsApp.Event.On("engineer:spotter:set", func(event *application.CustomEvent) {
@@ -69,11 +69,7 @@ func (b *EngineerBridge) Start() {
 				return
 			}
 		}
-		if err := b.service.SetSpotterEnabled(enabled); err != nil {
-			log.Printf("EngineerBridge: error setting spotter enabled: %v", err)
-			return
-		}
-		b.persistSettings()
+		b.mutateAndPersist("spotter enabled", func() error { return b.service.SetSpotterEnabled(enabled) })
 	}))
 
 	unsubs = append(unsubs, b.wailsApp.Event.On("engineer:sensitivity:set", func(event *application.CustomEvent) {
@@ -82,11 +78,7 @@ func (b *EngineerBridge) Start() {
 			log.Printf("EngineerBridge: error parsing sensitivity data: %v", err)
 			return
 		}
-		if err := b.service.SetSensitivity(sensitivity); err != nil {
-			log.Printf("EngineerBridge: error setting sensitivity: %v", err)
-			return
-		}
-		b.persistSettings()
+		b.mutateAndPersist("sensitivity", func() error { return b.service.SetSensitivity(sensitivity) })
 	}))
 
 	unsubs = append(unsubs, b.wailsApp.Event.On("engineer:output:set", func(event *application.CustomEvent) {
@@ -100,11 +92,7 @@ func (b *EngineerBridge) Start() {
 			log.Printf("EngineerBridge: error parsing output mode: %v", err)
 			return
 		}
-		if err := b.service.SetOutputMode(category, mode); err != nil {
-			log.Printf("EngineerBridge: error setting output mode: %v", err)
-			return
-		}
-		b.persistSettings()
+		b.mutateAndPersist("output mode", func() error { return b.service.SetOutputMode(category, mode) })
 	}))
 
 	unsubs = append(unsubs, b.wailsApp.Event.On("engineer:subtitles:set", func(event *application.CustomEvent) {
@@ -113,13 +101,27 @@ func (b *EngineerBridge) Start() {
 			log.Printf("EngineerBridge: error parsing subtitles data: %v", err)
 			return
 		}
-		b.service.SetSubtitlesEnabled(enabled)
-		b.persistSettings()
+		b.mutateAndPersist("subtitles", func() error {
+			b.service.SetSubtitlesEnabled(enabled)
+			return nil
+		})
 	}))
 
 	b.mu.Lock()
 	b.unsubs = unsubs
 	b.mu.Unlock()
+}
+
+// mutateAndPersist runs a service mutation and persists the resulting
+// settings atomically under settingsMu.
+func (b *EngineerBridge) mutateAndPersist(name string, mutate func() error) {
+	b.settingsMu.Lock()
+	defer b.settingsMu.Unlock()
+	if err := mutate(); err != nil {
+		log.Printf("EngineerBridge: error setting %s: %v", name, err)
+		return
+	}
+	b.persistSettings()
 }
 
 func (b *EngineerBridge) persistSettings() {
@@ -133,7 +135,7 @@ func (b *EngineerBridge) persistSettings() {
 	}
 	if err := b.settings.SetEngineerSettings(&EngineerSettings{
 		Enabled: status.Enabled, SpotterEnabled: status.SpotterEnabled,
-		SubtitlesEnabled: status.SubtitlesEnabled, Sensitivity: status.Sensitivity,
+		SubtitlesEnabled: b.service.SubtitlesPreference(), Sensitivity: status.Sensitivity,
 		OutputModes: outputModes,
 	}); err != nil {
 		log.Printf("EngineerBridge: error persisting settings: %v", err)

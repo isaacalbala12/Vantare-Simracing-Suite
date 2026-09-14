@@ -38,3 +38,32 @@ func TestEngineerBridgePersistsAcceptedServiceStatus(t *testing.T) {
 		t.Fatalf("persisted Engineer status = %+v", got)
 	}
 }
+
+// ISA-928: the persisted subtitle flag is the user's configured preference.
+// Status().SubtitlesEnabled is the effective value after the performance
+// visual gate (levels 4-5) and must never be written to disk.
+func TestEngineerBridgePersistsSubtitlePreferenceNotEffectiveState(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "app-settings.json")
+	settings := NewSettingsService(path, nil, nil)
+	if err := settings.Load(); err != nil {
+		t.Fatal(err)
+	}
+	svc := engineerservice.NewEngineerService(nil)
+	svc.SetSubtitlesEnabled(true)
+	svc.SetVisualPresentationEnabled(false)
+
+	if svc.Status().SubtitlesEnabled {
+		t.Fatal("effective subtitles should be gated off by the visual policy")
+	}
+	bridge := NewEngineerBridge(nil, nil, svc)
+	bridge.SetSettingsService(settings)
+	bridge.persistSettings()
+
+	reloaded := NewSettingsService(path, nil, nil)
+	if err := reloaded.Load(); err != nil {
+		t.Fatal(err)
+	}
+	if got := reloaded.EngineerSettings(); !got.SubtitlesEnabled {
+		t.Fatalf("persisted subtitle preference = %+v, want enabled", got)
+	}
+}

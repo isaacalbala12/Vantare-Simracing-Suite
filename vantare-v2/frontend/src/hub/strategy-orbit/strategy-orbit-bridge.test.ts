@@ -106,6 +106,7 @@ describe("strategy-orbit-bridge application client", () => {
         variants: [{ id: "variant-1", mode: "dry", order: ["driver-1"], overrides: {} }],
         activeVariantId: "variant-1",
       } },
+      { ...header("get_revision_planning_inputs", "recorded-inputs"), combinationId: "combo", sourceRevisions: [{ sessionId: "race-1", baseDigest: "a".repeat(64), revisionId: "b".repeat(64), snapshotId: "c".repeat(64) }], generatedAt: "2026-09-15T01:00:00Z" },
     ];
     const client = createStrategyOrbitApplicationClient<unknown>();
 

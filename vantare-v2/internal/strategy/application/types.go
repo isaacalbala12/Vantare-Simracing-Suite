@@ -12,6 +12,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/strategy/packaging"
 	"github.com/vantare/overlays/v2/internal/strategy/solver"
 	"github.com/vantare/overlays/v2/internal/strategy/tyres"
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
 const ProtocolVersionV1 = "strategy.application.v1"
@@ -49,6 +50,7 @@ const (
 	OperationCalculateOrbit          Operation = "calculate_orbit"
 	OperationListSessionCombinations Operation = "list_session_combinations"
 	OperationGetEventPlanningInputs  Operation = "get_event_planning_inputs"
+	OperationGetRevisionInputs       Operation = "get_revision_planning_inputs"
 	OperationGetValidatedExamples    Operation = "get_validated_examples"
 	OperationListReferenceCatalog    Operation = "list_reference_catalog"
 	OperationGetColdStartStatus      Operation = "get_cold_start_status"
@@ -163,6 +165,13 @@ type GetEventPlanningInputsCommand struct {
 	CommandHeader
 	EventID     strategydocument.EventID `json:"eventId"`
 	GeneratedAt time.Time                `json:"generatedAt"`
+}
+
+type GetRevisionPlanningInputsCommand struct {
+	CommandHeader
+	CombinationID   string                                   `json:"combinationId"`
+	SourceRevisions []strategyprojection.AnalysisRevisionRef `json:"sourceRevisions"`
+	GeneratedAt     time.Time                                `json:"generatedAt"`
 }
 
 type GetValidatedExamplesCommand struct {

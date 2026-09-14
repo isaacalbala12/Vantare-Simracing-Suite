@@ -43,6 +43,7 @@ var requiredOperationFields = map[Operation][]string{
 	OperationCalculateOrbit:          {"input"},
 	OperationListSessionCombinations: {},
 	OperationGetEventPlanningInputs:  {"eventId", "generatedAt"},
+	OperationGetRevisionInputs:       {"combinationId", "sourceRevisions", "generatedAt"},
 	OperationGetValidatedExamples:    {"eventId"},
 	OperationListReferenceCatalog:    {},
 	OperationGetColdStartStatus:      {},
@@ -241,6 +242,11 @@ func (bridge *JSONBridge[T]) Execute(ctx context.Context, document []byte) ([]by
 		var command GetEventPlanningInputsCommand
 		if err = decodeStrict(document, &command); err == nil {
 			result, err = bridge.service.GetEventPlanningInputs(ctx, command)
+		}
+	case OperationGetRevisionInputs:
+		var command GetRevisionPlanningInputsCommand
+		if err = decodeStrict(document, &command); err == nil {
+			result, err = bridge.service.GetRevisionPlanningInputs(ctx, command)
 		}
 	case OperationGetValidatedExamples:
 		var command GetValidatedExamplesCommand

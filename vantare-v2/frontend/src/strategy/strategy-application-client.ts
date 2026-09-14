@@ -51,6 +51,7 @@ export type StrategyApplicationOperation =
   | "calculate_orbit"
   | "list_session_combinations"
   | "get_event_planning_inputs"
+  | "get_revision_planning_inputs"
   | "get_validated_examples"
   | "list_reference_catalog"
   | "get_cold_start_status"
@@ -639,6 +640,11 @@ export type StrategyApplicationCommandV1<TPayload> =
   | CommandHeader<"list_events">
   | CommandHeader<"list_session_combinations">
   | (CommandHeader<"get_event_planning_inputs"> & { eventId: string; generatedAt: string })
+  | (CommandHeader<"get_revision_planning_inputs"> & {
+      combinationId: string;
+      sourceRevisions: readonly StrategyAnalysisRevisionRef[];
+      generatedAt: string;
+    })
   | (CommandHeader<"get_validated_examples"> & { eventId: string })
   | CommandHeader<"list_reference_catalog" | "get_cold_start_status" | "import_cold_start_next" | "retry_cold_start_failures" | "reject_cold_start">
   | (CommandHeader<"create_driver" | "edit_driver"> & {

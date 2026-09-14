@@ -166,16 +166,21 @@ func TestPinnedSelectionCannotFallBackToUnversionedCatalog(t *testing.T) {
 
 type revisionCatalogStub struct {
 	sessionCatalogStub
-	refs    *[]strategyprojection.AnalysisRevisionRef
-	failure error
-	cancel  context.CancelFunc
+	refs        *[]strategyprojection.AnalysisRevisionRef
+	generatedAt *time.Time
+	failure     error
+	cancel      context.CancelFunc
 }
 
-func (stub revisionCatalogStub) ProjectStrategyRevisionInputs(_ context.Context, _ string, refs []strategyprojection.AnalysisRevisionRef, _ time.Time) (strategyprojection.StrategyInputProjectionV2, error) {
+func (stub revisionCatalogStub) ProjectStrategyRevisionInputs(_ context.Context, _ string, refs []strategyprojection.AnalysisRevisionRef, generatedAt time.Time) (strategyprojection.StrategyInputProjectionV2, error) {
 	if stub.cancel != nil {
 		stub.cancel()
 	}
 	*stub.refs = append([]strategyprojection.AnalysisRevisionRef(nil), refs...)
+	if stub.generatedAt != nil {
+		*stub.generatedAt = generatedAt
+	}
+	stub.projection.GeneratedAt = generatedAt
 	return stub.projection, stub.failure
 }
 func TestPlanningInputsUsesAndChecksPinnedRevisionProducer(t *testing.T) {
@@ -251,5 +256,110 @@ func TestPlanningInputsUsesAndChecksPinnedRevisionProducer(t *testing.T) {
 				t.Fatal("query changed document")
 			}
 		})
+	}
+}
+
+func TestGetRevisionPlanningInputsProjectsExactSelectionWithoutEvent(t *testing.T) {
+	raw, err := os.ReadFile("../../telemetryanalysis/strategyprojection/testdata/strategyinputprojection_v2_new.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var projection strategyprojection.StrategyInputProjectionV2
+	if err := json.Unmarshal(raw, &projection); err != nil {
+		t.Fatal(err)
+	}
+	refs := []strategyprojection.AnalysisRevisionRef{
+		{SessionID: "race-1", BaseDigest: strings.Repeat("a", 64), RevisionID: strings.Repeat("b", 64), SnapshotID: strings.Repeat("c", 64)},
+		{SessionID: "race-2", BaseDigest: strings.Repeat("d", 64), RevisionID: strings.Repeat("e", 64), SnapshotID: strings.Repeat("f", 64)},
+	}
+	projection.SourceSessions = []string{"race-1", "race-2"}
+	projection.SourceRevisions = append([]strategyprojection.AnalysisRevisionRef(nil), refs...)
+	repo := &sessionCatalogRepository[any]{snapshot: repository.Snapshot[any]{Version: 12}}
+	var gotRefs []strategyprojection.AnalysisRevisionRef
+	var gotGeneratedAt time.Time
+	service := NewServiceWithSessionCatalog[any](repo, revisionCatalogStub{sessionCatalogStub: sessionCatalogStub{projection: projection}, refs: &gotRefs, generatedAt: &gotGeneratedAt})
+	generatedAt := time.Date(2026, 9, 15, 1, 0, 0, 123456789, time.UTC)
+
+	result, err := service.GetRevisionPlanningInputs(context.Background(), GetRevisionPlanningInputsCommand{
+		CommandHeader: CommandHeader{ProtocolVersion: ProtocolVersionV1, CommandID: "recorded-inputs", Operation: OperationGetRevisionInputs, ExpectedRepositoryVersion: 12},
+		CombinationID: projection.CombinationID, SourceRevisions: refs, GeneratedAt: generatedAt,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.RepositoryVersion != 12 || result.PlanningInputStatus != PlanningInputAvailable || result.PlanningInputs == nil || result.PlanningInputs.Projection == nil {
+		t.Fatalf("result = %+v", result)
+	}
+	if len(gotRefs) != 2 || gotRefs[0] != refs[0] || gotRefs[1] != refs[1] {
+		t.Fatalf("producer refs = %+v", gotRefs)
+	}
+	if !gotGeneratedAt.Equal(generatedAt.Truncate(time.Millisecond)) || len(result.PlanningInputs.Overrides) != 0 || repo.commitCalls != 0 {
+		t.Fatalf("query mutated or returned non-canonical data: %+v / commits=%d", result.PlanningInputs, repo.commitCalls)
+	}
+}
+
+func TestGetRevisionPlanningInputsRejectsInvalidOrSubstitutedSelection(t *testing.T) {
+	ref := strategyprojection.AnalysisRevisionRef{SessionID: "race-1", BaseDigest: strings.Repeat("a", 64), RevisionID: strings.Repeat("b", 64), SnapshotID: strings.Repeat("c", 64)}
+	repo := &sessionCatalogRepository[any]{snapshot: repository.Snapshot[any]{Version: 12}}
+	for _, test := range []struct {
+		name       string
+		refs       []strategyprojection.AnalysisRevisionRef
+		projection strategyprojection.StrategyInputProjectionV2
+		withPort   bool
+	}{
+		{name: "duplicate request", refs: []strategyprojection.AnalysisRevisionRef{ref, ref}, withPort: true},
+		{name: "missing producer", refs: []strategyprojection.AnalysisRevisionRef{ref}},
+		{name: "substituted projection", refs: []strategyprojection.AnalysisRevisionRef{ref}, withPort: true, projection: strategyprojection.StrategyInputProjectionV2{CombinationID: "foreign"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var gotRefs []strategyprojection.AnalysisRevisionRef
+			var catalog sessionCatalogPort = sessionCatalogStub{}
+			if test.withPort {
+				catalog = revisionCatalogStub{sessionCatalogStub: sessionCatalogStub{projection: test.projection}, refs: &gotRefs}
+			}
+			service := NewServiceWithSessionCatalog[any](repo, catalog)
+			result, err := service.GetRevisionPlanningInputs(context.Background(), GetRevisionPlanningInputsCommand{
+				CommandHeader: CommandHeader{ProtocolVersion: ProtocolVersionV1, CommandID: "recorded-invalid", Operation: OperationGetRevisionInputs, ExpectedRepositoryVersion: 12},
+				CombinationID: "combo", SourceRevisions: test.refs, GeneratedAt: time.Now().UTC(),
+			})
+			if err == nil || result.PlanningInputs != nil || repo.commitCalls != 0 {
+				t.Fatalf("accepted or wrote: result=%+v err=%v commits=%d", result, err, repo.commitCalls)
+			}
+			if test.name == "duplicate request" && len(gotRefs) != 0 {
+				t.Fatal("invalid selection reached producer")
+			}
+		})
+	}
+}
+
+func TestJSONBridgeGetsRevisionPlanningInputs(t *testing.T) {
+	raw, err := os.ReadFile("../../telemetryanalysis/strategyprojection/testdata/strategyinputprojection_v2_new.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var projection strategyprojection.StrategyInputProjectionV2
+	if err := json.Unmarshal(raw, &projection); err != nil {
+		t.Fatal(err)
+	}
+	ref := strategyprojection.AnalysisRevisionRef{SessionID: "race-1", BaseDigest: strings.Repeat("a", 64), RevisionID: strings.Repeat("b", 64), SnapshotID: strings.Repeat("c", 64)}
+	projection.SourceSessions = []string{ref.SessionID}
+	projection.SourceRevisions = []strategyprojection.AnalysisRevisionRef{ref}
+	var gotRefs []strategyprojection.AnalysisRevisionRef
+	repo := &sessionCatalogRepository[json.RawMessage]{snapshot: repository.Snapshot[json.RawMessage]{Version: 4}}
+	bridge := NewJSONBridge(NewServiceWithSessionCatalog[json.RawMessage](repo, revisionCatalogStub{sessionCatalogStub: sessionCatalogStub{projection: projection}, refs: &gotRefs}))
+	command, err := json.Marshal(GetRevisionPlanningInputsCommand{
+		CommandHeader: CommandHeader{ProtocolVersion: ProtocolVersionV1, CommandID: "recorded-bridge", Operation: OperationGetRevisionInputs, ExpectedRepositoryVersion: 4},
+		CombinationID: projection.CombinationID, SourceRevisions: []strategyprojection.AnalysisRevisionRef{ref}, GeneratedAt: time.Now().UTC(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := bridge.Execute(context.Background(), command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result Result[json.RawMessage]
+	if err := json.Unmarshal(response, &result); err != nil || result.PlanningInputs == nil || result.PlanningInputs.Projection == nil || result.PlanningInputs.Projection.SourceRevisions[0] != ref {
+		t.Fatalf("result=%s err=%v", response, err)
 	}
 }

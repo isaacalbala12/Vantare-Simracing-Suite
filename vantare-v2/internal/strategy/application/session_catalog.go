@@ -3,6 +3,7 @@ package application
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
@@ -135,31 +136,9 @@ func (service *Service[T]) GetEventPlanningInputs(ctx context.Context, command G
 		if err := strategyprojection.ValidateSourceRevisions(included, refs); err != nil {
 			return Result[T]{}, applicationError(ErrorInvalidCommand, "combination.sessions.revision", err)
 		}
-		producer, ok := service.sessionCatalog.(revisionSessionCatalogPort)
-		if !ok {
-			return Result[T]{}, applicationError(ErrorInvalidCommand, "combination.sessions.revision", ErrPinnedAnalysisProjectionUnavailable)
-		}
-		projection, err = producer.ProjectStrategyRevisionInputs(ctx, event.Combination.CombinationID, refs, canonicalMillisecond(command.GeneratedAt))
+		projection, err = service.projectRevisionPlanningInputs(ctx, event.Combination.CombinationID, refs, command.GeneratedAt)
 		if err != nil {
 			return Result[T]{}, err
-		}
-		if err := ctx.Err(); err != nil {
-			return Result[T]{}, err
-		}
-		if err := projection.Validate(); err != nil {
-			return Result[T]{}, applicationError(ErrorCalculationInvalid, "analysis.projection", err)
-		}
-		if projection.CombinationID != event.Combination.CombinationID || len(projection.SourceRevisions) != len(refs) {
-			return Result[T]{}, applicationError(ErrorCalculationInvalid, "analysis.revisions", ErrCalculationInvalid)
-		}
-		selected := make(map[string]strategyprojection.AnalysisRevisionRef, len(refs))
-		for _, ref := range refs {
-			selected[ref.SessionID] = ref
-		}
-		for _, ref := range projection.SourceRevisions {
-			if expected, ok := selected[ref.SessionID]; !ok || expected != ref {
-				return Result[T]{}, applicationError(ErrorCalculationInvalid, "analysis.revisions", ErrCalculationInvalid)
-			}
 		}
 	} else {
 		if service.sessionCatalog == nil {
@@ -173,6 +152,69 @@ func (service *Service[T]) GetEventPlanningInputs(ctx context.Context, command G
 	planning.Projection = &projection
 	result.PlanningInputStatus = PlanningInputAvailable
 	return result, nil
+}
+
+// GetRevisionPlanningInputs prepares transient recorded input without creating
+// a second persisted Event. Analysis remains the sole projection authority.
+func (service *Service[T]) GetRevisionPlanningInputs(ctx context.Context, command GetRevisionPlanningInputsCommand) (Result[T], error) {
+	if err := validateHeader(command.CommandHeader, OperationGetRevisionInputs); err != nil {
+		return Result[T]{}, err
+	}
+	if command.GeneratedAt.IsZero() || strings.TrimSpace(command.CombinationID) == "" || len(command.SourceRevisions) == 0 {
+		return Result[T]{}, applicationError(ErrorInvalidCommand, "sourceRevisions", ErrInvalidCommand)
+	}
+	sourceSessions := make([]string, len(command.SourceRevisions))
+	for index, ref := range command.SourceRevisions {
+		sourceSessions[index] = ref.SessionID
+	}
+	if err := strategyprojection.ValidateSourceRevisions(sourceSessions, command.SourceRevisions); err != nil {
+		return Result[T]{}, applicationError(ErrorInvalidCommand, "sourceRevisions", err)
+	}
+	snapshot, err := service.repository.Snapshot(ctx)
+	if err != nil {
+		return Result[T]{}, err
+	}
+	projection, err := service.projectRevisionPlanningInputs(ctx, command.CombinationID, command.SourceRevisions, command.GeneratedAt)
+	if err != nil {
+		return Result[T]{}, err
+	}
+	result := documentResult[T](command.CommandID, snapshot)
+	result.PlanningInputStatus = PlanningInputAvailable
+	result.PlanningInputs = &strategydocument.PlanningInputs{
+		Projection: &projection,
+		Overrides:  map[strategydocument.PlanningInputField]strategydocument.NumericInputOverride{},
+	}
+	return result, nil
+}
+
+func (service *Service[T]) projectRevisionPlanningInputs(ctx context.Context, combinationID string, refs []strategyprojection.AnalysisRevisionRef, generatedAt time.Time) (strategyprojection.StrategyInputProjectionV2, error) {
+	producer, ok := service.sessionCatalog.(revisionSessionCatalogPort)
+	if !ok {
+		return strategyprojection.StrategyInputProjectionV2{}, applicationError(ErrorInvalidCommand, "combination.sessions.revision", ErrPinnedAnalysisProjectionUnavailable)
+	}
+	projection, err := producer.ProjectStrategyRevisionInputs(ctx, combinationID, refs, canonicalMillisecond(generatedAt))
+	if err != nil {
+		return strategyprojection.StrategyInputProjectionV2{}, err
+	}
+	if err := ctx.Err(); err != nil {
+		return strategyprojection.StrategyInputProjectionV2{}, err
+	}
+	if err := projection.Validate(); err != nil {
+		return strategyprojection.StrategyInputProjectionV2{}, applicationError(ErrorCalculationInvalid, "analysis.projection", err)
+	}
+	if projection.CombinationID != combinationID || projection.GeneratedAt != canonicalMillisecond(generatedAt) || len(projection.SourceRevisions) != len(refs) {
+		return strategyprojection.StrategyInputProjectionV2{}, applicationError(ErrorCalculationInvalid, "analysis.revisions", ErrCalculationInvalid)
+	}
+	selected := make(map[string]strategyprojection.AnalysisRevisionRef, len(refs))
+	for _, ref := range refs {
+		selected[ref.SessionID] = ref
+	}
+	for _, ref := range projection.SourceRevisions {
+		if expected, ok := selected[ref.SessionID]; !ok || expected != ref {
+			return strategyprojection.StrategyInputProjectionV2{}, applicationError(ErrorCalculationInvalid, "analysis.revisions", ErrCalculationInvalid)
+		}
+	}
+	return projection, nil
 }
 
 func clonePlanningOverrides(source map[strategydocument.PlanningInputField]strategydocument.NumericInputOverride) map[strategydocument.PlanningInputField]strategydocument.NumericInputOverride {

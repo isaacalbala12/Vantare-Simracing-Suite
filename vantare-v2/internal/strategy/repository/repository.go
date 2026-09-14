@@ -283,11 +283,11 @@ func (repository *Repository[T]) LoadPendingRevision(ctx context.Context) (*Pend
 
 // AcknowledgePendingRevision removes only the named intent. Absence is
 // idempotent; a different identity fails closed.
-func (repository *Repository[T]) AcknowledgePendingRevision(ctx context.Context, commandID string) error {
+func (repository *Repository[T]) AcknowledgePendingRevision(ctx context.Context, commandID, commandDigest string) error {
 	if err := contextError(ctx); err != nil {
 		return err
 	}
-	if commandID == "" {
+	if commandID == "" || !pendingDigestPattern.MatchString(commandDigest) {
 		return ErrInvalidPendingRevision
 	}
 	lease, err := acquireRepositoryLease(filepath.Join(repository.root, leaseFileName))
@@ -302,7 +302,7 @@ func (repository *Repository[T]) AcknowledgePendingRevision(ctx context.Context,
 	if err != nil || current.pending == nil {
 		return err
 	}
-	if current.pending.CommandID != commandID {
+	if current.pending.CommandID != commandID || current.pending.CommandDigest != commandDigest {
 		return ErrPendingRevisionConflict
 	}
 	current.pending = nil

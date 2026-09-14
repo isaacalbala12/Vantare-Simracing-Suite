@@ -25,6 +25,13 @@ type repositoryPort[T any] interface {
 	Commit(context.Context, uint64, repository.ChangeSet[T]) (repository.CommitResult[T], error)
 }
 
+type recoverableRepositoryPort[T any] interface {
+	repositoryPort[T]
+	StagePendingRevision(context.Context, uint64, string, json.RawMessage) (repository.PendingRevisionSave, error)
+	LoadPendingRevision(context.Context) (*repository.PendingRevisionSave, error)
+	AcknowledgePendingRevision(context.Context, string, string) error
+}
+
 type sessionCatalogPort interface {
 	ListSessionCombinations(context.Context) (telemetryanalysis.SessionCatalogListing, error)
 	ProjectStrategyInputs(context.Context, string, []string, time.Time) (strategyprojection.StrategyInputProjectionV2, error)
@@ -165,6 +172,9 @@ func (service *Service[T]) SaveRevision(ctx context.Context, command SaveRevisio
 	}
 	ref := revision.Ref()
 	savedDraft.BaseRevision = &ref
+	if command.Recoverable {
+		return service.saveRecoverableRevision(ctx, command, savedDraft, revision)
+	}
 	commit, err := service.repository.Commit(ctx, command.ExpectedRepositoryVersion, repository.ChangeSet[T]{
 		Drafts:    []contract.PlanDraft[T]{savedDraft},
 		Revisions: []contract.PlanRevision[T]{revision},
@@ -173,6 +183,155 @@ func (service *Service[T]) SaveRevision(ctx context.Context, command SaveRevisio
 		return resultForDraft(command.CommandID, commit.Snapshot, savedDraft, &revision)
 	}
 	return service.reconcileDraft(ctx, command.CommandHeader, savedDraft, &revision, err)
+}
+
+func (service *Service[T]) saveRecoverableRevision(ctx context.Context, command SaveRevisionCommand[T], savedDraft contract.PlanDraft[T], revision contract.PlanRevision[T]) (Result[T], error) {
+	recovery, ok := service.repository.(recoverableRepositoryPort[T])
+	if !ok {
+		return Result[T]{}, applicationError(ErrorInvalidCommand, "recoverable", ErrInvalidCommand)
+	}
+	raw, err := json.Marshal(command)
+	if err != nil {
+		return Result[T]{}, fmt.Errorf("encode recoverable save_revision: %w", err)
+	}
+	pending, err := recovery.StagePendingRevision(ctx, command.ExpectedRepositoryVersion, string(command.CommandID), raw)
+	if err != nil {
+		return Result[T]{}, pendingRevisionError(err)
+	}
+	commit, err := recovery.Commit(ctx, command.ExpectedRepositoryVersion, repository.ChangeSet[T]{
+		Drafts:    []contract.PlanDraft[T]{savedDraft},
+		Revisions: []contract.PlanRevision[T]{revision},
+		RequiredPendingRevision: &repository.PendingRevisionIdentity{
+			CommandID: pending.CommandID, CommandDigest: pending.CommandDigest,
+		},
+	})
+	if err == nil {
+		return resultForDraft(command.CommandID, commit.Snapshot, savedDraft, &revision)
+	}
+	if reconciled, found, reconcileErr := service.resolveRevision(ctx, command, revision); reconcileErr != nil {
+		return Result[T]{}, errors.Join(err, reconcileErr)
+	} else if found {
+		return reconciled, nil
+	}
+	if !errors.Is(err, repository.ErrCommitUncertain) && !errors.Is(err, repository.ErrWriteInProgress) && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+		cleanupCtx := context.Background()
+		if acknowledgeErr := recovery.AcknowledgePendingRevision(cleanupCtx, pending.CommandID, pending.CommandDigest); acknowledgeErr != nil {
+			return Result[T]{}, errors.Join(pendingRevisionError(err), acknowledgeErr)
+		}
+	}
+	return Result[T]{}, pendingRevisionError(err)
+}
+
+func (service *Service[T]) GetPendingRevisionSave(ctx context.Context, command PendingRevisionCommand) (Result[T], error) {
+	if err := validateHeader(command.CommandHeader, OperationGetPendingRevisionSave); err != nil {
+		return Result[T]{}, err
+	}
+	pending, err := service.loadPendingRevision(ctx)
+	if err != nil {
+		return Result[T]{}, err
+	}
+	snapshot, err := service.repository.Snapshot(ctx)
+	if err != nil {
+		return Result[T]{}, err
+	}
+	return Result[T]{ProtocolVersion: ProtocolVersionV1, CommandID: command.CommandID, RepositoryVersion: snapshot.Version, PendingRevision: pending, RecoveredFromBackup: snapshot.RecoveredFromBackup}, nil
+}
+
+func (service *Service[T]) ResolvePendingRevisionSave(ctx context.Context, command PendingRevisionCommand) (Result[T], error) {
+	if err := validateHeader(command.CommandHeader, OperationResolveRevisionSave); err != nil {
+		return Result[T]{}, err
+	}
+	pending, err := service.loadPendingRevision(ctx)
+	if err != nil {
+		return Result[T]{}, err
+	}
+	snapshot, err := service.repository.Snapshot(ctx)
+	if err != nil {
+		return Result[T]{}, err
+	}
+	result := Result[T]{ProtocolVersion: ProtocolVersionV1, CommandID: command.CommandID, RepositoryVersion: snapshot.Version, PendingRevision: pending, PendingResolution: PendingRevisionNotStored, RecoveredFromBackup: snapshot.RecoveredFromBackup}
+	if pending == nil {
+		return result, nil
+	}
+	revision, err := contract.NewPlanRevision(pending.Command.Draft, contract.RevisionMetadata{RevisionID: pending.Command.RevisionID, CreatedAt: pending.Command.CreatedAt})
+	if err != nil {
+		return Result[T]{}, applicationError(ErrorInvalidCommand, "pendingRevision", err)
+	}
+	stored, found := findRevision(snapshot, revision.Ref())
+	if found && equalJSON(stored, revision) {
+		result.PendingResolution = PendingRevisionStored
+		result.Revision = &stored
+	}
+	return result, nil
+}
+
+func (service *Service[T]) AcknowledgePendingRevisionSave(ctx context.Context, command AcknowledgePendingRevisionCommand) (Result[T], error) {
+	if err := validateHeader(command.CommandHeader, OperationAcknowledgeRevisionSave); err != nil {
+		return Result[T]{}, err
+	}
+	recovery, ok := service.repository.(recoverableRepositoryPort[T])
+	if !ok {
+		return Result[T]{}, applicationError(ErrorInvalidCommand, "operation", ErrInvalidCommand)
+	}
+	if err := recovery.AcknowledgePendingRevision(ctx, command.PendingCommandID, command.CommandDigest); err != nil {
+		return Result[T]{}, pendingRevisionError(err)
+	}
+	snapshot, err := service.repository.Snapshot(ctx)
+	if err != nil {
+		return Result[T]{}, err
+	}
+	return Result[T]{ProtocolVersion: ProtocolVersionV1, CommandID: command.CommandID, RepositoryVersion: snapshot.Version, RecoveredFromBackup: snapshot.RecoveredFromBackup}, nil
+}
+
+func (service *Service[T]) loadPendingRevision(ctx context.Context) (*PendingRevisionSave[T], error) {
+	recovery, ok := service.repository.(recoverableRepositoryPort[T])
+	if !ok {
+		return nil, applicationError(ErrorInvalidCommand, "operation", ErrInvalidCommand)
+	}
+	stored, err := recovery.LoadPendingRevision(ctx)
+	if err != nil || stored == nil {
+		return nil, pendingRevisionError(err)
+	}
+	var command SaveRevisionCommand[T]
+	if err := json.Unmarshal(stored.Command, &command); err != nil {
+		return nil, applicationError(ErrorInvalidCommand, "pendingRevision", err)
+	}
+	if err := validateHeader(command.CommandHeader, OperationSaveRevision); err != nil || !command.Recoverable || string(command.CommandID) != stored.CommandID {
+		return nil, applicationError(ErrorInvalidCommand, "pendingRevision", errors.Join(ErrInvalidCommand, err))
+	}
+	return &PendingRevisionSave[T]{Command: command, CommandDigest: stored.CommandDigest}, nil
+}
+
+func (service *Service[T]) resolveRevision(ctx context.Context, command SaveRevisionCommand[T], revision contract.PlanRevision[T]) (Result[T], bool, error) {
+	snapshot, err := service.repository.Snapshot(ctx)
+	if err != nil {
+		return Result[T]{}, false, err
+	}
+	stored, found := findRevision(snapshot, revision.Ref())
+	if !found || !equalJSON(stored, revision) {
+		return Result[T]{}, false, nil
+	}
+	savedDraft, err := cloneDraft(command.Draft)
+	if err != nil {
+		return Result[T]{}, false, err
+	}
+	ref := stored.Ref()
+	savedDraft.BaseRevision = &ref
+	result, err := resultForDraft(command.CommandID, snapshot, savedDraft, &stored)
+	return result, err == nil, err
+}
+
+func pendingRevisionError(err error) error {
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, repository.ErrPendingRevisionConflict) || errors.Is(err, repository.ErrInvalidPendingRevision) {
+		return applicationError(ErrorPendingRevisionConflict, "pendingRevision", errors.Join(ErrPendingRevisionConflict, err))
+	}
+	if errors.Is(err, repository.ErrStaleWrite) {
+		return applicationError(ErrorStaleCommand, "expectedRepositoryVersion", errors.Join(ErrStaleCommand, err))
+	}
+	return err
 }
 
 func (service *Service[T]) Duplicate(ctx context.Context, command DuplicateCommand[T]) (Result[T], error) {

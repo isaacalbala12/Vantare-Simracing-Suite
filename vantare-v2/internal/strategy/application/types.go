@@ -24,6 +24,9 @@ const (
 	OperationOpen                    Operation = "open"
 	OperationEdit                    Operation = "edit"
 	OperationSaveRevision            Operation = "save_revision"
+	OperationGetPendingRevisionSave  Operation = "get_pending_revision_save"
+	OperationResolveRevisionSave     Operation = "resolve_pending_revision_save"
+	OperationAcknowledgeRevisionSave Operation = "acknowledge_pending_revision_save"
 	OperationDuplicate               Operation = "duplicate"
 	OperationActivate                Operation = "activate"
 	OperationDeactivate              Operation = "deactivate"
@@ -84,10 +87,31 @@ type EditCommand[T any] struct {
 
 type SaveRevisionCommand[T any] struct {
 	CommandHeader
-	Draft      contract.PlanDraft[T] `json:"draft"`
-	RevisionID contract.RevisionID   `json:"revisionId"`
-	CreatedAt  time.Time             `json:"createdAt"`
+	Draft       contract.PlanDraft[T] `json:"draft"`
+	RevisionID  contract.RevisionID   `json:"revisionId"`
+	CreatedAt   time.Time             `json:"createdAt"`
+	Recoverable bool                  `json:"recoverable,omitempty"`
 }
+
+type PendingRevisionCommand struct{ CommandHeader }
+
+type AcknowledgePendingRevisionCommand struct {
+	CommandHeader
+	PendingCommandID string `json:"pendingCommandId"`
+	CommandDigest    string `json:"commandDigest"`
+}
+
+type PendingRevisionSave[T any] struct {
+	Command       SaveRevisionCommand[T] `json:"command"`
+	CommandDigest string                 `json:"commandDigest"`
+}
+
+type PendingRevisionResolution string
+
+const (
+	PendingRevisionStored    PendingRevisionResolution = "stored"
+	PendingRevisionNotStored PendingRevisionResolution = "not_stored"
+)
 
 type DuplicateCommand[T any] struct {
 	CommandHeader
@@ -587,6 +611,8 @@ type Result[T any] struct {
 	Draft             *contract.PlanDraft[T]    `json:"draft,omitempty"`
 	SavedDraft        *contract.PlanDraft[T]    `json:"savedDraft,omitempty"`
 	Revision          *contract.PlanRevision[T] `json:"revision,omitempty"`
+	PendingRevision   *PendingRevisionSave[T]   `json:"pendingRevision,omitempty"`
+	PendingResolution PendingRevisionResolution `json:"pendingResolution,omitempty"`
 	ActivePlan        *contract.ActivePlan      `json:"activePlan,omitempty"`
 	// Activations is the audit trail, oldest first: what was activated, when,
 	// and what it replaced. It is append-only and never rewritten.

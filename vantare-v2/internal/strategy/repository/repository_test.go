@@ -70,13 +70,13 @@ func TestRepositoryPendingRevisionSurvivesRestartAndBindsCommit(t *testing.T) {
 	if pending, err := reopened.LoadPendingRevision(ctx); err != nil || pending == nil || pending.CommandID != "save-a" {
 		t.Fatalf("commit lost recovery intent: pending=%#v err=%v", pending, err)
 	}
-	if err := reopened.AcknowledgePendingRevision(ctx, "other"); !errors.Is(err, ErrPendingRevisionConflict) {
+	if err := reopened.AcknowledgePendingRevision(ctx, "other", staged.CommandDigest); !errors.Is(err, ErrPendingRevisionConflict) {
 		t.Fatalf("foreign acknowledge error = %v, want ErrPendingRevisionConflict", err)
 	}
-	if err := reopened.AcknowledgePendingRevision(ctx, "save-a"); err != nil {
+	if err := reopened.AcknowledgePendingRevision(ctx, "save-a", staged.CommandDigest); err != nil {
 		t.Fatal(err)
 	}
-	if err := reopened.AcknowledgePendingRevision(ctx, "save-a"); err != nil {
+	if err := reopened.AcknowledgePendingRevision(ctx, "save-a", staged.CommandDigest); err != nil {
 		t.Fatalf("idempotent acknowledge: %v", err)
 	}
 	if pending, err := reopened.LoadPendingRevision(ctx); err != nil || pending != nil {
@@ -96,7 +96,7 @@ func TestRepositoryRecoverableCommitRequiresStillStagedIntent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := repository.AcknowledgePendingRevision(ctx, "save-a"); err != nil {
+	if err := repository.AcknowledgePendingRevision(ctx, "save-a", staged.CommandDigest); err != nil {
 		t.Fatal(err)
 	}
 	_, err = repository.Commit(ctx, 0, ChangeSet[testPayload]{

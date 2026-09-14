@@ -339,6 +339,69 @@ func TestServiceReconcilesAnUncertainCommitWithoutRetrying(t *testing.T) {
 	}
 }
 
+func TestServiceRecoversExactRevisionSaveAfterRestartAndLaterHead(t *testing.T) {
+	ctx := context.Background()
+	root := t.TempDir()
+	repo, err := repository.Open[testPayload](root, repository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewService[testPayload](repo)
+	draft := validDraft("draft-1", "plan-1", 10)
+	created, err := service.Create(ctx, CreateCommand[testPayload]{CommandHeader: commandHeader("create", OperationCreate, 0), Draft: draft})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command := SaveRevisionCommand[testPayload]{
+		CommandHeader: commandHeader("save-a", OperationSaveRevision, created.RepositoryVersion),
+		Draft:         draft, RevisionID: "revision-a", CreatedAt: canonicalTime(2), Recoverable: true,
+	}
+	saved, err := service.SaveRevision(ctx, command)
+	if err != nil || saved.Revision == nil {
+		t.Fatalf("recoverable save = %#v, err=%v", saved, err)
+	}
+
+	reopenedRepo, err := repository.Open[testPayload](root, repository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	restarted := NewService[testPayload](reopenedRepo)
+	pendingResult, err := restarted.GetPendingRevisionSave(ctx, PendingRevisionCommand{CommandHeader: commandHeader("get-pending", OperationGetPendingRevisionSave, 0)})
+	if err != nil || pendingResult.PendingRevision == nil || !equalJSON(pendingResult.PendingRevision.Command, command) {
+		t.Fatalf("pending after restart = %#v, err=%v", pendingResult.PendingRevision, err)
+	}
+	if retried, err := restarted.SaveRevision(ctx, command); err != nil || retried.Revision == nil || retried.Revision.Ref() != saved.Revision.Ref() {
+		t.Fatalf("exact retry = %#v, err=%v", retried, err)
+	}
+
+	later := draft
+	later.Payload.Laps = 12
+	later.UpdatedAt = canonicalTime(3)
+	later.BaseRevision = pointerToRevisionRef(saved.Revision.Ref())
+	if _, err := restarted.SaveRevision(ctx, SaveRevisionCommand[testPayload]{CommandHeader: commandHeader("save-b", OperationSaveRevision, saved.RepositoryVersion), Draft: later, RevisionID: "revision-b", CreatedAt: canonicalTime(4)}); err != nil {
+		t.Fatal(err)
+	}
+	resolved, err := restarted.ResolvePendingRevisionSave(ctx, PendingRevisionCommand{CommandHeader: commandHeader("resolve", OperationResolveRevisionSave, 0)})
+	if err != nil || resolved.PendingResolution != PendingRevisionStored || resolved.Revision == nil || resolved.Revision.Ref() != saved.Revision.Ref() {
+		t.Fatalf("resolved original after later HEAD = %#v, err=%v", resolved, err)
+	}
+
+	changed := command
+	changed.Draft.Payload.Laps = 99
+	if _, err := restarted.SaveRevision(ctx, changed); !errors.Is(err, ErrPendingRevisionConflict) {
+		t.Fatalf("changed same identity error = %v, want ErrPendingRevisionConflict", err)
+	}
+	digest := pendingResult.PendingRevision.CommandDigest
+	if _, err := restarted.AcknowledgePendingRevisionSave(ctx, AcknowledgePendingRevisionCommand{CommandHeader: commandHeader("ack", OperationAcknowledgeRevisionSave, 0), PendingCommandID: "save-a", CommandDigest: digest}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := restarted.AcknowledgePendingRevisionSave(ctx, AcknowledgePendingRevisionCommand{CommandHeader: commandHeader("ack-again", OperationAcknowledgeRevisionSave, 0), PendingCommandID: "save-a", CommandDigest: digest}); err != nil {
+		t.Fatalf("idempotent acknowledgement: %v", err)
+	}
+}
+
+func pointerToRevisionRef(ref contract.RevisionRef) *contract.RevisionRef { return &ref }
+
 func TestServiceConcurrentDifferentCommandsNeverOverwrite(t *testing.T) {
 	repo, err := repository.Open[testPayload](t.TempDir(), repository.Options{})
 	if err != nil {

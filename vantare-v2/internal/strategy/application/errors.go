@@ -15,6 +15,7 @@ const (
 	ErrorDraftNotFound           ErrorCode = "draft_not_found"
 	ErrorDraftConflict           ErrorCode = "draft_conflict"
 	ErrorRevisionNotFound        ErrorCode = "revision_not_found"
+	ErrorPendingRevisionConflict ErrorCode = "pending_revision_conflict"
 	ErrorActiveConflict          ErrorCode = "active_plan_conflict"
 	ErrorUnsavedChanges          ErrorCode = "unsaved_changes"
 	ErrorPlanNotFound            ErrorCode = "plan_not_found"
@@ -43,6 +44,7 @@ var (
 	ErrDraftNotFound           = errors.New("strategy draft not found")
 	ErrDraftConflict           = errors.New("strategy draft conflicts with an existing draft")
 	ErrRevisionNotFound        = errors.New("strategy revision not found")
+	ErrPendingRevisionConflict = errors.New("strategy pending revision conflicts with another intent")
 	ErrActiveConflict          = errors.New("strategy active plan conflict")
 	ErrUnsavedChanges          = errors.New("strategy draft has unsaved changes")
 	ErrPlanNotFound            = errors.New("strategy plan not found")

@@ -1,6 +1,22 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1238 presupuesto de secuencia cerrado localmente; adapter multipiloto pendiente
+## Estado vigente — #1237 T02g2b cerrado localmente; disponibilidad pendiente
+
+T02g2b construye un perfil por piloto de la variante antes de optimizar y pasa
+el orden completo como secuencia al mismo SolverV2. El plan publica el piloto
+elegido por el solver cuando la forma de stints coincide; el camino de un piloto
+sin límites conserva su entrada legacy. Solve, replay y meteorología comparten el
+input; esta última usa perfiles secos antes de aplicar los escenarios. Los
+perfiles se deduplican sin perder repeticiones del orden. RED/GREEN, application,
+solver, Go completo, vet, build web, roadmap y diff-check pasan. Astra high cerró
+dos defectos del primer corte y recomendó derivar el bucket desde el modo para
+eliminar un parámetro contradictorio. El delta seco→mojado sigue promediado entre
+pilotos; queda registrado como #1239 y no se afirma clima individual. Siguiente:
+T06/T07 disponibilidad y conducción, además de distinguir orden fijado de
+propuesta libre. Sin UI, app/Wails/LMU, DuckDB, push, PR, CI remota, integración
+ni release.
+
+## Historial — #1238 presupuesto de secuencia cerrado localmente
 
 #1238 corrige el agotamiento observado en una carrera de 136 vueltas con cuatro
 pilotos equivalentes. El camino escalar existente acepta ahora varios perfiles

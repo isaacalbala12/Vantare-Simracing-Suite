@@ -155,9 +155,13 @@ func calculateOrbitWeather(ctx context.Context, input OrbitCalculationInput, dri
 	for index, scenario := range input.WeatherScenarios {
 		weighted[index] = solver.WeightedWeatherScenario{Scenario: scenario.Scenario, Weight: scenario.Weight}
 	}
+	solverInput, err := orbitVariantSolverInput(comparisonLaps, input.Event, drivers, variant, "dry", effectivePace, effectiveFuel, input.PlanningInputs)
+	if err != nil {
+		return OrbitWeatherResult{}, calculationApplicationError(ErrorCalculationInvalid, "input.activeVariantId", err)
+	}
 	solved, err := solver.SolveWeatherScenariosContext(
 		ctx,
-		orbitVariantSolverInput(comparisonLaps, input.Event, variant, effectivePace, effectiveFuel, strategyprojection.ClimateBucketDry, input.PlanningInputs),
+		solverInput,
 		solver.WeatherScenarioSet{Scenarios: weighted, BucketParameters: parameters},
 	)
 	if err != nil {
@@ -306,7 +310,10 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 }
 
 func calculateOrbitLapPlan(ctx context.Context, event OrbitCalculationEvent, drivers map[string]OrbitCalculationDriver, variant OrbitCalculationVariant, variantIndex int, planning *strategydocument.PlanningInputs, raceLaps int64, averagePace, averageFuel float64) (OrbitCalculationPlan, error) {
-	solverInput := orbitVariantSolverInput(raceLaps, event, variant, averagePace, averageFuel, orbitClimateBucket(variant.Mode), planning)
+	solverInput, err := orbitVariantSolverInput(raceLaps, event, drivers, variant, variant.Mode, averagePace, averageFuel, planning)
+	if err != nil {
+		return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, fmt.Sprintf("input.variants.%d.order", variantIndex), err)
+	}
 	optimised, err := solver.SolveV2Context(ctx, solverInput)
 	if err != nil {
 		return OrbitCalculationPlan{}, mapOrbitCalculationError(err, fmt.Sprintf("input.variants.%d", variantIndex))
@@ -366,6 +373,9 @@ func calculateOrbitLapPlan(ctx context.Context, event OrbitCalculationEvent, dri
 		var saving solver.StintDecision
 		if index < len(optimised.Best.Stints) && optimised.Best.Stints[index].Laps == count {
 			saving = optimised.Best.Stints[index]
+			if saving.Driver != "" {
+				driverID = saving.Driver
+			}
 		}
 		_, manualOverride := variant.Overrides[index]
 		lastLap := lap + count
@@ -483,22 +493,42 @@ func orbitSolverInput(
 func orbitVariantSolverInput(
 	raceLaps int64,
 	event OrbitCalculationEvent,
+	drivers map[string]OrbitCalculationDriver,
 	variant OrbitCalculationVariant,
+	profileMode string,
 	averagePace, averageFuel float64,
-	paceBucket strategyprojection.ClimateBucket,
 	planning *strategydocument.PlanningInputs,
-) solver.SolverInputV2 {
-	input := orbitSolverInput(raceLaps, event, averagePace, averageFuel, paceBucket, planning)
-	if len(variant.Order) != 1 || event.Rules == nil || len(event.Rules.DriverLimits) == 0 {
-		return input
+) (solver.SolverInputV2, error) {
+	input := orbitSolverInput(raceLaps, event, averagePace, averageFuel, orbitClimateBucket(profileMode), planning)
+	hasDriverLimits := event.Rules != nil && len(event.Rules.DriverLimits) > 0
+	if len(variant.Order) == 1 && !hasDriverLimits {
+		return input, nil
 	}
 	vePerLap := input.ResolveScalarInputs().VEPerLapPercent.Value
-	driverID := variant.Order[0]
-	input.DriverProfiles = []solver.DriverProfileInput{orbitDriverProfile(
-		driverID, OrbitCalculationPace{PaceSeconds: averagePace, FuelLitersPerLap: averageFuel}, vePerLap,
-		strategyprojection.Provenance{Kind: strategyprojection.ProvenanceReference, SourceID: "strategy.orbit.driver-configuration:" + driverID},
-	)}
-	return input
+	input.DriverProfiles = make([]solver.DriverProfileInput, 0, len(variant.Order))
+	seen := make(map[string]bool, len(variant.Order))
+	for _, driverID := range variant.Order {
+		if seen[driverID] {
+			continue
+		}
+		driver, ok := drivers[driverID]
+		if !ok {
+			return solver.SolverInputV2{}, fmt.Errorf("driver %q is not configured", driverID)
+		}
+		pace, err := effectiveOrbitPace(driver, profileMode, planning)
+		if err != nil {
+			return solver.SolverInputV2{}, err
+		}
+		input.DriverProfiles = append(input.DriverProfiles, orbitDriverProfile(
+			driverID, pace, vePerLap,
+			strategyprojection.Provenance{Kind: strategyprojection.ProvenanceReference, SourceID: "strategy.orbit.driver-configuration:" + driverID},
+		))
+		seen[driverID] = true
+	}
+	if len(variant.Order) > 1 {
+		input.DriverSequence = append([]string(nil), variant.Order...)
+	}
+	return input, nil
 }
 
 func orbitMatchesSolvedStints(laps []int64, solved []solver.StintDecision) bool {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"testing"
 
 	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
@@ -80,6 +81,78 @@ func TestOrbitAppliesSingleDriverLimitsBeforeOptimization(t *testing.T) {
 	_, err = calculateOrbitContext(context.Background(), input)
 	if !errors.Is(err, ErrCalculationInfeasible) {
 		t.Fatalf("driver maximum must make the plan infeasible: %v", err)
+	}
+}
+
+func TestOrbitAppliesMultiDriverProfilesAndSequenceBeforeOptimization(t *testing.T) {
+	targetLaps := int64(4)
+	maxLaps := int64(2)
+	input := OrbitCalculationInput{
+		Event: OrbitCalculationEvent{
+			RaceKind: "laps", TargetLaps: &targetLaps, TankLiters: 4, PitLossSeconds: 10,
+			Rules: &solver.EventRules{DriverLimits: map[string]solver.DriverLimit{
+				"fast": {MaxLaps: &maxLaps},
+				"slow": {MaxLaps: &maxLaps},
+			}},
+		},
+		Drivers: []OrbitCalculationDriver{
+			{ID: "fast", Name: "Fast", Dry: OrbitCalculationPace{PaceSeconds: 60, FuelLitersPerLap: 2}},
+			{ID: "slow", Name: "Slow", Dry: OrbitCalculationPace{PaceSeconds: 70, FuelLitersPerLap: 1}},
+		},
+		Variants: []OrbitCalculationVariant{{ID: "base", Mode: "dry", Order: []string{"fast", "slow"}}}, ActiveVariantID: "base",
+	}
+
+	result, err := calculateOrbitContext(context.Background(), input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan := result.Plans["base"]
+	if len(plan.Stints) != 2 {
+		t.Fatalf("stints = %+v, want two constrained stints", plan.Stints)
+	}
+	if plan.Stints[0].DriverID != "fast" || plan.Stints[0].Laps != 2 || plan.Stints[0].Pace != 60 || plan.Stints[0].Fuel != 4 {
+		t.Fatalf("fast stint = %+v", plan.Stints[0])
+	}
+	if plan.Stints[1].DriverID != "slow" || plan.Stints[1].Laps != 2 || plan.Stints[1].Pace != 70 || math.Abs(plan.Stints[1].Fuel-2.8) > 1e-9 {
+		t.Fatalf("slow stint = %+v", plan.Stints[1])
+	}
+}
+
+func TestOrbitVariantSolverInputKeepsUniqueProfilesAndFullSequence(t *testing.T) {
+	drivers := map[string]OrbitCalculationDriver{
+		"a": {ID: "a", Dry: OrbitCalculationPace{PaceSeconds: 60, FuelLitersPerLap: 1}},
+		"b": {ID: "b", Dry: OrbitCalculationPace{PaceSeconds: 61, FuelLitersPerLap: 1}},
+	}
+	mapped, err := orbitVariantSolverInput(3, OrbitCalculationEvent{TankLiters: 3, PitLossSeconds: 1}, drivers,
+		OrbitCalculationVariant{Mode: "dry", Order: []string{"a", "a", "b"}}, "dry", 60, 1, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(mapped.DriverProfiles) != 2 || len(mapped.DriverSequence) != 3 {
+		t.Fatalf("profiles=%+v sequence=%+v", mapped.DriverProfiles, mapped.DriverSequence)
+	}
+}
+
+func TestOrbitWeatherProfilesUseDryBaseInsteadOfActiveVariantMode(t *testing.T) {
+	drivers := map[string]OrbitCalculationDriver{
+		"a": {
+			ID:  "a",
+			Dry: OrbitCalculationPace{PaceSeconds: 60, FuelLitersPerLap: 1},
+			Wet: OrbitCalculationPace{PaceSeconds: 70, FuelLitersPerLap: 1},
+		},
+		"b": {
+			ID:  "b",
+			Dry: OrbitCalculationPace{PaceSeconds: 61, FuelLitersPerLap: 1},
+			Wet: OrbitCalculationPace{PaceSeconds: 71, FuelLitersPerLap: 1},
+		},
+	}
+	mapped, err := orbitVariantSolverInput(4, OrbitCalculationEvent{TankLiters: 4, PitLossSeconds: 1}, drivers,
+		OrbitCalculationVariant{Mode: "wet", Order: []string{"a", "b"}}, "dry", 60.5, 1, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := mapped.DriverProfiles[0].Manual.BaseLapSeconds; got != 60 {
+		t.Fatalf("weather base pace = %v, want dry 60 before weather delta", got)
 	}
 }
 

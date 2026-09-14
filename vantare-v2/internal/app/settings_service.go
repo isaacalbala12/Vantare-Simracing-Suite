@@ -997,15 +997,47 @@ func (s *SettingsService) Save(settings *AppSettings) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	snapshot := cloneAppSettings(settings)
-	if snapshot.Performance.Mode == string(performancepolicy.ModeAuto) {
-		snapshot.CpuSampling = true
-	}
+	normalizePerformanceForSave(snapshot)
 	data, err := json.MarshalIndent(snapshot, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal: %w", err)
 	}
 	// Directory is ensured at the top of saveWithRetry (idempotent).
 	return s.saveWithRetry(snapshot, data, 0)
+}
+
+// normalizePerformanceForSave applies the save-time rule shared by Save and
+// Update: auto performance mode always forces CPU sampling on.
+func normalizePerformanceForSave(settings *AppSettings) {
+	if settings.Performance.Mode == string(performancepolicy.ModeAuto) {
+		settings.CpuSampling = true
+	}
+}
+
+// Update applies mutate to the live settings under s.mu and persists the
+// result atomically. Unlike Save, the mutation always runs against the
+// current state, so a partial change can never install a snapshot captured
+// before another writer's update. mutate must be a plain field mutation and
+// must not call back into the service: the write lock is already held.
+func (s *SettingsService) Update(mutate func(*AppSettings)) error {
+	if mutate == nil {
+		return fmt.Errorf("mutate cannot be nil")
+	}
+	if s.path == "" {
+		return ErrSettingsPathEmpty
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.settings == nil {
+		s.settings = DefaultAppSettings()
+	}
+	mutate(s.settings)
+	normalizePerformanceForSave(s.settings)
+	data, err := json.MarshalIndent(s.settings, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal: %w", err)
+	}
+	return s.saveWithRetry(s.settings, data, 0)
 }
 
 // saveWithRetry attempts to persist data atomically, retrying with backoff

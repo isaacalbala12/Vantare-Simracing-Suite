@@ -1024,9 +1024,9 @@ func handleResolveLauncherDecision(decisionID, action string, remember bool, emi
 }
 
 func handleLauncherOnboardingComplete(settingsSvc *app.SettingsService, emitter app.EventEmitter) {
-	settings := settingsSvc.Settings()
-	settings.LauncherOnboardingCompleted = true
-	if err := settingsSvc.Save(settings); err != nil {
+	if err := settingsSvc.Update(func(settings *app.AppSettings) {
+		settings.LauncherOnboardingCompleted = true
+	}); err != nil {
 		emitter.Emit("launcher:error", map[string]any{"code": "onboarding_save_failed", "message": err.Error()})
 		return
 	}
@@ -2787,6 +2787,10 @@ func main() {
 		}
 		s.Performance.Source = app.PerformanceSourceUser
 		s.Performance.MigratedFrom = ""
+		// La sección engineer solo la escriben los eventos dedicados del
+		// Orbit; el formulario general fija el estado vivo para no restaurar
+		// ni borrar preferencias ajenas a su alcance.
+		s.Engineer = settingsSvc.EngineerSettings()
 		confirmed, _, err := performanceSaves.Execute(func() error { return settingsSvc.Save(&s) })
 		if err != nil {
 			log.Printf("settings:save error: %v", err)

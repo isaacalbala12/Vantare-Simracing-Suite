@@ -160,7 +160,13 @@ func (service *Service[T]) GetRevisionPlanningInputs(ctx context.Context, comman
 	if err := validateHeader(command.CommandHeader, OperationGetRevisionInputs); err != nil {
 		return Result[T]{}, err
 	}
-	if command.GeneratedAt.IsZero() || strings.TrimSpace(command.CombinationID) == "" || len(command.SourceRevisions) == 0 {
+	if command.GeneratedAt.IsZero() {
+		return Result[T]{}, applicationError(ErrorInvalidCommand, "generatedAt", ErrInvalidCommand)
+	}
+	if strings.TrimSpace(command.CombinationID) == "" {
+		return Result[T]{}, applicationError(ErrorInvalidCommand, "combinationId", ErrInvalidCommand)
+	}
+	if len(command.SourceRevisions) == 0 {
 		return Result[T]{}, applicationError(ErrorInvalidCommand, "sourceRevisions", ErrInvalidCommand)
 	}
 	sourceSessions := make([]string, len(command.SourceRevisions))

@@ -7,6 +7,7 @@ const refs = [
   { sessionId: "race-a", baseDigest: "a".repeat(64), revisionId: "b".repeat(64), snapshotId: "c".repeat(64) },
   { sessionId: "race-b", baseDigest: "d".repeat(64), revisionId: "e".repeat(64), snapshotId: "f".repeat(64) },
 ];
+const combination = { combinationId: "combo", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "499P", carClass: "Hypercar" };
 const planning = {
   overrides: {},
   projection: { combinationId: "combo", sourceRevisions: refs, generatedAt: "2026-09-15T01:00:00.123Z" },
@@ -22,7 +23,7 @@ function client(result: Partial<StrategyApplicationResultV1<unknown>>) {
 
 it("requests one exact recorded projection without creating an event", async () => {
   const application = client({ planningInputStatus: "available", planningInputs: planning });
-  const draft = { ...createRecordedWizardDraft(), combination: { combinationId: "combo", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "499P", carClass: "Hypercar" }, sessions: refs };
+  const draft = { ...createRecordedWizardDraft(), combination, sessions: refs };
 
   await expect(prepareRecordedPlanningInputs(application, draft, 9, "prepare", "2026-09-15T01:00:00.123Z")).resolves.toBe(planning);
   expect(application.execute).toHaveBeenCalledWith({
@@ -41,6 +42,17 @@ it.each([
   ["duplicated response", { planningInputStatus: "available", planningInputs: { ...planning, projection: { ...planning.projection!, sourceRevisions: [refs[0], refs[0]] } } }],
 ] as const)("rejects %s", async (_name, result) => {
   const application = client(result as Partial<StrategyApplicationResultV1<unknown>>);
-  const draft = { ...createRecordedWizardDraft(), combination: { combinationId: "combo", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "499P", carClass: "Hypercar" }, sessions: refs };
+  const draft = { ...createRecordedWizardDraft(), combination, sessions: refs };
   await expect(prepareRecordedPlanningInputs(application, draft, 9, "prepare", "2026-09-15T01:00:00.123Z")).rejects.toThrow(/recorded planning inputs/i);
+});
+
+it.each([
+  ["missing combination", { sessions: refs }, "2026-09-15T01:00:00.123Z"],
+  ["empty selection", { combination, sessions: [] }, "2026-09-15T01:00:00.123Z"],
+  ["duplicate selection", { combination, sessions: [refs[0], refs[0]] }, "2026-09-15T01:00:00.123Z"],
+  ["non-canonical instant", { combination, sessions: refs }, "2026-09-15T01:00:00Z"],
+] as const)("does not dispatch %s", async (_name, selection, generatedAt) => {
+  const application = client({ planningInputStatus: "available", planningInputs: planning });
+  await expect(prepareRecordedPlanningInputs(application, selection, 9, "prepare", generatedAt)).rejects.toThrow(/recorded planning inputs/i);
+  expect(application.execute).not.toHaveBeenCalled();
 });

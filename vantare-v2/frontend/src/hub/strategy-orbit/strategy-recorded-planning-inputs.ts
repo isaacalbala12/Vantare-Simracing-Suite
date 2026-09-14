@@ -15,8 +15,10 @@ export async function prepareRecordedPlanningInputs(
 ): Promise<StrategyPlanningInputsV2> {
   const combinationId = draft.combination?.combinationId;
   const sourceRevisions = draft.sessions.map(ref => ({ ...ref }));
+  const timestamp = Date.parse(generatedAt);
+  const canonicalGeneratedAt = Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : "";
   if (!combinationId || sourceRevisions.length === 0 || !Number.isSafeInteger(repositoryVersion)
-    || repositoryVersion < 0 || !commandId || !Number.isFinite(Date.parse(generatedAt))
+    || repositoryVersion < 0 || !commandId || canonicalGeneratedAt !== generatedAt
     || new Set(sourceRevisions.map(ref => ref.sessionId)).size !== sourceRevisions.length) invalid();
 
   const result = await application.execute({
@@ -26,13 +28,13 @@ export async function prepareRecordedPlanningInputs(
     expectedRepositoryVersion: repositoryVersion,
     combinationId,
     sourceRevisions,
-    generatedAt,
+    generatedAt: canonicalGeneratedAt,
   });
   const planning = result.planningInputs;
   const projection = planning?.projection;
   if (result.planningInputStatus !== "available" || !planning || !projection
     || projection.combinationId !== combinationId
-    || projection.generatedAt !== new Date(generatedAt).toISOString()
+    || projection.generatedAt !== canonicalGeneratedAt
     || !sameRevisionSelection(sourceRevisions, projection.sourceRevisions)) invalid();
   return planning;
 }

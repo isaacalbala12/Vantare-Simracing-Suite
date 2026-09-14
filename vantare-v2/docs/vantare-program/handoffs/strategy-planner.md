@@ -1,6 +1,23 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1263 T14g cerrado localmente; `save_revision` recuperable
+## Estado vigente — #1264 T15a1 cerrado localmente; criterio de pilotos recorded
+
+El borrador registrado conserva de forma aditiva el criterio `fixed|free` y
+la secuencia exacta de pilotos. La pantalla Pilotos permite elegir el criterio
+y ordenar una rotación fijada; los borradores anteriores siguen significando
+rotación fija en el orden ya guardado. Añadir o retirar un piloto reconcilia la
+misma lista sin conservar IDs ajenos. El mapper de cálculo exige el modo de
+ritmo como entrada explícita y rechaza listas vacías, duplicadas, incompletas o
+ajenas. La selección libre se transporta para carreras por vueltas; en carreras
+por tiempo permanece visible y bloqueada con causa porque el backend todavía
+no tiene esa semántica. No se ejecuta ningún cálculo en este corte. Siguiente:
+T15a2, entrada completa/readiness y modo libre temporal usando la autoridad
+existente. Pasan 5 archivos/94 tests focales, frontend 449/3862, typecheck,
+lint, i18n, build, Go global y 259 checks documentales. El build conserva el
+aviso heredado de chunks superiores a 500 kB. Sin app/Wails, LMU, DuckDB,
+push, PR, CI remota, integración ni release.
+
+## Historial — #1263 T14g cerrado localmente; `save_revision` recuperable
 
 El repositorio privado de Strategy conserva un único comando completo de
 `save_revision` antes de aplicar su efecto, sellado por digest y dentro del

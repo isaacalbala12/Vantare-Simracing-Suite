@@ -1,15 +1,16 @@
 # Vantare Overlays v2
 
-> **Entrada de desarrollo vigente:** [workflow de transición y lote activo](docs/vantare-program/notion-transition.md).
-> Leer las reglas de `vantare-v2/AGENTS.md` y el expediente canónico antes de
-> ejecutar instrucciones antiguas de desarrollo enlazadas desde esta página.
+> **Notion primero:** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192),
+> leer tarea y proyecto, y actualizar Notion durante la ejecución y la entrega.
+> Leer los AGENTS de origin/nightly actualizado; master o un chat antiguo pueden
+> contener instrucciones obsoletas. GitHub conserva código, PR, CI y releases.
 
 
 Pre-alpha `v0.1.1-prealpha` del reinicio del proyecto con **Go + Wails + React**.
 
 Estado actual: Hub principal + Preview Workbench + overlay desktop fullscreen transparente bajo demanda + telemetría live de Le Mans Ultimate. `apps/desktop/` es v1 legado y no forma parte de esta pre-alpha.
 
-Documentación: [`../docs/V2-STACK-AND-PERFORMANCE.md`](../docs/V2-STACK-AND-PERFORMANCE.md) · Plan maestro: [`../docs/V2-MASTER-PLAN.md`](../docs/V2-MASTER-PLAN.md) · **Guía completa:** [`../docs/proyecto/README.md`](../docs/proyecto/README.md)
+Documentación: [`../docs/V2-STACK-AND-PERFORMANCE.md`](../docs/V2-STACK-AND-PERFORMANCE.md) · Plan maestro: [`../docs/V2-MASTER-PLAN.md`](../docs/V2-MASTER-PLAN.md) · **Expediente vigente:** [`docs/vantare-program/README.md`](docs/vantare-program/README.md) · Guía histórica: [`../docs/proyecto/README.md`](../docs/proyecto/README.md)
 
 ## Requisitos
 

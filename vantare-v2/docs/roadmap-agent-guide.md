@@ -1,11 +1,11 @@
 # Guía de agentes para el roadmap
 
-> **Tracker y continuidad (2026-09-12):** leer primero
-> [la transición a Notion](vantare-program/notion-transition.md). Mientras su estado sea PREPARACIÓN,
-> las reglas GitHub/ISA de este documento rigen el cierre del lote existente
-> y la preparación técnica. El trabajo nuevo fuera del lote se captura en Notion
-> sin ejecutarlo todavía. Después del corte verificado, Notion será la autoridad
-> operativa y GitHub conservará código, PR, CI y releases.
+> **Notion primero (2026-09-14):** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192)
+> y leer la tarea y su proyecto antes de ejecutar. Actualizar Notion al empezar,
+> bloquear, entregar y verificar una integración; releer para comprobar la escritura.
+> [Contrato vigente](vantare-program/notion-transition.md). GitHub conserva código, PR, CI y releases;
+> las referencias ISA exigidas por los controles son un puente técnico temporal.
+> Su adaptación pendiente nunca permite omitir el seguimiento en Notion.
 
 
 Este documento sirve a workers que reciben una tarea de edición del roadmap.
@@ -14,7 +14,7 @@ lee `docs/roadmap-maintenance.md`.
 
 ## Antes de editar
 
-1. Lee `AGENTS.md`, `docs/roadmap/plan.md`, la issue de GitHub y el handoff vivo.
+1. Lee `AGENTS.md`, `docs/roadmap/plan.md`, la tarea Notion y el handoff vivo.
 2. Confirma rama, base, worktree y `git status --short`.
 3. Identifica si el cambio es de planning público, de entrega cumplida o solo
    de estado interno de la issue.
@@ -71,7 +71,7 @@ fallback. Los estados validos son `done`, `in-progress`, `planned` y `future`.
 - Si una entrega cumple un hito, actualiza el hito y el progreso de la fase en
   el mismo PR; no dejes un resultado terminado descrito como plan futuro.
 - Si solo cambia el estado técnico de la issue y no cambia lo que se comunica
-  públicamente, actualiza la issue y el handoff, no el roadmap.
+  públicamente, actualiza la tarea Notion y el handoff técnico, no el roadmap.
 - Regenera `roadmap.json` con el digest después de modificar `plan.md`.
 
 ## Checks

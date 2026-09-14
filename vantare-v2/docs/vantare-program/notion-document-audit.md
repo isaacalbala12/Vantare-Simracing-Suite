@@ -1,6 +1,6 @@
-# Revisión documental del cambio a Notion — ISA-1189
+# Revisión documental de Notion primero — VAN-724
 
-Fecha: 2026-09-12. Decisión y estado real: [notion-transition.md](notion-transition.md).
+Revisión vigente: 2026-09-14. Tarea [VAN-724](https://app.notion.com/p/3dbe51695c658138b19fe81c730d89a2), puente CI #1213. Decisión: [notion-transition.md](notion-transition.md).
 
 ## Alcance y método
 
@@ -14,7 +14,73 @@ Este inventario no certifica los estados técnicos de esos cuerpos históricos.
 No se hace un reemplazo global de Linear ni de ISA: son también procedencia y
 campos persistidos que deben conservarse. Cada archivo cambiado figura abajo.
 
-## Cambios por archivo
+## Revisión vigente por archivo (VAN-724)
+
+Causa: las primeras instrucciones decían que GitHub seguía siendo autoridad
+mientras PREPARACIÓN. Se corrigen los cuerpos operativos, no solo una cabecera.
+Se revisan todas las entradas y todos los hunks modificados; en handoffs extensos
+se conserva la historia técnica sin recertificar su estado actual.
+
+| Archivo | Cambio y límite revisado |
+|---|---|
+| [.github/ISSUE_TEMPLATE/config.yml](../../../.github/ISSUE_TEMPLATE/config.yml) | Enlace de entrada al hub; mantiene formularios técnicos y blank_issues_enabled false. |
+| [.github/ISSUE_TEMPLATE/roadmap-not-required.yml](../../../.github/ISSUE_TEMPLATE/roadmap-not-required.yml) | Tarea Notion requerida antes de referencia técnica; conserva campos consumidos por CI. |
+| [.github/ISSUE_TEMPLATE/roadmap-required.yml](../../../.github/ISSUE_TEMPLATE/roadmap-required.yml) | Tarea Notion requerida antes de referencia técnica; conserva campos consumidos por CI. |
+| [.github/PULL_REQUEST_TEMPLATE.md](../../../.github/PULL_REQUEST_TEMPLATE.md) | Tarea/proyecto Notion primero, evidencia de escritura y actualización tras merge; no finge validación automática. |
+| [AGENTS.md](../../../AGENTS.md) | Entrada directa al hub/tarea/proyecto; escrituras obligatorias y bootstrap de nightly para chats antiguos. |
+| [README.md](../../../README.md) | Entrada y lectura Notion obligatorias; contenido técnico e histórico conservado. |
+| [vantare-v2/AGENTS.md](../../AGENTS.md) | Autoridad Notion en lectura, ejecución, roadmap y entrega; puente CI separado; conserva controles técnicos. |
+| [vantare-v2/README.md](../../README.md) | Entrada y lectura Notion obligatorias; contenido técnico e histórico conservado. |
+| [vantare-v2/docs/README.md](../README.md) | Entrada y lectura Notion obligatorias; contenido técnico e histórico conservado. |
+| [vantare-v2/docs/agent-workflow.md](../agent-workflow.md) | Reescribe fuente operativa, flujo normal y definición de terminado; fallos de Notion no habilitan fallback. |
+| [vantare-v2/docs/branch-channels.md](../branch-channels.md) | Actualiza instrucciones de seguimiento a Notion; conserva contratos técnicos y evidencia histórica. |
+| [vantare-v2/docs/calendar-weekly-hotfix/README.md](../calendar-weekly-hotfix/README.md) | Entrada y lectura Notion obligatorias; contenido técnico e histórico conservado. |
+| [vantare-v2/docs/calendar-weekly-hotfix/weekly-update-prompt.md](../calendar-weekly-hotfix/weekly-update-prompt.md) | Reglas Notion dentro del bloque copiable; lectura, escritura, fallos y compatibilidad CI explícitos. |
+| [vantare-v2/docs/documentation-inventory.md](../documentation-inventory.md) | Actualiza instrucciones de seguimiento a Notion; conserva contratos técnicos y evidencia histórica. |
+| [vantare-v2/docs/master-feature-plan.md](../master-feature-plan.md) | Elimina rutas aparentemente actuales a GitHub y al índice de release histórico. |
+| [vantare-v2/docs/plan-beta-publica-y-lanzamiento.md](../plan-beta-publica-y-lanzamiento.md) | Gate Review e hitos en Notion ahora; CI y autorización de canal intactos. |
+| [vantare-v2/docs/prompts/bugfix-template.md](../prompts/bugfix-template.md) | Reglas Notion dentro del bloque copiable; lectura, escritura, fallos y compatibilidad CI explícitos. |
+| [vantare-v2/docs/prompts/miniplan-template.md](../prompts/miniplan-template.md) | Reglas Notion dentro del bloque copiable; lectura, escritura, fallos y compatibilidad CI explícitos. |
+| [vantare-v2/docs/prompts/reviewer-template.md](../prompts/reviewer-template.md) | Reglas Notion dentro del bloque copiable; lectura, escritura, fallos y compatibilidad CI explícitos. |
+| [vantare-v2/docs/prompts/worker-template.md](../prompts/worker-template.md) | Reglas Notion dentro del bloque copiable; lectura, escritura, fallos y compatibilidad CI explícitos. |
+| [vantare-v2/docs/release-beta-operations-runbook.md](../release-beta-operations-runbook.md) | Actualiza instrucciones de seguimiento a Notion; conserva contratos técnicos y evidencia histórica. |
+| [vantare-v2/docs/roadmap-agent-guide.md](../roadmap-agent-guide.md) | Precedencia operativa Notion; conserva plan editorial, digest y fragmentos ISA técnicos. |
+| [vantare-v2/docs/roadmap-maintenance.md](../roadmap-maintenance.md) | Precedencia operativa Notion; conserva plan editorial, digest y fragmentos ISA técnicos. |
+| [vantare-v2/docs/roadmap/plan.md](../roadmap/plan.md) | Solo cambia milestones:development-continuity en cuatro idiomas; conserva pendientes técnicos. |
+| [vantare-v2/docs/roadmap/roadmap.json](../roadmap/roadmap.json) | Regenerado desde origin/nightly con el generador existente; sin edición manual. |
+| [vantare-v2/docs/superpowers/skills/roadmap-management/SKILL.md](../superpowers/skills/roadmap-management/SKILL.md) | Precedencia operativa Notion; conserva plan editorial, digest y fragmentos ISA técnicos. |
+| [vantare-v2/docs/telemetry-core/README.md](../telemetry-core/README.md) | Entrada y lectura Notion obligatorias; contenido técnico e histórico conservado. |
+| [vantare-v2/docs/vantare-program/README.md](README.md) | Entrada y lectura Notion obligatorias; contenido técnico e histórico conservado. |
+| [vantare-v2/docs/vantare-program/execution-policy.md](execution-policy.md) | Notion antes de ejecución, estados reales y entrega verificada; promociones y revisión conservadas. |
+| [vantare-v2/docs/vantare-program/handoff-template.md](handoff-template.md) | Continuidad operativa Notion y evidencia Git diferenciadas; identidad y escritura verificadas. |
+| [vantare-v2/docs/vantare-program/handoffs/engineer-spotter.md](handoffs/engineer-spotter.md) | Entrada obligatoria Notion; conserva evidencia cronológica de producto. |
+| [vantare-v2/docs/vantare-program/handoffs/overlays-launcher-hub.md](handoffs/overlays-launcher-hub.md) | Entrada obligatoria Notion; conserva evidencia cronológica de producto. |
+| [vantare-v2/docs/vantare-program/handoffs/platform-commercial.md](handoffs/platform-commercial.md) | Entrada obligatoria Notion; conserva evidencia cronológica de producto. Añade registro VAN-724 que sustituye #1189. |
+| [vantare-v2/docs/vantare-program/handoffs/strategy-planner.md](handoffs/strategy-planner.md) | Entrada obligatoria Notion; conserva evidencia cronológica de producto. |
+| [vantare-v2/docs/vantare-program/handoffs/telemetry-analysis.md](handoffs/telemetry-analysis.md) | Entrada obligatoria Notion; conserva evidencia cronológica de producto. |
+| [vantare-v2/docs/vantare-program/handoffs/telemetry-core.md](handoffs/telemetry-core.md) | Entrada obligatoria Notion; conserva evidencia cronológica de producto. |
+| [vantare-v2/docs/vantare-program/handoffs/testing-center.md](handoffs/testing-center.md) | Entrada obligatoria Notion; conserva evidencia cronológica de producto. |
+| [vantare-v2/docs/vantare-program/notion-document-audit.md](notion-document-audit.md) | Inventario vigente por archivo, alcance de revisión y antecedentes explícitamente históricos. |
+| [vantare-v2/docs/vantare-program/notion-transition.md](notion-transition.md) | Sustituye PREPARACIÓN como autoridad; documenta Notion obligatorio y corte técnico pendiente, conserva lote histórico. |
+| [vantare-v2/docs/vantare-program/project-map.md](project-map.md) | Actualiza instrucciones de seguimiento a Notion; conserva contratos técnicos y evidencia histórica. |
+| [vantare-v2/docs/vantare-program/research-policy.md](research-policy.md) | Hallazgos y entregas en Notion con alcance autorizado; método de investigación intacto. |
+| [vantare-v2/docs/widget-rendering-preview-contract.md](../widget-rendering-preview-contract.md) | El estado de entrega se escribe en Notion; preserva contratos de widgets. |
+
+También se corrigen la portada, guía, contrato de transición y reglas de los
+17 proyectos de Notion. La tarea VAN-3 queda acotada al corte técnico exclusivo.
+Las escrituras se verifican por lectura posterior. La evidencia remota final
+vive en VAN-724 y su PR; este documento no anticipa un merge.
+
+Master sigue siendo la rama predeterminada: publicar estas reglas en nightly
+no actualiza su UI de formularios, ni los checkouts o contextos de chats antiguos.
+Los agentes deben refrescar y leer origin/nightly antes de continuar.
+
+## Inventario histórico de #1189 (2026-09-12)
+
+La tabla siguiente describe la entrega antigua, no la política actual. Sus
+referencias a autoridad por fase y activación quedaron sustituidas por VAN-724.
+
+### Cambios por archivo
 
 Rutas relativas a la raíz Git. Los enlaces se resuelven desde este inventario.
 
@@ -76,7 +142,7 @@ Rutas relativas a la raíz Git. Los enlaces se resuelven desde este inventario.
 | [vantare-v2/docs/vantare-program/project-map.md](project-map.md) | Distingue mapa arquitectónico de tablas históricas de agosto; no inventa estados nuevos. |
 | [vantare-v2/docs/vantare-program/research-policy.md](research-policy.md) | Hallazgos nuevos a Notion pendiente según fase, sin implementar fuera del lote. |
 
-## Revisados y conservados sin modificación
+### Revisados sin modificación en #1189
 
 | Archivo | Motivo |
 |---|---|
@@ -93,7 +159,7 @@ Los demás planes, ADR, análisis, changelogs y evidencias fechados permanecen c
 fuentes de contexto. La guardia raíz y los índices de entrada establecen su
 precedencia; no se modifican decisiones técnicas ajenas a la transición.
 
-## Controles que deben adaptarse antes de ACTIVO
+## Controles pendientes para retirar el puente GitHub/ISA
 
 Estas superficies se inspeccionaron para descubrir dependencias. Su comportamiento
 ejecutable **no se modifica ni se deshabilita en #1189**; las plantillas reciben
@@ -113,13 +179,13 @@ fijar diseño, probarlo y mantener compatibilidad con el histórico.
 | `supabase/functions/_shared/testing-center-codex-dossier.ts`, `supabase/functions/_shared/testing-center-codex-human-handoff.ts`, `supabase/functions/_shared/testing-center-rejection.ts` | Identidad/custodia técnica de reportes. Migrar solo mediante corte específico si es necesario; no cambiar campos persistidos o permisos por reemplazo textual. |
 | `.github/ISSUE_TEMPLATE/config.yml`, `.github/ISSUE_TEMPLATE/roadmap-required.yml`, `.github/ISSUE_TEMPLATE/roadmap-not-required.yml`, `.github/PULL_REQUEST_TEMPLATE.md`, `.github/CODEOWNERS` | Comprobar cobertura de `/AGENTS.md` y de `notion-transition.md`/`notion-document-audit.md` además de las reglas previas. La interfaz GitHub obtiene plantillas de la rama predeterminada master. Merge a nightly permite a agentes leer las nuevas reglas; no demuestra que la UI pública ni rulesets hayan cambiado. No promover master sin autorización. |
 
-Notion necesita completar esquema de dependencias/procedencia, vistas y acceso
-real de agentes. La conexión actual permite páginas/bases, pero no prueba una
-integración GitHub Workspace instalada ni que CI tenga un acceso Notion confiable.
+El hub ya contiene esquema de procedencia/dependencias, vistas y acceso de
+agentes comprobado. Quedan reconciliación histórica y controles exclusivos.
+La conexión de páginas/bases no demuestra que CI tenga acceso Notion confiable.
 No solicitar planes de pago ni credenciales por suposición: comprobar primero el
 circuito mínimo y pedir solo la acción concreta que resulte imprescindible.
 
-## Verificación de esta entrega
+## Verificación histórica de #1189
 
 - Parser/digest existente: 23 tests PASS.
 - Contrato roadmap existente: 21 tests PASS.

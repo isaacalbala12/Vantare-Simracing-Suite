@@ -1,11 +1,11 @@
 # Workflow de agentes
 
-> **Tracker y continuidad (2026-09-12):** leer primero
-> [la transición a Notion](vantare-program/notion-transition.md). Mientras su estado sea PREPARACIÓN,
-> las reglas GitHub/ISA de este documento rigen el cierre del lote existente
-> y la preparación técnica. El trabajo nuevo fuera del lote se captura en Notion
-> sin ejecutarlo todavía. Después del corte verificado, Notion será la autoridad
-> operativa y GitHub conservará código, PR, CI y releases.
+> **Notion primero (2026-09-14):** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192)
+> y leer la tarea y su proyecto antes de ejecutar. Actualizar Notion al empezar,
+> bloquear, entregar y verificar una integración; releer para comprobar la escritura.
+> [Contrato vigente](vantare-program/notion-transition.md). GitHub conserva código, PR, CI y releases;
+> las referencias ISA exigidas por los controles son un puente técnico temporal.
+> Su adaptación pendiente nunca permite omitir el seguimiento en Notion.
 
 
 > Linear fue retirado el 2026-08-20. Los IDs migrados se resuelven por su
@@ -26,17 +26,19 @@
 
 ## Fuente operativa y aislamiento
 
-- GitHub Issues contiene issues, milestones, dependencias, estado y rama; el
-  tablero es el GitHub Project "Vantare" y el estado vive en las labels
-  `state:*`.
+- Notion contiene tareas, proyectos, hitos, dependencias, prioridades y estado.
+  Leer tarea y proyecto antes de ejecutar, también para issues GitHub existentes.
+  Las labels `state:*` y el GitHub Project son referencias del flujo anterior.
 - Una issue ejecutable con cambios equivale a una rama, un worktree y un
   contexto propios.
-- Una investigación que solo modifica la issue no necesita rama; si genera
+- Una investigación que solo modifica la tarea Notion no necesita rama; si genera
   docs en el repo, sí.
-- Los hallazgos fuera de alcance crean issues; no se incorporan silenciosamente.
+- Los hallazgos fuera de alcance crean tareas Notion pendientes; no se incorporan silenciosamente.
 - Se confirma base, worktree y estado limpio antes de editar.
 - La rama sigue exactamente la convención `vantareapp/isa-N-slug`, con el
-  numero de la issue de GitHub.
+  número GitHub de la referencia técnica exigida por los gates actuales.
+  Crear primero la tarea Notion y reutilizar la issue importada cuando exista.
+  No usar VAN como ISA ni crear otro backlog GitHub.
 - Commits pequeños y staging limitado a rutas; no `git add .`.
 - El worker puede commit, push, PR draft e `In Review`, pero no promociona sin
   autorización.
@@ -45,12 +47,14 @@
 - `refactor` y `develop` se conservan como historia mientras tengan
   consumidores; no son bases nuevas ni se limpian para reutilizarlas.
 
-## Contrato de roadmap por issue
+## Contrato de roadmap y puente técnico temporal
 
-- Toda issue ejecutable lleva exactamente una label:
+- La tarea Notion declara la decisión y los IDs de roadmap. Su referencia
+  GitHub conserva el contrato que CI consulta y exactamente una label:
   `roadmap:required` o `roadmap:not-required`.
-- La rama canónica resuelve la autoridad: `vantareapp/isa-N-*` consulta la
-  issue N del mismo repositorio. Un enlace escrito en la PR no la sustituye.
+- La rama canónica resuelve la referencia técnica de CI: `vantareapp/isa-N-*` consulta la
+  issue N del mismo repositorio. Un enlace escrito en la PR no la sustituye para el validador actual.
+  Esto no convierte GitHub en autoridad de seguimiento ni exime de actualizar Notion.
 - Una issue `required` incluye `Objetivo`, `Impacto en roadmap`, `IDs de
   roadmap afectados` y `Cambio publico esperado`. Los IDs usan los tokens
   exactos `phases:id`, `areas:id` o `milestones:id`.
@@ -102,8 +106,8 @@ master, solo con aprobación final de Isaac
 ```
 
 `nightly` y `testers` existen desde ISA-121. `develop` queda congelada como
-referencia histórica y no recibe trabajo nuevo. La promoción usa una issue de
-integración propia; terminar una feature no la promociona automáticamente.
+referencia histórica y no recibe trabajo nuevo. La promoción usa una tarea Notion de
+integración propia y la referencia técnica GitHub que exigen los gates; terminar una feature no la promociona automáticamente.
 Tests y review no sustituyen las aprobaciones.
 
 ## Rama automática del Testing Center (ISA-318)
@@ -201,7 +205,9 @@ Debe buscar:
 ## Flujo normal
 
 1. Usuario debate con orquestador cuando hacen falta decisiones.
-2. Orquestador consulta GitHub Issues, `docs/vantare-program/` y el handoff vivo.
+2. Orquestador lee la tarea y el proyecto en Notion, las instrucciones actualizadas
+   de nightly, `docs/vantare-program/` y el handoff técnico. Registra agente,
+   Estado `En curso`, rama/base y siguiente paso en Notion.
 3. `docs/roadmap/plan.md` define el alcance y el estado público. Los tableros y
    planes históricos solo se consultan como contexto; no eligen trabajo.
 4. Orquestador crea o identifica el miniplan vigente.
@@ -210,18 +216,19 @@ Debe buscar:
 7. Worker reporta evidencia.
 8. Reviewer audita sin editar.
 9. Orquestador recomienda aceptar, corregir, dividir o revertir.
-10. Se hace commit pequeño cuando el contrato de la issue lo permite.
-11. El orquestador actualiza el handoff vivo y la issue de GitHub después de
-    cada worker o cambio material. Si cambia el alcance, el plan futuro o el
-    estado público, actualiza `docs/roadmap/plan.md` en el mismo PR. El worker
-    deja la issue en revisión (label `state:in-review`); no promociona por su cuenta.
-12. Tras la aprobación inicial de Isaac, una issue de integración promueve la
+10. Se hace commit pequeño cuando el contrato de la tarea Notion lo permite.
+11. Actualizar y releer Notion después de cada worker o cambio material. La
+    entrega queda `En revisión` con PR, checks/omisiones, riesgos y siguiente paso.
+    El handoff Git conserva evidencia técnica enlazada; no sustituye Notion. Si
+    cambia alcance, plan futuro o estado público, actualizar `docs/roadmap/plan.md`
+    en el mismo PR. El worker no promociona por su cuenta.
+12. Tras la aprobación inicial de Isaac, la tarea de integración promueve la
     entrega a `nightly`.
 13. Después del feedback y sus correcciones, otra promoción lleva el conjunto
     de `nightly` a `testers`.
 14. Solo una aprobación final de Isaac permite `testers` a `master`.
-15. Se actualizan el handoff y la issue de GitHub siempre que haya un cambio
-    material. El roadmap se actualiza cuando cambia el alcance, el plan futuro,
+15. Verificar el SHA en el canal remoto y registrar aceptación, PR y canal real
+    en Notion. Releer la escritura; no equiparar merge a publicación. El roadmap se actualiza cuando cambia el alcance, el plan futuro,
     una fase, un área, un hito o una entrega pública. `docs/current-plan.md` y
     `docs/roadmap-execution-board.md` son históricos y no se actualizan como
     parte del flujo normal.
@@ -280,8 +287,10 @@ Una tarea esta terminada solo si:
 - verificacion manual clara,
 - reviewer no encuentra criticos,
 - `docs/roadmap/plan.md` actualizado si cambia el alcance, el plan futuro o el
-  estado público; el handoff y la issue de GitHub reflejan siempre el estado
-  técnico y operativo.
+  estado público; Notion contiene el estado, PR, SHA/canal, checks, limitaciones
+  y siguiente paso, con escritura verificada; el handoff Git enlaza esa tarea.
+- Si falla el acceso o la escritura en Notion, conservar evidencia, comunicar
+  el bloqueo y pausar trabajo dependiente; no declarar seguimiento completado.
 
 Esta definicion cierra el trabajo tecnico de la rama. No demuestra que el
 cambio este en `nightly`, `testers`, `master` ni en una release. Esos estados

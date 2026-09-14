@@ -248,7 +248,8 @@ Checklist obligatorio de archivos a tocar:
 
 - Si el widget cambia el alcance o estado publico del roadmap, actualizar
   `docs/roadmap/plan.md` en la misma PR. Para el estado de la entrega, usar la
-  issue de GitHub y el handoff vivo.
+  tarea y el proyecto Notion, con escritura verificada; enlazar el handoff
+  técnico. Leer primero `docs/vantare-program/notion-transition.md`.
 
 ---
 

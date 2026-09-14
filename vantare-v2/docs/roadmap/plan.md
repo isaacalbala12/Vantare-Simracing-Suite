@@ -1371,10 +1371,10 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 - titulo.en: Documentation and development continuity
 - titulo.pt: Continuidade da documentação e acompanhamento
 - titulo.it: Continuità della documentazione e del monitoraggio
-- cuerpo: Centralizar la documentación y el seguimiento del desarrollo conservando el historial y distinguiendo trabajo pendiente, validado y publicado.
-- cuerpo.en: Centralize documentation and development tracking while preserving history and distinguishing pending, validated and published work.
-- cuerpo.pt: Centralizar a documentação e o acompanhamento do desenvolvimento, preservando o histórico e distinguindo trabalho pendente, validado e publicado.
-- cuerpo.it: Centralizzare la documentazione e il monitoraggio dello sviluppo, conservando lo storico e distinguendo lavoro in attesa, verificato e pubblicato.
+- cuerpo: Notion centraliza el seguimiento y la continuidad operativa, con lectura y actualización obligatorias para agentes. Queda completar la reconciliación histórica y retirar el puente de controles GitHub sin perder la evidencia de validación y publicación.
+- cuerpo.en: Notion centralizes development tracking and operational continuity, with mandatory agent reads and updates. Historical reconciliation and removal of the GitHub validation bridge remain pending, preserving validation and publication evidence.
+- cuerpo.pt: O Notion centraliza o acompanhamento e a continuidade operacional, com leitura e atualização obrigatórias pelos agentes. Falta concluir a reconciliação histórica e retirar a ponte de validação GitHub, preservando evidências de validação e publicação.
+- cuerpo.it: Notion centralizza il monitoraggio e la continuità operativa, con lettura e aggiornamento obbligatori per gli agenti. Restano la riconciliazione storica e la rimozione del ponte di validazione GitHub, conservando le prove di verifica e pubblicazione.
 - etiqueta: Plan
 - etiqueta.en: Plan
 - etiqueta.pt: Plano

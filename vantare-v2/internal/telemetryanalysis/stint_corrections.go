@@ -99,6 +99,34 @@ func PrepareStintBoundaryCorrectionSet(base SourceAnalysisRef, validity LapValid
 
 func prepareStintBoundaryCorrection(baseID string, base SourceAnalysisRef, validity LapValidityAnalysis, request StintBoundaryCorrection) (PreparedStintBoundaryCorrection, error) {
 	var empty PreparedStintBoundaryCorrection
+	original, matches := strategyprojection.StintBoundary{}, 0
+	for _, boundary := range validity.Temporal.StintBoundaries {
+		if boundary.StintNumber == request.Target.StintNumber && boundary.Timestamp.Equal(request.Target.Timestamp) && boundary.Cause == request.Target.Cause {
+			original = cloneStintBoundary(boundary)
+			matches++
+		}
+	}
+	if matches != 1 {
+		return empty, ErrCorrectionTarget
+	}
+	prepared, err := prepareStintBoundaryRepresentation(baseID, base, request, original)
+	if err != nil {
+		return empty, err
+	}
+	if prepared.Request.Operation == StintBoundarySet {
+		if err := validateStintBoundaryAnchor(validity, *prepared.Request.Replacement); err != nil {
+			return empty, err
+		}
+	}
+	return prepared, nil
+}
+
+// prepareStintBoundaryRepresentation validates the self-contained stored
+// representation. It does not prove that the original boundary or replacement
+// anchor exists in current source telemetry; live preparation does that around
+// this helper.
+func prepareStintBoundaryRepresentation(baseID string, base SourceAnalysisRef, request StintBoundaryCorrection, original strategyprojection.StintBoundary) (PreparedStintBoundaryCorrection, error) {
+	var empty PreparedStintBoundaryCorrection
 	if _, err := request.Base.Digest(); err != nil {
 		return empty, err
 	}
@@ -111,35 +139,29 @@ func prepareStintBoundaryCorrection(baseID string, base SourceAnalysisRef, valid
 	if !correctionText(request.Reason, 1024) {
 		return empty, fmt.Errorf("%w: reason", ErrInvalidCorrection)
 	}
-
 	request.Target.Timestamp = canonicalStintTime(request.Target.Timestamp)
 	request.Expected = cloneStintBoundary(request.Expected)
 	request.Replacement = cloneStintBoundaryReplacement(request.Replacement)
+	original = cloneStintBoundary(original)
 	if request.Target.StintNumber < 2 || request.Target.Timestamp.IsZero() || !request.Target.Cause.Valid() {
 		return empty, ErrCorrectionTarget
 	}
-
-	original, matches := strategyprojection.StintBoundary{}, 0
-	for _, boundary := range validity.Temporal.StintBoundaries {
-		if boundary.StintNumber == request.Target.StintNumber && boundary.Timestamp.Equal(request.Target.Timestamp) && boundary.Cause == request.Target.Cause {
-			original = cloneStintBoundary(boundary)
-			matches++
-		}
+	if err := original.Validate(); err != nil {
+		return empty, fmt.Errorf("%w: original boundary: %v", ErrCorrectionPrecondition, err)
 	}
-	if matches != 1 {
+	if stintBoundaryTargetFor(original) != request.Target {
 		return empty, ErrCorrectionTarget
 	}
 	if !reflect.DeepEqual(original, request.Expected) {
 		return empty, ErrCorrectionPrecondition
 	}
-
 	switch request.Operation {
 	case StintBoundarySet:
 		if request.Replacement == nil {
 			return empty, fmt.Errorf("%w: replacement required", ErrInvalidCorrection)
 		}
-		if err := validateStintBoundaryAnchor(validity, *request.Replacement); err != nil {
-			return empty, err
+		if request.Replacement.Anchor.LapNumber < 0 || request.Replacement.Anchor.Timestamp.IsZero() || !request.Replacement.Cause.Valid() {
+			return empty, fmt.Errorf("%w: replacement", ErrCorrectionValue)
 		}
 		if request.Replacement.Anchor.Timestamp.Equal(original.Timestamp) && request.Replacement.Cause == original.Cause {
 			return empty, fmt.Errorf("%w: inert replacement", ErrCorrectionValue)
@@ -151,12 +173,45 @@ func prepareStintBoundaryCorrection(baseID string, base SourceAnalysisRef, valid
 	default:
 		return empty, fmt.Errorf("%w: operation", ErrCorrectionValue)
 	}
-
 	id, err := correctionDigest("analysis.stint-boundary-correction.v1", request)
 	if err != nil {
 		return empty, err
 	}
 	return PreparedStintBoundaryCorrection{BaseID: baseID, CorrectionID: id, Request: request, Original: original}, nil
+}
+
+func prepareStoredStintBoundaryCorrections(base SourceAnalysisRef, requests []StintBoundaryCorrection) ([]PreparedStintBoundaryCorrection, error) {
+	baseID, err := base.Digest()
+	if err != nil {
+		return nil, err
+	}
+	if len(requests) > MaxSampleCorrections {
+		return nil, ErrInvalidCorrection
+	}
+	prepared := make([]PreparedStintBoundaryCorrection, 0, len(requests))
+	for _, request := range requests {
+		item, err := prepareStintBoundaryRepresentation(baseID, base, request, request.Expected)
+		if err != nil {
+			return nil, err
+		}
+		prepared = append(prepared, item)
+	}
+	sort.Slice(prepared, func(i, j int) bool {
+		left, right := prepared[i].Request.Target, prepared[j].Request.Target
+		if !left.Timestamp.Equal(right.Timestamp) {
+			return left.Timestamp.Before(right.Timestamp)
+		}
+		if left.StintNumber != right.StintNumber {
+			return left.StintNumber < right.StintNumber
+		}
+		return left.Cause < right.Cause
+	})
+	for index := 1; index < len(prepared); index++ {
+		if prepared[index-1].Request.Target == prepared[index].Request.Target {
+			return nil, ErrOverlappingCorrections
+		}
+	}
+	return prepared, nil
 }
 
 func validateStintBoundaryAnchor(validity LapValidityAnalysis, replacement StintBoundaryReplacement) error {

@@ -20,11 +20,12 @@ type SampleCorrectionInput struct {
 }
 
 // PreparedSampleCorrectionSnapshot retains its historical type name for callers.
-// The tagged representation is scalar v1, mixed v2, classification v3 or
-// canonical identity v4. Its digest identifies the full active set, not a
+// The tagged representation is scalar v1, mixed v2, classification v3,
+// canonical identity v4 or stint-boundary v5. Its digest identifies the full active set, not a
 // durable revision, command, author, or authorization. Without active
 // classifications the v1 and v2 representations keep their exact bytes and
-// digests; without active identity the v3 representation does too.
+// digests; without active identity the v3 representation does too, and without
+// active stint boundaries v1-v4 remain exact.
 type PreparedSampleCorrectionSnapshot struct {
 	ContractVersion string                             `json:"contractVersion"`
 	Base            SourceAnalysisRef                  `json:"base"`
@@ -32,10 +33,58 @@ type PreparedSampleCorrectionSnapshot struct {
 	Corrections     []PreparedSampleCorrection         `json:"corrections"`
 	FamilyUses      []PreparedLapFamilyUseCorrection   `json:"familyUses,omitempty"`
 	Classifications []PreparedClassificationCorrection `json:"classifications,omitempty"`
+	StintBoundaries []PreparedStintBoundaryCorrection  `json:"stintBoundaries,omitempty"`
 	// CanonicalCombination carries the resolved canonical target of an
 	// identity revision. Absent (omitted) without active identity, keeping
 	// v1/v2/v3 bytes and digests exact.
 	CanonicalCombination *CombinationIdentity `json:"canonicalCombination,omitempty"`
+}
+
+// PrepareStintMixedCorrectionSnapshot extends the existing mixed snapshot with
+// a complete set of validated stint-boundary decisions. An absent or empty set
+// delegates exactly to the previous constructors, preserving v1-v4 bytes and
+// digests. Active decisions use v5 and share the same operation budget.
+func PrepareStintMixedCorrectionSnapshot(base SourceAnalysisRef, inputs []SampleCorrectionInput, original LapValidityAnalysis, familyRequests []LapFamilyUseCorrection, session HistoricalSession, classRequests []ClassificationCorrection, target *CombinationIdentity, stintRequests []StintBoundaryCorrection) (PreparedSampleCorrectionSnapshot, error) {
+	var empty PreparedSampleCorrectionSnapshot
+	if len(inputs)+len(familyRequests)+len(classRequests)+len(stintRequests) > MaxSampleCorrections {
+		return empty, fmt.Errorf("%w: at most %d mixed corrections", ErrInvalidCorrection, MaxSampleCorrections)
+	}
+	previous, err := PrepareCanonicalMixedCorrectionSnapshot(base, inputs, original, familyRequests, session, classRequests, target)
+	if err != nil || len(stintRequests) == 0 {
+		return previous, err
+	}
+	stints, err := PrepareStintBoundaryCorrectionSet(base, original, stintRequests)
+	if err != nil {
+		return empty, err
+	}
+	return combineStintMixedSnapshot(previous, stints)
+}
+
+func combineStintMixedSnapshot(previous PreparedSampleCorrectionSnapshot, stints []PreparedStintBoundaryCorrection) (PreparedSampleCorrectionSnapshot, error) {
+	var empty PreparedSampleCorrectionSnapshot
+	if len(stints) == 0 {
+		return previous, nil
+	}
+	if len(previous.Corrections)+len(previous.FamilyUses)+len(previous.Classifications)+len(stints) > MaxSampleCorrections {
+		return empty, ErrInvalidCorrection
+	}
+	snapshot := previous
+	snapshot.ContractVersion = "analysis.mixed-snapshot.v5"
+	snapshot.StintBoundaries = append([]PreparedStintBoundaryCorrection(nil), stints...)
+	payload := struct {
+		Base                 SourceAnalysisRef                  `json:"base"`
+		Corrections          []PreparedSampleCorrection         `json:"corrections"`
+		FamilyUses           []PreparedLapFamilyUseCorrection   `json:"familyUses"`
+		Classifications      []PreparedClassificationCorrection `json:"classifications"`
+		CanonicalCombination *CombinationIdentity               `json:"canonicalCombination,omitempty"`
+		StintBoundaries      []PreparedStintBoundaryCorrection  `json:"stintBoundaries"`
+	}{snapshot.Base, snapshot.Corrections, snapshot.FamilyUses, snapshot.Classifications, snapshot.CanonicalCombination, snapshot.StintBoundaries}
+	id, err := correctionDigest(snapshot.ContractVersion, payload)
+	if err != nil {
+		return empty, err
+	}
+	snapshot.SnapshotID = id
+	return snapshot, nil
 }
 
 // PrepareObservationCorrectionSnapshot extends the same source snapshot with

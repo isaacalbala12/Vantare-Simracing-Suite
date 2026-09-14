@@ -141,12 +141,15 @@ mover, retirar, target obsoleto o ambiguo, primera fila, reloj, cobertura, vuelt
 de duración nula, operación inerte, duplicados, colisiones, inversiones, frontera
 terminal, stint de una vuelta, orden determinista e inmutabilidad del original.
 
-### T13c — snapshot y custodia
+### T13c — snapshot y custodia — cerrado localmente en #1214
 
-Extender el snapshot mixto, digest de comando y store existentes. Probar bytes
-v1-v4 exactos sin límites, snapshot v5 mixto, cuota global, replay, Resolve,
-Restore, grupo desconocido y commit incierto. No cambiar la versión del documento
-de custodia si su envoltorio puede seguir leyendo snapshots versionados.
+El snapshot, digest de comando y store existentes conservan ahora el conjunto
+completo bajo `analysis.mixed-snapshot.v5`. Sin límites activos delegan a las
+rutas v1-v4 exactas. Save y Resolve comparten un digest v5 canónico; reapertura,
+replay, retirada explícita, grupo desconocido, corrupción y commit incierto
+quedan cubiertos sin cambiar la versión del documento de custodia. La lectura
+revalida la representación almacenada, pero no fabrica evidencia temporal que
+el documento no contiene. Aplicación y derivados permanecen en T13d.
 
 ### T13d — vista y derivados
 

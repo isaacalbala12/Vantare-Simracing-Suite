@@ -184,6 +184,29 @@ func correctionCommandDigestCanonicalMixed(base SourceAnalysisRef, command Corre
 	}{previous, ordered})
 }
 
+// correctionCommandDigestStintMixed adds the canonical stint-boundary request
+// set under v5. Without active boundaries it returns the prior v1-v4 digest
+// exactly. Stored preparation validates representation only; source authority
+// and temporal anchors are checked when saving against live analysis.
+func correctionCommandDigestStintMixed(base SourceAnalysisRef, command CorrectionSaveCommand, requests []SampleValueCorrection, families []LapFamilyUseCorrection, classes []ClassificationCorrection, stints []StintBoundaryCorrection) (string, error) {
+	previous, err := correctionCommandDigestCanonicalMixed(base, command, requests, families, classes)
+	if err != nil || len(stints) == 0 {
+		return previous, err
+	}
+	prepared, err := prepareStoredStintBoundaryCorrections(base, stints)
+	if err != nil {
+		return "", err
+	}
+	ordered := make([]StintBoundaryCorrection, len(prepared))
+	for i, correction := range prepared {
+		ordered[i] = correction.Request
+	}
+	return correctionDigest("analysis.mixed-command.v5", struct {
+		PreviousCommandDigest string                    `json:"previousCommandDigest"`
+		StintBoundaries       []StintBoundaryCorrection `json:"stintBoundaries"`
+	}{previous, ordered})
+}
+
 // hasStoredIdentityActivity reports whether any stored request carries an
 // identity decision or reference. A v4 tag without it is inert.
 func hasStoredIdentityActivity(requests []ClassificationCorrection) bool {
@@ -253,6 +276,7 @@ func decodeCorrectionDocument(data []byte, base SourceAnalysisRef) (correctionDo
 			Snapshot struct {
 				ContractVersion      string          `json:"contractVersion"`
 				CanonicalCombination json.RawMessage `json:"canonicalCombination"`
+				StintBoundaries      json.RawMessage `json:"stintBoundaries"`
 			} `json:"snapshot"`
 		} `json:"revisions"`
 	}
@@ -268,7 +292,7 @@ func decodeCorrectionDocument(data []byte, base SourceAnalysisRef) (correctionDo
 		if err != nil || created.UTC().Format(time.RFC3339Nano) != revision.CreatedAt {
 			return invalid()
 		}
-		if len(revision.Snapshot.Corrections)+len(revision.Snapshot.FamilyUses)+len(revision.Snapshot.Classifications) > MaxSampleCorrections {
+		if len(revision.Snapshot.Corrections)+len(revision.Snapshot.FamilyUses)+len(revision.Snapshot.Classifications)+len(revision.Snapshot.StintBoundaries) > MaxSampleCorrections {
 			return invalid()
 		}
 		inputs := make([]SampleCorrectionInput, len(revision.Snapshot.Corrections))
@@ -297,11 +321,55 @@ func decodeCorrectionDocument(data []byte, base SourceAnalysisRef) (correctionDo
 			classRequests[i] = correction.Request
 		}
 		hasTarget := n < len(presence.Revisions) && presence.Revisions[n].Snapshot.CanonicalCombination != nil
-		if revision.Snapshot.ContractVersion == "analysis.mixed-snapshot.v4" {
+		hasStints := n < len(presence.Revisions) && presence.Revisions[n].Snapshot.StintBoundaries != nil
+		if revision.Snapshot.ContractVersion == "analysis.mixed-snapshot.v5" {
+			if !hasStints || len(revision.Snapshot.StintBoundaries) == 0 {
+				return invalid()
+			}
+			identity := hasStoredIdentityActivity(classRequests)
+			if identity != hasTarget || (hasTarget && revision.Snapshot.CanonicalCombination == nil) {
+				return invalid()
+			}
+			if identity {
+				classes, err := prepareStoredCanonicalClassificationCorrections(base, classRequests, revision.Snapshot.CanonicalCombination)
+				if err != nil {
+					return invalid()
+				}
+				snapshot, err = combineCanonicalMixedSnapshot(snapshot, families, classes, revision.Snapshot.CanonicalCombination)
+				if err != nil {
+					return invalid()
+				}
+			} else {
+				classes, err := prepareStoredClassificationCorrections(base, classRequests)
+				if err != nil {
+					return invalid()
+				}
+				snapshot, err = combineMixedSnapshot(snapshot, families, classes)
+				if err != nil {
+					return invalid()
+				}
+			}
+			stintRequests := make([]StintBoundaryCorrection, len(revision.Snapshot.StintBoundaries))
+			for i, correction := range revision.Snapshot.StintBoundaries {
+				stintRequests[i] = correction.Request
+			}
+			stints, err := prepareStoredStintBoundaryCorrections(base, stintRequests)
+			if err != nil {
+				return invalid()
+			}
+			snapshot, err = combineStintMixedSnapshot(snapshot, stints)
+			if err != nil || !reflect.DeepEqual(snapshot, revision.Snapshot) {
+				return invalid()
+			}
+			digest, err := correctionCommandDigestStintMixed(base, cmd, requests, familyRequests, classRequests, stintRequests)
+			if err != nil || digest != revision.CommandDigest {
+				return invalid()
+			}
+		} else if revision.Snapshot.ContractVersion == "analysis.mixed-snapshot.v4" {
 			// v4 requires a persisted non-null target and active identity;
 			// the stored snapshot, command and revision chain are
 			// recomputed through the current validators and the target.
-			if !hasTarget {
+			if !hasTarget || hasStints {
 				return invalid()
 			}
 			target := revision.Snapshot.CanonicalCombination
@@ -324,8 +392,8 @@ func decodeCorrectionDocument(data []byte, base SourceAnalysisRef) (correctionDo
 				return invalid()
 			}
 		} else {
-			// v1/v2/v3 reject any canonicalCombination presence, even null.
-			if hasTarget {
+			// v1/v2/v3 reject any v4/v5 field presence, even null or empty.
+			if hasTarget || hasStints {
 				return invalid()
 			}
 			classes, err := prepareStoredClassificationCorrections(base, classRequests)

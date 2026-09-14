@@ -439,5 +439,16 @@ terminales originales.
 
 La implementación reutiliza errores, cuota y geometría de cobertura existentes,
 devuelve copias separadas y no persiste, aplica, recalcula ni autoriza datos.
-Snapshot/custodia v5, vista efectiva, derivados, servicio y UI continúan en
-T13c-e según el [contrato T13](sdd/stint-boundary-corrections-t13.md).
+## Custodia de límites de stint — #1214
+
+`analysis.mixed-snapshot.v5` conserva límites junto a valores, familias,
+clasificación e identidad canónica. Sin límites activos se mantienen exactos
+los bytes y digests v1-v4. El store usa la misma identidad de comando para Save
+y Resolve, impide que un llamador que desconoce el grupo lo borre, permite su
+retirada mediante un conjunto vacío explícito y conserva las revisiones v5 al
+restaurar una representación anterior. Reapertura y replay verifican la forma
+persistida sin atribuirle autoridad sobre la fuente ni reconstruir telemetría
+ausente.
+
+Vista efectiva, derivados, servicio y UI continúan en T13d-e según el
+[contrato T13](sdd/stint-boundary-corrections-t13.md).

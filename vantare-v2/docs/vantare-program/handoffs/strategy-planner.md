@@ -1,6 +1,20 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1212 T13b cerrado localmente; T13c listo
+## Estado vigente — #1214 T13c cerrado localmente; T13d listo
+
+T13c integra las correcciones de límites en la custodia existente mediante el
+snapshot y comando v5. Sin límites activos conserva las representaciones y
+digests v1-v4 exactos. Save, reapertura, replay y Resolve comparten el conjunto
+canónico; un llamador antiguo no puede borrar límites activos y un conjunto
+vacío explícito restaura una revisión anterior sin eliminar historia. La cuota
+de 256 operaciones cubre los cuatro grupos. Corrupción, targets almacenados
+inconsistentes y confirmaciones de escritura inciertas se rechazan o recuperan
+con el flujo existente. Telemetry Analysis, race y vet focal pasan. T13d debe
+aplicar la vista efectiva y recalcular derivados; T13c no expone servicio/UI ni
+simula una aplicación correcta. Sin app/Wails/LMU, push, PR, CI remota,
+integración ni release.
+
+## Historial — #1212 T13b cerrado localmente; T13c listo
 
 T13b implementa en dos archivos los tipos y la validación pura de
 `set_stint_boundary` y `remove_stint_boundary`. El conjunto se prepara contra la

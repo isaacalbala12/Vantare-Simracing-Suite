@@ -48,9 +48,10 @@ type CorrectionCommandResolution struct {
 // ObservationCorrectionInput is assembled by Analysis from authorized original
 // data and scalar reanalysis. It is not a client DTO. Non-nil FamilyUses denotes
 // an explicit complete set, including explicit removal of all family decisions.
-// The same holds for Classifications: nil means the caller is unaware of the
-// group and must never silently drop it, while an explicit (possibly empty)
-// set replaces it. Session carries the original session for classification.
+// The same holds for Classifications and StintBoundaries: nil means the caller
+// is unaware of the group and must never silently drop it, while an explicit
+// (possibly empty) set replaces it. Session carries the original session for
+// classification.
 type ObservationCorrectionInput struct {
 	Samples         []SampleCorrectionInput
 	Original        LapValidityAnalysis
@@ -58,6 +59,9 @@ type ObservationCorrectionInput struct {
 	FamilyUses      []LapFamilyUseCorrection
 	Session         HistoricalSession
 	Classifications []ClassificationCorrection
+	// StintBoundaries follows the same complete-set rule: nil means the caller
+	// is unaware of the group; a non-nil empty set explicitly removes it.
+	StintBoundaries []StintBoundaryCorrection
 	// ResolveCanonicalCombination resuelve una referencia canónica contra
 	// el catálogo autorizado para una escritura nueva de identidad. Es un
 	// callback nativo opcional, nunca un DTO ni parte de digests. El store
@@ -145,14 +149,14 @@ func (s *CorrectionStore) Save(ctx context.Context, base SourceAnalysisRef, inpu
 }
 
 func (s *CorrectionStore) SaveObservations(ctx context.Context, base SourceAnalysisRef, input ObservationCorrectionInput, command CorrectionSaveCommand) (CorrectionStoreResult, error) {
-	if input.FamilyUses == nil || len(input.Samples)+len(input.FamilyUses)+len(input.Classifications) > MaxSampleCorrections {
+	if input.FamilyUses == nil || len(input.Samples)+len(input.FamilyUses)+len(input.Classifications)+len(input.StintBoundaries) > MaxSampleCorrections {
 		return CorrectionStoreResult{}, ErrInvalidCorrection
 	}
 	requests := make([]SampleValueCorrection, len(input.Samples))
 	for i, sample := range input.Samples {
 		requests[i] = sample.Request
 	}
-	digest, err := validatedMixedCommandDigest(base, command, requests, input.FamilyUses, input.Classifications)
+	digest, err := validatedStintMixedCommandDigest(base, command, requests, input.FamilyUses, input.Classifications, input.StintBoundaries)
 	if err != nil {
 		return CorrectionStoreResult{}, err
 	}
@@ -189,6 +193,20 @@ func (s *CorrectionStore) ResolveMixedCommand(ctx context.Context, base SourceAn
 		return CorrectionCommandResolution{}, ErrInvalidCorrection
 	}
 	digest, err := validatedMixedCommandDigest(base, command, requests, families, classes)
+	if err != nil {
+		return CorrectionCommandResolution{}, err
+	}
+	return s.resolveValidatedCommand(ctx, base, command, digest)
+}
+
+// ResolveStintMixedCommand resolves the complete four-group command. A nil
+// stint set is rejected so an unaware caller cannot match or remove active
+// stint-boundary decisions accidentally.
+func (s *CorrectionStore) ResolveStintMixedCommand(ctx context.Context, base SourceAnalysisRef, requests []SampleValueCorrection, families []LapFamilyUseCorrection, classes []ClassificationCorrection, stints []StintBoundaryCorrection, command CorrectionSaveCommand) (CorrectionCommandResolution, error) {
+	if families == nil || stints == nil {
+		return CorrectionCommandResolution{}, ErrInvalidCorrection
+	}
+	digest, err := validatedStintMixedCommandDigest(base, command, requests, families, classes, stints)
 	if err != nil {
 		return CorrectionCommandResolution{}, err
 	}
@@ -244,6 +262,16 @@ func validatedMixedCommandDigest(base SourceAnalysisRef, command CorrectionSaveC
 	return correctionCommandDigestCanonicalMixed(base, command, requests, families, classes)
 }
 
+func validatedStintMixedCommandDigest(base SourceAnalysisRef, command CorrectionSaveCommand, requests []SampleValueCorrection, families []LapFamilyUseCorrection, classes []ClassificationCorrection, stints []StintBoundaryCorrection) (string, error) {
+	if len(requests)+len(families)+len(classes)+len(stints) > MaxSampleCorrections {
+		return "", ErrInvalidCorrection
+	}
+	if _, err := validatedCorrectionCommandDigest(base, command, requests); err != nil {
+		return "", err
+	}
+	return correctionCommandDigestStintMixed(base, command, requests, families, classes, stints)
+}
+
 func validatedCorrectionCommandDigest(base SourceAnalysisRef, command CorrectionSaveCommand, requests []SampleValueCorrection) (string, error) {
 	if !correctionText(command.CommandID, 256) || !correctionText(command.LocalAuthorID, 256) || !correctionText(command.Reason, 1024) || !correctionSHA256(command.ExpectedRevision) || len(requests) > MaxSampleCorrections {
 		return "", ErrInvalidCorrection
@@ -281,7 +309,7 @@ func validatedCorrectionCommandDigest(base SourceAnalysisRef, command Correction
 // cancellation. Family validation and every previous guard stay intact.
 func prepareMixedSnapshotForWrite(ctx context.Context, base SourceAnalysisRef, input ObservationCorrectionInput) (PreparedSampleCorrectionSnapshot, error) {
 	if !hasStoredIdentityActivity(input.Classifications) {
-		return PrepareMixedCorrectionSnapshot(base, input.Samples, input.Original, input.FamilyUses, input.Session, input.Classifications)
+		return PrepareStintMixedCorrectionSnapshot(base, input.Samples, input.Original, input.FamilyUses, input.Session, input.Classifications, nil, input.StintBoundaries)
 	}
 	reference := ""
 	for _, request := range input.Classifications {
@@ -303,7 +331,7 @@ func prepareMixedSnapshotForWrite(ctx context.Context, base SourceAnalysisRef, i
 	if resolveErr != nil {
 		return PreparedSampleCorrectionSnapshot{}, fmt.Errorf("resolve canonical combination: %w", resolveErr)
 	}
-	return PrepareCanonicalMixedCorrectionSnapshot(base, input.Samples, input.Original, input.FamilyUses, input.Session, input.Classifications, &target)
+	return PrepareStintMixedCorrectionSnapshot(base, input.Samples, input.Original, input.FamilyUses, input.Session, input.Classifications, &target, input.StintBoundaries)
 }
 
 func (s *CorrectionStore) saveValidated(ctx context.Context, base SourceAnalysisRef, input ObservationCorrectionInput, command CorrectionSaveCommand, commandDigest string) (result CorrectionStoreResult, err error) {
@@ -335,6 +363,9 @@ func (s *CorrectionStore) saveValidated(ctx context.Context, base SourceAnalysis
 	}
 	if input.Classifications == nil && len(doc.Revisions) > 0 && len(doc.Revisions[len(doc.Revisions)-1].Snapshot.Classifications) > 0 {
 		return result, fmt.Errorf("%w: complete classification correction set required", ErrInvalidCorrection)
+	}
+	if input.StintBoundaries == nil && len(doc.Revisions) > 0 && len(doc.Revisions[len(doc.Revisions)-1].Snapshot.StintBoundaries) > 0 {
+		return result, fmt.Errorf("%w: complete stint boundary correction set required", ErrInvalidCorrection)
 	}
 	if len(doc.Revisions) >= maxCorrectionRevisions {
 		return result, fmt.Errorf("%w: revision quota", ErrInvalidCorrection)

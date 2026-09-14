@@ -135,7 +135,7 @@
         "scripts/**/*.mjs",
         "scripts/**/*.ts"
       ],
-      "notes": "Los 21 *-harness.html son harnesses de desarrollo/test, NO producto. hub-zoom-harness.html reusa src/main.tsx (entrada de produccion)."
+      "notes": "Los 21 *-harness.html son harnesses de desarrollo/test, NO producto. hub-zoom-harness.html reusa src/main.tsx (entrada de produccion). knip.json NO distingue entradas de produccion de dev/test: todas entran juntas en 'entry'. Esta lista es documentacion, no un control que el script ejecute."
     }
   },
   "platform_matrix": {
@@ -175,11 +175,11 @@
       "role": "build de release con tag production",
       "host": "cross",
       "analyzers": [],
-      "coverage_gap": "Algunos tests (p.ej. cmd/vantare/cpu_profile_production_test.go) solo compilan con el tag production."
+      "coverage_gap": "BRECHA EXPLICITA: no ejecuta ningun analizador. Algunos tests (p.ej. cmd/vantare/cpu_profile_production_test.go) solo compilan con el tag production, pero el analisis de calidad no cubre esta variante."
     }
   },
   "finding_exclusions": {
-    "vantare-v2/frontend/bindings": "Generado por Wails. Se excluye como HALLAZGO (knip/jscpd), pero NO se saca del grafo: sus consumidores siguen contando.",
+    "vantare-v2/frontend/bindings": "Generado por Wails. Se excluye como HALLAZGO (knip/jscpd). dependency-cruiser excluye bindings DEL GRAFO (no se puede evitar: son codigo generado que importa de @wailsio); sus consumidores siguen contando.",
     "vantare-v2/frontend/src/generated": "Generado (telemetry.ts). Se excluye como HALLAZGO, no del grafo."
   },
   "out_of_scope": {
@@ -222,19 +222,27 @@
   "policy_paths": {
     "force_full_graph_on_change": [
       "tools/quality/**",
-      ".github/workflows/quality.yml",
+      "tools/quality/scope.json",
+      "tools/quality/baseline/**",
+      "tools/quality/exceptions.json",
+      "tools/quality/versions.json",
+      ".github/workflows/**",
       "vantare-v2/frontend/knip.json",
       "vantare-v2/frontend/.dependency-cruiser.cjs",
+      "vantare-v2/frontend/.dependency-cruiser-known-violations.json",
       "vantare-v2/frontend/.jscpd.json",
       "vantare-v2/frontend/eslint.config.js",
+      "vantare-v2/frontend/tsconfig*.json",
+      "vantare-v2/frontend/vite.config.ts",
+      "vantare-v2/frontend/package.json",
+      "pnpm-lock.yaml",
       "vantare-v2/.gitignore",
-      ".gitignore",
-      "tools/quality/baseline/**"
+      ".gitignore"
     ],
     "policy_changed_aggregate_state": "REVIEW_REQUIRED"
   },
   "protections": {
-    "description": "Ningun analizador ni el ratchet pueden sugerir eliminar estas categorias. Los tipos estaticos NO demuestran validez en runtime.",
+    "description": "DOCUMENTACION (no un control ejecutable). Ningun analizador ni el ratchet pueden sugerir eliminar estas categorias. Los tipos estaticos NO demuestran validez en runtime. El script no consume esta lista automaticamente; es criterio de diseno para revision humana.",
     "never_flag_as_dead_or_unused": [
       "validacion de datos externos",
       "IPC",

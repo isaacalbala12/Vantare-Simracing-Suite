@@ -72,6 +72,13 @@ jobs:
       - name: Bootstrap quality tools
         run: python3 tools/quality/vantare_quality.py bootstrap
 
+      - name: Quality test suites (ratchet + negative)
+        # F10: las suites de tests se ejecutan en CI con exit code real.
+        # Sin || true, sin continue-on-error. Si los tests fallan, CI falla.
+        run: |
+          python3 -B tools/quality/tests/test_ratchet.py
+          python3 -B tools/quality/tests/test_negative.py
+
       - name: Doctor
         run: python3 tools/quality/vantare_quality.py doctor
 
@@ -141,6 +148,11 @@ jobs:
 
       - name: Bootstrap quality tools
         run: python3 tools/quality/vantare_quality.py bootstrap
+
+      - name: Quality test suites (ratchet + negative)
+        run: |
+          python3 -B tools/quality/tests/test_ratchet.py
+          python3 -B tools/quality/tests/test_negative.py
 
       - name: Audit (full analysis; la escritura de baselines es efimera en el runner y no vuelve al repo)
         run: python3 tools/quality/vantare_quality.py audit

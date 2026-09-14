@@ -31,8 +31,9 @@ def F(analyzer, rule, path, msg_norm="", symbol="", content_hash=""):
 
 
 class NormTests(unittest.TestCase):
-    def test_msg_norm_lowercases_and_masks_digits(self):
-        self.assertEqual(msg_norm("Error X has 42 items, line 7"), "error x has # items, line #")
+    def test_msg_norm_lowercases_and_preserves_digits(self):
+        # F7: NO elimina digitos; a veces distinguen simbolos distintos.
+        self.assertEqual(msg_norm("Error X has 42 items, line 7"), "error x has 42 items, line 7")
 
     def test_msg_norm_collapses_whitespace(self):
         self.assertEqual(msg_norm("a   b\t\nc"), "a b c")
@@ -213,6 +214,45 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(a.identity(), b.identity())
         c = F("go-mod-tidy", "tidy-diff", "vantare-v2/tools/vantare-telemetry-reader", msg_norm="diff")
         self.assertNotEqual(a.identity(), c.identity())
+
+
+class MultisetTests(unittest.TestCase):
+    """F7: semantica de MULTICONJUNTO. Una segunda aparicion de la misma
+    identidad en el mismo archivo es NEW, no se absorbe."""
+
+    def test_second_copy_same_file_same_identity_is_new(self):
+        # jscpd: dos copias del mismo fragmento en a.ts. Baseline tiene 1, actual 2.
+        ch = content_hash("duplicated block")
+        base = [F("jscpd", "duplication", "a.ts", content_hash=ch)]
+        actual = [
+            F("jscpd", "duplication", "a.ts", content_hash=ch),
+            F("jscpd", "duplication", "a.ts", content_hash=ch),
+        ]
+        c = classify_findings(base, actual)
+        self.assertEqual(len(c.new), 1, "la segunda aparicion en el mismo archivo debe ser NEW")
+        self.assertEqual(c.new[0].path, "a.ts")
+        self.assertEqual(len(c.resolved), 0)
+        self.assertEqual(len(c.moved), 0)
+
+    def test_second_staticcheck_same_file_same_rule_is_new(self):
+        # staticcheck: otra aparicion del mismo code+msg en el mismo archivo.
+        base = [F("staticcheck", "SA1019", "a.go", msg_norm="foo deprecated")]
+        actual = [
+            F("staticcheck", "SA1019", "a.go", msg_norm="foo deprecated"),
+            F("staticcheck", "SA1019", "a.go", msg_norm="foo deprecated"),
+        ]
+        c = classify_findings(base, actual)
+        self.assertEqual(len(c.new), 1, "la segunda aparicion debe ser NEW por multiconjunto")
+        self.assertEqual(len(c.new_blocking), 1)
+
+    def test_count_decrease_is_resolved(self):
+        # 3 copias en baseline, 1 en actual -> 2 RESOLVED.
+        ch = content_hash("block")
+        base = [F("jscpd", "duplication", "a.ts", content_hash=ch) for _ in range(3)]
+        actual = [F("jscpd", "duplication", "a.ts", content_hash=ch)]
+        c = classify_findings(base, actual)
+        self.assertEqual(len(c.resolved), 2)
+        self.assertEqual(len(c.new), 0)
 
 
 if __name__ == "__main__":

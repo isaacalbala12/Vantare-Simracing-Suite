@@ -13,9 +13,9 @@
 
 Se consolidan las entradas y 21 documentos sustituidos; el contenido anterior queda en Git por SHA. Las pasadas corrigen Wails, Studio/autoguardado, Workshop V2, OBS/Engineer SSE, transporte y autoridad LMU, Strategy/Analysis, Launcher, Billing, versionado y releases. Se conserva historia con ámbito explícito. Retirados dos logs y la skill vantare-core desautorizada. Sin código productivo ni cambios de gates; el hito documental sigue plan.
 
-Revisión independiente final PASS documental acotado, sin hallazgos accionables en el diff examinado. Setenta tests de digest/contrato/notas PASS; inventario de 994 rutas/hashes y barrido de 1.099 enlaces/126 anclas sin destinos ausentes. No se ha probado Windows/LMU/OBS ni Billing remoto.
+Revisión independiente final PASS documental acotado, sin hallazgos accionables en el diff examinado. 115 tests de digest/contrato/notas/topología PASS; inventario de 994 rutas/hashes y barrido de 1.099 enlaces/126 anclas sin destinos ausentes. No se ha probado Windows/LMU/OBS ni Billing remoto.
 
-La CI del primer commit documental falló en `TestRuntimeRoutesActionsButKeepsThemDisabled` (voiceinput, timeout 30 s); ese código/test no cambia frente a la base. No se diagnostica aquí la causa ni se declara resuelto. La integración permanece bloqueada hasta pasar los gates aplicables. Notion conserva estado, SHA, PR y CI final observados; no hay merge ni promoción.
+La CI del primer commit documental falló en `TestRuntimeRoutesActionsButKeepsThemDisabled` (voiceinput, timeout 30 s); ese código/test no cambia frente a la base. No se diagnostica aquí la causa ni se declara resuelto. El commit intermedio 45278c17 también detectó dos frases literales del runbook exigidas por el gate: restauradas sin tocar el test, con 45 casos PASS. La integración permanece bloqueada hasta pasar los gates aplicables. Notion conserva estado, SHA, PR y CI final observados; no hay merge ni promoción.
 
 ## VAN-724 — Notion obligatorio para todos los agentes (2026-09-14)
 

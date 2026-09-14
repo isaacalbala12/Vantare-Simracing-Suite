@@ -54,7 +54,7 @@ Si falla un anuncio, revisar el job concreto, sus comprobaciones de destino y su
 | Destino Discord no válido o no configurado | Revisar el secreto dedicado y el ID de destino según el contrato de comunicaciones |
 | Tag distribuido incorrecto o bug crítico | Conservarlo, registrar la incidencia y preparar una versión nueva |
 
-Un hotfix crítico requiere la excepción expresamente aprobada en [canales](branch-channels.md): rama `vantareapp/hotfix-isa-<número>-<descripción>` desde master, PR con gates estrictos y posterior traslado del cambio a nightly. La ruta ordinaria mantiene todos los canales. Ningún rollback documental mueve tags ni restaura datos automáticamente.
+Un hotfix crítico requiere la excepción expresamente aprobada en [canales](branch-channels.md): rama `vantareapp/hotfix-isa-<número>-<descripción>` desde `master`, PR con gates estrictos y posterior traslado del cambio a nightly. La ruta ordinaria mantiene todos los canales. No borres, muevas ni reutilices el tag distribuido. Ningún rollback documental mueve tags ni restaura datos automáticamente.
 
 ## Soporte de cuenta y Billing
 

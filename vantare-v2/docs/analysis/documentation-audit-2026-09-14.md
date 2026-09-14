@@ -42,6 +42,7 @@ Solo se retiran dos logs generados sin referencias (`vite-output.txt`, `frontend
 - Rutas literales actuales de las guías editadas y referencias históricas por commit/ruta contrastadas. Outputs, endpoints, placeholders y ejemplos históricos no se tratan como archivos de código obligatorios.
 - `python3 .github/scripts/tests/test_roadmap_digest.py`: **23 tests PASS**.
 - `python3 .github/scripts/tests/test_validate_roadmap_contract.py`: **21 tests PASS**.
+- `python3 .github/scripts/test_validate_branch_channels.py`: **45 tests PASS**, incluidas las frases normativas del runbook que consume el gate.
 - `python3 .github/scripts/tests/test_release_notes.py`: **26 tests PASS**. Incluye casos negativos de manifiestos ausentes; sus errores esperados no son fallos de la suite.
 - `python3 .github/scripts/roadmap_digest.py --repo . --ref 60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c --check`: **PASS**.
 - `python3 .github/scripts/release_notes.py --tag v0.1.0.7-nightly.15 --check`: **PASS**, manifiesto y dos fragmentos. No publica nada.
@@ -53,6 +54,8 @@ En la primera revisión había **29 destinos locales ausentes**. El barrido fina
 ## CI y límites de aceptación
 
 La CI del primer commit documental `2efbd2ee6dbd2baed351614c1231213e17500320` pasó promoción de rama y GitGuardian, pero el job de gates falló en `TestRuntimeRoutesActionsButKeepsThemDisabled`, paquete `internal/engineer/voiceinput`, tras 30 s sin publicar el resultado esperado. [Ejecución](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/34893873333). El código y test afectados son idénticos a la base; la auditoría no determina aquí su causa ni lo declara resuelto. Este fallo bloquea integración hasta aclararlo y pasar los gates aplicables.
+
+La CI del commit intermedio `45278c17` detectó que la reescritura del runbook conservaba el significado pero no dos frases literales exigidas por `test_runbook_never_reuses_tags_or_commits_to_master`. Se restauraron ambas sin cambiar el test y pasan sus 45 casos. Esa corrección documental no resuelve ni exime el fallo de voz de la ejecución anterior.
 
 No se ejecutan localmente suites completas/builds de producto ni Windows/LMU/OBS para este cambio documental. CI sí ejecutó tests de producto, con el fallo descrito. Las guías manuales son procedimientos de aceptación, no resultados simulados. La revisión documental no habilita venta ni una release.
 

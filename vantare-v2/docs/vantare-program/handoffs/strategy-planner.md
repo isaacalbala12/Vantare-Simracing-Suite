@@ -1,6 +1,16 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1252 T03e cerrado localmente; presupuesto meteorológico conservado
+## Estado vigente — #1253 T03f cerrado localmente; contrato actual reconciliado
+
+T03a–e queda cerrado sobre lo que CalculateOrbit produce hoy: factible no
+probado, inviable, cancelado, timeout, presupuesto agotado, respuesta vigente y
+carga pendiente sin falso éxito. La auditoría no encontró otro bug reproducible.
+Plan parcial y optimalidad demostrada después de la evaluación final requieren
+semántica del recorrido productivo y pasan explícitamente a T15; A12/A13 siguen
+abiertos. Siguiente: T14, revisiones reproducibles del plan. Sin cambios
+productivos, app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release.
+
+## Historial — #1252 T03e cerrado localmente; presupuesto meteorológico conservado
 
 Los escenarios meteorológicos ya distinguen una búsqueda interrumpida por el
 límite de candidatos o iteraciones de una carrera realmente inviable. Reutiliza

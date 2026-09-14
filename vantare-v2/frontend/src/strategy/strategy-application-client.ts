@@ -585,7 +585,10 @@ type CommandHeader<T extends StrategyApplicationOperation> = {
 
 export type StrategyApplicationCommandV1<TPayload> =
   | (CommandHeader<"create"> & { draft: PlanDraftV1<TPayload> })
-  | (CommandHeader<"open"> & { draftId: string })
+  | (CommandHeader<"open"> & (
+      | { draftId: string; revision?: never }
+      | { revision: RevisionRefV1; draftId?: never }
+    ))
   | (CommandHeader<"edit"> & { draft: PlanDraftV1<TPayload> })
   | (CommandHeader<"save_revision"> & {
       draft: PlanDraftV1<TPayload>;
@@ -1000,6 +1003,16 @@ export function createStrategyApplicationClient<TPayload>(
               if (payload.commandId !== command.commandId) return;
               void parseResult<TPayload>(payload).then(
                 (result) => {
+                  if (
+                    command.operation === "open" &&
+                    "revision" in command &&
+                    command.revision !== undefined &&
+                    (result.revision === undefined ||
+                      !sameRevisionRef(command.revision, result.revision))
+                  ) {
+                    fail(new Error("Strategy application opened a different revision"));
+                    return;
+                  }
                   if (settled) return;
                   settled = true;
                   cleanup();
@@ -1038,6 +1051,16 @@ export function createStrategyApplicationClient<TPayload>(
     },
   };
   return client;
+}
+
+function sameRevisionRef(
+  expected: RevisionRefV1,
+  actual: PlanRevisionV1<unknown>,
+): boolean {
+  return expected.planId === actual.planId &&
+    expected.variantId === actual.variantId &&
+    expected.revisionId === actual.revisionId &&
+    expected.contentHash === actual.contentHash;
 }
 
 export function createWailsStrategyApplicationTransport(): StrategyApplicationEventTransport {

@@ -9,6 +9,7 @@ import {
 import orbitGolden from "../hub/strategy-orbit/testdata/orbit-go-golden.json";
 import projectionGolden from "../../../internal/telemetryanalysis/strategyprojection/testdata/strategyinputprojection_v2_new.json";
 import { defaultTyreCondition } from "./strategy-tyre";
+import { canonicalizeAndHashStrategyJSONV1, type RevisionRefV1 } from "./strategy-contract-v1";
 
 describe("event rules document transport", () => {
   it.each([
@@ -101,6 +102,28 @@ function draft() {
     updatedAt: "2026-08-02T00:00:01Z",
     payload: { laps: 10 },
   };
+}
+
+async function revisionDocument(
+  ref: Omit<RevisionRefV1, "contentHash">,
+): Promise<Record<string, unknown> & RevisionRefV1> {
+  const revision = {
+    contractVersion: "strategy.v1",
+    hashAlgorithm: "sha256:strategy-c14n-v1",
+    revisionId: ref.revisionId,
+    sourceDraftId: "draft-1",
+    planId: ref.planId,
+    variantId: ref.variantId,
+    name: "Race plan",
+    mode: "manual",
+    capabilities: ["manual_inputs"],
+    provenance: { kind: "manual", sourceId: "user" },
+    confidence: { level: "high", basis: "manual" },
+    createdAt: "2026-08-02T00:00:01Z",
+    payload: { laps: 10 },
+  };
+  const { sha256 } = await canonicalizeAndHashStrategyJSONV1(JSON.stringify(revision));
+  return { ...revision, contentHash: sha256 };
 }
 
 describe("createStrategyApplicationClient", () => {
@@ -339,6 +362,91 @@ describe("createStrategyApplicationClient", () => {
       draft: { payload: { laps: 10 } },
     });
     expect(transport.listeners.get("strategy:application:result")?.size ?? 0).toBe(0);
+  });
+
+  it("opens the exact requested revision without a draft selector", async () => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const revision = await revisionDocument({ planId: "plan-1", variantId: "variant-1", revisionId: "revision-a" });
+    const command: StrategyApplicationCommandV1<Payload> = {
+      protocolVersion: "strategy.application.v1",
+      commandId: "open-revision-a",
+      operation: "open",
+      expectedRepositoryVersion: 3,
+      revision: {
+        planId: revision.planId,
+        variantId: revision.variantId,
+        revisionId: revision.revisionId,
+        contentHash: revision.contentHash,
+      },
+    };
+
+    const pending = client.execute(command);
+    expect(transport.emitted).toEqual([{ name: "strategy:application:command", payload: command }]);
+    expect(command).not.toHaveProperty("draftId");
+    emit(transport, "strategy:application:result", {
+      protocolVersion: "strategy.application.v1",
+      commandId: command.commandId,
+      repositoryVersion: 3,
+      revision,
+      recoveredFromBackup: false,
+      closed: false,
+    });
+
+    await expect(pending).resolves.toMatchObject({ revision: { revisionId: "revision-a" } });
+  });
+
+  it("rejects a valid revision different from the requested reference", async () => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const requested = await revisionDocument({ planId: "plan-1", variantId: "variant-1", revisionId: "revision-a" });
+    const returned = await revisionDocument({ planId: "plan-1", variantId: "variant-1", revisionId: "revision-b" });
+    const pending = client.execute({
+      protocolVersion: "strategy.application.v1",
+      commandId: "open-revision-mismatch",
+      operation: "open",
+      expectedRepositoryVersion: 3,
+      revision: {
+        planId: requested.planId,
+        variantId: requested.variantId,
+        revisionId: requested.revisionId,
+        contentHash: requested.contentHash,
+      },
+    });
+    emit(transport, "strategy:application:result", {
+      protocolVersion: "strategy.application.v1",
+      commandId: "open-revision-mismatch",
+      repositoryVersion: 3,
+      revision: returned,
+      recoveredFromBackup: false,
+      closed: false,
+    });
+
+    await expect(pending).rejects.toThrow(/different revision/i);
+  });
+
+  it("rejects a revision open result without the requested revision", async () => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const requested = await revisionDocument({ planId: "plan-1", variantId: "variant-1", revisionId: "revision-a" });
+    const pending = client.execute({
+      protocolVersion: "strategy.application.v1",
+      commandId: "open-revision-missing",
+      operation: "open",
+      expectedRepositoryVersion: 3,
+      revision: {
+        planId: requested.planId,
+        variantId: requested.variantId,
+        revisionId: requested.revisionId,
+        contentHash: requested.contentHash,
+      },
+    });
+    emit(transport, "strategy:application:result", {
+      protocolVersion: "strategy.application.v1",
+      commandId: "open-revision-missing",
+      repositoryVersion: 3,
+      recoveredFromBackup: false,
+      closed: false,
+    });
+
+    await expect(pending).rejects.toThrow(/different revision/i);
   });
 
   it.each([["fixed_distance", 10, true], ["timed", 10, false], [undefined, 10, false], ["fixed_distance", 0, false], ["fixed_distance", 10.5, false]] as const)("valida el alcance de WeatherScenario: %s / %s", async (comparisonBasis, comparisonLaps, valid) => {

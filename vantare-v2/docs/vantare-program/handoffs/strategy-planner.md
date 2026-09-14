@@ -1,6 +1,16 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1255 T14b cerrado localmente; lectura exacta sin fuente
+## Estado vigente — #1257 T14c cliente cerrado localmente; respuesta exacta
+
+El cliente TypeScript permite abrir una revisión mediante su referencia completa
+o conservar el selector legacy por borrador, de forma mutuamente exclusiva. La
+respuesta se decodifica y verifica como antes y además debe coincidir en plan,
+variante, revisión y hash con lo solicitado; una revisión válida distinta o
+ausente falla cerrada. T14 continúa con la vista de historial del plan y la
+recuperación duradera de comandos. Sin app/Wails/LMU, DuckDB, push, PR, CI remota,
+integración ni release.
+
+## Historial — #1255 T14b cerrado localmente; lectura exacta sin fuente
 
 La operación Go `open` acepta exactamente un `draftId` o una referencia completa
 de revisión. Tras guardar A, avanzar a B y reabrir el repositorio, el bridge

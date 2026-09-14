@@ -156,6 +156,9 @@ describe("Strategy Orbit lifecycle canónico", () => {
         });
       }
       if (command.operation === "open") {
+        if (!("draftId" in command) || command.draftId === undefined) {
+          throw new Error("unexpected revision open");
+        }
         const draft = {
           contractVersion: "strategy.v1" as const,
           draftId: command.draftId,

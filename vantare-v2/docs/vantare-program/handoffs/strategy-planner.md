@@ -1,6 +1,17 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1226 T02d2c cerrado localmente; T02d2d listo
+## Estado vigente — #1227 T02d2d cerrado localmente; T02e listo
+
+T02d2d añade las cargas iniciales Fuel/VE al contrato TypeScript y adapta el
+borrador recorded únicamente al evento que CalculateOrbit ya consume. Tiempo y
+vueltas, reglas, reservas, cero, ausencia y VE no aplicable conservan su
+semántica; una configuración desconocida o incompleta se rechaza. No construye
+pilotos, ritmos ni variantes antes de disponer de datos derivados, ni activa el
+panel Plan. El siguiente corte T02e continúa la matriz con inventario y curvas.
+Sin app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release. Astra
+high recomendó este límite para evitar contratos provisionales.
+
+## Historial — #1226 T02d2c cerrado localmente; T02d2d listo
 
 T02d2c conecta las cargas iniciales Fuel/VE del evento Go con SolverV2 y la
 evaluación final. Cero, ausencia y capacidad permanecen separados. Sólo el

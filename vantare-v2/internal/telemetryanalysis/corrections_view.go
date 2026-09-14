@@ -20,6 +20,7 @@ type EffectiveCorrectionView struct {
 	FamilyUses      []PreparedLapFamilyUseCorrection
 	Metadata        []HistoricalMetadata
 	Classifications []PreparedClassificationCorrection
+	StintBoundaries []PreparedStintBoundaryCorrection
 }
 
 // ApplySampleCorrectionSnapshot requires complete coverage of the snapshot's
@@ -152,7 +153,7 @@ func ApplyObservationCorrectionSnapshot(base SourceAnalysisRef, channels []Histo
 	return view, nil
 }
 
-// ApplyMixedCorrectionSnapshot validates all three operation sets against the
+// ApplyMixedCorrectionSnapshot validates all four operation sets against the
 // original authorized input: scalars against pages, families against the
 // validity model, classifications against the original session via T12a/J1.
 // The session is the single authority for channels and metadata. A v4 snapshot
@@ -163,8 +164,12 @@ func ApplyObservationCorrectionSnapshot(base SourceAnalysisRef, channels []Histo
 // without duplicating the whole session and without carrying the resolved
 // target into the view. Without classifications the v1/v2 semantics and APIs
 // apply unchanged. It is pure and does not authorize I/O or refresh
-// derivatives.
+// derivatives. A v5 snapshot first reuses that complete path, then validates
+// its stint-boundary set against the same original temporal model.
 func ApplyMixedCorrectionSnapshot(base SourceAnalysisRef, pages []HistoricalPage, original LapValidityAnalysis, session HistoricalSession, snapshot PreparedSampleCorrectionSnapshot) (EffectiveCorrectionView, error) {
+	if len(snapshot.StintBoundaries) > 0 {
+		return applyStintMixedCorrectionSnapshot(base, pages, original, session, snapshot)
+	}
 	if len(snapshot.Classifications) == 0 {
 		return ApplyObservationCorrectionSnapshot(base, session.Channels, pages, original, snapshot)
 	}
@@ -230,5 +235,42 @@ func ApplyMixedCorrectionSnapshot(base SourceAnalysisRef, pages []HistoricalPage
 	view.SnapshotID = checked.SnapshotID
 	view.Metadata = metadata
 	view.Classifications = classes
+	return view, nil
+}
+
+func applyStintMixedCorrectionSnapshot(base SourceAnalysisRef, pages []HistoricalPage, original LapValidityAnalysis, session HistoricalSession, snapshot PreparedSampleCorrectionSnapshot) (EffectiveCorrectionView, error) {
+	var empty EffectiveCorrectionView
+	if len(snapshot.Corrections)+len(snapshot.FamilyUses)+len(snapshot.Classifications)+len(snapshot.StintBoundaries) > MaxSampleCorrections {
+		return empty, ErrInvalidCorrection
+	}
+	scalar, err := canonicalSampleCorrectionSnapshot(snapshot.Base, snapshot.Corrections)
+	if err != nil {
+		return empty, err
+	}
+	previous, err := combineCanonicalMixedSnapshot(scalar, snapshot.FamilyUses, snapshot.Classifications, snapshot.CanonicalCombination)
+	if err != nil {
+		return empty, err
+	}
+	view, err := ApplyMixedCorrectionSnapshot(base, pages, original, session, previous)
+	if err != nil {
+		return empty, err
+	}
+	requests := make([]StintBoundaryCorrection, len(snapshot.StintBoundaries))
+	for i, correction := range snapshot.StintBoundaries {
+		requests[i] = correction.Request
+	}
+	stints, err := PrepareStintBoundaryCorrectionSet(base, original, requests)
+	if err != nil {
+		return empty, err
+	}
+	checked, err := combineStintMixedSnapshot(previous, stints)
+	if err != nil {
+		return empty, err
+	}
+	if !reflect.DeepEqual(checked, snapshot) {
+		return empty, fmt.Errorf("%w: stint snapshot integrity", ErrInvalidCorrection)
+	}
+	view.SnapshotID = checked.SnapshotID
+	view.StintBoundaries = stints
 	return view, nil
 }

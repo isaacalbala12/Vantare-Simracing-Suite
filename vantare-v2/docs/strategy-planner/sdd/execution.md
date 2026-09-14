@@ -27,10 +27,10 @@ Evidencia de los gaps: [matriz T02](../evidence/isa-1092/README.md),
 `StrategyRecordedWorkflow.tsx` bajo `frontend/src/hub/strategy-orbit/`.
 No repetir T12 ni declarar terminadas las entradas sólo por su posición en el DAG.
 
-**Siguiente corte elegible:** T13d aplica el conjunto de límites ya custodiado por
-#1214 a una copia de la segmentación y recalcula una vez sus derivados. Debe
-conservar originales y rechazar mezclas cuyo target haya cambiado; servicio y
-UI permanecen separados en T13e.
+**Siguiente corte elegible:** T13e expone preparación y guardado de límites por
+el servicio autorizado y el cliente nativo, y conecta la edición avanzada a la
+vista de Datos. Debe reutilizar Save/Resolve y la adopción explícita de revisión;
+la aceptación visual final permanece en T18.
 En paralelo lógico, preparar inventario T02 restante y preflight documental T22a;
 la ejecución física sigue siendo de un único escritor por worktree.
 

@@ -151,12 +151,18 @@ quedan cubiertos sin cambiar la versión del documento de custodia. La lectura
 revalida la representación almacenada, pero no fabrica evidencia temporal que
 el documento no contiene. Aplicación y derivados permanecen en T13d.
 
-### T13d — vista y derivados
+### T13d — vista y derivados — cerrado localmente en #1216
 
-Aplicar el conjunto validado a una copia de la segmentación y ejecutar las
-derivaciones existentes una sola vez. Probar que mover sólo cambia dependientes,
-eliminar fusiona, restaurar reproduce la revisión anterior y la fuente permanece
-intacta.
+La vista v5 reconstruye y valida primero la ruta v1-v4 y añade después el
+conjunto de límites sobre el mismo modelo original. La aplicación devuelve una
+copia, exige que cada target y su ancla sigan existiendo exactamente tras la
+rederivación y rechaza el conjunto entero si alguno cambió. El pipeline sustituye
+los límites de la validez efectiva antes de ejecutar una sola vez consumo,
+curvas y observaciones dependientes, incluida la estrategia observada con un
+horizonte temporal determinista. Un límite movido publica procedencia
+`corrected` y una confianza sin rangos observados heredados; los stints
+recalculados quedan marcados como corregidos y se renumeran de forma contigua.
+Mover, retirar y restaurar conservan fuente, digest y snapshot.
 
 Los targets se validan contra la base original. Si rederivar otras correcciones
 altera o elimina la identidad del límite seleccionado, el conjunto mixto se

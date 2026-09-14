@@ -1,6 +1,21 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1214 T13c cerrado localmente; T13d listo
+## Estado vigente — #1216 T13d cerrado localmente; T13e listo
+
+T13d aplica el conjunto v5 sobre una copia de la validez efectiva y lo inserta
+en el pipeline existente antes de las derivaciones. La vista reutiliza primero
+la aplicación completa v1-v4 y comprueba después la identidad íntegra del
+snapshot v5. Cada target debe seguir presente exactamente tras reanalizar los
+escalares y el ancla nueva debe sobrevivir a esa rederivación; no hay migración
+por tiempo u ordinal. Movimiento, retirada y restauración reproducen límites,
+curvas y estrategia observada sin mutar fuente, digest o snapshot. Los límites
+movidos publican procedencia corregida sin confianza observada heredada; los
+stints derivados se renumeran y quedan vinculados al snapshot de corrección.
+Telemetry Analysis, race y vet focal pasan. T13e debe exponer operaciones por el
+servicio y cliente nativos y conectarlas a la UI avanzada. Sin app/Wails/LMU,
+push, PR, CI remota, integración ni release.
+
+## Historial — #1214 T13c cerrado localmente; T13d listo
 
 T13c integra las correcciones de límites en la custodia existente mediante el
 snapshot y comando v5. Sin límites activos conserva las representaciones y

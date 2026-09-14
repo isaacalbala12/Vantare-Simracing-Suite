@@ -1,6 +1,11 @@
 package telemetryanalysis
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
+)
 
 // CorrectedSessionDerivations must retain Base/SnapshotID when projected or
 // cached. It is not an AuthorizedSessionModel and must never overwrite the
@@ -17,6 +22,7 @@ type CorrectedSessionDerivations struct {
 	Curves      SessionDerivedCurves
 	Pit         SessionPitObservation
 	Classified  ClassifiedSession
+	Observed    *strategyprojection.ObservedStrategyV1
 }
 
 // DeriveCorrectedSession reuses the current derivation pipeline after validating
@@ -33,7 +39,7 @@ func DeriveCorrectedSession(base SourceAnalysisRef, session HistoricalSession, p
 	alignment := BuildTemporalAlignment(session, pages)
 	session, pages = alignment.Session, alignment.Pages
 	var original LapValidityAnalysis
-	if len(snapshot.FamilyUses) > 0 {
+	if len(snapshot.FamilyUses) > 0 || len(snapshot.StintBoundaries) > 0 {
 		var err error
 		original, err = AnalyzeAlignedLapValidity(alignment)
 		if err != nil {
@@ -55,6 +61,12 @@ func DeriveCorrectedSession(base SourceAnalysisRef, session HistoricalSession, p
 			return empty, fmt.Errorf("corrected family use: %w", err)
 		}
 	}
+	if len(view.StintBoundaries) > 0 {
+		validity.Temporal.StintBoundaries, err = ApplyStintBoundaryCorrections(base, original, validity, view.StintBoundaries)
+		if err != nil {
+			return empty, fmt.Errorf("corrected stint boundaries: %w", err)
+		}
+	}
 	classified, effective, err := effectiveClassification(session, validity, view, classified, len(snapshot.Classifications) > 0)
 	if err != nil {
 		return empty, err
@@ -71,7 +83,42 @@ func DeriveCorrectedSession(base SourceAnalysisRef, session HistoricalSession, p
 	if err != nil {
 		return empty, fmt.Errorf("corrected pit observation: %w", err)
 	}
-	return CorrectedSessionDerivations{Base: base, SnapshotID: view.SnapshotID, Validity: validity, Consumption: consumption, Curves: curves, Pit: pit, Classified: classified}, nil
+	var observed *strategyprojection.ObservedStrategyV1
+	if classified.Type == SessionTypeRace {
+		if generatedAt, ok := correctedDerivationGeneratedAt(validity); ok {
+			value, err := DeriveObservedStrategy(effective, view.Pages, classified, validity, pit, generatedAt)
+			if err != nil {
+				return empty, fmt.Errorf("corrected observed strategy: %w", err)
+			}
+			if len(view.StintBoundaries) > 0 {
+				for index := range value.Stints {
+					value.Stints[index].Provenance = strategyprojection.Provenance{Kind: strategyprojection.ProvenanceCorrected, SourceID: view.SnapshotID}
+				}
+			}
+			observed = &value
+		}
+	}
+	return CorrectedSessionDerivations{Base: base, SnapshotID: view.SnapshotID, Validity: validity, Consumption: consumption, Curves: curves, Pit: pit, Classified: classified, Observed: observed}, nil
+}
+
+// correctedDerivationGeneratedAt binds the derived artifact to the recorded
+// temporal horizon. It stays deterministic across replay and restoration.
+func correctedDerivationGeneratedAt(validity LapValidityAnalysis) (time.Time, bool) {
+	var latest time.Time
+	for _, segment := range validity.Temporal.Segments {
+		if segment.SessionEndTs.After(latest) {
+			latest = segment.SessionEndTs
+		}
+	}
+	for _, lap := range validity.Laps {
+		if lap.End.After(latest) {
+			latest = lap.End
+		}
+	}
+	if latest.IsZero() {
+		return time.Time{}, false
+	}
+	return latest.Truncate(time.Millisecond).UTC(), true
 }
 
 // effectiveClassification selects the classification for derivation and

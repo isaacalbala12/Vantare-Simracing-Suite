@@ -450,5 +450,18 @@ restaurar una representación anterior. Reapertura y replay verifican la forma
 persistida sin atribuirle autoridad sobre la fuente ni reconstruir telemetría
 ausente.
 
-Vista efectiva, derivados, servicio y UI continúan en T13d-e según el
-[contrato T13](sdd/stint-boundary-corrections-t13.md).
+## Vista efectiva de límites y derivados — #1216
+
+La aplicación v5 valida la revisión completa contra la fuente autorizada y
+aplica límites sólo a una copia de la segmentación. Cada target original debe
+seguir presente exactamente después de cualquier corrección escalar; no existe
+migración por cercanía ni ordinal. El ancla nueva también debe sobrevivir a la
+rederivación. Los límites efectivos alimentan el pipeline existente antes de
+recalcular consumo, curvas y observaciones dependientes, incluida la estrategia
+observada con un horizonte temporal determinista. Un límite movido se publica
+como `corrected`, sin heredar rangos ni varianza de la observación sustituida.
+Los stints recalculados también se marcan como corregidos y se renumeran de
+forma contigua. Una restauración vuelve a producir los derivados de su snapshot
+sin cambiar el `SegmentationDigest`, los originales ni la revisión guardada.
+
+Servicio y UI continúan en T13e según el [contrato T13](sdd/stint-boundary-corrections-t13.md).

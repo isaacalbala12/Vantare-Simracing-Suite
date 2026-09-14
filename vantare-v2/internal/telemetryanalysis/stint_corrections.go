@@ -9,6 +9,8 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
+const stintBoundaryCorrectionComputationVersion = "stint-boundary-correction.v1"
+
 // StintBoundaryOperation is deliberately limited to existing boundaries.
 type StintBoundaryOperation string
 
@@ -251,33 +253,86 @@ func validateStintBoundaryAnchor(validity LapValidityAnalysis, replacement Stint
 }
 
 func validateEffectiveStintBoundaries(original []strategyprojection.StintBoundary, prepared []PreparedStintBoundaryCorrection) error {
-	requests := make(map[StintBoundaryTarget]StintBoundaryCorrection, len(prepared))
+	_, err := effectiveStintBoundaries(original, prepared)
+	return err
+}
+
+func effectiveStintBoundaries(original []strategyprojection.StintBoundary, prepared []PreparedStintBoundaryCorrection) ([]strategyprojection.StintBoundary, error) {
+	corrections := make(map[StintBoundaryTarget]PreparedStintBoundaryCorrection, len(prepared))
 	for _, item := range prepared {
-		requests[item.Request.Target] = item.Request
+		corrections[item.Request.Target] = item
 	}
 	effective := make([]strategyprojection.StintBoundary, 0, len(original))
 	for _, boundary := range original {
-		request, changed := requests[stintBoundaryTargetFor(boundary)]
+		item, changed := corrections[stintBoundaryTargetFor(boundary)]
 		if !changed {
-			effective = append(effective, boundary)
+			effective = append(effective, cloneStintBoundary(boundary))
 			continue
 		}
+		request := item.Request
 		if request.Operation == StintBoundaryRemove {
 			continue
 		}
-		corrected := boundary
-		corrected.Timestamp = request.Replacement.Anchor.Timestamp
+		corrected := cloneStintBoundary(boundary)
+		corrected.Timestamp = canonicalStintTime(request.Replacement.Anchor.Timestamp)
 		corrected.Cause = request.Replacement.Cause
+		corrected.Provenance = strategyprojection.Provenance{Kind: strategyprojection.ProvenanceCorrected, SourceID: item.CorrectionID}
+		corrected.Confidence = strategyprojection.Confidence{ComputationVersion: stintBoundaryCorrectionComputationVersion}
 		effective = append(effective, corrected)
 	}
 	sort.Slice(effective, func(i, j int) bool { return effective[i].Timestamp.Before(effective[j].Timestamp) })
 	for index := 1; index < len(effective); index++ {
 		previous, current := effective[index-1], effective[index]
 		if !previous.Timestamp.Before(current.Timestamp) || previous.StintNumber >= current.StintNumber {
-			return fmt.Errorf("%w: boundary ordering", ErrCorrectionValue)
+			return nil, fmt.Errorf("%w: boundary ordering", ErrCorrectionValue)
 		}
 	}
-	return nil
+	for index := range effective {
+		effective[index].StintNumber = index + 2
+	}
+	return effective, nil
+}
+
+// ApplyStintBoundaryCorrections applies a previously prepared complete set to
+// an effective validity model. Preparation is repeated against the immutable
+// original, then every target must still exist exactly in the effective model.
+// The returned boundary slice is detached; neither input is mutated.
+func ApplyStintBoundaryCorrections(base SourceAnalysisRef, original, effective LapValidityAnalysis, corrections []PreparedStintBoundaryCorrection) ([]strategyprojection.StintBoundary, error) {
+	if effective.SessionID != base.SessionID || effective.ComputationVersion != base.AnalysisVersion {
+		return nil, ErrCorrectionInterpretationChanged
+	}
+	if err := effective.Temporal.ContractVersion.ValidateTemporal(); err != nil {
+		return nil, ErrCorrectionInterpretationChanged
+	}
+	if len(corrections) > MaxSampleCorrections {
+		return nil, ErrInvalidCorrection
+	}
+	requests := make([]StintBoundaryCorrection, len(corrections))
+	for i, correction := range corrections {
+		requests[i] = correction.Request
+	}
+	checked, err := PrepareStintBoundaryCorrectionSet(base, original, requests)
+	if err != nil {
+		return nil, err
+	}
+	if len(checked) != 0 && !reflect.DeepEqual(checked, corrections) {
+		return nil, fmt.Errorf("%w: stint boundary set integrity", ErrInvalidCorrection)
+	}
+	counts := make(map[StintBoundaryTarget]int, len(corrections))
+	for _, boundary := range effective.Temporal.StintBoundaries {
+		counts[stintBoundaryTargetFor(boundary)]++
+	}
+	for _, correction := range checked {
+		if counts[correction.Request.Target] != 1 {
+			return nil, ErrCorrectionTarget
+		}
+		if correction.Request.Operation == StintBoundarySet {
+			if err := validateStintBoundaryAnchor(effective, *correction.Request.Replacement); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return effectiveStintBoundaries(effective.Temporal.StintBoundaries, checked)
 }
 
 func stintBoundaryTargetFor(boundary strategyprojection.StintBoundary) StintBoundaryTarget {

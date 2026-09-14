@@ -87,6 +87,134 @@ func TestSolveV2AssignsFastDriverWhereAvailableAndConstraintForcesSlowerStint(t 
 	}
 }
 
+func TestSolveV2DriverSequenceConstrainsStintsAndAbsentRemainsFree(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 4
+	input.FuelCapacityLiters.Value = 4
+	input.FuelPerLapLiters.Value = 1
+	input.PitCost.TransitSeconds.Value = 1
+	input.DriverProfiles = []DriverProfileInput{
+		manualDriver("fast", 90, 1),
+		manualDriver("slow", 92, 1),
+	}
+
+	free, err := SolveV2(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !free.Feasible || len(free.Best.Stints) != 1 || free.Best.Stints[0].Driver != "fast" {
+		t.Fatalf("free driver choice changed: %+v", free.Best.Stints)
+	}
+
+	input.DriverSequence = []string{"fast", "slow"}
+	sequenced, err := SolveV2(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !sequenced.Feasible || len(sequenced.Best.Stints) != 2 {
+		t.Fatalf("sequence did not require its first pass: %+v", sequenced)
+	}
+	if sequenced.Best.Stints[0].Driver != "fast" || sequenced.Best.Stints[1].Driver != "slow" {
+		t.Fatalf("driver sequence = %+v, want fast then slow", sequenced.Best.Stints)
+	}
+}
+
+func TestSolveV2DriverSequenceRepeatsAndReplayRejectsSwap(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 4
+	input.FuelCapacityLiters.Value = 1
+	input.FuelPerLapLiters.Value = 1
+	input.PitCost.TransitSeconds.Value = 1
+	input.DriverProfiles = []DriverProfileInput{
+		manualDriver("a", 90, 1),
+		manualDriver("b", 91, 1),
+	}
+	input.DriverSequence = []string{"a", "b"}
+
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"a", "b", "a", "b"}
+	if !result.Feasible || len(result.Best.Stints) != len(want) {
+		t.Fatalf("repeated sequence plan = %+v", result)
+	}
+	for index, driverID := range want {
+		if result.Best.Stints[index].Driver != driverID {
+			t.Fatalf("stint %d driver = %q, want %q", index, result.Best.Stints[index].Driver, driverID)
+		}
+	}
+
+	swapped := result.Best
+	swapped.Stints = append([]StintDecision(nil), result.Best.Stints...)
+	swapped.Stints[0].Driver, swapped.Stints[1].Driver = swapped.Stints[1].Driver, swapped.Stints[0].Driver
+	replayed, err := ReplayDecisionV2(input, swapped)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if replayed.Feasible || len(replayed.Reasons) == 0 || replayed.Reasons[0].Code != "driver_sequence" {
+		t.Fatalf("swapped sequence replay = %+v", replayed)
+	}
+}
+
+func TestSolveV2DriverSequenceRequiresConfiguredProfiles(t *testing.T) {
+	input := baseInputV2()
+	input.DriverProfiles = []DriverProfileInput{manualDriver("known", 90, 1)}
+	input.DriverSequence = []string{"known", "missing"}
+	if _, err := SolveV2(input); err == nil || !HasErrorCode(err, ErrorInvalidInput) {
+		t.Fatalf("missing sequence profile error = %v", err)
+	}
+}
+
+func TestSolveV2DriverSequenceFallsBackFromSingleStintShortcut(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 4
+	input.FuelCapacityLiters.Value = 4
+	input.FuelPerLapLiters.Value = 1
+	input.PitCost.TransitSeconds.Value = 1_000
+	input.DriverProfiles = []DriverProfileInput{manualDriver("solo", input.BaseLapSeconds.Value, input.FuelPerLapLiters.Value)}
+	input.DriverSequence = []string{"solo", "solo"}
+
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Feasible || len(result.Best.Stints) != 2 {
+		t.Fatalf("sequence must fall back from the one-stint shortcut: %+v", result)
+	}
+}
+
+func TestSolveV2DriverSequenceKeepsDistinctSequencePositionsDuringPruning(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 3
+	input.FuelCapacityLiters.Value = 3
+	input.FuelPerLapLiters.Value = 1
+	input.PitCost.TransitSeconds.Value = 1
+	input.DriverProfiles = []DriverProfileInput{
+		manualDriver("a", 90, 1),
+		manualDriver("b", 91, 1),
+	}
+	input.DriverSequence = []string{"a", "a", "b"}
+
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantTotal := exhaustiveV2Best(t, input)
+	if math.Abs(result.Expected.TotalSeconds-wantTotal) > epsilon {
+		t.Fatalf("sequence solver=%v exhaustive=%v", result.Expected.TotalSeconds, wantTotal)
+	}
+	want := []string{"a", "a", "b"}
+	if !result.Feasible || len(result.Best.Stints) != len(want) {
+		t.Fatalf("sequence position was lost during pruning: %+v", result)
+	}
+	for index, driverID := range want {
+		if result.Best.Stints[index].Driver != driverID || result.Best.Stints[index].Laps != 1 {
+			t.Fatalf("stint %d = %+v, want one lap by %s", index, result.Best.Stints[index], driverID)
+		}
+	}
+}
+
 func TestSolveV2UsesConsumptionFromAssignedDriverProfile(t *testing.T) {
 	input := baseInputV2()
 	input.RaceLaps = 4

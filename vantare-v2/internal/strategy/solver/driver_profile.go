@@ -109,6 +109,9 @@ func sameDriverUsage(left, right map[string]driverUsage) bool {
 
 func newDriverDecisionModel(input SolverInputV2, saving savingCost) (driverDecisionModel, error) {
 	if len(input.DriverProfiles) == 0 {
+		if len(input.DriverSequence) != 0 {
+			return driverDecisionModel{}, fmt.Errorf("driverSequence requires driverProfiles")
+		}
 		if len(input.EventRules.DriverLimits) != 0 {
 			return driverDecisionModel{}, fmt.Errorf("eventRules.driverLimits requires driverProfiles")
 		}
@@ -137,6 +140,11 @@ func newDriverDecisionModel(input SolverInputV2, saving savingCost) (driverDecis
 		}
 		model.order = append(model.order, cost)
 	}
+	for index, driverID := range input.DriverSequence {
+		if _, ok := seen[driverID]; !ok {
+			return driverDecisionModel{}, fmt.Errorf("driverSequence[%d] has no driverProfile", index)
+		}
+	}
 	for _, driverID := range input.sortedDriverLimitIDs() {
 		limit := input.EventRules.DriverLimits[driverID]
 		if _, ok := seen[driverID]; !ok {
@@ -147,6 +155,25 @@ func newDriverDecisionModel(input SolverInputV2, saving savingCost) (driverDecis
 		}
 	}
 	return model, nil
+}
+
+func (input SolverInputV2) driverSequenceAllows(stintIndex int, driverID string) bool {
+	return len(input.DriverSequence) == 0 || input.DriverSequence[stintIndex%len(input.DriverSequence)] == driverID
+}
+
+func (input SolverInputV2) driverSequenceComplete(decision DecisionVector) bool {
+	if len(input.DriverSequence) == 0 {
+		return true
+	}
+	if len(decision.Stints) < len(input.DriverSequence) {
+		return false
+	}
+	for index, stint := range decision.Stints {
+		if !input.driverSequenceAllows(index, stint.Driver) {
+			return false
+		}
+	}
+	return true
 }
 
 func (input SolverInputV2) sortedDriverLimitIDs() []string {

@@ -255,6 +255,7 @@ type SolverInputV2 struct {
 	TyreInventory        *TyreInventoryInput              `json:"tyreInventory,omitempty"`
 	CompoundPace         []CompoundPaceParameter          `json:"compoundPace,omitempty"`
 	DriverProfiles       []DriverProfileInput             `json:"driverProfiles,omitempty"`
+	DriverSequence       []string                         `json:"driverSequence,omitempty"`
 	Weather              *WeatherPlanInput                `json:"weather,omitempty"`
 	Discretization       ServiceDiscretization            `json:"serviceDiscretization"`
 }

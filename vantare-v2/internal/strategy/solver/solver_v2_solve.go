@@ -286,6 +286,9 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 		}
 		for _, node := range byLap[lap] {
 			for _, driver := range drivers.order {
+				if !input.driverSequenceAllows(len(node.decision.Stints), driver.id) {
+					continue
+				}
 				for _, savingLevel := range saving.levels {
 					worstDriver, _ := driverByID(worstDrivers, driver.id)
 					worstSavingLevel, _ := savingByID(worstSaving, savingLevel.level)
@@ -386,7 +389,7 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 										byLap[next.lap],
 										next,
 										input.Formation.Seconds.Value,
-										input.hasStopCountRules(),
+										input.hasStintCountSensitiveRules(),
 										fuelWeight.secondsPerLiter > 0,
 										tyreModel.enabled,
 										len(input.EventRules.RequiredWindows) > 0,
@@ -616,6 +619,9 @@ func (input SolverInputV2) stopCountAllowed(stops int) (bool, string, string) {
 }
 
 func (input SolverInputV2) completedAllowed(node searchNode, tyreModel tyreDecisionModel) (bool, string, string) {
+	if !input.driverSequenceComplete(node.decision) {
+		return false, "driver_sequence", "el plan no respeta la secuencia de pilotos configurada"
+	}
 	if allowed, code, message := input.stopCountAllowed(len(node.decision.PitStops)); !allowed {
 		return false, code, message
 	}
@@ -643,8 +649,8 @@ func (input SolverInputV2) completedAllowed(node searchNode, tyreModel tyreDecis
 	return true, "", ""
 }
 
-func (input SolverInputV2) hasStopCountRules() bool {
-	return input.EventRules.MinPitStops != nil || input.EventRules.MaxPitStops != nil
+func (input SolverInputV2) hasStintCountSensitiveRules() bool {
+	return input.EventRules.MinPitStops != nil || input.EventRules.MaxPitStops != nil || len(input.DriverSequence) > 0
 }
 
 func (input SolverInputV2) serviceResources() (serviceResource, serviceResource, error) {

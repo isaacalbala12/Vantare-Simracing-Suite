@@ -123,6 +123,9 @@ func replayDecisionV2(input SolverInputV2, decision DecisionVector, initial *[2]
 		if driverID == "" && len(drivers.order) == 1 {
 			driverID = drivers.order[0].id
 		}
+		if !input.driverSequenceAllows(index, driverID) {
+			return infeasibleReplay(decision, input.Formation.Seconds.Value, node, "driver_sequence", "el plan no respeta la secuencia de pilotos configurada"), nil
+		}
 		driver, found := driverByID(drivers, driverID)
 		if !found {
 			return ReplayResultV1{}, solveError(ErrorInvalidInput, fmt.Sprintf("decision.stints[%d].driver", index), "driver is not configured")

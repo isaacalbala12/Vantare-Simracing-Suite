@@ -1,6 +1,20 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1235 T02g1 cerrado localmente; contrato multipiloto pendiente
+## Estado vigente — #1236 T02g2a cerrado localmente; adapter multipiloto pendiente
+
+T02g2a añade a SolverV2 una secuencia de pilotos opcional. Ausente conserva la
+selección libre; presente exige la primera pasada y después repite el orden,
+validando perfiles y replay. La poda conserva el número de stints porque define
+la posición en la secuencia. RED reprodujo contrato ausente y una falsa
+inviabilidad `[A,A,B]`; el resultado coincide con el oráculo acotado. El atajo
+de recursos ya retrocedía correctamente a la búsqueda general, demostrado sin
+añadir un guard redundante. Focales, solver completo, vet y diff-check pasan.
+Astra high no encontró P0/P1/P2 tras la corrección. Siguiente: T02g2b conecta
+perfiles y secuencia desde Strategy, sin decidir todavía cómo la UI distingue
+propuesta libre de orden fijado. Sin UI, app/Wails/LMU, DuckDB, push, PR, CI
+remota, integración ni release.
+
+## Historial — #1235 T02g1 cerrado localmente; contrato multipiloto pendiente
 
 T02g1 crea el perfil efectivo antes de optimizar únicamente cuando el evento
 tiene un piloto y límites de conducción. Solve, meteorología y evaluación final

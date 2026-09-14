@@ -26,10 +26,13 @@ func simpleResourceDecisions(
 ) ([]DecisionVector, bool) {
 	driverID := ""
 	if drivers.enabled {
-		if len(drivers.order) != 1 || len(input.EventRules.DriverLimits) != 0 ||
-			drivers.order[0].baseLap != input.BaseLapSeconds.Value ||
-			drivers.order[0].fuelPerLap != fuel.perLap || drivers.order[0].vePerLap != ve.perLap {
+		if len(input.EventRules.DriverLimits) != 0 || (len(drivers.order) > 1 && len(input.DriverSequence) == 0) {
 			return nil, false
+		}
+		for _, driver := range drivers.order {
+			if driver.baseLap != input.BaseLapSeconds.Value || driver.fuelPerLap != fuel.perLap || driver.vePerLap != ve.perLap {
+				return nil, false
+			}
 		}
 		driverID = drivers.order[0].id
 	}
@@ -68,12 +71,16 @@ func simpleResourceDecisions(
 	if reserveStints > stintCount {
 		stintCount = reserveStints
 	}
+	if int64(len(input.DriverSequence)) > stintCount {
+		stintCount = int64(len(input.DriverSequence))
+	}
 	if stintCount > input.RaceLaps {
 		return nil, false
 	}
 	if ve.capacity == 0 && fuel.capacity > 0 && pitCost.TyreSeconds.Value == 0 {
 		decision, exact := simpleSingleFuelDecision(input, fuel, maxStint, stintCount, driverID)
 		if exact {
+			applySimpleDriverSequence(&decision, input.DriverSequence)
 			return []DecisionVector{decision}, true
 		}
 	}
@@ -82,7 +89,22 @@ func simpleResourceDecisions(
 		searchLimit = input.Budget.MaxCandidates
 	}
 	decisions, bounded := enumerateSimpleResourceDecisions(input, fuel, ve, maxStint, stintCount, driverID, searchLimit)
+	for index := range decisions {
+		applySimpleDriverSequence(&decisions[index], input.DriverSequence)
+	}
 	return decisions, bounded && len(decisions) > 0
+}
+
+func applySimpleDriverSequence(decision *DecisionVector, sequence []string) {
+	if len(sequence) == 0 {
+		return
+	}
+	for index := range decision.Stints {
+		decision.Stints[index].Driver = sequence[index%len(sequence)]
+	}
+	for index := range decision.PitStops {
+		decision.PitStops[index].Driver = sequence[(index+1)%len(sequence)]
+	}
 }
 
 func simpleSingleFuelDecision(input SolverInputV2, fuel serviceResource, maxStint, stintCount int64, driverID string) (DecisionVector, bool) {

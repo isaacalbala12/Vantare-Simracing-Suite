@@ -1,6 +1,18 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1236 T02g2a cerrado localmente; adapter multipiloto pendiente
+## Estado vigente — #1238 presupuesto de secuencia cerrado localmente; adapter multipiloto pendiente
+
+#1238 corrige el agotamiento observado en una carrera de 136 vueltas con cuatro
+pilotos equivalentes. El camino escalar existente acepta ahora varios perfiles
+idénticos cuando hay una secuencia explícita, calcula el mínimo de stints que
+completa su primera pasada y asigna la rotación a stints y paradas. La búsqueda
+general y su poda quedan intactas. El RED reproducía el presupuesto agotado;
+GREEN acredita cero iteraciones de búsqueda, orden completo, solver y Go. Astra
+high recomendó retirar una optimización general innecesaria y no encontró P0–P2
+en el corte final. Siguiente: T02g2b conecta perfiles y secuencia desde Strategy.
+Sin UI, app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release.
+
+## Historial — #1236 T02g2a cerrado localmente; adapter multipiloto pendiente
 
 T02g2a añade a SolverV2 una secuencia de pilotos opcional. Ausente conserva la
 selección libre; presente exige la primera pasada y después repite el orden,

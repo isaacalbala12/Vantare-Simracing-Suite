@@ -215,6 +215,42 @@ func TestSolveV2DriverSequenceKeepsDistinctSequencePositionsDuringPruning(t *tes
 	}
 }
 
+func TestSolveV2LongIdenticalDriverSequenceUsesScalarShortcut(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 136
+	input.BaseLapSeconds.Value = 104
+	input.FuelCapacityLiters.Value = 90
+	input.FuelPerLapLiters.Value = 2.75
+	input.PitCost.TransitSeconds.Value = 64
+	input.PitCost.RefuelRateLPerS.Value = 1e12
+	input.PitCost.VERatePPerS.Value = 1e12
+	input.PitCost.TyreSeconds.Value = 0
+	input.DriverProfiles = []DriverProfileInput{
+		manualDriver("a", 104, 2.75),
+		manualDriver("b", 104, 2.75),
+		manualDriver("c", 104, 2.75),
+		manualDriver("d", 104, 2.75),
+	}
+	input.DriverSequence = []string{"a", "b", "c", "d"}
+
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Feasible || !result.ComputeStats.WithinBudget || result.ComputeStats.Iterations != 0 {
+		t.Fatalf("long cyclic sequence did not use the bounded scalar shortcut: %+v", result.ComputeStats)
+	}
+	if len(result.Best.Stints) < len(input.DriverSequence) {
+		t.Fatalf("result has %d stints, want at least one complete sequence", len(result.Best.Stints))
+	}
+	for index := range result.Best.Stints {
+		driverID := input.DriverSequence[index%len(input.DriverSequence)]
+		if result.Best.Stints[index].Driver != driverID {
+			t.Fatalf("stint %d driver = %q, want %q", index, result.Best.Stints[index].Driver, driverID)
+		}
+	}
+}
+
 func TestSolveV2UsesConsumptionFromAssignedDriverProfile(t *testing.T) {
 	input := baseInputV2()
 	input.RaceLaps = 4

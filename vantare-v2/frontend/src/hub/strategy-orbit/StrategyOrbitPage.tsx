@@ -104,11 +104,16 @@ import { exportStrategyPackage } from "../../strategy/strategy-transfer";
 import {
   STRATEGY_ORBIT_REVISION_CONTRACT_V1,
   activateOrbitRevision,
+  acknowledgeOrbitRevisionRecovery,
   loadOrbitLifecycle,
+  loadOrbitRevisionRecovery,
   orbitLifecycleIdentity,
+  resolveOrbitRevisionRecovery,
+  retryOrbitRevisionRecovery,
   sameRevision,
   saveOrbitRevision,
   type OrbitLifecycleState,
+  type OrbitRevisionRecovery,
   type StrategyOrbitRevisionPayloadV1,
 } from "./strategy-orbit-lifecycle";
 import {
@@ -171,6 +176,13 @@ type VisibleApplicationFailure = {
 type OrbitLifecycleView = {
   readonly status: "idle" | "loading" | "ready" | "busy" | "error";
   readonly state?: OrbitLifecycleState;
+  readonly failure?: VisibleApplicationFailure;
+};
+
+type OrbitRecoveryView = {
+  readonly status: "loading" | "ready" | "busy" | "error";
+  readonly pending?: OrbitRevisionRecovery;
+  readonly resolution?: "stored" | "not_stored";
   readonly failure?: VisibleApplicationFailure;
 };
 
@@ -768,6 +780,21 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const lifecycleSequence = useRef(0);
   const [lifecycleRetry, setLifecycleRetry] = useState(0);
   const [lifecycle, setLifecycle] = useState<OrbitLifecycleView>({ status: "idle" });
+  const recoverySequence = useRef(0);
+  const [recovery, setRecovery] = useState<OrbitRecoveryView>({ status: "loading" });
+  useEffect(() => {
+    recoverySequence.current += 1;
+    const sequence = recoverySequence.current;
+    setRecovery({ status: "loading" });
+    void loadOrbitRevisionRecovery(lifecycleClient, String(sequence)).then(
+      (pending) => {
+        if (sequence === recoverySequence.current) setRecovery({ status: "ready", ...(pending ? { pending } : {}) });
+      },
+      (error: unknown) => {
+        if (sequence === recoverySequence.current) setRecovery({ status: "error", failure: visibleApplicationFailure(error) });
+      },
+    );
+  }, [lifecycleClient]);
   useEffect(() => {
     lifecycleSequence.current += 1;
     const sequence = lifecycleSequence.current;
@@ -818,6 +845,52 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       const failure = visibleApplicationFailure(error);
       setLifecycle({ status: "error", state: lifecycle.state, failure });
       toast.show(t("strategy.lifecycle.saveFailed"), failure.message);
+    }
+  };
+
+  const checkRecoveredRevision = async () => {
+    if (!recovery.pending) return;
+    const pending = recovery.pending;
+    recoverySequence.current += 1;
+    const sequence = recoverySequence.current;
+    setRecovery({ status: "busy", pending });
+    try {
+      const result = await resolveOrbitRevisionRecovery(lifecycleClient, String(sequence));
+      if (sequence !== recoverySequence.current) return;
+      setRecovery({ status: "ready", pending, resolution: result.stored ? "stored" : "not_stored" });
+    } catch (error) {
+      if (sequence === recoverySequence.current) setRecovery({ status: "error", pending, failure: visibleApplicationFailure(error) });
+    }
+  };
+
+  const retryRecoveredRevision = async () => {
+    if (!recovery.pending) return;
+    const pending = recovery.pending;
+    recoverySequence.current += 1;
+    const sequence = recoverySequence.current;
+    setRecovery({ status: "busy", pending, resolution: recovery.resolution });
+    try {
+      const revision = await retryOrbitRevisionRecovery(lifecycleClient, pending, String(sequence));
+      if (sequence !== recoverySequence.current) return;
+      setRecovery({ status: "ready" });
+      setLifecycleRetry((value) => value + 1);
+      toast.show(t("strategy.lifecycle.recoverySaved"), revision.revisionId);
+    } catch (error) {
+      if (sequence === recoverySequence.current) setRecovery({ status: "error", pending, resolution: recovery.resolution, failure: visibleApplicationFailure(error) });
+    }
+  };
+
+  const acknowledgeRecoveredRevision = async () => {
+    if (!recovery.pending) return;
+    const pending = recovery.pending;
+    recoverySequence.current += 1;
+    const sequence = recoverySequence.current;
+    setRecovery({ status: "busy", pending, resolution: recovery.resolution });
+    try {
+      await acknowledgeOrbitRevisionRecovery(lifecycleClient, pending, String(sequence));
+      if (sequence === recoverySequence.current) setRecovery({ status: "ready" });
+    } catch (error) {
+      if (sequence === recoverySequence.current) setRecovery({ status: "error", pending, resolution: recovery.resolution, failure: visibleApplicationFailure(error) });
     }
   };
 
@@ -2846,6 +2919,21 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       ) : null}
     </div>
   ) : null;
+  const recoveryStatus = recovery.pending || recovery.failure ? (
+    <div className="orbit-note" data-testid="orbit-strategy-revision-recovery">
+      <b>{t("strategy.lifecycle.recoveryTitle")}</b>
+      {recovery.pending ? <span>{recovery.pending.command.revisionId} · {recovery.pending.command.commandId}</span> : null}
+      <span>{recovery.resolution === "stored" ? t("strategy.lifecycle.recoveryStored") : recovery.resolution === "not_stored" ? t("strategy.lifecycle.recoveryMissing") : t("strategy.lifecycle.recoveryHint")}</span>
+      {recovery.failure ? <span role="alert">{recovery.failure.message}</span> : null}
+      {recovery.pending ? (
+        <div className="orbit-strategy__actions">
+          <Button disabled={recovery.status === "busy"} onClick={() => void checkRecoveredRevision()} size="sm" variant="ghost">{t("strategy.lifecycle.recoveryCheck")}</Button>
+          <Button disabled={recovery.status === "busy"} onClick={() => void retryRecoveredRevision()} size="sm" variant="primary">{t("strategy.lifecycle.recoveryRetry")}</Button>
+          <Button disabled={recovery.status === "busy"} onClick={() => void acknowledgeRecoveredRevision()} size="sm" variant="ghost">{t("strategy.lifecycle.recoveryAcknowledge")}</Button>
+        </div>
+      ) : null}
+    </div>
+  ) : null;
   const sessionDecisionByID = new Map(eventSessionDecisions.map((session) => [session.sessionId, session.included]));
   const sessionsPanel = sessionCatalog.status === "error" ? (
     <Note title={t("strategy.sessions.errorTitle")}>
@@ -2978,7 +3066,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
           </Button>
           <Button
             data-testid="orbit-strategy-save-revision"
-            disabled={lifecycle.status === "loading" || lifecycle.status === "busy"}
+            disabled={lifecycle.status === "loading" || lifecycle.status === "busy" || recovery.pending !== undefined}
             onClick={() => void saveVisibleRevision()}
             variant="primary"
           >
@@ -3033,6 +3121,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       </header>
 
       {editorFailureView}
+      {recoveryStatus}
       {lifecycleStatus}
 
       <UnderlineTabs<StrategyTab>

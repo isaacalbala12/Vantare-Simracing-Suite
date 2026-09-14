@@ -22,6 +22,15 @@ export function createOrbitCalculationTestClient(): StrategyApplicationClient<un
           closed: false,
         };
       }
+      if (command.operation === "get_pending_revision_save") {
+        return {
+          protocolVersion: "strategy.application.v1",
+          commandId: command.commandId,
+          repositoryVersion: 0,
+          recoveredFromBackup: false,
+          closed: false,
+        };
+      }
       if (command.operation !== "calculate_orbit") throw new Error(`unsupported test operation ${command.operation}`);
       return {
         protocolVersion: "strategy.application.v1",

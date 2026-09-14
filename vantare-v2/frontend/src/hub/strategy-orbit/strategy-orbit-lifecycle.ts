@@ -1,6 +1,7 @@
 import {
   STRATEGY_APPLICATION_PROTOCOL_V1,
   type StrategyApplicationClient,
+  type StrategyPendingRevisionSaveV1,
   type StrategyOrbitCalculationInputV1,
 } from "../../strategy/strategy-application-client";
 import type {
@@ -26,6 +27,63 @@ export type OrbitLifecycleState = {
   readonly savedRevision?: RevisionRefV1;
   readonly activePlan?: ActivePlanV1;
 };
+
+export type OrbitRevisionRecovery = StrategyPendingRevisionSaveV1<StrategyOrbitRevisionPayloadV1>;
+
+export async function loadOrbitRevisionRecovery(
+  client: StrategyApplicationClient<StrategyOrbitRevisionPayloadV1>,
+  commandID: string,
+): Promise<OrbitRevisionRecovery | undefined> {
+  const result = await client.execute({
+    protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
+    commandId: `orbit-recovery-${safeToken(commandID)}`,
+    operation: "get_pending_revision_save",
+    expectedRepositoryVersion: 0,
+  });
+  return result.pendingRevision;
+}
+
+export async function resolveOrbitRevisionRecovery(
+  client: StrategyApplicationClient<StrategyOrbitRevisionPayloadV1>,
+  commandID: string,
+): Promise<{ readonly stored: boolean; readonly revision?: RevisionRefV1 }> {
+  const result = await client.execute({
+    protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
+    commandId: `orbit-resolve-${safeToken(commandID)}`,
+    operation: "resolve_pending_revision_save",
+    expectedRepositoryVersion: 0,
+  });
+  return {
+    stored: result.pendingResolution === "stored",
+    ...(result.revision ? { revision: revisionRef(result.revision) } : {}),
+  };
+}
+
+export async function retryOrbitRevisionRecovery(
+  client: StrategyApplicationClient<StrategyOrbitRevisionPayloadV1>,
+  pending: OrbitRevisionRecovery,
+  commandID: string,
+): Promise<RevisionRefV1> {
+  const saved = await client.execute(pending.command);
+  if (!saved.revision) throw new Error("Strategy recovery did not return the immutable revision");
+  await acknowledgeOrbitRevisionRecovery(client, pending, commandID);
+  return revisionRef(saved.revision);
+}
+
+export async function acknowledgeOrbitRevisionRecovery(
+  client: StrategyApplicationClient<StrategyOrbitRevisionPayloadV1>,
+  pending: OrbitRevisionRecovery,
+  commandID: string,
+): Promise<void> {
+  await client.execute({
+    protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
+    commandId: `orbit-ack-${safeToken(commandID)}`,
+    operation: "acknowledge_pending_revision_save",
+    expectedRepositoryVersion: 0,
+    pendingCommandId: pending.command.commandId,
+    commandDigest: pending.commandDigest,
+  });
+}
 
 export type OrbitLifecycleClock = {
   id(): string;
@@ -119,6 +177,7 @@ export async function saveOrbitRevision(
     draft,
     revisionId: `orbit-revision-${operationID}`,
     createdAt: timestamp,
+    recoverable: true,
   });
   if (!saved.revision) {
     throw new Error("Strategy save did not return the immutable revision");
@@ -129,6 +188,10 @@ export async function saveOrbitRevision(
     revisionId: saved.revision.revisionId,
     contentHash: saved.revision.contentHash,
   };
+  if (!saved.pendingRevision) {
+    throw new Error("Strategy save did not return its recoverable command");
+  }
+  await acknowledgeOrbitRevisionRecovery(client, saved.pendingRevision, `saved-${operationID}`);
   const refreshed = await client.execute({
     protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
     commandId: `orbit-list-after-save-${operationID}`,
@@ -217,6 +280,15 @@ function lifecycleState(
     repositoryVersion,
     ...(savedRevision ? { savedRevision } : {}),
     ...(activePlan ? { activePlan } : {}),
+  };
+}
+
+function revisionRef(revision: RevisionRefV1): RevisionRefV1 {
+  return {
+    planId: revision.planId,
+    variantId: revision.variantId,
+    revisionId: revision.revisionId,
+    contentHash: revision.contentHash,
   };
 }
 

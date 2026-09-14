@@ -10,7 +10,11 @@ import projectionGolden from "../../../../internal/telemetryanalysis/strategypro
 import type { RevisionRefV1 } from "../../strategy/strategy-contract-v1";
 import {
   activateOrbitRevision,
+  acknowledgeOrbitRevisionRecovery,
   loadOrbitLifecycle,
+  loadOrbitRevisionRecovery,
+  resolveOrbitRevisionRecovery,
+  retryOrbitRevisionRecovery,
   saveOrbitRevision,
   type StrategyOrbitRevisionPayloadV1,
 } from "./strategy-orbit-lifecycle";
@@ -102,8 +106,10 @@ describe("Strategy Orbit lifecycle canónico", () => {
             payload: command.draft.payload,
             contentHash: revision.contentHash,
           } as never,
+          pendingRevision: { command, commandDigest: "c".repeat(64) },
         });
       }
+      if (command.operation === "acknowledge_pending_revision_save") return result(command);
       throw new Error(`unexpected ${command.operation}`);
     });
 
@@ -112,7 +118,7 @@ describe("Strategy Orbit lifecycle canónico", () => {
       now: () => "2026-08-21T18:00:00Z",
     });
 
-    expect(seen.map((command) => command.operation)).toEqual(["list", "create", "save_revision", "list"]);
+    expect(seen.map((command) => command.operation)).toEqual(["list", "create", "save_revision", "acknowledge_pending_revision_save", "list"]);
     expect(seen[1]).toMatchObject({
       operation: "create",
       expectedRepositoryVersion: 7,
@@ -122,10 +128,56 @@ describe("Strategy Orbit lifecycle canónico", () => {
       operation: "save_revision",
       expectedRepositoryVersion: 8,
       revisionId: "orbit-revision-visible",
+      recoverable: true,
       draft: { payload },
     });
     expect(saved.revision).toEqual(revision);
     expect(saved.repositoryVersion).toBe(9);
+  });
+
+  it("recupera, comprueba, reintenta y reconoce solo por la intención exacta", async () => {
+    const saveCommand: Extract<StrategyApplicationCommandV1<StrategyOrbitRevisionPayloadV1>, { operation: "save_revision" }> = {
+      protocolVersion: "strategy.application.v1",
+      commandId: "orbit-save-lost",
+      operation: "save_revision",
+      expectedRepositoryVersion: 8,
+      draft: {
+        contractVersion: "strategy.v1",
+        draftId: "orbit-draft-event-1",
+        planId: revision.planId,
+        variantId: revision.variantId,
+        name: "Enduro · Base",
+        mode: "manual",
+        capabilities: ["manual_inputs"],
+        provenance: { kind: "manual", sourceId: "strategy-orbit" },
+        confidence: { level: "high", basis: "visible calculated plan" },
+        updatedAt: "2026-08-21T18:00:00Z",
+        payload,
+      },
+      revisionId: revision.revisionId,
+      createdAt: "2026-08-21T18:00:00Z",
+      recoverable: true,
+    };
+    const pendingRevision = { command: saveCommand, commandDigest: "d".repeat(64) };
+    const seen: StrategyApplicationCommandV1<StrategyOrbitRevisionPayloadV1>[] = [];
+    const client = clientWith(async (command) => {
+      seen.push(command);
+      if (command.operation === "get_pending_revision_save") return result(command, { pendingRevision });
+      if (command.operation === "resolve_pending_revision_save") return result(command, { pendingRevision, pendingResolution: "stored", revision: { ...saveCommand.draft, ...revision } as never });
+      if (command.operation === "save_revision") return result(command, { revision: { ...saveCommand.draft, ...revision } as never, pendingRevision });
+      if (command.operation === "acknowledge_pending_revision_save") return result(command);
+      throw new Error(`unexpected ${command.operation}`);
+    });
+
+    expect(await loadOrbitRevisionRecovery(client, "load")).toEqual(pendingRevision);
+    expect(await resolveOrbitRevisionRecovery(client, "check")).toEqual({ stored: true, revision });
+    expect(await retryOrbitRevisionRecovery(client, pendingRevision, "retry")).toEqual(revision);
+    await acknowledgeOrbitRevisionRecovery(client, pendingRevision, "dismiss");
+    expect(seen.map((command) => command.operation)).toEqual([
+      "get_pending_revision_save", "resolve_pending_revision_save", "save_revision",
+      "acknowledge_pending_revision_save", "acknowledge_pending_revision_save",
+    ]);
+    expect(seen[2]).toEqual(saveCommand);
   });
 
   it("al recargar recupera revisión exacta y ActivePlan solo del backend", async () => {

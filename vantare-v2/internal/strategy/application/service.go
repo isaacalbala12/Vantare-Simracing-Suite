@@ -206,11 +206,16 @@ func (service *Service[T]) saveRecoverableRevision(ctx context.Context, command 
 		},
 	})
 	if err == nil {
-		return resultForDraft(command.CommandID, commit.Snapshot, savedDraft, &revision)
+		result, resultErr := resultForDraft(command.CommandID, commit.Snapshot, savedDraft, &revision)
+		if resultErr == nil {
+			result.PendingRevision = &PendingRevisionSave[T]{Command: command, CommandDigest: pending.CommandDigest}
+		}
+		return result, resultErr
 	}
 	if reconciled, found, reconcileErr := service.resolveRevision(ctx, command, revision); reconcileErr != nil {
 		return Result[T]{}, errors.Join(err, reconcileErr)
 	} else if found {
+		reconciled.PendingRevision = &PendingRevisionSave[T]{Command: command, CommandDigest: pending.CommandDigest}
 		return reconciled, nil
 	}
 	if !errors.Is(err, repository.ErrCommitUncertain) && !errors.Is(err, repository.ErrWriteInProgress) && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {

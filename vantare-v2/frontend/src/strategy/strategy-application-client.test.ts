@@ -134,6 +134,40 @@ describe("createStrategyApplicationClient", () => {
     transport = createTransport();
   });
 
+  it("parses the exact pending save_revision command and its resolution", async () => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const command = {
+      protocolVersion: "strategy.application.v1" as const,
+      commandId: "save-a",
+      operation: "save_revision" as const,
+      expectedRepositoryVersion: 4,
+      draft: draft(),
+      revisionId: "revision-a",
+      createdAt: "2026-08-02T00:00:02Z",
+      recoverable: true,
+    };
+    const pending = client.execute({
+      protocolVersion: "strategy.application.v1",
+      commandId: "get-pending",
+      operation: "get_pending_revision_save",
+      expectedRepositoryVersion: 0,
+    });
+    emit(transport, "strategy:application:result", {
+      protocolVersion: "strategy.application.v1",
+      commandId: "get-pending",
+      repositoryVersion: 5,
+      pendingRevision: { command, commandDigest: "a".repeat(64) },
+      pendingResolution: "stored",
+      recoveredFromBackup: false,
+      closed: false,
+    });
+    await expect(pending).resolves.toMatchObject({
+      pendingRevision: { command, commandDigest: "a".repeat(64) },
+      pendingResolution: "stored",
+    });
+    client.dispose();
+  });
+
   afterEach(() => {
     vi.useRealTimers();
   });

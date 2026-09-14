@@ -400,6 +400,42 @@ func TestServiceRecoversExactRevisionSaveAfterRestartAndLaterHead(t *testing.T) 
 	}
 }
 
+func TestJSONBridgeExposesAndAcknowledgesRecoverableRevisionSave(t *testing.T) {
+	ctx := context.Background()
+	repo, err := repository.Open[testPayload](t.TempDir(), repository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewService[testPayload](repo)
+	draft := validDraft("draft-bridge", "plan-bridge", 10)
+	created, err := service.Create(ctx, CreateCommand[testPayload]{CommandHeader: commandHeader("create-bridge", OperationCreate, 0), Draft: draft})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bridge := NewJSONBridge(service)
+	save := SaveRevisionCommand[testPayload]{CommandHeader: commandHeader("save-bridge", OperationSaveRevision, created.RepositoryVersion), Draft: draft, RevisionID: "revision-bridge", CreatedAt: canonicalTime(2), Recoverable: true}
+	raw, err := json.Marshal(save)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := bridge.Execute(ctx, raw); err != nil {
+		t.Fatal(err)
+	}
+	getRaw, _ := json.Marshal(PendingRevisionCommand{CommandHeader: commandHeader("get-bridge", OperationGetPendingRevisionSave, 0)})
+	encoded, err := bridge.Execute(ctx, getRaw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var pending Result[testPayload]
+	if err := json.Unmarshal(encoded, &pending); err != nil || pending.PendingRevision == nil {
+		t.Fatalf("bridge pending = %#v, err=%v", pending.PendingRevision, err)
+	}
+	ackRaw, _ := json.Marshal(AcknowledgePendingRevisionCommand{CommandHeader: commandHeader("ack-bridge", OperationAcknowledgeRevisionSave, 0), PendingCommandID: string(save.CommandID), CommandDigest: pending.PendingRevision.CommandDigest})
+	if _, err := bridge.Execute(ctx, ackRaw); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func pointerToRevisionRef(ref contract.RevisionRef) *contract.RevisionRef { return &ref }
 
 func TestServiceConcurrentDifferentCommandsNeverOverwrite(t *testing.T) {

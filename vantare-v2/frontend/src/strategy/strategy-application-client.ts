@@ -26,6 +26,9 @@ export type StrategyApplicationOperation =
   | "open"
   | "edit"
   | "save_revision"
+  | "get_pending_revision_save"
+  | "resolve_pending_revision_save"
+  | "acknowledge_pending_revision_save"
   | "duplicate"
   | "activate"
   | "deactivate"
@@ -594,6 +597,12 @@ export type StrategyApplicationCommandV1<TPayload> =
       draft: PlanDraftV1<TPayload>;
       revisionId: string;
       createdAt: string;
+      recoverable?: boolean;
+    })
+  | CommandHeader<"get_pending_revision_save" | "resolve_pending_revision_save">
+  | (CommandHeader<"acknowledge_pending_revision_save"> & {
+      pendingCommandId: string;
+      commandDigest: string;
     })
   | (CommandHeader<"duplicate"> & {
       sourceDraft: PlanDraftV1<TPayload>;
@@ -747,6 +756,8 @@ export type StrategyApplicationResultV1<TPayload> = {
   readonly draft?: PlanDraftV1<TPayload>;
   readonly savedDraft?: PlanDraftV1<TPayload>;
   readonly revision?: PlanRevisionV1<TPayload>;
+  readonly pendingRevision?: StrategyPendingRevisionSaveV1<TPayload>;
+  readonly pendingResolution?: "stored" | "not_stored";
   readonly activePlan?: ActivePlanV1;
   readonly activations?: readonly ActivePlanV1[];
   readonly plans?: readonly StrategyPlanSummaryV1[];
@@ -772,6 +783,11 @@ export type StrategyApplicationResultV1<TPayload> = {
   readonly imported?: boolean;
   readonly recoveredFromBackup: boolean;
   readonly closed: boolean;
+};
+
+export type StrategyPendingRevisionSaveV1<TPayload> = {
+  readonly command: Extract<StrategyApplicationCommandV1<TPayload>, { operation: "save_revision" }>;
+  readonly commandDigest: string;
 };
 
 export type StrategySessionClimateBucketV1 = {
@@ -862,6 +878,7 @@ export type StrategyApplicationErrorCode =
   | "draft_not_found"
   | "draft_conflict"
   | "revision_not_found"
+  | "pending_revision_conflict"
   | "active_plan_conflict"
   | "unsaved_changes"
   | "plan_not_found"
@@ -932,6 +949,7 @@ const applicationErrorCodes = new Set<StrategyApplicationErrorCode>([
   "draft_not_found",
   "draft_conflict",
   "revision_not_found",
+  "pending_revision_conflict",
   "active_plan_conflict",
   "unsaved_changes",
   "plan_not_found",
@@ -1129,6 +1147,12 @@ async function parseResult<TPayload>(
             JSON.stringify(payload.revision),
           )) as PlanRevisionV1<TPayload>,
         }),
+    ...(payload.pendingRevision === undefined
+      ? {}
+      : { pendingRevision: parsePendingRevisionSave<TPayload>(payload.pendingRevision) }),
+    ...(payload.pendingResolution === undefined
+      ? {}
+      : { pendingResolution: parsePendingRevisionResolution(payload.pendingResolution) }),
     ...(payload.activePlan === undefined
       ? {}
       : { activePlan: parseActivePlanV1(payload.activePlan) }),
@@ -1190,6 +1214,39 @@ async function parseResult<TPayload>(
     closed: payload.closed,
   };
   return deepFreeze(result);
+}
+
+function parsePendingRevisionSave<TPayload>(value: unknown): StrategyPendingRevisionSaveV1<TPayload> {
+  const pending = strategyRecord(value, "pendingRevision");
+  const command = strategyRecord(pending.command, "pendingRevision.command");
+  if (command.protocolVersion !== STRATEGY_APPLICATION_PROTOCOL_V1 || command.operation !== "save_revision" || command.recoverable !== true) {
+    throw new Error("Invalid Strategy pending revision command");
+  }
+  strategyString(command.commandId, "pendingRevision.command.commandId");
+  strategyInteger(command.expectedRepositoryVersion, "pendingRevision.command.expectedRepositoryVersion");
+  if ((command.expectedRepositoryVersion as number) < 0) throw new Error("Invalid Strategy pending revision repository version");
+  strategyString(command.revisionId, "pendingRevision.command.revisionId");
+  strategyString(command.createdAt, "pendingRevision.command.createdAt");
+  strategyString(pending.commandDigest, "pendingRevision.commandDigest");
+  if (!/^[a-f0-9]{64}$/.test(pending.commandDigest as string)) throw new Error("Invalid Strategy pending revision digest");
+  return {
+    command: {
+      protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
+      commandId: command.commandId as string,
+      operation: "save_revision",
+      expectedRepositoryVersion: command.expectedRepositoryVersion as number,
+      draft: parsePlanDraftV1<TPayload>(command.draft),
+      revisionId: command.revisionId as string,
+      createdAt: command.createdAt as string,
+      recoverable: true,
+    },
+    commandDigest: pending.commandDigest as string,
+  };
+}
+
+function parsePendingRevisionResolution(value: unknown): "stored" | "not_stored" {
+  strategyEnum(value, "pendingResolution", ["stored", "not_stored"]);
+  return value as "stored" | "not_stored";
 }
 
 function parseActivePlans(value: unknown): readonly ActivePlanV1[] {

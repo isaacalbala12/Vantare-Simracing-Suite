@@ -143,13 +143,14 @@ async function mounted() {
   await screen.findByTestId("orbit-stint-0");
 }
 
-function lifecycleClient() {
+function lifecycleClient(initialPending?: StrategyApplicationResultV1<StrategyOrbitRevisionPayloadV1>["pendingRevision"]) {
   const calculation = createOrbitCalculationTestClient();
   const seen: StrategyApplicationCommandV1<unknown>[] = [];
   let version = 0;
   let draft: PlanDraftV1<StrategyOrbitRevisionPayloadV1> | undefined;
   let revision: RevisionRefV1 | undefined;
   let activePlan: StrategyApplicationResultV1<unknown>["activePlan"];
+  let pending = initialPending;
   const client: StrategyApplicationClient<unknown> = {
     async execute(command) {
       seen.push(command);
@@ -161,6 +162,12 @@ function lifecycleClient() {
         recoveredFromBackup: false,
         closed: false,
       };
+      if (command.operation === "get_pending_revision_save") return { ...base, ...(pending ? { pendingRevision: pending } : {}) };
+      if (command.operation === "resolve_pending_revision_save") return { ...base, ...(pending ? { pendingRevision: pending, pendingResolution: "not_stored" as const } : { pendingResolution: "not_stored" as const }) };
+      if (command.operation === "acknowledge_pending_revision_save") {
+        pending = undefined;
+        return base;
+      }
       if (command.operation === "list") {
         return {
           ...base,
@@ -188,6 +195,7 @@ function lifecycleClient() {
         return { ...base, draft, savedDraft: draft };
       }
       if (command.operation === "save_revision") {
+        pending = { command, commandDigest: pending?.commandDigest ?? "c".repeat(64) };
         revision = {
           planId: command.draft.planId,
           variantId: command.draft.variantId,
@@ -217,6 +225,7 @@ function lifecycleClient() {
             payload: draft.payload,
             contentHash: revision.contentHash,
           } as never,
+          pendingRevision: pending,
         };
       }
       if (command.operation === "activate") {
@@ -662,6 +671,45 @@ describe("StrategyOrbitPage · ⚙ Ajustes", () => {
 });
 
 describe("StrategyOrbitPage · Estrategias", () => {
+
+  it("muestra el guardado recuperado sin ejecutarlo y deja comprobar o reintentar el comando exacto", async () => {
+    const pendingCommand: Extract<StrategyApplicationCommandV1<StrategyOrbitRevisionPayloadV1>, { operation: "save_revision" }> = {
+      protocolVersion: "strategy.application.v1",
+      commandId: "orbit-save-interrupted",
+      operation: "save_revision",
+      expectedRepositoryVersion: 3,
+      draft: {
+        contractVersion: "strategy.v1",
+        draftId: "orbit-draft-recovered",
+        planId: "orbit-event-recovered",
+        variantId: "visible-plan",
+        name: "Recovered",
+        mode: "manual",
+        capabilities: ["manual_inputs"],
+        provenance: { kind: "manual", sourceId: "strategy-orbit" },
+        confidence: { level: "high", basis: "visible calculated plan" },
+        updatedAt: "2026-09-15T00:00:00Z",
+        payload: { contractVersion: "strategy.orbit.revision.v1", event: { id: "recovered" }, variant: { id: "base" }, calculatedPlan: { totalLaps: 10 } },
+      },
+      revisionId: "orbit-revision-interrupted",
+      createdAt: "2026-09-15T00:00:00Z",
+      recoverable: true,
+    };
+    const backend = lifecycleClient({ command: pendingCommand, commandDigest: "d".repeat(64) });
+    mount(ROSTER, backend.client);
+
+    const recovery = await screen.findByTestId("orbit-strategy-revision-recovery");
+    expect(recovery.textContent).toContain("orbit-revision-interrupted");
+    expect(backend.seen.some((command) => command.operation === "save_revision")).toBe(false);
+    expect(screen.getByTestId("orbit-strategy-save-revision").hasAttribute("disabled")).toBe(true);
+
+    fireEvent.click(within(recovery).getByRole("button", { name: "Comprobar guardado" }));
+    await waitFor(() => expect(recovery.textContent).toContain("no aparece guardada"));
+    fireEvent.click(within(recovery).getByRole("button", { name: "Reintentar el mismo guardado" }));
+    await waitFor(() => expect(screen.queryByTestId("orbit-strategy-revision-recovery")).toBeNull());
+    expect(backend.seen.find((command) => command.operation === "save_revision")).toEqual(pendingCommand);
+    expect(backend.seen.some((command) => command.operation === "acknowledge_pending_revision_save")).toBe(true);
+  });
 
   it("Guardar confirma la revisión visible y Activar usa exactamente esa identidad", async () => {
     const backend = lifecycleClient();

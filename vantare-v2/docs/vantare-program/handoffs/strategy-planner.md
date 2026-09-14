@@ -1,6 +1,18 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1227 T02d2d cerrado localmente; T02e listo
+## Estado vigente — #1228 T02e backend cerrado localmente; T02e3 listo
+
+T02e acredita que `PlanningInputs` ya lleva curva combinada y vida útil derivada
+al cálculo, y añade únicamente el transporte de inventario físico explícito y
+parámetros de compuesto existentes. La evaluación final conserva compuesto,
+montaje y cambio/no cambio del solver; una redistribución manual incompatible se
+rechaza. No convierte el inventario agregado del documento ni infiere códigos,
+identidades o condiciones LMU. El siguiente corte T02e3 alinea el contrato
+TypeScript; T02e4 conecta custodia y borrador recorded. Application, SolverV2 y
+neumáticos pasan. Astra high no encontró P0/P1/P2 ni complejidad eliminable. Sin
+app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release.
+
+## Historial — #1227 T02d2d cerrado localmente; T02e listo
 
 T02d2d añade las cargas iniciales Fuel/VE al contrato TypeScript y adapta el
 borrador recorded únicamente al evento que CalculateOrbit ya consume. Tiempo y

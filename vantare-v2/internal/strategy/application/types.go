@@ -11,6 +11,7 @@ import (
 	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
 	"github.com/vantare/overlays/v2/internal/strategy/packaging"
 	"github.com/vantare/overlays/v2/internal/strategy/solver"
+	"github.com/vantare/overlays/v2/internal/strategy/tyres"
 )
 
 const ProtocolVersionV1 = "strategy.application.v1"
@@ -359,6 +360,8 @@ type OrbitCalculationEvent struct {
 	InitialFuelLiters *float64                       `json:"initialFuelLiters,omitempty"`
 	FuelReserveLiters *float64                       `json:"fuelReserveLiters,omitempty"`
 	VirtualEnergy     *OrbitCalculationVirtualEnergy `json:"virtualEnergy,omitempty"`
+	TyreInventory     *solver.TyreInventoryInput     `json:"tyreInventory,omitempty"`
+	CompoundPace      []solver.CompoundPaceParameter `json:"compoundPace,omitempty"`
 	PitLossSeconds    float64                        `json:"pitLossSeconds"`
 }
 
@@ -395,22 +398,24 @@ type OrbitCalculationVariant struct {
 }
 
 type OrbitCalculationStint struct {
-	Index             int     `json:"i"`
-	DriverID          string  `json:"d"`
-	Laps              int64   `json:"laps"`
-	Fuel              float64 `json:"fuel"`
-	Pace              float64 `json:"pace"`
-	StartSeconds      float64 `json:"start"`
-	EndSeconds        float64 `json:"end"`
-	FirstLap          int64   `json:"lap0"`
-	LastLap           int64   `json:"lap1"`
-	PitWindowLap      int64   `json:"pitWindowLap"`
-	PitWindowSeconds  float64 `json:"pitWindowSeconds"`
-	OverCapacity      bool    `json:"over"`
-	Manual            bool    `json:"manual"`
-	SavingLevel       string  `json:"savingLevel"`
-	FuelSavedPerLap   float64 `json:"fuelSavedPerLap"`
-	SavingCostSeconds float64 `json:"savingCostSeconds"`
+	Index             int            `json:"i"`
+	DriverID          string         `json:"d"`
+	Laps              int64          `json:"laps"`
+	Fuel              float64        `json:"fuel"`
+	Pace              float64        `json:"pace"`
+	StartSeconds      float64        `json:"start"`
+	EndSeconds        float64        `json:"end"`
+	FirstLap          int64          `json:"lap0"`
+	LastLap           int64          `json:"lap1"`
+	PitWindowLap      int64          `json:"pitWindowLap"`
+	PitWindowSeconds  float64        `json:"pitWindowSeconds"`
+	OverCapacity      bool           `json:"over"`
+	Manual            bool           `json:"manual"`
+	SavingLevel       string         `json:"savingLevel"`
+	FuelSavedPerLap   float64        `json:"fuelSavedPerLap"`
+	SavingCostSeconds float64        `json:"savingCostSeconds"`
+	Compound          tyres.Compound `json:"compound,omitempty"`
+	TyreFitment       *tyres.Fitment `json:"tyreFitment,omitempty"`
 }
 
 type OrbitCalculationDistribution struct {
@@ -420,15 +425,18 @@ type OrbitCalculationDistribution struct {
 }
 
 type OrbitCalculationStop struct {
-	Index                 int     `json:"index"`
-	Lap                   int64   `json:"lap"`
-	FuelInLiters          float64 `json:"fuelInLiters"`
-	FuelOutLiters         float64 `json:"fuelOutLiters"`
-	PitLossSeconds        float64 `json:"pitLossSeconds"`
-	PitTransitSeconds     float64 `json:"pitTransitSeconds"`
-	PitServiceSeconds     float64 `json:"pitServiceSeconds"`
-	PitOverlapSeconds     float64 `json:"pitOverlapSeconds"`
-	PitBreakdownAvailable bool    `json:"pitBreakdownAvailable"`
+	Index                 int            `json:"index"`
+	Lap                   int64          `json:"lap"`
+	FuelInLiters          float64        `json:"fuelInLiters"`
+	FuelOutLiters         float64        `json:"fuelOutLiters"`
+	PitLossSeconds        float64        `json:"pitLossSeconds"`
+	PitTransitSeconds     float64        `json:"pitTransitSeconds"`
+	PitServiceSeconds     float64        `json:"pitServiceSeconds"`
+	PitOverlapSeconds     float64        `json:"pitOverlapSeconds"`
+	PitBreakdownAvailable bool           `json:"pitBreakdownAvailable"`
+	ChangeTyres           *bool          `json:"changeTyres,omitempty"`
+	Compound              tyres.Compound `json:"compound,omitempty"`
+	TyreFitment           *tyres.Fitment `json:"tyreFitment,omitempty"`
 }
 
 type OrbitCalculationPlan struct {

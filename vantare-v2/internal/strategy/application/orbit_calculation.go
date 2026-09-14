@@ -331,6 +331,9 @@ func calculateOrbitLapPlan(ctx context.Context, event OrbitCalculationEvent, dri
 	if len(laps) == 0 {
 		return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, fmt.Sprintf("input.variants.%d.overrides", variantIndex), ErrCalculationInvalid)
 	}
+	if event.TyreInventory != nil && !orbitMatchesSolvedStints(laps, optimised.Best.Stints) {
+		return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, fmt.Sprintf("input.variants.%d.overrides", variantIndex), ErrCalculationInvalid)
+	}
 
 	plan := OrbitCalculationPlan{
 		Stints:       make([]OrbitCalculationStint, 0, len(laps)),
@@ -373,6 +376,8 @@ func calculateOrbitLapPlan(ctx context.Context, event OrbitCalculationEvent, dri
 			SavingLevel:       string(saving.SavingLevel),
 			FuelSavedPerLap:   saving.FuelSavedPerLap,
 			SavingCostSeconds: saving.SavingCostSeconds,
+			Compound:          saving.Compound,
+			TyreFitment:       saving.TyreFitment,
 		}
 		if saving.SavingLevel != "" && saving.SavingLevel != solver.SavingNone {
 			plan.SavingApplied = true
@@ -441,6 +446,8 @@ func orbitSolverInput(
 		// Explorar multiplos de una vuelta conserva todas sus decisiones posibles
 		// y evita introducir precision que la pantalla no puede editar.
 		Discretization: solver.ServiceDiscretization{FuelLiters: orbitFuelServiceStep(averageFuel, planning), VEPercent: 1},
+		TyreInventory:  event.TyreInventory,
+		CompoundPace:   event.CompoundPace,
 	}
 	if event.Rules != nil {
 		input.EventRules = *event.Rules
@@ -463,6 +470,18 @@ func orbitSolverInput(
 		}
 	}
 	return input
+}
+
+func orbitMatchesSolvedStints(laps []int64, solved []solver.StintDecision) bool {
+	if len(laps) != len(solved) {
+		return false
+	}
+	for index := range laps {
+		if laps[index] != solved[index].Laps {
+			return false
+		}
+	}
+	return true
 }
 
 func orbitFuelServiceStep(fuelPerLap float64, planning *strategydocument.PlanningInputs) float64 {

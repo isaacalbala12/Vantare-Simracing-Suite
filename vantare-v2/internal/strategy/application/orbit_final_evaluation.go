@@ -43,7 +43,11 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 		}
 		decision.Stints[index] = choice
 		if index < len(plan.Stints)-1 {
-			decision.PitStops = append(decision.PitStops, solver.PitStopDecision{Lap: stint.LastLap, ChangeTyres: true})
+			stop := solver.PitStopDecision{Lap: stint.LastLap, ChangeTyres: true}
+			if input.TyreInventory != nil {
+				stop = solved.Best.PitStops[index]
+			}
+			decision.PitStops = append(decision.PitStops, stop)
 		}
 	}
 	// Keep the original scalar/projection provenance when the drivers share
@@ -138,6 +142,12 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 		clock += cost.TotalSeconds
 		if index < len(plan.StopDetails) {
 			stop := &plan.StopDetails[index]
+			if input.TyreInventory != nil {
+				decisionStop := replayed.Decision.PitStops[index]
+				stop.ChangeTyres = &decisionStop.ChangeTyres
+				stop.Compound = decisionStop.Compound
+				stop.TyreFitment = decisionStop.TyreFitment
+			}
 			stop.FuelInLiters = stint.Fuel - required.Stints[index].FuelLiters
 			stop.FuelOutLiters = plan.Stints[index+1].Fuel
 			breakdown := replayed.Decision.PitStops[index].PitBreakdown

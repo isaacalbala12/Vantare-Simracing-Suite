@@ -8,10 +8,11 @@ import { recordedClassificationOriginal } from "./strategy-recorded-corrections"
 import type { RecordedCombination } from "./strategy-recorded-wizard";
 import { RecordedClassificationDetail, RecordedClassificationList, RecordedIdentityDetail, type RecordedClassificationForm, type RecordedIdentityForm } from "./StrategyRecordedClassification";
 import { RecordedLapDetail, RecordedLapList, type RecordedFamilyForm } from "./StrategyRecordedLaps";
+import { RecordedStintDetail, RecordedStintList, type RecordedStintForm } from "./StrategyRecordedStints";
 import "./strategy-recorded-data.css";
 
 type Form = { sampleIndex: number; column: string; original: AnalysisValue; value: string; reason: string };
-export type RecordedDataView = "laps" | "samples" | "classification";
+export type RecordedDataView = "laps" | "samples" | "classification" | "stints";
 export function StrategyRecordedData({ controller, sessions, sessionLabels = {}, selectedRevisions = [], catalog = [], busy, onSources, onPendingChange, view, onViewChange, t }: {
   readonly controller: RecordedCorrectionsController; readonly sessions: readonly RecordedSession[]; readonly busy: boolean;
   readonly sessionLabels?: Readonly<Record<string, string>>;
@@ -26,6 +27,7 @@ export function StrategyRecordedData({ controller, sessions, sessionLabels = {},
   const [familyForm, setFamilyForm] = useState<RecordedFamilyForm | null>(null);
   const [classForm, setClassForm] = useState<RecordedClassificationForm | null>(null);
   const [identityForm, setIdentityForm] = useState<RecordedIdentityForm | null>(null);
+  const [stintForm, setStintForm] = useState<RecordedStintForm | null>(null);
   const [column, setColumn] = useState("");
   const [form, setForm] = useState<Form | null>(null);
   const [formDirty, setFormDirty] = useState(false);
@@ -46,7 +48,7 @@ export function StrategyRecordedData({ controller, sessions, sessionLabels = {},
   const locked = busy || controller.busy;
   const editable = Boolean(channel && editor?.session.editableChannelIds?.includes(channel.id));
   const display = (value: AnalysisValue) => { const scalar = analysisValue(value); return scalar === null ? t("strategy.data.absent") : typeof scalar === "boolean" ? t(scalar ? "strategy.data.true" : "strategy.data.false") : String(scalar); };
-  function clearForm() { setFamilyForm(null); setClassForm(null); setIdentityForm(null); setForm(null); setFormDirty(false); setFormError(false); onPendingChange(false); }
+  function clearForm() { setFamilyForm(null); setClassForm(null); setIdentityForm(null); setStintForm(null); setForm(null); setFormDirty(false); setFormError(false); onPendingChange(false); }
   // One identity proposal replaces the whole combination through the same
   // common reason; the controller validates the target and stays atomic.
   function openIdentity() {
@@ -126,6 +128,20 @@ export function StrategyRecordedData({ controller, sessions, sessionLabels = {},
       if (applied) { setSaveReason(reason); clearForm(); }
       return;
     }
+    if (stintForm && editor) {
+      const proposal = editor.stintBoundaries.find(item => item.target.stintNumber === stintForm.boundary.stintNumber && item.target.timestamp === stintForm.boundary.timestamp && item.target.cause === stintForm.boundary.cause);
+      if (!stintForm.reason.trim()) return;
+      if (stintForm.choice === "original") {
+        if (proposal && controller.restoreStint(proposal.target)) { setSaveReason(stintForm.reason); clearForm(); }
+        return;
+      }
+      const anchor = editor.session.stintAnchors?.find(item => item.timestamp === stintForm.anchorTimestamp);
+      const applied = stintForm.choice === "remove"
+        ? controller.editStint(stintForm.boundary, "remove_stint_boundary", stintForm.reason)
+        : anchor ? controller.editStint(stintForm.boundary, "set_stint_boundary", stintForm.reason, anchor, stintForm.cause) : false;
+      if (applied) { setSaveReason(stintForm.reason); clearForm(); }
+      return;
+    }
     if (!form) return;
     const kind = form.original.scalar.kind;
     let replacement: AnalysisScalar;
@@ -143,7 +159,7 @@ export function StrategyRecordedData({ controller, sessions, sessionLabels = {},
         <div className="strategy-recorded-data__source"><label>{t("strategy.data.source")}<select value={editor?.session.opened.sessionId ?? ""} disabled={locked || formDirty || controller.unresolved} onChange={event => { const session = sessions.find(item => item.opened.sessionId === event.target.value); if (session) { clearForm(); setColumn(""); void controller.load(session); } }}>
           <option value="">{t("strategy.journey.choose")}</option>{sessions.map(session => <option key={session.opened.sessionId} value={session.opened.sessionId}>{sessionLabels[session.candidateId] || [session.combination?.trackName, session.combination?.carName].filter(Boolean).join(" · ") || t("strategy.recorded.unnamed")}</option>)}
         </select></label><Button variant="ghost" disabled={locked || formDirty || controller.unresolved} onClick={onSources}>{t("strategy.data.sources")}</Button></div>
-        <div className="strategy-recorded-laps__views"><h3>{t("strategy.data.observations")}</h3><span>{view !== "classification" ? <Button size="sm" variant="ghost" disabled={locked || formDirty || Boolean(editor?.request)} onClick={() => { clearForm(); onViewChange("classification"); }}>{t("strategy.classification.tab")}</Button> : null}{view === "laps" ? <Button size="sm" variant="ghost" disabled={locked || formDirty || Boolean(editor?.request)} onClick={() => { clearForm(); onViewChange("samples"); }}>{t("strategy.laps.advanced")}</Button> : <Button size="sm" variant="ghost" disabled={locked || formDirty || Boolean(editor?.request)} onClick={() => { clearForm(); onViewChange("laps"); }}>{t("strategy.laps.back")}</Button>}{view === "classification" ? <Button size="sm" variant="ghost" disabled={locked || formDirty || Boolean(editor?.request)} onClick={() => { clearForm(); onViewChange("samples"); }}>{t("strategy.laps.advanced")}</Button> : null}</span></div>
+        <div className="strategy-recorded-laps__views"><h3>{t("strategy.data.observations")}</h3><span>{view !== "classification" ? <Button size="sm" variant="ghost" disabled={locked || formDirty || Boolean(editor?.request)} onClick={() => { clearForm(); onViewChange("classification"); }}>{t("strategy.classification.tab")}</Button> : null}{view !== "stints" ? <Button size="sm" variant="ghost" disabled={locked || formDirty || Boolean(editor?.request)} onClick={() => { clearForm(); onViewChange("stints"); }}>{t("strategy.stints.tab")}</Button> : null}{view === "laps" ? <Button size="sm" variant="ghost" disabled={locked || formDirty || Boolean(editor?.request)} onClick={() => { clearForm(); onViewChange("samples"); }}>{t("strategy.laps.advanced")}</Button> : <Button size="sm" variant="ghost" disabled={locked || formDirty || Boolean(editor?.request)} onClick={() => { clearForm(); onViewChange("laps"); }}>{t("strategy.laps.back")}</Button>}{view === "classification" ? <Button size="sm" variant="ghost" disabled={locked || formDirty || Boolean(editor?.request)} onClick={() => { clearForm(); onViewChange("samples"); }}>{t("strategy.laps.advanced")}</Button> : null}</span></div>
         {view === "samples" ? <p className="strategy-recorded-data__muted">{t("strategy.data.advancedHint")}</p> : null}
         {!editor ? <div className="strategy-recorded-data__empty"><Icon name="i-telemetria" size={44} /><strong>{t("strategy.data.chooseSource")}</strong><p>{t("strategy.data.chooseSourceHint")}</p></div> : view === "laps" ? <RecordedLapList page={editor.lapPage} family={family} proposals={editor.familyUses ?? []} selected={familyForm?.row} locked={locked || formDirty || Boolean(editor.request)} t={t}
           onFamily={next => { clearForm(); setFamily(next); }} onPage={start => { clearForm(); void controller.laps(start); }}
@@ -160,18 +176,18 @@ export function StrategyRecordedData({ controller, sessions, sessionLabels = {},
             </tr>;
           })}</tbody></table></div>{page.samples.length === 0 ? <p role="status">{t("strategy.data.noSamples")}</p> : null}
           <div className="strategy-recorded-data__pages"><Button size="sm" variant="ghost" disabled={locked || formDirty || page.start === 0} onClick={() => { clearForm(); void controller.page(page.channel_id, Math.max(0, page.start - 50)); }}>{t("strategy.recorded.previous")}</Button><span>{t("strategy.data.samplesShown")} {page.samples.length}</span><Button size="sm" variant="ghost" disabled={locked || formDirty || page.samples.length < 50} onClick={() => { clearForm(); void controller.page(page.channel_id, page.start + 50); }}>{t("strategy.recorded.next")}</Button></div></> : <p className="strategy-recorded-data__empty">{t("strategy.data.chooseChannel")}</p>}
-        </> : <RecordedClassificationList session={editor.session} current={editor.current} proposals={editor.classifications} selected={classForm?.field} selectedIdentity={identityForm !== null} locked={locked || formDirty || Boolean(editor.request)} onSelect={openClassification} onSelectIdentity={openIdentity} t={t} />}
+        </> : view === "stints" ? <RecordedStintList boundaries={editor.session.stintBoundaries ?? []} proposals={editor.stintBoundaries} selected={stintForm?.boundary} locked={locked || formDirty || Boolean(editor.request)} t={t} onSelect={(boundary, proposal) => { clearForm(); setStintForm({ boundary, choice: proposal?.operation === "remove_stint_boundary" ? "remove" : "move", anchorTimestamp: proposal?.replacement?.anchor.timestamp ?? "", cause: proposal?.replacement?.cause ?? boundary.cause, reason: proposal?.reason ?? "" }); }} /> : <RecordedClassificationList session={editor.session} current={editor.current} proposals={editor.classifications} selected={classForm?.field} selectedIdentity={identityForm !== null} locked={locked || formDirty || Boolean(editor.request)} onSelect={openClassification} onSelectIdentity={openIdentity} t={t} />}
       </section>
       <aside className="strategy-recorded-data__detail"><h3>{t("strategy.data.review")}</h3><p className="strategy-recorded-data__muted">{t("strategy.data.reviewHint")}</p>
-        {identityForm && editor?.session.combination ? <RecordedIdentityDetail form={identityForm} original={editor.session.combination} saved={editor.current.revision.snapshot.canonicalCombination} catalog={catalog} dirty={formDirty} locked={locked || Boolean(editor?.request)} onChange={next => { setIdentityForm(next); setFormDirty(true); onPendingChange(true); }} onApply={apply} onCancel={clearForm} t={t} /> : classForm ? <RecordedClassificationDetail form={classForm} dirty={formDirty} locked={locked || Boolean(editor?.request)} onChange={next => { setClassForm(next); setFormDirty(true); onPendingChange(true); }} onApply={apply} onCancel={clearForm} t={t} /> : familyForm ? <RecordedLapDetail form={familyForm} dirty={formDirty} locked={locked || Boolean(editor?.request)} t={t} onChange={next => { setFamilyForm(next); setFormDirty(true); onPendingChange(true); }} onApply={apply} onCancel={clearForm} /> : form ? <form onSubmit={event => { event.preventDefault(); apply(); }}>
+        {identityForm && editor?.session.combination ? <RecordedIdentityDetail form={identityForm} original={editor.session.combination} saved={editor.current.revision.snapshot.canonicalCombination} catalog={catalog} dirty={formDirty} locked={locked || Boolean(editor?.request)} onChange={next => { setIdentityForm(next); setFormDirty(true); onPendingChange(true); }} onApply={apply} onCancel={clearForm} t={t} /> : classForm ? <RecordedClassificationDetail form={classForm} dirty={formDirty} locked={locked || Boolean(editor?.request)} onChange={next => { setClassForm(next); setFormDirty(true); onPendingChange(true); }} onApply={apply} onCancel={clearForm} t={t} /> : familyForm ? <RecordedLapDetail form={familyForm} dirty={formDirty} locked={locked || Boolean(editor?.request)} t={t} onChange={next => { setFamilyForm(next); setFormDirty(true); onPendingChange(true); }} onApply={apply} onCancel={clearForm} /> : stintForm && editor ? <RecordedStintDetail form={stintForm} anchors={editor.session.stintAnchors ?? []} hasProposal={editor.stintBoundaries.some(item => item.target.stintNumber === stintForm.boundary.stintNumber && item.target.timestamp === stintForm.boundary.timestamp && item.target.cause === stintForm.boundary.cause)} dirty={formDirty} locked={locked || Boolean(editor.request)} t={t} onChange={next => { setStintForm(next); setFormDirty(true); onPendingChange(true); }} onApply={apply} onCancel={clearForm} /> : form ? <form onSubmit={event => { event.preventDefault(); apply(); }}>
           <label>{t("strategy.data.originalReadOnly")}<output>{display(form.original)} {channel?.unit.symbol ?? ""}</output></label>
           <label>{t("strategy.data.correctedValue")}{form.original.scalar.kind === "boolean" ? <select value={form.value} disabled={locked || Boolean(editor?.request)} onChange={event => field("value", event.target.value)}><option value="true">{t("strategy.data.true")}</option><option value="false">{t("strategy.data.false")}</option></select> : <input value={form.value} type={form.original.scalar.kind === "text" ? "text" : "number"} step="any" disabled={locked || Boolean(editor?.request)} onChange={event => field("value", event.target.value)} />}</label>
           <label>{t("strategy.data.reason")}<textarea value={form.reason} maxLength={1024} disabled={locked || Boolean(editor?.request)} onChange={event => field("reason", event.target.value)} /></label>
           {formError ? <p role="alert">{t("strategy.data.invalidValue")}</p> : null}
           <div className="strategy-recorded-data__actions"><Button variant="ghost" disabled={locked} onClick={clearForm}>{t("strategy.recorded.cancel")}</Button><Button variant="primary" type="submit" disabled={locked || !formDirty || !form.reason.trim() || Boolean(editor?.request)}>{t("strategy.data.apply")}</Button></div>
-        </form> : <div className="strategy-recorded-data__empty"><Icon name="i-ajustes" size={36} /><p>{t(view === "laps" ? "strategy.laps.chooseLap" : view === "samples" ? "strategy.data.chooseSample" : "strategy.classification.chooseField")}</p></div>}
+        </form> : <div className="strategy-recorded-data__empty"><Icon name="i-ajustes" size={36} /><p>{t(view === "laps" ? "strategy.laps.chooseLap" : view === "samples" ? "strategy.data.chooseSample" : view === "stints" ? "strategy.stints.choose" : "strategy.classification.chooseField")}</p></div>}
         {editor ? <div className="strategy-recorded-data__revision">
-          <strong>{t("strategy.data.pendingCount")} {editor.corrections.length + (editor.familyUses?.length ?? 0) + (editor.classifications?.length ?? 0)}</strong>
+          <strong>{t("strategy.data.pendingCount")} {editor.corrections.length + (editor.familyUses?.length ?? 0) + (editor.classifications?.length ?? 0) + editor.stintBoundaries.length}</strong>
           {editor.dirty && !editor.request ? <><label>{t("strategy.data.revisionReason")}<input value={saveReason} disabled={locked || formDirty} onChange={event => setSaveReason(event.target.value)} /></label><div className="strategy-recorded-data__actions"><Button variant="ghost" disabled={locked || formDirty} onClick={() => controller.discard()}>{t("strategy.data.discard")}</Button><Button disabled={locked || formDirty || !saveReason.trim()} onClick={() => void controller.save(saveReason)}>{t("strategy.data.save")}</Button></div></> : null}
           {editor.request ? <><p role="status">{t("strategy.data.uncertain")}</p><div className="strategy-recorded-data__actions"><Button disabled={locked} onClick={() => void controller.resolveSave()}>{t("strategy.data.resolve")}</Button><Button variant="ghost" disabled={locked} onClick={() => void controller.retrySave()}>{t("strategy.data.retry")}</Button></div></> : null}
           {editor.saved ? <p>{t("strategy.data.savedSeparately")}</p> : null}

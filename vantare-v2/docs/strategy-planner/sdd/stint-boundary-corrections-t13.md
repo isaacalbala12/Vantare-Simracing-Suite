@@ -1,7 +1,7 @@
 # T13 — correcciones de límites de stint registrados
 
-Estado: contrato T13a cerrado localmente en #1211 y validación pura T13b
-cerrada localmente en #1212. Persistencia, aplicación y UI pendientes.
+Estado: T13a–e cerrados localmente en #1211, #1212, #1214, #1216 y #1220.
+La aceptación visual final permanece en T18 y el recorrido Wails en T22.
 Depende de la segmentación temporal corregida por #1208 y de la evidencia T19a
 de #1030.
 
@@ -169,12 +169,22 @@ altera o elimina la identidad del límite seleccionado, el conjunto mixto se
 rechaza atómicamente con el error existente de precondición u objetivo. No se
 traslada la corrección por ordinal ni por proximidad temporal.
 
-### T13e — servicio, cliente y UI avanzada
+### T13e — servicio, cliente y UI avanzada — cerrado localmente en #1220
 
-Exponer las dos operaciones mediante el servicio autorizado y el cliente nativo.
-La UI selecciona un límite original, ofrece finales de vuelta permitidos y causa,
-explica rechazos y exige motivo. Guardar y adoptar la revisión siguen siendo
-acciones separadas. La prueba visual final pertenece a T18 y Wails a T22.
+`PrepareCorrections` devuelve los límites originales y los finales de vuelta
+elegibles obtenidos de la misma lectura autorizada. `SaveCorrections` y
+`ResolveCorrectionCommand` transportan el cuarto grupo y el store vuelve a
+validarlo contra la vista escalar efectiva justo antes de escribir. No se añadió
+endpoint, store, formato ni estado de guardado paralelo.
+
+El cliente acepta snapshots v5 sin alterar v1–v4 y contrasta que la respuesta
+conserve exactamente la petición. Datos ofrece una vista avanzada para mover,
+retirar o volver al límite original, con causa y motivo obligatorios. Descartar,
+guardar, resolver una confirmación incierta, restaurar un ancestro, proyectar y
+adoptar reutilizan el ciclo existente. Revisiones cuenta y muestra estas
+decisiones; guardar y adoptar continúan siendo acciones separadas. La visita a
+boxes se conserva y se explica como dato independiente. La prueba visual final
+pertenece a T18 y Wails a T22.
 
 ## Rollback
 

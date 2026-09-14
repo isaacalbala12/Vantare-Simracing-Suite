@@ -234,6 +234,20 @@ describe("recorded classification history", () => {
     expect(screen.getByText("Stewards bulletin")).toBeTruthy();
     expect(screen.getByText("race")).toBeTruthy();
   });
+  it("counts and renders a saved stint-boundary decision", () => {
+    const f = fixture();
+    const original = { stintNumber: 2, timestamp: "1970-01-01T00:01:30Z", cause: "pit" as const, presence: "valid" as const, confidence: { sampleSize: 1, computationVersion: "lap-validity.v1" }, provenance: { kind: "observed", sourceId: "source" } };
+    const request = { operation: "set_stint_boundary" as const, base: f.session.base, target: { stintNumber: 2, timestamp: original.timestamp, cause: original.cause }, expected: original, replacement: { anchor: { lapNumber: 5, timestamp: "1970-01-01T00:03:00Z" }, cause: "driver_change" as const }, reason: "Driver handover checked" };
+    const current = parseCorrectionStoreResult({ headId: hd, revision: { revisionId: hd, parentRevisionId: "a".repeat(64), command: { expectedRevision: "a".repeat(64), commandId: "stint", reason: "Reviewed", localAuthorId: "local" }, commandDigest: he, createdAt: "2026-09-10T12:04:00Z", snapshot: { contractVersion: "analysis.mixed-snapshot.v5", base: f.session.base, snapshotId: hd, corrections: [], familyUses: [], classifications: [], stintBoundaries: [{ baseId: "a".repeat(64), correctionId: he, request, original }] } } });
+    render(<StrategyRecordedRevisions {...f.props} controller={{ ...f.controller, editor: { ...f.controller.editor!, current } }} />);
+    expect(screen.getByText("strategy.history.activeCorrections 1")).toBeTruthy();
+    expect(screen.getByText("Driver handover checked")).toBeTruthy();
+    expect(document.body.textContent).toContain("strategy.stints.cause.pit");
+    expect(document.body.textContent).toContain("strategy.stints.cause.driver_change");
+    expect(document.querySelector(`time[datetime="${original.timestamp}"]`)).toBeTruthy();
+    expect(document.querySelector(`time[datetime="${request.replacement.anchor.timestamp}"]`)).toBeTruthy();
+    expect(document.body.textContent).not.toContain("1970");
+  });
   it("shows the exact consulted older revision, neither the newer head nor local pending", () => {
     const f = fixture();
     const session = classSession(classMetadata());

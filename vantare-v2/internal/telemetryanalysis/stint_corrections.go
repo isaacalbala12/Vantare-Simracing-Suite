@@ -252,6 +252,20 @@ func validateStintBoundaryAnchor(validity LapValidityAnalysis, replacement Stint
 	return nil
 }
 
+// EligibleStintBoundaryAnchors lists the recorded lap ends that satisfy the
+// same rules used when a correction is saved. The result is advisory; Save
+// validates the selected anchor again against the authorized source.
+func EligibleStintBoundaryAnchors(validity LapValidityAnalysis) []StintBoundaryAnchor {
+	anchors := make([]StintBoundaryAnchor, 0, len(validity.Laps))
+	for _, lap := range validity.Laps {
+		anchor := StintBoundaryAnchor{LapNumber: lap.Number, Timestamp: lap.End}
+		if validateStintBoundaryAnchor(validity, StintBoundaryReplacement{Anchor: anchor, Cause: strategyprojection.StintCauseUnknown}) == nil {
+			anchors = append(anchors, anchor)
+		}
+	}
+	return anchors
+}
+
 func validateEffectiveStintBoundaries(original []strategyprojection.StintBoundary, prepared []PreparedStintBoundaryCorrection) error {
 	_, err := effectiveStintBoundaries(original, prepared)
 	return err

@@ -464,4 +464,19 @@ Los stints recalculados también se marcan como corregidos y se renumeran de
 forma contigua. Una restauración vuelve a producir los derivados de su snapshot
 sin cambiar el `SegmentationDigest`, los originales ni la revisión guardada.
 
-Servicio y UI continúan en T13e según el [contrato T13](sdd/stint-boundary-corrections-t13.md).
+## Servicio y editor de límites de stint — #1220
+
+`PrepareCorrections` publica los límites originales y las anclas elegibles desde
+la misma validez autorizada. Son opciones informativas: Save vuelve a comprobar
+target, ancla y conjunto completo tras aplicar cualquier corrección escalar.
+Save y Resolve usan los comandos existentes y transportan explícitamente el
+cuarto grupo; omitido significa cliente antiguo y `[]` restaura el conjunto
+vacío sin borrar historia.
+
+El contrato TypeScript admite v5 y mantiene v1–v4. Valida forma, base, original,
+reemplazo, duplicados, cuota conjunta e igualdad exacta de la respuesta. El
+editor avanzado de Datos reutiliza el mismo estado de propuestas, guardado
+incierto, descarte, restauración, proyección y adopción. Revisiones muestra la
+decisión guardada. No existe endpoint, persistencia o motor de segmentación
+adicional. La aceptación visual y Wails continúa en T18/T22 según el
+[contrato T13](sdd/stint-boundary-corrections-t13.md).

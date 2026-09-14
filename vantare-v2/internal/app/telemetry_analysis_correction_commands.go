@@ -27,7 +27,10 @@ type TelemetryAnalysisCorrectionSaveRequest struct {
 	// Same nil contract for classification decisions: omitted/null means the
 	// caller is unaware of the group and must never silently drop it.
 	Classifications []telemetryanalysis.ClassificationCorrection `json:"classifications"`
-	Command         telemetryanalysis.CorrectionSaveCommand      `json:"command"`
+	// Omitted/null is legacy; a non-nil empty set explicitly removes stint
+	// boundary decisions while preserving prior revisions.
+	StintBoundaries []telemetryanalysis.StintBoundaryCorrection `json:"stintBoundaries"`
+	Command         telemetryanalysis.CorrectionSaveCommand     `json:"command"`
 }
 type TelemetryAnalysisCorrectionRevisionRequest struct {
 	SessionID  string                              `json:"sessionId"`
@@ -37,10 +40,10 @@ type TelemetryAnalysisCorrectionRevisionRequest struct {
 
 func (service *TelemetryAnalysisService) SaveCorrections(ctx context.Context, request TelemetryAnalysisCorrectionSaveRequest) (telemetryanalysis.CorrectionStoreResult, error) {
 	var result telemetryanalysis.CorrectionStoreResult
-	if len(request.Corrections)+len(request.FamilyUses)+len(request.Classifications) > telemetryanalysis.MaxSampleCorrections {
+	if len(request.Corrections)+len(request.FamilyUses)+len(request.Classifications)+len(request.StintBoundaries) > telemetryanalysis.MaxSampleCorrections {
 		return result, ErrTelemetryAnalysisInvalidRequest
 	}
-	if request.Classifications != nil && request.FamilyUses == nil {
+	if (request.Classifications != nil || request.StintBoundaries != nil) && request.FamilyUses == nil {
 		return result, ErrTelemetryAnalysisInvalidRequest
 	}
 	err := service.withCorrectionInput(ctx, request.SessionID, func(operationCtx context.Context, input telemetryanalysis.CorrectionInput) error {
@@ -57,7 +60,7 @@ func (service *TelemetryAnalysisService) SaveCorrections(ctx context.Context, re
 		if request.FamilyUses == nil {
 			result, err = service.corrections.Save(operationCtx, input.Base, inputs, request.Command)
 		} else {
-			observations, prepareErr := observationInputForRequests(input, inputs, request.FamilyUses)
+			observations, prepareErr := observationInputForRequests(input, inputs, request.FamilyUses, request.StintBoundaries)
 			if prepareErr != nil {
 				return publicCorrectionError(prepareErr)
 			}
@@ -97,10 +100,10 @@ func (service *TelemetryAnalysisService) LoadCorrection(ctx context.Context, req
 // creates a revision or adopts the current head for a Strategy plan.
 func (service *TelemetryAnalysisService) ResolveCorrectionCommand(ctx context.Context, request TelemetryAnalysisCorrectionSaveRequest) (telemetryanalysis.CorrectionCommandResolution, error) {
 	var result telemetryanalysis.CorrectionCommandResolution
-	if len(request.Corrections)+len(request.FamilyUses)+len(request.Classifications) > telemetryanalysis.MaxSampleCorrections {
+	if len(request.Corrections)+len(request.FamilyUses)+len(request.Classifications)+len(request.StintBoundaries) > telemetryanalysis.MaxSampleCorrections {
 		return result, ErrTelemetryAnalysisInvalidRequest
 	}
-	if request.Classifications != nil && request.FamilyUses == nil {
+	if (request.Classifications != nil || request.StintBoundaries != nil) && request.FamilyUses == nil {
 		return result, ErrTelemetryAnalysisInvalidRequest
 	}
 	err := service.withCorrectionInput(ctx, request.SessionID, func(operationCtx context.Context, input telemetryanalysis.CorrectionInput) error {
@@ -113,6 +116,8 @@ func (service *TelemetryAnalysisService) ResolveCorrectionCommand(ctx context.Co
 		var err error
 		if request.FamilyUses == nil {
 			result, err = service.corrections.ResolveCommand(operationCtx, input.Base, request.Corrections, request.Command)
+		} else if request.StintBoundaries != nil {
+			result, err = service.corrections.ResolveStintMixedCommand(operationCtx, input.Base, request.Corrections, request.FamilyUses, request.Classifications, request.StintBoundaries, request.Command)
 		} else {
 			result, err = service.corrections.ResolveMixedCommand(operationCtx, input.Base, request.Corrections, request.FamilyUses, request.Classifications, request.Command)
 		}
@@ -248,9 +253,9 @@ func publicCorrectionError(err error) error {
 
 // Keep the source model and reanalyzed scalar view inside the authorized command.
 // Store validation resolves the entire family set against both before writing.
-func observationInputForRequests(input telemetryanalysis.CorrectionInput, samples []telemetryanalysis.SampleCorrectionInput, families []telemetryanalysis.LapFamilyUseCorrection) (telemetryanalysis.ObservationCorrectionInput, error) {
-	result := telemetryanalysis.ObservationCorrectionInput{Samples: samples, Original: input.Validity, Effective: input.Validity, FamilyUses: families}
-	if len(samples) == 0 || len(families) == 0 {
+func observationInputForRequests(input telemetryanalysis.CorrectionInput, samples []telemetryanalysis.SampleCorrectionInput, families []telemetryanalysis.LapFamilyUseCorrection, stints []telemetryanalysis.StintBoundaryCorrection) (telemetryanalysis.ObservationCorrectionInput, error) {
+	result := telemetryanalysis.ObservationCorrectionInput{Samples: samples, Original: input.Validity, Effective: input.Validity, FamilyUses: families, StintBoundaries: stints}
+	if len(samples) == 0 || (len(families) == 0 && len(stints) == 0) {
 		return result, nil
 	}
 	snapshot, err := telemetryanalysis.PrepareSampleCorrectionSnapshot(input.Base, samples)

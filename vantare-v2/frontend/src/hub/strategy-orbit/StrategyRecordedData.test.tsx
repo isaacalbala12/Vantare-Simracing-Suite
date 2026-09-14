@@ -26,11 +26,31 @@ function fixture() {
   const session: RecordedSession = { editableChannelIds: ["fuel"], candidateId: "candidate", base, combinationId: "combo", combination: { id: "combo", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Car", carClass: "LMP2" }, opened: { sessionId: "handle", session: { schema_version: 1, id: "source", channels: [channel], metadata: [] } }, revision: { sessionId: "source", baseDigest: b, revisionId: a, snapshotId: a } };
   const current = parseCorrectionStoreResult({ headId: a, revision: { revisionId: a, parentRevisionId: "", command: { expectedRevision: "", commandId: "", reason: "", localAuthorId: "" }, commandDigest: "", createdAt: "", snapshot: { contractVersion: "analysis.sample-snapshot.v1", base, snapshotId: a, corrections: [] } } });
   const page = { channel_id: "fuel", start: 0, sampling: channel.sampling, samples: [{ index: 4, values: [{ column: "value", present: true, quality: "unknown" as const, scalar: { kind: "number" as const, number: 12 } }] }] };
-  const methods = { laps: vi.fn(), editFamily: vi.fn().mockReturnValue(true), removeFamily: vi.fn().mockReturnValue(true), load: vi.fn(), page: vi.fn(), edit: vi.fn().mockReturnValue(true), save: vi.fn(), discard: vi.fn(), project: vi.fn(), adopt: vi.fn(), head: vi.fn(), resolveSave: vi.fn(), retrySave: vi.fn(), cancel: vi.fn() };
-  const controller = { ...methods, editor: { session, current, page, corrections: [], familyUses: [], classifications: [], dirty: false }, busy: false, error: "", unresolved: false } as unknown as RecordedCorrectionsController;
+  const methods = { laps: vi.fn(), editFamily: vi.fn().mockReturnValue(true), removeFamily: vi.fn().mockReturnValue(true), editStint: vi.fn().mockReturnValue(true), restoreStint: vi.fn().mockReturnValue(true), load: vi.fn(), page: vi.fn(), edit: vi.fn().mockReturnValue(true), save: vi.fn(), discard: vi.fn(), project: vi.fn(), adopt: vi.fn(), head: vi.fn(), resolveSave: vi.fn(), retrySave: vi.fn(), cancel: vi.fn() };
+  const controller = { ...methods, editor: { session, current, page, corrections: [], familyUses: [], classifications: [], stintBoundaries: [], dirty: false }, busy: false, error: "", unresolved: false } as unknown as RecordedCorrectionsController;
   return { session, current, page, methods, controller };
 }
 describe("recorded data screen", () => {
+  it("stages a stint move with an allowed lap end and keeps saving separate", () => {
+    const f = fixture(), pending = vi.fn();
+    const boundary = { stintNumber: 2, timestamp: "1970-01-01T00:03:00Z", cause: "pit" as const, presence: "valid" as const, provenance: { kind: "observed", sourceId: "source" }, confidence: { sampleSize: 1, computationVersion: "lap-validity.v1" } };
+    const anchor = { lapNumber: 4, timestamp: "1970-01-01T00:06:00Z" };
+    const session = { ...f.session, stintBoundaries: [boundary], stintAnchors: [anchor] };
+    const controller = { ...f.controller, editor: { ...f.controller.editor!, session } };
+    render(<HostedData controller={controller} sessions={[session]} busy={false} onSources={vi.fn()} onPendingChange={pending} t={t} />);
+    fireEvent.click(screen.getByRole("button", { name: "strategy.stints.tab" }));
+    fireEvent.click(screen.getByRole("button", { name: "strategy.stints.stint 2" }));
+    expect(document.body.textContent).toContain("00:03:00Z");
+    expect(document.body.textContent).not.toContain("1970");
+    fireEvent.change(screen.getByLabelText("strategy.stints.anchor"), { target: { value: anchor.timestamp } });
+    fireEvent.change(screen.getByLabelText("strategy.stints.cause"), { target: { value: "driver_change" } });
+    fireEvent.change(screen.getByLabelText("strategy.data.reason"), { target: { value: "Driver swap" } });
+    fireEvent.click(screen.getByRole("button", { name: "strategy.data.apply" }));
+    expect(f.methods.editStint).toHaveBeenCalledExactlyOnceWith(boundary, "set_stint_boundary", "Driver swap", anchor, "driver_change");
+    expect(f.methods.save).not.toHaveBeenCalled();
+    expect(f.methods.adopt).not.toHaveBeenCalled();
+    expect(pending).toHaveBeenLastCalledWith(false);
+  });
   it("keeps readable samples visible but blocks editing without native capability", () => {
     const f = fixture();
     const controller = { ...f.controller, editor: { ...f.controller.editor!, session: { ...f.session, editableChannelIds: [] } } };

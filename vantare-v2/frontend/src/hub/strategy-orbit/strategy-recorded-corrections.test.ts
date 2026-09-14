@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AnalysisClient } from "../../strategy/analysis-client";
 import { parseCorrectionStoreResult } from "../../strategy/analysis-contract";
-import type { AnalysisClassificationCorrection, AnalysisCombination, AnalysisFamilyCorrection, AnalysisLapPage, AnalysisBase, AnalysisMetadata, AnalysisPage, AnalysisScalar, AnalysisStoreResult } from "../../strategy/analysis-contract";
+import type { AnalysisClassificationCorrection, AnalysisCombination, AnalysisFamilyCorrection, AnalysisLapPage, AnalysisBase, AnalysisMetadata, AnalysisPage, AnalysisScalar, AnalysisStintBoundary, AnalysisStoreResult } from "../../strategy/analysis-contract";
 import type { RecordedSession } from "./strategy-recorded-session";
-import { loadRecordedLapPage, recordedClassificationCorrection, recordedClassificationOriginal, recordedFamilyCorrection, removeRecordedClassificationCorrection, replaceRecordedClassificationCorrection, replaceRecordedFamilyCorrection, removeRecordedFamilyCorrection, replaceRecordedIdentityClassifications, loadRecordedCorrection, projectRecordedCorrection, recordedCorrectionSave, recordedSampleCorrection, replaceRecordedCorrection } from "./strategy-recorded-corrections";
+import { loadRecordedLapPage, recordedClassificationCorrection, recordedClassificationOriginal, recordedFamilyCorrection, recordedStintBoundaryCorrection, removeRecordedClassificationCorrection, replaceRecordedClassificationCorrection, replaceRecordedFamilyCorrection, removeRecordedFamilyCorrection, removeRecordedStintBoundaryCorrection, replaceRecordedIdentityClassifications, replaceRecordedStintBoundaryCorrection, loadRecordedCorrection, projectRecordedCorrection, recordedCorrectionSave, recordedSampleCorrection, replaceRecordedCorrection } from "./strategy-recorded-corrections";
 
 const base: AnalysisBase = { sessionId: "source", contentSha256: "a".repeat(64), sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "lap-validity.v1", segmentationDigest: "b".repeat(64) };
 const initial = "c".repeat(64), next = "d".repeat(64), digest = "e".repeat(64);
@@ -67,6 +67,25 @@ describe("recorded scalar correction commands", () => {
     const restore = recordedCorrectionSave(session, current, [], "Restore original values", "restore");
     expect(restore.corrections).toEqual([]);
     expect(restore.command.expectedRevision).toBe(next);
+  });
+});
+
+describe("recorded stint boundary commands", () => {
+  const boundary: AnalysisStintBoundary = { stintNumber: 2, timestamp: "2026-09-10T12:03:00Z", cause: "pit", presence: "valid", provenance: { kind: "observed", sourceId: "source" }, confidence: { sampleSize: 1, computationVersion: "lap-validity.v1" } };
+  const anchor = { lapNumber: 4, timestamp: "2026-09-10T12:06:00Z" };
+  it("builds, replaces, restores and saves the exact original target", () => {
+    const f = fixture(), session = { ...f.session, stintBoundaries: [boundary], stintAnchors: [anchor] };
+    const move = recordedStintBoundaryCorrection(session, f.loaded, boundary, "set_stint_boundary", "Driver swap", anchor, "driver_change");
+    const remove = recordedStintBoundaryCorrection(session, f.loaded, boundary, "remove_stint_boundary", "False split");
+    expect(move.target).toEqual({ stintNumber: 2, timestamp: boundary.timestamp, cause: "pit" });
+    expect(replaceRecordedStintBoundaryCorrection([move], remove)).toEqual([remove]);
+    expect(removeRecordedStintBoundaryCorrection([move], move.target)).toEqual([]);
+    expect(recordedCorrectionSave(session, f.loaded, [], "Reviewed", "stint", [], [], [move]).stintBoundaries).toEqual([move]);
+  });
+  it("rejects an unadvertised target or incomplete move", () => {
+    const f = fixture();
+    expect(() => recordedStintBoundaryCorrection(f.session, f.loaded, boundary, "remove_stint_boundary", "No target")).toThrow("recorded_target_unavailable");
+    expect(() => recordedStintBoundaryCorrection({ ...f.session, stintBoundaries: [boundary] }, f.loaded, boundary, "set_stint_boundary", "No anchor")).toThrow();
   });
 });
 

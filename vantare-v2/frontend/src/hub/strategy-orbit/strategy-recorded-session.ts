@@ -1,5 +1,5 @@
 import type { AnalysisClient } from "../../strategy/analysis-client";
-import type { AnalysisBase, AnalysisCombination, AnalysisOpenedSession, AnalysisPreparation } from "../../strategy/analysis-contract";
+import type { AnalysisBase, AnalysisCombination, AnalysisOpenedSession, AnalysisPreparation, AnalysisStintBoundary, AnalysisStintBoundaryAnchor } from "../../strategy/analysis-contract";
 import { parseAnalysisPreparation, sameAnalysisBase } from "../../strategy/analysis-contract";
 import type { StrategyAnalysisRevisionRef } from "../../strategy/strategy-application-client";
 
@@ -12,6 +12,8 @@ export type RecordedSession = Readonly<{
   combination?: AnalysisCombination;
   projectionUnavailableReason?: "metadata_unavailable";
   editableChannelIds?: readonly string[];
+  stintBoundaries?: readonly AnalysisStintBoundary[];
+  stintAnchors?: readonly AnalysisStintBoundaryAnchor[];
 }>;
 
 // Inspection keeps the exact base and revision from Load plus the native
@@ -49,7 +51,7 @@ async function openInspectionSession(
     revisionId: loaded.revision.revisionId,
     snapshotId: loaded.revision.snapshot.snapshotId,
   };
-  return { candidateId, opened, base: prepared.base, revision, projectionUnavailableReason: "metadata_unavailable", editableChannelIds: [...(prepared.editableChannelIds ?? [])] };
+  return { candidateId, opened, base: prepared.base, revision, projectionUnavailableReason: "metadata_unavailable", editableChannelIds: [...(prepared.editableChannelIds ?? [])], stintBoundaries: structuredClone(prepared.stintBoundaries ?? []), stintAnchors: structuredClone(prepared.stintAnchors ?? []) };
 }
 
 // Open has a resource side effect. Keep its response even after cancellation
@@ -95,7 +97,7 @@ export async function openRecordedSession(
       || (expected && (revision.baseDigest !== expected.baseDigest || revision.revisionId !== expected.revisionId || revision.snapshotId !== expected.snapshotId))) {
       throw new Error("recorded_revision_mismatch");
     }
-    return { candidateId, opened, base: prepared.base, revision, combinationId: resolvedCombinationId, editableChannelIds: [...(prepared.editableChannelIds ?? [])], ...(prepared.combination ? { combination: prepared.combination } : {}) };
+    return { candidateId, opened, base: prepared.base, revision, combinationId: resolvedCombinationId, editableChannelIds: [...(prepared.editableChannelIds ?? [])], stintBoundaries: structuredClone(prepared.stintBoundaries ?? []), stintAnchors: structuredClone(prepared.stintAnchors ?? []), ...(prepared.combination ? { combination: prepared.combination } : {}) };
   } catch (error) {
     try {
       await client.close(opened.sessionId);

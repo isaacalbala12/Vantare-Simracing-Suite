@@ -7,6 +7,10 @@ import { recordedClassificationOriginal } from "./strategy-recorded-corrections"
 import type { RecordedCorrectionsController } from "./use-recorded-corrections";
 import "./strategy-recorded-revisions.css";
 
+function recordedStintTime(timestamp: string): string {
+  return timestamp.slice(timestamp.indexOf("T") + 1);
+}
+
 /** Source revision inspection never adopts a different revision into the race. */
 export function StrategyRecordedRevisions({ controller, sessions, sessionLabels, selectedRevisions = [], busy, configurationSaved, configurationDirty, onSources, onPendingChange, t }: {
   readonly controller: RecordedCorrectionsController; readonly sessions: readonly RecordedSession[];
@@ -20,7 +24,8 @@ export function StrategyRecordedRevisions({ controller, sessions, sessionLabels,
   const revision = editor?.current.revision;
   const familyUses = revision?.snapshot.familyUses ?? [];
   const classUses = revision?.snapshot.classifications ?? [];
-  const correctionCount = (revision?.snapshot.corrections.length ?? 0) + familyUses.length + classUses.length;
+  const stintBoundaries = revision?.snapshot.stintBoundaries ?? [];
+  const correctionCount = (revision?.snapshot.corrections.length ?? 0) + familyUses.length + classUses.length + stintBoundaries.length;
   const locked = busy || controller.busy;
   const navigatingBlocked = locked || controller.unresolved || reason !== "";
   // The open session alone is never the race selection. Locate the race ref by
@@ -95,7 +100,11 @@ export function StrategyRecordedRevisions({ controller, sessions, sessionLabels,
                 {prepared.request.field === "WeatherConditions" ? <p>{t("strategy.classification.weatherHint")}</p> : null}
               </> : <p>{t("strategy.classification.unavailable")}</p>}
             </article>;
-          })}</div>
+          })}{stintBoundaries.map(prepared => <article key={prepared.correctionId} className="strategy-recorded-revisions__change">
+            <strong>{t("strategy.stints.stint")} {prepared.original.stintNumber}</strong>
+            <dl><div><dt>{t("strategy.data.original")}</dt><dd><time dateTime={prepared.original.timestamp}>{recordedStintTime(prepared.original.timestamp)}</time> · {t(`strategy.stints.cause.${prepared.original.cause}`)}</dd></div><div><dt>{t("strategy.data.correction")}</dt><dd>{prepared.request.operation === "remove_stint_boundary" ? t("strategy.stints.remove") : <><time dateTime={prepared.request.replacement!.anchor.timestamp}>{recordedStintTime(prepared.request.replacement!.anchor.timestamp)}</time> · {t(`strategy.stints.cause.${prepared.request.replacement!.cause}`)}</>}</dd></div></dl>
+            <p>{prepared.request.reason}</p><p>{t("strategy.stints.pitIndependent")}</p>
+          </article>)}</div>
           {correctionCount === 0 ? <p className="strategy-recorded-data__muted">{t("strategy.history.noCorrections")}</p> : null}
         </>}
       </section>

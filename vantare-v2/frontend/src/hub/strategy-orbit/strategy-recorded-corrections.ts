@@ -1,5 +1,5 @@
 import type { AnalysisClient, AnalysisSaveRequest } from "../../strategy/analysis-client";
-import { analysisClassificationFieldForMetadataKey, analysisIdentityClassificationFields, analysisIdentityCombinationKey, analysisIdentityFieldForMetadataKey, analysisLapInstant, parseAnalysisCanonicalCombination, parseAnalysisClassificationCorrection, parseAnalysisClassificationCorrections, parseAnalysisClassificationOriginal, parseAnalysisClassificationReason, parseAnalysisFamilyCorrection, parseAnalysisFamilyCorrections, parseAnalysisLapTarget, type AnalysisClassificationCorrection, type AnalysisClassificationField, type AnalysisCombination, type AnalysisCorrectableFamily, type AnalysisFamilyCorrection, type AnalysisLapPage, type AnalysisLapTarget, parseAnalysisCorrection, parseAnalysisSaveCommand, sameAnalysisBase, type AnalysisCorrection, type AnalysisPage, type AnalysisScalar, type AnalysisStoreResult } from "../../strategy/analysis-contract";
+import { analysisClassificationFieldForMetadataKey, analysisIdentityClassificationFields, analysisIdentityCombinationKey, analysisIdentityFieldForMetadataKey, analysisLapInstant, parseAnalysisCanonicalCombination, parseAnalysisClassificationCorrection, parseAnalysisClassificationCorrections, parseAnalysisClassificationOriginal, parseAnalysisClassificationReason, parseAnalysisFamilyCorrection, parseAnalysisFamilyCorrections, parseAnalysisLapTarget, parseAnalysisStintBoundaryCorrection, parseAnalysisStintBoundaryCorrections, type AnalysisClassificationCorrection, type AnalysisClassificationField, type AnalysisCombination, type AnalysisCorrectableFamily, type AnalysisFamilyCorrection, type AnalysisLapPage, type AnalysisLapTarget, type AnalysisStintBoundary, type AnalysisStintBoundaryAnchor, type AnalysisStintBoundaryCorrection, type AnalysisStintBoundaryTarget, parseAnalysisCorrection, parseAnalysisSaveCommand, sameAnalysisBase, type AnalysisCorrection, type AnalysisPage, type AnalysisScalar, type AnalysisStoreResult } from "../../strategy/analysis-contract";
 import type { RecordedSession } from "./strategy-recorded-session";
 
 /** Explicit revision only. Reading a historical parent never changes the plan. */
@@ -41,12 +41,13 @@ export function replaceRecordedCorrection(active: readonly AnalysisCorrection[],
  * Classifications default to the loaded snapshot's requests so older callers
  * keep decisions; withdrawing or restoring passes the desired set explicitly
  * (including []). Output is fully cloned: later input edits cannot modify it. */
-export function recordedCorrectionSave(session: RecordedSession, current: AnalysisStoreResult, corrections: readonly AnalysisCorrection[], reason: string, commandId = `recorded-correction:${globalThis.crypto.randomUUID()}`, familyUses: readonly AnalysisFamilyCorrection[] = current.revision.snapshot.familyUses?.map(item => item.request) ?? [], classifications: readonly AnalysisClassificationCorrection[] = current.revision.snapshot.classifications?.map(item => item.request) ?? []): AnalysisSaveRequest {
+export function recordedCorrectionSave(session: RecordedSession, current: AnalysisStoreResult, corrections: readonly AnalysisCorrection[], reason: string, commandId = `recorded-correction:${globalThis.crypto.randomUUID()}`, familyUses: readonly AnalysisFamilyCorrection[] = current.revision.snapshot.familyUses?.map(item => item.request) ?? [], classifications: readonly AnalysisClassificationCorrection[] = current.revision.snapshot.classifications?.map(item => item.request) ?? [], stintBoundaries: readonly AnalysisStintBoundaryCorrection[] = current.revision.snapshot.stintBoundaries?.map(item => item.request) ?? []): AnalysisSaveRequest {
   if (!sameAnalysisBase(current.revision.snapshot.base, session.base)) throw new Error("recorded_correction_base_mismatch");
   if (current.revision.revisionId !== current.headId) throw new Error("recorded_revision_conflict");
-  if (corrections.length + familyUses.length + classifications.length > 256) throw new Error("recorded_correction_limit");
+  if (corrections.length + familyUses.length + classifications.length + stintBoundaries.length > 256) throw new Error("recorded_correction_limit");
   parseAnalysisFamilyCorrections(familyUses, session.base);
   parseAnalysisClassificationCorrections(classifications, session.base);
+  parseAnalysisStintBoundaryCorrections(stintBoundaries, session.base);
   const targets = new Set<string>();
   for (const correction of corrections) {
     parseAnalysisCorrection(correction);
@@ -56,7 +57,32 @@ export function recordedCorrectionSave(session: RecordedSession, current: Analys
     targets.add(key);
   }
   const command = parseAnalysisSaveCommand({ expectedRevision: current.headId, commandId, reason, localAuthorId: "local-user" });
-  return structuredClone({ sessionId: session.opened.sessionId, base: session.base, corrections, familyUses, classifications, command });
+  return structuredClone({ sessionId: session.opened.sessionId, base: session.base, corrections, familyUses, classifications, stintBoundaries, command });
+}
+
+function sameStintTarget(a: AnalysisStintBoundaryTarget, b: AnalysisStintBoundaryTarget): boolean {
+  return a.stintNumber === b.stintNumber && a.cause === b.cause && analysisLapInstant(a.timestamp) === analysisLapInstant(b.timestamp);
+}
+
+/** Builds one proposal against an original native boundary. Save revalidates
+ * the source, target and selected anchor before writing. */
+export function recordedStintBoundaryCorrection(session: RecordedSession, current: AnalysisStoreResult, expected: AnalysisStintBoundary, operation: "set_stint_boundary" | "remove_stint_boundary", reason: string, anchor?: AnalysisStintBoundaryAnchor, cause?: AnalysisStintBoundary["cause"]): AnalysisStintBoundaryCorrection {
+  if (!sameAnalysisBase(current.revision.snapshot.base, session.base)) throw new Error("recorded_correction_base_mismatch");
+  const originals = (session.stintBoundaries ?? []).filter(item => sameStintTarget(item, expected));
+  if (originals.length !== 1) throw new Error("recorded_target_unavailable");
+  const target = { stintNumber: expected.stintNumber, timestamp: expected.timestamp, cause: expected.cause };
+  const replacement = operation === "set_stint_boundary" ? { anchor, cause } : undefined;
+  return structuredClone(parseAnalysisStintBoundaryCorrection({ operation, base: session.base, target, expected: originals[0], replacement, reason }));
+}
+
+export function replaceRecordedStintBoundaryCorrection(active: readonly AnalysisStintBoundaryCorrection[], correction: AnalysisStintBoundaryCorrection): readonly AnalysisStintBoundaryCorrection[] {
+  const parsed = parseAnalysisStintBoundaryCorrection(correction);
+  parseAnalysisStintBoundaryCorrections(active, parsed.base);
+  return structuredClone(parseAnalysisStintBoundaryCorrections([...active.filter(item => !sameStintTarget(item.target, parsed.target)), parsed], parsed.base));
+}
+
+export function removeRecordedStintBoundaryCorrection(active: readonly AnalysisStintBoundaryCorrection[], target: AnalysisStintBoundaryTarget): readonly AnalysisStintBoundaryCorrection[] {
+  return structuredClone(active.filter(item => !sameStintTarget(item.target, target)));
 }
 
 // RAW original for one field from the OPEN session metadata: same presence,

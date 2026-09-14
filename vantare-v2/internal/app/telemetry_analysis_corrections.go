@@ -5,15 +5,18 @@ import (
 	"errors"
 
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
 type TelemetryAnalysisCorrectionPreparation struct {
-	Base                         telemetryanalysis.SourceAnalysisRef    `json:"base"`
-	BaseDigest                   string                                 `json:"baseDigest"`
-	BaseRevisionID               string                                 `json:"baseRevisionId"`
-	EditableChannelIDs           []string                               `json:"editableChannelIds"`
-	Combination                  *telemetryanalysis.CombinationIdentity `json:"combination,omitempty"`
-	CombinationUnavailableReason string                                 `json:"combinationUnavailableReason,omitempty"`
+	Base                         telemetryanalysis.SourceAnalysisRef     `json:"base"`
+	BaseDigest                   string                                  `json:"baseDigest"`
+	BaseRevisionID               string                                  `json:"baseRevisionId"`
+	EditableChannelIDs           []string                                `json:"editableChannelIds"`
+	StintBoundaries              []strategyprojection.StintBoundary      `json:"stintBoundaries"`
+	StintAnchors                 []telemetryanalysis.StintBoundaryAnchor `json:"stintAnchors"`
+	Combination                  *telemetryanalysis.CombinationIdentity  `json:"combination,omitempty"`
+	CombinationUnavailableReason string                                  `json:"combinationUnavailableReason,omitempty"`
 }
 
 // withCorrectionInput keeps authorization, lifecycle and the open-session lock
@@ -95,7 +98,12 @@ func (service *TelemetryAnalysisService) PrepareCorrections(ctx context.Context,
 		if err != nil {
 			return publicTelemetryAnalysisError(err)
 		}
-		result = TelemetryAnalysisCorrectionPreparation{Base: input.Base, BaseDigest: baseDigest, BaseRevisionID: initial.SnapshotID, EditableChannelIDs: []string{}}
+		result = TelemetryAnalysisCorrectionPreparation{
+			Base: input.Base, BaseDigest: baseDigest, BaseRevisionID: initial.SnapshotID,
+			EditableChannelIDs: []string{},
+			StintBoundaries:    append([]strategyprojection.StintBoundary{}, input.Validity.Temporal.StintBoundaries...),
+			StintAnchors:       telemetryanalysis.EligibleStintBoundaryAnchors(input.Validity),
+		}
 		// Inspection can expose channels outside the bounded correction read.
 		// Advertise only channels backed by prepared samples and known units.
 		preparedChannels := make(map[string]bool)

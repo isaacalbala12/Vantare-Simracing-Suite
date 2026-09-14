@@ -27,10 +27,10 @@ Evidencia de los gaps: [matriz T02](../evidence/isa-1092/README.md),
 `StrategyRecordedWorkflow.tsx` bajo `frontend/src/hub/strategy-orbit/`.
 No repetir T12 ni declarar terminadas las entradas sólo por su posición en el DAG.
 
-**Siguiente corte elegible:** T13e expone preparación y guardado de límites por
-el servicio autorizado y el cliente nativo, y conecta la edición avanzada a la
-vista de Datos. Debe reutilizar Save/Resolve y la adopción explícita de revisión;
-la aceptación visual final permanece en T18.
+**Siguiente corte elegible:** T02d inicia el cierre de la matriz de entradas con
+horizonte y recursos, siguiendo cortes pequeños hasta T02g/T06/T07 antes del
+contrato único de resultados T03. T13a–e queda cerrado localmente; la aceptación
+visual de sus pantallas permanece en T18 y el recorrido Wails en T22.
 En paralelo lógico, preparar inventario T02 restante y preflight documental T22a;
 la ejecución física sigue siendo de un único escritor por worktree.
 
@@ -198,8 +198,8 @@ archivos a ciegas ni ampliar el alcance de una issue histórica documental.
 | 1b · #1208 | Alinear canales continuos LMU al reloj de eventos mediante `GPS Time`, corregir cobertura y sustituir el join ordinal de `fuel_jump`. | RED/GREEN S125/S266/S026; sin stints fantasma ni muestreo desplazado; ausencia o puente inválido fallan cerrados; banco real con hashes intactos. |
 | 2 · T13a / #1211 · cerrado localmente | Contrato mínimo de `set_stint_boundary` y `remove_stint_boundary`: sólo límites originales, ancla directa `lap_event`, validación compartida, snapshot/versión y rollback. Distingue límite observado Analysis de restricción del plan T16. | Decisión, compatibilidad v1–v4, consumidores y RED de T13b fijados en `stint-boundary-corrections-t13.md`; sin otro motor de segmentación. |
 | 3 · T13b / #1212 · cerrado localmente | Tipos, constructor y validación pura en dos paths. | RED/GREEN para target, reloj, cobertura, forma, colisión, inversión, frontera terminal, orden e inmutabilidad; sin persistencia ni derivados. |
-| 3b · T13c | Representación y custodia: guardado mixto con valor/uso/clasificación, replay/Resolve/Restore, cuota y guardado incierto. | Snapshots anteriores sin cambio de bytes/digest; rechazo atómico de conflicto y grupos desconocidos; rollback preserva historial. |
-| 4 · T13d→e | Vista/derivación por familia y servicio; después contrato/cliente/UI avanzada y banco real de preparación. | Mover límite recalcula sólo dependientes y mantiene totales/invariantes respaldados; adopción explícita, referencias exactas, cancelar/respuesta tardía y original intacto. A08 local; visual/nativo en T18/T22. |
+| 3b · T13c / #1214 · cerrado localmente | Representación y custodia: guardado mixto con valor/uso/clasificación, replay/Resolve/Restore, cuota y guardado incierto. | Snapshots anteriores sin cambio de bytes/digest; rechazo atómico de conflicto y grupos desconocidos; rollback preserva historial. |
+| 4 · T13d→e / #1216/#1220 · cerrado localmente | Vista/derivación, servicio, contrato TS, cliente, edición avanzada e historial sobre el flujo existente. | Mover o retirar recalcula dependientes, conserva invariantes/original y se guarda, recupera, restaura, proyecta y adopta por las rutas existentes. A08 local; visual/nativo en T18/T22. |
 | 5 · T02d→g + T06/T07 | Cerrar matriz campo→origen→documento→adapter→solver→replay→UI. Cortes separados: horizonte/recursos; inventario/curvas; servicios/formación; perfiles/disponibilidad/conducción. Conectar cada grupo a reglas/pilotos del asistente. | Cada campo respaldado llega al solve y evaluación final o se rechaza con razón; cero/ausente/no aplicable distintos. Delta entre pilotos sólo altera ritmo. No promedio que elimine límites, inventario o perfiles antes de optimizar. |
 | 6 · T03 | Contrato único de resultado, readiness, obsolescencia/correlación y errores. Reutilizar evaluación final; reproducir huecos reales de estados. | Casos óptimo demostrado, factible no probado, parcial, inviable, cancelado y presupuesto agotado; respuesta antigua no pasa a vigente; cálculo pendiente de carga no anuncia éxito. |
 | 7 · T14a→c | Inventario de snapshot de plan y recuperación de comando tras reinicio; persistencia/compatibilidad; luego cliente y Revisiones distinguiendo fuente y plan. | A15/A16: aceptar A, crear B, cerrar/reabrir A exacta con reglas/pilotos/constraints/versiones/resultado; fuente ausente conserva consulta, no derivación. Sin sustituir por HEAD/base ni reintentar escritura incierta a ciegas. |

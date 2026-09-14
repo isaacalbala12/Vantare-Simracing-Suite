@@ -63,6 +63,22 @@ func stintCorrectionExample(t *testing.T) (SourceAnalysisRef, LapValidityAnalysi
 	return base, LapValidityAnalysis{SessionID: base.SessionID, ComputationVersion: base.AnalysisVersion, Temporal: temporal, Laps: laps}
 }
 
+func TestEligibleStintBoundaryAnchorsExposeOnlyValidatedLapEnds(t *testing.T) {
+	_, validity := stintCorrectionExample(t)
+	anchors := EligibleStintBoundaryAnchors(validity)
+	if len(anchors) != 4 || anchors[0].LapNumber != 1 || anchors[3].LapNumber != 4 {
+		t.Fatalf("eligible anchors = %+v", anchors)
+	}
+	invalid := cloneValidityForStintTest(validity)
+	invalid.Temporal.LapBoundaries[2].Source = strategyprojection.LapBoundarySourceLapDistReset
+	anchors = EligibleStintBoundaryAnchors(invalid)
+	for _, anchor := range anchors {
+		if anchor.LapNumber == 2 {
+			t.Fatalf("non-event anchor exposed: %+v", anchors)
+		}
+	}
+}
+
 func TestPrepareStintBoundaryCorrectionSetCanonicalSetAndRemove(t *testing.T) {
 	base, validity := stintCorrectionExample(t)
 	original := validity.Temporal.StintBoundaries[0]

@@ -10,10 +10,12 @@ const a = "a".repeat(64), b = "b".repeat(64), c = "c".repeat(64), d = "d".repeat
 function fixture() {
   const base = { sessionId: "source", contentSha256: a, sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "lap-validity.v1", segmentationDigest: b };
   const channel = { id: "fuel", source_name: "Fuel", unit: { symbol: "L", quality: "valid" as const }, sampling: { kind: "event_timestamped" as const, origin: "source_timestamp" as const }, columns: [{ name: "value", type: "number" as const }] };
-  const session: RecordedSession = { editableChannelIds: ["fuel"], candidateId: "candidate", opened: { sessionId: "handle", session: { schema_version: 1, id: "source", channels: [channel], metadata: [] } }, base, combinationId: "combo", revision: { sessionId: "source", baseDigest: c, revisionId: a, snapshotId: a } };
+  const boundary = { stintNumber: 2, timestamp: "2026-09-10T00:03:00Z", cause: "pit" as const, presence: "valid" as const, provenance: { kind: "observed", sourceId: "source" }, confidence: { sampleSize: 1, computationVersion: "lap-validity.v1" } };
+  const anchor = { lapNumber: 4, timestamp: "2026-09-10T00:06:00Z" };
+  const session: RecordedSession = { editableChannelIds: ["fuel"], stintBoundaries: [boundary], stintAnchors: [anchor], candidateId: "candidate", opened: { sessionId: "handle", session: { schema_version: 1, id: "source", channels: [channel], metadata: [] } }, base, combinationId: "combo", revision: { sessionId: "source", baseDigest: c, revisionId: a, snapshotId: a } };
   const current: AnalysisStoreResult = { headId: a, revision: { revisionId: a, parentRevisionId: "", command: { expectedRevision: "", commandId: "", reason: "", localAuthorId: "" }, commandDigest: "", createdAt: "", snapshot: { contractVersion: "analysis.sample-snapshot.v1", base, snapshotId: a, corrections: [] } } };
   const page: AnalysisPage = { channel_id: "fuel", start: 0, sampling: channel.sampling, samples: [{ index: 4, values: [{ column: "value", present: true, quality: "unknown", scalar: { kind: "number", number: 12 } }] }] };
-  const saved = (request: AnalysisSaveRequest): AnalysisStoreResult => ({ headId: b, revision: { revisionId: b, parentRevisionId: a, command: request.command, commandDigest: c, createdAt: "2026-09-10T00:00:00Z", snapshot: { ...current.revision.snapshot, snapshotId: b, contractVersion: request.classifications?.length ? "analysis.mixed-snapshot.v3" : request.familyUses?.length ? "analysis.observation-snapshot.v2" : "analysis.sample-snapshot.v1", familyUses: request.familyUses?.map(item => ({ baseId: c, correctionId: b, request: item, original: item.expected, corrected: { ...item.expected, included: item.included, exclusionReasons: item.included ? [] : [...(item.expected.exclusionReasons ?? []), "manual_exclusion"] } })), classifications: request.classifications?.map(item => ({ baseId: c, correctionId: b, request: item, original: item.expectedOriginal, corrected: item.replacement })), corrections: request.corrections.map(item => ({ baseId: c, correctionId: b, request: item, original: item.expected, corrected: { ...item.expected, scalar: item.replacement } })) } } });
+  const saved = (request: AnalysisSaveRequest): AnalysisStoreResult => ({ headId: b, revision: { revisionId: b, parentRevisionId: a, command: request.command, commandDigest: c, createdAt: "2026-09-10T00:00:00Z", snapshot: { ...current.revision.snapshot, snapshotId: b, contractVersion: request.stintBoundaries?.length ? "analysis.mixed-snapshot.v5" : request.classifications?.length ? "analysis.mixed-snapshot.v3" : request.familyUses?.length ? "analysis.observation-snapshot.v2" : "analysis.sample-snapshot.v1", familyUses: request.familyUses?.map(item => ({ baseId: c, correctionId: b, request: item, original: item.expected, corrected: { ...item.expected, included: item.included, exclusionReasons: item.included ? [] : [...(item.expected.exclusionReasons ?? []), "manual_exclusion"] } })), classifications: request.classifications?.map(item => ({ baseId: c, correctionId: b, request: item, original: item.expectedOriginal, corrected: item.replacement })), ...(request.stintBoundaries?.length ? { stintBoundaries: request.stintBoundaries.map(item => ({ baseId: c, correctionId: b, request: item, original: item.expected })) } : {}), corrections: request.corrections.map(item => ({ baseId: c, correctionId: b, request: item, original: item.expected, corrected: { ...item.expected, scalar: item.replacement } })) } } });
   const client = { laps: vi.fn(), resolve: vi.fn(), load: vi.fn().mockResolvedValue(current), page: vi.fn().mockResolvedValue(page), save: vi.fn().mockImplementation(async (request: AnalysisSaveRequest) => saved(request)), project: vi.fn().mockResolvedValue({ combinationId: "combo", sourceRevisions: [{ ...session.revision, revisionId: b, snapshotId: b }] }), close: vi.fn() };
   const onAdopt = vi.fn().mockResolvedValue(undefined);
   const hook = renderHook(() => useRecordedCorrections(client as unknown as AnalysisClient, onAdopt));
@@ -22,9 +24,22 @@ function fixture() {
     await act(() => hook.result.current.page("fuel", 0));
     act(() => hook.result.current.edit(4, "value", { kind: "number", number: 0 }, "Checked sample"));
   }
-  return { ...hook, client, onAdopt, session, current, saved, edit };
+  return { ...hook, client, onAdopt, session, current, saved, edit, boundary, anchor };
 }
 describe("recorded corrections owner", () => {
+  it("keeps stint proposals in the existing save and discard lifecycle", async () => {
+    const f = fixture();
+    await act(() => f.result.current.load(f.session));
+    act(() => f.result.current.editStint(f.boundary, "set_stint_boundary", "Driver swap", f.anchor, "driver_change"));
+    expect(f.result.current.editor?.stintBoundaries).toHaveLength(1);
+    act(() => f.result.current.discard());
+    expect(f.result.current.editor?.stintBoundaries).toEqual([]);
+    act(() => f.result.current.editStint(f.boundary, "remove_stint_boundary", "False split"));
+    await act(() => f.result.current.save("Reviewed stints"));
+    expect(f.client.save).toHaveBeenCalledWith(expect.objectContaining({ stintBoundaries: [expect.objectContaining({ operation: "remove_stint_boundary" })] }), expect.any(AbortSignal));
+    expect(f.result.current.editor?.stintBoundaries[0].operation).toBe("remove_stint_boundary");
+    expect(f.onAdopt).not.toHaveBeenCalled();
+  });
   it("resolves a durable command without replaying it or adopting the current head", async () => {
     const f = fixture();
     f.client.save.mockRejectedValueOnce(new Error("confirmation lost"));

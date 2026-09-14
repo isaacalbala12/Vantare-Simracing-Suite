@@ -53,12 +53,13 @@ export type AnalysisLapTarget = Readonly<{ number: number; start: string; end: s
 export type AnalysisFamilyCorrection = Readonly<{ base: AnalysisBase; target: AnalysisLapTarget; family: AnalysisCorrectableFamily; expected: AnalysisFamilyUse; included: boolean; reason: string }>;
 export type AnalysisPreparedFamilyCorrection = Readonly<{ baseId: string; correctionId: string; request: AnalysisFamilyCorrection; original: AnalysisFamilyUse; corrected: AnalysisFamilyUse }>;
 export type AnalysisSnapshot = Readonly<{
-  contractVersion: "analysis.sample-snapshot.v1" | "analysis.observation-snapshot.v2" | "analysis.mixed-snapshot.v3" | "analysis.mixed-snapshot.v4";
+  contractVersion: "analysis.sample-snapshot.v1" | "analysis.observation-snapshot.v2" | "analysis.mixed-snapshot.v3" | "analysis.mixed-snapshot.v4" | "analysis.mixed-snapshot.v5";
   base: AnalysisBase;
   snapshotId: string;
   corrections: readonly AnalysisPreparedCorrection[];
   familyUses?: readonly AnalysisPreparedFamilyCorrection[];
   classifications?: readonly AnalysisPreparedClassificationCorrection[];
+  stintBoundaries?: readonly AnalysisPreparedStintBoundaryCorrection[];
   canonicalCombination?: AnalysisCombination;
 }>;
 export type AnalysisSaveCommand = Readonly<{
@@ -85,6 +86,8 @@ export type AnalysisPreparation = Readonly<{
   baseRevisionId: string;
   baseDigest?: string;
   editableChannelIds?: readonly string[];
+  stintBoundaries?: readonly AnalysisStintBoundary[];
+  stintAnchors?: readonly AnalysisStintBoundaryAnchor[];
   combination?: AnalysisCombination;
   combinationUnavailableReason?: "metadata_unavailable";
 }>;
@@ -309,6 +312,26 @@ export function parseAnalysisPreparation(value: unknown): AnalysisPreparation {
       seen.add(channel);
     }
   }
+  if (r.stintBoundaries !== undefined) {
+    const boundaries = list(r.stintBoundaries, "preparation.stintBoundaries");
+    const seen = new Set<string>();
+    for (const value of boundaries) {
+      const boundary = parseAnalysisStintBoundary(value);
+      const key = stintBoundaryKey(boundary);
+      if (seen.has(key)) throw new AnalysisProtocolError("preparation.stintBoundaries");
+      seen.add(key);
+    }
+  }
+  if (r.stintAnchors !== undefined) {
+    const anchors = list(r.stintAnchors, "preparation.stintAnchors");
+    const seen = new Set<string>();
+    for (const value of anchors) {
+      const anchor = parseAnalysisStintBoundaryAnchor(value);
+      const key = JSON.stringify([anchor.lapNumber, String(analysisLapInstant(anchor.timestamp))]);
+      if (seen.has(key)) throw new AnalysisProtocolError("preparation.stintAnchors");
+      seen.add(key);
+    }
+  }
   if (r.combination !== undefined) {
     const combination = record(r.combination, "preparation.combination");
     for (const field of ["id", "simId", "trackName", "trackLayout", "carName", "carClass"]) text(combination[field], `preparation.combination.${field}`);
@@ -351,20 +374,24 @@ export function parseAnalysisCanonicalCombination(value: unknown): AnalysisCombi
 }
 function snapshot(value: unknown): AnalysisSnapshot {
   const r = record(value, "snapshot");
-  if (r.contractVersion !== "analysis.sample-snapshot.v1" && r.contractVersion !== "analysis.observation-snapshot.v2" && r.contractVersion !== "analysis.mixed-snapshot.v3" && r.contractVersion !== "analysis.mixed-snapshot.v4") {
+  if (r.contractVersion !== "analysis.sample-snapshot.v1" && r.contractVersion !== "analysis.observation-snapshot.v2" && r.contractVersion !== "analysis.mixed-snapshot.v3" && r.contractVersion !== "analysis.mixed-snapshot.v4" && r.contractVersion !== "analysis.mixed-snapshot.v5") {
     throw new AnalysisProtocolError("snapshot.contractVersion");
   }
   const isV4 = r.contractVersion === "analysis.mixed-snapshot.v4";
-  if (!isV4 && r.canonicalCombination !== undefined) {
+  const isV5 = r.contractVersion === "analysis.mixed-snapshot.v5";
+  if (!isV4 && !isV5 && r.canonicalCombination !== undefined) {
     throw new AnalysisProtocolError("snapshot.canonicalCombination");
   }
-  const target = isV4 ? parseAnalysisCanonicalCombination(r.canonicalCombination) : undefined;
+  const target = r.canonicalCombination === undefined ? undefined : parseAnalysisCanonicalCombination(r.canonicalCombination);
+  if (isV4 && target === undefined) throw new AnalysisProtocolError("snapshot.canonicalCombination");
   const base = parseAnalysisBase(r.base);
   digest(r.snapshotId, "snapshot.snapshotId");
   const corrections = list(r.corrections, "snapshot.corrections");
   const families = r.familyUses === undefined ? [] : list(r.familyUses, "snapshot.familyUses");
   const classes = r.classifications === undefined ? [] : list(r.classifications, "snapshot.classifications");
-  if (corrections.length + families.length + classes.length > 256) {
+  const stints = r.stintBoundaries === undefined ? [] : list(r.stintBoundaries, "snapshot.stintBoundaries");
+  if (!isV5 && r.stintBoundaries !== undefined) throw new AnalysisProtocolError("snapshot.contractVersion");
+  if (corrections.length + families.length + classes.length + stints.length > 256) {
     throw new AnalysisProtocolError("snapshot.quota");
   }
   if (r.contractVersion === "analysis.sample-snapshot.v1" && (families.length > 0 || classes.length > 0)) {
@@ -376,6 +403,7 @@ function snapshot(value: unknown): AnalysisSnapshot {
   if (r.contractVersion === "analysis.mixed-snapshot.v3" && classes.length === 0) {
     throw new AnalysisProtocolError("snapshot.contractVersion");
   }
+  if (isV5 && stints.length === 0) throw new AnalysisProtocolError("snapshot.contractVersion");
   const targets = new Set<string>();
   for (const item of corrections) {
     const c = record(item, "preparedCorrection");
@@ -421,7 +449,7 @@ function snapshot(value: unknown): AnalysisSnapshot {
     const parsed = parseAnalysisPreparedClassification(item);
     classRequests.push(parsed.request);
     if (parsed.request.canonicalCombinationId !== undefined) {
-      if (!isV4 || target === undefined || parsed.request.canonicalCombinationId !== target.id) {
+      if ((!isV4 && !isV5) || target === undefined || parsed.request.canonicalCombinationId !== target.id) {
         throw new AnalysisProtocolError("classification.reference");
       }
       identityActive = true;
@@ -431,9 +459,15 @@ function snapshot(value: unknown): AnalysisSnapshot {
     }
   }
   checkClassificationSet(classRequests, base, "snapshot.classifications");
-  if (isV4 && !identityActive) {
+  if ((isV4 || target !== undefined) && !identityActive) {
     throw new AnalysisProtocolError("snapshot.classifications");
   }
+  const stintRequests: AnalysisStintBoundaryCorrection[] = [];
+  for (const item of stints) {
+    const prepared = parseAnalysisPreparedStintBoundaryCorrection(item);
+    stintRequests.push(prepared.request);
+  }
+  parseAnalysisStintBoundaryCorrections(stintRequests, base);
   return r as unknown as AnalysisSnapshot;
 }
 export function parseAnalysisSaveCommand(value: unknown): AnalysisSaveCommand {
@@ -458,6 +492,7 @@ export function parseCorrectionStoreResult(value: unknown): AnalysisStoreResult 
       || s.corrections.length !== 0
       || (s.familyUses?.length ?? 0) !== 0
       || (s.classifications?.length ?? 0) !== 0
+      || (s.stintBoundaries?.length ?? 0) !== 0
       || ["expectedRevision", "commandId", "reason", "localAuthorId"].some((key) => command[key] !== "")) {
       throw new AnalysisProtocolError("revision.base");
     }
@@ -882,6 +917,22 @@ export type AnalysisStintBoundary = Readonly<{
   confidence: Readonly<{ sampleSize: number; computationVersion: string; rangeLower?: number; rangeUpper?: number; variance?: number }>;
   provenance: Readonly<{ kind: string; sourceId?: string; observedAt?: string }>;
 }>;
+export type AnalysisStintBoundaryTarget = Readonly<{ stintNumber: number; timestamp: string; cause: AnalysisStintBoundary["cause"] }>;
+export type AnalysisStintBoundaryAnchor = Readonly<{ lapNumber: number; timestamp: string }>;
+export type AnalysisStintBoundaryCorrection = Readonly<{
+  operation: "set_stint_boundary" | "remove_stint_boundary";
+  base: AnalysisBase;
+  target: AnalysisStintBoundaryTarget;
+  expected: AnalysisStintBoundary;
+  replacement?: Readonly<{ anchor: AnalysisStintBoundaryAnchor; cause: AnalysisStintBoundary["cause"] }>;
+  reason: string;
+}>;
+export type AnalysisPreparedStintBoundaryCorrection = Readonly<{
+  baseId: string;
+  correctionId: string;
+  request: AnalysisStintBoundaryCorrection;
+  original: AnalysisStintBoundary;
+}>;
 export type AnalysisLapCapability = Readonly<{ family: AnalysisCorrectableFamily; automaticIncluded: boolean; effectiveIncluded?: boolean; canInclude: boolean; canExclude: boolean; reason?: "target_unresolved" | "inclusion_requires_complete_coverage" }>;
 export type AnalysisLapInspection = Readonly<{ original: AnalysisLap; effective?: AnalysisLap; target?: AnalysisLapTarget; stintBoundary?: AnalysisStintBoundary; capabilities: readonly AnalysisLapCapability[] }>;
 export type AnalysisLapPage = Readonly<{ revisionId: string; headId: string; page: Readonly<{ base: AnalysisBase; snapshotId: string; start: number; total: number; laps: readonly AnalysisLapInspection[] }> }>;
@@ -899,7 +950,7 @@ function parseInspectedLap(value: unknown, original: boolean): AnalysisLap {
   for (const use of uses) { const parsed = parseAnalysisFamilyUse(use); if (original && parsed.correctionId) throw new AnalysisProtocolError("lap.originalCorrection"); }
   return r as unknown as AnalysisLap;
 }
-function parseInspectedStint(value: unknown): AnalysisStintBoundary {
+export function parseAnalysisStintBoundary(value: unknown): AnalysisStintBoundary {
   const r = record(value, "stintBoundary"); integer(r.stintNumber, "stintBoundary.number", 1);
   text(r.timestamp, "stintBoundary.timestamp", 64); analysisLapInstant(r.timestamp);
   oneOf(r.cause, ["pit", "fuel_jump", "tyre_change", "driver_change", "unknown"], "stintBoundary.cause");
@@ -913,6 +964,71 @@ function parseInspectedStint(value: unknown): AnalysisStintBoundary {
   if (provenance.observedAt !== undefined) { text(provenance.observedAt, "stintBoundary.observedAt", 64); analysisLapInstant(provenance.observedAt); }
   return r as unknown as AnalysisStintBoundary;
 }
+function stintBoundaryKey(value: AnalysisStintBoundary | AnalysisStintBoundaryTarget): string {
+  return JSON.stringify([value.stintNumber, String(analysisLapInstant(value.timestamp)), value.cause]);
+}
+function sameStintBoundary(a: AnalysisStintBoundary, b: AnalysisStintBoundary): boolean {
+  return stintBoundaryKey(a) === stintBoundaryKey(b)
+    && a.presence === b.presence
+    && a.provenance.kind === b.provenance.kind && a.provenance.sourceId === b.provenance.sourceId && a.provenance.observedAt === b.provenance.observedAt
+    && a.confidence.sampleSize === b.confidence.sampleSize && a.confidence.computationVersion === b.confidence.computationVersion
+    && a.confidence.rangeLower === b.confidence.rangeLower && a.confidence.rangeUpper === b.confidence.rangeUpper && a.confidence.variance === b.confidence.variance;
+}
+export function parseAnalysisStintBoundaryAnchor(value: unknown): AnalysisStintBoundaryAnchor {
+  const r = record(value, "stintAnchor"); integer(r.lapNumber, "stintAnchor.lapNumber");
+  text(r.timestamp, "stintAnchor.timestamp", 64); analysisLapInstant(r.timestamp);
+  return r as unknown as AnalysisStintBoundaryAnchor;
+}
+export function parseAnalysisStintBoundaryCorrection(value: unknown): AnalysisStintBoundaryCorrection {
+  const r = record(value, "stintCorrection");
+  oneOf(r.operation, ["set_stint_boundary", "remove_stint_boundary"], "stintCorrection.operation");
+  const base = parseAnalysisBase(r.base);
+  const target = record(r.target, "stintCorrection.target"); integer(target.stintNumber, "stintCorrection.target.stintNumber", 2);
+  text(target.timestamp, "stintCorrection.target.timestamp", 64); analysisLapInstant(target.timestamp);
+  oneOf(target.cause, ["pit", "fuel_jump", "tyre_change", "driver_change", "unknown"], "stintCorrection.target.cause");
+  const expected = parseAnalysisStintBoundary(r.expected);
+  text(r.reason, "stintCorrection.reason", 1024);
+  if (stintBoundaryKey(target as unknown as AnalysisStintBoundaryTarget) !== stintBoundaryKey(expected)) throw new AnalysisProtocolError("stintCorrection.expected");
+  if (r.operation === "set_stint_boundary") {
+    const replacement = record(r.replacement, "stintCorrection.replacement");
+    const anchor = parseAnalysisStintBoundaryAnchor(replacement.anchor);
+    oneOf(replacement.cause, ["pit", "fuel_jump", "tyre_change", "driver_change", "unknown"], "stintCorrection.replacement.cause");
+    if (analysisLapInstant(anchor.timestamp) === analysisLapInstant(expected.timestamp) && replacement.cause === expected.cause) throw new AnalysisProtocolError("stintCorrection.replacement");
+  } else if (r.replacement !== undefined) throw new AnalysisProtocolError("stintCorrection.replacement");
+  return { ...(r as unknown as AnalysisStintBoundaryCorrection), base };
+}
+export function parseAnalysisStintBoundaryCorrections(value: unknown, base: AnalysisBase): readonly AnalysisStintBoundaryCorrection[] {
+  const items = list(value, "stintCorrections");
+  if (items.length > 256) throw new AnalysisProtocolError("stintCorrections.limit");
+  const seen = new Set<string>();
+  const parsed = items.map(parseAnalysisStintBoundaryCorrection);
+  for (const item of parsed) {
+    if (!sameAnalysisBase(item.base, base)) throw new AnalysisProtocolError("stintCorrections.base");
+    const key = stintBoundaryKey(item.target);
+    if (seen.has(key)) throw new AnalysisProtocolError("stintCorrections.duplicate");
+    seen.add(key);
+  }
+  return parsed;
+}
+export function sameAnalysisStintBoundaryCorrections(a: readonly AnalysisStintBoundaryCorrection[], b: readonly AnalysisStintBoundaryCorrection[]): boolean {
+  if (a.length !== b.length) return false;
+  const right = new Map(b.map(item => [stintBoundaryKey(item.target), item]));
+  return a.every(item => {
+    const other = right.get(stintBoundaryKey(item.target));
+    const sameReplacement = item.replacement === undefined ? other?.replacement === undefined : Boolean(other?.replacement
+      && item.replacement.anchor.lapNumber === other.replacement.anchor.lapNumber
+      && analysisLapInstant(item.replacement.anchor.timestamp) === analysisLapInstant(other.replacement.anchor.timestamp)
+      && item.replacement.cause === other.replacement.cause);
+    return Boolean(other && sameReplacement && item.operation === other.operation && item.reason === other.reason && sameAnalysisBase(item.base, other.base)
+      && sameStintBoundary(item.expected, other.expected));
+  });
+}
+function parseAnalysisPreparedStintBoundaryCorrection(value: unknown): AnalysisPreparedStintBoundaryCorrection {
+  const r = record(value, "preparedStintCorrection"); digest(r.baseId, "stintCorrection.baseId"); digest(r.correctionId, "stintCorrection.correctionId");
+  const request = parseAnalysisStintBoundaryCorrection(r.request), original = parseAnalysisStintBoundary(r.original);
+  if (!sameStintBoundary(request.expected, original)) throw new AnalysisProtocolError("stintCorrection.original");
+  return r as unknown as AnalysisPreparedStintBoundaryCorrection;
+}
 export function parseAnalysisLapPage(value: unknown): AnalysisLapPage {
   const r = record(value, "lapPage"); digest(r.revisionId, "lapPage.revisionId"); digest(r.headId, "lapPage.headId");
   const page = record(r.page, "lapPage.page"); parseAnalysisBase(page.base); digest(page.snapshotId, "lapPage.snapshotId");
@@ -925,7 +1041,7 @@ export function parseAnalysisLapPage(value: unknown): AnalysisLapPage {
     const target = row.target === undefined ? undefined : parseAnalysisLapTarget(row.target);
     const matches = (lap: AnalysisLap) => target && lap.start !== undefined && target.number === lap.number && analysisLapInstant(target.start) === analysisLapInstant(lap.start) && analysisLapInstant(target.end) === analysisLapInstant(lap.end);
     if ((target && !matches(original)) || (effective && !matches(effective))) throw new AnalysisProtocolError("lapPage.targetMismatch");
-    if (row.stintBoundary !== undefined) { const boundary = parseInspectedStint(row.stintBoundary); if (original.start === undefined || analysisLapInstant(boundary.timestamp) > analysisLapInstant(original.start)) throw new AnalysisProtocolError("lapPage.stintBoundary"); }
+    if (row.stintBoundary !== undefined) { const boundary = parseAnalysisStintBoundary(row.stintBoundary); if (original.start === undefined || analysisLapInstant(boundary.timestamp) > analysisLapInstant(original.start)) throw new AnalysisProtocolError("lapPage.stintBoundary"); }
     const capabilities = list(row.capabilities, "lapPage.capabilities"), seen = new Set<string>();
     if (capabilities.length !== analysisCorrectableFamilies.length) throw new AnalysisProtocolError("lapPage.capabilities");
     for (const value of capabilities) {

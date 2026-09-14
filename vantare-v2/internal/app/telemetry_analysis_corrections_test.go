@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
 func TestTelemetryAnalysisEditableChannelsRequirePreparedSamples(t *testing.T) {
@@ -54,6 +55,17 @@ func TestTelemetryAnalysisEditableChannelsRequirePreparedSamples(t *testing.T) {
 	}
 }
 
+func TestObservationInputCarriesExplicitStintBoundarySet(t *testing.T) {
+	stints := []telemetryanalysis.StintBoundaryCorrection{{Operation: telemetryanalysis.StintBoundaryRemove}}
+	got, err := observationInputForRequests(telemetryanalysis.CorrectionInput{}, nil, []telemetryanalysis.LapFamilyUseCorrection{}, stints)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.StintBoundaries) != 1 || got.StintBoundaries[0].Operation != telemetryanalysis.StintBoundaryRemove {
+		t.Fatalf("stint boundary set lost: %+v", got.StintBoundaries)
+	}
+}
+
 func TestTelemetryAnalysisPreparesOnlyAuthorizedOpenCorrectionSource(t *testing.T) {
 	svc, path, now := telemetryAnalysisTestService(t, true)
 	t.Cleanup(func() {
@@ -90,13 +102,18 @@ func TestTelemetryAnalysisPreparesOnlyAuthorizedOpenCorrectionSource(t *testing.
 		t.Fatal(err)
 	}
 	var capability struct {
-		EditableChannelIDs []string `json:"editableChannelIds"`
+		EditableChannelIDs []string                                `json:"editableChannelIds"`
+		StintBoundaries    []strategyprojection.StintBoundary      `json:"stintBoundaries"`
+		StintAnchors       []telemetryanalysis.StintBoundaryAnchor `json:"stintAnchors"`
 	}
 	if err := json.Unmarshal(wire, &capability); err != nil {
 		t.Fatal(err)
 	}
 	if capability.EditableChannelIDs == nil || len(capability.EditableChannelIDs) != 0 {
 		t.Fatal("unknown units must expose an explicit empty editable set", string(wire))
+	}
+	if capability.StintBoundaries == nil || capability.StintAnchors == nil {
+		t.Fatal("preparation must expose empty stint lists instead of null", string(wire))
 	}
 	after, err := os.ReadFile(path)
 	if err != nil {

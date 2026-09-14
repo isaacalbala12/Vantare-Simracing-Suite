@@ -382,6 +382,11 @@ func (s *CorrectionStore) saveValidated(ctx context.Context, base SourceAnalysis
 			return result, err
 		}
 	}
+	if len(snapshot.StintBoundaries) > 0 {
+		if _, err := ApplyStintBoundaryCorrections(base, input.Original, input.Effective, snapshot.StintBoundaries); err != nil {
+			return result, err
+		}
+	}
 	revision := CorrectionRevision{ParentRevisionID: doc.HeadID, Command: command, CommandDigest: commandDigest, CreatedAt: time.Now().UTC().Format(time.RFC3339Nano), Snapshot: snapshot}
 	revision.RevisionID, err = correctionRevisionDigest(revision)
 	if err != nil {

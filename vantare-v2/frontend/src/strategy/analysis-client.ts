@@ -1,6 +1,6 @@
 import { Call } from "@wailsio/runtime";
 import { parseInputProjection } from "./strategy-application-client";
-import { AnalysisProtocolError, parseAnalysisClassificationCorrections, parseAnalysisLapPage, parseAnalysisFamilyCorrections, sameAnalysisClassificationCorrections, sameAnalysisFamilyCorrections, type AnalysisClassificationCorrection, type AnalysisFamilyCorrection, parseAnalysisBase, parseAnalysisCandidates, parseAnalysisCommandResolution, parseAnalysisCorrection, parseAnalysisOpenedSession, parseAnalysisPage, parseAnalysisPreparation, parseAnalysisSaveCommand, parseAnalysisStatus, parseCorrectionStoreResult, sameAnalysisBase, type AnalysisBase, type AnalysisCorrection, type AnalysisRevision, type AnalysisSaveCommand } from "./analysis-contract";
+import { AnalysisProtocolError, parseAnalysisClassificationCorrections, parseAnalysisLapPage, parseAnalysisFamilyCorrections, parseAnalysisStintBoundaryCorrections, sameAnalysisClassificationCorrections, sameAnalysisFamilyCorrections, sameAnalysisStintBoundaryCorrections, type AnalysisClassificationCorrection, type AnalysisFamilyCorrection, type AnalysisStintBoundaryCorrection, parseAnalysisBase, parseAnalysisCandidates, parseAnalysisCommandResolution, parseAnalysisCorrection, parseAnalysisOpenedSession, parseAnalysisPage, parseAnalysisPreparation, parseAnalysisSaveCommand, parseAnalysisStatus, parseCorrectionStoreResult, sameAnalysisBase, type AnalysisBase, type AnalysisCorrection, type AnalysisRevision, type AnalysisSaveCommand } from "./analysis-contract";
 const methods = ["Status", "Discover", "Open", "ReadPage", "PrepareCorrections", "InspectCorrectionLaps", "SaveCorrections", "ResolveCorrectionCommand", "LoadCorrection", "ProjectCorrection", "CloseSession"] as const;
 type AnalysisMethod = typeof methods[number];
 export type AnalysisTransport = {
@@ -17,6 +17,7 @@ export type AnalysisSaveRequest = Readonly<{
   corrections: readonly AnalysisCorrection[];
   familyUses?: readonly AnalysisFamilyCorrection[];
   classifications?: readonly AnalysisClassificationCorrection[];
+  stintBoundaries?: readonly AnalysisStintBoundaryCorrection[];
   command: AnalysisSaveCommand;
 }>;
 export type AnalysisLapRequest = AnalysisRevisionRequest & Readonly<{ start: number; limit: number }>;
@@ -55,15 +56,18 @@ function validateSaveRequest(request: AnalysisSaveRequest): void {
   if (!Array.isArray(request.corrections)) throw new AnalysisProtocolError("request.corrections");
   if (request.familyUses === null) throw new AnalysisProtocolError("request.familyUses");
   if (request.classifications === null) throw new AnalysisProtocolError("request.classifications");
+  if (request.stintBoundaries === null) throw new AnalysisProtocolError("request.stintBoundaries");
   // An explicit classification set requires an explicit family set: omitting
   // families means the caller is unaware of that group and must not drop it.
-  if (request.classifications !== undefined && request.familyUses === undefined) throw new AnalysisProtocolError("request.familyUses");
+  if ((request.classifications !== undefined || request.stintBoundaries !== undefined) && request.familyUses === undefined) throw new AnalysisProtocolError("request.familyUses");
   if (request.familyUses !== undefined && !Array.isArray(request.familyUses)) throw new AnalysisProtocolError("request.familyUses");
   if (request.classifications !== undefined && !Array.isArray(request.classifications)) throw new AnalysisProtocolError("request.classifications");
-  // Combined quota of the three groups before traversing any request element.
-  if (request.corrections.length + (request.familyUses?.length ?? 0) + (request.classifications?.length ?? 0) > 256) throw new AnalysisProtocolError("request.quota");
+  if (request.stintBoundaries !== undefined && !Array.isArray(request.stintBoundaries)) throw new AnalysisProtocolError("request.stintBoundaries");
+  // Combined quota of all four groups before traversing any request element.
+  if (request.corrections.length + (request.familyUses?.length ?? 0) + (request.classifications?.length ?? 0) + (request.stintBoundaries?.length ?? 0) > 256) throw new AnalysisProtocolError("request.quota");
   parseAnalysisFamilyCorrections(request.familyUses ?? [], request.base);
   parseAnalysisClassificationCorrections(request.classifications ?? [], request.base);
+  parseAnalysisStintBoundaryCorrections(request.stintBoundaries ?? [], request.base);
   for (const correction of request.corrections) {
     parseAnalysisCorrection(correction);
     if (!sameAnalysisBase(correction.base, request.base)) throw new AnalysisProtocolError("request.correctionBase");
@@ -77,6 +81,7 @@ function matchesSaveRevision(request: AnalysisSaveRequest, revision: AnalysisRev
     revision.command.localAuthorId !== request.command.localAuthorId) return false;
   if (!sameAnalysisFamilyCorrections(request.familyUses ?? [], revision.snapshot.familyUses?.map(item => item.request) ?? [])) return false;
   if (!sameAnalysisClassificationCorrections(request.classifications ?? [], revision.snapshot.classifications?.map(item => item.request) ?? [])) return false;
+  if (!sameAnalysisStintBoundaryCorrections(request.stintBoundaries ?? [], revision.snapshot.stintBoundaries?.map(item => item.request) ?? [])) return false;
   return true;
 }
 // Stateless transport: no retries or invented empty data. Cancelling a save

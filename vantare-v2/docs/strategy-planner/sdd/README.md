@@ -1,6 +1,6 @@
 # SDD — Strategy sobre telemetría registrada
 
-Versión 1.2 · contrato T13a 2026-09-14 · ISA-1091/1211 · continuación de ISA-694/1028.
+Versión 1.3 · T13 registrado cerrado localmente 2026-09-14 · ISA-1091/1220 · continuación de ISA-694/1028.
 
 ## Autoridad y propósito
 
@@ -80,7 +80,7 @@ Estado de referencia, no certificación permanente: revalidar al empezar cada co
 | Capacidad | Evidencia local al 14-09 | Pendiente real |
 |---|---|---|
 | Diseño y entrada | Asistente A4 unificado y biblioteca productiva #1093–1095; configuración guardada/reabierta. | Completar reglas/pilotos y paneles cálculo/plan/stint/parada; paridad T18 y recorrido Wails T22. |
-| Lectura/correcciones | Valor, uso por familia, clasificación y catálogo canónico v4 #1096/#1099/#1104. Banco J9 bidireccional Imola↔Monza conserva hashes originales. Contrato T13a #1211, validación T13b #1212, custodia v5 T13c #1214 y derivados T13d #1216 cerrados localmente. | Exponer límites en servicio/UI T13e, comandos tras reinicio y revisiones completas de plan T14, gates nativos/visuales. |
+| Lectura/correcciones | Valor, uso por familia, clasificación y catálogo canónico v4 #1096/#1099/#1104. Banco J9 bidireccional Imola↔Monza conserva hashes originales. T13a–e #1211/#1212/#1214/#1216/#1220 cierra localmente contrato, validación, custodia v5, derivados, servicio, cliente, edición avanzada e historial de límites. | Comandos tras reinicio y revisiones completas de plan T14; gates nativos/visuales T18/T22. |
 | Selección exacta | Documento/cliente/adapter #1084–1088 y adopción explícita desde Datos/Revisiones. | Plan aceptado reproducible con todas las entradas/versiones y consulta sin fuente; T14/T22. |
 | Motor/entradas | SolverV2, replay final y corrección local del coste repetido #1089; transporte de reglas #1092. | T02/T03/T06/T07 no completos: perfiles, disponibilidad, inventario, servicios/formación, recursos/horizonte y estados; conexión productiva T15. |
 | Criterios | Inventario/protocolo #1030; #1208 alinea LMU y cierra localmente la mezcla de relojes sobre S125/S266/S026. Imola/Monza son preparación expuesta. | Anotación independiente, calibración y reserva suficiente T19–T21. |

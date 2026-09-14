@@ -1,6 +1,24 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1216 T13d cerrado localmente; T13e listo
+## Estado vigente — #1220 T13e cerrado localmente; T02d listo
+
+T13e conecta los límites registrados de extremo a extremo sin añadir otro
+servicio, store o ciclo de edición. Preparación devuelve límites originales y
+anclas acreditadas; Save/Resolve revalidan el cuarto grupo junto a escalares,
+familias y clasificación. El cliente conserva compatibilidad v1–v4, valida v5 y
+rechaza respuestas que cambien la petición. Datos permite mover, retirar o
+restaurar un límite con causa y motivo, mientras Revisiones lo cuenta y muestra.
+Descarte, confirmación incierta, restore, proyección y adopción siguen las rutas
+existentes y las visitas a boxes permanecen independientes. Astra encontró y se
+corrigieron la lista nula al preparar una sesión sin paradas, una cuota aplicada
+por error al inventario, la aceptación de campos v5 vacíos en snapshots antiguos
+y la presentación del reloj de sesión como fecha civil; la segunda revisión no
+encontró P0/P1/P2 ni complejidad evitable. Frontend completo (447 archivos/3762
+tests), typecheck, lint, build, Go completo, vet focal y roadmap pasan. Después,
+el orden canónico continúa con T02d (horizonte y recursos), no con una ampliación
+de T13. Sin app/Wails/LMU, push, PR, CI remota, integración ni release.
+
+## Historial — #1216 T13d cerrado localmente; T13e listo
 
 T13d aplica el conjunto v5 sobre una copia de la validez efectiva y lo inserta
 en el pipeline existente antes de las derivaciones. La vista reutiliza primero

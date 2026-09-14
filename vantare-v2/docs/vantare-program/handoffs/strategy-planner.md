@@ -1,6 +1,21 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1222 T02d1 cerrado localmente; T02d2 listo
+## Estado vigente — #1224 T02d2a cerrado localmente; T02d2b listo
+
+T02d2a amplía el contrato existente con reservas independientes: Fuel en litros
+y energía virtual en puntos porcentuales, incluida la presencia explícita de
+cero. VE distingue `applicable` de `not_applicable`; este último estado la
+excluye del cálculo también con escenarios meteorológicos, sin mutar la
+proyección original. La ausencia de los campos conserva el comportamiento
+heredado. Todo entra por el mismo adaptador y `manual.CalculateRace`; no hay
+otro solver, store o estado. El siguiente corte T02d2b añade cargas iniciales
+fijas de Fuel/VE. Astra high no encontró P0/P1/P2 ni complejidad evitable. Go
+completo, vet focal, frontend 447/3763, cliente 49/49, typecheck, lint, build y
+roadmap pasan; la primera suite frontend tuvo un timeout Playwright heredado de
+Pedals Redline, cuyo focal y repetición global pasaron. Sin app/Wails/LMU,
+DuckDB, push, PR, CI remota, integración ni release.
+
+## Historial — #1222 T02d1 cerrado localmente; T02d2 listo
 
 T02d1 añade el horizonte exacto por vueltas al contrato de cálculo con la
 mínima bifurcación posible. `raceKind: "laps"` exige `targetLaps` positivo y

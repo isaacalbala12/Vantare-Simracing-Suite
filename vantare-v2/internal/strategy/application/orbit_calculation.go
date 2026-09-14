@@ -73,6 +73,9 @@ func calculateOrbitContext(ctx context.Context, input OrbitCalculationInput) (Or
 	}
 	input.Event.TankLiters = effectivePlanningValue(input.PlanningInputs, strategydocument.PlanningInputTank, input.Event.TankLiters)
 	input.Event.PitLossSeconds = effectivePlanningValue(input.PlanningInputs, strategydocument.PlanningInputPitLoss, input.Event.PitLossSeconds)
+	if err := validateOrbitEventResources(input.Event); err != nil {
+		return OrbitCalculationResult{}, err
+	}
 	variants := make(map[string]OrbitCalculationVariant, len(input.Variants))
 	for index, variant := range input.Variants {
 		if strings.TrimSpace(variant.ID) == "" {
@@ -430,8 +433,8 @@ func orbitSolverInput(
 		TyreLifeLaps:         orbitScalarInput(planning, strategydocument.PlanningInputTyreLife, 0, "strategy.orbit.tyre-life-not-configured"),
 		FuelPerLapLiters:     orbitScalarInput(planning, strategydocument.PlanningInputFuelPerLap, averageFuel, "strategy.orbit.fuel-per-lap"),
 		VEPerLapPercent:      orbitScalarInput(planning, strategydocument.PlanningInputVEPerLap, 0, "strategy.orbit.virtual-energy-not-configured"),
-		FuelReserve:          orbitFuelReserve(planning),
-		VirtualEnergyReserve: orbitVirtualEnergyReserve(planning),
+		FuelReserve:          orbitFuelReserve(event, planning),
+		VirtualEnergyReserve: orbitVirtualEnergyReserve(event, planning),
 		DegradationPerLap:    orbitScalarInput(planning, strategydocument.PlanningInputDegradation, 0, "strategy.orbit.degradation-not-configured"),
 		SavingCost:           orbitSavingCost(planning),
 		// Orbit expresa consumo por vuelta, no litros arbitrarios de servicio.
@@ -441,6 +444,15 @@ func orbitSolverInput(
 	}
 	if event.Rules != nil {
 		input.EventRules = *event.Rules
+	}
+	if event.VirtualEnergy != nil {
+		if event.VirtualEnergy.Applicability == "not_applicable" {
+			input.Projection = orbitProjectionWithoutVirtualEnergy(planning)
+			input.VECapacityPercent = orbitExplicitScalar(0, "strategy.orbit.virtual-energy-not-applicable")
+			input.VEPerLapPercent = orbitExplicitScalar(0, "strategy.orbit.virtual-energy-not-applicable")
+		} else {
+			input.VECapacityPercent = orbitExplicitScalar(*event.VirtualEnergy.CapacityPercent, "strategy.orbit.virtual-energy-capacity")
+		}
 	}
 	return input
 }
@@ -457,12 +469,27 @@ func orbitFuelServiceStep(fuelPerLap float64, planning *strategydocument.Plannin
 	return step
 }
 
-func orbitFuelReserve(planning *strategydocument.PlanningInputs) manual.FuelReserveInput {
+func orbitFuelReserve(event OrbitCalculationEvent, planning *strategydocument.PlanningInputs) manual.FuelReserveInput {
+	if event.FuelReserveLiters != nil {
+		// validateOrbitEventResources already checked this value.
+		amount, _ := contract.NewFuelLiters(*event.FuelReserveLiters)
+		evidence := orbitExplicitEvidence("strategy.orbit.fuel-reserve")
+		return manual.FuelReserveInput{Kind: manual.ReserveAmount, Amount: manual.Sourced[contract.FuelLiters]{Value: amount, Evidence: evidence}, Selection: evidence}
+	}
 	laps, evidence := orbitReserveLaps(planning)
 	return manual.FuelReserveInput{Kind: manual.ReserveLaps, Laps: manual.Sourced[float64]{Value: laps, Evidence: evidence}, Selection: evidence}
 }
 
-func orbitVirtualEnergyReserve(planning *strategydocument.PlanningInputs) manual.VirtualEnergyReserveInput {
+func orbitVirtualEnergyReserve(event OrbitCalculationEvent, planning *strategydocument.PlanningInputs) manual.VirtualEnergyReserveInput {
+	if event.VirtualEnergy != nil {
+		evidence := orbitExplicitEvidence("strategy.orbit.virtual-energy-reserve")
+		if event.VirtualEnergy.Applicability == "not_applicable" {
+			return manual.VirtualEnergyReserveInput{Kind: manual.ReserveNone, Selection: evidence}
+		}
+		// validateOrbitEventResources already checked this value.
+		amount, _ := contract.NewVirtualEnergyPercent(*event.VirtualEnergy.ReservePercent)
+		return manual.VirtualEnergyReserveInput{Kind: manual.ReserveAmount, Amount: manual.Sourced[contract.VirtualEnergyPercent]{Value: amount, Evidence: evidence}, Selection: evidence}
+	}
 	laps, evidence := orbitReserveLaps(planning)
 	return manual.VirtualEnergyReserveInput{Kind: manual.ReserveLaps, Laps: manual.Sourced[float64]{Value: laps, Evidence: evidence}, Selection: evidence}
 }
@@ -546,6 +573,66 @@ func orbitVECapacity(planning *strategydocument.PlanningInputs) solver.ScalarInp
 		strategyprojection.Confidence{SampleSize: 1, ComputationVersion: "orbit-adapter.v2"},
 		solver.ScalarRoleFallback,
 	)
+}
+
+func orbitExplicitEvidence(sourceID string) manual.Evidence {
+	return manual.Evidence{
+		Provenance: contract.Provenance{Kind: contract.ProvenanceManual, SourceID: sourceID},
+		Confidence: contract.Confidence{Level: contract.ConfidenceHigh, Basis: "validated explicit event resource"},
+	}
+}
+
+func orbitExplicitScalar(value float64, sourceID string) solver.ScalarInput {
+	return solver.NewSourcedScalar(
+		value,
+		strategyprojection.Provenance{Kind: strategyprojection.ProvenanceManual, SourceID: sourceID},
+		strategyprojection.Confidence{SampleSize: 1, ComputationVersion: "orbit-adapter.v3"},
+		solver.ScalarRoleUserOverride,
+	)
+}
+
+func orbitProjectionWithoutVirtualEnergy(planning *strategydocument.PlanningInputs) *strategyprojection.StrategyInputProjectionV2 {
+	projection := orbitProjection(planning)
+	if projection == nil {
+		return nil
+	}
+	clone := *projection
+	clone.VirtualEnergyConsumption.Presence = strategyprojection.PresenceMissing
+	clone.VirtualEnergyConsumption.Reason = "virtual_energy_not_applicable"
+	return &clone
+}
+
+func validateOrbitEventResources(event OrbitCalculationEvent) error {
+	if event.FuelReserveLiters != nil {
+		if _, err := contract.NewFuelLiters(*event.FuelReserveLiters); err != nil {
+			return calculationApplicationError(ErrorCalculationInvalid, "input.event.fuelReserveLiters", err)
+		}
+	}
+	if event.VirtualEnergy == nil {
+		return nil
+	}
+	energy := event.VirtualEnergy
+	if energy.Applicability == "not_applicable" {
+		return nil
+	}
+	if energy.Applicability != "applicable" {
+		return calculationApplicationError(ErrorCalculationInvalid, "input.event.virtualEnergy.applicability", ErrCalculationInvalid)
+	}
+	if energy.CapacityPercent == nil {
+		return calculationApplicationError(ErrorCalculationInvalid, "input.event.virtualEnergy.capacityPercent", ErrCalculationInvalid)
+	}
+	if energy.ReservePercent == nil {
+		return calculationApplicationError(ErrorCalculationInvalid, "input.event.virtualEnergy.reservePercent", ErrCalculationInvalid)
+	}
+	capacity, err := contract.NewVirtualEnergyPercent(*energy.CapacityPercent)
+	if err != nil || capacity.Value() == 0 {
+		return calculationApplicationError(ErrorCalculationInvalid, "input.event.virtualEnergy.capacityPercent", ErrCalculationInvalid)
+	}
+	reserve, err := contract.NewVirtualEnergyPercent(*energy.ReservePercent)
+	if err != nil || reserve.Value() > capacity.Value() {
+		return calculationApplicationError(ErrorCalculationInvalid, "input.event.virtualEnergy.reservePercent", ErrCalculationInvalid)
+	}
+	return nil
 }
 
 func orbitProjection(planning *strategydocument.PlanningInputs) *strategyprojection.StrategyInputProjectionV2 {

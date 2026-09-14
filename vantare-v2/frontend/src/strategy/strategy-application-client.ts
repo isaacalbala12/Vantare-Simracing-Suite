@@ -350,6 +350,18 @@ export type StrategyVariantComparisonV2 = {
 type StrategyOrbitCalculationEventV1 = {
   readonly rules?: StrategyEventRules;
   readonly tankLiters: number;
+  readonly fuelReserveLiters?: number;
+  readonly virtualEnergy?:
+    | {
+      readonly applicability: "applicable";
+      readonly capacityPercent: number;
+      readonly reservePercent: number;
+    }
+    | {
+      readonly applicability: "not_applicable";
+      readonly capacityPercent?: number;
+      readonly reservePercent?: number;
+    };
   readonly pitLossSeconds: number;
 } & (
   | {

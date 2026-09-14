@@ -122,6 +122,25 @@ es 12 y el puente JSON devuelve la misma distancia. El cliente TypeScript usa
 una unión discriminada, conserva el cero explícito y transporta el comando sin
 inventar duración. La ruta temporal queda cubierta por sus regresiones previas.
 
-El siguiente microcorte es T02d2, cargas iniciales y reservas independientes de
-Fuel y energía virtual. T02d1 no conecta todavía el asistente visual ni acredita
+El siguiente microcorte es T02d2a, reservas independientes de Fuel y energía
+virtual. T02d1 no conecta todavía el asistente visual ni acredita
 Wails, LMU o precisión física.
+
+## T02d2a — capacidad y reservas Fuel/VE (#1224)
+
+El evento admite reserva Fuel en litros y una configuración discriminada de
+energía virtual. `applicable` exige capacidad y reserva en puntos porcentuales;
+`not_applicable` retira VE del cálculo sin convertir su ausencia en consumo
+gratis. Si los campos nuevos no existen, el contrato conserva exactamente el
+comportamiento anterior y su reserva compartida por vueltas.
+
+Las reservas explícitas llegan al mismo `manual.CalculateRace` como cantidades,
+incluido cero, y Fuel y VE se validan por separado. La proyección se copia sólo
+para marcar VE no aplicable, de modo que los escenarios meteorológicos siguen
+disponibles y la fuente original queda intacta. El cliente TypeScript transporta
+el discriminador sin normalizaciones ni estado adicional.
+
+RED: el test nuevo no compilaba porque el evento carecía de los campos. GREEN:
+reservas independientes, cero explícito, compatibilidad heredada, VE no
+aplicable con clima y entradas inválidas quedan cubiertos. T02d2b añadirá las
+cargas iniciales fijas al solver; este corte no conecta todavía el asistente.

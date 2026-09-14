@@ -351,12 +351,20 @@ type OrbitCalculationInput struct {
 }
 
 type OrbitCalculationEvent struct {
-	Rules           *solver.EventRules `json:"rules,omitempty"`
-	RaceKind        string             `json:"raceKind,omitempty"`
-	DurationMinutes float64            `json:"durationMinutes"`
-	TargetLaps      *int64             `json:"targetLaps,omitempty"`
-	TankLiters      float64            `json:"tankLiters"`
-	PitLossSeconds  float64            `json:"pitLossSeconds"`
+	Rules             *solver.EventRules             `json:"rules,omitempty"`
+	RaceKind          string                         `json:"raceKind,omitempty"`
+	DurationMinutes   float64                        `json:"durationMinutes"`
+	TargetLaps        *int64                         `json:"targetLaps,omitempty"`
+	TankLiters        float64                        `json:"tankLiters"`
+	FuelReserveLiters *float64                       `json:"fuelReserveLiters,omitempty"`
+	VirtualEnergy     *OrbitCalculationVirtualEnergy `json:"virtualEnergy,omitempty"`
+	PitLossSeconds    float64                        `json:"pitLossSeconds"`
+}
+
+type OrbitCalculationVirtualEnergy struct {
+	Applicability   string   `json:"applicability"`
+	CapacityPercent *float64 `json:"capacityPercent,omitempty"`
+	ReservePercent  *float64 `json:"reservePercent,omitempty"`
 }
 
 type OrbitCalculationPace struct {

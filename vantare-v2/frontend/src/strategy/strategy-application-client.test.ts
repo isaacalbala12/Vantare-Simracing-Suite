@@ -122,7 +122,12 @@ describe("createStrategyApplicationClient", () => {
       operation: "calculate_orbit",
       expectedRepositoryVersion: 0,
       input: {
-        event: { raceKind: "laps", targetLaps: 12, durationMinutes: 0, tankLiters: 60, pitLossSeconds: 20 },
+        event: {
+          raceKind: "laps", targetLaps: 12, durationMinutes: 0, tankLiters: 60,
+          fuelReserveLiters: 0,
+          virtualEnergy: { applicability: "applicable", capacityPercent: 80, reservePercent: 0 },
+          pitLossSeconds: 20,
+        },
         drivers: [{ id: "d1", name: "D", dry: { paceSeconds: 60, fuelLitersPerLap: 1 }, wet: { paceSeconds: 66, fuelLitersPerLap: 1 }, eco: { paceSeconds: 61, fuelLitersPerLap: 0.9 } }],
         variants: [{ id: "s1", mode: "dry", order: ["d1"], overrides: {} }],
         activeVariantId: "s1",
@@ -131,7 +136,12 @@ describe("createStrategyApplicationClient", () => {
 
     const pending = client.execute(command);
     expect(transport.emitted).toEqual([{ name: "strategy:application:command", payload: command }]);
-    expect(command.input.event).toEqual({ raceKind: "laps", targetLaps: 12, durationMinutes: 0, tankLiters: 60, pitLossSeconds: 20 });
+    expect(command.input.event).toEqual({
+      raceKind: "laps", targetLaps: 12, durationMinutes: 0, tankLiters: 60,
+      fuelReserveLiters: 0,
+      virtualEnergy: { applicability: "applicable", capacityPercent: 80, reservePercent: 0 },
+      pitLossSeconds: 20,
+    });
     client.cancel(command.commandId);
     await expect(pending).rejects.toThrow(/cancelled/i);
   });

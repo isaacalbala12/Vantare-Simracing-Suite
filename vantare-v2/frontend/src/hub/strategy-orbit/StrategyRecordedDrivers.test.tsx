@@ -46,17 +46,20 @@ it("removes dependent estimates when their reference driver is removed", () => {
   expect(screen.getByText("strategy.journey.driver.pacePending")).toBeTruthy();
 });
 
-it("stores driving limits in rules as seconds, preserves absence and removes orphan limits", () => {
+it("stores driving limits in contract units, preserves absence and removes orphan limits", () => {
   const changed = vi.fn();
   render(<Editor changed={changed} />);
   const primary = within(screen.getByRole("region", { name: "strategy.journey.driver.label 1" }));
 
+  fireEvent.change(primary.getByRole("spinbutton", { name: "strategy.journey.driver.minLaps" }), { target: { value: "12" } });
+  fireEvent.change(primary.getByRole("spinbutton", { name: "strategy.journey.driver.maxLaps" }), { target: { value: "40" } });
   fireEvent.change(primary.getByRole("spinbutton", { name: "strategy.journey.driver.maxContinuousMinutes" }), { target: { value: "30" } });
   fireEvent.change(primary.getByRole("spinbutton", { name: "strategy.journey.driver.maxTotalMinutes" }), { target: { value: "90" } });
-  expect(changed.mock.lastCall?.[0].rules?.driverLimits?.primary).toEqual({ maxContinuousTimeSeconds: 1800, maxTotalTimeSeconds: 5400 });
+  expect(changed.mock.lastCall?.[0].rules?.driverLimits?.primary).toEqual({ minLaps: 12, maxLaps: 40, maxContinuousTimeSeconds: 1800, maxTotalTimeSeconds: 5400 });
 
+  fireEvent.change(primary.getByRole("spinbutton", { name: "strategy.journey.driver.minLaps" }), { target: { value: "" } });
   fireEvent.change(primary.getByRole("spinbutton", { name: "strategy.journey.driver.maxContinuousMinutes" }), { target: { value: "" } });
-  expect(changed.mock.lastCall?.[0].rules?.driverLimits?.primary).toEqual({ maxTotalTimeSeconds: 5400 });
+  expect(changed.mock.lastCall?.[0].rules?.driverLimits?.primary).toEqual({ maxLaps: 40, maxTotalTimeSeconds: 5400 });
 
   fireEvent.click(primary.getByRole("button", { name: "strategy.journey.driver.remove Alex" }));
   expect(changed.mock.lastCall?.[0].rules?.driverLimits?.primary).toBeUndefined();

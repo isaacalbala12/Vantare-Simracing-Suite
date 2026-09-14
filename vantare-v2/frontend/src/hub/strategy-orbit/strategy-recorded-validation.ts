@@ -18,6 +18,9 @@ export function recordedWizardErrors(draft: RecordedWizardDraft, step: RecordedW
       try { validateStrategyEventRules(draft.rules, "rules"); } catch { errors.push("rules"); }
     }
   }
+  if (step === "drivers" && draft.rules?.driverLimits) {
+    try { validateStrategyEventRules({ driverLimits: draft.rules.driverLimits }, "driver limits"); } catch { errors.push("rules"); }
+  }
   if (step === "drivers" || step === "sessions") {
     const byId = new Map(draft.drivers.map(driver => [driver.id, driver]));
     if (byId.size !== draft.drivers.length || draft.drivers.some(driver => !driver.id.trim() || !driver.name.trim())) errors.push("driverNames");

@@ -23,6 +23,12 @@ it.each<[Partial<RecordedWizardDraft>, string]>([
 it("does not apply retained VE values after explicitly marking the resource inapplicable", () => {
   expect(recordedWizardErrors({ ...empty, virtualEnergy: { applicability: "not_applicable", capacityPercent: 75, initialPercent: 80 } }, "rules")).toEqual([]);
 });
+it.each([
+  { minLaps: 40, maxLaps: 12 },
+  { minLaps: 12.5 },
+])("rejects invalid driver lap limits while editing drivers: %j", limits => {
+  expect(recordedWizardErrors({ ...empty, drivers: [{ id: "a", name: "Alex" }], rules: { driverLimits: { a: limits } } }, "drivers")).toContain("rules");
+});
 it.each<RecordedWizardDraft["drivers"]>([
   [{ id: "a", name: "" }],
   [{ id: "a", name: "Alex" }, { id: "a", name: "Sam" }],

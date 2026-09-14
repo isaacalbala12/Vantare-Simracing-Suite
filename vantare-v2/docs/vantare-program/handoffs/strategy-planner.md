@@ -1,17 +1,17 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1240 T07a cerrado localmente; reglas por vueltas pendientes
+## Estado vigente — #1241 T07b cerrado localmente; reglas visibles pendientes
 
-T07a añade al editor de Pilotos los máximos continuo y total en minutos y los
-guarda exclusivamente como segundos en `draft.rules.driverLimits`. Vaciar un
-campo conserva ausencia; quitar un piloto elimina su límite sin tocar reglas ni
-límites ajenos. Guardado/reapertura y adapter de cálculo conservan 1800/5400 s.
-Se reutilizan contrato, validador, persistencia y transporte existentes. Focales,
-frontend completo, typecheck, lint, build, roadmap y diff-check pasan. Astra high
-definió el corte mínimo: no duplicar límites dentro de `draft.drivers`. Siguiente:
-límites por vueltas y reglas visibles; la disponibilidad necesita primero una
-referencia temporal explícita. Sin app/Wails/LMU, DuckDB, push, PR, CI remota,
-integración ni release.
+T07b completa en el editor de Pilotos el mínimo/máximo de vueltas junto a los
+máximos continuo y total de T07a, todos dentro de
+`draft.rules.driverLimits`. Vueltas se guardan como enteros directos y minutos
+como segundos; vacío conserva ausencia y quitar un piloto elimina sólo su
+límite. El validador compartido rechaza fracciones y mínimo mayor que máximo
+antes de abandonar Pilotos. Guardado/reapertura, parser y adapter conservan
+12/40 vueltas y 1800/5400 s sin otro modelo. Astra recomendó este setter único
+en unidades de contrato y validación acotada a límites. Siguiente: reglas
+visibles; disponibilidad requiere una referencia temporal explícita. Sin
+app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release.
 
 ## Historial — #1237 T02g2b cerrado localmente
 

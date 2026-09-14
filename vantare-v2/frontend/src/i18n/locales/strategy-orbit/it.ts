@@ -748,6 +748,8 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.journey.driver.remove": "Rimuovi pilota",
   "strategy.journey.driver.name": "Nome del pilota",
   "strategy.journey.driver.maxContinuousMinutes": "Massimo continuativo · minuti",
+  "strategy.journey.driver.minLaps": "Minimo · giri",
+  "strategy.journey.driver.maxLaps": "Massimo · giri",
   "strategy.journey.driver.maxTotalMinutes": "Massimo totale · minuti",
   "strategy.journey.driver.paceSource": "Fonte del ritmo",
   "strategy.journey.driver.ownSessions": "Sessioni proprie · da validare",

@@ -3,7 +3,7 @@ import "./strategy-recorded-drivers.css";
 
 type DriverLimit = NonNullable<NonNullable<RecordedWizardDraft["rules"]>["driverLimits"]>[string];
 type DriverLimits = Readonly<Record<string, DriverLimit>>;
-type TimeLimitKey = "maxContinuousTimeSeconds" | "maxTotalTimeSeconds";
+type DriverLimitKey = "minLaps" | "maxLaps" | "maxContinuousTimeSeconds" | "maxTotalTimeSeconds";
 type MutableDriverLimit = { -readonly [Key in keyof DriverLimit]: DriverLimit[Key] };
 type MutableRules = { -readonly [Key in keyof NonNullable<RecordedWizardDraft["rules"]>]: NonNullable<RecordedWizardDraft["rules"]>[Key] };
 const minutesFromSeconds = (seconds: number | undefined) => seconds === undefined ? "" : seconds / 60;
@@ -28,10 +28,10 @@ export function StrategyRecordedDrivers({ draft, onChange, onAdd, t }: {
     ...draft, drivers: nextDrivers, rules: rulesWithDriverLimits(draft.rules, nextLimits),
   });
   const update = (id: string, patch: Partial<RecordedWizardDraft["drivers"][number]>) => change(drivers.map(driver => driver.id === id ? { ...driver, ...patch } : driver));
-  const updateTimeLimit = (id: string, key: TimeLimitKey, raw: string) => {
+  const updateDriverLimit = (id: string, key: DriverLimitKey, value: number | undefined) => {
     const nextLimit: MutableDriverLimit = { ...driverLimits[id] };
-    if (raw === "") delete nextLimit[key];
-    else nextLimit[key] = Number(raw) * 60;
+    if (value === undefined) delete nextLimit[key];
+    else nextLimit[key] = value;
     const nextLimits: Record<string, DriverLimit> = { ...driverLimits };
     if (Object.keys(nextLimit).length > 0) nextLimits[id] = nextLimit;
     else delete nextLimits[id];
@@ -50,8 +50,10 @@ export function StrategyRecordedDrivers({ draft, onChange, onAdd, t }: {
       </header>
       <label className="strategy-recorded-field"><span>{t("strategy.journey.driver.name")}</span><input value={driver.name} maxLength={120} placeholder={t("strategy.journey.unconfirmed")} onChange={event => update(driver.id, { name: event.target.value })} /></label>
       <div className="strategy-recorded-drivers__limits">
-        <label className="strategy-recorded-field"><span>{t("strategy.journey.driver.maxContinuousMinutes")}</span><input type="number" min="0.01" step="any" value={minutesFromSeconds(driverLimits[driver.id]?.maxContinuousTimeSeconds)} placeholder={t("strategy.journey.unconfirmed")} onChange={event => updateTimeLimit(driver.id, "maxContinuousTimeSeconds", event.target.value)} /></label>
-        <label className="strategy-recorded-field"><span>{t("strategy.journey.driver.maxTotalMinutes")}</span><input type="number" min="0.01" step="any" value={minutesFromSeconds(driverLimits[driver.id]?.maxTotalTimeSeconds)} placeholder={t("strategy.journey.unconfirmed")} onChange={event => updateTimeLimit(driver.id, "maxTotalTimeSeconds", event.target.value)} /></label>
+        <label className="strategy-recorded-field"><span>{t("strategy.journey.driver.minLaps")}</span><input type="number" min="0" step="1" value={driverLimits[driver.id]?.minLaps ?? ""} placeholder={t("strategy.journey.unconfirmed")} onChange={event => updateDriverLimit(driver.id, "minLaps", event.target.value === "" ? undefined : Number(event.target.value))} /></label>
+        <label className="strategy-recorded-field"><span>{t("strategy.journey.driver.maxLaps")}</span><input type="number" min="0" step="1" value={driverLimits[driver.id]?.maxLaps ?? ""} placeholder={t("strategy.journey.unconfirmed")} onChange={event => updateDriverLimit(driver.id, "maxLaps", event.target.value === "" ? undefined : Number(event.target.value))} /></label>
+        <label className="strategy-recorded-field"><span>{t("strategy.journey.driver.maxContinuousMinutes")}</span><input type="number" min="0.01" step="any" value={minutesFromSeconds(driverLimits[driver.id]?.maxContinuousTimeSeconds)} placeholder={t("strategy.journey.unconfirmed")} onChange={event => updateDriverLimit(driver.id, "maxContinuousTimeSeconds", event.target.value === "" ? undefined : Number(event.target.value) * 60)} /></label>
+        <label className="strategy-recorded-field"><span>{t("strategy.journey.driver.maxTotalMinutes")}</span><input type="number" min="0.01" step="any" value={minutesFromSeconds(driverLimits[driver.id]?.maxTotalTimeSeconds)} placeholder={t("strategy.journey.unconfirmed")} onChange={event => updateDriverLimit(driver.id, "maxTotalTimeSeconds", event.target.value === "" ? undefined : Number(event.target.value) * 60)} /></label>
       </div>
       {index > 0 && principal ? <label className="strategy-recorded-field"><span>{t("strategy.journey.driver.paceSource")}</span><select value={driver.referenceDriverId ?? ""} onChange={event => update(driver.id, event.target.value ? { referenceDriverId: event.target.value, paceDeltaSeconds: 0 } : { referenceDriverId: undefined, paceDeltaSeconds: undefined })}>
         <option value="">{t("strategy.journey.driver.ownSessions")}</option>

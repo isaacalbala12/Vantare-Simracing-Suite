@@ -354,6 +354,14 @@ export type StrategyVariantComparisonV2 = {
   readonly differentFields: readonly string[];
 };
 
+export type StrategyOrbitPitServicesV1 = {
+  readonly transitSeconds: number;
+  readonly refuelRateLPerS: number;
+  readonly veRatePPerS: number;
+  readonly tyreSeconds: number;
+  readonly serviceMode: "parallel" | "sequential";
+};
+
 type StrategyOrbitCalculationEventV1 = {
   readonly rules?: StrategyEventRules;
   readonly tankLiters: number;
@@ -385,6 +393,8 @@ type StrategyOrbitCalculationEventV1 = {
     readonly degradationPerLapSeconds: number;
     readonly curve?: readonly { readonly lapInStint: number; readonly deltaSeconds: number }[];
   }[];
+  readonly formationSeconds?: number;
+  readonly pitServices?: StrategyOrbitPitServicesV1;
   readonly pitLossSeconds: number;
 } & (
   | {
@@ -460,6 +470,7 @@ export type StrategyOrbitCalculatedPlanV1 = {
   }[];
   readonly drivingSeconds: number;
   readonly pitSeconds: number;
+  readonly formationSeconds?: number;
   readonly startFuelLiters: number;
   readonly finishFuelLiters: number;
   readonly reserveLaps: number;
@@ -1705,6 +1716,7 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
     ] as const) {
       strategyNumber(plan[field], `orbitCalculation.plans.${id}.${field}`);
     }
+    if (plan.formationSeconds !== undefined) strategyNumber(plan.formationSeconds, `orbitCalculation.plans.${id}.formationSeconds`);
     for (const field of ["totalLaps", "stops", "maxLaps"] as const) {
       strategyInteger(plan[field], `orbitCalculation.plans.${id}.${field}`);
     }
@@ -1758,6 +1770,7 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
       avgPace: plan.avgPace as number,
       drivingSeconds: plan.drivingSeconds as number,
       pitSeconds: plan.pitSeconds as number,
+      ...(plan.formationSeconds === undefined ? {} : { formationSeconds: plan.formationSeconds as number }),
       startFuelLiters: plan.startFuelLiters as number,
       finishFuelLiters: plan.finishFuelLiters as number,
       reserveLaps: plan.reserveLaps as number,

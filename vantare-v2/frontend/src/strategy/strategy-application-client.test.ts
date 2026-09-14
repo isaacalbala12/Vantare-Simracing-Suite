@@ -210,6 +210,56 @@ describe("createStrategyApplicationClient", () => {
     });
   });
 
+  it("transports explicit pit services and formation with the compatible legacy field", async () => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const event = {
+      durationMinutes: 10,
+      tankLiters: 60,
+      pitLossSeconds: 60,
+      formationSeconds: 30,
+      pitServices: { transitSeconds: 20, refuelRateLPerS: 2, veRatePPerS: 3, tyreSeconds: 8, serviceMode: "parallel" as const },
+    };
+    const command: StrategyApplicationCommandV1<Payload> = {
+      protocolVersion: "strategy.application.v1", commandId: "orbit-services", operation: "calculate_orbit", expectedRepositoryVersion: 0,
+      input: { event, drivers: [{ id: "d1", name: "D", dry: { paceSeconds: 60, fuelLitersPerLap: 1 }, wet: { paceSeconds: 66, fuelLitersPerLap: 1 }, eco: { paceSeconds: 61, fuelLitersPerLap: 0.9 } }], variants: [{ id: "s1", mode: "dry", order: ["d1"], overrides: {} }], activeVariantId: "s1" },
+    };
+
+    const pending = client.execute(command);
+    expect(transport.emitted[0]).toEqual({ name: "strategy:application:command", payload: command });
+    client.cancel(command.commandId);
+    await expect(pending).rejects.toThrow(/cancelled/i);
+  });
+
+  it.each([30, 0])("preserves explicit formationSeconds %s in calculated plans", async (formationSeconds) => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const command: StrategyApplicationCommandV1<Payload> = {
+      protocolVersion: "strategy.application.v1", commandId: `orbit-formation-${formationSeconds}`, operation: "calculate_orbit", expectedRepositoryVersion: 0,
+      input: { event: { durationMinutes: 10, tankLiters: 60, pitLossSeconds: 20 }, drivers: [{ id: "d1", name: "D", dry: { paceSeconds: 60, fuelLitersPerLap: 1 }, wet: { paceSeconds: 66, fuelLitersPerLap: 1 }, eco: { paceSeconds: 61, fuelLitersPerLap: 0.9 } }], variants: [{ id: "s1", mode: "dry", order: ["d1"], overrides: {} }], activeVariantId: "s1" },
+    };
+    const pending = client.execute(command);
+    emit(transport, "strategy:application:result", {
+      protocolVersion: "strategy.application.v1", commandId: command.commandId, repositoryVersion: 0, recoveredFromBackup: false, closed: false,
+      orbitCalculation: { ...orbitGolden, plans: { s1: { ...orbitGolden.plans.s1, formationSeconds } } },
+    });
+
+    await expect(pending).resolves.toMatchObject({ orbitCalculation: { plans: { s1: { formationSeconds } } } });
+  });
+
+  it.each([null, "30", Number.POSITIVE_INFINITY])("rejects invalid formationSeconds %s", async (formationSeconds) => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const command: StrategyApplicationCommandV1<Payload> = {
+      protocolVersion: "strategy.application.v1", commandId: `orbit-invalid-formation-${String(formationSeconds)}`, operation: "calculate_orbit", expectedRepositoryVersion: 0,
+      input: { event: { durationMinutes: 10, tankLiters: 60, pitLossSeconds: 20 }, drivers: [{ id: "d1", name: "D", dry: { paceSeconds: 60, fuelLitersPerLap: 1 }, wet: { paceSeconds: 66, fuelLitersPerLap: 1 }, eco: { paceSeconds: 61, fuelLitersPerLap: 0.9 } }], variants: [{ id: "s1", mode: "dry", order: ["d1"], overrides: {} }], activeVariantId: "s1" },
+    };
+    const pending = client.execute(command);
+    emit(transport, "strategy:application:result", {
+      protocolVersion: "strategy.application.v1", commandId: command.commandId, repositoryVersion: 0, recoveredFromBackup: false, closed: false,
+      orbitCalculation: { ...orbitGolden, plans: { s1: { ...orbitGolden.plans.s1, formationSeconds } } },
+    });
+
+    await expect(pending).rejects.toThrow(/formationSeconds/);
+  });
+
   it.each([
     ["missing fitment", { changeTyres: false, compound: "hard" }],
     ["invalid compound", { changeTyres: false, compound: "dry", tyreFitment: { frontLeft: "H-FL", frontRight: "H-FR", rearLeft: "H-RL", rearRight: "H-RR" } }],

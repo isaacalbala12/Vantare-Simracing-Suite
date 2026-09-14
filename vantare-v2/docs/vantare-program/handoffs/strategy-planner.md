@@ -1,6 +1,19 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1232 T02f2 cerrado localmente; T02f3 listo
+## Estado vigente — #1233 T02f3a cerrado localmente; T02f3b listo
+
+T02f3a alinea el cliente TypeScript con servicios explícitos de parada y tiempo
+de formación. La petición conserva el desglose exacto; el parser de resultados
+ya no descarta formación y distingue ausencia de cero. `pitLossSeconds` sigue
+requerido por compatibilidad de este contrato y Go lo ignora cuando existe el
+desglose. El doble frontend sólo acredita transporte y parsing, no vuelve a
+calcular la fórmula. Focales 60/60, suite completa 3796/3796, typecheck, lint,
+build y contratos del roadmap pasan. Astra high no encontró P0/P1/P2 ni otra
+capa que eliminar. Siguiente: T02f3b custodia y
+adaptación recorded. Sin UI, app/Wails/LMU, DuckDB, push, PR, CI remota,
+integración ni release.
+
+## Historial — #1232 T02f2 cerrado localmente; T02f3 listo
 
 T02f2 transporta un tiempo de formación opcional al modelo temporal existente.
 El reloj total y el inicio de la primera vuelta lo incluyen, mientras conducción

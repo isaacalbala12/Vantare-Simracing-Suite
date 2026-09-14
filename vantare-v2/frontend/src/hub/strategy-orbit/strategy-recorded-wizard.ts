@@ -30,6 +30,8 @@ export type RecordedWizardDraft = {
   readonly initialFuelLiters?: number;
   readonly fuelReserveLiters?: number;
   readonly pitLossSeconds?: number;
+  readonly pitServices?: NonNullable<RecordedCalculationEvent["pitServices"]>;
+  readonly formationSeconds?: number;
   readonly virtualEnergy?: {
     readonly applicability: "unknown" | "applicable" | "not_applicable";
     readonly capacityPercent?: number;

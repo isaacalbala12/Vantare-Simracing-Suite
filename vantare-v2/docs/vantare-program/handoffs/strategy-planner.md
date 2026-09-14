@@ -1,6 +1,19 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1233 T02f3a cerrado localmente; T02f3b listo
+## Estado vigente — #1234 T02f3b cerrado localmente; T02g listo
+
+T02f3b añade servicios explícitos y tiempo de formación como dos campos
+opcionales del borrador recorded v1. El parser existente valida su forma sin
+crear otra autoridad semántica; el adaptador los copia al evento sin aliasing y
+conserva ausencia y cero. Los borradores anteriores mantienen exactamente su
+JSON y versión. RED reproducido con nueve fallos; focales 48/48, typecheck y
+lint focal pasan. La suite completa 3806/3806, lint, build y contratos del
+roadmap también pasan. Astra high recomendó este corte de tres cambios productivos,
+sin nuevo validador, modelo, migración ni cálculo TypeScript. Siguiente: T02g,
+perfiles antes de optimizar. Sin UI, app/Wails/LMU, DuckDB, push, PR, CI remota,
+integración ni release.
+
+## Historial — #1233 T02f3a cerrado localmente; T02f3b listo
 
 T02f3a alinea el cliente TypeScript con servicios explícitos de parada y tiempo
 de formación. La petición conserva el desglose exacto; el parser de resultados

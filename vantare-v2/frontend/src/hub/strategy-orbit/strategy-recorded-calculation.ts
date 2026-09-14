@@ -21,6 +21,8 @@ export function recordedCalculationEvent(draft: RecordedWizardDraft): Calculatio
     ...(draft.fuelReserveLiters === undefined ? {} : { fuelReserveLiters: draft.fuelReserveLiters }),
     virtualEnergy,
     pitLossSeconds: draft.pitLossSeconds,
+    ...(draft.pitServices === undefined ? {} : { pitServices: structuredClone(draft.pitServices) }),
+    ...(draft.formationSeconds === undefined ? {} : { formationSeconds: draft.formationSeconds }),
     ...(draft.rules === undefined ? {} : { rules: structuredClone(draft.rules) }),
     ...(draft.tyreInventory === undefined ? {} : { tyreInventory: structuredClone(draft.tyreInventory) }),
     ...(draft.compoundPace === undefined ? {} : { compoundPace: structuredClone(draft.compoundPace) }),

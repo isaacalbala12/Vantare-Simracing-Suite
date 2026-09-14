@@ -10,6 +10,7 @@ const tyre = (id: string) => ({
 });
 const physicalInventory = { maximum: 1, tyres: [tyre("M-FL")] };
 const validCompoundPace = [{ compound: "medium", presence: "valid", provenance: { kind: "reference", sourceId: "revision-1" }, confidence: { sampleSize: 1, computationVersion: "test.v1" }, paceDeltaSeconds: 0, degradationPerLapSeconds: 0 }];
+const pitServices = { transitSeconds: 20, refuelRateLPerS: 2, veRatePPerS: 3, tyreSeconds: 8, serviceMode: "parallel" };
 it("round-trips an incomplete draft without manufacturing missing quantities", () => {
   const parsed = parseRecordedDraftPayload(JSON.parse(JSON.stringify(payload)));
   expect(parsed).toEqual(payload);
@@ -32,6 +33,15 @@ it.each([
 it("preserves zero configuration, signed estimates and full revision refs", () => {
   const draft = { ...payload.draft, fuelReserveLiters: 0, drivers: [{ id: "a", name: "Alex" }, { id: "b", name: "Sam", referenceDriverId: "a", paceDeltaSeconds: -0.5 }], sessions: [{ sessionId: "session", baseDigest: "base", revisionId: "revision", snapshotId: "snapshot" }] };
   expect(parseRecordedDraftPayload({ ...payload, draft }).draft).toEqual(draft);
+});
+it("round-trips explicit pit services and zero formation without sharing their object", () => {
+  const source = { ...payload, draft: { ...payload.draft, pitServices, formationSeconds: 0 } };
+
+  const parsed = parseRecordedDraftPayload(source);
+
+  expect(parsed).toEqual(source);
+  expect(parsed.draft.pitServices).not.toBe(pitServices);
+  expect(parseRecordedDraftPayload(payload)).toEqual(payload);
 });
 it("retains calendar version, class identity and published rules in an independent snapshot", () => {
   const calendar = { simulator: "lmu", version: 4, updated: "2026-09-09T12:00:00Z", capturedAt: "2026-09-10T00:00:00Z", series: {
@@ -63,6 +73,14 @@ it("rejects the legacy individual-tyre shape instead of inventing physical state
   expect(source.draft.tyreInventory.tyres[0]).toBe(legacy);
 });
 it.each([
+  { pitServices: null },
+  { pitServices: { ...pitServices, tyreSeconds: undefined } },
+  { pitServices: { ...pitServices, transitSeconds: "20" } },
+  { pitServices: { ...pitServices, refuelRateLPerS: Number.POSITIVE_INFINITY } },
+  { pitServices: { ...pitServices, serviceMode: "serial" } },
+  { formationSeconds: null },
+  { formationSeconds: "0" },
+  { formationSeconds: Number.POSITIVE_INFINITY },
   { tyreInventory: { maximum: 4, tyres: [] } },
   { compoundPace: [] },
   { tyreInventory: { maximum: 4, tyres: [tyre("M-FL"), tyre("M-FL")] }, compoundPace: validCompoundPace },
@@ -72,6 +90,6 @@ it.each([
   { tyreInventory: physicalInventory, compoundPace: [{ compound: "medium", presence: "valid", provenance: { kind: "reference" }, confidence: { level: "high" }, paceDeltaSeconds: 0, degradationPerLapSeconds: 0 }] },
   { tyreInventory: physicalInventory, compoundPace: [{ compound: "medium", presence: "valid", provenance: { kind: "reference" }, confidence: { sampleSize: 1, computationVersion: "test.v1" }, paceDeltaSeconds: 0, degradationPerLapSeconds: 0, curve: [{ lapInStint: 0, deltaSeconds: 0 }] }] },
   { tyreInventory: { maximum: 1, tyres: [{ ...tyre("M-FL"), condition: { ...tyre("M-FL").condition, confidence: { level: "unknown", basis: 42 } } }] }, compoundPace: [{ compound: "medium", presence: "valid", provenance: { kind: "reference" }, confidence: { sampleSize: 1, computationVersion: "test.v1" }, paceDeltaSeconds: 0, degradationPerLapSeconds: 0 }] },
-])("rejects incomplete physical tyre custody %#", patch => {
+])("rejects invalid recorded input %#", patch => {
   expect(() => parseRecordedDraftPayload({ ...payload, draft: { ...payload.draft, ...patch } })).toThrow();
 });

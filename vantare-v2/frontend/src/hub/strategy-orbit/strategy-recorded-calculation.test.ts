@@ -76,6 +76,18 @@ describe("recordedCalculationEvent", () => {
     expect(source).toEqual(before);
     expect(event).not.toHaveProperty("initialFuelLiters");
     expect(event).not.toHaveProperty("fuelReserveLiters");
+    expect(event).not.toHaveProperty("pitServices");
+    expect(event).not.toHaveProperty("formationSeconds");
+  });
+
+  it("copies explicit pit services and zero formation without aliasing", () => {
+    const pitServices = { transitSeconds: 20, refuelRateLPerS: 2, veRatePPerS: 3, tyreSeconds: 8, serviceMode: "sequential" as const };
+    const source = draft({ pitServices, formationSeconds: 0 });
+
+    const event = recordedCalculationEvent(source);
+
+    expect(event).toMatchObject({ pitServices, formationSeconds: 0 });
+    expect(event.pitServices).not.toBe(pitServices);
   });
 
   it("clones explicit physical tyre inputs without changing their values", () => {

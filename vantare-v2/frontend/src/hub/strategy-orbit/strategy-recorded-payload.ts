@@ -36,7 +36,12 @@ export function parseRecordedDraftPayload(value: unknown): RecordedDraftPayload 
   if (race.format !== "timed" && race.format !== "laps") invalid("race.format");
   if (race.format === "timed" && race.laps !== undefined || race.format === "laps" && race.durationMin !== undefined) invalid("race.units");
   optionalNumbers(race, ["durationMin", "laps"]);
-  optionalNumbers(draft, ["tankLiters", "initialFuelLiters", "fuelReserveLiters", "pitLossSeconds"]);
+  optionalNumbers(draft, ["tankLiters", "initialFuelLiters", "fuelReserveLiters", "pitLossSeconds", "formationSeconds"]);
+  if (draft.pitServices !== undefined) {
+    const services = object(draft.pitServices, "pitServices");
+    for (const field of ["transitSeconds", "refuelRateLPerS", "veRatePPerS", "tyreSeconds"]) number(services[field], `pitServices.${field}`);
+    if (services.serviceMode !== "parallel" && services.serviceMode !== "sequential") invalid("pitServices.serviceMode");
+  }
   if (draft.combination !== undefined) {
     const combination = object(draft.combination, "combination");
     for (const field of ["combinationId", "simId", "trackName", "carName", "carClass"]) string(combination[field], field, true);

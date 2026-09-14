@@ -1,0 +1,745 @@
+{
+  "header": {
+    "analyzer": "staticcheck",
+    "base_sha": "4e5e9556574bd2b3dc6d115ce13625812016aa0b",
+    "generated_at": "2026-09-14T23:12:57Z",
+    "tool_versions": {
+      "staticcheck": "2026.2.1",
+      "govet": "go1.25.0",
+      "deadcode": "v0.49.0",
+      "go-mod-tidy": "go1.25.0",
+      "knip": "6.34.0",
+      "dependency-cruiser": "18.2.0",
+      "jscpd": "5.1.2"
+    },
+    "scope_hash": "f7cf7c0de413ed87d95d4f589c0d18cf17fd4b72cd526f0a320a9ce40794859d",
+    "versions_fingerprint": "3a4e2c5c3626628ae6e904fd8a01eb4722f582912af5571fe0c64a60a4efb9d8",
+    "configs": [
+      "darwin-dev",
+      "windows-amd64"
+    ],
+    "count": 90
+  },
+  "findings": [
+    {
+      "analyzer": "staticcheck",
+      "rule": "S1005",
+      "path": "vantare-v2/cmd/vantare/launcher_dialog.go",
+      "msg_norm": "unnecessary assignment to the blank identifier",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "S1007",
+      "path": "vantare-v2/internal/strategy/producta/deny_copy_guard_test.go",
+      "msg_norm": "should use raw string (`...`) with regexp.mustcompile to avoid having to escape twice",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "S1016",
+      "path": "vantare-v2/internal/app/testing_center_report_bridge.go",
+      "msg_norm": "should convert request (type testingcenterreportdraftrequest) to testingcenterreportdraftdiscardedresponse instead of using struct literal",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "S1016",
+      "path": "vantare-v2/internal/telemetryanalysis/authorized_store.go",
+      "msg_norm": "should convert evidence (type historicalartifactevidence) to historicalartifactevidencerecord instead of using struct literal",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "S1038",
+      "path": "vantare-v2/internal/app/performance/sensor/presentmon_job_windows_test.go",
+      "msg_norm": "should use t.fatalf(...) instead of t.fatal(fmt.sprintf(...))",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1012",
+      "path": "vantare-v2/internal/app/strategy_live_runtime_test.go",
+      "msg_norm": "do not pass a nil context, even if a function permits it; pass context.todo if you are unsure about which context to use",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1012",
+      "path": "vantare-v2/internal/app/telemetry_core_runtime_test.go",
+      "msg_norm": "do not pass a nil context, even if a function permits it; pass context.todo if you are unsure about which context to use",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1019",
+      "path": "vantare-v2/cmd/vantare/main_test.go",
+      "msg_norm": "(github.com/vantare/overlays/v#/internal/app.launcherappentry).detected is deprecated: use availability instead. kept for settings migration.",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1019",
+      "path": "vantare-v2/internal/app/launcher/apps.go",
+      "msg_norm": "(github.com/vantare/overlays/v#/internal/app.launcherappentry).detected is deprecated: use availability instead. kept for settings migration.",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1019",
+      "path": "vantare-v2/internal/app/launcher/apps_test.go",
+      "msg_norm": "(github.com/vantare/overlays/v#/internal/app.launcherappentry).detected is deprecated: use availability instead. kept for settings migration.",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1019",
+      "path": "vantare-v2/internal/app/launcher/custom_apps_test.go",
+      "msg_norm": "(github.com/vantare/overlays/v#/internal/app.launcherappentry).detected is deprecated: use availability instead. kept for settings migration.",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1019",
+      "path": "vantare-v2/internal/app/launcher/discovery.go",
+      "msg_norm": "(github.com/vantare/overlays/v#/internal/app.launcherappentry).detected is deprecated: use availability instead. kept for settings migration.",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1019",
+      "path": "vantare-v2/internal/app/launcher/discovery_test.go",
+      "msg_norm": "(github.com/vantare/overlays/v#/internal/app.launcherappentry).detected is deprecated: use availability instead. kept for settings migration.",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1019",
+      "path": "vantare-v2/internal/app/launcher/discovery_windows_test.go",
+      "msg_norm": "(github.com/vantare/overlays/v#/internal/app.launcherappentry).detected is deprecated: use availability instead. kept for settings migration.",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1019",
+      "path": "vantare-v2/internal/app/launcher/icon_smoke_test.go",
+      "msg_norm": "(github.com/vantare/overlays/v#/internal/app.launcherappentry).detected is deprecated: use availability instead. kept for settings migration.",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1019",
+      "path": "vantare-v2/internal/app/launcher/icon_windows.go",
+      "msg_norm": "syscall.syscall has been deprecated since go #.#: use [syscalln] instead.",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1019",
+      "path": "vantare-v2/internal/app/launcher/icon_windows.go",
+      "msg_norm": "syscall.syscall# has been deprecated since go #.#: use [syscalln] instead.",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1019",
+      "path": "vantare-v2/internal/app/launcher/launcher_test.go",
+      "msg_norm": "(github.com/vantare/overlays/v#/internal/app.launcherappentry).detected is deprecated: use availability instead. kept for settings migration.",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1019",
+      "path": "vantare-v2/internal/app/strategy_live_runtime_test.go",
+      "msg_norm": "github.com/vantare/overlays/v#/internal/app/telemetrytransport.eventfact is deprecated: reserved contract name for the f# engineer facts port; there is no live fact transport in f#.",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1019",
+      "path": "vantare-v2/internal/app/strategy_live_runtime_test.go",
+      "msg_norm": "go/parser.parsedir has been deprecated since go #.# and an alternative has been available since go #.#: parsedir does not consider build tags when associating files with packages. for precise information about the relationship between packages and files, use golang.org/x/tools/go/packages, which can also optionally parse and type-check the files too.",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1019",
+      "path": "vantare-v2/internal/app/telemetry_core_hardening_test.go",
+      "msg_norm": "(github.com/vantare/overlays/v#/internal/app/telemetrytransport.hubmetrics).deltasretained is deprecated: rfc # was retired in isa-#/f#; this remains zero until f# releases the runtime metrics compatibility check.",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1019",
+      "path": "vantare-v2/internal/calendar/import_schedule.go",
+      "msg_norm": "strings.title has been deprecated since go #.# and an alternative has been available since go #.#: the rule title uses for word boundaries does not handle unicode punctuation properly. use golang.org/x/text/cases instead.",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1019",
+      "path": "vantare-v2/internal/strategy/live/architecture_test.go",
+      "msg_norm": "go/parser.parsedir has been deprecated since go #.# and an alternative has been available since go #.#: parsedir does not consider build tags when associating files with packages. for precise information about the relationship between packages and files, use golang.org/x/tools/go/packages, which can also optionally parse and type-check the files too.",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1019",
+      "path": "vantare-v2/internal/telemetry/recording/replay/canonical_integration_test.go",
+      "msg_norm": "github.com/vantare/overlays/v#/internal/telemetry/projection/analysis.projectv# is deprecated: reference projector for f#.b post-session analysis; no live consumer.",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1019",
+      "path": "vantare-v2/internal/telemetry/recording/replay/canonical_integration_test.go",
+      "msg_norm": "github.com/vantare/overlays/v#/internal/telemetry/projection/overlayv#.projectv# is deprecated: the production path composes the frame per section through cachedprojector (f#); projectv# remains the reference implementation that the byte-for-byte parity tests compare against. do not wire it back into the runtime.",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1019",
+      "path": "vantare-v2/internal/telemetryanalysis/staging_acl_windows.go",
+      "msg_norm": "golang.org/x/sys/windows.opencurrentprocesstoken is deprecated: explicitly call openprocesstoken(currentprocess(), ...) with the desired access instead, or use getcurrentprocesstoken for a token_query token.",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1019",
+      "path": "vantare-v2/internal/telemetryanalysis/staging_acl_windows_test.go",
+      "msg_norm": "golang.org/x/sys/windows.opencurrentprocesstoken is deprecated: explicitly call openprocesstoken(currentprocess(), ...) with the desired access instead, or use getcurrentprocesstoken for a token_query token.",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA1019",
+      "path": "vantare-v2/tools/telemetry-contract-gen/main.go",
+      "msg_norm": "github.com/vantare/overlays/v#/internal/app/telemetrytransport.eventfact is deprecated: reserved contract name for the f# engineer facts port; there is no live fact transport in f#.",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA4006",
+      "path": "vantare-v2/internal/engineer/laps/monitor_test.go",
+      "msg_norm": "this value of evs is never used",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA4006",
+      "path": "vantare-v2/internal/engineer/service/delivery_runtime.go",
+      "msg_norm": "this value of visualenabled is never used",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA4006",
+      "path": "vantare-v2/internal/engineer/spotter/state_test.go",
+      "msg_norm": "this value of events is never used",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA4006",
+      "path": "vantare-v2/internal/engineer/watchedopponents/monitor_test.go",
+      "msg_norm": "this value of evs is never used",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA4006",
+      "path": "vantare-v2/internal/radio/delivery_test.go",
+      "msg_norm": "this value of resolver is never used",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA4006",
+      "path": "vantare-v2/internal/server/profile.go",
+      "msg_norm": "this value of clean is never used",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA4006",
+      "path": "vantare-v2/internal/testingcenter/contract/decode.go",
+      "msg_norm": "this value of token is never used",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA4011",
+      "path": "vantare-v2/internal/engineer/service/engineer_service_test.go",
+      "msg_norm": "ineffective break statement. did you mean to break out of the outer loop?",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "SA9004",
+      "path": "vantare-v2/internal/telemetry/drivers/lmu/fusion.go",
+      "msg_norm": "only the first constant in this group has an explicit type",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "ST1005",
+      "path": "vantare-v2/cmd/lmu-calendar-bot/main.go",
+      "msg_norm": "error strings should not be capitalized",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "ST1005",
+      "path": "vantare-v2/cmd/vantare-admin/operational_access.go",
+      "msg_norm": "error strings should not end with punctuation or newlines",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "ST1005",
+      "path": "vantare-v2/cmd/vantare/main.go",
+      "msg_norm": "error strings should not be capitalized",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "ST1005",
+      "path": "vantare-v2/internal/app/schedule_import_service.go",
+      "msg_norm": "error strings should not be capitalized",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "ST1005",
+      "path": "vantare-v2/internal/app/strategy_live_runtime.go",
+      "msg_norm": "error strings should not be capitalized",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "ST1005",
+      "path": "vantare-v2/internal/app/telemetry_analysis_service.go",
+      "msg_norm": "error strings should not be capitalized",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "ST1005",
+      "path": "vantare-v2/internal/telemetryanalysis/duckdbadapter/invocation_windows.go",
+      "msg_norm": "error strings should not be capitalized",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/build/ios/app_options_default.go",
+      "msg_norm": "func modifyoptionsforios is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/cmd/vantare-admin/main.go",
+      "msg_norm": "func supabaserequest is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/cmd/vantare/launcher_dialog.go",
+      "msg_norm": "func loglauncherdialog.showretry is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/cmd/vantare/launcher_dialog.go",
+      "msg_norm": "type loglauncherdialog is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/cmd/vantare/main.go",
+      "msg_norm": "func executestrategysolvercommand is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/cmd/vantare/main.go",
+      "msg_norm": "func publicstrategysolvermessage is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/app/launcher/discovery.go",
+      "msg_norm": "func indexexecutables is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/app/launcher/icon_windows.go",
+      "msg_norm": "var procgetdevicecaps is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/app/launcher/launcher_test.go",
+      "msg_norm": "func hasevent is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/app/launcher/process.go",
+      "msg_norm": "type processterminator is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/app/profile_service.go",
+      "msg_norm": "func (*profileservice).listprofilefiles is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/app/telemetry_simulators_test.go",
+      "msg_norm": "field sequence is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/app/telemetrytransport/transport_test.go",
+      "msg_norm": "func jsonequal is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/app/telemetrytransport/transport_test.go",
+      "msg_norm": "func jsonvaluesequal is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/core/runtime.go",
+      "msg_norm": "func (*fnmonitor).trigger is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/core/runtime.go",
+      "msg_norm": "func engineevent.expiresat is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/core/runtime.go",
+      "msg_norm": "func engineevent.payload is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/core/runtime.go",
+      "msg_norm": "func engineevent.type is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/core/runtime.go",
+      "msg_norm": "type engineevent is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/core/runtime.go",
+      "msg_norm": "type fnmonitor is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/engine/monitor.go",
+      "msg_norm": "field lastfuelpressurefire is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/engine/monitor.go",
+      "msg_norm": "field lastfuelpressuremsg is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/engine/monitor.go",
+      "msg_norm": "field lastoilpressuremsg is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/engine/monitor_test.go",
+      "msg_norm": "func mkframe is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/flags/monitor.go",
+      "msg_norm": "field sessionid is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/laps/monitor.go",
+      "msg_norm": "field lastconsistencytype is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/laps/monitor_test.go",
+      "msg_norm": "func runconsistentlaps is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/multiclass/monitor.go",
+      "msg_norm": "func (*monitor).canemitfaster is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/multiclass/monitor.go",
+      "msg_norm": "func (*monitor).canemitslower is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/pitstops/monitor.go",
+      "msg_norm": "field mu is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/push/monitor.go",
+      "msg_norm": "field lastemitms is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/service/engineer_service.go",
+      "msg_norm": "func (*engineerservice).emitstatus is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/service/engineer_service_test.go",
+      "msg_norm": "func mapresolver.resolvepresentationcached is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/service/engineer_service_test.go",
+      "msg_norm": "type mapresolver is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/sessionend/monitor.go",
+      "msg_norm": "const finishstatusdnf is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/sessionend/monitor.go",
+      "msg_norm": "const finishstatusdsq is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/sessionend/monitor.go",
+      "msg_norm": "const finishstatusfinished is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/engineer/spotter/state.go",
+      "msg_norm": "func (*machine).clearevent is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/strategy/application/service_test.go",
+      "msg_norm": "func jsonequal is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/strategy/solver/solver_v2_solve.go",
+      "msg_norm": "func solverpitinput is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/telemetry/drivers/lmu/format.go",
+      "msg_norm": "func bufbool is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/telemetry/drivers/lmu/format.go",
+      "msg_norm": "func readstring is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/telemetry/drivers/lmu/format.go",
+      "msg_norm": "func validateinpit is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/telemetry/drivers/lmu/rest.go",
+      "msg_norm": "func timedmissing is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/telemetry/projection/overlayv2/cadence.go",
+      "msg_norm": "func safetydirty is unused",
+      "symbol": "",
+      "content_hash": ""
+    },
+    {
+      "analyzer": "staticcheck",
+      "rule": "U1000",
+      "path": "vantare-v2/internal/window/manager.go",
+      "msg_norm": "func (*manager).applyshrinkwrap is unused",
+      "symbol": "",
+      "content_hash": ""
+    }
+  ]
+}

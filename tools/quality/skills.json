@@ -1,0 +1,140 @@
+{
+  "schema": {
+    "description": "Registro de skills externas consideradas para el sistema de calidad anti-slop de Vantare. Inspeccionadas en modo solo lectura en una cache fuera del producto y gitignorada (tools/quality/.skills-cache/). NO se ejecutan sus scripts ni instaladores. NO se instala Claude Code.",
+    "cache_location": "tools/quality/.skills-cache/ (gitignored)",
+    "policy": "Solo lectura. Inspeccion del SKILL.md antes de nada. 'no disponible' es un estado valido y honesto."
+  },
+  "skills": [
+    {
+      "id": "tt-a1i/simplify-codebase",
+      "origin": "https://github.com/tt-a1i/simplify-codebase",
+      "revision_sha": "5da55efcb52db690e7406f06f827a23b15da2706",
+      "revision_date": "2026-09-04",
+      "license": "MIT",
+      "local_path": "tools/quality/.skills-cache/simplify-codebase/",
+      "status": "leida directamente",
+      "applicability": "parcial",
+      "applicable_part": "Survey mode (read-only, ranked evidence) alinea con la filosofia anti-slop: buscar dead code, duplicate state, redundant interfaces, abstractions sin dueno con evidencia antes de cortar.",
+      "discarded_part": "Change mode (eliminar/consolidar) queda fuera del alcance del tooling de calidad; las eliminaciones son decisiones de producto. La skill misma advierte que borrar una capability alcanzable es una decision de producto.",
+      "incompatibilities": []
+    },
+    {
+      "id": "anthropics/claude-plugins-official:code-simplifier",
+      "origin": "https://github.com/anthropics/claude-plugins-official",
+      "revision_sha": "da823e86c8feef13b73b6712af11eadd38c992f6",
+      "revision_date": "2026-09-14",
+      "license": "Apache-2.0",
+      "local_path": "tools/quality/.skills-cache/claude-plugins-official/plugins/code-simplifier/agents/code-simplifier.md",
+      "status": "leida directamente",
+      "applicability": "parcial",
+      "applicable_part": "Deteccion de complejidad accidental y simplificacion de codigo.",
+      "discarded_part": "Recomienda 'avoid try/catch when possible'. Esto choca con las PROTECCIONES EXPLICITAS de la politica anti-slop: el manejo de errores NO es slop y no se retira sin demostrar que sobra. Descartamos esa recomendacion; el resto se evalua caso a caso.",
+      "incompatibilities": [
+        "Recomienda evitar try/catch; nuestra politica exige conservar manejo de errores, cancelacion y limpieza de recursos."
+      ],
+      "note": "Es un agente/plugin (no una skill nativa SKILL.md); se inspecciono el .md del agente."
+    },
+    {
+      "id": "github/awesome-copilot:refactor-plan",
+      "origin": "https://github.com/github/awesome-copilot",
+      "revision_sha": "1899b18da3fa5183652f86165917d553cba1850a",
+      "revision_date": "2026-09-14",
+      "license": "MIT",
+      "local_path": "tools/quality/.skills-cache/awesome-copilot/skills/refactor-plan/SKILL.md",
+      "status": "leida directamente",
+      "applicability": "parcial",
+      "applicable_part": "Planificacion de refactors con pasos acotados y validacion; util como guia de flujo para cambios que requieren revision.",
+      "discarded_part": "Es generica y orientada a Copilot; no aporta reglas deterministas verificables para el gate de calidad. Se usa solo como referencia de flujo, no como regla bloqueante.",
+      "incompatibilities": []
+    },
+    {
+      "id": "spf13/go-skills:go",
+      "origin": "https://github.com/spf13/go-skills",
+      "revision_sha": "e67851cfcca008592c7c4965b8220c7cb37e2f1c",
+      "revision_date": "2026-07-10",
+      "license": "no disponible (sin LICENSE en el repo)",
+      "local_path": "tools/quality/.skills-cache/go-skills/go/SKILL.md",
+      "status": "leida directamente",
+      "applicability": "parcial",
+      "applicable_part": "Convenciones de Go y patrones idiomáticos; util como referencia para revision de codigo Go.",
+      "discarded_part": "Sin licencia explicita: no se integra ni se redistribuye; solo lectura para informar decisiones. Las reglas deterministas del gate (staticcheck, govet, deadcode) tienen prioridad sobre cualquier guia de estilo.",
+      "incompatibilities": [
+        "Repo sin LICENSE: uso solo como lectura, no se redistribuye."
+      ]
+    },
+    {
+      "id": "spf13/go-skills:wails",
+      "origin": "https://github.com/spf13/go-skills",
+      "revision_sha": "e67851cfcca008592c7c4965b8220c7cb37e2f1c",
+      "revision_date": "2026-07-10",
+      "license": "no disponible (sin LICENSE en el repo)",
+      "local_path": "tools/quality/.skills-cache/go-skills/wails/SKILL.md",
+      "status": "leida directamente",
+      "applicability": "parcial",
+      "applicable_part": "Deteccion de version de Wails (v2 vs v3) y separacion estricta de APIs. Vantare usa Wails 3 (alpha); la skill advierte que mezclar v2/v3 es el fallo mas comun.",
+      "discarded_part": "Sin licencia explicita: solo lectura. No aporta reglas deterministas para el gate; es referencia para entender el codigo del producto.",
+      "incompatibilities": [
+        "Repo sin LICENSE: uso solo como lectura, no se redistribuye."
+      ]
+    },
+    {
+      "id": "vercel-labs/agent-skills:react-best-practices",
+      "origin": "https://github.com/vercel-labs/agent-skills",
+      "revision_sha": "063bee94c3f4df8453406c830b0a7df0f2860278",
+      "revision_date": "2026-08-28",
+      "license": "no disponible (sin LICENSE en el repo)",
+      "local_path": "tools/quality/.skills-cache/agent-skills/skills/react-best-practices/SKILL.md",
+      "status": "leida directamente",
+      "applicability": "parcial",
+      "applicable_part": "Reglas de rendimiento de React del lado del cliente (secciones 1, 2, 5, 6, 7, 8): eliminar waterfalls, optimizar bundle, re-renders, rendering, JS perf, advanced patterns. Aplicables al frontend Vantare (Vite + React 19).",
+      "discarded_part": "Seccion 3 (Server-Side Performance) y referencias a Next.js/Server Components/Server Actions/RSC NO aplican: Vantare es una app desktop (Wails + Vite), no SSR. Se descarta toda la seccion 3.",
+      "incompatibilities": [
+        "Incluye Next.js/Server Components/Server Actions: no aplica a una app desktop Wails+Vite.",
+        "Repo sin LICENSE: uso solo como lectura, no se redistribuye."
+      ]
+    },
+    {
+      "id": "millionco/react-doctor",
+      "origin": "https://github.com/millionco/react-doctor",
+      "revision_sha": "922616f08db7d48463b1495e4dbdb699fc3d7c34",
+      "revision_date": "2026-09-13",
+      "license": "Modified MIT",
+      "local_path": "tools/quality/.skills-cache/react-doctor/skills/react-doctor/SKILL.md",
+      "status": "no aplicable",
+      "applicability": "no aplicable",
+      "applicable_part": "",
+      "discarded_part": "React Doctor es un CLI/escaner determinista (no una skill de flujo). El lead decidio NO anadirlo al gate de calidad en FASE 1 (la lista de herramientas es cerrada: staticcheck, govet, deadcode, go-mod-tidy, knip, dependency-cruiser, jscpd). Anadirlo requeriria preguntar al lead primero.",
+      "incompatibilities": [
+        "No esta en la lista cerrada de herramientas del encargo; anadirlo requiere autorizacion del lead."
+      ]
+    },
+    {
+      "id": "kucherenko/jscpd:jscpd",
+      "origin": "https://github.com/kucherenko/jscpd",
+      "revision_sha": "6627c87d49f6a2f6439a5382eb96533b03307109",
+      "revision_date": "2026-09-13",
+      "license": "MIT",
+      "local_path": "tools/quality/.skills-cache/jscpd/skills/jscpd/SKILL.md",
+      "status": "instalada",
+      "applicability": "parcial",
+      "applicable_part": "Uso de jscpd como analizador de duplicacion con ratchet por identidad (content_hash), un hallazgo por emplazamiento. Es la herramienta que ya integra el gate.",
+      "discarded_part": "La skill recomienda 'threshold: 0' y advierte no gatear CI con --threshold/--fail-on-new-clones sin revision. Nuestra politica NO usa gates de porcentaje global (threshold): usamos ratchet por identidad. Descartamos el uso de threshold como gate.",
+      "incompatibilities": [
+        "La skill trae threshold: 0 (porcentaje global); incompatible con nuestra politica de no usar gates de porcentaje global. Usamos ratchet por identidad en su lugar."
+      ]
+    },
+    {
+      "id": "kucherenko/jscpd:dry-refactoring",
+      "origin": "https://github.com/kucherenko/jscpd",
+      "revision_sha": "6627c87d49f6a2f6439a5382eb96533b03307109",
+      "revision_date": "2026-09-13",
+      "license": "MIT",
+      "local_path": "tools/quality/.skills-cache/jscpd/skills/dry-refactoring/SKILL.md",
+      "status": "leida directamente",
+      "applicability": "parcial",
+      "applicable_part": "Flujo de refactor DRY: identificar duplicacion, consolidar con evidencia. Referencia para interpretar hallazgos de jscpd.",
+      "discarded_part": "Es una guia de flujo, no reglas deterministas. Las eliminaciones son decisiones de producto; el gate solo bloquea NUEVA duplicacion, no fuerza eliminaciones.",
+      "incompatibilities": []
+    }
+  ]
+}

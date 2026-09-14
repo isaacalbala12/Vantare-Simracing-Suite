@@ -1,0 +1,98 @@
+{
+  "$schema": "exceptions-v1",
+  "version": 1,
+  "description": "Excepciones documentadas y aceptadas a hallazgos individuales. Vacio al inicio de FASE 1. Cada excepcion debe justificar por que el hallazgo no es un defecto real y referenciar la identidad del ratchet. Una excepcion NUNCA silencia un MOVED.",
+  "schema": {
+    "exceptions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "analyzer",
+          "rule",
+          "path",
+          "key",
+          "reason",
+          "added_by",
+          "added_at",
+          "scope",
+          "evidence",
+          "reevaluation"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "identificador estable unico"
+          },
+          "analyzer": {
+            "type": "string",
+            "enum": [
+              "staticcheck",
+              "govet",
+              "deadcode",
+              "knip",
+              "jscpd",
+              "dependency-cruiser",
+              "go-mod-tidy"
+            ]
+          },
+          "rule": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string",
+            "description": "norm(path): ruta POSIX relativa al repo"
+          },
+          "key": {
+            "type": "string",
+            "description": "msg_norm | symbol | content_hash segun analyzer"
+          },
+          "reason": {
+            "type": "string",
+            "description": "justificacion: por que no es un defecto real"
+          },
+          "added_by": {
+            "type": "string"
+          },
+          "added_at": {
+            "type": "string",
+            "description": "ISO-8601 UTC"
+          },
+          "expires": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "fecha de caducidad opcional ISO-8601"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "evidence": {
+            "type": "string"
+          },
+          "reevaluation": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "exceptions": [
+    {
+      "id": "go-mod-tidy-vantare-v2-coder-websocket",
+      "analyzer": "go-mod-tidy",
+      "rule": "tidy-diff",
+      "path": "vantare-v2",
+      "key": "diff current/go.mod tidy/go.mod --- current/go.mod +++ tidy/go.mod @@ -#,# +#,# @@ go #.#.# require ( + github.com/coder/websocket v#.#.# github.com/shirou/gopsutil/v# v#.#.# github.com/stretchr/testify v#.#.# github.com/wailsapp/wails/v# v#.#.#-alpha.#-tui @@ -#,# +#,# @@ github.com/protonmail/go-crypto v#.#.# // indirect github.com/adrg/xdg v#.#.# // indirect github.com/cloudflare/circl v#.#.# // indirect - github.com/coder/websocket v#.#.# // indirect github.com/cyphar/filepath-securejoin v#.#.# // indirect github.com/davecgh/go-spew v#.#.# // indirect github.com/dustin/go-humanize v#.#.# // indirect",
+      "reason": "Deriva preexistente del manifiesto: github.com/coder/websocket esta como // indirect en go.mod pero go mod tidy lo promueve a direct. Corregirla es un cambio de producto (editar go.mod) fuera del alcance de esta tarea de tooling.",
+      "scope": "Solo el modulo vantare-v2; solo la dependencia github.com/coder/websocket.",
+      "evidence": "go mod tidy -diff en vantare-v2 produce un diff que anade coder/websocket al bloque require directo y la quita del bloque indirect.",
+      "reevaluation": "Reevaluar cuando se toque go.mod del modulo vantare-v2 por cualquier otra razon; el cambio de producto que corrija la promocion de coder/websocket eliminara esta excepcion.",
+      "added_by": "vantare-quality FASE 1",
+      "added_at": "2026-09-14T23:00:00Z",
+      "expires": null
+    }
+  ]
+}

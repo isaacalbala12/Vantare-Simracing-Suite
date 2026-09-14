@@ -22,8 +22,7 @@ tipada de Shared Memory y la última de REST. Cada entrada produce una
 `Observation` canónica con una decisión por señal admitida. La secuencia y la
 edad monotónica gobiernan autoridad y TTL; UTC es solo metadata.
 
-Shared Memory es la fuente atómica de sesión y parrilla. REST solo puede
-completar los ocho solapamientos demostrados. En posición, vueltas completadas
+Shared Memory es la fuente atómica de sesión y parrilla. En la matriz histórica siguiente, REST completa los ocho solapamientos demostrados. En posición, vueltas completadas
 y paradas, REST se aplica exclusivamente a la fila que Shared Memory ya marcó
 como jugador. No crea filas, IDs, rivales ni identidad de jugador.
 
@@ -40,6 +39,10 @@ El orden de selección es:
 `0`, `false` y texto vacío presente son valores. Una discrepancia entre valores
 comparables genera un diagnóstico acotado a cinco, pero no cambia la autoridad.
 La salida nunca conserva el snapshot REST privado ni bytes raw.
+
+## Campos REST adicionales en el runtime actual
+
+La matriz de solapamientos no enumera todos los campos admitidos por la fusión actual. [fusion.go](../../internal/telemetry/drivers/lmu/fusion.go) también une `AmbientTemp`, `TrackTemp`, `SessionFlag` y los números de coche REST sobre la parrilla SHM existente. Conserva TTL REST de 2 s y calidad por campo. `scopedSessionField` y `overlayCarNumbers` descartan datos obtenidos antes del último límite de sesión, incluso dentro del TTL; no crean identidad ni filas desde REST. Esta unión no añade reglas a `MatrixVersion=6` ni concede por sí sola capacidades Engineer/Strategy.
 
 ## Matriz v3
 

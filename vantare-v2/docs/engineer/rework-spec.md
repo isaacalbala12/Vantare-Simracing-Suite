@@ -205,9 +205,11 @@ entrada del precacheo: cambiar catálogo ⇒ regenerar audio, nunca al revés.
 - TTS dinámico en runtime; nombres de pilotos hablados.
 - Migración visual de los widgets (pertenece al rework de overlays).
 
-## 10. Fases previstas (detalle en la fase PLAN)
+## 10. Fases del plan original (2026-08-21)
 
-- **F0** — Spike extraer-vs-reescribir (en curso) + catálogo v1 + creación de
+El orden siguiente conserva el diseño aprobado. Radio bus, familias y carril de voz tienen implementación posterior: no reiniciar estas fases por sus estados originales. [Handoff](../vantare-program/handoffs/engineer-spotter.md) para evidencia y Notion para siguiente tarea. La presencia de código no certifica los gates de escucha/LMU.
+
+- **F0** — Spike extraer-vs-reescribir (en curso en el corte original) + catálogo v1 + creación de
   issues GitHub.
 - **F1** — Radio bus `radio.v1` + benchmark de carril rápido en Wails real.
 - **F2** — Pipeline de precacheo Kokoro + escucha perceptual (gate A2).
@@ -234,7 +236,9 @@ entrada del precacheo: cambiar catálogo ⇒ regenerar audio, nunca al revés.
 - Numeración GitHub de los cortes (Linear retirado).
 - Voz/es concretas de Kokoro por locale (se decide en la escucha A2).
 
-## 13. Siguientes pasos
+## 13. Siguientes pasos del plan original
+
+Registro histórico, sustituido para ejecución por la tarea y proyecto Notion. La aprobación inicial ya figura en este documento; no solicitarla ni crear de nuevo F0–F6 a partir de esta lista.
 
 1. Revisión y aprobación de Isaac de este spec.
 2. Crear issues GitHub de F0..F6 y arrancar F1 (bus `internal/radio`) con

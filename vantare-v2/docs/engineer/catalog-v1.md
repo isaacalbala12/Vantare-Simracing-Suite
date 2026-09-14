@@ -27,7 +27,7 @@ Cada familia agrupa intents por dominio de carrera. El orden del documento sigue
 | **tipo** | `interrumpe` (corta audio no crítico, nunca al revés), `informa` (cola normal), `consulta` (readout bajo demanda — voz de entrada / PTT / botón; no se emite espontáneamente). |
 | **prioridad propuesta** | Orden total del bus (`radio.v1`, spec §4.1): **P0 spotter** > **P1 banderas/peligro** > **P2 fuel/pit crítico** > **P3 carrera y motivación** (dentro de P3 ordena la antigüedad; los cooldowns largos limitan la motivación). |
 | **TTL** | Ventana de relevancia tras `CreatedAtMS`; el bus nunca emite caducado. Spotter 2–4 s, peligro 8–10 s, fuel/pit 20–45 s, carrera 10–30 s, motivación 12–20 s. |
-| **señal canónica + disponibilidad HOY** | Campo(s) de `ObservationV1` / `FactV1` / `Manifest` necesarios y su estado **hoy**: `disponible` (existe y es `Field.Usable()`), `parcial` (derivable con heurística o con dato limitado), `ausente` (no existe en la observación canónica; requiere que Telemetry Core lo publique). No se inventan señales: daños solo vive en el lector privado; lluvia/temperatura no existen en LMU; banderas no están proyectadas. |
+| **señal canónica + disponibilidad HOY** | Campo(s) de `ObservationV1` / `FactV1` / `Manifest` necesarios y su estado **hoy**: `disponible` (existe y es `Field.Usable()`), `parcial` (derivable con heurística o con dato limitado), `ausente` (no existe en la observación canónica; requiere que Telemetry Core lo publique). No se inventan señales: daños solo vive en el lector privado; no se ha demostrado aquí la proyección Engineer de lluvia/temperatura. Core sí lee temperatura ambiente/pista de LMU y Overlay V2 la publica (`drivers/lmu/rest.go`, `projection/overlayv2/builder_weather.go`); eso no concede una capability Engineer. Las ausencias y banderas de esta tabla corresponden al corte F0, no certifican todas las señales actuales. |
 | **nota personalidades** | Variación futura **sin triplicar textos**: el catálogo mantiene un único texto por locale; la personalidad modula prefijo/entonación en el resolver (`Profesional` = neutro, `Cercano` = más coloquial, `Exigente` = más directivo). No hay 3× filas. |
 
 ### Convenciones de voz
@@ -318,7 +318,7 @@ Se conservan tal cual los textos de `internal/engineer/presentation/presentation
 
 ## 16. Referencias
 
-- Spec rework: `docs/engineer/rework-spec-referencia.md` (copia de referencia F0; el canónico lo commitea F1) — D1-D11, A1-A5, §5 catálogo.
+- Spec rework: [rework-spec.md](rework-spec.md) (spec canónica; la copia de referencia F0 ya no existe) — D1-D11, A1-A5, §5 catálogo.
 - Auditoría CrewChief: `docs/engineer/audits/g3-parity-audit.md` — inventario 37 damage / 30 conditions / pit REST / commands.
 - Intents actuales: `internal/engineer/presentation/presentation.go:definitions()` y `catalogs()` — 20 intents × 4 locales.
 - Observación canónica: `internal/telemetry/projection/engineer/{v1.go, adapter.go, contract.go}` — `ObservationV1`, `Manifest`, `CapabilitySession/Standings/Controls/Pit/Fuel/Gaps/Spatial`, `FactV1`.

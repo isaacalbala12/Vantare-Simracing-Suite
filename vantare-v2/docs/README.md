@@ -19,12 +19,12 @@ Este índice es la entrada de lectura. El [inventario](documentation-inventory.m
 |---|---|
 | Producto y etapas | [Contrato de producto](vantare-program/product-contract.md), [etapas de beta y lanzamiento](plan-beta-publica-y-lanzamiento.md) |
 | Telemetría live | [Telemetry Core](telemetry-core/README.md) y [handoff](vantare-program/handoffs/telemetry-core.md) |
-| Análisis post-sesión | [Contrato y evidencia de Analysis](vantare-program/research/telemetry-analysis/README.md) |
+| Análisis post-sesión | [Handoff y límites de integración](vantare-program/handoffs/telemetry-analysis.md), [investigación y contratos](vantare-program/research/telemetry-analysis/README.md) |
 | Engineer/Spotter | [Handoff](vantare-program/handoffs/engineer-spotter.md) y [rework](engineer/rework-spec.md) |
 | Strategy Planner | [Handoff](vantare-program/handoffs/strategy-planner.md) y [contrato de documento](strategy-planner/f1-3-contrato-documento-v2.md) |
 | Studio y widgets | [Studio](overlays-studio/README.md), [Workshop](overlays-studio/overlay-workshop-authoring-guide.md), [ADR](adr/) |
 | Launcher | [Arquitectura Launcher](launcher-v3-architecture.md) |
-| Cuenta, Billing y releases | [Handoff plataforma](vantare-program/handoffs/platform-commercial.md), [runbooks Billing](billing/), [artefactos](release-artifacts.md) |
+| Cuenta, Billing y releases | [Handoff plataforma](vantare-program/handoffs/platform-commercial.md), [cuenta y runbooks Billing](billing/README.md), [artefactos](release-artifacts.md) |
 | Testing Center | [Handoff](vantare-program/handoffs/testing-center.md) y [runbooks](runbooks/) |
 | Marca y UI | [Marca](BRAND.md), [diseño](DESIGN.md); contrastar decisiones visuales con el handoff de Hub/Studio |
 

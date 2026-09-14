@@ -1,128 +1,47 @@
-# Release Checklists
+# Checklist de aceptación por build
 
-Checklists operativas por fase.
+Registrar versión, SHA, canal, entorno y resultados en la tarea de release de Notion. Una casilla sin marcar es una comprobación pendiente; esta plantilla no afirma que una build pase. Los criterios de etapa están en el [plan de lanzamiento](plan-beta-publica-y-lanzamiento.md).
 
-## Alpha privada checklist
+## Producto y persistencia
 
-Producto:
+- [ ] La app instala, arranca y muestra la versión esperada en Windows con WebView2.
+- [ ] Acceso a cuenta y permisos corresponden al usuario y al canal.
+- [ ] Un perfil recomendado se abre y se puede copiar como editable.
+- [ ] Studio permite editar contenido/apariencia y mover/redimensionar widgets en el mismo documento.
+- [ ] Se confirma el autoguardado antes de salir; reabrir conserva contenido y posición.
+- [ ] Un fallo de guardado se muestra y permite recuperar el cambio, sin anunciarlo como guardado.
+- [ ] Desktop abre/cierra y representa el perfil; OBS en el mismo PC muestra los widgets según la [guía local](obs-local-setup.md).
+- [ ] Relative, Standings, Pedals y demás widgets incluidos se prueban con datos disponibles; las ausencias no se presentan como valores reales.
+- [ ] Live, desconectado y fixtures de prueba son distinguibles; la prueba LMU real queda identificada.
+- [ ] Hotkeys, delta y funciones experimentales incluidas cumplen lo anunciado o tienen una limitación explícita aceptada para ese corte.
 
-- [ ] App arranca.
-- [ ] Hub carga sin errores visibles.
-- [ ] Overlays Studio es el flujo principal.
-- [ ] Perfil recomendado puede abrirse.
-- [ ] Recomendado puede copiarse como editable.
-- [ ] Perfil propio guarda y recarga.
-- [ ] Overlay desktop abre y cierra.
-- [ ] Mock/live/demo se entiende en editor.
+## Verificación técnica
 
-Layout:
+- [ ] Checks de la PR y del canal pasan según [branch-channels](branch-channels.md).
+- [ ] Build frontend antes de Go cuando necesita los assets embebidos; usar los comandos de [operaciones](operations.md) y [pruebas](testing-strategy.md).
+- [ ] Artefactos oficiales, runtime DuckDB y checksums pasan la [receta de release](release-artifacts.md).
+- [ ] Prueba de instalación/update en entorno limpio y recuperación del perfil con una copia verificada.
+- [ ] Rendimiento junto a LMU medido cuando el corte lo exige; harness visual y tests no sustituyen esta evidencia.
 
-- [ ] `LayoutStudio` permite mover widgets.
-- [ ] `LayoutStudio` permite redimensionar widgets.
-- [ ] Guardar layout conserva X/Y/W/H.
-- [ ] Reabrir app conserva layout.
-- [ ] `LayoutStudio` no edita columnas, metricas ni formatos internos.
+## Experiencia del tester
 
-Widgets:
+- [ ] Un tester completa [instalación y primeros pasos](tester-build-instructions.md) sin asistencia.
+- [ ] Notas de la build describen cambios, comprobaciones y limitaciones reales.
+- [ ] Se conoce el [canal de feedback](tester-feedback-process.md) y se puede reproducir un reporte.
+- [ ] No hay P0/P1 abiertos en el alcance; los P2 aceptados constan en la tarea y notas.
 
-- [ ] `WidgetStudio` no muestra X/Y/W/H.
-- [ ] `WidgetStudio` no permite borrar widgets.
-- [ ] `WidgetStudio` no abre/detiene overlay.
-- [ ] `Relative` permite configurar todas sus opciones aprobadas.
-- [ ] `Standings` permite configurar todas sus opciones aprobadas excepto multiclase.
-- [ ] Preview aislada centra y escala correctamente.
-- [ ] Preview aislada de `Relative` no conserva espacio vacio derecho en fill ni compact.
-- [ ] Preview aislada de `Standings` usa ancho intrinseco y no recorta columnas opcionales.
-- [ ] `LayoutStudio` y overlay runtime siguen usando `position.w/h`.
+## Venta y apertura pública
 
-UI:
+- [ ] Flujo Polar compra → acceso → renovación/cancelación/refund validado con la matriz [Billing](billing/README.md) en el entorno autorizado.
+- [ ] Identidad, dispositivo, credencial offline y acceso por canal comprobados.
+- [ ] Soporte, refund y distribución tienen procedimiento aprobado.
+- [ ] Guías de usuario y limitaciones publicables corresponden a esa build.
+- [ ] Aceptación y autorización de Isaac registradas; el cierre técnico no levanta por sí solo el NO-GO comercial.
 
-- [ ] Rework visual acotado de `WidgetStudio` aplicado.
-- [ ] Paneles son legibles.
-- [ ] No hay secciones importantes ocultas por scroll roto.
-- [ ] El flujo no parece un prototipo tecnico.
-- [ ] No ejecutar nuevos reworks visuales completos hasta cerrar la mayoria de features core.
+## Publicación
 
-Checks:
-
-```powershell
-pnpm --dir frontend test
-pnpm --dir frontend build
-pnpm --dir frontend lint
-go test ./pkg/config ./internal/app
-git diff --check
-```
-
-Release/Discord:
-
-- [ ] `docs/changelog.md` tiene entrada para la version que se va a taggear.
-- [ ] La entrada usa secciones cortas: Nuevo, Mejorado, Corregido, Para testers.
-- [ ] El tag Git `vX.X.X.X` coincide exactamente con el heading del changelog.
-- [ ] El secret de GitHub `DISCORD_WEBHOOK_URL` esta configurado en el repo oficial.
-- [ ] Al pushear el tag `v*`, GitHub Actions publica el changelog en Discord.
-
-## Beta testers checklist
-
-Producto:
-
-- [ ] Todo lo de alpha privada esta cerrado.
-- [ ] Build compartible generado.
-- [ ] Instrucciones de instalacion escritas.
-- [ ] Known issues escritos.
-- [ ] Canal de bugs/feedback definido.
-- [ ] Perfiles recomendados iniciales pulidos.
-
-Features:
-
-- [ ] OBS setup local funciona.
-- [ ] URL OBS copiable.
-- [ ] Hotkey basica funciona o esta pospuesta explicitamente.
-- [ ] Delta best live funciona o tiene decision documentada.
-- [ ] `Pedals` beta v1 funciona.
-
-Manual:
-
-- [ ] Tester puede instalar sin ayuda directa.
-- [ ] Tester puede abrir overlay.
-- [ ] Tester puede editar `Relative`.
-- [ ] Tester puede editar `Standings`.
-- [ ] Tester puede usar OBS local.
-- [ ] Tester sabe donde reportar bugs.
-
-## Beta publica de pago checklist
-
-Pago/acceso:
-
-- [ ] Stripe o checkout externo decidido.
-- [ ] Flujo de pago probado.
-- [ ] Acceso/licencia probado.
-- [ ] Instrucciones de descarga claras.
-- [ ] Soporte/refund/feedback definido.
-
-Producto:
-
-- [ ] Todo lo de beta testers esta cerrado.
-- [ ] No hay P0/P1 abiertos.
-- [ ] P2 aceptados estan documentados.
-- [ ] Changelog visible.
-- [ ] Version visible.
-- [ ] Instalacion/update suficientemente clara.
-
-## Release checklist
-
-Producto:
-
-- [ ] Promesa LMU-first cumplida.
-- [ ] Performance validada.
-- [ ] Documentacion usuario lista.
-- [ ] Known issues publicables.
-- [ ] Soporte organizado.
-- [ ] Regression suite minima.
-- [ ] Smoke test en entorno limpio.
-
-GitHub:
-
-- [ ] Tag `v1.0.0.0`.
-- [ ] Release notes.
-- [ ] Artefactos adjuntos.
-- [ ] Changelog actualizado.
+- [ ] Manifiesto `docs/releases/<tag>.json` y fragmentos seleccionados completos y validados con `release_notes.py --check`.
+- [ ] Tag/canal/SHA coherentes, sin reutilizar un tag distribuido.
+- [ ] Release remota contiene los seis artefactos oficiales y sus checksums.
+- [ ] Comunicaciones usan los destinos dedicados de [Discord](discord-communications.md), después de verificar los artefactos.
+- [ ] Notion registra lo realmente integrado/publicado y los enlaces a evidencia.

@@ -6,7 +6,7 @@ Corte: 2026-09-14, `origin/nightly` **60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c**
 
 Se inventariaron **994 archivos versionados** `.md`, `.mdx`, `.rst` y `.txt` (**266,699 líneas** en la base). El [inventario por archivo](analysis/documentation-audit-2026-09-14.tsv) incluye tratamiento, motivo, nivel de revisión y hash del contenido original. Incluye textos de soporte como fixtures y licencias para evitar borrarlos por extensión.
 
-La cobertura del inventario es completa para esas extensiones. La verificación semántica es focal: portadas, operaciones, Studio, OBS, contratos de transporte, autoridad y hallazgos del informe. **No se han certificado una por una las afirmaciones de las 266.699 líneas**, ni se ha ejecutado LMU/Wails en Windows. HTML de referencia, imágenes, binarios, datos y JSON generados tienen su función propia y no se eliminan como prosa obsoleta. Las fuentes sincronizadas del proyecto ChatGPT no se modifican.
+La cobertura del inventario es completa para esas extensiones. La verificación semántica se realizó en pasadas sobre entradas y contratos vigentes: operaciones, Studio/Workshop, OBS, transporte, Strategy, Engineer, Analysis, Launcher, Billing y releases, con revisión independiente y evidencia en el informe. **No se han certificado una por una las afirmaciones de las 266.699 líneas**, ni se ha ejecutado LMU/Wails en Windows. HTML de referencia, imágenes, binarios, datos y JSON generados tienen su función propia y no se eliminan como prosa obsoleta. Las fuentes sincronizadas del proyecto ChatGPT no se modifican.
 
 ## Dónde leer
 
@@ -16,15 +16,15 @@ El [índice vigente](README.md) conduce a uso, desarrollo y contratos por módul
 
 | Tratamiento | Archivos |
 |---|---:|
-| Actualizar | 49 |
+| Actualizar | 69 |
 | Conservar contrato | 15 |
-| Conservar evidencia | 275 |
-| Conservar gobierno | 20 |
+| Conservar evidencia | 274 |
+| Conservar gobierno | 18 |
 | Conservar plan/referencia | 188 |
-| Conservar referencia | 183 |
+| Conservar referencia | 156 |
 | Conservar soporte | 13 |
-| Consolidar | 10 |
-| Referencia histórica | 238 |
+| Consolidar | 21 |
+| Referencia histórica | 237 |
 | Retirar | 3 |
 
 **Conservar** no significa **validado como actual**. Los planes y evidencias se consultan cuando una tarea los necesita. Los contratos conservados mantienen su estado y enmiendas; no se archivan solo por antigüedad. Los archivos actualizados y su evidencia concreta se explican en el [informe](analysis/documentation-audit-2026-09-14.md).
@@ -43,6 +43,17 @@ Se conserva la ruta breve para no romper referencias y se enlaza el contenido co
 - [`mock-live-demo-ux.md`](mock-live-demo-ux.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/mock-live-demo-ux.md).
 - [`release-02-licensing-auth-stage.md`](release-02-licensing-auth-stage.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/release-02-licensing-auth-stage.md).
 - [`release-02-licensing-auth-handoff.md`](release-02-licensing-auth-handoff.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/release-02-licensing-auth-handoff.md).
+- [`auth-ui-flow.md`](auth-ui-flow.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/auth-ui-flow.md).
+- [`licensing-auth-architecture.md`](licensing-auth-architecture.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/licensing-auth-architecture.md).
+- [`license-service-contract.md`](license-service-contract.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/license-service-contract.md).
+- [`widget-design-systems.md`](widget-design-systems.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/widget-design-systems.md).
+- [`widget-rendering-preview-contract.md`](widget-rendering-preview-contract.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/widget-rendering-preview-contract.md).
+- [`visual-regression-harness.md`](visual-regression-harness.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/visual-regression-harness.md).
+- [`tester-diagnostics-pack.md`](tester-diagnostics-pack.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/tester-diagnostics-pack.md).
+- [`product-decisions.md`](product-decisions.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/product-decisions.md).
+- [`settings-information-architecture.md`](settings-information-architecture.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/settings-information-architecture.md).
+- [`engineer-radio-overlay-spec.md`](engineer-radio-overlay-spec.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/engineer-radio-overlay-spec.md).
+- [`DESIGN.md`](DESIGN.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/DESIGN.md).
 
 ## Retiradas
 

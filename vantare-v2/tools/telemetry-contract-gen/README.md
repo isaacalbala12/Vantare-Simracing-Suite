@@ -7,9 +7,9 @@ canónico.
 
 Incluye:
 
-- proyecciones v1 de Overlay, Engineer, Strategy y el contrato Analysis
+- proyecciones v1 de Engineer, Strategy y el contrato Analysis
   conservado para F12.b;
-- contrato compacto `projection/overlayv2`, incluido su `QValue<T>` genérico;
+- contrato compacto `projection/overlayv2`: `OverlayUpdateV2`, `OverlayFrameV2` y su `QValue<T>` genérico; Overlay V1 ya no es una raíz;
 - metadata y campos wire compartidos de `projection`;
 - `Envelope`, `StatusEnvelope`, `StatusPayload`, `SnapshotKind`, `ProductID` y
   `EventKind` de `internal/app/telemetrytransport`;
@@ -17,9 +17,9 @@ Incluye:
 
 `internal/telemetry/schema/envelope` no contiene hoy structs exportados con
 tags JSON: sus wrappers internos no se generan. Los snapshots de producto
-cruzan el wire mediante `projection.Metadata` y sus payloads v1.
+cruzan el wire según cada raíz explícita; no asumir que Overlay V2 tiene el mismo envoltorio que los payloads v1.
 
-Para regenerar:
+Desde `vantare-v2/`, para regenerar:
 
 ```powershell
 go run ./tools/telemetry-contract-gen

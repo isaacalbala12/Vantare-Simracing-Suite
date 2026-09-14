@@ -1104,6 +1104,52 @@ func TestUpdateAppliesMutationOnLiveState(t *testing.T) {
 	}
 }
 
+// ISA-928 review (Astra P2, second pass): the settings:save handler applies
+// the incoming document while preserving the live engineer section inside
+// the same critical section. A payload captured before an engineer change
+// must never win — the live value is the one persisted.
+func TestUpdateReplacePreservesLiveEngineerSection(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	svc := app.NewSettingsService(path, &spyEmitter{}, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatal(err)
+	}
+
+	// The settings form's payload, captured before the engineer change: it
+	// still carries the default (stale) engineer section.
+	stalePayload := svc.Settings()
+	stalePayload.LauncherOnboardingCompleted = true
+
+	if err := svc.SetEngineerSettings(&app.EngineerSettings{
+		Enabled: true, SpotterEnabled: false, SubtitlesEnabled: true,
+		Sensitivity: "aggressive", OutputModes: map[string]string{"fuel": "both"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Same preserve-in-lock idiom the settings:save handler uses.
+	if err := svc.Update(func(live *app.AppSettings) {
+		liveEngineer := live.Engineer
+		*live = *stalePayload
+		live.Engineer = liveEngineer
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	reloaded := app.NewSettingsService(path, &spyEmitter{}, nil)
+	if err := reloaded.Load(); err != nil {
+		t.Fatal(err)
+	}
+	got := reloaded.EngineerSettings()
+	if got.Sensitivity != "aggressive" || got.SpotterEnabled {
+		t.Fatalf("live engineer section lost to stale payload: %+v", got)
+	}
+	if !reloaded.Settings().LauncherOnboardingCompleted {
+		t.Fatal("incoming document fields were not applied")
+	}
+}
+
 func TestEngineerSettingsMigrateAndRoundTripWithoutClobberingOtherSettings(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")

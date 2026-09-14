@@ -2782,16 +2782,19 @@ func main() {
 				}
 			}
 		}
-		if s.Performance.Mode == "auto" {
-			s.CpuSampling = true
-		}
 		s.Performance.Source = app.PerformanceSourceUser
 		s.Performance.MigratedFrom = ""
 		// La sección engineer solo la escriben los eventos dedicados del
-		// Orbit; el formulario general fija el estado vivo para no restaurar
-		// ni borrar preferencias ajenas a su alcance.
-		s.Engineer = settingsSvc.EngineerSettings()
-		confirmed, _, err := performanceSaves.Execute(func() error { return settingsSvc.Save(&s) })
+		// Orbit. El documento entrante se aplica sobre el estado vivo dentro
+		// de la misma sección crítica preservando ese valor, así un eco stale
+		// o ausente del formulario nunca restaura ni borra preferencias.
+		confirmed, _, err := performanceSaves.Execute(func() error {
+			return settingsSvc.Update(func(live *app.AppSettings) {
+				liveEngineer := live.Engineer
+				*live = s
+				live.Engineer = liveEngineer
+			})
+		})
 		if err != nil {
 			log.Printf("settings:save error: %v", err)
 			emitSettingsError(err.Error())

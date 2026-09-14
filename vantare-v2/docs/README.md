@@ -1,11 +1,11 @@
 # Documentacion de Vantare v2
 
-> **Tracker y continuidad (2026-09-12):** leer primero
-> [la transición a Notion](vantare-program/notion-transition.md). Mientras su estado sea PREPARACIÓN,
-> las reglas GitHub/ISA de este documento rigen el cierre del lote existente
-> y la preparación técnica. El trabajo nuevo fuera del lote se captura en Notion
-> sin ejecutarlo todavía. Después del corte verificado, Notion será la autoridad
-> operativa y GitHub conservará código, PR, CI y releases.
+> **Notion primero (2026-09-14):** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192)
+> y leer la tarea y su proyecto antes de ejecutar. Actualizar Notion al empezar,
+> bloquear, entregar y verificar una integración; releer para comprobar la escritura.
+> [Contrato vigente](vantare-program/notion-transition.md). GitHub conserva código, PR, CI y releases;
+> las referencias ISA exigidas por los controles son un puente técnico temporal.
+> Su adaptación pendiente nunca permite omitir el seguimiento en Notion.
 
 
 Este indice ayuda a agentes y reviewers a saber que leer antes de tocar el repo.
@@ -13,7 +13,7 @@ Este indice ayuda a agentes y reviewers a saber que leer antes de tocar el repo.
 ## Lectura rapida
 
 - `../AGENTS.md`: reglas obligatorias para cualquier agente.
-- `vantare-program/notion-transition.md`: tracker por fase, lote y corte aprobado.
+- `vantare-program/notion-transition.md`: Notion obligatorio, lote histórico y corte técnico pendiente.
 - `vantare-program/README.md`: expediente canonico y handoffs vigentes.
 - `roadmap/plan.md`: fuente publica de fases, areas, hitos y entregas del roadmap.
 - `master-feature-plan.md`: mapa de producto y contexto historico.
@@ -79,4 +79,4 @@ El proyecto historicamente tiene planes y documentacion fuera de `vantare-v2`, e
 
 ## Estado de roadmap
 
-La planificacion publica actual vive en `roadmap/plan.md` y sus datos generados en `roadmap/roadmap.json`. El estado operativo de una issue vive en GitHub Issues y la continuidad tecnica en el handoff vivo correspondiente. `master-feature-plan.md`, `current-plan.md` y `roadmap-execution-board.md` se conservan como mapa o contexto historico; `release-roadmap-execution-index.md` es historico; las etapas vigentes se consultan en `plan-beta-publica-y-lanzamiento.md` y el expediente canonico.
+La planificacion publica actual vive en `roadmap/plan.md` y sus datos generados en `roadmap/roadmap.json`. El estado operativo de cada tarea vive en Notion y debe actualizarse y releerse y la continuidad tecnica en el handoff vivo correspondiente. `master-feature-plan.md`, `current-plan.md` y `roadmap-execution-board.md` se conservan como mapa o contexto historico; `release-roadmap-execution-index.md` es historico; las etapas vigentes se consultan en `plan-beta-publica-y-lanzamiento.md` y el expediente canonico.

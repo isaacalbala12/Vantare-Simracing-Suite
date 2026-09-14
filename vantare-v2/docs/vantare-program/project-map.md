@@ -1,11 +1,11 @@
 # Mapa de proyectos y dependencias
 
-> **Tracker y continuidad (2026-09-12):** leer primero
-> [la transición a Notion](notion-transition.md). Mientras su estado sea PREPARACIÓN,
-> las reglas GitHub/ISA de este documento rigen el cierre del lote existente
-> y la preparación técnica. El trabajo nuevo fuera del lote se captura en Notion
-> sin ejecutarlo todavía. Después del corte verificado, Notion será la autoridad
-> operativa y GitHub conservará código, PR, CI y releases.
+> **Notion primero (2026-09-14):** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192)
+> y leer la tarea y su proyecto antes de ejecutar. Actualizar Notion al empezar,
+> bloquear, entregar y verificar una integración; releer para comprobar la escritura.
+> [Contrato vigente](notion-transition.md). GitHub conserva código, PR, CI y releases;
+> las referencias ISA exigidas por los controles son un puente técnico temporal.
+> Su adaptación pendiente nunca permite omitir el seguimiento en Notion.
 
 
 Mapa de fronteras con snapshot de estado del 2026-08-21. Las tablas de issues

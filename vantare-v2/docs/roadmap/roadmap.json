@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-13T01:15:20Z",
+  "generatedAt": "2026-09-14T00:47:42Z",
   "digest": {
-    "lastCommit": "1aea57118f972c04144dc4546ff8cc16705e6e79"
+    "lastCommit": "837a03d1457e4c675ff8a44977baf79ab294f5e3"
   },
   "phases": [
     {
@@ -2101,10 +2101,10 @@
         "it": "Continuità della documentazione e del monitoraggio"
       },
       "body": {
-        "es": "Centralizar la documentación y el seguimiento del desarrollo conservando el historial y distinguiendo trabajo pendiente, validado y publicado.",
-        "en": "Centralize documentation and development tracking while preserving history and distinguishing pending, validated and published work.",
-        "pt": "Centralizar a documentação e o acompanhamento do desenvolvimento, preservando o histórico e distinguindo trabalho pendente, validado e publicado.",
-        "it": "Centralizzare la documentazione e il monitoraggio dello sviluppo, conservando lo storico e distinguendo lavoro in attesa, verificato e pubblicato."
+        "es": "Notion centraliza el seguimiento y la continuidad operativa, con lectura y actualización obligatorias para agentes. Queda completar la reconciliación histórica y retirar el puente de controles GitHub sin perder la evidencia de validación y publicación.",
+        "en": "Notion centralizes development tracking and operational continuity, with mandatory agent reads and updates. Historical reconciliation and removal of the GitHub validation bridge remain pending, preserving validation and publication evidence.",
+        "pt": "O Notion centraliza o acompanhamento e a continuidade operacional, com leitura e atualização obrigatórias pelos agentes. Falta concluir a reconciliação histórica e retirar a ponte de validação GitHub, preservando evidências de validação e publicação.",
+        "it": "Notion centralizza il monitoraggio e la continuità operativa, con lettura e aggiornamento obbligatori per gli agenti. Restano la riconciliazione storica e la rimozione del ponte di validazione GitHub, conservando le prove di verifica e pubblicazione."
       },
       "label": {
         "es": "Plan",
@@ -2115,6 +2115,21 @@
     }
   ],
   "delivered": [
+    {
+      "date": "2026-09-14",
+      "entries": [
+        {
+          "kind": "docs",
+          "scope": "handoff",
+          "text": "ISA-1128 promocionado a nightly"
+        },
+        {
+          "kind": "fix",
+          "scope": "motion",
+          "text": "Reaterrizaje de las rondas de revisión adversarial"
+        }
+      ]
+    },
     {
       "date": "2026-09-13",
       "entries": [
@@ -2147,6 +2162,31 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-1183 · Integrar widgets Eficiencia y corrección Foco"
+        },
+        {
+          "kind": "fix",
+          "scope": "telemetria",
+          "text": "Escalares de sesion transitorios no tumban el frame LMU"
+        },
+        {
+          "kind": "fix",
+          "scope": "updater",
+          "text": "Avisar de version pendiente tras enfriamiento y en chequeos manuales"
+        },
+        {
+          "kind": "fix",
+          "scope": "windows",
+          "text": "Punteros COM/mmap tipados como unsafe.Pointer en vez de uintptr"
+        },
+        {
+          "kind": "fix",
+          "scope": "overlay",
+          "text": "Aborta fetches pendientes en dispose y espera por señal en use-fonts-ready"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Efficiency, política común y runtime optimizado"
         }
       ]
     },
@@ -2732,26 +2772,6 @@
           "kind": "change",
           "scope": "",
           "text": "Canales de Actualizaciones clasifican stable/testers/nightly"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-19",
-      "entries": [
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "VITE_ORBIT_DEFAULT acotado al paso de build en release.yml"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Manifiesto de release v0.1.0.7-nightly.10 y changelog"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "HUD-ORBIT — porte completo de Command Orbit v0.3 al hub"
         }
       ]
     }

@@ -9,7 +9,7 @@
 
 Plan maestro de features de Vantare Suite, con Overlays Studio e Ingeniero como modulos internos.
 
-> Actualizacion 2026-08-21: este documento queda como mapa de producto y contexto historico. La planificacion publica vive en `docs/roadmap/plan.md`; el estado operativo de cada issue vive en GitHub Issues y la continuidad tecnica en el handoff vivo. La ejecucion especifica hacia release oficial sigue siendo `docs/release-roadmap-execution-index.md`.
+> Actualizacion 2026-08-21: este documento queda como mapa de producto y contexto historico. La planificacion publica vive en `docs/roadmap/plan.md`; el estado operativo actual vive en Notion y la continuidad técnica versionada en el handoff. `docs/release-roadmap-execution-index.md` también es histórico; consultar el expediente vigente.
 >
 > Si hay conflicto, prevalecen: decisiones explicitas del chat, `docs/release-roadmap-execution-index.md`, planes `release-*`, y despues este documento.
 
@@ -526,7 +526,7 @@ Orden operativo desde hoy:
 11. `B4`: delta best live.
 12. `B5`: `Pedals` beta v1.
 
-El estado operativo detallado de cada trabajo vive en GitHub Issues y en el handoff vivo correspondiente. `docs/roadmap-execution-board.md` se conserva como historial.
+El estado operativo actual vive en Notion; el handoff conserva evidencia técnica fechada. `docs/roadmap-execution-board.md` se conserva como historial.
 
 ## Antipatrones
 

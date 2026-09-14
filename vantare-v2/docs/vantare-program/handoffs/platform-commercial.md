@@ -1,10 +1,25 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
-> **Continuidad del tracker:** [transición aprobada](../notion-transition.md).
-> PREPARACIÓN conserva este handoff y las issues del lote; tras el corte, un
-> único handoff Notion lo sustituirá con enlace y snapshot. Las entradas fechadas
-> de abajo conservan su evidencia; no implican que esas PR sigan abiertas hoy.
+> **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
+> Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,
+> bloquear, entregar y verificar merge. [Contrato](../notion-transition.md).
+> Este handoff conserva evidencia técnica fechada; sus estados antiguos no
+> sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
 
+
+## VAN-724 — Notion obligatorio para todos los agentes (2026-09-14)
+
+[Tarea principal](https://app.notion.com/p/3dbe51695c658138b19fe81c730d89a2).
+Puente técnico CI: GitHub #1213, rama `vantareapp/isa-1213-notion-primary-workflow`,
+base nightly `837a03d1457e4c675ff8a44977baf79ab294f5e3`.
+
+Isaac corrige la política anterior: Notion es la entrada y el seguimiento principal
+inmediato, también para issues existentes. Se exige lectura y escritura verificada
+al empezar, bloquear, entregar y verificar merge. Los AGENTS, plantillas e índices
+se alinean; el hub original contiene las bases. No hay sincronización automática.
+El corte técnico exclusivo sigue pendiente: los gates ISA/GitHub no se cambian.
+Evidencia de revisión, checks, PR y SHA integrado se registra en la tarea Notion.
+El registro de #1189 siguiente conserva la decisión histórica, sustituida por esta.
 
 ## ISA-1189 — transición a Notion (2026-09-12)
 

@@ -1,38 +1,27 @@
-# Transición del desarrollo a Notion
+# Notion primero: seguimiento y compatibilidad técnica
 
-Estado de activación: **PREPARACIÓN**.
-Decisión de Isaac: 2026-09-12. Implantación documental: GitHub #1189.
+Seguimiento operativo: **NOTION PRIMERO — obligatorio desde 2026-09-14**.
+Corte técnico exclusivo (retirar la dependencia de issues/ISA en CI): **PENDIENTE**.
+Decisión actual de Isaac: Notion debe ser la primera lectura y la actualización
+obligatoria de todos los agentes, también en trabajos existentes. Esta decisión
+sustituye la instrucción de #1189 que posponía el uso principal hasta el corte.
 
-Este documento es la autoridad única sobre **cuándo cambia el tracker**. Se lee
-antes de iniciar o delegar trabajo. La decisión está aprobada; el corte todavía
-no se ha ejecutado. Integrar #1189 en nightly publica estas instrucciones, no
-certifica que el histórico esté importado ni que los gates acepten tareas Notion.
-Las menciones a GitHub Issues en otros documentos operativos se aplican a la
-fase PREPARACIÓN; no son una orden de mantener un segundo tracker después del corte.
+## Autoridad y alcance
 
-## Decisión aprobada y límite
+Notion es la autoridad de tareas, prioridades, alcance, dependencias y continuidad.
+GitHub conserva código, contratos técnicos versionados, ramas, PR, CI y releases.
+La fase técnica pendiente no permite seguir trabajando solo en GitHub. Linear
+está retirado; sus IDs son procedencia histórica. No mantener dos backlogs.
 
-Notion será la autoridad de tareas, prioridades, alcance, dependencias,
-planificación interna y continuidad operativa. GitHub conservará código, contratos
-técnicos versionados, ramas, PR, CI, builds y releases. No habrá espejo permanente
-de issues nuevas en ambos sitios. Linear fue retirado; no se reactiva ni es
-requisito para migrar. Sus IDs se conservan solo como procedencia histórica.
-
-El corte se realiza cuando las entregas del lote estén **aceptadas e integradas
-en nightly**, y la importación y el flujo Notion estén verificados. No se espera
-a testers ni a una release. La autorización para integrar #1189 no autoriza a
-integrar PR de producto ajenas: cada entrega conserva su aceptación aplicable.
-
-No iniciar ampliaciones del producto con el workflow antiguo. Los hallazgos nuevos
-se capturan como pendientes de Notion; mientras PREPARACIÓN, no se ejecutan. Las
-correcciones imprescindibles para cerrar el alcance ya activo permanecen en su
-issue; una excepción de alcance se documenta con la decisión de Isaac. El trabajo
-necesario de migración es una excepción técnica a la congelación y mantiene issue
-GitHub y gates vigentes hasta activar el corte; no amplía el lote de producto.
+El trabajo nuevo se registra primero en Notion y se ejecuta cuando tiene alcance
+autorizado. No ampliar silenciosamente el lote de producto. El cierre de Strategy
+Planner y Clerk conserva sus criterios, pruebas y autorizaciones de integración;
+no exige completar todos los programas ni impide actualizar Notion desde ahora.
+Las tablas fechadas de abajo son historia, no una lista de trabajo actual.
 
 ## Entrada real de Notion
 
-- [Vantare · Desarrollo](https://app.notion.com/p/3d9e51695c65819c8fddd59b1757dd49).
+- [Vantare · Engineering Dashboard](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).
 - [Tareas](https://app.notion.com/p/7587f71012d64b05b6da2bc0d9aa0c10), data source
   `b1bca6c8-5590-40f3-ada7-6c0047830f42`; ID nativo prefijo `VAN`.
 - [Proyectos](https://app.notion.com/p/c1bf0e1563a748369afdb6557686af9b), data source
@@ -42,18 +31,24 @@ GitHub y gates vigentes hasta activar el corte; no amplía el lote de producto.
 - [Documentación y decisiones](https://app.notion.com/p/b9e21b2ff5634955a5b7325dfe7b7878), data source
   `5e6e84ec-6551-4ad5-badb-098aa34ac3f3`.
 
-Son estructuras iniciales en preparación, no una importación completa. Antes de
-escribir, obtener el esquema real. Ampliar la base existente; no crear otra al
-cambiar de agente. Faltan propiedades de importación (fechas/autores originales,
-ID estable de origen), relaciones de dependencia, vistas y carga verificadas.
+Las cuatro bases pertenecen al hub original. Leer el esquema real antes de
+escribir y reutilizar las páginas existentes. El kanban tiene filtro rápido
+**Proyecto**: elegir uno o varios; vacío muestra todos los proyectos. Las tarjetas
+históricas se consultan en su vista propia. No crear otro hub ni otra base.
+
+Captura importada del 2026-09-14: 720 issues y 1104 comentarios, 17 proyectos y
+24 hitos. Se revisaron las asignaciones por proyecto (173 corregidas). Estos
+recuentos son un snapshot, no una sincronización automática: reconciliar cambios
+posteriores por URL/ID de origen. Hay cuerpos históricos truncados y estados por
+reconciliar; no confundir importación con aceptación ni con integraciones probadas.
 
 Tareas de continuación ya preparadas en esa base (no recrearlas):
 
 - [Importar y verificar histórico y pendientes](https://app.notion.com/p/3d9e51695c6581188615dc4565314f14).
 - [Adaptar y probar controles](https://app.notion.com/p/3d9e51695c6581dc9350f3a1c880136c).
-- [Ejecutar el corte único](https://app.notion.com/p/3d9e51695c6581bcb80bf34c84d810e9), bloqueada por las anteriores y el lote.
+- [Completar el corte técnico exclusivo](https://app.notion.com/p/3d9e51695c6581bcb80bf34c84d810e9), bloqueada por las anteriores y el lote.
 
-## Lote de cierre aprobado
+## Referencia histórica del lote aprobado (2026-09-12)
 
 Snapshot de inspección: 2026-09-12, base nightly
 `74726a4a7ab2832a4ad493176b11b1fb4d282d93`. Resolver
@@ -104,19 +99,36 @@ nightly remoto, aceptación aplicable, checks y limitaciones, dependencias
 absorbidas con evidencia y pendientes trasladados. No basta `closed`, `merged`
 en una PR fuente, una etiqueta `state:*` ni un comentario de un worker.
 
-## Qué hace el siguiente agente
+## Qué hace cada agente, desde ahora
 
-1. Leer este documento desde nightly actualizado y comprobar PREPARACIÓN/ACTIVO.
-2. Si continúa una fila del lote, seguir su issue, rama y handoff actuales;
-   conservar tests, review y autorización de integración. Actualizar evidencia.
-3. Si prepara la migración, trabajar en issue técnica y rama aislada usando los
-   gates existentes. Registrar el avance en el handoff de plataforma, no crear
-   un handoff paralelo. #1189 cubre la documentación y estructuras iniciales;
-   la importación y la adaptación de controles se trazan en tareas propias.
-4. Si recibe producto nuevo fuera del lote, capturarlo en Tareas de Notion como
-   pendiente. No convertirlo silenciosamente en otra issue activa de GitHub.
-5. Revisar [inventario documental y técnico](notion-document-audit.md) antes de
-   afirmar que el corte está preparado.
+1. Obtener `origin/nightly` actualizado y leer sus AGENTS aunque el chat se haya
+   iniciado en master o un checkout antiguo. Crear worktree aislado; preservar
+   cambios ajenos. Nightly no actualiza los contextos ya cargados ni master.
+2. Abrir el hub, localizar la tarea por UUID/ID Notion o URL GitHub de origen y
+   leer su proyecto, dependencias, objetivo, alcance y aceptación. Para nuevas
+   peticiones, crear primero la tarea Notion; no duplicar una importada.
+3. Leer contratos y handoff técnico en Git. Actualizar Notion al empezar:
+   Estado `En curso`, Proyecto, Agente, Rama/base, siguiente paso y bloqueos.
+4. Implementar dentro del alcance autorizado. Tras cada worker, decisión,
+   bloqueo o cambio material, actualizar tarea y continuidad del proyecto.
+   Registrar hallazgos fuera de alcance como pendientes separados en Notion.
+5. Para cambios en el repo, conservar la issue GitHub existente si CI la consume.
+   Si falta y los gates la requieren, crear un puente técnico mínimo después de
+   Notion: enlace a la tarea y contrato de roadmap exacto. Usar el número GitHub
+   en `vantareapp/isa-N-slug`; nunca el VAN. Prioridades y estado se editan en Notion.
+   Mantener el contrato leído por CI coherente con las decisiones de Notion.
+6. Antes de entregar, escribir `En revisión`, PR, checks con resultados/omisiones,
+   SHA observado, riesgos y siguiente paso en Notion. Releer la página y comprobar
+   que quedaron guardados. Sin escritura verificada, el seguimiento no está cerrado.
+7. Después de una integración autorizada, verificar PR y pertenencia del SHA al
+   canal remoto; actualizar Notion con aceptación, canal y evidencia real. No
+   inferir publicación ni aceptación de producto de un cierre automático de GitHub.
+8. Revisar [inventario documental y técnico](notion-document-audit.md) antes de
+   afirmar que se puede retirar el puente GitHub. No desactivar validadores.
+
+No se implementa sincronización automática con este contrato. Si Notion no está
+accesible, conservar evidencia local, informar el fallo y pausar trabajo dependiente;
+no usar GitHub como sustituto silencioso ni declarar una actualización inexistente.
 
 ## Migración: contenido, identidad y verificación
 
@@ -154,18 +166,19 @@ por estado, ausencia de duplicados y lista explícita de omisiones. Un muestreo
 visual complementa esa comparación, no la sustituye. Reintentos hacen upsert.
 Antes del corte, importar el delta y registrar momento/SHA de la captura final.
 
-## Contrato operativo posterior al corte
+## Contrato operativo vigente
 
 - La tarea Notion es la autoridad de alcance/dependencias/estado. GitHub Issues
-  queda como archivo y entrada externa histórica; cualquier nuevo reporte externo
+  conserva el histórico y el puente técnico anterior; cualquier nuevo reporte externo
   se deriva a una tarea Notion con enlace, sin doble gestión.
 - Notion no ejecuta código por alojar una tarea: el agente/entorno conectado lee
   la tarea y contratos, implementa en rama aislada, abre PR y devuelve evidencia.
   No se activan colas, despachos, auto-merge ni gastos por este documento.
 - Cada tarea incluye objetivo, tipo, alcance/exclusiones, dependencias, documentos,
   criterios de aceptación, checks, verificación manual y decisión de roadmap con
-  IDs exactos. Mantener un único handoff operativo por proyecto en Notion; los
-  handoffs versionados previos quedan como snapshots con fecha y enlace sucesor.
+  IDs exactos. Mantener la continuidad operativa en la página del proyecto Notion. Los
+  handoffs Git conservan decisiones técnicas y evidencia fechada; no eligen
+  trabajo ni sustituyen el estado vivo. Enlazar cada nuevo registro a su tarea.
 - Código, ADR y contratos ligados a una versión continúan en Git con referencias
   desde Notion. Cada documento tiene un único lugar editable; no editar dos copias.
 - Prioridad/alcance vienen de Notion; PR/CI/canal/release vienen de GitHub. El agente
@@ -181,9 +194,10 @@ Antes del corte, importar el delta y registrar momento/SHA de la captura final.
   que un prefijo todavía rechazado por CI funciona. El corte técnico fijará la
   convención exacta y migrará plantillas/validadores juntos.
 
-## Puertas del corte único
+## Puertas pendientes del corte técnico exclusivo
 
-Todas se documentan con evidencia en el handoff de plataforma:
+Estas puertas retiran el puente GitHub/ISA; no condicionan el uso principal de
+Notion. Documentar evidencia en la tarea de corte y el proyecto Migración a Notion:
 
 - [ ] Lote aceptado e integrado; PR absorbidas y trabajo local reconciliados.
 - [ ] Histórico y pendientes importados, relaciones restauradas y omisiones listadas.
@@ -192,20 +206,19 @@ Todas se documentan con evidencia en el handoff de plataforma:
       probados con casos positivos/negativos y sin degradar controles de promoción.
 - [ ] Circuito real tarea Notion → PR → checks → evidencia en tarea verificado.
 - [ ] Delta final importado; instrucciones y puntos de entrada coherentes.
-- [ ] Fecha y SHA del corte registrados; estado cambiado a ACTIVO en PR a nightly,
+- [ ] Fecha y SHA del corte registrados; corte técnico marcado COMPLETADO en PR a nightly,
       portada Notion actualizada y GitHub Issues identificado como archivo.
 
 La decisión condicional del corte ya está aprobada por Isaac; no pedir de nuevo
 la misma decisión de producto. Si aparece un permiso de conexión, autenticación,
 configuración externa o acción reservada que aún no esté autorizado, solicitar
 solo ese paso concreto. No añadir un bloqueo basado en el mero paso del tiempo.
-No declarar ACTIVO por cerrar #1189 o por terminar únicamente las filas del lote.
+No declarar el corte técnico completado por cerrar #1189 ni únicamente el lote.
 
 ## Recuperación
 
-Antes de activar, continuar con el lote en GitHub si falla la preparación. No
-borrar issues ni reescribir PR. Después de activar, un fallo de acceso a Notion
-pausa la ejecución dependiente y conserva evidencia local; no resucita otro tracker.
-Una reversión de autoridad requiere decisión trazada de Isaac y reconciliación,
-sin pérdida de las páginas ni del histórico. Testers/master y releases conservan
-sus autorizaciones y checks existentes.
+Un fallo de Notion pausa la ejecución dependiente y conserva evidencia local;
+no reactiva GitHub ni Linear como seguimiento principal. Recuperar el acceso y
+reconciliar las escrituras pendientes antes de cerrar la tarea. Una reversión de
+autoridad requiere decisión trazada de Isaac, sin pérdida del histórico.
+Testers/master y releases conservan sus autorizaciones y checks existentes.

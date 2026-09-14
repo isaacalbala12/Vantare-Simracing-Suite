@@ -1,11 +1,11 @@
 # Plan de etapas: beta pública, versiones iterativas y lanzamiento
 
-> **Tracker y continuidad (2026-09-12):** leer primero
-> [la transición a Notion](vantare-program/notion-transition.md). Mientras su estado sea PREPARACIÓN,
-> las reglas GitHub/ISA de este documento rigen el cierre del lote existente
-> y la preparación técnica. El trabajo nuevo fuera del lote se captura en Notion
-> sin ejecutarlo todavía. Después del corte verificado, Notion será la autoridad
-> operativa y GitHub conservará código, PR, CI y releases.
+> **Notion primero (2026-09-14):** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192)
+> y leer la tarea y su proyecto antes de ejecutar. Actualizar Notion al empezar,
+> bloquear, entregar y verificar una integración; releer para comprobar la escritura.
+> [Contrato vigente](vantare-program/notion-transition.md). GitHub conserva código, PR, CI y releases;
+> las referencias ISA exigidas por los controles son un puente técnico temporal.
+> Su adaptación pendiente nunca permite omitir el seguimiento en Notion.
 
 
 Documento interno de planificación. Orquesta el camino de Vantare desde el
@@ -263,7 +263,7 @@ evidencia exigible y el acto concreto de subida.
 | Bump | Segmento | Cuándo | Ejemplo |
 |---|---|---|---|
 | Patch | 4.º | Hotfix sin cambio de alcance | `0.6.1.0` → `0.6.1.1` |
-| Corte de feature | 3.º | Milestone de GitHub cerrado al 100 % dentro de la fase | `0.6.1.0` → `0.6.2.0` |
+| Corte de feature | 3.º | Hito Notion aceptado al 100 % dentro de la fase, con evidencia del canal | `0.6.1.0` → `0.6.2.0` |
 | Transición de fase | 2.º | La fase anterior superó su gate review | `0.5.x` → `0.6.0.0` |
 | Release | 1.º | La candidata superó el gate 1.0 | `0.9.x` → `1.0.0.0` |
 
@@ -280,14 +280,13 @@ Reglas:
 
 ### Instrumento: la Gate Review
 
-El soporte de esta revisión sigue el tracker de `vantare-program/notion-transition.md`:
-en PREPARACIÓN se conservan las issues/milestones de GitHub; tras el corte, la
-Gate Review y sus hitos viven en Notion con enlaces a PR, CI, canal y release.
-Las referencias GitHub del procedimiento de abajo describen el soporte anterior,
-no obligan a crear issues espejo después de activar Notion.
+La Gate Review y sus hitos viven en Notion con enlaces a PR, CI, canal y release.
+El [contrato vigente](vantare-program/notion-transition.md) obliga a actualizar
+y releer Notion. Conservar una referencia GitHub `roadmap:required` únicamente
+para los validadores actuales, enlazada desde la tarea.
 
-Cada transición de fase se evalúa con una issue de GitHub
-`roadmap:required` titulada `Gate review vX.Y.0.0`, cuyo cuerpo es la
+Cada transición de fase se evalúa con una tarea Notion
+titulada `Gate review vX.Y.0.0`, cuyo cuerpo es la
 checklist de la fase con la evidencia enlazada punto a punto. Se cierra solo
 cuando:
 
@@ -300,11 +299,11 @@ cuando:
 4. la checklist operativa de `release-checklists.md` de esa etapa está al
    100 % o con excepciones escritas y aceptadas por Isaac.
 
-Soporte de tracking: el repo ya usa **milestones de GitHub por área**
-(`Telemetria Core · testers`, `Overlays Studio · master`, …). Las issues se
-asignan al milestone de canal de su área; un milestone cerrado al 100 % marca
-esa área como candidata a promoción de canal. La gate review de una transición
-evalúa el conjunto: qué milestones de área deben estar cerrados para esa
+Soporte de seguimiento: **Versiones e hitos de Notion**, relacionados con
+Proyecto y tareas. Los milestones GitHub importados conservan su procedencia;
+un cierre histórico no demuestra aceptación. Un hito aceptado con evidencia
+del canal marca el área como candidata a promoción. La gate review de una
+transición evalúa qué hitos deben estar aceptados para esa
 versión más los gates transversales (identidad, billing, docs, rendimiento).
 
 ### Transiciones y criterios medibles
@@ -501,8 +500,8 @@ Evidencia medible exigida:
   `python .github/scripts/roadmap_digest.py --repo . --ref origin/nightly`.
 - Lo entregado nunca se anuncia como plan: un hito cumplido pasa de `plan` a
   `feature`/`fix`/`release` y su cuerpo se reescribe a lo que la app hace hoy.
-- El estado operativo de cada trabajo vive en GitHub Issues y el handoff vivo
-  del proyecto, no aquí.
+- El estado operativo vive en la tarea y el proyecto Notion. El handoff Git
+  conserva evidencia técnica enlazada, no una segunda lista de ejecución.
 
 ## Reflejo en el roadmap público (plan.md)
 

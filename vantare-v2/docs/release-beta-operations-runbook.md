@@ -1,11 +1,11 @@
 # Runbook de Operaciones de Release y Beta Publica v0.1.0.0 (OPS1)
 
-> **Tracker y continuidad (2026-09-12):** leer primero
-> [la transición a Notion](vantare-program/notion-transition.md). Mientras su estado sea PREPARACIÓN,
-> las reglas GitHub/ISA de este documento rigen el cierre del lote existente
-> y la preparación técnica. El trabajo nuevo fuera del lote se captura en Notion
-> sin ejecutarlo todavía. Después del corte verificado, Notion será la autoridad
-> operativa y GitHub conservará código, PR, CI y releases.
+> **Notion primero (2026-09-14):** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192)
+> y leer la tarea y su proyecto antes de ejecutar. Actualizar Notion al empezar,
+> bloquear, entregar y verificar una integración; releer para comprobar la escritura.
+> [Contrato vigente](vantare-program/notion-transition.md). GitHub conserva código, PR, CI y releases;
+> las referencias ISA exigidas por los controles son un puente técnico temporal.
+> Su adaptación pendiente nunca permite omitir el seguimiento en Notion.
 > Los estados/versiones y recetas comerciales fechados de abajo son contexto.
 > Para decisiones vigentes prevalecen los contratos y handoffs del programa;
 > esta cabecera no certifica que el runtime o una release estén actualizados.

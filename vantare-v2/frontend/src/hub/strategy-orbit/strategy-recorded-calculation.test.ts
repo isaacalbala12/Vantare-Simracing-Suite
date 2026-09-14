@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 import { recordedCalculationEvent } from "./strategy-recorded-calculation";
 import { createRecordedWizardDraft, type RecordedWizardDraft } from "./strategy-recorded-wizard";
 
+const tyre = (id: string) => ({
+  id, compound: "medium" as const, origin: "event_allocation" as const,
+  condition: { minimumRemainingPercent: 90, maximumRemainingPercent: 100, provenance: { kind: "range" as const, sourceId: "telemetry" }, confidence: { level: "high" as const, basis: "recorded" } },
+  state: "free" as const, stints: 0,
+});
+
 function draft(patch: Partial<RecordedWizardDraft> = {}): RecordedWizardDraft {
   return {
     ...createRecordedWizardDraft(),
@@ -70,5 +76,17 @@ describe("recordedCalculationEvent", () => {
     expect(source).toEqual(before);
     expect(event).not.toHaveProperty("initialFuelLiters");
     expect(event).not.toHaveProperty("fuelReserveLiters");
+  });
+
+  it("clones explicit physical tyre inputs without changing their values", () => {
+    const tyreInventory = { maximum: 4, tyres: [tyre("M-FL"), tyre("M-FR"), tyre("M-RL"), tyre("M-RR")] };
+    const compoundPace = [{ compound: "medium" as const, presence: "valid" as const, provenance: { kind: "reference" as const, sourceId: "revision-1" }, confidence: { sampleSize: 12, computationVersion: "analysis.v1" }, paceDeltaSeconds: 0, degradationPerLapSeconds: 0, curve: [{ lapInStint: 2, deltaSeconds: 0.1 }] }];
+    const source = draft({ tyreInventory, compoundPace });
+
+    const event = recordedCalculationEvent(source);
+
+    expect(event).toMatchObject({ tyreInventory, compoundPace });
+    expect(event.tyreInventory).not.toBe(tyreInventory);
+    expect(event.compoundPace).not.toBe(compoundPace);
   });
 });

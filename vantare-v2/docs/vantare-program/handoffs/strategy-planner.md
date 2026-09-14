@@ -1,6 +1,18 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1229 T02e3 cerrado localmente; T02e4 listo
+## Estado vigente — #1230 T02e4 cerrado localmente; T02f listo
+
+T02e4 amplía el mismo borrador recorded v1 con inventario físico y ritmo por
+compuesto opcionales. La custodia exige ambas partes juntas, valida la forma
+canónica y el adaptador las clona al evento de cálculo. Los borradores anteriores
+sin esos campos conservan su JSON. No se convierte el conteo del calendario ni
+se migra `remainingPercent`, porque fabricaría estado físico. Focales 38 y
+frontend completo 448/3790, typecheck, lint, build, roadmap y diff-check pasan.
+Astra high cerró dos huecos de forma y no encontró P0/P1/P2 ni otra capa que
+eliminar. Siguiente: T02f servicios/formación. Sin UI,
+app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release.
+
+## Historial — #1229 T02e3 cerrado localmente; T02e4 listo
 
 T02e3 alinea el cliente TypeScript con el contrato físico Go sin otra
 representación: reutiliza `StrategyTyre`, transporta inventario y parámetros de

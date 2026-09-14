@@ -22,6 +22,8 @@ export function recordedCalculationEvent(draft: RecordedWizardDraft): Calculatio
     virtualEnergy,
     pitLossSeconds: draft.pitLossSeconds,
     ...(draft.rules === undefined ? {} : { rules: structuredClone(draft.rules) }),
+    ...(draft.tyreInventory === undefined ? {} : { tyreInventory: structuredClone(draft.tyreInventory) }),
+    ...(draft.compoundPace === undefined ? {} : { compoundPace: structuredClone(draft.compoundPace) }),
   };
   if (draft.race.format === "timed") {
     if (draft.race.durationMin === undefined) invalid();

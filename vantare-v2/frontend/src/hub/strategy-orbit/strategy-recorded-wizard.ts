@@ -1,5 +1,5 @@
 import type { Calendar, RaceSeries } from "../../calendar/calendar-types";
-import type { StrategyAnalysisRevisionRef, StrategySessionCombinationV1 } from "../../strategy/strategy-application-client";
+import type { StrategyAnalysisRevisionRef, StrategyOrbitCalculationInputV1, StrategySessionCombinationV1 } from "../../strategy/strategy-application-client";
 import type { StrategyEventRules } from "../../strategy/strategy-event-rules";
 import { calendarSessionCombinations } from "./strategy-calendar-selection";
 
@@ -15,6 +15,8 @@ export type RecordedCalendarSnapshot = {
   readonly startAt?: string;
   readonly series: RaceSeries;
 };
+
+type RecordedCalculationEvent = StrategyOrbitCalculationInputV1["event"];
 
 /** An unsaved working draft. Missing inputs are not observations or defaults. */
 export type RecordedWizardDraft = {
@@ -35,6 +37,8 @@ export type RecordedWizardDraft = {
     readonly reservePercent?: number;
   };
   readonly rules?: StrategyEventRules;
+  readonly tyreInventory?: NonNullable<RecordedCalculationEvent["tyreInventory"]>;
+  readonly compoundPace?: NonNullable<RecordedCalculationEvent["compoundPace"]>;
   readonly drivers: readonly { readonly id: string; readonly name: string; readonly referenceDriverId?: string; readonly paceDeltaSeconds?: number }[];
   readonly sessions: readonly StrategyAnalysisRevisionRef[];
   readonly invalidatedSessionCount: number;

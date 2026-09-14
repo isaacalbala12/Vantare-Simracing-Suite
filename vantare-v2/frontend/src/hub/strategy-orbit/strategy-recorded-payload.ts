@@ -1,4 +1,5 @@
 import { validateStrategyEventRules } from "../../strategy/strategy-event-rules";
+import { parseStrategyTyre, STRATEGY_COMPOUNDS } from "../../strategy/strategy-tyre";
 import { RECORDED_WIZARD_STEPS, type RecordedWizardDraft } from "./strategy-recorded-wizard";
 
 export const RECORDED_DRAFT_VERSION = "strategy.recorded.draft.v1" as const;
@@ -47,6 +48,41 @@ export function parseRecordedDraftPayload(value: unknown): RecordedDraftPayload 
     optionalNumbers(energy, ["capacityPercent", "initialPercent", "reservePercent"]);
   }
   if (draft.rules !== undefined) validateStrategyEventRules(draft.rules, "recorded rules");
+  if ((draft.tyreInventory === undefined) !== (draft.compoundPace === undefined)) invalid("tyreInputs");
+  if (draft.tyreInventory !== undefined) {
+    const inventory = object(draft.tyreInventory, "tyreInventory");
+    if (!Number.isSafeInteger(inventory.maximum) || (inventory.maximum as number) < 1) invalid("tyreInventory.maximum");
+    const ids = new Set<string>();
+    for (const candidate of array(inventory.tyres, "tyreInventory.tyres")) {
+      const stored = object(candidate, "tyreInventory.tyre");
+      if (stored.condition === undefined || stored.remainingPercent !== undefined) invalid("tyreInventory.tyre");
+      const condition = object(stored.condition, "tyreInventory.tyre.condition");
+      optionalStrings(object(condition.provenance, "tyreInventory.tyre.condition.provenance"), ["sourceId"]);
+      optionalStrings(object(condition.confidence, "tyreInventory.tyre.condition.confidence"), ["basis"]);
+      const tyre = parseStrategyTyre(candidate);
+      if (ids.has(tyre.id)) invalid("tyreInventory.tyres");
+      ids.add(tyre.id);
+    }
+  }
+  if (draft.compoundPace !== undefined) for (const candidate of array(draft.compoundPace, "compoundPace")) {
+    const pace = object(candidate, "compoundPace.item");
+    if (!(STRATEGY_COMPOUNDS as readonly unknown[]).includes(pace.compound)) invalid("compoundPace.compound");
+    if (pace.presence !== "valid") invalid("compoundPace.presence");
+    const provenance = object(pace.provenance, "compoundPace.provenance");
+    if (provenance.kind !== "manual" && provenance.kind !== "reference") invalid("compoundPace.provenance.kind");
+    optionalStrings(provenance, ["sourceId", "observedAt"]);
+    const confidence = object(pace.confidence, "compoundPace.confidence");
+    if (!Number.isSafeInteger(confidence.sampleSize)) invalid("compoundPace.confidence.sampleSize");
+    string(confidence.computationVersion, "compoundPace.confidence.computationVersion", true);
+    optionalNumbers(confidence, ["rangeLower", "rangeUpper", "variance"]);
+    number(pace.paceDeltaSeconds, "compoundPace.paceDeltaSeconds");
+    number(pace.degradationPerLapSeconds, "compoundPace.degradationPerLapSeconds");
+    if (pace.curve !== undefined) for (const point of array(pace.curve, "compoundPace.curve")) {
+      const curve = object(point, "compoundPace.curve.point");
+      if (!Number.isSafeInteger(curve.lapInStint) || (curve.lapInStint as number) < 1) invalid("compoundPace.curve.lapInStint");
+      number(curve.deltaSeconds, "compoundPace.curve.deltaSeconds");
+    }
+  }
   for (const candidate of array(draft.drivers, "drivers")) {
     const driver = object(candidate, "driver");
     string(driver.id, "driver.id", true); string(driver.name, "driver.name");

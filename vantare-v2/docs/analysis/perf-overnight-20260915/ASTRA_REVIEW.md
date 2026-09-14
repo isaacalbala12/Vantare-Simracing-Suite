@@ -2,7 +2,7 @@
 
 **Estado final:** `READY_WITH_LIMITATIONS`  
 **BASE_SHA:** `f617467427f8d78f7432b4445d52be0c4dfe616a`  
-**HEAD final:** `42a3f653f3fe14aae9f1d953c7528e4c4e910bea` (rama `perf/overnight-20260915-0130`)  
+**HEAD final:** `df0b510784d8572f1685020a778170d1bb679668` (rama `perf/overnight-20260915-0130`)  
 **Worktree:** `/Users/isaacalbala/Desktop/Isaac Albala/vantare-perf-overnight-20260915`  
 **Último commit bueno:** `c0f47c6a`  
 **Orquestador:** Devin, sin subagentes lanzados por limitaciones del harness.

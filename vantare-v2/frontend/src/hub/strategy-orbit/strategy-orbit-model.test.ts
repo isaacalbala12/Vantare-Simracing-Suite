@@ -74,6 +74,11 @@ describe("shaping de Orbit", () => {
     });
   });
 
+  it("transporta un delta de ritmo del piloto sin cambiar sus consumos", () => {
+    const input = orbitCalculationInput(EVENT, [{ ...DRIVER, paceDeltaSeconds: 2 }], [VARIANT], "s1");
+    expect(input.drivers[0]).toMatchObject({ paceDeltaSeconds: 2, dry: { fuelLitersPerLap: 2.75 } });
+  });
+
   it("transporta WeatherScenario v1 al motor sin recalcular el timeline", () => {
     const weatherScenarios = [{
       weight: 1,

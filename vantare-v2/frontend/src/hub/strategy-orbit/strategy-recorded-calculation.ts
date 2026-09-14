@@ -5,6 +5,36 @@ import { recordedWizardErrors } from "./strategy-recorded-validation";
 type CalculationEvent = StrategyOrbitCalculationInputV1["event"];
 type CalculationVariant = StrategyOrbitCalculationInputV1["variants"][number];
 
+/** Resolves relative driver estimates into the single additive value consumed by Go. */
+export function recordedCalculationDriverDeltas(
+  draft: Pick<RecordedWizardDraft, "drivers">,
+): Readonly<Record<string, number>> {
+  const byId = new Map(draft.drivers.map(driver => [driver.id, driver]));
+  if (byId.size !== draft.drivers.length || draft.drivers.some(driver => !driver.id.trim())) invalidDriverDelta();
+  const resolved = new Map<string, number>();
+  const visiting = new Set<string>();
+  const resolve = (id: string): number => {
+    const known = resolved.get(id);
+    if (known !== undefined) return known;
+    const driver = byId.get(id);
+    if (!driver || visiting.has(id)) invalidDriverDelta();
+    if (!driver.referenceDriverId) {
+      if (driver.paceDeltaSeconds !== undefined) invalidDriverDelta();
+      resolved.set(id, 0);
+      return 0;
+    }
+    if (!Number.isFinite(driver.paceDeltaSeconds) || !byId.has(driver.referenceDriverId)) invalidDriverDelta();
+    visiting.add(id);
+    const value = resolve(driver.referenceDriverId) + driver.paceDeltaSeconds!;
+    visiting.delete(id);
+    if (!Number.isFinite(value)) invalidDriverDelta();
+    resolved.set(id, value);
+    return value;
+  };
+  for (const driver of draft.drivers) resolve(driver.id);
+  return Object.fromEntries(resolved);
+}
+
 /** Maps confirmed event inputs only. Telemetry-derived drivers and variants belong to calculation readiness. */
 export function recordedCalculationEvent(draft: RecordedWizardDraft): CalculationEvent {
   if (recordedWizardErrors(draft, "rules").length > 0) invalid();
@@ -70,4 +100,8 @@ function applicableEnergy(capacityPercent?: number, initialPercent?: number, res
 
 function invalid(): never {
   throw new Error("Invalid recorded calculation event");
+}
+
+function invalidDriverDelta(): never {
+  throw new Error("Invalid recorded driver delta");
 }

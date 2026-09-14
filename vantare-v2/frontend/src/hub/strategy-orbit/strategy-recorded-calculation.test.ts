@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { recordedCalculationEvent, recordedCalculationVariant } from "./strategy-recorded-calculation";
+import { recordedCalculationDriverDeltas, recordedCalculationEvent, recordedCalculationVariant } from "./strategy-recorded-calculation";
 import { createRecordedWizardDraft, type RecordedWizardDraft } from "./strategy-recorded-wizard";
 
 const tyre = (id: string) => ({
@@ -151,5 +151,25 @@ describe("recordedCalculationVariant", () => {
     ["missing", { race: { format: "laps", laps: 50 }, drivers, driverOrder: { mode: "fixed", ids: ["alex"] } }],
   ] satisfies readonly [string, Partial<RecordedWizardDraft>][]) ("rejects %s driver order", (_name, patch) => {
     expect(() => recordedCalculationVariant(draft(patch), "dry")).toThrow(/recorded calculation variant/i);
+  });
+});
+
+describe("recordedCalculationDriverDeltas", () => {
+  it("resolves reference chains into one additive delta per driver", () => {
+    const source = draft({ drivers: [
+      { id: "alex", name: "Alex" },
+      { id: "sam", name: "Sam", referenceDriverId: "alex", paceDeltaSeconds: 2 },
+      { id: "lee", name: "Lee", referenceDriverId: "sam", paceDeltaSeconds: -0.5 },
+    ] });
+
+    expect(recordedCalculationDriverDeltas(source)).toEqual({ alex: 0, sam: 2, lee: 1.5 });
+  });
+
+  it.each([
+    ["missing reference", [{ id: "alex", name: "Alex", referenceDriverId: "missing", paceDeltaSeconds: 1 }]],
+    ["cycle", [{ id: "alex", name: "Alex", referenceDriverId: "sam", paceDeltaSeconds: 1 }, { id: "sam", name: "Sam", referenceDriverId: "alex", paceDeltaSeconds: 1 }]],
+    ["non-finite", [{ id: "alex", name: "Alex" }, { id: "sam", name: "Sam", referenceDriverId: "alex", paceDeltaSeconds: Infinity }]],
+  ] as const)("rejects %s", (_name, drivers) => {
+    expect(() => recordedCalculationDriverDeltas(draft({ drivers }))).toThrow(/driver delta/i);
   });
 });

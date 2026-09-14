@@ -418,6 +418,7 @@ export type StrategyOrbitCalculationInputV1 = {
   readonly drivers: readonly {
     readonly id: string;
     readonly name: string;
+    readonly paceDeltaSeconds?: number;
     readonly dry: StrategyOrbitCalculationPaceV1;
     readonly wet: StrategyOrbitCalculationPaceV1;
     readonly eco: StrategyOrbitCalculationPaceV1;

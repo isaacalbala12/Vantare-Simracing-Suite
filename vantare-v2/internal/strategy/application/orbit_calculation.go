@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -895,6 +896,10 @@ func effectiveOrbitPace(driver OrbitCalculationDriver, mode string, planning *st
 	pace.PaceSeconds = effectivePlanningValueForBucket(
 		planning, strategydocument.PlanningInputPace, pace.PaceSeconds, orbitClimateBucket(mode),
 	)
+	if math.IsNaN(driver.PaceDeltaSeconds) || math.IsInf(driver.PaceDeltaSeconds, 0) || pace.PaceSeconds+driver.PaceDeltaSeconds <= 0 {
+		return OrbitCalculationPace{}, ErrCalculationInvalid
+	}
+	pace.PaceSeconds += driver.PaceDeltaSeconds
 	pace.FuelLitersPerLap = effectivePlanningValue(planning, strategydocument.PlanningInputFuelPerLap, pace.FuelLitersPerLap)
 	return pace, nil
 }

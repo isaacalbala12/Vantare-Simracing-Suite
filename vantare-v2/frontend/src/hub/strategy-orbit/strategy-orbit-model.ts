@@ -51,6 +51,7 @@ export type StrategyPace = readonly [paceS: number, litresPerLap: number];
 export interface StrategyDriver {
   id: string;
   name: string;
+  paceDeltaSeconds?: number;
   ini: string;
   color: string;
   cls: string;
@@ -103,6 +104,7 @@ export function orbitCalculationInput(
     drivers: drivers.map((driver) => ({
       id: driver.id,
       name: driver.name,
+      ...(driver.paceDeltaSeconds === undefined ? {} : { paceDeltaSeconds: driver.paceDeltaSeconds }),
       dry: pace(driver.dry),
       wet: pace(driver.wet),
       eco: pace(driver.eco),

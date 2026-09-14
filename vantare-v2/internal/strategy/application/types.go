@@ -426,11 +426,12 @@ type OrbitCalculationPace struct {
 }
 
 type OrbitCalculationDriver struct {
-	ID   string               `json:"id"`
-	Name string               `json:"name"`
-	Dry  OrbitCalculationPace `json:"dry"`
-	Wet  OrbitCalculationPace `json:"wet"`
-	Eco  OrbitCalculationPace `json:"eco"`
+	ID               string               `json:"id"`
+	Name             string               `json:"name"`
+	PaceDeltaSeconds float64              `json:"paceDeltaSeconds,omitempty"`
+	Dry              OrbitCalculationPace `json:"dry"`
+	Wet              OrbitCalculationPace `json:"wet"`
+	Eco              OrbitCalculationPace `json:"eco"`
 }
 
 type OrbitCalculationOverride struct {

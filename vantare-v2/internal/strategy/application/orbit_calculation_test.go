@@ -572,6 +572,54 @@ func TestEffectiveOrbitPaceUsesTheVariantClimateBucket(t *testing.T) {
 	}
 }
 
+func TestOrbitKeepsExplicitDriverDeltaAfterResolvingObservedPace(t *testing.T) {
+	targetLaps := int64(4)
+	maxLaps := int64(2)
+	planning := isa825OrbitInput().PlanningInputs
+	planning.Projection.RepresentativePaceByClimateBucket = map[strategyprojection.ClimateBucket]strategyprojection.RepresentativePaceFamily{
+		strategyprojection.ClimateBucketDry: {
+			Presence: strategyprojection.PresenceValid, MedianLapSeconds: 60,
+			Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: "test:observed-pace"},
+			Confidence: strategyprojection.Confidence{SampleSize: 4, ComputationVersion: "test.v1"},
+		},
+	}
+	planning.Projection.FuelConsumption.MeanPerLap = 1
+	input := OrbitCalculationInput{
+		Event: OrbitCalculationEvent{
+			RaceKind: "laps", TargetLaps: &targetLaps, TankLiters: 10, PitLossSeconds: 10,
+			Rules: &solver.EventRules{DriverLimits: map[string]solver.DriverLimit{
+				"fast": {MaxLaps: &maxLaps}, "slow": {MaxLaps: &maxLaps},
+			}},
+		},
+		Drivers: []OrbitCalculationDriver{
+			{ID: "fast", Dry: OrbitCalculationPace{PaceSeconds: 90, FuelLitersPerLap: 3}},
+			{ID: "slow", PaceDeltaSeconds: 2, Dry: OrbitCalculationPace{PaceSeconds: 90, FuelLitersPerLap: 3}},
+		},
+		Variants:        []OrbitCalculationVariant{{ID: "base", Mode: "dry", Order: []string{"fast", "slow"}}},
+		ActiveVariantID: "base", PlanningInputs: planning,
+	}
+	fast, err := effectiveOrbitPace(input.Drivers[0], "dry", planning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	slow, err := effectiveOrbitPace(input.Drivers[1], "dry", planning)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fast.FuelLitersPerLap != 1 || slow.FuelLitersPerLap != 1 {
+		t.Fatalf("pace delta changed driver consumption: fast=%+v slow=%+v", fast, slow)
+	}
+
+	result, err := calculateOrbitContext(context.Background(), input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stints := result.Plans["base"].Stints
+	if len(stints) != 2 || stints[0].Pace != 60 || stints[1].Pace != 62 {
+		t.Fatalf("driver pace delta was lost after planning resolution: %+v", stints)
+	}
+}
+
 func TestCalculateOrbitRejectsDanglingDriverAsTypedError(t *testing.T) {
 	t.Parallel()
 	service := NewService[json.RawMessage](nil)

@@ -150,6 +150,43 @@ describe("createStrategyApplicationClient", () => {
     await expect(pending).rejects.toThrow(/cancelled/i);
   });
 
+  it.each([
+    ["absent", true],
+    ["not_proven", true],
+    ["proven", false],
+    [null, false],
+    [7, false],
+  ] as const)("validates Orbit optimality when present: %s", async (optimality, valid) => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const command: StrategyApplicationCommandV1<Payload> = {
+      protocolVersion: "strategy.application.v1", commandId: `orbit-optimality-${String(optimality)}`,
+      operation: "calculate_orbit", expectedRepositoryVersion: 0,
+      input: {
+        event: { durationMinutes: 10, tankLiters: 60, pitLossSeconds: 20 },
+        drivers: [{ id: "d1", name: "D", dry: { paceSeconds: 60, fuelLitersPerLap: 1 }, wet: { paceSeconds: 66, fuelLitersPerLap: 1 }, eco: { paceSeconds: 61, fuelLitersPerLap: 0.9 } }],
+        variants: [{ id: "s1", mode: "dry", order: ["d1"], overrides: {} }], activeVariantId: "s1",
+      },
+    };
+    const plan: Record<string, unknown> = { ...orbitGolden.plans.s1 };
+    if (optimality === "absent") delete plan.optimality;
+    else plan.optimality = optimality;
+
+    const pending = client.execute(command);
+    emit(transport, "strategy:application:result", {
+      protocolVersion: "strategy.application.v1", commandId: command.commandId, repositoryVersion: 0,
+      recoveredFromBackup: false, closed: false,
+      orbitCalculation: { ...orbitGolden, plans: { s1: plan } },
+    });
+
+    if (!valid) {
+      await expect(pending).rejects.toThrow("orbitCalculation.plans.s1.optimality");
+      return;
+    }
+    await expect(pending).resolves.toMatchObject({
+      orbitCalculation: { plans: { s1: optimality === "not_proven" ? { optimality } : {} } },
+    });
+  });
+
   it("transports the canonical physical inventory and compound pace unchanged", async () => {
     const client = createStrategyApplicationClient<Payload>(transport);
     const corners = ["FL", "FR", "RL", "RR"] as const;

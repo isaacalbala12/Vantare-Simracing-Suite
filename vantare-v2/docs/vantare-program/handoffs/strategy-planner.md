@@ -1,6 +1,15 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1250 T03c cerrado localmente; telemetría antes del cálculo
+## Estado vigente — #1251 T03d cerrado localmente; optimalidad validada
+
+El cliente conserva la ausencia legacy y `optimality: not_proven`, pero rechaza
+cualquier valor presente que no entiende en vez de aceptarlo y borrarlo. La
+validación reutiliza `strategyEnum`; no añade estado, envelope, taxonomía ni
+cambios del solver. T03 continúa con obsolescencia y estados finales del
+resultado. Sin app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni
+release.
+
+## Historial — #1250 T03c cerrado localmente; telemetría antes del cálculo
 
 Strategy Orbit bloquea el cálculo cuando el evento conserva sesiones de
 telemetría incluidas y sus entradas derivadas siguen pendientes o fallan. Al

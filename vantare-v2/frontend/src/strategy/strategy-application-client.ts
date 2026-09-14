@@ -1750,6 +1750,9 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
       return slice as StrategyOrbitCalculatedPlanV1["distribution"][number];
     });
     if (typeof plan.savingApplied !== "boolean") throw new Error(`Invalid Strategy orbitCalculation.plans.${id}.savingApplied`);
+    if (plan.optimality !== undefined) {
+      strategyEnum(plan.optimality, `orbitCalculation.plans.${id}.optimality`, ["not_proven"]);
+    }
     const stopDetails = plan.stopDetails.map((entry, index) => {
       const stop = strategyRecord(entry, `orbitCalculation.plans.${id}.stopDetails.${index}`);
       for (const field of ["index", "lap"] as const) {

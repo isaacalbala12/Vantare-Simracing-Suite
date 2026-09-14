@@ -17,4 +17,11 @@
 .strategy-recorded-fields__window .strategy-recorded-field { margin-top: 0; }
 .strategy-recorded-fields__window .orbit-btn { justify-self: end; }
 .strategy-recorded-fields__window--new { border-style: dashed; }
+.strategy-recorded-fields__compounds { display: grid; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--orbit-line); }
+.strategy-recorded-fields__compounds > strong { color: var(--orbit-ink); font-size: 13px; }
+.strategy-recorded-fields__compounds > p { margin: 0; color: var(--orbit-ink-2); font-size: 12px; }
+.strategy-recorded-fields__compounds > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.strategy-recorded-fields__compound { display: inline-flex; align-items: center; gap: 7px; padding: 8px 10px; border: 1px solid var(--orbit-line-strong); border-radius: 7px; color: var(--orbit-ink-2); font-size: 12px; cursor: pointer; }
+.strategy-recorded-fields__compound:has(input:checked) { border-color: var(--orbit-carmine); color: var(--orbit-ink); background: var(--orbit-selection-bg); }
+.strategy-recorded-fields__compound input { accent-color: var(--orbit-red); }
 @media (max-width: 600px) { .strategy-recorded-field { grid-template-columns: 1fr; gap: 6px; } }

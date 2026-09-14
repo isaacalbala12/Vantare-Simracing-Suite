@@ -8,7 +8,7 @@ const draft = {
   ...createRecordedWizardDraft(),
   combination: { combinationId: "lmu:spa", simId: "lmu", trackName: "Spa", trackLayout: "", carClass: "LMP2", carName: "Car" },
   drivers: [{ id: "primary", name: "Alex" }],
-  rules: { requiredWindows: [{ fromLap: 10, toLap: 20 }, { fromLap: 30, toLap: 40 }], driverLimits: { primary: { minLaps: 12, maxLaps: 40, maxContinuousTimeSeconds: 1800, maxTotalTimeSeconds: 5400 } } },
+  rules: { requiredWindows: [{ fromLap: 10, toLap: 20 }, { fromLap: 30, toLap: 40 }], mandatoryCompounds: ["hard", "wet"], driverLimits: { primary: { minLaps: 12, maxLaps: 40, maxContinuousTimeSeconds: 1800, maxTotalTimeSeconds: 5400 } } },
 };
 const time = { id: () => "test-command", now: () => "2026-09-10T00:00:00Z" };
 function fixture() {

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { STRATEGY_COMPOUNDS, type StrategyCompound } from "../../strategy/strategy-tyre";
 import type { RecordedWizardDraft } from "./strategy-recorded-wizard";
 import "./strategy-recorded-fields.css";
 
@@ -10,6 +11,13 @@ function rulesWithWindows(rules: RecordedWizardDraft["rules"], windows: readonly
   const next: MutableRules = { ...rules };
   if (windows.length > 0) next.requiredWindows = windows;
   else delete next.requiredWindows;
+  return Object.keys(next).length > 0 ? next : undefined;
+}
+
+function rulesWithCompounds(rules: RecordedWizardDraft["rules"], compounds: readonly StrategyCompound[]): RecordedWizardDraft["rules"] {
+  const next: MutableRules = { ...rules };
+  if (compounds.length > 0) next.mandatoryCompounds = compounds;
+  else delete next.mandatoryCompounds;
   return Object.keys(next).length > 0 ? next : undefined;
 }
 
@@ -31,10 +39,16 @@ export function StrategyRecordedRules({ draft, onChange, t }: {
   const energy = draft.virtualEnergy ?? { applicability: "unknown" as const };
   const publishedDuration = draft.calendar?.series.raceDurationMin ?? draft.calendar?.series.durationMin;
   const windows = draft.rules?.requiredWindows ?? [];
+  const mandatoryCompounds = draft.rules?.mandatoryCompounds ?? [];
   const updateWindows = (next: readonly PitWindow[]) => onChange({ ...draft, rules: rulesWithWindows(draft.rules, next) });
   const updateWindow = (index: number, key: keyof PitWindow, value: number | undefined) => {
     if (value === undefined) return;
     updateWindows(windows.map((window, position) => position === index ? { ...window, [key]: value } : window));
+  };
+  const toggleCompound = (compound: StrategyCompound) => {
+    const selected = mandatoryCompounds.includes(compound);
+    const next = STRATEGY_COMPOUNDS.filter(item => item === compound ? !selected : mandatoryCompounds.includes(item));
+    onChange({ ...draft, rules: rulesWithCompounds(draft.rules, next) });
   };
   return <div className="strategy-recorded-fields">
     <p className="strategy-recorded-fields__provenance">{t("strategy.journey.rules.configuration")}</p>
@@ -80,6 +94,16 @@ export function StrategyRecordedRules({ draft, onChange, t }: {
             updateWindows([...windows, { fromLap: newWindow.fromLap, toLap: newWindow.toLap }]);
             setNewWindow({});
           }}>{t("strategy.journey.pit.window.add")}</button>
+        </div>
+      </div>
+      <div className="strategy-recorded-fields__compounds" role="group" aria-label={t("strategy.journey.compounds.mandatory")}>
+        <strong>{t("strategy.journey.compounds.mandatory")}</strong>
+        <p>{t("strategy.journey.compounds.hint")}</p>
+        <div>
+          {STRATEGY_COMPOUNDS.map(compound => <label key={compound} className="strategy-recorded-fields__compound">
+            <input type="checkbox" checked={mandatoryCompounds.includes(compound)} onChange={() => toggleCompound(compound)} />
+            <span>{t(`strategy.journey.compound.${compound}`)}</span>
+          </label>)}
         </div>
       </div>
     </details>

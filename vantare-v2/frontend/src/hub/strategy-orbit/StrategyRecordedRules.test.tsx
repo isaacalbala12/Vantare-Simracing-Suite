@@ -81,3 +81,19 @@ it("adds, edits and removes complete required pit windows without dropping other
   fireEvent.click(screen.getByRole("button", { name: "strategy.journey.pit.window.remove 1" }));
   expect(changed.mock.lastCall?.[0].rules).toEqual({ minPitStops: 1 });
 });
+
+it("stores mandatory compounds in canonical order and removes only that rule", () => {
+  const changed = vi.fn();
+  const requiredWindows = [{ fromLap: 10, toLap: 20 }];
+  render(<Editor initial={{ ...createRecordedWizardDraft(), rules: { minPitStops: 1, requiredWindows } }} changed={changed} />);
+  fireEvent.click(screen.getByText("strategy.journey.rules.stops"));
+  expect(screen.getByText("strategy.journey.compounds.mandatory")).toBeTruthy();
+
+  fireEvent.click(screen.getByRole("checkbox", { name: "strategy.journey.compound.wet" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "strategy.journey.compound.hard" }));
+  expect(changed.mock.lastCall?.[0].rules).toEqual({ minPitStops: 1, requiredWindows, mandatoryCompounds: ["hard", "wet"] });
+
+  fireEvent.click(screen.getByRole("checkbox", { name: "strategy.journey.compound.hard" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "strategy.journey.compound.wet" }));
+  expect(changed.mock.lastCall?.[0].rules).toEqual({ minPitStops: 1, requiredWindows });
+});

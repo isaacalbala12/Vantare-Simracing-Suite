@@ -1,16 +1,21 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1242 T06a cerrado localmente; compuestos pendientes
+## Estado vigente — #1243 T06b cerrado localmente; reglas por clima pendientes
 
-T06a hace visibles las ventanas obligatorias de pit que ya transportaba el
-contrato: prepara ambos extremos antes de añadir, conserva orden y reglas
-ajenas, permite editar/quitar y elimina `requiredWindows` al retirar la última.
-El validador existente rechaza extremos menores que uno, fraccionarios o
-invertidos. Persistencia, parser y adapter conservan dos ventanas exactas sin
-otro modelo ni cambios en SolverV2. Astra fijó este grupo aislado para no mezclar
-las dependencias de inventario y clima de los compuestos. Siguiente: compuestos
-obligatorios y reglas por clima; después disponibilidad con referencia temporal
-explícita. Sin app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release.
+T06b muestra soft/medium/hard/wet como configuración explícita del evento y
+guarda la selección en orden canónico dentro de `mandatoryCompounds`. No filtra
+por telemetría: Reglas precede a Sesiones y la configuración puede guardarse sin
+datos; readiness/Solver explicará después qué respaldo falta. Vaciar elimina
+sólo este campo. Parser, guardado/reapertura y adapter conservan hard/wet sin
+otro modelo ni lógica física React. Astra confirmó esta solución tras contrastar
+el orden del asistente. Siguiente: `allowedCompoundsByClimate`; después
+disponibilidad con referencia temporal explícita. Sin app/Wails/LMU, DuckDB,
+push, PR, CI remota, integración ni release.
+
+## Historial — #1242 T06a cerrado localmente
+
+Reglas permite añadir, editar y quitar ventanas obligatorias inclusivas en
+`requiredWindows`; el vacío transitorio no borra y sólo Quitar elimina.
 
 ## Historial — #1241 T07b cerrado localmente
 

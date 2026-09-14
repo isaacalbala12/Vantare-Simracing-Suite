@@ -35,7 +35,7 @@ it("preserves zero configuration, signed estimates and full revision refs", () =
   expect(parseRecordedDraftPayload({ ...payload, draft }).draft).toEqual(draft);
 });
 it("round-trips pit windows and driver limits in contract units", () => {
-  const draft = { ...payload.draft, drivers: [{ id: "a", name: "Alex" }], rules: { requiredWindows: [{ fromLap: 10, toLap: 20 }, { fromLap: 30, toLap: 40 }], driverLimits: { a: { minLaps: 12, maxLaps: 40, maxContinuousTimeSeconds: 1800, maxTotalTimeSeconds: 5400 } } } };
+  const draft = { ...payload.draft, drivers: [{ id: "a", name: "Alex" }], rules: { requiredWindows: [{ fromLap: 10, toLap: 20 }, { fromLap: 30, toLap: 40 }], mandatoryCompounds: ["hard", "wet"], driverLimits: { a: { minLaps: 12, maxLaps: 40, maxContinuousTimeSeconds: 1800, maxTotalTimeSeconds: 5400 } } } };
   expect(parseRecordedDraftPayload({ ...payload, draft }).draft).toEqual(draft);
 });
 it("round-trips explicit pit services and zero formation without sharing their object", () => {

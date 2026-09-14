@@ -118,6 +118,101 @@ func TestOrbitAppliesMultiDriverProfilesAndSequenceBeforeOptimization(t *testing
 	}
 }
 
+func TestOrbitFreeDriverOrderLetsSolverChooseWithoutArtificialStop(t *testing.T) {
+	targetLaps := int64(4)
+	input := OrbitCalculationInput{
+		Event: OrbitCalculationEvent{RaceKind: "laps", TargetLaps: &targetLaps, TankLiters: 10, PitLossSeconds: 10},
+		Drivers: []OrbitCalculationDriver{
+			{ID: "fast", Name: "Fast", Dry: OrbitCalculationPace{PaceSeconds: 60, FuelLitersPerLap: 1}},
+			{ID: "slow", Name: "Slow", Dry: OrbitCalculationPace{PaceSeconds: 70, FuelLitersPerLap: 1}},
+		},
+		Variants: []OrbitCalculationVariant{{ID: "base", Mode: "dry", DriverOrderMode: "free", Order: []string{"slow", "fast"}}}, ActiveVariantID: "base",
+	}
+
+	result, err := calculateOrbitContext(context.Background(), input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan := result.Plans["base"]
+	if plan.Stops != 0 || len(plan.Stints) != 1 || plan.Stints[0].DriverID != "fast" || plan.Stints[0].Pace != 60 {
+		t.Fatalf("free driver proposal = %+v", plan)
+	}
+	input.WeatherScenarios = []strategydocument.WeightedWeatherScenario{resourceWeatherScenario()}
+	withWeather, err := calculateOrbitContext(context.Background(), input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if withWeather.Weather == nil || len(withWeather.Weather.Plans) != 1 || len(withWeather.Weather.Plans[0].Stints) != 1 {
+		t.Fatalf("free weather plan = %+v", withWeather.Weather)
+	}
+	input.WeatherScenarios = nil
+	minimumSlowLaps := int64(1)
+	input.Event.Rules = &solver.EventRules{DriverLimits: map[string]solver.DriverLimit{"slow": {MinLaps: &minimumSlowLaps}}}
+	constrained, err := calculateOrbitContext(context.Background(), input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	foundSlow := false
+	for _, stint := range constrained.Plans["base"].Stints {
+		foundSlow = foundSlow || stint.DriverID == "slow"
+	}
+	if !foundSlow {
+		t.Fatalf("explicit slow-driver minimum ignored: %+v", constrained.Plans["base"])
+	}
+
+	input.Event.Rules = nil
+	input.Variants[0].DriverOrderMode = ""
+	legacy, err := calculateOrbitContext(context.Background(), input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if legacy.Plans["base"].Stops != 1 || len(legacy.Plans["base"].Stints) != 2 {
+		t.Fatalf("absent mode must preserve fixed legacy rotation: %+v", legacy.Plans["base"])
+	}
+	input.Variants[0].DriverOrderMode = "fixed"
+	explicit, err := calculateOrbitContext(context.Background(), input)
+	if err != nil || len(explicit.Plans["base"].Stints) != 2 {
+		t.Fatalf("explicit fixed rotation = %+v, err=%v", explicit.Plans["base"], err)
+	}
+
+	input.Event = OrbitCalculationEvent{DurationMinutes: 4, TankLiters: 10, PitLossSeconds: 10}
+	input.Variants[0].DriverOrderMode = "free"
+	if _, err := calculateOrbitContext(context.Background(), input); !errors.Is(err, ErrCalculationInvalid) {
+		t.Fatalf("free timed race error = %v", err)
+	}
+}
+
+func TestOrbitFreeDriverOrderRejectsUnknownModeAndStintOverrides(t *testing.T) {
+	targetLaps := int64(4)
+	one := int64(1)
+	input := OrbitCalculationInput{
+		Event: OrbitCalculationEvent{RaceKind: "laps", TargetLaps: &targetLaps, TankLiters: 10, PitLossSeconds: 10},
+		Drivers: []OrbitCalculationDriver{
+			{ID: "fast", Dry: OrbitCalculationPace{PaceSeconds: 60, FuelLitersPerLap: 1}},
+			{ID: "slow", Dry: OrbitCalculationPace{PaceSeconds: 70, FuelLitersPerLap: 1}},
+		},
+		Variants: []OrbitCalculationVariant{{ID: "base", Mode: "dry", DriverOrderMode: "unknown", Order: []string{"fast", "slow"}}}, ActiveVariantID: "base",
+	}
+	if _, err := calculateOrbitContext(context.Background(), input); !errors.Is(err, ErrCalculationInvalid) {
+		t.Fatalf("unknown driver order mode error = %v", err)
+	}
+	input.Variants[0].DriverOrderMode = "free"
+	input.Variants[0].Overrides = map[int]OrbitCalculationOverride{0: {Laps: &one}}
+	if _, err := calculateOrbitContext(context.Background(), input); !errors.Is(err, ErrCalculationInvalid) {
+		t.Fatalf("free lap override error = %v", err)
+	}
+	input.Variants[0].Overrides = nil
+	input.Variants[0].Order = []string{"fast", "fast"}
+	if _, err := calculateOrbitContext(context.Background(), input); !errors.Is(err, ErrCalculationInvalid) {
+		t.Fatalf("duplicate free candidate error = %v", err)
+	}
+	input.Variants[0].Order = []string{"fast", "slow"}
+	input.Variants[0].Overrides = map[int]OrbitCalculationOverride{1: {Fuel: resourceValue(2)}}
+	if _, err := calculateOrbitContext(context.Background(), input); !errors.Is(err, ErrCalculationInvalid) {
+		t.Fatalf("free fuel override error = %v", err)
+	}
+}
+
 func TestOrbitVariantSolverInputKeepsUniqueProfilesAndFullSequence(t *testing.T) {
 	drivers := map[string]OrbitCalculationDriver{
 		"a": {ID: "a", Dry: OrbitCalculationPace{PaceSeconds: 60, FuelLitersPerLap: 1}},
@@ -130,6 +225,14 @@ func TestOrbitVariantSolverInputKeepsUniqueProfilesAndFullSequence(t *testing.T)
 	}
 	if len(mapped.DriverProfiles) != 2 || len(mapped.DriverSequence) != 3 {
 		t.Fatalf("profiles=%+v sequence=%+v", mapped.DriverProfiles, mapped.DriverSequence)
+	}
+	mapped, err = orbitVariantSolverInput(3, OrbitCalculationEvent{TankLiters: 3, PitLossSeconds: 1}, drivers,
+		OrbitCalculationVariant{Mode: "dry", DriverOrderMode: "free", Order: []string{"a", "b"}}, "dry", 60, 1, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(mapped.DriverProfiles) != 2 || len(mapped.DriverSequence) != 0 {
+		t.Fatalf("free profiles=%+v sequence=%+v", mapped.DriverProfiles, mapped.DriverSequence)
 	}
 }
 

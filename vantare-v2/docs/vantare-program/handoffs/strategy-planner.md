@@ -1,6 +1,21 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1245 T07c cerrado localmente; horario pendiente
+## Estado vigente — #1246 T02g3 cerrado localmente; selector en T15
+
+CalculateOrbit acepta `driverOrderMode`: ausente o `fixed` conserva la rotación
+cíclica legacy; `free` trata `order` como candidatos, transporta todos sus
+perfiles pero omite `DriverSequence`, por lo que SolverV2 puede elegir y omitir
+pilotos salvo límites explícitos. La publicación usa el piloto realmente resuelto
+y no fuerza un stint por candidato. El modo libre se limita a carreras por vueltas:
+el resolvedor temporal actual valida su horizonte provisional como distancia final
+y queda para T15 evitar falsos inviables con límites por vuelta. Modo desconocido,
+duplicados libres y overrides de stint libres fallan cerrados. El contrato TypeScript transporta
+el campo. No se añadió aún selector recorded: T15 debe conectarlo al construir
+la petición completa con perfiles y readiness. Siguiente: T03 estados finales.
+La disponibilidad horaria sigue pendiente. Sin app/Wails/LMU, DuckDB, push, PR,
+CI remota, integración ni release.
+
+## Historial — #1245 T07c cerrado localmente
 
 T07c edita por piloto los intervalos inclusivos de vueltas de carrera donde no
 puede conducir, directamente en `driverLimits[id].unavailable`. Añadir compone

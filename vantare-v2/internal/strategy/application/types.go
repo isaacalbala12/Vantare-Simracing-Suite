@@ -403,10 +403,11 @@ type OrbitCalculationOverride struct {
 }
 
 type OrbitCalculationVariant struct {
-	ID        string                           `json:"id"`
-	Mode      string                           `json:"mode"`
-	Order     []string                         `json:"order"`
-	Overrides map[int]OrbitCalculationOverride `json:"overrides"`
+	ID              string                           `json:"id"`
+	Mode            string                           `json:"mode"`
+	DriverOrderMode string                           `json:"driverOrderMode,omitempty"`
+	Order           []string                         `json:"order"`
+	Overrides       map[int]OrbitCalculationOverride `json:"overrides"`
 }
 
 type OrbitCalculationStint struct {

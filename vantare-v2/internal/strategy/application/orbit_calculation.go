@@ -225,6 +225,16 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 	if len(variant.Order) == 0 {
 		return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, fmt.Sprintf("input.variants.%d.order", variantIndex), ErrCalculationInvalid)
 	}
+	fixedDriverOrder, err := orbitFixedDriverOrder(variant)
+	if err != nil {
+		return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, fmt.Sprintf("input.variants.%d.driverOrderMode", variantIndex), fmt.Errorf("%v: %w", err, ErrCalculationInvalid))
+	}
+	if !fixedDriverOrder && len(variant.Overrides) > 0 {
+		return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, fmt.Sprintf("input.variants.%d.overrides", variantIndex), ErrCalculationInvalid)
+	}
+	if !fixedDriverOrder && event.RaceKind != string(manual.RaceByLaps) {
+		return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, fmt.Sprintf("input.variants.%d.driverOrderMode", variantIndex), fmt.Errorf("free driver order is not supported for timed races: %w", ErrCalculationInvalid))
+	}
 	paceTotal, fuelTotal := 0.0, 0.0
 	for orderIndex, driverID := range variant.Order {
 		driver, ok := drivers[driverID]
@@ -333,7 +343,7 @@ func calculateOrbitLapPlan(ctx context.Context, event OrbitCalculationEvent, dri
 	}
 
 	stintCount := len(optimised.Best.Stints)
-	if stintCount < len(variant.Order) {
+	if variant.DriverOrderMode != "free" && stintCount < len(variant.Order) {
 		stintCount = len(variant.Order)
 	}
 	var laps []int64
@@ -366,16 +376,16 @@ func calculateOrbitLapPlan(ctx context.Context, event OrbitCalculationEvent, dri
 	byDriver := make(map[string]*OrbitCalculationDistribution)
 	for index, count := range laps {
 		driverID := variant.Order[index%len(variant.Order)]
-		driverPace, err := effectiveOrbitPace(drivers[driverID], variant.Mode, planning)
-		if err != nil {
-			return OrbitCalculationPlan{}, err
-		}
 		var saving solver.StintDecision
 		if index < len(optimised.Best.Stints) && optimised.Best.Stints[index].Laps == count {
 			saving = optimised.Best.Stints[index]
 			if saving.Driver != "" {
 				driverID = saving.Driver
 			}
+		}
+		driverPace, err := effectiveOrbitPace(drivers[driverID], variant.Mode, planning)
+		if err != nil {
+			return OrbitCalculationPlan{}, err
 		}
 		_, manualOverride := variant.Overrides[index]
 		lastLap := lap + count
@@ -499,6 +509,10 @@ func orbitVariantSolverInput(
 	averagePace, averageFuel float64,
 	planning *strategydocument.PlanningInputs,
 ) (solver.SolverInputV2, error) {
+	fixedDriverOrder, err := orbitFixedDriverOrder(variant)
+	if err != nil {
+		return solver.SolverInputV2{}, err
+	}
 	input := orbitSolverInput(raceLaps, event, averagePace, averageFuel, orbitClimateBucket(profileMode), planning)
 	hasDriverLimits := event.Rules != nil && len(event.Rules.DriverLimits) > 0
 	if len(variant.Order) == 1 && !hasDriverLimits {
@@ -525,10 +539,28 @@ func orbitVariantSolverInput(
 		))
 		seen[driverID] = true
 	}
-	if len(variant.Order) > 1 {
+	if fixedDriverOrder && len(variant.Order) > 1 {
 		input.DriverSequence = append([]string(nil), variant.Order...)
 	}
 	return input, nil
+}
+
+func orbitFixedDriverOrder(variant OrbitCalculationVariant) (bool, error) {
+	switch variant.DriverOrderMode {
+	case "", "fixed":
+		return true, nil
+	case "free":
+		seen := make(map[string]bool, len(variant.Order))
+		for _, driverID := range variant.Order {
+			if seen[driverID] {
+				return false, fmt.Errorf("free driver order contains duplicate driver %q", driverID)
+			}
+			seen[driverID] = true
+		}
+		return false, nil
+	default:
+		return false, fmt.Errorf("unknown driverOrderMode %q", variant.DriverOrderMode)
+	}
 }
 
 func orbitMatchesSolvedStints(laps []int64, solved []solver.StintDecision) bool {

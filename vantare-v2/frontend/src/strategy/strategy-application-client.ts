@@ -421,6 +421,7 @@ export type StrategyOrbitCalculationInputV1 = {
   readonly variants: readonly {
     readonly id: string;
     readonly mode: "dry" | "wet" | "eco";
+    readonly driverOrderMode?: "fixed" | "free";
     readonly order: readonly string[];
     readonly overrides: Readonly<Record<number, { readonly laps?: number; readonly fuel?: number }>>;
   }[];

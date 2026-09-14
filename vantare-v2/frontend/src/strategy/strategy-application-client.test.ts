@@ -131,7 +131,7 @@ describe("createStrategyApplicationClient", () => {
           pitLossSeconds: 20,
         },
         drivers: [{ id: "d1", name: "D", dry: { paceSeconds: 60, fuelLitersPerLap: 1 }, wet: { paceSeconds: 66, fuelLitersPerLap: 1 }, eco: { paceSeconds: 61, fuelLitersPerLap: 0.9 } }],
-        variants: [{ id: "s1", mode: "dry", order: ["d1"], overrides: {} }],
+        variants: [{ id: "s1", mode: "dry", driverOrderMode: "free", order: ["d1"], overrides: {} }],
         activeVariantId: "s1",
       },
     };
@@ -145,6 +145,7 @@ describe("createStrategyApplicationClient", () => {
       virtualEnergy: { applicability: "applicable", capacityPercent: 80, initialPercent: 0, reservePercent: 0 },
       pitLossSeconds: 20,
     });
+    expect(command.input.variants[0].driverOrderMode).toBe("free");
     client.cancel(command.commandId);
     await expect(pending).rejects.toThrow(/cancelled/i);
   });

@@ -1,6 +1,23 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1264 T15a1 cerrado localmente; criterio de pilotos recorded
+## Estado vigente — #1265 T15a2a cerrado localmente; inputs recorded exactos
+
+Strategy expone una consulta read-only que recibe la combinación y las
+referencias completas del borrador recorded. Reutiliza el productor conjunto
+de Analysis, exige que la proyección devuelva la misma combinación, instante y
+conjunto exacto de revisiones y devuelve el contrato `PlanningInputs` existente
+sin crear otro Event ni escribir el repositorio. El cliente TypeScript congela
+la selección antes de enviarla y rechaza estado, proyección, combinación,
+instante o referencias ausentes, parciales, duplicadas o sustituidas. Siguiente:
+T15a2b, conservar el delta explícito entre pilotos después de resolver el ritmo
+observado en Go; después T15a2c resolverá el horizonte temporal libre dentro
+del solver. Pasan el paquete Go focal de aplicación, frontend focal 3/90,
+frontend completo 450/3870, typecheck, lint, i18n, build, Go global y 259
+checks documentales. El build conserva el aviso heredado de chunks superiores
+a 500 kB. Sin app/Wails, LMU, DuckDB, push, PR, CI remota, integración ni
+release.
+
+## Historial — #1264 T15a1 cerrado localmente; criterio de pilotos recorded
 
 El borrador registrado conserva de forma aditiva el criterio `fixed|free` y
 la secuencia exacta de pilotos. La pantalla Pilotos permite elegir el criterio

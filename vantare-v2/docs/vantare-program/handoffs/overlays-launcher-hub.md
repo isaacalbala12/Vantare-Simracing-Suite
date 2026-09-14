@@ -1084,7 +1084,25 @@ física nueva, retirada V1, merge o release en este corte documental.
   escena movía el dato pero la VM mantenía el orden viejo y nada se
   animaba. Verificado en navegador: overtake/battle destellan y deslizan,
   delta-cross-zero pulsa, relative-cross reordena con FLIP.
-  Sin merge, push, PR, promoción ni release.
+  **Promovido a nightly como `1567a263` (PR #1194)** tras revisión del diff
+  completo: corregidos clave i18n huérfana `pedals.showHeader`, contrato Go
+  `vantare-iracing` (recuperado después en `257b5fe6`, PR #1206, al
+  revertirlo #1191) y conflicto de merges con tower/SessionInfo de ISA-1185.
+  ISA-1183 (#1191, `eee3b99e`) divergió de ISA-1128 tras la primera revisión
+  adversarial y al integrarse dejó fuera la segunda/tercera ronda de
+  revisión. **Reaterrizaje en rama `vantareapp/isa-1128-motion-review-rounds`,
+  PR #1209**: `flipRows` por identidad de fila con retarget desde posición
+  visual y medidas normalizadas a la escala, `ctx.persist`, reduced-motion
+  reactivo vía `useSyncExternalStore`, teardown + timers con clave, memoria
+  de último lado no neutro del delta, `data-motion-level` en Pedals
+  Endurance, escena `standings-class-battle` + aviso de parches sin
+  resolver, y retirada de `useRelativeMotion` muerto. `37b455be` omitido
+  (nightly resolvió el lint del harness orbit por otro camino). En
+  `StandingsFunctional` se conserva el nightly actual (SessionInfo,
+  `infoPlacement`); en `RelativeFunctional` se conserva el presupuesto
+  escalado por `resolveWidgetVisualGeometryForType`. Gates: typecheck/lint/
+  build PASS, suite 452 archivos / 3598 tests verdes. Auto-merge a nightly
+  armado; pendiente CI y verificación física OBS/WebView2.
 
 - **S3 cerrado, 2026-09-03:** el mismo EXE R-FIX4 desde
   `4864b5c6`, SHA `cb69a4d5…878faba`, muestra Pedals sobre LMU con freno real

@@ -54,6 +54,7 @@ type HarnessStrategyRepository = {
   revisions: Record<string, Record<string, unknown>>;
   activePlan?: Record<string, unknown>;
   events?: Record<string, Record<string, unknown>>;
+  pendingRevision?: { command: Record<string, unknown>; commandDigest: string };
 };
 
 
@@ -166,6 +167,43 @@ async function handleHarnessStrategyCommand(command: Record<string, unknown>) {
     void createOrbitCalculationTestClient()
       .execute(command as unknown as StrategyApplicationCommandV1<unknown>)
       .then((result) => broadcast("strategy:application:result", result));
+    return;
+  }
+
+  if (operation === "get_pending_revision_save") {
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      ...(repository.pendingRevision ? { pendingRevision: repository.pendingRevision } : {}),
+    });
+    return;
+  }
+
+  if (operation === "resolve_pending_revision_save") {
+    const pendingCommand = readHarnessPayload(repository.pendingRevision?.command);
+    const draft = readHarnessPayload(pendingCommand.draft);
+    const wanted = {
+      planId: draft.planId,
+      variantId: draft.variantId,
+      revisionId: pendingCommand.revisionId,
+    };
+    const stored = repository.revisions[revisionKey(wanted)];
+    broadcast("strategy:application:result", {
+      ...baseResult,
+      ...(repository.pendingRevision ? { pendingRevision: repository.pendingRevision } : {}),
+      pendingResolution: stored ? "stored" : "not_stored",
+      ...(stored ? { revision: stored } : {}),
+    });
+    return;
+  }
+
+  if (operation === "acknowledge_pending_revision_save") {
+    if (repository.pendingRevision &&
+      (command.pendingCommandId !== repository.pendingRevision.command.commandId || command.commandDigest !== repository.pendingRevision.commandDigest)) {
+      return fail("pending_revision_conflict", "pendingRevision", "Pending Strategy revision does not match");
+    }
+    delete repository.pendingRevision;
+    saveHarnessStrategyRepository(repository);
+    broadcast("strategy:application:result", baseResult);
     return;
   }
 
@@ -368,6 +406,14 @@ async function handleHarnessStrategyCommand(command: Record<string, unknown>) {
     const draftId = typeof draft.draftId === "string" ? draft.draftId : "";
     const revisionId = typeof command.revisionId === "string" ? command.revisionId : "";
     if (!draftId || !revisionId) return fail("invalid_command", "draft", "Invalid Strategy save");
+    if (command.recoverable === true) {
+      const { sha256: commandDigest } = await canonicalizeAndHashStrategyJSONV1(JSON.stringify(command));
+      if (repository.pendingRevision && repository.pendingRevision.commandDigest !== commandDigest) {
+        return fail("pending_revision_conflict", "pendingRevision", "Another Strategy revision save is pending");
+      }
+      repository.pendingRevision = { command: structuredClone(command), commandDigest };
+      saveHarnessStrategyRepository(repository);
+    }
     const createdAt = typeof command.createdAt === "string" ? command.createdAt : "";
     const revisionWithoutHash = {
       contractVersion: "strategy.v1",
@@ -398,6 +444,7 @@ async function handleHarnessStrategyCommand(command: Record<string, unknown>) {
       draft: stored,
       savedDraft: stored,
       revision,
+      ...(repository.pendingRevision ? { pendingRevision: repository.pendingRevision } : {}),
     });
     return;
   }

@@ -785,7 +785,9 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   useEffect(() => {
     recoverySequence.current += 1;
     const sequence = recoverySequence.current;
-    setRecovery({ status: "loading" });
+    void Promise.resolve().then(() => {
+      if (sequence === recoverySequence.current) setRecovery({ status: "loading" });
+    });
     void loadOrbitRevisionRecovery(lifecycleClient, String(sequence)).then(
       (pending) => {
         if (sequence === recoverySequence.current) setRecovery({ status: "ready", ...(pending ? { pending } : {}) });

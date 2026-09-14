@@ -108,6 +108,34 @@ func TestRepositoryRecoverableCommitRequiresStillStagedIntent(t *testing.T) {
 	}
 }
 
+func TestRepositoryPendingStageReportsUncertainAfterBackupReplacement(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	repository, err := Open[testPayload](t.TempDir(), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defaultWriter := repository.write
+	writes := 0
+	fault := errors.New("primary replace failed")
+	repository.write = func(path string, data []byte) (bool, error) {
+		writes++
+		if writes == 2 {
+			return false, fault
+		}
+		return defaultWriter(path, data)
+	}
+	_, err = repository.StagePendingRevision(ctx, 0, "save-a", json.RawMessage(`{"commandId":"save-a"}`))
+	if !errors.Is(err, ErrCommitUncertain) || !errors.Is(err, fault) {
+		t.Fatalf("stage error = %v, want uncertain primary failure", err)
+	}
+	repository.write = defaultWriter
+	pending, err := repository.LoadPendingRevision(ctx)
+	if err != nil || pending == nil || pending.CommandID != "save-a" {
+		t.Fatalf("backup recovery = %#v, err=%v", pending, err)
+	}
+}
+
 func TestRepositoryRecoversDraftWithoutMutatingStableRevision(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()

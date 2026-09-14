@@ -1157,12 +1157,12 @@ func (repository *Repository[T]) writeMetadataState(ctx context.Context, state r
 		}
 		return fmt.Errorf("write strategy repository metadata backup: %w", err)
 	}
-	replaced, err := repository.write(repository.statePath(), encoded)
+	_, err = repository.write(repository.statePath(), encoded)
 	if err != nil {
-		if replaced {
-			return &CommitUncertainError{Version: state.generation, Cause: err}
-		}
-		return fmt.Errorf("write strategy repository metadata: %w", err)
+		// The backup already contains the new metadata. Even if the primary was
+		// not replaced, a later repair may recover it, so the outcome is not
+		// definitive from the caller's perspective.
+		return &CommitUncertainError{Version: state.generation, Cause: err}
 	}
 	return nil
 }

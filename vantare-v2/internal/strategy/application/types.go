@@ -248,6 +248,8 @@ type PlanSummary struct {
 	UpdatedAt     time.Time `json:"updatedAt"`
 	HasDraft      bool      `json:"hasDraft"`
 	RevisionCount int       `json:"revisionCount"`
+	// RevisionRefs lets a client discover immutable history without loading payloads.
+	RevisionRefs []contract.RevisionRef `json:"revisionRefs,omitempty"`
 	// LatestRevision identifies what would be opened or activated.
 	LatestRevision   *contract.RevisionRef `json:"latestRevision,omitempty"`
 	LatestRevisionAt *time.Time            `json:"latestRevisionAt,omitempty"`

@@ -1,6 +1,16 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1257 T14c cliente cerrado localmente; respuesta exacta
+## Estado vigente — #1259 T14d cerrado localmente; historia descubrible
+
+`list` publica ahora las referencias completas de todas las revisiones de cada
+plan sin cargar sus payloads. Tras A→B, A puede descubrirse y abrirse mediante
+la ruta exacta ya existente; las variantes no mezclan referencias. El cliente
+valida cada referencia presente y conserva compatibilidad con respuestas legacy
+sin el nuevo campo. T14 continúa con el visor mínimo y la recuperación duradera
+de comandos. Sin app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni
+release.
+
+## Historial — #1257 T14c cliente cerrado localmente; respuesta exacta
 
 El cliente TypeScript permite abrir una revisión mediante su referencia completa
 o conservar el selector legacy por borrador, de forma mutuamente exclusiva. La

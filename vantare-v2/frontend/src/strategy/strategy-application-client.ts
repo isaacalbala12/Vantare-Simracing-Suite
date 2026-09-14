@@ -686,6 +686,7 @@ export type StrategyPlanSummaryV1 = {
   readonly updatedAt: string;
   readonly hasDraft: boolean;
   readonly revisionCount: number;
+  readonly revisionRefs?: readonly RevisionRefV1[];
   readonly latestRevision?: RevisionRefV1;
   readonly latestRevisionAt?: string;
 };
@@ -1989,6 +1990,9 @@ function parsePlanSummaries(value: unknown): readonly StrategyPlanSummaryV1[] {
     if (typeof entry.revisionCount !== "number" || !Number.isSafeInteger(entry.revisionCount)) {
       throw new Error(`Invalid Strategy plan summary ${index}: revisionCount`);
     }
+    if (entry.revisionRefs !== undefined && !Array.isArray(entry.revisionRefs)) {
+      throw new Error(`Invalid Strategy plan summary ${index}: revisionRefs`);
+    }
     return {
       planId: entry.planId as string,
       variantId: entry.variantId as string,
@@ -1998,6 +2002,16 @@ function parsePlanSummaries(value: unknown): readonly StrategyPlanSummaryV1[] {
       hasDraft: entry.hasDraft === true,
       revisionCount: entry.revisionCount,
       ...(typeof entry.draftId === "string" ? { draftId: entry.draftId } : {}),
+      ...(entry.revisionRefs === undefined
+        ? {}
+        : {
+            revisionRefs: entry.revisionRefs.map(
+              (reference, revisionIndex) => parseRevisionRef(
+                reference,
+                `plans.${index}.revisionRefs.${revisionIndex}`,
+              ),
+            ),
+          }),
       ...(entry.latestRevision === undefined
         ? {}
         : { latestRevision: parseRevisionRef(entry.latestRevision, `plans.${index}.latestRevision`) }),

@@ -364,6 +364,73 @@ describe("createStrategyApplicationClient", () => {
     expect(transport.listeners.get("strategy:application:result")?.size ?? 0).toBe(0);
   });
 
+  it("transports historical revision references from the existing plan list", async () => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const command: StrategyApplicationCommandV1<Payload> = {
+      protocolVersion: "strategy.application.v1",
+      commandId: "list-history",
+      operation: "list",
+      expectedRepositoryVersion: 0,
+    };
+    const first = { planId: "plan-1", variantId: "variant-1", revisionId: "revision-1", contentHash: "a".repeat(64) };
+    const second = { ...first, revisionId: "revision-2", contentHash: "b".repeat(64) };
+    const pending = client.execute(command);
+    emit(transport, "strategy:application:result", {
+      protocolVersion: "strategy.application.v1",
+      commandId: command.commandId,
+      repositoryVersion: 2,
+      plans: [{
+        planId: "plan-1", variantId: "variant-1", name: "Race plan", mode: "manual",
+        updatedAt: "2026-08-02T00:00:02Z", hasDraft: true, revisionCount: 2,
+        revisionRefs: [first, second], latestRevision: second,
+      }],
+      recoveredFromBackup: false,
+      closed: false,
+    });
+
+    await expect(pending).resolves.toMatchObject({ plans: [{ revisionRefs: [first, second] }] });
+  });
+
+  it("keeps a legacy plan summary without historical references valid", async () => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const command: StrategyApplicationCommandV1<Payload> = {
+      protocolVersion: "strategy.application.v1", commandId: "list-legacy", operation: "list", expectedRepositoryVersion: 0,
+    };
+    const pending = client.execute(command);
+    emit(transport, "strategy:application:result", {
+      protocolVersion: "strategy.application.v1", commandId: command.commandId, repositoryVersion: 1,
+      plans: [{
+        planId: "plan-1", variantId: "variant-1", name: "Race plan", mode: "manual",
+        updatedAt: "2026-08-02T00:00:01Z", hasDraft: true, revisionCount: 2,
+        latestRevision: { planId: "plan-1", variantId: "variant-1", revisionId: "revision-2", contentHash: "b".repeat(64) },
+      }],
+      recoveredFromBackup: false, closed: false,
+    });
+
+    const result = await pending;
+    expect(result.plans?.[0]).toMatchObject({ revisionCount: 2, latestRevision: { revisionId: "revision-2" } });
+    expect(result.plans?.[0]).not.toHaveProperty("revisionRefs");
+  });
+
+  it("rejects a malformed historical revision reference", async () => {
+    const client = createStrategyApplicationClient<Payload>(transport);
+    const command: StrategyApplicationCommandV1<Payload> = {
+      protocolVersion: "strategy.application.v1", commandId: "list-invalid-history", operation: "list", expectedRepositoryVersion: 0,
+    };
+    const pending = client.execute(command);
+    emit(transport, "strategy:application:result", {
+      protocolVersion: "strategy.application.v1", commandId: command.commandId, repositoryVersion: 1,
+      plans: [{
+        planId: "plan-1", variantId: "variant-1", name: "Race plan", mode: "manual",
+        updatedAt: "2026-08-02T00:00:01Z", hasDraft: true, revisionCount: 1,
+        revisionRefs: [{ planId: "plan-1", variantId: "variant-1", revisionId: "revision-1" }],
+      }],
+      recoveredFromBackup: false, closed: false,
+    });
+
+    await expect(pending).rejects.toThrow(/revisionRefs\.0\.contentHash/);
+  });
+
   it("opens the exact requested revision without a draft selector", async () => {
     const client = createStrategyApplicationClient<Payload>(transport);
     const revision = await revisionDocument({ planId: "plan-1", variantId: "variant-1", revisionId: "revision-a" });

@@ -238,9 +238,11 @@ type SolverInputV2 struct {
 	EventRules           EventRules                    `json:"eventRules"`
 	Budget               ComputeBudget                 `json:"budget"`
 	// Inputs manuales cuando projection está missing/unsupported
-	FuelCapacityLiters ScalarInput `json:"fuelCapacityLiters"`
-	VECapacityPercent  ScalarInput `json:"veCapacityPercent"`
-	TyreLifeLaps       ScalarInput `json:"tyreLifeLaps"`
+	FuelCapacityLiters ScalarInput  `json:"fuelCapacityLiters"`
+	VECapacityPercent  ScalarInput  `json:"veCapacityPercent"`
+	InitialFuelLiters  *ScalarInput `json:"initialFuelLiters,omitempty"`
+	InitialVEPercent   *ScalarInput `json:"initialVEPercent,omitempty"`
+	TyreLifeLaps       ScalarInput  `json:"tyreLifeLaps"`
 	// Consumos manuales usados cuando la familia correspondiente de Projection
 	// no esta disponible. Cero desactiva el recurso junto con capacidad cero.
 	FuelPerLapLiters     ScalarInput                      `json:"fuelPerLapLiters"`
@@ -431,6 +433,23 @@ func (in SolverInputV2) Validate() error {
 	if in.VECapacityPercent.Value > 100 {
 		return fmt.Errorf("veCapacityPercent invalid")
 	}
+	for field, resource := range map[string]struct {
+		initial  *ScalarInput
+		capacity float64
+	}{
+		"initialFuelLiters": {initial: in.InitialFuelLiters, capacity: in.FuelCapacityLiters.Value},
+		"initialVEPercent":  {initial: in.InitialVEPercent, capacity: in.VECapacityPercent.Value},
+	} {
+		if resource.initial == nil {
+			continue
+		}
+		if err := resource.initial.validate(field, true); err != nil {
+			return err
+		}
+		if resource.initial.Value > resource.capacity {
+			return fmt.Errorf("%s exceeds capacity", field)
+		}
+	}
 	if err := in.TyreLifeLaps.validate("tyreLifeLaps", true); err != nil {
 		return err
 	}
@@ -584,6 +603,8 @@ type ResolvedScalarInputs struct {
 	BaseLapSeconds     ScalarInput  `json:"baseLapSeconds"`
 	FuelCapacityLiters ScalarInput  `json:"fuelCapacityLiters"`
 	VECapacityPercent  ScalarInput  `json:"veCapacityPercent"`
+	InitialFuelLiters  *ScalarInput `json:"initialFuelLiters,omitempty"`
+	InitialVEPercent   *ScalarInput `json:"initialVEPercent,omitempty"`
 	TyreLifeLaps       ScalarInput  `json:"tyreLifeLaps"`
 	FuelPerLapLiters   ScalarInput  `json:"fuelPerLapLiters"`
 	VEPerLapPercent    ScalarInput  `json:"vePerLapPercent"`
@@ -597,6 +618,8 @@ func (in SolverInputV2) resolvedScalarInputs() ResolvedScalarInputs {
 		BaseLapSeconds:     in.baseLapSource(),
 		FuelCapacityLiters: in.FuelCapacityLiters,
 		VECapacityPercent:  in.VECapacityPercent,
+		InitialFuelLiters:  in.InitialFuelLiters,
+		InitialVEPercent:   in.InitialVEPercent,
 		TyreLifeLaps:       in.tyreLifeSource(),
 		FuelPerLapLiters:   in.resourcePerLapSource(ResourceFuel),
 		VEPerLapPercent:    in.resourcePerLapSource(ResourceVirtualEnergy),

@@ -1,6 +1,20 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1224 T02d2a cerrado localmente; T02d2b listo
+## Estado vigente — #1225 T02d2b cerrado localmente; T02d2c listo
+
+T02d2b añade cargas iniciales Fuel/VE opcionales y trazables a SolverV2. Con
+presencia explícita, búsqueda general, replay, canonicalización, clima y peor
+caso usan exactamente ese valor, incluido cero. La ausencia conserva el atajo
+y la selección mínima heredados. Se reutilizan escalares y búsqueda existentes;
+el atajo no se amplía. El diagnóstico de riesgo parte también de la carga fija
+para mantener causas Fuel/VE concretas. T02d2c conectará application y la
+evaluación final. Sin cambios frontend, app/Wails/LMU, DuckDB, push, PR, CI
+remota, integración ni release. Astra high no encontró P0/P1/P2 ni complejidad
+eliminable. Solver, Go completo tras generar el embed web, vet focal, build web
+y roadmap pasan; el primer Go global sólo encontró `frontend/dist` ausente en
+el worktree nuevo.
+
+## Historial — #1224 T02d2a cerrado localmente; T02d2b listo
 
 T02d2a amplía el contrato existente con reservas independientes: Fuel en litros
 y energía virtual en puntos porcentuales, incluida la presencia explícita de

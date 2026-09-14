@@ -260,12 +260,39 @@ func minimumResourcePlanForDecision(
 	if veBalance.minimumStart > ve.capacity {
 		veBalance.minimumStart = ve.capacity
 	}
+	fuelStart, err := configuredInitialResourceUnits("initialFuelLiters", input.InitialFuelLiters, fuelBalance.minimumStart)
+	if err != nil {
+		return decisionResourcePlan{}, err
+	}
+	veStart, err := configuredInitialResourceUnits("initialVEPercent", input.InitialVEPercent, veBalance.minimumStart)
+	if err != nil {
+		return decisionResourcePlan{}, err
+	}
 	return decisionResourcePlan{
-		fuelStart: fuelBalance.minimumStart,
-		veStart:   veBalance.minimumStart,
+		fuelStart: fuelStart,
+		veStart:   veStart,
 		fuelUsed:  fuelBalance.used,
 		veUsed:    veBalance.used,
 	}, nil
+}
+
+func configuredInitialResourceUnits(field string, configured *ScalarInput, fallback int64) (int64, error) {
+	if configured == nil {
+		return fallback, nil
+	}
+	return serviceUnits(field, configured.Value)
+}
+
+func searchInitialResourceUnits(input SolverInputV2, fuel, ve serviceResource) (int64, int64, error) {
+	fuelStart, err := configuredInitialResourceUnits("initialFuelLiters", input.InitialFuelLiters, fuel.capacity)
+	if err != nil {
+		return 0, 0, err
+	}
+	veStart, err := configuredInitialResourceUnits("initialVEPercent", input.InitialVEPercent, ve.capacity)
+	if err != nil {
+		return 0, 0, err
+	}
+	return fuelStart, veStart, nil
 }
 
 func reserveUnitsForFuel(input manual.FuelReserveInput, raceLaps contract.LapCount, terminal, totalUsed int64) (int64, error) {

@@ -13,7 +13,7 @@ prevalece sobre sus notas históricas de «siguiente corte».
 | Paquete | Estado comprobado y trabajo que se conserva | Cierre restante |
 |---|---|---|
 | T00/T01 | SDD y corrección local del coste repetido de pit #1089; regresión Imola existente. | Revalidación nativa y presupuesto del modelo completo en T22; no reabrir el algoritmo sin reproducción. |
-| T02/T03/T06/T07 | Reglas transportadas en #1092; T02d1 #1222 añade horizonte exacto por vueltas; T02d2a #1224 transporta capacidad/aplicabilidad VE y reservas Fuel/VE independientes; asistente con duración, Fuel/VE, min/max paradas, nombres y delta de piloto. | Cargas iniciales fijas, matriz restante de recursos, perfiles antes de optimizar, disponibilidad/conducción, inventario, servicios/formación y estados finales. Una pantalla presente no cierra la familia. |
+| T02/T03/T06/T07 | Reglas transportadas en #1092; T02d1 #1222 añade horizonte exacto por vueltas; T02d2a #1224 transporta capacidad/aplicabilidad VE y reservas Fuel/VE; T02d2b #1225 fija cargas iniciales en SolverV2; asistente con duración, Fuel/VE, min/max paradas, nombres y delta de piloto. | Transporte application/UI de cargas, matriz restante de recursos, perfiles antes de optimizar, disponibilidad/conducción, inventario, servicios/formación y estados finales. Una pantalla presente no cierra la familia. |
 | T04/T05/T08/T09 | Shell/asistente unificado, biblioteca paginada, apertura explícita, configuración guardada/reabierta. | Paridad final T18, recuperación/copia y reinicio real T22; reutilizar servicios existentes y resolver sólo gaps observados. |
 | T10/T11 | Valor, uso por familia e historial de fuente implementados; bancos reales previos. | T11i visual/nativo pendiente; recuperación duradera de comandos y revisión completa del plan en T14/T22. |
 | T12 | Clasificación tipada e identidad canónica v4; J9 Imola→Monza 23.99 s y Monza→Imola 35.98 s, hashes intactos. | Gate visual/nativo compartido T18/T22; J9 no demuestra precisión empírica ni cálculo completo. |
@@ -27,8 +27,8 @@ Evidencia de los gaps: [matriz T02](../evidence/isa-1092/README.md),
 `StrategyRecordedWorkflow.tsx` bajo `frontend/src/hub/strategy-orbit/`.
 No repetir T12 ni declarar terminadas las entradas sólo por su posición en el DAG.
 
-**Siguiente corte elegible:** T02d2b añade cargas iniciales fijas de Fuel y
-energía virtual al solver existente, siguiendo cortes pequeños hasta T02g/T06/T07 antes del
+**Siguiente corte elegible:** T02d2c transporta las cargas iniciales desde
+application y las conserva en la evaluación final, siguiendo cortes pequeños hasta T02g/T06/T07 antes del
 contrato único de resultados T03. T13a–e queda cerrado localmente; la aceptación
 visual de sus pantallas permanece en T18 y el recorrido Wails en T22.
 En paralelo lógico, preparar inventario T02 restante y preflight documental T22a;

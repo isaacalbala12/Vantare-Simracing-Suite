@@ -196,8 +196,16 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 	}
 
 	initialChoices := tyreModel.initialChoices()
+	fuelStart, veStart, err := searchInitialResourceUnits(input, fuel, ve)
+	if err != nil {
+		return SolverResultV2{}, err
+	}
+	worstFuelStart, worstVEStart, err := searchInitialResourceUnits(envelope.full, worstFuel, worstVE)
+	if err != nil {
+		return SolverResultV2{}, err
+	}
 	initial := searchNode{
-		fuel: fuel.capacity, ve: ve.capacity, worstFuel: worstFuel.capacity, worstVE: worstVE.capacity, worstFeasible: true,
+		fuel: fuelStart, ve: veStart, worstFuel: worstFuelStart, worstVE: worstVEStart, worstFeasible: true,
 		decision: DecisionVector{PitStops: []PitStopDecision{}, Stints: []StintDecision{}},
 	}
 	byLap := make([][]searchNode, input.RaceLaps+1)
@@ -234,8 +242,13 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 		return result, nil
 	}
 
-	if decisions, ok := simpleResourceDecisions(input, fuel, ve, paceCost, compoundPace, fuelWeight, saving, drivers, weatherCost); ok {
-		for _, decision := range decisions {
+	var simpleDecisions []DecisionVector
+	simple := false
+	if input.InitialFuelLiters == nil && input.InitialVEPercent == nil {
+		simpleDecisions, simple = simpleResourceDecisions(input, fuel, ve, paceCost, compoundPace, fuelWeight, saving, drivers, weatherCost)
+	}
+	if simple {
+		for _, decision := range simpleDecisions {
 			replayed, replayErr := ReplayDecisionV2(input, decision)
 			if replayErr != nil {
 				return SolverResultV2{}, replayErr

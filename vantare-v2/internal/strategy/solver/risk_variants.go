@@ -190,7 +190,10 @@ func hardResourceRisks(input SolverInputV2, decision DecisionVector) ([]SolverRi
 	if err != nil {
 		return nil, err
 	}
-	fuelLeft, veLeft := fuel.capacity, ve.capacity
+	fuelLeft, veLeft, err := searchInitialResourceUnits(input, fuel, ve)
+	if err != nil {
+		return nil, err
+	}
 	tireAge := int64(0)
 	tireUsage := make(map[string]int64)
 	risks := make([]SolverRisk, 0, 3)

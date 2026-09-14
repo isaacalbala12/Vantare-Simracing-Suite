@@ -91,6 +91,12 @@ func replayDecisionV2(input SolverInputV2, decision DecisionVector, initial *[2]
 	}
 
 	if initial != nil {
+		if input.InitialFuelLiters != nil && input.InitialFuelLiters.Value != initial[0] {
+			return ReplayResultV1{}, solveError(ErrorInvalidInput, "initialFuelLiters", "explicit replay load differs from solver input")
+		}
+		if input.InitialVEPercent != nil && input.InitialVEPercent.Value != initial[1] {
+			return ReplayResultV1{}, solveError(ErrorInvalidInput, "initialVEPercent", "explicit replay load differs from solver input")
+		}
 		resourcePlan.fuelStart, err = replayServiceAmount("initialFuelLiters", initial[0], 0, fuel.capacity)
 		if err != nil {
 			return ReplayResultV1{}, solveError(ErrorInvalidInput, "initialFuelLiters", err.Error())

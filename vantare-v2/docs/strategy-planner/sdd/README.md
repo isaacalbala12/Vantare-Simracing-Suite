@@ -82,7 +82,7 @@ Estado de referencia, no certificación permanente: revalidar al empezar cada co
 | Diseño y entrada | Asistente A4 unificado y biblioteca productiva #1093–1095; configuración guardada/reabierta. | Completar reglas/pilotos y paneles cálculo/plan/stint/parada; paridad T18 y recorrido Wails T22. |
 | Lectura/correcciones | Valor, uso por familia, clasificación y catálogo canónico v4 #1096/#1099/#1104. Banco J9 bidireccional Imola↔Monza conserva hashes originales. T13a–e #1211/#1212/#1214/#1216/#1220 cierra localmente contrato, validación, custodia v5, derivados, servicio, cliente, edición avanzada e historial de límites. | Comandos tras reinicio y revisiones completas de plan T14; gates nativos/visuales T18/T22. |
 | Selección exacta | Documento/cliente/adapter #1084–1088 y adopción explícita desde Datos/Revisiones. | Plan aceptado reproducible con todas las entradas/versiones y consulta sin fuente; T14/T22. |
-| Motor/entradas | SolverV2, replay final y corrección local del coste repetido #1089; transporte de reglas #1092; horizonte exacto por vueltas T02d1 #1222; capacidad y reservas independientes Fuel/VE T02d2a #1224. | T02/T03/T06/T07 no completos: cargas iniciales, perfiles, disponibilidad, inventario, servicios/formación y estados; conexión productiva T15. |
+| Motor/entradas | SolverV2, replay final y corrección local del coste repetido #1089; transporte de reglas #1092; horizonte exacto por vueltas T02d1 #1222; capacidad/reservas T02d2a #1224 y cargas iniciales fijas del solver T02d2b #1225. | T02/T03/T06/T07 no completos: transporte application/UI de cargas, perfiles, disponibilidad, inventario, servicios/formación y estados; conexión productiva T15. |
 | Criterios | Inventario/protocolo #1030; #1208 alinea LMU y cierra localmente la mezcla de relojes sobre S125/S266/S026. Imola/Monza son preparación expuesta. | Anotación independiente, calibración y reserva suficiente T19–T21. |
 | Calidad | Gates locales y bancos por corte; T12 local cerrado en c2d5b45b. | WebView2 ERROR_INVALID_STATE sin causa demostrada, aceptación visual/nativa/distribución y precisión empírica. |
 
@@ -264,9 +264,9 @@ Conservar decisiones previas documentadas de reservas, no sustituirlas por otras
 constantes silenciosas. Verificar casos de última vuelta, reserva y pit final.
 
 T02d2a ya transporta capacidad/aplicabilidad VE y reservas explícitas e
-independientes de Fuel y VE. La ausencia conserva compatibilidad heredada y
-`not_applicable` excluye VE también bajo escenarios meteorológicos. Quedan las
-cargas iniciales fijas y la conexión del asistente en cortes posteriores.
+independientes de Fuel y VE. T02d2b fija cargas iniciales opcionales en el
+solver, replay, peor caso y clima sin alterar el camino legado. Quedan el
+transporte application y la conexión del asistente en cortes posteriores.
 
 La estimación entre pilotos afecta sólo al ritmo autorizado y queda versionada.
 No rellena desgaste, consumo ni perfil completo. Clima del evento/configuración

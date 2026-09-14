@@ -144,3 +144,22 @@ RED: el test nuevo no compilaba porque el evento carecía de los campos. GREEN:
 reservas independientes, cero explícito, compatibilidad heredada, VE no
 aplicable con clima y entradas inválidas quedan cubiertos. T02d2b añadirá las
 cargas iniciales fijas al solver; este corte no conecta todavía el asistente.
+
+## T02d2b — cargas iniciales fijas en SolverV2 (#1225)
+
+`SolverInputV2` admite cargas iniciales opcionales de Fuel y VE como escalares
+con procedencia. Si están presentes, la búsqueda general, el peor caso, replay,
+canonicalización y escenarios meteorológicos parten del valor exacto, incluido
+cero; nunca lo elevan para volver factible un plan. Si faltan, el atajo y la
+selección mínima anteriores permanecen intactos.
+
+El caso explícito usa la búsqueda general existente. Adaptar el atajo habría
+ampliado varias suposiciones sobre carga mínima y número de stints sin aportar
+otra capacidad. Las cargas se validan por separado contra sus capacidades, se
+incluyen en el hash y aparecen en las entradas resueltas. El diagnóstico de peor
+caso usa también la carga fija para conservar las causas Fuel/VE concretas.
+
+RED: los tests no compilaban porque el solver carecía de ambos campos. GREEN:
+carga insuficiente, coste de peso, replay, cero, validación, hash, clima y peor
+caso Fuel/VE quedan cubiertos. T02d2c transportará estos valores desde
+application y su evaluación final; este corte no toca TypeScript ni UI.

@@ -13,7 +13,7 @@ prevalece sobre sus notas históricas de «siguiente corte».
 | Paquete | Estado comprobado y trabajo que se conserva | Cierre restante |
 |---|---|---|
 | T00/T01 | SDD y corrección local del coste repetido de pit #1089; regresión Imola existente. | Revalidación nativa y presupuesto del modelo completo en T22; no reabrir el algoritmo sin reproducción. |
-| T02/T03/T06/T07 | Reglas transportadas en #1092; T02d1 #1222 añade horizonte por vueltas; T02d2a #1224 transporta capacidad/reservas; T02d2b #1225 fija cargas en SolverV2, T02d2c #1226 las conecta a CalculateOrbit Go y T02d2d #1227 adapta el evento TypeScript desde el asistente. T02e backend #1228 acredita curvas/vida derivadas y conecta inventario físico explícito; T02e3 #1229 alinea su contrato TypeScript y T02e4 #1230 lo custodia en el borrador recorded y lo transporta sin convertir agregados. T02f1 #1231 transporta el desglose explícito de parada al modelo único del solver con precedencia total y compatibilidad legacy; asistente con duración, Fuel/VE, paradas, nombres y delta. | Perfiles antes de optimizar, disponibilidad/conducción, formación y estados finales. Una pantalla presente no cierra la familia. |
+| T02/T03/T06/T07 | Reglas transportadas en #1092; T02d1 #1222 añade horizonte por vueltas; T02d2a #1224 transporta capacidad/reservas; T02d2b #1225 fija cargas en SolverV2, T02d2c #1226 las conecta a CalculateOrbit Go y T02d2d #1227 adapta el evento TypeScript desde el asistente. T02e backend #1228 acredita curvas/vida derivadas y conecta inventario físico explícito; T02e3 #1229 alinea su contrato TypeScript y T02e4 #1230 lo custodia en el borrador recorded y lo transporta sin convertir agregados. T02f1 #1231 transporta el desglose explícito de parada al modelo único del solver y T02f2 #1232 separa el tiempo de formación en reloj, conducción y horizonte; asistente con duración, Fuel/VE, paradas, nombres y delta. | Perfiles antes de optimizar, disponibilidad/conducción, transporte TypeScript de servicios/formación y estados finales. Una pantalla presente no cierra la familia. |
 | T04/T05/T08/T09 | Shell/asistente unificado, biblioteca paginada, apertura explícita, configuración guardada/reabierta. | Paridad final T18, recuperación/copia y reinicio real T22; reutilizar servicios existentes y resolver sólo gaps observados. |
 | T10/T11 | Valor, uso por familia e historial de fuente implementados; bancos reales previos. | T11i visual/nativo pendiente; recuperación duradera de comandos y revisión completa del plan en T14/T22. |
 | T12 | Clasificación tipada e identidad canónica v4; J9 Imola→Monza 23.99 s y Monza→Imola 35.98 s, hashes intactos. | Gate visual/nativo compartido T18/T22; J9 no demuestra precisión empírica ni cálculo completo. |
@@ -27,9 +27,8 @@ Evidencia de los gaps: [matriz T02](../evidence/isa-1092/README.md),
 `StrategyRecordedWorkflow.tsx` bajo `frontend/src/hub/strategy-orbit/`.
 No repetir T12 ni declarar terminadas las entradas sólo por su posición en el DAG.
 
-**Siguiente corte elegible:** T02f2 conecta el tiempo de formación y revisa su
-encaje en el horizonte sin introducir otro modelo de carrera. T02f3 transportará
-servicios y formación por TypeScript/custodia. Después se continúa con T02g/T06/T07 antes del
+**Siguiente corte elegible:** T02f3 transporta servicios y formación por el
+contrato TypeScript y la custodia recorded existentes. Después se continúa con T02g/T06/T07 antes del
 contrato único de resultados T03. T13a–e queda cerrado localmente; la aceptación
 visual de sus pantallas permanece en T18 y el recorrido Wails en T22.
 En paralelo lógico, preparar inventario T02 restante y preflight documental T22a;

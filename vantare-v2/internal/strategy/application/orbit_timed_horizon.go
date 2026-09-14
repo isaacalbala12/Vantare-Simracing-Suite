@@ -11,8 +11,9 @@ import (
 
 // Each horizon is solved and replayed in full. The estimate only selects the
 // next horizon; only the actual replay clock can accept a recommendation.
-func resolveOrbitTimedHorizon(ctx context.Context, race manual.RaceInput, laps int64, variantIndex int, calculate func(int64) (OrbitCalculationPlan, error)) (OrbitCalculationPlan, error) {
+func resolveOrbitTimedHorizon(ctx context.Context, race manual.RaceInput, laps int64, formationSeconds float64, variantIndex int, calculate func(int64) (OrbitCalculationPlan, error)) (OrbitCalculationPlan, error) {
 	duration := race.Duration.Value.Value()
+	competitiveDuration := duration - formationSeconds
 	tolerance := 1e-12 * math.Max(1, duration)
 	seen := make(map[int64]bool)
 	field := fmt.Sprintf("input.variants.%d", variantIndex)
@@ -32,16 +33,20 @@ func resolveOrbitTimedHorizon(ctx context.Context, race manual.RaceInput, laps i
 			return plan, nil
 		}
 		var next int64
-		if plan.PitSeconds > duration {
+		if plan.PitSeconds > competitiveDuration {
 			// CalculateRace rejects a pit budget larger than the whole event.
 			// Scale this search estimate down; its next plan is still fully checked.
-			next = int64(math.Floor(float64(laps) * duration / plan.TotalSeconds))
+			next = int64(math.Floor(float64(laps) * competitiveDuration / (plan.TotalSeconds - formationSeconds)))
 		} else {
 			race.AverageLap.Value, err = contract.NewDurationSeconds(plan.DrivingSeconds / float64(laps))
 			if err != nil {
 				return OrbitCalculationPlan{}, mapOrbitCalculationError(err, field)
 			}
 			race.PitLoss.Value, err = contract.NewDurationSeconds(plan.PitSeconds)
+			if err != nil {
+				return OrbitCalculationPlan{}, mapOrbitCalculationError(err, field)
+			}
+			race.Duration.Value, err = contract.NewDurationSeconds(competitiveDuration)
 			if err != nil {
 				return OrbitCalculationPlan{}, mapOrbitCalculationError(err, field)
 			}

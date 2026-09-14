@@ -363,6 +363,7 @@ type OrbitCalculationEvent struct {
 	TyreInventory     *solver.TyreInventoryInput     `json:"tyreInventory,omitempty"`
 	CompoundPace      []solver.CompoundPaceParameter `json:"compoundPace,omitempty"`
 	PitServices       *OrbitCalculationPitServices   `json:"pitServices,omitempty"`
+	FormationSeconds  *float64                       `json:"formationSeconds,omitempty"`
 	PitLossSeconds    float64                        `json:"pitLossSeconds"`
 }
 
@@ -464,6 +465,7 @@ type OrbitCalculationPlan struct {
 	Distribution            []OrbitCalculationDistribution `json:"distribution"`
 	DrivingSeconds          float64                        `json:"drivingSeconds"`
 	PitSeconds              float64                        `json:"pitSeconds"`
+	FormationSeconds        *float64                       `json:"formationSeconds,omitempty"`
 	StartFuelLiters         float64                        `json:"startFuelLiters"`
 	FinishFuelLiters        float64                        `json:"finishFuelLiters"`
 	ReserveLaps             float64                        `json:"reserveLaps"`

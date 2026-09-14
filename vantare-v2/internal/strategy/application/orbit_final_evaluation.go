@@ -115,14 +115,18 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 	plan.FinalLapStartSeconds = replayed.FinalLapStartSeconds
 	plan.Optimality = "not_proven"
 	plan.PitSeconds = replayed.Evaluation.PitSeconds
-	plan.DrivingSeconds = plan.TotalSeconds - plan.PitSeconds
+	plan.DrivingSeconds = plan.TotalSeconds - plan.PitSeconds - replayed.Evaluation.FormationSeconds
+	if input.Formation.Seconds.Role == solver.ScalarRoleUserOverride {
+		formationSeconds := replayed.Evaluation.FormationSeconds
+		plan.FormationSeconds = &formationSeconds
+	}
 	plan.StartFuelLiters = plan.Stints[0].Fuel
 	plan.FinishFuelLiters = replayed.Reserve.Fuel.RemainingAmount
 	plan.ReserveLaps = replayed.Reserve.EffectiveLaps
 	plan.ReserveRequiredLaps = requestedReserveLaps(replayed.Reserve)
 	plan.ReserveSatisfied = replayed.Reserve.Satisfied
 	plan.ReserveLimitingResource = string(replayed.Reserve.LimitingResource)
-	clock := 0.0
+	clock := replayed.Evaluation.FormationSeconds
 	for index := range plan.Distribution {
 		plan.Distribution[index].Seconds = 0
 	}
@@ -131,7 +135,7 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 		windowOffset := stint.PitWindowSeconds - stint.StartSeconds
 		cost := replayed.Stints[index].Evaluation
 		stint.StartSeconds = clock
-		stint.EndSeconds = clock + cost.TotalSeconds - cost.PitSeconds
+		stint.EndSeconds = clock + cost.TotalSeconds - cost.PitSeconds - cost.FormationSeconds
 		stint.PitWindowSeconds = clock + windowOffset
 		stint.OverCapacity = false
 		for driver := range plan.Distribution {
@@ -139,7 +143,7 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 				plan.Distribution[driver].Seconds += stint.EndSeconds - stint.StartSeconds
 			}
 		}
-		clock += cost.TotalSeconds
+		clock += cost.TotalSeconds - cost.FormationSeconds
 		if index < len(plan.StopDetails) {
 			stop := &plan.StopDetails[index]
 			if input.TyreInventory != nil {

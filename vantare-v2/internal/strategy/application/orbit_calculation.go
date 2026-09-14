@@ -286,12 +286,21 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 	raceInput.Kind = manual.RaceByTime
 	raceInput.Duration = manual.Sourced[contract.DurationSeconds]{Value: duration, Evidence: tracing}
 	raceInput.TimedFinish = manual.TimedFinishCurrentLap
-	race, err := manual.CalculateRace(raceInput)
+	formationSeconds := 0.0
+	if event.FormationSeconds != nil {
+		formationSeconds = *event.FormationSeconds
+	}
+	estimateInput := raceInput
+	estimateInput.Duration.Value, err = contract.NewDurationSeconds(duration.Value() - formationSeconds)
+	if err != nil {
+		return OrbitCalculationPlan{}, mapOrbitCalculationError(err, "input.event.formationSeconds")
+	}
+	race, err := manual.CalculateRace(estimateInput)
 	if err != nil {
 		return OrbitCalculationPlan{}, mapOrbitCalculationError(err, "input.event")
 	}
 
-	return resolveOrbitTimedHorizon(ctx, raceInput, race.CompetitiveLaps.Value(), variantIndex, func(laps int64) (OrbitCalculationPlan, error) {
+	return resolveOrbitTimedHorizon(ctx, raceInput, race.CompetitiveLaps.Value(), formationSeconds, variantIndex, func(laps int64) (OrbitCalculationPlan, error) {
 		return calculateOrbitLapPlan(ctx, event, drivers, variant, variantIndex, planning, laps, averagePace, averageFuel)
 	})
 }
@@ -420,6 +429,10 @@ func orbitSolverInput(
 	paceBucket strategyprojection.ClimateBucket,
 	planning *strategydocument.PlanningInputs,
 ) solver.SolverInputV2 {
+	formation := solver.Formation{Seconds: solver.NewFallbackScalar(0, "strategy.orbit.no-formation"), Presence: string(strategyprojection.PresenceValid)}
+	if event.FormationSeconds != nil {
+		formation.Seconds = orbitExplicitScalar(*event.FormationSeconds, "strategy.orbit.formation")
+	}
 	input := solver.SolverInputV2{
 		ContractVersion:      solver.SolverContractVersionV2,
 		RaceLaps:             raceLaps,
@@ -427,7 +440,7 @@ func orbitSolverInput(
 		BaseLapClimateBucket: paceBucket,
 		Projection:           orbitProjection(planning),
 		PitCost:              orbitPitCost(event, planning),
-		Formation:            solver.Formation{Seconds: solver.NewFallbackScalar(0, "strategy.orbit.no-formation"), Presence: string(strategyprojection.PresenceValid)},
+		Formation:            formation,
 		Budget:               solver.ComputeBudget{P95Millis: 10_000},
 		FuelCapacityLiters:   orbitScalarInput(planning, strategydocument.PlanningInputTank, event.TankLiters, "strategy.orbit.tank"),
 		VECapacityPercent:    orbitVECapacity(planning),
@@ -626,6 +639,14 @@ func orbitProjectionWithoutVirtualEnergy(planning *strategydocument.PlanningInpu
 }
 
 func validateOrbitEventResources(event OrbitCalculationEvent) error {
+	if event.FormationSeconds != nil {
+		if _, err := contract.NewDurationSeconds(*event.FormationSeconds); err != nil {
+			return calculationApplicationError(ErrorCalculationInvalid, "input.event.formationSeconds", err)
+		}
+		if event.RaceKind != string(manual.RaceByLaps) && *event.FormationSeconds >= event.DurationMinutes*60 {
+			return calculationApplicationError(ErrorCalculationInvalid, "input.event.formationSeconds", ErrCalculationInvalid)
+		}
+	}
 	if services := event.PitServices; services != nil {
 		if services.TransitSeconds == nil || services.RefuelRateLPerS == nil || services.VERatePPerS == nil || services.TyreSeconds == nil {
 			return calculationApplicationError(ErrorCalculationInvalid, "input.event.pitServices", ErrCalculationInvalid)

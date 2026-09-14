@@ -1,6 +1,18 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1231 T02f1 cerrado localmente; T02f2 listo
+## Estado vigente — #1232 T02f2 cerrado localmente; T02f3 listo
+
+T02f2 transporta un tiempo de formación opcional al modelo temporal existente.
+El reloj total y el inicio de la primera vuelta lo incluyen, mientras conducción
+y distribución por piloto lo excluyen. La estimación temporal descuenta ese
+tiempo desde el primer horizonte: 600 s, vueltas de 60 s y 130 s de formación
+convergen en ocho vueltas aun cuando diez serían inviables por recursos. Ausencia
+y cero explícito permanecen distintos. No se modelan vueltas ni consumo de
+formación. Astra high no encontró P0/P1/P2 tras corregir el horizonte inicial.
+Siguiente: T02f3 TypeScript y custodia recorded de servicios/formación. Sin UI,
+app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release.
+
+## Historial — #1231 T02f1 cerrado localmente; T02f2 listo
 
 T02f1 añade al evento de cálculo un desglose opcional y completo de servicios
 de parada. El adaptador único lo convierte al `PitCostModel` existente y marca

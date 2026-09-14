@@ -746,6 +746,8 @@ export const strategyOrbitEn: Record<string, string> = {
   "strategy.journey.driver.relay": "Relay driver",
   "strategy.journey.driver.remove": "Remove driver",
   "strategy.journey.driver.name": "Driver name",
+  "strategy.journey.driver.maxContinuousMinutes": "Maximum continuous · minutes",
+  "strategy.journey.driver.maxTotalMinutes": "Maximum total · minutes",
   "strategy.journey.driver.paceSource": "Pace source",
   "strategy.journey.driver.ownSessions": "Own sessions · to validate",
   "strategy.journey.driver.estimateFrom": "Estimate from",

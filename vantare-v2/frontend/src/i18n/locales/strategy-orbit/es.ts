@@ -746,6 +746,8 @@ export const strategyOrbitEs: Record<string, string> = {
   "strategy.journey.driver.relay": "Relevo",
   "strategy.journey.driver.remove": "Quitar piloto",
   "strategy.journey.driver.name": "Nombre del piloto",
+  "strategy.journey.driver.maxContinuousMinutes": "Máximo seguido · minutos",
+  "strategy.journey.driver.maxTotalMinutes": "Máximo total · minutos",
   "strategy.journey.driver.paceSource": "Fuente de ritmo",
   "strategy.journey.driver.ownSessions": "Sesiones propias · por validar",
   "strategy.journey.driver.estimateFrom": "Estimar a partir de",

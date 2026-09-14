@@ -25,7 +25,7 @@ describe("recordedCalculationEvent", () => {
       initialFuelLiters: 0,
       fuelReserveLiters: 0,
       virtualEnergy: { applicability: "applicable", capacityPercent: 80, initialPercent: 0, reservePercent: 0 },
-      rules: { minPitStops: 1 },
+      rules: { minPitStops: 1, driverLimits: { driver: { maxContinuousTimeSeconds: 1800, maxTotalTimeSeconds: 5400 } } },
     });
 
     expect(recordedCalculationEvent(source)).toEqual({
@@ -36,7 +36,7 @@ describe("recordedCalculationEvent", () => {
       fuelReserveLiters: 0,
       virtualEnergy: { applicability: "applicable", capacityPercent: 80, initialPercent: 0, reservePercent: 0 },
       pitLossSeconds: 32,
-      rules: { minPitStops: 1 },
+      rules: { minPitStops: 1, driverLimits: { driver: { maxContinuousTimeSeconds: 1800, maxTotalTimeSeconds: 5400 } } },
     });
   });
 

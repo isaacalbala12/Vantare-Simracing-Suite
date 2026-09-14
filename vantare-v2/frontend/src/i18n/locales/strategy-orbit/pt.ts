@@ -746,6 +746,8 @@ export const strategyOrbitPt: Record<string, string> = {
   "strategy.journey.driver.relay": "Piloto de substituição",
   "strategy.journey.driver.remove": "Remover piloto",
   "strategy.journey.driver.name": "Nome do piloto",
+  "strategy.journey.driver.maxContinuousMinutes": "Máximo contínuo · minutos",
+  "strategy.journey.driver.maxTotalMinutes": "Máximo total · minutos",
   "strategy.journey.driver.paceSource": "Fonte do ritmo",
   "strategy.journey.driver.ownSessions": "Sessões próprias · por validar",
   "strategy.journey.driver.estimateFrom": "Estimar a partir de",

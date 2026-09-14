@@ -34,6 +34,10 @@ it("preserves zero configuration, signed estimates and full revision refs", () =
   const draft = { ...payload.draft, fuelReserveLiters: 0, drivers: [{ id: "a", name: "Alex" }, { id: "b", name: "Sam", referenceDriverId: "a", paceDeltaSeconds: -0.5 }], sessions: [{ sessionId: "session", baseDigest: "base", revisionId: "revision", snapshotId: "snapshot" }] };
   expect(parseRecordedDraftPayload({ ...payload, draft }).draft).toEqual(draft);
 });
+it("round-trips driver time limits in seconds", () => {
+  const draft = { ...payload.draft, drivers: [{ id: "a", name: "Alex" }], rules: { driverLimits: { a: { maxContinuousTimeSeconds: 1800, maxTotalTimeSeconds: 5400 } } } };
+  expect(parseRecordedDraftPayload({ ...payload, draft }).draft).toEqual(draft);
+});
 it("round-trips explicit pit services and zero formation without sharing their object", () => {
   const source = { ...payload, draft: { ...payload.draft, pitServices, formationSeconds: 0 } };
 

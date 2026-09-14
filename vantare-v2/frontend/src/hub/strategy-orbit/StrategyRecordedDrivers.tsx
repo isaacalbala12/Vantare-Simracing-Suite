@@ -1,21 +1,58 @@
 import type { RecordedWizardDraft } from "./strategy-recorded-wizard";
 import "./strategy-recorded-drivers.css";
 
-export function StrategyRecordedDrivers({ drivers, onChange, onAdd, t }: {
-  readonly drivers: RecordedWizardDraft["drivers"];
-  readonly onChange: (drivers: RecordedWizardDraft["drivers"]) => void;
+type DriverLimit = NonNullable<NonNullable<RecordedWizardDraft["rules"]>["driverLimits"]>[string];
+type DriverLimits = Readonly<Record<string, DriverLimit>>;
+type TimeLimitKey = "maxContinuousTimeSeconds" | "maxTotalTimeSeconds";
+type MutableDriverLimit = { -readonly [Key in keyof DriverLimit]: DriverLimit[Key] };
+type MutableRules = { -readonly [Key in keyof NonNullable<RecordedWizardDraft["rules"]>]: NonNullable<RecordedWizardDraft["rules"]>[Key] };
+const minutesFromSeconds = (seconds: number | undefined) => seconds === undefined ? "" : seconds / 60;
+
+function rulesWithDriverLimits(rules: RecordedWizardDraft["rules"], limits: DriverLimits): RecordedWizardDraft["rules"] {
+  const next: MutableRules = { ...rules };
+  if (Object.keys(limits).length > 0) next.driverLimits = limits;
+  else delete next.driverLimits;
+  return Object.keys(next).length > 0 ? next : undefined;
+}
+
+export function StrategyRecordedDrivers({ draft, onChange, onAdd, t }: {
+  readonly draft: RecordedWizardDraft;
+  readonly onChange: (draft: RecordedWizardDraft) => void;
   readonly onAdd: () => void;
   readonly t: (key: string) => string;
 }) {
+  const drivers = draft.drivers;
+  const driverLimits = draft.rules?.driverLimits ?? {};
   const principal = drivers[0];
-  const update = (id: string, patch: Partial<RecordedWizardDraft["drivers"][number]>) => onChange(drivers.map(driver => driver.id === id ? { ...driver, ...patch } : driver));
+  const change = (nextDrivers: RecordedWizardDraft["drivers"], nextLimits: DriverLimits = driverLimits) => onChange({
+    ...draft, drivers: nextDrivers, rules: rulesWithDriverLimits(draft.rules, nextLimits),
+  });
+  const update = (id: string, patch: Partial<RecordedWizardDraft["drivers"][number]>) => change(drivers.map(driver => driver.id === id ? { ...driver, ...patch } : driver));
+  const updateTimeLimit = (id: string, key: TimeLimitKey, raw: string) => {
+    const nextLimit: MutableDriverLimit = { ...driverLimits[id] };
+    if (raw === "") delete nextLimit[key];
+    else nextLimit[key] = Number(raw) * 60;
+    const nextLimits: Record<string, DriverLimit> = { ...driverLimits };
+    if (Object.keys(nextLimit).length > 0) nextLimits[id] = nextLimit;
+    else delete nextLimits[id];
+    change(drivers, nextLimits);
+  };
+  const remove = (id: string) => {
+    const nextLimits: Record<string, DriverLimit> = { ...driverLimits };
+    delete nextLimits[id];
+    change(drivers.filter(item => item.id !== id).map(item => item.referenceDriverId === id ? { ...item, referenceDriverId: undefined, paceDeltaSeconds: undefined } : item), nextLimits);
+  };
   return <div className="strategy-recorded-drivers">
     {drivers.length === 0 ? <section className="strategy-recorded-drivers__card"><h3>{t("strategy.journey.driver.primary")}</h3><p role="status">{t("strategy.journey.driver.empty")}</p></section> : null}
     {drivers.map((driver, index) => <section key={driver.id} className="strategy-recorded-drivers__card" aria-label={`${t("strategy.journey.driver.label")} ${index + 1}`}>
       <header><span className="strategy-recorded-frame__eyebrow">{t(index === 0 ? "strategy.journey.driver.primary" : "strategy.journey.driver.relay")} {index > 0 ? index : ""}</span>
-        <button type="button" className="orbit-btn orbit-btn--ghost" aria-label={`${t("strategy.journey.driver.remove")} ${driver.name || index + 1}`} onClick={() => onChange(drivers.filter(item => item.id !== driver.id).map(item => item.referenceDriverId === driver.id ? { ...item, referenceDriverId: undefined, paceDeltaSeconds: undefined } : item))}>{t("strategy.journey.driver.remove")}</button>
+        <button type="button" className="orbit-btn orbit-btn--ghost" aria-label={`${t("strategy.journey.driver.remove")} ${driver.name || index + 1}`} onClick={() => remove(driver.id)}>{t("strategy.journey.driver.remove")}</button>
       </header>
       <label className="strategy-recorded-field"><span>{t("strategy.journey.driver.name")}</span><input value={driver.name} maxLength={120} placeholder={t("strategy.journey.unconfirmed")} onChange={event => update(driver.id, { name: event.target.value })} /></label>
+      <div className="strategy-recorded-drivers__limits">
+        <label className="strategy-recorded-field"><span>{t("strategy.journey.driver.maxContinuousMinutes")}</span><input type="number" min="0.01" step="any" value={minutesFromSeconds(driverLimits[driver.id]?.maxContinuousTimeSeconds)} placeholder={t("strategy.journey.unconfirmed")} onChange={event => updateTimeLimit(driver.id, "maxContinuousTimeSeconds", event.target.value)} /></label>
+        <label className="strategy-recorded-field"><span>{t("strategy.journey.driver.maxTotalMinutes")}</span><input type="number" min="0.01" step="any" value={minutesFromSeconds(driverLimits[driver.id]?.maxTotalTimeSeconds)} placeholder={t("strategy.journey.unconfirmed")} onChange={event => updateTimeLimit(driver.id, "maxTotalTimeSeconds", event.target.value)} /></label>
+      </div>
       {index > 0 && principal ? <label className="strategy-recorded-field"><span>{t("strategy.journey.driver.paceSource")}</span><select value={driver.referenceDriverId ?? ""} onChange={event => update(driver.id, event.target.value ? { referenceDriverId: event.target.value, paceDeltaSeconds: 0 } : { referenceDriverId: undefined, paceDeltaSeconds: undefined })}>
         <option value="">{t("strategy.journey.driver.ownSessions")}</option>
         <option value={principal.id}>{t("strategy.journey.driver.estimateFrom")} {principal.name || t("strategy.journey.driver.primary")}</option>

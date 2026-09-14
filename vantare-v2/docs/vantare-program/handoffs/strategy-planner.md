@@ -1,6 +1,19 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1237 T02g2b cerrado localmente; disponibilidad pendiente
+## Estado vigente — #1240 T07a cerrado localmente; reglas por vueltas pendientes
+
+T07a añade al editor de Pilotos los máximos continuo y total en minutos y los
+guarda exclusivamente como segundos en `draft.rules.driverLimits`. Vaciar un
+campo conserva ausencia; quitar un piloto elimina su límite sin tocar reglas ni
+límites ajenos. Guardado/reapertura y adapter de cálculo conservan 1800/5400 s.
+Se reutilizan contrato, validador, persistencia y transporte existentes. Focales,
+frontend completo, typecheck, lint, build, roadmap y diff-check pasan. Astra high
+definió el corte mínimo: no duplicar límites dentro de `draft.drivers`. Siguiente:
+límites por vueltas y reglas visibles; la disponibilidad necesita primero una
+referencia temporal explícita. Sin app/Wails/LMU, DuckDB, push, PR, CI remota,
+integración ni release.
+
+## Historial — #1237 T02g2b cerrado localmente
 
 T02g2b construye un perfil por piloto de la variante antes de optimizar y pasa
 el orden completo como secuencia al mismo SolverV2. El plan publica el piloto

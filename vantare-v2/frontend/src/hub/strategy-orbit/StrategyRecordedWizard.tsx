@@ -48,7 +48,7 @@ export function StrategyRecordedWizard({ draft, onChange, catalog, catalogState,
             change(selectRecordedCalendar(draft, snapshot, catalog));
           }} /> : null}
         {draft.step === "rules" ? <StrategyRecordedRules draft={draft} onChange={change} t={t} /> : null}
-        {draft.step === "drivers" ? <StrategyRecordedDrivers drivers={draft.drivers} onChange={drivers => change({ ...draft, drivers })} onAdd={() => change({ ...draft, drivers: [...draft.drivers, { id: globalThis.crypto.randomUUID(), name: "" }] })} t={t} /> : null}
+        {draft.step === "drivers" ? <StrategyRecordedDrivers draft={draft} onChange={change} onAdd={() => change({ ...draft, drivers: [...draft.drivers, { id: globalThis.crypto.randomUUID(), name: "" }] })} t={t} /> : null}
         {draft.step === "sessions" ? sessions : null}
         {draft.step === "sessions" && !canOpenDraft && openDraftHint ? <div role="status" className="strategy-recorded-wizard__errors"><p>{openDraftHint}</p>{onRetryOpenDraft ? <button type="button" className="orbit-btn orbit-btn--ghost" onClick={onRetryOpenDraft}>{t("strategy.workspace.refresh")}</button> : null}</div> : null}
         {errors.length > 0 ? <div className="strategy-recorded-wizard__errors" role="alert">{errors.map(code => <p key={code}>{t(`strategy.journey.error.${code}`)}</p>)}</div> : null}

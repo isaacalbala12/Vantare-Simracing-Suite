@@ -4,7 +4,12 @@ import { createRecordedDraft, saveRecordedDraft, openRecordedDraft } from "./str
 import { createRecordedWizardDraft } from "./strategy-recorded-wizard";
 import type { RecordedDraftPayload } from "./strategy-recorded-payload";
 
-const draft = { ...createRecordedWizardDraft(), combination: { combinationId: "lmu:spa", simId: "lmu", trackName: "Spa", trackLayout: "", carClass: "LMP2", carName: "Car" } };
+const draft = {
+  ...createRecordedWizardDraft(),
+  combination: { combinationId: "lmu:spa", simId: "lmu", trackName: "Spa", trackLayout: "", carClass: "LMP2", carName: "Car" },
+  drivers: [{ id: "primary", name: "Alex" }],
+  rules: { driverLimits: { primary: { maxContinuousTimeSeconds: 1800, maxTotalTimeSeconds: 5400 } } },
+};
 const time = { id: () => "test-command", now: () => "2026-09-10T00:00:00Z" };
 function fixture() {
   const execute = vi.fn(async (command: StrategyApplicationCommandV1<RecordedDraftPayload>): Promise<StrategyApplicationResultV1<RecordedDraftPayload>> => ({

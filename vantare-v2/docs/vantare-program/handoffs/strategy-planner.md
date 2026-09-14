@@ -1,6 +1,28 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1268 T15a2b cerrado localmente; delta de ritmo por piloto
+## Estado vigente — #1269 T15a2c cerrado localmente; orden libre temporal exacto
+
+SolverV2 acepta una duración opcional y decide el final con el reloj real de
+cada candidato, tras ajustar la carga inicial: formación, ritmo individual,
+combustible, stint y parada cuentan una sola vez. La última vuelta debe empezar
+antes del límite y terminar en él o después. En temporal se prefieren más
+vueltas y luego el menor tiempo; vueltas y rotación temporal fija conservan su
+semántica. CalculateOrbit usa este camino sólo para orden libre temporal y el
+asistente ya permite, valida y transporta esa elección. Las regresiones cubren
+239/240/241, formación, parada larga, mínimo de piloto, carga mínima, replay,
+cancelación y presupuesto. Siguiente: T15b debe conectar el ciclo
+Calcular/Cancelar desde el borrador recorded exacto; T15c cerrará plan parcial,
+optimalidad y aceptar/guardar separados. Sin app/Wails, LMU, DuckDB, push, PR,
+CI remota, integración ni release.
+
+Pasan solver y aplicación completos, 3 archivos/56 tests frontend focales,
+frontend completo 450/3.879, typecheck, lint, auditoría i18n, build, Go global
+y 259 checks documentales. El build conserva el aviso heredado de chunks
+superiores a 500 kB y Vitest imprime el `AbortError` conocido de teardown sin
+fallar ninguna prueba. El gate PR específico de roadmap no se ejecuta sin
+`GITHUB_TOKEN`; la issue sí declara los dos IDs modificados y no existe PR.
+
+## Historial — #1268 T15a2b cerrado localmente; delta de ritmo por piloto
 
 El contrato Orbit acepta un único delta aditivo de ritmo por piloto. Strategy
 resuelve primero el ritmo común observado y suma después ese delta, por lo que

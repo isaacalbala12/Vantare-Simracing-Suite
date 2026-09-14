@@ -25,14 +25,15 @@ afterEach(() => {
 });
 
 describe("AppShell", () => {
-  it("registers built-in systems once before the runtime bridge renders", () => {
+  it("registers built-in systems once before the runtime bridge renders", async () => {
     expect(registration).toHaveBeenCalledTimes(1);
     renderOrder.length = 0;
 
     render(<AppRuntime />);
 
-    expect(renderOrder).toEqual(["auth"]);
-    expect(screen.getByText("composite").closest("[data-auth-session-bridge]")).toBeTruthy();
+    expect((await screen.findByText("composite")).closest("[data-auth-session-bridge]")).toBeTruthy();
+    expect(renderOrder.length).toBeGreaterThan(0);
+    expect(renderOrder.every((entry) => entry === "auth")).toBe(true);
   });
 
   it.each([
@@ -41,11 +42,11 @@ describe("AppShell", () => {
     ["OAuth callback", "/", "#/auth/callback", "", "oauth"],
     ["Hub", "/", "#/hub", "", "hub"],
     ["Composite", "/", "", "", "composite"],
-  ])("routes %s through the single AuthSessionBridge", (_name, path, hash, search, expected) => {
+  ])("routes %s through the single AuthSessionBridge", async (_name, path, hash, search, expected) => {
     window.history.replaceState(null, "", `${path}${search}${hash}`);
 
     render(<AppRuntime />);
 
-    expect(screen.getByText(expected).closest("[data-auth-session-bridge]")).toBeTruthy();
+    expect((await screen.findByText(expected)).closest("[data-auth-session-bridge]")).toBeTruthy();
   });
 });

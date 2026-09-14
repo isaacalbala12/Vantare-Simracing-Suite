@@ -5,6 +5,15 @@ import { Events } from "@wailsio/runtime";
 import { isDowngrade } from "../../lib/version-compare";
 import { findInstallerAsset, type Channel, type Release, type UpdateInfo, type UpdaterSettings } from "./settings-contract";
 import { UPDATER_CHANNEL_EVENT } from "./updater-channel";
+import {
+  subscribeUpdaterAvailable,
+  subscribeUpdaterError,
+  subscribeUpdaterIgnored,
+  subscribeUpdaterInstalled,
+  subscribeUpdaterProgress,
+  subscribeUpdaterSettings,
+  subscribeUpdaterSettingsSaved,
+} from "./updater-events";
 
 export type UpdaterSettingsOptions = {
   /**
@@ -47,24 +56,29 @@ export function useUpdaterSettings(options?: UpdaterSettingsOptions) {
   useEffect(() => {
     const handlers: (() => void)[] = [];
 
+    // Las suscripciones pasan por el fanout de updater-events.ts: un solo
+    // Events.On de Wails por canal, el listener recibe `event.data` ya
+    // desenvuelto y cada guarda sigue viviendo aqui.
     handlers.push(
-      Events.On("updater:settings", (event: { data: { settings?: UpdaterSettings } }) => {
-        if (!event.data.settings) return;
-        confirmedRef.current = event.data.settings;
-        setSettings(event.data.settings);
+      subscribeUpdaterSettings((data) => {
+        const next = (data as { settings?: UpdaterSettings } | undefined)?.settings;
+        if (!next) return;
+        confirmedRef.current = next;
+        setSettings(next);
         // El resto de la app (shell, rail, Testing Center) se entera por aqui.
-        Events.Emit(UPDATER_CHANNEL_EVENT, { channel: event.data.settings.channel });
+        Events.Emit(UPDATER_CHANNEL_EVENT, { channel: next.channel });
       }),
     );
 
     handlers.push(
-      Events.On("updater:available", (event: { data: { info?: UpdateInfo } }) => {
+      subscribeUpdaterAvailable((data) => {
+        const info = (data as { info?: UpdateInfo } | undefined)?.info;
         setLoading(false);
-        if (event.data.info) {
-          setInfo(event.data.info);
+        if (info) {
+          setInfo(info);
           setStatus(
             formatMessage(tRef.current("updater.status.installedVersion"), {
-              version: event.data.info.currentVersion,
+              version: info.currentVersion,
             }),
           );
         }
@@ -72,18 +86,19 @@ export function useUpdaterSettings(options?: UpdaterSettingsOptions) {
     );
 
     handlers.push(
-      Events.On("updater:progress", (event: { data: { percent?: number } }) => {
-        setProgress(event.data.percent ?? null);
+      subscribeUpdaterProgress((data) => {
+        const percent = (data as { percent?: number } | undefined)?.percent;
+        setProgress(percent ?? null);
         setStatus(
           formatMessage(tRef.current("updater.status.downloading"), {
-            percent: event.data.percent ?? 0,
+            percent: percent ?? 0,
           }),
         );
       }),
     );
 
     handlers.push(
-      Events.On("updater:installed", () => {
+      subscribeUpdaterInstalled(() => {
         setInstallingTag(null);
         setProgress(null);
         setStatus(tRef.current("updater.status.installerLaunched"));
@@ -91,10 +106,11 @@ export function useUpdaterSettings(options?: UpdaterSettingsOptions) {
     );
 
     handlers.push(
-      Events.On("updater:ignored", (event: { data: { version?: string } }) => {
+      subscribeUpdaterIgnored((data) => {
+        const version = (data as { version?: string } | undefined)?.version;
         setStatus(
           formatMessage(tRef.current("updater.status.versionIgnored"), {
-            version: event.data.version ?? "",
+            version: version ?? "",
           }),
         );
         Events.Emit("updater:check:force");
@@ -102,7 +118,7 @@ export function useUpdaterSettings(options?: UpdaterSettingsOptions) {
     );
 
     handlers.push(
-      Events.On("updater:settings-saved", () => {
+      subscribeUpdaterSettingsSaved(() => {
         setStatus(tRef.current("updater.status.prefsSaved"));
         // El backend confirma con un `ok` pelado: sin volver a pedir los ajustes
         // nadie sabia si lo que se ve es lo que quedo guardado. Ahora se relee.
@@ -114,11 +130,12 @@ export function useUpdaterSettings(options?: UpdaterSettingsOptions) {
     );
 
     handlers.push(
-      Events.On("updater:error", (event: { data: { message?: string } }) => {
+      subscribeUpdaterError((data) => {
+        const message = (data as { message?: string } | undefined)?.message;
         setLoading(false);
         setInstallingTag(null);
         setProgress(null);
-        setError(event.data.message ?? tRef.current("updater.error.unknown"));
+        setError(message ?? tRef.current("updater.error.unknown"));
         // Un guardado que falla no puede dejar el radio en el canal nuevo.
         setSettings(confirmedRef.current);
       }),

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Events } from '@wailsio/runtime';
 import { useAccess } from '../../../lib/access';
@@ -6,16 +6,18 @@ import { useLicense } from '../../../lib/license';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { TelemetrySourceStatus } from '../../../telemetry-transport/source-status';
 import type { TestingCenterChannel } from '../../testing-center/contracts';
-import { useLauncherSnapshot } from '../../launcher/launcher-store';
+import { useLauncherProfiles } from '../../launcher/launcher-store';
 import { profileLabel, profileTarget, type ProfileEntry } from '../../state/overlay-workbench';
 import { type Section } from '../../navigation';
 import { formatMessage } from '../../orbit/format-message';
 import { ORBIT_KEYS, orbitStore } from '../../orbit/orbit-store';
 import { applyOrbitThemeWhileMounted } from '../../orbit/orbit-theme';
 import { useAccountIdentity } from '../../orbit/use-account-identity';
+import { ScheduleReviewNotice } from '../../settings-orbit/ScheduleReviewNotice';
 import { useCalendarStarts } from '../../orbit/use-calendar-starts';
 import { OrbitSimStatusContext } from '../../orbit/sim-status-context';
 import { useOverlayState } from '../../orbit/use-overlay-state';
+import { useOrbitPerfEffects } from '../../orbit/use-orbit-perf-effects';
 import { useOrbitResponsiveZoom } from '../../orbit/use-orbit-responsive-zoom';
 import {
   canSeeView,
@@ -34,41 +36,32 @@ import {
   useNotificationPreferences,
 } from '../../settings/notification-preferences';
 import type { UpdateInfo } from '../../settings/settings-contract';
+import {
+  subscribeUpdaterAvailable,
+  subscribeUpdaterError,
+  subscribeUpdaterInstalled,
+  subscribeUpdaterNotify,
+  subscribeUpdaterProgress,
+} from '../../settings/updater-events';
 import { CommandPalette, type PaletteItem } from './CommandPalette';
 import { ContextColumn, type ContextColumnBlock } from './ContextColumn';
 import { OrbitKeepAlive } from './OrbitKeepAlive';
+import { OrbitPageBoundary } from './OrbitPageBoundary';
 import { Rail, type RailItem } from './Rail';
 import { SideLauncher } from './SideLauncher';
 import { SideProfile } from './SideProfile';
 import { SideRaces } from './SideRaces';
 import { Topbar } from './Topbar';
-import { HomeOrbitPage } from '../../home-orbit/HomeOrbitPage';
 import {
-  LauncherOrbitPage,
   LAUNCHER_CONTEXT_SLOT_ID,
   LAUNCHER_TOPBAR_SLOT_ID,
-} from '../../launcher-orbit/LauncherOrbitPage';
-import {
-  RacesOrbitPage,
   RACES_CONTEXT_SLOT_ID,
   RACES_TOPBAR_SLOT_ID,
-} from '../../races-orbit/RacesOrbitPage';
-import {
-  StrategyOrbitPage,
-  STRATEGY_CONTEXT_SLOT_ID,
-} from '../../strategy-orbit/StrategyOrbitPage';
-import { EngineerOrbitPage } from '../../engineer-orbit/EngineerOrbitPage';
-import {
-  TelemetryOrbitPage,
-  TELEMETRY_CONTEXT_SLOT_ID,
-} from '../../telemetry-orbit/TelemetryOrbitPage';
-import { RoadmapOrbitPage, ROADMAP_CONTEXT_SLOT_ID } from '../../roadmap-orbit/RoadmapOrbitPage';
-import {
-  SettingsOrbitPage,
+  ROADMAP_CONTEXT_SLOT_ID,
   SETTINGS_CONTEXT_SLOT_ID,
-} from '../../settings-orbit/SettingsOrbitPage';
-import { TestingCenterOrbitPage } from '../../testing-center-orbit/TestingCenterOrbitPage';
-import { StudioRoute } from '../../overlay-studio/StudioRoute';
+  STRATEGY_CONTEXT_SLOT_ID,
+  TELEMETRY_CONTEXT_SLOT_ID,
+} from './orbit-slot-ids';
 import { ToastProvider } from '../../../ui/orbit/Toast';
 import { useToast } from '../../../ui/orbit/toast-context';
 import '../../../styles/orbit.tokens.css';
@@ -76,6 +69,75 @@ import '../../../styles/orbit-kit.css';
 import '../../../styles/orbit-shell.css';
 
 const AUTO_COLLAPSE_WIDTH = 1152;
+
+/* Páginas en lazy: el chunk inicial solo lleva la shell; cada pantalla viaja en
+   su propio chunk y se descarga en idle tras el primer pintado (ver
+   `prefetchOrbitPages`), así que el primer open de cada pestaña ya sale de
+   caché. Inicio también es lazy: `initialSection` restaura la última vista
+   guardada, así que no hay una página de arranque garantizada que justifique
+   mantenerla eager. */
+const HomeOrbitPage = lazy(() =>
+  import('../../home-orbit/HomeOrbitPage').then((m) => ({ default: m.HomeOrbitPage })),
+);
+const LauncherOrbitPage = lazy(() =>
+  import('../../launcher-orbit/LauncherOrbitPage').then((m) => ({ default: m.LauncherOrbitPage })),
+);
+const RacesOrbitPage = lazy(() =>
+  import('../../races-orbit/RacesOrbitPage').then((m) => ({ default: m.RacesOrbitPage })),
+);
+const StrategyOrbitPage = lazy(() =>
+  import('../../strategy-orbit/StrategyOrbitPage').then((m) => ({ default: m.StrategyOrbitPage })),
+);
+const EngineerOrbitPage = lazy(() =>
+  import('../../engineer-orbit/EngineerOrbitPage').then((m) => ({ default: m.EngineerOrbitPage })),
+);
+const TelemetryOrbitPage = lazy(() =>
+  import('../../telemetry-orbit/TelemetryOrbitPage').then((m) => ({ default: m.TelemetryOrbitPage })),
+);
+const RoadmapOrbitPage = lazy(() =>
+  import('../../roadmap-orbit/RoadmapOrbitPage').then((m) => ({ default: m.RoadmapOrbitPage })),
+);
+const SettingsOrbitPage = lazy(() =>
+  import('../../settings-orbit/SettingsOrbitPage').then((m) => ({ default: m.SettingsOrbitPage })),
+);
+const TestingCenterOrbitPage = lazy(() =>
+  import('../../testing-center-orbit/TestingCenterOrbitPage').then((m) => ({
+    default: m.TestingCenterOrbitPage,
+  })),
+);
+const StudioRoute = lazy(() =>
+  import('../../overlay-studio/StudioRoute').then((m) => ({ default: m.StudioRoute })),
+);
+
+/** Descarga los chunks de página en idle: navegación instantánea sin pagar su
+    parseo antes del primer pintado. Secuencial para no saturar el disco;
+    Inicio primero porque es la vista por defecto y Studio el último por ser el
+    chunk más pesado. */
+function prefetchOrbitPages(): void {
+  const loaders = [
+    () => import('../../home-orbit/HomeOrbitPage'),
+    () => import('../../launcher-orbit/LauncherOrbitPage'),
+    () => import('../../races-orbit/RacesOrbitPage'),
+    () => import('../../strategy-orbit/StrategyOrbitPage'),
+    () => import('../../engineer-orbit/EngineerOrbitPage'),
+    () => import('../../telemetry-orbit/TelemetryOrbitPage'),
+    () => import('../../roadmap-orbit/RoadmapOrbitPage'),
+    () => import('../../settings-orbit/SettingsOrbitPage'),
+    () => import('../../testing-center-orbit/TestingCenterOrbitPage'),
+    () => import('../../overlay-studio/StudioRoute'),
+  ];
+  const runNext = (index: number): void => {
+    if (index >= loaders.length) return;
+    const idle =
+      typeof requestIdleCallback === 'function'
+        ? requestIdleCallback
+        : (cb: () => void) => window.setTimeout(cb, 150);
+    idle(() => {
+      void loaders[index]().finally(() => runNext(index + 1));
+    });
+  };
+  runNext(0);
+}
 
 const RAIL_LABEL_KEY: Record<ViewId, string> = {
   inicio: 'shell.rail.home',
@@ -129,7 +191,7 @@ function OrbitShellBody({
   const { result: license } = useLicense();
   const overlay = useOverlayState();
   const races = useCalendarStarts();
-  const launcher = useLauncherSnapshot();
+  const launcherProfiles = useLauncherProfiles();
   const notificationPreferences = useNotificationPreferences();
 
   const activeView = sectionToView(activeSection);
@@ -158,14 +220,21 @@ function OrbitShellBody({
   // escala. Como el tema, vive y muere con la shell.
   useOrbitResponsiveZoom();
 
+  // El presupuesto de efectos que publica Go (`performance:level`) llega a la
+  // CSS como `:root[data-orbit-perf-effects]`: con "noBlur"/"flat" la shell
+  // deja de difuminar fondos (ISA-1150). Imperativo, sin re-render.
+  useOrbitPerfEffects();
+
   // El tema Orbit solo se aplica mientras la shell está montada y **no** se
   // guarda como preferencia: al apagar el flag vuelve el tema del usuario.
   useEffect(() => applyOrbitThemeWhileMounted(), []);
 
-  // Actualización: misma señal que UpdateBanner, sin duplicar su UI.
+  // Actualización: misma señal que UpdateBanner, sin duplicar su UI. Los
+  // canales pasan por el fanout de updater-events.ts (un Events.On de Wails
+  // por canal); cada listener recibe `event.data` ya desenvuelto.
   useEffect(() => {
-    const unsubNotify = Events.On('updater:notify', (event: { data?: { tag?: string } }) => {
-      const tag = event.data?.tag ?? '';
+    const unsubNotify = subscribeUpdaterNotify((data) => {
+      const tag = (data as { tag?: string } | undefined)?.tag ?? '';
       tagRef.current = tag;
       setUpdateTag(tag);
       setUpdate('available');
@@ -174,26 +243,22 @@ function OrbitShellBody({
     // completa, que es donde vienen las notas de cada release pendiente. Sin
     // esto habría que pedir otra comprobación solo para poder contar qué trae
     // la versión, es decir, una llamada de red por pasar el ratón.
-    const unsubAvailable = Events.On(
-      'updater:available',
-      (event: { data?: { info?: UpdateInfo } }) => {
-        if (event.data?.info) setUpdateInfo(event.data.info);
-      },
-    );
+    const unsubAvailable = subscribeUpdaterAvailable((data) => {
+      const info = (data as { info?: UpdateInfo } | undefined)?.info;
+      if (info) setUpdateInfo(info);
+    });
     // El porcentaje llega en el evento y antes se tiraba: el pill anunciaba
     // «Descargando… 0%» durante toda la descarga.
-    const unsubProgress = Events.On(
-      'updater:progress',
-      (event: { data?: { percent?: number } }) => {
-        setUpdatePercent(Math.max(0, Math.min(100, Math.round(event.data?.percent ?? 0))));
-        setUpdate('downloading');
-      },
-    );
+    const unsubProgress = subscribeUpdaterProgress((data) => {
+      const percent = (data as { percent?: number } | undefined)?.percent;
+      setUpdatePercent(Math.max(0, Math.min(100, Math.round(percent ?? 0))));
+      setUpdate('downloading');
+    });
     // El instalador ya corre y va a cerrar la app. Nadie emitia `updater:ready`,
     // asi que sin esto el pill se quedaba en «Descargando…» hasta el final.
-    const unsubInstalled = Events.On('updater:installed', () => setUpdate('installing'));
+    const unsubInstalled = subscribeUpdaterInstalled(() => setUpdate('installing'));
     // Una descarga que falla no puede dejar el aviso descargando para siempre.
-    const unsubError = Events.On('updater:error', () => {
+    const unsubError = subscribeUpdaterError(() => {
       setUpdatePercent(0);
       // Se vuelve a «disponible» solo si sabemos que version anunciar: la
       // etiqueta es «v{{v}}» y sin tag quedaba una «v» suelta.
@@ -250,6 +315,12 @@ function OrbitShellBody({
     orbitStore.set(ORBIT_KEYS.view, 'inicio');
     onNavigate(viewToSection('inicio'));
   }, [activeView, onNavigate, t, testingCenterChannel, toast]);
+
+  // Prefetch de chunks de página en idle: el arranque pinta ya con la shell y
+  // las pestañas quedan calientes en caché para navegación instantánea.
+  useEffect(() => {
+    prefetchOrbitPages();
+  }, []);
 
   const navigate = useCallback(
     (view: ViewId, target?: string) => {
@@ -319,15 +390,6 @@ function OrbitShellBody({
     },
     [t, toast],
   );
-
-  const launcherProfiles = useMemo(() => {
-    const all = [...(launcher?.userProfiles ?? []), ...(launcher?.vantareProfiles ?? [])];
-    return all.map((profile) => ({
-      id: profile.id,
-      name: profile.name,
-      steps: profile.steps?.length ?? 0,
-    }));
-  }, [launcher]);
 
   const blocks: ContextColumnBlock[] = useMemo(
     () => [
@@ -584,40 +646,61 @@ function OrbitShellBody({
               <div className="orbit-topbar__slot" id={RACES_TOPBAR_SLOT_ID} />
             ) : null}
           </Topbar>
+          {activeView !== 'studio' ? <ScheduleReviewNotice owner={access.roles.includes('owner') && !access.isBlocked} onReview={(target) => navigate('ajustes', target)} /> : null}
           <div className="orbit-workspace">
-            {activeView === 'inicio' ? (
-              <HomeOrbitPage
-                onActivateProfile={(profile) =>
-                  Events.Emit('hub:set-active', { id: profile.id, file: profile.file })
-                }
-                onNavigate={navigate}
-                onOpenPalette={() => setPaletteOpen(true)}
-                onToggleOverlay={toggleOverlay}
-                overlay={overlay}
-                races={races.starts}
-                simStatus={simStatus}
-                target={races.target}
-                userName={license?.email?.split('@')[0]}
-              />
-            ) : activeView === 'launcher' ? (
-              <LauncherOrbitPage />
-            ) : activeView === 'carreras' ? (
-              <RacesOrbitPage calendar={races.calendar} target={navTarget} />
-            ) : activeView === 'estrategia' ? (
-              <StrategyOrbitPage />
-            ) : activeView === 'ingeniero' ? (
-              <EngineerOrbitPage />
-            ) : activeView === 'telemetria' ? (
-              <TelemetryOrbitPage />
-            ) : activeView === 'roadmap' ? (
-              <RoadmapOrbitPage channel={testingCenterChannel ?? 'stable'} />
-            ) : activeView === 'ajustes' ? (
-              <SettingsOrbitPage target={navTarget} />
-            ) : activeView === 'testing' && testingCenterChannel ? (
-              <TestingCenterOrbitPage channel={testingCenterChannel} version={version} />
-            ) : null}
+            {/* `key={activeView}` remonta la frontera por pestaña: un chunk
+                fallido en una pantalla no deja el error clavado en las demás. */}
+            <OrbitPageBoundary
+              key={activeView}
+              title={t('shell.pageError')}
+              retry={t('shell.pageRetry')}
+            >
+              <Suspense fallback={<div className="orbit-page-loading" role="status"><span className="orbit-sr-only">{t('shell.pageLoading')}</span></div>}>
+                {activeView === 'inicio' ? (
+                  <HomeOrbitPage
+                    onActivateProfile={(profile) =>
+                      Events.Emit('hub:set-active', { id: profile.id, file: profile.file })
+                    }
+                    onNavigate={navigate}
+                    onOpenPalette={() => setPaletteOpen(true)}
+                    onToggleOverlay={toggleOverlay}
+                    overlay={overlay}
+                    races={races.starts}
+                    simStatus={simStatus}
+                    target={races.target}
+                    userName={license?.email?.split('@')[0]}
+                  />
+                ) : activeView === 'launcher' ? (
+                  <LauncherOrbitPage />
+                ) : activeView === 'carreras' ? (
+                  <RacesOrbitPage calendar={races.calendar} target={navTarget} refreshState={races.refreshState} calendarError={races.calendarError} />
+                ) : activeView === 'estrategia' ? (
+                  <StrategyOrbitPage />
+                ) : activeView === 'ingeniero' ? (
+                  <EngineerOrbitPage />
+                ) : activeView === 'telemetria' ? (
+                  <TelemetryOrbitPage />
+                ) : activeView === 'roadmap' ? (
+                  <RoadmapOrbitPage channel={testingCenterChannel ?? 'stable'} />
+                ) : activeView === 'ajustes' ? (
+                  <SettingsOrbitPage target={navTarget} />
+                ) : activeView === 'testing' && testingCenterChannel ? (
+                  <TestingCenterOrbitPage channel={testingCenterChannel} version={version} />
+                ) : null}
+              </Suspense>
+            </OrbitPageBoundary>
+            {/* El Studio vive en keep-alive: boundary y Suspense van dentro
+                para que una carga lenta o fallida del chunk del Studio no
+                deje en fallback (o en error) la página que sí está activa. */}
             <OrbitKeepAlive active={activeView === 'studio'}>
-              <StudioRoute target={target} />
+              <OrbitPageBoundary
+                title={t('shell.pageError')}
+                retry={t('shell.pageRetry')}
+              >
+                <Suspense fallback={<div className="orbit-page-loading" role="status"><span className="orbit-sr-only">{t('shell.pageLoading')}</span></div>}>
+                  <StudioRoute target={target} />
+                </Suspense>
+              </OrbitPageBoundary>
             </OrbitKeepAlive>
           </div>
         </div>

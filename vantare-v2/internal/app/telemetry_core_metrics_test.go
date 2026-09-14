@@ -63,7 +63,7 @@ func TestTelemetryCoreMetricsCounters(t *testing.T) {
 }
 
 func TestTelemetryEngineMetricsTrackSequenceDurationAndRejection(t *testing.T) {
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{TelemetryShadowBudget: time.Second})
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -128,3 +128,10 @@ describe("PedalsCrystal", () => {
     expect(source).not.toMatch(/profile-document/);
   });
 });
+
+it("applies each configured channel color to its label", () => {
+ const {root}=renderCrystal(readyModel);
+ for (const [channel, color] of [["throttle", "#2ecc71"], ["brake", "#e74c3c"], ["clutch", "#3498db"]]) {
+ expect((root.querySelector(`[data-pedal="${channel}"] .vc-pedals-label`) as HTMLElement).style.color).toBe(color);
+ }
+});

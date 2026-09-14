@@ -20,7 +20,7 @@ func TestFuelUsageWindowIsWiredExplicitly(t *testing.T) {
 		t.Fatalf("product window %d != canonical %d", derive.DefaultFuelUsageWindowProduct, derive.DefaultFuelUsageWindow)
 	}
 
-	// Los dos puntos de construcción deben usar ventana explícita.
+	// El punto de construcción debe usar ventana explícita.
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("cannot locate test file")
@@ -29,7 +29,6 @@ func TestFuelUsageWindowIsWiredExplicitly(t *testing.T) {
 
 	checks := []string{
 		"internal/app/telemetry_core_runtime.go",
-		"internal/app/telemetry_shadow.go",
 	}
 	for _, rel := range checks {
 		path := filepath.Join(repoRoot, rel)
@@ -50,9 +49,5 @@ func TestFuelUsageWindowIsWiredExplicitly(t *testing.T) {
 	pipeline := derive.NewPipeline(derive.Config{FuelUsageWindow: derive.DefaultFuelUsageWindowProduct})
 	if pipeline.FuelUsageWindow() != 3 {
 		t.Fatalf("pipeline window = %d, want 3", pipeline.FuelUsageWindow())
-	}
-	shadow := newTelemetryShadow(0, 0, nil)
-	if shadow.derive.FuelUsageWindow() != 3 {
-		t.Fatalf("shadow pipeline window = %d, want 3", shadow.derive.FuelUsageWindow())
 	}
 }

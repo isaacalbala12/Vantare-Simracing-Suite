@@ -19,3 +19,11 @@ it("renders the four deterministic sector materials supplied by the ViewModel", 
   const { container } = render(<HeadToHeadCrystal model={{ ...model, status: "ready", statusMessage: undefined, player: entry, opponent: { ...entry, place: 3, name: "RIVAL", isPlayer: false }, sectorComparisons: ["g", "g", "r", "r"] }} settings={{}} renderMode="harness" />);
   expect(Array.from(container.querySelectorAll(".is-player i")).map((element) => element.getAttribute("data-tone"))).toEqual(["g", "g", "r", "r"]);
 });
+
+it("explains the comparison and does not render invented sector or lap cells", () => {
+  const entry = { place: 4, number: "36", name: "PLAYER", team: "ALPINE", className: "HYPERCAR", isPlayer: true };
+  const { container } = render(<HeadToHeadCrystal model={{ ...model, status: "ready", player: entry, opponent: { ...entry, isPlayer: false } }} settings={{}} renderMode="harness" />);
+  expect(container.textContent).toContain("Rival anterior");
+  expect(container.textContent).toContain("respecto a ti");
+  expect(container.querySelector("time")).toBeNull();
+});

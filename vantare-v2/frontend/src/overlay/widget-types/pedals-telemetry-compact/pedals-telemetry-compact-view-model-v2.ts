@@ -33,6 +33,11 @@ function clampPedal(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
+function clampSteering(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(-1, Math.min(1, value));
+}
+
 /**
  * Pedals-telemetry-compact view model over the Overlay v2 contract.
  *
@@ -75,6 +80,7 @@ export function buildPedalsTelemetryCompactViewModelV2(
     speedKph,
     rpm,
     gear,
+    steering: unavailable ? 0 : clampSteering(displayedNumber(frame.player.steering) ?? 0),
     speedText: formatPedalsTelemetrySpeed(speedKph),
     rpmText: formatPedalsTelemetryRpm(rpm),
     gearText: formatPedalsTelemetryGear(gear),
@@ -95,6 +101,7 @@ export function pedalsTelemetryCompactDisplayedValues(
     speed: model.speedText,
     rpm: model.rpmText,
     gear: model.gearText,
+    steering: `${Math.round((model.steering ?? 0) * 100)}%`,
   });
 }
 

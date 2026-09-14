@@ -251,7 +251,7 @@ func TestClassifyBoundaryDefinesIdentityCancellation(t *testing.T) {
 	}
 }
 
-func mustManifest(t *testing.T, entries ...Capability) Manifest {
+func mustManifest(t testing.TB, entries ...Capability) Manifest {
 	t.Helper()
 	manifest, err := NewManifest(entries)
 	if err != nil {

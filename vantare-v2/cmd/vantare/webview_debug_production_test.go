@@ -10,3 +10,10 @@ func TestWebviewDebugArgsProductionAlwaysDisabled(t *testing.T) {
 		t.Fatalf("production webviewDebugArgs() = %q, want empty", got)
 	}
 }
+
+func TestPerformanceSensorProductionCannotBeDisabledByEnvironment(t *testing.T) {
+	t.Setenv("VANTARE_PERFORMANCE_SENSOR", "off")
+	if !performanceSensorEnabled() {
+		t.Fatal("production sensor was disabled by diagnostic environment")
+	}
+}

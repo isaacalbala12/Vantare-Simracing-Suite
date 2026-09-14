@@ -17,8 +17,16 @@ export const OVERLAY_V2_STATUS_EVENT = "telemetry:overlay-v2:status";
 export const OVERLAY_V2_SNAPSHOT_REQUEST_EVENT = `${OVERLAY_V2_SNAPSHOT_EVENT}:get`;
 export const OVERLAY_V2_PROJECTION_ROUTE = "/telemetry/overlay-v2/projection";
 
+// Límite duro de seguridad del producto overlay-v2 (ISA-894 A3, aprobado
+// 2026-09-04): sincronizado con OverlayV2MaxPayloadBytes del Publisher Go.
+// 64 KiB sigue siendo el objetivo de rendimiento representativo; el
+// transporte general conserva sus 256 KiB en telemetry-transport/contracts.
+export const OVERLAY_V2_MAX_PAYLOAD_BYTES = 72 * 1024;
+
 export type OverlayFrameV2State = Readonly<{
   revision: number;
+  /** Revision of the last decoded snapshot, unchanged by status/watchdog republishes. */
+  frameRevision?: number;
   ageMs: number;
   source?: OverlaySourceStatusV2;
   frame?: OverlayFrameV2;
@@ -36,6 +44,16 @@ export type OverlayFrameV2Store = Readonly<{
 export type OverlayFrameV2StoreDiagnostics = Readonly<{
   /** Percentiles over the current live window only; see `ingest`. */
   overlay_v2_parse_duration: Readonly<{ count: number; p50: number; p99: number; nonLiveSamples: number }>;
+  overlay_v2_transport: Readonly<{
+    revision: number;
+    frameRevision: number | null;
+    sourceState: OverlaySourceStatusV2["state"] | null;
+    epoch: number | null;
+    sequence: number | null;
+    sessionId: string | null;
+    vehicleCount: number;
+    playerPit: string | null;
+  }>;
 }>;
 
 export type OverlayFrameV2EventSource = Readonly<{
@@ -102,7 +120,7 @@ export function createOverlayFrameV2Store(
       }
       const started = performance.now();
       const update = decodeOverlayUpdateV2(input);
-      const elapsed = performance.now() - started;
+      const elapsed = performance.now() - started + (parsedUpdates.get(update) ?? 0);
       // The percentiles describe the current live window only. Samples taken
       // while the source is stale, degraded or reconnecting mix a different
       // regime into the same ring and made the published p99 unreadable.
@@ -121,6 +139,14 @@ export function createOverlayFrameV2Store(
       if (name === OVERLAY_V2_STATUS_EVENT && update.frame !== null) {
         throw new OverlayFrameV2ContractError("frame");
       }
+      if (
+        update.frame && state.frame &&
+        update.frame.epoch === state.frame.epoch &&
+        update.frame.sessionId === state.frame.sessionId &&
+        update.frame.sequence <= state.frame.sequence
+      ) {
+        throw new OverlayFrameV2ContractError("sequence");
+      }
       // The 512-sample ring already rotates per sample, but its percentiles
       // must not mix two runs: a new epoch or session id starts a fresh window.
       if (update.frame) {
@@ -133,16 +159,33 @@ export function createOverlayFrameV2Store(
       }
       const frame = update.frame ?? state.frame;
       const ageMs = frame ? watchdog.measure(frame.generatedAt).ageMs : update.source.ageMs ?? 0;
-      publish({ revision: update.revision, source: update.source, frame, ageMs });
+      publish({
+        revision: update.revision,
+        frameRevision: update.frame ? update.revision : state.frameRevision,
+        source: update.source,
+        frame,
+        ageMs,
+      });
     },
     getDiagnostics() {
       const sorted = [...parseDurations].sort((left, right) => left - right);
+      const playerStanding = state.frame?.standings.find((row) => row.id === state.frame?.player.id);
       return Object.freeze({
         overlay_v2_parse_duration: Object.freeze({
           count: sorted.length,
           p50: percentile(sorted, 0.5),
           p99: percentile(sorted, 0.99),
           nonLiveSamples: nonLiveParseSamples,
+        }),
+        overlay_v2_transport: Object.freeze({
+          revision: state.revision,
+          frameRevision: state.frameRevision ?? null,
+          sourceState: state.source?.state ?? null,
+          epoch: state.frame?.epoch ?? null,
+          sequence: state.frame?.sequence ?? null,
+          sessionId: state.frame?.sessionId ?? null,
+          vehicleCount: state.frame?.standings.length ?? 0,
+          playerPit: playerStanding?.pit ?? null,
         }),
       });
     },
@@ -226,12 +269,99 @@ export function attachOverlayFrameV2Sse(
   return () => source.close();
 }
 
+// Only updates parsed, fully validated and frozen here can skip the defensive
+// copy on ingestion. Weak ownership does not retain historical frames.
+const parsedUpdates = new WeakMap<object, number>();
+
+type SectionBase = {update: OverlayUpdateV2; sizes: Map<string, number>};
+type SectionDecodeContext = {bases: Map<string, SectionBase>; sessionId: string; delivery: number};
+const jsonBytes = (value: unknown): number => new TextEncoder().encode(JSON.stringify(value)).byteLength;
+
+/** One bounded base per event, private to this pull client generation. */
+export function createOverlaySectionDecoder(): (text: string, request: unknown) => unknown {
+  let sessionId = "";
+  let bases = new Map<string, SectionBase>();
+  return (text, request) => {
+    if (!plainObject(request) || typeof request.sessionId !== "string" || !Number.isSafeInteger(request.ack) || (request.ack as number) < 0) invalid("sections.request");
+    const next = new Map(request.sessionId === sessionId ? bases : undefined);
+    const response = parseOverlayPullJSON(text, {bases: next, sessionId: request.sessionId, delivery: (request.ack as number) + 1});
+    // Only commit after the complete envelope, all updates and limits passed.
+    bases = next;
+    sessionId = request.sessionId;
+    return response;
+  };
+}
+
+function frameFieldSizes(frame: OverlayFrameV2): Map<string, number> {
+  return new Map(Object.entries(frame).map(([key, value]) => [key, jsonBytes(key) + 1 + jsonBytes(value)]));
+}
+
+/** Parse an owned pull envelope once; the pull client still validates session/ACK. */
+export function parseOverlayPullJSON(text: string, sections?: SectionDecodeContext): unknown {
+  const started = performance.now();
+  if (text.length > 1_048_576) invalid("size");
+  const bytes = new TextEncoder().encode(text).byteLength;
+  if (bytes > 1_048_576) invalid("size");
+  const response: unknown = JSON.parse(text);
+  const envelopeElapsed = performance.now() - started;
+  if (sections && response !== null) {
+    objectWithKeys(response, "sections.envelope", ["sessionId", "delivery", "events"]);
+    if (response.sessionId !== sections.sessionId || response.delivery !== sections.delivery || !Array.isArray(response.events) || response.events.length > 2) invalid("sections.delivery");
+  }
+  if (plainObject(response) && Array.isArray(response.events)) {
+    for (const event of response.events) {
+      if (sections) objectWithKeys(event, "sections.event", ["name", "data"], ["baseRevision"]);
+      if (sections && event.name !== OVERLAY_V2_SNAPSHOT_EVENT && event.name !== OVERLAY_V2_STATUS_EVENT) invalid("sections.event");
+      if (!plainObject(event) || (event.name !== OVERLAY_V2_SNAPSHOT_EVENT && event.name !== OVERLAY_V2_STATUS_EVENT)) continue;
+      const decodeStarted = performance.now();
+      let sizes: Map<string, number> | undefined;
+      let validatedBase: OverlayFrameV2 | undefined;
+      if (sections && event.baseRevision !== undefined) {
+        positiveInteger(event.baseRevision, "sections.base");
+        const base = sections.bases.get(event.name);
+        if (!base?.update.frame || base.update.revision !== event.baseRevision) invalid("sections.base");
+        validatedBase = base.update.frame;
+        objectWithKeys(event.data, "sections.update", ["revision", "source", "frame"]);
+        if (!plainObject(event.data.frame) || typeof event.data.revision !== "number" || event.data.revision <= base.update.revision) invalid("sections.update");
+        if ((event.data.frame.epoch !== undefined && event.data.frame.epoch !== base.update.frame.epoch) || (event.data.frame.sessionId !== undefined && event.data.frame.sessionId !== base.update.frame.sessionId)) invalid("sections.identity");
+        sizes = new Map(base.sizes);
+        for (const [key, value] of Object.entries(event.data.frame)) {
+          if (!sizes.has(key)) invalid("sections.field");
+          sizes.set(key, jsonBytes(key) + 1 + jsonBytes(value));
+        }
+        const frameBytes = 2 + Math.max(0, sizes.size - 1) + [...sizes.values()].reduce((sum, size) => sum + size, 0);
+        if (jsonBytes({...event.data, frame: null}) - 4 + frameBytes > OVERLAY_V2_MAX_PAYLOAD_BYTES) invalid("size");
+        event.data = {...event.data, frame: {...base.update.frame, ...event.data.frame}};
+      }
+      // If the entire envelope fits, every contained update necessarily fits.
+      // Larger envelopes retain the exact per-update byte check (e.g. status
+      // plus a snapshot at the limit), not a relaxed transport-sized limit.
+      const update = sizes || bytes <= OVERLAY_V2_MAX_PAYLOAD_BYTES
+        ? validateOverlayUpdateV2(event.data, validatedBase)
+        : decodeOverlayUpdateV2(event.data);
+      // Retain upstream work in per-update diagnostics. Including the whole
+      // envelope cost is conservative when it contains more than one update.
+      parsedUpdates.set(update, envelopeElapsed + performance.now() - decodeStarted);
+      event.data = update;
+      if (sections) {
+        if (update.frame) sections.bases.set(event.name, {update, sizes: sizes ?? frameFieldSizes(update.frame)});
+        else sections.bases.delete(event.name);
+      }
+    }
+  }
+  return response;
+}
+
 export function decodeOverlayUpdateV2(input: unknown): OverlayUpdateV2 {
-  const value = cloneJSONInput(input);
+  if (plainObject(input) && parsedUpdates.has(input)) return input as unknown as OverlayUpdateV2;
+  return validateOverlayUpdateV2(cloneJSONInput(input));
+}
+
+function validateOverlayUpdateV2(value: unknown, validatedBase?: OverlayFrameV2): OverlayUpdateV2 {
   objectWithKeys(value, "update", ["revision", "source", "frame"]);
   positiveInteger(value.revision, "revision");
   sourceStatus(value.source, "source");
-  if (value.frame !== null) frame(value.frame, "frame");
+  if (value.frame !== null) frame(value.frame, "frame", validatedBase);
   return Object.freeze(value) as unknown as OverlayUpdateV2;
 }
 
@@ -246,23 +376,30 @@ function sourceStatus(value: unknown, path: string): void {
   Object.freeze(value);
 }
 
-function frame(value: unknown, path: string): void {
+function frame(value: unknown, path: string, validatedBase?: OverlayFrameV2): void {
   objectWithKeys(value, path, [
-    "contract", "algorithm", "epoch", "sequence", "sessionId", "generatedAt", "units",
-    "session", "player", "controls", "standings", "relative", "delta", "fuel", "spotter", "capabilities", "damage", "weather",
+    "contract", "algorithm", "epoch", "sequence", "sectionMask", "sessionId", "generatedAt", "units",
+    "session", "player", "controls", "standings", "relative", "relativeSettled", "delta", "fuel", "spotter", "capabilities", "damage", "weather",
   ]);
   if (value.contract !== 2) invalid(`${path}.contract`);
   positiveInteger(value.algorithm, `${path}.algorithm`);
   positiveInteger(value.epoch, `${path}.epoch`);
   positiveInteger(value.sequence, `${path}.sequence`);
+  const sectionMask = value.sectionMask;
+  if (typeof sectionMask !== "number" || !Number.isInteger(sectionMask) || sectionMask < 0 || sectionMask > 0x7ff) {
+    invalid(`${path}.sectionMask`);
+  }
   nonEmptyString(value.sessionId, `${path}.sessionId`);
   utcTimestamp(value.generatedAt, `${path}.generatedAt`);
   units(value.units, `${path}.units`);
   session(value.session, `${path}.session`);
   player(value.player, `${path}.player`);
   controls(value.controls, `${path}.controls`);
-  rowArray(value.standings, `${path}.standings`, validStanding);
-  rowArray(value.relative, `${path}.relative`, validRelative);
+  // Only decoder-owned, previously validated and frozen arrays can be reused.
+  // Fresh JSON arrays always differ by identity, even if their contents match.
+  if (!validatedBase || value.standings !== validatedBase.standings) rowArray(value.standings, `${path}.standings`, validStanding);
+  if (!validatedBase || value.relative !== validatedBase.relative) relativeRowArray(value.relative, `${path}.relative`);
+  if (!validatedBase || value.relativeSettled !== validatedBase.relativeSettled) relativeRowArray(value.relativeSettled, `${path}.relativeSettled`);
   delta(value.delta, `${path}.delta`);
   fuel(value.fuel, `${path}.fuel`);
   spotter(value.spotter, `${path}.spotter`);
@@ -301,16 +438,17 @@ function player(value: unknown, path: string): void {
 }
 
 /**
- * The controls history is three parallel per-mille arrays. They must have the
- * same length: a frame whose pedals disagree on how many samples exist is
- * malformed, not partially usable.
+ * The controls history is seven parallel arrays: three per-mille pedal
+ * series, one absolute capture instant per sample and three quality-bearing
+ * motion series. Every present array must have the same length: a frame whose
+ * series disagree on how many samples exist is malformed, not partially
+ * usable.
  */
 function controls(value: unknown, path: string): void {
   objectWithKeys(value, path, ["history"]);
   const history = value.history;
-  objectWithKeys(history, `${path}.history`, ["q"], ["windowMs", "throttle", "brake", "clutch"]);
+  objectWithKeys(history, `${path}.history`, ["q"], ["capturedAtMS", "throttle", "brake", "clutch", "speedMPS", "rpm", "gear"]);
   quality(history.q, `${path}.history.q`);
-  optionalNonNegativeInteger(history.windowMs, `${path}.history.windowMs`);
   let length: number | undefined;
   for (const key of ["throttle", "brake", "clutch"] as const) {
     const series = history[key];
@@ -319,7 +457,36 @@ function controls(value: unknown, path: string): void {
     if (length !== undefined && series.length !== length) invalid(`${path}.history.${key}`);
     length = series.length;
   }
+  const instants = history.capturedAtMS;
+  if (instants !== undefined) {
+    instantSeries(instants, `${path}.history.capturedAtMS`);
+    if (length !== undefined && instants.length !== length) invalid(`${path}.history.capturedAtMS`);
+    length = instants.length;
+  }
+  for (const key of ["speedMPS", "rpm", "gear"] as const) {
+    const series = history[key];
+    if (series === undefined) continue;
+    qvalueSeries(series, `${path}.history.${key}`);
+    if (length !== undefined && series.length !== length) invalid(`${path}.history.${key}`);
+    length = series.length;
+  }
   Object.freeze(history);
+  Object.freeze(value);
+}
+
+function instantSeries(value: unknown, path: string): asserts value is readonly number[] {
+  if (!Array.isArray(value) || value.length > 120) invalid(path);
+  for (const entry of value) {
+    if (!Number.isSafeInteger(entry) || (entry as number) < 0) invalid(path);
+  }
+  Object.freeze(value);
+}
+
+function qvalueSeries(value: unknown, path: string): asserts value is readonly OverlayQValue<unknown>[] {
+  if (!Array.isArray(value) || value.length > 120) invalid(path);
+  for (const entry of value) {
+    if (!validQValue(entry, "number")) invalid(path);
+  }
   Object.freeze(value);
 }
 
@@ -332,10 +499,10 @@ function perMilleSeries(value: unknown, path: string): asserts value is readonly
 }
 
 function validStanding(value: unknown): boolean {
-  if (!objectHasKeys(value, ["id", "position", "classPosition", "gap", "lastLap", "lapDistance", "groundPosition"], ["classId", "driver", "number", "gapLaps", "pit", "laps"])) return false;
+  if (!objectHasKeys(value, ["id", "position", "classPosition", "gap", "bestLap", "lastLap", "lapDistance", "groundPosition"], ["classId", "driver", "number", "gapLaps", "pit", "laps"])) return false;
   const valid = typeof value.id === "string" && value.id.length > 0 &&
     Number.isSafeInteger(value.position) && Number.isSafeInteger(value.classPosition) &&
-    validQValue(value.gap, "number") && validQValue(value.lastLap, "number") &&
+    validQValue(value.gap, "number") && validQValue(value.bestLap, "number") && validQValue(value.lastLap, "number") &&
     validQValue(value.lapDistance, "number") && validGroundPosition(value.groundPosition) &&
     [value.classId, value.driver, value.number, value.pit].every(optionalStringValue) &&
     [value.gapLaps, value.laps].every(optionalIntegerValue);
@@ -391,9 +558,11 @@ function weather(value: unknown, path: string): void {
 }
 
 function validRelative(value: unknown): boolean {
-  if (!objectHasKeys(value, ["id", "gap", "side", "authority"], ["name", "classId"])) return false;
+  if (!objectHasKeys(value, ["id", "position", "gap", "groundPosition", "lastLap", "side", "authority"], ["name", "classId"])) return false;
   const valid = typeof value.id === "string" && value.id.length > 0 &&
-    validQValue(value.gap, "number") && typeof value.side === "string" && value.side.length > 0 &&
+    typeof value.position === "number" && Number.isSafeInteger(value.position) && value.position > 0 &&
+    validQValue(value.gap, "number") && validGroundPosition(value.groundPosition) &&
+    validQValue(value.lastLap, "number") && ["ahead", "player", "behind"].includes(value.side as string) &&
     ["native", "derived", "estimated"].includes(value.authority as string) &&
     optionalStringValue(value.name) && optionalStringValue(value.classId);
   if (valid) Object.freeze(value);
@@ -401,20 +570,70 @@ function validRelative(value: unknown): boolean {
 }
 
 function delta(value: unknown, path: string): void {
-  objectWithKeys(value, path, ["seconds", "available"], ["reference", "requested", "trend", "authority"]);
+  objectWithKeys(value, path, ["seconds", "available", "history"], ["reference", "requested", "trend", "authority"]);
   qvalue(value.seconds, `${path}.seconds`, "number");
   array(value.available, `${path}.available`, nonEmptyString);
   for (const key of ["reference", "requested", "trend"] as const) optionalString(value[key], `${path}.${key}`);
   if (value.authority !== undefined) enumValue<OverlayAuthorityV2>(value.authority, `${path}.authority`, ["native", "derived", "estimated"]);
+  deltaHistory(value.history, `${path}.history`);
+  Object.freeze(value);
+}
+
+// Serie de delta del jugador: un instante Unix absoluto más una cifra de
+// segundos por muestra, siempre alineadas, tope 120, sin sentinels.
+function deltaHistory(value: unknown, path: string): void {
+  objectWithKeys(value, path, ["q"], ["capturedAtMS", "seconds"]);
+  quality(value.q, `${path}.q`);
+  const instants = value.capturedAtMS;
+  const seconds = value.seconds;
+  if (instants === undefined && seconds === undefined) {
+    Object.freeze(value);
+    return;
+  }
+  if (!Array.isArray(instants) || !Array.isArray(seconds)) invalid(path);
+  if (instants.length !== seconds.length || instants.length > 120) invalid(path);
+  instantSeries(instants, `${path}.capturedAtMS`);
+  for (const entry of seconds) {
+    if (typeof entry !== "number" || !Number.isFinite(entry)) invalid(`${path}.seconds`);
+  }
+  Object.freeze(seconds);
   Object.freeze(value);
 }
 
 function fuel(value: unknown, path: string): void {
-  objectWithKeys(value, path, ["remaining", "capacity", "perLap", "estimatedLaps"], ["basis"]);
-  for (const key of ["remaining", "capacity", "perLap", "estimatedLaps"] as const) qvalue(value[key], `${path}.${key}`, "number");
+  objectWithKeys(value, path, ["remaining", "capacity", "perLap", "estimatedLaps", "sessionLaps", "requiredFuel", "history"], ["basis"]);
+  for (const key of ["remaining", "capacity", "perLap", "estimatedLaps", "sessionLaps", "requiredFuel"] as const) qvalue(value[key], `${path}.${key}`, "number");
   // `basis` names the arithmetic behind `estimatedLaps`; Go elides it when
   // neither projection produced a value.
   if (value.basis !== undefined) enumValue(value.basis, `${path}.basis`, ["fuel", "session"]);
+  fuelHistory(value.history, `${path}.history`);
+  Object.freeze(value);
+}
+
+// Serie de consumo por vuelta del jugador: un número de vuelta más una
+// cifra de consumo por muestra, siempre alineadas, tope 64, sin sentinels.
+function fuelHistory(value: unknown, path: string): void {
+  objectWithKeys(value, path, ["q"], ["lap", "consumed"]);
+  quality(value.q, `${path}.q`);
+  let length: number | undefined;
+  const lap = value.lap;
+  if (lap !== undefined) {
+    if (!Array.isArray(lap) || lap.length > 64) invalid(`${path}.lap`);
+    for (const entry of lap) {
+      if (!Number.isSafeInteger(entry)) invalid(`${path}.lap`);
+    }
+    length = lap.length;
+    Object.freeze(lap);
+  }
+  const consumed = value.consumed;
+  if (consumed !== undefined) {
+    if (!Array.isArray(consumed) || consumed.length > 64) invalid(`${path}.consumed`);
+    for (const entry of consumed) {
+      if (typeof entry !== "number" || !Number.isFinite(entry)) invalid(`${path}.consumed`);
+    }
+    if (length !== undefined && consumed.length !== length) invalid(`${path}.consumed`);
+    Object.freeze(consumed);
+  }
   Object.freeze(value);
 }
 
@@ -428,7 +647,7 @@ function spotter(value: unknown, path: string): void {
 }
 
 function capabilities(value: unknown, path: string): void {
-  objectWithKeys(value, path, ["supported", "available", "modes"]);
+  objectWithKeys(value, path, ["supported", "available", "modes"], ["performance"]);
   array(value.supported, `${path}.supported`, nonEmptyString);
   record(value.available, `${path}.available`, (entry, entryPath) => quality(entry, entryPath));
   objectWithKeys(value.modes, `${path}.modes`, ["spatial", "delta", "standings", "gaps"]);
@@ -436,7 +655,34 @@ function capabilities(value: unknown, path: string): void {
   array(value.modes.delta, `${path}.modes.delta`, nonEmptyString);
   enumValue<OverlayModeV2>(value.modes.standings, `${path}.modes.standings`, ["none", "official", "reconstructed", "estimated"]);
   enumValue<OverlayModeV2>(value.modes.gaps, `${path}.modes.gaps`, ["none", "official", "reconstructed", "estimated"]);
+  if (value.performance === undefined) {
+    value.performance = {
+      level: 1,
+      mode: "manual",
+      effects: "full",
+      rafCap: null,
+      widgetHz: {},
+      sourceHz: 0,
+      reason: "unavailable",
+    };
+  }
+  performancePolicy(value.performance, `${path}.performance`);
   Object.freeze(value.modes);
+  Object.freeze(value);
+}
+
+function performancePolicy(value: unknown, path: string): void {
+  objectWithKeys(value, path, ["level", "mode", "effects", "rafCap", "widgetHz", "sourceHz"], ["reason"]);
+  if (!Number.isSafeInteger(value.level) || (value.level as number) < 1 || (value.level as number) > 5) invalid(`${path}.level`);
+  enumValue(value.mode, `${path}.mode`, ["manual", "custom", "auto"]);
+  enumValue(value.effects, `${path}.effects`, ["full", "noBlur", "flat"]);
+  if (value.rafCap !== null) positiveInteger(value.rafCap, `${path}.rafCap`);
+  record(value.widgetHz, `${path}.widgetHz`, (rate, ratePath) => {
+    if (rate === "dirty" || rate === "event") return;
+    if (typeof rate !== "number" || !Number.isFinite(rate) || rate <= 0) invalid(ratePath);
+  });
+  if (typeof value.sourceHz !== "number" || !Number.isFinite(value.sourceHz) || value.sourceHz < 0) invalid(`${path}.sourceHz`);
+  if (value.reason !== undefined) enumValue(value.reason, `${path}.reason`, ["cpu", "frametime", "user", "vr", "unavailable"]);
   Object.freeze(value);
 }
 
@@ -462,7 +708,7 @@ type JSONObject = Record<string, unknown>;
 function cloneJSONInput(input: unknown): JSONObject {
   try {
     const text = typeof input === "string" ? input : JSON.stringify(input);
-    if (new TextEncoder().encode(text).byteLength > 64 * 1024) invalid("size");
+    if (new TextEncoder().encode(text).byteLength > OVERLAY_V2_MAX_PAYLOAD_BYTES) invalid("size");
     const value = JSON.parse(text) as unknown;
     if (!plainObject(value)) invalid("update");
     return value;
@@ -498,6 +744,21 @@ function rowArray(value: unknown, path: string, validate: (value: unknown) => bo
     if (!validate(value[index])) invalid(`${path}[${index}]`);
   }
   Object.freeze(value);
+}
+
+function relativeRowArray(value: unknown, path: string): void {
+  if (!Array.isArray(value) || value.length > 17) invalid(path);
+  rowArray(value, path, validRelative);
+  if (value.length === 0) return;
+  const rows = value as readonly JSONObject[];
+  const playerIndex = rows.findIndex((row) => row.side === "player");
+  const playerCount = rows.filter((row) => row.side === "player").length;
+  if (
+    playerCount !== 1 || playerIndex > 8 || rows.length - playerIndex - 1 > 8 ||
+    rows.slice(0, playerIndex).some((row) => row.side !== "ahead") ||
+    rows.slice(playerIndex + 1).some((row) => row.side !== "behind") ||
+    new Set(rows.map((row) => row.id)).size !== rows.length
+  ) invalid(path);
 }
 
 function record(value: unknown, path: string, validate: (value: unknown, path: string) => void): void {

@@ -10,6 +10,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	performancepolicy "github.com/vantare/overlays/v2/internal/app/performance"
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 	"github.com/vantare/overlays/v2/internal/telemetry/capability"
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
@@ -18,7 +19,6 @@ import (
 	telemetryengine "github.com/vantare/overlays/v2/internal/telemetry/engine"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
-	overlayprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
 	overlayv2 "github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2"
 	strategyprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
@@ -27,6 +27,8 @@ import (
 const (
 	telemetryCoreStatusInterval   = 100 * time.Millisecond
 	defaultTelemetryWatchdogDelay = time.Second
+	sourceRateWindow              = 2 * time.Second
+	sourceRateMaxSamples          = 2048
 )
 
 type telemetryRuntimeLifecycle uint8
@@ -57,11 +59,18 @@ type EngineerProjectionConsumer interface {
 	ConsumeSourceStatus(engineerprojection.SourceStatusV1) error
 	ConsumeObservation(engineerprojection.ObservationSnapshotV1) error
 	ConsumeFact(engineerprojection.FactEnvelopeV1) error
+	// ConsumeFactBoundary recibe un gap de facts irrecuperable desde el
+	// puerto (overflow mas alla de la retencion o discontinuidad real). No
+	// inventa facts ni cambia conexion/fuente; solo degradacion explicita.
+	ConsumeFactBoundary(*engineerprojection.FactResyncRequiredError) error
 }
 
 // TelemetryCoreRuntimeConfig configures the canonical product runtime.
 type TelemetryCoreRuntimeConfig struct {
-	Enabled bool
+	OverlaySections bool
+	Enabled         bool
+	// PerformancePolicy es el nivel efectivo inicial decidido desde Ajustes.
+	PerformancePolicy performancepolicy.Policy
 	// Now is injectable for deterministic freshness tests. It defaults to
 	// time.Now and must preserve the monotonic component in production.
 	Now func() time.Time
@@ -92,12 +101,6 @@ type TelemetryCoreRuntimeConfig struct {
 	// StrategyPublicTransport restores the previous Strategy Hub, Wails and
 	// SSE publication for one rollback cycle. It is off by default.
 	StrategyPublicTransport bool
-	// TelemetryShadowEvery controls semantic comparison sampling while the
-	// engine flag is on. Zero uses one comparison every 30 accepted batches.
-	TelemetryShadowEvery uint64
-	// TelemetryShadowBudget bounds one isolated legacy shadow application.
-	// Values <= 0 use two milliseconds; overruns disable only the shadow.
-	TelemetryShadowBudget time.Duration
 	// Emit runs on an adapter goroutine owned by Stop. Implementations must
 	// return from Emit and must not call Stop synchronously from that callback.
 	Emitter  telemetrytransport.EventEmitter
@@ -115,15 +118,12 @@ type TelemetryCoreRuntimeConfig struct {
 
 // TelemetryCoreMetrics is a payload-free operational summary. It is safe to
 // expose through local diagnostics because it contains only counters and
-// bounded transport state. ProjectionsPublished remains one canonical batch
-// whose product fulls both published, and Transport remains the Overlay hub
-// for compatibility.
+// bounded transport state. StrategyProjectionsPublished keeps its current
+// semantics and StrategyTransport is the single surviving product transport.
 type TelemetryCoreMetrics struct {
 	ObservationsReceived         uint64
 	ObservationsRejected         uint64
 	BatchesApplied               uint64
-	ProjectionsPublished         uint64
-	OverlayProjectionsPublished  uint64
 	StrategyProjectionsPublished uint64
 	EngineerStatusesDelivered    uint64
 	EngineerObservations         uint64
@@ -139,10 +139,7 @@ type TelemetryCoreMetrics struct {
 	WatchdogDegradations         uint64
 	PayloadBytes                 map[string]TelemetryPayloadPercentiles
 	LifecycleTransitions         map[string]uint64
-	Transport                    telemetrytransport.HubMetrics
 	StrategyTransport            telemetrytransport.HubMetrics
-	ShadowMismatches             map[string]uint64
-	ShadowDisabled               bool
 	EngineSequence               uint64
 	SlotGraceReopen              uint64
 	SlotGenerationBumps          uint64
@@ -163,8 +160,6 @@ type telemetryCoreCounters struct {
 	observationsReceived      atomic.Uint64
 	observationsRejected      atomic.Uint64
 	batchesApplied            atomic.Uint64
-	projectionsPublished      atomic.Uint64
-	overlayProjections        atomic.Uint64
 	strategyProjections       atomic.Uint64
 	engineerStatusesDelivered atomic.Uint64
 	engineerObservations      atomic.Uint64
@@ -195,7 +190,6 @@ type TelemetryCoreRuntime struct {
 	overlayFrameV2Shadow     bool
 	engineerAsyncPort        bool
 	emitter                  telemetrytransport.EventEmitter
-	hub                      *telemetrytransport.Hub
 	strategyHub              *telemetrytransport.Hub
 	overlayV2Publishers      *telemetrytransport.PublisherRegistry
 	simulator                telemetrycore.SimulatorRuntime
@@ -203,7 +197,6 @@ type TelemetryCoreRuntime struct {
 	coord                    *telemetrycore.SessionCoordinator
 	derive                   *derive.Pipeline
 	engine                   *telemetryengine.TelemetryEngine
-	shadow                   *telemetryShadow
 	engineer                 EngineerProjectionConsumer
 	engineerPort             *engineerPort
 	engineerManifest         engineerprojection.Manifest
@@ -217,6 +210,8 @@ type TelemetryCoreRuntime struct {
 	watchdogDelay   time.Duration
 	watchdogEnabled bool
 	lastFrameAt     time.Time
+	sourceFrameAt   []time.Time
+	sourceHz        float64
 	watchdogStale   bool
 	// Solo lo toca la goroutine monitor; sirve para no repetir la misma linea
 	// de error terminal en cada tick.
@@ -231,7 +226,10 @@ type TelemetryCoreRuntime struct {
 	counters                  telemetryCoreCounters
 	metricStore               telemetryCoreMetricStore
 	overlayV2Project          func(envelope.Snapshot[derive.FinalState], overlayv2.SourceContextV2, overlayv2.PreferencesV2, uint64) (overlayv2.UpdateV2, error)
+	overlayV2SetCadence       func(overlayv2.SectionCadence)
 	overlayV2DeliveryRevision uint64
+	performancePolicy         performancepolicy.Policy
+	performanceRevision       uint64
 }
 
 // NewTelemetryCoreRuntime is side-effect free; Start owns all goroutines and
@@ -266,7 +264,8 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		engineerAsyncPort = *config.EngineerAsyncPort
 	}
 	overlayV2Publishers, err := telemetrytransport.NewPublisherRegistry(telemetrytransport.PublisherConfig{
-		Product: telemetrytransport.ProductOverlayV2,
+		Product:         telemetrytransport.ProductOverlayV2,
+		SectionEncoding: config.OverlaySections,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("build Overlay v2 publisher registry: %w", err)
@@ -314,6 +313,9 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 			},
 		})
 	}
+	overlayV2Project, overlayV2SetCadence := newCachedOverlayV2Project()
+	effectivePerformance := performancepolicy.Resolve(config.PerformancePolicy, nil)
+	logPerformanceDiagnostics(config.PerformancePolicy, effectivePerformance)
 	runtime := &TelemetryCoreRuntime{
 		enabled:                  config.Enabled,
 		telemetryFailurePolicyV2: failurePolicyV2,
@@ -321,30 +323,25 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 		overlayFrameV2Shadow:     overlayFrameV2Shadow,
 		engineerAsyncPort:        engineerAsyncPort,
 		emitter:                  config.Emitter,
-		hub: telemetrytransport.NewHub(telemetrytransport.HubConfig{
-			Product: telemetrytransport.ProductOverlay,
-			Versions: projection.VersionPolicy{
-				Current:          overlayprojection.CurrentVersion,
-				MinimumSupported: overlayprojection.MinimumSupportedVersion,
-			},
-		}),
-		strategyHub:            strategyHub,
-		overlayV2Publishers:    overlayV2Publishers,
-		simulator:              simulator,
-		reducer:                reducer,
-		coord:                  coordinator,
-		derive:                 pipeline,
-		engine:                 telemetryengine.New(reducer, coordinator, pipeline),
-		shadow:                 newTelemetryShadow(config.TelemetryShadowEvery, config.TelemetryShadowBudget, now),
-		engineer:               config.Engineer,
-		engineerManifest:       engineerManifest,
-		capabilities:           capabilities,
-		capabilityDeclaration:  simulatorConfig.Capabilities,
-		descriptorCapabilities: descriptorCapabilityTokens(simulatorConfig.Descriptor, capabilities),
-		now:                    now,
-		watchdogDelay:          watchdogDelay,
-		watchdogEnabled:        watchdogEnabled,
-		overlayV2Project:       newCachedOverlayV2Project(),
+		strategyHub:              strategyHub,
+		overlayV2Publishers:      overlayV2Publishers,
+		simulator:                simulator,
+		reducer:                  reducer,
+		coord:                    coordinator,
+		derive:                   pipeline,
+		engine:                   telemetryengine.New(reducer, coordinator, pipeline),
+		engineer:                 config.Engineer,
+		engineerManifest:         engineerManifest,
+		capabilities:             capabilities,
+		capabilityDeclaration:    simulatorConfig.Capabilities,
+		descriptorCapabilities:   descriptorCapabilityTokens(simulatorConfig.Descriptor, capabilities),
+		now:                      now,
+		watchdogDelay:            watchdogDelay,
+		watchdogEnabled:          watchdogEnabled,
+		overlayV2Project:         overlayV2Project,
+		overlayV2SetCadence:      overlayV2SetCadence,
+		performancePolicy:        effectivePerformance,
+		performanceRevision:      1,
 	}
 	if engineerAsyncPort {
 		runtime.engineerPort = newEngineerPort(runtime, config.Engineer, config.EngineerConsumeTimeout, config.EngineerFactQueueCapacity)
@@ -352,15 +349,7 @@ func NewTelemetryCoreRuntime(config TelemetryCoreRuntimeConfig) (*TelemetryCoreR
 	return runtime, nil
 }
 
-func (runtime *TelemetryCoreRuntime) Hub() *telemetrytransport.Hub {
-	if runtime == nil {
-		return nil
-	}
-	return runtime.hub
-}
-
-// StrategyHub exposes the Strategy product transport while Hub keeps its
-// historical Overlay meaning for existing callers.
+// StrategyHub exposes the single surviving product transport.
 func (runtime *TelemetryCoreRuntime) StrategyHub() *telemetrytransport.Hub {
 	if runtime == nil {
 		return nil
@@ -375,20 +364,102 @@ func (runtime *TelemetryCoreRuntime) OverlayV2Publishers() *telemetrytransport.P
 	return runtime.overlayV2Publishers
 }
 
+// SetPerformancePolicy publica una nueva decisión de Go. El projector toma la
+// cadencia y el contrato juntos en el siguiente tick V2.
+func (runtime *TelemetryCoreRuntime) SetPerformancePolicy(policy performancepolicy.Policy) {
+	if runtime == nil {
+		return
+	}
+	resolved := performancepolicy.Resolve(policy, nil)
+	runtime.mu.Lock()
+	if samePerformancePolicy(runtime.performancePolicy, resolved) {
+		runtime.mu.Unlock()
+		return
+	}
+	logPerformanceDiagnostics(policy, resolved)
+	runtime.performancePolicy = resolved
+	runtime.performanceRevision++
+	runtime.mu.Unlock()
+	runtime.emitPerformanceLevel(resolved)
+}
+
+// EmitPerformanceLevel refreshes the hub from the same Go authority carried
+// by OverlayFrame v2. It does not infer policy in the web layer.
+func (runtime *TelemetryCoreRuntime) EmitPerformanceLevel() {
+	if runtime == nil {
+		return
+	}
+	runtime.mu.Lock()
+	policy := runtime.performancePolicy
+	runtime.mu.Unlock()
+	runtime.emitPerformanceLevel(policy)
+}
+
+func (runtime *TelemetryCoreRuntime) emitPerformanceLevel(policy performancepolicy.Policy) {
+	if runtime.emitter != nil {
+		runtime.emitter.Emit("performance:level", overlayPerformancePolicy(policy, 0))
+	}
+}
+
+// PerformancePolicy devuelve el mismo snapshot que publica Overlay v2,
+// incluida la frecuencia real observada del driver.
+func (runtime *TelemetryCoreRuntime) PerformancePolicy() performancepolicy.Policy {
+	if runtime == nil {
+		return performancepolicy.Resolve(performancepolicy.Policy{}, nil)
+	}
+	runtime.mu.Lock()
+	defer runtime.mu.Unlock()
+	result := runtime.performancePolicy
+	result.SourceHz = runtime.sourceHz
+	result.WidgetHz = make(map[string]performancepolicy.WidgetRate, len(runtime.performancePolicy.WidgetHz))
+	for widget, rate := range runtime.performancePolicy.WidgetHz {
+		result.WidgetHz[widget] = rate
+	}
+	if runtime.performancePolicy.RafCap != nil {
+		value := *runtime.performancePolicy.RafCap
+		result.RafCap = &value
+	}
+	return result
+}
+
+func logPerformanceDiagnostics(requested, resolved performancepolicy.Policy) {
+	// Una configuración vacía es habitual en tests y significa fallback, no una
+	// elección explícita del usuario que merezca diagnóstico operativo.
+	if requested.Level < performancepolicy.LevelBalanced || requested.Level > performancepolicy.LevelMinimum {
+		return
+	}
+	for _, diagnostic := range performancepolicy.Diagnostics(resolved) {
+		log.Printf("performance diagnostic: %s", diagnostic)
+	}
+}
+
+func samePerformancePolicy(left, right performancepolicy.Policy) bool {
+	if left.Level != right.Level || left.Mode != right.Mode || left.Effects != right.Effects ||
+		left.Reason != right.Reason || len(left.WidgetHz) != len(right.WidgetHz) {
+		return false
+	}
+	if (left.RafCap == nil) != (right.RafCap == nil) || left.RafCap != nil && *left.RafCap != *right.RafCap {
+		return false
+	}
+	for widget, rate := range left.WidgetHz {
+		if right.WidgetHz[widget] != rate {
+			return false
+		}
+	}
+	return true
+}
+
 func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 	if runtime == nil {
 		return TelemetryCoreMetrics{}
 	}
 	details := runtime.metricStore.snapshot()
-	shadow := runtime.shadow.metrics()
 	mapper := runtime.simulator.MapperMetrics()
 	coordinator := runtime.coord.Metrics()
 	return TelemetryCoreMetrics{
 		ObservationsReceived:         runtime.counters.observationsReceived.Load(),
 		ObservationsRejected:         runtime.counters.observationsRejected.Load(),
 		BatchesApplied:               runtime.counters.batchesApplied.Load(),
-		ProjectionsPublished:         runtime.counters.projectionsPublished.Load(),
-		OverlayProjectionsPublished:  runtime.counters.overlayProjections.Load(),
 		StrategyProjectionsPublished: runtime.counters.strategyProjections.Load(),
 		EngineerStatusesDelivered:    runtime.counters.engineerStatusesDelivered.Load(),
 		EngineerObservations:         runtime.counters.engineerObservations.Load(),
@@ -404,10 +475,7 @@ func (runtime *TelemetryCoreRuntime) Metrics() TelemetryCoreMetrics {
 		WatchdogDegradations:         details.watchdogDegradations,
 		PayloadBytes:                 details.payloadBytes,
 		LifecycleTransitions:         details.lifecycleTransitions,
-		Transport:                    runtime.hub.Metrics(),
 		StrategyTransport:            strategyHubMetrics(runtime.strategyHub),
-		ShadowMismatches:             shadow.mismatches,
-		ShadowDisabled:               shadow.disabled,
 		EngineSequence:               runtime.counters.engineSequence.Load(),
 		SlotGraceReopen:              mapper.SlotGraceReopen,
 		SlotGenerationBumps:          mapper.SlotGenerationBumps,
@@ -684,9 +752,6 @@ func (runtime *TelemetryCoreRuntime) abortStart(startErr error) error {
 
 func (runtime *TelemetryCoreRuntime) closeProductHubs() error {
 	var result error
-	if err := runtime.hub.Close(); err != nil {
-		result = errors.Join(result, fmt.Errorf("close Overlay telemetry hub: %w", err))
-	}
 	if runtime.strategyHub != nil {
 		if err := runtime.strategyHub.Close(); err != nil {
 			result = errors.Join(result, fmt.Errorf("close Strategy telemetry hub: %w", err))
@@ -826,8 +891,6 @@ func (runtime *TelemetryCoreRuntime) serveWails(
 
 func productName(product telemetrytransport.ProductID) string {
 	switch product {
-	case telemetrytransport.ProductOverlay:
-		return "Overlay"
 	case telemetrytransport.ProductStrategy:
 		return "Strategy"
 	default:
@@ -903,7 +966,6 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 		sink.runtime.counters.engineSequence.Store(uint64(result.Cursor.Sequence))
 		final = result.State
 		factValues = result.Facts
-		sink.runtime.shadow.observe(ctx, batch, result)
 	} else {
 		observed, err := sink.runtime.reducer.Apply(batch)
 		if err != nil {
@@ -922,32 +984,24 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 	}
 	sink.runtime.recordFrameArrival()
 	sink.runtime.counters.batchesApplied.Add(1)
-	overlayProjected, err := overlayprojection.ProjectV1(final)
-	overlayReady := err == nil
-	if err != nil {
-		if failureErr := sink.runtime.handlePostCommitFailure(
-			telemetrytransport.ProductOverlay,
-			"projection",
-			fmt.Errorf("project Overlay telemetry: %w", err),
-		); failureErr != nil {
-			return failureErr
-		}
-	}
-	strategyProjected, err := strategyprojection.ProjectV1(final)
-	strategyReady := err == nil
-	if err != nil {
-		if failureErr := sink.runtime.handlePostCommitFailure(
-			telemetrytransport.ProductStrategy,
-			"projection",
-			fmt.Errorf("project Strategy telemetry: %w", err),
-		); failureErr != nil {
-			return failureErr
+	var strategyProjected strategyprojection.SnapshotV1
+	strategyReady := false
+	if sink.runtime.strategyHub != nil {
+		projected, err := strategyprojection.ProjectV1(final)
+		if err != nil {
+			if failureErr := sink.runtime.handlePostCommitFailure(
+				telemetrytransport.ProductStrategy,
+				"projection",
+				fmt.Errorf("project Strategy telemetry: %w", err),
+			); failureErr != nil {
+				return failureErr
+			}
+		} else {
+			strategyProjected, strategyReady = projected, true
 		}
 	}
 	status := sink.runtime.simulator.Status()
 	publication := sink.runtime.publishProjections(
-		overlayProjected,
-		overlayReady,
 		strategyProjected,
 		strategyReady,
 		status.State,
@@ -955,13 +1009,6 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 	)
 	if publication.statusErr != nil {
 		if failureErr := sink.runtime.handlePostCommitFailure("", "status", publication.statusErr); failureErr != nil {
-			return failureErr
-		}
-	}
-	if publication.overlayErr != nil {
-		if failureErr := sink.runtime.handlePostCommitFailure(
-			telemetrytransport.ProductOverlay, "publish", publication.overlayErr,
-		); failureErr != nil {
 			return failureErr
 		}
 	}
@@ -975,21 +1022,52 @@ func (sink runtimeBatchSink) WriteBatch(ctx context.Context, batch telemetrycore
 	if err := sink.runtime.publishOverlayV2(final, status.State, status.ReconnectAttempt); err != nil {
 		sink.runtime.handleOverlayV2Failure(err)
 	}
-	if publication.overlayPublished && (sink.runtime.strategyHub == nil || publication.strategyPublished) {
-		sink.runtime.counters.projectionsPublished.Add(1)
-	}
 	sink.runtime.deliverEngineerStatus(status.State, status.ReconnectAttempt)
 	sink.runtime.deliverEngineer(final, factValues)
 	return nil
 }
 
-// newCachedOverlayV2Project regula por seccion (F11) antes de proyectar y
-// serializar: envuelve CachedProjector con las cadencias por defecto (hoy
-// inertes: 0 = cada tick) conservando la firma inyectable que usan los tests.
-func newCachedOverlayV2Project() func(envelope.Snapshot[derive.FinalState], overlayv2.SourceContextV2, overlayv2.PreferencesV2, uint64) (overlayv2.UpdateV2, error) {
+// newCachedOverlayV2Project regula por seccion antes de proyectar y serializar.
+// Devuelve también la entrada de cadencia para aplicarla en el tick siguiente.
+func newCachedOverlayV2Project() (
+	func(envelope.Snapshot[derive.FinalState], overlayv2.SourceContextV2, overlayv2.PreferencesV2, uint64) (overlayv2.UpdateV2, error),
+	func(overlayv2.SectionCadence),
+) {
 	projector := overlayv2.NewCachedProjector(overlayv2.DefaultSectionCadence())
-	return func(snapshot envelope.Snapshot[derive.FinalState], source overlayv2.SourceContextV2, preferences overlayv2.PreferencesV2, revision uint64) (overlayv2.UpdateV2, error) {
+	project := func(snapshot envelope.Snapshot[derive.FinalState], source overlayv2.SourceContextV2, preferences overlayv2.PreferencesV2, revision uint64) (overlayv2.UpdateV2, error) {
 		return projector.Project(snapshot, source, preferences, revision, time.Now())
+	}
+	return project, projector.SetCadence
+}
+
+func overlayPerformancePolicy(policy performancepolicy.Policy, sourceHz float64) overlayv2.PerformanceV2 {
+	mode := overlayv2.PerformanceModeManual
+	switch policy.Mode {
+	case performancepolicy.ModeCustom:
+		mode = overlayv2.PerformanceModeCustom
+	case performancepolicy.ModeAuto:
+		mode = overlayv2.PerformanceModeAuto
+	}
+	effects := overlayv2.PerformanceEffectsV2(policy.Effects)
+	rates := make(map[string]json.RawMessage, len(policy.WidgetHz))
+	for widget, rate := range policy.WidgetHz {
+		if rate.IsMonitor() {
+			continue
+		}
+		encoded, err := json.Marshal(rate)
+		if err != nil {
+			continue
+		}
+		rates[widget] = encoded
+	}
+	var rafCap *int
+	if policy.RafCap != nil {
+		value := *policy.RafCap
+		rafCap = &value
+	}
+	return overlayv2.PerformanceV2{
+		Level: uint8(policy.Level), Mode: mode, Effects: effects, RafCap: rafCap,
+		WidgetHz: rates, Reason: overlayv2.PerformanceReasonV2(policy.Reason), SourceHz: sourceHz,
 	}
 }
 
@@ -1007,20 +1085,29 @@ func (runtime *TelemetryCoreRuntime) publishOverlayV2(
 	}
 	runtime.mu.Lock()
 	lastFrameAt := runtime.lastFrameAt
+	policy := runtime.performancePolicy
+	performanceRevision := runtime.performanceRevision
+	sourceHz := runtime.sourceHz
 	runtime.mu.Unlock()
 	age := runtime.now().Sub(lastFrameAt).Milliseconds()
 	if age < 0 {
 		age = 0
 	}
-	value, ok := final.Value()
+	// ponytail: Peek sin clon para count/modos; overlayCapabilityModes solo
+	// lee (TestIsa998PeekModesNoMutateNoRetain). La proyección real conserva
+	// su clon defensivo dentro de overlayV2Project.
+	value, ok := final.Peek()
 	if !ok {
 		return fmt.Errorf("%w: count Overlay v2 vehicles", telemetrytransport.ErrInvalidPayload)
 	}
 	started := time.Now()
+	runtime.overlayV2SetCadence(performancepolicy.CadenceFor(policy.Level))
 	update, err := runtime.overlayV2Project(final, overlayv2.SourceContextV2{
 		State: state.String(), ReconnectAttempt: attempt, LastFrameAgeMS: age,
 		DescriptorCapabilities: runtime.descriptorCapabilities,
 		Modes:                  overlayCapabilityModes(runtime.capabilityDeclaration, value),
+		PerformanceRevision:    performanceRevision,
+		Performance:            overlayPerformancePolicy(policy, sourceHz),
 	}, overlayv2.DefaultPreferencesV2(), 0)
 	runtime.metricStore.observeOverlayV2BuildDuration(time.Since(started))
 	if err != nil {
@@ -1050,17 +1137,16 @@ func (runtime *TelemetryCoreRuntime) publishOverlayV2(
 	update.Source.State = overlayv2.SourceStateV2(currentState.String())
 	update.Source.ReconnectAttempt = uint32(currentAttempt)
 	update.Source.LastFrameAgeMS = currentAge
-	encoded, err := json.Marshal(update)
-	if err != nil {
-		runtime.mu.Unlock()
-		return fmt.Errorf("%w: encode Overlay v2: %v", telemetrytransport.ErrInvalidPayload, err)
-	}
-	if err := publisher.PublishSnapshot(revision, json.RawMessage(encoded)); err != nil {
+	// PublishSnapshot already serializes and validates. This lock serializes
+	// snapshot publication, so the counter delta is this exact payload size.
+	previousBytes := publisher.Metrics().SnapshotBytes
+	if err := publisher.PublishSnapshot(revision, update); err != nil {
 		runtime.mu.Unlock()
 		return fmt.Errorf("%w: publish Overlay v2: %v", telemetrytransport.ErrInvalidPayload, err)
 	}
+	payloadBytes := publisher.Metrics().SnapshotBytes - previousBytes
 	runtime.mu.Unlock()
-	runtime.metricStore.observeOverlayV2Payload(len(value.Observed.Vehicles), uint64(len(encoded)))
+	runtime.metricStore.observeOverlayV2Payload(len(value.Observed.Vehicles), payloadBytes)
 	return nil
 }
 
@@ -1069,7 +1155,7 @@ func (runtime *TelemetryCoreRuntime) handleOverlayV2Failure(err error) {
 		return
 	}
 	// Shadow failure is deliberately not reflected in the canonical source
-	// status: doing so would invalidate a pending v1 full and make an
+	// status: doing so would invalidate a pending Strategy full and make an
 	// observational path user-visible.
 	product := string(telemetrytransport.ProductOverlayV2)
 	runtime.metricStore.publishFailure(product)
@@ -1280,16 +1366,12 @@ func engineerSourceState(state driver.State) engineerprojection.SourceState {
 }
 
 type projectionPublication struct {
-	overlayPublished  bool
 	strategyPublished bool
 	statusErr         error
-	overlayErr        error
 	strategyErr       error
 }
 
 func (runtime *TelemetryCoreRuntime) publishProjections(
-	overlayProjected overlayprojection.SnapshotV1,
-	overlayReady bool,
 	strategyProjected strategyprojection.SnapshotV1,
 	strategyReady bool,
 	state driver.State,
@@ -1301,26 +1383,6 @@ func (runtime *TelemetryCoreRuntime) publishProjections(
 		return projectionPublication{statusErr: err}
 	}
 	result := projectionPublication{}
-	if overlayReady {
-		overlayFrame, err := telemetrytransport.NewOverlayFull(
-			overlayProjected.Metadata,
-			runtime.statusRev,
-			overlayProjected.PayloadV1,
-		)
-		if err != nil {
-			result.overlayErr = fmt.Errorf("build Overlay telemetry projection: %w", err)
-		} else {
-			runtime.metricStore.observePayload(productName(telemetrytransport.ProductOverlay), uint64(len(overlayFrame.Payload)))
-			if err := runtime.guardConsumer("overlay.publish", func() error {
-				return runtime.hub.PublishSnapshot(overlayFrame, nil)
-			}); err != nil {
-				result.overlayErr = fmt.Errorf("publish Overlay telemetry projection: %w", err)
-			} else {
-				result.overlayPublished = true
-				runtime.counters.overlayProjections.Add(1)
-			}
-		}
-	}
 	if strategyReady && runtime.strategyHub != nil {
 		strategyFrame, err := telemetrytransport.NewStrategyFull(
 			strategyProjected.Metadata,
@@ -1360,18 +1422,6 @@ func (runtime *TelemetryCoreRuntime) setStatusLocked(state driver.State, attempt
 	nextRevision := runtime.statusRev + 1
 	capturedAt := runtime.now().UTC()
 	payload := telemetrytransport.StatusPayload{State: state.String(), ReconnectAttempt: attempt}
-	overlayStatus, err := telemetrytransport.NewStatus(
-		telemetrytransport.ProductOverlay,
-		nextRevision,
-		capturedAt,
-		payload,
-	)
-	if err != nil {
-		return fmt.Errorf("build Overlay telemetry status: %w", err)
-	}
-	if err := runtime.hub.PublishStatus(overlayStatus); err != nil {
-		return fmt.Errorf("publish Overlay telemetry status: %w", err)
-	}
 	if runtime.strategyHub != nil {
 		strategyStatus, err := telemetrytransport.NewStatus(
 			telemetrytransport.ProductStrategy,
@@ -1421,8 +1471,33 @@ func (runtime *TelemetryCoreRuntime) setStatusLocked(state driver.State, attempt
 
 func (runtime *TelemetryCoreRuntime) recordFrameArrival() {
 	runtime.mu.Lock()
-	runtime.lastFrameAt = runtime.now()
+	now := runtime.now()
+	runtime.lastFrameAt = now
 	runtime.watchdogStale = false
+	if count := len(runtime.sourceFrameAt); count > 0 && now.Before(runtime.sourceFrameAt[count-1]) {
+		runtime.sourceFrameAt = runtime.sourceFrameAt[:0]
+	}
+	cutoff := now.Add(-sourceRateWindow)
+	first := 0
+	for first < len(runtime.sourceFrameAt) && runtime.sourceFrameAt[first].Before(cutoff) {
+		first++
+	}
+	if first > 0 {
+		copy(runtime.sourceFrameAt, runtime.sourceFrameAt[first:])
+		runtime.sourceFrameAt = runtime.sourceFrameAt[:len(runtime.sourceFrameAt)-first]
+	}
+	runtime.sourceFrameAt = append(runtime.sourceFrameAt, now)
+	if len(runtime.sourceFrameAt) > sourceRateMaxSamples {
+		copy(runtime.sourceFrameAt, runtime.sourceFrameAt[len(runtime.sourceFrameAt)-sourceRateMaxSamples:])
+		runtime.sourceFrameAt = runtime.sourceFrameAt[:sourceRateMaxSamples]
+	}
+	runtime.sourceHz = 0
+	if len(runtime.sourceFrameAt) >= 2 {
+		span := now.Sub(runtime.sourceFrameAt[0])
+		if span > 0 {
+			runtime.sourceHz = float64(len(runtime.sourceFrameAt)-1) / span.Seconds()
+		}
+	}
 	runtime.mu.Unlock()
 }
 

@@ -3,7 +3,7 @@ export const shellOrbitEn: Record<string, string> = {
   "shell.rail.home": "Home",
   "shell.rail.studio": "Overlays Studio",
   "shell.rail.launcher": "Launcher",
-  "shell.rail.races": "Races",
+  "shell.rail.races": "Calendar",
   "shell.rail.strategy": "Strategy",
   "shell.rail.engineer": "Engineer",
   "shell.rail.telemetry": "Telemetry",
@@ -40,7 +40,7 @@ export const shellOrbitEn: Record<string, string> = {
   "shell.title.inicio": "Operations centre",
   "shell.title.studio": "Overlays Studio",
   "shell.title.launcher": "Launcher",
-  "shell.title.carreras": "Races",
+  "shell.title.carreras": "Calendar",
   "shell.title.estrategia": "Strategy",
   "shell.title.ingeniero": "Engineer",
   "shell.title.telemetria": "Telemetry",
@@ -86,4 +86,8 @@ export const shellOrbitEn: Record<string, string> = {
   "shell.access.unavailable": "Access not available",
   "shell.access.requiresPlan": "Requires the {{plan}} plan · current plan {{current}}",
   "shell.access.requiresPlanShort": "Requires {{plan}}",
+
+  "shell.pageLoading": "Loading…",
+  "shell.pageError": "This screen could not be loaded.",
+  "shell.pageRetry": "Retry",
 };

@@ -1,16 +1,15 @@
 import type { FeatureId } from "../../lib/access-policy";
 import type { InspectorCapability } from "./inspector-control";
 import type { WidgetType, WidgetInstanceV3 } from "./profile-document";
-import type { TelemetrySnapshot } from "./telemetry-snapshot";
 import type { EngineerPresentation } from "../../engineer/engineer-presentation-store";
 import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
-import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
+import type { RelativeViewModelState } from "../widget-types/relative/relative-view-model-v2";
 
 // Only registered widget definitions declare a feature gate. The vocabulary is
 // intentionally broader while the remaining widget definitions land in later
 // microplans, so keep this map partial instead of inventing placeholder gates.
 export const WIDGET_REQUIRED_FEATURE_BY_TYPE: Partial<Record<WidgetType, FeatureId>> = {
-  delta: "overlays.basic",
+  delta: "overlays.advanced",
   standings: "overlays.basic",
   pedals: "overlays.basic",
   relative: "overlays.advanced",
@@ -59,10 +58,30 @@ export type WidgetViewModelBase = {
 export type WidgetRuntimeInput = {
   engineerPresentation?: EngineerPresentation | null;
   engineerSubtitlesEnabled?: boolean;
-  overlayV2Features?: readonly OverlayV2Feature[];
+  raceScheduleEvents?: readonly {
+    id: string;
+    title: string;
+    track: string;
+    startAt: string;
+    durationMinutes: number;
+    classes: readonly string[];
+    status: string;
+    license?: string;
+  }[];
+  raceScheduleStatus?: WidgetRuntimeStatus;
+  overlayV2Failure?: Readonly<{
+    code: "invalid-frame" | "transport-error";
+    message: string;
+  }>;
   overlayV2Frame?: OverlayFrameV2;
   overlayV2Source?: OverlaySourceStatusV2;
+  relativeViewModelState?: RelativeViewModelState;
+  relativeViewModelNowMs?: () => number;
+  relativeViewModelInstanceKey?: string;
+  relativeViewModelStability?: "endurance-redline";
 };
+
+export type WidgetRenderMode = "studio" | "desktop" | "obs" | "harness";
 
 export type WidgetCapabilities = {
   inspectorSections: readonly InspectorSectionId[];
@@ -88,15 +107,9 @@ export type WidgetTypeDefinition<
   inspector: WidgetInspectorCapability;
   createDefault(id: string): WidgetInstanceV3;
   parseContent(input: unknown): TContent;
-  buildViewModel(snapshot: TelemetrySnapshot, content: TContent): TModel;
-  buildRuntimeViewModel?(
-    snapshot: TelemetrySnapshot,
+  buildAuxiliaryViewModel?(
     content: TContent,
     runtime: WidgetRuntimeInput,
-  ): TModel;
-  buildPreviewViewModel?(
-    snapshot: TelemetrySnapshot,
-    content: TContent,
-    runtime: WidgetRuntimeInput,
+    renderMode: WidgetRenderMode,
   ): TModel;
 };

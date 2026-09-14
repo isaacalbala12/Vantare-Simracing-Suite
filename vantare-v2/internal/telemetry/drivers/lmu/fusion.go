@@ -2,6 +2,7 @@ package lmu
 
 import (
 	"math"
+	"strings"
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/catalog"
@@ -143,6 +144,37 @@ type monotonicStamp struct {
 // and a single-source driver declares one without duplicating this code.
 type Fusion struct {
 	slots *fusion.Slots[Observation]
+	// lastSession is the last fresh SHM session signature. A fresh change, or
+	// a source-clock reset on the SHM input (the same two signals the batch
+	// mapper uses for its own session boundary), raises sessionFloor: only a
+	// REST grid polled at or after the boundary may publish numbers, so the
+	// previous session's grid cannot publish onto a reused slot afterwards —
+	// even with the same vehicle label. Residual scope: a restart that keeps
+	// the same track, type and a continuous clock raises no boundary here;
+	// that case stays bounded by the REST TTL only (see the ISA-1072 handoff).
+	lastSession  sessionEpochKey
+	sessionKnown bool
+	sessionFloor monotonicStamp
+}
+
+// sessionEpochKey is the minimal fresh SHM session identity that scopes the
+// REST number grid. It is deliberately not the batchMapper sessionSignature:
+// fusion owns only this display-identity floor, never canonical identity.
+type sessionEpochKey struct {
+	track string
+	typ   session.Type
+}
+
+func freshSessionKey(input Observation) (sessionEpochKey, bool) {
+	track, present := input.TrackName.Value()
+	if !present || input.TrackName.Freshness() != schema.FreshnessFresh || strings.TrimSpace(track) == "" {
+		return sessionEpochKey{}, false
+	}
+	typ, present := input.SessionType.Value()
+	if !present || input.SessionType.Freshness() != schema.FreshnessFresh || !typ.Known() {
+		return sessionEpochKey{}, false
+	}
+	return sessionEpochKey{track: track, typ: typ}, true
 }
 
 func (state *Fusion) store() *fusion.Slots[Observation] {
@@ -156,6 +188,18 @@ func (state *Fusion) Merge(receivedUTC time.Time, elapsed time.Duration, inputs 
 	slots := state.store()
 	for _, input := range inputs {
 		slots.Put(slotOf(input.Source), input, fusion.Stamp{Elapsed: elapsed, Set: true})
+		if input.Source == SourceSharedMemory {
+			if input.ClockChange == ClockReset {
+				state.sessionFloor = monotonicStamp{elapsed: elapsed, set: true}
+			}
+			if key, ok := freshSessionKey(input); ok {
+				if state.sessionKnown && key != state.lastSession {
+					state.sessionFloor = monotonicStamp{elapsed: elapsed, set: true}
+				}
+				state.lastSession = key
+				state.sessionKnown = true
+			}
+		}
 	}
 	sharedEntry := slots.Get(slotOf(SourceSharedMemory))
 	restEntry := slots.Get(slotOf(SourceREST))
@@ -181,7 +225,18 @@ func (state *Fusion) Merge(receivedUTC time.Time, elapsed time.Duration, inputs 
 	result.TrackName = chooseField(elapsed, ruleFor(catalog.SignalSessionTrackName), shm.TrackName, shmStamp, rest.TrackName.Field, timedStamp(rest.TrackName, restStamp), &result)
 	result.SessionType = chooseField(elapsed, ruleFor(catalog.SignalSessionType), shm.SessionType, shmStamp, rest.SessionType.Field, timedStamp(rest.SessionType, restStamp), &result)
 	result.VehicleCount = chooseField(elapsed, ruleFor(catalog.SignalSessionVehicleCount), shm.VehicleCount, shmStamp, rest.VehicleCount.Field, timedStamp(rest.VehicleCount, restStamp), &result)
+	// Session signals admitted by ISA-1106 are REST-joined like the car-number
+	// grid: shared memory exposes no admitted source, so the REST field flows
+	// with its own TTL and per-field quality, without a matrix rule.
+	// Correction B3: each field is scoped by the fusion session floor, like
+	// the car-number grid: values polled before the last session boundary go
+	// missing even within the REST TTL, without touching timestamps or
+	// widening the TTL.
+	result.AmbientTemp = scopedSessionField(rest.AmbientTemp, restStamp, elapsed, state.sessionFloor)
+	result.TrackTemp = scopedSessionField(rest.TrackTemp, restStamp, elapsed, state.sessionFloor)
+	result.SessionFlag = scopedSessionField(rest.SessionFlag, restStamp, elapsed, state.sessionFloor)
 	result.Vehicles = ageVehicleGrid(elapsed, shmStamp, shm.SourceTime, shm.Vehicles)
+	overlayCarNumbers(result.Vehicles, rest, elapsed, state.sessionFloor)
 	playerIndex := playerVehicleIndex(result.Vehicles)
 	restPlayerPresent := rest.PlayerPresent.Field
 	if len(result.Vehicles) == 0 {
@@ -322,9 +377,64 @@ func ageVehicleGrid(elapsed time.Duration, updated monotonicStamp, sourceTime sc
 		row.WorldPosition = ageGridField(elapsed, updated, forceStale, row.WorldPosition)
 		row.LocalVelocity = ageGridField(elapsed, updated, forceStale, row.LocalVelocity)
 		row.Orientation = ageGridField(elapsed, updated, forceStale, row.Orientation)
+		row.Damage = ageGridField(elapsed, updated, forceStale, row.Damage)
 		result[index] = row
 	}
 	return result
+}
+
+// overlayCarNumbers joins the REST identity grid onto the SHM grid in place.
+// The join key is the LMU slot plus matching vehicle identity: a row
+// publishes a number only while the REST grid is within its own TTL, the slot
+// is unambiguous, the entry carries a vehicle identity that still matches the
+// SHM row, and the grid was polled at or after the last session boundary.
+// Anything else stays absent — a missing number is always safer than a wrong
+// one on a reused slot. Grid order and identity are never touched.
+//
+// CarNumber is a catalog signal (standings.car_number) but has no
+// authority-matrix rule by design: the matrix arbitrates scalar top-level
+// fields with a preferred and an alternative source, while the number exists
+// only per-row and is joined here after arbitration. Its authority is the
+// REST endpoint itself, bounded by the same REST TTL the matrix grants the
+// other REST-sourced fields; the builder additionally publishes only fresh
+// values. It is not aged with the SHM grid: shared memory exposes no
+// car-number offset, so the SHM TTL never governs it.
+func overlayCarNumbers(vehicles []VehicleObservation, rest RESTObservation, elapsed time.Duration, floor monotonicStamp) {
+	if len(vehicles) == 0 || len(rest.CarNumbers) == 0 {
+		return
+	}
+	if !rest.carNumbersUpdatedMono.set || elapsed < rest.carNumbersUpdatedMono.elapsed ||
+		elapsed-rest.carNumbersUpdatedMono.elapsed > defaultRESTTTL {
+		return
+	}
+	// Existing intent: the fusion-side check uses defaultRESTTTL, the value
+	// the poller normalizes to when unconfigured. A custom cfg.ttl still
+	// drops the grid at poll time via markRESTStale; this check only bounds
+	// the stored grid between polls.
+	if floor.set && rest.carNumbersUpdatedMono.elapsed < floor.elapsed {
+		return
+	}
+	counts := make(map[int32]int, len(rest.CarNumbers))
+	for _, entry := range rest.CarNumbers {
+		counts[entry.Slot]++
+	}
+	bySlot := make(map[int32]restCarNumber, len(rest.CarNumbers))
+	for _, entry := range rest.CarNumbers {
+		if counts[entry.Slot] == 1 {
+			bySlot[entry.Slot] = entry
+		}
+	}
+	for index := range vehicles {
+		entry, ok := bySlot[int32(vehicles[index].SourceID)]
+		if !ok || entry.Vehicle == "" {
+			continue
+		}
+		name, present := usableField(vehicles[index].VehicleName)
+		if !present || strings.TrimSpace(string(name)) != entry.Vehicle {
+			continue
+		}
+		vehicles[index].CarNumber = observed(standings.CarNumber(entry.Number))
+	}
 }
 
 func ageGridField[T comparable](elapsed time.Duration, updated monotonicStamp, forceStale bool, field schema.Field[T]) schema.Field[T] {
@@ -443,6 +553,18 @@ func decisionFromField[T comparable](rule AuthorityRule, field schema.Field[T]) 
 		return FieldDecision{Signal: rule.Signal, Source: SourceUnknown, Freshness: schema.FreshnessMissing}
 	}
 	return FieldDecision{Signal: rule.Signal, Source: SourceSharedMemory, Freshness: field.Freshness()}
+}
+
+// scopedSessionField carries one REST-joined session signal with its own TTL
+// like fieldAt, and additionally scopes it by the fusion session floor like
+// the car-number grid: a value polled before the last session boundary is
+// previous-session data and publishes missing, even within the TTL.
+func scopedSessionField[T comparable](field TimedField[T], fallback monotonicStamp, elapsed time.Duration, floor monotonicStamp) schema.Field[T] {
+	stamp := timedStamp(field, fallback)
+	if floor.set && stamp.set && stamp.elapsed < floor.elapsed {
+		return schema.MissingField[T]()
+	}
+	return fieldAt(elapsed, stamp, defaultRESTTTL, field.Field)
 }
 
 func timedStamp[T comparable](field TimedField[T], fallback monotonicStamp) monotonicStamp {

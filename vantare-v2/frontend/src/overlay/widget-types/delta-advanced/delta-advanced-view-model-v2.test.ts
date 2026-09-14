@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { OverlayFrameV2, OverlayUpdateV2 } from "../../../generated/telemetry";
-import { buildDeltaAdvancedViewModel } from "./delta-advanced-view-model";
 import {
   buildDeltaAdvancedViewModelV2,
   deltaAdvancedDisplayedValues,
@@ -38,6 +37,7 @@ describe("delta-advanced v2 view model", () => {
     const model = buildDeltaAdvancedViewModelV2(frame, { state: "live" }, { showUnavailableFields: true });
     expect(model.status).toBe("ready");
     expect(model.best).toBeCloseTo(-0.238, 9);
+    expect(model.reference).toBe("personal-best");
     expect(model.availability.best).toBe(true);
     expect(model.availability.sector).toBe(false);
     expect(model.showUnavailableFields).toBe(true);
@@ -76,7 +76,7 @@ describe("delta-advanced v2 view model", () => {
     expect(model.best).toBeCloseTo(-0.1, 9);
   });
 
-  it("equivalencia de campos con v1 sobre fixture sintética", () => {
+  it("expone best y disponibilidad desde el frame canonico", () => {
     const deltaSeconds = -0.15;
     const v2Frame = withDelta(goldenFrame(), {
       seconds: { v: deltaSeconds, q: "fresh" },
@@ -85,18 +85,10 @@ describe("delta-advanced v2 view model", () => {
       available: ["personal-best"],
     });
     const v2 = buildDeltaAdvancedViewModelV2(v2Frame, { state: "live" }, { showUnavailableFields: true });
-    const snapshot = {
-      status: "ready" as const,
-      capturedAt: Date.now(),
-      session: { type: "race" as const },
-      player: { inPit: false, deltaSeconds },
-      scoring: [],
-    };
-    const v1 = buildDeltaAdvancedViewModel(snapshot, { showUnavailableFields: true });
-    expect(v2.best).toBe(v1.best);
-    expect(v2.availability.best).toBe(v1.availability.best);
-    expect(v2.availability.sector).toBe(v1.availability.sector);
-    expect(v2.showUnavailableFields).toBe(v1.showUnavailableFields);
+    expect(v2.best).toBeCloseTo(deltaSeconds, 9);
+    expect(v2.availability.best).toBe(true);
+    expect(v2.availability.sector).toBe(false);
+    expect(v2.showUnavailableFields).toBe(true);
   });
 
   it("expone proyección estable", () => {

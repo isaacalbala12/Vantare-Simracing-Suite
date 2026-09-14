@@ -5,9 +5,8 @@
  * DECISIÓN (D-31): el backend ya publica `seriesPreviews[].nextStarts` para
  * cada serie de `configs/calendar-lmu.json`. Cuando esa lista trae salidas
  * futuras se usa tal cual —es la autoridad— y el motor local `nextStarts` solo
- * cubre las series cuyo preview llega vacío o no llega (arranque en frío del
- * backend, calendario recortado). Así el hero y la columna no inventan horas y
- * tampoco se quedan en blanco mientras el backend calcula.
+ * cubre las series cuyo preview llega vacío o no llega dentro de la vigencia
+ * publicada. Un documento sin vigencia verificable no genera nuevas salidas.
  */
 import type { Calendar, RaceSeries } from "../../calendar/calendar-types";
 import { nextStarts, type Series, type SeriesTier } from "./next-starts";
@@ -67,12 +66,19 @@ export function intervalMinutesOf(series: RaceSeries): number {
   return 180;
 }
 
-/**
- * Traducción `RaceSeries` (contrato del backend) → `Series` (motor 13.3).
- * Devuelve `null` cuando la recurrencia no describe ninguna cadencia calculable.
- */
-export function toEngineSeries(series: RaceSeries): Series | null {
+/** Ventana publicada; nunca se deduce de updated, previews o la fecha actual. */
+export function scheduleWindow(calendar: Calendar | null): { validFrom: number; validUntil: number } | null {
+  const validFrom = Date.parse(calendar?.schedule?.validFrom ?? "");
+  const validUntil = Date.parse(calendar?.schedule?.validUntil ?? "");
+  return Number.isFinite(validFrom) && Number.isFinite(validUntil) && validFrom < validUntil
+    ? { validFrom, validUntil }
+    : null;
+}
+
+/** Traduce una recurrencia del backend al motor; null si no es calculable. */
+export function toEngineSeries(series: RaceSeries, window?: { validFrom: number; validUntil: number }): Series | null {
   const base = {
+    ...window,
     id: series.id,
     name: series.name,
     tier: toTier(series.tier),
@@ -119,6 +125,8 @@ export function buildRaceStarts(
   const limit = options.limit ?? 4;
   const perSeries = options.perSeries ?? 2;
   if (!calendar || limit <= 0) return [];
+  const window = scheduleWindow(calendar);
+  if (!window) return [];
 
   const followed = new Set(calendar.followedSeriesIds ?? []);
   const previews = calendar.seriesPreviews ?? [];
@@ -128,12 +136,12 @@ export function buildRaceStarts(
     const preview = previews.find((entry) => entry.seriesId === series.id);
     const fromBackend = (preview?.nextStarts ?? [])
       .map((iso) => new Date(iso))
-      .filter((at) => !Number.isNaN(at.getTime()) && at.getTime() >= now.getTime())
+      .filter((at) => at.getTime() >= Math.max(now.getTime(), window.validFrom) && at.getTime() < window.validUntil)
       .sort((a, b) => a.getTime() - b.getTime());
 
     let starts = fromBackend.slice(0, perSeries);
     if (starts.length === 0) {
-      const engineSeries = toEngineSeries(series);
+      const engineSeries = toEngineSeries(series, window);
       starts = engineSeries ? nextStarts(engineSeries, now, perSeries) : [];
     }
     if (starts.length === 0) continue;

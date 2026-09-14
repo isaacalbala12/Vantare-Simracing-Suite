@@ -11,7 +11,48 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/app"
+	performancepolicy "github.com/vantare/overlays/v2/internal/app/performance"
+	"github.com/vantare/overlays/v2/pkg/config"
 )
+
+func TestResolvePerformancePolicyProfileParityAndD4AutoFloor(t *testing.T) {
+	appLevel := app.PerformanceSettings{Mode: "level", Level: 4}
+	withoutProfile := app.ResolvePerformancePolicy(appLevel, nil)
+	inheritProfile := &config.ProfileDocumentV4{Performance: &config.ProfilePerformanceV4{Mode: config.ProfilePerformanceInherit}}
+	if got := app.ResolvePerformancePolicy(appLevel, inheritProfile); !reflect.DeepEqual(got, withoutProfile) {
+		t.Fatalf("inherit=%+v want exact app parity %+v", got, withoutProfile)
+	}
+
+	profileMaximum := &config.ProfileDocumentV4{Performance: &config.ProfilePerformanceV4{Mode: config.ProfilePerformanceLevel, Level: 1}}
+	got := app.ResolvePerformancePolicy(app.PerformanceSettings{Mode: "auto", Level: 1}, profileMaximum)
+	if got.Level != performancepolicy.LevelHigh || got.Mode != performancepolicy.ModeAuto {
+		t.Fatalf("auto should respect its level 2 quality ceiling: %+v", got)
+	}
+
+	profileMinimum := &config.ProfileDocumentV4{Performance: &config.ProfilePerformanceV4{Mode: config.ProfilePerformanceLevel, Level: 5}}
+	got = app.ResolvePerformancePolicy(app.PerformanceSettings{Mode: "auto", Level: 1}, profileMinimum)
+	if got.Level != performancepolicy.LevelMinimum || got.Mode != performancepolicy.ModeAuto {
+		t.Fatalf("auto must never raise a minimum profile: %+v", got)
+	}
+}
+
+func TestResolvePerformancePolicyCapsCustomWidgetOverrideWhenAutoLowers(t *testing.T) {
+	rate := config.ProfileWidgetRateV4{Hertz: 60}
+	profile := &config.ProfileDocumentV4{
+		Layouts: map[config.LayoutType]config.SessionLayoutV4{
+			config.LayoutGeneral: {Type: config.LayoutGeneral, Widgets: []config.WidgetInstanceV4{{ID: "delta-main", Type: config.WidgetTypeDelta}}},
+		},
+		Performance: &config.ProfilePerformanceV4{
+			Mode: config.ProfilePerformanceCustom, Level: 1,
+			Overrides: map[string]config.ProfilePerformanceOverrideV4{"delta-main": {Hz: &rate}},
+		},
+	}
+	got := app.ResolvePerformancePolicy(app.PerformanceSettings{Mode: "auto", Level: 1}, profile)
+	hz, ok := got.WidgetHz["delta-main"].Hertz()
+	if !ok || hz != 30 {
+		t.Fatalf("delta-main=%+v want auto-high cap 30Hz", got.WidgetHz["delta-main"])
+	}
+}
 
 func TestDefaultAppSettings(t *testing.T) {
 	s := app.DefaultAppSettings()
@@ -21,9 +62,10 @@ func TestDefaultAppSettings(t *testing.T) {
 	if !s.CpuSampling {
 		t.Errorf("expected cpuSampling enabled by default")
 	}
-	if !s.CpuSampling {
-		t.Errorf("expected cpuSampling=true")
+	if s.Performance.Mode != "auto" || s.Performance.Level != 3 || s.Performance.Source != app.PerformanceSourceDefault {
+		t.Errorf("expected automatic performance default, got %+v", s.Performance)
 	}
+	// R6a: el interruptor Overlay V1 esta retirado; ya no forma parte del contrato.
 	if len(s.Hotkeys) != 5 {
 		t.Errorf("expected 5 hotkeys, got %d", len(s.Hotkeys))
 	}
@@ -70,7 +112,7 @@ func TestSettingsServiceLoadSave(t *testing.T) {
 
 	// Save custom settings
 	custom := app.DefaultAppSettings()
-	custom.CpuSampling = false
+	custom.Performance = app.PerformanceSettings{Mode: "level", Level: 3, Source: app.PerformanceSourceUser}
 	custom.CpuSampling = false
 	custom.Hotkeys["toggleOverlay"] = "alt+v"
 	if err := svc.Save(custom); err != nil {
@@ -91,6 +133,20 @@ func TestSettingsServiceLoadSave(t *testing.T) {
 	}
 	if s2.Hotkeys["toggleOverlay"] != "alt+v" {
 		t.Errorf("expected toggleOverlay=alt+v, got %q", s2.Hotkeys["toggleOverlay"])
+	}
+}
+
+func TestSettingsServiceForcesCPUSamplingInAutomaticMode(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "app-settings.json")
+	service := app.NewSettingsService(path, nil, nil)
+	settings := app.DefaultAppSettings()
+	settings.Performance.Mode = "auto"
+	settings.CpuSampling = false
+	if err := service.Save(settings); err != nil {
+		t.Fatal(err)
+	}
+	if !service.Settings().CpuSampling {
+		t.Fatal("automatic mode persisted with cpuSampling disabled")
 	}
 }
 
@@ -405,11 +461,52 @@ func TestLoadMigratesSchemaVersionAndAddsDeltaHotkey(t *testing.T) {
 	os.WriteFile(path, []byte(data), 0o644)
 	svc := app.NewSettingsService(path, nil, nil)
 	svc.Load()
-	if svc.Settings().SchemaVersion != 4 {
-		t.Errorf("expected SchemaVersion=4, got %d", svc.Settings().SchemaVersion)
+	if svc.Settings().SchemaVersion != 7 {
+		t.Errorf("expected SchemaVersion=7, got %d", svc.Settings().SchemaVersion)
 	}
 	if got := svc.Settings().Hotkeys["cycleDeltaReference"]; got != "ctrl+shift+d" {
 		t.Errorf("cycleDeltaReference=%q want ctrl+shift+d", got)
+	}
+}
+
+func TestLoadMigratesSettingsBeforePerformanceWithoutLosingExistingValues(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	legacy := `{"schemaVersion":3,"cpuSampling":false,"activeOverlayProfileId":"endurance","hotkeys":{},"launcherApps":{},"launcherProfiles":[]}`
+	if err := os.WriteFile(path, []byte(legacy), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := app.NewSettingsService(path, nil, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatal(err)
+	}
+	got := svc.Settings()
+	if got.SchemaVersion != 7 || got.Performance.Mode != "auto" || got.Performance.Level != 3 || got.Performance.Source != app.PerformanceSourceDefault || got.Performance.MigratedFrom != "" {
+		t.Fatalf("migration result = %+v", got.Performance)
+	}
+	if got.CpuSampling || got.ActiveOverlayProfileID != "endurance" {
+		t.Fatalf("legacy values changed: cpuSampling=%v profile=%q", got.CpuSampling, got.ActiveOverlayProfileID)
+	}
+}
+
+// R6a: un JSON antiguo que aun contiene overlayV1Emit se ignora de forma
+// segura y la migracion avanza a la version actual sin depender del campo.
+func TestLegacyOverlayV1EmitKeyIsIgnored(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	legacy := `{"schemaVersion":5,"cpuSampling":true,"overlayV1Emit":true,"hotkeys":{},"launcherApps":{},"launcherProfiles":[]}`
+	if err := os.WriteFile(path, []byte(legacy), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := app.NewSettingsService(path, nil, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatal(err)
+	}
+	got := svc.Settings()
+	if got.SchemaVersion != 7 {
+		t.Fatalf("SchemaVersion = %d, want 7", got.SchemaVersion)
 	}
 }
 
@@ -532,8 +629,8 @@ func TestLauncherPoliciesMigrateLegacyProfilesToSafeDefaults(t *testing.T) {
 
 func TestDefaultAppSettingsHasCurrentSchemaVersion(t *testing.T) {
 	s := app.DefaultAppSettings()
-	if s.SchemaVersion != 4 {
-		t.Fatalf("expected SchemaVersion=4, got %d", s.SchemaVersion)
+	if s.SchemaVersion != 7 {
+		t.Fatalf("expected SchemaVersion=7, got %d", s.SchemaVersion)
 	}
 }
 
@@ -603,8 +700,11 @@ func TestLoadMigratesLegacySettings(t *testing.T) {
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if svc.Settings().SchemaVersion != 4 {
-		t.Errorf("expected SchemaVersion=4 after migration, got %d", svc.Settings().SchemaVersion)
+	if svc.Settings().SchemaVersion != 7 {
+		t.Errorf("expected SchemaVersion=7 after migration, got %d", svc.Settings().SchemaVersion)
+	}
+	if got := svc.Settings().Performance; got.Mode != "auto" || got.Level != 3 || got.Source != app.PerformanceSourceDefault || got.MigratedFrom != "" {
+		t.Errorf("expected migrated automatic performance default, got %+v", got)
 	}
 	if svc.Settings().LauncherApps == nil {
 		t.Error("LauncherApps should be initialized")
@@ -643,8 +743,8 @@ func TestLoadFallsBackToDefaultsOnTotalCorruption(t *testing.T) {
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load should not panic: %v", err)
 	}
-	if svc.Settings().SchemaVersion != 4 {
-		t.Errorf("expected defaults with SchemaVersion=4")
+	if svc.Settings().SchemaVersion != 7 {
+		t.Errorf("expected defaults with SchemaVersion=7")
 	}
 	if svc.Settings().LauncherProfiles == nil {
 		t.Error("expected default profiles")
@@ -991,6 +1091,10 @@ func fill(t *testing.T, field reflect.Value, name string) {
 		filled.SetMapIndex(key, item)
 		field.Set(filled)
 	case reflect.Slice:
+		if field.Type() == reflect.TypeOf(json.RawMessage{}) {
+			field.SetBytes([]byte(`20`))
+			return
+		}
 		item := reflect.New(field.Type().Elem()).Elem()
 		fill(t, item, name+"[0]")
 		field.Set(reflect.Append(reflect.MakeSlice(field.Type(), 0, 1), item))

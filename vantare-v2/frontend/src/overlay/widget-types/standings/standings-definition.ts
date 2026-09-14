@@ -7,7 +7,7 @@ import {
   parseStandingsContent,
   type StandingsContent,
 } from "./standings-content";
-import { buildStandingsViewModel, type StandingsViewModel } from "./standings-view-model";
+import type { StandingsViewModel } from "./standings-view-model";
 
 const STANDINGS_DEFAULT_LAYOUT = {
   x: 64,
@@ -49,5 +49,4 @@ export const standingsDefinition: WidgetTypeDefinition<StandingsContent, Standin
     };
   },
   parseContent: parseStandingsContent,
-  buildViewModel: buildStandingsViewModel,
 };

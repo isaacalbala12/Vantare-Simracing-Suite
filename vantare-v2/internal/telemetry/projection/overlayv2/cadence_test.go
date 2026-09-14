@@ -40,6 +40,22 @@ func TestSchedulerFirstPlanIsAlwaysComplete(t *testing.T) {
 	}
 }
 
+func TestSchedulerAppliesHotCadenceOnNextTick(t *testing.T) {
+	initial := DefaultSectionCadence()
+	next := SectionCadence{Fast: 150 * time.Millisecond, Mid: 300 * time.Millisecond, Slow: 750 * time.Millisecond, DirtyCeiling: time.Second}
+	scheduler := NewSectionScheduler(initial)
+	scheduler.Plan(cadenceOrigin, AllDirty())
+
+	scheduler.SetCadence(next)
+	if got := scheduler.Cadence(); got != initial {
+		t.Fatalf("SetCadence applied before next tick: %+v", got)
+	}
+	scheduler.Plan(cadenceOrigin.Add(10*time.Millisecond), 0)
+	if got := scheduler.Cadence(); got != next {
+		t.Fatalf("next tick cadence = %+v, want %+v", got, next)
+	}
+}
+
 func TestSchedulerHonoursTierIntervals(t *testing.T) {
 	t.Parallel()
 
@@ -172,5 +188,15 @@ func TestTierMapCoversEverySection(t *testing.T) {
 		if section.String() == "unknown" {
 			t.Fatalf("section %d has no name", section)
 		}
+	}
+}
+
+func TestAllSectionsReturnsIndependentValue(t *testing.T) {
+	t.Parallel()
+
+	sections := AllSections()
+	sections[0] = SectionCapabilities
+	if got := AllSections()[0]; got != SectionPlayer {
+		t.Fatalf("AllSections shared mutable storage: first section = %s", got)
 	}
 }

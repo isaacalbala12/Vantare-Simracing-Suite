@@ -10,9 +10,20 @@ const UNAVAILABLE_LABEL: Record<TrackMapUnavailableReason, string> = {
   "unknown-track": "TRACK NOT MAPPED",
 };
 
+function classColor(classId?: string): string {
+  switch (classId?.toUpperCase()) {
+    case "HYPERCAR": case "HC": return "#ff5964";
+    case "LMP2": return "#65aaff";
+    case "LMP3": return "#ffc857";
+    case "GT3": case "LMGT3": return "#50e39a";
+    default: return "#e8edf5";
+  }
+}
+
 export function TrackMapEndurance({ model, settings }: WidgetRendererProps<TrackMapViewModel>) {
   const parsed = parseTrackMapEnduranceSettings(settings);
   const showLabel = parsed.showTrackLabel && model.showTrackLabel;
+  const classes = [...new Set(model.markers.map((marker) => marker.classId?.trim() || undefined))];
 
   return (
     <section
@@ -38,7 +49,9 @@ export function TrackMapEndurance({ model, settings }: WidgetRendererProps<Track
               className="ven-tm-car"
               cx={marker.x}
               cy={marker.y}
-              r={marker.isPlayer ? 5 : 3.5}
+              r={marker.isPlayer ? 7 : 5.5}
+              style={{ fill: classColor(marker.classId) }}
+              aria-label={`${marker.isPlayer ? "YOU" : marker.id} · ${marker.classId || "Class unavailable"}`}
               data-track-map-car={marker.id}
               data-player={marker.isPlayer ? "true" : undefined}
             />
@@ -49,6 +62,15 @@ export function TrackMapEndurance({ model, settings }: WidgetRendererProps<Track
           <span>{UNAVAILABLE_LABEL[model.unavailableReason ?? "unknown-track"]}</span>
         </div>
       )}
+
+      {model.markers.length > 0 ? (
+        <div className="ven-tm-legend" aria-label="Car classes">
+          {classes.map((classId) => <span key={classId ?? "unknown"}>
+            <i style={{ backgroundColor: classColor(classId) }} />{classId ?? "Class unavailable"}
+          </span>)}
+          {model.markers.some((marker) => marker.isPlayer) ? <span><i className="ven-tm-player-key" />YOU</span> : null}
+        </div>
+      ) : null}
 
       {showLabel && model.trackLabel ? (
         <footer className="ven-tm-footer">

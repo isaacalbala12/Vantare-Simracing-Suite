@@ -1,0 +1,18 @@
+﻿[
+    {
+        "condition":  "off",
+        "durationSeconds":  60,
+        "executableSha256":  "f8515d11db51f522d75985ce3e963ac6927c2fb7f88ccb86ef3983fbc16ff231",
+        "cpuPctMean":  1.9459416296818783,
+        "cpuPctP95":  2.6848683895803216,
+        "privateMBMean":  272.2828125
+    },
+    {
+        "condition":  "on",
+        "durationSeconds":  60,
+        "executableSha256":  "f8515d11db51f522d75985ce3e963ac6927c2fb7f88ccb86ef3983fbc16ff231",
+        "cpuPctMean":  2.0896479852341838,
+        "cpuPctP95":  2.9365162139019443,
+        "privateMBMean":  276.93860677083336
+    }
+]

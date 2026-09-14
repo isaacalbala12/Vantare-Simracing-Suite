@@ -10,8 +10,6 @@
     "test": "vitest run",
     "typecheck": "tsc -b --noEmit",
     "test:isa13-mono": "node scripts/isa-13-mono-legibility.playwright.mjs",
-    "test:telemetry-overlay-shadow": "node scripts/telemetry-overlay-shadow.playwright.mjs",
-    "test:telemetry-cutover-runtimes": "node scripts/telemetry-cutover-runtimes.playwright.mjs",
     "e2e:diagnostics": "node scripts/diagnostics-inspector.playwright.mjs",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -38,6 +36,8 @@
     "visual:orbit-responsive": "node scripts/orbit-responsive-visual.mjs",
     "bench:overlay-studio-drag": "node scripts/overlay-studio-drag-bench.mjs",
     "bench:overlay-studio-drag:baseline": "node scripts/overlay-studio-drag-bench.mjs --update-baseline",
+    "profile:isa912-webview": "node scripts/isa-912-webview-profile.mjs",
+    "test:isa912-cpuprofile": "node --test scripts/lib/isa-912-cpuprofile-summary.node-test.mjs",
     "design-system:check": "node scripts/check-design-system.mjs",
     "i18n:audit": "node scripts/i18n-audit.mjs"
   },

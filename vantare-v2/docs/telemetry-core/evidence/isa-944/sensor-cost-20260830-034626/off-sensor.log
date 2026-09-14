@@ -1,0 +1,31 @@
+2026-08-30T01:46:36Z INFO  webview: remote debugging enabled via --remote-debugging-port=9246
+Aug 30 03:46:36.528 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 -buildmode=exe -compiler=gc DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_ENABLED=1 CGO_CFLAGS= CGO_CPPFLAGS= CGO_LDFLAGS= GOARCH=amd64 CGO_CXXFLAGS= GOOS=windows GOAMD64=v1
+Aug 30 03:46:36.532 INF Platform Info: Go-WebView2Loader=true WebView2=151.0.4129.107 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+Aug 30 03:46:36.532 INF AssetServer Info: middleware=true handler=true
+2026-08-30T01:46:36Z WARN  warning: Strategy cold start importer is unavailable
+2026-08-30T01:46:36Z WARN  warning: Telemetry Analysis reader runtime is unavailable; the rest of Vantare will continue
+2026-08-30T01:46:36Z INFO  performance diagnostic: variante no disponible
+2026-08-30T01:46:36Z INFO  HTTP server: listening on 127.0.0.1:39261
+2026-08-30T01:46:36Z INFO  OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026-08-30T01:46:36Z INFO  telemetry source: state=detecting available=false reconnectAttempt=0
+2026-08-30T01:46:36Z INFO  telemetry source: kind=lmu name=Le Mans Ultimate live=true available=false state=detecting
+2026-08-30T01:46:36Z INFO  global hotkeys active (5 registered)
+2026-08-30T01:46:37Z INFO  [WebView2] Environment created successfully
+2026-08-30T01:46:38Z INFO  telemetry source: state=live available=true reconnectAttempt=0
+2026-08-30T01:46:38Z ERROR warning: could not refresh published schedule: race_schedule_current failed: status 401 (using bundled)
+Aug 30 03:46:38.202 INF [AssetFileServerFS] Handling request url=/ file=.
+Aug 30 03:46:38.256 INF [AssetFileServerFS] Handling request url=/assets/index-QgShdQDw.js file=assets/index-QgShdQDw.js
+Aug 30 03:46:38.261 INF [AssetFileServerFS] Handling request url=/assets/index-CqeA-nh2.css file=assets/index-CqeA-nh2.css
+Aug 30 03:46:38.319 INF [AssetFileServerFS] Handling request url=/assets/AppShell-DJTTSNg5.css file=assets/AppShell-DJTTSNg5.css
+Aug 30 03:46:38.319 INF [AssetFileServerFS] Handling request url=/assets/AppShell-BbBt6Pcg.js file=assets/AppShell-BbBt6Pcg.js
+Aug 30 03:46:38.328 INF [AssetFileServerFS] Handling request url=/assets/Inter-Variable-Dx4kXJAl.woff2 file=assets/Inter-Variable-Dx4kXJAl.woff2
+Aug 30 03:46:38.364 INF [AssetFileServerFS] Handling request url=/favicon.svg file=favicon.svg
+Aug 30 03:46:38.639 INF [AssetFileServerFS] Handling request url=/assets/CascadiaCode-BLEi_uz2.ttf file=assets/CascadiaCode-BLEi_uz2.ttf
+2026-08-30T01:46:39Z INFO  license:validate request tokenLen=0 refreshLen=0
+2026-08-30T01:46:39Z INFO  license:validate result state=anonymous deviceOK=false entitlementCount=0 err=no session token provided
+2026-08-30T01:46:41Z INFO  license:validate request tokenLen=0 refreshLen=0
+2026-08-30T01:46:41Z INFO  license:validate result state=anonymous deviceOK=false entitlementCount=0 err=no session token provided
+2026-08-30T01:47:23Z INFO  telemetry source: state=stale available=true reconnectAttempt=0
+2026-08-30T01:47:24Z INFO  telemetry source: state=live available=true reconnectAttempt=0
+Aug 30 03:48:32.390 WRN Window #1 not found
+[0830/034832.413:ERROR:ui\gfx\win\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412

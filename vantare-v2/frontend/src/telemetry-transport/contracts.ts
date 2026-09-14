@@ -25,7 +25,6 @@ export type {
 } from "../generated/telemetry";
 
 export const TELEMETRY_PRODUCTS = [
-  "overlay",
   "engineer",
   "strategy",
   "analysis",
@@ -113,7 +112,7 @@ function parseEventName(name: string): {
   product: ProductID;
   kind: EventKind;
 } {
-  const match = /^telemetry:(overlay|engineer|strategy|analysis):(projection|status|fact)$/.exec(
+  const match = /^telemetry:(engineer|strategy|analysis):(projection|status|fact)$/.exec(
     name,
   );
   if (!match) {

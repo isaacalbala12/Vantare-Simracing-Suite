@@ -1,0 +1,197 @@
+{
+  "schema": "vantare.huella.cdp.v1",
+  "capturedAt": "2026-08-30T18:24:26.145Z",
+  "action": "inspect",
+  "control": null,
+  "durationSeconds": 1,
+  "expectedWidgets": 3,
+  "renderedWidgets": 0,
+  "overlayReadyAt": null,
+  "rendererProcessIds": [],
+  "rendererProcessInfoError": null,
+  "targets": [
+    {
+      "role": "overlay",
+      "url": "http://wails.localhost/overlay.html",
+      "title": "Vantare Overlay",
+      "overlay": true,
+      "hub": false,
+      "surface": "desktop",
+      "widgetCount": 3,
+      "diagnostics": {
+        "overlay_v2_parse_duration": {
+          "count": 512,
+          "p50": 0.30000000074505806,
+          "p99": 0.6000000014901161,
+          "nonLiveSamples": 119
+        },
+        "overlay_v2_transport": {
+          "revision": 37294,
+          "frameRevision": 37294,
+          "sourceState": "stale",
+          "epoch": 1,
+          "sequence": 37442,
+          "sessionId": "lmu-session-1",
+          "vehicleCount": 18,
+          "playerPit": "track"
+        },
+        "pull": {
+          "active": true,
+          "requestsCompleted": 22331,
+          "receivedV1Projections": 22299,
+          "receivedV2Snapshots": 22296,
+          "requestDurationMs": {
+            "count": 22331,
+            "sampleCount": 512,
+            "mean": 7.7688594330752805,
+            "max": 782.1999999992549,
+            "p99": 33.20000000298023,
+            "histogram": [
+              {
+                "le": 1,
+                "count": 0
+              },
+              {
+                "le": 2,
+                "count": 0
+              },
+              {
+                "le": 4,
+                "count": 0
+              },
+              {
+                "le": 8,
+                "count": 422
+              },
+              {
+                "le": 16,
+                "count": 70
+              },
+              {
+                "le": 32,
+                "count": 14
+              },
+              {
+                "le": 64,
+                "count": 6
+              },
+              {
+                "le": 128,
+                "count": 0
+              },
+              {
+                "le": 250,
+                "count": 0
+              },
+              {
+                "le": 500,
+                "count": 0
+              },
+              {
+                "le": 1000,
+                "count": 0
+              },
+              {
+                "le": 2500,
+                "count": 0
+              },
+              {
+                "le": 5000,
+                "count": 0
+              },
+              {
+                "le": null,
+                "count": 0
+              }
+            ]
+          }
+        },
+        "shadow": {
+          "frames": 3904,
+          "mismatches": 0,
+          "declaredDifferences": 139974,
+          "notComparable": 139974,
+          "framesByPhase": {
+            "live": 3904,
+            "stale": 116,
+            "degraded": 0,
+            "no-frame": 0,
+            "transition": 0
+          },
+          "mismatchesByPhase": {
+            "live": 0,
+            "stale": 0,
+            "degraded": 0,
+            "no-frame": 0,
+            "transition": 0
+          },
+          "epochResets": 0,
+          "metrics": {
+            "overlay_shadow_not_comparable_total{feature=\"controls\",reason=\"cached-section\",phase=\"live\"}": 17906,
+            "overlay_shadow_not_comparable_total{feature=\"controls\",reason=\"stale-phase\",phase=\"stale\"}": 116,
+            "overlay_shadow_not_comparable_total{feature=\"delta\",reason=\"cached-section\",phase=\"live\"}": 17906,
+            "overlay_shadow_not_comparable_total{feature=\"delta\",reason=\"stale-phase\",phase=\"stale\"}": 116,
+            "overlay_shadow_not_comparable_total{feature=\"fuel\",reason=\"cached-section\",phase=\"live\"}": 21453,
+            "overlay_shadow_not_comparable_total{feature=\"fuel\",reason=\"stale-phase\",phase=\"stale\"}": 116,
+            "overlay_shadow_not_comparable_total{feature=\"player-instruments\",reason=\"cached-section\",phase=\"live\"}": 17906,
+            "overlay_shadow_not_comparable_total{feature=\"player-instruments\",reason=\"stale-phase\",phase=\"stale\"}": 116,
+            "overlay_shadow_not_comparable_total{feature=\"relative\",reason=\"cached-section\",phase=\"live\"}": 21465,
+            "overlay_shadow_not_comparable_total{feature=\"relative\",reason=\"stale-phase\",phase=\"stale\"}": 116,
+            "overlay_shadow_not_comparable_total{feature=\"session\",reason=\"cached-section\",phase=\"live\"}": 20888,
+            "overlay_shadow_not_comparable_total{feature=\"session\",reason=\"stale-phase\",phase=\"stale\"}": 116,
+            "overlay_shadow_not_comparable_total{feature=\"standings\",reason=\"cached-section\",phase=\"live\"}": 21638,
+            "overlay_shadow_not_comparable_total{feature=\"standings\",reason=\"stale-phase\",phase=\"stale\"}": 116
+          },
+          "retained": {
+            "metricKeys": 14,
+            "pendingLegacy": 64,
+            "pendingOverlayV2": 64,
+            "comparedSequences": 64
+          }
+        }
+      },
+      "probe": {
+        "rafPerSecond": 123,
+        "longTaskCount": 0,
+        "longTaskTotalMs": 0,
+        "longTaskMaxMs": 0,
+        "widgetCount": 3
+      },
+      "memory": {
+        "jsHeapUsedBytes": 67552460,
+        "jsHeapTotalBytes": 130469888,
+        "documents": 1,
+        "nodes": 444,
+        "jsEventListeners": 177
+      },
+      "memoryError": null,
+      "screenshot": null
+    },
+    {
+      "role": "hub",
+      "url": "http://wails.localhost/#/hub",
+      "title": "Vantare",
+      "overlay": false,
+      "hub": true,
+      "surface": "hub",
+      "widgetCount": 0,
+      "diagnostics": null,
+      "probe": {
+        "rafPerSecond": 123,
+        "longTaskCount": 0,
+        "longTaskTotalMs": 0,
+        "longTaskMaxMs": 0,
+        "widgetCount": 0
+      },
+      "memory": {
+        "jsHeapUsedBytes": 49428440,
+        "jsHeapTotalBytes": 53682176,
+        "documents": 1,
+        "nodes": 100,
+        "jsEventListeners": 199
+      },
+      "memoryError": null,
+      "screenshot": null
+    }
+  ]
+}

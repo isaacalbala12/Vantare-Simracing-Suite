@@ -1,9 +1,14 @@
+import { buildPedalsTelemetryViewModelV2 } from "../pedals-telemetry/pedals-telemetry-view-model-v2";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { OverlayFrameV2, OverlayUpdateV2 } from "../../../generated/telemetry";
-import { buildPedalsTelemetryCompactViewModel } from "./pedals-telemetry-compact-view-model";
 import { buildPedalsTelemetryCompactViewModelV2 } from "./pedals-telemetry-compact-view-model-v2";
+import {
+  formatPedalsTelemetryGear,
+  formatPedalsTelemetryRpm,
+  formatPedalsTelemetrySpeed,
+} from "../pedals-telemetry/pedals-telemetry-view-model";
 
 function golden(vehicles: number): OverlayUpdateV2 {
   return JSON.parse(
@@ -82,21 +87,16 @@ describe("pedals-telemetry-compact v2 view model", () => {
     expect(mps.speedKph).toBeCloseTo(180, 9);
   });
 
-  it("equivalencia con v1 sobre fixture sintética", () => {
+  it("formatea textos con los helpers compartidos del canal pedals", () => {
     const v2 = buildPedalsTelemetryCompactViewModelV2(goldenFrame(), { state: "live" }, { showSpeed: true, showRpm: true, showClutch: true });
-    const snapshot = {
-      status: "ready" as const,
-      capturedAt: Date.now(),
-      session: { type: "race" as const },
-      player: { inPit: false, throttle: 0.75, brake: 0.125, clutch: 0, speedKph: 180, rpm: 7200, gear: 4 },
-      scoring: [],
-    };
-    const v1 = buildPedalsTelemetryCompactViewModel(snapshot, { showSpeed: true, showRpm: true, showClutch: true });
-    expect(v2.throttle).toBeCloseTo(v1.throttle, 9);
-    expect(v2.brake).toBeCloseTo(v1.brake, 9);
-    expect(v2.speedKph).toBeCloseTo(v1.speedKph ?? 0, 9);
-    expect(v2.speedText).toBe(v1.speedText);
-    expect(v2.rpmText).toBe(v1.rpmText);
-    expect(v2.gearText).toBe(v1.gearText);
+    expect(v2.speedText).toBe(formatPedalsTelemetrySpeed(v2.speedKph));
+    expect(v2.rpmText).toBe(formatPedalsTelemetryRpm(v2.rpm));
+    expect(v2.gearText).toBe(formatPedalsTelemetryGear(v2.gear));
   });
+});
+
+it.each([[-1,"R"],[0,"N"],[5,"5"],[-2,"\u2014"]] as const)("both V2 instruments format gear %s", (v, text) => {
+ const frame=syntheticFrame({gear:{q:"ok",v}});
+ expect(buildPedalsTelemetryCompactViewModelV2(frame,{state:"live"},{showSpeed:true,showRpm:true,showClutch:true}).gearText).toBe(text);
+ expect(buildPedalsTelemetryViewModelV2(frame,{state:"live"},{showPosition:true,showClutch:true}).gearText).toBe(text);
 });

@@ -7,6 +7,7 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
 )
 
 func TestBuildControlsPublishesTheCanonicalSeriesQuantized(t *testing.T) {
@@ -33,8 +34,16 @@ func TestBuildControlsPublishesTheCanonicalSeriesQuantized(t *testing.T) {
 	if view.Throttle[0] != 750 || view.Brake[0] != 125 || view.Clutch[0] != 0 {
 		t.Fatalf("quantized sample = %d/%d/%d, want 750/125/0", view.Throttle[0], view.Brake[0], view.Clutch[0])
 	}
-	if view.WindowMS != 1000 {
-		t.Fatalf("windowMs = %d, want the 1000 ms between the two fixture batches", view.WindowMS)
+	// The two fixture batches run one second apart: the wire carries both
+	// absolute capture instants, never a reconstructed spacing.
+	samples := final.Derived.ControlsHistory.Samples
+	if len(view.CapturedAtMS) != 2 ||
+		view.CapturedAtMS[0] != samples[0].CapturedAt.UnixMilli() ||
+		view.CapturedAtMS[1] != samples[1].CapturedAt.UnixMilli() {
+		t.Fatalf("capturedAtMS = %v, want the two real fixture instants", view.CapturedAtMS)
+	}
+	if view.CapturedAtMS[1]-view.CapturedAtMS[0] != 1000 {
+		t.Fatalf("capturedAtMS span = %d, want the 1000 ms between the two fixture batches", view.CapturedAtMS[1]-view.CapturedAtMS[0])
 	}
 }
 
@@ -68,7 +77,8 @@ func TestBuildControlsWithoutACanonicalHistoryInventsNothing(t *testing.T) {
 	}
 	final.Derived.ControlsHistory = derive.ControlHistory{Freshness: schema.FreshnessMissing}
 	view := BuildControls(final).History
-	if view.Q != QualityMissing || view.Throttle != nil || view.WindowMS != 0 {
+	if view.Q != QualityMissing || view.Throttle != nil || view.CapturedAtMS != nil ||
+		view.SpeedMPS != nil || view.RPM != nil || view.Gear != nil {
 		t.Fatalf("an absent history must stay absent: %#v", view)
 	}
 
@@ -97,7 +107,7 @@ func TestBuildControlsKeepsAStaleSeriesMarkedStale(t *testing.T) {
 	}
 }
 
-func TestBuildControlsWindowIsZeroForASinglePoint(t *testing.T) {
+func TestBuildControlsSinglePointKeepsItsRealInstant(t *testing.T) {
 	t.Parallel()
 
 	final, ok := builderFinalState(t, 20).Value()
@@ -105,16 +115,23 @@ func TestBuildControlsWindowIsZeroForASinglePoint(t *testing.T) {
 		t.Fatal("missing final state")
 	}
 	final.Derived.ControlsHistory.Samples = final.Derived.ControlsHistory.Samples[:1]
-	if view := BuildControls(final).History; view.WindowMS != 0 || len(view.Throttle) != 1 {
-		t.Fatalf("a single point spans nothing: %#v", view)
+	view := BuildControls(final).History
+	if len(view.Throttle) != 1 || len(view.CapturedAtMS) != 1 {
+		t.Fatalf("a single point is still one aligned row: %#v", view)
+	}
+	if want := final.Derived.ControlsHistory.Samples[0].CapturedAt.UnixMilli(); view.CapturedAtMS[0] != want {
+		t.Fatalf("capturedAtMS = %d, want the real fixture instant %d", view.CapturedAtMS[0], want)
 	}
 }
 
 // The full canonical window is the section's worst case. Measuring it here is
 // what keeps TestFrameV2SyntheticFullUnder64KiBWith104Vehicles honest: the
 // history belongs to the player alone, so it does not scale with the grid, but
-// its cost has to be a number and not an assumption.
-func TestBuildControlsAtTheCanonicalMaximumStaysUnderTwoKiB(t *testing.T) {
+// its cost has to be a number and not an assumption. The A1 shape carries one
+// absolute instant plus three quality-bearing motion cells per sample, so the
+// bound below is calibrated to that specified shape, not to the old
+// pedals-only section.
+func TestBuildControlsAtTheCanonicalMaximumStaysUnderTwelveKiB(t *testing.T) {
 	t.Parallel()
 
 	final, ok := builderFinalState(t, 20).Value()
@@ -127,6 +144,9 @@ func TestBuildControlsAtTheCanonicalMaximumStaysUnderTwoKiB(t *testing.T) {
 		samples[index] = derive.ControlSample{
 			CapturedAt: origin.Add(time.Duration(index) * 16 * time.Millisecond),
 			Throttle:   schema.Ratio(0.876), Brake: schema.Ratio(0.543), Clutch: schema.Ratio(0.321),
+			SpeedMPS:  builderPresent(82.5),
+			EngineRPM: builderPresent(vehicle.EngineRPM(7250)),
+			Gear:      builderPresent(vehicle.Gear(6)),
 		}
 	}
 	final.Derived.ControlsHistory = derive.ControlHistory{Freshness: schema.FreshnessFresh, Samples: samples}
@@ -136,10 +156,21 @@ func TestBuildControlsAtTheCanonicalMaximumStaysUnderTwoKiB(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("controls section with %d samples: %d bytes", derive.MaxControlsHistory, len(payload))
-	if len(payload) >= 2*1024 {
-		t.Fatalf("controls section = %d bytes, want < %d", len(payload), 2*1024)
+	if len(payload) >= 12*1024 {
+		t.Fatalf("controls section = %d bytes, want < %d", len(payload), 12*1024)
 	}
-	if view.History.WindowMS != int64(derive.MaxControlsHistory-1)*16 {
-		t.Fatalf("windowMs = %d, want the full span of the series", view.History.WindowMS)
+	history := view.History
+	if len(history.CapturedAtMS) != derive.MaxControlsHistory ||
+		len(history.SpeedMPS) != derive.MaxControlsHistory ||
+		len(history.RPM) != derive.MaxControlsHistory ||
+		len(history.Gear) != derive.MaxControlsHistory {
+		t.Fatalf("full window must stay index-aligned: %+v", map[string]int{
+			"capturedAtMS": len(history.CapturedAtMS), "throttle": len(history.Throttle),
+			"speedMPS": len(history.SpeedMPS), "rpm": len(history.RPM), "gear": len(history.Gear),
+		})
+	}
+	if history.CapturedAtMS[derive.MaxControlsHistory-1]-history.CapturedAtMS[0] != int64(derive.MaxControlsHistory-1)*16 {
+		t.Fatalf("capturedAtMS span = %d, want the full %d ms span of the series",
+			history.CapturedAtMS[derive.MaxControlsHistory-1]-history.CapturedAtMS[0], (derive.MaxControlsHistory-1)*16)
 	}
 }

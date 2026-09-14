@@ -168,6 +168,12 @@ jobs:
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: pnpm install --frozen-lockfile
 
+      - name: Install Playwright Chromium for blocking frontend tests
+        working-directory: ${{ env.VANTARE_DIR }}/frontend
+        run: |
+          pnpm exec playwright install chromium
+          if ($LASTEXITCODE -ne 0) { throw "playwright chromium install failed" }
+
       - name: Frontend build
         working-directory: ${{ env.VANTARE_DIR }}/frontend
         run: pnpm build

@@ -71,6 +71,7 @@ export function buildDeltaAdvancedViewModelV2(
     type: "delta-advanced",
     status: source.state === "stale" ? "stale" : "ready",
     statusMessage: source.reason || undefined,
+    reference: frame.delta.reference || undefined,
     best,
     availability,
     showUnavailableFields: content.showUnavailableFields,

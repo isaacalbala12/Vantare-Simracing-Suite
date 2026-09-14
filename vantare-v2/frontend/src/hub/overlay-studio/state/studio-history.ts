@@ -16,7 +16,15 @@ function cloneDocument(document: ProfileDocumentV3): ProfileDocumentV3 {
 }
 
 function documentsEqual(left: ProfileDocumentV3, right: ProfileDocumentV3): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
+  // Go serializes map keys in a different order from the inspector. Object
+  // order is not a document edit; array order (widgets/columns) still is.
+  const canonical = (document: ProfileDocumentV3) => JSON.stringify(document, (_key, value: unknown) => {
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0));
+    }
+    return value;
+  });
+  return canonical(left) === canonical(right);
 }
 
 function trimPast(past: ProfileDocumentV3[], limit: number): ProfileDocumentV3[] {

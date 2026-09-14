@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 4,
+  "id": "isa996-six-l1",
+  "name": "ISA996 seis widgets nivel fijo 1",
+  "displayMode": "racing",
+  "monitorIndex": 0,
+  "layoutViewport": {"width": 1920, "height": 1080},
+  "defaultVisualSystemId": "vantare-endurance",
+  "performance": {"mode": "level", "level": 1},
+  "layouts": {"general": {"type": "general", "widgets": [
+    {"id":"bench-standings","type":"standings","layout":{"x":16,"y":16,"w":826,"h":560,"zIndex":1,"aspectLocked":true},"behavior":{"enabled":true},"content":{},"visual":{"systemId":"vantare-endurance","systemVersion":1,"configVersion":1,"baseSettings":{"templateId":"standings-redline","showSessionHeader":true},"appearanceOverrides":{}}},
+    {"id":"bench-relative","type":"relative","layout":{"x":1100,"y":16,"w":760,"h":480,"zIndex":2,"aspectLocked":true},"behavior":{"enabled":true},"content":{},"visual":{"systemId":"vantare-endurance","systemVersion":1,"configVersion":1,"baseSettings":{"templateId":"relative-redline-mirror"},"appearanceOverrides":{}}},
+    {"id":"bench-pedals","type":"pedals","layout":{"x":860,"y":16,"w":220,"h":360,"zIndex":3,"aspectLocked":true},"behavior":{"enabled":true},"content":{},"visual":{"systemId":"vantare-endurance","systemVersion":1,"configVersion":1,"baseSettings":{"templateId":"pedals-redline"},"appearanceOverrides":{}}},
+    {"id":"bench-fuel","type":"fuel-strategy","layout":{"x":16,"y":600,"w":680,"h":204,"zIndex":4,"aspectLocked":true},"behavior":{"enabled":true},"content":{},"visual":{"systemId":"vantare-original","systemVersion":1,"configVersion":1,"baseSettings":{},"appearanceOverrides":{}}},
+    {"id":"bench-weather","type":"track-weather","layout":{"x":750,"y":600,"w":240,"h":421,"zIndex":5,"aspectLocked":true},"behavior":{"enabled":true},"content":{},"visual":{"systemId":"vantare-original","systemVersion":1,"configVersion":1,"baseSettings":{},"appearanceOverrides":{}}},
+    {"id":"bench-map","type":"track-map","layout":{"x":1100,"y":600,"w":640,"h":440,"zIndex":6,"aspectLocked":true},"behavior":{"enabled":true},"content":{},"visual":{"systemId":"vantare-endurance","systemVersion":1,"configVersion":1,"baseSettings":{"templateId":"track-map-outline","showTrackLabel":true},"appearanceOverrides":{}}}
+  ]}}
+}

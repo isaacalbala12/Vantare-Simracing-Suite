@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
+import { translate } from "../../../i18n/i18n";
 import { ORBIT_KEYS, orbitStore } from "../../orbit/orbit-store";
 import {
   appearanceSummary,
@@ -14,7 +15,7 @@ import {
 } from "./studio-orbit-model";
 
 const T: Record<string, string> = {
-  "studio.summary.fps": "{{n}} fps",
+  "studio.summary.performanceManaged": "política del perfil",
   "studio.summary.pit.any": "siempre",
   "studio.summary.pit.inPit": "solo en boxes",
   "studio.summary.pit.onTrack": "solo en pista",
@@ -68,17 +69,47 @@ describe("studio-orbit-model", () => {
     expect(designSummary(withProvenance, t)).toBe("Vantare Crystal · Crystal Bar");
   });
 
-  it("resume el comportamiento con fps, boxes y sesiones", () => {
+  it.each([["compact", "Signature"], ["broadcast", "Broadcast"]])("muestra el nombre vigente de %s al reabrir un perfil sin modificarlo", (id, name) => {
+    const widget = build({ type: "standings" });
+    widget.visual = { ...widget.visual, systemId: "vantare-functional", provenance: {
+      designId: `standings-functional-${id}`, designName: `Functional ${name} · Preview`,
+      origin: "vantare", appliedAt: "2026-09-09T00:00:00Z",
+    } };
+    const saved = JSON.stringify(widget);
+    const es = (key: string) => translate("es", key);
+    expect(designSummary(widget, es)).toBe(`Eficiencia · ${name}`);
+    expect(inspectorMeta(widget, es)).toBe(`${name} · 280 × 96`);
+    expect(JSON.stringify(widget)).toBe(saved);
+  });
+
+  it.each(["user", "unknown", "different-widget", "different-system", "different-version"])("conserva el nombre guardado cuando la procedencia es %s", (kind) => {
+    const widget = build({ type: kind === "different-widget" ? "delta" : "standings" });
+    widget.visual = { ...widget.visual,
+      systemId: kind === "different-system" ? "vantare-crystal" : "vantare-functional",
+      systemVersion: kind === "different-version" ? 2 : 1,
+      provenance: {
+        designId: kind === "unknown" ? "unknown" : "standings-functional-compact",
+        designName: "Mi estilo", origin: kind === "user" ? "user" : "vantare",
+        appliedAt: "2026-09-09T00:00:00Z",
+      },
+    };
+    expect(designSummary(widget, t)).toContain(" · Mi estilo");
+    expect(inspectorMeta(widget, t)).toBe("Mi estilo · 280 × 96");
+  });
+
+  it("resume el comportamiento con política, boxes y sesiones", () => {
     // El filtro de boxes solo se nombra cuando restringe: en el resumen corto
     // "siempre" gastaba la mitad de la linea para decir "sin filtro".
-    expect(behaviorSummary(build(), t)).toBe("15 fps · todas");
+    expect(behaviorSummary(build(), t)).toBe("política del perfil · todas");
     const restricted = build();
     restricted.behavior = {
       ...restricted.behavior,
       updateHz: 30,
       visibleWhen: { inPit: false, sessionTypes: ["race", "practice"] },
     };
-    expect(behaviorSummary(restricted, t)).toBe("30 fps · solo en pista · 2 sesiones");
+    expect(behaviorSummary(restricted, t)).toBe(
+      "política del perfil · solo en pista · 2 sesiones",
+    );
   });
 
   it("resume la apariencia con los overrides del usuario", () => {

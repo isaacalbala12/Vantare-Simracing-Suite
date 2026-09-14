@@ -8,7 +8,7 @@ import { useI18n } from '../../../i18n/I18nProvider';
 import { STUDIO_WIDGET_ACCESS_MESSAGE_KEY } from '../studio-v3-i18n';
 import { getStudioHotkey } from '../state/studio-hotkeys';
 import { listStudioMonitors, type StudioMonitor } from '../state/studio-monitor-client';
-import { useStudioDocument, useStudioPreview } from '../state/studio-store';
+import { useStudioActions, useStudioActiveLayout, useStudioPreview, useStudioSelector, useStudioWidgetPolicy } from '../state/studio-store';
 import { clientToLogical, resolveCanvasScale } from './canvas-geometry';
 import { resolveCanvasBackground, safeAreaInsets } from './canvas-backgrounds';
 import { CanvasActionBar } from './CanvasActionBar';
@@ -16,7 +16,7 @@ import { CanvasToolbar } from './CanvasToolbar';
 import { PreviewSourceControls } from './PreviewSourceControls';
 import { CanvasGuides } from './CanvasGuides';
 import { StudioWidgetFrame } from './StudioWidgetFrame';
-import { useStudioTelemetryLiveAvailable, useStudioTelemetrySnapshot } from './studio-telemetry';
+import { useStudioTelemetryLiveAvailable } from './studio-telemetry';
 import { useCanvasInteraction } from './useCanvasInteraction';
 import {
   buildWidgetAction,
@@ -40,21 +40,15 @@ export type StudioCanvasProps = {
 export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement {
   const { onOpenBrowserView, diagnostics, listMonitors = listStudioMonitors } = props;
   const { t } = useI18n();
-  const {
-    access,
-    document,
-    activeLayout,
-    activeSession,
-    selectedWidgetId,
-    savedDocument,
-    selectWidget,
-    dispatch,
-    notifyAccessDenied,
-  } = useStudioDocument();
+  const widgetPolicy = useStudioWidgetPolicy();
+  const document = useStudioSelector((s) => s.history?.present ?? null);
+  const activeLayout = useStudioActiveLayout();
+  const activeSession = useStudioSelector((s) => s.activeSession);
+  const selectedWidgetId = useStudioSelector((s) => s.selectedWidgetId);
+  const savedDocument = useStudioSelector((s) => s.history?.saved ?? null);
+  const { selectWidget, dispatch, notifyAccessDenied } = useStudioActions();
   const { preview, setPreview } = useStudioPreview();
   const liveAvailable = useStudioTelemetryLiveAvailable();
-  const liveSnapshot = useStudioTelemetrySnapshot();
-  const [snapshotDuringInteraction, setSnapshotDuringInteraction] = useState(liveSnapshot);
   const viewportRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<HTMLDivElement>(null);
@@ -154,8 +148,8 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
   const safeInsets = safeAreaInsets(layoutViewport.width, layoutViewport.height);
 
   const canMutateLayout = useCallback(
-    (widget: WidgetInstanceV3) => canMutateWidget(access, widget),
-    [access],
+    (widget: WidgetInstanceV3) => canMutateWidget(widgetPolicy, widget),
+    [widgetPolicy],
   );
   const onLayoutBlocked = useCallback(() => {
     notifyAccessDenied(t(STUDIO_WIDGET_ACCESS_MESSAGE_KEY));
@@ -173,16 +167,6 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
     canMutateLayout,
     onLayoutBlocked,
   });
-
-  const isCanvasInteracting = interaction.interaction.kind !== 'idle';
-
-  useEffect(() => {
-    if (isCanvasInteracting) return;
-    const timer = window.setTimeout(() => setSnapshotDuringInteraction(liveSnapshot), 0);
-    return () => window.clearTimeout(timer);
-  }, [isCanvasInteracting, liveSnapshot]);
-
-  const snapshotOverride = isCanvasInteracting ? snapshotDuringInteraction : undefined;
 
   const deleteConfirm = useDeleteWidgetConfirm();
   const confirmDelete = useCallback((message: string) => window.confirm(message), []);
@@ -420,10 +404,12 @@ export function StudioCanvas(props: StudioCanvasProps = {}): React.ReactElement 
               <StudioWidgetFrame
                 key={widget.id}
                 widget={widget}
+                profileId={document?.id ?? 'studio-unloaded'}
                 layout={interaction.resolveLayout(widget)}
+                layoutViewportWidth={layoutViewport.width}
+                layoutViewportHeight={layoutViewport.height}
                 previewActive={interaction.isWidgetPreviewActive(widget.id)}
                 selected={selectedWidgetId === widget.id}
-                snapshotOverride={snapshotOverride}
                 onSelect={selectWidget}
                 onFramePointerDown={interaction.onFramePointerDown}
                 onResizePointerDown={interaction.onResizePointerDown}

@@ -2,7 +2,6 @@ import { validateInspectorControls } from "../../core/inspector-control";
 import type { WidgetInstanceV3 } from "../../core/profile-document";
 import type { WidgetTypeDefinition } from "../../core/widget-definition";
 import { getWidgetRequiredFeature } from "../../core/widget-definition";
-import { buildDeltaViewModel } from "./delta-view-model";
 import type { DeltaViewModel } from "./delta-view-model";
 
 export const DELTA_REFERENCES = ["personal-best", "session-best", "previous-lap"] as const;
@@ -85,5 +84,4 @@ export const deltaDefinition: WidgetTypeDefinition<DeltaContent, DeltaViewModel>
     }
     return { reference: (value.reference as DeltaReference | undefined) ?? "personal-best" };
   },
-  buildViewModel: buildDeltaViewModel,
 };

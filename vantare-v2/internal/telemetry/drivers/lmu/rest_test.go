@@ -568,7 +568,7 @@ func BenchmarkRESTDecodeObservations(b *testing.B) {
 			b.Fatal(err)
 		}
 		cache := restCache{}
-		updateStandingsFields(&cache, rows, time.Time{}, monotonicStamp{elapsed: 0, set: true})
+		updateStandingsFields(&cache, rows, restResponse{receivedUTC: time.Time{}, receivedMono: monotonicStamp{elapsed: 0, set: true}})
 		fields, err := validateSessionFields(info, time.Time{}, monotonicStamp{elapsed: 0, set: true})
 		if err != nil {
 			b.Fatal(err)

@@ -1,5 +1,13 @@
 # Mantenimiento del roadmap
 
+> **Notion primero (2026-09-14):** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192)
+> y leer la tarea y su proyecto antes de ejecutar. Actualizar Notion al empezar,
+> bloquear, entregar y verificar una integración; releer para comprobar la escritura.
+> [Contrato vigente](vantare-program/notion-transition.md). GitHub conserva código, PR, CI y releases;
+> las referencias ISA exigidas por los controles son un puente técnico temporal.
+> Su adaptación pendiente nunca permite omitir el seguimiento en Notion.
+
+
 Este documento describe el procedimiento vigente para mantener el roadmap
 publico de Vantare. La autoridad del planning no se duplica en un registro de
 ejecucion historico.
@@ -10,14 +18,14 @@ Cada documento tiene una responsabilidad distinta:
 
 | Fuente | Responsabilidad |
 |---|---|
-| GitHub Issue `ISA-N` | Alcance, dependencias, estado operativo, rama y entrega |
+| Tarea Notion `VAN-N` | Alcance, dependencias, estado operativo, rama y entrega |
 | Handoff vivo | Continuidad tecnica, decisiones, evidencia, riesgos y siguiente accion |
 | `docs/roadmap/plan.md` | Fases, areas, hitos, alcance futuro y estado publico |
 | `docs/roadmap/roadmap.json` | Artefacto generado que consume la app; no se edita a mano |
 | `docs/current-plan.md` | Registro historico; no se actualiza como parte del flujo normal |
 | `docs/roadmap-execution-board.md` | Tablero historico; no se actualiza como parte del flujo normal |
 
-Si hay conflicto, prevalecen la issue y el handoff para la ejecucion, y
+Si hay conflicto, prevalecen la tarea Notion y el handoff técnico para la ejecucion, y
 `docs/roadmap/plan.md` para el planning publico. El roadmap no sustituye los
 contratos tecnicos ni el handoff.
 
@@ -31,8 +39,8 @@ El cambio se hace en el mismo PR que introduce el cambio material:
 3. Al completar una entrega que el roadmap anuncia: cambiar el hito de `plan` a
    `feature`, `fix` o `release`, reescribir su cuerpo para describir lo que
    funciona hoy y actualizar el progreso o los items de la fase si corresponde.
-4. Al cerrar una issue sin cambio de alcance publico: actualizar la issue y el
-   handoff; no hace falta tocar el roadmap solo por cambiar el estado interno.
+4. Al cerrar una issue sin cambio de alcance publico: actualizar la tarea Notion y el
+   handoff técnico; no hace falta tocar el roadmap solo por cambiar el estado interno.
 
 Un hito entregado no puede seguir presentandose como una promesa pendiente.
 

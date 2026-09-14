@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-968",
+  "type": "fix",
+  "summary": "Standings Redline amplía físicamente su frame cuando las columnas configuradas necesitan más espacio.",
+  "technicalNotes": [
+    "Redline calcula un ancho mínimo efectivo a partir de sus columnas y normaliza la geometría física compartida por Desktop, Studio y OBS; no comprime texto ni oculta columnas.",
+    "Studio conserva el desplazamiento visual al soltar, limita el borde derecho y no guarda cambios cuando solo se selecciona el widget sin moverlo.",
+    "La regresión atraviesa RuntimeOverlaySurface, RuntimeWidgetFrame, WidgetVisualViewport, WidgetVisualHost y el builder V2 con el golden canónico de 20 vehículos."
+  ],
+  "testing": [
+    "Abrir Standings Redline en Studio desde un perfil estrecho y confirmar que frame, selección y tiradores muestran el ancho efectivo completo sin recortes.",
+    "Arrastrarlo desde el borde derecho hacia ambos lados y confirmar que no salta al soltar; un clic sin arrastre no debe ensuciar el perfil.",
+    "Comprobar Desktop y OBS con telemetría real, 20 filas completas y cero ganadas/perdidas durante Practice."
+  ],
+  "knownLimitations": [
+    "La validación física S3 en Wails/LMU permanece pendiente antes de promover la rama."
+  ]
+}

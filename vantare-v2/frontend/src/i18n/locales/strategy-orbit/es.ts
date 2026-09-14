@@ -193,6 +193,7 @@ export const strategyOrbitEs: Record<string, string> = {
   "strategy.pit.newSet": "4 nuevos",
 
   "strategy.editor.laps": "Vueltas",
+  "strategy.editor.suspendBlocker": "Estrategia tiene un stint sin aplicar",
   "strategy.editor.fuel": "Combustible",
   "strategy.editor.pace": "Ritmo",
   "strategy.editor.ofDriver": "del piloto",
@@ -270,7 +271,7 @@ export const strategyOrbitEs: Record<string, string> = {
 
   "strategy.empty.noneTitle": "Sin eventos seguidos",
   "strategy.empty.none":
-    "Sigue una serie en Carreras y aparecerá aquí con sus próximas salidas.",
+    "Sigue una serie en Calendario y aparecerá aquí con sus próximas salidas.",
 
   "strategy.context.events": "Eventos",
   "strategy.context.noEvents": "Aún no tienes ningún evento de estrategia.",
@@ -496,6 +497,7 @@ export const strategyOrbitEs: Record<string, string> = {
   "strategy.weather.bucket.wet": "Mojado",
   "strategy.weather.add": "Añadir escenario",
   "strategy.weather.saveError": "No se pudo guardar el clima en el documento canónico.",
+  "strategy.weather.suspendBlocker": "Estrategia tiene un clima sin guardar",
   "strategy.weather.robust": "Recomendación robusta",
   "strategy.weather.minimax": "Minimax regret",
   "strategy.weather.maxRegret": "Regret máximo",

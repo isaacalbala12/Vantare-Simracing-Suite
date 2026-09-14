@@ -1,0 +1,98 @@
+@font-face { font-family: RedlineTower; src: url('/src/overlay/design-systems/vantare-endurance/standings/tower-assets/tower-condensed-400.ttf'); font-weight: 400; font-display: swap; }
+@font-face { font-family: RedlineTower; src: url('/src/overlay/design-systems/vantare-endurance/standings/tower-assets/tower-condensed-600.ttf'); font-weight: 600 800; font-display: swap; }
+@font-face { font-family: RedlineDetail; src: url('/src/overlay/design-systems/vantare-endurance/standings/tower-assets/tower-regular.ttf'); font-weight: 400; font-display: swap; }
+@font-face { font-family: RedlineDetail; src: url('/src/overlay/design-systems/vantare-endurance/standings/tower-assets/tower-bold.ttf'); font-weight: 700; font-display: swap; }
+
+/* Literal port of redline-tower.html V2. Scenery stays outside the renderer.
+   A separate class vocabulary prevents historic compact-table rules leaking in. */
+[data-widget-system="vantare-endurance"][data-redline-theme="tower"].ven-root {
+  padding: 0; gap: 0; width: 100%; height: 100%; overflow: hidden;
+  font-synthesis: auto; text-shadow: none; filter: none;
+}
+.ven-tower, .ven-tower * { box-sizing: border-box; }
+.ven-tower {
+  position: relative; width: 100%; height: 100%; overflow: hidden;
+  border: 1px solid #b3bac12e; border-radius: 5px 5px 30px 5px;
+  background: rgb(16 23 27 / var(--ven-red-surface-alpha, .95));
+  color: #f2f4f5; font: 400 14px/1.5 RedlineTower, sans-serif;
+  letter-spacing: normal; text-transform: none; text-shadow: none;
+}
+.ven-tower-header {
+  height: 99px; display: flex; position: relative; align-items: center;
+  padding: 20px 20px 18px 24px; background: linear-gradient(110deg,#070d11a6,#17212bad);
+}
+.ven-tower-wordmark {
+  width: 275px; height: 52px; flex: none; mix-blend-mode: screen;
+  background: url('/src/overlay/design-systems/vantare-endurance/standings/tower-assets/tower-reference.png') -301px -193px;
+}
+.ven-tower-signature, .ven-tower-race, .ven-tower-compact { display: flex; flex-direction: column; font-family: RedlineDetail, sans-serif; }
+.ven-tower-signature { position: relative; padding-left: 19px; gap: 6px; }
+.ven-tower-signature::before { content: ''; position: absolute; left: 0; top: 2px; bottom: 2px; width: 4px; background: #e32b39; border-radius: 0 0 4px 0; }
+.ven-tower-signature small { font-size: 11px; line-height: 1; letter-spacing: 4.7px; color: #aeb9c5; }
+.ven-tower-signature strong { font-size: 35px; line-height: 1; font-style: italic; letter-spacing: 1px; font-weight: 700; }
+.ven-tower-race strong { font-size: 37px; line-height: 1; letter-spacing: 2px; }
+.ven-tower-race small { font-size: 10px; line-height: 1; margin-top: 8px; letter-spacing: 2.4px; color: #a6b3c0; }
+.ven-tower-compact strong { font-size: 23px; line-height: 1; letter-spacing: 5px; font-weight: 400; }
+.ven-tower-compact small { font-size: 10px; line-height: 1; margin-top: 9px; letter-spacing: 4px; color: #ed5260; }
+.ven-tower-session { position: absolute; left: 328px; top: 24px; border-left: 1px solid #dce0e6bd; padding-left: 22px; height: 53px; }
+.ven-tower-session-label { font: 400 15px/1.15 RedlineDetail, sans-serif; }
+.ven-tower-time-label { display: block; }
+.ven-tower-clock { display: block; font: 700 27px/1.35 RedlineDetail, sans-serif; letter-spacing: -.4px; white-space: nowrap; }
+[data-redline-header="session"] .ven-tower-session { border-left: 0; left: auto; right: 24px; padding-left: 0; top: 23px; text-align: right; }
+[data-redline-header="session"] .ven-tower-session-label { font-size: 10px; letter-spacing: 2px; }
+[data-redline-header="session"] .ven-tower-clock { font-size: 34px; font-weight: 400; }
+[data-redline-header="compact"] .ven-tower-session { border-left-color: #dce0e62b; }
+[data-widget-system="vantare-endurance"] .ven-tower-category {
+  height: 38px; display: flex; align-items: center; justify-content: space-between;
+  position: relative; padding: 0 24px;
+  background: linear-gradient(105deg,#ce1726d9,#7a20308c 48%,#33141c14 100%);
+  clip-path: polygon(12px 0,100% 0,100% 100%,0 100%,0 12px);
+}
+.ven-tower-category-name { font: 700 26px/1 RedlineDetail, sans-serif; letter-spacing: .3px; }
+.ven-tower-category .ven-tower-gap-heading { font: 400 15px/1 RedlineDetail, sans-serif; letter-spacing: normal; }
+.ven-tower-rows { list-style: none; margin: 0; padding: 0; }
+[data-widget-system="vantare-endurance"] .ven-tower-row {
+  display: grid; grid-template-columns: 62px 69px 69px minmax(0,1fr) minmax(82px,max-content); align-items: center;
+  position: relative; border-bottom: 1px solid transparent; border-color: transparent;
+  background: linear-gradient(100deg,#111a2124,#11171b14 65%,transparent);
+}
+[data-widget-system="vantare-endurance"] .ven-tower-row:nth-child(even) { background: linear-gradient(100deg,#151d2221,#141c240a 85%,transparent); }
+.ven-tower-row::after { content: ''; position: absolute; bottom: 0; left: 18px; right: 16px; height: 1px; background: linear-gradient(90deg,transparent,#b0b5bc24 23%,#b0b5bc12 82%,transparent); pointer-events: none; }
+.ven-tower-position { font: italic 400 28px/1 RedlineTower, sans-serif; text-align: center; color: #ced4dc; }
+.ven-tower-manufacturer { height: 100%; align-self: stretch; background-repeat: no-repeat; background-position-x: -343px; }
+.ven-tower-manufacturer:is([data-manufacturer="porsche"],[data-manufacturer="ferrari"],[data-manufacturer="toyota"],[data-manufacturer="cadillac"],[data-manufacturer="bmw"],[data-manufacturer="aston"],[data-manufacturer="peugeot"]) { background-image: url('/src/overlay/design-systems/vantare-endurance/standings/tower-assets/tower-reference.png'); }
+.ven-tower-manufacturer[data-manufacturer="porsche"] { background-position-y: -307px; }
+.ven-tower-manufacturer[data-manufacturer="ferrari"] { background-position-y: -380px; }
+.ven-tower-manufacturer[data-manufacturer="toyota"] { background-position-y: -451px; }
+.ven-tower-manufacturer[data-manufacturer="cadillac"] { background-position-y: -523px; }
+.ven-tower-manufacturer[data-manufacturer="bmw"] { background-position-y: -815px; }
+.ven-tower-manufacturer[data-manufacturer="aston"] { background-position-y: -889px; }
+.ven-tower-manufacturer[data-manufacturer="peugeot"] { background-position-y: -965px; }
+.ven-tower-manufacturer[data-manufacturer="alpine"] { position: relative; background: #0766a4; }
+.ven-tower-manufacturer[data-manufacturer="alpine"]::after { content: ''; position: absolute; inset: 3px 0 auto; height: 65px; background: url('/src/overlay/design-systems/vantare-endurance/standings/tower-assets/tower-reference.png') -343px -599px no-repeat; }
+.ven-tower-number { font: 700 27px/1.5 RedlineDetail, sans-serif; letter-spacing: -1px; text-align: center; font-variant-numeric: tabular-nums; }
+.ven-tower-driver { font: 700 26px/1 RedlineDetail, sans-serif; white-space: nowrap; letter-spacing: 0; padding-left: 7px; }
+.ven-tower-gap { font: 400 25px/1.5 RedlineDetail, sans-serif; letter-spacing: 0; text-align: right; padding-right: 20px; white-space: nowrap; font-variant-numeric: tabular-nums; color: #e0e4e8; }
+[data-widget-system="vantare-endurance"] .ven-tower-row[data-player="true"] { border-top: 1px solid transparent; isolation: isolate; }
+[data-widget-system="vantare-endurance"][data-redline-selection="glow"] .ven-tower-row[data-player="true"] { background: linear-gradient(90deg,#e74b5814,#e74b5833 55%,#e74b581c); }
+[data-redline-selection="glow"] .ven-tower-row[data-player="true"] .ven-tower-position { color: #fff; }
+[data-widget-system="vantare-endurance"][data-redline-selection="frame"] .ven-tower-row[data-player="true"],
+[data-widget-system="vantare-endurance"][data-redline-selection="plate"] .ven-tower-row[data-player="true"] { background: none; }
+[data-redline-selection="frame"] .ven-tower-row[data-player="true"]::before { content: ''; position: absolute; inset: 5px 7px; border: 1px solid #d4e3ef85; border-radius: 3px 3px 18px 3px; border-bottom-color: #e94a58; background: #c7ddeb06; z-index: -1; }
+[data-redline-selection="plate"] .ven-tower-row[data-player="true"] .ven-tower-driver { background: #e7edf2; color: #14202b; padding: 12px 7px; border-radius: 2px 2px 14px 2px; position: relative; }
+[data-redline-selection="plate"] .ven-tower-row[data-player="true"] .ven-tower-driver::after { content: ''; position: absolute; left: 7px; top: 0; width: 22px; height: 2px; background: #e52d3c; }
+[data-widget-system="vantare-endurance"][data-redline-selection="legacy"] .ven-tower-row[data-player="true"] { background: linear-gradient(90deg,#521d22a8,#401a238c); border-top-color: #df36364d; border-bottom-color: #dc6d6d50; }
+[data-redline-selection="legacy"] .ven-tower-row[data-player="true"]::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 9px; background: #ed1c24; }
+.ven-tower-footer { height: 67px; display: flex; justify-content: space-between; align-items: center; padding: 0 24px 1px; font: 400 18px/1 RedlineDetail, sans-serif; letter-spacing: 3.8px; background: linear-gradient(100deg,#1c252c26,#20282e17); color: #cdd4dc; }
+.ven-tower-pagination { letter-spacing: 3px; white-space: nowrap; }
+
+/* Live labels are not restricted to the reference's short driver names. */
+.ven-tower-driver, .ven-tower-category-name, .ven-tower-footer > :first-child {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ven-tower-category-name { text-transform: uppercase; }
+.ven-tower-gap-heading, .ven-tower-pagination { flex-shrink: 0; }
+.ven-tower-footer { gap: 12px; }
+[data-widget-system="vantare-endurance"] .ven-tower .ven-status-message {
+  height: 36px; margin: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+}

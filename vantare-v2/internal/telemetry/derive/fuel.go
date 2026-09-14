@@ -16,6 +16,10 @@ const (
 	MaxFuelUsageWindow = 10
 	// DefaultFuelUsageWindow is the canonical window: the last three valid laps.
 	DefaultFuelUsageWindow = 3
+	// MaxFuelHistory bounds the per-lap series, not the average: every measured
+	// lap is kept up to this cap while PerLap still averages only the last
+	// DefaultFuelUsageWindow of them. The two budgets are separate on purpose.
+	MaxFuelHistory = 64
 	// fuelRefuelEpsilon is the smallest amount increase, in litres, that counts
 	// as a refuel instead of sensor noise around a monotonic drain.
 	fuelRefuelEpsilon = 0.05
@@ -32,6 +36,26 @@ type FuelUsage struct {
 	PerLap     schema.Field[energy.FuelAmount]
 	LastLap    schema.Field[energy.FuelAmount]
 	WindowLaps schema.Field[schema.Count]
+	// History is the per-lap series behind the average: one entry per measured
+	// lap, index-aligned by construction, in canonical litres. It never feeds
+	// PerLap beyond the samples the window already keeps; it only exposes them.
+	History FuelHistory
+}
+
+// FuelLapSample is one measured lap: the lap number it closed and the litres
+// it consumed. Both fields are plain values, never sentinels: a lap with no
+// measurement simply has no entry.
+type FuelLapSample struct {
+	Lap      session.LapNumber
+	Consumed energy.FuelAmount
+}
+
+// FuelHistory is the canonical per-lap fuel series of the player, oldest
+// first, capped at MaxFuelHistory. Only real tracker samples enter it: the
+// same gate that publishes into the average window appends here.
+type FuelHistory struct {
+	Freshness schema.Freshness
+	Samples   []FuelLapSample
 }
 
 func missingFuelUsage(freshness schema.Freshness) FuelUsage {
@@ -40,6 +64,7 @@ func missingFuelUsage(freshness schema.Freshness) FuelUsage {
 		PerLap:     schema.MissingField[energy.FuelAmount](),
 		LastLap:    schema.MissingField[energy.FuelAmount](),
 		WindowLaps: schema.MissingField[schema.Count](),
+		History:    FuelHistory{Freshness: freshness},
 	}
 }
 
@@ -62,6 +87,11 @@ type fuelUsageTracker struct {
 	samples  []energy.FuelAmount
 	hasLast  bool
 	lastLap  energy.FuelAmount
+	// history mirrors every sample appended to samples, oldest first, capped
+	// at MaxFuelHistory. It shares the same validity gate and the same reset,
+	// but never the window bound: the average stays short while the series
+	// stays long.
+	history []FuelLapSample
 }
 
 func newFuelUsageTracker(window int) *fuelUsageTracker {
@@ -80,6 +110,9 @@ func cloneFuelUsageTracker(input *fuelUsageTracker) *fuelUsageTracker {
 	// window is at most MaxFuelUsageWindow entries, so an eager clone is
 	// cheaper than the copy-on-write bookkeeping the delta history needs.
 	result.samples = append([]energy.FuelAmount(nil), input.samples...)
+	// The history is a plain slice of values: clone it the same eager way so
+	// the candidate never shares backing storage with the committed tracker.
+	result.history = append([]FuelLapSample(nil), input.history...)
 	return &result
 }
 
@@ -171,6 +204,10 @@ func (tracker *fuelUsageTracker) closeLap(input fuelUsageInput) {
 	if overflow := len(tracker.samples) - tracker.window; overflow > 0 {
 		tracker.samples = append([]energy.FuelAmount(nil), tracker.samples[overflow:]...)
 	}
+	tracker.history = append(tracker.history, FuelLapSample{Lap: tracker.openLap, Consumed: energy.FuelAmount(consumed)})
+	if overflow := len(tracker.history) - MaxFuelHistory; overflow > 0 {
+		tracker.history = append([]FuelLapSample(nil), tracker.history[overflow:]...)
+	}
 }
 
 func (tracker *fuelUsageTracker) invalidateOpenLap() {
@@ -180,13 +217,19 @@ func (tracker *fuelUsageTracker) invalidateOpenLap() {
 
 // output publishes the window with the freshness of the batch that produced it.
 // A degraded batch cannot invent a new average, but the laps already measured
-// stay valid, so the value survives and only its freshness drops.
+// stay valid, so the value survives and only its freshness drops. The history
+// follows the same rule: measured laps survive a stale batch, only fresher.
 func (tracker *fuelUsageTracker) output(freshness schema.Freshness) FuelUsage {
+	history := FuelHistory{
+		Freshness: freshness,
+		Samples:   append([]FuelLapSample(nil), tracker.history...),
+	}
 	if len(tracker.samples) == 0 {
 		return missingFuelUsage(freshness)
 	}
 	if freshness == schema.FreshnessMissing || freshness == schema.FreshnessInvalid {
 		freshness = schema.FreshnessStale
+		history.Freshness = schema.FreshnessStale
 	}
 	total := 0.0
 	for _, sample := range tracker.samples {
@@ -201,6 +244,7 @@ func (tracker *fuelUsageTracker) output(freshness schema.Freshness) FuelUsage {
 		PerLap:     mustDerived(energy.FuelAmount(average), freshness),
 		LastLap:    schema.MissingField[energy.FuelAmount](),
 		WindowLaps: mustDerived(schema.Count(len(tracker.samples)), freshness),
+		History:    history,
 	}
 	if tracker.hasLast {
 		result.LastLap = mustDerived(tracker.lastLap, freshness)

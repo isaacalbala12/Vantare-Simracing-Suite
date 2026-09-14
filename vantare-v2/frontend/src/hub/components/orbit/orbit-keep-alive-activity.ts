@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { TelemetryActivityGate } from '../../../overlay/runtime/use-rate-limited-telemetry';
+import type { TelemetryActivityGate } from '../../../overlay/runtime/telemetry-activity-gate';
 
 export type MutableOrbitActivityGate = TelemetryActivityGate & {
   setActive(active: boolean): void;

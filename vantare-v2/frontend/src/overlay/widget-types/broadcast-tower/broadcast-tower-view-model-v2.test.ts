@@ -44,6 +44,19 @@ describe("buildBroadcastTowerViewModelV2", () => {
     expect(model.sof).toBeUndefined();
   });
 
+  it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 2147483647])("does not expose invalid or unlimited max laps %s", (value) => {
+    const input = frame(5);
+    input.session.maxLaps = { q: "fresh", v: value };
+    const model = buildBroadcastTowerViewModelV2(input, { state: "live" } as OverlaySourceStatusV2, { rowCount: 5, showWeather: false, showSof: false });
+    expect(model.totalLaps).toBeUndefined();
+    expect(model.lap).toBe(34);
+  });
+
+  it.each([1, 240, 1000])("preserves a finite race length of %s laps", (value) => {
+    const input = frame(5);
+    input.session.maxLaps = { q: "fresh", v: value };
+    expect(buildBroadcastTowerViewModelV2(input, { state: "live" } as OverlaySourceStatusV2, { rowCount: 5, showWeather: false, showSof: false }).totalLaps).toBe(value);
+  });
   it("caps rows at ten regardless of config", () => {
     const model = buildBroadcastTowerViewModelV2(frame(20), { state: "live" } as OverlaySourceStatusV2, { rowCount: 20, showWeather: false, showSof: false });
     expect(model.rows).toHaveLength(10);

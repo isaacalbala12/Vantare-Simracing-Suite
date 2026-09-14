@@ -11,6 +11,7 @@ export type DeltaEnduranceTemplateDiagnostic = "unknown-template";
 export type DeltaEnduranceSettings = {
   templateId: DeltaEnduranceTemplateId;
   showHeader: boolean;
+  lossColor: string;
   templateDiagnostic?: DeltaEnduranceTemplateDiagnostic;
 };
 
@@ -25,19 +26,21 @@ export function parseDeltaEnduranceSettings(input: unknown): DeltaEnduranceSetti
     input && typeof input === "object" && !Array.isArray(input)
       ? (input as Record<string, unknown>)
       : {};
+  const lossColor = typeof source.lossColor === "string" && /^#[0-9a-f]{6}$/i.test(source.lossColor) ? source.lossColor : "#ff6b76";
   const showHeader = source.showHeader !== false;
   if (source.templateId === undefined) {
-    return { templateId: "delta-redline", showHeader };
+    return { templateId: "delta-redline", showHeader, lossColor };
   }
   if (isTemplateId(source.templateId)) {
-    return { templateId: source.templateId, showHeader };
+    return { templateId: source.templateId, showHeader, lossColor };
   }
-  return { templateId: "delta-redline", showHeader, templateDiagnostic: "unknown-template" };
+  return { templateId: "delta-redline", showHeader, lossColor, templateDiagnostic: "unknown-template" };
 }
 
 export const DELTA_ENDURANCE_DEFAULT_SETTINGS = {
   templateId: "delta-redline" as DeltaEnduranceTemplateId,
   showHeader: true,
+  lossColor: "#ff6b76",
 };
 
 export function normalizeDeltaEnduranceSettings(input: unknown): Record<string, unknown> {
@@ -51,5 +54,6 @@ export function normalizeDeltaEnduranceSettings(input: unknown): Record<string, 
     ...source,
     templateId: parsed.templateId,
     showHeader: parsed.showHeader,
+    lossColor: parsed.lossColor,
   };
 }

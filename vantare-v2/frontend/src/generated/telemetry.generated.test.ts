@@ -7,22 +7,20 @@ import type {
   EngineerPayloadV1,
   JSONObject,
   OverlayUpdateV2,
-  OverlayPayloadV1,
   ProductID,
   ProjectionEnvelope,
   StrategyPayloadV1,
 } from "./telemetry";
 
 type GeneratedPayloads = {
-  overlay: OverlayPayloadV1;
   engineer: EngineerPayloadV1;
   strategy: StrategyPayloadV1;
   analysis: AnalysisPayloadV1;
 };
 
+// R7a: ProductOverlay esta retirado; el contrato generado cubre los tres
+// productos V1 vivos (el legacy productivo de frontend se retira en R7b).
 const GOLDENS: Record<ProductID, string> = {
-  overlay:
-    "../internal/telemetry/projection/overlay/testdata/overlay_v1.golden.json",
   engineer:
     "../internal/telemetry/projection/engineer/testdata/engineer_v1.golden.json",
   strategy:

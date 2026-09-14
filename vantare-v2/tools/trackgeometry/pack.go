@@ -37,7 +37,14 @@ const PACKED_TRACKS: readonly PackedTrack[] = [
 		builder.WriteString("  {\n")
 		fmt.Fprintf(&builder, "    id: %q,\n", identifier(result.track))
 		fmt.Fprintf(&builder, "    label: %q,\n", result.track)
-		fmt.Fprintf(&builder, "    aliases: [%q],\n", result.track)
+		builder.WriteString("    aliases: [")
+		for index, alias := range aliasesForTrack(result.track) {
+			if index > 0 {
+				builder.WriteString(", ")
+			}
+			fmt.Fprintf(&builder, "%q", alias)
+		}
+		builder.WriteString("],\n")
 		builder.WriteString("    coordinates: [\n      ")
 		for index, point := range result.outline.Points {
 			if index > 0 {
@@ -104,6 +111,13 @@ function referenceLoop(): TrackGeometry {
 `)
 
 	return os.WriteFile(path, []byte(builder.String()), 0o644)
+}
+
+func aliasesForTrack(track string) []string {
+	if track == "Sebring International Raceway" {
+		return []string{track, "Sebring"}
+	}
+	return []string{track}
 }
 
 // identifier turns a circuit name into a stable kebab-case id.

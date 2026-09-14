@@ -126,7 +126,7 @@ func assertFieldValue[T comparable](t *testing.T, field Field[T], want T) {
 	}
 }
 
-func fullGridInput(t *testing.T) envelope.Snapshot[derive.FinalState] {
+func fullGridInput(t testing.TB) envelope.Snapshot[derive.FinalState] {
 	t.Helper()
 	fresh := schema.FreshnessFresh
 	observed := schema.ProvenanceObserved
@@ -204,7 +204,7 @@ func fullGridInput(t *testing.T) envelope.Snapshot[derive.FinalState] {
 	return result
 }
 
-func mustField[T comparable](t *testing.T, value T, provenance schema.Provenance, freshness schema.Freshness) schema.Field[T] {
+func mustField[T comparable](t testing.TB, value T, provenance schema.Provenance, freshness schema.Freshness) schema.Field[T] {
 	t.Helper()
 	result, err := schema.NewField(value, provenance, freshness)
 	if err != nil {

@@ -131,7 +131,6 @@ func TestGoldenContractsDoNotLeakCanonicalInternals(t *testing.T) {
 	// payload leakage directly in projection/engineer. The remaining products
 	// keep their transport JSON goldens here.
 	paths := []string{
-		filepath.Join("overlay", "testdata", "overlay_v1.golden.json"),
 		filepath.Join("strategy", "testdata", "strategy_v1.golden.json"),
 		filepath.Join("analysis", "testdata", "analysis_v1.golden.json"),
 	}

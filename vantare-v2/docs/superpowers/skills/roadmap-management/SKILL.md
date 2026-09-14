@@ -1,12 +1,20 @@
 # Skill: gestión del roadmap
 
+> **Notion primero (2026-09-14):** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192)
+> y leer la tarea y su proyecto antes de ejecutar. Actualizar Notion al empezar,
+> bloquear, entregar y verificar una integración; releer para comprobar la escritura.
+> [Contrato vigente](../../../vantare-program/notion-transition.md). GitHub conserva código, PR, CI y releases;
+> las referencias ISA exigidas por los controles son un puente técnico temporal.
+> Su adaptación pendiente nunca permite omitir el seguimiento en Notion.
+
+
 ## Fuente vigente
 
 La planificación pública vive en `docs/roadmap/plan.md` y el artefacto que
 consume la aplicación es `docs/roadmap/roadmap.json`, generado por
 `.github/scripts/roadmap_digest.py`.
 
-La ejecución de cada trabajo vive en su issue de GitHub (`ISA-N`), la
+La ejecución de cada trabajo vive en su tarea Notion (`VAN-N`), la
 continuidad técnica en el handoff vivo y la entrega visible para testers en el
 fragmento de changelog correspondiente. `docs/current-plan.md` y
 `docs/roadmap-execution-board.md` son registros históricos: no se actualizan
@@ -16,20 +24,20 @@ Para el procedimiento completo, leer `docs/roadmap-maintenance.md`.
 
 ## Al iniciar trabajo
 
-1. Lee `AGENTS.md`, `docs/roadmap/plan.md`, la issue de GitHub y el handoff
+1. Lee `AGENTS.md`, `docs/roadmap/plan.md`, la tarea Notion y el handoff
    vivo.
 2. Confirma rama, base, worktree y `git status --short`.
 3. Si el trabajo cambia el alcance, una fase, un área, un hito o una entrega
    pública, actualiza `docs/roadmap/plan.md` en la misma PR.
 4. Si solo cambia el estado interno, evidencia o riesgo de la issue, actualiza
-   la issue y el handoff, no el roadmap.
+   la tarea Notion y el handoff técnico, no el roadmap.
 
 ## Al completar trabajo
 
 1. Cambia en `plan.md` el hito o progreso anunciado cuando la entrega ya esté
    realmente cumplida.
-2. Registra evidencia, checks, riesgos y siguiente acción en la issue y el
-   handoff.
+2. Registra evidencia, checks, riesgos y siguiente acción en la tarea Notion y el
+   handoff técnico.
 3. Añade `docs/changelog/fragments/ISA-N.json` si el cambio es visible para
    testers.
 4. No edites `roadmap.json` a mano; el digest lo regenera en su PR automática.

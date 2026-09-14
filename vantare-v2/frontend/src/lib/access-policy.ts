@@ -50,6 +50,15 @@ export type AccessContext = {
   isUnconfigured: boolean;
 };
 
+/** Acceso basico por defecto cuando el overlay aun no tiene licencia resuelta. */
+export const FREE_ACCESS: AccessContext = {
+  planLabel: "free",
+  planStatus: "active",
+  roles: [],
+  isBlocked: false,
+  isUnconfigured: false,
+};
+
 export type UpdateChannel = "stable" | "testers" | "nightly";
 
 const OPERATIONAL_ROLE_ORDER: OperationalRole[] = [

@@ -1,0 +1,4074 @@
+{
+  "schema": "vantare.session.v1",
+  "session": "S1",
+  "phase": "off",
+  "expectedWindows": "desktop",
+  "durationMinutes": 20,
+  "startedAt": "2026-08-30T20:34:55.9369655+02:00",
+  "endedAt": "2026-08-30T20:54:56.1286260+02:00",
+  "executable": {
+    "path": "<measurement-worktree>\\bin\\vantare-sesiones.exe",
+    "sha256": "d02054e33a25139a59f57ef443255bb1fa63cc5988d05d4db98a332fbb1eda98",
+    "sha256End": "d02054e33a25139a59f57ef443255bb1fa63cc5988d05d4db98a332fbb1eda98",
+    "distPath": "<measurement-worktree>\\frontend\\dist",
+    "distSha256": "5b8e388c3a4b242d2e913dcfcfb1a7f5211536c564c464f7880a4fc77bf944f3",
+    "distSha256End": "5b8e388c3a4b242d2e913dcfcfb1a7f5211536c564c464f7880a4fc77bf944f3",
+    "stable": true,
+    "gitHead": "0a47361f7c144332d494f7f8b588a0936ebde8b4"
+  },
+  "scene": {
+    "description": "Spa practica, jugador en garaje, IA rodando",
+    "cars": 14
+  },
+  "hygiene": {
+    "foreign": [],
+    "systemWebView2": [
+      {
+        "Name": "msedgewebview2.exe",
+        "ProcessId": 9752,
+        "ParentProcessId": 9080,
+        "CommandLine": "\"C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\151.0.4129.107\\msedgewebview2.exe\" --embedded-browser-webview=1 --webview-exe-name=SearchHost.exe --webview-exe-version=2606.30004.100.0 --user-data-dir=\"<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView\" --noerrdialogs --disable-features=msSmartScreenProtection --edge-webview-enable-mojo-ipcz --enable-features=msEdgeFluentOverlayScrollbar --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; Cortana 1.18.9.23723; 10.0.0.0.26200.9168) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.26200 IsWebView2/True (WebView2Version 151.0.4129.107)\" --lang=es-ES --mojo-named-platform-channel-pipe=9080.10132.8573600517262582037 /pfhostedapp:ea1fa936703d743fbdf7b85ecde4a1cda5b2724a",
+        "userDataDir": "<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView"
+      },
+      {
+        "Name": "msedgewebview2.exe",
+        "ProcessId": 7948,
+        "ParentProcessId": 9752,
+        "CommandLine": "\"C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\151.0.4129.107\\msedgewebview2.exe\" --type=crashpad-handler --user-data-dir=<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView /prefetch:4 /pfhostedapp:ea1fa936703d743fbdf7b85ecde4a1cda5b2724a --monitor-self-annotation=ptype=crashpad-handler --database=<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView\\Crashpad --annotation=IsOfficialBuild=1 --annotation=channel= --annotation=chromium-version=151.0.7922.174 \"--annotation=exe=C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\151.0.4129.107\\msedgewebview2.exe\" --annotation=plat=Win64 \"--annotation=prod=Edge WebView2\" --annotation=ver=151.0.4129.107 --initial-client-data=0x16c,0x170,0x174,0x148,0x17c,0x7ffba97265f0,0x7ffba9726600,0x7ffba9726610",
+        "userDataDir": "<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView"
+      },
+      {
+        "Name": "msedgewebview2.exe",
+        "ProcessId": 10352,
+        "ParentProcessId": 9752,
+        "CommandLine": "\"C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\151.0.4129.107\\msedgewebview2.exe\" --type=gpu-process --noerrdialogs --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; Cortana 1.18.9.23723; 10.0.0.0.26200.9168) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.26200 IsWebView2/True (WebView2Version 151.0.4129.107)\" --user-data-dir=\"<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView\" --webview-exe-name=SearchHost.exe --webview-exe-version=2606.30004.100.0 --embedded-browser-webview=1 --gpu-preferences=WAAAAAAAAADgAAAEAAAAAAAAAAAAAGAAQAAAAAAAAAADAAAAAAAAADgAAAAAAAAAAAAAAAAAAAACAAAAAAAAAAAAAAAAAAAAKAAAAAAAAAAoAAAAAAAAAAgAAAAAAAAAEAAAAAIAAAABAAAAAAAAAAgAAAAAAAAACAAAAAAAAAA= --always-read-main-dll --metrics-shmem-handle=1980,i,18282524052107099634,13166805384568636141,262144 --field-trial-handle=2060,i,3365090682232894945,14813822915426672071,262144 --enable-features=msEdgeFluentOverlayScrollbar --disable-features=msSmartScreenProtection --variations-seed-version --pseudonymization-salt-handle=2084,i,14650293429704669866,7778520600876478717,4 --trace-process-track-uuid=3190708988185955192 --mojo-platform-channel-handle=2040 /prefetch:2 /pfhostedapp:ea1fa936703d743fbdf7b85ecde4a1cda5b2724a",
+        "userDataDir": "<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView"
+      },
+      {
+        "Name": "msedgewebview2.exe",
+        "ProcessId": 10376,
+        "ParentProcessId": 9752,
+        "CommandLine": "\"C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\151.0.4129.107\\msedgewebview2.exe\" --type=utility --utility-sub-type=network.mojom.NetworkService --lang=es --service-sandbox-type=none --noerrdialogs --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; Cortana 1.18.9.23723; 10.0.0.0.26200.9168) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.26200 IsWebView2/True (WebView2Version 151.0.4129.107)\" --user-data-dir=\"<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView\" --webview-exe-name=SearchHost.exe --webview-exe-version=2606.30004.100.0 --embedded-browser-webview=1 --always-read-main-dll --metrics-shmem-handle=2324,i,17558993731762439155,16377761269087256930,524288 --field-trial-handle=2060,i,3365090682232894945,14813822915426672071,262144 --enable-features=msEdgeFluentOverlayScrollbar --disable-features=msSmartScreenProtection --variations-seed-version --pseudonymization-salt-handle=2084,i,14650293429704669866,7778520600876478717,4 --trace-process-track-uuid=3190708989122997041 --mojo-platform-channel-handle=2332 /prefetch:11 /pfhostedapp:ea1fa936703d743fbdf7b85ecde4a1cda5b2724a",
+        "userDataDir": "<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView"
+      },
+      {
+        "Name": "msedgewebview2.exe",
+        "ProcessId": 10424,
+        "ParentProcessId": 9752,
+        "CommandLine": "\"C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\151.0.4129.107\\msedgewebview2.exe\" --type=utility --utility-sub-type=storage.mojom.StorageService --lang=es --service-sandbox-type=service --noerrdialogs --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; Cortana 1.18.9.23723; 10.0.0.0.26200.9168) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.26200 IsWebView2/True (WebView2Version 151.0.4129.107)\" --user-data-dir=\"<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView\" --webview-exe-name=SearchHost.exe --webview-exe-version=2606.30004.100.0 --embedded-browser-webview=1 --always-read-main-dll --metrics-shmem-handle=2636,i,2707856395177270348,9954285788031475675,524288 --field-trial-handle=2060,i,3365090682232894945,14813822915426672071,262144 --enable-features=msEdgeFluentOverlayScrollbar --disable-features=msSmartScreenProtection --variations-seed-version --pseudonymization-salt-handle=2084,i,14650293429704669866,7778520600876478717,4 --trace-process-track-uuid=3190708990060038890 --mojo-platform-channel-handle=2648 /prefetch:13 /pfhostedapp:ea1fa936703d743fbdf7b85ecde4a1cda5b2724a",
+        "userDataDir": "<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView"
+      },
+      {
+        "Name": "msedgewebview2.exe",
+        "ProcessId": 10636,
+        "ParentProcessId": 9752,
+        "CommandLine": "\"C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\151.0.4129.107\\msedgewebview2.exe\" --type=renderer --noerrdialogs --user-agent=\"Mozilla/5.0 (Windows NT 10.0; Win64; x64; Cortana 1.18.9.23723; 10.0.0.0.26200.9168) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.102 Safari/537.36 Edge/18.26200 IsWebView2/True (WebView2Version 151.0.4129.107)\" --user-data-dir=\"<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView\" --webview-exe-name=SearchHost.exe --webview-exe-version=2606.30004.100.0 --embedded-browser-webview=1 --video-capture-use-gpu-memory-buffer --lang=es --js-flags=--expose-gc --device-scale-factor=1 --num-raster-threads=4 --enable-main-frame-before-activation --renderer-client-id=5 --time-ticks-at-unix-epoch=-1788097422204529 --launch-time-ticks=269364661 --always-read-main-dll --metrics-shmem-handle=4068,i,13221559354169700947,11973272461152883813,2097152 --field-trial-handle=2060,i,3365090682232894945,14813822915426672071,262144 --enable-features=msEdgeFluentOverlayScrollbar --disable-features=msSmartScreenProtection --variations-seed-version --pseudonymization-salt-handle=2084,i,14650293429704669866,7778520600876478717,4 --trace-process-track-uuid=3190708990997080739 --mojo-platform-channel-handle=4092 /pfhostedapp:ea1fa936703d743fbdf7b85ecde4a1cda5b2724a /prefetch:1",
+        "userDataDir": "<user-profile>\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView"
+      }
+    ]
+  },
+  "samples": [
+    {
+      "timestamp": "2026-08-30T20:34:55.9369655+02:00",
+      "pid": 20076,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 203079680
+    },
+    {
+      "timestamp": "2026-08-30T20:34:55.9369655+02:00",
+      "pid": 22948,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 13901824
+    },
+    {
+      "timestamp": "2026-08-30T20:34:55.9369655+02:00",
+      "pid": 15756,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9453568
+    },
+    {
+      "timestamp": "2026-08-30T20:34:55.9369655+02:00",
+      "pid": 29848,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 61104128
+    },
+    {
+      "timestamp": "2026-08-30T20:34:55.9369655+02:00",
+      "pid": 13832,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2433024
+    },
+    {
+      "timestamp": "2026-08-30T20:34:55.9369655+02:00",
+      "pid": 6008,
+      "role": "browser",
+      "cpuPct": 0,
+      "privateBytes": 49459200
+    },
+    {
+      "timestamp": "2026-08-30T20:34:55.9369655+02:00",
+      "pid": 23144,
+      "role": "go-host",
+      "cpuPct": 0,
+      "privateBytes": 71303168
+    },
+    {
+      "timestamp": "2026-08-30T20:34:55.9369655+02:00",
+      "pid": 27288,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 56369152
+    },
+    {
+      "timestamp": "2026-08-30T20:35:56.0580136+02:00",
+      "pid": 20076,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 190898176
+    },
+    {
+      "timestamp": "2026-08-30T20:35:56.0580136+02:00",
+      "pid": 22948,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 14295040
+    },
+    {
+      "timestamp": "2026-08-30T20:35:56.0580136+02:00",
+      "pid": 15756,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9199616
+    },
+    {
+      "timestamp": "2026-08-30T20:35:56.0580136+02:00",
+      "pid": 29848,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 101646336
+    },
+    {
+      "timestamp": "2026-08-30T20:35:56.0580136+02:00",
+      "pid": 13832,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 3039232
+    },
+    {
+      "timestamp": "2026-08-30T20:35:56.0580136+02:00",
+      "pid": 6008,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 47214592
+    },
+    {
+      "timestamp": "2026-08-30T20:35:56.0580136+02:00",
+      "pid": 23144,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 73961472
+    },
+    {
+      "timestamp": "2026-08-30T20:35:56.0580136+02:00",
+      "pid": 27288,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 67780608
+    },
+    {
+      "timestamp": "2026-08-30T20:36:55.9449689+02:00",
+      "pid": 20076,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 201601024
+    },
+    {
+      "timestamp": "2026-08-30T20:36:55.9449689+02:00",
+      "pid": 22948,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 14704640
+    },
+    {
+      "timestamp": "2026-08-30T20:36:55.9449689+02:00",
+      "pid": 15756,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9199616
+    },
+    {
+      "timestamp": "2026-08-30T20:36:55.9449689+02:00",
+      "pid": 29848,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 115068928
+    },
+    {
+      "timestamp": "2026-08-30T20:36:55.9449689+02:00",
+      "pid": 13832,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 3039232
+    },
+    {
+      "timestamp": "2026-08-30T20:36:55.9449689+02:00",
+      "pid": 6008,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 47804416
+    },
+    {
+      "timestamp": "2026-08-30T20:36:55.9449689+02:00",
+      "pid": 23144,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 74174464
+    },
+    {
+      "timestamp": "2026-08-30T20:36:55.9449689+02:00",
+      "pid": 27288,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 76566528
+    },
+    {
+      "timestamp": "2026-08-30T20:37:56.0095582+02:00",
+      "pid": 20076,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 203997184
+    },
+    {
+      "timestamp": "2026-08-30T20:37:56.0095582+02:00",
+      "pid": 22948,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 15753216
+    },
+    {
+      "timestamp": "2026-08-30T20:37:56.0095582+02:00",
+      "pid": 15756,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9203712
+    },
+    {
+      "timestamp": "2026-08-30T20:37:56.0095582+02:00",
+      "pid": 29848,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 128909312
+    },
+    {
+      "timestamp": "2026-08-30T20:37:56.0095582+02:00",
+      "pid": 13832,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2953216
+    },
+    {
+      "timestamp": "2026-08-30T20:37:56.0095582+02:00",
+      "pid": 6008,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 49479680
+    },
+    {
+      "timestamp": "2026-08-30T20:37:56.0095582+02:00",
+      "pid": 23144,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 74141696
+    },
+    {
+      "timestamp": "2026-08-30T20:37:56.0095582+02:00",
+      "pid": 27288,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 85282816
+    },
+    {
+      "timestamp": "2026-08-30T20:38:55.9586781+02:00",
+      "pid": 20076,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 209117184
+    },
+    {
+      "timestamp": "2026-08-30T20:38:55.9586781+02:00",
+      "pid": 22948,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 15740928
+    },
+    {
+      "timestamp": "2026-08-30T20:38:55.9586781+02:00",
+      "pid": 15756,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9203712
+    },
+    {
+      "timestamp": "2026-08-30T20:38:55.9586781+02:00",
+      "pid": 29848,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 136548352
+    },
+    {
+      "timestamp": "2026-08-30T20:38:55.9586781+02:00",
+      "pid": 13832,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2891776
+    },
+    {
+      "timestamp": "2026-08-30T20:38:55.9586781+02:00",
+      "pid": 6008,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 49541120
+    },
+    {
+      "timestamp": "2026-08-30T20:38:55.9586781+02:00",
+      "pid": 23144,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 74952704
+    },
+    {
+      "timestamp": "2026-08-30T20:38:55.9586781+02:00",
+      "pid": 27288,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 92037120
+    },
+    {
+      "timestamp": "2026-08-30T20:39:56.0575148+02:00",
+      "pid": 20076,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 196603904
+    },
+    {
+      "timestamp": "2026-08-30T20:39:56.0575148+02:00",
+      "pid": 22948,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 15831040
+    },
+    {
+      "timestamp": "2026-08-30T20:39:56.0575148+02:00",
+      "pid": 15756,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9330688
+    },
+    {
+      "timestamp": "2026-08-30T20:39:56.0575148+02:00",
+      "pid": 29848,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 146550784
+    },
+    {
+      "timestamp": "2026-08-30T20:39:56.0575148+02:00",
+      "pid": 13832,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2965504
+    },
+    {
+      "timestamp": "2026-08-30T20:39:56.0575148+02:00",
+      "pid": 6008,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 50143232
+    },
+    {
+      "timestamp": "2026-08-30T20:39:56.0575148+02:00",
+      "pid": 23144,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 76099584
+    },
+    {
+      "timestamp": "2026-08-30T20:39:56.0575148+02:00",
+      "pid": 27288,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 99610624
+    },
+    {
+      "timestamp": "2026-08-30T20:40:55.9781445+02:00",
+      "pid": 20076,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 206807040
+    },
+    {
+      "timestamp": "2026-08-30T20:40:55.9781445+02:00",
+      "pid": 22948,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 17100800
+    },
+    {
+      "timestamp": "2026-08-30T20:40:55.9781445+02:00",
+      "pid": 15756,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9302016
+    },
+    {
+      "timestamp": "2026-08-30T20:40:55.9781445+02:00",
+      "pid": 29848,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 152903680
+    },
+    {
+      "timestamp": "2026-08-30T20:40:55.9781445+02:00",
+      "pid": 13832,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2965504
+    },
+    {
+      "timestamp": "2026-08-30T20:40:55.9781445+02:00",
+      "pid": 6008,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 51376128
+    },
+    {
+      "timestamp": "2026-08-30T20:40:55.9781445+02:00",
+      "pid": 23144,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 76341248
+    },
+    {
+      "timestamp": "2026-08-30T20:40:55.9781445+02:00",
+      "pid": 27288,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 102400000
+    },
+    {
+      "timestamp": "2026-08-30T20:41:56.0328245+02:00",
+      "pid": 20076,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 202993664
+    },
+    {
+      "timestamp": "2026-08-30T20:41:56.0328245+02:00",
+      "pid": 22948,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 16957440
+    },
+    {
+      "timestamp": "2026-08-30T20:41:56.0328245+02:00",
+      "pid": 15756,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9256960
+    },
+    {
+      "timestamp": "2026-08-30T20:41:56.0328245+02:00",
+      "pid": 29848,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 155021312
+    },
+    {
+      "timestamp": "2026-08-30T20:41:56.0328245+02:00",
+      "pid": 13832,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2899968
+    },
+    {
+      "timestamp": "2026-08-30T20:41:56.0328245+02:00",
+      "pid": 6008,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 52174848
+    },
+    {
+      "timestamp": "2026-08-30T20:41:56.0328245+02:00",
+      "pid": 23144,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 76525568
+    },
+    {
+      "timestamp": "2026-08-30T20:41:56.0328245+02:00",
+      "pid": 27288,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 105992192
+    },
+    {
+      "timestamp": "2026-08-30T20:42:56.0232494+02:00",
+      "pid": 20076,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 197447680
+    },
+    {
+      "timestamp": "2026-08-30T20:42:56.0232494+02:00",
+      "pid": 22948,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 18100224
+    },
+    {
+      "timestamp": "2026-08-30T20:42:56.0232494+02:00",
+      "pid": 15756,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9228288
+    },
+    {
+      "timestamp": "2026-08-30T20:42:56.0232494+02:00",
+      "pid": 29848,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 165908480
+    },
+    {
+      "timestamp": "2026-08-30T20:42:56.0232494+02:00",
+      "pid": 13832,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2895872
+    },
+    {
+      "timestamp": "2026-08-30T20:42:56.0232494+02:00",
+      "pid": 6008,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 53555200
+    },
+    {
+      "timestamp": "2026-08-30T20:42:56.0232494+02:00",
+      "pid": 23144,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 75829248
+    },
+    {
+      "timestamp": "2026-08-30T20:42:56.0232494+02:00",
+      "pid": 27288,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 107577344
+    },
+    {
+      "timestamp": "2026-08-30T20:43:56.1204082+02:00",
+      "pid": 20076,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 233934848
+    },
+    {
+      "timestamp": "2026-08-30T20:43:56.1204082+02:00",
+      "pid": 22948,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 18116608
+    },
+    {
+      "timestamp": "2026-08-30T20:43:56.1204082+02:00",
+      "pid": 15756,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9228288
+    },
+    {
+      "timestamp": "2026-08-30T20:43:56.1204082+02:00",
+      "pid": 29848,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 176586752
+    },
+    {
+      "timestamp": "2026-08-30T20:43:56.1204082+02:00",
+      "pid": 13832,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2895872
+    },
+    {
+      "timestamp": "2026-08-30T20:43:56.1204082+02:00",
+      "pid": 6008,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 53727232
+    },
+    {
+      "timestamp": "2026-08-30T20:43:56.1204082+02:00",
+      "pid": 23144,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 77324288
+    },
+    {
+      "timestamp": "2026-08-30T20:43:56.1204082+02:00",
+      "pid": 27288,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 114720768
+    },
+    {
+      "timestamp": "2026-08-30T20:44:56.0875895+02:00",
+      "pid": 20076,
+      "role": "gpu-process",
+      "cpuPct": 1,
+      "privateBytes": 221581312
+    },
+    {
+      "timestamp": "2026-08-30T20:44:56.0875895+02:00",
+      "pid": 22948,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 15798272
+    },
+    {
+      "timestamp": "2026-08-30T20:44:56.0875895+02:00",
+      "pid": 15756,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9302016
+    },
+    {
+      "timestamp": "2026-08-30T20:44:56.0875895+02:00",
+      "pid": 29848,
+      "role": "renderer-unassigned",
+      "cpuPct": 2,
+      "privateBytes": 138878976
+    },
+    {
+      "timestamp": "2026-08-30T20:44:56.0875895+02:00",
+      "pid": 13832,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2961408
+    },
+    {
+      "timestamp": "2026-08-30T20:44:56.0875895+02:00",
+      "pid": 6008,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 50847744
+    },
+    {
+      "timestamp": "2026-08-30T20:44:56.0875895+02:00",
+      "pid": 23144,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 77320192
+    },
+    {
+      "timestamp": "2026-08-30T20:44:56.0875895+02:00",
+      "pid": 27288,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 118796288
+    },
+    {
+      "timestamp": "2026-08-30T20:45:55.9887814+02:00",
+      "pid": 20076,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 210247680
+    },
+    {
+      "timestamp": "2026-08-30T20:45:55.9887814+02:00",
+      "pid": 22948,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 16437248
+    },
+    {
+      "timestamp": "2026-08-30T20:45:55.9887814+02:00",
+      "pid": 15756,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9302016
+    },
+    {
+      "timestamp": "2026-08-30T20:45:55.9887814+02:00",
+      "pid": 29848,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 178720768
+    },
+    {
+      "timestamp": "2026-08-30T20:45:55.9887814+02:00",
+      "pid": 13832,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2961408
+    },
+    {
+      "timestamp": "2026-08-30T20:45:55.9887814+02:00",
+      "pid": 6008,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 51728384
+    },
+    {
+      "timestamp": "2026-08-30T20:45:55.9887814+02:00",
+      "pid": 23144,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 77688832
+    },
+    {
+      "timestamp": "2026-08-30T20:45:55.9887814+02:00",
+      "pid": 27288,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 124678144
+    },
+    {
+      "timestamp": "2026-08-30T20:46:56.0471182+02:00",
+      "pid": 20076,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 221122560
+    },
+    {
+      "timestamp": "2026-08-30T20:46:56.0471182+02:00",
+      "pid": 22948,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 16887808
+    },
+    {
+      "timestamp": "2026-08-30T20:46:56.0471182+02:00",
+      "pid": 15756,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9228288
+    },
+    {
+      "timestamp": "2026-08-30T20:46:56.0471182+02:00",
+      "pid": 29848,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 192778240
+    },
+    {
+      "timestamp": "2026-08-30T20:46:56.0471182+02:00",
+      "pid": 13832,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2895872
+    },
+    {
+      "timestamp": "2026-08-30T20:46:56.0471182+02:00",
+      "pid": 6008,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 52961280
+    },
+    {
+      "timestamp": "2026-08-30T20:46:56.0471182+02:00",
+      "pid": 23144,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 77611008
+    },
+    {
+      "timestamp": "2026-08-30T20:46:56.0471182+02:00",
+      "pid": 27288,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 137601024
+    },
+    {
+      "timestamp": "2026-08-30T20:47:56.0993861+02:00",
+      "pid": 20076,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 221114368
+    },
+    {
+      "timestamp": "2026-08-30T20:47:56.0993861+02:00",
+      "pid": 22948,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 18063360
+    },
+    {
+      "timestamp": "2026-08-30T20:47:56.0993861+02:00",
+      "pid": 15756,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9228288
+    },
+    {
+      "timestamp": "2026-08-30T20:47:56.0993861+02:00",
+      "pid": 29848,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 207294464
+    },
+    {
+      "timestamp": "2026-08-30T20:47:56.0993861+02:00",
+      "pid": 13832,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2895872
+    },
+    {
+      "timestamp": "2026-08-30T20:47:56.0993861+02:00",
+      "pid": 6008,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 54476800
+    },
+    {
+      "timestamp": "2026-08-30T20:47:56.0993861+02:00",
+      "pid": 23144,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 80277504
+    },
+    {
+      "timestamp": "2026-08-30T20:47:56.0993861+02:00",
+      "pid": 27288,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 145006592
+    },
+    {
+      "timestamp": "2026-08-30T20:48:56.0499456+02:00",
+      "pid": 20076,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 213807104
+    },
+    {
+      "timestamp": "2026-08-30T20:48:56.0499456+02:00",
+      "pid": 22948,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 18067456
+    },
+    {
+      "timestamp": "2026-08-30T20:48:56.0499456+02:00",
+      "pid": 15756,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9207808
+    },
+    {
+      "timestamp": "2026-08-30T20:48:56.0499456+02:00",
+      "pid": 29848,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 220585984
+    },
+    {
+      "timestamp": "2026-08-30T20:48:56.0499456+02:00",
+      "pid": 13832,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2895872
+    },
+    {
+      "timestamp": "2026-08-30T20:48:56.0499456+02:00",
+      "pid": 6008,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 54517760
+    },
+    {
+      "timestamp": "2026-08-30T20:48:56.0499456+02:00",
+      "pid": 23144,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 79773696
+    },
+    {
+      "timestamp": "2026-08-30T20:48:56.0499456+02:00",
+      "pid": 27288,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 148713472
+    },
+    {
+      "timestamp": "2026-08-30T20:49:55.9763069+02:00",
+      "pid": 20076,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 228982784
+    },
+    {
+      "timestamp": "2026-08-30T20:49:55.9763069+02:00",
+      "pid": 22948,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 15757312
+    },
+    {
+      "timestamp": "2026-08-30T20:49:55.9763069+02:00",
+      "pid": 15756,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9424896
+    },
+    {
+      "timestamp": "2026-08-30T20:49:55.9763069+02:00",
+      "pid": 29848,
+      "role": "renderer-unassigned",
+      "cpuPct": 2,
+      "privateBytes": 226521088
+    },
+    {
+      "timestamp": "2026-08-30T20:49:55.9763069+02:00",
+      "pid": 13832,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2895872
+    },
+    {
+      "timestamp": "2026-08-30T20:49:55.9763069+02:00",
+      "pid": 6008,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 51548160
+    },
+    {
+      "timestamp": "2026-08-30T20:49:55.9763069+02:00",
+      "pid": 23144,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 80568320
+    },
+    {
+      "timestamp": "2026-08-30T20:49:55.9763069+02:00",
+      "pid": 27288,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 149626880
+    },
+    {
+      "timestamp": "2026-08-30T20:50:56.1144609+02:00",
+      "pid": 20076,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 220487680
+    },
+    {
+      "timestamp": "2026-08-30T20:50:56.1144609+02:00",
+      "pid": 22948,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 16400384
+    },
+    {
+      "timestamp": "2026-08-30T20:50:56.1144609+02:00",
+      "pid": 15756,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9306112
+    },
+    {
+      "timestamp": "2026-08-30T20:50:56.1144609+02:00",
+      "pid": 29848,
+      "role": "renderer-unassigned",
+      "cpuPct": 2,
+      "privateBytes": 233525248
+    },
+    {
+      "timestamp": "2026-08-30T20:50:56.1144609+02:00",
+      "pid": 13832,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2895872
+    },
+    {
+      "timestamp": "2026-08-30T20:50:56.1144609+02:00",
+      "pid": 6008,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 52449280
+    },
+    {
+      "timestamp": "2026-08-30T20:50:56.1144609+02:00",
+      "pid": 23144,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 80957440
+    },
+    {
+      "timestamp": "2026-08-30T20:50:56.1144609+02:00",
+      "pid": 27288,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 149647360
+    },
+    {
+      "timestamp": "2026-08-30T20:51:56.0242378+02:00",
+      "pid": 20076,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 214777856
+    },
+    {
+      "timestamp": "2026-08-30T20:51:56.0242378+02:00",
+      "pid": 22948,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 16945152
+    },
+    {
+      "timestamp": "2026-08-30T20:51:56.0242378+02:00",
+      "pid": 15756,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9306112
+    },
+    {
+      "timestamp": "2026-08-30T20:51:56.0242378+02:00",
+      "pid": 29848,
+      "role": "renderer-unassigned",
+      "cpuPct": 2,
+      "privateBytes": 210378752
+    },
+    {
+      "timestamp": "2026-08-30T20:51:56.0242378+02:00",
+      "pid": 13832,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2895872
+    },
+    {
+      "timestamp": "2026-08-30T20:51:56.0242378+02:00",
+      "pid": 6008,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 53129216
+    },
+    {
+      "timestamp": "2026-08-30T20:51:56.0242378+02:00",
+      "pid": 23144,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 81633280
+    },
+    {
+      "timestamp": "2026-08-30T20:51:56.0242378+02:00",
+      "pid": 27288,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 161329152
+    },
+    {
+      "timestamp": "2026-08-30T20:52:56.0850495+02:00",
+      "pid": 20076,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 216600576
+    },
+    {
+      "timestamp": "2026-08-30T20:52:56.0850495+02:00",
+      "pid": 22948,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 18128896
+    },
+    {
+      "timestamp": "2026-08-30T20:52:56.0850495+02:00",
+      "pid": 15756,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9306112
+    },
+    {
+      "timestamp": "2026-08-30T20:52:56.0850495+02:00",
+      "pid": 29848,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 170930176
+    },
+    {
+      "timestamp": "2026-08-30T20:52:56.0850495+02:00",
+      "pid": 13832,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2895872
+    },
+    {
+      "timestamp": "2026-08-30T20:52:56.0850495+02:00",
+      "pid": 6008,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 54718464
+    },
+    {
+      "timestamp": "2026-08-30T20:52:56.0850495+02:00",
+      "pid": 23144,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 81248256
+    },
+    {
+      "timestamp": "2026-08-30T20:52:56.0850495+02:00",
+      "pid": 27288,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 165117952
+    },
+    {
+      "timestamp": "2026-08-30T20:53:56.0892764+02:00",
+      "pid": 20076,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 220758016
+    },
+    {
+      "timestamp": "2026-08-30T20:53:56.0892764+02:00",
+      "pid": 22948,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 18128896
+    },
+    {
+      "timestamp": "2026-08-30T20:53:56.0892764+02:00",
+      "pid": 15756,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9306112
+    },
+    {
+      "timestamp": "2026-08-30T20:53:56.0892764+02:00",
+      "pid": 29848,
+      "role": "renderer-unassigned",
+      "cpuPct": 2,
+      "privateBytes": 177532928
+    },
+    {
+      "timestamp": "2026-08-30T20:53:56.0892764+02:00",
+      "pid": 13832,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2895872
+    },
+    {
+      "timestamp": "2026-08-30T20:53:56.0892764+02:00",
+      "pid": 6008,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 54796288
+    },
+    {
+      "timestamp": "2026-08-30T20:53:56.0892764+02:00",
+      "pid": 23144,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 81907712
+    },
+    {
+      "timestamp": "2026-08-30T20:53:56.0892764+02:00",
+      "pid": 27288,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 156360704
+    },
+    {
+      "timestamp": "2026-08-30T20:54:56.1286260+02:00",
+      "pid": 20076,
+      "role": "gpu-process",
+      "cpuPct": 0,
+      "privateBytes": 230514688
+    },
+    {
+      "timestamp": "2026-08-30T20:54:56.1286260+02:00",
+      "pid": 22948,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 15761408
+    },
+    {
+      "timestamp": "2026-08-30T20:54:56.1286260+02:00",
+      "pid": 15756,
+      "role": "utility",
+      "cpuPct": 0,
+      "privateBytes": 9306112
+    },
+    {
+      "timestamp": "2026-08-30T20:54:56.1286260+02:00",
+      "pid": 29848,
+      "role": "renderer-unassigned",
+      "cpuPct": 1,
+      "privateBytes": 167735296
+    },
+    {
+      "timestamp": "2026-08-30T20:54:56.1286260+02:00",
+      "pid": 13832,
+      "role": "crashpad",
+      "cpuPct": 0,
+      "privateBytes": 2895872
+    },
+    {
+      "timestamp": "2026-08-30T20:54:56.1286260+02:00",
+      "pid": 6008,
+      "role": "browser",
+      "cpuPct": 1,
+      "privateBytes": 51122176
+    },
+    {
+      "timestamp": "2026-08-30T20:54:56.1286260+02:00",
+      "pid": 23144,
+      "role": "go-host",
+      "cpuPct": 2,
+      "privateBytes": 82202624
+    },
+    {
+      "timestamp": "2026-08-30T20:54:56.1286260+02:00",
+      "pid": 27288,
+      "role": "renderer-unassigned",
+      "cpuPct": 0,
+      "privateBytes": 169697280
+    }
+  ],
+  "diagnostics": [
+    {
+      "schema": "vantare.huella.cdp.v1",
+      "capturedAt": "2026-08-30T18:34:58.311Z",
+      "action": "overlay-start",
+      "control": {
+        "changed": true,
+        "running": true,
+        "emittedAt": "2026-08-30T18:34:56.561Z",
+        "mechanism": {
+          "kind": "wails-event",
+          "eventName": "overlay:start-active"
+        }
+      },
+      "durationSeconds": 1,
+      "expectedWidgets": 3,
+      "renderedWidgets": 3,
+      "overlayReadyAt": "2026-08-30T18:34:57.102Z",
+      "rendererProcessIds": [
+        29848,
+        27288
+      ],
+      "rendererProcessInfoError": null,
+      "targets": [
+        {
+          "role": "hub",
+          "url": "http://wails.localhost/#/hub",
+          "title": "Vantare",
+          "overlay": false,
+          "hub": true,
+          "surface": "hub",
+          "widgetCount": 0,
+          "diagnostics": null,
+          "probe": {
+            "rafPerSecond": 121,
+            "longTaskCount": 0,
+            "longTaskTotalMs": 0,
+            "longTaskMaxMs": 0,
+            "widgetCount": 0
+          },
+          "memory": {
+            "jsHeapUsedBytes": 8611068,
+            "jsHeapTotalBytes": 11554816,
+            "documents": 3,
+            "nodes": 60,
+            "jsEventListeners": 196
+          },
+          "memoryError": null,
+          "screenshot": "<session-root>\\screenshots\\initial\\hub-1.png"
+        },
+        {
+          "role": "overlay",
+          "url": "http://wails.localhost/overlay.html",
+          "title": "Vantare Overlay",
+          "overlay": true,
+          "hub": false,
+          "surface": "desktop",
+          "widgetCount": 3,
+          "diagnostics": {
+            "overlay_v2_parse_duration": {
+              "count": 7,
+              "p50": 0.5,
+              "p99": 1.5,
+              "nonLiveSamples": 0
+            },
+            "overlay_v2_transport": {
+              "revision": 13,
+              "frameRevision": 13,
+              "sourceState": "live",
+              "epoch": 1,
+              "sequence": 130,
+              "sessionId": "lmu-session-1",
+              "vehicleCount": 18,
+              "playerPit": "pit"
+            },
+            "pull": {
+              "active": true,
+              "requestsCompleted": 7,
+              "receivedV1Projections": 0,
+              "receivedV2Snapshots": 6,
+              "requestDurationMs": {
+                "count": 7,
+                "sampleCount": 7,
+                "mean": 9.471428571535009,
+                "max": 35.399999998509884,
+                "p99": 35.399999998509884,
+                "histogram": [
+                  {
+                    "le": 1,
+                    "count": 0
+                  },
+                  {
+                    "le": 2,
+                    "count": 0
+                  },
+                  {
+                    "le": 4,
+                    "count": 1
+                  },
+                  {
+                    "le": 8,
+                    "count": 5
+                  },
+                  {
+                    "le": 16,
+                    "count": 0
+                  },
+                  {
+                    "le": 32,
+                    "count": 0
+                  },
+                  {
+                    "le": 64,
+                    "count": 1
+                  },
+                  {
+                    "le": 128,
+                    "count": 0
+                  },
+                  {
+                    "le": 250,
+                    "count": 0
+                  },
+                  {
+                    "le": 500,
+                    "count": 0
+                  },
+                  {
+                    "le": 1000,
+                    "count": 0
+                  },
+                  {
+                    "le": 2500,
+                    "count": 0
+                  },
+                  {
+                    "le": 5000,
+                    "count": 0
+                  },
+                  {
+                    "le": null,
+                    "count": 0
+                  }
+                ]
+              }
+            },
+            "shadow": null
+          },
+          "probe": {
+            "rafPerSecond": 120,
+            "longTaskCount": 0,
+            "longTaskTotalMs": 0,
+            "longTaskMaxMs": 0,
+            "widgetCount": 3
+          },
+          "memory": {
+            "jsHeapUsedBytes": 7254532,
+            "jsHeapTotalBytes": 11427840,
+            "documents": 3,
+            "nodes": 380,
+            "jsEventListeners": 179
+          },
+          "memoryError": null,
+          "screenshot": "<session-root>\\screenshots\\initial\\overlay-2.png"
+        }
+      ]
+    },
+    {
+      "schema": "vantare.huella.cdp.v1",
+      "capturedAt": "2026-08-30T18:39:58.76Z",
+      "action": "inspect",
+      "control": null,
+      "durationSeconds": 1,
+      "expectedWidgets": 3,
+      "renderedWidgets": 0,
+      "overlayReadyAt": null,
+      "rendererProcessIds": [],
+      "rendererProcessInfoError": null,
+      "targets": [
+        {
+          "role": "overlay",
+          "url": "http://wails.localhost/overlay.html",
+          "title": "Vantare Overlay",
+          "overlay": true,
+          "hub": false,
+          "surface": "desktop",
+          "widgetCount": 3,
+          "diagnostics": {
+            "overlay_v2_parse_duration": {
+              "count": 512,
+              "p50": 0.19999999925494194,
+              "p99": 0.4000000022351742,
+              "nonLiveSamples": 0
+            },
+            "overlay_v2_transport": {
+              "revision": 18899,
+              "frameRevision": 18899,
+              "sourceState": "live",
+              "epoch": 1,
+              "sequence": 19016,
+              "sessionId": "lmu-session-1",
+              "vehicleCount": 18,
+              "playerPit": "pit"
+            },
+            "pull": {
+              "active": true,
+              "requestsCompleted": 14042,
+              "receivedV1Projections": 0,
+              "receivedV2Snapshots": 13996,
+              "requestDurationMs": {
+                "count": 14042,
+                "sampleCount": 512,
+                "mean": 4.3644281441449015,
+                "max": 540.0999999977648,
+                "p99": 8.299999997019768,
+                "histogram": [
+                  {
+                    "le": 1,
+                    "count": 0
+                  },
+                  {
+                    "le": 2,
+                    "count": 0
+                  },
+                  {
+                    "le": 4,
+                    "count": 459
+                  },
+                  {
+                    "le": 8,
+                    "count": 46
+                  },
+                  {
+                    "le": 16,
+                    "count": 6
+                  },
+                  {
+                    "le": 32,
+                    "count": 1
+                  },
+                  {
+                    "le": 64,
+                    "count": 0
+                  },
+                  {
+                    "le": 128,
+                    "count": 0
+                  },
+                  {
+                    "le": 250,
+                    "count": 0
+                  },
+                  {
+                    "le": 500,
+                    "count": 0
+                  },
+                  {
+                    "le": 1000,
+                    "count": 0
+                  },
+                  {
+                    "le": 2500,
+                    "count": 0
+                  },
+                  {
+                    "le": 5000,
+                    "count": 0
+                  },
+                  {
+                    "le": null,
+                    "count": 0
+                  }
+                ]
+              }
+            },
+            "shadow": null
+          },
+          "probe": {
+            "rafPerSecond": 121,
+            "longTaskCount": 0,
+            "longTaskTotalMs": 0,
+            "longTaskMaxMs": 0,
+            "widgetCount": 3
+          },
+          "memory": {
+            "jsHeapUsedBytes": 37404480,
+            "jsHeapTotalBytes": 86691840,
+            "documents": 1,
+            "nodes": 363,
+            "jsEventListeners": 177
+          },
+          "memoryError": null,
+          "screenshot": null
+        },
+        {
+          "role": "hub",
+          "url": "http://wails.localhost/#/hub",
+          "title": "Vantare",
+          "overlay": false,
+          "hub": true,
+          "surface": "hub",
+          "widgetCount": 0,
+          "diagnostics": null,
+          "probe": {
+            "rafPerSecond": 121,
+            "longTaskCount": 0,
+            "longTaskTotalMs": 0,
+            "longTaskMaxMs": 0,
+            "widgetCount": 0
+          },
+          "memory": {
+            "jsHeapUsedBytes": 34589172,
+            "jsHeapTotalBytes": 40050688,
+            "documents": 1,
+            "nodes": 100,
+            "jsEventListeners": 199
+          },
+          "memoryError": null,
+          "screenshot": null
+        }
+      ]
+    },
+    {
+      "schema": "vantare.huella.cdp.v1",
+      "capturedAt": "2026-08-30T18:44:59.002Z",
+      "action": "inspect",
+      "control": null,
+      "durationSeconds": 1,
+      "expectedWidgets": 3,
+      "renderedWidgets": 0,
+      "overlayReadyAt": null,
+      "rendererProcessIds": [],
+      "rendererProcessInfoError": null,
+      "targets": [
+        {
+          "role": "overlay",
+          "url": "http://wails.localhost/overlay.html",
+          "title": "Vantare Overlay",
+          "overlay": true,
+          "hub": false,
+          "surface": "desktop",
+          "widgetCount": 3,
+          "diagnostics": {
+            "overlay_v2_parse_duration": {
+              "count": 512,
+              "p50": 0.20000000298023224,
+              "p99": 0.5,
+              "nonLiveSamples": 390
+            },
+            "overlay_v2_transport": {
+              "revision": 37794,
+              "frameRevision": 37794,
+              "sourceState": "live",
+              "epoch": 1,
+              "sequence": 37909,
+              "sessionId": "lmu-session-1",
+              "vehicleCount": 18,
+              "playerPit": "pit"
+            },
+            "pull": {
+              "active": true,
+              "requestsCompleted": 27960,
+              "receivedV1Projections": 0,
+              "receivedV2Snapshots": 27878,
+              "requestDurationMs": {
+                "count": 27960,
+                "sampleCount": 512,
+                "mean": 4.4432045779658615,
+                "max": 540.0999999977648,
+                "p99": 11.5,
+                "histogram": [
+                  {
+                    "le": 1,
+                    "count": 0
+                  },
+                  {
+                    "le": 2,
+                    "count": 0
+                  },
+                  {
+                    "le": 4,
+                    "count": 402
+                  },
+                  {
+                    "le": 8,
+                    "count": 97
+                  },
+                  {
+                    "le": 16,
+                    "count": 10
+                  },
+                  {
+                    "le": 32,
+                    "count": 2
+                  },
+                  {
+                    "le": 64,
+                    "count": 1
+                  },
+                  {
+                    "le": 128,
+                    "count": 0
+                  },
+                  {
+                    "le": 250,
+                    "count": 0
+                  },
+                  {
+                    "le": 500,
+                    "count": 0
+                  },
+                  {
+                    "le": 1000,
+                    "count": 0
+                  },
+                  {
+                    "le": 2500,
+                    "count": 0
+                  },
+                  {
+                    "le": 5000,
+                    "count": 0
+                  },
+                  {
+                    "le": null,
+                    "count": 0
+                  }
+                ]
+              }
+            },
+            "shadow": null
+          },
+          "probe": {
+            "rafPerSecond": 122,
+            "longTaskCount": 0,
+            "longTaskTotalMs": 0,
+            "longTaskMaxMs": 0,
+            "widgetCount": 3
+          },
+          "memory": {
+            "jsHeapUsedBytes": 52814560,
+            "jsHeapTotalBytes": 74371072,
+            "documents": 1,
+            "nodes": 363,
+            "jsEventListeners": 177
+          },
+          "memoryError": null,
+          "screenshot": null
+        },
+        {
+          "role": "hub",
+          "url": "http://wails.localhost/#/hub",
+          "title": "Vantare",
+          "overlay": false,
+          "hub": true,
+          "surface": "hub",
+          "widgetCount": 0,
+          "diagnostics": null,
+          "probe": {
+            "rafPerSecond": 123,
+            "longTaskCount": 0,
+            "longTaskTotalMs": 0,
+            "longTaskMaxMs": 0,
+            "widgetCount": 0
+          },
+          "memory": {
+            "jsHeapUsedBytes": 48923568,
+            "jsHeapTotalBytes": 54341632,
+            "documents": 1,
+            "nodes": 100,
+            "jsEventListeners": 199
+          },
+          "memoryError": null,
+          "screenshot": null
+        }
+      ]
+    },
+    {
+      "schema": "vantare.huella.cdp.v1",
+      "capturedAt": "2026-08-30T18:49:59.742Z",
+      "action": "inspect",
+      "control": null,
+      "durationSeconds": 1,
+      "expectedWidgets": 3,
+      "renderedWidgets": 0,
+      "overlayReadyAt": null,
+      "rendererProcessIds": [],
+      "rendererProcessInfoError": null,
+      "targets": [
+        {
+          "role": "overlay",
+          "url": "http://wails.localhost/overlay.html",
+          "title": "Vantare Overlay",
+          "overlay": true,
+          "hub": false,
+          "surface": "desktop",
+          "widgetCount": 3,
+          "diagnostics": {
+            "overlay_v2_parse_duration": {
+              "count": 512,
+              "p50": 0.20000000298023224,
+              "p99": 0.5,
+              "nonLiveSamples": 83
+            },
+            "overlay_v2_transport": {
+              "revision": 56633,
+              "frameRevision": 56633,
+              "sourceState": "live",
+              "epoch": 2,
+              "sequence": 15957,
+              "sessionId": "lmu-session-2",
+              "vehicleCount": 18,
+              "playerPit": "pit"
+            },
+            "pull": {
+              "active": true,
+              "requestsCompleted": 41865,
+              "receivedV1Projections": 0,
+              "receivedV2Snapshots": 41743,
+              "requestDurationMs": {
+                "count": 41865,
+                "sampleCount": 512,
+                "mean": 4.476694135910669,
+                "max": 871.8000000007451,
+                "p99": 49.099999997764826,
+                "histogram": [
+                  {
+                    "le": 1,
+                    "count": 0
+                  },
+                  {
+                    "le": 2,
+                    "count": 0
+                  },
+                  {
+                    "le": 4,
+                    "count": 332
+                  },
+                  {
+                    "le": 8,
+                    "count": 135
+                  },
+                  {
+                    "le": 16,
+                    "count": 27
+                  },
+                  {
+                    "le": 32,
+                    "count": 11
+                  },
+                  {
+                    "le": 64,
+                    "count": 3
+                  },
+                  {
+                    "le": 128,
+                    "count": 3
+                  },
+                  {
+                    "le": 250,
+                    "count": 1
+                  },
+                  {
+                    "le": 500,
+                    "count": 0
+                  },
+                  {
+                    "le": 1000,
+                    "count": 0
+                  },
+                  {
+                    "le": 2500,
+                    "count": 0
+                  },
+                  {
+                    "le": 5000,
+                    "count": 0
+                  },
+                  {
+                    "le": null,
+                    "count": 0
+                  }
+                ]
+              }
+            },
+            "shadow": null
+          },
+          "probe": {
+            "rafPerSecond": 122,
+            "longTaskCount": 0,
+            "longTaskTotalMs": 0,
+            "longTaskMaxMs": 0,
+            "widgetCount": 3
+          },
+          "memory": {
+            "jsHeapUsedBytes": 85203796,
+            "jsHeapTotalBytes": 153538560,
+            "documents": 1,
+            "nodes": 363,
+            "jsEventListeners": 177
+          },
+          "memoryError": null,
+          "screenshot": null
+        },
+        {
+          "role": "hub",
+          "url": "http://wails.localhost/#/hub",
+          "title": "Vantare",
+          "overlay": false,
+          "hub": true,
+          "surface": "hub",
+          "widgetCount": 0,
+          "diagnostics": null,
+          "probe": {
+            "rafPerSecond": 122,
+            "longTaskCount": 0,
+            "longTaskTotalMs": 0,
+            "longTaskMaxMs": 0,
+            "widgetCount": 0
+          },
+          "memory": {
+            "jsHeapUsedBytes": 72769744,
+            "jsHeapTotalBytes": 77537280,
+            "documents": 1,
+            "nodes": 100,
+            "jsEventListeners": 199
+          },
+          "memoryError": null,
+          "screenshot": null
+        }
+      ]
+    },
+    {
+      "schema": "vantare.huella.cdp.v1",
+      "capturedAt": "2026-08-30T18:54:58.748Z",
+      "action": "inspect",
+      "control": null,
+      "durationSeconds": 1,
+      "expectedWidgets": 3,
+      "renderedWidgets": 0,
+      "overlayReadyAt": null,
+      "rendererProcessIds": [],
+      "rendererProcessInfoError": null,
+      "targets": [
+        {
+          "role": "overlay",
+          "url": "http://wails.localhost/overlay.html",
+          "title": "Vantare Overlay",
+          "overlay": true,
+          "hub": false,
+          "surface": "desktop",
+          "widgetCount": 3,
+          "diagnostics": {
+            "overlay_v2_parse_duration": {
+              "count": 512,
+              "p50": 0.29999999701976776,
+              "p99": 0.5,
+              "nonLiveSamples": 169
+            },
+            "overlay_v2_transport": {
+              "revision": 75401,
+              "frameRevision": 75401,
+              "sourceState": "live",
+              "epoch": 2,
+              "sequence": 34723,
+              "sessionId": "lmu-session-2",
+              "vehicleCount": 18,
+              "playerPit": "pit"
+            },
+            "pull": {
+              "active": true,
+              "requestsCompleted": 55747,
+              "receivedV1Projections": 0,
+              "receivedV2Snapshots": 55588,
+              "requestDurationMs": {
+                "count": 55747,
+                "sampleCount": 512,
+                "mean": 4.476493802349687,
+                "max": 871.8000000007451,
+                "p99": 34.30000000074506,
+                "histogram": [
+                  {
+                    "le": 1,
+                    "count": 0
+                  },
+                  {
+                    "le": 2,
+                    "count": 0
+                  },
+                  {
+                    "le": 4,
+                    "count": 345
+                  },
+                  {
+                    "le": 8,
+                    "count": 125
+                  },
+                  {
+                    "le": 16,
+                    "count": 19
+                  },
+                  {
+                    "le": 32,
+                    "count": 17
+                  },
+                  {
+                    "le": 64,
+                    "count": 5
+                  },
+                  {
+                    "le": 128,
+                    "count": 1
+                  },
+                  {
+                    "le": 250,
+                    "count": 0
+                  },
+                  {
+                    "le": 500,
+                    "count": 0
+                  },
+                  {
+                    "le": 1000,
+                    "count": 0
+                  },
+                  {
+                    "le": 2500,
+                    "count": 0
+                  },
+                  {
+                    "le": 5000,
+                    "count": 0
+                  },
+                  {
+                    "le": null,
+                    "count": 0
+                  }
+                ]
+              }
+            },
+            "shadow": null
+          },
+          "probe": {
+            "rafPerSecond": 120,
+            "longTaskCount": 0,
+            "longTaskTotalMs": 0,
+            "longTaskMaxMs": 0,
+            "widgetCount": 3
+          },
+          "memory": {
+            "jsHeapUsedBytes": 83602220,
+            "jsHeapTotalBytes": 89100288,
+            "documents": 1,
+            "nodes": 363,
+            "jsEventListeners": 190
+          },
+          "memoryError": null,
+          "screenshot": "<session-root>\\screenshots\\final\\overlay-1.png"
+        },
+        {
+          "role": "hub",
+          "url": "http://wails.localhost/#/hub",
+          "title": "Vantare",
+          "overlay": false,
+          "hub": true,
+          "surface": "hub",
+          "widgetCount": 0,
+          "diagnostics": null,
+          "probe": {
+            "rafPerSecond": 120,
+            "longTaskCount": 0,
+            "longTaskTotalMs": 0,
+            "longTaskMaxMs": 0,
+            "widgetCount": 0
+          },
+          "memory": {
+            "jsHeapUsedBytes": 89391396,
+            "jsHeapTotalBytes": 96149504,
+            "documents": 1,
+            "nodes": 100,
+            "jsEventListeners": 212
+          },
+          "memoryError": null,
+          "screenshot": "<session-root>\\screenshots\\final\\hub-2.png"
+        }
+      ]
+    }
+  ],
+  "transitions": [
+    {
+      "kind": "window-first-seen",
+      "surface": "hub",
+      "window": "hub|hub|http://wails.localhost/#/hub|Vantare",
+      "timestamp": "08/30/2026 18:34:58"
+    },
+    {
+      "kind": "window-first-seen",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "timestamp": "08/30/2026 18:34:58"
+    },
+    {
+      "kind": "window-widget-ready",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "timestamp": "08/30/2026 18:34:58"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 149,
+      "sequence": 266,
+      "timestamp": "08/30/2026 18:34:59"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 312,
+      "sequence": 429,
+      "timestamp": "08/30/2026 18:35:01"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 636,
+      "sequence": 753,
+      "timestamp": "08/30/2026 18:35:07"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 905,
+      "sequence": 1022,
+      "timestamp": "08/30/2026 18:35:11"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 1219,
+      "sequence": 1336,
+      "timestamp": "08/30/2026 18:35:16"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 1539,
+      "sequence": 1656,
+      "timestamp": "08/30/2026 18:35:21"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 1864,
+      "sequence": 1981,
+      "timestamp": "08/30/2026 18:35:26"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 2157,
+      "sequence": 2274,
+      "timestamp": "08/30/2026 18:35:31"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 2483,
+      "sequence": 2600,
+      "timestamp": "08/30/2026 18:35:36"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 2785,
+      "sequence": 2902,
+      "timestamp": "08/30/2026 18:35:41"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 3123,
+      "sequence": 3240,
+      "timestamp": "08/30/2026 18:35:46"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 3434,
+      "sequence": 3551,
+      "timestamp": "08/30/2026 18:35:51"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 3748,
+      "sequence": 3865,
+      "timestamp": "08/30/2026 18:35:56"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 4056,
+      "sequence": 4173,
+      "timestamp": "08/30/2026 18:36:01"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 4380,
+      "sequence": 4497,
+      "timestamp": "08/30/2026 18:36:06"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 4701,
+      "sequence": 4818,
+      "timestamp": "08/30/2026 18:36:11"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 5014,
+      "sequence": 5131,
+      "timestamp": "08/30/2026 18:36:16"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 5305,
+      "sequence": 5422,
+      "timestamp": "08/30/2026 18:36:21"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 5626,
+      "sequence": 5743,
+      "timestamp": "08/30/2026 18:36:26"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 5946,
+      "sequence": 6063,
+      "timestamp": "08/30/2026 18:36:31"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 6265,
+      "sequence": 6382,
+      "timestamp": "08/30/2026 18:36:36"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 6568,
+      "sequence": 6685,
+      "timestamp": "08/30/2026 18:36:41"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 6889,
+      "sequence": 7006,
+      "timestamp": "08/30/2026 18:36:46"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 7207,
+      "sequence": 7324,
+      "timestamp": "08/30/2026 18:36:51"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 7526,
+      "sequence": 7643,
+      "timestamp": "08/30/2026 18:36:56"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 7846,
+      "sequence": 7963,
+      "timestamp": "08/30/2026 18:37:01"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 8131,
+      "sequence": 8248,
+      "timestamp": "08/30/2026 18:37:06"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 8451,
+      "sequence": 8568,
+      "timestamp": "08/30/2026 18:37:11"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 8769,
+      "sequence": 8886,
+      "timestamp": "08/30/2026 18:37:16"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 9094,
+      "sequence": 9211,
+      "timestamp": "08/30/2026 18:37:21"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 9402,
+      "sequence": 9519,
+      "timestamp": "08/30/2026 18:37:26"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 9715,
+      "sequence": 9832,
+      "timestamp": "08/30/2026 18:37:31"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 10018,
+      "sequence": 10135,
+      "timestamp": "08/30/2026 18:37:36"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 10348,
+      "sequence": 10465,
+      "timestamp": "08/30/2026 18:37:41"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 10664,
+      "sequence": 10781,
+      "timestamp": "08/30/2026 18:37:47"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 10926,
+      "sequence": 11043,
+      "timestamp": "08/30/2026 18:37:51"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 11245,
+      "sequence": 11362,
+      "timestamp": "08/30/2026 18:37:56"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 11568,
+      "sequence": 11685,
+      "timestamp": "08/30/2026 18:38:01"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 11888,
+      "sequence": 12005,
+      "timestamp": "08/30/2026 18:38:06"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 12201,
+      "sequence": 12318,
+      "timestamp": "08/30/2026 18:38:11"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 12518,
+      "sequence": 12635,
+      "timestamp": "08/30/2026 18:38:16"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 12846,
+      "sequence": 12963,
+      "timestamp": "08/30/2026 18:38:21"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 13163,
+      "sequence": 13280,
+      "timestamp": "08/30/2026 18:38:26"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 13486,
+      "sequence": 13603,
+      "timestamp": "08/30/2026 18:38:31"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 13763,
+      "sequence": 13880,
+      "timestamp": "08/30/2026 18:38:36"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 14083,
+      "sequence": 14200,
+      "timestamp": "08/30/2026 18:38:41"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 14418,
+      "sequence": 14535,
+      "timestamp": "08/30/2026 18:38:46"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 14736,
+      "sequence": 14853,
+      "timestamp": "08/30/2026 18:38:51"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 15057,
+      "sequence": 15174,
+      "timestamp": "08/30/2026 18:38:56"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 15361,
+      "sequence": 15478,
+      "timestamp": "08/30/2026 18:39:01"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 15695,
+      "sequence": 15812,
+      "timestamp": "08/30/2026 18:39:06"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 16003,
+      "sequence": 16120,
+      "timestamp": "08/30/2026 18:39:11"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 16330,
+      "sequence": 16447,
+      "timestamp": "08/30/2026 18:39:16"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 16607,
+      "sequence": 16724,
+      "timestamp": "08/30/2026 18:39:21"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 16926,
+      "sequence": 17043,
+      "timestamp": "08/30/2026 18:39:26"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 17244,
+      "sequence": 17361,
+      "timestamp": "08/30/2026 18:39:31"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 17569,
+      "sequence": 17686,
+      "timestamp": "08/30/2026 18:39:36"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 17893,
+      "sequence": 18010,
+      "timestamp": "08/30/2026 18:39:42"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 18186,
+      "sequence": 18303,
+      "timestamp": "08/30/2026 18:39:46"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 18505,
+      "sequence": 18622,
+      "timestamp": "08/30/2026 18:39:51"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 18827,
+      "sequence": 18944,
+      "timestamp": "08/30/2026 18:39:56"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 18899,
+      "sequence": 19016,
+      "timestamp": "08/30/2026 18:39:58"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 19159,
+      "sequence": 19276,
+      "timestamp": "08/30/2026 18:40:01"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 19414,
+      "sequence": 19531,
+      "timestamp": "08/30/2026 18:40:06"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 19733,
+      "sequence": 19850,
+      "timestamp": "08/30/2026 18:40:11"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 20057,
+      "sequence": 20174,
+      "timestamp": "08/30/2026 18:40:16"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 20377,
+      "sequence": 20494,
+      "timestamp": "08/30/2026 18:40:21"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 20698,
+      "sequence": 20815,
+      "timestamp": "08/30/2026 18:40:26"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 21005,
+      "sequence": 21122,
+      "timestamp": "08/30/2026 18:40:31"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 21331,
+      "sequence": 21448,
+      "timestamp": "08/30/2026 18:40:36"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 21639,
+      "sequence": 21756,
+      "timestamp": "08/30/2026 18:40:41"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 21961,
+      "sequence": 22078,
+      "timestamp": "08/30/2026 18:40:46"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 22292,
+      "sequence": 22409,
+      "timestamp": "08/30/2026 18:40:51"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 22599,
+      "sequence": 22716,
+      "timestamp": "08/30/2026 18:40:56"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 22926,
+      "sequence": 23043,
+      "timestamp": "08/30/2026 18:41:01"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 23234,
+      "sequence": 23351,
+      "timestamp": "08/30/2026 18:41:06"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 23582,
+      "sequence": 23699,
+      "timestamp": "08/30/2026 18:41:12"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 23869,
+      "sequence": 23986,
+      "timestamp": "08/30/2026 18:41:16"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 24190,
+      "sequence": 24307,
+      "timestamp": "08/30/2026 18:41:21"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 24511,
+      "sequence": 24628,
+      "timestamp": "08/30/2026 18:41:26"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 24834,
+      "sequence": 24951,
+      "timestamp": "08/30/2026 18:41:31"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 25136,
+      "sequence": 25253,
+      "timestamp": "08/30/2026 18:41:36"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 25463,
+      "sequence": 25580,
+      "timestamp": "08/30/2026 18:41:41"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 25770,
+      "sequence": 25887,
+      "timestamp": "08/30/2026 18:41:46"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 26105,
+      "sequence": 26222,
+      "timestamp": "08/30/2026 18:41:51"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 26458,
+      "sequence": 26575,
+      "timestamp": "08/30/2026 18:41:57"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 26725,
+      "sequence": 26842,
+      "timestamp": "08/30/2026 18:42:01"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 27043,
+      "sequence": 27160,
+      "timestamp": "08/30/2026 18:42:06"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 27362,
+      "sequence": 27479,
+      "timestamp": "08/30/2026 18:42:11"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 27685,
+      "sequence": 27802,
+      "timestamp": "08/30/2026 18:42:16"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 27973,
+      "sequence": 28090,
+      "timestamp": "08/30/2026 18:42:21"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 28283,
+      "sequence": 28400,
+      "timestamp": "08/30/2026 18:42:26"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 28615,
+      "sequence": 28732,
+      "timestamp": "08/30/2026 18:42:31"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 28933,
+      "sequence": 29050,
+      "timestamp": "08/30/2026 18:42:36"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 29277,
+      "sequence": 29394,
+      "timestamp": "08/30/2026 18:42:42"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 29560,
+      "sequence": 29677,
+      "timestamp": "08/30/2026 18:42:46"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 29882,
+      "sequence": 29999,
+      "timestamp": "08/30/2026 18:42:51"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 30204,
+      "sequence": 30321,
+      "timestamp": "08/30/2026 18:42:56"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 30533,
+      "sequence": 30650,
+      "timestamp": "08/30/2026 18:43:01"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 30856,
+      "sequence": 30973,
+      "timestamp": "08/30/2026 18:43:06"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 31161,
+      "sequence": 31278,
+      "timestamp": "08/30/2026 18:43:11"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 31481,
+      "sequence": 31598,
+      "timestamp": "08/30/2026 18:43:16"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 31805,
+      "sequence": 31922,
+      "timestamp": "08/30/2026 18:43:21"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 32128,
+      "sequence": 32245,
+      "timestamp": "08/30/2026 18:43:27"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 32393,
+      "sequence": 32510,
+      "timestamp": "08/30/2026 18:43:31"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 32712,
+      "sequence": 32829,
+      "timestamp": "08/30/2026 18:43:36"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 33036,
+      "sequence": 33153,
+      "timestamp": "08/30/2026 18:43:41"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 33357,
+      "sequence": 33474,
+      "timestamp": "08/30/2026 18:43:46"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 33670,
+      "sequence": 33787,
+      "timestamp": "08/30/2026 18:43:51"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 33978,
+      "sequence": 34095,
+      "timestamp": "08/30/2026 18:43:56"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 34295,
+      "sequence": 34412,
+      "timestamp": "08/30/2026 18:44:01"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 34632,
+      "sequence": 34749,
+      "timestamp": "08/30/2026 18:44:06"
+    },
+    {
+      "kind": "pit-state",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "from": "pit",
+      "to": "track",
+      "timestamp": "08/30/2026 18:44:06"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 34949,
+      "sequence": 35066,
+      "timestamp": "08/30/2026 18:44:12"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 35193,
+      "sequence": 35310,
+      "timestamp": "08/30/2026 18:44:16"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 35513,
+      "sequence": 35630,
+      "timestamp": "08/30/2026 18:44:21"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 35832,
+      "sequence": 35949,
+      "timestamp": "08/30/2026 18:44:26"
+    },
+    {
+      "kind": "source-state",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "from": "live",
+      "to": "stale",
+      "frameRevision": 36155,
+      "sequence": 36271,
+      "timestamp": "08/30/2026 18:44:31"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 36155,
+      "sequence": 36271,
+      "timestamp": "08/30/2026 18:44:31"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 36476,
+      "sequence": 36592,
+      "timestamp": "08/30/2026 18:44:37"
+    },
+    {
+      "kind": "pit-state",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "from": "track",
+      "to": "pit",
+      "timestamp": "08/30/2026 18:44:37"
+    },
+    {
+      "kind": "source-state",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "from": "stale",
+      "to": "live",
+      "frameRevision": 36768,
+      "sequence": 36883,
+      "timestamp": "08/30/2026 18:44:41"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 36768,
+      "sequence": 36883,
+      "timestamp": "08/30/2026 18:44:41"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 37066,
+      "sequence": 37181,
+      "timestamp": "08/30/2026 18:44:46"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 37389,
+      "sequence": 37504,
+      "timestamp": "08/30/2026 18:44:51"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 37723,
+      "sequence": 37838,
+      "timestamp": "08/30/2026 18:44:56"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 37794,
+      "sequence": 37909,
+      "timestamp": "08/30/2026 18:44:59"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 38017,
+      "sequence": 38132,
+      "timestamp": "08/30/2026 18:45:01"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 38322,
+      "sequence": 38437,
+      "timestamp": "08/30/2026 18:45:06"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 38642,
+      "sequence": 38757,
+      "timestamp": "08/30/2026 18:45:11"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 38971,
+      "sequence": 39086,
+      "timestamp": "08/30/2026 18:45:16"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 39278,
+      "sequence": 39393,
+      "timestamp": "08/30/2026 18:45:22"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 39552,
+      "sequence": 39667,
+      "timestamp": "08/30/2026 18:45:26"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 39858,
+      "sequence": 39973,
+      "timestamp": "08/30/2026 18:45:31"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 40179,
+      "sequence": 40294,
+      "timestamp": "08/30/2026 18:45:36"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 40501,
+      "sequence": 40616,
+      "timestamp": "08/30/2026 18:45:41"
+    },
+    {
+      "kind": "source-state",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "from": "live",
+      "to": "stale",
+      "frameRevision": 40800,
+      "sequence": 125,
+      "timestamp": "08/30/2026 18:45:46"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 40800,
+      "sequence": 125,
+      "timestamp": "08/30/2026 18:45:46"
+    },
+    {
+      "kind": "source-state",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "from": "stale",
+      "to": "live",
+      "frameRevision": 41107,
+      "sequence": 431,
+      "timestamp": "08/30/2026 18:45:51"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 41107,
+      "sequence": 431,
+      "timestamp": "08/30/2026 18:45:51"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 41426,
+      "sequence": 750,
+      "timestamp": "08/30/2026 18:45:56"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 41761,
+      "sequence": 1085,
+      "timestamp": "08/30/2026 18:46:01"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 42090,
+      "sequence": 1414,
+      "timestamp": "08/30/2026 18:46:07"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 42373,
+      "sequence": 1697,
+      "timestamp": "08/30/2026 18:46:11"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 42696,
+      "sequence": 2020,
+      "timestamp": "08/30/2026 18:46:16"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 43003,
+      "sequence": 2327,
+      "timestamp": "08/30/2026 18:46:21"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 43332,
+      "sequence": 2656,
+      "timestamp": "08/30/2026 18:46:26"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 43650,
+      "sequence": 2974,
+      "timestamp": "08/30/2026 18:46:31"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 43945,
+      "sequence": 3269,
+      "timestamp": "08/30/2026 18:46:36"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 44263,
+      "sequence": 3587,
+      "timestamp": "08/30/2026 18:46:41"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 44594,
+      "sequence": 3918,
+      "timestamp": "08/30/2026 18:46:46"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 44921,
+      "sequence": 4245,
+      "timestamp": "08/30/2026 18:46:51"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 45207,
+      "sequence": 4531,
+      "timestamp": "08/30/2026 18:46:56"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 45531,
+      "sequence": 4855,
+      "timestamp": "08/30/2026 18:47:01"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 45854,
+      "sequence": 5178,
+      "timestamp": "08/30/2026 18:47:06"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 46171,
+      "sequence": 5495,
+      "timestamp": "08/30/2026 18:47:11"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 46465,
+      "sequence": 5789,
+      "timestamp": "08/30/2026 18:47:17"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 46751,
+      "sequence": 6075,
+      "timestamp": "08/30/2026 18:47:21"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 47071,
+      "sequence": 6395,
+      "timestamp": "08/30/2026 18:47:26"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 47393,
+      "sequence": 6717,
+      "timestamp": "08/30/2026 18:47:31"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 47729,
+      "sequence": 7053,
+      "timestamp": "08/30/2026 18:47:36"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 48037,
+      "sequence": 7361,
+      "timestamp": "08/30/2026 18:47:41"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 48337,
+      "sequence": 7661,
+      "timestamp": "08/30/2026 18:47:46"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 48659,
+      "sequence": 7983,
+      "timestamp": "08/30/2026 18:47:51"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 48988,
+      "sequence": 8312,
+      "timestamp": "08/30/2026 18:47:56"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 49312,
+      "sequence": 8636,
+      "timestamp": "08/30/2026 18:48:01"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 49609,
+      "sequence": 8933,
+      "timestamp": "08/30/2026 18:48:06"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 49932,
+      "sequence": 9256,
+      "timestamp": "08/30/2026 18:48:11"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 50256,
+      "sequence": 9580,
+      "timestamp": "08/30/2026 18:48:16"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 50577,
+      "sequence": 9901,
+      "timestamp": "08/30/2026 18:48:21"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 50868,
+      "sequence": 10192,
+      "timestamp": "08/30/2026 18:48:26"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 51163,
+      "sequence": 10487,
+      "timestamp": "08/30/2026 18:48:31"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 51486,
+      "sequence": 10810,
+      "timestamp": "08/30/2026 18:48:36"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 51816,
+      "sequence": 11140,
+      "timestamp": "08/30/2026 18:48:41"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 52143,
+      "sequence": 11467,
+      "timestamp": "08/30/2026 18:48:46"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 52409,
+      "sequence": 11733,
+      "timestamp": "08/30/2026 18:48:51"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 52732,
+      "sequence": 12056,
+      "timestamp": "08/30/2026 18:48:56"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 53060,
+      "sequence": 12384,
+      "timestamp": "08/30/2026 18:49:01"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 53375,
+      "sequence": 12699,
+      "timestamp": "08/30/2026 18:49:06"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 53671,
+      "sequence": 12995,
+      "timestamp": "08/30/2026 18:49:11"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 53976,
+      "sequence": 13300,
+      "timestamp": "08/30/2026 18:49:16"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 54298,
+      "sequence": 13622,
+      "timestamp": "08/30/2026 18:49:21"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 54608,
+      "sequence": 13932,
+      "timestamp": "08/30/2026 18:49:26"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 54940,
+      "sequence": 14264,
+      "timestamp": "08/30/2026 18:49:31"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 55250,
+      "sequence": 14574,
+      "timestamp": "08/30/2026 18:49:36"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 55562,
+      "sequence": 14886,
+      "timestamp": "08/30/2026 18:49:41"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 55871,
+      "sequence": 15195,
+      "timestamp": "08/30/2026 18:49:46"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 56203,
+      "sequence": 15527,
+      "timestamp": "08/30/2026 18:49:51"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 56542,
+      "sequence": 15866,
+      "timestamp": "08/30/2026 18:49:57"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 56633,
+      "sequence": 15957,
+      "timestamp": "08/30/2026 18:49:59"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 56818,
+      "sequence": 16142,
+      "timestamp": "08/30/2026 18:50:01"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 57143,
+      "sequence": 16467,
+      "timestamp": "08/30/2026 18:50:06"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 57461,
+      "sequence": 16785,
+      "timestamp": "08/30/2026 18:50:11"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 57790,
+      "sequence": 17114,
+      "timestamp": "08/30/2026 18:50:16"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 58104,
+      "sequence": 17428,
+      "timestamp": "08/30/2026 18:50:22"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 58398,
+      "sequence": 17722,
+      "timestamp": "08/30/2026 18:50:26"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 58713,
+      "sequence": 18037,
+      "timestamp": "08/30/2026 18:50:31"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 59021,
+      "sequence": 18345,
+      "timestamp": "08/30/2026 18:50:36"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 59347,
+      "sequence": 18671,
+      "timestamp": "08/30/2026 18:50:41"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 59604,
+      "sequence": 18928,
+      "timestamp": "08/30/2026 18:50:46"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 59928,
+      "sequence": 19252,
+      "timestamp": "08/30/2026 18:50:51"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 60251,
+      "sequence": 19575,
+      "timestamp": "08/30/2026 18:50:56"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 60577,
+      "sequence": 19901,
+      "timestamp": "08/30/2026 18:51:01"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 60921,
+      "sequence": 20245,
+      "timestamp": "08/30/2026 18:51:07"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 61189,
+      "sequence": 20513,
+      "timestamp": "08/30/2026 18:51:11"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 61497,
+      "sequence": 20821,
+      "timestamp": "08/30/2026 18:51:16"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 61820,
+      "sequence": 21144,
+      "timestamp": "08/30/2026 18:51:21"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 62147,
+      "sequence": 21471,
+      "timestamp": "08/30/2026 18:51:26"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 62491,
+      "sequence": 21815,
+      "timestamp": "08/30/2026 18:51:32"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 62781,
+      "sequence": 22105,
+      "timestamp": "08/30/2026 18:51:36"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 63089,
+      "sequence": 22413,
+      "timestamp": "08/30/2026 18:51:41"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 63413,
+      "sequence": 22737,
+      "timestamp": "08/30/2026 18:51:46"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 63736,
+      "sequence": 23060,
+      "timestamp": "08/30/2026 18:51:51"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 64051,
+      "sequence": 23375,
+      "timestamp": "08/30/2026 18:51:56"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 64366,
+      "sequence": 23690,
+      "timestamp": "08/30/2026 18:52:01"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 64680,
+      "sequence": 24004,
+      "timestamp": "08/30/2026 18:52:06"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 65010,
+      "sequence": 24334,
+      "timestamp": "08/30/2026 18:52:11"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 65365,
+      "sequence": 24689,
+      "timestamp": "08/30/2026 18:52:17"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 65608,
+      "sequence": 24932,
+      "timestamp": "08/30/2026 18:52:21"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 65925,
+      "sequence": 25249,
+      "timestamp": "08/30/2026 18:52:26"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 66249,
+      "sequence": 25573,
+      "timestamp": "08/30/2026 18:52:31"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 66571,
+      "sequence": 25895,
+      "timestamp": "08/30/2026 18:52:36"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 66839,
+      "sequence": 26161,
+      "timestamp": "08/30/2026 18:52:41"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 67150,
+      "sequence": 26472,
+      "timestamp": "08/30/2026 18:52:46"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 67473,
+      "sequence": 26795,
+      "timestamp": "08/30/2026 18:52:51"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 67810,
+      "sequence": 27132,
+      "timestamp": "08/30/2026 18:52:56"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 68122,
+      "sequence": 27444,
+      "timestamp": "08/30/2026 18:53:02"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 68392,
+      "sequence": 27714,
+      "timestamp": "08/30/2026 18:53:06"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 68704,
+      "sequence": 28026,
+      "timestamp": "08/30/2026 18:53:11"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 69026,
+      "sequence": 28348,
+      "timestamp": "08/30/2026 18:53:16"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 69355,
+      "sequence": 28677,
+      "timestamp": "08/30/2026 18:53:21"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 69673,
+      "sequence": 28995,
+      "timestamp": "08/30/2026 18:53:26"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 69983,
+      "sequence": 29305,
+      "timestamp": "08/30/2026 18:53:31"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 70307,
+      "sequence": 29629,
+      "timestamp": "08/30/2026 18:53:36"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 70629,
+      "sequence": 29951,
+      "timestamp": "08/30/2026 18:53:41"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 70967,
+      "sequence": 30289,
+      "timestamp": "08/30/2026 18:53:47"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 71261,
+      "sequence": 30583,
+      "timestamp": "08/30/2026 18:53:51"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 71580,
+      "sequence": 30902,
+      "timestamp": "08/30/2026 18:53:56"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 71892,
+      "sequence": 31214,
+      "timestamp": "08/30/2026 18:54:01"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 72215,
+      "sequence": 31537,
+      "timestamp": "08/30/2026 18:54:06"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 72548,
+      "sequence": 31870,
+      "timestamp": "08/30/2026 18:54:11"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 72848,
+      "sequence": 32170,
+      "timestamp": "08/30/2026 18:54:16"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 73174,
+      "sequence": 32496,
+      "timestamp": "08/30/2026 18:54:21"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 73488,
+      "sequence": 32810,
+      "timestamp": "08/30/2026 18:54:26"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 73828,
+      "sequence": 33150,
+      "timestamp": "08/30/2026 18:54:31"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 74088,
+      "sequence": 33410,
+      "timestamp": "08/30/2026 18:54:36"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 74396,
+      "sequence": 33718,
+      "timestamp": "08/30/2026 18:54:41"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 74726,
+      "sequence": 34048,
+      "timestamp": "08/30/2026 18:54:46"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 75053,
+      "sequence": 34375,
+      "timestamp": "08/30/2026 18:54:51"
+    },
+    {
+      "kind": "v2-progress",
+      "surface": "desktop",
+      "window": "desktop|overlay|http://wails.localhost/overlay.html|Vantare Overlay",
+      "frameRevision": 75401,
+      "sequence": 34723,
+      "timestamp": "08/30/2026 18:54:58"
+    }
+  ],
+  "screenshots": {
+    "initial": [
+      "<session-root>\\screenshots\\initial\\hub-1.png",
+      "<session-root>\\screenshots\\initial\\overlay-2.png"
+    ],
+    "final": [
+      "<session-root>\\screenshots\\final\\overlay-1.png",
+      "<session-root>\\screenshots\\final\\hub-2.png"
+    ]
+  },
+  "shutdownClean": true,
+  "failure": null
+}

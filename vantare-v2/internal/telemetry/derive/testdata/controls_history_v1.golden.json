@@ -13,7 +13,10 @@
         "Vehicle": "vehicle",
         "Throttle": 0.1,
         "Brake": 0.2,
-        "Clutch": 0.3
+        "Clutch": 0.3,
+        "SpeedMPS": {},
+        "EngineRPM": {},
+        "Gear": {}
       }
     ],
     "gapsStatus": "missing",
@@ -33,7 +36,10 @@
         "Vehicle": "vehicle",
         "Throttle": 0.1,
         "Brake": 0.2,
-        "Clutch": 0.3
+        "Clutch": 0.3,
+        "SpeedMPS": {},
+        "EngineRPM": {},
+        "Gear": {}
       }
     ],
     "gapsStatus": "missing",
@@ -53,7 +59,10 @@
         "Vehicle": "vehicle",
         "Throttle": 0.1,
         "Brake": 0.2,
-        "Clutch": 0.3
+        "Clutch": 0.3,
+        "SpeedMPS": {},
+        "EngineRPM": {},
+        "Gear": {}
       },
       {
         "Cursor": {
@@ -64,7 +73,10 @@
         "Vehicle": "vehicle",
         "Throttle": 0.3,
         "Brake": 0.4,
-        "Clutch": 0.5
+        "Clutch": 0.5,
+        "SpeedMPS": {},
+        "EngineRPM": {},
+        "Gear": {}
       }
     ],
     "gapsStatus": "missing",

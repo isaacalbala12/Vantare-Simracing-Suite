@@ -8,7 +8,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/vantare/overlays/v2/pkg/config"
 )
@@ -33,6 +35,140 @@ func TestStudioProfileServiceFailureLogUsesSafeMetadata(t *testing.T) {
 		if strings.Contains(output, forbidden) {
 			t.Fatalf("log output=%q leaked %q", output, forbidden)
 		}
+	}
+}
+
+func TestStudioProfileServiceStateIsSafeDuringConfirmedPerformanceSaves(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "concurrent-performance.json")
+	doc := config.NormalizeProfileDocumentV3(&config.ProfileDocumentV3{
+		SchemaVersion: config.ProfileSchemaVersionV3,
+		ID:            "concurrent-performance",
+		Name:          "Concurrent performance",
+		DisplayMode:   config.ModeRacing,
+		Layouts: map[config.LayoutType]config.SessionLayoutV3{
+			config.LayoutGeneral: {Type: config.LayoutGeneral},
+		},
+	})
+	data, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := NewStudioProfileService(nil, nil)
+	if _, err := svc.Load(path); err != nil {
+		t.Fatal(err)
+	}
+	start := make(chan struct{})
+	var ready sync.WaitGroup
+	var done sync.WaitGroup
+	for worker := 0; worker < 8; worker++ {
+		ready.Add(1)
+		done.Add(1)
+		go func() {
+			defer done.Done()
+			ready.Done()
+			<-start
+			for index := 0; index < 25; index++ {
+				_ = svc.Path()
+				_ = svc.Document()
+				_ = svc.PerformanceProfile()
+				_ = svc.Revision()
+			}
+		}()
+	}
+	ready.Wait()
+	close(start)
+	svc.HandlePerformanceSave(map[string]any{
+		"requestId":   "confirmed-performance",
+		"performance": map[string]any{"mode": "level", "level": 5},
+	})
+	done.Wait()
+	if got := svc.PerformanceProfile(); got == nil || got.Performance == nil || got.Performance.Level != 5 {
+		t.Fatalf("confirmed performance=%+v want level 5", got)
+	}
+}
+
+func TestStudioProfileServiceConcurrentAutosaveAndPerformancePreserveBoth(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "concurrent-autosave.json")
+	source, err := os.ReadFile(filepath.Join("..", "..", "pkg", "config", "testdata", "profile-v0-core-widgets.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, source, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := NewStudioProfileService(nil, nil)
+	if _, err := svc.Load(path); err != nil {
+		t.Fatal(err)
+	}
+	expectedRevision := svc.Revision()
+	edited := svc.Document()
+	layout := edited.Layouts[config.LayoutGeneral]
+	if len(layout.Widgets) == 0 {
+		t.Fatal("fixture has no widgets")
+	}
+	layout.Widgets[0].Layout.X = 321
+	edited.Layouts[config.LayoutGeneral] = layout
+
+	performanceEntered := make(chan struct{})
+	releasePerformance := make(chan struct{})
+	svc.beforePersist = func(operation string) {
+		if operation == "performance" {
+			close(performanceEntered)
+			<-releasePerformance
+		}
+	}
+	performanceDone := make(chan struct{})
+	go func() {
+		defer close(performanceDone)
+		svc.HandlePerformanceSave(map[string]any{
+			"requestId":   "performance-concurrent",
+			"performance": map[string]any{"mode": "level", "level": 5},
+		})
+	}()
+	<-performanceEntered
+
+	layoutDone := make(chan error, 1)
+	go func() {
+		layoutDone <- svc.SaveInPlace("layout-concurrent", expectedRevision, edited)
+	}()
+	select {
+	case err := <-layoutDone:
+		t.Fatalf("autosave completed before the active performance save was released: %v", err)
+	default:
+	}
+	close(releasePerformance)
+
+	select {
+	case <-performanceDone:
+	case <-time.After(2 * time.Second):
+		t.Fatal("performance save did not terminate")
+	}
+	select {
+	case err := <-layoutDone:
+		if err != nil {
+			t.Fatalf("autosave failed after concurrent performance save: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("autosave did not terminate")
+	}
+
+	stored, err := (config.ProfileDocumentStore{}).LoadV4(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotLayout := stored.Document.Layouts[config.LayoutGeneral]
+	if len(gotLayout.Widgets) == 0 || gotLayout.Widgets[0].Layout.X != 321 {
+		t.Fatalf("layout x=%v want 321", gotLayout.Widgets)
+	}
+	if stored.Document.Performance == nil || stored.Document.Performance.Level != 5 {
+		t.Fatalf("performance=%+v want level 5", stored.Document.Performance)
 	}
 }
 
@@ -94,6 +230,90 @@ func TestStudioProfileServiceLoadEmitsLoaded(t *testing.T) {
 	if savedCalls != 0 {
 		t.Fatal("onSaved should not run on load")
 	}
+}
+
+func TestStudioProfileServiceSavesPerformanceInV4AndNotifiesRuntime(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "profile.json")
+	doc := config.NormalizeProfileDocumentV3(&config.ProfileDocumentV3{
+		SchemaVersion: config.ProfileSchemaVersionV3, ID: "performance-profile", Name: "Performance",
+		DisplayMode: config.ModeRacing, MonitorIndex: 0,
+		Layouts: map[config.LayoutType]config.SessionLayoutV3{
+			config.LayoutGeneral: {Type: config.LayoutGeneral, Widgets: []config.WidgetInstanceV3{}},
+		},
+	})
+	data, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	spy := &studioProfileSpy{}
+	svc := NewStudioProfileService(spy, nil)
+	if _, err := svc.Load(path); err != nil {
+		t.Fatal(err)
+	}
+	callbackCount := 0
+	svc.SetOnPerformanceSaved(func(profile *config.ProfileDocumentV4) {
+		callbackCount++
+		if profile.Performance == nil || profile.Performance.Level != 4 {
+			t.Fatalf("callback profile=%+v", profile.Performance)
+		}
+	})
+	svc.HandlePerformanceSave(map[string]any{
+		"requestId":   "performance-save-1",
+		"performance": map[string]any{"mode": "level", "level": 4},
+	})
+
+	if callbackCount != 1 {
+		t.Fatalf("callback count=%d want 1", callbackCount)
+	}
+	loaded, err := (config.ProfileDocumentStore{}).LoadV4(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.MigratedFrom != config.ProfileSchemaVersionV4 || loaded.Document.Performance == nil || loaded.Document.Performance.Level != 4 {
+		t.Fatalf("persisted=%+v from=%d", loaded.Document.Performance, loaded.MigratedFrom)
+	}
+	written, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(written), "updateHz") {
+		t.Fatal("performance save wrote a V3 cadence")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "profile.v3.bak")); err != nil {
+		t.Fatalf("missing V3 backup: %v", err)
+	}
+	if !containsString(spy.events, "studio:profile:performance:saved") {
+		t.Fatalf("events=%v", spy.events)
+	}
+
+	// Un guardado normal posterior de layout/contenido sigue llegando desde el
+	// editor V3 de compatibilidad, pero no puede borrar la política raíz V4.
+	edited := config.NormalizeProfileDocumentV3(svc.loaded.Document)
+	edited.Name = "Performance edited"
+	if err := svc.Save("document-save-1", svc.loaded.Revision, edited); err != nil {
+		t.Fatal(err)
+	}
+	afterDocumentSave, err := (config.ProfileDocumentStore{}).LoadV4(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if afterDocumentSave.Document.Performance == nil || afterDocumentSave.Document.Performance.Level != 4 {
+		t.Fatalf("document save lost performance: %+v", afterDocumentSave.Document.Performance)
+	}
+}
+
+func containsString(values []string, expected string) bool {
+	for _, value := range values {
+		if value == expected {
+			return true
+		}
+	}
+	return false
 }
 
 func TestStudioProfileServiceSaveEmitsSavedAndCallback(t *testing.T) {

@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2"
 )
 
 var (
@@ -17,6 +19,16 @@ var (
 )
 
 const DefaultPublisherMaxPayloadBytes = 64 * 1024
+
+// OverlayV2MaxPayloadBytes is the hard safety limit for the overlay-v2
+// product (ISA-894 A3, approved 2026-09-04): 64 KiB stays the representative
+// performance objective, 72 KiB is the most the publisher accepts and the
+// frontend validator mirrors — including explicit overrides, which clamp
+// back to 72 KiB instead of widening it. It is product-specific on purpose:
+// future products keep DefaultPublisherMaxPayloadBytes instead of silently
+// inheriting this raise. The generic transport ceiling (MaxPayloadBytes,
+// 256 KiB) is untouched.
+const OverlayV2MaxPayloadBytes = 72 * 1024
 
 // DefaultPublisherBytesWindow is the moving window used to report the outgoing
 // byte rate. One second keeps the number readable next to a cadence in Hz.
@@ -34,12 +46,14 @@ const (
 )
 
 type PublisherEvent struct {
-	Product PublisherProduct
-	Kind    PublisherEventKind
-	Data    json.RawMessage
+	sections *overlaySections
+	Product  PublisherProduct
+	Kind     PublisherEventKind
+	Data     json.RawMessage
 }
 
 type PublisherConfig struct {
+	SectionEncoding bool
 	Product         PublisherProduct
 	MaxPayloadBytes int
 	MaxSubscribers  int
@@ -83,7 +97,8 @@ type bytesSample struct {
 }
 
 type Publisher struct {
-	mu sync.Mutex
+	sectionEncoding bool
+	mu              sync.Mutex
 
 	closed           bool
 	product          PublisherProduct
@@ -103,14 +118,32 @@ type Publisher struct {
 	metrics          PublisherMetrics
 }
 
+// resolvePublisherMaxPayloadBytes is the single rule for the effective
+// publisher limit, shared by the constructor and the retained-status path so
+// the two can never diverge. For overlay-v2 the approved 72 KiB is a hard
+// cap, not just a default: an explicit override above it resolves back to
+// 72 KiB, otherwise Go would accept payloads the frontend validator
+// rejects. An explicit smaller limit stays in force. Any other product keeps
+// the previous behaviour (explicit within the transport ceiling, else the
+// 64 KiB representative objective); nothing is widened.
+func resolvePublisherMaxPayloadBytes(product PublisherProduct, configured int) int {
+	if product == ProductOverlayV2 {
+		if configured <= 0 || configured > OverlayV2MaxPayloadBytes {
+			return OverlayV2MaxPayloadBytes
+		}
+		return configured
+	}
+	if configured <= 0 || configured > MaxPayloadBytes {
+		return DefaultPublisherMaxPayloadBytes
+	}
+	return configured
+}
+
 func newPublisher(config PublisherConfig) (*Publisher, error) {
 	if !knownPublisherProduct(config.Product) {
 		return nil, ErrPublisherProduct
 	}
-	maximum := config.MaxPayloadBytes
-	if maximum <= 0 || maximum > MaxPayloadBytes {
-		maximum = DefaultPublisherMaxPayloadBytes
-	}
+	maximum := resolvePublisherMaxPayloadBytes(config.Product, config.MaxPayloadBytes)
 	subscribers := config.MaxSubscribers
 	if subscribers <= 0 || subscribers > MaxSubscribers {
 		subscribers = DefaultMaxSubscribers
@@ -124,7 +157,8 @@ func newPublisher(config PublisherConfig) (*Publisher, error) {
 		clock = time.Now
 	}
 	return &Publisher{
-		product: config.Product, maxPayload: maximum, maxSubscribers: subscribers,
+		sectionEncoding: config.SectionEncoding,
+		product:         config.Product, maxPayload: maximum, maxSubscribers: subscribers,
 		bytesWindow: window, now: clock,
 		subscribers: make(map[*PublisherSubscription]*publisherSubscriber),
 		metrics:     PublisherMetrics{MaxPayloadBytes: maximum, MaxSubscribers: subscribers},
@@ -132,7 +166,20 @@ func newPublisher(config PublisherConfig) (*Publisher, error) {
 }
 
 func (publisher *Publisher) PublishSnapshot(deliveryRevision uint64, payload any) error {
-	encoded, err := publisherPayload(payload)
+	var encoded json.RawMessage
+	var sections *overlaySections
+	var err error
+	if update, ok := payload.(overlayv2.UpdateV2); ok && publisher.sectionEncoding {
+		sections, err = encodeOverlaySections(update)
+		if err != nil {
+			return err
+		}
+	}
+	if sections != nil {
+		encoded = sections.full()
+	} else {
+		encoded, err = publisherPayload(payload)
+	}
 	if err != nil {
 		return err
 	}
@@ -151,7 +198,7 @@ func (publisher *Publisher) PublishSnapshot(deliveryRevision uint64, payload any
 	if publisher.hasSnapshot {
 		publisher.metrics.SnapshotReplacements++
 	}
-	publisher.latest = PublisherEvent{Product: publisher.product, Kind: PublisherEventSnapshot, Data: encoded}
+	publisher.latest = PublisherEvent{Product: publisher.product, Kind: PublisherEventSnapshot, Data: encoded, sections: sections}
 	publisher.hasSnapshot = true
 	publisher.snapshotRevision = deliveryRevision
 	publisher.metrics.SnapshotPublications++
@@ -409,10 +456,7 @@ func (registry *PublisherRegistry) PublishStatus(
 	if !configured {
 		return ErrPublisherProduct
 	}
-	maximum := config.MaxPayloadBytes
-	if maximum <= 0 || maximum > MaxPayloadBytes {
-		maximum = DefaultPublisherMaxPayloadBytes
-	}
+	maximum := resolvePublisherMaxPayloadBytes(product, config.MaxPayloadBytes)
 	if len(encoded) > maximum {
 		return ErrPayloadTooLarge
 	}
@@ -518,7 +562,8 @@ func publisherPayload(payload any) (json.RawMessage, error) {
 	if len(trimmed) < 2 || trimmed[0] != '{' || trimmed[len(trimmed)-1] != '}' {
 		return nil, ErrInvalidPayload
 	}
-	return append(json.RawMessage(nil), trimmed...), nil
+	// Marshal already returns an owned buffer, even for RawMessage inputs.
+	return json.RawMessage(trimmed), nil
 }
 
 func clonePublisherEvent(event PublisherEvent) PublisherEvent {

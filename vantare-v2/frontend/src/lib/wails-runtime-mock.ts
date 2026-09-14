@@ -947,6 +947,21 @@ export const Events = {
     // Auto-respond to settings request
     if (name === "settings:get") {
       setTimeout(() => broadcast("settings", getHubMockSettings()), 50);
+      // Nivel efectivo tal como lo publica Go (`performance:level`): el harness
+      // de Ajustes enseña así la cabecera «Efectivo ahora» y los Hz por widget.
+      setTimeout(
+        () =>
+          broadcast("performance:level", {
+            level: 3,
+            mode: "level",
+            effects: "full",
+            rafCap: 40,
+            sourceHz: 60,
+            reason: "user",
+            widgetHz: { standings: 5, relative: 15, delta: 20, "fuel-strategy": 2, "racing-flags": "event" },
+          }),
+        60,
+      );
       return;
     }
 
@@ -982,6 +997,21 @@ export const Events = {
           broadcast("settings", getHubMockSettings());
         }, 50);
       }
+      return;
+    }
+
+    // Personalizado (Ajustes › Rendimiento) guarda la política en el perfil
+    // activo y espera la confirmación correlacionada por `requestId`.
+    if (name === "studio:profile:performance:save") {
+      const payload = readHarnessPayload(data);
+      setTimeout(
+        () =>
+          broadcast("studio:profile:performance:saved", {
+            requestId: payload.requestId,
+            performance: payload.performance,
+          }),
+        40,
+      );
       return;
     }
 

@@ -2,7 +2,7 @@ import { validateInspectorControls } from "../../core/inspector-control";
 import type { WidgetInstanceV3 } from "../../core/profile-document";
 import type { WidgetTypeDefinition } from "../../core/widget-definition";
 import { getWidgetRequiredFeature } from "../../core/widget-definition";
-import { buildRacingFlagsViewModel, type RacingFlagsViewModel } from "./racing-flags-view-model";
+import type { RacingFlagsViewModel } from "./racing-flags-view-model";
 
 export type RacingFlagsContent = { showSectorFlags: boolean; hideWhenGreen: boolean };
 const DEFAULT_CONTENT: RacingFlagsContent = { showSectorFlags: true, hideWhenGreen: false };
@@ -26,5 +26,4 @@ export const racingFlagsDefinition: WidgetTypeDefinition<RacingFlagsContent, Rac
     for (const key of ["showSectorFlags", "hideWhenGreen"] as const) if (value[key] !== undefined && typeof value[key] !== "boolean") throw new Error("racing-flags content flags must be boolean");
     return { showSectorFlags: typeof value.showSectorFlags === "boolean" ? value.showSectorFlags : true, hideWhenGreen: typeof value.hideWhenGreen === "boolean" ? value.hideWhenGreen : false };
   },
-  buildViewModel: buildRacingFlagsViewModel,
 };

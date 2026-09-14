@@ -1,0 +1,138 @@
+2026-08-30T03:47:18Z INFO  webview: remote debugging enabled via --remote-debugging-port=9246
+Aug 30 05:47:18.530 INF Platform Info: Go-WebView2Loader=true WebView2=151.0.4129.107 ID=25H2 Name=Windows 10 Pro Version=2009 (Build: 26200) Branding=Windows 11 Pro
+Aug 30 05:47:18.528 INF Build Info: Wails=v3.0.0-alpha.98 Compiler=go1.26.4 CGO_CFLAGS= CGO_CPPFLAGS= CGO_LDFLAGS= GOARCH=amd64 DefaultGODEBUG=cryptocustomrand=1,tlssecpmlkem=0,urlstrictcolons=0 CGO_CXXFLAGS= GOOS=windows GOAMD64=v1 -buildmode=exe -compiler=gc CGO_ENABLED=1
+Aug 30 05:47:18.530 INF AssetServer Info: middleware=true handler=true
+2026-08-30T03:47:18Z WARN  warning: Strategy cold start importer is unavailable
+2026-08-30T03:47:18Z WARN  warning: Telemetry Analysis reader runtime is unavailable; the rest of Vantare will continue
+2026-08-30T03:47:18Z INFO  performance diagnostic: variante no disponible
+2026-08-30T03:47:18Z INFO  performance diagnostic: variante no disponible
+2026-08-30T03:47:18Z INFO  HTTP server: listening on 127.0.0.1:39261
+2026-08-30T03:47:18Z INFO  OBS overlay: http://127.0.0.1:39261/overlay?profile=example-racing.json
+2026-08-30T03:47:18Z INFO  telemetry source: state=detecting available=false reconnectAttempt=0
+2026-08-30T03:47:18Z INFO  telemetry source: kind=lmu name=Le Mans Ultimate live=true available=false state=detecting
+2026-08-30T03:47:18Z INFO  global hotkeys active (5 registered)
+2026-08-30T03:47:19Z INFO  [WebView2] Environment created successfully
+2026-08-30T03:47:19Z ERROR warning: could not refresh published schedule: race_schedule_current failed: status 401 (using bundled)
+Aug 30 05:47:19.816 INF [AssetFileServerFS] Handling request url=/ file=.
+Aug 30 05:47:19.873 INF [AssetFileServerFS] Handling request url=/assets/index-CqeA-nh2.css file=assets/index-CqeA-nh2.css
+Aug 30 05:47:19.875 INF [AssetFileServerFS] Handling request url=/assets/index-QgShdQDw.js file=assets/index-QgShdQDw.js
+Aug 30 05:47:19.937 INF [AssetFileServerFS] Handling request url=/assets/AppShell-BbBt6Pcg.js file=assets/AppShell-BbBt6Pcg.js
+Aug 30 05:47:19.939 INF [AssetFileServerFS] Handling request url=/assets/Inter-Variable-Dx4kXJAl.woff2 file=assets/Inter-Variable-Dx4kXJAl.woff2
+Aug 30 05:47:19.940 INF [AssetFileServerFS] Handling request url=/assets/AppShell-DJTTSNg5.css file=assets/AppShell-DJTTSNg5.css
+Aug 30 05:47:19.990 INF [AssetFileServerFS] Handling request url=/favicon.svg file=favicon.svg
+2026-08-30T03:47:19Z INFO  telemetry source: state=live available=true reconnectAttempt=0
+Aug 30 05:47:20.235 INF [AssetFileServerFS] Handling request url=/assets/CascadiaCode-BLEi_uz2.ttf file=assets/CascadiaCode-BLEi_uz2.ttf
+2026-08-30T03:47:20Z ERROR performance sensor: cpuPct=0.00 vantareCpuPct=0.00 vantareRamMB=262.95 gpuPct=0.00 gameFrametimeMs=unavailable gameError="" foreground=true level=5 reason=unavailable
+2026-08-30T03:47:20Z INFO  license:validate request tokenLen=0 refreshLen=0
+2026-08-30T03:47:20Z INFO  license:validate result state=anonymous deviceOK=false entitlementCount=0 err=no session token provided
+2026-08-30T03:47:21Z INFO  performance diagnostic: variante no disponible
+2026-08-30T03:47:21Z ERROR performance sensor: cpuPct=74.12 vantareCpuPct=2.46 vantareRamMB=262.57 gpuPct=0.00 gameFrametimeMs=15.390 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:22Z ERROR performance sensor: cpuPct=63.09 vantareCpuPct=3.61 vantareRamMB=267.02 gpuPct=0.00 gameFrametimeMs=10.786 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:23Z INFO  license:validate request tokenLen=0 refreshLen=0
+2026-08-30T03:47:23Z INFO  license:validate result state=anonymous deviceOK=false entitlementCount=0 err=no session token provided
+2026-08-30T03:47:23Z ERROR performance sensor: cpuPct=61.33 vantareCpuPct=3.42 vantareRamMB=293.87 gpuPct=0.00 gameFrametimeMs=11.256 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:24Z ERROR performance sensor: cpuPct=54.00 vantareCpuPct=1.95 vantareRamMB=294.38 gpuPct=0.00 gameFrametimeMs=13.089 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:25Z ERROR performance sensor: cpuPct=55.18 vantareCpuPct=1.70 vantareRamMB=294.09 gpuPct=0.00 gameFrametimeMs=10.846 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:26Z ERROR performance sensor: cpuPct=59.67 vantareCpuPct=2.32 vantareRamMB=294.74 gpuPct=0.00 gameFrametimeMs=13.484 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:27Z ERROR performance sensor: cpuPct=64.16 vantareCpuPct=2.25 vantareRamMB=292.14 gpuPct=0.00 gameFrametimeMs=11.499 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:28Z ERROR performance sensor: cpuPct=57.23 vantareCpuPct=1.17 vantareRamMB=273.73 gpuPct=0.00 gameFrametimeMs=11.412 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:29Z ERROR performance sensor: cpuPct=58.11 vantareCpuPct=2.25 vantareRamMB=265.85 gpuPct=0.00 gameFrametimeMs=14.236 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:30Z ERROR performance sensor: cpuPct=69.24 vantareCpuPct=1.76 vantareRamMB=262.36 gpuPct=0.00 gameFrametimeMs=11.641 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:31Z ERROR performance sensor: cpuPct=75.00 vantareCpuPct=2.35 vantareRamMB=262.29 gpuPct=0.00 gameFrametimeMs=14.542 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:32Z ERROR performance sensor: cpuPct=78.81 vantareCpuPct=2.64 vantareRamMB=262.36 gpuPct=0.00 gameFrametimeMs=13.649 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:33Z ERROR performance sensor: cpuPct=96.58 vantareCpuPct=1.95 vantareRamMB=263.15 gpuPct=0.00 gameFrametimeMs=16.868 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:34Z ERROR performance sensor: cpuPct=95.31 vantareCpuPct=2.63 vantareRamMB=263.81 gpuPct=0.00 gameFrametimeMs=18.271 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:35Z ERROR performance sensor: cpuPct=98.11 vantareCpuPct=1.87 vantareRamMB=263.87 gpuPct=0.00 gameFrametimeMs=17.506 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:36Z ERROR performance sensor: cpuPct=100.00 vantareCpuPct=1.79 vantareRamMB=264.34 gpuPct=0.00 gameFrametimeMs=20.262 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:37Z ERROR performance sensor: cpuPct=99.91 vantareCpuPct=2.57 vantareRamMB=264.86 gpuPct=0.00 gameFrametimeMs=19.079 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:38Z ERROR performance sensor: cpuPct=100.00 vantareCpuPct=1.37 vantareRamMB=265.11 gpuPct=0.00 gameFrametimeMs=20.232 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:39Z ERROR performance sensor: cpuPct=97.46 vantareCpuPct=2.64 vantareRamMB=262.81 gpuPct=0.00 gameFrametimeMs=18.403 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:40Z ERROR performance sensor: cpuPct=81.93 vantareCpuPct=1.66 vantareRamMB=263.24 gpuPct=0.00 gameFrametimeMs=20.298 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:41Z ERROR performance sensor: cpuPct=59.38 vantareCpuPct=1.56 vantareRamMB=263.66 gpuPct=0.00 gameFrametimeMs=20.391 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:42Z ERROR performance sensor: cpuPct=63.48 vantareCpuPct=1.68 vantareRamMB=263.82 gpuPct=0.00 gameFrametimeMs=13.093 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:43Z ERROR performance sensor: cpuPct=76.76 vantareCpuPct=2.04 vantareRamMB=263.93 gpuPct=0.00 gameFrametimeMs=19.774 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:44Z ERROR performance sensor: cpuPct=75.59 vantareCpuPct=1.76 vantareRamMB=264.28 gpuPct=0.00 gameFrametimeMs=14.292 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:45Z ERROR performance sensor: cpuPct=63.28 vantareCpuPct=2.05 vantareRamMB=264.38 gpuPct=0.00 gameFrametimeMs=14.229 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:46Z ERROR performance sensor: cpuPct=67.48 vantareCpuPct=2.25 vantareRamMB=264.79 gpuPct=0.00 gameFrametimeMs=12.831 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:47Z ERROR performance sensor: cpuPct=68.75 vantareCpuPct=1.95 vantareRamMB=264.62 gpuPct=0.00 gameFrametimeMs=14.622 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:48Z ERROR performance sensor: cpuPct=67.48 vantareCpuPct=2.07 vantareRamMB=263.74 gpuPct=0.00 gameFrametimeMs=15.176 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:49Z ERROR performance sensor: cpuPct=65.82 vantareCpuPct=1.83 vantareRamMB=266.27 gpuPct=0.00 gameFrametimeMs=11.363 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:50Z ERROR performance sensor: cpuPct=71.00 vantareCpuPct=3.61 vantareRamMB=264.34 gpuPct=0.00 gameFrametimeMs=16.506 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:51Z ERROR performance sensor: cpuPct=58.69 vantareCpuPct=1.27 vantareRamMB=263.84 gpuPct=0.00 gameFrametimeMs=11.457 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:52Z ERROR performance sensor: cpuPct=62.30 vantareCpuPct=2.34 vantareRamMB=264.32 gpuPct=0.00 gameFrametimeMs=9.979 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:53Z ERROR performance sensor: cpuPct=74.51 vantareCpuPct=2.59 vantareRamMB=264.51 gpuPct=0.00 gameFrametimeMs=9.599 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:54Z ERROR performance sensor: cpuPct=91.50 vantareCpuPct=1.85 vantareRamMB=265.31 gpuPct=0.00 gameFrametimeMs=25.226 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:55Z ERROR performance sensor: cpuPct=93.07 vantareCpuPct=2.45 vantareRamMB=264.59 gpuPct=0.00 gameFrametimeMs=19.054 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:56Z ERROR performance sensor: cpuPct=99.41 vantareCpuPct=1.27 vantareRamMB=267.45 gpuPct=0.00 gameFrametimeMs=15.781 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:57Z ERROR performance sensor: cpuPct=98.34 vantareCpuPct=1.95 vantareRamMB=265.74 gpuPct=0.00 gameFrametimeMs=18.412 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:58Z ERROR performance sensor: cpuPct=95.60 vantareCpuPct=1.89 vantareRamMB=269.07 gpuPct=0.00 gameFrametimeMs=15.226 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:47:59Z ERROR performance sensor: cpuPct=98.12 vantareCpuPct=1.71 vantareRamMB=265.29 gpuPct=0.00 gameFrametimeMs=20.606 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:00Z ERROR performance sensor: cpuPct=97.36 vantareCpuPct=2.54 vantareRamMB=265.83 gpuPct=0.00 gameFrametimeMs=19.925 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:01Z ERROR performance sensor: cpuPct=99.12 vantareCpuPct=1.36 vantareRamMB=268.79 gpuPct=0.00 gameFrametimeMs=18.976 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:02Z ERROR performance sensor: cpuPct=96.68 vantareCpuPct=1.86 vantareRamMB=266.21 gpuPct=0.00 gameFrametimeMs=22.885 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:03Z ERROR performance sensor: cpuPct=73.34 vantareCpuPct=3.22 vantareRamMB=267.16 gpuPct=0.00 gameFrametimeMs=15.433 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:04Z ERROR performance sensor: cpuPct=71.58 vantareCpuPct=2.16 vantareRamMB=267.01 gpuPct=0.00 gameFrametimeMs=17.343 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:05Z ERROR performance sensor: cpuPct=68.36 vantareCpuPct=2.75 vantareRamMB=266.48 gpuPct=0.00 gameFrametimeMs=11.310 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:06Z ERROR performance sensor: cpuPct=73.73 vantareCpuPct=1.37 vantareRamMB=267.77 gpuPct=0.00 gameFrametimeMs=18.006 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:07Z ERROR performance sensor: cpuPct=84.47 vantareCpuPct=1.86 vantareRamMB=268.38 gpuPct=0.00 gameFrametimeMs=18.506 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:08Z ERROR performance sensor: cpuPct=57.23 vantareCpuPct=1.76 vantareRamMB=268.27 gpuPct=0.00 gameFrametimeMs=15.825 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:09Z ERROR performance sensor: cpuPct=63.09 vantareCpuPct=2.73 vantareRamMB=268.47 gpuPct=0.00 gameFrametimeMs=13.362 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:10Z ERROR performance sensor: cpuPct=65.92 vantareCpuPct=1.98 vantareRamMB=268.39 gpuPct=0.00 gameFrametimeMs=17.045 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:11Z ERROR performance sensor: cpuPct=50.59 vantareCpuPct=2.03 vantareRamMB=268.31 gpuPct=0.00 gameFrametimeMs=13.222 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:12Z ERROR performance sensor: cpuPct=67.68 vantareCpuPct=1.46 vantareRamMB=268.41 gpuPct=0.00 gameFrametimeMs=13.432 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:13Z ERROR performance sensor: cpuPct=69.92 vantareCpuPct=1.66 vantareRamMB=268.69 gpuPct=0.00 gameFrametimeMs=11.217 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:14Z ERROR performance sensor: cpuPct=94.14 vantareCpuPct=2.05 vantareRamMB=267.55 gpuPct=0.00 gameFrametimeMs=15.408 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:15Z ERROR performance sensor: cpuPct=91.21 vantareCpuPct=1.38 vantareRamMB=267.38 gpuPct=0.00 gameFrametimeMs=20.704 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:16Z ERROR performance sensor: cpuPct=100.00 vantareCpuPct=2.60 vantareRamMB=267.07 gpuPct=0.00 gameFrametimeMs=14.701 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:17Z ERROR performance sensor: cpuPct=98.32 vantareCpuPct=2.39 vantareRamMB=268.53 gpuPct=0.00 gameFrametimeMs=20.025 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:18Z ERROR performance sensor: cpuPct=97.43 vantareCpuPct=2.29 vantareRamMB=266.72 gpuPct=0.00 gameFrametimeMs=18.370 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:19Z ERROR performance sensor: cpuPct=98.54 vantareCpuPct=2.24 vantareRamMB=268.95 gpuPct=0.00 gameFrametimeMs=18.170 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:20Z ERROR performance sensor: cpuPct=90.62 vantareCpuPct=2.35 vantareRamMB=267.92 gpuPct=0.00 gameFrametimeMs=12.352 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:21Z ERROR performance sensor: cpuPct=62.11 vantareCpuPct=1.79 vantareRamMB=268.85 gpuPct=0.00 gameFrametimeMs=12.511 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:22Z ERROR performance sensor: cpuPct=53.03 vantareCpuPct=2.54 vantareRamMB=269.26 gpuPct=0.00 gameFrametimeMs=11.520 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:23Z ERROR performance sensor: cpuPct=63.28 vantareCpuPct=1.76 vantareRamMB=268.93 gpuPct=0.00 gameFrametimeMs=17.746 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:24Z ERROR performance sensor: cpuPct=62.40 vantareCpuPct=1.56 vantareRamMB=268.30 gpuPct=0.00 gameFrametimeMs=10.675 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:25Z ERROR performance sensor: cpuPct=58.20 vantareCpuPct=2.25 vantareRamMB=268.67 gpuPct=0.00 gameFrametimeMs=14.194 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:26Z ERROR performance sensor: cpuPct=52.54 vantareCpuPct=1.47 vantareRamMB=269.44 gpuPct=0.00 gameFrametimeMs=11.353 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:27Z ERROR performance sensor: cpuPct=52.64 vantareCpuPct=1.88 vantareRamMB=270.49 gpuPct=0.00 gameFrametimeMs=9.629 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:28Z ERROR performance sensor: cpuPct=49.51 vantareCpuPct=1.32 vantareRamMB=270.06 gpuPct=0.00 gameFrametimeMs=11.443 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:29Z ERROR performance sensor: cpuPct=52.25 vantareCpuPct=2.54 vantareRamMB=270.09 gpuPct=0.00 gameFrametimeMs=12.152 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:30Z ERROR performance sensor: cpuPct=66.02 vantareCpuPct=1.56 vantareRamMB=270.19 gpuPct=0.00 gameFrametimeMs=21.410 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:31Z ERROR performance sensor: cpuPct=58.69 vantareCpuPct=1.07 vantareRamMB=269.92 gpuPct=0.00 gameFrametimeMs=13.773 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:32Z ERROR performance sensor: cpuPct=75.88 vantareCpuPct=3.38 vantareRamMB=269.21 gpuPct=0.00 gameFrametimeMs=11.684 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:33Z ERROR performance sensor: cpuPct=66.50 vantareCpuPct=1.73 vantareRamMB=269.29 gpuPct=0.00 gameFrametimeMs=12.084 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:34Z ERROR performance sensor: cpuPct=75.10 vantareCpuPct=1.95 vantareRamMB=270.44 gpuPct=0.00 gameFrametimeMs=12.927 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:35Z ERROR performance sensor: cpuPct=93.46 vantareCpuPct=1.85 vantareRamMB=270.29 gpuPct=0.00 gameFrametimeMs=17.743 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:36Z ERROR performance sensor: cpuPct=83.59 vantareCpuPct=1.56 vantareRamMB=270.02 gpuPct=0.00 gameFrametimeMs=17.466 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:37Z ERROR performance sensor: cpuPct=98.63 vantareCpuPct=1.95 vantareRamMB=269.49 gpuPct=0.00 gameFrametimeMs=19.174 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:38Z ERROR performance sensor: cpuPct=91.77 vantareCpuPct=2.13 vantareRamMB=270.16 gpuPct=0.00 gameFrametimeMs=15.609 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:39Z ERROR performance sensor: cpuPct=99.90 vantareCpuPct=1.57 vantareRamMB=270.02 gpuPct=0.00 gameFrametimeMs=18.919 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:40Z ERROR performance sensor: cpuPct=95.12 vantareCpuPct=2.54 vantareRamMB=271.24 gpuPct=0.00 gameFrametimeMs=19.013 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:41Z ERROR performance sensor: cpuPct=99.70 vantareCpuPct=2.31 vantareRamMB=271.13 gpuPct=0.00 gameFrametimeMs=19.922 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:42Z ERROR performance sensor: cpuPct=89.76 vantareCpuPct=1.38 vantareRamMB=270.20 gpuPct=0.00 gameFrametimeMs=22.642 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:43Z ERROR performance sensor: cpuPct=88.48 vantareCpuPct=1.76 vantareRamMB=270.27 gpuPct=0.00 gameFrametimeMs=16.110 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:44Z ERROR performance sensor: cpuPct=75.78 vantareCpuPct=2.54 vantareRamMB=271.30 gpuPct=0.00 gameFrametimeMs=14.466 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:45Z ERROR performance sensor: cpuPct=58.50 vantareCpuPct=3.05 vantareRamMB=270.66 gpuPct=0.00 gameFrametimeMs=11.213 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:46Z ERROR performance sensor: cpuPct=68.95 vantareCpuPct=1.76 vantareRamMB=270.66 gpuPct=0.00 gameFrametimeMs=16.957 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:47Z ERROR performance sensor: cpuPct=59.08 vantareCpuPct=1.95 vantareRamMB=271.06 gpuPct=0.00 gameFrametimeMs=10.679 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:48Z ERROR performance sensor: cpuPct=62.01 vantareCpuPct=1.95 vantareRamMB=271.27 gpuPct=0.00 gameFrametimeMs=13.996 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:49Z ERROR performance sensor: cpuPct=57.42 vantareCpuPct=1.37 vantareRamMB=271.82 gpuPct=0.00 gameFrametimeMs=11.057 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:50Z ERROR performance sensor: cpuPct=75.68 vantareCpuPct=1.98 vantareRamMB=271.91 gpuPct=0.00 gameFrametimeMs=14.229 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:51Z ERROR performance sensor: cpuPct=56.64 vantareCpuPct=2.23 vantareRamMB=270.88 gpuPct=0.00 gameFrametimeMs=12.023 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:52Z ERROR performance sensor: cpuPct=58.59 vantareCpuPct=1.86 vantareRamMB=271.68 gpuPct=0.00 gameFrametimeMs=12.526 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:53Z ERROR performance sensor: cpuPct=83.50 vantareCpuPct=2.63 vantareRamMB=272.54 gpuPct=0.00 gameFrametimeMs=18.340 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:54Z ERROR performance sensor: cpuPct=79.00 vantareCpuPct=2.25 vantareRamMB=271.06 gpuPct=0.00 gameFrametimeMs=14.040 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:55Z ERROR performance sensor: cpuPct=80.66 vantareCpuPct=2.55 vantareRamMB=271.18 gpuPct=0.00 gameFrametimeMs=15.031 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:56Z ERROR performance sensor: cpuPct=74.32 vantareCpuPct=2.13 vantareRamMB=271.73 gpuPct=0.00 gameFrametimeMs=11.492 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:57Z ERROR performance sensor: cpuPct=71.19 vantareCpuPct=1.85 vantareRamMB=272.05 gpuPct=0.00 gameFrametimeMs=14.942 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:58Z ERROR performance sensor: cpuPct=56.64 vantareCpuPct=2.44 vantareRamMB=270.69 gpuPct=0.00 gameFrametimeMs=11.107 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:48:59Z ERROR performance sensor: cpuPct=85.94 vantareCpuPct=2.05 vantareRamMB=272.10 gpuPct=0.00 gameFrametimeMs=24.484 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:49:00Z ERROR performance sensor: cpuPct=72.75 vantareCpuPct=2.76 vantareRamMB=272.11 gpuPct=0.00 gameFrametimeMs=16.812 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:49:01Z ERROR performance sensor: cpuPct=80.08 vantareCpuPct=3.22 vantareRamMB=272.47 gpuPct=0.00 gameFrametimeMs=15.284 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:49:02Z ERROR performance sensor: cpuPct=95.31 vantareCpuPct=2.05 vantareRamMB=272.50 gpuPct=0.00 gameFrametimeMs=13.429 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:49:03Z ERROR performance sensor: cpuPct=98.42 vantareCpuPct=2.21 vantareRamMB=274.29 gpuPct=0.00 gameFrametimeMs=21.241 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:49:04Z ERROR performance sensor: cpuPct=100.00 vantareCpuPct=1.34 vantareRamMB=276.82 gpuPct=0.00 gameFrametimeMs=19.726 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:49:05Z ERROR performance sensor: cpuPct=99.61 vantareCpuPct=1.82 vantareRamMB=277.64 gpuPct=0.00 gameFrametimeMs=19.027 gameError="" foreground=true level=5 reason=user
+2026-08-30T03:49:06Z ERROR performance sensor: cpuPct=96.00 vantareCpuPct=2.75 vantareRamMB=274.14 gpuPct=0.00 gameFrametimeMs=14.947 gameError="" foreground=true level=5 reason=user
+Aug 30 05:49:07.149 WRN Window #1 not found
+[0830/054907.170:ERROR:ui\gfx\win\window_impl.cc:172] Failed to unregister class Chrome_WidgetWin_0. Error = 1412

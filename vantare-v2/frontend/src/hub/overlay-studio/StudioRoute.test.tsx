@@ -1,5 +1,5 @@
 import { resetStudioStageGeometryCache } from './canvas/stage-geometry-cache';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Events } from '@wailsio/runtime';
@@ -9,16 +9,22 @@ import { createTelemetryRateCoordinator } from '../../overlay/core/telemetry-rat
 import { StudioRoute } from './StudioRoute';
 import type { StudioProfileClient } from './state/studio-profile-client';
 import * as overlayV2StoreModule from '../../telemetry-transport/overlay-frame-v2-store';
+import goldenV2Raw from '../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json?raw';
 
-const listeners = new Map<string, ((event: { data: unknown }) => void)[]>();
+type WailsListener = (event: { data: unknown }) => void;
+
+const listeners = new Map<string, Set<WailsListener>>();
 
 vi.mock('@wailsio/runtime', () => ({
   Events: {
     On: vi.fn((name: string, cb: (event: { data: unknown }) => void) => {
-      const existing = listeners.get(name) ?? [];
-      existing.push(cb);
+      const existing = listeners.get(name) ?? new Set<WailsListener>();
+      existing.add(cb);
       listeners.set(name, existing);
-      return vi.fn();
+      return vi.fn(() => {
+        existing.delete(cb);
+        if (existing.size === 0) listeners.delete(name);
+      });
     }),
     Emit: vi.fn(),
   },
@@ -109,8 +115,6 @@ describe('StudioRoute', () => {
     listeners.clear();
     vi.clearAllMocks();
     resetStudioStageGeometryCache();
-    delete window.__vantareOverlayV2Features;
-    window.localStorage.removeItem('vantare:overlay-v2-features');
   });
 
   afterEach(() => {
@@ -131,7 +135,7 @@ describe('StudioRoute', () => {
     expect(Events.Emit).toHaveBeenCalledWith('settings:get');
   });
 
-  it('does not subscribe Studio rendering to V2 frames while every V2 feature is off', () => {
+  it('keeps one coordinator binding active', () => {
     const store = overlayV2StoreModule.createOverlayFrameV2Store();
     const subscribe = vi.fn(store.subscribe);
     vi.spyOn(overlayV2StoreModule, 'createOverlayFrameV2Store').mockReturnValue({
@@ -147,7 +151,7 @@ describe('StudioRoute', () => {
       />,
     );
 
-    expect(subscribe).not.toHaveBeenCalled();
+    expect(subscribe).toHaveBeenCalledTimes(1);
   });
 
   it('loads the active profile directly into Overlay Studio V3', async () => {
@@ -205,6 +209,28 @@ describe('StudioRoute', () => {
     });
   });
 
+  // Regresion ISA-1149: cuando la carga falla, history queda a null y el
+  // guard !document ganaba al de lastError — el usuario veia un spinner
+  // eterno en lugar del error.
+  it('muestra el error de carga en lugar de un spinner eterno', async () => {
+    const client: StudioProfileClient = {
+      load: vi.fn(async () => {
+        throw new Error('read failed');
+      }),
+      save: vi.fn(),
+    };
+    render(
+      <StudioRoute
+        client={client}
+        coordinator={createTelemetryRateCoordinator()}
+        liveAvailable={false}
+      />,
+    );
+    bootProfiles();
+    await screen.findByTestId('studio-route-load-error');
+    expect(screen.queryByTestId('studio-route-loading')).toBeNull();
+  });
+
   it('uses one bounded pull session for live Studio without global telemetry events', async () => {
     const fetchMock = vi.fn((input: RequestInfo | URL) => {
       if (String(input).endsWith('/close')) {
@@ -229,6 +255,7 @@ describe('StudioRoute', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[0]).toBe('/_vantare/overlay-telemetry/pull');
+    // Guardia negativa B2: Studio live no suscribe eventos globales legacy.
     expect(vi.mocked(Events.On).mock.calls.map(([name]) => name)).not.toContain(
       'telemetry:overlay:projection',
     );
@@ -242,6 +269,75 @@ describe('StudioRoute', () => {
     view.unmount();
     expect(fetchMock.mock.calls.filter(([route]) => String(route).endsWith('/pull'))).toHaveLength(1);
     expect(fetchMock.mock.calls.filter(([route]) => String(route).endsWith('/close'))).toHaveLength(1);
+  });
+
+  it('acepta V2 y conserva un único repaint tras el doble setup de StrictMode', async () => {
+    let resolvePull: ((response: Response) => void) | undefined;
+    const requests: Array<{ sessionId: string; ack: number }> = [];
+    vi.stubGlobal('fetch', vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith('/close')) {
+        return Promise.resolve({ ok: true, status: 204 } as Response);
+      }
+      requests.push(JSON.parse(String(init?.body)) as { sessionId: string; ack: number });
+      return new Promise<Response>((resolve) => {
+        resolvePull = resolve;
+      });
+    }));
+    let activeSchedulers = 0;
+    let runScheduledFrame: (() => void) | null = null;
+    const coordinator = createTelemetryRateCoordinator({
+      createScheduler: () => ({
+        start: (onFrame) => {
+          activeSchedulers += 1;
+          runScheduledFrame = onFrame;
+        },
+        stop: () => {
+          activeSchedulers -= 1;
+          runScheduledFrame = null;
+        },
+      }),
+    });
+    const stores: overlayV2StoreModule.OverlayFrameV2Store[] = [];
+    const createStore = overlayV2StoreModule.createOverlayFrameV2Store;
+    vi.spyOn(overlayV2StoreModule, 'createOverlayFrameV2Store').mockImplementation(() => {
+      const store = createStore();
+      stores.push(store);
+      return store;
+    });
+
+    render(
+      <StrictMode>
+        <StudioRoute client={createMockClient()} coordinator={coordinator} liveAvailable />
+      </StrictMode>,
+    );
+    bootProfiles();
+    await screen.findByTestId('overlay-studio-v3');
+    expect(listeners.size).toBeGreaterThan(0);
+    for (const [event, activeListeners] of listeners) {
+      expect(activeListeners.size, `listeners activos para ${event}`).toBe(1);
+    }
+    expect(activeSchedulers).toBe(1);
+    const repaint = vi.fn();
+    const unsubscribe = coordinator.subscribe(undefined, repaint);
+    fireEvent.click(screen.getByRole('button', { name: 'Live' }));
+    const request = requests.at(-1);
+    expect(request).toBeDefined();
+    await act(async () => {
+      resolvePull?.(new Response(JSON.stringify({
+          sessionId: request?.sessionId,
+          delivery: 1,
+          events: [
+            { name: 'telemetry:overlay-v2:snapshot', data: JSON.parse(goldenV2Raw) },
+          ],
+        }), {status: 200, headers: {'Content-Type': 'application/json'}}));
+      await Promise.resolve();
+    });
+    act(() => runScheduledFrame?.());
+
+    expect(stores.some((store) => store.getSnapshot().revision === 1)).toBe(true);
+    expect(repaint).toHaveBeenCalled();
+    expect(screen.getByTestId('overlay-studio-v3')).toBeTruthy();
+    unsubscribe();
   });
 
   it('keeps the editor mounted and inert while visiting another Studio section', async () => {

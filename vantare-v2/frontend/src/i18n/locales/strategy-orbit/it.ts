@@ -193,6 +193,7 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.pit.newSet": "4 nuove",
 
   "strategy.editor.laps": "Giri",
+  "strategy.editor.suspendBlocker": "La Strategia ha uno stint non applicato",
   "strategy.editor.fuel": "Carburante",
   "strategy.editor.pace": "Passo",
   "strategy.editor.ofDriver": "del pilota",
@@ -269,7 +270,7 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.cards.activeTip": "Questa strategia è già quella attiva.",
 
   "strategy.empty.noneTitle": "Nessun evento seguito",
-  "strategy.empty.none": "Segui una serie in Gare e comparirà qui con le prossime partenze.",
+  "strategy.empty.none": "Segui una serie nel Calendario e comparirà qui con le prossime partenze.",
 
   "strategy.context.events": "Eventi",
   "strategy.context.noEvents": "Non hai ancora nessun evento di strategia.",
@@ -497,6 +498,7 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.weather.bucket.wet": "Bagnato",
   "strategy.weather.add": "Aggiungi scenario",
   "strategy.weather.saveError": "Impossibile salvare il meteo nel documento canonico.",
+  "strategy.weather.suspendBlocker": "La Strategia ha meteo non salvato",
   "strategy.weather.robust": "Raccomandazione robusta",
   "strategy.weather.minimax": "Minimax regret",
   "strategy.weather.maxRegret": "Regret massimo",

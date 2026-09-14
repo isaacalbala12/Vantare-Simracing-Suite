@@ -55,11 +55,7 @@ export function buildHeadToHeadViewModelV2(
   const aheadRow = rows[playerIndex - 1];
   const behindRow = rows[playerIndex + 1];
 
-  const gapSeconds =
-    gapById.get(opponentRow.id) ??
-    displayedNumber(opponentRow.gap) ??
-    gapById.get(rows[playerIndex]!.id) ??
-    displayedNumber(rows[playerIndex]!.gap);
+  const gapSeconds = gapById.get(opponentRow.id);
 
   return {
     type: "head-to-head",
@@ -126,5 +122,5 @@ function entry(
 
 function displayedNumber(value: OverlayQValue<number>): number | undefined {
   if (value.q === "missing" || value.q === "invalid") return undefined;
-  return value.v ?? 0;
+  return value.v !== undefined && Number.isFinite(value.v) ? value.v : undefined;
 }

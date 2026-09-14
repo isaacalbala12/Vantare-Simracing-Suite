@@ -193,6 +193,7 @@ export const strategyOrbitPt: Record<string, string> = {
   "strategy.pit.newSet": "4 novos",
 
   "strategy.editor.laps": "Voltas",
+  "strategy.editor.suspendBlocker": "A Estratégia tem um stint por aplicar",
   "strategy.editor.fuel": "Combustível",
   "strategy.editor.pace": "Ritmo",
   "strategy.editor.ofDriver": "do piloto",
@@ -269,7 +270,7 @@ export const strategyOrbitPt: Record<string, string> = {
   "strategy.cards.activeTip": "Esta estratégia já é a ativa.",
 
   "strategy.empty.noneTitle": "Sem eventos seguidos",
-  "strategy.empty.none": "Segue uma série em Corridas e aparecerá aqui com as próximas partidas.",
+  "strategy.empty.none": "Segue uma série no Calendário e aparecerá aqui com as próximas partidas.",
 
   "strategy.context.events": "Eventos",
   "strategy.context.noEvents": "Ainda não tens nenhum evento de estratégia.",
@@ -496,6 +497,7 @@ export const strategyOrbitPt: Record<string, string> = {
   "strategy.weather.bucket.wet": "Molhado",
   "strategy.weather.add": "Adicionar cenário",
   "strategy.weather.saveError": "Não foi possível guardar o clima no documento canónico.",
+  "strategy.weather.suspendBlocker": "A Estratégia tem clima por guardar",
   "strategy.weather.robust": "Recomendação robusta",
   "strategy.weather.minimax": "Minimax regret",
   "strategy.weather.maxRegret": "Regret máximo",

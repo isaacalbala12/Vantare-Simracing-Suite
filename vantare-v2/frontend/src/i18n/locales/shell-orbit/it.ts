@@ -3,7 +3,7 @@ export const shellOrbitIt: Record<string, string> = {
   "shell.rail.home": "Home",
   "shell.rail.studio": "Overlays Studio",
   "shell.rail.launcher": "Launcher",
-  "shell.rail.races": "Gare",
+  "shell.rail.races": "Calendario",
   "shell.rail.strategy": "Strategia",
   "shell.rail.engineer": "Ingegnere",
   "shell.rail.telemetry": "Telemetria",
@@ -40,7 +40,7 @@ export const shellOrbitIt: Record<string, string> = {
   "shell.title.inicio": "Centro operativo",
   "shell.title.studio": "Overlays Studio",
   "shell.title.launcher": "Launcher",
-  "shell.title.carreras": "Gare",
+  "shell.title.carreras": "Calendario",
   "shell.title.estrategia": "Strategia",
   "shell.title.ingeniero": "Ingegnere",
   "shell.title.telemetria": "Telemetria",
@@ -86,4 +86,8 @@ export const shellOrbitIt: Record<string, string> = {
   "shell.access.unavailable": "Accesso non disponibile",
   "shell.access.requiresPlan": "Richiede il piano {{plan}} · piano attuale {{current}}",
   "shell.access.requiresPlanShort": "Richiede {{plan}}",
+
+  "shell.pageLoading": "Caricamento…",
+  "shell.pageError": "Impossibile caricare questa schermata.",
+  "shell.pageRetry": "Riprova",
 };

@@ -1,7 +1,7 @@
 import { validateInspectorControls } from "../../core/inspector-control";
 import type { WidgetInstanceV3 } from "../../core/profile-document";
 import { getWidgetRequiredFeature, type WidgetTypeDefinition } from "../../core/widget-definition";
-import { buildFuelStrategyViewModel, type FuelStrategyViewModel } from "./fuel-strategy-view-model";
+import type { FuelStrategyViewModel } from "./fuel-strategy-view-model";
 
 export type FuelStrategyContent = { historyRows: number; units: "liters"; showProjection: boolean };
 const DEFAULT_CONTENT: FuelStrategyContent = { historyRows: 4, units: "liters", showProjection: true };
@@ -26,5 +26,4 @@ export const fuelStrategyDefinition: WidgetTypeDefinition<FuelStrategyContent, F
     const rows = typeof value.historyRows === "number" && Number.isFinite(value.historyRows) ? Math.max(1, Math.min(8, Math.round(value.historyRows))) : 4;
     return { historyRows: rows, units: "liters", showProjection: typeof value.showProjection === "boolean" ? value.showProjection : true };
   },
-  buildViewModel: buildFuelStrategyViewModel,
 };

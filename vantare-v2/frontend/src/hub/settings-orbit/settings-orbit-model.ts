@@ -21,6 +21,7 @@ export function resolveSettingsSection(
   requested?: string | null,
   stored: string | null = orbitStore.get(ORBIT_KEYS.settingsSection),
 ): SettingsSection {
+  if (requested?.startsWith("schedule:")) return "schedule";
   if (isSettingsSection(requested)) return requested;
   if (isSettingsSection(stored)) return stored;
   return DEFAULT_SETTINGS_SECTION;
@@ -124,6 +125,7 @@ export const SETTINGS_SEARCH_INDEX: SettingsSearchEntry[] = [
   // buscado no tenga fila propia.
   { section: "account", key: "settings.nav.account" },
   { section: "application", key: "settings.nav.application" },
+  { section: "performance", key: "settings.nav.performance" },
   { section: "updates", key: "settings.nav.updates" },
   { section: "hotkeys", key: "settings.nav.hotkeys" },
   { section: "diagnostics", key: "settings.nav.diagnostics" },
@@ -147,6 +149,11 @@ export const SETTINGS_SEARCH_INDEX: SettingsSearchEntry[] = [
   { section: "application", key: "settings.app.notifyUpdates" },
   { section: "application", key: "settings.app.notifyLauncher" },
   { section: "application", key: "settings.app.notifySystem" },
+
+  // Rendimiento
+  { section: "performance", key: "settings.performance.title" },
+  { section: "performance", key: "settings.performance.custom" },
+  { section: "performance", key: "settings.performance.auto" },
 
   // Actualizaciones
   { section: "updates", key: "settings.upd.installed" },

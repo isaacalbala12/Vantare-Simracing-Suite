@@ -34,6 +34,7 @@ import {
 } from "./standings/standings-endurance-settings";
 
 const deltaAppearanceControls = [
+  { kind: "color" as const, id: "delta-loss-color", labelKey: "overlay.inspector.delta.lossColor", path: "lossColor", defaultValue: "#ff6b76" },
   {
     kind: "toggle" as const,
     id: "show-header",

@@ -67,9 +67,28 @@ describe("widgetTypeRegistry", () => {
     });
   });
 
-  it("exposes a view model builder for every registered widget", () => {
-    for (const definition of widgetTypeRegistry.list()) {
-      expect(typeof definition.buildViewModel).toBe("function");
+  it("does not require a legacy builder for the 18 V2-only definitions", () => {
+    for (const type of [
+      "standings",
+      "relative",
+      "delta",
+      "fuel-strategy",
+      "pedals-telemetry",
+      "input-telemetry",
+      "racing-flags",
+      "delta-advanced",
+      "delta-trace",
+      "pedals",
+      "pedals-telemetry-compact",
+      "multiclass-relative",
+      "head-to-head",
+      "track-map",
+      "broadcast-tower",
+      "track-weather",
+      "car-damage-numbers",
+      "car-damage-visual",
+    ] as const) {
+      expect(widgetTypeRegistry.get(type).buildViewModel).toBeUndefined();
     }
   });
 });

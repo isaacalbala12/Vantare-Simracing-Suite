@@ -93,6 +93,25 @@ class ValidateBranchChannelsTest(unittest.TestCase):
             workflow,
         )
 
+    def test_blocking_frontend_tests_provision_chromium_before_running(self) -> None:
+        workflow = (
+            Path(__file__).resolve().parents[1] / "workflows" / "branch-channel-gates.yml"
+        ).read_text(encoding="utf-8")
+        dependencies_index = workflow.index("- name: Install frontend dependencies")
+        install_marker = "- name: Install Playwright Chromium for blocking frontend tests"
+        tests_marker = "- name: Frontend tests"
+        install_index = workflow.index(install_marker)
+        tests_index = workflow.index(tests_marker)
+        self.assertLess(dependencies_index, install_index)
+        self.assertLess(install_index, tests_index)
+        blocking_install = workflow[install_index:tests_index]
+        self.assertIn("pnpm exec playwright install chromium", blocking_install)
+        self.assertIn(
+            'if ($LASTEXITCODE -ne 0) { throw "playwright chromium install failed" }',
+            blocking_install,
+        )
+        self.assertNotIn("continue-on-error", blocking_install)
+
     def test_accepts_issue_branch_into_nightly(self) -> None:
         self.assertEqual(
             validate("pull_request", "refs/pull/1/merge", "nightly", "vantareapp/isa-121"),

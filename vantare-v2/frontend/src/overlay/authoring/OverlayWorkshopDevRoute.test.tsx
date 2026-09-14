@@ -2,20 +2,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { StrictMode } from "react";
 import { afterEach, describe, expect, it } from "vitest";
 import { OverlayWorkshopDevRoute } from "./OverlayWorkshopDevRoute";
-import {
-  buildAuthoringFixtureTelemetry,
-  buildAuthoringFixtureWidget,
-} from "./fixtures/authoring-fixtures";
-import {
-  readInputTelemetryHistory,
-  recordInputTelemetrySample,
-  resetInputTelemetryHistory,
-} from "../widget-types/input-telemetry/input-telemetry-accumulator";
-import { parseOverlayWorkshopQuery } from "./overlay-workshop-query";
+import { ALL_WIDGET_TYPES } from "../core/profile-document";
 
 afterEach(() => {
   cleanup();
-  resetInputTelemetryHistory();
 });
 
 describe("OverlayWorkshopDevRoute", () => {
@@ -29,79 +19,67 @@ describe("OverlayWorkshopDevRoute", () => {
     expect(document.querySelector("[data-widget-host-diagnostic]")).toBeNull();
   });
 
-  it("renders a visible error rather than mounting another design when selection is invalid", () => {
+  it("flags the rejected part and keeps every control alive when the URL selection is invalid", async () => {
     render(<OverlayWorkshopDevRoute search="?widget=pedals&system=vantare-crystal&design=delta-crystal-simple" />);
 
     expect(screen.getByRole("alert").textContent).toContain("requires widget=delta");
-    expect(document.querySelector("[data-overlay-workshop-widget-root]")).toBeNull();
+    await waitFor(() => expect(document.querySelector("[data-overlay-workshop-widget-root]")).toBeTruthy());
+    expect(screen.getByLabelText("Widget")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Widget"), { target: { value: "pedals" } });
+    await waitFor(() => expect(document.querySelector("[data-widget-renderer=pedals]")).toBeTruthy());
   });
 
   it("keeps stage controls accessible and renders the comparison through the same host", async () => {
     render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-crystal&design=delta-crystal-simple&state=ready&surface=studio&variant=default&compare=obs" />);
     await waitFor(() => expect(document.querySelectorAll("[data-overlay-workshop-widget-root]")).toHaveLength(2));
-    expect(screen.getByLabelText("Fondo")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Fondo"), { target: { value: "transparent" } });
+    fireEvent.click(screen.getByRole("button", { name: "Claro" }));
     expect(document.querySelector(".overlay-workshop-stage--transparent")).toBeTruthy();
     await waitFor(() => expect(document.querySelector("[data-overlay-workshop-surface=obs] [data-overlay-workshop-widget-root]")).toBeTruthy());
     expect(document.querySelector("[data-overlay-workshop-surface=obs] .overlay-workshop-surface-label")).toBeNull();
   });
 
-  it("applies declared preset dimensions and resets controls to the reproducible URL selection", async () => {
-    render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-crystal&design=delta-crystal-simple&state=ready&surface=studio&variant=default&preset=720p" />);
+  it("applies declared dimensions from the URL and resets controls to the reproducible selection", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-crystal&design=delta-crystal-simple&state=ready&surface=studio&variant=default&width=1280&height=720" />);
     await waitFor(() => expect(document.querySelector("[data-overlay-workshop-widget-root]")).toBeTruthy());
-    fireEvent.click(screen.getByRole("button", { name: "Aplicar tamaño declarado" }));
-    await waitFor(() => expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.width).toBe("1280px"));
-    fireEvent.change(screen.getByLabelText("Estado"), { target: { value: "error" } });
-    fireEvent.click(screen.getByRole("button", { name: "Restablecer" }));
-    expect((screen.getByLabelText("Estado") as HTMLSelectElement).value).toBe("ready");
-    expect((screen.getByLabelText("Sistema") as HTMLSelectElement).value).toBe("vantare-original");
+    expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.width).toBe("1280px");
+    fireEvent.change(screen.getByLabelText("Estado de la fuente"), { target: { value: "error" } });
+    fireEvent.click(screen.getByRole("button", { name: "Restablecer selección" }));
+    expect((screen.getByLabelText("Estado de la fuente") as HTMLSelectElement).value).toBe("ready");
+    expect((screen.getByLabelText("Sistema de diseño") as HTMLSelectElement).value).toBe("vantare-original");
   });
 
-  it("edits width and height together through accessible fields", async () => {
-    render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-original&state=ready&surface=studio&variant=default" />);
-    await waitFor(() => expect(document.querySelector("[data-overlay-workshop-widget-root]")).toBeTruthy());
-    fireEvent.change(screen.getByLabelText("Ancho"), { target: { value: "640" } });
-    fireEvent.change(screen.getByLabelText("Alto"), { target: { value: "240" } });
+  it("renders declared dimensions from the URL on the widget root", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-original&state=ready&surface=studio&variant=default&width=640&height=240" />);
     await waitFor(() => expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.width).toBe("640px"));
     expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.height).toBe("240px");
   });
 
-  it("keeps invalid declared dimensions as local drafts without changing the rendered root or URL", async () => {
-    render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-original&state=ready&surface=studio&variant=default&width=640&height=240" />);
-    await waitFor(() => expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.width).toBe("640px"));
-    const initialSearch = window.location.search;
-
-    fireEvent.change(screen.getByLabelText("Ancho"), { target: { value: "12" } });
-
-    expect((screen.getByLabelText("Ancho") as HTMLInputElement).value).toBe("12");
-    expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.width).toBe("640px");
-    expect(window.location.search).toBe(initialSearch);
-    expect("error" in parseOverlayWorkshopQuery(window.location.search)).toBe(false);
+  it("rejects invalid declared dimensions in the URL and falls back to defaults with a visible notice", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-original&state=ready&surface=studio&variant=default&width=12&height=240" />);
+    expect(screen.getByRole("alert").textContent).toContain("invalid declared dimensions");
+    await waitFor(() => expect(document.querySelector("[data-overlay-workshop-widget-root]")).toBeTruthy());
   });
 
   it("represents valid non-preset scale deep-links honestly and preserves their round trip", async () => {
     render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-original&state=ready&surface=studio&variant=default&scale=0.3" />);
     await waitFor(() => expect(document.querySelector("[data-overlay-workshop-widget-root]")).toBeTruthy());
 
-    expect((screen.getByLabelText("Escala") as HTMLInputElement).value).toBe("0.3");
     expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.transform).toContain("scale(0.3)");
     expect(document.querySelector("[data-overlay-workshop-query]")?.textContent).toContain("scale=0.3");
   });
 
-  it("seeds Input Telemetry after render without clearing unrelated histories in StrictMode", async () => {
-    const scenario = {
-      session: "race" as const,
-      location: "track" as const,
-      state: "ready" as const,
-      widget: "input-telemetry" as const,
-      system: "vantare-crystal" as const,
-      surface: "studio" as const,
-      variant: "default" as const,
-      designId: "input-crystal-blade",
-    };
-    const snapshot = buildAuthoringFixtureTelemetry(scenario);
-    recordInputTelemetrySample("unrelated-workshop-widget", snapshot);
+  it("applies the Efficiency v2 study skin from the URL and switches it from the controls", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=standings&system=vantare-functional&variant=standings-functional-study&design=standings-functional-compact&study=v2-focus&state=ready&surface=obs" />);
 
+    await waitFor(() => expect(document.querySelector("[data-standings-row]")).toBeTruthy());
+    expect(document.querySelector("[data-overlay-workshop-page]")?.getAttribute("data-study-style")).toBe("v2-focus");
+    expect(document.querySelector("[data-widget-system=vantare-functional]")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "V1" }));
+    expect(document.querySelector("[data-overlay-workshop-page]")?.getAttribute("data-study-style")).toBeNull();
+  });
+
+  it("renders Input history from the canonical V2 frame without seeding", async () => {
     render(
       <StrictMode>
         <OverlayWorkshopDevRoute search="?widget=input-telemetry&system=vantare-crystal&design=input-crystal-blade&state=ready&surface=studio&variant=default" />
@@ -109,11 +87,19 @@ describe("OverlayWorkshopDevRoute", () => {
     );
 
     await waitFor(() => expect(document.querySelector("[data-widget-renderer=input-telemetry]")).toBeTruthy());
-    const widget = buildAuthoringFixtureWidget(scenario);
-    const seeded = readInputTelemetryHistory(widget.id, snapshot, 8);
+    expect(document.querySelector(".vc-input-graph path")?.getAttribute("d")).toContain("L");
+  });
 
-    expect(seeded).toHaveLength(snapshot.derived?.inputHistory.length ?? 0);
-    expect(readInputTelemetryHistory("unrelated-workshop-widget", snapshot, 8)).toHaveLength(1);
+  it("renders each default widget marker", async () => {
+    expect(ALL_WIDGET_TYPES).toHaveLength(20);
+    for (const widget of ALL_WIDGET_TYPES) {
+      cleanup();
+      const system = widget === "engineer-radio" ? "vantare-crystal" : widget === "track-map" ? "vantare-endurance" : "vantare-original";
+      render(<OverlayWorkshopDevRoute search={`?widget=${widget}&system=${system}&state=ready&surface=obs`} />);
+      await waitFor(() =>
+        expect(document.querySelector(`[data-widget-renderer="${widget}"]`)).toBeTruthy(),
+      );
+    }
   });
 
   // A scene shapes the widget as well as the snapshot. The Workshop used to
@@ -121,6 +107,23 @@ describe("OverlayWorkshopDevRoute", () => {
   // class alone and the best-lap column off: the fastest-lap scene handed the
   // crown between two cars that were not on screen, and no glyph could ever
   // appear.
+  // Regresión ISA-1128: el swap de columnas por sesión solo aplica a
+  // Standings — Delta/Pedals no llevan content.columns y antes explotaban.
+  it("renders every functional widget in every session without fixture errors", async () => {
+    for (const widget of ["standings", "relative", "delta", "pedals"] as const) {
+      for (const session of ["practice", "qualifying", "race"] as const) {
+        cleanup();
+        render(
+          <OverlayWorkshopDevRoute search={`?widget=${widget}&system=vantare-functional&variant=default&session=${session}&state=ready&surface=obs`} />,
+        );
+        await waitFor(() =>
+          expect(document.querySelector(`.vf-${widget}`)).toBeTruthy(),
+        );
+        expect(document.querySelector("[data-overlay-workshop-fixture-error]")).toBeNull();
+      }
+    }
+  });
+
   it("builds the widget from the scene, not just the telemetry", async () => {
     render(
       <OverlayWorkshopDevRoute search="?widget=standings&system=vantare-endurance&design=standings-endurance-redline&state=ready&surface=obs&scene=standings-fastest-lap" />,
@@ -137,8 +140,8 @@ describe("OverlayWorkshopDevRoute", () => {
     );
     expect(classes.size).toBeGreaterThan(1);
 
-    // Without the best-lap column there is no session best, so nothing can
-    // hold the crown for the handover to move.
+    // La escena V2 declara explícitamente un dueño anterior y otro nuevo para
+    // probar el traspaso; no depende de la fixture ni del adapter V1.
     expect(document.querySelector(".ven-red-fastest")).toBeTruthy();
   });
 

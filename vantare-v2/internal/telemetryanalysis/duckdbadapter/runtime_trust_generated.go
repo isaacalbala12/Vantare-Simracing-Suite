@@ -2,4 +2,4 @@
 
 package duckdbadapter
 
-const productionManifestSHA256 = "132fd8b6ace1cf33680011275b821fe20b210111bcb8d57dabd3d1136ebe79c7"
+const productionManifestSHA256 = "700201f90266ae6b829372d9989408c6b0efd86725a50980d46fc05adfc24869"

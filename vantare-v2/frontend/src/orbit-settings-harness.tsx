@@ -10,6 +10,7 @@ import { LauncherStoreProvider } from './hub/launcher/launcher-store';
 import { OrbitShell } from './hub/components/orbit/OrbitShell';
 import { seedAccountIdentity } from './hub/orbit/use-account-identity';
 import type { Section } from './hub/navigation';
+import { resetHubMockState, type HubMockSeed } from './overlay-harness/hub-profile-mock-state';
 
 /**
  * Harness visual de Ajustes (briefing 11).
@@ -20,6 +21,13 @@ import type { Section } from './hub/navigation';
  * actualizador sin respuesta, atajos por defecto), que es justo lo que la
  * pantalla debe declarar con honestidad.
  */
+// `?seed=active` siembra un perfil activo (como en el harness del Studio) para
+// que Ajustes › Rendimiento pueda enseñar Personalizado y su tabla.
+function readHarnessSeed(search: string): HubMockSeed {
+  return new URLSearchParams(search).get('seed') === 'active' ? 'active' : 'empty';
+}
+resetHubMockState(readHarnessSeed(window.location.search));
+
 applyTheme(orbitThemeJson as unknown as VantareTheme);
 initializeDensity();
 

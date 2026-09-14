@@ -61,7 +61,7 @@ import {
   HARNESS_TYRES,
   HARNESS_WIDGETS,
 } from "./ui-orbit-harness-fixtures";
-import { buildMockTelemetry } from "./overlay/core/mock-scenarios";
+import { buildAuthoringV2ScenarioRuntime } from "./overlay/authoring/fixtures/authoring-v2-scenario-fixture";
 import type { WidgetType } from "./overlay/core/profile-document";
 import { widgetTypeRegistry } from "./overlay/core/widget-registry";
 import { WidgetVisualHost } from "./overlay/core/WidgetVisualHost";
@@ -478,8 +478,18 @@ const STINT_ROWS = [
 ];
 
 /** Instantánea fija para el mini-lienzo: los widgets reales del sistema V3 se
- *  pintan en modo preview (`renderMode: "harness"`), sin interacción. */
-const STAGE_SNAPSHOT = buildMockTelemetry({ session: "race", location: "track", state: "ready" });
+ *  pintan en modo preview (`renderMode: "harness"`), sin interacción.
+ *  Factory por llamada: cada widget clona su runtime V2 canónico. */
+function buildStageV2Runtime() {
+  return buildAuthoringV2ScenarioRuntime({
+    session: "race",
+    location: "track",
+    state: "ready",
+    widget: "standings",
+    system: "vantare-crystal",
+    variant: "default",
+  });
+}
 
 function renderStageWidget(doc: { id: string; w: number; h: number }) {
   const type = doc.id as WidgetType;
@@ -490,7 +500,7 @@ function renderStageWidget(doc: { id: string; w: number; h: number }) {
     <WidgetVisualViewport layout={layout} testId={`ok-stage-${doc.id}`} widgetType={type}>
       <WidgetVisualHost
         renderMode="harness"
-        snapshot={STAGE_SNAPSHOT}
+        runtime={buildStageV2Runtime()}
         widget={{ ...widget, layout }}
       />
     </WidgetVisualViewport>

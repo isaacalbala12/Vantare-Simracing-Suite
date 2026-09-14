@@ -1,0 +1,16 @@
+[
+  {
+    "condition": "off",
+    "durationSeconds": 60,
+    "cpuPctMean": 1.891699072548591,
+    "cpuPctP95": 2.736361507242208,
+    "privateMBMean": 267.3619140625
+  },
+  {
+    "condition": "on",
+    "durationSeconds": 60,
+    "cpuPctMean": 2.063659691343924,
+    "cpuPctP95": 2.8979031416984387,
+    "privateMBMean": 275.3216796875
+  }
+]

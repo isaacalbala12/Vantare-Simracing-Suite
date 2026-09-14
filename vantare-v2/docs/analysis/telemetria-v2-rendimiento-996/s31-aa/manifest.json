@@ -1,0 +1,18 @@
+{
+  "cpu": "AMD Ryzen 7 3700X 8-Core Processor             ",
+  "baselineSHA256": "2388AC559A07E85E1E720C8B338595598A5AF8D3775E7296AE5C1331B248ECBF",
+  "samples": 10,
+  "note": "Local Go microbenchmark; not application CPU/RAM/GPU or LMU frametime evidence",
+  "candidateSHA256": "2388AC559A07E85E1E720C8B338595598A5AF8D3775E7296AE5C1331B248ECBF",
+  "baseline": "C:\\tmp\\isa996-base-lmu.test.exe",
+  "candidate": "C:\\tmp\\isa996-base-lmu.test.exe",
+  "arguments": [
+    "-test.run=^$",
+    "-test.bench=^BenchmarkBatchMapperS31Fixture$",
+    "-test.benchmem",
+    "-test.benchtime=100ms",
+    "-test.cpu=1",
+    "-test.count=1"
+  ],
+  "startedUtc": "2026-09-05T21:55:45.6169184Z"
+}

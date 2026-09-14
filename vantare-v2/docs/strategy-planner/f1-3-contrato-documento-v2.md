@@ -3,16 +3,16 @@
 **Fecha:** 2026-08-21
 **Issue:** #726 (ISA-694 F1.3)
 **Owner:** Strategy (`internal/strategy/document`)
-**Estado:** compile-only `strategy.v2`
+**Estado:** contrato `strategy.v2` implementado; revisado contra nightly del 2026-09-14. La fecha e issue iniciales identifican su origen, no el estado actual.
 
 ## Ubicación y justificación
 
 Paquete `internal/strategy/document` (subpaquete v2 idiomático bajo `internal/strategy`).
-No reutiliza `internal/strategy/contract` directamente para no mezclar el contrato v1 (`strategy.v1` orientado a PlanDraft/PlanRevision) con el documento v2 orientado a eventos. `document` es el owner del documento de evento; `contract` sigue siendo el owner del lifecycle de planes v1. La separación evita migraciones implícitas y permite que `document` importe `strategyprojection` solo donde el ownership lo permite (no aquí, pero sí en solver).
+No reutiliza `internal/strategy/contract` directamente para no mezclar el contrato v1 (`strategy.v1` orientado a PlanDraft/PlanRevision) con el documento v2 orientado a eventos. `document` es el owner del documento de evento; `contract` sigue siendo el owner del lifecycle de planes v1. La separación evita migraciones implícitas. `document` importa `telemetryanalysis/strategyprojection`: `PlanningInputs.Projection` persiste `StrategyInputProjectionV2` con su procedencia para que el cálculo sea reproducible. Analysis produce la proyección; Strategy conserva el input aceptado, no reimplementa el lector histórico.
 
 ## Objetivo
 
-Representar todo lo que la migración de Orbit traerá, según `matriz-migracion-orbit.csv` y fixtures `orbit-localstorage`:
+Representar los datos que conserva la migración de Orbit, según `matriz-migracion-orbit.csv` y fixtures `orbit-localstorage`:
 - evento (`id`, `name`, `source`, `seriesId`, `track`, `cls`, `durationMin`, `startAt`, `team`, `teamMode`, `fillMode`, `lastOpenedAt`),
 - pilotos con **orden** (`drivers[].order`) y **disponibilidad** (`availability: driverId -> [state, from, to]` con validación `from<to`, solapes y refs),
 - variantes **por evento** (`strategies[]` con `order`, `state`, `overrides`, `tyres`; `activeStrategyId` validado contra estrategias sobrevivientes),
@@ -20,6 +20,7 @@ Representar todo lo que la migración de Orbit traerá, según `matriz-migracion
 - marca `legacy_synthetic_default` para distinguir defaults sintéticos (`durationMin=60`, `tankL=90`, `pitLossSec=60`, `startAt=now`, `name` fallback) del dato real del usuario, con `ProvenanceKind=legacy_synthetic_default` y `Evidence` explícito,
 - `RawLegacy` (backup byte a byte) para preview/cuarentena sin pérdida,
 - `MigrationMeta` (fingerprint/journal) para idempotencia.
+- `planningInputs`, incluida la proyección histórica V2 aceptada para cálculo.
 
 ## Tipos
 
@@ -38,7 +39,7 @@ go vet ./internal/strategy/document/...
 go test ./internal/strategy/document/... -run TestStrategyDocumentV2
 gofmt -l ./internal/strategy/document/
 ```
-Fixtures: `events-full.json`, `events-sparse-defaults.json`, `legacy-wrapped.json` deben decodificar vía `StrictDecode` de F2 (no aquí) y producir `legacy_synthetic_default` visible.
+Las fixtures de migración y los tests de `internal/strategy/application` comprueban importación y procedencia `legacy_synthetic_default`. Los tests del paquete document verifican las invariantes del documento; no sustituyen la prueba del repositorio ni de la UI.
 
 ## Corrección de realización en F2(a) (#729)
 
@@ -65,8 +66,12 @@ puede producir referencias colgantes y se conserva la invariante ya declarada
 de que `Variant.order` no puede estar vacío.
 
 El repositorio evoluciona de `strategy.repository.v1` a
-`strategy.repository.v2`. Esta migración es distinta de la futura importación
+`strategy.repository.v2`. Esta migración es distinta de la importación
 Orbit de F2(c): conserva lógicamente los drafts, revisiones, activaciones y
 plan activo v1; el campo `strategyDocument` queda ausente hasta el primer
-comando de evento. F2(c) será quien construya el documento desde el backup
+comando de evento. La importación implementada en [legacy_migration.go](../../internal/strategy/application/legacy_migration.go) construye el documento desde el backup
 Orbit y sus marcas `legacy_synthetic_default`.
+
+## Código que realiza el contrato
+
+[Documento](../../internal/strategy/document/document.go) · [mutaciones](../../internal/strategy/application/document_service.go) · [cálculo](../../internal/strategy/application/orbit_calculation.go) · [productor Analysis](../../internal/telemetryanalysis/sessioncatalog.go). Ejecutar los comandos anteriores desde `vantare-v2/`; no son evidencia de una prueba Windows.

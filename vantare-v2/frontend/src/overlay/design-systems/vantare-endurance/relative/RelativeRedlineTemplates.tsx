@@ -1,5 +1,4 @@
-import { createContext, useContext, useMemo, useRef, type CSSProperties, type ReactNode } from "react";
-import { useRelativeMotion } from "./useRelativeMotion";
+import type { CSSProperties, ReactNode } from "react";
 import { resolveRelativeClassColor } from "../../../widget-types/relative/relative-renderer-helpers";
 import type {
   RelativeRowViewModel,
@@ -66,10 +65,6 @@ function ClassChip({
   );
 }
 
-/** Ids currently rendered as ghosts, so every variant marks them the same way
-    without each one having to know the engine exists. */
-const GhostRowsContext = createContext<ReadonlySet<string>>(new Set());
-
 function RowShell({
   row,
   variant,
@@ -81,14 +76,12 @@ function RowShell({
   children: ReactNode;
   extra?: ReactNode;
 }) {
-  const ghosts = useContext(GhostRowsContext);
   return (
     <div
       data-relative-row={row.id}
       data-player={row.isPlayer ? "true" : undefined}
       data-tone={row.tone}
       data-class={row.vehicleClass || undefined}
-      data-ghost={ghosts.has(row.id) ? "true" : undefined}
       className="ven-rel-row"
       data-variant={variant}
     >
@@ -268,7 +261,7 @@ function TrafficTemplate({
         );
         if (threat && threat.id === row.id) {
           return (
-            <div key={`${row.id}-threat`}>
+            <div key={`${row.id}-threat`} data-relative-motion-row={row.id}>
               <div className="ven-rel-lapnote">
                 <span>
                   ◀◀ {classShortLabel(row.vehicleClass)} #{row.driverNumber} A{" "}
@@ -298,42 +291,24 @@ export function RelativeRedlineTemplate({
   variant: RelativeRedlineVariant;
   showHeader: boolean;
 }) {
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const motion = useRelativeMotion(model, model.status === "ready", rootRef);
-
-  // Departed rows are put back where they sat and marked, so the variants keep
-  // rendering a plain list and the fold happens in the right place.
-  const withGhosts = useMemo(() => {
-    if (motion.ghosts.length === 0) {
-      return model;
-    }
-    const rows = [...model.rows];
-    for (const ghost of [...motion.ghosts].sort((a, b) => a.index - b.index)) {
-      rows.splice(Math.min(ghost.index, rows.length), 0, ghost.row);
-    }
-    return { ...model, rows };
-  }, [model, motion.ghosts]);
-
-  const ghostIds = useMemo(
-    () => new Set(motion.ghosts.map((ghost) => ghost.row.id)),
-    [motion.ghosts],
-  );
+  const presentedModel = model;
+  // Las tres variantes Redline muestran la posición real de cada frame sin
+  // interpolación. El FLIP/ghosting hacía que una fila atravesase a otra y que
+  // las celdas de gap quedasen temporalmente recortadas durante tráfico real.
 
   return (
-    <div className="ven-rel-root" ref={rootRef}>
-      {model.statusMessage ? (
+    <div className="ven-rel-root">
+      {presentedModel.statusMessage ? (
         <p className="ven-status-message" role="status">
-          {model.statusMessage}
+          {presentedModel.statusMessage}
         </p>
       ) : null}
-      <GhostRowsContext.Provider value={ghostIds}>
-        <div className="ven-rel-block" data-variant={variant}>
-          {showHeader ? <Slots model={model} /> : null}
-          {variant === "mirror" ? <MirrorTemplate model={withGhosts} settings={settings} /> : null}
-          {variant === "proximity" ? <ProximityTemplate model={withGhosts} settings={settings} /> : null}
-          {variant === "traffic" ? <TrafficTemplate model={withGhosts} settings={settings} /> : null}
-        </div>
-      </GhostRowsContext.Provider>
+      <div className="ven-rel-block" data-variant={variant}>
+        {showHeader ? <Slots model={presentedModel} /> : null}
+        {variant === "mirror" ? <MirrorTemplate model={presentedModel} settings={settings} /> : null}
+        {variant === "proximity" ? <ProximityTemplate model={presentedModel} settings={settings} /> : null}
+        {variant === "traffic" ? <TrafficTemplate model={presentedModel} settings={settings} /> : null}
+      </div>
     </div>
   );
 }

@@ -1,23 +1,24 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import type { CalendarReminderPayload } from "../calendar/calendar-types";
 import { parseProfileDocumentV3, type ProfileDocumentV3 } from "./core/profile-document";
 import { resolveLayoutViewport } from "./core/layout-viewport";
 import { createTelemetryRateCoordinator } from "./core/telemetry-rate-coordinator";
+import { bindOverlayV2Coordinator } from "./core/overlay-v2-coordinator-binding";
 import { applyOverlayDocumentMode } from "./overlay-document";
 import { readOverlayRouteParams } from "./overlay-route-params";
 import { OverlayCalendarReminderBanner } from "./OverlayCalendarReminderBanner";
 import { ObsOverlayStudioPreview } from "./ObsOverlayStudioPreview";
 import { ObsOverlayRuntime } from "./runtime/ObsOverlayRuntime";
-import { createSseProjectionTelemetryAdapter } from "./transports/projection-telemetry-adapter";
 import { createEngineerPresentationStore } from "../engineer/engineer-presentation-store";
 import { createSseEngineerPresentationAdapter } from "../engineer/engineer-presentation-adapters";
 import {
   attachOverlayFrameV2Sse,
   createOverlayFrameV2Store,
 } from "../telemetry-transport/overlay-frame-v2-store";
-import { createOverlayV2ShadowRuntime } from "./telemetry-shadow/overlay-v2-shadow-runtime";
-import { readDiagnosticOverlayV2Features, type OverlayV2Feature } from "./telemetry-shadow/overlay-v2-features";
+import { createHttpRaceScheduleStore } from "./core/race-schedule-store";
+import type { WidgetPolicyWire } from "./core/widget-policy";
+import { useSseWidgetPolicy } from "./core/use-widget-policy";
 
 type ProfileV3ApiResponse = {
   document: ProfileDocumentV3;
@@ -25,6 +26,13 @@ type ProfileV3ApiResponse = {
 };
 
 const STREAMING_MODE_HINT = "obs-streaming";
+
+type ObsGeneration = Readonly<{
+  coordinator: ReturnType<typeof createTelemetryRateCoordinator>;
+  overlayV2Store: ReturnType<typeof createOverlayFrameV2Store>;
+  engineerPresentations: ReturnType<typeof createEngineerPresentationStore>;
+  raceSchedule: ReturnType<typeof createHttpRaceScheduleStore>;
+}>;
 
 export function ObsOverlayApp() {
   const [studioPreview] = useState(
@@ -35,74 +43,52 @@ export function ObsOverlayApp() {
   const [error, setError] = useState<string | null>(null);
   const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
 
-  const coordinator = useMemo(() => createTelemetryRateCoordinator(), []);
-  const overlayV2Store = useMemo(() => createOverlayFrameV2Store(), []);
-  const overlayV2Shadow = useMemo(() => createOverlayV2ShadowRuntime(), []);
-  const [overlayV2Features, setOverlayV2Features] = useState<readonly OverlayV2Feature[]>(() =>
-    readDiagnosticOverlayV2Features(),
-  );
-  const overlayV2State = useSyncExternalStore(
-    overlayV2Store.subscribe,
-    overlayV2Store.getSnapshot,
-    overlayV2Store.getSnapshot,
-  );
-  const engineerPresentations = useMemo(() => createEngineerPresentationStore(), []);
-  const engineerAdapter = useMemo(
-    () => createSseEngineerPresentationAdapter({ store: engineerPresentations }),
-    [engineerPresentations],
-  );
-  const adapter = useMemo(
-    () =>
-      createSseProjectionTelemetryAdapter({
-        coordinator,
-        runtime: "obs",
-        onMappedSnapshot: overlayV2Shadow.acceptLegacy,
-      }),
-    [coordinator, overlayV2Shadow],
-  );
-
+  const [generation, setGeneration] = useState<ObsGeneration | null>(null);
+  // Única conexión de política de la ventana OBS (ISA-1105, SSE).
+  const { policy: widgetPolicy } = useSseWidgetPolicy();
   useEffect(() => applyOverlayDocumentMode(), []);
 
   useEffect(() => {
-    const onChange = () => setOverlayV2Features(readDiagnosticOverlayV2Features());
-    window.addEventListener("vantare:overlay-v2-features-changed", onChange);
-    window.addEventListener("storage", onChange);
-    return () => {
-      window.removeEventListener("vantare:overlay-v2-features-changed", onChange);
-      window.removeEventListener("storage", onChange);
-    };
-  }, []);
-
-  useEffect(() => {
-    const unsubscribeOverlayV2Store = overlayV2Store.subscribe(() => {
-      const state = overlayV2Store.getSnapshot();
-      if (state.frame && state.source) {
-        overlayV2Shadow.acceptOverlayV2(state.frame, state.source);
-      }
-    });
+    const coordinator = createTelemetryRateCoordinator();
+    const overlayV2Store = createOverlayFrameV2Store();
+    const engineerPresentations = createEngineerPresentationStore();
+    const raceSchedule = createHttpRaceScheduleStore();
+    const engineerAdapter = createSseEngineerPresentationAdapter({ store: engineerPresentations });
+    overlayV2Store.reset();
+    const unsubscribeOverlayV2Store = bindOverlayV2Coordinator(
+      overlayV2Store,
+      coordinator,
+    );
     const detachOverlayV2 = attachOverlayFrameV2Sse(overlayV2Store, {
-      onError: (cause) => console.error("overlay-v2 shadow ingest failed", cause),
+      onError: (cause) => {
+        const message = cause instanceof Error ? cause.message : String(cause);
+        coordinator.setOverlayFailure({ code: "invalid-frame", message });
+        console.error("overlay-v2 ingest failed", cause);
+      },
     });
     const diagnosticWindow = window as Window & {
       __vantareOverlayV2Diagnostics?: () => unknown;
     };
     diagnosticWindow.__vantareOverlayV2Diagnostics = () => Object.freeze({
       ...overlayV2Store.getDiagnostics(),
-      shadow: overlayV2Shadow.sessionSummary(),
     });
-    adapter.start();
     engineerAdapter.start();
+    raceSchedule.start();
+    // Este efecto es la fabrica y el owner de la generacion; el render que la
+    // consume no puede montarse antes de que sus recursos externos existan.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setGeneration({ coordinator, overlayV2Store, engineerPresentations, raceSchedule });
     return () => {
       delete diagnosticWindow.__vantareOverlayV2Diagnostics;
       detachOverlayV2();
       unsubscribeOverlayV2Store();
-      adapter.stop();
       engineerAdapter.stop();
       overlayV2Store.dispose();
       engineerPresentations.dispose();
+      raceSchedule.dispose();
       coordinator.dispose();
     };
-  }, [adapter, coordinator, engineerAdapter, engineerPresentations, overlayV2Shadow, overlayV2Store]);
+  }, []);
 
   useEffect(() => {
     const unsub = Events.On("calendar:reminder", (event: { data: CalendarReminderPayload }) => {
@@ -117,8 +103,11 @@ export function ObsOverlayApp() {
   useEffect(() => {
     const { profileName } = readOverlayRouteParams(window.location.search);
     let disposed = false;
+    const controller = new AbortController();
 
-    fetch(`/api/profile-v3?profile=${encodeURIComponent(profileName)}`)
+    fetch(`/api/profile-v3?profile=${encodeURIComponent(profileName)}`, {
+      signal: controller.signal,
+    })
       .then((res) => {
         if (!res.ok) {
           throw new Error(`HTTP ${res.status}`);
@@ -142,6 +131,7 @@ export function ObsOverlayApp() {
 
     return () => {
       disposed = true;
+      controller.abort();
     };
   }, []);
 
@@ -153,7 +143,7 @@ export function ObsOverlayApp() {
     return <div className={`${statusShellClass} text-red-400`}>{error}</div>;
   }
 
-  if (!document) {
+  if (!document || !generation) {
     return (
       <div className={`${statusShellClass} ${studioPreview ? "text-white/60" : "text-white/40"}`}>
         Loading overlay...
@@ -161,23 +151,47 @@ export function ObsOverlayApp() {
     );
   }
 
+  return (
+    <ObsGenerationView
+      generation={generation}
+      document={document}
+      revision={revision}
+      reminder={reminder}
+      studioPreview={studioPreview}
+      widgetPolicy={widgetPolicy}
+      onCloseReminder={() => setReminder(null)}
+    />
+  );
+}
+
+type ObsGenerationViewProps = Readonly<{
+  generation: ObsGeneration;
+  document: ProfileDocumentV3;
+  revision: string;
+  reminder: CalendarReminderPayload | null;
+  studioPreview: boolean;
+  widgetPolicy: WidgetPolicyWire | null;
+  onCloseReminder(): void;
+}>;
+
+function ObsGenerationView(props: ObsGenerationViewProps) {
+  const { generation, document, revision, reminder, studioPreview, widgetPolicy, onCloseReminder } = props;
   const runtime = (
     <ObsOverlayRuntime
       key={revision}
       document={document}
       revision={revision}
-      telemetry={coordinator}
-      engineerPresentations={engineerPresentations}
-      overlayV2Frame={overlayV2State.frame}
-      overlayV2Source={overlayV2State.source}
-      overlayV2Features={overlayV2Features}
+      telemetry={generation.coordinator}
+      engineerPresentations={generation.engineerPresentations}
+      raceSchedule={generation.raceSchedule}
+      widgetPolicy={widgetPolicy}
     />
   );
 
   const reminderBanner = reminder ? (
     <OverlayCalendarReminderBanner
       reminder={reminder}
-      onClose={() => setReminder(null)}
+      onClose={onCloseReminder}
       className="absolute top-4 right-4 z-50"
     />
   ) : null;

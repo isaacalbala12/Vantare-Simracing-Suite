@@ -19,7 +19,6 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	drivercontract "github.com/vantare/overlays/v2/internal/telemetry/driver"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
-	overlayprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
@@ -29,24 +28,73 @@ import (
 )
 
 type runtimeProjectionResult struct {
-	projection overlayprojection.SnapshotV1
-	final      envelope.Snapshot[derive.FinalState]
-	facts      []envelope.Fact[telemetrycore.SessionFact]
-	run        identity.RunIdentity
+	// R6a.1: el proyector Overlay V1 esta retirado; el resultado conserva el
+	// hecho canonico FinalState, los facts coordinados y la identidad del run.
+	final envelope.Snapshot[derive.FinalState]
+	facts []envelope.Fact[telemetrycore.SessionFact]
+	run   identity.RunIdentity
+}
+
+// canonicalRuntimeVehicles devuelve los VehicleState canonicos del FinalState.
+func canonicalRuntimeVehicles(result runtimeProjectionResult) []telemetrycore.VehicleState {
+	state, ok := result.final.Value()
+	if !ok {
+		return nil
+	}
+	return state.Observed.Vehicles
+}
+
+// canonicalRuntimePlayer es el jugador segun la cabecera canonica.
+func canonicalRuntimePlayer(result runtimeProjectionResult) identity.VehicleID {
+	return result.final.Header().Identity.Vehicle
+}
+
+// canonicalRuntimeEpoch es el epoch segun el cursor canonico.
+func canonicalRuntimeEpoch(result runtimeProjectionResult) schema.Epoch {
+	return result.final.Header().Cursor.Epoch
+}
+
+// canonicalRuntimeDigest fija el contenido canonico determinista del run:
+// cursor, jugador, vehiculos y kinds de facts, sin proyeccion alguna.
+type canonicalRuntimeDigest struct {
+	Epoch    uint64   `json:"epoch"`
+	Sequence uint64   `json:"sequence"`
+	Player   string   `json:"player"`
+	Vehicles []string `json:"vehicles"`
+	Facts    []uint8  `json:"facts"`
+}
+
+func canonicalRuntimeFingerprint(result runtimeProjectionResult) canonicalRuntimeDigest {
+	header := result.final.Header()
+	vehicles := make([]string, 0, len(canonicalRuntimeVehicles(result)))
+	for _, current := range canonicalRuntimeVehicles(result) {
+		vehicles = append(vehicles, string(current.Identity.Vehicle))
+	}
+	kinds := make([]uint8, 0, len(result.facts))
+	for _, fact := range result.facts {
+		kinds = append(kinds, uint8(fact.Value().Kind))
+	}
+	return canonicalRuntimeDigest{
+		Epoch:    uint64(header.Cursor.Epoch),
+		Sequence: uint64(header.Cursor.Sequence),
+		Player:   string(header.Identity.Vehicle),
+		Vehicles: vehicles,
+		Facts:    kinds,
+	}
 }
 
 type runtimeIntegrationGoldenV1 struct {
-	SchemaVersion                int                   `json:"schemaVersion"`
-	SimulatorBuild               string                `json:"simulatorBuild"`
-	MenuFixtureSHA256            string                `json:"menuFixtureSha256"`
-	TrackFixtureSHA256           string                `json:"trackFixtureSha256"`
-	TrackOverlayProjectionSHA256 string                `json:"trackOverlayProjectionSha256"`
-	DeterministicRuns            int                   `json:"deterministicRuns"`
-	TrackVehicleCount            int                   `json:"trackVehicleCount"`
-	TrackPlayerPresent           bool                  `json:"trackPlayerPresent"`
-	DeltaTraceSHA256             string                `json:"deltaTraceSha256"`
-	InPitTransition              runtimeEvidenceGateV1 `json:"inPitTransition"`
-	DisconnectReconnect          runtimeEvidenceGateV1 `json:"disconnectReconnect"`
+	SchemaVersion                   int                   `json:"schemaVersion"`
+	SimulatorBuild                  string                `json:"simulatorBuild"`
+	MenuFixtureSHA256               string                `json:"menuFixtureSha256"`
+	TrackFixtureSHA256              string                `json:"trackFixtureSha256"`
+	TrackCanonicalFingerprintSHA256 string                `json:"trackCanonicalFingerprintSha256"`
+	DeterministicRuns               int                   `json:"deterministicRuns"`
+	TrackVehicleCount               int                   `json:"trackVehicleCount"`
+	TrackPlayerPresent              bool                  `json:"trackPlayerPresent"`
+	DeltaTraceSHA256                string                `json:"deltaTraceSha256"`
+	InPitTransition                 runtimeEvidenceGateV1 `json:"inPitTransition"`
+	DisconnectReconnect             runtimeEvidenceGateV1 `json:"disconnectReconnect"`
 }
 
 type runtimeEvidenceGateV1 struct {
@@ -176,15 +224,10 @@ func (sink *runtimeProjectionSink) WriteBatch(ctx context.Context, batch telemet
 	if err != nil {
 		return err
 	}
-	projection, err := overlayprojection.ProjectV1(final)
-	if err != nil {
-		return err
-	}
 	result := runtimeProjectionResult{
-		projection: projection,
-		final:      final,
-		facts:      append([]envelope.Fact[telemetrycore.SessionFact](nil), facts.values...),
-		run:        observed.Header().Identity,
+		final: final,
+		facts: append([]envelope.Fact[telemetrycore.SessionFact](nil), facts.values...),
+		run:   observed.Header().Identity,
 	}
 	select {
 	case sink.results <- result:
@@ -272,7 +315,7 @@ func (sink *runtimeFactSink) WriteFacts(_ context.Context, values []envelope.Fac
 	return nil
 }
 
-func TestSingleLMU14RuntimeReachesOverlayProjectionDeterministically(t *testing.T) {
+func TestSingleLMU14RuntimeReachesCanonicalDeterministically(t *testing.T) {
 	root := filepath.Join("..", "..", "..", "..", "testdata")
 	frame, err := os.ReadFile(filepath.Join(root, "lmu-1.4-track-fixture.bin"))
 	if err != nil {
@@ -289,20 +332,25 @@ func TestSingleLMU14RuntimeReachesOverlayProjectionDeterministically(t *testing.
 	}
 	assertSHA256Hex(t, menu, golden.MenuFixtureSHA256, "menu fixture")
 
+	// R6a.1: el proyector Overlay V1 esta retirado; el determinismo y el
+	// contenido se afirman sobre el hecho canonico FinalState, sin oraculo V1.
+	// La garantia fija se preserva: ademas de comparar las 20 ejecuciones
+	// entre si, el SHA256 del fingerprint canonico serializado se afirma
+	// contra el golden cerrado.
 	var first []byte
 	for run := range golden.DeterministicRuns {
 		result, opens := runSingleLMU14Frame(t, frame)
 		if opens != 1 {
 			t.Fatalf("run %d opened LMU_Data %d times, want exactly one", run, opens)
 		}
-		if len(result.projection.Vehicles) != golden.TrackVehicleCount || (result.projection.Player != "") != golden.TrackPlayerPresent {
-			t.Fatalf("run %d projection vehicles=%d player=%q", run, len(result.projection.Vehicles), result.projection.Player)
+		if len(canonicalRuntimeVehicles(result)) != golden.TrackVehicleCount || (canonicalRuntimePlayer(result) != "") != golden.TrackPlayerPresent {
+			t.Fatalf("run %d canonical vehicles=%d player=%q", run, len(canonicalRuntimeVehicles(result)), canonicalRuntimePlayer(result))
 		}
 		if len(result.facts) != 1 || result.facts[0].Value().Kind != telemetrycore.FactSessionStarted {
 			t.Fatalf("run %d facts = %#v, want one session-started fact", run, result.facts)
 		}
 
-		encoded, err := json.Marshal(result.projection)
+		encoded, err := json.Marshal(canonicalRuntimeFingerprint(result))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -311,10 +359,10 @@ func TestSingleLMU14RuntimeReachesOverlayProjectionDeterministically(t *testing.
 			continue
 		}
 		if !bytes.Equal(encoded, first) {
-			t.Fatalf("run %d projection differs from run 0", run)
+			t.Fatalf("run %d canonical state differs from run 0", run)
 		}
 	}
-	assertSHA256Hex(t, first, golden.TrackOverlayProjectionSHA256, "track Overlay projection")
+	assertSHA256Hex(t, first, golden.TrackCanonicalFingerprintSHA256, "canonical fingerprint")
 	deltaTrace, err := os.ReadFile(filepath.Join("..", "..", "derive", "testdata", "lmu-1.4-self-delta-trace-v1.jsonl"))
 	if err != nil {
 		t.Fatal(err)
@@ -362,15 +410,15 @@ func TestRealLMU14PitAndReconnectEvidenceReplays(t *testing.T) {
 		observation := readRealEvidenceFrame(t, root, evidence, received.Add(time.Duration(index)*time.Second))
 		fused := fusion.Merge(observation.ReceivedUTC, time.Duration(index)*time.Second, observation)
 		result := writeRuntimeObservation(t, mapper, downstream, fused)
-		assertProjectedPlayerInPit(t, result.projection, wantPit[index])
+		assertCanonicalPlayerInPit(t, result, wantPit[index])
 		if index == 0 {
 			first = result
 			continue
 		}
-		if result.run.Session != first.run.Session || result.projection.Epoch != first.projection.Epoch {
-			t.Fatalf("in-pit transition changed session/epoch at frame %d: first=%+v/%d got=%+v/%d", index, first.run, first.projection.Epoch, result.run, result.projection.Epoch)
+		if result.run.Session != first.run.Session || canonicalRuntimeEpoch(result) != canonicalRuntimeEpoch(first) {
+			t.Fatalf("in-pit transition changed session/epoch at frame %d: first=%+v/%d got=%+v/%d", index, first.run, canonicalRuntimeEpoch(first), result.run, canonicalRuntimeEpoch(result))
 		}
-		assertSameVehicleIDs(t, first.projection.Vehicles, result.projection.Vehicles)
+		assertSameVehicleIDs(t, canonicalRuntimeVehicles(first), canonicalRuntimeVehicles(result))
 	}
 
 	events := golden.DisconnectReconnect.Events
@@ -408,10 +456,10 @@ func TestRealLMU14PitAndReconnectEvidenceReplays(t *testing.T) {
 		reconnectFusion.Merge(before.ReceivedUTC, 10*time.Second, before))
 	afterResult := writeRuntimeObservation(t, reconnectMapper, reconnectDownstream,
 		reconnectFusion.Merge(after.ReceivedUTC, 11*time.Second, after))
-	if afterResult.run.Session == beforeResult.run.Session || afterResult.projection.Epoch != beforeResult.projection.Epoch+1 {
-		t.Fatalf("reconnect session/epoch = %+v/%d, want one new epoch after %+v/%d", afterResult.run, afterResult.projection.Epoch, beforeResult.run, beforeResult.projection.Epoch)
+	if afterResult.run.Session == beforeResult.run.Session || canonicalRuntimeEpoch(afterResult) != canonicalRuntimeEpoch(beforeResult)+1 {
+		t.Fatalf("reconnect session/epoch = %+v/%d, want one new epoch after %+v/%d", afterResult.run, canonicalRuntimeEpoch(afterResult), beforeResult.run, canonicalRuntimeEpoch(beforeResult))
 	}
-	assertSameVehicleIDs(t, beforeResult.projection.Vehicles, afterResult.projection.Vehicles)
+	assertSameVehicleIDs(t, canonicalRuntimeVehicles(beforeResult), canonicalRuntimeVehicles(afterResult))
 }
 
 func readRealEvidenceFrame(t testing.TB, root string, evidence runtimeFrameEvidenceV1, received time.Time) Observation {
@@ -471,18 +519,21 @@ func findPlayerVehicle(observation Observation) (VehicleObservation, bool) {
 	return VehicleObservation{}, false
 }
 
-func assertProjectedPlayerInPit(t testing.TB, projection overlayprojection.SnapshotV1, want bool) {
+// assertCanonicalPlayerInPit localiza al jugador por la cabecera canonica y
+// afirma su InPit sobre el VehicleState canonico, sin proyeccion V1.
+func assertCanonicalPlayerInPit(t testing.TB, result runtimeProjectionResult, want bool) {
 	t.Helper()
-	for _, current := range projection.Vehicles {
-		if current.ID != projection.Player {
+	player := canonicalRuntimePlayer(result)
+	for _, current := range canonicalRuntimeVehicles(result) {
+		if current.Identity.Vehicle != player {
 			continue
 		}
-		if !current.InPit.Present || bool(current.InPit.Value) != want {
+		if inPit, present := current.InPit.Value(); !present || bool(inPit) != want {
 			t.Fatalf("player InPit = %+v, want %v", current.InPit, want)
 		}
 		return
 	}
-	t.Fatalf("projection player %q not found", projection.Player)
+	t.Fatalf("canonical player %q not found", player)
 }
 
 func TestLMU14MenuCannotBecomeAnInventedLivePayload(t *testing.T) {
@@ -564,7 +615,7 @@ func TestLMU14CanonicalTransitionsPreserveOwnershipAndResetState(t *testing.T) {
 	}
 	advanceRuntimeObservation(&reordered, received.Add(time.Second), time.Second, ClockContinuous)
 	second := writeRuntimeObservation(t, mapper, downstream, reordered)
-	assertSameVehicleIDs(t, first.projection.Vehicles, second.projection.Vehicles)
+	assertSameVehicleIDs(t, canonicalRuntimeVehicles(first), canonicalRuntimeVehicles(second))
 
 	omitted := cloneRuntimeObservation(base)
 	omitted.Vehicles = append(omitted.Vehicles[:omittedIndex], omitted.Vehicles[omittedIndex+1:]...)
@@ -575,15 +626,15 @@ func TestLMU14CanonicalTransitionsPreserveOwnershipAndResetState(t *testing.T) {
 	reappeared := cloneRuntimeObservation(base)
 	advanceRuntimeObservation(&reappeared, received.Add(3*time.Second), 3*time.Second, ClockContinuous)
 	reappearedResult := writeRuntimeObservation(t, mapper, downstream, reappeared)
-	assertProjectionHasVehicle(t, reappearedResult.projection, string(vehicleID(omittedSlot, 1)))
+	assertCanonicalHasVehicle(t, reappearedResult, string(vehicleID(omittedSlot, 1)))
 
 	reset := cloneRuntimeObservation(base)
 	advanceRuntimeObservation(&reset, received.Add(4*time.Second), 100*time.Millisecond, ClockReset)
 	resetResult := writeRuntimeObservation(t, mapper, downstream, reset)
-	if resetResult.projection.Epoch <= reappearedResult.projection.Epoch || resetResult.run.Session == reappearedResult.run.Session {
-		t.Fatalf("session reset epoch/session = %d/%q, want epoch > %d and session != %q", resetResult.projection.Epoch, resetResult.run.Session, reappearedResult.projection.Epoch, reappearedResult.run.Session)
+	if canonicalRuntimeEpoch(resetResult) <= canonicalRuntimeEpoch(reappearedResult) || resetResult.run.Session == reappearedResult.run.Session {
+		t.Fatalf("session reset epoch/session = %d/%q, want epoch > %d and session != %q", canonicalRuntimeEpoch(resetResult), resetResult.run.Session, canonicalRuntimeEpoch(reappearedResult), reappearedResult.run.Session)
 	}
-	assertProjectionHasVehicle(t, resetResult.projection, string(vehicleID(omittedSlot, 1)))
+	assertCanonicalHasVehicle(t, resetResult, string(vehicleID(omittedSlot, 1)))
 
 	playerChanged := cloneRuntimeObservation(reset)
 	for index := range playerChanged.Vehicles {
@@ -592,13 +643,13 @@ func TestLMU14CanonicalTransitionsPreserveOwnershipAndResetState(t *testing.T) {
 	advanceRuntimeObservation(&playerChanged, received.Add(5*time.Second), 200*time.Millisecond, ClockContinuous)
 	playerChangedResult := writeRuntimeObservation(t, mapper, downstream, playerChanged)
 	wantPlayer := vehicleID(newPlayerSlot, 1)
-	if playerChangedResult.projection.Player != wantPlayer || playerChangedResult.run.Vehicle != wantPlayer ||
-		playerChangedResult.run.Session != resetResult.run.Session || playerChangedResult.projection.Epoch != resetResult.projection.Epoch {
-		t.Fatalf("player change projection player=%q run=%+v epoch=%d, want player=%q same session=%q and epoch=%d", playerChangedResult.projection.Player, playerChangedResult.run, playerChangedResult.projection.Epoch, wantPlayer, resetResult.run.Session, resetResult.projection.Epoch)
+	if canonicalRuntimePlayer(playerChangedResult) != wantPlayer || playerChangedResult.run.Vehicle != wantPlayer ||
+		playerChangedResult.run.Session != resetResult.run.Session || canonicalRuntimeEpoch(playerChangedResult) != canonicalRuntimeEpoch(resetResult) {
+		t.Fatalf("player change canonical player=%q run=%+v epoch=%d, want player=%q same session=%q and epoch=%d", canonicalRuntimePlayer(playerChangedResult), playerChangedResult.run, canonicalRuntimeEpoch(playerChangedResult), wantPlayer, resetResult.run.Session, canonicalRuntimeEpoch(resetResult))
 	}
 }
 
-func TestRealLMU14DeltaTraceCrossesCanonicalRuntimeBeforeOverlay(t *testing.T) {
+func TestRealLMU14DeltaTraceCrossesCanonicalRuntime(t *testing.T) {
 	root := filepath.Join("..", "..", "derive", "testdata")
 	trace, err := os.ReadFile(filepath.Join(root, "lmu-1.4-self-delta-trace-v1.jsonl"))
 	if err != nil {
@@ -630,7 +681,10 @@ func TestRealLMU14DeltaTraceCrossesCanonicalRuntimeBeforeOverlay(t *testing.T) {
 	scanner := bufio.NewScanner(bytes.NewReader(trace))
 	index := 0
 	deltaAfterReference := false
-	var firstDelta overlayprojection.SnapshotV1
+	// R6a.1: sin oraculo V1 ni golden de proyeccion; la garantia se conserva
+	// como asercion directa del hecho canonico Derived.Delta con los valores
+	// exactos que fijaba el golden retirado.
+	var firstDelta derive.FinalState
 	for scanner.Scan() {
 		var sample runtimeDeltaSampleV1
 		if err := decodeStrictJSON(scanner.Bytes(), &sample); err != nil {
@@ -660,13 +714,17 @@ func TestRealLMU14DeltaTraceCrossesCanonicalRuntimeBeforeOverlay(t *testing.T) {
 				InPit:       observed(pit.InPit(sample.InPit)),
 			}},
 		}
-		projected := writeRuntimeObservation(t, mapper, downstream, observation).projection
-		if index < golden.WrapSampleIndices[1] && projected.PlayerDelta.Present {
+		state, ok := writeRuntimeObservation(t, mapper, downstream, observation).final.Value()
+		if !ok {
+			t.Fatalf("sample %d produced no final state", index)
+		}
+		_, deltaPresent := state.Derived.Delta.Seconds.Value()
+		if index < golden.WrapSampleIndices[1] && deltaPresent {
 			t.Fatalf("sample %d exposed delta before the first completed reference lap", index)
 		}
-		if index >= golden.WrapSampleIndices[1] && index < golden.WrapSampleIndices[2] && projected.PlayerDelta.Present {
+		if index >= golden.WrapSampleIndices[1] && index < golden.WrapSampleIndices[2] && deltaPresent {
 			if !deltaAfterReference {
-				firstDelta = projected
+				firstDelta = state
 			}
 			deltaAfterReference = true
 		}
@@ -678,16 +736,36 @@ func TestRealLMU14DeltaTraceCrossesCanonicalRuntimeBeforeOverlay(t *testing.T) {
 	if index != golden.SampleCount || !deltaAfterReference {
 		t.Fatalf("real trace samples=%d/%d deltaAfterReference=%v", index, golden.SampleCount, deltaAfterReference)
 	}
-	encoded, err := json.MarshalIndent(firstDelta, "", "  ")
-	if err != nil {
-		t.Fatal(err)
+	delta := firstDelta.Derived.Delta
+	if got, present := delta.Seconds.Value(); !present || got != session.DeltaSeconds(-0.030563504) ||
+		delta.Seconds.Provenance() != schema.ProvenanceDerived || delta.Seconds.Freshness() != schema.FreshnessFresh {
+		t.Fatalf("first reference delta seconds = %+v", delta.Seconds)
 	}
-	want, err := os.ReadFile(filepath.Join("..", "..", "projection", "overlay", "testdata", "lmu-1.4-delta-overlay-v1.golden.json"))
-	if err != nil {
-		t.Fatal(err)
+	if _, present := delta.PersonalBest.Value(); present {
+		t.Fatalf("first reference invented personal-best delta: %+v", delta.PersonalBest)
 	}
-	if !bytes.Equal(append(encoded, '\n'), want) {
-		t.Fatalf("full-chain real delta Overlay v1 golden changed\n--- got ---\n%s\n--- want ---\n%s", encoded, want)
+	if got, present := delta.SessionBest.Value(); !present || got != session.DeltaSeconds(-0.030563504) ||
+		delta.SessionBest.Provenance() != schema.ProvenanceDerived {
+		t.Fatalf("first reference session-best delta = %+v", delta.SessionBest)
+	}
+	if got, present := delta.PreviousLap.Value(); !present || got != session.DeltaSeconds(-0.030563504) ||
+		delta.PreviousLap.Provenance() != schema.ProvenanceDerived {
+		t.Fatalf("first reference previous-lap delta = %+v", delta.PreviousLap)
+	}
+	if got, present := delta.Reference.Value(); !present || got != session.DeltaReferenceBestCompletedPlayerLap ||
+		delta.Reference.Provenance() != schema.ProvenanceDerived {
+		t.Fatalf("first reference delta reference = %+v", delta.Reference)
+	}
+	if len(delta.History) != 1 {
+		t.Fatalf("first reference delta history samples = %d, want 1", len(delta.History))
+	}
+	history := delta.History[0]
+	if history.Cursor.Epoch != 1 || history.Cursor.Sequence != 981 ||
+		history.CapturedAt.UnixMilli() != 1785520898000 ||
+		history.SourceTime != 7247*time.Second ||
+		history.LapDistance != standings.LapDistance(19.51011848449707) ||
+		history.Seconds != session.DeltaSeconds(-0.030563504) {
+		t.Fatalf("first reference delta history sample = %+v", history)
 	}
 }
 
@@ -774,11 +852,11 @@ func advanceRuntimeObservation(observation *Observation, received time.Time, sou
 	observation.ClockChange = change
 }
 
-func assertSameVehicleIDs(t testing.TB, left, right []overlayprojection.VehicleV1) {
+func assertSameVehicleIDs(t testing.TB, left, right []telemetrycore.VehicleState) {
 	t.Helper()
 	leftIDs := make(map[string]struct{}, len(left))
 	for _, current := range left {
-		id := string(current.ID)
+		id := string(current.Identity.Vehicle)
 		if _, duplicate := leftIDs[id]; duplicate {
 			t.Fatalf("left projection contains duplicate identity %q", id)
 		}
@@ -789,13 +867,13 @@ func assertSameVehicleIDs(t testing.TB, left, right []overlayprojection.VehicleV
 	}
 	rightIDs := make(map[string]struct{}, len(right))
 	for _, current := range right {
-		id := string(current.ID)
+		id := string(current.Identity.Vehicle)
 		if _, duplicate := rightIDs[id]; duplicate {
 			t.Fatalf("right projection contains duplicate identity %q", id)
 		}
 		rightIDs[id] = struct{}{}
 		if _, present := leftIDs[id]; !present {
-			t.Fatalf("reordered projection invented identity %q", current.ID)
+			t.Fatalf("reordered projection invented identity %q", current.Identity.Vehicle)
 		}
 	}
 	if len(rightIDs) != len(leftIDs) {
@@ -803,23 +881,15 @@ func assertSameVehicleIDs(t testing.TB, left, right []overlayprojection.VehicleV
 	}
 }
 
-func assertProjectionHasVehicle(t testing.TB, projection overlayprojection.SnapshotV1, want string) {
+// assertCanonicalHasVehicle afirma sobre los VehicleState canonicos.
+func assertCanonicalHasVehicle(t testing.TB, result runtimeProjectionResult, want string) {
 	t.Helper()
-	for _, current := range projection.Vehicles {
-		if string(current.ID) == want {
+	for _, current := range canonicalRuntimeVehicles(result) {
+		if string(current.Identity.Vehicle) == want {
 			return
 		}
 	}
-	t.Fatalf("projection does not contain vehicle %q", want)
-}
-
-func assertProjectionLacksVehicle(t testing.TB, projection overlayprojection.SnapshotV1, forbidden string) {
-	t.Helper()
-	for _, current := range projection.Vehicles {
-		if string(current.ID) == forbidden {
-			t.Fatalf("projection retained obsolete vehicle %q", forbidden)
-		}
-	}
+	t.Fatalf("canonical state does not contain vehicle %q", want)
 }
 
 func readRuntimeIntegrationGolden(t testing.TB) runtimeIntegrationGoldenV1 {

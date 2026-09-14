@@ -1,10 +1,9 @@
-import { memo, useLayoutEffect, useRef, type CSSProperties } from "react";
+import { memo, useLayoutEffect, useMemo, useRef, type CSSProperties } from "react";
 import type { WidgetInstanceV3, WidgetLayoutV3 } from "../core/profile-document";
-import type { TelemetrySnapshot } from "../core/telemetry-snapshot";
 import { WidgetVisualHost } from "../core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../core/WidgetVisualViewport";
 import { widgetTypeRegistry } from "../core/widget-registry";
-import { useRateLimitedTelemetry } from "../runtime/use-rate-limited-telemetry";
+import { useRateLimitedWidgetTelemetry } from "../runtime/use-rate-limited-telemetry";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import type { ResizeHandle } from "../../hub/overlay-studio/canvas/canvas-resize";
 import {
@@ -13,6 +12,7 @@ import {
   registerInplaceFrameElement,
   resolveInplaceFrameGeometry,
 } from "./inplace-frame-preview";
+import type { RaceScheduleSnapshot } from "../core/race-schedule-store";
 
 const RESIZE_HANDLES: readonly ResizeHandle[] = ["nw", "n", "ne", "e", "se", "s", "sw", "w"];
 
@@ -29,12 +29,13 @@ const HANDLE_STYLE: Record<ResizeHandle, CSSProperties> = {
 
 export type InPlaceWidgetEditFrameProps = {
   widget: WidgetInstanceV3;
+  profileId: string;
   layout: WidgetLayoutV3;
   previewActive?: boolean;
   selected: boolean;
   layoutOrigin?: { x: number; y: number };
   telemetry: TelemetryRateCoordinator;
-  snapshotOverride?: TelemetrySnapshot;
+  raceSchedule?: RaceScheduleSnapshot;
   onSelect(widgetId: string): void;
   onFramePointerDown?(widgetId: string, event: React.PointerEvent<HTMLElement>): void;
   onResizePointerDown?(
@@ -48,12 +49,13 @@ export type InPlaceWidgetEditFrameProps = {
 function InPlaceWidgetEditFrameComponent(props: InPlaceWidgetEditFrameProps): React.ReactElement {
   const {
     widget,
+    profileId,
     layout,
     previewActive = false,
     selected,
     layoutOrigin,
     telemetry,
-    snapshotOverride,
+    raceSchedule,
     onSelect,
     onFramePointerDown,
     onResizePointerDown,
@@ -61,8 +63,13 @@ function InPlaceWidgetEditFrameComponent(props: InPlaceWidgetEditFrameProps): Re
   } = props;
   const frameRef = useRef<HTMLDivElement>(null);
   const origin = layoutOrigin ?? { x: 0, y: 0 };
-  const rateLimitedSnapshot = useRateLimitedTelemetry(telemetry, widget.behavior.updateHz);
-  const snapshot = snapshotOverride ?? rateLimitedSnapshot;
+  const telemetryRuntime = useRateLimitedWidgetTelemetry(telemetry, widget.type);
+  const runtime = useMemo(() => ({
+    ...telemetryRuntime,
+    raceScheduleEvents: raceSchedule?.events,
+    raceScheduleStatus: raceSchedule?.status,
+    relativeViewModelInstanceKey: `${profileId}:${widget.id}`,
+  }), [profileId, raceSchedule, telemetryRuntime, widget.id]);
   const frameGeometry = resolveInplaceFrameGeometry(widget.id, layout, previewActive);
   const definition = widgetTypeRegistry.get(widget.type);
   const resizeHandles = definition.capabilities.resizeMode === "horizontal-only"
@@ -100,8 +107,11 @@ function InPlaceWidgetEditFrameComponent(props: InPlaceWidgetEditFrameProps): Re
   const chromeStyle: CSSProperties = {
     position: "absolute",
     inset: 0,
-    border: selected ? "1.5px solid #e63946" : "1px solid rgba(230, 57, 70, 0.35)",
-    borderRadius: 4,
+    border: selected
+      ? "1.5px solid #e63946"
+      : "1px solid rgba(255, 255, 255, 0.16)",
+    borderRadius: 6,
+    boxShadow: selected ? "0 0 0 3px rgba(230, 57, 70, 0.16)" : "none",
     pointerEvents: "none",
     zIndex: 2,
   };
@@ -155,12 +165,13 @@ function InPlaceWidgetEditFrameComponent(props: InPlaceWidgetEditFrameProps): Re
               style={{
                 position: "absolute",
                 zIndex: 4,
-                width: 10,
-                height: 10,
+                width: 9,
+                height: 9,
                 padding: 0,
-                border: "1px solid #e63946",
-                borderRadius: 2,
-                background: "rgba(8, 8, 10, 0.94)",
+                border: "1.5px solid #e63946",
+                borderRadius: 999,
+                background: "#0b0b0e",
+                boxShadow: "0 0 0 1.5px rgba(0, 0, 0, 0.5)",
                 ...HANDLE_STYLE[handle],
               }}
               onPointerDown={(event) => onResizePointerDown(widget.id, handle, event)}
@@ -177,8 +188,8 @@ function InPlaceWidgetEditFrameComponent(props: InPlaceWidgetEditFrameProps): Re
         >
           <WidgetVisualHost
             widget={widget}
-            snapshot={snapshot}
             renderMode="desktop"
+            runtime={runtime}
           />
         </WidgetVisualViewport>
       </div>
@@ -190,10 +201,13 @@ export const InPlaceWidgetEditFrame = memo(
   InPlaceWidgetEditFrameComponent,
   (previous, next) =>
     previous.widget === next.widget
+    && previous.profileId === next.profileId
     && previous.layout === next.layout
     && previous.previewActive === next.previewActive
     && previous.selected === next.selected
     && previous.layoutOrigin === next.layoutOrigin
+    && previous.telemetry === next.telemetry
+    && previous.raceSchedule === next.raceSchedule
     && previous.onSelect === next.onSelect
     && previous.onFramePointerDown === next.onFramePointerDown
     && previous.onResizePointerDown === next.onResizePointerDown

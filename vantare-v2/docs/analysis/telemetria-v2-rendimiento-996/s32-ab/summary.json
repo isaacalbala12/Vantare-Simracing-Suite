@@ -1,0 +1,26 @@
+[
+  {
+    "Side": "baseline",
+    "Benchmark": "BenchmarkEngineS32Apply",
+    "Samples": 10,
+    "MedianNs": 3846.5,
+    "MinNs": 3141.0,
+    "MaxNs": 4652.0,
+    "MinBytes": 6000.0,
+    "MaxBytes": 6000.0,
+    "MinAllocs": 14.0,
+    "MaxAllocs": 14.0
+  },
+  {
+    "Side": "candidate",
+    "Benchmark": "BenchmarkEngineS32Apply",
+    "Samples": 10,
+    "MedianNs": 3487.0,
+    "MinNs": 3169.0,
+    "MaxNs": 4052.0,
+    "MinBytes": 5520.0,
+    "MaxBytes": 5520.0,
+    "MinAllocs": 13.0,
+    "MaxAllocs": 13.0
+  }
+]

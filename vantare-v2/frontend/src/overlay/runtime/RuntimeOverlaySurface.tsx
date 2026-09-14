@@ -19,15 +19,22 @@ import {
 } from "../core/responsive-layout";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import { createWidgetDiagnosticCollector, type WidgetDiagnostic, type WidgetDiagnosticCollector } from "../core/widget-diagnostics";
+import {
+  isWidgetTypeAllowed,
+  resolveWidgetBrandVisible,
+  type WidgetPolicyWire,
+} from "../core/widget-policy";
 import { RuntimeWidgetFrame } from "./RuntimeWidgetFrame";
 import { resolveRuntimeLayout, selectRuntimeWidgets } from "./resolve-runtime-layout";
-import { useRateLimitedTelemetry } from "./use-rate-limited-telemetry";
+import { useOverlayRuntimeContext } from "./use-rate-limited-telemetry";
 import type { EngineerPresentationStore } from "../../engineer/engineer-presentation-store";
 import { EngineerSubtitles } from "../../engineer/EngineerSubtitles";
-import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
-import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
-
-export const RUNTIME_SURFACE_VISIBILITY_HZ = 15;
+import type { OverlayRuntimeContext } from "../core/overlay-runtime-context";
+import {
+  EMPTY_RACE_SCHEDULE_SNAPSHOT,
+  type RaceScheduleStore,
+} from "../core/race-schedule-store";
+import { resolveStandingsFrameLayout } from "../widget-types/standings/standings-frame-layout";
 
 export type RuntimeOverlaySurfaceProps = {
   document: ProfileDocumentV3;
@@ -37,20 +44,51 @@ export type RuntimeOverlaySurfaceProps = {
   onDiagnostic?: (diagnostic: WidgetDiagnostic) => void;
   diagnostics?: WidgetDiagnosticCollector;
   engineerPresentations?: EngineerPresentationStore;
-  overlayV2Frame?: OverlayFrameV2;
-  overlayV2Source?: OverlaySourceStatusV2;
-  overlayV2Features?: readonly OverlayV2Feature[];
+  raceSchedule?: RaceScheduleStore;
+  /**
+   * Política nativa vigente o null antes del primer snapshot (fail-safe
+   * Free). Los widgets bloqueados se filtran AQUÍ, antes de crear
+   * RuntimeWidgetFrame y suscribir telemetría: nunca se ejecutan, pero el
+   * documento se conserva íntegro fuera del runtime.
+   */
+  widgetPolicy?: WidgetPolicyWire | null;
 };
 
 const subscribeToNothing = () => () => undefined;
 const noPresentation = () => null;
 
 export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.ReactElement {
-  const { document, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics: diagnosticsProp, engineerPresentations, overlayV2Frame, overlayV2Source, overlayV2Features } = props;
+  const { document, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics: diagnosticsProp, engineerPresentations, raceSchedule, widgetPolicy = null } = props;
   const diagnostics = useMemo(() => diagnosticsProp ?? createWidgetDiagnosticCollector(), [diagnosticsProp]);
-  const snapshot = useRateLimitedTelemetry(telemetry, RUNTIME_SURFACE_VISIBILITY_HZ);
-  const layout = resolveRuntimeLayout(document, snapshot);
-  const widgets = selectRuntimeWidgets(layout, snapshot);
+  const runtimeContext = useOverlayRuntimeContext(telemetry);
+  const [contextMemory, setContextMemory] = useState<{
+    observed: OverlayRuntimeContext;
+    lastUseful?: OverlayRuntimeContext;
+  }>(() => ({
+    observed: runtimeContext,
+    lastUseful: runtimeContext.sessionType ? runtimeContext : undefined,
+  }));
+  if (contextMemory.observed !== runtimeContext) {
+    setContextMemory({
+      observed: runtimeContext,
+      lastUseful: runtimeContext.sessionType ? runtimeContext : contextMemory.lastUseful,
+    });
+  }
+  const layoutContext = runtimeContext.sessionType
+    ? runtimeContext
+    : contextMemory.lastUseful ?? runtimeContext;
+  const authorityUnavailable = telemetry.getOverlayFailure() !== undefined ||
+    telemetry.getOverlayFrame() === undefined ||
+    telemetry.getOverlaySource() === undefined ||
+    runtimeContext.sourceState === "error" ||
+    runtimeContext.sourceState === "stale";
+  const layout = resolveRuntimeLayout(document, layoutContext);
+  // En ausencia/fallo de V2 los frames deben seguir montados: el host es quien
+  // convierte ese estado en un diagnostico visible. Filtrar aqui ocultaria el
+  // unico mensaje accionable para Desktop y OBS.
+  const widgets = selectRuntimeWidgets(layout, layoutContext, {
+    bypassVisibility: authorityUnavailable,
+  }).filter((widget) => isWidgetTypeAllowed(widgetPolicy, widget.type));
   const layoutViewport = resolveLayoutViewport(document);
   const surfaceRef = useRef<HTMLDivElement>(null);
   const [outputViewport, setOutputViewport] = useState<ViewportSize | null>(null);
@@ -64,6 +102,11 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
     engineerPresentations?.subscribe ?? subscribeToNothing,
     engineerPresentations?.getSubtitlesEnabled ?? (() => false),
     () => false,
+  );
+  const raceScheduleSnapshot = useSyncExternalStore(
+    raceSchedule?.subscribe ?? subscribeToNothing,
+    raceSchedule?.getSnapshot ?? (() => EMPTY_RACE_SCHEDULE_SNAPSHOT),
+    () => EMPTY_RACE_SCHEDULE_SNAPSHOT,
   );
 
   useEffect(() => {
@@ -129,15 +172,35 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
     ? resolveResponsiveSceneTransform(layoutViewport, outputViewport)
     : null;
 
+  const origin = layoutOrigin ?? { x: 0, y: 0 };
+  const effectiveWidgets = widgets.map((widget) => {
+    const localLayout = {
+      ...widget.layout,
+      x: widget.layout.x - origin.x,
+      y: widget.layout.y - origin.y,
+    };
+    const brandVisible = resolveWidgetBrandVisible(widgetPolicy, widget);
+    const effectiveLayout = resolveStandingsFrameLayout(
+      widget,
+      localLayout,
+      layoutViewport.width,
+      layoutViewport.height,
+      brandVisible,
+    );
+    return {
+      ...widget,
+      layout: effectiveLayout,
+    };
+  });
   const responsiveWidgets = transform
-    ? widgets.map((widget) => ({
-        ...widget,
-        layout: {
-          ...widget.layout,
-          ...mapWidgetFrameToResponsive(widget.layout, transform),
-        },
-      }))
-    : widgets;
+    ? effectiveWidgets.map((widget) => {
+        const responsiveLayout = mapWidgetFrameToResponsive(widget.layout, transform);
+        return {
+          ...widget,
+          layout: { ...widget.layout, ...responsiveLayout },
+        };
+      })
+    : effectiveWidgets;
 
   const surfaceStyle: CSSProperties = {
     position: "relative",
@@ -177,16 +240,15 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
             <RuntimeWidgetFrame
               key={widget.id}
               widget={widget}
+              profileId={document.id}
               telemetry={telemetry}
               renderMode={renderMode}
-              layoutOrigin={layoutOrigin}
+              brandVisible={resolveWidgetBrandVisible(widgetPolicy, widget)}
               onDiagnostic={onDiagnostic}
               diagnostics={diagnostics}
               engineerPresentation={engineerPresentation}
               engineerSubtitlesEnabled={subtitlesEnabled}
-              overlayV2Frame={overlayV2Frame}
-              overlayV2Source={overlayV2Source}
-              overlayV2Features={overlayV2Features}
+              raceSchedule={raceScheduleSnapshot}
             />
           ))}
           {subtitlesEnabled && engineerPresentation

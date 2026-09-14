@@ -178,7 +178,8 @@ func isSupportedWidgetTypeV3(widgetType WidgetTypeV3) bool {
 		WidgetTypePedalsTelemetryCompact, WidgetTypeRacingFlags, WidgetTypeDeltaTrace,
 		WidgetTypeRaceSchedule, WidgetTypeHeadToHead, WidgetTypeDeltaAdvanced,
 		WidgetTypeInputTelemetry, WidgetTypeMulticlassRelative, WidgetTypeTrackWeather,
-		WidgetTypeCarDamageVisual, WidgetTypeCarDamageNumbers, WidgetTypeEngineerRadio:
+		WidgetTypeCarDamageVisual, WidgetTypeCarDamageNumbers, WidgetTypeEngineerRadio,
+		WidgetTypeTrackMap:
 		return true
 	default:
 		return false
@@ -262,7 +263,7 @@ func validateWidgetVisualSelectionV3(path string, visual WidgetVisualSelectionV3
 // IsSupportedDesignSystemID reports whether systemID belongs to the profile V3 contract.
 func IsSupportedDesignSystemID(systemID DesignSystemID) bool {
 	switch systemID {
-	case DesignSystemVantareOriginal, DesignSystemVantareCrystal, DesignSystemVantareEndurance:
+	case DesignSystemVantareOriginal, DesignSystemVantareCrystal, DesignSystemVantareEndurance, DesignSystemVantareFunctional, DesignSystemVantareIracing:
 		return true
 	default:
 		return false

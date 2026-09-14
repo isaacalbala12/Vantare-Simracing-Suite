@@ -1,3 +1,4 @@
+import { standingsDefinition } from "../../../overlay/widget-types/standings/standings-definition";
 import { describe, expect, it } from "vitest";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
@@ -642,3 +643,19 @@ describe("applyStudioCommand", () => {
     expect(document).toEqual(before);
   });
 });
+
+ it.each([340, 520])("resizes the persisted Crystal frame on row-count change at %i px only", (w) => {
+   const table = standingsDefinition.createDefault('table');
+   table.visual.systemId = 'vantare-crystal';
+   table.layout = { ...table.layout, w, h: 600 };
+   table.content = { ...table.content, rowCount: 20 };
+   const before = buildDocument([table]);
+   const reduced = applyStudioCommand(before, { type: 'widget/content', session: 'general', widgetIds: ['table'], content: { ...table.content, rowCount: 5 } });
+   const result = reduced.layouts.general!.widgets[0]!;
+   expect(result.layout.h).toBeLessThan(600);
+   expect(result.layout.w).toBe(w);
+   expect(result.layout.x).toBe(table.layout.x);
+   expect(before.layouts.general!.widgets[0]!.layout.h).toBe(600);
+   const changedColumn = applyStudioCommand(reduced, { type: 'widget/content', session: 'general', widgetIds: ['table'], content: { ...result.content, classScope: 'all-classes' } });
+   expect(changedColumn.layouts.general!.widgets[0]!.layout).toEqual(result.layout);
+ });

@@ -3,7 +3,6 @@ import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../../generated/t
 import type { RaceScheduleContent } from "./race-schedule-definition";
 import { buildRaceScheduleViewModelV2 } from "./race-schedule-view-model-v2";
 import { buildRaceScheduleViewModel } from "./race-schedule-view-model";
-import { buildMockTelemetry } from "../../core/mock-scenarios";
 
 function frameFixture(): OverlayFrameV2 {
   return {
@@ -43,27 +42,19 @@ describe("buildRaceScheduleViewModelV2", () => {
   });
 
   it("equivalencia con v1 cuando no hay dataset: ambos en missing y vacios", () => {
-    const snapshot = buildMockTelemetry({ session: "race", location: "track" });
-    const v1 = buildRaceScheduleViewModel(snapshot, content);
+    const auxiliary = buildRaceScheduleViewModel([], content);
     const v2 = buildRaceScheduleViewModelV2(frameFixture(), live, content);
-    expect(v1.status).toBe("missing");
+    expect(auxiliary.status).toBe("missing");
     expect(v2.status).toBe("missing");
-    expect(v1.events.length).toBe(0);
+    expect(auxiliary.events.length).toBe(0);
     expect(v2.events.length).toBe(0);
   });
 
-  it("cuando v1 tiene eventos, v2 sigue vacio y declara el gap", () => {
-    const snapshot = buildMockTelemetry({ session: "race", location: "track" });
-    const withEvents = {
-      ...snapshot,
-      auxiliary: {
-        scheduleEvents: [
+  it("cuando Calendar tiene eventos, el frame V2 sigue vacio y declara el gap", () => {
+    const calendar = buildRaceScheduleViewModel([
           { id: "a", title: "Race A", track: "Le Mans", startAt: "2026-07-15T10:00:00Z", durationMinutes: 45, classes: ["Hypercar"], status: "upcoming" },
-        ],
-      },
-    };
-    const v1 = buildRaceScheduleViewModel(withEvents, { rowCount: 1, licenseFilter: "all", timeZone: "UTC" });
-    expect(v1.status).toBe("ready");
+        ], { rowCount: 1, licenseFilter: "all", timeZone: "UTC" }, "ready");
+    expect(calendar.status).toBe("ready");
     const v2 = buildRaceScheduleViewModelV2(frameFixture(), live, { rowCount: 1, licenseFilter: "all", timeZone: "UTC" });
     expect(v2.events).toEqual([]);
     expect(v2.status).toBe("missing");

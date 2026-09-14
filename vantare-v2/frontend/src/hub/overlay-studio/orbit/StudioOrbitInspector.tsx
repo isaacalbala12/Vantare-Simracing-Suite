@@ -4,7 +4,7 @@ import { resolveLayoutViewport } from '../../../overlay/core/layout-viewport';
 import type { InspectorSectionId } from '../../../overlay/core/widget-definition';
 import { Accordion } from '../../../ui/orbit';
 import { executeWidgetAction } from '../canvas/widget-actions';
-import { useStudioTelemetrySnapshot } from '../canvas/studio-telemetry';
+import { useStudioOverlayRuntimeContext } from '../canvas/studio-telemetry';
 import { useDeleteWidgetConfirm } from '../components/studio-confirm';
 import { createWailsWidgetDesignClient } from '../designs/widget-design-client';
 import { ActionsSection } from '../inspector/ActionsSection';
@@ -12,7 +12,7 @@ import { DesignSection } from '../inspector/DesignSection';
 import { LayoutSection } from '../inspector/LayoutSection';
 import { WidgetPropertyInspectorView } from '../inspector/WidgetPropertyInspectorView';
 import { resolveInspectorSections } from '../inspector/inspector-sections';
-import { useStudioDocument } from '../state/studio-store';
+import { useStudioActions, useStudioActiveLayout, useStudioSelector, useStudioWidgetPolicy } from '../state/studio-store';
 import {
   appearanceSummary,
   behaviorSummary,
@@ -97,19 +97,15 @@ function HeaderAction(props: {
  * controles de apariencia) no se pintan: la resolucion sigue siendo suya.
  */
 export function StudioOrbitInspector(): React.ReactElement {
-  const {
-    access,
-    activeLayout,
-    activeSession,
-    selectedWidgetId,
-    document,
-    savedDocument,
-    dispatch,
-    selectWidget,
-    discardAll,
-  } = useStudioDocument();
+  const widgetPolicy = useStudioWidgetPolicy();
+  const activeLayout = useStudioActiveLayout();
+  const activeSession = useStudioSelector((s) => s.activeSession);
+  const selectedWidgetId = useStudioSelector((s) => s.selectedWidgetId);
+  const document = useStudioSelector((s) => s.history?.present ?? null);
+  const savedDocument = useStudioSelector((s) => s.history?.saved ?? null);
+  const { dispatch, selectWidget, discardAll } = useStudioActions();
   const { t } = useI18n();
-  const snapshot = useStudioTelemetrySnapshot();
+  const runtimeContext = useStudioOverlayRuntimeContext();
   const deleteConfirm = useDeleteWidgetConfirm();
   const designClient = useMemo(() => createWailsWidgetDesignClient(), []);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
@@ -164,7 +160,7 @@ export function StudioOrbitInspector(): React.ReactElement {
     if (id === 'design') {
       return (
         <DesignSection
-          access={access}
+          policy={widgetPolicy}
           designClient={designClient}
           dispatch={dispatch}
           session={activeSession}
@@ -176,11 +172,11 @@ export function StudioOrbitInspector(): React.ReactElement {
     if (id === 'appearance') {
       return (
         <WidgetPropertyInspectorView
-          access={access}
+          policy={widgetPolicy}
           dispatch={dispatch}
           sectionId="appearance"
           session={activeSession}
-          snapshot={snapshot}
+          runtimeContext={runtimeContext}
           widget={widget}
         />
       );
@@ -190,21 +186,21 @@ export function StudioOrbitInspector(): React.ReactElement {
         <>
           {has('behavior') ? (
             <WidgetPropertyInspectorView
-              access={access}
+              policy={widgetPolicy}
               dispatch={dispatch}
               sectionId="behavior"
               session={activeSession}
-              snapshot={snapshot}
+              runtimeContext={runtimeContext}
               widget={widget}
             />
           ) : null}
           {has('content') ? (
             <WidgetPropertyInspectorView
-              access={access}
+              policy={widgetPolicy}
               dispatch={dispatch}
               sectionId="content"
               session={activeSession}
-              snapshot={snapshot}
+              runtimeContext={runtimeContext}
               widget={widget}
             />
           ) : null}

@@ -18,6 +18,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/weather"
 )
 
 const (
@@ -92,6 +93,33 @@ type RESTObservation struct {
 	PlayerPosition TimedField[standings.Position]
 	CompletedLaps  TimedField[standings.CompletedLaps]
 	PitStopCount   TimedField[pit.StopCount]
+
+	// AmbientTemp and TrackTemp carry the sessionInfo air/track readings in
+	// Celsius (ISA-1106, weather.Temperature). Each field owns its presence,
+	// freshness and expiry independently: an absent or null reading is
+	// missing, a non-numeric or out-of-range one is invalid, and neither
+	// poisons the sibling fields.
+	AmbientTemp TimedField[weather.Temperature]
+	TrackTemp   TimedField[weather.Temperature]
+	// SessionFlag carries the conservative global flag assertion (ISA-1106):
+	// FlagYellow only on positive yellowFlagState evidence, missing
+	// otherwise. A sector-scoped flag never promotes to this global signal.
+	SessionFlag TimedField[session.Flag]
+
+	// CarNumbers is the per-row identity grid from the same standings poll.
+	// The number stays a string so "007" survives; the grid shares the REST
+	// TTL and is dropped (never frozen) once stale.
+	CarNumbers            []restCarNumber
+	CarNumbersUpdatedUTC  time.Time
+	carNumbersUpdatedMono monotonicStamp
+}
+
+// restCarNumber is one validated standings identity: the LMU slot plus the
+// source-supplied number and the vehicle label used to detect a reused slot.
+type restCarNumber struct {
+	Slot    int32
+	Number  string
+	Vehicle string
 }
 
 type restDoer interface {
@@ -188,6 +216,12 @@ type restCache struct {
 	playerPosition TimedField[standings.Position]
 	completedLaps  TimedField[standings.CompletedLaps]
 	pitStopCount   TimedField[pit.StopCount]
+	ambientTemp    TimedField[weather.Temperature]
+	trackTemp      TimedField[weather.Temperature]
+	sessionFlag    TimedField[session.Flag]
+	carNumbers     []restCarNumber
+	carNumbersUTC  time.Time
+	carNumbersMono monotonicStamp
 }
 
 type restStanding struct {
@@ -195,6 +229,11 @@ type restStanding struct {
 	Position      int32 `json:"position"`
 	LapsCompleted int32 `json:"lapsCompleted"`
 	Pitstops      int32 `json:"pitstops"`
+	// SlotID is a pointer so an absent/null slot is never confused with the
+	// valid slot 0.
+	SlotID      *int32 `json:"slotID"`
+	CarNumber   string `json:"carNumber"`
+	VehicleName string `json:"vehicleName"`
 }
 
 type restSessionInfo struct {
@@ -202,6 +241,19 @@ type restSessionInfo struct {
 	Session          string  `json:"session"`
 	NumberOfVehicles int32   `json:"numberOfVehicles"`
 	CurrentEventTime float64 `json:"currentEventTime"`
+	// Session signals admitted by ISA-1106. RawMessage keeps decoding
+	// tolerant per field: absent/null is missing, a present but unusable
+	// value is invalid, and one bad field never fails its siblings.
+	AmbientTemp     json.RawMessage `json:"ambientTemp"`
+	TrackTemp       json.RawMessage `json:"trackTemp"`
+	YellowFlagState json.RawMessage `json:"yellowFlagState"`
+	// SectorFlag is accepted and ignored for the global flag assertion: a
+	// sector-scoped flag must never promote to the session-global signal.
+	// GamePhase is accepted in any shape and ignored: it is not consulted
+	// for any canonical assertion, so an unknown shape must never block the
+	// session fields from the same poll.
+	SectorFlag json.RawMessage `json:"sectorFlag"`
+	GamePhase  json.RawMessage `json:"gamePhase"`
 }
 
 func runREST(ctx context.Context, cfg *restConfig, output chan<- Observation) error {
@@ -238,7 +290,7 @@ func pollREST(ctx context.Context, cfg *restConfig, cache *restCache) (Observati
 			cache.standings.Status = classifyDecodeError(err)
 		} else {
 			next := *cache
-			updateStandingsFields(&next, rows, standingsResponse.receivedUTC, standingsResponse.receivedMono)
+			updateStandingsFields(&next, rows, standingsResponse)
 			cache.applyStandings(next)
 			cache.standings.LastSuccessUTC = standingsResponse.receivedUTC
 			cache.standings.lastSuccessMono = standingsResponse.receivedMono
@@ -279,10 +331,14 @@ type restResponse struct {
 	attemptedUTC time.Time
 	receivedUTC  time.Time
 	receivedMono monotonicStamp
+	// startedMono stamps the request start. The car-number grid uses it (not
+	// the response end): a request sent before a session boundary must not
+	// pass the fusion floor just because its response arrived afterwards.
+	startedMono monotonicStamp
 }
 
 func fetchREST(parent context.Context, cfg *restConfig, path string) restResponse {
-	result := restResponse{attemptedUTC: restNow(cfg)}
+	result := restResponse{attemptedUTC: restNow(cfg), startedMono: monotonicStamp{elapsed: restElapsed(cfg), set: true}}
 	target, err := url.Parse(cfg.baseURL + path)
 	if err != nil || !isLoopbackHTTP(target) {
 		result.status = RESTEndpointMalformed
@@ -408,11 +464,15 @@ func classifyDecodeError(err error) RESTEndpointStatus {
 	return RESTEndpointMalformed
 }
 
-func updateStandingsFields(cache *restCache, rows []restStanding, now time.Time, elapsed monotonicStamp) {
+func updateStandingsFields(cache *restCache, rows []restStanding, response restResponse) {
+	now, elapsed := response.receivedUTC, response.receivedMono
 	cache.playerPresent = timedObservedAt(false, now, elapsed)
 	cache.playerPosition = timedMissingAt[standings.Position](now, elapsed)
 	cache.completedLaps = timedMissingAt[standings.CompletedLaps](now, elapsed)
 	cache.pitStopCount = timedMissingAt[pit.StopCount](now, elapsed)
+	cache.carNumbers = updateCarNumberGrid(rows)
+	cache.carNumbersUTC = response.attemptedUTC
+	cache.carNumbersMono = response.startedMono
 	for _, row := range rows {
 		if !row.Player {
 			continue
@@ -425,11 +485,60 @@ func updateStandingsFields(cache *restCache, rows []restStanding, now time.Time,
 	}
 }
 
+// updateCarNumberGrid keeps one validated identity per slot from a single
+// poll. Rows without an explicit slot never contribute (slot 0 is valid, so
+// absence is not zero). Slots are counted before any number is validated: a
+// slot claimed twice in one poll is ambiguous even when only one of the rows
+// carries a usable number, so neither entry publishes.
+func updateCarNumberGrid(rows []restStanding) []restCarNumber {
+	if len(rows) == 0 {
+		return nil
+	}
+	counts := make(map[int32]int, len(rows))
+	for _, row := range rows {
+		if row.SlotID == nil || *row.SlotID < 0 {
+			continue
+		}
+		counts[*row.SlotID]++
+	}
+	var grid []restCarNumber
+	for _, row := range rows {
+		if row.SlotID == nil || *row.SlotID < 0 || counts[*row.SlotID] != 1 {
+			continue
+		}
+		number, ok := normalizeRESTCarNumber(row.CarNumber)
+		if !ok {
+			continue
+		}
+		grid = append(grid, restCarNumber{Slot: *row.SlotID, Number: number, Vehicle: strings.TrimSpace(row.VehicleName)})
+	}
+	return grid
+}
+
+// normalizeRESTCarNumber validates a source-supplied car number and returns it
+// verbatim. Short numeric strings keep their exact form ("007" stays "007");
+// anything else is rejected so the fusion never publishes a guessed identity.
+func normalizeRESTCarNumber(value string) (string, bool) {
+	trimmed := strings.TrimSpace(value)
+	if len(trimmed) == 0 || len(trimmed) > 4 {
+		return "", false
+	}
+	for index := 0; index < len(trimmed); index++ {
+		if trimmed[index] < '0' || trimmed[index] > '9' {
+			return "", false
+		}
+	}
+	return trimmed, true
+}
+
 func (cache *restCache) applyStandings(next restCache) {
 	cache.playerPresent = next.playerPresent
 	cache.playerPosition = next.playerPosition
 	cache.completedLaps = next.completedLaps
 	cache.pitStopCount = next.pitStopCount
+	cache.carNumbers = next.carNumbers
+	cache.carNumbersUTC = next.carNumbersUTC
+	cache.carNumbersMono = next.carNumbersMono
 }
 
 type sessionFields struct {
@@ -437,7 +546,20 @@ type sessionFields struct {
 	sourceTime   TimedField[time.Duration]
 	sessionType  TimedField[session.Type]
 	vehicleCount TimedField[schema.Count]
+	ambientTemp  TimedField[weather.Temperature]
+	trackTemp    TimedField[weather.Temperature]
+	sessionFlag  TimedField[session.Flag]
 }
+
+// Plausible Celsius sanity bounds for the sessionInfo temperature readings.
+// They reject garbage without certifying the exact sensor vocabulary, which
+// still awaits an active-session capture.
+const (
+	minAmbientTempC = -30
+	maxAmbientTempC = 60
+	minTrackTempC   = -20
+	maxTrackTempC   = 80
+)
 
 func validateSessionFields(info restSessionInfo, now time.Time, elapsed monotonicStamp) (sessionFields, error) {
 	sourceTime, valid := durationFromSeconds(info.CurrentEventTime)
@@ -448,6 +570,9 @@ func validateSessionFields(info restSessionInfo, now time.Time, elapsed monotoni
 		sourceTime:   timedObservedAt(sourceTime, now, elapsed),
 		sessionType:  TimedField[session.Type]{Field: parseRESTSessionType(info.Session), UpdatedUTC: now, updatedMono: elapsed},
 		vehicleCount: timedValidatedAt[schema.Count](info.NumberOfVehicles, 0, maxVehicles, now, elapsed),
+		ambientTemp:  parseRESTTemperature(info.AmbientTemp, minAmbientTempC, maxAmbientTempC, now, elapsed),
+		trackTemp:    parseRESTTemperature(info.TrackTemp, minTrackTempC, maxTrackTempC, now, elapsed),
+		sessionFlag:  parseRESTSessionFlag(info.YellowFlagState, now, elapsed),
 	}
 	if info.TrackName == nil {
 		fields.trackName = timedMissingAt[string](now, elapsed)
@@ -482,6 +607,63 @@ func (cache *restCache) applySession(fields sessionFields) {
 	cache.sourceTime = fields.sourceTime
 	cache.sessionType = fields.sessionType
 	cache.vehicleCount = fields.vehicleCount
+	cache.ambientTemp = fields.ambientTemp
+	cache.trackTemp = fields.trackTemp
+	cache.sessionFlag = fields.sessionFlag
+}
+
+// parseRESTTemperature decodes one optional Celsius reading with per-field
+// independence: absent/null is missing, a present but non-numeric,
+// non-finite or out-of-range value is invalid, and never affects siblings.
+func parseRESTTemperature(raw json.RawMessage, minimum, maximum float64, now time.Time, elapsed monotonicStamp) TimedField[weather.Temperature] {
+	if len(bytes.TrimSpace(raw)) == 0 || string(bytes.TrimSpace(raw)) == "null" {
+		return timedMissingAt[weather.Temperature](now, elapsed)
+	}
+	var value float64
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return TimedField[weather.Temperature]{Field: invalid[weather.Temperature](), UpdatedUTC: now, updatedMono: elapsed}
+	}
+	if !finite(value) || value < minimum || value > maximum {
+		return TimedField[weather.Temperature]{Field: invalid[weather.Temperature](), UpdatedUTC: now, updatedMono: elapsed}
+	}
+	return timedObservedAt(weather.Temperature(value), now, elapsed)
+}
+
+// parseRESTSessionFlag maps the raw yellowFlagState shape to the documented
+// candidate assertion (ISA-1106 B2). The value vocabulary is adopted from the
+// official LMU-distributed SDK header (Support/SharedMemoryInterface/
+// InternalsPlugin.hpp: "Yellow flag states (applies to full-course only)":
+// -1 Invalid, 0 None, 1 Pending, 2 Pits closed, 3 Pit lead lap, 4 Pits open,
+// 5 Last lap, 6 Resume, 7 Race halt (not currently used)), corroborated by
+// the original isiMotor header and an independent consumer mapping. The
+// orchestrator admits only the unambiguous full-course integers 2, 3, 4, 5
+// as FlagYellow; 1 (Pending) and 6 (Resume) stay neutral as ambiguous until
+// an active-session capture confirms them. Whether the REST field carries
+// the same codes as the SHM field is still pending verification (naming
+// parity only), so this is a candidate contract proven by fixtures — never a
+// certified REST source. Everything else (other integers, fractions,
+// strings, bool, arrays, objects, null, absent) stays missing: no != 0
+// shortcut, no coercions or aliases, no default green. SectorFlag and
+// GamePhase are deliberately not consulted: sector scope must not promote to
+// global.
+func parseRESTSessionFlag(raw json.RawMessage, now time.Time, elapsed monotonicStamp) TimedField[session.Flag] {
+	trimmed := bytes.TrimSpace(raw)
+	if len(trimmed) == 0 || string(trimmed) == "null" {
+		return timedMissingAt[session.Flag](now, elapsed)
+	}
+	var number float64
+	if err := json.Unmarshal(trimmed, &number); err != nil {
+		return timedMissingAt[session.Flag](now, elapsed)
+	}
+	if !finite(number) || number != math.Trunc(number) {
+		return timedMissingAt[session.Flag](now, elapsed)
+	}
+	switch int(number) {
+	case 2, 3, 4, 5:
+		return timedObservedAt(session.FlagYellow, now, elapsed)
+	default:
+		return timedMissingAt[session.Flag](now, elapsed)
+	}
 }
 
 func (cache *restCache) acceptSession(info restSessionInfo, receivedUTC time.Time, receivedMono monotonicStamp) error {
@@ -547,10 +729,18 @@ func markRESTStale(cache *restCache, elapsed time.Duration, ttl time.Duration) {
 	cache.sourceTime = staleTimedField(cache.sourceTime, elapsed, ttl)
 	cache.sessionType = staleTimedField(cache.sessionType, elapsed, ttl)
 	cache.vehicleCount = staleTimedField(cache.vehicleCount, elapsed, ttl)
+	cache.ambientTemp = staleTimedField(cache.ambientTemp, elapsed, ttl)
+	cache.trackTemp = staleTimedField(cache.trackTemp, elapsed, ttl)
+	cache.sessionFlag = staleTimedField(cache.sessionFlag, elapsed, ttl)
 	cache.playerPresent = staleTimedField(cache.playerPresent, elapsed, ttl)
 	cache.playerPosition = staleTimedField(cache.playerPosition, elapsed, ttl)
 	cache.completedLaps = staleTimedField(cache.completedLaps, elapsed, ttl)
 	cache.pitStopCount = staleTimedField(cache.pitStopCount, elapsed, ttl)
+	// A stale identity grid is dropped, never frozen: a number that outlives
+	// its poll could belong to a reused slot.
+	if !cache.carNumbersMono.set || elapsed < cache.carNumbersMono.elapsed || elapsed-cache.carNumbersMono.elapsed > ttl {
+		cache.carNumbers = nil
+	}
 }
 
 func staleEndpoint(value RESTEndpointSnapshot, elapsed time.Duration, ttl time.Duration) RESTEndpointSnapshot {
@@ -581,6 +771,9 @@ func (cache restCache) snapshot() RESTObservation {
 		TrackName: cache.trackName, SourceTime: cache.sourceTime, SessionType: cache.sessionType, VehicleCount: cache.vehicleCount,
 		PlayerPresent: cache.playerPresent, PlayerPosition: cache.playerPosition,
 		CompletedLaps: cache.completedLaps, PitStopCount: cache.pitStopCount,
+		AmbientTemp: cache.ambientTemp, TrackTemp: cache.trackTemp, SessionFlag: cache.sessionFlag,
+		CarNumbers:           cache.carNumbers,
+		CarNumbersUpdatedUTC: cache.carNumbersUTC, carNumbersUpdatedMono: cache.carNumbersMono,
 	}
 }
 

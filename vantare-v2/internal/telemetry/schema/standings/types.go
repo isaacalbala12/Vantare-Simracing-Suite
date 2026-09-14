@@ -5,6 +5,10 @@ type Position int32
 
 type CompletedLaps int32
 
+// CarNumber is the source-supplied car number as a string. It stays a string
+// so leading zeros survive: "007" never becomes 7.
+type CarNumber string
+
 type VehicleClass string
 
 type Sector uint8

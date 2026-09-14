@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProfileDocumentV3 } from "./core/profile-document";
 import { CompositeApp } from "./CompositeApp";
@@ -6,7 +7,7 @@ import { relativeDefinition } from "./widget-types/relative/relative-definition"
 import {
   OVERLAY_PULL_REQUEST_ROUTE,
 } from "../telemetry-transport/overlay-wails-pull";
-import goldenRaw from "../../../internal/telemetry/projection/overlay/testdata/overlay_v1.golden.json?raw";
+import goldenV2Raw from "../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json?raw";
 
 type Handler = (event: { data: unknown }) => void;
 
@@ -20,6 +21,7 @@ const originalResizeObserver = globalThis.ResizeObserver;
 let desktopOutput = { width: 1920, height: 1080 };
 let pullDelivery = 0;
 let pullRequests: Array<{sessionId: string; ack: number}> = [];
+let pullClosedSessions = new Set<string>();
 let resolvePull: ((response: Response) => void) | undefined;
 
 function installResizeObserver(): void {
@@ -77,11 +79,10 @@ async function dispatchTelemetry(events: ReadonlyArray<{name: string; data: unkn
   if (!resolve) throw new Error("overlay pull response not pending");
   resolvePull = undefined;
   await act(async () => {
-    resolve({
-      ok: true,
+    resolve(new Response(JSON.stringify({sessionId: request.sessionId, delivery: pullDelivery, events}), {
       status: 200,
-      json: async () => ({sessionId: request.sessionId, delivery: pullDelivery, events}),
-    } as Response);
+      headers: {"Content-Type": "application/json"},
+    }));
     await Promise.resolve();
   });
 }
@@ -101,21 +102,19 @@ function buildProfilePayload(document: ProfileDocumentV3, revision = "rev-1", wi
   };
 }
 
-function canonicalEnvelope() {
-  const snapshot = JSON.parse(goldenRaw) as Record<string, unknown>;
-  const payload = { ...snapshot };
-  for (const key of ["canonicalVersion", "projectionVersion", "epoch", "sequence", "capturedAt"]) {
-    delete payload[key];
-  }
+// R2, sonda negativa de protocolo: el pull ignora eventos V1 aunque lleguen
+// con forma canónica. Sin golden V1: el payload es irrelevante porque la
+// aserción es que nada se pinta (no es un fixture de datos).
+function legacyV1Envelope() {
   return {
     product: "overlay",
-    projectionVersion: snapshot.projectionVersion,
-    epoch: snapshot.epoch,
-    sequence: snapshot.sequence,
+    projectionVersion: 1,
+    epoch: 7,
+    sequence: 3,
     kind: "full",
-    capturedAt: snapshot.capturedAt,
+    capturedAt: "2026-07-28T09:00:00Z",
     statusRevision: 1,
-    payload,
+    payload: {},
   };
 }
 
@@ -135,6 +134,36 @@ function buildRelativeDocument(): ProfileDocumentV3 {
   };
 }
 
+// Native widget policy over the mocked Wails bridge (ISA-1105): relative is
+// premium, so generation tests feed a paid snapshot before expecting frames.
+const paidPolicyWire = {
+  revision: 2,
+  overlaysBasic: true,
+  overlaysAdvanced: true,
+  engineerAI: false,
+  brandCrystal: "optional",
+  brandEfficiency: "optional",
+  brandOriginal: "none",
+};
+
+const freePolicyWire = {
+  revision: 3,
+  overlaysBasic: true,
+  overlaysAdvanced: false,
+  engineerAI: false,
+  brandCrystal: "required",
+  brandEfficiency: "required",
+  brandOriginal: "none",
+};
+
+function dispatchPolicySnapshot(wire: Record<string, unknown>): void {
+  dispatch("widget-policy:snapshot", wire);
+}
+
+function dispatchPolicyChanged(wire: Record<string, unknown>): void {
+  dispatch("widget-policy:changed", wire);
+}
+
 describe("CompositeApp", () => {
   beforeEach(() => {
     runtimeMock.handlers.clear();
@@ -145,6 +174,7 @@ describe("CompositeApp", () => {
     desktopOutput = { width: 1920, height: 1080 };
     pullDelivery = 0;
     pullRequests = [];
+    pullClosedSessions = new Set();
     resolvePull = undefined;
     vi.stubGlobal("fetch", vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const route = typeof input === "string" ? input : input.toString();
@@ -154,9 +184,76 @@ describe("CompositeApp", () => {
           resolvePull = resolve;
         });
       }
+      if (route.endsWith("/close")) {
+        const close = JSON.parse(String(init?.body)) as { sessionId: string };
+        pullClosedSessions.add(close.sessionId);
+      }
       return {ok: true, status: 204} as Response;
     }));
     installResizeObserver();
+  });
+
+  it("R2: un evento legacy V1 solo no alimenta Desktop (sin widget V1)", async () => {
+    render(<CompositeApp />);
+    dispatchPolicySnapshot(paidPolicyWire);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
+    tick(100);
+
+    await dispatchTelemetry([
+      { name: "telemetry:overlay:status", data: {
+        product: "overlay",
+        statusRevision: 1,
+        capturedAt: "2026-07-28T09:00:00Z",
+        payload: { state: "live", reconnectAttempt: 0 },
+      } },
+      { name: "telemetry:overlay:projection", data: legacyV1Envelope() },
+    ]);
+    tick(200);
+
+    expect(screen.queryByText("Driver 000")).toBeNull();
+    const diagnostics = window.__vantareOverlayV2Diagnostics?.() as Record<string, unknown> | undefined;
+    expect(diagnostics).toBeDefined();
+    expect(diagnostics).not.toHaveProperty("shadow");
+  });
+
+  it("R2: un snapshot V2 solo sigue alimentando el runtime y unmount cierra el pull", async () => {
+    const view = render(<CompositeApp />);
+    dispatchPolicySnapshot(paidPolicyWire);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
+    tick(100);
+
+    await dispatchTelemetry([
+      { name: "telemetry:overlay-v2:snapshot", data: JSON.parse(goldenV2Raw) },
+    ]);
+    tick(200);
+
+    expect(screen.getByText("Driver 000")).toBeTruthy();
+    const sessionId = pullRequests.at(-1)?.sessionId;
+    expect(sessionId).toBeDefined();
+
+    view.unmount();
+    tick(500);
+
+    expect(pullClosedSessions.has(sessionId!)).toBe(true);
+    expect(window.__vantareOverlayV2Diagnostics).toBeUndefined();
+    expect(runtimeMock.handlers.get("overlay:profile-v3-loaded") ?? []).toHaveLength(0);
+  });
+
+  it("does not allocate or ingest shadow state while V1 emission is off", async () => {
+    render(<CompositeApp />);
+    dispatchPolicySnapshot(paidPolicyWire);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
+    tick(100);
+
+    await dispatchTelemetry([
+      { name: "telemetry:overlay-v2:snapshot", data: JSON.parse(goldenV2Raw) },
+    ]);
+    tick(200);
+
+    expect(screen.getByText("Driver 000")).toBeTruthy();
+    const diagnostics = window.__vantareOverlayV2Diagnostics?.() as Record<string, unknown> | undefined;
+    expect(diagnostics).toBeDefined();
+    expect(diagnostics).not.toHaveProperty("shadow");
   });
 
   afterEach(() => {
@@ -166,10 +263,42 @@ describe("CompositeApp", () => {
     globalThis.ResizeObserver = originalResizeObserver;
   });
 
+  it("crea una generacion limpia y acepta frames V2 tras el doble setup de StrictMode", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    render(
+      <StrictMode>
+        <CompositeApp />
+      </StrictMode>,
+    );
+    dispatchPolicySnapshot(paidPolicyWire);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
+    await dispatchTelemetry([
+      { name: "telemetry:overlay-v2:snapshot", data: JSON.parse(goldenV2Raw) },
+    ]);
+    tick(100);
+
+    expect(screen.getAllByTestId("runtime-widget-frame")).toHaveLength(1);
+    expect(consoleError.mock.calls.flat().join(" ")).not.toContain("invalid-contract:disposed");
+    expect(window.__vantareOverlayV2Diagnostics?.()).toMatchObject({
+      overlay_v2_parse_duration: { count: 1 },
+    });
+    const activeSessions = new Set(
+      pullRequests
+        .map((request) => request.sessionId)
+        .filter((sessionId) => !pullClosedSessions.has(sessionId)),
+    );
+    expect(activeSessions.size).toBe(1);
+  });
+
   it("subscribes once to the profile and canonical Overlay transport", () => {
     render(<CompositeApp />);
     expect(runtimeMock.onCalls.filter((name) => name === "overlay:profile-v3-loaded")).toHaveLength(1);
+    // Policy subscribes before requesting, over the same bridge, exactly once.
+    expect(runtimeMock.onCalls.filter((name) => name === "widget-policy:snapshot")).toHaveLength(1);
+    expect(runtimeMock.onCalls.filter((name) => name === "widget-policy:changed")).toHaveLength(1);
     expect(runtimeMock.emit).toHaveBeenCalledWith("overlay:profile-v3:get");
+    expect(runtimeMock.emit).toHaveBeenCalledWith("widget-policy:get", expect.anything());
     expect(runtimeMock.onCalls.filter((name) => name === "telemetry:update")).toHaveLength(0);
     expect(runtimeMock.onCalls.filter((name) => name === "telemetry:overlay:status")).toHaveLength(0);
     expect(runtimeMock.onCalls.filter((name) => name === "telemetry:overlay:projection")).toHaveLength(0);
@@ -199,36 +328,34 @@ describe("CompositeApp", () => {
     tick(100);
 
     expect(screen.queryByText("Loading profile...")).toBeNull();
-    expect(screen.getByText("RELATIVE")).toBeTruthy();
+    dispatchPolicySnapshot(paidPolicyWire);
+    tick(100);
+    expect(screen.getByText("Overlay V2 frame unavailable")).toBeTruthy();
+    dispatchPolicySnapshot(paidPolicyWire);
+    tick(100);
+    expect(screen.getByTestId("runtime-widget-frame")).toBeTruthy();
   });
 
   it("renders runtime widgets after overlay:profile-v3-loaded", () => {
     render(<CompositeApp />);
+    dispatchPolicySnapshot(paidPolicyWire);
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     tick(100);
-    expect(screen.getByText("RELATIVE")).toBeTruthy();
+    expect(screen.getByText("Overlay V2 frame unavailable")).toBeTruthy();
   });
 
-  it("applies canonical Overlay projections from the HTTP response", async () => {
+  it("applies the Overlay V2 snapshot from the HTTP response", async () => {
     render(<CompositeApp />);
+    dispatchPolicySnapshot(paidPolicyWire);
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     tick(100);
 
     await dispatchTelemetry([
-      {
-        name: "telemetry:overlay:status",
-        data: {
-          product: "overlay",
-          statusRevision: 1,
-          capturedAt: "2026-07-28T09:00:00Z",
-          payload: { state: "live", reconnectAttempt: 0 },
-        },
-      },
-      {name: "telemetry:overlay:projection", data: canonicalEnvelope()},
+      {name: "telemetry:overlay-v2:snapshot", data: JSON.parse(goldenV2Raw)},
     ]);
     tick(200);
 
-    expect(screen.getByText("Player")).toBeTruthy();
+    expect(screen.getByText("Driver 000")).toBeTruthy();
   });
 
   it("renders a transparent empty surface for an empty profile", () => {
@@ -252,6 +379,7 @@ describe("CompositeApp", () => {
 
   it("refreshes the runtime surface when revision changes", () => {
     const view = render(<CompositeApp />);
+    dispatchPolicySnapshot(paidPolicyWire);
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument(), "rev-a"));
     tick(100);
     expect(view.getAllByTestId("runtime-widget-frame")).toHaveLength(1);
@@ -276,6 +404,7 @@ describe("CompositeApp", () => {
     };
 
     render(<CompositeApp />);
+    dispatchPolicySnapshot(paidPolicyWire);
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(document));
     tick(100);
 
@@ -284,6 +413,37 @@ describe("CompositeApp", () => {
     expect(scene.style.transform).toBe("translate(0px, 0px) scale(0.9)");
     expect(frame.style.left).toBe("218.666667px");
     expect(frame.style.top).toBe("87px");
+  });
+
+  it("blocks premium without a snapshot and applies live downgrade without losing the document", () => {
+    render(<CompositeApp />);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
+    tick(100);
+
+    // Fail-safe startup: the surface paints, the premium widget never executes.
+    expect(screen.getByTestId("runtime-overlay-surface")).toBeTruthy();
+    expect(screen.queryAllByTestId("runtime-widget-frame")).toHaveLength(0);
+
+    dispatchPolicySnapshot(paidPolicyWire);
+    tick(100);
+    expect(screen.getAllByTestId("runtime-widget-frame")).toHaveLength(1);
+    expect(screen.getByTestId("runtime-widget-frame").getAttribute("data-widget-id")).toBe(
+      "relative-main",
+    );
+
+    // Live downgrade: the frame unmounts, the document is preserved, and
+    // rights restore the same widget when they return.
+    dispatchPolicyChanged({ ...freePolicyWire, revision: 4 });
+    tick(100);
+    expect(screen.queryAllByTestId("runtime-widget-frame")).toHaveLength(0);
+    expect(screen.getByTestId("runtime-overlay-surface")).toBeTruthy();
+
+    dispatchPolicyChanged({ ...paidPolicyWire, revision: 5 });
+    tick(100);
+    expect(screen.getAllByTestId("runtime-widget-frame")).toHaveLength(1);
+    expect(screen.getByTestId("runtime-widget-frame").getAttribute("data-widget-id")).toBe(
+      "relative-main",
+    );
   });
 
   it("mounts edit chrome when overlay:edit-mode-changed fires", () => {

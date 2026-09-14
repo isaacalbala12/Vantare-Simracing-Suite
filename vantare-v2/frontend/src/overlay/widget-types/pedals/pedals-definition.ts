@@ -2,7 +2,7 @@ import { validateInspectorControls } from "../../core/inspector-control";
 import type { WidgetInstanceV3 } from "../../core/profile-document";
 import type { WidgetTypeDefinition } from "../../core/widget-definition";
 import { getWidgetRequiredFeature } from "../../core/widget-definition";
-import { buildPedalsViewModel, type PedalsViewModel } from "./pedals-view-model";
+import type { PedalsViewModel } from "./pedals-view-model";
 
 export type PedalsContent = Record<string, never>;
 
@@ -61,5 +61,4 @@ export const pedalsDefinition: WidgetTypeDefinition<PedalsContent, PedalsViewMod
     }
     return {};
   },
-  buildViewModel: buildPedalsViewModel,
 };

@@ -144,7 +144,7 @@ func TestProjectV1PreservesFreshStaleInvalidAndMissingWithoutFallbacks(t *testin
 			}
 
 			got := projectStrategyTestState(t, final)
-			wantFreshness := projection.FromFreshness(test.freshness)
+			wantFreshness := strategyTestProjectionFreshness(test.freshness)
 			for name, metadata := range map[string]struct {
 				present    bool
 				provenance projection.Provenance
@@ -534,6 +534,25 @@ func strategyTestField[T comparable](t testing.TB, value T, provenance schema.Pr
 		t.Fatal(err)
 	}
 	return field
+}
+
+// strategyTestProjectionFreshness replica la correspondencia canonica
+// schema.Freshness -> projection.Freshness que el proyector Strategy aplica a
+// cada campo (fresh/stale/invalid se preservan, cualquier otro valor es
+// missing explicito). Vive en el test porque projection.FromFreshness quedo
+// sin callers productivos tras retirar Overlay V1 y el guard exige cero
+// exports sin caller productivo.
+func strategyTestProjectionFreshness(value schema.Freshness) projection.Freshness {
+	switch value {
+	case schema.FreshnessFresh:
+		return projection.FreshnessFresh
+	case schema.FreshnessStale:
+		return projection.FreshnessStale
+	case schema.FreshnessInvalid:
+		return projection.FreshnessInvalid
+	default:
+		return projection.FreshnessMissing
+	}
 }
 
 func readStrategyGolden(t testing.TB, name string) []byte {

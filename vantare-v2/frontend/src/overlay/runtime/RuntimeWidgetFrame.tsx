@@ -1,34 +1,55 @@
-import type { CSSProperties } from "react";
+import { memo, useMemo, type CSSProperties } from "react";
 import type { WidgetInstanceV3 } from "../core/profile-document";
 import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
 import type { WidgetDiagnostic, WidgetDiagnosticCollector } from "../core/widget-diagnostics";
 import { WidgetVisualHost } from "../core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../core/WidgetVisualViewport";
-import { useRateLimitedTelemetry } from "./use-rate-limited-telemetry";
+import { useRateLimitedWidgetTelemetry } from "./use-rate-limited-telemetry";
 import type { EngineerPresentation } from "../../engineer/engineer-presentation-store";
-import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
-import type { OverlayV2Feature } from "../telemetry-shadow/overlay-v2-features";
+import type { RaceScheduleSnapshot } from "../core/race-schedule-store";
 
 export type RuntimeWidgetFrameProps = {
   widget: WidgetInstanceV3;
+  profileId: string;
   telemetry: TelemetryRateCoordinator;
   renderMode: "desktop" | "obs";
+  /** Decisión pura de marca (política + preferencia), resuelta en la superficie. */
+  brandVisible?: boolean;
   layoutOrigin?: { x: number; y: number };
   onDiagnostic?: (diagnostic: WidgetDiagnostic) => void;
   diagnostics?: WidgetDiagnosticCollector;
   engineerPresentation?: EngineerPresentation | null;
   engineerSubtitlesEnabled?: boolean;
-  overlayV2Frame?: OverlayFrameV2;
-  overlayV2Source?: OverlaySourceStatusV2;
-  overlayV2Features?: readonly OverlayV2Feature[];
+  raceSchedule?: RaceScheduleSnapshot;
 };
 
-export function RuntimeWidgetFrame(props: RuntimeWidgetFrameProps): React.ReactElement {
-  const { widget, telemetry, renderMode, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation, engineerSubtitlesEnabled, overlayV2Frame, overlayV2Source, overlayV2Features } = props;
-  const snapshot = useRateLimitedTelemetry(telemetry, widget.behavior.updateHz);
+function RuntimeWidgetFrameComponent(props: RuntimeWidgetFrameProps): React.ReactElement {
+  const { widget, profileId, telemetry, renderMode, brandVisible, layoutOrigin, onDiagnostic, diagnostics, engineerPresentation, engineerSubtitlesEnabled, raceSchedule } = props;
+  const runtimeTelemetry = useRateLimitedWidgetTelemetry(
+    telemetry,
+    widget.type,
+  );
+  const runtime = useMemo(
+    () => ({
+      engineerPresentation,
+      engineerSubtitlesEnabled,
+      raceScheduleEvents: raceSchedule?.events,
+      raceScheduleStatus: raceSchedule?.status,
+      ...runtimeTelemetry,
+      relativeViewModelInstanceKey: `${profileId}:${widget.id}`,
+    }),
+    [
+      engineerPresentation,
+      engineerSubtitlesEnabled,
+      raceSchedule?.events,
+      raceSchedule?.status,
+      runtimeTelemetry,
+      profileId,
+      widget.id,
+    ],
+  );
   const origin = layoutOrigin ?? { x: 0, y: 0 };
   const { x, y, w, h, zIndex } = widget.layout;
-
   const frameStyle: CSSProperties = {
     position: "absolute",
     left: x - origin.x,
@@ -50,13 +71,51 @@ export function RuntimeWidgetFrame(props: RuntimeWidgetFrameProps): React.ReactE
       >
         <WidgetVisualHost
           widget={widget}
-          snapshot={snapshot}
           renderMode={renderMode}
+          brandVisible={brandVisible}
           onDiagnostic={onDiagnostic}
           diagnostics={diagnostics}
-          runtime={{ engineerPresentation, engineerSubtitlesEnabled, overlayV2Frame, overlayV2Source, overlayV2Features }}
+          runtime={runtime}
         />
       </WidgetVisualViewport>
     </div>
   );
 }
+
+function sameWidget(left: WidgetInstanceV3, right: WidgetInstanceV3): boolean {
+  if (left === right) return true;
+  const leftLayout = left.layout;
+  const rightLayout = right.layout;
+  return left.id === right.id &&
+    left.type === right.type &&
+    left.name === right.name &&
+    left.content === right.content &&
+    left.visual === right.visual &&
+    left.behavior.enabled === right.behavior.enabled &&
+    left.behavior.updateHz === right.behavior.updateHz &&
+    left.behavior.visibleWhen === right.behavior.visibleWhen &&
+    leftLayout.x === rightLayout.x &&
+    leftLayout.y === rightLayout.y &&
+    leftLayout.w === rightLayout.w &&
+    leftLayout.h === rightLayout.h &&
+    leftLayout.zIndex === rightLayout.zIndex &&
+    leftLayout.aspectLocked === rightLayout.aspectLocked;
+}
+
+function sameOrigin(left?: { x: number; y: number }, right?: { x: number; y: number }): boolean {
+  return left === right || left?.x === right?.x && left?.y === right?.y;
+}
+
+export const RuntimeWidgetFrame = memo(RuntimeWidgetFrameComponent, (left, right) =>
+  sameWidget(left.widget, right.widget) &&
+  left.profileId === right.profileId &&
+  left.telemetry === right.telemetry &&
+  left.renderMode === right.renderMode &&
+  left.brandVisible === right.brandVisible &&
+  sameOrigin(left.layoutOrigin, right.layoutOrigin) &&
+  left.onDiagnostic === right.onDiagnostic &&
+  left.diagnostics === right.diagnostics &&
+  left.engineerPresentation === right.engineerPresentation &&
+  left.engineerSubtitlesEnabled === right.engineerSubtitlesEnabled &&
+  left.raceSchedule === right.raceSchedule,
+);

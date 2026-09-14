@@ -7,6 +7,7 @@ import {
   attachOverlayFrameV2Transport,
   createOverlayFrameV2Store,
   decodeOverlayUpdateV2,
+  parseOverlayPullJSON,
   OVERLAY_V2_PROJECTION_ROUTE,
   OVERLAY_V2_SNAPSHOT_EVENT,
   OVERLAY_V2_STATUS_EVENT,
@@ -16,6 +17,49 @@ import {
 afterEach(() => vi.useRealTimers());
 
 describe("OverlayFrame v2 store", () => {
+  it("includes upstream JSON parsing in ingestion diagnostics", () => {
+    const text = JSON.stringify({events: [{name: OVERLAY_V2_SNAPSHOT_EVENT, data: golden()}]});
+    let now = 0;
+    const clock = vi.spyOn(performance, "now").mockImplementation(() => now);
+    const original = JSON.parse;
+    const parser = vi.spyOn(JSON, "parse").mockImplementation(input => { now += 7; return original(input); });
+    try {
+      const response = parseOverlayPullJSON(text) as {events: {data: OverlayUpdateV2}[]};
+      const store = createOverlayFrameV2Store();
+      store.ingest(OVERLAY_V2_SNAPSHOT_EVENT, response.events[0]!.data);
+      expect(store.getDiagnostics().overlay_v2_parse_duration.p50).toBe(7);
+    } finally { parser.mockRestore(); clock.mockRestore(); }
+  });
+
+  it("parses a pull response once while retaining strict immutable ingestion", () => {
+    const update = golden();
+    const text = JSON.stringify({sessionId: "s", delivery: 1, events: [{name: OVERLAY_V2_SNAPSHOT_EVENT, data: update}]});
+    const parse = vi.spyOn(JSON, "parse");
+    try {
+      const response = parseOverlayPullJSON(text) as {events: {data: OverlayUpdateV2}[]};
+      const owned = response.events[0]!.data;
+      const store = createOverlayFrameV2Store();
+      store.ingest(OVERLAY_V2_SNAPSHOT_EVENT, owned);
+      expect(store.getSnapshot().frame).toEqual(update.frame);
+      expect(parse).toHaveBeenCalledTimes(1);
+      expect(Object.isFrozen(owned.frame?.standings[0])).toBe(true);
+      expect(() => Object.assign(owned.source, {state: "error"})).toThrow();
+      expect(store.getSnapshot().source?.state).toBe("live");
+    } finally { parse.mockRestore(); }
+  });
+
+  it("does not trust caller objects or invalid JSON just because they use the pull envelope", () => {
+    const update = golden();
+    const decoded = decodeOverlayUpdateV2(update);
+    Object.assign(update.source, {state: "error"});
+    expect(decoded.source.state).toBe("live");
+    const pull = (data: unknown) => JSON.stringify({sessionId: "s", delivery: 1, events: [{name: OVERLAY_V2_SNAPSHOT_EVENT, data}]});
+    expect(() => parseOverlayPullJSON(pull({...golden(), revision: 0}))).toThrow("revision");
+    expect(() => parseOverlayPullJSON(pull({...golden(), unexpected: true}))).toThrow("update");
+    expect(() => parseOverlayPullJSON("not-json")).toThrow();
+    expect(parseOverlayPullJSON("null")).toBeNull();
+  });
+
   it("decodes the generated Go contract strictly", () => {
     const update = golden();
     expect(decodeOverlayUpdateV2(JSON.stringify(update))).toEqual(update);
@@ -25,10 +69,127 @@ describe("OverlayFrame v2 store", () => {
     expect(() => decodeOverlayUpdateV2({ ...update, revision: 0 })).toThrow(
       "overlay-frame-v2:invalid-contract:revision",
     );
+    const withoutBestLap = JSON.parse(JSON.stringify(update)) as Record<string, unknown>;
+    const frameWithoutBestLap = withoutBestLap.frame as { standings: Record<string, unknown>[] };
+    delete frameWithoutBestLap.standings[0]?.bestLap;
+    expect(() => decodeOverlayUpdateV2(withoutBestLap)).toThrow(
+      "overlay-frame-v2:invalid-contract:frame.standings[0]",
+    );
+    for (const field of ["position", "groundPosition", "lastLap"] as const) {
+      const incomplete = JSON.parse(JSON.stringify(update)) as Record<string, unknown>;
+      const frame = incomplete.frame as { relative: Record<string, unknown>[] };
+      delete frame.relative[0]?.[field];
+      expect(() => decodeOverlayUpdateV2(incomplete)).toThrow(
+        "overlay-frame-v2:invalid-contract:frame.relative[0]",
+      );
+    }
+    expect(() => decodeOverlayUpdateV2({
+      ...update,
+      frame: { ...update.frame, sectionMask: 0x800 },
+    })).toThrow("overlay-frame-v2:invalid-contract:frame.sectionMask");
     expect(() => decodeOverlayUpdateV2({
       ...update,
       source: { ...update.source, state: "connected" },
     })).toThrow("overlay-frame-v2:invalid-contract:source.state");
+    expect(() => decodeOverlayUpdateV2({
+      ...update,
+      frame: {
+        ...update.frame,
+        capabilities: {
+          ...update.frame?.capabilities,
+          performance: { ...update.frame?.capabilities.performance, level: 6 },
+        },
+      },
+    })).toThrow("overlay-frame-v2:invalid-contract:frame.capabilities.performance.level");
+    expect(() => decodeOverlayUpdateV2({
+      ...update,
+      frame: {
+        ...update.frame,
+        capabilities: {
+          ...update.frame?.capabilities,
+          performance: { ...update.frame?.capabilities.performance, reason: "free-text" },
+        },
+      },
+    })).toThrow("overlay-frame-v2:invalid-contract:frame.capabilities.performance.reason");
+  });
+
+  it("requires and bounds both Relative windows to the canonical 8+player+8 contract", () => {
+    const update = golden();
+    const row = update.frame?.relative[0];
+    if (!update.frame || !row) throw new Error("golden Relative row missing");
+
+    const seventeen = Array.from({ length: 17 }, (_, index) => ({
+      ...row,
+      id: `relative-${index}`,
+      side: index < 8 ? "ahead" as const : index === 8 ? "player" as const : "behind" as const,
+    }));
+    expect(() => decodeOverlayUpdateV2({
+      ...update,
+      frame: { ...update.frame, relative: seventeen, relativeSettled: seventeen },
+    })).not.toThrow();
+    const settledWithDifferentCanonicalMembership = seventeen.map((entry, index) => ({
+      ...entry,
+      id: index === 0 ? "previous-ahead" : entry.id,
+    }));
+    expect(() => decodeOverlayUpdateV2({
+      ...update,
+      frame: {
+        ...update.frame,
+        relative: seventeen,
+        relativeSettled: settledWithDifferentCanonicalMembership,
+      },
+    })).not.toThrow();
+
+    for (const field of ["relative", "relativeSettled"] as const) {
+      expect(() => decodeOverlayUpdateV2({
+        ...update,
+        frame: { ...update.frame, [field]: [...seventeen, { ...row, id: `${field}-overflow` }] },
+      })).toThrow(`overlay-frame-v2:invalid-contract:frame.${field}`);
+
+      const rejects = [
+        seventeen.map((entry) => ({ ...entry, side: "ahead" })),
+        seventeen.map((entry, index) => ({ ...entry, side: index === 8 || index === 9 ? "player" : entry.side })),
+        seventeen.map((entry, index) => ({ ...entry, id: index === 16 ? seventeen[0]!.id : entry.id })),
+        [seventeen[9]!, seventeen[8]!, seventeen[7]!],
+        seventeen.map((entry, index) => ({ ...entry, side: index === 0 ? "nearby" : entry.side })),
+      ];
+      for (const rejected of rejects) {
+        expect(() => decodeOverlayUpdateV2({
+          ...update,
+          frame: { ...update.frame, [field]: rejected },
+        })).toThrow(`overlay-frame-v2:invalid-contract:frame.${field}`);
+      }
+    }
+
+    const missingSettled = JSON.parse(JSON.stringify(update)) as Record<string, unknown>;
+    delete (missingSettled.frame as Record<string, unknown>).relativeSettled;
+    expect(() => decodeOverlayUpdateV2(missingSettled)).toThrow(
+      "overlay-frame-v2:invalid-contract:frame",
+    );
+  });
+
+  it("rejects duplicate or regressing frame sequences within one stream", () => {
+    const store = createOverlayFrameV2Store();
+    const first = golden();
+    if (!first.frame) throw new Error("golden frame missing");
+    store.ingest(OVERLAY_V2_SNAPSHOT_EVENT, first);
+    const accepted = store.getSnapshot().frame;
+
+    for (const sequence of [first.frame.sequence, first.frame.sequence - 1]) {
+      expect(() => store.ingest(OVERLAY_V2_SNAPSHOT_EVENT, {
+        ...first,
+        revision: first.revision + 1,
+        frame: { ...first.frame!, sequence },
+      })).toThrow("overlay-frame-v2:invalid-contract:sequence");
+      expect(store.getSnapshot().frame).toBe(accepted);
+      expect(store.getSnapshot().revision).toBe(first.revision);
+    }
+
+    expect(() => store.ingest(OVERLAY_V2_SNAPSHOT_EVENT, {
+      ...first,
+      revision: first.revision + 1,
+      frame: { ...first.frame, epoch: first.frame.epoch + 1, sequence: 1 },
+    })).not.toThrow();
   });
 
   it("accepts revision gaps and retains one stable immutable frame reference", () => {
@@ -50,6 +211,23 @@ describe("OverlayFrame v2 store", () => {
       source: { state: "live" },
       frame: null,
     })).toThrow("overlay-frame-v2:invalid-contract:revision");
+  });
+
+  it("normalizes a rollout frame without performance to level 1 parity", () => {
+    const legacy = JSON.parse(JSON.stringify(golden())) as Record<string, unknown>;
+    const frame = legacy.frame as { capabilities: Record<string, unknown> };
+    delete frame.capabilities.performance;
+
+    const decoded = decodeOverlayUpdateV2(JSON.stringify(legacy));
+    expect(decoded.frame?.capabilities.performance).toEqual({
+      level: 1,
+      mode: "manual",
+      effects: "full",
+      rafCap: null,
+      widgetHz: {},
+      sourceHz: 0,
+      reason: "unavailable",
+    });
   });
 
   it("reuses the freshness watchdog without cloning the frame", () => {
@@ -109,6 +287,14 @@ describe("OverlayFrame v2 store", () => {
     listeners.get(OVERLAY_V2_SNAPSHOT_EVENT)?.(JSON.stringify(golden()));
     expect(store.getSnapshot().frame?.contract).toBe(2);
     expect(store.getDiagnostics().overlay_v2_parse_duration.count).toBe(1);
+    expect(store.getDiagnostics().overlay_v2_transport).toMatchObject({
+      revision: 1,
+      sourceState: "live",
+      epoch: 3,
+      sequence: 2,
+      vehicleCount: 1,
+      playerPit: "pit",
+    });
     detach();
     expect(listeners.size).toBe(0);
   });

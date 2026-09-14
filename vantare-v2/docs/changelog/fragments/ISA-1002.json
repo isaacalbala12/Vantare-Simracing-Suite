@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1002",
+  "type": "change",
+  "summary": "Menor trabajo de telemetría y cadencias por widget, con E20 disponible para pruebas en nightly.",
+  "technicalNotes": ["Socket desktop persistente, estado Engineer sin emisiones idénticas y Hub minimizado descargable si no tiene borradores.", "E20 conserva el contrato V2, ACK, replay y publicación atómica; se activa antes del arranque con VANTARE_OVERLAY_SECTIONS=1.", "Se conservan las correcciones de testers de ISA-1000 y la caché del mapa de ISA-979."],
+  "testing": ["Probar seis widgets visibles con LMU en primer plano; minimizar y reabrir el Hub sin perder borradores.", "Reiniciar overlay y cambiar perfil, verificando datos frescos, filas completas y transparencia.", "Comparar envío completo e incremental con la misma build; usar VANTARE_OVERLAY_SECTIONS=0 para volver al envío completo."],
+  "knownLimitations": ["La reducción medida pertenece al candidato ISA-996: no garantiza CPU menor al 2% ni una ganancia sobre el HUD de LMU.", "No incluye una release ni promoción a testers/master.", "E20 permanece opt-in; las nuevas fases de simplificación no están incluidas."]
+}

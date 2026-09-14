@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { buildMockTelemetry } from "../overlay/core/mock-scenarios";
+import { buildAuthoringV2ScenarioRuntime } from "../overlay/authoring/fixtures/authoring-v2-scenario-fixture";
 import { createTelemetryRateCoordinator } from "../overlay/core/telemetry-rate-coordinator";
 import { OverlayStudioV3 } from "../hub/overlay-studio/OverlayStudioV3";
 import { ConnectedStudioProvider } from "../hub/overlay-studio/state/studio-store";
@@ -32,7 +32,15 @@ export function OverlayStudioV3HarnessPage({ search }: { search: string }): Reac
   );
   const coordinator = useMemo(() => {
     const next = createTelemetryRateCoordinator();
-    next.publish(buildMockTelemetry({ session: "race", location: "track", state: "ready" }));
+    const runtime = buildAuthoringV2ScenarioRuntime({
+      session: "race",
+      location: "track",
+      state: "ready",
+      widget: "delta",
+      system: "vantare-endurance",
+      variant: "default",
+    });
+    next.setOverlayFrame(runtime.overlayV2Frame, runtime.overlayV2Source);
     return next;
   }, []);
 

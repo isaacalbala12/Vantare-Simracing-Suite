@@ -1,11 +1,27 @@
-import { CompositeApp } from "./overlay/CompositeApp";
-import { ObsOverlayApp } from "./overlay/ObsOverlayApp";
+import { lazy } from "react";
 import { HubApp } from "./hub/HubApp";
 import { OAuthCallbackHandler } from "./hub/auth/OAuthCallbackHandler";
 import { registerBuiltinDesignSystems } from "./hub/registry/builtin-systems";
 import { AuthSessionBridge } from "./lib/AuthSessionBridge";
+import { Events } from "@wailsio/runtime";
+import { installHubSuspendGuard } from "./hub/hub-suspend-guard";
 
 registerBuiltinDesignSystems();
+const hubGeneration = new URLSearchParams(window.location.hash.split("?")[1] ?? "").get("hubGeneration") ?? "unversioned";
+installHubSuspendGuard({
+  on: (event, handler) => {
+    const unsubscribe = Events.On(event, handler);
+    return () => unsubscribe?.();
+  },
+  emit: (event, payload) => Events.Emit(event, payload),
+}, hubGeneration);
+
+const CompositeApp = lazy(async () => ({
+  default: (await import("./overlay/CompositeApp")).CompositeApp,
+}));
+const ObsOverlayApp = lazy(async () => ({
+  default: (await import("./overlay/ObsOverlayApp")).ObsOverlayApp,
+}));
 
 export function AppShell(): React.ReactElement {
   const path = window.location.pathname;

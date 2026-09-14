@@ -1,0 +1,16 @@
+{
+  "technicalNotes": [
+    "Dense ajusta su rejilla al tamaño560x100 con la escala productiva",
+    "Broadcast no muestra INT32_MAX ni límites inválidos como vueltas de carrera"
+  ],
+  "type": "fix",
+  "summary": "Dense contiene el embrague y Broadcast omite vueltas ilimitadas",
+  "knownLimitations": [
+    "Marcha atrás, trail dinámico y comparaciones con vueltas siguen pendientes de validación física"
+  ],
+  "schemaVersion": 1,
+  "issue": "ISA-1004",
+  "testing": [
+    "Regresiones RED/GREEN de geometría Chromium y ViewModel Broadcast"
+  ]
+}

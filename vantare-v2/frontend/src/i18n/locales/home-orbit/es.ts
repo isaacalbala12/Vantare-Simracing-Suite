@@ -17,7 +17,7 @@ export const homeOrbitEs: Record<string, string> = {
 
   "home.next.eyebrow": "Próxima serie",
   "home.next.prefix": "en",
-  "home.next.open": "Abrir la serie en Carreras",
+  "home.next.open": "Abrir la serie en Calendario",
   "home.next.empty": "Sin salidas próximas en el calendario",
 
   "home.focal.eyebrow": "Perfil activo",

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BILLING_PAYWALL_PLANS,
   FOUNDER_PLANS,
@@ -18,6 +18,7 @@ import {
   type BillingProductKey,
 } from "../../lib/billing-client";
 import { refreshCurrentUserEntitlements } from "../../lib/entitlements-refresh";
+import { useHubSuspendBlocker } from "../hub-suspend-guard";
 
 type PostCheckoutAccessState =
   | "idle"
@@ -51,6 +52,15 @@ export function PaywallScreen({ email, result, onContinueFree }: PaywallScreenPr
 
   const [accessCheckState, setAccessCheckState] =
     useState<PostCheckoutAccessState>("idle");
+  const mounted = useRef(true);
+  useEffect(() => () => {
+    mounted.current = false;
+  }, []);
+  useHubSuspendBlocker(
+    "billing-checkout-pending",
+    "Hay un checkout externo pendiente",
+    pendingPlan !== null || (checkoutOpened && accessCheckState !== "success"),
+  );
 
   const summary = useMemo(
     () =>
@@ -83,6 +93,7 @@ export function PaywallScreen({ email, result, onContinueFree }: PaywallScreenPr
 
     setPendingPlan(planKey);
     const checkout = await createBillingCheckout(planKey);
+    if (!mounted.current) return;
     setPendingPlan(null);
 
     if (!checkout.ok) {
@@ -105,6 +116,7 @@ export function PaywallScreen({ email, result, onContinueFree }: PaywallScreenPr
   const handleCheckAccess = useCallback(async () => {
     setAccessCheckState("checking");
     const refreshed = await refreshCurrentUserEntitlements();
+    if (!mounted.current) return;
     if (!refreshed.ok) {
       setAccessCheckState("error");
       return;

@@ -17,7 +17,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/projection"
 	analysisprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/analysis"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
-	overlayprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
+	overlayv2 "github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2"
 	strategyprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/energy"
@@ -134,7 +134,12 @@ func canonicalIntegrationDigest(
 		if err != nil {
 			return err
 		}
-		overlay, err := overlayprojection.ProjectV1(final)
+		// R6a.1 (excepcion unica del microplan): Overlay V1 esta retirado y no
+		// puede servir de oraculo ni omitirse el consumidor Overlay. El digest
+		// incluye un OverlayFrame V2 determinista via el ProjectV2 puro de
+		// referencia, con contexto/defaults existentes y sin tocar produccion
+		// V2 ni reimplementar V1.
+		overlay, err := overlayv2.ProjectV2(final, overlayv2.SourceContextV2{State: "live"}, overlayv2.DefaultPreferencesV2(), 1)
 		if err != nil {
 			return err
 		}
@@ -156,7 +161,7 @@ func canonicalIntegrationDigest(
 			return err
 		}
 		encoded, err = json.Marshal(struct {
-			Overlay      overlayprojection.SnapshotV1      `json:"overlay"`
+			Overlay      overlayv2.UpdateV2                `json:"overlay"`
 			Analysis     analysisprojection.SnapshotV1     `json:"analysis"`
 			Strategy     strategyprojection.SnapshotV1     `json:"strategy"`
 			Engineer     engineerprojection.SnapshotV1     `json:"engineer"`

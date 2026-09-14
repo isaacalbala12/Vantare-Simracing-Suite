@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-893",
+  "type": "change",
+  "summary": "OverlayFrame V2 pasa a ser la autoridad única de los widgets en Studio, Desktop y OBS.",
+  "technicalNotes": [
+    "Los 18 widgets telemétricos construyen ViewModels puros desde OverlayFrame V2 a través del WidgetVisualHost compartido.",
+    "Layout y visibilidad usan un contexto mínimo derivado de V2; Calendar y Engineer permanecen como fuentes auxiliares explícitas.",
+    "Un frame ausente, inválido, stale o con error produce un estado visible del widget y el rollback diagnóstico no persiste ni pinta V1."
+  ],
+  "testing": [
+    "Abrir Studio y overlays Desktop/OBS con LMU activo y comprobar que los widgets se actualizan y respetan layout y visibilidad.",
+    "Interrumpir la fuente V2 y comprobar que el widget muestra el diagnóstico correspondiente sin recuperar datos V1."
+  ],
+  "knownLimitations": [
+    "Los tipos, adapters, histories y la emisión V1 se conservan temporalmente para comparación y serán retirados por ISA-894."
+  ]
+}

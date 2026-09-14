@@ -2,10 +2,7 @@ import { validateInspectorControls } from "../../core/inspector-control";
 import type { WidgetInstanceV3 } from "../../core/profile-document";
 import type { WidgetTypeDefinition } from "../../core/widget-definition";
 import { getWidgetRequiredFeature } from "../../core/widget-definition";
-import {
-  buildPedalsTelemetryViewModel,
-  type PedalsTelemetryViewModel,
-} from "./pedals-telemetry-view-model";
+import type { PedalsTelemetryViewModel } from "./pedals-telemetry-view-model";
 
 export type PedalsTelemetryContent = {
   showPosition: boolean;
@@ -94,5 +91,4 @@ export const pedalsTelemetryDefinition: WidgetTypeDefinition<
       showClutch: value.showClutch ?? DEFAULT_CONTENT.showClutch,
     };
   },
-  buildViewModel: buildPedalsTelemetryViewModel,
 };

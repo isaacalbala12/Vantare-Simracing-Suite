@@ -1,6 +1,7 @@
-import type { AccessContext } from "../../../lib/access-policy";
+import type { StudioPolicy } from "../access/studio-access";
 import type { SessionLayoutType, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
-import type { TelemetrySnapshot } from "../../../overlay/core/telemetry-snapshot";
+import type { OverlayRuntimeContext } from "../../../overlay/core/overlay-runtime-context";
+import { resolveBrandMode } from "../../../overlay/core/widget-policy";
 import type { StudioCommand } from "../state/studio-command";
 import { getStudioMutationGate, type StudioMutation } from "../access/studio-access";
 import { AppearanceSection } from "./AppearanceSection";
@@ -13,8 +14,8 @@ export type WidgetPropertyInspectorViewProps = {
   sectionId: WidgetPropertySectionId;
   widget: WidgetInstanceV3;
   session: SessionLayoutType;
-  snapshot: TelemetrySnapshot;
-  access: AccessContext;
+  runtimeContext: OverlayRuntimeContext;
+  policy: StudioPolicy;
   disabled?: boolean;
   dispatch(command: StudioCommand): void;
 };
@@ -32,9 +33,9 @@ const SECTION_MUTATION: Record<WidgetPropertySectionId, StudioMutation> = {
  * Compartida por StudioInspector (Hub) y el panel flotante del overlay.
  */
 export function WidgetPropertyInspectorView(props: WidgetPropertyInspectorViewProps): React.ReactElement {
-  const { sectionId, widget, session, snapshot, access, disabled = false, dispatch } = props;
+  const { sectionId, widget, session, runtimeContext, policy, disabled = false, dispatch } = props;
   const mutation = SECTION_MUTATION[sectionId];
-  const gate = getStudioMutationGate({ access, mutation, widget });
+  const gate = getStudioMutationGate({ policy, mutation, widget });
   const sectionDisabled = disabled || !gate.allowed;
 
   const dispatchChecked = (command: StudioCommand): void => {
@@ -48,13 +49,18 @@ export function WidgetPropertyInspectorView(props: WidgetPropertyInspectorViewPr
     <div data-testid="widget-property-inspector" data-widget-id={widget.id}>
       <fieldset disabled={sectionDisabled ? true : undefined}>
         {sectionId === "appearance" ? (
-          <AppearanceSection widget={widget} session={session} dispatch={dispatchChecked} />
+          <AppearanceSection
+            widget={widget}
+            session={session}
+            dispatch={dispatchChecked}
+            brandLocked={resolveBrandMode(policy, widget.visual.systemId) === "required"}
+          />
         ) : null}
         {sectionId === "content" ? (
           <ContentSection widget={widget} session={session} dispatch={dispatchChecked} disabled={sectionDisabled} />
         ) : null}
         {sectionId === "behavior" ? (
-          <BehaviorSection widget={widget} session={session} snapshot={snapshot} dispatch={dispatchChecked} />
+          <BehaviorSection widget={widget} session={session} runtimeContext={runtimeContext} dispatch={dispatchChecked} />
         ) : null}
       </fieldset>
     </div>

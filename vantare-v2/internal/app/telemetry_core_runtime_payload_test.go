@@ -8,7 +8,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 )
 
-func TestRuntimeRestartsAfterTransientFailure(t *testing.T) {
+func TestRuntimeStartsAfterLargeGridBatchWithoutOverlayV1Failure(t *testing.T) {
 	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
@@ -24,12 +24,15 @@ func TestRuntimeRestartsAfterTransientFailure(t *testing.T) {
 	}
 }
 
-func TestDroppedFrameIncrementsCounterAndPublishesDegraded(t *testing.T) {
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
+func TestLargeGridPublishesStrategyWithoutDegrading(t *testing.T) {
+	// R6a: sin la proyeccion Overlay V1, 104 vehiculos ya no superan el
+	// limite de payload: Strategy publica sin degradar. El fallo de
+	// publicacion sigue cubierto en los tests de failure-policy.
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{StrategyPublicTransport: true})
 	if err != nil {
 		t.Fatal(err)
 	}
-	subscription, err := runtime.Hub().Subscribe(context.Background())
+	subscription, err := runtime.StrategyHub().Subscribe(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,9 +42,12 @@ func TestDroppedFrameIncrementsCounterAndPublishesDegraded(t *testing.T) {
 		t.Fatalf("transient failure escaped driver loop: %v", err)
 	}
 	metrics := runtime.Metrics()
-	if metrics.FramesDropped["overlay-publish"] != 1 || metrics.PublishFailures["overlay"] != 1 ||
+	if len(metrics.FramesDropped) != 0 || len(metrics.PublishFailures) != 0 ||
 		metrics.FailStops != 0 {
-		t.Fatalf("drop metrics = %+v", metrics)
+		t.Fatalf("drop metrics = %#v", metrics)
+	}
+	if metrics.StrategyProjectionsPublished != 1 {
+		t.Fatalf("strategy publications = %#v", metrics)
 	}
 
 	event, err := subscription.Next(context.Background())
@@ -59,12 +65,12 @@ func TestDroppedFrameIncrementsCounterAndPublishesDegraded(t *testing.T) {
 	if err := json.Unmarshal(event.Data, &status); err != nil {
 		t.Fatal(err)
 	}
-	if status.Payload.State != "degraded" {
-		t.Fatalf("published status = %q, want degraded", status.Payload.State)
+	if status.Payload.State != "stopped" {
+		t.Fatalf("published status = %q, want stopped", status.Payload.State)
 	}
 }
 
-func TestPayloadLimitIsAContractNotAKillSwitch(t *testing.T) {
+func TestPayloadLimitContractSurvivesOverlayV1Retirement(t *testing.T) {
 	if telemetrytransport.MaxPayloadBytes != 256*1024 {
 		t.Fatalf("MaxPayloadBytes = %d, want unchanged 256 KiB contract", telemetrytransport.MaxPayloadBytes)
 	}
@@ -72,7 +78,7 @@ func TestPayloadLimitIsAContractNotAKillSwitch(t *testing.T) {
 		t.Fatalf("ErrPayloadTooLarge class = %d, want productOrPayload", got)
 	}
 
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{StrategyPublicTransport: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +88,8 @@ func TestPayloadLimitIsAContractNotAKillSwitch(t *testing.T) {
 	}
 	metrics := runtime.Metrics()
 	if runtime.lifecycle != telemetryRuntimeRunning || metrics.FailStops != 0 ||
-		metrics.FramesDropped["overlay-publish"] != 1 || metrics.PublishFailures["overlay"] != 1 {
+		len(metrics.FramesDropped) != 0 || len(metrics.PublishFailures) != 0 ||
+		metrics.StrategyProjectionsPublished != 1 {
 		t.Fatalf("payload contract killed runtime: lifecycle=%d metrics=%+v", runtime.lifecycle, metrics)
 	}
 }

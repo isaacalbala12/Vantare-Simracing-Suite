@@ -1,23 +1,26 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { designSystemRegistry } from "../core/design-system-registry";
 import { WidgetVisualHost } from "../core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../core/WidgetVisualViewport";
 import { ALL_WIDGET_TYPES, type DesignSystemId, type WidgetInstanceV3, type WidgetType } from "../core/profile-document";
-import { applyWidgetDesign } from "../core/widget-design";
 import { buildEngineerPresentationFixture } from "../../engineer/engineer-presentation-fixtures";
 import {
+  buildWorkshopFrameV2,
+  buildWorkshopWidget,
   STANDINGS_REPLAY_FRAME_COUNT,
-  buildAuthoringFixtureTelemetry,
-  buildAuthoringFixtureWidget,
-  resetAndSeedAuthoringInputTelemetry,
-  type HarnessVariant,
-} from "./fixtures/authoring-fixtures";
-import { getCrystalHarnessDesign, type AuthoringFixtureWidget } from "./fixtures/authoring-fixtures";
+  WORKSHOP_V2_VARIANTS,
+  type WorkshopV2Scenario,
+  type WorkshopV2Variant,
+} from "./fixtures/authoring-v2-workshop-frame";
+import { FunctionalStudyControls } from "./FunctionalStudyControls";
+import { resolveStandingsMinimumSize } from "../widget-types/standings/standings-frame-layout";
+import type { WidgetRuntimeInput } from "../core/widget-definition";
 import { getAnimationScene, listAnimationScenes } from "./fixtures/animation-scenes";
 import { interpolateSceneAt, sampleAtRate, sceneDurationMs } from "./fixtures/scene-interpolation";
 import { projectionGapsFor } from "./fixtures/projection-gaps";
+import { REDLINE_TOWER_REFERENCE } from "./fixtures/redline-tower-reference";
 import { listOfficialDesigns } from "../design-systems/official-designs";
-import { clearInputTelemetryHistory } from "../widget-types/input-telemetry/input-telemetry-accumulator";
 import {
   parseOverlayWorkshopQuery,
   serializeOverlayWorkshopQuery,
@@ -26,77 +29,62 @@ import {
 } from "./overlay-workshop-query";
 import "./overlay-workshop.css";
 
-const SYSTEMS: readonly DesignSystemId[] = ["vantare-original", "vantare-crystal", "vantare-endurance"];
 const STATES = ["ready", "stale", "disconnected", "error"] as const;
 const SURFACES = ["studio", "desktop", "obs", "harness"] as const;
-const VARIANTS: readonly HarnessVariant[] = [
-  "default",
-  "relative-fill",
-  "relative-multiclass",
-  "standings-stress60",
-  "standings-multiclass",
-  "standings-replay",
-  "standings-minimal",
-  "standings-all-columns",
-  "pedals-zero",
-  "pedals-full",
-];
+export const OVERLAY_WORKSHOP_PROFILE_ID = "workshop-fixture";
+const VARIANTS: readonly WorkshopV2Variant[] = WORKSHOP_V2_VARIANTS;
 
-function createScenarioWidget(query: OverlayWorkshopQuery): WidgetInstanceV3 {
-  const crystalDesign = query.designId ? getCrystalHarnessDesign(query.designId) : undefined;
-  let widget = buildAuthoringFixtureWidget({
-    session: query.session,
-    location: query.location,
-    state: query.state,
+function createRouteScenarioWidget(query: OverlayWorkshopQuery): WidgetInstanceV3 {
+  const widget = buildWorkshopWidget({
     widget: query.widget,
     system: query.system,
-    surface: query.surface,
     variant: query.variant,
-    // The scene shapes the widget as well as the snapshot: without it the
-    // standings kept the player's class only and the best-lap column off, so
-    // the fastest-lap scene handed the crown between two cars that were not
-    // on screen and no glyph could appear at all.
+    session: query.session,
+    designId: query.designId,
     sceneId: query.sceneId,
-    ...(crystalDesign ? { designId: crystalDesign.designId } : {}),
+    brand: query.brand,
+    modules: query.modules,
+    slots: query.slots,
   });
-  if (query.designId) {
-    const design = listOfficialDesigns(query.widget).find((candidate) => candidate.id === query.designId);
-    if (design) {
-      widget = applyWidgetDesign(widget, design, "1970-01-01T00:00:00.000Z");
-    }
-  }
-  if (crystalDesign) {
-    widget.layout = {
-      ...widget.layout,
-      w: crystalDesign.width,
-      h: crystalDesign.height,
-    };
-  }
-  return widget;
+  if (query.widget !== "standings" || query.system !== "vantare-endurance") return widget;
+  return { ...widget, visual: { ...widget.visual, appearanceOverrides: {
+    ...(widget.visual.appearanceOverrides ?? {}),
+    ...(query.redlineTheme ? { redlineTheme: query.redlineTheme } : {}),
+    ...(query.redlineSelection ? { redlineSelection: query.redlineSelection } : {}),
+    ...(query.redlineHeader ? { redlineHeader: query.redlineHeader } : {}),
+    ...(query.redlineOpacity !== undefined ? { redlineSurfaceOpacity: query.redlineOpacity } : {}),
+  } } };
 }
 
 type PreparedFixture = {
   key: string;
   widget: WidgetInstanceV3;
-  snapshot: ReturnType<typeof buildAuthoringFixtureTelemetry>;
+  base: {
+    session: WorkshopV2Scenario["session"];
+    location: WorkshopV2Scenario["location"];
+    state: WorkshopV2Scenario["state"];
+    widget: WidgetType;
+    system: DesignSystemId;
+    variant: WorkshopV2Variant;
+  };
+  runtime: WidgetRuntimeInput;
 };
 
 function prepareFixture(query: OverlayWorkshopQuery): PreparedFixture {
-  const crystalDesign = query.designId ? getCrystalHarnessDesign(query.designId) : undefined;
-  const widget = createScenarioWidget(query);
-  const snapshot = buildAuthoringFixtureTelemetry({
+  const widget = createRouteScenarioWidget(query);
+  const base = {
     session: query.session,
     location: query.location,
     state: query.state,
     widget: query.widget,
     system: query.system,
-    surface: query.surface,
     variant: query.variant,
-    ...(crystalDesign ? { designId: crystalDesign.designId } : {}),
-  });
-  // Keyed without the frame, matching fixtureKey: stepping a scene must not
-  // count as a different fixture.
-  return { key: serializeOverlayWorkshopQuery({ ...query, sceneFrame: undefined }), widget, snapshot };
+  };
+  const runtime = buildWorkshopFrameV2(base);
+  // Keyed without the frame or reference-only visual toggles: stepping a scene
+  // must not count as a different fixture and the redline reference overlay is
+  // not part of the widget contract.
+  return { key: serializeOverlayWorkshopQuery({ ...query, sceneFrame: undefined, redlineData: undefined }), widget, base, runtime };
 }
 
 const PRESET_DIMENSIONS = { "720p": [1280, 720], "1080p": [1920, 1080], "1440p": [2560, 1440] } as const;
@@ -114,7 +102,7 @@ function SelectField(props: {
   return (
     <label className="overlay-workshop-control">
       <span>{props.label}</span>
-      <select value={props.value} onChange={(event) => props.onChange(event.target.value)}>
+      <select aria-label={props.label} value={props.value} onChange={(event) => props.onChange(event.target.value)}>
         {props.children}
       </select>
     </label>
@@ -127,28 +115,42 @@ function DimensionField(props: { label: string; value: string; onChange(value: s
 }
 
 function compatibleSystems(widget: WidgetType): readonly DesignSystemId[] {
-  return widget === "engineer-radio" ? ["vantare-crystal"] : SYSTEMS;
+  return designSystemRegistry
+    .list()
+    .filter((system) => system.widgets.some((entry) => entry.widgetType === widget))
+    .map((system) => system.id);
 }
 
 function defaultSystem(widget: WidgetType): DesignSystemId {
-  return compatibleSystems(widget)[0]!;
+  return compatibleSystems(widget)[0] ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.system;
 }
 
-function WorkshopSurface({ prepared, surface, query, comparison = false }: { prepared: PreparedFixture; surface: OverlayWorkshopQuery["surface"]; query: OverlayWorkshopQuery; comparison?: boolean }): React.ReactElement {
+function WorkshopSurface({ prepared, profileId, surface, query, comparison = false }: { prepared: PreparedFixture; profileId: string; surface: OverlayWorkshopQuery["surface"]; query: OverlayWorkshopQuery; comparison?: boolean }): React.ReactElement {
   const width = query.width ?? prepared.widget.layout.w;
   const height = query.height ?? prepared.widget.layout.h;
+  const reference = query.redlineData === "reference" && query.widget === "standings" && query.redlineTheme === "tower" && query.state === "ready" && !query.sceneId;
+  const margin = reference ? 80 : 0;
+  const runtime = {
+    ...prepared.runtime,
+    relativeViewModelInstanceKey: `${profileId}:${prepared.widget.id}`,
+  };
   return <div className="overlay-workshop-surface" data-overlay-workshop-surface={surface} data-overlay-workshop-comparison={comparison || undefined}>
     {surface !== "obs" && <span className="overlay-workshop-surface-label">{surface}</span>}
-    <div className="overlay-workshop-widget-root" data-overlay-workshop-widget-root style={{ width, height, transform: `scale(${query.scale})`, transformOrigin: "center" }}>
+    <div style={{ width: (width + margin * 2) * query.scale, height: (height + margin * 2) * query.scale }}>
+    <div className={reference ? `overlay-workshop-reference-canvas overlay-workshop-reference-canvas--${query.background}` : undefined} style={{ width: reference ? width + margin * 2 : width * query.scale, height: reference ? height + margin * 2 : height * query.scale, padding: margin, transform: reference ? `scale(${query.scale})` : undefined, transformOrigin: "top left" }}>
+    <div className="overlay-workshop-widget-root" data-overlay-workshop-widget-root style={{ width, height, transform: reference ? undefined : `scale(${query.scale})`, transformOrigin: "top left" }}>
       <WidgetVisualViewport widgetType={prepared.widget.type} visual={prepared.widget.visual} layout={{ ...prepared.widget.layout, w: width, h: height }} testId="overlay-workshop-viewport">
-        <WidgetVisualHost widget={{ ...prepared.widget, layout: { ...prepared.widget.layout, w: width, h: height } }} snapshot={prepared.snapshot} renderMode={surface}
-          runtime={prepared.widget.type === "engineer-radio" ? { engineerPresentation: query.state === "ready" ? buildEngineerPresentationFixture() : null } : undefined} />
+        <WidgetVisualHost widget={{ ...prepared.widget, layout: { ...prepared.widget.layout, w: width, h: height } }} renderMode={surface}
+          authoringModel={reference ? REDLINE_TOWER_REFERENCE : undefined}
+          runtime={prepared.widget.type === "engineer-radio" ? { ...runtime, engineerPresentation: query.state === "ready" ? buildEngineerPresentationFixture() : null } : runtime} />
       </WidgetVisualViewport>
+    </div>
+    </div>
     </div>
   </div>;
 }
 
-function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQuery }): React.ReactElement {
+function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initialQuery: OverlayWorkshopQuery; initialError?: string; profileId: string }): React.ReactElement {
   const [parsed, setQuery] = useState<OverlayWorkshopQuery>(initialQuery);
   const [prepared, setPrepared] = useState<PreparedFixture | null>(null);
   const [dimensionDraft, setDimensionDraft] = useState({
@@ -167,7 +169,7 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
   // the previous ViewModel the motion engines diff against — so discrete
   // animations (overtake flash, crown flight, relative crossing) could never
   // fire in the Workshop, which is the one place they need to be visible.
-  const fixtureKey = serializeOverlayWorkshopQuery({ ...parsed, sceneFrame: undefined });
+  const fixtureKey = serializeOverlayWorkshopQuery({ ...parsed, sceneFrame: undefined, redlineData: undefined });
 
   const [replayFrame, setReplayFrame] = useState(0);
   useEffect(() => {
@@ -195,7 +197,7 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
       (initialQuery.sceneId ? (getAnimationScene(initialQuery.sceneId)?.frameMs ?? 0) : 0),
   );
   const elapsedRef = useRef(0);
-  const scenesForWidget = listAnimationScenes(parsed.widget as AuthoringFixtureWidget);
+  const scenesForWidget = listAnimationScenes(parsed.widget);
 
   useEffect(() => {
     elapsedRef.current = elapsedMs;
@@ -267,34 +269,22 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
       throw new Error(`invalid serialized fixture query: ${fixtureQuery.error}`);
     }
     const next = prepareFixture(fixtureQuery);
-    resetAndSeedAuthoringInputTelemetry(next.widget, next.snapshot);
     let active = true;
     queueMicrotask(() => {
       if (active) setPrepared(next);
     });
     return () => {
       active = false;
-      clearInputTelemetryHistory(next.widget.id);
     };
   }, [fixtureKey]);
-
-  const liveFixtureInput = {
-    session: parsed.session,
-    location: parsed.location,
-    state: parsed.state,
-    widget: parsed.widget,
-    system: parsed.system,
-    surface: parsed.surface,
-    variant: parsed.variant,
-  } as const;
 
   const preparedForRender = !prepared
     ? prepared
     : scene && playhead
       ? {
           ...prepared,
-          snapshot: buildAuthoringFixtureTelemetry({
-            ...liveFixtureInput,
+          runtime: buildWorkshopFrameV2({
+            ...prepared.base,
             sceneId: scene.id,
             sceneState: playhead.frame,
           }),
@@ -302,7 +292,7 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
       : parsed.variant === "standings-replay"
         ? {
             ...prepared,
-            snapshot: buildAuthoringFixtureTelemetry({ ...liveFixtureInput, replayFrame }),
+            runtime: buildWorkshopFrameV2({ ...prepared.base, replayFrame }),
           }
         : prepared;
 
@@ -311,11 +301,15 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
     const system = compatibleSystems(widgetType).includes(parsed.system) ? parsed.system : defaultSystem(widgetType);
     update({ ...parsed, widget: widgetType, system, designId: undefined, variant: "default" });
   };
-  const chooseSystem = (value: string) => update({ ...parsed, system: value as DesignSystemId, designId: undefined });
-  const chooseDesign = (value: string) => update({ ...parsed, ...(value ? { designId: value } : { designId: undefined }) });
+  const chooseSystem = (value: string) => update({ ...parsed, system: value as DesignSystemId, designId: undefined, variant: "default" });
+  const chooseDesign = (value: string) => {
+    const next = parseOverlayWorkshopQuery(serializeOverlayWorkshopQuery({ ...parsed, designId: value || undefined,
+      redlineTheme: undefined, redlineSelection: undefined, redlineHeader: undefined, redlineOpacity: undefined }));
+    if (!("error" in next)) update(next);
+  };
   const chooseState = (value: string) => update({ ...parsed, state: value as OverlayWorkshopQuery["state"] });
   const chooseSurface = (value: string) => update({ ...parsed, surface: value as OverlayWorkshopQuery["surface"] });
-  const chooseVariant = (value: string) => update({ ...parsed, variant: value as HarnessVariant });
+  const chooseVariant = (value: string) => update({ ...parsed, variant: value as WorkshopV2Variant });
   const chooseSession = (value: string) => update({ ...parsed, session: value as OverlayWorkshopQuery["session"] });
   const chooseLocation = (value: string) => update({ ...parsed, location: value as OverlayWorkshopQuery["location"] });
   const chooseBackground = (value: string) => update({ ...parsed, background: value as OverlayWorkshopQuery["background"] });
@@ -346,24 +340,67 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
     if (widthValid && heightValid) update({ ...parsed, width, height });
   };
 
+  const isFunctionalStudy = parsed.variant === "standings-functional-study" && parsed.system === "vantare-functional";
+  const studySize = isFunctionalStudy && prepared?.widget.type === "standings" ? resolveStandingsMinimumSize(prepared.widget) : undefined;
+  // La banda ambiental opcional (~30 px) no entra en el mínimo del contenido:
+  // el estudio la añade a la altura para que no recorte la última fila.
+  const displayQuery = studySize
+    ? { ...parsed, width: studySize.width, height: studySize.height === undefined ? undefined : studySize.height + 30, scale: 1 }
+    : parsed;
+
   return (
-    <main className="overlay-workshop" data-overlay-workshop-page>
+    <main className={isFunctionalStudy ? "overlay-workshop functional-study" : "overlay-workshop"} data-overlay-workshop-page data-study-style={isFunctionalStudy ? parsed.studyStyle : undefined}>
+      {initialError && (
+        <div className="overlay-workshop-alert" role="alert" data-overlay-workshop-error>
+          Workshop selection rejected: {initialError}
+        </div>
+      )}
+      {isFunctionalStudy ? (
+        <FunctionalStudyControls query={parsed} update={update} onRunScene={runScene} onReset={reset} />
+      ) : (
+        <aside className="overlay-workshop-sidebar" aria-label="Laboratorio visual">
       <header className="overlay-workshop-header">
         <div className="overlay-workshop-header__title">
           <span className="overlay-workshop-badge">solo desarrollo</span>
           <h1>Overlay Workshop</h1>
         </div>
-        <span data-overlay-workshop-query>{serializeOverlayWorkshopQuery(parsed)}</span>
+        <p>Diseño en vivo · renderer compartido</p>
+        <details><summary>Enlace reproducible</summary><span data-overlay-workshop-query>{serializeOverlayWorkshopQuery(parsed)}</span></details>
       </header>
       {/* Three groups, in the order the questions actually get asked: what am I
           looking at, what is it being fed, and how is it being presented. */}
       <section className="overlay-workshop-controls" aria-label="Selección del Workshop">
+        {parsed.widget === "standings" && parsed.system === "vantare-endurance" && (!parsed.designId || parsed.designId === "standings-endurance-redline" || parsed.designId === "standings-endurance-redline-tower") ? (
+          <fieldset className="overlay-workshop-group overlay-workshop-lab">
+            <legend>Redline · Estudio visual</legend>
+            <button type="button" onClick={() => {
+              setDimensionDraft({ width: "482", height: "1087" }); setScaleDraft("0.65");
+              update({ ...parsed, designId: "standings-endurance-redline-tower", redlineTheme: "tower", redlineSelection: "glow", redlineHeader: "current", redlineOpacity: .95, redlineData: "reference", width: 482, height: 1087, scale: .65, state: "ready", sceneId: undefined, sceneFrame: undefined });
+            }}>Aplicar estudio azul · luz roja</button>
+            <SelectField label="Datos de comparación" value={parsed.redlineData ?? "telemetry"} onChange={(value) => update({ ...parsed, redlineData: value as OverlayWorkshopQuery["redlineData"] })}>
+              <option value="reference">Referencia HTML · 12 pilotos de ejemplo</option><option value="telemetry">Escenario V2 · sin datos inventados</option>
+            </SelectField>
+            {parsed.redlineData === "reference" && parsed.state === "ready" && !parsed.sceneId && <p className="overlay-workshop-note" role="note">REFERENCIA VISUAL: datos de ejemplo, no telemetría de LMU. Mismo renderer productivo. 482 × 1087 px.</p>}
+            {parsed.redlineTheme === "tower" && <p className="overlay-workshop-note">Copia estática del HTML. Las animaciones y columnas configurables de esta composición aún no están validadas.</p>}
+            <SelectField label="Tratamiento" value={parsed.redlineTheme ?? "classic"} onChange={(value) => update({ ...parsed, redlineTheme: value as OverlayWorkshopQuery["redlineTheme"] })}>
+              <option value="classic">Redline actual</option><option value="tower">Azul grafito</option>
+            </SelectField>
+            <SelectField label="Fila del jugador" value={parsed.redlineSelection ?? "legacy"} onChange={(value) => update({ ...parsed, redlineSelection: value as OverlayWorkshopQuery["redlineSelection"] })}>
+              <option value="glow">Fila de luz roja · sin línea</option><option value="frame">Marco fino</option><option value="plate">Placa de nombre</option><option value="legacy">Resaltado actual</option>
+            </SelectField>
+            <SelectField label="Cabecera" value={parsed.redlineHeader ?? "current"} onChange={(value) => update({ ...parsed, redlineHeader: value as OverlayWorkshopQuery["redlineHeader"] })}>
+              <option value="signature">Firma Redline</option><option value="session">Sesión protagonista</option><option value="compact">Marca compacta</option><option value="current">Cabecera actual</option>
+            </SelectField>
+            <label className="overlay-workshop-control"><span>Opacidad del fondo · {Math.round((parsed.redlineOpacity ?? 1) * 100)}%</span><input aria-label="Opacidad del fondo" type="range" min="45" max="100" value={Math.round((parsed.redlineOpacity ?? 1) * 100)} onChange={(event) => update({ ...parsed, redlineOpacity: Number(event.target.value) / 100 })} /></label>
+            <p className="overlay-workshop-note">Variantes exploratorias. Sin guardar perfiles. El contrato actual no aporta emblemas de fabricante.</p>
+          </fieldset>
+        ) : null}
         <fieldset className="overlay-workshop-group">
           <legend>Qué</legend>
           <SelectField label="Widget" value={parsed.widget} onChange={chooseWidget}>
             {ALL_WIDGET_TYPES.map((widgetType) => <option key={widgetType} value={widgetType}>{widgetType}</option>)}
           </SelectField>
-          <SelectField label="Sistema" value={parsed.system} onChange={chooseSystem}>
+          <SelectField label="Sistema de diseño" value={parsed.system} onChange={chooseSystem}>
             {compatibleSystems(parsed.widget).map((system) => <option key={system} value={system}>{system}</option>)}
           </SelectField>
           <SelectField label="Diseño" value={parsed.designId ?? ""} onChange={chooseDesign}>
@@ -374,7 +411,7 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
 
         <fieldset className="overlay-workshop-group">
           <legend>Datos</legend>
-          <SelectField label="Estado" value={parsed.state} onChange={chooseState}>
+          <SelectField label="Estado de la fuente" value={parsed.state} onChange={chooseState}>
             {STATES.map((state) => <option key={state} value={state}>{state}</option>)}
           </SelectField>
           <SelectField label="Sesión" value={parsed.session} onChange={chooseSession}>
@@ -399,6 +436,9 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
           <SelectField label="Fondo" value={parsed.background} onChange={chooseBackground}>
             {(["transparent", "grid", "solid", "context"] as const).map((background) => <option key={background} value={background}>{background}</option>)}
           </SelectField>
+          <div className="overlay-workshop-group__actions">
+            <button type="button" onClick={() => chooseBackground("transparent")}>Claro</button>
+          </div>
           <label className="overlay-workshop-control"><span>Escala</span><input type="number" min="0.25" max="2" step="0.05" value={scaleDraft} onChange={(event) => chooseScale(event.target.value)} /></label>
           <SelectField label="Resolución" value={parsed.preset} onChange={choosePreset}>
             {(["720p", "1080p", "1440p"] as const).map((preset) => <option key={preset} value={preset}>{preset}</option>)}
@@ -407,7 +447,7 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
           <DimensionField label="Alto" value={dimensionDraft.height} onChange={(value) => chooseDimension("height", value)} />
           <div className="overlay-workshop-group__actions">
             <button type="button" onClick={applyPreset}>Aplicar tamaño declarado</button>
-            <button type="button" className="overlay-workshop-button--quiet" onClick={reset}>Restablecer</button>
+            <button type="button" className="overlay-workshop-button--quiet" onClick={reset}>Restablecer selección</button>
           </div>
         </fieldset>
       </section>
@@ -510,24 +550,81 @@ function OverlayWorkshopPage({ initialQuery }: { initialQuery: OverlayWorkshopQu
           </div>
         ) : null}
       </section>
-      <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage>
+      <p className="overlay-workshop-note">Datos de ejemplo V2, no telemetría en vivo. El escenario no forma parte del widget.</p>
+      </aside>
+      )}
+      <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage data-stage-label={`${parsed.widget.toUpperCase().replace(/-/g, " ")} / ESTUDIO 01`}>
         {prepared?.key === fixtureKey && (
-          <><WorkshopSurface prepared={preparedForRender ?? prepared} surface={parsed.surface} query={parsed} />
-          {parsed.compare && <WorkshopSurface prepared={preparedForRender ?? prepared} surface={parsed.compare} query={parsed} comparison />}</>
+          <><WorkshopSurface prepared={preparedForRender ?? prepared} profileId={profileId} surface={parsed.surface} query={displayQuery} />
+          {parsed.compare && <WorkshopSurface prepared={preparedForRender ?? prepared} profileId={profileId} surface={parsed.compare} query={displayQuery} comparison />}</>
         )}
+        {isFunctionalStudy && scene ? (
+          <div className="overlay-workshop-transport" data-overlay-workshop-transport>
+            <div className="overlay-workshop-transport__buttons">
+              <button type="button" onClick={() => stepFrame(-1)} data-testid="workshop-scene-prev" aria-label="Fotograma anterior">◀</button>
+              <button
+                type="button"
+                onClick={() => (playing ? setPlaying(false) : runScene(scene.id))}
+                data-testid="workshop-scene-play"
+                aria-pressed={playing}
+              >
+                {playing ? "❙❙ Pausa" : "▶ Reproducir de nuevo"}
+              </button>
+              <button type="button" onClick={() => stepFrame(1)} data-testid="workshop-scene-next" aria-label="Fotograma siguiente">▶</button>
+              <label className="overlay-workshop-transport__loop">
+                <input
+                  type="checkbox"
+                  checked={loop}
+                  onChange={(event) => setLoop(event.target.checked)}
+                  data-testid="workshop-scene-loop"
+                />
+                En bucle
+              </label>
+            </div>
+            <label className="overlay-workshop-transport__scrub">
+              <span>
+                Paso {currentKeyframe + 1} de {scene.frames.length} · {(sceneDurationMs(scene) / 1000).toFixed(1)}s · datos a {updateHz} Hz, como en juego
+              </span>
+              <input
+                type="range"
+                min={0}
+                max={scene.frames.length - 1}
+                step={1}
+                value={currentKeyframe}
+                onChange={(event) => parkFrame(Number(event.target.value))}
+                data-testid="workshop-scene-scrub"
+              />
+            </label>
+            <p className="overlay-workshop-transport__caption" data-testid="workshop-scene-caption">
+              {playhead?.frame.caption}
+            </p>
+            <p className="overlay-workshop-transport__watch" data-testid="workshop-scene-watch">
+              <strong>Qué mirar:</strong> {scene.watchFor}
+            </p>
+            {scene.unsupportedSignal ? (
+              <p className="overlay-workshop-transport__unsupported" data-testid="workshop-scene-unsupported">
+                <strong>Solo en el mock:</strong> esta animación necesita{" "}
+                <code>{scene.unsupportedSignal}</code>, que la proyección de telemetría actual no
+                entrega. Aquí se ve; en una carrera real no se dispara.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </section>
     </main>
   );
 }
 
-export function OverlayWorkshopDevRoute({ search = window.location.search }: { search?: string }): React.ReactElement {
+export function OverlayWorkshopDevRoute({ search = window.location.search, profileId = OVERLAY_WORKSHOP_PROFILE_ID }: { search?: string; profileId?: string }): React.ReactElement {
   const parsed = parseOverlayWorkshopQuery(search);
   if ("error" in parsed) {
     return (
-      <main className="overlay-workshop-error" data-overlay-workshop-error role="alert">
-        Workshop selection rejected: {parsed.error}
-      </main>
+      <OverlayWorkshopPage
+        initialQuery={DEFAULT_OVERLAY_WORKSHOP_QUERY}
+        initialError={parsed.error}
+        profileId={profileId}
+      />
     );
   }
-  return <OverlayWorkshopPage initialQuery={parsed} />;
+  return <OverlayWorkshopPage initialQuery={parsed} profileId={profileId} />;
 }

@@ -1,5 +1,13 @@
 # LMU weekly calendar hotfix flow
 
+> **Notion primero (2026-09-14):** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192)
+> y leer la tarea y su proyecto antes de ejecutar. Actualizar Notion al empezar,
+> bloquear, entregar y verificar una integración; releer para comprobar la escritura.
+> [Contrato vigente](../vantare-program/notion-transition.md). GitHub conserva código, PR, CI y releases;
+> las referencias ISA exigidas por los controles son un puente técnico temporal.
+> Su adaptación pendiente nunca permite omitir el seguimiento en Notion.
+
+
 Carpeta operativa para actualizar el calendario oficial semanal de LMU sin redisenar la app.
 
 ## Objetivo

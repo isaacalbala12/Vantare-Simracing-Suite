@@ -42,8 +42,8 @@ describe("ROADMAP_FALLBACK dataset", () => {
   // The counts are editorial and change whenever the roadmap is updated
   // (docs/roadmap-maintenance.md), so what is pinned here is the structure the
   // page depends on: every section populated, with ids unique enough to key by.
-  it("has the four narrative phases, with populated areas and milestones", () => {
-    expect(ROADMAP_FALLBACK.phases.length).toBe(4);
+  it("has populated narrative phases, areas and milestones", () => {
+    expect(ROADMAP_FALLBACK.phases.length).toBeGreaterThan(0);
     expect(ROADMAP_FALLBACK.areas.length).toBeGreaterThan(0);
     expect(ROADMAP_FALLBACK.milestones.length).toBeGreaterThan(0);
   });

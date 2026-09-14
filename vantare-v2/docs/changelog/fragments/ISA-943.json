@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-943",
+  "type": "feature",
+  "summary": "Ajustes incorpora niveles de rendimiento y cada perfil de overlay puede heredarlos o personalizarlos por widget.",
+  "technicalNotes": [
+    "El perfil v4 sustituye updateHz por una política inherit, level o custom y conserva la lectura indefinida de perfiles v3 con copia de seguridad al migrar.",
+    "Go combina la preferencia de la aplicación y la del perfil activo, y publica el resultado en capabilities.performance y performance:level.",
+    "Personalizado muestra la cadencia efectiva y los overrides de Hz y efectos con indicadores +CPU y +GPU."
+  ],
+  "testing": [
+    "Cambiar entre Máximo, Alto, Equilibrado, Ahorro y Mínimo en Ajustes > Rendimiento y comprobar que la opción queda seleccionada.",
+    "Abrir un perfil de tres widgets, elegir Personalizado y revisar las tres filas, sus Hz y los indicadores de coste.",
+    "En Studio, cambiar la política del perfil entre Heredar, Nivel y Personalizado y volver a abrirlo para comprobar que se conserva."
+  ],
+  "knownLimitations": [
+    "Automático permanece deshabilitado como próximamente hasta que se entregue el sensor F3.",
+    "Las variantes visuales noBlur y flat requieren todavía el pase visual de Isaac."
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-958",
+  "type": "fix",
+  "summary": "Relative Endurance Redline mantiene estables las filas durante tráfico denso y cruces alrededor del coche del jugador.",
+  "technicalNotes": [
+    "Un cambio ahead/behind del mismo VehicleID debe sostenerse durante 900 ms monotónicos; mientras oscila, posición, gap y lado conservan una única fila aceptada y coherente.",
+    "Los cruces reales se publican al vencer el hold, con una latencia máxima de 900 ms más una cadencia del widget.",
+    "Los cambios de epoch o sesión reinician la presentación sin ghosts, y cada desaparición tiene un identificador propio para que un timer antiguo no borre una salida posterior.",
+    "Una sustitución conserva el número de filas: Redline anima la entrada nueva sin añadir como sexta fila el coche saliente; los ghosts quedan reservados para huecos netos reales.",
+    "La estabilidad se activa solo para Relative Endurance Redline. Un reconnect breve de la misma epoch/sesión conserva durante un máximo de 400 ms el último snapshot ready con un jugador; disconnected, stale y cambios de epoch/session lo invalidan de inmediato.",
+    "Traffic trata el aviso de doblaje y su fila como un único slot; mientras existe ese slot compuesto no aplica FLIP traslacional, evitando que el aviso quede detrás de otra fila durante churn."
+  ],
+  "testing": [
+    "Con el jugador parado en boxes y tráfico denso, comprobar que un rival que oscila alrededor de cero no salta repetidamente entre adelante y detrás.",
+    "Mantener un cruce real más de 900 ms y confirmar que la fila cambia de lado con su posición y gap del mismo snapshot.",
+    "Cambiar de sesión o epoch y confirmar que Redline no anima como retirados los coches de la sesión anterior.",
+    "Repetir S3 Relative Redline Mirror y confirmar que una sustitución 5→5 genera como máximo una transición, sin muestra intermedia de seis filas.",
+    "Forzar live/retry 0 → detecting/retry 1 → live/retry 1 con un frame Relative vacío dentro de la misma sesión y confirmar que Traffic permanece en cinco filas con un único jugador; repetir con stopped y epoch nueva para confirmar vaciado inmediato.",
+    "En Traffic, mover una amenaza de clase más rápida a una fila superior y confirmar que el rectángulo del lapnote no intersecta ninguna fila durante la transición."
+  ],
+  "knownLimitations": [
+    "La rama se valida con pruebas deterministas y build; la comprobación física en Wails con LMU real queda pendiente antes de promoverla."
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-990",
+  "type": "fix",
+  "summary": "Los instrumentos muestran R y N, respetan los colores de pedales y reservan espacio para el historial de inputs.",
+  "technicalNotes": [
+    "Dense, Capsule y Blade conservan los ceros del embrague y actualizan sus trazados desde el ViewModel compartido.",
+    "Las luces muestran una escala explicita de RPM, sin presentarla como corte del motor ni mantener luces rojas activas.",
+    "Compact respeta Mostrar RPM y mantiene la lectura numerica incluso fuera del rango de la escala."
+  ],
+  "testing": [
+    "Cambiar colores de THR, BRK y CLU y verificar barra y etiqueta.",
+    "Probar R, N y marchas hacia delante con LMU; observar el historial al soltar completamente el embrague.",
+    "Verificar legibilidad de Dense y Capsule al tamaño habitual y las RPM frente al coche."
+  ],
+  "knownLimitations": [
+    "La escala RPM no constituye una alerta de cambio ni de corte: el contrato actual no aporta limite del motor.",
+    "La evidencia automatizada de componentes y Chrome no sustituye validar Wails y LMU reales."
+  ]
+}

@@ -1,0 +1,60 @@
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkBatchMapperS31Fixture 	    3102	     39686 ns/op	   68994 B/op	     100 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkBatchMapperS31Fixture 	    2444	     45419 ns/op	   68995 B/op	     100 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkBatchMapperS31Fixture 	    3363	     44031 ns/op	   68995 B/op	     100 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkBatchMapperS31Fixture 	    3153	     41555 ns/op	   68994 B/op	     100 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkBatchMapperS31Fixture 	    2970	     45746 ns/op	   68995 B/op	     100 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkBatchMapperS31Fixture 	    3238	     42396 ns/op	   68995 B/op	     100 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkBatchMapperS31Fixture 	    3243	     38538 ns/op	   68994 B/op	     100 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkBatchMapperS31Fixture 	    3045	     42045 ns/op	   68995 B/op	     100 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkBatchMapperS31Fixture 	    2373	     51621 ns/op	   68995 B/op	     100 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkBatchMapperS31Fixture 	    2670	     49920 ns/op	   68995 B/op	     100 allocs/op
+PASS

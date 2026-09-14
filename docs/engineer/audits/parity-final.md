@@ -100,6 +100,6 @@ These features can be implemented in Go with existing telemetry fields:
 - **10% blocked by audio infrastructure** (~30 features need voice clips/TTS)
 - **6% code-pure available** (~18 features implementable now with existing offsets)
 
-See [docs/engineer/audits/parity-review-cycle-1.md](../parity-review-cycle-1.md) for the detailed cycle-1 gap analysis that identified the specific missing offsets.
+See [docs/engineer/audits/parity-review-cycle-1.md](parity-review-cycle-1.md) for the detailed cycle-1 gap analysis that identified the specific missing offsets.
 
 > **Tests**: `go test ./internal/engineer/... -count=1 -timeout 90s` — **27/27 packages pass, zero failures** (2026-06-29).

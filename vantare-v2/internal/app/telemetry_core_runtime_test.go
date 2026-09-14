@@ -48,8 +48,9 @@ func TestTelemetryCoreRuntimeDoesNotPushOverlayFramesToGlobalWails(t *testing.T)
 		t.Fatalf("global Wails received Overlay telemetry without an Overlay consumer: %s", name)
 	case <-time.After(100 * time.Millisecond):
 	}
-	if subscribers := runtime.Hub().Metrics().CurrentSubscribers; subscribers != 0 {
-		t.Fatalf("global Wails bridge subscribers = %d, want 0", subscribers)
+	// R6b: no existe Hub Overlay; sin flag tampoco hay transporte Strategy.
+	if runtime.StrategyHub() != nil {
+		t.Fatal("StrategyHub() without flag must stay nil")
 	}
 	if _, active := runtime.OverlayV2Publishers().Lookup(telemetrytransport.ProductOverlayV2); active {
 		t.Fatal("global Wails bridge activated Overlay v2 without a consumer")
@@ -111,13 +112,14 @@ func TestTelemetryEngineApplyFlagDefaultsOnAndCanRollback(t *testing.T) {
 }
 
 func TestTelemetryCoreRuntimeDisabledPublishesStoppedWithoutStartingLMU(t *testing.T) {
-	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Enabled: false})
+	// R6b: el stopped inicial solo llega a Strategy; no existe Hub Overlay.
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{Enabled: false, StrategyPublicTransport: true})
 	if err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	subscription, err := runtime.Hub().Subscribe(ctx)
+	subscription, err := runtime.StrategyHub().Subscribe(ctx)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,22 +1,42 @@
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildMockTelemetry } from "../../../core/mock-scenarios";
 import {
   createDefaultStandingsContent,
+  getEnabledStandingsColumns,
   type StandingsMetricId,
 } from "../../../widget-types/standings/standings-content";
-import { buildStandingsViewModel } from "../../../widget-types/standings/standings-view-model";
+import type { StandingsRowViewModel, StandingsViewModel } from "../../../widget-types/standings/standings-view-model";
 import { StandingsRedlineTemplate } from "./StandingsRedlineTemplate";
+import { fitStandingsRowsToHeight, measureStandingsFlowHeight } from "./standings-endurance-layout";
 
 afterEach(() => {
   cleanup();
   vi.useRealTimers();
 });
 
+const templateRow: StandingsRowViewModel = {
+  id: "template",
+  position: 1,
+  driverNumber: "",
+  driverName: "Driver 001",
+  vehicleClass: "HYPERCAR",
+  teamCode: "",
+  teamBrandColor: "",
+  gapText: "+0.0s",
+  intervalText: "+0.0s",
+  currentLapText: "1",
+  lastLapText: "1:31.234",
+  bestLapText: "1:30.999",
+  pitText: "",
+  tireCompound: "",
+  isPlayer: false,
+  isLeader: false,
+};
+
 function modelWithColumns(
   metrics: readonly StandingsMetricId[],
   disabledAnchors = false,
-) {
+): StandingsViewModel {
   const defaults = createDefaultStandingsContent();
   const byMetric = new Map(defaults.columns.map((column) => [column.metricId, column]));
   const columns = metrics.map((metricId) => {
@@ -29,10 +49,15 @@ function modelWithColumns(
         : true,
     };
   });
-  return buildStandingsViewModel(
-    buildMockTelemetry({ session: "race", location: "track", state: "ready" }),
-    { ...defaults, columns },
-  );
+  return {
+    type: "standings",
+    status: "ready",
+    activeClass: "HYPERCAR",
+    sessionLabel: "RACE",
+    remainingText: "—",
+    columns: getEnabledStandingsColumns({ ...defaults, columns }),
+    rows: [{ ...templateRow }],
+  };
 }
 
 function firstRow(container: HTMLElement): HTMLElement {
@@ -124,23 +149,34 @@ describe("StandingsRedlineTemplate", () => {
       (row.querySelector('[data-metric="tireCompound"]') as HTMLElement).style.justifySelf,
     ).toBe("start");
     const root = view.container.querySelector<HTMLElement>(".ven-red-root");
-    expect(root?.style.width).toBe("");
-    expect(root?.style.minWidth).toMatch(/px$/);
+    expect(root?.style.minWidth).toBe("");
   });
 
   it("renders retirement ghosts through the same configurable row", () => {
     vi.useFakeTimers();
     const full = modelWithColumns(["position", "driverName", "lastLap", "gap"]);
-    const initial = { ...full, rows: full.rows.slice(0, 2) };
+    const expandedRows = Array.from({ length: 18 }, (_, index) => ({
+      ...full.rows[index % full.rows.length]!,
+      id: `redline-${index}`,
+      position: index + 1,
+      isPlayer: index === 7,
+      vehicleClass: "HYPERCAR",
+    }));
+    const fittedRows = fitStandingsRowsToHeight(expandedRows, {
+      templateId: "standings-redline",
+      viewportHeight: 560,
+      showSessionHeader: true,
+    });
+    const initial = { ...full, rows: fittedRows };
     const view = render(
-      <StandingsRedlineTemplate model={initial} settings={{}} showSessionHeader={false} />,
+      <StandingsRedlineTemplate model={initial} settings={{}} showSessionHeader />,
     );
 
     view.rerender(
       <StandingsRedlineTemplate
-        model={{ ...initial, rows: initial.rows.slice(0, 1) }}
+        model={{ ...initial, rows: initial.rows.slice(0, -1) }}
         settings={{}}
-        showSessionHeader={false}
+        showSessionHeader
       />,
     );
     act(() => vi.advanceTimersByTime(0));
@@ -153,5 +189,50 @@ describe("StandingsRedlineTemplate", () => {
       ),
     ).toEqual(["position", "driverName", "lastLap", "gap"]);
     expect(ghost?.querySelector('[data-metric="gap"]')?.textContent).toBe("OUT");
+    const rowCount = view.container.querySelectorAll(".ven-red-row").length;
+    expect(measureStandingsFlowHeight({
+      templateId: "standings-redline",
+      rowCount,
+      groupCount: view.container.querySelectorAll(".ven-red-block").length,
+      showSessionHeader: true,
+      battleBoxCount: 0,
+    })).toBeLessThanOrEqual(560);
+  });
+
+  it("keeps a crystallized battle box within the fitted 560px flow", () => {
+    vi.useFakeTimers();
+    const full = modelWithColumns(["position", "driverName", "lastLap", "gap"]);
+    const expandedRows = Array.from({ length: 18 }, (_, index) => ({
+      ...full.rows[index % full.rows.length]!,
+      id: `battle-${index}`,
+      position: index + 1,
+      isPlayer: index === 7,
+      vehicleClass: "HYPERCAR",
+      gapText: index === 8 ? "+14.4s" : index === 7 ? "+14.0s" : `+${index * 2}.0s`,
+      pitText: "",
+    }));
+    const rows = fitStandingsRowsToHeight(expandedRows, {
+      templateId: "standings-redline",
+      viewportHeight: 560,
+      showSessionHeader: true,
+    });
+    const battleModel = { ...full, sessionLabel: "RACE", rows };
+    const view = render(
+      <StandingsRedlineTemplate model={battleModel} settings={{}} showSessionHeader />,
+    );
+    expect(view.container.querySelectorAll('.ven-red-battle[data-stage="seam"]')).toHaveLength(1);
+    view.rerender(
+      <StandingsRedlineTemplate model={{ ...battleModel }} settings={{}} showSessionHeader />,
+    );
+    act(() => vi.advanceTimersByTime(2500));
+
+    expect(view.container.querySelectorAll('.ven-red-battle[data-stage="box"]')).toHaveLength(1);
+    expect(measureStandingsFlowHeight({
+      templateId: "standings-redline",
+      rowCount: view.container.querySelectorAll(".ven-red-row").length,
+      groupCount: view.container.querySelectorAll(".ven-red-block").length,
+      showSessionHeader: true,
+      battleBoxCount: 1,
+    })).toBeLessThanOrEqual(560);
   });
 });

@@ -1,4 +1,4 @@
-import { memo, useLayoutEffect, useRef, type CSSProperties } from 'react';
+import { memo, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react';
 import {
   applyStudioFrameLayoutPreview,
   getStudioFrameLayoutPreview,
@@ -6,7 +6,6 @@ import {
   resolveStudioFrameGeometry,
 } from './canvas-frame-preview';
 import type { WidgetInstanceV3, WidgetLayoutV3 } from '../../../overlay/core/profile-document';
-import type { TelemetrySnapshot } from '../../../overlay/core/telemetry-snapshot';
 import type { WidgetDiagnosticCollector } from '../../../overlay/core/widget-diagnostics';
 import { WidgetVisualHost } from '../../../overlay/core/WidgetVisualHost';
 import { WidgetVisualViewport } from '../../../overlay/core/WidgetVisualViewport';
@@ -14,7 +13,12 @@ import { widgetTypeRegistry } from '../../../overlay/core/widget-registry';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { ResizeHandle } from './canvas-resize';
 import { useSelectionFit } from './useSelectionFit';
-import { useStudioTelemetryRuntime, useStudioTelemetrySnapshot } from './studio-telemetry';
+import { useStudioTelemetryRuntime } from './studio-telemetry';
+import {
+  resolveStandingsFrameLayout,
+  resolveStandingsMinimumSize,
+} from '../../../overlay/widget-types/standings/standings-frame-layout';
+import { DEFAULT_LAYOUT_VIEWPORT } from '../../../overlay/core/layout-viewport';
 
 const MemoWidgetVisualHost = memo(WidgetVisualHost);
 
@@ -33,10 +37,10 @@ const RESIZE_HANDLES: readonly ResizeHandle[] = ['nw', 'n', 'ne', 'e', 'se', 's'
 
 export type StudioWidgetFrameProps = {
   widget: WidgetInstanceV3;
+  profileId: string;
   layout: WidgetLayoutV3;
   previewActive?: boolean;
   selected: boolean;
-  snapshotOverride?: TelemetrySnapshot;
   onSelect(widgetId: string): void;
   onFramePointerDown?(widgetId: string, event: React.PointerEvent<HTMLElement>): void;
   onResizePointerDown?(
@@ -52,29 +56,46 @@ export type StudioWidgetFrameProps = {
    * piel Orbit; el lienzo V3 clasico lo deja apagado y no cambia.
    */
   fitSelectionToContent?: boolean;
+  layoutViewportWidth?: number;
+  layoutViewportHeight?: number;
 };
 
 function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactElement {
   const {
     widget,
+    profileId,
     layout,
     previewActive = false,
     selected,
-    snapshotOverride,
     onSelect,
     onFramePointerDown,
     onResizePointerDown,
     onLostPointerCapture,
     diagnostics,
     fitSelectionToContent = false,
+    layoutViewportWidth = DEFAULT_LAYOUT_VIEWPORT.width,
+    layoutViewportHeight = DEFAULT_LAYOUT_VIEWPORT.height,
   } = props;
   const { t } = useI18n();
-  const rateLimitedSnapshot = useStudioTelemetrySnapshot(widget.behavior.updateHz);
-  const runtime = useStudioTelemetryRuntime();
-  const snapshot = snapshotOverride ?? rateLimitedSnapshot;
+  const runtime = useStudioTelemetryRuntime(widget.type);
+  const widgetRuntime = useMemo(() => ({
+    ...runtime,
+    relativeViewModelInstanceKey: `${profileId}:${widget.id}`,
+  }), [profileId, runtime, widget.id]);
   const frameRef = useRef<HTMLDivElement>(null);
   const selectionRef = useRef<HTMLDivElement>(null);
-  const frameGeometry = resolveStudioFrameGeometry(widget.id, layout, previewActive);
+  const frameGeometry = resolveStandingsFrameLayout(
+    widget,
+    resolveStudioFrameGeometry(widget.id, layout, previewActive),
+    layoutViewportWidth,
+    layoutViewportHeight,
+  );
+  const effectiveMinimum = resolveStandingsMinimumSize(widget);
+  const effectiveMinimumWidth = effectiveMinimum?.width;
+  const effectiveMinimumHeight = effectiveMinimum?.height;
+  const layoutWasNormalized =
+    (effectiveMinimumWidth !== undefined && layout.w < effectiveMinimumWidth) ||
+    (effectiveMinimumHeight !== undefined && layout.h < effectiveMinimumHeight);
   const resizeHandles =
     widgetTypeRegistry.get(widget.type).capabilities.resizeMode === 'horizontal-only'
       ? (['e', 'w'] as const)
@@ -132,6 +153,11 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
       ref={frameRef}
       data-testid={`studio-widget-frame-${widget.id}`}
       data-preview-active={previewActive ? 'true' : undefined}
+      data-effective-minimum-width={effectiveMinimumWidth}
+      data-effective-minimum-height={effectiveMinimumHeight}
+      data-layout-normalized={layoutWasNormalized ? 'true' : undefined}
+      data-layout-viewport-width={layoutViewportWidth}
+      data-layout-viewport-height={layoutViewportHeight}
       className={frameClassName}
       style={frameStyle}
       role="button"
@@ -200,10 +226,9 @@ function StudioWidgetFrameComponent(props: StudioWidgetFrameProps): React.ReactE
         >
           <MemoWidgetVisualHost
             widget={widget}
-            snapshot={snapshot}
             renderMode="studio"
             diagnostics={diagnostics}
-            runtime={runtime}
+            runtime={widgetRuntime}
           />
         </WidgetVisualViewport>
       </div>
@@ -215,14 +240,16 @@ export const StudioWidgetFrame = memo(
   StudioWidgetFrameComponent,
   (previous, next) =>
     previous.widget === next.widget &&
+    previous.profileId === next.profileId &&
     layoutsEqual(previous.layout, next.layout) &&
     previous.previewActive === next.previewActive &&
     previous.selected === next.selected &&
-    previous.snapshotOverride === next.snapshotOverride &&
     previous.onSelect === next.onSelect &&
     previous.onFramePointerDown === next.onFramePointerDown &&
     previous.onResizePointerDown === next.onResizePointerDown &&
     previous.onLostPointerCapture === next.onLostPointerCapture &&
     previous.diagnostics === next.diagnostics &&
-    previous.fitSelectionToContent === next.fitSelectionToContent,
+    previous.fitSelectionToContent === next.fitSelectionToContent &&
+    previous.layoutViewportWidth === next.layoutViewportWidth &&
+    previous.layoutViewportHeight === next.layoutViewportHeight,
 );

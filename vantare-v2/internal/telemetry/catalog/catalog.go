@@ -107,6 +107,7 @@ var definitions = []Definition{
 	{ID: SignalDamageDetached, Key: "damage.detached", Domain: schema.DomainVehicle, Unit: schema.UnitBoolean, Range: schema.UnsupportedRange(), Action: LedgerAppended, Notes: "Whether any non-wheel parts are detached (LMU mDetached)."},
 	{ID: SignalDamageWheelDetachedCount, Key: "damage.wheel_detached_count", Domain: schema.DomainVehicle, Unit: schema.UnitCount, Range: schema.ClosedRange(0, 4), Action: LedgerAppended, Notes: "Count of detached wheels (0..4) from LMU wheel mDetached."},
 	{ID: SignalStandingsLapProgressTime, Key: "standings.lap_progress_time", Domain: schema.DomainStandings, Unit: schema.UnitSeconds, Range: schema.UnknownRange(), Action: LedgerAppended, Notes: "Simulator-observed temporal coordinate of a vehicle within the current circuit lap; signed finite source values preserve explicit quality."},
+	{ID: SignalStandingsCarNumber, Key: "standings.car_number", Domain: schema.DomainStandings, Unit: schema.UnitText, Range: schema.UnsupportedRange(), Action: LedgerAppended, Notes: "Source-supplied car number as a string (\"007\" preserved); REST-joined per-row display identity, never inferred from driver or vehicle names."},
 }
 
 // Tombstones is intentionally empty until the first canonical ID is retired.

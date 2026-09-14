@@ -26,7 +26,7 @@ Cada app mantiene cuatro hechos independientes:
 
 ## Iconos
 
-La prioridad runtime es override local → asset oficial local → extracción del ejecutable → abreviatura. No se usa CDN ni URL remota. Los siete assets oficiales no se incorporan en este corte; el resolver tipado los deja explícitamente vacíos y la UI conserva el fallback seguro.
+La prioridad runtime es override local → asset oficial local → extracción del ejecutable → abreviatura. No se usa CDN ni URL remota. La tabla [app-icons.ts](../frontend/src/hub/launcher/app-icons.ts) incorpora `MOTEC_BRAND_ICON` para MoTeC, porque el ejecutable i2 tiene otra marca. Las otras seis entradas quedan vacías deliberadamente y recurren al icono instalado o al fallback local.
 
 ## Perfiles y ejecución
 
@@ -46,11 +46,18 @@ Los eventos agregados legacy de apps y perfiles ya no son emitidos por producci�
 
 ## Verificación
 
+Desde `vantare-v2/`, preparar dependencias según [operaciones](operations.md). El build frontend debe existir antes de los tests Go que embeben sus assets.
+
 ```powershell
+pnpm --dir frontend build
 go test ./internal/app/launcher/... ./cmd/vantare/...
 go test -race ./internal/app/launcher/...
 pnpm --dir frontend test
-pnpm --dir frontend build
+```
+
+El script visual es una receta del corte Launcher v3: necesita Chromium instalado (`pnpm --dir frontend exec playwright install chromium`) y un servidor ya abierto en `http://127.0.0.1:5173/#/hub`, o la variable `LAUNCHER_SMOKE_URL` con la URL del entorno de prueba. No inicia el servidor. Su fixture espera siete apps y dos perfiles; confirmar que el harness corresponde a ese contrato antes de interpretar el resultado como regresión de la app.
+
+```powershell
 node frontend/scripts/launcher-v3-smoke.mjs
 ```
 
@@ -60,4 +67,4 @@ El smoke usa el mock Wails, verifica siete apps, perfiles, editor avanzado, ause
 
 - Los logos oficiales requieren assets aprobados; sin ellos se usa abreviatura o extracción local.
 - El trigger LMU y las recomendaciones de delay viven como primitivas de sesión y necesitan wiring de producción adicional para activarse desde ajustes.
-- La suite global conserva fallos preexistentes fuera de Launcher en `internal/server` y lint de Calendar/telemetría.
+- Los fallos registrados en el corte inicial no eximen los checks actuales. Usar los gates de la PR/canal y registrar los fallos de la revisión concreta.

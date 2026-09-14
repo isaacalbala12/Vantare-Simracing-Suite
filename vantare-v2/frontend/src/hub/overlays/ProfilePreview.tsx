@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { ProfileConfig } from "../../lib/profile";
-import { buildMockTelemetry } from "../../overlay/core/mock-scenarios";
+import { buildAuthoringV2ScenarioRuntime } from "../../overlay/authoring/fixtures/authoring-v2-scenario-fixture";
 import type { ProfileDocumentV3 } from "../../overlay/core/profile-document";
 import { WidgetVisualHost } from "../../overlay/core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../../overlay/core/WidgetVisualViewport";
@@ -10,12 +10,6 @@ const MemoWidgetVisualHost = memo(WidgetVisualHost);
 
 const LOGICAL_WIDTH = 1920;
 const LOGICAL_HEIGHT = 1080;
-
-const PREVIEW_SNAPSHOT = buildMockTelemetry({
-  session: "race",
-  location: "track",
-  state: "ready",
-});
 
 type ProfilePreviewProps = {
   profile?: ProfileConfig | null;
@@ -30,6 +24,20 @@ export function ProfilePreview({ profile, previewDocument }: ProfilePreviewProps
     [profile, previewDocument],
   );
   const widgets = document?.layouts.general.widgets ?? [];
+  // Factory por instancia: cada preview clona su runtime V2 canónico; mutar
+  // uno nunca contamina a otro (ver ProfilePreview.isolation.test.tsx).
+  const previewRuntime = useMemo(
+    () =>
+      buildAuthoringV2ScenarioRuntime({
+        session: "race",
+        location: "track",
+        state: "ready",
+        widget: "standings",
+        system: "vantare-crystal",
+        variant: "default",
+      }),
+    [],
+  );
 
   useEffect(() => {
     const el = containerRef.current;
@@ -60,7 +68,7 @@ export function ProfilePreview({ profile, previewDocument }: ProfilePreviewProps
     return (
       <div
         data-testid="profile-preview"
-        className="flex aspect-video items-center justify-center rounded-lg border border-white/10 bg-black/45 text-xs text-vantare-textMuted"
+        className="flex aspect-video items-center justify-center rounded-orbit border border-orbit-line bg-orbit-surface-1 text-xs text-orbit-ink-3"
       >
         Preview no disponible
       </div>
@@ -71,7 +79,7 @@ export function ProfilePreview({ profile, previewDocument }: ProfilePreviewProps
     <div
       ref={containerRef}
       data-testid="profile-preview"
-      className="relative overflow-hidden rounded-lg border border-white/10 bg-black/45"
+      className="relative overflow-hidden rounded-orbit border border-orbit-line bg-orbit-surface-1"
       style={{ aspectRatio: `${LOGICAL_WIDTH} / ${LOGICAL_HEIGHT}` }}
     >
       <div
@@ -115,7 +123,7 @@ export function ProfilePreview({ profile, previewDocument }: ProfilePreviewProps
               >
                 <MemoWidgetVisualHost
                   widget={widget}
-                  snapshot={PREVIEW_SNAPSHOT}
+                  runtime={previewRuntime}
                   renderMode="harness"
                 />
               </WidgetVisualViewport>

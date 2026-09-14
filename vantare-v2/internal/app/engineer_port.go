@@ -24,6 +24,9 @@ type engineerPort struct {
 	facts        chan engineerprojection.FactEnvelopeV1
 	stop         chan struct{}
 	done         chan struct{}
+	// factWake es una señal coalescente (sin datos): hay un boundary
+	// pendiente de notificar al consumidor en el orden del loop.
+	factWake chan struct{}
 
 	started atomic.Bool
 	start   sync.Once
@@ -31,8 +34,12 @@ type engineerPort struct {
 	enqueue sync.Mutex
 	factMu  sync.Mutex
 
-	factCursor            *engineerprojection.FactCursor
-	factBoundary          error
+	factCursor   *engineerprojection.FactCursor
+	factBoundary error
+	// factBoundaryNotified marca el boundary ya notificado: se notifica una
+	// sola vez hasta que un epoch nuevo lo limpia. En el mismo epoch no hay
+	// recuperacion: el gap es explicito y persiste.
+	factBoundaryNotified  bool
 	factDeliveredSequence telemetrycore.FactSequence
 }
 
@@ -60,6 +67,7 @@ func newEngineerPort(runtime *TelemetryCoreRuntime, consumer EngineerProjectionC
 		facts:        make(chan engineerprojection.FactEnvelopeV1, factCapacity),
 		stop:         make(chan struct{}),
 		done:         make(chan struct{}),
+		factWake:     make(chan struct{}, 1),
 		factCursor:   engineerprojection.NewFactCursor(factCapacity),
 	}
 }
@@ -98,6 +106,32 @@ func fmtEngineerPortStop(err error) error {
 	return errors.Join(errors.New("stop Engineer asynchronous port"), err)
 }
 
+func (port *engineerPort) signalFactWakeLocked() {
+	select {
+	case port.factWake <- struct{}{}:
+	default:
+	}
+}
+
+// Delivery stays on the port loop: a queued old wake never carries stale
+// boundary data past a newly delivered epoch. The producer never calls service.
+func (port *engineerPort) notifyFactBoundary() {
+	port.factMu.Lock()
+	var boundary *engineerprojection.FactResyncRequiredError
+	if port.factBoundaryNotified || !errors.As(port.factBoundary, &boundary) {
+		port.factMu.Unlock()
+		return
+	}
+	value := *boundary
+	port.factBoundaryNotified = true
+	port.factMu.Unlock()
+	if err := port.runtime.guardConsumer("engineer.fact-boundary", func() error {
+		return port.consumer.ConsumeFactBoundary(&value)
+	}); err != nil {
+		port.runtime.recordEngineerFactBoundary(newTelemetryConsumerError("engineer.fact-boundary", err))
+	}
+}
+
 func (port *engineerPort) EnqueueFact(value engineerprojection.FactEnvelopeV1) (bool, error) {
 	if port == nil || !port.started.Load() {
 		return false, nil
@@ -110,12 +144,15 @@ func (port *engineerPort) EnqueueFact(value engineerprojection.FactEnvelopeV1) (
 	}
 	if err := port.factCursor.Append(value); err != nil {
 		port.factBoundary = err
+		port.factBoundaryNotified = false
 		port.runtime.metricStore.incrementEngineerFactResync()
 		port.runtime.recordEngineerFactBoundary(err)
+		port.signalFactWakeLocked()
 		return true, err
 	}
 	if value.Epoch > currentEpoch {
 		port.factBoundary = nil
+		port.factBoundaryNotified = false
 		port.factDeliveredSequence = 0
 	}
 	select {
@@ -128,6 +165,7 @@ func (port *engineerPort) EnqueueFact(value engineerprojection.FactEnvelopeV1) (
 			Next:     value.Fact.Sequence,
 		}
 		port.factBoundary = boundary
+		port.factBoundaryNotified = false
 		port.runtime.metricStore.engineerFactDropped()
 		for {
 			select {
@@ -141,6 +179,7 @@ func (port *engineerPort) EnqueueFact(value engineerprojection.FactEnvelopeV1) (
 	factsDrained:
 		port.runtime.metricStore.incrementEngineerFactResync()
 		port.runtime.recordEngineerFactBoundary(boundary)
+		port.signalFactWakeLocked()
 		return true, boundary
 	}
 }
@@ -156,6 +195,7 @@ func (port *engineerPort) ResyncFacts(from telemetrycore.FactSequence) ([]engine
 		return nil, err
 	}
 	port.factBoundary = nil
+	port.factBoundaryNotified = false
 	return facts, nil
 }
 
@@ -165,6 +205,8 @@ func (port *engineerPort) DeclareFactBoundary(err error) {
 	}
 	port.factMu.Lock()
 	port.factBoundary = err
+	port.factBoundaryNotified = false
+	port.signalFactWakeLocked()
 	port.factMu.Unlock()
 }
 
@@ -242,8 +284,12 @@ func (port *engineerPort) run() {
 			return
 		case status := <-port.statuses:
 			port.deliverStatus(status)
+		case <-port.factWake:
+			port.notifyFactBoundary()
 		case observation := <-port.observations:
-			port.consumeObservation(observation)
+			if !port.consumeObservation(observation) {
+				return
+			}
 		case fact := <-port.facts:
 			port.runtime.metricStore.setEngineerFactQueueDepth(uint64(len(port.facts)))
 			port.consumeFact(fact)
@@ -288,7 +334,14 @@ func (port *engineerPort) deliverStatus(delivery engineerStatusDelivery) {
 	}
 }
 
-func (port *engineerPort) consumeObservation(value engineerprojection.ObservationSnapshotV1) {
+// consumeObservation ejecuta el callback con timeout y single-flight real:
+// el loop no lee otra observacion hasta que esta termine (una llamada en
+// vuelo como maximo; el canal cap-1 conserva la ultima). Un callback no
+// cooperativo no se cancela: queda retenido como maximo 1 y su resultado
+// tardio se descarta sin tapar el timeout. Devuelve false si se pidio stop
+// (el loop debe salir); la salida entrega los status ya encolados, igual que
+// cualquier otra ruta de cierre, sin inventar ninguno.
+func (port *engineerPort) consumeObservation(value engineerprojection.ObservationSnapshotV1) bool {
 	started := time.Now()
 	result := make(chan error, 1)
 	go func() {
@@ -298,13 +351,38 @@ func (port *engineerPort) consumeObservation(value engineerprojection.Observatio
 	}()
 	timer := time.NewTimer(port.timeout)
 	defer timer.Stop()
-	var err error
 	select {
-	case err = <-result:
+	case err := <-result:
+		port.runtime.metricStore.observeEngineerConsumeLatency(time.Since(started))
+		port.runtime.recordEngineerObservationResult(err)
+		return true
 	case <-timer.C:
-		err = newTelemetryConsumerError("engineer.observation", context.DeadlineExceeded)
+		err := newTelemetryConsumerError("engineer.observation", context.DeadlineExceeded)
 		port.runtime.metricStore.engineerTimeout()
+		port.runtime.metricStore.observeEngineerConsumeLatency(time.Since(started))
+		port.runtime.recordEngineerObservationResult(err)
+	case <-port.stop:
+		port.deliverLastStatus()
+		return false
 	}
-	port.runtime.metricStore.observeEngineerConsumeLatency(time.Since(started))
-	port.runtime.recordEngineerObservationResult(err)
+	// El callback sigue vivo tras el timeout: el timer vencio una sola vez,
+	// no se crea otra ejecucion y el resultado tardio se descarta. El canal
+	// cap-1 conserva la ultima observacion; status, facts y stop se siguen
+	// atendiendo sin inventar datos.
+	for {
+		select {
+		case <-result:
+			return true
+		case status := <-port.statuses:
+			port.deliverStatus(status)
+		case <-port.factWake:
+			port.notifyFactBoundary()
+		case fact := <-port.facts:
+			port.runtime.metricStore.setEngineerFactQueueDepth(uint64(len(port.facts)))
+			port.consumeFact(fact)
+		case <-port.stop:
+			port.deliverLastStatus()
+			return false
+		}
+	}
 }

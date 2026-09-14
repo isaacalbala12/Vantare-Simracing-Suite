@@ -181,6 +181,59 @@ func TestProfileDocumentStoreVantareEnduranceMemoryRoundTrip(t *testing.T) {
 	}
 }
 
+func TestProfileDocumentStoreFunctionalStandingsRoundTrip(t *testing.T) {
+	for _, template := range []string{"signature", "broadcast"} {
+		t.Run(template, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "functional.json")
+			widget := validWidget("standings-main", WidgetTypeStandings)
+			widget.Visual.SystemID = DesignSystemID("vantare-functional")
+			widget.Visual.BaseSettings = map[string]any{"templateId": template}
+			widget.Visual.AppearanceOverrides = map[string]any{"showSessionHeader": false}
+			widget.Visual.SystemMemories = map[DesignSystemID]WidgetVisualSelectionV3{
+				DesignSystemVantareOriginal: {SystemVersion: 1, ConfigVersion: 1, BaseSettings: map[string]any{"compactRows": true}},
+			}
+			doc := ConvertProfileV3ToV4(validProfileV3(widget))
+			store := ProfileDocumentStore{}
+			revision, err := store.SaveV4(path, "", doc, ProfileSchemaVersionV4)
+			if err != nil {
+				t.Fatal(err)
+			}
+			loaded, err := store.LoadV4(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := loaded.Document.Layouts[LayoutGeneral].Widgets[0]
+			if loaded.Revision != revision || got.Visual.SystemID != widget.Visual.SystemID ||
+				got.Visual.BaseSettings["templateId"] != template || got.Visual.AppearanceOverrides["showSessionHeader"] != false ||
+				got.Visual.SystemMemories[DesignSystemVantareOriginal].BaseSettings["compactRows"] != true {
+				t.Fatalf("functional selection or prior system memory lost: %+v", got.Visual)
+			}
+		})
+	}
+}
+
+func TestProfileDocumentStoreIracingPedalsRoundTrip(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "iracing-pedals.json")
+	widget := validWidget("pedals-advanced-main", WidgetTypePedalsTelemetryCompact)
+	widget.Visual.SystemID = DesignSystemVantareIracing
+	widget.Visual.BaseSettings = map[string]any{"templateId": "iracing"}
+	doc := ConvertProfileV3ToV4(validProfileV3(widget))
+	store := ProfileDocumentStore{}
+	revision, err := store.SaveV4(path, "", doc, ProfileSchemaVersionV4)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := store.LoadV4(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := loaded.Document.Layouts[LayoutGeneral].Widgets[0]
+	if loaded.Revision != revision || got.Visual.SystemID != DesignSystemVantareIracing ||
+		got.Visual.BaseSettings["templateId"] != "iracing" {
+		t.Fatalf("iracing selection lost: %+v", got.Visual)
+	}
+}
+
 func TestProfileDocumentStoreEngineerRadioRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "engineer-radio.json")
@@ -207,6 +260,29 @@ func TestProfileDocumentStoreEngineerRadioRoundTrip(t *testing.T) {
 	}
 	if got[0].Content["display"] != "radio" {
 		t.Fatalf("content=%v want preserved display=radio", got[0].Content)
+	}
+}
+
+func TestProfileDocumentStoreTrackMapRoundTrip(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "track-map.json")
+	widget := validWidget("track-map-main", WidgetTypeTrackMap)
+	widget.Visual.SystemID = DesignSystemVantareEndurance
+	widget.Content = map[string]any{"showTrackLabel": true}
+	store := ProfileDocumentStore{}
+	revision, err := store.Save(path, "", validProfileV3(widget), ProfileSchemaVersionV3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	loaded, err := store.Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.Revision != revision {
+		t.Fatalf("revision=%q want %q", loaded.Revision, revision)
+	}
+	got := loaded.Document.Layouts[LayoutGeneral].Widgets
+	if len(got) != 1 || got[0].Type != WidgetTypeTrackMap || got[0].Content["showTrackLabel"] != true {
+		t.Fatalf("track map did not survive save/load: %+v", got)
 	}
 }
 

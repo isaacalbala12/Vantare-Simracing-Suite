@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import type { WidgetRendererProps } from "../../../core/design-system-definition";
+import { CrystalBrand } from "../crystal-primitives";
 import {
   buildPedalsAppearanceStyle,
   resolvePedalColor,
@@ -12,6 +13,9 @@ function pedalHeight(value: number): string {
 
 export function PedalsCrystal({ model, settings }: WidgetRendererProps<PedalsViewModel>) {
   const transparentBackground = settings.transparentBackground !== false;
+  // Decisión pura de presentación (ISA-1105): la inyecta WidgetVisualHost.
+  // Pedals nunca tuvo marca, así que sin decisión se conserva tal cual.
+  const brandVisible = settings.brandVisible === true;
 
   return (
     <section
@@ -23,6 +27,11 @@ export function PedalsCrystal({ model, settings }: WidgetRendererProps<PedalsVie
       style={buildPedalsAppearanceStyle(settings)}
     >
       <div className="vc-pedals-frame">
+        {brandVisible ? (
+          <div className="vc-brand-band">
+            <CrystalBrand>VANTARE</CrystalBrand>
+          </div>
+        ) : null}
         {model.statusMessage ? (
           <p className="vc-pedals-status-message" role="status">
             {model.statusMessage}
@@ -41,7 +50,7 @@ export function PedalsCrystal({ model, settings }: WidgetRendererProps<PedalsVie
                 }
               />
             </div>
-            <span className="vc-pedals-label">THR</span>
+            <span className="vc-pedals-label" style={{ color: resolvePedalColor("throttle", settings) }}>THR</span>
             <span className="vc-pedals-value">{model.throttleText}</span>
           </article>
           <article className="vc-pedals-channel" data-pedal="brake">
@@ -56,7 +65,7 @@ export function PedalsCrystal({ model, settings }: WidgetRendererProps<PedalsVie
                 }
               />
             </div>
-            <span className="vc-pedals-label">BRK</span>
+            <span className="vc-pedals-label" style={{ color: resolvePedalColor("brake", settings) }}>BRK</span>
             <span className="vc-pedals-value">{model.brakeText}</span>
           </article>
           <article className="vc-pedals-channel" data-pedal="clutch">
@@ -71,7 +80,7 @@ export function PedalsCrystal({ model, settings }: WidgetRendererProps<PedalsVie
                 }
               />
             </div>
-            <span className="vc-pedals-label">CLU</span>
+            <span className="vc-pedals-label" style={{ color: resolvePedalColor("clutch", settings) }}>CLU</span>
             <span className="vc-pedals-value">{model.clutchText}</span>
           </article>
         </div>

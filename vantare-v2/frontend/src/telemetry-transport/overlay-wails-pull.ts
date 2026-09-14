@@ -1,17 +1,17 @@
+import {createSocketPullPost} from "./overlay-socket-pull";
+import {OverlayFrameV2ContractError, parseOverlayPullJSON} from "./overlay-frame-v2-store";
+
 export const OVERLAY_PULL_REQUEST_ROUTE = "/_vantare/overlay-telemetry/pull";
 export const OVERLAY_PULL_CLOSE_ROUTE = "/_vantare/overlay-telemetry/close";
 
 const MAX_SESSION_ID_LENGTH = 128;
 
 const ALLOWED_EVENTS = new Set([
-  "telemetry:overlay:status",
-  "telemetry:overlay:projection",
-  "telemetry:overlay:fact",
   "telemetry:overlay-v2:status",
   "telemetry:overlay-v2:snapshot",
 ]);
 
-type PullEvent = Readonly<{name: string; data: unknown}>;
+type PullEvent = Readonly<{name: string; data: unknown; baseRevision?: number}>;
 type PullResponse = Readonly<{
   sessionId: string;
   delivery: number;
@@ -25,6 +25,8 @@ const IDLE_PULL_DELAY_MS = 100;
 const ERROR_PULL_DELAY_MS = 250;
 const EMPTY_RESPONSES_BEFORE_IDLE = 3;
 const BROWSER_PULL_TIMEOUT_MS = 5_000;
+const REQUEST_DURATION_SAMPLE_LIMIT = 512;
+const REQUEST_DURATION_BUCKETS_MS = Object.freeze([1, 2, 4, 8, 16, 32, 64, 128, 250, 500, 1_000, 2_500, 5_000]);
 
 export type OverlayWailsPullOptions = Readonly<{
   post(route: string, data: unknown): unknown | Promise<unknown>;
@@ -32,6 +34,22 @@ export type OverlayWailsPullOptions = Readonly<{
   cancel?: (handle: ScheduleHandle) => void;
   createSessionID?: () => string;
   onError?: (error: unknown) => void;
+  now?: () => number;
+}>;
+
+export type OverlayWailsPullDiagnostics = Readonly<{
+  active: boolean;
+  requestsCompleted: number;
+  receivedV2Snapshots: number;
+  receivedV2SectionSnapshots: number;
+  requestDurationMs: Readonly<{
+    count: number;
+    sampleCount: number;
+    mean: number;
+    max: number;
+    p99: number;
+    histogram: readonly Readonly<{le: number | null; count: number}>[];
+  }>;
 }>;
 
 export type OverlayWailsPullClient = Readonly<{
@@ -40,6 +58,7 @@ export type OverlayWailsPullClient = Readonly<{
   }>;
   start(): void;
   stop(): void;
+  getDiagnostics(): OverlayWailsPullDiagnostics;
 }>;
 
 export type BrowserOverlayWailsPullOptions = Readonly<{
@@ -68,6 +87,7 @@ export function createOverlayWailsPullClient(
   const cancel = options.cancel ?? defaultCancel;
   const createSessionID = options.createSessionID ?? defaultSessionID;
   const onError = options.onError ?? (() => undefined);
+  const now = options.now ?? (() => typeof performance === "undefined" ? Date.now() : performance.now());
   const listeners = new Map<string, Set<(data: unknown) => void>>();
 
   let active = false;
@@ -76,6 +96,12 @@ export function createOverlayWailsPullClient(
   let acknowledged = 0;
   let emptyResponses = 0;
   let scheduled: ScheduleHandle | undefined;
+  let requestsCompleted = 0;
+  let receivedV2Snapshots = 0;
+  let receivedV2SectionSnapshots = 0;
+  let requestDurationTotalMs = 0;
+  let requestDurationMaxMs = 0;
+  const requestDurationSamplesMs: number[] = [];
 
   const scheduleNext = (delayMs: number) => {
     if (!active || scheduled !== undefined) return;
@@ -86,8 +112,17 @@ export function createOverlayWailsPullClient(
     input: unknown,
     requestSessionID: string,
     requestAck: number,
+    startedAt: number,
   ) => {
     if (!active || sessionID !== requestSessionID || acknowledged !== requestAck) return;
+    const duration = Math.max(0, now() - startedAt);
+    requestsCompleted += 1;
+    requestDurationTotalMs += duration;
+    requestDurationMaxMs = Math.max(requestDurationMaxMs, duration);
+    requestDurationSamplesMs.push(duration);
+    if (requestDurationSamplesMs.length > REQUEST_DURATION_SAMPLE_LIMIT) {
+      requestDurationSamplesMs.shift();
+    }
     if (input === undefined) {
       awaiting = false;
       emptyResponses += 1;
@@ -107,6 +142,7 @@ export function createOverlayWailsPullClient(
     awaiting = true;
     const requestSessionID = sessionID;
     const requestAck = acknowledged;
+    const startedAt = now();
     try {
       const posted = options.post(OVERLAY_PULL_REQUEST_ROUTE, {
         sessionId: requestSessionID,
@@ -114,17 +150,24 @@ export function createOverlayWailsPullClient(
       });
       if (posted instanceof Promise) {
         void posted.then(
-          (input) => handlePostedResponse(input, requestSessionID, requestAck),
+          (input) => handlePostedResponse(input, requestSessionID, requestAck, startedAt),
           (error) => {
             if (active && sessionID === requestSessionID && acknowledged === requestAck) {
               awaiting = false;
+              if (error instanceof OverlayFrameV2ContractError && error.path === "sections.base") {
+                // A missing base cannot be repaired by replaying that delta.
+                // A fresh generation forces a full bootstrap, without ACKing it.
+                sessionID = createSessionID();
+                acknowledged = 0;
+                emptyResponses = 0;
+              }
               scheduleNext(ERROR_PULL_DELAY_MS);
             }
             onError(error);
           },
         );
       } else {
-        handlePostedResponse(posted, requestSessionID, requestAck);
+        handlePostedResponse(posted, requestSessionID, requestAck, startedAt);
       }
     } catch (error) {
       awaiting = false;
@@ -154,6 +197,10 @@ export function createOverlayWailsPullClient(
       if (!ALLOWED_EVENTS.has(event.name)) {
         onError(new Error("overlay-wails-pull:invalid-event-name"));
         continue;
+      }
+      if (event.name === "telemetry:overlay-v2:snapshot") {
+        receivedV2Snapshots += 1;
+        if (event.baseRevision !== undefined) receivedV2SectionSnapshots += 1;
       }
       for (const listener of listeners.get(event.name) ?? []) {
         try {
@@ -214,12 +261,50 @@ export function createOverlayWailsPullClient(
         onError(error);
       }
     },
+    getDiagnostics() {
+      const sortedDurations = [...requestDurationSamplesMs].sort((left, right) => left - right);
+      return Object.freeze({
+        active,
+        requestsCompleted,
+        receivedV2Snapshots,
+        receivedV2SectionSnapshots,
+        requestDurationMs: Object.freeze({
+          count: requestsCompleted,
+          sampleCount: sortedDurations.length,
+          mean: requestsCompleted === 0 ? 0 : requestDurationTotalMs / requestsCompleted,
+          max: requestDurationMaxMs,
+          p99: percentile(sortedDurations, 0.99),
+          histogram: requestDurationHistogram(sortedDurations),
+        }),
+      });
+    },
   };
+}
+
+function percentile(sorted: readonly number[], fraction: number): number {
+  if (sorted.length === 0) return 0;
+  return sorted[Math.ceil(sorted.length * fraction) - 1] ?? 0;
+}
+
+function requestDurationHistogram(sorted: readonly number[]) {
+  const histogram: Array<Readonly<{le: number | null; count: number}>> = [];
+  let offset = 0;
+  for (const upperBound of REQUEST_DURATION_BUCKETS_MS) {
+    let end = offset;
+    while (end < sorted.length && (sorted[end] ?? Infinity) <= upperBound) end += 1;
+    histogram.push(Object.freeze({le: upperBound, count: end - offset}));
+    offset = end;
+  }
+  histogram.push(Object.freeze({le: null, count: sorted.length - offset}));
+  return Object.freeze(histogram);
 }
 
 export function createBrowserOverlayWailsPullClient(
   options: BrowserOverlayWailsPullOptions = {},
 ): OverlayWailsPullClient {
+  if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("socketOverlayPull") === "1") {
+    return createOverlayWailsPullClient({post: createSocketPullPost(), onError: options.onError});
+  }
   return createOverlayWailsPullClient({
     post: async (route, data) => {
       const controller = new AbortController();
@@ -236,7 +321,7 @@ export function createBrowserOverlayWailsPullClient(
           throw new Error(`overlay telemetry pull HTTP ${response.status}`);
         }
         if (response.status === 204) return undefined;
-        return response.json();
+        return parseOverlayPullJSON(await response.text());
       } finally {
         clearTimeout(timeout);
       }
@@ -263,7 +348,8 @@ function decodeResponse(input: unknown): PullResponse | undefined {
     }
     const event = inputEvent as Record<string, unknown>;
     if (typeof event.name !== "string" || !("data" in event)) return undefined;
-    events.push({name: event.name, data: event.data});
+    if (event.baseRevision !== undefined && (!Number.isSafeInteger(event.baseRevision) || (event.baseRevision as number) <= 0)) return undefined;
+    events.push({name: event.name, data: event.data, baseRevision: event.baseRevision as number | undefined});
   }
   return {sessionId: value.sessionId, delivery: value.delivery as number, events};
 }

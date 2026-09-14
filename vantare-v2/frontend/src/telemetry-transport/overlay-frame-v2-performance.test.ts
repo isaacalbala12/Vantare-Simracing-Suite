@@ -7,22 +7,26 @@ describe("OverlayFrame v2 parse budget", () => {
     for (let index = 0; index < 100; index += 1) decodeOverlayUpdateV2(encoded);
     // Three trials isolate the decoder from transient work in the shared test
     // runner. As in Go benchmarks, the best stable trial is the gate value.
-    const operationsPerSample = 500;
+    const operationsPerSample = 250;
     const trials = Array.from({ length: 3 }, () => measureTrial(encoded, operationsPerSample));
-    const selected = [...trials].sort((left, right) => left.cpuP99 - right.cpuP99)[0]!;
-    console.info(`OverlayFrame v2 Node JSON.parse+decode best-of-3 CPU p99/op=${selected.cpuP99.toFixed(3)}ms wall=${selected.wallP99.toFixed(3)}ms bytes=${encoded.length}`);
+    const selected = [...trials].sort((left, right) => left.cpuMedian - right.cpuMedian)[0]!;
+    console.info(`OverlayFrame v2 Node JSON.parse+decode best-of-3 CPU median/op=${selected.cpuMedian.toFixed(3)}ms worstBatch=${selected.cpuWorst.toFixed(3)}ms wall=${selected.wallMedian.toFixed(3)}ms bytes=${encoded.length}`);
     // Presupuesto: 1,5 ms por frame sintético completo @104 (~46 KB tras
     // añadir weather, damage y posición por coche en ISA-696/ISA-781; antes
     // ~36 KB y 1 ms). El runner de CI de Windows es ~1,5x más lento que un
     // equipo de desarrollo. El frame real de LMU @104 ronda la mitad de bytes.
-    expect(selected.cpuP99).toBeLessThan(1.5);
+    // La puerta es la mediana de los 8 lotes: el "p99" anterior era el max de
+    // 4 muestras, el estimador mas ruidoso posible — un solo lote con pausa
+    // de GC o rescheduling lo violaba sin regresion real (ISA-1019). Una
+    // regresion de coste real infla todos los lotes y rompe la mediana igual.
+    expect(selected.cpuMedian).toBeLessThan(1.5);
   }, 60_000);
 });
 
 function measureTrial(encoded: string, operationsPerSample: number) {
   const cpuSamples: number[] = [];
   const wallSamples: number[] = [];
-  for (let index = 0; index < 4; index += 1) {
+  for (let index = 0; index < 8; index += 1) {
     const wallStarted = performance.now();
     const cpuStarted = process.cpuUsage();
     for (let operation = 0; operation < operationsPerSample; operation += 1) {
@@ -34,11 +38,16 @@ function measureTrial(encoded: string, operationsPerSample: number) {
   }
   cpuSamples.sort((left, right) => left - right);
   wallSamples.sort((left, right) => left - right);
-  return { cpuP99: percentile99(cpuSamples), wallP99: percentile99(wallSamples) };
+  return {
+    cpuMedian: median(cpuSamples),
+    cpuWorst: cpuSamples[cpuSamples.length - 1]!,
+    wallMedian: median(wallSamples),
+  };
 }
 
-function percentile99(samples: readonly number[]): number {
-  return samples[Math.ceil(samples.length * 0.99) - 1]!;
+function median(samples: readonly number[]): number {
+  const middle = samples.length / 2;
+  return (samples[middle - 1]! + samples[middle]!) / 2;
 }
 
 function syntheticFullUpdate(vehicles: number) {
@@ -55,18 +64,27 @@ function syntheticFullUpdate(vehicles: number) {
     pit: "track",
     laps: 12,
     lastLap: fresh(92.125 + index / 1_000),
+    bestLap: fresh(91.875 + index / 1_000),
     lapDistance: fresh(index * 37.5),
     groundPosition: fresh({ x: index * 10, z: index * -5 }),
   }));
-  const relative = standings.map((row, index) => ({
+  const relative = standings.slice(44, 61).map((row, index) => ({
     id: row.id,
-    gap: fresh((index - 52) * 0.25),
-    side: index < 52 ? "behind" : "ahead",
+    position: row.position,
+    gap: fresh((index - 8) * 0.25),
+    groundPosition: row.groundPosition,
+    lastLap: row.lastLap,
+    side: index < 8 ? "ahead" : index === 8 ? "player" : "behind",
     authority: "native" as const,
     name: row.driver,
+    classId: row.classId,
   }));
-  // The worst case is always the full canonical window of pedal samples.
+  // The worst case is always the full canonical window of control samples:
+  // 120 absolute instants plus three quality-bearing motion cells per sample.
   const series = (offset: number) => Array.from({ length: 120 }, (_, index) => (index * 7 + offset) % 1_001);
+  const instants = Array.from({ length: 120 }, (_, index) => 1_786_711_200_000 + index * 16);
+  const motion = (base: number, step: number) =>
+    Array.from({ length: 120 }, (_, index) => ({ v: base + (index % 10) * step, q: "fresh" as const }));
   return {
     revision: 1,
     source: { state: "live", retry: 0, ageMs: 0 },
@@ -75,6 +93,7 @@ function syntheticFullUpdate(vehicles: number) {
       algorithm: 1,
       epoch: 1,
       sequence: 1,
+      sectionMask: 0x7ff,
       sessionId: "synthetic-session",
       generatedAt: "2026-08-19T12:00:00Z",
       units: { speed: "mps", temperature: "celsius", pressure: "kpa", fuel: "liters" },
@@ -83,16 +102,36 @@ function syntheticFullUpdate(vehicles: number) {
         id: "vehicle-000", speed: fresh(50), rpm: fresh(7_200), gear: fresh(4),
         throttle: fresh(0.75), brake: fresh(0.125), clutch: fresh(0), steering: fresh(-0.1),
       },
-      controls: { history: { q: "fresh", windowMs: 1_904, throttle: series(0), brake: series(37), clutch: series(91) } },
+      controls: {
+        history: {
+          q: "fresh",
+          capturedAtMS: instants,
+          throttle: series(0),
+          brake: series(37),
+          clutch: series(91),
+          speedMPS: motion(80, 0.5),
+          rpm: motion(7000, 25),
+          gear: motion(4, 0),
+        },
+      },
       standings,
       relative,
-      delta: { seconds: fresh(-0.245), reference: "best", requested: "best", available: ["best", "last"], trend: "gaining", authority: "derived" },
-      fuel: { remaining: fresh(42), capacity: fresh(100), perLap: fresh(2.4), estimatedLaps: fresh(17.5) },
+      relativeSettled: relative,
+      delta: { seconds: fresh(-0.245), reference: "best", requested: "best", available: ["best", "last"], trend: "gaining", authority: "derived", history: { q: "missing" } },
+      fuel: { remaining: fresh(42), capacity: fresh(100), perLap: fresh(2.4), estimatedLaps: fresh(17.5), sessionLaps: fresh(79), requiredFuel: fresh(189.6), history: { q: "missing" } },
       spotter: { mode: "official", left: fresh(false), right: fresh(true) },
       capabilities: {
         supported: ["session", "controls", "standings", "gaps", "fuel", "delta", "spotter"],
         available: { session: "fresh", controls: "fresh", standings: "fresh", gaps: "fresh", fuel: "fresh", delta: "fresh", spotter: "fresh" },
         modes: { spatial: ["longitudinal", "lateral"], delta: ["best", "last"], standings: "official", gaps: "official" },
+        performance: {
+          level: 3,
+          mode: "manual",
+          effects: "noBlur",
+          rafCap: 40,
+          widgetHz: { standings: 10, relative: 10, delta: 20 },
+          sourceHz: 60,
+        },
       },
       damage: {
         dents: fresh([0, 1, 0, 2, 0, 0, 3, 0]), overheating: fresh(false), detached: fresh(false), wheelDetachedCount: fresh(0),

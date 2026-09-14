@@ -11,15 +11,15 @@ tecnico vive en `tools/release_build_preflight.ps1`, `tools/build_nsis.ps1` y
 
 ## 1. Artefactos oficiales
 
-| Artefacto | Ruta | Tamanio tipico | Notas |
+| Artefacto | Ruta | Tamaño | Notas |
 |---|---|---|---|
-| Instalador NSIS | `bin/vantare-amd64-installer.exe` | ~25 MB | Ejecutable self-extracting con `vantare.exe` y la unidad DuckDB confiada. Genera atajos y desinstalador. |
-| Portable zip | `bin/vantare-portable-amd64.zip` | ~25 MB | Contiene `vantare.exe`, `configs/*.json`, `docs/README.txt` y la unidad exacta `runtime/telemetry/duckdb-v1`. |
-| Binario base | `bin/vantare.exe` | ~13 MB | Empaquetado dentro del instalador. El updater productivo descarga y ejecuta el installer, por lo que hereda la unidad DuckDB. |
+| Instalador NSIS | `bin/vantare-amd64-installer.exe` | Medir en cada build | Ejecutable self-extracting con `vantare.exe` y la unidad DuckDB confiada. Genera atajos y desinstalador. |
+| Portable zip | `bin/vantare-portable-amd64.zip` | Medir en cada build | Contiene `vantare.exe`, `configs/*.json`, `docs/README.txt` y la unidad exacta `runtime/telemetry/duckdb-v1`. |
+| Binario base | `bin/vantare.exe` | Medir en cada build | Empaquetado dentro del instalador. El updater productivo descarga y ejecuta el installer, por lo que hereda la unidad DuckDB. |
 | Checksums SHA-256 | `bin/<artifact>.sha256` | ~90 B | Un archivo `<artifact>.sha256` por cada artefacto oficial. Formato `<hash>  <nombre>`. |
 | Suma global de checksums | `bin/SHA256SUMS.txt` | (futuro) | Se anade en R03.C si la publicacion a GitHub Releases lo necesita. |
 
-**El portable zip debe contener `configs/`** porque los perfiles recomendados son la primera impresion para un tester nuevo. Ver `docs/tester-build-instructions.md` seccion 2 metodo B.
+**El portable zip debe contener `configs/`** porque los perfiles recomendados son la primera impresion para un tester nuevo. Ver [guía de instalación para testers](tester-build-instructions.md).
 
 ---
 
@@ -134,8 +134,8 @@ SHA-256 antes de usarlo.
    Exige VANTARE_SUPABASE_URL y VANTARE_SUPABASE_ANON_KEY antes de build/deps.
 
 1. version:sync   (root)
-   Lee VERSION (0.3.10.0) y sincroniza:
-     - cmd/vantare/main.go              -> var version = "v0.3.10.0"
+   Lee VERSION (valor del corte) y sincroniza:
+     - cmd/vantare/main.go              -> var version = "v<VERSION>"
      - build/config.yml                 -> info.version
      - build/windows/info.json          -> fixed.file_version + info.ProductVersion
      - build/windows/nsis/project.nsi   -> !define INFO_PRODUCTVERSION
@@ -143,7 +143,7 @@ SHA-256 antes de usarlo.
 2. windows:build (windows:build:native)
    go mod tidy + frontend build (pnpm) + icons + syso + go build con ldflags:
      -tags production -trimpath -buildvcs=false
-     -ldflags="-w -s -H windowsgui -X main.version=v0.3.10.0"
+     -ldflags="-w -s -H windowsgui -X main.version=v<VERSION>"
    -> bin/vantare.exe
 
 3. windows:telemetry:runtime
@@ -241,7 +241,7 @@ Release, resubiendo con `--clobber` cuando ya existe:
 - `vantare-amd64-installer.exe` + `.sha256`
 - `vantare-portable-amd64.zip` + `.sha256`
 
-El body del release se extrae de la seccion `## vX.X.X.X` de `docs/changelog.md`; si no existe, se usa un fallback generico y se emite un warning.
+El cuerpo de la release se genera desde `docs/releases/<tag>.json` y sus fragmentos con `.github/scripts/release_notes.py`. En pre-releases el workflow valida ese contrato antes del build; en tags estables lo valida al generar las notas, después de construir y antes de publicar. Si falta o está incompleto, no publica notas genéricas como fallback. Ver [comunicaciones](discord-communications.md).
 
 Seguridad:
 
@@ -302,9 +302,9 @@ Get-Content bin\vantare-amd64-installer.exe.sha256 | ForEach-Object {
 
 ## 6. Firma de codigo: estado y gap
 
-**Estado actual (R03.B): sin firma de codigo.**
+**La receta versionada no invoca firma Authenticode.** Comprobar la firma del artefacto concreto; este documento no ha inspeccionado certificados ni secretos remotos.
 
-- Las tareas `windows:sign` y `windows:sign:installer` existen en `build/windows/Taskfile.yml` (template de wails3) pero requieren `SIGN_CERTIFICATE` o `SIGN_THUMBPRINT` + password en keychain. Ninguno esta configurado.
+- Las tareas `windows:sign` y `windows:sign:installer` existen en `build/windows/Taskfile.yml` (template de wails3) pero requieren `SIGN_CERTIFICATE` o `SIGN_THUMBPRINT` + password en keychain. Su existencia no demuestra que haya un certificado configurado o que la receta firme.
 - Sin firma: Windows SmartScreen muestra la advertencia "Editor desconocido" al ejecutar el installer.
 - Los checksums SHA-256 mitigan integridad (un atacante no puede sustituir el binario sin que el hash cambie), pero NO mitigan autenticidad (un atacante puede publicar su propio binario + SHA256 en otro canal).
 - El autoupdater de Vantare (`internal/updater`) descarga el installer y verifica SHA-256 contra un manifest separado. Eso protege a testers que actualizan in-app desde un canal legitimo. NO protege a un tester nuevo que descarga un installer de un enlace comprometido.
@@ -317,7 +317,7 @@ Get-Content bin\vantare-amd64-installer.exe.sha256 | ForEach-Object {
 4. Actualizar el runbook para que `wails3 task release:artifacts` invoque `windows:sign` + `windows:sign:installer` como paso final, antes de `release:verify`.
 5. Validar que NSIS firma correctamente el instalador firmado (NSIS 3.x soporta signtool via `SignTool::Sign` en `.onInit`).
 
-Mientras tanto, el runbook `docs/release-beta-operations-runbook.md` ya documenta la advertencia SmartScreen como un "known issue" para testers de beta privada.
+La [guía de testers](tester-build-instructions.md) pide comprobar procedencia, firma y notas del artefacto ante un aviso de Windows. Registrar el estado observado de esa build.
 
 ---
 
@@ -345,8 +345,8 @@ Despues de correr `wails3 task release:artifacts`, en este orden:
 ## 8. Riesgos restantes (heredados, fuera de R03.B)
 
 - **Sin firma de codigo.** Ver seccion 6. Riesgo P0 para release estable publico (R03.H/14 lo cierra).
-- **Reproducibilidad del binario Go.** Go embebe timestamps y paths en el binario. `-trimpath -buildvcs=false` ya esta aplicado, pero dos builds consecutivos del mismo commit daran SHA256 distintos para `vantare.exe`. Esto es esperado; lo importante es que `version:sync` se ejecuto antes. El checksum por si solo no es unico-identificador.
-- **NSIS comprime el exe.** El instalador no contiene el string `v0.3.10.0` en UTF-8 (NSIS comprime con zlib). Por eso `verify` busca `0.3.10.0` en UTF-16 LE dentro del recurso de version PE (que NSIS pone sin comprimir). Si NSIS cambia su representacion de version resources, este check se rompe. Mitigacion: test regresivo si se actualiza NSIS.
+- **Reproducibilidad binaria no certificada.** La receta fija pasos y valida integridad/versionado. No se ha demostrado identidad byte a byte entre dos builds independientes con el mismo entorno; registrar toolchain, inputs, SHA de código y hashes de artefactos al comprobarla. No atribuir diferencias automáticamente a timestamps de Go.
+- **NSIS comprime el exe.** El instalador no contiene el string `v<VERSION>` en UTF-8 (NSIS comprime con zlib). Por eso `verify` busca `<VERSION>` en UTF-16 LE dentro del recurso de version PE (que NSIS pone sin comprimir). Si NSIS cambia su representacion de version resources, este check se rompe. Mitigacion: test regresivo si se actualiza NSIS.
 - **Shim de wails3 `makensis.exe` local.** En algunos entornos (este host incluido) el shim de wails3 falla con error 0x2 porque no encuentra el NSIS real. `tools/build_nsis.ps1` lo evita llamando al binario real directamente. El task `windows:package` original sigue dependiendo del shim; se deja como esta porque arreglarlo es responsabilidad del entorno, no del codigo de Vantare.
 - **Toolchain del workflow remoto.** El runtime confiado de TA-03C se produjo
   con Go 1.26.4, GCC UCRT64 16.1.0 y PowerShell 7. Un workflow que conserve Go

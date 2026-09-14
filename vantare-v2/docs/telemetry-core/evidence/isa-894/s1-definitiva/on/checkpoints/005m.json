@@ -1,0 +1,190 @@
+{
+  "schema": "vantare.huella.cdp.v1",
+  "capturedAt": "2026-08-30T18:19:25.682Z",
+  "action": "inspect",
+  "control": null,
+  "durationSeconds": 1,
+  "expectedWidgets": 3,
+  "renderedWidgets": 0,
+  "overlayReadyAt": null,
+  "rendererProcessIds": [],
+  "rendererProcessInfoError": null,
+  "targets": [
+    {
+      "role": "overlay",
+      "url": "http://wails.localhost/overlay.html",
+      "title": "Vantare Overlay",
+      "overlay": true,
+      "hub": false,
+      "surface": "desktop",
+      "widgetCount": 3,
+      "diagnostics": {
+        "overlay_v2_parse_duration": {
+          "count": 512,
+          "p50": 0.2000000011175871,
+          "p99": 0.40000000037252903,
+          "nonLiveSamples": 0
+        },
+        "overlay_v2_transport": {
+          "revision": 18572,
+          "frameRevision": 18572,
+          "sourceState": "live",
+          "epoch": 1,
+          "sequence": 18721,
+          "sessionId": "lmu-session-1",
+          "vehicleCount": 18,
+          "playerPit": "pit"
+        },
+        "pull": {
+          "active": true,
+          "requestsCompleted": 11117,
+          "receivedV1Projections": 11106,
+          "receivedV2Snapshots": 11104,
+          "requestDurationMs": {
+            "count": 11117,
+            "sampleCount": 512,
+            "mean": 7.880777188079221,
+            "max": 782.1999999992549,
+            "p99": 13.400000000372529,
+            "histogram": [
+              {
+                "le": 1,
+                "count": 0
+              },
+              {
+                "le": 2,
+                "count": 0
+              },
+              {
+                "le": 4,
+                "count": 6
+              },
+              {
+                "le": 8,
+                "count": 479
+              },
+              {
+                "le": 16,
+                "count": 25
+              },
+              {
+                "le": 32,
+                "count": 2
+              },
+              {
+                "le": 64,
+                "count": 0
+              },
+              {
+                "le": 128,
+                "count": 0
+              },
+              {
+                "le": 250,
+                "count": 0
+              },
+              {
+                "le": 500,
+                "count": 0
+              },
+              {
+                "le": 1000,
+                "count": 0
+              },
+              {
+                "le": 2500,
+                "count": 0
+              },
+              {
+                "le": 5000,
+                "count": 0
+              },
+              {
+                "le": null,
+                "count": 0
+              }
+            ]
+          }
+        },
+        "shadow": {
+          "frames": 2071,
+          "mismatches": 0,
+          "declaredDifferences": 69320,
+          "notComparable": 69320,
+          "framesByPhase": {
+            "live": 2071,
+            "stale": 0,
+            "degraded": 0,
+            "no-frame": 0,
+            "transition": 0
+          },
+          "mismatchesByPhase": {
+            "live": 0,
+            "stale": 0,
+            "degraded": 0,
+            "no-frame": 0,
+            "transition": 0
+          },
+          "epochResets": 0,
+          "metrics": {
+            "overlay_shadow_not_comparable_total{feature=\"controls\",reason=\"cached-section\",phase=\"live\"}": 8846,
+            "overlay_shadow_not_comparable_total{feature=\"delta\",reason=\"cached-section\",phase=\"live\"}": 8846,
+            "overlay_shadow_not_comparable_total{feature=\"fuel\",reason=\"cached-section\",phase=\"live\"}": 10753,
+            "overlay_shadow_not_comparable_total{feature=\"player-instruments\",reason=\"cached-section\",phase=\"live\"}": 8846,
+            "overlay_shadow_not_comparable_total{feature=\"relative\",reason=\"cached-section\",phase=\"live\"}": 10753,
+            "overlay_shadow_not_comparable_total{feature=\"session\",reason=\"cached-section\",phase=\"live\"}": 10456,
+            "overlay_shadow_not_comparable_total{feature=\"standings\",reason=\"cached-section\",phase=\"live\"}": 10820
+          },
+          "retained": {
+            "metricKeys": 7,
+            "pendingLegacy": 63,
+            "pendingOverlayV2": 63,
+            "comparedSequences": 64
+          }
+        }
+      },
+      "probe": {
+        "rafPerSecond": 120,
+        "longTaskCount": 0,
+        "longTaskTotalMs": 0,
+        "longTaskMaxMs": 0,
+        "widgetCount": 3
+      },
+      "memory": {
+        "jsHeapUsedBytes": 52032864,
+        "jsHeapTotalBytes": 108449792,
+        "documents": 1,
+        "nodes": 363,
+        "jsEventListeners": 177
+      },
+      "memoryError": null,
+      "screenshot": null
+    },
+    {
+      "role": "hub",
+      "url": "http://wails.localhost/#/hub",
+      "title": "Vantare",
+      "overlay": false,
+      "hub": true,
+      "surface": "hub",
+      "widgetCount": 0,
+      "diagnostics": null,
+      "probe": {
+        "rafPerSecond": 121,
+        "longTaskCount": 0,
+        "longTaskTotalMs": 0,
+        "longTaskMaxMs": 0,
+        "widgetCount": 0
+      },
+      "memory": {
+        "jsHeapUsedBytes": 33240252,
+        "jsHeapTotalBytes": 36642816,
+        "documents": 1,
+        "nodes": 100,
+        "jsEventListeners": 199
+      },
+      "memoryError": null,
+      "screenshot": null
+    }
+  ]
+}

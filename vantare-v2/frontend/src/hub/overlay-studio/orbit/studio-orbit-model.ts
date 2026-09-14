@@ -7,6 +7,7 @@
  * la capa Orbit es presentacion y nada mas.
  */
 import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import { getOfficialDesign } from "../../../overlay/design-systems/official-designs";
 import type { StudioPreviewState } from "../state/studio-store";
 import { ORBIT_KEYS, orbitStore } from "../../orbit/orbit-store";
 
@@ -30,14 +31,24 @@ export function systemLabel(widget: WidgetInstanceV3, t: Translate): string {
   return label === key ? widget.visual.systemId : label;
 }
 
+function designLabel(widget: WidgetInstanceV3): string | undefined {
+  const provenance = widget.visual.provenance;
+  const official = provenance?.origin === "vantare" ? getOfficialDesign(provenance.designId) : undefined;
+  if (official?.widgetType === widget.type && official.systemId === widget.visual.systemId &&
+      official.systemVersion === widget.visual.systemVersion && official.configVersion === widget.visual.configVersion) {
+    return official.name;
+  }
+  return provenance?.designName?.trim();
+}
+
 /** "Vantare Crystal · Crystal Bar" — el diseno solo aparece si hay procedencia. */
 export function designSummary(widget: WidgetInstanceV3, t: Translate): string {
-  const design = widget.visual.provenance?.designName?.trim();
+  const design = designLabel(widget);
   return [systemLabel(widget, t), design].filter(Boolean).join(" · ");
 }
 
 /**
- * "15 fps · todas" / "30 fps · solo en pista · 2 sesiones".
+ * Compact summary: translated profile policy followed by active visibility filters.
  *
  * El resumen vive en una linea de ~180 px junto al titulo del acordeon: con el
  * texto largo ("15 fps · siempre · todas las sesiones") siempre salia cortado
@@ -45,7 +56,7 @@ export function designSummary(widget: WidgetInstanceV3, t: Translate): string {
  * filtro de boxes en "siempre"— no se nombran: solo se nombra lo que restringe.
  */
 export function behaviorSummary(widget: WidgetInstanceV3, t: Translate): string {
-  const fps = fill(t("studio.summary.fps"), { n: widget.behavior.updateHz });
+  const cadence = t("studio.summary.performanceManaged");
   const inPit = widget.behavior.visibleWhen?.inPit;
   const pit =
     inPit === undefined
@@ -58,7 +69,7 @@ export function behaviorSummary(widget: WidgetInstanceV3, t: Translate): string 
     sessionTypes.length === 0
       ? t("studio.summary.sessionsAll")
       : fill(t("studio.summary.sessions"), { n: sessionTypes.length });
-  return [fps, pit, sessions].filter(Boolean).join(" · ");
+  return [cadence, pit, sessions].filter(Boolean).join(" · ");
 }
 
 /** "por defecto" / "2 cambios": lo que el usuario ha tocado sobre el diseno. */
@@ -96,7 +107,7 @@ export function layoutSummary(widget: WidgetInstanceV3, t: Translate): string {
  * unico que se sabe del widget.
  */
 export function inspectorMeta(widget: WidgetInstanceV3, t: Translate): string {
-  const design = widget.visual.provenance?.designName?.trim() || systemLabel(widget, t);
+  const design = designLabel(widget) || systemLabel(widget, t);
   return fill(t("studio.inspector.meta"), {
     design,
     w: Math.round(widget.layout.w),

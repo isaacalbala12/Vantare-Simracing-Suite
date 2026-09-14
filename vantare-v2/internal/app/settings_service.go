@@ -10,6 +10,9 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	performancepolicy "github.com/vantare/overlays/v2/internal/app/performance"
+	"github.com/vantare/overlays/v2/pkg/config"
 )
 
 // ErrSettingsPathEmpty is returned when Save is called without a file path.
@@ -36,7 +39,7 @@ type NotificationSettings struct {
 	UpdatesMuted bool `json:"updatesMuted,omitempty"`
 	// LauncherMuted hides the toast a launch chain shows when it finishes.
 	LauncherMuted bool `json:"launcherMuted,omitempty"`
-	// SystemEnabled raises a Windows toast when a launch finishes while the
+	// SystemEnabled raises Windows toasts for launch completion and calendar reminders while the
 	// window is minimised. Off by default: it needs the platform's permission,
 	// which only the user can grant.
 	SystemEnabled bool `json:"systemEnabled,omitempty"`
@@ -64,10 +67,189 @@ func DefaultEngineerSettings() *EngineerSettings {
 	}
 }
 
+// WidgetOverride conserva el formato de Personalizado sin activar todavía su
+// UI. Hz es JSON porque el contrato admite un número o la cadena "dirty".
+type WidgetOverride struct {
+	Hz      json.RawMessage `json:"hz,omitempty"`
+	Effects string          `json:"effects,omitempty"`
+}
+
+// PerformanceSettings guarda el defecto global.
+type PerformanceSettings struct {
+	Mode         string                    `json:"mode"`
+	Level        int                       `json:"level"`
+	Source       PerformanceSource         `json:"source"`
+	MigratedFrom string                    `json:"migratedFrom,omitempty"`
+	Overrides    map[string]WidgetOverride `json:"overrides,omitempty"`
+}
+
+type PerformanceSource string
+
+const (
+	PerformanceSourceDefault PerformanceSource = "default"
+	PerformanceSourceUser    PerformanceSource = "user"
+
+	PerformanceMigratedFromRolloutLevel1 = "rollout-level-1"
+)
+
+func performanceDefault() PerformanceSettings {
+	return PerformanceSettings{Mode: string(performancepolicy.ModeAuto), Level: int(performancepolicy.LevelBalanced), Source: PerformanceSourceDefault}
+}
+
+// ResolvePerformancePolicy combina el defecto de la app con la preferencia
+// del perfil v4. Un perfil sin performance equivale exactamente a inherit.
+func ResolvePerformancePolicy(settings PerformanceSettings, profile *config.ProfileDocumentV4) performancepolicy.Policy {
+	requested := performancepolicy.Policy{
+		Mode:  performancepolicy.Mode(settings.Mode),
+		Level: performancepolicy.Level(settings.Level),
+	}
+	if requested.Mode == performancepolicy.ModeCustom {
+		requested.WidgetHz = performancepolicy.WidgetHzFor(requested.Level)
+		for widget, override := range settings.Overrides {
+			if rate, ok := performanceRateFromJSON(override.Hz); ok {
+				requested.WidgetHz[widget] = rate
+			}
+		}
+	}
+	appPolicy := performancepolicy.Resolve(requested, nil)
+	if profile == nil || profile.Performance == nil || profile.Performance.Mode == config.ProfilePerformanceInherit {
+		if requested.Mode == performancepolicy.ModeAuto {
+			return performancepolicy.ResolveAuto(performancepolicy.LevelHigh, performancepolicy.ReasonUnavailable)
+		}
+		return appPolicy
+	}
+	preference := profile.Performance
+
+	profileLevel := performancepolicy.Level(preference.Level)
+	if profileLevel < performancepolicy.LevelMaximum || profileLevel > performancepolicy.LevelMinimum {
+		profileLevel = performancepolicy.LevelBalanced
+	}
+	profilePolicy := performancepolicy.Policy{Mode: performancepolicy.ModeLevel, Level: profileLevel}
+	if preference.Mode == config.ProfilePerformanceCustom {
+		profilePolicy.Mode = performancepolicy.ModeCustom
+		profilePolicy.WidgetHz = performancepolicy.WidgetHzFor(profileLevel)
+		profilePolicy.WidgetEffects = map[string]performancepolicy.Effects{}
+		for widgetID, override := range preference.Overrides {
+			if override.Hz != nil {
+				if override.Hz.Dirty {
+					profilePolicy.WidgetHz[widgetID] = performancepolicy.Dirty()
+				} else if override.Hz.Hertz > 0 {
+					profilePolicy.WidgetHz[widgetID] = performancepolicy.Hertz(override.Hz.Hertz)
+				}
+			}
+			if override.Effects != nil {
+				profilePolicy.WidgetEffects[widgetID] = performancepolicy.Effects(*override.Effects)
+			}
+		}
+	}
+	resolved := performancepolicy.Resolve(profilePolicy, nil)
+	if requested.Mode != performancepolicy.ModeAuto {
+		return resolved
+	}
+
+	// D4: Automático puede operar desde el nivel 2, pero nunca elevar la calidad
+	// pedida por el perfil. En la escala 1..5 el límite es max(2, perfil).
+	if performancepolicy.LevelHigh > resolved.Level {
+		degraded := performancepolicy.Policy{Mode: profilePolicy.Mode, Level: performancepolicy.LevelHigh}
+		if profilePolicy.Mode == performancepolicy.ModeCustom {
+			degraded.WidgetHz = performancepolicy.WidgetHzFor(performancepolicy.LevelHigh)
+			degraded.WidgetEffects = profilePolicy.WidgetEffects
+			widgetTypes := profileWidgetTypes(profile)
+			for widgetID, rate := range profilePolicy.WidgetHz {
+				widgetType, ok := widgetTypes[widgetID]
+				if !ok {
+					continue
+				}
+				base := degraded.WidgetHz[widgetType]
+				degraded.WidgetHz[widgetID] = slowerWidgetRate(base, rate)
+			}
+		}
+		resolved = performancepolicy.Resolve(degraded, nil)
+	}
+	resolved.Mode = performancepolicy.ModeAuto
+	resolved.Reason = performancepolicy.ReasonUnavailable
+	return resolved
+}
+
+// ResolveEffectivePerformancePolicy is the single composition boundary for
+// native lifecycle consumers and TelemetryCore. Diagnostic builds force the
+// complete policy, including the capability published to the overlay.
+func ResolveEffectivePerformancePolicy(settings PerformanceSettings, profile *config.ProfileDocumentV4) performancepolicy.Policy {
+	if override := diagnosticPerformanceLevel(); override != 0 {
+		return performancepolicy.Resolve(performancepolicy.Policy{
+			Mode:  performancepolicy.ModeLevel,
+			Level: performancepolicy.Level(override),
+		}, nil)
+	}
+	return ResolvePerformancePolicy(settings, profile)
+}
+
+func profileWidgetTypes(profile *config.ProfileDocumentV4) map[string]string {
+	result := map[string]string{}
+	if profile == nil {
+		return result
+	}
+	for _, layout := range profile.Layouts {
+		for _, widget := range layout.Widgets {
+			result[widget.ID] = string(widget.Type)
+		}
+	}
+	return result
+}
+
+func slowerWidgetRate(base, requested performancepolicy.WidgetRate) performancepolicy.WidgetRate {
+	if base.Signal() == "dirty" || base.Signal() == "event" {
+		return base
+	}
+	if requested.Signal() == "dirty" || requested.Signal() == "event" {
+		return requested
+	}
+	if base.IsMonitor() {
+		return requested
+	}
+	if requested.IsMonitor() {
+		return base
+	}
+	baseHz, _ := base.Hertz()
+	requestedHz, _ := requested.Hertz()
+	if requestedHz < baseHz {
+		return requested
+	}
+	return base
+}
+
+// ResolveAutomaticPerformancePolicy incorpora la decisión viva del sensor.
+func ResolveAutomaticPerformancePolicy(level performancepolicy.Level, reason performancepolicy.Reason) performancepolicy.Policy {
+	return performancepolicy.ResolveAuto(level, reason)
+}
+
+func performanceRateFromJSON(raw json.RawMessage) (performancepolicy.WidgetRate, bool) {
+	if len(raw) == 0 {
+		return performancepolicy.WidgetRate{}, false
+	}
+	var hz int
+	if err := json.Unmarshal(raw, &hz); err == nil && hz > 0 {
+		return performancepolicy.Hertz(hz), true
+	}
+	var signal string
+	if err := json.Unmarshal(raw, &signal); err != nil {
+		return performancepolicy.WidgetRate{}, false
+	}
+	switch signal {
+	case "dirty":
+		return performancepolicy.Dirty(), true
+	case "event":
+		return performancepolicy.Event(), true
+	default:
+		return performancepolicy.WidgetRate{}, false
+	}
+}
+
 // AppSettings holds user-configurable global settings.
 type AppSettings struct {
 	SchemaVersion               int                         `json:"schemaVersion"`
 	CpuSampling                 bool                        `json:"cpuSampling"`
+	Performance                 PerformanceSettings         `json:"performance"`
 	Notifications               NotificationSettings        `json:"notifications"`
 	Engineer                    *EngineerSettings           `json:"engineer,omitempty"`
 	Hotkeys                     map[string]string           `json:"hotkeys"`
@@ -223,6 +405,7 @@ func DefaultAppSettings() *AppSettings {
 	return &AppSettings{
 		SchemaVersion: appSettingsSchemaVersion,
 		CpuSampling:   true,
+		Performance:   performanceDefault(),
 		Engineer:      DefaultEngineerSettings(),
 		Hotkeys: map[string]string{
 			"toggleOverlay":       "ctrl+shift+v",
@@ -292,6 +475,7 @@ func cloneAppSettings(settings *AppSettings) *AppSettings {
 	if settings.LauncherProfiles != nil {
 		copy.LauncherProfiles = cloneProfiles(settings.LauncherProfiles)
 	}
+	copy.Performance.Overrides = cloneWidgetOverrides(settings.Performance.Overrides)
 	copy.Engineer = cloneEngineerSettings(settings.Engineer)
 	return &copy
 }
@@ -310,8 +494,20 @@ func cloneEngineerSettings(settings *EngineerSettings) *EngineerSettings {
 	return &copy
 }
 
+func cloneWidgetOverrides(source map[string]WidgetOverride) map[string]WidgetOverride {
+	if source == nil {
+		return nil
+	}
+	result := make(map[string]WidgetOverride, len(source))
+	for key, value := range source {
+		value.Hz = append(json.RawMessage(nil), value.Hz...)
+		result[key] = value
+	}
+	return result
+}
+
 // appSettingsSchemaVersion is the current shape of the persisted settings.
-const appSettingsSchemaVersion = 4
+const appSettingsSchemaVersion = 7
 
 // migrateSettings applies schema migrations in place.
 //
@@ -324,7 +520,15 @@ const appSettingsSchemaVersion = 4
 //	          sampler through SetCPUEnabled.
 //	v2 -> v3: add the configurable Delta reference hotkey without replacing any
 //	          user-defined combinations.
-//	v3 -> v4: persist Engineer/Spotter runtime controls. Older files receive the
+//	v3 -> v4: add the former temporary global performance default at level 1.
+//	v4 -> v5: make Automatic the default after gate 12.2. The exact unmarked
+//	          level-1 sentinel was written by the temporary rollout and migrates
+//	          with a visible marker; an explicit user source or any other choice
+//	          is preserved. The migration is never applied to schema v5+.
+//	v5 -> v6: retira el interruptor diagnostico Overlay V1 sin depender de el.
+//	Un JSON antiguo que aun contenga la clave retirada se ignora de forma
+//	segura porque el decodificador desconoce la clave. SchemaVersion queda en 6.
+//	v6 -> v7: persist Engineer/Spotter runtime controls. Older files receive the
 //	          shipping defaults instead of treating missing booleans as opt-outs.
 func (s *SettingsService) migrateSettings(settings *AppSettings) {
 	if settings.SchemaVersion == 0 {
@@ -349,8 +553,34 @@ func (s *SettingsService) migrateSettings(settings *AppSettings) {
 		settings.SchemaVersion = 3
 	}
 	if settings.SchemaVersion < 4 {
-		settings.Engineer = DefaultEngineerSettings()
+		if settings.Performance.Mode == "" {
+			// No persisted choice existed. Route it to today's default without the
+			// rollout marker, which is reserved for files that actually wrote level 1.
+			settings.Performance = performanceDefault()
+		}
 		settings.SchemaVersion = 4
+	}
+	if settings.SchemaVersion < 5 {
+		performance := settings.Performance
+		legacyDefault := performance.Source == "" &&
+			performance.Mode == string(performancepolicy.ModeLevel) &&
+			performance.Level == 1 && len(performance.Overrides) == 0
+		if performance.Mode == "" || performance.Source == PerformanceSourceDefault {
+			settings.Performance = performanceDefault()
+		} else if legacyDefault {
+			settings.Performance = performanceDefault()
+			settings.Performance.MigratedFrom = PerformanceMigratedFromRolloutLevel1
+		} else if performance.Source == "" {
+			settings.Performance.Source = PerformanceSourceUser
+		}
+		settings.SchemaVersion = 5
+	}
+	if settings.SchemaVersion < 6 {
+		settings.SchemaVersion = 6
+	}
+	if settings.SchemaVersion < 7 {
+		settings.Engineer = DefaultEngineerSettings()
+		settings.SchemaVersion = 7
 	}
 	settings.Engineer = normalizeEngineerSettings(settings.Engineer)
 }
@@ -670,6 +900,7 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 	merged := &AppSettings{
 		SchemaVersion:               loaded.SchemaVersion,
 		CpuSampling:                 loaded.CpuSampling,
+		Performance:                 loaded.Performance,
 		Notifications:               loaded.Notifications,
 		Engineer:                    cloneEngineerSettings(loaded.Engineer),
 		ActiveOverlayProfileID:      loaded.ActiveOverlayProfileID,
@@ -679,6 +910,7 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 		LauncherLMUTriggerProfileID: loaded.LauncherLMUTriggerProfileID,
 		LauncherOnboardingCompleted: loaded.LauncherOnboardingCompleted,
 	}
+	merged.Performance.Overrides = cloneWidgetOverrides(loaded.Performance.Overrides)
 	if loaded.Hotkeys != nil {
 		merged.Hotkeys = make(map[string]string, len(loaded.Hotkeys))
 		for k, v := range loaded.Hotkeys {
@@ -707,6 +939,9 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 		merged.LauncherProfiles = defaultLauncherProfiles()
 	}
 	s.migrateSettings(merged)
+	if merged.Performance.Level < 1 || merged.Performance.Level > 5 {
+		merged.Performance = PerformanceSettings{Mode: "level", Level: 1}
+	}
 	s.settings = merged
 }
 
@@ -738,6 +973,13 @@ func (s *SettingsService) SetEngineerSettings(settings *EngineerSettings) error 
 	snapshot := cloneAppSettings(s.settings)
 	s.mu.Unlock()
 	return s.saveWithRetry(snapshot, data, 0)
+}
+
+// EffectivePerformancePolicy resolves the same canonical policy published in
+// capabilities.performance. Diagnostic builds may force a nominal level for
+// reproducible lifecycle measurements without changing persisted settings.
+func (s *SettingsService) EffectivePerformancePolicy(profile *config.ProfileDocumentV4) performancepolicy.Policy {
+	return ResolveEffectivePerformancePolicy(s.Snapshot().Performance, profile)
 }
 
 // persistSidecarApplied writes the current settings to disk (via atomicWrite)
@@ -773,6 +1015,9 @@ func (s *SettingsService) Save(settings *AppSettings) error {
 		return ErrSettingsPathEmpty
 	}
 	snapshot := cloneAppSettings(settings)
+	if snapshot.Performance.Mode == string(performancepolicy.ModeAuto) {
+		snapshot.CpuSampling = true
+	}
 	data, err := json.MarshalIndent(snapshot, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal: %w", err)

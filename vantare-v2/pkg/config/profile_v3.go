@@ -49,14 +49,17 @@ const (
 	WidgetTypeCarDamageVisual        WidgetTypeV3 = "car-damage-visual"
 	WidgetTypeCarDamageNumbers       WidgetTypeV3 = "car-damage-numbers"
 	WidgetTypeEngineerRadio          WidgetTypeV3 = "engineer-radio"
+	WidgetTypeTrackMap               WidgetTypeV3 = "track-map"
 )
 
 type DesignSystemID string
 
 const (
-	DesignSystemVantareOriginal  DesignSystemID = "vantare-original"
-	DesignSystemVantareCrystal   DesignSystemID = "vantare-crystal"
-	DesignSystemVantareEndurance DesignSystemID = "vantare-endurance"
+	DesignSystemVantareOriginal   DesignSystemID = "vantare-original"
+	DesignSystemVantareCrystal    DesignSystemID = "vantare-crystal"
+	DesignSystemVantareEndurance  DesignSystemID = "vantare-endurance"
+	DesignSystemVantareFunctional DesignSystemID = "vantare-functional"
+	DesignSystemVantareIracing    DesignSystemID = "vantare-iracing"
 )
 
 type ProfileDocumentV3 struct {
@@ -160,7 +163,9 @@ type WidgetDesignProvenanceV3 struct {
 }
 
 type LoadedProfileV3 struct {
-	Document     *ProfileDocumentV3
-	Revision     string
-	MigratedFrom int
+	Document         *ProfileDocumentV3
+	DocumentV4       *ProfileDocumentV4
+	Revision         string
+	MigratedFrom     int
+	MigrationNotices []ProfileMigrationNoticeV4
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useNow } from "../../hub/orbit/use-now";
 import { Dot } from "./Dot";
 import { IconButton } from "./IconButton";
 import { formatCountdown } from "./viz-types";
@@ -39,15 +39,7 @@ export function NextRaceCard({
   now,
   className,
 }: NextRaceCardProps) {
-  const [tick, setTick] = useState(() => now ?? new Date());
-
-  useEffect(() => {
-    if (now) return;
-    const id = setInterval(() => setTick(new Date()), 1000);
-    return () => clearInterval(id);
-  }, [now]);
-
-  const clock = now ?? tick;
+  const clock = useNow(now);
   const label = formatCountdown(target, clock);
   const clockLabel = prefix ? `${prefix} ${label}` : label;
 

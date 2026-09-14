@@ -16,15 +16,15 @@ describe("attachProjectionTransport", () => {
         };
       },
     };
-    const store = createProjectionTransportStore("overlay", {
+    const store = createProjectionTransportStore("engineer", {
       now: () => Date.parse("2026-07-30T00:00:00Z"),
     });
     const onError = vi.fn();
     const detach = attachProjectionTransport(store, source, onError);
-    expect([...listeners.keys()]).toEqual(subscribedEventNames("overlay"));
+    expect([...listeners.keys()]).toEqual(subscribedEventNames("engineer"));
 
-    listeners.get(eventName("overlay", "status"))?.({
-      product: "overlay",
+    listeners.get(eventName("engineer", "status"))?.({
+      product: "engineer",
       statusRevision: 1,
       capturedAt: "2026-07-30T00:00:00Z",
       payload: { state: "live", reconnectAttempt: 0 },
@@ -34,7 +34,7 @@ describe("attachProjectionTransport", () => {
 
     detach();
     detach();
-    expect(removed).toEqual(subscribedEventNames("overlay"));
+    expect(removed).toEqual(subscribedEventNames("engineer"));
     expect(listeners.size).toBe(0);
   });
 

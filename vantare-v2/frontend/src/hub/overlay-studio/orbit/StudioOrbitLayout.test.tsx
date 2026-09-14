@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../designs/widget-design-client", () => ({
@@ -10,14 +10,25 @@ vi.mock("../designs/widget-design-client", () => ({
   }),
 }));
 
+const wails = vi.hoisted(() => ({
+  handlers: new Map<string, Array<(event: { data?: unknown }) => void>>(),
+  emit: vi.fn(),
+}));
+
 vi.mock("@wailsio/runtime", () => ({
   Events: {
-    On: vi.fn(() => () => undefined),
-    Emit: vi.fn(),
+    On: vi.fn((name: string, handler: (event: { data?: unknown }) => void) => {
+      const listeners = wails.handlers.get(name) ?? [];
+      listeners.push(handler);
+      wails.handlers.set(name, listeners);
+      return () => wails.handlers.set(name, listeners.filter((item) => item !== handler));
+    }),
+    Emit: wails.emit,
   },
 }));
 
 import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import type { StudioPolicy } from "../access/studio-access";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import { standingsDefinition } from "../../../overlay/widget-types/standings/standings-definition";
 import { I18nProvider } from "../../../i18n/I18nProvider";
@@ -71,9 +82,21 @@ function renderStudio(
   topbar.id = STUDIO_TOPBAR_SLOT_ID;
   window.document.body.append(context, topbar);
 
+  // Studio mechanics tests run with overlays rights; denial itself is
+  // covered by the dedicated policy suites.
+  const paidPolicy: StudioPolicy = {
+    revision: 2,
+    overlaysBasic: true,
+    overlaysAdvanced: true,
+    engineerAI: false,
+    brandCrystal: "optional",
+    brandEfficiency: "optional",
+    brandOriginal: "none",
+  };
+
   const tree = (
     <I18nProvider>
-      <StudioProvider client={createClient(document)} initialFile="profile.json">
+      <StudioProvider client={createClient(document)} initialFile="profile.json" widgetPolicy={paidPolicy}>
         <StudioTelemetryProvider coordinator={createTestTelemetryCoordinator()} liveAvailable={false}>
           <StudioConfirmProvider>
             <StudioOrbitLayout
@@ -109,6 +132,8 @@ afterEach(() => {
 });
 
 beforeEach(() => {
+  wails.handlers.clear();
+  wails.emit.mockClear();
   window.localStorage.clear();
   // Ventana ancha: por debajo de `STUDIO_AUTO_FOLD_INSPECTOR_WIDTH` el
   // inspector se pliega solo (D-R4-4) y estas pruebas van sobre el desplegado.
@@ -162,7 +187,7 @@ describe("StudioOrbitLayout", () => {
     expect(screen.getByTestId("studio-widget-hidden-badge-delta-main")).toBeTruthy();
   });
 
-  it("actualiza en vivo el resumen del acordeón de comportamiento", async () => {
+  it("marca la frecuencia heredada como sustituida por la política del perfil", async () => {
     renderStudio();
     fireEvent.click(
       within(await screen.findByTestId("orbit-studio-widget-item-delta-main")).getByRole("option"),
@@ -171,18 +196,11 @@ describe("StudioOrbitLayout", () => {
     const summaries = () =>
       [...inspector.querySelectorAll(".orbit-acc__sum")].map((node) => node.textContent ?? "");
 
-    await waitFor(() => expect(summaries().join(" ")).toContain("fps"));
-    const before = summaries().find((text) => text.includes("fps")) ?? "";
-
-    // La frecuencia es un `Select` del kit, no los chips del inspector legado.
-    fireEvent.click(screen.getByRole("combobox", { name: "Frecuencia" }));
-    fireEvent.click(screen.getByRole("option", { name: "10" }));
-
-    await waitFor(() => {
-      const after = summaries().find((text) => text.includes("fps")) ?? "";
-      expect(after).not.toBe(before);
-      expect(after).toContain("10");
-    });
+    await waitFor(() => expect(summaries().join(" ")).toContain("política del perfil"));
+    expect(screen.getByTestId("studio-behavior-performance-policy").textContent).toContain(
+      "Ajustes › Rendimiento",
+    );
+    expect(screen.queryByRole("combobox", { name: "Frecuencia" })).toBeNull();
   });
 
   it("pinta los campos del inspector con los controles del kit y rótulos humanos", async () => {
@@ -265,6 +283,18 @@ describe("StudioOrbitLayout", () => {
     expect(orbitStore.get(ORBIT_KEYS.rightDock)).toBe("open");
   });
 
+  it("muestra el enlace OBS al pie del dock con la URL del perfil abierto", async () => {
+    renderStudio();
+    const dock = await screen.findByTestId("orbit-studio-dock");
+    const obs = await within(dock).findByTestId("orbit-studio-obs");
+
+    // Último bloque del dock: el enlace vive debajo del inspector.
+    expect(dock.lastElementChild).toBe(obs);
+
+    const input = within(obs).getByTestId("orbit-studio-obs-url") as HTMLInputElement;
+    expect(input.value).toBe("http://127.0.0.1:39261/overlay?profile=profile.json");
+  });
+
   it("pliega el inspector solo cuando la ventana es estrecha y lo avisa", async () => {
     Object.defineProperty(window, "innerWidth", { configurable: true, value: 1280 });
     renderStudio();
@@ -303,6 +333,97 @@ describe("StudioOrbitLayout", () => {
     await waitFor(() => {
       expect(screen.getByTestId("orbit-studio-save").getAttribute("data-s")).toBe("saved");
     });
+  });
+
+  it("guarda la política v4 del perfil y muestra el nivel efectivo", async () => {
+    renderStudio();
+
+    for (const handler of wails.handlers.get("performance:level") ?? []) {
+      handler({ data: { level: 3, hz: 30, sourceHz: 0, effects: "noBlur" } });
+    }
+    await waitFor(() => {
+      expect(screen.getByTestId("studio-performance-badge").textContent).toContain("Equilibrado");
+    });
+
+    fireEvent.click(screen.getByRole("combobox", { name: "Política del perfil" }));
+    fireEvent.click(screen.getByRole("option", { name: "Personalizado" }));
+
+    await waitFor(() => {
+      expect(wails.emit).toHaveBeenCalledWith(
+        "studio:profile:performance:save",
+        expect.objectContaining({
+          performance: { mode: "custom", level: 3, overrides: {} },
+        }),
+      );
+    });
+    const saveCall = wails.emit.mock.calls.find(([name]) => name === "studio:profile:performance:save");
+    const payload = saveCall?.[1] as { requestId?: string } | undefined;
+    act(() => {
+      for (const handler of wails.handlers.get("studio:profile:performance:saved") ?? []) {
+        handler({ data: { requestId: payload?.requestId, performance: { mode: "custom", level: 3, overrides: {} } } });
+      }
+    });
+    expect(screen.getByTestId("studio-performance-level")).toBeTruthy();
+  });
+
+  it("solo confirma la política con el requestId pendiente", async () => {
+    renderStudio();
+    fireEvent.click(screen.getByRole("combobox", { name: "Política del perfil" }));
+    fireEvent.click(screen.getByRole("option", { name: "Personalizado" }));
+    const saveCall = wails.emit.mock.calls.find(([name]) => name === "studio:profile:performance:save");
+    const payload = saveCall?.[1] as { requestId?: string } | undefined;
+    expect(payload?.requestId).toBeTruthy();
+    expect(screen.queryByTestId("studio-performance-level")).toBeNull();
+
+    act(() => {
+      for (const handler of wails.handlers.get("studio:profile:performance:saved") ?? []) {
+        handler({ data: { requestId: "foreign", performance: { mode: "custom", level: 5, overrides: {} } } });
+      }
+    });
+    expect(screen.queryByTestId("studio-performance-level")).toBeNull();
+
+    act(() => {
+      for (const handler of wails.handlers.get("studio:profile:performance:saved") ?? []) {
+        handler({ data: { requestId: payload?.requestId, performance: { mode: "custom", level: 3, overrides: {} } } });
+      }
+    });
+    expect(screen.getByTestId("studio-performance-level")).toBeTruthy();
+  });
+
+  it("revierte la política cuando falla el guardado correlacionado", () => {
+    renderStudio();
+    fireEvent.click(screen.getByRole("combobox", { name: "Política del perfil" }));
+    fireEvent.click(screen.getByRole("option", { name: "Personalizado" }));
+    const saveCall = wails.emit.mock.calls.find(([name]) => name === "studio:profile:performance:save");
+    const payload = saveCall?.[1] as { requestId?: string } | undefined;
+
+    act(() => {
+      for (const handler of wails.handlers.get("studio:profile:error") ?? []) {
+        handler({ data: { requestId: payload?.requestId, operation: "performance-save", message: "disk full" } });
+      }
+      for (const handler of wails.handlers.get("studio:profile:performance:saved") ?? []) {
+        handler({ data: { requestId: payload?.requestId, performance: { mode: "custom", level: 3, overrides: {} } } });
+      }
+    });
+    expect(screen.queryByTestId("studio-performance-level")).toBeNull();
+  });
+
+  it("revierte la política ante conflicto de revisión correlacionado", () => {
+    renderStudio();
+    fireEvent.click(screen.getByRole("combobox", { name: "Política del perfil" }));
+    fireEvent.click(screen.getByRole("option", { name: "Personalizado" }));
+    const saveCall = wails.emit.mock.calls.find(([name]) => name === "studio:profile:performance:save");
+    const payload = saveCall?.[1] as { requestId?: string } | undefined;
+
+    act(() => {
+      for (const handler of wails.handlers.get("studio:profile:conflict") ?? []) {
+        handler({ data: { requestId: payload?.requestId, message: "revision conflict" } });
+      }
+      for (const handler of wails.handlers.get("studio:profile:performance:saved") ?? []) {
+        handler({ data: { requestId: payload?.requestId, performance: { mode: "custom", level: 3, overrides: {} } } });
+      }
+    });
+    expect(screen.queryByTestId("studio-performance-level")).toBeNull();
   });
 
   it("habilita `Live` cuando la shell da el sim por conectado", async () => {

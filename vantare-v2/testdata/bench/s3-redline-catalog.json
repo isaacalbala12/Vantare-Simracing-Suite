@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 1,
+  "profiles": [
+    {
+      "ordinal": 9,
+      "family": "standings",
+      "templateId": "standings-redline",
+      "profileId": "s3-standings-redline",
+      "file": "09-standings-redline.profile-v3.json",
+      "widgetId": "widget-standings-redline",
+      "type": "standings",
+      "layout": { "w": 280, "h": 900 },
+      "expectedPhysicalFrameWidth": 826,
+      "updateHz": 8,
+      "content": {
+        "rowCount": 20,
+        "classScope": "all-classes",
+        "columns": [
+          { "id": "position", "metricId": "position", "enabled": true, "widthPreset": "sm" },
+          { "id": "driverName", "metricId": "driverName", "enabled": true, "widthPreset": "lg" },
+          { "id": "driverNumber", "metricId": "driverNumber", "enabled": true, "widthPreset": "sm" },
+          { "id": "gap", "metricId": "gap", "enabled": true, "widthPreset": "md" },
+          { "id": "bestLap", "metricId": "bestLap", "enabled": true, "widthPreset": "lg" },
+          { "id": "vehicleClass", "metricId": "vehicleClass", "enabled": true, "widthPreset": "lg" },
+          { "id": "currentLap", "metricId": "currentLap", "enabled": true, "widthPreset": "auto" },
+          { "id": "interval", "metricId": "interval", "enabled": true, "widthPreset": "md" },
+          { "id": "lastLap", "metricId": "lastLap", "enabled": true, "widthPreset": "lg" },
+          { "id": "pit", "metricId": "pit", "enabled": true, "widthPreset": "xs" },
+          { "id": "tireCompound", "metricId": "tireCompound", "enabled": true, "widthPreset": "sm" }
+        ]
+      },
+      "baseSettings": { "templateId": "standings-redline", "showSessionHeader": true }
+    },
+    {
+      "ordinal": 13,
+      "family": "relative",
+      "templateId": "relative-redline-mirror",
+      "profileId": "s3-relative-redline-mirror",
+      "file": "13-relative-redline-mirror.profile-v3.json",
+      "widgetId": "widget-relative-redline-mirror",
+      "type": "relative",
+      "layout": { "w": 760, "h": 700 },
+      "updateHz": 12,
+      "content": { "filters": { "classScope": "all", "includePlayer": true, "rangeAhead": 4, "rangeBehind": 4, "rowHeightMode": "comfortable" } },
+      "baseSettings": { "templateId": "relative-redline-mirror", "showHeader": true }
+    },
+    {
+      "ordinal": 14,
+      "family": "relative",
+      "templateId": "relative-redline-proximity",
+      "profileId": "s3-relative-redline-proximity",
+      "file": "14-relative-redline-proximity.profile-v3.json",
+      "widgetId": "widget-relative-redline-proximity",
+      "type": "relative",
+      "layout": { "w": 760, "h": 700 },
+      "updateHz": 12,
+      "content": { "filters": { "classScope": "all", "includePlayer": true, "rangeAhead": 4, "rangeBehind": 4, "rowHeightMode": "comfortable" } },
+      "baseSettings": { "templateId": "relative-redline-proximity", "showHeader": true }
+    },
+    {
+      "ordinal": 15,
+      "family": "relative",
+      "templateId": "relative-redline-traffic",
+      "profileId": "s3-relative-redline-traffic",
+      "file": "15-relative-redline-traffic.profile-v3.json",
+      "widgetId": "widget-relative-redline-traffic",
+      "type": "relative",
+      "layout": { "w": 760, "h": 700 },
+      "updateHz": 12,
+      "content": { "filters": { "classScope": "all", "includePlayer": true, "rangeAhead": 4, "rangeBehind": 4, "rowHeightMode": "comfortable" } },
+      "baseSettings": { "templateId": "relative-redline-traffic", "showHeader": true }
+    },
+    {
+      "ordinal": 22,
+      "family": "pedals",
+      "templateId": "pedals-redline",
+      "profileId": "s3-pedals-redline",
+      "file": "22-pedals-redline.profile-v3.json",
+      "widgetId": "widget-pedals-redline",
+      "type": "pedals",
+      "layout": { "w": 520, "h": 420 },
+      "updateHz": 20,
+      "content": {},
+      "baseSettings": { "templateId": "pedals-redline" }
+    }
+  ]
+}

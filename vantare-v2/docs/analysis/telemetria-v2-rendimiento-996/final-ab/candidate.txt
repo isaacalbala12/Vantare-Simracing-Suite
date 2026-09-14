@@ -1,0 +1,110 @@
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkIsa998RuntimeSink/2vehiculos         	    7204	     42773 ns/op	   39438 B/op	      17 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/2vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: shadow retirado de producción (candidato)
+BenchmarkIsa998RuntimeSink/64vehiculos        	     945	    167173 ns/op	  147282 B/op	     210 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/64vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: shadow retirado de producción (candidato)
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkIsa998RuntimeSink/2vehiculos         	    7827	     43995 ns/op	   39465 B/op	      17 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/2vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: shadow retirado de producción (candidato)
+BenchmarkIsa998RuntimeSink/64vehiculos        	     724	    162040 ns/op	  146426 B/op	     210 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/64vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: shadow retirado de producción (candidato)
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkIsa998RuntimeSink/2vehiculos         	    5917	     42849 ns/op	   39364 B/op	      17 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/2vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: shadow retirado de producción (candidato)
+BenchmarkIsa998RuntimeSink/64vehiculos        	     938	    157514 ns/op	  147262 B/op	     210 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/64vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: shadow retirado de producción (candidato)
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkIsa998RuntimeSink/2vehiculos         	    7591	     43443 ns/op	   39455 B/op	      17 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/2vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: shadow retirado de producción (candidato)
+BenchmarkIsa998RuntimeSink/64vehiculos        	    1021	    153184 ns/op	  147491 B/op	     210 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/64vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: shadow retirado de producción (candidato)
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkIsa998RuntimeSink/2vehiculos         	    5920	     46436 ns/op	   39364 B/op	      17 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/2vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: shadow retirado de producción (candidato)
+BenchmarkIsa998RuntimeSink/64vehiculos        	     801	    157471 ns/op	  146778 B/op	     210 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/64vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: shadow retirado de producción (candidato)
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkIsa998RuntimeSink/2vehiculos         	    7654	     40199 ns/op	   39458 B/op	      17 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/2vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: shadow retirado de producción (candidato)
+BenchmarkIsa998RuntimeSink/64vehiculos        	     884	    146145 ns/op	  147089 B/op	     210 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/64vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: shadow retirado de producción (candidato)
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkIsa998RuntimeSink/2vehiculos         	    7746	     43600 ns/op	   39461 B/op	      17 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/2vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: shadow retirado de producción (candidato)
+BenchmarkIsa998RuntimeSink/64vehiculos        	     834	    159641 ns/op	  146909 B/op	     210 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/64vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: shadow retirado de producción (candidato)
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkIsa998RuntimeSink/2vehiculos         	    9072	     45532 ns/op	   39508 B/op	      17 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/2vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: shadow retirado de producción (candidato)
+BenchmarkIsa998RuntimeSink/64vehiculos        	     807	    165489 ns/op	  146803 B/op	     210 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/64vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: shadow retirado de producción (candidato)
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkIsa998RuntimeSink/2vehiculos         	    7666	     40506 ns/op	   39458 B/op	      17 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/2vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: shadow retirado de producción (candidato)
+BenchmarkIsa998RuntimeSink/64vehiculos        	     823	    167885 ns/op	  146866 B/op	     210 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/64vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: shadow retirado de producción (candidato)
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkIsa998RuntimeSink/2vehiculos         	    7506	     38145 ns/op	   39451 B/op	      17 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/2vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: shadow retirado de producción (candidato)
+BenchmarkIsa998RuntimeSink/64vehiculos        	    1052	    146043 ns/op	  147567 B/op	     210 allocs/op
+--- BENCH: BenchmarkIsa998RuntimeSink/64vehiculos
+    telemetry_isa998_perf_bench_test.go:66: isa998: shadow retirado de producción (candidato)
+PASS

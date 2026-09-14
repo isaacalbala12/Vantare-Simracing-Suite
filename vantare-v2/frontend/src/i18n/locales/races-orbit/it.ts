@@ -1,12 +1,17 @@
 /** Catalogo `races.*` di Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
 export const racesOrbitIt: Record<string, string> = {
   "races.eyebrow": "Calendario LMU",
-  "races.title": "Gare",
+  "races.title": "Calendario",
   "races.lead":
-    "Partenze calcolate dalla cadenza pubblicata del fixture, nel tuo fuso orario.",
+    "Orari e prossime partenze, nel tuo fuso orario.",
+  "races.status.refreshing": "Aggiornamento…",
+  "races.status.error": "Impossibile aggiornare il calendario. Riprova.",
+  "races.status.loading": "Caricamento del calendario…",
+  "races.status.unknown": "La validità dell'orario è sconosciuta. Aggiornalo.",
+  "races.status.future": "Questo orario non è ancora iniziato.",
+  "races.status.expired": "Orario scaduto. Aggiorna per vedere le prossime partenze.",
+  "races.status.updated": "Orario aggiornato.",
   "races.refresh": "Aggiorna orario",
-  "races.refreshed": "Orario richiesto",
-  "races.refreshedHint": "È stato richiesto al backend il calendario pubblicato.",
 
   "races.views.label": "Vista del calendario",
   "races.views.next": "Prossime",
@@ -46,6 +51,7 @@ export const racesOrbitIt: Record<string, string> = {
   "races.detail.race": "Gara",
   "races.detail.cadence": "Cadenza",
   "races.detail.next": "Prossima partenza",
+  "races.detail.estimated": "~ durata stimata",
   "races.detail.sessions": "Sessioni",
   "races.detail.starts": "Partenze successive",
   "races.detail.picked": "Partenza scelta",
@@ -72,6 +78,9 @@ export const racesOrbitIt: Record<string, string> = {
   "races.tier.advanced": "Oro",
   "races.tier.weekly": "Settimanale",
 
+  "races.detail.followPending": "Salvataggio…",
+  "races.toasts.followFailed": "Impossibile salvare la preferenza",
+  "races.toasts.followFailedHint": "La preferenza non è stata confermata. Riprova.",
   "races.toasts.followed": "Serie seguita",
   "races.toasts.followedHint":
     "Promemoria a {{minutes}} min da ogni partenza di {{name}}.",

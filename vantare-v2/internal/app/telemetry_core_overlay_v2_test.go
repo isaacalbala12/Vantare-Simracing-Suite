@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"testing"
 	"time"
 
+	performancepolicy "github.com/vantare/overlays/v2/internal/app/performance"
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
@@ -14,16 +16,133 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 )
 
-func TestRuntimePublishesV1AndV2InShadow(t *testing.T) {
+func TestOverlayV2AppliesHotPerformancePolicyOnNextTick(t *testing.T) {
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+		PerformancePolicy: performancepolicy.Policy{Mode: performancepolicy.ModeLevel, Level: performancepolicy.LevelMaximum},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisher, release, err := runtime.OverlayV2Publishers().RegisterConsumer(telemetrytransport.ProductOverlayV2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+
+	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(1, 1)); err != nil {
+		t.Fatal(err)
+	}
+	firstEvent, ok := publisher.ReplaySnapshot()
+	if !ok {
+		t.Fatal("missing first snapshot")
+	}
+	var first overlayv2.UpdateV2
+	if err := json.Unmarshal(firstEvent.Data, &first); err != nil {
+		t.Fatal(err)
+	}
+	if first.Frame == nil || first.Frame.Capabilities.Performance == nil || first.Frame.Capabilities.Performance.Level != 1 || first.Frame.Capabilities.Performance.RafCap != nil {
+		t.Fatalf("first performance = %+v", first.Frame.Capabilities.Performance)
+	}
+
+	runtime.SetPerformancePolicy(performancepolicy.Policy{Mode: performancepolicy.ModeLevel, Level: performancepolicy.LevelMinimum})
+	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(2, 1)); err != nil {
+		t.Fatal(err)
+	}
+	secondEvent, ok := publisher.ReplaySnapshot()
+	if !ok {
+		t.Fatal("missing second snapshot")
+	}
+	var second overlayv2.UpdateV2
+	if err := json.Unmarshal(secondEvent.Data, &second); err != nil {
+		t.Fatal(err)
+	}
+	performance := second.Frame.Capabilities.Performance
+	if performance == nil {
+		t.Fatal("second performance is nil")
+	}
+	if performance.Level != 5 || performance.RafCap == nil || *performance.RafCap != 20 || performance.Mode != overlayv2.PerformanceModeManual {
+		t.Fatalf("next tick performance = %+v", performance)
+	}
+}
+
+func TestPerformanceLevelEventUsesResolvedGoPolicy(t *testing.T) {
+	spy := &studioProfileSpy{}
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+		Emitter:           spy,
+		PerformancePolicy: performancepolicy.Policy{Mode: performancepolicy.ModeLevel, Level: performancepolicy.LevelHigh},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime.EmitPerformanceLevel()
+	runtime.SetPerformancePolicy(performancepolicy.Policy{Mode: performancepolicy.ModeLevel, Level: performancepolicy.LevelMinimum})
+	if len(spy.events) != 2 || spy.events[0] != "performance:level" || spy.events[1] != "performance:level" {
+		t.Fatalf("events=%v", spy.events)
+	}
+	first, ok := spy.data[0].(overlayv2.PerformanceV2)
+	if !ok || first.Level != 2 {
+		t.Fatalf("first payload=%T %+v", spy.data[0], spy.data[0])
+	}
+	second, ok := spy.data[1].(overlayv2.PerformanceV2)
+	if !ok || second.Level != 5 || second.RafCap == nil || *second.RafCap != 20 {
+		t.Fatalf("second payload=%T %+v", spy.data[1], spy.data[1])
+	}
+}
+
+func TestOverlayV2PublishesObservedSourceHzOverTwoSeconds(t *testing.T) {
+	now := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
+	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{
+		Now: func() time.Time { return now },
+		PerformancePolicy: performancepolicy.Policy{
+			Mode: performancepolicy.ModeLevel, Level: performancepolicy.LevelMaximum, SourceHz: 999,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisher, release, err := runtime.OverlayV2Publishers().RegisterConsumer(telemetrytransport.ProductOverlayV2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+
+	for sequence := uint64(1); sequence <= 20; sequence++ {
+		now = time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC).Add(time.Duration(sequence-1) * 100 * time.Millisecond)
+		if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(sequence, 1)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Fuerza capabilities en el tick 21 para observar el valor actual de la
+	// ventana, no un valor memoizado antes de completarse los dos segundos.
+	runtime.SetPerformancePolicy(performancepolicy.Policy{Mode: performancepolicy.ModeLevel, Level: performancepolicy.LevelHigh})
+	now = time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC).Add(2 * time.Second)
+	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(21, 1)); err != nil {
+		t.Fatal(err)
+	}
+
+	event, ok := publisher.ReplaySnapshot()
+	if !ok {
+		t.Fatal("missing observed-rate snapshot")
+	}
+	var update overlayv2.UpdateV2
+	if err := json.Unmarshal(event.Data, &update); err != nil {
+		t.Fatal(err)
+	}
+	if update.Frame == nil || update.Frame.Capabilities.Performance == nil {
+		t.Fatal("missing performance capability")
+	}
+	if got := update.Frame.Capabilities.Performance.SourceHz; math.Abs(got-10) > 0.0001 {
+		t.Fatalf("sourceHz = %.4f, want observed 10 Hz", got)
+	}
+}
+
+func TestRuntimePublishesV2WithoutV1(t *testing.T) {
+	// R6b: no existe Hub Overlay; WriteBatch publica V2 y Strategy conserva
+	// su semantica.
 	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	v1, err := runtime.Hub().Subscribe(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer v1.Close()
 	v2Publisher, release, err := runtime.OverlayV2Publishers().RegisterConsumer(telemetrytransport.ProductOverlayV2)
 	if err != nil {
 		t.Fatal(err)
@@ -38,7 +157,6 @@ func TestRuntimePublishesV1AndV2InShadow(t *testing.T) {
 	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(1, 1)); err != nil {
 		t.Fatalf("WriteBatch() = %v", err)
 	}
-	assertNextV1Snapshot(t, v1)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	event := nextOverlayV2Snapshot(t, v2, ctx)
@@ -53,7 +171,7 @@ func TestRuntimePublishesV1AndV2InShadow(t *testing.T) {
 		t.Fatalf("v2 update = %+v", update)
 	}
 	metrics := runtime.Metrics()
-	if metrics.OverlayProjectionsPublished != 1 || metrics.OverlayV2PayloadBytes["1"].Count != 1 ||
+	if metrics.OverlayV2PayloadBytes["1"].Count != 1 ||
 		metrics.OverlayV2BuildDurationUs.Count != 1 || metrics.PublisherDroppedFrames["overlay-v2"] != 0 {
 		t.Fatalf("shadow metrics = %+v", metrics)
 	}
@@ -107,16 +225,13 @@ func TestRuntimePublishesAndRetainsOverlayV2LifecycleWithoutFrames(t *testing.T)
 	}
 }
 
-func TestOverlayV2FailureDoesNotAffectV1(t *testing.T) {
+func TestOverlayV2FailureIsNonTerminal(t *testing.T) {
+	// R6b: un fallo V2 sigue siendo no terminal y Strategy conserva su
+	// semantica (sin hub en este corte).
 	runtime, err := NewTelemetryCoreRuntime(TelemetryCoreRuntimeConfig{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	v1, err := runtime.Hub().Subscribe(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer v1.Close()
 	_, release, err := runtime.OverlayV2Publishers().RegisterConsumer(telemetrytransport.ProductOverlayV2)
 	if err != nil {
 		t.Fatal(err)
@@ -131,9 +246,8 @@ func TestOverlayV2FailureDoesNotAffectV1(t *testing.T) {
 	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(1, 1)); err != nil {
 		t.Fatalf("v2 shadow failure escaped driver loop: %v", err)
 	}
-	assertNextV1Snapshot(t, v1)
 	metrics := runtime.Metrics()
-	if metrics.OverlayProjectionsPublished != 1 || metrics.PublishFailures["overlay-v2"] != 1 ||
+	if metrics.PublishFailures["overlay-v2"] != 1 ||
 		metrics.FramesDropped["overlay-v2-publish"] != 1 || metrics.FailStops != 0 {
 		t.Fatalf("v2 failure isolation metrics = %+v", metrics)
 	}
@@ -225,21 +339,6 @@ func TestOverlayV2SnapshotRevisionCannotBeOvertakenByConcurrentStatus(t *testing
 	}
 	if snapshotUpdate.Source.State != overlayv2.SourceStateStale {
 		t.Fatalf("snapshot source = %q, want current stale state", snapshotUpdate.Source.State)
-	}
-}
-
-func assertNextV1Snapshot(t *testing.T, subscription *telemetrytransport.Subscription) {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	for {
-		event, err := subscription.Next(ctx)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if event.Kind == telemetrytransport.EventSnapshot {
-			return
-		}
 	}
 }
 

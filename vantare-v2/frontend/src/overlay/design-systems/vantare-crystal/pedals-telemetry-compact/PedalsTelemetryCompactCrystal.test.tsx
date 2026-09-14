@@ -18,3 +18,16 @@ describe("PedalsTelemetryCompactCrystal", () => {
     expect(root.querySelectorAll("button, input, textarea")).toHaveLength(0);
   });
 });
+
+it("uses an explicit RPM scale and preserves the number above its range", () => {
+ const {container,rerender}=render(<PedalsTelemetryCompactCrystal model={{...model,rpm:6300,rpmText:"6.3k"}} settings={{}} renderMode="harness"/>);
+ expect(container.textContent).toContain("0-10k RPM");
+ expect(container.querySelectorAll(".is-on")).toHaveLength(4);
+ expect(container.querySelectorAll(".is-red")).toHaveLength(0);
+ rerender(<PedalsTelemetryCompactCrystal model={{...model,rpm:12500,rpmText:"12.5k"}} settings={{}} renderMode="harness"/>);
+ expect(container.textContent).toContain("12.5k");
+});
+it("honors the RPM content toggle", () => {
+ const {container}=render(<PedalsTelemetryCompactCrystal model={{...model,showRpm:false}} settings={{}} renderMode="harness"/>);
+ expect(container.querySelector(".vc-pedals-compact-shift")).toBeNull();
+});

@@ -4,10 +4,9 @@ import type {
   StandingsViewModel,
 } from "../../../widget-types/standings/standings-view-model";
 import { resolveStandingsSessionMode } from "../../../widget-types/standings/standings-formatting";
+import { flipRows } from "../../../core/widget-motion";
 import {
-  classPositionsById,
   deriveBattlePairs,
-  deriveFlipOffsets,
   derivePositionDeltas,
   deriveRosterChange,
   deriveStandingsEvents,
@@ -75,6 +74,22 @@ function rowElement(root: HTMLElement | null, rowId: string): HTMLElement | null
   return root?.querySelector<HTMLElement>(`[data-standings-row="${CSS.escape(rowId)}"]`) ?? null;
 }
 
+function clearImperativeMotion(root: HTMLElement | null): void {
+  if (!root) return;
+  for (const row of root.querySelectorAll<HTMLElement>("[data-standings-row]")) {
+    delete row.dataset.motion;
+    delete row.dataset.hot;
+    row.style.removeProperty("--flash-delay");
+  }
+  for (const element of [root, ...root.querySelectorAll("*")]) {
+    const getAnimations = (element as Element & { getAnimations?: () => Animation[] }).getAnimations;
+    if (typeof getAnimations === "function") {
+      for (const animation of getAnimations.call(element)) animation.cancel();
+    }
+  }
+  for (const floater of root.querySelectorAll(".ven-red-crown-fly")) floater.remove();
+}
+
 /** Flies a clone of the fastest-lap glyph from the old holder's best cell to the new one. */
 function flyCrown(root: HTMLElement, fromRowId: string, toRowId: string): void {
   const fromCell = rowElement(root, fromRowId)?.querySelector<HTMLElement>(".ven-red-best");
@@ -123,9 +138,6 @@ export function useStandingsMotion(
   enabled: boolean,
   rootRef: RefObject<HTMLElement | null>,
 ): StandingsMotionState {
-  const [baseline] = useState(() =>
-    model.status === "ready" ? classPositionsById(model) : new Map<string, number>(),
-  );
   const [tires, setTires] = useState<ReadonlyMap<string, TireReveal>>(new Map());
   const [boxKeys, setBoxKeys] = useState<ReadonlySet<string>>(new Set());
   const [dissolving, setDissolving] = useState<ReadonlyMap<string, BattlePair>>(new Map());
@@ -135,9 +147,15 @@ export function useStandingsMotion(
   const [displayDeltas, setDisplayDeltas] = useState<ReadonlyMap<string, number>>(new Map());
   const prevRef = useRef<StandingsViewModel | null>(null);
   const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  const keyedRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const battleSeenRef = useRef<Set<string>>(new Set());
   const deltaTargetsRef = useRef<ReadonlyMap<string, number>>(new Map());
   const deltaShownRef = useRef<ReadonlyMap<string, number>>(new Map());
+  const lifecycleRef = useRef<{ identity?: string; sequence?: number; mode: string } | null>(null);
+  /** Memoria del FLIP medido (tops por id de fila) — sobrevive a remounts. */
+  const motionStateRef = useRef<Map<string, unknown>>(new Map());
+  /** true mientras un apply dejó trabajo vivo — el teardown corre una vez. */
+  const effectsActiveRef = useRef(false);
 
   useEffect(() => {
     const timers = timersRef.current;
@@ -150,7 +168,58 @@ export function useStandingsMotion(
   }, []);
 
   useLayoutEffect(() => {
+    const mode = model.status === "ready" ? resolveStandingsSessionMode(model.sessionLabel) : model.status;
+    const previousLifecycle = lifecycleRef.current;
+    const reset = previousLifecycle !== null && (
+      previousLifecycle.identity !== model.motionIdentity ||
+      previousLifecycle.mode !== mode ||
+      (previousLifecycle.sequence !== undefined &&
+        model.motionSequence !== undefined &&
+        model.motionSequence < previousLifecycle.sequence)
+    );
+    lifecycleRef.current = {
+      identity: model.motionIdentity,
+      sequence: model.motionSequence,
+      mode,
+    };
+    if (reset) {
+      for (const timer of timersRef.current) clearTimeout(timer);
+      timersRef.current.clear();
+      keyedRef.current.clear();
+      clearImperativeMotion(rootRef.current);
+      battleSeenRef.current.clear();
+      deltaTargetsRef.current = new Map();
+      deltaShownRef.current = new Map();
+      motionStateRef.current = new Map();
+      prevRef.current = null;
+      setDisplayDeltas(new Map());
+      setTires(new Map());
+      setBoxKeys(new Set());
+      setDissolving(new Map());
+      setGhosts([]);
+    }
     if (!enabled || model.status !== "ready") {
+      // Bajar el presupuesto no puede dejar animaciones WAAPI corriendo,
+      // timers pendientes ni attrs de flash encendidos — mismo contrato
+      // de cancelación que useWidgetMotion, una sola vez por transición.
+      if (effectsActiveRef.current) {
+        effectsActiveRef.current = false;
+        for (const timer of timersRef.current) {
+          clearTimeout(timer);
+        }
+        timersRef.current.clear();
+        keyedRef.current.clear();
+        clearImperativeMotion(rootRef.current);
+        battleSeenRef.current.clear();
+        deltaTargetsRef.current = new Map();
+        deltaShownRef.current = new Map();
+        motionStateRef.current = new Map();
+        setDisplayDeltas(new Map());
+        setTires(new Map());
+        setBoxKeys(new Set());
+        setDissolving(new Map());
+        setGhosts([]);
+      }
       prevRef.current = model.status === "ready" ? model : null;
       return;
     }
@@ -158,17 +227,33 @@ export function useStandingsMotion(
     prevRef.current = model;
     const root = rootRef.current;
 
-    const schedule = (durationMs: number, run: () => void) => {
+    // Misma disciplina que MotionSchedule del core: con key, reprogramar la
+    // misma clave cancela el timer anterior — sin ella el borrado viejo apaga
+    // el flash del evento siguiente, y stepDeltas apilaba una cadena de
+    // timers por apply.
+    const schedule = (durationMs: number, run: () => void, key?: string) => {
       const timer = setTimeout(() => {
         timersRef.current.delete(timer);
+        if (key !== undefined && keyedRef.current.get(key) === timer) {
+          keyedRef.current.delete(key);
+        }
         run();
       }, durationMs);
+      if (key !== undefined) {
+        const previous = keyedRef.current.get(key);
+        if (previous !== undefined) {
+          clearTimeout(previous);
+          timersRef.current.delete(previous);
+        }
+        keyedRef.current.set(key, timer);
+      }
       timersRef.current.add(timer);
     };
 
     // Delta counting: step the displayed value one unit toward the target so
     // a two-place jump reads +1 → +2 instead of teleporting.
-    deltaTargetsRef.current = derivePositionDeltas(baseline, model);
+    effectsActiveRef.current = true;
+    deltaTargetsRef.current = derivePositionDeltas(model);
     const stepDeltas = () => {
       const goal = deltaTargetsRef.current;
       const current = deltaShownRef.current;
@@ -190,25 +275,28 @@ export function useStandingsMotion(
       if (moved) {
         deltaShownRef.current = next;
         setDisplayDeltas(next);
-        schedule(DELTA_STEP_MS, stepDeltas);
+        schedule(DELTA_STEP_MS, stepDeltas, "delta-step");
       }
     };
     stepDeltas();
 
-    if (!prev || !root) {
+    if (!root) {
       return;
     }
 
-    // FLIP slides, duration scaled by distance so a three-row climb glides
-    // slower than a one-row swap instead of snapping at the same speed.
-    for (const [rowId, offset] of deriveFlipOffsets(prev, model, REDLINE_ROW_STRIDE_PX)) {
-      const rowsMoved = Math.abs(offset) / REDLINE_ROW_STRIDE_PX;
-      const duration = Math.min(FLIP_MAX_MS, FLIP_BASE_MS + rowsMoved * FLIP_PER_ROW_MS);
-      const element = rowElement(root, rowId);
-      element?.animate(
-        [{ transform: `translateY(${offset}px)` }, { transform: "translateY(0)" }],
-        { duration, easing: "cubic-bezier(0.22, 0.9, 0.3, 1)" },
-      );
+    // FLIP medido por id: la fila desliza desde su posición visual real, no
+    // desde un stride por índice. La memoria va por id, así que una fila
+    // re-montada al entrar o salir de un contenedor .ven-red-battle conserva
+    // su posición de origen en vez de saltar al destino.
+    flipRows(root, motionStateRef.current, {
+      rows: "[data-standings-row]",
+      id: (row) => row.dataset.standingsRow,
+      duration: (from) =>
+        Math.min(FLIP_MAX_MS, FLIP_BASE_MS + (Math.abs(from) / REDLINE_ROW_STRIDE_PX) * FLIP_PER_ROW_MS),
+    });
+
+    if (!prev) {
+      return;
     }
 
     // Roster: entries slide in; retirements become ghosts that fade in place.
@@ -339,7 +427,7 @@ export function useStandingsMotion(
         });
       }
     }
-  }, [enabled, model, rootRef, baseline]);
+  }, [enabled, model, rootRef]);
 
   // A pair that just broke has to be dissolving BEFORE anything commits.
   //

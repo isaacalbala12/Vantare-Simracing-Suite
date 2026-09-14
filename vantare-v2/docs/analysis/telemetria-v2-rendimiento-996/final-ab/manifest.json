@@ -1,0 +1,18 @@
+{
+  "arguments": [
+    "-test.run=^$",
+    "-test.bench=^BenchmarkIsa998RuntimeSink$",
+    "-test.benchmem",
+    "-test.benchtime=100ms",
+    "-test.cpu=1",
+    "-test.count=1"
+  ],
+  "candidate": "C:\\tmp\\isa996-final-runtime.test.exe",
+  "baseline": "C:\\tmp\\isa996-base-runtime.test.exe",
+  "cpu": "AMD Ryzen 7 3700X 8-Core Processor             ",
+  "candidateSHA256": "9710400FC95BE9E609AB056FF74A2C81CEDB8E24A24501D588D0C9BEAE717A79",
+  "startedUtc": "2026-09-05T22:30:29.7314198Z",
+  "baselineSHA256": "4DB91E0A78748C28ED159A0DA147EAC9937F604CA6820A67A4B0627A1D16B1F4",
+  "note": "Local Go microbenchmark; not application CPU/RAM/GPU or LMU frametime evidence",
+  "samples": 10
+}

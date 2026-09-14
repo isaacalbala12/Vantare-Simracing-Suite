@@ -1,5 +1,7 @@
 import type { WidgetLayoutV3 } from "../../../overlay/core/profile-document";
 import { resolveWidgetVisualGeometry } from "../../../overlay/core/widget-visual-geometry";
+import { resolveMinimumWidthFrameLayout } from "../../../overlay/widget-types/standings/standings-redline-layout";
+import { resolveMinimumHeightFrameLayout } from "../../../overlay/widget-types/standings/standings-frame-layout";
 
 type FramePreviewKind = "move" | "resize";
 
@@ -40,17 +42,35 @@ export function clearStudioFrameLayoutPreview(widgetId: string): void {
   previewSessions.delete(widgetId);
 }
 
+function resolveEffectiveFrameLayout(frame: HTMLElement, layout: WidgetLayoutV3): WidgetLayoutV3 {
+  const minimumWidth = Number(frame.dataset.effectiveMinimumWidth);
+  const minimumHeight = Number(frame.dataset.effectiveMinimumHeight);
+  const viewportWidth = Number(frame.dataset.layoutViewportWidth);
+  const viewportHeight = Number(frame.dataset.layoutViewportHeight);
+  const sized = resolveMinimumWidthFrameLayout(
+    layout,
+    Number.isFinite(minimumWidth) && minimumWidth > 0 ? minimumWidth : undefined,
+    Number.isFinite(viewportWidth) && viewportWidth > 0 ? viewportWidth : undefined,
+  );
+  return resolveMinimumHeightFrameLayout(
+    sized,
+    Number.isFinite(minimumHeight) && minimumHeight > 0 ? minimumHeight : undefined,
+    Number.isFinite(viewportHeight) && viewportHeight > 0 ? viewportHeight : undefined,
+  );
+}
+
 function writeFrameGeometry(frame: HTMLElement, layout: WidgetLayoutV3): void {
-  frame.style.left = `${layout.x}px`;
-  frame.style.top = `${layout.y}px`;
-  frame.style.width = `${layout.w}px`;
-  frame.style.height = `${layout.h}px`;
+  const effectiveLayout = resolveEffectiveFrameLayout(frame, layout);
+  frame.style.left = `${effectiveLayout.x}px`;
+  frame.style.top = `${effectiveLayout.y}px`;
+  frame.style.width = `${effectiveLayout.w}px`;
+  frame.style.height = `${effectiveLayout.h}px`;
   const viewport = frame.querySelector<HTMLElement>("[data-widget-visual-viewport]");
   const baseWidth = viewport?.dataset.widgetVisualFluidWidth === "true"
-    ? layout.w
+    ? effectiveLayout.w
     : Number(viewport?.dataset.widgetVisualBaseWidth);
   if (viewport && Number.isFinite(baseWidth) && baseWidth > 0) {
-    const geometry = resolveWidgetVisualGeometry(layout, baseWidth);
+    const geometry = resolveWidgetVisualGeometry(effectiveLayout, baseWidth);
     viewport.style.width = `${geometry.baseWidth}px`;
     viewport.style.height = `${geometry.baseHeight}px`;
     viewport.style.transform = `scale(${geometry.scale})`;
@@ -63,8 +83,14 @@ function writeMovePreview(
   preview: WidgetLayoutV3,
 ): void {
   writeFrameGeometry(frame, start);
-  const dx = preview.x - start.x;
-  const dy = preview.y - start.y;
+  const effectiveStart = resolveEffectiveFrameLayout(frame, start);
+  const effectivePreview = resolveEffectiveFrameLayout(frame, {
+    ...effectiveStart,
+    x: effectiveStart.x + preview.x - start.x,
+    y: effectiveStart.y + preview.y - start.y,
+  });
+  const dx = effectivePreview.x - effectiveStart.x;
+  const dy = effectivePreview.y - effectiveStart.y;
   if (dx === 0 && dy === 0) {
     frame.style.transform = "";
     return;

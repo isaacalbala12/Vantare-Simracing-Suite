@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1009",
+  "type": "change",
+  "summary": "Telemetría V2 y optimizaciones del HUD reunidas en Nightly para validación de usuarios.",
+  "technicalNotes": ["Incluye las integraciones #1001, #1003 y #1006, y la instalación de Chromium para las pruebas del empaquetado oficial.", "El transporte desktop persistente, las cadencias por widget y la descarga del Hub minimizado reducen trabajo sin cambiar la frontera de datos común de los simuladores.", "E20 es opcional: VANTARE_OVERLAY_SECTIONS=1 antes del arranque; VANTARE_OVERLAY_SECTIONS=0 conserva el envío completo."],
+  "testing": ["Comprobar seis widgets realmente visibles con LMU, sus filas, transparencia y datos frescos.", "Minimizar y reabrir el Hub, cambiar perfil y reiniciar el overlay sin perder borradores.", "Comparar E20 y envío completo con la misma build y escena."],
+  "knownLimitations": ["No se garantiza CPU inferior al 2% ni superioridad de rendimiento frente al HUD de LMU.", "La aceptación visual y funcional con el jugador en pista sigue siendo necesaria.", "Esta pre-release no promueve cambios a testers ni master."]
+}

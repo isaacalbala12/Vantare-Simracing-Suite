@@ -10,6 +10,8 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/energy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/weather"
 )
 
 // Section names the parts of FrameV2 that can be regulated independently.
@@ -55,9 +57,11 @@ func (section Section) String() string {
 }
 
 // AllSections is ordered by tier and then by declaration so every traversal is
-// deterministic; tests and metrics depend on that order.
-func AllSections() []Section {
-	return []Section{
+// deterministic; tests and metrics depend on that order. Returning the array
+// by value keeps the zero-allocation traversal without exposing mutable global
+// storage to callers.
+func AllSections() [sectionCount]Section {
+	return [sectionCount]Section{
 		SectionPlayer, SectionControls, SectionDelta, SectionRelative, SectionSpotter,
 		SectionSession, SectionStandings, SectionFuel, SectionDamage, SectionWeather, SectionCapabilities,
 	}
@@ -99,9 +103,18 @@ func TierOf(section Section) SectionTier {
 // rebuilds whenever its interval has elapsed. Fast and mid sections always
 // follow their plain interval.
 type SectionCadence struct {
-	Fast         time.Duration
-	Mid          time.Duration
-	Slow         time.Duration
+	Fast time.Duration
+	Mid  time.Duration
+	Slow time.Duration
+	// Spotter y Session son rutas de seguridad. Cero conserva el intervalo de
+	// su tier para cadencias antiguas; PerformancePolicy fija ambos explícitos.
+	Spotter time.Duration
+	Session time.Duration
+	// Positive overrides split consumers within the slow tier. Zero retains
+	// the tier interval, preserving existing callers and safety dispatch.
+	Relative     time.Duration
+	Standings    time.Duration
+	Fuel         time.Duration
 	DirtyCeiling time.Duration
 }
 
@@ -117,6 +130,8 @@ func DefaultSectionCadence() SectionCadence {
 		Fast:         50 * time.Millisecond,
 		Mid:          100 * time.Millisecond,
 		Slow:         250 * time.Millisecond,
+		Spotter:      100 * time.Millisecond,
+		Session:      250 * time.Millisecond,
 		DirtyCeiling: time.Second,
 	}
 }
@@ -138,6 +153,31 @@ func (cadence SectionCadence) Interval(tier SectionTier) time.Duration {
 	return value
 }
 
+// IntervalFor conserva los presupuestos de seguridad aunque otros tiers se
+// ralenticen. Las cadencias anteriores sin overrides siguen usando su tier.
+func (cadence SectionCadence) IntervalFor(section Section) time.Duration {
+	value := time.Duration(0)
+	switch section {
+	case SectionSpotter:
+		value = cadence.Spotter
+	case SectionSession:
+		value = cadence.Session
+	case SectionRelative:
+		value = cadence.Relative
+	case SectionStandings:
+		value = cadence.Standings
+	case SectionFuel:
+		value = cadence.Fuel
+	}
+	if value == 0 {
+		return cadence.Interval(TierOf(section))
+	}
+	if value < 0 {
+		return 0
+	}
+	return value
+}
+
 // regulates reports whether the cadence can ever skip a rebuild.
 func (cadence SectionCadence) regulates() bool {
 	return cadence.Interval(TierFast) > 0 || cadence.Interval(TierMid) > 0 || cadence.Interval(TierSlow) > 0
@@ -150,13 +190,51 @@ type DirtySet uint16
 func (set DirtySet) Mark(section Section) DirtySet { return set | (1 << section) }
 func (set DirtySet) Has(section Section) bool      { return set&(1<<section) != 0 }
 
-// AllDirty marks every section, which is what a stream discontinuity means.
-func AllDirty() DirtySet { return DirtySet(1<<sectionCount - 1) }
+const (
+	dirtySafetySession = sectionCount + iota
+	dirtySafetySpotter
+)
+
+func (set DirtySet) markSafety(section Section) DirtySet {
+	switch section {
+	case SectionSession:
+		return set | (1 << dirtySafetySession)
+	case SectionSpotter:
+		return set | (1 << dirtySafetySpotter)
+	default:
+		return set
+	}
+}
+
+func (set DirtySet) hasSafety(section Section) bool {
+	switch section {
+	case SectionSession:
+		return set&(1<<dirtySafetySession) != 0
+	case SectionSpotter:
+		return set&(1<<dirtySafetySpotter) != 0
+	default:
+		return false
+	}
+}
+
+// safetyDirty marca un cambio material que no puede esperar al intervalo de
+// la sección. Solo session (bandera) y spotter admiten esta vía.
+func safetyDirty(section Section) DirtySet {
+	return DirtySet(0).Mark(section).markSafety(section)
+}
+
+// AllDirty marks every section and both safety invalidations, which is what a
+// stream discontinuity means.
+func AllDirty() DirtySet { return DirtySet(1<<(sectionCount+2) - 1) }
 
 // SectionPlan is the scheduler decision for one tick.
 type SectionPlan uint16
 
 func (plan SectionPlan) Rebuild(section Section) bool { return plan&(1<<section) != 0 }
+
+// AllSectionsMask is the wire mask of a frame whose sections all originate
+// from its own source cursor.
+func AllSectionsMask() uint16 { return uint16(1<<sectionCount) - 1 }
 
 func (plan SectionPlan) with(section Section) SectionPlan { return plan | (1 << section) }
 
@@ -176,9 +254,11 @@ func (plan SectionPlan) Count() int {
 // concurrency; the caller injects `now`. Equal inputs always yield the same
 // plan.
 type SectionScheduler struct {
-	cadence SectionCadence
-	built   [sectionCount]bool
-	last    [sectionCount]time.Time
+	cadence    SectionCadence
+	pending    SectionCadence
+	hasPending bool
+	built      [sectionCount]bool
+	last       [sectionCount]time.Time
 }
 
 // NewSectionScheduler builds a scheduler that has never emitted a frame, so
@@ -189,6 +269,13 @@ func NewSectionScheduler(cadence SectionCadence) *SectionScheduler {
 
 // Cadence returns the configuration in use.
 func (scheduler *SectionScheduler) Cadence() SectionCadence { return scheduler.cadence }
+
+// SetCadence encola una politica nueva. Plan la aplica al inicio del siguiente
+// tick para que un cambio de Ajustes no parta una decision a mitad del frame.
+func (scheduler *SectionScheduler) SetCadence(cadence SectionCadence) {
+	scheduler.pending = cadence
+	scheduler.hasPending = true
+}
 
 // Plan decides the sections to rebuild at `now` and records the decision. A
 // section rebuilds when any of these holds:
@@ -204,6 +291,10 @@ func (scheduler *SectionScheduler) Cadence() SectionCadence { return scheduler.c
 // A non-monotonic clock (now before the last build) is treated as a
 // discontinuity and rebuilds the section.
 func (scheduler *SectionScheduler) Plan(now time.Time, dirty DirtySet) SectionPlan {
+	if scheduler.hasPending {
+		scheduler.cadence = scheduler.pending
+		scheduler.hasPending = false
+	}
 	var plan SectionPlan
 	ceiling := scheduler.cadence.DirtyCeiling
 	for _, section := range AllSections() {
@@ -220,12 +311,22 @@ func (scheduler *SectionScheduler) decide(section Section, now time.Time, dirty 
 	if !scheduler.built[section] {
 		return true
 	}
-	interval := scheduler.cadence.Interval(TierOf(section))
+	interval := scheduler.cadence.IntervalFor(section)
 	if interval <= 0 {
 		return true
 	}
 	elapsed := now.Sub(scheduler.last[section])
 	if elapsed < 0 {
+		return true
+	}
+	// Performance vive dentro de capabilities y debe llegar en el mismo tick
+	// que cambia la politica; el tier sigue siendo slow cuando permanece igual.
+	if section == SectionCapabilities && dirty.Has(section) {
+		return true
+	}
+	// Banderas y avisos laterales nunca esperan su intervalo: la siguiente
+	// proyección debe contener el cambio material observado.
+	if dirty.hasSafety(section) {
 		return true
 	}
 	// Dirty gating and the staleness ceiling only apply to the slow tier: fast
@@ -327,6 +428,7 @@ type CachedProjector struct {
 	previous dirtySignals
 	hasPrev  bool
 	memo     FrameV2
+	settled  relativeSettler
 
 	ticks    uint64
 	fullRuns uint64
@@ -382,6 +484,11 @@ func NewCachedProjectorWithBuilders(cadence SectionCadence, builders SectionBuil
 
 // Cadence returns the configuration in use.
 func (projector *CachedProjector) Cadence() SectionCadence { return projector.scheduler.Cadence() }
+
+// SetCadence aplica la nueva politica al principio del proximo Project.
+func (projector *CachedProjector) SetCadence(cadence SectionCadence) {
+	projector.scheduler.SetCadence(cadence)
+}
 
 // Metrics returns a copy of the regulation counters.
 func (projector *CachedProjector) Metrics() CachedProjectorMetrics {
@@ -446,6 +553,7 @@ func (projector *CachedProjector) Project(
 	frame.AlgorithmVersion = AlgorithmVersionV2
 	frame.StreamEpoch = uint64(header.Cursor.Epoch)
 	frame.SourceSequence = uint64(header.Cursor.Sequence)
+	frame.SectionBuildMask = uint16(plan)
 	frame.SessionID = string(header.Identity.Session)
 	frame.GeneratedAt = header.Clock.ReceivedUTC.Round(0).UTC().Format(time.RFC3339Nano)
 	frame.Units = UnitsV2{
@@ -463,6 +571,7 @@ func (projector *CachedProjector) Project(
 	}
 	if plan.Rebuild(SectionRelative) {
 		frame.Relative = projector.builders.Relative(final, preferences, source)
+		frame.RelativeSettled = projector.settled.project(final, frame.Relative, header, now)
 	}
 	if plan.Rebuild(SectionSpotter) {
 		frame.Spotter = projector.builders.Spotter(final, preferences, source)
@@ -502,20 +611,38 @@ func (projector *CachedProjector) Project(
 // whether a slow section changed materially. They deliberately avoid invoking
 // any builder: asking a builder would defeat the regulation.
 type dirtySignals struct {
-	session      string
-	epoch        int64
-	vehicles     int
-	sourceState  string
-	degraded     string
-	capabilities int
+	session             string
+	epoch               int64
+	vehicles            int
+	sourceState         string
+	degraded            string
+	capabilities        int
+	performanceRevision uint64
+	sessionFlag         QValue[string]
+	spotterView         SpotterViewV2
 
 	track       schema.Field[string]
 	sessionType schema.Field[session.Type]
 	maximumLaps schema.Field[session.MaximumLaps]
 	remaining   schema.Field[session.RemainingTime]
+	// ambientTemp and trackTemp fingerprint exactly what BuildWeather
+	// projects for the session (ISA-1106, B4): value and quality both
+	// decide, following the fuel/standings signal pattern. Rain, wetness,
+	// wind and pressure stay missing with no admitted source, so they need
+	// no signal.
+	ambientTemp schema.Field[weather.Temperature]
+	trackTemp   schema.Field[weather.Temperature]
 
 	playerFuel schema.Field[energy.Fuel]
 	fuelPerLap schema.Field[energy.FuelAmount]
+	// fuelHistoryLen and fuelHistoryLast fingerprint exactly what BuildFuel
+	// projects from the canonical series: the newest sample alone decides a
+	// change, because the series only ever appends or drops the oldest entry.
+	// SessionLaps and RequiredFuel also read Derived.SessionRemaining (already
+	// the `remaining` signal) and the player LastLapTime below.
+	fuelHistoryLen  int
+	fuelHistoryLast derive.FuelLapSample
+	playerLastLap   schema.Field[standings.LapTime]
 	// standingsMark fingerprints exactly the fields BuildStandings projects
 	// (see hashStandingsVehicle), so a signal the builder ignores never marks
 	// the section dirty and any projected change always does.
@@ -529,21 +656,26 @@ type dirtySignals struct {
 
 func observeDirtySignals(header envelope.Header, final derive.FinalState, source SourceContextV2) dirtySignals {
 	signals := dirtySignals{
-		session:        string(header.Identity.Session),
-		epoch:          int64(header.Cursor.Epoch),
-		vehicles:       len(final.Observed.Vehicles),
-		sourceState:    source.State,
-		degraded:       source.DegradedReason,
-		capabilities:   len(source.DescriptorCapabilities),
-		track:          final.Observed.TrackName,
-		sessionType:    final.Observed.SessionType,
-		maximumLaps:    final.Observed.MaximumLaps,
-		remaining:      final.Derived.SessionRemaining,
-		gapsFreshness:  final.Derived.Gaps.Freshness,
-		deltaFreshness: final.Derived.Delta.Freshness,
-		fuelPerLap:     final.Derived.Fuel.PerLap,
-		spatialMark:    schema.FreshnessMissing,
-		standingsMark:  fnvOffset64,
+		session:             string(header.Identity.Session),
+		epoch:               int64(header.Cursor.Epoch),
+		vehicles:            len(final.Observed.Vehicles),
+		sourceState:         source.State,
+		degraded:            source.DegradedReason,
+		capabilities:        len(source.DescriptorCapabilities),
+		performanceRevision: source.PerformanceRevision,
+		sessionFlag:         BuildSession(final).Flag,
+		spotterView:         BuildSpotter(final),
+		track:               final.Observed.TrackName,
+		sessionType:         final.Observed.SessionType,
+		maximumLaps:         final.Observed.MaximumLaps,
+		remaining:           final.Derived.SessionRemaining,
+		ambientTemp:         final.Observed.AmbientTemp,
+		trackTemp:           final.Observed.TrackTemp,
+		gapsFreshness:       final.Derived.Gaps.Freshness,
+		deltaFreshness:      final.Derived.Delta.Freshness,
+		fuelPerLap:          final.Derived.Fuel.PerLap,
+		spatialMark:         schema.FreshnessMissing,
+		standingsMark:       fnvOffset64,
 	}
 	for index := range final.Observed.Vehicles {
 		current := &final.Observed.Vehicles[index]
@@ -554,9 +686,14 @@ func observeDirtySignals(header envelope.Header, final derive.FinalState, source
 		if player, present := current.Player.Value(); present && player {
 			signals.playerFuel = current.Fuel
 			signals.playerDamage = current.Damage
+			signals.playerLastLap = current.LastLapTime
 		}
 	}
 	signals.relativeMark = hashRelativeMark(final)
+	signals.fuelHistoryLen = len(final.Derived.Fuel.History.Samples)
+	if signals.fuelHistoryLen > 0 {
+		signals.fuelHistoryLast = final.Derived.Fuel.History.Samples[signals.fuelHistoryLen-1]
+	}
 	return signals
 }
 
@@ -567,9 +704,15 @@ func (signals dirtySignals) diff(previous dirtySignals) DirtySet {
 		return AllDirty()
 	}
 	dirty := DirtySet(0)
+	if signals.sessionFlag != previous.sessionFlag {
+		dirty = dirty.Mark(SectionSession).markSafety(SectionSession)
+	}
 	if signals.track != previous.track || signals.sessionType != previous.sessionType ||
 		signals.maximumLaps != previous.maximumLaps || signals.remaining != previous.remaining {
 		dirty = dirty.Mark(SectionSession)
+	}
+	if signals.ambientTemp != previous.ambientTemp || signals.trackTemp != previous.trackTemp {
+		dirty = dirty.Mark(SectionWeather)
 	}
 	// Standings depends only on its own fingerprint: the derived gap set feeds
 	// relative, not the classification rows.
@@ -582,17 +725,22 @@ func (signals dirtySignals) diff(previous dirtySignals) DirtySet {
 	if signals.deltaFreshness != previous.deltaFreshness {
 		dirty = dirty.Mark(SectionDelta)
 	}
-	if signals.spatialMark != previous.spatialMark {
+	if signals.spotterView != previous.spotterView {
+		dirty = dirty.Mark(SectionSpotter).markSafety(SectionSpotter)
+	} else if signals.spatialMark != previous.spatialMark {
 		dirty = dirty.Mark(SectionSpotter)
 	}
-	if signals.playerFuel != previous.playerFuel || signals.fuelPerLap != previous.fuelPerLap {
+	if signals.playerFuel != previous.playerFuel || signals.fuelPerLap != previous.fuelPerLap ||
+		signals.fuelHistoryLen != previous.fuelHistoryLen || signals.fuelHistoryLast != previous.fuelHistoryLast ||
+		signals.remaining != previous.remaining || signals.playerLastLap != previous.playerLastLap {
 		dirty = dirty.Mark(SectionFuel)
 	}
 	if signals.playerDamage != previous.playerDamage {
 		dirty = dirty.Mark(SectionDamage)
 	}
 	if signals.sourceState != previous.sourceState || signals.degraded != previous.degraded ||
-		signals.capabilities != previous.capabilities || signals.vehicles != previous.vehicles {
+		signals.capabilities != previous.capabilities || signals.performanceRevision != previous.performanceRevision ||
+		signals.vehicles != previous.vehicles {
 		dirty = dirty.Mark(SectionCapabilities)
 	}
 	// Fast sections exist to move: they are never gated by dirtiness.

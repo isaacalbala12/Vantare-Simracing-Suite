@@ -103,6 +103,7 @@ export const VIEWS_WITHOUT_CONTEXT: ViewId[] = ["inicio", "ingeniero", "testing"
 export const SETTINGS_SECTIONS = [
   "account",
   "application",
+  "performance",
   "updates",
   "hotkeys",
   "privacy",

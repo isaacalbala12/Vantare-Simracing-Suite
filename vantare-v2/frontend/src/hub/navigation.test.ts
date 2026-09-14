@@ -33,7 +33,7 @@ describe("hub navigation contract", () => {
       "Hub",
       "Overlays Studio",
       "Launcher",
-      "Carreras",
+      "Calendario",
       "Ingeniero",
       "Strategy",
       "Telemetría",

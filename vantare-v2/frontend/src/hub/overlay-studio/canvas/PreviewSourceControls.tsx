@@ -1,8 +1,8 @@
-import type { MockLocationScenario, MockSessionScenario } from "../../../overlay/core/mock-scenarios";
+import type { AuthoringV2Scenario } from "../../../overlay/authoring/fixtures/authoring-v2-scenario-fixture";
 import type { StudioPreviewState } from "../state/studio-store";
 
-const MOCK_SESSIONS: readonly MockSessionScenario[] = ["practice", "qualifying", "race"];
-const MOCK_LOCATIONS: readonly MockLocationScenario[] = ["track", "pits"];
+const MOCK_SESSIONS: readonly AuthoringV2Scenario["session"][] = ["practice", "qualifying", "race"];
+const MOCK_LOCATIONS: readonly AuthoringV2Scenario["location"][] = ["track", "pits"];
 
 export type PreviewSourceControlsProps = {
   preview: StudioPreviewState;
@@ -48,7 +48,7 @@ export function PreviewSourceControls(props: PreviewSourceControlsProps): React.
             data-testid="studio-mock-session-select"
             value={preview.mockSession}
             onChange={(event) =>
-              onPreviewChange({ mockSession: event.target.value as MockSessionScenario })
+              onPreviewChange({ mockSession: event.target.value as AuthoringV2Scenario["session"] })
             }
           >
             {MOCK_SESSIONS.map((session) => (
@@ -61,7 +61,7 @@ export function PreviewSourceControls(props: PreviewSourceControlsProps): React.
             data-testid="studio-mock-location-select"
             value={preview.mockLocation}
             onChange={(event) =>
-              onPreviewChange({ mockLocation: event.target.value as MockLocationScenario })
+              onPreviewChange({ mockLocation: event.target.value as AuthoringV2Scenario["location"] })
             }
           >
             {MOCK_LOCATIONS.map((location) => (

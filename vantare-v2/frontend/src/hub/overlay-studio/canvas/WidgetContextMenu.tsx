@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type {
   ProfileDocumentV3,
@@ -70,6 +70,26 @@ export function WidgetContextMenu(props: WidgetContextMenuProps): React.ReactEle
       window.removeEventListener('keydown', onKeyDown);
     };
   }, [menu, onClose]);
+
+  // El menu nace en la posicion del click; si se sale del viewport se recoloca
+  // hacia dentro. Se escribe en el DOM directamente: es una vista transitoria
+  // y un re-render por esto no aporta nada.
+  useLayoutEffect(() => {
+    const panel = panelRef.current;
+    if (!menu || !panel) {
+      return;
+    }
+    const rect = panel.getBoundingClientRect();
+    const margin = 8;
+    const x = Math.max(margin, Math.min(menu.x, window.innerWidth - rect.width - margin));
+    const y = Math.max(margin, Math.min(menu.y, window.innerHeight - rect.height - margin));
+    if (x !== menu.x) {
+      panel.style.left = `${x}px`;
+    }
+    if (y !== menu.y) {
+      panel.style.top = `${y}px`;
+    }
+  }, [menu]);
 
   if (!props.menu) {
     return null;

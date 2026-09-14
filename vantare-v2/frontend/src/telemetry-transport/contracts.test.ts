@@ -86,29 +86,29 @@ describe("telemetry transport contracts", () => {
   it("rejects an unknown version and a mismatched product", () => {
     expect(() =>
       decodeTransportEvent(
-        eventName("overlay", "projection"),
-        { ...projection("overlay", {}), projectionVersion: 2 },
+        eventName("engineer", "projection"),
+        { ...projection("engineer", {}), projectionVersion: 2 },
       ),
     ).toThrowError(expect.objectContaining({ code: "unsupported-version" }));
     expect(() =>
       decodeTransportEvent(
-        eventName("overlay", "projection"),
-        projection("engineer", {}),
+        eventName("engineer", "projection"),
+        projection("strategy", {}),
       ),
     ).toThrowError(expect.objectContaining({ code: "invalid-envelope" }));
   });
 
   it("accepts safe additive envelope and status extensions", () => {
     const projected = decodeTransportEvent(
-      eventName("overlay", "projection"),
+      eventName("engineer", "projection"),
       {
-        ...projection("overlay", { capabilities: [] }),
+        ...projection("engineer", { capabilities: [] }),
         traceHint: { optional: true },
       },
     );
     expect(projected.kind).toBe("projection");
-    const status = decodeTransportEvent(eventName("overlay", "status"), {
-      product: "overlay",
+    const status = decodeTransportEvent(eventName("engineer", "status"), {
+      product: "engineer",
       statusRevision: 1,
       capturedAt,
       payload: {
@@ -121,7 +121,7 @@ describe("telemetry transport contracts", () => {
     expect(status).toEqual({
       kind: "status",
       value: {
-        product: "overlay",
+        product: "engineer",
         statusRevision: 1,
         capturedAt,
         payload: { state: "live", reconnectAttempt: 0 },
@@ -131,8 +131,8 @@ describe("telemetry transport contracts", () => {
 
   it("rejects unsafe additive envelope extensions", () => {
     expect(() =>
-      decodeTransportEvent(eventName("overlay", "projection"), {
-        ...projection("overlay", {}),
+      decodeTransportEvent(eventName("engineer", "projection"), {
+        ...projection("engineer", {}),
         raw: { private: true },
       }),
     ).toThrowError(expect.objectContaining({ code: "forbidden-payload" }));
@@ -141,28 +141,28 @@ describe("telemetry transport contracts", () => {
   it("rejects oversized, reserved and non-object payloads", () => {
     expect(() =>
       decodeTransportEvent(
-        eventName("overlay", "projection"),
-        projection("overlay", { value: "x".repeat(300) }),
+        eventName("engineer", "projection"),
+        projection("engineer", { value: "x".repeat(300) }),
         128,
       ),
     ).toThrowError(expect.objectContaining({ code: "payload-too-large" }));
     expect(() =>
       decodeTransportEvent(
-        eventName("overlay", "projection"),
-        projection("overlay", { nested: { raw: "private" } }),
+        eventName("engineer", "projection"),
+        projection("engineer", { nested: { raw: "private" } }),
       ),
     ).toThrowError(expect.objectContaining({ code: "forbidden-payload" }));
     expect(() =>
-      decodeTransportEvent(eventName("overlay", "projection"), {
-        ...projection("overlay", {}),
+      decodeTransportEvent(eventName("engineer", "projection"), {
+        ...projection("engineer", {}),
         payload: [],
       }),
     ).toThrowError(expect.objectContaining({ code: "invalid-envelope" }));
     expect(() =>
       decodeTransportEvent(
-        eventName("overlay", "projection"),
+        eventName("engineer", "projection"),
         JSON.parse(
-          JSON.stringify(projection("overlay", {})).replace(
+          JSON.stringify(projection("engineer", {})).replace(
             '"payload":{}',
             '"payload":{"__proto__":{"polluted":true}}',
           ),
@@ -174,24 +174,24 @@ describe("telemetry transport contracts", () => {
   it("never lets a public override raise or invalidate the hard payload limit", () => {
     expect(() =>
       decodeTransportEvent(
-        eventName("overlay", "projection"),
-        projection("overlay", { value: "x".repeat(270_000) }),
+        eventName("engineer", "projection"),
+        projection("engineer", { value: "x".repeat(270_000) }),
         1_000_000,
       ),
     ).toThrowError(expect.objectContaining({ code: "payload-too-large" }));
     for (const invalidMaximum of [0, -1, 1.5, Number.NaN]) {
       expect(() =>
         decodeTransportEvent(
-          eventName("overlay", "projection"),
-          projection("overlay", {}),
+          eventName("engineer", "projection"),
+          projection("engineer", {}),
           invalidMaximum,
         ),
       ).toThrowError(expect.objectContaining({ code: "invalid-envelope" }));
     }
     expect(() =>
       decodeTransportEvent(
-        eventName("overlay", "projection"),
-        projection("overlay", { value: "x".repeat(200) }),
+        eventName("engineer", "projection"),
+        projection("engineer", { value: "x".repeat(200) }),
         128,
       ),
     ).toThrowError(expect.objectContaining({ code: "payload-too-large" }));
@@ -199,8 +199,8 @@ describe("telemetry transport contracts", () => {
 
   it("rejects unsafe cursors instead of losing uint64 precision", () => {
     expect(() =>
-      decodeTransportEvent(eventName("overlay", "projection"), {
-        ...projection("overlay", {}),
+      decodeTransportEvent(eventName("engineer", "projection"), {
+        ...projection("engineer", {}),
         sequence: Number.MAX_SAFE_INTEGER + 1,
       }),
     ).toThrow(TransportContractError);

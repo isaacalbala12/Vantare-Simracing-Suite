@@ -6,8 +6,10 @@ import {
   signUp,
   resetPasswordForEmail,
 } from "../../lib/supabase-auth";
-import { Browser, Events } from "@wailsio/runtime";
+import { Browser } from "@wailsio/runtime";
+import { subscribeLicenseChanged } from "../../lib/license-events";
 import { useI18n } from "../../i18n/I18nProvider";
+import { useHubSuspendBlocker } from "../hub-suspend-guard";
 
 export type LoginSessionTokens = {
   accessToken: string;
@@ -33,21 +35,30 @@ export function LoginScreen({ onLoggedIn }: LoginScreenProps) {
   const [resetEmail, setResetEmail] = useState("");
   const [resetSent, setResetSent] = useState(false);
 
+  useHubSuspendBlocker(
+    "oauth-pending",
+    "Hay una autenticación OAuth pendiente",
+    Boolean(oauthPending) || waitingExternal,
+  );
+  useHubSuspendBlocker(
+    "auth-form-draft",
+    "Hay credenciales de acceso sin enviar",
+    email.trim() !== "" || password !== "" || resetEmail.trim() !== "" || submitting,
+  );
+
   useEffect(() => {
     if (!waitingExternal) return;
-    const unsub = Events.On(
-      "license:changed",
-      (event: { data: { state?: string; accessToken?: string } }) => {
-        const state = event.data?.state;
-        if (state && state !== "anonymous") {
-          setWaitingExternal(false);
-          setOauthPending(null);
-          if (event.data?.accessToken) {
-            onLoggedIn({ accessToken: event.data.accessToken });
-          }
+    const unsub = subscribeLicenseChanged((raw: unknown) => {
+      const data = raw as { state?: string; accessToken?: string } | undefined;
+      const state = data?.state;
+      if (state && state !== "anonymous") {
+        setWaitingExternal(false);
+        setOauthPending(null);
+        if (data?.accessToken) {
+          onLoggedIn({ accessToken: data.accessToken });
         }
-      },
-    );
+      }
+    });
     return () => {
       unsub?.();
     };

@@ -18,7 +18,9 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
+	"github.com/vantare/overlays/v2/internal/calendar"
 	engineerservice "github.com/vantare/overlays/v2/internal/engineer/service"
+	"github.com/vantare/overlays/v2/internal/license"
 )
 
 type authAttempt struct {
@@ -190,6 +192,7 @@ type Server struct {
 	mux          *http.ServeMux
 	srv          *http.Server
 	engineerSvc  *engineerservice.EngineerService
+	widgetPolicy WidgetPolicySource
 	distFS       fs.FS
 	cfgDir       string
 	emitter      EventEmitter
@@ -204,17 +207,25 @@ type ServerConfig struct {
 	CfgDir                  string
 	EngineerSvc             *engineerservice.EngineerService
 	Emitter                 EventEmitter
-	OverlayProjection       *telemetrytransport.Hub
 	StrategyProjection      *telemetrytransport.Hub
 	StrategyPublicTransport bool
 	OverlayV2Publishers     *telemetrytransport.PublisherRegistry
+	// WidgetPolicy wires the sanitized native authority snapshot for the
+	// OBS browser source. Nil leaves the route unregistered. A concrete
+	// *license.Service satisfies the interface; the compile-time assertion
+	// lives with the handler.
+	WidgetPolicy WidgetPolicySource
 }
+
+// compile-time wiring check: the native authority is the only source.
+var _ WidgetPolicySource = (*license.Service)(nil)
 
 func New(cfg ServerConfig) *Server {
 	mux := http.NewServeMux()
 	s := &Server{
 		mux:          mux,
 		engineerSvc:  cfg.EngineerSvc,
+		widgetPolicy: cfg.WidgetPolicy,
 		distFS:       cfg.DistFS,
 		cfgDir:       cfg.CfgDir,
 		emitter:      cfg.Emitter,
@@ -227,13 +238,8 @@ func New(cfg ServerConfig) *Server {
 	mux.HandleFunc("GET /overlay", s.handleOverlay)
 	mux.HandleFunc("GET /api/profile", s.handleProfile)
 	mux.HandleFunc("GET /api/profile-v3", s.handleProfileV3)
+	mux.HandleFunc("GET /api/calendar", s.handleCalendar)
 	mux.HandleFunc("GET /api/engineer/health", s.handleEngineerHealth)
-	if cfg.OverlayProjection != nil {
-		mux.Handle(
-			"GET "+telemetrytransport.ProjectionRoute(telemetrytransport.ProductOverlay),
-			telemetrytransport.SSEHandler(cfg.OverlayProjection),
-		)
-	}
 	if cfg.StrategyPublicTransport && cfg.StrategyProjection != nil {
 		mux.Handle(
 			"GET "+telemetrytransport.ProjectionRoute(telemetrytransport.ProductStrategy),
@@ -249,6 +255,9 @@ func New(cfg ServerConfig) *Server {
 	mux.HandleFunc("GET /engineer/stream", s.handleEngineerSSE)
 	mux.HandleFunc("GET /auth/callback", s.handleAuthCallback)
 	mux.HandleFunc("POST /auth/token", s.handleAuthToken)
+	if cfg.WidgetPolicy != nil {
+		mux.Handle("GET "+WidgetPolicyStreamRoute, widgetPolicyStreamHandler(cfg.WidgetPolicy))
+	}
 	if cfg.DistFS != nil {
 		mux.Handle("GET /assets/", securityHeaders(http.FileServerFS(cfg.DistFS)))
 		mux.Handle("GET /favicon.svg", securityHeaders(http.FileServerFS(cfg.DistFS)))
@@ -262,6 +271,19 @@ func New(cfg ServerConfig) *Server {
 	}
 
 	return s
+}
+
+func (s *Server) handleCalendar(w http.ResponseWriter, _ *http.Request) {
+	service := calendar.NewService(s.cfgDir, time.Now)
+	if err := service.Load(); err != nil {
+		http.Error(w, "calendar unavailable", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(service.Calendar()); err != nil {
+		log.Printf("calendar response: %v", err)
+	}
 }
 
 func (s *Server) Handler() http.Handler {
@@ -319,9 +341,9 @@ func (s *Server) handleOverlay(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "frontend dist not available", http.StatusInternalServerError)
 		return
 	}
-	data, err := fs.ReadFile(s.distFS, "index.html")
+	data, err := fs.ReadFile(s.distFS, "overlay.html")
 	if err != nil {
-		http.Error(w, "index.html not found", http.StatusInternalServerError)
+		http.Error(w, "overlay.html not found", http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")

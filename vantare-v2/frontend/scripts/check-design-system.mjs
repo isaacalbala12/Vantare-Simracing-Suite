@@ -22,7 +22,9 @@ for (const system of systems) {
   for (const contract of ["systemMigrations:", "widgets:", "configMigrations:", "defaultSettings:", "parseSettings(", "Renderer:"]) {
     if (!manifest.includes(contract)) failures.push(`${system}/manifest: missing ${contract}`);
   }
-  for (const widget of coreWidgets) {
+  // Functional is an explicitly partial system: the authoring contract permits
+  // registering only implemented widgets. Keep the existing systems' coverage.
+  for (const widget of system === "vantare-functional" ? ["standings"] : coreWidgets) {
     if (!manifest.includes(`widgetType: "${widget}"`)) failures.push(`${system}/manifest: missing ${widget} compatibility`);
   }
   if (!/\b0\s*:/.test(manifest)) failures.push(`${system}/manifest: missing version 0 migration`);

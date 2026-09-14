@@ -2,24 +2,23 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExterna
 import { Events } from '@wailsio/runtime';
 import { useI18n } from '../../i18n/I18nProvider';
 import { createTelemetryRateCoordinator } from '../../overlay/core/telemetry-rate-coordinator';
-import type { TelemetryAdapter } from '../../overlay/transports/telemetry-adapter';
+import type { TelemetryAdapter } from './studio-overlay-telemetry';
 import type { WidgetRuntimeInput } from '../../overlay/core/widget-definition';
-import { createWailsProjectionTelemetryAdapter } from '../../overlay/transports/projection-telemetry-adapter';
 import {
   createOverlayFrameV2Store,
-  type OverlayFrameV2State,
 } from '../../telemetry-transport/overlay-frame-v2-store';
+import { bindOverlayV2Coordinator } from '../../overlay/core/overlay-v2-coordinator-binding';
 import { createBrowserOverlayWailsPullClient } from '../../telemetry-transport/overlay-wails-pull';
 import {
   telemetrySourceStatusEvent,
   telemetrySourceStatusRequestEvent,
   type TelemetrySourceStatus,
 } from '../../telemetry-transport/source-status';
-import { readDiagnosticOverlayV2Features } from '../../overlay/telemetry-shadow/overlay-v2-features';
+import { createWailsRaceScheduleStore } from '../../overlay/core/race-schedule-store';
 import { ProfilesOrbitPage } from '../profiles-orbit/ProfilesOrbitPage';
+import { setHubStudioDirty } from '../hub-suspend-guard';
 import { RecommendedProfilesView } from '../overlays/RecommendedProfilesView';
 import { CommunityComingSoonView } from '../overlays/CommunityComingSoonView';
-import { ObsOverlaySetupView } from '../overlays/ObsOverlaySetupView';
 import { RecommendedSuccessBanner } from '../overlays/RecommendedSuccessBanner';
 import {
   RECOMMENDED_PROFILES,
@@ -33,7 +32,7 @@ import {
   type OverlayStatus,
   type ProfileEntry,
 } from '../state/overlay-workbench';
-import type { AppSettings } from '../settings/settings-contract';
+import { getSettingsStore } from '../settings/settings-store';
 import { DirtyChangesDialog } from './components/DirtyChangesDialog';
 import { ProfileNameDialog } from './components/ProfileNameDialog';
 import { NoActiveProfileState } from './NoActiveProfileState';
@@ -44,16 +43,13 @@ import {
   createWailsStudioEventTransport,
   type StudioProfileClient,
 } from './state/studio-profile-client';
-import { ConnectedStudioProvider, useStudioDocument } from './state/studio-store';
+import { ConnectedStudioProvider, useStudioActions, useStudioDirty, useStudioSelector } from './state/studio-store';
 import { StudioAutosave } from './state/studio-autosave';
 import type { StudioProfileEntry } from './studio-profile-entry';
 
 import { modeFromTarget, type StudioRouteMode } from './studio-route-target';
 import { createStudioOverlayTelemetryAdapter } from './studio-overlay-telemetry';
 
-const EMPTY_OVERLAY_V2_STATE: OverlayFrameV2State = Object.freeze({revision: 0, ageMs: 0});
-const subscribeToNothing = () => () => undefined;
-const getEmptyOverlayV2State = () => EMPTY_OVERLAY_V2_STATE;
 
 type ProfilesListPayload = {
   profiles?: ProfileEntry[];
@@ -125,6 +121,7 @@ function toStudioProfiles(profiles: ProfileEntry[]): StudioProfileEntry[] {
     id: profile.id,
     name: profile.name?.trim() || profile.id,
     file: profile.file,
+    performance: profile.performance,
   }));
 }
 
@@ -193,7 +190,24 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
     onNavigationCancel,
   } = props;
   const { t } = useI18n();
-  const { document, lastError } = useStudioDocument();
+  const document = useStudioSelector((s) => s.history?.present ?? null);
+  const lastError = useStudioSelector((s) => s.loadError);
+
+  // El error va primero: cuando la carga falla history queda a null y
+  // `document` nunca llega — con el orden inverso la UI de error era
+  // inalcanzable y el usuario veia un spinner eterno.
+  if (lastError) {
+    return (
+      <div
+        data-testid="studio-route-load-error"
+        className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[720px] flex-col px-6 py-8"
+      >
+        <div className="orbit-alert orbit-alert--danger p-6">
+          {lastError}
+        </div>
+      </div>
+    );
+  }
 
   if (!document) {
     return (
@@ -201,21 +215,8 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
         data-testid="studio-route-loading"
         className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1200px] flex-col px-6 py-8"
       >
-        <div className="glass-panel rounded-xl p-8 text-sm text-vantare-textMuted">
+        <div className="rounded-orbit border border-orbit-line bg-orbit-surface-1 p-8 text-sm text-orbit-ink-2">
           {t('studio.v3.route.loadingProfile')}
-        </div>
-      </div>
-    );
-  }
-
-  if (lastError) {
-    return (
-      <div
-        data-testid="studio-route-load-error"
-        className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[720px] flex-col px-6 py-8"
-      >
-        <div className="rounded-xl border border-vantare-red-500/30 bg-vantare-red-950/20 p-6 text-sm text-vantare-red-300">
-          {lastError}
         </div>
       </div>
     );
@@ -252,7 +253,7 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
           <div className="mx-auto mt-4 max-w-[1800px] px-6">
             <div
               data-testid="recommended-error-banner"
-              className="rounded-lg border border-vantare-red-500/30 bg-vantare-red-950/20 px-4 py-3 text-sm text-vantare-red-300"
+              className="orbit-alert orbit-alert--danger"
             >
               {notice}
             </div>
@@ -268,10 +269,6 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
     );
   } else if (mode === 'community') {
     secondaryView = <CommunityComingSoonView onBack={() => onSetMode('editor')} />;
-  } else if (mode === 'obs') {
-    const obsProfileRef = activeProfileId ?? editorFile;
-    const obsUrl = `${window.location.origin}/overlay?profile=${encodeURIComponent(obsProfileRef)}`;
-    secondaryView = <ObsOverlaySetupView url={obsUrl} onBack={() => onSetMode('editor')} />;
   }
 
   const editorActive = mode === 'editor';
@@ -314,13 +311,14 @@ function StudioRouteEditor(props: StudioRouteEditorProps): React.ReactElement {
 type StudioRouteNavigationBridgeProps = {
   onDirtyChange(dirty: boolean): void;
   onBindActions(actions: {
-    save(): ReturnType<ReturnType<typeof useStudioDocument>['save']>;
+    save(): ReturnType<ReturnType<typeof useStudioActions>['save']>;
     discardAll(): void;
   }): void;
 };
 
 function StudioRouteNavigationBridge(props: StudioRouteNavigationBridgeProps): null {
-  const { dirty, save, discardAll } = useStudioDocument();
+  const dirty = useStudioDirty();
+  const { save, discardAll } = useStudioActions();
   const { onDirtyChange, onBindActions } = props;
 
   useEffect(() => {
@@ -334,64 +332,97 @@ function StudioRouteNavigationBridge(props: StudioRouteNavigationBridgeProps): n
   return null;
 }
 
+type StudioTelemetryGeneration = Readonly<{
+  coordinator: ReturnType<typeof createTelemetryRateCoordinator>;
+  overlayV2Store: ReturnType<typeof createOverlayFrameV2Store>;
+  overlayPull: ReturnType<typeof createBrowserOverlayWailsPullClient>;
+  telemetryAdapter: TelemetryAdapter | null;
+  raceSchedule: ReturnType<typeof createWailsRaceScheduleStore>;
+}>;
+
 export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): React.ReactElement {
+  const { coordinator: coordinatorProp, telemetryAdapter: telemetryAdapterProp = null } = props;
+  const [generation, setGeneration] = useState<StudioTelemetryGeneration | null>(null);
+
+  useEffect(() => {
+    const coordinator = coordinatorProp ?? createTelemetryRateCoordinator();
+    const overlayV2Store = createOverlayFrameV2Store();
+    const overlayPull = createBrowserOverlayWailsPullClient({
+      onError: (error) => console.error('studio overlay telemetry pull failed', error),
+    });
+    const raceSchedule = createWailsRaceScheduleStore();
+    const telemetryAdapter = telemetryAdapterProp ?? createStudioOverlayTelemetryAdapter({
+      coordinator,
+      pull: overlayPull,
+      overlayV2Store,
+      onOverlayV2Error: (error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        coordinator.setOverlayFailure({ code: 'invalid-frame', message });
+        console.error('studio overlay-v2 ingest failed', error);
+      },
+    });
+    overlayV2Store.reset();
+    const unbindOverlayV2 = bindOverlayV2Coordinator(overlayV2Store, coordinator);
+    const diagnosticWindow = window as Window & { __vantareOverlayV2Diagnostics?: () => unknown };
+    diagnosticWindow.__vantareOverlayV2Diagnostics = () => Object.freeze({
+      ...overlayV2Store.getDiagnostics(),
+      pull: overlayPull.getDiagnostics(),
+    });
+    // Este efecto es la fabrica y el owner de la generacion; Studio no debe
+    // registrar listeners ni cargar perfiles contra recursos ya dispuestos.
+    raceSchedule.start();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setGeneration({ coordinator, overlayV2Store, overlayPull, telemetryAdapter, raceSchedule });
+
+    return () => {
+      delete diagnosticWindow.__vantareOverlayV2Diagnostics;
+      if (telemetryAdapterProp === null) telemetryAdapter.stop();
+      overlayPull.stop();
+      unbindOverlayV2();
+      overlayV2Store.dispose();
+      raceSchedule.dispose();
+      if (coordinatorProp === undefined) coordinator.dispose();
+    };
+  }, [coordinatorProp, telemetryAdapterProp]);
+
+  return generation ? <StudioRouteGeneration {...props} generation={generation} /> : <></>;
+});
+
+type StudioRouteGenerationProps = StudioRouteProps & Readonly<{
+  generation: StudioTelemetryGeneration;
+}>;
+
+function StudioRouteGeneration(props: StudioRouteGenerationProps): React.ReactElement {
   const {
     client: clientProp,
-    telemetryAdapter: telemetryAdapterProp = null,
-    coordinator: coordinatorProp,
     liveAvailable: liveAvailableProp,
     pendingRecommendedAutoStart = null,
     onAutoStartHandled,
     target,
+    generation,
   } = props;
+  const { coordinator, telemetryAdapter } = generation;
   const { t } = useI18n();
 
   const client = useMemo(
     () => clientProp ?? createStudioProfileClient(createWailsStudioEventTransport()),
     [clientProp],
   );
-  const coordinator = useMemo(
-    () => coordinatorProp ?? createTelemetryRateCoordinator(),
-    [coordinatorProp],
+  const raceSchedule = useSyncExternalStore(
+    generation.raceSchedule.subscribe,
+    generation.raceSchedule.getSnapshot,
+    generation.raceSchedule.getSnapshot,
   );
-  const overlayV2Store = useMemo(() => createOverlayFrameV2Store(), []);
-  const [overlayV2Features, setOverlayV2Features] = useState(() =>
-    readDiagnosticOverlayV2Features(),
-  );
-  const overlayV2Enabled = overlayV2Features.length > 0;
-  const overlayV2State = useSyncExternalStore(
-    overlayV2Enabled ? overlayV2Store.subscribe : subscribeToNothing,
-    overlayV2Enabled ? overlayV2Store.getSnapshot : getEmptyOverlayV2State,
-    overlayV2Enabled ? overlayV2Store.getSnapshot : getEmptyOverlayV2State,
-  );
-  const overlayPull = useMemo(() => createBrowserOverlayWailsPullClient({
-    onError: (error) => console.error('studio overlay telemetry pull failed', error),
-  }), []);
-  const telemetryAdapter = useMemo(() => {
-    if (telemetryAdapterProp !== null) {
-      return telemetryAdapterProp;
-    }
-    const legacy = createWailsProjectionTelemetryAdapter({
-      coordinator,
-      runtime: 'studio',
-      subscribe: overlayPull.source.subscribe,
-    });
-    return createStudioOverlayTelemetryAdapter({
-      legacy,
-      pull: overlayPull,
-      overlayV2Store,
-      onOverlayV2Error: (error) => console.error('studio overlay-v2 ingest failed', error),
-    });
-  }, [coordinator, overlayPull, overlayV2Store, telemetryAdapterProp]);
   const runtime = useMemo<WidgetRuntimeInput>(() => ({
-    overlayV2Features,
-    overlayV2Frame: overlayV2State.frame,
-    overlayV2Source: overlayV2State.source,
-  }), [overlayV2Features, overlayV2State.frame, overlayV2State.source]);
+    raceScheduleEvents: raceSchedule.events,
+    raceScheduleStatus: raceSchedule.status,
+  }), [raceSchedule]);
 
   const [profiles, setProfiles] = useState<ProfileEntry[]>([]);
   const [profilesLoaded, setProfilesLoaded] = useState(false);
-  const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
+  const [activeProfileId, setActiveProfileId] = useState<string | null>(
+    () => getSettingsStore().getActiveOverlayProfileId(),
+  );
   const [editorFile, setEditorFile] = useState<string | null>(null);
   const [mode, setMode] = useState<StudioRouteMode>(() => modeFromTarget(target) ?? 'editor');
   // La shell puede pedir Mis perfiles sin desmontar la ruta: navigate a studio
@@ -422,7 +453,7 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
   const dirtyRef = useRef(false);
   const pendingCreateNameRef = useRef<string | null>(null);
   const studioActionsRef = useRef<{
-    save(): ReturnType<ReturnType<typeof useStudioDocument>['save']>;
+    save(): ReturnType<ReturnType<typeof useStudioActions>['save']>;
     discardAll(): void;
   } | null>(null);
   const navigationResolverRef = useRef<((decision: 'save' | 'discard' | 'cancel') => void) | null>(
@@ -433,16 +464,6 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
   const effectiveMode: StudioRouteMode = isAutoStart && mode === 'editor' ? 'recommended' : mode;
   const autoActivateAndStart = isAutoStart;
   const studioProfiles = useMemo(() => toStudioProfiles(profiles), [profiles]);
-
-  useEffect(() => {
-    const refresh = () => setOverlayV2Features(readDiagnosticOverlayV2Features());
-    window.addEventListener('vantare:overlay-v2-features-changed', refresh);
-    window.addEventListener('storage', refresh);
-    return () => {
-      window.removeEventListener('vantare:overlay-v2-features-changed', refresh);
-      window.removeEventListener('storage', refresh);
-    };
-  }, []);
 
   useEffect(() => {
     if (liveAvailableProp !== undefined) return;
@@ -468,10 +489,11 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
     const unsubOverlayStatus = Events.On('overlay:status', (event: { data: unknown }) => {
       setOverlayStatus(event.data as OverlayStatus);
     });
-    const unsubSettings = Events.On('settings', (event: { data: AppSettings }) => {
-      if (event.data?.activeOverlayProfileId) {
-        setActiveProfileId(event.data.activeOverlayProfileId);
-      }
+    const settingsStore = getSettingsStore();
+    // Igual que antes: solo un id valido reemplaza; null/empty no borra.
+    const unsubSettings = settingsStore.subscribeActiveOverlayProfileId(() => {
+      const next = settingsStore.getActiveOverlayProfileId();
+      if (next) setActiveProfileId(next);
     });
     const unsubActivated = Events.On('hub:profile-activated', (event: { data: unknown }) => {
       const payload = getPayload<{ activeProfileId?: string }>(event);
@@ -520,13 +542,6 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
     setEditorFile(created.file);
     setMode('editor');
   }, [profiles, profilesLoaded]);
-
-  useEffect(() => {
-    return () => {
-      telemetryAdapter?.stop();
-      coordinator.dispose();
-    };
-  }, [coordinator, telemetryAdapter]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -732,7 +747,7 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
           data-testid="studio-route-loading"
           className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-[1200px] flex-col px-6 py-8"
         >
-          <div className="glass-panel rounded-xl p-8 text-sm text-vantare-textMuted">
+          <div className="rounded-orbit border border-orbit-line bg-orbit-surface-1 p-8 text-sm text-orbit-ink-2">
             {t('studio.v3.route.loadingProfiles')}
           </div>
         </div>
@@ -750,7 +765,7 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
               <div className="mx-auto mt-4 max-w-[1800px] px-6">
                 <div
                   data-testid="recommended-error-banner"
-                  className="rounded-lg border border-vantare-red-500/30 bg-vantare-red-950/20 px-4 py-3 text-sm text-vantare-red-300"
+                  className="orbit-alert orbit-alert--danger"
                 >
                   {notice}
                 </div>
@@ -797,7 +812,7 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
               <div className="mx-auto mt-4 max-w-[1800px] px-6">
                 <div
                   data-testid="recommended-error-banner"
-                  className="rounded-lg border border-vantare-red-500/30 bg-vantare-red-950/20 px-4 py-3 text-sm text-vantare-red-300"
+                  className="orbit-alert orbit-alert--danger"
                 >
                   {notice}
                 </div>
@@ -838,6 +853,7 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
         <StudioRouteNavigationBridge
           onDirtyChange={(dirty) => {
             dirtyRef.current = dirty;
+            setHubStudioDirty(dirty);
           }}
           onBindActions={(actions) => {
             studioActionsRef.current = actions;
@@ -887,4 +903,4 @@ export const StudioRoute = memo(function StudioRoute(props: StudioRouteProps): R
       {profileDialogs}
     </>
   );
-});
+}

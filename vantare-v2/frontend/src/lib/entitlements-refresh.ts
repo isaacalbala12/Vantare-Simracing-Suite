@@ -1,4 +1,5 @@
 import { Events } from "@wailsio/runtime";
+import { subscribeLicenseChanged, subscribeLicenseError } from "./license-events";
 import { getSession } from "./supabase-auth";
 import type { Entitlement, LicenseResult } from "./license-types";
 import { licenseDebug, licenseDebugWarn } from "./license-debug";
@@ -138,8 +139,8 @@ export async function refreshCurrentUserEntitlements(options?: {
       resolve(value);
     };
 
-    const unsubChanged = Events.On("license:changed", (event: unknown) => {
-      const data = (event as { data?: LicenseResult | null })?.data ?? null;
+    const unsubChanged = subscribeLicenseChanged((raw: unknown) => {
+      const data = (raw as LicenseResult | null) ?? null;
       const fresh = data
         ? isFreshLicenseEvent(data, requestedAfterMs, {
             requireAuthenticated: true,
@@ -164,9 +165,9 @@ export async function refreshCurrentUserEntitlements(options?: {
       });
     });
 
-    const unsubError = Events.On("license:error", (event: unknown) => {
+    const unsubError = subscribeLicenseError((raw: unknown) => {
       const message =
-        (event as { data?: { message?: string } })?.data?.message ?? "";
+        (raw as { message?: string } | null)?.message ?? "";
       licenseDebugWarn("refresh", "license:error", { message });
       finish({ ok: false, reason: "validation_error" });
     });
@@ -214,8 +215,8 @@ export async function resetActiveDevice(options?: {
       resolve(value);
     };
 
-    const unsubChanged = Events.On("license:changed", (event: unknown) => {
-      const data = (event as { data?: LicenseResult | null })?.data ?? null;
+    const unsubChanged = subscribeLicenseChanged((raw: unknown) => {
+      const data = (raw as LicenseResult | null) ?? null;
       const fresh = data
         ? isFreshLicenseEvent(data, requestedAfterMs, {
             requireAuthenticated: true,
@@ -233,9 +234,9 @@ export async function resetActiveDevice(options?: {
       finish({ ok: true });
     });
 
-    const unsubError = Events.On("license:error", (event: unknown) => {
+    const unsubError = subscribeLicenseError((raw: unknown) => {
       const message =
-        (event as { data?: { message?: string } })?.data?.message ?? "";
+        (raw as { message?: string } | null)?.message ?? "";
       licenseDebugWarn("reset-device", "license:error", { message });
       if (isRateLimitMessage(message)) {
         finish({ ok: false, reason: "rate_limit" });

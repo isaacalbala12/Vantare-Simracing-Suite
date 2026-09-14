@@ -9,8 +9,6 @@ import {
 } from "./contracts";
 
 const GOLDENS: Record<ProductID, string> = {
-  overlay:
-    "../internal/telemetry/projection/overlay/testdata/overlay_v1.golden.json",
   engineer:
     "../internal/telemetry/projection/engineer/testdata/engineer_v1.golden.json",
   strategy:
@@ -52,38 +50,4 @@ describe("Go projection golden compatibility", () => {
       }
     },
   );
-
-  it("keeps the exact pre-D7 Overlay v1 golden transport-compatible", () => {
-    const golden = JSON.parse(
-      readFileSync(
-        path.resolve(
-          process.cwd(),
-          "../internal/telemetry/projection/overlay/testdata/overlay_v1_pre_d7.golden.json",
-        ),
-        "utf8",
-      ),
-    ) as JSONObject;
-    const payload = { ...golden };
-    delete payload.canonicalVersion;
-    delete payload.projectionVersion;
-    delete payload.epoch;
-    delete payload.sequence;
-    delete payload.capturedAt;
-
-    const event = decodeTransportEvent(eventName("overlay", "projection"), {
-      product: "overlay",
-      projectionVersion: golden.projectionVersion,
-      epoch: golden.epoch,
-      sequence: golden.sequence,
-      kind: "full",
-      capturedAt: golden.capturedAt,
-      statusRevision: 1,
-      payload,
-    });
-
-    expect(event.kind).toBe("projection");
-    if (event.kind === "projection") {
-      expect(event.value.payload).toEqual(payload);
-    }
-  });
 });

@@ -1,12 +1,17 @@
 /** `races.*` catalogue for Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
 export const racesOrbitEn: Record<string, string> = {
   "races.eyebrow": "LMU calendar",
-  "races.title": "Races",
+  "races.title": "Calendar",
   "races.lead":
-    "Starts computed from the fixture's published cadence, in your time zone.",
+    "Schedules and upcoming starts, in your time zone.",
+  "races.status.refreshing": "Refreshing…",
+  "races.status.error": "Could not update the calendar. Try again.",
+  "races.status.loading": "Loading calendar…",
+  "races.status.unknown": "The schedule's validity is unknown. Refresh it.",
+  "races.status.future": "This schedule has not started yet.",
+  "races.status.expired": "Schedule expired. Refresh to see upcoming starts.",
+  "races.status.updated": "Schedule updated.",
   "races.refresh": "Refresh schedule",
-  "races.refreshed": "Schedule requested",
-  "races.refreshedHint": "The published calendar has been requested from the backend.",
 
   "races.views.label": "Calendar view",
   "races.views.next": "Upcoming",
@@ -46,6 +51,7 @@ export const racesOrbitEn: Record<string, string> = {
   "races.detail.race": "Race",
   "races.detail.cadence": "Cadence",
   "races.detail.next": "Next start",
+  "races.detail.estimated": "~ estimated duration",
   "races.detail.sessions": "Sessions",
   "races.detail.starts": "Following starts",
   "races.detail.picked": "Picked start",
@@ -71,6 +77,9 @@ export const racesOrbitEn: Record<string, string> = {
   "races.tier.advanced": "Gold",
   "races.tier.weekly": "Weekly",
 
+  "races.detail.followPending": "Saving…",
+  "races.toasts.followFailed": "Could not save follow preference",
+  "races.toasts.followFailedHint": "Your preference has not been confirmed. Try again.",
   "races.toasts.followed": "Series followed",
   "races.toasts.followedHint":
     "Reminders {{minutes}} min before every start of {{name}}.",

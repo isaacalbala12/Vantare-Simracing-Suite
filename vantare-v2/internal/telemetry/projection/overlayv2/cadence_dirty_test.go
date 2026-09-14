@@ -73,10 +73,11 @@ func TestStandingsDirtySignalIgnoresUnprojectedChanges(t *testing.T) {
 			},
 		},
 		{
-			name: "best lap time is not projected",
+			name: "best lap time is projected",
 			mutate: func(state *derive.FinalState) {
 				state.Observed.Vehicles[1].BestLapTime = builderPresent(standings.LapTime(88.1))
 			},
+			dirty: true,
 		},
 		{
 			name: "order changes",
@@ -266,6 +267,13 @@ func TestRelativeDirtySignalIgnoresUnprojectedChanges(t *testing.T) {
 						state.Observed.Vehicles[index].DriverName = builderPresent(identity.DriverName("Otro"))
 					}
 				}
+			},
+			dirty: true,
+		},
+		{
+			name: "position of neighbour inside window changes",
+			mutate: func(state *derive.FinalState) {
+				state.Observed.Vehicles[1].Position = builderPresent(standings.Position(19))
 			},
 			dirty: true,
 		},
@@ -528,5 +536,36 @@ func TestStandingsRelativeStayFreshUnderRegulatedCadence(t *testing.T) {
 				t.Fatalf("tick %d relative mismatch on clean tick\n got: %s\nwant: %s", tick, regulatedJSON, freshJSON)
 			}
 		}
+	}
+}
+
+func TestSpotterWarningReachesFrameOnNextTick(t *testing.T) {
+	t.Parallel()
+
+	projector := NewCachedProjector(SectionCadence{
+		Fast: time.Hour, Mid: time.Hour, Slow: time.Hour,
+		Spotter: time.Hour, Session: time.Hour, DirtyCeiling: 2 * time.Hour,
+	})
+	base := builderFinalState(t, 2)
+	header := base.Header()
+	origin := time.Date(2026, 8, 28, 12, 0, 0, 0, time.UTC)
+	project := func(sequence schema.Sequence, state derive.FinalState, now time.Time) UpdateV2 {
+		header.Cursor.Sequence = sequence
+		header.Clock.ReceivedUTC = now
+		snapshot, err := envelope.NewSnapshot(header, state, cloneFinalState)
+		if err != nil {
+			t.Fatal(err)
+		}
+		update, err := projector.Project(snapshot, builderSourceContext(), DefaultPreferencesV2(), uint64(sequence), now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return update
+	}
+
+	project(1, spotterState(t, spotterPlayer{}, spotterOpponent{x: 60}), origin)
+	got := project(2, spotterState(t, spotterPlayer{}, spotterOpponent{x: 3, z: 1}), origin.Add(time.Millisecond))
+	if got.Frame == nil || !got.Frame.Spotter.Left.V || got.Frame.Spotter.Left.Q != QualityFresh {
+		t.Fatalf("aviso spotter no llegó en el tick siguiente: %#v", got.Frame)
 	}
 }

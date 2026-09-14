@@ -58,7 +58,8 @@ func MigrateProfileJSONToV3(data []byte) (*ProfileDocumentV3, int, error) {
 		return nil, 0, fmt.Errorf("parse profile envelope: %w", err)
 	}
 	from := envelope.SchemaVersion
-	if from == ProfileSchemaVersionV3 {
+	switch from {
+	case ProfileSchemaVersionV3:
 		var doc ProfileDocumentV3
 		if err := json.Unmarshal(data, &doc); err != nil {
 			return nil, 0, fmt.Errorf("parse profile v3: %w", err)
@@ -71,6 +72,10 @@ func MigrateProfileJSONToV3(data []byte) (*ProfileDocumentV3, int, error) {
 			return nil, 0, err
 		}
 		return normalized, ProfileSchemaVersionV3, nil
+	case 0, 1, ProfileSchemaVersionV2:
+		// Supported legacy schemas continue below.
+	default:
+		return nil, 0, fmt.Errorf("schemaVersion %d no soportado", from)
 	}
 
 	var raw map[string]any

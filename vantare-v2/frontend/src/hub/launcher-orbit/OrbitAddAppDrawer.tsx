@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from "react";
 import { useI18n } from "../../i18n/I18nProvider";
 import { Button, Drawer, Field, Input } from "../../ui/orbit";
 import type { AppPickedListener, Unsubscribe } from "../launcher/launcher-bridge";
+import { useHubSuspendBlocker } from "../hub-suspend-guard";
 import "../../styles/orbit-launcher.css";
 
 export type OrbitAddAppDrawerProps = {
@@ -45,6 +46,11 @@ export function OrbitAddAppDrawer({
   const [name, setName] = useState("");
   const [path, setPath] = useState("");
   const [browsing, setBrowsing] = useState(false);
+  useHubSuspendBlocker(
+    "launcher-add-app-draft",
+    "Launcher tiene un alta de aplicación sin guardar",
+    open && (name.trim() !== "" || path.trim() !== "" || browsing),
+  );
 
   useEffect(() => {
     if (!open || !subscribeAppPicked) return;

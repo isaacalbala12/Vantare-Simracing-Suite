@@ -14,10 +14,11 @@ export function PedalsTelemetryCrystal({ model }: WidgetRendererProps<PedalsTele
           <span className="vc-pedals-telemetry-gear-value">{model.gearText}</span>
         </div>
         <div className="vc-pedals-telemetry-center">
+          <small className="vc-rpm-scale">0-10k RPM</small>
           <div className="vc-pedals-telemetry-leds" aria-label={`RPM ${model.rpmText}`}>
             {Array.from({ length: 9 }, (_, index) => (
               <span
-                className={`vc-pedals-telemetry-led${model.rpm !== undefined && model.rpm >= (index + 1) * 1000 ? " is-on" : ""}${index >= 4 ? " is-red" : ""}`}
+                className={`vc-pedals-telemetry-led${model.rpm !== undefined && model.rpm >= (index + 1) * 10000 / 9 ? " is-on" : ""}`}
                 key={index}
               />
             ))}

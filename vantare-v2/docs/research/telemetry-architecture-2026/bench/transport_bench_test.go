@@ -14,13 +14,13 @@ import (
 
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection"
-	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlay"
+	"github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 )
 
-func overlayPayload(tb testing.TB, count int) (overlay.PayloadV1, projection.Metadata) {
+func strategyPayload(tb testing.TB, count int) (strategy.PayloadV1, projection.Metadata) {
 	tb.Helper()
 	final := FinalStateFixture(tb, count, 32)
-	projected, err := overlay.ProjectV1(final)
+	projected, err := strategy.ProjectV1(final)
 	if err != nil {
 		tb.Fatal(err)
 	}
@@ -29,9 +29,11 @@ func overlayPayload(tb testing.TB, count int) (overlay.PayloadV1, projection.Met
 
 func liveHub(tb testing.TB) *telemetrytransport.Hub {
 	tb.Helper()
-	hub := telemetrytransport.NewHub(telemetrytransport.HubConfig{Product: telemetrytransport.ProductOverlay})
+	// R7a: ProductOverlay esta retirado; el Hub generico se banca sobre
+	// Strategy, su consumidor vivo en produccion.
+	hub := telemetrytransport.NewHub(telemetrytransport.HubConfig{Product: telemetrytransport.ProductStrategy})
 	status, err := telemetrytransport.NewStatus(
-		telemetrytransport.ProductOverlay, 1, time.Now(),
+		telemetrytransport.ProductStrategy, 1, time.Now(),
 		telemetrytransport.StatusPayload{State: "live"},
 	)
 	if err != nil {
@@ -43,18 +45,18 @@ func liveHub(tb testing.TB) *telemetrytransport.Hub {
 	return hub
 }
 
-// BenchmarkTransportPublishOverlayV1 prices NewOverlayFull (marshal + seal +
-// validation) plus Hub.PublishSnapshot for the real overlay payload.
-func BenchmarkTransportPublishOverlayV1(b *testing.B) {
+// BenchmarkTransportPublishStrategyV1 prices NewStrategyFull (marshal + seal +
+// validation) plus Hub.PublishSnapshot for the real strategy payload.
+func BenchmarkTransportPublishStrategyV1(b *testing.B) {
 	for _, count := range VehicleCounts {
 		b.Run(fmt.Sprintf("vehicles=%d", count), func(b *testing.B) {
-			payload, metadata := overlayPayload(b, count)
+			payload, metadata := strategyPayload(b, count)
 			hub := liveHub(b)
 			b.ReportAllocs()
 			b.ResetTimer()
 			for i := 0; i < b.N; i++ {
 				metadata.Sequence = metadata.Sequence + 1
-				full, err := telemetrytransport.NewOverlayFull(metadata, 1, payload)
+				full, err := telemetrytransport.NewStrategyFull(metadata, 1, payload)
 				if err != nil {
 					b.Skipf("payload of %d vehicles rejected by transport: %v", count, err)
 				}
@@ -67,23 +69,11 @@ func BenchmarkTransportPublishOverlayV1(b *testing.B) {
 }
 
 // BenchmarkSealSHA256 isolates the per-frame SHA-256 seal over the payload.
+// R7a: el brazo overlay-v1 esta retirado; solo queda el brazo del prototipo
+// compacto historico (BuildCompactFrame), que no es el OverlayFrame V2
+// productivo ni la linea base de la auditoria futura.
 func BenchmarkSealSHA256(b *testing.B) {
 	for _, count := range VehicleCounts {
-		payload, _ := overlayPayload(b, count)
-		encoded, err := json.Marshal(payload)
-		if err != nil {
-			b.Fatal(err)
-		}
-		b.Run(fmt.Sprintf("overlay-v1/vehicles=%d/bytes=%d", count, len(encoded)), func(b *testing.B) {
-			b.SetBytes(int64(len(encoded)))
-			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
-				digest := sha256.New()
-				digest.Write(encoded)
-				var out [sha256.Size]byte
-				digest.Sum(out[:0])
-			}
-		})
 		compact, err := json.Marshal(BuildCompactFrame(FinalStateFixture(b, count, 32)))
 		if err != nil {
 			b.Fatal(err)
@@ -114,42 +104,14 @@ func BenchmarkMergePatchGenerate(b *testing.B) {
 				}
 			}
 		})
-
-		previousPayload, _ := overlayPayload(b, count)
-		previousOverlay, _ := json.Marshal(previousPayload)
-		nextProjected, err := overlay.ProjectV1(FinalStateFixture(b, count, 33))
-		if err != nil {
-			b.Fatal(err)
-		}
-		nextOverlay, _ := json.Marshal(nextProjected.PayloadV1)
-		b.Run(fmt.Sprintf("overlay-v1/vehicles=%d", count), func(b *testing.B) {
-			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
-				if GenerateMergePatch(previousOverlay, nextOverlay) == nil {
-					b.Fatal("empty patch")
-				}
-			}
-		})
 	}
 }
 
-// BenchmarkMergePatchApply prices the repository's ApplyMergePatch, which the
-// frontend mirror must also pay on every delta frame.
-func BenchmarkMergePatchApply(b *testing.B) {
-	for _, count := range VehicleCounts {
-		previous, _ := json.Marshal(BuildCompactFrame(FinalStateFixture(b, count, 32)))
-		next, _ := json.Marshal(BuildCompactFrame(FinalStateFixture(b, count, 33)))
-		patch := GenerateMergePatch(previous, next)
-		b.Run(fmt.Sprintf("compact/vehicles=%d", count), func(b *testing.B) {
-			b.ReportAllocs()
-			for i := 0; i < b.N; i++ {
-				if _, err := telemetrytransport.ApplyMergePatch(previous, patch); err != nil {
-					b.Fatal(err)
-				}
-			}
-		})
-	}
-}
+// R7a: BenchmarkMergePatchApply esta retirado: invocaba
+// telemetrytransport.ApplyMergePatch, simbolo inexistente en HEAD
+// (rotura preexistente, no introducida por R7a). La via delta sigue
+// fallando cerrada con ErrDeltaUnsupported, que continua vivo; se elimina
+// el caso en lugar de reimplementar la capacidad.
 
 // BenchmarkLatestWinsCell prices the alternative publisher: one atomic cell
 // with a level-triggered signal, i.e. "the newest frame always wins and the
@@ -194,7 +156,7 @@ func BenchmarkLatestWinsCell(b *testing.B) {
 // deliberately slow (5 ms per read). The Hub is documented latest-wins and
 // starts no goroutines; this checks the publisher really never pays for it.
 func BenchmarkSlowSubscriberHub(b *testing.B) {
-	payload, metadata := overlayPayload(b, 20)
+	payload, metadata := strategyPayload(b, 20)
 	hub := liveHub(b)
 	ctx, cancel := context.WithCancel(context.Background())
 	subscription, err := hub.Subscribe(ctx)
@@ -219,7 +181,7 @@ func BenchmarkSlowSubscriberHub(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		metadata.Sequence = metadata.Sequence + 1
-		full, err := telemetrytransport.NewOverlayFull(metadata, 1, payload)
+		full, err := telemetrytransport.NewStrategyFull(metadata, 1, payload)
 		if err != nil {
 			b.Fatal(err)
 		}

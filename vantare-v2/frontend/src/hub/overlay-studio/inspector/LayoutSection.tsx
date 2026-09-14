@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type {
   ProfileDocumentV3,
   SessionLayoutType,
@@ -8,6 +9,7 @@ import { widgetTypeRegistry } from '../../../overlay/core/widget-registry';
 import { useI18n } from '../../../i18n/I18nProvider';
 import { Button, Field, Input, Toggle } from '../../../ui/orbit';
 import { executeWidgetAction } from '../canvas/widget-actions';
+import { useHubSuspendBlocker } from '../../hub-suspend-guard';
 import type { StudioCommand } from '../state/studio-command';
 
 /** Campos numericos X/Y/W/H de la fila de 4 del inspector Orbit. */
@@ -33,6 +35,24 @@ export function LayoutSection(props: LayoutSectionProps): React.ReactElement {
   const { t } = useI18n();
   const definition = widgetTypeRegistry.get(widget.type);
   const canUnlock = definition.capabilities.supportsAspectUnlock;
+  const [draftFields, setDraftFields] = useState<Set<string>>(() => new Set());
+  useHubSuspendBlocker(
+    'studio-layout-input-draft',
+    t('studio.inspector.layout.suspendBlocker'),
+    draftFields.size > 0,
+  );
+  const beginDraft = (key: string) => setDraftFields((current) => {
+    if (current.has(key)) return current;
+    const next = new Set(current);
+    next.add(key);
+    return next;
+  });
+  const endDraft = (key: string) => setDraftFields((current) => {
+    if (!current.has(key)) return current;
+    const next = new Set(current);
+    next.delete(key);
+    return next;
+  });
 
   const setAspectLocked = (aspectLocked: boolean) =>
     dispatch({
@@ -93,10 +113,18 @@ export function LayoutSection(props: LayoutSectionProps): React.ReactElement {
                   // refleja el arrastre sin pelearse con lo que estas tecleando.
                   key={`${widget.id}-${field.key}-${current}`}
                   numeric
-                  onBlur={(event) => commitLayoutField(field.key, event.target.value)}
+                  onBlur={(event) => {
+                    commitLayoutField(field.key, event.target.value);
+                    endDraft(field.key);
+                  }}
+                  onInput={() => beginDraft(field.key)}
                   onKeyDown={(event) => {
                     if (event.key === 'Enter') {
                       commitLayoutField(field.key, event.currentTarget.value);
+                      endDraft(field.key);
+                    } else if (event.key === 'Escape') {
+                      event.currentTarget.value = String(current);
+                      endDraft(field.key);
                     }
                   }}
                 />

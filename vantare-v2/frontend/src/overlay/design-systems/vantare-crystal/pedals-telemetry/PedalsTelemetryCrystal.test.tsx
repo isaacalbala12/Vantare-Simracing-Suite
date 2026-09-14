@@ -56,3 +56,10 @@ describe("PedalsTelemetryCrystal", () => {
     expect(source).not.toMatch(/@wailsio\/runtime|telemetry-store|getTelemetryRef|profile-document/);
   });
 });
+
+it("labels the neutral RPM scale and never presents it as a redline", () => {
+ const {container}=render(<PedalsTelemetryCrystal model={{...model,rpm:2200,rpmText:"2.2k"}} settings={{}} renderMode="harness"/>);
+ expect(container.textContent).toContain("0-10k RPM");
+ expect(container.querySelectorAll(".is-red")).toHaveLength(0);
+ expect(container.querySelectorAll(".is-on")).toHaveLength(1);
+});

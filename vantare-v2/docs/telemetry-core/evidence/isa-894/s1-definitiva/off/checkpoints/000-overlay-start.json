@@ -1,0 +1,166 @@
+{
+  "schema": "vantare.huella.cdp.v1",
+  "capturedAt": "2026-08-30T18:34:58.311Z",
+  "action": "overlay-start",
+  "control": {
+    "changed": true,
+    "running": true,
+    "emittedAt": "2026-08-30T18:34:56.561Z",
+    "mechanism": {
+      "kind": "wails-event",
+      "eventName": "overlay:start-active"
+    }
+  },
+  "durationSeconds": 1,
+  "expectedWidgets": 3,
+  "renderedWidgets": 3,
+  "overlayReadyAt": "2026-08-30T18:34:57.102Z",
+  "rendererProcessIds": [
+    29848,
+    27288
+  ],
+  "rendererProcessInfoError": null,
+  "targets": [
+    {
+      "role": "hub",
+      "url": "http://wails.localhost/#/hub",
+      "title": "Vantare",
+      "overlay": false,
+      "hub": true,
+      "surface": "hub",
+      "widgetCount": 0,
+      "diagnostics": null,
+      "probe": {
+        "rafPerSecond": 121,
+        "longTaskCount": 0,
+        "longTaskTotalMs": 0,
+        "longTaskMaxMs": 0,
+        "widgetCount": 0
+      },
+      "memory": {
+        "jsHeapUsedBytes": 8611068,
+        "jsHeapTotalBytes": 11554816,
+        "documents": 3,
+        "nodes": 60,
+        "jsEventListeners": 196
+      },
+      "memoryError": null,
+      "screenshot": "<session-root>\\screenshots\\initial\\hub-1.png"
+    },
+    {
+      "role": "overlay",
+      "url": "http://wails.localhost/overlay.html",
+      "title": "Vantare Overlay",
+      "overlay": true,
+      "hub": false,
+      "surface": "desktop",
+      "widgetCount": 3,
+      "diagnostics": {
+        "overlay_v2_parse_duration": {
+          "count": 7,
+          "p50": 0.5,
+          "p99": 1.5,
+          "nonLiveSamples": 0
+        },
+        "overlay_v2_transport": {
+          "revision": 13,
+          "frameRevision": 13,
+          "sourceState": "live",
+          "epoch": 1,
+          "sequence": 130,
+          "sessionId": "lmu-session-1",
+          "vehicleCount": 18,
+          "playerPit": "pit"
+        },
+        "pull": {
+          "active": true,
+          "requestsCompleted": 7,
+          "receivedV1Projections": 0,
+          "receivedV2Snapshots": 6,
+          "requestDurationMs": {
+            "count": 7,
+            "sampleCount": 7,
+            "mean": 9.471428571535009,
+            "max": 35.399999998509884,
+            "p99": 35.399999998509884,
+            "histogram": [
+              {
+                "le": 1,
+                "count": 0
+              },
+              {
+                "le": 2,
+                "count": 0
+              },
+              {
+                "le": 4,
+                "count": 1
+              },
+              {
+                "le": 8,
+                "count": 5
+              },
+              {
+                "le": 16,
+                "count": 0
+              },
+              {
+                "le": 32,
+                "count": 0
+              },
+              {
+                "le": 64,
+                "count": 1
+              },
+              {
+                "le": 128,
+                "count": 0
+              },
+              {
+                "le": 250,
+                "count": 0
+              },
+              {
+                "le": 500,
+                "count": 0
+              },
+              {
+                "le": 1000,
+                "count": 0
+              },
+              {
+                "le": 2500,
+                "count": 0
+              },
+              {
+                "le": 5000,
+                "count": 0
+              },
+              {
+                "le": null,
+                "count": 0
+              }
+            ]
+          }
+        },
+        "shadow": null
+      },
+      "probe": {
+        "rafPerSecond": 120,
+        "longTaskCount": 0,
+        "longTaskTotalMs": 0,
+        "longTaskMaxMs": 0,
+        "widgetCount": 3
+      },
+      "memory": {
+        "jsHeapUsedBytes": 7254532,
+        "jsHeapTotalBytes": 11427840,
+        "documents": 3,
+        "nodes": 380,
+        "jsEventListeners": 179
+      },
+      "memoryError": null,
+      "screenshot": "<session-root>\\screenshots\\initial\\overlay-2.png"
+    }
+  ]
+}

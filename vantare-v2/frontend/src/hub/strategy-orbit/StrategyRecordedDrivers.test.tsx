@@ -36,10 +36,30 @@ it("uses equal pace only after explicitly selecting an estimate, then accepts a 
   expect(changed.mock.lastCall?.[0].drivers[1].paceDeltaSeconds).toBeUndefined();
 });
 
+it("edits and reorders the fixed driver sequence explicitly", () => {
+  const changed = vi.fn();
+  render(<Editor changed={changed} initial={{
+    step: "drivers", mode: "manual", name: "", race: { format: "laps", laps: 50 }, drivers, sessions: [], invalidatedSessionCount: 0,
+    driverOrder: { mode: "fixed", ids: ["primary", "relay"] },
+  }} />);
+
+  fireEvent.click(screen.getByRole("button", { name: "strategy.journey.driver.order.down Alex" }));
+  expect(changed.mock.lastCall?.[0].driverOrder).toEqual({ mode: "fixed", ids: ["relay", "primary"] });
+  fireEvent.change(screen.getByRole("combobox", { name: "strategy.journey.driver.order.mode" }), { target: { value: "free" } });
+  expect(changed.mock.lastCall?.[0].driverOrder).toEqual({ mode: "free", ids: ["relay", "primary"] });
+});
+
+it("keeps free order visible but unavailable for timed races", () => {
+  render(<Editor changed={vi.fn()} />);
+  const selector = screen.getByRole("combobox", { name: "strategy.journey.driver.order.mode" });
+  expect((within(selector).getByRole("option", { name: "strategy.journey.driver.order.free" }) as HTMLOptionElement).disabled).toBe(true);
+  expect(screen.getByText("strategy.journey.driver.order.timedBlocked")).toBeTruthy();
+});
+
 it("removes dependent estimates when their reference driver is removed", () => {
   const changed = vi.fn();
   render(<Editor changed={changed} />);
-  fireEvent.change(screen.getByRole("combobox"), { target: { value: "primary" } });
+  fireEvent.change(screen.getByRole("combobox", { name: "strategy.journey.driver.paceSource" }), { target: { value: "primary" } });
   fireEvent.click(screen.getByRole("button", { name: "strategy.journey.driver.remove Alex" }));
   expect(changed.mock.lastCall?.[0].drivers).toEqual([{ id: "relay", name: "Sam", referenceDriverId: undefined, paceDeltaSeconds: undefined }]);
   expect(screen.queryByText("strategy.journey.driver.estimated")).toBeNull();

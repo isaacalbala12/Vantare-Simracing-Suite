@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { recordedCalculationEvent } from "./strategy-recorded-calculation";
+import { recordedCalculationEvent, recordedCalculationVariant } from "./strategy-recorded-calculation";
 import { createRecordedWizardDraft, type RecordedWizardDraft } from "./strategy-recorded-wizard";
 
 const tyre = (id: string) => ({
@@ -100,5 +100,56 @@ describe("recordedCalculationEvent", () => {
     expect(event).toMatchObject({ tyreInventory, compoundPace });
     expect(event.tyreInventory).not.toBe(tyreInventory);
     expect(event.compoundPace).not.toBe(compoundPace);
+  });
+});
+
+describe("recordedCalculationVariant", () => {
+  const drivers = [{ id: "alex", name: "Alex" }, { id: "sam", name: "Sam" }];
+
+  it("maps an explicit fixed sequence without calculating presentation values", () => {
+    const source = draft({
+      race: { format: "timed", durationMin: 120 },
+      drivers,
+      driverOrder: { mode: "fixed", ids: ["sam", "alex"] },
+    });
+
+    expect(recordedCalculationVariant(source, "wet")).toEqual({
+      id: "recorded-main",
+      mode: "wet",
+      driverOrderMode: "fixed",
+      order: ["sam", "alex"],
+      overrides: {},
+    });
+  });
+
+  it("uses the legacy driver order as a fixed sequence without mutating the draft", () => {
+    const source = draft({ drivers });
+    const before = structuredClone(source);
+
+    expect(recordedCalculationVariant(source, "dry").order).toEqual(["alex", "sam"]);
+    expect(source).toEqual(before);
+  });
+
+  it("maps unique free candidates for a lap race", () => {
+    const source = draft({
+      race: { format: "laps", laps: 50 },
+      drivers,
+      driverOrder: { mode: "free", ids: ["alex", "sam"] },
+    });
+
+    expect(recordedCalculationVariant(source, "eco")).toMatchObject({
+      mode: "eco",
+      driverOrderMode: "free",
+      order: ["alex", "sam"],
+    });
+  });
+
+  it.each([
+    ["timed free mode", { drivers, driverOrder: { mode: "free", ids: ["alex", "sam"] } }],
+    ["duplicate", { race: { format: "laps", laps: 50 }, drivers, driverOrder: { mode: "free", ids: ["alex", "alex"] } }],
+    ["foreign", { race: { format: "laps", laps: 50 }, drivers, driverOrder: { mode: "fixed", ids: ["alex", "other"] } }],
+    ["missing", { race: { format: "laps", laps: 50 }, drivers, driverOrder: { mode: "fixed", ids: ["alex"] } }],
+  ] satisfies readonly [string, Partial<RecordedWizardDraft>][]) ("rejects %s driver order", (_name, patch) => {
+    expect(() => recordedCalculationVariant(draft(patch), "dry")).toThrow(/recorded calculation variant/i);
   });
 });

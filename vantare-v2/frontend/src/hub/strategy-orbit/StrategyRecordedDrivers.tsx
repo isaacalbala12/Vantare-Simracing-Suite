@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { RecordedWizardDraft } from "./strategy-recorded-wizard";
+import { effectiveRecordedDriverOrder, reconcileRecordedDriverOrder, type RecordedWizardDraft } from "./strategy-recorded-wizard";
 import "./strategy-recorded-drivers.css";
 
 type DriverLimit = NonNullable<NonNullable<RecordedWizardDraft["rules"]>["driverLimits"]>[string];
@@ -59,10 +59,22 @@ export function StrategyRecordedDrivers({ draft, onChange, onAdd, t }: {
 }) {
   const drivers = draft.drivers;
   const driverLimits = draft.rules?.driverLimits ?? {};
+  const driverOrder = effectiveRecordedDriverOrder(draft);
   const principal = drivers[0];
   const change = (nextDrivers: RecordedWizardDraft["drivers"], nextLimits: DriverLimits = driverLimits) => onChange({
-    ...draft, drivers: nextDrivers, rules: rulesWithDriverLimits(draft.rules, nextLimits),
+    ...draft, drivers: nextDrivers, driverOrder: reconcileRecordedDriverOrder(draft, nextDrivers), rules: rulesWithDriverLimits(draft.rules, nextLimits),
   });
+  const setOrder = (mode: "fixed" | "free", ids = driverOrder.ids) => onChange({
+    ...draft,
+    driverOrder: { mode, ids: [...ids] },
+  });
+  const moveDriver = (index: number, offset: -1 | 1) => {
+    const target = index + offset;
+    if (target < 0 || target >= driverOrder.ids.length || driverOrder.mode !== "fixed") return;
+    const ids = [...driverOrder.ids];
+    [ids[index], ids[target]] = [ids[target], ids[index]];
+    setOrder("fixed", ids);
+  };
   const update = (id: string, patch: Partial<RecordedWizardDraft["drivers"][number]>) => change(drivers.map(driver => driver.id === id ? { ...driver, ...patch } : driver));
   const changeDriverLimit = (id: string, nextLimit: MutableDriverLimit) => {
     const nextLimits: Record<string, DriverLimit> = { ...driverLimits };
@@ -88,6 +100,28 @@ export function StrategyRecordedDrivers({ draft, onChange, onAdd, t }: {
     change(drivers.filter(item => item.id !== id).map(item => item.referenceDriverId === id ? { ...item, referenceDriverId: undefined, paceDeltaSeconds: undefined } : item), nextLimits);
   };
   return <div className="strategy-recorded-drivers">
+    <section className="strategy-recorded-drivers__order" aria-label={t("strategy.journey.driver.order.title")}>
+      <div>
+        <strong>{t("strategy.journey.driver.order.title")}</strong>
+        <p>{t(driverOrder.mode === "fixed" ? "strategy.journey.driver.order.fixedHint" : "strategy.journey.driver.order.freeHint")}</p>
+      </div>
+      <label className="strategy-recorded-field">
+        <span>{t("strategy.journey.driver.order.mode")}</span>
+        <select aria-label={t("strategy.journey.driver.order.mode")} value={driverOrder.mode} onChange={event => setOrder(event.target.value as "fixed" | "free")}>
+          <option value="fixed">{t("strategy.journey.driver.order.fixed")}</option>
+          <option value="free" disabled={draft.race.format === "timed"}>{t("strategy.journey.driver.order.free")}</option>
+        </select>
+      </label>
+      {draft.race.format === "timed" ? <p className="strategy-recorded-drivers__order-note">{t("strategy.journey.driver.order.timedBlocked")}</p> : null}
+      <ol>{driverOrder.ids.map((id, index) => {
+        const driver = drivers.find(candidate => candidate.id === id);
+        const name = driver?.name || t("strategy.journey.unconfirmed");
+        return <li key={id}><span>{index + 1}</span><strong>{name}</strong>{driverOrder.mode === "fixed" ? <span>
+          <button type="button" className="orbit-btn orbit-btn--ghost" disabled={index === 0} aria-label={`${t("strategy.journey.driver.order.up")} ${name}`} onClick={() => moveDriver(index, -1)}>↑</button>
+          <button type="button" className="orbit-btn orbit-btn--ghost" disabled={index === driverOrder.ids.length - 1} aria-label={`${t("strategy.journey.driver.order.down")} ${name}`} onClick={() => moveDriver(index, 1)}>↓</button>
+        </span> : null}</li>;
+      })}</ol>
+    </section>
     {drivers.length === 0 ? <section className="strategy-recorded-drivers__card"><h3>{t("strategy.journey.driver.primary")}</h3><p role="status">{t("strategy.journey.driver.empty")}</p></section> : null}
     {drivers.map((driver, index) => <section key={driver.id} className="strategy-recorded-drivers__card" aria-label={`${t("strategy.journey.driver.label")} ${index + 1}`}>
       <header><span className="strategy-recorded-frame__eyebrow">{t(index === 0 ? "strategy.journey.driver.primary" : "strategy.journey.driver.relay")} {index > 0 ? index : ""}</span>

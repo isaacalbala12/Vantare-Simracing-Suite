@@ -1,5 +1,5 @@
 import { validateStrategyEventRules } from "../../strategy/strategy-event-rules";
-import type { RecordedWizardDraft, RecordedWizardStep } from "./strategy-recorded-wizard";
+import { effectiveRecordedDriverOrder, type RecordedWizardDraft, type RecordedWizardStep } from "./strategy-recorded-wizard";
 
 /** Validate supplied configuration; missing telemetry is not a draft error. */
 export function recordedWizardErrors(draft: RecordedWizardDraft, step: RecordedWizardStep): string[] {
@@ -24,6 +24,10 @@ export function recordedWizardErrors(draft: RecordedWizardDraft, step: RecordedW
   if (step === "drivers" || step === "sessions") {
     const byId = new Map(draft.drivers.map(driver => [driver.id, driver]));
     if (byId.size !== draft.drivers.length || draft.drivers.some(driver => !driver.id.trim() || !driver.name.trim())) errors.push("driverNames");
+    const order = effectiveRecordedDriverOrder(draft);
+    const ordered = new Set(order.ids);
+    if (ordered.size !== order.ids.length || ordered.size !== byId.size || order.ids.some(id => !byId.has(id))
+      || (draft.race.format === "timed" && order.mode === "free")) errors.push("driverOrder");
     if (draft.drivers.some(driver => {
       if (driver.paceDeltaSeconds !== undefined && !Number.isFinite(driver.paceDeltaSeconds)) return true;
       if (!driver.referenceDriverId) return driver.paceDeltaSeconds !== undefined;

@@ -1,6 +1,14 @@
 @import './strategy-recorded-fields.css';
 
 .strategy-recorded-drivers { display: grid; gap: 14px; }
+.strategy-recorded-drivers__order { display: grid; grid-template-columns: minmax(0, 1fr) minmax(210px, 0.45fr); gap: 14px 22px; padding: 20px 22px; border: 1px solid var(--orbit-line-strong); border-radius: 10px; background: var(--orbit-surface-1); }
+.strategy-recorded-drivers__order p { margin: 5px 0 0; color: var(--orbit-ink-2); font-size: 13px; }
+.strategy-recorded-drivers__order-note { grid-column: 1 / -1; padding: 10px 12px; border-left: 2px solid var(--orbit-red); background: var(--orbit-surface-0); }
+.strategy-recorded-drivers__order ol { grid-column: 1 / -1; display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.strategy-recorded-drivers__order li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 38px; padding: 5px 7px; border-top: 1px solid var(--orbit-line); }
+.strategy-recorded-drivers__order li > span:first-child { color: var(--orbit-ink-2); font-variant-numeric: tabular-nums; }
+.strategy-recorded-drivers__order li > span:last-child { display: flex; gap: 5px; }
+.strategy-recorded-drivers__order li button { min-width: 34px; padding: 5px 8px; }
 .strategy-recorded-drivers__card { padding: 20px 22px; border: 1px solid var(--orbit-line-strong); border-radius: 10px; background: var(--orbit-surface-0); }
 .strategy-recorded-drivers__card header { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 14px; }
 .strategy-recorded-drivers__card h3 { margin: 0 0 16px; font-size: 16px; }
@@ -12,4 +20,4 @@
 .strategy-recorded-drivers__estimate strong { display: inline-block; padding: 4px 8px; border: 1px solid var(--orbit-line-strong); border-radius: 5px; color: var(--orbit-ink-2); font-size: 11px; font-weight: 400; }
 .strategy-recorded-drivers__add { justify-content: center; min-height: 48px; }
 .strategy-recorded-drivers button:focus-visible { outline: 2px solid var(--orbit-red); outline-offset: 3px; }
-@media (max-width: 600px) { .strategy-recorded-drivers__card { padding: 16px; } .strategy-recorded-drivers__limits { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .strategy-recorded-drivers__order { grid-template-columns: 1fr; padding: 16px; } .strategy-recorded-drivers__order ol, .strategy-recorded-drivers__order-note { grid-column: 1; } .strategy-recorded-drivers__card { padding: 16px; } .strategy-recorded-drivers__limits { grid-template-columns: 1fr; } }

@@ -34,6 +34,19 @@ it("preserves zero configuration, signed estimates and full revision refs", () =
   const draft = { ...payload.draft, fuelReserveLiters: 0, drivers: [{ id: "a", name: "Alex" }, { id: "b", name: "Sam", referenceDriverId: "a", paceDeltaSeconds: -0.5 }], sessions: [{ sessionId: "session", baseDigest: "base", revisionId: "revision", snapshotId: "snapshot" }] };
   expect(parseRecordedDraftPayload({ ...payload, draft }).draft).toEqual(draft);
 });
+it("round-trips an explicit driver order while legacy v1 drafts stay unchanged", () => {
+  const ordered = {
+    ...payload,
+    draft: {
+      ...payload.draft,
+      drivers: [{ id: "a", name: "Alex" }, { id: "b", name: "Sam" }],
+      driverOrder: { mode: "free", ids: ["b", "a"] },
+    },
+  };
+
+  expect(parseRecordedDraftPayload(ordered)).toEqual(ordered);
+  expect(parseRecordedDraftPayload(payload)).toEqual(payload);
+});
 it("round-trips pit windows and driver limits in contract units", () => {
   const draft = { ...payload.draft, drivers: [{ id: "a", name: "Alex" }], rules: { requiredWindows: [{ fromLap: 10, toLap: 20 }, { fromLap: 30, toLap: 40 }], mandatoryCompounds: ["hard", "wet"], allowedCompoundsByClimate: { dry: ["hard", "wet"], wet: ["soft"] }, driverLimits: { a: { minLaps: 12, maxLaps: 40, maxContinuousTimeSeconds: 1800, maxTotalTimeSeconds: 5400 } } } };
   expect(parseRecordedDraftPayload({ ...payload, draft }).draft).toEqual(draft);
@@ -85,6 +98,9 @@ it.each([
   { formationSeconds: null },
   { formationSeconds: "0" },
   { formationSeconds: Number.POSITIVE_INFINITY },
+  { driverOrder: null },
+  { driverOrder: { mode: "automatic", ids: [] } },
+  { driverOrder: { mode: "fixed", ids: "driver" } },
   { tyreInventory: { maximum: 4, tyres: [] } },
   { compoundPace: [] },
   { tyreInventory: { maximum: 4, tyres: [tyre("M-FL"), tyre("M-FL")] }, compoundPace: validCompoundPace },

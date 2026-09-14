@@ -44,3 +44,12 @@ it.each<RecordedWizardDraft["drivers"]>([
 ])("rejects incomplete or cyclic driver references", (...drivers) => {
   expect(recordedWizardErrors({ ...empty, drivers }, "drivers").length).toBeGreaterThan(0);
 });
+it.each([
+  { race: { format: "timed", durationMin: 60 } as const, driverOrder: { mode: "free", ids: ["a", "b"] } as const },
+  { race: { format: "laps", laps: 50 } as const, driverOrder: { mode: "fixed", ids: ["a", "a"] } as const },
+  { race: { format: "laps", laps: 50 } as const, driverOrder: { mode: "fixed", ids: ["a"] } as const },
+  { race: { format: "laps", laps: 50 } as const, driverOrder: { mode: "free", ids: ["a", "other"] } as const },
+])("rejects a driver criterion that cannot be sent to the current solver: %j", patch => {
+  const drivers = [{ id: "a", name: "Alex" }, { id: "b", name: "Sam" }];
+  expect(recordedWizardErrors({ ...empty, ...patch, drivers }, "drivers")).toContain("driverOrder");
+});

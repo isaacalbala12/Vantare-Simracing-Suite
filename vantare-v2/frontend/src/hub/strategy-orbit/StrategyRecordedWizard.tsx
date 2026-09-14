@@ -6,7 +6,7 @@ import { StrategyRecordedStart } from "./StrategyRecordedStart";
 import { StrategyRecordedCombination } from "./StrategyRecordedCombination";
 import { StrategyRecordedRules } from "./StrategyRecordedRules";
 import { StrategyRecordedDrivers } from "./StrategyRecordedDrivers";
-import { RECORDED_WIZARD_STEPS, moveRecordedWizard, selectRecordedCalendar, selectRecordedCombination, snapshotRecordedCalendar, type RecordedCombination, type RecordedWizardDraft } from "./strategy-recorded-wizard";
+import { RECORDED_WIZARD_STEPS, moveRecordedWizard, reconcileRecordedDriverOrder, selectRecordedCalendar, selectRecordedCombination, snapshotRecordedCalendar, type RecordedCombination, type RecordedWizardDraft } from "./strategy-recorded-wizard";
 import { recordedWizardErrors } from "./strategy-recorded-validation";
 
 export function StrategyRecordedWizard({ draft, onChange, catalog, catalogState, calendar, onDiscover, sessions, onOpenDraft, onExit, busy = false, canOpenDraft = true, openDraftHint, onRetryOpenDraft, error, t }: {
@@ -48,7 +48,10 @@ export function StrategyRecordedWizard({ draft, onChange, catalog, catalogState,
             change(selectRecordedCalendar(draft, snapshot, catalog));
           }} /> : null}
         {draft.step === "rules" ? <StrategyRecordedRules draft={draft} onChange={change} t={t} /> : null}
-        {draft.step === "drivers" ? <StrategyRecordedDrivers draft={draft} onChange={change} onAdd={() => change({ ...draft, drivers: [...draft.drivers, { id: globalThis.crypto.randomUUID(), name: "" }] })} t={t} /> : null}
+        {draft.step === "drivers" ? <StrategyRecordedDrivers draft={draft} onChange={change} onAdd={() => {
+          const drivers = [...draft.drivers, { id: globalThis.crypto.randomUUID(), name: "" }];
+          change({ ...draft, drivers, driverOrder: reconcileRecordedDriverOrder(draft, drivers) });
+        }} t={t} /> : null}
         {draft.step === "sessions" ? sessions : null}
         {draft.step === "sessions" && !canOpenDraft && openDraftHint ? <div role="status" className="strategy-recorded-wizard__errors"><p>{openDraftHint}</p>{onRetryOpenDraft ? <button type="button" className="orbit-btn orbit-btn--ghost" onClick={onRetryOpenDraft}>{t("strategy.workspace.refresh")}</button> : null}</div> : null}
         {errors.length > 0 ? <div className="strategy-recorded-wizard__errors" role="alert">{errors.map(code => <p key={code}>{t(`strategy.journey.error.${code}`)}</p>)}</div> : null}

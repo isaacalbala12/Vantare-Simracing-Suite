@@ -1,8 +1,9 @@
 import type { StrategyOrbitCalculationInputV1 } from "../../strategy/strategy-application-client";
-import type { RecordedWizardDraft } from "./strategy-recorded-wizard";
+import { effectiveRecordedDriverOrder, type RecordedWizardDraft } from "./strategy-recorded-wizard";
 import { recordedWizardErrors } from "./strategy-recorded-validation";
 
 type CalculationEvent = StrategyOrbitCalculationInputV1["event"];
+type CalculationVariant = StrategyOrbitCalculationInputV1["variants"][number];
 
 /** Maps confirmed event inputs only. Telemetry-derived drivers and variants belong to calculation readiness. */
 export function recordedCalculationEvent(draft: RecordedWizardDraft): CalculationEvent {
@@ -33,6 +34,28 @@ export function recordedCalculationEvent(draft: RecordedWizardDraft): Calculatio
   }
   if (draft.race.laps === undefined) invalid();
   return { ...common, raceKind: "laps", targetLaps: draft.race.laps, durationMinutes: 0 };
+}
+
+/** Maps only the confirmed driver criterion. The future caller must supply its explicit pace mode. */
+export function recordedCalculationVariant(
+  draft: RecordedWizardDraft,
+  mode: CalculationVariant["mode"],
+): CalculationVariant {
+  const order = effectiveRecordedDriverOrder(draft);
+  const driverIds = draft.drivers.map(driver => driver.id);
+  const expected = new Set(driverIds);
+  const actual = new Set(order.ids);
+  if (driverIds.length === 0 || actual.size !== order.ids.length || actual.size !== expected.size
+    || order.ids.some(id => !expected.has(id)) || (draft.race.format === "timed" && order.mode === "free")) {
+    throw new Error("Invalid recorded calculation variant");
+  }
+  return {
+    id: "recorded-main",
+    mode,
+    driverOrderMode: order.mode,
+    order: [...order.ids],
+    overrides: {},
+  };
 }
 
 function applicableEnergy(capacityPercent?: number, initialPercent?: number, reservePercent?: number) {

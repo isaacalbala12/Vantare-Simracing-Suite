@@ -37,6 +37,11 @@ export function parseRecordedDraftPayload(value: unknown): RecordedDraftPayload 
   if (race.format === "timed" && race.laps !== undefined || race.format === "laps" && race.durationMin !== undefined) invalid("race.units");
   optionalNumbers(race, ["durationMin", "laps"]);
   optionalNumbers(draft, ["tankLiters", "initialFuelLiters", "fuelReserveLiters", "pitLossSeconds", "formationSeconds"]);
+  if (draft.driverOrder !== undefined) {
+    const order = object(draft.driverOrder, "driverOrder");
+    if (order.mode !== "fixed" && order.mode !== "free") invalid("driverOrder.mode");
+    for (const id of array(order.ids, "driverOrder.ids")) string(id, "driverOrder.id", true);
+  }
   if (draft.pitServices !== undefined) {
     const services = object(draft.pitServices, "pitServices");
     for (const field of ["transitSeconds", "refuelRateLPerS", "veRatePPerS", "tyreSeconds"]) number(services[field], `pitServices.${field}`);

@@ -42,9 +42,35 @@ export type RecordedWizardDraft = {
   readonly tyreInventory?: NonNullable<RecordedCalculationEvent["tyreInventory"]>;
   readonly compoundPace?: NonNullable<RecordedCalculationEvent["compoundPace"]>;
   readonly drivers: readonly { readonly id: string; readonly name: string; readonly referenceDriverId?: string; readonly paceDeltaSeconds?: number }[];
+  /** Absent only in drafts saved before T15; those retain their listed driver order as fixed. */
+  readonly driverOrder?: { readonly mode: "fixed" | "free"; readonly ids: readonly string[] };
   readonly sessions: readonly StrategyAnalysisRevisionRef[];
   readonly invalidatedSessionCount: number;
 };
+
+export type RecordedDriverOrder = NonNullable<RecordedWizardDraft["driverOrder"]>;
+
+/** Materializes the additive T15 field without rewriting older stored drafts. */
+export function effectiveRecordedDriverOrder(draft: Pick<RecordedWizardDraft, "drivers" | "driverOrder">): RecordedDriverOrder {
+  return draft.driverOrder
+    ? { mode: draft.driverOrder.mode, ids: [...draft.driverOrder.ids] }
+    : { mode: "fixed", ids: draft.drivers.map(driver => driver.id) };
+}
+
+/** Keeps the explicit sequence/candidate set aligned when the driver roster changes. */
+export function reconcileRecordedDriverOrder(
+  draft: Pick<RecordedWizardDraft, "drivers" | "driverOrder">,
+  drivers: RecordedWizardDraft["drivers"],
+): RecordedDriverOrder {
+  const current = effectiveRecordedDriverOrder(draft);
+  const available = new Set(drivers.map(driver => driver.id));
+  const retained = current.ids.filter(id => available.has(id));
+  const present = new Set(retained);
+  return {
+    mode: current.mode,
+    ids: [...retained, ...drivers.map(driver => driver.id).filter(id => !present.has(id))],
+  };
+}
 
 export function createRecordedWizardDraft(): RecordedWizardDraft {
   return { step: "start", mode: "manual", name: "", race: { format: "timed" }, drivers: [], sessions: [], invalidatedSessionCount: 0 };

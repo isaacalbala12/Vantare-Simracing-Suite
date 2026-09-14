@@ -12,16 +12,20 @@ vi.mock("./strategy-orbit-bridge", () => ({ createStrategyOrbitApplicationClient
 afterEach(() => { cleanup(); document.getElementById(STRATEGY_CONTEXT_SLOT_ID)?.remove(); });
 const combination = { combinationId: "lmu:imola", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Car", carClass: "LMP2", sessionCount: 1, raceCount: 1, lastActivity: "2026-09-10T00:00:00Z", climateBuckets: [], sessions: [] };
 const draft = { contractVersion: "strategy.v1" as const, draftId: "recorded-draft:existing", planId: "recorded-plan:existing", variantId: "recorded-main", name: "Saved Imola", mode: "manual" as const, updatedAt: "2026-09-10T00:00:00Z", capabilities: ["manual_inputs" as const], provenance: { kind: "manual" as const }, confidence: { level: "unknown" as const }, payload: { contractVersion: "strategy.recorded.draft.v1" as const, eventId: "existing", draft: { ...createRecordedWizardDraft(), combination, name: "Saved Imola" } } };
-function setup(options?: { delayLibrary: boolean }) {
+function setup(options?: { delayLibrary?: boolean; plans?: StrategyApplicationResultV1<RecordedDraftPayload>["plans"]; catalogFails?: boolean }) {
   let releaseLibrary = () => {};
   const libraryReady = options?.delayLibrary ? new Promise<void>(resolve => { releaseLibrary = resolve; }) : Promise.resolve();
   const execute = vi.fn(async (command: StrategyApplicationCommandV1<RecordedDraftPayload>): Promise<StrategyApplicationResultV1<RecordedDraftPayload>> => {
     const base = { protocolVersion: "strategy.application.v1" as const, commandId: command.commandId, repositoryVersion: 4, recoveredFromBackup: false, closed: false };
     switch (command.operation) {
-      case "list": await libraryReady; return { ...base, plans: [{ planId: draft.planId, variantId: draft.variantId, draftId: draft.draftId, name: draft.name, mode: draft.mode, updatedAt: draft.updatedAt, hasDraft: true, revisionCount: 0 }] };
-      case "list_session_combinations": return { ...base, sessionCatalogStatus: "available", sessionCombinations: [combination] };
+      case "list": await libraryReady; return { ...base, plans: options?.plans ?? [{ planId: draft.planId, variantId: draft.variantId, draftId: draft.draftId, name: draft.name, mode: draft.mode, updatedAt: draft.updatedAt, hasDraft: true, revisionCount: 0 }] };
+      case "list_session_combinations": if (options?.catalogFails) throw new Error("catalog unavailable"); return { ...base, sessionCatalogStatus: "available", sessionCombinations: [combination] };
       case "list_events": return { ...base, events: [] };
-      case "open": return { ...base, draft };
+      case "open": if ("revision" in command && command.revision) return { ...base, revision: {
+        contractVersion: "strategy.v1", hashAlgorithm: "sha256", sourceDraftId: draft.draftId, name: draft.name, mode: draft.mode,
+        capabilities: [], provenance: { kind: "manual" }, confidence: { level: "unknown" }, createdAt: "2026-09-09T10:00:00Z",
+        payload: { contractVersion: "strategy.orbit.revision.v1", calculatedPlan: { totalLaps: 71, total: 7420, stops: 2 } }, ...command.revision,
+      } as never }; return { ...base, draft };
       case "create": return { ...base, draft: command.draft };
       default: throw new Error(`Unexpected native operation ${command.operation}`);
     }
@@ -87,4 +91,17 @@ it("keeps preparation editable but waits for the native repository version befor
   await waitFor(() => expect((save as HTMLButtonElement).disabled).toBe(false));
   fireEvent.click(save);
   await screen.findByText("strategy.workspace.saved");
+});
+it("offers saved history without a draft and only opens the explicitly chosen revision", async () => {
+  const refA = { planId: "recorded-plan:history", variantId: "recorded-main", revisionId: "revision-a", contentHash: "a".repeat(64) };
+  const refB = { ...refA, revisionId: "revision-b", contentHash: "b".repeat(64) };
+  const { slot, execute } = setup({ catalogFails: true, plans: [{ ...refA, name: "Historical Le Mans", mode: "manual", updatedAt: "2026-09-14T12:00:00Z", hasDraft: false, revisionCount: 2, revisionRefs: [refA, refB], latestRevision: refB }] });
+  fireEvent.click(await within(slot).findByRole("button", { name: "strategy.home.saved" }));
+  fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.leave" }));
+  expect(await screen.findByText("Historical Le Mans")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "strategy.planHistory.open" }));
+  expect(execute.mock.calls.filter(([command]) => command.operation === "open")).toHaveLength(0);
+  fireEvent.click(screen.getAllByRole("button", { name: "strategy.planHistory.choose" })[0]);
+  expect(await screen.findByText("2:03:40")).toBeTruthy();
+  expect(execute.mock.calls.find(([command]) => command.operation === "open")?.[0]).toMatchObject({ revision: refA });
 });

@@ -4,10 +4,14 @@ import { filterPlans, loadStrategyLibrary, sortPlans, type StrategyLibrary } fro
 import type { RecordedDraftPayload } from "./strategy-recorded-payload";
 import { openRecordedDraft, type StoredRecordedDraft } from "./strategy-recorded-persistence";
 
-function recordedPlan(plan: StrategyPlanSummaryV1): boolean {
+function recordedIdentity(plan: StrategyPlanSummaryV1): boolean {
   const prefix = "recorded-plan:";
-  return plan.hasDraft && plan.variantId === "recorded-main" && plan.planId.startsWith(prefix)
-    && plan.planId.length > prefix.length && plan.draftId === `recorded-draft:${plan.planId.slice(prefix.length)}`;
+  return plan.variantId === "recorded-main" && plan.planId.startsWith(prefix) && plan.planId.length > prefix.length;
+}
+
+function recordedDraft(plan: StrategyPlanSummaryV1): boolean {
+  return recordedIdentity(plan) && plan.hasDraft
+    && plan.draftId === `recorded-draft:${plan.planId.slice("recorded-plan:".length)}`;
 }
 
 /** Lists native summaries only. A selection opens and validates exactly one payload. */
@@ -32,15 +36,17 @@ export function useRecordedLibrary(application: StrategyApplicationClient<Record
     });
     return () => { current = false; };
   }, [application, retry]);
-  const all = library?.plans.filter(recordedPlan) ?? [];
+  const all = library?.plans.filter(recordedIdentity) ?? [];
+  const drafts = all.filter(recordedDraft);
   return {
     status, error, opening, query, setQuery,
-    plans: sortPlans(filterPlans(all, { query }), "recent"),
+    plans: sortPlans(filterPlans(drafts, { query }), "recent"),
+    savedPlans: sortPlans(filterPlans(all, { query, onlySaved: true }), "recent"),
     repositoryVersion: status === "ready" ? library?.repositoryVersion : undefined,
     recoveredFromBackup: library?.recoveredFromBackup ?? false,
     refresh: () => { if (!pending.current) { setStatus("loading"); setError(""); setRetry(value => value + 1); } },
     open: async (draftId: string): Promise<StoredRecordedDraft | undefined> => {
-      const selected = all.find(plan => plan.draftId === draftId);
+      const selected = drafts.find(plan => plan.draftId === draftId);
       if (pending.current || status !== "ready" || !selected) return undefined;
       pending.current = true; setOpening(true); setError("");
       try {

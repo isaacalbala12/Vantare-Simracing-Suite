@@ -1,4 +1,4 @@
-# Plan ejecutable y continuidad — SDD v1.1
+# Plan ejecutable y continuidad — SDD v1.2
 
 [Especificación](README.md) · [Aceptación](acceptance.md) · ISA-1091.
 
@@ -17,7 +17,7 @@ prevalece sobre sus notas históricas de «siguiente corte».
 | T04/T05/T08/T09 | Shell/asistente unificado, biblioteca paginada, apertura explícita, configuración guardada/reabierta. | Paridad final T18, recuperación/copia y reinicio real T22; reutilizar servicios existentes y resolver sólo gaps observados. |
 | T10/T11 | Valor, uso por familia e historial de fuente implementados; bancos reales previos. | T11i visual/nativo pendiente; recuperación duradera de comandos y revisión completa del plan en T14/T22. |
 | T12 | Clasificación tipada e identidad canónica v4; J9 Imola→Monza 23.99 s y Monza→Imola 35.98 s, hashes intactos. | Gate visual/nativo compartido T18/T22; J9 no demuestra precisión empírica ni cálculo completo. |
-| T13–T18 | T13a–e cerrado localmente; T14a #1254 conserva la entrada exacta del cálculo, T14b #1255 la abre por referencia en Go sin fuente, T14c #1257 exige esa misma referencia en el cliente TypeScript y T14d #1259 publica todas las referencias históricas sin payloads. Contratos y referencias visuales disponibles para el resto. | Cliente/vista histórica y recuperación duradera T14; cálculo, stint/parada y paridad. |
+| T13–T18 | T13a–e cerrado localmente; T14a #1254 conserva la entrada exacta del cálculo, T14b #1255 la abre por referencia en Go sin fuente, T14c #1257 exige esa misma referencia en el cliente TypeScript, T14d #1259 publica todas las referencias históricas sin payloads y T14e #1260 permite elegir y consultar cada resultado exacto desde Mis estrategias. Contratos y referencias visuales disponibles para el resto. | Recuperación duradera de comandos T14; cálculo, stint/parada y paridad. |
 | T19–T21 | Inventario y protocolo #1030; preparación expuesta identificada. | Semántica/anotación, calibración y reserva suficiente de carreras completas; A19 sigue pendiente. |
 | T22/T23 | Bancos nativos sin GUI existen; WebView2 `ERROR_INVALID_STATE` reproducido en T11i. | Diagnóstico acotado, recorrido de distribución, aceptación y entrega verificable. |
 | T24 | Aplazado por decisión de producto. | Investigación live sólo tras aceptación del registrado; no implementación live. |
@@ -27,7 +27,7 @@ Evidencia de los gaps: [matriz T02](../evidence/isa-1092/README.md),
 `StrategyRecordedWorkflow.tsx` bajo `frontend/src/hub/strategy-orbit/`.
 No repetir T12 ni declarar terminadas las entradas sólo por su posición en el DAG.
 
-**Siguiente corte elegible:** T14a #1254 conserva la petición exacta asociada al resultado guardado, T14b #1255 abre una revisión exacta por el bridge Go sin la fuente, T14c #1257 valida la misma selección en el cliente TypeScript y T14d #1259 permite descubrir A después de crear B. T14 continúa con la vista histórica y recuperación duradera antes de conectar el recorrido productivo. T03a–e queda cerrado sobre el contrato actual: cancelación, timeout, presupuesto agotado, inviabilidad, resultado vigente y carga pendiente ya tienen rutas comprobadas. El plan parcial y la optimalidad demostrada después de la evaluación final requieren semántica de producto y permanecen en T15; A12/A13 siguen abiertos. El selector recorded y el modo libre temporal también se conectan allí. La disponibilidad horaria legacy necesita otra referencia temporal y permanece pendiente. T13a–e queda cerrado localmente; la aceptación visual de sus pantallas permanece en T18 y el recorrido Wails en T22.
+**Siguiente corte elegible:** T14a–e ya conserva, descubre y consulta cada revisión exacta sin reabrir su fuente. T14 continúa sólo con recuperación duradera de comandos antes de conectar el recorrido productivo. T03a–e queda cerrado sobre el contrato actual: cancelación, timeout, presupuesto agotado, inviabilidad, resultado vigente y carga pendiente ya tienen rutas comprobadas. El plan parcial y la optimalidad demostrada después de la evaluación final requieren semántica de producto y permanecen en T15; A12/A13 siguen abiertos. El selector recorded y el modo libre temporal también se conectan allí. La disponibilidad horaria legacy necesita otra referencia temporal y permanece pendiente. T13a–e queda cerrado localmente; la aceptación visual de sus pantallas permanece en T18 y el recorrido Wails en T22.
 En paralelo lógico, preparar inventario T02 restante y preflight documental T22a;
 la ejecución física sigue siendo de un único escritor por worktree.
 
@@ -80,12 +80,11 @@ de alcance se propone con evidencia antes de ejecutar la parte nueva.
   No leer/copiar .env ni secretos. LMU permanece intacto y sólo se cierran
   procesos propios identificados.
 - El proveedor de ejecución es una elección operativa, no un contrato de
-  producto. Actualmente Isaac pide **Devin MCP, SWE-2 Max**: confirmar modelo
-  efectivo `swe-2-max` antes de asignar un corte. No usar OpenCode ni sustituir
-  silenciosamente modelo/modo. El orquestador mantiene dirección, planes,
-  documentación, issues y aceptación basada en diff/evidencia; Devin implementa,
-  prueba y revisa el alcance asignado. La auditoría documental Astra high está
-  autorizada específicamente; no concede subdelegación general.
+  producto. Tras comprobar que las sesiones SWE-2 Max consumían mucho contexto
+  sin producir cambios, Isaac aceptó que el orquestador ejecute directamente
+  los cortes para no bloquear el avance. Devin queda disponible sólo si aporta
+  una ventaja concreta; no usar OpenCode. Astra puede asesorar cuando la
+  solución simple no esté clara, sin convertir su informe en aceptación.
 - Ante `resource_exhausted`, sesión perdida o adaptador no disponible, conservar
   archivos/logs y comprobar estado antes de reintentar. No lanzar bucles de
   sesiones ni duplicar trabajo. El orquestador puede ejecutar localmente el
@@ -117,7 +116,7 @@ No inventar un timeout de espera que transforme silencio en aprobación.
 ```text
 BASE local T12 c2d5b45b + capacidades previas (no aceptación integral)
   -> T19a semántica temporal -> #1208 alineación LMU -> T13a contrato -> T13b..e límites
-  -> T14a..c revisiones reproducibles
+  -> T14a..e revisiones reproducibles
 
 T02 restante -> T06 reglas completas / T07 perfiles y conducción -> T03a-e contrato actual cerrado
 T14 + T02/T03/T06/T07 cerrados -> T15a..c cálculo/plan
@@ -199,7 +198,7 @@ archivos a ciegas ni ampliar el alcance de una issue histórica documental.
 | 4 · T13d→e / #1216/#1220 · cerrado localmente | Vista/derivación, servicio, contrato TS, cliente, edición avanzada e historial sobre el flujo existente. | Mover o retirar recalcula dependientes, conserva invariantes/original y se guarda, recupera, restaura, proyecta y adopta por las rutas existentes. A08 local; visual/nativo en T18/T22. |
 | 5 · T02d→g + T06/T07 | T02d1 #1222 y T02d2a–d #1224–#1227 cierran localmente horizonte y recursos; T02e #1228–#1230 inventario/curvas; T02f #1231–#1234 servicios/formación; T02g1 #1235 conecta el perfil único, T02g2a #1236 añade una secuencia multipiloto opcional, #1238 conserva su presupuesto, T02g2b #1237 conecta perfiles/secuencia y T02g3 #1246 distingue fijo/libre por vueltas en CalculateOrbit; T07a/T07b #1240/#1241 editan tiempo/vueltas, T06a #1242 ventanas de pit, T06b #1243 compuestos obligatorios, T06c #1244 compuestos por clima y T07c #1245 indisponibilidad por vueltas sin duplicar contratos. T15 conectará el selector recorded y resolverá el modo libre temporal; la disponibilidad horaria permanece separada. #1239 conserva pendiente el clima individual. | Cada campo respaldado llega al solve y evaluación final o se rechaza con razón; cero/ausente/no aplicable distintos. Delta entre pilotos sólo altera ritmo. No promedio que elimine límites, inventario o perfiles antes de optimizar. |
 | 6 · T03 / cerrado localmente | T03a #1248 distingue cancelación y timeout; T03b #1249 evita colisiones entre montajes; T03c #1250 espera las entradas derivadas; T03d #1251 valida optimalidad; T03e #1252 conserva presupuesto agotado con clima; T03f #1253 reconcilia el cierre sin fabricar estados. | El contrato actual distingue factible no probado, inviable, cancelado, timeout y presupuesto agotado; descarta respuestas antiguas y no anuncia éxito durante la carga. Plan parcial y optimalidad final quedan en T15; A12/A13 permanecen abiertos. |
-| 7 · T14a→d | T14a #1254 guarda la entrada exacta usada por el resultado y detecta A→B. T14b #1255 abre A por referencia completa mediante el bridge Go tras reabrir el repositorio, sin fuente ni fallback. T14c #1257 transporta esa referencia en el cliente TypeScript y rechaza una respuesta válida ausente o distinta. T14d #1259 enumera todas las referencias sin cargar payloads. Continúan la vista de Revisiones y la recuperación de comando tras reinicio. | A15/A16: aceptar A, crear B, cerrar/reabrir A exacta con reglas/pilotos/constraints/versiones/resultado; fuente ausente conserva consulta, no derivación. Sin sustituir por HEAD/base ni reintentar escritura incierta a ciegas. |
+| 7 · T14a→e | T14a #1254 guarda la entrada exacta usada por el resultado y detecta A→B. T14b #1255 abre A por referencia completa mediante el bridge Go tras reabrir el repositorio, sin fuente ni fallback. T14c #1257 transporta esa referencia en el cliente TypeScript y rechaza una respuesta válida ausente o distinta. T14d #1259 enumera todas las referencias sin cargar payloads. T14e #1260 permite elegir y consultar A desde Mis estrategias aunque no exista borrador, sin apertura automática. Continúa sólo la recuperación de comando tras reinicio. | A15/A16: aceptar A, crear B, cerrar/reabrir A exacta con reglas/pilotos/constraints/versiones/resultado; fuente ausente conserva consulta, no derivación. Sin sustituir por HEAD/base ni reintentar escritura incierta a ciegas. |
 | 8 · T15a→c | Conectar Carrera→Cálculo→Plan productivos: entrada exacta/readiness; ciclo calcular/cancelar; resultado explicable y aceptar/guardar separados. Definir plan parcial y cuándo la evaluación final conserva una optimalidad demostrada. | A12/A13 y E01/E02 controlados: propuesta real, unidades/recursos y procedencia, incertidumbre y límites; estados parciales/finales comprobados, sin tarjeta decorativa ni fórmula alternativa en React. Comparación matemática acotada y replay. |
 | 9 · T16a→b | Constraints y evaluación de stint; después detalle/arrastre/teclado con obsolescencia y selección sincronizada. | Mismo cambio por drag/teclado produce mismo constraint, respeta piloto/tiempo/Fuel/VE/neumático; comparación sólo con mismo modelo/fuentes/reglas y causa de inviabilidad visible. |
 | 10 · T17a→b | Servicios y recursos de parada; después detalle productivo y recálculo. | Tránsito separado de servicio, concurrencia o secuencia según reglas, cantidades/inventario/ventanas y reservas validadas sin doble conteo. E07 sobre decisión final, no sólo preview. |

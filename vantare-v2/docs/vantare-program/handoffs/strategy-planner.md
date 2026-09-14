@@ -1,6 +1,22 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1259 T14d cerrado localmente; historia descubrible
+## Estado vigente — #1260 T14e cerrado localmente; historial consultable
+
+Mis estrategias muestra planes guardados aunque ya no tengan borrador y abre un
+historial lateral sin cargar revisiones automáticamente. La persona elige una
+referencia completa; durante la lectura no se muestra un resultado anterior y
+un fallo permite reintentar exactamente la misma revisión. El visor identifica
+la última referencia por igualdad completa y presenta sólo vueltas, duración y
+paradas validadas del snapshot Orbit; los payloads incompatibles y los resúmenes
+legacy conservan metadatos y explicación sin inventar datos. Cerrar durante una
+lectura invalida su respuesta tardía. T14 continúa únicamente con recuperación
+duradera de comandos. Focales 14/14, frontend global 449 archivos/3838 tests,
+typecheck, lint, i18n, build y 259 comprobaciones documentales pasan. El build
+mantiene sólo el aviso heredado de chunks mayores de 500 kB; la suite conserva
+un AbortError de teardown no fatal ya conocido. La aceptación visual sigue en
+T18. Sin app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release.
+
+## Historial — #1259 T14d cerrado localmente; historia descubrible
 
 `list` publica ahora las referencias completas de todas las revisiones de cada
 plan sin cargar sus payloads. Tras A→B, A puede descubrirse y abrirse mediante

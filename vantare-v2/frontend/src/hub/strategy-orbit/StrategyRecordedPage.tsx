@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { useI18n } from "../../i18n/I18nProvider";
 import { Button, Icon, useToast } from "../../ui/orbit";
 import type { AnalysisClient } from "../../strategy/analysis-client";
-import type { StrategyApplicationClient } from "../../strategy/strategy-application-client";
+import type { StrategyApplicationClient, StrategyPlanSummaryV1 } from "../../strategy/strategy-application-client";
 import { useCalendarStarts } from "../orbit/use-calendar-starts";
 import { useOrbitSlot } from "../orbit/use-orbit-slot";
 import { createStrategyOrbitApplicationClient } from "./strategy-orbit-bridge";
@@ -13,6 +13,7 @@ import type { RecordedWizardDraft } from "./strategy-recorded-wizard";
 import { loadStrategySessionCatalog, type StrategySessionCatalogView } from "./strategy-session-selection";
 import { useRecordedLibrary } from "./use-recorded-library";
 import { StrategyRecordedWorkflow } from "./StrategyRecordedWorkflow";
+import { StrategyPlanHistory } from "./StrategyPlanHistory";
 import "./strategy-recorded-page.css";
 
 export const STRATEGY_CONTEXT_SLOT_ID = "orbit-strategy-context-slot";
@@ -48,6 +49,7 @@ export function StrategyRecordedPage({ applicationClient: supplied, analysisClie
     return () => { mounted.current = false; queueMicrotask(() => { if (!supplied && !mounted.current) application.dispose(); }); };
   }, [application, supplied]);
   const library = useRecordedLibrary(application);
+  const [historyPlan, setHistoryPlan] = useState<StrategyPlanSummaryV1>();
   const [active, setActive] = useState<{ eventId: string; initial?: StoredRecordedDraft } | null>(() => ({ eventId: globalThis.crypto.randomUUID() }));
   const [catalog, setCatalog] = useState<StrategySessionCatalogView>();
   const [catalogState, setCatalogState] = useState<"loading" | "available" | "unavailable">("loading");
@@ -78,9 +80,14 @@ export function StrategyRecordedPage({ applicationClient: supplied, analysisClie
         {library.opening ? <p role="status">{t("strategy.journey.opening")}</p> : null}
         {library.error ? <p role="alert">{t("strategy.workspace.libraryError")}</p> : null}
         {library.recoveredFromBackup ? <p role="status">{t("strategy.workspace.recovered")}</p> : null}
-        {library.status === "ready" && library.plans.length === 0 ? <p>{t("strategy.workspace.emptyLibrary")}</p> : null}
+        {library.status === "ready" && library.plans.length === 0 && library.savedPlans.length === 0 ? <p>{t("strategy.workspace.emptyLibrary")}</p> : null}
         <ul>{library.plans.map(plan => <li key={plan.draftId}><div><strong>{plan.name}</strong><small>{new Date(plan.updatedAt).toLocaleString()}</small></div>
           <Button variant="ghost" disabled={library.opening || library.status !== "ready"} onClick={() => { if (!plan.draftId) return; void library.open(plan.draftId).then(opened => { if (opened) setActive({ eventId: opened.document.payload.eventId, initial: opened }); }); }}>{t("strategy.workspace.open")}</Button></li>)}</ul>
+        {library.savedPlans.length ? <section className="strategy-recorded-library__history" aria-labelledby="recorded-history-title"><h3 id="recorded-history-title">{t("strategy.planHistory.savedPlans")}</h3>
+          <ul>{library.savedPlans.map(plan => <li key={`${plan.planId}:${plan.variantId}`}><div><strong>{plan.name}</strong><small>{plan.revisionCount} {t("strategy.planHistory.revisions")}</small></div>
+            <Button variant="ghost" disabled={library.opening || library.status !== "ready"} onClick={() => setHistoryPlan(plan)}>{t("strategy.planHistory.open")}</Button></li>)}</ul>
+        </section> : null}
+        {historyPlan ? <StrategyPlanHistory key={`${historyPlan.planId}:${historyPlan.variantId}`} plan={historyPlan} application={application} onClose={() => setHistoryPlan(undefined)} t={t} /> : null}
       </section>}
   </div>;
 }

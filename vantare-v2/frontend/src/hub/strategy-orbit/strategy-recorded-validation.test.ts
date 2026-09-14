@@ -17,6 +17,9 @@ it.each<[Partial<RecordedWizardDraft>, string]>([
   [{ virtualEnergy: { applicability: "applicable", capacityPercent: 75, initialPercent: 80 } }, "energy"],
   [{ virtualEnergy: { applicability: "applicable", reservePercent: 101 } }, "energy"],
   [{ rules: { minPitStops: 3, maxPitStops: 2 } }, "rules"],
+  [{ rules: { requiredWindows: [{ fromLap: 20, toLap: 10 }] } }, "rules"],
+  [{ rules: { requiredWindows: [{ fromLap: 0, toLap: 10 }] } }, "rules"],
+  [{ rules: { requiredWindows: [{ fromLap: 10.5, toLap: 20 }] } }, "rules"],
 ])("rejects supplied invalid configuration: %j", (patch, error) => {
   expect(recordedWizardErrors({ ...empty, ...patch }, "rules")).toContain(error);
 });

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { StrategyRecordedRules } from "./StrategyRecordedRules";
 import { createRecordedWizardDraft, type RecordedWizardDraft } from "./strategy-recorded-wizard";
@@ -53,4 +53,31 @@ it("updates stop counts without dropping other sourced rule values", () => {
   fireEvent.change(screen.getByRole("spinbutton", { name: "strategy.journey.pit.max" }), { target: { value: "3" } });
   expect(changed.mock.lastCall?.[0].rules).toEqual({ ...rules, maxPitStops: 3 });
   expect(rules).toEqual({ minPitStops: 1, requiredWindows: [{ fromLap: 10, toLap: 20 }] });
+});
+
+it("adds, edits and removes complete required pit windows without dropping other rules", () => {
+  const changed = vi.fn();
+  render(<Editor initial={{ ...createRecordedWizardDraft(), rules: { minPitStops: 1 } }} changed={changed} />);
+  fireEvent.click(screen.getByText("strategy.journey.rules.stops"));
+
+  expect((screen.getByRole("button", { name: "strategy.journey.pit.window.add" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.change(screen.getByRole("spinbutton", { name: "strategy.journey.pit.window.newFromLap" }), { target: { value: "10" } });
+  fireEvent.change(screen.getByRole("spinbutton", { name: "strategy.journey.pit.window.newToLap" }), { target: { value: "20" } });
+  fireEvent.click(screen.getByRole("button", { name: "strategy.journey.pit.window.add" }));
+  fireEvent.change(screen.getByRole("spinbutton", { name: "strategy.journey.pit.window.newFromLap" }), { target: { value: "30" } });
+  fireEvent.change(screen.getByRole("spinbutton", { name: "strategy.journey.pit.window.newToLap" }), { target: { value: "40" } });
+  fireEvent.click(screen.getByRole("button", { name: "strategy.journey.pit.window.add" }));
+  expect(changed.mock.lastCall?.[0].rules).toEqual({ minPitStops: 1, requiredWindows: [{ fromLap: 10, toLap: 20 }, { fromLap: 30, toLap: 40 }] });
+
+  const first = screen.getByRole("group", { name: "strategy.journey.pit.window.label 1" });
+  const firstStart = within(first).getByRole("spinbutton", { name: "strategy.journey.pit.window.fromLap" });
+  fireEvent.change(firstStart, { target: { value: "" } });
+  expect(changed.mock.lastCall?.[0].rules).toEqual({ minPitStops: 1, requiredWindows: [{ fromLap: 10, toLap: 20 }, { fromLap: 30, toLap: 40 }] });
+  fireEvent.change(firstStart, { target: { value: "15" } });
+  expect(changed.mock.lastCall?.[0].rules).toEqual({ minPitStops: 1, requiredWindows: [{ fromLap: 15, toLap: 20 }, { fromLap: 30, toLap: 40 }] });
+  fireEvent.change(within(first).getByRole("spinbutton", { name: "strategy.journey.pit.window.toLap" }), { target: { value: "22" } });
+  fireEvent.click(screen.getByRole("button", { name: "strategy.journey.pit.window.remove 2" }));
+  expect(changed.mock.lastCall?.[0].rules).toEqual({ minPitStops: 1, requiredWindows: [{ fromLap: 15, toLap: 22 }] });
+  fireEvent.click(screen.getByRole("button", { name: "strategy.journey.pit.window.remove 1" }));
+  expect(changed.mock.lastCall?.[0].rules).toEqual({ minPitStops: 1 });
 });

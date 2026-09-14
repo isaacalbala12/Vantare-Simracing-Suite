@@ -1,17 +1,22 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1241 T07b cerrado localmente; reglas visibles pendientes
+## Estado vigente — #1242 T06a cerrado localmente; compuestos pendientes
 
-T07b completa en el editor de Pilotos el mínimo/máximo de vueltas junto a los
-máximos continuo y total de T07a, todos dentro de
-`draft.rules.driverLimits`. Vueltas se guardan como enteros directos y minutos
-como segundos; vacío conserva ausencia y quitar un piloto elimina sólo su
-límite. El validador compartido rechaza fracciones y mínimo mayor que máximo
-antes de abandonar Pilotos. Guardado/reapertura, parser y adapter conservan
-12/40 vueltas y 1800/5400 s sin otro modelo. Astra recomendó este setter único
-en unidades de contrato y validación acotada a límites. Siguiente: reglas
-visibles; disponibilidad requiere una referencia temporal explícita. Sin
-app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release.
+T06a hace visibles las ventanas obligatorias de pit que ya transportaba el
+contrato: prepara ambos extremos antes de añadir, conserva orden y reglas
+ajenas, permite editar/quitar y elimina `requiredWindows` al retirar la última.
+El validador existente rechaza extremos menores que uno, fraccionarios o
+invertidos. Persistencia, parser y adapter conservan dos ventanas exactas sin
+otro modelo ni cambios en SolverV2. Astra fijó este grupo aislado para no mezclar
+las dependencias de inventario y clima de los compuestos. Siguiente: compuestos
+obligatorios y reglas por clima; después disponibilidad con referencia temporal
+explícita. Sin app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release.
+
+## Historial — #1241 T07b cerrado localmente
+
+Pilotos edita mínimo/máximo de vueltas y máximos continuo/total exclusivamente
+en `draft.rules.driverLimits`; validación, guardado y cálculo conservan las
+unidades del contrato sin duplicar modelos.
 
 ## Historial — #1237 T02g2b cerrado localmente
 

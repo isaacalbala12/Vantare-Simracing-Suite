@@ -1,6 +1,19 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1243 T06b cerrado localmente; reglas por clima pendientes
+## Estado vigente — #1244 T06c cerrado localmente; disponibilidad pendiente
+
+T06c edita `allowedCompoundsByClimate` directamente en las reglas existentes,
+con tres grupos seco/húmedo/mojado y los cuatro compuestos canónicos. La ausencia
+de selección se presenta como «Sin restricción» y vaciar el último compuesto
+elimina el bucket y, si procede, el mapa. La configuración precede a Sesiones:
+no se filtra con telemetría ni se fabrica compatibilidad; readiness/Solver debe
+explicar después los escenarios sin respaldo o inviables. Guardado, reapertura y
+adapter conservan el mapa exacto. Astra confirmó el corte mínimo sin editor
+genérico. Siguiente: disponibilidad por ventanas de vueltas, verificando antes
+su semántica temporal. Sin app/Wails/LMU, DuckDB, push, PR, CI remota,
+integración ni release.
+
+## Historial — #1243 T06b cerrado localmente
 
 T06b muestra soft/medium/hard/wet como configuración explícita del evento y
 guarda la selección en orden canónico dentro de `mandatoryCompounds`. No filtra

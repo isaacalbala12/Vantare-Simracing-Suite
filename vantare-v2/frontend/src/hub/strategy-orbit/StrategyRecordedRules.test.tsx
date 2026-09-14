@@ -87,13 +87,34 @@ it("stores mandatory compounds in canonical order and removes only that rule", (
   const requiredWindows = [{ fromLap: 10, toLap: 20 }];
   render(<Editor initial={{ ...createRecordedWizardDraft(), rules: { minPitStops: 1, requiredWindows } }} changed={changed} />);
   fireEvent.click(screen.getByText("strategy.journey.rules.stops"));
-  expect(screen.getByText("strategy.journey.compounds.mandatory")).toBeTruthy();
+  const mandatory = within(screen.getByRole("group", { name: "strategy.journey.compounds.mandatory" }));
+  expect(mandatory.getByText("strategy.journey.compounds.mandatory")).toBeTruthy();
 
-  fireEvent.click(screen.getByRole("checkbox", { name: "strategy.journey.compound.wet" }));
-  fireEvent.click(screen.getByRole("checkbox", { name: "strategy.journey.compound.hard" }));
+  fireEvent.click(mandatory.getByRole("checkbox", { name: "strategy.journey.compound.wet" }));
+  fireEvent.click(mandatory.getByRole("checkbox", { name: "strategy.journey.compound.hard" }));
   expect(changed.mock.lastCall?.[0].rules).toEqual({ minPitStops: 1, requiredWindows, mandatoryCompounds: ["hard", "wet"] });
 
-  fireEvent.click(screen.getByRole("checkbox", { name: "strategy.journey.compound.hard" }));
-  fireEvent.click(screen.getByRole("checkbox", { name: "strategy.journey.compound.wet" }));
+  fireEvent.click(mandatory.getByRole("checkbox", { name: "strategy.journey.compound.hard" }));
+  fireEvent.click(mandatory.getByRole("checkbox", { name: "strategy.journey.compound.wet" }));
   expect(changed.mock.lastCall?.[0].rules).toEqual({ minPitStops: 1, requiredWindows });
+});
+
+it("stores independent climate compound rules and shows absence as unrestricted", () => {
+  const changed = vi.fn();
+  render(<Editor initial={{ ...createRecordedWizardDraft(), rules: { minPitStops: 1 } }} changed={changed} />);
+  fireEvent.click(screen.getByText("strategy.journey.rules.stops"));
+  const dry = within(screen.getByRole("group", { name: "strategy.journey.climate.dry" }));
+  const wet = within(screen.getByRole("group", { name: "strategy.journey.climate.wet" }));
+  expect(dry.getByText("strategy.journey.compounds.unrestricted")).toBeTruthy();
+
+  fireEvent.click(dry.getByRole("checkbox", { name: "strategy.journey.compound.wet" }));
+  fireEvent.click(dry.getByRole("checkbox", { name: "strategy.journey.compound.hard" }));
+  fireEvent.click(wet.getByRole("checkbox", { name: "strategy.journey.compound.soft" }));
+  expect(changed.mock.lastCall?.[0].rules).toEqual({ minPitStops: 1, allowedCompoundsByClimate: { dry: ["hard", "wet"], wet: ["soft"] } });
+
+  fireEvent.click(wet.getByRole("checkbox", { name: "strategy.journey.compound.soft" }));
+  expect(changed.mock.lastCall?.[0].rules).toEqual({ minPitStops: 1, allowedCompoundsByClimate: { dry: ["hard", "wet"] } });
+  fireEvent.click(dry.getByRole("checkbox", { name: "strategy.journey.compound.hard" }));
+  fireEvent.click(dry.getByRole("checkbox", { name: "strategy.journey.compound.wet" }));
+  expect(changed.mock.lastCall?.[0].rules).toEqual({ minPitStops: 1 });
 });

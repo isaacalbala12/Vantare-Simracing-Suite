@@ -6,6 +6,10 @@ import "./strategy-recorded-fields.css";
 type EventRules = NonNullable<RecordedWizardDraft["rules"]>;
 type PitWindow = NonNullable<EventRules["requiredWindows"]>[number];
 type MutableRules = { -readonly [Key in keyof EventRules]: EventRules[Key] };
+const CLIMATES = ["dry", "humid", "wet"] as const;
+type Climate = typeof CLIMATES[number];
+type ClimateRules = NonNullable<EventRules["allowedCompoundsByClimate"]>;
+type MutableClimateRules = { -readonly [Key in keyof ClimateRules]: ClimateRules[Key] };
 
 function rulesWithWindows(rules: RecordedWizardDraft["rules"], windows: readonly PitWindow[]): RecordedWizardDraft["rules"] {
   const next: MutableRules = { ...rules };
@@ -18,6 +22,13 @@ function rulesWithCompounds(rules: RecordedWizardDraft["rules"], compounds: read
   const next: MutableRules = { ...rules };
   if (compounds.length > 0) next.mandatoryCompounds = compounds;
   else delete next.mandatoryCompounds;
+  return Object.keys(next).length > 0 ? next : undefined;
+}
+
+function rulesWithClimateCompounds(rules: RecordedWizardDraft["rules"], climates: ClimateRules): RecordedWizardDraft["rules"] {
+  const next: MutableRules = { ...rules };
+  if (Object.keys(climates).length > 0) next.allowedCompoundsByClimate = climates;
+  else delete next.allowedCompoundsByClimate;
   return Object.keys(next).length > 0 ? next : undefined;
 }
 
@@ -40,6 +51,7 @@ export function StrategyRecordedRules({ draft, onChange, t }: {
   const publishedDuration = draft.calendar?.series.raceDurationMin ?? draft.calendar?.series.durationMin;
   const windows = draft.rules?.requiredWindows ?? [];
   const mandatoryCompounds = draft.rules?.mandatoryCompounds ?? [];
+  const climateCompounds = draft.rules?.allowedCompoundsByClimate ?? {};
   const updateWindows = (next: readonly PitWindow[]) => onChange({ ...draft, rules: rulesWithWindows(draft.rules, next) });
   const updateWindow = (index: number, key: keyof PitWindow, value: number | undefined) => {
     if (value === undefined) return;
@@ -49,6 +61,15 @@ export function StrategyRecordedRules({ draft, onChange, t }: {
     const selected = mandatoryCompounds.includes(compound);
     const next = STRATEGY_COMPOUNDS.filter(item => item === compound ? !selected : mandatoryCompounds.includes(item));
     onChange({ ...draft, rules: rulesWithCompounds(draft.rules, next) });
+  };
+  const toggleClimateCompound = (climate: Climate, compound: StrategyCompound) => {
+    const current = climateCompounds[climate] ?? [];
+    const selected = current.includes(compound);
+    const nextBucket = STRATEGY_COMPOUNDS.filter(item => item === compound ? !selected : current.includes(item));
+    const next: MutableClimateRules = { ...climateCompounds };
+    if (nextBucket.length > 0) next[climate] = nextBucket;
+    else delete next[climate];
+    onChange({ ...draft, rules: rulesWithClimateCompounds(draft.rules, next) });
   };
   return <div className="strategy-recorded-fields">
     <p className="strategy-recorded-fields__provenance">{t("strategy.journey.rules.configuration")}</p>
@@ -105,6 +126,21 @@ export function StrategyRecordedRules({ draft, onChange, t }: {
             <span>{t(`strategy.journey.compound.${compound}`)}</span>
           </label>)}
         </div>
+      </div>
+      <div className="strategy-recorded-fields__climates" role="group" aria-label={t("strategy.journey.compounds.byClimate")}>
+        <strong>{t("strategy.journey.compounds.byClimate")}</strong>
+        <p>{t("strategy.journey.compounds.byClimateHint")}</p>
+        {CLIMATES.map(climate => {
+          const selected = climateCompounds[climate] ?? [];
+          return <div key={climate} className="strategy-recorded-fields__climate" role="group" aria-label={t(`strategy.journey.climate.${climate}`)}>
+            <strong>{t(`strategy.journey.climate.${climate}`)}</strong>
+            {selected.length === 0 ? <span>{t("strategy.journey.compounds.unrestricted")}</span> : null}
+            <div>{STRATEGY_COMPOUNDS.map(compound => <label key={compound} className="strategy-recorded-fields__compound">
+              <input type="checkbox" checked={selected.includes(compound)} onChange={() => toggleClimateCompound(climate, compound)} />
+              <span>{t(`strategy.journey.compound.${compound}`)}</span>
+            </label>)}</div>
+          </div>;
+        })}
       </div>
     </details>
   </div>;

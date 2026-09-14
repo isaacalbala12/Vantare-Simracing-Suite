@@ -4,7 +4,9 @@ import type {
   StrategyApplicationClient,
   StrategyApplicationCommandV1,
   StrategyApplicationResultV1,
+  StrategyOrbitCalculationInputV1,
 } from "../../strategy/strategy-application-client";
+import projectionGolden from "../../../../internal/telemetryanalysis/strategyprojection/testdata/strategyinputprojection_v2_new.json";
 import type { RevisionRefV1 } from "../../strategy/strategy-contract-v1";
 import {
   activateOrbitRevision,
@@ -19,6 +21,26 @@ const payload: StrategyOrbitRevisionPayloadV1 = {
   variant: { id: "strategy-a", name: "Base", mode: "dry" },
   calculatedPlan: { totalLaps: 139 },
 };
+
+function payloadWithSourceRevision(revisionId: string): StrategyOrbitRevisionPayloadV1 {
+  const sourceRevisions = projectionGolden.sourceSessions.map((sessionId) => ({
+    sessionId,
+    baseDigest: "a".repeat(64),
+    revisionId,
+    snapshotId: "c".repeat(64),
+  }));
+  const calculationInput = {
+    event: { durationMinutes: 60, tankLiters: 100, pitLossSeconds: 30 },
+    drivers: [],
+    variants: [],
+    activeVariantId: "strategy-a",
+    planningInputs: {
+      projection: { ...projectionGolden, sourceRevisions },
+      overrides: {},
+    },
+  } as StrategyOrbitCalculationInputV1;
+  return { ...payload, calculationInput };
+}
 
 const revision: RevisionRefV1 = {
   planId: "orbit-event-event-1",
@@ -107,6 +129,7 @@ describe("Strategy Orbit lifecycle canónico", () => {
   });
 
   it("al recargar recupera revisión exacta y ActivePlan solo del backend", async () => {
+    const savedPayload = payloadWithSourceRevision("b".repeat(64));
     const activePlan = {
       contractVersion: "strategy.v1" as const,
       activationId: "activation-1",
@@ -145,17 +168,24 @@ describe("Strategy Orbit lifecycle canónico", () => {
           provenance: { kind: "manual" as const, sourceId: "strategy-orbit" },
           confidence: { level: "high" as const, basis: "visible calculated plan" },
           updatedAt: "2026-08-21T18:00:00Z",
-          payload,
+          payload: savedPayload,
         };
         return result(command, { repositoryVersion: 12, draft, savedDraft: draft });
       }
       throw new Error(`unexpected ${command.operation}`);
     });
 
-    const loaded = await loadOrbitLifecycle(client, payload, "reload");
+    const loaded = await loadOrbitLifecycle(client, savedPayload, "reload");
     expect(loaded.savedRevision).toEqual(revision);
     expect(loaded.activePlan).toEqual(activePlan);
     expect(loaded.repositoryVersion).toBe(12);
+
+    const changedSource = await loadOrbitLifecycle(
+      client,
+      payloadWithSourceRevision("d".repeat(64)),
+      "changed-source",
+    );
+    expect(changedSource.savedRevision).toBeUndefined();
   });
 
   it("Activar envía exactamente la revisión guardada y conserva el ActivePlan devuelto", async () => {

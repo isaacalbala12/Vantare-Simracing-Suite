@@ -674,8 +674,12 @@ describe("StrategyOrbitPage · Estrategias", () => {
 
     const saved = await screen.findByTestId("orbit-strategy-revision-status");
     expect(saved.textContent).toContain("orbit-revision-");
-    const saveCommand = backend.seen.find((command) => command.operation === "save_revision");
-    expect(saveCommand).toMatchObject({ operation: "save_revision" });
+    const calculationCommand = backend.seen.find((command) => command.operation === "calculate_orbit") as
+      Extract<StrategyApplicationCommandV1<unknown>, { operation: "calculate_orbit" }>;
+    const saveCommand = backend.seen.find((command) => command.operation === "save_revision") as
+      Extract<StrategyApplicationCommandV1<unknown>, { operation: "save_revision" }>;
+    expect((saveCommand.draft.payload as StrategyOrbitRevisionPayloadV1).calculationInput)
+      .toEqual(calculationCommand.input);
 
     const activate = screen.getByTestId("orbit-strategy-activate-revision");
     fireEvent.click(activate);

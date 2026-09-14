@@ -1,6 +1,16 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1253 T03f cerrado localmente; contrato actual reconciliado
+## Estado vigente — #1254 T14a cerrado localmente; snapshot conserva la entrada exacta
+
+La revisión inmutable de Orbit conserva ahora, junto al resultado, la petición
+`StrategyOrbitCalculationInputV1` que lo produjo: proyección, overrides,
+referencias de fuente, reglas, pilotos, variantes y escenarios meteorológicos.
+El campo es aditivo para abrir snapshots anteriores. Una fuente A→B deja de
+reconocer A como la revisión visible guardada. T14 continúa con consulta de
+revisiones antiguas sin fuente y recuperación duradera de comandos. Sin
+app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release.
+
+## Historial — #1253 T03f cerrado localmente; contrato actual reconciliado
 
 T03a–e queda cerrado sobre lo que CalculateOrbit produce hoy: factible no
 probado, inviable, cancelado, timeout, presupuesto agotado, respuesta vigente y

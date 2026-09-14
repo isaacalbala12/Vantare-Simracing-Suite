@@ -1,6 +1,7 @@
 import {
   STRATEGY_APPLICATION_PROTOCOL_V1,
   type StrategyApplicationClient,
+  type StrategyOrbitCalculationInputV1,
 } from "../../strategy/strategy-application-client";
 import type {
   ActivePlanV1,
@@ -16,6 +17,7 @@ export type StrategyOrbitRevisionPayloadV1 = {
   readonly contractVersion: typeof STRATEGY_ORBIT_REVISION_CONTRACT_V1;
   readonly event: object & { readonly id: string };
   readonly variant: object & { readonly id: string };
+  readonly calculationInput?: StrategyOrbitCalculationInputV1;
   readonly calculatedPlan: object;
 };
 

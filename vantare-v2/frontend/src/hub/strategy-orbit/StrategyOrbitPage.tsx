@@ -760,6 +760,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         ...(eventRules === undefined ? {} : { rules: eventRules }),
       },
       variant: active,
+      ...(calculationInput ? { calculationInput } : {}),
       calculatedPlan: plan,
     };
   })();

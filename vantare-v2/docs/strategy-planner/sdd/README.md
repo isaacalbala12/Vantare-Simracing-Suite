@@ -1,6 +1,6 @@
 # SDD — Strategy sobre telemetría registrada
 
-Versión 1.3 · T13 registrado cerrado localmente 2026-09-14 · ISA-1091/1220 · continuación de ISA-694/1028.
+Versión 1.4 · T14a cerrado localmente 2026-09-14 · ISA-1091/1254 · continuación de ISA-694/1028.
 
 ## Autoridad y propósito
 
@@ -80,8 +80,8 @@ Estado de referencia, no certificación permanente: revalidar al empezar cada co
 | Capacidad | Evidencia local al 14-09 | Pendiente real |
 |---|---|---|
 | Diseño y entrada | Asistente A4 unificado y biblioteca productiva #1093–1095; configuración guardada/reabierta. | Completar reglas/pilotos y paneles cálculo/plan/stint/parada; paridad T18 y recorrido Wails T22. |
-| Lectura/correcciones | Valor, uso por familia, clasificación y catálogo canónico v4 #1096/#1099/#1104. Banco J9 bidireccional Imola↔Monza conserva hashes originales. T13a–e #1211/#1212/#1214/#1216/#1220 cierra localmente contrato, validación, custodia v5, derivados, servicio, cliente, edición avanzada e historial de límites. | Comandos tras reinicio y revisiones completas de plan T14; gates nativos/visuales T18/T22. |
-| Selección exacta | Documento/cliente/adapter #1084–1088 y adopción explícita desde Datos/Revisiones. | Plan aceptado reproducible con todas las entradas/versiones y consulta sin fuente; T14/T22. |
+| Lectura/correcciones | Valor, uso por familia, clasificación y catálogo canónico v4 #1096/#1099/#1104. Banco J9 bidireccional Imola↔Monza conserva hashes originales. T13a–e #1211/#1212/#1214/#1216/#1220 cierra localmente contrato, validación, custodia v5, derivados, servicio, cliente, edición avanzada e historial de límites. | Recuperación de comandos tras reinicio y consulta completa de revisiones de plan T14; gates nativos/visuales T18/T22. |
+| Selección exacta | Documento/cliente/adapter #1084–1088 y adopción explícita desde Datos/Revisiones. T14a #1254 guarda en la revisión Orbit la petición exacta asociada al resultado y detecta cambios de fuente. | Consulta del plan aceptado sin fuente y recuperación duradera; T14/T22. |
 | Motor/entradas | SolverV2, replay final y corrección local del coste repetido #1089; transporte de reglas #1092; horizonte exacto por vueltas T02d1 #1222; capacidad/reservas T02d2a #1224; cargas fijas del solver T02d2b #1225 y transporte Go T02d2c #1226; #1246 distingue orden fijo y selección libre por vueltas; T03a #1248 distingue cancelación de timeout, T03b #1249 evita reutilizar comandos entre montajes, T03c #1250 espera la telemetría seleccionada, T03d #1251 rechaza optimalidad desconocida y T03e #1252 distingue presupuesto agotado de inviabilidad con clima. | T03a–e queda cerrado sobre el contrato actual. T02/T06/T07 conservan disponibilidad horaria; T15 conectará selector de orden, modo libre temporal, plan parcial, optimalidad final y recorrido productivo. |
 | Criterios | Inventario/protocolo #1030; #1208 alinea LMU y cierra localmente la mezcla de relojes sobre S125/S266/S026. Imola/Monza son preparación expuesta. | Anotación independiente, calibración y reserva suficiente T19–T21. |
 | Calidad | Gates locales y bancos por corte; T12 local cerrado en c2d5b45b. | WebView2 ERROR_INVALID_STATE sin causa demostrada, aceptación visual/nativa/distribución y precisión empírica. |

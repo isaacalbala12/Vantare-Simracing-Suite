@@ -66,7 +66,18 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 			stint.Fuel += required.Finish.FuelLiters
 			veLoads[index] += required.Finish.VEPercent
 		}
+		if index == 0 {
+			if input.InitialFuelLiters != nil {
+				stint.Fuel = input.InitialFuelLiters.Value
+			}
+			if input.InitialVEPercent != nil {
+				veLoads[index] = input.InitialVEPercent.Value
+			}
+		}
 		if override := variant.Overrides[index]; override.Fuel != nil {
+			if index == 0 && input.InitialFuelLiters != nil && *override.Fuel != input.InitialFuelLiters.Value {
+				return fmt.Errorf("initial Fuel conflicts with stint override: %w", ErrCalculationInvalid)
+			}
 			stint.Fuel = *override.Fuel
 		}
 		if stint.Fuel+1e-6 < required.Stints[index].FuelLiters || stint.Fuel > input.FuelCapacityLiters.Value+1e-6 || veLoads[index] > input.VECapacityPercent.Value+1e-6 {
@@ -75,14 +86,18 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 		if index > 0 {
 			previous := plan.Stints[index-1]
 			fuelRemaining := previous.Fuel - required.Stints[index-1].FuelLiters
+			veRemaining := veLoads[index-1] - required.Stints[index-1].VEPercent
 			if stint.Fuel < fuelRemaining {
 				if variant.Overrides[index].Fuel != nil {
 					return fmt.Errorf("stint %d requires removing fuel: %w", index, ErrCalculationInfeasible)
 				}
 				stint.Fuel = fuelRemaining
 			}
+			if veLoads[index] < veRemaining {
+				veLoads[index] = veRemaining
+			}
 			decision.PitStops[index-1].FuelLiters = math.Max(0, stint.Fuel-fuelRemaining)
-			decision.PitStops[index-1].VEPercent = veLoads[index] - (veLoads[index-1] - required.Stints[index-1].VEPercent)
+			decision.PitStops[index-1].VEPercent = math.Max(0, veLoads[index]-veRemaining)
 		}
 	}
 	replayed, err := solver.ReplayDecisionV2WithResources(input, decision, plan.Stints[0].Fuel, veLoads[0])

@@ -163,3 +163,20 @@ RED: los tests no compilaban porque el solver carecía de ambos campos. GREEN:
 carga insuficiente, coste de peso, replay, cero, validación, hash, clima y peor
 caso Fuel/VE quedan cubiertos. T02d2c transportará estos valores desde
 application y su evaluación final; este corte no toca TypeScript ni UI.
+
+## T02d2c — cargas iniciales en CalculateOrbit (#1226)
+
+El evento Go transporta cargas iniciales opcionales de Fuel y VE a los escalares
+fijos de SolverV2. Se validan contra la capacidad efectiva y conservan cero,
+ausencia y procedencia. La evaluación final fija sólo el primer target y deja
+que el replay común determine factibilidad y coste.
+
+El remanente de VE se propaga entre stints igual que Fuel: una parada añade sólo
+la cantidad necesaria y nunca intenta retirar energía sobrante. Una edición de
+Fuel del primer stint que contradice la carga del evento se rechaza en lugar de
+elegir una autoridad silenciosamente.
+
+RED: CalculateOrbit no tenía campos para las cargas. GREEN: transporte,
+procedencia, carga superior a la mínima, cero explícito, rangos, conflicto y
+remanente VE con parada Fuel quedan cubiertos. T02d2d conectará el contrato
+TypeScript y el borrador del asistente sin rehacer esta semántica.

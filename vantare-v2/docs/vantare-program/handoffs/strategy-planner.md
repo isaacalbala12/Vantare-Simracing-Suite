@@ -1,6 +1,18 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1225 T02d2b cerrado localmente; T02d2c listo
+## Estado vigente — #1226 T02d2c cerrado localmente; T02d2d listo
+
+T02d2c conecta las cargas iniciales Fuel/VE del evento Go con SolverV2 y la
+evaluación final. Cero, ausencia y capacidad permanecen separados. Sólo el
+primer target queda fijado; el replay común conserva factibilidad y coste. El
+remanente VE atraviesa las paradas como Fuel y los servicios nunca retiran
+energía. Un override Fuel contradictorio se rechaza. T02d2d sólo debe enlazar
+TypeScript y el borrador existente. Sin cambios UI, app/Wails/LMU, DuckDB,
+push, PR, CI remota, integración ni release. Astra high no encontró P0/P1/P2
+ni complejidad eliminable. Application y Go completos, vet focal, build web y
+roadmap pasan.
+
+## Historial — #1225 T02d2b cerrado localmente; T02d2c listo
 
 T02d2b añade cargas iniciales Fuel/VE opcionales y trazables a SolverV2. Con
 presencia explícita, búsqueda general, replay, canonicalización, clima y peor

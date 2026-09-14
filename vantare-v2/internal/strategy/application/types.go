@@ -356,6 +356,7 @@ type OrbitCalculationEvent struct {
 	DurationMinutes   float64                        `json:"durationMinutes"`
 	TargetLaps        *int64                         `json:"targetLaps,omitempty"`
 	TankLiters        float64                        `json:"tankLiters"`
+	InitialFuelLiters *float64                       `json:"initialFuelLiters,omitempty"`
 	FuelReserveLiters *float64                       `json:"fuelReserveLiters,omitempty"`
 	VirtualEnergy     *OrbitCalculationVirtualEnergy `json:"virtualEnergy,omitempty"`
 	PitLossSeconds    float64                        `json:"pitLossSeconds"`
@@ -364,6 +365,7 @@ type OrbitCalculationEvent struct {
 type OrbitCalculationVirtualEnergy struct {
 	Applicability   string   `json:"applicability"`
 	CapacityPercent *float64 `json:"capacityPercent,omitempty"`
+	InitialPercent  *float64 `json:"initialPercent,omitempty"`
 	ReservePercent  *float64 `json:"reservePercent,omitempty"`
 }
 

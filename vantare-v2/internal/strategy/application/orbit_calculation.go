@@ -445,6 +445,10 @@ func orbitSolverInput(
 	if event.Rules != nil {
 		input.EventRules = *event.Rules
 	}
+	if event.InitialFuelLiters != nil {
+		value := orbitExplicitScalar(*event.InitialFuelLiters, "strategy.orbit.initial-fuel")
+		input.InitialFuelLiters = &value
+	}
 	if event.VirtualEnergy != nil {
 		if event.VirtualEnergy.Applicability == "not_applicable" {
 			input.Projection = orbitProjectionWithoutVirtualEnergy(planning)
@@ -452,6 +456,10 @@ func orbitSolverInput(
 			input.VEPerLapPercent = orbitExplicitScalar(0, "strategy.orbit.virtual-energy-not-applicable")
 		} else {
 			input.VECapacityPercent = orbitExplicitScalar(*event.VirtualEnergy.CapacityPercent, "strategy.orbit.virtual-energy-capacity")
+			if event.VirtualEnergy.InitialPercent != nil {
+				value := orbitExplicitScalar(*event.VirtualEnergy.InitialPercent, "strategy.orbit.initial-virtual-energy")
+				input.InitialVEPercent = &value
+			}
 		}
 	}
 	return input
@@ -603,6 +611,12 @@ func orbitProjectionWithoutVirtualEnergy(planning *strategydocument.PlanningInpu
 }
 
 func validateOrbitEventResources(event OrbitCalculationEvent) error {
+	if event.InitialFuelLiters != nil {
+		initial, err := contract.NewFuelLiters(*event.InitialFuelLiters)
+		if err != nil || initial.Value() > event.TankLiters {
+			return calculationApplicationError(ErrorCalculationInvalid, "input.event.initialFuelLiters", ErrCalculationInvalid)
+		}
+	}
 	if event.FuelReserveLiters != nil {
 		if _, err := contract.NewFuelLiters(*event.FuelReserveLiters); err != nil {
 			return calculationApplicationError(ErrorCalculationInvalid, "input.event.fuelReserveLiters", err)
@@ -631,6 +645,12 @@ func validateOrbitEventResources(event OrbitCalculationEvent) error {
 	reserve, err := contract.NewVirtualEnergyPercent(*energy.ReservePercent)
 	if err != nil || reserve.Value() > capacity.Value() {
 		return calculationApplicationError(ErrorCalculationInvalid, "input.event.virtualEnergy.reservePercent", ErrCalculationInvalid)
+	}
+	if energy.InitialPercent != nil {
+		initial, err := contract.NewVirtualEnergyPercent(*energy.InitialPercent)
+		if err != nil || initial.Value() > capacity.Value() {
+			return calculationApplicationError(ErrorCalculationInvalid, "input.event.virtualEnergy.initialPercent", ErrCalculationInvalid)
+		}
 	}
 	return nil
 }

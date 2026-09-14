@@ -8,16 +8,19 @@ import (
 
 	document "github.com/vantare/overlays/v2/internal/strategy/document"
 	"github.com/vantare/overlays/v2/internal/strategy/manual"
+	"github.com/vantare/overlays/v2/internal/strategy/solver"
 	"github.com/vantare/overlays/v2/internal/strategy/weather"
 	sp "github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
 func TestOrbitMapsIndependentFuelAndVirtualEnergyReserves(t *testing.T) {
 	input := finalEvaluationInput()
+	input.Event.InitialFuelLiters = resourceValue(6)
 	input.Event.FuelReserveLiters = resourceValue(3)
 	input.Event.VirtualEnergy = &OrbitCalculationVirtualEnergy{
 		Applicability:   "applicable",
 		CapacityPercent: resourceValue(20),
+		InitialPercent:  resourceValue(7),
 		ReservePercent:  resourceValue(4),
 	}
 	input.PlanningInputs = planningOverride(sp.PresenceValid, 2)
@@ -32,6 +35,10 @@ func TestOrbitMapsIndependentFuelAndVirtualEnergyReserves(t *testing.T) {
 	if mapped.VECapacityPercent.Value != 20 {
 		t.Fatalf("VE capacity = %+v", mapped.VECapacityPercent)
 	}
+	if mapped.InitialFuelLiters == nil || mapped.InitialFuelLiters.Value != 6 ||
+		mapped.InitialVEPercent == nil || mapped.InitialVEPercent.Value != 7 {
+		t.Fatalf("initial resources = fuel %+v VE %+v", mapped.InitialFuelLiters, mapped.InitialVEPercent)
+	}
 
 	result, err := calculateOrbit(input)
 	if err != nil {
@@ -40,6 +47,9 @@ func TestOrbitMapsIndependentFuelAndVirtualEnergyReserves(t *testing.T) {
 	plan := result.Plans["s1"]
 	if !plan.ReserveSatisfied || plan.ReserveLimitingResource != "virtual_energy" || plan.ReserveLaps != 2 {
 		t.Fatalf("plan reserve = %+v", plan)
+	}
+	if plan.StartFuelLiters != 6 {
+		t.Fatalf("final plan raised or replaced initial fuel: %+v", plan)
 	}
 }
 
@@ -130,7 +140,74 @@ func TestOrbitRejectsIncompleteOrInvalidExplicitResources(t *testing.T) {
 	}
 }
 
+func TestOrbitRejectsInitialResourcesAboveCapacity(t *testing.T) {
+	input := finalEvaluationInput()
+	input.Event.InitialFuelLiters = resourceValue(input.Event.TankLiters + 1)
+	assertOrbitInvalidField(t, input, "input.event.initialFuelLiters")
+	input.Event.InitialFuelLiters = resourceValue(-1)
+	assertOrbitInvalidField(t, input, "input.event.initialFuelLiters")
+
+	input = finalEvaluationInput()
+	input.Event.VirtualEnergy = &OrbitCalculationVirtualEnergy{
+		Applicability:   "applicable",
+		CapacityPercent: resourceValue(20),
+		InitialPercent:  resourceValue(21),
+		ReservePercent:  resourceValue(0),
+	}
+	assertOrbitInvalidField(t, input, "input.event.virtualEnergy.initialPercent")
+	input.Event.VirtualEnergy.InitialPercent = resourceValue(-1)
+	assertOrbitInvalidField(t, input, "input.event.virtualEnergy.initialPercent")
+}
+
+func TestOrbitExplicitZeroInitialFuelIsNotFilled(t *testing.T) {
+	input := finalEvaluationInput()
+	input.Event.InitialFuelLiters = resourceValue(0)
+	zeroStops := 0
+	input.Event.Rules = &solver.EventRules{MaxPitStops: &zeroStops}
+	if _, err := calculateOrbit(input); !errors.Is(err, ErrCalculationInfeasible) {
+		t.Fatalf("zero initial fuel was filled: %v", err)
+	}
+}
+
+func TestOrbitCarriesFixedInitialVirtualEnergyAcrossFuelStop(t *testing.T) {
+	input := finalEvaluationInput()
+	input.Event.TankLiters = 2
+	input.Event.FuelReserveLiters = resourceValue(0)
+	input.Event.VirtualEnergy = &OrbitCalculationVirtualEnergy{
+		Applicability:   "applicable",
+		CapacityPercent: resourceValue(20),
+		InitialPercent:  resourceValue(20),
+		ReservePercent:  resourceValue(0),
+	}
+	input.PlanningInputs = planningOverride(sp.PresenceValid, 1)
+	result, err := calculateOrbit(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Plans["s1"].Stops == 0 {
+		t.Fatal("fuel did not force the expected stop")
+	}
+}
+
+func TestOrbitRejectsConflictingInitialFuelOverride(t *testing.T) {
+	input := finalEvaluationInput()
+	input.Event.InitialFuelLiters = resourceValue(6)
+	input.Variants[0].Overrides = map[int]OrbitCalculationOverride{0: {Fuel: resourceValue(5)}}
+	if _, err := calculateOrbit(input); !errors.Is(err, ErrCalculationInvalid) {
+		t.Fatalf("conflicting first-stint fuel = %v", err)
+	}
+}
+
 func resourceValue(value float64) *float64 { return &value }
+
+func assertOrbitInvalidField(t *testing.T, input OrbitCalculationInput, field string) {
+	t.Helper()
+	_, err := calculateOrbit(input)
+	var applicationErr *ApplicationError
+	if !errors.As(err, &applicationErr) || applicationErr.Code != ErrorCalculationInvalid || applicationErr.Field != field {
+		t.Fatalf("error = %#v, want %s", err, field)
+	}
+}
 
 func planningOverride(presence sp.Presence, value float64) *document.PlanningInputs {
 	return &document.PlanningInputs{Overrides: map[document.PlanningInputField]document.NumericInputOverride{

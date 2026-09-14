@@ -16,7 +16,7 @@ export function AppShell(): React.ReactElement {
   if (hash.startsWith("/auth/callback")) {
     return <OAuthCallbackHandler />;
   }
-  if (hash.startsWith("/hub")) {
+  if (hash.startsWith("/hub") || params.get("hub") === "1") {
     return <HubApp />;
   }
   return <CompositeApp />;

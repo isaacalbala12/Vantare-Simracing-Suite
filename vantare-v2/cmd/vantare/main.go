@@ -1612,7 +1612,7 @@ func main() {
 		Height:         800,
 		Frameless:      false,
 		BackgroundType: application.BackgroundTypeSolid,
-		URL:            "/#/hub",
+		URL:            "/?hub=1",
 		MinWidth:       900,
 		MinHeight:      600,
 	})

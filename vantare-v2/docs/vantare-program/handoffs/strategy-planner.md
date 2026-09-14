@@ -1,6 +1,24 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1261 T14f cerrado localmente; corrección recuperable tras reinicio
+## Estado vigente — #1263 T14g cerrado localmente; `save_revision` recuperable
+
+El repositorio privado de Strategy conserva un único comando completo de
+`save_revision` antes de aplicar su efecto, sellado por digest y dentro del
+envelope existente. Stage y reconocimiento mantienen la generación lógica; el
+commit exige bajo el mismo lease que siga custodiada exactamente esa identidad.
+Así, reconocer mientras llega una ejecución tardía impide que el efecto ocurra
+sin custodia. Un reinicio expone la intención sin guardarla, resolverla ni
+reconocerla automáticamente. Orbit permite comprobar si la revisión inmutable
+exacta ya existe, reintentar el mismo comando o cerrar el aviso. La comprobación
+encuentra A aunque el borrador o HEAD ya estén en B. El camino legacy de
+`save_revision` permanece compatible. Frontend 449/3845, Strategy focal, Go
+global, typecheck, lint, i18n, build y 259 checks documentales pasan. Un
+benchmark Overlay ruidoso falló una vez por 0,032 ms y pasó aislado y en la
+repetición global, sin modificar su umbral. Siguiente: T15. Sin app/Wails, LMU,
+DuckDB, push, PR, CI remota,
+integración ni release.
+
+## Historial — #1261 T14f cerrado localmente; corrección recuperable tras reinicio
 
 `CorrectionStore` custodia antes de Save un único comando mixto completo
 por base: correcciones escalares, uso por familia, clasificación y límites,

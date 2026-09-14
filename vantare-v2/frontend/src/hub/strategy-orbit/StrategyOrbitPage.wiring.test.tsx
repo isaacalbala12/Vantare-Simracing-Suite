@@ -1,17 +1,19 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../../i18n/I18nProvider";
 import { ToastProvider } from "../../ui/orbit/Toast";
 import { StrategyOrbitPage, STRATEGY_CONTEXT_SLOT_ID } from "./StrategyOrbitPage";
 import type { StrategyRoster } from "./strategy-orbit-bridge";
 import orbitGolden from "./testdata/orbit-go-golden.json";
-import type {
-  StrategyApplicationClient,
-  StrategyApplicationCommandV1,
-  StrategyApplicationResultV1,
-  StrategyOrbitCalculationResultV1,
-  StrategyEventV2,
-  StrategyPlanningInputsV2,
+import {
+  createStrategyApplicationClient,
+  type StrategyApplicationClient,
+  type StrategyApplicationCommandV1,
+  type StrategyApplicationEventTransport,
+  type StrategyApplicationResultV1,
+  type StrategyOrbitCalculationResultV1,
+  type StrategyEventV2,
+  type StrategyPlanningInputsV2,
 } from "../../strategy/strategy-application-client";
 
 vi.mock("@wailsio/runtime", () => ({
@@ -136,6 +138,80 @@ afterEach(() => {
 });
 
 describe("StrategyOrbitPage · cableado auditado", () => {
+  it("no acepta una respuesta de cálculo de un montaje anterior", async () => {
+    window.localStorage.clear();
+    const listeners = new Map<string, Set<(payload: unknown) => void>>();
+    const calculations: StrategyApplicationCommandV1<unknown>[] = [];
+    const emitTransport = (name: string, payload: unknown) => {
+      for (const listener of listeners.get(name) ?? []) {
+        listener({ data: [payload] });
+      }
+    };
+    const transport: StrategyApplicationEventTransport = {
+      emit(name, payload) {
+        if (name !== "strategy:application:command") return;
+        const command = payload as StrategyApplicationCommandV1<unknown>;
+        if (command.operation === "calculate_orbit") {
+          calculations.push(command);
+          return;
+        }
+        if (command.operation === "list") {
+          emitTransport("strategy:application:result", {
+            protocolVersion: "strategy.application.v1",
+            commandId: command.commandId,
+            repositoryVersion: 0,
+            plans: [],
+            recoveredFromBackup: false,
+            closed: false,
+          });
+        }
+      },
+      on(name, listener) {
+        const bucket = listeners.get(name) ?? new Set();
+        bucket.add(listener);
+        listeners.set(name, bucket);
+        return () => bucket.delete(listener);
+      },
+    };
+    const client = createStrategyApplicationClient<unknown>(transport);
+    const first = render(<I18nProvider><ToastProvider><StrategyOrbitPage applicationClient={client} roster={ROSTER} /></ToastProvider></I18nProvider>);
+    await waitFor(() => expect(calculations).toHaveLength(1));
+    first.unmount();
+
+    window.localStorage.clear();
+    render(<I18nProvider><ToastProvider><StrategyOrbitPage applicationClient={client} roster={ROSTER} /></ToastProvider></I18nProvider>);
+    await waitFor(() => expect(calculations).toHaveLength(2));
+
+    await act(async () => emitTransport("strategy:application:error", {
+      commandId: calculations[0].commandId,
+      code: "calculation_timeout",
+      field: "input",
+      message: "old calculation",
+    }));
+    expect(screen.getByTestId("orbit-strategy-calculation-loading")).toBeTruthy();
+    expect(calculations[1].commandId).not.toBe(calculations[0].commandId);
+
+    await act(async () => emitTransport("strategy:application:result", {
+      protocolVersion: "strategy.application.v1",
+      commandId: calculations[0].commandId,
+      repositoryVersion: 0,
+      orbitCalculation: orbitGolden as StrategyOrbitCalculationResultV1,
+      recoveredFromBackup: false,
+      closed: false,
+    }));
+    expect(screen.getByTestId("orbit-strategy-calculation-loading")).toBeTruthy();
+
+    await act(async () => emitTransport("strategy:application:result", {
+      protocolVersion: "strategy.application.v1",
+      commandId: calculations[1].commandId,
+      repositoryVersion: 0,
+      orbitCalculation: orbitGolden as StrategyOrbitCalculationResultV1,
+      recoveredFromBackup: false,
+      closed: false,
+    }));
+    expect(await screen.findByTestId("orbit-strategy-overview")).toBeTruthy();
+  });
+
   it("muestra exactamente el golden producido por manual+solver Go", async () => {
     window.localStorage.clear();
     mount();

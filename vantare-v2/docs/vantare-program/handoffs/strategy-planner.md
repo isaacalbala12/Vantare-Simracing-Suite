@@ -1,6 +1,15 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1248 T03a cerrado localmente; cancelación distinta de timeout
+## Estado vigente — #1249 T03b cerrado localmente; comandos de cálculo únicos
+
+Cada montaje de Strategy crea sus comandos de cálculo con UUID. El cliente,
+`calculationKey` y cleanup existentes descartan respuestas y errores tardíos de
+un montaje anterior incluso cuando el transporte continúa trabajando. La prueba
+usa el cliente real y un transporte controlado; no se añadió manager, registro
+global, protocolo ni máquina de estados. T03 continúa con readiness y estados de
+resultado. Sin app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release.
+
+## Historial — #1248 T03a cerrado localmente; cancelación distinta de timeout
 
 `CalculateOrbit` distingue `context.Canceled` como `calculation_cancelled` y
 reserva `calculation_timeout` para deadlines. Application conserva ambas causas;

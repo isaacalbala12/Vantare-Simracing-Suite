@@ -679,7 +679,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       return;
     }
     const currentCalculationInput = JSON.parse(calculationKey) as NonNullable<typeof calculationInput>;
-    const commandId = `orbit-calculate-${sequence}`;
+    const commandId = `orbit-calculate-${globalThis.crypto.randomUUID()}`;
     let current = true;
     void Promise.resolve().then(() => {
       if (current) setCalculation({ status: "loading" });

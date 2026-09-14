@@ -75,6 +75,34 @@ func weatherBusinessInput(t *testing.T) (SolverInputV2, []WeatherBucketParameter
 	return input, parameters
 }
 
+func TestWeatherScenarioReportsExhaustedSearchBudget(t *testing.T) {
+	input, parameters := weatherBusinessInput(t)
+	set := WeatherScenarioSet{
+		Scenarios:        []WeightedWeatherScenario{{Scenario: weatherScenario("dry-budget", [5]float64{}), Weight: 1}},
+		BucketParameters: parameters,
+	}
+	if _, err := SolveWeatherScenarios(input, set); err != nil {
+		t.Fatalf("control scenario must be feasible: %v", err)
+	}
+
+	for _, test := range []struct {
+		name      string
+		constrain func(*ComputeBudget)
+	}{
+		{name: "candidates", constrain: func(budget *ComputeBudget) { budget.MaxCandidates = 1 }},
+		{name: "iterations", constrain: func(budget *ComputeBudget) { budget.MaxIterations = 1 }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			constrained := input
+			test.constrain(&constrained.Budget)
+			_, err := SolveWeatherScenarios(constrained, set)
+			if !HasErrorCode(err, ErrorOverflow) {
+				t.Fatalf("exhausted scenario search error = %v, want %s", err, ErrorOverflow)
+			}
+		})
+	}
+}
+
 func TestWeatherTimelineInterpolatesFiveNodesAndThresholdsPerLap(t *testing.T) {
 	scenario := weatherScenario("timeline", [5]float64{0, 10, 50, 90, 100})
 	timeline := weatherTimeline(scenario, 9, RainChanceThresholds{HumidPercent: 20, WetPercent: 60})

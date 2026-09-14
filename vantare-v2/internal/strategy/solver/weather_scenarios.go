@@ -459,6 +459,11 @@ func SolveWeatherScenariosContext(ctx context.Context, input SolverInputV2, set 
 			return WeatherScenarioResult{}, err
 		}
 		if !plan.Feasible {
+			for _, reason := range plan.Reasons {
+				if reason.Code == "candidate_budget_exhausted" || reason.Code == "iteration_budget_exhausted" {
+					return WeatherScenarioResult{}, solveError(ErrorOverflow, "weatherScenarios."+weighted.Scenario.ScenarioID, reason.Message)
+				}
+			}
 			return WeatherScenarioResult{}, solveError(ErrorInfeasible, "weatherScenarios."+weighted.Scenario.ScenarioID, "scenario has no feasible plan")
 		}
 		weight := weighted.Weight / weightTotal

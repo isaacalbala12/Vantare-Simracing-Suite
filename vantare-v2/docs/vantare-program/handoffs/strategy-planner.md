@@ -1,6 +1,15 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1251 T03d cerrado localmente; optimalidad validada
+## Estado vigente — #1252 T03e cerrado localmente; presupuesto meteorológico conservado
+
+Los escenarios meteorológicos ya distinguen una búsqueda interrumpida por el
+límite de candidatos o iteraciones de una carrera realmente inviable. Reutiliza
+las razones existentes y `ErrorOverflow`; no cambia el presupuesto, el algoritmo,
+la solución parcial, el protocolo ni la UI. T03 continúa sólo después de volver
+a contrastar sus estados y obsolescencia con casos reproducibles. Sin
+app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release.
+
+## Historial — #1251 T03d cerrado localmente; optimalidad validada
 
 El cliente conserva la ausencia legacy y `optimality: not_proven`, pero rechaza
 cualquier valor presente que no entiende en vez de aceptarlo y borrarlo. La

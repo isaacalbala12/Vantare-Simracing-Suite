@@ -105,6 +105,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - item.en: Reproducible hardware footprint bench for Vantare and the overlay
 - item.pt: Banco reproduzível de impacto por hardware para Vantare e o overlay
 - item.it: Banco riproducibile dell'impronta hardware per Vantare e l'overlay
+- item: Kit Orbit consolidado: código muerto retirado y contrato público reducido a su API real
+- item.en: Orbit kit consolidated: dead code removed and public contract reduced to its real API
+- item.pt: Kit Orbit consolidado: código morto removido e contrato público reduzido à sua API real
+- item.it: Kit Orbit consolidato: codice morto rimosso e contratto pubblico ridotto alla sua API reale
 
 ### Programa de insiders
 

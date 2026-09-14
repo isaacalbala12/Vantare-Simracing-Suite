@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { MINI_STAGE_HEIGHT, MINI_STAGE_WIDTH, type WidgetDoc } from "./viz-types";
+import { cx } from "./cx";
 
 export interface MiniStageProps {
   widgets: WidgetDoc[];
@@ -40,7 +41,7 @@ export function MiniStage({ widgets, system, renderWidget, className }: MiniStag
   return (
     <div
       aria-hidden="true"
-      className={["orbit-mini-stage", className].filter(Boolean).join(" ")}
+      className={cx("orbit-mini-stage", className)}
       data-system={system}
       data-testid="orbit-mini-stage"
       ref={ref}

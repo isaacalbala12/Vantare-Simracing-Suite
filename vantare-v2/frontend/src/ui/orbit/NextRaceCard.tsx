@@ -2,6 +2,7 @@ import { useNow } from "../../hub/orbit/use-now";
 import { Dot } from "./Dot";
 import { IconButton } from "./IconButton";
 import { formatCountdown } from "./viz-types";
+import { cx } from "./cx";
 
 export interface NextRaceCardProps {
   target: Date;
@@ -45,7 +46,7 @@ export function NextRaceCard({
 
   return (
     <article
-      className={["orbit-next-race", className].filter(Boolean).join(" ")}
+      className={cx("orbit-next-race", className)}
       data-testid="orbit-next-race"
     >
       <span className="orbit-next-race__eyebrow">

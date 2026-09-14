@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-14T20:26:34Z",
+  "generatedAt": "2026-09-14T22:59:07Z",
   "digest": {
-    "lastCommit": "60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c"
+    "lastCommit": "4e5e9556574bd2b3dc6d115ce13625812016aa0b"
   },
   "phases": [
     {
@@ -118,6 +118,12 @@
           "en": "Reproducible hardware footprint bench for Vantare and the overlay",
           "pt": "Banco reproduzível de impacto por hardware para Vantare e o overlay",
           "it": "Banco riproducibile dell'impronta hardware per Vantare e l'overlay"
+        },
+        {
+          "es": "Kit Orbit consolidado: código muerto retirado y contrato público reducido a su API real",
+          "en": "Orbit kit consolidated: dead code removed and public contract reduced to its real API",
+          "pt": "Kit Orbit consolidado: código morto removido e contrato público reduzido à sua API real",
+          "it": "Kit Orbit consolidato: codice morto rimosso e contratto pubblico ridotto alla sua API reale"
         }
       ]
     },
@@ -2132,6 +2138,11 @@
           "kind": "docs",
           "scope": "workflow",
           "text": "Notion como entrada y seguimiento obligatorio"
+        },
+        {
+          "kind": "docs",
+          "scope": "",
+          "text": "Depurar entradas y contratos vigentes de la suite"
         }
       ]
     },

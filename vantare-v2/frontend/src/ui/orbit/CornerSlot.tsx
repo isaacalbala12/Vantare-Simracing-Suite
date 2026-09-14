@@ -3,6 +3,7 @@ import { useI18n } from "../../i18n/I18nProvider";
 import { formatMessage } from "../../hub/orbit/format-message";
 import { TyreChip } from "./TyreChip";
 import type { TyreView } from "./viz-types";
+import { cx } from "./cx";
 
 export interface CornerSlotProps {
   corner: "FL" | "FR" | "RL" | "RR";
@@ -73,7 +74,7 @@ export function CornerSlot({ corner, tyre, onDrop, onClear, picked, pickedId, cl
       aria-label={`${formatMessage(t("orbit.corner.slotAria"), { corner: cornerLabel })}${
         tyre ? `: ${tyre.id}` : `: ${t("orbit.corner.emptyState")}`
       }`}
-      className={["orbit-corner-slot", className].filter(Boolean).join(" ")}
+      className={cx("orbit-corner-slot", className)}
       data-over={over ? "true" : undefined}
       data-picked={picked ? "true" : undefined}
       data-pulse={pulse ? "true" : undefined}

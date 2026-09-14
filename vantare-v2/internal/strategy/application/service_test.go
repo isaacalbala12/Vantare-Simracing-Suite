@@ -17,6 +17,126 @@ type testPayload struct {
 	Laps int `json:"laps"`
 }
 
+func TestBridgeOpensExactRevisionAfterRestartWithoutSources(t *testing.T) {
+	ctx := context.Background()
+	root := t.TempDir()
+	repo, err := repository.Open[testPayload](root, repository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewService[testPayload](repo)
+	draft := validDraft("draft-1", "plan-1", 10)
+	created, err := service.Create(ctx, CreateCommand[testPayload]{CommandHeader: commandHeader("create", OperationCreate, 0), Draft: draft})
+	if err != nil {
+		t.Fatal(err)
+	}
+	draft.Payload.Laps = 11
+	draft.UpdatedAt = canonicalTime(2)
+	savedA, err := service.SaveRevision(ctx, SaveRevisionCommand[testPayload]{CommandHeader: commandHeader("save-a", OperationSaveRevision, created.RepositoryVersion), Draft: draft, RevisionID: "revision-a", CreatedAt: canonicalTime(3)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	draft = *savedA.SavedDraft
+	draft.Payload.Laps = 22
+	draft.UpdatedAt = canonicalTime(4)
+	if _, err := service.SaveRevision(ctx, SaveRevisionCommand[testPayload]{CommandHeader: commandHeader("save-b", OperationSaveRevision, savedA.RepositoryVersion), Draft: draft, RevisionID: "revision-b", CreatedAt: canonicalTime(5)}); err != nil {
+		t.Fatal(err)
+	}
+
+	reopened, err := repository.Open[testPayload](root, repository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	command, err := json.Marshal(map[string]any{
+		"protocolVersion":           ProtocolVersionV1,
+		"commandId":                 "open-a",
+		"operation":                 OperationOpen,
+		"expectedRepositoryVersion": 0,
+		"revision":                  savedA.Revision.Ref(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bridge := NewJSONBridge(NewService[testPayload](reopened))
+	encoded, err := bridge.Execute(ctx, command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var opened struct {
+		RepositoryVersion uint64          `json:"repositoryVersion"`
+		Draft             json.RawMessage `json:"draft"`
+		Revision          json.RawMessage `json:"revision"`
+	}
+	if err := json.Unmarshal(encoded, &opened); err != nil {
+		t.Fatal(err)
+	}
+	openedRevision, err := contract.DecodePlanRevision[testPayload](opened.Revision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if openedRevision.Ref() != savedA.Revision.Ref() {
+		t.Fatalf("opened revision = %#v, want A", opened.Revision)
+	}
+	payload, err := openedRevision.Payload()
+	if err != nil || payload.Laps != 11 {
+		t.Fatalf("opened payload = %#v, err=%v", payload, err)
+	}
+	if len(opened.Draft) != 0 || opened.RepositoryVersion != savedA.RepositoryVersion+1 {
+		t.Fatalf("revision read changed or substituted state: %#v", opened)
+	}
+
+	legacyCommand, err := json.Marshal(OpenCommand{CommandHeader: commandHeader("open-draft", OperationOpen, 0), DraftID: draft.DraftID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacyEncoded, err := bridge.Execute(ctx, legacyCommand)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var legacyOpened Result[testPayload]
+	if err := json.Unmarshal(legacyEncoded, &legacyOpened); err != nil {
+		t.Fatal(err)
+	}
+	if legacyOpened.Draft == nil || legacyOpened.Draft.Payload.Laps != 22 {
+		t.Fatalf("legacy open did not return current draft B: %#v", legacyOpened.Draft)
+	}
+
+	wrongHash := savedA.Revision.Ref()
+	wrongHash.ContentHash = strings.Repeat("d", 64)
+	wrongHashCommand, err := json.Marshal(OpenCommand{CommandHeader: commandHeader("open-wrong-hash", OperationOpen, 0), Revision: &wrongHash})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := bridge.Execute(ctx, wrongHashCommand); !errors.Is(err, ErrRevisionNotFound) {
+		t.Fatalf("wrong hash open = %v, want ErrRevisionNotFound", err)
+	}
+}
+
+func TestOpenRejectsAmbiguousOrMissingRevisionSelectors(t *testing.T) {
+	repo, err := repository.Open[testPayload](t.TempDir(), repository.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	service := NewService[testPayload](repo)
+	missing := contract.RevisionRef{PlanID: "plan-1", VariantID: "variant-1", RevisionID: "revision-missing", ContentHash: "a" + strings.Repeat("0", 63)}
+	tests := []struct {
+		name    string
+		command OpenCommand
+		want    error
+	}{
+		{name: "neither", command: OpenCommand{CommandHeader: commandHeader("none", OperationOpen, 0)}, want: ErrInvalidCommand},
+		{name: "both", command: OpenCommand{CommandHeader: commandHeader("both", OperationOpen, 0), DraftID: "draft-1", Revision: &missing}, want: ErrInvalidCommand},
+		{name: "missing revision", command: OpenCommand{CommandHeader: commandHeader("missing", OperationOpen, 0), Revision: &missing}, want: ErrRevisionNotFound},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := service.Open(context.Background(), test.command); !errors.Is(err, test.want) {
+				t.Fatalf("Open() = %v, want %v", err, test.want)
+			}
+		})
+	}
+}
+
 func TestServiceCreateSaveAndRetryAreIdempotent(t *testing.T) {
 	repo, err := repository.Open[testPayload](t.TempDir(), repository.Options{})
 	if err != nil {

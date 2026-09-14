@@ -1,6 +1,16 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1254 T14a cerrado localmente; snapshot conserva la entrada exacta
+## Estado vigente — #1255 T14b cerrado localmente; lectura exacta sin fuente
+
+La operación Go `open` acepta exactamente un `draftId` o una referencia completa
+de revisión. Tras guardar A, avanzar a B y reabrir el repositorio, el bridge
+devuelve A con su payload inmutable sin proveedor de telemetría, sin sustituirla
+por B y sin escribir estado. El hash discordante, la revisión ausente y los
+selectores ambiguos fallan cerrados; `open` por borrador conserva su contrato.
+T14 continúa con cliente/vista de Revisiones y recuperación duradera de comandos.
+Sin app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release.
+
+## Historial — #1254 T14a cerrado localmente; snapshot conserva la entrada exacta
 
 La revisión inmutable de Orbit conserva ahora, junto al resultado, la petición
 `StrategyOrbitCalculationInputV1` que lo produjo: proyección, overrides,

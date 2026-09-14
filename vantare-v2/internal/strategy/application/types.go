@@ -73,7 +73,8 @@ type CreateCommand[T any] struct {
 
 type OpenCommand struct {
 	CommandHeader
-	DraftID contract.DraftID `json:"draftId"`
+	DraftID  contract.DraftID      `json:"draftId,omitempty"`
+	Revision *contract.RevisionRef `json:"revision,omitempty"`
 }
 
 type EditCommand[T any] struct {

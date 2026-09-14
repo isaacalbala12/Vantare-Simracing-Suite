@@ -12,7 +12,7 @@ import (
 
 var requiredOperationFields = map[Operation][]string{
 	OperationCreate:       {"draft"},
-	OperationOpen:         {"draftId"},
+	OperationOpen:         {},
 	OperationEdit:         {"draft"},
 	OperationSaveRevision: {"draft", "revisionId", "createdAt"},
 	OperationDuplicate:    {"sourceDraft", "targetDraftId", "targetPlanId", "targetVariantId", "name", "updatedAt"},

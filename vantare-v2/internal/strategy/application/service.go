@@ -107,12 +107,28 @@ func (service *Service[T]) Open(ctx context.Context, command OpenCommand) (Resul
 	if err := validateHeader(command.CommandHeader, OperationOpen); err != nil {
 		return Result[T]{}, err
 	}
-	if err := validateApplicationIdentifier("draftId", command.DraftID); err != nil {
+	hasDraft := command.DraftID != ""
+	hasRevision := command.Revision != nil
+	if hasDraft == hasRevision {
+		return Result[T]{}, applicationError(ErrorInvalidCommand, "open", ErrInvalidCommand)
+	}
+	if hasDraft {
+		if err := validateApplicationIdentifier("draftId", command.DraftID); err != nil {
+			return Result[T]{}, err
+		}
+	} else if err := command.Revision.Validate(); err != nil {
 		return Result[T]{}, err
 	}
 	snapshot, err := service.repository.Snapshot(ctx)
 	if err != nil {
 		return Result[T]{}, err
+	}
+	if command.Revision != nil {
+		revision, ok := findRevision(snapshot, *command.Revision)
+		if !ok {
+			return Result[T]{}, applicationError(ErrorRevisionNotFound, "revision", ErrRevisionNotFound)
+		}
+		return Result[T]{ProtocolVersion: ProtocolVersionV1, CommandID: command.CommandID, RepositoryVersion: snapshot.Version, Revision: &revision, RecoveredFromBackup: snapshot.RecoveredFromBackup}, nil
 	}
 	draft, ok := findDraft(snapshot, command.DraftID)
 	if !ok {
@@ -439,12 +455,17 @@ func findDraft[T any](snapshot repository.Snapshot[T], draftID contract.DraftID)
 }
 
 func hasRevision[T any](snapshot repository.Snapshot[T], ref contract.RevisionRef) bool {
+	_, ok := findRevision(snapshot, ref)
+	return ok
+}
+
+func findRevision[T any](snapshot repository.Snapshot[T], ref contract.RevisionRef) (contract.PlanRevision[T], bool) {
 	for _, revision := range snapshot.Revisions {
 		if revision.Ref() == ref {
-			return true
+			return revision, true
 		}
 	}
-	return false
+	return contract.PlanRevision[T]{}, false
 }
 
 func cloneDraft[T any](draft contract.PlanDraft[T]) (contract.PlanDraft[T], error) {

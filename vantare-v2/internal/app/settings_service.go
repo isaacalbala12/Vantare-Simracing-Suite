@@ -1014,11 +1014,13 @@ func normalizePerformanceForSave(settings *AppSettings) {
 	}
 }
 
-// Update applies mutate to the live settings under s.mu and persists the
-// result atomically. Unlike Save, the mutation always runs against the
-// current state, so a partial change can never install a snapshot captured
-// before another writer's update. mutate must be a plain field mutation and
-// must not call back into the service: the write lock is already held.
+// Update clones the live settings under s.mu, applies mutate to that
+// candidate and persists it atomically, publishing it only on success.
+// Unlike Save, the mutation always runs against the current state, so a
+// partial change can never install a snapshot captured before another
+// writer's update — and a failed write leaves memory untouched. mutate must
+// be a plain field mutation and must not call back into the service: the
+// write lock is already held.
 func (s *SettingsService) Update(mutate func(*AppSettings)) error {
 	if mutate == nil {
 		return fmt.Errorf("mutate cannot be nil")
@@ -1028,16 +1030,19 @@ func (s *SettingsService) Update(mutate func(*AppSettings)) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.settings == nil {
-		s.settings = DefaultAppSettings()
+	candidate := s.settings
+	if candidate == nil {
+		candidate = DefaultAppSettings()
+	} else {
+		candidate = cloneAppSettings(candidate)
 	}
-	mutate(s.settings)
-	normalizePerformanceForSave(s.settings)
-	data, err := json.MarshalIndent(s.settings, "", "  ")
+	mutate(candidate)
+	normalizePerformanceForSave(candidate)
+	data, err := json.MarshalIndent(candidate, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal: %w", err)
 	}
-	return s.saveWithRetry(s.settings, data, 0)
+	return s.saveWithRetry(candidate, data, 0)
 }
 
 // saveWithRetry attempts to persist data atomically, retrying with backoff

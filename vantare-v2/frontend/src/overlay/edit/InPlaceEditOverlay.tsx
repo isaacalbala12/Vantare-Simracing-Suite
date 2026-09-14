@@ -12,7 +12,7 @@ import type { TelemetryRateCoordinator } from "../core/telemetry-rate-coordinato
 import { useOverlayRuntimeContext } from "../runtime/use-rate-limited-telemetry";
 import { resolveRuntimeLayout } from "../runtime/resolve-runtime-layout";
 import { StudioProvider, useStudioActions, useStudioSelector } from "../../hub/overlay-studio/state/studio-store";
-import { FREE_ACCESS, type AccessContext } from "../../lib/access-policy";
+import type { StudioPolicy } from "../../hub/overlay-studio/access/studio-access";
 import { InPlaceWidgetEditFrame } from "./InPlaceWidgetEditFrame";
 import { MemoInPlaceInspectorPanel } from "./InPlaceInspectorPanel";
 import { useInplaceInteraction } from "./use-inplace-interaction";
@@ -56,13 +56,13 @@ export type InPlaceEditOverlayProps = {
   revision: string;
   layoutOrigin?: { x: number; y: number };
   telemetry: TelemetryRateCoordinator;
-  access?: AccessContext;
+  policy: StudioPolicy;
   licenseLoading?: boolean;
   raceSchedule?: RaceScheduleStore;
 };
 
 export function InPlaceEditOverlay(props: InPlaceEditOverlayProps): React.ReactElement {
-  const { document, revision, layoutOrigin, telemetry, access, licenseLoading, raceSchedule } = props;
+  const { document, revision, layoutOrigin, telemetry, policy, licenseLoading, raceSchedule } = props;
   const transport = useMemo(() => createWailsStudioEventTransport(), []);
   const client = useMemo(
     () => createInPlaceProfileClient({ document, revision, transport }),
@@ -74,14 +74,14 @@ export function InPlaceEditOverlay(props: InPlaceEditOverlayProps): React.ReactE
       client={client}
       initialFile="in-place"
       recoveryStorage={null}
-      access={access}
+      widgetPolicy={policy}
     >
       <StudioConfirmProvider>
         <InPlaceEditOverlayContent
           document={document}
           layoutOrigin={layoutOrigin}
           telemetry={telemetry}
-          access={access}
+          policy={policy}
           licenseLoading={licenseLoading ?? false}
           raceSchedule={raceSchedule}
         />
@@ -91,11 +91,12 @@ export function InPlaceEditOverlay(props: InPlaceEditOverlayProps): React.ReactE
 }
 
 function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revision">): React.ReactElement {
-  const { document, layoutOrigin, telemetry, access, licenseLoading, raceSchedule } = props;
+  const { document, layoutOrigin, telemetry, policy, licenseLoading, raceSchedule } = props;
   const { t } = useI18n();
   const storeDocument = useStudioSelector((s) => s.history?.present ?? null);
   const savedDocument = useStudioSelector((s) => s.history?.saved ?? null);
   const saveState = useStudioSelector((s) => s.saveState);
+  const accessNotice = useStudioSelector((s) => s.accessNotice);
   const {
     dispatch,
     selectWidget,
@@ -540,9 +541,10 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
       >
         {t("overlay.editMode.hint")}
       </div>
-      {saveState === "conflict" || saveState === "error" ? (
+      {accessNotice || saveState === "conflict" || saveState === "error" ? (
         <div
           data-testid="edit-mode-save-error"
+          role="alert"
           style={{
             position: "fixed",
             bottom: 12,
@@ -558,7 +560,7 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
             pointerEvents: "none",
           }}
         >
-          {t("overlay.editMode.saveError")}
+          {t(accessNotice ?? "overlay.editMode.saveError")}
         </div>
       ) : null}
       <MemoInPlaceInspectorPanel
@@ -570,7 +572,7 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
         selectWidget={handleSelect}
         side={panelSide}
         ghosted={interaction.isInteractionActive}
-        access={access}
+        policy={policy}
         licenseLoading={licenseLoading}
         autosave={autosave}
       />
@@ -588,7 +590,7 @@ function InPlaceEditOverlayContent(props: Omit<InPlaceEditOverlayProps, "revisio
         />
       ) : null}
       <AddWidgetDialog
-        access={access ?? FREE_ACCESS}
+        policy={policy}
         onAdd={handleAddWidget}
         onClose={() => setAddDialogOpen(false)}
         open={addDialogOpen}

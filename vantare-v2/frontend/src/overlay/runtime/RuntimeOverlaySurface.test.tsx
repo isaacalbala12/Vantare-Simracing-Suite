@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import type { ComponentProps } from "react";
 import { act, cleanup, render } from "@testing-library/react";
 import { chromium } from "playwright";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,7 +9,8 @@ import { createTelemetryRateCoordinator as createBaseTelemetryRateCoordinator } 
 import { createWidgetDiagnosticCollector } from "../core/widget-diagnostics";
 import { deltaDefinition } from "../widget-types/delta/delta-definition";
 import { standingsDefinition } from "../widget-types/standings/standings-definition";
-import { RuntimeOverlaySurface } from "./RuntimeOverlaySurface";
+import { RuntimeOverlaySurface as RuntimeOverlaySurfaceBase } from "./RuntimeOverlaySurface";
+import type { WidgetPolicyWire } from "../core/widget-policy";
 import { createEngineerPresentationStore } from "../../engineer/engineer-presentation-store";
 import { buildEngineerPresentationFixture } from "../../engineer/engineer-presentation-fixtures";
 import goldenV2Raw from "../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json?raw";
@@ -21,6 +23,20 @@ import type { StandingsContent } from "../widget-types/standings/standings-conte
 import goldenV2TwentyRaw from "../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json?raw";
 
 const originalResizeObserver = globalThis.ResizeObserver;
+
+const paidPolicy: WidgetPolicyWire = {
+  revision: 1,
+  overlaysBasic: true,
+  overlaysAdvanced: true,
+  engineerAI: true,
+  brandCrystal: "optional",
+  brandEfficiency: "optional",
+  brandOriginal: "none",
+};
+
+function RuntimeOverlaySurface(props: ComponentProps<typeof RuntimeOverlaySurfaceBase>) {
+  return <RuntimeOverlaySurfaceBase {...props} widgetPolicy={props.widgetPolicy ?? paidPolicy} />;
+}
 
 type ResizeObserverHarness = {
   trigger(width: number, height: number): void;
@@ -132,8 +148,8 @@ describe("RuntimeOverlaySurface", () => {
     const frame = view.getByTestId("runtime-widget-frame");
     const viewport = view.getByTestId("runtime-widget-viewport-functional");
     expect(Number.parseFloat(frame.style.width)).toBeGreaterThan(340);
-    expect(frame.style.height).toBe("670px");
-    expect(frame.style.top).toBe("410px");
+    expect(frame.style.height).toBe("692px");
+    expect(frame.style.top).toBe("388px");
     expect(viewport.style.transform).toBe("scale(1)");
     expect(view.container.querySelectorAll('[data-widget-system="vantare-functional"] [data-standings-row]')).toHaveLength(20);
     expect(widget.layout.w).toBe(340);

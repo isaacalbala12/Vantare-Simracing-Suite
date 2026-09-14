@@ -17,6 +17,8 @@ import {
 } from "../telemetry-transport/overlay-frame-v2-store";
 import { createBrowserOverlayWailsPullClient } from "../telemetry-transport/overlay-wails-pull";
 import { createWailsRaceScheduleStore } from "./core/race-schedule-store";
+import type { WidgetPolicyWire } from "./core/widget-policy";
+import { useWailsWidgetPolicy } from "./core/use-widget-policy";
 
 type ProfileV3LoadedPayload = {
   document: ProfileDocumentV3;
@@ -40,6 +42,8 @@ export function CompositeApp() {
   const [reminder, setReminder] = useState<CalendarReminderPayload | null>(null);
 
   const [generation, setGeneration] = useState<CompositeGeneration | null>(null);
+  // Única conexión de política de la ventana Desktop (ISA-1105).
+  const { policy: widgetPolicy } = useWailsWidgetPolicy();
   useEffect(() => applyOverlayDocumentMode(), []);
 
   useEffect(() => {
@@ -162,6 +166,7 @@ export function CompositeApp() {
       layoutOrigin={layoutOrigin}
       editMode={editMode}
       reminder={reminder}
+      widgetPolicy={widgetPolicy}
       onCloseReminder={() => setReminder(null)}
     />
   );
@@ -174,6 +179,7 @@ type CompositeGenerationViewProps = Readonly<{
   layoutOrigin: { x: number; y: number };
   editMode: boolean;
   reminder: CalendarReminderPayload | null;
+  widgetPolicy: WidgetPolicyWire | null;
   onCloseReminder(): void;
 }>;
 
@@ -185,6 +191,7 @@ function CompositeGenerationView(props: CompositeGenerationViewProps) {
     layoutOrigin,
     editMode,
     reminder,
+    widgetPolicy,
     onCloseReminder,
   } = props;
   return (
@@ -196,6 +203,7 @@ function CompositeGenerationView(props: CompositeGenerationViewProps) {
           layoutOrigin={layoutOrigin}
           telemetry={generation.coordinator}
           raceSchedule={generation.raceSchedule}
+          policy={widgetPolicy}
         />
       ) : (
         <DesktopOverlayRuntime
@@ -206,6 +214,7 @@ function CompositeGenerationView(props: CompositeGenerationViewProps) {
           telemetry={generation.coordinator}
           engineerPresentations={generation.engineerPresentations}
           raceSchedule={generation.raceSchedule}
+          widgetPolicy={widgetPolicy}
         />
       )}
       {reminder && (

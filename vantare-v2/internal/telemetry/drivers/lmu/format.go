@@ -18,6 +18,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/weather"
 )
 
 const (
@@ -94,11 +95,18 @@ type Observation struct {
 	InPit          schema.Field[pit.InPit]
 	Fuel           schema.Field[energy.Fuel]
 	Damage         schema.Field[damage.State]
-	Vehicles       []VehicleObservation
-	REST           RESTObservation
-	MatrixVersion  uint16
-	Decisions      []FieldDecision
-	Conflicts      []ConflictDiagnostic
+	// AmbientTemp and TrackTemp carry the REST sessionInfo Celsius readings
+	// (ISA-1106, REST-joined like CarNumber: no SHM source, no matrix rule).
+	// SessionFlag carries the conservative global flag assertion: yellow
+	// only on positive evidence, missing otherwise, never green by absence.
+	AmbientTemp   schema.Field[weather.Temperature]
+	TrackTemp     schema.Field[weather.Temperature]
+	SessionFlag   schema.Field[session.Flag]
+	Vehicles      []VehicleObservation
+	REST          RESTObservation
+	MatrixVersion uint16
+	Decisions     []FieldDecision
+	Conflicts     []ConflictDiagnostic
 }
 
 // VehicleSourceID is the LMU slot ID for one continuously occupied row. It is
@@ -176,13 +184,16 @@ func parseWithProfile(buf []byte, received time.Time, profile compatibilityProfi
 	if !ok {
 		return rejectedObservation(result, profile, "session-string-invalid"), nil
 	}
+	// Los escalares de sesion no rechazan el frame (ISA-848): estados
+	// legitimos de LMU los dejan fuera de rango de forma transitoria —
+	// cuenta atras con currentTime negativo, ultima vuelta de una carrera a
+	// tiempo con endTime ya superado, o -1 en maximumLaps sin limite de
+	// vueltas. La coherencia del layout ya la prueban el recuento de
+	// vehiculos, el nombre de pista y la parrilla biyectiva; un escalar
+	// atipico se publica como campo invalido, no como observacion rechazada.
 	currentSeconds := readFloat64(buf, lmu13Layout.Session.CurrentTime.Offset)
-	currentTime, currentValid := durationFromSeconds(currentSeconds)
 	endSeconds := readFloat64(buf, lmu13Layout.Session.EndTime.Offset)
 	maximumLaps := readInt32(buf, lmu13Layout.Session.MaximumLaps.Offset)
-	if !currentValid || !finite(endSeconds) || endSeconds < currentSeconds || maximumLaps < 0 {
-		return rejectedObservation(result, profile, "session-values-invalid"), nil
-	}
 	grid, playerIndex, valid := parseActiveGrid(buf, int(vehicles))
 	if !valid {
 		return rejectedObservation(result, profile, "active-grid-invalid"), nil
@@ -199,9 +210,15 @@ func parseWithProfile(buf []byte, received time.Time, profile compatibilityProfi
 	result.TrackName = observed(normalizeTrackName(track))
 	result.VehicleCount = validateCount(vehicles, 0, maxVehicles)
 	result.SessionType = validateSessionType(readInt32(buf, lmu13Layout.Session.SessionType.Offset))
-	result.SourceTime = observed(currentTime)
-	result.EndTime = observed(session.EndTime(endSeconds))
-	result.MaximumLaps = observed(session.MaximumLaps(maximumLaps))
+	result.SourceTime = validateDuration(currentSeconds)
+	result.EndTime = invalid[session.EndTime]()
+	if finite(endSeconds) && (!finite(currentSeconds) || endSeconds >= currentSeconds) {
+		result.EndTime = observed(session.EndTime(endSeconds))
+	}
+	result.MaximumLaps = invalid[session.MaximumLaps]()
+	if maximumLaps >= 0 {
+		result.MaximumLaps = observed(session.MaximumLaps(maximumLaps))
+	}
 	result.Vehicles = grid
 	if playerPresent {
 		publishPlayer(&result, grid[playerIndex])

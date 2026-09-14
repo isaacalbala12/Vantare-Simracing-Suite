@@ -5,7 +5,7 @@ export {
   useStudioSelector,
   useStudioStoreInstance,
   useStudioActions,
-  useStudioAccess,
+  useStudioWidgetPolicy,
   useStudioActiveLayout,
   useStudioDirty,
   type StudioDocumentContextValue,

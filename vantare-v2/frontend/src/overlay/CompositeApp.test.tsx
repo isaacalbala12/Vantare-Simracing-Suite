@@ -134,6 +134,36 @@ function buildRelativeDocument(): ProfileDocumentV3 {
   };
 }
 
+// Native widget policy over the mocked Wails bridge (ISA-1105): relative is
+// premium, so generation tests feed a paid snapshot before expecting frames.
+const paidPolicyWire = {
+  revision: 2,
+  overlaysBasic: true,
+  overlaysAdvanced: true,
+  engineerAI: false,
+  brandCrystal: "optional",
+  brandEfficiency: "optional",
+  brandOriginal: "none",
+};
+
+const freePolicyWire = {
+  revision: 3,
+  overlaysBasic: true,
+  overlaysAdvanced: false,
+  engineerAI: false,
+  brandCrystal: "required",
+  brandEfficiency: "required",
+  brandOriginal: "none",
+};
+
+function dispatchPolicySnapshot(wire: Record<string, unknown>): void {
+  dispatch("widget-policy:snapshot", wire);
+}
+
+function dispatchPolicyChanged(wire: Record<string, unknown>): void {
+  dispatch("widget-policy:changed", wire);
+}
+
 describe("CompositeApp", () => {
   beforeEach(() => {
     runtimeMock.handlers.clear();
@@ -165,6 +195,7 @@ describe("CompositeApp", () => {
 
   it("R2: un evento legacy V1 solo no alimenta Desktop (sin widget V1)", async () => {
     render(<CompositeApp />);
+    dispatchPolicySnapshot(paidPolicyWire);
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     tick(100);
 
@@ -187,6 +218,7 @@ describe("CompositeApp", () => {
 
   it("R2: un snapshot V2 solo sigue alimentando el runtime y unmount cierra el pull", async () => {
     const view = render(<CompositeApp />);
+    dispatchPolicySnapshot(paidPolicyWire);
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     tick(100);
 
@@ -209,6 +241,7 @@ describe("CompositeApp", () => {
 
   it("does not allocate or ingest shadow state while V1 emission is off", async () => {
     render(<CompositeApp />);
+    dispatchPolicySnapshot(paidPolicyWire);
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     tick(100);
 
@@ -238,6 +271,7 @@ describe("CompositeApp", () => {
         <CompositeApp />
       </StrictMode>,
     );
+    dispatchPolicySnapshot(paidPolicyWire);
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     await dispatchTelemetry([
       { name: "telemetry:overlay-v2:snapshot", data: JSON.parse(goldenV2Raw) },
@@ -260,7 +294,11 @@ describe("CompositeApp", () => {
   it("subscribes once to the profile and canonical Overlay transport", () => {
     render(<CompositeApp />);
     expect(runtimeMock.onCalls.filter((name) => name === "overlay:profile-v3-loaded")).toHaveLength(1);
+    // Policy subscribes before requesting, over the same bridge, exactly once.
+    expect(runtimeMock.onCalls.filter((name) => name === "widget-policy:snapshot")).toHaveLength(1);
+    expect(runtimeMock.onCalls.filter((name) => name === "widget-policy:changed")).toHaveLength(1);
     expect(runtimeMock.emit).toHaveBeenCalledWith("overlay:profile-v3:get");
+    expect(runtimeMock.emit).toHaveBeenCalledWith("widget-policy:get", expect.anything());
     expect(runtimeMock.onCalls.filter((name) => name === "telemetry:update")).toHaveLength(0);
     expect(runtimeMock.onCalls.filter((name) => name === "telemetry:overlay:status")).toHaveLength(0);
     expect(runtimeMock.onCalls.filter((name) => name === "telemetry:overlay:projection")).toHaveLength(0);
@@ -290,11 +328,17 @@ describe("CompositeApp", () => {
     tick(100);
 
     expect(screen.queryByText("Loading profile...")).toBeNull();
+    dispatchPolicySnapshot(paidPolicyWire);
+    tick(100);
     expect(screen.getByText("Overlay V2 frame unavailable")).toBeTruthy();
+    dispatchPolicySnapshot(paidPolicyWire);
+    tick(100);
+    expect(screen.getByTestId("runtime-widget-frame")).toBeTruthy();
   });
 
   it("renders runtime widgets after overlay:profile-v3-loaded", () => {
     render(<CompositeApp />);
+    dispatchPolicySnapshot(paidPolicyWire);
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     tick(100);
     expect(screen.getByText("Overlay V2 frame unavailable")).toBeTruthy();
@@ -302,6 +346,7 @@ describe("CompositeApp", () => {
 
   it("applies the Overlay V2 snapshot from the HTTP response", async () => {
     render(<CompositeApp />);
+    dispatchPolicySnapshot(paidPolicyWire);
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
     tick(100);
 
@@ -334,6 +379,7 @@ describe("CompositeApp", () => {
 
   it("refreshes the runtime surface when revision changes", () => {
     const view = render(<CompositeApp />);
+    dispatchPolicySnapshot(paidPolicyWire);
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument(), "rev-a"));
     tick(100);
     expect(view.getAllByTestId("runtime-widget-frame")).toHaveLength(1);
@@ -358,6 +404,7 @@ describe("CompositeApp", () => {
     };
 
     render(<CompositeApp />);
+    dispatchPolicySnapshot(paidPolicyWire);
     dispatch("overlay:profile-v3-loaded", buildProfilePayload(document));
     tick(100);
 
@@ -366,6 +413,37 @@ describe("CompositeApp", () => {
     expect(scene.style.transform).toBe("translate(0px, 0px) scale(0.9)");
     expect(frame.style.left).toBe("218.666667px");
     expect(frame.style.top).toBe("87px");
+  });
+
+  it("blocks premium without a snapshot and applies live downgrade without losing the document", () => {
+    render(<CompositeApp />);
+    dispatch("overlay:profile-v3-loaded", buildProfilePayload(buildRelativeDocument()));
+    tick(100);
+
+    // Fail-safe startup: the surface paints, the premium widget never executes.
+    expect(screen.getByTestId("runtime-overlay-surface")).toBeTruthy();
+    expect(screen.queryAllByTestId("runtime-widget-frame")).toHaveLength(0);
+
+    dispatchPolicySnapshot(paidPolicyWire);
+    tick(100);
+    expect(screen.getAllByTestId("runtime-widget-frame")).toHaveLength(1);
+    expect(screen.getByTestId("runtime-widget-frame").getAttribute("data-widget-id")).toBe(
+      "relative-main",
+    );
+
+    // Live downgrade: the frame unmounts, the document is preserved, and
+    // rights restore the same widget when they return.
+    dispatchPolicyChanged({ ...freePolicyWire, revision: 4 });
+    tick(100);
+    expect(screen.queryAllByTestId("runtime-widget-frame")).toHaveLength(0);
+    expect(screen.getByTestId("runtime-overlay-surface")).toBeTruthy();
+
+    dispatchPolicyChanged({ ...paidPolicyWire, revision: 5 });
+    tick(100);
+    expect(screen.getAllByTestId("runtime-widget-frame")).toHaveLength(1);
+    expect(screen.getByTestId("runtime-widget-frame").getAttribute("data-widget-id")).toBe(
+      "relative-main",
+    );
   });
 
   it("mounts edit chrome when overlay:edit-mode-changed fires", () => {

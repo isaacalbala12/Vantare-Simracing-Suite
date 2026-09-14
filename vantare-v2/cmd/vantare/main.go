@@ -1862,6 +1862,17 @@ func main() {
 	wailsApp.Event.On("license:cached:get", func(_ *application.CustomEvent) {
 		licenseSvc.EmitCachedState()
 	})
+	// Widget policy snapshot for Studio/Desktop consumers (ISA-1097). The
+	// frontend requests Events.Emit("widget-policy:get") and applies the
+	// widget-policy:snapshot answer when no revision is applied yet or its
+	// revision is not older (a delayed answer from the same instance never
+	// overwrites a newer changed; a backend restart reloads the frontend,
+	// so the initial snapshot always enters). Payload is WidgetPolicyWire:
+	// the effective decision only, without identity, roles, tokens,
+	// entitlements or capabilities.
+	wailsApp.Event.On("widget-policy:get", func(_ *application.CustomEvent) {
+		emitter.Emit("widget-policy:snapshot", licenseSvc.CurrentWidgetPolicy().ToWire())
+	})
 	wailsApp.RegisterService(application.NewService(licenseSvc))
 	telemetryAnalysisCfg, telemetryAnalysisCfgErr := telemetryAnalysisBackendConfig()
 	if telemetryAnalysisCfgErr != nil {
@@ -2067,6 +2078,10 @@ func main() {
 	}
 	hubSvc.SetStudioProfileService(studioProfileSvc)
 	studioProfileSvc.RegisterHandlers(wailsApp)
+	// Widget access authority (ISA-1097): every native save path compares
+	// against this snapshot. Studio/Desktop read it via widget-policy
+	// events, OBS via the policy SSE stream, and the guards via composition.
+	wireWidgetPolicySources(hubSvc, profileSvc, studioProfileSvc, licenseSvc)
 	// La política inicial debe usar la pareja confirmada ajustes+perfil. La
 	// restauración ocurre antes de construir TelemetryCoreRuntime y, como el
 	// reconciliador aún no está conectado, no emite performance:level.
@@ -2279,6 +2294,10 @@ func main() {
 			}
 			return telemetryCoreRuntime.OverlayV2Publishers()
 		}(),
+		// Sanitized widget policy for the OBS browser source: the effective
+		// decision only, never the license. Studio/Desktop use the native
+		// snapshot and widget-policy:changed events from the same authority.
+		WidgetPolicy: licenseSvc,
 	})
 	httpSrv.Start()
 	wailsApp.Event.On("obs:url:get", func(*application.CustomEvent) {
@@ -2506,6 +2525,21 @@ func main() {
 	)
 	profileHkMgr = launcher.NewHotkeyManager()
 
+	// updater:notify enciende el pill de actualizacion de la shell. Lo
+	// emite cualquier chequeo que confirma una version pendiente — el
+	// silencioso del arranque y tambien los manuales de Ajustes, que antes
+	// solo publicaban updater:available y dejaban el aviso apagado.
+	emitUpdateNotify := func(info *updater.UpdateInfo) {
+		if info.HasUpdate && info.LatestRelease.TagName != "" {
+			emitter.Emit("updater:notify", map[string]any{
+				"tag":         info.LatestRelease.TagName,
+				"name":        info.LatestRelease.Name,
+				"prerelease":  info.LatestRelease.Prerelease,
+				"downloadURL": installerURL(info.LatestRelease),
+			})
+		}
+	}
+
 	// Silent update check on startup (after a short delay so the UI is ready).
 	if updaterSvc != nil {
 		go func() {
@@ -2522,14 +2556,7 @@ func main() {
 			if ctx.Err() != nil {
 				return
 			}
-			if info.HasUpdate && info.LatestRelease.TagName != "" {
-				emitter.Emit("updater:notify", map[string]any{
-					"tag":         info.LatestRelease.TagName,
-					"name":        info.LatestRelease.Name,
-					"prerelease":  info.LatestRelease.Prerelease,
-					"downloadURL": installerURL(info.LatestRelease),
-				})
-			}
+			emitUpdateNotify(info)
 			// The notification carries only the tag, but this check already
 			// fetched every pending release with its notes. Publishing the
 			// whole result lets the shell say what the update brings without
@@ -2630,6 +2657,7 @@ func main() {
 				emitUpdaterError(err.Error())
 				return
 			}
+			emitUpdateNotify(info)
 			emitter.Emit("updater:available", map[string]any{"info": info})
 		}
 

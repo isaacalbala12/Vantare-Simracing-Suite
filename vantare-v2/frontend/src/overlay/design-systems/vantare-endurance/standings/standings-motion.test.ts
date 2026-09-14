@@ -6,7 +6,6 @@ import {
 } from "../../../widget-types/standings/standings-view-model";
 import {
   deriveBattlePairs,
-  deriveFlipOffsets,
   derivePositionDeltas,
   deriveRosterChange,
   deriveStandingsEvents,
@@ -184,19 +183,6 @@ describe("standings-motion", () => {
         intervalSeconds: 0.3,
       },
     ]);
-  });
-
-  it("computes FLIP offsets from in-class index changes", () => {
-    const prev = gridA();
-    const next = model([
-      row({ id: "a", position: 1, gapText: "—" }),
-      row({ id: "c", position: 2, gapText: "+3.9s", isPlayer: true }),
-      row({ id: "b", position: 3, gapText: "+4.1s" }),
-    ]);
-    const offsets = deriveFlipOffsets(prev, next, 30);
-    expect(offsets.get("c")).toBe(30);
-    expect(offsets.get("b")).toBe(-30);
-    expect(offsets.has("a")).toBe(false);
   });
 
   it("derives roster entries and retirements with the ghost's in-class index", () => {

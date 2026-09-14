@@ -599,7 +599,9 @@ func inferStintBoundaries(
 	}
 	for _, rise := range observedFuelRises(fuelPages) {
 		boundarySeconds := rise.seconds
-		if entry, ok := pitEntryAt(pitEvents, rise.seconds); ok {
+		if entry, inside, observedEntry := pitIntervalAt(pitEvents, rise.seconds); inside && !observedEntry {
+			continue
+		} else if inside {
 			boundarySeconds = entry
 		}
 		if boundarySeconds <= firstLapSeconds(lapEvents) {
@@ -801,8 +803,8 @@ func observedFuelRises(pages []HistoricalPage) []fuelRise {
 	return rises
 }
 
-func pitEntryAt(events []observedEvent, seconds float64) (float64, bool) {
-	initialized, active, open := false, false, false
+func pitIntervalAt(events []observedEvent, seconds float64) (float64, bool, bool) {
+	initialized, active, observedEntry := false, false, false
 	entry := 0.0
 	for _, event := range events {
 		state, ok := firstBoolean(event.values)
@@ -811,20 +813,23 @@ func pitEntryAt(events []observedEvent, seconds float64) (float64, bool) {
 		}
 		if !initialized {
 			initialized, active = true, state
+			if state {
+				entry = event.seconds
+			}
 			continue
 		}
 		if state && !active {
-			entry, open = event.seconds, true
+			entry, observedEntry = event.seconds, true
 		}
 		if !state && active {
-			if open && seconds >= entry && seconds <= event.seconds {
-				return entry, true
+			if seconds >= entry && seconds <= event.seconds {
+				return entry, true, observedEntry
 			}
-			open = false
+			observedEntry = false
 		}
 		active = state
 	}
-	return entry, open && seconds >= entry
+	return entry, active && seconds >= entry, observedEntry
 }
 
 func addStintCandidate(candidates map[int]stintCandidate, candidate stintCandidate) {

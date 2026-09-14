@@ -1,0 +1,67 @@
+{
+  "issue": 1208,
+  "testedAt": "2026-09-14",
+  "testedBaseHead": "76d96f62a7281b5badab2b851a1d994cc201b33a",
+  "modes": ["ISA1208_IMPORT_ONLY=1", "full S125 to S026 revision roundtrip"],
+  "runtimeManifestSha256": "700201f90266ae6b829372d9989408c6b0efd86725a50980d46fc05adfc24869",
+  "runtime": "DuckDB v1.5.5; protocol 1; schema 1; windows/amd64",
+  "sources": [
+    {
+      "id": "S125",
+      "track": "Autodromo Enzo e Dino Ferrari",
+      "sha256Before": "35438326ecddd6ab660ed3aad70b076a73e3290236c0292f30657594c38c1eb0",
+      "sha256After": "35438326ecddd6ab660ed3aad70b076a73e3290236c0292f30657594c38c1eb0",
+      "replayCatalogSha256": "caa49da10cbddad59661fdfb33647c5f58f90cd5dc15da8746195a8165e9d611",
+      "walBefore": false,
+      "walAfter": false,
+      "temporalBridge": "aligned",
+      "coverage": {"startSeconds": 24.545, "endSeconds": 3796.483, "gaps": []},
+      "stintBoundaries": [{"stintNumber": 2, "seconds": 2893.76, "cause": "pit", "presence": "valid"}],
+      "laps": 39,
+      "fuelLaps": 25,
+      "virtualEnergyLaps": 25,
+      "pitIntervals": [{"startSeconds": 2874.12, "endSeconds": 2928.24, "durationSeconds": 54.12, "fuelAddedLiters": 25.71540343761444, "fuelRateLPerS": 1.870211159099232, "open": false}]
+    },
+    {
+      "id": "S266",
+      "track": "Algarve International Circuit",
+      "sha256Before": "6b912640e5b68da087fbe86ce70401101edbdc89cb89cb93df30c9ef396d9362",
+      "sha256After": "6b912640e5b68da087fbe86ce70401101edbdc89cb89cb93df30c9ef396d9362",
+      "replayCatalogSha256": "d9e3230f0651f5bff3d46385c0d24be49c040bf59b30879962dcd539ec458d1f",
+      "walBefore": false,
+      "walAfter": false,
+      "temporalBridge": "aligned",
+      "coverage": {"startSeconds": 10104.66, "endSeconds": 16840.14, "gaps": [{"startSeconds": 16840.14, "endSeconds": 16958.673, "reason": "no_coverage"}]},
+      "stintBoundaries": [{"stintNumber": 2, "seconds": 13580.36, "cause": "pit", "presence": "valid"}],
+      "laps": 71,
+      "fuelLaps": 58,
+      "virtualEnergyLaps": 58,
+      "pitIntervals": [
+        {"startSeconds": 13513.52, "endSeconds": 13588.52, "durationSeconds": 75, "fuelAddedLiters": 74.72546902298927, "fuelRateLPerS": 1.872818772506014, "open": false},
+        {"startSeconds": 16933.28, "endSeconds": null, "durationSeconds": 0, "open": true, "reason": "open_pit_lane_interval"}
+      ]
+    },
+    {
+      "id": "S026",
+      "track": "Autodromo Nazionale Monza",
+      "sha256Before": "08a1e626d7154becd493aa84addbf146cc7f0f229c8a7aa39664766813495538",
+      "sha256After": "08a1e626d7154becd493aa84addbf146cc7f0f229c8a7aa39664766813495538",
+      "replayCatalogSha256": "27cd47f499c736ca5942e0d92f5914f15736f54e498649f099185e37fc9d3421",
+      "walBefore": false,
+      "walAfter": false,
+      "temporalBridge": "aligned",
+      "coverage": {"startSeconds": 6144.018, "endSeconds": 12158.9, "gaps": [{"startSeconds": 12158.9, "endSeconds": 12180.053, "reason": "no_coverage"}]},
+      "stintBoundaries": [
+        {"stintNumber": 2, "seconds": 9149.8, "cause": "pit", "presence": "valid"},
+        {"stintNumber": 3, "seconds": 12158.9, "cause": "pit", "presence": "valid"}
+      ],
+      "laps": 61,
+      "fuelLaps": 53,
+      "virtualEnergyLaps": 53,
+      "pitIntervals": [
+        {"startSeconds": 9144.62, "endSeconds": 9214.18, "durationSeconds": 69.56, "fuelAddedLiters": 85.91343808174133, "virtualEnergyAddedPercent": 99.48938238620758, "fuelRateLPerS": 3.9959738642670386, "virtualEnergyRatePPerS": 2.496596797646341, "open": false},
+        {"startSeconds": 12153.72, "endSeconds": null, "durationSeconds": 0, "open": true, "reason": "open_pit_lane_interval"}
+      ]
+    }
+  ]
+}

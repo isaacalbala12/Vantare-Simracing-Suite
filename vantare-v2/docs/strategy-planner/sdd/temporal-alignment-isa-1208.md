@@ -1,6 +1,6 @@
 # ISA-1208 — microplan de alineación temporal LMU registrada
 
-Estado: plan de ejecución aprobado por continuidad del SDD. Fecha: 2026-09-14.
+Estado: implementación y banco real cerrados localmente. Fecha: 2026-09-14.
 Base: `e3b637082bcbf84aa608ec75eccb926ae0324c86`. Rama:
 `vantareapp/isa-1208-strategy-temporal-alignment`.
 
@@ -47,7 +47,14 @@ Base: `e3b637082bcbf84aa608ec75eccb926ae0324c86`. Rama:
 - RED observado en C2: el contrato rechazaba el intervalo abierto y el helper
   de wear aún exigía resets ordinales. GREEN: casos de abierto, estado inicial,
   tasa con deriva, agregado mixto/abierto, número real de vuelta y contrato.
-- Sigue **D**: banco real S125/S266/S026, hashes/WAL, compatibilidad y gates.
+- **D — cerrado localmente.** El banco productivo sobre S125/S266/S026
+  confirma puente alineado, recursos en el reloj de eventos y ausencia de los
+  tres `fuel_jump` fantasma de T19a. S026 conserva `pit@9149.8` y
+  `pit@12158.9`; S125 queda en `pit@2893.76` y S266 en `pit@13580.36`.
+  Hashes intactos y sin `.wal`. La regresión real descubrió y corrigió el caso
+  de repostaje dentro del estado inicial `In Pits=true`. #1210 separa el límite
+  de preparación que S266 supera con el conjunto actual de canales.
+  Evidencia: `../evidence/isa-1208/README.md` y `real-bank.json`.
 
 ## Problema demostrado
 
@@ -158,6 +165,8 @@ Paths esperados:
 
 - `internal/telemetryanalysis/pitobserved.go`
 - `internal/telemetryanalysis/pitobserved_test.go`
+- `internal/telemetryanalysis/strategyprojection/projection.go`
+- `internal/telemetryanalysis/strategyprojection/strategyprojection_test.go`
 
 Fuel, VE y wear alineados pueden cruzarse con intervalos `In Pits`. Un
 intervalo abierto continúa abierto; `In Pits` no se convierte en garaje o
@@ -169,23 +178,31 @@ puente conserva el motivo; no hay doble conteo.
 
 ### D — banco real, compatibilidad y expediente
 
-Reejecutar el banco opt-in sobre S125, S266 y S026, con exportación privada
-saneada. Verificar hashes antes/después y ausencia de WAL. Comparar límites,
-cobertura, vueltas con recursos y motivos frente a T19a. Después ejecutar:
+Ejecutado el banco opt-in sobre S125, S266 y S026 con exportación privada
+saneada. Los tres originales conservan su SHA-256 y no crean WAL. El contraste
+con T19a demuestra límites, cobertura, recursos y visitas abiertas en el mismo
+reloj; el resumen versionado está en `../evidence/isa-1208/`. La importación
+productiva pasa en las tres fuentes. S266 supera el
+presupuesto independiente de `PrepareCorrections`; #1210 conserva ese hallazgo
+fuera del alcance temporal sin relajar el límite.
+
+Checks ejecutados:
 
 ```powershell
-go test ./internal/telemetryanalysis -count=1
-go test ./...
-go vet ./...
+go test ./internal/telemetryanalysis/... -count=1
+go test ./internal/strategy/... -count=1
+go test ./internal/... -count=1
 ```
 
-Actualizar este microplan con resultado, el handoff vivo, #1208 y el hito
-`strategy-recorded-editor`; regenerar `roadmap.json` mediante el digest. No
-abrir app/Wails/LMU. No push, PR, integración o release.
+Los dos primeros gates pasan. El tercero mostró sólo el presupuesto temporal
+de un test SQLite ajeno al cambio; su repetición focal pasó en 0.25 s. Tras
+generar sólo el embed web, `go test ./... -count=1` pasa. `go vet ./...` conserva
+únicamente tres avisos heredados de `unsafe.Pointer` fuera del alcance; los
+paquetes modificados pasaron vet focal. No se abrió app/Wails/LMU.
 
 ## Condición para T13a
 
-T13a sólo empieza si el corte final demuestra simultáneamente:
+El corte final ya demuestra simultáneamente:
 
 - un reloj compartido explícito o fallo cerrado por fuente;
 - S125/S266 sin límites `fuel_jump` fantasma;

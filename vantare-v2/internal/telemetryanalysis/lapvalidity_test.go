@@ -326,6 +326,22 @@ func TestAnalyzeLapValidityIgnoresInitialFuelRiseAndPitState(t *testing.T) {
 	}
 }
 
+func TestAnalyzeLapValidityIgnoresFuelRiseInsideInitialPitState(t *testing.T) {
+	session, pages := reducedT19aTemporalRegression(t)
+	pages[6].Samples = []HistoricalSample{
+		{Index: 0, TimestampSeconds: floatPointer(1000), Values: []HistoricalValue{booleanValue("In Pits", true)}},
+		{Index: 1, TimestampSeconds: floatPointer(1022), Values: []HistoricalValue{booleanValue("In Pits", false)}},
+	}
+
+	analysis, err := AnalyzeLapValidity(session, pages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(analysis.Temporal.StintBoundaries) != 0 {
+		t.Fatalf("fuel rise inside initial pit state created stint boundaries: %+v", analysis.Temporal.StintBoundaries)
+	}
+}
+
 func TestAnalyzeLapValidityMergesPitCrossingWithLaterFuelRise(t *testing.T) {
 	session, pages := reducedT19aTemporalRegression(t)
 	pages[6].Samples = []HistoricalSample{

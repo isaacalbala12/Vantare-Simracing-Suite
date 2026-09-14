@@ -1,6 +1,41 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1208 A/B/C1/C2 cerrados; sigue banco real D
+## Estado vigente — #1208 cerrado localmente; T13a desbloqueado
+
+El banco real D pasa sobre S125 Imola, S266 Algarve y S026 Monza con el runtime
+confiado DuckDB v1.5.5. Los tres puentes quedan alineados. S125 publica sólo
+`pit@2893.76`; S266 sólo `pit@13580.36`; S026 conserva `pit@9149.8` y
+`pit@12158.9`. Desaparecen los tres `fuel_jump` fantasma de T19a y no quedan
+stints de una vuelta. Fuel/VE tienen métrica derivada en 25/25, 58/58 y 53/53
+vueltas.
+Las colas de cobertura de S266/S026 empiezan tras el último `Lap`, no por mezcla
+de orígenes. Las visitas finales abiertas conservan final y recursos ausentes.
+
+Los SHA-256 originales son idénticos antes/después y no apareció `.wal`.
+Strategy y Telemetry Analysis completos pasan. `internal/...` tuvo un único
+timeout de presupuesto SQLite ajeno; el focal pasó inmediatamente en 0.25 s y
+la repetición global `go test ./... -count=1` pasó tras generar sólo el embed
+web. `go vet ./...` conserva tres avisos `unsafe.Pointer` heredados fuera del
+alcance; vet focal de los paquetes modificados pasa.
+El banco real llevó a una última regresión RED/GREEN: un repostaje dentro de
+`In Pits=true` inicial ya no crea límite sin una entrada observada. El banco
+reutiliza el modelo importado y separa importación de la preparación avanzada.
+S266 supera el presupuesto de esa preparación con el conjunto actual de
+canales; queda en #1210 sin relajarlo dentro de #1208. Evidencia versionada en
+`docs/strategy-planner/evidence/isa-1208/`.
+
+Dos importaciones independientes producen catálogos byte a byte idénticos para
+las tres fuentes. El recorrido completo S125→S026 también pasa y conserva la
+identidad importada frente a la revisión nativa. El replay de S266 se limita a
+importación/derivaciones; no se afirma roundtrip de correcciones mientras #1210
+siga abierto.
+
+Astra high aconsejó congelar A-C2 y evitar otro harness; el cierre conserva esa
+ruta mínima. Pendientes inmediatos: commit y actualización de #1208. Después
+puede comenzar T13a. Sin app/Wails/LMU, push, PR, CI remota, integración ni
+release.
+
+## Historial — #1208 corte C2 cerrado localmente
 
 C2 conserva visitas `In Pits` cerradas y abiertas sin fabricar el final. Una
 visita abierta lleva inicio observado, final ausente, duración no disponible y

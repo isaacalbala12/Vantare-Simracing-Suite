@@ -151,6 +151,22 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 		}
 		models[candidate.DisplayName] = model
 	}
+	// Export the already imported primary model before the correction-editor
+	// checks. Long recordings can exceed that editor's independent safety cap.
+	if exportPath := os.Getenv("ISA1088_EXPORT_CATALOG"); exportPath != "" {
+		exportStore, err := telemetryanalysis.OpenAuthorizedSessionStore(filepath.Clean(exportPath))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := exportStore.Add(ctx, models[primaryCandidate.DisplayName]); err != nil {
+			t.Fatal(err)
+		}
+		t.Log("exported real observed model through existing importer")
+	}
+	if os.Getenv("ISA1208_IMPORT_ONLY") == "1" {
+		t.Log("real import-only validation completed")
+		return
+	}
 	sessionCatalog := telemetryanalysis.NewSessionCatalog(store)
 	svc.cfg.SessionCatalog = sessionCatalog
 	targetClassified, err := telemetryanalysis.ClassifyHistoricalSession(models[targetCandidate.DisplayName].Session)
@@ -194,6 +210,9 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 	}
 	t.Logf("exact revision retained: %s; combination: %s", exact.SourceRevisions[0].RevisionID, exact.CombinationID)
 	ref := exact.SourceRevisions[0]
+	if models[primaryCandidate.DisplayName].Session.ID != ref.SessionID {
+		t.Fatal("imported/native source identity mismatch")
+	}
 	repo := recordedRealRepository{snapshot: repository.Snapshot[any]{Version: 1, StrategyDocument: &strategydocument.StrategyDocumentV2{
 		Events: []strategydocument.Event{{ID: "real-event", Combination: &strategydocument.CombinationReference{CombinationID: exact.CombinationID, Sessions: []strategydocument.SessionSelection{{SessionID: ref.SessionID, Included: true, Revision: &ref}}}}},
 	}}}
@@ -228,33 +247,6 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 	classifiedSessionID, classifiedHead := verifyRecordedRealClassificationRevision(t, ctx, svc, reopened, prepared.Base, saved.HeadID, primaryCandidate.ID)
 	identitySessionID, identityHead := verifyRecordedRealIdentityRevision(t, ctx, svc, TelemetryAnalysisOpenedSession{SessionID: classifiedSessionID, Session: opened.Session}, prepared.Base, classifiedHead, primaryCandidate.ID, targetClassified.Combination)
 	verifyRecordedRealFamilyRevision(t, ctx, svc, identitySessionID, primaryCandidate.ID, prepared.Base, identityHead)
-	// Optional explicit export to an isolated diagnostic application's catalog.
-	// This uses the existing importer, not handcrafted observed data.
-	if exportPath := os.Getenv("ISA1088_EXPORT_CATALOG"); exportPath != "" {
-		importer, err := coldstart.NewLMUImporter(runtimeApp, filepath.Join(root, "observed-staging"))
-		if err != nil {
-			t.Fatal(err)
-		}
-		candidate := svc.currentCandidate(primaryCandidate.ID)
-		if candidate == nil {
-			t.Fatal("candidate no longer available")
-		}
-		model, err := importer.Import(ctx, candidate.candidate)
-		if err != nil {
-			t.Fatalf("observed import: %v", err)
-		}
-		if model.Session.ID != ref.SessionID {
-			t.Fatal("observed/native source identity mismatch")
-		}
-		store, err := telemetryanalysis.OpenAuthorizedSessionStore(filepath.Clean(exportPath))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := store.Add(ctx, model); err != nil {
-			t.Fatal(err)
-		}
-		t.Log("exported real observed model through existing importer")
-	}
 }
 
 func recordedRealCandidateByDisplayName(t *testing.T, candidates []TelemetryAnalysisCandidate, displayName string) TelemetryAnalysisCandidate {

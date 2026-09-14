@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 
 	"github.com/vantare/overlays/v2/internal/strategy/contract"
@@ -25,6 +26,8 @@ const (
 	repositoryHashV1    = "sha256:strategy-repository-json-v1"
 	maxSafeGeneration   = uint64(1<<53 - 1)
 )
+
+var pendingDigestPattern = regexp.MustCompile(`^[a-f0-9]{64}$`)
 
 type Limits struct {
 	MaxRepositoryBytes int64
@@ -106,12 +109,29 @@ type ChangeSet[T any] struct {
 	// Deactivate clears the active plan. It cannot be combined with Activate:
 	// a change set that both activates and deactivates has no meaning.
 	Deactivate bool
+	// RequiredPendingRevision binds a recoverable save to the exact staged
+	// intent under the same lease as its effect. Legacy commits leave it nil.
+	RequiredPendingRevision *PendingRevisionIdentity
+}
+
+type PendingRevisionIdentity struct {
+	CommandID     string
+	CommandDigest string
 }
 
 // CommitResult reports the new snapshot and effective plan deletions.
 type CommitResult[T any] struct {
 	Snapshot[T]
 	DeletedPlans int
+}
+
+// PendingRevisionSave is the exact save_revision command retained before its
+// effect. Command stays opaque here so the repository does not depend on the
+// application protocol it persists for recovery.
+type PendingRevisionSave struct {
+	CommandID     string          `json:"commandId"`
+	Command       json.RawMessage `json:"command"`
+	CommandDigest string          `json:"commandDigest"`
 }
 
 // The activation fields are omitempty on purpose: a repository that has never
@@ -126,6 +146,7 @@ type diskEnvelope struct {
 	ActivePlan        json.RawMessage   `json:"activePlan,omitempty"`
 	Activations       []json.RawMessage `json:"activations,omitempty"`
 	StrategyDocument  json.RawMessage   `json:"strategyDocument,omitempty"`
+	PendingRevision   json.RawMessage   `json:"pendingRevision,omitempty"`
 	ContentHash       string            `json:"contentHash"`
 }
 
@@ -138,6 +159,7 @@ type repositoryHashInput struct {
 	ActivePlan        json.RawMessage   `json:"activePlan,omitempty"`
 	Activations       []json.RawMessage `json:"activations,omitempty"`
 	StrategyDocument  json.RawMessage   `json:"strategyDocument,omitempty"`
+	PendingRevision   json.RawMessage   `json:"pendingRevision,omitempty"`
 }
 
 type repositoryState[T any] struct {
@@ -147,6 +169,7 @@ type repositoryState[T any] struct {
 	activePlan  *contract.ActivePlan
 	activations []contract.ActivePlan
 	document    *strategydocument.StrategyDocumentV2
+	pending     *PendingRevisionSave
 }
 
 // Open prepares a private repository root without creating an empty state.
@@ -207,6 +230,85 @@ func (repository *Repository[T]) Snapshot(ctx context.Context) (Snapshot[T], err
 	return snapshotFromState(state, recovered)
 }
 
+// StagePendingRevision durably retains one exact save_revision command without
+// advancing the logical repository generation. An exact replay is a no-op.
+func (repository *Repository[T]) StagePendingRevision(ctx context.Context, expectedVersion uint64, commandID string, command json.RawMessage) (PendingRevisionSave, error) {
+	if err := contextError(ctx); err != nil {
+		return PendingRevisionSave{}, err
+	}
+	pending, err := newPendingRevision(commandID, command)
+	if err != nil {
+		return PendingRevisionSave{}, err
+	}
+	lease, err := acquireRepositoryLease(filepath.Join(repository.root, leaseFileName))
+	if err != nil {
+		return PendingRevisionSave{}, err
+	}
+	defer lease.Close()
+	if err := cleanupOrphanedTemps(repository.root); err != nil {
+		return PendingRevisionSave{}, err
+	}
+	current, _, _, err := repository.loadLocked(true)
+	if err != nil {
+		return PendingRevisionSave{}, err
+	}
+	if current.pending != nil {
+		if current.pending.CommandID != pending.CommandID || current.pending.CommandDigest != pending.CommandDigest || !bytes.Equal(current.pending.Command, pending.Command) {
+			return PendingRevisionSave{}, ErrPendingRevisionConflict
+		}
+		return clonePendingRevision(*current.pending), nil
+	}
+	if current.generation != expectedVersion {
+		return PendingRevisionSave{}, fmt.Errorf("%w: expected %d, current %d", ErrStaleWrite, expectedVersion, current.generation)
+	}
+	current.pending = &pending
+	if err := repository.writeMetadataState(ctx, current); err != nil {
+		return PendingRevisionSave{}, err
+	}
+	return clonePendingRevision(pending), nil
+}
+
+// LoadPendingRevision returns the retained intent without interpreting it.
+func (repository *Repository[T]) LoadPendingRevision(ctx context.Context) (*PendingRevisionSave, error) {
+	if err := contextError(ctx); err != nil {
+		return nil, err
+	}
+	state, _, _, err := repository.loadLocked(false)
+	if err != nil || state.pending == nil {
+		return nil, err
+	}
+	pending := clonePendingRevision(*state.pending)
+	return &pending, nil
+}
+
+// AcknowledgePendingRevision removes only the named intent. Absence is
+// idempotent; a different identity fails closed.
+func (repository *Repository[T]) AcknowledgePendingRevision(ctx context.Context, commandID string) error {
+	if err := contextError(ctx); err != nil {
+		return err
+	}
+	if commandID == "" {
+		return ErrInvalidPendingRevision
+	}
+	lease, err := acquireRepositoryLease(filepath.Join(repository.root, leaseFileName))
+	if err != nil {
+		return err
+	}
+	defer lease.Close()
+	if err := cleanupOrphanedTemps(repository.root); err != nil {
+		return err
+	}
+	current, _, _, err := repository.loadLocked(true)
+	if err != nil || current.pending == nil {
+		return err
+	}
+	if current.pending.CommandID != commandID {
+		return ErrPendingRevisionConflict
+	}
+	current.pending = nil
+	return repository.writeMetadataState(ctx, current)
+}
+
 func (repository *Repository[T]) Commit(ctx context.Context, expectedVersion uint64, changes ChangeSet[T]) (CommitResult[T], error) {
 	if err := contextError(ctx); err != nil {
 		return CommitResult[T]{}, err
@@ -226,6 +328,11 @@ func (repository *Repository[T]) Commit(ctx context.Context, expectedVersion uin
 	}
 	if current.generation != expectedVersion {
 		return CommitResult[T]{}, fmt.Errorf("%w: expected %d, current %d", ErrStaleWrite, expectedVersion, current.generation)
+	}
+	if required := changes.RequiredPendingRevision; required != nil {
+		if current.pending == nil || current.pending.CommandID != required.CommandID || current.pending.CommandDigest != required.CommandDigest {
+			return CommitResult[T]{}, ErrPendingRevisionConflict
+		}
 	}
 	if current.generation >= maxSafeGeneration {
 		return CommitResult[T]{}, fmt.Errorf("%w: repository generation exhausted", ErrLimitExceeded)
@@ -458,6 +565,25 @@ func (repository *Repository[T]) decodeState(data []byte) (repositoryState[T], e
 		}
 		state.document = &strategyDocument
 	}
+	if len(envelope.PendingRevision) > 0 {
+		if len(envelope.PendingRevision) > repository.limits.MaxDocumentBytes {
+			return repositoryState[T]{}, fmt.Errorf("%w: pending revision command exceeds configured limit", ErrLimitExceeded)
+		}
+		var pending PendingRevisionSave
+		decoder := json.NewDecoder(bytes.NewReader(envelope.PendingRevision))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&pending); err != nil {
+			return repositoryState[T]{}, fmt.Errorf("%w: decode pending revision: %v", ErrCorruptRepository, err)
+		}
+		if err := ensureJSONEOF(decoder); err != nil {
+			return repositoryState[T]{}, fmt.Errorf("%w: decode pending revision: %v", ErrCorruptRepository, err)
+		}
+		if err := validateStoredPendingRevision(pending); err != nil {
+			return repositoryState[T]{}, fmt.Errorf("%w: %v", ErrCorruptRepository, err)
+		}
+		pending.Command, _ = compactPendingCommand(pending.Command)
+		state.pending = &pending
+	}
 	if err := validateUniqueState(state); err != nil {
 		return repositoryState[T]{}, err
 	}
@@ -526,6 +652,19 @@ func (repository *Repository[T]) encodeState(state repositoryState[T]) ([]byte, 
 		}
 		envelope.StrategyDocument = raw
 	}
+	if state.pending != nil {
+		if err := validateStoredPendingRevision(*state.pending); err != nil {
+			return nil, err
+		}
+		raw, err := json.Marshal(state.pending)
+		if err != nil {
+			return nil, fmt.Errorf("encode pending strategy revision: %w", err)
+		}
+		if len(raw) > repository.limits.MaxDocumentBytes {
+			return nil, fmt.Errorf("%w: pending revision command exceeds configured limit", ErrLimitExceeded)
+		}
+		envelope.PendingRevision = raw
+	}
 	var err error
 	envelope.ContentHash, err = hashEnvelope(envelope)
 	if err != nil {
@@ -578,6 +717,7 @@ func hashEnvelope(envelope diskEnvelope) (string, error) {
 		ActivePlan:        envelope.ActivePlan,
 		Activations:       envelope.Activations,
 		StrategyDocument:  envelope.StrategyDocument,
+		PendingRevision:   envelope.PendingRevision,
 	}
 	encoded, err := json.Marshal(input)
 	if err != nil {
@@ -794,6 +934,10 @@ func snapshotFromState[T any](state repositoryState[T], recovered bool) (Snapsho
 
 func cloneState[T any](state repositoryState[T]) (repositoryState[T], error) {
 	clone := repositoryState[T]{generation: state.generation}
+	if state.pending != nil {
+		pending := clonePendingRevision(*state.pending)
+		clone.pending = &pending
+	}
 	if state.document != nil {
 		documentClone, err := cloneStrategyDocument(*state.document)
 		if err != nil {
@@ -944,6 +1088,81 @@ func contextError(ctx context.Context) error {
 	}
 	if err := ctx.Err(); err != nil {
 		return fmt.Errorf("strategy repository operation canceled: %w", err)
+	}
+	return nil
+}
+
+func newPendingRevision(commandID string, command json.RawMessage) (PendingRevisionSave, error) {
+	if commandID == "" {
+		return PendingRevisionSave{}, ErrInvalidPendingRevision
+	}
+	compact, err := compactPendingCommand(command)
+	if err != nil {
+		return PendingRevisionSave{}, err
+	}
+	digest := sha256.Sum256(compact)
+	return PendingRevisionSave{
+		CommandID:     commandID,
+		Command:       compact,
+		CommandDigest: fmt.Sprintf("%x", digest),
+	}, nil
+}
+
+func validateStoredPendingRevision(pending PendingRevisionSave) error {
+	if pending.CommandID == "" || !pendingDigestPattern.MatchString(pending.CommandDigest) {
+		return ErrInvalidPendingRevision
+	}
+	compact, err := compactPendingCommand(pending.Command)
+	if err != nil {
+		return err
+	}
+	digest := sha256.Sum256(compact)
+	if pending.CommandDigest != fmt.Sprintf("%x", digest) {
+		return ErrInvalidPendingRevision
+	}
+	return nil
+}
+
+func compactPendingCommand(command json.RawMessage) (json.RawMessage, error) {
+	if len(command) == 0 || !json.Valid(command) {
+		return nil, ErrInvalidPendingRevision
+	}
+	var compact bytes.Buffer
+	if err := json.Compact(&compact, command); err != nil {
+		return nil, ErrInvalidPendingRevision
+	}
+	return append(json.RawMessage(nil), compact.Bytes()...), nil
+}
+
+func clonePendingRevision(pending PendingRevisionSave) PendingRevisionSave {
+	pending.Command = append(json.RawMessage(nil), pending.Command...)
+	return pending
+}
+
+// writeMetadataState replaces both recovery copies with metadata that keeps the
+// same logical generation. This makes staging and acknowledgement durable while
+// leaving the subsequent optimistic save_revision command valid.
+func (repository *Repository[T]) writeMetadataState(ctx context.Context, state repositoryState[T]) error {
+	encoded, err := repository.encodeState(state)
+	if err != nil {
+		return err
+	}
+	if err := contextError(ctx); err != nil {
+		return err
+	}
+	backupReplaced, err := repository.write(filepath.Join(repository.root, backupFileName), encoded)
+	if err != nil {
+		if backupReplaced {
+			return &CommitUncertainError{Version: state.generation, Cause: err}
+		}
+		return fmt.Errorf("write strategy repository metadata backup: %w", err)
+	}
+	replaced, err := repository.write(repository.statePath(), encoded)
+	if err != nil {
+		if replaced {
+			return &CommitUncertainError{Version: state.generation, Cause: err}
+		}
+		return fmt.Errorf("write strategy repository metadata: %w", err)
 	}
 	return nil
 }

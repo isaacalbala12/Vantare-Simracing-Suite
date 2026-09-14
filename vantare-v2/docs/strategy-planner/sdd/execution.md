@@ -13,7 +13,7 @@ prevalece sobre sus notas históricas de «siguiente corte».
 | Paquete | Estado comprobado y trabajo que se conserva | Cierre restante |
 |---|---|---|
 | T00/T01 | SDD y corrección local del coste repetido de pit #1089; regresión Imola existente. | Revalidación nativa y presupuesto del modelo completo en T22; no reabrir el algoritmo sin reproducción. |
-| T02/T03/T06/T07 | Reglas transportadas en #1092; asistente con duración, Fuel/VE, min/max paradas, nombres y delta de piloto. | Matriz completa de entradas, perfiles antes de optimizar, disponibilidad/conducción, inventario, servicios/formación, horizonte por vueltas y estados finales. Una pantalla presente no cierra la familia. |
+| T02/T03/T06/T07 | Reglas transportadas en #1092; T02d1 #1222 añade horizonte exacto por vueltas; asistente con duración, Fuel/VE, min/max paradas, nombres y delta de piloto. | Matriz completa de recursos, perfiles antes de optimizar, disponibilidad/conducción, inventario, servicios/formación y estados finales. Una pantalla presente no cierra la familia. |
 | T04/T05/T08/T09 | Shell/asistente unificado, biblioteca paginada, apertura explícita, configuración guardada/reabierta. | Paridad final T18, recuperación/copia y reinicio real T22; reutilizar servicios existentes y resolver sólo gaps observados. |
 | T10/T11 | Valor, uso por familia e historial de fuente implementados; bancos reales previos. | T11i visual/nativo pendiente; recuperación duradera de comandos y revisión completa del plan en T14/T22. |
 | T12 | Clasificación tipada e identidad canónica v4; J9 Imola→Monza 23.99 s y Monza→Imola 35.98 s, hashes intactos. | Gate visual/nativo compartido T18/T22; J9 no demuestra precisión empírica ni cálculo completo. |
@@ -27,8 +27,8 @@ Evidencia de los gaps: [matriz T02](../evidence/isa-1092/README.md),
 `StrategyRecordedWorkflow.tsx` bajo `frontend/src/hub/strategy-orbit/`.
 No repetir T12 ni declarar terminadas las entradas sólo por su posición en el DAG.
 
-**Siguiente corte elegible:** T02d inicia el cierre de la matriz de entradas con
-horizonte y recursos, siguiendo cortes pequeños hasta T02g/T06/T07 antes del
+**Siguiente corte elegible:** T02d2 continúa el cierre de la matriz de entradas
+con Fuel y energía virtual, siguiendo cortes pequeños hasta T02g/T06/T07 antes del
 contrato único de resultados T03. T13a–e queda cerrado localmente; la aceptación
 visual de sus pantallas permanece en T18 y el recorrido Wails en T22.
 En paralelo lógico, preparar inventario T02 restante y preflight documental T22a;
@@ -200,7 +200,7 @@ archivos a ciegas ni ampliar el alcance de una issue histórica documental.
 | 3 · T13b / #1212 · cerrado localmente | Tipos, constructor y validación pura en dos paths. | RED/GREEN para target, reloj, cobertura, forma, colisión, inversión, frontera terminal, orden e inmutabilidad; sin persistencia ni derivados. |
 | 3b · T13c / #1214 · cerrado localmente | Representación y custodia: guardado mixto con valor/uso/clasificación, replay/Resolve/Restore, cuota y guardado incierto. | Snapshots anteriores sin cambio de bytes/digest; rechazo atómico de conflicto y grupos desconocidos; rollback preserva historial. |
 | 4 · T13d→e / #1216/#1220 · cerrado localmente | Vista/derivación, servicio, contrato TS, cliente, edición avanzada e historial sobre el flujo existente. | Mover o retirar recalcula dependientes, conserva invariantes/original y se guarda, recupera, restaura, proyecta y adopta por las rutas existentes. A08 local; visual/nativo en T18/T22. |
-| 5 · T02d→g + T06/T07 | Cerrar matriz campo→origen→documento→adapter→solver→replay→UI. Cortes separados: horizonte/recursos; inventario/curvas; servicios/formación; perfiles/disponibilidad/conducción. Conectar cada grupo a reglas/pilotos del asistente. | Cada campo respaldado llega al solve y evaluación final o se rechaza con razón; cero/ausente/no aplicable distintos. Delta entre pilotos sólo altera ritmo. No promedio que elimine límites, inventario o perfiles antes de optimizar. |
+| 5 · T02d→g + T06/T07 | T02d1 #1222 cierra localmente el horizonte exacto por vueltas. Continuar la matriz campo→origen→documento→adapter→solver→replay→UI con cortes separados: recursos; inventario/curvas; servicios/formación; perfiles/disponibilidad/conducción. Conectar cada grupo a reglas/pilotos del asistente. | Cada campo respaldado llega al solve y evaluación final o se rechaza con razón; cero/ausente/no aplicable distintos. Delta entre pilotos sólo altera ritmo. No promedio que elimine límites, inventario o perfiles antes de optimizar. |
 | 6 · T03 | Contrato único de resultado, readiness, obsolescencia/correlación y errores. Reutilizar evaluación final; reproducir huecos reales de estados. | Casos óptimo demostrado, factible no probado, parcial, inviable, cancelado y presupuesto agotado; respuesta antigua no pasa a vigente; cálculo pendiente de carga no anuncia éxito. |
 | 7 · T14a→c | Inventario de snapshot de plan y recuperación de comando tras reinicio; persistencia/compatibilidad; luego cliente y Revisiones distinguiendo fuente y plan. | A15/A16: aceptar A, crear B, cerrar/reabrir A exacta con reglas/pilotos/constraints/versiones/resultado; fuente ausente conserva consulta, no derivación. Sin sustituir por HEAD/base ni reintentar escritura incierta a ciegas. |
 | 8 · T15a→c | Conectar Carrera→Cálculo→Plan productivos: entrada exacta/readiness; ciclo calcular/cancelar; resultado explicable y aceptar/guardar separados. | A12/A13 y E01/E02 controlados: propuesta real, unidades/recursos y procedencia, incertidumbre y límites; no tarjeta decorativa ni fórmula alternativa en React. Comparación matemática acotada y replay. |

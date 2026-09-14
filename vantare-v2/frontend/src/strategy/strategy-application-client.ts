@@ -347,13 +347,25 @@ export type StrategyVariantComparisonV2 = {
   readonly differentFields: readonly string[];
 };
 
-export type StrategyOrbitCalculationInputV1 = {
-  readonly event: {
-    readonly rules?: StrategyEventRules;
+type StrategyOrbitCalculationEventV1 = {
+  readonly rules?: StrategyEventRules;
+  readonly tankLiters: number;
+  readonly pitLossSeconds: number;
+} & (
+  | {
+    readonly raceKind?: "time";
     readonly durationMinutes: number;
-    readonly tankLiters: number;
-    readonly pitLossSeconds: number;
-  };
+    readonly targetLaps?: never;
+  }
+  | {
+    readonly raceKind: "laps";
+    readonly targetLaps: number;
+    readonly durationMinutes: 0;
+  }
+);
+
+export type StrategyOrbitCalculationInputV1 = {
+  readonly event: StrategyOrbitCalculationEventV1;
   readonly drivers: readonly {
     readonly id: string;
     readonly name: string;

@@ -106,3 +106,22 @@ Pendiente #1092: edición visible de reglas (T06), perfiles antes de optimizar,
 disponibilidad temporal, recursos Fuel/VE y pit detallado. T03 debe evitar dar
 por completo un cálculo iniciado antes de cargar configuración/proyección.
 T04 #1093 puede avanzar independientemente, conforme al orden práctico del SDD.
+
+## T02d1 — horizonte exacto por vueltas (#1222)
+
+El contrato de cálculo distingue explícitamente `time` y `laps`; la ausencia
+de discriminador conserva el camino temporal anterior. En modo vueltas exige
+`targetLaps`, mantiene `durationMinutes` inactivo a cero y rechaza valores
+ausentes, no positivos, combinaciones ambiguas y tipos desconocidos. El cálculo
+reutiliza `manual.CalculateRace` y llama al mismo `calculateOrbitLapPlan`: no
+convierte vueltas a minutos ni añade solver, iteración o persistencia.
+
+RED: los tests no compilaban porque el contrato no tenía horizonte por vueltas.
+GREEN: 12 vueltas se conservan con ritmos de 60 y 95 s/vuelta, la suma de stints
+es 12 y el puente JSON devuelve la misma distancia. El cliente TypeScript usa
+una unión discriminada, conserva el cero explícito y transporta el comando sin
+inventar duración. La ruta temporal queda cubierta por sus regresiones previas.
+
+El siguiente microcorte es T02d2, cargas iniciales y reservas independientes de
+Fuel y energía virtual. T02d1 no conecta todavía el asistente visual ni acredita
+Wails, LMU o precisión física.

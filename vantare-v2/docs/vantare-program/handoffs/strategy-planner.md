@@ -1,6 +1,20 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1220 T13e cerrado localmente; T02d listo
+## Estado vigente — #1222 T02d1 cerrado localmente; T02d2 listo
+
+T02d1 añade el horizonte exacto por vueltas al contrato de cálculo con la
+mínima bifurcación posible. `raceKind: "laps"` exige `targetLaps` positivo y
+duración inactiva a cero; el contrato anterior sin discriminador sigue siendo
+temporal. Ambos caminos comparten `manual.CalculateRace` y el cálculo por
+vueltas ya existente, por lo que no aparece otro solver, conversión a minutos,
+iteración o estado. Go conserva exactamente N vueltas con ritmos distintos y
+el puente JSON; TypeScript usa una unión discriminada y transporta el cero sin
+perder presencia. Astra high aconsejó esta separación y no encontró P0. El
+siguiente corte T02d2 transporta cargas iniciales y reservas independientes de
+Fuel y energía virtual. Sin app/Wails/LMU, DuckDB, push, PR, CI remota,
+integración ni release.
+
+## Historial — #1220 T13e cerrado localmente; T02d listo
 
 T13e conecta los límites registrados de extremo a extremo sin añadir otro
 servicio, store o ciclo de edición. Preparación devuelve límites originales y

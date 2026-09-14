@@ -352,7 +352,9 @@ type OrbitCalculationInput struct {
 
 type OrbitCalculationEvent struct {
 	Rules           *solver.EventRules `json:"rules,omitempty"`
+	RaceKind        string             `json:"raceKind,omitempty"`
 	DurationMinutes float64            `json:"durationMinutes"`
+	TargetLaps      *int64             `json:"targetLaps,omitempty"`
 	TankLiters      float64            `json:"tankLiters"`
 	PitLossSeconds  float64            `json:"pitLossSeconds"`
 }

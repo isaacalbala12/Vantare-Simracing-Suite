@@ -236,10 +236,6 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 		Provenance: contract.Provenance{Kind: contract.ProvenanceManual, SourceID: "strategy.orbit"},
 		Confidence: contract.Confidence{Level: contract.ConfidenceHigh, Basis: "validated Orbit input"},
 	}
-	duration, err := contract.NewDurationSeconds(event.DurationMinutes * 60)
-	if err != nil {
-		return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, "input.event.durationMinutes", err)
-	}
 	averageLap, err := contract.NewDurationSeconds(averagePace)
 	if err != nil {
 		return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, fmt.Sprintf("input.variants.%d.order", variantIndex), err)
@@ -247,14 +243,44 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 	zeroDuration, _ := contract.NewDurationSeconds(0)
 	zeroLaps, _ := contract.NewLapCount(0)
 	raceInput := manual.RaceInput{
-		Kind:          manual.RaceByTime,
-		Duration:      manual.Sourced[contract.DurationSeconds]{Value: duration, Evidence: tracing},
 		AverageLap:    manual.Sourced[contract.DurationSeconds]{Value: averageLap, Evidence: tracing},
 		FormationLaps: manual.Sourced[contract.LapCount]{Value: zeroLaps, Evidence: tracing},
 		PitLoss:       manual.Sourced[contract.DurationSeconds]{Value: zeroDuration, Evidence: tracing},
-		TimedFinish:   manual.TimedFinishCurrentLap,
 		Selection:     tracing,
 	}
+
+	if event.RaceKind == string(manual.RaceByLaps) {
+		if event.TargetLaps == nil {
+			return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, "input.event.targetLaps", ErrCalculationInvalid)
+		}
+		if event.DurationMinutes != 0 {
+			return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, "input.event.durationMinutes", ErrCalculationInvalid)
+		}
+		targetLaps, err := contract.NewLapCount(*event.TargetLaps)
+		if err != nil {
+			return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, "input.event.targetLaps", err)
+		}
+		raceInput.Kind = manual.RaceByLaps
+		raceInput.TargetLaps = manual.Sourced[contract.LapCount]{Value: targetLaps, Evidence: tracing}
+		race, err := manual.CalculateRace(raceInput)
+		if err != nil {
+			return OrbitCalculationPlan{}, mapOrbitCalculationError(err, "input.event")
+		}
+		return calculateOrbitLapPlan(ctx, event, drivers, variant, variantIndex, planning, race.CompetitiveLaps.Value(), averagePace, averageFuel)
+	}
+	if event.RaceKind != "" && event.RaceKind != string(manual.RaceByTime) {
+		return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, "input.event.raceKind", ErrCalculationInvalid)
+	}
+	if event.TargetLaps != nil {
+		return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, "input.event.targetLaps", ErrCalculationInvalid)
+	}
+	duration, err := contract.NewDurationSeconds(event.DurationMinutes * 60)
+	if err != nil {
+		return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, "input.event.durationMinutes", err)
+	}
+	raceInput.Kind = manual.RaceByTime
+	raceInput.Duration = manual.Sourced[contract.DurationSeconds]{Value: duration, Evidence: tracing}
+	raceInput.TimedFinish = manual.TimedFinishCurrentLap
 	race, err := manual.CalculateRace(raceInput)
 	if err != nil {
 		return OrbitCalculationPlan{}, mapOrbitCalculationError(err, "input.event")

@@ -1,7 +1,7 @@
 import { Call } from "@wailsio/runtime";
 import { parseInputProjection } from "./strategy-application-client";
 import { AnalysisProtocolError, parseAnalysisClassificationCorrections, parseAnalysisLapPage, parseAnalysisFamilyCorrections, parseAnalysisStintBoundaryCorrections, sameAnalysisClassificationCorrections, sameAnalysisFamilyCorrections, sameAnalysisStintBoundaryCorrections, type AnalysisClassificationCorrection, type AnalysisFamilyCorrection, type AnalysisStintBoundaryCorrection, parseAnalysisBase, parseAnalysisCandidates, parseAnalysisCommandResolution, parseAnalysisCorrection, parseAnalysisOpenedSession, parseAnalysisPage, parseAnalysisPreparation, parseAnalysisSaveCommand, parseAnalysisStatus, parseCorrectionStoreResult, sameAnalysisBase, type AnalysisBase, type AnalysisCorrection, type AnalysisRevision, type AnalysisSaveCommand } from "./analysis-contract";
-const methods = ["Status", "Discover", "Open", "ReadPage", "PrepareCorrections", "InspectCorrectionLaps", "SaveCorrections", "ResolveCorrectionCommand", "LoadCorrection", "ProjectCorrection", "CloseSession"] as const;
+const methods = ["Status", "Discover", "Open", "ReadPage", "PrepareCorrections", "InspectCorrectionLaps", "SaveCorrections", "SaveRecoverableCorrections", "LoadPendingCorrectionCommand", "AcknowledgeCorrectionCommand", "ResolveCorrectionCommand", "LoadCorrection", "ProjectCorrection", "CloseSession"] as const;
 type AnalysisMethod = typeof methods[number];
 export type AnalysisTransport = {
   call(method: AnalysisMethod, args: readonly unknown[], signal?: AbortSignal): Promise<unknown>;
@@ -84,6 +84,17 @@ function matchesSaveRevision(request: AnalysisSaveRequest, revision: AnalysisRev
   if (!sameAnalysisStintBoundaryCorrections(request.stintBoundaries ?? [], revision.snapshot.stintBoundaries?.map(item => item.request) ?? [])) return false;
   return true;
 }
+function parsePendingSaveRequest(value: unknown, sessionId: string, base: AnalysisBase): AnalysisSaveRequest | undefined {
+  if (value === null) return undefined;
+  if (typeof value !== "object" || value === null || Array.isArray(value)) throw new AnalysisProtocolError("pending");
+  const raw = value as Record<string, unknown>;
+  if (!Array.isArray(raw.familyUses) || !Array.isArray(raw.classifications) || !Array.isArray(raw.stintBoundaries) || typeof raw.commandDigest !== "string" || !/^[a-f0-9]{64}$/.test(raw.commandDigest)) {
+    throw new AnalysisProtocolError("pending.complete");
+  }
+  const request = { sessionId, base, corrections: raw.corrections, familyUses: raw.familyUses, classifications: raw.classifications, stintBoundaries: raw.stintBoundaries, command: raw.command } as AnalysisSaveRequest;
+  validateSaveRequest(request);
+  return request;
+}
 // Stateless transport: no retries or invented empty data. Cancelling a save
 // does not imply rollback; consumers must retain its command ID for recovery.
 export function createAnalysisClient(transport: AnalysisTransport = createNativeAnalysisTransport()) {
@@ -132,11 +143,21 @@ export function createAnalysisClient(transport: AnalysisTransport = createNative
     },
     async save(request: AnalysisSaveRequest, signal?: AbortSignal) {
       validateSaveRequest(request);
-      const result = parseCorrectionStoreResult(await invoke("SaveCorrections", [request], signal));
+      const recoverable = request.familyUses !== undefined && request.classifications !== undefined && request.stintBoundaries !== undefined;
+      const result = parseCorrectionStoreResult(await invoke(recoverable ? "SaveRecoverableCorrections" : "SaveCorrections", [request], signal));
       if (!matchesSaveRevision(request, result.revision)) {
         throw new AnalysisProtocolError("save.requestMismatch");
       }
       return result;
+    },
+    async pending(sessionId: string, base: AnalysisBase, signal?: AbortSignal) {
+      identifier(sessionId);
+      parseAnalysisBase(base);
+      return parsePendingSaveRequest(await invoke("LoadPendingCorrectionCommand", [{ sessionId, base }], signal), sessionId, base);
+    },
+    async acknowledge(request: AnalysisSaveRequest, signal?: AbortSignal): Promise<void> {
+      validateSaveRequest(request);
+      await invoke("AcknowledgeCorrectionCommand", [{ sessionId: request.sessionId, base: request.base, commandId: request.command.commandId }], signal);
     },
     async resolve(request: AnalysisSaveRequest, signal?: AbortSignal) {
       validateSaveRequest(request);

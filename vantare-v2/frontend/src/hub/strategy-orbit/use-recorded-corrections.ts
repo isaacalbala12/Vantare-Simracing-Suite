@@ -59,6 +59,7 @@ export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session
     // Freeze edits before dispatch. Failure/cancellation retains this exact command.
     setEditor({ ...current, request, projected: undefined });
     const saved = await client.save(request, signal);
+    await client.acknowledge(request, signal);
     await retainSaved(current, saved, signal);
   }
   async function retainSaved(current: Editor, saved: AnalysisStoreResult, signal: AbortSignal) {
@@ -80,8 +81,14 @@ export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session
     return run(async signal => {
       if (editor?.dirty || editor?.request) throw new Error("recorded_pending_corrections");
       const current = await loadRecordedCorrection(client, session, revisionId, signal);
+      const request = await client.pending(session.opened.sessionId, session.base, signal);
       signal.throwIfAborted();
-      if (alive.current) setEditor({ session, current, corrections: current.revision.snapshot.corrections.map(item => item.request), familyUses: current.revision.snapshot.familyUses?.map(item => item.request) ?? [], classifications: current.revision.snapshot.classifications?.map(item => item.request) ?? [], stintBoundaries: current.revision.snapshot.stintBoundaries?.map(item => item.request) ?? [], dirty: false });
+      if (alive.current) setEditor({ session, current,
+        corrections: request?.corrections ?? current.revision.snapshot.corrections.map(item => item.request),
+        familyUses: request?.familyUses ?? current.revision.snapshot.familyUses?.map(item => item.request) ?? [],
+        classifications: request?.classifications ?? current.revision.snapshot.classifications?.map(item => item.request) ?? [],
+        stintBoundaries: request?.stintBoundaries ?? current.revision.snapshot.stintBoundaries?.map(item => item.request) ?? [],
+        dirty: Boolean(request), request });
     });
   }
   return {
@@ -146,8 +153,10 @@ export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session
       signal.throwIfAborted();
       if (!alive.current) return;
       if (resolved.found) {
+        await client.acknowledge(editor.request, signal);
         await retainSaved(editor, { headId: resolved.headId, revision: resolved.revision }, signal);
       } else {
+        await client.acknowledge(editor.request, signal);
         // Confirmed absence unfreezes the proposal; a changed head still blocks
         // saving until the user explicitly reviews/discards the old proposal.
         setEditor({ ...editor, request: undefined, dirty: true, corrections: editor.request.corrections, familyUses: editor.request.familyUses ?? [], classifications: editor.request.classifications ?? [], stintBoundaries: editor.request.stintBoundaries ?? [],

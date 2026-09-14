@@ -75,7 +75,7 @@ function inspectionJourney() {
   const save = vi.fn(async (request: AnalysisSaveRequest) => buildResponse(request));
   const load = vi.fn(async () => current);
   const resolve = vi.fn();
-  const analysis = { discover: vi.fn().mockResolvedValue(candidates), load, page: vi.fn().mockResolvedValue(page), save, resolve, project, close } as unknown as AnalysisClient;
+  const analysis = { discover: vi.fn().mockResolvedValue(candidates), load, pending: vi.fn().mockResolvedValue(undefined), acknowledge: vi.fn().mockResolvedValue(undefined), page: vi.fn().mockResolvedValue(page), save, resolve, project, close } as unknown as AnalysisClient;
   vi.mocked(openRecordedSession).mockResolvedValue(partial);
   const onExit = vi.fn();
   const drafts: DraftSeen[] = [];
@@ -238,7 +238,7 @@ function classificationJourney() {
     return response;
   });
   const load = vi.fn(async () => current);
-  const analysis = { discover: vi.fn().mockResolvedValue(candidates), load, save, resolve: vi.fn(), project, close } as unknown as AnalysisClient;
+  const analysis = { discover: vi.fn().mockResolvedValue(candidates), load, pending: vi.fn().mockResolvedValue(undefined), acknowledge: vi.fn().mockResolvedValue(undefined), save, resolve: vi.fn(), project, close } as unknown as AnalysisClient;
   vi.mocked(openRecordedSession).mockResolvedValue(partial);
   const onExit = vi.fn();
   const view = render(<StrategyRecordedWorkflow eventId="event" catalog={[]} catalogState="available" calendar={null} application={application} analysis={analysis} onExit={onExit} onCleanupError={vi.fn()} t={key => key} />);

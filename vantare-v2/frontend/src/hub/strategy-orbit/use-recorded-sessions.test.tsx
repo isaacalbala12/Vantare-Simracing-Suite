@@ -16,7 +16,7 @@ it("serializes correction reads against close in the same cycle and releases set
   let finish!: (value: unknown) => void;
   const load = vi.fn(() => new Promise(resolve => { finish = resolve; }));
   const close = vi.fn().mockResolvedValue(undefined);
-  const client = { load, close } as unknown as AnalysisClient;
+  const client = { load, pending: vi.fn().mockResolvedValue(undefined), close } as unknown as AnalysisClient;
   const complete = { ...session, base: { sessionId: "source", contentSha256: "a".repeat(64), sizeBytes: 1, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "analysis", segmentationDigest: "b".repeat(64) } };
   vi.mocked(openRecordedSession).mockResolvedValue(complete);
   const { result } = renderHook(() => useRecordedSessions({ revisions: [], client, onApply: vi.fn(), onCleanupError: vi.fn() }));
@@ -126,7 +126,7 @@ const markedIdWorld = recordedWorld({ candidateId: "marked-id", handle: "marked-
 it("accepts inspection of an owned source and loads its exact revision", async () => {
   const load = vi.fn().mockResolvedValue(inspectionStored);
   const close = vi.fn().mockResolvedValue(undefined);
-  const client = { load, close } as unknown as AnalysisClient;
+  const client = { load, pending: vi.fn().mockResolvedValue(undefined), close } as unknown as AnalysisClient;
   vi.mocked(openRecordedSession).mockResolvedValue(inspection);
   const { result } = renderHook(() => useRecordedSessions({ revisions: [], client, onApply: vi.fn(), onCleanupError: vi.fn() }));
   await act(() => result.current.open(inspectedCandidate));
@@ -141,7 +141,7 @@ it("accepts inspection of an owned source and loads its exact revision", async (
 
 it("rejects inspection of a foreign source without touching the client", async () => {
   const load = vi.fn().mockResolvedValue(inspectionStored);
-  const client = { load, close: vi.fn().mockResolvedValue(undefined) } as unknown as AnalysisClient;
+  const client = { load, pending: vi.fn().mockResolvedValue(undefined), close: vi.fn().mockResolvedValue(undefined) } as unknown as AnalysisClient;
   vi.mocked(openRecordedSession).mockResolvedValue(inspection);
   const { result } = renderHook(() => useRecordedSessions({ revisions: [], client, onApply: vi.fn(), onCleanupError: vi.fn() }));
   await act(() => result.current.open(inspectedCandidate));
@@ -174,7 +174,7 @@ it("blocks close, apply and switching inspector while an inspection load is pend
   const load = vi.fn(() => new Promise(resolve => { finish = resolve; }));
   const close = vi.fn().mockResolvedValue(undefined);
   const onApply = vi.fn().mockResolvedValue(undefined);
-  const client = { load, close } as unknown as AnalysisClient;
+  const client = { load, pending: vi.fn().mockResolvedValue(undefined), close } as unknown as AnalysisClient;
   vi.mocked(openRecordedSession).mockImplementation(async (_client, id) => (id === projectedWorld.candidate.id ? projectedWorld.session : projectedOtherWorld.session));
   const { result } = renderHook(() => useRecordedSessions({ revisions: [], client, onApply, onCleanupError: vi.fn() }));
   await act(() => result.current.open(projectedWorld.candidate));
@@ -201,7 +201,7 @@ it("wipes previous editor data when an inspection load fails and keeps its cause
     if (request.sessionId === inspectionWorld.opened.sessionId) throw new Error("auth denied");
     return projectedWorld.stored;
   });
-  const client = { load, close: vi.fn().mockResolvedValue(undefined) } as unknown as AnalysisClient;
+  const client = { load, pending: vi.fn().mockResolvedValue(undefined), close: vi.fn().mockResolvedValue(undefined) } as unknown as AnalysisClient;
   vi.mocked(openRecordedSession).mockImplementation(async (_client, id) => (id === projectedWorld.candidate.id ? projectedWorld.session : inspection));
   const { result } = renderHook(() => useRecordedSessions({ revisions: [], client, onApply: vi.fn(), onCleanupError: vi.fn() }));
   await act(() => result.current.open(projectedWorld.candidate));
@@ -220,7 +220,7 @@ it("wipes previous editor data when an inspection load fails and keeps its cause
 it("rejects adoption of a marked revision carrying an attached identity", async () => {
   const load = vi.fn().mockResolvedValue(markedIdWorld.stored);
   const project = vi.fn().mockResolvedValue({ combinationId: "combo", sourceRevisions: [markedIdWorld.session.revision] });
-  const client = { load, project, close: vi.fn().mockResolvedValue(undefined) } as unknown as AnalysisClient;
+  const client = { load, pending: vi.fn().mockResolvedValue(undefined), project, close: vi.fn().mockResolvedValue(undefined) } as unknown as AnalysisClient;
   vi.mocked(openRecordedSession).mockResolvedValue(markedIdWorld.session);
   const onRevision = vi.fn().mockResolvedValue(undefined);
   const { result } = renderHook(() => useRecordedSessions({ revisions: [], client, onApply: vi.fn(), onRevision, onCleanupError: vi.fn() }));
@@ -237,7 +237,7 @@ it("rejects an unmarked identity enabling a marked owned source", async () => {
   const impostor: RecordedSession = { candidateId: inspection.candidateId, opened: inspection.opened, base: inspectionBase, revision: inspectionRevision, combinationId: "combo" };
   const load = vi.fn().mockResolvedValue(inspectionStored);
   const project = vi.fn().mockResolvedValue({ combinationId: "combo", sourceRevisions: [inspectionRevision] });
-  const client = { load, project, close: vi.fn().mockResolvedValue(undefined) } as unknown as AnalysisClient;
+  const client = { load, pending: vi.fn().mockResolvedValue(undefined), project, close: vi.fn().mockResolvedValue(undefined) } as unknown as AnalysisClient;
   vi.mocked(openRecordedSession).mockResolvedValue(inspection);
   const onRevision = vi.fn().mockResolvedValue(undefined);
   const { result } = renderHook(() => useRecordedSessions({ revisions: [], client, onApply: vi.fn(), onRevision, onCleanupError: vi.fn() }));
@@ -252,7 +252,7 @@ it("rejects an unmarked identity enabling a marked owned source", async () => {
 
 it("loads the owned original when inspected through an altered revision copy", async () => {
   const load = vi.fn().mockResolvedValue(inspectionStored);
-  const client = { load, close: vi.fn().mockResolvedValue(undefined) } as unknown as AnalysisClient;
+  const client = { load, pending: vi.fn().mockResolvedValue(undefined), close: vi.fn().mockResolvedValue(undefined) } as unknown as AnalysisClient;
   vi.mocked(openRecordedSession).mockResolvedValue(inspection);
   const { result } = renderHook(() => useRecordedSessions({ revisions: [], client, onApply: vi.fn(), onCleanupError: vi.fn() }));
   await act(() => result.current.open(inspectedCandidate));

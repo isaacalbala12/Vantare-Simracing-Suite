@@ -38,7 +38,27 @@ type TelemetryAnalysisCorrectionRevisionRequest struct {
 	RevisionID string                              `json:"revisionId"`
 }
 
+type TelemetryAnalysisCorrectionPendingRequest struct {
+	SessionID string                              `json:"sessionId"`
+	Base      telemetryanalysis.SourceAnalysisRef `json:"base"`
+	CommandID string                              `json:"commandId,omitempty"`
+}
+
 func (service *TelemetryAnalysisService) SaveCorrections(ctx context.Context, request TelemetryAnalysisCorrectionSaveRequest) (telemetryanalysis.CorrectionStoreResult, error) {
+	return service.saveCorrections(ctx, request, false)
+}
+
+// SaveRecoverableCorrections retains the complete current-format command before
+// dispatching its write. The pending intent remains until the client confirms
+// receipt through AcknowledgeCorrectionCommand.
+func (service *TelemetryAnalysisService) SaveRecoverableCorrections(ctx context.Context, request TelemetryAnalysisCorrectionSaveRequest) (telemetryanalysis.CorrectionStoreResult, error) {
+	if request.FamilyUses == nil || request.Classifications == nil || request.StintBoundaries == nil {
+		return telemetryanalysis.CorrectionStoreResult{}, ErrTelemetryAnalysisInvalidRequest
+	}
+	return service.saveCorrections(ctx, request, true)
+}
+
+func (service *TelemetryAnalysisService) saveCorrections(ctx context.Context, request TelemetryAnalysisCorrectionSaveRequest, recoverable bool) (telemetryanalysis.CorrectionStoreResult, error) {
 	var result telemetryanalysis.CorrectionStoreResult
 	if len(request.Corrections)+len(request.FamilyUses)+len(request.Classifications)+len(request.StintBoundaries) > telemetryanalysis.MaxSampleCorrections {
 		return result, ErrTelemetryAnalysisInvalidRequest
@@ -67,7 +87,21 @@ func (service *TelemetryAnalysisService) SaveCorrections(ctx context.Context, re
 			observations.Session = input.Session
 			observations.Classifications = request.Classifications
 			observations.ResolveCanonicalCombination = service.cfg.SessionCatalog.ResolveCanonicalCombination
+			if recoverable {
+				_, err = service.corrections.StagePendingCommand(operationCtx, input.Base, telemetryanalysis.PendingCorrectionCommand{
+					Corrections: request.Corrections, FamilyUses: request.FamilyUses, Classifications: request.Classifications,
+					StintBoundaries: request.StintBoundaries, Command: request.Command,
+				})
+				if err != nil {
+					return publicCorrectionError(err)
+				}
+			}
 			result, err = service.corrections.SaveObservations(operationCtx, input.Base, observations, request.Command)
+		}
+		if recoverable && err != nil && !correctionOutcomeUncertain(err) {
+			if acknowledgeErr := service.corrections.AcknowledgePendingCommand(operationCtx, input.Base, request.Command.CommandID); acknowledgeErr != nil {
+				return publicCorrectionError(acknowledgeErr)
+			}
 		}
 		return publicCorrectionError(err)
 	})
@@ -75,6 +109,41 @@ func (service *TelemetryAnalysisService) SaveCorrections(ctx context.Context, re
 		return telemetryanalysis.CorrectionStoreResult{}, err
 	}
 	return result, nil
+}
+
+func correctionOutcomeUncertain(err error) bool {
+	return errors.Is(err, telemetryanalysis.ErrCorrectionCommitUncertain) || errors.Is(err, telemetryanalysis.ErrCorrectionWriteInProgress) || errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)
+}
+
+func (service *TelemetryAnalysisService) LoadPendingCorrectionCommand(ctx context.Context, request TelemetryAnalysisCorrectionPendingRequest) (*telemetryanalysis.PendingCorrectionCommand, error) {
+	var result *telemetryanalysis.PendingCorrectionCommand
+	err := service.withCorrectionInput(ctx, request.SessionID, func(operationCtx context.Context, input telemetryanalysis.CorrectionInput) error {
+		if request.Base != input.Base {
+			return ErrTelemetryAnalysisCorrectionSourceChanged
+		}
+		if service.corrections == nil {
+			return ErrTelemetryAnalysisCorrectionStorage
+		}
+		var err error
+		result, err = service.corrections.LoadPendingCommand(operationCtx, input.Base)
+		return publicCorrectionError(err)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (service *TelemetryAnalysisService) AcknowledgeCorrectionCommand(ctx context.Context, request TelemetryAnalysisCorrectionPendingRequest) error {
+	return service.withCorrectionInput(ctx, request.SessionID, func(operationCtx context.Context, input telemetryanalysis.CorrectionInput) error {
+		if request.Base != input.Base {
+			return ErrTelemetryAnalysisCorrectionSourceChanged
+		}
+		if service.corrections == nil {
+			return ErrTelemetryAnalysisCorrectionStorage
+		}
+		return publicCorrectionError(service.corrections.AcknowledgePendingCommand(operationCtx, input.Base, request.CommandID))
+	})
 }
 
 func (service *TelemetryAnalysisService) LoadCorrection(ctx context.Context, request TelemetryAnalysisCorrectionRevisionRequest) (telemetryanalysis.CorrectionStoreResult, error) {

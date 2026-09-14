@@ -90,6 +90,25 @@ describe("native Analysis client", () => {
     await expect(client.load({ sessionId: "handle", base, revisionId: "d".repeat(64) })).rejects.toThrow("requestMismatch");
     await expect(client.load({ sessionId: "handle", base: { ...base, sessionId: "other" }, revisionId })).rejects.toThrow("requestMismatch");
   });
+  it("recovers a complete pending command with the current handle and acknowledges it exactly", async () => {
+    const base = { sessionId: "source", contentSha256: "a".repeat(64), sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "v1", segmentationDigest: "b".repeat(64) };
+    const command = { expectedRevision: "c".repeat(64), commandId: "pending-command", reason: "Reviewed", localAuthorId: "local" };
+    const stored = { corrections: [], familyUses: [], classifications: [], stintBoundaries: [], command, commandDigest: "d".repeat(64) };
+    const call = vi.fn().mockResolvedValueOnce(stored).mockResolvedValueOnce(undefined).mockResolvedValueOnce(null);
+    const client = createAnalysisClient({ call });
+    const pending = await client.pending("fresh-handle", base);
+    expect(pending).toEqual({ sessionId: "fresh-handle", base, corrections: [], familyUses: [], classifications: [], stintBoundaries: [], command });
+    expect(call).toHaveBeenNthCalledWith(1, "LoadPendingCorrectionCommand", [{ sessionId: "fresh-handle", base }], undefined);
+    if (!pending) throw new Error("expected pending command");
+    await client.acknowledge(pending);
+    expect(call).toHaveBeenNthCalledWith(2, "AcknowledgeCorrectionCommand", [{ sessionId: "fresh-handle", base, commandId: "pending-command" }], undefined);
+    await expect(client.pending("fresh-handle", base)).resolves.toBeUndefined();
+  });
+  it("rejects an incomplete pending command before exposing it", async () => {
+    const base = { sessionId: "source", contentSha256: "a".repeat(64), sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "v1", segmentationDigest: "b".repeat(64) };
+    const call = vi.fn().mockResolvedValue({ corrections: [], familyUses: [], classifications: [], command: { expectedRevision: "c".repeat(64), commandId: "pending-command", reason: "Reviewed", localAuthorId: "local" }, commandDigest: "d".repeat(64) });
+    await expect(createAnalysisClient({ call }).pending("handle", base)).rejects.toThrow("pending.complete");
+  });
 });
 
 describe("complete family command transport", () => {

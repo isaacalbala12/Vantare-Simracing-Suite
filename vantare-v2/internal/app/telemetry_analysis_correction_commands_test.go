@@ -425,6 +425,52 @@ outer:
 	return request
 }
 
+func TestRecoverableCorrectionCommandRequiresCurrentAuthorityAndExplicitAcknowledgement(t *testing.T) {
+	svc, opened, _, _ := revisionCatalogFixture(t)
+	ctx := context.Background()
+	handle := opened[0].SessionID
+	input, base := classificationCommandInput(t, svc, ctx, handle)
+	initial, err := telemetryanalysis.PrepareSampleCorrectionSnapshot(base, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	request := classificationSaveRequest(input, "recoverable-class-save")
+	request.SessionID = handle
+	if _, err := svc.SaveRecoverableCorrections(ctx, request); !errors.Is(err, ErrTelemetryAnalysisInvalidRequest) {
+		t.Fatal("recoverable save accepted an implicit correction group", err)
+	}
+	request.StintBoundaries = []telemetryanalysis.StintBoundaryCorrection{}
+	request.Command.ExpectedRevision = initial.SnapshotID
+	if _, err := svc.SaveRecoverableCorrections(ctx, request); err != nil {
+		t.Fatal("recoverable save failed", err)
+	}
+	pendingRequest := TelemetryAnalysisCorrectionPendingRequest{SessionID: handle, Base: base}
+	pending, err := svc.LoadPendingCorrectionCommand(ctx, pendingRequest)
+	if err != nil || pending == nil || pending.Command.CommandID != request.Command.CommandID || pending.StintBoundaries == nil {
+		t.Fatal("service lost the complete pending command", err)
+	}
+	foreign := pendingRequest
+	foreign.Base.AnalysisVersion = "foreign"
+	if _, err := svc.LoadPendingCorrectionCommand(ctx, foreign); !errors.Is(err, ErrTelemetryAnalysisCorrectionSourceChanged) {
+		t.Fatal("loaded pending command for another base", err)
+	}
+	svc.authorizer = telemetryAnalysisAuthorizerStub{allowed: false}
+	if _, err := svc.LoadPendingCorrectionCommand(ctx, pendingRequest); !errors.Is(err, ErrTelemetryAnalysisUnauthorized) {
+		t.Fatal("loaded pending command without source authority", err)
+	}
+	svc.authorizer = telemetryAnalysisAuthorizerStub{allowed: true}
+	pendingRequest.CommandID = request.Command.CommandID
+	if err := svc.AcknowledgeCorrectionCommand(ctx, pendingRequest); err != nil {
+		t.Fatal("could not acknowledge delivered command", err)
+	}
+	if pending, err := svc.LoadPendingCorrectionCommand(ctx, pendingRequest); err != nil || pending != nil {
+		t.Fatal("acknowledged command remained pending", err)
+	}
+	if err := svc.AcknowledgeCorrectionCommand(ctx, pendingRequest); err != nil {
+		t.Fatal("acknowledgement was not idempotent", err)
+	}
+}
+
 func TestClassificationCommandsSaveResolveGuardAndReplay(t *testing.T) {
 	svc, opened, _, _ := revisionCatalogFixture(t)
 	ctx := context.Background()

@@ -18,7 +18,7 @@ function setup(options?: { repositoryVersion?: number }) {
   }));
   const application: StrategyApplicationClient<RecordedDraftPayload> = { execute, cancel: vi.fn(), dispose: vi.fn() };
   const close = vi.fn().mockResolvedValue(undefined);
-  const analysis = { close, load: vi.fn(), page: vi.fn(), save: vi.fn(), project: vi.fn() };
+  const analysis = { close, load: vi.fn(), pending: vi.fn().mockResolvedValue(undefined), acknowledge: vi.fn().mockResolvedValue(undefined), page: vi.fn(), save: vi.fn(), project: vi.fn() };
   vi.mocked(openRecordedSession).mockResolvedValue(session);
   const hook = renderHook(() => useRecordedWorkflow({ eventId: "event", repositoryVersion: options ? options.repositoryVersion : 7, catalog: [], application, analysis: analysis as unknown as AnalysisClient, onCleanupError: vi.fn() }));
   return { ...hook, execute, close, analysis };

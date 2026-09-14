@@ -1,8 +1,8 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1261 T14f1; intención incierta durable en Analysis
+## Estado vigente — #1261 T14f cerrado localmente; corrección recuperable tras reinicio
 
-`CorrectionStore` puede custodiar antes de Save un único comando mixto completo
+`CorrectionStore` custodia antes de Save un único comando mixto completo
 por base: correcciones escalares, uso por familia, clasificación y límites,
 incluidos conjuntos vacíos explícitos. El documento privado sella el contenido
 con el digest canónico existente, lo valida al reabrir y conserva la intención
@@ -10,10 +10,13 @@ si otra escritura avanza la cabeza. Cargar no abre fuentes ni concede autoridad;
 reconocer retira sólo el commandId exacto y es idempotente. Se reutilizan lease,
 backup y escritura atómica. Cuatro regresiones nuevas cubren reinicio, pérdida
 de confirmación al preparar, commit confirmado, ausencia con HEAD posterior,
-conflicto, reconocimiento y corrupción;
-`go test ./internal/telemetryanalysis` pasa. Continúa T14f2: operación del
-servicio/bridge y cliente, todavía sin UI ni cierre integral de T14f. Sin
-app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release.
+conflicto, reconocimiento y corrupción. El servicio revalida la fuente, el
+cliente repone sólo el handle temporal y el editor expone la recuperación sin
+resolver o reintentar automáticamente. Sólo tras reconocer se limpia el estado.
+Frontend 449/3842, Strategy 47/533, typecheck, lint, i18n, build, Go global y 259
+checks documentales pasan. Persisten únicamente el aviso heredado de chunks y el
+AbortError no fatal conocido. Continúa T14g con `save_revision`. Sin app/Wails,
+LMU, DuckDB, push, PR, CI remota, integración ni release.
 
 ## Historial — #1260 T14e cerrado localmente; historial consultable
 

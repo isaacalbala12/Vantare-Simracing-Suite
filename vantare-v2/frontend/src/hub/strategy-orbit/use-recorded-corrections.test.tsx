@@ -16,7 +16,7 @@ function fixture() {
   const current: AnalysisStoreResult = { headId: a, revision: { revisionId: a, parentRevisionId: "", command: { expectedRevision: "", commandId: "", reason: "", localAuthorId: "" }, commandDigest: "", createdAt: "", snapshot: { contractVersion: "analysis.sample-snapshot.v1", base, snapshotId: a, corrections: [] } } };
   const page: AnalysisPage = { channel_id: "fuel", start: 0, sampling: channel.sampling, samples: [{ index: 4, values: [{ column: "value", present: true, quality: "unknown", scalar: { kind: "number", number: 12 } }] }] };
   const saved = (request: AnalysisSaveRequest): AnalysisStoreResult => ({ headId: b, revision: { revisionId: b, parentRevisionId: a, command: request.command, commandDigest: c, createdAt: "2026-09-10T00:00:00Z", snapshot: { ...current.revision.snapshot, snapshotId: b, contractVersion: request.stintBoundaries?.length ? "analysis.mixed-snapshot.v5" : request.classifications?.length ? "analysis.mixed-snapshot.v3" : request.familyUses?.length ? "analysis.observation-snapshot.v2" : "analysis.sample-snapshot.v1", familyUses: request.familyUses?.map(item => ({ baseId: c, correctionId: b, request: item, original: item.expected, corrected: { ...item.expected, included: item.included, exclusionReasons: item.included ? [] : [...(item.expected.exclusionReasons ?? []), "manual_exclusion"] } })), classifications: request.classifications?.map(item => ({ baseId: c, correctionId: b, request: item, original: item.expectedOriginal, corrected: item.replacement })), ...(request.stintBoundaries?.length ? { stintBoundaries: request.stintBoundaries.map(item => ({ baseId: c, correctionId: b, request: item, original: item.expected })) } : {}), corrections: request.corrections.map(item => ({ baseId: c, correctionId: b, request: item, original: item.expected, corrected: { ...item.expected, scalar: item.replacement } })) } } });
-  const client = { laps: vi.fn(), resolve: vi.fn(), load: vi.fn().mockResolvedValue(current), page: vi.fn().mockResolvedValue(page), save: vi.fn().mockImplementation(async (request: AnalysisSaveRequest) => saved(request)), project: vi.fn().mockResolvedValue({ combinationId: "combo", sourceRevisions: [{ ...session.revision, revisionId: b, snapshotId: b }] }), close: vi.fn() };
+  const client = { laps: vi.fn(), resolve: vi.fn(), pending: vi.fn().mockResolvedValue(undefined), acknowledge: vi.fn().mockResolvedValue(undefined), load: vi.fn().mockResolvedValue(current), page: vi.fn().mockResolvedValue(page), save: vi.fn().mockImplementation(async (request: AnalysisSaveRequest) => saved(request)), project: vi.fn().mockResolvedValue({ combinationId: "combo", sourceRevisions: [{ ...session.revision, revisionId: b, snapshotId: b }] }), close: vi.fn() };
   const onAdopt = vi.fn().mockResolvedValue(undefined);
   const hook = renderHook(() => useRecordedCorrections(client as unknown as AnalysisClient, onAdopt));
   async function edit() {
@@ -27,6 +27,38 @@ function fixture() {
   return { ...hook, client, onAdopt, session, current, saved, edit, boundary, anchor };
 }
 describe("recorded corrections owner", () => {
+  it("surfaces a recovered command after reopening without saving or resolving it automatically", async () => {
+    const f = fixture();
+    const request: AnalysisSaveRequest = { sessionId: f.session.opened.sessionId, base: f.session.base, corrections: [], familyUses: [], classifications: [], stintBoundaries: [], command: { expectedRevision: a, commandId: "recovered", reason: "Reviewed", localAuthorId: "local" } };
+    f.client.pending.mockResolvedValueOnce(request);
+    f.client.resolve.mockResolvedValueOnce({ found: true, headId: b, revision: f.saved(request).revision });
+    await act(() => f.result.current.load(f.session));
+    expect(f.client.pending).toHaveBeenCalledWith(f.session.opened.sessionId, f.session.base, expect.any(AbortSignal));
+    expect(f.client.save).not.toHaveBeenCalled();
+    expect(f.client.resolve).not.toHaveBeenCalled();
+    expect(f.result.current.editor).toMatchObject({ request, dirty: true, corrections: [], familyUses: [], classifications: [], stintBoundaries: [] });
+    await act(() => f.result.current.resolveSave());
+    expect(f.client.acknowledge).toHaveBeenCalledWith(request, expect.any(AbortSignal));
+    expect(f.result.current.editor?.request).toBeUndefined();
+    expect(f.result.current.editor?.dirty).toBe(false);
+  });
+  it("keeps a confirmed save recoverable when acknowledgement fails", async () => {
+    const f = fixture();
+    await f.edit();
+    f.client.acknowledge.mockRejectedValueOnce(new Error("acknowledgement unavailable"));
+    await act(() => f.result.current.save("Reviewed"));
+    const request = f.result.current.editor?.request;
+    expect(request).toBeDefined();
+    expect(f.result.current.editor?.saved).toBeUndefined();
+    expect(f.result.current.error).toBe("acknowledgement unavailable");
+    const stored = f.saved(request!);
+    f.client.resolve.mockResolvedValueOnce({ found: true, headId: stored.headId, revision: stored.revision });
+    await act(() => f.result.current.resolveSave());
+    expect(f.client.save).toHaveBeenCalledTimes(1);
+    expect(f.client.acknowledge).toHaveBeenCalledTimes(2);
+    expect(f.result.current.editor?.request).toBeUndefined();
+    expect(f.result.current.editor?.saved?.revision.revisionId).toBe(b);
+  });
   it("keeps stint proposals in the existing save and discard lifecycle", async () => {
     const f = fixture();
     await act(() => f.result.current.load(f.session));

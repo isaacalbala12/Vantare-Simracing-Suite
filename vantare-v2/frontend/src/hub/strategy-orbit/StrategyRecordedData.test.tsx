@@ -104,7 +104,7 @@ describe("recorded data screen", () => {
     const f = fixture();
     const candidate = { id: "candidate", displayName: "Imola_R.duckdb", state: "ready", size: 10, modifiedAt: "2026-09-10T00:00:00Z", walPresent: false };
     vi.mocked(openRecordedSession).mockResolvedValue(f.session);
-    const analysis = { discover: vi.fn().mockResolvedValue([candidate]), load: vi.fn().mockResolvedValue(f.current), page: vi.fn().mockResolvedValue(f.page), close: vi.fn().mockResolvedValue(undefined) } as unknown as AnalysisClient;
+    const analysis = { discover: vi.fn().mockResolvedValue([candidate]), load: vi.fn().mockResolvedValue(f.current), pending: vi.fn().mockResolvedValue(undefined), page: vi.fn().mockResolvedValue(f.page), close: vi.fn().mockResolvedValue(undefined) } as unknown as AnalysisClient;
     const draft = { ...createRecordedWizardDraft(), step: "sessions" as const, combination: { combinationId: "combo", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Car", carClass: "LMP2" }, sessions: [f.session.revision] };
     const initial = { repositoryVersion: 1, document: { payload: { contractVersion: "strategy.recorded.draft.v1", eventId: "event", draft } } } as StoredRecordedDraft;
     const application = { execute: vi.fn(), dispose: vi.fn(), cancel: vi.fn() } as StrategyApplicationClient<RecordedDraftPayload>;
@@ -416,7 +416,7 @@ describe("recorded classification through a real controller", () => {
     const current = parseCorrectionStoreResult({ headId: b, revision: { revisionId: b, parentRevisionId: "a".repeat(64), command: { expectedRevision: "a".repeat(64), commandId: "classify", reason: "Reviewed", localAuthorId: "local" }, commandDigest: c, createdAt: "2026-09-10T00:00:00Z", snapshot: { contractVersion: "analysis.mixed-snapshot.v3", base: session.base, snapshotId: b, corrections: [], familyUses: [], classifications: [{ baseId: "a".repeat(64), correctionId: d, request, original: "practice", corrected: "race" }] } } });
     const save = vi.fn(async (saved: AnalysisSaveRequest) => parseCorrectionStoreResult({ headId: c, revision: { revisionId: c, parentRevisionId: b, command: saved.command, commandDigest: d, createdAt: "2026-09-10T00:00:00Z", snapshot: { contractVersion: "analysis.sample-snapshot.v1", base: session.base, snapshotId: c, corrections: [] } } }));
     const project = vi.fn(), onAdopt = vi.fn(async () => {});
-    const client = { load: vi.fn().mockResolvedValue(current), save, project } as unknown as AnalysisClient;
+    const client = { load: vi.fn().mockResolvedValue(current), pending: vi.fn().mockResolvedValue(undefined), acknowledge: vi.fn().mockResolvedValue(undefined), save, project } as unknown as AnalysisClient;
     render(<HookedClassificationData client={client} session={session} onAdopt={onAdopt} />);
     fireEvent.change(screen.getByLabelText("strategy.data.source"), { target: { value: "handle" } });
     await screen.findByRole("button", { name: "strategy.classification.tab" });
@@ -468,7 +468,7 @@ describe("recorded classification through a real controller", () => {
     expect(parseAnalysisPage(page)).toBe(page);
     const b = "b".repeat(64), c = "c".repeat(64), d = "d".repeat(64);
     const save = vi.fn(async (request: AnalysisSaveRequest) => parseCorrectionStoreResult({ headId: b, revision: { revisionId: b, parentRevisionId: "a".repeat(64), command: request.command, commandDigest: c, createdAt: "2026-09-10T00:00:00Z", snapshot: { contractVersion: "analysis.mixed-snapshot.v3", base: session.base, snapshotId: b, corrections: request.corrections.map(item => ({ baseId: "a".repeat(64), correctionId: d, request: item, original: item.expected, corrected: { ...item.expected, scalar: item.replacement } })), familyUses: (request.familyUses ?? []).map(item => ({ baseId: "a".repeat(64), correctionId: d, request: item, original: item.expected, corrected: { ...item.expected, included: item.included, exclusionReasons: item.included ? [] : [...(item.expected.exclusionReasons ?? []), "manual_exclusion"] } })), classifications: (request.classifications ?? []).map(item => ({ baseId: "a".repeat(64), correctionId: d, request: item, original: item.expectedOriginal, corrected: "race" })) } } }));
-    const client = { load: vi.fn().mockResolvedValue(f.current), page: vi.fn().mockResolvedValue(page), laps: vi.fn().mockResolvedValue(lapPage), save, project: vi.fn() } as unknown as AnalysisClient;
+    const client = { load: vi.fn().mockResolvedValue(f.current), pending: vi.fn().mockResolvedValue(undefined), acknowledge: vi.fn().mockResolvedValue(undefined), page: vi.fn().mockResolvedValue(page), laps: vi.fn().mockResolvedValue(lapPage), save, project: vi.fn() } as unknown as AnalysisClient;
     const onAdopt = vi.fn(async () => {});
     render(<HookedClassificationData client={client} session={session} onAdopt={onAdopt} />);
     fireEvent.change(screen.getByLabelText("strategy.data.source"), { target: { value: "handle" } });
@@ -615,7 +615,7 @@ describe("recorded identity selector", () => {
     const f = identityScreenFixture();
     const candidate = { id: "candidate", displayName: "Imola_R.duckdb", state: "ready", size: 10, modifiedAt: "2026-09-10T00:00:00Z", walPresent: false };
     vi.mocked(openRecordedSession).mockResolvedValue(f.session);
-    const analysis = { discover: vi.fn().mockResolvedValue([candidate]), load: vi.fn().mockResolvedValue(f.current), page: vi.fn().mockResolvedValue(f.page), close: vi.fn().mockResolvedValue(undefined) } as unknown as AnalysisClient;
+    const analysis = { discover: vi.fn().mockResolvedValue([candidate]), load: vi.fn().mockResolvedValue(f.current), pending: vi.fn().mockResolvedValue(undefined), page: vi.fn().mockResolvedValue(f.page), close: vi.fn().mockResolvedValue(undefined) } as unknown as AnalysisClient;
     const draft = { ...createRecordedWizardDraft(), step: "sessions" as const, combination: { combinationId: identityCombination.id, simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Oreca 07", carClass: "LMP2" }, sessions: [f.session.revision] };
     const initial = { repositoryVersion: 1, document: { payload: { contractVersion: "strategy.recorded.draft.v1", eventId: "event", draft } } } as StoredRecordedDraft;
     const application = { execute: vi.fn(), dispose: vi.fn(), cancel: vi.fn() } as StrategyApplicationClient<RecordedDraftPayload>;

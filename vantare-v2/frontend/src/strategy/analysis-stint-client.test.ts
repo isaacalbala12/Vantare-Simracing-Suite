@@ -14,7 +14,7 @@ describe("Analysis stint client", () => {
   it("saves through the existing method and verifies the complete returned set", async () => {
     const transport = { call: vi.fn().mockResolvedValue(response()) } as AnalysisTransport;
     await expect(createAnalysisClient(transport).save(request)).resolves.toMatchObject({ headId: a });
-    expect(transport.call).toHaveBeenCalledWith("SaveCorrections", [request], undefined);
+    expect(transport.call).toHaveBeenCalledWith("SaveRecoverableCorrections", [request], undefined);
   });
   it("rejects a response that loses the set and a null request group", async () => {
     const client = createAnalysisClient({ call: vi.fn().mockResolvedValue(response(false)) } as AnalysisTransport);

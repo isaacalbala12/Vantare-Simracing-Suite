@@ -64,3 +64,33 @@ it("stores driving limits in contract units, preserves absence and removes orpha
   fireEvent.click(primary.getByRole("button", { name: "strategy.journey.driver.remove Alex" }));
   expect(changed.mock.lastCall?.[0].rules?.driverLimits?.primary).toBeUndefined();
 });
+
+it("adds, edits and removes inclusive unavailable lap windows without losing other limits", () => {
+  const changed = vi.fn();
+  const initial = {
+    step: "drivers", mode: "manual", name: "", race: { format: "laps", laps: 50 }, drivers, sessions: [], invalidatedSessionCount: 0,
+    rules: { minPitStops: 1, driverLimits: { primary: { maxLaps: 40 }, relay: { minLaps: 5 } } },
+  } satisfies RecordedWizardDraft;
+  render(<Editor initial={initial} changed={changed} />);
+  const primary = within(screen.getByRole("region", { name: "strategy.journey.driver.label 1" }));
+  const availability = within(primary.getByRole("group", { name: "strategy.journey.driver.unavailable" }));
+  expect(availability.getByText("strategy.journey.driver.unavailable.empty")).toBeTruthy();
+
+  fireEvent.change(availability.getByRole("spinbutton", { name: "strategy.journey.driver.unavailable.newFromLap" }), { target: { value: "4" } });
+  fireEvent.change(availability.getByRole("spinbutton", { name: "strategy.journey.driver.unavailable.newToLap" }), { target: { value: "4" } });
+  fireEvent.click(availability.getByRole("button", { name: "strategy.journey.driver.unavailable.add" }));
+  fireEvent.change(availability.getByRole("spinbutton", { name: "strategy.journey.driver.unavailable.newFromLap" }), { target: { value: "20" } });
+  fireEvent.change(availability.getByRole("spinbutton", { name: "strategy.journey.driver.unavailable.newToLap" }), { target: { value: "25" } });
+  fireEvent.click(availability.getByRole("button", { name: "strategy.journey.driver.unavailable.add" }));
+  expect(changed.mock.lastCall?.[0].rules).toEqual({ minPitStops: 1, driverLimits: { primary: { maxLaps: 40, unavailable: [{ fromLap: 4, toLap: 4 }, { fromLap: 20, toLap: 25 }] }, relay: { minLaps: 5 } } });
+
+  const first = within(availability.getByRole("group", { name: "strategy.journey.driver.unavailable.window.label 1" }));
+  fireEvent.change(first.getByRole("spinbutton", { name: "strategy.journey.driver.unavailable.fromLap" }), { target: { value: "" } });
+  expect(changed.mock.lastCall?.[0].rules?.driverLimits?.primary.unavailable).toEqual([{ fromLap: 4, toLap: 4 }, { fromLap: 20, toLap: 25 }]);
+  fireEvent.change(first.getByRole("spinbutton", { name: "strategy.journey.driver.unavailable.fromLap" }), { target: { value: "5" } });
+  fireEvent.change(first.getByRole("spinbutton", { name: "strategy.journey.driver.unavailable.toLap" }), { target: { value: "6" } });
+  fireEvent.click(availability.getByRole("button", { name: "strategy.journey.driver.unavailable.remove 2" }));
+  expect(changed.mock.lastCall?.[0].rules?.driverLimits?.primary).toEqual({ maxLaps: 40, unavailable: [{ fromLap: 5, toLap: 6 }] });
+  fireEvent.click(availability.getByRole("button", { name: "strategy.journey.driver.unavailable.remove 1" }));
+  expect(changed.mock.lastCall?.[0].rules).toEqual({ minPitStops: 1, driverLimits: { primary: { maxLaps: 40 }, relay: { minLaps: 5 } } });
+});

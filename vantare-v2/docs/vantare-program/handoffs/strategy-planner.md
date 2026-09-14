@@ -1,6 +1,19 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1244 T06c cerrado localmente; disponibilidad pendiente
+## Estado vigente — #1245 T07c cerrado localmente; horario pendiente
+
+T07c edita por piloto los intervalos inclusivos de vueltas de carrera donde no
+puede conducir, directamente en `driverLimits[id].unavailable`. Añadir compone
+ambos extremos; vaciar temporalmente una fila confirmada no la elimina y sólo
+Quitar borra. El vacío se presenta como «Sin tramos no disponibles configurados»
+sin afirmar disponibilidad total. Validación, guardado/reapertura y cálculo
+conservan los intervalos y las demás reglas. El modelo horario legacy por minutos
+del día permanece separado: no se convierte a vueltas mediante ritmo medio.
+Siguiente: distinguir orden fijado de propuesta libre; la disponibilidad horaria
+completa necesita una decisión temporal posterior. Sin app/Wails/LMU, DuckDB,
+push, PR, CI remota, integración ni release.
+
+## Historial — #1244 T06c cerrado localmente
 
 T06c edita `allowedCompoundsByClimate` directamente en las reglas existentes,
 con tres grupos seco/húmedo/mojado y los cuatro compuestos canónicos. La ausencia

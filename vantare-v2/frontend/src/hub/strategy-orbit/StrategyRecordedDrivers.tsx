@@ -1,9 +1,11 @@
+import { useState } from "react";
 import type { RecordedWizardDraft } from "./strategy-recorded-wizard";
 import "./strategy-recorded-drivers.css";
 
 type DriverLimit = NonNullable<NonNullable<RecordedWizardDraft["rules"]>["driverLimits"]>[string];
 type DriverLimits = Readonly<Record<string, DriverLimit>>;
 type DriverLimitKey = "minLaps" | "maxLaps" | "maxContinuousTimeSeconds" | "maxTotalTimeSeconds";
+type LapWindow = NonNullable<DriverLimit["unavailable"]>[number];
 type MutableDriverLimit = { -readonly [Key in keyof DriverLimit]: DriverLimit[Key] };
 type MutableRules = { -readonly [Key in keyof NonNullable<RecordedWizardDraft["rules"]>]: NonNullable<RecordedWizardDraft["rules"]>[Key] };
 const minutesFromSeconds = (seconds: number | undefined) => seconds === undefined ? "" : seconds / 60;
@@ -13,6 +15,40 @@ function rulesWithDriverLimits(rules: RecordedWizardDraft["rules"], limits: Driv
   if (Object.keys(limits).length > 0) next.driverLimits = limits;
   else delete next.driverLimits;
   return Object.keys(next).length > 0 ? next : undefined;
+}
+
+function DriverUnavailableWindows({ windows, onChange, t }: {
+  readonly windows: readonly LapWindow[];
+  readonly onChange: (windows: readonly LapWindow[]) => void;
+  readonly t: (key: string) => string;
+}) {
+  const [fromLap, setFromLap] = useState<number>();
+  const [toLap, setToLap] = useState<number>();
+  const update = (index: number, key: keyof LapWindow, value: number | undefined) => {
+    if (value === undefined) return;
+    onChange(windows.map((window, current) => current === index ? { ...window, [key]: value } : window));
+  };
+  const add = () => {
+    if (fromLap === undefined || toLap === undefined) return;
+    onChange([...windows, { fromLap, toLap }]);
+    setFromLap(undefined);
+    setToLap(undefined);
+  };
+  return <div className="strategy-recorded-fields__windows" role="group" aria-label={t("strategy.journey.driver.unavailable")}>
+    <strong>{t("strategy.journey.driver.unavailable")}</strong>
+    <p>{t("strategy.journey.driver.unavailable.hint")}</p>
+    {windows.length === 0 ? <p>{t("strategy.journey.driver.unavailable.empty")}</p> : null}
+    {windows.map((window, index) => <div key={index} className="strategy-recorded-fields__window" role="group" aria-label={`${t("strategy.journey.driver.unavailable.window.label")} ${index + 1}`}>
+      <label className="strategy-recorded-field"><span>{t("strategy.journey.driver.unavailable.fromLap")}</span><input type="number" min="1" step="1" value={window.fromLap} onChange={event => update(index, "fromLap", event.target.value === "" ? undefined : Number(event.target.value))} /></label>
+      <label className="strategy-recorded-field"><span>{t("strategy.journey.driver.unavailable.toLap")}</span><input type="number" min="1" step="1" value={window.toLap} onChange={event => update(index, "toLap", event.target.value === "" ? undefined : Number(event.target.value))} /></label>
+      <button type="button" className="orbit-btn orbit-btn--ghost" aria-label={`${t("strategy.journey.driver.unavailable.remove")} ${index + 1}`} onClick={() => onChange(windows.filter((_, current) => current !== index))}>{t("strategy.journey.driver.unavailable.remove")}</button>
+    </div>)}
+    <div className="strategy-recorded-fields__window strategy-recorded-fields__window--new">
+      <label className="strategy-recorded-field"><span>{t("strategy.journey.driver.unavailable.newFromLap")}</span><input type="number" min="1" step="1" value={fromLap ?? ""} onChange={event => setFromLap(event.target.value === "" ? undefined : Number(event.target.value))} /></label>
+      <label className="strategy-recorded-field"><span>{t("strategy.journey.driver.unavailable.newToLap")}</span><input type="number" min="1" step="1" value={toLap ?? ""} onChange={event => setToLap(event.target.value === "" ? undefined : Number(event.target.value))} /></label>
+      <button type="button" className="orbit-btn orbit-btn--ghost" disabled={fromLap === undefined || toLap === undefined} onClick={add}>{t("strategy.journey.driver.unavailable.add")}</button>
+    </div>
+  </div>;
 }
 
 export function StrategyRecordedDrivers({ draft, onChange, onAdd, t }: {
@@ -28,14 +64,23 @@ export function StrategyRecordedDrivers({ draft, onChange, onAdd, t }: {
     ...draft, drivers: nextDrivers, rules: rulesWithDriverLimits(draft.rules, nextLimits),
   });
   const update = (id: string, patch: Partial<RecordedWizardDraft["drivers"][number]>) => change(drivers.map(driver => driver.id === id ? { ...driver, ...patch } : driver));
-  const updateDriverLimit = (id: string, key: DriverLimitKey, value: number | undefined) => {
-    const nextLimit: MutableDriverLimit = { ...driverLimits[id] };
-    if (value === undefined) delete nextLimit[key];
-    else nextLimit[key] = value;
+  const changeDriverLimit = (id: string, nextLimit: MutableDriverLimit) => {
     const nextLimits: Record<string, DriverLimit> = { ...driverLimits };
     if (Object.keys(nextLimit).length > 0) nextLimits[id] = nextLimit;
     else delete nextLimits[id];
     change(drivers, nextLimits);
+  };
+  const updateDriverLimit = (id: string, key: DriverLimitKey, value: number | undefined) => {
+    const nextLimit: MutableDriverLimit = { ...driverLimits[id] };
+    if (value === undefined) delete nextLimit[key];
+    else nextLimit[key] = value;
+    changeDriverLimit(id, nextLimit);
+  };
+  const updateUnavailable = (id: string, unavailable: readonly LapWindow[]) => {
+    const nextLimit: MutableDriverLimit = { ...driverLimits[id] };
+    if (unavailable.length > 0) nextLimit.unavailable = unavailable;
+    else delete nextLimit.unavailable;
+    changeDriverLimit(id, nextLimit);
   };
   const remove = (id: string) => {
     const nextLimits: Record<string, DriverLimit> = { ...driverLimits };
@@ -55,6 +100,7 @@ export function StrategyRecordedDrivers({ draft, onChange, onAdd, t }: {
         <label className="strategy-recorded-field"><span>{t("strategy.journey.driver.maxContinuousMinutes")}</span><input type="number" min="0.01" step="any" value={minutesFromSeconds(driverLimits[driver.id]?.maxContinuousTimeSeconds)} placeholder={t("strategy.journey.unconfirmed")} onChange={event => updateDriverLimit(driver.id, "maxContinuousTimeSeconds", event.target.value === "" ? undefined : Number(event.target.value) * 60)} /></label>
         <label className="strategy-recorded-field"><span>{t("strategy.journey.driver.maxTotalMinutes")}</span><input type="number" min="0.01" step="any" value={minutesFromSeconds(driverLimits[driver.id]?.maxTotalTimeSeconds)} placeholder={t("strategy.journey.unconfirmed")} onChange={event => updateDriverLimit(driver.id, "maxTotalTimeSeconds", event.target.value === "" ? undefined : Number(event.target.value) * 60)} /></label>
       </div>
+      <DriverUnavailableWindows windows={driverLimits[driver.id]?.unavailable ?? []} onChange={windows => updateUnavailable(driver.id, windows)} t={t} />
       {index > 0 && principal ? <label className="strategy-recorded-field"><span>{t("strategy.journey.driver.paceSource")}</span><select value={driver.referenceDriverId ?? ""} onChange={event => update(driver.id, event.target.value ? { referenceDriverId: event.target.value, paceDeltaSeconds: 0 } : { referenceDriverId: undefined, paceDeltaSeconds: undefined })}>
         <option value="">{t("strategy.journey.driver.ownSessions")}</option>
         <option value={principal.id}>{t("strategy.journey.driver.estimateFrom")} {principal.name || t("strategy.journey.driver.primary")}</option>

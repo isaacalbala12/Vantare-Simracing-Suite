@@ -13,6 +13,8 @@ Objetivo: evitar regresiones conocidas (especialmente en el canvas) y dejar deci
 | [arrastre-y-resize.md](./arrastre-y-resize.md) | Exploración de fluidez, alternativas (A/B/C), benchmark y verificación manual. |
 | [benchmarks/](./benchmarks/) | Trazas JSON, config, baseline B1 y resultados del harness Playwright. |
 
+El editor único y el autoguardado se describen en [arquitectura](../architecture.md) y [ADR 0093](../adr/0093-overlay-studio-autosave-history.md). Para autoría visual, usar [Workshop](overlay-workshop-authoring-guide.md).
+
 ## Regla rápida (canvas)
 
 Durante `pointermove` / resize en el lienzo:
@@ -20,7 +22,7 @@ Durante `pointermove` / resize en el lienzo:
 - **Sí:** mover el frame con DOM imperativo (`canvas-frame-preview.ts`) y commitear solo en `pointerup`.
 - **No:** pasar la posición transitoria por `setState` / `resolveLayout` → React pisa el DOM y reaparecen teleport + rastro.
 
-Patrón de referencia en el repo legacy: `frontend/src/hub/preview/PreviewCanvas.tsx` (comentario: *"Move the DOM element directly to avoid parent re-renders"*).
+Referencia productiva: [preview imperativa del canvas](canvas-drag-imperative-preview.md) y `frontend/src/hub/overlay-studio/canvas/canvas-frame-preview.ts`.
 
 ## Archivos clave del canvas
 

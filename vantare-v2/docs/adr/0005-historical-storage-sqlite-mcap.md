@@ -9,6 +9,10 @@ ISA-101 solo documenta y mide la decisión. No incorpora un backend productivo
 ni añade dependencias al módulo principal. TC-06B no puede empezar hasta que
 una revisión independiente acepte este ADR y sus condiciones.
 
+## Evolución comprobada (2026-09-14)
+
+El apartado de estado anterior describe la propuesta de ISA-101, no una puerta pendiente actual de dependencias. [go.mod](../../go.mod) ya incluye `modernc.org/sqlite` y [diagnostics_bridge.go](../../internal/app/diagnostics_bridge.go) instancia el store para diagnóstico. Esto no demuestra por sí solo grabación live conectada ni aceptación de MCAP. El reader DuckDB de Analysis tiene [otro ADR](0005-duckdb-helper-for-historical-telemetry.md); no es un reemplazo automático de SQLite.
+
 ## Fecha
 
 2026-07-30

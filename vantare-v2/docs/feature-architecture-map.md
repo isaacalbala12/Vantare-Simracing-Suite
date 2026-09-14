@@ -1,5 +1,9 @@
 # Feature Architecture Map
 
+> **Ámbito documental (2026-09-14):** Mapa histórico; no define el estado ni la secuencia de implementación actuales.
+> [Referencia vigente](architecture.md).
+
+
 Mapa de arquitectura para implementar features sin mezclar responsabilidades.
 
 > Actualizacion 2026-06-26: para el release oficial, este mapa debe leerse junto a `docs/release-roadmap-execution-index.md`. Pagos/licencias, autoupdater, iRacing, Assetto Corsa, Assetto Corsa Lua/CSP Pack, OBS LAN, calendario LMU, onboarding, i18n, Track Map e Input Telemetry/Trace son scope de release, no futuribles.

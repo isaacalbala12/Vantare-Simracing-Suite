@@ -1,80 +1,56 @@
-# Inventario de documentacion
+# Inventario y criterio documental
 
-> **Notion primero (2026-09-14):** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192)
-> y leer la tarea y su proyecto antes de ejecutar. Actualizar Notion al empezar,
-> bloquear, entregar y verificar una integración; releer para comprobar la escritura.
-> [Contrato vigente](vantare-program/notion-transition.md). GitHub conserva código, PR, CI y releases;
-> las referencias ISA exigidas por los controles son un puente técnico temporal.
-> Su adaptación pendiente nunca permite omitir el seguimiento en Notion.
-> Para esta transición, consultar el [inventario individual](vantare-program/notion-document-audit.md).
-> El índice de ejecución de release antiguo es histórico, no autoridad operativa.
+Corte: 2026-09-14, `origin/nightly` **60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c**. Tarea [VAN-725](https://app.notion.com/p/3dbe51695c658147aec0cf0aee3f3bb9), proyecto Plataforma y roadmap; puente técnico [GitHub #1256](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1256).
 
+## Alcance real de la revisión
 
-Ultima actualizacion: 2026-08-21.
+Se inventariaron **994 archivos versionados** `.md`, `.mdx`, `.rst` y `.txt` (**266,699 líneas** en la base). El [inventario por archivo](analysis/documentation-audit-2026-09-14.tsv) incluye tratamiento, motivo, nivel de revisión y hash del contenido original. Incluye textos de soporte como fixtures y licencias para evitar borrarlos por extensión.
 
-Este inventario clasifica la documentacion conocida dentro de `vantare-v2`.
+La cobertura del inventario es completa para esas extensiones. La verificación semántica es focal: portadas, operaciones, Studio, OBS, contratos de transporte, autoridad y hallazgos del informe. **No se han certificado una por una las afirmaciones de las 266.699 líneas**, ni se ha ejecutado LMU/Wails en Windows. HTML de referencia, imágenes, binarios, datos y JSON generados tienen su función propia y no se eliminan como prosa obsoleta. Las fuentes sincronizadas del proyecto ChatGPT no se modifican.
 
-## Documentos dentro del repo
+## Dónde leer
 
-| Documento | Estado | Accion recomendada |
-|---|---|---|
-| `README.md` | Util, pero parcialmente desactualizado respecto a Overlays Studio | Actualizar en una tarea separada despues de validacion manual completa |
-| `AGENTS.md` | Nuevo documento de control | Mantener como lectura obligatoria para agentes |
-| `docs/README.md` | Nuevo indice de documentacion | Mantener actualizado cuando se anadan docs |
-| `docs/roadmap/plan.md` | Fuente publica de fases, areas, hitos y entregas | Actualizar en la misma PR cuando cambie el alcance o estado publico |
-| `docs/current-plan.md` | Registro historico de ejecucion | No actualizar en el flujo normal; conservar como contexto |
-| `docs/architecture.md` | Nueva arquitectura resumida | Mantener simple; ampliar solo con decisiones reales |
-| `docs/domain-model.md` | Nuevo glosario de dominio | Actualizar si cambian nombres o conceptos |
-| `docs/testing-strategy.md` | Nueva estrategia de testing | Actualizar si cambian comandos |
-| `docs/manual-verification.md` | Guia manual actualizada al flujo real de Overlays Studio | Actualizar con cada flujo importante |
-| `docs/agent-workflow.md` | Nuevo workflow de agentes | Mantener alineado con el proceso real |
-| `docs/roadmap-maintenance.md` | Contrato de mantenimiento del roadmap | Mantener alineado con decisiones Notion, el contrato CI temporal y el digest generado |
-| `docs/operations.md` | Nueva guia de operaciones | Actualizar si cambia tooling |
-| `docs/go-review-checklist.md` | Nueva checklist Go | Mantener como referencia para reviewers |
-| `docs/stripe-licensing-status-audit.md` | Auditoría extensa de Stripe/licencias/pagos (2026-07-06) | Mantener actualizado al cerrar SQL-01/CHECKOUT-01/DEPLOY-01 |
-| `docs/release-02-licensing-auth-stage.md` | Doc ancla del stage licencias/auth/pagos (2026-07-06) | Mantener actualizado el estado de miniplans al cerrar cada uno |
-| `docs/release-02-licensing-auth-handoff.md` | Handoff de sesión licencias/auth (2026-07-06) | Leer al continuar esta sección en otro chat |
-| `docs/adr/0001-close-lmu-pilot-ratings.md` | ADR existente util | Mantener |
-| `docs/adr/0002-llm-first-stack.md` | Nuevo ADR | Mantener |
-| `tools/README.md` | Util para herramientas LMU | Mantener |
-| `testdata/README.md` | Util para fixtures LMU | Mantener |
-| `frontend/README.md` | Plantilla/herencia de Vite, probablemente generica | Revisar y actualizar o archivar en tarea separada |
+El [índice vigente](README.md) conduce a uso, desarrollo y contratos por módulo. [docs de la raíz](../../docs/README.md) y los registros de agentes son historia. Notion contiene tareas y pendientes; no mantener un segundo backlog en `current-plan.md` o `technical-debt.md`.
 
-## Documentacion externa relacionada
+## Tratamiento del inventario base
 
-Hay documentacion historica en `C:\Users\isaac\Desktop\Vantare-Overlays\docs` y planes en `docs/superpowers/plans` fuera de `vantare-v2`.
+| Tratamiento | Archivos |
+|---|---:|
+| Actualizar | 49 |
+| Conservar contrato | 15 |
+| Conservar evidencia | 275 |
+| Conservar gobierno | 20 |
+| Conservar plan/referencia | 188 |
+| Conservar referencia | 183 |
+| Conservar soporte | 13 |
+| Consolidar | 10 |
+| Referencia histórica | 238 |
+| Retirar | 3 |
 
-No se mueve en esta tarea porque:
+**Conservar** no significa **validado como actual**. Los planes y evidencias se consultan cuando una tarea los necesita. Los contratos conservados mantienen su estado y enmiendas; no se archivan solo por antigüedad. Los archivos actualizados y su evidencia concreta se explican en el [informe](analysis/documentation-audit-2026-09-14.md).
 
-- el usuario indico que trabajamos exclusivamente sobre `vantare-v2`,
-- moverla mezclaria reorganizacion amplia con la capa de control,
-- hay cambios abiertos de otros agentes,
-- conviene hacerlo con un miniplan documental separado.
+## Documentos consolidados
 
-Accion recomendada futura:
+Se conserva la ruta breve para no romper referencias y se enlaza el contenido completo anterior por SHA. Las secciones históricas ya no forman parte de las guías operativas.
 
-1. Inventariar docs externos.
-2. Decidir que se copia como referencia activa.
-3. Archivar planes antiguos que ya no guien trabajo actual.
-4. Actualizar enlaces desde `vantare-v2/docs/README.md`.
+- [`current-plan.md`](current-plan.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/current-plan.md).
+- [`master-feature-plan.md`](master-feature-plan.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/master-feature-plan.md).
+- [`roadmap-execution-board.md`](roadmap-execution-board.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/roadmap-execution-board.md).
+- [`release-roadmap-execution-index.md`](release-roadmap-execution-index.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/release-roadmap-execution-index.md).
+- [`alpha-beta-roadmap.md`](alpha-beta-roadmap.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/alpha-beta-roadmap.md).
+- [`vantare-repository-context.md`](../../vantare-repository-context.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-repository-context.md).
+- [`vantare-suite-architecture.md`](vantare-suite-architecture.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/vantare-suite-architecture.md).
+- [`mock-live-demo-ux.md`](mock-live-demo-ux.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/mock-live-demo-ux.md).
+- [`release-02-licensing-auth-stage.md`](release-02-licensing-auth-stage.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/release-02-licensing-auth-stage.md).
+- [`release-02-licensing-auth-handoff.md`](release-02-licensing-auth-handoff.md) → [contenido anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/release-02-licensing-auth-handoff.md).
 
-## Archivos no documentales detectados como cambios abiertos
+## Retiradas
 
-Hay cambios abiertos en archivos de producto y build. Esta capa de control no los clasifica ni modifica.
+- `vite-output.txt` y `frontend/test_output.txt`: salidas generadas sin referencias versionadas; los resultados no describían la build actual.
+- `.agents/skills/vantare-core/SKILL.md`: skill explícitamente desautorizada por AGENTS. Se elimina la entrada descubrible; su historia permanece en Git.
 
-Antes de cualquier tarea de feature o bugfix, un worker debe ejecutar:
+No se retiran licencias, fixtures, contratos de rollback, pruebas ni evidencias originales de simulador. El detalle de enlaces y limitaciones está en el informe.
 
-```powershell
-git status --short
-```
+## Mantenimiento
 
-Y separar claramente cambios preexistentes de cambios nuevos.
-
-## Criterio para futuras acciones
-
-- Mantener: documento actual y util.
-- Actualizar: documento util pero desactualizado.
-- Fusionar: documentos duplicados con informacion vigente.
-- Archivar: historico util pero no debe guiar trabajo actual.
-- Mover: solo con tarea documental separada y actualizando enlaces.
-- Eliminar: solo con aprobacion explicita del usuario.
+Un documento tiene un propósito y un lugar editable. Enlazar contratos y scripts en vez de copiar estados o comandos. Actualizar documentación junto al comportamiento que describe. Marcar una propuesta como propuesta y fechar una evidencia; no convertir un checklist en una afirmación de pruebas superadas. Usar el inventario como registro de este corte, no como un catálogo que requiera mantenimiento manual en cada PR.

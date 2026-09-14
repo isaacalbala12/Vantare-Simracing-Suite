@@ -19,7 +19,7 @@ tecnico vive en `tools/release_build_preflight.ps1`, `tools/build_nsis.ps1` y
 | Checksums SHA-256 | `bin/<artifact>.sha256` | ~90 B | Un archivo `<artifact>.sha256` por cada artefacto oficial. Formato `<hash>  <nombre>`. |
 | Suma global de checksums | `bin/SHA256SUMS.txt` | (futuro) | Se anade en R03.C si la publicacion a GitHub Releases lo necesita. |
 
-**El portable zip debe contener `configs/`** porque los perfiles recomendados son la primera impresion para un tester nuevo. Ver `docs/tester-build-instructions.md` seccion 2 metodo B.
+**El portable zip debe contener `configs/`** porque los perfiles recomendados son la primera impresion para un tester nuevo. Ver [guía de instalación para testers](tester-build-instructions.md).
 
 ---
 

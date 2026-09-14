@@ -1,5 +1,9 @@
 # Contrato de Renderizado y Preview de Widgets
 
+> **Ámbito documental (2026-09-14):** Contrato histórico de preview anterior al editor único; conservar criterios visuales solo cuando la tarea actual los adopte.
+> [Referencia vigente](overlays-studio/overlay-workshop-authoring-guide.md).
+
+
 Guia obligatoria para workers que creen, modifiquen o depuren widgets en Vantare v2.
 
 Ultima actualizacion: 2026-06-26.

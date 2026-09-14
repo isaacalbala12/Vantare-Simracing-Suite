@@ -1,5 +1,9 @@
 # Licensing And Authentication Architecture
 
+> **Ámbito documental (2026-09-14):** Diseño histórico de Release 02; no expresa el estado de ejecución de Clerk/Billing ni autoriza una migración.
+> [Referencia vigente](vantare-program/handoffs/platform-commercial.md).
+
+
 > Scope: Release 02 — Stripe, Supabase, auth and online licensing.
 > Status: design-only (no production code yet).
 > Date: 2026-06-26.

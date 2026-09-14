@@ -7,6 +7,14 @@
 > sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
 
 
+## VAN-725 — Depuración documental del repositorio (2026-09-14)
+
+[Tarea Notion](https://app.notion.com/p/3dbe51695c658147aec0cf0aee3f3bb9), puente técnico GitHub #1256. Base nightly `60b47b7c`, rama `vantareapp/isa-1256-documentacion-vigente`. [Informe y evidencia](../../analysis/documentation-audit-2026-09-14.md), [inventario de 994 textos](../../analysis/documentation-audit-2026-09-14.tsv).
+
+Se consolidan las entradas y diez registros sustituidos; el contenido anterior queda en Git por SHA. Se corrigen Wails, desconectado, Studio/autosave, OBS loopback, transporte V2 y autoridad documental; las evidencias fechadas no se certifican como estado actual. Retirados dos logs generados y la skill vantare-core desautorizada. Sin código productivo ni cambios de gates. El hito documental sigue plan.
+
+Revisión independiente PASS tras corregir preparación del frontend antes de tests Go. Pruebas de digest/contrato: 44 PASS; build y runtime Windows no ejecutados por tratarse de documentación. Notion conserva el estado de entrega, PR, CI y canal verificados; este registro no afirma integración.
+
 ## VAN-724 — Notion obligatorio para todos los agentes (2026-09-14)
 
 [Tarea principal](https://app.notion.com/p/3dbe51695c658138b19fe81c730d89a2).

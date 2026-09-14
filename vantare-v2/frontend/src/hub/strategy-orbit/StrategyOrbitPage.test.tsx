@@ -441,7 +441,15 @@ describe("StrategyOrbitPage · Resumen", () => {
   it("muestra loading y después el error tipado del motor sin cifras de fallback", async () => {
     let rejectCalculation: (error: Error) => void = () => undefined;
     const client: StrategyApplicationClient<unknown> = {
-      execute: () => new Promise((_resolve, reject) => { rejectCalculation = reject; }),
+      execute: (command) => {
+        if (command.operation === "list_session_combinations" || command.operation === "list_events") {
+          throw new StrategyApplicationError("invalid_command", "operation", "catalog unavailable");
+        }
+        if (command.operation === "calculate_orbit") {
+          return new Promise((_resolve, reject) => { rejectCalculation = reject; });
+        }
+        throw new Error(`unexpected ${command.operation}`);
+      },
       cancel: () => false,
       dispose: () => undefined,
     };

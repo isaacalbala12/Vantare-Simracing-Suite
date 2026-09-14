@@ -1,6 +1,16 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1249 T03b cerrado localmente; comandos de cálculo únicos
+## Estado vigente — #1250 T03c cerrado localmente; telemetría antes del cálculo
+
+Strategy Orbit bloquea el cálculo cuando el evento conserva sesiones de
+telemetría incluidas y sus entradas derivadas siguen pendientes o fallan. Al
+resolver usa los valores derivados exactos; sin telemetría, el recorrido manual
+conserva su cálculo. Guardar una selección sólo publica el estado invalidado y
+un único efecto prepara las entradas, sin hook, controlador, registro global ni
+contrato nuevo. T03 continúa con obsolescencia y estados finales del resultado.
+Sin app/Wails/LMU, DuckDB, push, PR, CI remota, integración ni release.
+
+## Historial — #1249 T03b cerrado localmente; comandos de cálculo únicos
 
 Cada montaje de Strategy crea sus comandos de cálculo con UUID. El cliente,
 `calculationKey` y cleanup existentes descartan respuestas y errores tardíos de

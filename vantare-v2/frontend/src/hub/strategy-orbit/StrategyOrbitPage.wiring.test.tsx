@@ -155,6 +155,15 @@ describe("StrategyOrbitPage · cableado auditado", () => {
           calculations.push(command);
           return;
         }
+        if (command.operation === "list_session_combinations" || command.operation === "list_events") {
+          emitTransport("strategy:application:error", {
+            commandId: command.commandId,
+            code: "invalid_command",
+            field: "operation",
+            message: "catalog unavailable",
+          });
+          return;
+        }
         if (command.operation === "list") {
           emitTransport("strategy:application:result", {
             protocolVersion: "strategy.application.v1",
@@ -249,27 +258,39 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     const rules: NonNullable<StrategyEventV2["rules"]> = { value: { minPitStops: 2 }, evidence: { provenance: { kind: "manual", sourceId: "event-rules-test" }, confidence: { level: "high", basis: "configured event" } } };
     let version = 0;
     const calculatedInputs: unknown[] = [];
+    let planningCalls = 0;
+    let deferPlanning = true;
+    let rejectPlanning = false;
+    let catalogHasCombination = true;
+    let resolvePlanning!: (result: StrategyApplicationResultV1<unknown>) => void;
+    const planning = new Promise<StrategyApplicationResultV1<unknown>>((resolve) => { resolvePlanning = resolve; });
     const client: StrategyApplicationClient<unknown> = {
       async execute(command: StrategyApplicationCommandV1<unknown>): Promise<StrategyApplicationResultV1<unknown>> {
         const base = { protocolVersion: "strategy.application.v1" as const, commandId: command.commandId, repositoryVersion: version, recoveredFromBackup: false, closed: false };
-        if (command.operation === "list_session_combinations") return { ...base, sessionCatalogStatus: "available", sessionCombinations: [{
+        if (command.operation === "list_session_combinations") return { ...base, sessionCatalogStatus: "available", sessionCombinations: catalogHasCombination ? [{
           combinationId: "lmu:imola", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Mustang", carClass: "LMGT3",
           sessionCount: 1, raceCount: 1, lastActivity: "2026-08-21T12:00:00Z", climateBuckets: [{ bucket: "dry", laps: 20 }],
           sessions: [{ sessionId: "race-1", type: "race", status: "identified_usable", defaultIncluded: true, lastActivity: "2026-08-21T12:00:00Z", climateBuckets: [{ bucket: "dry", laps: 20 }] }],
-        }] };
+        }] : [] };
         if (command.operation === "list_events") return { ...base, events: saved ? [saved] : [] };
         if (command.operation === "create_event" || command.operation === "edit_event") {
           saved = command.operation === "create_event" ? { ...command.event, rules } : command.event;
           version += 1;
           return { ...base, repositoryVersion: version, strategyDocument: { contractVersion: "strategy.v2", schemaVersion: "2.1.0", generatedAt: command.updatedAt, events: [saved] } };
         }
-        if (command.operation === "get_event_planning_inputs") return {
-          ...base,
-          planningInputStatus: saved?.combination?.sessions.some((session) => session.included) ? "available" : "no_included_sessions",
-          planningInputs: saved?.combination?.sessions.some((session) => session.included)
-            ? { ...derivedPlanning, overrides: saved.planningInputs?.overrides ?? {} }
-            : { overrides: saved?.planningInputs?.overrides ?? {} },
-        };
+        if (command.operation === "get_event_planning_inputs") {
+          planningCalls += 1;
+          if (deferPlanning) return planning;
+          if (rejectPlanning) throw new Error("planning failed");
+          const included = saved?.combination?.sessions.some((session) => session.included);
+          return {
+            ...base,
+            planningInputStatus: included ? "available" : "no_included_sessions",
+            planningInputs: included
+              ? { ...derivedPlanning, overrides: saved?.planningInputs?.overrides ?? {} }
+              : { overrides: saved?.planningInputs?.overrides ?? {} },
+          };
+        }
         if (command.operation === "calculate_orbit") {
           calculatedInputs.push(command.input);
           return { ...base, orbitCalculation: orbitGolden as StrategyOrbitCalculationResultV1 };
@@ -283,10 +304,27 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     const slot = document.createElement("div");
     slot.id = STRATEGY_CONTEXT_SLOT_ID;
     document.body.append(slot);
-    render(<I18nProvider><ToastProvider><StrategyOrbitPage applicationClient={client} roster={ROSTER} /></ToastProvider></I18nProvider>);
+    const first = render(<I18nProvider><ToastProvider><StrategyOrbitPage applicationClient={client} roster={ROSTER} /></ToastProvider></I18nProvider>);
 
     expect(await screen.findByTestId("orbit-strategy-session-picker")).toBeTruthy();
     fireEvent.click(screen.getByTestId("orbit-session-combination-lmu:imola"));
+    await waitFor(() => expect(saved?.combination?.sessions.some((session) => session.included)).toBe(true));
+    first.unmount();
+    calculatedInputs.length = 0;
+    const second = render(<I18nProvider><ToastProvider><StrategyOrbitPage applicationClient={client} roster={ROSTER} /></ToastProvider></I18nProvider>);
+    await waitFor(() => expect(planningCalls).toBeGreaterThanOrEqual(2));
+    expect(calculatedInputs).toHaveLength(0);
+    expect(screen.getByTestId("orbit-strategy-calculation-loading")).toBeTruthy();
+    deferPlanning = false;
+    await act(async () => resolvePlanning({
+      protocolVersion: "strategy.application.v1",
+      commandId: "planning",
+      repositoryVersion: version,
+      recoveredFromBackup: false,
+      closed: false,
+      planningInputStatus: "available",
+      planningInputs: { ...derivedPlanning, overrides: saved?.planningInputs?.overrides ?? {} },
+    }));
     expect(await screen.findByTestId("orbit-strategy-overview")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Datos" }));
     expect(within(await screen.findByTestId("orbit-planning-input-fuel_per_lap_liters")).getByLabelText(/Derivado: Calculado con 4 muestras/)).toBeTruthy();
@@ -326,6 +364,21 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     fireEvent.click(within(sessions).getByRole("button", { name: "Excluir" }));
     await screen.findByText("Excluida por ti");
     expect(saved?.combination?.sessions).toEqual([{ sessionId: "race-1", included: false }]);
+    rejectPlanning = true;
+    calculatedInputs.length = 0;
+    const include = await screen.findByRole("button", { name: "Incluir" });
+    await waitFor(() => expect(include.hasAttribute("disabled")).toBe(false));
+    fireEvent.click(include);
+    await screen.findByTestId("orbit-strategy-calculation-error");
+    expect(calculatedInputs).toHaveLength(0);
+    second.unmount();
+    catalogHasCombination = false;
+    calculatedInputs.length = 0;
+    render(<I18nProvider><ToastProvider><StrategyOrbitPage applicationClient={client} roster={ROSTER} /></ToastProvider></I18nProvider>);
+    fireEvent.click(await screen.findByTestId("orbit-strategy-session-skip"));
+    await screen.findByTestId("orbit-strategy-calculation-error");
+    expect(screen.queryByTestId("orbit-strategy-calculation-loading")).toBeNull();
+    expect(calculatedInputs).toHaveLength(0);
   });
 
   it("muestra ejemplos validados ordenados con cifras neutrales del replay Go", async () => {
@@ -409,7 +462,7 @@ describe("StrategyOrbitPage · cableado auditado", () => {
     render(<I18nProvider><ToastProvider><StrategyOrbitPage applicationClient={client} roster={ROSTER} /></ToastProvider></I18nProvider>);
 
     fireEvent.click((await screen.findByTestId("orbit-session-combination-lmu:imola")));
-    expect((await screen.findByTestId("orbit-validated-examples")).textContent).toContain("Aún no hay carreras de esta combinación");
+    await waitFor(() => expect(screen.getByTestId("orbit-validated-examples").textContent).toContain("Aún no hay carreras de esta combinación"));
   });
 
   it("edita NODE_50 y muestra planes por escenario con recomendación robusta", async () => {

@@ -608,6 +608,22 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   const eventPlanningInputs = eventRecord && catalogView
     ? catalogView.planningByEvent[eventRecord.id]
     : undefined;
+  const eventPlanningStatus = eventRecord && catalogView
+    ? catalogView.planningStatusByEvent[eventRecord.id]
+    : undefined;
+  const persistedSessionSelection = eventRecord && catalogView
+    ? catalogView.events.find((event) => event.id === eventRecord.id)?.combination?.sessions ?? []
+    : [];
+  const telemetryPlanningRequired = eventRecord?.fillMode === "telemetry"
+    || persistedSessionSelection.some((session) => session.included);
+  const telemetryPlanningReady = sessionCatalog.status === "error"
+    ? eventRecord?.fillMode !== "telemetry"
+    : sessionCatalog.status === "ready"
+      && (!telemetryPlanningRequired || eventPlanningStatus === "available");
+  const telemetryPlanningFailed = telemetryPlanningRequired
+    && (sessionCatalog.status === "error" || sessionSave === "error"
+      || (sessionCatalog.status === "ready" && !eventCombination)
+      || (eventPlanningStatus !== undefined && eventPlanningStatus !== "available"));
   const eventRules = catalogView?.events.find(event => event.id === eventRecord?.id)?.rules;
   const eventWeatherScenarios = eventRecord && catalogView
     ? selectedWeatherScenarios(catalogView, eventRecord.id)
@@ -629,11 +645,8 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
     );
     return () => { current = false; };
   }, [applicationClient, catalogView, eventCombination, eventRecord]);
-  const planningRequests = useRef(new Set<string>());
   useEffect(() => {
-    if (!eventRecord || !catalogView || !eventCombination || eventPlanningInputs
-      || planningRequests.current.has(eventRecord.id)) return;
-    planningRequests.current.add(eventRecord.id);
+    if (!eventRecord || !catalogView || !eventCombination || eventPlanningInputs) return;
     let current = true;
     void refreshStrategyPlanningInputs(applicationClient, catalogView, eventRecord.id).then(
       (view) => { if (current) setSessionCatalog({ status: "ready", view }); },
@@ -661,7 +674,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
   // ── cálculo Go (manual + solver) ─────────────────────────────────────────
   const calculationSequence = useRef(0);
   const [calculationRetry, setCalculationRetry] = useState(0);
-  const calculationInput = strategyEvent && eventRecord && activeId
+  const calculationInput = strategyEvent && eventRecord && activeId && telemetryPlanningReady
     ? orbitCalculationInput(strategyEvent, eventRecord.drivers, Object.values(variants), activeId, eventPlanningInputs, eventWeatherScenarios, eventRules?.value)
     : null;
   const calculationKey = calculationInput ? JSON.stringify(calculationInput) : "";
@@ -1278,8 +1291,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         combination,
         combination.sessions.map((session) => ({ sessionId: session.sessionId, included: session.defaultIncluded })),
       );
-      const view = await refreshStrategyPlanningInputs(applicationClient, saved, eventRecord.id);
-      setSessionCatalog({ status: "ready", view });
+      setSessionCatalog({ status: "ready", view: saved });
       setSessionPickerDismissed(eventRecord.id);
       setSessionSave("idle");
     } catch {
@@ -1301,8 +1313,7 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
         eventCombination,
         sessions,
       );
-      const view = await refreshStrategyPlanningInputs(applicationClient, saved, eventRecord.id);
-      setSessionCatalog({ status: "ready", view });
+      setSessionCatalog({ status: "ready", view: saved });
       setSessionSave("idle");
     } catch {
       setSessionSave("error");
@@ -2628,9 +2639,6 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
                     signal.throwIfAborted();
                     // Keep the acknowledged version even if recomputation fails.
                     setSessionCatalog({ status: "ready", view: saved });
-                    const view = await refreshStrategyPlanningInputs(applicationClient, saved, eventRecord.id);
-                    signal.throwIfAborted();
-                    setSessionCatalog({ status: "ready", view });
                   }}
                 />
               </div> : null;
@@ -2666,8 +2674,13 @@ export function StrategyOrbitPage({ applicationClient: injectedClient, runtimeFa
       <div className="orbit-strategy orbit-strategy--empty" data-testid="orbit-strategy">
         {contextSlot ? createPortal(context, contextSlot) : null}
         {recordedSessionsPanel}
-        <Surface data-testid="orbit-strategy-calculation-loading" title={t("strategy.calculation.loading")}>
-          <p role="status">{t("strategy.calculation.loadingHint")}</p>
+        <Surface
+          data-testid={telemetryPlanningFailed ? "orbit-strategy-calculation-error" : "orbit-strategy-calculation-loading"}
+          title={t(telemetryPlanningFailed ? "strategy.sessions.errorTitle" : "strategy.calculation.loading")}
+        >
+          <p role={telemetryPlanningFailed ? "alert" : "status"}>
+            {t(telemetryPlanningFailed ? "strategy.sessions.errorTitle" : "strategy.calculation.loadingHint")}
+          </p>
         </Surface>
         {editorFailureView}
         {migrationDialog}

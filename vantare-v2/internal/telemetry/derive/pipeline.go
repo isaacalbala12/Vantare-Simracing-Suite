@@ -311,10 +311,11 @@ func appendControlSample(previous []ControlSample, sample ControlSample, limit i
 		next[limit-1] = sample
 		return next
 	}
-	next := make([]ControlSample, len(previous)+1)
-	copy(next, previous)
-	next[len(previous)] = sample
-	return next
+	// Keep the proven grow path before the buffer is full. slices.Clone may
+	// retain enough capacity for append and benchmarks better than an exact-size
+	// allocation for partial histories; the full-buffer branch above is where
+	// avoiding the second allocation matters.
+	return append(slices.Clone(previous), sample)
 }
 
 func controlsFreshness(fields ...schema.Field[schema.Ratio]) schema.Freshness {

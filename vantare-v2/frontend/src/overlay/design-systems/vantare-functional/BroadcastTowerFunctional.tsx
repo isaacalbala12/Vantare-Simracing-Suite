@@ -3,6 +3,9 @@ import type { WidgetRendererProps } from "../../core/design-system-definition";
 import type { BroadcastTowerViewModel } from "../../widget-types/broadcast-tower/broadcast-tower-view-model";
 import { functionalLabels } from "./labels";
 
+// Horizontal Standings: tira de ancho completo a 71px — bloque de sesión,
+// stream de tarjetas por piloto repartiendo el ancho, y datos de pista/SOF
+// al final. rowCount decide cuántas tarjetas; la caja solo cambia de ancho.
 export function BroadcastTowerFunctional({ model, effects }: WidgetRendererProps<BroadcastTowerViewModel>) {
   const { locale } = useI18n();
   const labels = functionalLabels[locale];
@@ -18,49 +21,47 @@ export function BroadcastTowerFunctional({ model, effects }: WidgetRendererProps
       data-status={model.status}
       data-effects={effects}
     >
-      <header className="vf-broadcast-tower-header">
-        <span className="vf-broadcast-tower-label">{model.sessionLabel}</span>
-        <span className="vf-broadcast-tower-lap">
-          {labels.currentLap} {model.lap ?? "—"}/{model.totalLaps ?? "—"}
-        </span>
-      </header>
+      <div className="vf-bt-lead">
+        <span className="vf-bt-session">{model.sessionLabel}</span>
+        <b className="vf-bt-lap">
+          {labels.currentLap} {model.lap ?? "—"}
+          {model.totalLaps !== undefined && <span className="vf-bt-lap-total">/{model.totalLaps}</span>}
+        </b>
+      </div>
       {statusText ? (
         <p className="vf-status" role="status">{statusText}</p>
       ) : (
-        <div className="vf-broadcast-tower-list" role="list">
+        <div className="vf-bt-stream" role="list">
           {model.rows.slice(0, model.rowCount).map((row) => (
             <div
               key={`${row.place}-${row.number}`}
-              className="vf-broadcast-tower-row"
+              className="vf-bt-card"
               data-player={row.isPlayer}
               role="listitem"
             >
-              <span className="vf-broadcast-tower-place">{row.place}</span>
-              <span
-                className="vf-broadcast-tower-number"
-                style={{ color: row.brandColor ?? "inherit" }}
-              >
-                {row.number}
+              <span className="vf-bt-place">{row.place}</span>
+              <i
+                className="vf-bt-brand"
+                style={{ background: row.brandColor ?? "var(--vf-accent)" }}
+              />
+              <span className="vf-bt-id">
+                <b className="vf-bt-name">{row.name}</b>
+                {row.team !== "—" && <em className="vf-bt-team">{row.team.slice(0, 3).toUpperCase()}</em>}
               </span>
-              <span className="vf-broadcast-tower-name">{row.name}</span>
-              <span className="vf-broadcast-tower-gap">{gapText(row.gap)}</span>
+              <span className="vf-bt-gap">{gapText(row.gap)}</span>
             </div>
           ))}
         </div>
       )}
       {(model.showWeather || model.showSof) && (
-        <footer className="vf-broadcast-tower-footer">
-          {model.showWeather && model.trackTempC !== undefined && (
-            <span className="vf-broadcast-tower-ambient">
-              {labels.track} {model.trackTempC}°C
+        <aside className="vf-bt-side">
+          {model.showWeather && (
+            <span className="vf-bt-ambient">
+              {labels.trackTemp} {model.trackTempC !== undefined ? `${model.trackTempC}°` : "—"}
             </span>
           )}
-          {model.showSof && (
-            <span className="vf-broadcast-tower-sof">
-              SOF {model.sof ?? "—"}
-            </span>
-          )}
-        </footer>
+          {model.showSof && <span className="vf-bt-sof">SOF {model.sof ?? "—"}</span>}
+        </aside>
       )}
     </section>
   );

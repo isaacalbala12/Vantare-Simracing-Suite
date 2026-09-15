@@ -23,6 +23,9 @@ const WIDGET_LABELS: Partial<Record<WidgetType, string>> = {
   relative: "Relative",
   delta: "Delta",
   pedals: "Pedals",
+  "broadcast-tower": "Horizontal Standings",
+  "fuel-strategy": "Fuel Strategy",
+  "pedals-telemetry": "Pedals Telemetry",
   "pedals-telemetry-compact": "Pedales avanzados",
 };
 const widgetLabel = (widget: WidgetType) => WIDGET_LABELS[widget] ?? widget;

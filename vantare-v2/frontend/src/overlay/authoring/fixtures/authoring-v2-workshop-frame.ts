@@ -357,6 +357,16 @@ function withWorkshopDemo(frame: OverlayFrameV2, quality: OverlayQualityV2): Ove
     },
     delta: { ...frame.delta, seconds: qualityValue(0.214, quality) },
     controls: { history: demoControlsHistory(quality) },
+    fuel: {
+      ...frame.fuel,
+      perLap: qualityValue(2.14, quality),
+      requiredFuel: qualityValue(169.1, quality),
+      history: {
+        q: quality,
+        lap: [14, 15, 16, 17],
+        consumed: [2.21, 2.08, 2.26, 2.12],
+      },
+    },
     weather: {
       ...frame.weather,
       ambientC: qualityValue(21, quality),

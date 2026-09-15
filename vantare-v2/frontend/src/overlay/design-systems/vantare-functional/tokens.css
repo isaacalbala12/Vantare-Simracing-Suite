@@ -259,20 +259,31 @@
 .vf-pedals-telemetry-position-label { font: 600 7px/1 Inter, Arial, sans-serif; letter-spacing: .12em; color: var(--vf-muted); }
 .vf-pedals-telemetry-position b { font: 700 14px/1 Inter, Arial, sans-serif; font-variant-numeric: tabular-nums; color: var(--vf-ink); }
 
-/* Fuel strategy: panel compacto de combustible con historial de vueltas. */
-.vf-fuel-strategy { display: flex; flex-direction: column; justify-content: flex-start; min-height: 100%; padding: 10px 12px; }
-.vf-fuel-strategy-body { display: flex; flex-direction: column; gap: 8px; }
-.vf-fuel-strategy-primary { display: flex; align-items: baseline; gap: 8px; }
-.vf-fuel-strategy-primary .vf-fuel-strategy-label { font: 600 8px/1 Inter, Arial, sans-serif; letter-spacing: .12em; color: var(--vf-muted); text-transform: uppercase; }
-.vf-fuel-strategy-primary .vf-fuel-strategy-value { font: 700 24px/1 Inter, Arial, sans-serif; font-variant-numeric: tabular-nums; color: var(--vf-ink); }
-.vf-fuel-strategy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; }
-.vf-fuel-strategy-slot { display: flex; align-items: baseline; gap: 6px; }
-.vf-fuel-strategy-slot-label { font: 600 7px/1 Inter, Arial, sans-serif; letter-spacing: .1em; color: var(--vf-muted); text-transform: uppercase; }
-.vf-fuel-strategy-slot-value { font: 650 12px/1 Inter, Arial, sans-serif; font-variant-numeric: tabular-nums; color: var(--vf-ink); }
-.vf-fuel-strategy-history { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--vf-line); }
-.vf-fuel-strategy-row { display: flex; align-items: baseline; justify-content: space-between; font: 650 11px/1 Inter, Arial, sans-serif; }
-.vf-fuel-strategy-row-lap { font: 600 7px/1 Inter, Arial, sans-serif; letter-spacing: .1em; color: var(--vf-muted); text-transform: uppercase; }
-.vf-fuel-strategy-row-value { font-variant-numeric: tabular-nums; color: var(--vf-ink); }
+/* Fuel Strategy: panel principal (nivel + barra + stats + estimación) y
+   panel de historial separado por un hairline — misma composición que el
+   diseño de referencia, con el lenguaje funcional. */
+.vf-fuel-strategy { display: flex; align-items: stretch; height: 100%; min-height: 0; padding: 0; }
+.vf-fuel-strategy .vf-status { display: flex; flex: 1; align-items: center; justify-content: center; margin: 0; font: 600 9px/1 Inter, Arial, sans-serif; letter-spacing: .14em; color: var(--vf-muted); }
+.vf-fuel-main { display: flex; flex-direction: column; flex: 1; min-width: 0; padding: 12px 14px; }
+.vf-fuel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.vf-fuel-label { font: 600 8px/1 Inter, Arial, sans-serif; letter-spacing: .16em; color: var(--vf-muted); text-transform: uppercase; }
+.vf-fuel-value { font: 700 26px/1 Inter, Arial, sans-serif; letter-spacing: -.02em; font-variant-numeric: tabular-nums; color: var(--vf-ink); }
+.vf-fuel-bar { height: 4px; margin-top: 10px; border-radius: 2px; overflow: hidden; background: rgb(255 255 255 / 8%); }
+.vf-fuel-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #e32530, var(--vf-accent)); }
+.vf-fuel-stats { display: flex; gap: 14px; flex: 1; align-items: center; }
+.vf-fuel-stat { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.vf-fuel-stat-label { font: 600 7px/1 Inter, Arial, sans-serif; font-style: normal; letter-spacing: .12em; color: var(--vf-muted); text-transform: uppercase; }
+.vf-fuel-stat-value { font: 650 13px/1 Inter, Arial, sans-serif; font-variant-numeric: tabular-nums; color: var(--vf-ink); }
+.vf-fuel-stat-value--req { color: #e2c568; }
+.vf-fuel-foot { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: auto; padding-top: 8px; border-top: 1px solid var(--vf-line); font: 600 8px/1 Inter, Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--vf-muted); }
+.vf-fuel-foot b { font-weight: 650; font-size: 9px; color: var(--vf-ink); font-variant-numeric: tabular-nums; }
+.vf-fuel-history { display: flex; flex-direction: column; width: 36%; flex-shrink: 0; min-width: 150px; padding: 12px 14px; border-left: 1px solid var(--vf-line); }
+.vf-fuel-history-title { font: 600 8px/1 Inter, Arial, sans-serif; letter-spacing: .16em; color: var(--vf-muted); text-transform: uppercase; padding-bottom: 8px; border-bottom: 1px solid var(--vf-line); }
+.vf-fuel-history-list { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+.vf-fuel-history-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 7px 0; box-shadow: inset 0 -1px var(--vf-line); font: 650 11px/1 Inter, Arial, sans-serif; font-variant-numeric: tabular-nums; }
+.vf-fuel-history-row:last-child { box-shadow: none; }
+.vf-fuel-history-row span { font-weight: 600; font-size: 7px; letter-spacing: .1em; color: var(--vf-muted); text-transform: uppercase; }
+.vf-fuel-history-row b { color: var(--vf-ink); }
 
 /* Car damage numbers: grid compacto de porcentajes. */
 .vf-car-damage-numbers { display: flex; flex-direction: column; justify-content: center; min-height: 100%; padding: 10px 12px; }
@@ -331,20 +342,26 @@
 .vf-race-schedule-classes { font: 600 7px/1 Inter, Arial, sans-serif; letter-spacing: .08em; color: var(--vf-muted); text-transform: uppercase; }
 .vf-race-schedule-duration { font: 650 10px/1 Inter, Arial, sans-serif; color: var(--vf-ink); }
 
-/* Broadcast tower: lista compacta tipo standings sin cabecera de sesión. */
-.vf-broadcast-tower { display: flex; flex-direction: column; justify-content: flex-start; min-height: 100%; padding: 10px 12px; }
-.vf-broadcast-tower-header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--vf-line); }
-.vf-broadcast-tower-label { font: 700 12px/1 Inter, Arial, sans-serif; letter-spacing: .02em; color: var(--vf-ink); text-transform: uppercase; }
-.vf-broadcast-tower-lap { font: 600 9px/1 Inter, Arial, sans-serif; letter-spacing: .08em; color: var(--vf-muted); }
-.vf-broadcast-tower-list { display: flex; flex-direction: column; gap: 4px; }
-.vf-broadcast-tower-row { display: grid; grid-template-columns: 26px 34px 1fr 64px; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 4px; }
-.vf-broadcast-tower-row[data-player="true"] { background: var(--vf-player); }
-.vf-broadcast-tower-place { font: 650 12px/1 Inter, Arial, sans-serif; font-variant-numeric: tabular-nums; color: var(--vf-ink); }
-.vf-broadcast-tower-number { font: 600 10px/1 Inter, Arial, sans-serif; font-variant-numeric: tabular-nums; }
-.vf-broadcast-tower-name { font: 650 11px/1 Inter, Arial, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--vf-ink); }
-.vf-broadcast-tower-gap { font: 650 11px/1 Inter, Arial, sans-serif; font-variant-numeric: tabular-nums; text-align: right; color: var(--vf-ink); }
-.vf-broadcast-tower-footer { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--vf-line); }
-.vf-broadcast-tower-ambient, .vf-broadcast-tower-sof { font: 600 8px/1 Inter, Arial, sans-serif; letter-spacing: .08em; color: var(--vf-muted); }
+/* Horizontal Standings: tira de ancho completo. La caja es horizontal-only
+   (la altura es fija); las tarjetas reparten el ancho a partes iguales. */
+.vf-broadcast-tower { display: flex; align-items: stretch; height: 100%; min-height: 0; padding: 0; }
+.vf-broadcast-tower .vf-status { display: flex; flex: 1; align-items: center; justify-content: center; margin: 0; font: 600 9px/1 Inter, Arial, sans-serif; letter-spacing: .14em; color: var(--vf-muted); }
+.vf-bt-lead { display: flex; flex-direction: column; justify-content: center; gap: 4px; flex-shrink: 0; min-width: 0; padding: 0 14px; border-right: 1px solid var(--vf-line); }
+.vf-bt-session { font: 600 8px/1 Inter, Arial, sans-serif; letter-spacing: .16em; color: var(--vf-muted); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vf-bt-lap { font: 700 17px/1 Inter, Arial, sans-serif; letter-spacing: -.02em; color: var(--vf-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.vf-bt-lap-total { margin-left: 1px; font-size: 10px; font-weight: 600; color: var(--vf-muted); }
+.vf-bt-stream { display: flex; flex: 1; min-width: 0; align-items: stretch; }
+.vf-bt-card { display: flex; align-items: center; gap: 8px; flex: 1 1 0; min-width: 0; padding: 0 12px; }
+.vf-bt-card + .vf-bt-card { border-left: 1px solid var(--vf-line); }
+.vf-bt-card[data-player="true"] { background: var(--vf-player); box-shadow: inset 0 1px rgb(255 255 255 / 13%), inset 0 -1px rgb(255 255 255 / 8%); }
+.vf-bt-place { flex-shrink: 0; min-width: 16px; font: 650 15px/1 Inter, Arial, sans-serif; font-variant-numeric: tabular-nums; color: var(--vf-muted); }
+.vf-bt-brand { flex-shrink: 0; align-self: stretch; width: 3px; margin: 14px 0; border-radius: 1px; }
+.vf-bt-id { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
+.vf-bt-name { font: 700 12px/1 Inter, Arial, sans-serif; letter-spacing: -.01em; color: var(--vf-ink); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vf-bt-team { font: 600 7px/1 Inter, Arial, sans-serif; font-style: normal; letter-spacing: .12em; color: var(--vf-muted); }
+.vf-bt-gap { flex-shrink: 0; font: 650 10px/1 Inter, Arial, sans-serif; font-variant-numeric: tabular-nums; color: var(--vf-muted); }
+.vf-bt-side { display: flex; flex-direction: column; justify-content: center; gap: 5px; flex-shrink: 0; padding: 0 14px; border-left: 1px solid var(--vf-line); }
+.vf-bt-ambient, .vf-bt-sof { font: 600 8px/1 Inter, Arial, sans-serif; letter-spacing: .12em; color: var(--vf-muted); text-transform: uppercase; white-space: nowrap; }
 
 /* Multiclass relative: filas con etiqueta de clase. */
 .vf-multiclass-relative { display: flex; flex-direction: column; justify-content: flex-start; min-height: 100%; padding: 10px 12px; }

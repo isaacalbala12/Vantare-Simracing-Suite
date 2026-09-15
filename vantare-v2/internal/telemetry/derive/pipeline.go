@@ -302,6 +302,9 @@ func deriveControlsHistory(
 // Allocating the final length once also avoids append-then-tail-copy churn when
 // the history is full.
 func appendControlSample(previous []ControlSample, sample ControlSample, limit int) []ControlSample {
+	if limit <= 0 {
+		limit = MaxControlsHistory
+	}
 	if len(previous) >= limit {
 		next := make([]ControlSample, limit)
 		copy(next, previous[len(previous)-limit+1:])

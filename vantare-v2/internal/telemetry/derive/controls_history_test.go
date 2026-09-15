@@ -227,6 +227,63 @@ func TestAppendControlSampleOwnsHistoryAndKeepsBoundedTail(t *testing.T) {
 	}
 }
 
+func TestAppendControlSampleNormalizesInvalidLimit(t *testing.T) {
+	t.Parallel()
+
+	next := appendControlSample(nil, ControlSample{Cursor: schema.Cursor{Sequence: 1}}, 0)
+	if len(next) != 1 || next[0].Cursor.Sequence != 1 {
+		t.Fatalf("limit zero produced %v, want one retained sample", next)
+	}
+}
+
+var controlHistoryBenchmarkSink ControlHistory
+
+// BenchmarkDeriveControlsHistoryAllocation is a short, copyable harness for
+// base/candidate comparison. It calls the real deriveControlsHistory path and
+// keeps the history empty, partial, or full while varying pedal freshness.
+// The coordinator owns the actual repeated measurement; this declaration only
+// provides the identical benchmark shape on both revisions.
+func BenchmarkDeriveControlsHistoryAllocation(b *testing.B) {
+	for _, current := range []struct {
+		name      string
+		history   int
+		freshness schema.Freshness
+	}{
+		{name: "empty_fresh", history: 0, freshness: schema.FreshnessFresh},
+		{name: "partial_fresh", history: 60, freshness: schema.FreshnessFresh},
+		{name: "full_fresh", history: MaxControlsHistory, freshness: schema.FreshnessFresh},
+		{name: "full_stale", history: MaxControlsHistory, freshness: schema.FreshnessStale},
+		{name: "full_missing", history: MaxControlsHistory, freshness: schema.FreshnessMissing},
+	} {
+		b.Run(current.name, func(b *testing.B) {
+			field := func(value schema.Ratio) schema.Field[schema.Ratio] {
+				if current.freshness == schema.FreshnessMissing {
+					return schema.MissingField[schema.Ratio]()
+				}
+				result, err := schema.NewField(value, schema.ProvenanceObserved, current.freshness)
+				if err != nil {
+					b.Fatal(err)
+				}
+				return result
+			}
+			observed := core.ObservedState{Vehicles: []core.VehicleState{{
+				Identity: identity.RunIdentity{Vehicle: "player"},
+				Throttle: field(.5), Brake: field(.25), Clutch: field(.1),
+			}}}
+			header := envelope.Header{Cursor: schema.Cursor{Epoch: 1, Sequence: 1}, Identity: identity.RunIdentity{Vehicle: "player"}}
+			history := make([]ControlSample, current.history)
+			for index := range history {
+				history[index].Cursor.Sequence = schema.Sequence(index + 1)
+			}
+			b.ReportAllocs()
+			b.ResetTimer()
+			for range b.N {
+				controlHistoryBenchmarkSink = deriveControlsHistory(header, observed, history, MaxControlsHistory)
+			}
+		})
+	}
+}
+
 // observedSnapshotWithMotion mirrors observedSnapshot but also drives the
 // canonical motion fields of the active vehicle.
 func observedSnapshotWithMotion(

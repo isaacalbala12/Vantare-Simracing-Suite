@@ -113,11 +113,11 @@ describe("recorded data screen", () => {
     fireEvent.keyDown(screen.getByRole("tab", { name: "strategy.data.tab.race" }), { key: "ArrowRight" });
     expect(document.activeElement).toBe(screen.getByRole("tab", { name: "strategy.data.tab.data" }));
     fireEvent.click(screen.getByRole("button", { name: "strategy.data.sources" }));
-    const drawer = screen.getByRole("dialog");
+    const drawer = screen.getByTestId("strategy-recorded-source-screen");
     fireEvent.click(within(drawer).getByRole("button", { name: "strategy.recorded.discover" }));
     fireEvent.click(await within(drawer).findByRole("button", { name: "strategy.recorded.open" }));
     await within(drawer).findByRole("button", { name: "strategy.recorded.apply" });
-    fireEvent.click(within(drawer).getAllByRole("button", { name: "strategy.recorded.close" })[0]);
+    fireEvent.click(within(drawer).getByRole("button", { name: /strategy.journey.back/ }));
     fireEvent.change(screen.getByLabelText("strategy.data.source"), { target: { value: "handle" } });
     await screen.findByRole("button", { name: "strategy.laps.load" });
     fireEvent.click(screen.getByRole("button", { name: "strategy.laps.advanced" }));
@@ -622,12 +622,12 @@ describe("recorded identity selector", () => {
     render(<StrategyRecordedWorkflow eventId="event" initial={initial} catalog={[catalogCombination]} catalogState="available" calendar={null} application={application} analysis={analysis} onExit={vi.fn()} onCleanupError={vi.fn()} t={t} />);
     fireEvent.click(screen.getByRole("tab", { name: "strategy.data.tab.data" }));
     fireEvent.click(screen.getByRole("button", { name: "strategy.data.sources" }));
-    const drawer = screen.getByRole("dialog");
+    const drawer = screen.getByTestId("strategy-recorded-source-screen");
     fireEvent.click(within(drawer).getByRole("button", { name: "strategy.recorded.discover" }));
     fireEvent.click(await within(drawer).findByRole("button", { name: "strategy.recorded.open" }));
     fireEvent.click(await within(drawer).findByRole("button", { name: "strategy.recorded.apply" }));
     await within(drawer).findByText("strategy.recorded.applied");
-    fireEvent.click(within(drawer).getAllByRole("button", { name: "strategy.recorded.close" })[0]);
+    fireEvent.click(within(drawer).getByRole("button", { name: /strategy.journey.back/ }));
     fireEvent.change(screen.getByLabelText("strategy.data.source"), { target: { value: "handle" } });
     await screen.findByRole("button", { name: "strategy.laps.load" });
     fireEvent.click(await screen.findByRole("button", { name: "strategy.classification.tab" }));

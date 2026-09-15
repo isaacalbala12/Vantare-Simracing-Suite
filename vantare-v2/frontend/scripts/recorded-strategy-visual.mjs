@@ -49,13 +49,14 @@ async function waitForServer() {
   throw new Error(`recorded Strategy harness did not start\n${serverOutput}`);
 }
 
-async function pageFor(browser, width, height, locale = 'es', calculation = '') {
+async function pageFor(browser, width, height, locale = 'es', calculation = '', catalog = '') {
   const page = await stillPage(browser, { viewport: { width, height }, deviceScaleFactor: 1, timezoneId: 'Europe/Madrid' });
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.clock.setFixedTime(clock);
   const query = new URLSearchParams({ locale });
   if (calculation) query.set('calculation', calculation);
+  if (catalog) query.set('catalog', catalog);
   await page.goto(`${baseUrl}?${query}`, { waitUntil: 'networkidle' });
   await page.getByTestId('orbit-strategy').waitFor();
   await settle(page);
@@ -116,10 +117,10 @@ async function widthContract(page) {
 async function openAnalysis(page) {
   await page.locator('#recorded-tab-data').click();
   await page.locator('#recorded-panel-data button').filter({ hasText: /fuentes/i }).click();
-  const drawer = page.getByRole('dialog');
-  await drawer.locator('button').filter({ hasText: /Buscar|Search|Procurar|Cerca/i }).first().click();
-  await drawer.locator('.orbit-strategy__session-row button:enabled').filter({ hasText: /Abrir|Open|Apri/i }).first().click();
-  await drawer.locator('button').filter({ hasText: /Inspeccionar|Inspect|Ispeziona/i }).click();
+  const sources = page.getByTestId('strategy-recorded-source-screen');
+  await sources.locator('button').filter({ hasText: /Buscar|Search|Procurar|Cerca/i }).first().click();
+  await sources.locator('.orbit-strategy__session-row button:enabled').filter({ hasText: /Abrir|Open|Apri/i }).first().click();
+  await sources.locator('button').filter({ hasText: /Inspeccionar|Inspect|Ispeziona/i }).click();
   await page.locator('#recorded-panel-data select').first().waitFor();
   await settle(page);
 }
@@ -137,12 +138,24 @@ async function captureMain(browser) {
   }
   await page.close();
 
+  const combinationSources = await pageFor(browser, 1672, 941, 'es', '', 'empty');
+  await combinationSources.page.locator('.strategy-recorded-frame__footer button').last().click();
+  await combinationSources.page.getByRole('button', { name: /Buscar sesiones/i }).click();
+  const combinationSourceScreen = combinationSources.page.getByTestId('strategy-recorded-source-screen');
+  await combinationSourceScreen.waitFor();
+  await screenshot(combinationSources.page, '02b-combination-sources');
+  const combinationSourceWidth = await widthContract(combinationSources.page);
+  if (combinationSourceWidth.scrollWidth > combinationSourceWidth.innerWidth || combinationSourceWidth.overflow.length) {
+    throw new Error(`combination source screen width contract failed\n${JSON.stringify(combinationSourceWidth, null, 2)}`);
+  }
+  await combinationSources.page.close();
+
   const dataRun = await pageFor(browser, 1672, 941);
   await openSaved(dataRun.page);
   await dataRun.page.locator('#recorded-tab-data').click();
   await screenshot(dataRun.page, '07-data-empty');
   await dataRun.page.locator('#recorded-panel-data button').filter({ hasText: /fuentes/i }).click();
-  const drawer = dataRun.page.getByRole('dialog');
+  const drawer = dataRun.page.getByTestId('strategy-recorded-source-screen');
   await drawer.locator('button').filter({ hasText: /Buscar/i }).first().click();
   await screenshot(dataRun.page, '08-data-sources');
   await drawer.locator('.orbit-strategy__session-row button:enabled').filter({ hasText: /Abrir/i }).first().click();
@@ -206,7 +219,7 @@ async function captureMatrix(browser) {
       if (width <= 768) {
         await run.page.locator('#recorded-tab-data').click();
         await run.page.locator('#recorded-panel-data button').filter({ hasText: /fuentes|sources|fontes|fonti/i }).click();
-        const drawer = run.page.getByRole('dialog');
+        const drawer = run.page.getByTestId('strategy-recorded-source-screen');
         await drawer.locator('button').filter({ hasText: /Buscar|Find|Procurar|Cerca/i }).first().click();
         journeys.sources = await widthContract(run.page);
         await screenshot(run.page, `matrix-${locale}-${width}-sources`);

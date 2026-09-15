@@ -2,12 +2,12 @@
 
 ## Resultado final
 
-- Pasada aceptada: `pass-23`.
-- Cobertura: 18 pantallas principales y 72 capturas responsive.
+- Pasada base aceptada: `pass-23`.
+- Corrección nativa de fuentes aceptada: `pass-27-runtime-source-screen`.
+- Cobertura: 19 pantallas principales y 72 capturas responsive.
 - Idiomas: ES, EN, PT e IT.
 - Anchuras cubiertas: 320, 768, 1024 y 1672 px según la familia.
-- Mínimo principal: 9,1/10.
-- Mínimo responsive: 9,1/10.
+- Nota adversarial final: 9,2/10.
 - Hallazgos pendientes: ninguno P0, P1 o P2.
 - `responsive.json`: 16 combinaciones, sin diferencia entre ancho interior y
   contenido, sin overflow registrado, sin errores de página y con foco visible.
@@ -67,6 +67,19 @@ idiomas, el foco y la ausencia de desbordamientos.
 
 El artefacto verificable de geometría y runtime es
 `pass-23/responsive.json`.
+
+## Corrección tras preflight Wails
+
+La biblioteca de fuentes dejó de ser un drawer y ahora ocupa una pantalla A4
+completa. El flujo repite automáticamente la observación de estabilidad sin
+debilitar la protección del archivo activo. `pass-27-runtime-source-screen`
+recaptura 91 imágenes, incluida la entrada real desde «Elige tu combinación»,
+y su `responsive.json` no registra overflow ni errores.
+
+La revisión adversarial final se ejecutó con GPT-5.6 Sol medium y abrió los 91
+PNG completos por separado. Puntúa el conjunto 9,2/10, sin P0/P1/P2. Como P3
+deja el tamaño táctil ajustado de algunos controles a 320 px y la partición
+legible de nombres largos de archivo en dos líneas.
 
 ## Límite de la evidencia
 

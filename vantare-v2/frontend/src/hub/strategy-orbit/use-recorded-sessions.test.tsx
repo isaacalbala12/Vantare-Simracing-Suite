@@ -8,9 +8,27 @@ import { useRecordedSessions } from "./use-recorded-sessions";
 import { StrategyRecordedSessionsView } from "./StrategyRecordedSessions";
 
 vi.mock("./strategy-recorded-session", () => ({ openRecordedSession: vi.fn() }));
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+afterEach(() => { cleanup(); vi.clearAllMocks(); vi.useRealTimers(); });
 const candidate = { id: "candidate", state: "ready", size: 1024, modifiedAt: "2026-09-09T12:00:00Z", walPresent: false };
 const session = { candidateId: "candidate", combinationId: "combo", base: { sessionId: "source" }, opened: { sessionId: "handle", session: { metadata: [] } }, revision: { sessionId: "source", revisionId: "a".repeat(64), baseDigest: "b".repeat(64), snapshotId: "c".repeat(64) } } as RecordedSession;
+
+it("automatically verifies stable discovered files until they can be opened", async () => {
+  vi.useFakeTimers();
+  const stabilizing = { ...candidate, state: "stabilizing" };
+  const discover = vi.fn().mockResolvedValueOnce([stabilizing]).mockResolvedValueOnce([candidate]);
+  const client = { discover, close: vi.fn() } as unknown as AnalysisClient;
+  const { result } = renderHook(() => useRecordedSessions({ revisions: [], client, onApply: vi.fn(), onCleanupError: vi.fn() }));
+
+  let discovery!: Promise<void>;
+  await act(async () => { discovery = result.current.discover(); });
+  expect(result.current.candidates).toEqual([stabilizing]);
+  expect(discover).toHaveBeenCalledTimes(1);
+
+  await act(async () => { await vi.advanceTimersByTimeAsync(5_500); await discovery; });
+  expect(discover).toHaveBeenCalledTimes(2);
+  expect(result.current.candidates).toEqual([candidate]);
+  vi.useRealTimers();
+});
 
 it("serializes correction reads against close in the same cycle and releases settled editor state", async () => {
   let finish!: (value: unknown) => void;

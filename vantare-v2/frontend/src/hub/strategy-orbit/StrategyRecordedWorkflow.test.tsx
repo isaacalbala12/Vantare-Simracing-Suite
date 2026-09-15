@@ -26,12 +26,12 @@ it("completes the five-step bootstrap using only an explicitly opened and accept
   const { execute, close, unmount } = setup();
   fireEvent.click(screen.getByRole("button", { name: /strategy.journey.next/ }));
   fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.discover" }));
-  const drawer = screen.getByRole("dialog");
-  fireEvent.click(await within(drawer).findByRole("button", { name: "strategy.recorded.open" }));
-  fireEvent.click(await within(drawer).findByRole("button", { name: "strategy.recorded.apply" }));
-  await within(drawer).findByText("strategy.recorded.applied");
+  const sourceScreen = screen.getByTestId("strategy-recorded-source-screen");
+  fireEvent.click(await within(sourceScreen).findByRole("button", { name: "strategy.recorded.open" }));
+  fireEvent.click(await within(sourceScreen).findByRole("button", { name: "strategy.recorded.apply" }));
+  await within(sourceScreen).findByText("strategy.recorded.applied");
   expect(execute).not.toHaveBeenCalled();
-  fireEvent.click(within(drawer).getAllByRole("button", { name: "strategy.recorded.close" })[0]);
+  fireEvent.click(within(sourceScreen).getByRole("button", { name: /strategy.journey.back/ }));
   for (let step = 0; step < 3; step++) fireEvent.click(screen.getByRole("button", { name: /strategy.journey.next/ }));
   fireEvent.click(screen.getByRole("button", { name: /strategy.journey.openDraft/ }));
   await screen.findByText("strategy.workspace.saved");
@@ -88,10 +88,10 @@ async function advanceToCombination() {
 }
 async function discoverAndOpen() {
   fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.discover" }));
-  const drawer = screen.getByRole("dialog");
-  fireEvent.click(await within(drawer).findByRole("button", { name: "strategy.recorded.open" }));
-  await within(drawer).findByRole("button", { name: "strategy.recorded.inspect" });
-  return drawer;
+  const sourceScreen = screen.getByTestId("strategy-recorded-source-screen");
+  fireEvent.click(await within(sourceScreen).findByRole("button", { name: "strategy.recorded.open" }));
+  await within(sourceScreen).findByRole("button", { name: "strategy.recorded.inspect" });
+  return sourceScreen;
 }
 async function inspectPartial() {
   const f = inspectionJourney();
@@ -118,7 +118,7 @@ describe("recorded inspection journey", () => {
     expect((within(drawer).getByRole("button", { name: "strategy.recorded.apply" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(within(drawer).getByRole("button", { name: "strategy.recorded.inspect" }));
     await screen.findByRole("button", { name: "strategy.laps.advanced" });
-    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByTestId("strategy-recorded-source-screen")).toBeNull();
     expect(screen.getByRole("option", { name: "Imola_partial.duckdb" })).toBeTruthy();
     await applyScalarSample();
     fireEvent.change(screen.getByLabelText("strategy.data.revisionReason"), { target: { value: "Checked inspection" } });
@@ -155,13 +155,13 @@ describe("recorded inspection journey", () => {
     expect(screen.queryByRole("button", { name: /strategy.journey.next/ })).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "strategy.data.tab.race" }));
     fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.review" }));
-    const drawer = screen.getByRole("dialog");
+    const drawer = screen.getByTestId("strategy-recorded-source-screen");
     expect(f.load).toHaveBeenCalledTimes(1);
     fireEvent.click(within(drawer).getByRole("button", { name: "strategy.recorded.inspect" }));
-    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(screen.getByTestId("strategy-recorded-source-screen")).toBeTruthy();
     expect(f.load).toHaveBeenCalledTimes(1);
-    fireEvent.click(within(drawer).getByTestId("orbit-drawer-close"));
-    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(within(drawer).getByRole("button", { name: /strategy.journey.back/ }));
+    expect(screen.queryByTestId("strategy-recorded-source-screen")).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "strategy.data.tab.data" }));
     const request = f.save.mock.calls[0][0] as AnalysisSaveRequest;
     const response = f.buildResponse(request);

@@ -257,10 +257,11 @@ async function handleHarnessStrategyCommand(command: Record<string, unknown>) {
   }
 
   if (operation === "list_session_combinations") {
+    const emptyCatalog = new URLSearchParams(globalThis.location?.search ?? "").get("catalog") === "empty";
     broadcast("strategy:application:result", {
       ...baseResult,
       sessionCatalogStatus: "available",
-      sessionCombinations: [{
+      sessionCombinations: emptyCatalog ? [] : [{
         combinationId: "lmu:imola-lmgt3",
         simId: "lmu",
         trackName: "Imola",

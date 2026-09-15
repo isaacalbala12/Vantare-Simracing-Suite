@@ -5,6 +5,22 @@ import type { StrategyAnalysisRevisionRef } from "../../strategy/strategy-applic
 import { openRecordedSession, type RecordedSession } from "./strategy-recorded-session";
 import { useRecordedCorrections } from "./use-recorded-corrections";
 
+const STABILITY_RECHECK_MS = 5_500;
+
+function waitForStability(signal: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    const aborted = () => {
+      globalThis.clearTimeout(timer);
+      reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+    };
+    const timer = globalThis.setTimeout(() => {
+      signal.removeEventListener("abort", aborted);
+      resolve();
+    }, STABILITY_RECHECK_MS);
+    signal.addEventListener("abort", aborted, { once: true });
+  });
+}
+
 export type RecordedSessionsOptions = {
   readonly combinationId?: string;
   readonly revisions: readonly StrategyAnalysisRevisionRef[];
@@ -75,9 +91,15 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
     locked: corrections.unresolved,
     cancel: () => { pending.current?.abort(); corrections.cancel(); },
     discover: () => run(async signal => {
-      const found = await client.discover(signal);
+      let found = await client.discover(signal);
       signal.throwIfAborted();
       if (alive.current) setCandidates(found);
+      if (found.some(candidate => candidate.state === "stabilizing" && !candidate.walPresent)) {
+        await waitForStability(signal);
+        found = await client.discover(signal);
+        signal.throwIfAborted();
+        if (alive.current) setCandidates(found);
+      }
     }),
     open: (candidate: AnalysisCandidate) => run(async signal => {
       if (owned.current.length >= 4 || candidate.state !== "ready" || candidate.walPresent || owned.current.some(item => item.candidateId === candidate.id)) return;

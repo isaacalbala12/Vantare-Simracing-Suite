@@ -2,11 +2,11 @@ import { useState, type ReactNode } from "react";
 import type { Calendar } from "../../calendar/calendar-types";
 import type { AnalysisClient } from "../../strategy/analysis-client";
 import type { StrategyApplicationClient } from "../../strategy/strategy-application-client";
-import { ConfirmDialog, Drawer, Button } from "../../ui/orbit";
+import { ConfirmDialog, Button } from "../../ui/orbit";
 import { useHubSuspendBlocker } from "../hub-suspend-guard";
 import type { RecordedDraftPayload } from "./strategy-recorded-payload";
 import type { StoredRecordedDraft } from "./strategy-recorded-persistence";
-import type { RecordedCombination, RecordedWizardDraft, RecordedWizardStep } from "./strategy-recorded-wizard";
+import { RECORDED_WIZARD_STEPS, type RecordedCombination, type RecordedWizardDraft, type RecordedWizardStep } from "./strategy-recorded-wizard";
 import { useRecordedWorkflow } from "./use-recorded-workflow";
 import type { RecordedSession } from "./strategy-recorded-session";
 import { StrategyRecordedWizard } from "./StrategyRecordedWizard";
@@ -17,6 +17,8 @@ import { StrategyRecordedRevisions } from "./StrategyRecordedRevisions";
 import { StrategyRecordedPlan } from "./StrategyRecordedPlan";
 import { useRecordedCalculation } from "./use-recorded-calculation";
 import { useRecordedAcceptance } from "./use-recorded-acceptance";
+import { StrategyRecordedFrame } from "./StrategyRecordedFrame";
+import { formatMessage } from "../orbit/format-message";
 
 /** Mount once per event. Views never own or dispose the opened Analysis files. */
 export function StrategyRecordedWorkflow({ eventId, repositoryVersion, repositoryLoading = false, onRetryRepository, initial, catalog, catalogState, calendar, application, analysis, onExit, onCleanupError, navigation, t }: {
@@ -68,7 +70,18 @@ export function StrategyRecordedWorkflow({ eventId, repositoryVersion, repositor
   const sourceView = <StrategyRecordedSessionsView controller={{ ...flow.sessions, busy: flow.busy, locked: flow.sessions.locked || formPending || strategyBusy }} onInspect={inspectSession} t={t} />;
   return <div className="strategy-recorded-workflow" data-view={flow.view} data-tab={tab}>
     {navigation?.({ requestExit: exit, draft: flow.draft, view: flow.view, busy: flow.busy || strategyBusy })}
-    {flow.view === "preparation" ? <StrategyRecordedWizard draft={flow.draft} onChange={flow.change} catalog={flow.choices} catalogState={flow.choices.length > 0 ? "available" : catalogState} calendar={calendar}
+    {libraryOpen ? <div className="strategy-recorded-source-screen" data-testid="strategy-recorded-source-screen">
+      <StrategyRecordedFrame
+        steps={RECORDED_WIZARD_STEPS.map(id => ({ id, label: t(`strategy.journey.step.${id}`), available: false }))}
+        currentStep={flow.draft.step}
+        onStep={() => undefined}
+        title={t("strategy.recorded.title")}
+        description={t("strategy.recorded.hint")}
+        preservationLabel={t("strategy.recorded.originals")}
+        progressLabel={formatMessage(t("strategy.journey.progress"), { step: RECORDED_WIZARD_STEPS.indexOf(flow.draft.step) + 1, total: RECORDED_WIZARD_STEPS.length })}
+        actions={<Button variant="ghost" disabled={flow.sessions.busy} onClick={() => setLibraryOpen(false)}>← {t("strategy.journey.back")}</Button>}
+      >{sourceView}</StrategyRecordedFrame>
+    </div> : flow.view === "preparation" ? <StrategyRecordedWizard draft={flow.draft} onChange={flow.change} catalog={flow.choices} catalogState={flow.choices.length > 0 ? "available" : catalogState} calendar={calendar}
       canOpenDraft={!flow.busy && (flow.stored !== undefined || repositoryVersion !== undefined)}
       openDraftHint={t(flow.sessions.busy ? "strategy.recorded.busy" : repositoryLoading ? "strategy.workspace.repositoryLoading" : "strategy.workspace.repositoryUnavailable")}
       onRetryOpenDraft={!flow.busy && !repositoryLoading ? onRetryRepository : undefined}
@@ -86,7 +99,6 @@ export function StrategyRecordedWorkflow({ eventId, repositoryVersion, repositor
         <div className="strategy-recorded-editor-panel" id="recorded-panel-plan" role="tabpanel" aria-labelledby="recorded-tab-plan" hidden={tab !== "plan"}><StrategyRecordedPlan draft={flow.draft} state={calculation.state} acceptance={acceptance} locked={flow.busy || formPending || repositoryVersion === undefined} onChange={flow.change} onCalculate={() => void calculation.calculate()} onRecalculateStints={constraints => void calculation.recalculateStints(constraints)} onRecalculatePits={constraints => void calculation.recalculatePits(constraints)} onCancel={calculation.cancel} t={t} /></div>
         {historyVisited ? <div className="strategy-recorded-editor-panel" id="recorded-panel-revisions" role="tabpanel" aria-labelledby="recorded-tab-revisions" hidden={tab !== "revisions"}><StrategyRecordedRevisions key={revisionKey} controller={flow.sessions.corrections} sessions={flow.sessions.sessions} selectedRevisions={flow.draft.sessions} sessionLabels={sessionLabels} busy={flow.busy || dataPending || strategyBusy} configurationSaved={Boolean(flow.stored)} configurationDirty={flow.dirty} onSources={() => setLibraryOpen(true)} onPendingChange={setHistoryPending} t={t} /></div> : null}
       </>}
-    <Drawer open={libraryOpen} title={t("strategy.recorded.title")} closeLabel={t("strategy.recorded.close")} onClose={() => setLibraryOpen(false)}>{sourceView}</Drawer>
     <ConfirmDialog open={exitOpen} title={t("strategy.workspace.leaveTitle")} body={t("strategy.workspace.leaveBody")} confirmLabel={t("strategy.workspace.leave")} cancelLabel={t("strategy.recorded.cancel")} onCancel={() => setExitOpen(false)} onConfirm={onExit} />
   </div>;
 }

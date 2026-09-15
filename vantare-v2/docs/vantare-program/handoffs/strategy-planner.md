@@ -6,9 +6,9 @@
 > Este handoff conserva evidencia técnica fechada; sus estados antiguos no
 > sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
 
-## Estado vigente — #1277 T18 cerrado localmente; paridad visual A4 aceptada
+## Estado vigente — #1277 T18 corregido tras la primera prueba nativa
 
-Las 18 pantallas y estados principales de Strategy registrada se han llevado a
+Las 19 pantallas y estados principales de Strategy registrada se han llevado a
 la composición A4 aprobada: asistente único de cinco pasos, editor con sidebar
 comprimido, biblioteca, Carrera, Datos, Revisiones, Plan, Stint, Parada y estados
 de cálculo. El rojo/carmín mantiene presencia contenida sobre el garaje y las
@@ -16,22 +16,32 @@ superficies oscuras de Vantare. La presentación productiva conserva las mismas
 autoridades de datos, cálculo y persistencia; el harness sólo fija respuestas
 deterministas para obtener capturas comparables.
 
-La pasada final `isa-1277-visual/pass-23` contiene 18 capturas principales y 72
-variantes responsive en ES/EN/PT/IT. `responsive.json` registra 16 combinaciones
-sin overflow, errores de página ni foco invisible. La revisión adversarial
-separada puntúa todas las pantallas por encima de 9/10, con mínimo global 9,1 y
-sin P0/P1/P2 visual pendiente.
+La primera ejecución Wails real reveló dos fallos que el harness anterior no
+podía acreditar: todos los DuckDB quedaban para siempre en estabilización porque
+la UI no repetía la observación de seguridad, y la biblioteca se abría en un
+drawer ajeno al recorrido A4. La UI conserva la doble observación y ahora repite
+automáticamente el descubrimiento tras 5,5 segundos; la biblioteca ocupa una
+pantalla intermedia completa, vuelve al contexto anterior y mantiene intactos
+los originales.
+
+La pasada `isa-1277-visual/pass-27-runtime-source-screen` recaptura 19 vistas
+principales, incluida la ruta real desde «Elige tu combinación», y 72 variantes
+responsive. Su matriz vuelve a registrar cero overflow y cero errores. La
+revisión adversarial separada con GPT-5.6 Sol medium abrió los 91 PNG por
+separado, puntúa el conjunto 9,2/10 y no deja P0/P1/P2.
 
 La rama quedó reconciliada con `origin/nightly` en
 `f617467427f8d78f7432b4445d52be0c4dfe616a`. Pasan typecheck, lint, build,
-i18n, 70 pruebas focales, la suite frontend completa (494 archivos; 4.280
-pruebas aprobadas y 2 omitidas), `go test ./...`, 137 checks documentales y el
-contrato de roadmap reconstruido desde esa base.
+i18n, 41 pruebas focales del cambio y la suite frontend completa (490 archivos;
+4.256 pruebas aprobadas y 2 omitidas), 137 checks documentales y el contrato de
+roadmap reconstruido desde esa base. La compilación Wails productiva también
+termina correctamente.
 
-Siguiente: T22 conserva el recorrido Wails con archivos DuckDB reales y la
-configuración/licencia de producto. T18 no prueba reader, LMU, precisión física,
-persistencia nativa ni distribución. Sin app/Wails, LMU, DuckDB, push, PR, CI
-remota, integración ni release.
+La compilación productiva local se reconstruyó y está abierta para repetir el
+recorrido sobre los DuckDB reales del equipo. Falta la confirmación manual de
+que una sesión concreta abre y el resto del gate T22: persistencia, reinicio,
+copia opcional, errores y licencia. Sin push, PR, CI remota, integración ni
+release.
 
 ## Historial — #1276 T17b cerrado localmente; editor de parada conectado
 

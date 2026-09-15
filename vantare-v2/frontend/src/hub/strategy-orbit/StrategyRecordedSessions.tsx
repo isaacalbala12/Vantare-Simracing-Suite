@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { Button, Chip, Note } from "../../ui/orbit";
 import type { RecordedSession } from "./strategy-recorded-session";
 import { useRecordedSessions, type RecordedSessionsController, type RecordedSessionsOptions } from "./use-recorded-sessions";
@@ -44,6 +44,7 @@ export function StrategyRecordedSessionsView({ controller, onInspect, t }: { rea
   const pages = Math.max(1, Math.ceil(filtered.length / 25));
   const currentPage = Math.min(page, pages - 1);
   const visible = filtered.slice(currentPage * 25, (currentPage + 1) * 25);
+  const breakableName = (name: string) => name.split("_").map((part, index, parts) => <Fragment key={`${part}:${index}`}>{part}{index < parts.length - 1 ? <>_<wbr /></> : null}</Fragment>);
   return <section className="orbit-strategy__sessions" aria-label={t("strategy.recorded.title")}>
     <div className="orbit-strategy__sessions-head"><b>{t("strategy.recorded.title")}</b><Chip>{sessions.length}/4</Chip></div>
     <p>{t("strategy.recorded.hint")}</p>
@@ -67,7 +68,7 @@ export function StrategyRecordedSessionsView({ controller, onInspect, t }: { rea
       {filtered.length === 0 ? <p>{t("strategy.recorded.noMatches")}</p> : null}
       <ul className="strategy-recorded-library__list" aria-label={t("strategy.recorded.files")}>
         {visible.map(candidate => <li className="orbit-strategy__session-row" key={candidate.id}>
-          <span><b>{candidate.displayName || t("strategy.recorded.unnamed")}</b><small>{new Date(candidate.modifiedAt).toLocaleString()} · {(candidate.size / 1048576).toFixed(1)} MB</small><small>{t(candidate.state === "ready" && !candidate.walPresent ? "strategy.recorded.ready" : "strategy.recorded.waiting")}</small></span>
+          <span><b>{candidate.displayName ? breakableName(candidate.displayName) : t("strategy.recorded.unnamed")}</b><small>{new Date(candidate.modifiedAt).toLocaleString()} · {(candidate.size / 1048576).toFixed(1)} MB</small><small>{t(candidate.state === "ready" && !candidate.walPresent ? "strategy.recorded.ready" : "strategy.recorded.waiting")}</small></span>
           <Button size="sm" disabled={locked || sessions.length >= 4 || candidate.state !== "ready" || candidate.walPresent || sessions.some(session => session.candidateId === candidate.id)} onClick={() => void controller.open(candidate)}>{t("strategy.recorded.open")}</Button>
         </li>)}
       </ul>

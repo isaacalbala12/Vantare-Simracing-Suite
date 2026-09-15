@@ -735,7 +735,7 @@ export const strategyOrbitEs: Record<string, string> = {
   "strategy.recorded.ready": "Listo para abrir",
   "strategy.recorded.waiting": "No disponible todavía",
   "strategy.recorded.order": "Orden",
-  "strategy.recorded.recent": "Más recientes",
+  "strategy.recorded.recent": "Recientes",
   "strategy.recorded.oldest": "Más antiguos",
   "strategy.recorded.filenameHint": "El nombre sirve para localizar el archivo. Coche y circuito se verificarán al abrirlo.",
   "strategy.recorded.matches": "Archivos encontrados:",

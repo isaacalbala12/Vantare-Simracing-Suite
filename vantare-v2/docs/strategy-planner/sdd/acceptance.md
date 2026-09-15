@@ -116,12 +116,16 @@ se identifican como tales y nunca pasan por telemetría del usuario.
 ### Resultado local T18 — #1277
 
 La pasada final `evidence/isa-1277-visual/pass-23` contiene 18 estados principales
-y 72 variantes responsive en ES/EN/PT/IT. La revisión adversarial visual separada
-puntúa cada pantalla por encima de 9,0, con mínimo global 9,1, y no deja hallazgos
-P0/P1/P2. El informe automático cubre 16 combinaciones de tamaño e idioma sin
-desbordamientos, errores de página ni foco invisible. Es evidencia React del
-componente productivo con runtime determinista; T22 sigue siendo obligatorio para
-Wails, DuckDB real, persistencia nativa y distribución.
+y 72 variantes responsive en ES/EN/PT/IT. La primera ejecución Wails descubrió
+que la biblioteca lateral no pertenecía al recorrido y que una sola observación
+dejaba los DuckDB bloqueados en estabilización. La corrección conserva el gate de
+seguridad, repite automáticamente la observación tras 5,5 segundos y presenta la
+biblioteca como pantalla A4 completa. `pass-27-runtime-source-screen` recaptura 91
+vistas, incluida la ruta real desde «Elige tu combinación», sin overflow ni
+errores; la revisión adversarial GPT-5.6 Sol medium puntúa el conjunto 9,2/10 y
+no deja P0/P1/P2. Falta confirmar la
+apertura de una sesión real y completar persistencia, reinicio, copia, fallos y
+licencia en T22.
 
 ## 5. Protocolo empírico y rendimiento
 

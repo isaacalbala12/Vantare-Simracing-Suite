@@ -707,7 +707,7 @@ export const strategyOrbitPt: Record<string, string> = {
   "strategy.recorded.ready": "Pronto para abrir",
   "strategy.recorded.waiting": "Ainda indisponível",
   "strategy.recorded.order": "Ordem",
-  "strategy.recorded.recent": "Mais recentes",
+  "strategy.recorded.recent": "Recentes",
   "strategy.recorded.oldest": "Mais antigos",
   "strategy.recorded.filenameHint": "O nome ajuda a localizar o ficheiro. O carro e o circuito serão verificados ao abri-lo.",
   "strategy.recorded.matches": "Ficheiros encontrados:",

@@ -204,16 +204,20 @@ export function buildWorkshopWidget(input: {
   }
 
   // Recuento de filas del Standings: el mismo `rowCount` que edita Studio;
-  // el view model recorta por él y en Eficiencia la caja se re-encaja como
-  // en la ventana del Relative — fila fija, marco que sigue al contenido.
+  // el view model recorta por él.
   if (input.widget === "standings" && input.rows !== undefined) {
     const content = widget.content as Record<string, unknown>;
     widget = { ...widget, content: { ...content, rowCount: input.rows } };
-    if (input.system === "vantare-functional") {
-      const minimum = resolveStandingsMinimumSize(widget);
-      if (minimum) {
-        widget = { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height ?? widget.layout.h } };
-      }
+  }
+
+  // El formato de nombre y el recuento cambian el tamaño intrínseco: la caja
+  // se re-encaja después de aplicarlos — el encaje base de createScenarioWidget
+  // siempre vio el formato completo y el recuento por defecto.
+  if (input.widget === "standings" && input.system === "vantare-functional"
+      && (input.rows !== undefined || input.nameFormat !== undefined)) {
+    const minimum = resolveStandingsMinimumSize(widget);
+    if (minimum) {
+      widget = { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height ?? widget.layout.h } };
     }
   }
 

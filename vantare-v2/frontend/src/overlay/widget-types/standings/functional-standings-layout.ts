@@ -10,8 +10,23 @@ const WIDTHS: Readonly<Record<string, number>> = {
 // Presets add breathing room to readable minima; timing text never shrinks below them.
 const PRESET_EXTRA: Readonly<Record<WidgetColumnWidthPreset, number>> = { xs: 0, sm: 0, md: 12, lg: 24, auto: 0 };
 
+// Formatted names have narrower readable minima: "F. Albuquerque" ≈ 118px,
+// "Albuquerque" ≈ 103px, plus cell padding. Broadcast keeps its +20 signature.
+const NAME_WIDTH: Readonly<Record<string, number>> = { initial: 152, surname: 128 };
+
+function driverNameMinimum(column: WidgetColumnV3, broadcast: boolean): number {
+  const base = broadcast ? 224 : 204;
+  const mode = column.format?.mode;
+  if (mode === "truncate") {
+    const maxChars = typeof column.format?.maxChars === "number" ? column.format.maxChars : 16;
+    return Math.max(96, Math.min(base, Math.round(maxChars * 8.4) + 24));
+  }
+  const minimum = typeof mode === "string" ? NAME_WIDTH[mode] : undefined;
+  return minimum == null ? base : minimum + (broadcast ? 20 : 0);
+}
+
 export function resolveFunctionalColumnWidth(column: WidgetColumnV3, broadcast = false): number {
-  const minimum = column.metricId === "driverName" ? (broadcast ? 224 : 204) : WIDTHS[column.metricId] ?? 72;
+  const minimum = column.metricId === "driverName" ? driverNameMinimum(column, broadcast) : WIDTHS[column.metricId] ?? 72;
   return minimum + PRESET_EXTRA[column.widthPreset];
 }
 

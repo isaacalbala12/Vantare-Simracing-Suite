@@ -32,4 +32,30 @@ describe("Efficiency session geometry", () => {
       expect(resolveFunctionalColumnWidth({ id: metricId, metricId, enabled: true, widthPreset: "sm" })).toBeLessThanOrEqual(88);
     }
   });
+
+  it("narrows the driver name column when the name format shortens the text", () => {
+    const name = (mode: string, broadcast = false) =>
+      resolveFunctionalColumnWidth(
+        { id: "driverName", metricId: "driverName", enabled: true, widthPreset: "sm", format: { mode } },
+        broadcast,
+      );
+    expect(name("full")).toBe(204);
+    expect(name("initial")).toBe(152);
+    expect(name("surname")).toBe(128);
+    expect(name("full", true)).toBe(224);
+    expect(name("initial", true)).toBe(172);
+    expect(name("surname", true)).toBe(148);
+    // truncate deriva del presupuesto de caracteres (≈8.4 px/carácter + padding).
+    expect(name("truncate")).toBe(158);
+  });
+
+  it("moves the session header to its own band when a short name narrows the identity prefix", () => {
+    const short = columns.map((column) =>
+      column.metricId === "driverName" ? { ...column, format: { mode: "surname" } } : column);
+    const wide = resolveFunctionalStandingsSize(columns, 10, { templateId: "signature" });
+    const narrow = resolveFunctionalStandingsSize(short, 10, { templateId: "signature" });
+    expect(narrow.width).toBe(wide.width - 76);
+    // El prefijo pos+nombre (162 px) ya no sostiene la cabecera: banda de 49 px.
+    expect(narrow.height).toBe(wide.height + 49);
+  });
 });

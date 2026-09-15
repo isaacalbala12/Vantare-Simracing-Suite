@@ -154,14 +154,16 @@ func telemetryField(name string, offset int, sourceType windowsSourceType, count
 	return layoutField{Name: name, Scope: scopeTelemetryRow, Offset: offset, Type: sourceType, Count: count}
 }
 
+const lmu13MaxScoringRows = 104
+
 // lmu13Layout is the closed allowlist proven by the two hash-pinned LMU 1.3
 // fixtures. Adding a field requires new provenance and a contract test; known
 // but excluded bytes deliberately have no field in this API.
 var lmu13Layout = layoutContract{
 	Version:       "1.3.0.0",
 	ObjectSize:    324820,
-	ScoringRows:   rowLayout{Base: 2192, Stride: 584, Maximum: 104},
-	TelemetryRows: rowLayout{Base: 128468, Stride: 1888, Maximum: 104},
+	ScoringRows:   rowLayout{Base: 2192, Stride: 584, Maximum: lmu13MaxScoringRows},
+	TelemetryRows: rowLayout{Base: 128468, Stride: 1888, Maximum: lmu13MaxScoringRows},
 	Session: sessionLayout{
 		TrackName:    sessionField("session.track_name", 1632, sourceChar, 64),
 		SessionType:  sessionField("session.type", 1696, sourceInt32, 1),

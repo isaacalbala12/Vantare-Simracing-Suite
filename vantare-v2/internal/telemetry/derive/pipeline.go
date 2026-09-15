@@ -195,7 +195,7 @@ func (pipeline *Pipeline) Prepare(
 		return PipelineCandidate{}, err
 	}
 
-	history := slices.Clone(pipeline.state.Derived.ControlsHistory.Samples)
+	history := pipeline.state.Derived.ControlsHistory.Samples
 	if pipeline.initialized && mustReset(pipeline.header, header) {
 		history = nil
 	}
@@ -271,17 +271,17 @@ func deriveControlsHistory(
 		}
 	}
 	if active == nil {
-		return ControlHistory{Freshness: schema.FreshnessMissing, Samples: history}
+		return ControlHistory{Freshness: schema.FreshnessMissing, Samples: slices.Clone(history)}
 	}
 
 	freshness := controlsFreshness(active.Throttle, active.Brake, active.Clutch)
 	if freshness != schema.FreshnessFresh {
-		return ControlHistory{Freshness: freshness, Samples: history}
+		return ControlHistory{Freshness: freshness, Samples: slices.Clone(history)}
 	}
 	throttle, _ := active.Throttle.Value()
 	brake, _ := active.Brake.Value()
 	clutch, _ := active.Clutch.Value()
-	history = append(history, ControlSample{
+	sample := ControlSample{
 		Cursor:     header.Cursor,
 		CapturedAt: header.Clock.ReceivedUTC,
 		Vehicle:    header.Identity.Vehicle,
@@ -291,11 +291,31 @@ func deriveControlsHistory(
 		SpeedMPS:   active.SpeedMPS,
 		EngineRPM:  active.EngineRPM,
 		Gear:       active.Gear,
-	})
-	if overflow := len(history) - limit; overflow > 0 {
-		history = slices.Clone(history[overflow:])
 	}
+	history = appendControlSample(history, sample, limit)
 	return ControlHistory{Freshness: schema.FreshnessFresh, Samples: history}
+}
+
+// appendControlSample returns an independently owned bounded history. A
+// candidate may be prepared without being committed, so reusing the previous
+// backing array would let a later append mutate the published pipeline state.
+// Allocating the final length once also avoids append-then-tail-copy churn when
+// the history is full.
+func appendControlSample(previous []ControlSample, sample ControlSample, limit int) []ControlSample {
+	if limit <= 0 {
+		limit = MaxControlsHistory
+	}
+	if len(previous) >= limit {
+		next := make([]ControlSample, limit)
+		copy(next, previous[len(previous)-limit+1:])
+		next[limit-1] = sample
+		return next
+	}
+	// Keep the proven grow path before the buffer is full. slices.Clone may
+	// retain enough capacity for append and benchmarks better than an exact-size
+	// allocation for partial histories; the full-buffer branch above is where
+	// avoiding the second allocation matters.
+	return append(slices.Clone(previous), sample)
 }
 
 func controlsFreshness(fields ...schema.Field[schema.Ratio]) schema.Freshness {

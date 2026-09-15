@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -298,9 +299,8 @@ func slotFingerprint(source VehicleObservation) identitypolicy.SlotFingerprint {
 	driverName, _ := usableField(source.DriverName)
 	class, _ := usableField(source.VehicleClass)
 	return identitypolicy.SlotFingerprint{
-		SourceKey: fmt.Sprint(source.SourceID),
-		Driver:    string(driverName),
-		Class:     string(class),
+		Driver: string(driverName),
+		Class:  string(class),
 	}
 }
 
@@ -405,9 +405,19 @@ func usableField[T comparable](field schema.Field[T]) (T, bool) {
 }
 
 func sessionID(counter uint64) identity.SessionID {
-	return identity.SessionID(fmt.Sprintf("lmu-session-%d", counter))
+	var buf [32]byte
+	b := buf[:0]
+	b = append(b, "lmu-session-"...)
+	b = strconv.AppendUint(b, counter, 10)
+	return identity.SessionID(string(b))
 }
 
 func vehicleID(slot VehicleSourceID, generation uint64) identity.VehicleID {
-	return identity.VehicleID(fmt.Sprintf("lmu-slot-%d-generation-%d", slot, generation))
+	var buf [64]byte
+	b := buf[:0]
+	b = append(b, "lmu-slot-"...)
+	b = strconv.AppendInt(b, int64(slot), 10)
+	b = append(b, "-generation-"...)
+	b = strconv.AppendUint(b, generation, 10)
+	return identity.VehicleID(string(b))
 }

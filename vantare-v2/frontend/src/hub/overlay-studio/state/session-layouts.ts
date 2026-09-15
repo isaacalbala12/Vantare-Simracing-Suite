@@ -37,8 +37,11 @@ export function copySessionLayout(
   source: SessionLayoutType,
   target: SessionLayoutType,
 ): ProfileDocumentV3 {
+  // resolveSessionLayout ya devuelve un clon propio: reasignar su tipo evita
+  // clonar el layout origen dos veces.
   const sourceLayout = resolveSessionLayout(document, source);
   const next = structuredClone(document);
-  next.layouts[target] = cloneLayout(sourceLayout, target);
+  sourceLayout.type = target;
+  next.layouts[target] = sourceLayout;
   return next;
 }

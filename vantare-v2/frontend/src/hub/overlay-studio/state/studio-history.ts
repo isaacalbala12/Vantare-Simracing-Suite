@@ -15,16 +15,54 @@ function cloneDocument(document: ProfileDocumentV3): ProfileDocumentV3 {
   return structuredClone(document);
 }
 
+function deepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (typeof a !== typeof b) return false;
+  if (a == null || b == null) return a === b;
+
+  if (Array.isArray(a)) {
+    if (!Array.isArray(b) || a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i += 1) {
+      if (!deepEqual(a[i], b[i])) return false;
+    }
+    return true;
+  }
+
+  if (typeof a === "object") {
+    if (Array.isArray(b)) return false;
+
+    let aCount = 0;
+    for (const key in a) {
+      if (Object.prototype.hasOwnProperty.call(a, key)) {
+        const aValue = (a as Record<string, unknown>)[key];
+        if (aValue === undefined) continue;
+        aCount += 1;
+        if (!Object.prototype.hasOwnProperty.call(b, key)) return false;
+        const bValue = (b as Record<string, unknown>)[key];
+        if (bValue === undefined) return false;
+        if (!deepEqual(aValue, bValue)) return false;
+      }
+    }
+
+    let bCount = 0;
+    for (const key in b) {
+      if (Object.prototype.hasOwnProperty.call(b, key)) {
+        const bValue = (b as Record<string, unknown>)[key];
+        if (bValue === undefined) continue;
+        bCount += 1;
+      }
+    }
+
+    return aCount === bCount;
+  }
+
+  return a === b;
+}
+
 function documentsEqual(left: ProfileDocumentV3, right: ProfileDocumentV3): boolean {
   // Go serializes map keys in a different order from the inspector. Object
   // order is not a document edit; array order (widgets/columns) still is.
-  const canonical = (document: ProfileDocumentV3) => JSON.stringify(document, (_key, value: unknown) => {
-    if (value && typeof value === "object" && !Array.isArray(value)) {
-      return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0));
-    }
-    return value;
-  });
-  return canonical(left) === canonical(right);
+  return deepEqual(left, right);
 }
 
 function trimPast(past: ProfileDocumentV3[], limit: number): ProfileDocumentV3[] {
@@ -46,11 +84,11 @@ export function createStudioHistory(document: ProfileDocumentV3, limit = DEFAULT
 }
 
 export function commitStudioCommand(history: StudioHistory, command: StudioCommand): StudioHistory {
-  const previous = cloneDocument(history.present);
   const present = applyStudioCommand(history.present, command);
-  if (documentsEqual(previous, present)) {
+  if (documentsEqual(history.present, present)) {
     return history;
   }
+  const previous = cloneDocument(history.present);
   return {
     ...history,
     past: trimPast([...history.past, previous], history.limit),

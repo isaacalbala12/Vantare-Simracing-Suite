@@ -7,6 +7,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unicode/utf8"
 )
 
 type centerSpy struct {
@@ -207,6 +208,28 @@ func TestCenterTruncatesDisplayFields(t *testing.T) {
 	stored := center.Snapshot().Records[0]
 	if len(stored.ConcreteCause) != maxCauseLen {
 		t.Fatalf("cause len=%d, want %d", len(stored.ConcreteCause), maxCauseLen)
+	}
+	if len(stored.Fallback) != maxFallback {
+		t.Fatalf("fallback len=%d, want %d", len(stored.Fallback), maxFallback)
+	}
+}
+
+// Un corte a mitad de runa dejaría UTF-8 inválido en pantalla.
+func TestCenterTruncatesOnRuneBoundary(t *testing.T) {
+	center, _ := newTestCenter(t)
+	rec := validRecord(SourceUpdater, "k")
+	// 'é' ocupa 2 bytes: con un límite que cae a mitad, el resultado debe
+	// quedarse en el límite anterior y seguir siendo UTF-8 válido.
+	rec.ConcreteCause = strings.Repeat("a", maxCauseLen-1) + "é"
+	if err := center.Publish(rec); err != nil {
+		t.Fatalf("Publish: %v", err)
+	}
+	stored := center.Snapshot().Records[0].ConcreteCause
+	if !utf8.ValidString(stored) {
+		t.Fatal("truncated cause is not valid UTF-8")
+	}
+	if len(stored) != maxCauseLen-1 {
+		t.Fatalf("len=%d, want %d (é dropped, not split)", len(stored), maxCauseLen-1)
 	}
 }
 

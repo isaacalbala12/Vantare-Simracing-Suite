@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"time"
+	"unicode/utf8"
 )
 
 // CenterContractVersion versions the snapshot schema the frontend consumes.
@@ -156,12 +157,8 @@ func validateRecord(rec *Record) error {
 	}
 	// Cause y fallback son campos de display: se truncan a su cota en vez de
 	// rechazar el registro — un error largo no debe hacer desaparecer el aviso.
-	if len(rec.ConcreteCause) > maxCauseLen {
-		rec.ConcreteCause = rec.ConcreteCause[:maxCauseLen]
-	}
-	if len(rec.Fallback) > maxFallback {
-		rec.Fallback = rec.Fallback[:maxFallback]
-	}
+	rec.ConcreteCause = truncateRunes(rec.ConcreteCause, maxCauseLen)
+	rec.Fallback = truncateRunes(rec.Fallback, maxFallback)
 	if len(rec.Params) > maxParams {
 		return fmt.Errorf("params exceed bounds")
 	}
@@ -176,6 +173,18 @@ func validateRecord(rec *Record) error {
 		}
 	}
 	return nil
+}
+
+// truncateRunes cuts at a byte limit without splitting a rune: s[:max] may
+// land mid-character and produce invalid UTF-8 on screen.
+func truncateRunes(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	for max > 0 && !utf8.RuneStart(s[max]) {
+		max--
+	}
+	return s[:max]
 }
 
 // sameSignature reports whether the incoming record describes the same state

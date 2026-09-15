@@ -154,11 +154,11 @@ func telemetryField(name string, offset int, sourceType windowsSourceType, count
 	return layoutField{Name: name, Scope: scopeTelemetryRow, Offset: offset, Type: sourceType, Count: count}
 }
 
+const lmu13MaxScoringRows = 104
+
 // lmu13Layout is the closed allowlist proven by the two hash-pinned LMU 1.3
 // fixtures. Adding a field requires new provenance and a contract test; known
 // but excluded bytes deliberately have no field in this API.
-const lmu13MaxScoringRows = 104
-
 var lmu13Layout = layoutContract{
 	Version:       "1.3.0.0",
 	ObjectSize:    324820,

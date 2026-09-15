@@ -102,7 +102,7 @@ function withSessionLayout(
   session: SessionLayoutType,
   updater: (widgets: WidgetInstanceV3[]) => WidgetInstanceV3[],
 ): ProfileDocumentV3 {
-  const next = materializeSessionLayout(structuredClone(document), session);
+  const next = materializeSessionLayout(document, session);
   const layout = next.layouts[session] ?? resolveSessionLayout(next, session);
   layout.widgets = updater(layout.widgets);
   next.layouts[session] = layout;
@@ -448,7 +448,7 @@ function applyWidgetApplyDesign(
 }
 
 function applySessionCopy(document: ProfileDocumentV3, command: Extract<StudioCommand, { type: "session/copy" }>) {
-  return copySessionLayout(structuredClone(document), command.source, command.target);
+  return copySessionLayout(document, command.source, command.target);
 }
 
 function applyDocumentLayoutViewport(

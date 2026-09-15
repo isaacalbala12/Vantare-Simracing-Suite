@@ -59,7 +59,7 @@ function deepEqual(a: unknown, b: unknown): boolean {
   return a === b;
 }
 
-function documentsEqual(left: ProfileDocumentV3, right: ProfileDocumentV3): boolean {
+export function documentsEqual(left: ProfileDocumentV3, right: ProfileDocumentV3): boolean {
   // Go serializes map keys in a different order from the inspector. Object
   // order is not a document edit; array order (widgets/columns) still is.
   return deepEqual(left, right);

@@ -1,8 +1,8 @@
 # Segunda ronda de optimización dirigida por hechos
 
-Fecha: 2026-09-15  
-Estado: diseño aprobado en conversación; pendiente de revisión del documento escrito  
-Tarea: [VAN-727](https://app.notion.com/p/3dce51695c65814e97def0b85ba62a48)  
+Fecha: 2026-09-15
+Estado: diseño aprobado en conversación; pendiente de revisión del documento escrito
+Tarea: [VAN-727](https://app.notion.com/p/3dce51695c65814e97def0b85ba62a48)
 Proyecto: Telemetry Core
 
 ## Objetivo

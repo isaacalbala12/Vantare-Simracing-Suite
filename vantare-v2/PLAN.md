@@ -1,6 +1,6 @@
 # PLAN — segunda ronda de optimización dirigida por hechos
 
-Base: `ae11bef79471e04aaa8f11422e0c91d834b4277b`  
+Base: `ae11bef79471e04aaa8f11422e0c91d834b4277b`
 Tarea: [VAN-727](https://app.notion.com/p/3dce51695c65814e97def0b85ba62a48)
 
 1. Crear tres worktrees desde la base: Studio, overlays frontend y Go.

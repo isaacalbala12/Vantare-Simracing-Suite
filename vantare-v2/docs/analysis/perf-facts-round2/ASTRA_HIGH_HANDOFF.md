@@ -54,4 +54,3 @@ pnpm exec vitest bench src/overlay/core/telemetry-rate-coordinator.perf.bench.ts
 - ¿Un benchmark incluye overhead diferente entre base y candidato?
 - ¿Se ha desplazado trabajo a otra fase sin medirla?
 - ¿Existe alguna afirmación de Windows, FPS o LMU no respaldada?
-

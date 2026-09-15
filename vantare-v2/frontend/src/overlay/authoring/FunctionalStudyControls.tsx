@@ -41,7 +41,7 @@ const STUDY_LANDING: Partial<Record<WidgetType, Pick<OverlayWorkshopQuery, "vari
 };
 
 const STATE_OPTIONS = [["ready", "Recibiendo"], ["stale", "Datos antiguos"], ["disconnected", "Desconectado"], ["error", "Error"]] as const;
-const SESSION_OPTIONS = [["race", "Carrera"], ["qualifying", "Clasificación"], ["practice", "Práctica"]] as const;
+const SESSION_OPTIONS = [["practice", "Práctica"], ["qualifying", "Clasificación"], ["race", "Carrera"]] as const;
 const LOCATION_OPTIONS = [["track", "Pista"], ["pits", "Boxes"]] as const;
 const BACKGROUND_OPTIONS = [["context", "Mixto"], ["solid", "Oscuro"], ["transparent", "Claro"]] as const;
 const SURFACE_OPTIONS = [["studio", "Studio"], ["desktop", "Desktop"], ["obs", "OBS"], ["harness", "Harness"]] as const;
@@ -188,6 +188,10 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
       ) : <p className="functional-study-note">Fixture: {query.variant}</p>}
     </fieldset>
 
+    <fieldset><legend>Sesión</legend>
+      <Segments options={SESSION_OPTIONS} value={query.session} onChange={(value) => update({ ...query, session: value as OverlayWorkshopQuery["session"] })} />
+    </fieldset>
+
     {isFunctional && designs.length > 1 && <fieldset><legend>Estilo</legend><div className="functional-study-segments">{designs.map((design) => <button type="button" key={design.id} aria-pressed={(query.designId ?? defaultDesign?.id) === design.id} onClick={() => update({ ...query, designId: design.id })}>{design.name}</button>)}</div></fieldset>}
     {isFunctional && query.widget !== "relative" && <fieldset><legend>Marca</legend><div className="functional-study-segments">
       <button type="button" aria-pressed={query.brand !== "off"} onClick={() => update({ ...query, brand: undefined })}>Con marca</button>
@@ -259,9 +263,6 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
     <fieldset><legend>Datos</legend>
       <Select label="Estado de la fuente" value={query.state} onChange={(value) => update({ ...query, state: value as OverlayWorkshopQuery["state"] })}>
         {STATE_OPTIONS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
-      </Select>
-      <Select label="Sesión" value={query.session} onChange={(value) => update({ ...query, session: value as OverlayWorkshopQuery["session"] })}>
-        {SESSION_OPTIONS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
       </Select>
       <Select label="Ubicación" value={query.location} onChange={(value) => update({ ...query, location: value as OverlayWorkshopQuery["location"] })}>
         {LOCATION_OPTIONS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}

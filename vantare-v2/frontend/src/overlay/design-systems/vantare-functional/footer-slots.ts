@@ -6,12 +6,12 @@ type Labels = (typeof functionalLabels)["en"];
 
 export type FooterSlotCell = { id: string; label: string; value: string };
 
-function footerSlotLabel(id: string, labels: Labels): string {
+function footerSlotLabel(id: string, labels: Labels, paceSession = false): string {
   const labelFor: Record<string, string> = {
     time: labels.remaining,
     lap: labels.currentLap,
     position: labels.position,
-    gap: labels.gap,
+    gap: paceSession ? labels.paceGap : labels.gap,
     bestLap: labels.bestLap,
     lastLap: labels.lastLap,
     track: labels.trackTemp,
@@ -30,6 +30,10 @@ export function resolveFunctionalFooterSlots(
 ): FooterSlotCell[] {
   const player = model.rows.find((row) => row.isPlayer);
   const lapText = model.type === "standings" ? model.lapText : undefined;
+  // Misma regla que la cabecera de columna: fuera de carrera la diferencia se
+  // mide contra la mejor vuelta, no contra el líder.
+  const session = model.sessionLabel?.toLowerCase();
+  const paceSession = session === "practice" || session === "qualifying";
   const values: Record<string, string | undefined> = {
     time: model.remainingText,
     lap: lapText,
@@ -43,7 +47,7 @@ export function resolveFunctionalFooterSlots(
   };
   return slotIds.map((id) => ({
     id,
-    label: footerSlotLabel(id, labels),
+    label: footerSlotLabel(id, labels, paceSession),
     value: values[id] ?? "—",
   }));
 }

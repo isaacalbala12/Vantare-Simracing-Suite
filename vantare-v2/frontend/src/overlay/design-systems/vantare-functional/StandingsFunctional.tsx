@@ -110,7 +110,9 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
       {!unavailable && visibleRows.length > 0 && (
         <div className="vf-table-wrap">
         <table className="vf-table" aria-label={`${sessionLabel} · ${model.activeClass}`}>
-          <colgroup>{columns.map((column) => <col key={column.id} style={{ width: resolveFunctionalColumnWidth(column, broadcast) }} />)}</colgroup>
+          <colgroup>{columns.map((column) => column.metricId === "driverName"
+            ? <col key={column.id} />
+            : <col key={column.id} style={{ width: resolveFunctionalColumnWidth(column, broadcast) }} />)}</colgroup>
           <thead>{splitHeader ? <>
             <tr className="vf-info-row"><th rowSpan={2} colSpan={identitySpan} scope="colgroup" className="vf-identity-head">{sessionHeader}</th><th colSpan={columns.length - identitySpan} className="vf-info-head">{headerInfo}</th></tr>
             <tr className="vf-metric-row">{columns.slice(identitySpan).map(column => <th key={column.id} scope="col" data-metric={column.metricId} title={labelFor(column.metricId)}><span className="vf-column-label">{labelFor(column.metricId)}</span></th>)}</tr>

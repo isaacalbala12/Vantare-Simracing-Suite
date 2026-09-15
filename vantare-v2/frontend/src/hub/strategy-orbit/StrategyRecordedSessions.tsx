@@ -47,7 +47,7 @@ export function StrategyRecordedSessionsView({ controller, onInspect, t }: { rea
   return <section className="orbit-strategy__sessions" aria-label={t("strategy.recorded.title")}>
     <div className="orbit-strategy__sessions-head"><b>{t("strategy.recorded.title")}</b><Chip>{sessions.length}/4</Chip></div>
     <p>{t("strategy.recorded.hint")}</p>
-    <Button disabled={locked} onClick={() => void controller.discover()} variant="ghost">{t("strategy.recorded.discover")}</Button>
+    <Button disabled={locked} onClick={() => void controller.discover()} variant="primary">{t("strategy.recorded.discover")}</Button>
     {controller.locked ? <p role="status">{t("strategy.data.finishPending")}</p> : null}
     {busy ? <p role="status">{t("strategy.recorded.busy")} <Button variant="ghost" onClick={controller.cancel}>{t("strategy.recorded.cancel")}</Button></p> : null}
     {errorMessage ? <Note title={t("strategy.recorded.error")}><span role="alert">{errorMessage}</span></Note> : null}

@@ -1,6 +1,27 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1276 T17b cerrado localmente; editor de parada conectado
+## Estado vigente — #1277 T18 cerrado localmente; paridad visual A4 aceptada
+
+Las 18 pantallas y estados principales de Strategy registrada se han llevado a
+la composición A4 aprobada: asistente único de cinco pasos, editor con sidebar
+comprimido, biblioteca, Carrera, Datos, Revisiones, Plan, Stint, Parada y estados
+de cálculo. El rojo/carmín mantiene presencia contenida sobre el garaje y las
+superficies oscuras de Vantare. La presentación productiva conserva las mismas
+autoridades de datos, cálculo y persistencia; el harness sólo fija respuestas
+deterministas para obtener capturas comparables.
+
+La pasada final `isa-1277-visual/pass-20` contiene 18 capturas principales y 72
+variantes responsive en ES/EN/PT/IT. `responsive.json` registra 16 combinaciones
+sin overflow, errores de página ni foco invisible. La revisión adversarial
+separada puntúa todas las pantallas por encima de 9/10, con mínimo global 9,1 y
+sin P0/P1/P2 visual pendiente.
+
+Siguiente: T22 conserva el recorrido Wails con archivos DuckDB reales y la
+configuración/licencia de producto. T18 no prueba reader, LMU, precisión física,
+persistencia nativa ni distribución. Sin app/Wails, LMU, DuckDB, push, PR, CI
+remota, integración ni release.
+
+## Historial — #1276 T17b cerrado localmente; editor de parada conectado
 
 El panel Plan permite editar por parada Fuel añadido y energía virtual cuando
 aplica. Si el evento aporta inventario físico, también permite decidir el cambio

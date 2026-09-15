@@ -113,6 +113,16 @@ se identifican como tales y nunca pasan por telemetría del usuario.
    avanzar tareas técnicas independientes mientras espera. Su aceptación final
    no sustituye los gates de cálculo y datos.
 
+### Resultado local T18 — #1277
+
+La pasada final `evidence/isa-1277-visual/pass-20` contiene 18 estados principales
+y 72 variantes responsive en ES/EN/PT/IT. La revisión adversarial visual separada
+puntúa cada pantalla por encima de 9,0, con mínimo global 9,1, y no deja hallazgos
+P0/P1/P2. El informe automático cubre 16 combinaciones de tamaño e idioma sin
+desbordamientos, errores de página ni foco invisible. Es evidencia React del
+componente productivo con runtime determinista; T22 sigue siendo obligatorio para
+Wails, DuckDB real, persistencia nativa y distribución.
+
 ## 5. Protocolo empírico y rendimiento
 
 Antes de evaluación: guardar hashes de conjuntos, criterio de deduplicación,

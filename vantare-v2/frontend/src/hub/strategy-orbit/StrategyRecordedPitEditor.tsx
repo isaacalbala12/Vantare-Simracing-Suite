@@ -22,6 +22,10 @@ function seconds(value: number): string {
   return `${new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 }).format(value)} s`;
 }
 
+function editableNumber(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
 export function StrategyRecordedPitEditor({ plan, input, locked, onDirtyChange, onRecalculate, t }: {
   readonly plan: StrategyOrbitCalculatedPlanV1;
   readonly input: StrategyOrbitCalculationInputV1;
@@ -35,9 +39,9 @@ export function StrategyRecordedPitEditor({ plan, input, locked, onDirtyChange, 
     ? [...new Set(tyreInventory.tyres.map(tyre => tyre.compound))]
     : [];
   const baseline = plan.stopDetails.map((stop, index): EditablePit => ({
-    fuelLiters: stop.fuelOutLiters - stop.fuelInLiters,
+    fuelLiters: editableNumber(stop.fuelOutLiters - stop.fuelInLiters),
     ...(stop.virtualEnergyInPercent === undefined || stop.virtualEnergyOutPercent === undefined
-      ? {} : { vePercent: stop.virtualEnergyOutPercent - stop.virtualEnergyInPercent }),
+      ? {} : { vePercent: editableNumber(stop.virtualEnergyOutPercent - stop.virtualEnergyInPercent) }),
     ...(tyreInventory ? {
       changeTyres: stop.changeTyres ?? false,
       compound: (stop.changeTyres ?? false)
@@ -46,6 +50,7 @@ export function StrategyRecordedPitEditor({ plan, input, locked, onDirtyChange, 
     } : {}),
   }));
   const [pits, setPits] = useState<readonly EditablePit[]>(baseline);
+  const [active, setActive] = useState(0);
   const dirty = pits.some((pit, index) => !same(pit, baseline[index]));
 
   const update = (next: readonly EditablePit[]) => {
@@ -57,17 +62,18 @@ export function StrategyRecordedPitEditor({ plan, input, locked, onDirtyChange, 
     update(pits.map((pit, pitIndex) => pitIndex === index ? { ...pit, [field]: value } : pit));
   };
 
-  return <section className="strategy-recorded-pit-editor" aria-labelledby="pit-editor-title">
-    <header>
-      <div><p>{t("strategy.pitEdit.eyebrow")}</p><h3 id="pit-editor-title">{t("strategy.pitEdit.title")}</h3></div>
-      <span>{t(input.event.pitServices?.serviceMode === "sequential" ? "strategy.pitEdit.sequential"
-        : input.event.pitServices?.serviceMode === "parallel" ? "strategy.pitEdit.parallel" : "strategy.pitEdit.modeUnavailable")}</span>
-    </header>
+  return <section className="strategy-recorded-pit-editor" aria-label={t("strategy.pitEdit.title")}>
+    <div className="strategy-recorded-pit-editor__context"><strong>{t("strategy.pitEdit.total")}</strong><span>{plan.stopDetails.length}</span><p>{t(input.event.pitServices?.serviceMode === "sequential" ? "strategy.pitEdit.sequential"
+      : input.event.pitServices?.serviceMode === "parallel" ? "strategy.pitEdit.parallel" : "strategy.pitEdit.modeUnavailable")}</p></div>
+    <label className="strategy-recorded-editor__select"><span>{t("strategy.pitEdit.title")}</span><select value={active} onChange={event => setActive(Number(event.target.value))}>{pits.map((_, index) => <option key={index} value={index}>{t("strategy.plan.stop")} {index + 1}</option>)}</select></label>
+    <nav className="strategy-recorded-pit-editor__selector" aria-label={t("strategy.pitEdit.title")}>
+      {pits.map((_, index) => <button key={index} type="button" aria-current={active === index ? "step" : undefined} onClick={() => setActive(index)}><span>{index + 1}</span>{t("strategy.plan.stop")} {index + 1}</button>)}
+    </nav>
     <ol>
       {pits.map((pit, index) => {
         const stop = plan.stopDetails[index];
         const nextCompound = plan.stints[index + 1]?.compound;
-        return <li key={stop.index}>
+        return <li key={stop.index} hidden={index !== active}>
           <article>
             <header><strong>{t("strategy.plan.stop")} {index + 1}</strong><span>{t("strategy.plan.lap")} {stop.lap}</span></header>
             <div className="strategy-recorded-pit-editor__fields">
@@ -93,7 +99,7 @@ export function StrategyRecordedPitEditor({ plan, input, locked, onDirtyChange, 
       })}
     </ol>
     <footer>
-      {dirty ? <p role="status">{t("strategy.pitEdit.stale")}</p> : <p>{t("strategy.pitEdit.hint")}</p>}
+      {dirty ? <p role="status">{t("strategy.pitEdit.stale")}</p> : null}
       <Button variant="ghost" disabled={locked || !dirty} onClick={() => update(baseline)}>{t("strategy.pitEdit.reset")}</Button>
       <Button variant="primary" disabled={locked || !dirty} onClick={() => onRecalculate(pits.map((pit, index) => ({ index, ...pit })))}>{t("strategy.pitEdit.recalculate")}</Button>
     </footer>

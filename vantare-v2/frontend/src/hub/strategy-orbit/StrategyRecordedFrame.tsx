@@ -22,7 +22,7 @@ export function StrategyRecordedFrame({ steps, currentStep, onStep, title, descr
   const heading = useRef<HTMLHeadingElement>(null);
   const index = steps.findIndex(step => step.id === currentStep);
   useEffect(() => { heading.current?.focus({ preventScroll: true }); }, [currentStep]);
-  return <section className="strategy-recorded-frame" aria-labelledby="strategy-recorded-heading" data-testid="orbit-strategy-wizard">
+  return <section className="strategy-recorded-frame" aria-labelledby="strategy-recorded-heading" data-step={currentStep} data-testid="orbit-strategy-wizard">
     <nav className="strategy-recorded-frame__progress" aria-label={title}>
       <span className="strategy-recorded-frame__progress-label">{progressLabel}</span>
       <ol>{steps.map((step, position) => <li key={step.id} data-state={position < index ? "done" : position === index ? "now" : "next"} data-testid={`orbit-strategy-wizard-step-${step.id}`}>

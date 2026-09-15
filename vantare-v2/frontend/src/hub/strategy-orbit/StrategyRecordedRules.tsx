@@ -32,11 +32,11 @@ function rulesWithClimateCompounds(rules: RecordedWizardDraft["rules"], climates
   return Object.keys(next).length > 0 ? next : undefined;
 }
 
-function NumberField({ label, value, onChange, min = 0, max, integer = false, placeholder }: {
+function NumberField({ label, value, onChange, min = 0, max, integer = false, placeholder, className }: {
   readonly label: string; readonly value?: number; readonly onChange: (value: number | undefined) => void;
-  readonly min?: number; readonly max?: number; readonly integer?: boolean; readonly placeholder: string;
+  readonly min?: number; readonly max?: number; readonly integer?: boolean; readonly placeholder: string; readonly className?: string;
 }) {
-  return <label className="strategy-recorded-field"><span>{label}</span><input type="number" min={min} max={max} step={integer ? 1 : "any"}
+  return <label className={`strategy-recorded-field${className ? ` ${className}` : ""}`}><span>{label}</span><input type="number" min={min} max={max} step={integer ? 1 : "any"}
     value={value ?? ""} placeholder={placeholder} onChange={event => onChange(event.target.value === "" ? undefined : event.target.valueAsNumber)} /></label>;
 }
 
@@ -78,24 +78,26 @@ export function StrategyRecordedRules({ draft, onChange, t }: {
       <p>{draft.calendar.series.name} · {publishedDuration} {t("strategy.journey.minutes")}</p>
       <button type="button" className="orbit-btn orbit-btn--ghost" onClick={() => onChange({ ...draft, name: draft.name || draft.calendar!.series.name, race: { format: "timed", durationMin: publishedDuration } })}>{t("strategy.journey.rules.applyCalendar")}</button>
     </div> : null}
-    <label className="strategy-recorded-field"><span>{t("strategy.journey.race.format")}</span><select value={draft.race.format} onChange={event => onChange({ ...draft, race: event.target.value === "laps" ? { format: "laps" } : { format: "timed" } })}>
+    <label className="strategy-recorded-field strategy-recorded-field--race"><span>{t("strategy.journey.race.format")}</span><select value={draft.race.format} onChange={event => onChange({ ...draft, race: event.target.value === "laps" ? { format: "laps" } : { format: "timed" } })}>
       <option value="timed">{t("strategy.journey.minutes")}</option><option value="laps">{t("strategy.journey.laps")}</option>
     </select></label>
-    <NumberField label={t(draft.race.format === "timed" ? "strategy.journey.race.duration" : "strategy.journey.race.laps")}
+    <NumberField className="strategy-recorded-field--race" label={t(draft.race.format === "timed" ? "strategy.journey.race.duration" : "strategy.journey.race.laps")}
       value={draft.race.format === "timed" ? draft.race.durationMin : draft.race.laps} placeholder={placeholder} min={1} integer={draft.race.format === "laps"}
       onChange={value => onChange({ ...draft, race: draft.race.format === "timed" ? { format: "timed", durationMin: value } : { format: "laps", laps: value } })} />
     <details className="strategy-recorded-fields__group" open><summary>{t("strategy.journey.rules.resources")}</summary>
-      {number("tankLiters", "strategy.journey.fuel.capacity", 0.001)}
-      {number("initialFuelLiters", "strategy.journey.fuel.initial")}
-      {number("fuelReserveLiters", "strategy.journey.fuel.reserve")}
-      <label className="strategy-recorded-field"><span>{t("strategy.journey.energy")}</span><select value={energy.applicability} onChange={event => {
-        const applicability = event.target.value as typeof energy.applicability;
-        onChange({ ...draft, virtualEnergy: { ...energy, applicability } });
-      }}>
-        <option value="unknown">{placeholder}</option><option value="applicable">{t("strategy.journey.applicable")}</option><option value="not_applicable">{t("strategy.journey.notApplicable")}</option>
-      </select></label>
-      {energy.applicability === "applicable" ? (["capacityPercent", "initialPercent", "reservePercent"] as const).map(key => <NumberField key={key} label={t(`strategy.journey.energy.${key}`)} value={energy[key]} min={key === "capacityPercent" ? 0.001 : 0} max={100} placeholder={placeholder}
-        onChange={value => onChange({ ...draft, virtualEnergy: { ...energy, [key]: value } })} />) : null}
+      <div className="strategy-recorded-fields__resource-grid">
+        {number("tankLiters", "strategy.journey.fuel.capacity", 0.001)}
+        {number("initialFuelLiters", "strategy.journey.fuel.initial")}
+        {number("fuelReserveLiters", "strategy.journey.fuel.reserve")}
+        <label className="strategy-recorded-field"><span>{t("strategy.journey.energy")}</span><select value={energy.applicability} onChange={event => {
+          const applicability = event.target.value as typeof energy.applicability;
+          onChange({ ...draft, virtualEnergy: { ...energy, applicability } });
+        }}>
+          <option value="unknown">{placeholder}</option><option value="applicable">{t("strategy.journey.applicable")}</option><option value="not_applicable">{t("strategy.journey.notApplicable")}</option>
+        </select></label>
+        {energy.applicability === "applicable" ? (["capacityPercent", "initialPercent", "reservePercent"] as const).map(key => <NumberField key={key} label={t(`strategy.journey.energy.${key}`)} value={energy[key]} min={key === "capacityPercent" ? 0.001 : 0} max={100} placeholder={placeholder}
+          onChange={value => onChange({ ...draft, virtualEnergy: { ...energy, [key]: value } })} />) : null}
+      </div>
     </details>
     <details className="strategy-recorded-fields__group"><summary>{t("strategy.journey.rules.stops")}</summary>
       {number("pitLossSeconds", "strategy.journey.pit.loss")}

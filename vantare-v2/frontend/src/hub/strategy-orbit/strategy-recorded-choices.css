@@ -16,6 +16,11 @@
 .strategy-recorded-choice small { display: block; font-size: 14px; line-height: 1.5; color: var(--orbit-ink-2); }
 .strategy-recorded-choice__check { display: grid; place-items: center; flex: 0 0 24px; height: 24px; border-radius: 50%; color: var(--orbit-ink-2); font-size: 14px; }
 .strategy-recorded-choice[aria-pressed='true'] .strategy-recorded-choice__check { color: var(--orbit-ink); background: var(--orbit-carmine); }
+.strategy-recorded-field--race { padding: 10px 12px; border: 1px solid rgba(255,255,255,.08); border-radius: 9px; background: rgba(9,12,14,.9); }
 @media (max-width: 600px) {
-  .strategy-recorded-choice { gap: 16px; padding: 20px 30px 20px 16px; }
+  .strategy-recorded-choice { display: grid; grid-template-columns: 20px 20px minmax(0,1fr); align-items: start; gap: 8px; min-height: 0; padding: 18px 14px; }
+  .strategy-recorded-choice > svg { width: 20px; height: 20px; }
+  .strategy-recorded-choice__check { width: 20px; height: 20px; flex-basis: 20px; }
+  .strategy-recorded-choice strong { margin-bottom: 6px; font-size: 18px; }
+  .strategy-recorded-choice small { font-size: 13px; }
 }

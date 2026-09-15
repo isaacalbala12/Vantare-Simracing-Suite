@@ -74,7 +74,7 @@ export function StrategyRecordedWorkflow({ eventId, repositoryVersion, repositor
       onRetryOpenDraft={!flow.busy && !repositoryLoading ? onRetryRepository : undefined}
       onDiscover={discover} sessions={sourceView} onOpenDraft={() => void flow.openEditor()} onExit={exit} busy={flow.saving} error={error} t={t} />
       : <>
-        <Button variant="ghost" disabled={backBlocked} onClick={backToPreparation}>{t("strategy.recorded.backToWizard")}</Button>
+        <div className="strategy-recorded-workspace-head"><Button aria-label={t("strategy.recorded.backToWizard")} variant="ghost" disabled={backBlocked} onClick={backToPreparation}>← {t("strategy.recorded.backToWizard")}</Button></div>
         <nav className="strategy-recorded-tabs" role="tablist" aria-label={t("strategy.data.editorTabs")}>{(["race", "data", "plan", "revisions"] as const).map((item, index, tabs) => <button key={item} id={`recorded-tab-${item}`} type="button" role="tab" aria-selected={tab === item} aria-controls={`recorded-panel-${item}`} tabIndex={tab === item ? 0 : -1} onClick={() => { setTab(item); if (item === "data") setDataVisited(true); if (item === "plan") setPlanVisited(true); if (item === "revisions") setHistoryVisited(true); }} onKeyDown={event => {
           const next = event.key === "ArrowRight" ? (index + 1) % tabs.length : event.key === "ArrowLeft" ? (index + tabs.length - 1) % tabs.length : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : undefined;
           if (next === undefined) return;

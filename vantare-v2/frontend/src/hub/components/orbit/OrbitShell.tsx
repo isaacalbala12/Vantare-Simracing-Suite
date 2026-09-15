@@ -5,6 +5,7 @@ import { useAccess } from '../../../lib/access';
 import { useLicense } from '../../../lib/license';
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { TelemetrySourceStatus } from '../../../telemetry-transport/source-status';
+import type { AnalysisClient } from '../../../strategy/analysis-client';
 import type { TestingCenterChannel } from '../../testing-center/contracts';
 import { useLauncherSnapshot } from '../../launcher/launcher-store';
 import { profileLabel, profileTarget, type ProfileEntry } from '../../state/overlay-workbench';
@@ -97,6 +98,8 @@ export type OrbitShellProps = {
   sourceStatus?: TelemetrySourceStatus | null;
   testingCenterChannel?: TestingCenterChannel | null;
   target?: string;
+  /** Optional native boundary supplied by deterministic visual/integration harnesses. */
+  strategyAnalysisClient?: AnalysisClient;
 };
 
 function resolveSimStatus(source: TelemetrySourceStatus | null | undefined): SimStatus {
@@ -123,6 +126,7 @@ function OrbitShellBody({
   sourceStatus,
   testingCenterChannel,
   target,
+  strategyAnalysisClient,
 }: OrbitShellProps) {
   const { t } = useI18n();
   const access = useAccess();
@@ -604,7 +608,7 @@ function OrbitShellBody({
             ) : activeView === 'carreras' ? (
               <RacesOrbitPage calendar={races.calendar} target={navTarget} />
             ) : activeView === 'estrategia' ? (
-              <StrategyRecordedPage />
+              <StrategyRecordedPage analysisClient={strategyAnalysisClient} />
             ) : activeView === 'ingeniero' ? (
               <EngineerOrbitPage />
             ) : activeView === 'telemetria' ? (

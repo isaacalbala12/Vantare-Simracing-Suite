@@ -177,22 +177,23 @@ it("shows the exact calculated plan and accepts only through the acceptance cont
   const view = render(<StrategyRecordedPlan acceptance={acceptance} draft={draft} state={{ status: "success", input, result: { plans: { "recorded-main": plan }, comparisons: {} } }} locked={false} onChange={vi.fn()} onCalculate={vi.fn()} onRecalculateStints={onRecalculate} onRecalculatePits={onRecalculatePits} onCancel={vi.fn()} t={key => key} />);
 
   expect(screen.getByText("strategy.calculation.optimal")).toBeTruthy();
-  expect(screen.getAllByText("strategy.plan.stop 1")).toHaveLength(2);
+  expect(screen.getAllByText("strategy.plan.stop 1")).toHaveLength(1);
   expect(screen.getByText(revision.sessionId)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "strategy.plan.accept" }));
   expect(accept).toHaveBeenCalledOnce();
 
+  fireEvent.click(screen.getByRole("button", { name: /strategy\.pitEdit\.title/ }));
   fireEvent.change(screen.getByLabelText("strategy.pitEdit.fuelAdded 1"), { target: { value: "6" } });
-  expect((screen.getByRole("button", { name: "strategy.plan.accept" }) as HTMLButtonElement).disabled).toBe(true);
-  fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.calculate" }));
-  expect((screen.getByRole("button", { name: "strategy.plan.accept" }) as HTMLButtonElement).disabled).toBe(false);
+  expect(screen.queryByRole("button", { name: "strategy.plan.accept" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "strategy.pitEdit.reset" }));
   fireEvent.change(screen.getByLabelText("strategy.pitEdit.fuelAdded 1"), { target: { value: "6" } });
   fireEvent.click(screen.getByRole("button", { name: "strategy.pitEdit.recalculate" }));
   expect(onRecalculatePits).toHaveBeenCalledWith([{ index: 0, fuelLiters: 6 }]);
 
+  fireEvent.click(screen.getByRole("button", { name: /strategy\.data\.tab\.plan/ }));
+  fireEvent.click(screen.getByRole("button", { name: /strategy\.stint\.title/ }));
   fireEvent.change(screen.getByLabelText("strategy.stint.dragBoundary 1"), { target: { value: "1" } });
-  expect((screen.getByRole("button", { name: "strategy.plan.accept" }) as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.queryByRole("button", { name: "strategy.plan.accept" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: "strategy.stint.recalculate" }));
   expect(onRecalculate).toHaveBeenCalledWith([
     { index: 0, driverId: "alex", laps: 1 },
@@ -208,5 +209,7 @@ it("shows the exact calculated plan and accepts only through the acceptance cont
   expect(screen.getByText("strategy.pitEdit.cost")).toBeTruthy();
   expect(screen.getByText("+2 s")).toBeTruthy();
   expect((screen.getByLabelText("strategy.stint.dragBoundary 1") as HTMLInputElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: /strategy\.data\.tab\.plan/ }));
+  fireEvent.click(screen.getByRole("button", { name: /strategy\.pitEdit\.title/ }));
   expect((screen.getByLabelText("strategy.pitEdit.fuelAdded 1") as HTMLInputElement).disabled).toBe(false);
 });

@@ -33,7 +33,7 @@ export function StrategyRecordedOverview({ draft, dirty, busy, error, onEdit, on
         <section className="strategy-recorded-overview__sources" aria-label={t("strategy.workspace.sources")}>
           <h3>{t("strategy.workspace.sources")}</h3>
           <div className="strategy-recorded-overview__source-row"><Icon name="i-telemetria" size={32} />
-            <div><strong>{draft.sessions.length === 0 ? t("strategy.workspace.noSources") : formatMessage(t("strategy.workspace.selectedSources"), { count: draft.sessions.length })}</strong><p>{t("strategy.workspace.sourceStatus")}</p></div>
+            <div><strong>{draft.sessions.length === 0 ? t("strategy.workspace.noSources") : formatMessage(t(draft.sessions.length === 1 ? "strategy.workspace.selectedSource" : "strategy.workspace.selectedSources"), { count: draft.sessions.length })}</strong><p>{t("strategy.workspace.sourceStatus")}</p></div>
             <button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy} onClick={onSources}>{t("strategy.workspace.review")}</button>
           </div>
           <div className="strategy-recorded-overview__observations"><h3>{t("strategy.workspace.observations")}</h3><strong>{t("strategy.workspace.validationPending")}</strong><p>{t("strategy.workspace.validationHint")}</p></div>

@@ -34,8 +34,8 @@ function DriverUnavailableWindows({ windows, onChange, t }: {
     setFromLap(undefined);
     setToLap(undefined);
   };
-  return <div className="strategy-recorded-fields__windows" role="group" aria-label={t("strategy.journey.driver.unavailable")}>
-    <strong>{t("strategy.journey.driver.unavailable")}</strong>
+  return <details className="strategy-recorded-fields__windows" aria-label={t("strategy.journey.driver.unavailable")} open={windows.length > 0 ? true : undefined}>
+    <summary>{t("strategy.journey.driver.unavailable")}</summary>
     <p>{t("strategy.journey.driver.unavailable.hint")}</p>
     {windows.length === 0 ? <p>{t("strategy.journey.driver.unavailable.empty")}</p> : null}
     {windows.map((window, index) => <div key={index} className="strategy-recorded-fields__window" role="group" aria-label={`${t("strategy.journey.driver.unavailable.window.label")} ${index + 1}`}>
@@ -48,7 +48,7 @@ function DriverUnavailableWindows({ windows, onChange, t }: {
       <label className="strategy-recorded-field"><span>{t("strategy.journey.driver.unavailable.newToLap")}</span><input type="number" min="1" step="1" value={toLap ?? ""} onChange={event => setToLap(event.target.value === "" ? undefined : Number(event.target.value))} /></label>
       <button type="button" className="orbit-btn orbit-btn--ghost" disabled={fromLap === undefined || toLap === undefined} onClick={add}>{t("strategy.journey.driver.unavailable.add")}</button>
     </div>
-  </div>;
+  </details>;
 }
 
 export function StrategyRecordedDrivers({ draft, onChange, onAdd, t }: {

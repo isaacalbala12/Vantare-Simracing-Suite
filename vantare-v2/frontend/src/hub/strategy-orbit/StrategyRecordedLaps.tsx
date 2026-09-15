@@ -15,6 +15,7 @@ export function RecordedLapList({ page, family, proposals, selected, locked, onF
   readonly onSelect: (row: AnalysisLapInspection, proposal: AnalysisFamilyCorrection | undefined) => void; readonly onPage: (start: number) => void; readonly t: Translate;
 }) {
   return <>
+    <label className="strategy-recorded-laps__family-select"><span>{t("strategy.laps.families")}</span><select value={family} disabled={locked} onChange={event => onFamily(event.target.value as AnalysisCorrectableFamily)}>{analysisCorrectableFamilies.map(item => <option key={item} value={item}>{t(`strategy.laps.family.${item}`)}</option>)}</select></label>
     <div className="strategy-recorded-laps__families" aria-label={t("strategy.laps.families")}>{analysisCorrectableFamilies.map(item => <button key={item} type="button" aria-pressed={family === item} disabled={locked} onClick={() => onFamily(item)}>{t(`strategy.laps.family.${item}`)}</button>)}</div>
     {!page ? <div className="strategy-recorded-data__empty"><strong>{t("strategy.laps.loadTitle")}</strong><p>{t("strategy.laps.loadHint")}</p><Button disabled={locked} onClick={() => onPage(0)}>{t("strategy.laps.load")}</Button></div> : <>
       <p className="strategy-recorded-data__muted">{t("strategy.laps.rulesHint")}</p>
@@ -25,8 +26,8 @@ export function RecordedLapList({ page, family, proposals, selected, locked, onF
         const newStint = index === 0 || boundary?.timestamp !== previous?.timestamp || boundary?.stintNumber !== previous?.stintNumber;
         return <Fragment key={`${page.page.start + index}`}>
           {newStint ? <tr className="strategy-recorded-laps__stint"><td colSpan={5}>{boundary ? <>{t("strategy.laps.stint")} {boundary.stintNumber} · {t(`strategy.laps.boundary.${boundary.presence}`)}</> : t("strategy.laps.noBoundary")}</td></tr> : null}
-          <tr aria-selected={selected === row}><td><button type="button" disabled={locked} onClick={() => onSelect(row, proposal)}>{t("strategy.laps.lap")} {row.original.number}</button>{!row.original.complete ? <small>{t("strategy.laps.incomplete")}</small> : null}</td>
-            <td>{row.original.lapTimeSeconds === undefined ? t("strategy.data.absent") : `${row.original.lapTimeSeconds.toFixed(3)} s`}</td><td>{familyUsageLabel(cap?.automaticIncluded, t)}</td><td>{familyUsageLabel(cap?.effectiveIncluded, t)}</td><td>{proposal ? familyUsageLabel(proposal.included, t) : t("strategy.laps.automatic")}</td></tr>
+          <tr aria-selected={selected === row}><td data-label={t("strategy.laps.lap")}><button type="button" disabled={locked} onClick={() => onSelect(row, proposal)}>{t("strategy.laps.lap")} {row.original.number}</button>{!row.original.complete ? <small>{t("strategy.laps.incomplete")}</small> : null}</td>
+            <td data-label={t("strategy.laps.time")}>{row.original.lapTimeSeconds === undefined ? t("strategy.data.absent") : `${row.original.lapTimeSeconds.toFixed(3)} s`}</td><td data-label={t("strategy.laps.automatic")}>{familyUsageLabel(cap?.automaticIncluded, t)}</td><td data-label={t("strategy.laps.saved")}>{familyUsageLabel(cap?.effectiveIncluded, t)}</td><td data-label={t("strategy.laps.proposal")}>{proposal ? familyUsageLabel(proposal.included, t) : t("strategy.laps.automatic")}</td></tr>
         </Fragment>;
       })}</tbody></table></div>
       {page.page.laps.length === 0 ? <p role="status">{t("strategy.laps.empty")}</p> : null}

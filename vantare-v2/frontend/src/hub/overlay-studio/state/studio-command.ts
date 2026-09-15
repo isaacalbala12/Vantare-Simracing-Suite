@@ -1,5 +1,18 @@
 import { parseStandingsContent } from "../../../overlay/widget-types/standings/standings-content";
 import {
+  getEnabledRelativeColumns,
+  parseRelativeContent,
+} from "../../../overlay/widget-types/relative/relative-content";
+import {
+  computeRelativeConfiguredRowCount,
+  computeRelativeIntrinsicHeight,
+  computeRelativeIntrinsicWidth,
+} from "../../../overlay/widget-types/relative/relative-renderer-helpers";
+import {
+  FUNCTIONAL_RELATIVE_BASE_WIDTH,
+  resolveFunctionalRelativeBaseHeight,
+} from "../../../overlay/design-systems/vantare-functional/relative-layout";
+import {
   parseProfileDocumentV3,
   ProfileDocumentValidationError,
   type ProfileDocumentV3,
@@ -304,6 +317,31 @@ function applyWidgetContent(document: ProfileDocumentV3, command: Extract<Studio
     const content = structuredClone(command.content);
     return widgets.map((widget) => {
       if (!targets.has(widget.id)) return widget;
+      if (widget.type === "relative") {
+        // La ventana del relative define el marco: si las filas configuradas
+        // cambian, la caja crece o se encoge — la fila nunca cambia de alto.
+        // En Eficiencia la fila mide 28px reales a escala 1, así que el alto
+        // se deriva del contenido a la escala que tenga la caja (w/430).
+        const previous = parseRelativeContent(widget.content);
+        const next = parseRelativeContent(content);
+        const functional = widget.visual.systemId === "vantare-functional";
+        const settings = { ...widget.visual.baseSettings, ...widget.visual.appearanceOverrides };
+        const rowsOf = (value: ReturnType<typeof parseRelativeContent>) => computeRelativeConfiguredRowCount(value);
+        if (functional) {
+          const scale = widget.layout.w > 0 ? widget.layout.w / FUNCTIONAL_RELATIVE_BASE_WIDTH : 1;
+          const h = Math.ceil(resolveFunctionalRelativeBaseHeight(rowsOf(next), settings) * scale);
+          if (rowsOf(next) === rowsOf(previous)) return { ...widget, content };
+          return { ...widget, content, layout: { ...widget.layout, h } };
+        }
+        const intrinsicSize = (value: ReturnType<typeof parseRelativeContent>) => ({
+          w: computeRelativeIntrinsicWidth(getEnabledRelativeColumns(value)),
+          h: computeRelativeIntrinsicHeight(value.rowHeightMode, rowsOf(value)),
+        });
+        const size = intrinsicSize(next);
+        const before = intrinsicSize(previous);
+        if (size.w === before.w && size.h === before.h) return { ...widget, content };
+        return { ...widget, content, layout: { ...widget.layout, w: size.w, h: size.h } };
+      }
       if (widget.type !== "standings" || widget.visual.systemId !== "vantare-crystal") return { ...widget, content };
       const previousRows = parseStandingsContent(widget.content).rowCount;
       const rows = parseStandingsContent(content).rowCount;

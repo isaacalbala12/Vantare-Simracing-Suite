@@ -106,4 +106,17 @@ describe("Overlay Workshop query", () => {
     expect(parseOverlayWorkshopQuery("?widget=standings&system=vantare-original&slots=gap")).not.toHaveProperty("slots");
     expect(parseOverlayWorkshopQuery("?widget=standings&system=vantare-functional&slots=unknown")).toHaveProperty("error");
   });
+
+  it("round-trips the relative window and drops it outside relative", () => {
+    const parsed = parseOverlayWorkshopQuery("?widget=relative&ahead=5&behind=0");
+    if ("error" in parsed) throw new Error(parsed.error);
+    expect(parsed.ahead).toBe(5);
+    expect(parsed.behind).toBe(0);
+    expect(serializeOverlayWorkshopQuery(parsed)).toContain("ahead=5");
+    expect(serializeOverlayWorkshopQuery(parsed)).toContain("behind=0");
+    expect(parseOverlayWorkshopQuery("?widget=delta&ahead=4")).not.toHaveProperty("ahead");
+    expect(parseOverlayWorkshopQuery("?widget=relative&ahead=9")).toHaveProperty("error");
+    expect(parseOverlayWorkshopQuery("?widget=relative&behind=-1")).toHaveProperty("error");
+    expect(parseOverlayWorkshopQuery("?widget=relative&ahead=1.5")).toHaveProperty("error");
+  });
 });

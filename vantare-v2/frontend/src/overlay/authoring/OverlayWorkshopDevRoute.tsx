@@ -21,6 +21,7 @@ import {
 import "./overlay-workshop.css";
 import { FunctionalStudyControls } from "./FunctionalStudyControls";
 import { resolveStandingsMinimumSize } from "../widget-types/standings/standings-frame-layout";
+import { parseRelativeContent } from "../widget-types/relative/relative-content";
 
 export const OVERLAY_WORKSHOP_PROFILE_ID = "workshop-fixture";
 
@@ -35,6 +36,8 @@ function createRouteScenarioWidget(query: OverlayWorkshopQuery): WidgetInstanceV
     brand: query.brand,
     modules: query.modules,
     slots: query.slots,
+    ahead: query.ahead,
+    behind: query.behind,
   });
   // Laboratorio tower de Redline (ISA-1071, dev): las elecciones viajan por el
   // contrato visual como appearanceOverrides, igual que en producción, y solo
@@ -243,6 +246,9 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
     if (!widget) return null;
     try {
       const head = scene ? interpolateSceneAt(scene, sampledMs, loop) : null;
+      // La ventana dev multiclass sigue la configuración real del widget:
+      // el frame entrega justo las filas que el contenido declara.
+      const relativeRange = widget.type === "relative" ? parseRelativeContent(widget.content) : undefined;
       return buildWorkshopFrameV2({
         session: parsed.session,
         location: parsed.location,
@@ -252,6 +258,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
         variant: parsed.variant,
         ...(head && scene ? { sceneId: scene.id, sceneState: head.frame } : {}),
         ...(parsed.variant === "standings-replay" ? { replayFrame } : {}),
+        ...(relativeRange ? { rangeAhead: relativeRange.rangeAhead, rangeBehind: relativeRange.rangeBehind } : {}),
       });
     } catch {
       return null;

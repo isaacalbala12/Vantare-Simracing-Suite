@@ -1,4 +1,5 @@
 import { standingsDefinition } from "../../../overlay/widget-types/standings/standings-definition";
+import { relativeDefinition } from "../../../overlay/widget-types/relative/relative-definition";
 import { describe, expect, it } from "vitest";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
@@ -658,4 +659,20 @@ describe("applyStudioCommand", () => {
    expect(before.layouts.general!.widgets[0]!.layout.h).toBe(600);
    const changedColumn = applyStudioCommand(reduced, { type: 'widget/content', session: 'general', widgetIds: ['table'], content: { ...result.content, classScope: 'all-classes' } });
    expect(changedColumn.layouts.general!.widgets[0]!.layout).toEqual(result.layout);
+ });
+
+ it("refits the Functional relative frame when the window changes and keeps row height fixed", () => {
+   const relative = relativeDefinition.createDefault('rel');
+   relative.visual.systemId = 'vantare-functional';
+   relative.layout = { ...relative.layout, w: 430, h: 600 };
+   const before = buildDocument([relative]);
+   const wider = applyStudioCommand(before, { type: 'widget/content', session: 'general', widgetIds: ['rel'], content: { ...relative.content, rangeAhead: 8, rangeBehind: 8 } });
+   const grown = wider.layouts.general!.widgets[0]!;
+   // 3+1+3 → 8+1+8 filas a 28px fijos: +280px de marco, ancho intacto.
+   expect(grown.layout.h).toBe(30 + 17 * 28 + 30);
+   expect(grown.layout.w).toBe(430);
+   const narrower = applyStudioCommand(wider, { type: 'widget/content', session: 'general', widgetIds: ['rel'], content: { ...grown.content, rangeAhead: 1, rangeBehind: 1 } });
+   expect(narrower.layouts.general!.widgets[0]!.layout.h).toBe(30 + 3 * 28 + 30);
+   const sameWindow = applyStudioCommand(narrower, { type: 'widget/content', session: 'general', widgetIds: ['rel'], content: { ...narrower.layouts.general!.widgets[0]!.content, classScope: 'sameClass' } });
+   expect(sameWindow.layouts.general!.widgets[0]!.layout).toEqual(narrower.layouts.general!.widgets[0]!.layout);
  });

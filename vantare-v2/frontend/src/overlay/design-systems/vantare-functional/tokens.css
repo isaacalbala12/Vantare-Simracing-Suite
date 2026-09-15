@@ -70,6 +70,7 @@
    superior de .vf-footer. */
 .vf-meta, .vf-footer { position: relative; z-index: 1; display: flex; align-items: center; gap: 16px; height: 30px; padding: 0 12px; }
 .vf-meta { border-bottom: 1px solid var(--vf-line); }
+.vf-meta .vf-footer-item--end { margin-left: auto; }
 .vf-footer { border-top: 1px solid var(--vf-line); }
 
 /* Huecos de datos del pie: fila limpia de pares etiqueta+valor, sin
@@ -136,7 +137,7 @@
    ni fila de etiquetas. La decoración de esquina dejaría ruido sobre la
    primera fila, así que también queda fuera. */
 .vf-relative::before { display: none; }
-.vf-relative .vf-table { width: 100%; height: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; margin: 0; }
+.vf-relative .vf-table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; margin: 0; }
 .vf-relative .vf-table td { position: relative; border: 0; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vf-relative .vf-table td:is([data-metric="position"], [data-metric="class"], [data-metric="carNumber"]) { padding: 0 4px; }
 .vf-relative .vf-table td { height: 28px; box-shadow: inset 0 -1px var(--vf-line); font-size: 13px; font-weight: 650; letter-spacing: -.02em; }
@@ -144,11 +145,8 @@
 .vf-relative .vf-table td[data-metric="carNumber"] { color: #a5a5ab; font-size: 11px; font-weight: 600; }
 .vf-relative .vf-table td[data-metric="driverName"] { padding-left: 8px; }
 .vf-relative .vf-table td:is([data-metric="lastLap"], [data-metric="bestLap"]) { font-weight: 600; color: #e6e5e9; }
-.vf-relative .vf-table td:is([data-metric="lastLap"], [data-metric="bestLap"]) .vf-lap-value { position: relative; }
-.vf-relative .vf-table td:is([data-metric="lastLap"], [data-metric="bestLap"]) .vf-lap-value::before { content: ""; position: absolute; left: -9px; top: 50%; transform: translateY(-50%); width: 1px; height: 12px; background: rgb(245 245 245 / 24%); }
 .vf-relative .vf-class-tick { display: block; width: 3px; height: 14px; margin: 0 auto; border-radius: 1px; }
 .vf-relative .vf-table tr[data-player="true"] td { background-color: var(--vf-player); background-image: linear-gradient(180deg, rgb(255 255 255 / 4%), transparent 60%); box-shadow: inset 0 1px rgb(255 255 255 / 13%), inset 0 -1px rgb(255 255 255 / 8%); }
-.vf-relative .vf-table tr[data-player="true"] td:is([data-metric="lastLap"], [data-metric="bestLap"]) .vf-lap-value::before { display: none; }
 .vf-relative .vf-table tr[data-player="true"] td:first-child { color: #ffffff; }
 .vf-relative .vf-table tr:last-child td { box-shadow: none; }
 .vf-relative .vf-table td[data-metric="gap"] { text-align: center; }

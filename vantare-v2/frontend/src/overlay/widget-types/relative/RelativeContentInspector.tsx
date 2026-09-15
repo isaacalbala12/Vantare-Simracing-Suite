@@ -3,6 +3,7 @@ import type { WidgetColumnWidthPreset } from "../shared/widget-column";
 import { Check, Field, Seg } from "../../../ui/orbit";
 import {
   moveRelativeColumn, parseRelativeContent, RELATIVE_COLUMN_TEMPLATES,
+  RELATIVE_RANGE_LIMIT,
   toggleRelativeColumn, updateRelativeColumn, updateRelativeFilters,
 } from "./relative-content";
 
@@ -11,6 +12,7 @@ const widths: { value: WidgetColumnWidthPreset; label: string }[] = [
   { value: "md", label: "Media" }, { value: "lg", label: "Ancha" }, { value: "auto", label: "Auto" },
 ];
 const aligns = [{ value: "left", label: "Izquierda" }, { value: "center", label: "Centro" }, { value: "right", label: "Derecha" }] as const;
+const rangeOptions = Array.from({ length: RELATIVE_RANGE_LIMIT + 1 }, (_, index) => index);
 
 export function RelativeContentInspector({ widget, disabled, onContentChange }: CustomInspectorProps): React.ReactElement {
   const content = parseRelativeContent(widget.content);
@@ -18,6 +20,12 @@ export function RelativeContentInspector({ widget, disabled, onContentChange }: 
   return (
     <div className="orbit-studio-ins__body" data-testid="studio-inspector-section-content" data-widget-id={widget.id}>
       <div data-testid="studio-relative-filters">
+        <Field label="Delante">
+          <Seg label="Delante" value={String(content.rangeAhead)} wide options={rangeOptions.map((count) => ({ value: String(count), label: String(count), disabled }))} onChange={value => publish(updateRelativeFilters(content, { rangeAhead: Number(value) }))} />
+        </Field>
+        <Field label="Detrás">
+          <Seg label="Detrás" value={String(content.rangeBehind)} wide options={rangeOptions.map((count) => ({ value: String(count), label: String(count), disabled }))} onChange={value => publish(updateRelativeFilters(content, { rangeBehind: Number(value) }))} />
+        </Field>
         <Field label="Clase">
           <Seg label="Clase" value={content.classScope} wide options={[{ value: "all", label: "Todas", disabled }, { value: "sameClass", label: "Misma clase", disabled }]} onChange={value => publish(updateRelativeFilters(content, { classScope: value as "all" | "sameClass" }))} />
         </Field>

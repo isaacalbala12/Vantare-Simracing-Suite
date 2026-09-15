@@ -15,6 +15,21 @@ import {
   type AuthoringV2Variant,
 } from "./authoring-v2-scenario-fixture";
 import { buildAuthoringV2ScenarioWidget } from "./authoring-v2-scenario-widget";
+import {
+  getEnabledRelativeColumns,
+  parseRelativeContent,
+  updateRelativeFilters,
+} from "../../widget-types/relative/relative-content";
+import {
+  computeRelativeConfiguredRowCount,
+  computeRelativeIntrinsicHeight,
+  computeRelativeIntrinsicWidth,
+} from "../../widget-types/relative/relative-renderer-helpers";
+import {
+  FUNCTIONAL_RELATIVE_BASE_WIDTH,
+  resolveFunctionalRelativeBaseHeight,
+  resolveFunctionalRelativeSlotsWidth,
+} from "../../design-systems/vantare-functional/relative-layout";
 import { FUNCTIONAL_STUDY_DEFAULT_MODULES } from "../functional-study-options";
 import { applyWidgetDesign } from "../../core/widget-design";
 import { getOfficialDesign, listOfficialDesigns } from "../../design-systems/official-designs";
@@ -138,6 +153,8 @@ export function buildWorkshopWidget(input: {
   brand?: "off";
   modules?: readonly string[];
   slots?: readonly string[];
+  ahead?: number;
+  behind?: number;
 }): WidgetInstanceV3 {
   let widget = createScenarioWidget({
     widget: input.widget,
@@ -200,6 +217,34 @@ export function buildWorkshopWidget(input: {
     };
   }
 
+  // Ventana del relative: la caja se adapta al contenido, nunca al revés —
+  // la fila queda a su alto fijo y el marco crece o se encoge con las filas
+  // configuradas. En Eficiencia se re-encaja siempre (a escala 1 las filas
+  // miden 28px reales y las fichas no se encogen); en el resto de sistemas
+  // solo cuando la URL fija la ventana, para no pisar las medidas de
+  // manifiesto o diseño sin motivo.
+  if (input.widget === "relative") {
+    const next = updateRelativeFilters(parseRelativeContent(widget.content), {
+      ...(input.ahead !== undefined ? { rangeAhead: input.ahead } : {}),
+      ...(input.behind !== undefined ? { rangeBehind: input.behind } : {}),
+    });
+    widget = { ...widget, content: next };
+    const rows = computeRelativeConfiguredRowCount(next);
+    const settings = { ...widget.visual.baseSettings, ...widget.visual.appearanceOverrides };
+    if (input.system === "vantare-functional") {
+      const w = Math.max(
+        FUNCTIONAL_RELATIVE_BASE_WIDTH,
+        Math.ceil(resolveFunctionalRelativeSlotsWidth(settings)),
+      );
+      const h = Math.ceil(resolveFunctionalRelativeBaseHeight(rows, settings) * (w / FUNCTIONAL_RELATIVE_BASE_WIDTH));
+      widget = { ...widget, layout: { ...widget.layout, w, h: next.rowHeightMode === "fill" ? Math.max(widget.layout.h, h) : h } };
+    } else if (input.ahead !== undefined || input.behind !== undefined) {
+      const w = computeRelativeIntrinsicWidth(getEnabledRelativeColumns(next));
+      const h = computeRelativeIntrinsicHeight(next.rowHeightMode, rows);
+      widget = { ...widget, layout: { ...widget.layout, w, h: next.rowHeightMode === "fill" ? Math.max(widget.layout.h, h) : h } };
+    }
+  }
+
   return widget;
 }
 
@@ -214,6 +259,9 @@ export type WorkshopV2Scenario = {
   sceneId?: string;
   sceneFrame?: number;
   sceneState?: SceneFrame;
+  /** Filas que la ventana dev multiclass deja delante/detrás del jugador. */
+  rangeAhead?: number;
+  rangeBehind?: number;
 };
 
 // Calendario auxiliar dev migrado del mock legacy: no es telemetría, solo
@@ -442,7 +490,23 @@ function stressStandings(rows: readonly OverlayStandingRowV2[]): OverlayStanding
   return out;
 }
 
-const RELATIVE_DEV_GAPS = [5.5, 4.2, 1.8, 0.4, 0, -0.3, -2.6, -5.1];
+// Gaps dev por distancia al jugador (cerca→lejos). El golden ofrece 8 filas
+// por lado; más allá de los valores semilla la distancia crece a paso fijo
+// para que cualquier ventana 0–8 siga siendo determinista.
+const RELATIVE_DEV_GAP_AHEAD = [0.4, 1.8, 4.2, 5.5];
+const RELATIVE_DEV_GAP_BEHIND = [-0.3, -2.6, -5.1];
+
+function relativeDevGap(distance: number): number {
+  if (distance > 0) {
+    const base = RELATIVE_DEV_GAP_AHEAD[distance - 1];
+    return base ?? Math.round((5.5 + (distance - RELATIVE_DEV_GAP_AHEAD.length) * 1.7) * 100) / 100;
+  }
+  if (distance < 0) {
+    const base = RELATIVE_DEV_GAP_BEHIND[-distance - 1];
+    return base ?? Math.round((-5.1 - (-distance - RELATIVE_DEV_GAP_BEHIND.length) * 1.9) * 100) / 100;
+  }
+  return 0;
+}
 
 function sideForGap(gap: number, fallback: string): string {
   if (gap > 0) return "ahead";
@@ -450,12 +514,15 @@ function sideForGap(gap: number, fallback: string): string {
   return fallback;
 }
 
-// Ventana dev sobre el orden canónico: 4 ahead far→near, player, 3 behind
-// near→far. Una sola función para relative y relativeSettled.
+// Ventana dev sobre el orden canónico: N ahead far→near, player, M behind
+// near→far, con N/M configurables (por defecto 3/3, el default de producto).
+// Una sola función para relative y relativeSettled.
 function relativeDevWindow(
   rows: readonly OverlayRelativeRowV2[],
   playerId: string,
   quality: OverlayQualityV2,
+  aheadCount = 3,
+  behindCount = 3,
 ): OverlayRelativeRowV2[] {
   const gapValue = (row: OverlayRelativeRowV2): number => row.gap.v ?? 0;
   const ahead = rows
@@ -466,9 +533,11 @@ function relativeDevWindow(
   if (!player) {
     throw new Error("authoring-v2-workshop-frame: relative sin fila del jugador");
   }
-  const window = [...ahead.slice(-4), player, ...behind.slice(0, 3)];
+  const aheadRows = ahead.slice(-aheadCount);
+  const window = [...aheadRows, player, ...behind.slice(0, behindCount)];
+  const playerIndex = aheadRows.length;
   return window.map((row, index) => {
-    const gap = RELATIVE_DEV_GAPS[index]!;
+    const gap = relativeDevGap(playerIndex - index);
     return {
       ...row,
       gap: qualityValue(gap, quality),
@@ -682,10 +751,12 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
     }
     case "relative-multiclass": {
       const playerId = frame.player.id ?? "";
+      const ahead = scenario.rangeAhead ?? 3;
+      const behind = scenario.rangeBehind ?? 3;
       frame = {
         ...frame,
-        relative: relativeDevWindow(frame.relative, playerId, quality),
-        relativeSettled: relativeDevWindow(frame.relativeSettled, playerId, quality),
+        relative: relativeDevWindow(frame.relative, playerId, quality, ahead, behind),
+        relativeSettled: relativeDevWindow(frame.relativeSettled, playerId, quality, ahead, behind),
       };
       break;
     }

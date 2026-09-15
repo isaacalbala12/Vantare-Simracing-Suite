@@ -7,6 +7,7 @@ import { projectionGapsFor } from "./fixtures/projection-gaps";
 import { WORKSHOP_V2_VARIANTS } from "./fixtures/authoring-v2-workshop-frame";
 import { serializeOverlayWorkshopQuery, type OverlayWorkshopQuery } from "./overlay-workshop-query";
 import { FUNCTIONAL_STUDY_DEFAULT_MODULES, FUNCTIONAL_STUDY_MODULES, FUNCTIONAL_STUDY_SLOTS, FUNCTIONAL_STUDY_STYLES } from "./functional-study-options";
+import { RELATIVE_RANGE_AHEAD, RELATIVE_RANGE_BEHIND, RELATIVE_RANGE_LIMIT } from "../widget-types/relative/relative-content";
 
 const SYSTEM_LABELS: Record<string, string> = {
   "vantare-functional": "Eficiencia",
@@ -42,6 +43,7 @@ const LOCATION_OPTIONS = [["track", "Pista"], ["pits", "Boxes"]] as const;
 const BACKGROUND_OPTIONS = [["context", "Mixto"], ["solid", "Oscuro"], ["transparent", "Claro"]] as const;
 const SURFACE_OPTIONS = [["studio", "Studio"], ["desktop", "Desktop"], ["obs", "OBS"], ["harness", "Harness"]] as const;
 const SCALE_OPTIONS = [["0.5", "0.5×"], ["1", "1×"], ["1.5", "1.5×"], ["2", "2×"]] as const;
+const RELATIVE_RANGE_OPTIONS = Array.from({ length: RELATIVE_RANGE_LIMIT + 1 }, (_, index) => [String(index), String(index)] as const);
 
 // Resolución del lienzo (portado de la vista genérica retirada en ISA-1221):
 // el preset solo declara la intención; "Aplicar tamaño declarado" fija
@@ -104,6 +106,9 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
       studyStyle: undefined,
       sceneId: undefined,
       sceneFrame: undefined,
+      // La ventana del relative no existe en otros widgets; no la arrastramos.
+      ahead: undefined,
+      behind: undefined,
       ...safeLanding,
     });
   };
@@ -194,6 +199,12 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
         const modules = query.modules ?? FUNCTIONAL_STUDY_DEFAULT_MODULES;
         return <label key={item.id} className="functional-study-toggle"><span>{item.label}</span><input type="checkbox" checked={modules.includes(item.id)} onChange={() => update({ ...query, modules: modules.includes(item.id) ? modules.filter((id) => id !== item.id) : [...modules, item.id] })} /></label>;
       })}
+    </fieldset>}
+    {query.widget === "relative" && <fieldset><legend>Ventana</legend><p className="functional-study-note">Pilotos por delante y por detrás del jugador; la caja se adapta a las filas.</p>
+      <p className="functional-study-note">Delante</p>
+      <Segments options={RELATIVE_RANGE_OPTIONS} value={String(query.ahead ?? RELATIVE_RANGE_AHEAD)} onChange={(value) => update({ ...query, ahead: Number(value) })} />
+      <p className="functional-study-note">Detrás</p>
+      <Segments options={RELATIVE_RANGE_OPTIONS} value={String(query.behind ?? RELATIVE_RANGE_BEHIND)} onChange={(value) => update({ ...query, behind: Number(value) })} />
     </fieldset>}
     {isFunctional && (isStandings || query.widget === "relative") && <fieldset><legend>Pie de datos</legend><p className="functional-study-note">Datos bajo las filas, en orden de selección.</p>
       {FUNCTIONAL_STUDY_SLOTS.map((slot) => {

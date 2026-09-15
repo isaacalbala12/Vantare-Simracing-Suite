@@ -1,6 +1,25 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1275 T17a cerrado localmente; restricciones de parada
+## Estado vigente — #1276 T17b cerrado localmente; editor de parada conectado
+
+El panel Plan permite editar por parada Fuel añadido y energía virtual cuando
+aplica. Si el evento aporta inventario físico, también permite decidir el cambio
+de neumáticos y el compuesto; la ausencia queda explicada y no genera datos.
+Cada tarjeta muestra vuelta, tránsito, servicio, solape y total producidos por
+el replay único, con el modo paralelo o secuencial gobernado por el evento.
+
+Una edición local marca el resultado como obsoleto, bloquea su aceptación y
+puede restablecerse. Recalcular reutiliza la entrada preparada, fija todos los
+stints y servicios visibles y muestra el coste exacto contra el plan vigente.
+Una parada ya calculada puede refinarse sobre su baseline retenido. La edición
+de stint se bloquea tras calcular paradas para no mezclar dos referencias de
+coste; un cálculo completo explícito inicia otra propuesta.
+
+Siguiente: T18 recorre todas las pantallas y estados con capturas comparables y
+revisión visual adversarial. T22 conserva Wails/DuckDB real. Sin app/Wails, LMU,
+DuckDB, push, PR, CI remota, integración ni release.
+
+## Historial — #1275 T17a cerrado localmente; restricciones de parada
 
 Las variantes Orbit pueden fijar por parada la cantidad añadida de Fuel y VE,
 además de conservar o cambiar neumáticos y compuesto cuando existe inventario
@@ -15,9 +34,8 @@ TypeScript construye base + variante restringida fijando todos los límites
 visibles. También se corrigió la carga VE publicada por stint, que se copiaba
 antes de resolver sus cantidades reales.
 
-Siguiente: T17b conecta el editor y detalle productivo de parada, obsolescencia,
-recálculo y coste. T18 conserva la revisión visual adversarial. Sin app/Wails,
-LMU, DuckDB, push, PR, CI remota, integración ni release.
+T17b conectó el editor y detalle productivo de parada, obsolescencia, recálculo
+y coste.
 
 ## Historial — #1274 T16b cerrado localmente; editor de stint conectado
 

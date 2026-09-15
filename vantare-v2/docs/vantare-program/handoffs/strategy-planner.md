@@ -1,23 +1,22 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1273 T16a cerrado localmente; restricciones comparables
+## Estado vigente — #1274 T16b cerrado localmente; editor de stint conectado
 
-Strategy puede construir una única petición con la propuesta recorded exacta y
-una variante de stint restringida. Reutiliza las primitivas existentes: la
-secuencia `order` fija el piloto visible y `overrides[index].laps` fija vueltas.
-No añade campos Go, otro solver ni otro modelo de restricciones.
+El panel Plan permite fijar el piloto de cada stint y mover cada límite entre
+dos stints. El control arrastrable nativo y su entrada numérica equivalente
+modifican la misma frontera, mantienen el total exacto y conservan al menos una
+vuelta a cada lado. Restablecer descarta los cambios locales aún no calculados.
 
-La variante restringida parte de los stints exactos mostrados, conserva evento,
-pilotos, fuentes y `PlanningInputs`, y se vuelve activa para presentar su plan.
-La propuesta original viaja intacta en la misma orden, por lo que SolverV2
-evalúa ambas y devuelve la comparación. Índices, pilotos, vueltas, duplicados y
-cambios vacíos fallan antes de enviar. Una prueba Go demuestra base libre intacta,
-restricción fija, delta exacto y optimalidad no demostrada tras editar vueltas.
+Una edición muestra inmediatamente que el plan está desactualizado y bloquea
+su aceptación. Recalcular no vuelve a preparar telemetría: usa las mismas
+fuentes, reglas y `PlanningInputs`, envía base y variante restringida en una
+sola orden y presenta el resultado de SolverV2 con su coste exacto frente a la
+base. Editar de nuevo vuelve a invalidarlo.
 
-Siguiente: T16b debe conectar estos controles al detalle visual del stint,
-incluida alternativa de teclado al arrastre, obsolescencia y coste frente a la
-base. T17 editará las paradas. Sin app/Wails, LMU, DuckDB, push, PR, CI remota,
-integración ni release.
+Siguiente: T17 debe editar parada y servicios con el mismo patrón de restricción,
+replay y comparación, sin duplicar tránsito/servicio. T18 conserva la revisión
+visual adversarial. Sin app/Wails, LMU, DuckDB, push, PR, CI remota, integración
+ni release.
 
 ## Historial — #1268 T15a2b cerrado localmente; delta de ritmo por piloto
 

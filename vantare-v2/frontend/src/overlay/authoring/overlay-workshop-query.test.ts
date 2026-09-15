@@ -37,6 +37,9 @@ describe("Overlay Workshop query", () => {
 
   it("rejects invalid or mismatched selections instead of silently falling back", () => {
     expect(parseOverlayWorkshopQuery("?widget=unknown")).toEqual({ error: "invalid widget parameter: unknown" });
+    expect(parseOverlayWorkshopQuery("?widget=relative&variant=relative-multiclass")).toEqual({
+      error: "invalid variant parameter: relative-multiclass",
+    });
     expect(parseOverlayWorkshopQuery("?widget=pedals&system=vantare-crystal&design=delta-crystal-simple")).toEqual({
       error: "design delta-crystal-simple requires widget=delta",
     });
@@ -105,5 +108,29 @@ describe("Overlay Workshop query", () => {
     expect(parseOverlayWorkshopQuery("?widget=delta&system=vantare-functional&slots=gap")).not.toHaveProperty("slots");
     expect(parseOverlayWorkshopQuery("?widget=standings&system=vantare-original&slots=gap")).not.toHaveProperty("slots");
     expect(parseOverlayWorkshopQuery("?widget=standings&system=vantare-functional&slots=unknown")).toHaveProperty("error");
+  });
+
+  it("round-trips the relative window and drops it outside relative", () => {
+    const parsed = parseOverlayWorkshopQuery("?widget=relative&ahead=5&behind=0");
+    if ("error" in parsed) throw new Error(parsed.error);
+    expect(parsed.ahead).toBe(5);
+    expect(parsed.behind).toBe(0);
+    expect(serializeOverlayWorkshopQuery(parsed)).toContain("ahead=5");
+    expect(serializeOverlayWorkshopQuery(parsed)).toContain("behind=0");
+    expect(parseOverlayWorkshopQuery("?widget=delta&ahead=4")).not.toHaveProperty("ahead");
+    expect(parseOverlayWorkshopQuery("?widget=relative&ahead=9")).toHaveProperty("error");
+    expect(parseOverlayWorkshopQuery("?widget=relative&behind=-1")).toHaveProperty("error");
+    expect(parseOverlayWorkshopQuery("?widget=relative&ahead=1.5")).toHaveProperty("error");
+  });
+
+  it("round-trips the standings row count and drops it outside standings", () => {
+    const parsed = parseOverlayWorkshopQuery("?widget=standings&rows=27");
+    if ("error" in parsed) throw new Error(parsed.error);
+    expect(parsed.rows).toBe(27);
+    expect(serializeOverlayWorkshopQuery(parsed)).toContain("rows=27");
+    expect(parseOverlayWorkshopQuery("?widget=relative&rows=12")).not.toHaveProperty("rows");
+    expect(parseOverlayWorkshopQuery("?widget=standings&rows=0")).toHaveProperty("error");
+    expect(parseOverlayWorkshopQuery("?widget=standings&rows=31")).toHaveProperty("error");
+    expect(parseOverlayWorkshopQuery("?widget=standings&rows=2.5")).toHaveProperty("error");
   });
 });

@@ -45,6 +45,28 @@ type NotificationSettings struct {
 	SystemEnabled bool `json:"systemEnabled,omitempty"`
 }
 
+// EngineerSettings persists the product controls exposed by Engineer Orbit.
+// Voice selection and volume are intentionally absent: they only configure the
+// local "test voice" WebView helper, not the race delivery runtime.
+type EngineerSettings struct {
+	Enabled          bool              `json:"enabled"`
+	SpotterEnabled   bool              `json:"spotterEnabled"`
+	SubtitlesEnabled bool              `json:"subtitlesEnabled"`
+	Sensitivity      string            `json:"sensitivity"`
+	OutputModes      map[string]string `json:"outputModes"`
+}
+
+func DefaultEngineerSettings() *EngineerSettings {
+	return &EngineerSettings{
+		Enabled: true, SpotterEnabled: true, SubtitlesEnabled: true,
+		Sensitivity: "normal",
+		OutputModes: map[string]string{
+			"spotter": "both", "fuel": "both", "penalties": "both",
+			"laps": "both", "timings": "both", "pitstops": "both",
+		},
+	}
+}
+
 // WidgetOverride conserva el formato de Personalizado sin activar todavía su
 // UI. Hz es JSON porque el contrato admite un número o la cadena "dirty".
 type WidgetOverride struct {
@@ -229,6 +251,7 @@ type AppSettings struct {
 	CpuSampling                 bool                        `json:"cpuSampling"`
 	Performance                 PerformanceSettings         `json:"performance"`
 	Notifications               NotificationSettings        `json:"notifications"`
+	Engineer                    *EngineerSettings           `json:"engineer,omitempty"`
 	Hotkeys                     map[string]string           `json:"hotkeys"`
 	ActiveOverlayProfileID      string                      `json:"activeOverlayProfileId,omitempty"`
 	BetaWelcomeCompleted        bool                        `json:"betaWelcomeCompleted,omitempty"`
@@ -383,6 +406,7 @@ func DefaultAppSettings() *AppSettings {
 		SchemaVersion: appSettingsSchemaVersion,
 		CpuSampling:   true,
 		Performance:   performanceDefault(),
+		Engineer:      DefaultEngineerSettings(),
 		Hotkeys: map[string]string{
 			"toggleOverlay":       "ctrl+shift+v",
 			"toggleEditMode":      "ctrl+shift+e",
@@ -452,6 +476,21 @@ func cloneAppSettings(settings *AppSettings) *AppSettings {
 		copy.LauncherProfiles = cloneProfiles(settings.LauncherProfiles)
 	}
 	copy.Performance.Overrides = cloneWidgetOverrides(settings.Performance.Overrides)
+	copy.Engineer = cloneEngineerSettings(settings.Engineer)
+	return &copy
+}
+
+func cloneEngineerSettings(settings *EngineerSettings) *EngineerSettings {
+	if settings == nil {
+		return nil
+	}
+	copy := *settings
+	if settings.OutputModes != nil {
+		copy.OutputModes = make(map[string]string, len(settings.OutputModes))
+		for family, mode := range settings.OutputModes {
+			copy.OutputModes[family] = mode
+		}
+	}
 	return &copy
 }
 
@@ -468,7 +507,7 @@ func cloneWidgetOverrides(source map[string]WidgetOverride) map[string]WidgetOve
 }
 
 // appSettingsSchemaVersion is the current shape of the persisted settings.
-const appSettingsSchemaVersion = 6
+const appSettingsSchemaVersion = 7
 
 // migrateSettings applies schema migrations in place.
 //
@@ -489,6 +528,8 @@ const appSettingsSchemaVersion = 6
 //	v5 -> v6: retira el interruptor diagnostico Overlay V1 sin depender de el.
 //	Un JSON antiguo que aun contenga la clave retirada se ignora de forma
 //	segura porque el decodificador desconoce la clave. SchemaVersion queda en 6.
+//	v6 -> v7: persist Engineer/Spotter runtime controls. Older files receive the
+//	          shipping defaults instead of treating missing booleans as opt-outs.
 func (s *SettingsService) migrateSettings(settings *AppSettings) {
 	if settings.SchemaVersion == 0 {
 		settings.SchemaVersion = 1
@@ -537,6 +578,37 @@ func (s *SettingsService) migrateSettings(settings *AppSettings) {
 	if settings.SchemaVersion < 6 {
 		settings.SchemaVersion = 6
 	}
+	if settings.SchemaVersion < 7 {
+		settings.Engineer = DefaultEngineerSettings()
+		settings.SchemaVersion = 7
+	}
+	settings.Engineer = normalizeEngineerSettings(settings.Engineer)
+}
+
+func normalizeEngineerSettings(settings *EngineerSettings) *EngineerSettings {
+	if settings == nil {
+		return DefaultEngineerSettings()
+	}
+	result := cloneEngineerSettings(settings)
+	if result.Sensitivity != "conservative" && result.Sensitivity != "normal" && result.Sensitivity != "aggressive" {
+		result.Sensitivity = "normal"
+	}
+	defaults := DefaultEngineerSettings()
+	if result.OutputModes == nil {
+		result.OutputModes = map[string]string{}
+	}
+	for family, fallback := range defaults.OutputModes {
+		mode := result.OutputModes[family]
+		if mode != "audio" && mode != "visual" && mode != "both" && mode != "disabled" {
+			result.OutputModes[family] = fallback
+		}
+	}
+	for family := range result.OutputModes {
+		if _, supported := defaults.OutputModes[family]; !supported {
+			delete(result.OutputModes, family)
+		}
+	}
+	return result
 }
 
 func defaultLauncherApps() map[string]LauncherAppEntry {
@@ -643,6 +715,7 @@ func (s *SettingsService) GetLauncherApps() map[string]LauncherAppEntry {
 // SetLauncherApps replaces the entire LauncherApps map and persists the change.
 func (s *SettingsService) SetLauncherApps(apps map[string]LauncherAppEntry) error {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.settings == nil {
 		s.settings = DefaultAppSettings()
 	}
@@ -650,16 +723,11 @@ func (s *SettingsService) SetLauncherApps(apps map[string]LauncherAppEntry) erro
 	for k, v := range apps {
 		s.settings.LauncherApps[k] = v
 	}
-	// Marshal under lock for data consistency, then persist without the lock.
 	data, err := json.MarshalIndent(s.settings, "", "  ")
 	if err != nil {
-		s.mu.Unlock()
 		return fmt.Errorf("marshal: %w", err)
 	}
-	settings := s.settings
-	s.mu.Unlock()
-
-	return s.saveWithRetry(settings, data, 0)
+	return s.saveWithRetry(s.settings, data, 0)
 }
 
 // GetLauncherProfiles returns the current launch profiles slice with a read lock.
@@ -675,71 +743,58 @@ func (s *SettingsService) GetLauncherProfiles() []LaunchProfile {
 // SetLauncherProfiles replaces the entire LaunchProfiles slice and persists the change.
 func (s *SettingsService) SetLauncherProfiles(profiles []LaunchProfile) error {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.settings == nil {
 		s.settings = DefaultAppSettings()
 	}
 	s.settings.LauncherProfiles = normalizeProfiles(profiles)
-	// Marshal under lock for data consistency, then persist without the lock.
 	data, err := json.MarshalIndent(s.settings, "", "  ")
 	if err != nil {
-		s.mu.Unlock()
 		return fmt.Errorf("marshal: %w", err)
 	}
-	settings := s.settings
-	s.mu.Unlock()
-
-	return s.saveWithRetry(settings, data, 0)
+	return s.saveWithRetry(s.settings, data, 0)
 }
 
 // UpdateLauncherAppArgs updates the Args field of a launcher app entry and
 // persists the change. It returns ErrAppNotFound if the app ID does not exist.
 func (s *SettingsService) UpdateLauncherAppArgs(id, args string) error {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.settings == nil {
-		s.mu.Unlock()
 		return ErrSettingsNotLoaded
 	}
 	entry, ok := s.settings.LauncherApps[id]
 	if !ok {
-		s.mu.Unlock()
 		return ErrAppNotFound
 	}
 	entry.Args = args
 	s.settings.LauncherApps[id] = entry
 	data, err := json.MarshalIndent(s.settings, "", "  ")
 	if err != nil {
-		s.mu.Unlock()
 		return fmt.Errorf("marshal: %w", err)
 	}
-	settings := s.settings
-	s.mu.Unlock()
-
-	return s.saveWithRetry(settings, data, 0)
+	return s.saveWithRetry(s.settings, data, 0)
 }
 
 // SetLauncherAppFavorite updates the IsFavorite field of a launcher app entry
 // and persists the change. Returns ErrAppNotFound if the app ID does not exist.
 func (s *SettingsService) SetLauncherAppFavorite(id string, favorite bool) error {
 	s.mu.Lock()
+	defer s.mu.Unlock()
 	if s.settings == nil {
-		s.mu.Unlock()
 		return ErrSettingsNotLoaded
 	}
 	entry, ok := s.settings.LauncherApps[id]
 	if !ok {
-		s.mu.Unlock()
 		return ErrAppNotFound
 	}
 	entry.IsFavorite = favorite
 	s.settings.LauncherApps[id] = entry
 	data, err := json.MarshalIndent(s.settings, "", "  ")
 	if err != nil {
-		s.mu.Unlock()
 		return fmt.Errorf("marshal: %w", err)
 	}
-	settings := s.settings
-	s.mu.Unlock()
-	return s.saveWithRetry(settings, data, 0)
+	return s.saveWithRetry(s.settings, data, 0)
 }
 
 // Load reads settings from disk with tolerance for corruption.
@@ -830,6 +885,7 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 		CpuSampling:                 loaded.CpuSampling,
 		Performance:                 loaded.Performance,
 		Notifications:               loaded.Notifications,
+		Engineer:                    cloneEngineerSettings(loaded.Engineer),
 		ActiveOverlayProfileID:      loaded.ActiveOverlayProfileID,
 		BetaWelcomeCompleted:        loaded.BetaWelcomeCompleted,
 		BetaUserRole:                loaded.BetaUserRole,
@@ -872,6 +928,34 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 	s.settings = merged
 }
 
+// EngineerSettings returns an owned, normalized snapshot of the persisted
+// Engineer controls.
+func (s *SettingsService) EngineerSettings() *EngineerSettings {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if s.settings == nil {
+		return DefaultEngineerSettings()
+	}
+	return normalizeEngineerSettings(s.settings.Engineer)
+}
+
+// SetEngineerSettings atomically persists only the Engineer controls without
+// replacing unrelated settings that another UI surface may have changed.
+func (s *SettingsService) SetEngineerSettings(settings *EngineerSettings) error {
+	normalized := normalizeEngineerSettings(settings)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.settings == nil {
+		s.settings = DefaultAppSettings()
+	}
+	s.settings.Engineer = normalized
+	data, err := json.MarshalIndent(s.settings, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal engineer settings: %w", err)
+	}
+	return s.saveWithRetry(s.settings, data, 0)
+}
+
 // EffectivePerformancePolicy resolves the same canonical policy published in
 // capabilities.performance. Diagnostic builds may force a nominal level for
 // reproducible lifecycle measurements without changing persisted settings.
@@ -901,9 +985,8 @@ func (s *SettingsService) persistSidecarApplied() error {
 }
 
 // Save persists settings to disk atomically with retry+backoff and .bak rotation.
-// It marshals the settings under the write lock for data consistency, then
-// releases the lock before I/O and sleep so the mutex is never held during
-// backoff delays.
+// The whole capture-marshal-write runs under s.mu so a slower saver can never
+// land an older full-settings snapshot over a newer one.
 func (s *SettingsService) Save(settings *AppSettings) error {
 	if settings == nil {
 		return fmt.Errorf("settings cannot be nil")
@@ -911,10 +994,10 @@ func (s *SettingsService) Save(settings *AppSettings) error {
 	if s.path == "" {
 		return ErrSettingsPathEmpty
 	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	snapshot := cloneAppSettings(settings)
-	if snapshot.Performance.Mode == string(performancepolicy.ModeAuto) {
-		snapshot.CpuSampling = true
-	}
+	normalizePerformanceForSave(snapshot)
 	data, err := json.MarshalIndent(snapshot, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal: %w", err)
@@ -923,9 +1006,50 @@ func (s *SettingsService) Save(settings *AppSettings) error {
 	return s.saveWithRetry(snapshot, data, 0)
 }
 
+// normalizePerformanceForSave applies the save-time rule shared by Save and
+// Update: auto performance mode always forces CPU sampling on.
+func normalizePerformanceForSave(settings *AppSettings) {
+	if settings.Performance.Mode == string(performancepolicy.ModeAuto) {
+		settings.CpuSampling = true
+	}
+}
+
+// Update clones the live settings under s.mu, applies mutate to that
+// candidate and persists it atomically, publishing it only on success.
+// Unlike Save, the mutation always runs against the current state, so a
+// partial change can never install a snapshot captured before another
+// writer's update — and a failed write leaves memory untouched. mutate must
+// be a plain field mutation and must not call back into the service: the
+// write lock is already held.
+func (s *SettingsService) Update(mutate func(*AppSettings)) error {
+	if mutate == nil {
+		return fmt.Errorf("mutate cannot be nil")
+	}
+	if s.path == "" {
+		return ErrSettingsPathEmpty
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	candidate := s.settings
+	if candidate == nil {
+		candidate = DefaultAppSettings()
+	} else {
+		candidate = cloneAppSettings(candidate)
+	}
+	mutate(candidate)
+	normalizePerformanceForSave(candidate)
+	data, err := json.MarshalIndent(candidate, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal: %w", err)
+	}
+	return s.saveWithRetry(candidate, data, 0)
+}
+
 // saveWithRetry attempts to persist data atomically, retrying with backoff
-// on failure. The caller must NOT hold s.mu — this function takes the lock
-// only briefly to update s.settings after a successful write.
+// on failure. The caller MUST hold s.mu: mutation, marshal and write share
+// one critical section so persisted snapshots are applied in mutation order
+// and an older snapshot can never overwrite a newer state, in memory or on
+// disk. s.mu is a write mutex here; readers wait for the duration of the I/O.
 func (s *SettingsService) saveWithRetry(settings *AppSettings, data []byte, attempt int) error {
 	if dir := filepath.Dir(s.path); dir != "" && dir != "." {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -935,9 +1059,7 @@ func (s *SettingsService) saveWithRetry(settings *AppSettings, data []byte, atte
 	err := s.atomicWrite(data)
 	if err == nil {
 		_ = os.Remove(s.path + ".failed")
-		s.mu.Lock()
 		s.settings = cloneAppSettings(settings)
-		s.mu.Unlock()
 		return nil
 	}
 	if attempt+1 < len(saveBackoffs) {

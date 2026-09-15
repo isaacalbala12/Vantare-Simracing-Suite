@@ -18,6 +18,8 @@ export interface TopbarProps {
   /** Versiones pendientes en total, incluidas las que no se describen. */
   updateNotesTotal?: number;
   updateNewsLabels?: UpdateNewsLabels;
+  /** Centro de notificaciones (campana + panel); vive junto al pill. */
+  notifications?: ReactNode;
   className?: string;
 }
 
@@ -37,6 +39,7 @@ export function Topbar({
   updateNotes,
   updateNotesTotal,
   updateNewsLabels,
+  notifications,
   className,
 }: TopbarProps) {
   const pill =
@@ -61,6 +64,7 @@ export function Topbar({
       </div>
       {children}
       <div className="orbit-topbar__right">
+        {notifications}
         {pill && updateNewsLabels && updateNotes?.length ? (
           <UpdateNews
             labels={updateNewsLabels}

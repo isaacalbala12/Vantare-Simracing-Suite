@@ -80,7 +80,7 @@ export function StandingsApexTemplate({
                 </span>
                 <span className="ven-apex-id">
                   <span className="ven-apex-code">{driverCode(row.driverName)}</span>
-                  <span className="ven-apex-name">{row.driverName}</span>
+                  <span className="ven-apex-name">{row.configuredDriverName ?? row.driverName}</span>
                 </span>
                 {row.pitText ? <span className="ven-apex-pit">{row.pitText}</span> : null}
                 <span className="ven-apex-best" data-session-best={isSessionBest ? "true" : undefined}>

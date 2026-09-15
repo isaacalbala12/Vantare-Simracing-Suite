@@ -48,7 +48,7 @@ export const studioV3Es: Record<string, string> = {
   "studio.v3.widgetTypes.racingFlags": "Banderas de carrera",
   "studio.v3.inspector.racingFlags.showSectorFlags": "Mostrar sectores",
   "studio.v3.inspector.racingFlags.hideWhenGreen": "Ocultar en verde",
-  "studio.v3.widgetTypes.broadcastTower": "Torre de retransmisión",
+  "studio.v3.widgetTypes.broadcastTower": "Horizontal Standings",
   "studio.v3.inspector.broadcastTower.rowCount": "Número de filas",
   "studio.v3.inspector.broadcastTower.showWeather": "Mostrar clima",
   "studio.v3.inspector.broadcastTower.showSof": "Mostrar SOF",

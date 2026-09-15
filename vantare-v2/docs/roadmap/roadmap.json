@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-14T22:59:07Z",
+  "generatedAt": "2026-09-15T19:56:09Z",
   "digest": {
-    "lastCommit": "4e5e9556574bd2b3dc6d115ce13625812016aa0b"
+    "lastCommit": "d15c03cd1b057f6f4c23cdfbe05ec157942b3dad"
   },
   "phases": [
     {
@@ -444,7 +444,7 @@
     {
       "id": "overlays-studio",
       "title": {
-        "es": "Overlays Studio",
+        "es": "Overlay Studio",
         "en": "Overlay Studio",
         "pt": "Estúdio de Overlays",
         "it": "Studio degli overlay"
@@ -1513,10 +1513,10 @@
         "it": "Preferenze e prova delle notifiche"
       },
       "body": {
-        "es": "Los avisos de actualización respetan la preferencia guardada y Ajustes permite enviar una prueba de Windows con resultado visible; Spotter permanece en su overlay y audio de carrera, fuera de los canales de notificación del producto.",
-        "en": "Update alerts respect the saved preference and Settings can send a Windows test with a visible result; Spotter remains in its race overlay and audio, outside the product notification channels.",
-        "pt": "Os avisos de atualização respeitam a preferência guardada e as Definições permitem enviar um teste do Windows com resultado visível; o Spotter permanece no overlay e áudio de corrida, fora dos canais de notificação do produto.",
-        "it": "Gli avvisi di aggiornamento rispettano la preferenza salvata e le Impostazioni possono inviare una prova Windows con risultato visibile; Spotter resta nell'overlay e nell'audio di gara, fuori dai canali di notifica del prodotto."
+        "es": "Los avisos de actualización respetan la preferencia guardada y Ajustes permite enviar una prueba de Windows con resultado visible. El centro de notificaciones de la shell guarda los avisos recientes con deduplicación, permite marcarlos como leídos y limpiarlos, y sus acciones se validan en backend; Spotter permanece en su overlay y audio de carrera, fuera de los canales de notificación del producto.",
+        "en": "Update alerts respect the saved preference and Settings can send a Windows test with a visible result. The shell notification center keeps recent alerts with deduplication, lets you mark them read and clear them, and its actions are validated in the backend; Spotter remains in its race overlay and audio, outside the product notification channels.",
+        "pt": "Os avisos de atualização respeitam a preferência guardada e as Definições permitem enviar um teste do Windows com resultado visível. O centro de notificações da shell guarda os avisos recentes com deduplicação, permite marcá-los como lidos e limpá-los, e as suas ações são validadas no backend; o Spotter permanece no overlay e áudio de corrida, fora dos canais de notificação do produto.",
+        "it": "Gli avvisi di aggiornamento rispettano la preferenza salvata e le Impostazioni possono inviare una prova Windows con risultato visibile. Il centro notifiche della shell conserva gli avvisi recenti con deduplicazione, permette di segnarli come letti e di cancellarli, e le sue azioni sono validate nel backend; Spotter resta nell'overlay e nell'audio di gara, fuori dai canali di notifica del prodotto."
       },
       "label": {
         "es": "Corregido",
@@ -1755,10 +1755,10 @@
         "it": "Radio bus, Spotter e motore di famiglie"
       },
       "body": {
-        "es": "Spotter y las familias fuel, sanciones, vueltas, tiempos y boxes consumen telemetría canónica y entregan avisos priorizados por el mismo bus, con rollback exclusivo del stack anterior.",
-        "en": "Spotter plus fuel, penalties, laps, timings and pit families consume canonical telemetry and deliver prioritized alerts through the same bus, with an exclusive rollback to the previous stack.",
-        "pt": "Spotter e as famílias de combustível, penalizações, voltas, tempos e boxes consomem telemetria canónica e entregam alertas priorizados pelo mesmo bus, com rollback exclusivo para o stack anterior.",
-        "it": "Spotter e le famiglie carburante, penalità, giri, tempi e box consumano telemetria canonica e consegnano avvisi prioritari sullo stesso bus, con rollback esclusivo allo stack precedente."
+        "es": "Spotter y las familias fuel, sanciones, vueltas, tiempos y boxes consumen telemetría canónica y entregan avisos priorizados por el mismo bus, con rollback exclusivo del stack anterior. El widget engineer-radio del overlay muestra cada aviso publicado, incluidas las respuestas del carril de voz experimental y los avisos de rendimiento. Orbit guarda módulos, sensibilidad y salidas, y avisa de forma contextual cuando faltan datos espaciales para Spotter.",
+        "en": "Spotter plus fuel, penalties, laps, timings and pit families consume canonical telemetry and deliver prioritized alerts through the same bus, with an exclusive rollback to the previous stack. The overlay engineer-radio widget shows every published alert, including experimental voice-lane answers and performance notices. Orbit saves modules, sensitivity and outputs, and shows a contextual warning when Spotter lacks spatial data.",
+        "pt": "Spotter e as famílias de combustível, penalizações, voltas, tempos e boxes consomem telemetria canónica e entregam alertas priorizados pelo mesmo bus, com rollback exclusivo para o stack anterior. O widget engineer-radio do overlay mostra cada alerta publicado, incluindo respostas do carril de voz experimental e avisos de desempenho. O Orbit guarda módulos, sensibilidade e saídas, e avisa quando faltam dados espaciais para o Spotter.",
+        "it": "Spotter e le famiglie carburante, penalità, giri, tempi e box consumano telemetria canonica e consegnano avvisi prioritari sullo stesso bus, con rollback esclusivo allo stack precedente. Il widget engineer-radio dell'overlay mostra ogni avviso pubblicato, comprese le risposte del canale vocale sperimentale e gli avvisi di prestazioni. Orbit salva moduli, sensibilità e uscite e avvisa quando mancano dati spaziali per lo Spotter."
       },
       "label": {
         "es": "En revisión",
@@ -2122,8 +2122,43 @@
   ],
   "delivered": [
     {
+      "date": "2026-09-15",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Workshop: study view como único harness"
+        },
+        {
+          "kind": "feat",
+          "scope": "notifications",
+          "text": "Centro de notificaciones con Spotter overlay-only"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-713 · Matriz de cobertura y reconciliación del Ingeniero"
+        },
+        {
+          "kind": "fix",
+          "scope": "engineer",
+          "text": "Cierra el contrato de evento UI del widget radio"
+        }
+      ]
+    },
+    {
       "date": "2026-09-14",
       "entries": [
+        {
+          "kind": "docs",
+          "scope": "",
+          "text": "Depurar entradas y contratos vigentes de la suite"
+        },
+        {
+          "kind": "docs",
+          "scope": "workflow",
+          "text": "Notion como entrada y seguimiento obligatorio"
+        },
         {
           "kind": "docs",
           "scope": "handoff",
@@ -2133,52 +2168,12 @@
           "kind": "fix",
           "scope": "motion",
           "text": "Reaterrizaje de las rondas de revisión adversarial"
-        },
-        {
-          "kind": "docs",
-          "scope": "workflow",
-          "text": "Notion como entrada y seguimiento obligatorio"
-        },
-        {
-          "kind": "docs",
-          "scope": "",
-          "text": "Depurar entradas y contratos vigentes de la suite"
         }
       ]
     },
     {
       "date": "2026-09-13",
       "entries": [
-        {
-          "kind": "fix",
-          "scope": "estrategia",
-          "text": "Presupuesto de trabajo por tamaño en Orbit en vez de deadline de pared"
-        },
-        {
-          "kind": "feat",
-          "scope": "widgets",
-          "text": "Sistema de diseno Eficiencia + motor de animacion"
-        },
-        {
-          "kind": "fix",
-          "scope": "estrategia",
-          "text": "Presupuesto de memoria en importación de sesiones LMU"
-        },
-        {
-          "kind": "fix",
-          "scope": "telemetria",
-          "text": "Dedup de vueltas, fronteras de fuel alineadas y deteccion de huecos rowid"
-        },
-        {
-          "kind": "fix",
-          "scope": "config",
-          "text": "Readmite vantare-iracing en el contrato de perfiles V3"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-1183 · Integrar widgets Eficiencia y corrección Foco"
-        },
         {
           "kind": "fix",
           "scope": "telemetria",
@@ -2203,6 +2198,36 @@
           "kind": "change",
           "scope": "",
           "text": "Efficiency, política común y runtime optimizado"
+        },
+        {
+          "kind": "fix",
+          "scope": "estrategia",
+          "text": "Presupuesto de memoria en importación de sesiones LMU"
+        },
+        {
+          "kind": "fix",
+          "scope": "telemetria",
+          "text": "Dedup de vueltas, fronteras de fuel alineadas y deteccion de huecos rowid"
+        },
+        {
+          "kind": "fix",
+          "scope": "config",
+          "text": "Readmite vantare-iracing en el contrato de perfiles V3"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-1183 · Integrar widgets Eficiencia y corrección Foco"
+        },
+        {
+          "kind": "feat",
+          "scope": "widgets",
+          "text": "Sistema de diseno Eficiencia + motor de animacion"
+        },
+        {
+          "kind": "fix",
+          "scope": "estrategia",
+          "text": "Presupuesto de trabajo por tamaño en Orbit en vez de deadline de pared"
         }
       ]
     },
@@ -2240,16 +2265,6 @@
       "date": "2026-09-11",
       "entries": [
         {
-          "kind": "feat",
-          "scope": "overlay",
-          "text": "Editor in-place C5 — toolbar pill, pestañas y panel ocultable"
-        },
-        {
-          "kind": "feat",
-          "scope": "overlay",
-          "text": "Editor in-place — teclado, acciones de widget y salida visible"
-        },
-        {
           "kind": "perf",
           "scope": "hub",
           "text": "Canal granular de perfiles en launcher-store"
@@ -2273,6 +2288,16 @@
           "kind": "fix",
           "scope": "studio",
           "text": "Restaurar enlace OBS al pie del dock de ajustes"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlay",
+          "text": "Editor in-place C5 — toolbar pill, pestañas y panel ocultable"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlay",
+          "text": "Editor in-place — teclado, acciones de widget y salida visible"
         }
       ]
     },
@@ -2280,9 +2305,9 @@
       "date": "2026-09-10",
       "entries": [
         {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-1101 · Integrar Redline Tower y dorsales canónicos"
+          "kind": "docs",
+          "scope": "ci",
+          "text": "Registrar integración Nightly de ISA-728"
         },
         {
           "kind": "fix",
@@ -2290,9 +2315,9 @@
           "text": "Corregir validación del workflow inerte"
         },
         {
-          "kind": "docs",
-          "scope": "ci",
-          "text": "Registrar integración Nightly de ISA-728"
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-1101 · Integrar Redline Tower y dorsales canónicos"
         }
       ]
     },
@@ -2723,71 +2748,6 @@
           "kind": "feat",
           "scope": "telemetry",
           "text": "Señales finas de suciedad para standings y relative"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-20",
-      "entries": [
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "El launcher ya no revienta con mapa nil al cachear iconos"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Promocionar el rework de telemetría Go-first a nightly"
-        },
-        {
-          "kind": "docs",
-          "scope": "roadmap",
-          "text": "Reflejar lo entregado en plan.md y exigirlo en AGENTS.md"
-        },
-        {
-          "kind": "fix",
-          "scope": "orbit",
-          "text": "Alinear el harness visual del roadmap con la pagina semiautomatica"
-        },
-        {
-          "kind": "fix",
-          "scope": "orbit",
-          "text": "Capturas visuales deterministas congelando el movimiento en el harness"
-        },
-        {
-          "kind": "feat",
-          "scope": "ci",
-          "text": "Retirar Linear como fuente operativa"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Diagnostico publica los registros y los ultimos eventos"
-        },
-        {
-          "kind": "feat",
-          "scope": "launcher",
-          "text": "Favoritos del catalogo y aplicaciones personalizadas"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Roadmap semiautomatico: plan manual + digest de commits"
-        },
-        {
-          "kind": "feat",
-          "scope": "estrategia",
-          "text": "Menu de entrada, asistente de creacion y pase de UI"
-        },
-        {
-          "kind": "fix",
-          "scope": "release",
-          "text": "Anuncios de Discord con copy humano desde el manifiesto"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Canales de Actualizaciones clasifican stable/testers/nightly"
         }
       ]
     }

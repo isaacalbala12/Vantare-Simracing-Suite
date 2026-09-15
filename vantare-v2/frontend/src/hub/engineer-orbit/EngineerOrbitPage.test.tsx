@@ -40,6 +40,7 @@ const STATUS: EngineerStatus = {
   source: "telemetry-core",
   presentationLifecycle: 1,
   spotterEnabled: true,
+  spotterAvailability: { state: "ready" },
   sensitivity: "normal",
   ttsCacheCount: 0,
   recentMessages: [
@@ -172,6 +173,24 @@ describe("EngineerOrbitPage", () => {
     expect(screen.getByTestId("orbit-engineer-feed-empty").textContent).toContain(
       "Sin mensajes de sesión",
     );
+  });
+
+  it("avisa si el Spotter no está disponible aunque la telemetría esté conectada", () => {
+    const fake = fakeBridge({
+      ...STATUS,
+      connected: true,
+      spotterAvailability: { state: "unavailable", reason: "capability" },
+    });
+    mount(fake.bridge);
+
+    const notice = screen.getByTestId("orbit-engineer-spotter-unavailable");
+    expect(notice.textContent).toContain("Spotter no disponible");
+    expect(notice.textContent).toContain("telemetría espacial");
+
+    fireEvent.click(
+      within(screen.getByTestId("orbit-eng-mod-spotter")).getByRole("button", { name: "Spotter" }),
+    );
+    expect(screen.queryByTestId("orbit-engineer-spotter-unavailable")).toBeNull();
   });
 
   it("no usa el atributo `title` nativo", () => {

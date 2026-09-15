@@ -3,8 +3,8 @@ import type { WidgetColumnV3, WidgetColumnWidthPreset } from "../shared/widget-c
 export const FUNCTIONAL_IDENTITY_METRICS: ReadonlySet<string> = new Set(["position", "driverNumber", "driverName", "vehicleClass"]);
 
 const WIDTHS: Readonly<Record<string, number>> = {
-  position: 34, driverNumber: 36, gap: 86, interval: 86, lastLap: 104,
-  bestLap: 104, pit: 42, currentLap: 52, vehicleClass: 60, tireCompound: 48,
+  position: 34, driverNumber: 36, gap: 84, interval: 84, lastLap: 84,
+  bestLap: 84, pit: 36, currentLap: 52, vehicleClass: 60, tireCompound: 48,
 };
 
 // Presets add breathing room to readable minima; timing text never shrinks below them.
@@ -41,7 +41,7 @@ export function resolveFunctionalHeaderInfoPlacement(
 }
 
 export function resolveFunctionalStandingsSize(
-  columns: readonly WidgetColumnV3[], rowCount: number, settings: Readonly<Record<string, unknown>>,
+  columns: readonly WidgetColumnV3[], rowCount: number, settings: Readonly<Record<string, unknown>>, rowHeight = 30,
 ): { width: number; height: number } {
   const broadcast = settings.templateId === "broadcast";
   const enabled = columns.filter((column) => column.enabled);
@@ -51,8 +51,10 @@ export function resolveFunctionalStandingsSize(
     && resolveFunctionalIdentitySpan(enabled) === 0;
   const header = broadcast ? 24 + (settings.showSessionHeader === false ? 0 : 46)
     : 50 + (separateSignatureHeader ? 49 : 0);
-  const footer = settings.showSessionFooter === false ? 0 : 22;
+  // El pie ambiente (pista/aire/viento) mide 30px y prevalece sobre el pie de
+  // sesión de 22px cuando hay datos — el tamaño mínimo presupone el caso real.
+  const footer = settings.showSessionFooter === false ? 0 : 30;
   const infoBand = resolveFunctionalHeaderInfoPlacement(enabled, settings) === "band" ? 22 : 0;
   const brandBand = settings.brandVisible === true && settings.showSessionHeader === false ? 22 : 0;
-  return { width: Math.max(broadcast ? 258 : 238, width), height: header + infoBand + brandBand + rowCount * 30 + footer };
+  return { width: Math.max(broadcast ? 258 : 238, width), height: header + infoBand + brandBand + rowCount * rowHeight + footer };
 }

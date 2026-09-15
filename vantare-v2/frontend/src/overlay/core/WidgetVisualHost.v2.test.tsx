@@ -181,14 +181,14 @@ describe("WidgetVisualHost v2 generic registry", () => {
       <WidgetVisualHost widget={{ ...widget }} renderMode="harness" runtime={runtime("profile-a", changedFrame)} />,
     );
     expect([...view.container.querySelectorAll("[data-relative-row]")].map((row) => row.getAttribute("data-relative-row"))).toEqual([
-      "new-ahead", "old-ahead", "player-1",
+      "far-ahead", "new-ahead", "old-ahead", "player-1",
     ]);
 
     view.rerender(
       <WidgetVisualHost widget={{ ...widget }} renderMode="harness" runtime={runtime("profile-b", changedFrame)} />,
     );
     expect([...view.container.querySelectorAll("[data-relative-row]")].map((row) => row.getAttribute("data-relative-row"))).toEqual([
-      "new-ahead", "old-ahead", "player-1",
+      "far-ahead", "new-ahead", "old-ahead", "player-1",
     ]);
   });
 
@@ -220,7 +220,7 @@ describe("WidgetVisualHost v2 generic registry", () => {
 
       expect([...view.container.querySelectorAll("[data-relative-row]")].map(
         (row) => row.getAttribute("data-relative-row"),
-      )).toEqual(["old-ahead", "new-ahead", "player-1"]);
+      )).toEqual(["far-ahead", "old-ahead", "new-ahead", "player-1"]);
     },
   );
 

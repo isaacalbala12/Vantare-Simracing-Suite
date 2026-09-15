@@ -9,6 +9,8 @@ export type RelativeRowViewModel = {
   vehicleClass: string;
   driverNumber: string;
   driverName: string;
+  /** Nombre ya formateado según `format.mode` de la columna Piloto; si falta, se muestra `driverName`. */
+  configuredDriverName?: string;
   gapText: string;
   bestLapText: string;
   lastLapText: string;
@@ -46,7 +48,7 @@ export function resolveRelativeCellValue(row: RelativeRowViewModel, metricId: st
     case "carNumber":
       return row.driverNumber;
     case "driverName":
-      return row.driverName;
+      return row.configuredDriverName ?? row.driverName;
     case "gap":
       return row.gapText;
     case "bestLap":

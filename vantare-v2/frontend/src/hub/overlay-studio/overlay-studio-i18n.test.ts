@@ -19,7 +19,7 @@ const STUDIO_V3_LOCALES = {
 
 const OVERLAY_STUDIO_ROOT = join(__dirname);
 
-const SPANISH_BOUNDARY_PATTERN = /["'`]([^"'`]*[áéíóúñ¿¡][^"'`]*)["'`]/;
+const SPANISH_BOUNDARY_PATTERN = /["'`]([^"'`\r\n]*[áéíóúñ¿¡][^"'`\r\n]*)["'`]/;
 
 const BOUNDARY_ALLOWLIST = new Set([
   "vantare-original",

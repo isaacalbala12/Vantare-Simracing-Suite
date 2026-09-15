@@ -6,6 +6,7 @@ import type {
   OverlayQValue,
   OverlayRelativeRowV2,
   OverlayStandingRowV2,
+  Overlayv2DeltaHistoryV2,
 } from "../../../generated/telemetry";
 import type { DesignSystemId, WidgetInstanceV3, WidgetType } from "../../core/profile-document";
 import type { WidgetRuntimeInput } from "../../core/widget-definition";
@@ -15,7 +16,25 @@ import {
   type AuthoringV2Variant,
 } from "./authoring-v2-scenario-fixture";
 import { buildAuthoringV2ScenarioWidget } from "./authoring-v2-scenario-widget";
+import {
+  getEnabledRelativeColumns,
+  parseRelativeContent,
+  RELATIVE_RANGE_AHEAD,
+  RELATIVE_RANGE_BEHIND,
+  updateRelativeFilters,
+} from "../../widget-types/relative/relative-content";
+import {
+  computeRelativeConfiguredRowCount,
+  computeRelativeIntrinsicHeight,
+  computeRelativeIntrinsicWidth,
+} from "../../widget-types/relative/relative-renderer-helpers";
+import {
+  FUNCTIONAL_RELATIVE_BASE_WIDTH,
+  resolveFunctionalRelativeBaseHeight,
+  resolveFunctionalRelativeSlotsWidth,
+} from "../../design-systems/vantare-functional/relative-layout";
 import { FUNCTIONAL_STUDY_DEFAULT_MODULES } from "../functional-study-options";
+import { resolveStandingsMinimumSize } from "../../widget-types/standings/standings-frame-layout";
 import { applyWidgetDesign } from "../../core/widget-design";
 import { getOfficialDesign, listOfficialDesigns } from "../../design-systems/official-designs";
 import { getAnimationScene, sceneFrameAt } from "./animation-scenes";
@@ -28,7 +47,6 @@ export const WORKSHOP_V2_DEV_VARIANTS = [
   "standings-functional-study",
   "standings-stress60",
   "standings-replay",
-  "relative-multiclass",
   "pedals-zero",
   "pedals-full",
 ] as const;
@@ -40,6 +58,15 @@ export const WORKSHOP_V2_VARIANTS: readonly WorkshopV2Variant[] = [
   ...AUTHORING_V2_VARIANTS,
   ...WORKSHOP_V2_DEV_VARIANTS,
 ];
+
+// La presentación multiclass es el default del Relative dentro de Eficiencia.
+function usesRelativeStudyProjection(input: {
+  widget: WidgetType;
+  system: DesignSystemId;
+  variant: WorkshopV2Variant;
+}): boolean {
+  return input.widget === "relative" && input.system === "vantare-functional" && input.variant === "default";
+}
 
 const WORKSHOP_V2_VARIANT_SET: ReadonlySet<string> = new Set(WORKSHOP_V2_VARIANTS);
 
@@ -54,7 +81,6 @@ const DEV_SHAPE_VARIANT: Record<WorkshopV2DevVariant, AuthoringV2Variant> = {
   "standings-functional-study": "default",
   "standings-stress60": "default",
   "standings-replay": "standings-multiclass",
-  "relative-multiclass": "default",
   "pedals-zero": "default",
   "pedals-full": "default",
 };
@@ -89,10 +115,11 @@ export function createScenarioWidget(input: {
 }): WidgetInstanceV3 {
   const shape = shapeVariantFor(input);
   let widget = buildAuthoringV2ScenarioWidget({ widget: input.widget, system: input.system, variant: shape });
-  // La ventana dev multiclass del relative se presenta como en la referencia:
+  // La proyección multiclass del Relative se presenta como en la referencia:
   // solo posición, clase, nombre y gap — driverNumber y bestLap son huecos
   // declarados de la proyección y dibujarían columnas permanentes de "—".
-  if (input.widget === "relative" && input.variant === "relative-multiclass") {
+  // En Eficiencia esta es la forma canónica de `default`.
+  if (usesRelativeStudyProjection(input)) {
     const content = widget.content as Record<string, unknown>;
     const keep = new Set(["position", "class", "driverName", "gap"]);
     const columns = Array.isArray(content.columns)
@@ -138,6 +165,10 @@ export function buildWorkshopWidget(input: {
   brand?: "off";
   modules?: readonly string[];
   slots?: readonly string[];
+  ahead?: number;
+  behind?: number;
+  nameFormat?: "full" | "initial" | "surname";
+  rows?: number;
 }): WidgetInstanceV3 {
   let widget = createScenarioWidget({
     widget: input.widget,
@@ -157,6 +188,33 @@ export function buildWorkshopWidget(input: {
       ? (content.columns as Record<string, unknown>[]).map((column) => column.metricId === "lastLap" ? { ...column, enabled: false } : column.metricId === "bestLap" ? { ...column, enabled: true } : column)
       : content.columns;
     widget = { ...widget, content: { ...content, columns } };
+  }
+
+  // Formato del nombre de piloto: el mismo `format.mode` que edita Studio en
+  // la columna Piloto. Viaja por content.columns, nada fuera del contrato.
+  if (input.nameFormat && (input.widget === "standings" || input.widget === "relative")) {
+    const content = widget.content as Record<string, unknown>;
+    const columns = Array.isArray(content.columns)
+      ? (content.columns as Record<string, unknown>[]).map((column) =>
+          column.metricId === "driverName"
+            ? { ...column, format: { ...(column.format as Record<string, unknown> | undefined), mode: input.nameFormat } }
+            : column)
+      : content.columns;
+    widget = { ...widget, content: { ...content, columns } };
+  }
+
+  // Recuento de filas del Standings: el mismo `rowCount` que edita Studio;
+  // el view model recorta por él y en Eficiencia la caja se re-encaja como
+  // en la ventana del Relative — fila fija, marco que sigue al contenido.
+  if (input.widget === "standings" && input.rows !== undefined) {
+    const content = widget.content as Record<string, unknown>;
+    widget = { ...widget, content: { ...content, rowCount: input.rows } };
+    if (input.system === "vantare-functional") {
+      const minimum = resolveStandingsMinimumSize(widget);
+      if (minimum) {
+        widget = { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height ?? widget.layout.h } };
+      }
+    }
   }
 
   // El selector de marca del panel hace de autoridad local (en producción la
@@ -200,6 +258,34 @@ export function buildWorkshopWidget(input: {
     };
   }
 
+  // Ventana del relative: la caja se adapta al contenido, nunca al revés —
+  // la fila queda a su alto fijo y el marco crece o se encoge con las filas
+  // configuradas. En Eficiencia se re-encaja siempre (a escala 1 las filas
+  // miden 28px reales y las fichas no se encogen); en el resto de sistemas
+  // solo cuando la URL fija la ventana, para no pisar las medidas de
+  // manifiesto o diseño sin motivo.
+  if (input.widget === "relative") {
+    const next = updateRelativeFilters(parseRelativeContent(widget.content), {
+      ...(input.ahead !== undefined ? { rangeAhead: input.ahead } : {}),
+      ...(input.behind !== undefined ? { rangeBehind: input.behind } : {}),
+    });
+    widget = { ...widget, content: next };
+    const rows = computeRelativeConfiguredRowCount(next);
+    const settings = { ...widget.visual.baseSettings, ...widget.visual.appearanceOverrides };
+    if (input.system === "vantare-functional") {
+      const w = Math.max(
+        FUNCTIONAL_RELATIVE_BASE_WIDTH,
+        Math.ceil(resolveFunctionalRelativeSlotsWidth(settings)),
+      );
+      const h = Math.ceil(resolveFunctionalRelativeBaseHeight(rows, settings) * (w / FUNCTIONAL_RELATIVE_BASE_WIDTH));
+      widget = { ...widget, layout: { ...widget.layout, w, h: next.rowHeightMode === "fill" ? Math.max(widget.layout.h, h) : h } };
+    } else if (input.ahead !== undefined || input.behind !== undefined) {
+      const w = computeRelativeIntrinsicWidth(getEnabledRelativeColumns(next));
+      const h = computeRelativeIntrinsicHeight(next.rowHeightMode, rows);
+      widget = { ...widget, layout: { ...widget.layout, w, h: next.rowHeightMode === "fill" ? Math.max(widget.layout.h, h) : h } };
+    }
+  }
+
   return widget;
 }
 
@@ -214,6 +300,11 @@ export type WorkshopV2Scenario = {
   sceneId?: string;
   sceneFrame?: number;
   sceneState?: SceneFrame;
+  /** Filas que la ventana de Relative deja delante/detrás del jugador. */
+  rangeAhead?: number;
+  rangeBehind?: number;
+  /** Filas declaradas por el Standings (1–30); el golden se completa en ciclo. */
+  standingRows?: number;
 };
 
 // Calendario auxiliar dev migrado del mock legacy: no es telemetría, solo
@@ -251,6 +342,16 @@ const WORKSHOP_DEMO_GRID: readonly string[] = [
   "Maro Engel",           // 18 gte
   "Mikkel Jensen",        // 19 hypercar
   "Nico Pino",            // 20 lmp2
+  "Charlie Eastwood",     // 21 gte — filas extra del selector 1–30
+  "Robert Kubica",        // 22 hypercar
+  "Matthieu Vaxivière",   // 23 lmp2
+  "Valentino Rossi",      // 24 gte
+  "Jenson Button",        // 25 hypercar
+  "Bent Viscaal",         // 26 lmp2
+  "Rahel Frey",           // 27 gte
+  "Mick Schumacher",      // 28 hypercar
+  "Franco Colapinto",     // 29 lmp2
+  "Michelle Gatting",     // 30 gte
 ];
 
 // Trazas deterministas de un sector para input-telemetry: recta, frenada
@@ -281,6 +382,22 @@ function demoControlsHistory(quality: OverlayQualityV2): OverlayControlsHistoryV
   return { q: quality, capturedAtMS, throttle, brake, clutch, speedMPS: speed, rpm, gear };
 }
 
+// Serie delta determinista para delta-trace: 100 muestras a 20 Hz sobre 5 s
+// (la ventana por defecto enseña las últimas 4 s). Tendencia a la baja —
+// el piloto recorta — con ondulación de sector.
+const DEMO_DELTA_POINTS = 100;
+function demoDeltaHistory(quality: OverlayQualityV2): Overlayv2DeltaHistoryV2 {
+  const capturedAtMS: number[] = [];
+  const seconds: number[] = [];
+  const base = 1_757_900_000_000;
+  for (let i = 0; i < DEMO_DELTA_POINTS; i += 1) {
+    capturedAtMS.push(base + i * 50);
+    const drift = i / (DEMO_DELTA_POINTS - 1);
+    seconds.push(0.5 - drift * 0.3 + Math.sin(i / 5) * 0.07);
+  }
+  return { q: quality, capturedAtMS, seconds };
+}
+
 // Capa de demostración del Workshop: el golden canónico trae shape y cantidad
 // pero nombres vacíos ("Driver 0NN") y varios canales sin valor, que no sirven
 // para juzgar el diseño. Aquí se rellenan identidades y canales de muestra —
@@ -307,8 +424,23 @@ function withWorkshopDemo(frame: OverlayFrameV2, quality: OverlayQualityV2): Ove
       clutch: qualityValue(0.06, quality),
       steering: qualityValue(0.08, quality),
     },
-    delta: { ...frame.delta, seconds: qualityValue(0.214, quality) },
+    delta: {
+      ...frame.delta,
+      seconds: qualityValue(0.214, quality),
+      history: demoDeltaHistory(quality),
+    },
+    session: { ...frame.session, flag: qualityValue("green", quality) },
     controls: { history: demoControlsHistory(quality) },
+    fuel: {
+      ...frame.fuel,
+      perLap: qualityValue(2.14, quality),
+      requiredFuel: qualityValue(169.1, quality),
+      history: {
+        q: quality,
+        lap: [14, 15, 16, 17],
+        consumed: [2.21, 2.08, 2.26, 2.12],
+      },
+    },
     weather: {
       ...frame.weather,
       ambientC: qualityValue(21, quality),
@@ -424,25 +556,55 @@ function patchStandings(
   return out.sort((left, right) => left.position - right.position);
 }
 
-function stressStandings(rows: readonly OverlayStandingRowV2[]): OverlayStandingRowV2[] {
-  const out: OverlayStandingRowV2[] = [];
+// Repite la parrilla en ciclo hasta `count` filas: ids únicos por copia,
+// posición reenumerada y un salto de gap por vuelta para que las filas
+// extra no repliquen el "Leader" de la P1.
+function padStandings(rows: readonly OverlayStandingRowV2[], count: number): OverlayStandingRowV2[] {
+  const out: OverlayStandingRowV2[] = [...rows];
   const perClass = new Map<string, number>();
-  for (let copy = 0; copy < 3; copy++) {
-    rows.forEach((row) => {
+  out.forEach((row) => {
+    const classId = row.classId ?? "unknown";
+    perClass.set(classId, (perClass.get(classId) ?? 0) + 1);
+  });
+  for (let copy = 1; out.length < count; copy++) {
+    for (const row of rows) {
+      if (out.length >= count) break;
       const classId = row.classId ?? "unknown";
       perClass.set(classId, (perClass.get(classId) ?? 0) + 1);
+      const gap = typeof row.gap?.v === "number" ? row.gap.v + copy * 15 : row.gap;
       out.push({
         ...row,
-        id: copy === 0 ? row.id : `${row.id}#dev-${copy}`,
+        id: `${row.id}#dev-${copy}`,
+        gap: typeof gap === "number" ? { ...row.gap, v: gap } : row.gap,
         position: out.length + 1,
         classPosition: perClass.get(classId)!,
       });
-    });
+    }
   }
   return out;
 }
 
-const RELATIVE_DEV_GAPS = [5.5, 4.2, 1.8, 0.4, 0, -0.3, -2.6, -5.1];
+function stressStandings(rows: readonly OverlayStandingRowV2[]): OverlayStandingRowV2[] {
+  return padStandings(rows, rows.length * 3);
+}
+
+// Gaps dev por distancia al jugador (cerca→lejos). El golden ofrece 8 filas
+// por lado; más allá de los valores semilla la distancia crece a paso fijo
+// para que cualquier ventana 0–8 siga siendo determinista.
+const RELATIVE_DEV_GAP_AHEAD = [0.4, 1.8, 4.2, 5.5];
+const RELATIVE_DEV_GAP_BEHIND = [-0.3, -2.6, -5.1];
+
+function relativeDevGap(distance: number): number {
+  if (distance > 0) {
+    const base = RELATIVE_DEV_GAP_AHEAD[distance - 1];
+    return base ?? Math.round((5.5 + (distance - RELATIVE_DEV_GAP_AHEAD.length) * 1.7) * 100) / 100;
+  }
+  if (distance < 0) {
+    const base = RELATIVE_DEV_GAP_BEHIND[-distance - 1];
+    return base ?? Math.round((-5.1 - (-distance - RELATIVE_DEV_GAP_BEHIND.length) * 1.9) * 100) / 100;
+  }
+  return 0;
+}
 
 function sideForGap(gap: number, fallback: string): string {
   if (gap > 0) return "ahead";
@@ -450,12 +612,15 @@ function sideForGap(gap: number, fallback: string): string {
   return fallback;
 }
 
-// Ventana dev sobre el orden canónico: 4 ahead far→near, player, 3 behind
-// near→far. Una sola función para relative y relativeSettled.
+// Ventana dev sobre el orden canónico: N ahead far→near, player, M behind
+// near→far, con N/M configurables (por defecto 3/3, el default de producto).
+// Una sola función para relative y relativeSettled.
 function relativeDevWindow(
   rows: readonly OverlayRelativeRowV2[],
   playerId: string,
   quality: OverlayQualityV2,
+  aheadCount = 3,
+  behindCount = 3,
 ): OverlayRelativeRowV2[] {
   const gapValue = (row: OverlayRelativeRowV2): number => row.gap.v ?? 0;
   const ahead = rows
@@ -466,9 +631,11 @@ function relativeDevWindow(
   if (!player) {
     throw new Error("authoring-v2-workshop-frame: relative sin fila del jugador");
   }
-  const window = [...ahead.slice(-4), player, ...behind.slice(0, 3)];
+  const aheadRows = ahead.slice(-aheadCount);
+  const window = [...aheadRows, player, ...behind.slice(0, behindCount)];
+  const playerIndex = aheadRows.length;
   return window.map((row, index) => {
-    const gap = RELATIVE_DEV_GAPS[index]!;
+    const gap = relativeDevGap(playerIndex - index);
     return {
       ...row,
       gap: qualityValue(gap, quality),
@@ -644,7 +811,15 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
     return runtime;
   }
   const quality: OverlayQualityV2 = source.state === "live" ? "fresh" : "stale";
-  let frame = withWorkshopDemo(base.overlayV2Frame!, quality);
+  // El selector de filas (1–30) puede pedir más coches de los que trae el
+  // golden de 20: se completa en ciclo antes del demo para que las filas
+  // extra también reciban nombre de la parrilla.
+  let baseFrame = base.overlayV2Frame!;
+  if (scenario.widget === "standings" && scenario.standingRows !== undefined
+    && baseFrame.standings.length < scenario.standingRows) {
+    baseFrame = { ...baseFrame, standings: padStandings(baseFrame.standings, scenario.standingRows) };
+  }
+  let frame = withWorkshopDemo(baseFrame, quality);
   switch (scenario.variant) {
     case "standings-functional-study": {
       // Explicit visual-study data, never live telemetry. The original V2
@@ -680,15 +855,6 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
       frame = { ...frame, standings: patchStandings(frame.standings, replayStepPatches(step), quality) };
       break;
     }
-    case "relative-multiclass": {
-      const playerId = frame.player.id ?? "";
-      frame = {
-        ...frame,
-        relative: relativeDevWindow(frame.relative, playerId, quality),
-        relativeSettled: relativeDevWindow(frame.relativeSettled, playerId, quality),
-      };
-      break;
-    }
     case "pedals-zero":
       frame = forcePedals(frame, 0, quality);
       break;
@@ -697,6 +863,18 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
       break;
     default:
       break;
+  }
+  // El default de Relative en Eficiencia usa una ventana multiclass
+  // determinista; no existe una variante alternativa para esta presentación.
+  if (usesRelativeStudyProjection(scenario)) {
+    const playerId = frame.player.id ?? "";
+    const ahead = scenario.rangeAhead ?? RELATIVE_RANGE_AHEAD;
+    const behind = scenario.rangeBehind ?? RELATIVE_RANGE_BEHIND;
+    frame = {
+      ...frame,
+      relative: relativeDevWindow(frame.relative, playerId, quality, ahead, behind),
+      relativeSettled: relativeDevWindow(frame.relativeSettled, playerId, quality, ahead, behind),
+    };
   }
   frame = applyScene(frame, scenario, quality);
   return { ...runtime, overlayV2Frame: frame };

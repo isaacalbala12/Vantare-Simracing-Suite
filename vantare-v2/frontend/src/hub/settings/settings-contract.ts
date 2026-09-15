@@ -74,10 +74,19 @@ export type PerformanceSettings = {
   overrides?: Record<string, { hz?: number | "dirty"; effects?: "full" | "noBlur" | "flat" }>;
 };
 
+export type EngineerSettings = {
+  enabled: boolean;
+  spotterEnabled: boolean;
+  subtitlesEnabled: boolean;
+  sensitivity: "conservative" | "normal" | "aggressive";
+  outputModes: Record<string, "audio" | "visual" | "both" | "disabled">;
+};
+
 export type AppSettings = {
   cpuSampling: boolean;
   performance: PerformanceSettings;
   notifications?: NotificationSettings;
+  engineer?: EngineerSettings;
   hotkeys: Record<string, string>;
   activeOverlayProfileId?: string;
   betaWelcomeCompleted?: boolean;

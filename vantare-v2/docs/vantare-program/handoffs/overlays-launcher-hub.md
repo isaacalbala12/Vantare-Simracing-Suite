@@ -3029,3 +3029,35 @@ aislada a `nightly` (pendiente review/merge):
 - `plan.md` publica `functional-widget-design` y `widget-access-branding` como
   entregados; `roadmap.json` se regenera desde la base confiable. CI del SHA
   final y pertenencia al remoto Nightly son los últimos gates antes del cierre.
+
+## ISA-901 — centro de notificaciones y Spotter overlay-only (2026-09-15)
+
+- Candidato `vantareapp/isa-901-centro-notificaciones`, PR draft a `nightly`.
+  Depende de #900 (ya cerrada); paraguas #899. Sin merge ni promoción
+  implícita: la integración la autoriza Isaac.
+- `internal/notify.Center` es el store acotado (50) y la única autoridad de
+  avisos recientes; publica el snapshot completo en `notifications:center`
+  tras cada mutación y un webview reconectado pide `notifications:center:get`.
+  `revision` descarta entregas viejas. Contrato y matriz en ADR-0096.
+- Matriz por fuente: `updater`/`launcher` → hub+windows+history; `system`
+  (prueba manual) → hub+history sin Windows. Fuente silenciada aterriza leída
+  y sin toast. Acciones solo `navigate` con allowlist backend
+  (`settings:updates`, `launcher`): el frontend manda el id y el backend
+  revalida antes de emitir `notifications:center:navigate`.
+- Exclusión Spotter por construcción: `Source` es conjunto cerrado sin
+  `spotter`, así que `Publish` lo rechaza con `ErrSourceDenied`; ningún camino
+  del ingeniero toca el centro ni el toast. Su salida sigue siendo
+  overlay/subtítulos/audio.
+- `centerEmitter` reemplaza `notifyingEmitter`: `launcher:chain:done` ahora
+  produce registro del centro; `notify.Service.SendGated` es el canal Windows
+  (reutiliza preferencia+autorización+ventana oculta) en goroutine propia.
+  `LaunchFinished` quedó sin consumidores y se retiró.
+- UI: campana con badge en la topbar Orbit + panel (leído/limpiar/acción).
+  i18n en es/en/it/pt; las claves `notifications.record.*` las emite el
+  backend y un test de contrato cruza `notify_center.go` con los catálogos.
+- Evidencia: `go test -race ./internal/notify` PASS (un test de concurrencia
+  cazó y corrigió corrupción en el move-to-front del dedupe); 3600+ tests
+  frontend PASS; typecheck/lint/build web PASS; auditoría i18n 0 huérfanas;
+  `GOOS=windows go build ./cmd/vantare` PASS.
+- Pendiente humano: verificación visual de la campana en la app real
+  (Wails/WebView2) y toast Windows; son parte del paquete de validación beta.

@@ -93,10 +93,10 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
   const rowsFit = Math.max(0, Math.floor((tableSpace - tableHeaderHeight - internalInfoHeight) / 30));
   const visibleRows = Number.isFinite(tableSpace) ? model.rows.slice(0, rowsFit) : model.rows;
 
-  const sessionHeader = <div className="vf-session" title={`${sessionLabel} · ${labels.remaining}`}>
+  const sessionHeader = <div className={`vf-session${brandVisible ? "" : " vf-session--bare"}`} title={`${sessionLabel} · ${labels.remaining}`}>
     {brandVisible ? <span className="vf-brand" aria-label="Vantare"><img src={vantareMark} alt="" />VANTARE</span> : null}
     <span className="vf-session-context"><span className="vf-session-type" role={model.status === "stale" ? "status" : undefined}>{model.status === "stale" ? labels.stale : sessionLabel}</span><span className="vf-clock">{model.remainingText}</span></span>
-    <span className="vf-class" title={model.activeClass}>{model.activeClass}</span>
+    <span className="vf-class" title={model.activeClass}>{model.activeClass.slice(0, 3).toUpperCase()}</span>
     {infoPlacement === "inline" && headerInfo}
   </div>;
 
@@ -110,7 +110,9 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
       {!unavailable && visibleRows.length > 0 && (
         <div className="vf-table-wrap">
         <table className="vf-table" aria-label={`${sessionLabel} · ${model.activeClass}`}>
-          <colgroup>{columns.map((column) => <col key={column.id} style={{ width: resolveFunctionalColumnWidth(column, broadcast) }} />)}</colgroup>
+          <colgroup>{columns.map((column) => column.metricId === "driverName"
+            ? <col key={column.id} />
+            : <col key={column.id} style={{ width: resolveFunctionalColumnWidth(column, broadcast) }} />)}</colgroup>
           <thead>{splitHeader ? <>
             <tr className="vf-info-row"><th rowSpan={2} colSpan={identitySpan} scope="colgroup" className="vf-identity-head">{sessionHeader}</th><th colSpan={columns.length - identitySpan} className="vf-info-head">{headerInfo}</th></tr>
             <tr className="vf-metric-row">{columns.slice(identitySpan).map(column => <th key={column.id} scope="col" data-metric={column.metricId} title={labelFor(column.metricId)}><span className="vf-column-label">{labelFor(column.metricId)}</span></th>)}</tr>
@@ -143,7 +145,7 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
         <div className="vf-footer" data-session-footer>
           {model.trackTempText ? <span className="vf-footer-item">{labels.trackTemp} <b>{model.trackTempText}</b></span> : null}
           {model.ambientTempText ? <span className="vf-footer-item">{labels.ambientTemp} <b>{model.ambientTempText}</b></span> : null}
-          {model.windText ? <span className="vf-footer-item vf-footer-item--end">{labels.wind} <b>{model.windText}</b></span> : null}
+          {model.windText ? <span className="vf-footer-item">{labels.wind} <b>{model.windText}</b></span> : null}
         </div>
       ) : config.showSessionFooter ? (
         <SessionInfo className="vf-session-footer" choices={[config.footerFirst, config.footerSecond]} model={model} labels={labels} />

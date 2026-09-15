@@ -25,16 +25,16 @@ type Scenario = {
   state: "ready";
 };
 
-function buildWidget(scenario: Scenario, useStudySize = false): { widget: WidgetInstanceV3; runtime: ReturnType<typeof buildWorkshopFrameV2> } {
+function buildWidget(scenario: Scenario, useStudySize = false, rowHeight = 30): { widget: WidgetInstanceV3; runtime: ReturnType<typeof buildWorkshopFrameV2> } {
   let widget = buildWorkshopWidget(scenario);
   const runtime = buildWorkshopFrameV2(scenario);
   // Coloca el frame en el origen del canvas de prueba para que las
   // coordenadas getBoundingClientRect sean directas y la ventana lo enmarque.
   widget = { ...widget, layout: { ...widget.layout, x: 0, y: 0 } };
   if (useStudySize && widget.type === "standings") {
-    const study = resolveStandingsMinimumSize(widget);
+    const study = resolveStandingsMinimumSize(widget, undefined, rowHeight);
     if (study?.height !== undefined) {
-      widget = { ...widget, layout: { ...widget.layout, w: study.width, h: study.height + 30 } };
+      widget = { ...widget, layout: { ...widget.layout, w: study.width, h: study.height } };
     }
   }
   return { widget, runtime };
@@ -114,7 +114,7 @@ describe("Functional Workshop clipping and fill", () => {
     }
   });
 
-  it("Standings study Foco (shorter rows) still fills the wrap", async () => {
+  it("Standings study Foco (taller rows) still fills the wrap", async () => {
     const scenario: Scenario = {
       widget: "standings",
       system: "vantare-functional",
@@ -123,11 +123,11 @@ describe("Functional Workshop clipping and fill", () => {
       location: "track",
       state: "ready",
     };
-    const { widget, runtime } = buildWidget(scenario, true);
+    const { widget, runtime } = buildWidget(scenario, true, 34);
     const browser = await chromium.launch({ headless: true });
     try {
       const page = await browser.newPage({ viewport: { width: widget.layout.w + 40, height: widget.layout.h + 40 } });
-      const focoCss = `.functional-study[data-study-style="v2-focus"] .vf-standings .vf-table td { height: 28px; }`;
+      const focoCss = `.functional-study[data-study-style="v2-focus"] .vf-standings .vf-table td { height: 34px; }`;
       await page.setContent(renderMarkup(widget, runtime, focoCss));
       const result = await page.evaluate(() => {
         const frame = document.querySelector<HTMLElement>("[data-testid='runtime-widget-frame']");
@@ -174,7 +174,7 @@ describe("Functional Workshop clipping and fill", () => {
     const scenario: Scenario = {
       widget: "relative",
       system: "vantare-functional",
-      variant: "relative-multiclass",
+      variant: "default",
       session: "race",
       location: "track",
       state: "ready",

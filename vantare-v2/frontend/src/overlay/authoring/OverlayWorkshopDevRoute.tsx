@@ -49,8 +49,14 @@ function createRouteScenarioWidget(query: OverlayWorkshopQuery): WidgetInstanceV
   } } };
 }
 
-function setSearch(query: OverlayWorkshopQuery): void {
-  window.history.replaceState(null, "", `/workshop?${serializeOverlayWorkshopQuery(query)}`);
+function setSearch(query: OverlayWorkshopQuery, mode: "push" | "replace" = "push"): void {
+  const url = `/workshop?${serializeOverlayWorkshopQuery(query)}`;
+  if (url === `${window.location.pathname}${window.location.search}`) return;
+  if (mode === "push") {
+    window.history.pushState(null, "", url);
+  } else {
+    window.history.replaceState(null, "", url);
+  }
 }
 
 function WorkshopSurface({ widget, runtime, profileId, surface, query, comparison = false }: { widget: WidgetInstanceV3; runtime: WidgetRuntimeInput; profileId: string; surface: OverlayWorkshopQuery["surface"]; query: OverlayWorkshopQuery; comparison?: boolean }): React.ReactElement {
@@ -87,8 +93,9 @@ function WorkshopSurface({ widget, runtime, profileId, surface, query, compariso
 
 function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initialQuery: OverlayWorkshopQuery; initialError?: string; profileId: string }): React.ReactElement {
   const [parsed, setQuery] = useState<OverlayWorkshopQuery>(initialQuery);
-  const update = (next: OverlayWorkshopQuery) => {
-    setSearch(next);
+  const [rejected, setRejected] = useState(initialError);
+  const update = (next: OverlayWorkshopQuery, mode: "push" | "replace" = "push") => {
+    setSearch(next, mode);
     setQuery(next);
   };
 
@@ -160,6 +167,32 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
     setElapsedMs(scene ? (parsed.sceneFrame ?? 0) * scene.frameMs : 0);
   }
 
+  // Atrás/adelante del navegador: cada selección es una entrada del historial
+  // (los controles hacen pushState; solo el aparcado de fotogramas usa
+  // replaceState para no inundarlo al arrastrar el scrub). Un popstate
+  // re-parsea la URL y la vuelca al estado — una entrada inválida cae al
+  // estado por defecto con el aviso visible, nunca a una página muerta.
+  useEffect(() => {
+    const onPopState = () => {
+      setPlaying(false);
+      const next = parseOverlayWorkshopQuery(window.location.search);
+      if ("error" in next) {
+        setRejected(next.error);
+        setElapsedScene(undefined);
+        setElapsedMs(0);
+        setQuery({ ...DEFAULT_OVERLAY_WORKSHOP_QUERY });
+        return;
+      }
+      setRejected(undefined);
+      const nextScene = next.sceneId ? getAnimationScene(next.sceneId) : undefined;
+      setElapsedScene(next.sceneId);
+      setElapsedMs(nextScene ? (next.sceneFrame ?? 0) * nextScene.frameMs : 0);
+      setQuery(next);
+    };
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
   // Playhead in milliseconds, advanced on every animation frame. The scene's
   // frames are keyframes; what plays between them is interpolated, so a gap
   // closing or a pedal going down moves instead of stepping.
@@ -228,7 +261,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
   const parkFrame = (frame: number) => {
     setPlaying(false);
     setElapsedMs(scene ? frame * scene.frameMs : 0);
-    update({ ...parsed, sceneFrame: frame });
+    update({ ...parsed, sceneFrame: frame }, "replace");
   };
   const stepFrame = (delta: number) => {
     if (!scene) return;
@@ -258,7 +291,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
     <main className="overlay-workshop functional-study" data-overlay-workshop-page data-study-style={parsed.studyStyle}>
       <FunctionalStudyControls query={parsed} update={update} onRunScene={runScene} onReset={reset} />
       <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage data-stage-label={`${parsed.widget.toUpperCase().replace(/-/g, " ")} / ESTUDIO 01`}>
-        {initialError && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-rejected>URL rechazada ({initialError}) — se cargaron los valores por defecto.</p>}
+        {rejected && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-rejected>URL rechazada ({rejected}) — se cargaron los valores por defecto.</p>}
         {fixtureError && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-fixture-error>Selección inválida: {fixtureError}</p>}
         {!fixtureError && widget && runtime && (
           <><WorkshopSurface widget={widget} runtime={runtime} profileId={profileId} surface={parsed.surface} query={displayQuery} />

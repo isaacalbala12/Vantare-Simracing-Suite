@@ -86,6 +86,31 @@ describe("OverlayWorkshopDevRoute", () => {
     }
   });
 
+  // ISA-1221: cada selección es una entrada del historial — atrás/adelante
+  // navega dentro del Workshop y nunca abandona la página hacia un estado
+  // muerto. El aparcado de fotogramas usa replaceState para no inundarlo.
+  it("navigates back/forward inside the workshop instead of leaving the page", async () => {
+    render(
+      <OverlayWorkshopDevRoute search="?widget=delta&system=vantare-original&state=ready&surface=studio&variant=default" />,
+    );
+    await waitFor(() => expect(document.querySelector("[data-widget-renderer=delta]")).toBeTruthy());
+
+    fireEvent.change(screen.getByLabelText("Widget"), { target: { value: "pedals" } });
+    await waitFor(() => expect(document.querySelector("[data-widget-renderer=pedals]")).toBeTruthy());
+    expect(window.location.search).toContain("widget=pedals");
+
+    fireEvent.change(screen.getByLabelText("Widget"), { target: { value: "standings" } });
+    await waitFor(() => expect(document.querySelector("[data-widget-renderer=standings]")).toBeTruthy());
+    expect(window.location.search).toContain("widget=standings");
+
+    window.history.back();
+    await waitFor(() => expect(document.querySelector("[data-widget-renderer=pedals]")).toBeTruthy());
+    expect(window.location.search).toContain("widget=pedals");
+
+    window.history.forward();
+    await waitFor(() => expect(document.querySelector("[data-widget-renderer=standings]")).toBeTruthy());
+  });
+
   it("keeps the scene transport inside the stage under the study view", async () => {
     render(
       <OverlayWorkshopDevRoute search="?widget=standings&system=vantare-endurance&design=standings-endurance-redline&state=ready&surface=obs&scene=standings-fastest-lap" />,

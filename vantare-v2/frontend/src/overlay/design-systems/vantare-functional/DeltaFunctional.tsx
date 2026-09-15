@@ -78,7 +78,7 @@ export function DeltaFunctional({ model, settings, motion = "full", effects }: W
             <span className="vf-delta-center" />
             <span className="vf-delta-fill" style={fill} />
           </div>
-          <div className="vf-delta-scale" aria-hidden="true"><span>-2</span><span>0</span><span>+2</span></div>
+          <div className="vf-delta-scale" aria-hidden="true"><span>-1.5</span><span>0</span><span>+1.5</span></div>
         </>
       )}
     </section>

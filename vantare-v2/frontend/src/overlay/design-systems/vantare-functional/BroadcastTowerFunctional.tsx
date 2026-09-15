@@ -26,6 +26,7 @@ export function BroadcastTowerFunctional({ model, effects }: WidgetRendererProps
       data-widget-system="vantare-functional"
       data-widget-renderer="broadcast-tower"
       data-status={model.status}
+      data-flag={model.flag ?? "unknown"}
       data-effects={effects}
     >
       <div className="vf-bt-lead">
@@ -47,9 +48,14 @@ export function BroadcastTowerFunctional({ model, effects }: WidgetRendererProps
               role="listitem"
             >
               <span className="vf-bt-place">{row.place}</span>
-              {row.team !== "—" && <span className="vf-bt-class">{classLabel(row.team)}</span>}
-              <b className="vf-bt-name">{shortName(row.name)}</b>
-              <span className="vf-bt-gap">{gapText(row.gap)}</span>
+              <span className="vf-bt-id">
+                <b className="vf-bt-name">{shortName(row.name)}</b>
+                <span className="vf-bt-sub">
+                  {row.team !== "—" && <span className="vf-bt-class">{classLabel(row.team)}</span>}
+                  {row.number !== "—" && <span className="vf-bt-number">#{row.number}</span>}
+                </span>
+              </span>
+              <span className="vf-bt-gap">{row.place === 1 ? "LEADER" : gapText(row.gap)}</span>
             </div>
           ))}
         </div>

@@ -3,6 +3,7 @@ import { widgetTypeRegistry } from "../../core/widget-registry";
 import { applyWidgetDesign } from "../../core/widget-design";
 import { getOfficialDesign } from "../../design-systems/official-designs";
 import { parseRelativeContent, updateRelativeFilters } from "../../widget-types/relative/relative-content";
+import { resolveStandingsMinimumSize } from "../../widget-types/standings/standings-frame-layout";
 import { resolveFunctionalMulticlassHeight } from "../../design-systems/vantare-functional/multiclass-layout";
 import { AUTHORING_V2_VARIANTS, type AuthoringV2Variant } from "./authoring-v2-scenario-fixture";
 
@@ -51,9 +52,12 @@ export function buildAuthoringV2ScenarioWidget(input: {
       widget.layout = { ...widget.layout, h: resolveFunctionalMulticlassHeight(4) };
     }
   }
-  if (input.widget === "standings" && input.variant === "standings-multiclass") {
+  if (input.widget === "standings") {
     const content = widget.content as Record<string, unknown>;
-    const columns = Array.isArray(content.columns)
+    // El Workshop enseña el campo completo: el golden interclasa clases y el
+    // scope por defecto (player-class) dejaba solo las filas de la clase del
+    // jugador — posiciones 1,4,7… y filas estiradas al alto de la caja.
+    const columns = input.variant === "standings-multiclass" && Array.isArray(content.columns)
       ? (content.columns as Record<string, unknown>[]).map((column) =>
           column.metricId === "bestLap" ? { ...column, enabled: true } : column,
         )
@@ -79,6 +83,17 @@ export function buildAuthoringV2ScenarioWidget(input: {
   widget.layout = { ...widget.layout, x: 120, y: 96, zIndex: 1 };
   if (input.design) {
     widget.layout = { ...widget.layout, w: input.design.width, h: input.design.height };
+  }
+
+  // En Eficiencia la fila del Standings es fija (30px): la caja del estudio se
+  // encaja al tamaño intrínseco para no estirar filas ni dejar hueco muerto.
+  if (input.widget === "standings" && input.system === "vantare-functional" && input.variant === "default" && !input.design) {
+    const minimum = resolveStandingsMinimumSize(widget);
+    widget.layout = {
+      ...widget.layout,
+      w: Math.max(widget.layout.w, minimum?.width ?? 0),
+      h: minimum?.height ?? widget.layout.h,
+    };
   }
 
   if (input.widget === "relative" && input.variant === "relative-fill") {

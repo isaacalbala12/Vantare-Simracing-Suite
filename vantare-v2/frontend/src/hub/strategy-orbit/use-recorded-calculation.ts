@@ -3,6 +3,7 @@ import type { StrategyApplicationClient, StrategyOrbitCalculationInputV1, Strate
 import type { RecordedDraftPayload } from "./strategy-recorded-payload";
 import { assessRecordedCalculation, type RecordedCalculationCoverage } from "./strategy-recorded-calculation";
 import { prepareRecordedPlanningInputs } from "./strategy-recorded-planning-inputs";
+import { recordedPitComparisonInput, type RecordedPitConstraint } from "./strategy-recorded-pit-constraints";
 import { recordedStintComparisonInput, type RecordedStintConstraint } from "./strategy-recorded-stint-constraints";
 import type { RecordedWizardDraft } from "./strategy-recorded-wizard";
 
@@ -108,6 +109,18 @@ export function useRecordedCalculation(
     }
   }, [application, executeInput, publishError, repositoryVersion, state]);
 
+  const recalculatePits = useCallback(async (constraints: readonly RecordedPitConstraint[]) => {
+    if (repositoryVersion === undefined || state.status !== "success") return;
+    const current = ++generation.current;
+    cancelRequested.current = false;
+    if (active.current) application.cancel(active.current);
+    try {
+      await executeInput(recordedPitComparisonInput(state, constraints), current);
+    } catch (error) {
+      publishError(error, current);
+    }
+  }, [application, executeInput, publishError, repositoryVersion, state]);
+
   const cancel = useCallback(() => {
     if (!active.current) return;
     cancelRequested.current = true;
@@ -119,5 +132,5 @@ export function useRecordedCalculation(
     }
   }, [application, calculationKey]);
 
-  return { state, calculate, recalculateStints, cancel };
+  return { state, calculate, recalculateStints, recalculatePits, cancel };
 }

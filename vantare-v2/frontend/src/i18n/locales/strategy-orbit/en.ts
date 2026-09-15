@@ -474,6 +474,12 @@ export const strategyOrbitEn: Record<string, string> = {
   "strategy.stint.boundary": "Stint boundary", "strategy.stint.dragBoundary": "Drag boundary after stint", "strategy.stint.numberBoundary": "Edit boundary by number after stint",
   "strategy.stint.hint": "Move a boundary or fix a driver to compare with the proposal.", "strategy.stint.stale": "There are changes to recalculate. The displayed plan can no longer be accepted.",
   "strategy.stint.reset": "Reset", "strategy.stint.recalculate": "Recalculate changes", "strategy.stint.cost": "Cost against the base proposal", "strategy.stint.costHint": "Same telemetry sources, rules, and inputs.",
+  "strategy.pitEdit.eyebrow": "Manual edit", "strategy.pitEdit.title": "Adjust pit stops", "strategy.pitEdit.parallel": "Parallel services", "strategy.pitEdit.sequential": "Sequential services", "strategy.pitEdit.modeUnavailable": "Service mode unavailable",
+  "strategy.pitEdit.fuelAdded": "Fuel added", "strategy.pitEdit.veAdded": "Virtual energy added", "strategy.pitEdit.changeTyres": "Change tyres", "strategy.pitEdit.compound": "Compound",
+  "strategy.pitEdit.tyresUnavailable": "This event has no physical tyre inventory.", "strategy.pitEdit.breakdownUnavailable": "The source cannot separate transit and service.",
+  "strategy.pitEdit.transit": "Transit", "strategy.pitEdit.service": "Service", "strategy.pitEdit.overlap": "Overlap", "strategy.pitEdit.total": "Total",
+  "strategy.pitEdit.hint": "Adjust a service to compare it with the current plan.", "strategy.pitEdit.stale": "There are changes to recalculate. The displayed plan can no longer be accepted.",
+  "strategy.pitEdit.reset": "Reset", "strategy.pitEdit.recalculate": "Recalculate stop", "strategy.pitEdit.cost": "Edited pit-stop cost", "strategy.pitEdit.costHint": "Exact comparison with the current plan, without importing telemetry again.",
 
   "strategy.drivers.name": "Name",
   "strategy.drivers.paceOf": "{{mode}} pace",

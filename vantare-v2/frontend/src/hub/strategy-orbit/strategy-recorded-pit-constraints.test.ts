@@ -37,4 +37,13 @@ describe("recordedPitComparisonInput", () => {
   ])("rejects incomplete or invalid stop constraints %#", constraints => {
     expect(() => recordedPitComparisonInput(state, constraints)).toThrow("Recorded pit constraints are invalid");
   });
+
+  it("updates an existing pit edit against its retained base", () => {
+    const first = recordedPitComparisonInput(state, [{ index: 0, fuelLiters: 4, vePercent: 10 }]);
+    const editedPlan = { ...result.plans["recorded-main"], stopDetails: [{ ...result.plans["recorded-main"].stopDetails[0], fuelOutLiters: 6 }] };
+    const editedState = { status: "success", key: "key", input: first, result: { plans: { "recorded-main": result.plans["recorded-main"], [RECORDED_PIT_EDIT_VARIANT_ID]: editedPlan }, comparisons: {} } } satisfies RecordedCalculationState;
+    const next = recordedPitComparisonInput(editedState, [{ index: 0, fuelLiters: 5, vePercent: 10 }]);
+    expect(next.variants.map(variant => variant.id)).toEqual(["recorded-main", RECORDED_PIT_EDIT_VARIANT_ID]);
+    expect(next.variants[1].pitOverrides).toEqual({ 0: { fuelLiters: 5, vePercent: 10 } });
+  });
 });

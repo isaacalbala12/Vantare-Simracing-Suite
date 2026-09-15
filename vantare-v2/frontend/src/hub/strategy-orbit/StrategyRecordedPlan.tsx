@@ -2,9 +2,11 @@ import { useState } from "react";
 import type { StrategyOrbitCalculatedPlanV1 } from "../../strategy/strategy-application-client";
 import { Button } from "../../ui/orbit";
 import { currentRecordedPlan } from "./strategy-recorded-result";
+import { RECORDED_PIT_EDIT_VARIANT_ID, type RecordedPitConstraint } from "./strategy-recorded-pit-constraints";
 import { RECORDED_STINT_EDIT_VARIANT_ID, type RecordedStintConstraint } from "./strategy-recorded-stint-constraints";
 import type { RecordedWizardDraft } from "./strategy-recorded-wizard";
 import { StrategyRecordedStintEditor } from "./StrategyRecordedStintEditor";
+import { StrategyRecordedPitEditor } from "./StrategyRecordedPitEditor";
 import type { RecordedAcceptanceController } from "./use-recorded-acceptance";
 import type { RecordedCalculationState } from "./use-recorded-calculation";
 import "./strategy-recorded-plan.css";
@@ -64,24 +66,34 @@ function PlanResult({ plan, draft, t }: { readonly plan: StrategyOrbitCalculated
   </>;
 }
 
-export function StrategyRecordedPlan({ draft, state, acceptance, locked, onChange, onCalculate, onRecalculate, onCancel, t }: {
+export function StrategyRecordedPlan({ draft, state, acceptance, locked, onChange, onCalculate, onRecalculateStints, onRecalculatePits, onCancel, t }: {
   readonly draft: RecordedWizardDraft;
   readonly state: RecordedCalculationState;
   readonly acceptance: RecordedAcceptanceController;
   readonly locked: boolean;
   readonly onChange: (draft: RecordedWizardDraft) => void;
   readonly onCalculate: () => void;
-  readonly onRecalculate: (constraints: readonly RecordedStintConstraint[]) => void;
+  readonly onRecalculateStints: (constraints: readonly RecordedStintConstraint[]) => void;
+  readonly onRecalculatePits: (constraints: readonly RecordedPitConstraint[]) => void;
   readonly onCancel: () => void;
   readonly t: (key: string) => string;
 }) {
   const [stintDirty, setStintDirty] = useState(false);
+  const [pitDirty, setPitDirty] = useState(false);
   const running = state.status === "preparing" || state.status === "calculating" || state.status === "cancelling";
   const plan = currentRecordedPlan(state);
-  const basePlan = state.status === "success" ? state.result.plans["recorded-main"] : undefined;
   const stintComparison = state.status === "success" && state.input.activeVariantId === RECORDED_STINT_EDIT_VARIANT_ID
     ? state.result.comparisons["recorded-main"] : undefined;
+  const pitBaseId = state.status === "success" && state.input.activeVariantId === RECORDED_PIT_EDIT_VARIANT_ID
+    ? state.input.variants.find(variant => variant.id !== RECORDED_PIT_EDIT_VARIANT_ID)?.id : undefined;
+  const pitComparison = state.status === "success" && pitBaseId
+    ? state.result.comparisons[pitBaseId] : undefined;
   const accepting = acceptance.state.status === "accepting" || acceptance.state.status === "loading";
+  const calculate = () => {
+    setStintDirty(false);
+    setPitDirty(false);
+    onCalculate();
+  };
   const title = plan ? "strategy.calculation.ready"
     : state.status === "partial" ? "strategy.calculation.partial"
       : state.status === "error" ? "strategy.calculation.error"
@@ -112,18 +124,22 @@ export function StrategyRecordedPlan({ draft, state, acceptance, locked, onChang
     </div> : null}
     {plan ? <PlanResult plan={plan} draft={draft} t={t} /> : null}
     {stintComparison ? <div className="strategy-recorded-plan__cost" role="status"><strong>{t("strategy.stint.cost")}</strong><span>{-stintComparison.totalDeltaSeconds >= 0 ? "+" : ""}{number(-stintComparison.totalDeltaSeconds)} s</span><small>{t("strategy.stint.costHint")}</small></div> : null}
-    {basePlan && plan ? <StrategyRecordedStintEditor key={JSON.stringify(plan.stints.map(stint => [stint.d, stint.laps]))} plan={plan} drivers={draft.drivers} locked={locked || accepting} onDirtyChange={setStintDirty} onRecalculate={constraints => { setStintDirty(false); onRecalculate(constraints); }} t={t} /> : null}
+    {pitComparison ? <div className="strategy-recorded-plan__cost" role="status"><strong>{t("strategy.pitEdit.cost")}</strong><span>{-pitComparison.totalDeltaSeconds >= 0 ? "+" : ""}{number(-pitComparison.totalDeltaSeconds)} s</span><small>{t("strategy.pitEdit.costHint")}</small></div> : null}
+    {plan && state.status === "success" ? <>
+      <StrategyRecordedStintEditor key={JSON.stringify(plan.stints.map(stint => [stint.d, stint.laps]))} plan={plan} drivers={draft.drivers} locked={locked || accepting || pitDirty || state.input.activeVariantId === RECORDED_PIT_EDIT_VARIANT_ID} onDirtyChange={setStintDirty} onRecalculate={constraints => { setStintDirty(false); onRecalculateStints(constraints); }} t={t} />
+      {plan.stopDetails.length ? <StrategyRecordedPitEditor key={JSON.stringify(plan.stopDetails)} plan={plan} input={state.input} locked={locked || accepting || stintDirty} onDirtyChange={setPitDirty} onRecalculate={constraints => { setPitDirty(false); onRecalculatePits(constraints); }} t={t} /> : null}
+    </> : null}
     {state.status === "cancelled" ? <p role="status">{t("strategy.calculation.cancelledHint")}</p> : null}
     {state.status === "error" ? <p role="alert" data-code={state.code} data-field={state.field}>{t(state.code && errorKey[state.code] ? errorKey[state.code] : "strategy.calculation.errorHint")}</p> : null}
     {state.status === "success" ? <section className="strategy-recorded-plan__sources"><h3>{t("strategy.plan.sources")}</h3><ul>{state.input.planningInputs?.projection?.sourceRevisions?.map(ref => <li key={ref.sessionId}><strong>{ref.sessionId}</strong><code>{ref.revisionId.slice(0, 12)}</code></li>)}</ul></section> : null}
-    {acceptance.state.status === "accepted" && !stintDirty ? <p role="status">{t("strategy.plan.accepted")}</p> : null}
+    {acceptance.state.status === "accepted" && !stintDirty && !pitDirty ? <p role="status">{t("strategy.plan.accepted")}</p> : null}
     {acceptance.state.status === "error" ? <p role="alert">{t("strategy.plan.acceptanceUnavailable")}</p> : null}
     {acceptance.state.status === "recovery" ? <div role="alert" className="strategy-recorded-plan__recovery"><p>{t("strategy.plan.acceptancePending")}</p><Button variant="ghost" onClick={() => void acceptance.resolve()}>{t("strategy.plan.checkAcceptance")}</Button><Button variant="ghost" onClick={() => void acceptance.retry()}>{t("strategy.plan.retryAcceptance")}</Button><Button variant="ghost" onClick={() => void acceptance.dismiss()}>{t("strategy.plan.dismissAcceptance")}</Button></div> : null}
     <footer className="strategy-recorded-plan__actions">
       <small>{t("strategy.plan.saveSeparate")}</small>
       {running ? <Button variant="ghost" disabled={state.status === "cancelling"} onClick={onCancel}>{t("strategy.recorded.cancel")}</Button>
-        : <Button variant="ghost" disabled={locked || accepting || !draft.calculationMode} onClick={onCalculate}>{t(state.status === "error" || state.status === "cancelled" || state.status === "partial" ? "strategy.calculation.retry" : "strategy.workspace.calculate")}</Button>}
-      {plan ? <Button variant="primary" disabled={locked || stintDirty || accepting || acceptance.state.status === "accepted" || acceptance.state.status === "recovery" || acceptance.state.status === "error"} onClick={() => void acceptance.accept()}>{t(accepting ? "strategy.plan.accepting" : "strategy.plan.accept")}</Button> : null}
+        : <Button variant="ghost" disabled={locked || accepting || !draft.calculationMode} onClick={calculate}>{t(state.status === "error" || state.status === "cancelled" || state.status === "partial" ? "strategy.calculation.retry" : "strategy.workspace.calculate")}</Button>}
+      {plan ? <Button variant="primary" disabled={locked || stintDirty || pitDirty || accepting || acceptance.state.status === "accepted" || acceptance.state.status === "recovery" || acceptance.state.status === "error"} onClick={() => void acceptance.accept()}>{t(accepting ? "strategy.plan.accepting" : "strategy.plan.accept")}</Button> : null}
     </footer>
   </section>;
 }

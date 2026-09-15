@@ -76,6 +76,33 @@ describe("useRecordedCalculation", () => {
     } });
   });
 
+  it("recalculates pit edits from the current plan without preparing telemetry again", async () => {
+    const basePlan = { totalLaps: 4, total: 370, stops: 1, stints: [{ i: 0, d: "alex", laps: 2 }, { i: 1, d: "alex", laps: 2 }], stopDetails: [{ index: 0, lap: 2, fuelInLiters: 1, fuelOutLiters: 5, pitLossSeconds: 10, pitTransitSeconds: 6, pitServiceSeconds: 4, pitOverlapSeconds: 0, pitBreakdownAvailable: true }] } as unknown as StrategyOrbitCalculatedPlanV1;
+    let calculations = 0;
+    const execute = vi.fn(async (command: StrategyApplicationCommandV1<RecordedDraftPayload>) => {
+      if (command.operation === "get_revision_planning_inputs") return result(command, { planningInputStatus: "available", planningInputs: planning(command.generatedAt) });
+      calculations += 1;
+      return result(command, { orbitCalculation: calculations === 1
+        ? { plans: { "recorded-main": basePlan }, comparisons: {} }
+        : { plans: { "recorded-main": basePlan, "recorded-pit-edit": { ...basePlan, total: 372 } }, comparisons: { "recorded-main": { totalDeltaSeconds: -2 } as never } } });
+    });
+    const application: StrategyApplicationClient<RecordedDraftPayload> = { execute, cancel: vi.fn(() => true), dispose: vi.fn() };
+    const { result: hook } = renderHook(() => useRecordedCalculation(draft, 7, application));
+    await act(() => hook.current.calculate());
+
+    await act(() => hook.current.recalculatePits([{ index: 0, fuelLiters: 6 }]));
+
+    expect(hook.current.state).toMatchObject({ status: "success", input: { activeVariantId: "recorded-pit-edit" } });
+    expect(execute.mock.calls.filter(([command]) => command.operation === "get_revision_planning_inputs")).toHaveLength(1);
+    expect(execute.mock.calls[2][0]).toMatchObject({ operation: "calculate_orbit", input: {
+      activeVariantId: "recorded-pit-edit",
+      variants: [
+        { id: "recorded-main" },
+        { id: "recorded-pit-edit", driverOrderMode: "fixed", order: ["alex", "alex"], overrides: { 0: { laps: 2 }, 1: { laps: 2 } }, pitOverrides: { 0: { fuelLiters: 6 } } },
+      ],
+    } });
+  });
+
   it("cancels the active native command and ends in a distinct cancelled state", async () => {
     let reject!: (error: Error) => void;
     const execute = vi.fn(() => new Promise<StrategyApplicationResultV1<RecordedDraftPayload>>((_resolve, fail) => { reject = fail; }));
@@ -119,12 +146,12 @@ describe("useRecordedCalculation", () => {
 it("requires an explicit supported condition and exposes cancel while running", () => {
   const onChange = vi.fn(), onCalculate = vi.fn(), onCancel = vi.fn();
   const acceptance = { state: { status: "idle" as const }, accept: vi.fn(), resolve: vi.fn(), retry: vi.fn(), dismiss: vi.fn() };
-  const view = render(<StrategyRecordedPlan acceptance={acceptance} draft={{ ...draft, calculationMode: undefined }} state={{ status: "idle" }} locked={false} onChange={onChange} onCalculate={onCalculate} onRecalculate={vi.fn()} onCancel={onCancel} t={key => key} />);
+  const view = render(<StrategyRecordedPlan acceptance={acceptance} draft={{ ...draft, calculationMode: undefined }} state={{ status: "idle" }} locked={false} onChange={onChange} onCalculate={onCalculate} onRecalculateStints={vi.fn()} onRecalculatePits={vi.fn()} onCancel={onCancel} t={key => key} />);
   expect((screen.getByRole("button", { name: "strategy.workspace.calculate" }) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.change(screen.getByLabelText("strategy.calculation.condition"), { target: { value: "dry" } });
   expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ calculationMode: "dry" }));
 
-  view.rerender(<StrategyRecordedPlan acceptance={acceptance} draft={draft} state={{ status: "calculating" }} locked={false} onChange={onChange} onCalculate={onCalculate} onRecalculate={vi.fn()} onCancel={onCancel} t={key => key} />);
+  view.rerender(<StrategyRecordedPlan acceptance={acceptance} draft={draft} state={{ status: "calculating" }} locked={false} onChange={onChange} onCalculate={onCalculate} onRecalculateStints={vi.fn()} onRecalculatePits={vi.fn()} onCancel={onCancel} t={key => key} />);
   fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.cancel" }));
   expect(onCancel).toHaveBeenCalledOnce();
 });
@@ -132,6 +159,7 @@ it("requires an explicit supported condition and exposes cancel while running", 
 it("shows the exact calculated plan and accepts only through the acceptance controller", () => {
   const accept = vi.fn();
   const onRecalculate = vi.fn();
+  const onRecalculatePits = vi.fn();
   const acceptance = { state: { status: "idle" as const }, accept, resolve: vi.fn(), retry: vi.fn(), dismiss: vi.fn() };
   const input = recordedCalculationInput(draft, planning("2026-09-15T00:00:00.000Z"));
   const plan: StrategyOrbitCalculatedPlanV1 = {
@@ -146,13 +174,22 @@ it("shows the exact calculated plan and accepts only through the acceptance cont
     ],
     stopDetails: [{ index: 0, lap: 2, fuelInLiters: 1, fuelOutLiters: 5, pitLossSeconds: 10, pitTransitSeconds: 6, pitServiceSeconds: 4, pitOverlapSeconds: 0, pitBreakdownAvailable: true }],
   };
-  const view = render(<StrategyRecordedPlan acceptance={acceptance} draft={draft} state={{ status: "success", input, result: { plans: { "recorded-main": plan }, comparisons: {} } }} locked={false} onChange={vi.fn()} onCalculate={vi.fn()} onRecalculate={onRecalculate} onCancel={vi.fn()} t={key => key} />);
+  const view = render(<StrategyRecordedPlan acceptance={acceptance} draft={draft} state={{ status: "success", input, result: { plans: { "recorded-main": plan }, comparisons: {} } }} locked={false} onChange={vi.fn()} onCalculate={vi.fn()} onRecalculateStints={onRecalculate} onRecalculatePits={onRecalculatePits} onCancel={vi.fn()} t={key => key} />);
 
   expect(screen.getByText("strategy.calculation.optimal")).toBeTruthy();
-  expect(screen.getByText("strategy.plan.stop 1")).toBeTruthy();
+  expect(screen.getAllByText("strategy.plan.stop 1")).toHaveLength(2);
   expect(screen.getByText(revision.sessionId)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "strategy.plan.accept" }));
   expect(accept).toHaveBeenCalledOnce();
+
+  fireEvent.change(screen.getByLabelText("strategy.pitEdit.fuelAdded 1"), { target: { value: "6" } });
+  expect((screen.getByRole("button", { name: "strategy.plan.accept" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.calculate" }));
+  expect((screen.getByRole("button", { name: "strategy.plan.accept" }) as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.click(screen.getByRole("button", { name: "strategy.pitEdit.reset" }));
+  fireEvent.change(screen.getByLabelText("strategy.pitEdit.fuelAdded 1"), { target: { value: "6" } });
+  fireEvent.click(screen.getByRole("button", { name: "strategy.pitEdit.recalculate" }));
+  expect(onRecalculatePits).toHaveBeenCalledWith([{ index: 0, fuelLiters: 6 }]);
 
   fireEvent.change(screen.getByLabelText("strategy.stint.dragBoundary 1"), { target: { value: "1" } });
   expect((screen.getByRole("button", { name: "strategy.plan.accept" }) as HTMLButtonElement).disabled).toBe(true);
@@ -163,6 +200,13 @@ it("shows the exact calculated plan and accepts only through the acceptance cont
   ]);
 
   const constrainedInput = { ...input, activeVariantId: "recorded-stint-edit", variants: [...input.variants, { ...input.variants[0], id: "recorded-stint-edit" }] };
-  view.rerender(<StrategyRecordedPlan acceptance={acceptance} draft={draft} state={{ status: "success", input: constrainedInput, result: { plans: { "recorded-main": plan, "recorded-stint-edit": { ...plan, total: 375 } }, comparisons: { "recorded-main": { totalDeltaSeconds: -5 } as never } } }} locked={false} onChange={vi.fn()} onCalculate={vi.fn()} onRecalculate={onRecalculate} onCancel={vi.fn()} t={key => key} />);
+  view.rerender(<StrategyRecordedPlan acceptance={acceptance} draft={draft} state={{ status: "success", input: constrainedInput, result: { plans: { "recorded-main": plan, "recorded-stint-edit": { ...plan, total: 375 } }, comparisons: { "recorded-main": { totalDeltaSeconds: -5 } as never } } }} locked={false} onChange={vi.fn()} onCalculate={vi.fn()} onRecalculateStints={onRecalculate} onRecalculatePits={onRecalculatePits} onCancel={vi.fn()} t={key => key} />);
   expect(screen.getByText("+5 s")).toBeTruthy();
+
+  const pitInput = { ...constrainedInput, activeVariantId: "recorded-pit-edit", variants: [constrainedInput.variants[1], { ...constrainedInput.variants[1], id: "recorded-pit-edit", pitOverrides: { 0: { fuelLiters: 6 } } }] };
+  view.rerender(<StrategyRecordedPlan acceptance={acceptance} draft={draft} state={{ status: "success", input: pitInput, result: { plans: { "recorded-stint-edit": { ...plan, total: 375 }, "recorded-pit-edit": { ...plan, total: 377 } }, comparisons: { "recorded-stint-edit": { totalDeltaSeconds: -2 } as never } } }} locked={false} onChange={vi.fn()} onCalculate={vi.fn()} onRecalculateStints={onRecalculate} onRecalculatePits={onRecalculatePits} onCancel={vi.fn()} t={key => key} />);
+  expect(screen.getByText("strategy.pitEdit.cost")).toBeTruthy();
+  expect(screen.getByText("+2 s")).toBeTruthy();
+  expect((screen.getByLabelText("strategy.stint.dragBoundary 1") as HTMLInputElement).disabled).toBe(true);
+  expect((screen.getByLabelText("strategy.pitEdit.fuelAdded 1") as HTMLInputElement).disabled).toBe(false);
 });

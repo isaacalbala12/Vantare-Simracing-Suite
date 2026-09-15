@@ -45,6 +45,25 @@
 .strategy-recorded-stint-editor__boundary input[type='number'] { width: 76px; padding: 0 8px; }
 .strategy-recorded-stint-editor > footer { padding-top: 12px; border-top: 1px solid rgba(255,255,255,.07); }
 .strategy-recorded-stint-editor > footer p { margin-right: auto; }
+.strategy-recorded-pit-editor { display: grid; gap: 14px; padding: 18px; border: 1px solid color-mix(in srgb, var(--orbit-red) 22%, rgba(255,255,255,.09)); border-radius: 12px; background: rgba(10,13,15,.76); }
+.strategy-recorded-pit-editor > header, .strategy-recorded-pit-editor > footer, .strategy-recorded-pit-editor article > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.strategy-recorded-pit-editor > header p { margin: 0 0 4px; color: var(--orbit-red); font-size: 10px; font-weight: 750; letter-spacing: 1px; text-transform: uppercase; }
+.strategy-recorded-pit-editor > header h3, .strategy-recorded-pit-editor > footer p, .strategy-recorded-pit-editor article > header { margin: 0; }
+.strategy-recorded-pit-editor > header > span, .strategy-recorded-pit-editor article > header span, .strategy-recorded-pit-editor > footer p, .strategy-recorded-pit-editor__unavailable { color: var(--orbit-ink-2); font-size: 12px; }
+.strategy-recorded-pit-editor ol { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.strategy-recorded-pit-editor article { display: grid; gap: 14px; padding: 15px; border: 1px solid rgba(255,255,255,.07); border-radius: 10px; background: rgba(255,255,255,.035); }
+.strategy-recorded-pit-editor__fields { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; }
+.strategy-recorded-pit-editor label { display: grid; align-content: center; gap: 5px; color: var(--orbit-ink-2); font-size: 11px; }
+.strategy-recorded-pit-editor input[type='number'], .strategy-recorded-pit-editor select { width: 100%; min-height: 34px; padding: 0 8px; border: 1px solid rgba(255,255,255,.12); border-radius: 7px; color: var(--orbit-ink); background: rgba(5,8,10,.8); }
+.strategy-recorded-pit-editor__input { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 6px; }
+.strategy-recorded-pit-editor__check { grid-template-columns: auto 1fr; align-items: center; padding-top: 18px; }
+.strategy-recorded-pit-editor__check input { accent-color: var(--orbit-red); }
+.strategy-recorded-pit-editor dl { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; margin: 0; padding-top: 12px; border-top: 1px solid rgba(255,255,255,.06); }
+.strategy-recorded-pit-editor dl div { display: flex; justify-content: space-between; gap: 10px; }
+.strategy-recorded-pit-editor dd { margin: 0; color: var(--orbit-ink); font-size: 12px; }
+.strategy-recorded-pit-editor__unavailable { margin: 0; }
+.strategy-recorded-pit-editor > footer { padding-top: 12px; border-top: 1px solid rgba(255,255,255,.07); }
+.strategy-recorded-pit-editor > footer p { margin-right: auto; }
 .strategy-recorded-plan__actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: auto; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.08); }
 .strategy-recorded-plan__actions small { margin-right: auto; }
 @media (max-width: 880px) {
@@ -55,9 +74,13 @@
   .strategy-recorded-plan__timeline > li { grid-template-columns: 1fr; }
   .strategy-recorded-stint-editor article, .strategy-recorded-stint-editor > footer { align-items: stretch; flex-direction: column; }
   .strategy-recorded-stint-editor > footer p { margin: 0; }
+  .strategy-recorded-pit-editor__fields, .strategy-recorded-pit-editor dl { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .strategy-recorded-pit-editor > footer { align-items: stretch; flex-direction: column; }
+  .strategy-recorded-pit-editor > footer p { margin: 0; }
 }
 @media (max-width: 540px) {
   .strategy-recorded-plan__stint dl { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .strategy-recorded-plan__actions { align-items: stretch; flex-direction: column; }
   .strategy-recorded-plan__actions small { margin: 0; }
+  .strategy-recorded-pit-editor__fields, .strategy-recorded-pit-editor dl { grid-template-columns: 1fr; }
 }

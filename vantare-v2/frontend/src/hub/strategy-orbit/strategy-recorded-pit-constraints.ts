@@ -21,10 +21,13 @@ export function recordedPitComparisonInput(
   state: RecordedCalculationState,
   constraints: readonly RecordedPitConstraint[],
 ): StrategyOrbitCalculationInputV1 {
-  if (state.status !== "success" || state.input.activeVariantId === RECORDED_PIT_EDIT_VARIANT_ID) invalid();
+  if (state.status !== "success") invalid();
   const plan = currentRecordedPlan(state);
-  const base = state.input.variants.find(variant => variant.id === state.input.activeVariantId);
-  if (!plan || !base || constraints.length !== plan.stopDetails.length) invalid();
+  const active = state.input.variants.find(variant => variant.id === state.input.activeVariantId);
+  const base = state.input.activeVariantId === RECORDED_PIT_EDIT_VARIANT_ID
+    ? state.input.variants.find(variant => variant.id !== RECORDED_PIT_EDIT_VARIANT_ID)
+    : active;
+  if (!plan || !active || !base || constraints.length !== plan.stopDetails.length) invalid();
 
   const pitOverrides: Record<number, Omit<RecordedPitConstraint, "index">> = {};
   const seen = new Set<number>();
@@ -55,10 +58,10 @@ export function recordedPitComparisonInput(
   }
 
   const overrides = Object.fromEntries(plan.stints.map((stint, index) => [index, {
-    ...base.overrides[index], laps: stint.laps,
+    ...active.overrides[index], laps: stint.laps,
   }]));
   const constrained = {
-    ...structuredClone(base), id: RECORDED_PIT_EDIT_VARIANT_ID,
+    ...structuredClone(active), id: RECORDED_PIT_EDIT_VARIANT_ID,
     driverOrderMode: "fixed" as const,
     order: plan.stints.map(stint => stint.d),
     overrides,

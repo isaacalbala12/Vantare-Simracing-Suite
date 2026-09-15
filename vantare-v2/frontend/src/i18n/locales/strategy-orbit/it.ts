@@ -465,6 +465,12 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.stint.boundary": "Limite dello stint", "strategy.stint.dragBoundary": "Trascina il limite dopo lo stint", "strategy.stint.numberBoundary": "Modifica numericamente il limite dopo lo stint",
   "strategy.stint.hint": "Sposta un limite o fissa un pilota per confrontare la proposta.", "strategy.stint.stale": "Ci sono modifiche da ricalcolare. Il piano mostrato non può più essere accettato.",
   "strategy.stint.reset": "Ripristina", "strategy.stint.recalculate": "Ricalcola modifiche", "strategy.stint.cost": "Costo rispetto alla proposta base", "strategy.stint.costHint": "Stesse fonti, regole e input di telemetria.",
+  "strategy.pitEdit.eyebrow": "Modifica manuale", "strategy.pitEdit.title": "Regola le soste", "strategy.pitEdit.parallel": "Servizi in parallelo", "strategy.pitEdit.sequential": "Servizi sequenziali", "strategy.pitEdit.modeUnavailable": "Modalità di servizio non disponibile",
+  "strategy.pitEdit.fuelAdded": "Fuel aggiunto", "strategy.pitEdit.veAdded": "Energia virtuale aggiunta", "strategy.pitEdit.changeTyres": "Cambia pneumatici", "strategy.pitEdit.compound": "Mescola",
+  "strategy.pitEdit.tyresUnavailable": "Questo evento non ha un inventario fisico degli pneumatici.", "strategy.pitEdit.breakdownUnavailable": "La fonte non consente di separare transito e servizio.",
+  "strategy.pitEdit.transit": "Transito", "strategy.pitEdit.service": "Servizio", "strategy.pitEdit.overlap": "Sovrapposizione", "strategy.pitEdit.total": "Totale",
+  "strategy.pitEdit.hint": "Regola un servizio per confrontarlo con il piano attuale.", "strategy.pitEdit.stale": "Ci sono modifiche da ricalcolare. Il piano mostrato non può più essere accettato.",
+  "strategy.pitEdit.reset": "Ripristina", "strategy.pitEdit.recalculate": "Ricalcola sosta", "strategy.pitEdit.cost": "Costo delle soste modificate", "strategy.pitEdit.costHint": "Confronto esatto con il piano attuale, senza reimportare la telemetria.",
 
   "strategy.drivers.name": "Nome",
   "strategy.drivers.paceOf": "Ritmo {{mode}}",

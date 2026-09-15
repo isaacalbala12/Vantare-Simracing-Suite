@@ -6,6 +6,13 @@ import { functionalLabels } from "./labels";
 // Horizontal Standings: tira de ancho completo a 71px — bloque de sesión,
 // stream de tarjetas por piloto repartiendo el ancho, y datos de pista/SOF
 // al final. rowCount decide cuántas tarjetas; la caja solo cambia de ancho.
+const classLabel = (value: string) => value.toUpperCase().includes("HYPER") ? "HC" : value.slice(0, 3).toUpperCase();
+
+const shortName = (name: string) => {
+  const words = name.replace(/\(.*?\)/g, " ").trim().split(/\s+/).filter(Boolean);
+  return words.length > 1 ? `${words[0][0]}. ${words.slice(1).join(" ")}` : name;
+};
+
 export function BroadcastTowerFunctional({ model, effects }: WidgetRendererProps<BroadcastTowerViewModel>) {
   const { locale } = useI18n();
   const labels = functionalLabels[locale];
@@ -40,14 +47,8 @@ export function BroadcastTowerFunctional({ model, effects }: WidgetRendererProps
               role="listitem"
             >
               <span className="vf-bt-place">{row.place}</span>
-              <i
-                className="vf-bt-brand"
-                style={{ background: row.brandColor ?? "var(--vf-accent)" }}
-              />
-              <span className="vf-bt-id">
-                <b className="vf-bt-name">{row.name}</b>
-                {row.team !== "—" && <em className="vf-bt-team">{row.team.slice(0, 3).toUpperCase()}</em>}
-              </span>
+              {row.team !== "—" && <span className="vf-bt-class">{classLabel(row.team)}</span>}
+              <b className="vf-bt-name">{shortName(row.name)}</b>
               <span className="vf-bt-gap">{gapText(row.gap)}</span>
             </div>
           ))}

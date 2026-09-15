@@ -93,7 +93,7 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
   const rowsFit = Math.max(0, Math.floor((tableSpace - tableHeaderHeight - internalInfoHeight) / 30));
   const visibleRows = Number.isFinite(tableSpace) ? model.rows.slice(0, rowsFit) : model.rows;
 
-  const sessionHeader = <div className="vf-session" title={`${sessionLabel} · ${labels.remaining}`}>
+  const sessionHeader = <div className={`vf-session${brandVisible ? "" : " vf-session--bare"}`} title={`${sessionLabel} · ${labels.remaining}`}>
     {brandVisible ? <span className="vf-brand" aria-label="Vantare"><img src={vantareMark} alt="" />VANTARE</span> : null}
     <span className="vf-session-context"><span className="vf-session-type" role={model.status === "stale" ? "status" : undefined}>{model.status === "stale" ? labels.stale : sessionLabel}</span><span className="vf-clock">{model.remainingText}</span></span>
     <span className="vf-class" title={model.activeClass}>{model.activeClass}</span>

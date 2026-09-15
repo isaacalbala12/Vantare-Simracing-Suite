@@ -1,27 +1,23 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1271 T15c cerrado localmente; resultado recorded aceptable
+## Estado vigente — #1273 T16a cerrado localmente; restricciones comparables
 
-El panel Plan presenta la salida exacta de SolverV2: duración, vueltas, paradas,
-reserva, stints, Fuel, VE cuando aplica y las revisiones fuente. Un conjunto
-incompleto muestra sólo ritmo/consumo respaldado y sus bloqueos, sin enviar un
-cálculo ni convertir ausencia en cero. Inviabilidad, cancelación, timeout y
-presupuesto agotado mantienen estados distintos.
+Strategy puede construir una única petición con la propuesta recorded exacta y
+una variante de stint restringida. Reutiliza las primitivas existentes: la
+secuencia `order` fija el piloto visible y `overrides[index].laps` fija vueltas.
+No añade campos Go, otro solver ni otro modelo de restricciones.
 
-Go publica `strategy.solver.v2`, el objetivo `minimum_total_seconds` y sólo marca
-`proven` cuando el replay coincide con la decisión optimizada, no hubo edición
-de la variante ni degradación del presupuesto. El resto de planes factibles es
-`not_proven`; el cliente legacy sin esos metadatos sigue legible y no se anuncia
-como óptimo.
+La variante restringida parte de los stints exactos mostrados, conserva evento,
+pilotos, fuentes y `PlanningInputs`, y se vuelve activa para presentar su plan.
+La propuesta original viaja intacta en la misma orden, por lo que SolverV2
+evalúa ambas y devuelve la comparación. Índices, pilotos, vueltas, duplicados y
+cambios vacíos fallan antes de enviar. Una prueba Go demuestra base libre intacta,
+restricción fija, delta exacto y optimalidad no demostrada tras editar vueltas.
 
-Aceptar conserva en una revisión Orbit el borrador, variante, petición y plan
-exactos ya calculados. No vuelve a preparar telemetría ni a calcular. La acción
-es distinta de guardar configuración y reutiliza la recuperación duradera de
-`save_revision`: una escritura incierta se comprueba o reintenta con el mismo
-comando. Cambiar borrador o resultado impide presentar una aceptación anterior
-como vigente. Siguiente: T16 debe editar restricciones de stint y recalcular
-contra una propuesta comparable; T17 hará lo mismo para paradas. Sin app/Wails,
-LMU, DuckDB, push, PR, CI remota, integración ni release.
+Siguiente: T16b debe conectar estos controles al detalle visual del stint,
+incluida alternativa de teclado al arrastre, obsolescencia y coste frente a la
+base. T17 editará las paradas. Sin app/Wails, LMU, DuckDB, push, PR, CI remota,
+integración ni release.
 
 ## Historial — #1268 T15a2b cerrado localmente; delta de ritmo por piloto
 

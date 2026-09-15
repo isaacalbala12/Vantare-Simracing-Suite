@@ -1,18 +1,19 @@
 # ASTRA_REVIEW — Campaña nocturna de optimización medible
 
-**Estado final:** `READY_WITH_LIMITATIONS`  
+**Estado final:** `REVIEWED_AND_MERGED`  
 **BASE_SHA:** `f617467427f8d78f7432b4445d52be0c4dfe616a`  
-**HEAD final:** `a5de341ef6d9032c4f99477a29785e75917ba47d` (rama `perf/overnight-20260915-0130`; el commit de documentación posterior se puede ver con `git rev-parse HEAD`)  
+**HEAD final:** `b7866e52` (rama `perf/overnight-20260915-0130`; el commit de documentación posterior se puede ver con `git rev-parse HEAD`)
+**Merge:** promocionada a `nightly` tras revisión local y autorización explícita; Astra High puede hacer revisión adversarial post-merge.  
 **Worktree:** `/Users/isaacalbala/Desktop/Isaac Albala/vantare-perf-overnight-20260915`  
-**Último commit bueno:** `a5de341ef6d9032c4f99477a29785e75917ba47d`  
+**Último commit bueno:** `b7866e52`  
 **Orquestador:** Devin, sin subagentes lanzados por limitaciones del harness.
 
 ## Alcance real y decisiones de campaña
 
 - Se aisló el worktree desde `origin/nightly` (`f6174674`) sin tocar los worktrees ajenos: `vantare-quality-worktree` (agente anti-slop, `quality/antislop-bootstrap`), `vantare-isa928` y `vantare-isa713-cobertura`.
-- No se accedió a Notion desde este entorno (sin MCP de Notion); el seguimiento se conserva en `RUN_STATE.md` y `experiments.jsonl`.
-- No se hizo merge, push, PR, release ni cambios administrativos.
+- No se accedió a Notion desde este entorno (sin MCP de Notion); el seguimiento se conserva en `RUN_STATE.md` y `experiments.jsonl`. Notion debe actualizarse manualmente tras el merge.
 - Se ejecutó **un experimento aceptado** (E1) en la ruta caliente de telemetría LMU. Se exploró un segundo intento dentro del mismo experimento que se descartó por conservar compatibilidad con LMU14.
+- Se revisó el diff localmente antes de mergear y se aplicaron dos correcciones menores: reubicar el doc comment de `lmu13Layout` y tratar dos `NaN` como iguales en `deepEqual`.
 - Se dejan priorizados los espacios no demostrados para revisión adversarial.
 
 ## Experimento aceptado E1: BatchMapper LMU
@@ -64,6 +65,7 @@ git revert c0f47c6a
   - ignora el orden de las claves de los objetos,
   - conserva el orden de los arrays (widgets/columnas),
   - omite claves con valor `undefined` para equivalencia con `JSON.stringify`,
+  - trata dos valores `NaN` en el mismo campo numérico como iguales,
   - no construye cadenas ni objetos intermedios.
 - `commitStudioCommand`: ahora aplica el comando, compara `history.present` con `present` y solo clona `previous` si hay un cambio real.
 
@@ -90,8 +92,8 @@ git revert <sha de E2>
 ```
 
 ### Tests y checks
-- `pnpm --dir vantare-v2/frontend exec vitest run src/hub/overlay-studio/state/studio-history.test.ts` — PASS (14 tests).
-- `pnpm --dir vantare-v2/frontend test` — PASS (448 files, 3573 tests, 2 skipped).
+- `pnpm --dir vantare-v2/frontend exec vitest run src/hub/overlay-studio/state/studio-history.test.ts` — PASS (15 tests, incluido test de regresión para NaN).
+- `pnpm --dir vantare-v2/frontend test` — PASS (448 files, 3574 tests, 2 skipped).
 - `pnpm --dir vantare-v2/frontend typecheck` — PASS.
 - `pnpm --dir vantare-v2/frontend lint` — PASS.
 
@@ -102,7 +104,7 @@ git revert <sha de E2>
 ```
 
 - Producto: `batch_mapper.go`, `layout.go`, `slot.go`, `slot_test.go`, `studio-history.ts`.
-- Tests/benchmarks: `slot_test.go`, `studio-history.perf.bench.ts`, `studio-history.commit.perf.bench.ts`.
+- Tests/benchmarks: `slot_test.go`, `studio-history.test.ts`, `studio-history.perf.bench.ts`, `studio-history.commit.perf.bench.ts`.
 - Campaña: `RUN_STATE.md`, `experiments.jsonl`, `ASTRA_REVIEW.md`.
 - No se atribuyen cambios de otras ramas.
 
@@ -114,8 +116,9 @@ git revert <sha de E2>
 | Go `go test ./internal/telemetry/identity` | PASS | |
 | Go `go vet` (ambos paquetes) | PASS | |
 | TS `pnpm --dir vantare-v2/frontend typecheck` | PASS | |
-| TS `pnpm --dir vantare-v2/frontend test` | PASS | 448 archivos, 3573 tests, 2 skipped |
+| TS `pnpm --dir vantare-v2/frontend test` | PASS | 448 archivos, 3574 tests, 2 skipped |
 | TS `pnpm --dir vantare-v2/frontend lint` | PASS | |
+| TS `pnpm --dir vantare-v2/frontend build` | PASS | |
 | Go `go test ./internal/telemetry/...` | FAIL en `diagnostics` y `recording/sqlite` | fallos preexistentes, no relacionados con el cambio |
 | Build Wails/LMU Windows | NOT_APPLICABLE | entorno macOS, no se puede verificar |
 

@@ -5,9 +5,9 @@
 - **BASE_SHA**: f617467427f8d78f7432b4445d52be0c4dfe616a
 - **rama_campania**: perf/overnight-20260915-0130
 - **worktree**: /Users/isaacalbala/Desktop/Isaac Albala/vantare-perf-overnight-20260915
-- **HEAD_final**: a5de341ef6d9032c4f99477a29785e75917ba47d
-- **ultimo_commit_bueno**: a5de341ef6d9032c4f99477a29785e75917ba47d
-- **experimento_actual**: ninguno (cierre)
+- **HEAD_final**: b7866e52 (producto tras correcciones de revisión; ver `git rev-parse HEAD` para el commit de documentación actual)
+- **ultimo_commit_bueno**: b7866e52
+- **experimento_actual**: ninguno (revisión finalizada, merge en nightly autorizado)
 - **limite_temporal_h**: 8
 - **limite_experimentos**: 24
 - **experimentos_realizados**: 2
@@ -15,8 +15,8 @@
 - **experimentos_descartados**: 1 (array fijo en validateMapperObservation)
 - **subagentes_activos**: 0
 - **bloqueos**: Notion no accesible desde este harness (sin MCP de Notion); se conserva evidencia en Git y se comunica el bloqueo. No se dispuso de subagentes reales.
-- **estado_campania**: READY_WITH_LIMITATIONS
-- **siguiente_accion**: revisión adversarial por Astra High; reconciliar con rama anti-slop antes de promocionar.
+- **estado_campania**: READY_FOR_MERGE
+- **siguiente_accion**: ejecutar merge en `nightly` y actualizar Notion manualmente con el SHA de merge; reconciliar con rama anti-slop al combinar.
 
 ## Resumen de experimentos
 

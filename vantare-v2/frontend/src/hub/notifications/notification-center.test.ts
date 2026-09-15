@@ -87,14 +87,18 @@ describe("notification center store", () => {
     expect(listener).not.toHaveBeenCalled();
   });
 
-  it("requestCenter emite get tras suscribirse (reconexión)", () => {
-    const off = sub(vi.fn());
-    off();
-    // Sin listeners vivos la suscripción Wails se cierra; requestCenter la
-    // reabre antes de pedir para no perderse la respuesta.
+  it("requestCenter emite get solo con suscriptores vivos", () => {
+    // Sin nadie que reciba la respuesta, pedir dejaría una suscripción Wails
+    // huérfana: ni se emite ni se instala el listener.
     requestCenter();
-    expect(mocks.handlers.has("notifications:center")).toBe(true);
+    expect(mocks.emit).not.toHaveBeenCalled();
+    expect(mocks.handlers.has("notifications:center")).toBe(false);
+
+    // Con un suscriptor (el componente ya montado) la petición sale.
+    const off = sub(vi.fn());
+    requestCenter();
     expect(mocks.emit).toHaveBeenCalledWith("notifications:center:get");
+    off();
   });
 
   it("emite las mutaciones con el payload del contrato", () => {

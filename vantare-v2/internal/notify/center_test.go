@@ -179,7 +179,6 @@ func TestCenterRejectsInvalidPayloads(t *testing.T) {
 		"bad severity":      {Source: SourceUpdater, Severity: "fatal", DedupeKey: "k", TitleKey: "t"},
 		"missing title":     {Source: SourceUpdater, Severity: SeverityInfo, DedupeKey: "k"},
 		"missing dedupe":    {Source: SourceUpdater, Severity: SeverityInfo, TitleKey: "t"},
-		"long cause":        {Source: SourceUpdater, Severity: SeverityInfo, DedupeKey: "k", TitleKey: "t", ConcreteCause: strings.Repeat("x", maxCauseLen+1)},
 		"too many params":   {Source: SourceUpdater, Severity: SeverityInfo, DedupeKey: "k", TitleKey: "t", Params: map[string]string{"a": "1", "b": "2", "c": "3", "d": "4", "e": "5", "f": "6", "g": "7", "h": "8", "i": "9"}},
 		"long param value":  {Source: SourceUpdater, Severity: SeverityInfo, DedupeKey: "k", TitleKey: "t", Params: map[string]string{"k": strings.Repeat("v", maxParamLen+1)}},
 		"bad action kind":   {Source: SourceUpdater, Severity: SeverityInfo, DedupeKey: "k", TitleKey: "t", Action: &Action{Kind: "open-url", Target: "settings:updates"}},
@@ -192,6 +191,22 @@ func TestCenterRejectsInvalidPayloads(t *testing.T) {
 	}
 	if len(center.Snapshot().Records) != 0 {
 		t.Fatal("invalid payloads were stored")
+	}
+}
+
+// Los campos de display se truncan a su cota en vez de rechazar el registro:
+// un error de checksum largo no debe hacer desaparecer el aviso del centro.
+func TestCenterTruncatesDisplayFields(t *testing.T) {
+	center, _ := newTestCenter(t)
+	rec := validRecord(SourceUpdater, "k")
+	rec.ConcreteCause = strings.Repeat("x", maxCauseLen+50)
+	rec.Fallback = strings.Repeat("y", maxFallback+50)
+	if err := center.Publish(rec); err != nil {
+		t.Fatalf("long display fields must be truncated, not rejected: %v", err)
+	}
+	stored := center.Snapshot().Records[0]
+	if len(stored.ConcreteCause) != maxCauseLen {
+		t.Fatalf("cause len=%d, want %d", len(stored.ConcreteCause), maxCauseLen)
 	}
 }
 

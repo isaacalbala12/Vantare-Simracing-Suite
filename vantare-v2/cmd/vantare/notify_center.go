@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"hash/fnv"
 	"log"
 
 	"github.com/vantare/overlays/v2/internal/app"
@@ -81,15 +82,19 @@ func publishUpdateAvailable(center *notify.Center, tag string) {
 	}
 }
 
-// publishUpdaterError records a failed update operation with its cause.
+// publishUpdaterError records a failed update operation with its cause. The
+// dedupe key hashes the message — a long checksum error would otherwise
+// exceed the dedupe bound and the record would be dropped entirely.
 func publishUpdaterError(center *notify.Center, message string) {
 	if center == nil || message == "" {
 		return
 	}
+	h := fnv.New64a()
+	_, _ = h.Write([]byte(message))
 	rec := notify.Record{
 		Source:        notify.SourceUpdater,
 		Severity:      notify.SeverityError,
-		DedupeKey:     "updater:error:" + message,
+		DedupeKey:     fmt.Sprintf("updater:error:%x", h.Sum64()),
 		TitleKey:      "notifications.record.updater.error.title",
 		ConcreteCause: message,
 		Action:        &notify.Action{Kind: "navigate", Target: "settings:updates"},

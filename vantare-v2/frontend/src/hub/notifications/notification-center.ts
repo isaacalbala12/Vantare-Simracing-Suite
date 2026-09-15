@@ -83,9 +83,11 @@ export function getCenterSnapshot(): CenterSnapshot {
   return snapshot;
 }
 
-/** Suscríbete antes de pedir el snapshot o la primera entrega se pierde. */
+/** Solo con suscriptores vivos: pedir sin nadie que reciba la respuesta
+ *  dejaría la suscripción Wails huérfana. El componente suscribe en el mount
+ *  antes de que corra su efecto, así que la petición siempre tiene oyente. */
 export function requestCenter(): void {
-  ensureCenterListener();
+  if (listeners.size === 0) return;
   Events.Emit("notifications:center:get");
 }
 

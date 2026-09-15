@@ -154,8 +154,13 @@ func validateRecord(rec *Record) error {
 	if rec.DedupeKey == "" || len(rec.DedupeKey) > maxDedupeLen {
 		return fmt.Errorf("invalid dedupe key")
 	}
-	if len(rec.ConcreteCause) > maxCauseLen || len(rec.Fallback) > maxFallback {
-		return fmt.Errorf("payload exceeds bounds")
+	// Cause y fallback son campos de display: se truncan a su cota en vez de
+	// rechazar el registro — un error largo no debe hacer desaparecer el aviso.
+	if len(rec.ConcreteCause) > maxCauseLen {
+		rec.ConcreteCause = rec.ConcreteCause[:maxCauseLen]
+	}
+	if len(rec.Fallback) > maxFallback {
+		rec.Fallback = rec.Fallback[:maxFallback]
 	}
 	if len(rec.Params) > maxParams {
 		return fmt.Errorf("params exceed bounds")

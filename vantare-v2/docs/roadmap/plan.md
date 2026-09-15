@@ -981,10 +981,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Notification preferences and test
 - titulo.pt: Preferências e teste de notificações
 - titulo.it: Preferenze e prova delle notifiche
-- cuerpo: Los avisos de actualización respetan la preferencia guardada y Ajustes permite enviar una prueba de Windows con resultado visible; Spotter permanece en su overlay y audio de carrera, fuera de los canales de notificación del producto.
-- cuerpo.en: Update alerts respect the saved preference and Settings can send a Windows test with a visible result; Spotter remains in its race overlay and audio, outside the product notification channels.
-- cuerpo.pt: Os avisos de atualização respeitam a preferência guardada e as Definições permitem enviar um teste do Windows com resultado visível; o Spotter permanece no overlay e áudio de corrida, fora dos canais de notificação do produto.
-- cuerpo.it: Gli avvisi di aggiornamento rispettano la preferenza salvata e le Impostazioni possono inviare una prova Windows con risultato visibile; Spotter resta nell'overlay e nell'audio di gara, fuori dai canali di notifica del prodotto.
+- cuerpo: Los avisos de actualización respetan la preferencia guardada y Ajustes permite enviar una prueba de Windows con resultado visible. El centro de notificaciones de la shell guarda los avisos recientes con deduplicación, permite marcarlos como leídos y limpiarlos, y sus acciones se validan en backend; Spotter permanece en su overlay y audio de carrera, fuera de los canales de notificación del producto.
+- cuerpo.en: Update alerts respect the saved preference and Settings can send a Windows test with a visible result. The shell notification center keeps recent alerts with deduplication, lets you mark them read and clear them, and its actions are validated in the backend; Spotter remains in its race overlay and audio, outside the product notification channels.
+- cuerpo.pt: Os avisos de atualização respeitam a preferência guardada e as Definições permitem enviar um teste do Windows com resultado visível. O centro de notificações da shell guarda os avisos recentes com deduplicação, permite marcá-los como lidos e limpá-los, e as suas ações são validadas no backend; o Spotter permanece no overlay e áudio de corrida, fora dos canais de notificação do produto.
+- cuerpo.it: Gli avvisi di aggiornamento rispettano la preferenza salvata e le Impostazioni possono inviare una prova Windows con risultato visibile. Il centro notifiche della shell conserva gli avvisi recenti con deduplicazione, permette di segnarli come letti e di cancellarli, e le sue azioni sono validate nel backend; Spotter resta nell'overlay e nell'audio di gara, fuori dai canali di notifica del prodotto.
 - etiqueta: Corregido
 - etiqueta.en: Fixed
 - etiqueta.pt: Corrigido

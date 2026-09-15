@@ -29,11 +29,12 @@ export function DeltaFunctional({ model, settings, motion = "full", effects }: W
   });
   const labels = functionalLabels[locale];
   const statusText = model.status !== "ready" ? labels[model.status] : undefined;
+  // El relleno siempre se posiciona con left+width para que el cruce de cero
+  // sea continuo: la barra drena hacia el ancla y crece por el otro lado en
+  // vez de saltar entre anclas right/left, que no interpolan.
   const fill: CSSProperties = model.progress === 0
     ? { display: "none" }
-    : model.progress < 0
-      ? { right: "50%", width: `${Math.abs(model.progress) * 50}%` }
-      : { left: "50%", width: `${model.progress * 50}%` };
+    : { left: `${50 + Math.min(0, model.progress) * 50}%`, width: `${Math.abs(model.progress) * 50}%` };
   const arrow = model.tone === "gaining" ? "▲" : model.tone === "losing" ? "▼" : "";
   // "capsule" es la dirección tipo Crystal (ISA-1128): cápsulas sobre pista
   // gruesa. "instrument" es la dirección por defecto.

@@ -19,6 +19,8 @@ import { buildAuthoringV2ScenarioWidget } from "./authoring-v2-scenario-widget";
 import {
   getEnabledRelativeColumns,
   parseRelativeContent,
+  RELATIVE_RANGE_AHEAD,
+  RELATIVE_RANGE_BEHIND,
   updateRelativeFilters,
 } from "../../widget-types/relative/relative-content";
 import {
@@ -44,7 +46,6 @@ export const WORKSHOP_V2_DEV_VARIANTS = [
   "standings-functional-study",
   "standings-stress60",
   "standings-replay",
-  "relative-multiclass",
   "pedals-zero",
   "pedals-full",
 ] as const;
@@ -56,6 +57,15 @@ export const WORKSHOP_V2_VARIANTS: readonly WorkshopV2Variant[] = [
   ...AUTHORING_V2_VARIANTS,
   ...WORKSHOP_V2_DEV_VARIANTS,
 ];
+
+// La presentación multiclass es el default del Relative dentro de Eficiencia.
+function usesRelativeStudyProjection(input: {
+  widget: WidgetType;
+  system: DesignSystemId;
+  variant: WorkshopV2Variant;
+}): boolean {
+  return input.widget === "relative" && input.system === "vantare-functional" && input.variant === "default";
+}
 
 const WORKSHOP_V2_VARIANT_SET: ReadonlySet<string> = new Set(WORKSHOP_V2_VARIANTS);
 
@@ -70,7 +80,6 @@ const DEV_SHAPE_VARIANT: Record<WorkshopV2DevVariant, AuthoringV2Variant> = {
   "standings-functional-study": "default",
   "standings-stress60": "default",
   "standings-replay": "standings-multiclass",
-  "relative-multiclass": "default",
   "pedals-zero": "default",
   "pedals-full": "default",
 };
@@ -105,10 +114,11 @@ export function createScenarioWidget(input: {
 }): WidgetInstanceV3 {
   const shape = shapeVariantFor(input);
   let widget = buildAuthoringV2ScenarioWidget({ widget: input.widget, system: input.system, variant: shape });
-  // La ventana dev multiclass del relative se presenta como en la referencia:
+  // La proyección multiclass del Relative se presenta como en la referencia:
   // solo posición, clase, nombre y gap — driverNumber y bestLap son huecos
   // declarados de la proyección y dibujarían columnas permanentes de "—".
-  if (input.widget === "relative" && input.variant === "relative-multiclass") {
+  // En Eficiencia esta es la forma canónica de `default`.
+  if (usesRelativeStudyProjection(input)) {
     const content = widget.content as Record<string, unknown>;
     const keep = new Set(["position", "class", "driverName", "gap"]);
     const columns = Array.isArray(content.columns)
@@ -260,7 +270,7 @@ export type WorkshopV2Scenario = {
   sceneId?: string;
   sceneFrame?: number;
   sceneState?: SceneFrame;
-  /** Filas que la ventana dev multiclass deja delante/detrás del jugador. */
+  /** Filas que la ventana de Relative deja delante/detrás del jugador. */
   rangeAhead?: number;
   rangeBehind?: number;
 };
@@ -781,17 +791,6 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
       frame = { ...frame, standings: patchStandings(frame.standings, replayStepPatches(step), quality) };
       break;
     }
-    case "relative-multiclass": {
-      const playerId = frame.player.id ?? "";
-      const ahead = scenario.rangeAhead ?? 3;
-      const behind = scenario.rangeBehind ?? 3;
-      frame = {
-        ...frame,
-        relative: relativeDevWindow(frame.relative, playerId, quality, ahead, behind),
-        relativeSettled: relativeDevWindow(frame.relativeSettled, playerId, quality, ahead, behind),
-      };
-      break;
-    }
     case "pedals-zero":
       frame = forcePedals(frame, 0, quality);
       break;
@@ -800,6 +799,18 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
       break;
     default:
       break;
+  }
+  // El default de Relative en Eficiencia usa una ventana multiclass
+  // determinista; no existe una variante alternativa para esta presentación.
+  if (usesRelativeStudyProjection(scenario)) {
+    const playerId = frame.player.id ?? "";
+    const ahead = scenario.rangeAhead ?? RELATIVE_RANGE_AHEAD;
+    const behind = scenario.rangeBehind ?? RELATIVE_RANGE_BEHIND;
+    frame = {
+      ...frame,
+      relative: relativeDevWindow(frame.relative, playerId, quality, ahead, behind),
+      relativeSettled: relativeDevWindow(frame.relativeSettled, playerId, quality, ahead, behind),
+    };
   }
   frame = applyScene(frame, scenario, quality);
   return { ...runtime, overlayV2Frame: frame };

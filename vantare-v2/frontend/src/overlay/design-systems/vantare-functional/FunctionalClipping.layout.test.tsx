@@ -174,7 +174,7 @@ describe("Functional Workshop clipping and fill", () => {
     const scenario: Scenario = {
       widget: "relative",
       system: "vantare-functional",
-      variant: "relative-multiclass",
+      variant: "default",
       session: "race",
       location: "track",
       state: "ready",

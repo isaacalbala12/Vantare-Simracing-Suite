@@ -15,6 +15,7 @@ import {
 import { parseOverlayWorkshopQuery } from "./overlay-workshop-query";
 import * as relativeV2 from "../widget-types/relative/relative-view-model-v2";
 import { relativeDefinition } from "../widget-types/relative/relative-definition";
+import { getEnabledRelativeColumns, parseRelativeContent } from "../widget-types/relative/relative-content";
 import { decodeControlsHistory } from "../widget-types/input-telemetry/input-telemetry-view-model-v2";
 
 afterEach(() => {
@@ -195,6 +196,21 @@ describe("buildWorkshopFrameV2", () => {
     expect(frame.relative[0]!.gap.v).toBe(7.2);
     expect(frame.relative.filter((row) => row.side === "ahead")).toHaveLength(5);
     expect(frame.relative.filter((row) => row.side === "behind")).toHaveLength(2);
+  });
+
+  it("uses the multiclass projection for Functional Relative default and its legacy alias", () => {
+    const functionalDefault = scenario({ widget: "relative", system: "vantare-functional", variant: "default" });
+    const functionalAlias = { ...functionalDefault, variant: "relative-multiclass" as const };
+    const defaultFrame = buildWorkshopFrameV2(functionalDefault).overlayV2Frame!;
+    const aliasFrame = buildWorkshopFrameV2(functionalAlias).overlayV2Frame!;
+    const defaultWidget = createScenarioWidget(functionalDefault);
+    const aliasWidget = createScenarioWidget(functionalAlias);
+
+    expect(defaultFrame.relative).toEqual(aliasFrame.relative);
+    expect(defaultFrame.relativeSettled).toEqual(aliasFrame.relativeSettled);
+    expect(defaultWidget.content).toEqual(aliasWidget.content);
+    expect(getEnabledRelativeColumns(parseRelativeContent(defaultWidget.content)).map((column) => column.metricId))
+      .toEqual(["position", "class", "driverName", "gap"]);
   });
 
   it("crosses the same id through side and gap in relative-cross", () => {

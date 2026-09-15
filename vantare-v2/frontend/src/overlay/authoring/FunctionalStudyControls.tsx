@@ -30,9 +30,8 @@ const WIDGET_LABELS: Partial<Record<WidgetType, string>> = {
 };
 const widgetLabel = (widget: WidgetType) => WIDGET_LABELS[widget] ?? widget;
 
-// Cada widget aterriza en la fixture más expresiva disponible para juzgar el
-// diseño; el resto de la selección ligada al widget anterior (escena, diseño,
-// piel de estudio) no sobrevive porque convertiría la query en inválida.
+// Cada widget aterriza en la variante canónica `default`; la escena de Delta
+// se conserva porque es parte del estudio del diseño, no una variante visual.
 const STUDY_LANDING: Partial<Record<WidgetType, Pick<OverlayWorkshopQuery, "variant" | "sceneId" | "sceneFrame">>> = {
   standings: { variant: "default" },
   relative: { variant: "default" },
@@ -85,10 +84,9 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
   const gaps = projectionGapsFor(query.widget);
   const isFunctional = query.system === "vantare-functional";
   const isStandings = query.widget === "standings";
-  // Las fixtures de desarrollo siguen siendo útiles para pruebas y deep-links
-  // internos, pero el Workshop público tiene una única variante canónica.
+  // Las fixtures de desarrollo siguen siendo útiles para pruebas internas,
+  // pero el Workshop público tiene una única variante canónica.
   const displayedVariant = "default";
-  const variants = ["default"] as const;
 
   const chooseWidget = (widget: WidgetType) => {
     const nextSystems = designSystemRegistry.list().filter((system) => system.widgets.some((entry) => entry.widgetType === widget)).map((system) => system.id);
@@ -117,8 +115,7 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
     system: system as OverlayWorkshopQuery["system"],
     designId: undefined,
     studyStyle: undefined,
-    // La variante de estudio de Standings solo existe dentro de Eficiencia.
-    ...(system === "vantare-functional" || query.variant !== "standings-functional-study" ? {} : { variant: "default" as const }),
+    variant: "default",
   });
   const chooseDesign = (value: string) => update({ ...query, designId: value || undefined });
   const chooseScene = (value: string) => update({ ...query, sceneId: value || undefined, sceneFrame: value ? 0 : undefined });
@@ -174,11 +171,7 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
       {!isFunctional && designs.length > 0 && <Select label="Diseño" value={query.designId ?? defaultDesign?.id ?? ""} onChange={chooseDesign}>
         {designs.map((design) => <option key={design.id} value={design.id}>{design.name}</option>)}
       </Select>}
-      {variants.length > 1 ? (
-        <Select label="Variante" value={displayedVariant} onChange={chooseVariant}>
-          {variants.map((variant) => <option key={variant} value={variant}>{variant}</option>)}
-        </Select>
-      ) : <p className="functional-study-note">Fixture: {displayedVariant}</p>}
+      <p className="functional-study-note">Fixture: {displayedVariant}</p>
     </fieldset>
 
     <fieldset><legend>Sesión</legend>

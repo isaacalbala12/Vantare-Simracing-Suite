@@ -32,34 +32,34 @@ func (b *spyBackend) Send(title, body string) error {
 
 func always(value bool) func() bool { return func() bool { return value } }
 
-func TestLaunchFinishedSendsWhenEverythingAgrees(t *testing.T) {
+func TestSendGatedSendsWhenEverythingAgrees(t *testing.T) {
 	backend := &spyBackend{authorized: true}
 	service := New(backend, always(true), always(true))
 
-	sent, err := service.LaunchFinished("Pro", true)
+	sent, err := service.SendGated("El perfil Pro está listo.")
 
 	if err != nil || !sent {
 		t.Fatalf("sent=%v err=%v, want a notification", sent, err)
 	}
 	if len(backend.sent) != 1 || !strings.Contains(backend.sent[0], "Pro") {
-		t.Fatalf("sent %v, want one mentioning the profile", backend.sent)
+		t.Fatalf("sent %v, want the body delivered as given", backend.sent)
 	}
 }
 
-func TestLaunchFinishedSaysWhenItWentBadly(t *testing.T) {
+func TestSendGatedDeliversTheBodyAsGiven(t *testing.T) {
 	backend := &spyBackend{authorized: true}
 	service := New(backend, always(true), always(true))
 
-	if _, err := service.LaunchFinished("Pro", false); err != nil {
-		t.Fatalf("LaunchFinished: %v", err)
+	if _, err := service.SendGated("El perfil Pro no se pudo iniciar del todo."); err != nil {
+		t.Fatalf("SendGated: %v", err)
 	}
 
 	if !strings.Contains(backend.sent[0], "no se pudo") {
-		t.Fatalf("a failed launch must say so, got %q", backend.sent[0])
+		t.Fatalf("the caller's wording must arrive verbatim, got %q", backend.sent[0])
 	}
 }
 
-func TestLaunchFinishedStaysQuiet(t *testing.T) {
+func TestSendGatedStaysQuiet(t *testing.T) {
 	cases := []struct {
 		name       string
 		authorized bool
@@ -76,10 +76,10 @@ func TestLaunchFinishedStaysQuiet(t *testing.T) {
 			backend := &spyBackend{authorized: testCase.authorized}
 			service := New(backend, always(testCase.enabled), always(testCase.hidden))
 
-			sent, err := service.LaunchFinished("Pro", true)
+			sent, err := service.SendGated("El perfil Pro está listo.")
 
 			if err != nil {
-				t.Fatalf("LaunchFinished: %v", err)
+				t.Fatalf("SendGated: %v", err)
 			}
 			if sent || len(backend.sent) != 0 {
 				t.Fatalf("expected silence, sent=%v %v", sent, backend.sent)
@@ -96,7 +96,7 @@ func TestWithoutABackendEverythingIsANoOp(t *testing.T) {
 	if service.Supported() {
 		t.Fatal("a service with no backend is not supported")
 	}
-	if sent, err := service.LaunchFinished("Pro", true); sent || err != nil {
+	if sent, err := service.SendGated("anything"); sent || err != nil {
 		t.Fatalf("sent=%v err=%v, want a silent no-op", sent, err)
 	}
 	if granted, err := service.RequestAuthorization(); granted || err != nil {
@@ -108,7 +108,7 @@ func TestAuthorizationErrorsAreReportedNotSwallowed(t *testing.T) {
 	backend := &spyBackend{authErr: errors.New("registry unavailable")}
 	service := New(backend, always(true), always(true))
 
-	if _, err := service.LaunchFinished("Pro", true); err == nil {
+	if _, err := service.SendGated("anything"); err == nil {
 		t.Fatal("an authorization failure must surface")
 	}
 }

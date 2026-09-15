@@ -125,21 +125,17 @@ func (s *Service) SendTest() error {
 	})
 }
 
-// LaunchFinished raises the toast for a finished launch chain. It returns
-// whether one was sent, which is what lets a caller tell the difference between
-// "declined" and "failed".
-func (s *Service) LaunchFinished(profileName string, ok bool) (bool, error) {
-	body := fmt.Sprintf("El perfil %s está listo.", profileName)
-	if !ok {
-		body = fmt.Sprintf("El perfil %s no se pudo iniciar del todo.", profileName)
-	}
-	return s.sendWhenHidden(body)
-}
-
 // CalendarReminder uses the existing platform thread, preference and visibility gates.
 // Accepted by the API is not proof that Windows displayed the toast.
 func (s *Service) CalendarReminder(title, track string, minutesLeft int) (bool, error) {
 	return s.sendWhenHidden(fmt.Sprintf("%s · %s · T−%d min", title, track, minutesLeft))
+}
+
+// SendGated raises a toast when preferences, authorization and visibility
+// allow it, and reports whether one was actually sent. It is the Windows
+// channel of the notification center.
+func (s *Service) SendGated(body string) (bool, error) {
+	return s.sendWhenHidden(body)
 }
 
 func (s *Service) sendWhenHidden(body string) (bool, error) {

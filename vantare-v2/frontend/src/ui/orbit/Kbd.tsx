@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import { cx } from "./cx";
 
 export interface KbdProps {
   keys: string[];
@@ -10,15 +11,7 @@ export interface KbdProps {
 }
 
 export function Kbd({ keys, physical, empty, conflict, className }: KbdProps) {
-  const classes = [
-    "orbit-kbd",
-    physical ? "orbit-kbd--physical" : null,
-    empty ? "orbit-kbd--empty" : null,
-    conflict ? "orbit-kbd--conflict" : null,
-    className,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const classes = cx("orbit-kbd", physical ? "orbit-kbd--physical" : null, empty ? "orbit-kbd--empty" : null, conflict ? "orbit-kbd--conflict" : null, className);
 
   return (
     <span className={classes}>

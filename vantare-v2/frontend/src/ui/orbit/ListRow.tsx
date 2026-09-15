@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cx } from "./cx";
 
 export interface ListRowProps {
   title: ReactNode;
@@ -28,14 +29,7 @@ export function ListRow({
   ariaSelected,
   className,
 }: ListRowProps) {
-  const classes = [
-    "orbit-row",
-    selected ? "orbit-row--sel" : null,
-    next ? "orbit-row--next" : null,
-    className,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const classes = cx("orbit-row", selected ? "orbit-row--sel" : null, next ? "orbit-row--next" : null, className);
 
   return (
     <button

@@ -1,5 +1,6 @@
 import { useI18n } from "../../i18n/I18nProvider";
 import { formatHour, type AvailRange, type AvailState, type DriverView } from "./viz-types";
+import { cx } from "./cx";
 
 export interface AvailabilityBoardProps {
   drivers: DriverView[];
@@ -39,7 +40,7 @@ export function AvailabilityBoard({
   return (
     <div
       aria-label={boardLabel}
-      className={["orbit-avail", className].filter(Boolean).join(" ")}
+      className={cx("orbit-avail", className)}
       data-testid="orbit-availability-board"
       role="group"
     >

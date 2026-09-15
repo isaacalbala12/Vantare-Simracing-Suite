@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cx } from "./cx";
 
 export interface AccordionProps {
   title: string;
@@ -47,7 +48,7 @@ export function Accordion({
 }: AccordionProps) {
   return (
     <details
-      className={["orbit-acc", className].filter(Boolean).join(" ")}
+      className={cx("orbit-acc", className)}
       onToggle={(event) => onToggle?.((event.currentTarget as HTMLDetailsElement).open)}
       open={open}
     >

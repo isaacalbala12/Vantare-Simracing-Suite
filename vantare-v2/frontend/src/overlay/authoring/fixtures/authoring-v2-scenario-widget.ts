@@ -86,12 +86,13 @@ export function buildAuthoringV2ScenarioWidget(input: {
   }
 
   // En Eficiencia la fila del Standings es fija (30px): la caja del estudio se
-  // encaja al tamaño intrínseco para no estirar filas ni dejar hueco muerto.
-  if (input.widget === "standings" && input.system === "vantare-functional" && input.variant === "default" && !input.design) {
+  // encaja al tamaño intrínseco — ni filas estiradas ni hueco muerto, y las
+  // columnas no se reparten el sobrante de un marco más ancho que el contenido.
+  if (input.widget === "standings" && input.system === "vantare-functional" && !input.design) {
     const minimum = resolveStandingsMinimumSize(widget);
     widget.layout = {
       ...widget.layout,
-      w: Math.max(widget.layout.w, minimum?.width ?? 0),
+      w: minimum?.width ?? widget.layout.w,
       h: minimum?.height ?? widget.layout.h,
     };
   }

@@ -67,18 +67,18 @@ describe("standings-content", () => {
     expect(content.rowCount).toBe(20);
   });
 
-  it("accepts valid rowCount values (5, 10, 15, 20)", () => {
-    const validCounts = [5, 10, 15, 20];
-    for (const count of validCounts) {
+  it("accepts every rowCount in the 1–30 range", () => {
+    for (const count of [1, 5, 7, 10, 15, 20, 25, 30]) {
       const parsed = parseStandingsContent({ rowCount: count });
       expect(parsed.rowCount).toBe(count);
     }
   });
 
   it("rejects invalid rowCount and falls back to default", () => {
-    expect(parseStandingsContent({ rowCount: 7 }).rowCount).toBe(20);
-    expect(parseStandingsContent({ rowCount: 30 }).rowCount).toBe(20);
+    expect(parseStandingsContent({ rowCount: 0 }).rowCount).toBe(20);
+    expect(parseStandingsContent({ rowCount: 31 }).rowCount).toBe(20);
     expect(parseStandingsContent({ rowCount: -1 }).rowCount).toBe(20);
+    expect(parseStandingsContent({ rowCount: 7.5 }).rowCount).toBe(20);
     expect(parseStandingsContent({ rowCount: "25" }).rowCount).toBe(20);
   });
 

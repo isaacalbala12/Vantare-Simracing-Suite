@@ -34,6 +34,7 @@ import {
   resolveFunctionalRelativeSlotsWidth,
 } from "../../design-systems/vantare-functional/relative-layout";
 import { FUNCTIONAL_STUDY_DEFAULT_MODULES } from "../functional-study-options";
+import { resolveStandingsMinimumSize } from "../../widget-types/standings/standings-frame-layout";
 import { applyWidgetDesign } from "../../core/widget-design";
 import { getOfficialDesign, listOfficialDesigns } from "../../design-systems/official-designs";
 import { getAnimationScene, sceneFrameAt } from "./animation-scenes";
@@ -167,6 +168,7 @@ export function buildWorkshopWidget(input: {
   ahead?: number;
   behind?: number;
   nameFormat?: "full" | "initial" | "surname";
+  rows?: number;
 }): WidgetInstanceV3 {
   let widget = createScenarioWidget({
     widget: input.widget,
@@ -199,6 +201,20 @@ export function buildWorkshopWidget(input: {
             : column)
       : content.columns;
     widget = { ...widget, content: { ...content, columns } };
+  }
+
+  // Recuento de filas del Standings: el mismo `rowCount` que edita Studio;
+  // el view model recorta por él y en Eficiencia la caja se re-encaja como
+  // en la ventana del Relative — fila fija, marco que sigue al contenido.
+  if (input.widget === "standings" && input.rows !== undefined) {
+    const content = widget.content as Record<string, unknown>;
+    widget = { ...widget, content: { ...content, rowCount: input.rows } };
+    if (input.system === "vantare-functional") {
+      const minimum = resolveStandingsMinimumSize(widget);
+      if (minimum) {
+        widget = { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height ?? widget.layout.h } };
+      }
+    }
   }
 
   // El selector de marca del panel hace de autoridad local (en producción la
@@ -287,6 +303,8 @@ export type WorkshopV2Scenario = {
   /** Filas que la ventana de Relative deja delante/detrás del jugador. */
   rangeAhead?: number;
   rangeBehind?: number;
+  /** Filas declaradas por el Standings (1–30); el golden se completa en ciclo. */
+  standingRows?: number;
 };
 
 // Calendario auxiliar dev migrado del mock legacy: no es telemetría, solo
@@ -324,6 +342,16 @@ const WORKSHOP_DEMO_GRID: readonly string[] = [
   "Maro Engel",           // 18 gte
   "Mikkel Jensen",        // 19 hypercar
   "Nico Pino",            // 20 lmp2
+  "Charlie Eastwood",     // 21 gte — filas extra del selector 1–30
+  "Robert Kubica",        // 22 hypercar
+  "Matthieu Vaxivière",   // 23 lmp2
+  "Valentino Rossi",      // 24 gte
+  "Jenson Button",        // 25 hypercar
+  "Bent Viscaal",         // 26 lmp2
+  "Rahel Frey",           // 27 gte
+  "Mick Schumacher",      // 28 hypercar
+  "Franco Colapinto",     // 29 lmp2
+  "Michelle Gatting",     // 30 gte
 ];
 
 // Trazas deterministas de un sector para input-telemetry: recta, frenada
@@ -528,22 +556,36 @@ function patchStandings(
   return out.sort((left, right) => left.position - right.position);
 }
 
-function stressStandings(rows: readonly OverlayStandingRowV2[]): OverlayStandingRowV2[] {
-  const out: OverlayStandingRowV2[] = [];
+// Repite la parrilla en ciclo hasta `count` filas: ids únicos por copia,
+// posición reenumerada y un salto de gap por vuelta para que las filas
+// extra no repliquen el "Leader" de la P1.
+function padStandings(rows: readonly OverlayStandingRowV2[], count: number): OverlayStandingRowV2[] {
+  const out: OverlayStandingRowV2[] = [...rows];
   const perClass = new Map<string, number>();
-  for (let copy = 0; copy < 3; copy++) {
-    rows.forEach((row) => {
+  out.forEach((row) => {
+    const classId = row.classId ?? "unknown";
+    perClass.set(classId, (perClass.get(classId) ?? 0) + 1);
+  });
+  for (let copy = 1; out.length < count; copy++) {
+    for (const row of rows) {
+      if (out.length >= count) break;
       const classId = row.classId ?? "unknown";
       perClass.set(classId, (perClass.get(classId) ?? 0) + 1);
+      const gap = typeof row.gap?.v === "number" ? row.gap.v + copy * 15 : row.gap;
       out.push({
         ...row,
-        id: copy === 0 ? row.id : `${row.id}#dev-${copy}`,
+        id: `${row.id}#dev-${copy}`,
+        gap: typeof gap === "number" ? { ...row.gap, v: gap } : row.gap,
         position: out.length + 1,
         classPosition: perClass.get(classId)!,
       });
-    });
+    }
   }
   return out;
+}
+
+function stressStandings(rows: readonly OverlayStandingRowV2[]): OverlayStandingRowV2[] {
+  return padStandings(rows, rows.length * 3);
 }
 
 // Gaps dev por distancia al jugador (cerca→lejos). El golden ofrece 8 filas
@@ -769,7 +811,15 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
     return runtime;
   }
   const quality: OverlayQualityV2 = source.state === "live" ? "fresh" : "stale";
-  let frame = withWorkshopDemo(base.overlayV2Frame!, quality);
+  // El selector de filas (1–30) puede pedir más coches de los que trae el
+  // golden de 20: se completa en ciclo antes del demo para que las filas
+  // extra también reciban nombre de la parrilla.
+  let baseFrame = base.overlayV2Frame!;
+  if (scenario.widget === "standings" && scenario.standingRows !== undefined
+    && baseFrame.standings.length < scenario.standingRows) {
+    baseFrame = { ...baseFrame, standings: padStandings(baseFrame.standings, scenario.standingRows) };
+  }
+  let frame = withWorkshopDemo(baseFrame, quality);
   switch (scenario.variant) {
     case "standings-functional-study": {
       // Explicit visual-study data, never live telemetry. The original V2

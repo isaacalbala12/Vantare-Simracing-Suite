@@ -6,7 +6,7 @@ import { functionalLabels } from "./labels";
 // Horizontal Standings: tira de ancho completo a 71px — bloque de sesión,
 // stream de tarjetas por piloto repartiendo el ancho, y datos de pista/SOF
 // al final. rowCount decide cuántas tarjetas; la caja solo cambia de ancho.
-const classLabel = (value: string) => value.toUpperCase().includes("HYPER") ? "HC" : value.slice(0, 3).toUpperCase();
+const classLabel = (value: string) => value.slice(0, 3).toUpperCase();
 
 const shortName = (name: string) => {
   const words = name.replace(/\(.*?\)/g, " ").trim().split(/\s+/).filter(Boolean);

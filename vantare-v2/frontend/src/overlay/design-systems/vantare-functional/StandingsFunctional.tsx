@@ -96,7 +96,7 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
   const sessionHeader = <div className={`vf-session${brandVisible ? "" : " vf-session--bare"}`} title={`${sessionLabel} · ${labels.remaining}`}>
     {brandVisible ? <span className="vf-brand" aria-label="Vantare"><img src={vantareMark} alt="" />VANTARE</span> : null}
     <span className="vf-session-context"><span className="vf-session-type" role={model.status === "stale" ? "status" : undefined}>{model.status === "stale" ? labels.stale : sessionLabel}</span><span className="vf-clock">{model.remainingText}</span></span>
-    <span className="vf-class" title={model.activeClass}>{model.activeClass}</span>
+    <span className="vf-class" title={model.activeClass}>{model.activeClass.slice(0, 3).toUpperCase()}</span>
     {infoPlacement === "inline" && headerInfo}
   </div>;
 

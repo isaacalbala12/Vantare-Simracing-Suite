@@ -7,6 +7,7 @@ import { projectionGapsFor } from "./fixtures/projection-gaps";
 import { serializeOverlayWorkshopQuery, type OverlayWorkshopQuery } from "./overlay-workshop-query";
 import { FUNCTIONAL_STUDY_DEFAULT_MODULES, FUNCTIONAL_STUDY_MODULES, FUNCTIONAL_STUDY_SLOTS, FUNCTIONAL_STUDY_STYLES } from "./functional-study-options";
 import { RELATIVE_RANGE_AHEAD, RELATIVE_RANGE_BEHIND, RELATIVE_RANGE_LIMIT } from "../widget-types/relative/relative-content";
+import { STANDINGS_ROW_COUNT_OPTIONS } from "../widget-types/standings/standings-content";
 
 const SYSTEM_LABELS: Record<string, string> = {
   "vantare-functional": "Eficiencia",
@@ -104,6 +105,8 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
       // La ventana del relative no existe en otros widgets; no la arrastramos.
       ahead: undefined,
       behind: undefined,
+      // El recuento de filas solo existe en standings.
+      ...(widget === "standings" ? {} : { rows: undefined }),
       // El formato de nombre solo existe donde hay columna Piloto.
       ...(widget === "standings" || widget === "relative" ? {} : { nameFormat: undefined }),
       ...landing,
@@ -191,6 +194,11 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
       <button type="button" aria-pressed={!query.studyStyle} onClick={() => update({ ...query, studyStyle: undefined })}>V1</button>
       {FUNCTIONAL_STUDY_STYLES.map((style) => <button type="button" key={style.id} aria-pressed={query.studyStyle === style.id} onClick={() => update({ ...query, designId: style.designId, studyStyle: style.id })}>{style.label}</button>)}
     </div></fieldset>}
+    {isStandings && <fieldset><legend>Filas</legend><p className="functional-study-note">Pilotos visibles; la caja se adapta al recuento.</p>
+      <Select label="Pilotos" value={String(query.rows ?? 20)} onChange={(value) => update({ ...query, rows: Number(value) })}>
+        {STANDINGS_ROW_COUNT_OPTIONS.map((count) => <option key={count} value={count}>{count}</option>)}
+      </Select>
+    </fieldset>}
     {isFunctional && isStandings && <fieldset><legend>Módulos</legend><p className="functional-study-note">Posición y piloto siempre visibles.</p>
       {FUNCTIONAL_STUDY_MODULES.map((item) => {
         const modules = query.modules ?? FUNCTIONAL_STUDY_DEFAULT_MODULES;

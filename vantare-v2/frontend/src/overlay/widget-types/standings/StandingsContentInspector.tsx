@@ -1,6 +1,6 @@
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { CustomInspectorProps } from '../../core/inspector-control';
-import { Check, Field, Seg } from '../../../ui/orbit';
+import { Check, Field, Seg, Select } from '../../../ui/orbit';
 import {
   type WidgetColumnWidthPreset,
 } from '../shared/widget-column';
@@ -134,16 +134,15 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
       >
         <div data-testid="studio-standings-row-count">
           <Field label={t('studio.inspector.content.rows')}>
-            <Seg
+            <Select
               label={t('studio.inspector.content.rows')}
               onChange={(next) => publish(updateRowCount(content, Number(next)))}
               options={STANDINGS_ROW_COUNT_OPTIONS.map((count) => ({
                 value: String(count),
                 label: String(count),
-                disabled,
               }))}
               value={String(content.rowCount)}
-              wide
+              disabled={disabled}
             />
           </Field>
         </div>

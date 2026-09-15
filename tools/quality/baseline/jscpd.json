@@ -1,0 +1,4136 @@
+{
+  "header": {
+    "analyzer": "jscpd",
+    "base_sha": "7cfb153e8c2b86d15cb09445334a574d1a529b5e",
+    "generated_at": "2026-09-14T23:31:03Z",
+    "tool_versions": {
+      "staticcheck": "2026.2.1",
+      "govet": "go1.25.0",
+      "deadcode": "v0.49.0",
+      "go-mod-tidy": "go1.25.0",
+      "knip": "6.34.0",
+      "dependency-cruiser": "18.2.0",
+      "jscpd": "5.1.2"
+    },
+    "scope_hash": "a7cc956dfefdd75e8e2aa1a9ac374638c4a1a44c28ef5e867b73c38908c730ce",
+    "versions_fingerprint": "3a4e2c5c3626628ae6e904fd8a01eb4722f582912af5571fe0c64a60a4efb9d8",
+    "configs": [
+      "frontend"
+    ],
+    "count": 514
+  },
+  "findings": [
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/calendar/calendar-types.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "bb7522e7b390a85763086f6e14ecb0612a74f3222d61123b789fa6d8eda89f33"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/engineer/engineer-presentation-adapters.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "729d6f9e797a64744db4595daa881c24f5cc57c36f0221f785aa56f07d05248a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/fonts.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "0478a1671f1d1cfd9e20d83b4f43fb9a8295c674b1db0b7917cb9a1c14f81822"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/fonts.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "0478a1671f1d1cfd9e20d83b4f43fb9a8295c674b1db0b7917cb9a1c14f81822"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/fonts.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "0478a1671f1d1cfd9e20d83b4f43fb9a8295c674b1db0b7917cb9a1c14f81822"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/fonts.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2c1ac3c42c1c0a8d065a93c6c60367e578eb0510afcdd10211ae1fb75c39b938"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/fonts.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2c1ac3c42c1c0a8d065a93c6c60367e578eb0510afcdd10211ae1fb75c39b938"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/fonts.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2c1ac3c42c1c0a8d065a93c6c60367e578eb0510afcdd10211ae1fb75c39b938"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/fonts.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2c1ac3c42c1c0a8d065a93c6c60367e578eb0510afcdd10211ae1fb75c39b938"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/fonts.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2c1ac3c42c1c0a8d065a93c6c60367e578eb0510afcdd10211ae1fb75c39b938"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/fonts.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2c1ac3c42c1c0a8d065a93c6c60367e578eb0510afcdd10211ae1fb75c39b938"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/fonts.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "4c196c1b7f3ab0363e7dba11884768b6bbc70f464588af4cdef27af52e173e25"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/fonts.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "4c196c1b7f3ab0363e7dba11884768b6bbc70f464588af4cdef27af52e173e25"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/fonts.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "4c196c1b7f3ab0363e7dba11884768b6bbc70f464588af4cdef27af52e173e25"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/fonts.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "4c196c1b7f3ab0363e7dba11884768b6bbc70f464588af4cdef27af52e173e25"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/fonts.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "4c196c1b7f3ab0363e7dba11884768b6bbc70f464588af4cdef27af52e173e25"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/fonts.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "4c196c1b7f3ab0363e7dba11884768b6bbc70f464588af4cdef27af52e173e25"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/fonts.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "4c196c1b7f3ab0363e7dba11884768b6bbc70f464588af4cdef27af52e173e25"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/fonts.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "4c196c1b7f3ab0363e7dba11884768b6bbc70f464588af4cdef27af52e173e25"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/fonts.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "e3a371c8ccd58576c8cb2f1bd39e16446418bc308fa8d690ca158bfb6846c42d"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/fonts.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "e3a371c8ccd58576c8cb2f1bd39e16446418bc308fa8d690ca158bfb6846c42d"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/calendar-visual-mock-data.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "344eebdaa51746a4d09438a2791f44b4a194e660d706b3b1da3a681e5d4d5661"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/calendar-visual-mock-data.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "344eebdaa51746a4d09438a2791f44b4a194e660d706b3b1da3a681e5d4d5661"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/calendar-visual-mock-data.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "59d75ca28fb17565166075145019e27c24cb6685139d893407e200d434bba0dd"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/calendar-visual-mock-data.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "59d75ca28fb17565166075145019e27c24cb6685139d893407e200d434bba0dd"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/calendar-visual-mock-data.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "85192277451510025e26c377669a47f43befaaf3c1d4bfcf02607c5efc49df46"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/calendar-visual-mock-data.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "85192277451510025e26c377669a47f43befaaf3c1d4bfcf02607c5efc49df46"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/calendar-visual-mock-data.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "85192277451510025e26c377669a47f43befaaf3c1d4bfcf02607c5efc49df46"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/calendar-visual-mock-data.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "85192277451510025e26c377669a47f43befaaf3c1d4bfcf02607c5efc49df46"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/calendar-visual-mock-data.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "d20b791d2efe8402eca88f7d59927aabff747b04af680c3511e2666f26768c1a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/calendar-visual-mock-data.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "d20b791d2efe8402eca88f7d59927aabff747b04af680c3511e2666f26768c1a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/launcher/chain-store-core.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "7cf82dbe367c7d446dd742bac48bb8ec5b63cc75b9abadfab12b8182909adf0d"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/launcher/chain-store-core.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "7cf82dbe367c7d446dd742bac48bb8ec5b63cc75b9abadfab12b8182909adf0d"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/orbit/use-calendar-starts.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "300a2500891a1f7f299dd2368550ad5959b277eba7acd6a89515b56519401b07"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/orbit/use-calendar-starts.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "d65920818f9fe925413cc7035f614eeab521ed30f6777316df70e583d5d43417"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/orbit/use-overlay-state.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "300a2500891a1f7f299dd2368550ad5959b277eba7acd6a89515b56519401b07"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/orbit/use-overlay-state.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "d65920818f9fe925413cc7035f614eeab521ed30f6777316df70e583d5d43417"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/canvas-frame-preview.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "004d87cdbc0437a4de8bb40de868606952dd5e317277db5812a716c43cd885b4"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/canvas-frame-preview.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "0f4b02bfb3b46436e88a80f05557c52b6a8ad174c935c1f408c7f82ae714a9f6"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/canvas-frame-preview.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2acdfe36ca1a821fb8ba43c72967f3f9b04aedb8e6c49c949e0797ff5818c8dd"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/canvas-frame-preview.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "e164b0cb98a316d4f2645138b02802ddbc48f403cf76e1670b5e3fdfa3a0625e"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/canvas-resize.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "20060b484d588900b25bc0234e434137ed3bb4f59ee160434fd3db73c6707a6c"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/canvas-resize.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "20060b484d588900b25bc0234e434137ed3bb4f59ee160434fd3db73c6707a6c"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/canvas-resize.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "5848d9dc4168b94e4bf602e024519d5b9ecf24b2625a5a071ed88427c53155db"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/canvas-resize.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "5848d9dc4168b94e4bf602e024519d5b9ecf24b2625a5a071ed88427c53155db"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/canvas-resize.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "9253170e30ce025b1a99a7bc27b4e335cb585a1d8393979a728eb20a6e6f30f7"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/canvas-resize.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "9253170e30ce025b1a99a7bc27b4e335cb585a1d8393979a728eb20a6e6f30f7"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/canvas-resize.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "bdbe9bfda193e10cd1aa1dadc693cca27cc8003d1d259f54c4166898e3ae7e3d"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/canvas-resize.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "bdbe9bfda193e10cd1aa1dadc693cca27cc8003d1d259f54c4166898e3ae7e3d"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/useCanvasInteraction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "15649cb6fbed8ad800e66d25cd58ab591d3c0d31588f1be2bcaccd8702360725"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/useCanvasInteraction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2accf6e55c14cd00490b465d3bd0f2e6dea93431c52843a3af61ee751e14c4af"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/useCanvasInteraction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "33d9fb3b05c0ba5b5ee2a4fcc87a7e7c5214e55f544d7ec44ee1b071a645ac74"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/useCanvasInteraction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "33d9fb3b05c0ba5b5ee2a4fcc87a7e7c5214e55f544d7ec44ee1b071a645ac74"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/useCanvasInteraction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "6412c5c367aea2be1c12db167181b3c639a17a4eb9d992953c3a70f095358f2e"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/useCanvasInteraction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "adc56a1e62675d1a4ddda6aec1594767c423ac910db1e0b23746c5a05690d7c9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/useCanvasInteraction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "adc56a1e62675d1a4ddda6aec1594767c423ac910db1e0b23746c5a05690d7c9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/useCanvasInteraction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "b25aad0f6079eb19efe5d485c16d7df9f442b0d159ea5eed50c2cee16a3790fe"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/useCanvasInteraction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c9488a0347e37387a1c1d1d633ee11b105b81cfdc41946c1eacd983ce32085e1"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/useCanvasInteraction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "cfd0249c9db4f6a58a96d874979e30ae25480d69aed2117f667b9309fd71fdff"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/useCanvasInteraction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "cfd0249c9db4f6a58a96d874979e30ae25480d69aed2117f667b9309fd71fdff"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/useCanvasInteraction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "da093887ba91a12088fe339e8cb261f4e19f2fadf3999e70652f5ecc9b9b9ae9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/useCanvasInteraction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "dec086329e4b278d75a378fc101992382f35923ba6b5e6b04db4a1dd7e5c3073"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/useCanvasInteraction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "e13a7d74504193ad54733971c82326b43b6fb4948ff92462c9dc6cc2b21a7e0e"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/canvas/useCanvasInteraction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ec07e411c25a1bf54102a827fbaaf3af413fdc3f3812f15576441c381873f854"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/designs/design-utils.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c98cc014ea95007180360f03d439633eeeb15fcb364bebbaa851a33f54c03381"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/designs/widget-design-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2625b9c1c4c196c67db7acbd8b23bb8c1d4b252cc3f6c4f3fa31066c4c21854d"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/designs/widget-design-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2625b9c1c4c196c67db7acbd8b23bb8c1d4b252cc3f6c4f3fa31066c4c21854d"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/designs/widget-design-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2d4d4d48899498d0c80175c7951597f8913dd7c89bb09ef30b9183c4cbe32c12"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/designs/widget-design-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2d4d4d48899498d0c80175c7951597f8913dd7c89bb09ef30b9183c4cbe32c12"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/designs/widget-design-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "5ba4dda9d67c85df98957e9c15f3e769d7a06a95e679a588187f3b83321fc297"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/overlay-studio-v3.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "906ef7c0fcb72f8de049e66a73c932f85e413b4423470d1357f7ad2990888a5f"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/overlay-studio-v3.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "906ef7c0fcb72f8de049e66a73c932f85e413b4423470d1357f7ad2990888a5f"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/overlay-studio-v3.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c130b6e48e51d6ad6afc5c5aac4b60af95091573a0f9d1f1f4fe7596b8a0e01b"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/overlay-studio-v3.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "de07b3a399eaa5b77f5ff7d3852008307c61e6f94d872742a3882fb856baf816"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/overlay-studio-v3.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "de07b3a399eaa5b77f5ff7d3852008307c61e6f94d872742a3882fb856baf816"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/state/studio-command.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8fb782cf53ed430ef291e8f96109cfc8cfa405b3b39d796f879af3d5a4b677e2"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/state/studio-command.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8fb782cf53ed430ef291e8f96109cfc8cfa405b3b39d796f879af3d5a4b677e2"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/state/studio-command.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "96be80d324cfd52706dda630f64ef41b21044f9bfe584e0d34df76638c73af3c"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/state/studio-command.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "96be80d324cfd52706dda630f64ef41b21044f9bfe584e0d34df76638c73af3c"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/state/studio-command.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "aaf27fc519fcf2a2f3057776df4834050a32f77e21e27fbe8ebdd599c0eaa151"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/state/studio-command.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "aaf27fc519fcf2a2f3057776df4834050a32f77e21e27fbe8ebdd599c0eaa151"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/state/studio-command.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "b6595f779532a8fe0d14eb100f9cc7dbb72fbd5f7cf421b43bd033aacbc22ddb"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/state/studio-command.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "b6595f779532a8fe0d14eb100f9cc7dbb72fbd5f7cf421b43bd033aacbc22ddb"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/state/studio-command.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f820aea54c05508b7113b6a2587daf0df4ae851fe23ef4eec3b27c6bd83ab0be"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/state/studio-command.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f820aea54c05508b7113b6a2587daf0df4ae851fe23ef4eec3b27c6bd83ab0be"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/state/studio-profile-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "46b29e346962b2a586b8bf4e6d1cae7dcf9101a7e510c313f76163d51fcdfc54"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/state/studio-profile-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "5ba4dda9d67c85df98957e9c15f3e769d7a06a95e679a588187f3b83321fc297"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/state/studio-profile-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "90eb78b89b26f8b42fe637c2dfbba8f6e18ecceaac870adf108a0f3d85cd80d2"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/state/widget-order.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "174298d680fcc83c5cfd2d1ee99b855152e1a22240460fe156276615b4b58bc2"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlay-studio/state/widget-order.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "174298d680fcc83c5cfd2d1ee99b855152e1a22240460fe156276615b4b58bc2"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlays/recommended-profiles.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "736d92bf1577a040f01a709499bb8c23d05c844e22b16d699ab3fb02095f9cd3"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlays/recommended-profiles.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "736d92bf1577a040f01a709499bb8c23d05c844e22b16d699ab3fb02095f9cd3"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlays/recommended-profiles.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "7ffdc66bfe319978abe716f20425de73f1061df2f94913a16274c511a21baa91"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlays/recommended-profiles.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "7ffdc66bfe319978abe716f20425de73f1061df2f94913a16274c511a21baa91"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlays/recommended-profiles.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "e9d0396d60104c2b588692132267869cfcb2f33461bc9b6e011ccf5ec53ef46a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/overlays/recommended-profiles.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "e9d0396d60104c2b588692132267869cfcb2f33461bc9b6e011ccf5ec53ef46a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/registry/builtin-systems.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "0bfe203950c9b818a16b52e393b8dc2e83f7c9b6de4db5ddf9d609420d01ab86"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/registry/builtin-systems.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "0bfe203950c9b818a16b52e393b8dc2e83f7c9b6de4db5ddf9d609420d01ab86"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/settings-orbit/schedule-import-model.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "bb7522e7b390a85763086f6e14ecb0612a74f3222d61123b789fa6d8eda89f33"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/state/style-catalog.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "28adc2731c3bd5f9d87cdc882d78fcaa8fe30bddaf6772b9a3dfbc1da9fdeb30"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/state/style-catalog.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "28adc2731c3bd5f9d87cdc882d78fcaa8fe30bddaf6772b9a3dfbc1da9fdeb30"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/state/style-catalog.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "89115e9019651bf351bd9ce220c9be9a1b9c9ca26eae3d8b444f223372da7e98"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/state/style-catalog.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "89115e9019651bf351bd9ce220c9be9a1b9c9ca26eae3d8b444f223372da7e98"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/state/style-catalog.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8d39a3536cdaefd43bacddfc6d36328208cb7a9dbac8a218e807165b66cbc43f"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/state/style-catalog.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8d39a3536cdaefd43bacddfc6d36328208cb7a9dbac8a218e807165b66cbc43f"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/state/style-catalog.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "9f7058f486897910850b89f81a7c8cb7ed106f06f7ee2260aca92480526446be"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/state/style-catalog.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "9f7058f486897910850b89f81a7c8cb7ed106f06f7ee2260aca92480526446be"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/strategy-orbit/strategy-events-store.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2af6e8d522789769aa857ee856c83678e00952dee0255584998915973da7d1d5"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/strategy-orbit/strategy-events-store.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "889cffa5dc1eca7365e4f2252c56a4425ae80e5fda145d1cfd3f624162a97708"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/strategy-orbit/strategy-events-store.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "889cffa5dc1eca7365e4f2252c56a4425ae80e5fda145d1cfd3f624162a97708"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/strategy-orbit/strategy-infographic.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c6d8ce8312ba54f921df0d18e8c5fa7d603a3bf99b4c22038cf654988d75aebc"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/strategy-orbit/strategy-infographic.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c6d8ce8312ba54f921df0d18e8c5fa7d603a3bf99b4c22038cf654988d75aebc"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/strategy-orbit/strategy-orbit-bridge.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2af6e8d522789769aa857ee856c83678e00952dee0255584998915973da7d1d5"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/strategy-orbit/strategy-orbit-lifecycle.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "b6e45e4607e399d9e3bdc15d1ef7053e1d4af44c69451b76c8bca1f9df490e03"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/strategy-orbit/strategy-session-selection.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "60e6828bf2cd1ee77187160f8d0a675dd1ed793d60abcf646aa659288adc670b"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/strategy-orbit/strategy-weather-scenarios.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "60e6828bf2cd1ee77187160f8d0a675dd1ed793d60abcf646aa659288adc670b"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/telemetry-orbit/telemetry-orbit-model.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "289b96d3be681338cba3407e25649efb3d971220a194115d5d2ea607c9797815"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/telemetry-orbit/telemetry-orbit-model.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "30cd00a283c4de3bad97569430eea66b3f373d149f3bebea02aa1c1662e62b4b"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/telemetry-orbit/telemetry-orbit-model.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "dbbea2701a8afdd6a83fbf46848b60895818cc30eca8e2e289027d870b8d02eb"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/hub/telemetry-orbit/telemetry-orbit-model.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "e2a95e6a543e1cd779e491e68ae1e8aad2136b4c4df861762c3e0ab8561c480c"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/i18n/locales/en.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "b3158907cff2354f499e05134e7e4b70ba77501bf0241fdcf9b3d6fb2aacbd0a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/i18n/locales/es.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "56cc6cb5997471a0568abace3ab569bd338e5d58f2efd0ddcd6cd0ff39ea58b7"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/i18n/locales/es.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "b3158907cff2354f499e05134e7e4b70ba77501bf0241fdcf9b3d6fb2aacbd0a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/i18n/locales/es.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ef30db658c79c489429fdbb4c5b4a197e9666479435627bc91b20dc272fa16ab"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/i18n/locales/it.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "56cc6cb5997471a0568abace3ab569bd338e5d58f2efd0ddcd6cd0ff39ea58b7"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/i18n/locales/pt.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ef30db658c79c489429fdbb4c5b4a197e9666479435627bc91b20dc272fa16ab"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/lib/entitlements-refresh.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8afd79fd32cc2a95879ffd6ba40ec857f4761a22426cbda8052e80e0b96ff3cc"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/lib/entitlements-refresh.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8afd79fd32cc2a95879ffd6ba40ec857f4761a22426cbda8052e80e0b96ff3cc"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/lib/entitlements-refresh.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "d21fdbee1e4a265505171899e779453baf38ae070429d56766979e54918b7318"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/lib/plan.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "d21fdbee1e4a265505171899e779453baf38ae070429d56766979e54918b7318"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/lib/supabase-auth.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "cc99dc8e81b2a1f7e397cdd1b1572b9fd850f78793cd49670a229c927f3f5427"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/lib/supabase-auth.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "cc99dc8e81b2a1f7e397cdd1b1572b9fd850f78793cd49670a229c927f3f5427"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/lib/wails-runtime-mock.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "80c48c99ee5e2015b33245f06be7f710bdd76664575f846f9c9a4356cb93b132"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/lib/wails-runtime-mock.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "bc5957c82f8307b39eb6735665a29424f12cb329621684edfef516ce6dbcff9a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/lib/wails-runtime-mock.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "bc5957c82f8307b39eb6735665a29424f12cb329621684edfef516ce6dbcff9a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/lib/wails-runtime-topbar-mock.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "80c48c99ee5e2015b33245f06be7f710bdd76664575f846f9c9a4356cb93b132"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/authoring/fixtures/animation-scenes.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "9eefdd87e7f21e0fb99a26e3e89e30d3a5d6db2c76af2e1d35176953b2ae8bc0"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/authoring/fixtures/animation-scenes.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "9eefdd87e7f21e0fb99a26e3e89e30d3a5d6db2c76af2e1d35176953b2ae8bc0"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/authoring/fixtures/scene-interpolation.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ee7fb6b29cce16ea4dc84c5dba638573cbba276d0e0ecf2435bf1e7ffcdcd421"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/authoring/fixtures/scene-interpolation.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ee7fb6b29cce16ea4dc84c5dba638573cbba276d0e0ecf2435bf1e7ffcdcd421"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/authoring/overlay-workshop.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f23fcfcc91d8a056b48762660194584295f2ea965b4a4558fb05af05b5a5ce49"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/authoring/overlay-workshop.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f23fcfcc91d8a056b48762660194584295f2ea965b4a4558fb05af05b5a5ce49"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/core/profile-document.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c042cf9a08b19d326a5692c1b53c7895553fcd48184dc10d51dd6bad127d77de"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/core/profile-layout-conform.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c98cc014ea95007180360f03d439633eeeb15fcb364bebbaa851a33f54c03381"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/core/widget-design.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c042cf9a08b19d326a5692c1b53c7895553fcd48184dc10d51dd6bad127d77de"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/core/widget-motion.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "193732b96cbb4afc5d5b32f7e61b2c1ea6def99139365c8fc5f24166127dcf3b"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/core/widget-policy-transport.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "729d6f9e797a64744db4595daa881c24f5cc57c36f0221f785aa56f07d05248a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/delta/delta-settings.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "d42b8b7f5ebeb3a6597817da1fed325fdde9c633523e15fbf0afda62fc71f549"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/isa93-parity-overrides.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "07b9597d6347ef76bcce0e91367bb54776a5b50ab0883cb658f48b1b9bd91af8"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/isa93-parity-overrides.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "083981aaa42186d549035725a6ea33e2e4d4469b9f086fcdac49b636a5056392"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/isa93-parity-overrides.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "0f5a319a9a08e9962eccf0f82cf4aea693cc16cd0aab770f8c2baf4c1b6fcb6f"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/isa93-parity-overrides.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "327bb51c5ba78f939c219baac95e97bb0442ee6aab5acf1dba6e9a4317a257b9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/isa93-parity-overrides.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "327bb51c5ba78f939c219baac95e97bb0442ee6aab5acf1dba6e9a4317a257b9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/isa93-parity-overrides.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "358367d0809546db3e091b29ee313d30dcfca50e704d9b0ca07677473a32a8e6"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/isa93-parity-overrides.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "358367d0809546db3e091b29ee313d30dcfca50e704d9b0ca07677473a32a8e6"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/isa93-parity-overrides.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "4c64c4e7990c41cf131ba59bf21b24299944ab6e0141a58d7844130b410be4b4"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/isa93-parity-overrides.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "85262fb5d6e2f639dd394b53904f102fadded9cfe0a1d54e52beab5c5943d9fe"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/isa93-parity-overrides.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "a3ef3edb7a065ccd87f26a4d93b0bc839e974f5c1693e53c5f57fdff4fbab8e9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/isa93-parity-overrides.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "a3ef3edb7a065ccd87f26a4d93b0bc839e974f5c1693e53c5f57fdff4fbab8e9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/isa93-parity-overrides.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "a95427ab8e235e932d5be628da1d4071b214d804bd89f0fdebb1670dcc4f4f66"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/isa93-parity-overrides.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "a9a77db1d1520cfab5b96ad72278219234eb1e8e57a0eaae9734c2678a0b89a3"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/isa93-parity-overrides.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c076cc7e0bfccee8d6f9499db9f0c6f250120e11bebc015d99697e6982706fc0"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/isa93-parity-overrides.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f6f6f9eca339f351b93bb4ad2bb82f18b08ccd01808492806093a89a54bfc4da"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "3ef399395ed7521e956448cd90dcec1a9ed3d01047bda50c048a8b5bcfedb6bb"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "50519cc9e27e6c43eb9a19bb5e0ffeb2c8e3d9ab35ea76f1ca4bd1a0f2fd4f0e"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "9a0a0c50ea1cdd9e0a936a2a3493fcaffa2af257e2d102df7c693efd470d34c9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "b5a35ff6d24e5ef4455f503d263d91006fad0567ebc7d2dc54d165b83e081bd9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "beb562e643c065cc8ee035dbe69904392bd04e768e12be61f339174bdfd86c57"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "d9559e914a83979be68b0e12065e75104f5710bac27581bc68f7394881ee577b"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ec52ffeb42a5c83beee9d5d817e0eca28b66f3447d1ee6f109204a57f20f08f4"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f1648bfa146c932e4e242d9a3876e5475bcf3da3cfb0f8d58879a7e567355ba3"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f1648bfa146c932e4e242d9a3876e5475bcf3da3cfb0f8d58879a7e567355ba3"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "0478a1671f1d1cfd9e20d83b4f43fb9a8295c674b1db0b7917cb9a1c14f81822"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "07b9597d6347ef76bcce0e91367bb54776a5b50ab0883cb658f48b1b9bd91af8"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "083981aaa42186d549035725a6ea33e2e4d4469b9f086fcdac49b636a5056392"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "0f5a319a9a08e9962eccf0f82cf4aea693cc16cd0aab770f8c2baf4c1b6fcb6f"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "4c64c4e7990c41cf131ba59bf21b24299944ab6e0141a58d7844130b410be4b4"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "5963f25e6812e08a4dc73d74b51ebc01a6788dca70abe02e0790ad2e796583fe"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "5963f25e6812e08a4dc73d74b51ebc01a6788dca70abe02e0790ad2e796583fe"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "662ce6b473f0f61d3187132f2e356958933cff935fe4ab198fa1c7e0a99a1c74"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "662ce6b473f0f61d3187132f2e356958933cff935fe4ab198fa1c7e0a99a1c74"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "6fde1b5b82543a86961e3f4fde7b636c6b591e0bea50fd345e6dca280febec14"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "6fde1b5b82543a86961e3f4fde7b636c6b591e0bea50fd345e6dca280febec14"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "85262fb5d6e2f639dd394b53904f102fadded9cfe0a1d54e52beab5c5943d9fe"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8d63ff799ef8cbd18fe74197998b106306c99a139f916d4429e6055180094cb1"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8d63ff799ef8cbd18fe74197998b106306c99a139f916d4429e6055180094cb1"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "a1a185d78519bd5b67beb8810e9429b67368863ed21c915a7dee19069866fd70"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "a1a185d78519bd5b67beb8810e9429b67368863ed21c915a7dee19069866fd70"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "a35a1b7eaf4e9e13cb2a1d6840a5681de0377ba126ca9625c8222e3c8a750654"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "a35a1b7eaf4e9e13cb2a1d6840a5681de0377ba126ca9625c8222e3c8a750654"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "a95427ab8e235e932d5be628da1d4071b214d804bd89f0fdebb1670dcc4f4f66"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "a9a77db1d1520cfab5b96ad72278219234eb1e8e57a0eaae9734c2678a0b89a3"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c076cc7e0bfccee8d6f9499db9f0c6f250120e11bebc015d99697e6982706fc0"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ed098718ece63ab25ce3936f1f5f88dd3c5fe3c5814d3bb6a3e96d6a22f27c84"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ed098718ece63ab25ce3936f1f5f88dd3c5fe3c5814d3bb6a3e96d6a22f27c84"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-crystal/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f6f6f9eca339f351b93bb4ad2bb82f18b08ccd01808492806093a89a54bfc4da"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "5ff5ae76cb19209e3f2f9f69670abe15fd45a1ba1f0c29684b2e29e090b9666d"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "9a0a0c50ea1cdd9e0a936a2a3493fcaffa2af257e2d102df7c693efd470d34c9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "b5a35ff6d24e5ef4455f503d263d91006fad0567ebc7d2dc54d165b83e081bd9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/relative/relative-endurance-settings.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "d42b8b7f5ebeb3a6597817da1fed325fdde9c633523e15fbf0afda62fc71f549"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/standings/useStandingsMotion.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "193732b96cbb4afc5d5b32f7e61b2c1ea6def99139365c8fc5f24166127dcf3b"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/standings/useStandingsMotion.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "96d35827d7bd0835a371a42d5b5351786ee9d518bd90393b7a95fdefdb76e908"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/standings/useStandingsMotion.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "96d35827d7bd0835a371a42d5b5351786ee9d518bd90393b7a95fdefdb76e908"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "0e590a0a41e8e9f4b79b0a8758a067466def0579489f9b27baf41f02c95fdb27"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "0e590a0a41e8e9f4b79b0a8758a067466def0579489f9b27baf41f02c95fdb27"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "4ddc578e1f739c5795eff43ac73eb651d9b3e0cafe5f631cdba1a56367164b43"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "4ddc578e1f739c5795eff43ac73eb651d9b3e0cafe5f631cdba1a56367164b43"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "5aeb9a9e682217633826b636c2c995337c2dc81b832e7d68a27e8c0a58af00fb"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "5aeb9a9e682217633826b636c2c995337c2dc81b832e7d68a27e8c0a58af00fb"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "5aeb9a9e682217633826b636c2c995337c2dc81b832e7d68a27e8c0a58af00fb"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "5aeb9a9e682217633826b636c2c995337c2dc81b832e7d68a27e8c0a58af00fb"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "5d4c1adbee6492e2c53bfd1f67e6f69ba11bd228601c35a1a9c7d98b932111d3"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "5d4c1adbee6492e2c53bfd1f67e6f69ba11bd228601c35a1a9c7d98b932111d3"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "6006b1c42c9e550184efdf3e88593ef4cb676961e1f8055c1f77eb492d1f3d48"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "6006b1c42c9e550184efdf3e88593ef4cb676961e1f8055c1f77eb492d1f3d48"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "70bf5ffe1784439fcf4a52e17128fa46abb4f21bc49969e7d3fafcf3793ffa10"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "70bf5ffe1784439fcf4a52e17128fa46abb4f21bc49969e7d3fafcf3793ffa10"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "b18ff2cd6993dc12230e22a978d486965b031e479dd9c2d06542ec06c95ab76c"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "b18ff2cd6993dc12230e22a978d486965b031e479dd9c2d06542ec06c95ab76c"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c9b8392fc578926219e3698ea574bfd14df3504a9611d48ee1cf3c909c78b794"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c9b8392fc578926219e3698ea574bfd14df3504a9611d48ee1cf3c909c78b794"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "e021a01bd5a4006f5fb65ce400106bc22ff100defdc0a472a094967795dd5b6c"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-endurance/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "e021a01bd5a4006f5fb65ce400106bc22ff100defdc0a472a094967795dd5b6c"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "292ca80a14940391874e264c0718b4120a54401eec8432eb74dd4825cdf701f1"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "292ca80a14940391874e264c0718b4120a54401eec8432eb74dd4825cdf701f1"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2a6092f5ef1c8525e036c94522d2ff00b82df957d43cedf3f5ca0d6043574547"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2a6092f5ef1c8525e036c94522d2ff00b82df957d43cedf3f5ca0d6043574547"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "3af3b7ec7394ed11ae4e3698047b80ba4386176aaa7d3c9387035196d885e8a9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "3af3b7ec7394ed11ae4e3698047b80ba4386176aaa7d3c9387035196d885e8a9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "4db01d5b055ef9153618059c30da2feef1b321725cffe6d854ab568dc736ae4a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "4db01d5b055ef9153618059c30da2feef1b321725cffe6d854ab568dc736ae4a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "84bed9c543e51d343fa63c6e4405e9d9f63799859f5bb8a2b67dc41537662a60"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "84bed9c543e51d343fa63c6e4405e9d9f63799859f5bb8a2b67dc41537662a60"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "976f0d867f2687610752b254d6d1199f2cdae61fe7d7398dbfb308fc3791fb17"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "976f0d867f2687610752b254d6d1199f2cdae61fe7d7398dbfb308fc3791fb17"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "a2e36b8bcb4e14ff10592f08f54483434ec7828da5d545221e21c890cd8cb359"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "a2e36b8bcb4e14ff10592f08f54483434ec7828da5d545221e21c890cd8cb359"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "d5738a925b50ce3df551b5402770b5b94797797e7789f438700c5c8a4ab62bc9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "d5738a925b50ce3df551b5402770b5b94797797e7789f438700c5c8a4ab62bc9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-iracing/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-original/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "3ef399395ed7521e956448cd90dcec1a9ed3d01047bda50c048a8b5bcfedb6bb"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-original/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "50519cc9e27e6c43eb9a19bb5e0ffeb2c8e3d9ab35ea76f1ca4bd1a0f2fd4f0e"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-original/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "5ff5ae76cb19209e3f2f9f69670abe15fd45a1ba1f0c29684b2e29e090b9666d"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-original/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8327808c91989b7236611b6ee053e1ade1b45c229da8d69528826f5ec60c7a7a"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-original/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "beb562e643c065cc8ee035dbe69904392bd04e768e12be61f339174bdfd86c57"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-original/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "d9559e914a83979be68b0e12065e75104f5710bac27581bc68f7394881ee577b"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-original/manifest.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ec52ffeb42a5c83beee9d5d817e0eca28b66f3447d1ee6f109204a57f20f08f4"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-original/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "62f06642c54a7bdc08e13dfea24500f50bcf25ee6d798289ca1184c817017947"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-original/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "62f06642c54a7bdc08e13dfea24500f50bcf25ee6d798289ca1184c817017947"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-original/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "cebbce591d24311a0734deaa34347fbd23b10b504b85fcd83e7323b2cbda7c1d"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-original/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "cebbce591d24311a0734deaa34347fbd23b10b504b85fcd83e7323b2cbda7c1d"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-original/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "eb5ea68cfe24227771fd911eea6cfc9aa670681bddefae139e47e74b5d05d635"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/design-systems/vantare-original/tokens.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "eb5ea68cfe24227771fd911eea6cfc9aa670681bddefae139e47e74b5d05d635"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/edit/inplace-edit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f09f1912cfcef534318630019546e34409cc75c0783716304fa4be7a7b034c0d"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/edit/inplace-edit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f09f1912cfcef534318630019546e34409cc75c0783716304fa4be7a7b034c0d"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/edit/inplace-frame-preview.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "004d87cdbc0437a4de8bb40de868606952dd5e317277db5812a716c43cd885b4"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/edit/inplace-frame-preview.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "0f4b02bfb3b46436e88a80f05557c52b6a8ad174c935c1f408c7f82ae714a9f6"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/edit/inplace-frame-preview.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2acdfe36ca1a821fb8ba43c72967f3f9b04aedb8e6c49c949e0797ff5818c8dd"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/edit/inplace-frame-preview.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "e164b0cb98a316d4f2645138b02802ddbc48f403cf76e1670b5e3fdfa3a0625e"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/edit/use-inplace-interaction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "15649cb6fbed8ad800e66d25cd58ab591d3c0d31588f1be2bcaccd8702360725"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/edit/use-inplace-interaction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2accf6e55c14cd00490b465d3bd0f2e6dea93431c52843a3af61ee751e14c4af"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/edit/use-inplace-interaction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "6412c5c367aea2be1c12db167181b3c639a17a4eb9d992953c3a70f095358f2e"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/edit/use-inplace-interaction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "accfca4aa625ab4a21ac28a21e92dadb258dfa18d907c06be1a5ee673ba59cc0"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/edit/use-inplace-interaction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "accfca4aa625ab4a21ac28a21e92dadb258dfa18d907c06be1a5ee673ba59cc0"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/edit/use-inplace-interaction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "b25aad0f6079eb19efe5d485c16d7df9f442b0d159ea5eed50c2cee16a3790fe"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/edit/use-inplace-interaction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c9488a0347e37387a1c1d1d633ee11b105b81cfdc41946c1eacd983ce32085e1"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/edit/use-inplace-interaction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "da093887ba91a12088fe339e8cb261f4e19f2fadf3999e70652f5ecc9b9b9ae9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/edit/use-inplace-interaction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "dec086329e4b278d75a378fc101992382f35923ba6b5e6b04db4a1dd7e5c3073"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/edit/use-inplace-interaction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "e13a7d74504193ad54733971c82326b43b6fb4948ff92462c9dc6cc2b21a7e0e"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/edit/use-inplace-interaction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ec07e411c25a1bf54102a827fbaaf3af413fdc3f3812f15576441c381873f854"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/edit/use-inplace-interaction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "fe0533b8d753fbf230ff9edfb14e568049145916fa0409597a3429ba1713b95d"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/edit/use-inplace-interaction.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "fe0533b8d753fbf230ff9edfb14e568049145916fa0409597a3429ba1713b95d"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/car-damage-numbers/car-damage-numbers-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "7e4c67f9814351782b0e8f3eda245b08a05323c2f32edda712109f3aaf8b9369"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/car-damage-numbers/car-damage-numbers-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c5076ec13f6f434a60845cc35789d209577ff47f4bdce6e866bbd5d40ea67e65"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/car-damage-numbers/car-damage-numbers-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "cb0926a8e01b32559269178c9c2207b8d4008d1cd547f925d355a8e18313a3e6"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/car-damage-visual/car-damage-visual-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "7e4c67f9814351782b0e8f3eda245b08a05323c2f32edda712109f3aaf8b9369"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/car-damage-visual/car-damage-visual-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c5076ec13f6f434a60845cc35789d209577ff47f4bdce6e866bbd5d40ea67e65"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/car-damage-visual/car-damage-visual-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "cb0926a8e01b32559269178c9c2207b8d4008d1cd547f925d355a8e18313a3e6"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/head-to-head/head-to-head-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "14f4a06e54e1e604fa5614355ca636502abf8bc42d7785b0e2317a0bde4dba73"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/input-telemetry/input-telemetry-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "37abbe08b159779247990c0fe1f8f66a615389f1ac541b81baa6f802ead60afd"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/multiclass-relative/multiclass-relative-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "14f4a06e54e1e604fa5614355ca636502abf8bc42d7785b0e2317a0bde4dba73"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/pedals-telemetry-compact/pedals-telemetry-compact-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "1a606b7fc2e303c379aec8fa81e1eacf6051ca017d3e373c6d2e24c258e94f28"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/pedals-telemetry-compact/pedals-telemetry-compact-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "519d4d0368b42ba43ec90acd2e503449bcac4024afb2a4611f94bc4b1c54f6ba"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/pedals-telemetry-compact/pedals-telemetry-compact-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "fb627c95ccf311a52343aa9eee841867c7ff994cd091535f022972eba5035fc8"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/pedals-telemetry/pedals-telemetry-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "1a606b7fc2e303c379aec8fa81e1eacf6051ca017d3e373c6d2e24c258e94f28"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/pedals-telemetry/pedals-telemetry-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "37abbe08b159779247990c0fe1f8f66a615389f1ac541b81baa6f802ead60afd"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/pedals-telemetry/pedals-telemetry-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "519d4d0368b42ba43ec90acd2e503449bcac4024afb2a4611f94bc4b1c54f6ba"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/pedals-telemetry/pedals-telemetry-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "fb627c95ccf311a52343aa9eee841867c7ff994cd091535f022972eba5035fc8"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/relative/relative-content.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "719dc003900a90a7083f42b3fb05a63a8f46cde451bfd1ce72113cfc90afa36b"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/relative/relative-content.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "93719ca00ee78d476470fa088f6d3ff24076eca6f511611e5402d797119b4b66"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/relative/relative-content.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "bebd2bbad45e2b930b4a04429220483fc374efd0c0b51ba44ea87c34d260438f"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/relative/relative-content.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c91e2210f0d906e9207cf62baae113a3d494d4972feb1e858560d01c7dcb2056"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/relative/relative-content.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f4c08d81dd9ff860667f5eca3d69ed998605f2cbf7ffa6cab5c483cc42304352"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/relative/relative-renderer-helpers.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2e1d69ed7aedaa83f927efaf503b6a48aaa37bdf794e107da9981a61c0132bc0"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/relative/relative-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "468a7012596806f9ed0a5e27d0e0a2dcefce5d205fa29267170699e4abf563ee"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/relative/relative-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c63dfad4055350aa698438f61b0e800ef12e53c29edfb3325d772430922b6597"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/standings/standings-content.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "719dc003900a90a7083f42b3fb05a63a8f46cde451bfd1ce72113cfc90afa36b"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/standings/standings-content.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "93719ca00ee78d476470fa088f6d3ff24076eca6f511611e5402d797119b4b66"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/standings/standings-content.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "bebd2bbad45e2b930b4a04429220483fc374efd0c0b51ba44ea87c34d260438f"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/standings/standings-content.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c91e2210f0d906e9207cf62baae113a3d494d4972feb1e858560d01c7dcb2056"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/standings/standings-content.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f4c08d81dd9ff860667f5eca3d69ed998605f2cbf7ffa6cab5c483cc42304352"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/standings/standings-renderer-helpers.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2e1d69ed7aedaa83f927efaf503b6a48aaa37bdf794e107da9981a61c0132bc0"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/standings/standings-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c63dfad4055350aa698438f61b0e800ef12e53c29edfb3325d772430922b6597"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/overlay/widget-types/track-weather/track-weather-view-model-v2.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "468a7012596806f9ed0a5e27d0e0a2dcefce5d205fa29267170699e4abf563ee"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "0bbae791d399c60db014187f5e850b47c411ccc801032746172622f65f80387b"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "46b29e346962b2a586b8bf4e6d1cae7dcf9101a7e510c313f76163d51fcdfc54"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "758bde93f96d9fb29efaefa34870f5b46230ede00c23119a7b3a73930f0b2594"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8d13f2b9497e861052fb5c2d72079cd27e40aef21975f71bd96c62e25a386478"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "90eb78b89b26f8b42fe637c2dfbba8f6e18ecceaac870adf108a0f3d85cd80d2"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ac25c80dc4642632c2b624662c2cbd80840f4d5a84e93610000f2f76b0f74ea5"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-application-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "bf8b4f5e342c3c2e8ded4f49a2bb4a32f0a4f34906d3d129e8117a991dffd549"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-contract-v1.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "bf8b4f5e342c3c2e8ded4f49a2bb4a32f0a4f34906d3d129e8117a991dffd549"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-editor.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "d4e5664594963bbd708b341b483c2cc2f49dae1627399c0abb5f88584aa6c6c2"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-manual-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "076ad3fef3c7e1a7049dd8dc34dbd6dad6048a09167f874a1d3891900f7c55a6"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-manual-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "20dcc7e249af522af4fb5dd59b9762d867f54eea1293b27bf399d8c2f8cdcfe0"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-manual-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2ee9d3408c3e33d120427353164aa7876602a057d093c9dcedfe14d2296d75cd"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-manual-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2ee9d3408c3e33d120427353164aa7876602a057d093c9dcedfe14d2296d75cd"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-manual-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "45b76058c5780982d43d2f44f3e0d3f501f73b460715e86a3baba42d85ede7a8"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-manual-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "45b76058c5780982d43d2f44f3e0d3f501f73b460715e86a3baba42d85ede7a8"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-manual-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "65102deaca29d2c6068470278c06195cf11659f7b45bbc3310114ae1d5d0cbd9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-manual-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "65102deaca29d2c6068470278c06195cf11659f7b45bbc3310114ae1d5d0cbd9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-manual-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "758bde93f96d9fb29efaefa34870f5b46230ede00c23119a7b3a73930f0b2594"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-manual-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ca5bb69c38516c22f7a8ffd7edc9d1bef0f5024039dffbf4269a054514c3d3cc"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-manual-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ea6561d14c9c9f6878a1fe43affdac6658bb1067b96558838c6a33cb5c166e94"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-manual-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ea6561d14c9c9f6878a1fe43affdac6658bb1067b96558838c6a33cb5c166e94"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-manual-input.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "d4e5664594963bbd708b341b483c2cc2f49dae1627399c0abb5f88584aa6c6c2"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-solver-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "0bbae791d399c60db014187f5e850b47c411ccc801032746172622f65f80387b"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-solver-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "20dcc7e249af522af4fb5dd59b9762d867f54eea1293b27bf399d8c2f8cdcfe0"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-solver-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2ee9d3408c3e33d120427353164aa7876602a057d093c9dcedfe14d2296d75cd"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-solver-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "45b76058c5780982d43d2f44f3e0d3f501f73b460715e86a3baba42d85ede7a8"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-solver-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "65102deaca29d2c6068470278c06195cf11659f7b45bbc3310114ae1d5d0cbd9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-solver-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ca5bb69c38516c22f7a8ffd7edc9d1bef0f5024039dffbf4269a054514c3d3cc"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-solver-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ea6561d14c9c9f6878a1fe43affdac6658bb1067b96558838c6a33cb5c166e94"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-solver-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "fff2b9ef627bda28bda3a7c37c00840ffdf16756fe617c72f6c47a9bfed81239"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-store.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ac25c80dc4642632c2b624662c2cbd80840f4d5a84e93610000f2f76b0f74ea5"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-store.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "b6e45e4607e399d9e3bdc15d1ef7053e1d4af44c69451b76c8bca1f9df490e03"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-tyre-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "076ad3fef3c7e1a7049dd8dc34dbd6dad6048a09167f874a1d3891900f7c55a6"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-tyre-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2ee9d3408c3e33d120427353164aa7876602a057d093c9dcedfe14d2296d75cd"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-tyre-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "45b76058c5780982d43d2f44f3e0d3f501f73b460715e86a3baba42d85ede7a8"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-tyre-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "65102deaca29d2c6068470278c06195cf11659f7b45bbc3310114ae1d5d0cbd9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-tyre-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8d13f2b9497e861052fb5c2d72079cd27e40aef21975f71bd96c62e25a386478"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-tyre-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ea6561d14c9c9f6878a1fe43affdac6658bb1067b96558838c6a33cb5c166e94"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/strategy/strategy-tyre-client.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "fff2b9ef627bda28bda3a7c37c00840ffdf16756fe617c72f6c47a9bfed81239"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "30086204d08c975ad1abbbcbc6021851c0e40cbb105949958cdd1c1f548deb6e"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "30086204d08c975ad1abbbcbc6021851c0e40cbb105949958cdd1c1f548deb6e"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "30086204d08c975ad1abbbcbc6021851c0e40cbb105949958cdd1c1f548deb6e"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "30086204d08c975ad1abbbcbc6021851c0e40cbb105949958cdd1c1f548deb6e"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "39c4742eec924fe4b9596a53238dfe1b9a6c87b0528c133d7fbf2e46aa6c39ec"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "969b3804d5ec0674bcdf9dcb42a27f5a2f9aeff5d14865f5f61f06ab26fd50bd"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "a92045c92a85f34fffe82ec63b6c1f4241a992ee33386a4f986ba51d3ba3b584"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ae25e2328aec6a386f644b61ec70e028b6518d2c62c6030a1b4e1fb6167b7334"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ae25e2328aec6a386f644b61ec70e028b6518d2c62c6030a1b4e1fb6167b7334"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ae25e2328aec6a386f644b61ec70e028b6518d2c62c6030a1b4e1fb6167b7334"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ae25e2328aec6a386f644b61ec70e028b6518d2c62c6030a1b4e1fb6167b7334"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ae25e2328aec6a386f644b61ec70e028b6518d2c62c6030a1b4e1fb6167b7334"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ae25e2328aec6a386f644b61ec70e028b6518d2c62c6030a1b4e1fb6167b7334"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "be82e6ffd289288343343bec013114f94ec7bb7ef3b1a18868fb4d09a75d10c9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "be82e6ffd289288343343bec013114f94ec7bb7ef3b1a18868fb4d09a75d10c9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "be82e6ffd289288343343bec013114f94ec7bb7ef3b1a18868fb4d09a75d10c9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "be82e6ffd289288343343bec013114f94ec7bb7ef3b1a18868fb4d09a75d10c9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "be82e6ffd289288343343bec013114f94ec7bb7ef3b1a18868fb4d09a75d10c9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "be82e6ffd289288343343bec013114f94ec7bb7ef3b1a18868fb4d09a75d10c9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "be82e6ffd289288343343bec013114f94ec7bb7ef3b1a18868fb4d09a75d10c9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ed37fddb7040e0eaefcd4fe4fa1a119bae8fcca1ca656552d17901ae61156f49"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f1ec18bf2378214fc3dc294c6fb842017bf6519a5ba8c2a1882c67c849cc78b3"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f1ec18bf2378214fc3dc294c6fb842017bf6519a5ba8c2a1882c67c849cc78b3"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f1ec18bf2378214fc3dc294c6fb842017bf6519a5ba8c2a1882c67c849cc78b3"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-engineer.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f1ec18bf2378214fc3dc294c6fb842017bf6519a5ba8c2a1882c67c849cc78b3"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-home.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "58cfbb3aa5b17680d1447062ec7006d29d74168a0ec129423619a24dee67d1db"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-home.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "85dd3876f494feffb0a1f13ccd710b25102aee4107499e440095b6d5750c7461"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-home.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ed37fddb7040e0eaefcd4fe4fa1a119bae8fcca1ca656552d17901ae61156f49"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-home.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f1ec18bf2378214fc3dc294c6fb842017bf6519a5ba8c2a1882c67c849cc78b3"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-kit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "07ca9e3e54f593d6822a235443d3aeea8555686e22c952a081c0f75ad874a6d7"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-kit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "07e1525d4d6620e485d96722960c914d3b46d9d41d4b54b21400e8a1be309adc"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-kit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "1132ca51560e0cf018147c2c689c158546e91efe7e0e832bd3996b458e21faee"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-kit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2b177a270eab97a0cfd4532a0a9739e59671ecb29647056f7e0b146341846e37"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-kit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2b177a270eab97a0cfd4532a0a9739e59671ecb29647056f7e0b146341846e37"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-kit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "56248c2f04072f4c48be559bb6abe0e5b43de69d2654f8c30c5e78b83c22fef5"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-kit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "5daa3048eff607e072ce615082ca4b761e9e5751431866ebd7c1de7afea509fc"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-kit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "6adf5f5f414f1880cbd0333f03769ccde1fefa7eaf097e5fc3946f2bbf12fc65"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-kit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "93c41d9b83da2160b7aedb578b1f059206a60ecef0520fedc5fbf5be081a27f7"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-kit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "9413d2bf40f8851a22efbceaa1d0493aa8685aaaacda930c987c3d3788a6410e"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-kit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "9413d2bf40f8851a22efbceaa1d0493aa8685aaaacda930c987c3d3788a6410e"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-kit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "b2fe4ebe73939e0432f918aa96afa3e6b52a03ddd974a48dbfb82073f6fc3b47"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-kit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "b2fe4ebe73939e0432f918aa96afa3e6b52a03ddd974a48dbfb82073f6fc3b47"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-kit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c04a3874a8f9fd2fbe97ea0f86479a061e2ac45f4a3ab52c50b16fd742d52068"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-kit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c04a3874a8f9fd2fbe97ea0f86479a061e2ac45f4a3ab52c50b16fd742d52068"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-kit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "cf89dec2da0375a883de67f35e2bf37e5bc24f4477a92a2e84d1b390a70ce804"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-kit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "cf89dec2da0375a883de67f35e2bf37e5bc24f4477a92a2e84d1b390a70ce804"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-kit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "cfcfffe3b8d25391cf6b1c6a4dafe81c5292221e372317fc9449cc47aa19b855"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-kit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "fc078d5e816a699144d1bc274ea7721f38e8659d74df211e58ecf1ff792e1ba7"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-kit.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "fc078d5e816a699144d1bc274ea7721f38e8659d74df211e58ecf1ff792e1ba7"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-launcher.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "30086204d08c975ad1abbbcbc6021851c0e40cbb105949958cdd1c1f548deb6e"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-launcher.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ac01577be2548e1f652d8267e46b325711f926231e67fd75e06154c9879da849"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-launcher.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ae25e2328aec6a386f644b61ec70e028b6518d2c62c6030a1b4e1fb6167b7334"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-launcher.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "be82e6ffd289288343343bec013114f94ec7bb7ef3b1a18868fb4d09a75d10c9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-onboarding.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "07ca9e3e54f593d6822a235443d3aeea8555686e22c952a081c0f75ad874a6d7"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-onboarding.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "56248c2f04072f4c48be559bb6abe0e5b43de69d2654f8c30c5e78b83c22fef5"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-onboarding.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "cfcfffe3b8d25391cf6b1c6a4dafe81c5292221e372317fc9449cc47aa19b855"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-profiles.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "30086204d08c975ad1abbbcbc6021851c0e40cbb105949958cdd1c1f548deb6e"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-profiles.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "a90e079f7b6beca85b3de90bade46ef7c5e47e671357a76e01fac5fe48e99c80"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-profiles.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ae25e2328aec6a386f644b61ec70e028b6518d2c62c6030a1b4e1fb6167b7334"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-profiles.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "b484668e3c6ff8f35a2306b14971fe09914dcc2df49ccdc2170cd517f303eb4b"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-profiles.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "be82e6ffd289288343343bec013114f94ec7bb7ef3b1a18868fb4d09a75d10c9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-profiles.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "e88ed41e5088b8e19fd1af22dc9543828a63da79e32901ede5163b18f58a1e96"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-races.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "30086204d08c975ad1abbbcbc6021851c0e40cbb105949958cdd1c1f548deb6e"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-races.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "58cfbb3aa5b17680d1447062ec7006d29d74168a0ec129423619a24dee67d1db"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-races.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "a90e079f7b6beca85b3de90bade46ef7c5e47e671357a76e01fac5fe48e99c80"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-races.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "be82e6ffd289288343343bec013114f94ec7bb7ef3b1a18868fb4d09a75d10c9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-roadmap.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "69160766804206db9156cb38e51816772281f05f99e811900d0fc6cb28e5367f"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-roadmap.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "6adf5f5f414f1880cbd0333f03769ccde1fefa7eaf097e5fc3946f2bbf12fc65"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-roadmap.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8a6576508c28b4132e4e97ec63ae370624457e8fe3e891002d4bdc76b38e4647"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-roadmap.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "a92045c92a85f34fffe82ec63b6c1f4241a992ee33386a4f986ba51d3ba3b584"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-roadmap.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ae25e2328aec6a386f644b61ec70e028b6518d2c62c6030a1b4e1fb6167b7334"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-roadmap.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "be82e6ffd289288343343bec013114f94ec7bb7ef3b1a18868fb4d09a75d10c9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-roadmap.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "e88ed41e5088b8e19fd1af22dc9543828a63da79e32901ede5163b18f58a1e96"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-roadmap.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f93cd2f1c946f938059d929d9fc3f72e1cccf9faaa9cf9e09d77312056eb1796"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-roadmap.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f93cd2f1c946f938059d929d9fc3f72e1cccf9faaa9cf9e09d77312056eb1796"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-roadmap.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "fcbe2f010997966a2a18465f484a6c917af16af7727ac6171ce3980c077595e6"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-settings.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "07e1525d4d6620e485d96722960c914d3b46d9d41d4b54b21400e8a1be309adc"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-settings.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "39c4742eec924fe4b9596a53238dfe1b9a6c87b0528c133d7fbf2e46aa6c39ec"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-settings.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "43a4e720b4175ed502df943d62ab8efed0ef3a2d2914be07394a352f97269259"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-settings.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "43a4e720b4175ed502df943d62ab8efed0ef3a2d2914be07394a352f97269259"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-settings.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "4c1a5e2c5ec7b7a1ae5f81fd6623806a3831b5e3741263028630cddf0cac3196"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-settings.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "4c1a5e2c5ec7b7a1ae5f81fd6623806a3831b5e3741263028630cddf0cac3196"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-settings.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "5daa3048eff607e072ce615082ca4b761e9e5751431866ebd7c1de7afea509fc"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-settings.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "6989bea2ee932cdd4cdcb574b7e7f0d07ab7428b2c604da9c6c45ac723339b86"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-settings.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "8a6576508c28b4132e4e97ec63ae370624457e8fe3e891002d4bdc76b38e4647"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-settings.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ae25e2328aec6a386f644b61ec70e028b6518d2c62c6030a1b4e1fb6167b7334"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-settings.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "be82e6ffd289288343343bec013114f94ec7bb7ef3b1a18868fb4d09a75d10c9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-settings.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f1ec18bf2378214fc3dc294c6fb842017bf6519a5ba8c2a1882c67c849cc78b3"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-settings.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "fcbe2f010997966a2a18465f484a6c917af16af7727ac6171ce3980c077595e6"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-shell.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "1132ca51560e0cf018147c2c689c158546e91efe7e0e832bd3996b458e21faee"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-shell.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "85dd3876f494feffb0a1f13ccd710b25102aee4107499e440095b6d5750c7461"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-shell.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "93c41d9b83da2160b7aedb578b1f059206a60ecef0520fedc5fbf5be081a27f7"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-shell.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "c130b6e48e51d6ad6afc5c5aac4b60af95091573a0f9d1f1f4fe7596b8a0e01b"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-strategy.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "969b3804d5ec0674bcdf9dcb42a27f5a2f9aeff5d14865f5f61f06ab26fd50bd"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-strategy.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "eabcce16c1811fd8ce73d6ef20d303e9711b1a1609084744078a7569f0896e48"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-strategy.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "eabcce16c1811fd8ce73d6ef20d303e9711b1a1609084744078a7569f0896e48"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-studio.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2b177a270eab97a0cfd4532a0a9739e59671ecb29647056f7e0b146341846e37"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-studio.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "2b177a270eab97a0cfd4532a0a9739e59671ecb29647056f7e0b146341846e37"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-telemetry.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "30086204d08c975ad1abbbcbc6021851c0e40cbb105949958cdd1c1f548deb6e"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-telemetry.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ac01577be2548e1f652d8267e46b325711f926231e67fd75e06154c9879da849"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-telemetry.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ae25e2328aec6a386f644b61ec70e028b6518d2c62c6030a1b4e1fb6167b7334"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-telemetry.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "b484668e3c6ff8f35a2306b14971fe09914dcc2df49ccdc2170cd517f303eb4b"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-telemetry.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "be82e6ffd289288343343bec013114f94ec7bb7ef3b1a18868fb4d09a75d10c9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-telemetry.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f1ec18bf2378214fc3dc294c6fb842017bf6519a5ba8c2a1882c67c849cc78b3"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-telemetry.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "f1ec18bf2378214fc3dc294c6fb842017bf6519a5ba8c2a1882c67c849cc78b3"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-testing.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "69160766804206db9156cb38e51816772281f05f99e811900d0fc6cb28e5367f"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-testing.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "6989bea2ee932cdd4cdcb574b7e7f0d07ab7428b2c604da9c6c45ac723339b86"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-testing.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "ae25e2328aec6a386f644b61ec70e028b6518d2c62c6030a1b4e1fb6167b7334"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-testing.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "bc8c38f9e0570c9ff0ebf8d5b6e73c058c791559dbab75448023d8ae6ece3d5c"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-testing.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "bc8c38f9e0570c9ff0ebf8d5b6e73c058c791559dbab75448023d8ae6ece3d5c"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/styles/orbit-testing.css",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "be82e6ffd289288343343bec013114f94ec7bb7ef3b1a18868fb4d09a75d10c9"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/telemetry-transport/overlay-frame-v2-store.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "15c68f8ebd11989d442f0fc6372e40b0313897bdda513739077cab141dda9edf"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/telemetry-transport/overlay-wails-pull.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "15c68f8ebd11989d442f0fc6372e40b0313897bdda513739077cab141dda9edf"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/ui-orbit-harness-fixtures.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "289b96d3be681338cba3407e25649efb3d971220a194115d5d2ea607c9797815"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/ui-orbit-harness-fixtures.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "30cd00a283c4de3bad97569430eea66b3f373d149f3bebea02aa1c1662e62b4b"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/ui-orbit-harness-fixtures.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "dbbea2701a8afdd6a83fbf46848b60895818cc30eca8e2e289027d870b8d02eb"
+    },
+    {
+      "analyzer": "jscpd",
+      "rule": "duplication",
+      "path": "vantare-v2/frontend/ui-orbit-harness-fixtures.ts",
+      "msg_norm": "",
+      "symbol": "",
+      "content_hash": "e2a95e6a543e1cd779e491e68ae1e8aad2136b4c4df861762c3e0ab8561c480c"
+    }
+  ]
+}

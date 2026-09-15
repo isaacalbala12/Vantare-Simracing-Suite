@@ -32,3 +32,11 @@ de GitHub ni contextos ya cargados por otros agentes.
 Estas reglas también cubren documentación y tooling fuera de `vantare-v2`.
 `docs/proyecto`, `docs/engineer` y snapshots antiguos son referencia histórica.
 Conservar las autorizaciones específicas de cada entrega y canal.
+
+## Sistema de calidad anti-slop
+
+La política de calidad y el workflow de tooling están en
+[docs/quality/anti-slop.md](docs/quality/anti-slop.md) y en
+[.devin/skills/vantare-quality/SKILL.md](.devin/skills/vantare-quality/SKILL.md).
+El script vive en `tools/quality/vantare_quality.py` (subcomandos:
+bootstrap/doctor/check/audit/report/baseline).

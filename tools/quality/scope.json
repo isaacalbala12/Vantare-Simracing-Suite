@@ -1,0 +1,262 @@
+{
+  "$schema": "scope-v1",
+  "version": 1,
+  "description": "Alcance declarado del sistema de calidad anti-slop de Vantare (FASE 1). Lo fuera de alcance esta CLASIFICADO y VISIBLE, nunca oculto.",
+  "repo_root": ".",
+  "in_scope": {
+    "vantare-v2-go": {
+      "kind": "go-module",
+      "path": "vantare-v2",
+      "go_mod": "vantare-v2/go.mod",
+      "module_path": "github.com/vantare/overlays/v2",
+      "executables": [
+        "cmd/vantare",
+        "cmd/vantare-admin",
+        "cmd/vantare-catalog",
+        "cmd/vantare-curator",
+        "cmd/vantare-editorial",
+        "cmd/lmu-api-probe",
+        "cmd/lmu-calendar-bot",
+        "cmd/spotter-debug"
+      ],
+      "analyzers": [
+        "govet",
+        "staticcheck",
+        "deadcode",
+        "go-mod-tidy"
+      ],
+      "notes": "Modulo Go del producto. deadcode es SOLO informativo."
+    },
+    "vantare-v2-frontend": {
+      "kind": "frontend",
+      "path": "vantare-v2/frontend",
+      "package_json": "vantare-v2/frontend/package.json",
+      "analyzers": [
+        "knip",
+        "jscpd",
+        "dependency-cruiser"
+      ],
+      "production_entries": [
+        {
+          "html": "index.html",
+          "script": "src/main.tsx"
+        },
+        {
+          "html": "overlay.html",
+          "script": "src/overlay-main.tsx"
+        }
+      ],
+      "development_entries": [
+        {
+          "html": "calendar-harness.html",
+          "script": "src/calendar-visual-harness.tsx"
+        },
+        {
+          "html": "diagnostics-harness.html",
+          "script": "src/hub/settings/diagnostics/harness-main.tsx"
+        },
+        {
+          "html": "orbit-engineer-harness.html",
+          "script": "src/orbit-engineer-harness.tsx"
+        },
+        {
+          "html": "orbit-home-harness.html",
+          "script": "src/orbit-home-harness.tsx"
+        },
+        {
+          "html": "orbit-launcher-harness.html",
+          "script": "src/orbit-launcher-harness.tsx"
+        },
+        {
+          "html": "orbit-outside-harness.html",
+          "script": "src/orbit-outside-harness.tsx"
+        },
+        {
+          "html": "orbit-races-harness.html",
+          "script": "src/orbit-races-harness.tsx"
+        },
+        {
+          "html": "orbit-roadmap-harness.html",
+          "script": "src/orbit-roadmap-harness.tsx"
+        },
+        {
+          "html": "orbit-settings-harness.html",
+          "script": "src/orbit-settings-harness.tsx"
+        },
+        {
+          "html": "orbit-shell-harness.html",
+          "script": "src/orbit-shell-harness.tsx"
+        },
+        {
+          "html": "orbit-strategy-harness.html",
+          "script": "src/orbit-strategy-harness.tsx"
+        },
+        {
+          "html": "orbit-studio-harness.html",
+          "script": "src/orbit-studio-harness.tsx"
+        },
+        {
+          "html": "orbit-telemetry-harness.html",
+          "script": "src/orbit-telemetry-harness.tsx"
+        },
+        {
+          "html": "orbit-testing-harness.html",
+          "script": "src/orbit-testing-harness.tsx"
+        },
+        {
+          "html": "orbit-tokens-harness.html",
+          "script": "src/orbit-tokens-harness.tsx"
+        },
+        {
+          "html": "overlay-studio-harness.html",
+          "script": "src/overlay-harness/main.tsx"
+        },
+        {
+          "html": "overlay-studio-route-harness.html",
+          "script": "src/overlay-harness/studio-route-main.tsx"
+        },
+        {
+          "html": "overlay-studio-v3-harness.html",
+          "script": "src/overlay-harness/studio-v3-main.tsx"
+        },
+        {
+          "html": "responsive-overlay-harness.html",
+          "script": "src/overlay-harness/responsive-overlay-main.tsx"
+        },
+        {
+          "html": "ui-orbit-harness.html",
+          "script": "src/ui-orbit-harness.tsx"
+        }
+      ],
+      "test_entries": [
+        "src/test-setup.ts"
+      ],
+      "script_entries": [
+        "scripts/**/*.mjs",
+        "scripts/**/*.ts"
+      ],
+      "notes": "Los 21 *-harness.html son harnesses de desarrollo/test, NO producto. hub-zoom-harness.html reusa src/main.tsx (entrada de produccion). knip.json NO distingue entradas de produccion de dev/test: todas entran juntas en 'entry'. Esta lista es documentacion, no un control que el script ejecute."
+    }
+  },
+  "platform_matrix": {
+    "darwin-dev": {
+      "goos": "darwin",
+      "goarch": "arm64",
+      "build_tags": [],
+      "role": "analisis local (host macOS)",
+      "host": "darwin",
+      "analyzers": ["staticcheck", "govet", "deadcode", "go-mod-tidy", "knip", "jscpd", "dependency-cruiser"],
+      "coverage_gap": "cmd/vantare NO compila en darwin (referencia a launcher.HotkeyManager etc., solo definidos en *_windows.go). Se excluye de govet/deadcode en darwin; staticcheck lo omite silenciosamente. Cubierto por la variante windows/amd64."
+    },
+    "linux-dev": {
+      "goos": "linux",
+      "goarch": "amd64",
+      "build_tags": [],
+      "role": "analisis CI (host Linux, ubuntu-latest)",
+      "host": "linux",
+      "analyzers": ["staticcheck", "govet", "deadcode", "go-mod-tidy", "knip", "jscpd", "dependency-cruiser"],
+      "coverage_gap": "cmd/vantare referencia launcher.HotkeyManager etc. solo definidos en *_windows.go. Se excluye de govet/deadcode en linux; staticcheck lo omite silenciosamente. Cubierto por la variante windows/amd64."
+    },
+    "windows-amd64": {
+      "goos": "windows",
+      "goarch": "amd64",
+      "build_tags": [],
+      "role": "cruce Go (cross-compile desde host para cubrir cmd/vantare)",
+      "host": "cross",
+      "analyzers": ["staticcheck", "govet", "deadcode"],
+      "coverage_gap": "El analisis cruzado GOOS=windows se ejecuta desde el host para cubrir cmd/vantare."
+    },
+    "windows-amd64-production": {
+      "goos": "windows",
+      "goarch": "amd64",
+      "build_tags": [
+        "production"
+      ],
+      "role": "build de release con tag production",
+      "host": "cross",
+      "analyzers": [],
+      "coverage_gap": "BRECHA EXPLICITA: no ejecuta ningun analizador. Algunos tests (p.ej. cmd/vantare/cpu_profile_production_test.go) solo compilan con el tag production, pero el analisis de calidad no cubre esta variante."
+    }
+  },
+  "finding_exclusions": {
+    "vantare-v2/frontend/bindings": "Generado por Wails. Se excluye como HALLAZGO (knip/jscpd). dependency-cruiser excluye bindings DEL GRAFO (no se puede evitar: son codigo generado que importa de @wailsio); sus consumidores siguen contando.",
+    "vantare-v2/frontend/src/generated": "Generado (telemetry.ts). Se excluye como HALLAZGO, no del grafo."
+  },
+  "out_of_scope": {
+    "root-pnpm-workspace": {
+      "kind": "historico-v1",
+      "paths": [
+        "apps/desktop",
+        "packages/*",
+        "shared/*",
+        "pnpm-workspace.yaml",
+        "turbo.json",
+        "package.json"
+      ],
+      "reason": "Workspace pnpm raiz historico V1 (Electron apps/desktop, packages/*, shared/*). No es el producto actual (Wails)."
+    },
+    "aux-go-modules": {
+      "kind": "herramienta-investigacion",
+      "paths": [
+        "vantare-v2/tools/vantare-telemetry-reader",
+        "vantare-v2/tools/benchmarks/isa101-storage",
+        "vantare-v2/docs/vantare-program/research/telemetry-analysis/spikes/ta03b"
+      ],
+      "reason": "Modulos Go auxiliares: herramienta e investigacion. go mod tidy -diff se ejecuta por modulo pero no entran en el baseline bloqueante del producto."
+    },
+    "curation-worker": {
+      "kind": "infraestructura",
+      "paths": [
+        "vantare-v2/infra/curation-worker"
+      ],
+      "reason": "Infraestructura fuera del workspace pnpm. No analizada en v1."
+    },
+    "bench-scripts": {
+      "kind": "infraestructura",
+      "paths": [
+        "vantare-v2/scripts/bench"
+      ],
+      "reason": "Scripts de bench fuera del workspace pnpm. No analizados en v1."
+    }
+  },
+  "policy_paths": {
+    "force_full_graph_on_change": [
+      "tools/quality/**",
+      "tools/quality/scope.json",
+      "tools/quality/baseline/**",
+      "tools/quality/exceptions.json",
+      "tools/quality/versions.json",
+      ".github/workflows/**",
+      "vantare-v2/frontend/knip.json",
+      "vantare-v2/frontend/.dependency-cruiser.cjs",
+      "vantare-v2/frontend/.dependency-cruiser-known-violations.json",
+      "vantare-v2/frontend/.jscpd.json",
+      "vantare-v2/frontend/eslint.config.js",
+      "vantare-v2/frontend/tsconfig*.json",
+      "vantare-v2/frontend/vite.config.ts",
+      "vantare-v2/frontend/package.json",
+      "pnpm-lock.yaml",
+      "vantare-v2/.gitignore",
+      ".gitignore"
+    ],
+    "policy_changed_aggregate_state": "REVIEW_REQUIRED"
+  },
+  "protections": {
+    "description": "DOCUMENTACION (no un control ejecutable). Ningun analizador ni el ratchet pueden sugerir eliminar estas categorias. Los tipos estaticos NO demuestran validez en runtime. El script no consume esta lista automaticamente; es criterio de diseno para revision humana.",
+    "never_flag_as_dead_or_unused": [
+      "validacion de datos externos",
+      "IPC",
+      "red",
+      "disco",
+      "autenticacion",
+      "licencias",
+      "autorizacion",
+      "concurrencia",
+      "persistencia",
+      "timeouts",
+      "cancelacion",
+      "limpieza de recursos",
+      "manejo de errores"
+    ]
+  }
+}

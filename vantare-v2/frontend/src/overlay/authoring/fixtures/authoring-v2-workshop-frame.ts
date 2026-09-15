@@ -6,6 +6,7 @@ import type {
   OverlayQValue,
   OverlayRelativeRowV2,
   OverlayStandingRowV2,
+  Overlayv2DeltaHistoryV2,
 } from "../../../generated/telemetry";
 import type { DesignSystemId, WidgetInstanceV3, WidgetType } from "../../core/profile-document";
 import type { WidgetRuntimeInput } from "../../core/widget-definition";
@@ -329,6 +330,22 @@ function demoControlsHistory(quality: OverlayQualityV2): OverlayControlsHistoryV
   return { q: quality, capturedAtMS, throttle, brake, clutch, speedMPS: speed, rpm, gear };
 }
 
+// Serie delta determinista para delta-trace: 100 muestras a 20 Hz sobre 5 s
+// (la ventana por defecto enseña las últimas 4 s). Tendencia a la baja —
+// el piloto recorta — con ondulación de sector.
+const DEMO_DELTA_POINTS = 100;
+function demoDeltaHistory(quality: OverlayQualityV2): Overlayv2DeltaHistoryV2 {
+  const capturedAtMS: number[] = [];
+  const seconds: number[] = [];
+  const base = 1_757_900_000_000;
+  for (let i = 0; i < DEMO_DELTA_POINTS; i += 1) {
+    capturedAtMS.push(base + i * 50);
+    const drift = i / (DEMO_DELTA_POINTS - 1);
+    seconds.push(0.5 - drift * 0.3 + Math.sin(i / 5) * 0.07);
+  }
+  return { q: quality, capturedAtMS, seconds };
+}
+
 // Capa de demostración del Workshop: el golden canónico trae shape y cantidad
 // pero nombres vacíos ("Driver 0NN") y varios canales sin valor, que no sirven
 // para juzgar el diseño. Aquí se rellenan identidades y canales de muestra —
@@ -355,7 +372,12 @@ function withWorkshopDemo(frame: OverlayFrameV2, quality: OverlayQualityV2): Ove
       clutch: qualityValue(0.06, quality),
       steering: qualityValue(0.08, quality),
     },
-    delta: { ...frame.delta, seconds: qualityValue(0.214, quality) },
+    delta: {
+      ...frame.delta,
+      seconds: qualityValue(0.214, quality),
+      history: demoDeltaHistory(quality),
+    },
+    session: { ...frame.session, flag: qualityValue("green", quality) },
     controls: { history: demoControlsHistory(quality) },
     fuel: {
       ...frame.fuel,

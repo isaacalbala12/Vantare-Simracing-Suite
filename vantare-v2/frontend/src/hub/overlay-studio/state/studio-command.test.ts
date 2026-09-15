@@ -1,5 +1,6 @@
 import { standingsDefinition } from "../../../overlay/widget-types/standings/standings-definition";
 import { relativeDefinition } from "../../../overlay/widget-types/relative/relative-definition";
+import { multiclassRelativeDefinition } from "../../../overlay/widget-types/multiclass-relative/multiclass-relative-definition";
 import { describe, expect, it } from "vitest";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
@@ -675,4 +676,17 @@ describe("applyStudioCommand", () => {
    expect(narrower.layouts.general!.widgets[0]!.layout.h).toBe(30 + 3 * 28 + 30);
    const sameWindow = applyStudioCommand(narrower, { type: 'widget/content', session: 'general', widgetIds: ['rel'], content: { ...narrower.layouts.general!.widgets[0]!.content, classScope: 'sameClass' } });
    expect(sameWindow.layouts.general!.widgets[0]!.layout).toEqual(narrower.layouts.general!.widgets[0]!.layout);
+ });
+
+ it("refits the Functional multiclass-relative frame when rowCount changes", () => {
+   const widget = multiclassRelativeDefinition.createDefault('mc');
+   widget.visual.systemId = 'vantare-functional';
+   const before = buildDocument([widget]);
+   const grown = applyStudioCommand(before, { type: 'widget/content', session: 'general', widgetIds: ['mc'], content: { ...widget.content, rowCount: 7 } });
+   // 5 → 7 filas a ~27px fijos: el marco crece, la fila no.
+   expect(grown.layouts.general!.widgets[0]!.layout.h).toBe(20 + 7 * 27);
+   const shrunk = applyStudioCommand(grown, { type: 'widget/content', session: 'general', widgetIds: ['mc'], content: { ...grown.layouts.general!.widgets[0]!.content, rowCount: 3 } });
+   expect(shrunk.layouts.general!.widgets[0]!.layout.h).toBe(20 + 3 * 27);
+   const sameRows = applyStudioCommand(shrunk, { type: 'widget/content', session: 'general', widgetIds: ['mc'], content: { ...shrunk.layouts.general!.widgets[0]!.content, classMode: 'same' } });
+   expect(sameRows.layouts.general!.widgets[0]!.layout).toEqual(shrunk.layouts.general!.widgets[0]!.layout);
  });

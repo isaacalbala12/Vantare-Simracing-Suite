@@ -12,6 +12,8 @@ import {
   FUNCTIONAL_RELATIVE_BASE_WIDTH,
   resolveFunctionalRelativeBaseHeight,
 } from "../../../overlay/design-systems/vantare-functional/relative-layout";
+import { multiclassRelativeDefinition } from "../../../overlay/widget-types/multiclass-relative/multiclass-relative-definition";
+import { resolveFunctionalMulticlassHeight } from "../../../overlay/design-systems/vantare-functional/multiclass-layout";
 import {
   parseProfileDocumentV3,
   ProfileDocumentValidationError,
@@ -341,6 +343,14 @@ function applyWidgetContent(document: ProfileDocumentV3, command: Extract<Studio
         const before = intrinsicSize(previous);
         if (size.w === before.w && size.h === before.h) return { ...widget, content };
         return { ...widget, content, layout: { ...widget.layout, w: size.w, h: size.h } };
+      }
+      if (widget.type === "multiclass-relative" && widget.visual.systemId === "vantare-functional") {
+        // Misma regla que el relative: las filas son fijas y el marco crece
+        // o se encoge con rowCount.
+        const before = multiclassRelativeDefinition.parseContent(widget.content).rowCount;
+        const next = multiclassRelativeDefinition.parseContent(content).rowCount;
+        if (next === before) return { ...widget, content };
+        return { ...widget, content, layout: { ...widget.layout, h: resolveFunctionalMulticlassHeight(next) } };
       }
       if (widget.type !== "standings" || widget.visual.systemId !== "vantare-crystal") return { ...widget, content };
       const previousRows = parseStandingsContent(widget.content).rowCount;

@@ -3,6 +3,7 @@ import { widgetTypeRegistry } from "../../core/widget-registry";
 import { applyWidgetDesign } from "../../core/widget-design";
 import { getOfficialDesign } from "../../design-systems/official-designs";
 import { parseRelativeContent, updateRelativeFilters } from "../../widget-types/relative/relative-content";
+import { resolveFunctionalMulticlassHeight } from "../../design-systems/vantare-functional/multiclass-layout";
 import { AUTHORING_V2_VARIANTS, type AuthoringV2Variant } from "./authoring-v2-scenario-fixture";
 
 // Widget de autoría para el escenario V2 puro (C2b6b): solo forma, cero
@@ -44,6 +45,11 @@ export function buildAuthoringV2ScenarioWidget(input: {
   }
   if (input.widget === "multiclass-relative") {
     widget.content = { ...widget.content as Record<string, unknown>, rowCount: 4 };
+    // La caja se adapta al contenido como en el relative: filas fijas y el
+    // marco crece con ellas (en Eficiencia, ~27px por fila + padding).
+    if (input.system === "vantare-functional") {
+      widget.layout = { ...widget.layout, h: resolveFunctionalMulticlassHeight(4) };
+    }
   }
   if (input.widget === "standings" && input.variant === "standings-multiclass") {
     const content = widget.content as Record<string, unknown>;

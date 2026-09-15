@@ -105,6 +105,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - item.en: Reproducible hardware footprint bench for Vantare and the overlay
 - item.pt: Banco reproduzível de impacto por hardware para Vantare e o overlay
 - item.it: Banco riproducibile dell'impronta hardware per Vantare e l'overlay
+- item: Kit Orbit consolidado: código muerto retirado y contrato público reducido a su API real
+- item.en: Orbit kit consolidated: dead code removed and public contract reduced to its real API
+- item.pt: Kit Orbit consolidado: código morto removido e contrato público reduzido à sua API real
+- item.it: Kit Orbit consolidato: codice morto rimosso e contratto pubblico ridotto alla sua API reale
 
 ### Programa de insiders
 
@@ -1140,10 +1144,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Radio bus, Spotter and family engine
 - titulo.pt: Radio bus, Spotter e motor de famílias
 - titulo.it: Radio bus, Spotter e motore di famiglie
-- cuerpo: Spotter y las familias fuel, sanciones, vueltas, tiempos y boxes consumen telemetría canónica y entregan avisos priorizados por el mismo bus, con rollback exclusivo del stack anterior.
-- cuerpo.en: Spotter plus fuel, penalties, laps, timings and pit families consume canonical telemetry and deliver prioritized alerts through the same bus, with an exclusive rollback to the previous stack.
-- cuerpo.pt: Spotter e as famílias de combustível, penalizações, voltas, tempos e boxes consomem telemetria canónica e entregam alertas priorizados pelo mesmo bus, com rollback exclusivo para o stack anterior.
-- cuerpo.it: Spotter e le famiglie carburante, penalità, giri, tempi e box consumano telemetria canonica e consegnano avvisi prioritari sullo stesso bus, con rollback esclusivo allo stack precedente.
+- cuerpo: Spotter y las familias fuel, sanciones, vueltas, tiempos y boxes consumen telemetría canónica y entregan avisos priorizados por el mismo bus, con rollback exclusivo del stack anterior. El widget engineer-radio del overlay muestra cada aviso publicado, incluidas las respuestas del carril de voz experimental y los avisos de rendimiento.
+- cuerpo.en: Spotter plus fuel, penalties, laps, timings and pit families consume canonical telemetry and deliver prioritized alerts through the same bus, with an exclusive rollback to the previous stack. The overlay engineer-radio widget shows every published alert, including experimental voice-lane answers and performance notices.
+- cuerpo.pt: Spotter e as famílias de combustível, penalizações, voltas, tempos e boxes consomem telemetria canónica e entregam alertas priorizados pelo mesmo bus, com rollback exclusivo para o stack anterior. O widget engineer-radio do overlay mostra cada alerta publicado, incluindo respostas do carril de voz experimental e avisos de desempenho.
+- cuerpo.it: Spotter e le famiglie carburante, penalità, giri, tempi e box consumano telemetria canonica e consegnano avvisi prioritari sullo stesso bus, con rollback esclusivo allo stack precedente. Il widget engineer-radio dell'overlay mostra ogni avviso pubblicato, comprese le risposte del canale vocale sperimentale e gli avvisi di prestazioni.
 - etiqueta: En revisión
 - etiqueta.en: In review
 - etiqueta.pt: Em revisão

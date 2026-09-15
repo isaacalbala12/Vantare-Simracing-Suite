@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cx } from "./cx";
 
 export interface StatTileProps {
   label: string;
@@ -10,9 +11,7 @@ export interface StatTileProps {
 }
 
 export function StatTile({ label, value, unit, sub, tone = "neutral", className }: StatTileProps) {
-  const classes = ["orbit-stat", tone === "neutral" ? null : `orbit-stat--${tone}`, className]
-    .filter(Boolean)
-    .join(" ");
+  const classes = cx("orbit-stat", tone === "neutral" ? null : `orbit-stat--${tone}`, className);
 
   return (
     <div className={classes}>
@@ -33,5 +32,5 @@ export interface StatRowProps {
 
 /** Rejilla de 4 columnas con `--orbit-space` (`04 · stat-row`). */
 export function StatRow({ children, className }: StatRowProps) {
-  return <div className={["orbit-stat-row", className].filter(Boolean).join(" ")}>{children}</div>;
+  return <div className={cx("orbit-stat-row", className)}>{children}</div>;
 }

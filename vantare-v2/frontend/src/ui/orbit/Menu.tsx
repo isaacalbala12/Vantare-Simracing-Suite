@@ -1,4 +1,5 @@
 import { cloneElement, useEffect, useId, useRef, useState, type ReactElement } from "react";
+import { cx } from "./cx";
 
 export interface MenuItem {
   id: string;
@@ -42,7 +43,7 @@ export function Menu({ trigger, items, label, className }: MenuProps) {
   }, [open]);
 
   return (
-    <div className={["orbit-menu-wrap", className].filter(Boolean).join(" ")} ref={wrapRef}>
+    <div className={cx("orbit-menu-wrap", className)} ref={wrapRef}>
       {cloneElement(trigger, {
         onClick: () => setOpen((value) => !value),
         "aria-haspopup": "menu",

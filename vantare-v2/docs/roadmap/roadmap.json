@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-14T20:26:34Z",
+  "generatedAt": "2026-09-15T13:16:33Z",
   "digest": {
-    "lastCommit": "60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c"
+    "lastCommit": "f617467427f8d78f7432b4445d52be0c4dfe616a"
   },
   "phases": [
     {
@@ -118,6 +118,12 @@
           "en": "Reproducible hardware footprint bench for Vantare and the overlay",
           "pt": "Banco reproduzível de impacto por hardware para Vantare e o overlay",
           "it": "Banco riproducibile dell'impronta hardware per Vantare e l'overlay"
+        },
+        {
+          "es": "Kit Orbit consolidado: código muerto retirado y contrato público reducido a su API real",
+          "en": "Orbit kit consolidated: dead code removed and public contract reduced to its real API",
+          "pt": "Kit Orbit consolidado: código morto removido e contrato público reduzido à sua API real",
+          "it": "Kit Orbit consolidato: codice morto rimosso e contratto pubblico ridotto alla sua API reale"
         }
       ]
     },
@@ -1749,10 +1755,10 @@
         "it": "Radio bus, Spotter e motore di famiglie"
       },
       "body": {
-        "es": "Spotter y las familias fuel, sanciones, vueltas, tiempos y boxes consumen telemetría canónica y entregan avisos priorizados por el mismo bus, con rollback exclusivo del stack anterior.",
-        "en": "Spotter plus fuel, penalties, laps, timings and pit families consume canonical telemetry and deliver prioritized alerts through the same bus, with an exclusive rollback to the previous stack.",
-        "pt": "Spotter e as famílias de combustível, penalizações, voltas, tempos e boxes consomem telemetria canónica e entregam alertas priorizados pelo mesmo bus, com rollback exclusivo para o stack anterior.",
-        "it": "Spotter e le famiglie carburante, penalità, giri, tempi e box consumano telemetria canonica e consegnano avvisi prioritari sullo stesso bus, con rollback esclusivo allo stack precedente."
+        "es": "Spotter y las familias fuel, sanciones, vueltas, tiempos y boxes consumen telemetría canónica y entregan avisos priorizados por el mismo bus, con rollback exclusivo del stack anterior. El widget engineer-radio del overlay muestra cada aviso publicado, incluidas las respuestas del carril de voz experimental y los avisos de rendimiento.",
+        "en": "Spotter plus fuel, penalties, laps, timings and pit families consume canonical telemetry and deliver prioritized alerts through the same bus, with an exclusive rollback to the previous stack. The overlay engineer-radio widget shows every published alert, including experimental voice-lane answers and performance notices.",
+        "pt": "Spotter e as famílias de combustível, penalizações, voltas, tempos e boxes consomem telemetria canónica e entregam alertas priorizados pelo mesmo bus, com rollback exclusivo para o stack anterior. O widget engineer-radio do overlay mostra cada alerta publicado, incluindo respostas do carril de voz experimental e avisos de desempenho.",
+        "it": "Spotter e le famiglie carburante, penalità, giri, tempi e box consumano telemetria canonica e consegnano avvisi prioritari sullo stesso bus, con rollback esclusivo allo stack precedente. Il widget engineer-radio dell'overlay mostra ogni avviso pubblicato, comprese le risposte del canale vocale sperimentale e gli avvisi di prestazioni."
       },
       "label": {
         "es": "En revisión",
@@ -2132,6 +2138,11 @@
           "kind": "docs",
           "scope": "workflow",
           "text": "Notion como entrada y seguimiento obligatorio"
+        },
+        {
+          "kind": "docs",
+          "scope": "",
+          "text": "Depurar entradas y contratos vigentes de la suite"
         }
       ]
     },

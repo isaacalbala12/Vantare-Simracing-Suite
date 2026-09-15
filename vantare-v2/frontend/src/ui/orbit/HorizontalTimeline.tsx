@@ -6,6 +6,7 @@ import {
   useRef,
   type ReactNode,
 } from "react";
+import { cx } from "./cx";
 
 export interface TimelineBlock {
   id: string;
@@ -183,9 +184,7 @@ export function HorizontalTimeline<Row>({
   return (
     <div
       aria-label={label}
-      className={["orbit-tl", pan ? "orbit-tl--pan" : null, className]
-        .filter(Boolean)
-        .join(" ")}
+      className={cx("orbit-tl", pan ? "orbit-tl--pan" : null, className)}
       data-testid="orbit-timeline"
       onPointerDown={pan ? onPointerDown : undefined}
       ref={scroller}

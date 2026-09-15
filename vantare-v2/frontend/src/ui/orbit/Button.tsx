@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes } from "react";
 import { Icon, type IconName } from "./Icon";
+import { cx } from "./cx";
 
 export type Tone = "neutral" | "accent" | "ok" | "warn" | "danger" | "reference";
 export type Size = "sm" | "md";
@@ -49,16 +50,7 @@ export function Button({
 }: ButtonProps) {
   const isSave = state === "dirty" || state === "saved";
   const isRun = state === "idle" || state === "running";
-  const classes = [
-    "orbit-btn",
-    `orbit-btn--${variant}`,
-    `orbit-btn--${size}`,
-    isSave ? "orbit-btn--save" : null,
-    isRun ? "orbit-btn--run" : null,
-    className,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const classes = cx("orbit-btn", `orbit-btn--${variant}`, `orbit-btn--${size}`, isSave ? "orbit-btn--save" : null, isRun ? "orbit-btn--run" : null, className);
 
   return (
     <button

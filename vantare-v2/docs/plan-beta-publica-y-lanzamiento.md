@@ -29,7 +29,8 @@ iterativas dentro de la beta y la fase de lanzamiento estable.
 | `docs/release-checklists.md` | Checklists operativas de alpha, beta testers, beta pública y release |
 | `docs/release-beta-operations-runbook.md` | Procedimiento de release, tags, Discord y rollback |
 | `docs/roadmap/plan.md` | Estado público vigente del roadmap |
-| `docs/vantare-program/project-map.md` + handoffs | Estado operativo real de cada módulo |
+| Notion: tarea y proyecto | Estado operativo y alcance aprobado de cada módulo |
+| `docs/vantare-program/project-map.md` + handoffs | Fronteras y evidencia técnica fechada; no sustituyen el estado de Notion |
 
 ## Estado real verificado (2026-09-11)
 
@@ -104,7 +105,7 @@ Subetapas (cada una es un corte de versión `feature`):
 
 | Subetapa | Rango | Contenido | Gate |
 |---|---|---|---|
-| 1a. Producto usable | `0.2.x` | App arranca, overlay desktop funciona, perfiles guardan/cargan, mover/redimensionar, recomendado → copia editable, mock/live/demo claro | Un tester cercano completa el flujo real sin asistencia |
+| 1a. Producto usable | `0.2.x` | App arranca, overlay desktop funciona, perfiles guardan/cargan, mover/redimensionar, recomendado → copia editable, live, desconexión y fixtures de prueba distinguibles | Un tester cercano completa el flujo real sin asistencia |
 | 1b. Widgets core | `0.3.x` | `Relative` y `Standings` cerrados (salvo multiclase), rework UI acotado del Studio, sin regresiones críticas de preview | Relative/Standings configurables bastan para perfiles reales LMU |
 | 1c. Distribución testers | `0.4.x` | Build compartible, instrucciones, known issues, canal de feedback, OBS local sencillo, hotkeys básicas o pospuestas explícitas, `deltaBest` live fiable o decisión documentada | Tester externo instala, abre overlay, usa recomendado, edita y reporta bugs |
 | 1d. Cierre core LMU | `0.5.x` | `Pedals` beta v1, recomendados pulidos, smoke test completo | Sin P0/P1 abiertos; P2 documentados y aceptados |
@@ -182,7 +183,7 @@ los documentos internos de ingeniería:
 | Known issues públicos | Rehacer desde `tester-known-issues.md` depurado |
 | Guía OBS/streaming | Reescribir con el flujo actual de Browser Source |
 | FAQ + soporte | Crear: refund, device-limit, canales, requisitos |
-| Changelog público | Mantener `docs/changelog.md` como fuente de anuncios |
+| Changelog público | Generar notas desde manifiestos y fragmentos; `docs/changelog.md` conserva historia |
 | Docs de usuario por módulo | Crear mínimas: Studio, Launcher, Calendario, Engineer, Strategy |
 
 No se reinician: contratos técnicos, ADR, handoffs, ni la documentación

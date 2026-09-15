@@ -2,9 +2,7 @@
 
 ## Resultado
 
-`internal/telemetry/core.SessionCoordinator` consume exclusivamente snapshots
-inmutables ya aceptados por el reducer y emite hechos discretos por un puerto
-neutral. No adquiere telemetría, no modifica snapshots, no conoce LMU ni
+`internal/telemetry/core.SessionCoordinator` prepara hechos sobre snapshots canónicos. En el runtime actual, `TelemetryEngine` confirma reducer, derivaciones y hechos en una frontera común; un resultado intermedio no se publica como lote aceptado. Ver [engine.go](../../internal/telemetry/engine/engine.go) y [ADR 0008](../adr/0008-telemetry-engine-commit-boundary-and-overlay-frame-v2.md). Los contratos de componente y cortes ISA de abajo deben interpretarse dentro de esa frontera. No adquiere telemetría, no modifica snapshots, no conoce LMU ni
 productos y no crea goroutines.
 
 Snapshots y hechos conservan contratos distintos:

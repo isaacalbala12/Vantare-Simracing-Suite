@@ -1,5 +1,9 @@
 # STR-00 — Auditoría y replanificación del Strategy Planner
 
+> **Ámbito documental (2026-09-14):** Auditoría histórica STR-00. Los estados de las tareas se consultan en Notion y no se infieren de este corte.
+> [Referencia vigente](../vantare-program/handoffs/strategy-planner.md).
+
+
 **Fecha:** 2026-08-01
 **Issue:** ISA-134 / STR-00
 **Tipo:** auditoría documental; no modifica código de producto

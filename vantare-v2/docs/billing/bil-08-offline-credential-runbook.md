@@ -12,7 +12,7 @@ producción. Ejecutarlo no autoriza un deploy.
 - `VANTARE_LICENSE_PUBLIC_KEYS`: lista de lectura
   `key-id:base64url-public-key`, embebida en la build de Windows.
 - Nunca guardar la clave privada en Git, `.env.local`, logs, artefactos, CI de
-  cliente, variables `VITE_*`, documentación o Linear.
+  cliente, variables `VITE_*`, documentación o Notion.
 
 La generación y custodia deben realizarse desde un entorno administrativo
 controlado. Registrar únicamente key-id, fingerprint público, fecha, responsable
@@ -98,5 +98,5 @@ que el emisor y el cliente vuelvan a estar alineados.
 - Edición, campos extra, firma/key-id erróneos y copia fallan cerrados.
 - Migración legacy y estado de reloj corrupto no conceden acceso.
 
-Guardar en Linear solo resultados sanitizados, SHA, entorno y conteos. Nunca
+Guardar en Notion solo resultados sanitizados, SHA, entorno y conteos. Nunca
 incluir JWT, fingerprint completo, clave privada, credenciales o PII.

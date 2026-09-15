@@ -1,82 +1,39 @@
-# Documentacion de Vantare v2
+# Documentación vigente de Vantare
 
-> **Notion primero (2026-09-14):** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192)
-> y leer la tarea y su proyecto antes de ejecutar. Actualizar Notion al empezar,
-> bloquear, entregar y verificar una integración; releer para comprobar la escritura.
-> [Contrato vigente](vantare-program/notion-transition.md). GitHub conserva código, PR, CI y releases;
-> las referencias ISA exigidas por los controles son un puente técnico temporal.
-> Su adaptación pendiente nunca permite omitir el seguimiento en Notion.
+Este índice es la entrada de lectura. El [inventario](documentation-inventory.md) separa guías actuales, contratos, planes y evidencia histórica. No hay que leer todo el archivo para empezar.
 
+## Uso de una build
 
-Este indice ayuda a agentes y reviewers a saber que leer antes de tocar el repo.
+[Instalación y pruebas](tester-build-instructions.md) · [OBS local](obs-local-setup.md) · [Incidencias](tester-known-issues.md) · [Feedback](tester-feedback-process.md).
 
-## Lectura rapida
+## Desarrollo y revisión
 
-- `../AGENTS.md`: reglas obligatorias para cualquier agente.
-- `vantare-program/notion-transition.md`: Notion obligatorio, lote histórico y corte técnico pendiente.
-- `vantare-program/README.md`: expediente canonico y handoffs vigentes.
-- `roadmap/plan.md`: fuente publica de fases, areas, hitos y entregas del roadmap.
-- `master-feature-plan.md`: mapa de producto y contexto historico.
-- `current-plan.md`: registro historico de ejecucion; no es fuente de planificacion.
-- `roadmap-execution-board.md`: tablero historico; no es fuente operativa actual.
-- `versioning-and-release-gates.md`: versionado `X.X.X.X` y gates de salida por fase.
-- `feature-architecture-map.md`: limites de arquitectura por feature.
-- `product-decisions.md`: decisiones cerradas y pendientes.
-- `release-checklists.md`: checklists de alpha, beta, pago y release.
-- `superpowers/plans/`: planes detallados ya aprobados para Overlays Studio.
-- `architecture.md`: separacion entre Go, TypeScript, dominio, adaptadores y UI.
-- `domain-model.md`: nombres canonicos del producto.
-- `testing-strategy.md`: comandos y reglas de testing.
-- `manual-verification.md`: pasos manuales para validar sin leer codigo.
-- `widget-preview-bug-log.md`: bugs, causas raiz y reglas para no romper la preview aislada de WidgetStudio.
-- `resolved-bugs.md`: indice de bugs importantes ya solucionados y reglas para no reabrirlos.
-- `alpha-beta-roadmap.md`: resumen historico de estrategia alpha/beta.
-- `agent-workflow.md`: flujo orquestador -> worker -> reviewer.
-- `operations.md`: comandos basicos del repo.
-- `go-review-checklist.md`: checklist para revisar Go.
+1. [AGENTS](../AGENTS.md), tarea y proyecto en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).
+2. [Expediente técnico](vantare-program/README.md) y handoff del módulo.
+3. [Operaciones](operations.md), [arquitectura](architecture.md) y [modelo de dominio](domain-model.md).
+4. [Pruebas](testing-strategy.md) y [verificación manual](manual-verification.md).
 
-## Para workers
+## Contratos por tema
 
-Antes de programar, leer siempre:
+| Tema | Entrada |
+|---|---|
+| Producto y etapas | [Contrato de producto](vantare-program/product-contract.md), [etapas de beta y lanzamiento](plan-beta-publica-y-lanzamiento.md) |
+| Telemetría live | [Telemetry Core](telemetry-core/README.md) y [handoff](vantare-program/handoffs/telemetry-core.md) |
+| Análisis post-sesión | [Handoff y límites de integración](vantare-program/handoffs/telemetry-analysis.md), [investigación y contratos](vantare-program/research/telemetry-analysis/README.md) |
+| Engineer/Spotter | [Handoff](vantare-program/handoffs/engineer-spotter.md) y [rework](engineer/rework-spec.md) |
+| Strategy Planner | [Handoff](vantare-program/handoffs/strategy-planner.md) y [contrato de documento](strategy-planner/f1-3-contrato-documento-v2.md) |
+| Studio y widgets | [Studio](overlays-studio/README.md), [Workshop](overlays-studio/overlay-workshop-authoring-guide.md), [ADR](adr/) |
+| Launcher | [Arquitectura Launcher](launcher-v3-architecture.md) |
+| Cuenta, Billing y releases | [Handoff plataforma](vantare-program/handoffs/platform-commercial.md), [cuenta y runbooks Billing](billing/README.md), [artefactos](release-artifacts.md) |
+| Testing Center | [Handoff](vantare-program/handoffs/testing-center.md) y [runbooks](runbooks/) |
+| Marca y UI | [Marca](BRAND.md), [diseño](DESIGN.md); contrastar decisiones visuales con el handoff de Hub/Studio |
 
-1. `../AGENTS.md`
-2. `roadmap/plan.md`
-3. Documento especifico de la tarea
-4. Tests relacionados
+## Gobierno
 
-Si la tarea afecta arquitectura, leer tambien `architecture.md`.
-Si cambia comportamiento, leer `testing-strategy.md` y `manual-verification.md`.
+[Workflow](agent-workflow.md) · [Notion primero](vantare-program/notion-transition.md) · [Canales](branch-channels.md) · [Roadmap público](roadmap/plan.md) · [Mantenimiento del roadmap](roadmap-maintenance.md).
 
-## Para reviewers
+Notion contiene alcance y estado operativo. GitHub prueba código, PR, CI, canal y release. El roadmap es editorial: `plan.md` se edita y `roadmap.json` se genera. Los planes de `superpowers/` solo se ejecutan cuando la tarea vigente los adopta; la carpeta no significa que todos estén aprobados o pendientes.
 
-Leer:
+## Histórico
 
-1. `../AGENTS.md`
-2. `roadmap/plan.md`
-3. `agent-workflow.md`
-4. Diff del worker
-5. Tests y comandos ejecutados por el worker
-
-## Decisiones
-
-Las decisiones tecnicas estables viven en `adr/`.
-
-- `adr/0001-close-lmu-pilot-ratings.md`: cierre de ratings LMU.
-- `adr/0002-llm-first-stack.md`: decision de stack optimizado para desarrollo asistido por agentes.
-
-## Prompts reutilizables
-
-Plantillas en `prompts/`:
-
-- `worker-template.md`
-- `reviewer-template.md`
-- `bugfix-template.md`
-- `miniplan-template.md`
-
-## Documentacion externa relacionada
-
-El proyecto historicamente tiene planes y documentacion fuera de `vantare-v2`, en la carpeta superior `C:\Users\isaac\Desktop\Vantare-Overlays\docs`. Esta capa de control trabaja dentro de `vantare-v2` y no mueve esos archivos automaticamente.
-
-## Estado de roadmap
-
-La planificacion publica actual vive en `roadmap/plan.md` y sus datos generados en `roadmap/roadmap.json`. El estado operativo de cada tarea vive en Notion y debe actualizarse y releerse y la continuidad tecnica en el handoff vivo correspondiente. `master-feature-plan.md`, `current-plan.md` y `roadmap-execution-board.md` se conservan como mapa o contexto historico; `release-roadmap-execution-index.md` es historico; las etapas vigentes se consultan en `plan-beta-publica-y-lanzamiento.md` y el expediente canonico.
+[Inventario y archivos sustituidos](documentation-inventory.md). Los logs, auditorías, baselines y planes fechados describen su corte. Conservar una evidencia no significa que sus resultados sigan vigentes. Los documentos sustituidos enlazan a su versión inmutable en Git y a su sucesor.

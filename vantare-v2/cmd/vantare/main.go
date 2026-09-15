@@ -993,9 +993,9 @@ func handleResolveLauncherDecision(decisionID, action string, remember bool, emi
 }
 
 func handleLauncherOnboardingComplete(settingsSvc *app.SettingsService, emitter app.EventEmitter) {
-	settings := settingsSvc.Settings()
-	settings.LauncherOnboardingCompleted = true
-	if err := settingsSvc.Save(settings); err != nil {
+	if err := settingsSvc.Update(func(settings *app.AppSettings) {
+		settings.LauncherOnboardingCompleted = true
+	}); err != nil {
 		emitter.Emit("launcher:error", map[string]any{"code": "onboarding_save_failed", "message": err.Error()})
 		return
 	}
@@ -2083,6 +2083,9 @@ func main() {
 	// Engineer owns product behavior only. TelemetryCoreRuntime below is its
 	// sole production telemetry source.
 	engSvc = engineerservice.NewEngineerService(emitter)
+	if err := app.ApplyEngineerSettings(engSvc, settingsSvc.EngineerSettings()); err != nil {
+		log.Printf("engineer settings restore error: %v", err)
+	}
 	engSvc.SetVisualPresentationEnabled(effectivePerformanceLevel() < 4)
 	if err := engSvc.SetLegacySpotterRollback(*legacyEngineerSpotter); err != nil {
 		log.Printf("engineer legacy spotter rollback configuration error: %v", err)
@@ -2135,6 +2138,7 @@ func main() {
 
 	// Register Wails bridge for Engineer events and commands
 	engBridge = app.NewEngineerBridge(wailsApp, emitter, engSvc)
+	engBridge.SetSettingsService(settingsSvc)
 	engBridge.Start()
 
 	effectivePerformance := settingsSvc.EffectivePerformancePolicy(studioProfileSvc.PerformanceProfile())
@@ -2814,12 +2818,19 @@ func main() {
 				}
 			}
 		}
-		if s.Performance.Mode == "auto" {
-			s.CpuSampling = true
-		}
 		s.Performance.Source = app.PerformanceSourceUser
 		s.Performance.MigratedFrom = ""
-		confirmed, _, err := performanceSaves.Execute(func() error { return settingsSvc.Save(&s) })
+		// La sección engineer solo la escriben los eventos dedicados del
+		// Orbit. El documento entrante se aplica sobre el estado vivo dentro
+		// de la misma sección crítica preservando ese valor, así un eco stale
+		// o ausente del formulario nunca restaura ni borra preferencias.
+		confirmed, _, err := performanceSaves.Execute(func() error {
+			return settingsSvc.Update(func(live *app.AppSettings) {
+				liveEngineer := live.Engineer
+				*live = s
+				live.Engineer = liveEngineer
+			})
+		})
 		if err != nil {
 			log.Printf("settings:save error: %v", err)
 			emitSettingsError(err.Error())

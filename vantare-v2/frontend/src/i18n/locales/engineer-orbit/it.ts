@@ -23,6 +23,13 @@ export const engineerOrbitIt: Record<string, string> = {
     "Finestra dei box e obiettivo di consumo dal piano attivo.",
   "engineer.modules.soon": "Prossimamente",
 
+  "engineer.spotterUnavailable.title": "Spotter non disponibile",
+  "engineer.spotterUnavailable.capability": "LMU non sta fornendo la telemetria spaziale necessaria.",
+  "engineer.spotterUnavailable.capability_unsupported": "LMU non fornisce la telemetria spaziale in questa sessione.",
+  "engineer.spotterUnavailable.capability_degraded": "La telemetria spaziale è degradata e lo Spotter non può valutare in modo affidabile.",
+  "engineer.spotterUnavailable.player": "Non è possibile identificare l'auto del giocatore nella sessione.",
+  "engineer.spotterUnavailable.spatial": "Mancano dati di posizione affidabili per rilevare le auto vicine.",
+
   "engineer.voice.title": "Voce",
   "engineer.voice.meta": "{{n}} voci di sistema · impostazione locale",
   "engineer.voice.noneMeta": "nessun motore vocale",

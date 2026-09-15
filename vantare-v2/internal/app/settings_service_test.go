@@ -461,8 +461,8 @@ func TestLoadMigratesSchemaVersionAndAddsDeltaHotkey(t *testing.T) {
 	os.WriteFile(path, []byte(data), 0o644)
 	svc := app.NewSettingsService(path, nil, nil)
 	svc.Load()
-	if svc.Settings().SchemaVersion != 6 {
-		t.Errorf("expected SchemaVersion=6, got %d", svc.Settings().SchemaVersion)
+	if svc.Settings().SchemaVersion != 7 {
+		t.Errorf("expected SchemaVersion=7, got %d", svc.Settings().SchemaVersion)
 	}
 	if got := svc.Settings().Hotkeys["cycleDeltaReference"]; got != "ctrl+shift+d" {
 		t.Errorf("cycleDeltaReference=%q want ctrl+shift+d", got)
@@ -482,7 +482,7 @@ func TestLoadMigratesSettingsBeforePerformanceWithoutLosingExistingValues(t *tes
 		t.Fatal(err)
 	}
 	got := svc.Settings()
-	if got.SchemaVersion != 6 || got.Performance.Mode != "auto" || got.Performance.Level != 3 || got.Performance.Source != app.PerformanceSourceDefault || got.Performance.MigratedFrom != "" {
+	if got.SchemaVersion != 7 || got.Performance.Mode != "auto" || got.Performance.Level != 3 || got.Performance.Source != app.PerformanceSourceDefault || got.Performance.MigratedFrom != "" {
 		t.Fatalf("migration result = %+v", got.Performance)
 	}
 	if got.CpuSampling || got.ActiveOverlayProfileID != "endurance" {
@@ -491,7 +491,7 @@ func TestLoadMigratesSettingsBeforePerformanceWithoutLosingExistingValues(t *tes
 }
 
 // R6a: un JSON antiguo que aun contiene overlayV1Emit se ignora de forma
-// segura y la migracion conserva SchemaVersion 6 sin depender del campo.
+// segura y la migracion avanza a la version actual sin depender del campo.
 func TestLegacyOverlayV1EmitKeyIsIgnored(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")
@@ -505,8 +505,8 @@ func TestLegacyOverlayV1EmitKeyIsIgnored(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := svc.Settings()
-	if got.SchemaVersion != 6 {
-		t.Fatalf("SchemaVersion = %d, want 6", got.SchemaVersion)
+	if got.SchemaVersion != 7 {
+		t.Fatalf("SchemaVersion = %d, want 7", got.SchemaVersion)
 	}
 }
 
@@ -629,8 +629,8 @@ func TestLauncherPoliciesMigrateLegacyProfilesToSafeDefaults(t *testing.T) {
 
 func TestDefaultAppSettingsHasCurrentSchemaVersion(t *testing.T) {
 	s := app.DefaultAppSettings()
-	if s.SchemaVersion != 6 {
-		t.Fatalf("expected SchemaVersion=6, got %d", s.SchemaVersion)
+	if s.SchemaVersion != 7 {
+		t.Fatalf("expected SchemaVersion=7, got %d", s.SchemaVersion)
 	}
 }
 
@@ -700,8 +700,8 @@ func TestLoadMigratesLegacySettings(t *testing.T) {
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load: %v", err)
 	}
-	if svc.Settings().SchemaVersion != 6 {
-		t.Errorf("expected SchemaVersion=6 after migration, got %d", svc.Settings().SchemaVersion)
+	if svc.Settings().SchemaVersion != 7 {
+		t.Errorf("expected SchemaVersion=7 after migration, got %d", svc.Settings().SchemaVersion)
 	}
 	if got := svc.Settings().Performance; got.Mode != "auto" || got.Level != 3 || got.Source != app.PerformanceSourceDefault || got.MigratedFrom != "" {
 		t.Errorf("expected migrated automatic performance default, got %+v", got)
@@ -743,8 +743,8 @@ func TestLoadFallsBackToDefaultsOnTotalCorruption(t *testing.T) {
 	if err := svc.Load(); err != nil {
 		t.Fatalf("load should not panic: %v", err)
 	}
-	if svc.Settings().SchemaVersion != 6 {
-		t.Errorf("expected defaults with SchemaVersion=6")
+	if svc.Settings().SchemaVersion != 7 {
+		t.Errorf("expected defaults with SchemaVersion=7")
 	}
 	if svc.Settings().LauncherProfiles == nil {
 		t.Error("expected default profiles")
@@ -979,6 +979,213 @@ func TestSettingsNotificationChoicesRoundTrip(t *testing.T) {
 	got := reloaded.Snapshot().Notifications
 	if !got.UpdatesMuted || got.LauncherMuted || !got.SystemEnabled {
 		t.Fatalf("round trip = %+v, want updates muted and desktop enabled", got)
+	}
+}
+
+// ISA-928 review: concurrent setters share one critical section for
+// mutation, marshal and write, so a slower writer can never land an older
+// full-settings snapshot over a newer one. Each field below has exactly one
+// writer, so its final value is deterministic and must equal that writer's
+// last write. Run under -race.
+func TestConcurrentSettingsWritesNeverLoseSections(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	svc := app.NewSettingsService(path, &spyEmitter{}, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatal(err)
+	}
+
+	const iterations = 32
+	errCh := make(chan error, iterations*3)
+	var wg sync.WaitGroup
+	wg.Add(3)
+
+	go func() { // engineer writer: last write lands non-default values
+		defer wg.Done()
+		for i := 0; i < iterations; i++ {
+			last := i == iterations-1
+			settings := &app.EngineerSettings{
+				Enabled: true, SpotterEnabled: !last, SubtitlesEnabled: true,
+				Sensitivity: "normal", OutputModes: map[string]string{"fuel": "both"},
+			}
+			if last {
+				settings.SpotterEnabled = false
+				settings.Sensitivity = "aggressive"
+			}
+			if err := svc.SetEngineerSettings(settings); err != nil {
+				errCh <- fmt.Errorf("SetEngineerSettings: %w", err)
+				return
+			}
+		}
+	}()
+
+	go func() { // launcher writer: last write lands IsFavorite=true
+		defer wg.Done()
+		for i := 0; i < iterations; i++ {
+			if err := svc.SetLauncherAppFavorite("lmu", i == iterations-1); err != nil {
+				errCh <- fmt.Errorf("SetLauncherAppFavorite: %w", err)
+				return
+			}
+		}
+	}()
+
+	go func() { // partial-update writer on live state
+		defer wg.Done()
+		for i := 0; i < iterations; i++ {
+			profile := "profile-transient"
+			if i == iterations-1 {
+				profile = "profile-final"
+			}
+			if err := svc.Update(func(s *app.AppSettings) {
+				s.ActiveOverlayProfileID = profile
+			}); err != nil {
+				errCh <- fmt.Errorf("Update: %w", err)
+				return
+			}
+		}
+	}()
+
+	wg.Wait()
+	close(errCh)
+	for err := range errCh {
+		t.Error(err)
+	}
+	if t.Failed() {
+		return
+	}
+
+	reloaded := app.NewSettingsService(path, &spyEmitter{}, nil)
+	if err := reloaded.Load(); err != nil {
+		t.Fatal(err)
+	}
+	got := reloaded.EngineerSettings()
+	if got == nil || got.Sensitivity != "aggressive" || got.SpotterEnabled {
+		t.Fatalf("engineer writer's last update lost: %+v", got)
+	}
+	if entry, ok := reloaded.Settings().LauncherApps["lmu"]; !ok || !entry.IsFavorite {
+		t.Fatalf("launcher writer's last update lost: %+v", reloaded.Settings().LauncherApps)
+	}
+	if id := reloaded.Settings().ActiveOverlayProfileID; id != "profile-final" {
+		t.Fatalf("update writer's last update lost: %q", id)
+	}
+}
+
+// ISA-928 review (Astra P2): a caller holding a stale snapshot must not
+// resurrect it. Update applies the mutation on the live state, so engineer
+// changes persisted after the snapshot was captured are preserved.
+func TestUpdateAppliesMutationOnLiveState(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	svc := app.NewSettingsService(path, &spyEmitter{}, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatal(err)
+	}
+
+	_ = svc.Settings() // stale snapshot captured before the engineer change
+	if err := svc.SetEngineerSettings(&app.EngineerSettings{
+		Enabled: true, SpotterEnabled: false, SubtitlesEnabled: true,
+		Sensitivity: "aggressive", OutputModes: map[string]string{"fuel": "both"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// Hub-style partial update on an unrelated field.
+	if err := svc.Update(func(s *app.AppSettings) {
+		s.ActiveOverlayProfileID = "p1"
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	got := svc.EngineerSettings()
+	if got.Sensitivity != "aggressive" || got.SpotterEnabled {
+		t.Fatalf("engineer section resurrected/lost by partial update: %+v", got)
+	}
+	if id := svc.Settings().ActiveOverlayProfileID; id != "p1" {
+		t.Fatalf("partial update not applied: %q", id)
+	}
+}
+
+// ISA-928 review (Astra P2, second pass): the settings:save handler applies
+// the incoming document while preserving the live engineer section inside
+// the same critical section. A payload captured before an engineer change
+// must never win — the live value is the one persisted.
+func TestUpdateReplacePreservesLiveEngineerSection(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	svc := app.NewSettingsService(path, &spyEmitter{}, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatal(err)
+	}
+
+	// The settings form's payload, captured before the engineer change: it
+	// still carries the default (stale) engineer section.
+	stalePayload := svc.Settings()
+	stalePayload.LauncherOnboardingCompleted = true
+
+	if err := svc.SetEngineerSettings(&app.EngineerSettings{
+		Enabled: true, SpotterEnabled: false, SubtitlesEnabled: true,
+		Sensitivity: "aggressive", OutputModes: map[string]string{"fuel": "both"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Same preserve-in-lock idiom the settings:save handler uses.
+	if err := svc.Update(func(live *app.AppSettings) {
+		liveEngineer := live.Engineer
+		*live = *stalePayload
+		live.Engineer = liveEngineer
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	reloaded := app.NewSettingsService(path, &spyEmitter{}, nil)
+	if err := reloaded.Load(); err != nil {
+		t.Fatal(err)
+	}
+	got := reloaded.EngineerSettings()
+	if got.Sensitivity != "aggressive" || got.SpotterEnabled {
+		t.Fatalf("live engineer section lost to stale payload: %+v", got)
+	}
+	if !reloaded.Settings().LauncherOnboardingCompleted {
+		t.Fatal("incoming document fields were not applied")
+	}
+}
+
+func TestEngineerSettingsMigrateAndRoundTripWithoutClobberingOtherSettings(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app-settings.json")
+	if err := os.WriteFile(path, []byte(`{"schemaVersion":3,"cpuSampling":false,"hotkeys":{"toggleOverlay":"custom"}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	svc := app.NewSettingsService(path, &spyEmitter{}, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatal(err)
+	}
+	defaults := svc.EngineerSettings()
+	if !defaults.Enabled || !defaults.SpotterEnabled || !defaults.SubtitlesEnabled || defaults.Sensitivity != "normal" {
+		t.Fatalf("migrated Engineer defaults = %+v", defaults)
+	}
+
+	want := &app.EngineerSettings{
+		Enabled: false, SpotterEnabled: true, SubtitlesEnabled: false,
+		Sensitivity: "aggressive",
+		OutputModes: map[string]string{"spotter": "visual", "fuel": "disabled", "penalties": "audio", "laps": "both", "timings": "visual", "pitstops": "audio"},
+	}
+	if err := svc.SetEngineerSettings(want); err != nil {
+		t.Fatal(err)
+	}
+	want.OutputModes["spotter"] = "mutated"
+
+	reloaded := app.NewSettingsService(path, &spyEmitter{}, nil)
+	if err := reloaded.Load(); err != nil {
+		t.Fatal(err)
+	}
+	got := reloaded.EngineerSettings()
+	if got.Enabled || !got.SpotterEnabled || got.SubtitlesEnabled || got.Sensitivity != "aggressive" || got.OutputModes["spotter"] != "visual" {
+		t.Fatalf("round-trip Engineer settings = %+v", got)
+	}
+	if snapshot := reloaded.Settings(); snapshot.CpuSampling || snapshot.Hotkeys["toggleOverlay"] != "custom" {
+		t.Fatalf("unrelated settings were overwritten: %+v", snapshot)
 	}
 }
 

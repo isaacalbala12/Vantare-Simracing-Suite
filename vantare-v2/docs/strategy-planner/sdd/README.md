@@ -1,6 +1,6 @@
 # SDD — Strategy sobre telemetría registrada
 
-Versión 1.14 · T15a2c cerrado localmente 2026-09-15 · ISA-1091/1269 · continuación de ISA-694/1028.
+Versión 1.15 · T15b cerrado localmente 2026-09-15 · ISA-1091/1270 · continuación de ISA-694/1028.
 
 ## Autoridad y propósito
 

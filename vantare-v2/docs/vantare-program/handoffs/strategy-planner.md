@@ -1,26 +1,29 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1269 T15a2c cerrado localmente; orden libre temporal exacto
+## Estado vigente — #1270 T15b cerrado localmente; ciclo recorded conectado
 
-SolverV2 acepta una duración opcional y decide el final con el reloj real de
-cada candidato, tras ajustar la carga inicial: formación, ritmo individual,
-combustible, stint y parada cuentan una sola vez. La última vuelta debe empezar
-antes del límite y terminar en él o después. En temporal se prefieren más
-vueltas y luego el menor tiempo; vueltas y rotación temporal fija conservan su
-semántica. CalculateOrbit usa este camino sólo para orden libre temporal y el
-asistente ya permite, valida y transporta esa elección. Las regresiones cubren
-239/240/241, formación, parada larga, mínimo de piloto, carga mínima, replay,
-cancelación y presupuesto. Siguiente: T15b debe conectar el ciclo
-Calcular/Cancelar desde el borrador recorded exacto; T15c cerrará plan parcial,
-optimalidad y aceptar/guardar separados. Sin app/Wails, LMU, DuckDB, push, PR,
-CI remota, integración ni release.
+El panel Plan conserva una condición seca o mojada explícita y solicita a
+Analysis la proyección conjunta de las revisiones exactas seleccionadas. Sólo
+después construye una petición `calculate_orbit`: pilotos estimados llevan su
+delta, mientras ritmo, Fuel y VE proceden de `PlanningInputs`; no se copian
+perfiles entre condiciones ni se crea un motor TypeScript. Preparar, calcular,
+cancelar, error y éxito son estados visibles. Cambiar borrador, condición,
+revisiones o montaje invalida el resultado y cancela el comando activo; ninguna
+respuesta tardía sustituye el estado vigente. El resultado queda en memoria
+para T15c y no se guarda ni acepta automáticamente.
 
-Pasan solver y aplicación completos, 3 archivos/56 tests frontend focales,
-frontend completo 450/3.879, typecheck, lint, auditoría i18n, build, Go global
-y 259 checks documentales. El build conserva el aviso heredado de chunks
-superiores a 500 kB y Vitest imprime el `AbortError` conocido de teardown sin
-fallar ninguna prueba. El gate PR específico de roadmap no se ejecuta sin
-`GITHUB_TOKEN`; la issue sí declara los dos IDs modificados y no existe PR.
+La entrada recorded falla cerrada si falta la condición, el bucket de ritmo,
+Fuel, VE aplicable o las referencias exactas. Go también rechaza un delta si no
+hay ritmo base observado. Se mantienen compatibles los perfiles completos del
+flujo anterior. Siguiente: T15c debe presentar plan parcial/final, optimalidad
+y aceptar/guardar separados. Sin app/Wails, LMU, DuckDB, push, PR, CI remota,
+integración ni release.
+
+Pasan 5 archivos/96 tests frontend focales, aplicación Go completa, typecheck,
+lint, auditoría i18n, build y Go global. El frontend completo dio 3.889/3.890:
+falló sólo el banco ajeno de parseo al coincidir exactamente con su límite de
+1,500 ms; su repetición aislada pasó. El build conserva el aviso heredado de
+chunks superiores a 500 kB y Vitest imprime el `AbortError` conocido de teardown.
 
 ## Historial — #1268 T15a2b cerrado localmente; delta de ritmo por piloto
 

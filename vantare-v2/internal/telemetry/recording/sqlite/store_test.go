@@ -55,7 +55,8 @@ type failingFiles struct {
 
 type cooperativeBlockingFiles struct {
 	OSFileSystem
-	block atomic.Bool
+	block   atomic.Bool
+	blocked chan struct{}
 }
 
 func (f *cooperativeBlockingFiles) WriteAtomic(
@@ -65,6 +66,12 @@ func (f *cooperativeBlockingFiles) WriteAtomic(
 	mode os.FileMode,
 ) error {
 	if f.block.Load() {
+		if f.blocked != nil {
+			select {
+			case f.blocked <- struct{}{}:
+			default:
+			}
+		}
 		<-ctx.Done()
 		return ctx.Err()
 	}
@@ -606,7 +613,7 @@ func TestManifestOperationsHonorContextWithoutLateWriteOrTempLeak(t *testing.T) 
 		t.Run(test.name, func(t *testing.T) {
 			root := t.TempDir()
 			ref, manifest := testSession(root)
-			files := &cooperativeBlockingFiles{}
+			files := &cooperativeBlockingFiles{blocked: make(chan struct{}, 1)}
 			store := New(Options{Files: files})
 			writer, err := store.Begin(context.Background(), ref, manifest)
 			if err != nil {
@@ -621,15 +628,27 @@ func TestManifestOperationsHonorContextWithoutLateWriteOrTempLeak(t *testing.T) 
 				t.Fatalf("ReadFile(before) error = %v", err)
 			}
 			files.block.Store(true)
-			ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
-			started := time.Now()
-			err = test.run(ctx, writer)
-			cancel()
-			if !errors.Is(err, context.DeadlineExceeded) {
-				t.Fatalf("%s error = %v", test.name, err)
+			// Cancelacion dirigida por senal, sin tiempos absolutos: la operacion
+			// se aparca en el WriteAtomic bloqueante y entonces se cancela.
+			ctx, cancel := context.WithCancel(context.Background())
+			done := make(chan error, 1)
+			go func() { done <- test.run(ctx, writer) }()
+			select {
+			case <-files.blocked:
+			case err := <-done:
+				t.Fatalf("%s returned %v before reaching the write", test.name, err)
+			case <-time.After(30 * time.Second):
+				cancel()
+				t.Fatalf("%s did not reach the manifest write", test.name)
 			}
-			if elapsed := time.Since(started); elapsed > recording.DefaultCommitBudget {
-				t.Fatalf("%s returned after %v", test.name, elapsed)
+			cancel()
+			select {
+			case err = <-done:
+			case <-time.After(30 * time.Second):
+				t.Fatalf("%s did not return after cancellation", test.name)
+			}
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("%s error = %v", test.name, err)
 			}
 			files.block.Store(false)
 			after, err := os.ReadFile(filepath.Join(root, ref.SessionID, manifestName))
@@ -788,14 +807,16 @@ func TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles(t *testing.T) {
 	// Bajo carga paralela el commit puede tardar; espera acotada a que el
 	// coordinator vacíe la cola por el camino normal antes de Stop, evitando
 	// que el drain de Stop tenga que hacer todo el trabajo bajo CommitBudget.
-	deadline := time.Now().Add(5 * time.Second)
+	// La cota solo detecta un bloqueo real de la cola, no limita commits
+	// lentos en un runner cargado (ISA-708).
+	deadline := time.Now().Add(30 * time.Second)
 	for time.Now().Before(deadline) {
 		if coordinator.Status().CommittedBatches == 100 {
 			break
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
-	stopCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	stopCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if err := coordinator.Stop(stopCtx); err != nil {
 		t.Fatalf("Stop() error = %v", err)
@@ -816,10 +837,11 @@ func TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles(t *testing.T) {
 	original := filepath.Join(root, ref.SessionID)
 	moved := filepath.Join(root, "released-session")
 	// En Windows el handle de SQLite/lease puede liberarse de forma
-	// eventualmente consistente. Reintento acotado sin sleep arbitrario
-	// largo: polling 1s para distinguir fuga real de cierre tardío.
+	// eventualmente consistente y bajo carga paralela el cierre puede tardar
+	// mas. Reintento acotado a 10s: una fuga real nunca libera, asi que la
+	// ventana solo distingue fuga de cierre tardio (ISA-708).
 	var renameErr error
-	for attempt := 0; attempt < 50; attempt++ {
+	for attempt := 0; attempt < 500; attempt++ {
 		renameErr = os.Rename(original, moved)
 		if renameErr == nil {
 			break

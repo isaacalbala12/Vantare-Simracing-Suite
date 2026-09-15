@@ -90,12 +90,13 @@ func (l AnalyzedLap) HasLabel(wanted LapLabel) bool {
 }
 
 type LapValidityDiagnostics struct {
-	ReconciledLaps    int                                `json:"reconciledLaps"`
-	LapEventRows      int                                `json:"lapEventRows"`
-	UsableLapTimeRows int                                `json:"usableLapTimeRows"`
-	LapDistResets     int                                `json:"lapDistResets"`
-	TemporalBridge    TemporalAlignmentStatus            `json:"temporalBridge"`
-	TemporalChannels  map[string]TemporalAlignmentStatus `json:"temporalChannels,omitempty"`
+	ReconciledLaps     int                                `json:"reconciledLaps"`
+	LapEventRows       int                                `json:"lapEventRows"`
+	DuplicateLapEvents int                                `json:"duplicateLapEvents,omitempty"`
+	UsableLapTimeRows  int                                `json:"usableLapTimeRows"`
+	LapDistResets      int                                `json:"lapDistResets"`
+	TemporalBridge     TemporalAlignmentStatus            `json:"temporalBridge"`
+	TemporalChannels   map[string]TemporalAlignmentStatus `json:"temporalChannels,omitempty"`
 }
 
 type LapValidityAnalysis struct {
@@ -150,7 +151,7 @@ func AnalyzeAlignedLapValidity(alignment TemporalAlignmentResult) (LapValidityAn
 		return LapValidityAnalysis{}, err
 	}
 
-	lapEvents := readLapEvents(grouped["lap"])
+	lapEvents, duplicateLapEvents := readLapEvents(grouped["lap"])
 	resets, _ := readLapDistResetObservations(grouped["lap dist"])
 	continuousStart, continuousEnd, hasContinuousCoverage := continuousCoverageWindow(
 		grouped["ambient temperature"],
@@ -180,6 +181,7 @@ func AnalyzeAlignedLapValidity(alignment TemporalAlignmentResult) (LapValidityAn
 		},
 	}
 	result.Diagnostics.LapEventRows = len(lapEvents)
+	result.Diagnostics.DuplicateLapEvents = duplicateLapEvents
 	result.Diagnostics.LapDistResets = len(resets)
 	if len(lapEvents) > 1 {
 		for index := 1; index < len(lapEvents); index++ {
@@ -251,7 +253,7 @@ func groupPagesBySource(session HistoricalSession, pages []HistoricalPage) (map[
 	return grouped, nil
 }
 
-func readLapEvents(pages []HistoricalPage) []observedLapEvent {
+func readLapEvents(pages []HistoricalPage) ([]observedLapEvent, int) {
 	var events []observedLapEvent
 	for _, page := range pages {
 		for _, sample := range page.Samples {
@@ -270,7 +272,16 @@ func readLapEvents(pages []HistoricalPage) []observedLapEvent {
 		}
 		return events[i].seconds < events[j].seconds
 	})
-	return events
+	deduped := events[:0]
+	duplicates := 0
+	for index, event := range events {
+		if index > 0 && event.lapNumber == events[index-1].lapNumber {
+			duplicates++
+			continue
+		}
+		deduped = append(deduped, event)
+	}
+	return deduped, duplicates
 }
 
 func readEvents(pages []HistoricalPage) []observedEvent {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Events } from "@wailsio/runtime";
 import { parseKeyEvent } from "./hotkey-capture";
+import { getSettingsStore } from "./settings-store";
 import {
   DEFAULT_APP_SETTINGS,
   type AppSettings,
@@ -21,66 +21,75 @@ import {
  */
 export type SettingsSaveStatus = "saving" | "saved" | null;
 
+// The old guard probed event.data.deltaMode for truthiness, so it doubled
+// as "is this a real payload". With that field gone the check has to say
+// what it means: accept any settings object (the shared channel already
+// drops non-object payloads before they reach the store).
+function mergeWithDefaults(data: AppSettings): AppSettings {
+  return {
+    ...DEFAULT_APP_SETTINGS,
+    ...data,
+    hotkeys: { ...DEFAULT_APP_SETTINGS.hotkeys, ...(data.hotkeys ?? {}) },
+  };
+}
+
 export function useAppSettings() {
+  const store = getSettingsStore();
   const [appSettings, setAppSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
   const [settingsStatus, setSettingsStatus] = useState<SettingsSaveStatus>(null);
   const [capturingKey, setCapturingKey] = useState<string | null>(null);
   const requestSequence = useRef(0);
   const pendingRequest = useRef<string | null>(null);
+  const statusTimer = useRef<number | null>(null);
 
+  // Go marshala un mapa nil como `null`, y un payload antiguo puede no traer
+  // `hotkeys` en absoluto. Sustituir el objeto entero dejaba las cuatro
+  // combinaciones en blanco y la pantalla decía «sin asignar» sobre atajos
+  // que el backend sigue registrando. Las que falten se rellenan con el
+  // contrato; las que vengan mandan.
+  //
+  // setState dentro del callback de suscripcion (no en el cuerpo del efecto):
+  // es la forma que pide la regla de hooks para sincronizar sistemas externos.
   useEffect(() => {
-    const handlers: (() => void)[] = [];
-
-    handlers.push(
-      // The old guard probed event.data.deltaMode for truthiness, so it doubled
-      // as "is this a real payload". With that field gone the check has to say
-      // what it means: accept any settings object.
-      Events.On("settings", (event: { data: AppSettings }) => {
-        if (!event.data || typeof event.data !== "object") return;
-        // Go marshala un mapa nil como `null`, y un payload antiguo puede no
-        // traer `hotkeys` en absoluto. Sustituir el objeto entero dejaba las
-        // cuatro combinaciones en blanco y la pantalla decía «sin asignar»
-        // sobre atajos que el backend sigue registrando. Las que falten se
-        // rellenan con el contrato; las que vengan mandan.
-        setAppSettings({
-		  ...DEFAULT_APP_SETTINGS,
-          ...event.data,
-          hotkeys: { ...DEFAULT_APP_SETTINGS.hotkeys, ...(event.data.hotkeys ?? {}) },
-        });
-      }),
-    );
-
-    handlers.push(
-      Events.On("settings-saved", (event: { data?: { requestId?: string; settings?: AppSettings } }) => {
-        if (!event.data?.requestId || event.data.requestId !== pendingRequest.current) return;
-        pendingRequest.current = null;
-        if (event.data.settings) {
-          setAppSettings({
-            ...DEFAULT_APP_SETTINGS,
-            ...event.data.settings,
-            hotkeys: { ...DEFAULT_APP_SETTINGS.hotkeys, ...(event.data.settings.hotkeys ?? {}) },
-          });
-        }
-        setSettingsStatus("saved");
-        setTimeout(() => setSettingsStatus(null), 3000);
-      }),
-    );
-
-    Events.Emit("settings:get");
-
+    const offSettings = store.subscribe(() => {
+      const next = store.getSnapshot();
+      if (next) {
+        setAppSettings(mergeWithDefaults(next));
+      }
+    });
+    const offSaved = store.subscribeSettingsSaved(() => {
+      const payload = store.getSettingsSaved();
+      if (!payload?.requestId || payload.requestId !== pendingRequest.current) return;
+      pendingRequest.current = null;
+      if (payload.settings) {
+        setAppSettings(mergeWithDefaults(payload.settings));
+      }
+      setSettingsStatus("saved");
+      if (statusTimer.current !== null) window.clearTimeout(statusTimer.current);
+      statusTimer.current = window.setTimeout(() => setSettingsStatus(null), 3000);
+    });
+    store.requestSettings();
     return () => {
-      handlers.forEach((h) => h?.());
+      offSettings();
+      offSaved();
+      if (statusTimer.current !== null) {
+        window.clearTimeout(statusTimer.current);
+        statusTimer.current = null;
+      }
     };
-  }, []);
+  }, [store]);
 
-  function save(next: AppSettings) {
-	requestSequence.current += 1;
-	const requestId = `settings-${requestSequence.current.toString(36)}`;
-	pendingRequest.current = requestId;
-    setAppSettings(next);
-    setSettingsStatus("saving");
-    Events.Emit("settings:save", { requestId, settings: next });
-  }
+  const save = useCallback(
+    (next: AppSettings) => {
+      requestSequence.current += 1;
+      const requestId = `settings-${requestSequence.current.toString(36)}`;
+      pendingRequest.current = requestId;
+      setAppSettings(next);
+      setSettingsStatus("saving");
+      store.saveSettings({ requestId, settings: next });
+    },
+    [store],
+  );
 
   function toggleCpuSampling() {
     save({ ...appSettings, cpuSampling: !appSettings.cpuSampling });
@@ -121,7 +130,7 @@ export function useAppSettings() {
       });
       setCapturingKey(null);
     },
-    [capturingKey, appSettings],
+    [capturingKey, appSettings, save],
   );
 
   useEffect(() => {

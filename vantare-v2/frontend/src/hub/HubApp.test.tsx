@@ -1,5 +1,5 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 
 const {
@@ -141,6 +141,13 @@ describe('HubApp gate (production)', () => {
     // Default to "no session" so the bridge does not blow up tests that do
     // not explicitly set the session token.
     getSessionMock.mockResolvedValue(null);
+  });
+
+  afterEach(async () => {
+    cleanup();
+    // Las páginas Orbit se cargan en lazy: espera a que los import() pendientes
+    // resuelvan antes de que Vitest desmonte el entorno (EnvironmentTeardownError).
+    await vi.dynamicImportSettled();
   });
 
   it('shows loading screen while license is loading', () => {
@@ -564,6 +571,32 @@ describe('HubApp gate (production)', () => {
     await waitFor(() => {
       expect(screen.getByTestId('orbit-launcher')).toBeTruthy();
     });
+  });
+
+  it('mirrors the published performance effects budget onto the shell root', async () => {
+    // `mockImplementation` persiste entre tests: capturamos el handler de
+    // `performance:level` en vez de depender del mapa compartido.
+    let levelHandler: ((event: unknown) => void) | undefined;
+    eventsOn.mockImplementation((name: string, cb: (event: unknown) => void) => {
+      if (name === 'performance:level') levelHandler = cb;
+      return () => false;
+    });
+    setLicense({
+      state: 'active',
+      entitlements: ['overlays'],
+      userId: 'u',
+      email: 'u@example.com',
+      deviceOK: true,
+    });
+    render(<HubApp />);
+    await waitFor(() => expect(screen.getByTestId('orbit-shell')).toBeTruthy());
+
+    expect(levelHandler).toBeTruthy();
+    act(() => levelHandler?.({ data: { level: 4, mode: 'level', effects: 'noBlur' } }));
+    expect(document.documentElement.dataset.orbitPerfEffects).toBe('noBlur');
+
+    act(() => levelHandler?.({ data: { level: 1, mode: 'level', effects: 'full' } }));
+    expect(document.documentElement.dataset.orbitPerfEffects).toBe('full');
   });
 
   it('marks the active section as current in the topbar', async () => {

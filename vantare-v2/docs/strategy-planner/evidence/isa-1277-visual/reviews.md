@@ -2,7 +2,7 @@
 
 ## Resultado final
 
-- Pasada aceptada: `pass-20`.
+- Pasada aceptada: `pass-22`.
 - Cobertura: 18 pantallas principales y 72 capturas responsive.
 - Idiomas: ES, EN, PT e IT.
 - Anchuras cubiertas: 320, 768, 1024 y 1672 px según la familia.
@@ -12,9 +12,10 @@
 - `responsive.json`: 16 combinaciones, sin diferencia entre ancho interior y
   contenido, sin overflow registrado, sin errores de página y con foco visible.
 
-La revisión fue exclusivamente visual y separada de la implementación. Las 22
-capturas modificadas desde la pasada 19 se inspeccionaron directamente; las 68
-restantes se contrastaron por SHA-256 y conservaron su evaluación anterior.
+La revisión fue exclusivamente visual y separada de la implementación. Las 9
+capturas modificadas desde la pasada 21 se inspeccionaron directamente; las 81
+restantes se contrastaron por SHA-256 y conservaron su evaluación anterior. La
+truncación de `Creador de Contenido` quedó resuelta en dos líneas completas.
 
 ## Puntuación de pantallas principales
 
@@ -63,7 +64,7 @@ restantes se contrastaron por SHA-256 y conservaron su evaluación anterior.
 | Parada · 768 px | 9,1 | 9,1 | 9,1 | 9,1 |
 
 El artefacto verificable de geometría y runtime es
-`pass-20/responsive.json`.
+`pass-22/responsive.json`.
 
 ## Límite de la evidencia
 

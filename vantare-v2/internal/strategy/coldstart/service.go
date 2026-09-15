@@ -23,8 +23,41 @@ const (
 	defaultImportConcurrency = 4
 	maximumImportConcurrency = 4
 	// Keep the existing 30-minute client budget, allowing a minute for the response.
-	defaultCandidateTimeout = 29 * time.Minute
+	defaultCandidateTimeout      = 29 * time.Minute
+	maxImportBatchEstimatedBytes = int64(4 << 30)
+	importMemoryExpansionFactor  = int64(16)
+	defaultImportMemoryEstimate  = int64(1 << 30)
 )
+
+func importMemoryEstimate(candidate telemetryanalysis.Candidate) int64 {
+	if candidate.Size <= 0 {
+		return defaultImportMemoryEstimate
+	}
+	return candidate.Size * importMemoryExpansionFactor
+}
+
+func selectPendingBatch(candidates []telemetryanalysis.Candidate, imported, failed map[string]struct{}, limit int) []telemetryanalysis.Candidate {
+	pending := make([]telemetryanalysis.Candidate, 0, limit)
+	var batchEstimate int64
+	for _, candidate := range candidates {
+		if _, exists := imported[candidate.Locator]; exists {
+			continue
+		}
+		if _, exists := failed[candidate.Locator]; exists {
+			continue
+		}
+		estimate := importMemoryEstimate(candidate)
+		if len(pending) > 0 && batchEstimate+estimate > maxImportBatchEstimatedBytes {
+			continue
+		}
+		pending = append(pending, candidate)
+		batchEstimate += estimate
+		if len(pending) == limit {
+			break
+		}
+	}
+	return pending
+}
 
 const (
 	DecisionPending  Decision = "pending"
@@ -181,7 +214,6 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 	for _, failure := range state.Failures {
 		failed[failure.Locator] = struct{}{}
 	}
-	pending := make([]telemetryanalysis.Candidate, 0, service.importConcurrency())
 	for _, candidate := range service.candidates {
 		if _, exists := imported[candidate.Locator]; exists {
 			continue
@@ -191,14 +223,8 @@ func (service *Service) ImportNext(ctx context.Context) (Progress, error) {
 			imported[candidate.Locator] = struct{}{}
 			continue
 		}
-		if _, exists := failed[candidate.Locator]; exists {
-			continue
-		}
-		pending = append(pending, candidate)
-		if len(pending) == cap(pending) {
-			break
-		}
 	}
+	pending := selectPendingBatch(service.candidates, imported, failed, service.importConcurrency())
 	if len(pending) > 0 {
 		results := make([]candidateImportResult, len(pending))
 		var wait sync.WaitGroup

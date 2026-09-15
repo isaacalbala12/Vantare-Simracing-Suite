@@ -37,6 +37,7 @@ export type SchedulePreview = {
 };
 
 export type ScheduleCandidate = {
+  schedule?: { validFrom: string; validUntil: string };
   messageId: string;
   sourceHash: string;
   guildId: string;

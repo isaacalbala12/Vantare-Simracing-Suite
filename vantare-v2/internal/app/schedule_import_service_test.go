@@ -56,9 +56,12 @@ func TestParseEmitsAReviewablePreview(t *testing.T) {
 	spy := &spyEmitter{}
 	svc := app.NewScheduleImportService(nil, spy)
 
-	svc.Parse(scheduleFixture(t))
+	svc.Parse(scheduleFixture(t), "parse-1")
 
 	preview := lastEvent(t, spy, "schedule:preview")
+	if preview["requestId"] == "" || preview["requestId"] == nil {
+		t.Fatal("preview must identify its request")
+	}
 	if preview["validFrom"] != "2026-08-04" {
 		t.Fatalf("validFrom=%v", preview["validFrom"])
 	}
@@ -87,7 +90,7 @@ func TestParseReportsUnreadableTextInsteadOfPublishingIt(t *testing.T) {
 	spy := &spyEmitter{}
 	svc := app.NewScheduleImportService(nil, spy)
 
-	svc.Parse("esto no es un horario")
+	svc.Parse("esto no es un horario", "parse-error")
 
 	if msg := lastEvent(t, spy, "schedule:error")["message"]; msg == "" {
 		t.Fatal("an unreadable paste must explain itself")
@@ -103,9 +106,12 @@ func TestParsePreviewCarriesSpecialEventConstraints(t *testing.T) {
 	spy := &spyEmitter{}
 	svc := app.NewScheduleImportService(nil, spy)
 
-	svc.Parse(scheduleAug25Fixture(t))
+	svc.Parse(scheduleAug25Fixture(t), "parse-2")
 
 	preview := lastEvent(t, spy, "schedule:preview")
+	if preview["requestId"] == "" || preview["requestId"] == nil {
+		t.Fatal("preview must identify its request")
+	}
 	if preview["sourceNotesCount"].(float64) != 1 {
 		t.Fatalf("sourceNotesCount=%v", preview["sourceNotesCount"])
 	}
@@ -148,7 +154,10 @@ func TestSaveDraftAndPublishReportBackToTheScreen(t *testing.T) {
 	spy := &spyEmitter{}
 	svc := app.NewScheduleImportService(calendar.NewSchedulePublisher(server.URL, "anon"), spy)
 
-	svc.SaveDraft(context.Background(), "token", scheduleFixture(t))
+	svc.SaveDraft(context.Background(), "token", scheduleFixture(t), "save-1")
+	if got := lastEvent(t, spy, "schedule:draft-saved")["requestId"]; got != "save-1" {
+		t.Fatalf("requestId=%v", got)
+	}
 	if id := lastEvent(t, spy, "schedule:draft-saved")["draftId"]; id != "draft-9" {
 		t.Fatalf("draftId=%v", id)
 	}
@@ -183,7 +192,7 @@ func TestOwnerRejectionIsExplainedInPlainWords(t *testing.T) {
 	spy := &spyEmitter{}
 	svc := app.NewScheduleImportService(calendar.NewSchedulePublisher(server.URL, "anon"), spy)
 
-	svc.SaveDraft(context.Background(), "token", scheduleFixture(t))
+	svc.SaveDraft(context.Background(), "token", scheduleFixture(t), "save-1")
 
 	msg := lastEvent(t, spy, "schedule:error")["message"]
 	if msg != "Necesitas rol owner para importar el horario" {
@@ -195,7 +204,7 @@ func TestAnUnconfiguredBuildSaysSoRatherThanFailingSilently(t *testing.T) {
 	spy := &spyEmitter{}
 	svc := app.NewScheduleImportService(nil, spy)
 
-	svc.SaveDraft(context.Background(), "token", scheduleFixture(t))
+	svc.SaveDraft(context.Background(), "token", scheduleFixture(t), "save-1")
 
 	if msg := lastEvent(t, spy, "schedule:error")["message"]; msg == "" {
 		t.Fatal("an unconfigured build must explain itself")

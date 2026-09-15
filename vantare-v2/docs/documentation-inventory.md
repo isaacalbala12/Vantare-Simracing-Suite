@@ -1,5 +1,15 @@
 # Inventario de documentacion
 
+> **Notion primero (2026-09-14):** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192)
+> y leer la tarea y su proyecto antes de ejecutar. Actualizar Notion al empezar,
+> bloquear, entregar y verificar una integración; releer para comprobar la escritura.
+> [Contrato vigente](vantare-program/notion-transition.md). GitHub conserva código, PR, CI y releases;
+> las referencias ISA exigidas por los controles son un puente técnico temporal.
+> Su adaptación pendiente nunca permite omitir el seguimiento en Notion.
+> Para esta transición, consultar el [inventario individual](vantare-program/notion-document-audit.md).
+> El índice de ejecución de release antiguo es histórico, no autoridad operativa.
+
+
 Ultima actualizacion: 2026-08-21.
 
 Este inventario clasifica la documentacion conocida dentro de `vantare-v2`.
@@ -18,7 +28,7 @@ Este inventario clasifica la documentacion conocida dentro de `vantare-v2`.
 | `docs/testing-strategy.md` | Nueva estrategia de testing | Actualizar si cambian comandos |
 | `docs/manual-verification.md` | Guia manual actualizada al flujo real de Overlays Studio | Actualizar con cada flujo importante |
 | `docs/agent-workflow.md` | Nuevo workflow de agentes | Mantener alineado con el proceso real |
-| `docs/roadmap-maintenance.md` | Contrato de mantenimiento del roadmap | Mantener alineado con GitHub Issues y el digest generado |
+| `docs/roadmap-maintenance.md` | Contrato de mantenimiento del roadmap | Mantener alineado con decisiones Notion, el contrato CI temporal y el digest generado |
 | `docs/operations.md` | Nueva guia de operaciones | Actualizar si cambia tooling |
 | `docs/go-review-checklist.md` | Nueva checklist Go | Mantener como referencia para reviewers |
 | `docs/stripe-licensing-status-audit.md` | Auditoría extensa de Stripe/licencias/pagos (2026-07-06) | Mantener actualizado al cerrar SQL-01/CHECKOUT-01/DEPLOY-01 |

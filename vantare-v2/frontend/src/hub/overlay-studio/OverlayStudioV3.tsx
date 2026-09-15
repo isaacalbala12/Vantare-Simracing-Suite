@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../../i18n/I18nProvider';
+import { Button } from '../../ui/orbit/Button';
 import { resolveStudioV3Text } from './studio-v3-i18n';
 import './overlay-studio-v3.css';
 import { openBrowserView, type BrowserViewDecision } from './browser-view';
@@ -12,7 +13,8 @@ import { StudioConfirmProvider } from './components/StudioConfirmProvider';
 import { DirtyChangesDialog } from './components/DirtyChangesDialog';
 import { RecoveryDialog } from './components/RecoveryDialog';
 import { createStudioRecoveryStore, type StudioRecoveryRecord } from './state/studio-recovery';
-import { useStudioDocument } from './state/studio-store';
+import { useStudioActions, useStudioDirty, useStudioSelector } from './state/studio-store';
+import { useObsBaseUrl } from './orbit/obs-url';
 import { StudioOrbitLayout } from './orbit/StudioOrbitLayout';
 import type { StudioProfileEntry } from './studio-profile-entry';
 
@@ -53,16 +55,11 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
     recoveryStorageProp ?? (typeof window !== 'undefined' ? window.sessionStorage : null);
   const diagnostics = useMemo(() => createWidgetDiagnosticCollector(), []);
 
-  const {
-    dirty,
-    save,
-    discardAll,
-    acceptRecovery,
-    document,
-    revision,
-    accessNotice,
-    dismissAccessNotice,
-  } = useStudioDocument();
+  const dirty = useStudioDirty();
+  const document = useStudioSelector((s) => s.history?.present ?? null);
+  const revision = useStudioSelector((s) => s.revision);
+  const accessNotice = useStudioSelector((s) => s.accessNotice);
+  const { save, discardAll, acceptRecovery, dismissAccessNotice } = useStudioActions();
 
   const [pendingProfileFile, setPendingProfileFile] = useState<string | null>(null);
   const [dirtyDialogOpen, setDirtyDialogOpen] = useState(false);
@@ -72,6 +69,9 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
   const [browserViewDialogOpen, setBrowserViewDialogOpen] = useState(false);
   const [browserViewSaving, setBrowserViewSaving] = useState(false);
   const [browserViewError, setBrowserViewError] = useState<string | null>(null);
+  // El navegador del sistema no resuelve el origen del WebView: la vista de
+  // navegador abre contra el servidor HTTP real de overlays (ISA-1162).
+  const obsBaseUrl = useObsBaseUrl();
   const recoveryCheckedProfileIdRef = useRef<string | null>(null);
   const browserViewDecideRef = useRef<((decision: BrowserViewDecision) => void) | null>(null);
 
@@ -190,7 +190,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
     const result = await openBrowserView({
       dirty,
       profileFile: activeFile,
-      baseUrl: window.location.origin,
+      baseUrl: obsBaseUrl,
       studioPreview: browserViewStudioPreview,
       decide: () =>
         new Promise<BrowserViewDecision>((resolve) => {
@@ -214,7 +214,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
 
     setBrowserViewDialogOpen(true);
     setBrowserViewError('studio.v3.browserView.saveFailed');
-  }, [activeFile, browserViewStudioPreview, dirty, save]);
+  }, [activeFile, browserViewStudioPreview, dirty, obsBaseUrl, save]);
 
   const handleBrowserViewSave = useCallback(() => {
     setBrowserViewSaving(true);
@@ -231,17 +231,13 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
       {accessNotice ? (
         <div
           data-testid="studio-access-notice"
-          className="mx-4 mt-3 flex items-center justify-between gap-3 rounded-lg border border-vantare-red-500/30 bg-vantare-red-950/20 px-4 py-3 text-sm text-vantare-red-300"
+          className="orbit-alert orbit-alert--danger mx-4 mt-3"
           role="alert"
         >
           <span>{resolveStudioV3Text(accessNotice, t)}</span>
-          <button
-            type="button"
-            className="rounded-md border border-white/15 px-2 py-1 text-xs font-semibold text-white"
-            onClick={dismissAccessNotice}
-          >
+          <Button variant="ghost" size="sm" onClick={dismissAccessNotice}>
             Cerrar
-          </button>
+          </Button>
         </div>
       ) : null}
       <StudioConfirmProvider>
@@ -249,6 +245,7 @@ export function OverlayStudioV3(props: OverlayStudioV3Props): React.ReactElement
           <StudioOrbitLayout
             activeFile={activeFile}
             diagnostics={diagnostics}
+            obsBaseUrl={obsBaseUrl}
             onOpenBrowserView={() => void handleOpenBrowserView()}
             onRequestProfileChange={guardedProfileChange}
             profiles={profiles}

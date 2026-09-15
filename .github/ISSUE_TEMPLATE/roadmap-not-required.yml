@@ -7,9 +7,23 @@ body:
   - type: markdown
     attributes:
       value: |
+        Notion es el seguimiento principal: https://app.notion.com/p/3fce51695c65834e80b381ec2d632192
+        Crea o localiza primero la tarea Notion. Este formulario conserva únicamente
+        el contrato que consultan los gates actuales. Actualiza estado y evidencia
+        en Notion; consulta notion-transition.md y los AGENTS de nightly actualizado.
+
         Esta exencion no se concede solo por elegir el formulario. CI acepta
         unicamente rutas internas de su allowlist cerrada y rechaza cualquier
         cambio en plan.md, roadmap.json o codigo productivo.
+
+  - type: input
+    id: notion_task
+    attributes:
+      label: Tarea principal en Notion
+      description: URL real de la tarea existente, con proyecto y alcance aprobados.
+      placeholder: https://app.notion.com/p/...
+    validations:
+      required: true
 
   - type: textarea
     id: objective

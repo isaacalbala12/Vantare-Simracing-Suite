@@ -233,20 +233,9 @@
   opacity: 0.12;
 }
 
-.orbit-studio-scene .osv3-widget-frame--selected .osv3-widget-frame__chrome {
-  inset: -6px;
-  border: 1px dashed rgba(240, 71, 85, 0.8);
-  border-radius: 10px;
-}
-
-.orbit-studio-scene .osv3-resize-handle {
-  width: 9px;
-  height: 9px;
-  border: 1px solid #2a2228;
-  border-radius: 2.5px;
-  background: #f8f6f6;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5), 0 0 10px rgba(240, 71, 85, 0.35);
-}
+/* La skin Orbit ya no reskinea el chrome: el marco de seleccion es el mismo
+   que el del editor in-place (ISA-1152) — linea solida con glow y handles
+   circulares, una sola fuente en overlay-studio-v3.css. */
 
 /* Etiqueta de seleccion: vive en el `stage`, no en el `scene` escalado, para
    medir en pixeles reales y poder recortarse contra los bordes del lienzo. */
@@ -393,6 +382,37 @@
   padding: 18px;
   color: var(--orbit-ink-4);
   font-size: var(--orbit-fs-body);
+}
+
+/* Enlace OBS al pie del dock de ajustes (ISA-1162): fijo bajo el inspector,
+   no depende de que haya un widget seleccionado. */
+.orbit-studio-obs {
+  display: flex;
+  flex: none;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px 14px;
+  border-top: 1px solid var(--orbit-line);
+}
+
+.orbit-studio-obs__hint {
+  margin: 0;
+  color: var(--orbit-ink-4);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.orbit-studio-obs__url {
+  width: 100%;
+  min-width: 0;
+  font-family: var(--orbit-font-mono);
+  font-size: 11px;
+}
+
+.orbit-studio-obs__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .orbit-studio-acc > summary {

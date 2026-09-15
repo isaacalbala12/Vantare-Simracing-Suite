@@ -701,3 +701,88 @@ func assertTemporalContractValid(t *testing.T, analysis LapValidityAnalysis) {
 		}
 	}
 }
+
+func lapValidityNumberSample(index int64, ts *float64, value float64) HistoricalSample {
+	sample := HistoricalSample{Index: index, TimestampSeconds: ts}
+	sample.Values = append(sample.Values, HistoricalValue{
+		Column: "value", Present: true, Quality: QualityValid,
+		Scalar: HistoricalScalar{Kind: ScalarNumber, Number: value},
+	})
+	return sample
+}
+
+func TestAnalyzeLapValidityDropsDuplicateLapEvents(t *testing.T) {
+	t.Parallel()
+	sampling := HistoricalSampling{Kind: SamplingEventTimestamped, Origin: TimeOriginSourceTimestamp}
+	session := HistoricalSession{SchemaVersion: HistoricalSchemaVersion, ID: "dup-laps"}
+	session.Channels = append(session.Channels, HistoricalChannel{
+		ID: "lap-ch", Order: 0, SourceName: "Lap", Sampling: sampling,
+		Columns: []HistoricalColumn{{Name: "value", Type: ScalarNumber}}, Capability: QualityValid,
+	})
+	at := func(seconds float64) *float64 { return &seconds }
+	page := HistoricalPage{ChannelID: "lap-ch", Sampling: sampling}
+	page.Samples = append(page.Samples,
+		lapValidityNumberSample(0, at(60), 1),
+		lapValidityNumberSample(1, at(120), 2),
+		lapValidityNumberSample(2, at(121), 2),
+		lapValidityNumberSample(3, at(180), 3),
+	)
+
+	analysis, err := AnalyzeLapValidity(session, []HistoricalPage{page})
+	if err != nil {
+		t.Fatalf("AnalyzeLapValidity() error = %v", err)
+	}
+	if analysis.Diagnostics.DuplicateLapEvents != 1 {
+		t.Fatalf("DuplicateLapEvents = %d, want 1", analysis.Diagnostics.DuplicateLapEvents)
+	}
+	if len(analysis.Laps) != 3 || analysis.Diagnostics.LapEventRows != 3 {
+		t.Fatalf("laps = %d rows = %d, want 3 deduplicated lap events", len(analysis.Laps), analysis.Diagnostics.LapEventRows)
+	}
+	for index, lap := range analysis.Laps {
+		if lap.Number != index+1 {
+			t.Fatalf("lap %d number = %d", index, lap.Number)
+		}
+	}
+}
+
+func TestAnalyzeLapValidityDoesNotCompareFuelAcrossMissingBoundary(t *testing.T) {
+	t.Parallel()
+	continuous := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 10, Origin: TimeOriginSourceTimestamp}
+	session := HistoricalSession{SchemaVersion: HistoricalSchemaVersion, ID: "sparse-fuel"}
+	pages := []HistoricalPage{}
+	addChannel := func(name string, samples []HistoricalSample) {
+		channel := HistoricalChannel{
+			ID: name + "-ch", Order: len(session.Channels), SourceName: name, Sampling: continuous,
+			Columns: []HistoricalColumn{{Name: "value", Type: ScalarNumber}}, Capability: QualityValid,
+		}
+		session.Channels = append(session.Channels, channel)
+		pages = append(pages, HistoricalPage{ChannelID: channel.ID, Sampling: continuous, Samples: samples})
+	}
+	lapDist := []HistoricalSample{}
+	for index := int64(0); index <= 30; index++ {
+		meters := float64(index%10) * 400
+		if index%10 == 0 && index > 0 {
+			meters = 0
+		}
+		seconds := 100 + float64(index)/10
+		lapDist = append(lapDist, lapValidityNumberSample(index, &seconds, meters))
+	}
+	addChannel("Lap Dist", lapDist)
+	at := func(seconds float64) *float64 { return &seconds }
+	fuel := []HistoricalSample{
+		lapValidityNumberSample(10, at(101), 30),
+		{Index: 11, TimestampSeconds: at(101.1), Values: []HistoricalValue{{Column: "value", Quality: QualityMissing}}},
+		lapValidityNumberSample(12, at(101.2), 65),
+	}
+	addChannel("Fuel Level", fuel)
+
+	analysis, err := AnalyzeLapValidity(session, pages)
+	if err != nil {
+		t.Fatalf("AnalyzeLapValidity() error = %v", err)
+	}
+	for _, boundary := range analysis.Temporal.StintBoundaries {
+		if boundary.Cause == "fuel_jump" {
+			t.Fatalf("fuel jump inferred across a missing boundary sample: %+v", boundary)
+		}
+	}
+}

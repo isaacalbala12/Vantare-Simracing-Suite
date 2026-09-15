@@ -476,7 +476,7 @@ func orbitSolverInput(
 		Projection:           orbitProjection(planning),
 		PitCost:              orbitPitCost(event, planning),
 		Formation:            formation,
-		Budget:               solver.ComputeBudget{P95Millis: 10_000},
+		Budget:               orbitSolverBudget(raceLaps),
 		FuelCapacityLiters:   orbitScalarInput(planning, strategydocument.PlanningInputTank, event.TankLiters, "strategy.orbit.tank"),
 		VECapacityPercent:    orbitVECapacity(planning),
 		TyreLifeLaps:         orbitScalarInput(planning, strategydocument.PlanningInputTyreLife, 0, "strategy.orbit.tyre-life-not-configured"),
@@ -589,6 +589,36 @@ func orbitMatchesSolvedStints(laps []int64, solved []solver.StintDecision) bool 
 		}
 	}
 	return true
+}
+
+// orbitSolverBudget turns race size into a deterministic work budget. It
+// preserves the solver defaults for ordinary races and caps pathological work.
+func orbitSolverBudget(raceLaps int64) solver.ComputeBudget {
+	const (
+		minimumCandidates = int64(10_000_000)
+		candidatesPerLap  = int64(100_000)
+		maximumCandidates = int64(200_000_000)
+		minimumIterations = int64(100_000_000)
+		iterationsPerLap  = int64(1_000_000)
+		maximumIterations = int64(1_000_000_000)
+	)
+	candidates := minimumCandidates
+	if raceLaps > maximumCandidates/candidatesPerLap {
+		candidates = maximumCandidates
+	} else if scaled := raceLaps * candidatesPerLap; scaled > candidates {
+		candidates = scaled
+	}
+	iterations := minimumIterations
+	if raceLaps > maximumIterations/iterationsPerLap {
+		iterations = maximumIterations
+	} else if scaled := raceLaps * iterationsPerLap; scaled > iterations {
+		iterations = scaled
+	}
+	return solver.ComputeBudget{
+		P95Millis:     10_000,
+		MaxCandidates: int(candidates),
+		MaxIterations: int(iterations),
+	}
 }
 
 func orbitFuelServiceStep(fuelPerLap float64, planning *strategydocument.PlanningInputs) float64 {

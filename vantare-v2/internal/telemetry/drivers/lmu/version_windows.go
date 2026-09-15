@@ -424,13 +424,13 @@ func readWindowsFileVersion(path string) (BuildEvidence, error) {
 	if err != nil {
 		return BuildEvidence{}, errors.New("encode version query")
 	}
-	var fixedAddress uintptr
+	var fixedAddress unsafe.Pointer
 	var fixedLength uint32
 	result, _, callErr = verQueryValueW.Call(uintptr(unsafe.Pointer(&buffer[0])), uintptr(unsafe.Pointer(root)), uintptr(unsafe.Pointer(&fixedAddress)), uintptr(unsafe.Pointer(&fixedLength)))
-	if result == 0 || fixedAddress == 0 || fixedLength < uint32(unsafe.Sizeof(fixedFileInfo{})) {
+	if result == 0 || fixedAddress == nil || fixedLength < uint32(unsafe.Sizeof(fixedFileInfo{})) {
 		return BuildEvidence{}, fmt.Errorf("query fixed version: %w", callErr)
 	}
-	fixed := *(*fixedFileInfo)(unsafe.Pointer(fixedAddress))
+	fixed := *(*fixedFileInfo)(fixedAddress)
 	return buildEvidenceFromFixed(fixed)
 }
 

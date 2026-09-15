@@ -1,5 +1,12 @@
 # Handoff vivo — Telemetry Core
 
+> **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
+> Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,
+> bloquear, entregar y verificar merge. [Contrato](../notion-transition.md).
+> Este handoff conserva evidencia técnica fechada; sus estados antiguos no
+> sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
+
+
 ## Integración autorizada ISA-1002 — 2026-09-06
 
 Preparación sobre nightly `c18f2e6e` (#1001 ya integrado), fuente ISA-996

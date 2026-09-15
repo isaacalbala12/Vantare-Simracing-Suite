@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1072",
+  "type": "fix",
+  "summary": "Los standings reciben el dorsal real de LMU cuando la fuente lo proporciona de forma fiable.",
+  "technicalNotes": [
+    "El dato recorre el driver, Core, Telemetría V2 y el ViewModel compartido, sin lectores por widget y conservando ceros iniciales como 007.",
+    "Los slots ambiguos, las identidades no coincidentes y los datos caducados o anteriores al cambio de sesión no publican un dorsal."
+  ],
+  "testing": [
+    "Con LMU activo, compara los dorsales de Studio y HUD con el simulador en cada diseño de standings.",
+    "Comprueba un cambio de sesión y pérdida de fuente: no deben aparecer dorsales inventados ni de otro vehículo."
+  ],
+  "knownLimitations": [
+    "La correspondencia física Wails/LMU todavía no está certificada; las pruebas automatizadas no la sustituyen.",
+    "Fabricante y logo transparente siguen pendientes. Un reinicio con pista, tipo y reloj continuo idénticos queda acotado por la caducidad REST de dos segundos."
+  ]
+}

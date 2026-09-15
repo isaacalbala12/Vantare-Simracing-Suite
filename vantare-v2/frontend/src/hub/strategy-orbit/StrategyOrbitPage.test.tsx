@@ -449,13 +449,18 @@ afterEach(() => {
 describe("StrategyOrbitPage · Resumen", () => {
   it("muestra loading y después el error tipado del motor sin cifras de fallback", async () => {
     let rejectCalculation: (error: Error) => void = () => undefined;
+    let markCalculationStarted: () => void = () => undefined;
+    const calculationStarted = new Promise<void>((resolve) => { markCalculationStarted = resolve; });
     const client: StrategyApplicationClient<unknown> = {
       execute: (command) => {
         if (command.operation === "list_session_combinations" || command.operation === "list_events") {
           throw new StrategyApplicationError("invalid_command", "operation", "catalog unavailable");
         }
         if (command.operation === "calculate_orbit") {
-          return new Promise((_resolve, reject) => { rejectCalculation = reject; });
+          return new Promise((_resolve, reject) => {
+            rejectCalculation = reject;
+            markCalculationStarted();
+          });
         }
         throw new Error(`unexpected ${command.operation}`);
       },
@@ -464,6 +469,7 @@ describe("StrategyOrbitPage · Resumen", () => {
     };
     mount(ROSTER, client);
     expect(await screen.findByTestId("orbit-strategy-calculation-loading")).toBeTruthy();
+    await calculationStarted;
     expect(screen.queryByTestId("orbit-stint-0")).toBeNull();
 
     rejectCalculation(new StrategyApplicationError(

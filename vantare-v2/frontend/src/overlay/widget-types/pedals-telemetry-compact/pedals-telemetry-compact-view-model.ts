@@ -8,6 +8,8 @@ export type PedalsTelemetryCompactViewModel = WidgetViewModelBase & {
   speedKph?: number;
   rpm?: number;
   gear?: number;
+  /** Volante normalizado -1..1 (negativo = izquierda). */
+  steering?: number;
   speedText: string;
   rpmText: string;
   gearText: string;

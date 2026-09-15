@@ -8,6 +8,8 @@
 export type SeriesTier = "beginner" | "intermediate" | "advanced" | "weekly";
 
 export interface Series {
+  validFrom?: number;
+  validUntil?: number;
   id: string;
   name: string;
   tier: SeriesTier;
@@ -29,6 +31,11 @@ export interface Series {
 export function nextStarts(series: Series, from: Date, count = 4): Date[] {
   const out: Date[] = [];
   if (count <= 0) return out;
+  if (series.validFrom !== undefined && from.getTime() < series.validFrom) {
+    from = new Date(series.validFrom);
+  }
+  const end = series.validUntil ?? Infinity;
+  if (from.getTime() >= end) return out;
 
   if (series.every && series.offset !== undefined) {
     const truncated = new Date(from);
@@ -40,7 +47,9 @@ export function nextStarts(series: Series, from: Date, count = 4): Date[] {
       candidate = new Date(candidate.getTime() + series.every * 60_000);
     }
     for (let i = 0; i < count; i += 1) {
-      out.push(new Date(candidate.getTime() + i * series.every * 60_000));
+      const at = candidate.getTime() + i * series.every * 60_000;
+      if (at >= end) break;
+      out.push(new Date(at));
     }
     return out;
   }
@@ -58,7 +67,7 @@ export function nextStarts(series: Series, from: Date, count = 4): Date[] {
       const [h, m] = hm.split(":").map(Number);
       const candidate = new Date(day);
       candidate.setUTCHours(h, m, 0, 0);
-      if (candidate >= from && out.length < count) out.push(candidate);
+      if (candidate >= from && candidate.getTime() < end && out.length < count) out.push(candidate);
     }
   }
   return out;
@@ -89,5 +98,21 @@ export function formatCountdown(msRemaining: number): string {
 
 /** Hora local HH:MM de una salida. */
 export function formatStartTime(at: Date): string {
-  return `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
+  return `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}${repeatedHourOffset(at)}`;
+}
+
+/** Only ambiguous local hours need an offset to distinguish their instants. */
+export function repeatedHourOffset(at: Date): string {
+  const repeated = [-1, 1].some((direction) => {
+    const adjacent = new Date(at.getTime() + direction * 86_400_000);
+    const shift = adjacent.getTimezoneOffset() - at.getTimezoneOffset();
+    if (shift === 0) return false;
+    const other = new Date(at.getTime() + shift * 60_000);
+    return other.getFullYear() === at.getFullYear() && other.getMonth() === at.getMonth()
+      && other.getDate() === at.getDate() && other.getHours() === at.getHours()
+      && other.getMinutes() === at.getMinutes() && other.getTimezoneOffset() !== at.getTimezoneOffset();
+  });
+  if (!repeated) return "";
+  const offset = -at.getTimezoneOffset();
+  return ` UTC${offset >= 0 ? "+" : "−"}${String(Math.floor(Math.abs(offset) / 60)).padStart(2, "0")}:${String(Math.abs(offset) % 60).padStart(2, "0")}`;
 }

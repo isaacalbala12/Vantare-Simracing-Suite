@@ -4,14 +4,18 @@ import type { ReactNode } from 'react';
 import { Events } from '@wailsio/runtime';
 import { OrbitShell } from './components/orbit/OrbitShell';
 import { ORBIT_KEYS, orbitStore } from './orbit/orbit-store';
+import { getSettingsStore } from './settings/settings-store';
 import { initialSection } from './orbit/initial-view';
 import { viewToSection } from './orbit/views';
 import { resolveTestingCenterChannel } from './testing-center/channel-access';
 import {
-  UPDATER_CHANNEL_EVENT,
   buildChannelOf,
   type UpdaterChannelEvent,
 } from './settings/updater-channel';
+import {
+  subscribeUpdaterChannel,
+  subscribeUpdaterSettings,
+} from './settings/updater-events';
 import type { VantareBuildChannel } from './testing-center/contracts';
 import { type Section, isSection } from './navigation';
 import { LicenseProvider, useLicense } from '../lib/license';
@@ -73,9 +77,9 @@ function LicenseGate({ children }: { children: ReactNode }) {
       return (
         <div
           data-testid="license-loading"
-          className="flex h-screen items-center justify-center bg-[#0a0a0a] text-white"
+          className="flex h-screen items-center justify-center bg-orbit-canvas text-orbit-ink"
         >
-          <p className="font-mono text-xs uppercase tracking-widest text-vantare-textDim">
+          <p className="font-mono text-xs uppercase tracking-widest text-orbit-ink-3">
             Cargando licencia...
           </p>
         </div>
@@ -93,7 +97,7 @@ function LicenseGate({ children }: { children: ReactNode }) {
       {blocking ? (
         <div
           data-testid="license-blocked-overlay"
-          className="fixed inset-0 z-[9999] overflow-auto bg-[#0a0a0a]"
+          className="fixed inset-0 z-[9999] overflow-auto bg-orbit-canvas"
         >
           {blocking}
         </div>
@@ -151,9 +155,10 @@ function HubShell() {
         setSourceStatus(event.data);
       },
     );
-    const unsubSettings = Events.On('settings', (event: { data: Record<string, unknown> }) => {
-      settingsRef.current = event.data ?? null;
-      const completed = event.data?.betaWelcomeCompleted === true;
+    const settingsStore = getSettingsStore();
+    const applySettings = (data: Record<string, unknown> | null) => {
+      settingsRef.current = data ?? null;
+      const completed = data?.betaWelcomeCompleted === true;
       setShowBetaWelcome(!completed);
       setSettingsLoaded(true);
       // Primer arranque: la bienvenida se monta sobre Inicio, nunca sobre otra
@@ -162,24 +167,27 @@ function HubShell() {
         orbitStore.set(ORBIT_KEYS.view, 'inicio');
         setSection(viewToSection('inicio'));
       }
+    };
+    // settings:get (emitido mas abajo en este mismo efecto) garantiza que el
+    // store publica el primer snapshot; el callback solo reacciona a eventos.
+    const unsubSettings = settingsStore.subscribe(() => {
+      applySettings(settingsStore.getSnapshot());
     });
     // Ajustes emite este evento al confirmar el canal (y al releerlo del
-    // backend): la shell se entera sin recargar.
-    const unsubChannel = Events.On(
-      UPDATER_CHANNEL_EVENT,
-      (event: { data: UpdaterChannelEvent }) => {
-        const channel = event.data?.channel;
-        setPreferredChannel(channel ? buildChannelOf(channel) : null);
-      },
-    );
+    // backend): la shell se entera sin recargar. Ambos canales updater pasan
+    // por el fanout de updater-events.ts; el listener recibe `event.data`
+    // desenvuelto.
+    const unsubChannel = subscribeUpdaterChannel((data) => {
+      const channel = (data as UpdaterChannelEvent | undefined)?.channel;
+      setPreferredChannel(channel ? buildChannelOf(channel) : null);
+    });
     // Y al arrancar, directo del backend: Ajustes puede no haberse abierto nunca.
-    const unsubUpdaterSettings = Events.On(
-      'updater:settings',
-      (event: { data: { settings?: { channel?: UpdaterChannelEvent['channel'] } } }) => {
-        const channel = event.data?.settings?.channel;
-        if (channel) setPreferredChannel(buildChannelOf(channel));
-      },
-    );
+    const unsubUpdaterSettings = subscribeUpdaterSettings((data) => {
+      const channel = (
+        data as { settings?: { channel?: UpdaterChannelEvent['channel'] } } | undefined
+      )?.settings?.channel;
+      if (channel) setPreferredChannel(buildChannelOf(channel));
+    });
     const unsubReminder = Events.On(
       'calendar:reminder',
       (event: { data: CalendarReminderPayload }) => {

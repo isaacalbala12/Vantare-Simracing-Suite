@@ -57,3 +57,68 @@ describe("useOverlayState · perfil activo", () => {
     expect(names).toContain("settings:get");
   });
 });
+
+describe("useOverlayState · store de módulo compartido", () => {
+  beforeEach(() => {
+    handlers.clear();
+    vi.mocked(Events.On).mockImplementation(((name: string, handler: Handler) => {
+      const set = handlers.get(name) ?? new Set<Handler>();
+      set.add(handler);
+      handlers.set(name, set);
+      return () => set.delete(handler);
+    }) as unknown as typeof Events.On);
+    vi.mocked(Events.On).mockClear();
+    vi.mocked(Events.Emit).mockClear();
+  });
+
+  afterEach(() => cleanup());
+
+  it("dos consumidores simultáneos abren una sola suscripción y un solo handshake", () => {
+    render(
+      <>
+        <Probe />
+        <Probe />
+      </>,
+    );
+    const subscribed = vi.mocked(Events.On).mock.calls.map((call) => call[0]).sort();
+    expect(subscribed).toEqual([
+      "hub:profile-activated",
+      "hub:profiles",
+      "overlay:status",
+      "settings",
+      "settings-saved",
+    ]);
+    const emitted = vi.mocked(Events.Emit).mock.calls.map((call) => call[0]);
+    expect(emitted.filter((name) => name === "hub:list")).toHaveLength(1);
+    expect(emitted.filter((name) => name === "settings:get")).toHaveLength(1);
+    expect(emitted.filter((name) => name === "overlay:status:get")).toHaveLength(1);
+
+    // Fan-out: un solo evento del backend actualiza a los dos consumidores.
+    emit("hub:profiles", { profiles: PROFILES });
+    emit("settings", { activeOverlayProfileId: "a" });
+    for (const node of screen.getAllByTestId("active")) {
+      expect(node.textContent).toBe("Perfil A");
+    }
+  });
+
+  it("un segundo montaje con el store activo no repite el handshake", () => {
+    render(<Probe />);
+    vi.mocked(Events.Emit).mockClear();
+    render(<Probe />);
+    expect(vi.mocked(Events.Emit)).not.toHaveBeenCalled();
+  });
+
+  it("la suscripción sobrevive al primer desmontaje y se libera con el último", () => {
+    const first = render(<Probe />);
+    const second = render(<Probe />);
+    expect(handlers.get("hub:profiles")?.size).toBe(1);
+    first.unmount();
+    expect(handlers.get("hub:profiles")?.size).toBe(1);
+    second.unmount();
+    expect(handlers.get("hub:profiles")?.size ?? 0).toBe(0);
+    expect(handlers.get("settings")?.size ?? 0).toBe(0);
+    expect(handlers.get("settings-saved")?.size ?? 0).toBe(0);
+    expect(handlers.get("overlay:status")?.size ?? 0).toBe(0);
+    expect(handlers.get("hub:profile-activated")?.size ?? 0).toBe(0);
+  });
+});

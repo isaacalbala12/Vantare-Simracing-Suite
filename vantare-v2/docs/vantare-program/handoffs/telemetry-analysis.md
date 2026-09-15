@@ -1,5 +1,11 @@
 # Handoff vivo — Telemetry Analysis
 
+> **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
+> Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,
+> bloquear, entregar y verificar merge. [Contrato](../notion-transition.md).
+> Este handoff conserva evidencia técnica fechada; sus estados antiguos no
+> sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
+
 ## SDD T02a — reglas recibidas por Orbit, ISA-1092 (2026-09-09)
 
 Base6d4aa514; rama vantareapp/isa-1092-recorded-event-inputs,

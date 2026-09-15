@@ -1,5 +1,11 @@
 # Vantare Overlays
 
+> **Notion primero:** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192),
+> leer tarea y proyecto, y actualizar Notion durante la ejecución y la entrega.
+> Leer los AGENTS de origin/nightly actualizado; master o un chat antiguo pueden
+> contener instrucciones obsoletas. GitHub conserva código, PR, CI y releases.
+
+
 > **Alpha v0.1.0-alpha.1:** el desarrollo activo está en [`vantare-v2/`](vantare-v2/) con Go + Wails v3 + React 19.
 > `apps/desktop/` es la versión Electron v1 heredada y no representa la alpha v2 actual.
 

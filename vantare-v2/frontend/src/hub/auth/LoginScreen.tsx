@@ -6,7 +6,8 @@ import {
   signUp,
   resetPasswordForEmail,
 } from "../../lib/supabase-auth";
-import { Browser, Events } from "@wailsio/runtime";
+import { Browser } from "@wailsio/runtime";
+import { subscribeLicenseChanged } from "../../lib/license-events";
 import { useI18n } from "../../i18n/I18nProvider";
 import { useHubSuspendBlocker } from "../hub-suspend-guard";
 
@@ -47,19 +48,17 @@ export function LoginScreen({ onLoggedIn }: LoginScreenProps) {
 
   useEffect(() => {
     if (!waitingExternal) return;
-    const unsub = Events.On(
-      "license:changed",
-      (event: { data: { state?: string; accessToken?: string } }) => {
-        const state = event.data?.state;
-        if (state && state !== "anonymous") {
-          setWaitingExternal(false);
-          setOauthPending(null);
-          if (event.data?.accessToken) {
-            onLoggedIn({ accessToken: event.data.accessToken });
-          }
+    const unsub = subscribeLicenseChanged((raw: unknown) => {
+      const data = raw as { state?: string; accessToken?: string } | undefined;
+      const state = data?.state;
+      if (state && state !== "anonymous") {
+        setWaitingExternal(false);
+        setOauthPending(null);
+        if (data?.accessToken) {
+          onLoggedIn({ accessToken: data.accessToken });
         }
-      },
-    );
+      }
+    });
     return () => {
       unsub?.();
     };

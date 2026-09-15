@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-15T12:32:24Z",
+  "generatedAt": "2026-09-15T13:29:06Z",
   "digest": {
     "lastCommit": "60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c"
   },
@@ -14,10 +14,10 @@
         "it": "Fase 1"
       },
       "title": {
-        "es": "Beta pública",
-        "en": "Public beta",
-        "pt": "Beta pública",
-        "it": "Beta pubblica"
+        "es": "Beta inicial",
+        "en": "Initial beta",
+        "pt": "Beta inicial",
+        "it": "Beta iniziale"
       },
       "status": "done",
       "target": {
@@ -122,12 +122,122 @@
       ]
     },
     {
-      "id": "engineer",
+      "id": "insiders-program",
       "phaseLabel": {
         "es": "Fase 3",
         "en": "Phase 3",
         "pt": "Fase 3",
         "it": "Fase 3"
+      },
+      "title": {
+        "es": "Programa de insiders",
+        "en": "Insiders programme",
+        "pt": "Programa de insiders",
+        "it": "Programma insiders"
+      },
+      "status": "planned",
+      "target": {
+        "es": "v0.2.x - v0.5.x",
+        "en": "v0.2.x - v0.5.x",
+        "pt": "v0.2.x - v0.5.x",
+        "it": "v0.2.x - v0.5.x"
+      },
+      "progress": 10,
+      "summary": {
+        "es": "Pruebas cerradas en los canales Nightly y Testers: producto usable de extremo a extremo, widgets core completos y builds compartibles con feedback real.",
+        "en": "Closed testing on the Nightly and Testers channels: an end-to-end usable product, complete core widgets and shareable builds with real feedback.",
+        "pt": "Testes fechados nos canais Nightly e Testers: produto utilizável de ponta a ponta, widgets principais completos e builds partilháveis com feedback real.",
+        "it": "Test chiusi sui canali Nightly e Testers: prodotto utilizzabile end-to-end, widget principali completi e build condivisibili con feedback reale."
+      },
+      "highlights": [
+        {
+          "es": "Producto usable de extremo a extremo en LMU",
+          "en": "End-to-end usable product in LMU",
+          "pt": "Produto utilizável de ponta a ponta no LMU",
+          "it": "Prodotto utilizzabile end-to-end in LMU"
+        },
+        {
+          "es": "Relative, Standings, Pedals y Delta estables",
+          "en": "Stable Relative, Standings, Pedals and Delta",
+          "pt": "Relative, Standings, Pedals e Delta estáveis",
+          "it": "Relative, Standings, Pedals e Delta stabili"
+        },
+        {
+          "es": "Builds compartibles con instrucciones y canal de feedback",
+          "en": "Shareable builds with instructions and a feedback channel",
+          "pt": "Builds partilháveis com instruções e canal de feedback",
+          "it": "Build condivisibili con istruzioni e canale di feedback"
+        },
+        {
+          "es": "Overlay Studio V3 y editor in-place cerrados",
+          "en": "Overlay Studio V3 and the in-place editor closed",
+          "pt": "Overlay Studio V3 e editor in-place fechados",
+          "it": "Overlay Studio V3 ed editor in-place chiusi"
+        }
+      ]
+    },
+    {
+      "id": "public-beta",
+      "phaseLabel": {
+        "es": "Fase 4",
+        "en": "Phase 4",
+        "pt": "Fase 4",
+        "it": "Fase 4"
+      },
+      "title": {
+        "es": "Beta pública",
+        "en": "Public beta",
+        "pt": "Beta pública",
+        "it": "Beta pubblica"
+      },
+      "status": "planned",
+      "target": {
+        "es": "v0.6.x - v0.8.x",
+        "en": "v0.6.x - v0.8.x",
+        "pt": "v0.6.x - v0.8.x",
+        "it": "v0.6.x - v0.8.x"
+      },
+      "progress": 0,
+      "summary": {
+        "es": "Relanzamiento abierto de la beta: documentación reiniciada, pagos con Polar, onboarding guiado y versiones iterativas.",
+        "en": "Open relaunch of the beta: restarted documentation, Polar payments, guided onboarding and iterative versions.",
+        "pt": "Relançamento aberto da beta: documentação reiniciada, pagamentos com Polar, onboarding guiado e versões iterativas.",
+        "it": "Rilancio aperto della beta: documentazione riavviata, pagamenti con Polar, onboarding guidato e versioni iterative."
+      },
+      "highlights": [
+        {
+          "es": "Documentación pública reiniciada",
+          "en": "Restarted public documentation",
+          "pt": "Documentação pública reiniciada",
+          "it": "Documentazione pubblica riavviata"
+        },
+        {
+          "es": "Pagos y licencias con Polar operativos",
+          "en": "Working Polar payments and licensing",
+          "pt": "Pagamentos e licenças com Polar operacionais",
+          "it": "Pagamenti e licenze con Polar operativi"
+        },
+        {
+          "es": "Onboarding guiado y canal estable abierto a todos",
+          "en": "Guided onboarding and the stable channel open to everyone",
+          "pt": "Onboarding guiado e canal estável aberto a todos",
+          "it": "Onboarding guidato e canale stabile aperto a tutti"
+        },
+        {
+          "es": "Versiones iterativas: layouts por sesión, data blocks y OBS avanzado",
+          "en": "Iterative versions: per-session layouts, data blocks and advanced OBS",
+          "pt": "Versões iterativas: layouts por sessão, data blocks e OBS avançado",
+          "it": "Versioni iterative: layout per sessione, data block e OBS avanzato"
+        }
+      ]
+    },
+    {
+      "id": "engineer",
+      "phaseLabel": {
+        "es": "Fase 5",
+        "en": "Phase 5",
+        "pt": "Fase 5",
+        "it": "Fase 5"
       },
       "title": {
         "es": "Ingeniero y estrategia",
@@ -177,12 +287,110 @@
       ]
     },
     {
+      "id": "release-candidate",
+      "phaseLabel": {
+        "es": "Fase 6",
+        "en": "Phase 6",
+        "pt": "Fase 6",
+        "it": "Fase 6"
+      },
+      "title": {
+        "es": "Candidata de lanzamiento",
+        "en": "Release candidate",
+        "pt": "Candidata a lançamento",
+        "it": "Candidata al lancio"
+      },
+      "status": "future",
+      "target": {
+        "es": "v0.9.x",
+        "en": "v0.9.x",
+        "pt": "v0.9.x",
+        "it": "v0.9.x"
+      },
+      "progress": 0,
+      "summary": {
+        "es": "Hardening final: rendimiento validado junto al simulador, regresión mínima cubierta y sin errores críticos abiertos.",
+        "en": "Final hardening: performance validated next to the simulator, minimum regression coverage and no open critical errors.",
+        "pt": "Hardening final: desempenho validado junto ao simulador, cobertura mínima de regressão e sem erros críticos abertos.",
+        "it": "Hardening finale: prestazioni validate accanto al simulatore, copertura minima di regressione e nessun errore critico aperto."
+      },
+      "highlights": [
+        {
+          "es": "Rendimiento validado junto al simulador",
+          "en": "Performance validated next to the simulator",
+          "pt": "Desempenho validado junto ao simulador",
+          "it": "Prestazioni validate accanto al simulatore"
+        },
+        {
+          "es": "Suite de regresión visual y funcional mínima",
+          "en": "Minimum visual and functional regression suite",
+          "pt": "Suite mínima de regressão visual e funcional",
+          "it": "Suite minima di regressione visiva e funzionale"
+        },
+        {
+          "es": "Documentación de usuario completa",
+          "en": "Complete user documentation",
+          "pt": "Documentação de utilizador completa",
+          "it": "Documentazione utente completa"
+        }
+      ]
+    },
+    {
+      "id": "launch",
+      "phaseLabel": {
+        "es": "Fase 7",
+        "en": "Phase 7",
+        "pt": "Fase 7",
+        "it": "Fase 7"
+      },
+      "title": {
+        "es": "Lanzamiento 1.0",
+        "en": "1.0 launch",
+        "pt": "Lançamento 1.0",
+        "it": "Lancio 1.0"
+      },
+      "status": "future",
+      "target": {
+        "es": "v1.0.0.0",
+        "en": "v1.0.0.0",
+        "pt": "v1.0.0.0",
+        "it": "v1.0.0.0"
+      },
+      "progress": 0,
+      "summary": {
+        "es": "Versión estable LMU-first con pago y acceso fiables, soporte organizado y calidad para sostener la reputación pública.",
+        "en": "Stable LMU-first release with reliable payment and access, organized support and the quality to hold a public reputation.",
+        "pt": "Versão estável LMU-first com pagamento e acesso fiáveis, suporte organizado e qualidade para sustentar a reputação pública.",
+        "it": "Versione stabile LMU-first con pagamento e accesso affidabili, supporto organizzato e qualità per sostenere la reputazione pubblica."
+      },
+      "highlights": [
+        {
+          "es": "Suite completa estable para Le Mans Ultimate",
+          "en": "Complete stable suite for Le Mans Ultimate",
+          "pt": "Suite completa estável para Le Mans Ultimate",
+          "it": "Suite completa stabile per Le Mans Ultimate"
+        },
+        {
+          "es": "Pago, licencia y actualizador fiables",
+          "en": "Reliable payment, licensing and updater",
+          "pt": "Pagamento, licença e atualizador fiáveis",
+          "it": "Pagamento, licenza e updater affidabili"
+        },
+        {
+          "es": "Soporte y documentación de usuario listos",
+          "en": "Support and user documentation ready",
+          "pt": "Suporte e documentação de utilizador prontos",
+          "it": "Supporto e documentazione utente pronti"
+        }
+      ]
+    },
+    {
       "id": "ecosystem",
       "phaseLabel": {
-        "es": "Fase 4",
-        "en": "Phase 4",
-        "pt": "Fase 4",
-        "it": "Fase 4"
+        "es": "Fase 8",
+        "en": "Phase 8",
+        "pt": "Fase 8",
+        "it": "Fase 8"
       },
       "title": {
         "es": "Ecosistema",
@@ -231,9 +439,9 @@
       "id": "overlays-studio",
       "title": {
         "es": "Overlays Studio",
-        "en": "Overlays Studio",
-        "pt": "Overlays Studio",
-        "it": "Overlays Studio"
+        "en": "Overlay Studio",
+        "pt": "Estúdio de Overlays",
+        "it": "Studio degli overlay"
       },
       "progress": 75,
       "status": "in-progress",
@@ -343,6 +551,886 @@
     }
   ],
   "milestones": [
+    {
+      "id": "account-identity",
+      "type": "plan",
+      "title": {
+        "es": "Cuenta e inicio de sesión renovados",
+        "en": "Renewed account and sign-in",
+        "pt": "Conta e início de sessão renovados",
+        "it": "Account e accesso rinnovati"
+      },
+      "body": {
+        "es": "La cuenta pasa a una identidad nueva: inicio de sesión renovado, las sesiones anteriores conviven durante la transición y el sistema anterior se retira al final. Es prerequisito de la beta pública.",
+        "en": "The account moves to a new identity: a renewed sign-in, previous sessions coexisting during the transition and retirement of the old system at the end. It is a prerequisite for the public beta.",
+        "pt": "A conta passa para uma nova identidade: início de sessão renovado, as sessões anteriores coexistem durante a transição e o sistema anterior é retirado no final. É pré-requisito da beta pública.",
+        "it": "L'account passa a una nuova identità: accesso rinnovato, le sessioni precedenti coesistono durante la transizione e il vecchio sistema viene ritirato alla fine. È prerequisito della beta pubblica."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "insiders-usable-product",
+      "type": "plan",
+      "title": {
+        "es": "Producto usable de extremo a extremo en LMU",
+        "en": "End-to-end usable product in LMU",
+        "pt": "Produto utilizável de ponta a ponta no LMU",
+        "it": "Prodotto utilizzabile end-to-end in LMU"
+      },
+      "body": {
+        "es": "El programa de insiders cierra esta puerta cuando una persona de prueba abre Vantare, mueve y redimensiona widgets, guarda su perfil, reabre la app y usa el overlay de escritorio sin ayuda técnica. Incluye el editor in-place, perfiles robustos y recomendados editables.",
+        "en": "The insiders programme clears this gate when a tester opens Vantare, moves and resizes widgets, saves their profile, reopens the app and uses the desktop overlay without technical help. It includes the in-place editor, robust profiles and editable recommended profiles.",
+        "pt": "O programa de insiders fecha esta porta quando uma pessoa de teste abre o Vantare, move e redimensiona widgets, grava o seu perfil, reabre a app e usa o overlay de desktop sem ajuda técnica. Inclui o editor in-place, perfis robustos e recomendados editáveis.",
+        "it": "Il programma insiders supera questa porta quando un tester apre Vantare, sposta e ridimensiona i widget, salva il profilo, riapre l'app e usa l'overlay desktop senza aiuto tecnico. Include l'editor in-place, profili robusti e profili consigliati modificabili."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "orbit-v1-12",
+      "type": "plan",
+      "title": {
+        "es": "Hub Orbit v1.12",
+        "en": "Hub Orbit v1.12",
+        "pt": "Hub Orbit v1.12",
+        "it": "Hub Orbit v1.12"
+      },
+      "body": {
+        "es": "Nuevo lenguaje visual global del shell: tipografía única, rojo racing, vidrio fino, Inicio con héroe de la próxima carrera, strip seleccionable y columna contextual, consolidado sin regresiones visuales.",
+        "en": "New global shell visual language: unique typography, racing red, fine glass, Home with the next race hero, selectable strip and contextual column, consolidated without visual regressions.",
+        "pt": "Nova linguagem visual global do shell: tipografia única, vermelho racing, vidro fino, Início com herói da próxima corrida, strip selecionável e coluna contextual, consolidado sem regressões visuais.",
+        "it": "Nuovo linguaggio visivo globale della shell: tipografia unica, rosso racing, vetro fine, Home con l'eroe della prossima gara, strip selezionabile e colonna contestuale, consolidato senza regressioni visive."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "overlay-studio-v3-complete",
+      "type": "plan",
+      "title": {
+        "es": "Overlay Studio V3 cerrado",
+        "en": "Overlay Studio V3 closed",
+        "pt": "Overlay Studio V3 fechado",
+        "it": "Overlay Studio V3 chiuso"
+      },
+      "body": {
+        "es": "El editor de overlays queda completo para la 1.0: layout, contenido, comportamiento y apariencia en un solo lugar, más el editor in-place sobre el overlay de escritorio.",
+        "en": "The overlay editor is complete for 1.0: layout, content, behaviour and appearance in one place, plus the in-place editor on the desktop overlay.",
+        "pt": "O editor de overlays fica completo para a 1.0: layout, conteúdo, comportamento e aparência num só lugar, mais o editor in-place sobre o overlay de desktop.",
+        "it": "L'editor degli overlay è completo per la 1.0: layout, contenuto, comportamento e aspetto in un unico posto, più l'editor in-place sull'overlay desktop."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "telemetry-core-stable",
+      "type": "plan",
+      "title": {
+        "es": "Telemetría Core V2 estable",
+        "en": "Telemetry Core V2 stable",
+        "pt": "Telemetry Core V2 estável",
+        "it": "Telemetry Core V2 stabile"
+      },
+      "body": {
+        "es": "Telemetry V2 es la única cadena productiva: retirada completa de V1 (fases R0–R5), datos fiables para todos los widgets y módulos, y política de rendimiento estable para Le Mans Ultimate.",
+        "en": "Telemetry V2 is the only production chain: complete removal of V1 (phases R0–R5), reliable data for all widgets and modules, and a stable performance policy for Le Mans Ultimate.",
+        "pt": "O Telemetry V2 é a única cadeia produtiva: retirada completa do V1 (fases R0–R5), dados fiáveis para todos os widgets e módulos e política de desempenho estável para o Le Mans Ultimate.",
+        "it": "Il Telemetry V2 è l'unica catena di produzione: rimozione completa del V1 (fasi R0–R5), dati affidabili per tutti i widget e moduli e una politica di prestazioni stabile per Le Mans Ultimate."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "core-widgets-beta",
+      "type": "plan",
+      "title": {
+        "es": "Widgets core completos para LMU",
+        "en": "Complete core widgets for LMU",
+        "pt": "Widgets principais completos para LMU",
+        "it": "Widget principali completi per LMU"
+      },
+      "body": {
+        "es": "Relative, Standings, Pedals y Delta quedan estables para perfiles reales de Le Mans Ultimate: Pedals beta v1, delta de mejor vuelta en vivo fiable y hotkeys básicas o pospuestas de forma explícita.",
+        "en": "Relative, Standings, Pedals and Delta become stable for real Le Mans Ultimate profiles: Pedals beta v1, reliable live best-lap delta and basic hotkeys or explicitly deferred ones.",
+        "pt": "Relative, Standings, Pedals e Delta ficam estáveis para perfis reais de Le Mans Ultimate: Pedals beta v1, delta de melhor volta ao vivo fiável e hotkeys básicas ou explicitamente adiadas.",
+        "it": "Relative, Standings, Pedals e Delta diventano stabili per i profili reali di Le Mans Ultimate: Pedals beta v1, delta sul miglior giro live affidabile e hotkey di base o esplicitamente rimandate."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "calendar-complete",
+      "type": "plan",
+      "title": {
+        "es": "Calendario completo",
+        "en": "Complete calendar",
+        "pt": "Calendário completo",
+        "it": "Calendario completo"
+      },
+      "body": {
+        "es": "Calendario completo para la 1.0: publicación Owner, recordatorios, widget en el Hub, validación de horarios y seguimiento de series sin pérdida de datos.",
+        "en": "Complete calendar for 1.0: Owner publishing, reminders, Hub widget, schedule validation and series tracking without data loss.",
+        "pt": "Calendário completo para a 1.0: publicação Owner, lembretes, widget no Hub, validação de horários e seguimento de séries sem perda de dados.",
+        "it": "Calendario completo per la 1.0: pubblicazione Owner, promemoria, widget dell'Hub, validazione orari e tracciamento serie senza perdita dati."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "insiders-shared-builds",
+      "type": "plan",
+      "title": {
+        "es": "Builds compartibles del canal Testers",
+        "en": "Shareable Testers channel builds",
+        "pt": "Builds partilháveis do canal Testers",
+        "it": "Build condivisibili del canale Testers"
+      },
+      "body": {
+        "es": "El canal Testers distribuye builds verificadas con instrucciones de instalación, lista de problemas conocidos y un canal de feedback definido. OBS local funciona con URL copiable e instrucciones compactas.",
+        "en": "The Testers channel ships verified builds with installation instructions, a known-issues list and a defined feedback channel. Local OBS works with a copyable URL and compact instructions.",
+        "pt": "O canal Testers distribui builds verificadas com instruções de instalação, lista de problemas conhecidos e um canal de feedback definido. O OBS local funciona com URL copiável e instruções compactas.",
+        "it": "Il canale Testers distribuisce build verificate con istruzioni di installazione, elenco dei problemi noti e un canale di feedback definito. OBS locale funziona con URL copiabile e istruzioni compatte."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "docs-public-reboot",
+      "type": "plan",
+      "title": {
+        "es": "Documentación pública reiniciada",
+        "en": "Restarted public documentation",
+        "pt": "Documentação pública reiniciada",
+        "it": "Documentazione pubblica riavviata"
+      },
+      "body": {
+        "es": "La documentación de usuario se reorganiza y reescribe para la apertura: guía de instalación, primeros pasos, problemas conocidos y soporte. Las guías internas dejan de ser requisito para usar el producto.",
+        "en": "User documentation is reorganised and rewritten for the opening: installation guide, first steps, known issues and support. Internal guides stop being a requirement to use the product.",
+        "pt": "A documentação de utilizador é reorganizada e reescrita para a abertura: guia de instalação, primeiros passos, problemas conhecidos e suporte. As guias internas deixam de ser requisito para usar o produto.",
+        "it": "La documentazione utente viene riorganizzata e riscritta per l'apertura: guida all'installazione, primi passi, problemi noti e supporto. Le guide interne smettono di essere un requisito per usare il prodotto."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "installer-updater",
+      "type": "plan",
+      "title": {
+        "es": "Instalador y actualizador",
+        "en": "Installer and updater",
+        "pt": "Instalador e atualizador",
+        "it": "Installer e updater"
+      },
+      "body": {
+        "es": "Instalador y actualizador fiables: descarga clara, instalación en entorno limpio, actualización por canales que valida el entitlement antes de mostrar cada build, y desinstalación limpia.",
+        "en": "Reliable installer and updater: clear download, clean install, per-channel updates that validate entitlement before showing any build, and clean uninstall.",
+        "pt": "Instalador e atualizador fiáveis: download claro, instalação limpa, atualização por canais que valida o entitlement antes de mostrar cada build e desinstalação limpa.",
+        "it": "Installer e updater affidabili: download chiaro, installazione pulita, aggiornamenti per canale che validano l'entitlement prima di mostrare ogni build e disinstallazione pulita."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "billing-polar-live",
+      "type": "plan",
+      "title": {
+        "es": "Pagos y licencias con Polar operativos",
+        "en": "Working Polar payments and licensing",
+        "pt": "Pagamentos e licenças com Polar operacionais",
+        "it": "Pagamenti e licenze con Polar operativi"
+      },
+      "body": {
+        "es": "Polar queda operativo como autoridad comercial: matriz monetaria cerrada, reconciliación, trial con recordatorio, un dispositivo activo reemplazable y credencial offline firmada. Ninguna venta pública antes de cerrar la matriz.",
+        "en": "Polar becomes operational as the commercial authority: closed monetary matrix, reconciliation, trial with reminder, one replaceable active device and a signed offline credential. No public sale before the matrix is closed.",
+        "pt": "O Polar fica operacional como autoridade comercial: matriz monetária fechada, reconciliação, trial com lembrete, um dispositivo ativo substituível e credencial offline assinada. Nenhuma venda pública antes de fechar a matriz.",
+        "it": "Polar diventa operativo come autorità commerciale: matrice monetaria chiusa, riconciliazione, trial con promemoria, un dispositivo attivo sostituibile e credenziale offline firmata. Nessuna vendita pubblica prima della chiusura della matrice."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "public-presence",
+      "type": "plan",
+      "title": {
+        "es": "Presencia pública",
+        "en": "Public presence",
+        "pt": "Presença pública",
+        "it": "Presenza pubblica"
+      },
+      "body": {
+        "es": "Presencia pública de la beta: landing de descarga, problemas conocidos, canal de Discord público y primer contacto con el soporte listos para abrir a todos.",
+        "en": "Public beta presence: download landing page, known issues, public Discord channel and first contact support ready to open to everyone.",
+        "pt": "Presença pública da beta: landing de download, problemas conhecidos, canal de Discord público e primeiro contacto de suporte prontos para abrir a todos.",
+        "it": "Presenza pubblica della beta: landing di download, problemi noti, canale Discord pubblico e primo contatto di supporto pronti per aprire a tutti."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "public-beta-relaunch",
+      "type": "plan",
+      "title": {
+        "es": "Apertura de la beta pública",
+        "en": "Public beta opening",
+        "pt": "Abertura da beta pública",
+        "it": "Apertura della beta pubblica"
+      },
+      "body": {
+        "es": "El canal estable se abre a todos con el plan Free y la compra disponible: onboarding guiado con idioma, cuenta, simulador y perfil recomendado, descarga clara y soporte en Discord.",
+        "en": "The stable channel opens to everyone with the Free plan and purchase available: guided onboarding with language, account, simulator and recommended profile, a clear download and Discord support.",
+        "pt": "O canal estável abre-se a todos com o plano Free e a compra disponível: onboarding guiado com idioma, conta, simulador e perfil recomendado, download claro e suporte no Discord.",
+        "it": "Il canale stabile si apre a tutti con il piano Free e l'acquisto disponibile: onboarding guidato con lingua, account, simulatore e profilo consigliato, download chiaro e supporto su Discord."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "telemetry-analysis-complete",
+      "type": "plan",
+      "title": {
+        "es": "Análisis de telemetría completo",
+        "en": "Complete telemetry analysis",
+        "pt": "Análise completa de telemetria",
+        "it": "Analisi completa di telemetria"
+      },
+      "body": {
+        "es": "La herramienta post-sesión responde «¿cómo puedo ser más rápido?» con comparaciones sincronizadas, métricas y recomendaciones explicables, leyendo las sesiones grabadas en local.",
+        "en": "The post-session tool answers \"how can I be faster?\" with synchronized comparisons, metrics and explainable recommendations, reading locally recorded sessions.",
+        "pt": "A ferramenta pós-sessão responde «como posso ser mais rápido?» com comparações sincronizadas, métricas e recomendações explicáveis, lendo as sessões gravadas localmente.",
+        "it": "Lo strumento post-sessione risponde «come posso essere più veloce?» con confronti sincronizzati, metriche e raccomandazioni spiegabili, leggendo le sessioni registrate in locale."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "strategy-planner-v1",
+      "type": "plan",
+      "title": {
+        "es": "Strategy Planner completo",
+        "en": "Complete Strategy Planner",
+        "pt": "Strategy Planner completo",
+        "it": "Strategy Planner completo"
+      },
+      "body": {
+        "es": "El planificador crea, compara, guarda, ejecuta y adapta estrategias para minimizar el tiempo total esperado y mostrar riesgos y alternativas, alimentado por datos reales de sesión.",
+        "en": "The planner creates, compares, saves, executes and adapts strategies to minimise expected total time and show risks and alternatives, fed by real session data.",
+        "pt": "O planeador cria, compara, grava, executa e adapta estratégias para minimizar o tempo total esperado e mostrar riscos e alternativas, alimentado por dados reais de sessão.",
+        "it": "Il pianificatore crea, confronta, salva, esegue e adatta le strategie per minimizzare il tempo totale atteso e mostrare rischi e alternative, alimentato da dati di sessione reali."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "engineer-beta",
+      "type": "plan",
+      "title": {
+        "es": "Engineer Beta completo",
+        "en": "Complete Engineer Beta",
+        "pt": "Engineer Beta completo",
+        "it": "Engineer Beta completo"
+      },
+      "body": {
+        "es": "Ingeniero y Spotter listos para la 1.0: seguridad y tráfico en directo, monitores de carrera, audio offline, wake word, voz integrada y prueba de resistencia real en Le Mans Ultimate.",
+        "en": "Engineer and Spotter ready for 1.0: live safety and traffic, race monitors, offline audio, wake word, integrated voice and a real endurance test in Le Mans Ultimate.",
+        "pt": "Engineer e Spotter prontos para a 1.0: segurança e tráfego em direto, monitores de corrida, áudio offline, wake word, voz integrada e prova de resistência real no Le Mans Ultimate.",
+        "it": "Engineer e Spotter pronti per la 1.0: sicurezza e traffico in diretta, monitor di gara, audio offline, wake word, voce integrata e prova di resistenza reale su Le Mans Ultimate."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "beta-version-iterations",
+      "type": "plan",
+      "title": {
+        "es": "Iteraciones de la beta pública",
+        "en": "Public beta iterations",
+        "pt": "Iterações da beta pública",
+        "it": "Iterazioni della beta pubblica"
+      },
+      "body": {
+        "es": "La beta pública avanza por versiones sucesivas: layouts por sesión con alternativa general, temas y densidad maduros, data blocks con datos fiables y OBS avanzado opcional sin romper el OBS local.",
+        "en": "The public beta moves forward in successive versions: per-session layouts with a general fallback, mature themes and density, data blocks with reliable data and optional advanced OBS that does not break local OBS.",
+        "pt": "A beta pública avança por versões sucessivas: layouts por sessão com alternativa geral, temas e densidade maduros, data blocks com dados fiáveis e OBS avançado opcional sem quebrar o OBS local.",
+        "it": "La beta pubblica avanza con versioni successive: layout per sessione con alternativa generale, temi e densità maturi, data block con dati affidabili e OBS avanzato opzionale senza rompere l'OBS locale."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "rc-hardening",
+      "type": "plan",
+      "title": {
+        "es": "Hardening de la candidata de lanzamiento",
+        "en": "Release candidate hardening",
+        "pt": "Hardening da candidata a lançamento",
+        "it": "Hardening della candidata al lancio"
+      },
+      "body": {
+        "es": "La línea 0.9.x endurece el producto: rendimiento validado junto al simulador con el banco de huella, suite de regresión mínima, instalación y actualización claras, sin P0/P1 abiertos y P2 con decisión escrita.",
+        "en": "The 0.9.x line hardens the product: performance validated next to the simulator with the footprint bench, a minimum regression suite, clear install and update, no open P0/P1 and P2s with a written decision.",
+        "pt": "A linha 0.9.x endurece o produto: desempenho validado junto ao simulador com o banco de impacto, suite mínima de regressão, instalação e atualização claras, sem P0/P1 abertos e P2 com decisão escrita.",
+        "it": "La linea 0.9.x rafforza il prodotto: prestazioni validate accanto al simulatore con il banco d'impronta, suite di regressione minima, installazione e aggiornamento chiari, nessun P0/P1 aperto e P2 con decisione scritta."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "launch-1-0",
+      "type": "plan",
+      "title": {
+        "es": "Lanzamiento v1.0.0.0",
+        "en": "v1.0.0.0 launch",
+        "pt": "Lançamento v1.0.0.0",
+        "it": "Lancio v1.0.0.0"
+      },
+      "body": {
+        "es": "Vantare sale como versión estable LMU-first: suite completa con pago y acceso estables, documentación de usuario, soporte organizado y calidad suficiente para sostener la reputación pública.",
+        "en": "Vantare ships as a stable LMU-first release: a complete suite with stable payment and access, user documentation, organized support and enough quality to hold a public reputation.",
+        "pt": "O Vantare sai como versão estável LMU-first: suite completa com pagamento e acesso estáveis, documentação de utilizador, suporte organizado e qualidade suficiente para sustentar a reputação pública.",
+        "it": "Vantare esce come versione stabile LMU-first: suite completa con pagamento e accesso stabili, documentazione utente, supporto organizzato e qualità sufficiente a sostenere la reputazione pubblica."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "multisim-support",
+      "type": "plan",
+      "title": {
+        "es": "Multisimulador",
+        "en": "Multi-simulator",
+        "pt": "Multisimulador",
+        "it": "Multisimulatore"
+      },
+      "body": {
+        "es": "Después de la 1.0, Vantare se abre a más simuladores en el orden decidido: iRacing, Assetto Corsa 2014, Assetto Corsa EVO, Assetto Corsa Competizione y Automobilista 2.",
+        "en": "After 1.0, Vantare opens to more simulators in the chosen order: iRacing, Assetto Corsa 2014, Assetto Corsa EVO, Assetto Corsa Competizione and Automobilista 2.",
+        "pt": "Depois da 1.0, o Vantare abre-se a mais simuladores na ordem decidida: iRacing, Assetto Corsa 2014, Assetto Corsa EVO, Assetto Corsa Competizione e Automobilista 2.",
+        "it": "Dopo la 1.0, Vantare si apre ad altri simulatori nell'ordine deciso: iRacing, Assetto Corsa 2014, Assetto Corsa EVO, Assetto Corsa Competizione e Automobilista 2."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
+    },
+    {
+      "id": "obs-browser-source-link",
+      "type": "fix",
+      "title": {
+        "es": "Enlace OBS restaurado en Overlays Studio",
+        "en": "OBS link restored in Overlays Studio",
+        "pt": "Ligação OBS restaurada no Overlays Studio",
+        "it": "Link OBS ripristinato in Overlays Studio"
+      },
+      "body": {
+        "es": "El panel de ajustes del Studio muestra al final la URL local del Browser Source para el perfil abierto, con botones para copiar la URL y las instrucciones. La dirección es la real del servidor interno, no el origen del WebView, y la vista de navegador del Studio abre contra ese mismo origen.",
+        "en": "The Studio settings panel shows the local Browser Source URL for the open profile at the bottom, with buttons to copy the URL and the instructions. The address is the real internal server one, not the WebView origin, and the Studio browser view opens against the same origin.",
+        "pt": "O painel de ajustes do Studio mostra no final o URL local do Browser Source para o perfil aberto, com botões para copiar o URL e as instruções. A direção é a real do servidor interno, não a origem do WebView, e a vista de navegador do Studio abre contra a mesma origem.",
+        "it": "Il pannello delle impostazioni dello Studio mostra in fondo l'URL locale del Browser Source per il profilo aperto, con pulsanti per copiare l'URL e le istruzioni. L'indirizzo è quello reale del server interno, non l'origine della WebView, e la vista browser dello Studio si apre sulla stessa origine."
+      },
+      "label": {
+        "es": "ISA-1162",
+        "en": "ISA-1162",
+        "pt": "ISA-1162",
+        "it": "ISA-1162"
+      }
+    },
+    {
+      "id": "testing-center-workflow-validation",
+      "type": "fix",
+      "title": {
+        "es": "Comprobaciones de mantenimiento sin falsos fallos",
+        "en": "Maintenance checks without false failures",
+        "pt": "Verificações de manutenção sem falsas falhas",
+        "it": "Controlli di manutenzione senza falsi errori"
+      },
+      "body": {
+        "es": "La corrección integrada en Nightly elimina el error de configuración que marcaba cada cambio como fallido antes de ejecutar las comprobaciones del Testing Center. Conserva la prueba manual y mantiene desactivadas las correcciones automáticas; la publicación sigue pendiente.",
+        "en": "The fix integrated into Nightly removes the configuration error that marked each change as failed before Testing Center checks could run. It preserves the manual test and keeps automatic fixes disabled; publication remains pending.",
+        "pt": "A correção integrada no Nightly elimina o erro de configuração que marcava cada alteração como falha antes de executar as verificações do Testing Center. Preserva o teste manual e mantém as correções automáticas desativadas; a publicação continua pendente.",
+        "it": "La correzione integrata in Nightly elimina l'errore di configurazione che segnava ogni modifica come fallita prima dei controlli del Testing Center. Conserva il test manuale e mantiene disattivate le correzioni automatiche; la pubblicazione resta in attesa."
+      },
+      "label": {
+        "es": "ISA-728",
+        "en": "ISA-728",
+        "pt": "ISA-728",
+        "it": "ISA-728"
+      }
+    },
+    {
+      "id": "overlay-modular-contract",
+      "type": "feature",
+      "title": {
+        "es": "Contrato modular de overlays y laboratorio Redline",
+        "en": "Contrato modular de overlays y laboratorio Redline",
+        "pt": "Contrato modular de overlays y laboratorio Redline",
+        "it": "Contrato modular de overlays y laboratorio Redline"
+      },
+      "body": {
+        "es": "Primer corte del contrato Endurance: Tower Preview seleccionable con cabecera actual, luz roja, fondo azul con la opacidad aprobada y escala proporcional, sin migrar perfiles ni cambiar el diseño predeterminado. El dorsal real de LMU recorre REST, Core, V2 y el ViewModel compartido de todos los standings, conserva ceros iniciales como 007 y queda ausente si la identidad no es fiable o está caducada. Los pilotos de comparación están identificados como ejemplo y excluidos de producción. Esta entrega inicial no cierra el contrato modular: fabricante con fuente autorizada, logo transparente fiel, animaciones, columnas configurables, reglas por sesión y foco, recursos de distribución y comprobación física en Wails/LMU siguen pendientes. No se afirma una validación en juego ni una release publicada.",
+        "en": "Primer corte del contrato Endurance: Tower Preview seleccionable con cabecera actual, luz roja, fondo azul con la opacidad aprobada y escala proporcional, sin migrar perfiles ni cambiar el diseño predeterminado. El dorsal real de LMU recorre REST, Core, V2 y el ViewModel compartido de todos los standings, conserva ceros iniciales como 007 y queda ausente si la identidad no es fiable o está caducada. Los pilotos de comparación están identificados como ejemplo y excluidos de producción. Esta entrega inicial no cierra el contrato modular: fabricante con fuente autorizada, logo transparente fiel, animaciones, columnas configurables, reglas por sesión y foco, recursos de distribución y comprobación física en Wails/LMU siguen pendientes. No se afirma una validación en juego ni una release publicada.",
+        "pt": "Primer corte del contrato Endurance: Tower Preview seleccionable con cabecera actual, luz roja, fondo azul con la opacidad aprobada y escala proporcional, sin migrar perfiles ni cambiar el diseño predeterminado. El dorsal real de LMU recorre REST, Core, V2 y el ViewModel compartido de todos los standings, conserva ceros iniciales como 007 y queda ausente si la identidad no es fiable o está caducada. Los pilotos de comparación están identificados como ejemplo y excluidos de producción. Esta entrega inicial no cierra el contrato modular: fabricante con fuente autorizada, logo transparente fiel, animaciones, columnas configurables, reglas por sesión y foco, recursos de distribución y comprobación física en Wails/LMU siguen pendientes. No se afirma una validación en juego ni una release publicada.",
+        "it": "Primer corte del contrato Endurance: Tower Preview seleccionable con cabecera actual, luz roja, fondo azul con la opacidad aprobada y escala proporcional, sin migrar perfiles ni cambiar el diseño predeterminado. El dorsal real de LMU recorre REST, Core, V2 y el ViewModel compartido de todos los standings, conserva ceros iniciales como 007 y queda ausente si la identidad no es fiable o está caducada. Los pilotos de comparación están identificados como ejemplo y excluidos de producción. Esta entrega inicial no cierra el contrato modular: fabricante con fuente autorizada, logo transparente fiel, animaciones, columnas configurables, reglas por sesión y foco, recursos de distribución y comprobación física en Wails/LMU siguen pendientes. No se afirma una validación en juego ni una release publicada."
+      },
+      "label": {
+        "es": "ISA-1101",
+        "en": "ISA-1101",
+        "pt": "ISA-1101",
+        "it": "ISA-1101"
+      }
+    },
+    {
+      "id": "calendar-owner-review-notice",
+      "type": "feature",
+      "title": {
+        "es": "Aviso de horario pendiente para Owner",
+        "en": "Pending schedule notice for Owner",
+        "pt": "Aviso de horario pendente para Owner",
+        "it": "Avviso calendario in attesa per Owner"
+      },
+      "body": {
+        "es": "El Owner recibe un aviso persistente del nuevo horario de Discord, abre su revision y acepta su publicacion con confirmacion del resultado.",
+        "en": "Owners see a persistent notice for a new Discord schedule, open its review and accept publication with a confirmed result.",
+        "pt": "O Owner recebe um aviso persistente do novo horario do Discord, abre a revisao e aceita a publicacao com resultado confirmado.",
+        "it": "L'Owner riceve un avviso persistente del nuovo calendario Discord, apre la revisione e accetta la pubblicazione con esito confermato."
+      },
+      "label": {
+        "es": "ISA-1061",
+        "en": "ISA-1061",
+        "pt": "ISA-1061",
+        "it": "ISA-1061"
+      }
+    },
+    {
+      "id": "calendar-timeline-labels",
+      "type": "fix",
+      "title": {
+        "es": "Horas legibles en Timeline",
+        "en": "Readable Timeline hours",
+        "pt": "Horas legiveis no Timeline",
+        "it": "Orari leggibili nella Timeline"
+      },
+      "body": {
+        "es": "Calendario separa las etiquetas horarias segun el ancho y el zoom para evitar que se superpongan.",
+        "en": "Calendar spaces time labels according to width and zoom to prevent overlap.",
+        "pt": "O Calendario espaca as etiquetas de horas segundo a largura e o zoom para evitar sobreposicao.",
+        "it": "Il Calendario distanzia le etichette orarie in base alla larghezza e allo zoom per evitare sovrapposizioni."
+      },
+      "label": {
+        "es": "ISA-1058",
+        "en": "ISA-1058",
+        "pt": "ISA-1058",
+        "it": "ISA-1058"
+      }
+    },
+    {
+      "id": "calendar-validation-performance",
+      "type": "plan",
+      "title": {
+        "es": "Validacion y rendimiento de Calendario",
+        "en": "Calendar validation and performance",
+        "pt": "Validacao e desempenho do Calendario",
+        "it": "Validazione e prestazioni del Calendario"
+      },
+      "body": {
+        "es": "Validar conjuntamente las correcciones de Calendario en la app real y medir consumo y velocidad antes de aceptar optimizaciones.",
+        "en": "Validate Calendar corrections together in the real app and measure resource use and speed before accepting optimizations.",
+        "pt": "Validar as correcoes do Calendario na app real e medir consumo e velocidade antes de aceitar otimizacoes.",
+        "it": "Validare le correzioni del Calendario nella app reale e misurare consumo e velocita prima di accettare ottimizzazioni."
+      },
+      "label": {
+        "es": "ISA-1057",
+        "en": "ISA-1057",
+        "pt": "ISA-1057",
+        "it": "ISA-1057"
+      }
+    },
+    {
+      "id": "base-app-footprint",
+      "type": "plan",
+      "title": {
+        "es": "Rendimiento de la base de la app",
+        "en": "Base app performance",
+        "pt": "Desempenho da base da aplicação",
+        "it": "Prestazioni della base dell'app"
+      },
+      "body": {
+        "es": "Campaña aprobada para reducir CPU, GPU y memoria y acelerar arranque, apertura de pantallas, navegación y respuesta de la base de Vantare, conservando apariencia y capacidades. Incluye Hub, navegación y servicios comunes; HUD y Overlay Studio quedan excluidos. El escenario principal mantiene el simulador abierto y mide los procesos propios de Vantare. Primero se prepara el banco y una referencia reproducible, después se validan cambios pequeños. Todavía no se anuncia ahorro medido.",
+        "en": "Approved campaign to reduce CPU, GPU and memory use and speed up startup, screen opening, navigation and interaction in the Vantare base app while preserving appearance and capabilities. Includes the Hub, navigation and shared services; HUD and Overlay Studio are excluded. The main scenario keeps the simulator open and measures Vantare-owned processes. First prepare the measurement tools and a reproducible baseline, then validate small changes. No measured savings are announced yet.",
+        "pt": "Campanha aprovada para reduzir CPU, GPU e memória e acelerar o arranque, a abertura de ecrãs, a navegação e a resposta da base do Vantare, preservando aparência e capacidades. Inclui Hub, navegação e serviços comuns; HUD e Overlay Studio ficam excluídos. O cenário principal mantém o simulador aberto e mede os processos do Vantare. Primeiro preparar as ferramentas e uma referência reproduzível, depois validar pequenas alterações. Ainda não se anuncia uma redução medida.",
+        "it": "Campagna approvata per ridurre CPU, GPU e memoria e accelerare avvio, apertura delle schermate, navigazione e risposta della base di Vantare, preservando aspetto e capacità. Include Hub, navigazione e servizi comuni; HUD e Overlay Studio sono esclusi. Lo scenario principale mantiene aperto il simulatore e misura i processi di Vantare. Prima preparare gli strumenti e una base riproducibile, poi verificare piccole modifiche. Nessun risparmio misurato viene ancora annunciato."
+      },
+      "label": {
+        "es": "ISA-1015",
+        "en": "ISA-1015",
+        "pt": "ISA-1015",
+        "it": "ISA-1015"
+      }
+    },
+    {
+      "id": "calendar-tab-name",
+      "type": "fix",
+      "title": {
+        "es": "Pestaña Calendario",
+        "en": "Calendar tab",
+        "pt": "Separador Calendário",
+        "it": "Scheda Calendario"
+      },
+      "body": {
+        "es": "La pestaña antes llamada Carreras se llama Calendario. Los títulos y enlaces de Inicio y Strategy usan el mismo nombre; sus vistas, datos y funcionamiento se mantienen.",
+        "en": "The tab previously called Races is now Calendar. Titles and links from Home and Strategy use the same name; views, data and behavior are unchanged.",
+        "pt": "O separador antes chamado Corridas chama-se Calendário. Títulos e ligações de Início e Strategy usam o mesmo nome; vistas, dados e funcionamento mantêm-se.",
+        "it": "La scheda prima chiamata Gare si chiama Calendario. Titoli e collegamenti da Home e Strategy usano lo stesso nome; viste, dati e funzionamento restano invariati."
+      },
+      "label": {
+        "es": "ISA-1022",
+        "en": "ISA-1022",
+        "pt": "ISA-1022",
+        "it": "ISA-1022"
+      }
+    },
+    {
+      "id": "calendar-correction-optimization",
+      "type": "plan",
+      "title": {
+        "es": "Corrección y optimización integral de Calendario",
+        "en": "Calendar correctness and performance",
+        "pt": "Correção e otimização do Calendário",
+        "it": "Correzione e ottimizzazione del Calendario"
+      },
+      "body": {
+        "es": "Plan aprobado por cortes: pruebas de recorrido, vigencia del horario, recordatorios de series, coherencia de las cinco vistas y optimización medida de apertura, interacción y consumo. Conserva la apariencia y los contratos de HUD y Studio. La validación visual Wails y el ahorro global siguen pendientes.",
+        "en": "Approved incremental plan: end-to-end checks, schedule validity, series reminders, consistency across five views and measured improvements to opening, interaction and resource use. Appearance and HUD/Studio contracts are preserved. Wails visual validation and overall savings remain pending.",
+        "pt": "Plano aprovado por etapas: testes de percurso, validade do horário, lembretes de séries, consistência das cinco vistas e otimização medida de abertura, interação e consumo. Preserva a aparência e os contratos de HUD e Studio. A validação visual Wails e a poupança global continuam pendentes.",
+        "it": "Piano approvato per fasi: prove del percorso, validità degli orari, promemoria delle serie, coerenza delle cinque viste e ottimizzazione misurata di apertura, interazione e consumo. Preserva aspetto e contratti HUD/Studio. Validazione visiva Wails e risparmio complessivo ancora da verificare."
+      },
+      "label": {
+        "es": "ISA-1027",
+        "en": "ISA-1027",
+        "pt": "ISA-1027",
+        "it": "ISA-1027"
+      }
+    },
+    {
+      "id": "calendar-native-reminders",
+      "type": "fix",
+      "title": {
+        "es": "Recordatorios nativos con permisos y preferencias",
+        "en": "Native reminders respect permissions and preferences",
+        "pt": "Lembretes nativos respeitam permissões e preferências",
+        "it": "Promemoria nativi con permessi e preferenze"
+      },
+      "body": {
+        "es": "Los recordatorios de Calendario usan las notificaciones nativas existentes cuando la ventana está minimizada, el usuario las activa y la plataforma las permite. La autoridad nativa controla los seguimientos y avisos; aceptar un envío no confirma que Windows lo haya mostrado.",
+        "en": "Calendar reminders use existing native notifications when the window is minimised, the user enables them and the platform allows them. Native authority controls follows and reminders; accepting a send does not prove Windows displayed it.",
+        "pt": "Os lembretes do Calendário usam as notificações nativas existentes com a janela minimizada, se o utilizador as ativar e a plataforma permitir. A autoridade nativa controla seguimentos e avisos; aceitar um envio não prova que o Windows o mostrou.",
+        "it": "I promemoria del Calendario usano le notifiche native esistenti con finestra ridotta a icona, se abilitate dall'utente e consentite dalla piattaforma. L'autorità nativa controlla preferenze e avvisi; accettare l'invio non prova che Windows lo abbia mostrato."
+      },
+      "label": {
+        "es": "ISA-1055",
+        "en": "ISA-1055",
+        "pt": "ISA-1055",
+        "it": "ISA-1055"
+      }
+    },
+    {
+      "id": "calendar-follow-confirmation",
+      "type": "fix",
+      "title": {
+        "es": "Seguimiento confirmado después de guardar",
+        "en": "Follow confirmation after saving",
+        "pt": "Confirmação de seguimento após guardar",
+        "it": "Conferma della preferenza dopo il salvataggio"
+      },
+      "body": {
+        "es": "Seguir o dejar de seguir una serie espera la confirmación del guardado antes de anunciar éxito, bloquea clics duplicados y permite reintentar si falla. Las respuestas ajenas o antiguas no confirman otra acción.",
+        "en": "Following or unfollowing a series waits for save confirmation before reporting success, blocks duplicate clicks and allows retrying on failure. Unrelated or old responses cannot confirm another action.",
+        "pt": "Seguir ou deixar de seguir uma série espera a confirmação da gravação, bloqueia cliques duplicados e permite tentar novamente se falhar. Respostas alheias ou antigas não confirmam outra ação.",
+        "it": "Seguire o smettere di seguire una serie attende la conferma del salvataggio, blocca clic duplicati e consente di riprovare in caso di errore. Risposte estranee o precedenti non confermano un'altra azione."
+      },
+      "label": {
+        "es": "ISA-1050",
+        "en": "ISA-1050",
+        "pt": "ISA-1050",
+        "it": "ISA-1050"
+      }
+    },
+    {
+      "id": "calendar-follow-persistence",
+      "type": "fix",
+      "title": {
+        "es": "Seguimiento conservado si falla el guardado",
+        "en": "Follow preferences preserved on save failure",
+        "pt": "Seguimento preservado se a gravação falhar",
+        "it": "Preferenze conservate se il salvataggio fallisce"
+      },
+      "body": {
+        "es": "Si guardar falla, seguir o dejar de seguir un evento o serie conserva la preferencia anterior y permite reintentar sin aparentar un éxito inexistente.",
+        "en": "If saving fails, following or unfollowing an event or series preserves the previous preference and allows retrying without reporting a false success.",
+        "pt": "Se a gravação falhar, seguir ou deixar de seguir um evento ou série mantém a preferência anterior e permite tentar novamente sem aparentar sucesso.",
+        "it": "Se il salvataggio fallisce, seguire o smettere di seguire un evento o una serie conserva la preferenza precedente e consente di riprovare senza un falso successo."
+      },
+      "label": {
+        "es": "ISA-1049",
+        "en": "ISA-1049",
+        "pt": "ISA-1049",
+        "it": "ISA-1049"
+      }
+    },
+    {
+      "id": "calendar-schedule-retention",
+      "type": "fix",
+      "title": {
+        "es": "Conservación del horario publicado",
+        "en": "Retain the published schedule",
+        "pt": "Preservar o horário publicado",
+        "it": "Conservare il calendario pubblicato"
+      },
+      "body": {
+        "es": "El servicio conserva el horario guardado al reiniciar o fallar la actualización, guarda su vigencia y procedencia y no sustituye un horario activo por una publicación futura. Un fallo al guardar el horario conserva también el estado anterior en memoria. La aplicación de vigencia en las vistas y los recordatorios continúa en los siguientes cortes.",
+        "en": "The service retains the saved schedule across restart or refresh failure, stores its validity and source, and does not replace an active schedule with a future publication. A schedule write failure also preserves the previous in-memory state. View validity and reminder fixes continue in subsequent cuts.",
+        "pt": "O serviço mantém o horário guardado ao reiniciar ou falhar a atualização, guarda validade e origem e não substitui um horário ativo por uma publicação futura. Uma falha de gravação também preserva o estado anterior em memória. Validade nas vistas e lembretes continuam nas próximas etapas.",
+        "it": "Il servizio conserva l'orario salvato al riavvio o in caso di aggiornamento fallito, ne registra validità e origine e non sostituisce un orario attivo con una pubblicazione futura. Un errore di salvataggio conserva anche lo stato precedente in memoria. Validità nelle viste e promemoria proseguono nei prossimi interventi."
+      },
+      "label": {
+        "es": "ISA-1029",
+        "en": "ISA-1029",
+        "pt": "ISA-1029",
+        "it": "ISA-1029"
+      }
+    },
+    {
+      "id": "calendar-series-reminders",
+      "type": "fix",
+      "title": {
+        "es": "Recordatorios de series seguidas",
+        "en": "Reminders for followed series",
+        "pt": "Lembretes de séries seguidas",
+        "it": "Promemoria delle serie seguite"
+      },
+      "body": {
+        "es": "Seguir una serie incluye sus salidas publicadas en los recordatorios. Los avisos respetan el umbral por segundos y no se duplican al seguir también el evento.",
+        "en": "Following a series includes its published starts in reminders. Notifications respect the threshold to the second and are not duplicated when also following the event.",
+        "pt": "Seguir uma série inclui as suas partidas publicadas nos lembretes. Os avisos respeitam o limite por segundos e não se duplicam ao seguir também o evento.",
+        "it": "Seguire una serie include le sue partenze pubblicate nei promemoria. Gli avvisi rispettano la soglia al secondo e non si duplicano seguendo anche l'evento."
+      },
+      "label": {
+        "es": "ISA-1039",
+        "en": "ISA-1039",
+        "pt": "ISA-1039",
+        "it": "ISA-1039"
+      }
+    },
+    {
+      "id": "calendar-detail-selection",
+      "type": "fix",
+      "title": {
+        "es": "Detalle de Calendario coherente con la selección",
+        "en": "Calendar detail follows the selected race",
+        "pt": "Detalhe do Calendário coerente com a seleção",
+        "it": "Dettaglio del Calendario coerente con la selezione"
+      },
+      "body": {
+        "es": "El detalle marca las duraciones estimadas y valida la hora elegida para la serie y publicación actuales. Cambiar de filtro o navegar desde Inicio no arrastra una hora ajena; las horas históricas aún publicadas se conservan.",
+        "en": "Details mark estimated durations and validate the selected time against the current series and publication. Changing filters or navigating from Home does not carry over another race time; valid historical times are preserved.",
+        "pt": "O detalhe assinala durações estimadas e valida a hora escolhida para a série e publicação atuais. Mudar o filtro ou navegar desde Início não arrasta outra hora; horários históricos válidos são preservados.",
+        "it": "Il dettaglio indica le durate stimate e verifica l'orario scelto per la serie e pubblicazione correnti. Cambiare filtro o navigare da Home non trascina un altro orario; gli orari storici validi vengono conservati."
+      },
+      "label": {
+        "es": "ISA-1052",
+        "en": "ISA-1052",
+        "pt": "ISA-1052",
+        "it": "ISA-1052"
+      }
+    },
+    {
+      "id": "calendar-month-classification",
+      "type": "fix",
+      "title": {
+        "es": "Mes sin ocurrencias duplicadas como especiales",
+        "en": "Month without occurrences duplicated as specials",
+        "pt": "Mês sem ocorrências duplicadas como especiais",
+        "it": "Mese senza occorrenze duplicate come speciali"
+      },
+      "body": {
+        "es": "Mes distingue las ocurrencias generadas de las series y los eventos especiales mediante su procedencia e identidad. Los filtros no convierten series ocultas en especiales y se conserva el documento compartido. Al abrir un especial o +N, Día conserva los eventos anunciados por Mes, incluso sin series.",
+        "en": "Month distinguishes generated series occurrences from special events by source and identity. Filters do not turn hidden series into specials and the shared document is preserved. Opening a special or +N keeps the events shown by Month in Day, even without series.",
+        "pt": "O mês distingue ocorrências geradas das séries e eventos especiais pela origem e identidade. Os filtros não convertem séries ocultas em especiais e o documento partilhado é preservado. Ao abrir um especial ou +N, Dia mantém os eventos mostrados pelo Mês, mesmo sem séries.",
+        "it": "Il mese distingue le occorrenze generate delle serie dagli eventi speciali tramite origine e identità. I filtri non trasformano serie nascoste in speciali e il documento condiviso resta intatto. Aprendo uno speciale o +N, Giorno conserva gli eventi mostrati da Mese, anche senza serie."
+      },
+      "label": {
+        "es": "ISA-1046",
+        "en": "ISA-1046",
+        "pt": "ISA-1046",
+        "it": "ISA-1046"
+      }
+    },
+    {
+      "id": "calendar-local-days-slots",
+      "type": "fix",
+      "title": {
+        "es": "Días locales y salidas completas en Calendario",
+        "en": "Local days and complete calendar starts",
+        "pt": "Dias locais e partidas completas no calendário",
+        "it": "Giorni locali e partenze complete nel calendario"
+      },
+      "body": {
+        "es": "Las vistas respetan medianoches locales y cambios de hora, cuentan todas las salidas publicadas y distinguen los instantes de una hora repetida mediante su desplazamiento UTC.",
+        "en": "Views respect local midnights and daylight saving changes, count every published start and distinguish repeated-hour instants using their UTC offset.",
+        "pt": "As vistas respeitam as meias-noites locais e mudanças de hora, contam todas as partidas publicadas e distinguem instantes de uma hora repetida pelo desvio UTC.",
+        "it": "Le viste rispettano le mezzanotti locali e i cambi d'ora, contano tutte le partenze pubblicate e distinguono gli istanti di un'ora ripetuta tramite lo scarto UTC."
+      },
+      "label": {
+        "es": "ISA-1044",
+        "en": "ISA-1044",
+        "pt": "ISA-1044",
+        "it": "ISA-1044"
+      }
+    },
+    {
+      "id": "calendar-schedule-validity",
+      "type": "fix",
+      "title": {
+        "es": "Vigencia de las salidas de Calendario",
+        "en": "Calendar departure validity",
+        "pt": "Validade das saídas do Calendário",
+        "it": "Validità delle partenze del Calendario"
+      },
+      "body": {
+        "es": "Inicio y el motor de las cinco vistas limitan las salidas al periodo publicado, incluido el detalle y los previews. Sin vigencia verificable no se generan nuevas salidas. Este corte depende de los metadatos del servicio ISA-1029; errores visibles, recordatorios y los demás ajustes de las vistas siguen en el plan ISA-1027.",
+        "en": "Home and the five-view engine limit departures to the published period, including details and previews. No new departures are generated without verifiable validity. This cut depends on ISA-1029 service metadata; visible errors, reminders and remaining view fixes continue in ISA-1027.",
+        "pt": "Início e o motor das cinco vistas limitam saídas ao período publicado, incluindo detalhe e previews. Sem validade verificável não são geradas novas saídas. Depende dos metadados ISA-1029; erros visíveis, lembretes e restantes correções continuam no plano ISA-1027.",
+        "it": "Home e il motore delle cinque viste limitano le partenze al periodo pubblicato, inclusi dettagli e anteprime. Senza validità verificabile non vengono generate nuove partenze. Dipende dai metadati ISA-1029; errori visibili, promemoria e altre correzioni proseguono nel piano ISA-1027."
+      },
+      "label": {
+        "es": "ISA-1032",
+        "en": "ISA-1032",
+        "pt": "ISA-1032",
+        "it": "ISA-1032"
+      }
+    },
+    {
+      "id": "calendar-refresh-result",
+      "type": "fix",
+      "title": {
+        "es": "Resultado explícito al actualizar Calendario",
+        "en": "Explicit calendar refresh result",
+        "pt": "Resultado explícito da atualização do Calendário",
+        "it": "Risultato esplicito dell'aggiornamento del Calendario"
+      },
+      "body": {
+        "es": "El puente comunica inicio y resultado de la actualización, también cuando falla la sesión o la red. Publica el documento confirmado solo tras éxito y serializa las peticiones para evitar resultados entremezclados. La conservación del horario depende de ISA-1029 y la presentación de estados continúa en el siguiente corte del plan ISA-1027.",
+        "en": "The bridge reports refresh start and result, including session or network failure. It publishes the confirmed document only on success and serializes requests to avoid interleaved results. Schedule retention depends on ISA-1029 and status presentation continues in the next ISA-1027 cut.",
+        "pt": "O bridge comunica início e resultado da atualização, incluindo falha de sessão ou rede. Publica o documento confirmado apenas após sucesso e serializa pedidos para evitar resultados misturados. A conservação depende de ISA-1029 e a apresentação de estados continua no próximo corte ISA-1027.",
+        "it": "Il bridge comunica inizio e risultato dell'aggiornamento, anche in caso di errore di sessione o rete. Pubblica il documento confermato solo dopo il successo e serializza le richieste. La conservazione dipende da ISA-1029; gli stati visibili proseguono nel prossimo intervento ISA-1027."
+      },
+      "label": {
+        "es": "ISA-1035",
+        "en": "ISA-1035",
+        "pt": "ISA-1035",
+        "it": "ISA-1035"
+      }
+    },
+    {
+      "id": "calendar-refresh-status-ui",
+      "type": "fix",
+      "title": {
+        "es": "Estado visible de actualización de Calendario",
+        "en": "Visible calendar refresh status",
+        "pt": "Estado visível da atualização do calendário",
+        "it": "Stato visibile dell'aggiornamento del calendario"
+      },
+      "body": {
+        "es": "Calendario distingue carga, actualización, error y vigencia del horario; confirma el resultado recibido y conserva la vista mientras se actualiza.",
+        "en": "Calendar distinguishes loading, refresh, errors and schedule validity; it confirms the received result and preserves the view during refresh.",
+        "pt": "O calendário distingue carregamento, atualização, erro e validade do horário; confirma o resultado recebido e conserva a vista durante a atualização.",
+        "it": "Il calendario distingue caricamento, aggiornamento, errore e validità dell'orario; conferma il risultato ricevuto e conserva la vista durante l'aggiornamento."
+      },
+      "label": {
+        "es": "Fix",
+        "en": "Fix",
+        "pt": "Fix",
+        "it": "Fix"
+      }
+    },
     {
       "id": "telemetry-six-widget-cpu",
       "type": "fix",
@@ -551,10 +1639,10 @@
         "it": "Overlay Studio V3 in corso"
       },
       "body": {
-        "es": "Un único límite de render para estudio, runtime y previsualización, con guardado automático, historial de deshacer/rehacer, Standings Redline configurable y con ancho físico mínimo que preserva columnas y filas completas en perfiles estrechos, pedales Redline contenidos en su frame y con la saturación confinada a sus wells, y Track Map Endurance ajustado al frame sin recortar su pie, dentro de los catálogos Crystal, Neo y Endurance. El candidato Redline conserva su evidencia visual S3 acotada; las comprobaciones restantes pasan a Isaac. El nuevo programa se centra en Telemetría V2 y ya no impone Redline como primera fase; no declara superados los gates pendientes ni amplía otros diseños.",
-        "en": "A single render boundary for studio, runtime and preview, with autosave, undo/redo history, configurable Standings Redline with a minimum physical width that preserves complete columns and rows in narrow profiles, Redline pedals contained in their frame with saturation confined to their wells, and Endurance Track Map fitted to its frame without clipping its footer, within the Crystal, Neo and Endurance catalogues. The Redline candidate retains its bounded S3 visual evidence; Isaac owns the remaining manual checks. The new programme focuses on Telemetry V2 rather than requiring Redline as its first phase; pending gates are not declared passed and other designs are not expanded.",
-        "pt": "Um único limite de render para estúdio, runtime e pré-visualização, com gravação automática, histórico de desfazer/refazer, Standings Redline configurável e com largura física mínima que preserva colunas e linhas completas em perfis estreitos, pedais Redline contidos no frame e com a saturação confinada aos seus wells, e Track Map Endurance ajustado ao frame sem cortar o rodapé, nos catálogos Crystal, Neo e Endurance. O candidato Redline conserva a evidência visual S3 delimitada; Isaac assume as verificações manuais restantes. O novo programa centra-se na Telemetria V2, sem impor Redline como primeira fase; não declara os gates pendentes aprovados nem amplia outros designs.",
-        "it": "Un unico confine di render per studio, runtime e anteprima, con salvataggio automatico, cronologia annulla/ripristina, Standings Redline configurabile e con larghezza fisica minima che preserva colonne e righe complete nei profili stretti, pedali Redline contenuti nel frame e con la saturazione confinata ai propri well, e Track Map Endurance adattato al frame senza tagliare il piè di pagina, nei cataloghi Crystal, Neo ed Endurance. Il candidato Redline conserva l'evidenza visiva S3 circoscritta; Isaac eseguirà le verifiche manuali restanti. Il nuovo programma si concentra su Telemetry V2 senza imporre Redline come prima fase; non dichiara superati i gate pendenti né amplia altri design."
+        "es": "Un único límite de render para estudio, runtime y previsualización, con guardado automático, historial de deshacer/rehacer, Standings Redline configurable y con ancho físico mínimo que preserva columnas y filas completas en perfiles estrechos, pedales Redline contenidos en su frame y con la saturación confinada a sus wells, y Track Map Endurance ajustado al frame sin recortar su pie, dentro de los catálogos Crystal, Neo y Endurance. El candidato Redline conserva su evidencia visual S3 acotada; las comprobaciones restantes pasan a Isaac. El nuevo programa se centra en Telemetría V2 y ya no impone Redline como primera fase; no declara superados los gates pendientes ni amplía otros diseños. El editor in-place del overlay de escritorio (Ctrl+Shift+E) añade control por teclado —deshacer, rehacer, nudge por flechas, duplicar, eliminar con confirmación y guardar—, menú contextual por widget con acciones de orden y centrado, alternancia de visibilidad desde el inspector y salida visible además de la hotkey. El panel in-place suma edición numérica de layout (X, Y, ancho, alto y bloqueo de proporción) con acciones de orden y centrado, se pliega a su cabecera y evita cubrir el widget seleccionado. La barra del editor permite cambiar la sesión que se edita (general, práctica, clasificación, carrera, resistencia) con vista previa de la sesión no materializada y materialización al primer cambio, y añadir widgets desde el catálogo del Studio con sus puertas de licencia. El panel resuelve sus secciones igual que el Studio (resolveInspectorSections, orden y gating por widget): diseño con sistema/variante, aplicar a todos y guardar como diseño, y acciones de restauración —restaurar valores y descartar todo— en el inspector in-place. El inspector se organiza en pestañas por sección, se ancla al lateral con auto-esquiva o flota arrastrable, se oculta a una pestaña de borde y se hace fantasma durante el arrastre; la barra superior es una pill cohesiva y los frames llevan líneas finas con handles circulares.",
+        "en": "A single render boundary for studio, runtime and preview, with autosave, undo/redo history, configurable Standings Redline with a minimum physical width that preserves complete columns and rows in narrow profiles, Redline pedals contained in their frame with saturation confined to their wells, and Endurance Track Map fitted to its frame without clipping its footer, within the Crystal, Neo and Endurance catalogues. The Redline candidate retains its bounded S3 visual evidence; Isaac owns the remaining manual checks. The new programme focuses on Telemetry V2 rather than requiring Redline as its first phase; pending gates are not declared passed and other designs are not expanded. The desktop overlay in-place editor (Ctrl+Shift+E) adds keyboard control —undo, redo, arrow-key nudge, duplicate, confirmed delete and save—, a per-widget context menu with order and centering actions, visibility toggling from the inspector, and a visible exit control alongside the hotkey. The in-place panel adds numeric layout editing (X, Y, width, height and aspect lock) with order and centering actions, collapses to its header and moves aside so it never covers the selected widget. The editor bar switches the session being edited (general, practice, qualifying, race, endurance) with a preview of unmaterialized sessions that materialize on first change, and adds widgets from the Studio catalog with its license gates. The panel resolves its sections like the Studio (resolveInspectorSections, order and per-widget gating): design with system/variant, apply-to-all and save-as-design, plus restore actions —restore defaults and discard all— in the in-place inspector. The inspector organizes into per-section tabs, docks to the side with auto-avoid or floats as a draggable panel, hides to an edge tab and turns ghostly while dragging; the top bar is a cohesive pill and frames carry thin outlines with circular handles.",
+        "pt": "Um único limite de render para estúdio, runtime e pré-visualização, com gravação automática, histórico de desfazer/refazer, Standings Redline configurável e com largura física mínima que preserva colunas e linhas completas em perfis estreitos, pedais Redline contidos no frame e com a saturação confinada aos seus wells, e Track Map Endurance ajustado ao frame sem cortar o rodapé, nos catálogos Crystal, Neo e Endurance. O candidato Redline conserva a evidência visual S3 delimitada; Isaac assume as verificações manuais restantes. O novo programa centra-se na Telemetria V2, sem impor Redline como primeira fase; não declara os gates pendentes aprovados nem amplia outros designs. O editor in-place do overlay de desktop (Ctrl+Shift+E) adiciona controle por teclado —desfazer, refazer, deslocamento por setas, duplicar, excluir com confirmação e salvar—, menu contextual por widget com ações de ordem e centralização, alternância de visibilidade no inspetor e saída visível além da hotkey. O painel in-place adiciona edição numérica de layout (X, Y, largura, altura e bloqueio de proporção) com ações de ordem e centralização, recolhe-se ao cabeçalho e desloca-se para não cobrir o widget selecionado. A barra do editor alterna a sessão em edição (geral, treino, classificação, corrida, resistência) com pré-visualização de sessões não materializadas que se materializam na primeira alteração, e adiciona widgets do catálogo do Studio com seus gates de licença. O painel resolve suas seções como o Studio (resolveInspectorSections, ordem e gating por widget): design com sistema/variante, aplicar a todos e guardar como design, e ações de restauração —restaurar valores e descartar tudo— no inspector in-place. O inspector organiza-se em abas por seção, fixa-se na lateral com auto-esquiva ou flutua arrastável, oculta-se numa aba de borda e fica fantasma durante o arraste; a barra superior é uma pill coesa e os frames levam linhas finas com handles circulares.",
+        "it": "Un unico confine di render per studio, runtime e anteprima, con salvataggio automatico, cronologia annulla/ripristina, Standings Redline configurabile e con larghezza fisica minima che preserva colonne e righe complete nei profili stretti, pedali Redline contenuti nel frame e con la saturazione confinata ai propri well, e Track Map Endurance adattato al frame senza tagliare il piè di pagina, nei cataloghi Crystal, Neo ed Endurance. Il candidato Redline conserva l'evidenza visiva S3 circoscritta; Isaac eseguirà le verifiche manuali restanti. Il nuovo programma si concentra su Telemetry V2 senza imporre Redline come prima fase; non dichiara superati i gate pendenti né amplia altri design. L'editor in-place dell'overlay desktop (Ctrl+Shift+E) aggiunge il controllo da tastiera —annulla, ripeti, spostamento con frecce, duplica, elimina con conferma e salva—, un menu contestuale per widget con azioni di ordine e centratura, l'attivazione della visibilità dall'ispettore e un'uscita visibile oltre alla hotkey. Il pannello in-place aggiunge la modifica numerica del layout (X, Y, larghezza, altezza e blocco proporzioni) con azioni di ordine e centratura, si riduce alla barra del titolo e si sposta per non coprire il widget selezionato. La barra dell'editor cambia la sessione in modifica (generale, prove, qualifiche, gara, endurance) con anteprima delle sessioni non materializzate che si materializzano alla prima modifica, e aggiunge widget dal catalogo dello Studio con i suoi gate di licenza. Il pannello risolve le sue sezioni come lo Studio (resolveInspectorSections, ordine e gating per widget): design con sistema/variante, applica a tutti e salva come design, e azioni di ripristino —ripristina valori e scarta tutto— nell'inspector in-place. L'inspector si organizza in schede per sezione, si ancora al lato con auto-evitamento o galleggia trascinabile, si nasconde in una linguetta di bordo e diventa fantasma durante il trascinamento; la barra superiore è una pill coesa e i frame portano linee sottili con maniglie circolari."
       },
       "label": {
         "es": "En desarrollo",
@@ -1004,6 +2092,50 @@
       }
     },
     {
+      "id": "functional-widget-design",
+      "type": "feature",
+      "title": {
+        "es": "Sistema de diseño Eficiencia",
+        "en": "Efficiency widget design system",
+        "pt": "Sistema de design Eficiência",
+        "it": "Sistema di design Efficienza"
+      },
+      "body": {
+        "es": "Eficiencia ofrece los estilos Signature y Broadcast para Standings, con transparencia suave, identidad Vantare, tipografía unificada y selección neutra. Cabecera y pie fino permiten elegir información de sesión; las diagonales reflejan la bandera sin animación cuando existe una señal vigente. La fuente REST LMU aporta temperaturas con calidad y caducidad y una bandera fail-closed; su equivalencia de códigos exige comprobación en sesión activa. Los perfiles conservan la selección y el marco adapta columnas, filas y pie en Studio, Desktop y OBS. La entrega conjunta quedó validada físicamente e integrada en Nightly mediante PR #1107; la equivalencia de bandera y temperatura sigue pendiente de una sesión LMU activa.",
+        "en": "Efficiency offers Signature and Broadcast Standings styles, with subtle transparency, Vantare identity, unified typography and neutral selection. The header and thin footer offer selectable session information; diagonal accents reflect the flag without animation when a current signal exists. The LMU REST source supplies temperatures with quality and expiry plus a fail-closed flag; its code mapping requires an active-session check. Profiles retain selections and the frame fits columns, rows and footer across Studio, Desktop and OBS. The joint delivery was physically validated and integrated into Nightly through PR #1107; flag and temperature equivalence still awaits an active LMU session.",
+        "pt": "Eficiência oferece os estilos Signature e Broadcast para Standings, com transparência suave, identidade Vantare, tipografia unificada e seleção neutra. Cabeçalho e rodapé fino permitem escolher informação da sessão; as diagonais refletem a bandeira sem animação quando existe um sinal atual. A fonte REST LMU fornece temperaturas com qualidade e expiração e uma bandeira fail-closed; o mapeamento dos códigos exige verificação numa sessão ativa. Os perfis preservam a seleção e o quadro adapta colunas, filas e rodapé no Studio, Desktop e OBS. A entrega conjunta foi validada fisicamente e integrada na Nightly através do PR #1107; a equivalência da bandeira e da temperatura continua pendente de uma sessão LMU ativa.",
+        "it": "Efficienza offre gli stili Signature e Broadcast per Standings, con trasparenza lieve, identità Vantare, tipografia unificata e selezione neutra. Intestazione e piè sottile permettono di scegliere informazioni di sessione; le diagonali riflettono la bandiera senza animazione quando esiste un segnale attuale. La fonte REST LMU fornisce temperature con qualità e scadenza e una bandiera fail-closed; la mappatura dei codici richiede una verifica in sessione attiva. I profili conservano la selezione e il riquadro adatta colonne, righe e piè in Studio, Desktop e OBS. La consegna congiunta è stata verificata fisicamente e integrata in Nightly tramite la PR #1107; l'equivalenza di bandiera e temperatura resta in attesa di una sessione LMU attiva."
+      },
+      "label": {
+        "es": "ISA-1083",
+        "en": "ISA-1083",
+        "pt": "ISA-1083",
+        "it": "ISA-1083"
+      }
+    },
+    {
+      "id": "widget-access-branding",
+      "type": "feature",
+      "title": {
+        "es": "Acceso y marca por widget",
+        "en": "Widget access and branding",
+        "pt": "Acesso e marca por widget",
+        "it": "Accesso e marchio per widget"
+      },
+      "body": {
+        "es": "Studio, Desktop y OBS aplican la misma política nativa por widget desde la licencia verificada, sin autoridad de licencia en renderizadores. Standings y Pedals siguen disponibles en Free y con cualquier pago; Delta y los demás premium exigen Overlays; engineer-radio exige Engineer y Overlays no lo concede. Los perfiles conservan los widgets bloqueados al importar, mover o eliminar y recuperan sus ajustes al volver los derechos. Crystal y Efficiency muestran la marca Vantare obligatoria en Free, también con cabecera o pie ocultos o ajustes importados, y la ocultan por defecto con pago con preferencia explícita para activarla. La entrega conjunta quedó validada e integrada en Nightly mediante PR #1107. Sin testers/master ni release.",
+        "en": "Studio, Desktop and OBS enforce the same native per-widget policy from the verified license, with no licensing authority inside renderers. Standings and Pedals stay available on Free and any paid plan; Delta and other premium widgets require Overlays; engineer-radio requires Engineer and Overlays never grants it. Profiles keep blocked widgets across import, move or delete and restore their settings when rights return. Crystal and Efficiency show the mandatory Vantare brand on Free, even with hidden header or footer or imported settings, and hide it by default on paid plans with an explicit opt-in. The joint delivery was validated and integrated into Nightly through PR #1107. No testers/master or release.",
+        "pt": "Studio, Desktop e OBS aplicam a mesma política nativa por widget a partir da licença verificada, sem autoridade de licença nos renderers. Standings e Pedals continuam disponíveis no Free e em qualquer plano pago; Delta e os restantes premium exigem Overlays; engineer-radio exige Engineer e Overlays nunca o concede. Os perfis conservam os widgets bloqueados ao importar, mover ou eliminar e recuperam os ajustes quando os direitos voltam. Crystal e Efficiency mostram a marca Vantare obrigatória no Free, mesmo com cabeçalho ou rodapé ocultos ou ajustes importados, e ocultam-na por defeito nos pagos com ativação explícita. A entrega conjunta foi validada e integrada na Nightly através do PR #1107. Sem testers/master nem release.",
+        "it": "Studio, Desktop e OBS applicano la stessa policy nativa per widget dalla licenza verificata, senza autorità di licenza nei renderer. Standings e Pedals restano disponibili su Free e qualsiasi piano a pagamento; Delta e gli altri premium richiedono Overlays; engineer-radio richiede Engineer e Overlays non lo concede mai. I profili conservano i widget bloccati tra importazione, spostamento o eliminazione e ne ripristinano le impostazioni al ritorno dei diritti. Crystal ed Efficiency mostrano il marchio Vantare obbligatorio su Free, anche con intestazione o piè nascosti o impostazioni importate, e lo nascondono di default sui piani a pagamento con attivazione esplicita. La consegna congiunta è stata verificata e integrata in Nightly tramite la PR #1107. Nessun testers/master né release."
+      },
+      "label": {
+        "es": "ISA-1105",
+        "en": "ISA-1105",
+        "pt": "ISA-1105",
+        "it": "ISA-1105"
+      }
+    },
+    {
       "id": "telemetry-timeline-export",
       "type": "plan",
       "title": {
@@ -1024,12 +2156,39 @@
         "pt": "Plano",
         "it": "Piano"
       }
+    },
+    {
+      "id": "development-continuity",
+      "type": "plan",
+      "title": {
+        "es": "Continuidad de documentación y seguimiento",
+        "en": "Documentation and development continuity",
+        "pt": "Continuidade da documentação e acompanhamento",
+        "it": "Continuità della documentazione e del monitoraggio"
+      },
+      "body": {
+        "es": "Notion centraliza el seguimiento y la continuidad operativa, con lectura y actualización obligatorias para agentes. Queda completar la reconciliación histórica y retirar el puente de controles GitHub sin perder la evidencia de validación y publicación.",
+        "en": "Notion centralizes development tracking and operational continuity, with mandatory agent reads and updates. Historical reconciliation and removal of the GitHub validation bridge remain pending, preserving validation and publication evidence.",
+        "pt": "O Notion centraliza o acompanhamento e a continuidade operacional, com leitura e atualização obrigatórias pelos agentes. Falta concluir a reconciliação histórica e retirar a ponte de validação GitHub, preservando evidências de validação e publicação.",
+        "it": "Notion centralizza il monitoraggio e la continuità operativa, con lettura e aggiornamento obbligatori per gli agenti. Restano la riconciliazione storica e la rimozione del ponte di validazione GitHub, conservando le prove di verifica e pubblicazione."
+      },
+      "label": {
+        "es": "Plan",
+        "en": "Plan",
+        "pt": "Plano",
+        "it": "Piano"
+      }
     }
   ],
   "delivered": [
     {
       "date": "2026-09-14",
       "entries": [
+        {
+          "kind": "docs",
+          "scope": "handoff",
+          "text": "ISA-1128 promocionado a nightly"
+        },
         {
           "kind": "fix",
           "scope": "motion",
@@ -1039,62 +2198,22 @@
           "kind": "docs",
           "scope": "workflow",
           "text": "Notion como entrada y seguimiento obligatorio"
-        },
-        {
-          "kind": "docs",
-          "scope": "handoff",
-          "text": "ISA-1128 promocionado a nightly"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Align physical tyre client contract"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Preserve recorded tyre decisions"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Adapt recorded calculation event"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Apply fixed initial resources"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Fix initial solver resources"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Map explicit resource reserves"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Calculate exact lap horizons"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Edit recorded stint boundaries"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Derive corrected stint boundaries"
         }
       ]
     },
     {
       "date": "2026-09-13",
       "entries": [
+        {
+          "kind": "fix",
+          "scope": "estrategia",
+          "text": "Presupuesto de trabajo por tamaño en Orbit en vez de deadline de pared"
+        },
+        {
+          "kind": "feat",
+          "scope": "widgets",
+          "text": "Sistema de diseno Eficiencia + motor de animacion"
+        },
         {
           "kind": "fix",
           "scope": "estrategia",
@@ -1114,21 +2233,6 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-1183 · Integrar widgets Eficiencia y corrección Foco"
-        },
-        {
-          "kind": "feat",
-          "scope": "widgets",
-          "text": "Sistema de diseno Eficiencia + motor de animacion"
-        },
-        {
-          "kind": "fix",
-          "scope": "estrategia",
-          "text": "Presupuesto de trabajo por tamaño en Orbit en vez de deadline de pared"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "Efficiency, política común y runtime optimizado"
         },
         {
           "kind": "fix",
@@ -1151,9 +2255,9 @@
           "text": "Aborta fetches pendientes en dispose y espera por señal en use-fonts-ready"
         },
         {
-          "kind": "docs",
-          "scope": "strategy",
-          "text": "Reconcile remaining recorded plan"
+          "kind": "change",
+          "scope": "",
+          "text": "Efficiency, política común y runtime optimizado"
         }
       ]
     },
@@ -1184,47 +2288,22 @@
           "kind": "docs",
           "scope": "roadmap",
           "text": "Etapas hacia beta pública, versiones y lanzamiento"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Edit canonical identity from recorded data"
-        },
-        {
-          "kind": "docs",
-          "scope": "strategy",
-          "text": "Close identity selector cut"
-        },
-        {
-          "kind": "docs",
-          "scope": "strategy",
-          "text": "Record J8c controller acceptance"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Stage canonical identity proposals"
-        },
-        {
-          "kind": "docs",
-          "scope": "strategy",
-          "text": "Close J8c controller cut"
-        },
-        {
-          "kind": "docs",
-          "scope": "strategy",
-          "text": "Record J8b acceptance"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Build atomic identity corrections"
         }
       ]
     },
     {
       "date": "2026-09-11",
       "entries": [
+        {
+          "kind": "feat",
+          "scope": "overlay",
+          "text": "Editor in-place C5 — toolbar pill, pestañas y panel ocultable"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlay",
+          "text": "Editor in-place — teclado, acciones de widget y salida visible"
+        },
         {
           "kind": "perf",
           "scope": "hub",
@@ -1249,41 +2328,6 @@
           "kind": "fix",
           "scope": "studio",
           "text": "Restaurar enlace OBS al pie del dock de ajustes"
-        },
-        {
-          "kind": "feat",
-          "scope": "overlay",
-          "text": "Editor in-place C5 — toolbar pill, pestañas y panel ocultable"
-        },
-        {
-          "kind": "feat",
-          "scope": "overlay",
-          "text": "Editor in-place — teclado, acciones de widget y salida visible"
-        },
-        {
-          "kind": "docs",
-          "scope": "strategy",
-          "text": "Record J8b executor blocker"
-        },
-        {
-          "kind": "docs",
-          "scope": "strategy",
-          "text": "Close identity wire contract"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Parse canonical identity revisions"
-        },
-        {
-          "kind": "docs",
-          "scope": "strategy",
-          "text": "Close shared catalog composition"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Share telemetry session catalog"
         }
       ]
     },
@@ -1296,124 +2340,14 @@
           "text": "ISA-1101 · Integrar Redline Tower y dorsales canónicos"
         },
         {
-          "kind": "docs",
-          "scope": "ci",
-          "text": "Registrar integración Nightly de ISA-728"
-        },
-        {
           "kind": "fix",
           "scope": "ci",
           "text": "Corregir validación del workflow inerte"
         },
         {
           "kind": "docs",
-          "scope": "strategy",
-          "text": "Accept identity preparation and define J2"
-        },
-        {
-          "kind": "feat",
-          "scope": "analysis",
-          "text": "Prepare canonical identity corrections"
-        },
-        {
-          "kind": "docs",
-          "scope": "strategy",
-          "text": "Record Imola and Monza classification roundtrips"
-        },
-        {
-          "kind": "docs",
-          "scope": "strategy",
-          "text": "Close canonical identity contract and review real bank"
-        },
-        {
-          "kind": "docs",
-          "scope": "strategy",
-          "text": "Record reviewed classification history and full gates"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Show saved classification decisions in history"
-        },
-        {
-          "kind": "docs",
-          "scope": "strategy",
-          "text": "Record view fix and detail history and bank checks"
-        },
-        {
-          "kind": "fix",
-          "scope": "strategy",
-          "text": "Retain data view across revision changes"
-        },
-        {
-          "kind": "docs",
-          "scope": "strategy",
-          "text": "Accept Hc review and plan view continuity fix"
-        }
-      ]
-    },
-    {
-      "date": "2026-09-09",
-      "entries": [
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Add unified recorded combination screen"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Add recorded A4 start choices"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Define recorded wizard draft and explicit selections"
-        },
-        {
-          "kind": "docs",
-          "scope": "strategy",
-          "text": "Align A4 transition status across roadmap locales"
-        },
-        {
-          "kind": "fix",
-          "scope": "test",
-          "text": "Expose unavailable native calls in Orbit harness"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Mount A4 presentation frame in recorded wizard"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Carry canonical rules into Orbit calculation"
-        },
-        {
-          "kind": "fix",
-          "scope": "strategy",
-          "text": "Preserve rules through legacy journal operations"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Validate event rule document transport"
-        },
-        {
-          "kind": "fix",
-          "scope": "strategy",
-          "text": "Persist event rule schema through commands"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Version sourced event rules in documents"
-        },
-        {
-          "kind": "fix",
-          "scope": "strategy",
-          "text": "Honor supplied event rules in Orbit calculation"
+          "scope": "ci",
+          "text": "Registrar integración Nightly de ISA-728"
         }
       ]
     },
@@ -1424,61 +2358,6 @@
           "kind": "change",
           "scope": "",
           "text": "Calendario: aviso Owner y revision del horario de Discord"
-        },
-        {
-          "kind": "feat",
-          "scope": "analysis",
-          "text": "Authorize scalar correction commands"
-        },
-        {
-          "kind": "feat",
-          "scope": "analysis",
-          "text": "Prepare bounded authorized correction input"
-        },
-        {
-          "kind": "feat",
-          "scope": "strategy",
-          "text": "Bind stored analysis revisions and validate client"
-        },
-        {
-          "kind": "feat",
-          "scope": "analysis",
-          "text": "Preserve exact projection revision references"
-        },
-        {
-          "kind": "feat",
-          "scope": "analysis",
-          "text": "Rederive scalar correction snapshots"
-        },
-        {
-          "kind": "feat",
-          "scope": "analysis",
-          "text": "Apply complete scalar corrections to detached pages"
-        },
-        {
-          "kind": "feat",
-          "scope": "analysis",
-          "text": "Persist scalar correction revision history"
-        },
-        {
-          "kind": "feat",
-          "scope": "analysis",
-          "text": "Validate canonical scalar correction snapshots"
-        },
-        {
-          "kind": "docs",
-          "scope": "strategy",
-          "text": "Unify simulator event and combination step"
-        },
-        {
-          "kind": "docs",
-          "scope": "strategy",
-          "text": "Complete remaining screens through visual review"
-        },
-        {
-          "kind": "docs",
-          "scope": "strategy",
-          "text": "Match stint and pit concepts through visual review"
         }
       ]
     },
@@ -1496,9 +2375,19 @@
       "date": "2026-09-06",
       "entries": [
         {
+          "kind": "docs",
+          "scope": "release",
+          "text": "Prepare nightly.15 manifest"
+        },
+        {
+          "kind": "fix",
+          "scope": "release",
+          "text": "Install Chromium before visual frontend tests"
+        },
+        {
           "kind": "change",
           "scope": "",
-          "text": "ISA-1000 · Integrar V2 completo y feedback tester en nightly"
+          "text": "ISA-1004 · Corregir Dense a 560x100 y vueltas ilimitadas de Broadcast"
         },
         {
           "kind": "change",
@@ -1508,17 +2397,7 @@
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-1004 · Corregir Dense a 560x100 y vueltas ilimitadas de Broadcast"
-        },
-        {
-          "kind": "fix",
-          "scope": "release",
-          "text": "Install Chromium before visual frontend tests"
-        },
-        {
-          "kind": "docs",
-          "scope": "release",
-          "text": "Prepare nightly.15 manifest"
+          "text": "ISA-1000 · Integrar V2 completo y feedback tester en nightly"
         }
       ]
     },
@@ -1548,22 +2427,12 @@
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-924 · Banco: atribución del renderer overlay, limpieza de sesiones ETW y frametime inválido marcado"
+          "text": "ISA-894 · F9 corte 1: V1 apagado por defecto con rollback, A/B y guardarraíles"
         },
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-893 · OverlayFrame V2 autoridad completa en Studio, Desktop y OBS (cutover)"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-943 · Perfil v4 + Ajustes › Rendimiento (C2)"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-943 · Pase visual de Ajustes › Rendimiento"
+          "text": "ISA-944 · Sensor de host y modo Automático (F3)"
         },
         {
           "kind": "change",
@@ -1573,12 +2442,22 @@
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-894 · F9 corte 1: V1 apagado por defecto con rollback, A/B y guardarraíles"
+          "text": "ISA-943 · Pase visual de Ajustes › Rendimiento"
         },
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-944 · Sensor de host y modo Automático (F3)"
+          "text": "ISA-943 · Perfil v4 + Ajustes › Rendimiento (C2)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-893 · OverlayFrame V2 autoridad completa en Studio, Desktop y OBS (cutover)"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-924 · Banco: atribución del renderer overlay, limpieza de sesiones ETW y frametime inválido marcado"
         }
       ]
     },
@@ -1588,12 +2467,12 @@
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-926 · PerformancePolicy en Go: niveles 1–5, ajustes v4 y capabilities.performance"
+          "text": "ISA-924 · Baseline F0 de huella mínima (2026-08-29)"
         },
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-924 · Baseline F0 de huella mínima (2026-08-29)"
+          "text": "ISA-926 · PerformancePolicy en Go: niveles 1–5, ajustes v4 y capabilities.performance"
         }
       ]
     },
@@ -1899,6 +2778,71 @@
           "kind": "feat",
           "scope": "telemetry",
           "text": "Señales finas de suciedad para standings y relative"
+        }
+      ]
+    },
+    {
+      "date": "2026-08-20",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "El launcher ya no revienta con mapa nil al cachear iconos"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Promocionar el rework de telemetría Go-first a nightly"
+        },
+        {
+          "kind": "docs",
+          "scope": "roadmap",
+          "text": "Reflejar lo entregado en plan.md y exigirlo en AGENTS.md"
+        },
+        {
+          "kind": "fix",
+          "scope": "orbit",
+          "text": "Alinear el harness visual del roadmap con la pagina semiautomatica"
+        },
+        {
+          "kind": "fix",
+          "scope": "orbit",
+          "text": "Capturas visuales deterministas congelando el movimiento en el harness"
+        },
+        {
+          "kind": "feat",
+          "scope": "ci",
+          "text": "Retirar Linear como fuente operativa"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Diagnostico publica los registros y los ultimos eventos"
+        },
+        {
+          "kind": "feat",
+          "scope": "launcher",
+          "text": "Favoritos del catalogo y aplicaciones personalizadas"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Roadmap semiautomatico: plan manual + digest de commits"
+        },
+        {
+          "kind": "feat",
+          "scope": "estrategia",
+          "text": "Menu de entrada, asistente de creacion y pase de UI"
+        },
+        {
+          "kind": "fix",
+          "scope": "release",
+          "text": "Anuncios de Discord con copy humano desde el manifiesto"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Canales de Actualizaciones clasifican stable/testers/nightly"
         }
       ]
     }

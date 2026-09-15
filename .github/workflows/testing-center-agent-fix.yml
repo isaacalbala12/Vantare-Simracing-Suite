@@ -152,8 +152,6 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
-    env:
-      MANIFEST_PATH: ${{ runner.temp }}/testing-center/trusted-manifest.json
     outputs:
       manifest_sha256: ${{ steps.build_manifest.outputs.manifest_sha256 }}
       control_sha256: ${{ steps.control_digest.outputs.control_sha256 }}
@@ -185,6 +183,7 @@ jobs:
       - name: Build trusted manifest from verify runner bundle facts only
         id: build_manifest
         env:
+          MANIFEST_PATH: ${{ runner.temp }}/testing-center/trusted-manifest.json
           RAW_GIT_FACTS: ${{ runner.temp }}/testing-center-evidence/raw-git-facts.json
           DOSSIER: ${{ runner.temp }}/testing-center-evidence/dossier.json
           COMMAND_RESULTS: ${{ runner.temp }}/testing-center-evidence/command-results.json
@@ -215,8 +214,6 @@ jobs:
     if: github.event_name == 'repository_dispatch' && needs.manifest_collector.result == 'success' && false
     runs-on: ubuntu-latest
     timeout-minutes: 2
-    env:
-      MANIFEST_PATH: ${{ runner.temp }}/testing-center/trusted-manifest.json
     outputs:
       head_sha: ${{ steps.diff_outputs.outputs.head_sha }}
       head_digest: ${{ steps.diff_outputs.outputs.head_digest }}
@@ -235,6 +232,7 @@ jobs:
       - name: Verify manifest sha256 before gating
         shell: bash
         env:
+          MANIFEST_PATH: ${{ runner.temp }}/testing-center/trusted-manifest.json
           EXPECTED_MANIFEST_SHA256: ${{ needs.manifest_collector.outputs.manifest_sha256 }}
         run: |
           set -euo pipefail
@@ -244,10 +242,14 @@ jobs:
             exit 1
           fi
       - name: Evaluate server-owned manifest without network
+        env:
+          MANIFEST_PATH: ${{ runner.temp }}/testing-center/trusted-manifest.json
         run: python .github/scripts/testing_center_diff_gate.py "$MANIFEST_PATH" > "$RUNNER_TEMP/diff-decision.json"
       - name: Export only validated immutable identity
         id: diff_outputs
         shell: bash
+        env:
+          MANIFEST_PATH: ${{ runner.temp }}/testing-center/trusted-manifest.json
         run: |
           python -I - <<'PY'
           import json
@@ -272,6 +274,8 @@ jobs:
               )
           PY
       - name: Stage validated review input
+        env:
+          MANIFEST_PATH: ${{ runner.temp }}/testing-center/trusted-manifest.json
         run: |
           mkdir -p "$RUNNER_TEMP/testing-center-review-input"
           cp "$MANIFEST_PATH" "$RUNNER_TEMP/testing-center-review-input/validated-diff-manifest.json"

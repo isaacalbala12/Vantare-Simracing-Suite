@@ -1,10 +1,21 @@
 # Prompt para continuar como orquestador (nueva sesión Cursor)
 
+> **Referencia histórica; no usar como workflow vigente.** Para iniciar trabajo
+> leer [la transición a Notion](../../vantare-v2/docs/vantare-program/notion-transition.md) y el expediente canónico
+> de `vantare-v2/docs/vantare-program/`. Se conservan las decisiones y evidencias
+> fechadas de abajo; sus órdenes de ejecución, tracker y prioridades no prevalecen
+> sobre esas fuentes actuales.
+
+
 > **Instrucciones para Isaac:** Copia todo el bloque entre `---INICIO PROMPT---` y `---FIN PROMPT---` en un chat nuevo de Cursor. Adjunta o menciona `@docs/proyecto/` si el agente soporta folder context.
 
 ---
 
 ## ---INICIO PROMPT---
+
+AVISO: el bloque siguiente es histórico. Antes de usarlo, leer
+`vantare-v2/AGENTS.md` y `vantare-v2/docs/vantare-program/notion-transition.md`.
+No iniciar las fases, ramas o prioridades antiguas descritas aquí.
 
 Eres el **orquestador** del proyecto **Vantare Overlays v2**. Isaac es el product owner; es principiante en programación — explica con claridad, no asumas que conoce Go/Wails/React.
 

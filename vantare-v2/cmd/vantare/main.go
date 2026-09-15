@@ -1818,6 +1818,17 @@ func main() {
 	wailsApp.Event.On("license:cached:get", func(_ *application.CustomEvent) {
 		licenseSvc.EmitCachedState()
 	})
+	// Widget policy snapshot for Studio/Desktop consumers (ISA-1097). The
+	// frontend requests Events.Emit("widget-policy:get") and applies the
+	// widget-policy:snapshot answer when no revision is applied yet or its
+	// revision is not older (a delayed answer from the same instance never
+	// overwrites a newer changed; a backend restart reloads the frontend,
+	// so the initial snapshot always enters). Payload is WidgetPolicyWire:
+	// the effective decision only, without identity, roles, tokens,
+	// entitlements or capabilities.
+	wailsApp.Event.On("widget-policy:get", func(_ *application.CustomEvent) {
+		emitter.Emit("widget-policy:snapshot", licenseSvc.CurrentWidgetPolicy().ToWire())
+	})
 	wailsApp.RegisterService(application.NewService(licenseSvc))
 	var strategyRepo *strategyrepository.Repository[json.RawMessage]
 	var sessionCatalog *telemetryanalysis.SessionCatalog
@@ -2051,6 +2062,10 @@ func main() {
 	}
 	hubSvc.SetStudioProfileService(studioProfileSvc)
 	studioProfileSvc.RegisterHandlers(wailsApp)
+	// Widget access authority (ISA-1097): every native save path compares
+	// against this snapshot. Studio/Desktop read it via widget-policy
+	// events, OBS via the policy SSE stream, and the guards via composition.
+	wireWidgetPolicySources(hubSvc, profileSvc, studioProfileSvc, licenseSvc)
 	// La política inicial debe usar la pareja confirmada ajustes+perfil. La
 	// restauración ocurre antes de construir TelemetryCoreRuntime y, como el
 	// reconciliador aún no está conectado, no emite performance:level.
@@ -2263,8 +2278,15 @@ func main() {
 			}
 			return telemetryCoreRuntime.OverlayV2Publishers()
 		}(),
+		// Sanitized widget policy for the OBS browser source: the effective
+		// decision only, never the license. Studio/Desktop use the native
+		// snapshot and widget-policy:changed events from the same authority.
+		WidgetPolicy: licenseSvc,
 	})
 	httpSrv.Start()
+	wailsApp.Event.On("obs:url:get", func(*application.CustomEvent) {
+		emitObsURL(emitter, httpSrv)
+	})
 	wailsApp.Event.On("auth:attempt:create", func(event *application.CustomEvent) {
 		var payload struct {
 			RequestID string `json:"requestId"`
@@ -2305,49 +2327,48 @@ func main() {
 		log.Printf("warning: could not load calendar: %v (using empty)", err)
 	}
 
-	// Apply bundled LMU seed (CALENDAR-04). Replaces old bundled events
-	// with the latest seed while preserving non-bundled events and followed
-	// IDs for events that still exist. A bad seed logs a warning and does
-	// not block startup.
+	// Initialize legacy data only when no official series have been saved.
+	// Both seed methods preserve an existing schedule while refresh is pending.
 	if seed, err := calendar.LoadBundledSeed(); err != nil {
 		log.Printf("warning: could not load bundled seed: %v (skipping)", err)
 	} else if err := calendarSvc.ApplyBundledSeed(seed); err != nil {
 		log.Printf("warning: could not apply bundled seed: %v (using existing calendar)", err)
 	}
 
-	// Apply official LMU weekly schedule (CALENDAR-05-C). Replaces old
-	// bundled events with a bounded window of generated events, stores
-	// official series definitions, generates UI-safe series previews, and
-	// prunes invalid followed series IDs. A bad schedule logs a warning
-	// and does not block startup.
+	// Initialize the official weekly schedule on first use. Never replace a saved
+	// publication just because this binary bundles an older schedule.
 	if err := calendarSvc.ApplyOfficialSchedule(time.Now()); err != nil {
 		log.Printf("warning: could not apply official schedule: %v (using existing calendar)", err)
 	}
 
 	// The owner publishes the weekly schedule centrally, so ask for it once at
 	// startup. It happens in the background: a slow or unreachable Supabase must
-	// not hold up the window, and the bundled schedule applied just above is
-	// already good enough to open with.
+	// not hold up the window. The saved document remains available, including
+	// its original validity; being offline does not make an expired schedule valid.
 	schedulePublisher := calendar.NewSchedulePublisher(supabaseURLResolved, supabaseAnonKeyResolved)
 	scheduleImportSvc := app.NewScheduleImportService(schedulePublisher, emitter)
 	calendarDiscordInbox, inboxErr := discordbot.NewInbox(filepath.Join(cfgDir, "calendar-discord-inbox.json"))
 	if inboxErr != nil {
 		log.Printf("warning: Discord calendar inbox unavailable: %v", inboxErr)
 	}
+	var calendarRefreshMu sync.Mutex
+	var calendarRefreshStatus app.CalendarRefreshStatus
 	refreshPublishedSchedule := func() {
-		session, err := authManager.Restore()
-		if err != nil {
-			// Signed out: the bundled schedule is the only one available.
-			return
-		}
-		source, err := calendarSvc.RefreshPublishedSchedule(
-			context.Background(), schedulePublisher, session.AccessToken, time.Now(),
-		)
-		if err != nil {
-			log.Printf("warning: could not refresh published schedule: %v (using %s)", err, source)
-			return
-		}
-		app.HandleCalendarGet(calendarSvc, emitter)
+		calendarRefreshMu.Lock()
+		defer calendarRefreshMu.Unlock()
+		app.HandleCalendarRefresh(calendarSvc, func() error {
+			session, err := authManager.Restore()
+			if err != nil {
+				return err
+			}
+			source, err := calendarSvc.RefreshPublishedSchedule(
+				ctx, schedulePublisher, session.AccessToken, time.Now(),
+			)
+			if err != nil {
+				log.Printf("warning: could not refresh published schedule: %v (using %s)", err, source)
+			}
+			return err
+		}, emitter, &calendarRefreshStatus)
 	}
 	go refreshPublishedSchedule()
 
@@ -2357,7 +2378,10 @@ func main() {
 	{
 		reminderTick := time.NewTicker(calendarReminderInterval)
 		defer reminderTick.Stop()
-		go calendar.StartReminderLoop(ctx, calendarSvc, reminderTick.C, time.Now, func(r calendar.Reminder) {
+		go calendar.StartReminderLoop(ctx, calendarSvc, reminderTick.C, time.Now, licenseSvc.AllowsCalendarReminders, func(r calendar.Reminder) {
+			if !licenseSvc.AllowsCalendarReminders() {
+				return
+			}
 			emitter.Emit("calendar:reminder", map[string]any{
 				"eventId":         r.EventID,
 				"title":           r.Title,
@@ -2366,6 +2390,11 @@ func main() {
 				"startTime":       r.StartTime,
 				"registrationUrl": r.RegistrationURL,
 			})
+			if sent, err := notifySvc.CalendarReminder(r.Title, r.Track, r.MinutesLeft); err != nil {
+				log.Printf("calendar:reminder native failed: %v", err)
+			} else if sent {
+				log.Printf("calendar:reminder native accepted event=%s minutes=%d", r.EventID, r.MinutesLeft)
+			}
 		})
 	}
 
@@ -2480,6 +2509,21 @@ func main() {
 	)
 	profileHkMgr = launcher.NewHotkeyManager()
 
+	// updater:notify enciende el pill de actualizacion de la shell. Lo
+	// emite cualquier chequeo que confirma una version pendiente — el
+	// silencioso del arranque y tambien los manuales de Ajustes, que antes
+	// solo publicaban updater:available y dejaban el aviso apagado.
+	emitUpdateNotify := func(info *updater.UpdateInfo) {
+		if info.HasUpdate && info.LatestRelease.TagName != "" {
+			emitter.Emit("updater:notify", map[string]any{
+				"tag":         info.LatestRelease.TagName,
+				"name":        info.LatestRelease.Name,
+				"prerelease":  info.LatestRelease.Prerelease,
+				"downloadURL": installerURL(info.LatestRelease),
+			})
+		}
+	}
+
 	// Silent update check on startup (after a short delay so the UI is ready).
 	if updaterSvc != nil {
 		go func() {
@@ -2496,14 +2540,7 @@ func main() {
 			if ctx.Err() != nil {
 				return
 			}
-			if info.HasUpdate && info.LatestRelease.TagName != "" {
-				emitter.Emit("updater:notify", map[string]any{
-					"tag":         info.LatestRelease.TagName,
-					"name":        info.LatestRelease.Name,
-					"prerelease":  info.LatestRelease.Prerelease,
-					"downloadURL": installerURL(info.LatestRelease),
-				})
-			}
+			emitUpdateNotify(info)
 			// The notification carries only the tag, but this check already
 			// fetched every pending release with its notes. Publishing the
 			// whole result lets the shell say what the update brings without
@@ -2604,6 +2641,7 @@ func main() {
 				emitUpdaterError(err.Error())
 				return
 			}
+			emitUpdateNotify(info)
 			emitter.Emit("updater:available", map[string]any{"info": info})
 		}
 
@@ -3353,6 +3391,10 @@ func main() {
 		app.HandleCalendarGet(calendarSvc, emitter)
 	})
 
+	wailsApp.Event.On("calendar:refresh:status:get", func(event *application.CustomEvent) {
+		calendarRefreshStatus.EmitCurrent(emitter)
+	})
+
 	// Owner-only schedule publishing. The parse runs locally so the owner sees
 	// what was understood before anything is stored; the database enforces who
 	// may store it.
@@ -3362,23 +3404,25 @@ func main() {
 
 	wailsApp.Event.On("schedule:parse", func(event *application.CustomEvent) {
 		var payload struct {
-			Text string `json:"text"`
+			Text      string `json:"text"`
+			RequestID string `json:"requestId"`
 		}
 		decodeEventPayload(event, &payload)
-		scheduleImportSvc.Parse(payload.Text)
+		scheduleImportSvc.Parse(payload.Text, payload.RequestID)
 	})
 
 	wailsApp.Event.On("schedule:draft:save", func(event *application.CustomEvent) {
 		var payload struct {
-			Text string `json:"text"`
+			Text      string `json:"text"`
+			RequestID string `json:"requestId"`
 		}
 		decodeEventPayload(event, &payload)
 		session, err := authManager.Restore()
 		if err != nil {
-			emitter.Emit("schedule:error", map[string]any{"message": "Inicia sesión para importar el horario"})
+			emitter.Emit("schedule:error", map[string]any{"message": "Inicia sesión para importar el horario", "requestId": payload.RequestID})
 			return
 		}
-		go scheduleImportSvc.SaveDraft(context.Background(), session.AccessToken, payload.Text)
+		go scheduleImportSvc.SaveDraft(ctx, session.AccessToken, payload.Text, payload.RequestID)
 	})
 
 	wailsApp.Event.On("schedule:publish", func(event *application.CustomEvent) {
@@ -3388,11 +3432,11 @@ func main() {
 		decodeEventPayload(event, &payload)
 		session, err := authManager.Restore()
 		if err != nil {
-			emitter.Emit("schedule:error", map[string]any{"message": "Inicia sesión para publicar el horario"})
+			emitter.Emit("schedule:error", map[string]any{"message": "Inicia sesión para publicar el horario", "requestId": payload.DraftID})
 			return
 		}
 		go func() {
-			scheduleImportSvc.Publish(context.Background(), session.AccessToken, payload.DraftID)
+			scheduleImportSvc.Publish(ctx, session.AccessToken, payload.DraftID)
 			refreshPublishedSchedule()
 		}()
 	})
@@ -3445,7 +3489,7 @@ func main() {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		app.HandleCalendarFollow(payload.EventID, calendarSvc, calendarSvc, emitter, log.Printf)
+		app.HandleCalendarFollow(payload.EventID, calendarSvc, calendarSvc, emitter, log.Printf, licenseSvc.AllowsCalendarReminders())
 	})
 
 	wailsApp.Event.On("calendar:unfollow", func(event *application.CustomEvent) {
@@ -3463,26 +3507,28 @@ func main() {
 	// Calendar series follow/unfollow handlers (CALENDAR-05-E1).
 	wailsApp.Event.On("calendar:series:follow", func(event *application.CustomEvent) {
 		var payload struct {
-			SeriesID string `json:"seriesId"`
+			SeriesID  string `json:"seriesId"`
+			RequestID string `json:"requestId"`
 		}
 		if event.Data != nil {
 			if raw, err := json.Marshal(event.Data); err == nil {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		app.HandleCalendarSeriesFollow(payload.SeriesID, calendarSvc, calendarSvc, emitter, log.Printf)
+		app.HandleCalendarSeriesFollow(payload.SeriesID, calendarSvc, calendarSvc, emitter, log.Printf, payload.RequestID, licenseSvc.AllowsCalendarReminders())
 	})
 
 	wailsApp.Event.On("calendar:series:unfollow", func(event *application.CustomEvent) {
 		var payload struct {
-			SeriesID string `json:"seriesId"`
+			SeriesID  string `json:"seriesId"`
+			RequestID string `json:"requestId"`
 		}
 		if event.Data != nil {
 			if raw, err := json.Marshal(event.Data); err == nil {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		app.HandleCalendarSeriesUnfollow(payload.SeriesID, calendarSvc, calendarSvc, emitter, log.Printf)
+		app.HandleCalendarSeriesUnfollow(payload.SeriesID, calendarSvc, calendarSvc, emitter, log.Printf, payload.RequestID)
 	})
 
 	// Listen for layout:save events from frontend (Preview editor or edit mode drag-save)

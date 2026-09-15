@@ -28,6 +28,7 @@ func NewScheduleImportService(publisher *calendar.SchedulePublisher, emitter Eve
 // SchedulePreview is what the owner reviews before publishing: enough of the
 // parse to tell at a glance whether the parser understood the text.
 type SchedulePreview struct {
+	RequestID        string          `json:"requestId,omitempty"`
 	ValidFrom        string          `json:"validFrom"`
 	ValidUntil       string          `json:"validUntil"`
 	SeriesCount      int             `json:"seriesCount"`
@@ -66,41 +67,43 @@ type PreviewSeries struct {
 
 // Parse turns pasted text into a preview without touching the network, and
 // emits either schedule:preview or schedule:error.
-func (s *ScheduleImportService) Parse(text string) {
+func (s *ScheduleImportService) Parse(text, requestID string) {
 	sched, err := calendar.ParseAndValidate(text)
 	if err != nil {
-		s.emitError(err)
+		s.emitRequestError(err, requestID)
 		return
 	}
-	s.emitter.Emit("schedule:preview", buildSchedulePreview(sched))
+	preview := buildSchedulePreview(sched)
+	preview.RequestID = requestID
+	s.emitter.Emit("schedule:preview", preview)
 }
 
 // SaveDraft parses and stores the text as the owner's draft.
-func (s *ScheduleImportService) SaveDraft(ctx context.Context, sessionToken, text string) {
+func (s *ScheduleImportService) SaveDraft(ctx context.Context, sessionToken, text, requestID string) {
 	if s.publisher == nil {
-		s.emitError(errors.New("Supabase no está configurado en esta build"))
+		s.emitRequestError(errors.New("Supabase no está configurado en esta build"), requestID)
 		return
 	}
 	id, err := s.publisher.SaveDraft(ctx, sessionToken, text)
 	if err != nil {
-		s.emitError(err)
+		s.emitRequestError(err, requestID)
 		return
 	}
-	s.emitter.Emit("schedule:draft-saved", map[string]any{"draftId": id})
+	s.emitter.Emit("schedule:draft-saved", map[string]any{"draftId": id, "requestId": requestID})
 }
 
 // Publish promotes the draft so every client picks it up.
 func (s *ScheduleImportService) Publish(ctx context.Context, sessionToken, draftID string) {
 	if s.publisher == nil {
-		s.emitError(errors.New("Supabase no está configurado en esta build"))
+		s.emitRequestError(errors.New("Supabase no está configurado en esta build"), draftID)
 		return
 	}
 	if draftID == "" {
-		s.emitError(errors.New("no hay borrador que publicar"))
+		s.emitRequestError(errors.New("no hay borrador que publicar"), draftID)
 		return
 	}
 	if err := s.publisher.Publish(ctx, sessionToken, draftID); err != nil {
-		s.emitError(err)
+		s.emitRequestError(err, draftID)
 		return
 	}
 	s.emitter.Emit("schedule:published", map[string]any{"draftId": draftID})
@@ -129,12 +132,14 @@ func (s *ScheduleImportService) LoadDraft(ctx context.Context, sessionToken stri
 	})
 }
 
-func (s *ScheduleImportService) emitError(err error) {
+func (s *ScheduleImportService) emitError(err error) { s.emitRequestError(err, "") }
+
+func (s *ScheduleImportService) emitRequestError(err error, requestID string) {
 	message := err.Error()
 	if errors.Is(err, calendar.ErrNotOwner) {
 		message = "Necesitas rol owner para importar el horario"
 	}
-	s.emitter.Emit("schedule:error", map[string]any{"message": message})
+	s.emitter.Emit("schedule:error", map[string]any{"message": message, "requestId": requestID})
 }
 
 func buildSchedulePreview(sched calendar.OfficialSchedule) SchedulePreview {

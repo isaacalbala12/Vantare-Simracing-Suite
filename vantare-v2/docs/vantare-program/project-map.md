@@ -1,7 +1,17 @@
 # Mapa de proyectos y dependencias
 
-Estado: 2026-08-21. GitHub Issues es la fuente del estado operativo; el roadmap
-publico se mantiene en `roadmap/plan.md`.
+> **Notion primero (2026-09-14):** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192)
+> y leer la tarea y su proyecto antes de ejecutar. Actualizar Notion al empezar,
+> bloquear, entregar y verificar una integración; releer para comprobar la escritura.
+> [Contrato vigente](notion-transition.md). GitHub conserva código, PR, CI y releases;
+> las referencias ISA exigidas por los controles son un puente técnico temporal.
+> Su adaptación pendiente nunca permite omitir el seguimiento en Notion.
+
+
+Mapa de fronteras con snapshot de estado del 2026-08-21. Las tablas de issues
+y el orden global de abajo son historicos, no el lote actual ni una cola de
+ejecucion. Consultar el tracker por fase y los handoffs vivos para elegir trabajo.
+El roadmap publico se mantiene en `roadmap/plan.md`.
 
 ## Grafo principal
 

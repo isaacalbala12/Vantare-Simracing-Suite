@@ -1,7 +1,4 @@
 import { es } from "./locales/es";
-import { en } from "./locales/en";
-import { pt } from "./locales/pt";
-import { it } from "./locales/it";
 
 export type Locale = "es" | "en" | "pt" | "it";
 
@@ -9,7 +6,30 @@ export const SUPPORTED_LOCALES: readonly Locale[] = ["es", "en", "pt", "it"];
 
 export const DEFAULT_LOCALE: Locale = "es";
 
-const dictionaries: Record<Locale, Record<string, string>> = { es, en, pt, it };
+// El idioma por defecto queda eager: cualquier clave siempre resuelve a
+// español como fallback inmediato. Los demás diccionarios se cargan bajo
+// demanda con loadDictionary; hasta que llegan, translate cae al default.
+const dictionaries: Partial<Record<Locale, Record<string, string>>> = { es };
+
+const loaders: Record<Exclude<Locale, "es">, () => Promise<Record<string, string>>> = {
+  en: () => import("./locales/en").then((m) => m.en),
+  pt: () => import("./locales/pt").then((m) => m.pt),
+  it: () => import("./locales/it").then((m) => m.it),
+};
+
+export function isDictionaryLoaded(locale: Locale): boolean {
+  return dictionaries[normalizeLocale(locale)] !== undefined;
+}
+
+export function getDictionary(locale: Locale): Record<string, string> | undefined {
+  return dictionaries[normalizeLocale(locale)];
+}
+
+export async function loadDictionary(locale: Locale): Promise<void> {
+  const safe = normalizeLocale(locale);
+  if (safe === "es" || dictionaries[safe]) return;
+  dictionaries[safe] = await loaders[safe]();
+}
 
 export function isLocale(value: unknown): value is Locale {
   return SUPPORTED_LOCALES.includes(value as Locale);
@@ -21,6 +41,7 @@ export function normalizeLocale(value: unknown): Locale {
 }
 
 export function translate(locale: Locale, key: string): string {
-  const dict = dictionaries[normalizeLocale(locale)];
-  return dict[key] ?? key;
+  const safe = normalizeLocale(locale);
+  const dict = dictionaries[safe] ?? dictionaries[DEFAULT_LOCALE];
+  return dict?.[key] ?? key;
 }

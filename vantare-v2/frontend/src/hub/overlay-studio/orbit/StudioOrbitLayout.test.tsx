@@ -28,6 +28,7 @@ vi.mock("@wailsio/runtime", () => ({
 }));
 
 import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import type { StudioPolicy } from "../access/studio-access";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import { standingsDefinition } from "../../../overlay/widget-types/standings/standings-definition";
 import { I18nProvider } from "../../../i18n/I18nProvider";
@@ -81,9 +82,21 @@ function renderStudio(
   topbar.id = STUDIO_TOPBAR_SLOT_ID;
   window.document.body.append(context, topbar);
 
+  // Studio mechanics tests run with overlays rights; denial itself is
+  // covered by the dedicated policy suites.
+  const paidPolicy: StudioPolicy = {
+    revision: 2,
+    overlaysBasic: true,
+    overlaysAdvanced: true,
+    engineerAI: false,
+    brandCrystal: "optional",
+    brandEfficiency: "optional",
+    brandOriginal: "none",
+  };
+
   const tree = (
     <I18nProvider>
-      <StudioProvider client={createClient(document)} initialFile="profile.json">
+      <StudioProvider client={createClient(document)} initialFile="profile.json" widgetPolicy={paidPolicy}>
         <StudioTelemetryProvider coordinator={createTestTelemetryCoordinator()} liveAvailable={false}>
           <StudioConfirmProvider>
             <StudioOrbitLayout
@@ -268,6 +281,18 @@ describe("StudioOrbitLayout", () => {
       expect(screen.getByTestId("orbit-studio").getAttribute("data-right-dock")).toBe("open");
     });
     expect(orbitStore.get(ORBIT_KEYS.rightDock)).toBe("open");
+  });
+
+  it("muestra el enlace OBS al pie del dock con la URL del perfil abierto", async () => {
+    renderStudio();
+    const dock = await screen.findByTestId("orbit-studio-dock");
+    const obs = await within(dock).findByTestId("orbit-studio-obs");
+
+    // Último bloque del dock: el enlace vive debajo del inspector.
+    expect(dock.lastElementChild).toBe(obs);
+
+    const input = within(obs).getByTestId("orbit-studio-obs-url") as HTMLInputElement;
+    expect(input.value).toBe("http://127.0.0.1:39261/overlay?profile=profile.json");
   });
 
   it("pliega el inspector solo cuando la ventana es estrecha y lo avisa", async () => {

@@ -38,7 +38,7 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Fases
 
-### Beta pública
+### Beta inicial
 
 - id: beta-foundation
 - estado: done
@@ -46,9 +46,9 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - etiqueta: Fase 1
 - etiqueta.en: Phase 1
 - objetivo: v0.1.0
-- titulo.en: Public beta
-- titulo.pt: Beta pública
-- titulo.it: Beta pubblica
+- titulo.en: Initial beta
+- titulo.pt: Beta inicial
+- titulo.it: Beta iniziale
 - resumen: Login Google, plan Free, overlays recomendados, launcher LMU y Hub v5.2.
 - resumen.en: Google login, Free plan, recommended overlays, LMU launcher and Hub v5.2.
 - resumen.pt: Login Google, plano Free, overlays recomendados, launcher LMU e Hub v5.2.
@@ -106,13 +106,77 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - item.pt: Banco reproduzível de impacto por hardware para Vantare e o overlay
 - item.it: Banco riproducibile dell'impronta hardware per Vantare e l'overlay
 
+### Programa de insiders
+
+- id: insiders-program
+- estado: planned
+- progreso: 10
+- etiqueta: Fase 3
+- etiqueta.en: Phase 3
+- objetivo: v0.2.x - v0.5.x
+- titulo.en: Insiders programme
+- titulo.pt: Programa de insiders
+- titulo.it: Programma insiders
+- resumen: Pruebas cerradas en los canales Nightly y Testers: producto usable de extremo a extremo, widgets core completos y builds compartibles con feedback real.
+- resumen.en: Closed testing on the Nightly and Testers channels: an end-to-end usable product, complete core widgets and shareable builds with real feedback.
+- resumen.pt: Testes fechados nos canais Nightly e Testers: produto utilizável de ponta a ponta, widgets principais completos e builds partilháveis com feedback real.
+- resumen.it: Test chiusi sui canali Nightly e Testers: prodotto utilizzabile end-to-end, widget principali completi e build condivisibili con feedback reale.
+- item: Producto usable de extremo a extremo en LMU
+- item.en: End-to-end usable product in LMU
+- item.pt: Produto utilizável de ponta a ponta no LMU
+- item.it: Prodotto utilizzabile end-to-end in LMU
+- item: Relative, Standings, Pedals y Delta estables
+- item.en: Stable Relative, Standings, Pedals and Delta
+- item.pt: Relative, Standings, Pedals e Delta estáveis
+- item.it: Relative, Standings, Pedals e Delta stabili
+- item: Builds compartibles con instrucciones y canal de feedback
+- item.en: Shareable builds with instructions and a feedback channel
+- item.pt: Builds partilháveis com instruções e canal de feedback
+- item.it: Build condivisibili con istruzioni e canale di feedback
+- item: Overlay Studio V3 y editor in-place cerrados
+- item.en: Overlay Studio V3 and the in-place editor closed
+- item.pt: Overlay Studio V3 e editor in-place fechados
+- item.it: Overlay Studio V3 ed editor in-place chiusi
+
+### Beta pública
+
+- id: public-beta
+- estado: planned
+- progreso: 0
+- etiqueta: Fase 4
+- etiqueta.en: Phase 4
+- objetivo: v0.6.x - v0.8.x
+- titulo.en: Public beta
+- titulo.pt: Beta pública
+- titulo.it: Beta pubblica
+- resumen: Relanzamiento abierto de la beta: documentación reiniciada, pagos con Polar, onboarding guiado y versiones iterativas.
+- resumen.en: Open relaunch of the beta: restarted documentation, Polar payments, guided onboarding and iterative versions.
+- resumen.pt: Relançamento aberto da beta: documentação reiniciada, pagamentos com Polar, onboarding guiado e versões iterativas.
+- resumen.it: Rilancio aperto della beta: documentazione riavviata, pagamenti con Polar, onboarding guidato e versioni iterative.
+- item: Documentación pública reiniciada
+- item.en: Restarted public documentation
+- item.pt: Documentação pública reiniciada
+- item.it: Documentazione pubblica riavviata
+- item: Pagos y licencias con Polar operativos
+- item.en: Working Polar payments and licensing
+- item.pt: Pagamentos e licenças com Polar operacionais
+- item.it: Pagamenti e licenze con Polar operativi
+- item: Onboarding guiado y canal estable abierto a todos
+- item.en: Guided onboarding and the stable channel open to everyone
+- item.pt: Onboarding guiado e canal estável aberto a todos
+- item.it: Onboarding guidato e canale stabile aperto a tutti
+- item: Versiones iterativas: layouts por sesión, data blocks y OBS avanzado
+- item.en: Iterative versions: per-session layouts, data blocks and advanced OBS
+- item.pt: Versões iterativas: layouts por sessão, data blocks e OBS avançado
+- item.it: Versioni iterative: layout per sessione, data block e OBS avanzato
+
 ### Ingeniero y estrategia
 
 - id: engineer
 - estado: planned
 - progreso: 25
-- etiqueta: Fase 3
-- etiqueta.en: Phase 3
+- etiqueta: Fase 5
+- etiqueta.en: Phase 5
 - objetivo: Por planear
 - objetivo.en: To plan
 - objetivo.pt: Por planear
@@ -141,13 +205,69 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - item.pt: Voz e perfis avançados depois
 - item.it: Voce e profili avanzati dopo
 
+### Candidata de lanzamiento
+
+- id: release-candidate
+- estado: future
+- progreso: 0
+- etiqueta: Fase 6
+- etiqueta.en: Phase 6
+- objetivo: v0.9.x
+- titulo.en: Release candidate
+- titulo.pt: Candidata a lançamento
+- titulo.it: Candidata al lancio
+- resumen: Hardening final: rendimiento validado junto al simulador, regresión mínima cubierta y sin errores críticos abiertos.
+- resumen.en: Final hardening: performance validated next to the simulator, minimum regression coverage and no open critical errors.
+- resumen.pt: Hardening final: desempenho validado junto ao simulador, cobertura mínima de regressão e sem erros críticos abertos.
+- resumen.it: Hardening finale: prestazioni validate accanto al simulatore, copertura minima di regressione e nessun errore critico aperto.
+- item: Rendimiento validado junto al simulador
+- item.en: Performance validated next to the simulator
+- item.pt: Desempenho validado junto ao simulador
+- item.it: Prestazioni validate accanto al simulatore
+- item: Suite de regresión visual y funcional mínima
+- item.en: Minimum visual and functional regression suite
+- item.pt: Suite mínima de regressão visual e funcional
+- item.it: Suite minima di regressione visiva e funzionale
+- item: Documentación de usuario completa
+- item.en: Complete user documentation
+- item.pt: Documentação de utilizador completa
+- item.it: Documentazione utente completa
+
+### Lanzamiento 1.0
+
+- id: launch
+- estado: future
+- progreso: 0
+- etiqueta: Fase 7
+- etiqueta.en: Phase 7
+- objetivo: v1.0.0.0
+- titulo.en: 1.0 launch
+- titulo.pt: Lançamento 1.0
+- titulo.it: Lancio 1.0
+- resumen: Versión estable LMU-first con pago y acceso fiables, soporte organizado y calidad para sostener la reputación pública.
+- resumen.en: Stable LMU-first release with reliable payment and access, organized support and the quality to hold a public reputation.
+- resumen.pt: Versão estável LMU-first com pagamento e acesso fiáveis, suporte organizado e qualidade para sustentar a reputação pública.
+- resumen.it: Versione stabile LMU-first con pagamento e accesso affidabili, supporto organizzato e qualità per sostenere la reputazione pubblica.
+- item: Suite completa estable para Le Mans Ultimate
+- item.en: Complete stable suite for Le Mans Ultimate
+- item.pt: Suite completa estável para Le Mans Ultimate
+- item.it: Suite completa stabile per Le Mans Ultimate
+- item: Pago, licencia y actualizador fiables
+- item.en: Reliable payment, licensing and updater
+- item.pt: Pagamento, licença e atualizador fiáveis
+- item.it: Pagamento, licenza e updater affidabili
+- item: Soporte y documentación de usuario listos
+- item.en: Support and user documentation ready
+- item.pt: Suporte e documentação de utilizador prontos
+- item.it: Supporto e documentazione utente pronti
+
 ### Ecosistema
 
 - id: ecosystem
 - estado: future
 - progreso: 10
-- etiqueta: Fase 4
-- etiqueta.en: Phase 4
+- etiqueta: Fase 8
+- etiqueta.en: Phase 8
 - objetivo: Futuro
 - objetivo.en: Future
 - objetivo.pt: Futuro
@@ -181,6 +301,9 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - id: overlays-studio
 - estado: in-progress
 - progreso: 75
+- titulo.en: Overlay Studio
+- titulo.pt: Estúdio de Overlays
+- titulo.it: Studio degli overlay
 - proyectos: overlay-studio-v3
 
 ### Launcher
@@ -253,6 +376,560 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 ---
 
 ## Hitos
+
+### Cuenta e inicio de sesión renovados
+
+- id: account-identity
+- tipo: plan
+- titulo.en: Renewed account and sign-in
+- titulo.pt: Conta e início de sessão renovados
+- titulo.it: Account e accesso rinnovati
+- cuerpo: La cuenta pasa a una identidad nueva: inicio de sesión renovado, las sesiones anteriores conviven durante la transición y el sistema anterior se retira al final. Es prerequisito de la beta pública.
+- cuerpo.en: The account moves to a new identity: a renewed sign-in, previous sessions coexisting during the transition and retirement of the old system at the end. It is a prerequisite for the public beta.
+- cuerpo.pt: A conta passa para uma nova identidade: início de sessão renovado, as sessões anteriores coexistem durante a transição e o sistema anterior é retirado no final. É pré-requisito da beta pública.
+- cuerpo.it: L'account passa a una nuova identità: accesso rinnovato, le sessioni precedenti coesistono durante la transizione e il vecchio sistema viene ritirato alla fine. È prerequisito della beta pubblica.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Producto usable de extremo a extremo en LMU
+
+- id: insiders-usable-product
+- tipo: plan
+- titulo.en: End-to-end usable product in LMU
+- titulo.pt: Produto utilizável de ponta a ponta no LMU
+- titulo.it: Prodotto utilizzabile end-to-end in LMU
+- cuerpo: El programa de insiders cierra esta puerta cuando una persona de prueba abre Vantare, mueve y redimensiona widgets, guarda su perfil, reabre la app y usa el overlay de escritorio sin ayuda técnica. Incluye el editor in-place, perfiles robustos y recomendados editables.
+- cuerpo.en: The insiders programme clears this gate when a tester opens Vantare, moves and resizes widgets, saves their profile, reopens the app and uses the desktop overlay without technical help. It includes the in-place editor, robust profiles and editable recommended profiles.
+- cuerpo.pt: O programa de insiders fecha esta porta quando uma pessoa de teste abre o Vantare, move e redimensiona widgets, grava o seu perfil, reabre a app e usa o overlay de desktop sem ajuda técnica. Inclui o editor in-place, perfis robustos e recomendados editáveis.
+- cuerpo.it: Il programma insiders supera questa porta quando un tester apre Vantare, sposta e ridimensiona i widget, salva il profilo, riapre l'app e usa l'overlay desktop senza aiuto tecnico. Include l'editor in-place, profili robusti e profili consigliati modificabili.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Hub Orbit v1.12
+
+- id: orbit-v1-12
+- tipo: plan
+- titulo.en: Hub Orbit v1.12
+- titulo.pt: Hub Orbit v1.12
+- titulo.it: Hub Orbit v1.12
+- cuerpo: Nuevo lenguaje visual global del shell: tipografía única, rojo racing, vidrio fino, Inicio con héroe de la próxima carrera, strip seleccionable y columna contextual, consolidado sin regresiones visuales.
+- cuerpo.en: New global shell visual language: unique typography, racing red, fine glass, Home with the next race hero, selectable strip and contextual column, consolidated without visual regressions.
+- cuerpo.pt: Nova linguagem visual global do shell: tipografia única, vermelho racing, vidro fino, Início com herói da próxima corrida, strip selecionável e coluna contextual, consolidado sem regressões visuais.
+- cuerpo.it: Nuovo linguaggio visivo globale della shell: tipografia unica, rosso racing, vetro fine, Home con l'eroe della prossima gara, strip selezionabile e colonna contestuale, consolidato senza regressioni visive.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Overlay Studio V3 cerrado
+
+- id: overlay-studio-v3-complete
+- tipo: plan
+- titulo.en: Overlay Studio V3 closed
+- titulo.pt: Overlay Studio V3 fechado
+- titulo.it: Overlay Studio V3 chiuso
+- cuerpo: El editor de overlays queda completo para la 1.0: layout, contenido, comportamiento y apariencia en un solo lugar, más el editor in-place sobre el overlay de escritorio.
+- cuerpo.en: The overlay editor is complete for 1.0: layout, content, behaviour and appearance in one place, plus the in-place editor on the desktop overlay.
+- cuerpo.pt: O editor de overlays fica completo para a 1.0: layout, conteúdo, comportamento e aparência num só lugar, mais o editor in-place sobre o overlay de desktop.
+- cuerpo.it: L'editor degli overlay è completo per la 1.0: layout, contenuto, comportamento e aspetto in un unico posto, più l'editor in-place sull'overlay desktop.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Telemetría Core V2 estable
+
+- id: telemetry-core-stable
+- tipo: plan
+- titulo.en: Telemetry Core V2 stable
+- titulo.pt: Telemetry Core V2 estável
+- titulo.it: Telemetry Core V2 stabile
+- cuerpo: Telemetry V2 es la única cadena productiva: retirada completa de V1 (fases R0–R5), datos fiables para todos los widgets y módulos, y política de rendimiento estable para Le Mans Ultimate.
+- cuerpo.en: Telemetry V2 is the only production chain: complete removal of V1 (phases R0–R5), reliable data for all widgets and modules, and a stable performance policy for Le Mans Ultimate.
+- cuerpo.pt: O Telemetry V2 é a única cadeia produtiva: retirada completa do V1 (fases R0–R5), dados fiáveis para todos os widgets e módulos e política de desempenho estável para o Le Mans Ultimate.
+- cuerpo.it: Il Telemetry V2 è l'unica catena di produzione: rimozione completa del V1 (fasi R0–R5), dati affidabili per tutti i widget e moduli e una politica di prestazioni stabile per Le Mans Ultimate.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Widgets core completos para LMU
+
+- id: core-widgets-beta
+- tipo: plan
+- titulo.en: Complete core widgets for LMU
+- titulo.pt: Widgets principais completos para LMU
+- titulo.it: Widget principali completi per LMU
+- cuerpo: Relative, Standings, Pedals y Delta quedan estables para perfiles reales de Le Mans Ultimate: Pedals beta v1, delta de mejor vuelta en vivo fiable y hotkeys básicas o pospuestas de forma explícita.
+- cuerpo.en: Relative, Standings, Pedals and Delta become stable for real Le Mans Ultimate profiles: Pedals beta v1, reliable live best-lap delta and basic hotkeys or explicitly deferred ones.
+- cuerpo.pt: Relative, Standings, Pedals e Delta ficam estáveis para perfis reais de Le Mans Ultimate: Pedals beta v1, delta de melhor volta ao vivo fiável e hotkeys básicas ou explicitamente adiadas.
+- cuerpo.it: Relative, Standings, Pedals e Delta diventano stabili per i profili reali di Le Mans Ultimate: Pedals beta v1, delta sul miglior giro live affidabile e hotkey di base o esplicitamente rimandate.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Calendario completo
+
+- id: calendar-complete
+- tipo: plan
+- titulo.en: Complete calendar
+- titulo.pt: Calendário completo
+- titulo.it: Calendario completo
+- cuerpo: Calendario completo para la 1.0: publicación Owner, recordatorios, widget en el Hub, validación de horarios y seguimiento de series sin pérdida de datos.
+- cuerpo.en: Complete calendar for 1.0: Owner publishing, reminders, Hub widget, schedule validation and series tracking without data loss.
+- cuerpo.pt: Calendário completo para a 1.0: publicação Owner, lembretes, widget no Hub, validação de horários e seguimento de séries sem perda de dados.
+- cuerpo.it: Calendario completo per la 1.0: pubblicazione Owner, promemoria, widget dell'Hub, validazione orari e tracciamento serie senza perdita dati.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Builds compartibles del canal Testers
+
+- id: insiders-shared-builds
+- tipo: plan
+- titulo.en: Shareable Testers channel builds
+- titulo.pt: Builds partilháveis do canal Testers
+- titulo.it: Build condivisibili del canale Testers
+- cuerpo: El canal Testers distribuye builds verificadas con instrucciones de instalación, lista de problemas conocidos y un canal de feedback definido. OBS local funciona con URL copiable e instrucciones compactas.
+- cuerpo.en: The Testers channel ships verified builds with installation instructions, a known-issues list and a defined feedback channel. Local OBS works with a copyable URL and compact instructions.
+- cuerpo.pt: O canal Testers distribui builds verificadas com instruções de instalação, lista de problemas conhecidos e um canal de feedback definido. O OBS local funciona com URL copiável e instruções compactas.
+- cuerpo.it: Il canale Testers distribuisce build verificate con istruzioni di installazione, elenco dei problemi noti e un canale di feedback definito. OBS locale funziona con URL copiabile e istruzioni compatte.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Documentación pública reiniciada
+
+- id: docs-public-reboot
+- tipo: plan
+- titulo.en: Restarted public documentation
+- titulo.pt: Documentação pública reiniciada
+- titulo.it: Documentazione pubblica riavviata
+- cuerpo: La documentación de usuario se reorganiza y reescribe para la apertura: guía de instalación, primeros pasos, problemas conocidos y soporte. Las guías internas dejan de ser requisito para usar el producto.
+- cuerpo.en: User documentation is reorganised and rewritten for the opening: installation guide, first steps, known issues and support. Internal guides stop being a requirement to use the product.
+- cuerpo.pt: A documentação de utilizador é reorganizada e reescrita para a abertura: guia de instalação, primeiros passos, problemas conhecidos e suporte. As guias internas deixam de ser requisito para usar o produto.
+- cuerpo.it: La documentazione utente viene riorganizzata e riscritta per l'apertura: guida all'installazione, primi passi, problemi noti e supporto. Le guide interne smettono di essere un requisito per usare il prodotto.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Instalador y actualizador
+
+- id: installer-updater
+- tipo: plan
+- titulo.en: Installer and updater
+- titulo.pt: Instalador e atualizador
+- titulo.it: Installer e updater
+- cuerpo: Instalador y actualizador fiables: descarga clara, instalación en entorno limpio, actualización por canales que valida el entitlement antes de mostrar cada build, y desinstalación limpia.
+- cuerpo.en: Reliable installer and updater: clear download, clean install, per-channel updates that validate entitlement before showing any build, and clean uninstall.
+- cuerpo.pt: Instalador e atualizador fiáveis: download claro, instalação limpa, atualização por canais que valida o entitlement antes de mostrar cada build e desinstalação limpa.
+- cuerpo.it: Installer e updater affidabili: download chiaro, installazione pulita, aggiornamenti per canale che validano l'entitlement prima di mostrare ogni build e disinstallazione pulita.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Pagos y licencias con Polar operativos
+
+- id: billing-polar-live
+- tipo: plan
+- titulo.en: Working Polar payments and licensing
+- titulo.pt: Pagamentos e licenças com Polar operacionais
+- titulo.it: Pagamenti e licenze con Polar operativi
+- cuerpo: Polar queda operativo como autoridad comercial: matriz monetaria cerrada, reconciliación, trial con recordatorio, un dispositivo activo reemplazable y credencial offline firmada. Ninguna venta pública antes de cerrar la matriz.
+- cuerpo.en: Polar becomes operational as the commercial authority: closed monetary matrix, reconciliation, trial with reminder, one replaceable active device and a signed offline credential. No public sale before the matrix is closed.
+- cuerpo.pt: O Polar fica operacional como autoridade comercial: matriz monetária fechada, reconciliação, trial com lembrete, um dispositivo ativo substituível e credencial offline assinada. Nenhuma venda pública antes de fechar a matriz.
+- cuerpo.it: Polar diventa operativo come autorità commerciale: matrice monetaria chiusa, riconciliazione, trial con promemoria, un dispositivo attivo sostituibile e credenziale offline firmata. Nessuna vendita pubblica prima della chiusura della matrice.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Presencia pública
+
+- id: public-presence
+- tipo: plan
+- titulo.en: Public presence
+- titulo.pt: Presença pública
+- titulo.it: Presenza pubblica
+- cuerpo: Presencia pública de la beta: landing de descarga, problemas conocidos, canal de Discord público y primer contacto con el soporte listos para abrir a todos.
+- cuerpo.en: Public beta presence: download landing page, known issues, public Discord channel and first contact support ready to open to everyone.
+- cuerpo.pt: Presença pública da beta: landing de download, problemas conhecidos, canal de Discord público e primeiro contacto de suporte prontos para abrir a todos.
+- cuerpo.it: Presenza pubblica della beta: landing di download, problemi noti, canale Discord pubblico e primo contatto di supporto pronti per aprire a tutti.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Apertura de la beta pública
+
+- id: public-beta-relaunch
+- tipo: plan
+- titulo.en: Public beta opening
+- titulo.pt: Abertura da beta pública
+- titulo.it: Apertura della beta pubblica
+- cuerpo: El canal estable se abre a todos con el plan Free y la compra disponible: onboarding guiado con idioma, cuenta, simulador y perfil recomendado, descarga clara y soporte en Discord.
+- cuerpo.en: The stable channel opens to everyone with the Free plan and purchase available: guided onboarding with language, account, simulator and recommended profile, a clear download and Discord support.
+- cuerpo.pt: O canal estável abre-se a todos com o plano Free e a compra disponível: onboarding guiado com idioma, conta, simulador e perfil recomendado, download claro e suporte no Discord.
+- cuerpo.it: Il canale stabile si apre a tutti con il piano Free e l'acquisto disponibile: onboarding guidato con lingua, account, simulatore e profilo consigliato, download chiaro e supporto su Discord.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Análisis de telemetría completo
+
+- id: telemetry-analysis-complete
+- tipo: plan
+- titulo.en: Complete telemetry analysis
+- titulo.pt: Análise completa de telemetria
+- titulo.it: Analisi completa di telemetria
+- cuerpo: La herramienta post-sesión responde «¿cómo puedo ser más rápido?» con comparaciones sincronizadas, métricas y recomendaciones explicables, leyendo las sesiones grabadas en local.
+- cuerpo.en: The post-session tool answers "how can I be faster?" with synchronized comparisons, metrics and explainable recommendations, reading locally recorded sessions.
+- cuerpo.pt: A ferramenta pós-sessão responde «como posso ser mais rápido?» com comparações sincronizadas, métricas e recomendações explicáveis, lendo as sessões gravadas localmente.
+- cuerpo.it: Lo strumento post-sessione risponde «come posso essere più veloce?» con confronti sincronizzati, metriche e raccomandazioni spiegabili, leggendo le sessioni registrate in locale.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Strategy Planner completo
+
+- id: strategy-planner-v1
+- tipo: plan
+- titulo.en: Complete Strategy Planner
+- titulo.pt: Strategy Planner completo
+- titulo.it: Strategy Planner completo
+- cuerpo: El planificador crea, compara, guarda, ejecuta y adapta estrategias para minimizar el tiempo total esperado y mostrar riesgos y alternativas, alimentado por datos reales de sesión.
+- cuerpo.en: The planner creates, compares, saves, executes and adapts strategies to minimise expected total time and show risks and alternatives, fed by real session data.
+- cuerpo.pt: O planeador cria, compara, grava, executa e adapta estratégias para minimizar o tempo total esperado e mostrar riscos e alternativas, alimentado por dados reais de sessão.
+- cuerpo.it: Il pianificatore crea, confronta, salva, esegue e adatta le strategie per minimizzare il tempo totale atteso e mostrare rischi e alternative, alimentato da dati di sessione reali.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Engineer Beta completo
+
+- id: engineer-beta
+- tipo: plan
+- titulo.en: Complete Engineer Beta
+- titulo.pt: Engineer Beta completo
+- titulo.it: Engineer Beta completo
+- cuerpo: Ingeniero y Spotter listos para la 1.0: seguridad y tráfico en directo, monitores de carrera, audio offline, wake word, voz integrada y prueba de resistencia real en Le Mans Ultimate.
+- cuerpo.en: Engineer and Spotter ready for 1.0: live safety and traffic, race monitors, offline audio, wake word, integrated voice and a real endurance test in Le Mans Ultimate.
+- cuerpo.pt: Engineer e Spotter prontos para a 1.0: segurança e tráfego em direto, monitores de corrida, áudio offline, wake word, voz integrada e prova de resistência real no Le Mans Ultimate.
+- cuerpo.it: Engineer e Spotter pronti per la 1.0: sicurezza e traffico in diretta, monitor di gara, audio offline, wake word, voce integrata e prova di resistenza reale su Le Mans Ultimate.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Iteraciones de la beta pública
+
+- id: beta-version-iterations
+- tipo: plan
+- titulo.en: Public beta iterations
+- titulo.pt: Iterações da beta pública
+- titulo.it: Iterazioni della beta pubblica
+- cuerpo: La beta pública avanza por versiones sucesivas: layouts por sesión con alternativa general, temas y densidad maduros, data blocks con datos fiables y OBS avanzado opcional sin romper el OBS local.
+- cuerpo.en: The public beta moves forward in successive versions: per-session layouts with a general fallback, mature themes and density, data blocks with reliable data and optional advanced OBS that does not break local OBS.
+- cuerpo.pt: A beta pública avança por versões sucessivas: layouts por sessão com alternativa geral, temas e densidade maduros, data blocks com dados fiáveis e OBS avançado opcional sem quebrar o OBS local.
+- cuerpo.it: La beta pubblica avanza con versioni successive: layout per sessione con alternativa generale, temi e densità maturi, data block con dati affidabili e OBS avanzato opzionale senza rompere l'OBS locale.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Hardening de la candidata de lanzamiento
+
+- id: rc-hardening
+- tipo: plan
+- titulo.en: Release candidate hardening
+- titulo.pt: Hardening da candidata a lançamento
+- titulo.it: Hardening della candidata al lancio
+- cuerpo: La línea 0.9.x endurece el producto: rendimiento validado junto al simulador con el banco de huella, suite de regresión mínima, instalación y actualización claras, sin P0/P1 abiertos y P2 con decisión escrita.
+- cuerpo.en: The 0.9.x line hardens the product: performance validated next to the simulator with the footprint bench, a minimum regression suite, clear install and update, no open P0/P1 and P2s with a written decision.
+- cuerpo.pt: A linha 0.9.x endurece o produto: desempenho validado junto ao simulador com o banco de impacto, suite mínima de regressão, instalação e atualização claras, sem P0/P1 abertos e P2 com decisão escrita.
+- cuerpo.it: La linea 0.9.x rafforza il prodotto: prestazioni validate accanto al simulatore con il banco d'impronta, suite di regressione minima, installazione e aggiornamento chiari, nessun P0/P1 aperto e P2 con decisione scritta.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Lanzamiento v1.0.0.0
+
+- id: launch-1-0
+- tipo: plan
+- titulo.en: v1.0.0.0 launch
+- titulo.pt: Lançamento v1.0.0.0
+- titulo.it: Lancio v1.0.0.0
+- cuerpo: Vantare sale como versión estable LMU-first: suite completa con pago y acceso estables, documentación de usuario, soporte organizado y calidad suficiente para sostener la reputación pública.
+- cuerpo.en: Vantare ships as a stable LMU-first release: a complete suite with stable payment and access, user documentation, organized support and enough quality to hold a public reputation.
+- cuerpo.pt: O Vantare sai como versão estável LMU-first: suite completa com pagamento e acesso estáveis, documentação de utilizador, suporte organizado e qualidade suficiente para sustentar a reputação pública.
+- cuerpo.it: Vantare esce come versione stabile LMU-first: suite completa con pagamento e accesso stabili, documentazione utente, supporto organizzato e qualità sufficiente a sostenere la reputazione pubblica.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Multisimulador
+
+- id: multisim-support
+- tipo: plan
+- titulo.en: Multi-simulator
+- titulo.pt: Multisimulador
+- titulo.it: Multisimulatore
+- cuerpo: Después de la 1.0, Vantare se abre a más simuladores en el orden decidido: iRacing, Assetto Corsa 2014, Assetto Corsa EVO, Assetto Corsa Competizione y Automobilista 2.
+- cuerpo.en: After 1.0, Vantare opens to more simulators in the chosen order: iRacing, Assetto Corsa 2014, Assetto Corsa EVO, Assetto Corsa Competizione and Automobilista 2.
+- cuerpo.pt: Depois da 1.0, o Vantare abre-se a mais simuladores na ordem decidida: iRacing, Assetto Corsa 2014, Assetto Corsa EVO, Assetto Corsa Competizione e Automobilista 2.
+- cuerpo.it: Dopo la 1.0, Vantare si apre ad altri simulatori nell'ordine deciso: iRacing, Assetto Corsa 2014, Assetto Corsa EVO, Assetto Corsa Competizione e Automobilista 2.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Enlace OBS restaurado en Overlays Studio
+
+- id: obs-browser-source-link
+- tipo: fix
+- titulo.en: OBS link restored in Overlays Studio
+- titulo.pt: Ligação OBS restaurada no Overlays Studio
+- titulo.it: Link OBS ripristinato in Overlays Studio
+- cuerpo: El panel de ajustes del Studio muestra al final la URL local del Browser Source para el perfil abierto, con botones para copiar la URL y las instrucciones. La dirección es la real del servidor interno, no el origen del WebView, y la vista de navegador del Studio abre contra ese mismo origen.
+- cuerpo.en: The Studio settings panel shows the local Browser Source URL for the open profile at the bottom, with buttons to copy the URL and the instructions. The address is the real internal server one, not the WebView origin, and the Studio browser view opens against the same origin.
+- cuerpo.pt: O painel de ajustes do Studio mostra no final o URL local do Browser Source para o perfil aberto, com botões para copiar o URL e as instruções. A direção é a real do servidor interno, não a origem do WebView, e a vista de navegador do Studio abre contra a mesma origem.
+- cuerpo.it: Il pannello delle impostazioni dello Studio mostra in fondo l'URL locale del Browser Source per il profilo aperto, con pulsanti per copiare l'URL e le istruzioni. L'indirizzo è quello reale del server interno, non l'origine della WebView, e la vista browser dello Studio si apre sulla stessa origine.
+- etiqueta: ISA-1162
+
+### Comprobaciones de mantenimiento sin falsos fallos
+
+- id: testing-center-workflow-validation
+- tipo: fix
+- titulo.en: Maintenance checks without false failures
+- titulo.pt: Verificações de manutenção sem falsas falhas
+- titulo.it: Controlli di manutenzione senza falsi errori
+- cuerpo: La corrección integrada en Nightly elimina el error de configuración que marcaba cada cambio como fallido antes de ejecutar las comprobaciones del Testing Center. Conserva la prueba manual y mantiene desactivadas las correcciones automáticas; la publicación sigue pendiente.
+- cuerpo.en: The fix integrated into Nightly removes the configuration error that marked each change as failed before Testing Center checks could run. It preserves the manual test and keeps automatic fixes disabled; publication remains pending.
+- cuerpo.pt: A correção integrada no Nightly elimina o erro de configuração que marcava cada alteração como falha antes de executar as verificações do Testing Center. Preserva o teste manual e mantém as correções automáticas desativadas; a publicação continua pendente.
+- cuerpo.it: La correzione integrata in Nightly elimina l'errore di configurazione che segnava ogni modifica come fallita prima dei controlli del Testing Center. Conserva il test manuale e mantiene disattivate le correzioni automatiche; la pubblicazione resta in attesa.
+- etiqueta: ISA-728
+
+### Contrato modular de overlays y laboratorio Redline
+
+- id: overlay-modular-contract
+- tipo: feature
+- cuerpo: Primer corte del contrato Endurance: Tower Preview seleccionable con cabecera actual, luz roja, fondo azul con la opacidad aprobada y escala proporcional, sin migrar perfiles ni cambiar el diseño predeterminado. El dorsal real de LMU recorre REST, Core, V2 y el ViewModel compartido de todos los standings, conserva ceros iniciales como 007 y queda ausente si la identidad no es fiable o está caducada. Los pilotos de comparación están identificados como ejemplo y excluidos de producción. Esta entrega inicial no cierra el contrato modular: fabricante con fuente autorizada, logo transparente fiel, animaciones, columnas configurables, reglas por sesión y foco, recursos de distribución y comprobación física en Wails/LMU siguen pendientes. No se afirma una validación en juego ni una release publicada.
+- etiqueta: ISA-1101
+
+### Aviso de horario pendiente para Owner
+
+- id: calendar-owner-review-notice
+- tipo: feature
+- titulo.en: Pending schedule notice for Owner
+- titulo.pt: Aviso de horario pendente para Owner
+- titulo.it: Avviso calendario in attesa per Owner
+- cuerpo: El Owner recibe un aviso persistente del nuevo horario de Discord, abre su revision y acepta su publicacion con confirmacion del resultado.
+- cuerpo.en: Owners see a persistent notice for a new Discord schedule, open its review and accept publication with a confirmed result.
+- cuerpo.pt: O Owner recebe um aviso persistente do novo horario do Discord, abre a revisao e aceita a publicacao com resultado confirmado.
+- cuerpo.it: L'Owner riceve un avviso persistente del nuovo calendario Discord, apre la revisione e accetta la pubblicazione con esito confermato.
+- etiqueta: ISA-1061
+
+### Horas legibles en Timeline
+
+- id: calendar-timeline-labels
+- tipo: fix
+- titulo.en: Readable Timeline hours
+- titulo.pt: Horas legiveis no Timeline
+- titulo.it: Orari leggibili nella Timeline
+- cuerpo: Calendario separa las etiquetas horarias segun el ancho y el zoom para evitar que se superpongan.
+- cuerpo.en: Calendar spaces time labels according to width and zoom to prevent overlap.
+- cuerpo.pt: O Calendario espaca as etiquetas de horas segundo a largura e o zoom para evitar sobreposicao.
+- cuerpo.it: Il Calendario distanzia le etichette orarie in base alla larghezza e allo zoom per evitare sovrapposizioni.
+- etiqueta: ISA-1058
+
+### Validacion y rendimiento de Calendario
+
+- id: calendar-validation-performance
+- tipo: plan
+- titulo.en: Calendar validation and performance
+- titulo.pt: Validacao e desempenho do Calendario
+- titulo.it: Validazione e prestazioni del Calendario
+- cuerpo: Validar conjuntamente las correcciones de Calendario en la app real y medir consumo y velocidad antes de aceptar optimizaciones.
+- cuerpo.en: Validate Calendar corrections together in the real app and measure resource use and speed before accepting optimizations.
+- cuerpo.pt: Validar as correcoes do Calendario na app real e medir consumo e velocidade antes de aceitar otimizacoes.
+- cuerpo.it: Validare le correzioni del Calendario nella app reale e misurare consumo e velocita prima di accettare ottimizzazioni.
+- etiqueta: ISA-1057
+
+### Rendimiento de la base de la app
+
+- id: base-app-footprint
+- tipo: plan
+- titulo.en: Base app performance
+- titulo.pt: Desempenho da base da aplicação
+- titulo.it: Prestazioni della base dell'app
+- cuerpo: Campaña aprobada para reducir CPU, GPU y memoria y acelerar arranque, apertura de pantallas, navegación y respuesta de la base de Vantare, conservando apariencia y capacidades. Incluye Hub, navegación y servicios comunes; HUD y Overlay Studio quedan excluidos. El escenario principal mantiene el simulador abierto y mide los procesos propios de Vantare. Primero se prepara el banco y una referencia reproducible, después se validan cambios pequeños. Todavía no se anuncia ahorro medido.
+- cuerpo.en: Approved campaign to reduce CPU, GPU and memory use and speed up startup, screen opening, navigation and interaction in the Vantare base app while preserving appearance and capabilities. Includes the Hub, navigation and shared services; HUD and Overlay Studio are excluded. The main scenario keeps the simulator open and measures Vantare-owned processes. First prepare the measurement tools and a reproducible baseline, then validate small changes. No measured savings are announced yet.
+- cuerpo.pt: Campanha aprovada para reduzir CPU, GPU e memória e acelerar o arranque, a abertura de ecrãs, a navegação e a resposta da base do Vantare, preservando aparência e capacidades. Inclui Hub, navegação e serviços comuns; HUD e Overlay Studio ficam excluídos. O cenário principal mantém o simulador aberto e mede os processos do Vantare. Primeiro preparar as ferramentas e uma referência reproduzível, depois validar pequenas alterações. Ainda não se anuncia uma redução medida.
+- cuerpo.it: Campagna approvata per ridurre CPU, GPU e memoria e accelerare avvio, apertura delle schermate, navigazione e risposta della base di Vantare, preservando aspetto e capacità. Include Hub, navigazione e servizi comuni; HUD e Overlay Studio sono esclusi. Lo scenario principale mantiene aperto il simulatore e misura i processi di Vantare. Prima preparare gli strumenti e una base riproducibile, poi verificare piccole modifiche. Nessun risparmio misurato viene ancora annunciato.
+- etiqueta: ISA-1015
+
+### Pestaña Calendario
+
+- id: calendar-tab-name
+- tipo: fix
+- titulo.en: Calendar tab
+- titulo.pt: Separador Calendário
+- titulo.it: Scheda Calendario
+- cuerpo: La pestaña antes llamada Carreras se llama Calendario. Los títulos y enlaces de Inicio y Strategy usan el mismo nombre; sus vistas, datos y funcionamiento se mantienen.
+- cuerpo.en: The tab previously called Races is now Calendar. Titles and links from Home and Strategy use the same name; views, data and behavior are unchanged.
+- cuerpo.pt: O separador antes chamado Corridas chama-se Calendário. Títulos e ligações de Início e Strategy usam o mesmo nome; vistas, dados e funcionamento mantêm-se.
+- cuerpo.it: La scheda prima chiamata Gare si chiama Calendario. Titoli e collegamenti da Home e Strategy usano lo stesso nome; viste, dati e funzionamento restano invariati.
+- etiqueta: ISA-1022
+
+### Corrección y optimización integral de Calendario
+
+- id: calendar-correction-optimization
+- tipo: plan
+- titulo.en: Calendar correctness and performance
+- titulo.pt: Correção e otimização do Calendário
+- titulo.it: Correzione e ottimizzazione del Calendario
+- cuerpo: Plan aprobado por cortes: pruebas de recorrido, vigencia del horario, recordatorios de series, coherencia de las cinco vistas y optimización medida de apertura, interacción y consumo. Conserva la apariencia y los contratos de HUD y Studio. La validación visual Wails y el ahorro global siguen pendientes.
+- cuerpo.en: Approved incremental plan: end-to-end checks, schedule validity, series reminders, consistency across five views and measured improvements to opening, interaction and resource use. Appearance and HUD/Studio contracts are preserved. Wails visual validation and overall savings remain pending.
+- cuerpo.pt: Plano aprovado por etapas: testes de percurso, validade do horário, lembretes de séries, consistência das cinco vistas e otimização medida de abertura, interação e consumo. Preserva a aparência e os contratos de HUD e Studio. A validação visual Wails e a poupança global continuam pendentes.
+- cuerpo.it: Piano approvato per fasi: prove del percorso, validità degli orari, promemoria delle serie, coerenza delle cinque viste e ottimizzazione misurata di apertura, interazione e consumo. Preserva aspetto e contratti HUD/Studio. Validazione visiva Wails e risparmio complessivo ancora da verificare.
+- etiqueta: ISA-1027
+
+### Recordatorios nativos con permisos y preferencias
+
+- id: calendar-native-reminders
+- tipo: fix
+- titulo.en: Native reminders respect permissions and preferences
+- titulo.pt: Lembretes nativos respeitam permissões e preferências
+- titulo.it: Promemoria nativi con permessi e preferenze
+- cuerpo: Los recordatorios de Calendario usan las notificaciones nativas existentes cuando la ventana está minimizada, el usuario las activa y la plataforma las permite. La autoridad nativa controla los seguimientos y avisos; aceptar un envío no confirma que Windows lo haya mostrado.
+- cuerpo.en: Calendar reminders use existing native notifications when the window is minimised, the user enables them and the platform allows them. Native authority controls follows and reminders; accepting a send does not prove Windows displayed it.
+- cuerpo.pt: Os lembretes do Calendário usam as notificações nativas existentes com a janela minimizada, se o utilizador as ativar e a plataforma permitir. A autoridade nativa controla seguimentos e avisos; aceitar um envio não prova que o Windows o mostrou.
+- cuerpo.it: I promemoria del Calendario usano le notifiche native esistenti con finestra ridotta a icona, se abilitate dall'utente e consentite dalla piattaforma. L'autorità nativa controlla preferenze e avvisi; accettare l'invio non prova che Windows lo abbia mostrato.
+- etiqueta: ISA-1055
+
+### Seguimiento confirmado después de guardar
+
+- id: calendar-follow-confirmation
+- tipo: fix
+- titulo.en: Follow confirmation after saving
+- titulo.pt: Confirmação de seguimento após guardar
+- titulo.it: Conferma della preferenza dopo il salvataggio
+- cuerpo: Seguir o dejar de seguir una serie espera la confirmación del guardado antes de anunciar éxito, bloquea clics duplicados y permite reintentar si falla. Las respuestas ajenas o antiguas no confirman otra acción.
+- cuerpo.en: Following or unfollowing a series waits for save confirmation before reporting success, blocks duplicate clicks and allows retrying on failure. Unrelated or old responses cannot confirm another action.
+- cuerpo.pt: Seguir ou deixar de seguir uma série espera a confirmação da gravação, bloqueia cliques duplicados e permite tentar novamente se falhar. Respostas alheias ou antigas não confirmam outra ação.
+- cuerpo.it: Seguire o smettere di seguire una serie attende la conferma del salvataggio, blocca clic duplicati e consente di riprovare in caso di errore. Risposte estranee o precedenti non confermano un'altra azione.
+- etiqueta: ISA-1050
+
+### Seguimiento conservado si falla el guardado
+
+- id: calendar-follow-persistence
+- tipo: fix
+- titulo.en: Follow preferences preserved on save failure
+- titulo.pt: Seguimento preservado se a gravação falhar
+- titulo.it: Preferenze conservate se il salvataggio fallisce
+- cuerpo: Si guardar falla, seguir o dejar de seguir un evento o serie conserva la preferencia anterior y permite reintentar sin aparentar un éxito inexistente.
+- cuerpo.en: If saving fails, following or unfollowing an event or series preserves the previous preference and allows retrying without reporting a false success.
+- cuerpo.pt: Se a gravação falhar, seguir ou deixar de seguir um evento ou série mantém a preferência anterior e permite tentar novamente sem aparentar sucesso.
+- cuerpo.it: Se il salvataggio fallisce, seguire o smettere di seguire un evento o una serie conserva la preferenza precedente e consente di riprovare senza un falso successo.
+- etiqueta: ISA-1049
+
+### Conservación del horario publicado
+
+- id: calendar-schedule-retention
+- tipo: fix
+- titulo.en: Retain the published schedule
+- titulo.pt: Preservar o horário publicado
+- titulo.it: Conservare il calendario pubblicato
+- cuerpo: El servicio conserva el horario guardado al reiniciar o fallar la actualización, guarda su vigencia y procedencia y no sustituye un horario activo por una publicación futura. Un fallo al guardar el horario conserva también el estado anterior en memoria. La aplicación de vigencia en las vistas y los recordatorios continúa en los siguientes cortes.
+- cuerpo.en: The service retains the saved schedule across restart or refresh failure, stores its validity and source, and does not replace an active schedule with a future publication. A schedule write failure also preserves the previous in-memory state. View validity and reminder fixes continue in subsequent cuts.
+- cuerpo.pt: O serviço mantém o horário guardado ao reiniciar ou falhar a atualização, guarda validade e origem e não substitui um horário ativo por uma publicação futura. Uma falha de gravação também preserva o estado anterior em memória. Validade nas vistas e lembretes continuam nas próximas etapas.
+- cuerpo.it: Il servizio conserva l'orario salvato al riavvio o in caso di aggiornamento fallito, ne registra validità e origine e non sostituisce un orario attivo con una pubblicazione futura. Un errore di salvataggio conserva anche lo stato precedente in memoria. Validità nelle viste e promemoria proseguono nei prossimi interventi.
+- etiqueta: ISA-1029
+
+### Recordatorios de series seguidas
+
+- id: calendar-series-reminders
+- tipo: fix
+- titulo.en: Reminders for followed series
+- titulo.pt: Lembretes de séries seguidas
+- titulo.it: Promemoria delle serie seguite
+- cuerpo: Seguir una serie incluye sus salidas publicadas en los recordatorios. Los avisos respetan el umbral por segundos y no se duplican al seguir también el evento.
+- cuerpo.en: Following a series includes its published starts in reminders. Notifications respect the threshold to the second and are not duplicated when also following the event.
+- cuerpo.pt: Seguir uma série inclui as suas partidas publicadas nos lembretes. Os avisos respeitam o limite por segundos e não se duplicam ao seguir também o evento.
+- cuerpo.it: Seguire una serie include le sue partenze pubblicate nei promemoria. Gli avvisi rispettano la soglia al secondo e non si duplicano seguendo anche l'evento.
+- etiqueta: ISA-1039
+
+### Detalle de Calendario coherente con la selección
+
+- id: calendar-detail-selection
+- tipo: fix
+- titulo.en: Calendar detail follows the selected race
+- titulo.pt: Detalhe do Calendário coerente com a seleção
+- titulo.it: Dettaglio del Calendario coerente con la selezione
+- cuerpo: El detalle marca las duraciones estimadas y valida la hora elegida para la serie y publicación actuales. Cambiar de filtro o navegar desde Inicio no arrastra una hora ajena; las horas históricas aún publicadas se conservan.
+- cuerpo.en: Details mark estimated durations and validate the selected time against the current series and publication. Changing filters or navigating from Home does not carry over another race time; valid historical times are preserved.
+- cuerpo.pt: O detalhe assinala durações estimadas e valida a hora escolhida para a série e publicação atuais. Mudar o filtro ou navegar desde Início não arrasta outra hora; horários históricos válidos são preservados.
+- cuerpo.it: Il dettaglio indica le durate stimate e verifica l'orario scelto per la serie e pubblicazione correnti. Cambiare filtro o navigare da Home non trascina un altro orario; gli orari storici validi vengono conservati.
+- etiqueta: ISA-1052
+
+### Mes sin ocurrencias duplicadas como especiales
+
+- id: calendar-month-classification
+- tipo: fix
+- titulo.en: Month without occurrences duplicated as specials
+- titulo.pt: Mês sem ocorrências duplicadas como especiais
+- titulo.it: Mese senza occorrenze duplicate come speciali
+- cuerpo: Mes distingue las ocurrencias generadas de las series y los eventos especiales mediante su procedencia e identidad. Los filtros no convierten series ocultas en especiales y se conserva el documento compartido. Al abrir un especial o +N, Día conserva los eventos anunciados por Mes, incluso sin series.
+- cuerpo.en: Month distinguishes generated series occurrences from special events by source and identity. Filters do not turn hidden series into specials and the shared document is preserved. Opening a special or +N keeps the events shown by Month in Day, even without series.
+- cuerpo.pt: O mês distingue ocorrências geradas das séries e eventos especiais pela origem e identidade. Os filtros não convertem séries ocultas em especiais e o documento partilhado é preservado. Ao abrir um especial ou +N, Dia mantém os eventos mostrados pelo Mês, mesmo sem séries.
+- cuerpo.it: Il mese distingue le occorrenze generate delle serie dagli eventi speciali tramite origine e identità. I filtri non trasformano serie nascoste in speciali e il documento condiviso resta intatto. Aprendo uno speciale o +N, Giorno conserva gli eventi mostrati da Mese, anche senza serie.
+- etiqueta: ISA-1046
+
+### Días locales y salidas completas en Calendario
+
+- id: calendar-local-days-slots
+- tipo: fix
+- titulo.en: Local days and complete calendar starts
+- titulo.pt: Dias locais e partidas completas no calendário
+- titulo.it: Giorni locali e partenze complete nel calendario
+- cuerpo: Las vistas respetan medianoches locales y cambios de hora, cuentan todas las salidas publicadas y distinguen los instantes de una hora repetida mediante su desplazamiento UTC.
+- cuerpo.en: Views respect local midnights and daylight saving changes, count every published start and distinguish repeated-hour instants using their UTC offset.
+- cuerpo.pt: As vistas respeitam as meias-noites locais e mudanças de hora, contam todas as partidas publicadas e distinguem instantes de uma hora repetida pelo desvio UTC.
+- cuerpo.it: Le viste rispettano le mezzanotti locali e i cambi d'ora, contano tutte le partenze pubblicate e distinguono gli istanti di un'ora ripetuta tramite lo scarto UTC.
+- etiqueta: ISA-1044
+
+### Vigencia de las salidas de Calendario
+
+- id: calendar-schedule-validity
+- tipo: fix
+- titulo.en: Calendar departure validity
+- titulo.pt: Validade das saídas do Calendário
+- titulo.it: Validità delle partenze del Calendario
+- cuerpo: Inicio y el motor de las cinco vistas limitan las salidas al periodo publicado, incluido el detalle y los previews. Sin vigencia verificable no se generan nuevas salidas. Este corte depende de los metadatos del servicio ISA-1029; errores visibles, recordatorios y los demás ajustes de las vistas siguen en el plan ISA-1027.
+- cuerpo.en: Home and the five-view engine limit departures to the published period, including details and previews. No new departures are generated without verifiable validity. This cut depends on ISA-1029 service metadata; visible errors, reminders and remaining view fixes continue in ISA-1027.
+- cuerpo.pt: Início e o motor das cinco vistas limitam saídas ao período publicado, incluindo detalhe e previews. Sem validade verificável não são geradas novas saídas. Depende dos metadados ISA-1029; erros visíveis, lembretes e restantes correções continuam no plano ISA-1027.
+- cuerpo.it: Home e il motore delle cinque viste limitano le partenze al periodo pubblicato, inclusi dettagli e anteprime. Senza validità verificabile non vengono generate nuove partenze. Dipende dai metadati ISA-1029; errori visibili, promemoria e altre correzioni proseguono nel piano ISA-1027.
+- etiqueta: ISA-1032
+
+### Resultado explícito al actualizar Calendario
+
+- id: calendar-refresh-result
+- tipo: fix
+- titulo.en: Explicit calendar refresh result
+- titulo.pt: Resultado explícito da atualização do Calendário
+- titulo.it: Risultato esplicito dell'aggiornamento del Calendario
+- cuerpo: El puente comunica inicio y resultado de la actualización, también cuando falla la sesión o la red. Publica el documento confirmado solo tras éxito y serializa las peticiones para evitar resultados entremezclados. La conservación del horario depende de ISA-1029 y la presentación de estados continúa en el siguiente corte del plan ISA-1027.
+- cuerpo.en: The bridge reports refresh start and result, including session or network failure. It publishes the confirmed document only on success and serializes requests to avoid interleaved results. Schedule retention depends on ISA-1029 and status presentation continues in the next ISA-1027 cut.
+- cuerpo.pt: O bridge comunica início e resultado da atualização, incluindo falha de sessão ou rede. Publica o documento confirmado apenas após sucesso e serializa pedidos para evitar resultados misturados. A conservação depende de ISA-1029 e a apresentação de estados continua no próximo corte ISA-1027.
+- cuerpo.it: Il bridge comunica inizio e risultato dell'aggiornamento, anche in caso di errore di sessione o rete. Pubblica il documento confermato solo dopo il successo e serializza le richieste. La conservazione dipende da ISA-1029; gli stati visibili proseguono nel prossimo intervento ISA-1027.
+- etiqueta: ISA-1035
+
+### Estado visible de actualización de Calendario
+
+- id: calendar-refresh-status-ui
+- tipo: fix
+- titulo.en: Visible calendar refresh status
+- titulo.pt: Estado visível da atualização do calendário
+- titulo.it: Stato visibile dell'aggiornamento del calendario
+- cuerpo: Calendario distingue carga, actualización, error y vigencia del horario; confirma el resultado recibido y conserva la vista mientras se actualiza.
+- cuerpo.en: Calendar distinguishes loading, refresh, errors and schedule validity; it confirms the received result and preserves the view during refresh.
+- cuerpo.pt: O calendário distingue carregamento, atualização, erro e validade do horário; confirma o resultado recebido e conserva a vista durante a atualização.
+- cuerpo.it: Il calendario distingue caricamento, aggiornamento, errore e validità dell'orario; conferma il risultato ricevuto e conserva la vista durante l'aggiornamento.
+- etiqueta: Fix
 
 ### CPU con seis widgets
 
@@ -389,10 +1066,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Overlay Studio V3 under way
 - titulo.pt: Overlay Studio V3 em curso
 - titulo.it: Overlay Studio V3 in corso
-- cuerpo: Un único límite de render para estudio, runtime y previsualización, con guardado automático, historial de deshacer/rehacer, Standings Redline configurable y con ancho físico mínimo que preserva columnas y filas completas en perfiles estrechos, pedales Redline contenidos en su frame y con la saturación confinada a sus wells, y Track Map Endurance ajustado al frame sin recortar su pie, dentro de los catálogos Crystal, Neo y Endurance. El candidato Redline conserva su evidencia visual S3 acotada; las comprobaciones restantes pasan a Isaac. El nuevo programa se centra en Telemetría V2 y ya no impone Redline como primera fase; no declara superados los gates pendientes ni amplía otros diseños.
-- cuerpo.en: A single render boundary for studio, runtime and preview, with autosave, undo/redo history, configurable Standings Redline with a minimum physical width that preserves complete columns and rows in narrow profiles, Redline pedals contained in their frame with saturation confined to their wells, and Endurance Track Map fitted to its frame without clipping its footer, within the Crystal, Neo and Endurance catalogues. The Redline candidate retains its bounded S3 visual evidence; Isaac owns the remaining manual checks. The new programme focuses on Telemetry V2 rather than requiring Redline as its first phase; pending gates are not declared passed and other designs are not expanded.
-- cuerpo.pt: Um único limite de render para estúdio, runtime e pré-visualização, com gravação automática, histórico de desfazer/refazer, Standings Redline configurável e com largura física mínima que preserva colunas e linhas completas em perfis estreitos, pedais Redline contidos no frame e com a saturação confinada aos seus wells, e Track Map Endurance ajustado ao frame sem cortar o rodapé, nos catálogos Crystal, Neo e Endurance. O candidato Redline conserva a evidência visual S3 delimitada; Isaac assume as verificações manuais restantes. O novo programa centra-se na Telemetria V2, sem impor Redline como primeira fase; não declara os gates pendentes aprovados nem amplia outros designs.
-- cuerpo.it: Un unico confine di render per studio, runtime e anteprima, con salvataggio automatico, cronologia annulla/ripristina, Standings Redline configurabile e con larghezza fisica minima che preserva colonne e righe complete nei profili stretti, pedali Redline contenuti nel frame e con la saturazione confinata ai propri well, e Track Map Endurance adattato al frame senza tagliare il piè di pagina, nei cataloghi Crystal, Neo ed Endurance. Il candidato Redline conserva l'evidenza visiva S3 circoscritta; Isaac eseguirà le verifiche manuali restanti. Il nuovo programma si concentra su Telemetry V2 senza imporre Redline come prima fase; non dichiara superati i gate pendenti né amplia altri design.
+- cuerpo: Un único límite de render para estudio, runtime y previsualización, con guardado automático, historial de deshacer/rehacer, Standings Redline configurable y con ancho físico mínimo que preserva columnas y filas completas en perfiles estrechos, pedales Redline contenidos en su frame y con la saturación confinada a sus wells, y Track Map Endurance ajustado al frame sin recortar su pie, dentro de los catálogos Crystal, Neo y Endurance. El candidato Redline conserva su evidencia visual S3 acotada; las comprobaciones restantes pasan a Isaac. El nuevo programa se centra en Telemetría V2 y ya no impone Redline como primera fase; no declara superados los gates pendientes ni amplía otros diseños. El editor in-place del overlay de escritorio (Ctrl+Shift+E) añade control por teclado —deshacer, rehacer, nudge por flechas, duplicar, eliminar con confirmación y guardar—, menú contextual por widget con acciones de orden y centrado, alternancia de visibilidad desde el inspector y salida visible además de la hotkey. El panel in-place suma edición numérica de layout (X, Y, ancho, alto y bloqueo de proporción) con acciones de orden y centrado, se pliega a su cabecera y evita cubrir el widget seleccionado. La barra del editor permite cambiar la sesión que se edita (general, práctica, clasificación, carrera, resistencia) con vista previa de la sesión no materializada y materialización al primer cambio, y añadir widgets desde el catálogo del Studio con sus puertas de licencia. El panel resuelve sus secciones igual que el Studio (resolveInspectorSections, orden y gating por widget): diseño con sistema/variante, aplicar a todos y guardar como diseño, y acciones de restauración —restaurar valores y descartar todo— en el inspector in-place. El inspector se organiza en pestañas por sección, se ancla al lateral con auto-esquiva o flota arrastrable, se oculta a una pestaña de borde y se hace fantasma durante el arrastre; la barra superior es una pill cohesiva y los frames llevan líneas finas con handles circulares.
+- cuerpo.en: A single render boundary for studio, runtime and preview, with autosave, undo/redo history, configurable Standings Redline with a minimum physical width that preserves complete columns and rows in narrow profiles, Redline pedals contained in their frame with saturation confined to their wells, and Endurance Track Map fitted to its frame without clipping its footer, within the Crystal, Neo and Endurance catalogues. The Redline candidate retains its bounded S3 visual evidence; Isaac owns the remaining manual checks. The new programme focuses on Telemetry V2 rather than requiring Redline as its first phase; pending gates are not declared passed and other designs are not expanded. The desktop overlay in-place editor (Ctrl+Shift+E) adds keyboard control —undo, redo, arrow-key nudge, duplicate, confirmed delete and save—, a per-widget context menu with order and centering actions, visibility toggling from the inspector, and a visible exit control alongside the hotkey. The in-place panel adds numeric layout editing (X, Y, width, height and aspect lock) with order and centering actions, collapses to its header and moves aside so it never covers the selected widget. The editor bar switches the session being edited (general, practice, qualifying, race, endurance) with a preview of unmaterialized sessions that materialize on first change, and adds widgets from the Studio catalog with its license gates. The panel resolves its sections like the Studio (resolveInspectorSections, order and per-widget gating): design with system/variant, apply-to-all and save-as-design, plus restore actions —restore defaults and discard all— in the in-place inspector. The inspector organizes into per-section tabs, docks to the side with auto-avoid or floats as a draggable panel, hides to an edge tab and turns ghostly while dragging; the top bar is a cohesive pill and frames carry thin outlines with circular handles.
+- cuerpo.pt: Um único limite de render para estúdio, runtime e pré-visualização, com gravação automática, histórico de desfazer/refazer, Standings Redline configurável e com largura física mínima que preserva colunas e linhas completas em perfis estreitos, pedais Redline contidos no frame e com a saturação confinada aos seus wells, e Track Map Endurance ajustado ao frame sem cortar o rodapé, nos catálogos Crystal, Neo e Endurance. O candidato Redline conserva a evidência visual S3 delimitada; Isaac assume as verificações manuais restantes. O novo programa centra-se na Telemetria V2, sem impor Redline como primeira fase; não declara os gates pendentes aprovados nem amplia outros designs. O editor in-place do overlay de desktop (Ctrl+Shift+E) adiciona controle por teclado —desfazer, refazer, deslocamento por setas, duplicar, excluir com confirmação e salvar—, menu contextual por widget com ações de ordem e centralização, alternância de visibilidade no inspetor e saída visível além da hotkey. O painel in-place adiciona edição numérica de layout (X, Y, largura, altura e bloqueio de proporção) com ações de ordem e centralização, recolhe-se ao cabeçalho e desloca-se para não cobrir o widget selecionado. A barra do editor alterna a sessão em edição (geral, treino, classificação, corrida, resistência) com pré-visualização de sessões não materializadas que se materializam na primeira alteração, e adiciona widgets do catálogo do Studio com seus gates de licença. O painel resolve suas seções como o Studio (resolveInspectorSections, ordem e gating por widget): design com sistema/variante, aplicar a todos e guardar como design, e ações de restauração —restaurar valores e descartar tudo— no inspector in-place. O inspector organiza-se em abas por seção, fixa-se na lateral com auto-esquiva ou flutua arrastável, oculta-se numa aba de borda e fica fantasma durante o arraste; a barra superior é uma pill coesa e os frames levam linhas finas com handles circulares.
+- cuerpo.it: Un unico confine di render per studio, runtime e anteprima, con salvataggio automatico, cronologia annulla/ripristina, Standings Redline configurabile e con larghezza fisica minima che preserva colonne e righe complete nei profili stretti, pedali Redline contenuti nel frame e con la saturazione confinata ai propri well, e Track Map Endurance adattato al frame senza tagliare il piè di pagina, nei cataloghi Crystal, Neo ed Endurance. Il candidato Redline conserva l'evidenza visiva S3 circoscritta; Isaac eseguirà le verifiche manuali restanti. Il nuovo programma si concentra su Telemetry V2 senza imporre Redline come prima fase; non dichiara superati i gate pendenti né amplia altri design. L'editor in-place dell'overlay desktop (Ctrl+Shift+E) aggiunge il controllo da tastiera —annulla, ripeti, spostamento con frecce, duplica, elimina con conferma e salva—, un menu contestuale per widget con azioni di ordine e centratura, l'attivazione della visibilità dall'ispettore e un'uscita visibile oltre alla hotkey. Il pannello in-place aggiunge la modifica numerica del layout (X, Y, larghezza, altezza e blocco proporzioni) con azioni di ordine e centratura, si riduce alla barra del titolo e si sposta per non coprire il widget selezionato. La barra dell'editor cambia la sessione in modifica (generale, prove, qualifiche, gara, endurance) con anteprima delle sessioni non materializzate che si materializzano alla prima modifica, e aggiunge widget dal catalogo dello Studio con i suoi gate di licenza. Il pannello risolve le sue sezioni come lo Studio (resolveInspectorSections, ordine e gating per widget): design con sistema/variante, applica a tutti e salva come design, e azioni di ripristino —ripristina valori e scarta tutto— nell'inspector in-place. L'inspector si organizza in schede per sezione, si ancora al lato con auto-evitamento o galleggia trascinabile, si nasconde in una linguetta di bordo e diventa fantasma durante il trascinamento; la barra superiore è una pill coesa e i frame portano linee sottili con maniglie circolari.
 - etiqueta: En desarrollo
 - etiqueta.en: In progress
 - etiqueta.pt: Em desenvolvimento
@@ -689,6 +1366,32 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 - cuerpo.it: Le Impostazioni consentono di ingrandire o ridurre tutta l'app in sei passaggi, ripristinare la dimensione predefinita e usare Ctrl +, Ctrl −, Ctrl 0 o Ctrl + rotellina; la preferenza resta memorizzata su questo dispositivo e convive con l'adattamento responsive della finestra.
 - etiqueta: Feature
 
+### Sistema de diseño Eficiencia
+
+- id: functional-widget-design
+- tipo: feature
+- titulo.en: Efficiency widget design system
+- titulo.pt: Sistema de design Eficiência
+- titulo.it: Sistema di design Efficienza
+- cuerpo: Eficiencia ofrece los estilos Signature y Broadcast para Standings, con transparencia suave, identidad Vantare, tipografía unificada y selección neutra. Cabecera y pie fino permiten elegir información de sesión; las diagonales reflejan la bandera sin animación cuando existe una señal vigente. La fuente REST LMU aporta temperaturas con calidad y caducidad y una bandera fail-closed; su equivalencia de códigos exige comprobación en sesión activa. Los perfiles conservan la selección y el marco adapta columnas, filas y pie en Studio, Desktop y OBS. La entrega conjunta quedó validada físicamente e integrada en Nightly mediante PR #1107; la equivalencia de bandera y temperatura sigue pendiente de una sesión LMU activa.
+- cuerpo.en: Efficiency offers Signature and Broadcast Standings styles, with subtle transparency, Vantare identity, unified typography and neutral selection. The header and thin footer offer selectable session information; diagonal accents reflect the flag without animation when a current signal exists. The LMU REST source supplies temperatures with quality and expiry plus a fail-closed flag; its code mapping requires an active-session check. Profiles retain selections and the frame fits columns, rows and footer across Studio, Desktop and OBS. The joint delivery was physically validated and integrated into Nightly through PR #1107; flag and temperature equivalence still awaits an active LMU session.
+- cuerpo.pt: Eficiência oferece os estilos Signature e Broadcast para Standings, com transparência suave, identidade Vantare, tipografia unificada e seleção neutra. Cabeçalho e rodapé fino permitem escolher informação da sessão; as diagonais refletem a bandeira sem animação quando existe um sinal atual. A fonte REST LMU fornece temperaturas com qualidade e expiração e uma bandeira fail-closed; o mapeamento dos códigos exige verificação numa sessão ativa. Os perfis preservam a seleção e o quadro adapta colunas, filas e rodapé no Studio, Desktop e OBS. A entrega conjunta foi validada fisicamente e integrada na Nightly através do PR #1107; a equivalência da bandeira e da temperatura continua pendente de uma sessão LMU ativa.
+- cuerpo.it: Efficienza offre gli stili Signature e Broadcast per Standings, con trasparenza lieve, identità Vantare, tipografia unificata e selezione neutra. Intestazione e piè sottile permettono di scegliere informazioni di sessione; le diagonali riflettono la bandiera senza animazione quando esiste un segnale attuale. La fonte REST LMU fornisce temperature con qualità e scadenza e una bandiera fail-closed; la mappatura dei codici richiede una verifica in sessione attiva. I profili conservano la selezione e il riquadro adatta colonne, righe e piè in Studio, Desktop e OBS. La consegna congiunta è stata verificata fisicamente e integrata in Nightly tramite la PR #1107; l'equivalenza di bandiera e temperatura resta in attesa di una sessione LMU attiva.
+- etiqueta: ISA-1083
+
+### Acceso y marca por widget
+
+- id: widget-access-branding
+- tipo: feature
+- titulo.en: Widget access and branding
+- titulo.pt: Acesso e marca por widget
+- titulo.it: Accesso e marchio per widget
+- cuerpo: Studio, Desktop y OBS aplican la misma política nativa por widget desde la licencia verificada, sin autoridad de licencia en renderizadores. Standings y Pedals siguen disponibles en Free y con cualquier pago; Delta y los demás premium exigen Overlays; engineer-radio exige Engineer y Overlays no lo concede. Los perfiles conservan los widgets bloqueados al importar, mover o eliminar y recuperan sus ajustes al volver los derechos. Crystal y Efficiency muestran la marca Vantare obligatoria en Free, también con cabecera o pie ocultos o ajustes importados, y la ocultan por defecto con pago con preferencia explícita para activarla. La entrega conjunta quedó validada e integrada en Nightly mediante PR #1107. Sin testers/master ni release.
+- cuerpo.en: Studio, Desktop and OBS enforce the same native per-widget policy from the verified license, with no licensing authority inside renderers. Standings and Pedals stay available on Free and any paid plan; Delta and other premium widgets require Overlays; engineer-radio requires Engineer and Overlays never grants it. Profiles keep blocked widgets across import, move or delete and restore their settings when rights return. Crystal and Efficiency show the mandatory Vantare brand on Free, even with hidden header or footer or imported settings, and hide it by default on paid plans with an explicit opt-in. The joint delivery was validated and integrated into Nightly through PR #1107. No testers/master or release.
+- cuerpo.pt: Studio, Desktop e OBS aplicam a mesma política nativa por widget a partir da licença verificada, sem autoridade de licença nos renderers. Standings e Pedals continuam disponíveis no Free e em qualquer plano pago; Delta e os restantes premium exigem Overlays; engineer-radio exige Engineer e Overlays nunca o concede. Os perfis conservam os widgets bloqueados ao importar, mover ou eliminar e recuperam os ajustes quando os direitos voltam. Crystal e Efficiency mostram a marca Vantare obrigatória no Free, mesmo com cabeçalho ou rodapé ocultos ou ajustes importados, e ocultam-na por defeito nos pagos com ativação explícita. A entrega conjunta foi validada e integrada na Nightly através do PR #1107. Sem testers/master nem release.
+- cuerpo.it: Studio, Desktop e OBS applicano la stessa policy nativa per widget dalla licenza verificata, senza autorità di licenza nei renderer. Standings e Pedals restano disponibili su Free e qualsiasi piano a pagamento; Delta e gli altri premium richiedono Overlays; engineer-radio richiede Engineer e Overlays non lo concede mai. I profili conservano i widget bloccati tra importazione, spostamento o eliminazione e ne ripristinano le impostazioni al ritorno dei diritti. Crystal ed Efficiency mostrano il marchio Vantare obbligatorio su Free, anche con intestazione o piè nascosti o impostazioni importate, e lo nascondono di default sui piani a pagamento con attivazione esplicita. La consegna congiunta è stata verificata e integrata in Nightly tramite la PR #1107. Nessun testers/master né release.
+- etiqueta: ISA-1105
+
 ### Eje temporal en Telemetría y exportar radio
 
 - id: telemetry-timeline-export
@@ -701,5 +1404,21 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 - cuerpo.pt: Ambos dependem de que a gravação DuckDB (ADR 0004/0005) seja exposta ao frontend.
 - cuerpo.it: Entrambi dipendono dall'esposizione della registrazione DuckDB (ADR 0004/0005) al frontend.
 - etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
+### Continuidad de documentación y seguimiento
+
+- id: development-continuity
+- tipo: plan
+- titulo.en: Documentation and development continuity
+- titulo.pt: Continuidade da documentação e acompanhamento
+- titulo.it: Continuità della documentazione e del monitoraggio
+- cuerpo: Notion centraliza el seguimiento y la continuidad operativa, con lectura y actualización obligatorias para agentes. Queda completar la reconciliación histórica y retirar el puente de controles GitHub sin perder la evidencia de validación y publicación.
+- cuerpo.en: Notion centralizes development tracking and operational continuity, with mandatory agent reads and updates. Historical reconciliation and removal of the GitHub validation bridge remain pending, preserving validation and publication evidence.
+- cuerpo.pt: O Notion centraliza o acompanhamento e a continuidade operacional, com leitura e atualização obrigatórias pelos agentes. Falta concluir a reconciliação histórica e retirar a ponte de validação GitHub, preservando evidências de validação e publicação.
+- cuerpo.it: Notion centralizza il monitoraggio e la continuità operativa, con lettura e aggiornamento obbligatori per gli agenti. Restano la riconciliazione storica e la rimozione del ponte di validazione GitHub, conservando le prove di verifica e pubblicazione.
+- etiqueta: Plan
+- etiqueta.en: Plan
 - etiqueta.pt: Plano
 - etiqueta.it: Piano

@@ -19,6 +19,12 @@ function visual(
 }
 
 describe("WidgetVisualViewport", () => {
+  it.each([238, 324, 428, 574])("keeps Functional typography at its native size with %i px of modules", (width) => {
+    render(<WidgetVisualViewport widgetType="standings" visual={visual("vantare-functional")} layout={{ w: width, h: 400 }} testId="viewport"><div /></WidgetVisualViewport>);
+    expect(screen.getByTestId("viewport").style.width).toBe(`${width}px`);
+    expect(screen.getByTestId("viewport").style.transform).toBe("scale(1)");
+  });
+
   it("gives Endurance Redline real CSS width when the standings widget widens", () => {
     render(
       <WidgetVisualViewport

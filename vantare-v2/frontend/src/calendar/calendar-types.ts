@@ -103,6 +103,14 @@ export type RaceSeries = {
 };
 
 export type Calendar = {
+  /** Validity/provenance from the persisted backend document; absent in legacy files. */
+  schedule?: {
+    validFrom: string;
+    validUntil: string;
+    updated: string;
+    publishedAt?: string;
+    source: "bundled" | "published" | "cached";
+  };
   version: number;
   timezone: string;
   reminderMinutes: number[];

@@ -62,6 +62,10 @@
 
 /* ------------------------------------------------------ CALENDARIO LMU */
 
+.orbit-set-schedule__card {
+  flex: none;
+}
+
 .orbit-set-schedule__candidates,
 .orbit-set-schedule__series {
   display: flex;
@@ -79,6 +83,7 @@
 }
 
 .orbit-set-schedule__source {
+  width: 100%;
   min-height: 240px;
 }
 

@@ -113,7 +113,7 @@ describe("HomeOrbitPage con datos", () => {
     // El reloj corre con la hora real: basta con el prefijo y el formato.
     expect(card.textContent).toMatch(/en \d/);
     expect(card.textContent).toContain("Cada 15 min · Bronze SR");
-    fireEvent.click(screen.getByRole("button", { name: "Abrir la serie en Carreras" }));
+    fireEvent.click(screen.getByRole("button", { name: "Abrir la serie en Calendario" }));
     expect(onNavigate).toHaveBeenCalledWith("carreras", "a");
   });
 

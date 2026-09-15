@@ -9,6 +9,7 @@ import type {
   StudioSaveResult,
 } from '../../hub/overlay-studio/state/studio-profile-client';
 import { InPlaceInspectorPanel } from './InPlaceInspectorPanel';
+import type { StudioPolicy } from '../../hub/overlay-studio/access/studio-access';
 import { useInplaceAutosave } from './use-inplace-autosave';
 
 type Handler = (event: { data: unknown }) => void;
@@ -32,12 +33,14 @@ vi.mock('@wailsio/runtime', () => ({
   },
 }));
 
-const suiteAccess = {
-  planLabel: 'suite' as const,
-  planStatus: 'active' as const,
-  roles: [],
-  isBlocked: false,
-  isUnconfigured: false,
+const paidPolicy: StudioPolicy = {
+  revision: 2,
+  overlaysBasic: true,
+  overlaysAdvanced: true,
+  engineerAI: false,
+  brandCrystal: 'optional',
+  brandEfficiency: 'optional',
+  brandOriginal: 'none',
 };
 
 function buildDeltaWidget(): WidgetInstanceV3 {
@@ -79,7 +82,7 @@ function Harness({ widget }: { widget: WidgetInstanceV3 | null }): React.ReactEl
       client={createMemoryClient()}
       initialFile="test.json"
       recoveryStorage={null}
-      access={suiteAccess}
+      widgetPolicy={paidPolicy}
     >
       <Inner widget={widget} telemetry={coordinator} />
     </StudioProvider>
@@ -98,12 +101,14 @@ function Inner({
   return (
     <InPlaceInspectorPanel
       widget={widget}
+      widgets={widget ? [widget] : []}
       session="race"
       telemetry={telemetry}
-      access={suiteAccess}
+      layoutViewport={{ width: 1920, height: 1080 }}
+      selectWidget={() => undefined}
+      policy={paidPolicy}
       licenseLoading={false}
       autosave={autosave}
-      selectedWidgetId={widget?.id ?? null}
     />
   );
 }
@@ -124,16 +129,30 @@ describe('InPlaceInspectorPanel', () => {
     expect(screen.getByTestId('inplace-inspector-empty')).toBeTruthy();
   });
 
-  it('renders the three property sections for a selected widget', async () => {
+  it('renders tabs for the resolved sections and switches between them', async () => {
     render(<Harness widget={buildDeltaWidget()} />);
     await waitFor(() => expect(screen.getByTestId('inplace-inspector-panel')).toBeTruthy());
+
+    // Todas las secciones del widget como pestañas; layout es la activa por defecto.
+    for (const id of ['design', 'appearance', 'content', 'behavior', 'layout', 'actions']) {
+      expect(screen.getByTestId(`inplace-tab-${id}`)).toBeTruthy();
+    }
+    expect(screen.getByTestId('inplace-inspector-section-layout')).toBeTruthy();
+    expect(screen.queryByTestId('inplace-inspector-section-appearance')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('inplace-tab-appearance'));
     expect(screen.getByTestId('inplace-inspector-section-appearance')).toBeTruthy();
-    expect(screen.getByTestId('inplace-inspector-section-content')).toBeTruthy();
+    expect(screen.queryByTestId('inplace-inspector-section-layout')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('inplace-tab-behavior'));
     expect(screen.getByTestId('inplace-inspector-section-behavior')).toBeTruthy();
+    expect(screen.queryByTestId('inplace-inspector-section-appearance')).toBeNull();
   });
 
   it('dispatches widget/visual when toggling an appearance control', async () => {
     render(<Harness widget={buildDeltaWidget()} />);
+    await waitFor(() => expect(screen.getByTestId('inplace-tab-appearance')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('inplace-tab-appearance'));
     const toggle = await screen.findByRole('button', { name: 'Mostrar cabecera' });
     fireEvent.click(toggle);
 
@@ -151,6 +170,7 @@ describe('InPlaceInspectorPanel', () => {
     expect(redo.disabled).toBe(true);
 
     // Un cambio de apariencia habilita undo.
+    fireEvent.click(screen.getByTestId('inplace-tab-appearance'));
     fireEvent.click(await screen.findByRole('button', { name: 'Mostrar cabecera' }));
     await waitFor(() =>
       expect((screen.getByTestId('inplace-undo') as HTMLButtonElement).disabled).toBe(false),

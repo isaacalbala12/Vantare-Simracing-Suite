@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useI18n } from '../../../i18n/I18nProvider';
-import type { AccessContext } from '../../../lib/access-policy';
+import type { StudioPolicy } from '../access/studio-access';
 import { listOfficialDesigns } from '../../../overlay/design-systems/official-designs';
+import { designSystemRegistry } from '../../../overlay/core/design-system-registry';
 import type {
   DesignSystemId,
   SessionLayoutType,
@@ -26,7 +27,7 @@ export type DesignSectionProps = {
   widget: WidgetInstanceV3;
   session: SessionLayoutType;
   widgets: readonly WidgetInstanceV3[];
-  access: AccessContext;
+  policy: StudioPolicy;
   dispatch(command: StudioCommand): void;
   designClient: WidgetDesignClient;
   confirmApplyAll?: (message: string) => boolean;
@@ -34,18 +35,19 @@ export type DesignSectionProps = {
   promptRename?: (currentName: string) => string | null;
 };
 
-const VISUAL_SYSTEM_OPTIONS: readonly { id: DesignSystemId; labelKey: string }[] = [
-  { id: 'vantare-original', labelKey: 'studio.v3.design.system.original' },
-  { id: 'vantare-crystal', labelKey: 'studio.v3.design.system.crystal' },
-  { id: 'vantare-endurance', labelKey: 'studio.v3.design.system.endurance' },
-];
+const VISUAL_SYSTEM_LABELS: Partial<Record<DesignSystemId, string>> = {
+  'vantare-original': 'studio.v3.design.system.original',
+  'vantare-crystal': 'studio.v3.design.system.crystal',
+  'vantare-endurance': 'studio.v3.design.system.endurance',
+  'vantare-functional': 'studio.v3.design.system.efficiency',
+};
 
 export function DesignSection(props: DesignSectionProps): React.ReactElement {
   const {
     widget,
     session,
     widgets,
-    access,
+    policy,
     dispatch,
     designClient,
     confirmApplyAll = (message) => window.confirm(message),
@@ -107,12 +109,12 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
     [selectedSystemId, userDesigns, widget],
   );
 
-  const canApply = getStudioMutationGate({ access, mutation: 'apply-design', widget }).allowed;
-  const canApplyAll = getStudioMutationGate({ access, mutation: 'apply-all', widget }).allowed;
+  const canApply = getStudioMutationGate({ policy, mutation: 'apply-design', widget }).allowed;
+  const canApplyAll = getStudioMutationGate({ policy, mutation: 'apply-all', widget }).allowed;
   const canSave = canApply;
 
   const applyDesign = (design: WidgetDesignV1, widgetIds: readonly string[]) => {
-    const gate = getStudioMutationGate({ access, mutation: 'apply-design', widget, design });
+    const gate = getStudioMutationGate({ policy, mutation: 'apply-design', widget, design });
     if (!gate.allowed) {
       return;
     }
@@ -220,7 +222,7 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
     // `Select` no puede ofrecer algo que el gate va a rechazar.
     const catalogue = [...officialDesigns, ...compatibleUserDesigns].filter(
       (design) =>
-        getStudioMutationGate({ access, mutation: 'apply-design', widget, design }).allowed,
+        getStudioMutationGate({ policy, mutation: 'apply-design', widget, design }).allowed,
     );
     const lockedCount = officialDesigns.length + compatibleUserDesigns.length - catalogue.length;
     // El valor del `Select` es el diseno que el widget lleva puesto, no solo el
@@ -260,10 +262,12 @@ export function DesignSection(props: DesignSectionProps): React.ReactElement {
               id="orbit-design-system"
               label={t('studio.inspector.design.system')}
               onChange={(next) => selectAndApplySystem(next as DesignSystemId)}
-              options={VISUAL_SYSTEM_OPTIONS.map((option) => ({
-                value: option.id,
-                label: t(option.labelKey),
-              }))}
+              options={designSystemRegistry.list()
+                .filter((system) => system.widgets.some((entry) => entry.widgetType === widget.type))
+                .map((system) => ({
+                  value: system.id,
+                  label: VISUAL_SYSTEM_LABELS[system.id] ? t(VISUAL_SYSTEM_LABELS[system.id]!) : system.label,
+                }))}
               value={selectedSystemId}
             />
           </Field>

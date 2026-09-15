@@ -1,6 +1,17 @@
 # Prompt bugfix pequeno
 
 ```markdown
+Abre primero el hub Notion: https://app.notion.com/p/3fce51695c65834e80b381ec2d632192
+Tarea Notion obligatoria: [URL REAL Y VAN]; Proyecto: [URL REAL].
+Lee tarea, proyecto, dependencias y aceptación, después AGENTS de origin/nightly
+actualizado y docs/vantare-program/notion-transition.md.
+Referencia GitHub/ISA para los gates actuales: [URL/ID SEPARADOS DEL VAN].
+Actualiza y relee Notion al empezar, bloquear, entregar y verificar integración:
+Estado, Agente, Proyecto, siguiente paso, PR, checks, riesgos y SHA/canal.
+El chat y GitHub no sustituyen esta escritura. Si falla Notion, conserva evidencia
+y comunica el bloqueo; no ejecutes trabajo dependiente ni declares seguimiento cerrado.
+No confundir integración con publicación ni ampliar el alcance autorizado.
+
 Actua como worker de bugfix pequeno en `vantare-v2`.
 
 Bug:

@@ -38,10 +38,17 @@ export function resolveStandingsClassColor(
 export function buildStandingsAppearanceStyle(
   settings: Readonly<Record<string, unknown>>,
 ): CSSProperties {
+  const rawOpacity = settings.redlineSurfaceOpacity;
+  const surfaceOpacity =
+    typeof rawOpacity === "number" && Number.isFinite(rawOpacity)
+      ? Math.min(1, Math.max(0.45, rawOpacity))
+      : 1;
   return {
     "--vo-standings-accent": readColor(
       settings.accentColor,
       STANDINGS_DEFAULT_APPEARANCE.accentColor,
     ),
+    // Surface-only alpha for the opt-in tower theme; content stays opaque.
+    ...(rawOpacity !== undefined ? { "--ven-red-surface-alpha": String(surfaceOpacity) } : {}),
   } as CSSProperties;
 }

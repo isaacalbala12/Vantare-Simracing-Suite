@@ -11,7 +11,7 @@ const CONTENT = standingsDefinition.parseContent({
 });
 
 describe("standings v2 view model", () => {
-  it("matches nightly byte-for-byte for the one-car fixture", () => {
+  it("preserves every nightly field while adding canonical Tower metadata and session information", () => {
     const update = golden(1);
     if (!update.frame) throw new Error("golden frame missing");
     const expected = readFileSync(path.resolve(
@@ -19,8 +19,23 @@ describe("standings v2 view model", () => {
       "src/overlay/widget-types/standings/testdata/standings-v2-nightly-one-car.json",
     ), "utf8").trim();
 
-    expect(JSON.stringify(buildStandingsViewModelV2(update.frame, update.source, CONTENT)))
-      .toBe(expected);
+    const baseline = JSON.parse(expected);
+    expect(buildStandingsViewModelV2(update.frame, update.source, CONTENT)).toEqual({
+      ...baseline,
+      trackName: update.frame.session.track.v,
+      totalRows: 1,
+      flag: "unknown",
+      sessionInfo: {
+        trackTemperature: { text: "—", stale: false }, airTemperature: { text: "—", stale: false },
+        estimatedLaps: { text: "≈79", stale: false }, totalLaps: { text: "—", stale: false },
+        track: { text: "Sebring", stale: false }, remaining: { text: "01:59:58", stale: false },
+        rain: { text: "—", stale: false }, wetness: { text: "—", stale: false },
+      },
+      rows: baseline.rows.map((row: Record<string, unknown>, index: number) => ({
+        ...row,
+        classPosition: update.frame!.standings[index].classPosition,
+      })),
+    });
   });
   it.each([1, 20, 44, 104])(
     "renders the order resolved in Go for the %i-vehicle golden without re-sorting",

@@ -1,17 +1,19 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { AccessContext } from "../../../lib/access-policy";
+import type { StudioPolicy } from "../access/studio-access";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { StudioProfileClient, StudioSaveResult } from "./studio-profile-client";
-import { StudioProvider, useStudioDocument, useStudioPreview } from "./studio-store";
+import { StudioProvider, useStudioDocument, useStudioPreview, useStudioDirty, useStudioActions } from "./studio-store";
 
-const freeAccess: AccessContext = {
-  planLabel: "free",
-  planStatus: "active",
-  roles: [],
-  isBlocked: false,
-  isUnconfigured: false,
+const paidPolicy: StudioPolicy = {
+  revision: 7,
+  overlaysBasic: true,
+  overlaysAdvanced: true,
+  engineerAI: false,
+  brandCrystal: "optional",
+  brandEfficiency: "optional",
+  brandOriginal: "none",
 };
 
 function buildRelativeWidget(id = "relative-main"): WidgetInstanceV3 {
@@ -90,7 +92,7 @@ function createMemoryStorage(): Storage {
 
 function wrapper(
   client: StudioProfileClient,
-  options?: { recoveryStorage?: Storage; recoveryWriteDelayMs?: number; access?: AccessContext },
+  options?: { recoveryStorage?: Storage; recoveryWriteDelayMs?: number; widgetPolicy?: StudioPolicy },
 ) {
   return function Wrapper({ children }: { children: React.ReactNode }) {
     return (
@@ -99,7 +101,7 @@ function wrapper(
         initialFile="profiles/test.json"
         recoveryStorage={options?.recoveryStorage ?? null}
         recoveryWriteDelayMs={options?.recoveryWriteDelayMs ?? 300}
-        access={options?.access}
+        widgetPolicy={options?.widgetPolicy ?? null}
       >
         {children}
       </StudioProvider>
@@ -301,7 +303,10 @@ describe("StudioProvider", () => {
     const client = createMockClient(
       buildDocument({ systemVersion: 0, configVersion: 0, baseSettings: { legacy: true } }),
     );
-    const { result } = renderHook(() => useStudioDocument(), { wrapper: wrapper(client) });
+    // Delta is premium: persisting its migrated visuals needs rights.
+    const { result } = renderHook(() => useStudioDocument(), {
+      wrapper: wrapper(client, { widgetPolicy: paidPolicy }),
+    });
     await waitFor(() => expect(result.current.dirty).toBe(true));
 
     await act(async () => {
@@ -334,6 +339,34 @@ describe("StudioProvider", () => {
     expect(result.current.dirty).toBe(false);
     expect(result.current.document?.layouts.general.widgets[0].layout.x).toBe(250);
     expect(client.save).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps the document and shows the existing notice on native downgrade denial", async () => {
+    const client = createMockClient(buildDocument());
+    const { result } = renderHook(() => useStudioDocument(), { wrapper: wrapper(client) });
+    await waitFor(() => expect(result.current.document).not.toBeNull());
+
+    act(() => {
+      result.current.dispatch({
+        type: "widget/layout", session: "general", widgetIds: ["delta-main"], patch: { x: 250 },
+      });
+    });
+
+    client.save = vi.fn(async () => ({
+      status: "error" as const,
+      message: "studio.v3.access.premiumSaveDenied",
+      widgetIds: ["delta-main"],
+    }));
+    let saveResult: StudioSaveResult | undefined;
+    await act(async () => {
+      saveResult = await result.current.save();
+    });
+    expect(saveResult?.status).toBe("error");
+    expect(result.current.saveState).toBe("error");
+    // The existing translated notice is shown; the draft is untouched.
+    expect(result.current.accessNotice).toBe("studio.v3.access.premiumSaveDenied");
+    expect(result.current.document?.layouts.general.widgets[0].layout.x).toBe(250);
+    expect(result.current.dirty).toBe(true);
   });
 
   it("preserves the draft when save fails or conflicts", async () => {
@@ -465,12 +498,12 @@ describe("StudioProvider", () => {
     expect(documentHook.result.current.document?.layouts.general.widgets[0].layout.x).toBe(64);
   });
 
-  it("allows layout dispatch for premium widgets on free access", async () => {
+  it("allows layout dispatch for premium widgets without a policy", async () => {
     const document = buildDocument();
     document.layouts.general.widgets.push(buildRelativeWidget());
     const client = createMockClient(document);
     const { result } = renderHook(() => useStudioDocument(), {
-      wrapper: wrapper(client, { access: freeAccess }),
+      wrapper: wrapper(client),
     });
     await waitFor(() => expect(result.current.document).not.toBeNull());
 
@@ -488,12 +521,12 @@ describe("StudioProvider", () => {
     expect(result.current.lastError).toBeNull();
   });
 
-  it("allows save when only premium widget layout changed under free access", async () => {
+  it("allows save when only premium widget layout changed without a policy", async () => {
     const savedDocument = buildDocument();
     savedDocument.layouts.general.widgets.push(buildRelativeWidget());
     const client = createMockClient(savedDocument);
     const { result } = renderHook(() => useStudioDocument(), {
-      wrapper: wrapper(client, { access: freeAccess }),
+      wrapper: wrapper(client),
     });
     await waitFor(() => expect(result.current.document).not.toBeNull());
 
@@ -692,5 +725,38 @@ describe("StudioProvider", () => {
       changed = result.current.redo();
     });
     expect(changed).toBe(false);
+  });
+
+  it("un suscriptor granular no repinta cuando cambia un slice ajeno", async () => {
+    const client = createMockClient(buildDocument());
+    const renders = vi.fn();
+    const { result } = renderHook(
+      () => {
+        renders();
+        return { dirty: useStudioDirty(), actions: useStudioActions() };
+      },
+      { wrapper: wrapper(client) },
+    );
+    await waitFor(() => expect(result.current.dirty).toBe(false));
+
+    const rendersBeforeSelect = renders.mock.calls.length;
+    // selectedWidgetId cambia, pero dirty no: el suscriptor granular no debe
+    // volver a renderizar (con el shim useStudioDocument si lo haria).
+    act(() => {
+      result.current.actions.selectWidget("delta-main");
+    });
+    expect(renders.mock.calls.length).toBe(rendersBeforeSelect);
+
+    // Un dispatch que ensucia el documento si lo despierta.
+    act(() => {
+      result.current.actions.dispatch({
+        type: "widget/layout",
+        session: "general",
+        widgetIds: ["delta-main"],
+        patch: { x: 999 },
+      });
+    });
+    expect(result.current.dirty).toBe(true);
+    expect(renders.mock.calls.length).toBeGreaterThan(rendersBeforeSelect);
   });
 });

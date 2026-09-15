@@ -1,5 +1,16 @@
 # Telemetry Core — autoridad y fronteras
 
+> **Notion primero (2026-09-14):** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192)
+> y leer la tarea y su proyecto antes de ejecutar. Actualizar Notion al empezar,
+> bloquear, entregar y verificar una integración; releer para comprobar la escritura.
+> [Contrato vigente](../vantare-program/notion-transition.md). GitHub conserva código, PR, CI y releases;
+> las referencias ISA exigidas por los controles son un puente técnico temporal.
+> Su adaptación pendiente nunca permite omitir el seguimiento en Notion.
+> Los estados/versiones y recetas comerciales fechados de abajo son contexto.
+> Para decisiones vigentes prevalecen los contratos y handoffs del programa;
+> esta cabecera no certifica que el runtime o una release estén actualizados.
+
+
 Estado de esta guía: vigente desde ISA-100 sobre `develop@f492007`.
 
 ## Propósito
@@ -39,7 +50,8 @@ sin wiring. Guías:
 2. Los documentos de evidencia de `docs/telemetry-core/` describen lo ya observado e integrado.
 3. El plan maestro describe el resultado y el orden global.
 4. Un microplan solo es ejecutable cuando su cabecera lo indica.
-5. Linear refleja el estado operativo y la rama de cada issue.
+5. El tracker definido en `../vantare-program/notion-transition.md` refleja
+   el estado operativo y la rama. Linear está retirado.
 
 Si dos documentos contradicen evidencia más reciente, prevalece la evidencia actual y se detiene la ejecución hasta reconciliar el plan.
 
@@ -79,7 +91,7 @@ Strategy Product B no forma parte de este paquete documental. Puede ser consumid
 - Mock, simulator y replay solo mediante test o harness explícito.
 - Ningún renderer de widgets conoce fuentes, transporte o persistencia.
 - No se elimina funcionalidad Engineer; solo infraestructura duplicada demostrada sin consumidores.
-- Cada issue ejecutable parte de la base aprobada indicada en Linear y usa su propia rama, worktree y chat.
+- Cada issue ejecutable parte de la base aprobada indicada en la tarea autoritativa y usa su propia rama, worktree y chat.
 - Ninguna rama de issue se promueve a `nightly` sin aprobación inicial de Isaac;
   `master` requiere siempre su validación final.
 

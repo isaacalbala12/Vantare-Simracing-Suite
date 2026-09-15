@@ -1,5 +1,13 @@
 # Canales de ramas y promociones
 
+> **Notion primero (2026-09-14):** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192)
+> y leer la tarea y su proyecto antes de ejecutar. Actualizar Notion al empezar,
+> bloquear, entregar y verificar una integración; releer para comprobar la escritura.
+> [Contrato vigente](vantare-program/notion-transition.md). GitHub conserva código, PR, CI y releases;
+> las referencias ISA exigidas por los controles son un puente técnico temporal.
+> Su adaptación pendiente nunca permite omitir el seguimiento en Notion.
+
+
 ## Contrato canónico
 
 ```text
@@ -142,7 +150,7 @@ inventariada.
   en cualquier otro test bloquea la promoción.
 - Los PR a `testers` solo pueden proceder de `nightly`.
 - Los PR a `master` solo pueden proceder de `testers`.
-- En los gates de canal de CI, las ramas Linear `isa-*` y `hotfix-isa-*` usan
+- En los gates de canal de CI, las ramas GitHub `isa-*` y `hotfix-isa-*` usan
   segmentos separados por guiones; un guion bajo solo es válido entre dos
   tokens alfanuméricos dentro del mismo segmento (por ejemplo, `merge_group`).
 - La única excepción es un hotfix crítico aprobado expresamente por Isaac:

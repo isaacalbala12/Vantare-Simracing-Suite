@@ -18,12 +18,18 @@
   src: url('./assets/fonts/orbit/Inter-Variable.woff2') format('woff2');
 }
 
+/*
+ * CascadiaCode-subset.woff2 is a latin subset (Latin, Latin-1, Extended-A/B,
+ * technical symbols) of CascadiaCode.ttf, generated with pyftsubset --flavor
+ * woff2. The full TTF stays next to it as the regeneration source; only the
+ * woff2 is bundled (~74 KB instead of ~380 KB).
+ */
 @font-face {
   font-family: 'Cascadia Code';
   font-style: normal;
   font-weight: 200 700;
   font-display: block;
-  src: url('./assets/fonts/orbit/CascadiaCode.ttf') format('truetype');
+  src: url('./assets/fonts/orbit/CascadiaCode-subset.woff2') format('woff2');
 }
 
 @font-face {

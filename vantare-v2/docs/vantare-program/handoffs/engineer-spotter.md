@@ -1,5 +1,12 @@
 # Handoff vivo — Engineer/Spotter
 
+> **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
+> Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,
+> bloquear, entregar y verificar merge. [Contrato](../notion-transition.md).
+> Este handoff conserva evidencia técnica fechada; sus estados antiguos no
+> sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
+
+
 ## Resultado
 
 Engineer Beta acompaña al piloto en directo; Spotter se limita a seguridad,
@@ -11,7 +18,7 @@ CrewChief, Pit Manager y wake word.
 
 - `docs/vantare-program/README.md`, `product-contract.md` y
   `research-policy.md`.
-- Este handoff y el proyecto Linear del módulo.
+- Este handoff y el proyecto del tracker vigente según `../notion-transition.md`.
 - ADR 0004 y el handoff de Telemetry Core.
 - `docs/telemetry-core/engineer-rescue-matrix.md` y
   `docs/engineer/audits/g3-parity-audit.md` son evidencia histórica.

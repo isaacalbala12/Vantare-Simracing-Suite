@@ -21,6 +21,28 @@ import {
 
 const DEFAULT_VIEWPORT = DEFAULT_LAYOUT_VIEWPORT;
 
+it.each([false, true])("resizes Functional from its visible bounds without clipping rows (snap disabled: %s)", (disableSnap) => {
+  const widget = standingsDefinition.createDefault("functional");
+  widget.visual = { ...widget.visual, systemId: "vantare-functional", baseSettings: { templateId: "broadcast" } };
+  widget.content = { ...widget.content, rowCount: 20 };
+  // Align the effective right/bottom edges with the 8px grid so snapping does not obscure the resize delta.
+  widget.layout = { ...widget.layout, x: 96, y: 100, w: 340, h: 420, aspectLocked: false };
+  const preview = (dx: number, dy: number) => applyResizePreview({
+    widget, start: widget.layout, handle: "se", pointerOrigin: { x: 0, y: 0 },
+    pointerCurrent: { x: dx, y: dy }, siblings: [], disableSnap, layoutViewport: DEFAULT_VIEWPORT,
+  }).layout;
+  const stationary = preview(0, 0);
+  const expanded = preview(80, 80);
+  expect(stationary.w).toBeGreaterThan(340);
+  expect(stationary.h).toBe(692);
+  expect(expanded.w).toBe(stationary.w + 80);
+  expect(expanded.h).toBe(stationary.h + 80);
+  const contracted = preview(-500, -500);
+  expect(contracted.w).toBe(stationary.w);
+  expect(contracted.h).toBe(stationary.h);
+  expect(widget.layout.w).toBe(340);
+});
+
 function buildDocument(): ProfileDocumentV3 {
   const delta = deltaDefinition.createDefault("delta-main");
   delta.layout = { x: 100, y: 100, w: 280, h: 96, zIndex: 0, aspectLocked: true };

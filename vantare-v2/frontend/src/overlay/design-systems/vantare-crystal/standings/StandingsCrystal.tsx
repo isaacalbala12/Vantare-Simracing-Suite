@@ -46,6 +46,10 @@ function renderGap(row: StandingsRowViewModel, metricId: string | undefined) {
 
 export function StandingsCrystal({ model, settings }: WidgetRendererProps<StandingsViewModel>) {
   const showSessionHeader = settings.showSessionHeader !== false;
+  // Decisión pura de presentación (ISA-1105): la inyecta WidgetVisualHost
+  // desde la política nativa y la preferencia del documento. Sin ella se
+  // conserva el comportamiento previo (marca con cabecera).
+  const brandVisible = settings.brandVisible ?? showSessionHeader;
   const compactRows = settings.compactRows === true;
   const gridTemplateColumns = ["20px", ...model.columns.map(column => {
     const fallback = STANDINGS_COLUMN_TEMPLATES.find(t => t.metricId === column.metricId)?.defaultWidth ?? 60;
@@ -67,12 +71,16 @@ export function StandingsCrystal({ model, settings }: WidgetRendererProps<Standi
       <div className="vc-standings-frame">
         {showSessionHeader ? (
           <header className="vc-standings-header">
-            <CrystalBrand>VANTARE</CrystalBrand>
+            {brandVisible ? <CrystalBrand>VANTARE</CrystalBrand> : null}
             <div className="vc-standings-header-meta">
               <CrystalPill>{model.activeClass}</CrystalPill>
               <span className="vc-standings-remaining">{model.remainingText}</span>
             </div>
           </header>
+        ) : brandVisible ? (
+          <div className="vc-brand-band">
+            <CrystalBrand>VANTARE</CrystalBrand>
+          </div>
         ) : null}
         {model.statusMessage ? (
           <p className="vc-standings-status-message" role="status">

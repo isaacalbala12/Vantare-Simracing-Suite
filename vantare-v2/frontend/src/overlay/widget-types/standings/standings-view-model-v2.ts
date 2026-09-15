@@ -9,6 +9,8 @@ import { getEnabledStandingsColumns } from "./standings-content";
 import { formatRemainingTime } from "./standings-formatting";
 import {
   withStandingsMotionIdentity,
+  type StandingsFlag,
+  type StandingsInfoValue,
   type StandingsRowViewModel,
   type StandingsViewModel,
 } from "./standings-view-model";
@@ -27,8 +29,10 @@ const PLACEHOLDER = "—";
  *
  * Fields the canonical state does not carry stay at the placeholder and are
  * declared unsupported for the shadow comparator rather than invented:
- * driverNumber, teamCode, teamBrandColor, tireCompound and the
+ * teamCode, teamBrandColor, tireCompound and the
  * interval to the car ahead (the frame carries the gap to the leader only).
+ * The optional wire number is displayed if supplied; the current Core
+ * producer does not emit it, tracked separately in ISA-1072.
  */
 export function buildStandingsViewModelV2(
   frame: OverlayFrameV2,
@@ -61,6 +65,7 @@ export function buildStandingsViewModelV2(
   const paceSession = phase === "practice" || phase === "qualifying";
   const sessionBestLap = paceSession ? fastestLap(scoped) : undefined;
   const limited = scoped.slice(0, content.rowCount ?? 20);
+  const weather = frame.weather;
 
   return withStandingsMotionIdentity({
     type: "standings",
@@ -69,9 +74,47 @@ export function buildStandingsViewModelV2(
     activeClass,
     sessionLabel: displayedText(frame.session.phase)?.toUpperCase() ?? PLACEHOLDER,
     remainingText: formatRemainingTime(displayedNumber(frame.session.remaining)),
+    trackName: displayedText(frame.session.track),
+    totalRows: scoped.length,
+    ambientTempText: formatTemp(displayedNumber(weather?.ambientC)),
+    trackTempText: formatTemp(displayedNumber(weather?.trackC)),
+    windText: formatWind(displayedNumber(weather?.windKph)),
+    flag: source.state === "live" ? currentFlag(frame.session.flag) : "unknown",
+    sessionInfo: sessionInformation(frame, phase === "race"),
     columns,
     rows: limited.map((row, index) => buildRow(row, index, playerId, paceSession, sessionBestLap)),
   }, `${frame.sessionId}:${frame.epoch}`, frame.sequence);
+}
+
+function currentFlag(value: OverlayQValue<string>): StandingsFlag {
+  if (value.q !== "fresh") return "unknown";
+  switch (value.v?.toLowerCase()) {
+    case "green": case "yellow": case "blue": case "red": case "white": case "black": return value.v.toLowerCase() as StandingsFlag;
+    case "checkered": case "chequered": return "checkered";
+    default: return "unknown";
+  }
+}
+
+function sessionInformation(frame: OverlayFrameV2, race: boolean): NonNullable<StandingsViewModel["sessionInfo"]> {
+  const numberInfo = (value: OverlayQValue<number>, format: (n: number) => string): StandingsInfoValue => {
+    const number = displayedNumber(value);
+    return { text: number !== undefined && Number.isFinite(number) ? format(number) : PLACEHOLDER, stale: value.q === "stale" };
+  };
+  const temperature = (celsius: number) => {
+    const fahrenheit = frame.units.temperature === "fahrenheit";
+    return `${Number((fahrenheit ? celsius * 9 / 5 + 32 : celsius).toFixed(1))}°${fahrenheit ? "F" : "C"}`;
+  };
+  const percent = (n: number) => n >= 0 && n <= 100 ? `${Math.round(n)}%` : PLACEHOLDER;
+  return {
+    trackTemperature: numberInfo(frame.weather.trackC, temperature),
+    airTemperature: numberInfo(frame.weather.ambientC, temperature),
+    estimatedLaps: numberInfo(frame.fuel.sessionLaps, n => race && Number.isInteger(n) && n >= 0 && n < 2147483647 ? `≈${n}` : PLACEHOLDER),
+    totalLaps: numberInfo(frame.session.maxLaps, n => Number.isInteger(n) && n > 0 && n < 2147483647 ? String(n) : PLACEHOLDER),
+    track: { text: displayedText(frame.session.track) || PLACEHOLDER, stale: frame.session.track.q === "stale" },
+    remaining: numberInfo(frame.session.remaining, formatRemainingTime),
+    rain: numberInfo(frame.weather.rainPercent, percent),
+    wetness: numberInfo(frame.weather.wetnessPct, percent),
+  };
 }
 
 export function standingsDisplayedValues(
@@ -82,6 +125,9 @@ export function standingsDisplayedValues(
     sessionLabel: model.sessionLabel,
     activeClass: model.activeClass,
     remainingText: model.remainingText,
+    ambientTemp: model.ambientTempText ?? PLACEHOLDER,
+    trackTemp: model.trackTempText ?? PLACEHOLDER,
+    wind: model.windText ?? PLACEHOLDER,
     rowCount: String(model.rows.length),
     rows: model.rows
       .map((row) => [
@@ -99,7 +145,7 @@ export function standingsDisplayedValues(
   });
 }
 
-/** Fields the V2 presentation cannot fill from canonical telemetry. */
+/** Gaps of the current Core producer, not a ban on optional wire values. */
 export const OVERLAY_V2_STANDINGS_DECLARED_GAPS: readonly string[] = Object.freeze([
   "rows[].driverNumber",
   "rows[].teamCode",
@@ -119,7 +165,8 @@ function buildRow(
   return {
     id: row.id,
     position: row.position,
-    driverNumber: "",
+    classPosition: row.classPosition,
+    driverNumber: row.number ?? "",
     driverName,
     configuredDriverName: driverName,
     vehicleClass: row.classId ?? "",
@@ -167,6 +214,14 @@ function formatLapTime(seconds: number | undefined): string {
   return `${Math.floor(seconds / 60)}:${(seconds % 60).toFixed(3).padStart(6, "0")}`;
 }
 
+function formatTemp(value: number | undefined): string | undefined {
+  return value === undefined ? undefined : `${Math.round(value)}°`;
+}
+
+function formatWind(value: number | undefined): string | undefined {
+  return value === undefined ? undefined : `${Math.round(value)} km/h`;
+}
+
 function resolveActiveClass(
   rows: readonly OverlayStandingRowV2[],
   playerId: string | undefined,
@@ -176,8 +231,8 @@ function resolveActiveClass(
   return chosen === "" ? PLACEHOLDER : chosen.toUpperCase();
 }
 
-function displayedNumber(value: OverlayQValue<number>): number | undefined {
-  if (value.q === "missing" || value.q === "invalid") return undefined;
+function displayedNumber(value: OverlayQValue<number> | undefined): number | undefined {
+  if (!value || value.q === "missing" || value.q === "invalid") return undefined;
   // Go omitempty elides legitimate zeroes. Quality is the presence bit.
   return value.v ?? 0;
 }

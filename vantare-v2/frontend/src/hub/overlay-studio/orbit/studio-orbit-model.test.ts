@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
+import { translate } from "../../../i18n/i18n";
 import { ORBIT_KEYS, orbitStore } from "../../orbit/orbit-store";
 import {
   appearanceSummary,
@@ -66,6 +67,34 @@ describe("studio-orbit-model", () => {
       },
     });
     expect(designSummary(withProvenance, t)).toBe("Vantare Crystal · Crystal Bar");
+  });
+
+  it.each([["compact", "Signature"], ["broadcast", "Broadcast"]])("muestra el nombre vigente de %s al reabrir un perfil sin modificarlo", (id, name) => {
+    const widget = build({ type: "standings" });
+    widget.visual = { ...widget.visual, systemId: "vantare-functional", provenance: {
+      designId: `standings-functional-${id}`, designName: `Functional ${name} · Preview`,
+      origin: "vantare", appliedAt: "2026-09-09T00:00:00Z",
+    } };
+    const saved = JSON.stringify(widget);
+    const es = (key: string) => translate("es", key);
+    expect(designSummary(widget, es)).toBe(`Eficiencia · ${name}`);
+    expect(inspectorMeta(widget, es)).toBe(`${name} · 280 × 96`);
+    expect(JSON.stringify(widget)).toBe(saved);
+  });
+
+  it.each(["user", "unknown", "different-widget", "different-system", "different-version"])("conserva el nombre guardado cuando la procedencia es %s", (kind) => {
+    const widget = build({ type: kind === "different-widget" ? "delta" : "standings" });
+    widget.visual = { ...widget.visual,
+      systemId: kind === "different-system" ? "vantare-crystal" : "vantare-functional",
+      systemVersion: kind === "different-version" ? 2 : 1,
+      provenance: {
+        designId: kind === "unknown" ? "unknown" : "standings-functional-compact",
+        designName: "Mi estilo", origin: kind === "user" ? "user" : "vantare",
+        appliedAt: "2026-09-09T00:00:00Z",
+      },
+    };
+    expect(designSummary(widget, t)).toContain(" · Mi estilo");
+    expect(inspectorMeta(widget, t)).toBe("Mi estilo · 280 × 96");
   });
 
   it("resume el comportamiento con política, boxes y sesiones", () => {

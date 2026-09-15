@@ -23,6 +23,15 @@ export function buildAuthoringV2ScenarioWidget(input: {
   let widget = definition.createDefault(`${input.widget}-harness`);
   widget.visual = { ...widget.visual, systemId: input.system };
 
+  // Explicit Functional authoring preset. Runtime profiles keep their own
+  // configured columns; this only chooses which existing V2 fields to preview.
+  if (input.widget === "standings" && input.system === "vantare-functional" && input.variant === "default") {
+    const content = widget.content as Record<string, unknown>;
+    const metrics = new Set(["position", "driverName", "gap", "lastLap", "pit"]);
+    const columns = (content.columns as Record<string, unknown>[]).map((column) => ({ ...column, enabled: metrics.has(String(column.metricId)) }));
+    widget.content = { ...content, columns, rowCount: 10 };
+  }
+
   if (input.design) {
     const design = getOfficialDesign(input.design.designId);
     if (!design) {

@@ -115,7 +115,7 @@ se identifican como tales y nunca pasan por telemetría del usuario.
 
 ### Resultado local T18 — #1277
 
-La pasada final `evidence/isa-1277-visual/pass-20` contiene 18 estados principales
+La pasada final `evidence/isa-1277-visual/pass-22` contiene 18 estados principales
 y 72 variantes responsive en ES/EN/PT/IT. La revisión adversarial visual separada
 puntúa cada pantalla por encima de 9,0, con mínimo global 9,1, y no deja hallazgos
 P0/P1/P2. El informe automático cubre 16 combinaciones de tamaño e idioma sin

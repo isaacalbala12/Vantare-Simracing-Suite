@@ -13,6 +13,9 @@ import (
 // evaluateFinalOrbitPlan translates the visible load targets into a fixed
 // decision. Only the solver evaluates its constraints and driving costs.
 func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInputV2, solved solver.SolverResultV2, drivers map[string]OrbitCalculationDriver, variant OrbitCalculationVariant, planning *document.PlanningInputs) error {
+	if err := validateOrbitPitOverrides(variant, len(plan.Stints)-1, input.VECapacityPercent.Value > 0, input.TyreInventory != nil); err != nil {
+		return err
+	}
 	decision := solver.DecisionVector{Stints: make([]solver.StintDecision, len(plan.Stints)), PitStops: make([]solver.PitStopDecision, 0, len(plan.Stints)-1)}
 	seen := make(map[string]bool)
 	keepDriverProfiles := len(input.DriverProfiles) > 0
@@ -22,10 +25,6 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 	veLoads := make([]float64, len(plan.Stints))
 	for index := range plan.Stints {
 		stint := &plan.Stints[index]
-		if input.VECapacityPercent.Value > 0 {
-			value := veLoads[index]
-			stint.VirtualEnergy = &value
-		}
 		pace, err := effectiveOrbitPace(drivers[stint.DriverID], variant.Mode, planning)
 		if err != nil {
 			return err
@@ -55,6 +54,16 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 				stop = solved.Best.PitStops[index]
 			}
 			decision.PitStops = append(decision.PitStops, stop)
+		}
+	}
+	for index, override := range variant.PitOverrides {
+		stop := &decision.PitStops[index]
+		if override.ChangeTyres != nil {
+			stop.ChangeTyres = *override.ChangeTyres
+		}
+		if override.Compound != nil {
+			decision.Stints[index+1].Compound = *override.Compound
+			decision.Stints[index+1].TyreFitment = nil
 		}
 	}
 	// Keep a profile supplied to optimisation. Otherwise preserve the original
@@ -91,24 +100,36 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 			}
 			stint.Fuel = *override.Fuel
 		}
-		if stint.Fuel+1e-6 < required.Stints[index].FuelLiters || stint.Fuel > input.FuelCapacityLiters.Value+1e-6 || veLoads[index] > input.VECapacityPercent.Value+1e-6 {
-			return fmt.Errorf("stint %d exceeds available resources: %w", index, ErrCalculationInfeasible)
-		}
 		if index > 0 {
 			previous := plan.Stints[index-1]
 			fuelRemaining := previous.Fuel - required.Stints[index-1].FuelLiters
 			veRemaining := veLoads[index-1] - required.Stints[index-1].VEPercent
-			if stint.Fuel < fuelRemaining {
+			pitOverride := variant.PitOverrides[index-1]
+			if pitOverride.FuelLiters != nil {
+				if variant.Overrides[index].Fuel != nil {
+					return fmt.Errorf("stop %d has two Fuel authorities: %w", index-1, ErrCalculationInvalid)
+				}
+				stint.Fuel = fuelRemaining + *pitOverride.FuelLiters
+			} else if stint.Fuel < fuelRemaining {
 				if variant.Overrides[index].Fuel != nil {
 					return fmt.Errorf("stint %d requires removing fuel: %w", index, ErrCalculationInfeasible)
 				}
 				stint.Fuel = fuelRemaining
 			}
-			if veLoads[index] < veRemaining {
+			if pitOverride.VEPercent != nil {
+				veLoads[index] = veRemaining + *pitOverride.VEPercent
+			} else if veLoads[index] < veRemaining {
 				veLoads[index] = veRemaining
 			}
 			decision.PitStops[index-1].FuelLiters = math.Max(0, stint.Fuel-fuelRemaining)
 			decision.PitStops[index-1].VEPercent = math.Max(0, veLoads[index]-veRemaining)
+		}
+		if stint.Fuel+1e-6 < required.Stints[index].FuelLiters || stint.Fuel > input.FuelCapacityLiters.Value+1e-6 || veLoads[index]+1e-6 < required.Stints[index].VEPercent || veLoads[index] > input.VECapacityPercent.Value+1e-6 {
+			return fmt.Errorf("stint %d exceeds available resources: %w", index, ErrCalculationInfeasible)
+		}
+		if input.VECapacityPercent.Value > 0 {
+			value := veLoads[index]
+			stint.VirtualEnergy = &value
 		}
 	}
 	replayed, err := solver.ReplayDecisionV2WithResources(input, decision, plan.Stints[0].Fuel, veLoads[0])
@@ -123,7 +144,7 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 	plan.ModelVersion = string(solved.ContractVersion)
 	plan.Objective = "minimum_total_seconds"
 	plan.Optimality = "not_proven"
-	if len(variant.Overrides) == 0 && !solved.ComputeStats.Degradation.Applied && reflect.DeepEqual(replayed.Decision, solved.Best) {
+	if len(variant.Overrides) == 0 && len(variant.PitOverrides) == 0 && !solved.ComputeStats.Degradation.Applied && reflect.DeepEqual(replayed.Decision, solved.Best) {
 		plan.Optimality = "proven"
 	}
 	plan.PitSeconds = replayed.Evaluation.PitSeconds
@@ -144,6 +165,10 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 	}
 	for index := range plan.Stints {
 		stint := &plan.Stints[index]
+		if input.TyreInventory != nil {
+			stint.Compound = replayed.Decision.Stints[index].Compound
+			stint.TyreFitment = replayed.Decision.Stints[index].TyreFitment
+		}
 		windowOffset := stint.PitWindowSeconds - stint.StartSeconds
 		cost := replayed.Stints[index].Evaluation
 		stint.StartSeconds = clock
@@ -178,6 +203,29 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 			stop.PitServiceSeconds = breakdown.CoreServiceSeconds.Value()
 			stop.PitOverlapSeconds = breakdown.OverlapSavedSeconds.Value()
 			stop.PitBreakdownAvailable = true
+		}
+	}
+	return nil
+}
+
+func validateOrbitPitOverrides(variant OrbitCalculationVariant, stopCount int, veApplicable, tyresAvailable bool) error {
+	for index, override := range variant.PitOverrides {
+		if index < 0 || index >= stopCount {
+			return fmt.Errorf("pit override %d does not name a visible stop: %w", index, ErrCalculationInvalid)
+		}
+		for field, value := range map[string]*float64{"fuelLiters": override.FuelLiters, "vePercent": override.VEPercent} {
+			if value != nil && (*value < 0 || math.IsNaN(*value) || math.IsInf(*value, 0)) {
+				return fmt.Errorf("pit override %d %s is invalid: %w", index, field, ErrCalculationInvalid)
+			}
+		}
+		if override.VEPercent != nil && !veApplicable {
+			return fmt.Errorf("pit override %d cannot service unavailable virtual energy: %w", index, ErrCalculationInvalid)
+		}
+		if (override.ChangeTyres != nil || override.Compound != nil) && !tyresAvailable {
+			return fmt.Errorf("pit override %d cannot select tyres without physical inventory: %w", index, ErrCalculationInvalid)
+		}
+		if override.Compound != nil && !override.Compound.Valid() {
+			return fmt.Errorf("pit override %d compound is invalid: %w", index, ErrCalculationInvalid)
 		}
 	}
 	return nil

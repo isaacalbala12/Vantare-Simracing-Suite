@@ -230,7 +230,7 @@ func calculateOrbitPlan(ctx context.Context, event OrbitCalculationEvent, driver
 	if err != nil {
 		return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, fmt.Sprintf("input.variants.%d.driverOrderMode", variantIndex), fmt.Errorf("%v: %w", err, ErrCalculationInvalid))
 	}
-	if !fixedDriverOrder && len(variant.Overrides) > 0 {
+	if !fixedDriverOrder && (len(variant.Overrides) > 0 || len(variant.PitOverrides) > 0) {
 		return OrbitCalculationPlan{}, calculationApplicationError(ErrorCalculationInvalid, fmt.Sprintf("input.variants.%d.overrides", variantIndex), ErrCalculationInvalid)
 	}
 	paceTotal, fuelTotal := 0.0, 0.0

@@ -97,8 +97,9 @@ func TestOrbitFinalEvaluationPublishesVirtualEnergyOnlyWhenApplicable(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if with.Plans["strategy-1"].Stints[0].VirtualEnergy == nil {
-		t.Fatal("applicable virtual energy was omitted")
+	stint := with.Plans["strategy-1"].Stints[0]
+	if stint.VirtualEnergy == nil || *stint.VirtualEnergy <= 0 {
+		t.Fatalf("applicable virtual energy load was not published: %+v", stint)
 	}
 }
 

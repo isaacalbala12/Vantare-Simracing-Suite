@@ -439,12 +439,23 @@ type OrbitCalculationOverride struct {
 	Fuel *float64 `json:"fuel,omitempty"`
 }
 
+// OrbitCalculationPitOverride fixes the services performed at one visible
+// stop. Amounts are added at the stop, rather than target loads for the next
+// stint. The event remains the single authority for service timing/mode.
+type OrbitCalculationPitOverride struct {
+	FuelLiters  *float64        `json:"fuelLiters,omitempty"`
+	VEPercent   *float64        `json:"vePercent,omitempty"`
+	ChangeTyres *bool           `json:"changeTyres,omitempty"`
+	Compound    *tyres.Compound `json:"compound,omitempty"`
+}
+
 type OrbitCalculationVariant struct {
-	ID              string                           `json:"id"`
-	Mode            string                           `json:"mode"`
-	DriverOrderMode string                           `json:"driverOrderMode,omitempty"`
-	Order           []string                         `json:"order"`
-	Overrides       map[int]OrbitCalculationOverride `json:"overrides"`
+	ID              string                              `json:"id"`
+	Mode            string                              `json:"mode"`
+	DriverOrderMode string                              `json:"driverOrderMode,omitempty"`
+	Order           []string                            `json:"order"`
+	Overrides       map[int]OrbitCalculationOverride    `json:"overrides"`
+	PitOverrides    map[int]OrbitCalculationPitOverride `json:"pitOverrides,omitempty"`
 }
 
 type OrbitCalculationStint struct {

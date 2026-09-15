@@ -430,6 +430,12 @@ export type StrategyOrbitCalculationInputV1 = {
     readonly driverOrderMode?: "fixed" | "free";
     readonly order: readonly string[];
     readonly overrides: Readonly<Record<number, { readonly laps?: number; readonly fuel?: number }>>;
+    readonly pitOverrides?: Readonly<Record<number, {
+      readonly fuelLiters?: number;
+      readonly vePercent?: number;
+      readonly changeTyres?: boolean;
+      readonly compound?: StrategyCompound;
+    }>>;
   }[];
   readonly activeVariantId: string;
   readonly planningInputs?: StrategyPlanningInputsV2;

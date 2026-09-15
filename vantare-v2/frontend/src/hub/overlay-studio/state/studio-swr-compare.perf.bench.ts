@@ -32,7 +32,7 @@ for (const widgets of [10, 50, 100]) {
       documentsEqual(left, right);
     }, { time: 500 });
     bench("base JSON.stringify", () => {
-      JSON.stringify(left) === JSON.stringify(right);
+      Boolean(JSON.stringify(left) === JSON.stringify(right));
     }, { time: 500 });
   });
 }

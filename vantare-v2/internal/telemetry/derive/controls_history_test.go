@@ -2,6 +2,7 @@ package derive
 
 import (
 	"context"
+	"reflect"
 	"testing"
 	"time"
 
@@ -206,6 +207,23 @@ func TestControlsHistoryKeepsLimitResetAndAlignmentWithMotion(t *testing.T) {
 	}
 	if _, present := resetState.Derived.ControlsHistory.Samples[0].Gear.Value(); !present {
 		t.Fatal("reset sample lost its motion fields")
+	}
+}
+
+func TestAppendControlSampleOwnsHistoryAndKeepsBoundedTail(t *testing.T) {
+	t.Parallel()
+
+	previous := make([]ControlSample, 3, 8)
+	previous[0].Cursor.Sequence = 1
+	previous[1].Cursor.Sequence = 2
+	previous[2].Cursor.Sequence = 3
+	next := appendControlSample(previous, ControlSample{Cursor: schema.Cursor{Sequence: 4}}, 3)
+	if got := []schema.Sequence{next[0].Cursor.Sequence, next[1].Cursor.Sequence, next[2].Cursor.Sequence}; !reflect.DeepEqual(got, []schema.Sequence{2, 3, 4}) {
+		t.Fatalf("bounded tail = %v, want [2 3 4]", got)
+	}
+	next[0].Cursor.Sequence = 99
+	if previous[1].Cursor.Sequence != 2 {
+		t.Fatalf("appendControlSample aliased previous backing array")
 	}
 }
 

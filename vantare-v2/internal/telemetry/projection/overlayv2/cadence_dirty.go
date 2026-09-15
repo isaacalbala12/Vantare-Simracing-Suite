@@ -88,6 +88,9 @@ func hashStandingsVehicle(sum uint64, vehicle *core.VehicleState) uint64 {
 	sum = hashFieldInt32(sum, vehicle.Position)
 	sum = hashFieldString(sum, vehicle.VehicleClass)
 	sum = hashFieldString(sum, vehicle.DriverName)
+	// CarNumber is projected only while fresh; hash the effective wire value so
+	// stale/invalid source churn does not rebuild standings unnecessarily.
+	sum = hashString(sum, observedCarNumber(vehicle.CarNumber))
 	sum = hashFieldFloat(sum, vehicle.TimeBehindLeader)
 	sum = hashFieldInt32(sum, vehicle.LapsBehindLeader)
 	sum = hashFieldBool(sum, vehicle.InPit)

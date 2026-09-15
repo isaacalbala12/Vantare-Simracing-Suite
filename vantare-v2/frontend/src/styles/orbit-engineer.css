@@ -73,6 +73,39 @@
   margin-top: 14px;
 }
 
+.orbit-engineer__spotter-notice {
+  display: flex;
+  flex: none;
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+  padding: 11px 14px;
+  border: 1px solid rgba(240, 171, 71, 0.32);
+  border-radius: var(--orbit-radius);
+  color: var(--orbit-ink);
+  background: rgba(240, 171, 71, 0.08);
+}
+
+.orbit-engineer__spotter-notice > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+
+.orbit-engineer__spotter-notice b {
+  font-size: var(--orbit-fs-body);
+}
+
+.orbit-engineer__spotter-notice span span {
+  color: var(--orbit-ink-2);
+  font-size: var(--orbit-fs-small);
+}
+
+.orbit-engineer__spotter-notice-icon {
+  display: inline-flex;
+  flex: none;
+  color: #f0ab47;
+}
+
 .orbit-eng-mod {
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr) auto;

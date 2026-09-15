@@ -296,4 +296,53 @@ describe("createTelemetryRateCoordinator", () => {
     expect(harness.stops()).toBe(1);
     coordinator.dispose();
   });
+
+  it("compares source and capabilities without serializing every publication", () => {
+    const coordinator = createTelemetryRateCoordinator();
+    const stringify = vi.spyOn(JSON, "stringify");
+    const frame = performanceFrame(1, 40, { standings: "dirty" });
+
+    coordinator.setOverlayFrame(frame, { state: "live", ageMs: 0 });
+    const firstContext = coordinator.getOverlayRuntimeContext();
+    stringify.mockClear();
+    coordinator.setOverlayFrame(
+      { ...frame, sequence: 2 },
+      { state: "live", ageMs: 16 },
+    );
+
+    expect(stringify).not.toHaveBeenCalled();
+    expect(coordinator.getOverlayRuntimeContext()).toBe(firstContext);
+    coordinator.dispose();
+  });
+
+  it("keeps source age-only updates observable without waking an idle scheduler", () => {
+    const harness = controllableScheduler();
+    const coordinator = createTelemetryRateCoordinator({ createScheduler: harness.create });
+    const frame = performanceFrame(1, null, {});
+    coordinator.setOverlayFrame(frame, { state: "live", ageMs: 0 });
+    coordinator.setOverlayFrame(frame, { state: "live", ageMs: 250 });
+    expect(coordinator.getOverlaySource()?.ageMs).toBe(250);
+    expect(harness.starts()).toBe(0);
+    coordinator.dispose();
+  });
+
+  it.each([
+    ["null to omitted", null, undefined],
+    ["omitted to null", undefined, null],
+  ] as const)("preserves the wire distinction from %s performance policy", (_label, firstPolicy, secondPolicy) => {
+    const coordinator = createTelemetryRateCoordinator();
+    const frame = performanceFrame(1, null, {});
+    coordinator.setOverlayFrame({
+      ...frame,
+      capabilities: { ...frame.capabilities, performance: firstPolicy },
+    });
+    const firstContext = coordinator.getOverlayRuntimeContext();
+    coordinator.setOverlayFrame({
+      ...frame,
+      sequence: 2,
+      capabilities: { ...frame.capabilities, performance: secondPolicy },
+    });
+    expect(coordinator.getOverlayRuntimeContext()).not.toBe(firstContext);
+    coordinator.dispose();
+  });
 });

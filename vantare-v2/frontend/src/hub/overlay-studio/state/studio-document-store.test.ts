@@ -67,6 +67,25 @@ describe("studio document store", () => {
     expect(state.history).toBe(seed.history);
   });
 
+  it("trata como identica una semilla con distinto orden de claves", () => {
+    const document = makeDocument();
+    const seed = buildInitialHistory(document);
+    const reordered = {
+      layouts: { ...document.layouts },
+      monitorIndex: document.monitorIndex,
+      displayMode: document.displayMode,
+      name: document.name,
+      id: document.id,
+      schemaVersion: document.schemaVersion,
+    };
+    const store = createStudioStore(seed);
+
+    store.applyLoadedDocument({ document: reordered, revision: "rev-10" }, seed);
+
+    expect(store.getSnapshot().history).toBe(seed.history);
+    expect(store.getSnapshot().revision).toBe("rev-10");
+  });
+
   it("dispatch sin documento devuelve false sin mutar estado", () => {
     const store = createStudioStore(null);
     const listener = vi.fn();

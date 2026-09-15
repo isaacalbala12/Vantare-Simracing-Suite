@@ -68,6 +68,87 @@ describe("OverlayWorkshopDevRoute", () => {
     expect(document.querySelector("[data-overlay-workshop-query]")?.textContent).toContain("scale=0.3");
   });
 
+  // ISA-1221: la study view es el único harness — cualquier combinación
+  // widget/sistema renderiza el panel de estudio y nunca la sidebar genérica
+  // que el merge 6110370c resucitó por error.
+  it("renders the study view as the only harness for every widget/system selection", async () => {
+    for (const search of [
+      "?widget=delta&system=vantare-crystal&design=delta-crystal-simple&state=ready&surface=studio&variant=default",
+      "?widget=pedals&system=vantare-original&state=ready&surface=obs&variant=pedals-full",
+      "?widget=standings&system=vantare-functional&variant=standings-functional-study&state=ready&surface=obs",
+    ]) {
+      cleanup();
+      render(<OverlayWorkshopDevRoute search={search} />);
+      await waitFor(() => expect(document.querySelector(".functional-study-controls")).toBeTruthy());
+      expect(document.querySelector(".overlay-workshop-sidebar")).toBeNull();
+      expect(screen.queryByLabelText("Laboratorio visual")).toBeNull();
+      expect(document.querySelector("[data-overlay-workshop-stage]")).toBeTruthy();
+    }
+  });
+
+  // ISA-1221: cada selección es una entrada del historial — atrás/adelante
+  // navega dentro del Workshop y nunca abandona la página hacia un estado
+  // muerto. El aparcado de fotogramas usa replaceState para no inundarlo.
+  it("navigates back/forward inside the workshop instead of leaving the page", async () => {
+    render(
+      <OverlayWorkshopDevRoute search="?widget=delta&system=vantare-original&state=ready&surface=studio&variant=default" />,
+    );
+    await waitFor(() => expect(document.querySelector("[data-widget-renderer=delta]")).toBeTruthy());
+
+    fireEvent.change(screen.getByLabelText("Widget"), { target: { value: "pedals" } });
+    await waitFor(() => expect(document.querySelector("[data-widget-renderer=pedals]")).toBeTruthy());
+    expect(window.location.search).toContain("widget=pedals");
+
+    fireEvent.change(screen.getByLabelText("Widget"), { target: { value: "standings" } });
+    await waitFor(() => expect(document.querySelector("[data-widget-renderer=standings]")).toBeTruthy());
+    expect(window.location.search).toContain("widget=standings");
+
+    window.history.back();
+    await waitFor(() => expect(document.querySelector("[data-widget-renderer=pedals]")).toBeTruthy());
+    expect(window.location.search).toContain("widget=pedals");
+
+    window.history.forward();
+    await waitFor(() => expect(document.querySelector("[data-widget-renderer=standings]")).toBeTruthy());
+  });
+
+  it("keeps the scene transport inside the stage under the study view", async () => {
+    render(
+      <OverlayWorkshopDevRoute search="?widget=standings&system=vantare-endurance&design=standings-endurance-redline&state=ready&surface=obs&scene=standings-fastest-lap" />,
+    );
+    await waitFor(() =>
+      expect(
+        document.querySelector("[data-overlay-workshop-stage] [data-overlay-workshop-transport]"),
+      ).toBeTruthy(),
+    );
+    expect(screen.getByTestId("workshop-scene-scrub")).toBeTruthy();
+  });
+
+  it("declares the canvas size through the study view preset and free dimensions", async () => {
+    render(
+      <OverlayWorkshopDevRoute search="?widget=delta&system=vantare-original&state=ready&surface=studio&variant=default" />,
+    );
+    await waitFor(() => expect(document.querySelector("[data-overlay-workshop-widget-root]")).toBeTruthy());
+
+    // El preset solo declara la intención; el botón fija ancho y alto.
+    fireEvent.change(screen.getByLabelText("Resolución"), { target: { value: "720p" } });
+    fireEvent.click(screen.getByRole("button", { name: "Aplicar tamaño declarado" }));
+    const root = document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement;
+    expect(root.style.width).toBe("1280px");
+    expect(root.style.height).toBe("720px");
+    expect(document.querySelector("[data-overlay-workshop-query]")?.textContent).toContain("preset=720p");
+    expect(document.querySelector("[data-overlay-workshop-query]")?.textContent).toContain("width=1280");
+
+    // Fail-closed: un ancho fuera de rango no reescribe la URL; al completar
+    // un par válido el lienzo adopta las dimensiones libres.
+    fireEvent.change(screen.getByLabelText("Ancho"), { target: { value: "12" } });
+    expect(document.querySelector("[data-overlay-workshop-query]")?.textContent).toContain("width=1280");
+    fireEvent.change(screen.getByLabelText("Ancho"), { target: { value: "640" } });
+    fireEvent.change(screen.getByLabelText("Alto"), { target: { value: "240" } });
+    expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.width).toBe("640px");
+    expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.height).toBe("240px");
+    expect(document.querySelector("[data-overlay-workshop-query]")?.textContent).toContain("height=240");
+  });
+
   it("applies the Efficiency v2 study skin from the URL and switches it from the controls", async () => {
     render(<OverlayWorkshopDevRoute search="?widget=standings&system=vantare-functional&variant=standings-functional-study&design=standings-functional-compact&study=v2-focus&state=ready&surface=obs" />);
 
@@ -121,6 +202,16 @@ describe("OverlayWorkshopDevRoute", () => {
         );
         expect(document.querySelector("[data-overlay-workshop-fixture-error]")).toBeNull();
       }
+    }
+  });
+
+  it("exposes only the default Workshop variant for every widget", async () => {
+    for (const widget of ["standings", "relative", "delta", "pedals"] as const) {
+      cleanup();
+      render(<OverlayWorkshopDevRoute search={`?widget=${widget}&system=vantare-functional&variant=default&state=ready&surface=obs`} />);
+      await waitFor(() => expect(document.querySelector(`[data-widget-renderer=${widget}]`)).toBeTruthy());
+      expect(screen.queryByLabelText("Variante")).toBeNull();
+      expect(screen.getByText("Fixture: default")).toBeTruthy();
     }
   });
 

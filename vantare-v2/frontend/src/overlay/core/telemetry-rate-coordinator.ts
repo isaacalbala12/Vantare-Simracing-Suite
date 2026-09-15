@@ -1,4 +1,9 @@
-import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
+import type {
+  OverlayCapabilitiesV2,
+  OverlayFrameV2,
+  OverlayPerformanceV2,
+  OverlaySourceStatusV2,
+} from "../../generated/telemetry";
 import { buildOverlayRuntimeContext, type OverlayRuntimeContext } from "./overlay-runtime-context";
 import type { WidgetRuntimeInput } from "./widget-definition";
 
@@ -35,6 +40,75 @@ export type TelemetryRateCoordinatorOptions = {
   /** Injects the repaint loop. Defaults to requestAnimationFrame. */
   createScheduler?: () => TelemetryScheduler;
 };
+
+function sameSource(
+  left: OverlaySourceStatusV2 | undefined,
+  right: OverlaySourceStatusV2 | undefined,
+): boolean {
+  return left === right || (
+    left?.state === right?.state &&
+    left?.retry === right?.retry &&
+    left?.ageMs === right?.ageMs &&
+    left?.reason === right?.reason
+  );
+}
+
+function sameRecord(left: Readonly<Record<string, unknown>>, right: Readonly<Record<string, unknown>>): boolean {
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  if (leftKeys.length !== rightKeys.length) return false;
+  return leftKeys.every((key) => left[key] === right[key]);
+}
+
+function samePerformance(
+  left: OverlayPerformanceV2 | null | undefined,
+  right: OverlayPerformanceV2 | null | undefined,
+): boolean {
+  if (left === right) return true;
+  // `null` is an explicit wire value while `undefined` means the field was
+  // omitted. Preserve that distinction from the former JSON comparison.
+  if (left == null || right == null) return false;
+  return (
+    left?.level === right?.level &&
+    left?.mode === right?.mode &&
+    left?.effects === right?.effects &&
+    left?.rafCap === right?.rafCap &&
+    left?.sourceHz === right?.sourceHz &&
+    left?.reason === right?.reason &&
+    sameRecord(left?.widgetHz ?? {}, right?.widgetHz ?? {})
+  );
+}
+
+function sameCapabilities(
+  left: OverlayCapabilitiesV2 | undefined,
+  right: OverlayCapabilitiesV2 | undefined,
+): boolean {
+  return left === right || (
+    left !== undefined && right !== undefined &&
+    sameArray(left.supported, right.supported) &&
+    sameRecord(left.available ?? {}, right.available ?? {}) &&
+    (left.modes?.gaps ?? undefined) === (right.modes?.gaps ?? undefined) &&
+    (left.modes?.standings ?? undefined) === (right.modes?.standings ?? undefined) &&
+    sameArray(left.modes?.delta, right.modes?.delta) &&
+    sameArray(left.modes?.spatial, right.modes?.spatial) &&
+    samePerformance(left.performance, right.performance)
+  );
+}
+
+function sameArray(left: readonly unknown[] | undefined, right: readonly unknown[] | undefined): boolean {
+  return left === right || (
+    left !== undefined && right !== undefined &&
+    left.length === right.length &&
+    left.every((value, index) => value === right[index])
+  );
+}
+
+function sameFailure(
+  left: WidgetRuntimeInput["overlayV2Failure"],
+  right: WidgetRuntimeInput["overlayV2Failure"],
+): boolean {
+  return left === right || left?.code === right?.code && left?.message === right?.message;
+}
 
 /**
  * Go publica el presupuesto efectivo. Este coordinador solo lo obedece: una
@@ -168,7 +242,7 @@ export function createTelemetryRateCoordinator(
     a.playerPresent === b.playerPresent &&
     a.playerInPit === b.playerInPit &&
     a.vehicleCount === b.vehicleCount &&
-    JSON.stringify(a.capabilities) === JSON.stringify(b.capabilities);
+    sameCapabilities(a.capabilities, b.capabilities);
 
   const intervalFor = (subscription: Subscription): number => {
     const performancePolicy = overlayFrame?.capabilities.performance;
@@ -275,12 +349,12 @@ export function createTelemetryRateCoordinator(
     },
     setOverlayFrame(frame, source, revision, frameRevision) {
       const sameFrame = frame?.sequence === overlayFrame?.sequence && frame?.epoch === overlayFrame?.epoch;
-      const sameSource = JSON.stringify(source) === JSON.stringify(overlaySource);
-      const nextRevision = revision ?? (sameFrame && sameSource ? overlayRevision : overlayRevision + 1);
+      const sourceUnchanged = sameSource(source, overlaySource);
+      const nextRevision = revision ?? (sameFrame && sourceUnchanged ? overlayRevision : overlayRevision + 1);
       const nextFrameRevision = frameRevision ?? (frame && !sameFrame ? overlayFrameRevision + 1 : overlayFrameRevision);
       const clearsFailure = overlayFailure !== undefined && frame !== undefined && source !== undefined &&
         nextFrameRevision > (overlayFailureFrameRevision ?? overlayFrameRevision);
-      if (sameFrame && sameSource && !clearsFailure) return;
+      if (sameFrame && sourceUnchanged && !clearsFailure) return;
       overlayFrame = frame;
       overlaySource = source;
       overlayRevision = Math.max(overlayRevision, nextRevision);
@@ -296,7 +370,7 @@ export function createTelemetryRateCoordinator(
       version += 1;
     },
     setOverlayFailure(failure) {
-      if (JSON.stringify(failure) === JSON.stringify(overlayFailure)) return;
+      if (sameFailure(failure, overlayFailure)) return;
       overlayFailure = failure;
       overlayFailureFrameRevision = failure ? overlayFrameRevision : undefined;
       version += 1;

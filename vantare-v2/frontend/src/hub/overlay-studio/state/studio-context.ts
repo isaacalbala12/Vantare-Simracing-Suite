@@ -13,7 +13,7 @@ import type {
 import type { AuthoringV2Scenario } from "../../../overlay/authoring/fixtures/authoring-v2-scenario-fixture";
 import type { StudioCommand } from "./studio-command";
 import type { StudioSaveResult } from "./studio-profile-client";
-import { isStudioHistoryDirty } from "./studio-history";
+import { selectStudioDirty } from "./studio-derived-selectors";
 import { resolveSessionLayout } from "./session-layouts";
 import type { StudioStore } from "./studio-document-store";
 
@@ -114,7 +114,7 @@ export function useStudioWidgetPolicy(): WidgetPolicyWire | null {
 }
 
 export function useStudioDirty(): boolean {
-  return useStudioSelector((s) => (s.history ? isStudioHistoryDirty(s.history) : false));
+  return useStudioSelector((s) => selectStudioDirty(s.history));
 }
 
 export function useStudioActiveLayout(): SessionLayoutV3 | null {
@@ -147,7 +147,7 @@ export function useStudioDocument(): StudioDocumentContextValue {
       activeLayout: document ? resolveSessionLayout(document, state.activeSession) : null,
       activeSession: state.activeSession,
       selectedWidgetId: state.selectedWidgetId,
-      dirty: state.history ? isStudioHistoryDirty(state.history) : false,
+      dirty: selectStudioDirty(state.history),
       canUndo: (state.history?.past.length ?? 0) > 0,
       canRedo: (state.history?.future.length ?? 0) > 0,
       saveState: state.saveState,

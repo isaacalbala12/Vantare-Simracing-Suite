@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useId, useRef, type ReactNode } from "react";
+import { useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "./Button";
+import { cx } from "./cx";
+import { useModalFocus } from "./modal-focus";
 
 export type ConfirmTone = "danger" | "primary";
 
@@ -19,9 +21,6 @@ export interface ConfirmDialogProps {
   className?: string;
   "data-testid"?: string;
 }
-
-const FOCUSABLE =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
  * Diálogo de confirmación centrado del kit Orbit.
@@ -48,52 +47,10 @@ export function ConfirmDialog({
   "data-testid": testId,
 }: ConfirmDialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
-  const restoreRef = useRef<HTMLElement | null>(null);
   const titleId = useId();
   const bodyId = useId();
-
-  const focusables = useCallback((): HTMLElement[] => {
-    const panel = panelRef.current;
-    if (!panel) return [];
-    return Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
-  }, []);
-
-  useEffect(() => {
-    if (!open) return;
-    restoreRef.current = document.activeElement as HTMLElement | null;
-    // El primero del panel es Cancelar (ver el pie): el foco arranca ahí.
-    (focusables()[0] ?? panelRef.current)?.focus();
-    return () => {
-      restoreRef.current?.focus?.();
-    };
-  }, [open, focusables]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.stopPropagation();
-        event.preventDefault();
-        onCancel();
-        return;
-      }
-      if (event.key !== "Tab") return;
-      const nodes = focusables();
-      if (nodes.length === 0) return;
-      const first = nodes[0];
-      const last = nodes[nodes.length - 1];
-      const active = document.activeElement;
-      if (event.shiftKey && (active === first || !panelRef.current?.contains(active))) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && active === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [open, onCancel, focusables]);
+  // El primero del panel es Cancelar (ver el pie): el foco arranca ahí.
+  useModalFocus(panelRef, open, onCancel, { escapePreventDefault: true });
 
   if (!open) return null;
 
@@ -109,7 +66,7 @@ export function ConfirmDialog({
         aria-describedby={bodyId}
         aria-labelledby={titleId}
         aria-modal="true"
-        className={["orbit-confirm", className].filter(Boolean).join(" ")}
+        className={cx("orbit-confirm", className)}
         ref={panelRef}
         role="alertdialog"
         tabIndex={-1}

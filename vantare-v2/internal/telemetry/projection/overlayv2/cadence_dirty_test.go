@@ -132,6 +132,23 @@ func TestStandingsDirtySignalIgnoresUnprojectedChanges(t *testing.T) {
 			dirty: true,
 		},
 		{
+			name: "fresh car number changes",
+			mutate: func(state *derive.FinalState) {
+				state.Observed.Vehicles[1].CarNumber = builderPresent(standings.CarNumber("007"))
+			},
+			dirty: true,
+		},
+		{
+			name: "stale car number remains omitted",
+			mutate: func(state *derive.FinalState) {
+				field, err := schema.NewField(standings.CarNumber("007"), schema.ProvenanceObserved, schema.FreshnessStale)
+				if err != nil {
+					panic(err)
+				}
+				state.Observed.Vehicles[1].CarNumber = field
+			},
+		},
+		{
 			name: "completed laps change",
 			mutate: func(state *derive.FinalState) {
 				state.Observed.Vehicles[2].CompletedLaps = builderPresent(standings.CompletedLaps(11))
@@ -169,6 +186,9 @@ func TestStandingsDirtySignalMatchesTheBuiltRows(t *testing.T) {
 		func(state *derive.FinalState) { state.Observed.Vehicles[1].InPit = builderPresent(pit.InPit(true)) },
 		func(state *derive.FinalState) {
 			state.Observed.Vehicles[2].LastLapTime = builderPresent(standings.LapTime(90.0))
+		},
+		func(state *derive.FinalState) {
+			state.Observed.Vehicles[1].CarNumber = builderPresent(standings.CarNumber("007"))
 		},
 		func(state *derive.FinalState) { state.Observed.Vehicles = state.Observed.Vehicles[:2] },
 	}

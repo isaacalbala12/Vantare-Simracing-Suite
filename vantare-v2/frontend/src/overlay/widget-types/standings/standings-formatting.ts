@@ -1,11 +1,11 @@
 import type { WidgetColumnV3 } from "../shared/widget-column";
+import { formatDriverName } from "../shared/driver-name";
 
 export type StandingsSessionMode = "practice" | "qual" | "race" | "other";
 
 export type StandingsScoringRow = Record<string, unknown>;
 
 const PLACEHOLDER = "—";
-const DEFAULT_NAME_MAX_CHARS = 16;
 
 function readString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
@@ -21,22 +21,8 @@ function clampDecimals(value: unknown): 0 | 1 | 2 | 3 {
   return 3;
 }
 
-function truncateText(value: string, maxChars: number): string {
-  if (maxChars <= 1) return "…";
-  if (value.length <= maxChars) return value;
-  return `${value.slice(0, maxChars - 1)}…`;
-}
-
 function formatStandingsDriverName(name: string | undefined, column: WidgetColumnV3): string {
-  const value = name ?? "?";
-  const format = column.format;
-  const mode = readString(format?.mode);
-  if (mode !== "truncate") return value;
-
-  const configuredMax = readNumber(format?.maxChars);
-  if (configuredMax != null && configuredMax < 2) return "…";
-  const maxChars = Math.max(2, Math.min(64, Math.round(configuredMax ?? DEFAULT_NAME_MAX_CHARS)));
-  return truncateText(value, maxChars);
+  return formatDriverName(name, column);
 }
 
 function formatStandingsLapTime(seconds: number | undefined, column: WidgetColumnV3): string {

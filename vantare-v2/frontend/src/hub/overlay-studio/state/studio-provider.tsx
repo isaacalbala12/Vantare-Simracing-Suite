@@ -25,7 +25,7 @@ import {
   createStudioStore,
   type StudioSeed,
 } from "./studio-document-store";
-import { isStudioHistoryDirty } from "./studio-history";
+import { selectStudioDirty } from "./studio-derived-selectors";
 
 const DEFAULT_PREVIEW_STATE: StudioPreviewState = {
   source: "mock",
@@ -100,7 +100,7 @@ export function StudioProvider(props: {
   // sesión no lo reprograman.
   const docState = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
   const document = docState.history?.present ?? null;
-  const dirty = docState.history ? isStudioHistoryDirty(docState.history) : false;
+  const dirty = selectStudioDirty(docState.history);
 
   useEffect(() => {
     if (!recoveryStore || !document || !dirty) {

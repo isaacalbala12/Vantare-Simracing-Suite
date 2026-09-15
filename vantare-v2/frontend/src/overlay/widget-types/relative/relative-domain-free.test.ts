@@ -549,6 +549,28 @@ describe("relative v2 view model", () => {
     expect(buildRelativeViewModelV2(anchorless, { state: "live" }, CONTENT).rows).toEqual([]);
   });
 
+  it.each([
+    { mode: "initial" as const, expected: "M. Costa" },
+    { mode: "surname" as const, expected: "Costa" },
+    { mode: "full" as const, expected: "María Costa" },
+  ])("formats the driver-name column as $expected in $mode mode", ({ mode, expected }) => {
+    const base = goldenFrame(44);
+    const content = {
+      ...CONTENT,
+      rangeAhead: 1,
+      rangeBehind: 0,
+      columns: CONTENT.columns.map((column) => column.metricId === "driverName"
+        ? { ...column, format: { ...column.format, mode } }
+        : column),
+    };
+    const frame = relativeScenarioFrame(base, 900, ["María Costa"], [], true);
+    const model = buildRelativeViewModelV2(frame, { state: "live" }, content);
+    const row = model.rows.find((entry) => entry.id === "María Costa");
+
+    expect(row).toMatchObject({ driverName: "María Costa", configuredDriverName: expected });
+    expect(relativeDisplayedValues(model).rows).toContain(expected);
+  });
+
   it("exposes a stable displayed projection for the shadow comparator", () => {
     const displayed = relativeDisplayedValues(
       buildRelativeViewModelV2(goldenFrame(44), { state: "live" }, CONTENT),

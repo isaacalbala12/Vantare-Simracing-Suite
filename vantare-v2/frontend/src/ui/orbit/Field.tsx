@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cx } from "./cx";
 
 export interface FieldProps {
   label: string;
@@ -11,9 +12,7 @@ export interface FieldProps {
 }
 
 export function Field({ label, hint, htmlFor, row, children, className }: FieldProps) {
-  const classes = [row ? "orbit-field orbit-field--row" : "orbit-field", className]
-    .filter(Boolean)
-    .join(" ");
+  const classes = cx(row ? "orbit-field orbit-field--row" : "orbit-field", className);
 
   return (
     <div className={classes}>

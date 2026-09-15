@@ -179,6 +179,39 @@ func TestEngineerServiceConsumesCanonicalObservationWithoutOwningSource(t *testi
 	t.Fatal("canonical observation did not reach Spotter notification queue")
 }
 
+func TestEngineerStatusSeparatesConnectedSourceFromSpotterAvailability(t *testing.T) {
+	svc := service.NewEngineerService(&mockEmitter{})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer svc.Stop()
+
+	observation := canonicalObservationAt(t, 1, 1, 1, 80, 100)
+	observation.Player.Orientation = engineerprojection.Field[engineerprojection.Orientation]{}
+	if err := svc.ConsumeObservation(observation); err != nil {
+		t.Fatal(err)
+	}
+	status := svc.Status()
+	if !status.Connected || status.SpotterAvailability.State != service.SpotterAvailabilityUnavailable || status.SpotterAvailability.Reason != "spatial" {
+		t.Fatalf("status = %+v, want connected source with unavailable Spotter", status)
+	}
+
+	if err := svc.ConsumeObservation(canonicalObservationAt(t, 1, 2, 1, 80, 100)); err != nil {
+		t.Fatal(err)
+	}
+	if status = svc.Status(); status.SpotterAvailability.State != service.SpotterAvailabilityReady {
+		t.Fatalf("recovered status = %+v, want ready Spotter", status)
+	}
+	if err := svc.SetSpotterEnabled(false); err != nil {
+		t.Fatal(err)
+	}
+	if status = svc.Status(); status.SpotterAvailability.State != service.SpotterAvailabilityDisabled {
+		t.Fatalf("disabled status = %+v", status)
+	}
+}
+
 func TestRadioSpotterDoesNotDuplicateLegacyProjection(t *testing.T) {
 	svc := service.NewEngineerService(&mockEmitter{})
 	ctx, cancel := context.WithCancel(context.Background())

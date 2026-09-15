@@ -20,6 +20,13 @@ export const engineerOrbitEn: Record<string, string> = {
   "engineer.modules.liveStrategyHint": "Pit window and fuel target from the active plan.",
   "engineer.modules.soon": "Coming soon",
 
+  "engineer.spotterUnavailable.title": "Spotter unavailable",
+  "engineer.spotterUnavailable.capability": "LMU is not providing the required spatial telemetry.",
+  "engineer.spotterUnavailable.capability_unsupported": "LMU does not deliver spatial telemetry in this session.",
+  "engineer.spotterUnavailable.capability_degraded": "Spatial telemetry is degraded and the Spotter cannot evaluate reliably.",
+  "engineer.spotterUnavailable.player": "The player's car cannot be identified in this session.",
+  "engineer.spotterUnavailable.spatial": "Reliable position data is missing to detect nearby cars.",
+
   "engineer.voice.title": "Voice",
   "engineer.voice.meta": "{{n}} system voices · local setting",
   "engineer.voice.noneMeta": "no speech engine",

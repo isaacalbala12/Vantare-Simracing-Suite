@@ -7,7 +7,7 @@ import type { DeltaContent } from "./delta-definition";
 import type { DeltaTone, DeltaViewModel } from "./delta-view-model";
 
 const PLACEHOLDER = "—";
-const DELTA_PROGRESS_SCALE_SECONDS = 2;
+const DELTA_PROGRESS_SCALE_SECONDS = 1.5;
 
 /**
  * Delta view model over the Overlay v2 contract.

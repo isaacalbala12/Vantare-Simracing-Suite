@@ -23,12 +23,27 @@ type EngineerStatus struct {
 	Source                string                 `json:"source"`
 	PresentationLifecycle uint64                 `json:"presentationLifecycle"`
 	SpotterEnabled        bool                   `json:"spotterEnabled"`
+	SpotterAvailability   SpotterAvailability    `json:"spotterAvailability"`
 	Sensitivity           string                 `json:"sensitivity"`
 	OutputModes           map[string]OutputMode  `json:"outputModes"`
 	SubtitlesEnabled      bool                   `json:"subtitlesEnabled"`
 	TTSCacheCount         int                    `json:"ttsCacheCount"`
 	RecentMessages        []EngineerNotification `json:"recentMessages"`
 	LastError             string                 `json:"lastError,omitempty"`
+}
+
+type SpotterAvailabilityState string
+
+const (
+	SpotterAvailabilityDisabled    SpotterAvailabilityState = "disabled"
+	SpotterAvailabilityWaiting     SpotterAvailabilityState = "waiting"
+	SpotterAvailabilityReady       SpotterAvailabilityState = "ready"
+	SpotterAvailabilityUnavailable SpotterAvailabilityState = "unavailable"
+)
+
+type SpotterAvailability struct {
+	State  SpotterAvailabilityState `json:"state"`
+	Reason string                   `json:"reason,omitempty"`
 }
 
 const EngineerStreamVersion uint16 = 1

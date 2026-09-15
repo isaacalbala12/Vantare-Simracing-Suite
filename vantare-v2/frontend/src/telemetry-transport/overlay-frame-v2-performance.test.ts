@@ -1,5 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { decodeOverlayUpdateV2 } from "./overlay-frame-v2-store";
+import { describe, expect, it, vi } from "vitest";
+import {
+  createOverlaySectionDecoder,
+  decodeOverlayUpdateV2,
+  parseOverlayPullJSON,
+  OVERLAY_V2_SNAPSHOT_EVENT,
+} from "./overlay-frame-v2-store";
 
 describe("OverlayFrame v2 parse budget", () => {
   it("TestOverlayFrameV2ParsesUnderBudgetP99", () => {
@@ -21,6 +26,57 @@ describe("OverlayFrame v2 parse budget", () => {
     // regresion de coste real infla todos los lotes y rompe la mediana igual.
     expect(selected.cpuMedian).toBeLessThan(1.5);
   }, 60_000);
+});
+
+describe("OverlayFrame v2 section byte accounting", () => {
+  it("counts bootstrap versus small delta work before considering an optimization", () => {
+    const sessionId = "section-harness";
+    const bootstrap = JSON.stringify({
+      sessionId,
+      delivery: 1,
+      events: [{ name: OVERLAY_V2_SNAPSHOT_EVENT, data: syntheticFullUpdate(104) }],
+    });
+    const delta = JSON.stringify({
+      sessionId,
+      delivery: 2,
+      events: [{
+        name: OVERLAY_V2_SNAPSHOT_EVENT,
+        baseRevision: 1,
+        data: { revision: 2, source: { state: "live" }, frame: { sequence: 2 } },
+      }],
+    });
+    const decoder = createOverlaySectionDecoder();
+    const stringify = vi.spyOn(JSON, "stringify");
+    const encode = vi.spyOn(TextEncoder.prototype, "encode");
+    stringify.mockClear();
+    encode.mockClear();
+    decoder(bootstrap, { sessionId, ack: 0 });
+    const bootstrapWork = { stringify: stringify.mock.calls.length, encode: encode.mock.calls.length };
+    stringify.mockClear();
+    encode.mockClear();
+    decoder(delta, { sessionId, ack: 1 });
+    const deltaWork = { stringify: stringify.mock.calls.length, encode: encode.mock.calls.length };
+    stringify.mockRestore();
+    encode.mockRestore();
+
+    console.info(`OverlayFrame v2 section accounting bootstrap=${JSON.stringify(bootstrapWork)} delta=${JSON.stringify(deltaWork)} fullBytes=${new TextEncoder().encode(bootstrap).byteLength}`);
+    expect(bootstrapWork.stringify).toBeGreaterThan(0);
+    expect(deltaWork.stringify).toBeGreaterThan(0);
+    expect(deltaWork.stringify).toBeLessThan(bootstrapWork.stringify);
+    expect(deltaWork.encode).toBeLessThan(bootstrapWork.encode);
+  });
+
+  it("keeps the non-section bootstrap path free of frameFieldSizes work", () => {
+    const text = JSON.stringify({ events: [{ name: OVERLAY_V2_SNAPSHOT_EVENT, data: syntheticFullUpdate(44) }] });
+    const stringify = vi.spyOn(JSON, "stringify");
+    const encode = vi.spyOn(TextEncoder.prototype, "encode");
+    stringify.mockClear();
+    encode.mockClear();
+    parseOverlayPullJSON(text);
+    expect(stringify).not.toHaveBeenCalled();
+    stringify.mockRestore();
+    encode.mockRestore();
+  });
 });
 
 function measureTrial(encoded: string, operationsPerSample: number) {

@@ -72,6 +72,20 @@ describe("StandingsFunctional brand decision", () => {
     expect(container.querySelectorAll("tbody td")).toHaveLength(model.columns.length);
   });
 
+  it("drops the logo gap with the bare session header when the brand is off", () => {
+    const { container } = render(
+      <StandingsFunctional
+        model={model}
+        settings={{ showSessionHeader: true, showBrand: false, brandVisible: false }}
+        renderMode="harness"
+      />,
+    );
+    const session = container.querySelector(".vf-session--bare");
+    expect(session).toBeTruthy();
+    expect(session?.querySelector(".vf-brand")).toBeNull();
+    expect(session?.querySelector(".vf-session-context")).toBeTruthy();
+  });
+
   it("paid opt-in shows the brand while opt-out hides it with a visible header", () => {
     const on = render(
       <StandingsFunctional

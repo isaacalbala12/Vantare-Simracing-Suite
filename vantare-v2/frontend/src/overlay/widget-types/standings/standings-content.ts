@@ -112,7 +112,12 @@ export const STANDINGS_COLUMN_TEMPLATES: readonly StandingsColumnTemplate[] = [
 
 const PRESET_ENTRIES = Object.entries(WIDTH_PRESET_PIXELS) as [Exclude<WidgetColumnWidthPreset, "auto">, number][];
 
-export const STANDINGS_ROW_COUNT_OPTIONS = [5, 10, 15, 20] as const;
+export const STANDINGS_ROW_COUNT_MIN = 1;
+export const STANDINGS_ROW_COUNT_MAX = 30;
+export const STANDINGS_ROW_COUNT_OPTIONS: readonly number[] = Array.from(
+  { length: STANDINGS_ROW_COUNT_MAX - STANDINGS_ROW_COUNT_MIN + 1 },
+  (_, index) => index + STANDINGS_ROW_COUNT_MIN,
+);
 
 export function nearestWidthPreset(width: number): WidgetColumnWidthPreset {
   let best: WidgetColumnWidthPreset = "md";
@@ -190,7 +195,8 @@ export function parseStandingsContent(input: unknown): StandingsContent {
   // Parse rowCount
   const rowCount = inputRecord.rowCount;
   const parsedRowCount =
-    typeof rowCount === "number" && STANDINGS_ROW_COUNT_OPTIONS.includes(rowCount as typeof STANDINGS_ROW_COUNT_OPTIONS[number])
+    typeof rowCount === "number" && Number.isInteger(rowCount)
+      && rowCount >= STANDINGS_ROW_COUNT_MIN && rowCount <= STANDINGS_ROW_COUNT_MAX
       ? rowCount
       : defaults.rowCount;
 
@@ -260,12 +266,19 @@ export function moveStandingsColumn(
 export function updateStandingsColumn(
   content: StandingsContent,
   columnId: string,
-  patch: Partial<Pick<WidgetColumnV3, "widthPreset" | "style">>,
+  patch: Partial<Pick<WidgetColumnV3, "widthPreset" | "style" | "format">>,
 ): StandingsContent {
   return {
     ...content,
     columns: content.columns.map((column) =>
-      column.id === columnId ? { ...column, ...patch, style: { ...column.style, ...patch.style } } : column,
+      column.id === columnId
+        ? {
+            ...column,
+            ...patch,
+            format: patch.format === undefined ? column.format : { ...column.format, ...patch.format },
+            style: { ...column.style, ...patch.style },
+          }
+        : column,
     ),
   };
 }

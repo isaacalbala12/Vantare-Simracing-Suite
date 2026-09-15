@@ -12,9 +12,9 @@ export type HarnessSystem = DesignSystemId;
 export type HarnessWidget = WidgetType;
 
 // Parity solo admite variantes de forma/contenido sobre datos canónicos V2.
-// Las que fabrican telemetría (relative-multiclass, standings-stress60,
-// standings-replay, pedals-zero, pedals-full) se rechazan como invalid
-// variant; siguen disponibles en Workshop sin tocar.
+// Las que fabrican telemetría (standings-stress60, standings-replay,
+// pedals-zero, pedals-full) se rechazan como invalid variant; no forman parte
+// del contrato de este harness.
 export type HarnessVariant = AuthoringV2Variant;
 
 const PARITY_VARIANTS: ReadonlySet<string> = new Set(AUTHORING_V2_VARIANTS);

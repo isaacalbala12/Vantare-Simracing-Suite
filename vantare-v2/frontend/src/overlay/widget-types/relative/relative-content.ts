@@ -37,8 +37,10 @@ export const RELATIVE_METRIC_IDS: readonly RelativeMetricId[] = [
   "lastLap",
 ];
 
-export const RELATIVE_RANGE_AHEAD = 2;
-export const RELATIVE_RANGE_BEHIND = 2;
+export const RELATIVE_RANGE_AHEAD = 3;
+export const RELATIVE_RANGE_BEHIND = 3;
+/** Ventana configurable delante/detrás del jugador: 0–8 filas por lado. */
+export const RELATIVE_RANGE_LIMIT = 8;
 
 type RelativeColumnTemplate = {
   id: string;
@@ -159,8 +161,19 @@ function normalizeLegacyColumn(raw: Record<string, unknown>): WidgetColumnV3 {
   return column;
 }
 
+function readRange(value: unknown, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.max(0, Math.min(RELATIVE_RANGE_LIMIT, Math.round(value)));
+}
+
 function readFilterFields(source: Record<string, unknown>): Partial<RelativeContent> {
   const patch: Partial<RelativeContent> = {};
+  if ("rangeAhead" in source) {
+    patch.rangeAhead = readRange(source.rangeAhead, RELATIVE_RANGE_AHEAD);
+  }
+  if ("rangeBehind" in source) {
+    patch.rangeBehind = readRange(source.rangeBehind, RELATIVE_RANGE_BEHIND);
+  }
   if ("classScope" in source) {
     patch.classScope = readClassScope(source.classScope, "all");
   }
@@ -254,12 +267,19 @@ export function moveRelativeColumn(
 export function updateRelativeColumn(
   content: RelativeContent,
   columnId: string,
-  patch: Partial<Pick<WidgetColumnV3, "widthPreset" | "style">>,
+  patch: Partial<Pick<WidgetColumnV3, "widthPreset" | "style" | "format">>,
 ): RelativeContent {
   return {
     ...content,
     columns: content.columns.map((column) =>
-      column.id === columnId ? { ...column, ...patch, style: { ...column.style, ...patch.style } } : column,
+      column.id === columnId
+        ? {
+            ...column,
+            ...patch,
+            format: patch.format === undefined ? column.format : { ...column.format, ...patch.format },
+            style: { ...column.style, ...patch.style },
+          }
+        : column,
     ),
   };
 }
@@ -267,14 +287,14 @@ export function updateRelativeColumn(
 export function updateRelativeFilters(
   content: RelativeContent,
   patch: Partial<
-    Pick<RelativeContent, "classScope" | "rowHeightMode">
+    Pick<RelativeContent, "classScope" | "rowHeightMode" | "rangeAhead" | "rangeBehind">
   >,
 ): RelativeContent {
   return {
     ...content,
-    rangeAhead: RELATIVE_RANGE_AHEAD,
-    rangeBehind: RELATIVE_RANGE_BEHIND,
     includePlayer: true,
+    ...(patch.rangeAhead !== undefined ? { rangeAhead: readRange(patch.rangeAhead, content.rangeAhead) } : {}),
+    ...(patch.rangeBehind !== undefined ? { rangeBehind: readRange(patch.rangeBehind, content.rangeBehind) } : {}),
     ...(patch.classScope !== undefined ? { classScope: readClassScope(patch.classScope, content.classScope) } : {}),
     ...(patch.rowHeightMode !== undefined
       ? { rowHeightMode: readRowHeightMode(patch.rowHeightMode, content.rowHeightMode) }

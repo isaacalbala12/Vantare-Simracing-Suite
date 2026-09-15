@@ -12,7 +12,7 @@ const FILL_OPACITY_SPAN = 0.55;
 /**
  * Redline delta: a bipolar bar anchored at zero, the reading centred on it, and
  * the reference lap stated underneath. `model.progress` already arrives clamped
- * to [-1, 1] over a +-2s scale, so half the bar is one full-scale deflection.
+ * to [-1, 1] over a +-1.5s scale, so half the bar is one full-scale deflection.
  */
 export function DeltaRedlineTemplate({
   model,

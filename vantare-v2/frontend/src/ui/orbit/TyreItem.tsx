@@ -1,6 +1,7 @@
 import { useState, type DragEvent } from "react";
 import { TyreChip } from "./TyreChip";
 import { TYRE_WARN_USES, type TyreView } from "./viz-types";
+import { cx } from "./cx";
 
 export interface TyreItemProps {
   tyre: TyreView;
@@ -31,7 +32,7 @@ export function TyreItem({ tyre, used, picked, onPick, className }: TyreItemProp
     <button
       aria-grabbed={dragging}
       aria-pressed={picked ?? false}
-      className={["orbit-tyre-item", className].filter(Boolean).join(" ")}
+      className={cx("orbit-tyre-item", className)}
       data-dragging={dragging ? "true" : undefined}
       data-testid={`orbit-tyre-item-${tyre.id}`}
       data-used={used.length ? "true" : undefined}

@@ -7,6 +7,8 @@ import type {
 import type { StandingsContent } from "./standings-content";
 import { getEnabledStandingsColumns } from "./standings-content";
 import { formatRemainingTime } from "./standings-formatting";
+import { formatDriverName } from "../shared/driver-name";
+import type { WidgetColumnV3 } from "../shared/widget-column";
 import {
   withStandingsMotionIdentity,
   type StandingsFlag,
@@ -65,6 +67,7 @@ export function buildStandingsViewModelV2(
   const paceSession = phase === "practice" || phase === "qualifying";
   const sessionBestLap = paceSession ? fastestLap(scoped) : undefined;
   const limited = scoped.slice(0, content.rowCount ?? 20);
+  const nameColumn = columns.find((column) => column.metricId === "driverName");
   const weather = frame.weather;
 
   return withStandingsMotionIdentity({
@@ -82,7 +85,7 @@ export function buildStandingsViewModelV2(
     flag: source.state === "live" ? currentFlag(frame.session.flag) : "unknown",
     sessionInfo: sessionInformation(frame, phase === "race"),
     columns,
-    rows: limited.map((row, index) => buildRow(row, index, playerId, paceSession, sessionBestLap)),
+    rows: limited.map((row, index) => buildRow(row, index, playerId, paceSession, sessionBestLap, nameColumn)),
   }, `${frame.sessionId}:${frame.epoch}`, frame.sequence);
 }
 
@@ -133,7 +136,7 @@ export function standingsDisplayedValues(
       .map((row) => [
         row.id,
         row.position,
-        row.driverName,
+        row.configuredDriverName ?? row.driverName,
         row.vehicleClass,
         row.currentLapText,
         row.lastLapText,
@@ -160,6 +163,7 @@ function buildRow(
   playerId: string | undefined,
   paceSession: boolean,
   sessionBestLap: number | undefined,
+  nameColumn: WidgetColumnV3 | undefined,
 ): StandingsRowViewModel {
   const driverName = row.driver || PLACEHOLDER;
   return {
@@ -168,7 +172,7 @@ function buildRow(
     classPosition: row.classPosition,
     driverNumber: row.number ?? "",
     driverName,
-    configuredDriverName: driverName,
+    configuredDriverName: formatDriverName(driverName, nameColumn),
     vehicleClass: row.classId ?? "",
     teamCode: "",
     teamBrandColor: "",

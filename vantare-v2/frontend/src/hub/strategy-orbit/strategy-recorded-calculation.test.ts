@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { recordedCalculationDriverDeltas, recordedCalculationEvent, recordedCalculationInput, recordedCalculationVariant } from "./strategy-recorded-calculation";
+import { assessRecordedCalculation, recordedCalculationDriverDeltas, recordedCalculationEvent, recordedCalculationInput, recordedCalculationVariant } from "./strategy-recorded-calculation";
 import { createRecordedWizardDraft, type RecordedWizardDraft } from "./strategy-recorded-wizard";
 
 const tyre = (id: string) => ({
@@ -204,6 +204,31 @@ describe("recordedCalculationInput", () => {
     sessions: [revision],
     drivers: [{ id: "alex", name: "Alex" }, { id: "sam", name: "Sam", referenceDriverId: "alex", paceDeltaSeconds: 2 }],
     driverOrder: { mode: "free", ids: ["alex", "sam"] },
+  });
+
+  it("keeps valid telemetry magnitudes visible when another required family is missing", () => {
+    const inputs = projection("dry");
+    const assessed = assessRecordedCalculation(readyDraft("dry"), {
+      ...inputs,
+      projection: { ...inputs.projection, fuelConsumption: { ...inputs.projection.fuelConsumption, presence: "missing" } },
+    });
+    expect(assessed).toEqual({ status: "partial", coverage: {
+      paceSeconds: 90, virtualEnergyApplicable: false, blockers: ["fuel"],
+    } });
+  });
+
+  it("keeps an observed zero virtual-energy consumption distinct from absence", () => {
+    const inputs = projection("dry");
+    const assessed = assessRecordedCalculation(readyDraft("dry"), {
+      ...inputs,
+      projection: { ...inputs.projection, virtualEnergyConsumption: { ...inputs.projection.virtualEnergyConsumption, presence: "valid" } },
+    });
+    const applicable = assessRecordedCalculation({ ...readyDraft("dry"), virtualEnergy: { applicability: "applicable", capacityPercent: 100, reservePercent: 0 } }, {
+      ...inputs,
+      projection: { ...inputs.projection, virtualEnergyConsumption: { ...inputs.projection.virtualEnergyConsumption, presence: "valid" } },
+    });
+    expect(assessed.status).toBe("ready");
+    expect(applicable).toMatchObject({ status: "ready", coverage: { virtualEnergyApplicable: true, virtualEnergyPercentPerLap: 0, blockers: [] } });
   });
 
   it.each(["dry", "wet"] as const)("builds one exact %s request without manufacturing driver fallback profiles", mode => {

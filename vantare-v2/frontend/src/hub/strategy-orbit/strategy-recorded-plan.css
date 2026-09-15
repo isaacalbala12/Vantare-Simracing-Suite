@@ -1,0 +1,42 @@
+.strategy-recorded-plan { display: flex; flex-direction: column; gap: 22px; min-height: 100%; padding: 34px 36px; color: var(--orbit-ink); background: radial-gradient(circle at 82% 4%, color-mix(in srgb, var(--orbit-red) 12%, transparent), transparent 34%); }
+.strategy-recorded-plan__heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.strategy-recorded-plan__heading p { margin: 0 0 8px; color: var(--orbit-red); font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; }
+.strategy-recorded-plan__heading h2 { margin: 0; font-size: clamp(28px,3vw,42px); letter-spacing: -1px; }
+.strategy-recorded-plan__heading .strategy-recorded-field { width: min(280px,40vw); }
+.strategy-recorded-plan__status, .strategy-recorded-plan__partial, .strategy-recorded-plan__recovery { padding: 16px 18px; border: 1px solid rgba(255,255,255,.09); border-left: 3px solid var(--orbit-red); border-radius: 10px; background: rgba(14,17,19,.88); }
+.strategy-recorded-plan__status { display: grid; gap: 5px; }
+.strategy-recorded-plan__status[data-optimality='proven'] { border-left-color: #56c58b; }
+.strategy-recorded-plan__status span, .strategy-recorded-plan__actions small { color: var(--orbit-ink-2); }
+.strategy-recorded-plan__summary, .strategy-recorded-plan__partial dl { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; margin: 0; }
+.strategy-recorded-plan__summary div, .strategy-recorded-plan__partial dl div { padding: 16px; border: 1px solid rgba(255,255,255,.08); border-radius: 9px; background: rgba(11,14,16,.9); }
+.strategy-recorded-plan dt { color: var(--orbit-ink-2); font-size: 11px; letter-spacing: .8px; text-transform: uppercase; }
+.strategy-recorded-plan dd { margin: 7px 0 0; font-size: 20px; font-weight: 680; }
+.strategy-recorded-plan__timeline { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
+.strategy-recorded-plan__timeline > li { display: grid; grid-template-columns: minmax(0,1fr) minmax(230px,.42fr); gap: 12px; }
+.strategy-recorded-plan__stint, .strategy-recorded-plan__stop { padding: 18px; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; background: rgba(12,15,17,.94); }
+.strategy-recorded-plan__stint header, .strategy-recorded-plan__stop header { display: flex; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.strategy-recorded-plan__stint header span, .strategy-recorded-plan__stop header span { color: var(--orbit-red); font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+.strategy-recorded-plan__stint dl { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 12px; margin: 0; }
+.strategy-recorded-plan__stint dd { font-size: 15px; }
+.strategy-recorded-plan__stop { border-color: color-mix(in srgb, var(--orbit-red) 30%, rgba(255,255,255,.08)); }
+.strategy-recorded-plan__stop p { margin: 7px 0; color: var(--orbit-ink-2); font-size: 13px; }
+.strategy-recorded-plan__sources { padding-top: 8px; border-top: 1px solid rgba(255,255,255,.08); }
+.strategy-recorded-plan__sources h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+.strategy-recorded-plan__sources ul { display: flex; flex-wrap: wrap; gap: 8px; padding: 0; list-style: none; }
+.strategy-recorded-plan__sources li { display: grid; gap: 3px; padding: 9px 12px; border-radius: 8px; background: rgba(255,255,255,.05); }
+.strategy-recorded-plan__sources code { color: var(--orbit-ink-2); font-size: 11px; }
+.strategy-recorded-plan__recovery .orbit-btn { margin: 8px 8px 0 0; }
+.strategy-recorded-plan__actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: auto; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.08); }
+.strategy-recorded-plan__actions small { margin-right: auto; }
+@media (max-width: 880px) {
+  .strategy-recorded-plan { padding: 24px 18px; }
+  .strategy-recorded-plan__heading { align-items: stretch; flex-direction: column; }
+  .strategy-recorded-plan__heading .strategy-recorded-field { width: 100%; }
+  .strategy-recorded-plan__summary, .strategy-recorded-plan__partial dl { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .strategy-recorded-plan__timeline > li { grid-template-columns: 1fr; }
+}
+@media (max-width: 540px) {
+  .strategy-recorded-plan__stint dl { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .strategy-recorded-plan__actions { align-items: stretch; flex-direction: column; }
+  .strategy-recorded-plan__actions small { margin: 0; }
+}

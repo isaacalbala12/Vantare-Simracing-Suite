@@ -210,7 +210,7 @@ describe("createStrategyApplicationClient", () => {
   it.each([
     ["absent", true],
     ["not_proven", true],
-    ["proven", false],
+    ["proven", true],
     [null, false],
     [7, false],
   ] as const)("validates Orbit optimality when present: %s", async (optimality, valid) => {
@@ -240,7 +240,7 @@ describe("createStrategyApplicationClient", () => {
       return;
     }
     await expect(pending).resolves.toMatchObject({
-      orbitCalculation: { plans: { s1: optimality === "not_proven" ? { optimality } : {} } },
+      orbitCalculation: { plans: { s1: optimality === "not_proven" || optimality === "proven" ? { optimality } : {} } },
     });
   });
 

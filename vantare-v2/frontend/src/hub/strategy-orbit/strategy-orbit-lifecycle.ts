@@ -6,8 +6,12 @@ import {
 } from "../../strategy/strategy-application-client";
 import type {
   ActivePlanV1,
+  ConfidenceV1,
   PlanDraftV1,
+  PlanMode,
+  ProvenanceV1,
   RevisionRefV1,
+  StrategyCapability,
 } from "../../strategy/strategy-contract-v1";
 
 export const STRATEGY_ORBIT_REVISION_CONTRACT_V1 =
@@ -90,6 +94,20 @@ export type OrbitLifecycleClock = {
   now(): string;
 };
 
+export type OrbitRevisionMetadata = {
+  readonly mode: PlanMode;
+  readonly capabilities: readonly StrategyCapability[];
+  readonly provenance: ProvenanceV1;
+  readonly confidence: ConfidenceV1;
+};
+
+const legacyOrbitMetadata: OrbitRevisionMetadata = {
+  mode: "manual",
+  capabilities: ["manual_inputs"],
+  provenance: { kind: "manual", sourceId: "strategy-orbit" },
+  confidence: { level: "high", basis: "visible calculated plan" },
+};
+
 const defaultClock: OrbitLifecycleClock = {
   id: () => globalThis.crypto.randomUUID(),
   now: () => new Date().toISOString(),
@@ -131,6 +149,7 @@ export async function saveOrbitRevision(
   visible: StrategyOrbitRevisionPayloadV1,
   name: string,
   clock: OrbitLifecycleClock = defaultClock,
+  metadata: OrbitRevisionMetadata = legacyOrbitMetadata,
 ): Promise<OrbitLifecycleState & { readonly revision: RevisionRefV1 }> {
   const identity = orbitLifecycleIdentity(visible.event.id);
   const operationID = safeToken(clock.id());
@@ -157,7 +176,7 @@ export async function saveOrbitRevision(
     repositoryVersion = opened.repositoryVersion;
     baseRevision = opened.draft?.baseRevision ?? baseRevision;
   } else {
-    const draft = orbitDraft(identity, visible, name, timestamp, baseRevision);
+    const draft = orbitDraft(identity, visible, name, timestamp, baseRevision, metadata);
     const created = await client.execute({
       protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
       commandId: `orbit-create-${operationID}`,
@@ -168,7 +187,7 @@ export async function saveOrbitRevision(
     repositoryVersion = created.repositoryVersion;
   }
 
-  const draft = orbitDraft(identity, visible, name, timestamp, baseRevision);
+  const draft = orbitDraft(identity, visible, name, timestamp, baseRevision, metadata);
   const saved = await client.execute({
     protocolVersion: STRATEGY_APPLICATION_PROTOCOL_V1,
     commandId: `orbit-save-${operationID}`,
@@ -254,6 +273,7 @@ function orbitDraft(
   name: string,
   updatedAt: string,
   baseRevision?: RevisionRefV1,
+  metadata: OrbitRevisionMetadata = legacyOrbitMetadata,
 ): PlanDraftV1<StrategyOrbitRevisionPayloadV1> {
   return {
     contractVersion: "strategy.v1",
@@ -262,10 +282,10 @@ function orbitDraft(
     variantId: identity.variantId,
     ...(baseRevision ? { baseRevision } : {}),
     name,
-    mode: "manual",
-    capabilities: ["manual_inputs"],
-    provenance: { kind: "manual", sourceId: "strategy-orbit" },
-    confidence: { level: "high", basis: "visible calculated plan" },
+    mode: metadata.mode,
+    capabilities: [...metadata.capabilities],
+    provenance: metadata.provenance,
+    confidence: metadata.confidence,
     updatedAt,
     payload,
   };

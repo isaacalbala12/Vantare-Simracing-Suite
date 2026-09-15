@@ -452,6 +452,7 @@ type OrbitCalculationStint struct {
 	DriverID          string         `json:"d"`
 	Laps              int64          `json:"laps"`
 	Fuel              float64        `json:"fuel"`
+	VirtualEnergy     *float64       `json:"virtualEnergy,omitempty"`
 	Pace              float64        `json:"pace"`
 	StartSeconds      float64        `json:"start"`
 	EndSeconds        float64        `json:"end"`
@@ -475,22 +476,26 @@ type OrbitCalculationDistribution struct {
 }
 
 type OrbitCalculationStop struct {
-	Index                 int            `json:"index"`
-	Lap                   int64          `json:"lap"`
-	FuelInLiters          float64        `json:"fuelInLiters"`
-	FuelOutLiters         float64        `json:"fuelOutLiters"`
-	PitLossSeconds        float64        `json:"pitLossSeconds"`
-	PitTransitSeconds     float64        `json:"pitTransitSeconds"`
-	PitServiceSeconds     float64        `json:"pitServiceSeconds"`
-	PitOverlapSeconds     float64        `json:"pitOverlapSeconds"`
-	PitBreakdownAvailable bool           `json:"pitBreakdownAvailable"`
-	ChangeTyres           *bool          `json:"changeTyres,omitempty"`
-	Compound              tyres.Compound `json:"compound,omitempty"`
-	TyreFitment           *tyres.Fitment `json:"tyreFitment,omitempty"`
+	Index                   int            `json:"index"`
+	Lap                     int64          `json:"lap"`
+	FuelInLiters            float64        `json:"fuelInLiters"`
+	FuelOutLiters           float64        `json:"fuelOutLiters"`
+	VirtualEnergyInPercent  *float64       `json:"virtualEnergyInPercent,omitempty"`
+	VirtualEnergyOutPercent *float64       `json:"virtualEnergyOutPercent,omitempty"`
+	PitLossSeconds          float64        `json:"pitLossSeconds"`
+	PitTransitSeconds       float64        `json:"pitTransitSeconds"`
+	PitServiceSeconds       float64        `json:"pitServiceSeconds"`
+	PitOverlapSeconds       float64        `json:"pitOverlapSeconds"`
+	PitBreakdownAvailable   bool           `json:"pitBreakdownAvailable"`
+	ChangeTyres             *bool          `json:"changeTyres,omitempty"`
+	Compound                tyres.Compound `json:"compound,omitempty"`
+	TyreFitment             *tyres.Fitment `json:"tyreFitment,omitempty"`
 }
 
 type OrbitCalculationPlan struct {
 	FinalLapStartSeconds float64 `json:"finalLapStartSeconds"`
+	ModelVersion         string  `json:"modelVersion"`
+	Objective            string  `json:"objective"`
 	// A fixed replay proves constraints and cost, not global optimality.
 	Optimality              string                         `json:"optimality"`
 	Stints                  []OrbitCalculationStint        `json:"stints"`

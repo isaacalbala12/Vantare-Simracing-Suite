@@ -446,6 +446,7 @@ export type StrategyOrbitCalculatedStintV1 = {
   readonly d: string;
   readonly laps: number;
   readonly fuel: number;
+  readonly virtualEnergy?: number;
   readonly pace: number;
   readonly start: number;
   readonly end: number;
@@ -463,6 +464,8 @@ export type StrategyOrbitCalculatedStintV1 = {
 };
 
 export type StrategyOrbitCalculatedPlanV1 = {
+  readonly modelVersion?: "strategy.solver.v2";
+  readonly objective?: "minimum_total_seconds";
   readonly stints: readonly StrategyOrbitCalculatedStintV1[];
   readonly totalLaps: number;
   readonly total: number;
@@ -484,13 +487,15 @@ export type StrategyOrbitCalculatedPlanV1 = {
   /** Margen exigido por producto y si el plan lo cumple (ISA-832). */
   readonly reserveRequiredLaps: number;
   readonly reserveSatisfied: boolean;
-	/** Fixed replay does not establish global optimality. Absent on older responses. */
-  readonly optimality?: "not_proven";
+	/** Result of evaluating the final visible decision. Absent on older responses. */
+	readonly optimality?: "proven" | "not_proven";
   readonly stopDetails: readonly {
     readonly index: number;
     readonly lap: number;
     readonly fuelInLiters: number;
     readonly fuelOutLiters: number;
+    readonly virtualEnergyInPercent?: number;
+    readonly virtualEnergyOutPercent?: number;
     readonly pitLossSeconds: number;
     readonly pitTransitSeconds: number;
     readonly pitServiceSeconds: number;
@@ -1809,6 +1814,8 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
       strategyNumber(plan[field], `orbitCalculation.plans.${id}.${field}`);
     }
     if (plan.formationSeconds !== undefined) strategyNumber(plan.formationSeconds, `orbitCalculation.plans.${id}.formationSeconds`);
+    if (plan.modelVersion !== undefined) strategyEnum(plan.modelVersion, `orbitCalculation.plans.${id}.modelVersion`, ["strategy.solver.v2"]);
+    if (plan.objective !== undefined) strategyEnum(plan.objective, `orbitCalculation.plans.${id}.objective`, ["minimum_total_seconds"]);
     for (const field of ["totalLaps", "stops", "maxLaps"] as const) {
       strategyInteger(plan[field], `orbitCalculation.plans.${id}.${field}`);
     }
@@ -1825,6 +1832,7 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
       for (const field of ["fuel", "pace", "start", "end", "pitWindowSeconds", "fuelSavedPerLap", "savingCostSeconds"] as const) {
         strategyNumber(stint[field], `orbitCalculation.plans.${id}.stints.${index}.${field}`);
       }
+      if (stint.virtualEnergy !== undefined) strategyNumber(stint.virtualEnergy, `orbitCalculation.plans.${id}.stints.${index}.virtualEnergy`);
       if (typeof stint.over !== "boolean" || typeof stint.manual !== "boolean") {
         throw new Error(`Invalid Strategy orbitCalculation.plans.${id}.stints.${index}`);
       }
@@ -1840,7 +1848,7 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
     });
     if (typeof plan.savingApplied !== "boolean") throw new Error(`Invalid Strategy orbitCalculation.plans.${id}.savingApplied`);
     if (plan.optimality !== undefined) {
-      strategyEnum(plan.optimality, `orbitCalculation.plans.${id}.optimality`, ["not_proven"]);
+    strategyEnum(plan.optimality, `orbitCalculation.plans.${id}.optimality`, ["proven", "not_proven"]);
     }
     const stopDetails = plan.stopDetails.map((entry, index) => {
       const stop = strategyRecord(entry, `orbitCalculation.plans.${id}.stopDetails.${index}`);
@@ -1849,6 +1857,9 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
       }
       for (const field of ["fuelInLiters", "fuelOutLiters", "pitLossSeconds", "pitTransitSeconds", "pitServiceSeconds", "pitOverlapSeconds"] as const) {
         strategyNumber(stop[field], `orbitCalculation.plans.${id}.stopDetails.${index}.${field}`);
+      }
+      for (const field of ["virtualEnergyInPercent", "virtualEnergyOutPercent"] as const) {
+        if (stop[field] !== undefined) strategyNumber(stop[field], `orbitCalculation.plans.${id}.stopDetails.${index}.${field}`);
       }
       if (typeof stop.pitBreakdownAvailable !== "boolean") throw new Error(`Invalid Strategy orbitCalculation.plans.${id}.stopDetails.${index}.pitBreakdownAvailable`);
       parseOrbitTyreDecision(stop, `orbitCalculation.plans.${id}.stopDetails.${index}`, true);
@@ -1871,7 +1882,9 @@ function parseStrategyOrbitCalculation(value: unknown): StrategyOrbitCalculation
       reserveLaps: plan.reserveLaps as number,
       reserveRequiredLaps: plan.reserveRequiredLaps as number,
       reserveSatisfied: plan.reserveSatisfied === true,
-      ...(plan.optimality === "not_proven" ? { optimality: "not_proven" as const } : {}),
+      ...(plan.modelVersion === "strategy.solver.v2" ? { modelVersion: "strategy.solver.v2" as const } : {}),
+      ...(plan.objective === "minimum_total_seconds" ? { objective: "minimum_total_seconds" as const } : {}),
+      ...(plan.optimality === "proven" || plan.optimality === "not_proven" ? { optimality: plan.optimality } : {}),
       stopDetails,
       savingApplied: plan.savingApplied as boolean,
     };

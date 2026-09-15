@@ -63,7 +63,7 @@ func TestOrbitFinalEvaluationMatchesSolverCost(t *testing.T) {
 	}
 }
 
-func TestOrbitFinalEvaluationDoesNotClaimOptimality(t *testing.T) {
+func TestOrbitFinalEvaluationProvesUnchangedSolvedDecision(t *testing.T) {
 	input := finalEvaluationInput()
 	result, err := calculateOrbit(input)
 	if err != nil {
@@ -77,8 +77,41 @@ func TestOrbitFinalEvaluationDoesNotClaimOptimality(t *testing.T) {
 	if err := json.Unmarshal(raw, &plan); err != nil {
 		t.Fatal(err)
 	}
-	if plan["optimality"] != "not_proven" {
-		t.Fatalf("missing final-plan optimality status: %s", raw)
+	if plan["optimality"] != "proven" {
+		t.Fatalf("final plan did not preserve solver optimality: %s", raw)
+	}
+	if plan["modelVersion"] != "strategy.solver.v2" || plan["objective"] != "minimum_total_seconds" {
+		t.Fatalf("final plan omitted its model identity: %s", raw)
+	}
+}
+
+func TestOrbitFinalEvaluationPublishesVirtualEnergyOnlyWhenApplicable(t *testing.T) {
+	without, err := calculateOrbit(finalEvaluationInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if without.Plans["s1"].Stints[0].VirtualEnergy != nil {
+		t.Fatal("non-applicable virtual energy was published")
+	}
+	with, err := calculateOrbit(isa825OrbitInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if with.Plans["strategy-1"].Stints[0].VirtualEnergy == nil {
+		t.Fatal("applicable virtual energy was omitted")
+	}
+}
+
+func TestOrbitFinalEvaluationDoesNotClaimOptimalityAfterVisibleOverride(t *testing.T) {
+	input := finalEvaluationInput()
+	fuel := 8.0
+	input.Variants[0].Overrides = map[int]OrbitCalculationOverride{0: {Fuel: &fuel}}
+	result, err := calculateOrbit(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Plans["s1"].Optimality != "not_proven" {
+		t.Fatalf("edited final decision claimed optimality: %+v", result.Plans["s1"])
 	}
 }
 

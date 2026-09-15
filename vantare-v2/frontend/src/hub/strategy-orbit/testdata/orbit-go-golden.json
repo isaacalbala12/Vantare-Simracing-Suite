@@ -2,6 +2,8 @@
   "plans": {
     "s1": {
       "finalLapStartSeconds": 14296.000000000351,
+      "modelVersion": "strategy.solver.v2",
+      "objective": "minimum_total_seconds",
       "optimality": "not_proven",
       "stints": [
         {

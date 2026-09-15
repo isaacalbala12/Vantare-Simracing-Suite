@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { StrategyApplicationClient, StrategyOrbitCalculationResultV1 } from "../../strategy/strategy-application-client";
+import type { StrategyApplicationClient, StrategyOrbitCalculationInputV1, StrategyOrbitCalculationResultV1 } from "../../strategy/strategy-application-client";
 import type { RecordedDraftPayload } from "./strategy-recorded-payload";
-import { recordedCalculationInput } from "./strategy-recorded-calculation";
+import { assessRecordedCalculation, type RecordedCalculationCoverage } from "./strategy-recorded-calculation";
 import { prepareRecordedPlanningInputs } from "./strategy-recorded-planning-inputs";
 import type { RecordedWizardDraft } from "./strategy-recorded-wizard";
 
 export type RecordedCalculationState =
   | { readonly status: "idle" | "preparing" | "calculating" | "cancelling" | "cancelled" }
-  | { readonly status: "success"; readonly result: StrategyOrbitCalculationResultV1 }
+  | { readonly status: "partial"; readonly coverage: RecordedCalculationCoverage }
+  | { readonly status: "success"; readonly input: StrategyOrbitCalculationInputV1; readonly result: StrategyOrbitCalculationResultV1 }
   | { readonly status: "error"; readonly message: string; readonly code?: string; readonly field?: string };
 
 export function useRecordedCalculation(
@@ -49,7 +50,13 @@ export function useRecordedCalculation(
         application as StrategyApplicationClient<unknown>, draft, repositoryVersion, prepareId, new Date().toISOString(),
       );
       if (current !== generation.current) return;
-      const input = recordedCalculationInput(draft, planning);
+      const assessed = assessRecordedCalculation(draft, planning);
+      if (assessed.status === "partial") {
+        active.current = undefined;
+        setState({ status: "partial", key: calculationKey, coverage: assessed.coverage });
+        return;
+      }
+      const input = assessed.input;
       const calculateId = `recorded-calculate-${globalThis.crypto.randomUUID()}`;
       active.current = calculateId;
       setState({ status: "calculating", key: calculationKey });
@@ -60,7 +67,8 @@ export function useRecordedCalculation(
       if (current !== generation.current) return;
       if (!result.orbitCalculation) throw new Error("Strategy calculation result is missing");
       active.current = undefined;
-      setState({ status: "success", key: calculationKey, result: result.orbitCalculation });
+      if (!result.orbitCalculation.plans[input.activeVariantId]) throw new Error("Strategy calculation result is missing its active plan");
+      setState({ status: "success", key: calculationKey, input, result: result.orbitCalculation });
     } catch (error) {
       if (current !== generation.current) return;
       active.current = undefined;

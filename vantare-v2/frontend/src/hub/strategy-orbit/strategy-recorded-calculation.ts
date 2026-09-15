@@ -5,11 +5,33 @@ import { recordedWizardErrors } from "./strategy-recorded-validation";
 type CalculationEvent = StrategyOrbitCalculationInputV1["event"];
 type CalculationVariant = StrategyOrbitCalculationInputV1["variants"][number];
 
+export type RecordedCalculationCoverage = {
+  readonly paceSeconds?: number;
+  readonly fuelLitersPerLap?: number;
+  readonly virtualEnergyPercentPerLap?: number;
+  readonly virtualEnergyApplicable: boolean;
+  readonly blockers: readonly ("pace" | "fuel" | "virtual_energy")[];
+};
+
+export type RecordedCalculationAssessment =
+  | { readonly status: "ready"; readonly input: StrategyOrbitCalculationInputV1; readonly coverage: RecordedCalculationCoverage }
+  | { readonly status: "partial"; readonly coverage: RecordedCalculationCoverage };
+
 /** Builds the one recorded proposal from exact telemetry inputs, without fallback profiles. */
 export function recordedCalculationInput(
   draft: RecordedWizardDraft,
   planningInputs: StrategyPlanningInputsV2,
 ): StrategyOrbitCalculationInputV1 {
+  const assessed = assessRecordedCalculation(draft, planningInputs);
+  if (assessed.status !== "ready") invalidInput();
+  return assessed.input;
+}
+
+/** Separates incomplete telemetry coverage from an invalid configuration. */
+export function assessRecordedCalculation(
+  draft: RecordedWizardDraft,
+  planningInputs: StrategyPlanningInputsV2,
+): RecordedCalculationAssessment {
   const mode = draft.calculationMode;
   const projection = planningInputs.projection;
   if (!mode || !draft.combination || !projection || projection.combinationId !== draft.combination.combinationId
@@ -21,23 +43,40 @@ export function recordedCalculationInput(
   const fuelOverride = planningInputs.overrides.fuel_per_lap_liters;
   const fuelValue = fuelOverride?.presence === "valid" ? fuelOverride.value
     : projection.fuelConsumption.presence === "valid" ? projection.fuelConsumption.meanPerLap : undefined;
-  if (!positive(paceValue) || !positive(fuelValue)) invalidInput();
+  let energyValue: number | undefined;
   if (draft.virtualEnergy?.applicability === "applicable") {
     const energyOverride = planningInputs.overrides.ve_per_lap_percent;
-    const energy = energyOverride?.presence === "valid" ? energyOverride.value
+    energyValue = energyOverride?.presence === "valid" ? energyOverride.value
       : projection.virtualEnergyConsumption.presence === "valid" ? projection.virtualEnergyConsumption.meanPerLap : undefined;
-    if (!positive(energy)) invalidInput();
   }
 
+  const blockers: RecordedCalculationCoverage["blockers"] = [
+    ...(!positive(paceValue) ? ["pace" as const] : []),
+    ...(!positive(fuelValue) ? ["fuel" as const] : []),
+    ...(draft.virtualEnergy?.applicability === "applicable" && !nonNegative(energyValue) ? ["virtual_energy" as const] : []),
+  ];
+  const coverage: RecordedCalculationCoverage = {
+    ...(positive(paceValue) ? { paceSeconds: paceValue } : {}),
+    ...(positive(fuelValue) ? { fuelLitersPerLap: fuelValue } : {}),
+    ...(nonNegative(energyValue) ? { virtualEnergyPercentPerLap: energyValue } : {}),
+    virtualEnergyApplicable: draft.virtualEnergy?.applicability === "applicable",
+    blockers,
+  };
+  // Event validation still fails closed. A partial result only describes
+  // telemetry families that were prepared successfully for this exact draft.
+  const event = recordedCalculationEvent(draft);
   const deltas = recordedCalculationDriverDeltas(draft);
-  if (draft.drivers.some(driver => !positive(paceValue + deltas[driver.id]))) invalidInput();
   const variant = recordedCalculationVariant(draft, mode);
-  return {
-    event: recordedCalculationEvent(draft),
+  if (blockers.length > 0) return { status: "partial", coverage };
+
+  const readyPace = paceValue as number;
+  if (draft.drivers.some(driver => !positive(readyPace + deltas[driver.id]))) invalidInput();
+  return { status: "ready", coverage, input: {
+    event,
     drivers: draft.drivers.map(driver => ({ id: driver.id, name: driver.name, paceDeltaSeconds: deltas[driver.id] })),
     variants: [variant], activeVariantId: variant.id,
     planningInputs: structuredClone(planningInputs),
-  };
+  } };
 }
 
 /** Resolves relative driver estimates into the single additive value consumed by Go. */
@@ -152,6 +191,10 @@ function sameRevisions(expected: RecordedWizardDraft["sessions"], actual?: Recor
 
 function positive(value: number | undefined): value is number {
   return value !== undefined && Number.isFinite(value) && value > 0;
+}
+
+function nonNegative(value: number | undefined): value is number {
+  return value !== undefined && Number.isFinite(value) && value >= 0;
 }
 
 function invalidInput(): never {

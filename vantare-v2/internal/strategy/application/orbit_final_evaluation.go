@@ -3,6 +3,7 @@ package application
 import (
 	"fmt"
 	"math"
+	"reflect"
 
 	document "github.com/vantare/overlays/v2/internal/strategy/document"
 	"github.com/vantare/overlays/v2/internal/strategy/solver"
@@ -21,6 +22,10 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 	veLoads := make([]float64, len(plan.Stints))
 	for index := range plan.Stints {
 		stint := &plan.Stints[index]
+		if input.VECapacityPercent.Value > 0 {
+			value := veLoads[index]
+			stint.VirtualEnergy = &value
+		}
 		pace, err := effectiveOrbitPace(drivers[stint.DriverID], variant.Mode, planning)
 		if err != nil {
 			return err
@@ -115,7 +120,12 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 	}
 	plan.TotalSeconds = replayed.Evaluation.TotalSeconds
 	plan.FinalLapStartSeconds = replayed.FinalLapStartSeconds
+	plan.ModelVersion = string(solved.ContractVersion)
+	plan.Objective = "minimum_total_seconds"
 	plan.Optimality = "not_proven"
+	if len(variant.Overrides) == 0 && !solved.ComputeStats.Degradation.Applied && reflect.DeepEqual(replayed.Decision, solved.Best) {
+		plan.Optimality = "proven"
+	}
 	plan.PitSeconds = replayed.Evaluation.PitSeconds
 	plan.DrivingSeconds = plan.TotalSeconds - plan.PitSeconds - replayed.Evaluation.FormationSeconds
 	if input.Formation.Seconds.Role == solver.ScalarRoleUserOverride {
@@ -156,6 +166,12 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 			}
 			stop.FuelInLiters = stint.Fuel - required.Stints[index].FuelLiters
 			stop.FuelOutLiters = plan.Stints[index+1].Fuel
+			if input.VECapacityPercent.Value > 0 {
+				energyIn := veLoads[index] - required.Stints[index].VEPercent
+				energyOut := veLoads[index+1]
+				stop.VirtualEnergyInPercent = &energyIn
+				stop.VirtualEnergyOutPercent = &energyOut
+			}
 			breakdown := replayed.Decision.PitStops[index].PitBreakdown
 			stop.PitLossSeconds = breakdown.TotalSeconds.Value()
 			stop.PitTransitSeconds = breakdown.TravelSeconds.Value()

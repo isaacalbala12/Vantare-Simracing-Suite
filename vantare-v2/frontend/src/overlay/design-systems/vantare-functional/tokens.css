@@ -156,8 +156,13 @@
 /* Delta: valor único y pista de centro; la última vuelta ocupa la derecha de
    la cabecera como el reloj en Standings. Sin pie: el widget es aspect-locked
    a ~2,9:1 y una banda extra lo desbordaría. */
-.vf-delta { --vf-gain: #7fb686; --vf-loss: #d95360; }
+.vf-delta { --vf-gain: #7fb686; --vf-loss: #d95360; min-height: 100%; }
+.vf-delta[data-template="instrument"] { display: flex; flex-direction: column; justify-content: center; }
+.vf-delta-head { position: relative; }
 .vf-delta-value { display: flex; align-items: baseline; justify-content: center; gap: 8px; padding: 6px 12px 0; font-size: 27px; font-weight: 700; letter-spacing: -.025em; font-variant-numeric: tabular-nums; color: var(--vf-ink); }
+.vf-delta-last { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.vf-delta-last small { font: 600 7px/1 Inter, Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--vf-muted); }
+.vf-delta-last b { font: 650 12px/1 Inter, Arial, sans-serif; font-variant-numeric: tabular-nums; color: var(--vf-muted); font-weight: 650; }
 .vf-delta-arrow { width: 12px; font-size: 13px; text-align: center; }
 .vf-delta[data-tone="gaining"] .vf-delta-value { color: var(--vf-gain); }
 .vf-delta[data-tone="losing"] .vf-delta-value { color: var(--vf-loss); }
@@ -176,15 +181,13 @@
 .vf-delta-capsule-fill { transition: width 140ms linear, left 140ms linear, right 140ms linear, background-color 300ms ease; }
 .vf-delta[data-cross] .vf-delta-center, .vf-delta[data-cross] .vf-delta-capsule-center { background: var(--vf-ink); box-shadow: 0 0 8px rgb(245 245 245 / 60%); transition: background-color 350ms ease, box-shadow 350ms ease; }
 .vf-delta[data-cross] .vf-delta-value, .vf-delta[data-cross] .vf-delta-capsule-value { transform: scale(1.04); transition: transform 180ms ease-out; }
-.vf-delta[data-newBest] .vf-delta-foot, .vf-delta[data-newBest] .vf-delta-capsule-lap { color: var(--vf-ink); }
+.vf-delta[data-newBest] .vf-delta-last b, .vf-delta[data-newBest] .vf-delta-capsule-lap { color: var(--vf-ink); }
 .vf-standings [data-standings-row][data-motion], .vf-relative [data-relative-row][data-cross] { transition: background-color 500ms ease-out; }
 .vf-standings [data-standings-row][data-motion="rise"], .vf-relative [data-relative-row][data-cross="rise"] { background-color: rgb(127 182 134 / 12%); }
 .vf-standings [data-standings-row][data-motion="fall"], .vf-relative [data-relative-row][data-cross="fall"] { background-color: rgb(217 83 96 / 12%); }
 .vf-delta[data-tone="gaining"] .vf-delta-fill { background: linear-gradient(90deg, rgb(127 182 134 / 30%), var(--vf-gain)); box-shadow: 0 0 7px rgb(127 182 134 / 40%); }
 .vf-delta[data-tone="losing"] .vf-delta-fill { background: linear-gradient(90deg, var(--vf-loss), rgb(217 83 96 / 30%)); box-shadow: 0 0 7px rgb(217 83 96 / 40%); }
 .vf-delta-scale { display: flex; justify-content: space-between; margin: 1px 16px 0; font-family: "JetBrains Mono", monospace; font-size: 7px; letter-spacing: .04em; color: var(--vf-faint); }
-.vf-delta-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; padding: 5px 16px 7px; border-top: 1px solid rgb(245 245 245 / 10%); }
-.vf-delta-foot .vf-clock { font-size: 12px; }
 
 /* Dirección "capsule" (tipo Crystal): fila de datos en píldora, pista
    gruesa con relleno desde el centro y píldora de valor superpuesta.

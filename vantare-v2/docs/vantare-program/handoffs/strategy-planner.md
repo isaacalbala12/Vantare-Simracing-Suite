@@ -1,29 +1,27 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1270 T15b cerrado localmente; ciclo recorded conectado
+## Estado vigente — #1271 T15c cerrado localmente; resultado recorded aceptable
 
-El panel Plan conserva una condición seca o mojada explícita y solicita a
-Analysis la proyección conjunta de las revisiones exactas seleccionadas. Sólo
-después construye una petición `calculate_orbit`: pilotos estimados llevan su
-delta, mientras ritmo, Fuel y VE proceden de `PlanningInputs`; no se copian
-perfiles entre condiciones ni se crea un motor TypeScript. Preparar, calcular,
-cancelar, error y éxito son estados visibles. Cambiar borrador, condición,
-revisiones o montaje invalida el resultado y cancela el comando activo; ninguna
-respuesta tardía sustituye el estado vigente. El resultado queda en memoria
-para T15c y no se guarda ni acepta automáticamente.
+El panel Plan presenta la salida exacta de SolverV2: duración, vueltas, paradas,
+reserva, stints, Fuel, VE cuando aplica y las revisiones fuente. Un conjunto
+incompleto muestra sólo ritmo/consumo respaldado y sus bloqueos, sin enviar un
+cálculo ni convertir ausencia en cero. Inviabilidad, cancelación, timeout y
+presupuesto agotado mantienen estados distintos.
 
-La entrada recorded falla cerrada si falta la condición, el bucket de ritmo,
-Fuel, VE aplicable o las referencias exactas. Go también rechaza un delta si no
-hay ritmo base observado. Se mantienen compatibles los perfiles completos del
-flujo anterior. Siguiente: T15c debe presentar plan parcial/final, optimalidad
-y aceptar/guardar separados. Sin app/Wails, LMU, DuckDB, push, PR, CI remota,
-integración ni release.
+Go publica `strategy.solver.v2`, el objetivo `minimum_total_seconds` y sólo marca
+`proven` cuando el replay coincide con la decisión optimizada, no hubo edición
+de la variante ni degradación del presupuesto. El resto de planes factibles es
+`not_proven`; el cliente legacy sin esos metadatos sigue legible y no se anuncia
+como óptimo.
 
-Pasan 5 archivos/96 tests frontend focales, aplicación Go completa, typecheck,
-lint, auditoría i18n, build y Go global. El frontend completo dio 3.889/3.890:
-falló sólo el banco ajeno de parseo al coincidir exactamente con su límite de
-1,500 ms; su repetición aislada pasó. El build conserva el aviso heredado de
-chunks superiores a 500 kB y Vitest imprime el `AbortError` conocido de teardown.
+Aceptar conserva en una revisión Orbit el borrador, variante, petición y plan
+exactos ya calculados. No vuelve a preparar telemetría ni a calcular. La acción
+es distinta de guardar configuración y reutiliza la recuperación duradera de
+`save_revision`: una escritura incierta se comprueba o reintenta con el mismo
+comando. Cambiar borrador o resultado impide presentar una aceptación anterior
+como vigente. Siguiente: T16 debe editar restricciones de stint y recalcular
+contra una propuesta comparable; T17 hará lo mismo para paradas. Sin app/Wails,
+LMU, DuckDB, push, PR, CI remota, integración ni release.
 
 ## Historial — #1268 T15a2b cerrado localmente; delta de ritmo por piloto
 

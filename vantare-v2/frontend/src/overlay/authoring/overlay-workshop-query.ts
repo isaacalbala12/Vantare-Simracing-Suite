@@ -7,6 +7,9 @@ import { designSystemRegistry } from "../core/design-system-registry";
 import { parseStandingsEnduranceSettings } from "../design-systems/vantare-endurance/standings/standings-endurance-settings";
 import { WIDGET_TYPES } from "../core/profile-document";
 import { FUNCTIONAL_STUDY_MODULE_IDS, FUNCTIONAL_STUDY_SLOT_IDS, FUNCTIONAL_STUDY_STYLE_IDS, type FunctionalStudyStyleId } from "./functional-study-options";
+import { RELATIVE_RANGE_LIMIT } from "../widget-types/relative/relative-content";
+import { STANDINGS_ROW_COUNT_MAX, STANDINGS_ROW_COUNT_MIN } from "../widget-types/standings/standings-content";
+import { DRIVER_NAME_FORMATS, type DriverNameFormat } from "../widget-types/shared/driver-name";
 
 export type OverlayWorkshopQuery = {
   widget: WidgetType;
@@ -20,6 +23,14 @@ export type OverlayWorkshopQuery = {
   modules?: readonly string[];
   /** Huecos de datos del pie en standings/relative de Eficiencia. */
   slots?: readonly string[];
+  /** Ventana del Relative: pilotos por delante/detrás (0–8 cada lado). */
+  ahead?: number;
+  behind?: number;
+  /** Formato del nombre de piloto (`format.mode` de la columna Piloto en
+   *  standings/relative): completo, "N. Apellido" o solo apellido. */
+  nameFormat?: DriverNameFormat;
+  /** Filas del Standings (1–30): las que el contenido declara, como en Studio. */
+  rows?: number;
   state: AuthoringV2Scenario["state"];
   surface: "studio" | "desktop" | "obs" | "harness";
   variant: WorkshopV2Variant;
@@ -127,9 +138,6 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   if (variant === "relative-fill" && widget !== "relative") {
     return { error: "relative-fill variant requires widget=relative" };
   }
-  if (variant === "relative-multiclass" && widget !== "relative") {
-    return { error: "relative-multiclass variant requires widget=relative" };
-  }
   if (variant === "standings-stress60" && widget !== "standings") {
     return { error: "standings-stress60 variant requires widget=standings" };
   }
@@ -204,6 +212,40 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
     }
   }
 
+  // Ventana del relative: enteros 0–8 por lado. Fuera de relative se
+  // descartan en silencio, igual que los slots fuera de su ámbito.
+  const aheadRaw = params.get("ahead");
+  const behindRaw = params.get("behind");
+  const aheadParsed = aheadRaw === null ? undefined : Number(aheadRaw);
+  const behindParsed = behindRaw === null ? undefined : Number(behindRaw);
+  for (const [name, value] of [["ahead", aheadParsed], ["behind", behindParsed]] as const) {
+    if (value !== undefined && (!Number.isInteger(value) || value < 0 || value > RELATIVE_RANGE_LIMIT)) {
+      return { error: `invalid ${name} parameter: ${value}` };
+    }
+  }
+  const ahead = widget === "relative" ? aheadParsed : undefined;
+  const behind = widget === "relative" ? behindParsed : undefined;
+
+  // Formato del nombre de piloto: valor desconocido es error honesto; fuera de
+  // widgets con columna Piloto (standings/relative) se descarta en silencio.
+  const nameFormatRaw = params.get("nameFormat");
+  if (nameFormatRaw !== null && !DRIVER_NAME_FORMATS.includes(nameFormatRaw as DriverNameFormat)) {
+    return { error: `invalid nameFormat parameter: ${nameFormatRaw}` };
+  }
+  const nameFormat = nameFormatRaw !== null && (widget === "standings" || widget === "relative")
+    ? nameFormatRaw as DriverNameFormat
+    : undefined;
+
+  // Filas del Standings: entero 1–30. Fuera de standings se descarta en
+  // silencio, igual que la ventana del Relative fuera de su widget.
+  const rowsRaw = params.get("rows");
+  const rowsParsed = rowsRaw === null ? undefined : Number(rowsRaw);
+  if (rowsParsed !== undefined && (!Number.isInteger(rowsParsed)
+    || rowsParsed < STANDINGS_ROW_COUNT_MIN || rowsParsed > STANDINGS_ROW_COUNT_MAX)) {
+    return { error: `invalid rows parameter: ${rowsRaw}` };
+  }
+  const rows = widget === "standings" ? rowsParsed : undefined;
+
   // Tower lab options are validated here and applied as appearanceOverrides;
   // the productive settings parser re-validates them before rendering.
   const designSettings = parseStandingsEnduranceSettings(designId ? getOfficialDesign(designId)?.visual ?? {} : {});
@@ -231,6 +273,8 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   return { widget, system, state, surface, variant, session, location, background, scale, preset,
     ...(designId ? { designId } : {}), ...(studyStyle ? { studyStyle } : {}), ...(parsedWidth ? { width: parsedWidth } : {}), ...(parsedHeight ? { height: parsedHeight } : {}), ...(compare ? { compare } : {}),
     ...(sceneId ? { sceneId } : {}), ...(sceneFrame !== undefined ? { sceneFrame } : {}), ...(brand === "off" ? { brand } : {}), ...(modules ? { modules } : {}), ...(slots ? { slots } : {}),
+    ...(ahead !== undefined ? { ahead } : {}), ...(behind !== undefined ? { behind } : {}), ...(nameFormat ? { nameFormat } : {}),
+    ...(rows !== undefined ? { rows } : {}),
     ...(redlineThemeRaw ? { redlineTheme: redlineThemeRaw as OverlayWorkshopQuery["redlineTheme"] } : {}),
     ...(redlineData ? { redlineData } : {}),
     ...(redlineSelectionRaw ? { redlineSelection: redlineSelectionRaw as OverlayWorkshopQuery["redlineSelection"] } : {}),
@@ -265,6 +309,10 @@ export function serializeOverlayWorkshopQuery(query: OverlayWorkshopQuery): stri
   if (query.brand) params.set("brand", query.brand);
   if (query.modules) params.set("modules", query.modules.join(","));
   if (query.slots) params.set("slots", query.slots.join(","));
+  if (query.ahead !== undefined) params.set("ahead", String(query.ahead));
+  if (query.behind !== undefined) params.set("behind", String(query.behind));
+  if (query.nameFormat) params.set("nameFormat", query.nameFormat);
+  if (query.rows !== undefined) params.set("rows", String(query.rows));
   if (query.redlineTheme) params.set("redlineTheme", query.redlineTheme);
   if (query.redlineData) params.set("redlineData", query.redlineData);
   if (query.redlineSelection) params.set("redlineSelection", query.redlineSelection);

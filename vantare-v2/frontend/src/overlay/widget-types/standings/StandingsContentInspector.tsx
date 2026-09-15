@@ -1,6 +1,6 @@
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { CustomInspectorProps } from '../../core/inspector-control';
-import { Check, Field, Seg } from '../../../ui/orbit';
+import { Check, Field, Seg, Select } from '../../../ui/orbit';
 import {
   type WidgetColumnWidthPreset,
 } from '../shared/widget-column';
@@ -12,6 +12,7 @@ import {
   toggleStandingsColumn,
   updateStandingsColumn,
 } from './standings-content';
+import { DRIVER_NAME_FORMATS, type DriverNameFormat } from '../shared/driver-name';
 import {
   isStandingsRedlineWidget,
   isStandingsRedlineTowerVisual,
@@ -133,16 +134,15 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
       >
         <div data-testid="studio-standings-row-count">
           <Field label={t('studio.inspector.content.rows')}>
-            <Seg
+            <Select
               label={t('studio.inspector.content.rows')}
               onChange={(next) => publish(updateRowCount(content, Number(next)))}
               options={STANDINGS_ROW_COUNT_OPTIONS.map((count) => ({
                 value: String(count),
                 label: String(count),
-                disabled,
               }))}
               value={String(content.rowCount)}
-              wide
+              disabled={disabled}
             />
           </Field>
         </div>
@@ -243,6 +243,34 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
                       wide
                     />
                   </div>
+                  {column.metricId === 'driverName' && !fixed ? (
+                    <div
+                      className="orbit-studio-cols__seg"
+                      data-testid={`studio-standings-column-name-format-${column.id}`}
+                    >
+                      <Seg
+                        label={`${t('studio.inspector.content.nameFormat')} · ${name}`}
+                        onChange={(next) =>
+                          publish(
+                            updateStandingsColumn(content, column.id, {
+                              format: { mode: next },
+                            }),
+                          )
+                        }
+                        options={DRIVER_NAME_FORMATS.map((format) => ({
+                          value: format,
+                          label: t(`studio.inspector.content.nameFormat.${format}`),
+                          disabled,
+                        }))}
+                        value={
+                          DRIVER_NAME_FORMATS.includes(column.format?.mode as DriverNameFormat)
+                            ? (column.format?.mode as DriverNameFormat)
+                            : 'full'
+                        }
+                        wide
+                      />
+                    </div>
+                  ) : null}
                   {hasAlign(column) ? (
                     <div
                       className="orbit-studio-cols__seg"

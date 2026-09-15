@@ -45,7 +45,7 @@ const catalog: readonly Catalog[] = [
     type: "relative",
     templateIds: RELATIVE_ENDURANCE_TEMPLATE_IDS,
     width: 430,
-    height: 234,
+    height: 285,
   },
   {
     type: "delta",
@@ -83,7 +83,7 @@ function functionalRegions(type: WidgetType, templateId: string): readonly Funct
         name: "each relative row",
         selector: "[data-relative-row]",
         kind: "backing",
-        expectedCount: 5,
+        expectedCount: 7,
       },
     ];
     if (templateId === "relative-redline-mirror") {

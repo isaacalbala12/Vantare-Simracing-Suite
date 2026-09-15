@@ -6,6 +6,7 @@ import { resolveMinimumWidthFrameLayout, resolveStandingsRedlineMinimumWidth } f
 export function resolveStandingsMinimumSize(
   widget: WidgetInstanceV3,
   brandVisible?: boolean,
+  rowHeight = 30,
 ): { width: number; height?: number } | undefined {
   if (widget.type === "standings" && widget.visual.systemId === "vantare-functional") {
     try {
@@ -13,7 +14,7 @@ export function resolveStandingsMinimumSize(
       return resolveFunctionalStandingsSize(content.columns, content.rowCount ?? 20, {
         ...widget.visual.baseSettings, ...widget.visual.appearanceOverrides,
         ...(brandVisible === undefined ? {} : { brandVisible }),
-      });
+      }, rowHeight);
     } catch {
       // Invalid content is reported by WidgetVisualHost, without hiding its diagnostic.
       return undefined;

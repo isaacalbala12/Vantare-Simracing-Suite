@@ -18,9 +18,9 @@ describe("Functional Delta", () => {
     expect(container.querySelector(".vf-delta")?.getAttribute("data-tone")).toBe("gaining");
     expect(container.querySelector(".vf-delta-value")?.textContent).toBe("▲-0.280");
     expect(container.querySelector(".vf-delta-arrow")?.textContent).toBe("▲");
-    expect(container.querySelector(".vf-delta-foot .vf-clock")?.textContent).toBe("1:31.234");
+    expect(container.querySelector(".vf-delta-last .vf-clock")?.textContent).toBe("1:31.234");
     const fill = container.querySelector<HTMLElement>(".vf-delta-fill");
-    expect(fill?.style.right).toBe("50%");
+    expect(fill?.style.left).toBe("25%");
     expect(fill?.style.width).toBe("25%");
   });
 
@@ -29,6 +29,15 @@ describe("Functional Delta", () => {
     const fill = container.querySelector<HTMLElement>(".vf-delta-fill");
     expect(fill?.style.left).toBe("50%");
     expect(fill?.style.width).toBe("25%");
+  });
+
+  it("keeps left/width interpolable on both sides so the zero crossing drains through the anchor", () => {
+    const { container, rerender } = render(<DeltaFunctional model={{ ...model, progress: -0.02 }} settings={{}} renderMode="harness" />);
+    const fill = container.querySelector<HTMLElement>(".vf-delta-fill");
+    expect(fill?.style.left).toBe("49%");
+    rerender(<DeltaFunctional model={{ ...model, tone: "losing", progress: 0.02 }} settings={{}} renderMode="harness" />);
+    expect(fill?.style.left).toBe("50%");
+    expect(fill?.style.right).toBe("");
   });
 
   it("hides the fill entirely at zero progress", () => {

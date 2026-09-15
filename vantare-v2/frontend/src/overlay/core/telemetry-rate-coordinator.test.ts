@@ -326,17 +326,23 @@ describe("createTelemetryRateCoordinator", () => {
     coordinator.dispose();
   });
 
-  it("preserves the wire distinction between null and omitted performance policy", () => {
+  it.each([
+    ["null to omitted", null, undefined],
+    ["omitted to null", undefined, null],
+  ] as const)("preserves the wire distinction from %s performance policy", (_label, firstPolicy, secondPolicy) => {
     const coordinator = createTelemetryRateCoordinator();
     const frame = performanceFrame(1, null, {});
-    coordinator.setOverlayFrame(frame);
-    const withNull = coordinator.getOverlayRuntimeContext();
+    coordinator.setOverlayFrame({
+      ...frame,
+      capabilities: { ...frame.capabilities, performance: firstPolicy },
+    });
+    const firstContext = coordinator.getOverlayRuntimeContext();
     coordinator.setOverlayFrame({
       ...frame,
       sequence: 2,
-      capabilities: { ...frame.capabilities, performance: undefined },
+      capabilities: { ...frame.capabilities, performance: secondPolicy },
     });
-    expect(coordinator.getOverlayRuntimeContext()).not.toBe(withNull);
+    expect(coordinator.getOverlayRuntimeContext()).not.toBe(firstContext);
     coordinator.dispose();
   });
 });

@@ -176,3 +176,5 @@ El conjunto Go comparable contiene 137 paquetes y excluye únicamente `cmd/vanta
 El escenario combinado es un arnés determinista de proyección con datos cambiantes, no una medición end-to-end de Wails/LMU. Windows, FPS, CPU/GPU de la aplicación distribuida y validación visual siguen **NO_EJECUTADOS** y no se infieren desde macOS.
 
 Veredicto técnico de esta continuación: **APTO PARA REVISIÓN DE INTEGRACIÓN, sin regresiones candidatas demostradas en el entorno disponible**. La ronda no está integrada: no se ejecutaron merge, push, PR, deploy ni release.
+
+La revisión Astra High final sobre `be070261` cerró **APPROVE, sin P0–P3 pendientes**. Antes del veredicto detectó y reprodujo el sesgo del primer arnés F04 (49/100 reencuentros de identidad); el arnés definitivo lo reduce a 0/100 y es el único origen de la cifra ~2,95× documentada.

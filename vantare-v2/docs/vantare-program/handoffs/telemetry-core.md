@@ -27,6 +27,9 @@ integración; Windows/Wails/LMU real sigue no ejecutado. Informe:
 `docs/analysis/perf-facts-round2/FINAL_REPORT.md`. Sin merge, push, PR, deploy
 ni release.
 
+Revisión final Astra High sobre `be070261`: **APPROVE**, P0–P3 pendientes =
+0. La tarea VAN-727 queda cerrada en Notion y permanece `Sin integrar`.
+
 
 ## Integración autorizada ISA-1002 — 2026-09-06
 

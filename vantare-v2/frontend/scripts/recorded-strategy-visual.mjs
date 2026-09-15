@@ -190,6 +190,16 @@ async function captureMain(browser) {
     window.scrollTo(0, 0);
   });
   await screenshot(planRun.page, '15-pit-editor');
+  await planRun.page.evaluate(() => history.replaceState(null, '', `${location.pathname}?locale=es&calculation=error`));
+  await planRun.page.getByLabel(/Fuel añadido 1/i).fill('200');
+  await planRun.page.getByRole('button', { name: /Recalcular parada/i }).click();
+  await planRun.page.locator('#recorded-panel-plan [role="alert"]').waitFor();
+  const recovery = planRun.page.locator('.strategy-recorded-plan__editor-head button');
+  await recovery.waitFor();
+  await screenshot(planRun.page, '15b-pit-error-recovery');
+  await recovery.click();
+  await planRun.page.getByRole('button', { name: /Reintentar/i }).waitFor();
+  await screenshot(planRun.page, '15c-plan-error-retry');
   await planRun.page.close();
 
   for (const [mode, name] of [['slow', '16-plan-loading'], ['partial', '17-plan-partial'], ['error', '18-plan-error']]) {
@@ -256,13 +266,28 @@ async function captureMatrix(browser) {
   if (failures.length) throw new Error(`responsive contract failed\n${JSON.stringify(failures, null, 2)}`);
 }
 
+async function captureInlineSessions(browser) {
+  const run = await pageFor(browser, 1208, 941);
+  await openSaved(run.page);
+  await run.page.locator('.strategy-recorded-workspace-head button').click();
+  await run.page.getByTestId('orbit-strategy-wizard-step-sessions').locator('button').click();
+  await run.page.getByRole('button', { name: /Buscar sesiones/i }).click();
+  const contract = await widthContract(run.page);
+  await screenshot(run.page, '05b-wizard-sessions-1208');
+  if (contract.scrollWidth > contract.innerWidth || contract.overflow.length || run.errors.length) {
+    throw new Error(`inline sessions width contract failed\n${JSON.stringify({ contract, errors: run.errors }, null, 2)}`);
+  }
+  await run.page.close();
+}
+
 let browser;
 try {
   await waitForServer();
   browser = await chromium.launch({ headless: true });
   await captureMain(browser);
+  await captureInlineSessions(browser);
   await captureMatrix(browser);
-  fs.writeFileSync(path.join(output, 'README.md'), `# T18 · ${pass}\n\nCapturas del frontend productivo en la shell Orbit mediante un banco determinista. No son prueba Wails, LMU ni DuckDB real.\n`);
+  fs.writeFileSync(path.join(output, 'README.md'), `# T18 · ${pass}\n\n94 capturas del frontend productivo en la shell Orbit: 22 estados principales, incluida la lista integrada a 1208 px y la recuperación tras una parada inviable, más 72 variantes responsive ES/EN/PT/IT. El banco es determinista; no es prueba Wails, LMU ni DuckDB real.\n`);
   console.log(`recorded Strategy visual evidence: ${output}`);
 } finally {
   if (browser) await browser.close();

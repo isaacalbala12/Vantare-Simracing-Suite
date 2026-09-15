@@ -6,7 +6,7 @@
 > Este handoff conserva evidencia técnica fechada; sus estados antiguos no
 > sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
 
-## Estado vigente — #1277 T18 corregido tras la primera prueba nativa
+## Estado vigente — #1277 T18 reforzado con recorrido adversarial Computer Use
 
 Las 19 pantallas y estados principales de Strategy registrada se han llevado a
 la composición A4 aprobada: asistente único de cinco pasos, editor con sidebar
@@ -24,24 +24,34 @@ automáticamente el descubrimiento tras 5,5 segundos; la biblioteca ocupa una
 pantalla intermedia completa, vuelve al contexto anterior y mantiene intactos
 los originales.
 
-La pasada `isa-1277-visual/pass-27-runtime-source-screen` recaptura 19 vistas
-principales, incluida la ruta real desde «Elige tu combinación», y 72 variantes
-responsive. Su matriz vuelve a registrar cero overflow y cero errores. La
-revisión adversarial separada con GPT-5.6 Sol medium abrió los 91 PNG por
-separado, puntúa el conjunto 9,2/10 y no deja P0/P1/P2.
+Computer Use recorrió manualmente asistente, descubrimiento, apertura y selección
+de fuente, revisión de una vuelta con incidente, guardado separado, adopción,
+cálculo y edición de parada. Encontró dos defectos: las filas de sesiones se
+apelmazaban en el paso integrado y un recálculo manual inviable ocultaba la
+salida del editor. Ambos están corregidos. El harness también conserva ahora la
+revisión que guarda y usa la causa canónica `incident_offtrack`, por lo que el
+recorrido de correcciones deja de fallar por datos de prueba inválidos.
+
+La pasada `isa-1277-visual/pass-28-computer-use` contiene 22 estados principales
+y 72 variantes responsive: 94 PNG en total. Añade el paso de sesiones a 1208 px,
+el error dentro de Parada y su retorno a Plan con «Reintentar cálculo». La matriz
+registra cero overflow y cero errores. La nota adversarial visual de la base se
+mantiene en 9,2/10 y la inspección directa de las tres vistas nuevas no deja
+P0/P1/P2.
 
 La rama quedó reconciliada con `origin/nightly` en
 `f617467427f8d78f7432b4445d52be0c4dfe616a`. Pasan typecheck, lint, build,
-i18n, 41 pruebas focales del cambio y la suite frontend completa (490 archivos;
+i18n, 46 pruebas focales del cambio y la suite frontend completa (490 archivos;
 4.256 pruebas aprobadas y 2 omitidas), 137 checks documentales y el contrato de
 roadmap reconstruido desde esa base. La compilación Wails productiva también
 termina correctamente.
 
-La compilación productiva local se reconstruyó y está abierta para repetir el
-recorrido sobre los DuckDB reales del equipo. Falta la confirmación manual de
-que una sesión concreta abre y el resto del gate T22: persistencia, reinicio,
-copia opcional, errores y licencia. Sin push, PR, CI remota, integración ni
-release.
+La compilación productiva local sigue abierta para repetir el recorrido sobre
+los DuckDB reales del equipo. Computer Use no expone esa ventana WebView2, por
+lo que esta pasada acredita los componentes React productivos con respuestas
+deterministas, no la apertura física del DuckDB. Falta el gate T22: apertura
+real, persistencia, reinicio, copia opcional, errores y licencia. Sin push, PR,
+CI remota, integración ni release.
 
 ## Historial — #1276 T17b cerrado localmente; editor de parada conectado
 

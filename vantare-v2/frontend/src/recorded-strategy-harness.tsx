@@ -9,8 +9,8 @@ import { LicenseProvider } from './lib/license';
 import { LauncherStoreProvider } from './hub/launcher/launcher-store';
 import { OrbitShell } from './hub/components/orbit/OrbitShell';
 import type { Section } from './hub/navigation';
-import type { AnalysisClient, AnalysisLapRequest, AnalysisPageRequest, AnalysisRevisionRequest } from './strategy/analysis-client';
-import type { AnalysisBase } from './strategy/analysis-contract';
+import type { AnalysisClient, AnalysisLapRequest, AnalysisPageRequest, AnalysisRevisionRequest, AnalysisSaveRequest } from './strategy/analysis-client';
+import type { AnalysisBase, AnalysisStoreResult } from './strategy/analysis-contract';
 import { defaultTyreCondition, type StrategyTyre } from './strategy/strategy-tyre';
 
 const SHA_A = 'a'.repeat(64);
@@ -57,11 +57,13 @@ function seedRecordedDraft() {
   localStorage.setItem('vantare.strategy.harness.repository.v1', JSON.stringify({ version: 7, drafts: { [document.draftId]: document }, revisions: {}, events: {} }));
 }
 
-function analysisRevision(revisionId = REVISION.revisionId, snapshotId = REVISION.snapshotId) {
-  return { headId: REVISION.revisionId, revision: { revisionId, parentRevisionId: '', command: { expectedRevision: '', commandId: '', reason: '', localAuthorId: '' }, commandDigest: '', createdAt: '', snapshot: { contractVersion: 'analysis.mixed-snapshot.v5', base: BASE, snapshotId, corrections: [], familyUses: [], classifications: [], stintBoundaries: [] } } };
+function analysisRevision(revisionId = REVISION.revisionId, snapshotId = REVISION.snapshotId): AnalysisStoreResult {
+  return { headId: revisionId, revision: { revisionId, parentRevisionId: '', command: { expectedRevision: '', commandId: '', reason: '', localAuthorId: '' }, commandDigest: '', createdAt: '', snapshot: { contractVersion: 'analysis.mixed-snapshot.v5' as const, base: BASE, snapshotId, corrections: [], familyUses: [], classifications: [], stintBoundaries: [] } } };
 }
 
 function createRecordedAnalysisClient(): AnalysisClient {
+  let current = analysisRevision();
+  let saveCount = 0;
   const opened = { sessionId: 'visual-handle-imola', session: { schema_version: 1, id: REVISION.sessionId, channels: [CHANNEL], metadata: [
     { key: 'SessionType', present: true, quality: 'valid', sensitive: false, value: 'race' },
     { key: 'WeatherConditions', present: true, quality: 'valid', sensitive: false, value: 'Dry' },
@@ -80,12 +82,27 @@ function createRecordedAnalysisClient(): AnalysisClient {
     ]),
     open: async () => opened,
     prepare: async () => ({ base: BASE, baseRevisionId: REVISION.revisionId, baseDigest: REVISION.baseDigest, combination: COMBINATION, editableChannelIds: ['fuel'], stintBoundaries: [boundary], stintAnchors: [{ lapNumber: 25, timestamp: '2026-09-15T12:43:45Z' }] }),
-    load: async (request: AnalysisRevisionRequest) => analysisRevision(request.revisionId, request.revisionId === REVISION.revisionId ? REVISION.snapshotId : request.revisionId),
+    load: async (request: AnalysisRevisionRequest) => request.revisionId === current.revision.revisionId ? current : analysisRevision(request.revisionId, request.revisionId === REVISION.revisionId ? REVISION.snapshotId : request.revisionId),
     pending: async () => undefined,
     project: async (request: AnalysisRevisionRequest) => ({ combinationId: COMBINATION.id, sourceRevisions: [{ ...REVISION, revisionId: request.revisionId, snapshotId: request.revisionId === REVISION.revisionId ? REVISION.snapshotId : request.revisionId }] }),
     page: async (request: AnalysisPageRequest) => ({ channel_id: request.channelId, start: request.start, sampling: CHANNEL.sampling, samples: Array.from({ length: 12 }, (_, index) => ({ index: request.start + index, values: [{ column: 'value', present: true, quality: index === 7 ? 'unknown' : 'valid', scalar: { kind: 'number', number: 106 - index * 2.7 } }] })) }),
-    laps: async (request: AnalysisLapRequest) => ({ revisionId: request.revisionId, headId: REVISION.revisionId, page: { base: BASE, snapshotId: request.revisionId === REVISION.revisionId ? REVISION.snapshotId : request.revisionId, start: request.start, total: 5, laps: Array.from({ length: 5 }, (_, index) => { const number = request.start + index + 21; const start = `2026-09-15T12:${String(index * 2).padStart(2, '0')}:00Z`; const end = `2026-09-15T12:${String(index * 2 + 1).padStart(2, '0')}:44Z`; const target = { number, start, end }; const familyUse = ['fuel_consumption', 'virtual_energy_consumption', 'combined_stint_pace_curve', 'tyre_degradation', 'saving_cost'].map((family) => ({ family, included: index !== 3, exclusionReasons: index === 3 ? ['spin'] : [] })); return { original: { ...target, complete: true, labels: index === 3 ? ['spin'] : [], familyUse }, effective: { ...target, complete: true, labels: index === 3 ? ['spin'] : [], familyUse }, target, capabilities: familyUse.map((use) => ({ family: use.family, automaticIncluded: use.included, effectiveIncluded: use.included, canInclude: true, canExclude: true })) }; }) } }),
-    save: async () => analysisRevision(), acknowledge: async () => undefined,
+    laps: async (request: AnalysisLapRequest) => ({ revisionId: request.revisionId, headId: current.headId, page: { base: BASE, snapshotId: request.revisionId === current.revision.revisionId ? current.revision.snapshot.snapshotId : request.revisionId === REVISION.revisionId ? REVISION.snapshotId : request.revisionId, start: request.start, total: 5, laps: Array.from({ length: 5 }, (_, index) => { const number = request.start + index + 21; const start = `2026-09-15T12:${String(index * 2).padStart(2, '0')}:00Z`; const end = `2026-09-15T12:${String(index * 2 + 1).padStart(2, '0')}:44Z`; const target = { number, start, end }; const familyUse = ['fuel_consumption', 'virtual_energy_consumption', 'combined_stint_pace_curve', 'tyre_degradation', 'saving_cost'].map((family) => ({ family, included: index !== 3, exclusionReasons: index === 3 ? ['incident_offtrack'] : [] })); return { original: { ...target, complete: true, labels: index === 3 ? ['incident_offtrack'] : [], familyUse }, effective: { ...target, complete: true, labels: index === 3 ? ['incident_offtrack'] : [], familyUse }, target, capabilities: familyUse.map((use) => ({ family: use.family, automaticIncluded: use.included, effectiveIncluded: use.included, canInclude: true, canExclude: true })) }; }) } }),
+    save: async (request: AnalysisSaveRequest) => {
+      const revisionId = 'def0123456789abc'[Math.min(saveCount++, 15)].repeat(64);
+      const preparedId = SHA_C;
+      current = { headId: revisionId, revision: {
+        revisionId, parentRevisionId: request.command.expectedRevision, command: request.command,
+        commandDigest: SHA_C, createdAt: new Date().toISOString(), snapshot: {
+          contractVersion: 'analysis.mixed-snapshot.v5', base: request.base, snapshotId: revisionId,
+          corrections: request.corrections.map(item => ({ baseId: preparedId, correctionId: revisionId, request: item, original: item.expected, corrected: { ...item.expected, scalar: item.replacement } })),
+          familyUses: (request.familyUses ?? []).map(item => ({ baseId: preparedId, correctionId: revisionId, request: item, original: item.expected, corrected: { ...item.expected, included: item.included, exclusionReasons: item.included ? [] : [...(item.expected.exclusionReasons ?? []), 'manual_exclusion'] } })),
+          classifications: (request.classifications ?? []).map(item => ({ baseId: preparedId, correctionId: revisionId, request: item, original: item.expectedOriginal, corrected: item.replacement })),
+          stintBoundaries: (request.stintBoundaries ?? []).map(item => ({ baseId: preparedId, correctionId: revisionId, request: item, original: item.expected })),
+        },
+      } };
+      return current;
+    },
+    acknowledge: async () => undefined,
     resolve: async () => ({ found: false, headId: REVISION.revisionId }),
     close: async () => undefined,
   } as unknown as AnalysisClient;

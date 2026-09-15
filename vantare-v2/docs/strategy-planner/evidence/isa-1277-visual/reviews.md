@@ -4,6 +4,7 @@
 
 - Pasada base aceptada: `pass-23`.
 - Corrección nativa de fuentes aceptada: `pass-27-runtime-source-screen`.
+- Recorrido adversarial y recuperación aceptados: `pass-28-computer-use`.
 - Cobertura: 19 pantallas principales y 72 capturas responsive.
 - Idiomas: ES, EN, PT e IT.
 - Anchuras cubiertas: 320, 768, 1024 y 1672 px según la familia.
@@ -66,7 +67,7 @@ idiomas, el foco y la ausencia de desbordamientos.
 | Parada · 768 px | 9,1 | 9,1 | 9,1 | 9,1 |
 
 El artefacto verificable de geometría y runtime es
-`pass-23/responsive.json`.
+`pass-28-computer-use/responsive.json`.
 
 ## Corrección tras preflight Wails
 
@@ -80,6 +81,15 @@ La revisión adversarial final se ejecutó con GPT-5.6 Sol medium y abrió los 9
 PNG completos por separado. Puntúa el conjunto 9,2/10, sin P0/P1/P2. Como P3
 deja el tamaño táctil ajustado de algunos controles a 320 px y la partición
 legible de nombres largos de archivo en dos líneas.
+
+## Recorrido Computer Use
+
+`pass-28-computer-use` incorpora 94 PNG: las 91 vistas anteriores y tres
+regresiones. La lista integrada de sesiones a 1208 px separa nombre, fecha,
+tamaño y estado; el error de una parada inviable conserva «← Plan»; al volver,
+Plan muestra «Reintentar cálculo». Computer Use verificó además el flujo manual
+de guardado y adopción de una corrección de vuelta antes de calcular. Las tres
+capturas nuevas se inspeccionaron completas y no presentan P0/P1/P2.
 
 ## Límite de la evidencia
 

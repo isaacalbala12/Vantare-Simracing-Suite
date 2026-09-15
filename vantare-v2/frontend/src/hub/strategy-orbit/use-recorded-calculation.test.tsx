@@ -212,4 +212,8 @@ it("shows the exact calculated plan and accepts only through the acceptance cont
   fireEvent.click(screen.getByRole("button", { name: /strategy\.data\.tab\.plan/ }));
   fireEvent.click(screen.getByRole("button", { name: /strategy\.pitEdit\.title/ }));
   expect((screen.getByLabelText("strategy.pitEdit.fuelAdded 1") as HTMLInputElement).disabled).toBe(false);
+
+  view.rerender(<StrategyRecordedPlan acceptance={acceptance} draft={draft} state={{ status: "error", message: "infeasible", code: "calculation_infeasible" }} locked={false} onChange={vi.fn()} onCalculate={vi.fn()} onRecalculateStints={onRecalculate} onRecalculatePits={onRecalculatePits} onCancel={vi.fn()} t={key => key} />);
+  fireEvent.click(screen.getByRole("button", { name: /strategy\.data\.tab\.plan/ }));
+  expect(screen.getByRole("button", { name: "strategy.calculation.retry" })).toBeTruthy();
 });

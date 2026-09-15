@@ -120,10 +120,11 @@ y 72 variantes responsive en ES/EN/PT/IT. La primera ejecución Wails descubrió
 que la biblioteca lateral no pertenecía al recorrido y que una sola observación
 dejaba los DuckDB bloqueados en estabilización. La corrección conserva el gate de
 seguridad, repite automáticamente la observación tras 5,5 segundos y presenta la
-biblioteca como pantalla A4 completa. `pass-27-runtime-source-screen` recaptura 91
-vistas, incluida la ruta real desde «Elige tu combinación», sin overflow ni
-errores; la revisión adversarial GPT-5.6 Sol medium puntúa el conjunto 9,2/10 y
-no deja P0/P1/P2. Falta confirmar la
+biblioteca como pantalla A4 completa. `pass-28-computer-use` recaptura 94
+vistas, incluida la ruta real desde «Elige tu combinación», la lista integrada
+a 1208 px y la recuperación de una parada inviable, sin overflow ni errores;
+la revisión adversarial GPT-5.6 Sol medium puntúa la base visual 9,2/10 y la
+inspección de las vistas añadidas no deja P0/P1/P2. Falta confirmar la
 apertura de una sesión real y completar persistencia, reinicio, copia, fallos y
 licencia en T22.
 

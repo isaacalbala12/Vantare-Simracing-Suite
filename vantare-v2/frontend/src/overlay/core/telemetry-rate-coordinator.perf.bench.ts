@@ -8,6 +8,7 @@ const sharedUpdate = JSON.parse(goldenV2Raw) as OverlayUpdateV2;
 const independentUpdates = [
   decodeOverlayUpdateV2(JSON.parse(goldenV2Raw)),
   decodeOverlayUpdateV2(JSON.parse(goldenV2Raw)),
+  decodeOverlayUpdateV2(JSON.parse(goldenV2Raw)),
 ] as const;
 
 describe("telemetry coordinator stable publication", () => {
@@ -32,12 +33,15 @@ describe("telemetry coordinator stable publication", () => {
   {
     const coordinator = createTelemetryRateCoordinator();
     let sequence = independentUpdates[0].frame?.sequence ?? 0;
+    coordinator.setOverlayFrame(independentUpdates[0].frame ?? undefined, independentUpdates[0].source);
 
     bench(
       "publish with equivalent independently decoded objects",
       () => {
         sequence += 1;
-        const update = independentUpdates[sequence % independentUpdates.length]!;
+        // The retained runtime context owns update 0. Alternating only updates
+        // 1 and 2 prevents the identity fast path on every measured iteration.
+        const update = independentUpdates[1 + (sequence % 2)]!;
         coordinator.setOverlayFrame(
           update.frame ? { ...update.frame, sequence } : undefined,
           update.source,

@@ -143,7 +143,7 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
         <div className="vf-footer" data-session-footer>
           {model.trackTempText ? <span className="vf-footer-item">{labels.trackTemp} <b>{model.trackTempText}</b></span> : null}
           {model.ambientTempText ? <span className="vf-footer-item">{labels.ambientTemp} <b>{model.ambientTempText}</b></span> : null}
-          {model.windText ? <span className="vf-footer-item vf-footer-item--end">{labels.wind} <b>{model.windText}</b></span> : null}
+          {model.windText ? <span className="vf-footer-item">{labels.wind} <b>{model.windText}</b></span> : null}
         </div>
       ) : config.showSessionFooter ? (
         <SessionInfo className="vf-session-footer" choices={[config.footerFirst, config.footerSecond]} model={model} labels={labels} />

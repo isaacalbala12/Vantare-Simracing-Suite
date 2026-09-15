@@ -325,4 +325,18 @@ describe("createTelemetryRateCoordinator", () => {
     expect(harness.starts()).toBe(0);
     coordinator.dispose();
   });
+
+  it("preserves the wire distinction between null and omitted performance policy", () => {
+    const coordinator = createTelemetryRateCoordinator();
+    const frame = performanceFrame(1, null, {});
+    coordinator.setOverlayFrame(frame);
+    const withNull = coordinator.getOverlayRuntimeContext();
+    coordinator.setOverlayFrame({
+      ...frame,
+      sequence: 2,
+      capabilities: { ...frame.capabilities, performance: undefined },
+    });
+    expect(coordinator.getOverlayRuntimeContext()).not.toBe(withNull);
+    coordinator.dispose();
+  });
 });

@@ -64,7 +64,11 @@ function samePerformance(
   left: OverlayPerformanceV2 | null | undefined,
   right: OverlayPerformanceV2 | null | undefined,
 ): boolean {
-  return left === right || (
+  if (left === right) return true;
+  // `null` is an explicit wire value while `undefined` means the field was
+  // omitted. Preserve that distinction from the former JSON comparison.
+  if (left == null || right == null) return false;
+  return (
     left?.level === right?.level &&
     left?.mode === right?.mode &&
     left?.effects === right?.effects &&

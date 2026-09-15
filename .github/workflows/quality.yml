@@ -69,6 +69,12 @@ jobs:
         # ejecutarse desde la raiz, no desde vantare-v2/frontend.
         run: pnpm install --frozen-lockfile
 
+      - name: Frontend build
+        # govet/staticcheck resuelven vantare-v2/frontend via //go:embed dist;
+        # sin el build, go list falla con "cannot embed directory dist".
+        working-directory: vantare-v2/frontend
+        run: pnpm build
+
       - name: Bootstrap quality tools
         run: python3 tools/quality/vantare_quality.py bootstrap
 
@@ -145,6 +151,11 @@ jobs:
 
       - name: Install frontend devDeps
         run: pnpm install --frozen-lockfile
+
+      - name: Frontend build
+        # Igual que en quality-check: los analizadores Go necesitan dist/.
+        working-directory: vantare-v2/frontend
+        run: pnpm build
 
       - name: Bootstrap quality tools
         run: python3 tools/quality/vantare_quality.py bootstrap

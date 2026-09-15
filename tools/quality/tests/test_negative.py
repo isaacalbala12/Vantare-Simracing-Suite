@@ -225,6 +225,139 @@ class TestRealDepcruiseCircuit(unittest.TestCase):
         result = run_dependency_cruiser(scope, versions, "frontend", fe_root=fixture)
         self.assertEqual(result.status, FAIL,
                          f"violation fixture debe dar status FAIL; got {result.status} (exit {result.exit_code}): {result.raw_stdout[:200]}{result.raw_stderr[:200]}")
+        # R1: el runner debe generar Findings reales (no vacios).
+        self.assertTrue(len(result.findings) > 0,
+                        "depcruise FAIL debe generar Findings reales (no vacios). Si findings es [], el agregado sale PASS.")
+
+    def test_depcruise_violation_cmd_check_exits_nonzero(self):
+        """R3 MUTATION TEST: circuito completo depcruise -> cmd_check -> exit code.
+        Si run_dependency_cruiser se rompe a return PASS, cmd_check sale 0 y este
+        test falla (asserta exit code, no status del runner)."""
+        scope = load_json(SCOPE_PATH)
+        versions = load_json(VERSIONS_PATH)
+        fixture = FIXTURES / "depcruise-circuit"
+        assert fixture.exists(), f"fixture no encontrado: {fixture}"
+        result = run_dependency_cruiser(scope, versions, "frontend", fe_root=fixture)
+        self._assert_cmd_check_exits_nonzero(result)
+
+    def test_depcruise_fail_without_findings_blocks(self):
+        """R1b: un ToolResult de depcruise con status FAIL pero sin findings
+        debe llevar el agregado a FAIL (integrity_issue), nunca a PASS."""
+        from vantare_quality import ToolResult
+        # Simular un resultado FAIL sin findings (contradiccion).
+        fake_result = ToolResult("dependency-cruiser", "frontend", FAIL, 1,
+                                  error="violacion sin detalle", raw_stdout="some output")
+        self._assert_cmd_check_exits_nonzero(fake_result)
+
+    def _assert_cmd_check_exits_nonzero(self, depcruise_result):
+        """Helper: inyecta el resultado depcruise + PASS para los demas analizadores
+        esperados en cmd_check y verifica que el exit code es != 0. Si el runner
+        se rompe a return PASS, cmd_check sale 0 y este test falla (R3).
+        Aisla policy_changed para que el test solo mida el efecto del resultado."""
+        import argparse
+        import vantare_quality as vq
+        from vantare_quality import ToolResult, PASS, RATCHET_ANALYZERS, NO_BASELINE_ANALYZERS, load_baseline
+        all_expected = RATCHET_ANALYZERS | NO_BASELINE_ANALYZERS
+        pass_results = []
+        for a in sorted(all_expected):
+            if a == depcruise_result.analyzer:
+                continue
+            if a in ("knip", "jscpd", "dependency-cruiser"):
+                configs = ["frontend"]
+            elif a in ("govet", "staticcheck"):
+                bl = load_baseline(a)
+                configs = bl.get("header", {}).get("configs", ["host-go"]) if bl else ["host-go"]
+            else:
+                configs = ["host-go"]
+            for cfg in configs:
+                pass_results.append(ToolResult(a, cfg, PASS, 0))
+        original_run_all = vq._run_all
+        original_policy = vq._policy_changed
+        vq._run_all = lambda scope, versions: pass_results + [depcruise_result]
+        vq._policy_changed = lambda scope_base, base_sha: (False, [])  # aislar
+        try:
+            args = argparse.Namespace(ci=False, base=None, json=False)
+            exit_code = vq.cmd_check(args)
+        finally:
+            vq._run_all = original_run_all
+            vq._policy_changed = original_policy
+        self.assertNotEqual(exit_code, 0,
+                            f"cmd_check debe dar exit != 0 con depcruise FAIL; got {exit_code}. "
+                            "Si cmd_check se rompe a return 0, este test falla (R3).")
+
+
+# ---------------------------------------------------------------------------
+# R3: cmd_check exit code tests for knip and jscpd mutations
+# ---------------------------------------------------------------------------
+
+class TestCmdCheckExitCodeKnipJscpd(unittest.TestCase):
+    """R3: tests que assertan el EXIT CODE de cmd_check para knip y jscpd.
+    Si parse_knip o parse_jscpd se rompen a return [], estos tests fallan
+    porque cmd_check sale 0 (sin NEW bloqueantes)."""
+
+    def _assert_cmd_check_exits_nonzero_with_result(self, target_result):
+        """Inyecta el resultado objetivo + PASS para los demas analizadores
+        esperados, y verifica que cmd_check da exit != 0.
+        Aisla policy_changed para que el test solo mida el efecto del resultado."""
+        import argparse
+        import vantare_quality as vq
+        from vantare_quality import ToolResult, PASS, RATCHET_ANALYZERS, NO_BASELINE_ANALYZERS, load_baseline
+        all_expected = RATCHET_ANALYZERS | NO_BASELINE_ANALYZERS
+        pass_results = []
+        for a in sorted(all_expected):
+            if a == target_result.analyzer:
+                continue
+            if a in ("knip", "jscpd", "dependency-cruiser"):
+                configs = ["frontend"]
+            elif a in ("govet", "staticcheck"):
+                bl = load_baseline(a)
+                configs = bl.get("header", {}).get("configs", ["host-go"]) if bl else ["host-go"]
+            else:
+                configs = ["host-go"]
+            for cfg in configs:
+                pass_results.append(ToolResult(a, cfg, PASS, 0))
+        original_run_all = vq._run_all
+        original_policy = vq._policy_changed
+        vq._run_all = lambda scope, versions: pass_results + [target_result]
+        vq._policy_changed = lambda scope_base, base_sha: (False, [])  # aislar
+        try:
+            args = argparse.Namespace(ci=False, base=None, json=False)
+            exit_code = vq.cmd_check(args)
+        finally:
+            vq._run_all = original_run_all
+            vq._policy_changed = original_policy
+        self.assertNotEqual(exit_code, 0,
+                            f"cmd_check debe dar exit != 0; got {exit_code}. "
+                            "Si parse_knip/parse_jscpd se rompe a return [], no hay NEW -> PASS -> exit 0.")
+
+    def test_knip_new_finding_cmd_check_exits_nonzero(self):
+        """R3: knip con hallazgo NUEVO -> cmd_check exit != 0.
+        Si parse_knip se rompe a return [], no hay hallazgos -> no NEW -> exit 0."""
+        knip = _find_bin("knip")
+        rc, out, _err = _run(knip, ["--reporter", "json"], KNIP_FIXTURES)
+        findings = parse_knip(out, REPO_ROOT, KNIP_FIXTURES)
+        self.assertTrue(len(findings) > 0, "parse_knip debe devolver hallazgos")
+        from vantare_quality import ToolResult, FAIL
+        result = ToolResult("knip", "frontend", FAIL, rc, findings=findings)
+        self._assert_cmd_check_exits_nonzero_with_result(result)
+
+    def test_jscpd_new_finding_cmd_check_exits_nonzero(self):
+        """R3: jscpd con hallazgo NUEVO -> cmd_check exit != 0.
+        Si parse_jscpd se rompe a return [], no hay hallazgos -> no NEW -> exit 0."""
+        jscpd = _find_bin("jscpd")
+        with tempfile.TemporaryDirectory() as tmp:
+            out_dir = Path(tmp)
+            rc, out, err = _run(jscpd, ["--reporters", "json", "--min-lines", "5",
+                                        "--min-tokens", "30", "--output", str(out_dir),
+                                        str(JSCPD_FIXTURES)], JSCPD_FIXTURES)
+            report = out_dir / "jscpd-report.json"
+            assert report.exists(), f"jscpd no genero informe: {err}"
+            report_obj = json.loads(report.read_text())
+        findings = parse_jscpd(report_obj, REPO_ROOT, JSCPD_FIXTURES)
+        self.assertTrue(len(findings) > 0, "parse_jscpd debe devolver hallazgos")
+        from vantare_quality import ToolResult, FAIL
+        result = ToolResult("jscpd", "frontend", FAIL, rc, findings=findings)
+        self._assert_cmd_check_exits_nonzero_with_result(result)
 
 
 # ---------------------------------------------------------------------------

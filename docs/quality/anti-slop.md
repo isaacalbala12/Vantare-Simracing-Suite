@@ -23,16 +23,20 @@ un hallazgo NUEVO (no en baseline, no exceptuado):
 - **staticcheck**: hallazgos nuevos por código de regla + path + mensaje.
 - **go vet**: hallazgos nuevos por path + mensaje.
 - **knip**: exports/tipos/archivos/dependencias no usados, nuevos por regla +
-  path + símbolo. Las entradas de producción y de dev/test se distinguen para
-  que "usado solo en tests" no se confunda con "sin usar".
+  path + símbolo. knip no distingue entradas de producción de dev/test de forma
+  fiable; esa distinción es documentación, no un control ejecutable.
 - **dependency-cruiser**: fronteras verificables (ciclos; renderizadores y
-  canvas no acceden a @wailsio/@supabase). Usa su baseline nativo de
-  known-violations.
+  canvas no acceden a @wailsio/@supabase). Bloquea por ESTADO (no por ratchet):
+  usa `--ignore-known` con su baseline nativo de known-violations, y cualquier
+  violación nueva (exit 1) es bloqueante. Excluye bindings y generado del
+  grafo, no solo de los hallazgos.
 - **go mod tidy -diff**: control objetivo sin baseline. Cualquier diff no
   exceptuado es bloqueante. No modifica manifiestos.
 - **jscpd**: duplicación nueva por identidad (content_hash del fragmento), un
-  hallazgo por emplazamiento. Un TERCER emplazamiento de un clon conocido es
-  NUEVO, no absorbido por el par antiguo.
+  hallazgo por emplazamiento. Semántica de multiconjunto: un TERCER
+  emplazamiento de un clon conocido es NUEVO, no absorbido por el par antiguo,
+  y una segunda aparición de la misma identidad en el mismo archivo también
+  es NUEVO.
 
 ### Informativas (no bloqueantes)
 
@@ -43,6 +47,10 @@ un hallazgo NUEVO (no en baseline, no exceptuado):
 
 ### Requieren juicio humano (REVIEW_REQUIRED)
 
+- **MOVED**: un hallazgo que desaparece de un path y aparece con la misma
+  regla+mensaje en otro. No se castiga como defecto nuevo, pero BLOQUEA
+  llevando el agregado a `REVIEW_REQUIRED` (exit ≠ 0): un traslado legítimo
+  no pasa solo, exige revisión explícita.
 - Cualquier cambio que toque `tools/quality/**`, los baselines, la
   configuración de analizadores, los ignores o `.github/workflows/quality.yml`
   marca `policy_changed: true`, fuerza análisis de grafo completo y el
@@ -79,9 +87,16 @@ manejo de errores son controles de runtime que los tipos no reemplazan.
 
 ## Ratchet: la integridad del baseline
 
-- Los baselines se aceptan solo con `baseline --confirm` (nunca en CI).
+- Los baselines se aceptan solo con `baseline --confirm` (nunca en CI). `audit`
+  analiza pero NO escribe baselines.
+- Los baselines son portables: las configs semánticas (`host-go` para Go del
+  host, `windows-amd64` para cruce Windows, `frontend` para npm) separan la
+  procedencia del host de la cobertura semántica. Darwin y Linux producen
+  el mismo conjunto de configs, así el baseline es comparable entre plataformas.
 - `check` da ERROR si el `scope_hash` o las versiones de las herramientas
   difieren de la configuración actual: obliga recalibración explícita.
+- `check` da FAIL si un analizador con baseline no produjo resultado (NOT_RUN):
+  un analizador no puede desaparecer en silencio.
 - La cabecera del baseline guarda `base_sha` como **procedencia** (de qué
   SHA se generó), NO como oráculo de manipulación. El diff de política se
   calcula contra la base real del PR (`--base <sha>` en CI, o

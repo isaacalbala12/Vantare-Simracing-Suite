@@ -605,20 +605,59 @@ def run_jscpd(scope: dict, versions: dict, config: str) -> ToolResult:
     return ToolResult("jscpd", config, FAIL if findings else PASS, rc, findings=findings, duration_ms=ms, raw_stdout=out, raw_stderr=err, version=versions["analyzers"]["jscpd"]["version"])
 
 
+def parse_depcruise(report_obj: Any, repo_root: Path, fe_root: Path) -> list[Finding]:
+    """Parsea summary.violations[] del JSON de dependency-cruiser.
+    Filtra las conocidas (rule.severity == 'ignore' tras --ignore-known).
+    Identidad: rule.name + from + to (sin linea/columna)."""
+    violations = report_obj.get("summary", {}).get("violations", [])
+    findings: list[Finding] = []
+    for v in violations:
+        rule = v.get("rule", {})
+        if rule.get("severity") == "ignore":
+            continue  # conocida, filtrada por --ignore-known.
+        name = rule.get("name", "unknown")
+        from_path = v.get("from", "")
+        to_path = v.get("to", "")
+        findings.append(Finding(
+            analyzer="dependency-cruiser",
+            rule=name,
+            path=norm_path(from_path, repo_root),
+            msg_norm=to_path,
+        ))
+    return findings
+
+
 def run_dependency_cruiser(scope: dict, versions: dict, config: str, fe_root: Path | None = None) -> ToolResult:
     """dependency-cruiser con --ignore-known (baseline nativo). STATUS_BLOCKING:
     exit 1 = violacion nueva (no filtrada por known-violations) -> bloquea.
-    fe_root opcional para tests sobre fixtures."""
+    Genera Findings reales parseando summary.violations[] del JSON.
+    fe_root opcional para tests sobre fixtures (usa el binario del frontend real)."""
     fe = fe_root or (REPO_ROOT / "vantare-v2" / "frontend")
-    pnpm = shutil.which("pnpm") or "pnpm"
+    # En tests sobre fixtures, pnpm exec no encuentra el binario (no hay node_modules).
+    # Usar el binario del frontend real directamente.
+    depcruise_bin = REPO_ROOT / "vantare-v2" / "frontend" / "node_modules" / ".bin" / "depcruise"
+    if depcruise_bin.exists():
+        cmd = [str(depcruise_bin), "src", "--config", ".dependency-cruiser.cjs", "--ignore-known", "--output-type", "json"]
+    else:
+        pnpm = shutil.which("pnpm") or "pnpm"
+        cmd = [pnpm, "--dir", str(fe), "exec", "depcruise", "src", "--config", ".dependency-cruiser.cjs", "--ignore-known", "--output-type", "json"]
     try:
-        rc, out, err, ms = run_cmd([pnpm, "--dir", str(fe), "exec", "depcruise", "src", "--config", ".dependency-cruiser.cjs", "--ignore-known"], cwd=fe, timeout=600)
+        rc, out, err, ms = run_cmd(cmd, cwd=fe, timeout=600)
     except ToolError as e:
         return ToolResult("dependency-cruiser", config, ERROR, -1, error=str(e))
     if rc >= 2:
         return ToolResult("dependency-cruiser", config, ERROR, rc, error=f"crash (exit {rc}): {err.strip()[:500]}", duration_ms=ms, raw_stderr=err)
+    # Parsear JSON para construir Findings. Si no parsea -> ERROR.
+    try:
+        report = json.loads(out)
+    except json.JSONDecodeError as e:
+        return ToolResult("dependency-cruiser", config, ERROR, rc, error=f"salida JSON no parseable: {e}", duration_ms=ms, raw_stdout=out, raw_stderr=err)
+    findings = parse_depcruise(report, REPO_ROOT, fe)
     # exit 0 = sin violaciones nuevas, 1 = violaciones nuevas (no conocidas).
-    return ToolResult("dependency-cruiser", config, FAIL if rc == 1 else PASS, rc, duration_ms=ms, raw_stdout=out, raw_stderr=err, version=versions["analyzers"]["dependency-cruiser"]["version"])
+    # Si rc==1 pero no hay findings, es una contradiccion -> ERROR (defensa R1b).
+    if rc == 1 and not findings:
+        return ToolResult("dependency-cruiser", config, ERROR, rc, error="exit 1 sin violaciones parseables (contradiccion)", duration_ms=ms, raw_stdout=out, raw_stderr=err, version=versions["analyzers"]["dependency-cruiser"]["version"])
+    return ToolResult("dependency-cruiser", config, FAIL if findings else PASS, rc, findings=findings, duration_ms=ms, raw_stdout=out, raw_stderr=err, version=versions["analyzers"]["dependency-cruiser"]["version"])
 
 
 ANALYZER_RUNNERS = {
@@ -827,6 +866,10 @@ def _print_summary(results: list[ToolResult]) -> None:
 
 
 def _save_last_run(results: list[ToolResult], scope: dict, versions: dict, mode: str, **extra) -> None:
+    # R2: persistir raw_stdout/raw_stderr truncados (~4000 chars) solo cuando
+    # el resultado no es PASS, para que la evidencia de violaciones no se pierda.
+    # No se vuelcan variables de entorno ni nada que pueda contener credenciales.
+    _TRUNC = 4000
     payload = {
         "mode": mode,
         "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
@@ -834,7 +877,8 @@ def _save_last_run(results: list[ToolResult], scope: dict, versions: dict, mode:
         "versions_fingerprint": versions_fingerprint(versions),
         "results": [
             {"analyzer": r.analyzer, "config": r.config, "status": r.status, "exit_code": r.exit_code,
-             "findings": [asdict(f) for f in r.findings], "error": r.error, "duration_ms": r.duration_ms, "version": r.version}
+             "findings": [asdict(f) for f in r.findings], "error": r.error, "duration_ms": r.duration_ms, "version": r.version,
+             **({"raw_stdout": r.raw_stdout[:_TRUNC], "raw_stderr": r.raw_stderr[:_TRUNC]} if r.status != PASS else {})}
             for r in results
         ],
     }
@@ -954,8 +998,11 @@ def cmd_check(args: argparse.Namespace) -> int:
                     classifications[r.analyzer] = Classification(new=new_blocking)
                     excepted_findings[r.analyzer] = excepted
                 else:
-                    # FAIL sin hallazgos (no deberia pasar, pero defensivo).
-                    classifications[r.analyzer] = Classification(new=[])
+                    # R1b: FAIL sin hallazgos es una contradiccion -> integrity_issue -> FAIL.
+                    # Nunca puede llegar a PASS. El runner ya deberia haber devuelto
+                    # ERROR en este caso, pero si llega aqui, lo cazamos.
+                    integrity_issues.append(f"{r.analyzer}: FAIL sin hallazgos (violacion sin detalle) -> revisar raw_stdout")
+                    classifications[r.analyzer] = Classification()
             else:
                 classifications[r.analyzer] = Classification()
             continue

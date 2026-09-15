@@ -19,8 +19,8 @@ solo se aceptan con `baseline --confirm` (nunca en CI).
 
 2. **Baseline.** Ejecuta `python3 tools/quality/vantare_quality.py check` para
    ver el estado actual contra el baseline. Si necesitas el análisis completo,
-   usa `audit` (genera baselines; NUNCA en CI). Un baseline se acepta solo con
-   `baseline --confirm` y registra el SHA base como procedencia.
+   usa `audit` (analiza sin escribir baselines; NUNCA en CI). Un baseline se
+   acepta solo con `baseline --confirm` y registra el SHA base como procedencia.
 
 3. **Cambios acotados.** Haz el cambio mínimo. No toques `tools/quality/**`,
    baselines, configs de analizadores ni ignores en el mismo PR que toca
@@ -34,8 +34,11 @@ solo se aceptan con `baseline --confirm` (nunca en CI).
    `python3 -B tools/quality/tests/test_negative.py`.
 
 5. **Delta de calidad.** Ejecuta `check` de nuevo. El ratchet compara
-   identidades: un hallazgo NUEVO bloquea aunque el total no suba. MOVED
-   (misma regla+mensaje, distinto path) se lista destacado y nunca se silencia.
+   identidades con semántica de multiconjunto: un hallazgo NUEVO bloquea
+   aunque el total no suba, y una segunda aparición de la misma identidad
+   en el mismo archivo también es NUEVO. MOVED (misma regla+mensaje, distinto
+   path) bloquea llevando el agregado a `REVIEW_REQUIRED` (exit ≠ 0): un
+   traslado legítimo no se castiga como defecto nuevo, pero tampoco pasa solo.
    Los hallazgos exceptuados (ver `exceptions.json`) se listan como excepción
    activa en cada ejecución.
 

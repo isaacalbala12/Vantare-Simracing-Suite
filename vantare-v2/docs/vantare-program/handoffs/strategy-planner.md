@@ -1,6 +1,25 @@
 # Handoff vivo — Strategy Planner
 
-## Estado vigente — #1274 T16b cerrado localmente; editor de stint conectado
+## Estado vigente — #1275 T17a cerrado localmente; restricciones de parada
+
+Las variantes Orbit pueden fijar por parada la cantidad añadida de Fuel y VE,
+además de conservar o cambiar neumáticos y compuesto cuando existe inventario
+físico. Las cantidades son servicios, no cargas objetivo del stint siguiente;
+se rechazan dos autoridades para el mismo repostaje. El modo paralelo o
+secuencial continúa siendo una regla global del evento.
+
+La evaluación materializa una única decisión y el replay existente comprueba
+capacidad, reserva, inventario y ventanas. El mismo replay produce el coste:
+tránsito se cuenta una vez y el servicio respeta el modo del evento. La entrada
+TypeScript construye base + variante restringida fijando todos los límites
+visibles. También se corrigió la carga VE publicada por stint, que se copiaba
+antes de resolver sus cantidades reales.
+
+Siguiente: T17b conecta el editor y detalle productivo de parada, obsolescencia,
+recálculo y coste. T18 conserva la revisión visual adversarial. Sin app/Wails,
+LMU, DuckDB, push, PR, CI remota, integración ni release.
+
+## Historial — #1274 T16b cerrado localmente; editor de stint conectado
 
 El panel Plan permite fijar el piloto de cada stint y mover cada límite entre
 dos stints. El control arrastrable nativo y su entrada numérica equivalente

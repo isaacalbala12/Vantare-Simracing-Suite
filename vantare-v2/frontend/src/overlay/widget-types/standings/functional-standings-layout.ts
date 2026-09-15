@@ -51,7 +51,9 @@ export function resolveFunctionalStandingsSize(
     && resolveFunctionalIdentitySpan(enabled) === 0;
   const header = broadcast ? 24 + (settings.showSessionHeader === false ? 0 : 46)
     : 50 + (separateSignatureHeader ? 49 : 0);
-  const footer = settings.showSessionFooter === false ? 0 : 22;
+  // El pie ambiente (pista/aire/viento) mide 30px y prevalece sobre el pie de
+  // sesión de 22px cuando hay datos — el tamaño mínimo presupone el caso real.
+  const footer = settings.showSessionFooter === false ? 0 : 30;
   const infoBand = resolveFunctionalHeaderInfoPlacement(enabled, settings) === "band" ? 22 : 0;
   const brandBand = settings.brandVisible === true && settings.showSessionHeader === false ? 22 : 0;
   return { width: Math.max(broadcast ? 258 : 238, width), height: header + infoBand + brandBand + rowCount * 30 + footer };

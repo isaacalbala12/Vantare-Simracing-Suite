@@ -5,15 +5,15 @@ import type { WidgetColumnV3 } from "../shared/widget-column";
 const columns: WidgetColumnV3[] = ["position", "driverName", "gap"].map(metricId => ({ id: metricId, metricId, enabled: true, widthPreset: "sm" }));
 
 describe("Efficiency session geometry", () => {
-  it.each(["signature", "broadcast"])("reserves exactly the thin footer height in %s without altering columns", templateId => {
+  it.each(["signature", "broadcast"])("reserves exactly the ambient footer height in %s without altering columns", templateId => {
     const noFooter = resolveFunctionalStandingsSize(columns, 10, { templateId, showSessionFooter: false });
-    expect(resolveFunctionalStandingsSize(columns, 10, { templateId })).toEqual({ width: noFooter.width, height: noFooter.height + 22 });
+    expect(resolveFunctionalStandingsSize(columns, 10, { templateId })).toEqual({ width: noFooter.width, height: noFooter.height + 30 });
   });
 
   it("keeps the wide Signature combined header at 50 px with configurable information", () => {
     const wide = [...columns, { id: "lap", metricId: "bestLap", enabled: true, widthPreset: "sm" as const }];
     // ISA-1221: con las columnas métricas compactas, 2 infos ya no caben junto a la cabecera y caen a la banda de 22 px.
-    expect(resolveFunctionalStandingsSize(wide, 10, { headerFirst: "trackTemperature", headerSecond: "estimatedLaps" }).height).toBe(394);
+    expect(resolveFunctionalStandingsSize(wide, 10, { headerFirst: "trackTemperature", headerSecond: "estimatedLaps" }).height).toBe(402);
   });
 
   it.each(["signature", "broadcast"])("keeps selected header information visible in narrow %s layouts", templateId => {

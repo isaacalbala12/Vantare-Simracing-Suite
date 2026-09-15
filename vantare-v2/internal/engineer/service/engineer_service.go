@@ -763,8 +763,20 @@ func (s *EngineerService) advancePresentationLifecycleLocked() {
 	s.activePresentation = nil
 	// A buffered notification belongs to the generation being invalidated.
 	// Drain it before publishing the new status; otherwise an SSE select could
-	// observe the clear first and then resurrect the stale message.
+	// observe the clear first and then resurrect the stale message. The same
+	// holds for the ordered stream: a full streamSubs buffer would drop the
+	// post-generation status and keep replaying stale presentations.
 	for _, subscriber := range s.subs {
+		for {
+			select {
+			case <-subscriber:
+				continue
+			default:
+			}
+			break
+		}
+	}
+	for _, subscriber := range s.streamSubs {
 		for {
 			select {
 			case <-subscriber:

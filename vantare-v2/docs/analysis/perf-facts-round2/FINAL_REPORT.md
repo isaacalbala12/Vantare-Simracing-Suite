@@ -140,3 +140,39 @@ Un revisor Luna independiente leyó el diff integrado y dio **PASS condicional s
 - Merge, push, PR, deploy y release: no ejecutados.
 
 Los commits son locales y pequeños por familia; cada uno puede revertirse de forma independiente. El saldo final de documentación añade este informe, el ledger y el handoff de revisión.
+
+## Continuación adversarial y cierre reproducido — 2026-09-15
+
+Esta sección **sustituye el estado de validación final anterior**, que mezclaba un Node no reproducible con fallos de `localStorage`. Con el runtime fijado por el proyecto (Node 22.23.0, pnpm 9.1.0), las suites frontend completas de `ROUND_BASE`, candidato original y candidato corregido terminan en verde. No hubo corrección de producto en esta continuación: el commit `43f86f0f` solo endurece tests y arneses tras la primera revisión Astra High.
+
+### Comparación de suites
+
+| Superficie | ROUND_BASE `ae11bef7` | Candidato `b6462c4b` | Corregido `43f86f0f` | Veredicto |
+|---|---:|---:|---:|---|
+| Frontend completa, archivos | 448/448 PASS | 451/451 PASS | 451/451 PASS | Sin regresión |
+| Frontend completa, tests | 3.573 PASS, 2 omitidos | 3.592 PASS, 2 omitidos | 3.593 PASS, 2 omitidos | Sin fallo candidato |
+| Go comparable macOS, paquetes | 119 PASS, 2 FAIL, 16 sin tests aplicables | 119 PASS, 2 FAIL, 16 sin tests aplicables | 119 PASS, 2 FAIL, 16 sin tests aplicables | Misma firma base/candidato |
+| Go comparable macOS, tests/subtests | 6.134 PASS, 6 eventos FAIL, 6 omitidos | 6.151 PASS, 6 eventos FAIL, 6 omitidos | 6.153 PASS, 6 eventos FAIL, 6 omitidos | Sin fallo candidato |
+| TypeScript / ESLint / build producción | — | PASS | PASS | Cerrado |
+| Race + vet, derive y overlayv2 | — | PASS | PASS | Cerrado |
+
+El conjunto Go comparable contiene 137 paquetes y excluye únicamente `cmd/vantare` e `internal/app/launcher`: el primero no compila en macOS por símbolos Win32 y el segundo reproduce en base y candidato el timeout de `TestRunChainCancellable`. Con `TMPDIR` canónico bajo `/private/tmp`, modo 0700 y `umask 077`, los dos fallos de paquete restantes son idénticos: semántica de path absoluto Windows en `internal/server` y recuperación crash/lease Windows en `internal/telemetry/recording/sqlite`. Una ejecución previa sin exportar `TMPDIR` se descartó explícitamente.
+
+### Cierre F01–F08
+
+| ID | Evidencia repetida | Estado final |
+|---|---|---|
+| F01 | Tres pares alternados. Medianas 25/50/100 widgets: `0,2805→0,2032`, `0,5533→0,3945`, `1,0880→0,7764` ms/op; copy `1,5380→1,0649`. | **IMPLEMENTADO_Y_MEDIDO** |
+| F02 | Tres repeticiones del arnés de dos consumidores. Dirty 50 widgets `0,0586→0,0291` ms; SWR 50 `0,0557→0,0288` ms. | **IMPLEMENTADO_Y_MEDIDO** |
+| F03 | Tres pares alternados. Repaint 1/5/20 widgets: `0,0630→0,0537`, `0,2563→0,2351`, `1,0090→0,9299` ms/op. | **IMPLEMENTADO_Y_MEDIDO** |
+| F04 | Tres pares alternados. Referencias compartidas `250.936→6.781.875` ops/s (~27,0×); objetos equivalentes decodificados por separado `203.675→954.980` ops/s (~4,69×). Test explícito `null→omitido` y `omitido→null`. | **IMPLEMENTADO_Y_MEDIDO** |
+| F05 | Matriz combinada 12/12 PASS. La base no reconstruye standings ante `CarNumber`; el candidato reconstruye exactamente las seis variantes dinámicas y conserva los skips estáticos. | **CORRECCIÓN_DE_CORRECCIÓN_DEMOSTRADA** |
+| F06 | Test con builder inyectado hostil demuestra que su mutación ocurre sobre una copia y no alcanza el snapshot de entrada. Se conserva `Snapshot.Value`. | **DESCARTADO_CON_EVIDENCIA** |
+| F07 | Diez pares intercalados: full/fresh `5,014→2,897 µs/op` (-42,23%, p=0,000), `32,56→16,56 KiB/op` (-49,14%), `5→4` allocs. Empty, partial, stale y missing sin cambio significativo. Test directo demuestra que `Prepare` no publica y que `Commit` no muta snapshots retenidos. | **IMPLEMENTADO_Y_MEDIDO** |
+| F08 | Se revalidaron límites/ACK/base/session/rollback en la suite completa; no apareció evidencia que justifique sustituir la contabilidad conservadora. | **DESCARTADO_CON_EVIDENCIA** |
+
+### Límites y decisión
+
+El escenario combinado es un arnés determinista de proyección con datos cambiantes, no una medición end-to-end de Wails/LMU. Windows, FPS, CPU/GPU de la aplicación distribuida y validación visual siguen **NO_EJECUTADOS** y no se infieren desde macOS.
+
+Veredicto técnico de esta continuación: **APTO PARA REVISIÓN DE INTEGRACIÓN, sin regresiones candidatas demostradas en el entorno disponible**. La ronda no está integrada: no se ejecutaron merge, push, PR, deploy ni release.

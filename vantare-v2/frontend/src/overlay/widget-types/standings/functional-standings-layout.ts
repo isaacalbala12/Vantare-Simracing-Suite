@@ -41,7 +41,7 @@ export function resolveFunctionalHeaderInfoPlacement(
 }
 
 export function resolveFunctionalStandingsSize(
-  columns: readonly WidgetColumnV3[], rowCount: number, settings: Readonly<Record<string, unknown>>,
+  columns: readonly WidgetColumnV3[], rowCount: number, settings: Readonly<Record<string, unknown>>, rowHeight = 30,
 ): { width: number; height: number } {
   const broadcast = settings.templateId === "broadcast";
   const enabled = columns.filter((column) => column.enabled);
@@ -56,5 +56,5 @@ export function resolveFunctionalStandingsSize(
   const footer = settings.showSessionFooter === false ? 0 : 30;
   const infoBand = resolveFunctionalHeaderInfoPlacement(enabled, settings) === "band" ? 22 : 0;
   const brandBand = settings.brandVisible === true && settings.showSessionHeader === false ? 22 : 0;
-  return { width: Math.max(broadcast ? 258 : 238, width), height: header + infoBand + brandBand + rowCount * 30 + footer };
+  return { width: Math.max(broadcast ? 258 : 238, width), height: header + infoBand + brandBand + rowCount * rowHeight + footer };
 }

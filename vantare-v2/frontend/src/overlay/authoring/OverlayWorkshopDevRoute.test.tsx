@@ -205,28 +205,14 @@ describe("OverlayWorkshopDevRoute", () => {
     }
   });
 
-  it("uses the multiclass Relative projection as default without exposing a duplicate variant", async () => {
-    const renderRows = async (variant: string) => {
+  it("exposes only the default Workshop variant for every widget", async () => {
+    for (const widget of ["standings", "relative", "delta", "pedals"] as const) {
       cleanup();
-      render(<OverlayWorkshopDevRoute search={`?widget=relative&system=vantare-functional&variant=${variant}&state=ready&surface=obs`} />);
-      await waitFor(() => expect(document.querySelector("[data-widget-renderer=relative]")).toBeTruthy());
-      return [...document.querySelectorAll("[data-relative-row]")].map((row) => ({
-        id: row.getAttribute("data-relative-row"),
-        metrics: [...row.querySelectorAll("td")].map((cell) => cell.getAttribute("data-metric")),
-        text: row.textContent,
-      }));
-    };
-
-    const defaultRows = await renderRows("default");
-    expect(screen.queryByLabelText("Variante")).toBeNull();
-    expect(screen.getByText("Fixture: default")).toBeTruthy();
-    expect(document.querySelector("td[data-metric=carNumber]")).toBeNull();
-    expect(document.querySelector("td[data-metric=bestLap]")).toBeNull();
-
-    const aliasRows = await renderRows("relative-multiclass");
-    expect(aliasRows).toEqual(defaultRows);
-    expect(screen.queryByLabelText("Variante")).toBeNull();
-    expect(screen.getByText("Fixture: default")).toBeTruthy();
+      render(<OverlayWorkshopDevRoute search={`?widget=${widget}&system=vantare-functional&variant=default&state=ready&surface=obs`} />);
+      await waitFor(() => expect(document.querySelector(`[data-widget-renderer=${widget}]`)).toBeTruthy());
+      expect(screen.queryByLabelText("Variante")).toBeNull();
+      expect(screen.getByText("Fixture: default")).toBeTruthy();
+    }
   });
 
   it("builds the widget from the scene, not just the telemetry", async () => {

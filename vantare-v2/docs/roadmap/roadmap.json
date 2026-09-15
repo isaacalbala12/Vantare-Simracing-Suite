@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-15T16:43:56Z",
+  "generatedAt": "2026-09-15T18:54:58Z",
   "digest": {
     "lastCommit": "f617467427f8d78f7432b4445d52be0c4dfe616a"
   },
@@ -444,12 +444,12 @@
     {
       "id": "overlays-studio",
       "title": {
-        "es": "Overlays Studio",
+        "es": "Overlay Studio",
         "en": "Overlay Studio",
         "pt": "Estúdio de Overlays",
         "it": "Studio degli overlay"
       },
-      "progress": 80,
+      "progress": 75,
       "status": "in-progress",
       "projects": [
         "overlay-studio-v3"

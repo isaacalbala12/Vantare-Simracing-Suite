@@ -157,12 +157,12 @@ describe("buildWorkshopFrameV2", () => {
     expect(STANDINGS_REPLAY_FRAME_COUNT).toBe(10);
   });
 
-  it("keeps observable rows and classes for relative-multiclass", () => {
-    const frame = buildWorkshopFrameV2(scenario({ widget: "relative", variant: "relative-multiclass" }))
+  it("keeps observable rows and classes for Functional Relative default", () => {
+    const frame = buildWorkshopFrameV2(scenario({ widget: "relative", system: "vantare-functional", variant: "default" }))
       .overlayV2Frame!;
     // Ventana por defecto de producto: 3 ahead más cercanos (pos 4,3,2),
     // player (pos 1), 3 behind más cercanos (pos 20,19,18).
-    const canonical = buildWorkshopFrameV2(scenario({ widget: "relative" })).overlayV2Frame!;
+    const canonical = buildWorkshopFrameV2(scenario({ widget: "relative", system: "vantare-functional", variant: "default" })).overlayV2Frame!;
     const at = (position: number): string =>
       canonical.relative.find((row) => row.position === position)!.id;
     const expected = [4, 3, 2, 1, 20, 19, 18].map(at);
@@ -182,12 +182,12 @@ describe("buildWorkshopFrameV2", () => {
     }
   });
 
-  it("honours a configured relative-multiclass window up to 8 per side", () => {
-    const canonical = buildWorkshopFrameV2(scenario({ widget: "relative" })).overlayV2Frame!;
+  it("honours a configured Functional Relative default window up to 8 per side", () => {
+    const canonical = buildWorkshopFrameV2(scenario({ widget: "relative", system: "vantare-endurance", variant: "default" })).overlayV2Frame!;
     const at = (position: number): string =>
       canonical.relative.find((row) => row.position === position)!.id;
     const frame = buildWorkshopFrameV2(
-      scenario({ widget: "relative", variant: "relative-multiclass", rangeAhead: 5, rangeBehind: 2 }),
+      scenario({ widget: "relative", system: "vantare-functional", variant: "default", rangeAhead: 5, rangeBehind: 2 }),
     ).overlayV2Frame!;
     const expected = [6, 5, 4, 3, 2, 1, 20, 19].map(at);
     expect(frame.relative.map((row) => row.id)).toEqual(expected);
@@ -198,19 +198,15 @@ describe("buildWorkshopFrameV2", () => {
     expect(frame.relative.filter((row) => row.side === "behind")).toHaveLength(2);
   });
 
-  it("uses the multiclass projection for Functional Relative default and its legacy alias", () => {
+  it("uses the multiclass projection for Functional Relative default", () => {
     const functionalDefault = scenario({ widget: "relative", system: "vantare-functional", variant: "default" });
-    const functionalAlias = { ...functionalDefault, variant: "relative-multiclass" as const };
     const defaultFrame = buildWorkshopFrameV2(functionalDefault).overlayV2Frame!;
-    const aliasFrame = buildWorkshopFrameV2(functionalAlias).overlayV2Frame!;
     const defaultWidget = createScenarioWidget(functionalDefault);
-    const aliasWidget = createScenarioWidget(functionalAlias);
 
-    expect(defaultFrame.relative).toEqual(aliasFrame.relative);
-    expect(defaultFrame.relativeSettled).toEqual(aliasFrame.relativeSettled);
-    expect(defaultWidget.content).toEqual(aliasWidget.content);
     expect(getEnabledRelativeColumns(parseRelativeContent(defaultWidget.content)).map((column) => column.metricId))
       .toEqual(["position", "class", "driverName", "gap"]);
+    expect(defaultFrame.relative).toHaveLength(7);
+    expect(defaultFrame.relativeSettled).toHaveLength(7);
   });
 
   it("crosses the same id through side and gap in relative-cross", () => {

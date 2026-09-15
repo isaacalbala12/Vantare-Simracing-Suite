@@ -304,7 +304,8 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 - id: overlays-studio
 - estado: in-progress
-- progreso: 80
+- progreso: 75
+- titulo: Overlay Studio
 - titulo.en: Overlay Studio
 - titulo.pt: Estúdio de Overlays
 - titulo.it: Studio degli overlay

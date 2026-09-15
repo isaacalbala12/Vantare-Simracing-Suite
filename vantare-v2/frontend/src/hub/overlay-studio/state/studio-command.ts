@@ -320,10 +320,10 @@ function applyWidgetContent(document: ProfileDocumentV3, command: Extract<Studio
     return widgets.map((widget) => {
       if (!targets.has(widget.id)) return widget;
       if (widget.type === "relative") {
-        // La ventana del relative define el marco: si las filas configuradas
-        // cambian, la caja crece o se encoge — la fila nunca cambia de alto.
-        // En Eficiencia la fila mide 28px reales a escala 1, así que el alto
-        // se deriva del contenido a la escala que tenga la caja (w/430).
+        // The relative window drives the frame: when the configured row
+        // count changes the box grows or shrinks — the row never changes height.
+        // In Eficiencia the row is 28px tall at scale 1, so height derives
+        // from content at the box's own scale (w/430).
         const previous = parseRelativeContent(widget.content);
         const next = parseRelativeContent(content);
         const functional = widget.visual.systemId === "vantare-functional";

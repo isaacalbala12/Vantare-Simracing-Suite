@@ -461,6 +461,10 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.plan.sources": "Revisioni esatte utilizzate", "strategy.plan.accept": "Accetta proposta", "strategy.plan.accepting": "Accettazione…", "strategy.plan.accepted": "Proposta accettata come revisione immutabile.", "strategy.plan.saveSeparate": "Salvare la configurazione e accettare la proposta sono azioni separate.",
   "strategy.plan.acceptancePending": "Un’accettazione precedente deve essere verificata prima di ripeterla.", "strategy.plan.checkAcceptance": "Verifica", "strategy.plan.retryAcceptance": "Riprova la stessa accettazione", "strategy.plan.dismissAcceptance": "Ignora avviso",
   "strategy.plan.acceptanceUnavailable": "Non è stato possibile verificare un’accettazione in sospeso. Riapri Strategy prima di accettare.",
+  "strategy.stint.eyebrow": "Modifica manuale", "strategy.stint.title": "Regola gli stint", "strategy.stint.total": "Giri totali", "strategy.stint.driver": "Pilota", "strategy.stint.laps": "giri",
+  "strategy.stint.boundary": "Limite dello stint", "strategy.stint.dragBoundary": "Trascina il limite dopo lo stint", "strategy.stint.numberBoundary": "Modifica numericamente il limite dopo lo stint",
+  "strategy.stint.hint": "Sposta un limite o fissa un pilota per confrontare la proposta.", "strategy.stint.stale": "Ci sono modifiche da ricalcolare. Il piano mostrato non può più essere accettato.",
+  "strategy.stint.reset": "Ripristina", "strategy.stint.recalculate": "Ricalcola modifiche", "strategy.stint.cost": "Costo rispetto alla proposta base", "strategy.stint.costHint": "Stesse fonti, regole e input di telemetria.",
 
   "strategy.drivers.name": "Nome",
   "strategy.drivers.paceOf": "Ritmo {{mode}}",

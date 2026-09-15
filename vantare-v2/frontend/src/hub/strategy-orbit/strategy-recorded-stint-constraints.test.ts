@@ -4,6 +4,7 @@ import type {
   StrategyOrbitCalculatedPlanV1,
 } from "../../strategy/strategy-application-client";
 import {
+  RECORDED_STINT_EDIT_VARIANT_ID,
   recordedStintComparisonInput,
   type RecordedStintConstraint,
 } from "./strategy-recorded-stint-constraints";
@@ -67,5 +68,18 @@ describe("recordedStintComparisonInput", () => {
     ["no change", success(), [{ index: 0, driverId: "alex", laps: 7 }]],
   ] satisfies readonly [string, RecordedCalculationState, readonly RecordedStintConstraint[]][])("rejects %s", (_name, state, edits) => {
     expect(() => recordedStintComparisonInput(state, edits)).toThrow("Invalid recorded stint constraints");
+  });
+
+  it("returns to the exact base without preparing telemetry again", () => {
+    const initial = success();
+    const state: Extract<RecordedCalculationState, { status: "success" }> = {
+      ...initial,
+      input: { ...initial.input, activeVariantId: RECORDED_STINT_EDIT_VARIANT_ID },
+      result: { ...initial.result, plans: { ...initial.result.plans, [RECORDED_STINT_EDIT_VARIANT_ID]: basePlan } },
+    };
+    expect(recordedStintComparisonInput(state, [
+      { index: 0, driverId: "alex", laps: 7 },
+      { index: 1, driverId: "sam", laps: 5 },
+    ])).toMatchObject({ activeVariantId: "recorded-main", variants: [{ id: "recorded-main" }] });
   });
 });

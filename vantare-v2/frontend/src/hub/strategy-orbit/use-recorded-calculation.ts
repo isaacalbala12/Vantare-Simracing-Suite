@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { StrategyApplicationClient, StrategyOrbitCalculationInputV1, StrategyOrbitCalculationResultV1 } from "../../strategy/strategy-application-client";
 import type { RecordedDraftPayload } from "./strategy-recorded-payload";
 import { assessRecordedCalculation, type RecordedCalculationCoverage } from "./strategy-recorded-calculation";
 import { prepareRecordedPlanningInputs } from "./strategy-recorded-planning-inputs";
+import { recordedStintComparisonInput, type RecordedStintConstraint } from "./strategy-recorded-stint-constraints";
 import type { RecordedWizardDraft } from "./strategy-recorded-wizard";
 
 export type RecordedCalculationState =
@@ -21,6 +22,8 @@ export function useRecordedCalculation(
   const generation = useRef(0);
   const active = useRef<string | undefined>(undefined);
   const cancelRequested = useRef(false);
+  const state: RecordedCalculationState = useMemo(() => storedState.status === "idle" || storedState.key === calculationKey
+    ? storedState : { status: "idle" }, [calculationKey, storedState]);
 
   useEffect(() => {
     generation.current += 1;
@@ -33,6 +36,37 @@ export function useRecordedCalculation(
       active.current = undefined;
     };
   }, [application, draft, repositoryVersion]);
+
+  const executeInput = useCallback(async (input: StrategyOrbitCalculationInputV1, current: number) => {
+    const calculateId = `recorded-calculate-${globalThis.crypto.randomUUID()}`;
+    active.current = calculateId;
+    setState({ status: "calculating", key: calculationKey });
+    const result = await application.execute({
+      protocolVersion: "strategy.application.v1", commandId: calculateId, operation: "calculate_orbit",
+      expectedRepositoryVersion: repositoryVersion!, input,
+    });
+    if (current !== generation.current) return;
+    if (!result.orbitCalculation?.plans[input.activeVariantId]) throw new Error("Strategy calculation result is missing its active plan");
+    active.current = undefined;
+    setState({ status: "success", key: calculationKey, input, result: result.orbitCalculation });
+  }, [application, calculationKey, repositoryVersion]);
+
+  const publishError = useCallback((error: unknown, current: number) => {
+    if (current !== generation.current) return;
+    active.current = undefined;
+    const typed = error instanceof Error ? error : new Error(String(error));
+    const metadata = typed as Error & { code?: string; field?: string };
+    if (cancelRequested.current) {
+      cancelRequested.current = false;
+      setState({ status: "cancelled", key: calculationKey });
+      return;
+    }
+    setState({
+      status: "error", key: calculationKey, message: typed.message,
+      ...(typeof metadata.code === "string" ? { code: metadata.code } : {}),
+      ...(typeof metadata.field === "string" ? { field: metadata.field } : {}),
+    });
+  }, [calculationKey]);
 
   const calculate = useCallback(async () => {
     if (repositoryVersion === undefined || !Number.isSafeInteger(repositoryVersion) || repositoryVersion < 0) {
@@ -56,36 +90,23 @@ export function useRecordedCalculation(
         setState({ status: "partial", key: calculationKey, coverage: assessed.coverage });
         return;
       }
-      const input = assessed.input;
-      const calculateId = `recorded-calculate-${globalThis.crypto.randomUUID()}`;
-      active.current = calculateId;
-      setState({ status: "calculating", key: calculationKey });
-      const result = await application.execute({
-        protocolVersion: "strategy.application.v1", commandId: calculateId, operation: "calculate_orbit",
-        expectedRepositoryVersion: repositoryVersion, input,
-      });
-      if (current !== generation.current) return;
-      if (!result.orbitCalculation) throw new Error("Strategy calculation result is missing");
-      active.current = undefined;
-      if (!result.orbitCalculation.plans[input.activeVariantId]) throw new Error("Strategy calculation result is missing its active plan");
-      setState({ status: "success", key: calculationKey, input, result: result.orbitCalculation });
+      await executeInput(assessed.input, current);
     } catch (error) {
-      if (current !== generation.current) return;
-      active.current = undefined;
-      const typed = error instanceof Error ? error : new Error(String(error));
-      const metadata = typed as Error & { code?: string; field?: string };
-      if (cancelRequested.current) {
-        cancelRequested.current = false;
-        setState({ status: "cancelled", key: calculationKey });
-        return;
-      }
-      setState({
-        status: "error", key: calculationKey, message: typed.message,
-        ...(typeof metadata.code === "string" ? { code: metadata.code } : {}),
-        ...(typeof metadata.field === "string" ? { field: metadata.field } : {}),
-      });
+      publishError(error, current);
     }
-  }, [application, calculationKey, draft, repositoryVersion]);
+  }, [application, calculationKey, draft, executeInput, publishError, repositoryVersion]);
+
+  const recalculateStints = useCallback(async (constraints: readonly RecordedStintConstraint[]) => {
+    if (repositoryVersion === undefined || state.status !== "success") return;
+    const current = ++generation.current;
+    cancelRequested.current = false;
+    if (active.current) application.cancel(active.current);
+    try {
+      await executeInput(recordedStintComparisonInput(state, constraints), current);
+    } catch (error) {
+      publishError(error, current);
+    }
+  }, [application, executeInput, publishError, repositoryVersion, state]);
 
   const cancel = useCallback(() => {
     if (!active.current) return;
@@ -98,7 +119,5 @@ export function useRecordedCalculation(
     }
   }, [application, calculationKey]);
 
-  const state: RecordedCalculationState = storedState.status === "idle" || storedState.key === calculationKey
-    ? storedState : { status: "idle" };
-  return { state, calculate, cancel };
+  return { state, calculate, recalculateStints, cancel };
 }

@@ -470,6 +470,10 @@ export const strategyOrbitEn: Record<string, string> = {
   "strategy.plan.saveSeparate": "Saving configuration and accepting a proposal are separate actions.",
   "strategy.plan.acceptancePending": "A previous acceptance must be checked before it can be repeated.", "strategy.plan.checkAcceptance": "Check", "strategy.plan.retryAcceptance": "Retry the same acceptance", "strategy.plan.dismissAcceptance": "Dismiss notice",
   "strategy.plan.acceptanceUnavailable": "A pending acceptance could not be checked. Reopen Strategy before accepting.",
+  "strategy.stint.eyebrow": "Manual edit", "strategy.stint.title": "Adjust stints", "strategy.stint.total": "Total laps", "strategy.stint.driver": "Driver", "strategy.stint.laps": "laps",
+  "strategy.stint.boundary": "Stint boundary", "strategy.stint.dragBoundary": "Drag boundary after stint", "strategy.stint.numberBoundary": "Edit boundary by number after stint",
+  "strategy.stint.hint": "Move a boundary or fix a driver to compare with the proposal.", "strategy.stint.stale": "There are changes to recalculate. The displayed plan can no longer be accepted.",
+  "strategy.stint.reset": "Reset", "strategy.stint.recalculate": "Recalculate changes", "strategy.stint.cost": "Cost against the base proposal", "strategy.stint.costHint": "Same telemetry sources, rules, and inputs.",
 
   "strategy.drivers.name": "Name",
   "strategy.drivers.paceOf": "{{mode}} pace",

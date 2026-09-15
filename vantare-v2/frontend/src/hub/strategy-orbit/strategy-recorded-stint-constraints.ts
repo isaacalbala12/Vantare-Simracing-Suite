@@ -41,7 +41,10 @@ export function recordedStintComparisonInput(
       overrides[constraint.index] = { laps: constraint.laps };
     }
   }
-  if (!changed) invalid();
+  if (!changed) {
+    if (state.input.activeVariantId !== RECORDED_STINT_EDIT_VARIANT_ID) invalid();
+    return { ...structuredClone(state.input), variants: [structuredClone(base)], activeVariantId: base.id };
+  }
 
   const constrained = {
     ...structuredClone(base),

@@ -42,6 +42,7 @@ const STUDY_LANDING: Partial<Record<WidgetType, Pick<OverlayWorkshopQuery, "vari
 const STATE_OPTIONS = [["ready", "Recibiendo"], ["stale", "Datos antiguos"], ["disconnected", "Desconectado"], ["error", "Error"]] as const;
 const SESSION_OPTIONS = [["practice", "Práctica"], ["qualifying", "Clasificación"], ["race", "Carrera"]] as const;
 const LOCATION_OPTIONS = [["track", "Pista"], ["pits", "Boxes"]] as const;
+const NAME_FORMAT_OPTIONS = [["full", "Completo"], ["initial", "N. Apellido"], ["surname", "Apellido"]] as const;
 const BACKGROUND_OPTIONS = [["context", "Mixto"], ["solid", "Oscuro"], ["transparent", "Claro"]] as const;
 const SURFACE_OPTIONS = [["studio", "Studio"], ["desktop", "Desktop"], ["obs", "OBS"], ["harness", "Harness"]] as const;
 const SCALE_OPTIONS = [["0.5", "0.5×"], ["1", "1×"], ["1.5", "1.5×"], ["2", "2×"]] as const;
@@ -103,6 +104,8 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
       // La ventana del relative no existe en otros widgets; no la arrastramos.
       ahead: undefined,
       behind: undefined,
+      // El formato de nombre solo existe donde hay columna Piloto.
+      ...(widget === "standings" || widget === "relative" ? {} : { nameFormat: undefined }),
       ...landing,
     });
   };
@@ -199,6 +202,9 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
       <Segments options={RELATIVE_RANGE_OPTIONS} value={String(query.ahead ?? RELATIVE_RANGE_AHEAD)} onChange={(value) => update({ ...query, ahead: Number(value) })} />
       <p className="functional-study-note">Detrás</p>
       <Segments options={RELATIVE_RANGE_OPTIONS} value={String(query.behind ?? RELATIVE_RANGE_BEHIND)} onChange={(value) => update({ ...query, behind: Number(value) })} />
+    </fieldset>}
+    {(isStandings || query.widget === "relative") && <fieldset><legend>Nombre</legend>
+      <Segments options={NAME_FORMAT_OPTIONS} value={query.nameFormat ?? "full"} onChange={(value) => update({ ...query, nameFormat: value === "full" ? undefined : value as OverlayWorkshopQuery["nameFormat"] })} />
     </fieldset>}
     {isFunctional && (isStandings || query.widget === "relative") && <fieldset><legend>Pie de datos</legend><p className="functional-study-note">Datos bajo las filas, en orden de selección.</p>
       {FUNCTIONAL_STUDY_SLOTS.map((slot) => {

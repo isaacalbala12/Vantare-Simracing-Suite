@@ -3,7 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import type { OverlayFrameV2 } from "../../../generated/telemetry";
 import { standingsDefinition } from "./standings-definition";
-import { buildStandingsViewModelV2 } from "./standings-view-model-v2";
+import { buildStandingsViewModelV2, standingsDisplayedValues } from "./standings-view-model-v2";
 
 const content = standingsDefinition.parseContent({ classScope: "all-classes", rowCount: 20 });
 
@@ -89,6 +89,44 @@ describe("buildStandingsViewModelV2 session columns", () => {
       pitText: "PIT",
     });
     expect(model.rows[1]?.gapText).not.toBe(model.rows[1]?.pitText);
+  });
+
+  it.each([
+    { mode: "initial" as const, expected: "M. Costa" },
+    { mode: "surname" as const, expected: "Costa" },
+    { mode: "full" as const, expected: "María Costa" },
+  ])("formats the driver-name column as $expected in $mode mode", ({ mode, expected }) => {
+    const frame = frameForPhase("race");
+    const named = {
+      ...frame,
+      standings: frame.standings.map((row, index) => index === 0 ? { ...row, driver: "María Costa" } : row),
+    };
+    const formatted = {
+      ...content,
+      columns: content.columns.map((column) => column.metricId === "driverName"
+        ? { ...column, format: { ...column.format, mode } }
+        : column),
+    };
+    const model = buildStandingsViewModelV2(named, { state: "live" }, formatted);
+
+    expect(model.rows[0]).toMatchObject({ driverName: "María Costa", configuredDriverName: expected });
+    expect(standingsDisplayedValues(model).rows).toContain(expected);
+  });
+
+  it("keeps the raw driver name in displayed values when the column format is unknown", () => {
+    const frame = frameForPhase("race");
+    const named = {
+      ...frame,
+      standings: frame.standings.map((row, index) => index === 0 ? { ...row, driver: "María Costa" } : row),
+    };
+    const formatted = {
+      ...content,
+      columns: content.columns.map((column) => column.metricId === "driverName"
+        ? { ...column, format: { ...column.format, mode: "bogus" } }
+        : column),
+    };
+    const model = buildStandingsViewModelV2(named, { state: "live" }, formatted);
+    expect(model.rows[0]).toMatchObject({ driverName: "María Costa", configuredDriverName: "María Costa" });
   });
 
   it("uses the session/class scope best lap even when its row is below rowCount", () => {

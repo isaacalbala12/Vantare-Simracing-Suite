@@ -260,12 +260,19 @@ export function moveStandingsColumn(
 export function updateStandingsColumn(
   content: StandingsContent,
   columnId: string,
-  patch: Partial<Pick<WidgetColumnV3, "widthPreset" | "style">>,
+  patch: Partial<Pick<WidgetColumnV3, "widthPreset" | "style" | "format">>,
 ): StandingsContent {
   return {
     ...content,
     columns: content.columns.map((column) =>
-      column.id === columnId ? { ...column, ...patch, style: { ...column.style, ...patch.style } } : column,
+      column.id === columnId
+        ? {
+            ...column,
+            ...patch,
+            format: patch.format === undefined ? column.format : { ...column.format, ...patch.format },
+            style: { ...column.style, ...patch.style },
+          }
+        : column,
     ),
   };
 }

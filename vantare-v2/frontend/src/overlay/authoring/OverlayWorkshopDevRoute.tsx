@@ -38,6 +38,7 @@ function createRouteScenarioWidget(query: OverlayWorkshopQuery): WidgetInstanceV
     slots: query.slots,
     ahead: query.ahead,
     behind: query.behind,
+    nameFormat: query.nameFormat,
   });
   // Laboratorio tower de Redline (ISA-1071, dev): las elecciones viajan por el
   // contrato visual como appearanceOverrides, igual que en producción, y solo

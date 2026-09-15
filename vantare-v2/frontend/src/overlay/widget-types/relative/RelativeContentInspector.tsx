@@ -12,6 +12,7 @@ const widths: { value: WidgetColumnWidthPreset; label: string }[] = [
   { value: "md", label: "Media" }, { value: "lg", label: "Ancha" }, { value: "auto", label: "Auto" },
 ];
 const aligns = [{ value: "left", label: "Izquierda" }, { value: "center", label: "Centro" }, { value: "right", label: "Derecha" }] as const;
+const nameFormats = [{ value: "full", label: "Completo" }, { value: "initial", label: "N. Apellido" }, { value: "surname", label: "Apellido" }] as const;
 const rangeOptions = Array.from({ length: RELATIVE_RANGE_LIMIT + 1 }, (_, index) => index);
 
 export function RelativeContentInspector({ widget, disabled, onContentChange }: CustomInspectorProps): React.ReactElement {
@@ -47,6 +48,7 @@ export function RelativeContentInspector({ widget, disabled, onContentChange }: 
               <div className="orbit-studio-cols__controls">
                 <Field label={`Ancho · ${name}`}><Seg label={`Ancho · ${name}`} value={column.widthPreset} options={widths.map(option => ({ ...option, disabled }))} onChange={value => publish(updateRelativeColumn(content, column.id, { widthPreset: value as WidgetColumnWidthPreset }))} wide /></Field>
                 <Field label={`Alineación · ${name}`}><Seg label={`Alineación · ${name}`} value={column.style?.align ?? "center"} options={aligns.map(option => ({ ...option, disabled }))} onChange={value => publish(updateRelativeColumn(content, column.id, { style: { align: value as "left" | "center" | "right" } }))} wide /></Field>
+                {column.metricId === "driverName" ? <Field label={`Nombre · ${name}`}><Seg label={`Nombre · ${name}`} value={nameFormats.some(option => option.value === column.format?.mode) ? String(column.format?.mode) : "full"} options={nameFormats.map(option => ({ ...option, disabled }))} onChange={value => publish(updateRelativeColumn(content, column.id, { format: { mode: value } }))} wide /></Field> : null}
               </div>
             </li>
           );

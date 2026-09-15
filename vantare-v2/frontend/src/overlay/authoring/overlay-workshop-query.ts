@@ -8,6 +8,7 @@ import { parseStandingsEnduranceSettings } from "../design-systems/vantare-endur
 import { WIDGET_TYPES } from "../core/profile-document";
 import { FUNCTIONAL_STUDY_MODULE_IDS, FUNCTIONAL_STUDY_SLOT_IDS, FUNCTIONAL_STUDY_STYLE_IDS, type FunctionalStudyStyleId } from "./functional-study-options";
 import { RELATIVE_RANGE_LIMIT } from "../widget-types/relative/relative-content";
+import { DRIVER_NAME_FORMATS, type DriverNameFormat } from "../widget-types/shared/driver-name";
 
 export type OverlayWorkshopQuery = {
   widget: WidgetType;
@@ -24,6 +25,9 @@ export type OverlayWorkshopQuery = {
   /** Ventana del Relative: pilotos por delante/detrás (0–8 cada lado). */
   ahead?: number;
   behind?: number;
+  /** Formato del nombre de piloto (`format.mode` de la columna Piloto en
+   *  standings/relative): completo, "N. Apellido" o solo apellido. */
+  nameFormat?: DriverNameFormat;
   state: AuthoringV2Scenario["state"];
   surface: "studio" | "desktop" | "obs" | "harness";
   variant: WorkshopV2Variant;
@@ -219,6 +223,16 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   const ahead = widget === "relative" ? aheadParsed : undefined;
   const behind = widget === "relative" ? behindParsed : undefined;
 
+  // Formato del nombre de piloto: valor desconocido es error honesto; fuera de
+  // widgets con columna Piloto (standings/relative) se descarta en silencio.
+  const nameFormatRaw = params.get("nameFormat");
+  if (nameFormatRaw !== null && !DRIVER_NAME_FORMATS.includes(nameFormatRaw as DriverNameFormat)) {
+    return { error: `invalid nameFormat parameter: ${nameFormatRaw}` };
+  }
+  const nameFormat = nameFormatRaw !== null && (widget === "standings" || widget === "relative")
+    ? nameFormatRaw as DriverNameFormat
+    : undefined;
+
   // Tower lab options are validated here and applied as appearanceOverrides;
   // the productive settings parser re-validates them before rendering.
   const designSettings = parseStandingsEnduranceSettings(designId ? getOfficialDesign(designId)?.visual ?? {} : {});
@@ -246,7 +260,7 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   return { widget, system, state, surface, variant, session, location, background, scale, preset,
     ...(designId ? { designId } : {}), ...(studyStyle ? { studyStyle } : {}), ...(parsedWidth ? { width: parsedWidth } : {}), ...(parsedHeight ? { height: parsedHeight } : {}), ...(compare ? { compare } : {}),
     ...(sceneId ? { sceneId } : {}), ...(sceneFrame !== undefined ? { sceneFrame } : {}), ...(brand === "off" ? { brand } : {}), ...(modules ? { modules } : {}), ...(slots ? { slots } : {}),
-    ...(ahead !== undefined ? { ahead } : {}), ...(behind !== undefined ? { behind } : {}),
+    ...(ahead !== undefined ? { ahead } : {}), ...(behind !== undefined ? { behind } : {}), ...(nameFormat ? { nameFormat } : {}),
     ...(redlineThemeRaw ? { redlineTheme: redlineThemeRaw as OverlayWorkshopQuery["redlineTheme"] } : {}),
     ...(redlineData ? { redlineData } : {}),
     ...(redlineSelectionRaw ? { redlineSelection: redlineSelectionRaw as OverlayWorkshopQuery["redlineSelection"] } : {}),
@@ -283,6 +297,7 @@ export function serializeOverlayWorkshopQuery(query: OverlayWorkshopQuery): stri
   if (query.slots) params.set("slots", query.slots.join(","));
   if (query.ahead !== undefined) params.set("ahead", String(query.ahead));
   if (query.behind !== undefined) params.set("behind", String(query.behind));
+  if (query.nameFormat) params.set("nameFormat", query.nameFormat);
   if (query.redlineTheme) params.set("redlineTheme", query.redlineTheme);
   if (query.redlineData) params.set("redlineData", query.redlineData);
   if (query.redlineSelection) params.set("redlineSelection", query.redlineSelection);

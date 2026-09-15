@@ -166,6 +166,7 @@ export function buildWorkshopWidget(input: {
   slots?: readonly string[];
   ahead?: number;
   behind?: number;
+  nameFormat?: "full" | "initial" | "surname";
 }): WidgetInstanceV3 {
   let widget = createScenarioWidget({
     widget: input.widget,
@@ -183,6 +184,19 @@ export function buildWorkshopWidget(input: {
     const content = widget.content as Record<string, unknown>;
     const columns = Array.isArray(content.columns)
       ? (content.columns as Record<string, unknown>[]).map((column) => column.metricId === "lastLap" ? { ...column, enabled: false } : column.metricId === "bestLap" ? { ...column, enabled: true } : column)
+      : content.columns;
+    widget = { ...widget, content: { ...content, columns } };
+  }
+
+  // Formato del nombre de piloto: el mismo `format.mode` que edita Studio en
+  // la columna Piloto. Viaja por content.columns, nada fuera del contrato.
+  if (input.nameFormat && (input.widget === "standings" || input.widget === "relative")) {
+    const content = widget.content as Record<string, unknown>;
+    const columns = Array.isArray(content.columns)
+      ? (content.columns as Record<string, unknown>[]).map((column) =>
+          column.metricId === "driverName"
+            ? { ...column, format: { ...(column.format as Record<string, unknown> | undefined), mode: input.nameFormat } }
+            : column)
       : content.columns;
     widget = { ...widget, content: { ...content, columns } };
   }

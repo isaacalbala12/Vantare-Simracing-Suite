@@ -44,6 +44,21 @@ describe("RelativeContentInspector", () => {
   });
 });
 
+  it("publishes the driver-name format on the Piloto column only", () => {
+    const onContentChange = vi.fn();
+    render(<RelativeContentInspector widget={createWidget()} onContentChange={onContentChange} />);
+    const group = screen.getByRole("group", { name: "Nombre · Piloto" });
+    fireEvent.click(within(group).getByRole("button", { name: "N. Apellido" }));
+    expect(onContentChange).toHaveBeenCalledTimes(1);
+    const next = onContentChange.mock.calls[0]?.[0] as {
+      columns: { metricId: string; format?: Record<string, unknown> }[];
+    };
+    expect(next.columns.find((column) => column.metricId === "driverName")?.format)
+      .toMatchObject({ mode: "initial" });
+    expect(next.columns.filter((column) => column.metricId !== "driverName")
+      .every((column) => column.format?.mode === undefined)).toBe(true);
+  });
+
  it("uses labelled Orbit controls without abbreviated native selects", () => {
    const { container } = render(<RelativeContentInspector widget={createWidget()} onContentChange={vi.fn()} />);
    expect(container.querySelector('select')).toBeNull();

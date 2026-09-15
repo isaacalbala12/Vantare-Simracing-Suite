@@ -66,7 +66,7 @@ export function StandingsRacelabsTemplate({
                 <span className="ven-rl-pos">{index + 1}</span>
                 <span className="ven-rl-stripe" aria-hidden="true" />
                 <span className="ven-rl-name">
-                  {row.driverName}
+                  {row.configuredDriverName ?? row.driverName}
                   {row.pitText ? <span className="ven-rl-pit">{row.pitText}</span> : null}
                 </span>
                 <span className="ven-rl-gap">{index === 0 ? "-" : gapOneDecimal(row.gapText)}</span>

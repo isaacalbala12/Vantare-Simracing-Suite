@@ -12,6 +12,7 @@ import {
   toggleStandingsColumn,
   updateStandingsColumn,
 } from './standings-content';
+import { DRIVER_NAME_FORMATS, type DriverNameFormat } from '../shared/driver-name';
 import {
   isStandingsRedlineWidget,
   isStandingsRedlineTowerVisual,
@@ -243,6 +244,34 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
                       wide
                     />
                   </div>
+                  {column.metricId === 'driverName' && !fixed ? (
+                    <div
+                      className="orbit-studio-cols__seg"
+                      data-testid={`studio-standings-column-name-format-${column.id}`}
+                    >
+                      <Seg
+                        label={`${t('studio.inspector.content.nameFormat')} · ${name}`}
+                        onChange={(next) =>
+                          publish(
+                            updateStandingsColumn(content, column.id, {
+                              format: { mode: next },
+                            }),
+                          )
+                        }
+                        options={DRIVER_NAME_FORMATS.map((format) => ({
+                          value: format,
+                          label: t(`studio.inspector.content.nameFormat.${format}`),
+                          disabled,
+                        }))}
+                        value={
+                          DRIVER_NAME_FORMATS.includes(column.format?.mode as DriverNameFormat)
+                            ? (column.format?.mode as DriverNameFormat)
+                            : 'full'
+                        }
+                        wide
+                      />
+                    </div>
+                  ) : null}
                   {hasAlign(column) ? (
                     <div
                       className="orbit-studio-cols__seg"

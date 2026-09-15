@@ -65,7 +65,7 @@ function NeoTemplate({
             <span className="ven-neo-pos ven-neor-pos">{row.position}</span>
             <span className="ven-neo-id">
               <span className="ven-neo-code">{driverCode(row.driverName)}</span>
-              <span className="ven-neo-name">{row.driverName}</span>
+              <span className="ven-neo-name">{row.configuredDriverName ?? row.driverName}</span>
             </span>
             <span className="ven-neo-gap ven-neor-gap" data-tone={row.tone}>
               {row.isPlayer ? "YOU" : row.gapText}
@@ -157,7 +157,7 @@ export function RelativeEndurance({ model, settings }: WidgetRendererProps<Relat
           >
             <span className="ven-pos-chip">{row.position}</span>
             <span className="ven-relative-number">{row.driverNumber}</span>
-            <span className="ven-relative-name">{row.driverName}</span>
+            <span className="ven-relative-name">{row.configuredDriverName ?? row.driverName}</span>
             <span className="ven-relative-gap" data-tone={row.tone}>
               {row.isPlayer ? "—" : row.gapText}
             </span>

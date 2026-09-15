@@ -267,12 +267,19 @@ export function moveRelativeColumn(
 export function updateRelativeColumn(
   content: RelativeContent,
   columnId: string,
-  patch: Partial<Pick<WidgetColumnV3, "widthPreset" | "style">>,
+  patch: Partial<Pick<WidgetColumnV3, "widthPreset" | "style" | "format">>,
 ): RelativeContent {
   return {
     ...content,
     columns: content.columns.map((column) =>
-      column.id === columnId ? { ...column, ...patch, style: { ...column.style, ...patch.style } } : column,
+      column.id === columnId
+        ? {
+            ...column,
+            ...patch,
+            format: patch.format === undefined ? column.format : { ...column.format, ...patch.format },
+            style: { ...column.style, ...patch.style },
+          }
+        : column,
     ),
   };
 }

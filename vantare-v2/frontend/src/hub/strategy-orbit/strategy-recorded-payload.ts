@@ -30,6 +30,7 @@ export function parseRecordedDraftPayload(value: unknown): RecordedDraftPayload 
   const draft = object(payload.draft, "draft");
   if (!RECORDED_WIZARD_STEPS.some(step => step === draft.step)) invalid("step");
   if (draft.mode !== "manual" && draft.mode !== "automatic") invalid("mode");
+  if (draft.calculationMode !== undefined && draft.calculationMode !== "dry" && draft.calculationMode !== "wet") invalid("calculationMode");
   string(draft.name, "name");
   if (!Number.isSafeInteger(draft.invalidatedSessionCount) || (draft.invalidatedSessionCount as number) < 0) invalid("invalidatedSessionCount");
   const race = object(draft.race, "race");

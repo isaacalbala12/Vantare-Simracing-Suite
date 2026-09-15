@@ -911,7 +911,8 @@ func effectiveOrbitPace(driver OrbitCalculationDriver, mode string, planning *st
 	pace.PaceSeconds = effectivePlanningValueForBucket(
 		planning, strategydocument.PlanningInputPace, pace.PaceSeconds, orbitClimateBucket(mode),
 	)
-	if math.IsNaN(driver.PaceDeltaSeconds) || math.IsInf(driver.PaceDeltaSeconds, 0) || pace.PaceSeconds+driver.PaceDeltaSeconds <= 0 {
+	if math.IsNaN(pace.PaceSeconds) || math.IsInf(pace.PaceSeconds, 0) || pace.PaceSeconds <= 0 ||
+		math.IsNaN(driver.PaceDeltaSeconds) || math.IsInf(driver.PaceDeltaSeconds, 0) || pace.PaceSeconds+driver.PaceDeltaSeconds <= 0 {
 		return OrbitCalculationPace{}, ErrCalculationInvalid
 	}
 	pace.PaceSeconds += driver.PaceDeltaSeconds

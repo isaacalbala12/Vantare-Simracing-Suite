@@ -440,6 +440,13 @@ export const strategyOrbitIt: Record<string, string> = {
 
   "strategy.calculation.loading": "Calcolo della strategia",
   "strategy.calculation.loadingHint": "Il motore Go sta calcolando giri, stint e carburante.",
+  "strategy.calculation.condition": "Condizione del calcolo",
+  "strategy.calculation.preparingHint": "Preparazione della telemetria delle revisioni selezionate…",
+  "strategy.calculation.ready": "Calcolo completato",
+  "strategy.calculation.readyHint": "Il risultato è pronto per la revisione. Non è stato salvato né accettato.",
+  "strategy.calculation.cancelled": "Calcolo annullato",
+  "strategy.calculation.cancelledHint": "L’operazione è stata annullata e il risultato non verrà utilizzato.",
+  "strategy.calculation.errorHint": "Controlla la configurazione, la copertura della telemetria e lo stato del motore.",
   "strategy.calculation.error": "Impossibile calcolare la strategia",
   "strategy.calculation.missing": "Il motore non ha restituito un piano per la strategia attiva.",
   "strategy.calculation.retry": "Ricalcola",

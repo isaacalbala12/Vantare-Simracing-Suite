@@ -572,6 +572,22 @@ func TestEffectiveOrbitPaceUsesTheVariantClimateBucket(t *testing.T) {
 	}
 }
 
+func TestEffectiveOrbitPaceRejectsDeltaWithoutObservedBase(t *testing.T) {
+	driver := OrbitCalculationDriver{ID: "estimated", PaceDeltaSeconds: 2}
+	planning := &strategydocument.PlanningInputs{
+		Projection: &strategyprojection.StrategyInputProjectionV2{
+			FuelConsumption: strategyprojection.ResourceConsumptionFamily{
+				Presence: strategyprojection.PresenceValid, MeanPerLap: 1,
+			},
+		},
+		Overrides: map[strategydocument.PlanningInputField]strategydocument.NumericInputOverride{},
+	}
+
+	if _, err := effectiveOrbitPace(driver, "dry", planning); !errors.Is(err, ErrCalculationInvalid) {
+		t.Fatalf("effectiveOrbitPace error = %v, want calculation invalid", err)
+	}
+}
+
 func TestOrbitKeepsExplicitDriverDeltaAfterResolvingObservedPace(t *testing.T) {
 	targetLaps := int64(4)
 	maxLaps := int64(2)

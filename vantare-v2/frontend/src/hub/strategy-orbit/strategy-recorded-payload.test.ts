@@ -47,6 +47,12 @@ it("round-trips an explicit driver order while legacy v1 drafts stay unchanged",
   expect(parseRecordedDraftPayload(ordered)).toEqual(ordered);
   expect(parseRecordedDraftPayload(payload)).toEqual(payload);
 });
+it("round-trips an explicit calculation condition while legacy v1 drafts stay unchanged", () => {
+  const conditioned = { ...payload, draft: { ...payload.draft, calculationMode: "wet" } };
+  expect(parseRecordedDraftPayload(conditioned)).toEqual(conditioned);
+  expect(parseRecordedDraftPayload(payload)).toEqual(payload);
+  expect(() => parseRecordedDraftPayload({ ...payload, draft: { ...payload.draft, calculationMode: "eco" } })).toThrow();
+});
 it("round-trips pit windows and driver limits in contract units", () => {
   const draft = { ...payload.draft, drivers: [{ id: "a", name: "Alex" }], rules: { requiredWindows: [{ fromLap: 10, toLap: 20 }, { fromLap: 30, toLap: 40 }], mandatoryCompounds: ["hard", "wet"], allowedCompoundsByClimate: { dry: ["hard", "wet"], wet: ["soft"] }, driverLimits: { a: { minLaps: 12, maxLaps: 40, maxContinuousTimeSeconds: 1800, maxTotalTimeSeconds: 5400 } } } };
   expect(parseRecordedDraftPayload({ ...payload, draft }).draft).toEqual(draft);

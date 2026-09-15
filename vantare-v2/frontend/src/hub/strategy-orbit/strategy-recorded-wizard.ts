@@ -22,6 +22,8 @@ type RecordedCalculationEvent = StrategyOrbitCalculationInputV1["event"];
 export type RecordedWizardDraft = {
   readonly step: RecordedWizardStep;
   readonly mode: "manual" | "automatic";
+  /** Explicit fixed condition for the recorded proposal. Absent in legacy or incomplete drafts. */
+  readonly calculationMode?: "dry" | "wet";
   readonly combination?: RecordedCombination;
   readonly calendar?: RecordedCalendarSnapshot;
   readonly name: string;

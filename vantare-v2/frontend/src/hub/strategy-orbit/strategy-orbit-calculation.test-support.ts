@@ -53,7 +53,7 @@ function calculateForTest(input: StrategyOrbitCalculationInputV1): StrategyOrbit
     const selected = variant.order.map((id) => {
       const driver = drivers.get(id);
       if (!driver) throw new Error(`dangling driver ${id}`);
-      return driver[variant.mode];
+      return testPace(driver, variant.mode);
     });
     const avgPace = selected.reduce((sum, pace) => sum + pace.paceSeconds, 0) / selected.length;
     const avgFuel = selected.reduce((sum, pace) => sum + pace.fuelLitersPerLap, 0) / selected.length;
@@ -72,7 +72,7 @@ function calculateForTest(input: StrategyOrbitCalculationInputV1): StrategyOrbit
     const distribution = new Map<string, { driverId: string; laps: number; seconds: number }>();
     const stints = Array.from({ length: count }, (_, index) => {
       const driverId = variant.order[index % variant.order.length];
-      const pace = drivers.get(driverId)![variant.mode];
+      const pace = testPace(drivers.get(driverId)!, variant.mode);
       const laps = fixed.includes(index) ? variant.overrides[index]!.laps! : base + (extra-- > 0 ? 1 : 0);
       const wanted = variant.overrides[index]?.fuel ?? laps * pace.fuelLitersPerLap;
       const start = clock;
@@ -109,7 +109,7 @@ function calculateForTest(input: StrategyOrbitCalculationInputV1): StrategyOrbit
     const drivingSeconds = stints.reduce((sum, stint) => sum + stint.end - stint.start, 0);
     const finish = stints.at(-1);
     const finishFuelLiters = finish
-      ? Math.max(0, finish.fuel - finish.laps * drivers.get(finish.d)![variant.mode].fuelLitersPerLap)
+      ? Math.max(0, finish.fuel - finish.laps * testPace(drivers.get(finish.d)!, variant.mode).fuelLitersPerLap)
       : 0;
     plans[variant.id] = {
       stints,
@@ -132,7 +132,7 @@ function calculateForTest(input: StrategyOrbitCalculationInputV1): StrategyOrbit
       stopDetails: stints.slice(0, -1).map((stint, index) => ({
         index,
         lap: stint.lap1,
-        fuelInLiters: Math.max(0, stint.fuel - stint.laps * drivers.get(stint.d)![variant.mode].fuelLitersPerLap),
+        fuelInLiters: Math.max(0, stint.fuel - stint.laps * testPace(drivers.get(stint.d)!, variant.mode).fuelLitersPerLap),
         fuelOutLiters: stints[index + 1].fuel,
         pitLossSeconds: input.event.pitLossSeconds,
         pitTransitSeconds: input.event.pitLossSeconds,
@@ -172,4 +172,13 @@ function calculateForTest(input: StrategyOrbitCalculationInputV1): StrategyOrbit
     };
   }
   return { plans, comparisons };
+}
+
+function testPace(
+  driver: StrategyOrbitCalculationInputV1["drivers"][number],
+  mode: StrategyOrbitCalculationInputV1["variants"][number]["mode"],
+) {
+  const pace = driver[mode];
+  if (!pace) throw new Error(`missing ${mode} fallback in calculation test double`);
+  return pace;
 }

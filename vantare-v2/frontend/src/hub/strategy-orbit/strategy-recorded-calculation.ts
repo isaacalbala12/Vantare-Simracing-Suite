@@ -1,9 +1,44 @@
-import type { StrategyOrbitCalculationInputV1 } from "../../strategy/strategy-application-client";
+import type { StrategyOrbitCalculationInputV1, StrategyPlanningInputsV2 } from "../../strategy/strategy-application-client";
 import { effectiveRecordedDriverOrder, type RecordedWizardDraft } from "./strategy-recorded-wizard";
 import { recordedWizardErrors } from "./strategy-recorded-validation";
 
 type CalculationEvent = StrategyOrbitCalculationInputV1["event"];
 type CalculationVariant = StrategyOrbitCalculationInputV1["variants"][number];
+
+/** Builds the one recorded proposal from exact telemetry inputs, without fallback profiles. */
+export function recordedCalculationInput(
+  draft: RecordedWizardDraft,
+  planningInputs: StrategyPlanningInputsV2,
+): StrategyOrbitCalculationInputV1 {
+  const mode = draft.calculationMode;
+  const projection = planningInputs.projection;
+  if (!mode || !draft.combination || !projection || projection.combinationId !== draft.combination.combinationId
+    || !sameRevisions(draft.sessions, projection.sourceRevisions)) invalidInput();
+
+  const paceOverride = planningInputs.overrides.base_pace_seconds;
+  const pace = paceOverride?.presence === "valid" ? paceOverride.value : projection.representativePaceByClimateBucket?.[mode];
+  const paceValue = typeof pace === "number" ? pace : pace?.presence === "valid" ? pace.medianLapSeconds : undefined;
+  const fuelOverride = planningInputs.overrides.fuel_per_lap_liters;
+  const fuelValue = fuelOverride?.presence === "valid" ? fuelOverride.value
+    : projection.fuelConsumption.presence === "valid" ? projection.fuelConsumption.meanPerLap : undefined;
+  if (!positive(paceValue) || !positive(fuelValue)) invalidInput();
+  if (draft.virtualEnergy?.applicability === "applicable") {
+    const energyOverride = planningInputs.overrides.ve_per_lap_percent;
+    const energy = energyOverride?.presence === "valid" ? energyOverride.value
+      : projection.virtualEnergyConsumption.presence === "valid" ? projection.virtualEnergyConsumption.meanPerLap : undefined;
+    if (!positive(energy)) invalidInput();
+  }
+
+  const deltas = recordedCalculationDriverDeltas(draft);
+  if (draft.drivers.some(driver => !positive(paceValue + deltas[driver.id]))) invalidInput();
+  const variant = recordedCalculationVariant(draft, mode);
+  return {
+    event: recordedCalculationEvent(draft),
+    drivers: draft.drivers.map(driver => ({ id: driver.id, name: driver.name, paceDeltaSeconds: deltas[driver.id] })),
+    variants: [variant], activeVariantId: variant.id,
+    planningInputs: structuredClone(planningInputs),
+  };
+}
 
 /** Resolves relative driver estimates into the single additive value consumed by Go. */
 export function recordedCalculationDriverDeltas(
@@ -104,4 +139,21 @@ function invalid(): never {
 
 function invalidDriverDelta(): never {
   throw new Error("Invalid recorded driver delta");
+}
+
+function sameRevisions(expected: RecordedWizardDraft["sessions"], actual?: RecordedWizardDraft["sessions"]): boolean {
+  if (!actual || actual.length !== expected.length || expected.length === 0) return false;
+  const bySession = new Map(expected.map(ref => [ref.sessionId, ref]));
+  return actual.every(ref => {
+    const match = bySession.get(ref.sessionId);
+    return match?.baseDigest === ref.baseDigest && match.revisionId === ref.revisionId && match.snapshotId === ref.snapshotId;
+  }) && new Set(actual.map(ref => ref.sessionId)).size === actual.length;
+}
+
+function positive(value: number | undefined): value is number {
+  return value !== undefined && Number.isFinite(value) && value > 0;
+}
+
+function invalidInput(): never {
+  throw new Error("Invalid recorded calculation input");
 }

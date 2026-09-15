@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { recordedCalculationDriverDeltas, recordedCalculationEvent, recordedCalculationVariant } from "./strategy-recorded-calculation";
+import { recordedCalculationDriverDeltas, recordedCalculationEvent, recordedCalculationInput, recordedCalculationVariant } from "./strategy-recorded-calculation";
 import { createRecordedWizardDraft, type RecordedWizardDraft } from "./strategy-recorded-wizard";
 
 const tyre = (id: string) => ({
@@ -178,5 +178,49 @@ describe("recordedCalculationDriverDeltas", () => {
     ["non-finite", [{ id: "alex", name: "Alex" }, { id: "sam", name: "Sam", referenceDriverId: "alex", paceDeltaSeconds: Infinity }]],
   ] as const)("rejects %s", (_name, drivers) => {
     expect(() => recordedCalculationDriverDeltas(draft({ drivers }))).toThrow(/driver delta/i);
+  });
+});
+
+describe("recordedCalculationInput", () => {
+  const revision = { sessionId: "race", baseDigest: "a".repeat(64), revisionId: "b".repeat(64), snapshotId: "c".repeat(64) };
+  const projection = (mode: "dry" | "wet" = "dry") => ({
+    projection: {
+      contractVersion: "strategyinputprojection.v2" as const,
+      generatedAt: "2026-09-15T01:00:00.000Z",
+      computationVersion: "test.v1",
+      sourceSessions: ["race"], sourceRevisions: [revision], combinationId: "combo",
+      fuelConsumption: { presence: "valid" as const, provenance: { kind: "derived" as const, sourceId: "race" }, confidence: { sampleSize: 8, computationVersion: "test.v1" }, meanPerLap: 2, rangeLower: 1.8, rangeUpper: 2.2 },
+      virtualEnergyConsumption: { presence: "missing" as const, provenance: { kind: "derived" as const, sourceId: "race" }, confidence: { sampleSize: 0, computationVersion: "test.v1" }, meanPerLap: 0, rangeLower: 0, rangeUpper: 0 },
+      representativePaceByClimateBucket: { [mode]: { presence: "valid" as const, provenance: { kind: "derived" as const, sourceId: "race" }, confidence: { sampleSize: 8, computationVersion: "test.v1" }, medianLapSeconds: mode === "dry" ? 90 : 105 } },
+      combinedStintPaceCurve: { presence: "missing" as const, provenance: { kind: "derived" as const, sourceId: "race" }, confidence: { sampleSize: 0, computationVersion: "test.v1" }, identifiability: "combined_only" as const, points: [] },
+      tyreDegradation: { presence: "missing" as const, provenance: { kind: "derived" as const, sourceId: "race" }, confidence: { sampleSize: 0, computationVersion: "test.v1" } },
+      pit: { presence: "missing" as const, provenance: { kind: "derived" as const, sourceId: "race" }, confidence: { sampleSize: 0, computationVersion: "test.v1" } },
+      savingCost: { presence: "missing" as const, provenance: { kind: "derived" as const, sourceId: "race" }, confidence: { sampleSize: 0, computationVersion: "test.v1" } },
+    }, overrides: {},
+  });
+  const readyDraft = (calculationMode: "dry" | "wet" | undefined = "dry") => draft({
+    calculationMode,
+    combination: { combinationId: "combo", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Car", carClass: "LMP2" },
+    sessions: [revision],
+    drivers: [{ id: "alex", name: "Alex" }, { id: "sam", name: "Sam", referenceDriverId: "alex", paceDeltaSeconds: 2 }],
+    driverOrder: { mode: "free", ids: ["alex", "sam"] },
+  });
+
+  it.each(["dry", "wet"] as const)("builds one exact %s request without manufacturing driver fallback profiles", mode => {
+    const planning = projection(mode);
+    expect(recordedCalculationInput(readyDraft(mode), planning)).toEqual(expect.objectContaining({
+      drivers: [{ id: "alex", name: "Alex", paceDeltaSeconds: 0 }, { id: "sam", name: "Sam", paceDeltaSeconds: 2 }],
+      variants: [{ id: "recorded-main", mode, driverOrderMode: "free", order: ["alex", "sam"], overrides: {} }],
+      activeVariantId: "recorded-main", planningInputs: planning,
+    }));
+  });
+
+  it.each([
+    ["condition", { ...readyDraft(), calculationMode: undefined }, projection()],
+    ["selected bucket", readyDraft("wet"), projection("dry")],
+    ["fuel", readyDraft(), { ...projection(), projection: { ...projection().projection, fuelConsumption: { ...projection().projection.fuelConsumption, presence: "missing" as const } } }],
+    ["exact revision", readyDraft(), { ...projection(), projection: { ...projection().projection, sourceRevisions: [{ ...revision, revisionId: "d".repeat(64) }] } }],
+  ])("rejects missing or stale %s before dispatch", (_name, source, planning) => {
+    expect(() => recordedCalculationInput(source, planning)).toThrow(/recorded calculation input/i);
   });
 });

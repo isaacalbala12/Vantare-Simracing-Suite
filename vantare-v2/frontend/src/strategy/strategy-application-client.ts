@@ -419,9 +419,10 @@ export type StrategyOrbitCalculationInputV1 = {
     readonly id: string;
     readonly name: string;
     readonly paceDeltaSeconds?: number;
-    readonly dry: StrategyOrbitCalculationPaceV1;
-    readonly wet: StrategyOrbitCalculationPaceV1;
-    readonly eco: StrategyOrbitCalculationPaceV1;
+    /** Optional legacy fallback. Recorded calculations resolve observed values from planningInputs. */
+    readonly dry?: StrategyOrbitCalculationPaceV1;
+    readonly wet?: StrategyOrbitCalculationPaceV1;
+    readonly eco?: StrategyOrbitCalculationPaceV1;
   }[];
   readonly variants: readonly {
     readonly id: string;

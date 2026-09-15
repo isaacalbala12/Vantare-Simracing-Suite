@@ -439,6 +439,13 @@ export const strategyOrbitEn: Record<string, string> = {
 
   "strategy.calculation.loading": "Calculating strategy",
   "strategy.calculation.loadingHint": "The Go engine is calculating laps, stints, and fuel.",
+  "strategy.calculation.condition": "Calculation condition",
+  "strategy.calculation.preparingHint": "Preparing telemetry from the selected revisions…",
+  "strategy.calculation.ready": "Calculation complete",
+  "strategy.calculation.readyHint": "The result is ready to review. It has not been saved or accepted.",
+  "strategy.calculation.cancelled": "Calculation cancelled",
+  "strategy.calculation.cancelledHint": "The operation was cancelled and its result will not be used.",
+  "strategy.calculation.errorHint": "Review the configuration, telemetry coverage, and engine status.",
   "strategy.calculation.error": "The strategy could not be calculated",
   "strategy.calculation.missing": "The engine did not return a plan for the active strategy.",
   "strategy.calculation.retry": "Retry calculation",

@@ -105,6 +105,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - item.en: Reproducible hardware footprint bench for Vantare and the overlay
 - item.pt: Banco reproduzível de impacto por hardware para Vantare e o overlay
 - item.it: Banco riproducibile dell'impronta hardware per Vantare e l'overlay
+- item: Kit Orbit consolidado: código muerto retirado y contrato público reducido a su API real
+- item.en: Orbit kit consolidated: dead code removed and public contract reduced to its real API
+- item.pt: Kit Orbit consolidado: código morto removido e contrato público reduzido à sua API real
+- item.it: Kit Orbit consolidato: codice morto rimosso e contratto pubblico ridotto alla sua API reale
 
 ### Programa de insiders
 
@@ -504,10 +508,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Restarted public documentation
 - titulo.pt: Documentação pública reiniciada
 - titulo.it: Documentazione pubblica riavviata
-- cuerpo: La documentación de usuario se reorganiza y reescribe para la apertura: guía de instalación, primeros pasos, problemas conocidos y soporte. Las guías internas dejan de ser requisito para usar el producto.
-- cuerpo.en: User documentation is reorganised and rewritten for the opening: installation guide, first steps, known issues and support. Internal guides stop being a requirement to use the product.
-- cuerpo.pt: A documentação de utilizador é reorganizada e reescrita para a abertura: guia de instalação, primeiros passos, problemas conhecidos e suporte. As guias internas deixam de ser requisito para usar o produto.
-- cuerpo.it: La documentazione utente viene riorganizzata e riscritta per l'apertura: guida all'installazione, primi passi, problemi noti e supporto. Le guide interne smettono di essere un requisito per usare il prodotto.
+- cuerpo: La documentación de usuario se reorganiza y reescribe para la apertura: guía de instalación, primeros pasos, problemas conocidos y soporte. Las guías internas dejan de ser requisito para usar el producto. La depuración del repositorio distingue guías vigentes, contratos y evidencia histórica; no cierra por sí sola las guías públicas ni su validación con testers.
+- cuerpo.en: User documentation is reorganised and rewritten for the opening: installation guide, first steps, known issues and support. Internal guides stop being a requirement to use the product. Repository cleanup separates current guides, contracts and historical evidence; it does not by itself complete public guides or tester validation.
+- cuerpo.pt: A documentação de utilizador é reorganizada e reescrita para a abertura: guia de instalação, primeiros passos, problemas conhecidos e suporte. As guias internas deixam de ser requisito para usar o produto. A depuração do repositório separa guias atuais, contratos e evidência histórica; não conclui por si só os guias públicos nem a validação com testers.
+- cuerpo.it: La documentazione utente viene riorganizzata e riscritta per l'apertura: guida all'installazione, primi passi, problemi noti e supporto. Le guide interne smettono di essere un requisito per usare il prodotto. La pulizia del repository distingue guide attuali, contratti ed evidenze storiche; da sola non completa le guide pubbliche né la validazione con i tester.
 - etiqueta: Plan
 - etiqueta.pt: Plano
 - etiqueta.it: Piano

@@ -16,14 +16,14 @@ superficies oscuras de Vantare. La presentación productiva conserva las mismas
 autoridades de datos, cálculo y persistencia; el harness sólo fija respuestas
 deterministas para obtener capturas comparables.
 
-La pasada final `isa-1277-visual/pass-22` contiene 18 capturas principales y 72
+La pasada final `isa-1277-visual/pass-23` contiene 18 capturas principales y 72
 variantes responsive en ES/EN/PT/IT. `responsive.json` registra 16 combinaciones
 sin overflow, errores de página ni foco invisible. La revisión adversarial
 separada puntúa todas las pantallas por encima de 9/10, con mínimo global 9,1 y
 sin P0/P1/P2 visual pendiente.
 
 La rama quedó reconciliada con `origin/nightly` en
-`60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c`. Pasan typecheck, lint, build,
+`f617467427f8d78f7432b4445d52be0c4dfe616a`. Pasan typecheck, lint, build,
 i18n, 70 pruebas focales, la suite frontend completa (494 archivos; 4.280
 pruebas aprobadas y 2 omitidas), `go test ./...`, 137 checks documentales y el
 contrato de roadmap reconstruido desde esa base.

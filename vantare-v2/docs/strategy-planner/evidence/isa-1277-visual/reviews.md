@@ -2,7 +2,7 @@
 
 ## Resultado final
 
-- Pasada aceptada: `pass-22`.
+- Pasada aceptada: `pass-23`.
 - Cobertura: 18 pantallas principales y 72 capturas responsive.
 - Idiomas: ES, EN, PT e IT.
 - Anchuras cubiertas: 320, 768, 1024 y 1672 px según la familia.
@@ -12,10 +12,12 @@
 - `responsive.json`: 16 combinaciones, sin diferencia entre ancho interior y
   contenido, sin overflow registrado, sin errores de página y con foco visible.
 
-La revisión fue exclusivamente visual y separada de la implementación. Las 9
-capturas modificadas desde la pasada 21 se inspeccionaron directamente; las 81
-restantes se contrastaron por SHA-256 y conservaron su evaluación anterior. La
-truncación de `Creador de Contenido` quedó resuelta en dos líneas completas.
+La revisión fue exclusivamente visual y separada de la implementación. La
+pasada 23 recapturó la matriz tras reconciliar `nightly`: sus 90 PNG y
+`responsive.json` son idénticos por SHA-256 a la pasada 22, por lo que heredan
+sus puntuaciones aceptadas. El revisor adversarial confirmó la equivalencia y
+volvió a comprobar `Creador de Contenido` completo en dos líneas, los cuatro
+idiomas, el foco y la ausencia de desbordamientos.
 
 ## Puntuación de pantallas principales
 
@@ -64,7 +66,7 @@ truncación de `Creador de Contenido` quedó resuelta en dos líneas completas.
 | Parada · 768 px | 9,1 | 9,1 | 9,1 | 9,1 |
 
 El artefacto verificable de geometría y runtime es
-`pass-22/responsive.json`.
+`pass-23/responsive.json`.
 
 ## Límite de la evidencia
 

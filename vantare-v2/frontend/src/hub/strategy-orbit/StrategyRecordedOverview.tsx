@@ -1,4 +1,4 @@
-import { Icon, type IconName } from "../../ui/orbit";
+import { Icon, type IconName } from "../../ui/orbit/Icon";
 import { formatMessage } from "../orbit/format-message";
 import type { RecordedWizardDraft, RecordedWizardStep } from "./strategy-recorded-wizard";
 import "./strategy-recorded-overview.css";

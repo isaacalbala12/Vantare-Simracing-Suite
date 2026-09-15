@@ -1,154 +1,33 @@
-# Verificacion manual
+# Verificación manual de la build
 
-Guia para validar cambios sin leer codigo.
+Guía de comprobación, no acta de pruebas ejecutadas. Registrar versión, SHA/canal, Windows, perfil usado, fuente y resultado. Usar un perfil de prueba. Arranque: [operaciones](operations.md).
 
-## Arrancar app en modo seguro
+## Hub y fuente
 
-Desde `vantare-v2`:
+1. Abrir la app y comprobar carga del Hub y navegación entre las pantallas del cambio.
+2. Sin LMU, o con `-live=false`, comprobar estado desconectado: no deben aparecer datos ficticios como observaciones live.
+3. Con LMU en una sesión real, contrastar estado y datos con el simulador. Anotar campos no disponibles; no sustituirlos por ceros.
 
-```powershell
-pnpm --dir frontend build
-go run ./cmd/vantare -live=false -profile configs/example-racing.json
-```
+## Editor único de Overlay Studio
 
-Usa `-live=false` para no depender de LMU.
+1. Abrir Studio y seleccionar/crear un perfil propio; si se parte de un recomendado, crear una copia.
+2. Añadir un widget y cambiar una propiedad y su colocación dentro del mismo editor.
+3. Arrastrar y redimensionar: la preview debe seguir el gesto y confirmar al soltar, sin saltos ni rastro.
+4. Esperar la confirmación de autoguardado, salir y reabrir el perfil. Comprobar que el cambio persiste.
+5. Deshacer/rehacer una edición ya guardada y verificar la nueva persistencia.
+6. Ante error de guardado o conflicto, comprobar estado explícito y conservación del borrador. No interpretar un click como confirmación.
 
-## Checklist general
+El comportamiento previsto está en [ADR 0093](adr/0093-overlay-studio-autosave-history.md) y el [contrato del canvas](overlays-studio/canvas-drag-imperative-preview.md). Las instrucciones antiguas de `WidgetStudio` y `LayoutStudio` ya no describen esta UI.
 
-- La app abre sin ventana de error.
-- El Hub carga primero.
-- El topbar muestra las secciones esperadas.
-- No aparecen errores visibles.
-- Los botones principales responden.
-- Si guardas algo, aparece confirmacion o el cambio persiste.
+## Desktop y OBS
 
-## Overlays Studio - biblioteca
+1. Iniciar/detener el overlay con un perfil válido; comprobar apertura y cierre reales.
+2. Editar el perfil en Studio, esperar guardado y comprobar coherencia de geometría y contenido en Desktop.
+3. Añadir OBS con la [URL local del perfil](obs-local-setup.md); comprobar el mismo perfil, estados de fuente y cambios guardados.
+4. Desconectar/reconectar la fuente y cerrar las superficies. Verificar que no quedan ventanas o suscripciones visibles inesperadas.
 
-1. Abre la app.
-2. En el topbar, entra en `Overlays Studio`.
-3. Comprueba que aparecen:
-   - `Widgets`,
-   - `Mis perfiles`,
-   - `Recomendados por Vantare`,
-   - `Comunidad`.
-4. Comprueba que `Comunidad` indica `Proximamente`.
-5. Comprueba que no hay una pestaña visible separada llamada `Preview`.
+## Reporte
 
-## Overlays Studio - Widgets
+Indicar pantalla, acción, resultado esperado/observado, repetibilidad, fuente live/desconectada y evidencia permitida. Para diagnósticos usar la UI y el [contrato de exportación sanitizada](telemetry-core/inspector-privacy-diagnostic-export-isa-104.md). No adjuntar indiscriminadamente perfiles, credenciales o logs completos.
 
-1. Entra en `Overlays Studio`.
-2. Pulsa la tarjeta `Widgets`.
-3. Selecciona un widget.
-4. Comprueba que puedes editar propiedades de widget.
-5. Comprueba que NO aparecen:
-   - `POSICION Y TAMANO`,
-   - campos `X/Y/W/H`,
-   - boton `Eliminar`.
-6. Cambia una propiedad simple y revisa que el estado de guardado responde.
-
-## Overlays Studio - Relative configurable
-
-1. Entra en `Overlays Studio`.
-2. Pulsa `Widgets`.
-3. Selecciona `relative`.
-4. Activa `Mostrar mejor vuelta` y `Mostrar ultima vuelta`.
-5. En `Altura de filas`, prueba:
-   - `Rellenar altura del widget`,
-   - `Reducir altura visual`.
-6. En modo compacto (`Reducir altura visual`), comprueba:
-   - el bloque queda centrado en el checkerboard;
-   - no hay espacio vacio grande a la derecha;
-   - las columnas siguen alineadas por fila;
-   - no hay clipping de nombre, gap o vueltas;
-   - al cambiar formato/ancho de columnas, el bloque crece o encoge alrededor del centro.
-7. En modo fill, comprueba que el widget respeta la caja guardada del layout.
-8. Cambia filtros:
-   - `Coches delante`,
-   - `Coches detras`,
-   - `Filtro de clase`,
-   - `Mostrar coche del jugador`.
-9. Verifica que los cambios se guardan y se mantienen al recargar.
-
-Si la preview aislada vuelve a mostrar offsets, clipping o cajas invisibles, revisar `widget-preview-bug-log.md` antes de aplicar fixes visuales.
-
-## Overlays Studio - Mis perfiles y layout
-
-1. Entra en `Overlays Studio`.
-2. Pulsa la tarjeta `Mis perfiles`.
-3. Comprueba que aparecen perfiles propios con preview real o, si falta el config, `Preview no disponible`.
-4. Comprueba que cada perfil tiene `Editar layout`.
-5. Pulsa `Editar layout` en un perfil.
-6. Deben existir controles de posicion/tamano en `LayoutStudio`.
-7. Mueve o redimensiona un widget si la UI lo permite.
-8. Guarda y vuelve a abrir para comprobar persistencia.
-
-## Crear perfil
-
-1. En `Overlays Studio`, usa `Nuevo perfil` si esta disponible.
-2. Crea un perfil de prueba.
-3. Comprueba que vuelve a aparecer en la lista sin reiniciar la app.
-4. Si no aparece, reportar como bug de refresco de perfiles.
-
-## Recomendados por Vantare
-
-1. Entra en `Overlays Studio`.
-2. Pulsa la tarjeta `Recomendados por Vantare`.
-3. Comprueba que aparecen presets oficiales con preview real.
-4. Pulsa `Guardar como perfil propio` en uno de ellos.
-5. Introduce un nombre.
-6. Vuelve a `Mis perfiles` y comprueba que el nuevo perfil aparece.
-
-## Overlay runtime live
-
-1. Usa un perfil valido.
-2. En `Mis perfiles`, pulsa `Abrir overlay` en un perfil.
-3. Comprueba que aparece el overlay desktop.
-4. Comprueba que la accion cambia a `Detener overlay`.
-5. Pulsa `Detener overlay`.
-6. Comprueba que el overlay se cierra y no quedan ventanas inesperadas.
-7. Entra en `LayoutStudio` del mismo perfil.
-8. Comprueba que existe `Abrir overlay`.
-9. Mueve un widget para dejar el layout en estado `dirty`.
-10. Comprueba que `Abrir overlay` se deshabilita.
-11. Guarda.
-12. Comprueba que `Abrir overlay` vuelve a habilitarse.
-
-## Overlay Studio V3 — smoke de produccion (Fase 7)
-
-Usar una **copia migrada** del perfil de Fase 0, nunca el unico perfil del usuario. Conservar el `.pre-v3.bak` generado por la migracion.
-
-Comandos de gate automatizado (2026-07-11, rama `refactor`):
-
-```powershell
-pnpm --dir vantare-v2/frontend test
-pnpm --dir vantare-v2/frontend build
-pnpm --dir vantare-v2/frontend visual:overlay-studio
-cd vantare-v2; go test ./internal/app/... ./cmd/vantare/... -count=1
-```
-
-Resultado registrado: frontend 2084/2084 PASS, build PASS, visual 59 baselines 0.000% delta + parity, Go app PASS. `go test ./...` conserva fallos preexistentes en `internal/server` (nonce/port).
-
-Checklist manual en Wails (perfil de prueba):
-
-1. Abrir Hub → `Overlays Studio`: entra **directo** al editor V3 del perfil activo (sin home v5.2). Si no hay activo, muestra crear/seleccionar/recomendados.
-2. Cambiar sesion (Practice/Qualifying/Race/Endurance); editar y guardar un layout independiente por sesion.
-3. Arrastrar/redimensionar Delta, guardar, undo/redo, reabrir y verificar persistencia.
-4. Cambiar Original/Crystal en los cuatro widgets.
-5. Mock session/location y Live desconectado en preview.
-6. Iniciar overlay Desktop; guardar en Studio y verificar **un** refresh automatico.
-7. Abrir Browser View; verificar estado guardado y reconexion SSE.
-8. Borrar los cuatro widgets V3, guardar, verificar Desktop/OBS transparentes y payloads legacy preservados en JSON.
-9. Restaurar fixture; hotkey de edicion abre/enfoca Overlay Studio con Desktop fullscreen click-through.
-10. Forzar conflicto de save y fallo de disco; verificar que el borrador local sigue intacto.
-
-Rollback ensayado (orden): revert `refactor(studio): switch Hub route` → OBS runtime → Desktop runtime → lifecycle Go.
-
-## Que reportar si algo falla
-
-Indica:
-
-- pantalla donde ocurre,
-- boton pulsado,
-- texto del error,
-- si estabas en mock o live,
-- si el fallo se repite al reiniciar.
+[Versión anterior y evidencia fechada](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/manual-verification.md).

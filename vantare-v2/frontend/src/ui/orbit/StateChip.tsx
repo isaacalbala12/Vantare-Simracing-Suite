@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { cx } from "./cx";
 
 export interface StateChipProps {
   children: ReactNode;
@@ -7,9 +8,7 @@ export interface StateChipProps {
 }
 
 export function StateChip({ children, state, className }: StateChipProps) {
-  const classes = ["orbit-state-chip", `orbit-state-chip--${state}`, className]
-    .filter(Boolean)
-    .join(" ");
+  const classes = cx("orbit-state-chip", `orbit-state-chip--${state}`, className);
 
   return (
     <span className={classes}>

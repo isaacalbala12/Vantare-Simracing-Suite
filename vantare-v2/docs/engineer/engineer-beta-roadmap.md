@@ -1,5 +1,9 @@
 # Engineer Beta — roadmap canónico ENG-12 a ENG-29
 
+> **Ámbito documental (2026-09-14):** Roadmap histórico ENG; Linear está retirado. La tarea Notion y el rework vigente determinan el siguiente trabajo, no las fases de abajo.
+> [Referencia vigente](rework-spec.md).
+
+
 ## Estado y autoridad
 
 - Fecha: 2026-08-02.

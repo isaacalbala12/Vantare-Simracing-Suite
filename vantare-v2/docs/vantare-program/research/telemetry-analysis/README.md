@@ -4,6 +4,10 @@ Estado: investigación canónica en revisión; no es código de producto ni una
 autorización de promoción a `nightly`.
 Fecha de corte: 2026-07-27. Issue: ISA-122 / TA-01. Base: GOV-01 `67e263392b2192ee11f2ef4ccb161331dda3c735`.
 
+## Entrada actual
+
+Consultar el [handoff Analysis](../../handoffs/telemetry-analysis.md) y la tarea/proyecto Notion para continuar. El backend histórico y sus proyecciones alimentan Strategy; la [fuente de Telemetría Orbit](../../../../frontend/src/hub/telemetry-orbit/telemetry-orbit-source.ts) aún devuelve una lista vacía en el corte revisado del 2026-09-14. Esta investigación no demuestra integración de esa pantalla. Las propuestas y límites que siguen corresponden a TA-01.
+
 ## Objetivo y alcance
 
 Definir, a partir de evidencia primaria y de los contratos existentes, una experiencia post-sesión local-first que responda **«¿cómo puedo ser más rápido?»** en menos de un minuto y permita profundizar en un workspace avanzado. Este paquete investiga productos, fuentes LMU y el repo; no implementa producto, no añade dependencias y no modifica LMU, SimHub ni datos de usuario.
@@ -14,7 +18,7 @@ conecta evidencia; **Propuesta Vantare** debe cerrarse mediante review y quedar
 trazada antes de implementarse. No se ha creado cuenta, usado trial, pagado,
 aceptado términos adicionales ni inspeccionado binarios de terceros.
 
-## Índice ejecutable
+## Índice de investigación y contratos
 
 | Documento | Uso |
 |---|---|

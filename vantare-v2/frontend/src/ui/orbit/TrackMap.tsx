@@ -1,4 +1,5 @@
 import { segmentTone } from "./viz-types";
+import { cx } from "./cx";
 
 export interface TrackSegment {
   id: string;
@@ -69,7 +70,7 @@ export function TrackMap({
   return (
     <svg
       aria-label={label}
-      className={["orbit-trackmap", className].filter(Boolean).join(" ")}
+      className={cx("orbit-trackmap", className)}
       role="img"
       viewBox={`${minX} ${minY} ${width} ${height}`}
     >

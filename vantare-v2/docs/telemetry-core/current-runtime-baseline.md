@@ -1,5 +1,9 @@
 # TC-01B — Baseline dinámico del runtime actual
 
+> **Ámbito documental (2026-09-14):** Evidencia histórica del 2026-07-14. El fallback mock y las rutas observadas corresponden exclusivamente a aquella build.
+> [Referencia vigente](README.md).
+
+
 ## Identidad de la ejecución
 
 - Fecha local: 2026-07-14, Europe/Madrid.

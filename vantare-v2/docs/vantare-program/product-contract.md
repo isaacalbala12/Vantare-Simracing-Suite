@@ -1,6 +1,6 @@
 # Contrato de producto Vantare
 
-Estado: decisiones confirmadas por Isaac hasta 2026-07-27.
+Estado: contrato de producto; lanzamiento reconciliado el 2026-09-14 con la decisión del 2026-09-11. Los requisitos y precios decididos no certifican disponibilidad comercial.
 
 ## Definición y principios
 
@@ -19,9 +19,10 @@ aplicaciones independientes.
 
 ## Usuarios y lanzamiento
 
-El producto sirve a pilotos casuales, competitivos y de resistencia. El primer
-lanzamiento comercial es directo, precedido por una prueba cerrada corta. No
-hay beta pública abierta.
+El producto sirve a pilotos casuales, competitivos y de resistencia. La decisión del 2026-09-11 prevé una beta pública reiniciada, versiones
+iterativas y después lanzamiento estable. Sustituye la decisión anterior de
+lanzamiento directo sin beta abierta. Consultar [etapas y decisiones aún pendientes](../plan-beta-publica-y-lanzamiento.md) y el [roadmap](../roadmap/plan.md);
+este contrato no anuncia apertura ni fija una fecha nueva.
 
 El lanzamiento debe incluir Hub, Launcher, Overlay Studio, los widgets
 principales, Telemetry Core, Telemetry Analysis, Engineer/Spotter Beta, Strategy

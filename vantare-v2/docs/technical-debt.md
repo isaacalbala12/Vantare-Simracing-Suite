@@ -1,5 +1,9 @@
 # Deuda tecnica
 
+> **Ámbito documental (2026-09-14):** Registro histórico de deuda y decisiones. Notion contiene los pendientes actuales; no actualizar esta lista como segundo backlog ni asumir que un pendiente sigue abierto.
+> [Referencia vigente](vantare-program/notion-transition.md).
+
+
 Documento vivo para centralizar deuda tecnica aceptada, P2/P3 diferidos y follow-ups de reviews.
 
 ## Reglas

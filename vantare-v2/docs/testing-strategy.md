@@ -1,108 +1,45 @@
-# Estrategia de testing
+# Pruebas y verificaciones
 
-## Objetivo
+Ejecutar checks adecuados al cambio y reportar sus resultados reales. Un comando documentado no es un check ejecutado; los resultados antiguos no son el estado de la build actual.
 
-Que el usuario pueda confiar en agentes sin revisar codigo complejo. Los jueces reales son tests, build, lint cuando aplique y verificacion manual.
+## Comandos disponibles
 
-## Comandos principales
-
-Desde la raiz `vantare-v2`:
+Desde `vantare-v2`, tras la [preparación](operations.md):
 
 ```powershell
-go test ./...
+pnpm --dir frontend typecheck
 pnpm --dir frontend test
 pnpm --dir frontend build
 pnpm --dir frontend lint
-```
-
-Usar `pnpm --dir frontend lint` cuando el cambio toque frontend y el estado actual de ESLint lo permita. Si falla por problemas preexistentes, el worker debe decirlo claramente.
-
-## Ejecutar la app
-
-Modo mock sin LMU:
-
-```powershell
-go run ./cmd/vantare -live=false -profile configs/example-racing.json
-```
-
-Modo live con LMU:
-
-```powershell
-go run ./cmd/vantare -profile configs/example-racing.json
-```
-
-## Go
-
-Usar:
-
-```powershell
 go test ./...
+git diff --check
 ```
 
-Para cambios en telemetria LMU:
+El build frontend precede a los checks Go que necesitan los assets embebidos. `typecheck` recorre los proyectos TypeScript con `tsc -b --noEmit`; no usar el `tsconfig.json` raíz como si contuviera fuentes.
+
+## Selección por cambio
+
+| Cambio | Verificación |
+|---|---|
+| Documentación | Contraste con código, rutas/enlaces y `git diff --check`; no requiere inventar tests de producto |
+| Go o contratos compartidos | Tests del paquete y `go test ./...`; informar skips de fixtures y límites de plataforma |
+| Frontend | Tests afectados, typecheck, build y lint aplicable |
+| Studio/Widgets visuales | Protocolo de la tarea, capturas e interacción; revisar scripts actuales antes de invocar un harness |
+| Runtime Windows/LMU/OBS | Evidencia en esa plataforma, con build y perfil identificados; mocks no la sustituyen |
+
+Los scripts disponibles están en [package.json](../frontend/package.json). Por ejemplo:
 
 ```powershell
-go test ./internal/telemetry/lmu/ -run Fixture
+pnpm --dir frontend test -- src/hub/overlay-studio
+pnpm --dir frontend test -- src/telemetry-transport
+pnpm --dir frontend visual:orbit-studio
+pnpm --dir frontend design-system:check
 ```
 
-Si falta fixture real, algunos tests pueden hacer `Skip`; eso debe informarse.
+Workshop tiene [su protocolo](overlays-studio/overlay-workshop-authoring-guide.md). `visual:overlay-studio` ya no es un script del manifiesto de este corte; no copiarlo de planes de julio. Cada protocolo visual puede requerir su servidor/configuración y no equivale por sí solo a probar Wails real.
 
-## Frontend
+## Resultados y gates
 
-Tests con Vitest:
+Registrar comando, resultado, SHA, plataforma y cualquier omisión. No ocultar fallos ni rebajar tests; una deuda antigua debe seguir demostrándose antes de atribuirle un fallo nuevo. Los gates efectivos están en [branch-channel-gates.yml](../../.github/workflows/branch-channel-gates.yml), [release.yml](../../.github/workflows/release.yml) y los [contratos de canales](branch-channels.md).
 
-```powershell
-pnpm --dir frontend test
-```
-
-Build:
-
-```powershell
-pnpm --dir frontend build
-```
-
-Tests focalizados cuando se trabaja en una zona concreta:
-
-```powershell
-pnpm --dir frontend test -- WidgetStudio.test.tsx
-pnpm --dir frontend test -- LayoutStudio.test.tsx
-pnpm --dir frontend test -- OverlaysStudioPage.test.tsx
-```
-
-Preview aislada de WidgetStudio:
-
-```powershell
-pnpm --dir frontend test -- PreviewScaler WidgetSandboxPreview WidgetPreviewPanel RelativeWidget relative-format WidgetRenderer
-```
-
-Usar este bloque cuando se toque centrado, escala, medicion DOM, Relative compacto/fill o `WidgetPreviewPanel`.
-
-## Reglas
-
-- Bug arreglado: anadir test de regresion si es viable.
-- Refactor: primero proteger comportamiento existente con tests.
-- UI: testear texto, botones, callbacks y estados relevantes.
-- No borrar tests para hacer pasar el build.
-- No bajar aserciones sin explicar por que.
-- No dar una tarea por terminada sin indicar comandos ejecutados.
-
-## Cuando basta verificacion manual
-
-Puede bastar si:
-
-- el cambio es solo documentacion,
-- el cambio es estetico menor,
-- no hay comportamiento automatizable facil.
-
-Aun asi, el worker debe indicar pasos manuales concretos.
-
-## Si un test falla
-
-1. No ocultarlo.
-2. Indicar comando exacto.
-3. Indicar si parece fallo propio o preexistente.
-4. No arreglar problemas no relacionados sin permiso.
-5. Si bloquea la tarea, parar y pedir decision.
-# Gates vigentes de Overlay Studio V3 (2026-07-11)
-
-Para cambios V3 ejecutar el test enfocado, `pnpm --dir frontend build`, `pnpm --dir frontend visual:overlay-studio`, `pnpm --dir frontend design-system:check` y `git diff --check`. La matriz cubre cuatro widgets, Original/Crystal, Studio/Desktop/OBS y estados ready/missing/stale/disconnected/error. Las referencias a WidgetStudio/LayoutStudio de este documento son históricas.
+La [verificación manual](manual-verification.md) complementa los checks. Ningún check autoriza una promoción de canal.

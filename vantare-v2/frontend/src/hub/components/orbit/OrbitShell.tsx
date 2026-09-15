@@ -31,6 +31,8 @@ import {
   type ViewId,
 } from '../../orbit/views';
 import { pendingReleases } from '../../settings/release-notes';
+import { NotificationCenter } from '../../notifications/NotificationCenter';
+import { subscribeCenterNavigate } from '../../notifications/notification-center';
 import {
   allowsUpdateAlerts,
   useNotificationPreferences,
@@ -345,6 +347,17 @@ function OrbitShellBody({
     [access, onNavigate, planLabel, t, testingCenterChannel, toast],
   );
 
+  // Las acciones del centro de notificaciones se resuelven en backend y vuelven
+  // como target semántico ya validado; aquí solo se traduce a vista+sección.
+  useEffect(
+    () =>
+      subscribeCenterNavigate((target) => {
+        if (target === 'settings:updates') navigate('ajustes', 'updates');
+        else if (target === 'launcher') navigate('launcher');
+      }),
+    [navigate],
+  );
+
   const railItems: RailItem[] = useMemo(
     () =>
       RAIL_ORDER.filter((entry) => entry.id !== 'testing' || Boolean(testingCenterChannel)).map(
@@ -627,6 +640,7 @@ function OrbitShellBody({
         <div className="orbit-main">
           <Topbar
             eyebrow={t(`shell.topbar.eyebrow.${activeView}`)}
+            notifications={<NotificationCenter />}
             // El pill no instala a ciegas: lleva a Ajustes › Actualizaciones, que es
             // donde vive el estado real, el canal y el botón de instalar (briefing 11).
             onUpdate={() => navigate('ajustes', 'updates')}

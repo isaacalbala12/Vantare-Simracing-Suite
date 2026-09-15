@@ -534,37 +534,6 @@ func (n wailsNotifier) Send(title, body string) error {
 	})
 }
 
-// notifyingEmitter watches launch chains going past on their way to the
-// frontend and raises a desktop notification when one finishes. It sits here,
-// not in the launcher package, so that package keeps knowing nothing about
-// notifications.
-type notifyingEmitter struct {
-	downstream app.EventEmitter
-	notify     *notify.Service
-	settings   *app.SettingsService
-}
-
-func (e notifyingEmitter) Emit(name string, data any) {
-	e.downstream.Emit(name, data)
-	if name != "launcher:chain:done" {
-		return
-	}
-	progress, ok := data.(launcher.ChainProgress)
-	if !ok {
-		return
-	}
-	// Sent on its own goroutine: raising a toast is a platform call, and the
-	// launch chain must not wait on it.
-	go func() {
-		if _, err := e.notify.LaunchFinished(
-			launchProfileName(e.settings, progress.ProfileID),
-			progress.Success,
-		); err != nil {
-			log.Printf("notification for %s failed: %v", progress.ProfileID, err)
-		}
-	}()
-}
-
 // launchProfileName prefers the name the user gave a profile, falling back to
 // its id so a notification is never about "".
 func launchProfileName(settings *app.SettingsService, profileID string) string {
@@ -1422,6 +1391,7 @@ func main() {
 	var launcherSvc *launcher.Service
 	var profileHkMgr *launcher.HotkeyManager
 	var notifySvc *notify.Service
+	var notifyCenter *notify.Center
 	var diagnosticsBridge *app.DiagnosticsBridge
 	var testingCenterReportDraftBridge *app.TestingCenterReportDraftBridge
 	var testingCenterDiagnosticBridge *app.TestingCenterDiagnosticBridge
@@ -1793,6 +1763,7 @@ func main() {
 			payload["message"] = err.Error()
 		}
 		emitter.Emit("notifications:test:result", payload)
+		publishTestResult(notifyCenter, err)
 	})
 
 	// Register profile service with Wails (frontend can call methods)
@@ -2336,6 +2307,67 @@ func main() {
 		func() bool { return hubLifecycle.IsMinimised() },
 	)
 
+	// Centro de notificaciones (ISA-901): store acotado + snapshot para
+	// reconexión. El canal Windows reutiliza las puertas de notifySvc y va en
+	// su propia goroutine para no bloquear la publicación en el bus.
+	notifyCenter = notify.NewCenter(notify.CenterOptions{
+		Emit: func(snap notify.Snapshot) { emitter.Emit("notifications:center", snap) },
+		Muted: func(source notify.Source) bool {
+			prefs := settingsSvc.Snapshot().Notifications
+			switch source {
+			case notify.SourceUpdater:
+				return prefs.UpdatesMuted
+			case notify.SourceLauncher:
+				return prefs.LauncherMuted
+			}
+			return false
+		},
+		Windows: func(body string) {
+			go func() {
+				if _, err := notifySvc.SendGated(body); err != nil {
+					log.Printf("notification center toast failed: %v", err)
+				}
+			}()
+		},
+	})
+
+	wailsApp.Event.On("notifications:center:get", func(_ *application.CustomEvent) {
+		emitter.Emit("notifications:center", notifyCenter.Snapshot())
+	})
+	wailsApp.Event.On("notifications:center:read", func(event *application.CustomEvent) {
+		var payload struct {
+			ID string `json:"id"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		notifyCenter.MarkRead(payload.ID)
+	})
+	wailsApp.Event.On("notifications:center:clear", func(_ *application.CustomEvent) {
+		notifyCenter.Clear()
+	})
+	// La acción se resuelve y valida en backend: el frontend solo manda el id
+	// del registro y navega al destino permitido que vuelve.
+	wailsApp.Event.On("notifications:center:action", func(event *application.CustomEvent) {
+		var payload struct {
+			ID string `json:"id"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		action, err := notifyCenter.ResolveAction(payload.ID)
+		if err != nil {
+			log.Printf("notification center action %q refused: %v", payload.ID, err)
+			return
+		}
+		notifyCenter.MarkRead(payload.ID)
+		emitter.Emit("notifications:center:navigate", map[string]any{"target": action.Target})
+	})
+
 	// Calendar service for the local LMU race calendar (CALENDAR-02).
 	// Data is persisted to cfgDir/calendar-lmu.json, not app-settings.json.
 	calendarSvc := calendar.NewService(cfgDir, time.Now)
@@ -2418,11 +2450,12 @@ func main() {
 	// (LAUNCHER-01). Only LMU is supported in this first cut. The service is
 	// fire-and-forget: it spawns the configured command and forgets it. No
 	// process supervision, no multi-sim, no Linux/Proton yet.
-	// The launcher emits through this, so a finished chain can raise a desktop
-	// toast without the launcher package knowing anything about notifications.
+	// The launcher emits through this, so a finished chain reaches the
+	// notification center (and its Windows channel) without the launcher
+	// package knowing anything about notifications.
 	launcherSvc = launcher.NewService(
 		settingsSvc,
-		notifyingEmitter{downstream: emitter, notify: notifySvc, settings: settingsSvc},
+		centerEmitter{downstream: emitter, center: notifyCenter, settings: settingsSvc},
 		exec.Command,
 	)
 
@@ -2537,6 +2570,7 @@ func main() {
 				"prerelease":  info.LatestRelease.Prerelease,
 				"downloadURL": installerURL(info.LatestRelease),
 			})
+			publishUpdateAvailable(notifyCenter, info.LatestRelease.TagName)
 		}
 	}
 
@@ -2612,6 +2646,7 @@ func main() {
 	if updaterSvc != nil {
 		emitUpdaterError := func(message string) {
 			emitter.Emit("updater:error", map[string]any{"message": message})
+			publishUpdaterError(notifyCenter, message)
 		}
 
 		wailsApp.Event.On("updater:settings:get", func(event *application.CustomEvent) {
@@ -2729,6 +2764,7 @@ func main() {
 					return
 				}
 				emitter.Emit("updater:installed", map[string]any{"ok": true})
+				publishUpdateInstalling(notifyCenter)
 			}()
 		})
 	}

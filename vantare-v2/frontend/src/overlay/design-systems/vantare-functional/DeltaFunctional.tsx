@@ -29,11 +29,12 @@ export function DeltaFunctional({ model, settings, motion = "full", effects }: W
   });
   const labels = functionalLabels[locale];
   const statusText = model.status !== "ready" ? labels[model.status] : undefined;
+  // El relleno siempre se posiciona con left+width para que el cruce de cero
+  // sea continuo: la barra drena hacia el ancla y crece por el otro lado en
+  // vez de saltar entre anclas right/left, que no interpolan.
   const fill: CSSProperties = model.progress === 0
     ? { display: "none" }
-    : model.progress < 0
-      ? { right: "50%", width: `${Math.abs(model.progress) * 50}%` }
-      : { left: "50%", width: `${model.progress * 50}%` };
+    : { left: `${50 + Math.min(0, model.progress) * 50}%`, width: `${Math.abs(model.progress) * 50}%` };
   const arrow = model.tone === "gaining" ? "▲" : model.tone === "losing" ? "▼" : "";
   // "capsule" es la dirección tipo Crystal (ISA-1128): cápsulas sobre pista
   // gruesa. "instrument" es la dirección por defecto.
@@ -64,16 +65,21 @@ export function DeltaFunctional({ model, settings, motion = "full", effects }: W
         </div>
       ) : (
         <>
-          <strong className="vf-delta-value">
-            <span className="vf-delta-arrow" aria-hidden="true">{arrow}</span>
-            {model.deltaText}
-          </strong>
+          <header className="vf-delta-head">
+            <strong className="vf-delta-value">
+              <span className="vf-delta-arrow" aria-hidden="true">{arrow}</span>
+              {model.deltaText}
+            </strong>
+            <span className="vf-delta-last">
+              <small>{labels.lastLap}</small>
+              <b className="vf-clock">{model.lastLapText}</b>
+            </span>
+          </header>
           <div className="vf-delta-track" aria-hidden="true">
             <span className="vf-delta-center" />
             <span className="vf-delta-fill" style={fill} />
           </div>
-          <div className="vf-delta-scale" aria-hidden="true"><span>-2</span><span>0</span><span>+2</span></div>
-          <div className="vf-delta-foot"><span className="vf-session-type">{labels.lastLap}</span><span className="vf-clock">{model.lastLapText}</span></div>
+          <div className="vf-delta-scale" aria-hidden="true"><span>-1.5</span><span>0</span><span>+1.5</span></div>
         </>
       )}
     </section>

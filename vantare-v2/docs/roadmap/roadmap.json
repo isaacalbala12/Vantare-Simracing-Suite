@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-15T19:13:11Z",
+  "generatedAt": "2026-09-15T19:42:48Z",
   "digest": {
-    "lastCommit": "dde7b8a0270ea7da55678939d41dec74b0d648ec"
+    "lastCommit": "9410344cd4d4d84f5c2c1bc49336142b823f3cb4"
   },
   "phases": [
     {
@@ -444,7 +444,7 @@
     {
       "id": "overlays-studio",
       "title": {
-        "es": "Overlays Studio",
+        "es": "Overlay Studio",
         "en": "Overlay Studio",
         "pt": "Estúdio de Overlays",
         "it": "Studio degli overlay"
@@ -2124,6 +2124,16 @@
     {
       "date": "2026-09-15",
       "entries": [
+        {
+          "kind": "feat",
+          "scope": "notifications",
+          "text": "Centro de notificaciones con Spotter overlay-only"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-713 · Matriz de cobertura y reconciliación del Ingeniero"
+        },
         {
           "kind": "fix",
           "scope": "engineer",

@@ -56,14 +56,13 @@ describe("parseHarnessQuery", () => {
 
   it("rejects telemetry-fabricating variants as invalid variant", () => {
     for (const variant of [
-      "relative-multiclass",
       "standings-stress60",
       "standings-replay",
       "pedals-zero",
       "pedals-full",
     ]) {
       const widget =
-        variant === "relative-multiclass" ? "relative" : variant.startsWith("standings") ? "standings" : "pedals";
+        variant.startsWith("standings") ? "standings" : "pedals";
       expect(parseHarnessQuery(`?widget=${widget}&variant=${variant}`)).toEqual({
         error: `invalid variant parameter: ${variant}`,
       });

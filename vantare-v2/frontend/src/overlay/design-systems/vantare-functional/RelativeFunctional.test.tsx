@@ -58,7 +58,7 @@ describe("Functional Relative", () => {
   });
 
   it.each(["studio", "desktop", "obs", "harness"] as const)("renders through the shared host with V2 Workshop data on %s", (surface) => {
-    const scenario = { widget: "relative", system: "vantare-functional", variant: "relative-multiclass", state: "ready", session: "race", location: "track" } as const;
+    const scenario = { widget: "relative", system: "vantare-functional", variant: "default", state: "ready", session: "race", location: "track" } as const;
     const widget = createScenarioWidget({ ...scenario, designId: "relative-functional-signature" });
     const { container } = render(<WidgetVisualHost widget={widget} runtime={buildWorkshopFrameV2(scenario)} renderMode={surface} />);
     expect(container.querySelector('[data-widget-system="vantare-functional"][data-widget-renderer="relative"][data-status="ready"]')).not.toBeNull();

@@ -76,7 +76,7 @@ export function resolveStandingsCellValue(
     case "driverNumber":
       return row.driverNumber;
     case "driverName":
-      return row.driverName;
+      return row.configuredDriverName ?? row.driverName;
     case "vehicleClass":
       return row.vehicleClass;
     case "gap":

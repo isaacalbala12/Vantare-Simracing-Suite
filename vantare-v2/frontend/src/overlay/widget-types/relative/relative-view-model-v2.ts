@@ -7,6 +7,8 @@ import type {
 import type { RelativeContent } from "./relative-content";
 import { getEnabledRelativeColumns } from "./relative-content";
 import { resolveRelativeTone } from "./relative-row-selection";
+import { formatDriverName } from "../shared/driver-name";
+import type { WidgetColumnV3 } from "../shared/widget-column";
 import type { RelativeRowViewModel, RelativeViewModel } from "./relative-view-model";
 
 const PLACEHOLDER = "—";
@@ -115,6 +117,7 @@ export function prepareRelativeViewModelV2(
   const state = cloneRelativeViewModelState(stability.state);
   const draftStability = { ...stability, state };
   const columns = getEnabledRelativeColumns(content);
+  const nameColumn = columns.find((column) => column.metricId === "driverName");
   if (source.state !== "live") {
     const bridgeReconnect = draftStability.bridgeSourceReconnect === true &&
       (source.state === "connecting" || source.state === "detecting");
@@ -150,7 +153,7 @@ export function prepareRelativeViewModelV2(
           : undefined,
         columns,
         rowHeightMode: content.rowHeightMode,
-        rows: retainedRows.map(buildRow),
+        rows: retainedRows.map((row) => buildRow(row, nameColumn)),
         ...buildRelativeMeta(frame),
       },
     };
@@ -188,7 +191,7 @@ export function prepareRelativeViewModelV2(
     ),
     columns,
     rowHeightMode: content.rowHeightMode,
-    rows: window.map(buildRow),
+    rows: window.map((row) => buildRow(row, nameColumn)),
     ...buildRelativeMeta(frame),
     },
   };
@@ -232,7 +235,7 @@ export function relativeDisplayedValues(
     rowCount: String(model.rows.length),
     rows: model.rows
       .map((row) => [
-        row.id, row.position, row.vehicleClass, row.driverName,
+        row.id, row.position, row.vehicleClass, row.configuredDriverName ?? row.driverName,
         row.gapText, row.side, row.tone, row.isPlayer ? "player" : "",
       ].join("~"))
       .join("|"),
@@ -265,15 +268,18 @@ function sameClass(row: OverlayRelativeRowV2, player: OverlayRelativeRowV2 | und
 
 function buildRow(
   row: OverlayRelativeRowV2,
+  nameColumn: WidgetColumnV3 | undefined,
 ): RelativeRowViewModel {
   const isPlayer = row.side === "player";
   const gapSeconds = displayedNumber(row.gap) ?? null;
+  const driverName = row.name || "?";
   return {
     id: row.id,
     position: row.position,
     vehicleClass: row.classId ?? "",
     driverNumber: "",
-    driverName: row.name || "?",
+    driverName,
+    configuredDriverName: formatDriverName(driverName, nameColumn),
     gapText: isPlayer || gapSeconds === null ? PLACEHOLDER : formatGap(gapSeconds),
     bestLapText: PLACEHOLDER,
     lastLapText: formatLapTime(displayedNumber(row.lastLap)),

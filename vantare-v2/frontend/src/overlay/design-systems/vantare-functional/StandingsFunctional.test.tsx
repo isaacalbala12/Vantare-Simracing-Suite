@@ -109,6 +109,15 @@ describe("Functional Standings", () => {
     expect(container.querySelectorAll("tbody td")).toHaveLength(ordered.length);
   });
 
+  it("lets the name column absorb spare width so metric columns stay clustered (ISA-1221)", () => {
+    const { container } = render(<StandingsFunctional model={model} settings={{}} renderMode="harness" />);
+    const cols = [...container.querySelectorAll("colgroup col")];
+    expect(cols).toHaveLength(model.columns.length);
+    const nameCol = cols[model.columns.findIndex((column) => column.metricId === "driverName")]!;
+    expect(nameCol.style.width).toBe("");
+    for (const col of cols.filter((col) => col !== nameCol)) expect(col.style.width).not.toBe("");
+  });
+
   it("distinguishes best-lap gap from race gap without relabelling the last lap", () => {
     const race = render(<StandingsFunctional model={model} settings={{}} renderMode="harness" />);
     const raceLabel = race.container.querySelector('th[data-metric="gap"]')?.textContent;

@@ -4,6 +4,16 @@ import type { BroadcastTowerRow, BroadcastTowerViewModel } from "./broadcast-tow
 
 const PLACEHOLDER = "—";
 
+function currentFlag(value: OverlayQValue<string> | undefined): string {
+  if (!value || value.q !== "fresh") return "unknown";
+  const flag = value.v?.toLowerCase();
+  switch (flag) {
+    case "green": case "yellow": case "blue": case "red": case "white": case "black": return flag;
+    case "checkered": case "chequered": return "checkered";
+    default: return "unknown";
+  }
+}
+
 function displayedNumber(value: OverlayQValue<number> | undefined): number | undefined {
   if (!value || value.q === "missing" || value.q === "invalid") return undefined;
   return value.v ?? 0;
@@ -84,6 +94,7 @@ export function buildBroadcastTowerViewModelV2(
     totalLaps,
     trackTempC: displayedNumber(frame.weather?.trackC),
     sof: undefined,
+    flag: source.state === "live" ? currentFlag(frame.session?.flag) : "unknown",
     rows,
     rowCount: content.rowCount,
     showWeather: content.showWeather,

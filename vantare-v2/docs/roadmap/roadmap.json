@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-15T19:56:09Z",
+  "generatedAt": "2026-09-15T20:46:40Z",
   "digest": {
-    "lastCommit": "d15c03cd1b057f6f4c23cdfbe05ec157942b3dad"
+    "lastCommit": "9c1ab36216fe248bbeebe9e4d794d48885d7e5cf"
   },
   "phases": [
     {
@@ -2143,6 +2143,16 @@
           "kind": "fix",
           "scope": "engineer",
           "text": "Cierra el contrato de evento UI del widget radio"
+        },
+        {
+          "kind": "perf",
+          "scope": "",
+          "text": "Segunda ronda de optimización dirigida por hechos + overnight consolidada"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-928 · Persistir controles y avisar Spotter no disponible"
         }
       ]
     },

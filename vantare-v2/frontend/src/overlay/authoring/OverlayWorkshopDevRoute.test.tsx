@@ -215,6 +215,24 @@ describe("OverlayWorkshopDevRoute", () => {
     }
   });
 
+  it("exposes isolated Functional Pedals background and overlay presentations", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=pedals&system=vantare-functional&variant=default&state=ready&surface=obs" />);
+    await waitFor(() => expect(document.querySelector("[data-widget-renderer=pedals]")).toBeTruthy());
+
+    expect(screen.getByRole("button", { name: "Con fondo" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Sin fondo · Solo barras" }).getAttribute("aria-pressed")).toBe("false");
+    expect(document.querySelector("[data-widget-renderer=pedals]")?.getAttribute("data-transparent")).toBe("false");
+
+    fireEvent.click(screen.getByRole("button", { name: "Sin fondo · Solo barras" }));
+    await waitFor(() => expect(document.querySelector("[data-widget-renderer=pedals]")?.getAttribute("data-transparent")).toBe("true"));
+    expect(window.location.search).toContain("design=pedals-functional-overlay");
+    expect(document.querySelectorAll("[data-widget-renderer=pedals] .vf-pedal")).toHaveLength(3);
+
+    fireEvent.click(screen.getByRole("button", { name: "Con fondo" }));
+    await waitFor(() => expect(document.querySelector("[data-widget-renderer=pedals]")?.getAttribute("data-transparent")).toBe("false"));
+    expect(window.location.search).toContain("design=pedals-functional-signature");
+  });
+
   it("builds the widget from the scene, not just the telemetry", async () => {
     render(
       <OverlayWorkshopDevRoute search="?widget=standings&system=vantare-endurance&design=standings-endurance-redline&state=ready&surface=obs&scene=standings-fastest-lap" />,

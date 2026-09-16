@@ -16,6 +16,7 @@ const model: PedalsViewModel = {
 describe("Functional Pedals", () => {
   it("renders the three channels with their model values", () => {
     const { container } = render(<PedalsFunctional model={model} settings={{}} renderMode="harness" />);
+    expect(container.querySelector(".vf-pedals")?.getAttribute("data-transparent")).toBe("false");
     const pedal = (id: string) => container.querySelector(`[data-pedal="${id}"]`);
     expect(pedal("throttle")?.querySelector(".vf-pedal-value")?.textContent).toBe("85%");
     expect(pedal("brake")?.querySelector(".vf-pedal-value")?.textContent).toBe("20%");
@@ -43,5 +44,22 @@ describe("Functional Pedals", () => {
     expect(container.querySelector('[data-widget-system="vantare-functional"][data-widget-renderer="pedals"][data-status="ready"]')).not.toBeNull();
     expect(container.querySelectorAll(".vf-pedal")).toHaveLength(3);
     expect(container.querySelector('[data-testid="widget-host-diagnostic"]')).toBeNull();
+  });
+
+  it("keeps the background and overlay presentations isolated", () => {
+    const scenario = { widget: "pedals", system: "vantare-functional", variant: "default", state: "ready", session: "race", location: "track" } as const;
+    const runtime = buildWorkshopFrameV2(scenario);
+    const backgroundWidget = createScenarioWidget({ ...scenario, designId: "pedals-functional-signature" });
+    const overlayWidget = createScenarioWidget({ ...scenario, designId: "pedals-functional-overlay" });
+
+    const background = render(<WidgetVisualHost widget={backgroundWidget} runtime={runtime} renderMode="harness" />);
+    expect(background.container.querySelector(".vf-pedals")?.getAttribute("data-transparent")).toBe("false");
+    expect(background.container.querySelector(".vf-pedals")?.classList.contains("vf-pedals--overlay")).toBe(false);
+
+    background.unmount();
+    const overlay = render(<WidgetVisualHost widget={overlayWidget} runtime={runtime} renderMode="harness" />);
+    expect(overlay.container.querySelector(".vf-pedals")?.getAttribute("data-transparent")).toBe("true");
+    expect(overlay.container.querySelector(".vf-pedals")?.classList.contains("vf-pedals--overlay")).toBe(true);
+    expect(overlay.container.querySelectorAll(".vf-pedal")).toHaveLength(3);
   });
 });

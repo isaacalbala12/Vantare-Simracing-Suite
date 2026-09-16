@@ -178,7 +178,7 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
       <Segments options={SESSION_OPTIONS} value={query.session} onChange={(value) => update({ ...query, session: value as OverlayWorkshopQuery["session"] })} />
     </fieldset>
 
-    {isFunctional && designs.length > 1 && <fieldset><legend>Estilo</legend><div className="functional-study-segments">{designs.map((design) => <button type="button" key={design.id} aria-pressed={(query.designId ?? defaultDesign?.id) === design.id} onClick={() => update({ ...query, designId: design.id })}>{design.name}</button>)}</div></fieldset>}
+    {isFunctional && designs.length > 1 && <fieldset><legend>{query.widget === "pedals" ? "Presentación" : "Estilo"}</legend><div className="functional-study-segments">{designs.map((design) => <button type="button" key={design.id} aria-pressed={(query.designId ?? defaultDesign?.id) === design.id} onClick={() => update({ ...query, designId: design.id })}>{design.name}</button>)}</div></fieldset>}
     {isFunctional && query.widget !== "relative" && <fieldset><legend>Marca</legend><div className="functional-study-segments">
       <button type="button" aria-pressed={query.brand !== "off"} onClick={() => update({ ...query, brand: undefined })}>Con marca</button>
       <button type="button" aria-pressed={query.brand === "off"} onClick={() => update({ ...query, brand: "off" })}>Sin marca</button>

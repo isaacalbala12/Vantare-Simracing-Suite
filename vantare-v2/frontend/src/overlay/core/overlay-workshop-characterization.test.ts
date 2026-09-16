@@ -47,10 +47,10 @@ describe("Overlay Workshop characterization", () => {
     expect(designSystemRegistry.list().map((system) => [system.id, system.widgets.length])).toEqual([
       ["vantare-original", 18], ["vantare-crystal", 19], ["vantare-endurance", 5], ["vantare-functional", 18], ["vantare-iracing", 1],
     ]);
-    expect(designs).toHaveLength(86);
+    expect(designs).toHaveLength(87);
     expect(designs.filter((design) => design.systemId === "vantare-functional").map((design) => design.id)).toEqual([
       "standings-functional-compact", "standings-functional-broadcast",
-      "relative-functional-signature", "delta-functional-signature", "delta-functional-capsule", "pedals-functional-signature",
+      "relative-functional-signature", "delta-functional-signature", "delta-functional-capsule", "pedals-functional-signature", "pedals-functional-overlay",
       "track-weather-functional-signature", "track-map-functional-signature", "pedals-telemetry-functional-signature",
       "fuel-strategy-functional-signature", "car-damage-numbers-functional-signature", "input-telemetry-functional-signature",
       "racing-flags-functional-signature", "race-schedule-functional-signature",

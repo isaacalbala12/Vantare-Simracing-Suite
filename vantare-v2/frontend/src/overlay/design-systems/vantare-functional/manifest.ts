@@ -80,7 +80,8 @@ export const vantareFunctionalManifest: DesignSystemDefinition = {
       defaultSettings: {},
       configMigrations: { 0: (settings) => ({ ...settings }) },
       parseSettings(input: unknown) {
-        return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
+        const value = input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {};
+        return { ...value, transparentBackground: value.transparentBackground === true };
       },
       inspector: { appearance: [] },
       Renderer: PedalsFunctional as ComponentType<WidgetRendererProps>,

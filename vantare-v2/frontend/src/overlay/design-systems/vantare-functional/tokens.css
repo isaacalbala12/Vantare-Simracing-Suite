@@ -153,16 +153,32 @@
 .vf-relative .vf-table tr:last-child td { box-shadow: none; }
 .vf-relative .vf-table td[data-metric="gap"] { text-align: center; }
 
-/* Delta: valor único y pista de centro; la última vuelta ocupa la derecha de
-   la cabecera como el reloj en Standings. Sin pie: el widget es aspect-locked
-   a ~2,9:1 y una banda extra lo desbordaría. */
-.vf-delta { --vf-gain: #7fb686; --vf-loss: #d95360; min-height: 100%; }
+/* Delta: valor único y pista de centro. Los datos de vuelta son avisos
+   condicionales: en reposo el instrumento queda limpio y, cuando aparecen,
+   cada uno ocupa su propia columna sin invadir el valor central. */
+.vf-delta { --vf-gain: #7fb686; --vf-loss: #d95360; min-height: 100%; overflow: visible; container-type: inline-size; }
 .vf-delta[data-template="instrument"] { display: flex; flex-direction: column; justify-content: center; }
-.vf-delta-head { position: relative; }
-.vf-delta-value { display: flex; align-items: baseline; justify-content: center; gap: 8px; padding: 6px 12px 0; font-size: 27px; font-weight: 700; letter-spacing: -.025em; font-variant-numeric: tabular-nums; color: var(--vf-ink); }
-.vf-delta-last { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
-.vf-delta-last small { font: 600 7px/1 Inter, Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--vf-muted); }
-.vf-delta-last b { font: 650 12px/1 Inter, Arial, sans-serif; font-variant-numeric: tabular-nums; color: var(--vf-muted); font-weight: 650; }
+.vf-delta-head { position: relative; min-width: 0; min-height: 52.5px; padding: 6px 8px 0; }
+.vf-delta-head > .vf-delta-events { position: absolute; inset: 6px 8px 0; display: block; }
+.vf-delta-value { position: absolute; top: 0; left: 50%; width: max-content; max-width: calc(100% - 16px); display: flex; align-items: baseline; justify-content: center; min-width: 0; gap: 8px; padding: 6px 0 0; font-size: 27px; font-weight: 700; letter-spacing: -.025em; font-variant-numeric: tabular-nums; color: var(--vf-ink); transform: translateX(-50%); }
+.vf-delta-events { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.vf-delta-events > span { position: absolute; top: 50%; display: flex; flex-direction: column; gap: 3px; opacity: 0; visibility: hidden; transition: opacity 180ms ease-out, transform 180ms ease-out; }
+.vf-delta-reference { left: 16px; align-items: flex-start; transform: translateY(-50%) translateX(-6px); }
+.vf-delta-last { right: 16px; align-items: flex-end; transform: translateY(-50%) translateX(6px); }
+.vf-delta-head > .vf-delta-events > span { top: 50%; width: calc(50% - 57px); min-width: 0; max-width: calc(50% - 57px); overflow: hidden; }
+.vf-delta-head > .vf-delta-events > .vf-delta-reference { left: 0; right: auto; align-items: flex-start; transform: translateY(-50%) translateX(-6px); }
+.vf-delta-head > .vf-delta-events > .vf-delta-last { right: 0; left: auto; align-items: flex-end; transform: translateY(-50%) translateX(6px); }
+.vf-delta-events small { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 600 7px/1 Inter, Arial, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: var(--vf-muted); }
+.vf-delta-events b { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 650 12px/1 Inter, Arial, sans-serif; font-variant-numeric: tabular-nums; color: var(--vf-muted); font-weight: 650; }
+.vf-delta[data-delta-event="lap-completed"] .vf-delta-last,
+.vf-delta[data-delta-event="personal-best"] .vf-delta-last,
+.vf-delta[data-delta-event="personal-best"] .vf-delta-reference { opacity: 1; visibility: visible; transform: translateY(-50%) translateX(0); }
+.vf-delta[data-delta-event="lap-completed"] .vf-delta-head > .vf-delta-events > .vf-delta-last,
+.vf-delta[data-delta-event="personal-best"] .vf-delta-head > .vf-delta-events > .vf-delta-last,
+.vf-delta[data-delta-event="personal-best"] .vf-delta-head > .vf-delta-events > .vf-delta-reference { transform: translateY(-50%) translateX(0); }
+.vf-delta[data-delta-event="personal-best"] .vf-delta-reference b { color: var(--vf-gain); }
+.vf-delta[data-delta-event="personal-best"] .vf-delta-last b { color: var(--vf-ink); }
+.vf-delta[data-delta-event="lap-completed"] .vf-delta-last b { color: var(--vf-ink); }
 .vf-delta-arrow { width: 12px; font-size: 13px; text-align: center; }
 .vf-delta[data-tone="gaining"] .vf-delta-value { color: var(--vf-gain); }
 .vf-delta[data-tone="losing"] .vf-delta-value { color: var(--vf-loss); }
@@ -182,8 +198,8 @@
 .vf-delta[data-cross] .vf-delta-center, .vf-delta[data-cross] .vf-delta-capsule-center { transition: background-color 350ms ease, box-shadow 350ms ease; }
 .vf-delta[data-cross="gaining"] .vf-delta-center, .vf-delta[data-cross="gaining"] .vf-delta-capsule-center { background: var(--vf-gain); box-shadow: 0 0 8px rgb(127 182 134 / 70%); }
 .vf-delta[data-cross="losing"] .vf-delta-center, .vf-delta[data-cross="losing"] .vf-delta-capsule-center { background: var(--vf-loss); box-shadow: 0 0 8px rgb(217 83 96 / 70%); }
-.vf-delta[data-cross] .vf-delta-value, .vf-delta[data-cross] .vf-delta-capsule-value { transform: scale(1.04); transition: transform 180ms ease-out; }
-.vf-delta[data-newBest] .vf-delta-last b, .vf-delta[data-newBest] .vf-delta-capsule-lap { color: var(--vf-ink); }
+.vf-delta[data-cross] .vf-delta-value { transform: translateX(-50%) scale(1.04); transition: transform 180ms ease-out; }
+.vf-delta[data-cross] .vf-delta-capsule-value { transform: scale(1.04); transition: transform 180ms ease-out; }
 .vf-standings [data-standings-row][data-motion], .vf-relative [data-relative-row][data-cross] { transition: background-color 500ms ease-out; }
 .vf-standings [data-standings-row][data-motion="rise"], .vf-relative [data-relative-row][data-cross="rise"] { background-color: rgb(127 182 134 / 12%); }
 .vf-standings [data-standings-row][data-motion="fall"], .vf-relative [data-relative-row][data-cross="fall"] { background-color: rgb(217 83 96 / 12%); }
@@ -213,6 +229,9 @@
 .vf-delta-capsule-value .vf-delta-arrow { width: auto; font-size: 10px; }
 .vf-delta-capsule-value[data-tone="gaining"] { color: var(--vf-gain); border-color: rgb(127 182 134 / 40%); }
 .vf-delta-capsule-value[data-tone="losing"] { color: var(--vf-loss); border-color: rgb(217 83 96 / 40%); }
+@media (prefers-reduced-motion: reduce) {
+  .vf-delta-events > span { transition: none; }
+}
 
 /* Pedals: tres canales finos, colores semánticos apagados. */
 .vf-pedals { --vf-throttle: #6fae7d; --vf-brake: #d95360; --vf-clutch: #c9a15c; display: flex; flex-direction: column; height: 100%; }

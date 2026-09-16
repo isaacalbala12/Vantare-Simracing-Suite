@@ -74,7 +74,7 @@ laterales innecesarios, sin cambiar la información ni la jerarquía visual.
 
 ## Verificación
 
-- Actualizar las pruebas de geometría para los diez `metricId` soportados,
+- Actualizar las pruebas de geometría para los once `metricId` soportados,
   incluidos presets y formatos de nombre.
 - Comprobar que el tamaño del marco disminuye al activar columnas compactas
   y que no se rompe el cálculo de altura, cabecera partida ni footer.

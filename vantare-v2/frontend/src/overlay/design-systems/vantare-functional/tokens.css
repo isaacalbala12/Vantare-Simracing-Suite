@@ -50,6 +50,7 @@
 .vf-time-unit { margin-left: 2px; color: #aaa9af; font-size: 9px; font-weight: 500; letter-spacing: 0; }
 .vf-class { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 5px 6px; border-radius: 4px 1px 4px 4px; color: #ffffff; background: linear-gradient(145deg, #e32530, #ba0f1b); font-size: 9px; letter-spacing: .02em; font-weight: 700; }
 .vf-heading-name { display: block; text-align: left; padding-left: 10px; }
+.vf-standings[data-template="signature"] .vf-table th[data-metric="driverName"] { text-align: left; }
 .vf-standings .vf-table td { height: 30px; box-shadow: inset 0 -1px var(--vf-line); font-size: 14px; font-weight: 650; letter-spacing: -.025em; }
 .vf-standings .vf-table td:is([data-metric="lastLap"], [data-metric="bestLap"]) { font-weight: 600; color: #e6e5e9; }
 .vf-standings:is([data-session="practice"], [data-session="qualifying"]) .vf-table td[data-metric="bestLap"] { font-weight: 650; color: var(--vf-ink); }

@@ -4,7 +4,8 @@ import { applyWidgetDesign } from "../../core/widget-design";
 import { getOfficialDesign } from "../../design-systems/official-designs";
 import { parseRelativeContent, updateRelativeFilters } from "../../widget-types/relative/relative-content";
 import { resolveStandingsMinimumSize } from "../../widget-types/standings/standings-frame-layout";
-import { resolveFunctionalMulticlassHeight } from "../../design-systems/vantare-functional/multiclass-layout";
+import { EFFICIENCY_SYSTEM_ID } from "../../core/design-system-names";
+import { resolveEfficiencyMulticlassHeight } from "../../design-systems/vantare-efficiency/multiclass-layout";
 import { AUTHORING_V2_VARIANTS, type AuthoringV2Variant } from "./authoring-v2-scenario-fixture";
 
 // Widget de autoría para el escenario V2 puro (C2b6b): solo forma, cero
@@ -27,7 +28,7 @@ export function buildAuthoringV2ScenarioWidget(input: {
 
   // Explicit Functional authoring preset. Runtime profiles keep their own
   // configured columns; this only chooses which existing V2 fields to preview.
-  if (input.widget === "standings" && input.system === "vantare-functional" && input.variant === "default") {
+  if (input.widget === "standings" && input.system === EFFICIENCY_SYSTEM_ID && input.variant === "default") {
     const content = widget.content as Record<string, unknown>;
     const metrics = new Set(["position", "driverName", "gap", "lastLap", "pit"]);
     const columns = (content.columns as Record<string, unknown>[]).map((column) => ({ ...column, enabled: metrics.has(String(column.metricId)) }));
@@ -48,8 +49,8 @@ export function buildAuthoringV2ScenarioWidget(input: {
     widget.content = { ...widget.content as Record<string, unknown>, rowCount: 4 };
     // La caja se adapta al contenido como en el relative: filas fijas y el
     // marco crece con ellas (en Eficiencia, ~27px por fila + padding).
-    if (input.system === "vantare-functional") {
-      widget.layout = { ...widget.layout, h: resolveFunctionalMulticlassHeight(4) };
+    if (input.system === EFFICIENCY_SYSTEM_ID) {
+      widget.layout = { ...widget.layout, h: resolveEfficiencyMulticlassHeight(4) };
     }
   }
   if (input.widget === "standings") {
@@ -88,7 +89,7 @@ export function buildAuthoringV2ScenarioWidget(input: {
   // En Eficiencia la fila del Standings es fija (30px): la caja del estudio se
   // encaja al tamaño intrínseco — ni filas estiradas ni hueco muerto, y las
   // columnas no se reparten el sobrante de un marco más ancho que el contenido.
-  if (input.widget === "standings" && input.system === "vantare-functional" && !input.design) {
+  if (input.widget === "standings" && input.system === EFFICIENCY_SYSTEM_ID && !input.design) {
     const minimum = resolveStandingsMinimumSize(widget);
     widget.layout = {
       ...widget.layout,

@@ -10,6 +10,7 @@ import type {
 } from "../../../generated/telemetry";
 import type { DesignSystemId, WidgetInstanceV3, WidgetType } from "../../core/profile-document";
 import type { WidgetRuntimeInput } from "../../core/widget-definition";
+import { EFFICIENCY_SYSTEM_ID } from "../../core/design-system-names";
 import {
   AUTHORING_V2_VARIANTS,
   buildAuthoringV2ScenarioRuntime,
@@ -29,11 +30,11 @@ import {
   computeRelativeIntrinsicWidth,
 } from "../../widget-types/relative/relative-renderer-helpers";
 import {
-  FUNCTIONAL_RELATIVE_BASE_WIDTH,
-  resolveFunctionalRelativeBaseHeight,
-  resolveFunctionalRelativeSlotsWidth,
-} from "../../design-systems/vantare-functional/relative-layout";
-import { FUNCTIONAL_STUDY_DEFAULT_MODULES } from "../functional-study-options";
+  EFFICIENCY_RELATIVE_BASE_WIDTH,
+  resolveEfficiencyRelativeBaseHeight,
+  resolveEfficiencyRelativeSlotsWidth,
+} from "../../design-systems/vantare-efficiency/relative-layout";
+import { EFFICIENCY_STUDY_DEFAULT_MODULES } from "../efficiency-study-options";
 import { resolveStandingsMinimumSize } from "../../widget-types/standings/standings-frame-layout";
 import { applyWidgetDesign } from "../../core/widget-design";
 import { getOfficialDesign, listOfficialDesigns } from "../../design-systems/official-designs";
@@ -65,7 +66,7 @@ function usesRelativeStudyProjection(input: {
   system: DesignSystemId;
   variant: WorkshopV2Variant;
 }): boolean {
-  return input.widget === "relative" && input.system === "vantare-functional" && input.variant === "default";
+  return input.widget === "relative" && input.system === EFFICIENCY_SYSTEM_ID && input.variant === "default";
 }
 
 const WORKSHOP_V2_VARIANT_SET: ReadonlySet<string> = new Set(WORKSHOP_V2_VARIANTS);
@@ -182,7 +183,7 @@ export function buildWorkshopWidget(input: {
   // los perfiles guardados no los toca nunca el renderer al cambiar la sesión.
   // Solo Standings tiene columnas de vuelta — Delta/Pedals no llevan
   // content.columns (antes este bloque explotaba sobre ellos).
-  if (input.system === "vantare-functional" && input.widget === "standings" && input.variant === "default" && input.session !== "race") {
+  if (input.system === EFFICIENCY_SYSTEM_ID && input.widget === "standings" && input.variant === "default" && input.session !== "race") {
     const content = widget.content as Record<string, unknown>;
     const columns = Array.isArray(content.columns)
       ? (content.columns as Record<string, unknown>[]).map((column) => column.metricId === "lastLap" ? { ...column, enabled: false } : column.metricId === "bestLap" ? { ...column, enabled: true } : column)
@@ -213,7 +214,7 @@ export function buildWorkshopWidget(input: {
   // El formato de nombre y el recuento cambian el tamaño intrínseco: la caja
   // se re-encaja después de aplicarlos — el encaje base de createScenarioWidget
   // siempre vio el formato completo y el recuento por defecto.
-  if (input.widget === "standings" && input.system === "vantare-functional"
+  if (input.widget === "standings" && input.system === EFFICIENCY_SYSTEM_ID
       && (input.rows !== undefined || input.nameFormat !== undefined)) {
     const minimum = resolveStandingsMinimumSize(widget);
     if (minimum) {
@@ -236,8 +237,8 @@ export function buildWorkshopWidget(input: {
   // Módulos del estudio Standings: posición y piloto siempre visibles; el
   // resto lo encienden los módulos elegidos. En el estudio cada columna toma
   // ancho automático — el reparto lo decide el layout, no presets guardados.
-  if (input.system === "vantare-functional" && input.widget === "standings" && input.variant === "standings-functional-study") {
-    const modules = input.modules ?? FUNCTIONAL_STUDY_DEFAULT_MODULES;
+  if (input.system === EFFICIENCY_SYSTEM_ID && input.widget === "standings" && input.variant === "standings-functional-study") {
+    const modules = input.modules ?? EFFICIENCY_STUDY_DEFAULT_MODULES;
     const content = widget.content as Record<string, unknown>;
     const columns = Array.isArray(content.columns)
       ? (content.columns as Record<string, unknown>[]).map((column) => ({
@@ -251,7 +252,7 @@ export function buildWorkshopWidget(input: {
   }
 
   // Huecos de datos del pie en standings/relative de Eficiencia.
-  if (input.slots && input.slots.length > 0 && input.system === "vantare-functional"
+  if (input.slots && input.slots.length > 0 && input.system === EFFICIENCY_SYSTEM_ID
     && (input.widget === "standings" || input.widget === "relative")) {
     widget = {
       ...widget,
@@ -276,12 +277,12 @@ export function buildWorkshopWidget(input: {
     widget = { ...widget, content: next };
     const rows = computeRelativeConfiguredRowCount(next);
     const settings = { ...widget.visual.baseSettings, ...widget.visual.appearanceOverrides };
-    if (input.system === "vantare-functional") {
+    if (input.system === EFFICIENCY_SYSTEM_ID) {
       const w = Math.max(
-        FUNCTIONAL_RELATIVE_BASE_WIDTH,
-        Math.ceil(resolveFunctionalRelativeSlotsWidth(settings)),
+        EFFICIENCY_RELATIVE_BASE_WIDTH,
+        Math.ceil(resolveEfficiencyRelativeSlotsWidth(settings)),
       );
-      const h = Math.ceil(resolveFunctionalRelativeBaseHeight(rows, settings) * (w / FUNCTIONAL_RELATIVE_BASE_WIDTH));
+      const h = Math.ceil(resolveEfficiencyRelativeBaseHeight(rows, settings) * (w / EFFICIENCY_RELATIVE_BASE_WIDTH));
       widget = { ...widget, layout: { ...widget.layout, w, h: next.rowHeightMode === "fill" ? Math.max(widget.layout.h, h) : h } };
     } else if (input.ahead !== undefined || input.behind !== undefined) {
       const w = computeRelativeIntrinsicWidth(getEnabledRelativeColumns(next));

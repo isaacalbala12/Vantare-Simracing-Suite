@@ -4,9 +4,18 @@ import { isWorkshopV2Variant, type WorkshopV2Variant } from "./fixtures/authorin
 import { getAnimationScene } from "./fixtures/animation-scenes";
 import { getOfficialDesign } from "../design-systems/official-designs";
 import { designSystemRegistry } from "../core/design-system-registry";
+import {
+  EFFICIENCY_SYSTEM_ID,
+  normalizeDesignSystemId,
+} from "../core/design-system-names";
 import { parseStandingsEnduranceSettings } from "../design-systems/vantare-endurance/standings/standings-endurance-settings";
 import { WIDGET_TYPES } from "../core/profile-document";
-import { FUNCTIONAL_STUDY_MODULE_IDS, FUNCTIONAL_STUDY_SLOT_IDS, FUNCTIONAL_STUDY_STYLE_IDS, type FunctionalStudyStyleId } from "./functional-study-options";
+import {
+  EFFICIENCY_STUDY_MODULE_IDS,
+  EFFICIENCY_STUDY_SLOT_IDS,
+  EFFICIENCY_STUDY_STYLE_IDS,
+  type EfficiencyStudyStyleId,
+} from "./efficiency-study-options";
 import { RELATIVE_RANGE_LIMIT } from "../widget-types/relative/relative-content";
 import { STANDINGS_ROW_COUNT_MAX, STANDINGS_ROW_COUNT_MIN } from "../widget-types/standings/standings-content";
 import { DRIVER_NAME_FORMATS, type DriverNameFormat } from "../widget-types/shared/driver-name";
@@ -17,7 +26,7 @@ export type OverlayWorkshopQuery = {
   designId?: string;
   /** Piel de estudio Eficiencia v2 (ISA-1120); solo aplica en la variante
    * `standings-functional-study` y nunca se persiste en perfiles. */
-  studyStyle?: FunctionalStudyStyleId;
+  studyStyle?: EfficiencyStudyStyleId;
   /** Columnas opcionales del estudio (gap/bestLap/lastLap/pit). Misma regla:
    *  solo dentro de `standings-functional-study`. */
   modules?: readonly string[];
@@ -74,7 +83,6 @@ export const DEFAULT_OVERLAY_WORKSHOP_QUERY: OverlayWorkshopQuery = {
   preset: "1080p",
 };
 
-const DESIGN_SYSTEMS = new Set<DesignSystemId>(["vantare-original", "vantare-crystal", "vantare-endurance", "vantare-functional", "vantare-iracing"]);
 const STATES = new Set<AuthoringV2Scenario["state"]>(["ready", "stale", "disconnected", "error"]);
 const SURFACES = new Set<OverlayWorkshopQuery["surface"]>(["studio", "desktop", "obs", "harness"]);
 const SESSIONS = new Set<AuthoringV2Scenario["session"]>(["practice", "qualifying", "race"]);
@@ -88,7 +96,8 @@ const REDLINE_HEADERS = new Set(["current", "signature", "session", "compact"]);
 export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery | { error: string } {
   const params = new URLSearchParams(search.startsWith("?") ? search : `?${search}`);
   const widget = (params.get("widget") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.widget) as WidgetType;
-  const system = (params.get("system") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.system) as DesignSystemId;
+  const rawSystem = params.get("system") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.system;
+  const system = normalizeDesignSystemId(rawSystem);
   const state = (params.get("state") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.state) as AuthoringV2Scenario["state"];
   const surface = (params.get("surface") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.surface) as OverlayWorkshopQuery["surface"];
   const variant = (params.get("variant") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.variant) as WorkshopV2Variant;
@@ -104,16 +113,16 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   const height = params.get("height");
 
   if (!WIDGET_TYPES.has(widget)) return { error: `invalid widget parameter: ${widget}` };
-  if (!DESIGN_SYSTEMS.has(system)) return { error: `invalid system parameter: ${system}` };
+  if (!system) return { error: `invalid system parameter: ${rawSystem}` };
   // Eficiencia se ofrece en los widgets que declara su manifest — la lista no
   // se duplica aquí; el registro es la fuente de verdad.
-  if (system === "vantare-functional" && !designSystemRegistry.get("vantare-functional", 1).widgets.some((entry) => entry.widgetType === widget)) {
-    return { error: `vantare-functional does not support widget=${widget}` };
+  if (system === EFFICIENCY_SYSTEM_ID && !designSystemRegistry.get(EFFICIENCY_SYSTEM_ID, 1).widgets.some((entry) => entry.widgetType === widget)) {
+    return { error: `${EFFICIENCY_SYSTEM_ID} does not support widget=${widget}` };
   }
   if (!STATES.has(state)) return { error: `invalid state parameter: ${state}` };
   if (!SURFACES.has(surface)) return { error: `invalid surface parameter: ${surface}` };
   if (!isWorkshopV2Variant(variant)) return { error: `invalid variant parameter: ${variant}` };
-  if (variant === "standings-functional-study" && (widget !== "standings" || system !== "vantare-functional")) return { error: "standings-functional-study requires Functional Standings" };
+  if (variant === "standings-functional-study" && (widget !== "standings" || system !== EFFICIENCY_SYSTEM_ID)) return { error: "standings-functional-study requires Functional Standings" };
   if (!SESSIONS.has(session)) return { error: `invalid session parameter: ${session}` };
   if (!LOCATIONS.has(location)) return { error: `invalid location parameter: ${location}` };
   if (!BACKGROUNDS.has(background)) return { error: `invalid background parameter: ${background}` };
@@ -156,8 +165,8 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   if ((variant === "pedals-zero" || variant === "pedals-full") && widget !== "pedals") {
     return { error: `${variant} variant requires widget=pedals` };
   }
-  if (widget === "engineer-radio" && !["vantare-crystal", "vantare-functional"].includes(system)) {
-    return { error: "engineer-radio requires system=vantare-crystal or vantare-functional" };
+  if (widget === "engineer-radio" && !["vantare-crystal", EFFICIENCY_SYSTEM_ID].includes(system)) {
+    return { error: `engineer-radio requires system=vantare-crystal or ${EFFICIENCY_SYSTEM_ID}` };
   }
 
   const sceneId = params.get("scene") ?? undefined;
@@ -176,11 +185,11 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   // valor desconocido es un error honesto, pero uno válido que sobrevive un
   // cambio de variante se descarta en silencio en vez de romper la página.
   const studyStyleRaw = params.get("study");
-  if (studyStyleRaw !== null && !FUNCTIONAL_STUDY_STYLE_IDS.has(studyStyleRaw)) {
+  if (studyStyleRaw !== null && !EFFICIENCY_STUDY_STYLE_IDS.has(studyStyleRaw)) {
     return { error: `invalid study parameter: ${studyStyleRaw}` };
   }
-  const studyStyle = studyStyleRaw !== null && variant === "standings-functional-study" && system === "vantare-functional"
-    ? studyStyleRaw as FunctionalStudyStyleId
+  const studyStyle = studyStyleRaw !== null && variant === "standings-functional-study" && system === EFFICIENCY_SYSTEM_ID
+    ? studyStyleRaw as EfficiencyStudyStyleId
     : undefined;
 
   const brand = params.get("brand");
@@ -192,9 +201,9 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   let modules: readonly string[] | undefined;
   if (modulesRaw !== null) {
     const list = modulesRaw.split(",").filter(Boolean);
-    const unknown = list.find((id) => !FUNCTIONAL_STUDY_MODULE_IDS.has(id));
+    const unknown = list.find((id) => !EFFICIENCY_STUDY_MODULE_IDS.has(id));
     if (unknown) return { error: `invalid modules parameter: ${modulesRaw}` };
-    if (variant === "standings-functional-study" && system === "vantare-functional") {
+    if (variant === "standings-functional-study" && system === EFFICIENCY_SYSTEM_ID) {
       modules = list;
     }
   }
@@ -205,9 +214,9 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   let slots: readonly string[] | undefined;
   if (slotsRaw !== null) {
     const list = slotsRaw.split(",").filter(Boolean);
-    const unknown = list.find((id) => !FUNCTIONAL_STUDY_SLOT_IDS.has(id));
+    const unknown = list.find((id) => !EFFICIENCY_STUDY_SLOT_IDS.has(id));
     if (unknown) return { error: `invalid slots parameter: ${slotsRaw}` };
-    if (system === "vantare-functional" && (widget === "standings" || widget === "relative") && list.length > 0) {
+    if (system === EFFICIENCY_SYSTEM_ID && (widget === "standings" || widget === "relative") && list.length > 0) {
       slots = list;
     }
   }

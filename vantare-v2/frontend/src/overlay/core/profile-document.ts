@@ -6,6 +6,7 @@ import {
   resolveLayoutViewport,
   type LayoutViewport,
 } from "./layout-viewport";
+import { isSupportedDesignSystemId, normalizeDesignSystemId } from "./design-system-names";
 
 export const PROFILE_SCHEMA_VERSION_V3 = 3 as const;
 export const PROFILE_SCHEMA_VERSION_V4 = 4 as const;
@@ -62,7 +63,6 @@ export const ALL_WIDGET_TYPES = [
   "track-map",
 ] as const satisfies readonly WidgetType[];
 export const WIDGET_TYPES = new Set<WidgetType>(ALL_WIDGET_TYPES);
-const DESIGN_SYSTEM_IDS = new Set<DesignSystemId>(["vantare-original", "vantare-crystal", "vantare-endurance", "vantare-functional", "vantare-iracing"]);
 const SESSION_LAYOUT_TYPES = new Set<SessionLayoutType>([
   "general",
   "practice",
@@ -299,12 +299,12 @@ function validateBehavior(path: string, behavior: WidgetBehaviorV3): void {
 }
 
 function validateVisual(path: string, visual: WidgetVisualV3): void {
-  if (!DESIGN_SYSTEM_IDS.has(visual.systemId)) {
+  if (!isSupportedDesignSystemId(visual.systemId)) {
     validationError(`${path}.systemId`, "unsupported design system");
   }
   validateVisualSelection(path, visual);
   for (const [systemId, memory] of Object.entries(visual.systemMemories ?? {})) {
-    if (!DESIGN_SYSTEM_IDS.has(systemId as DesignSystemId)) {
+    if (!isSupportedDesignSystemId(systemId)) {
       validationError(`${path}.systemMemories.${systemId}`, "unsupported design system");
     }
     validateVisualSelection(`${path}.systemMemories.${systemId}`, memory);
@@ -414,7 +414,11 @@ function parseWidgetVisualSelection(input: unknown, path: string): WidgetVisualS
 
 function parseWidgetVisual(input: unknown, path: string): WidgetVisualV3 {
   const raw = readRecord(input, path);
-  const systemId = readString(raw.systemId, `${path}.systemId`) as DesignSystemId;
+  const rawSystemId = readString(raw.systemId, `${path}.systemId`);
+  const systemId = normalizeDesignSystemId(rawSystemId);
+  if (!systemId) {
+    validationError(`${path}.systemId`, "unsupported design system");
+  }
   const visual: WidgetVisualV3 = {
     systemId,
     ...parseWidgetVisualSelection(raw, path),
@@ -423,10 +427,17 @@ function parseWidgetVisual(input: unknown, path: string): WidgetVisualV3 {
     const memoriesRaw = readRecord(raw.systemMemories, `${path}.systemMemories`);
     const memories: Partial<Record<DesignSystemId, WidgetVisualSelectionV3>> = {};
     for (const [memorySystemId, memory] of Object.entries(memoriesRaw)) {
-      if (!DESIGN_SYSTEM_IDS.has(memorySystemId as DesignSystemId)) {
+      const normalizedMemorySystemId = normalizeDesignSystemId(memorySystemId);
+      if (!normalizedMemorySystemId) {
         validationError(`${path}.systemMemories.${memorySystemId}`, "unsupported design system");
       }
-      memories[memorySystemId as DesignSystemId] = parseWidgetVisualSelection(
+      if (memories[normalizedMemorySystemId] !== undefined) {
+        validationError(
+          `${path}.systemMemories.${memorySystemId}`,
+          `duplicate design system alias for ${normalizedMemorySystemId}`,
+        );
+      }
+      memories[normalizedMemorySystemId] = parseWidgetVisualSelection(
         memory,
         `${path}.systemMemories.${memorySystemId}`,
       );
@@ -576,8 +587,9 @@ export function parseProfileDocumentV3(input: unknown): ProfileDocumentV3 {
   const resolvedLayoutViewport = resolveLayoutViewport({ layoutViewport });
   let defaultVisualSystemId: DesignSystemId | undefined;
   if (raw.defaultVisualSystemId !== undefined) {
-    defaultVisualSystemId = readString(raw.defaultVisualSystemId, "defaultVisualSystemId") as DesignSystemId;
-    if (!DESIGN_SYSTEM_IDS.has(defaultVisualSystemId)) {
+    const rawDefaultVisualSystemId = readString(raw.defaultVisualSystemId, "defaultVisualSystemId");
+    defaultVisualSystemId = normalizeDesignSystemId(rawDefaultVisualSystemId);
+    if (!defaultVisualSystemId) {
       validationError("defaultVisualSystemId", "unsupported design system");
     }
   }

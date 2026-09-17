@@ -24,6 +24,16 @@ describe("Overlay Workshop query", () => {
     });
   });
 
+  it.each(["efficiency", "vantare-efficiency", "functional"]) (
+    "normalizes the %s Workshop alias to the stable URL contract",
+    (alias) => {
+      const parsed = parseOverlayWorkshopQuery(`?widget=relative&system=${alias}&variant=default`);
+      if ("error" in parsed) throw new Error(parsed.error);
+      expect(parsed.system).toBe("vantare-functional");
+      expect(serializeOverlayWorkshopQuery(parsed)).toContain("system=vantare-functional");
+    },
+  );
+
   it("round trips controls and rejects unsafe stage values", () => {
     const parsed = parseOverlayWorkshopQuery("?widget=delta&system=vantare-original&state=ready&surface=studio&variant=default&session=practice&location=pits&background=transparent&scale=1.25&preset=720p&width=640&height=240&compare=obs");
     if ("error" in parsed) throw new Error(parsed.error);
@@ -132,5 +142,19 @@ describe("Overlay Workshop query", () => {
     expect(parseOverlayWorkshopQuery("?widget=standings&rows=0")).toHaveProperty("error");
     expect(parseOverlayWorkshopQuery("?widget=standings&rows=31")).toHaveProperty("error");
     expect(parseOverlayWorkshopQuery("?widget=standings&rows=2.5")).toHaveProperty("error");
+  });
+
+  it("round-trips explicit SessionV2 flag probes for Pedals only", () => {
+    const parsed = parseOverlayWorkshopQuery("?widget=pedals&flag=yellow");
+    if ("error" in parsed) throw new Error(parsed.error);
+    expect(parsed.flag).toBe("yellow");
+    expect(serializeOverlayWorkshopQuery(parsed)).toContain("flag=yellow");
+
+    const outside = parseOverlayWorkshopQuery("?widget=standings&flag=yellow");
+    if ("error" in outside) throw new Error(outside.error);
+    expect(outside).not.toHaveProperty("flag");
+    expect(parseOverlayWorkshopQuery("?widget=pedals&flag=not-a-flag")).toEqual({
+      error: "invalid flag parameter: not-a-flag",
+    });
   });
 });

@@ -10,11 +10,12 @@ import {
   computeRelativeIntrinsicWidth,
 } from "../../../overlay/widget-types/relative/relative-renderer-helpers";
 import {
-  FUNCTIONAL_RELATIVE_BASE_WIDTH,
-  resolveFunctionalRelativeBaseHeight,
-} from "../../../overlay/design-systems/vantare-functional/relative-layout";
+  EFFICIENCY_RELATIVE_BASE_WIDTH,
+  resolveEfficiencyRelativeBaseHeight,
+} from "../../../overlay/design-systems/vantare-efficiency/relative-layout";
 import { multiclassRelativeDefinition } from "../../../overlay/widget-types/multiclass-relative/multiclass-relative-definition";
-import { resolveFunctionalMulticlassHeight } from "../../../overlay/design-systems/vantare-functional/multiclass-layout";
+import { resolveEfficiencyMulticlassHeight } from "../../../overlay/design-systems/vantare-efficiency/multiclass-layout";
+import { isEfficiencySystem } from "../../../overlay/core/design-system-names";
 import {
   parseProfileDocumentV3,
   ProfileDocumentValidationError,
@@ -327,12 +328,12 @@ function applyWidgetContent(document: ProfileDocumentV3, command: Extract<Studio
         // from content at the box's own scale (w/430).
         const previous = parseRelativeContent(widget.content);
         const next = parseRelativeContent(content);
-        const functional = widget.visual.systemId === "vantare-functional";
+        const efficiency = isEfficiencySystem(widget.visual.systemId);
         const settings = { ...widget.visual.baseSettings, ...widget.visual.appearanceOverrides };
         const rowsOf = (value: ReturnType<typeof parseRelativeContent>) => computeRelativeConfiguredRowCount(value);
-        if (functional) {
-          const scale = widget.layout.w > 0 ? widget.layout.w / FUNCTIONAL_RELATIVE_BASE_WIDTH : 1;
-          const h = Math.ceil(resolveFunctionalRelativeBaseHeight(rowsOf(next), settings) * scale);
+        if (efficiency) {
+          const scale = widget.layout.w > 0 ? widget.layout.w / EFFICIENCY_RELATIVE_BASE_WIDTH : 1;
+          const h = Math.ceil(resolveEfficiencyRelativeBaseHeight(rowsOf(next), settings) * scale);
           if (rowsOf(next) === rowsOf(previous)) return { ...widget, content };
           return { ...widget, content, layout: { ...widget.layout, h } };
         }
@@ -345,15 +346,15 @@ function applyWidgetContent(document: ProfileDocumentV3, command: Extract<Studio
         if (size.w === before.w && size.h === before.h) return { ...widget, content };
         return { ...widget, content, layout: { ...widget.layout, w: size.w, h: size.h } };
       }
-      if (widget.type === "multiclass-relative" && widget.visual.systemId === "vantare-functional") {
+      if (widget.type === "multiclass-relative" && isEfficiencySystem(widget.visual.systemId)) {
         // Misma regla que el relative: las filas son fijas y el marco crece
         // o se encoge con rowCount.
         const before = multiclassRelativeDefinition.parseContent(widget.content).rowCount;
         const next = multiclassRelativeDefinition.parseContent(content).rowCount;
         if (next === before) return { ...widget, content };
-        return { ...widget, content, layout: { ...widget.layout, h: resolveFunctionalMulticlassHeight(next) } };
+        return { ...widget, content, layout: { ...widget.layout, h: resolveEfficiencyMulticlassHeight(next) } };
       }
-      if (widget.type === "standings" && widget.visual.systemId === "vantare-functional") {
+      if (widget.type === "standings" && isEfficiencySystem(widget.visual.systemId)) {
         // En Eficiencia el marco sigue al contenido: si el tamaño intrínseco
         // cambia (rowCount, formato de nombre, columnas), la caja se re-encaja.
         const before = resolveStandingsMinimumSize(widget);

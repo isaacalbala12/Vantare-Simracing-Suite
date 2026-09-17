@@ -1,5 +1,6 @@
 import type { FeatureId } from "../../lib/access-policy";
 import { WIDGET_TYPES, type WidgetType, type DesignSystemId, type WidgetInstanceV3 } from "./profile-document";
+import { normalizeDesignSystemId } from "./design-system-names";
 
 export type WidgetDesignV1 = {
   id: string;
@@ -35,8 +36,6 @@ export class WidgetDesignValidationError extends Error {
     this.path = path;
   }
 }
-
-const DESIGN_SYSTEM_IDS = new Set<DesignSystemId>(["vantare-original", "vantare-crystal", "vantare-endurance", "vantare-functional", "vantare-iracing"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -85,8 +84,9 @@ export function validateWidgetDesign(input: unknown): WidgetDesignV1 {
   if (!WIDGET_TYPES.has(widgetType)) {
     validationError("widgetType", "unsupported widget type");
   }
-  const systemId = readString(raw.systemId, "systemId") as DesignSystemId;
-  if (!DESIGN_SYSTEM_IDS.has(systemId)) {
+  const rawSystemId = readString(raw.systemId, "systemId");
+  const systemId = normalizeDesignSystemId(rawSystemId);
+  if (!systemId) {
     validationError("systemId", "unsupported design system");
   }
   const systemVersion = readNumber(raw.systemVersion, "systemVersion");

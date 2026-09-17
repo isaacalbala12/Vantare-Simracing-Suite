@@ -230,6 +230,31 @@ describe("parseProfileDocumentV3", () => {
     expect(memory?.baseSettings.accentColor).toBe("#8cf");
   });
 
+  it("normalizes Efficiency aliases in the default system, widget and memory keys", () => {
+    const widget = validWidget("delta-efficiency", "delta");
+    widget.visual = {
+      ...widget.visual,
+      systemId: "vantare-efficiency" as never,
+      systemMemories: {
+        efficiency: {
+          systemVersion: 1,
+          configVersion: 1,
+          baseSettings: { accentColor: "#8cf" },
+          appearanceOverrides: {},
+        },
+      } as never,
+    };
+    const document = parseProfileDocumentV3({
+      ...minimalDocument(),
+      defaultVisualSystemId: "efficiency",
+      layouts: { general: { type: "general", widgets: [widget] } },
+    });
+
+    expect(document.defaultVisualSystemId).toBe("vantare-functional");
+    expect(document.layouts.general.widgets[0]?.visual.systemId).toBe("vantare-functional");
+    expect(document.layouts.general.widgets[0]?.visual.systemMemories).toHaveProperty("vantare-functional");
+  });
+
   it.each([
     ["unknown system", { "unknown-system": {} }, "layouts.general.widgets[0].visual.systemMemories.unknown-system"],
     [

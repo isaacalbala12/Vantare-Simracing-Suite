@@ -9,6 +9,7 @@ import {
   STANDINGS_REPLAY_FRAME_COUNT,
 } from "./fixtures/authoring-v2-workshop-frame";
 import type { WidgetRuntimeInput } from "../core/widget-definition";
+import { EFFICIENCY_SYSTEM_ID } from "../core/design-system-names";
 import { getAnimationScene } from "./fixtures/animation-scenes";
 import { interpolateSceneAt, sampleAtRate, sceneDurationMs } from "./fixtures/scene-interpolation";
 import { REDLINE_TOWER_REFERENCE } from "./fixtures/redline-tower-reference";
@@ -19,7 +20,7 @@ import {
   type OverlayWorkshopQuery,
 } from "./overlay-workshop-query";
 import "./overlay-workshop.css";
-import { FunctionalStudyControls } from "./FunctionalStudyControls";
+import { EfficiencyStudyControls } from "./EfficiencyStudyControls";
 import { resolveStandingsMinimumSize } from "../widget-types/standings/standings-frame-layout";
 import { parseStandingsContent } from "../widget-types/standings/standings-content";
 import { parseRelativeContent } from "../widget-types/relative/relative-content";
@@ -121,7 +122,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
   const widget = built.widget;
   const fixtureError = built.error;
   // La mesa de módulos/tamaño del estudio es solo de Standings.
-  const isStudyTable = parsed.system === "vantare-functional" && parsed.widget === "standings" && parsed.variant === "standings-functional-study";
+  const isStudyTable = parsed.system === EFFICIENCY_SYSTEM_ID && parsed.widget === "standings" && parsed.variant === "standings-functional-study";
 
   const [replayFrame, setReplayFrame] = useState(0);
   useEffect(() => {
@@ -302,7 +303,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
     // La vista de estudio es el único harness: no hay chrome genérico que se
     // pueda mezclar; todas las selecciones viven en el panel lateral.
     <main className="overlay-workshop functional-study" data-overlay-workshop-page data-study-style={parsed.studyStyle}>
-      <FunctionalStudyControls query={parsed} update={update} onRunScene={runScene} onReset={reset} />
+      <EfficiencyStudyControls query={parsed} update={update} onRunScene={runScene} onReset={reset} />
       <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage data-stage-label={`${parsed.widget.toUpperCase().replace(/-/g, " ")} / ESTUDIO 01`}>
         {rejected && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-rejected>URL rechazada ({rejected}) — se cargaron los valores por defecto.</p>}
         {fixtureError && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-fixture-error>Selección inválida: {fixtureError}</p>}

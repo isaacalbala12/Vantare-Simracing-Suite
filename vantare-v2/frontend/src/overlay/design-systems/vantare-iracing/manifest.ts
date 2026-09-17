@@ -3,9 +3,9 @@ import type { DesignSystemDefinition, WidgetRendererProps } from "../../core/des
 import { PedalsAdvancedIracing } from "./PedalsAdvancedIracing";
 
 /**
- * Sistema de diseño "iRacing" (dev, ISA-1128): mantiene el contrato de
- * Pedales Avanzados (pedals-telemetry-compact), con la presentación funcional
- * de Eficiencia aplicada a ese widget.
+ * Sistema de diseño "iRacing" (dev, ISA-1128): conserva la composición
+ * original de Pedales Avanzados (pedals-telemetry-compact), con la paleta y
+ * superficies sobrias de Eficiencia.
  */
 export const vantareIracingManifest: DesignSystemDefinition = {
   id: "vantare-iracing",

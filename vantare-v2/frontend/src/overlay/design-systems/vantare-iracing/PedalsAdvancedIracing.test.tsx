@@ -24,39 +24,38 @@ const model: PedalsTelemetryCompactViewModel = {
 };
 
 describe("PedalsAdvancedIracing", () => {
-  it("uses the Efficiency hierarchy without the iRacing wheel identity", () => {
+  it("preserves the original iRacing composition with the Efficiency palette contract", () => {
     const { container } = render(<PedalsAdvancedIracing model={model} settings={{}} renderMode="harness" />);
     const root = container.querySelector('[data-widget-system="vantare-iracing"]') as HTMLElement;
 
     expect(root.getAttribute("data-widget-renderer")).toBe("pedals-telemetry-compact");
-    expect(root.querySelector(".vi-frame")).toBeTruthy();
     expect(root.querySelector(".vi-gear-letter")?.textContent).toBe("6");
     expect(root.querySelector(".vi-speed")?.textContent).toContain("242");
     expect(root.querySelector(".vi-rpm")?.textContent).toContain("8.1k");
-    expect(root.querySelector(".vi-position")?.textContent).toContain("POS");
-    expect(root.querySelector(".vi-wheel")).toBeNull();
-    expect(root.querySelectorAll(".vi-channel")).toHaveLength(3);
+    expect(root.querySelector(".vi-wheel")).toBeTruthy();
+    expect(root.querySelector<SVGGElement>(".vi-wheel-rotor")?.style.transform).toBe("rotate(180deg)");
+    expect(root.querySelectorAll(".vi-bar[data-pedal]")).toHaveLength(3);
   });
 
-  it("renders the semantic pedal percentages", () => {
+  it("keeps the compact pedal bars and their percentages in titles", () => {
     const { container } = render(<PedalsAdvancedIracing model={model} settings={{}} renderMode="harness" />);
     const channel = (id: string) => container.querySelector(`[data-pedal="${id}"]`) as HTMLElement;
 
-    expect(channel("clutch").querySelector(".vi-channel-value")?.textContent).toBe("6%");
-    expect(channel("brake").querySelector(".vi-channel-value")?.textContent).toBe("12%");
-    expect(channel("throttle").querySelector(".vi-channel-value")?.textContent).toBe("78%");
-    expect(channel("throttle").querySelector<HTMLElement>(".vi-bar i")?.style.height).toBe("78%");
+    expect(channel("clutch").title).toBe("C 6%");
+    expect(channel("brake").title).toBe("B 12%");
+    expect(channel("throttle").title).toBe("T 78%");
+    expect(channel("throttle").querySelector<HTMLElement>("i")?.style.height).toBe("78%");
   });
 
-  it("honors compact content toggles without changing the frame", () => {
+  it("honors compact content toggles without changing the composition", () => {
     const { container } = render(
       <PedalsAdvancedIracing model={{ ...model, showSpeed: false, showRpm: false, showClutch: false }} settings={{}} renderMode="harness" />,
     );
 
-    expect(container.querySelector(".vi-frame")).toBeTruthy();
     expect(container.querySelector(".vi-speed")).toBeNull();
     expect(container.querySelector(".vi-rpm")).toBeNull();
-    expect(container.querySelectorAll(".vi-channel")).toHaveLength(2);
+    expect(container.querySelectorAll(".vi-bar[data-pedal]")).toHaveLength(2);
+    expect(container.querySelector(".vi-wheel")).toBeTruthy();
   });
 
   it.each(["stale", "missing", "disconnected", "error"] as const)("keeps an accessible status for %s", (status) => {

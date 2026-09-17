@@ -3,10 +3,9 @@ import type { DesignSystemDefinition, WidgetRendererProps } from "../../core/des
 import { PedalsAdvancedIracing } from "./PedalsAdvancedIracing";
 
 /**
- * Sistema de diseño "iRacing" (dev, ISA-1128): la referencia visual clásica
- * de sim racing. Por ahora solo cubre Pedales Avanzados
- * (pedals-telemetry-compact): marcha ámbar, velocidad, tres barras
- * verticales y volante que gira con la entrada real.
+ * Sistema de diseño "iRacing" (dev, ISA-1128): mantiene el contrato de
+ * Pedales Avanzados (pedals-telemetry-compact), con la presentación funcional
+ * de Eficiencia aplicada a ese widget.
  */
 export const vantareIracingManifest: DesignSystemDefinition = {
   id: "vantare-iracing",

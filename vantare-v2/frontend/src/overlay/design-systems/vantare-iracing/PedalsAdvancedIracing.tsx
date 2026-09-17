@@ -7,37 +7,35 @@ const CHANNELS = [
   { id: "throttle", label: "T" },
 ] as const;
 
-/** Rotación del volante: steering normalizado -1..1 → ±450° (un giro GT). */
-const WHEEL_LOCK_DEG = 450;
-
 export function PedalsAdvancedIracing({ model, effects }: WidgetRendererProps<PedalsTelemetryCompactViewModel>) {
   const values = { clutch: model.clutch, brake: model.brake, throttle: model.throttle };
-  const steeringDeg = (model.steering ?? 0) * WHEEL_LOCK_DEG;
   return (
     <section className="vi-pedals-adv" data-widget-system="vantare-iracing" data-widget-renderer="pedals-telemetry-compact" data-status={model.status} data-effects={effects}>
       {model.status !== "ready" && <p className="vi-status" role="status">{model.statusMessage ?? model.status}</p>}
-      <div className="vi-gear">
-        <strong className="vi-gear-letter">{model.gearText}</strong>
-        {model.showSpeed ? <span className="vi-speed"><b>{model.speedText}</b> km/h</span> : null}
-        {model.showRpm ? <span className="vi-rpm">{model.rpmText} rpm</span> : null}
+      <div className="vi-frame">
+        <div className="vi-gear">
+          <strong className="vi-gear-letter">{model.gearText}</strong>
+          <span className="vi-gear-label">GEAR</span>
+        </div>
+        <div className="vi-telemetry">
+          {model.showSpeed ? <span className="vi-speed"><small>VELOCIDAD</small><b>{model.speedText} <em>KPH</em></b></span> : null}
+          {model.showRpm ? <span className="vi-rpm"><b>{model.rpmText}</b> <em>RPM</em></span> : null}
+        </div>
+        <div className="vi-bars" role="group" aria-label="Pedal inputs">
+          {CHANNELS.map(({ id, label }) => {
+            if (id === "clutch" && !model.showClutch) return null;
+            const percentage = Math.round(values[id] * 100);
+            return (
+              <span key={id} className="vi-channel" data-pedal={id} title={`${label} ${percentage}%`}>
+                <small className="vi-channel-label">{label}</small>
+                <span className="vi-bar"><i style={{ height: `${percentage}%` }} /></span>
+                <b className="vi-channel-value">{percentage}%</b>
+              </span>
+            );
+          })}
+        </div>
+        <div className="vi-position"><small>POS</small><strong>—</strong></div>
       </div>
-      <div className="vi-bars" role="group" aria-label="Pedal inputs">
-        {CHANNELS.map(({ id, label }) => {
-          if (id === "clutch" && !model.showClutch) return null;
-          return (
-            <span key={id} className="vi-bar" data-pedal={id} title={`${label} ${Math.round(values[id] * 100)}%`}>
-              <i style={{ height: `${Math.round(values[id] * 100)}%` }} />
-            </span>
-          );
-        })}
-      </div>
-      <svg className="vi-wheel" viewBox="0 0 64 64" aria-hidden="true">
-        <g className="vi-wheel-rotor" style={{ transform: `rotate(${steeringDeg}deg)`, transformOrigin: "32px 32px" }}>
-          <circle cx="32" cy="32" r="25" fill="none" stroke="currentColor" strokeWidth="7" />
-          <path d="M32 32 L32 9 M32 32 L12.5 46 M32 32 L51.5 46" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" />
-          <rect x="29" y="4" width="6" height="9" rx="2" className="vi-wheel-marker" />
-        </g>
-      </svg>
     </section>
   );
 }

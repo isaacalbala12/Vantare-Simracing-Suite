@@ -64,7 +64,7 @@ export function createRelativeViewModelCommitAuthority(): RelativeViewModelCommi
  *
  * The row selection is NOT redone here. Overlay v1 walked outwards from the
  * player over a lap-distance ordering inside relative-row-selection.ts (:9-48)
- * and produced [ahead far→near, player, behind near→far]. That selection is
+ * and produced [ahead near→far, player, behind near→far]. That selection is
  * domain and now lives in the Go builder, which publishes exactly that order
  * over canonical lap distance and attaches the canonical temporal gap.
  *
@@ -167,7 +167,7 @@ export function prepareRelativeViewModelV2(
   const candidateWithPlayer = anchor < 0
     ? []
     : [
-        ...scoped.slice(Math.max(0, anchor - content.rangeAhead), anchor),
+        ...scoped.slice(0, anchor).slice(0, content.rangeAhead),
         scoped[anchor],
         ...scoped.slice(anchor + 1, anchor + 1 + content.rangeBehind),
       ];

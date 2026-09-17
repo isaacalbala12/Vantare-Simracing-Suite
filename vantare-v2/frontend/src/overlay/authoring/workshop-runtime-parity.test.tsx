@@ -160,17 +160,18 @@ describe("buildWorkshopFrameV2", () => {
   it("keeps observable rows and classes for Functional Relative default", () => {
     const frame = buildWorkshopFrameV2(scenario({ widget: "relative", system: "vantare-functional", variant: "default" }))
       .overlayV2Frame!;
-    // Ventana por defecto de producto: 3 ahead más cercanos (pos 4,3,2),
+    // Ventana por defecto de producto: 3 ahead más cercanos (pos 2,3,4),
     // player (pos 1), 3 behind más cercanos (pos 20,19,18).
     const canonical = buildWorkshopFrameV2(scenario({ widget: "relative", system: "vantare-functional", variant: "default" })).overlayV2Frame!;
     const at = (position: number): string =>
       canonical.relative.find((row) => row.position === position)!.id;
-    const expected = [4, 3, 2, 1, 20, 19, 18].map(at);
+    const expected = [2, 3, 4, 1, 20, 19, 18].map(at);
     expect(frame.relative.map((row) => row.id)).toEqual(expected);
+    expect(frame.relative.map((row) => row.position)).toEqual([2, 3, 4, 1, 20, 19, 18]);
     expect(frame.relativeSettled.map((row) => row.id)).toEqual(expected);
     for (const section of [frame.relative, frame.relativeSettled] as const) {
       expect(section).toHaveLength(7);
-      expect(section.map((row) => row.gap.v)).toEqual([4.2, 1.8, 0.4, 0, -0.3, -2.6, -5.1]);
+      expect(section.map((row) => row.gap.v)).toEqual([0.4, 1.8, 4.2, 0, -0.3, -2.6, -5.1]);
       expect(new Set(section.map((row) => row.id)).size).toBe(7);
       const players = section.filter((row) => row.side === "player");
       expect(players).toHaveLength(1);
@@ -189,11 +190,12 @@ describe("buildWorkshopFrameV2", () => {
     const frame = buildWorkshopFrameV2(
       scenario({ widget: "relative", system: "vantare-functional", variant: "default", rangeAhead: 5, rangeBehind: 2 }),
     ).overlayV2Frame!;
-    const expected = [6, 5, 4, 3, 2, 1, 20, 19].map(at);
+    const expected = [2, 3, 4, 5, 6, 1, 20, 19].map(at);
     expect(frame.relative.map((row) => row.id)).toEqual(expected);
+    expect(frame.relative.map((row) => row.position)).toEqual([2, 3, 4, 5, 6, 1, 20, 19]);
     expect(frame.relativeSettled.map((row) => row.id)).toEqual(expected);
     // Gaps deterministas más allá de la semilla histórica (cuarto ahead).
-    expect(frame.relative[0]!.gap.v).toBe(7.2);
+    expect(frame.relative[0]!.gap.v).toBe(0.4);
     expect(frame.relative.filter((row) => row.side === "ahead")).toHaveLength(5);
     expect(frame.relative.filter((row) => row.side === "behind")).toHaveLength(2);
   });

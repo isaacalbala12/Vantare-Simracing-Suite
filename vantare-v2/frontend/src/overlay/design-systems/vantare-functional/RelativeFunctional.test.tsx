@@ -45,6 +45,23 @@ describe("Functional Relative", () => {
     expect(container.querySelector('td[data-metric="position"]')).toBeNull();
   });
 
+  it("associates the class marker with the position instead of the driver name", () => {
+    const withClass: RelativeViewModel = {
+      ...model,
+      columns: [
+        model.columns[0]!,
+        { id: "class", metricId: "class", enabled: true, widthPreset: "auto", style: { align: "center" } },
+        model.columns[2]!,
+      ],
+    };
+    const { container } = render(<RelativeFunctional model={withClass} settings={{}} renderMode="harness" />);
+
+    expect(container.querySelector('td[data-metric="position"] .vf-position-identity--with-class')).not.toBeNull();
+    expect(container.querySelector('td[data-metric="position"] .vf-position-identity .vf-class-tick')).not.toBeNull();
+    expect(container.querySelector('td[data-metric="class"] .vf-class-tick')).toBeNull();
+    expect(container.querySelector('td[data-metric="driverName"] .vf-class-tick')).toBeNull();
+  });
+
   it.each(["disconnected", "missing", "error"] as const)("labels %s and suppresses retained rows", (status) => {
     const { container, getByRole } = render(<RelativeFunctional model={{ ...model, status }} settings={{}} renderMode="harness" />);
     expect(getByRole("status").textContent).toBeTruthy();

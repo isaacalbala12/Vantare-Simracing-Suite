@@ -617,7 +617,7 @@ function sideForGap(gap: number, fallback: string): string {
   return fallback;
 }
 
-// Ventana dev sobre el orden canónico: N ahead far→near, player, M behind
+// Ventana dev sobre el orden canónico: N ahead near→far, player, M behind
 // near→far, con N/M configurables (por defecto 3/3, el default de producto).
 // Una sola función para relative y relativeSettled.
 function relativeDevWindow(
@@ -630,17 +630,21 @@ function relativeDevWindow(
   const gapValue = (row: OverlayRelativeRowV2): number => row.gap.v ?? 0;
   const ahead = rows
     .filter((row) => row.side === "ahead")
-    .sort((left, right) => gapValue(right) - gapValue(left));
+    .sort((left, right) => gapValue(left) - gapValue(right));
   const behind = rows.filter((row) => row.side === "behind");
   const player = rows.find((row) => row.id === playerId);
   if (!player) {
     throw new Error("authoring-v2-workshop-frame: relative sin fila del jugador");
   }
-  const aheadRows = ahead.slice(-aheadCount);
+  const aheadRows = ahead.slice(0, aheadCount);
   const window = [...aheadRows, player, ...behind.slice(0, behindCount)];
   const playerIndex = aheadRows.length;
   return window.map((row, index) => {
-    const gap = relativeDevGap(playerIndex - index);
+    const gap = row.id === playerId
+      ? 0
+      : row.side === "ahead"
+        ? relativeDevGap(index + 1)
+        : relativeDevGap(playerIndex - index);
     return {
       ...row,
       gap: qualityValue(gap, quality),
@@ -736,11 +740,18 @@ function applyScene(
       relative = patchRelativeSection(frame.relative, state.cars, quality, resolved);
       settled = patchRelativeSection(frame.relativeSettled, state.cars, quality, resolved);
       // La VM confía en el orden canónico del frame: tras un cruce hay que
-      // reordenar como haría Go — gap a jugador descendente (delante arriba,
-      // jugador en medio, detrás abajo), si no el cambio de lado no se ve.
-      const byGapDesc = (a: OverlayRelativeRowV2, b: OverlayRelativeRowV2) => (b.gap.v ?? 0) - (a.gap.v ?? 0);
-      relative = [...relative].sort(byGapDesc);
-      settled = [...settled].sort(byGapDesc);
+      // reordenar como haría Go — delante cerca→lejos, jugador en medio,
+      // detrás cerca→lejos — si no el cambio de lado no se ve.
+      const relativeOrder = (left: OverlayRelativeRowV2, right: OverlayRelativeRowV2) => {
+        const sideRank = (side: string) => side === "ahead" ? 0 : side === "player" ? 1 : 2;
+        const rankDelta = sideRank(left.side) - sideRank(right.side);
+        if (rankDelta !== 0) return rankDelta;
+        const leftGap = left.gap.v ?? 0;
+        const rightGap = right.gap.v ?? 0;
+        return left.side === "behind" ? rightGap - leftGap : leftGap - rightGap;
+      };
+      relative = [...relative].sort(relativeOrder);
+      settled = [...settled].sort(relativeOrder);
     } else {
       standings = standings.flatMap((row) => {
         const key = (row.driver && state.cars![row.driver] ? row.driver : undefined) ?? seatNameAt(STANDINGS_DEV_SEAT_BY_DRIVER, row.position);

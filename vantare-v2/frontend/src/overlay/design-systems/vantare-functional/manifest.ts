@@ -11,7 +11,7 @@ import { FuelStrategyFunctional } from "./FuelStrategyFunctional";
 import { InputTelemetryFunctional } from "./InputTelemetryFunctional";
 import { MulticlassRelativeFunctional } from "./MulticlassRelativeFunctional";
 import { PedalsFunctional } from "./PedalsFunctional";
-import { PedalsTelemetryFunctional } from "./PedalsTelemetryFunctional";
+import { PedalsAdvancedEfficiency } from "./PedalsAdvancedEfficiency";
 import { RacingFlagsFunctional } from "./RacingFlagsFunctional";
 import { RaceScheduleFunctional } from "./RaceScheduleFunctional";
 import { RelativeFunctional } from "./RelativeFunctional";
@@ -95,7 +95,7 @@ export const vantareFunctionalManifest: DesignSystemDefinition = {
         return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
       },
       inspector: { appearance: [] },
-      Renderer: PedalsTelemetryFunctional as ComponentType<WidgetRendererProps>,
+      Renderer: PedalsAdvancedEfficiency as ComponentType<WidgetRendererProps>,
     },
     {
       widgetType: "track-weather",

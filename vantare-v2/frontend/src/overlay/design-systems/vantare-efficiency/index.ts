@@ -16,7 +16,10 @@ export { HeadToHeadFunctional as HeadToHeadEfficiency } from "../vantare-functio
 export { InputTelemetryFunctional as InputTelemetryEfficiency } from "../vantare-functional/InputTelemetryFunctional";
 export { MulticlassRelativeFunctional as MulticlassRelativeEfficiency } from "../vantare-functional/MulticlassRelativeFunctional";
 export { PedalsFunctional as PedalsEfficiency } from "../vantare-functional/PedalsFunctional";
-export { PedalsTelemetryFunctional as PedalsTelemetryEfficiency } from "../vantare-functional/PedalsTelemetryFunctional";
+export {
+  PedalsAdvancedEfficiency,
+  PedalsAdvancedEfficiency as PedalsTelemetryEfficiency,
+} from "../vantare-functional/PedalsAdvancedEfficiency";
 export { RaceScheduleFunctional as RaceScheduleEfficiency } from "../vantare-functional/RaceScheduleFunctional";
 export { RacingFlagsFunctional as RacingFlagsEfficiency } from "../vantare-functional/RacingFlagsFunctional";
 export { RelativeFunctional as RelativeEfficiency } from "../vantare-functional/RelativeFunctional";

@@ -3,7 +3,7 @@ import type { WidgetColumnV3, WidgetColumnWidthPreset } from "../shared/widget-c
 export const FUNCTIONAL_IDENTITY_METRICS: ReadonlySet<string> = new Set(["position", "driverNumber", "driverName", "vehicleClass"]);
 
 const WIDTHS: Readonly<Record<string, number>> = {
-  position: 34, driverNumber: 36, gap: 84, interval: 84, lastLap: 84,
+  position: 34, driverNumber: 36, gap: 86, interval: 84, lastLap: 84,
   bestLap: 84, pit: 36, currentLap: 52, vehicleClass: 60, tireCompound: 48,
 };
 

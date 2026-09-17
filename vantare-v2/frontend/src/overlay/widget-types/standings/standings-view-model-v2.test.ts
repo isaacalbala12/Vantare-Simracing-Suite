@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import type { OverlayFrameV2 } from "../../../generated/telemetry";
 import { standingsDefinition } from "./standings-definition";
 import { buildStandingsViewModelV2, standingsDisplayedValues } from "./standings-view-model-v2";
+import { formatStandingsLapDifference, formatStandingsSecondsDifference } from "./standings-formatting";
 
 const content = standingsDefinition.parseContent({ classScope: "all-classes", rowCount: 20 });
 
@@ -76,9 +77,9 @@ describe("buildStandingsViewModelV2 session columns", () => {
   });
 
   it.each([
-    { phase: "practice" as const, gap: "+2.000s" },
-    { phase: "qualifying" as const, gap: "+2.000s" },
-    { phase: "race" as const, gap: "+145.600s" },
+    { phase: "practice" as const, gap: "+2.00s" },
+    { phase: "qualifying" as const, gap: "+2.00s" },
+    { phase: "race" as const, gap: "+145.60s" },
   ])("maps coherent best-lap and gap fields in $phase", ({ phase, gap }) => {
     const model = buildStandingsViewModelV2(frameForPhase(phase), { state: "live" }, content);
 
@@ -89,6 +90,31 @@ describe("buildStandingsViewModelV2 session columns", () => {
       pitText: "PIT",
     });
     expect(model.rows[1]?.gapText).not.toBe(model.rows[1]?.pitText);
+  });
+
+  it("keeps one- and two-digit seconds readable and spells lap gaps", () => {
+    const frame = frameForPhase("race");
+    const [leader, oneDigit, twoDigits] = frame.standings;
+    const model = buildStandingsViewModelV2({
+      ...frame,
+      standings: [
+        { ...leader!, id: "leader", position: 1, gap: { q: "fresh", v: 0 }, gapLaps: undefined },
+        { ...oneDigit!, id: "one-digit", position: 2, gap: { q: "fresh", v: 0.8 }, gapLaps: undefined },
+        { ...twoDigits!, id: "two-digits", position: 3, gap: { q: "fresh", v: 11.3 }, gapLaps: undefined },
+        { ...twoDigits!, id: "one-lap", position: 4, gap: { q: "fresh", v: 99 }, gapLaps: 1 },
+        { ...twoDigits!, id: "two-laps", position: 5, gap: { q: "fresh", v: 99 }, gapLaps: 2 },
+      ],
+    }, { state: "live" }, content);
+
+    expect(model.rows.map((row) => row.gapText)).toEqual([
+      "Leader", "+0.80s", "+11.30s", "+1 vuelta", "+2 vueltas",
+    ]);
+  });
+
+  it("preserves the sign for timing and lap differences", () => {
+    expect(formatStandingsSecondsDifference(-0.8)).toBe("-0.80s");
+    expect(formatStandingsLapDifference(-1)).toBe("-1 vuelta");
+    expect(formatStandingsLapDifference(-2)).toBe("-2 vueltas");
   });
 
   it.each([
@@ -144,6 +170,6 @@ describe("buildStandingsViewModelV2 session columns", () => {
     );
 
     expect(model.rows).toHaveLength(2);
-    expect(model.rows.map((row) => row.gapText)).toEqual(["+1.000s", "+3.000s"]);
+    expect(model.rows.map((row) => row.gapText)).toEqual(["+1.00s", "+3.00s"]);
   });
 });

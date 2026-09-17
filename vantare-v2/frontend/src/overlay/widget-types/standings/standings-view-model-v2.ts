@@ -6,7 +6,11 @@ import type {
 } from "../../../generated/telemetry";
 import type { StandingsContent } from "./standings-content";
 import { getEnabledStandingsColumns } from "./standings-content";
-import { formatRemainingTime } from "./standings-formatting";
+import {
+  formatRemainingTime,
+  formatStandingsLapDifference,
+  formatStandingsSecondsDifference,
+} from "./standings-formatting";
 import { formatDriverName } from "../shared/driver-name";
 import type { WidgetColumnV3 } from "../shared/widget-column";
 import {
@@ -203,14 +207,14 @@ function formatBestLapGap(row: OverlayStandingRowV2, sessionBestLap: number | un
   const lap = displayedNumber(row.bestLap);
   if (lap === undefined || lap <= 0 || sessionBestLap === undefined) return PLACEHOLDER;
   const gap = lap - sessionBestLap;
-  return gap <= 0.0005 ? "Leader" : `+${gap.toFixed(3)}s`;
+  return gap <= 0.0005 ? "Leader" : formatStandingsSecondsDifference(gap);
 }
 
 function formatGap(row: OverlayStandingRowV2, index: number): string {
   if (index === 0) return "Leader";
-  if (row.gapLaps !== undefined && row.gapLaps > 0) return `+${row.gapLaps}L`;
+  if (row.gapLaps !== undefined && row.gapLaps !== 0) return formatStandingsLapDifference(row.gapLaps);
   const gap = displayedNumber(row.gap);
-  return gap !== undefined && gap > 0 ? `+${gap.toFixed(3)}s` : PLACEHOLDER;
+  return gap !== undefined && gap !== 0 ? formatStandingsSecondsDifference(gap) : PLACEHOLDER;
 }
 
 function formatLapTime(seconds: number | undefined): string {

@@ -587,6 +587,7 @@
 .vf-standings .vf-table td[data-metric="position"] { padding: 0 4px; font-size: 14px; font-weight: 600; color: #b9bbc1; letter-spacing: -.02em; }
 .vf-standings .vf-table td[data-metric="driverNumber"] { color: #a5a5ab; font-size: 11px; font-weight: 600; }
 .vf-standings .vf-table td[data-metric="driverName"] { padding-left: 10px; padding-right: 10px; }
+.vf-standings .vf-table td[data-metric="gap"] { overflow: visible; text-overflow: clip; }
 .vf-driver { display: flex; align-items: baseline; min-width: 0; gap: 7px; }
 .vf-driver-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 700; letter-spacing: -.025em; text-transform: uppercase; }
 .vf-driver small { margin-left: auto; flex-shrink: 0; color: #c6c6cb; font-size: 8px; letter-spacing: .06em; font-weight: 600; }

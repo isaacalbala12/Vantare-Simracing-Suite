@@ -31,7 +31,7 @@
 .vf-standings::after, .vf-relative::after, .vf-delta::after, .vf-pedals::after, .vf-pedals-telemetry::after, .vf-track-weather::after, .vf-track-map::after, .vf-fuel-strategy::after, .vf-car-damage-numbers::after, .vf-input-telemetry::after, .vf-racing-flags::after, .vf-race-schedule::after, .vf-broadcast-tower::after, .vf-multiclass-relative::after, .vf-car-damage-visual::after, .vf-delta-trace::after, .vf-head-to-head::after, .vf-engineer-radio::after { content: ""; position: absolute; inset: 0; border: 1px solid rgb(255 255 255 / 12%); border-top-color: rgb(255 255 255 / 24%); border-radius: inherit; pointer-events: none; }
 
 .vf-standings .vf-table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; margin: 0; }
-.vf-standings .vf-table :is(th, td) { position: relative; border: 0; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vf-standings .vf-table :is(th, td) { position: relative; border: 0; padding: 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vf-standings .vf-table thead th { height: 50px; color: #bdbfc4; font-size: 8px; font-weight: 600; letter-spacing: .14em; text-align: right; vertical-align: middle; border-bottom: 1px solid var(--vf-line); background: linear-gradient(180deg, rgb(255 255 255 / 2%), transparent); }
 .vf-standings .vf-table th[data-metric="gap"] { text-align: center; }
 .vf-standings .vf-table th.vf-identity-head { padding: 0; }
@@ -57,7 +57,7 @@
 .vf-standings:is([data-session="practice"], [data-session="qualifying"]) .vf-table th[data-metric="bestLap"] { color: var(--vf-ink); }
 .vf-standings .vf-table td[data-metric="position"] { padding: 0 4px; font-size: 14px; font-weight: 600; color: #b9bbc1; letter-spacing: -.02em; }
 .vf-standings .vf-table td[data-metric="driverNumber"] { color: #a5a5ab; font-size: 11px; font-weight: 600; }
-.vf-standings .vf-table td[data-metric="driverName"] { padding-left: 10px; padding-right: 10px; }
+.vf-standings .vf-table td[data-metric="driverName"] { padding-left: 8px; padding-right: 8px; }
 .vf-driver { display: flex; align-items: baseline; min-width: 0; gap: 7px; }
 .vf-driver-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 700; letter-spacing: -.025em; text-transform: uppercase; }
 .vf-standings .vf-table tr[data-player="true"] td { background-color: var(--vf-player); background-image: linear-gradient(180deg, rgb(255 255 255 / 4%), transparent 60%); box-shadow: inset 0 1px rgb(255 255 255 / 13%), inset 0 -1px rgb(255 255 255 / 8%); }
@@ -316,21 +316,97 @@
 .vf-input-telemetry-trace { display: flex; align-items: flex-end; gap: 1px; height: 28px; margin-top: 8px; padding-top: 6px; border-top: 1px solid var(--vf-line); }
 .vf-input-telemetry-sample { flex: 1; min-width: 2px; background: rgb(111 174 125 / 55%); border-radius: 1px 1px 0 0; }
 
-/* Racing flags: aviso compacto con bandera global y sectores. */
-.vf-racing-flags { display: flex; flex-direction: column; align-items: stretch; justify-content: center; min-height: 100%; padding: 10px 12px; }
+/* Racing flags: placa viva de Eficiencia. El color ocupa toda la superficie
+   para que la señal sobreviva a tamaños pequeños; la amarilla comunica
+   urgencia con un borde que respira, sin añadir un icono flotante. */
+[data-widget-system="vantare-functional"].vf-racing-flags {
+  --vf-racing-flags-rgb: 177 180 188;
+  --vf-racing-flags-start: #b7bac2;
+  --vf-racing-flags-mid: #979aa4;
+  --vf-racing-flags-end: #737782;
+  --vf-racing-flags-text-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  min-width: 0;
+  padding: clamp(8px, 4%, 18px) clamp(12px, 6%, 24px);
+  container-type: inline-size;
+  border: 1px solid rgb(var(--vf-racing-flags-rgb) / .62);
+  background: linear-gradient(108deg, var(--vf-racing-flags-start) 0%, var(--vf-racing-flags-mid) 54%, var(--vf-racing-flags-end) 100%);
+  box-shadow: 0 8px 22px rgb(var(--vf-racing-flags-rgb) / .2);
+}
+[data-widget-system="vantare-functional"].vf-racing-flags::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(110deg, rgb(255 255 255 / 8%), transparent 42%);
+}
 .vf-racing-flags--hidden { display: none; }
-.vf-racing-flags-banner { display: flex; flex-direction: column; gap: 3px; text-align: center; }
-.vf-racing-flags-banner small { font: 600 8px/1 Inter, Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--vf-muted); }
-.vf-racing-flags-banner strong { font: 700 18px/1 Inter, Arial, sans-serif; letter-spacing: -.02em; color: var(--vf-ink); }
-.vf-racing-flags[data-flag="yellow"] .vf-racing-flags-banner strong { color: #e2c568; }
-.vf-racing-flags[data-flag="green"] .vf-racing-flags-banner strong { color: #7fb686; }
-.vf-racing-flags[data-flag="red"] .vf-racing-flags-banner strong { color: #ff2a3b; }
-.vf-racing-flags[data-flag="blue"] .vf-racing-flags-banner strong { color: #5b8bd6; }
+.vf-racing-flags[data-flag="green"] {
+  --vf-racing-flags-rgb: 49 215 120;
+  --vf-racing-flags-start: #62e38e;
+  --vf-racing-flags-mid: #3dcc75;
+  --vf-racing-flags-end: #219b5a;
+}
+.vf-racing-flags[data-flag="yellow"] {
+  --vf-racing-flags-rgb: 242 201 76;
+  --vf-racing-flags-start: #f5d66a;
+  --vf-racing-flags-mid: #edc34e;
+  --vf-racing-flags-end: #d29b2b;
+  animation: vf-racing-flags-yellow-border 920ms ease-in-out infinite;
+}
+.vf-racing-flags[data-flag="red"] {
+  --vf-racing-flags-rgb: 255 64 80;
+  --vf-racing-flags-start: #ff6b72;
+  --vf-racing-flags-mid: #f04452;
+  --vf-racing-flags-end: #c92d3a;
+}
+.vf-racing-flags[data-flag="blue"] {
+  --vf-racing-flags-rgb: 91 139 214;
+  --vf-racing-flags-start: #81a7e8;
+  --vf-racing-flags-mid: #5c88d3;
+  --vf-racing-flags-end: #3f5ea8;
+}
+.vf-racing-flags[data-flag="white"] {
+  --vf-racing-flags-rgb: 245 245 245;
+  --vf-racing-flags-start: #f7f7f9;
+  --vf-racing-flags-mid: #e7e7ed;
+  --vf-racing-flags-end: #c6c8d0;
+}
+.vf-racing-flags[data-flag="black"] {
+  --vf-racing-flags-rgb: 110 112 118;
+  --vf-racing-flags-start: #686a72;
+  --vf-racing-flags-mid: #3f4148;
+  --vf-racing-flags-end: #24262b;
+}
+.vf-racing-flags[data-flag="checkered"] {
+  --vf-racing-flags-rgb: 209 209 214;
+  --vf-racing-flags-start: #f2f2f5;
+  --vf-racing-flags-mid: #d6d6db;
+  --vf-racing-flags-end: #abadb5;
+}
+.vf-racing-flags-banner { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: flex-start; gap: clamp(5px, 2cqi, 8px); text-align: left; }
+.vf-racing-flags-banner small { color: var(--vf-racing-flags-text-color); opacity: .82; font: 800 clamp(7px, 2.5cqi, 10px)/1 Inter, Arial, sans-serif; letter-spacing: .18em; text-transform: uppercase; text-shadow: 0 1px 8px rgb(0 0 0 / 18%); }
+.vf-racing-flags-banner strong { color: var(--vf-racing-flags-text-color); font: 850 clamp(16px, 8cqi, 30px)/.9 Inter, Arial, sans-serif; letter-spacing: -.045em; text-shadow: 0 1px 10px rgb(0 0 0 / 30%); }
 .vf-racing-flags-sectors { display: flex; justify-content: center; gap: 4px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--vf-line); }
-.vf-racing-flags-sector { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 3px; background: rgb(245 245 255 / 8%); font: 700 9px/1 Inter, Arial, sans-serif; color: var(--vf-ink); }
-.vf-racing-flags-sector[data-flag="yellow"] { background: rgb(226 197 104 / 25%); color: #e2c568; }
-.vf-racing-flags-sector[data-flag="red"] { background: rgb(255 42 59 / 22%); color: #ff2a3b; }
-.vf-racing-flags-sector[data-flag="green"] { background: rgb(127 182 134 / 22%); color: #7fb686; }
+.vf-racing-flags-sector { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 3px; background: rgb(0 0 0 / 14%); font: 700 9px/1 Inter, Arial, sans-serif; color: var(--vf-racing-flags-text-color); }
+.vf-racing-flags-sector[data-flag="yellow"] { background: rgb(0 0 0 / 18%); }
+.vf-racing-flags-sector[data-flag="red"] { background: rgb(0 0 0 / 18%); }
+.vf-racing-flags-sector[data-flag="green"] { background: rgb(0 0 0 / 18%); }
+.vf-racing-flags[data-effects="flat"] { animation: none; box-shadow: none; }
+.vf-racing-flags[data-motion="reduced"], .vf-racing-flags[data-motion="minimal"] { animation: none; }
+@media (prefers-reduced-motion: reduce) { .vf-racing-flags[data-flag="yellow"] { animation: none; } }
+@keyframes vf-racing-flags-yellow-border {
+  0%, 100% { border-color: rgb(242 201 76 / .48); box-shadow: 0 0 0 1px rgb(242 201 76 / .08), 0 5px 17px rgb(242 201 76 / .15); }
+  48% { border-color: rgb(255 225 100); box-shadow: 0 0 0 2px rgb(242 201 76 / .28), 0 0 18px 3px rgb(242 201 76 / .55), 0 8px 28px rgb(242 201 76 / .25); }
+}
 
 /* Race schedule: lista compacta de eventos. */
 .vf-race-schedule { display: flex; flex-direction: column; justify-content: flex-start; min-height: 100%; padding: 10px 12px; }
@@ -487,7 +563,7 @@
 .vf-standings::after { content: ""; position: absolute; inset: 0; border: 1px solid rgb(255 255 255 / 12%); border-top-color: rgb(255 255 255 / 24%); border-radius: inherit; pointer-events: none; }
 .vf-standings[data-session-header="false"]::before { display: none; }
 .vf-standings .vf-table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; margin: 0; }
-.vf-standings .vf-table :is(th, td) { position: relative; border: 0; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vf-standings .vf-table :is(th, td) { position: relative; border: 0; padding: 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vf-standings .vf-table thead th { height: 50px; color: #bdbfc4; font-size: 8px; font-weight: 600; letter-spacing: .14em; text-align: right; vertical-align: middle; border-bottom: 1px solid var(--vf-line); background: linear-gradient(180deg, rgb(255 255 255 / 2%), transparent); }
 .vf-standings .vf-table th.vf-identity-head { padding: 0; }
 .vf-standings .vf-table th.vf-source-notice { color: #e2c568; text-align: left; letter-spacing: 0; }
@@ -541,7 +617,7 @@
 .vf-standings:is([data-session="practice"], [data-session="qualifying"]) .vf-table th[data-metric="bestLap"] { color: var(--vf-ink); }
 .vf-standings .vf-table td[data-metric="position"] { padding: 0 4px; font-size: 14px; font-weight: 600; color: #b9bbc1; letter-spacing: -.02em; }
 .vf-standings .vf-table td[data-metric="driverNumber"] { color: #a5a5ab; font-size: 11px; font-weight: 600; }
-.vf-standings .vf-table td[data-metric="driverName"] { padding-left: 10px; padding-right: 10px; }
+.vf-standings .vf-table td[data-metric="driverName"] { padding-left: 8px; padding-right: 8px; }
 .vf-driver { display: flex; align-items: baseline; min-width: 0; gap: 7px; }
 .vf-driver-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 700; letter-spacing: -.025em; text-transform: uppercase; }
 .vf-driver small { margin-left: auto; flex-shrink: 0; color: #c6c6cb; font-size: 8px; letter-spacing: .06em; font-weight: 600; }

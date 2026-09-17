@@ -133,4 +133,20 @@ describe("Overlay Workshop query", () => {
     expect(parseOverlayWorkshopQuery("?widget=standings&rows=31")).toHaveProperty("error");
     expect(parseOverlayWorkshopQuery("?widget=standings&rows=2.5")).toHaveProperty("error");
   });
+
+  it("round-trips Functional Racing Flags probes and text color", () => {
+    const parsed = parseOverlayWorkshopQuery("?widget=racing-flags&system=vantare-functional&flag=yellow&textColor=%23ffcc00");
+    if ("error" in parsed) throw new Error(parsed.error);
+    expect(parsed.flag).toBe("yellow");
+    expect(parsed.textColor).toBe("#ffcc00");
+    expect(serializeOverlayWorkshopQuery(parsed)).toContain("flag=yellow");
+    expect(serializeOverlayWorkshopQuery(parsed)).toContain("textColor=%23ffcc00");
+    expect(parseOverlayWorkshopQuery("?widget=racing-flags&textColor=yellow")).toEqual({
+      error: "invalid textColor parameter: yellow",
+    });
+
+    const outside = parseOverlayWorkshopQuery("?widget=standings&textColor=%23ffcc00");
+    if ("error" in outside) throw new Error(outside.error);
+    expect(outside).not.toHaveProperty("textColor");
+  });
 });

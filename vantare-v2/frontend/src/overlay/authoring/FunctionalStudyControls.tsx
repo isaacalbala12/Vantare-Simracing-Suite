@@ -8,6 +8,12 @@ import { serializeOverlayWorkshopQuery, type OverlayWorkshopQuery } from "./over
 import { FUNCTIONAL_STUDY_DEFAULT_MODULES, FUNCTIONAL_STUDY_MODULES, FUNCTIONAL_STUDY_SLOTS, FUNCTIONAL_STUDY_STYLES } from "./functional-study-options";
 import { RELATIVE_RANGE_AHEAD, RELATIVE_RANGE_BEHIND, RELATIVE_RANGE_LIMIT } from "../widget-types/relative/relative-content";
 import { STANDINGS_ROW_COUNT_OPTIONS } from "../widget-types/standings/standings-content";
+import {
+  RACING_FLAGS_DEFAULT_TEXT_COLOR,
+  RACING_FLAGS_KNOWN_FLAGS,
+  RACING_FLAGS_WHITE_FLAG_TEXT_COLOR,
+  type RacingFlagsKnownFlag,
+} from "../design-systems/vantare-functional/racing-flags-settings";
 
 const SYSTEM_LABELS: Record<string, string> = {
   "vantare-functional": "Eficiencia",
@@ -27,6 +33,7 @@ const WIDGET_LABELS: Partial<Record<WidgetType, string>> = {
   "fuel-strategy": "Fuel Strategy",
   "pedals-telemetry": "Pedals Telemetry",
   "pedals-telemetry-compact": "Pedales avanzados",
+  "racing-flags": "Racing Flags",
 };
 const widgetLabel = (widget: WidgetType) => WIDGET_LABELS[widget] ?? widget;
 
@@ -47,6 +54,7 @@ const BACKGROUND_OPTIONS = [["context", "Mixto"], ["solid", "Oscuro"], ["transpa
 const SURFACE_OPTIONS = [["studio", "Studio"], ["desktop", "Desktop"], ["obs", "OBS"], ["harness", "Harness"]] as const;
 const SCALE_OPTIONS = [["0.5", "0.5×"], ["1", "1×"], ["1.5", "1.5×"], ["2", "2×"]] as const;
 const RELATIVE_RANGE_OPTIONS = Array.from({ length: RELATIVE_RANGE_LIMIT + 1 }, (_, index) => [String(index), String(index)] as const);
+const FLAG_OPTIONS = RACING_FLAGS_KNOWN_FLAGS.map((flag) => [flag, flag === "yellow" ? "Amarilla" : flag === "green" ? "Verde" : flag === "blue" ? "Azul" : flag === "red" ? "Roja" : flag === "white" ? "Blanca" : flag === "black" ? "Negra" : "A cuadros"] as const);
 
 // Resolución del lienzo (portado de la vista genérica retirada en ISA-1221):
 // el preset solo declara la intención; "Aplicar tamaño declarado" fija
@@ -84,6 +92,8 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
   const gaps = projectionGapsFor(query.widget);
   const isFunctional = query.system === "vantare-functional";
   const isStandings = query.widget === "standings";
+  const isRacingFlags = query.widget === "racing-flags";
+  const isFlagWidget = isRacingFlags;
   // Las fixtures de desarrollo siguen siendo útiles para pruebas internas,
   // pero el Workshop público tiene una única variante canónica.
   const displayedVariant = "default";
@@ -107,6 +117,8 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
       ...(widget === "standings" ? {} : { rows: undefined }),
       // El formato de nombre solo existe donde hay columna Piloto.
       ...(widget === "standings" || widget === "relative" ? {} : { nameFormat: undefined }),
+      ...(widget === "racing-flags" ? {} : { textColor: undefined }),
+      ...(widget === "racing-flags" ? {} : { flag: undefined }),
       ...landing,
     });
   };
@@ -116,10 +128,19 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
     designId: undefined,
     studyStyle: undefined,
     variant: "default",
+    textColor: undefined,
   });
   const chooseDesign = (value: string) => update({ ...query, designId: value || undefined });
   const chooseScene = (value: string) => update({ ...query, sceneId: value || undefined, sceneFrame: value ? 0 : undefined });
   const chooseScale = (value: string) => update({ ...query, scale: Number(value) });
+  const chooseFlag = (value: string) => update({
+    ...query,
+    flag: value as RacingFlagsKnownFlag,
+    ...(value === "white" && query.textColor === RACING_FLAGS_DEFAULT_TEXT_COLOR ? { textColor: undefined } : {}),
+  });
+  const defaultRacingFlagsTextColor = query.flag === "white"
+    ? RACING_FLAGS_WHITE_FLAG_TEXT_COLOR
+    : RACING_FLAGS_DEFAULT_TEXT_COLOR;
 
   // Borradores de texto para ancho/alto: la query solo se reescribe cuando las
   // dos dimensiones son enteros dentro de rango — una URL a medias sería
@@ -255,6 +276,9 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
     </fieldset>
 
     <fieldset><legend>Datos</legend>
+      {isFlagWidget && <Select label="Bandera" value={query.flag ?? "green"} onChange={chooseFlag}>
+        {FLAG_OPTIONS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+      </Select>}
       <Select label="Estado de la fuente" value={query.state} onChange={(value) => update({ ...query, state: value as OverlayWorkshopQuery["state"] })}>
         {STATE_OPTIONS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
       </Select>
@@ -264,6 +288,7 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
     </fieldset>
 
     <fieldset><legend>Presentación</legend>
+      {isFunctional && isRacingFlags && <label className="functional-study-select"><span>Color de la letra</span><input aria-label="Color de la letra" type="color" value={query.textColor ?? defaultRacingFlagsTextColor} onChange={(event) => update({ ...query, textColor: event.target.value })} /></label>}
       <p className="functional-study-note">Fondo</p>
       <Segments options={BACKGROUND_OPTIONS} value={query.background} onChange={(value) => update({ ...query, background: value as OverlayWorkshopQuery["background"] })} />
       <Select label="Superficie" value={query.surface} onChange={(value) => update({ ...query, surface: value as OverlayWorkshopQuery["surface"] })}>

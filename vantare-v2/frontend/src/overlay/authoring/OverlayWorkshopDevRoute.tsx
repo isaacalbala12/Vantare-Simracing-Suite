@@ -41,6 +41,7 @@ function createRouteScenarioWidget(query: OverlayWorkshopQuery): WidgetInstanceV
     behind: query.behind,
     nameFormat: query.nameFormat,
     rows: query.rows,
+    textColor: query.textColor,
   });
   // Laboratorio tower de Redline (ISA-1071, dev): las elecciones viajan por el
   // contrato visual como appearanceOverrides, igual que en producción, y solo
@@ -262,6 +263,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
         widget: parsed.widget,
         system: parsed.system,
         variant: parsed.variant,
+        ...(parsed.flag !== undefined ? { flag: parsed.flag } : {}),
         ...(head && scene ? { sceneId: scene.id, sceneState: head.frame } : {}),
         ...(parsed.variant === "standings-replay" ? { replayFrame } : {}),
         ...(relativeRange ? { rangeAhead: relativeRange.rangeAhead, rangeBehind: relativeRange.rangeBehind } : {}),

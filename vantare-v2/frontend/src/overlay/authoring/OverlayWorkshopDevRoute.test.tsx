@@ -54,6 +54,45 @@ describe("OverlayWorkshopDevRoute", () => {
     expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.height).toBe("240px");
   });
 
+  it("exposes the Functional Racing Flags probe, text color, and live dimensions in Harness", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=racing-flags&system=vantare-functional&state=ready&surface=harness&variant=default&flag=yellow&textColor=%23ffcc00&width=360&height=96" />);
+    await waitFor(() => expect(document.querySelector('[data-widget-renderer="racing-flags"]')).toBeTruthy());
+
+    const root = document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement;
+    expect(root.style.width).toBe("360px");
+    expect(root.style.height).toBe("96px");
+    expect(document.querySelector('[data-widget-renderer="racing-flags"]')?.getAttribute("data-flag")).toBe("yellow");
+    expect(document.querySelector('[data-widget-renderer="racing-flags"]')?.getAttribute("data-text-color")).toBe("#ffcc00");
+    expect((screen.getByLabelText("Bandera") as HTMLSelectElement).value).toBe("yellow");
+    expect((screen.getByLabelText("Color de la letra") as HTMLInputElement).value).toBe("#ffcc00");
+
+    fireEvent.change(screen.getByLabelText("Ancho"), { target: { value: "420" } });
+    fireEvent.change(screen.getByLabelText("Alto"), { target: { value: "120" } });
+    await waitFor(() => {
+      expect(root.style.width).toBe("420px");
+      expect(root.style.height).toBe("120px");
+    });
+
+    fireEvent.change(screen.getByLabelText("Color de la letra"), { target: { value: "#ff00aa" } });
+    await waitFor(() => expect(document.querySelector('[data-widget-renderer="racing-flags"]')?.getAttribute("data-text-color")).toBe("#ff00aa"));
+    expect(window.location.search).toContain("textColor=%23ff00aa");
+
+    fireEvent.change(screen.getByLabelText("Bandera"), { target: { value: "green" } });
+    await waitFor(() => expect(document.querySelector('[data-widget-renderer="racing-flags"]')?.getAttribute("data-flag")).toBe("green"));
+    expect(window.location.search).toContain("flag=green");
+  });
+
+  it("uses black text for the white flag while keeping the color picker configurable", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=racing-flags&system=vantare-functional&state=ready&surface=harness&variant=default&flag=white&width=360&height=96" />);
+    await waitFor(() => expect(document.querySelector('[data-widget-renderer="racing-flags"]')).toBeTruthy());
+
+    expect(document.querySelector('[data-widget-renderer="racing-flags"]')?.getAttribute("data-text-color")).toBe("#141517");
+    expect((screen.getByLabelText("Color de la letra") as HTMLInputElement).value).toBe("#141517");
+
+    fireEvent.change(screen.getByLabelText("Color de la letra"), { target: { value: "#ffffff" } });
+    await waitFor(() => expect(document.querySelector('[data-widget-renderer="racing-flags"]')?.getAttribute("data-text-color")).toBe("#ffffff"));
+  });
+
   it("rejects invalid declared dimensions in the URL and falls back to defaults with a visible notice", async () => {
     render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-original&state=ready&surface=studio&variant=default&width=12&height=240" />);
     expect(screen.getByRole("alert").textContent).toContain("invalid declared dimensions");

@@ -10,6 +10,11 @@ import { FUNCTIONAL_STUDY_MODULE_IDS, FUNCTIONAL_STUDY_SLOT_IDS, FUNCTIONAL_STUD
 import { RELATIVE_RANGE_LIMIT } from "../widget-types/relative/relative-content";
 import { STANDINGS_ROW_COUNT_MAX, STANDINGS_ROW_COUNT_MIN } from "../widget-types/standings/standings-content";
 import { DRIVER_NAME_FORMATS, type DriverNameFormat } from "../widget-types/shared/driver-name";
+import {
+  isRacingFlagsTextColor,
+  RACING_FLAGS_KNOWN_FLAGS,
+  type RacingFlagsKnownFlag,
+} from "../design-systems/vantare-functional/racing-flags-settings";
 
 export type OverlayWorkshopQuery = {
   widget: WidgetType;
@@ -34,6 +39,10 @@ export type OverlayWorkshopQuery = {
   state: AuthoringV2Scenario["state"];
   surface: "studio" | "desktop" | "obs" | "harness";
   variant: WorkshopV2Variant;
+  /** Explicit dev-only flag probe for Functional Racing Flags. */
+  flag?: RacingFlagsKnownFlag;
+  /** Eficiencia Racing Flags text color override for the Workshop. */
+  textColor?: string;
   session: AuthoringV2Scenario["session"];
   location: AuthoringV2Scenario["location"];
   background: "transparent" | "grid" | "solid" | "context";
@@ -92,6 +101,8 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   const state = (params.get("state") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.state) as AuthoringV2Scenario["state"];
   const surface = (params.get("surface") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.surface) as OverlayWorkshopQuery["surface"];
   const variant = (params.get("variant") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.variant) as WorkshopV2Variant;
+  const flagRaw = params.get("flag");
+  const textColorRaw = params.get("textColor");
   const designId = params.get("design") ?? undefined;
   const session = (params.get("session") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.session) as AuthoringV2Scenario["session"];
   const location = (params.get("location") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.location) as AuthoringV2Scenario["location"];
@@ -113,6 +124,12 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   if (!STATES.has(state)) return { error: `invalid state parameter: ${state}` };
   if (!SURFACES.has(surface)) return { error: `invalid surface parameter: ${surface}` };
   if (!isWorkshopV2Variant(variant)) return { error: `invalid variant parameter: ${variant}` };
+  if (flagRaw !== null && !(RACING_FLAGS_KNOWN_FLAGS as readonly string[]).includes(flagRaw)) {
+    return { error: `invalid flag parameter: ${flagRaw}` };
+  }
+  if (textColorRaw !== null && !isRacingFlagsTextColor(textColorRaw)) {
+    return { error: `invalid textColor parameter: ${textColorRaw}` };
+  }
   if (variant === "standings-functional-study" && (widget !== "standings" || system !== "vantare-functional")) return { error: "standings-functional-study requires Functional Standings" };
   if (!SESSIONS.has(session)) return { error: `invalid session parameter: ${session}` };
   if (!LOCATIONS.has(location)) return { error: `invalid location parameter: ${location}` };
@@ -245,6 +262,12 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
     return { error: `invalid rows parameter: ${rowsRaw}` };
   }
   const rows = widget === "standings" ? rowsParsed : undefined;
+  const flag = widget === "racing-flags" && flagRaw !== null
+    ? flagRaw as RacingFlagsKnownFlag
+    : undefined;
+  const textColor = widget === "racing-flags" && system === "vantare-functional" && textColorRaw !== null
+    ? textColorRaw.toLowerCase()
+    : undefined;
 
   // Tower lab options are validated here and applied as appearanceOverrides;
   // the productive settings parser re-validates them before rendering.
@@ -275,6 +298,8 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
     ...(sceneId ? { sceneId } : {}), ...(sceneFrame !== undefined ? { sceneFrame } : {}), ...(brand === "off" ? { brand } : {}), ...(modules ? { modules } : {}), ...(slots ? { slots } : {}),
     ...(ahead !== undefined ? { ahead } : {}), ...(behind !== undefined ? { behind } : {}), ...(nameFormat ? { nameFormat } : {}),
     ...(rows !== undefined ? { rows } : {}),
+    ...(flag !== undefined ? { flag } : {}),
+    ...(textColor !== undefined ? { textColor } : {}),
     ...(redlineThemeRaw ? { redlineTheme: redlineThemeRaw as OverlayWorkshopQuery["redlineTheme"] } : {}),
     ...(redlineData ? { redlineData } : {}),
     ...(redlineSelectionRaw ? { redlineSelection: redlineSelectionRaw as OverlayWorkshopQuery["redlineSelection"] } : {}),
@@ -313,6 +338,8 @@ export function serializeOverlayWorkshopQuery(query: OverlayWorkshopQuery): stri
   if (query.behind !== undefined) params.set("behind", String(query.behind));
   if (query.nameFormat) params.set("nameFormat", query.nameFormat);
   if (query.rows !== undefined) params.set("rows", String(query.rows));
+  if (query.flag) params.set("flag", query.flag);
+  if (query.textColor) params.set("textColor", query.textColor);
   if (query.redlineTheme) params.set("redlineTheme", query.redlineTheme);
   if (query.redlineData) params.set("redlineData", query.redlineData);
   if (query.redlineSelection) params.set("redlineSelection", query.redlineSelection);

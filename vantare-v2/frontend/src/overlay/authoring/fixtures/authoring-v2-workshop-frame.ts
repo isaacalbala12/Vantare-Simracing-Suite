@@ -10,6 +10,7 @@ import type {
 } from "../../../generated/telemetry";
 import type { DesignSystemId, WidgetInstanceV3, WidgetType } from "../../core/profile-document";
 import type { WidgetRuntimeInput } from "../../core/widget-definition";
+import { normalizeRacingFlagsTextColor } from "../../design-systems/vantare-functional/racing-flags-settings";
 import {
   AUTHORING_V2_VARIANTS,
   buildAuthoringV2ScenarioRuntime,
@@ -39,6 +40,7 @@ import { applyWidgetDesign } from "../../core/widget-design";
 import { getOfficialDesign, listOfficialDesigns } from "../../design-systems/official-designs";
 import { getAnimationScene, sceneFrameAt } from "./animation-scenes";
 import type { SceneFrame } from "./animation-scenes";
+import type { RacingFlagsKnownFlag } from "../../design-systems/vantare-functional/racing-flags-settings";
 
 // Variantes dev de Workshop: transformaciones explícitas, deterministas y
 // acotadas sobre el golden canónico. La variante en sí declara el artificio;
@@ -169,6 +171,7 @@ export function buildWorkshopWidget(input: {
   behind?: number;
   nameFormat?: "full" | "initial" | "surname";
   rows?: number;
+  textColor?: string;
 }): WidgetInstanceV3 {
   let widget = createScenarioWidget({
     widget: input.widget,
@@ -225,6 +228,19 @@ export function buildWorkshopWidget(input: {
       visual: {
         ...widget.visual,
         appearanceOverrides: { ...(widget.visual.appearanceOverrides ?? {}), brandVisible: false },
+      },
+    };
+  }
+
+  if (input.widget === "racing-flags" && input.system === "vantare-functional" && input.textColor !== undefined) {
+    widget = {
+      ...widget,
+      visual: {
+        ...widget.visual,
+        appearanceOverrides: {
+          ...(widget.visual.appearanceOverrides ?? {}),
+          textColor: normalizeRacingFlagsTextColor(input.textColor),
+        },
       },
     };
   }
@@ -296,6 +312,8 @@ export type WorkshopV2Scenario = {
   widget: WidgetType;
   system: DesignSystemId;
   variant: WorkshopV2Variant;
+  /** Dev-only explicit SessionV2 flag probe for Functional Racing Flags. */
+  flag?: RacingFlagsKnownFlag;
   replayFrame?: number;
   sceneId?: string;
   sceneFrame?: number;
@@ -820,6 +838,17 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
     baseFrame = { ...baseFrame, standings: padStandings(baseFrame.standings, scenario.standingRows) };
   }
   let frame = withWorkshopDemo(baseFrame, quality);
+  if (scenario.widget === "racing-flags") {
+    frame = {
+      ...frame,
+      session: {
+        ...frame.session,
+        flag: scenario.flag === undefined
+          ? qualityValue("green", quality)
+          : qualityValue(scenario.flag, quality),
+      },
+    };
+  }
   switch (scenario.variant) {
     case "standings-functional-study": {
       // Explicit visual-study data, never live telemetry. The original V2

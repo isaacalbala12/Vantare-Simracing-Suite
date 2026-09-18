@@ -627,15 +627,14 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
   align-items: center;
 }
 
-.orbit-update-news__panel {
+.orbit-update-news__panel,
+.orbit-notifications__panel {
   position: absolute;
   top: 100%;
   right: 0;
   z-index: var(--orbit-z-menu);
-  width: 380px;
   max-height: min(60vh, 520px);
   margin-top: 8px;
-  padding: 14px 15px 12px;
   overflow-y: auto;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 14px;
@@ -645,6 +644,16 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
   font-size: 12px;
   line-height: 1.5;
   text-align: left;
+}
+
+.orbit-update-news__panel {
+  width: 380px;
+  padding: 14px 15px 12px;
+}
+
+.orbit-notifications__panel {
+  width: 360px;
+  padding: 12px;
 }
 
 .orbit-update-news__panel::before {
@@ -761,26 +770,6 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
   line-height: 15px;
   text-align: center;
   pointer-events: none;
-}
-
-.orbit-notifications__panel {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  z-index: var(--orbit-z-menu);
-  width: 360px;
-  max-height: min(60vh, 520px);
-  margin-top: 8px;
-  padding: 12px;
-  overflow-y: auto;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
-  background: var(--orbit-surface-2);
-  box-shadow: var(--orbit-shadow-menu);
-  color: var(--orbit-ink-2);
-  font-size: 12px;
-  line-height: 1.5;
-  text-align: left;
 }
 
 .orbit-notifications__head {

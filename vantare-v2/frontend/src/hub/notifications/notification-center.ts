@@ -13,10 +13,10 @@ import { Events } from "@wailsio/runtime";
  * canales del contrato.
  */
 
-export type NotificationSource = "updater" | "launcher" | "system";
-export type NotificationSeverity = "info" | "warning" | "error";
+type NotificationSource = "updater" | "launcher" | "system";
+type NotificationSeverity = "info" | "warning" | "error";
 
-export type NotificationAction = {
+type NotificationAction = {
   kind: "navigate";
   target: string;
 };

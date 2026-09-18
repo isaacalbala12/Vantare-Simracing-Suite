@@ -3,10 +3,10 @@ import { functionalLabels } from "./labels";
 
 // Medidas reales del renderer Eficiencia en px sin escalar (tokens.css):
 // la barra de meta y la de sesión miden 30px y cada fila 28px fijos.
-export const FUNCTIONAL_RELATIVE_META_PX = 30;
-export const FUNCTIONAL_RELATIVE_ROW_PX = 28;
-export const FUNCTIONAL_RELATIVE_FOOTER_PX = 30;
-export const FUNCTIONAL_RELATIVE_PADDING_X = 24;
+const FUNCTIONAL_RELATIVE_META_PX = 30;
+const FUNCTIONAL_RELATIVE_ROW_PX = 28;
+const FUNCTIONAL_RELATIVE_FOOTER_PX = 30;
+const FUNCTIONAL_RELATIVE_PADDING_X = 24;
 // Ancho natural del widget: con él la geometría da escala 1 y las filas se
 // ven a su tamaño real; una caja más estrecha encoge todo el conjunto.
 export const FUNCTIONAL_RELATIVE_BASE_WIDTH = 430;

@@ -152,8 +152,6 @@ export const studioOrbitPt: Record<string, string> = {
   "overlay.inspector.standings.showSessionHeader": "Mostrar cabeçalho de sessão",
   "overlay.inspector.standings.showBrand": "Mostrar marca Vantare",
   "overlay.inspector.brand.required": "Marca obrigatória: sempre visível neste plano",
-  "overlay.inspector.efficiency.headerFirst": "Dado 1 do cabeçalho",
-  "overlay.inspector.efficiency.headerSecond": "Dado 2 do cabeçalho",
   "overlay.inspector.efficiency.showSessionFooter": "Mostrar rodapé da sessão",
   "overlay.inspector.efficiency.footerFirst": "Dado 1 do rodapé",
   "overlay.inspector.efficiency.footerSecond": "Dado 2 do rodapé",

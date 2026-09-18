@@ -1,5 +1,6 @@
 import {
   cloneWidgetColumns,
+  updateWidgetColumn,
   validateWidgetColumns,
   WIDTH_PRESET_PIXELS,
   type WidgetColumnV3,
@@ -271,16 +272,7 @@ export function updateRelativeColumn(
 ): RelativeContent {
   return {
     ...content,
-    columns: content.columns.map((column) =>
-      column.id === columnId
-        ? {
-            ...column,
-            ...patch,
-            format: patch.format === undefined ? column.format : { ...column.format, ...patch.format },
-            style: { ...column.style, ...patch.style },
-          }
-        : column,
-    ),
+    columns: updateWidgetColumn(content.columns, columnId, patch),
   };
 }
 

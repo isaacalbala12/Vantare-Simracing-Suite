@@ -4,6 +4,7 @@ import type { WidgetType, WidgetInstanceV3 } from "./profile-document";
 import type { EngineerPresentation } from "../../engineer/engineer-presentation-store";
 import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../generated/telemetry";
 import type { RelativeViewModelState } from "../widget-types/relative/relative-view-model-v2";
+import type { StandingsWindowRuntime } from "../widget-types/standings/standings-window";
 
 // Only registered widget definitions declare a feature gate. The vocabulary is
 // intentionally broader while the remaining widget definitions land in later
@@ -75,6 +76,8 @@ export type WidgetRuntimeInput = {
   }>;
   overlayV2Frame?: OverlayFrameV2;
   overlayV2Source?: OverlaySourceStatusV2;
+  /** Workshop-only presentation policy; never part of the telemetry frame. */
+  standingsWindow?: StandingsWindowRuntime;
   relativeViewModelState?: RelativeViewModelState;
   relativeViewModelNowMs?: () => number;
   relativeViewModelInstanceKey?: string;

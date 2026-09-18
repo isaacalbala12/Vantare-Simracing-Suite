@@ -1,12 +1,31 @@
 import type { WidgetInstanceV3, WidgetLayoutV3 } from "../../core/profile-document";
+import type { OverlayFrameV2, OverlaySourceStatusV2 } from "../../../generated/telemetry";
 import { parseStandingsContent } from "./standings-content";
 import { resolveFunctionalStandingsSize } from "./functional-standings-layout";
+import { countFunctionalStandingsClassBands } from "./functional-standings-multiclass";
+import { buildStandingsViewModelV2 } from "./standings-view-model-v2";
 import { resolveMinimumWidthFrameLayout, resolveStandingsRedlineMinimumWidth } from "./standings-redline-layout";
+
+export type StandingsFrameRuntime = Readonly<{
+  frame: OverlayFrameV2;
+  source: OverlaySourceStatusV2;
+}>;
+
+function resolveFunctionalClassBandCount(
+  content: ReturnType<typeof parseStandingsContent>,
+  runtime?: StandingsFrameRuntime,
+): number {
+  if (content.classificationMode !== "multiclass") return 0;
+  if (!runtime) return 1;
+  const model = buildStandingsViewModelV2(runtime.frame, runtime.source, content);
+  return countFunctionalStandingsClassBands(model.rows, model.classificationMode);
+}
 
 export function resolveStandingsMinimumSize(
   widget: WidgetInstanceV3,
   brandVisible?: boolean,
   rowHeight = 30,
+  runtime?: StandingsFrameRuntime,
 ): { width: number; height?: number } | undefined {
   if (widget.type === "standings" && widget.visual.systemId === "vantare-functional") {
     try {
@@ -14,7 +33,7 @@ export function resolveStandingsMinimumSize(
       return resolveFunctionalStandingsSize(content.columns, content.rowCount ?? 20, {
         ...widget.visual.baseSettings, ...widget.visual.appearanceOverrides,
         ...(brandVisible === undefined ? {} : { brandVisible }),
-      }, rowHeight);
+      }, rowHeight, resolveFunctionalClassBandCount(content, runtime));
     } catch {
       // Invalid content is reported by WidgetVisualHost, without hiding its diagnostic.
       return undefined;
@@ -40,8 +59,9 @@ export function resolveStandingsFrameLayout(
   viewportWidth?: number,
   viewportHeight?: number,
   brandVisible?: boolean,
+  runtime?: StandingsFrameRuntime,
 ): WidgetLayoutV3 {
-  const minimum = resolveStandingsMinimumSize(widget, brandVisible);
+  const minimum = resolveStandingsMinimumSize(widget, brandVisible, 30, runtime);
   const sized = resolveMinimumWidthFrameLayout(layout, minimum?.width, viewportWidth);
   return resolveMinimumHeightFrameLayout(sized, minimum?.height, viewportHeight);
 }

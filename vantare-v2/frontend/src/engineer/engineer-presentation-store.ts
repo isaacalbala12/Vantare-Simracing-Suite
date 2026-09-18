@@ -3,7 +3,7 @@ export const ENGINEER_STREAM_EVENT = "engineer:stream";
 export type EngineerLocale = "es" | "en" | "it" | "pt-BR";
 export type EngineerRole = "spotter" | "engineer";
 export type EngineerSeverity = "info" | "warning" | "critical";
-export type EngineerPresentationSource = "telemetry-core" | "voice-input" | "performance-sensor";
+type EngineerPresentationSource = "telemetry-core" | "voice-input" | "performance-sensor";
 
 export type EngineerPresentation = {
   version: 1;

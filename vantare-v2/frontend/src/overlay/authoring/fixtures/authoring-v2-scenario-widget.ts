@@ -6,6 +6,7 @@ import { parseRelativeContent, updateRelativeFilters } from "../../widget-types/
 import { resolveStandingsMinimumSize } from "../../widget-types/standings/standings-frame-layout";
 import { resolveFunctionalMulticlassHeight } from "../../design-systems/vantare-functional/multiclass-layout";
 import { AUTHORING_V2_VARIANTS, type AuthoringV2Variant } from "./authoring-v2-scenario-fixture";
+import { mapAuthoringWidgetColumns } from "./authoring-v2-widget-columns";
 
 // Widget de autoría para el escenario V2 puro (C2b6b): solo forma, cero
 // telemetría. Construye desde el registro productivo, aplica el diseño
@@ -62,22 +63,25 @@ export function buildAuthoringV2ScenarioWidget(input: {
           column.metricId === "bestLap" ? { ...column, enabled: true } : column,
         )
       : content.columns;
-    widget.content = { ...content, classScope: "all-classes", columns };
+    widget.content = {
+      ...content,
+      classScope: "all-classes",
+      classificationMode: input.variant === "standings-multiclass" ? "multiclass" : "normal",
+      columns,
+    };
   }
   if (
     input.widget === "standings" &&
     (input.variant === "standings-minimal" || input.variant === "standings-all-columns")
   ) {
     const content = widget.content as Record<string, unknown>;
-    const columns = Array.isArray(content.columns)
-      ? (content.columns as Record<string, unknown>[]).map((column) => ({
-          ...column,
-          enabled:
-            input.variant === "standings-all-columns" ||
-            column.metricId === "position" ||
-            column.metricId === "driverName",
-        }))
-      : content.columns;
+    const columns = mapAuthoringWidgetColumns(content, (column) => ({
+      ...column,
+      enabled:
+        input.variant === "standings-all-columns" ||
+        column.metricId === "position" ||
+        column.metricId === "driverName",
+    }));
     widget.content = { ...content, columns };
   }
   widget.layout = { ...widget.layout, x: 120, y: 96, zIndex: 1 };

@@ -8,6 +8,13 @@ import { serializeOverlayWorkshopQuery, type OverlayWorkshopQuery } from "./over
 import { FUNCTIONAL_STUDY_DEFAULT_MODULES, FUNCTIONAL_STUDY_MODULES, FUNCTIONAL_STUDY_SLOTS, FUNCTIONAL_STUDY_STYLES } from "./functional-study-options";
 import { RELATIVE_RANGE_AHEAD, RELATIVE_RANGE_BEHIND, RELATIVE_RANGE_LIMIT } from "../widget-types/relative/relative-content";
 import { STANDINGS_ROW_COUNT_OPTIONS } from "../widget-types/standings/standings-content";
+import {
+  RACING_FLAGS_DEFAULT_TEXT_COLOR,
+  RACING_FLAGS_KNOWN_FLAGS,
+  RACING_FLAGS_WHITE_FLAG_TEXT_COLOR,
+  type RacingFlagsKnownFlag,
+} from "../design-systems/vantare-functional/racing-flags-settings";
+import { STANDINGS_WINDOW_AROUND_OPTIONS, STANDINGS_WINDOW_DEFAULT_AROUND } from "../widget-types/standings/standings-window";
 
 const SYSTEM_LABELS: Record<string, string> = {
   "vantare-functional": "Eficiencia",
@@ -27,6 +34,7 @@ const WIDGET_LABELS: Partial<Record<WidgetType, string>> = {
   "fuel-strategy": "Fuel Strategy",
   "pedals-telemetry": "Pedals Telemetry",
   "pedals-telemetry-compact": "Pedales avanzados",
+  "racing-flags": "Racing Flags",
 };
 const widgetLabel = (widget: WidgetType) => WIDGET_LABELS[widget] ?? widget;
 
@@ -41,12 +49,17 @@ const STUDY_LANDING: Partial<Record<WidgetType, Pick<OverlayWorkshopQuery, "vari
 
 const STATE_OPTIONS = [["ready", "Recibiendo"], ["stale", "Datos antiguos"], ["disconnected", "Desconectado"], ["error", "Error"]] as const;
 const SESSION_OPTIONS = [["practice", "Práctica"], ["qualifying", "Clasificación"], ["race", "Carrera"]] as const;
+const STANDINGS_SCOPE_OPTIONS = [["default", "Normal"], ["standings-multiclass", "Multiclass"]] as const;
 const LOCATION_OPTIONS = [["track", "Pista"], ["pits", "Boxes"]] as const;
 const NAME_FORMAT_OPTIONS = [["full", "Completo"], ["initial", "N. Apellido"], ["surname", "Apellido"]] as const;
 const BACKGROUND_OPTIONS = [["context", "Mixto"], ["solid", "Oscuro"], ["transparent", "Claro"]] as const;
 const SURFACE_OPTIONS = [["studio", "Studio"], ["desktop", "Desktop"], ["obs", "OBS"], ["harness", "Harness"]] as const;
 const SCALE_OPTIONS = [["0.5", "0.5×"], ["1", "1×"], ["1.5", "1.5×"], ["2", "2×"]] as const;
 const RELATIVE_RANGE_OPTIONS = Array.from({ length: RELATIVE_RANGE_LIMIT + 1 }, (_, index) => [String(index), String(index)] as const);
+const FLAG_OPTIONS = RACING_FLAGS_KNOWN_FLAGS.map((flag) => [flag, flag === "yellow" ? "Amarilla" : flag === "green" ? "Verde" : flag === "blue" ? "Azul" : flag === "red" ? "Roja" : flag === "white" ? "Blanca" : flag === "black" ? "Negra" : "A cuadros"] as const);
+const STUDY_STYLE_OPTIONS = FUNCTIONAL_STUDY_STYLES.map(({ id, label }) => [id, label] as const);
+const STANDINGS_WINDOW_OPTIONS = STANDINGS_WINDOW_AROUND_OPTIONS.map((count) => [String(count), String(count)] as const);
+const FUNCTIONAL_DEFAULT_STANDINGS_MODULES: readonly string[] = ["gap", "lastLap", "pit"];
 
 // Resolución del lienzo (portado de la vista genérica retirada en ISA-1221):
 // el preset solo declara la intención; "Aplicar tamaño declarado" fija
@@ -84,6 +97,8 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
   const gaps = projectionGapsFor(query.widget);
   const isFunctional = query.system === "vantare-functional";
   const isStandings = query.widget === "standings";
+  const isRacingFlags = query.widget === "racing-flags";
+  const isFlagWidget = isRacingFlags;
   // Las fixtures de desarrollo siguen siendo útiles para pruebas internas,
   // pero el Workshop público tiene una única variante canónica.
   const displayedVariant = "default";
@@ -98,15 +113,18 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
       system,
       designId: undefined,
       studyStyle: undefined,
+      around: undefined,
       sceneId: undefined,
       sceneFrame: undefined,
       // La ventana del relative no existe en otros widgets; no la arrastramos.
       ahead: undefined,
       behind: undefined,
       // El recuento de filas solo existe en standings.
-      ...(widget === "standings" ? {} : { rows: undefined }),
+      ...(widget === "standings" ? {} : { rows: undefined, playerPosition: undefined }),
       // El formato de nombre solo existe donde hay columna Piloto.
       ...(widget === "standings" || widget === "relative" ? {} : { nameFormat: undefined }),
+      ...(widget === "racing-flags" ? {} : { textColor: undefined }),
+      ...(widget === "racing-flags" ? {} : { flag: undefined }),
       ...landing,
     });
   };
@@ -116,10 +134,32 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
     designId: undefined,
     studyStyle: undefined,
     variant: "default",
+    textColor: undefined,
   });
   const chooseDesign = (value: string) => update({ ...query, designId: value || undefined });
   const chooseScene = (value: string) => update({ ...query, sceneId: value || undefined, sceneFrame: value ? 0 : undefined });
   const chooseScale = (value: string) => update({ ...query, scale: Number(value) });
+  const chooseFlag = (value: string) => update({
+    ...query,
+    flag: value as RacingFlagsKnownFlag,
+    ...(value === "white" && query.textColor === RACING_FLAGS_DEFAULT_TEXT_COLOR ? { textColor: undefined } : {}),
+  });
+  const defaultRacingFlagsTextColor = query.flag === "white"
+    ? RACING_FLAGS_WHITE_FLAG_TEXT_COLOR
+    : RACING_FLAGS_DEFAULT_TEXT_COLOR;
+  const chooseStandingsScope = (value: string) => update({
+    ...query,
+    variant: value as OverlayWorkshopQuery["variant"],
+    designId: undefined,
+    studyStyle: query.studyStyle ?? "default",
+    around: query.around ?? STANDINGS_WINDOW_DEFAULT_AROUND,
+  });
+  const chooseStudyStyle = (value: string) => update({
+    ...query,
+    studyStyle: value as OverlayWorkshopQuery["studyStyle"],
+    around: query.around ?? STANDINGS_WINDOW_DEFAULT_AROUND,
+  });
+  const selectedStudyStyle = query.studyStyle ?? "default";
 
   // Borradores de texto para ancho/alto: la query solo se reescribe cuando las
   // dos dimensiones son enteros dentro de rango — una URL a medias sería
@@ -183,18 +223,29 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
       <button type="button" aria-pressed={query.brand !== "off"} onClick={() => update({ ...query, brand: undefined })}>Con marca</button>
       <button type="button" aria-pressed={query.brand === "off"} onClick={() => update({ ...query, brand: "off" })}>Sin marca</button>
     </div></fieldset>}
-    {isFunctional && isStandings && <fieldset><legend>Dirección v2</legend><div className="functional-study-segments">
-      <button type="button" aria-pressed={!query.studyStyle} onClick={() => update({ ...query, studyStyle: undefined })}>V1</button>
-      {FUNCTIONAL_STUDY_STYLES.map((style) => <button type="button" key={style.id} aria-pressed={query.studyStyle === style.id} onClick={() => update({ ...query, designId: style.designId, studyStyle: style.id })}>{style.label}</button>)}
-    </div></fieldset>}
+    {isFunctional && isStandings && <fieldset><legend>Dirección v2</legend>
+      <Segments options={STUDY_STYLE_OPTIONS} value={selectedStudyStyle} onChange={chooseStudyStyle} />
+    </fieldset>}
+    {isFunctional && isStandings && <fieldset><legend>Clasificación</legend>
+      <Segments options={STANDINGS_SCOPE_OPTIONS} value={query.variant === "standings-multiclass" ? "standings-multiclass" : "default"} onChange={chooseStandingsScope} />
+    </fieldset>}
     {isStandings && <fieldset><legend>Filas</legend><p className="functional-study-note">Pilotos visibles; la caja se adapta al recuento.</p>
-      <Select label="Pilotos" value={String(query.rows ?? 20)} onChange={(value) => update({ ...query, rows: Number(value) })}>
+      <Select label="Pilotos" value={String(query.rows ?? 20)} onChange={(value) => {
+        const rows = Number(value);
+        update({ ...query, rows, playerPosition: Math.min(query.playerPosition ?? 1, rows) });
+      }}>
         {STANDINGS_ROW_COUNT_OPTIONS.map((count) => <option key={count} value={count}>{count}</option>)}
       </Select>
+      {isFunctional && <Select label="Posición del jugador" value={String(query.playerPosition ?? 1)} onChange={(value) => update({ ...query, playerPosition: Number(value) })}>
+        {STANDINGS_ROW_COUNT_OPTIONS.map((position) => <option key={position} value={position} disabled={position > (query.rows ?? 20)}>{position}</option>)}
+      </Select>}
+      {isFunctional && <Select label="Pilotos alrededor" value={String(query.around ?? STANDINGS_WINDOW_DEFAULT_AROUND)} onChange={(value) => update({ ...query, around: Number(value) as OverlayWorkshopQuery["around"] })}>
+        {STANDINGS_WINDOW_OPTIONS.map(([count, label]) => <option key={count} value={count}>{label}</option>)}
+      </Select>}
     </fieldset>}
     {isFunctional && isStandings && <fieldset><legend>Módulos</legend><p className="functional-study-note">Posición y piloto siempre visibles.</p>
       {FUNCTIONAL_STUDY_MODULES.map((item) => {
-        const modules = query.modules ?? FUNCTIONAL_STUDY_DEFAULT_MODULES;
+        const modules = query.modules ?? (query.variant === "standings-functional-study" ? FUNCTIONAL_STUDY_DEFAULT_MODULES : FUNCTIONAL_DEFAULT_STANDINGS_MODULES);
         return <label key={item.id} className="functional-study-toggle"><span>{item.label}</span><input type="checkbox" checked={modules.includes(item.id)} onChange={() => update({ ...query, modules: modules.includes(item.id) ? modules.filter((id) => id !== item.id) : [...modules, item.id] })} /></label>;
       })}
     </fieldset>}
@@ -255,6 +306,9 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
     </fieldset>
 
     <fieldset><legend>Datos</legend>
+      {isFlagWidget && <Select label="Bandera" value={query.flag ?? "green"} onChange={chooseFlag}>
+        {FLAG_OPTIONS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+      </Select>}
       <Select label="Estado de la fuente" value={query.state} onChange={(value) => update({ ...query, state: value as OverlayWorkshopQuery["state"] })}>
         {STATE_OPTIONS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
       </Select>
@@ -264,6 +318,7 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
     </fieldset>
 
     <fieldset><legend>Presentación</legend>
+      {isFunctional && isRacingFlags && <label className="functional-study-select"><span>Color de la letra</span><input aria-label="Color de la letra" type="color" value={query.textColor ?? defaultRacingFlagsTextColor} onChange={(event) => update({ ...query, textColor: event.target.value })} /></label>}
       <p className="functional-study-note">Fondo</p>
       <Segments options={BACKGROUND_OPTIONS} value={query.background} onChange={(value) => update({ ...query, background: value as OverlayWorkshopQuery["background"] })} />
       <Select label="Superficie" value={query.surface} onChange={(value) => update({ ...query, surface: value as OverlayWorkshopQuery["surface"] })}>

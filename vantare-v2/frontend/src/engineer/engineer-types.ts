@@ -4,7 +4,7 @@ export type EngineerNotification = EngineerPresentation;
 
 export type EngineerOutputMode = "audio" | "visual" | "both" | "disabled";
 
-export type SpotterAvailability = {
+type SpotterAvailability = {
   state: "disabled" | "waiting" | "ready" | "unavailable";
   reason?:
     | "source"

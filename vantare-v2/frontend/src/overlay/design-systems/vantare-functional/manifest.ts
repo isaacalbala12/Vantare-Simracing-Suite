@@ -13,6 +13,10 @@ import { MulticlassRelativeFunctional } from "./MulticlassRelativeFunctional";
 import { PedalsFunctional } from "./PedalsFunctional";
 import { PedalsTelemetryFunctional } from "./PedalsTelemetryFunctional";
 import { RacingFlagsFunctional } from "./RacingFlagsFunctional";
+import {
+  normalizeRacingFlagsTextColor,
+  RACING_FLAGS_DEFAULT_TEXT_COLOR,
+} from "./racing-flags-settings";
 import { RaceScheduleFunctional } from "./RaceScheduleFunctional";
 import { RelativeFunctional } from "./RelativeFunctional";
 import { StandingsFunctional } from "./StandingsFunctional";
@@ -37,8 +41,6 @@ export const vantareFunctionalManifest: DesignSystemDefinition = {
       inspector: { appearance: [
         { kind: "toggle", id: "show-session-header", labelKey: "overlay.inspector.standings.showSessionHeader", path: "showSessionHeader", defaultValue: true },
         { kind: "toggle", id: "show-brand", labelKey: "overlay.inspector.standings.showBrand", path: "showBrand", defaultValue: false },
-        { kind: "select", id: "header-first", labelKey: "overlay.inspector.efficiency.headerFirst", path: "headerFirst", options: infoOptions, defaultValue: FUNCTIONAL_DEFAULT_SETTINGS.headerFirst },
-        { kind: "select", id: "header-second", labelKey: "overlay.inspector.efficiency.headerSecond", path: "headerSecond", options: infoOptions, defaultValue: FUNCTIONAL_DEFAULT_SETTINGS.headerSecond },
         { kind: "toggle", id: "show-session-footer", labelKey: "overlay.inspector.efficiency.showSessionFooter", path: "showSessionFooter", defaultValue: true },
         { kind: "select", id: "footer-first", labelKey: "overlay.inspector.efficiency.footerFirst", path: "footerFirst", options: infoOptions, defaultValue: FUNCTIONAL_DEFAULT_SETTINGS.footerFirst },
         { kind: "select", id: "footer-second", labelKey: "overlay.inspector.efficiency.footerSecond", path: "footerSecond", options: infoOptions, defaultValue: FUNCTIONAL_DEFAULT_SETTINGS.footerSecond },
@@ -154,12 +156,19 @@ export const vantareFunctionalManifest: DesignSystemDefinition = {
     {
       widgetType: "racing-flags",
       configVersion: 1,
-      defaultSettings: {},
+      defaultSettings: { textColor: RACING_FLAGS_DEFAULT_TEXT_COLOR },
       configMigrations: { 0: (settings) => ({ ...settings }) },
       parseSettings(input: unknown) {
-        return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
+        const value = input && typeof input === "object" && !Array.isArray(input)
+          ? input as Record<string, unknown>
+          : {};
+        return value.textColor === undefined
+          ? { ...value }
+          : { ...value, textColor: normalizeRacingFlagsTextColor(value.textColor) };
       },
-      inspector: { appearance: [] },
+      inspector: { appearance: [
+        { kind: "color", id: "text-color", labelKey: "studio.v3.inspector.racingFlags.textColor", path: "textColor", defaultValue: RACING_FLAGS_DEFAULT_TEXT_COLOR },
+      ] },
       Renderer: RacingFlagsFunctional as ComponentType<WidgetRendererProps>,
     },
     {

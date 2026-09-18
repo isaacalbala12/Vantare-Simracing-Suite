@@ -10,6 +10,7 @@ import type {
 } from "../../../generated/telemetry";
 import type { DesignSystemId, WidgetInstanceV3, WidgetType } from "../../core/profile-document";
 import type { WidgetRuntimeInput } from "../../core/widget-definition";
+import { normalizeRacingFlagsTextColor } from "../../design-systems/vantare-functional/racing-flags-settings";
 import {
   AUTHORING_V2_VARIANTS,
   buildAuthoringV2ScenarioRuntime,
@@ -39,6 +40,15 @@ import { applyWidgetDesign } from "../../core/widget-design";
 import { getOfficialDesign, listOfficialDesigns } from "../../design-systems/official-designs";
 import { getAnimationScene, sceneFrameAt } from "./animation-scenes";
 import type { SceneFrame } from "./animation-scenes";
+import type { RacingFlagsKnownFlag } from "../../design-systems/vantare-functional/racing-flags-settings";
+import { mapAuthoringWidgetColumns } from "./authoring-v2-widget-columns";
+
+function fitFunctionalStandingsMinimum(widget: WidgetInstanceV3): WidgetInstanceV3 {
+  const minimum = resolveStandingsMinimumSize(widget);
+  return minimum
+    ? { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height ?? widget.layout.h } }
+    : widget;
+}
 
 // Variantes dev de Workshop: transformaciones explícitas, deterministas y
 // acotadas sobre el golden canónico. La variante en sí declara el artificio;
@@ -54,7 +64,7 @@ export const WORKSHOP_V2_DEV_VARIANTS = [
 export type WorkshopV2DevVariant = (typeof WORKSHOP_V2_DEV_VARIANTS)[number];
 export type WorkshopV2Variant = AuthoringV2Variant | WorkshopV2DevVariant;
 
-export const WORKSHOP_V2_VARIANTS: readonly WorkshopV2Variant[] = [
+const WORKSHOP_V2_VARIANTS: readonly WorkshopV2Variant[] = [
   ...AUTHORING_V2_VARIANTS,
   ...WORKSHOP_V2_DEV_VARIANTS,
 ];
@@ -169,6 +179,7 @@ export function buildWorkshopWidget(input: {
   behind?: number;
   nameFormat?: "full" | "initial" | "surname";
   rows?: number;
+  textColor?: string;
 }): WidgetInstanceV3 {
   let widget = createScenarioWidget({
     widget: input.widget,
@@ -194,12 +205,10 @@ export function buildWorkshopWidget(input: {
   // la columna Piloto. Viaja por content.columns, nada fuera del contrato.
   if (input.nameFormat && (input.widget === "standings" || input.widget === "relative")) {
     const content = widget.content as Record<string, unknown>;
-    const columns = Array.isArray(content.columns)
-      ? (content.columns as Record<string, unknown>[]).map((column) =>
-          column.metricId === "driverName"
-            ? { ...column, format: { ...(column.format as Record<string, unknown> | undefined), mode: input.nameFormat } }
-            : column)
-      : content.columns;
+    const columns = mapAuthoringWidgetColumns(content, (column) =>
+      column.metricId === "driverName"
+        ? { ...column, format: { ...(column.format as Record<string, unknown> | undefined), mode: input.nameFormat } }
+        : column);
     widget = { ...widget, content: { ...content, columns } };
   }
 
@@ -209,12 +218,14 @@ export function buildWorkshopWidget(input: {
   if (input.widget === "standings" && input.rows !== undefined) {
     const content = widget.content as Record<string, unknown>;
     widget = { ...widget, content: { ...content, rowCount: input.rows } };
-    if (input.system === "vantare-functional") {
-      const minimum = resolveStandingsMinimumSize(widget);
-      if (minimum) {
-        widget = { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height ?? widget.layout.h } };
-      }
-    }
+  }
+
+  // El formato de nombre y el recuento cambian el tamaño intrínseco: la caja
+  // se re-encaja después de aplicarlos — el encaje base de createScenarioWidget
+  // siempre vio el formato completo y el recuento por defecto.
+  if (input.widget === "standings" && input.system === "vantare-functional"
+      && (input.rows !== undefined || input.nameFormat !== undefined || input.variant === "standings-multiclass")) {
+    widget = fitFunctionalStandingsMinimum(widget);
   }
 
   // El selector de marca del panel hace de autoridad local (en producción la
@@ -229,21 +240,37 @@ export function buildWorkshopWidget(input: {
     };
   }
 
-  // Módulos del estudio Standings: posición y piloto siempre visibles; el
-  // resto lo encienden los módulos elegidos. En el estudio cada columna toma
-  // ancho automático — el reparto lo decide el layout, no presets guardados.
-  if (input.system === "vantare-functional" && input.widget === "standings" && input.variant === "standings-functional-study") {
+  if (input.widget === "racing-flags" && input.system === "vantare-functional" && input.textColor !== undefined) {
+    widget = {
+      ...widget,
+      visual: {
+        ...widget.visual,
+        appearanceOverrides: {
+          ...(widget.visual.appearanceOverrides ?? {}),
+          textColor: normalizeRacingFlagsTextColor(input.textColor),
+        },
+      },
+    };
+  }
+
+  // Módulos de Standings Eficiencia: posición y piloto siempre visibles; el
+  // resto lo encienden los módulos elegidos. La selección también aplica a la
+  // variante canónica `default`, que es la que expone el Workshop.
+  if (input.system === "vantare-functional" && input.widget === "standings"
+    && (input.variant === "standings-functional-study" || input.modules !== undefined)) {
     const modules = input.modules ?? FUNCTIONAL_STUDY_DEFAULT_MODULES;
     const content = widget.content as Record<string, unknown>;
     const columns = Array.isArray(content.columns)
       ? (content.columns as Record<string, unknown>[]).map((column) => ({
           ...column,
-          widthPreset: "auto" as const,
+          ...(input.variant === "standings-functional-study" ? { widthPreset: "auto" as const } : {}),
           enabled: column.metricId === "position" || column.metricId === "driverName" || modules.includes(String(column.metricId)),
         }))
       : content.columns;
-    // El estudio enseña siempre al menos 15 pilotos (decisión de Isaac).
-    widget = { ...widget, content: { ...content, columns, rowCount: 15 } };
+    // El estudio enseña siempre al menos 15 pilotos; la variante canónica
+    // conserva su recuento salvo que el selector Filas lo haya cambiado.
+    widget = { ...widget, content: { ...content, columns, ...(input.variant === "standings-functional-study" ? { rowCount: 15 } : {}) } };
+    widget = fitFunctionalStandingsMinimum(widget);
   }
 
   // Huecos de datos del pie en standings/relative de Eficiencia.
@@ -296,6 +323,8 @@ export type WorkshopV2Scenario = {
   widget: WidgetType;
   system: DesignSystemId;
   variant: WorkshopV2Variant;
+  /** Dev-only explicit SessionV2 flag probe for Functional Racing Flags. */
+  flag?: RacingFlagsKnownFlag;
   replayFrame?: number;
   sceneId?: string;
   sceneFrame?: number;
@@ -305,6 +334,8 @@ export type WorkshopV2Scenario = {
   rangeBehind?: number;
   /** Filas declaradas por el Standings (1–30); el golden se completa en ciclo. */
   standingRows?: number;
+  /** Posición del jugador en la parrilla de demostración del Workshop. */
+  playerPosition?: number;
 };
 
 // Calendario auxiliar dev migrado del mock legacy: no es telemetría, solo
@@ -451,6 +482,12 @@ function withWorkshopDemo(frame: OverlayFrameV2, quality: OverlayQualityV2): Ove
       wetnessPct: qualityValue(0, quality),
     },
   };
+}
+
+function withWorkshopPlayerPosition(frame: OverlayFrameV2, position: number): OverlayFrameV2 {
+  const target = frame.standings.find((row) => row.position === position);
+  if (!target) return frame;
+  return { ...frame, player: { ...frame.player, id: target.id } };
 }
 
 // Asiento posicional de cada piloto dev en la parrilla legacy: las tablas dev
@@ -820,6 +857,17 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
     baseFrame = { ...baseFrame, standings: padStandings(baseFrame.standings, scenario.standingRows) };
   }
   let frame = withWorkshopDemo(baseFrame, quality);
+  if (scenario.widget === "racing-flags") {
+    frame = {
+      ...frame,
+      session: {
+        ...frame.session,
+        flag: scenario.flag === undefined
+          ? qualityValue("green", quality)
+          : qualityValue(scenario.flag, quality),
+      },
+    };
+  }
   switch (scenario.variant) {
     case "standings-functional-study": {
       // Explicit visual-study data, never live telemetry. The original V2
@@ -875,6 +923,9 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
       relative: relativeDevWindow(frame.relative, playerId, quality, ahead, behind),
       relativeSettled: relativeDevWindow(frame.relativeSettled, playerId, quality, ahead, behind),
     };
+  }
+  if (scenario.widget === "standings" && scenario.playerPosition !== undefined) {
+    frame = withWorkshopPlayerPosition(frame, scenario.playerPosition);
   }
   frame = applyScene(frame, scenario, quality);
   return { ...runtime, overlayV2Frame: frame };

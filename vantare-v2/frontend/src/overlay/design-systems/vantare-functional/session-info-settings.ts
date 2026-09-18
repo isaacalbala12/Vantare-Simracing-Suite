@@ -6,8 +6,10 @@ export type FunctionalInfoChoice = StandingsInfoMetric | "none";
 export const FUNCTIONAL_DEFAULT_SETTINGS = {
   showSessionHeader: true,
   templateId: "signature",
-  headerFirst: "trackTemperature",
-  headerSecond: "airTemperature",
+  // The Efficiency standings shell has one session header. Keep these legacy
+  // keys for config compatibility, but never create a second numeric band.
+  headerFirst: "none",
+  headerSecond: "none",
   showSessionFooter: true,
   footerFirst: "track",
   footerSecond: "estimatedLaps",

@@ -1,5 +1,6 @@
 import {
   cloneWidgetColumns,
+  updateWidgetColumn,
   validateWidgetColumns,
   WIDTH_PRESET_PIXELS,
   type WidgetColumnV3,
@@ -20,11 +21,14 @@ export type StandingsMetricId =
   | "tireCompound";
 
 export type StandingsClassScope = "player-class" | "all-classes";
+export type StandingsClassificationMode = "normal" | "multiclass";
 
 export type StandingsContent = {
   columns: WidgetColumnV3[];
   rowCount?: number;
   classScope: StandingsClassScope;
+  /** Classification is independent from the visual study/style. */
+  classificationMode?: StandingsClassificationMode;
 };
 
 export const STANDINGS_METRIC_IDS: readonly StandingsMetricId[] = [
@@ -204,10 +208,17 @@ export function parseStandingsContent(input: unknown): StandingsContent {
   const rawScope = inputRecord.classScope;
   const classScope: StandingsClassScope =
     rawScope === "all-classes" ? "all-classes" : "player-class";
+  const rawClassificationMode = inputRecord.classificationMode;
+  const classificationMode: StandingsClassificationMode =
+    rawClassificationMode === "normal" || rawClassificationMode === "multiclass"
+      ? rawClassificationMode
+      : classScope === "all-classes"
+        ? "multiclass"
+        : "normal";
 
   const rawColumns = inputRecord.columns;
   if (!Array.isArray(rawColumns)) {
-    return { ...defaults, rowCount: parsedRowCount, classScope };
+    return { ...defaults, rowCount: parsedRowCount, classScope, classificationMode };
   }
   const columns = rawColumns.map((entry) => {
     if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
@@ -225,7 +236,7 @@ export function parseStandingsContent(input: unknown): StandingsContent {
     seenMetricIds.add(column.metricId);
   }
 
-  return { columns, rowCount: parsedRowCount, classScope };
+  return { columns, rowCount: parsedRowCount, classScope, classificationMode };
 }
 
 export function getEnabledStandingsColumns(content: StandingsContent): WidgetColumnV3[] {
@@ -270,15 +281,6 @@ export function updateStandingsColumn(
 ): StandingsContent {
   return {
     ...content,
-    columns: content.columns.map((column) =>
-      column.id === columnId
-        ? {
-            ...column,
-            ...patch,
-            format: patch.format === undefined ? column.format : { ...column.format, ...patch.format },
-            style: { ...column.style, ...patch.style },
-          }
-        : column,
-    ),
+    columns: updateWidgetColumn(content.columns, columnId, patch),
   };
 }

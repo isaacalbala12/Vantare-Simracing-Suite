@@ -152,8 +152,6 @@ export const studioOrbitIt: Record<string, string> = {
   "overlay.inspector.standings.showSessionHeader": "Mostra intestazione di sessione",
   "overlay.inspector.standings.showBrand": "Mostra marchio Vantare",
   "overlay.inspector.brand.required": "Marchio obbligatorio: sempre visibile in questo piano",
-  "overlay.inspector.efficiency.headerFirst": "Dato 1 dell'intestazione",
-  "overlay.inspector.efficiency.headerSecond": "Dato 2 dell'intestazione",
   "overlay.inspector.efficiency.showSessionFooter": "Mostra piè di sessione",
   "overlay.inspector.efficiency.footerFirst": "Dato 1 del piè",
   "overlay.inspector.efficiency.footerSecond": "Dato 2 del piè",

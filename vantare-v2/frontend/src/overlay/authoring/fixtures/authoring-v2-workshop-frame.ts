@@ -214,7 +214,7 @@ export function buildWorkshopWidget(input: {
   // se re-encaja después de aplicarlos — el encaje base de createScenarioWidget
   // siempre vio el formato completo y el recuento por defecto.
   if (input.widget === "standings" && input.system === "vantare-functional"
-      && (input.rows !== undefined || input.nameFormat !== undefined)) {
+      && (input.rows !== undefined || input.nameFormat !== undefined || input.variant === "standings-multiclass")) {
     const minimum = resolveStandingsMinimumSize(widget);
     if (minimum) {
       widget = { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height ?? widget.layout.h } };
@@ -233,21 +233,27 @@ export function buildWorkshopWidget(input: {
     };
   }
 
-  // Módulos del estudio Standings: posición y piloto siempre visibles; el
-  // resto lo encienden los módulos elegidos. En el estudio cada columna toma
-  // ancho automático — el reparto lo decide el layout, no presets guardados.
-  if (input.system === "vantare-functional" && input.widget === "standings" && input.variant === "standings-functional-study") {
+  // Módulos de Standings Eficiencia: posición y piloto siempre visibles; el
+  // resto lo encienden los módulos elegidos. La selección también aplica a la
+  // variante canónica `default`, que es la que expone el Workshop.
+  if (input.system === "vantare-functional" && input.widget === "standings"
+    && (input.variant === "standings-functional-study" || input.modules !== undefined)) {
     const modules = input.modules ?? FUNCTIONAL_STUDY_DEFAULT_MODULES;
     const content = widget.content as Record<string, unknown>;
     const columns = Array.isArray(content.columns)
       ? (content.columns as Record<string, unknown>[]).map((column) => ({
           ...column,
-          widthPreset: "auto" as const,
+          ...(input.variant === "standings-functional-study" ? { widthPreset: "auto" as const } : {}),
           enabled: column.metricId === "position" || column.metricId === "driverName" || modules.includes(String(column.metricId)),
         }))
       : content.columns;
-    // El estudio enseña siempre al menos 15 pilotos (decisión de Isaac).
-    widget = { ...widget, content: { ...content, columns, rowCount: 15 } };
+    // El estudio enseña siempre al menos 15 pilotos; la variante canónica
+    // conserva su recuento salvo que el selector Filas lo haya cambiado.
+    widget = { ...widget, content: { ...content, columns, ...(input.variant === "standings-functional-study" ? { rowCount: 15 } : {}) } };
+    const minimum = resolveStandingsMinimumSize(widget);
+    if (minimum) {
+      widget = { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height ?? widget.layout.h } };
+    }
   }
 
   // Huecos de datos del pie en standings/relative de Eficiencia.
@@ -309,6 +315,8 @@ export type WorkshopV2Scenario = {
   rangeBehind?: number;
   /** Filas declaradas por el Standings (1–30); el golden se completa en ciclo. */
   standingRows?: number;
+  /** Posición del jugador en la parrilla de demostración del Workshop. */
+  playerPosition?: number;
 };
 
 // Calendario auxiliar dev migrado del mock legacy: no es telemetría, solo
@@ -455,6 +463,12 @@ function withWorkshopDemo(frame: OverlayFrameV2, quality: OverlayQualityV2): Ove
       wetnessPct: qualityValue(0, quality),
     },
   };
+}
+
+function withWorkshopPlayerPosition(frame: OverlayFrameV2, position: number): OverlayFrameV2 {
+  const target = frame.standings.find((row) => row.position === position);
+  if (!target) return frame;
+  return { ...frame, player: { ...frame.player, id: target.id } };
 }
 
 // Asiento posicional de cada piloto dev en la parrilla legacy: las tablas dev
@@ -879,6 +893,9 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
       relative: relativeDevWindow(frame.relative, playerId, quality, ahead, behind),
       relativeSettled: relativeDevWindow(frame.relativeSettled, playerId, quality, ahead, behind),
     };
+  }
+  if (scenario.widget === "standings" && scenario.playerPosition !== undefined) {
+    frame = withWorkshopPlayerPosition(frame, scenario.playerPosition);
   }
   frame = applyScene(frame, scenario, quality);
   return { ...runtime, overlayV2Frame: frame };

@@ -686,13 +686,13 @@ describe("applyStudioCommand", () => {
      column.metricId === 'driverName' ? { ...column, format: { ...(column.format as object), mode: 'surname' } } : column);
    const resized = applyStudioCommand(before, { type: 'widget/content', session: 'general', widgetIds: ['table'], content: { ...table.content, columns } });
    const result = resized.layouts.general!.widgets[0]!;
-   // El mínimo del nombre cae 204 → 128 (−76) y la cabecera pasa a banda (+49):
-   // pos+num+nombre+gap+clase+últ.vuelta = 426 px de ancho; 50+49+20·30+30 de alto.
-   expect(result.layout.w).toBe(426);
-   expect(result.layout.h).toBe(729);
+   // El nombre se compacta sin crear una segunda banda de cabecera: el
+   // presupuesto V1 queda en 376 × 672 px.
+   expect(result.layout.w).toBe(376);
+   expect(result.layout.h).toBe(672);
    const restored = applyStudioCommand(resized, { type: 'widget/content', session: 'general', widgetIds: ['table'], content: table.content });
-   expect(restored.layouts.general!.widgets[0]!.layout.w).toBe(502);
-   expect(restored.layouts.general!.widgets[0]!.layout.h).toBe(680);
+   expect(restored.layouts.general!.widgets[0]!.layout.w).toBe(440);
+   expect(restored.layouts.general!.widgets[0]!.layout.h).toBe(672);
  });
 
  it("refits the Functional multiclass-relative frame when rowCount changes", () => {

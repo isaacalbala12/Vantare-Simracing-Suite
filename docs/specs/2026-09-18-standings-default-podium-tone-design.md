@@ -89,9 +89,9 @@ una variable visual dedicada.
 | Jugador en P1, P2 o P3 | Resaltado del jugador dentro del bloque tonal |
 | Jugador fuera del top 3 | Top 3 tonal y ventana contextual separada al comenzar |
 | Jugador en última posición | La ventana se desplaza como ahora; la separación no cambia |
-| `around=0` | Top 3 tonal; no hay fila contextual |
+| `around=0` | Top 3 tonal; si el jugador está fuera del top 3, queda como única fila contextual separada |
 | Multiclass | Sin bloque tonal; bandas de clase sin cambios |
-| V1 o Foco | Render visual actual, sin metadatos estilísticos aplicados por el Workshop |
+| V1 o Foco | Render visual actual; el scope Default no aplica ningún estilo tonal |
 | Fuente no disponible | No se añaden adornos a estados sin filas |
 
 ## Verificación

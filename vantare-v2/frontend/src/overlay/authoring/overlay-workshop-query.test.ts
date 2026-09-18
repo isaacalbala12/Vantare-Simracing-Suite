@@ -4,6 +4,7 @@ import {
   parseOverlayWorkshopQuery,
   serializeOverlayWorkshopQuery,
 } from "./overlay-workshop-query";
+import { buildWorkshopWidget } from "./fixtures/authoring-v2-workshop-frame";
 
 describe("Overlay Workshop query", () => {
   it("parses an explicit reproducible product selection", () => {
@@ -60,7 +61,7 @@ describe("Overlay Workshop query", () => {
     }
   });
 
-  it("keeps the Efficiency study skin only inside the functional study variant", () => {
+  it("selects the Efficiency Standings default and keeps study styles reproducible", () => {
     const parsed = parseOverlayWorkshopQuery(
       "?widget=standings&system=vantare-functional&variant=standings-functional-study&design=standings-functional-compact&study=v2-focus",
     );
@@ -70,11 +71,41 @@ describe("Overlay Workshop query", () => {
 
     expect(parseOverlayWorkshopQuery("?study=inventada")).toEqual({ error: "invalid study parameter: inventada" });
 
-    // Un valor válido fuera del estudio se descarta sin romper la página.
-    const outside = parseOverlayWorkshopQuery("?widget=standings&system=vantare-functional&variant=default&study=v2-focus");
+    const defaultStyle = parseOverlayWorkshopQuery("?widget=standings&system=vantare-functional&variant=default");
+    if ("error" in defaultStyle) throw new Error(defaultStyle.error);
+    expect(defaultStyle.studyStyle).toBe("default");
+    expect(defaultStyle.around).toBe(4);
+    expect(serializeOverlayWorkshopQuery(defaultStyle)).toContain("study=default");
+    expect(serializeOverlayWorkshopQuery(defaultStyle)).toContain("around=4");
+
+    // Un valor válido fuera de Standings de Eficiencia se descarta sin romper
+    // la página.
+    const outside = parseOverlayWorkshopQuery("?widget=relative&system=vantare-functional&variant=default&study=v2-focus&around=4");
     if ("error" in outside) throw new Error(outside.error);
     expect(outside.studyStyle).toBeUndefined();
+    expect(outside.around).toBeUndefined();
     expect(serializeOverlayWorkshopQuery(outside)).not.toContain("study=");
+  });
+
+  it("keeps Functional Standings modules on the canonical variant", () => {
+    const parsed = parseOverlayWorkshopQuery(
+      "?widget=standings&system=vantare-functional&variant=default&modules=bestLap,pit",
+    );
+    if ("error" in parsed) throw new Error(parsed.error);
+    expect(parsed.modules).toEqual(["bestLap", "pit"]);
+    expect(serializeOverlayWorkshopQuery(parsed)).toContain("modules=bestLap%2Cpit");
+
+    const widget = buildWorkshopWidget({
+      widget: "standings",
+      system: "vantare-functional",
+      variant: "default",
+      session: "race",
+      modules: parsed.modules,
+    });
+    const columns = (widget.content.columns as { metricId: string; enabled: boolean }[])
+      .filter((column) => column.enabled)
+      .map((column) => column.metricId);
+    expect(columns).toEqual(["position", "driverName", "bestLap", "pit"]);
   });
 
   it("round-trips the brand selector and rejects unknown values", () => {
@@ -148,5 +179,18 @@ describe("Overlay Workshop query", () => {
     const outside = parseOverlayWorkshopQuery("?widget=standings&textColor=%23ffcc00");
     if ("error" in outside) throw new Error(outside.error);
     expect(outside).not.toHaveProperty("textColor");
+  });
+
+  it("round-trips the standings neighbour window and player position", () => {
+    const parsed = parseOverlayWorkshopQuery("?widget=standings&system=vantare-functional&study=v2-focus&rows=12&playerPosition=9&around=6");
+    if ("error" in parsed) throw new Error(parsed.error);
+    expect(parsed.around).toBe(6);
+    expect(parsed.playerPosition).toBe(9);
+    expect(serializeOverlayWorkshopQuery(parsed)).toContain("around=6");
+    expect(serializeOverlayWorkshopQuery(parsed)).toContain("playerPosition=9");
+    expect(parseOverlayWorkshopQuery("?widget=standings&system=vantare-functional&around=3")).toHaveProperty("error");
+    expect(parseOverlayWorkshopQuery("?widget=delta&around=4")).not.toHaveProperty("around");
+    expect(parseOverlayWorkshopQuery("?widget=delta&playerPosition=4")).not.toHaveProperty("playerPosition");
+    expect(parseOverlayWorkshopQuery("?widget=standings&rows=8&playerPosition=9")).toHaveProperty("error");
   });
 });

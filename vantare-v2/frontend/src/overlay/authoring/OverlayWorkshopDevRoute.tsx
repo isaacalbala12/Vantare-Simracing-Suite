@@ -20,9 +20,12 @@ import {
 } from "./overlay-workshop-query";
 import "./overlay-workshop.css";
 import { FunctionalStudyControls } from "./FunctionalStudyControls";
-import { resolveStandingsMinimumSize } from "../widget-types/standings/standings-frame-layout";
 import { parseStandingsContent } from "../widget-types/standings/standings-content";
+import { buildStandingsViewModelV2 } from "../widget-types/standings/standings-view-model-v2";
 import { parseRelativeContent } from "../widget-types/relative/relative-content";
+import { countFunctionalStandingsClassBands } from "../widget-types/standings/functional-standings-multiclass";
+import { resolveFunctionalStandingsSize } from "../widget-types/standings/functional-standings-layout";
+import { prepareWidgetVisualSettings } from "../core/widget-visual-settings";
 
 export const OVERLAY_WORKSHOP_PROFILE_ID = "workshop-fixture";
 
@@ -56,6 +59,39 @@ function createRouteScenarioWidget(query: OverlayWorkshopQuery): WidgetInstanceV
   } } };
 }
 
+/**
+ * The Workshop uses the same projected rows as the productive renderer. The
+ * selected classification/window therefore needs to participate in the
+ * intrinsic height calculation before the preview is painted.
+ */
+function fitFunctionalStandingsToRuntime(
+  widget: WidgetInstanceV3,
+  runtime: WidgetRuntimeInput,
+): WidgetInstanceV3 {
+  if (widget.type !== "standings" || widget.visual.systemId !== "vantare-functional") {
+    return widget;
+  }
+  const frame = runtime.overlayV2Frame;
+  const source = runtime.overlayV2Source;
+  if (!frame || !source) return widget;
+
+  try {
+    const content = parseStandingsContent(widget.content);
+    const model = buildStandingsViewModelV2(frame, source, content, runtime.standingsWindow);
+    const { settings } = prepareWidgetVisualSettings(widget);
+    const minimum = resolveFunctionalStandingsSize(
+      content.columns,
+      model.rows.length,
+      settings,
+      30,
+      countFunctionalStandingsClassBands(model.rows, model.classificationMode),
+    );
+    return { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height } };
+  } catch {
+    return widget;
+  }
+}
+
 function setSearch(query: OverlayWorkshopQuery, mode: "push" | "replace" = "push"): void {
   const url = `/workshop?${serializeOverlayWorkshopQuery(query)}`;
   if (url === `${window.location.pathname}${window.location.search}`) return;
@@ -69,6 +105,14 @@ function setSearch(query: OverlayWorkshopQuery, mode: "push" | "replace" = "push
 function WorkshopSurface({ widget, runtime, profileId, surface, query, comparison = false }: { widget: WidgetInstanceV3; runtime: WidgetRuntimeInput; profileId: string; surface: OverlayWorkshopQuery["surface"]; query: OverlayWorkshopQuery; comparison?: boolean }): React.ReactElement {
   const width = query.width ?? widget.layout.w;
   const height = query.height ?? widget.layout.h;
+  const pitOverflow = (() => {
+    if (widget.type !== "standings" || query.system !== "vantare-functional") return false;
+    try {
+      return parseStandingsContent(widget.content).columns.some((column) => column.metricId === "pit" && column.enabled);
+    } catch {
+      return false;
+    }
+  })();
   // Tower reference mode (ISA-1071): the productive renderer runs against the
   // static HTML study's fixture instead of telemetry, on a labeled canvas.
   const reference = query.redlineData === "reference" && query.widget === "standings" && query.redlineTheme === "tower" && query.state === "ready" && !query.sceneId;
@@ -78,7 +122,7 @@ function WorkshopSurface({ widget, runtime, profileId, surface, query, compariso
     relativeViewModelInstanceKey: `${profileId}:${widget.id}`,
   };
   const host = (
-    <div className="overlay-workshop-widget-root" data-overlay-workshop-widget-root style={{ width, height, transform: reference ? undefined : `scale(${query.scale})`, transformOrigin: reference ? "top left" : "center" }}>
+    <div className={`overlay-workshop-widget-root${pitOverflow ? " overlay-workshop-widget-root--pit-overflow" : ""}`} data-overlay-workshop-widget-root style={{ width, height, transform: reference ? undefined : `scale(${query.scale})`, transformOrigin: reference ? "top left" : "center" }}>
       <WidgetVisualViewport widgetType={widget.type} visual={widget.visual} layout={{ ...widget.layout, w: width, h: height }} testId="overlay-workshop-viewport">
         <WidgetVisualHost widget={{ ...widget, layout: { ...widget.layout, w: width, h: height } }} renderMode={surface}
           authoringModel={reference ? REDLINE_TOWER_REFERENCE : undefined}
@@ -121,9 +165,6 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
   }, [parsed]);
   const widget = built.widget;
   const fixtureError = built.error;
-  // La mesa de módulos/tamaño del estudio es solo de Standings.
-  const isStudyTable = parsed.system === "vantare-functional" && parsed.widget === "standings" && parsed.variant === "standings-functional-study";
-
   const [replayFrame, setReplayFrame] = useState(0);
   useEffect(() => {
     if (parsed.variant !== "standings-replay") {
@@ -256,7 +297,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
       // Igual en Standings: si el recuento supera los 20 del golden, el
       // frame lo completa en ciclo hasta las filas declaradas.
       const standingRows = widget.type === "standings" ? parseStandingsContent(widget.content).rowCount : undefined;
-      return buildWorkshopFrameV2({
+      const baseRuntime = buildWorkshopFrameV2({
         session: parsed.session,
         location: parsed.location,
         state: parsed.state,
@@ -268,11 +309,21 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
         ...(parsed.variant === "standings-replay" ? { replayFrame } : {}),
         ...(relativeRange ? { rangeAhead: relativeRange.rangeAhead, rangeBehind: relativeRange.rangeBehind } : {}),
         ...(standingRows !== undefined ? { standingRows } : {}),
+        ...(parsed.playerPosition !== undefined ? { playerPosition: parsed.playerPosition } : {}),
       });
+      if (parsed.widget === "standings" && parsed.system === "vantare-functional" && parsed.around !== undefined) {
+        return { ...baseRuntime, standingsWindow: { mode: "podium-around-player", around: parsed.around } };
+      }
+      return baseRuntime;
     } catch {
       return null;
     }
   }, [parsed, widget, sampledMs, replayFrame, scene, loop]);
+
+  const visualWidget = useMemo(
+    () => widget && runtime ? fitFunctionalStandingsToRuntime(widget, runtime) : widget,
+    [widget, runtime],
+  );
 
   const parkFrame = (frame: number) => {
     setPlaying(false);
@@ -296,10 +347,6 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
     update({ ...DEFAULT_OVERLAY_WORKSHOP_QUERY });
   };
 
-  const studySize = isStudyTable && widget?.type === "standings" ? resolveStandingsMinimumSize(widget) : undefined;
-  // El mínimo ya incluye la banda ambiental del pie: la caja se encaja tal cual.
-  const displayQuery = studySize ? { ...parsed, width: studySize.width, height: studySize.height, scale: 1 } : parsed;
-
   return (
     // La vista de estudio es el único harness: no hay chrome genérico que se
     // pueda mezclar; todas las selecciones viven en el panel lateral.
@@ -308,9 +355,9 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
       <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage data-stage-label={`${parsed.widget.toUpperCase().replace(/-/g, " ")} / ESTUDIO 01`}>
         {rejected && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-rejected>URL rechazada ({rejected}) — se cargaron los valores por defecto.</p>}
         {fixtureError && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-fixture-error>Selección inválida: {fixtureError}</p>}
-        {!fixtureError && widget && runtime && (
-          <><WorkshopSurface widget={widget} runtime={runtime} profileId={profileId} surface={parsed.surface} query={displayQuery} />
-          {parsed.compare && <WorkshopSurface widget={widget} runtime={runtime} profileId={profileId} surface={parsed.compare} query={displayQuery} comparison />}</>
+        {!fixtureError && visualWidget && runtime && (
+          <><WorkshopSurface widget={visualWidget} runtime={runtime} profileId={profileId} surface={parsed.surface} query={parsed} />
+          {parsed.compare && <WorkshopSurface widget={visualWidget} runtime={runtime} profileId={profileId} surface={parsed.compare} query={parsed} comparison />}</>
         )}
         {scene ? (
           <div className="overlay-workshop-transport" data-overlay-workshop-transport>

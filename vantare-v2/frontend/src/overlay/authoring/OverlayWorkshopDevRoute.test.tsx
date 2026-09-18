@@ -196,7 +196,52 @@ describe("OverlayWorkshopDevRoute", () => {
     expect(document.querySelector("[data-widget-system=vantare-functional]")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "V1" }));
-    expect(document.querySelector("[data-overlay-workshop-page]")?.getAttribute("data-study-style")).toBeNull();
+    expect(document.querySelector("[data-overlay-workshop-page]")?.getAttribute("data-study-style")).toBe("v1");
+  });
+
+  it("selects Efficiency Standings default and exposes the player-neighbour window", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=standings&system=vantare-functional&variant=default&rows=12&state=ready&surface=obs" />);
+
+    await waitFor(() => expect(document.querySelectorAll("[data-standings-row]").length).toBeGreaterThan(0));
+    expect(document.querySelector("[data-overlay-workshop-page]")?.getAttribute("data-study-style")).toBe("default");
+    expect((screen.getByLabelText("Pilotos alrededor") as HTMLSelectElement).value).toBe("4");
+    expect(document.querySelectorAll("[data-standings-row]")).toHaveLength(7);
+    expect([...document.querySelectorAll("[data-standings-row] [data-metric=position]")].map((cell) => cell.textContent)).toEqual([
+      "1", "2", "3", "4", "5", "6", "7",
+    ]);
+
+    fireEvent.change(screen.getByLabelText("Pilotos alrededor"), { target: { value: "0" } });
+    await waitFor(() => expect(document.querySelectorAll("[data-standings-row]")).toHaveLength(3));
+    expect(window.location.search).toContain("around=0");
+  });
+
+  it("projects normal classification and the player window through every Efficiency style", async () => {
+    for (const study of ["v1", "default", "v2-focus"] as const) {
+      cleanup();
+      render(<OverlayWorkshopDevRoute search={`?widget=standings&system=vantare-functional&variant=default&study=${study}&rows=12&playerPosition=9&around=4&state=ready&surface=obs`} />);
+
+      await waitFor(() => expect(document.querySelectorAll("[data-standings-row]")).toHaveLength(8));
+      const root = document.querySelector('[data-widget-renderer="standings"]');
+      expect(root?.getAttribute("data-classification-mode")).toBe("normal");
+      expect(root?.getAttribute("data-multiclass")).toBeNull();
+      expect(document.querySelectorAll(".vf-class-band")).toHaveLength(0);
+      expect([...document.querySelectorAll("[data-standings-row] [data-metric=position]")].map((cell) => cell.textContent)).toEqual([
+        "1", "2", "3", "7", "8", "9", "10", "11",
+      ]);
+      expect(document.querySelector("[data-standings-row][data-player] [data-metric=position]")?.textContent).toBe("9");
+      expect((screen.getByLabelText("Pilotos alrededor") as HTMLSelectElement).value).toBe("4");
+    }
+  });
+
+  it("keeps multiclass explicit while sharing the same player window policy", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=standings&system=vantare-functional&variant=standings-multiclass&study=v2-focus&rows=12&playerPosition=9&around=4&state=ready&surface=obs" />);
+
+    await waitFor(() => expect(document.querySelectorAll("[data-standings-row]").length).toBeGreaterThan(0));
+    const root = document.querySelector('[data-widget-renderer="standings"]');
+    expect(root?.getAttribute("data-classification-mode")).toBe("multiclass");
+    expect(root?.getAttribute("data-multiclass")).toBe("true");
+    expect(document.querySelectorAll(".vf-class-band").length).toBeGreaterThan(0);
+    expect(document.querySelector("[data-standings-row][data-player] [data-metric=position]")?.textContent).toBe("3");
   });
 
   it("renders Input history from the canonical V2 frame without seeding", async () => {

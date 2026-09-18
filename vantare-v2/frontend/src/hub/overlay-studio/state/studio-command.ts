@@ -1,4 +1,5 @@
 import { parseStandingsContent } from "../../../overlay/widget-types/standings/standings-content";
+import { resolveStandingsMinimumSize } from "../../../overlay/widget-types/standings/standings-frame-layout";
 import {
   getEnabledRelativeColumns,
   parseRelativeContent,
@@ -351,6 +352,24 @@ function applyWidgetContent(document: ProfileDocumentV3, command: Extract<Studio
         const next = multiclassRelativeDefinition.parseContent(content).rowCount;
         if (next === before) return { ...widget, content };
         return { ...widget, content, layout: { ...widget.layout, h: resolveFunctionalMulticlassHeight(next) } };
+      }
+      if (widget.type === "standings" && widget.visual.systemId === "vantare-functional") {
+        // En Eficiencia el marco sigue al contenido: si el tamaño intrínseco
+        // cambia (rowCount, formato de nombre, columnas), la caja se re-encaja.
+        const before = resolveStandingsMinimumSize(widget);
+        const nextWidget = { ...widget, content };
+        const after = resolveStandingsMinimumSize(nextWidget);
+        if (before?.width === after?.width && before?.height === after?.height) {
+          return nextWidget;
+        }
+        return {
+          ...nextWidget,
+          layout: {
+            ...widget.layout,
+            w: after?.width ?? widget.layout.w,
+            h: after?.height ?? widget.layout.h,
+          },
+        };
       }
       if (widget.type !== "standings" || widget.visual.systemId !== "vantare-crystal") return { ...widget, content };
       const previousRows = parseStandingsContent(widget.content).rowCount;

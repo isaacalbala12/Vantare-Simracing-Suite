@@ -6,11 +6,18 @@ import type {
 } from "../../../generated/telemetry";
 import type { StandingsContent } from "./standings-content";
 import { getEnabledStandingsColumns } from "./standings-content";
-import { formatRemainingTime } from "./standings-formatting";
+import { selectDefaultStandingsWindow, type StandingsWindowRuntime } from "./standings-window";
+import {
+  formatRemainingTime,
+  formatStandingsLapDifference,
+  formatStandingsSecondsDifference,
+} from "./standings-formatting";
 import { formatDriverName } from "../shared/driver-name";
 import type { WidgetColumnV3 } from "../shared/widget-column";
 import {
   withStandingsMotionIdentity,
+  withStandingsClassScope,
+  withStandingsClassificationMode,
   type StandingsFlag,
   type StandingsInfoValue,
   type StandingsRowViewModel,
@@ -25,9 +32,9 @@ const PLACEHOLDER = "—";
  * The ordering is NOT recomputed here: `frame.standings` arrives already
  * resolved by the Go builder, including the fallback that Overlay v1 applied
  * silently inside standings-view-model.ts. This module only formats, filters
- * by the widget's own presentation config (class scope, row count) and picks
- * authorised fields — no business rule, no sorting, no gap arithmetic beyond
- * rendering what the frame declares.
+ * by the widget's own presentation config (class scope, row count, and the
+ * Workshop-only player window) and picks authorised fields — no sorting, no
+ * gap arithmetic beyond rendering what the frame declares.
  *
  * Fields the canonical state does not carry stay at the placeholder and are
  * declared unsupported for the shadow comparator rather than invented:
@@ -40,10 +47,13 @@ export function buildStandingsViewModelV2(
   frame: OverlayFrameV2,
   source: OverlaySourceStatusV2,
   content: StandingsContent,
+  window?: StandingsWindowRuntime,
 ): StandingsViewModel {
   const columns = getEnabledStandingsColumns(content);
+  const classificationMode = content.classificationMode
+    ?? (content.classScope === "all-classes" ? "multiclass" : "normal");
   if (source.state === "error" || source.state === "stopped") {
-    return {
+    return withStandingsClassificationMode(withStandingsClassScope({
       type: "standings",
       status: source.state === "error" ? "error" : "disconnected",
       statusMessage: source.reason || undefined,
@@ -52,7 +62,7 @@ export function buildStandingsViewModelV2(
       remainingText: PLACEHOLDER,
       columns,
       rows: [],
-    };
+    }, content.classScope), classificationMode);
   }
 
   const playerId = frame.player.id;
@@ -69,24 +79,34 @@ export function buildStandingsViewModelV2(
   const limited = scoped.slice(0, content.rowCount ?? 20);
   const nameColumn = columns.find((column) => column.metricId === "driverName");
   const weather = frame.weather;
+  const projectedRows = limited.map((row, index) =>
+    buildRow(row, index, playerId, paceSession, sessionBestLap, nameColumn),
+  );
+  const rows = window
+    ? selectDefaultStandingsWindow(projectedRows, window.around)
+    : projectedRows;
 
-  return withStandingsMotionIdentity({
-    type: "standings",
-    status: source.state === "stale" ? "stale" : "ready",
-    statusMessage: source.reason || undefined,
-    activeClass,
-    sessionLabel: displayedText(frame.session.phase)?.toUpperCase() ?? PLACEHOLDER,
-    remainingText: formatRemainingTime(displayedNumber(frame.session.remaining)),
-    trackName: displayedText(frame.session.track),
-    totalRows: scoped.length,
-    ambientTempText: formatTemp(displayedNumber(weather?.ambientC)),
-    trackTempText: formatTemp(displayedNumber(weather?.trackC)),
-    windText: formatWind(displayedNumber(weather?.windKph)),
-    flag: source.state === "live" ? currentFlag(frame.session.flag) : "unknown",
-    sessionInfo: sessionInformation(frame, phase === "race"),
-    columns,
-    rows: limited.map((row, index) => buildRow(row, index, playerId, paceSession, sessionBestLap, nameColumn)),
-  }, `${frame.sessionId}:${frame.epoch}`, frame.sequence);
+  return withStandingsMotionIdentity(
+    withStandingsClassificationMode(withStandingsClassScope({
+      type: "standings",
+      status: source.state === "stale" ? "stale" : "ready",
+      statusMessage: source.reason || undefined,
+      activeClass,
+      sessionLabel: displayedText(frame.session.phase)?.toUpperCase() ?? PLACEHOLDER,
+      remainingText: formatRemainingTime(displayedNumber(frame.session.remaining)),
+      trackName: displayedText(frame.session.track),
+      totalRows: scoped.length,
+      ambientTempText: formatTemp(displayedNumber(weather?.ambientC)),
+      trackTempText: formatTemp(displayedNumber(weather?.trackC)),
+      windText: formatWind(displayedNumber(weather?.windKph)),
+      flag: source.state === "live" ? currentFlag(frame.session.flag) : "unknown",
+      sessionInfo: sessionInformation(frame, phase === "race"),
+      columns,
+      rows,
+    }, content.classScope), classificationMode),
+    `${frame.sessionId}:${frame.epoch}`,
+    frame.sequence,
+  );
 }
 
 function currentFlag(value: OverlayQValue<string>): StandingsFlag {
@@ -203,14 +223,14 @@ function formatBestLapGap(row: OverlayStandingRowV2, sessionBestLap: number | un
   const lap = displayedNumber(row.bestLap);
   if (lap === undefined || lap <= 0 || sessionBestLap === undefined) return PLACEHOLDER;
   const gap = lap - sessionBestLap;
-  return gap <= 0.0005 ? "Leader" : `+${gap.toFixed(3)}s`;
+  return gap <= 0.0005 ? "Leader" : formatStandingsSecondsDifference(gap);
 }
 
 function formatGap(row: OverlayStandingRowV2, index: number): string {
   if (index === 0) return "Leader";
-  if (row.gapLaps !== undefined && row.gapLaps > 0) return `+${row.gapLaps}L`;
+  if (row.gapLaps !== undefined && row.gapLaps !== 0) return formatStandingsLapDifference(row.gapLaps);
   const gap = displayedNumber(row.gap);
-  return gap !== undefined && gap > 0 ? `+${gap.toFixed(3)}s` : PLACEHOLDER;
+  return gap !== undefined && gap !== 0 ? formatStandingsSecondsDifference(gap) : PLACEHOLDER;
 }
 
 function formatLapTime(seconds: number | undefined): string {

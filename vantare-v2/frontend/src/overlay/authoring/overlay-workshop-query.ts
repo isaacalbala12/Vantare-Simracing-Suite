@@ -9,6 +9,11 @@ import { WIDGET_TYPES } from "../core/profile-document";
 import { FUNCTIONAL_STUDY_MODULE_IDS, FUNCTIONAL_STUDY_SLOT_IDS, FUNCTIONAL_STUDY_STYLE_IDS, type FunctionalStudyStyleId } from "./functional-study-options";
 import { RELATIVE_RANGE_LIMIT } from "../widget-types/relative/relative-content";
 import { STANDINGS_ROW_COUNT_MAX, STANDINGS_ROW_COUNT_MIN } from "../widget-types/standings/standings-content";
+import {
+  STANDINGS_WINDOW_AROUND_OPTIONS,
+  STANDINGS_WINDOW_DEFAULT_AROUND,
+  type StandingsWindowAround,
+} from "../widget-types/standings/standings-window";
 import { DRIVER_NAME_FORMATS, type DriverNameFormat } from "../widget-types/shared/driver-name";
 import {
   isRacingFlagsTextColor,
@@ -36,6 +41,10 @@ export type OverlayWorkshopQuery = {
   nameFormat?: DriverNameFormat;
   /** Filas del Standings (1–30): las que el contenido declara, como en Studio. */
   rows?: number;
+  /** Vecinos visibles alrededor del jugador en el estudio de Standings (0–8, pares). */
+  around?: StandingsWindowAround;
+  /** Posición del jugador en la parrilla de demostración del harness. */
+  playerPosition?: number;
   state: AuthoringV2Scenario["state"];
   surface: "studio" | "desktop" | "obs" | "harness";
   variant: WorkshopV2Variant;
@@ -196,8 +205,9 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   if (studyStyleRaw !== null && !FUNCTIONAL_STUDY_STYLE_IDS.has(studyStyleRaw)) {
     return { error: `invalid study parameter: ${studyStyleRaw}` };
   }
-  const studyStyle = studyStyleRaw !== null && variant === "standings-functional-study" && system === "vantare-functional"
-    ? studyStyleRaw as FunctionalStudyStyleId
+  const efficiencyStandings = widget === "standings" && system === "vantare-functional";
+  const studyStyle = efficiencyStandings
+    ? (studyStyleRaw ?? "default") as FunctionalStudyStyleId
     : undefined;
 
   const brand = params.get("brand");
@@ -211,7 +221,7 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
     const list = modulesRaw.split(",").filter(Boolean);
     const unknown = list.find((id) => !FUNCTIONAL_STUDY_MODULE_IDS.has(id));
     if (unknown) return { error: `invalid modules parameter: ${modulesRaw}` };
-    if (variant === "standings-functional-study" && system === "vantare-functional") {
+    if (widget === "standings" && system === "vantare-functional") {
       modules = list;
     }
   }
@@ -269,6 +279,34 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
     ? textColorRaw.toLowerCase()
     : undefined;
 
+  const playerPositionRaw = params.get("playerPosition");
+  const playerPositionParsed = playerPositionRaw === null ? undefined : Number(playerPositionRaw);
+  const defaultWorkshopRows = efficiencyStandings
+    ? variant === "standings-functional-study" ? 15 : 20
+    : 20;
+  const playerPositionLimit = rows ?? defaultWorkshopRows;
+  if (widget === "standings" && playerPositionParsed !== undefined && (
+    !Number.isInteger(playerPositionParsed)
+      || playerPositionParsed < STANDINGS_ROW_COUNT_MIN
+      || playerPositionParsed > Math.min(STANDINGS_ROW_COUNT_MAX, playerPositionLimit)
+  )) {
+    return { error: `invalid playerPosition parameter: ${playerPositionRaw}` };
+  }
+  const playerPosition = widget === "standings" ? playerPositionParsed : undefined;
+  const aroundRaw = params.get("around");
+  const aroundParsed = aroundRaw === null ? undefined : Number(aroundRaw);
+  if (aroundParsed !== undefined && (
+    !Number.isInteger(aroundParsed)
+    || !STANDINGS_WINDOW_AROUND_OPTIONS.includes(aroundParsed as StandingsWindowAround)
+  )) {
+    return { error: `invalid around parameter: ${aroundRaw}` };
+  }
+  const around: StandingsWindowAround | undefined = efficiencyStandings
+    ? aroundParsed === undefined
+      ? STANDINGS_WINDOW_DEFAULT_AROUND
+      : aroundParsed as StandingsWindowAround
+    : undefined;
+
   // Tower lab options are validated here and applied as appearanceOverrides;
   // the productive settings parser re-validates them before rendering.
   const designSettings = parseStandingsEnduranceSettings(designId ? getOfficialDesign(designId)?.visual ?? {} : {});
@@ -300,6 +338,8 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
     ...(rows !== undefined ? { rows } : {}),
     ...(flag !== undefined ? { flag } : {}),
     ...(textColor !== undefined ? { textColor } : {}),
+    ...(around !== undefined ? { around } : {}),
+    ...(playerPosition !== undefined ? { playerPosition } : {}),
     ...(redlineThemeRaw ? { redlineTheme: redlineThemeRaw as OverlayWorkshopQuery["redlineTheme"] } : {}),
     ...(redlineData ? { redlineData } : {}),
     ...(redlineSelectionRaw ? { redlineSelection: redlineSelectionRaw as OverlayWorkshopQuery["redlineSelection"] } : {}),
@@ -340,6 +380,8 @@ export function serializeOverlayWorkshopQuery(query: OverlayWorkshopQuery): stri
   if (query.rows !== undefined) params.set("rows", String(query.rows));
   if (query.flag) params.set("flag", query.flag);
   if (query.textColor) params.set("textColor", query.textColor);
+  if (query.around !== undefined) params.set("around", String(query.around));
+  if (query.playerPosition !== undefined) params.set("playerPosition", String(query.playerPosition));
   if (query.redlineTheme) params.set("redlineTheme", query.redlineTheme);
   if (query.redlineData) params.set("redlineData", query.redlineData);
   if (query.redlineSelection) params.set("redlineSelection", query.redlineSelection);

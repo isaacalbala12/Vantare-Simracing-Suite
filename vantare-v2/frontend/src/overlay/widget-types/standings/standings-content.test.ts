@@ -19,6 +19,13 @@ describe("standings-content", () => {
     expect(parsed.columns).toEqual(createDefaultStandingsContent().columns);
   });
 
+  it("infers legacy all-class content as multiclass unless the mode is explicit", () => {
+    const legacy = parseStandingsContent({ ...createDefaultStandingsContent(), classScope: "all-classes" });
+    const normal = parseStandingsContent({ classScope: "all-classes", classificationMode: "normal" });
+    expect(legacy.classificationMode).toBe("multiclass");
+    expect(normal.classificationMode).toBe("normal");
+  });
+
   it("maps legacy numeric widths to the nearest preset", () => {
     expect(nearestWidthPreset(28)).toBe("sm");
     expect(nearestWidthPreset(132)).toBe("lg");

@@ -32,6 +32,7 @@
    halos, retirement ghosts — whole, when a real session cuts them off at the
    edge. The point of this page is to see what ships. */
 .overlay-workshop-widget-root { position: relative; overflow: hidden; flex: none; }
+.overlay-workshop-widget-root--pit-overflow { overflow: visible; }
 .overlay-workshop-alert { margin: 8px 0; padding: 10px 14px; border: 1px solid rgb(217 83 96 / 45%); border-radius: 6px; background: rgb(193 18 31 / 12%); color: var(--v-red-400, #f0a9ae); font: 12px/1.5 "JetBrains Mono", monospace; }
 .overlay-workshop-stage .overlay-workshop-alert { margin: 0; place-self: center; }
 

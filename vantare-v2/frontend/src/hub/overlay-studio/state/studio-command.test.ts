@@ -678,6 +678,23 @@ describe("applyStudioCommand", () => {
    expect(sameWindow.layouts.general!.widgets[0]!.layout).toEqual(narrower.layouts.general!.widgets[0]!.layout);
  });
 
+ it("refits the Functional standings frame when the driver name format narrows", () => {
+   const table = standingsDefinition.createDefault('table');
+   table.visual.systemId = 'vantare-functional';
+   const before = buildDocument([table]);
+   const columns = (table.content as { columns: Array<Record<string, unknown>> }).columns.map((column) =>
+     column.metricId === 'driverName' ? { ...column, format: { ...(column.format as object), mode: 'surname' } } : column);
+   const resized = applyStudioCommand(before, { type: 'widget/content', session: 'general', widgetIds: ['table'], content: { ...table.content, columns } });
+   const result = resized.layouts.general!.widgets[0]!;
+   // El nombre se compacta sin crear una segunda banda de cabecera: el
+   // presupuesto V1 queda en 376 × 672 px.
+   expect(result.layout.w).toBe(376);
+   expect(result.layout.h).toBe(672);
+   const restored = applyStudioCommand(resized, { type: 'widget/content', session: 'general', widgetIds: ['table'], content: table.content });
+   expect(restored.layouts.general!.widgets[0]!.layout.w).toBe(440);
+   expect(restored.layouts.general!.widgets[0]!.layout.h).toBe(672);
+ });
+
  it("refits the Functional multiclass-relative frame when rowCount changes", () => {
    const widget = multiclassRelativeDefinition.createDefault('mc');
    widget.visual.systemId = 'vantare-functional';

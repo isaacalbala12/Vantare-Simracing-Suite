@@ -16,6 +16,8 @@ export const FUNCTIONAL_STUDY_DEFAULT_MODULES: readonly string[] = ["gap", "best
  * con `data-study-style` sobre la estructura de un diseño oficial existente.
  * Solo vive en el Workshop; no es un diseño oficial ni se persiste. */
 export const FUNCTIONAL_STUDY_STYLES = [
+  { id: "v1", label: "V1", designId: "standings-functional-compact" },
+  { id: "default", label: "Default", designId: "standings-functional-compact" },
   { id: "v2-focus", label: "Foco", designId: "standings-functional-compact" },
 ] as const;
 

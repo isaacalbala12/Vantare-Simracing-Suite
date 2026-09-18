@@ -3,7 +3,20 @@ import { useI18n } from "../../../i18n/I18nProvider";
 import type { WidgetRendererProps } from "../../core/design-system-definition";
 import { flipRows, useWidgetMotion } from "../../core/widget-motion";
 import { deriveOvertakes } from "./functional-motion";
-import { FUNCTIONAL_IDENTITY_METRICS as IDENTITY, resolveFunctionalColumnWidth, resolveFunctionalIdentitySpan, resolveFunctionalHeaderInfoPlacement } from "../../widget-types/standings/functional-standings-layout";
+import {
+  FUNCTIONAL_BROADCAST_COLUMN_HEADER_HEIGHT,
+  FUNCTIONAL_BROADCAST_SESSION_HEADER_HEIGHT,
+  FUNCTIONAL_IDENTITY_METRICS as IDENTITY,
+  FUNCTIONAL_SIGNATURE_COLUMN_HEADER_HEIGHT,
+  FUNCTIONAL_SIGNATURE_SESSION_HEADER_HEIGHT,
+  resolveFunctionalColumnWidth,
+  resolveFunctionalIdentitySpan,
+} from "../../widget-types/standings/functional-standings-layout";
+import {
+  buildFunctionalStandingsEntries,
+  FUNCTIONAL_STANDINGS_CLASS_BAND_HEIGHT,
+  takeFunctionalStandingsRows,
+} from "../../widget-types/standings/functional-standings-multiclass";
 import { resolveStandingsCellValue, type StandingsViewModel } from "../../widget-types/standings/standings-view-model";
 import { functionalLabels } from "./labels";
 import vantareMark from "../../../assets/orbit/vantare-mark.png";
@@ -51,7 +64,12 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
   const session = model.sessionLabel.toLowerCase();
   const paceSession = session === "practice" || session === "qualifying";
   const sessionLabel = session === "race" || session === "practice" || session === "qualifying" ? labels[session] : model.sessionLabel;
-  const columns = model.columns;
+  const configuredColumns = model.columns;
+  // Pit is a row status, not a timing metric: keep its module in the content
+  // contract, but render its label beyond the final visible metric instead of
+  // reserving a standalone table column.
+  const columns = configuredColumns.filter((column) => column.metricId !== "pit");
+  const pitEnabled = configuredColumns.some((column) => column.metricId === "pit" && column.enabled);
   const identitySpan = resolveFunctionalIdentitySpan(columns);
   const hasHeader = config.showSessionHeader;
   // Decisión pura de presentación (ISA-1105): la inyecta WidgetVisualHost
@@ -71,70 +89,97 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
     ? Math.min(1, (innerWidth * 0.97) / slotsTotal)
     : 1;
   const hasAmbientFooter = Boolean(model.trackTempText || model.ambientTempText || model.windText);
-  const infoPlacement = resolveFunctionalHeaderInfoPlacement(columns, config);
-  const splitHeader = infoPlacement === "split";
+  const classScope = model.classScope ?? "player-class";
+  const classificationMode = model.classificationMode
+    ?? (classScope === "all-classes" ? "multiclass" : "normal");
+  const multiclass = classificationMode === "multiclass";
   const unavailable = model.status === "disconnected" || model.status === "missing" || model.status === "error";
   const externalHeader = !identitySpan || unavailable || broadcast || model.rows.length === 0;
   const statusText = model.status !== "ready" ? labels[model.status] : model.rows.length === 0 ? labels.missing : undefined;
   const labelFor = (metric: string) => metric === "gap" && paceSession ? labels.paceGap : labels[metric as keyof typeof labels] ?? metric;
-  const headerInfo = <SessionInfo className="vf-header-info" choices={[config.headerFirst, config.headerSecond]} model={model} labels={labels} />;
-
   const slotRows = footerSlots.length <= 5 ? (footerSlots.length > 0 ? 1 : 0) : Math.ceil(slotsTotal / innerWidth);
   const slotsHeight = slotRows > 0 ? FOOTER_SLOT_PAD_PX + slotRows * FOOTER_SLOT_ROW_PX : 0;
   const footerHeight = slotsHeight || (hasAmbientFooter ? 30 : config.showSessionFooter ? 22 : 0);
   const brandBandHeight = !hasHeader && brandVisible ? 22 : 0;
-  const looseHeaderHeight = externalHeader && hasHeader ? (broadcast ? 46 : 49) : 0;
-  const externalInfoHeight = externalHeader && infoPlacement === "band" ? 22 : 0;
-  const tableHeaderHeight = broadcast ? 24 : 50;
-  const internalInfoHeight = !externalHeader && infoPlacement === "band" ? 22 : 0;
+  const looseHeaderHeight = externalHeader && hasHeader
+    ? (broadcast ? FUNCTIONAL_BROADCAST_SESSION_HEADER_HEIGHT : FUNCTIONAL_SIGNATURE_SESSION_HEADER_HEIGHT)
+    : 0;
+  const tableHeaderHeight = broadcast
+    ? FUNCTIONAL_BROADCAST_COLUMN_HEADER_HEIGHT
+    : !hasHeader || externalHeader || identitySpan === 0
+      ? FUNCTIONAL_SIGNATURE_COLUMN_HEADER_HEIGHT
+      : FUNCTIONAL_SIGNATURE_SESSION_HEADER_HEIGHT;
   const tableSpace = layout?.h === undefined
     ? Number.POSITIVE_INFINITY
-    : layout.h - footerHeight - brandBandHeight - looseHeaderHeight - externalInfoHeight;
-  const rowsFit = Math.max(0, Math.floor((tableSpace - tableHeaderHeight - internalInfoHeight) / 30));
-  const visibleRows = Number.isFinite(tableSpace) ? model.rows.slice(0, rowsFit) : model.rows;
+    : layout.h - footerHeight - brandBandHeight - looseHeaderHeight;
+  const availableBodyHeight = tableSpace - tableHeaderHeight;
+  const visibleRows = takeFunctionalStandingsRows(model.rows, classificationMode, availableBodyHeight);
+  const entries = buildFunctionalStandingsEntries(visibleRows, classificationMode);
+  // Keep the PIT badge outside the table's geometry. The rail mirrors the
+  // table rows, so the badge stays aligned without reserving a fake metric
+  // column or changing the width of the standings card.
+  const pitIndicators: Array<{ key: string; top: number }> = [];
+  if (pitEnabled) {
+    let top = tableHeaderHeight;
+    for (const entry of entries) {
+      const entryHeight = entry.kind === "class" ? FUNCTIONAL_STANDINGS_CLASS_BAND_HEIGHT : 30;
+      if (entry.kind === "row" && entry.row.pitText) {
+        pitIndicators.push({ key: entry.key, top: top + entryHeight / 2 });
+      }
+      top += entryHeight;
+    }
+  }
 
   const sessionHeader = <div className={`vf-session${brandVisible ? "" : " vf-session--bare"}`} title={`${sessionLabel} · ${labels.remaining}`}>
     {brandVisible ? <span className="vf-brand" aria-label="Vantare"><img src={vantareMark} alt="" />VANTARE</span> : null}
     <span className="vf-session-context"><span className="vf-session-type" role={model.status === "stale" ? "status" : undefined}>{model.status === "stale" ? labels.stale : sessionLabel}</span><span className="vf-clock">{model.remainingText}</span></span>
     <span className="vf-class" title={model.activeClass}>{model.activeClass.slice(0, 3).toUpperCase()}</span>
-    {infoPlacement === "inline" && headerInfo}
   </div>;
 
   return (
-    <section ref={rootRef} className="vf-standings" data-widget-system="vantare-functional" data-widget-renderer="standings" data-template={broadcast ? "broadcast" : "signature"} data-session-header={hasHeader} data-status={model.status} data-session={session} data-flag={model.status === "ready" ? model.flag ?? "unknown" : "unknown"} data-effects={effects} data-motion-level={motion}>
+    <section ref={rootRef} className="vf-standings" data-widget-system="vantare-functional" data-widget-renderer="standings" data-template={broadcast ? "broadcast" : "signature"} data-session-header={hasHeader} data-pit-module={pitEnabled || undefined} data-class-scope={classScope} data-classification-mode={classificationMode} data-multiclass={multiclass || undefined} data-status={model.status} data-session={session} data-flag={model.status === "ready" ? model.flag ?? "unknown" : "unknown"} data-effects={effects} data-motion-level={motion}>
       {!hasHeader && brandVisible && <div className="vf-brand-band"><span className="vf-brand" aria-label="Vantare"><img src={vantareMark} alt="" />VANTARE</span></div>}
       {externalHeader && hasHeader && sessionHeader}
-      {externalHeader && infoPlacement === "band" && <div className="vf-info-band">{headerInfo}</div>}
       {statusText && model.status !== "stale" && <p className="vf-status" role="status">{statusText}</p>}
       {model.statusMessage && model.status !== "stale" && <p className="vf-detail">{model.statusMessage}</p>}
       {!unavailable && visibleRows.length > 0 && (
-        <div className="vf-table-wrap">
+        <div className="vf-table-wrap" data-pit-enabled={pitEnabled || undefined}>
         <table className="vf-table" aria-label={`${sessionLabel} · ${model.activeClass}`}>
           <colgroup>{columns.map((column) => column.metricId === "driverName"
             ? <col key={column.id} />
             : <col key={column.id} style={{ width: resolveFunctionalColumnWidth(column, broadcast) }} />)}</colgroup>
-          <thead>{splitHeader ? <>
-            <tr className="vf-info-row"><th rowSpan={2} colSpan={identitySpan} scope="colgroup" className="vf-identity-head">{sessionHeader}</th><th colSpan={columns.length - identitySpan} className="vf-info-head">{headerInfo}</th></tr>
-            <tr className="vf-metric-row">{columns.slice(identitySpan).map(column => <th key={column.id} scope="col" data-metric={column.metricId} title={labelFor(column.metricId)}><span className="vf-column-label">{labelFor(column.metricId)}</span></th>)}</tr>
-          </> : <tr>
+          <thead><tr>
             {model.status === "stale" && !hasHeader ? <th colSpan={columns.length} className="vf-source-notice" role="status">{statusText}</th> : <>
             {!broadcast && identitySpan > 0 && <th colSpan={identitySpan} scope="colgroup" className="vf-identity-head">{hasHeader ? sessionHeader : <span className="vf-heading-name">{labels.driverName}</span>}</th>}
             {columns.slice(broadcast ? 0 : identitySpan).map((column) => <th key={column.id} scope="col" data-metric={column.metricId} title={labelFor(column.metricId)}><span className="vf-column-label">{labelFor(column.metricId)}</span></th>)}
             </>}
-          </tr>}{!externalHeader && infoPlacement === "band" && <tr><th colSpan={columns.length} className="vf-info-band">{headerInfo}</th></tr>}</thead>
-          <tbody>{visibleRows.map((row) => (
-            <tr key={row.id} data-standings-row={row.id} data-player={row.isPlayer || undefined}>
+          </tr></thead>
+          <tbody>{entries.map((entry) => entry.kind === "class" ? (
+            <tr key={entry.key} className="vf-class-band" data-class-id={entry.classId} data-class-accent={entry.accent}>
+              <th colSpan={columns.length} scope="rowgroup">
+                <span className="vf-class-band__content"><span className="vf-class-band__accent" aria-hidden="true" /><span className="vf-class-band__label">{entry.label}</span></span>
+              </th>
+            </tr>
+          ) : (
+            <tr key={entry.key} data-standings-row={entry.row.id} data-player={entry.row.isPlayer || undefined}>
               {columns.map((column) => {
-                const value = column.metricId === "driverName" ? row.configuredDriverName ?? row.driverName : resolveStandingsCellValue(row, column.metricId);
+                const row = entry.row;
+                const value = column.metricId === "position"
+                  ? String(entry.displayPosition)
+                  : column.metricId === "driverName"
+                    ? row.configuredDriverName ?? row.driverName
+                    : resolveStandingsCellValue(row, column.metricId);
                 const seconds = (column.metricId === "gap" || column.metricId === "interval") ? /^([+-]?\d+(?:\.\d+)?)(s)$/.exec(value) : null;
                 return <td key={column.id} data-metric={column.metricId} data-identity={IDENTITY.has(column.metricId) || undefined} aria-label={`${labelFor(column.metricId)}: ${value}`} style={{ textAlign: column.metricId === "gap" ? "center" : column.style?.align ?? (column.metricId === "driverName" ? "left" : IDENTITY.has(column.metricId) ? "center" : "right") }}>
-                  {column.metricId === "driverName" ? <span className="vf-driver"><span className="vf-driver-name" title={value}>{value}</span></span> :
-                    column.metricId === "pit" ? <span title={value} className={row.pitText ? "vf-pit" : undefined}>{value}</span> : <span title={value} className={`vf-cell-value${seconds ? " vf-gap-number" : ""}`}>{seconds ? <>{seconds[1]}<small className="vf-time-unit">{seconds[2]}</small></> : value}</span>}
+                  {column.metricId === "driverName" ? <span className="vf-driver"><span className="vf-driver-name" title={value}>{value}</span></span> : <span title={value} className={`vf-cell-value${seconds ? " vf-gap-number" : ""}`}>{seconds ? <>{seconds[1]}<small className="vf-time-unit">{seconds[2]}</small></> : value}</span>}
                 </td>;
               })}
             </tr>
           ))}</tbody>
         </table>
+        {pitIndicators.length > 0 ? <div className="vf-pit-rail" aria-label={labels.pit}>
+          {pitIndicators.map((indicator) => <span key={indicator.key} className="vf-pit-label" data-pit-indicator role="img" aria-label={labels.pit} title={labels.pit} style={{ top: `${indicator.top}px` }}>{labels.pit}</span>)}
+        </div> : null}
         </div>
       )}
       {footerSlots.length > 0 && !unavailable ? (

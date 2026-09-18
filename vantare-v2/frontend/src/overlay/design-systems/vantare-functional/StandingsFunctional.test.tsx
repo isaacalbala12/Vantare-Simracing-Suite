@@ -22,11 +22,19 @@ const model: StandingsViewModel = {
 };
 
 describe("Functional Standings", () => {
-  it("keeps pit, gap and last lap in separate configured cells and marks the player only by its row", () => {
+  it("integrates the Pit status into a label beyond the final metric", () => {
     const { container } = render(<StandingsFunctional model={model} settings={{}} renderMode="harness" />);
-    expect(container.querySelector('td[data-metric="lastLap"]')?.textContent).toBe("1:42.318");
+    expect(container.querySelector('td[data-metric="lastLap"] .vf-cell-value')?.textContent).toBe("1:42.318");
     expect(container.querySelector('td[data-metric="gap"]')?.textContent).toBe("+2.106s");
-    expect(container.querySelector('td[data-metric="pit"]')?.textContent).toBe("PIT");
+    expect(container.querySelector('th[data-metric="pit"]')).toBeNull();
+    expect(container.querySelector('td[data-metric="pit"]')).toBeNull();
+    const marker = container.querySelector('[data-pit-indicator]');
+    expect(marker).not.toBeNull();
+    expect(marker?.getAttribute("role")).toBe("img");
+    expect(marker?.getAttribute("aria-label")).toBe("PIT");
+    expect(marker?.parentElement?.classList.contains("vf-pit-rail")).toBe(true);
+    expect(container.querySelector('td[data-metric="lastLap"]')?.textContent).toBe("1:42.318");
+    expect(marker?.textContent).toBe("PIT");
     expect(container.querySelector('.vf-driver small')).toBeNull();
     expect(container.querySelector('tr[data-player="true"]')).not.toBeNull();
   });
@@ -112,8 +120,9 @@ describe("Functional Standings", () => {
   it("lets the name column absorb spare width so metric columns stay clustered (ISA-1221)", () => {
     const { container } = render(<StandingsFunctional model={model} settings={{}} renderMode="harness" />);
     const cols = [...container.querySelectorAll("colgroup col")];
-    expect(cols).toHaveLength(model.columns.length);
-    const nameCol = cols[model.columns.findIndex((column) => column.metricId === "driverName")]!;
+    const tableColumns = model.columns.filter((column) => column.metricId !== "pit");
+    expect(cols).toHaveLength(tableColumns.length);
+    const nameCol = cols[tableColumns.findIndex((column) => column.metricId === "driverName")]!;
     expect(nameCol.style.width).toBe("");
     for (const col of cols.filter((col) => col !== nameCol)) expect(col.style.width).not.toBe("");
   });
@@ -124,7 +133,7 @@ describe("Functional Standings", () => {
     race.unmount();
     const practice = render(<StandingsFunctional model={{ ...model, sessionLabel: "PRACTICE" }} settings={{}} renderMode="harness" />);
     expect(practice.container.querySelector('th[data-metric="gap"]')?.textContent).not.toBe(raceLabel);
-    expect(practice.container.querySelector('td[data-metric="lastLap"]')?.textContent).toBe("1:42.318");
+    expect(practice.container.querySelector('td[data-metric="lastLap"] .vf-cell-value')?.textContent).toBe("1:42.318");
   });
 
   it.each(["studio", "desktop", "obs", "harness"] as const)("uses both appearances through the shared host with V2 Workshop data on %s", (surface) => {

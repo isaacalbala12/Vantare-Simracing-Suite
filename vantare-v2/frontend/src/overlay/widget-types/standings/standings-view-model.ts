@@ -1,5 +1,6 @@
 import type { WidgetViewModelBase } from "../../core/widget-definition";
 import type { WidgetColumnV3 } from "../shared/widget-column";
+import type { StandingsClassScope, StandingsClassificationMode } from "./standings-content";
 
 export type StandingsRowViewModel = {
   id: string;
@@ -34,6 +35,10 @@ export type StandingsInfoValue = { text: string; stale?: boolean };
 
 export type StandingsViewModel = WidgetViewModelBase & {
   type: "standings";
+  /** Content scope used by the shared renderer; absent on legacy V1 models. */
+  classScope?: StandingsClassScope;
+  /** Classification used by the shared renderer; independent from visual style. */
+  classificationMode?: StandingsClassificationMode;
   activeClass: string;
   sessionLabel: string;
   remainingText: string;
@@ -62,6 +67,38 @@ export function withStandingsMotionIdentity(
   Object.defineProperties(model, {
     motionIdentity: { value: identity, enumerable: false },
     motionSequence: { value: sequence, enumerable: false },
+  });
+  return model;
+}
+
+/**
+ * Keeps the scope available to the renderer without changing the enumerable
+ * V1 projection consumed by existing shadow/comparator tests.
+ */
+export function withStandingsClassScope(
+  model: StandingsViewModel,
+  classScope: StandingsClassScope,
+): StandingsViewModel {
+  Object.defineProperty(model, "classScope", {
+    value: classScope,
+    configurable: true,
+    enumerable: false,
+  });
+  return model;
+}
+
+/**
+ * Keeps the classification available to renderers without changing the
+ * enumerable legacy projection consumed by shadow/comparator tests.
+ */
+export function withStandingsClassificationMode(
+  model: StandingsViewModel,
+  classificationMode: StandingsClassificationMode,
+): StandingsViewModel {
+  Object.defineProperty(model, "classificationMode", {
+    value: classificationMode,
+    configurable: true,
+    enumerable: false,
   });
   return model;
 }

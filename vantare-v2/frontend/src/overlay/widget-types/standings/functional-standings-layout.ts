@@ -92,7 +92,7 @@ export function resolveFunctionalStandingsSize(
     : FUNCTIONAL_SIGNATURE_SESSION_HEADER_HEIGHT;
   const header = broadcast
     ? FUNCTIONAL_BROADCAST_COLUMN_HEADER_HEIGHT + (settings.showSessionHeader === false ? 0 : FUNCTIONAL_BROADCAST_SESSION_HEADER_HEIGHT)
-    : (settings.showSessionHeader === false ? 0 : signatureTableHeader)
+    : signatureTableHeader
       + (identitySpan === 0 && settings.showSessionHeader !== false ? FUNCTIONAL_SIGNATURE_SESSION_HEADER_HEIGHT : 0);
   // El pie ambiente (pista/aire/viento) mide 30px y prevalece sobre el pie de
   // sesión de 22px cuando hay datos — el tamaño mínimo presupone el caso real.

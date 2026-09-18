@@ -46,6 +46,7 @@ export const studioV3It: Record<string, string> = {
   "studio.v3.inspector.pedalsTelemetryCompact.showRpm": "Mostra RPM",
   "studio.v3.inspector.pedalsTelemetryCompact.showClutch": "Mostra frizione",
   "studio.v3.widgetTypes.racingFlags": "Bandiere di gara",
+  "studio.v3.inspector.racingFlags.textColor": "Colore del testo",
   "studio.v3.inspector.racingFlags.showSectorFlags": "Mostra settori",
   "studio.v3.inspector.racingFlags.hideWhenGreen": "Nascondi con verde",
   "studio.v3.widgetTypes.broadcastTower": "Horizontal Standings",

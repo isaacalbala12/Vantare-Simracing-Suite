@@ -41,6 +41,14 @@ import { getOfficialDesign, listOfficialDesigns } from "../../design-systems/off
 import { getAnimationScene, sceneFrameAt } from "./animation-scenes";
 import type { SceneFrame } from "./animation-scenes";
 import type { RacingFlagsKnownFlag } from "../../design-systems/vantare-functional/racing-flags-settings";
+import { mapAuthoringWidgetColumns } from "./authoring-v2-widget-columns";
+
+function fitFunctionalStandingsMinimum(widget: WidgetInstanceV3): WidgetInstanceV3 {
+  const minimum = resolveStandingsMinimumSize(widget);
+  return minimum
+    ? { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height ?? widget.layout.h } }
+    : widget;
+}
 
 // Variantes dev de Workshop: transformaciones explícitas, deterministas y
 // acotadas sobre el golden canónico. La variante en sí declara el artificio;
@@ -197,12 +205,10 @@ export function buildWorkshopWidget(input: {
   // la columna Piloto. Viaja por content.columns, nada fuera del contrato.
   if (input.nameFormat && (input.widget === "standings" || input.widget === "relative")) {
     const content = widget.content as Record<string, unknown>;
-    const columns = Array.isArray(content.columns)
-      ? (content.columns as Record<string, unknown>[]).map((column) =>
-          column.metricId === "driverName"
-            ? { ...column, format: { ...(column.format as Record<string, unknown> | undefined), mode: input.nameFormat } }
-            : column)
-      : content.columns;
+    const columns = mapAuthoringWidgetColumns(content, (column) =>
+      column.metricId === "driverName"
+        ? { ...column, format: { ...(column.format as Record<string, unknown> | undefined), mode: input.nameFormat } }
+        : column);
     widget = { ...widget, content: { ...content, columns } };
   }
 
@@ -219,10 +225,7 @@ export function buildWorkshopWidget(input: {
   // siempre vio el formato completo y el recuento por defecto.
   if (input.widget === "standings" && input.system === "vantare-functional"
       && (input.rows !== undefined || input.nameFormat !== undefined || input.variant === "standings-multiclass")) {
-    const minimum = resolveStandingsMinimumSize(widget);
-    if (minimum) {
-      widget = { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height ?? widget.layout.h } };
-    }
+    widget = fitFunctionalStandingsMinimum(widget);
   }
 
   // El selector de marca del panel hace de autoridad local (en producción la
@@ -267,10 +270,7 @@ export function buildWorkshopWidget(input: {
     // El estudio enseña siempre al menos 15 pilotos; la variante canónica
     // conserva su recuento salvo que el selector Filas lo haya cambiado.
     widget = { ...widget, content: { ...content, columns, ...(input.variant === "standings-functional-study" ? { rowCount: 15 } : {}) } };
-    const minimum = resolveStandingsMinimumSize(widget);
-    if (minimum) {
-      widget = { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height ?? widget.layout.h } };
-    }
+    widget = fitFunctionalStandingsMinimum(widget);
   }
 
   // Huecos de datos del pie en standings/relative de Eficiencia.

@@ -151,8 +151,6 @@ export const studioOrbitEn: Record<string, string> = {
   "overlay.inspector.standings.showSessionHeader": "Show session header",
   "overlay.inspector.standings.showBrand": "Show Vantare brand",
   "overlay.inspector.brand.required": "Mandatory brand: always visible on this plan",
-  "overlay.inspector.efficiency.headerFirst": "Header information 1",
-  "overlay.inspector.efficiency.headerSecond": "Header information 2",
   "overlay.inspector.efficiency.showSessionFooter": "Show session footer",
   "overlay.inspector.efficiency.footerFirst": "Footer information 1",
   "overlay.inspector.efficiency.footerSecond": "Footer information 2",

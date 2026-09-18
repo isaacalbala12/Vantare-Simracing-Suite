@@ -152,8 +152,6 @@ export const studioOrbitEs: Record<string, string> = {
   "overlay.inspector.standings.showSessionHeader": "Mostrar cabecera de sesión",
   "overlay.inspector.standings.showBrand": "Mostrar marca Vantare",
   "overlay.inspector.brand.required": "Marca obligatoria: siempre visible en este plan",
-  "overlay.inspector.efficiency.headerFirst": "Dato 1 de cabecera",
-  "overlay.inspector.efficiency.headerSecond": "Dato 2 de cabecera",
   "overlay.inspector.efficiency.showSessionFooter": "Mostrar pie de sesión",
   "overlay.inspector.efficiency.footerFirst": "Dato 1 del pie",
   "overlay.inspector.efficiency.footerSecond": "Dato 2 del pie",

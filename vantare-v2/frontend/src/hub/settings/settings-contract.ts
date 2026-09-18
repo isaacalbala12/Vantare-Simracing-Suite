@@ -74,7 +74,7 @@ export type PerformanceSettings = {
   overrides?: Record<string, { hz?: number | "dirty"; effects?: "full" | "noBlur" | "flat" }>;
 };
 
-export type EngineerSettings = {
+type EngineerSettings = {
   enabled: boolean;
   spotterEnabled: boolean;
   subtitlesEnabled: boolean;

@@ -62,7 +62,12 @@ export function buildAuthoringV2ScenarioWidget(input: {
           column.metricId === "bestLap" ? { ...column, enabled: true } : column,
         )
       : content.columns;
-    widget.content = { ...content, classScope: "all-classes", columns };
+    widget.content = {
+      ...content,
+      classScope: "all-classes",
+      classificationMode: input.variant === "standings-multiclass" ? "multiclass" : "normal",
+      columns,
+    };
   }
   if (
     input.widget === "standings" &&

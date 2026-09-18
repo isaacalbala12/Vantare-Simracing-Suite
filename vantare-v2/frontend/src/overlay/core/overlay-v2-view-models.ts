@@ -47,8 +47,8 @@ export const overlayV2ViewModelRegistry: ReadonlyMap<WidgetType, OverlayV2ViewMo
   [
     "standings",
     {
-      buildViewModelV2: (frame, source, content) =>
-        buildStandingsViewModelV2(frame, source, content as never),
+      buildViewModelV2: (frame, source, content, ctx) =>
+        buildStandingsViewModelV2(frame, source, content as never, ctx?.standingsWindow),
     },
   ],
   [

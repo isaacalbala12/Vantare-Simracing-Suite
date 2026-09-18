@@ -26,7 +26,7 @@ it.each([false, true])("resizes Functional from its visible bounds without clipp
   widget.visual = { ...widget.visual, systemId: "vantare-functional", baseSettings: { templateId: "broadcast" } };
   widget.content = { ...widget.content, rowCount: 20 };
   // Align the effective right/bottom edges with the 8px grid so snapping does not obscure the resize delta.
-  widget.layout = { ...widget.layout, x: 94, y: 100, w: 340, h: 420, aspectLocked: false };
+  widget.layout = { ...widget.layout, x: 92, y: 100, w: 340, h: 420, aspectLocked: false };
   const preview = (dx: number, dy: number) => applyResizePreview({
     widget, start: widget.layout, handle: "se", pointerOrigin: { x: 0, y: 0 },
     pointerCurrent: { x: dx, y: dy }, siblings: [], disableSnap, layoutViewport: DEFAULT_VIEWPORT,

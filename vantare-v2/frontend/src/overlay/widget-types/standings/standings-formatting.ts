@@ -74,6 +74,17 @@ export function formatRemainingTime(seconds: number | undefined): string {
   return `${pad(m)}:${pad(s)}`;
 }
 
+export function formatStandingsSecondsDifference(seconds: number | undefined): string {
+  if (seconds == null || !Number.isFinite(seconds) || seconds === 0) return PLACEHOLDER;
+  return `${seconds > 0 ? "+" : ""}${seconds.toFixed(2)}s`;
+}
+
+export function formatStandingsLapDifference(laps: number | undefined): string {
+  if (laps == null || !Number.isFinite(laps) || laps === 0) return PLACEHOLDER;
+  const magnitude = Math.abs(laps);
+  return `${laps > 0 ? "+" : "-"}${magnitude} ${magnitude === 1 ? "vuelta" : "vueltas"}`;
+}
+
 export function formatStandingsGap(
   row: StandingsScoringRow,
   classLeader: StandingsScoringRow | undefined,
@@ -85,13 +96,13 @@ export function formatStandingsGap(
   }
   const lapsDiff =
     Number(row.lapsBehindLeader ?? 0) - Number(classLeader?.lapsBehindLeader ?? 0);
-  if (lapsDiff > 0) {
-    return `+${lapsDiff}L`;
+  if (lapsDiff !== 0) {
+    return formatStandingsLapDifference(lapsDiff);
   }
   const timeDiff =
     Number(row.timeBehindLeader ?? 0) - Number(classLeader?.timeBehindLeader ?? 0);
-  if (timeDiff > 0) {
-    return `+${timeDiff.toFixed(3)}s`;
+  if (timeDiff !== 0) {
+    return formatStandingsSecondsDifference(timeDiff);
   }
   return PLACEHOLDER;
 }
@@ -153,10 +164,10 @@ export function formatStandingsColumnValue(
       return formatStandingsGapForMode(mode, row, classLeader);
     case "interval": {
       const interval = row.timeBehindNext;
-      if (typeof interval !== "number" || !Number.isFinite(interval) || interval <= 0) {
+      if (typeof interval !== "number" || !Number.isFinite(interval) || interval === 0) {
         return PLACEHOLDER;
       }
-      return `+${interval.toFixed(3)}s`;
+      return formatStandingsSecondsDifference(interval);
     }
     case "currentLap":
       return String(row.totalLaps ?? "");

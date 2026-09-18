@@ -30,9 +30,9 @@ El panel mantiene dos conceptos separados:
 
 - `Pilotos`: total de pilotos de la parrilla que se toma del frame de ejemplo
   o de la fuente live. Para la prueba aprobada, el valor es 12.
-- `Pilotos alrededor`: número total de posiciones de la ventana alrededor del
-  jugador. El valor inicial es 4 y se reparte como dos posiciones delante y
-  dos detrás.
+- `Pilotos alrededor`: número total de pilotos vecinos, sin contar al jugador.
+  El valor inicial es 4 y se reparte como dos posiciones delante y dos detrás
+  cuando hay espacio.
 
 La URL del Workshop serializa la ventana para que una revisión sea reproducible.
 El nombre interno recomendado para el parámetro es `around`, con un límite
@@ -60,14 +60,16 @@ Para `around = 4`, una parrilla de 12 con el jugador en P9 produce:
 La regla general es:
 
 1. conservar las primeras `min(3, total)` posiciones;
-2. si el jugador está fuera del top 3, construir una ventana de `around`
-   posiciones que lo incluya, repartida de forma equilibrada a ambos lados;
+2. si el jugador está fuera del top 3, construir una ventana que incluya al
+   jugador y hasta `around` vecinos, repartida de forma equilibrada a ambos
+   lados;
 3. si la ventana alcanza el principio o el final de la parrilla, desplazarla
    hacia el lado disponible hasta completar el número solicitado;
 4. unir el top 3 y la ventana eliminando duplicados y conservando el orden
    original de carrera;
-5. si el jugador está dentro del top 3, mantener ese top 3 y completar la
-   ventana con las siguientes posiciones disponibles, sin duplicar filas;
+5. si el jugador está dentro del top 3, mantener ese top 3 y completar con las
+   siguientes posiciones disponibles, sin duplicar filas; el jugador ya forma
+   parte del bloque fijo;
 6. si no existe jugador autorizado, mostrar el top 3 y las primeras posiciones
    disponibles hasta completar la capacidad solicitada, sin inventar foco.
 
@@ -136,7 +138,7 @@ tipografía, columnas, focos y alturas divergiesen de V1.
 
 Se descarta porque Standings necesita conservar el top 3 fijo y porque esos
 campos tienen semántica independiente por lado. `around` expresa aquí el total
-de posiciones de la ventana.
+de pilotos vecinos de la ventana, sin contar al jugador.
 
 ## Verificación
 

@@ -126,6 +126,26 @@
 .vf-standings[data-template="broadcast"] .vf-table tr[data-player="true"] td:first-child { border-radius: 6px 0 0 6px; }
 .vf-standings[data-template="broadcast"] .vf-table tr[data-player="true"] td:last-child { border-radius: 0 6px 6px 0; }
 
+/* Multiclass: the class band carries the category signal while pilot rows
+   remain neutral. The soft surface keeps the compact table readable. */
+.vf-standings .vf-table tr.vf-class-band > th {
+  height: 28px;
+  padding: 0 10px;
+  border-top: 1px solid var(--vf-line);
+  border-bottom: 1px solid var(--vf-line);
+  background: linear-gradient(180deg, var(--vf-class-surface), transparent);
+  color: var(--vf-class-accent);
+  text-align: left;
+  vertical-align: middle;
+}
+.vf-standings .vf-class-band__content { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.vf-standings .vf-class-band__accent { flex: 0 0 2px; width: 2px; height: 14px; border-radius: 1px; background: var(--vf-class-accent); }
+.vf-standings .vf-class-band__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: inherit; font-size: 9px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.vf-standings .vf-class-band[data-class-accent="red"] { --vf-class-accent: #e63946; --vf-class-surface: rgb(230 57 70 / 11%); }
+.vf-standings .vf-class-band[data-class-accent="blue"] { --vf-class-accent: #5b8bd6; --vf-class-surface: rgb(91 139 214 / 11%); }
+.vf-standings .vf-class-band[data-class-accent="amber"] { --vf-class-accent: #e2c568; --vf-class-surface: rgb(226 197 104 / 11%); }
+.vf-standings .vf-class-band[data-class-accent="neutral"] { --vf-class-accent: #b9b9bd; --vf-class-surface: rgb(185 185 189 / 5%); }
+
 /* Franja de marca obligatoria con cabecera oculta (ISA-1105): mismo alto y
    fondo que una banda de información, sin efectos ni animación nuevos. */
 .vf-standings .vf-brand-band { display: flex; align-items: center; height: 22px; padding: 0 10px; border-bottom: 1px solid var(--vf-line); background: rgb(0 0 0 / 10%); }
@@ -467,6 +487,10 @@
 .vf-bt-name { font: 700 12px/1 Inter, Arial, sans-serif; letter-spacing: -.01em; color: var(--vf-ink); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vf-bt-sub { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .vf-bt-class { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; padding: 2px 4px; border-radius: 3px; background: #8b93a7; font: 700 7px/1 Inter, Arial, sans-serif; color: #ffffff; }
+.vf-bt-class[data-class-accent="red"] { background: #e63946; }
+.vf-bt-class[data-class-accent="blue"] { background: #5b8bd6; }
+.vf-bt-class[data-class-accent="amber"] { background: #e2c568; color: #151612; }
+.vf-bt-class[data-class-accent="neutral"] { background: #8b93a7; }
 .vf-bt-number { font: 600 8px/1 Inter, Arial, sans-serif; letter-spacing: .08em; font-variant-numeric: tabular-nums; color: var(--vf-muted); }
 .vf-bt-gap { flex-shrink: 0; font: 650 10px/1 Inter, Arial, sans-serif; font-variant-numeric: tabular-nums; color: var(--vf-muted); }
 .vf-bt-side { display: flex; flex-direction: column; justify-content: center; gap: 5px; flex-shrink: 0; padding: 0 14px; border-left: 1px solid var(--vf-line); }

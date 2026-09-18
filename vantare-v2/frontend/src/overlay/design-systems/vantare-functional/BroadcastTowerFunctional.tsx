@@ -1,6 +1,7 @@
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { WidgetRendererProps } from "../../core/design-system-definition";
 import type { BroadcastTowerViewModel } from "../../widget-types/broadcast-tower/broadcast-tower-view-model";
+import { resolveFunctionalClassAccent } from "../../widget-types/standings/functional-class-accent";
 import { functionalLabels } from "./labels";
 
 // Horizontal Standings: tira de ancho completo a 71px — bloque de sesión,
@@ -51,7 +52,7 @@ export function BroadcastTowerFunctional({ model, effects }: WidgetRendererProps
               <span className="vf-bt-id">
                 <b className="vf-bt-name">{shortName(row.name)}</b>
                 <span className="vf-bt-sub">
-                  {row.team !== "—" && <span className="vf-bt-class">{classLabel(row.team)}</span>}
+                  {row.team !== "—" && <span className="vf-bt-class" data-class-accent={resolveFunctionalClassAccent(row.team)}>{classLabel(row.team)}</span>}
                   {row.number !== "—" && <span className="vf-bt-number">#{row.number}</span>}
                 </span>
               </span>

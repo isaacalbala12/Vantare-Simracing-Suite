@@ -1,5 +1,15 @@
 # Spec — Rework del Ingeniero: radio bus + motor de familias (borrador)
 
+> **Ámbito actualizado (2026-09-20):** este documento conserva el corte de
+> agosto y su evidencia. Para el nuevo programa LMU rigen la
+> [spec de paridad observable](../specs/2026-09-19-crewchief-lmu-parity-design.md)
+> y el [ADR 0010](../adr/0010-engineer-cloud-dialogue-and-offline-parity.md).
+> Sustituyen el objetivo sin paridad completa, la tolerancia de menor cobertura
+> como cierre, D11 y la exclusión de TTS dinámico/nombres hablados. Conservan
+> fuente canónica única, radio/ACK/TTL, preempción P0, acciones confirmables y
+> gates humanos de voz/LMU. No reinician F0–F6 ni aprueban Kokoro dinámico o un
+> proveedor concreto; los estados históricos de abajo no gobiernan el nuevo cierre.
+
 Fecha: 2026-08-21. Estado: **aprobado por Isaac (2026-08-21)**; issues GitHub
 en creación. Ideación previa:
 `docs/ideas/rework-ingeniero.md`. Base: `origin/nightly@7735f098` con la

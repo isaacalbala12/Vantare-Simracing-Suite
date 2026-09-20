@@ -4,6 +4,31 @@
 - Estado: aprobado por Isaac durante la revisión de paridad
 - Base Vantare: `origin/nightly@8a0620e8abe75914efed41de4117490f3e47a3b4`
 - Oráculo inicial CrewChief: `mr_belowski/CrewChiefV4@4c3865e09a347d4c806c0bc0cd66aae335fbc610`
+- Revisión contractual: 2026-09-20; resuelve la revisión adversarial del diseño,
+  sin declarar implementación ni superar gates técnicos o humanos.
+- Decisión de arquitectura: [ADR 0010](../adr/0010-engineer-cloud-dialogue-and-offline-parity.md).
+
+## 0. Autoridad y lectura
+
+Esta spec gobierna el nuevo programa de paridad LMU. Sustituye en
+[rework-spec.md](../engineer/rework-spec.md) el objetivo de base simple sin
+paridad, la tolerancia de menor cobertura como criterio de cierre, la regla de
+un archivo por familia y la exclusión de TTS dinámico/nombres hablados del
+corte anterior. No reinicia ni declara inexistente el trabajo ya integrado.
+
+El ADR 0010 amplía la interpretación de consultas mediante LLM cloud, pero
+conserva de [ENG-15](../engineer/dialogue-router-isa-186.md) el catálogo tipado,
+precondiciones, lifecycle, confirmaciones, idempotencia y verificación de
+acciones. La prohibición histórica de LLM para elegir intents se sustituye
+únicamente por una propuesta de herramienta validada por código; no otorga
+autoridad al proveedor sobre hechos, confirmaciones o efectos.
+
+Permanecen vigentes Telemetry Core como fuente única, sus contratos de
+proyección/capabilities, el bus compartido, la preempción del Spotter, las
+garantías de privacidad y los gates humanos de STT, wake word y percepción
+audible aún no superados. Aprobar este diseño no convierte esos gates en GO,
+no aprueba un proveedor/modelo concreto ni autoriza publicación o promoción.
+El roadmap ENG histórico conserva evidencia; no decide la secuencia nueva.
 
 ## 1. Objetivo
 
@@ -54,8 +79,9 @@ Un test de una constante, un intent registrado o una frase existente no prueba
 paridad. Tampoco se usarán porcentajes basados en líneas, carpetas de audio o
 cantidad de eventos.
 
-Cuando LMU no exponga una señal imprescindible, el caso se marca `bloqueado
-por señal`; no se sustituye por una heurística silenciosa. Cualquier desviación
+Cuando no exista fuente observada, derivación demostrada o catálogo propio
+fiable para un dato imprescindible (§9), el caso se marca `bloqueado por señal`;
+no se sustituye por una heurística silenciosa. Cualquier desviación
 requiere aprobación explícita de producto y queda registrada.
 
 ## 4. Estrategia de entrega
@@ -95,10 +121,27 @@ se reutiliza mediante contratos pequeños y versionados.
 | 10 | Estado del coche | Motor, temperaturas, presiones, batería y daños aero/motor/suspensión. |
 | 11 | Condiciones y sesión | Lluvia, pista, temperaturas, tiempo/vueltas restantes, inicio, últimas vueltas y final. |
 | 12 | Interacción por voz | Infraestructura transversal iniciada con Timings; consultas y acciones de todas las secciones. |
-| 13 | Coaching secundario | Ataque/defensa por curva, motivación y mensajes no críticos. |
+| 13 | Coaching secundario | Motivación, pace notes propios y consejo adicional no cubierto por Timings; no pospone ataque/defensa por landmarks de T5/T6. |
 
 El número indica orden de cierre, no aislamiento técnico. La interacción por
 voz empieza en Timings y crece con cada nueva sección.
+
+El mapa se completa con esta asignación transversal. T0 identifica cada
+comando observable y lo asigna a una fila; una agrupación no permite omitirlo.
+
+| Conducta transversal | Propietario y cierre |
+|---|---|
+| Radio check, repetir, silencio/informado, volumen y silencio en curvas | Interacción por voz/radio. Los controles que alteran Timings se inventarían en T0 y sus efectos se prueban en T4/T7. Repetir revalida el contexto; no repite una cifra caducada como actual. |
+| STATUS/SESSION_STATUS y respuestas compuestas | Interacción coordina; cada familia aporta hechos. El componente Timings se cierra en T6, sin esperar otras familias. |
+| Leer curvas durante una vuelta, gaps por vuelta, formación manual | Timings T4–T7 con sus controles; la formación compartida alimenta los silencios aunque los avisos de frozen order se cierren después. |
+| Reloj y alarma de hora local | Condiciones/sesión e interacción, incluidos durante LMU; reloj separado del de telemetría, ajuste/cancelación confirmables, sin calendario ni servicios remotos. No forman parte de T8. |
+| Pace notes y motivación | Coaching secundario; contenido propio/consentido y gates de grabación independientes. |
+| Controles UI/VR, MQTT, chat de otros sims y reputación específica iRacing/R3E | Excluidos por §2. No se trasladan a un genérico “otras consultas”. |
+
+Los nombres CommonActions y AlarmClock identifican fuentes del inventario,
+no módulos que deban copiarse. Audio/dispositivos, hot-plug, ducking,
+configuración y recuperación son dependencias transversales de la salida de
+radio, no una UI CrewChief nueva.
 
 ## 6. Arquitectura de interacción por voz
 
@@ -122,13 +165,55 @@ PTT/wake -> STT -> Conversation Orchestrator -> LLM cloud
   -> radio/audio/widget
 ```
 
-El LLM puede producir variaciones ilimitadas, pero cada respuesta declara los
-hechos usados. El validador rechaza números, nombres, posiciones, relaciones o
-acciones que no estén autorizados por los resultados de herramientas vigentes.
+El LLM comprende lenguaje libre y propone herramientas de una allowlist
+cerrada por turno. El dispatcher valida intent, slots, rangos, precondiciones,
+capability, permisos y lifecycle antes de resolverlas. No hay herramientas de
+SQL, archivos, navegación, HTTP arbitrario ni acceso a stores. Una selección
+ambigua o incompatible con la solicitud pide aclaración; no ejecuta una acción.
+
+La respuesta natural se realiza mediante un plan de enunciado tipado. No basta
+un JSON válido ni una lista de hechos citados junto a texto arbitrario. La
+salida del LLM nunca se envía directamente a audio o widget.
 
 Los mensajes automáticos no críticos pueden usar el mismo camino. Su trigger,
 semántica, prioridad y caducidad llegan cerrados desde el motor de la feature;
 el LLM sólo redacta.
+
+#### 6.2.1 Contrato semántico y validador
+
+Cada resultado de herramienta incluye versión, ID de hecho, tipo de consulta,
+sujeto y rival opacos, relación (clase/carrera/pista), dirección, magnitud,
+unidad, diferencia de vueltas, tendencia, calidad, procedencia, snapshot,
+observedAt, freshUntil y lifecycle. Los tipos de respuesta distinguen dato,
+leading, last, sin rival, no disponible y aclaración; cero no es ausencia.
+Cada tipo declara qué campos son obligatorios, opcionales o prohibidos.
+
+El código produce la lista de proposiciones obligatorias y opcionales
+autorizadas. El LLM puede ordenar cláusulas donde el tipo lo permita y elegir
+formas naturales de una gramática de realización propia por locale. Esa
+gramática usa slots vinculados a hechos y variantes declarativas verificadas;
+no exige precachear cada frase completa ni limita el producto a una frase por
+intent. El validador reconstruye el texto desde el plan: no confía en texto,
+SSML, números ni citas suministrados fuera del esquema. Rechaza campos extra,
+hechos omitidos, duplicados contradictorios y operadores no autorizados.
+
+Las variantes no pueden cambiar sujeto, dirección, unidad, tendencia,
+negación, certeza, causalidad, prioridad o acción sugerida. Tampoco pueden
+añadir recomendaciones como que un adelantamiento es seguro. Nombres y texto
+de rivales son datos no confiables y nunca instrucciones. Si una variación no
+puede demostrarse equivalente con esta realización, usa el compositor
+canónico offline. No se usa otro LLM como juez de seguridad.
+
+El gate negativo debe rechazar: inversión de sujeto/dirección; cifra o unidad
+distinta; negación; omisión de vuelta/contexto obligatorio; causalidad o consejo
+añadidos; herramienta equivocada; solicitud con dos interpretaciones; replay
+de tool result de otro turno; snapshot o rival caducado; claves extra;
+overflow/NaN; inyección en nombre, transcripción o resultado; SSML externo;
+intentos de confirmar/aplicar mediante tool call. El corpus por locale incluye
+paráfrasis positivas y near-miss negativos etiquetados independientemente.
+El PASS exige cero afirmaciones factuales o efectos no autorizados en ese
+corpus; no se presenta este resultado finito como prueba de lenguaje libre
+arbitrario. La restricción estructural protege también fuera del corpus.
 
 ### 6.3 Fallback offline
 
@@ -147,6 +232,38 @@ El fallback:
 - conserva propuestas, readback y confirmaciones;
 - pierde variedad lingüística, no funcionalidad.
 
+La equivalencia es de capacidades semánticas: cada consulta/acción soportada
+online tiene formas canónicas propias en es, en, it y pt-BR, documentadas en la
+ayuda y accesibles por PTT. El router offline no promete reconocer toda
+paráfrasis online. Ante unknown/ambigüedad ofrece la forma canónica y conserva
+el fallback PTT/UI de ENG-15; no adivina slots ni afirma haber respondido.
+
+STT es local en ambos caminos y no es un LLM local de conversación. El pack de
+STT, su modelo fijado, permisos y captura real son dependencias del PASS de
+voz; un harness textual o un host que declare unavailable no lo satisface.
+PTT es suficiente para probar las consultas; wake sólo se activa tras su gate
+FAR/FRR independiente. Los cuatro locales son obligatorios para el cierre.
+
+El PhrasePack tiene manifest/version/hash y contiene confirmaciones, readback,
+indisponibilidad, relaciones, tendencias, posiciones, vueltas, signos,
+decimales y unidades. El compositor declara rangos y precisión por tipo;
+compone todos los valores válidos de ese tipo y rechaza los demás. T0 fija la
+precisión audible con el oráculo. No convierte un número en otro para caber en
+el pack. Se prueban bordes, cero presente, singular/plural y cambio de locale.
+
+La identidad audible usa nombre sólo cuando hay un fragmento propio usable;
+en otro caso usa posición de clase y relación, o dorsal/clase si están
+demostrados. El ID del vehículo sigue siendo la autoridad. El widget puede
+mostrar el nombre local. Nombre desconocido no produce silencio si existe una
+identificación alternativa inequívoca; una respuesta que exige un nombre sin
+alternativa disponible se marca bloqueada, no PASS. Lo mismo se aplica a
+landmarks con nombre o identificador hablado propio de catálogo.
+
+Una instalación preparada para voz incluye todos los packs comprometidos y
+puede arrancar en frío sin red ni caché generativa. Un pack ausente/corrupto o
+un STT sin modelo deja una degradación explícita y no obtiene offline PASS.
+La salida visual de §10 es recuperación operativa, no paridad audible.
+
 Se activa directamente sin red o con circuito de proveedor abierto. También
 se activa si el LLM supera el timeout, produce una respuesta inválida o falla
 el TTS dinámico. El fallo generativo no consume el hecho ni altera el estado de
@@ -164,11 +281,18 @@ la feature.
 Las implementaciones concretas de proveedor no forman parte de los dominios
 Engineer ni Telemetry.
 
+“Texto arbitrario” describe la capacidad técnica del adaptador de síntesis;
+su único llamador productivo entrega texto reconstruido por §6.2.1 y
+sanitizado por §6.8, nunca una respuesta libre del proveedor.
+
 ### 6.5 Conversación y acciones
 
-La memoria es corta, efímera y está ligada a sesión, piloto, fuente y epoch.
-Cambiar cualquiera invalida la conversación y las propuestas pendientes. No
-se persisten audio ni transcripciones por defecto.
+La memoria es efímera, de hasta seis turnos o cinco minutos de inactividad
+(lo que venza primero), ligada a evento, sesión, vehículo, equipo, piloto,
+fuente, epoch y locale. No reutiliza hechos de turnos anteriores como datos
+actuales. Cambiar cualquiera, resetear el reloj o perder contexto invalida
+conversación, trabajos y propuestas. No se persisten audio ni transcripciones
+por defecto; la política detallada de salida de datos está en §6.8.
 
 Las acciones siguen obligatoriamente:
 
@@ -176,8 +300,34 @@ Las acciones siguen obligatoriamente:
 propuesta -> readback -> confirmación -> ejecución idempotente -> verificación
 ```
 
-El LLM puede formular cada turno, pero el estado y las transiciones pertenecen
-al router determinista. Una acción nunca se deriva del texto generado.
+El LLM puede ayudar a formular la propuesta, pero el estado y las transiciones
+pertenecen al router determinista. Una acción nunca se deriva del texto
+generado. Proponer no ejecuta ni reserva un efecto irreversible.
+
+La propuesta conserva ProposalID, revisión, intent/slots exactos,
+precondiciones, evidencia, lifecycle, locale y deadline. El readback de sus
+parámetros es canónico y está ligado a esa revisión. La propuesta sólo se hace
+confirmable al recibir evidencia de que todos los parámetros obligatorios se
+entregaron audiblemente; queued/started o publicar el widget no equivalen a
+readback completado. Si se usa UI accesible, exige un gesto explícito de
+revisión y confirmación sobre esos mismos parámetros, registrado como canal UI.
+
+La confirmación sólo puede proceder de entrada nueva del piloto reconocida
+por el protocolo determinista de ENG-15 en el mismo locale. Ni una herramienta
+ni una respuesta del LLM pueden confirmarse a sí mismas. Un readback cortado,
+fallido o sustituido no habilita confirmación. Una nueva propuesta invalida la
+anterior y exige otro readback. Cancelar, dos turnos no comprendidos, pérdida
+de contexto/freshness o deadline mantienen los rechazos de ENG-15.
+
+El router consume una propuesta una sola vez; el puerto de aplicación
+revalida justo antes del efecto y usa ProposalID como clave idempotente. Si se
+pierde una respuesta después del commit, devuelve/consulta el resultado de ese
+mismo ID; no repite el efecto con otro ID ni presenta cancelado como no aplicado.
+Un resultado indeterminado queda pendiente de reconciliación, bloquea una
+repetición conflictiva y se comunica como tal. Verificación de estado final
+demostrable es requisito para anunciar éxito, también offline. Las acciones
+sin puerto real seguro permanecen disabled. T8 no exige implementar Pit o
+Strategy, pero sí demostrar que ninguna herramienta Timings los ejecuta.
 
 ### 6.6 Presupuestos iniciales
 
@@ -186,6 +336,117 @@ al router determinista. Una acción nunca se deriva del texto generado.
 - timeout generativo interactivo: 2,5 s, seguido de fallback;
 - timeout generativo automático no crítico: 750 ms;
 - carril crítico local: independiente de todos los anteriores.
+
+Los 150 ms se miden desde cierre de captura PTT/VAD hasta el primer sonido
+local de recepción. Los 1,5 s se miden desde fin de habla hasta primera muestra
+audible de respuesta útil, excluyendo ese feedback. El deadline interactivo de
+2,5 s arranca al cerrar captura; STT consume ese mismo presupuesto antes de
+admitir trabajo generativo. El automático arranca en el trigger. Ambos incluyen
+herramientas, LLM, validación y obtención de audio dinámico reproducible; no se
+reinician por herramienta,
+retry, chunk o proveedor. Nunca supera el deadline del hecho. Una interacción
+que agote 2,5 s pierde el objetivo de 1,5 s y queda contabilizada como fallback,
+no como éxito del objetivo. STT puede tener un timeout menor según perfil de
+dispositivo, nunca superar el deadline compartido. Si no consigue texto válido
+antes de vencer, se pide repetir localmente; no se envía audio a un STT cloud
+ni se inventa una consulta. El fallo se registra, no obtiene PASS interactivo.
+
+La medición usa el binario Windows real, tiempos monotónicos y comienzo real
+de reproducción, no el ACK lógico started. El informe incluye p50/p95/máximo,
+muestras, hardware, locale, STT, proveedor/red, carga de LMU, tasas de fallback,
+cancelación y falta de audio. Se informa por separado caliente/frío,
+online/offline y con P0 concurrente; el PASS de objetivos se evalúa en p95 y el
+máximo de feedback se comprueba como límite de 150 ms en el corpus medido.
+
+### 6.7 Lifecycle, presión y entrega
+
+Cada trabajo conserva JobID, TurnID o FactID, revisión del productor,
+lifecycle completo, locale, observedAt, freshUntil, deadline absoluto y token
+de cancelación. Datos de snapshots distintos no se mezclan sin una derivación
+declarada. Cambiar rival/contexto invalida el trabajo aunque su TTL no venza.
+
+Límites iniciales por instancia: un turno interactivo activo y un trabajo
+automático generativo activo, con un candidato automático pendiente latest-wins
+por relación y un máximo total de tres candidatos pendientes. Un turno nuevo
+sustituye/cancela el interactivo anterior; la propuesta mutable pendiente
+sigue las reglas de §6.5.
+Máximo cuatro invocaciones de herramientas por turno, dos rondas de LLM, 16 KiB
+de entrada serializada y 4 KiB de salida; excederlos usa fallback. Los límites
+de tokens se configuran además por proveedor sin ampliar esos límites de bytes
+ni los deadlines. Audio dinámico se limita a 30 s y 8 MiB decodificados por
+job; excederlos cancela antes de reproducir. Las respuestas superiores se
+dividen por proposiciones antes de generarse, nunca se truncan a mitad de un
+hecho. El plan de cada tipo fija su longitud máxima por debajo de ese techo.
+
+El trabajo cloud se prepara fuera del lock de ingesta/diálogo y sin ocupar el
+turno de reproducción. No se crea una solicitud por frame. Cola llena,
+sustitución, circuito abierto o deadline provocan una decisión local explícita
+(fallback si aún es relevante; descarte si ya no lo es). Telemetry Core,
+familias y el carril crítico no esperan ningún proveedor.
+
+Online y fallback compiten por un único ganador de presentación por JobID y
+revisión. Timeout/cancelación invalida el token del proveedor: callbacks y
+chunks tardíos no publican, no consumen cooldown ni cambian la feature. Sólo
+hay un terminal de entrega. Antes de cualquier audio dinámico se valida el
+plan completo; streaming no permite hablar prefijos aún no validados. Un fallo
+de audio tras empezar sólo permite continuar con cláusulas canónicas aún no
+entregadas, identificadas por ID; si no se sabe dónde se cortó, se cancela y se
+espera al siguiente ciclo revalidado. No se repite automáticamente un hecho
+que el piloto ya pudo oír.
+
+En started se comprueban de nuevo rival, relación, fase, banderas, pits,
+capabilities, lifecycle, freshness y valor audible frente al snapshot actual.
+Se mantiene la clasificación de tendencia de las muestras admitidas por T3;
+la cifra se obtiene del contexto vigente. Si cambia fuera de la precisión
+audible autorizada, se recompone localmente o se cancela, sin ampliar TTL ni
+reiniciar generación. Un cambio semántico del hecho invalida toda su salida.
+El estado de emisión/cadencia sólo avanza al compromiso de entrega definido
+por la fila del oráculo, nunca por invocar LLM/TTS ni por perder esa carrera.
+
+P0 preempta también audio ya empezado. La regla de terminar con seguridad
+después de started sólo permite completar una cláusula no crítica ante un
+cambio ordinario de valor; no anula P0, Stop, desactivación, pérdida de fuente
+o cambio de sesión/identidad/rival, que cancelan. Todo proceso, stream y goroutine
+tiene owner y cierre acotado; se prueba cero trabajos residuales tras Stop.
+
+El circuito es independiente por LLM/TTS: fallo explícito de conectividad
+abre inmediatamente; tres timeouts/errores consecutivos también lo abren.
+Tras 30 s se permite una única sonda half-open en un trabajo relevante;
+éxito lo cierra, fallo duplica la espera hasta cinco minutos. No se reintenta
+un job agotado. Cancelación por usuario/P0 no cuenta como fallo del proveedor.
+La revocación del modo cloud cancela pendientes y prohíbe sondas/reintentos.
+
+### 6.8 Privacidad y observabilidad
+
+Rige el [contrato de producto](../vantare-program/product-contract.md).
+Cloud se activa mediante una acción explícita para la sesión que muestra
+proveedores y datos enviados; no se deduce consentimiento de PTT, una licencia
+o la aceptación de esta spec. Sin esa activación se usa offline. No se habilita
+subida automática de paquetes ni se modifica el consentimiento de ADR 0009.
+
+| Frontera | Datos permitidos y retención |
+|---|---|
+| Micrófono → STT local | PCM acotado a la ventana de captura; memoria efímera, sin archivos/logs. Se elimina al cerrar/cancelar. |
+| Router → LLM cloud | Texto necesario sanitizado y contexto mínimo del turno. Se sustituyen nombres/identificadores personales por referencias opacas locales y se excluyen voz, rutas, telemetría cruda, credenciales y perfiles. Si no se puede sanitizar, offline. |
+| Herramientas → LLM | Sólo la allowlist del tipo semántico: relaciones, cifras/unidades, calidad y referencias opacas del turno. Nunca parrilla completa ni historial crudo. |
+| Realizador → TTS dinámico | Únicamente texto reconstruido y validado; sin nombres personales, rutas, IDs internos o transcripción original. Identidad audible se realiza por posición/clase o fragmento local autorizado. |
+| Memoria y caché | Conversación bajo §6.5; audio dinámico efímero ligado al job. PhrasePack estático propio puede persistir; no se llena con audio/texto de sesión. |
+| Diagnóstico/replay | Sólo IDs de caso/job opacos, enums, métricas agregadas y fixtures sintéticas o capturas consentidas sanitizadas. No prompts, respuestas libres, audio, transcripciones ni nombres. |
+
+Cada adaptador documenta proveedor, modelo/versiones, región, política de
+retención y tratamiento de cancelación antes de su gate. La configuración
+admitida exige no entrenamiento y cero retención remota del contenido fuera
+del procesamiento efímero de la solicitud; no basta desactivar logs locales.
+Un proveedor que no garantice esas condiciones no se habilita. Cancelar impide
+nuevos envíos y descarta resultados locales; no afirma recuperar bytes ya
+aceptados remotamente. No hay tracing automático de SDK con contenido.
+
+La traza local acotada conserva motivo de emisión/silencio, rechazo de
+validación, estado del circuito, edad de evidencia, coalescing, fallback y
+terminal, y tiempos STT/herramientas/LLM/TTS/cola/reproducción. Se limita a
+2.048 eventos en memoria sin PII; exportar requiere el flujo consentido de
+diagnóstico. El gate verifica allowlists con canarios sintéticos de PII,
+ausencia de contenido en logs y cero envíos sin activación o tras revocación.
 
 ## 7. Oráculo y ledger
 
@@ -202,14 +463,37 @@ Cada conducta se registra con un identificador estable y contiene:
 - resultado offline precacheado;
 - replay y evidencia LMU.
 
+El esperado se obtiene de CrewChief, nunca del resultado de Vantare: cada
+fila cita archivo/línea del commit fijado y, para inferencias o anomalías,
+traza observada o harness independiente. Guarda hash de fixture, configuración
+completa (incluidas opciones globales), pista/catálogo, locale, variante de
+identidad audible y versión del entorno/audio de referencia. No se copian
+assets ni gramáticas: se registra su efecto observable.
+
+El replay usa reloj monotónico virtual y PRNG inyectable con semilla y secuencia
+de elecciones registradas, separada de variación textual. Se comparan hechos,
+silencios, orden y ventanas temporales, no textos idénticos. Cada fila declara
+precisión/unidad, instante de muestreo, contador inicial, ventana admisible
+desde trigger hasta started y condición de consumo de cadencia. Los límites
+son parte del esperado; no se amplían para hacer pasar una implementación.
+La aleatorización se prueba por bordes y elecciones controladas, además de
+distribución; no se exige que dos PRNG no sincronizados hablen en el mismo tick.
+
+La ruta online se prueba con respuestas/tool calls capturados sintéticos y
+proveedores falsos deterministas; el gate de voz real prueba además el
+proveedor efectivo. El LLM live no define un golden. El gate acústico verifica
+las proposiciones realmente oídas y unidades, no sólo el texto anterior al TTS.
+
 Ejemplo conceptual:
 
 ```text
 TIM-AUTO-017
-Contexto: carrera, P4, mismo rival delante durante tres sectores,
-          gaps 2,4 -> 2,1 -> 1,8 s, sin banderas ni boxes.
+Contexto: carrera, P4 de clase, mismo rival delante; muestras admitidas
+          2,4 -> 2,1 -> 1,8 s; contador delante ya habilitado (>=4),
+          gap detrás 4 s con historial válido; sin candidato de doblaje,
+          banderas, boxes ni condición de final. El rival no cambia en cola.
 Esperado: anuncia que el piloto recorta al rival, comunica el gap actual,
-          no anuncia simultáneamente detrás y usa prioridad normal.
+          no anuncia simultáneamente detrás; prioridad CC 5, TTL 5 s.
 ```
 
 Estados permitidos:
@@ -226,6 +510,25 @@ Estados permitidos:
 Una sección sólo se cierra cuando todos sus casos obligatorios alcanzan
 `paridad cerrada` o tienen una desviación aprobada por producto.
 
+Los estados son acumulación de evidencias independientes, no una promoción
+automática por orden. Una fila conserva resultado PASS/FAIL/INCONCLUSIVE por
+gate, SHA Vantare, fixture, contrato, config, locale, packs/modelos y proveedor.
+Cambiar cualquiera que afecte la conducta invalida sus PASS dependientes; no
+se hereda el audio de una revisión ni el LMU PASS de otra sin comprobar impacto.
+Un gate ausente o una señal bloqueada nunca equivale a PASS.
+
+T0 mantiene además un registro de anomalías del oráculo: comportamiento
+confirmado, defecto candidato, defecto demostrado o desviación aprobada. Cada
+entrada contiene reproducción, impacto y decisión; los defectos no se copian
+silenciosamente ni se corrigen en el esperado sin aprobación. Deben
+caracterizarse especialmente el cálculo de estado detrás antes de insertar la
+muestra (Timings.cs:613), la comprobación repetida de gaps[0] en isSameCar
+(:1068), el filtro de posición que puede impedir el desdoblaje (:653–659) y
+la repetición de aviso por rival después de cinco minutos (:716–720). Hasta
+resolver la clasificación, los casos afectados no pasan a implementación de
+paridad ni a PASS; el resto del inventario sí puede avanzar. Una rama presente
+en código no prueba que sea observable durante LMU.
+
 ## 8. Primer corte: Timings
 
 ### T0 — Oráculo
@@ -233,6 +536,18 @@ Una sección sólo se cierra cuando todos sus casos obligatorios alcanzan
 Inventariar `Events/Timings.cs`, sus dependencias observables, defaults,
 comandos, silencios, revalidaciones y casos límite. Toda opción se documenta
 aunque inicialmente sólo se implemente el default.
+
+Salida exigida: matriz normativa de §7 y §8.1 completa para la configuración
+default, inventario de todas las opciones aplicables, tabla de datos de §9 y
+registro de anomalías. Fuentes mínimas al SHA fijado: Timings.cs,
+AbstractEvent.cs, GameStateMapper.cs, GameStateData.cs (DeltaTime y relaciones),
+RF2GameStateMapper.cs (ruta LMU), TrackData.cs, Opponents.cs, CommonActions.cs,
+QueuedMessage.cs, AudioPlayer.cs, GlobalBehaviourSettings.cs,
+NumberProcessing (TimeSpanWrapper y lectores por locale) y Settings.settings.
+Se demuestra que la
+opción revert_to_legacy_version_of_refactored_code está false; el monitor
+legacy de ninguno de los productos puede convertirse en oráculo por accidente.
+No empieza T1 implementable sin esas salidas revisadas; T0 no acredita paridad.
 
 ### T1 — Relaciones de carrera
 
@@ -243,17 +558,33 @@ Producir relaciones estables y tipadas para:
 - rival de clase inmediatamente detrás;
 - coche inmediatamente delante en pista;
 - coche inmediatamente detrás en pista;
+- candidato automático detrás en pista de la misma clase, distinto del rival
+  inmediatamente detrás en carrera (no confundirlo con la consulta sin filtro);
 - diferencia temporal y de vueltas.
 
 Cada relación incluye ID del vehículo, nombre/clase cuando sean utilizables,
 calidad, freshness, sesión y epoch. No se infiere identidad mediante el valor
 del gap.
 
+Posición de clase, orden en pista y orden general son campos separados. Se
+declaran filtro de actividad, velocidad y entrada en boxes, wrap de meta,
+signos de tiempo/vueltas y dato unknown. Sólo una derivación demostrada puede
+convertir posiciones/gaps generales en relaciones de clase. T1 verifica esos
+contratos con los casos de §9 antes de habilitar el muestreo de T2.
+
 ### T2 — Muestreo
 
 Mantener historial separado por relación e ID de rival. Muestrear en cambio de
 sector o gap point equivalente. Cambiar rival, sesión o epoch reinicia su
 historia y evita atribuir una tendencia al coche incorrecto.
+
+Se eligen gap points cuando la definición de pista los contiene; en otro caso
+se usan cambios de sector. No se muestrea dos veces por ambos caminos ni se
+fabrica una muestra por frame. Cruce hacia delante, meta, retroceso, salto de
+snapshots, valores duplicados y primera muestra están en el oráculo. Si no se
+puede demostrar qué intervalo se cruzó, se reinicia la ventana afectada. La
+política de duplicados y la asimetría de inserción delante/detrás se
+caracterizan en T0 antes de decidir una desviación.
 
 ### T3 — Clasificación
 
@@ -276,10 +607,11 @@ Implementar:
 - frecuencias independientes delante, detrás y coche detrás en pista;
 - aleatorización equivalente;
 - preferencia por mensajes a mitad de vuelta;
-- selección de una sola relación, favoreciendo el gap menor;
-- prioridad de un coche que dobla o se desdobla;
+- selección de una sola relación en modo normal, con las excepciones de §8.1;
+- preferencia del candidato detrás en pista que cumple el filtro del oráculo;
+  doblaje/desdoblaje se distinguen sólo cuando la relación está demostrada;
 - supresión durante formación, neutralización, bandera relevante, pit lane,
-  vuelta de entrada y final inmediato de carrera;
+  vuelta de entrada, reanudación tras verde y final según §8.1;
 - revalidación justo antes de empezar el audio.
 
 ### T5 — Mensajes automáticos
@@ -291,11 +623,14 @@ Emitir hechos semánticos para:
 - piloto recortando;
 - presión sostenida;
 - retención sostenida;
-- doblaje/desdoblaje.
+- doblaje/desdoblaje;
+- consejo de ataque/defensa por landmark incorporado a los mensajes anteriores;
+- lectura de curvas durante la vuelta solicitada, independiente de gap messages.
 
 El online genera redacción natural. El offline compone una frase canónica. En
 ambos casos se conservan dirección, valor, rival/contexto y tendencia
-obligatorios. Se elimina como salida final cualquier aviso equivalente a
+obligatorios para cada tipo (un CLOSE puede no incluir cifra). Se elimina como
+salida final cualquier aviso equivalente a
 “Diferencias actualizadas” sin datos.
 
 ### T6 — Consultas
@@ -308,10 +643,24 @@ Herramientas y fallback cubrirán:
 - coche detrás en pista;
 - gap al líder;
 - vuelta del líder;
-- punto donde se gana o pierde tiempo cuando exista evidencia de landmarks.
+- punto donde se gana o pierde tiempo cuando exista evidencia de landmarks;
+- componente Timings de STATUS y SESSION_STATUS;
+- controles de resumen por vuelta, lectura de curvas y silencio que afectan
+  Timings, mediante el protocolo de acción apropiado.
 
 Leading, last, sin rival, diferencia de vueltas, dato missing y dato stale
 tienen respuestas explícitas y no reutilizan un cero ambiguo.
+
+Se distingue disponibilidad por consulta y sesión: gaps de carrera y vuelta
+del líder son consultas de carrera; consultas en pista y al líder conservan
+la semántica aplicable de práctica/clasificación del oráculo. “Gap al líder”
+no se transforma silenciosamente en diferencia de mejor vuelta: T0 verifica
+qué relación devuelve la ruta LMU en cada sesión. WHERE_AM_I_FASTER compara con
+el rival de clase delante y WHERE_AM_I_SLOWER con el de detrás; consumen el
+mismo cooldown de consejo que el automático. Una consulta de gap actualiza el
+último gap reportado sólo donde lo hace el oráculo, sin reiniciar por defecto
+todos los contadores. STATUS no inventa un “sin datos” extra cuando su
+contribución Timings debe callar.
 
 ### T7 — Ajustes
 
@@ -327,6 +676,25 @@ Defaults iniciales del oráculo CrewChief:
 Después del PASS de defaults se exponen los mismos grados configurables y se
 añaden escenarios de sus extremos, incluido frecuencia cero.
 
+El inventario inicial también incluye opciones globales que alteran Timings:
+just_the_facts=false, enable_driver_names=true,
+enable_delayed_messages_on_hardparts=false,
+allow_important_messages_even_when_silenced=false,
+always_report_time_in_hundredths=false, quiet/informed, preferencia de
+identidad audible, lectura de curvas y activación del modo de gaps por vuelta.
+Incluye dependencias de clase, locales/number reader, disponibilidad de nombres
+y audio, update interval y la opción de implementación legacy. Por opción se
+registra fuente/default/dominio válido, qué conducta cambia, si se expone en
+Vantare, extremo negativo/cero y gate. Las opciones exclusivas de otros sims
+se excluyen con evidencia. La opción legacy se documenta como referencia de
+selección de oráculo, no exige exponer dos implementaciones Vantare.
+
+Los valores anteriores no constituyen por sí solos el
+inventario. La paridad default se etiqueta como tal; opciones aún no
+implementadas no se publicitan como soportadas. Para cerrar la sección completa
+se prueban también todas las opciones incluidas o se registra su desviación
+aprobada según §7; “defaults PASS” no cierra silenciosamente ese remanente.
+
 ### T8 — Cierre
 
 Timings exige:
@@ -339,18 +707,98 @@ Timings exige:
 - evidencia de latencia y ausencia de mensajes obsoletos;
 - documentación actualizada del ledger.
 
+También exige casos de práctica/clasificación, multiclass, líder/último,
+cruce de meta, gaps de vueltas, frecuencia cero, resumen por vuelta,
+desactivación/quiet, datos congelados/ausentes, nuevos epochs y cambio de
+locale. Cada caso tiene salida audible/semántica y silencio esperado por
+locale. Se añade cold start sin red y sin caché generativa, packs completos y
+corruptos, nombre desconocido, pérdida de red/STT/TTS, fallo durante streaming,
+timeout y callback tardío, tormenta de triggers, cola llena y P0 en cada fase.
+Se comprueban cancelación/Stop sin residuos, ausencia de doble salida,
+invariantes de §6.2.1, privacidad de §6.8 y readback interrumpido de §6.5.
+La evidencia humana de voz/LMU es distinta del replay sintético; un escenario
+sin landmarks disponibles no demuestra el PASS de consejo por curvas.
+
+### 8.1 Reglas mínimas del oráculo Timings
+
+Esta tabla es vinculante para T0; su matriz extiende los casos de borde y
+resuelve anomalías, no puede borrar filas. Referencias: CrewChiefV4 al SHA del
+encabezado; los números identifican líneas iniciales para comprobar la fuente.
+
+| ID | Conducta y esperado mínimo | Fuente |
+|---|---|---|
+| TIM-REL | Delante/detrás de clase en carrera; consultas en pista sin filtro de clase. El candidato automático detrás en pista es de la misma clase y excluye al rival inmediatamente detrás en carrera. En pista se excluyen coches con velocidad <=0,5 m/s o entrando a pits; wrap y dirección se verifican antes de hablar. | Timings.cs:297,340,1268; GameStateData.cs:4759,4805 |
+| TIM-SAMPLE | Gap point sustituye al sector cuando existe; cruce positivo desde debajo del punto, no en vuelta atrás. Longitud >3.300 m usa puntos inicialmente separados 780 m y último a 50 m de meta; pistas de dos sectores tienen regla propia. Ajustes por hard parts forman parte del perfil de pista. | Timings.cs:1424; TrackData.cs:875,1351,1384 |
+| TIM-STATE | NONE con <3 muestras, valores <=0, gap más reciente >20 s, salto entre dos recientes >5 s o identidad no fiable. CLOSE: dos recientes <0,5 s, o tres <0,7 s, o cuatro <0,8 s, sujeto al mínimo de tres. Creciente/decreciente exige monotonía a una decimal y comparación con último reportado redondeado a entero, salvo valor inicial -1; midpoint al par de Math.Round. OTHER exige diferencias con las otras dos <1 s; en otro caso NONE. La comparación distinta del último reportado se caracteriza, no se normaliza silenciosamente. | Timings.cs:1017 |
+| TIM-PRECISION | AUTO_GAPS: segundos si gap >10 s; por debajo, centésimas sólo si useHundredths y gap <0,5 s en LMU; décimas en los otros casos. useHundredths depende de clase y always_report_time_in_hundredths. T0 verifica redondeo/realización de cada locale; 0,5 y 10 s son bordes distintos de los umbrales de clasificación. | NumberProcessing/TimeSpanWrapper.cs:37; GlobalBehaviourSettings.cs:108 |
+| TIM-CADENCE | Frecuencia cero desactiva esa relación. Para frecuencia positiva f, espera mínima 11-clamp(f,1,10), máxima exclusiva mínima+clamp(randomness,1,10); espera inicial mínima. Tras entrega/resolución admitida, nuevo sorteo. Sin gap points, preferencia mitad de vuelta añade 0/1/2 sólo al caer en fin de vuelta. Contadores independientes por puntos admitidos; cambio de rival detrás en pista prepara su contador para próxima oportunidad. | Timings.cs:173,199,244,256,624,646 |
+| TIM-SELECT | Normal: candidato detrás en pista “cercano” si <=5 s, CLOSE/DECREASING, por delante en clasificación general y habilitado; CLOSE se excluye con just_the_facts. Si además vence su cadencia, tiene preferencia. Delante/detrás de carrera requieren frecuencia>0, estado distinto de NONE y lapDelta=0; CLOSE/just_the_facts suprime esas salidas. Delante se inhibe con cualquier behindOnTrack CLOSE; detrás con candidato “cercano”, aunque no haya vencido su cadencia. closerInFront sólo es true si ambos historiales existen y gap delante < gap detrás. Delante requiere closerInFront o frecuencia detrás<=0; detrás requiere lo contrario o frecuencia delante<=0, siempre con su cadencia vencida. Igualdad favorece detrás; no se inventa un fallback al otro lado si no cumple. Se prueban historial ausente, líder/último y frecuencia cero. El modo por vuelta usa otra regla. Posibles ramas inalcanzables siguen §7. | Timings.cs:650 |
+| TIM-SILENCE | Gap automático sólo en Race y fase admitida por AbstractEvent (Green/Countdown), fuera de formación manual. Calla con currentLapIsFCY, amarilla local, azul, pit lane o intención de parar esta vuelta. Calla mientras completedLaps del snapshot previo <= lapCountWhenLastWentGreen. Opciones gap disabled/quiet y hard parts conservan sus excepciones de cola. | Timings.cs:428,453,364; AbstractEvent.cs:168; AudioPlayer.cs:948,1352 |
+| TIM-END | Carrera cronometrada: silencio con tiempo restante >-1 y <120 s. Por vueltas: cuando vueltas restantes=0, circuito normal calla; LONG (>10 km hasta 20 km) calla en sectores 2/3; VERY_LONG (>20 km) en sector 3. No se convierte falta de Remaining en carrera terminada. | Timings.cs:267; TrackData.cs:880 |
+| TIM-AUTO | INCREASING/DECREASING/OTHER comunican gap actual y relación; umbral numérico normal >0,05 s. CLOSE delante comunica retención sólo tras >60 s desde holdingUsUp de ese rival; la fuente reinicia por cambio de rival, no por cada salida temporal de CLOSE. Detrás CLOSE comunica presión. Ataque si retención CLOSE con gap <6 s o DECREASING <6 s; defensa en CLOSE o DECREASING. Consejos distinguen entrada/recorrido de curva, con evidencia de landmarks y cooldown independiente ataque/defensa de tres minutos por rival. | Timings.cs:439,599,767,857,938,974 |
+| TIM-QUEUE | Normal: prioridad CC 5 y TTL 5 s; cifra/identidad/supresiones se resuelven justo antes de reproducir. En Vantare prioridad de rutina P3; consulta P2; carril P0 conserva precedencia. T0 prueba orden relativo al resto de radio, no equivalencia numérica entre escalas. Cancelación anterior a salida no consume el hecho. Los efectos de callbacks sin contenido se caracterizan como anomalía antes de fijar cadencia. | Timings.cs:674; QueuedMessage.cs:251,353 |
+| TIM-LAPPING | Revalidar mismo candidato y no-racing; no reportar gap <0,05 s. CLOSE avisa contexto de doblaje; intervalo por rival de cinco minutos según fuente, sujeto a anomalías. Fuera de CLOSE puede incluir posición y diferencia de vueltas. No denominar “desdoblaje” a un rival sin relación demostrada. | Timings.cs:691 |
+| TIM-LAPMODE | En nueva vuelta combina delante si no líder, detrás si no último y candidato detrás en pista sólo si dobla; gaps >0,05 s. Mensaje breve sin nombres, detrás en pista sin lap diff; prioridad CC 10, TTL 5 s, playEvenWhenSilenced=true. En Vantare P2; no evita P0 ni filtros de carrera/pits/banderas. | Timings.cs:476 |
+| TIM-QUERY | Delante/detrás de carrera y vuelta del líder: Race. leading/last explícitos; tiempo cero sin dato no se convierte en gap válido. Consultas en pista validan signo y comunican vueltas; gap al líder usa relación relativa con dirección explícita, incluida clasificación; líder es de clase. Vuelta del líder incluye diferencia de vueltas cuando existe. | Timings.cs:1210,1268,1315,1349 |
+| TIM-STATUS | STATUS/SESSION_STATUS: si líder, gap detrás >2 s; si no líder y no último, gap delante >2 s; en otros casos contribución silenciosa, sin “no data” añadido. Se integra con otras familias sin duplicar. | Timings.cs:1152 |
+| TIM-CORNERS | Lectura pedida para la vuelta actual en midpoint de landmark; sucede antes del filtro gap messages/formación, conservando fase aplicable. TTL 2 s, prioridad CC 10 (Vantare P2), sin esperar LLM. Consultas faster/slower y consejos automáticos comparten historial/cooldowns y catálogo propio de landmarks. | Timings.cs:421,1178; RF2GameStateMapper.cs:782,833 |
+
+Fuera del carril crítico, prioridad P2/P3 no autoriza nuevas proposiciones ni
+elimina expiración. La excepción de resumen por vuelta a quiet es explícita;
+ninguna salida evade desactivación total de audio por el usuario. Toda
+diferencia respecto al oráculo por seguridad o control de usuario se anota en
+el ledger; no se disfraza de equivalencia literal de prioridad.
+
 ## 9. Datos y extensiones de telemetría
 
 La proyección Engineer actual ya contiene parrilla completa, IDs, nombres,
 clases, posición, vueltas, sector, distancia, gaps y posición espacial. Esto es
-suficiente para iniciar T1-T3.
+suficiente para iniciar la caracterización de T1, no para declarar equivalentes
+todos sus gaps ni para habilitar automáticamente T2–T5. La vista de producto
+actual se llama ObservationV1: “Telemetry V2” no cambia ese versionado.
 
-Telemetry Core contiene amarilla global, pero la proyección Engineer debe
-exponerla con calidad y freshness. Fase de carrera, amarilla local, azul, gap
-points y landmarks requieren inventario y, donde LMU los exponga de forma
-fiable, una extensión canónica. La falta de estas señales no bloquea la
-relación básica ni los mensajes numéricos; bloquea únicamente los escenarios
-que las necesitan.
+Todo dato se clasifica antes de depender de él:
+
+| Clase | Contrato y uso |
+|---|---|
+| Observado | Señal LMU mapeada por Telemetry Core con fuente, unidad, calidad, freshness y evidencia del mapping en sesión activa. Un campo presente no basta. |
+| Derivado | Regla determinista identificada/versionada sobre observados o catálogo demostrado; conserva procedencia e incertidumbre. La derivación no oculta un dato missing. |
+| Catálogo | Datos propios/licenciados de pista, landmark o voz con versión, identidad de pista/layout, coordenadas/unidades y cobertura. Nunca se copian assets CrewChief. |
+| Ausente o candidato | Missing/unsupported o mapping pendiente de demostrar. No equivale a false/green/zero. Sólo bloquea las conductas que necesitan ese conocimiento, identificadas en el ledger. |
+
+Amarilla global existe en Core como mapping candidato del REST, pendiente de
+verificación activa (schema/session/types.go:27). Debe exponerse con esa
+calidad, nunca como fuente certificada por el mero cambio de proyección.
+Timings requiere además fase, estado de vuelta FCY y última vuelta al volver
+a verde, amarilla local, azul, pits/intención de parada, tipo/duración de
+carrera y longitud/clase de longitud de pista. T0 identifica fuente observada
+o derivación demostrable de cada una. Intención de parada/manual formation
+pueden provenir del estado determinista confirmado del Engineer, con origen
+explícito; no se inventan desde texto cloud.
+
+Gap points no son una señal que LMU deba proporcionar: CrewChief los calcula
+con longitud/sectores y los ajusta con hard parts. Se derivan en Engineer a
+partir de datos canónicos y definición propia de pista; los criterios de
+muestreo son conducta de producto, no umbrales nuevos en Telemetry Core.
+Landmarks combinan catálogo propio y tiempos de paso derivados. La ausencia
+de nombres de curva en LMU no demuestra imposibilidad: se inventaría catálogo
+y evidencia de timing disponibles, con bloqueo explícito si no los hay.
+
+Antes de T2, T1 debe demostrar el significado de posición/clase, gap de
+carrera, gap relativo en pista y diferencia de vueltas. Incluye líder/último,
+mono/multiclass, coches a distinta vuelta, ritmos diferentes, detenido/pits,
+envoltura de meta y campos ausentes. El gap relativo actual, derivado de
+LapProgressTime con EstimatedLapTime, no es equivalente por nombre al delta de
+pasos de CrewChief. Se compara con entradas y esperados independientes; si no
+cumple, se extiende la derivación/proyección con una semántica demostrada antes
+de usarlo, sin segundo lector. Posición de clase derivada lleva su calidad.
+
+Se puede avanzar con relaciones y replay sintético sin haber demostrado todas
+las banderas. Para hablar automáticamente en LMU deben ser conocidas y
+vigentes todas las precondiciones de silencio de esa regla; señal de bandera
+missing no significa ausencia de bandera. Una consulta numérica que no depende
+de esa señal puede seguir disponible con sus propias precondiciones. Así se
+delimita el bloqueo sin habilitar avisos de carrera en contexto desconocido.
 
 No se reintroducirá `telemetry.Frame` legacy ni un segundo lector LMU.
 
@@ -358,8 +806,8 @@ No se reintroducirá `telemetry.Frame` legacy ni un segundo lector LMU.
 
 - Dato missing/stale: silencio o respuesta explícita de indisponibilidad.
 - Cambio de rival/contexto antes de `started`: cancelar el mensaje.
-- Cambio después de `started`: terminar de forma segura; el siguiente ciclo
-  usa el nuevo contexto.
+- Cambio después de `started`: aplicar §6.7; sólo un cambio ordinario de valor
+  permite terminar la cláusula. P0, Stop o cambio de lifecycle cancelan.
 - LLM/TTS inválido o lento: fallback offline sin consumir el hecho.
 - STT ambiguo: pedir aclaración; nunca elegir una acción por proximidad textual.
 - Pérdida de red: abrir circuito, evitar reintentos por cada frame y mantener
@@ -367,11 +815,34 @@ No se reintroducirá `telemetry.Frame` legacy ni un segundo lector LMU.
 - Falta de phrase pack: salida visual y diagnóstico; no sintetizar un hecho.
 - Señal LMU no demostrable: caso bloqueado, sin proxy oculto.
 
+La falta de pack nunca marca PASS audible. Error de TTS antes de empezar puede
+usar compositor local; después de empezar se aplica la política por cláusula,
+sin doble presentación del mismo job. “Sin consumir el hecho” no renueva su
+caducidad ni autoriza reintentos ilimitados.
+
 ## 11. Criterio de transición entre secciones
 
 No se empieza el cierre de la siguiente sección mientras Timings no haya
 alcanzado `paridad cerrada`, incluido `LMU PASS`. El gate LMU puede descubrir
 correcciones y obliga a resolverlas antes de ampliar superficie.
+
+El orden T0–T8 es de aceptación, con estas dependencias explícitas:
+
+1. T0 cierra contrato/oráculo, inventario de opciones y taxonomía de datos.
+2. T1 caracteriza/provee las relaciones y la semántica de gaps; longitud y
+   puntos de pista están listos antes de T2.
+3. Las señales y el estado compartido de silencios, radio/ACK, lifecycle,
+   validador y cancelación de §6 preceden a la primera salida de T4/T5.
+   Esto no obliga a cerrar antes la familia audible de banderas.
+4. T5/T6 incluyen los consejos y controles de Timings, con catálogo/landmarks
+   propios cuando corresponda. No se trasladan al futuro coaching para cerrar.
+5. STT local real, QueryPort canónico, compositor y packs instalables preceden
+   a los PASS de voz de T6/T8; fakes sólo permiten avanzar replays de contratos.
+
+La infraestructura se entrega con esas conductas concretas. Una dependencia
+sin señal/asset fiable bloquea sus casos; no exige construir de antemano todos
+los dominios. PLAN.md debe reflejar estos gates y sus entregables, no una
+promesa genérica de “conectar voz al final”.
 
 Tras Timings, el orden es Spotter, banderas/neutralizaciones, vueltas/ritmo,
 rivales/multiclass y el resto del mapa de la sección 5. Cada sección reutiliza

@@ -1022,6 +1022,22 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - etiqueta.pt: Plano
 - etiqueta.it: Piano
 
+### Análisis Linux del grafo Wails
+
+- id: quality-linux-analysis
+- tipo: fix
+- titulo.en: Linux analysis of the Wails graph
+- titulo.pt: Análise Linux do grafo Wails
+- titulo.it: Analisi Linux del grafo Wails
+- cuerpo: El candidato de CI prepara GTK4 y WebKitGTK 6.0 en los dos jobs Linux para que govet y deadcode analicen el grafo Wails declarado sin recortar paquetes. Los fallos de instalación, integridad y hallazgos NEW siguen cerrando el gate; no cambia baselines. Pendiente de revisión externa e integración en Nightly.
+- cuerpo.en: The CI candidate prepares GTK4 and WebKitGTK 6.0 in both Linux jobs so govet and deadcode can analyse the declared Wails graph without dropping packages. Installation failures, integrity errors and NEW findings still fail the gate; baselines remain unchanged. External review and Nightly integration are pending.
+- cuerpo.pt: O candidato de CI prepara GTK4 e WebKitGTK 6.0 nos dois jobs Linux para que govet e deadcode analisem o grafo Wails declarado sem excluir pacotes. Falhas de instalação, erros de integridade e achados NEW continuam a fechar o gate; os baselines não mudam. A revisão externa e a integração no Nightly estão pendentes.
+- cuerpo.it: Il candidato CI prepara GTK4 e WebKitGTK 6.0 in entrambi i job Linux affinché govet e deadcode analizzino il grafo Wails dichiarato senza escludere pacchetti. Errori di installazione, integrità e rilievi NEW continuano a bloccare il gate; i baseline restano invariati. La revisione esterna e l'integrazione in Nightly sono in attesa.
+- etiqueta: Candidato
+- etiqueta.en: Candidate
+- etiqueta.pt: Candidato
+- etiqueta.it: Candidato
+
 ### v0.1.0.5 en nightly
 
 - id: v0105

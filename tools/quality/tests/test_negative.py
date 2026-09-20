@@ -528,6 +528,52 @@ class TestCmdCheckExitCode(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# VAN-733: el workflow prepara el stack Linux real de Wails en ambos jobs
+# ---------------------------------------------------------------------------
+
+class TestQualityWorkflowWailsDependencies(unittest.TestCase):
+    """Impide que quality-check o quality-audit pierdan GTK4/WebKitGTK 6.0."""
+
+    @classmethod
+    def setUpClass(cls):
+        workflow_path = REPO_ROOT / ".github" / "workflows" / "quality.yml"
+        cls.workflow = workflow_path.read_text(encoding="utf-8")
+
+    def _job_section(self, job: str, next_job: str | None = None) -> str:
+        marker = f"  {job}:\n"
+        self.assertIn(marker, self.workflow, f"falta el job {job}")
+        section = self.workflow.split(marker, 1)[1]
+        if next_job:
+            next_marker = f"  {next_job}:\n"
+            self.assertIn(next_marker, section, f"falta el job siguiente {next_job}")
+            section = section.split(next_marker, 1)[0]
+        return section
+
+    def test_both_linux_jobs_prepare_wails_native_dependencies(self):
+        jobs = {
+            "quality-check": self._job_section("quality-check", "quality-audit"),
+            "quality-audit": self._job_section("quality-audit"),
+        }
+        required = (
+            "sudo apt-get update",
+            "--no-install-recommends",
+            "libgtk-4-dev",
+            "libwebkitgtk-6.0-dev",
+            "pkg-config --print-errors --exists gtk4 webkitgtk-6.0",
+        )
+        for job, section in jobs.items():
+            with self.subTest(job=job):
+                step_marker = "      - name: Install Wails Linux development dependencies\n"
+                next_marker = "\n      - name: Install staticcheck"
+                self.assertEqual(section.count(step_marker), 1, f"{job} debe tener un unico paso Wails")
+                step = section.split(step_marker, 1)[1]
+                self.assertIn(next_marker, step, f"{job} debe preparar Wails antes de staticcheck")
+                step = step.split(next_marker, 1)[0]
+                for fragment in required:
+                    self.assertIn(fragment, step, f"{job} no contiene {fragment} en el paso Wails")
+
+
+# ---------------------------------------------------------------------------
 # F11: doctor MISMATCH incrementa issues
 # ---------------------------------------------------------------------------
 

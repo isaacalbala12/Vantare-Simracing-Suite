@@ -6,6 +6,26 @@
 > Este handoff conserva evidencia técnica fechada; sus estados antiguos no
 > sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
 
+## VAN-733 — Quality Linux y dependencias nativas de Wails (2026-09-20)
+
+[Tarea Notion](https://app.notion.com/p/3e1e51695c65819fbf23edeb5957cbcd),
+puente técnico GitHub #1296, rama
+`vantareapp/isa-1296-quality-linux-wails`, base `nightly@8a0620e8`.
+
+La PR documental #1295 demostró que `quality-check (ratchet)` alcanza cero
+hallazgos `NEW`, pero `govet/linux-dev` y `deadcode/linux-dev` terminan en
+`ERROR` porque el runner no prepara GTK4/WebKitGTK 6.0 para el grafo Wails.
+Isaac aprobó conservar la cobertura Linux e instalar las dependencias nativas
+en `quality-check` y `quality-audit`; no se excluirán paquetes, no se usará
+GTK3 y no se tocarán baselines. Diseño versionado en
+`docs/specs/2026-09-20-quality-linux-wails-analysis-design.md`.
+
+Estado: diseño escrito en `201e1db4`, pendiente de revisión explícita de Isaac
+antes de redactar el plan o implementar. El PR de política deberá mostrar los
+analizadores completos y `REVIEW_REQUIRED`; el PASS ordinario se comprobará
+después sobre #1295 solo tras una integración autorizada. Sin PR, merge ni
+promoción.
+
 
 ## VAN-725 — Depuración documental del repositorio (2026-09-14)
 

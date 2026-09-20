@@ -1,22 +1,41 @@
 # Diseño — Paridad observable CrewChief para Engineer LMU
 
 - Fecha: 2026-09-19
-- Estado: aprobado por Isaac durante la revisión de paridad
+- Estado: propuesta de precisión contractual; pendiente de aprobación de Isaac
 - Base Vantare: `origin/nightly@8a0620e8abe75914efed41de4117490f3e47a3b4`
 - Oráculo inicial CrewChief: `mr_belowski/CrewChiefV4@4c3865e09a347d4c806c0bc0cd66aae335fbc610`
-- Revisión contractual: 2026-09-20; resuelve la revisión adversarial del diseño,
-  sin declarar implementación ni superar gates técnicos o humanos.
+- Revisión contractual: 2026-09-20; correcciones de revisión adversarial,
+  sin declarar aprobados los detalles nuevos, implementación o gates superados.
 - Decisión de arquitectura: [ADR 0010](../adr/0010-engineer-cloud-dialogue-and-offline-parity.md).
 
 ## 0. Autoridad y lectura
 
-Esta spec gobierna el nuevo programa de paridad LMU. Sustituye en
-[rework-spec.md](../engineer/rework-spec.md) el objetivo de base simple sin
-paridad, la tolerancia de menor cobertura como criterio de cierre, la regla de
-un archivo por familia y la exclusión de TTS dinámico/nombres hablados del
-corte anterior. No reinicia ni declara inexistente el trabajo ya integrado.
+Las decisiones base acordadas son: LMU-only, paridad observable CrewChief sin
+copiar implementación ni defectos, defaults primero con todas las opciones
+inventariadas, cortes verticales, Timings primero y replay más LMU; LLM cloud
+para lenguaje libre y redacción generativa, sin acceso directo a telemetría;
+hechos y acciones deterministas, carril crítico local, ausencia de LLM local,
+fallback precacheado funcional y presupuestos de §6.6. Voz y LLM comparten un
+camino ampliable de herramientas y entrega.
 
-El ADR 0010 amplía la interpretación de consultas mediante LLM cloud, pero
+Los contratos detallados añadidos por las revisiones, incluido el mecanismo
+de variación abierta, sus riesgos residuales y las condiciones de identidad
+audible, son una propuesta, no una aprobación atribuible al usuario. “Debe” y
+“PASS” expresan requisitos de esta propuesta: no prueba de producto entregado.
+Antes de convertirla en PLAN.md se requiere aprobar esta precisión; las
+decisiones base no se reabren. DEV-NAME-001 (§6.3) no se acepta por aprobar el
+resto: requiere resolución explícita de cobertura o de desviación.
+
+Esta spec propone gobernar el nuevo programa de paridad LMU. La precedencia
+del objetivo de paridad y de la frontera cloud procede de las decisiones base;
+las precisiones siguientes quedan pendientes. Sustituye en ese perímetro de
+[rework-spec.md](../engineer/rework-spec.md) el objetivo de base simple sin
+paridad y la exclusión absoluta de TTS dinámico. Propone sustituir además la
+tolerancia de menor cobertura como criterio de cierre, la regla de un archivo
+por familia y la exclusión de nombres hablados del corte anterior. No reinicia
+ni declara inexistente el trabajo ya integrado.
+
+El ADR 0010 propone concretar la interpretación mediante LLM cloud, pero
 conserva de [ENG-15](../engineer/dialogue-router-isa-186.md) el catálogo tipado,
 precondiciones, lifecycle, confirmaciones, idempotencia y verificación de
 acciones. La prohibición histórica de LLM para elegir intents se sustituye
@@ -171,9 +190,10 @@ capability, permisos y lifecycle antes de resolverlas. No hay herramientas de
 SQL, archivos, navegación, HTTP arbitrario ni acceso a stores. Una selección
 ambigua o incompatible con la solicitud pide aclaración; no ejecuta una acción.
 
-La respuesta natural se realiza mediante un plan de enunciado tipado. No basta
-un JSON válido ni una lista de hechos citados junto a texto arbitrario. La
-salida del LLM nunca se envía directamente a audio o widget.
+La respuesta separa cláusulas factuales canónicas y texto discursivo generado
+libremente según §6.2.1. No se reduce a elegir cien variantes ni a combinar una
+gramática finita. Tampoco basta un JSON válido o citar hechos junto a texto
+arbitrario: toda salida atraviesa el ensamblador y sus gates antes de TTS/widget.
 
 Los mensajes automáticos no críticos pueden usar el mismo camino. Su trigger,
 semántica, prioridad y caducidad llegan cerrados desde el motor de la feature;
@@ -188,21 +208,80 @@ observedAt, freshUntil y lifecycle. Los tipos de respuesta distinguen dato,
 leading, last, sin rival, no disponible y aclaración; cero no es ausencia.
 Cada tipo declara qué campos son obligatorios, opcionales o prohibidos.
 
-El código produce la lista de proposiciones obligatorias y opcionales
-autorizadas. El LLM puede ordenar cláusulas donde el tipo lo permita y elegir
-formas naturales de una gramática de realización propia por locale. Esa
-gramática usa slots vinculados a hechos y variantes declarativas verificadas;
-no exige precachear cada frase completa ni limita el producto a una frase por
-intent. El validador reconstruye el texto desde el plan: no confía en texto,
-SSML, números ni citas suministrados fuera del esquema. Rechaza campos extra,
-hechos omitidos, duplicados contradictorios y operadores no autorizados.
+El ensamblador determinista crea un `FactBundle` cerrado: proposiciones,
+texto canónico por locale, slots de audio local, IDs y hash de revisión.
+Incluye todo el contenido obligatorio y sólo opcionales elegidos por el motor.
+Cada átomo es una cláusula factual completa con sujeto, relación y unidades,
+no un número suelto que el modelo pueda vincular a cualquier verbo. El dominio
+fija agrupaciones indivisibles y restricciones de orden: condición/calidad con
+su dato, relación antes de cifra dependiente y orden cerrado para acciones.
+El modelo no puede añadir, omitir, parafrasear ni negar esas cláusulas.
+Una diferencia de sujeto, dirección, unidad, tendencia, certeza, causalidad o
+acción exige otro hecho del dominio, no una redacción del LLM.
 
-Las variantes no pueden cambiar sujeto, dirección, unidad, tendencia,
-negación, certeza, causalidad, prioridad o acción sugerida. Tampoco pueden
-añadir recomendaciones como que un adelantamiento es seguro. Nombres y texto
-de rivales son datos no confiables y nunca instrucciones. Si una variación no
-puede demostrarse equivalente con esta realización, usa el compositor
-canónico offline. No se usa otro LLM como juez de seguridad.
+El LLM devuelve exclusivamente `UtterancePlan {schemaVersion, jobID, revision,
+locale, factBundleHash, segments}`. Un segmento es `factRef` o `discourseText`.
+Puede ordenar los bloques independientes dentro del orden parcial autorizado;
+el dominio decide qué hechos aparecen, no el modelo. `discourseText` es texto
+natural nuevo de vocabulario abierto, no un ID de variante ni texto
+reconstruido desde una gramática. Redacta introducción, transiciones y
+contextualización de la petición para organizar la respuesta útil; no se
+limita a saludos o despedidas. Puede presentar los bloques como respuesta
+breve, comparación solicitada o resumen, sólo si ese acto discursivo está
+autorizado por el tipo de consulta. No añade datos de carrera, identidades,
+cifras, comparaciones factuales, predicciones, causalidad, negaciones de los
+hechos ni recomendaciones/órdenes. No aparece en alarmas críticas, lectura de
+curvas con TTL corto, readback, confirmación, ejecución o resultado de acciones.
+
+El código verifica todos los factRef, exactamente una vez y con el orden
+permitido, e inserta sus cláusulas inmutables; un plan inválido se reemplaza
+por el orden canónico completo. El discurso sólo ocupa fronteras entre bloques
+o la introducción/cierre, con separación audible. Nunca divide una cláusula,
+se usa como negación/modificador suyo ni completa una frase factual truncada.
+Máximo tres segmentos discursivos; cada uno hasta 120 caracteres/20 palabras y
+el conjunto hasta 240 caracteres/40 palabras, sin SSML, URLs, controles, slots
+o delimitadores. La forma y límites se validan en cada locale. El resultado
+audible/widget contiene sólo cláusulas canónicas vigentes más el discurso
+admitido; sin discurso conserva una respuesta útil y completa. Los fragmentos
+de nombre de §6.3 se intercalan localmente; no se envían al TTS cloud. Ningún segmento
+discursivo llega al dispatcher ni altera estado, prioridad, TTL o acciones.
+
+Ejemplo de forma, no catálogo de variantes: ante una consulta compuesta el
+modelo puede introducir «Empiezo por la diferencia que me has preguntado:»,
+referenciar una cláusula canónica delante y redactar «Completo el resumen con
+el otro lado:» antes de la cláusula detrás, si ambas están autorizadas. Otra
+salida puede empezar por el resumen o invertir bloques independientes. El
+modelo redacta esa organización; no redacta los hechos. Un «vas mejor»,
+«no te preocupa» o «puedes atacar» es contenido prohibido aunque no tenga cifra.
+
+Hay dos gates distintos, sin confundir sus garantías:
+
+1. Validación determinista del esquema, tipos, límites, vínculo job/revisión/
+   hash, referencias/orden, ausencia de claves extra y composición íntegra
+   del FactBundle. Esto sí demuestra que la vía generativa no modifica hechos
+   tipados ni efectos.
+2. Admisión del discurso: filtros estructurales y léxicos más un clasificador
+   de contenido versionado por locale que sólo devuelve admitido/rechazado/
+   incierto. Evalúa si los segmentos y su composición con los hechos cumplen
+   la función discursiva autorizada, sin modificar su sentido ni añadir
+   afirmaciones. No es autoridad de hechos ni un verificador de verdad.
+   Su estrategia concreta y umbral se fijan y evalúan antes de habilitar un
+   proveedor. Si emplea un servicio cloud, está sujeto a §6.7–§6.8, incluido el
+   presupuesto total de llamadas y tiempo; no añade rondas fuera del límite.
+   No introduce un LLM local. Rechazo, incertidumbre, idioma incorrecto,
+   indisponibilidad o timeout descartan todo el discurso y su orden propuesto;
+   sale sólo el FactBundle en orden canónico, con PhrasePack si TTS falla.
+
+No existe aquí una prueba determinista de equivalencia semántica de lenguaje
+natural arbitrario. El segundo gate es falible: un falso negativo podría
+admitir una implicatura o afirmación impropia, aunque no altere los datos ni
+ejecute acciones. Este riesgo residual debe constar en la aprobación de esta
+precisión y en el gate online; no se declara eliminado por otro LLM. Eliminar
+por construcción el riesgo añadido por texto libre requiere una salida sólo
+canónica, que no satisface por sí sola el objetivo de variación abierta. No se puede
+presentar ese modo como online generativo PASS ni relajar hechos/acciones para
+obtenerlo. Nombres, transcripciones y tool results siguen siendo datos no
+confiables, nunca instrucciones.
 
 El gate negativo debe rechazar: inversión de sujeto/dirección; cifra o unidad
 distinta; negación; omisión de vuelta/contexto obligatorio; causalidad o consejo
@@ -211,9 +290,21 @@ de tool result de otro turno; snapshot o rival caducado; claves extra;
 overflow/NaN; inyección en nombre, transcripción o resultado; SSML externo;
 intentos de confirmar/aplicar mediante tool call. El corpus por locale incluye
 paráfrasis positivas y near-miss negativos etiquetados independientemente.
+Incluye además discurso con cifras escritas, comparaciones sin números,
+sarcasmo, implicaturas, contradicción indirecta, instrucciones camufladas y
+cambio de idioma. Se distingue rechazo estructural de rechazo de contenido.
 El PASS exige cero afirmaciones factuales o efectos no autorizados en ese
-corpus; no se presenta este resultado finito como prueba de lenguaje libre
-arbitrario. La restricción estructural protege también fuera del corpus.
+corpus y revisión audible independiente; no prueba todo lenguaje arbitrario.
+El informe online declara versiones, falsos positivos/negativos observados y
+tasa de fallback. Debe demostrar nuevas formulaciones aceptadas que no existan
+en PhrasePack ni en una lista/gramática de variantes y que organicen de forma
+perceptible la respuesta útil en consultas/automáticos no críticos. Añadir
+sólo una coletilla social no satisface este gate. Se cubren respuestas simples
+y compuestas, orden permitido/prohibido y discurso que altera el sentido por
+su posición. Fallback en todos los casos no obtiene PASS generativo.
+Cambiar modelo, prompt, clasificador o umbral invalida este gate. El corpus
+sintético puede guardar el discurso; sesiones
+reales conservan sólo métricas sin contenido según §6.8.
 
 ### 6.3 Fallback offline
 
@@ -251,13 +342,36 @@ compone todos los valores válidos de ese tipo y rechaza los demás. T0 fija la
 precisión audible con el oráculo. No convierte un número en otro para caber en
 el pack. Se prueban bordes, cero presente, singular/plural y cambio de locale.
 
-La identidad audible usa nombre sólo cuando hay un fragmento propio usable;
-en otro caso usa posición de clase y relación, o dorsal/clase si están
-demostrados. El ID del vehículo sigue siendo la autoridad. El widget puede
-mostrar el nombre local. Nombre desconocido no produce silencio si existe una
-identificación alternativa inequívoca; una respuesta que exige un nombre sin
-alternativa disponible se marca bloqueada, no PASS. Lo mismo se aplica a
-landmarks con nombre o identificador hablado propio de catálogo.
+La identidad audible distingue `nombre literal` de `identificación funcional`
+(posición/relación o dorsal/clase demostrados). El ID del vehículo es la
+autoridad para ambos, pero no son salidas equivalentes automáticamente.
+CrewChief activa enable_driver_names por defecto (Settings.settings:302);
+Timings.cs:795,884 usa MkOpponentShort, que habla un nombre si canReadName lo
+permite (Opponents.cs:1081–1120), con alternativas según contexto y assets.
+T0 fija la elección observable y disponibilidad del pack de referencia por
+caso: no exige pronunciar todos los nombres imaginables ni asume que ninguno
+sea pronunciable.
+
+Online y offline usan el mismo catálogo propio/licenciado de fragmentos de
+nombre precacheados y su mapping local revisado; no se descargan ni generan
+nombres durante la sesión. Se compone localmente el nombre con las demás
+cláusulas, sin enviarlo a proveedores. El gate acústico verifica nombre literal,
+pronunciación identificable, rival correcto, cambio de piloto, homónimos y
+continuidad del audio en cada locale. Mostrar el nombre en widget no sustituye
+oírlo. Un nombre desconocido conserva identificación funcional si es inequívoca;
+una petición de nombre literal responde canónicamente que no puede pronunciarlo
+y puede añadir la identidad funcional, sin afirmar que contestó el nombre.
+
+Registro `DEV-NAME-001` — desviación potencial, pendiente de decisión de
+producto: si CrewChief habla el nombre y Vantare sólo identifica por posición/
+dorsal, ese caso no obtiene paridad ni se cierra por privacidad. Para resolverlo
+se demuestra cobertura literal propia en el caso, o Isaac aprueba expresamente
+la sustitución funcional con su alcance, motivo y casos afectados en el ledger.
+No hay aprobación implícita ni expansión de consentimiento cloud. T0 inventaría
+esta brecha antes de planificar assets; T8 queda bloqueado para esos casos
+mientras no se resuelva. El PASS de offline exige la misma capacidad de nombre
+que online desde cold start: prohibido ocultar una capacidad online que pierda
+al desconectar. Lo mismo se aplica a landmarks con nombre/identificador propio.
 
 Una instalación preparada para voz incluye todos los packs comprometidos y
 puede arrancar en frío sin red ni caché generativa. Un pack ausente/corrupto o
@@ -282,8 +396,9 @@ Las implementaciones concretas de proveedor no forman parte de los dominios
 Engineer ni Telemetry.
 
 “Texto arbitrario” describe la capacidad técnica del adaptador de síntesis;
-su único llamador productivo entrega texto reconstruido por §6.2.1 y
-sanitizado por §6.8, nunca una respuesta libre del proveedor.
+su único llamador productivo entrega las cláusulas canónicas y los segmentos
+discursivos abiertos admitidos por §6.2.1, sanitizados por §6.8. No recibe el
+envelope bruto ni texto que haya evitado esos gates.
 
 ### 6.5 Conversación y acciones
 
@@ -388,11 +503,14 @@ Online y fallback compiten por un único ganador de presentación por JobID y
 revisión. Timeout/cancelación invalida el token del proveedor: callbacks y
 chunks tardíos no publican, no consumen cooldown ni cambian la feature. Sólo
 hay un terminal de entrega. Antes de cualquier audio dinámico se valida el
-plan completo; streaming no permite hablar prefijos aún no validados. Un fallo
+FactBundle completo y se admite o descarta el discurso; streaming no permite
+hablar prefijos aún no validados. Un fallo
 de audio tras empezar sólo permite continuar con cláusulas canónicas aún no
 entregadas, identificadas por ID; si no se sabe dónde se cortó, se cancela y se
 espera al siguiente ciclo revalidado. No se repite automáticamente un hecho
-que el piloto ya pudo oír.
+que el piloto ya pudo oír. La introducción discursiva no cuenta como respuesta
+útil para medir §6.6: se mide la primera muestra de una cláusula canónica que
+responde a la consulta/hecho, no relleno que anteceda esa información.
 
 En started se comprueban de nuevo rival, relación, fase, banderas, pits,
 capabilities, lifecycle, freshness y valor audible frente al snapshot actual.
@@ -429,7 +547,7 @@ subida automática de paquetes ni se modifica el consentimiento de ADR 0009.
 | Micrófono → STT local | PCM acotado a la ventana de captura; memoria efímera, sin archivos/logs. Se elimina al cerrar/cancelar. |
 | Router → LLM cloud | Texto necesario sanitizado y contexto mínimo del turno. Se sustituyen nombres/identificadores personales por referencias opacas locales y se excluyen voz, rutas, telemetría cruda, credenciales y perfiles. Si no se puede sanitizar, offline. |
 | Herramientas → LLM | Sólo la allowlist del tipo semántico: relaciones, cifras/unidades, calidad y referencias opacas del turno. Nunca parrilla completa ni historial crudo. |
-| Realizador → TTS dinámico | Únicamente texto reconstruido y validado; sin nombres personales, rutas, IDs internos o transcripción original. Identidad audible se realiza por posición/clase o fragmento local autorizado. |
+| Realizador → TTS dinámico | Sólo cláusulas canónicas y discurso admitido; sin nombres personales, rutas, IDs internos o transcripción original. Nombres literales se insertan con fragmentos locales. Sustituirlos por posición/clase exige la resolución de DEV-NAME-001, no un PASS implícito. |
 | Memoria y caché | Conversación bajo §6.5; audio dinámico efímero ligado al job. PhrasePack estático propio puede persistir; no se llena con audio/texto de sesión. |
 | Diagnóstico/replay | Sólo IDs de caso/job opacos, enums, métricas agregadas y fixtures sintéticas o capturas consentidas sanitizadas. No prompts, respuestas libres, audio, transcripciones ni nombres. |
 
@@ -461,6 +579,7 @@ Cada conducta se registra con un identificador estable y contiene:
 - prioridad, interrupción, TTL y revalidación;
 - resultado online generativo;
 - resultado offline precacheado;
+- nombre literal o identidad funcional esperada y desviaciones aprobadas;
 - replay y evidencia LMU.
 
 El esperado se obtiene de CrewChief, nunca del resultado de Vantare: cada
@@ -701,6 +820,7 @@ Timings exige:
 
 - todos los escenarios default en replay;
 - respuesta generativa validada;
+- variación discursiva abierta y evaluación de riesgo residual de §6.2.1;
 - el mismo escenario resuelto offline;
 - sesión LMU con cambio de rival, presión, adelantamiento, boxes, amarilla y
   final de carrera;
@@ -716,6 +836,10 @@ corruptos, nombre desconocido, pérdida de red/STT/TTS, fallo durante streaming,
 timeout y callback tardío, tormenta de triggers, cola llena y P0 en cada fase.
 Se comprueban cancelación/Stop sin residuos, ausencia de doble salida,
 invariantes de §6.2.1, privacidad de §6.8 y readback interrumpido de §6.5.
+DEV-NAME-001 se resuelve con evidencia literal o aprobación explícita de su
+desviación; identificar funcionalmente no permite marcar como idéntico un caso
+que exige nombre. Un online que siempre usa compositor o variantes enumeradas
+no supera el gate de variación aunque sus hechos sean correctos.
 La evidencia humana de voz/LMU es distinta del replay sintético; un escenario
 sin landmarks disponibles no demuestra el PASS de consejo por curvas.
 

@@ -28,6 +28,37 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+### 2026-09-20 — Propuesta de paridad LMU; seguimiento de la revisión pendiente
+
+La rama `codex/crewchief-lmu-parity-design`, sobre
+`origin/nightly@8a0620e8abe75914efed41de4117490f3e47a3b4`, contiene la
+[propuesta de precisión contractual](../../specs/2026-09-19-crewchief-lmu-parity-design.md)
+y el [ADR 0010 propuesto](../../adr/0010-engineer-cloud-dialogue-and-offline-parity.md).
+Los commits `9cc51122` y `5f374b15` son evidencia de diseño/revisión, no
+implementación, aprobación de los detalles, paridad ni integración en Nightly.
+La segunda revisión separa redacción abierta de hechos canónicos y registra
+la brecha de nombre literal frente a identidad funcional. Los gates humanos
+anteriores permanecen pendientes donde no haya evidencia independiente.
+
+Lectura de seguimiento verificada el 2026-09-20: hay conexión Notion accesible;
+se han leído el hub, el [proyecto Engineer / Spotter](https://app.notion.com/p/3dae51695c65811a8485ca41bc5c9a8e)
+y la tarjeta de roadmap [Paridad casi completa con CrewChief](https://app.notion.com/p/3e0e51695c658121b9b7f6aca13ff789).
+Esa tarjeta está Planificada y carece de cuerpo ejecutable: no verifica por sí
+sola tarea, rama/base y alcance de esta revisión documental. Las búsquedas
+CrewChief/Timings/paridad no han identificado una tarea exacta del corte; no
+prueban que no exista. No se ha inventado un ID ni actualizado otra tarea como
+si fuese ésta. Tampoco se ha verificado capacidad de escritura mediante una
+mutación ajena al alcance.
+
+Bloqueo de seguimiento/integración: vincular y leer la tarea ejecutable correcta
+y actualizar/releer su evidencia conforme al contrato Notion. Hasta entonces
+la corrección local no se declara entregada en el seguimiento ni autoriza
+PLAN.md, integración o promoción. Esta entrada conserva la limitación; no
+sustituye aquella actualización. La aprobación de la precisión y la resolución
+de DEV-NAME-001 pertenecen a producto, no se deducen de este handoff.
+
+### Evidencia histórica anterior (no estado de la revisión de paridad)
+
 ISA-940 conecta el nivel efectivo publicado por la política de rendimiento con
 la salida de Ingeniero: en niveles 4–5 invalida y bloquea subtítulos y toda
 presentación visual, pero conserva sin cambios la decisión y reproducción de
@@ -396,14 +427,14 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | Cerrada técnicamente | ISA-109 / TC-08B, entrada pura completa sin wiring |
 | Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
 
-## Siguiente acción exacta
+## Siguiente acción histórica (no autoriza el corte de paridad)
 
 Revisar ISA-928 y, tras autorización de integración, dejar que los testers de
 Nightly ejecuten el gate LMU descrito en `docs/engineer/families-radio-isa-718.md`
 y el gate Spotter de ISA-717. Hasta esa evidencia no se borra el stack legacy
 ni se declara validación física LMU o promoción.
 
-## Última actualización
+## Actualizaciones históricas anteriores
 
 2026-08-28, ISA-928 añade persistencia focal a la configuración Engineer y un
 estado Spotter independiente de `connected`. La UI localizada muestra la

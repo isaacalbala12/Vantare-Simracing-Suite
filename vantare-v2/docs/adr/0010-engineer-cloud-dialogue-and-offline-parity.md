@@ -2,8 +2,9 @@
 
 ## Estado y alcance
 
-Decisión de diseño aprobada para el programa de paridad Engineer LMU;
-precisión contractual incorporada tras revisión adversarial el 2026-09-20.
+Propuesto; precisión contractual pendiente de aprobación de Isaac.
+Revisado el 2026-09-20. Las decisiones base acordadas se enumeran en §0 de la
+spec: este ADR no atribuye aprobación a los mecanismos añadidos en revisión.
 No acredita implementación, proveedor operativo, gate humano, promoción ni
 publicación. La [spec normativa](../specs/2026-09-19-crewchief-lmu-parity-design.md)
 define conductas, límites, pruebas y cierre por feature, empezando por Timings.
@@ -30,11 +31,20 @@ real ni permite superar gates humanos.
    autorizadas por turno; un dispatcher determinista valida esquema, slots,
    precondiciones, lifecycle y permisos. El modelo no accede a Core, stores,
    SQL, archivos ni red arbitraria mediante herramientas.
-3. El LLM propone un plan de enunciado con variación natural. La realización
-   usa una gramática propia por locale con slots vinculados a hechos; un
-   validador determinista reconstruye el texto y rechaza semántica añadida,
-   omitida o invertida. Texto libre no verificable nunca sale a TTS/widget;
-   se sustituye por composición canónica. Un segundo LLM no es juez de hechos.
+3. El código crea un FactBundle inmutable con cláusulas factuales completas,
+   orden parcial permitido, IDs y hash. El LLM organiza la respuesta útil con
+   introducciones, transiciones y contextualización de vocabulario abierto;
+   no elige una lista/gramática de variantes ni se limita a una coletilla
+   social. Puede ordenar bloques independientes autorizados, sin alterar ni
+   parafrasear sus hechos. El ensamblador valida referencias/orden e inserta
+   las cláusulas canónicas completas entre los segmentos admitidos. Esquema,
+   vínculo con revisión y hechos/efectos se validan determinísticamente; la
+   admisión semántica del discurso es un filtro falible, nunca prueba universal de
+   ausencia de afirmaciones o implicaturas impropias. §6.2.1 fija límites,
+   prohibiciones, corpus, métricas, invalidación y riesgo residual que debe
+   aceptarse explícitamente antes del gate online. Rechazo, incertidumbre o
+   timeout retiran el discurso y conservan la respuesta en orden canónico.
+   Ni un segundo modelo ni el discurso adquieren autoridad de hechos o acciones.
 4. Spotter, banderas y alarmas críticas usan el carril local. El resto puede
    preparar voz dinámica fuera del turno de radio; P0 conserva preempción.
    Un solo JobID/revisión puede ganar entre online y fallback. Deadlines,
@@ -42,8 +52,12 @@ real ni permite superar gates humanos.
 5. No existe LLM local. Offline conserva todas las capacidades semánticas
    mediante STT local, router con formas canónicas y PhrasePack completo en
    es/en/it/pt-BR. Pierde variedad de interpretación/redacción, no consultas,
-   cifras, identidad inequívoca ni controles. Sin modelo/pack real no hay
-   PASS offline, aunque siga disponible una degradación visual.
+   cifras, identidad inequívoca ni controles. Nombre literal e identidad
+   funcional no son automáticamente equivalentes: ambos modos comparten
+   fragmentos propios locales; DEV-NAME-001 registra una eventual sustitución
+   de nombre por posición/dorsal como desviación pendiente, no paridad. Sin
+   cobertura literal demostrada o desviación aprobada no se cierra ese caso.
+   Sin modelo/pack real no hay PASS offline, aunque siga la salida visual.
 6. ENG-15 conserva la autoridad sobre propuestas, readback, confirmación,
    evidencia, lifecycle, cancelación e idempotencia. El readback obligatorio
    es canónico y debe entregarse antes de habilitar confirmación de esa
@@ -54,6 +68,8 @@ real ni permite superar gates humanos.
 7. La activación cloud explícita por sesión muestra proveedor y datos; sin
    ella se usa offline. Se envían sólo texto sanitizado y hechos mínimos,
    sin audio, nombres personales, telemetría cruda, rutas o credenciales.
+   Los nombres audibles se componen con fragmentos locales y no se suprimen
+   silenciosamente para conceder paridad; rige DEV-NAME-001 de la spec.
    No se admite entrenamiento ni retención remota fuera del procesamiento
    efímero; SDK/trazas/cachés no pueden persistir contenido de sesión. Se preserva
    el [contrato de privacidad de producto](../vantare-program/product-contract.md).
@@ -63,9 +79,13 @@ interactivo 1,5 s, timeout generativo interactivo 2,5 s y automático 750 ms.
 Su alcance y medición están en §6.6 de la spec; un timeout no es un PASS del
 objetivo. Replay determinista y evidencia audible/LMU siguen separados.
 
-## Relación con contratos anteriores
+## Precedencia propuesta y garantías conservadas
 
-- [Rework](../engineer/rework-spec.md): quedan sustituidos para este programa
+La dirección de producto y la frontera cloud se apoyan en las decisiones base
+acordadas. Las precisiones de este ADR y sus gates siguen propuestas; su
+aprobación no puede inferirse de los avisos de supersesión ni de un commit.
+
+- [Rework](../engineer/rework-spec.md): la supersesión propuesta comprende
   el objetivo sin paridad, la regla de un archivo por familia y la exclusión
   de TTS dinámico/nombres. Se conserva el bus único, ACK, TTL, P0, proyección
   canónica y lo ya demostrado. Kokoro dinámico no queda aprobado por este ADR.
@@ -85,15 +105,22 @@ permite demostrar los invariantes y se descarta. Limitar toda interacción a
 frases exactas preserva offline, pero no satisface la comprensión online
 aprobada; se mantiene sólo como camino de recuperación funcional.
 
-La solución requiere packs instalables, herramientas y realización semántica
-versionadas, lifecycle de trabajos y gates negativos de proveedor. Se crea
-esa infraestructura dentro de Timings, con conducta verificable, sin abrir
+Restringir el LLM a escoger variantes finitas tampoco cumple la decisión de
+generar formulaciones abiertas. La separación factual/discursiva permite esa
+variación sin ceder autoridad; no promete que un filtro de lenguaje arbitrario
+sea infalible. El modo canónico es recuperación, no sustituto del gate online.
+
+La solución requiere packs instalables, herramientas y ensamblado versionados,
+lifecycle de trabajos y gates negativos de proveedor. Se crea esa
+infraestructura dentro de Timings, con conducta verificable, sin abrir
 una plataforma previa. La selección concreta de proveedor/modelo necesita
 demostrar los contratos; no cambia la autoridad del dominio ni el perímetro.
 
 ## Verificación
 
-La spec §6–§9 exige pruebas de inversión/omisión semántica, prompt injection,
+La spec §6–§9 exige hechos canónicos inmutables, discurso abierto no enumerado,
+evaluación explícita de fallos de su filtro, identidad literal frente a
+funcional, pruebas de inversión/omisión semántica, prompt injection,
 tool calls inválidos, cold start offline, cuatro locales, readback interrumpido,
 double-submit/commit perdido, callbacks tardíos, saturación, P0, cancelación,
 Stop sin residuos y ausencia de PII/envíos sin activación. Cada resultado se

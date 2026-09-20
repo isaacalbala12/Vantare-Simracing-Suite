@@ -3,7 +3,9 @@
 > **Extensión de diseño (2026-09-20):** el
 > [ADR 0010](../adr/0010-engineer-cloud-dialogue-and-offline-parity.md) y la
 > [spec de paridad LMU](../specs/2026-09-19-crewchief-lmu-parity-design.md)
-> permiten propuestas de intent/herramienta del LLM cloud validadas por código.
+> recogen la decisión base de permitir propuestas de intent/herramienta del
+> LLM cloud validadas por código. Su precisión contractual está propuesta,
+> pendiente de aprobación de Isaac; no se atribuye aprobación a esta revisión.
 > Esto sustituye para el nuevo programa la exclusión absoluta del LLM en
 > interpretación, no la autoridad determinista de hechos, slots, confirmaciones
 > o efectos. Todas las garantías de este router siguen vigentes; la nueva ruta

@@ -47,8 +47,12 @@ real ni permite superar gates humanos.
    Ni un segundo modelo ni el discurso adquieren autoridad de hechos o acciones.
 4. Spotter, banderas y alarmas críticas usan el carril local. El resto puede
    preparar voz dinámica fuera del turno de radio; P0 conserva preempción.
-   Un solo JobID/revisión puede ganar entre online y fallback. Deadlines,
-   límites, cancelación y revalidación al comenzar audio rigen ambos caminos.
+   Un solo ganador vigente entre online y fallback y un terminal por JobID.
+   Recomponer crea revisión/hash nuevos sin renovar el job ni sus deadlines;
+   invalida plan, discurso y audio anteriores y sólo compone pendientes locales.
+   Cada bloque factual se revalida antes de oírse; started de la introducción
+   no autoriza una respuesta completa stale. Entregas parciales no se repiten
+   ni habilitan readback. Límites, cancelación y P0 rigen ambos caminos.
 5. No existe LLM local. Offline conserva todas las capacidades semánticas
    mediante STT local, router con formas canónicas y PhrasePack completo en
    es/en/it/pt-BR. Pierde variedad de interpretación/redacción, no consultas,
@@ -78,6 +82,9 @@ Los presupuestos aprobados permanecen: feedback máximo 150 ms, objetivo
 interactivo 1,5 s, timeout generativo interactivo 2,5 s y automático 750 ms.
 Su alcance y medición están en §6.6 de la spec; un timeout no es un PASS del
 objetivo. Replay determinista y evidencia audible/LMU siguen separados.
+DEC-FEEDBACK-P0-001 deja pendiente el arbitraje del feedback audible cuando
+P0 ocupa la radio más de 150 ms; no concede permiso de mezcla, interrupción
+ni excepción al presupuesto. Debe resolverse antes del PASS conjunto de voz.
 
 ## Precedencia propuesta y garantías conservadas
 

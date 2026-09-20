@@ -40,6 +40,18 @@ La segunda revisión separa redacción abierta de hechos canónicos y registra
 la brecha de nombre literal frente a identidad funcional. Los gates humanos
 anteriores permanecen pendientes donde no haya evidencia independiente.
 
+La pasada adversarial final sobre `7f2837f5` corrige la invalidación de
+plan/hash/audio al recomponer y la revalidación de cada bloque de una respuesta
+compuesta, conservando un terminal por job y sin renovar deadlines. Corrige
+también el filtro de posición de clase del resumen por vuelta de CrewChief:
+su nombre interno no demuestra una diferencia de vueltas. Explicita el avance
+de contadores aunque una muestra sea duplicada y la diferencia de “último”
+entre consulta y automático/STATUS tras retiradas. Son precisiones
+documentales propuestas, no nuevo runtime ni un gate PASS.
+Se registra además DEC-FEEDBACK-P0-001: el arbitraje del feedback audible de
+150 ms con una salida P0 ya activa necesita decisión de experiencia. No se
+reduce el presupuesto ni se permite interrumpir/mezclar P0 por inferencia.
+
 Lectura de seguimiento verificada el 2026-09-20: hay conexión Notion accesible;
 se han leído el hub, el [proyecto Engineer / Spotter](https://app.notion.com/p/3dae51695c65811a8485ca41bc5c9a8e)
 y la tarjeta de roadmap [Paridad casi completa con CrewChief](https://app.notion.com/p/3e0e51695c658121b9b7f6aca13ff789).

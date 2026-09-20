@@ -473,6 +473,19 @@ cancelación y falta de audio. Se informa por separado caliente/frío,
 online/offline y con P0 concurrente; el PASS de objetivos se evalúa en p95 y el
 máximo de feedback se comprueba como límite de 150 ms en el corpus medido.
 
+`DEC-FEEDBACK-P0-001` — arbitraje pendiente de Isaac: falta fijar cómo obtener
+feedback audible en <=150 ms cuando P0 ya ocupa la radio durante más de ese
+intervalo. Un único slot no puede ofrecer ambos inicios a tiempo sin otra
+política de salida. No se deduce permiso para interrumpir, atenuar o mezclar
+feedback con P0, sustituirlo por visual, ni excluir esas muestras del límite.
+Los presupuestos aprobados y la precedencia P0 permanecen intactos. Si se
+propone una señal audible independiente, deben aprobarse su coexistencia y
+un gate de inteligibilidad que demuestre que no afecta al aviso crítico. Hasta
+resolver ese contrato, el escenario P0 ocupado >150 ms es INCONCLUSIVE y
+bloquea el PASS conjunto de recepción/voz, no la caracterización de Timings.
+Ésta es una decisión de experiencia pendiente, no falta de LMU físico ni
+autorización para implementar una excepción silenciosa.
+
 ### 6.7 Lifecycle, presión y entrega
 
 Cada trabajo conserva JobID, TurnID o FactID, revisión del productor,
@@ -500,7 +513,9 @@ sustitución, circuito abierto o deadline provocan una decisión local explícit
 familias y el carril crítico no esperan ningún proveedor.
 
 Online y fallback compiten por un único ganador de presentación por JobID y
-revisión. Timeout/cancelación invalida el token del proveedor: callbacks y
+revisión vigente; el coordinador conserva una única entrega lógica y un único
+terminal por JobID, también cuando cambie su revisión. La revisión no crea
+otro permiso de reproducción. Timeout/cancelación invalida el token del proveedor: callbacks y
 chunks tardíos no publican, no consumen cooldown ni cambian la feature. Sólo
 hay un terminal de entrega. Antes de cualquier audio dinámico se valida el
 FactBundle completo y se admite o descarta el discurso; streaming no permite
@@ -520,6 +535,28 @@ audible autorizada, se recompone localmente o se cancela, sin ampliar TTL ni
 reiniciar generación. Un cambio semántico del hecho invalida toda su salida.
 El estado de emisión/cadencia sólo avanza al compromiso de entrega definido
 por la fila del oráculo, nunca por invocar LLM/TTS ni por perder esa carrera.
+
+Recomponer no muta el FactBundle que ya validó el modelo: el coordinador crea
+una revisión de presentación monotónica bajo el mismo JobID, con nuevo hash,
+conservando FactID, entrega acumulada y deadlines originales. Invalida de forma
+atómica el plan, discurso, audio TTS y callbacks de la revisión anterior; no
+rebindea sus factRef a valores nuevos. La nueva revisión sólo compone audio
+canónico local pendiente, sin relanzar cloud. La autoridad de la feature decide
+si el hecho sigue siendo el mismo; un cambio semántico cancela, no se encubre
+como revisión. El ACK de una revisión retirada nunca avanza cadencia ni readback.
+
+Started del job o de una introducción no autoriza todos los bloques futuros.
+Antes de cada bloque factual indivisible —y al continuar tras fallo— se repite
+la revalidación sobre el contexto actual, incluyendo TTL/freshUntil y los
+valores que se van a oír. No se inicia otro bloque caducado porque el primero
+empezara a tiempo. Lo ya empezado conserva la regla de finalización/P0 de este
+apartado. Un cambio que invalide la composición retira todo discurso restante.
+Cada bloque registra no iniciado/iniciado/entregado/interrumpido-incierto;
+sólo se continúa con bloques no iniciados, nunca con uno que pudo oírse a
+medias. Si no hay evidencia suficiente del punto de corte, se cancela según la
+regla anterior. Una entrega parcial no se registra como respuesta completa ni
+habilita la confirmación de un readback incompleto. Dividir una respuesta larga
+no crea nuevos jobs con TTL renovado ni reproduce hechos ya entregados.
 
 P0 preempta también audio ya empezado. La regla de terminar con seguridad
 después de started sólo permite completar una cláusula no crítica ante un
@@ -544,12 +581,12 @@ subida automática de paquetes ni se modifica el consentimiento de ADR 0009.
 
 | Frontera | Datos permitidos y retención |
 |---|---|
-| Micrófono → STT local | PCM acotado a la ventana de captura; memoria efímera, sin archivos/logs. Se elimina al cerrar/cancelar. |
+| Micrófono → STT local | PCM acotado a la ventana de captura; memoria efímera, sin archivos/logs. Cerrar PTT/VAD deja terminar STT dentro del deadline; el owner elimina PCM al terminar/cancelar STT o vencer el job, no antes de consumirlo. |
 | Router → LLM cloud | Texto necesario sanitizado y contexto mínimo del turno. Se sustituyen nombres/identificadores personales por referencias opacas locales y se excluyen voz, rutas, telemetría cruda, credenciales y perfiles. Si no se puede sanitizar, offline. |
 | Herramientas → LLM | Sólo la allowlist del tipo semántico: relaciones, cifras/unidades, calidad y referencias opacas del turno. Nunca parrilla completa ni historial crudo. |
 | Realizador → TTS dinámico | Sólo cláusulas canónicas y discurso admitido; sin nombres personales, rutas, IDs internos o transcripción original. Nombres literales se insertan con fragmentos locales. Sustituirlos por posición/clase exige la resolución de DEV-NAME-001, no un PASS implícito. |
 | Memoria y caché | Conversación bajo §6.5; audio dinámico efímero ligado al job. PhrasePack estático propio puede persistir; no se llena con audio/texto de sesión. |
-| Diagnóstico/replay | Sólo IDs de caso/job opacos, enums, métricas agregadas y fixtures sintéticas o capturas consentidas sanitizadas. No prompts, respuestas libres, audio, transcripciones ni nombres. |
+| Diagnóstico/replay | Sólo IDs de caso/job opacos, enums, métricas agregadas y fixtures sintéticas o capturas consentidas sanitizadas. No prompts, respuestas libres, audio, transcripciones ni nombres de sesiones reales. La excepción de corpus sintético de §6.2.1 permite sus textos inventados versionados, nunca trasladar contenido de sesión bajo esa etiqueta. |
 
 Cada adaptador documenta proveedor, modelo/versiones, región, política de
 retención y tratamiento de cancelación antes de su gate. La configuración
@@ -834,6 +871,11 @@ locale. Cada caso tiene salida audible/semántica y silencio esperado por
 locale. Se añade cold start sin red y sin caché generativa, packs completos y
 corruptos, nombre desconocido, pérdida de red/STT/TTS, fallo durante streaming,
 timeout y callback tardío, tormenta de triggers, cola llena y P0 en cada fase.
+Se fuerza cambio de cifra después de generar audio y antes de started, hash
+viejo tras recomposición, ACK de revisión sustituida, expiración entre bloques,
+fallo después de una introducción y corte a mitad de cláusula. Se exige un solo
+terminal por JobID, cero rebinding de hechos a texto aprobado y ningún bloque
+posterior iniciado con datos obsoletos o repetido tras entrega parcial.
 Se comprueban cancelación/Stop sin residuos, ausencia de doble salida,
 invariantes de §6.2.1, privacidad de §6.8 y readback interrumpido de §6.5.
 DEV-NAME-001 se resuelve con evidencia literal o aprobación explícita de su
@@ -855,15 +897,15 @@ encabezado; los números identifican líneas iniciales para comprobar la fuente.
 | TIM-SAMPLE | Gap point sustituye al sector cuando existe; cruce positivo desde debajo del punto, no en vuelta atrás. Longitud >3.300 m usa puntos inicialmente separados 780 m y último a 50 m de meta; pistas de dos sectores tienen regla propia. Ajustes por hard parts forman parte del perfil de pista. | Timings.cs:1424; TrackData.cs:875,1351,1384 |
 | TIM-STATE | NONE con <3 muestras, valores <=0, gap más reciente >20 s, salto entre dos recientes >5 s o identidad no fiable. CLOSE: dos recientes <0,5 s, o tres <0,7 s, o cuatro <0,8 s, sujeto al mínimo de tres. Creciente/decreciente exige monotonía a una decimal y comparación con último reportado redondeado a entero, salvo valor inicial -1; midpoint al par de Math.Round. OTHER exige diferencias con las otras dos <1 s; en otro caso NONE. La comparación distinta del último reportado se caracteriza, no se normaliza silenciosamente. | Timings.cs:1017 |
 | TIM-PRECISION | AUTO_GAPS: segundos si gap >10 s; por debajo, centésimas sólo si useHundredths y gap <0,5 s en LMU; décimas en los otros casos. useHundredths depende de clase y always_report_time_in_hundredths. T0 verifica redondeo/realización de cada locale; 0,5 y 10 s son bordes distintos de los umbrales de clasificación. | NumberProcessing/TimeSpanWrapper.cs:37; GlobalBehaviourSettings.cs:108 |
-| TIM-CADENCE | Frecuencia cero desactiva esa relación. Para frecuencia positiva f, espera mínima 11-clamp(f,1,10), máxima exclusiva mínima+clamp(randomness,1,10); espera inicial mínima. Tras entrega/resolución admitida, nuevo sorteo. Sin gap points, preferencia mitad de vuelta añade 0/1/2 sólo al caer en fin de vuelta. Contadores independientes por puntos admitidos; cambio de rival detrás en pista prepara su contador para próxima oportunidad. | Timings.cs:173,199,244,256,624,646 |
+| TIM-CADENCE | Frecuencia cero desactiva esa relación. Para frecuencia positiva f, espera mínima 11-clamp(f,1,10), máxima exclusiva mínima+clamp(randomness,1,10); espera inicial mínima. Tras entrega/resolución admitida, nuevo sorteo. Sin gap points, preferencia mitad de vuelta añade 0/1/2 sólo al caer en fin de vuelta. En modo normal los tres contadores avanzan por cada punto/sector admitido por el trigger, aunque se descarte una muestra duplicada; conservan resets y esperas independientes. El modo por vuelta actualiza gaps pero no incrementa esos contadores. Cambio de rival detrás en pista prepara su contador para próxima oportunidad. | Timings.cs:173,199,244,256,469,624,646 |
 | TIM-SELECT | Normal: candidato detrás en pista “cercano” si <=5 s, CLOSE/DECREASING, por delante en clasificación general y habilitado; CLOSE se excluye con just_the_facts. Si además vence su cadencia, tiene preferencia. Delante/detrás de carrera requieren frecuencia>0, estado distinto de NONE y lapDelta=0; CLOSE/just_the_facts suprime esas salidas. Delante se inhibe con cualquier behindOnTrack CLOSE; detrás con candidato “cercano”, aunque no haya vencido su cadencia. closerInFront sólo es true si ambos historiales existen y gap delante < gap detrás. Delante requiere closerInFront o frecuencia detrás<=0; detrás requiere lo contrario o frecuencia delante<=0, siempre con su cadencia vencida. Igualdad favorece detrás; no se inventa un fallback al otro lado si no cumple. Se prueban historial ausente, líder/último y frecuencia cero. El modo por vuelta usa otra regla. Posibles ramas inalcanzables siguen §7. | Timings.cs:650 |
 | TIM-SILENCE | Gap automático sólo en Race y fase admitida por AbstractEvent (Green/Countdown), fuera de formación manual. Calla con currentLapIsFCY, amarilla local, azul, pit lane o intención de parar esta vuelta. Calla mientras completedLaps del snapshot previo <= lapCountWhenLastWentGreen. Opciones gap disabled/quiet y hard parts conservan sus excepciones de cola. | Timings.cs:428,453,364; AbstractEvent.cs:168; AudioPlayer.cs:948,1352 |
 | TIM-END | Carrera cronometrada: silencio con tiempo restante >-1 y <120 s. Por vueltas: cuando vueltas restantes=0, circuito normal calla; LONG (>10 km hasta 20 km) calla en sectores 2/3; VERY_LONG (>20 km) en sector 3. No se convierte falta de Remaining en carrera terminada. | Timings.cs:267; TrackData.cs:880 |
 | TIM-AUTO | INCREASING/DECREASING/OTHER comunican gap actual y relación; umbral numérico normal >0,05 s. CLOSE delante comunica retención sólo tras >60 s desde holdingUsUp de ese rival; la fuente reinicia por cambio de rival, no por cada salida temporal de CLOSE. Detrás CLOSE comunica presión. Ataque si retención CLOSE con gap <6 s o DECREASING <6 s; defensa en CLOSE o DECREASING. Consejos distinguen entrada/recorrido de curva, con evidencia de landmarks y cooldown independiente ataque/defensa de tres minutos por rival. | Timings.cs:439,599,767,857,938,974 |
 | TIM-QUEUE | Normal: prioridad CC 5 y TTL 5 s; cifra/identidad/supresiones se resuelven justo antes de reproducir. En Vantare prioridad de rutina P3; consulta P2; carril P0 conserva precedencia. T0 prueba orden relativo al resto de radio, no equivalencia numérica entre escalas. Cancelación anterior a salida no consume el hecho. Los efectos de callbacks sin contenido se caracterizan como anomalía antes de fijar cadencia. | Timings.cs:674; QueuedMessage.cs:251,353 |
 | TIM-LAPPING | Revalidar mismo candidato y no-racing; no reportar gap <0,05 s. CLOSE avisa contexto de doblaje; intervalo por rival de cinco minutos según fuente, sujeto a anomalías. Fuera de CLOSE puede incluir posición y diferencia de vueltas. No denominar “desdoblaje” a un rival sin relación demostrada. | Timings.cs:691 |
-| TIM-LAPMODE | En nueva vuelta combina delante si no líder, detrás si no último y candidato detrás en pista sólo si dobla; gaps >0,05 s. Mensaje breve sin nombres, detrás en pista sin lap diff; prioridad CC 10, TTL 5 s, playEvenWhenSilenced=true. En Vantare P2; no evita P0 ni filtros de carrera/pits/banderas. | Timings.cs:476 |
-| TIM-QUERY | Delante/detrás de carrera y vuelta del líder: Race. leading/last explícitos; tiempo cero sin dato no se convierte en gap válido. Consultas en pista validan signo y comunican vueltas; gap al líder usa relación relativa con dirección explícita, incluida clasificación; líder es de clase. Vuelta del líder incluye diferencia de vueltas cuando existe. | Timings.cs:1210,1268,1315,1349 |
+| TIM-LAPMODE | En nueva vuelta combina delante si no líder, detrás si no último y candidato de la misma clase detrás en pista filtrado por ClassPosition <= la del piloto y excluyendo al rival detrás en carrera. El filtro llamado onlyIncludeCarsLappingThePlayer no exige lapDelta distinto de cero: no sustituirlo por “sólo si ya dobla”. Gaps >0,05 s. Mensaje breve sin nombres, detrás en pista sin lap diff ni afirmación añadida de doblaje; prioridad CC 10, TTL 5 s, playEvenWhenSilenced=true. En Vantare P2; no evita P0 ni filtros de carrera/pits/banderas. | Timings.cs:476,504; GameStateData.cs:4805 |
+| TIM-QUERY | Delante/detrás de carrera y vuelta del líder: Race. leading/last explícitos; tiempo cero sin dato no se convierte en gap válido. “Último” en consulta detrás usa isLastInStandings (cantidad inicial de coches), distinto de isLast (cantidad actual) usado por automático/STATUS; T0 cubre retiradas y no normaliza ambos predicados. Consultas en pista validan signo y comunican vueltas; gap al líder usa relación relativa con dirección explícita, incluida clasificación; líder es de clase. Vuelta del líder incluye diferencia de vueltas cuando existe. | Timings.cs:1210,1241,1268,1315,1349; GameStateData.cs:4635,4648 |
 | TIM-STATUS | STATUS/SESSION_STATUS: si líder, gap detrás >2 s; si no líder y no último, gap delante >2 s; en otros casos contribución silenciosa, sin “no data” añadido. Se integra con otras familias sin duplicar. | Timings.cs:1152 |
 | TIM-CORNERS | Lectura pedida para la vuelta actual en midpoint de landmark; sucede antes del filtro gap messages/formación, conservando fase aplicable. TTL 2 s, prioridad CC 10 (Vantare P2), sin esperar LLM. Consultas faster/slower y consejos automáticos comparten historial/cooldowns y catálogo propio de landmarks. | Timings.cs:421,1178; RF2GameStateMapper.cs:782,833 |
 

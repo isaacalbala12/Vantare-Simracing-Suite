@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-20T14:56:57Z",
+  "generatedAt": "2026-09-20T15:02:17Z",
   "digest": {
     "lastCommit": "1e9932c4d8ca3d53a58d093449cfb840f7108e8f"
   },
@@ -2189,16 +2189,6 @@
       "date": "2026-09-15",
       "entries": [
         {
-          "kind": "perf",
-          "scope": "",
-          "text": "Segunda ronda de optimización dirigida por hechos + overnight consolidada"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-928 · Persistir controles y avisar Spotter no disponible"
-        },
-        {
           "kind": "change",
           "scope": "",
           "text": "Workshop: study view como único harness"
@@ -2217,6 +2207,16 @@
           "kind": "fix",
           "scope": "engineer",
           "text": "Cierra el contrato de evento UI del widget radio"
+        },
+        {
+          "kind": "perf",
+          "scope": "",
+          "text": "Segunda ronda de optimización dirigida por hechos + overnight consolidada"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-928 · Persistir controles y avisar Spotter no disponible"
         }
       ]
     },

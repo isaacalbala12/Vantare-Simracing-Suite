@@ -48,9 +48,12 @@ su nombre interno no demuestra una diferencia de vueltas. Explicita el avance
 de contadores aunque una muestra sea duplicada y la diferencia de “último”
 entre consulta y automático/STATUS tras retiradas. Son precisiones
 documentales propuestas, no nuevo runtime ni un gate PASS.
-Se registra además DEC-FEEDBACK-P0-001: el arbitraje del feedback audible de
-150 ms con una salida P0 ya activa necesita decisión de experiencia. No se
-reduce el presupuesto ni se permite interrumpir/mezclar P0 por inferencia.
+`DEC-FEEDBACK-P0-001` queda resuelta por Isaac el 2026-09-20: una salida P0
+activa nunca se interrumpe, atenúa ni mezcla. La UI acusa recepción en <=150 ms
+y un único ACK audible espera la primera oportunidad posterior a P0, sujeto a
+revalidación y descarte si el turno ya no está vigente o empezó la respuesta
+útil. La demora se registra `blocked_by_p0` y se evalúa en cohorte separada; no
+pausa deadlines ni altera la prioridad crítica.
 
 Lectura de seguimiento verificada el 2026-09-20: hay conexión Notion accesible;
 se han leído el hub, el [proyecto Engineer / Spotter](https://app.notion.com/p/3dae51695c65811a8485ca41bc5c9a8e)

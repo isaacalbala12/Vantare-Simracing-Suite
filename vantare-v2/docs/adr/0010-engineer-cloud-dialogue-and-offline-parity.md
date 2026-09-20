@@ -47,6 +47,12 @@ real ni permite superar gates humanos.
    Ni un segundo modelo ni el discurso adquieren autoridad de hechos o acciones.
 4. Spotter, banderas y alarmas críticas usan el carril local. El resto puede
    preparar voz dinámica fuera del turno de radio; P0 conserva preempción.
+   Si P0 ya ocupa el único slot, no se interrumpe, atenúa ni mezcla: la recepción
+   se confirma visualmente en <=150 ms y emite un único ACK audible en la primera
+   oportunidad posterior, tras revalidar el turno. Esa demora se registra como
+   `blocked_by_p0` en una cohorte separada; no pausa deadlines ni autoriza audio
+   obsoleto. Esta resolución de `DEC-FEEDBACK-P0-001` fue acordada por Isaac el
+   2026-09-20.
    Un solo ganador vigente entre online y fallback y un terminal por JobID.
    Recomponer crea revisión/hash nuevos sin renovar el job ni sus deadlines;
    invalida plan, discurso y audio anteriores y sólo compone pendientes locales.
@@ -82,9 +88,10 @@ Los presupuestos aprobados permanecen: feedback máximo 150 ms, objetivo
 interactivo 1,5 s, timeout generativo interactivo 2,5 s y automático 750 ms.
 Su alcance y medición están en §6.6 de la spec; un timeout no es un PASS del
 objetivo. Replay determinista y evidencia audible/LMU siguen separados.
-DEC-FEEDBACK-P0-001 deja pendiente el arbitraje del feedback audible cuando
-P0 ocupa la radio más de 150 ms; no concede permiso de mezcla, interrupción
-ni excepción al presupuesto. Debe resolverse antes del PASS conjunto de voz.
+DEC-FEEDBACK-P0-001 preserva el feedback audible <=150 ms cuando el carril está
+libre y, bajo P0, exige ACK visual <=150 ms más audio en la primera oportunidad.
+La cohorte `blocked_by_p0` demuestra por separado no solapamiento, vigencia y
+entrega sin convertir la contención crítica en un fallo ordinario del SLO.
 
 ## Precedencia propuesta y garantías conservadas
 

@@ -453,8 +453,11 @@ Strategy, pero sí demostrar que ninguna herramienta Timings los ejecuta.
 - carril crítico local: independiente de todos los anteriores.
 
 Los 150 ms se miden desde cierre de captura PTT/VAD hasta el primer sonido
-local de recepción. Los 1,5 s se miden desde fin de habla hasta primera muestra
-audible de respuesta útil, excluyendo ese feedback. El deadline interactivo de
+local de recepción cuando el carril de radio está disponible. Si P0 ya ocupa
+la radio, rige `DEC-FEEDBACK-P0-001`: confirmación visual local dentro de esos
+150 ms y ACK audible inmediatamente después de P0, si el turno sigue vigente.
+Los 1,5 s se miden desde fin de habla hasta primera muestra audible de respuesta
+útil, excluyendo ese feedback. El deadline interactivo de
 2,5 s arranca al cerrar captura; STT consume ese mismo presupuesto antes de
 admitir trabajo generativo. El automático arranca en el trigger. Ambos incluyen
 herramientas, LLM, validación y obtención de audio dinámico reproducible; no se
@@ -470,21 +473,27 @@ La medición usa el binario Windows real, tiempos monotónicos y comienzo real
 de reproducción, no el ACK lógico started. El informe incluye p50/p95/máximo,
 muestras, hardware, locale, STT, proveedor/red, carga de LMU, tasas de fallback,
 cancelación y falta de audio. Se informa por separado caliente/frío,
-online/offline y con P0 concurrente; el PASS de objetivos se evalúa en p95 y el
-máximo de feedback se comprueba como límite de 150 ms en el corpus medido.
+online/offline y con P0 concurrente; el PASS de objetivos se evalúa en p95. El
+máximo audible de 150 ms se comprueba en el corpus sin P0 ocupando la radio. La
+cohorte concurrente se informa aparte y exige ACK visual <=150 ms; su demora
+audible se etiqueta `blocked_by_p0`, no como incumplimiento ordinario del SLO.
 
-`DEC-FEEDBACK-P0-001` — arbitraje pendiente de Isaac: falta fijar cómo obtener
-feedback audible en <=150 ms cuando P0 ya ocupa la radio durante más de ese
-intervalo. Un único slot no puede ofrecer ambos inicios a tiempo sin otra
-política de salida. No se deduce permiso para interrumpir, atenuar o mezclar
-feedback con P0, sustituirlo por visual, ni excluir esas muestras del límite.
-Los presupuestos aprobados y la precedencia P0 permanecen intactos. Si se
-propone una señal audible independiente, deben aprobarse su coexistencia y
-un gate de inteligibilidad que demuestre que no afecta al aviso crítico. Hasta
-resolver ese contrato, el escenario P0 ocupado >150 ms es INCONCLUSIVE y
-bloquea el PASS conjunto de recepción/voz, no la caracterización de Timings.
-Ésta es una decisión de experiencia pendiente, no falta de LMU físico ni
-autorización para implementar una excepción silenciosa.
+`DEC-FEEDBACK-P0-001` — resuelta por Isaac el 2026-09-20: P0 no se interrumpe,
+atenúa ni mezcla con el feedback de recepción. Mientras P0 ocupa el único slot,
+la UI confirma localmente dentro de 150 ms y encola un único ACK audible para
+el primer instante posterior a P0. Antes de reproducirlo revalida TurnID,
+cancelación y vigencia; si ya comenzó una respuesta útil o el turno dejó de ser
+vigente, lo descarta para evitar un ACK tardío o duplicado. Esta excepción de
+modalidad sólo cubre el feedback de recepción: no pausa deadlines de STT,
+herramientas, LLM, facts ni fallback, no concede mezcla y no rebaja P0.
+
+Las latencias de respuesta útil bloqueadas por P0 se publican en la cohorte
+`blocked_by_p0`, separadas del SLO interactivo sin contención. Al liberar el
+carril se revalida cada bloque según §6.7: sólo se reproduce contenido todavía
+vigente; si caducó, se cancela o recompone sin renovar su deadline. El gate
+comprueba ausencia de solapamiento, un único ACK, confirmación visual <=150 ms,
+primera oportunidad audible tras P0 y que ningún resultado obsoleto llegue a
+radio o widget.
 
 ### 6.7 Lifecycle, presión y entrega
 

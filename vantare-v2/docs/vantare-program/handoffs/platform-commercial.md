@@ -6,6 +6,51 @@
 > Este handoff conserva evidencia técnica fechada; sus estados antiguos no
 > sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
 
+## VAN-733 — Quality Linux y dependencias nativas de Wails (2026-09-20)
+
+[Tarea Notion](https://app.notion.com/p/3e1e51695c65819fbf23edeb5957cbcd),
+puente técnico GitHub #1296, rama
+`vantareapp/isa-1296-quality-linux-wails`, base `nightly@8a0620e8`.
+
+La PR documental #1295 demostró que `quality-check (ratchet)` alcanza cero
+hallazgos `NEW`, pero `govet/linux-dev` y `deadcode/linux-dev` terminan en
+`ERROR` porque el runner no prepara GTK4/WebKitGTK 6.0 para el grafo Wails.
+Isaac aprobó conservar la cobertura Linux e instalar las dependencias nativas
+en `quality-check` y `quality-audit`; no se excluirán paquetes, no se usará
+GTK3 y no se tocarán baselines. Diseño versionado en
+`docs/specs/2026-09-20-quality-linux-wails-analysis-design.md`.
+
+Isaac aprobó la especificación y el candidato quedó implementado en
+`6275db0c`: ambos jobs instalan las dos bibliotecas y exigen que `pkg-config`
+las resuelva antes de los analizadores. Una regresión de contrato falló primero
+en los dos jobs y pasa tras el cambio. No cambia baselines, versiones,
+selección de paquetes ni semántica del ratchet.
+
+Evidencia local: frontend build PASS; ratchet 29/29; negative 24/24; doctor
+sin issues; roadmap digest 23/23, contrato 21/21 y artefacto `--check` PASS.
+El validador contra la issue viva confirma exactamente
+`milestones:quality-linux-analysis`.
+El check completo local tiene cero `NEW`, cero errores de integridad y termina
+`REVIEW_REQUIRED` por los dos paths de política modificados, que es el estado
+esperado del candidato. El hito `quality-linux-analysis` permanece descrito
+como candidato pendiente de integración.
+
+PR draft #1297 abierta a `nightly`. En Ubuntu, el run `35516591473` instala y
+verifica GTK4/WebKitGTK 6.0; `govet/linux-dev` termina PASS con cero hallazgos y
+`deadcode/linux-dev` PASS con 3742 hallazgos informativos. Todos los analizadores
+quedan con cero `NEW` y sin errores de integridad; el único motivo del agregado
+`REVIEW_REQUIRED` son `.github/workflows/quality.yml` y
+`tools/quality/tests/test_negative.py`, ambos paths de política modificados por
+este arreglo. El run bloqueante `35516591462` pasa la topología, contratos,
+tests, frontend, Wails Windows y advisories. Los avisos futuros sobre Node 20 y
+la migración de `ubuntu-latest` a Ubuntu 26 quedan fuera de VAN-733 y no cambian
+estos resultados.
+
+Isaac autorizó la integración el 2026-09-20. En el momento de este cierre
+documental todavía no se ha hecho merge ni promoción; después de verificar el
+merge se registrarán SHA/canal en Notion y se reejecutará #1295 para demostrar
+el PASS ordinario sobre `nightly`.
+
 
 ## VAN-725 — Depuración documental del repositorio (2026-09-14)
 

@@ -20,11 +20,22 @@ en `quality-check` y `quality-audit`; no se excluirán paquetes, no se usará
 GTK3 y no se tocarán baselines. Diseño versionado en
 `docs/specs/2026-09-20-quality-linux-wails-analysis-design.md`.
 
-Estado: diseño escrito en `201e1db4`, pendiente de revisión explícita de Isaac
-antes de redactar el plan o implementar. El PR de política deberá mostrar los
-analizadores completos y `REVIEW_REQUIRED`; el PASS ordinario se comprobará
-después sobre #1295 solo tras una integración autorizada. Sin PR, merge ni
-promoción.
+Isaac aprobó la especificación y el candidato quedó implementado en
+`6275db0c`: ambos jobs instalan las dos bibliotecas y exigen que `pkg-config`
+las resuelva antes de los analizadores. Una regresión de contrato falló primero
+en los dos jobs y pasa tras el cambio. No cambia baselines, versiones,
+selección de paquetes ni semántica del ratchet.
+
+Evidencia local: frontend build PASS; ratchet 29/29; negative 24/24; doctor
+sin issues; roadmap digest 23/23, contrato 21/21 y artefacto `--check` PASS.
+El validador contra la issue viva confirma exactamente
+`milestones:quality-linux-analysis`.
+El check completo tiene cero `NEW`, cero errores de integridad y termina
+`REVIEW_REQUIRED` por los dos paths de política modificados, que es el estado
+esperado del candidato. El hito `quality-linux-analysis` permanece descrito
+como candidato pendiente de revisión e integración. Falta abrir PR draft y
+observar Ubuntu; el PASS ordinario de #1295 solo se comprobará tras una
+integración expresamente autorizada. Sin merge ni promoción.
 
 
 ## VAN-725 — Depuración documental del repositorio (2026-09-14)

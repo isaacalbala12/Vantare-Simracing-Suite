@@ -3,11 +3,12 @@
 > **Ámbito documental (actualizado 2026-09-20):** Roadmap histórico ENG;
 > Linear está retirado. La tarea Notion determina alcance y siguiente trabajo;
 > las fases de abajo no son la cola vigente.
-> Las decisiones base del nuevo programa LMU y su precisión propuesta están en
+> Las decisiones del nuevo programa LMU y su precisión aprobada para primeras
+> pruebas están en
 > la [spec de paridad observable](../specs/2026-09-19-crewchief-lmu-parity-design.md)
 > y el [ADR 0010](../adr/0010-engineer-cloud-dialogue-and-offline-parity.md).
-> Los detalles nuevos aún requieren aprobación; estos enlaces no conceden GO
-> ni registran una tarea Notion entregada. El [rework](rework-spec.md) conserva
+> La aprobación de diseño no concede GO de implementación, PASS o producción,
+> ni registra una tarea Notion entregada. El [rework](rework-spec.md) conserva
 > el corte anterior. La dirección acordada cambia el orden y la
 > frontera de interpretación cloud; se conservan fuente canónica, acciones
 > confirmables, preempción y gates humanos aún no superados. Ningún estado

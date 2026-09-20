@@ -28,12 +28,13 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
-### 2026-09-20 — Propuesta de paridad LMU; seguimiento de la revisión pendiente
+### 2026-09-20 — Diseño de paridad LMU aprobado; seguimiento ejecutable pendiente
 
 La rama `codex/crewchief-lmu-parity-design`, sobre
 `origin/nightly@8a0620e8abe75914efed41de4117490f3e47a3b4`, contiene la
-[propuesta de precisión contractual](../../specs/2026-09-19-crewchief-lmu-parity-design.md)
-y el [ADR 0010 propuesto](../../adr/0010-engineer-cloud-dialogue-and-offline-parity.md).
+[precisión contractual](../../specs/2026-09-19-crewchief-lmu-parity-design.md)
+y el [ADR 0010](../../adr/0010-engineer-cloud-dialogue-and-offline-parity.md),
+aprobados por Isaac el 2026-09-20 para planificación y primeras pruebas.
 Los commits `9cc51122` y `5f374b15` son evidencia de diseño/revisión, no
 implementación, aprobación de los detalles, paridad ni integración en Nightly.
 La segunda revisión separa redacción abierta de hechos canónicos y registra
@@ -50,13 +51,22 @@ también el filtro de posición de clase del resumen por vuelta de CrewChief:
 su nombre interno no demuestra una diferencia de vueltas. Explicita el avance
 de contadores aunque una muestra sea duplicada y la diferencia de “último”
 entre consulta y automático/STATUS tras retiradas. Son precisiones
-documentales propuestas, no nuevo runtime ni un gate PASS.
+documentales aceptadas, no nuevo runtime ni un gate PASS.
 `DEC-FEEDBACK-P0-001` queda resuelta por Isaac el 2026-09-20: una salida P0
 activa nunca se interrumpe, atenúa ni mezcla. La UI acusa recepción en <=150 ms
 y un único ACK audible espera la primera oportunidad posterior a P0, sujeto a
 revalidación y descarte si el turno ya no está vigente o empezó la respuesta
 útil. La demora se registra `blocked_by_p0` y se evalúa en cohorte separada; no
 pausa deadlines ni altera la prioridad crítica.
+
+Isaac acepta el 2026-09-20 el riesgo residual del discurso generativo para
+primeras pruebas y exige reducirlo al máximo. Se añade el
+[diseño de persona y estilo nativo](../../specs/2026-09-20-engineer-persona-native-style-design.md):
+`calm_race_engineer`, packs escritos originalmente por locale, cápsula compacta,
+StyleGate local fail-closed y fallback canónico. Presupuesto inicial: modelo
+8K mínimo, entrada objetivo <2.000 tokens, máximo 3.000 y persona/estilo <=350.
+No existe máximo editorial de salida: la brevedad procede de normas/system
+prompt; una generación incompleta o fuera de deadline se descarta, no se trunca.
 
 Lectura de seguimiento verificada el 2026-09-20: hay conexión Notion accesible;
 se han leído el hub, el [proyecto Engineer / Spotter](https://app.notion.com/p/3dae51695c65811a8485ca41bc5c9a8e)
@@ -72,8 +82,8 @@ Bloqueo de seguimiento/integración: vincular y leer la tarea ejecutable correct
 y actualizar/releer su evidencia conforme al contrato Notion. Hasta entonces
 la corrección local no se declara entregada en el seguimiento ni autoriza
 PLAN.md, integración o promoción. Esta entrada conserva la limitación; no
-sustituye aquella actualización. La aprobación de la precisión aún propuesta
-pertenece a producto y no se deduce de este handoff; DEV-NAME-001 ya tiene la
+sustituye aquella actualización. La aprobación del diseño no elimina este
+bloqueo operativo ni se deduce de este handoff; DEV-NAME-001 ya tiene la
 resolución explícita registrada arriba.
 
 ### Evidencia histórica anterior (no estado de la revisión de paridad)

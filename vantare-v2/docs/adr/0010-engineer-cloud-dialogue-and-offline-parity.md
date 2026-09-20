@@ -2,9 +2,8 @@
 
 ## Estado y alcance
 
-Propuesto; precisión contractual pendiente de aprobación de Isaac.
-Revisado el 2026-09-20. Las decisiones base acordadas se enumeran en §0 de la
-spec: este ADR no atribuye aprobación a los mecanismos añadidos en revisión.
+Aceptado por Isaac el 2026-09-20 para planificación y primeras pruebas.
+Las decisiones base y precisiones acordadas se enumeran en §0 de la spec.
 No acredita implementación, proveedor operativo, gate humano, promoción ni
 publicación. La [spec normativa](../specs/2026-09-19-crewchief-lmu-parity-design.md)
 define conductas, límites, pruebas y cierre por feature, empezando por Timings.
@@ -41,8 +40,10 @@ real ni permite superar gates humanos.
    vínculo con revisión y hechos/efectos se validan determinísticamente; la
    admisión semántica del discurso es un filtro falible, nunca prueba universal de
    ausencia de afirmaciones o implicaturas impropias. §6.2.1 fija límites,
-   prohibiciones, corpus, métricas, invalidación y riesgo residual que debe
-   aceptarse explícitamente antes del gate online. Rechazo, incertidumbre o
+   prohibiciones, corpus, métricas e invalidación. Isaac aceptó el riesgo
+   residual para primeras pruebas, sujeto al
+   [diseño de persona/estilo](../specs/2026-09-20-engineer-persona-native-style-design.md)
+   y sin convertirlo en PASS. Rechazo, incertidumbre o
    timeout retiran el discurso y conservan la respuesta en orden canónico.
    Ni un segundo modelo ni el discurso adquieren autoridad de hechos o acciones.
 4. Spotter, banderas y alarmas críticas usan el carril local. El resto puede
@@ -95,13 +96,14 @@ libre y, bajo P0, exige ACK visual <=150 ms más audio en la primera oportunidad
 La cohorte `blocked_by_p0` demuestra por separado no solapamiento, vigencia y
 entrega sin convertir la contención crítica en un fallo ordinario del SLO.
 
-## Precedencia propuesta y garantías conservadas
+## Precedencia aceptada y garantías conservadas
 
 La dirección de producto y la frontera cloud se apoyan en las decisiones base
-acordadas. Las precisiones de este ADR y sus gates siguen propuestas; su
-aprobación no puede inferirse de los avisos de supersesión ni de un commit.
+acordadas. Isaac aceptó estas precisiones para planificación y primeras pruebas
+el 2026-09-20; eso no convierte avisos de supersesión o commits en evidencia de
+implementación, PASS, integración o producción.
 
-- [Rework](../engineer/rework-spec.md): la supersesión propuesta comprende
+- [Rework](../engineer/rework-spec.md): la supersesión de diseño comprende
   el objetivo sin paridad, la regla de un archivo por familia y la exclusión
   de TTS dinámico/nombres. Se conserva el bus único, ACK, TTL, P0, proyección
   canónica y lo ya demostrado. Kokoro dinámico no queda aprobado por este ADR.

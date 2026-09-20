@@ -1,12 +1,13 @@
 # Diseño — Paridad observable CrewChief para Engineer LMU
 
 - Fecha: 2026-09-19
-- Estado: propuesta de precisión contractual; pendiente de aprobación de Isaac
+- Estado: aprobado por Isaac para planificación y primeras pruebas; no implementado
 - Base Vantare: `origin/nightly@8a0620e8abe75914efed41de4117490f3e47a3b4`
 - Oráculo inicial CrewChief: `mr_belowski/CrewChiefV4@4c3865e09a347d4c806c0bc0cd66aae335fbc610`
 - Revisión contractual: 2026-09-20; correcciones de revisión adversarial,
-  sin declarar aprobados los detalles nuevos, implementación o gates superados.
+  aprobadas para planificación/pruebas sin declarar implementación o gates superados.
 - Decisión de arquitectura: [ADR 0010](../adr/0010-engineer-cloud-dialogue-and-offline-parity.md).
+- Persona y estilo: [diseño nativo versionado](2026-09-20-engineer-persona-native-style-design.md).
 
 ## 0. Autoridad y lectura
 
@@ -18,20 +19,19 @@ hechos y acciones deterministas, carril crítico local, ausencia de LLM local,
 fallback precacheado funcional y presupuestos de §6.6. Voz y LLM comparten un
 camino ampliable de herramientas y entrega.
 
-Los contratos detallados añadidos por las revisiones, incluido el mecanismo
-de variación abierta y sus riesgos residuales, son una propuesta, no una
-aprobación atribuible al usuario. La regla de identidad audible de
-`DEV-NAME-001` sí fue resuelta expresamente el 2026-09-20. “Debe” y
-“PASS” expresan requisitos de esta propuesta: no prueba de producto entregado.
-Antes de convertirla en PLAN.md se requiere aprobar la precisión aún propuesta;
-las decisiones base no se reabren. `DEV-NAME-001` (§6.3) exige cobertura literal
-cuando el oráculo la tenga y no admite cerrar el caso mediante una sustitución.
+Isaac aprobó el 2026-09-20 la precisión contractual para planificación y
+primeras pruebas, incluido el riesgo residual del discurso generativo. La
+aceptación exige reducirlo mediante hechos protegidos, StyleGate fail-closed,
+corpus por locale y fallback canónico; no lo declara eliminado ni permite al
+LLM controlar hechos o acciones. `DEC-FEEDBACK-P0-001` y `DEV-NAME-001` también
+quedaron resueltos expresamente. “Debe” y “PASS” siguen siendo requisitos de
+diseño: no prueban implementación, paridad, gate humano ni publicación.
 
-Esta spec propone gobernar el nuevo programa de paridad LMU. La precedencia
-del objetivo de paridad y de la frontera cloud procede de las decisiones base;
-las precisiones siguientes quedan pendientes. Sustituye en ese perímetro de
+Esta spec gobierna el diseño del nuevo programa de paridad LMU para su
+planificación y primeras pruebas. La precedencia del objetivo de paridad y de
+la frontera cloud procede de las decisiones aprobadas. Sustituye en ese perímetro de
 [rework-spec.md](../engineer/rework-spec.md) el objetivo de base simple sin
-paridad y la exclusión absoluta de TTS dinámico. Propone sustituir además la
+paridad y la exclusión absoluta de TTS dinámico. Sustituye además la
 tolerancia de menor cobertura como criterio de cierre, la regla de un archivo
 por familia y la exclusión de nombres hablados del corte anterior. No reinicia
 ni declara inexistente el trabajo ya integrado.
@@ -239,13 +239,21 @@ permitido, e inserta sus cláusulas inmutables; un plan inválido se reemplaza
 por el orden canónico completo. El discurso sólo ocupa fronteras entre bloques
 o la introducción/cierre, con separación audible. Nunca divide una cláusula,
 se usa como negación/modificador suyo ni completa una frase factual truncada.
-Máximo tres segmentos discursivos; cada uno hasta 120 caracteres/20 palabras y
-el conjunto hasta 240 caracteres/40 palabras, sin SSML, URLs, controles, slots
-o delimitadores. La forma y límites se validan en cada locale. El resultado
+No hay límite editorial de tokens, palabras, caracteres, frases o segmentos:
+la brevedad se obtiene por PersonaProfile, StyleCapsule y normas de StyleGate,
+no truncando la salida. Siguen prohibidos SSML, URLs, controles, slots o
+delimitadores. La forma y el estilo se validan en cada locale. El resultado
 audible/widget contiene sólo cláusulas canónicas vigentes más el discurso
 admitido; sin discurso conserva una respuesta útil y completa. Los fragmentos
 de nombre de §6.3 se intercalan localmente; no se envían al TTS cloud. Ningún segmento
 discursivo llega al dispatcher ni altera estado, prioridad, TTL o acciones.
+
+Rige el [contrato de persona y estilo nativo](2026-09-20-engineer-persona-native-style-design.md):
+modelo con ventana mínima 8K, entrada habitual inferior a 2.000 tokens, máximo
+de entrada 3.000 y PersonaProfile más StyleCapsule hasta 350. Vantare no usa un
+máximo de tokens de salida como control de estilo. Deadline, TTL y límites
+inevitables del proveedor permanecen; una salida incompleta se descarta entera
+y usa fallback, nunca se trunca para TTS/widget.
 
 Ejemplo de forma, no catálogo de variantes: ante una consulta compuesta el
 modelo puede introducir «Empiezo por la diferencia que me has preguntado:»,
@@ -276,8 +284,9 @@ Hay dos gates distintos, sin confundir sus garantías:
 No existe aquí una prueba determinista de equivalencia semántica de lenguaje
 natural arbitrario. El segundo gate es falible: un falso negativo podría
 admitir una implicatura o afirmación impropia, aunque no altere los datos ni
-ejecute acciones. Este riesgo residual debe constar en la aprobación de esta
-precisión y en el gate online; no se declara eliminado por otro LLM. Eliminar
+ejecute acciones. Isaac aceptó este riesgo residual para las primeras pruebas
+el 2026-09-20, condicionado a mitigarlo y medirlo conforme al diseño de estilo;
+no se declara eliminado por otro LLM. Eliminar
 por construcción el riesgo añadido por texto libre requiere una salida sólo
 canónica, que no satisface por sí sola el objetivo de variación abierta. No se puede
 presentar ese modo como online generativo PASS ni relajar hechos/acciones para

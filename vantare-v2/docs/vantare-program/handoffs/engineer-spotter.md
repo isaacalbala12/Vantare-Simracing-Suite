@@ -28,9 +28,10 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
-### 2026-09-20 — Diseño de paridad LMU aprobado; seguimiento ejecutable pendiente
+### 2026-09-20 — Diseño aprobado y plan ejecutable trazado en VAN-732
 
-La rama `codex/crewchief-lmu-parity-design`, sobre
+La rama `vantareapp/isa-1294-crewchief-parity-plan`, antes llamada
+`codex/crewchief-lmu-parity-design`, sobre
 `origin/nightly@8a0620e8abe75914efed41de4117490f3e47a3b4`, contiene la
 [precisión contractual](../../specs/2026-09-19-crewchief-lmu-parity-design.md)
 y el [ADR 0010](../../adr/0010-engineer-cloud-dialogue-and-offline-parity.md),
@@ -68,23 +69,21 @@ StyleGate local fail-closed y fallback canónico. Presupuesto inicial: modelo
 No existe máximo editorial de salida: la brevedad procede de normas/system
 prompt; una generación incompleta o fuera de deadline se descarta, no se trunca.
 
-Lectura de seguimiento verificada el 2026-09-20: hay conexión Notion accesible;
-se han leído el hub, el [proyecto Engineer / Spotter](https://app.notion.com/p/3dae51695c65811a8485ca41bc5c9a8e)
-y la tarjeta de roadmap [Paridad casi completa con CrewChief](https://app.notion.com/p/3e0e51695c658121b9b7f6aca13ff789).
-Esa tarjeta está Planificada y carece de cuerpo ejecutable: no verifica por sí
-sola tarea, rama/base y alcance de esta revisión documental. Las búsquedas
-CrewChief/Timings/paridad no han identificado una tarea exacta del corte; no
-prueban que no exista. No se ha inventado un ID ni actualizado otra tarea como
-si fuese ésta. Tampoco se ha verificado capacidad de escritura mediante una
-mutación ajena al alcance.
+Seguimiento verificado el 2026-09-20: [VAN-732](https://app.notion.com/p/3e1e51695c6581daa4cce76fca3a54bc)
+es la tarea ejecutable nativa del proyecto
+[Engineer / Spotter](https://app.notion.com/p/3dae51695c65811a8485ca41bc5c9a8e).
+Está vinculada al roadmap [Paridad casi completa con CrewChief](https://app.notion.com/p/3e0e51695c658121b9b7f6aca13ff789)
+y al puente técnico [GitHub #1294](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1294).
+La rama se renombra `vantareapp/isa-1294-crewchief-parity-plan` y conserva como
+base `origin/nightly@8a0620e8abe75914efed41de4117490f3e47a3b4`.
 
-Bloqueo de seguimiento/integración: vincular y leer la tarea ejecutable correcta
-y actualizar/releer su evidencia conforme al contrato Notion. Hasta entonces
-la corrección local no se declara entregada en el seguimiento ni autoriza
-PLAN.md, integración o promoción. Esta entrada conserva la limitación; no
-sustituye aquella actualización. La aprobación del diseño no elimina este
-bloqueo operativo ni se deduce de este handoff; DEV-NAME-001 ya tiene la
-resolución explícita registrada arriba.
+El [plan ejecutable](../../engineer/PLAN.md) divide Timings en P0 y T0–T8.
+Identifica el monitor actual como alpha, fija el oráculo independiente, separa
+señal insuficiente de fallo de interpretación e integra desde el primer corte
+audible `FactBundle`, `UtterancePlan`, StyleGate, LLM cloud y fallback offline.
+La primera acción posterior es T0a, extracción reproducible del oráculo. T1,
+runtime y proveedor cloud permanecen bloqueados hasta cerrar/revisar T0 y crear
+sus tareas/puentes propios. #1294 no autoriza implementación ni promoción.
 
 ### Evidencia histórica anterior (no estado de la revisión de paridad)
 

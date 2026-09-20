@@ -1,9 +1,10 @@
 # Diseño — Persona y estilo nativo del Engineer
 
 - Fecha: 2026-09-20
-- Estado: decisiones aprobadas para primeras pruebas; redacción pendiente de revisión de Isaac
+- Estado: diseño y redacción aprobados para primeras pruebas; no implementado
 - Alcance: redacción online no factual, estilo por locale y fallback canónico
 - Depende de: [paridad observable CrewChief LMU](2026-09-19-crewchief-lmu-parity-design.md)
+- Ejecución: [VAN-732 · plan Timings y voz LLM](../engineer/PLAN.md)
 
 ## 1. Decisión
 

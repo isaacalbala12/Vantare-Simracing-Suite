@@ -4,6 +4,7 @@
 - Estado: aprobado por Isaac para planificación y primeras pruebas; no implementado
 - Base Vantare: `origin/nightly@8a0620e8abe75914efed41de4117490f3e47a3b4`
 - Oráculo inicial CrewChief: `mr_belowski/CrewChiefV4@4c3865e09a347d4c806c0bc0cd66aae335fbc610`
+- Plan ejecutable: [VAN-732 · Timings y voz LLM nativa](../engineer/PLAN.md)
 - Revisión contractual: 2026-09-20; correcciones de revisión adversarial,
   aprobadas para planificación/pruebas sin declarar implementación o gates superados.
 - Decisión de arquitectura: [ADR 0010](../adr/0010-engineer-cloud-dialogue-and-offline-parity.md).

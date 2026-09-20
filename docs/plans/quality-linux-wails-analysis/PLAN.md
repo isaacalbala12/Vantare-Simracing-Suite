@@ -16,8 +16,9 @@ Base: `origin/nightly@8a0620e8abe75914efed41de4117490f3e47a3b4`.
   regenerar `roadmap.json` y actualizar el handoff vivo.
 - [x] Ejecutar suites ratchet/negative, doctor, validadores de roadmap,
   `git diff --check` y revisión completa del diff.
-- [ ] Publicar la rama y abrir PR draft a `nightly`; confirmar en Ubuntu que
+- [x] Publicar la rama y abrir PR draft a `nightly`; confirmar en Ubuntu que
   ambos analizadores terminan sin ERROR y que el agregado queda
   `REVIEW_REQUIRED` por cambio de política.
-- [ ] No integrar sin autorización específica de Isaac. Tras una integración
-  autorizada, reejecutar #1295 para demostrar el PASS ordinario.
+- [x] No integrar sin autorización específica de Isaac. Autorización recibida
+  el 2026-09-20; tras verificar el merge, reejecutar #1295 para demostrar el
+  PASS ordinario.

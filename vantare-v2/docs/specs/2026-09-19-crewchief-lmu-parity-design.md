@@ -19,12 +19,13 @@ fallback precacheado funcional y presupuestos de §6.6. Voz y LLM comparten un
 camino ampliable de herramientas y entrega.
 
 Los contratos detallados añadidos por las revisiones, incluido el mecanismo
-de variación abierta, sus riesgos residuales y las condiciones de identidad
-audible, son una propuesta, no una aprobación atribuible al usuario. “Debe” y
+de variación abierta y sus riesgos residuales, son una propuesta, no una
+aprobación atribuible al usuario. La regla de identidad audible de
+`DEV-NAME-001` sí fue resuelta expresamente el 2026-09-20. “Debe” y
 “PASS” expresan requisitos de esta propuesta: no prueba de producto entregado.
-Antes de convertirla en PLAN.md se requiere aprobar esta precisión; las
-decisiones base no se reabren. DEV-NAME-001 (§6.3) no se acepta por aprobar el
-resto: requiere resolución explícita de cobertura o de desviación.
+Antes de convertirla en PLAN.md se requiere aprobar la precisión aún propuesta;
+las decisiones base no se reabren. `DEV-NAME-001` (§6.3) exige cobertura literal
+cuando el oráculo la tenga y no admite cerrar el caso mediante una sustitución.
 
 Esta spec propone gobernar el nuevo programa de paridad LMU. La precedencia
 del objetivo de paridad y de la frontera cloud procede de las decisiones base;
@@ -362,16 +363,22 @@ oírlo. Un nombre desconocido conserva identificación funcional si es inequívo
 una petición de nombre literal responde canónicamente que no puede pronunciarlo
 y puede añadir la identidad funcional, sin afirmar que contestó el nombre.
 
-Registro `DEV-NAME-001` — desviación potencial, pendiente de decisión de
-producto: si CrewChief habla el nombre y Vantare sólo identifica por posición/
-dorsal, ese caso no obtiene paridad ni se cierra por privacidad. Para resolverlo
-se demuestra cobertura literal propia en el caso, o Isaac aprueba expresamente
-la sustitución funcional con su alcance, motivo y casos afectados en el ledger.
-No hay aprobación implícita ni expansión de consentimiento cloud. T0 inventaría
-esta brecha antes de planificar assets; T8 queda bloqueado para esos casos
-mientras no se resuelva. El PASS de offline exige la misma capacidad de nombre
-que online desde cold start: prohibido ocultar una capacidad online que pierda
-al desconectar. Lo mismo se aplica a landmarks con nombre/identificador propio.
+Registro `DEV-NAME-001` — resuelto por Isaac el 2026-09-20: si CrewChief habla
+el nombre literal en el caso del oráculo, Vantare debe pronunciar ese mismo
+nombre mediante un fragmento local propio/licenciado. Posición, dorsal, clase o
+texto visual no son sustitutos de paridad para ese caso. Si falta el fragmento,
+el producto puede degradar de forma segura a identificación funcional, pero el
+caso permanece FAIL y bloquea T8 hasta completar la cobertura; no existe una
+excepción de producto preaprobada. Si CrewChief tampoco puede pronunciarlo,
+Vantare reproduce el fallback observable registrado por T0 y no inventa una
+exigencia literal superior al oráculo.
+
+La resolución no expande consentimiento cloud: mapping, selección, composición
+y audio del nombre permanecen locales. T0 debe inventariar la cobertura que
+CrewChief puede leer antes de planificar assets, con licencia/procedencia, locale, alias,
+pronunciación y hash del fragmento. El PASS offline exige la misma capacidad
+desde cold start que online; prohibido ocultar una capacidad al desconectar.
+Lo mismo se aplica a landmarks con nombre/identificador propio.
 
 Una instalación preparada para voz incluye todos los packs comprometidos y
 puede arrancar en frío sin red ni caché generativa. Un pack ausente/corrupto o
@@ -593,7 +600,7 @@ subida automática de paquetes ni se modifica el consentimiento de ADR 0009.
 | Micrófono → STT local | PCM acotado a la ventana de captura; memoria efímera, sin archivos/logs. Cerrar PTT/VAD deja terminar STT dentro del deadline; el owner elimina PCM al terminar/cancelar STT o vencer el job, no antes de consumirlo. |
 | Router → LLM cloud | Texto necesario sanitizado y contexto mínimo del turno. Se sustituyen nombres/identificadores personales por referencias opacas locales y se excluyen voz, rutas, telemetría cruda, credenciales y perfiles. Si no se puede sanitizar, offline. |
 | Herramientas → LLM | Sólo la allowlist del tipo semántico: relaciones, cifras/unidades, calidad y referencias opacas del turno. Nunca parrilla completa ni historial crudo. |
-| Realizador → TTS dinámico | Sólo cláusulas canónicas y discurso admitido; sin nombres personales, rutas, IDs internos o transcripción original. Nombres literales se insertan con fragmentos locales. Sustituirlos por posición/clase exige la resolución de DEV-NAME-001, no un PASS implícito. |
+| Realizador → TTS dinámico | Sólo cláusulas canónicas y discurso admitido; sin nombres personales, rutas, IDs internos o transcripción original. Nombres literales se insertan con fragmentos locales. Si el oráculo pronuncia el nombre, sustituirlo por posición/clase es FAIL según DEV-NAME-001. |
 | Memoria y caché | Conversación bajo §6.5; audio dinámico efímero ligado al job. PhrasePack estático propio puede persistir; no se llena con audio/texto de sesión. |
 | Diagnóstico/replay | Sólo IDs de caso/job opacos, enums, métricas agregadas y fixtures sintéticas o capturas consentidas sanitizadas. No prompts, respuestas libres, audio, transcripciones ni nombres de sesiones reales. La excepción de corpus sintético de §6.2.1 permite sus textos inventados versionados, nunca trasladar contenido de sesión bajo esa etiqueta. |
 
@@ -625,7 +632,7 @@ Cada conducta se registra con un identificador estable y contiene:
 - prioridad, interrupción, TTL y revalidación;
 - resultado online generativo;
 - resultado offline precacheado;
-- nombre literal o identidad funcional esperada y desviaciones aprobadas;
+- nombre literal o fallback funcional esperado según la salida del oráculo;
 - replay y evidencia LMU.
 
 El esperado se obtiene de CrewChief, nunca del resultado de Vantare: cada
@@ -887,9 +894,9 @@ terminal por JobID, cero rebinding de hechos a texto aprobado y ningún bloque
 posterior iniciado con datos obsoletos o repetido tras entrega parcial.
 Se comprueban cancelación/Stop sin residuos, ausencia de doble salida,
 invariantes de §6.2.1, privacidad de §6.8 y readback interrumpido de §6.5.
-DEV-NAME-001 se resuelve con evidencia literal o aprobación explícita de su
-desviación; identificar funcionalmente no permite marcar como idéntico un caso
-que exige nombre. Un online que siempre usa compositor o variantes enumeradas
+DEV-NAME-001 exige evidencia literal cuando el oráculo pronuncia el nombre;
+identificar funcionalmente no permite marcar como idéntico ese caso. Un online
+que siempre usa compositor o variantes enumeradas
 no supera el gate de variación aunque sus hechos sean correctos.
 La evidencia humana de voz/LMU es distinta del replay sintético; un escenario
 sin landmarks disponibles no demuestra el PASS de consejo por curvas.

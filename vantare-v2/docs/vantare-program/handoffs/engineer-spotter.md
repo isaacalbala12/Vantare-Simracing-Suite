@@ -37,8 +37,11 @@ y el [ADR 0010 propuesto](../../adr/0010-engineer-cloud-dialogue-and-offline-par
 Los commits `9cc51122` y `5f374b15` son evidencia de diseño/revisión, no
 implementación, aprobación de los detalles, paridad ni integración en Nightly.
 La segunda revisión separa redacción abierta de hechos canónicos y registra
-la brecha de nombre literal frente a identidad funcional. Los gates humanos
-anteriores permanecen pendientes donde no haya evidencia independiente.
+la brecha de nombre literal frente a identidad funcional. `DEV-NAME-001` queda
+resuelto por Isaac el 2026-09-20: cuando CrewChief pronuncia un nombre, Vantare
+debe cubrirlo con un fragmento local; una sustitución funcional es degradación
+segura pero FAIL de paridad. Los gates humanos anteriores permanecen pendientes
+donde no haya evidencia independiente.
 
 La pasada adversarial final sobre `7f2837f5` corrige la invalidación de
 plan/hash/audio al recomponer y la revalidación de cada bloque de una respuesta
@@ -69,8 +72,9 @@ Bloqueo de seguimiento/integración: vincular y leer la tarea ejecutable correct
 y actualizar/releer su evidencia conforme al contrato Notion. Hasta entonces
 la corrección local no se declara entregada en el seguimiento ni autoriza
 PLAN.md, integración o promoción. Esta entrada conserva la limitación; no
-sustituye aquella actualización. La aprobación de la precisión y la resolución
-de DEV-NAME-001 pertenecen a producto, no se deducen de este handoff.
+sustituye aquella actualización. La aprobación de la precisión aún propuesta
+pertenece a producto y no se deduce de este handoff; DEV-NAME-001 ya tiene la
+resolución explícita registrada arriba.
 
 ### Evidencia histórica anterior (no estado de la revisión de paridad)
 

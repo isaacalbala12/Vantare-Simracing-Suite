@@ -63,10 +63,11 @@ real ni permite superar gates humanos.
    mediante STT local, router con formas canónicas y PhrasePack completo en
    es/en/it/pt-BR. Pierde variedad de interpretación/redacción, no consultas,
    cifras, identidad inequívoca ni controles. Nombre literal e identidad
-   funcional no son automáticamente equivalentes: ambos modos comparten
-   fragmentos propios locales; DEV-NAME-001 registra una eventual sustitución
-   de nombre por posición/dorsal como desviación pendiente, no paridad. Sin
-   cobertura literal demostrada o desviación aprobada no se cierra ese caso.
+   funcional no son equivalentes: ambos modos comparten fragmentos propios
+   locales. DEV-NAME-001, resuelto por Isaac el 2026-09-20, exige nombre literal
+   cuando CrewChief pueda pronunciarlo; posición/dorsal puede ser degradación
+   segura, pero el caso sigue FAIL hasta demostrar cobertura literal. Cuando el
+   oráculo tampoco pronuncia el nombre, se replica su fallback observable.
    Sin modelo/pack real no hay PASS offline, aunque siga la salida visual.
 6. ENG-15 conserva la autoridad sobre propuestas, readback, confirmación,
    evidencia, lifecycle, cancelación e idempotencia. El readback obligatorio
@@ -79,7 +80,8 @@ real ni permite superar gates humanos.
    ella se usa offline. Se envían sólo texto sanitizado y hechos mínimos,
    sin audio, nombres personales, telemetría cruda, rutas o credenciales.
    Los nombres audibles se componen con fragmentos locales y no se suprimen
-   silenciosamente para conceder paridad; rige DEV-NAME-001 de la spec.
+   silenciosamente para conceder paridad; rige DEV-NAME-001 de la spec, sin
+   excepción de sustitución preaprobada.
    No se admite entrenamiento ni retención remota fuera del procesamiento
    efímero; SDK/trazas/cachés no pueden persistir contenido de sesión. Se preserva
    el [contrato de privacidad de producto](../vantare-program/product-contract.md).

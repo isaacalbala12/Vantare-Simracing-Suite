@@ -28,6 +28,19 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+### 2026-09-22 — Ciclo de comparación antes y después
+
+Isaac confirma que ya aceptó la PR documental #1295 y pide continuar reparando
+el ingeniero actual. [VAN-732](https://app.notion.com/p/3e1e51695c6581daa4cce76fca3a54bc)
+explicita en el [plan](../../engineer/PLAN.md#forma-de-ejecución) el ciclo por
+corte: plan y contraste CrewChief con ajustes predeterminados, desarrollo con
+regresiones y segundo contraste con la misma referencia. Se corrige además el
+diagnóstico: el camino por defecto es familias → servicio → radio; el monitor
+alpha sólo interviene en rollback legacy. La reparación de runtime pertenece
+a [VAN-736](https://app.notion.com/p/3e3e51695c6581ed8370e2a4b5302ae6) / #1299,
+en una rama distinta. Esta precisión no cambia el alcance documental de #1295
+ni declara cerradas T0a/T0b, la paridad completa o la integración del candidato.
+
 ### 2026-09-20 — Diseño aprobado y plan ejecutable trazado en VAN-732
 
 La rama `vantareapp/isa-1294-crewchief-parity-plan`, antes llamada

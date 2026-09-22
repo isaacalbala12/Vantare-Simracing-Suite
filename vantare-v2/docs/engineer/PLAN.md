@@ -11,7 +11,8 @@
 - Contrato: [diseño de paridad](../specs/2026-09-19-crewchief-lmu-parity-design.md)
 - Voz y estilo: [persona y estilo nativo](../specs/2026-09-20-engineer-persona-native-style-design.md)
 - Decisión arquitectónica: [ADR 0010](../adr/0010-engineer-cloud-dialogue-and-offline-parity.md)
-- Estado: plan listo para revisión; runtime no iniciado.
+- Estado: diseño documental aceptado por Isaac; T0–T8 no iniciados. La reparación
+  del runtime actual continúa por separado en VAN-736 / GitHub #1299.
 
 Este fichero no sustituye el `PLAN.md` de la raíz de `vantare-v2`, que pertenece
 a VAN-727. Tampoco convierte #1294 en una issue de implementación: su diff debe
@@ -44,10 +45,13 @@ la política y una respuesta incompleta se descarta entera.
 
 La ausencia de paridad no tiene una causa única:
 
-1. `internal/engineer/timings/monitor.go` se declara explícitamente monitor
-   mínimo de alpha. Usa una cadencia fija y unas pocas heurísticas; no modela
-   el estado, selección, silencios, revalidación ni consultas de CrewChief.
-2. Sus tests validan esa implementación simplificada. No comparan contra un
+1. La ruta productiva por defecto genera Timings en
+   `internal/families/timings.go` y lo entrega desde `internal/engineer/service`
+   mediante `internal/radio`. El monitor mínimo de alpha
+   `internal/engineer/timings/monitor.go` pertenece al rollback legacy. Cambiar
+   sólo ese monitor no corrige el producto. Ninguno modela aún todo el estado,
+   selección, silencios, revalidación y consultas de CrewChief.
+2. Los tests existentes caracterizan esas implementaciones simplificadas. No comparan contra un
    esperado independiente de CrewChief, por lo que pueden estar verdes y seguir
    demostrando el comportamiento equivocado.
 3. La interpretación anterior redujo Timings a «gap periódico + tendencia».
@@ -65,6 +69,25 @@ se fijará primero y cada pieza se reemplazará sólo cuando su corte tenga repl
 independiente y una ruta de rollback clara.
 
 ## Forma de ejecución
+
+Cada corte, incluidas las reparaciones del runtime actual, repite este ciclo:
+
+1. **Plan y comprobación previa de paridad con CrewChief.** Fijar el SHA de
+   referencia, los ajustes predeterminados confirmados por Isaac, las reglas
+   aplicables y los casos de emisión, silencio y cancelación. Escribir el
+   esperado desde esa fuente y demostrar la diferencia antes de desarrollar.
+2. **Desarrollo.** Implementar el cambio mínimo en la ruta activa, con
+   regresiones inicialmente rojas, controles positivos y rollback. Conservar
+   los datos ausentes como ausentes y no ampliar el alcance para hacer pasar
+   los casos.
+3. **Confirmación posterior de paridad con CrewChief.** Volver a la misma
+   fuente y configuración, comparar cada resultado observable y registrar
+   las diferencias restantes. Tests de código, replay, voz acústica y LMU
+   real son evidencias distintas; ningún PASS sustituye a otro gate.
+
+El ciclo no sustituye las puertas T0a/T0b ni autoriza promociones. La reparación
+inicial está trazada en [VAN-736](https://app.notion.com/p/3e3e51695c6581ed8370e2a4b5302ae6)
+y GitHub #1299; esta PR conserva alcance exclusivamente documental.
 
 - Un corte vertical equivale a una tarea hija en Notion, una referencia GitHub,
   una rama desde el `origin/nightly` vigente y una PR revisable.
@@ -353,6 +376,7 @@ documentales ejecutan enlaces, formato, roadmap digest y anti-slop aplicable.
 
 ## Próxima acción autorizada
 
-Revisar e integrar únicamente P0. Después, crear la tarea hija y el puente
+Completar la comprobación técnica e integración de P0, cuyo diseño Isaac ya
+aceptó. Después, crear la tarea hija y el puente
 técnico de **T0a — extracción reproducible del oráculo** desde el `nightly`
 vigente. No empezar T1 ni implementar el proveedor LLM en la rama #1294.

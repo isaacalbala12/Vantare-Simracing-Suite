@@ -1,5 +1,7 @@
 import type { WidgetRendererProps } from "../../core/design-system-definition";
 import type { HeadToHeadEntry, HeadToHeadViewModel } from "../../widget-types/head-to-head/head-to-head-view-model";
+import { useI18n } from "../../../i18n/I18nProvider";
+import { functionalLabels } from "./labels";
 
 function Driver({ entry, label, gap, selected }: { entry: HeadToHeadEntry; label: string; gap?: number; selected?: boolean }) {
   return (
@@ -15,6 +17,8 @@ function Driver({ entry, label, gap, selected }: { entry: HeadToHeadEntry; label
 }
 
 export function HeadToHeadFunctional({ model, effects }: WidgetRendererProps<HeadToHeadViewModel>) {
+  const { locale } = useI18n();
+  const labels = functionalLabels[locale];
   const ahead = model.ahead ?? (model.target === "ahead" ? model.opponent : undefined);
   const behind = model.behind ?? (model.target === "behind" ? model.opponent : undefined);
 
@@ -27,15 +31,15 @@ export function HeadToHeadFunctional({ model, effects }: WidgetRendererProps<Hea
       data-target={model.target}
       data-effects={effects}
     >
-      <header className="vf-head-to-head-header">H2H · {model.target === "ahead" ? "DELANTE" : "DETRÁS"}</header>
+      <header className="vf-head-to-head-header">H2H · {model.target === "ahead" ? labels.ahead : labels.behind}</header>
       {model.player && model.opponent ? (
         <div className="vf-head-to-head-list" role="list">
-          {ahead ? <Driver entry={ahead} label="Rival" gap={model.gapSeconds} selected={model.target === "ahead"} /> : null}
-          <Driver entry={model.player} label="Tú" />
-          {behind ? <Driver entry={behind} label="Rival" gap={model.gapSeconds} selected={model.target === "behind"} /> : null}
+          {ahead ? <Driver entry={ahead} label={labels.rival} gap={model.gapSeconds} selected={model.target === "ahead"} /> : null}
+          <Driver entry={model.player} label={labels.you} />
+          {behind ? <Driver entry={behind} label={labels.rival} gap={model.gapSeconds} selected={model.target === "behind"} /> : null}
         </div>
       ) : (
-        <p className="vf-status" role="status">{model.statusMessage ?? "Sin rival en esta dirección"}</p>
+        <p className="vf-status" role="status">{labels.noRival}</p>
       )}
     </section>
   );

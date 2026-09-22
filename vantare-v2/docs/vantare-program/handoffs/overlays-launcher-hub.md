@@ -3084,3 +3084,35 @@ aislada a `nightly` (pendiente review/merge):
 - Isaac autoriza expresamente integrar PR #1298 en nightly mediante subagente. La dependencia de CI #1302 / VAN-737 corrige la prueba negativa que asumía cambios de política en cualquier PR; mantiene los controles y cuenta con revisión independiente.
 - El candidato de widgets conserva el código revisado en `6c59caf2`; esta conciliación solo incorpora la dependencia de tooling y documentación de aceptación. El nuevo ajuste de animación Delta `e492aa88` está en otra rama y no forma parte de #1298; Isaac lo aprobó visualmente durante esta integración y se seguirá por separado.
 - Verificación remota de SHA/canal y checks en [VAN-41](https://app.notion.com/p/3dbe51695c658125b1c2efc198edfc94). La revisión visual continúa en Workshop y la certificación LMU activa permanece pendiente; sin testers/master/release.
+
+
+## 2026-09-22 · ISA-1315 inicio: idioma común sin trabajo por muestra
+
+Isaac aprobó compartir el idioma de la app con las etiquetas de widgets y exigió separar toda resolución de traducciones de la telemetría. Seguimiento de widgets en [Asana, En curso](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218757534554194), por su instrucción expresa; [#1315](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1315) conserva el puente CI. [Diseño y plan aprobado](../../plans/2026-09-22-isa-1315-widget-locale.md). Base nightly e41f703c, worktree aislado vantare-widget-locale, rama vantareapp/isa-1315-widget-locale. Próximo paso: implementación mediante worker y revisión independiente de persistencia/concurrencia. PR #1306 continúa separada; sin integración ni promoción de canales.
+
+
+### ISA-1315 · continuidad de la revisión GPT-6
+
+A petición expresa de Isaac, GPT-6 Sol retoma implementación y GPT-6 Astra revisa arquitectura y backend en checkout separado. El primer commit de implementación es 34bec633; no representa entrega final. La revisión detectó que la recuperación `.failed` podía aplicar tras reinicio un idioma rechazado: queda exigida corrección acotada y regresión. El frontend debe serializar elecciones rápidas porque Wails beta.24 ejecuta callbacks concurrentes.
+
+Base e41f703c + diseño67e9e9ce: frontend build PASS y quality PASS (NEW=0, MOVED=0). Fallos previos reproducidos en macOS: cmd/vantare depende de símbolos Windows; TestProfileRejectsAbsolutePathWindows devuelve404 en lugar de400. No se modifican esos fallos ajenos al alcance ni se presentan los controles globales Go como verdes. Próximo paso: completar frontend, comprobar los contadores con widgets reales y revisar el candidato final. Seguimiento principal sigue [Asana, En curso](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218757534554194).
+
+
+### ISA-1315 · cierre técnico de la rama
+
+Implementación de GPT-6 Sol en `34bec633`, `d4806bb9`, `8540c1b8` y `cc59e9fc`. GPT-6 Astra aprobó la infraestructura de `8540c1b8` después de corregir la recuperación `.failed`, la colisión de IDs entre ventanas, el rechazo de envío y los snapshots OBS inválidos. El último commit añade únicamente comprobaciones de contadores. El orquestador revisó el diff y la evidencia.
+
+Entrega: [PR draft #1317](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1317) a `nightly`, desde la base `e41f703c`. El seguimiento principal permanece en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218757534554194), En curso hasta la revisión visual de Isaac. No hubo integración remota ni promoción de canales. Los controles remotos se iniciaron al publicar; consultar la PR para su resultado actual.
+
+Cambios: preferencia UI nativa persistida en SettingsService y eventos de idioma en cmd/server; contexto I18n en Hub, Desktop, OBS y Workshop; catálogos y presentación de Eficiencia; pruebas de autoridad, reconexión, concurrencia y rendimiento. Sin dependencias nuevas, cambios de política de calidad o modificación de códigos de sesión/telemetría. El roadmap modifica únicamente `milestones:functional-widget-design` y su JSON se generó desde `e41f703c`. Fragmento ISA-1315 añadido.
+
+Evidencia:
+
+- Frontend completo sobre `8540c1b8`: 468 archivos, 3779 tests PASS y 2 omitidos; build y lint PASS. En `cc59e9fc`, dos casos de rendimiento y lint PASS.
+- WidgetVisualHost real: 100 frames conservan el nodo, las resoluciones de sesión, las cargas de diccionario, las lecturas/escrituras de almacenamiento y las suscripciones/mensajes Wails. Cambiar idioma sí cambia la etiqueta y conserva el montaje. No se afirma coste CPU nulo durante una selección de idioma.
+- Reviewer independiente: 10 archivos y 86 tests PASS; Go focal con `-race` PASS. Persistencia, sidecar genérico y reinicio/concurrencia verificados.
+- Quality sobre `cc59e9fc`: aggregate PASS, NEW=0, MOVED=0, policy_changed=false; todos los analizadores terminaron. Un intento previo con Node 26 falló al parsear dependency-cruiser; la ejecución válida usa Node 22.23.2. No se modificaron reglas o baselines.
+- `go test ./...` se interrumpió tras unos seis minutos esperando launcher.test; no está verde. cmd/vantare no compila en Mac por símbolos Windows. TestProfileRejectsAbsolutePathWindows y dos pruebas de DiagnosticsBridge fallan también en la base `e41f703c`, reproducido por el orquestador. No se amplió el alcance para ocultarlos o corregirlos aquí.
+- Preview local de GPT-6 Luna: `2be30c59` combina idioma con motion `317d31c4` (PR #1306) y conserva los cambios aceptados. Build PASS, 172 pruebas focales PASS y después dos pruebas de contadores PASS; árbol limpio. El servidor del preview está activo en el puerto 5177. El merge local del preview no representa integración remota.
+
+Límites: sin verificación física Windows/OBS ni visual automatizada, por la restricción de acceso del navegador; no se eludió por otra herramienta. Workshop autónomo comparte el idioma de su origen del navegador, sin prometer sincronía con una app nativa separada. El catálogo completado es Eficiencia; otros sistemas conservan textos pendientes. Sigue el comportamiento previo de mantener el catálogo anterior mientras se carga otro: puede haber un breve desfase entre etiquetas estáticas de widgets y texto del Hub en la primera selección. Próximo paso: revisar el selector de idioma en Workshop y la sincronía física con Desktop/OBS.

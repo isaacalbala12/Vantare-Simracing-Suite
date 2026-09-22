@@ -248,6 +248,7 @@ func performanceRateFromJSON(raw json.RawMessage) (performancepolicy.WidgetRate,
 // AppSettings holds user-configurable global settings.
 type AppSettings struct {
 	SchemaVersion               int                         `json:"schemaVersion"`
+	UILocale                    string                      `json:"uiLocale,omitempty"`
 	CpuSampling                 bool                        `json:"cpuSampling"`
 	Performance                 PerformanceSettings         `json:"performance"`
 	Notifications               NotificationSettings        `json:"notifications"`
@@ -648,7 +649,9 @@ func defaultLauncherProfiles() []LaunchProfile {
 
 // SettingsService persists AppSettings to a JSON file and emits Wails events.
 type SettingsService struct {
-	mu sync.RWMutex
+	mu                sync.RWMutex
+	localeRevision    uint64
+	localeSubscribers map[chan UILocaleSnapshot]struct{}
 	// writeMu serialises the temp-file-then-rename dance. s.mu guards the
 	// in-memory settings and is deliberately released during I/O, so without a
 	// separate lock two savers could rename onto the same destination at once —
@@ -882,6 +885,7 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 	// floor. TestApplyLoadedKeepsEveryPersistedField exists to catch that.
 	merged := &AppSettings{
 		SchemaVersion:               loaded.SchemaVersion,
+		UILocale:                    loaded.UILocale,
 		CpuSampling:                 loaded.CpuSampling,
 		Performance:                 loaded.Performance,
 		Notifications:               loaded.Notifications,
@@ -892,6 +896,9 @@ func (s *SettingsService) applyLoaded(loaded *AppSettings) {
 		LauncherLMUTriggerEnabled:   loaded.LauncherLMUTriggerEnabled,
 		LauncherLMUTriggerProfileID: loaded.LauncherLMUTriggerProfileID,
 		LauncherOnboardingCompleted: loaded.LauncherOnboardingCompleted,
+	}
+	if !validUILocale(merged.UILocale) {
+		merged.UILocale = ""
 	}
 	merged.Performance.Overrides = cloneWidgetOverrides(loaded.Performance.Overrides)
 	if loaded.Hotkeys != nil {
@@ -997,6 +1004,10 @@ func (s *SettingsService) Save(settings *AppSettings) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	snapshot := cloneAppSettings(settings)
+	// Older full-settings forms do not own the focused UI locale preference.
+	if s.settings != nil {
+		snapshot.UILocale = s.settings.UILocale
+	}
 	normalizePerformanceForSave(snapshot)
 	data, err := json.MarshalIndent(snapshot, "", "  ")
 	if err != nil {
@@ -1051,6 +1062,10 @@ func (s *SettingsService) Update(mutate func(*AppSettings)) error {
 // and an older snapshot can never overwrite a newer state, in memory or on
 // disk. s.mu is a write mutex here; readers wait for the duration of the I/O.
 func (s *SettingsService) saveWithRetry(settings *AppSettings, data []byte, attempt int) error {
+	return s.saveWithRetryMode(settings, data, attempt, true)
+}
+
+func (s *SettingsService) saveWithRetryMode(settings *AppSettings, data []byte, attempt int, writeSidecar bool) error {
 	if dir := filepath.Dir(s.path); dir != "" && dir != "." {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return fmt.Errorf("mkdir: %w", err)
@@ -1059,15 +1074,36 @@ func (s *SettingsService) saveWithRetry(settings *AppSettings, data []byte, atte
 	err := s.atomicWrite(data)
 	if err == nil {
 		_ = os.Remove(s.path + ".failed")
+		oldLocale := ""
+		if s.settings != nil {
+			oldLocale = s.settings.UILocale
+		}
 		s.settings = cloneAppSettings(settings)
+		if oldLocale != settings.UILocale {
+			s.localeRevision++
+			snapshot := UILocaleSnapshot{Locale: settings.UILocale, Revision: s.localeRevision}
+			for subscriber := range s.localeSubscribers {
+				select {
+				case subscriber <- snapshot:
+				default:
+					select {
+					case <-subscriber:
+					default:
+					}
+					subscriber <- snapshot
+				}
+			}
+		}
 		return nil
 	}
 	if attempt+1 < len(saveBackoffs) {
 		time.Sleep(saveBackoffs[attempt+1])
-		return s.saveWithRetry(settings, data, attempt+1)
+		return s.saveWithRetryMode(settings, data, attempt+1, writeSidecar)
 	}
 	// Exhausted: write payload to sidecar file.
-	_ = os.WriteFile(s.path+".failed", data, 0o644)
+	if writeSidecar {
+		_ = os.WriteFile(s.path+".failed", data, 0o644)
+	}
 	return fmt.Errorf("save failed after retries: %w", err)
 }
 

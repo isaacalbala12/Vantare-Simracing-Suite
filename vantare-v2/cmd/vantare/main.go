@@ -2273,6 +2273,7 @@ func main() {
 		// decision only, never the license. Studio/Desktop use the native
 		// snapshot and widget-policy:changed events from the same authority.
 		WidgetPolicy: licenseSvc,
+		UILocale:     settingsSvc,
 	})
 	httpSrv.Start()
 	wailsApp.Event.On("obs:url:get", func(*application.CustomEvent) {
@@ -2801,6 +2802,52 @@ func main() {
 			telemetryCoreRuntime.EmitPerformanceLevel()
 		}
 	})
+	wailsApp.Event.On("ui-locale:get", func(_ *application.CustomEvent) {
+		emitter.Emit("ui-locale:snapshot", settingsSvc.UILocaleSnapshot())
+	})
+	wailsApp.Event.On("ui-locale:set", func(event *application.CustomEvent) {
+		var request struct {
+			Locale    string `json:"locale"`
+			RequestID string `json:"requestId"`
+		}
+		raw, err := json.Marshal(event.Data)
+		if err == nil {
+			err = json.Unmarshal(raw, &request)
+		}
+		if err != nil || request.RequestID == "" {
+			emitter.Emit("ui-locale:error", map[string]any{"message": "invalid UI locale request"})
+			return
+		}
+		before := settingsSvc.UILocaleSnapshot()
+		snapshot, err := settingsSvc.SetUILocale(request.Locale)
+		if err != nil {
+			emitter.Emit("ui-locale:error", map[string]any{"requestId": request.RequestID, "message": err.Error()})
+			return
+		}
+		if snapshot.Revision != before.Revision {
+			emitter.Emit("ui-locale:changed", snapshot)
+		}
+		emitter.Emit("ui-locale:confirmed", map[string]any{"requestId": request.RequestID, "locale": snapshot.Locale, "revision": snapshot.Revision})
+	})
+	wailsApp.Event.On("ui-locale:initialize", func(event *application.CustomEvent) {
+		var request struct {
+			Locale string `json:"locale"`
+		}
+		raw, err := json.Marshal(event.Data)
+		if err == nil {
+			err = json.Unmarshal(raw, &request)
+		}
+		if err != nil {
+			emitter.Emit("ui-locale:error", map[string]any{"message": "invalid UI locale request"})
+			return
+		}
+		snapshot, err := settingsSvc.InitializeUILocale(request.Locale)
+		if err != nil {
+			emitter.Emit("ui-locale:error", map[string]any{"message": err.Error()})
+			return
+		}
+		emitter.Emit("ui-locale:snapshot", snapshot)
+	})
 
 	wailsApp.Event.On("settings:save", func(event *application.CustomEvent) {
 		var request struct {
@@ -2827,8 +2874,10 @@ func main() {
 		confirmed, _, err := performanceSaves.Execute(func() error {
 			return settingsSvc.Update(func(live *app.AppSettings) {
 				liveEngineer := live.Engineer
+				liveUILocale := live.UILocale
 				*live = s
 				live.Engineer = liveEngineer
+				live.UILocale = liveUILocale
 			})
 		})
 		if err != nil {

@@ -1,4 +1,4 @@
-import { useRef, type CSSProperties } from "react";
+import { useMemo, useRef, type CSSProperties } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { WidgetRendererProps } from "../../core/design-system-definition";
 import { flipRows, useWidgetMotion } from "../../core/widget-motion";
@@ -18,7 +18,7 @@ import {
   takeFunctionalStandingsRows,
 } from "../../widget-types/standings/functional-standings-multiclass";
 import { resolveStandingsCellValue, type StandingsViewModel } from "../../widget-types/standings/standings-view-model";
-import { functionalLabels } from "./labels";
+import { functionalLabels, sessionDisplayLabel } from "./labels";
 import vantareMark from "../../../assets/orbit/vantare-mark.png";
 import { parseFunctionalSettings } from "./session-info-settings";
 import { SessionInfo } from "./SessionInfo";
@@ -61,9 +61,9 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
   const labels = functionalLabels[locale];
   const config = parseFunctionalSettings(settings);
   const broadcast = config.templateId === "broadcast";
-  const session = model.sessionLabel.toLowerCase();
+  const session = useMemo(() => model.sessionLabel.toLowerCase(), [model.sessionLabel]);
   const paceSession = session === "practice" || session === "qualifying";
-  const sessionLabel = session === "race" || session === "practice" || session === "qualifying" ? labels[session] : model.sessionLabel;
+  const sessionLabel = useMemo(() => sessionDisplayLabel(locale, model.sessionLabel), [locale, model.sessionLabel]);
   const configuredColumns = model.columns;
   // Pit is a row status, not a timing metric: keep its module in the content
   // contract, but render its label beyond the final visible metric instead of
@@ -179,9 +179,10 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
                   : column.metricId === "driverName"
                     ? row.configuredDriverName ?? row.driverName
                     : resolveStandingsCellValue(row, column.metricId);
+                const displayValue = value === "LEADER" ? labels.leader : value;
                 const seconds = (column.metricId === "gap" || column.metricId === "interval") ? /^([+-]?\d+(?:\.\d+)?)(s)$/.exec(value) : null;
-                return <td key={column.id} data-metric={column.metricId} data-identity={IDENTITY.has(column.metricId) || undefined} aria-label={`${labelFor(column.metricId)}: ${value}`} style={{ textAlign: column.metricId === "gap" ? "center" : column.style?.align ?? (column.metricId === "driverName" ? "left" : IDENTITY.has(column.metricId) ? "center" : "right") }}>
-                  {column.metricId === "driverName" ? <span className="vf-driver"><span className="vf-driver-name" title={value}>{value}</span></span> : <span title={value} className={`vf-cell-value${seconds ? " vf-gap-number" : ""}`}>{seconds ? <>{seconds[1]}<small className="vf-time-unit">{seconds[2]}</small></> : value}</span>}
+                return <td key={column.id} data-metric={column.metricId} data-identity={IDENTITY.has(column.metricId) || undefined} aria-label={`${labelFor(column.metricId)}: ${displayValue}`} style={{ textAlign: column.metricId === "gap" ? "center" : column.style?.align ?? (column.metricId === "driverName" ? "left" : IDENTITY.has(column.metricId) ? "center" : "right") }}>
+                  {column.metricId === "driverName" ? <span className="vf-driver"><span className="vf-driver-name" title={value}>{value}</span></span> : <span title={displayValue} className={`vf-cell-value${seconds ? " vf-gap-number" : ""}`}>{seconds ? <>{seconds[1]}<small className="vf-time-unit">{seconds[2]}</small></> : displayValue}</span>}
                 </td>;
               })}
             </tr>

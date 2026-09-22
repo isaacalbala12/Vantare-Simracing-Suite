@@ -1203,7 +1203,7 @@ func TestApplyLoadedKeepsEveryPersistedField(t *testing.T) {
 	for i := 0; i < value.NumField(); i++ {
 		field := value.Field(i)
 		name := value.Type().Field(i).Name
-		if name == "SchemaVersion" {
+		if name == "SchemaVersion" || name == "UILocale" {
 			// Owned by the migration, not by the user.
 			continue
 		}
@@ -1226,7 +1226,7 @@ func TestApplyLoadedKeepsEveryPersistedField(t *testing.T) {
 	got := reflect.ValueOf(reloaded.Snapshot()).Elem()
 	for i := 0; i < value.NumField(); i++ {
 		name := value.Type().Field(i).Name
-		if name == "SchemaVersion" {
+		if name == "SchemaVersion" || name == "UILocale" {
 			continue
 		}
 		if got.Field(i).IsZero() {

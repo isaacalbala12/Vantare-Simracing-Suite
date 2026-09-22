@@ -185,6 +185,7 @@ describe("ObsOverlayApp", () => {
       "/api/widget-policy/stream",
       "/telemetry/overlay-v2/projection",
       "/engineer/stream",
+      "/api/ui-locale/stream",
     ]);
     expect(MockEventSource.instances.some(
       (source) => source.url === "/telemetry/overlay/projection",
@@ -203,7 +204,7 @@ describe("ObsOverlayApp", () => {
     expect(diagnostics).not.toHaveProperty("shadow");
 
     view.unmount();
-    expect(MockEventSource.instances).toHaveLength(3);
+    expect(MockEventSource.instances).toHaveLength(4);
     for (const source of MockEventSource.instances) {
       expect(source.close).toHaveBeenCalledTimes(1);
     }
@@ -254,8 +255,8 @@ describe("ObsOverlayApp", () => {
       overlay_v2_parse_duration: { count: 1 },
     });
     expect(diagnostics).not.toHaveProperty("shadow");
-    expect(MockEventSource.instances.filter((source) => !source.close.mock.calls.length)).toHaveLength(3);
-    expect(MockEventSource.instances.filter((source) => source.close.mock.calls.length)).toHaveLength(3);
+    expect(MockEventSource.instances.filter((source) => !source.close.mock.calls.length)).toHaveLength(4);
+    expect(MockEventSource.instances.filter((source) => source.close.mock.calls.length)).toHaveLength(4);
   });
 
   it("loads profile-v3 and starts canonical V2 plus Engineer SSE adapters without V1", async () => {
@@ -286,6 +287,7 @@ describe("ObsOverlayApp", () => {
       "/api/widget-policy/stream",
       "/telemetry/overlay-v2/projection",
       "/engineer/stream",
+      "/api/ui-locale/stream",
     ]);
     expect(screen.getByTestId("runtime-overlay-surface")).toBeTruthy();
   });

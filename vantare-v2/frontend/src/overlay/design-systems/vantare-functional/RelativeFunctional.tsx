@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useRef } from "react";
+import { useMemo, useRef } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { WidgetRendererProps } from "../../core/design-system-definition";
 import { flipRows, useWidgetMotion } from "../../core/widget-motion";
@@ -8,7 +8,7 @@ import { resolveColumnWidthPixels } from "../../widget-types/shared/widget-colum
 import { RELATIVE_COLUMN_TEMPLATES } from "../../widget-types/relative/relative-content";
 import { resolveRelativeClassColor } from "../../widget-types/relative/relative-renderer-helpers";
 import { resolveRelativeCellValue, type RelativeViewModel } from "../../widget-types/relative/relative-view-model";
-import { functionalLabels } from "./labels";
+import { functionalLabels, sessionDisplayLabel } from "./labels";
 import { FOOTER_SLOT_GAP_PX, FOOTER_SLOT_PAD_PX, FOOTER_SLOT_ROW_PX, footerSlotItemWidth, resolveFunctionalFooterSlots } from "./footer-slots";
 import { resolveWidgetVisualGeometryForType } from "../../core/widget-visual-geometry";
 
@@ -46,6 +46,7 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
     root.querySelectorAll<HTMLElement>("[data-cross]").forEach((el) => { delete el.dataset.cross; });
   });
   const labels = functionalLabels[locale];
+  const sessionLabel = useMemo(() => sessionDisplayLabel(locale, model.sessionLabel), [locale, model.sessionLabel]);
   const columns = model.columns;
   const hasPositionColumn = columns.some((column) => column.metricId === "position");
   const hasClassColumn = columns.some((column) => column.metricId === "class");
@@ -126,7 +127,7 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
       )}
       {hasFooter && (
         <div className="vf-footer" data-session-footer>
-          {model.sessionLabel ? <span className="vf-footer-item"><b>{model.sessionLabel}{model.remainingText ? ` ${model.remainingText}` : ""}</b></span> : model.remainingText ? <span className="vf-footer-item"><b>{model.remainingText}</b></span> : null}
+          {model.sessionLabel ? <span className="vf-footer-item"><b>{sessionLabel}{model.remainingText ? ` ${model.remainingText}` : ""}</b></span> : model.remainingText ? <span className="vf-footer-item"><b>{model.remainingText}</b></span> : null}
           {model.ambientTempText ? <span className="vf-footer-item vf-footer-item--end">{labels.ambientTemp} <b>{model.ambientTempText}</b></span> : null}
           {model.trackTempText ? <span className="vf-footer-item">{labels.trackTemp} <b>{model.trackTempText}</b></span> : null}
           {model.windText ? <span className="vf-footer-item">{labels.wind} <b>{model.windText}</b></span> : null}

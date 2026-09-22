@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useI18n } from "../../i18n/I18nProvider";
+import type { Locale } from "../../i18n/i18n";
 import { ALL_WIDGET_TYPES, type WidgetLayoutV3, type WidgetType } from "../core/profile-document";
 import { designSystemRegistry } from "../core/design-system-registry";
 import { listOfficialDesigns } from "../design-systems/official-designs";
@@ -85,6 +87,7 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
   onRunScene: (sceneId: string) => void;
   onReset: () => void;
 }) {
+  const { locale, setLocale, options } = useI18n();
   const systems = designSystemRegistry
     .list()
     .filter((system) => system.widgets.some((entry) => entry.widgetType === query.widget))
@@ -220,6 +223,13 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
 
   return <aside className="functional-study-controls" aria-label={`Diseño de ${query.widget}`}>
     <div className="functional-study-title"><span>VANTARE / WORKSHOP</span><h1>{systemLabel(query.system)}.</h1><p>{widgetLabel(query.widget)} · Sistema {systemLabel(query.system)}</p></div>
+
+    <fieldset><legend>Idioma del widget</legend>
+      <Select label="Idioma" value={locale} onChange={(value) => setLocale(value as Locale)}>
+        {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+      </Select>
+      <p className="functional-study-note">Demostración en este navegador. Si se abre desde otro origen, la preferencia se guarda por separado.</p>
+    </fieldset>
 
     <fieldset><legend>Widget</legend>
       <Select label="Widget" value={query.widget} onChange={(value) => chooseWidget(value as WidgetType)}>

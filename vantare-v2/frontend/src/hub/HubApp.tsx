@@ -262,7 +262,7 @@ function HubShell() {
 export function HubApp() {
   return (
     <LicenseProvider>
-      <I18nProvider>
+      <I18nProvider mode="native-hub">
         <LicenseGate>
           <HubErrorBoundary>
             <ChainRunnerProvider>

@@ -1,6 +1,7 @@
 # VAN-742 / ISA-1310 — validación conjunta del ingeniero
 
-Estado: candidato compuesto, validación en curso; sin integración ni promoción.
+Estado: composición y validación local revisadas; CI por head en Notion/PR.
+Sin integración ni promoción.
 Tarea: https://app.notion.com/p/3e3e51695c6581a5aeb7ffca7dec48f6
 Base: `nightly@ae5a1482a85674963b30b1fe5f9cd54de8b19921` (Wails beta.24).
 Rama: `vantareapp/isa-1310-engineer-joint-validation`.
@@ -66,20 +67,83 @@ El probe original de VAN-735 permanece fuera del producto, sin cambios:
 SHA256 `0f584792b638a3a23231d87c7306ab147394b90f87323fb3daa93327d0c8fb8f`.
 Se ejecuta por overlay que añade exclusivamente ese archivo de pruebas al
 servicio real de la base y del candidato. No sustituye archivos productivos.
-La comprobación previa virtual encontró 8 de 9 diferencias corregidas; esta
-entrega debe confirmarlo en el conjunto real. El audio es un hallazgo adicional,
+La repetición real confirma 8 de 9 diferencias corregidas y conserva ambos
+controles positivos. La base ae5a1482 reproduce las nueve diferencias. En el
+candidato solo falla `two_frames_same_sector`: aún produce gap_report con dos
+observaciones del mismo sector. El probe termina con exit 1 en ambos; no se
+omita ese fallo para llamar verde a la suite. El audio es un hallazgo adicional,
 no convierte esa cuenta en 9/9.
 
-## Validación en curso
+| Caso original | Base ae5a1482 | Conjunto |
+| --- | --- | --- |
+| Práctica / clasificación / últimos 90 s | 3 FAIL | 3 PASS |
+| Mismo sector en dos observaciones | FAIL | FAIL pendiente |
+| Pit desconocido | FAIL | PASS |
+| Fuel con tres vueltas de autonomía en última vuelta | FAIL | PASS |
+| Aviso pendiente al entrar en pit | FAIL | PASS |
+| Solape nuevo con rival parado | FAIL | PASS |
+| Clear tras primer vacío | 1550 ms; FAIL | 1250 ms; PASS |
+| Dos controles positivos | 2 PASS | 2 PASS |
+
+Se releen después los mismos blobs CrewChief: defaults de 12 m/s por eje,
+150 ms de clear, pausas entre fragmentos/mensajes de 0, NAudio/WAVEOUT y fin
+por callback. El límite temporal de audio es protección, no demora obligatoria.
+La composición preserva las fronteras y los límites de los microplanes.
+
+## Validación local y revisión
 
 Dependencias instaladas desde el lockfile en un checkout propio: Wails runtime
-3.0.0-beta.24, Node 22.23.2 y Go 1.25.0. Build frontend PASS. No se modifica
-la instalación compartida anterior ni los contratos de calidad.
+3.0.0-beta.24, Node 22.23.2 y Go 1.25.0; `TMPDIR=/private/tmp` en macOS.
+Build frontend del candidato y de la base PASS. No se modifica la instalación
+compartida anterior ni los contratos de calidad.
 
-Se están comprobando suites focal/global/race/vet, el probe original, calidad,
-roadmap y CI Windows de las cuatro ramas y del conjunto. La revisión externa
-usa un checkout separado. Los resultados finales se registrarán aquí y en
-Notion; no se traslada automáticamente el PASS histórico de 1101 a ae5a1482.
+| Check | Resultado |
+| --- | --- |
+| Unión de cambios / blobs | PASS; 38 archivos de las cuatro entradas, antes de este informe |
+| Focal Engineer/Spotter/familias/radio/proyección | 40 paquetes PASS; voiceinput FAIL por VAN-741 |
+| Race en siete paquetes afectados | PASS |
+| Vet en esos siete paquetes | PASS |
+| Compilación del test audio Windows / vet Windows en módulos afectados | PASS cruzado; no ejecuta PowerShell en macOS |
+| Go global candidato | 119 paquetes PASS; cuatro paquetes FAIL de la base macOS |
+| Go global base ae5a1482 | 118 paquetes PASS; esos cuatro FAIL más voiceinput intermitente |
+| Calidad contra ae5a1482 | PASS, cero NEW/MOVED, política intacta |
+| Contrato vivo roadmap / digest | PASS; dos IDs exactos, 21 tests de contrato y 23 de digest |
+| Tres fragmentos, gofmt de 18 archivos Go y diff-check | PASS |
+| Revisión independiente de composición 9edc4abd | PASS acotado, sin P1/P2 |
+
+Los cuatro paquetes que fallan en ambos globales son `cmd/vantare` (símbolos
+Windows no disponibles en macOS), Launcher (dos pruebas y timeout de 90 s),
+Server (ruta absoluta Windows) y Recording SQLite (crash/permisos). No se
+declara PASS global macOS. El fixture voiceinput falla en el focal candidato
+y en el global base; una repetición focal independiente sobre ae5a1482 lo
+reproduce 38/50 veces. Es evidencia de intermitencia, no una tasa comparable
+a otras ejecuciones ni una regresión atribuida al conjunto. Su stdout con
+PASS adicional sigue documentado en VAN-741; no se cambia voz ni se relaja
+el protocolo.
+
+El reviewer reconstruye el golden sin usar el runtime: 11 tiempos +1 ms y
+32 tiempos +2 ms, mismos 57 eventos y demás campos de Fuel. Comprueba 19
+archivos de runtime/tests idénticos al propietario y los dos compartidos;
+no encuentra una inversión nueva de bloqueos entre observación, ACK y audio.
+Los bloques de las cuatro entregas se conservan en el handoff.
+
+Los logs completos se conservan en el expediente local
+`docs/audits/engineer-2026-09-22/joint-1310/`, fuera del repositorio de producto,
+con manifiesto SHA256. La evidencia Windows ejecutada, head, CI final y estado
+operativo se mantienen en [VAN-742](https://app.notion.com/p/3e3e51695c6581a5aeb7ffca7dec48f6)
+y [PR1311](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1311).
+Las PR1295/1300/1304/1308 repiten también sus controles en sus heads actualizados.
+No trasladar el PASS histórico de 1101 al nuevo candidato ni confundir
+compilación cruzada con ejecución Windows o escucha real.
+
+Comandos principales desde `vantare-v2`:
+
+```sh
+go test -count=1 -timeout 90s ./internal/spotter/... ./internal/radio/... ./internal/engineer/... ./internal/families/... ./internal/telemetry/projection/engineer/...
+go test -race -count=1 -timeout 90s ./internal/spotter/... ./internal/radio/... ./internal/families/... ./internal/engineer/audio/... ./internal/engineer/service/... ./internal/engineer/replayoracle/... ./internal/telemetry/projection/engineer/...
+go vet ./internal/spotter/... ./internal/radio/... ./internal/families/... ./internal/engineer/audio/... ./internal/engineer/service/... ./internal/engineer/replayoracle/... ./internal/telemetry/projection/engineer/...
+go test -count=1 -timeout 90s ./...
+```
 
 ## Límites y siguiente puerta
 

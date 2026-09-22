@@ -28,14 +28,18 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
-### 2026-09-22 — Composición sobre Wails beta.24 en curso
+### 2026-09-22 — Composición revisada sobre Wails beta.24
 
 [VAN-742](https://app.notion.com/p/3e3e51695c6581a5aeb7ffca7dec48f6) / #1310
 actualiza PR1295, PR1300, PR1304 y PR1308 a nightly ae5a1482 y comprueba su
 convivencia en una rama propia. La unión conserva los cambios de producto;
 el replay compartido mantiene ausencia de pit_now y frontera estricta de
 clear. [Informe](../../analysis/isa-1310-engineer-joint-validation.md) con
-heads, resolución semántica y controles en curso. Las entradas siguientes
+heads, resolución semántica y controles: probe original 8/9 corregidos y dos
+controles conservados; race/vet de siete paquetes y calidad PASS. Revisión
+independiente PASS acotado sin P1/P2. Los globales conservan fallos macOS de
+base y la intermitencia voiceinput registrada en VAN-741. Estado de CI Windows
+y head final en Notion y PR1311. Las entradas siguientes
 conservan evidencia histórica; sus bases y cifras no describen esta unión.
 Sin integración ni promoción. T0a sigue después de P0 integrado; escucha
 Windows/LMU, primer sonido y VAN-741 permanecen pendientes.

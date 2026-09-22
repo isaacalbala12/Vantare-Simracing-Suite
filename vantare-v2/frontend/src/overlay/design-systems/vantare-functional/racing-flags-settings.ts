@@ -1,15 +1,5 @@
 export const RACING_FLAGS_DEFAULT_TEXT_COLOR = "#ffffff";
 export const RACING_FLAGS_WHITE_FLAG_TEXT_COLOR = "#141517";
-export const RACING_FLAGS_KNOWN_FLAGS = [
-  "green",
-  "yellow",
-  "blue",
-  "red",
-  "white",
-  "black",
-  "checkered",
-] as const;
-export type RacingFlagsKnownFlag = (typeof RACING_FLAGS_KNOWN_FLAGS)[number];
 
 const RACING_FLAGS_TEXT_COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
 

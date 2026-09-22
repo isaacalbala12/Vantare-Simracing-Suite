@@ -9,6 +9,7 @@ import type {
   WidgetInstanceV3,
 } from '../../../overlay/core/profile-document';
 import type { WidgetDesignV1 } from '../../../overlay/core/widget-design';
+import { EFFICIENCY_SYSTEM_ID } from '../../../overlay/core/design-system-names';
 import { getStudioMutationGate } from '../access/studio-access';
 import { useStudioConfirm } from '../components/studio-confirm';
 import { SaveDesignDialog } from '../designs/SaveDesignDialog';
@@ -39,7 +40,7 @@ const VISUAL_SYSTEM_LABELS: Partial<Record<DesignSystemId, string>> = {
   'vantare-original': 'studio.v3.design.system.original',
   'vantare-crystal': 'studio.v3.design.system.crystal',
   'vantare-endurance': 'studio.v3.design.system.endurance',
-  'vantare-functional': 'studio.v3.design.system.efficiency',
+  [EFFICIENCY_SYSTEM_ID]: 'studio.v3.design.system.efficiency',
 };
 
 export function DesignSection(props: DesignSectionProps): React.ReactElement {

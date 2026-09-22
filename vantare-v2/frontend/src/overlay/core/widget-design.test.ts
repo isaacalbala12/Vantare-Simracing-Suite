@@ -103,6 +103,11 @@ describe("validateWidgetDesign", () => {
     expect(parsed.id).toBe("design-1");
   });
 
+  it("normalizes an Efficiency alias without changing the persisted ID", () => {
+    const parsed = validateWidgetDesign(baseDesign({ systemId: "vantare-efficiency" as never }));
+    expect(parsed.systemId).toBe("vantare-functional");
+  });
+
   it("rejects unsupported widget type", () => {
     expect(() => validateWidgetDesign(baseDesign({ widgetType: "telemetry" as never }))).toThrow();
   });

@@ -11,7 +11,7 @@ import { FuelStrategyFunctional } from "./FuelStrategyFunctional";
 import { InputTelemetryFunctional } from "./InputTelemetryFunctional";
 import { MulticlassRelativeFunctional } from "./MulticlassRelativeFunctional";
 import { PedalsFunctional } from "./PedalsFunctional";
-import { PedalsTelemetryFunctional } from "./PedalsTelemetryFunctional";
+import { PedalsAdvancedEfficiency } from "./PedalsAdvancedEfficiency";
 import { RacingFlagsFunctional } from "./RacingFlagsFunctional";
 import {
   normalizeRacingFlagsTextColor,
@@ -82,7 +82,8 @@ export const vantareFunctionalManifest: DesignSystemDefinition = {
       defaultSettings: {},
       configMigrations: { 0: (settings) => ({ ...settings }) },
       parseSettings(input: unknown) {
-        return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
+        const value = input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {};
+        return { ...value, transparentBackground: value.transparentBackground === true };
       },
       inspector: { appearance: [] },
       Renderer: PedalsFunctional as ComponentType<WidgetRendererProps>,
@@ -96,7 +97,7 @@ export const vantareFunctionalManifest: DesignSystemDefinition = {
         return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
       },
       inspector: { appearance: [] },
-      Renderer: PedalsTelemetryFunctional as ComponentType<WidgetRendererProps>,
+      Renderer: PedalsAdvancedEfficiency as ComponentType<WidgetRendererProps>,
     },
     {
       widgetType: "track-weather",

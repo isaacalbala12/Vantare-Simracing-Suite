@@ -7,11 +7,49 @@ import type { DeltaViewModel } from "../../widget-types/delta/delta-view-model";
 import { functionalLabels } from "./labels";
 import { deltaSide, deriveDeltaCross } from "./functional-motion";
 
+type DeltaEvent = "lap-completed" | "personal-best";
+
+function parseLapTime(value: string): number | undefined {
+  const match = /^(\d+):(\d{2})\.(\d{3})$/.exec(value.trim());
+  if (!match) return undefined;
+  const seconds = Number(match[1]) * 60 + Number(match[2]) + Number(match[3]) / 1000;
+  return Number.isFinite(seconds) ? seconds : undefined;
+}
+
+function sameSession(prev: DeltaViewModel, next: DeltaViewModel): boolean {
+  return prev.sessionIdentity === next.sessionIdentity;
+}
+
+function isPersonalBest(prev: DeltaViewModel, next: DeltaViewModel): boolean {
+  const previousBest = parseLapTime(prev.bestLapText);
+  const nextBest = parseLapTime(next.bestLapText);
+  return previousBest !== undefined && nextBest !== undefined && nextBest < previousBest;
+}
+
+function isCompletedLap(prev: DeltaViewModel, next: DeltaViewModel): boolean {
+  if (next.completedLap !== undefined && prev.completedLap !== undefined) {
+    return next.completedLap > prev.completedLap && parseLapTime(next.lastLapText) !== undefined;
+  }
+  return prev.lastLapText !== next.lastLapText
+    && parseLapTime(prev.lastLapText) !== undefined
+    && parseLapTime(next.lastLapText) !== undefined;
+}
+
+function deriveDeltaEvent(prev: DeltaViewModel, next: DeltaViewModel): DeltaEvent | undefined {
+  if (!sameSession(prev, next)) return undefined;
+  // A personal best is the higher-priority signal when both values arrive in
+  // the same frame; the right-hand last-lap notice still appears with it.
+  if (isPersonalBest(prev, next)) return "personal-best";
+  if (isCompletedLap(prev, next)) return "lap-completed";
+  return undefined;
+}
+
 export function DeltaFunctional({ model, settings, motion = "full", effects }: WidgetRendererProps<DeltaViewModel>) {
   const { locale } = useI18n();
   const rootRef = useRef<HTMLElement | null>(null);
   // La barra ya transiciona por CSS; el motor solo marca el cruce de cero y
-  // la nueva referencia — los dos momentos que un cambio de ancho no dice.
+  // los eventos puntuales de vuelta — los dos momentos que un cambio de ancho
+  // no dice.
   useWidgetMotion(model, motion === "full", rootRef, ({ prev, next, root, schedule, persist }) => {
     // Memoria del último lado no neutro: perder→neutro→ganar debe marcar el
     // cruce igual que perder→ganar — el par (neutro, ganar) solo no basta.
@@ -22,10 +60,15 @@ export function DeltaFunctional({ model, settings, motion = "full", effects }: W
       root.dataset.cross = cross;
       schedule(700, () => { delete root.dataset.cross; });
     }
-    if (next.bestLapText !== prev.bestLapText && next.bestLapText.trim() !== "" && next.bestLapText !== "—") {
-      root.dataset.newBest = "true";
-      schedule(1100, () => { delete root.dataset.newBest; });
+    const event = deriveDeltaEvent(prev, next);
+    if (event) {
+      root.dataset.deltaEvent = event;
+      schedule(event === "personal-best" ? 4000 : 2600, () => {
+        delete root.dataset.deltaEvent;
+      }, "delta-event");
     }
+  }, (root) => {
+    delete root.dataset.deltaEvent;
   });
   const labels = functionalLabels[locale];
   const statusText = model.status !== "ready" ? labels[model.status] : undefined;
@@ -40,20 +83,29 @@ export function DeltaFunctional({ model, settings, motion = "full", effects }: W
   // gruesa. "instrument" es la dirección por defecto.
   const capsule = settings.templateId === "capsule";
 
-  // Sin cabecera de sesión: el delta es un instrumento — valor, escala y la
-  // última vuelta como pie. La marca no vive aquí (decisión de Isaac).
+  const eventNotices = (
+    <div className="vf-delta-events" aria-live="polite" aria-atomic="true">
+      <span className="vf-delta-reference">
+        <small>{labels.personalBest}</small>
+        <b className="vf-clock">{model.bestLapText}</b>
+      </span>
+      <span className="vf-delta-last">
+        <small>{labels.lastLap}</small>
+        <b className="vf-clock">{model.lastLapText}</b>
+      </span>
+    </div>
+  );
+
+  // Las referencias laterales son avisos efímeros: en reposo solo queda el
+  // delta. En el instrumento comparten una rejilla de tres columnas con el
+  // valor central, para que una etiqueta nunca invada el indicador.
   return (
     <section ref={rootRef} className="vf-delta" data-widget-system="vantare-functional" data-widget-renderer="delta" data-status={model.status} data-tone={model.tone} data-session-header="false" data-template={capsule ? "capsule" : "instrument"} data-effects={effects}>
       {statusText && <p className="vf-status" role="status">{statusText}</p>}
       {model.statusMessage && model.status !== "stale" && <p className="vf-detail">{model.statusMessage}</p>}
       {capsule ? (
         <div className="vf-delta-capsule">
-          <div className="vf-delta-capsule-top">
-            <span className="vf-delta-capsule-label">{labels.lastLap}</span>
-            <span className="vf-delta-capsule-sep" aria-hidden="true">|</span>
-            <span className="vf-delta-capsule-lap">{model.lastLapText}</span>
-            <span className="vf-delta-capsule-delta" data-tone={model.tone}>{model.deltaText}</span>
-          </div>
+          {eventNotices}
           <div className="vf-delta-capsule-track" data-tone={model.tone} aria-hidden="true">
             <span className="vf-delta-capsule-center" />
             <span className="vf-delta-capsule-fill" style={fill} />
@@ -66,14 +118,11 @@ export function DeltaFunctional({ model, settings, motion = "full", effects }: W
       ) : (
         <>
           <header className="vf-delta-head">
+            {eventNotices}
             <strong className="vf-delta-value">
               <span className="vf-delta-arrow" aria-hidden="true">{arrow}</span>
               {model.deltaText}
             </strong>
-            <span className="vf-delta-last">
-              <small>{labels.lastLap}</small>
-              <b className="vf-clock">{model.lastLapText}</b>
-            </span>
           </header>
           <div className="vf-delta-track" aria-hidden="true">
             <span className="vf-delta-center" />

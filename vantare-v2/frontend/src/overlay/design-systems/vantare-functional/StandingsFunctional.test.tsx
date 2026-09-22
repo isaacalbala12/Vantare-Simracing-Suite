@@ -39,6 +39,42 @@ describe("Functional Standings", () => {
     expect(container.querySelector('tr[data-player="true"]')).not.toBeNull();
   });
 
+  it("marks the projected top three and the first context row without changing the rows", () => {
+    const rows = [1, 2, 3, 7, 8].map((position) => ({
+      ...model.rows[0]!,
+      id: `row-${position}`,
+      position,
+      driverName: `Driver ${position}`,
+      isPlayer: position === 7,
+      isLeader: position === 1,
+    }));
+    const { container } = render(<StandingsFunctional model={{ ...model, rows, classificationMode: "normal" }} settings={{}} renderMode="harness" />);
+    const renderedRows = [...container.querySelectorAll<HTMLElement>("tr[data-standings-row]")];
+
+    expect(renderedRows).toHaveLength(rows.length);
+    expect(renderedRows.map((row) => row.dataset.standingsGroup)).toEqual([
+      "podium", "podium", "podium", "context", "context",
+    ]);
+    expect(renderedRows.filter((row) => row.dataset.standingsContextStart === "true")).toHaveLength(1);
+    expect(renderedRows[3]?.dataset.standingsContextStart).toBe("true");
+    expect(renderedRows[3]?.dataset.player).toBe("true");
+  });
+
+  it("does not add tonal grouping metadata to Multiclass", () => {
+    const rows = [1, 2, 3, 7].map((position) => ({
+      ...model.rows[0]!,
+      id: `class-row-${position}`,
+      position,
+      driverName: `Driver ${position}`,
+      isPlayer: position === 7,
+      isLeader: position === 1,
+    }));
+    const { container } = render(<StandingsFunctional model={{ ...model, rows, classScope: "all-classes", classificationMode: "multiclass" }} settings={{}} renderMode="harness" />);
+
+    expect(container.querySelector("[data-standings-group]")).toBeNull();
+    expect(container.querySelector("[data-standings-context-start]")).toBeNull();
+  });
+
   it("drops the integrated brand when the injected decision hides it (ISA-1105)", () => {
     const { container } = render(<StandingsFunctional model={model} settings={{ brandVisible: false }} renderMode="harness" />);
     expect(container.querySelector(".vf-brand")).toBeNull();

@@ -20,7 +20,7 @@ Alternativas consideradas: un distintivo permanente repetiría la función del S
 - [x] Registrar en Studio, persistencia, permisos y transporte con los contratos existentes.
 - [x] Implementar el renderer y catálogos de idioma; añadir escenario reproducible de Workshop.
 - [x] Verificar casos reales del contrato, interacción, expiración, build/typecheck y lint.
-- [ ] Registrar evidencia, handoff, roadmap y PR draft; sin promoción implícita.
+- [x] Registrar evidencia, handoff, roadmap y PR draft; sin promoción implícita.
 
 Archivos previstos: nuevo directorio widget-types/fastest-lap y renderer Efficiency; registros/tipos/manifest/catálogo/política/config/transporte existentes; catálogos es/en/pt/it; fixture Workshop; pruebas focales y documentos de entrega.
 La prueba física con LMU/Windows se declarará pendiente si no hay una sesión real disponible.
@@ -33,3 +33,5 @@ Frontend: 470 archivos y 3814 pruebas PASS, 2 omitidas; después del ajuste del 
 La suite Go global se ejecutó con timeout de 60 s por paquete y falla en áreas ajenas al cambio: símbolos Windows en cmd/vantare, launcher, ruta Windows y Diagnostics/SQLite. No se presenta como verde. Revisión manual de navegador: primer frame sin aviso, nueva marca visible, caducidad sin nueva telemetría, volver atrás y repetir; composición legible en 480×104 y preview reducido a 280×72.
 
 Pendientes de aceptación: revisión independiente y prueba física LMU/Windows/OBS. La ruta local `/workshop?widget=fastest-lap&system=vantare-functional&surface=studio&scene=fastest-lap-alert` muestra el componente real con datos de demostración. En Desktop/OBS, avanzar del primer al segundo paso activa el aviso.
+
+Entrega: [PR draft #1330](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1330), implementación `dbc35180`, publicada en la rama aislada. Sin promoción.

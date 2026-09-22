@@ -39,6 +39,13 @@ function functionalRelativeFrame(sceneId: string, sceneFrame: number) {
   ).overlayV2Frame!;
 }
 
+function functionalRelativeModel(sceneId: string, sceneFrame: number) {
+  const input = scenario("relative", sceneId, sceneFrame, "vantare-functional");
+  const runtime = buildWorkshopFrameV2(input);
+  const widget = createScenarioWidget(input);
+  return buildRelativeViewModelV2(runtime.overlayV2Frame!, runtime.overlayV2Source!, parseRelativeContent(widget.content));
+}
+
 function relativeModelAt(sceneId: string, frame: number) {
   const input = scenario("relative", sceneId, frame);
   const runtime = buildWorkshopFrameV2(input);
@@ -81,6 +88,14 @@ describe("animation scene catalog", () => {
     for (const scene of listAnimationScenes("standings")) {
       expect(scene.widget).toBe("standings");
     }
+  });
+
+  it("does not advertise older Relative effects under Eficiencia", () => {
+    const functional = listAnimationScenes("relative", "vantare-functional").map((scene) => scene.id);
+    expect(functional).toContain("relative-functional-sequence");
+    expect(functional).not.toContain("relative-cross");
+    expect(functional).not.toContain("relative-enter");
+    expect(listAnimationScenes("relative", "vantare-endurance").map((scene) => scene.id)).toContain("relative-enter");
   });
 
   it("only flags gaps declared by the V2 presentation contract", () => {
@@ -247,6 +262,10 @@ describe("scenes drive the motion engine", () => {
       expect(from === "ahead" ? priorIndex < playerIndex : priorIndex > playerIndex).toBe(true);
       expect(to === "ahead" ? nextIndex < nextPlayerIndex : nextIndex > nextPlayerIndex).toBe(true);
     }
+    const visibleBefore = functionalRelativeModel(sceneId, 0);
+    const visibleAfter = functionalRelativeModel(sceneId, 2);
+    expect(visibleBefore.rows.find((row) => row.position === 20)?.side).toBe(from);
+    expect(visibleAfter.rows.find((row) => row.position === 20)?.side).toBe(to);
   });
 
   it("Functional Relative window scene exits and re-enters the same row without moving the player", () => {
@@ -262,6 +281,9 @@ describe("scenes drive the motion engine", () => {
     expect(reentered?.id).toBe(entered?.id);
     expect(birchAt(frames[4]!)?.id).toBe(entered?.id);
     expect(frames.every((frame) => frame.player.id === playerId)).toBe(true);
+    const visible = [0, 1, 3, 5, 6].map((frame) => functionalRelativeModel("relative-functional-window-cycle", frame));
+    expect(visible.map((current) => current.rows.some((row) => row.position === 19))).toEqual([false, true, false, true, true]);
+    expect(new Set(visible.map((current) => current.rows.find((row) => row.isPlayer)?.id)).size).toBe(1);
   });
 
   it("Functional Relative fast reversal keeps one rival and flips sides every 180 ms", () => {
@@ -274,21 +296,27 @@ describe("scenes drive the motion engine", () => {
     expect(frames.every((frame) => frame.player.id === frames[0]!.player.id)).toBe(true);
     expect(rows.map((row) => row.side)).toEqual(["behind", "ahead", "behind", "ahead"]);
     expect(rows.map((row) => row.gap.v)).toEqual([-0.14, 0.14, -0.14, 0.14]);
+    expect(scene.frames.map((_, index) => functionalRelativeModel(scene.id, index).rows.find((row) => row.position === 20)?.side))
+      .toEqual(["behind", "ahead", "behind", "ahead"]);
   });
 
-  it("Functional Relative stable sample scene repeats identical row IDs and numeric values", () => {
+  it("Functional Relative stable sample changes numbers without changing visible identities", () => {
     const scene = getAnimationScene("relative-functional-stable-values")!;
     const frames = scene.frames.map((_, index) => functionalRelativeFrame(scene.id, index));
     const sample = (frame: (typeof frames)[number]) => frame.relative.map((row) => [row.id, row.gap.v]);
     expect(frames.slice(1).every((frame) => frame.player.id === frames[0]!.player.id)).toBe(true);
-    expect(sample(frames[1]!)).toEqual(sample(frames[0]!));
-    expect(sample(frames[2]!)).toEqual(sample(frames[0]!));
+    expect(sample(frames[1]!)).not.toEqual(sample(frames[0]!));
+    expect(sample(frames[2]!)).not.toEqual(sample(frames[1]!));
+    const visible = scene.frames.map((_, index) => functionalRelativeModel(scene.id, index).rows);
+    expect(visible[1]?.map((row) => row.id)).toEqual(visible[0]?.map((row) => row.id));
+    expect(visible[2]?.map((row) => row.id)).toEqual(visible[0]?.map((row) => row.id));
+    expect(visible[1]?.map((row) => row.gapText)).not.toEqual(visible[0]?.map((row) => row.gapText));
   });
 
-  it("Functional Relative combined scene is available for manual and play review", () => {
+  it("Functional Relative combined scene is available for complete review", () => {
     const scene = getAnimationScene("relative-functional-sequence")!;
-    expect(scene.label).toMatch(/manual \/ play/i);
-    expect(scene.watchFor).toMatch(/Reproducir.*scrubber/i);
+    expect(scene.label).toBe("Secuencia completa");
+    expect(scene.watchFor).toMatch(/Reproducir.*deslizador/i);
     const frames = scene.frames.map((_, index) => functionalRelativeFrame(scene.id, index));
     const bruniAt = (frame: (typeof frames)[number]) => frame.relative.find((row) => row.position === 20)!;
     const birchAt = (frame: (typeof frames)[number]) => frame.relative.find((row) => row.position === 19);
@@ -301,6 +329,11 @@ describe("scenes drive the motion engine", () => {
     expect(birchAt(frames[5]!)?.id).toBe(birchAt(frames[2]!)?.id);
     expect(bruniAt(frames[7]!).side).toBe("behind");
     expect(frames.every((frame) => frame.player.id === frames[0]!.player.id)).toBe(true);
+    for (const index of [0, 2, 4, 5, 7]) {
+      const visible = functionalRelativeModel(scene.id, index).rows;
+      expect(visible.some((row) => row.position === 20)).toBe(true);
+      expect(visible.some((row) => row.position === 19)).toBe(index === 2 || index === 5 || index === 7);
+    }
   });
 
   it("delta chip scene moves a car several places at once", () => {

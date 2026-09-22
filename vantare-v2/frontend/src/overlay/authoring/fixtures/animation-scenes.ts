@@ -415,9 +415,9 @@ const RELATIVE_FUNCTIONAL_FAST_REVERSAL_SCENE: AnimationScene = {
 const RELATIVE_FUNCTIONAL_STABLE_SCENE: AnimationScene = {
   id: "relative-functional-stable-values",
   widget: "relative",
-  label: "Cifras estables",
+  label: "Datos cambian, filas quietas",
   watchFor:
-    "Las muestras repiten los mismos gaps y las mismas identidades. Revisa que el texto numérico permanezca quieto y que el jugador no se desplace sin un cambio de telemetría.",
+    "Las distancias cambian sin cruzar al jugador ni alterar el orden visible. Revisa que los números se actualicen sin mover las filas ni reiniciar transiciones.",
   frameMs: 1200,
   frames: [
     {
@@ -428,17 +428,17 @@ const RELATIVE_FUNCTIONAL_STABLE_SCENE: AnimationScene = {
       },
     },
     {
-      caption: "Muestra 2 idéntica: ningún número cambia",
+      caption: "Muestra 2: Bruni −0,27 s; Birch −2,5 s",
       cars: {
-        "Gianmaria Bruni": { timeGapToPlayer: -0.3 },
-        "Michael Birch": { timeGapToPlayer: -2.6 },
+        "Gianmaria Bruni": { timeGapToPlayer: -0.27 },
+        "Michael Birch": { timeGapToPlayer: -2.5 },
       },
     },
     {
-      caption: "Muestra 3 idéntica: filas y cifras siguen quietas",
+      caption: "Muestra 3: Bruni −0,24 s; Birch −2,4 s",
       cars: {
-        "Gianmaria Bruni": { timeGapToPlayer: -0.3 },
-        "Michael Birch": { timeGapToPlayer: -2.6 },
+        "Gianmaria Bruni": { timeGapToPlayer: -0.24 },
+        "Michael Birch": { timeGapToPlayer: -2.4 },
       },
     },
   ],
@@ -447,9 +447,9 @@ const RELATIVE_FUNCTIONAL_STABLE_SCENE: AnimationScene = {
 const RELATIVE_FUNCTIONAL_SEQUENCE_SCENE: AnimationScene = {
   id: "relative-functional-sequence",
   widget: "relative",
-  label: "Secuencia conjunta · manual / play",
+  label: "Secuencia completa",
   watchFor:
-    "Usa Reproducir para ver la secuencia completa o el scrubber para detenerte en cada muestra: cruce en ambos sentidos, salida y reentrada de Birch, y un tramo final con cifras estables.",
+    "Usa Reproducir para ver la secuencia completa o el deslizador para detenerte en cada muestra: cruce en ambos sentidos, salida y reentrada de Birch, y un tramo final con distancias cambiantes sin mover las filas.",
   frameMs: 900,
   frames: [
     {
@@ -625,8 +625,8 @@ export function getAnimationScene(id: string): AnimationScene | undefined {
   return ANIMATION_SCENES.find((scene) => scene.id === id);
 }
 
-export function listAnimationScenes(widget: WidgetType): readonly AnimationScene[] {
-  return ANIMATION_SCENES.filter((scene) => scene.widget === widget);
+export function listAnimationScenes(widget: WidgetType, system?: string): readonly AnimationScene[] {
+  return ANIMATION_SCENES.filter((scene) => scene.widget === widget && (system !== "vantare-functional" || (scene.id !== "relative-cross" && scene.id !== "relative-enter")));
 }
 
 /** Wraps so the transport can loop and step backwards past zero. */

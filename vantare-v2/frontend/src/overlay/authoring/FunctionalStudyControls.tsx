@@ -96,7 +96,7 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
   const defaultDesign = designs.find((design) => design.isDefault) ?? designs[0];
   // Cada variante declarada pertenece a un widget por su prefijo; el resto
   // produciría una query inválida.
-  const scenes = listAnimationScenes(query.widget);
+  const scenes = listAnimationScenes(query.widget, query.system);
   const gaps = projectionGapsFor(query.widget);
   const isFunctional = query.system === "vantare-functional";
   const isStandings = query.widget === "standings";

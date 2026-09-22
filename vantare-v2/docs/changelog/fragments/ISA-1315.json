@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1315",
+  "type": "feature",
+  "summary": "Las etiquetas de los widgets Eficiencia siguen el idioma de la app, incluyendo práctica, clasificación y carrera.",
+  "technicalNotes": [
+    "Preferencia común persistida de español, inglés, portugués e italiano; sincronización inicial y por eventos Wails/SSE, sin consultar el idioma periódicamente.",
+    "Catálogos estáticos y etiqueta de sesión memorizada por idioma/código; la telemetría y los códigos utilizados por las animaciones se conservan.",
+    "Inicialización condicional desde la preferencia anterior del Hub, protección frente a formularios antiguos, cambios rápidos y recuperación tras fallos. Workshop autónomo comparte la preferencia de su origen del navegador."
+  ],
+  "testing": [
+    "Suite frontend, build y lint superados; revisión independiente de infraestructura y pruebas Go focales con detector de carreras superadas.",
+    "Regresión con WidgetVisualHost real durante 100 actualizaciones de telemetría: conserva el nodo y no repite resolución de sesión ni acceso a almacenamiento; cambio de idioma actualiza la etiqueta sin remontar.",
+    "El preview local combina la implementación con las animaciones aceptadas de Delta y Standings; no equivale a integración de canales."
+  ],
+  "knownLimitations": [
+    "Pendiente revisión visual física en Windows/OBS; las pruebas automatizadas de esta entrega no la sustituyen.",
+    "En macOS la suite Go global presenta fallos reproducidos en la base: símbolos de Windows en cmd/vantare, prueba de ruta Windows y dos pruebas de DiagnosticsBridge.",
+    "La infraestructura cubre las entradas compartidas; el catálogo completado corresponde al sistema Eficiencia. No modifica el idioma del audio/contenido Engineer ni completa los catálogos de otros sistemas visuales."
+  ]
+}

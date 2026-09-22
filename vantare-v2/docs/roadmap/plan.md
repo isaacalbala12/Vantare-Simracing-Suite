@@ -1428,3 +1428,16 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 - cuerpo.pt: O Vantare utiliza Wails v3 beta.24 com backend, runtime frontend e ferramentas de compilação alinhados. A build Windows passou os testes automatizados e a verificação manual de Isaac. Esta atualização não inclui Streams nem declara melhorias de desempenho.
 - cuerpo.it: Vantare utilizza Wails v3 beta.24 con backend, runtime frontend e strumenti di compilazione allineati. La build Windows ha superato i test automatici e la verifica manuale di Isaac. Questo aggiornamento non introduce Streams né dichiara miglioramenti delle prestazioni.
 - etiqueta: ISA-1305
+
+### Toolchain Go 1.27.1 para el pipeline Windows
+
+- id: go-127-toolchain
+- tipo: fix
+- titulo.en: Go 1.27.1 toolchain for the Windows pipeline
+- titulo.pt: Toolchain Go 1.27.1 para o pipeline Windows
+- titulo.it: Toolchain Go 1.27.1 per la pipeline Windows
+- cuerpo: El módulo principal y los controles activos de compilación y calidad pasan a Go 1.27.1. La build Windows se valida antes de integrar el cambio. El runtime nativo de telemetría y los builds Docker alternativos mantienen cadenas separadas.
+- cuerpo.en: The main module and active build and quality checks move to Go 1.27.1. The Windows build is validated before integration. The native telemetry runtime and alternative Docker builds retain separate toolchains.
+- cuerpo.pt: O módulo principal e as verificações ativas de build e qualidade passam para Go 1.27.1. A build Windows é validada antes da integração. O runtime nativo de telemetria e os builds Docker alternativos mantêm toolchains separadas.
+- cuerpo.it: Il modulo principale e i controlli attivi di build e qualità passano a Go 1.27.1. La build Windows viene verificata prima dell'integrazione. Il runtime nativo della telemetria e le build Docker alternative mantengono toolchain separate.
+- etiqueta: ISA-1325

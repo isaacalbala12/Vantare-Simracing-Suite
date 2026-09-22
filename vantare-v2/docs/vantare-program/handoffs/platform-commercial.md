@@ -1,5 +1,13 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## VAN-747 / GitHub #1325 — migración Go 1.27.1 en curso (2026-09-22)
+
+[Tarea Notion VAN-747](https://app.notion.com/p/3e3e51695c6581329168eec61e2dbb7e), [referencia técnica #1325](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1325). Rama aislada `vantareapp/isa-1325-go-127-toolchain`, base Nightly `e6d7d2b5e58f55b82c0ed2f6a79667476d897086`.
+
+El plan [Go 1.27.1](../../specs/go-127-toolchain/PLAN.md) recibió `REQUEST_CHANGES` del mismo subagente Astra que revisó el informe de arquitectura. Antes de implementar se incorporaron el pin oculto de Doctor, la recalibración explícita de baselines, los cuatro módulos de tidy, la comprobación del paso de roadmap en modo auditoría y la limitación de Docker/helper nativo. Dictamen posterior: GO para producir candidato, sujeto a sus pruebas. No se actualizan Wails beta.24, Engineer ni el helper precompilado de telemetría. Los Dockerfiles alternativos tienen fallos previos de punto de entrada y Garble antiguo; quedan fuera de este PR y no se presentan como builds probadas.
+
+Go 1.27.1 se ha descargado y seleccionado localmente; cuatro `go mod tidy -diff` PASS, Doctor PASS y prueba focal de versión PASS. Build frontend PASS. Analizadores locales recompilados con Go 1.27.1; análisis y CI Windows todavía en curso. Ningún canal, release ni runtime nativo publicado se ha modificado.
+
 ## VAN-740 / ISA-1305 — Wails beta.24 aceptado para Nightly (2026-09-22)
 
 [Tarea Notion VAN-740](https://app.notion.com/p/3e3e51695c6581f7a1aae9d4db50ee38), puente técnico [GitHub #1305](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1305).

@@ -1,23 +1,23 @@
 {
   "header": {
     "analyzer": "jscpd",
-    "base_sha": "7cfb153e8c2b86d15cb09445334a574d1a529b5e",
-    "generated_at": "2026-09-14T23:31:03Z",
+    "base_sha": "e001be7fe2a07bf582609a7bd4d152e98692accb",
+    "generated_at": "2026-09-22T20:56:28Z",
     "tool_versions": {
       "staticcheck": "2026.2.1",
-      "govet": "go1.25.0",
+      "govet": "go1.27.1",
       "deadcode": "v0.49.0",
-      "go-mod-tidy": "go1.25.0",
+      "go-mod-tidy": "go1.27.1",
       "knip": "6.34.0",
       "dependency-cruiser": "18.2.0",
       "jscpd": "5.1.2"
     },
     "scope_hash": "a7cc956dfefdd75e8e2aa1a9ac374638c4a1a44c28ef5e867b73c38908c730ce",
-    "versions_fingerprint": "3a4e2c5c3626628ae6e904fd8a01eb4722f582912af5571fe0c64a60a4efb9d8",
+    "versions_fingerprint": "89d4c5c4f32c8d85cd2d33c48af847a2cef9ecca9fe6861c59493be764c6f499",
     "configs": [
       "frontend"
     ],
-    "count": 514
+    "count": 486
   },
   "findings": [
     {
@@ -1143,22 +1143,6 @@
     {
       "analyzer": "jscpd",
       "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/authoring/overlay-workshop.css",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "f23fcfcc91d8a056b48762660194584295f2ea965b4a4558fb05af05b5a5ce49"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/authoring/overlay-workshop.css",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "f23fcfcc91d8a056b48762660194584295f2ea965b4a4558fb05af05b5a5ce49"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
       "path": "vantare-v2/frontend/overlay/core/profile-document.ts",
       "msg_norm": "",
       "symbol": "",
@@ -2207,166 +2191,6 @@
     {
       "analyzer": "jscpd",
       "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/manifest.ts",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "f43396467d42ea97955f861a904793842155c467aeb45457dbc14f0e3c45b051"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "292ca80a14940391874e264c0718b4120a54401eec8432eb74dd4825cdf701f1"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "292ca80a14940391874e264c0718b4120a54401eec8432eb74dd4825cdf701f1"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "2a6092f5ef1c8525e036c94522d2ff00b82df957d43cedf3f5ca0d6043574547"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "2a6092f5ef1c8525e036c94522d2ff00b82df957d43cedf3f5ca0d6043574547"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "3af3b7ec7394ed11ae4e3698047b80ba4386176aaa7d3c9387035196d885e8a9"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "3af3b7ec7394ed11ae4e3698047b80ba4386176aaa7d3c9387035196d885e8a9"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "4db01d5b055ef9153618059c30da2feef1b321725cffe6d854ab568dc736ae4a"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "4db01d5b055ef9153618059c30da2feef1b321725cffe6d854ab568dc736ae4a"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "84bed9c543e51d343fa63c6e4405e9d9f63799859f5bb8a2b67dc41537662a60"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "84bed9c543e51d343fa63c6e4405e9d9f63799859f5bb8a2b67dc41537662a60"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "976f0d867f2687610752b254d6d1199f2cdae61fe7d7398dbfb308fc3791fb17"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "976f0d867f2687610752b254d6d1199f2cdae61fe7d7398dbfb308fc3791fb17"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "a2e36b8bcb4e14ff10592f08f54483434ec7828da5d545221e21c890cd8cb359"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "a2e36b8bcb4e14ff10592f08f54483434ec7828da5d545221e21c890cd8cb359"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "d5738a925b50ce3df551b5402770b5b94797797e7789f438700c5c8a4ab62bc9"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/design-systems/vantare-functional/tokens.css",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "d5738a925b50ce3df551b5402770b5b94797797e7789f438700c5c8a4ab62bc9"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
       "path": "vantare-v2/frontend/overlay/design-systems/vantare-iracing/manifest.ts",
       "msg_norm": "",
       "symbol": "",
@@ -2706,31 +2530,7 @@
       "path": "vantare-v2/frontend/overlay/widget-types/pedals-telemetry-compact/pedals-telemetry-compact-view-model-v2.ts",
       "msg_norm": "",
       "symbol": "",
-      "content_hash": "1a606b7fc2e303c379aec8fa81e1eacf6051ca017d3e373c6d2e24c258e94f28"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/widget-types/pedals-telemetry-compact/pedals-telemetry-compact-view-model-v2.ts",
-      "msg_norm": "",
-      "symbol": "",
       "content_hash": "519d4d0368b42ba43ec90acd2e503449bcac4024afb2a4611f94bc4b1c54f6ba"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/widget-types/pedals-telemetry-compact/pedals-telemetry-compact-view-model-v2.ts",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "fb627c95ccf311a52343aa9eee841867c7ff994cd091535f022972eba5035fc8"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/widget-types/pedals-telemetry/pedals-telemetry-view-model-v2.ts",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "1a606b7fc2e303c379aec8fa81e1eacf6051ca017d3e373c6d2e24c258e94f28"
     },
     {
       "analyzer": "jscpd",
@@ -2751,14 +2551,6 @@
     {
       "analyzer": "jscpd",
       "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/widget-types/pedals-telemetry/pedals-telemetry-view-model-v2.ts",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "fb627c95ccf311a52343aa9eee841867c7ff994cd091535f022972eba5035fc8"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
       "path": "vantare-v2/frontend/overlay/widget-types/relative/relative-content.ts",
       "msg_norm": "",
       "symbol": "",
@@ -2771,14 +2563,6 @@
       "msg_norm": "",
       "symbol": "",
       "content_hash": "93719ca00ee78d476470fa088f6d3ff24076eca6f511611e5402d797119b4b66"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/widget-types/relative/relative-content.ts",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "bebd2bbad45e2b930b4a04429220483fc374efd0c0b51ba44ea87c34d260438f"
     },
     {
       "analyzer": "jscpd",
@@ -2835,14 +2619,6 @@
       "msg_norm": "",
       "symbol": "",
       "content_hash": "93719ca00ee78d476470fa088f6d3ff24076eca6f511611e5402d797119b4b66"
-    },
-    {
-      "analyzer": "jscpd",
-      "rule": "duplication",
-      "path": "vantare-v2/frontend/overlay/widget-types/standings/standings-content.ts",
-      "msg_norm": "",
-      "symbol": "",
-      "content_hash": "bebd2bbad45e2b930b4a04429220483fc374efd0c0b51ba44ea87c34d260438f"
     },
     {
       "analyzer": "jscpd",

@@ -1,19 +1,19 @@
 {
   "header": {
     "analyzer": "govet",
-    "base_sha": "7cfb153e8c2b86d15cb09445334a574d1a529b5e",
-    "generated_at": "2026-09-14T23:31:03Z",
+    "base_sha": "e001be7fe2a07bf582609a7bd4d152e98692accb",
+    "generated_at": "2026-09-22T20:56:28Z",
     "tool_versions": {
       "staticcheck": "2026.2.1",
-      "govet": "go1.25.0",
+      "govet": "go1.27.1",
       "deadcode": "v0.49.0",
-      "go-mod-tidy": "go1.25.0",
+      "go-mod-tidy": "go1.27.1",
       "knip": "6.34.0",
       "dependency-cruiser": "18.2.0",
       "jscpd": "5.1.2"
     },
     "scope_hash": "a7cc956dfefdd75e8e2aa1a9ac374638c4a1a44c28ef5e867b73c38908c730ce",
-    "versions_fingerprint": "3a4e2c5c3626628ae6e904fd8a01eb4722f582912af5571fe0c64a60a4efb9d8",
+    "versions_fingerprint": "89d4c5c4f32c8d85cd2d33c48af847a2cef9ecca9fe6861c59493be764c6f499",
     "configs": [
       "host-go",
       "windows-amd64"

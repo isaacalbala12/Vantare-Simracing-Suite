@@ -2,14 +2,15 @@
   "schemaVersion": 1,
   "issue": "ISA-1320",
   "type": "feature",
-  "summary": "Relative Eficiencia incorpora movimientos suaves y una señal de color muy tenue al cruzarse coches, manteniendo estables al jugador y las cifras.",
+  "summary": "Relative Eficiencia incorpora movimientos suaves, una señal de cruce muy tenue y una etiqueta discreta de diferencia de vueltas en carrera.",
   "technicalNotes": [
     "Deslizamientos de 220–300 ms sin rebote, fundidos de 120 ms y una señal de color de hasta el 4 % exclusivamente ante cruces reales.",
     "Reserva de huecos visuales alrededor del jugador; cifras nuevas no reinician animaciones ni añaden mediciones de layout o temporizadores.",
     "Continuidad de posición y opacidad durante entradas y salidas; limpieza al cambiar fuente, tamaño, presupuesto de movimiento o al desmontar.",
     "Seis escenas de revisión en Workshop sobre el renderer productivo compartido.",
     "Workshop conserva el campo de rivales antes de aplicar cruces y ausencias, para rellenar la ventana configurada sin perder el sexto rival.",
-    "Presentación del grupo delantero de lejos a cerca para colocar al rival más próximo junto al jugador; el recorte conserva primero a los cercanos."
+    "Presentación del grupo delantero de lejos a cerca para colocar al rival más próximo junto al jugador; el recorte conserva primero a los cercanos.",
+    "La etiqueta ±N vueltas usa la diferencia canónica respecto al jugador; no se infiere de la posición de carrera ni de las distancias. Solo se muestra en carrera con datos vigentes y textos traducidos, sin nuevos temporizadores o cálculos de vueltas en el renderer."
   ],
   "testing": [
     "Suite frontend completa en c809d5e8: 469 archivos, 3795 pruebas superadas y 2 omitidas.",
@@ -18,7 +19,8 @@
     "Escenas comprobadas con modelos visibles en práctica, clasificación y carrera.",
     "Código final cf14f927: revisión independiente final de 7 pruebas Relative, typecheck/lint, build y ratchet aprobados; sin hallazgos pendientes en la revisión automatizada.",
     "Regresión de seis rivales en los nueve pasos de la secuencia montada; prueba independiente de ruta completa con saltos hacia atrás. Fuente: 48 focales, tipos, build y lint; preview combinado: 75 focales PASS.",
-    "Orden DOM comprobado antes/después y ruta completa en práctica, clasificación y carrera; 66 pruebas focales, tipos/build/lint PASS."
+    "Orden DOM comprobado antes/después y ruta completa en práctica, clasificación y carrera; 66 pruebas focales, tipos/build/lint PASS.",
+    "Señal de vueltas: overlayv2 y derive completos con race PASS; contrato y vet PASS. UI: 99 pruebas focales, tipos/build/lint PASS; root: 4 pruebas de ruta completa y ratchet NEW=0/MOVED=0. Escenas de clasificación coherente y 100 cambios de lapDelta sin nuevos efectos/layout/timers. Último refinamiento de campo completo: 28 pruebas focales PASS."
   ],
   "knownLimitations": [
     "Pendiente valoración visual de Isaac y prueba física en Windows/OBS. Las pruebas DOM y los fixtures no sustituyen esa revisión.",

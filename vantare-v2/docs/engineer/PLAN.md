@@ -14,7 +14,8 @@
 - Estado a 2026-09-22: diseño y evoluciones A1–A9 aceptados por Isaac. Reparación
   P0 integrada mediante PR1311. T0a (PR1313/166ff3c5) y T0b (PR1319/95f0dc81)
   revisados, sin integrar; T1 sintético en revisión en VAN-746/#1321 sobre
-  nightly e6d7d2b5. Pruebas reales y corte audible T4 pendientes.
+  nightly e6d7d2b5 (PR1324/69e729de). T2 sintético continúa en VAN-748/#1326,
+  con dependencia T1 explícita; pruebas reales y corte audible T4 pendientes.
 
 Este fichero no sustituye el `PLAN.md` de la raíz de `vantare-v2`, que pertenece
 a VAN-727. Tampoco convierte #1294 en una issue de implementación: su diff debe
@@ -173,7 +174,7 @@ Notion propia para T1.
 [Microplan y límites](t1-relations-1321.md): cubre semántica TIM-REL con pasos
 observados y adaptaciones conservadoras explícitas. No cierra T1 real ni
 certifica LMU: longitud/layout, velocidad e InLap reales siguen por verificar.
-Sin conexión a la radio; T2–T8 siguen pendientes.
+Sin conexión a la radio; T2 continúa en su corte propio y T3–T8 siguen pendientes.
 
 **Objetivo.** Producir líder de clase, delante/detrás de clase, delante/detrás
 en pista, candidato automático detrás en pista y diferencias temporal/de
@@ -193,6 +194,13 @@ o calidad suficiente produce unknown/silencio, no una relación aproximada.
 con heurística sin procedencia o un segundo reader.
 
 ### T2 — Muestreo por pista y rival
+
+**Corte sintético 2026-09-22.** [VAN-748](https://app.notion.com/p/3e3e51695c6581569e14cee997a5f181)
+/ #1326 implementa perfiles declarados, oportunidades por cruce y tres ventanas
+por relación/ID. [Microplan, fuente y límites](t2-sampling-1326.md). API opt-in
+y sin consumidor audible; depende del commit T1 69e729de, sin integrar.
+La geometría real sigue pendiente; no hay catálogo live ni aprendizaje de
+hardparts. Isaac aplaza Windows/LMU; T3 es el siguiente corte de desarrollo.
 
 **Objetivo.** Historial independiente por relación e ID, muestreado una vez por
 gap point o sector y reiniciado en rival/sesión/epoch ambiguos.

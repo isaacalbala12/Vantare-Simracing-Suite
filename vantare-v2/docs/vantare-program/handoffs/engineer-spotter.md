@@ -28,6 +28,24 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+### 2026-09-22 — T2 sintético de muestreo
+
+[VAN-748](https://app.notion.com/p/3e3e51695c6581569e14cee997a5f181) / #1326,
+`vantareapp/isa-1326-timings-sampling`, base nightly `e6d7d2b5` y dependencia
+original T1 `69e729de`/PR1324. El delta exclusivo T2 se revisa contra T1; la PR
+a nightly es acumulativa mientras T1 siga sin integrar. Sin merge/promoción.
+El [corte T2](../../engineer/t2-sampling-1326.md) aporta perfil inmutable,
+una oportunidad por cruce y tres historiales independientes por rival. A1/A2
+están aceptadas; clasificación y cadencia no se adelantan. API opt-in sin
+consumidor de producto. Fuente antes/después y revisión Go GPT-6 favorables;
+tests de recuperación y ventanas traseras completan la revisión.
+Isaac aplaza Windows/LMU y pide continuar desarrollo; siguiente corte T3.
+No hay catálogo live certificado ni evidencia acústica. Build auxiliar P0
+35782437738 falló en TestPlayerRejectsMissingMedia (timeout Windows), sin
+instalador ni release. Ese bloqueo de preparación real se registra en VAN-735,
+fuera del código T2; los checks de este corte se registran en VAN-748 y la PR.
+T3–T8 y VAN-741/VAN-744 continúan separados.
+
 ### 2026-09-22 — T1 sintético de relaciones
 
 [VAN-746](https://app.notion.com/p/3e3e51695c6581bca1a6e38ff864077d) / #1321,

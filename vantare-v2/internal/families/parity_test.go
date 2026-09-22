@@ -15,7 +15,7 @@ func (clock *testClock) NowMS() int64 { return clock.now }
 
 func baseEvidence(now int64) Evidence {
 	return Evidence{NowMS: now, Ready: true, Subject: "player", FuelKnown: true, FuelLitres: 100,
-		SessionTypeKnown: true, SessionType: "race",
+		SessionTypeKnown: true, SessionType: "race", EndTimeKnown: true,
 		FuelCapacityKnown: true, FuelCapacity: 100, LapKnown: true, Lap: 1,
 		PenaltyKnown: true, GapLeaderKnown: true, GapLeader: 5, GapNextKnown: true, GapNext: 2,
 		PitKnown: true}

@@ -51,11 +51,16 @@ func TestFamilyTimingsRequiresValidRaceContext(t *testing.T) {
 		{name: "timed_remaining_stale", change: func(s *derive.FinalState) {
 			s.Derived.SessionRemaining = staleContextField(t, session.RemainingTime(600))
 		}},
-		// Remaining alone does not establish fixed-time format. Lap-only end
-		// guards need track length and the leader's remaining laps in a later cut.
-		{name: "unknown_format", want: true, change: func(s *derive.FinalState) {
+		// Unknown format cannot authorize a report. An observed zero is
+		// distinct from missing; lap-only end guards remain a separate cut.
+		{name: "unknown_format", change: func(s *derive.FinalState) {
 			s.Observed.EndTime = schema.MissingField[session.EndTime]()
 			s.Derived.SessionRemaining = observedField(t, session.RemainingTime(90))
+		}},
+		{name: "observed_zero_end", want: true, change: func(s *derive.FinalState) {
+			s.Observed.EndTime = observedField(t, session.EndTime(0))
+			s.Observed.MaximumLaps = observedField(t, session.MaximumLaps(10))
+			s.Derived.SessionRemaining = schema.MissingField[session.RemainingTime]()
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -82,6 +87,52 @@ func TestFamilyTimingsRequiresValidRaceContext(t *testing.T) {
 	}
 }
 
+func TestFamilyTimingsDoesNotReopenWhenEndEvidenceBecomesUnusable(t *testing.T) {
+	for _, test := range []struct {
+		name    string
+		nearEnd bool
+		change  func(*derive.FinalState)
+	}{
+		{name: "elapsed_clock_missing", nearEnd: true, change: func(s *derive.FinalState) {
+			s.Observed.EndTime = schema.MissingField[session.EndTime]()
+			s.Derived.SessionRemaining = schema.MissingField[session.RemainingTime]()
+		}},
+		{name: "stale_end_after_valid_race", change: func(s *derive.FinalState) {
+			s.Observed.EndTime = staleContextField(t, session.EndTime(900))
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			clock := &familyContextClock{now: 1000}
+			engine, err := families.New(clock, radio.LocaleES)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for seq := uint64(1); seq <= 6; seq++ {
+				var change func(*derive.FinalState)
+				if seq == 3 && test.nearEnd {
+					change = func(s *derive.FinalState) {
+						s.Derived.SessionRemaining = observedField(t, session.RemainingTime(0))
+					}
+				} else if seq >= 3 {
+					change = test.change
+				}
+				clock.now = int64(seq) * 1000
+				result, err := engine.Evaluate(familyContextObservation(t, seq, change))
+				if err != nil {
+					t.Fatal(err)
+				}
+				var timing bool
+				for _, message := range result.Messages {
+					timing = timing || message.Intent == families.IntentTimingGapReport
+				}
+				if timing != (seq == 2) {
+					t.Fatalf("sequence %d gap report = %v, want only the initial valid report", seq, timing)
+				}
+			}
+		})
+	}
+}
+
 func TestFamilyTimingsRevokesPendingContextBeforeStarted(t *testing.T) {
 	for _, test := range []struct {
 		name   string
@@ -91,6 +142,8 @@ func TestFamilyTimingsRevokesPendingContextBeforeStarted(t *testing.T) {
 		{name: "pit_missing", change: func(s *derive.FinalState) { s.Observed.Vehicles[0].InPit = schema.MissingField[pit.InPit]() }},
 		{name: "practice", change: func(s *derive.FinalState) { s.Observed.SessionType = observedField(t, session.TypePractice) }},
 		{name: "near_end", change: func(s *derive.FinalState) { s.Derived.SessionRemaining = observedField(t, session.RemainingTime(90)) }},
+		{name: "end_missing", change: func(s *derive.FinalState) { s.Observed.EndTime = schema.MissingField[session.EndTime]() }},
+		{name: "end_stale", change: func(s *derive.FinalState) { s.Observed.EndTime = staleContextField(t, session.EndTime(900)) }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			gate := &firstSpotterResolveGate{started: make(chan struct{}), release: make(chan struct{}), done: make(chan error, 1)}

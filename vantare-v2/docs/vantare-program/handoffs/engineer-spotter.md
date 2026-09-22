@@ -28,6 +28,18 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+### 2026-09-22 — Composición sobre Wails beta.24 en curso
+
+[VAN-742](https://app.notion.com/p/3e3e51695c6581a5aeb7ffca7dec48f6) / #1310
+actualiza PR1295, PR1300, PR1304 y PR1308 a nightly ae5a1482 y comprueba su
+convivencia en una rama propia. La unión conserva los cambios de producto;
+el replay compartido mantiene ausencia de pit_now y frontera estricta de
+clear. [Informe](../../analysis/isa-1310-engineer-joint-validation.md) con
+heads, resolución semántica y controles en curso. Las entradas siguientes
+conservan evidencia histórica; sus bases y cifras no describen esta unión.
+Sin integración ni promoción. T0a sigue después de P0 integrado; escucha
+Windows/LMU, primer sonido y VAN-741 permanecen pendientes.
+
 2026-09-22 — [VAN-739](https://app.notion.com/p/3e3e51695c6581faa188fb4a1e8ca5eb)
 / GitHub #1307 aborda las esperas artificiales del audio Windows, F1 de VAN-735.
 Microplan: [`repair-isa-1307.md`](../../engineer/repair-isa-1307.md).

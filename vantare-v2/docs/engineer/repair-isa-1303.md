@@ -158,8 +158,10 @@ los mismos cuatro paquetes fallidos. No se declara PASS global.
 En Windows/LMU, circuito normal, sensibilidad normal y ajustes predeterminados:
 
 1. Rodar en paralelo con un rival a velocidad similar: debe anunciar el lado.
-2. Pasar cerca de un rival parado con diferencia superior a 12 m/s: no debe
-   iniciar un solape nuevo por esa detección; uno ya establecido sigue su geometría.
+2. Pasar cerca de un rival parado con una diferencia absoluta de velocidad
+   mayor o igual a 12 m/s en al menos uno de los ejes mundo X/Z: no debe iniciar
+   un solape nuevo; uno ya establecido sigue su geometría. Una diferencia total
+   superior a 12 m/s puede admitirse si ambos componentes están por debajo.
 3. Separarse después de un aviso iniciado y observar la salida libre. Registrar
    por separado último solape, primer vacío, decisión, ACK y primer sonido.
 4. Reaparecer en el lado antes del clear: una ocupación válida cancela el libre;

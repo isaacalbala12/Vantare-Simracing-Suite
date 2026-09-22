@@ -9,7 +9,7 @@
     "La ocupación observada se separa del contexto del aviso para filtrar reapariciones y rechazar inicios obsoletos. Se conservan las reglas de entrega y caducidad."
   ],
   "testing": [
-    "Comprobar que un rival parado no inicia un aviso de solape nuevo cuando la diferencia de velocidad supera el límite, y que un coche que circula en paralelo sí lo inicia.",
+    "Comprobar que un rival parado no inicia un aviso de solape nuevo cuando la diferencia absoluta de velocidad alcanza 12 m/s en alguno de los ejes mundo X/Z, y que un coche que circula en paralelo sí lo inicia.",
     "Tras un aviso iniciado y una separación persistente, comprobar el aviso libre. Si un rival válido reaparece durante la espera, no debe anunciarse libre.",
     "Comprobar que un aviso de coche al lado que seguía pendiente no empieza después de observar la separación."
   ],

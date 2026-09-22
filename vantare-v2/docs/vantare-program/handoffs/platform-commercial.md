@@ -1,5 +1,15 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## VAN-740 / ISA-1305 — Wails beta.24 aceptado para Nightly (2026-09-22)
+
+[Tarea Notion VAN-740](https://app.notion.com/p/3e3e51695c6581f7a1aae9d4db50ee38), puente técnico [GitHub #1305](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1305).
+Worktree `C:/tmp/vantare-isa1305`, rama `vantareapp/isa-1305-wails-beta24-smoke`, base Nightly `1101f73579ddaa8798b7d9948bae8b4e2a77d850`.
+Go, runtime frontend y los tres pins CLI de CI/release pasan a beta.24 sin adaptar código de producto. Build/tipos frontend, lint, 466 archivos/3772 tests frontend (2 omitidos), 126 paquetes Go con tests y build Windows production CGO=0 PASS.
+La build canónica configurada se generó, abrió y fue aceptada por Isaac: «va todo bien, puedes mergear». Se reutilizó el entorno público existente, sin leer/copiar `.env.local` ni imprimir valores; archivo Go temporal eliminado.
+Evidencia, hash del exe y límites: [informe ISA-1305](../../analysis/isa-1305-wails-beta24-smoke.md). No se afirma una matriz completa LMU/OBS ni mejora de rendimiento. El teardown frontend imprime un AbortError sin hacer fallar la suite.
+Revisión independiente `3afeb0c0`: ACCEPT. CI identificó `go-mod-tidy` como único hallazgo nuevo; normalizado el grafo, segunda comprobación sin diff. PR [#1309](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1309); controles del candidato final pendientes.
+Roadmap: `milestones:wails-v3-beta24`. Siguiente acción: PR, CI del candidato exacto y squash autorizado a Nightly; registrar allí el SHA remoto verificado. Sin testers/master/release. El spike macOS/Streams VAN-734 permanece separado.
+
 > **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
 > Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,
 > bloquear, entregar y verificar merge. [Contrato](../notion-transition.md).

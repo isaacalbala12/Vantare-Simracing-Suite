@@ -47,9 +47,9 @@ func BuildRelative(final derive.FinalState) []RelativeRowV2 {
 	if !found {
 		return rows
 	}
-	gaps := make(map[string]schema.Field[standings.RelativeTime], len(final.Derived.Gaps.Vehicles))
+	gaps := make(map[string]derive.VehicleGap, len(final.Derived.Gaps.Vehicles))
 	for _, gap := range final.Derived.Gaps.Vehicles {
-		gaps[string(gap.Vehicle)] = gap.Time
+		gaps[string(gap.Vehicle)] = gap
 	}
 	positions := resolvedRelativePositions(final.Observed.Vehicles)
 
@@ -185,17 +185,18 @@ func usableRelativeGap(field schema.Field[standings.RelativeTime]) (float64, boo
 func relativeRow(
 	vehicle core.VehicleState,
 	position int32,
-	gap schema.Field[standings.RelativeTime],
+	gap derive.VehicleGap,
 	side string,
 ) RelativeRowV2 {
 	return RelativeRowV2{
 		VehicleID:      string(vehicle.Identity.Vehicle),
 		Position:       position,
-		GapSeconds:     canonicalRelativeGap(gap, side),
+		GapSeconds:     canonicalRelativeGap(gap.Time, side),
+		LapDelta:       qualityValue(gap.Laps, func(value standings.RelativeLaps) int32 { return int32(value) }),
 		GroundPosition: groundPositionValue(vehicle.WorldPosition),
 		LastLapSeconds: qualityValue(vehicle.LastLapTime, func(value standings.LapTime) float64 { return float64(value) }),
 		Side:           side,
-		Authority:      relativeAuthority(gap),
+		Authority:      relativeAuthority(gap.Time),
 		DisplayName:    observedString(vehicle.DriverName),
 		ClassID:        vehicleClassID(vehicle),
 	}
@@ -218,9 +219,9 @@ func canonicalRelativeGap(gap schema.Field[standings.RelativeTime], side string)
 // playerRelativeRow publishes the player anchor. Its gap to itself is zero by
 // construction, and it carries the quality of the gap set rather than claiming
 // a freshness the canonical state never observed.
-func playerRelativeRow(player core.VehicleState, position int32, gap schema.Field[standings.RelativeTime]) RelativeRowV2 {
+func playerRelativeRow(player core.VehicleState, position int32, gap derive.VehicleGap) RelativeRowV2 {
 	row := relativeRow(player, position, gap, RelativeSidePlayer)
-	if _, usable := usableRelativeGap(gap); !usable {
+	if _, usable := usableRelativeGap(gap.Time); !usable {
 		row.GapSeconds = missingValue[float64]()
 		row.Authority = AuthorityDerived
 	}

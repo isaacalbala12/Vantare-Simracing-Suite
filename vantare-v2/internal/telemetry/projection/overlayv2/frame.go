@@ -236,6 +236,7 @@ type RelativeRowV2 struct {
 	VehicleID      string                   `json:"id"`
 	Position       int32                    `json:"position"`
 	GapSeconds     QValue[float64]          `json:"gap"`
+	LapDelta       QValue[int32]            `json:"lapDelta"`
 	GroundPosition QValue[GroundPositionV2] `json:"groundPosition"`
 	LastLapSeconds QValue[float64]          `json:"lastLap"`
 	Side           string                   `json:"side"`

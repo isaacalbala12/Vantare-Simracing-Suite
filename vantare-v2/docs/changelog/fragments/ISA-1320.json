@@ -8,7 +8,8 @@
     "Reserva de huecos visuales alrededor del jugador; cifras nuevas no reinician animaciones ni añaden mediciones de layout o temporizadores.",
     "Continuidad de posición y opacidad durante entradas y salidas; limpieza al cambiar fuente, tamaño, presupuesto de movimiento o al desmontar.",
     "Seis escenas de revisión en Workshop sobre el renderer productivo compartido.",
-    "Workshop conserva el campo de rivales antes de aplicar cruces y ausencias, para rellenar la ventana configurada sin perder el sexto rival."
+    "Workshop conserva el campo de rivales antes de aplicar cruces y ausencias, para rellenar la ventana configurada sin perder el sexto rival.",
+    "Presentación del grupo delantero de lejos a cerca para colocar al rival más próximo junto al jugador; el recorte conserva primero a los cercanos."
   ],
   "testing": [
     "Suite frontend completa en c809d5e8: 469 archivos, 3795 pruebas superadas y 2 omitidas.",
@@ -16,7 +17,8 @@
     "Tras refinar la reentrada: pruebas focales de opacidad/limpieza, tipos, build, lint y ratchet sin nuevas incidencias; la suite completa antecede a este refinamiento.",
     "Escenas comprobadas con modelos visibles en práctica, clasificación y carrera.",
     "Código final cf14f927: revisión independiente final de 7 pruebas Relative, typecheck/lint, build y ratchet aprobados; sin hallazgos pendientes en la revisión automatizada.",
-    "Regresión de seis rivales en los nueve pasos de la secuencia montada; prueba independiente de ruta completa con saltos hacia atrás. Fuente: 48 focales, tipos, build y lint; preview combinado: 75 focales PASS."
+    "Regresión de seis rivales en los nueve pasos de la secuencia montada; prueba independiente de ruta completa con saltos hacia atrás. Fuente: 48 focales, tipos, build y lint; preview combinado: 75 focales PASS.",
+    "Orden DOM comprobado antes/después y ruta completa en práctica, clasificación y carrera; 66 pruebas focales, tipos/build/lint PASS."
   ],
   "knownLimitations": [
     "Pendiente valoración visual de Isaac y prueba física en Windows/OBS. Las pruebas DOM y los fixtures no sustituyen esa revisión.",

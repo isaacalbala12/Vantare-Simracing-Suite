@@ -3152,3 +3152,12 @@ Isaac confirma que falta uno de los seis rivales configurados. Reproducción ind
 `956f6990` conserva el campo disponible en las escenas Relative antes de aplicar sus cambios. La selección productiva existente elige los tres rivales más cercanos por lado. Sin cambios de geometría, motor de animación ni telemetría productiva. Prueba permanente con un único WidgetVisualHost montado: nueve pasos, siete identidades únicas, salida/reentrada de Jensen y nodo del jugador estable. Fuente: 48 pruebas focales, tipos, build y lint PASS.
 
 Preview `f2cde704` incorpora solo ese ajuste sobre `0b9dee71`, conserva Delta/Standings y pasa 75 pruebas focales. Revisión independiente de la ruta Workshop completa con la URL del usuario: nueve pasos y saltos hacia atrás mantienen siete filas; la aserción que fallaba antes pasa después. Vite 5177 continúa sirviendo el ajuste sin reiniciar. Estas son pruebas DOM, no certificación visual. Asana sigue En curso hasta aceptación de Isaac; sin merge de #1323.
+
+
+### ISA-1320 — orden espacial junto al jugador
+
+Isaac señala los rivales invertidos, citando el 18 frente al 16 por detrás en la secuencia, frame4. Confirmado delante: el contrato V2 entrega cerca→lejos, pero la presentación lo pintaba igual de arriba abajo; dejaba el rival lejano junto al jugador. `2cb3e2a3` selecciona primero los rivales cercanos dentro del presupuesto y después invierte solo el grupo delantero para mostrar lejos→cerca→jugador. Detrás mantiene cerca→lejos; sin reordenar telemetría, posición de carrera ni datos por muestra.
+
+La prueba DOM de orden falla antes y pasa después. 66 pruebas focales, tipos, build y lint PASS. Revisión independiente de ruta completa en práctica, clasificación y carrera: nueve pasos y saltos hacia atrás mantienen seis rivales, con gaps descendentes de arriba abajo en ambos grupos. Se conserva la identidad del jugador y el arreglo del sexto rival.
+
+El ejemplo trasero requiere distinguir clasificación y distancia: frame4 asigna18=−5,1s,17=−7s,16=−8,9s, por lo que18 es el más cercano según esos datos. Se ha preguntado a Isaac por el criterio esperado; no se inventan gaps ni se invierte detrás para cumplir el número de posición. Pendiente su valoración visual; Asana En curso, sin merge.

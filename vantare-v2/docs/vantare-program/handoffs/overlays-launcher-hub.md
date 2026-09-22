@@ -3096,3 +3096,21 @@ Isaac aprobó compartir el idioma de la app con las etiquetas de widgets y exigi
 A petición expresa de Isaac, GPT-6 Sol retoma implementación y GPT-6 Astra revisa arquitectura y backend en checkout separado. El primer commit de implementación es 34bec633; no representa entrega final. La revisión detectó que la recuperación `.failed` podía aplicar tras reinicio un idioma rechazado: queda exigida corrección acotada y regresión. El frontend debe serializar elecciones rápidas porque Wails beta.24 ejecuta callbacks concurrentes.
 
 Base e41f703c + diseño67e9e9ce: frontend build PASS y quality PASS (NEW=0, MOVED=0). Fallos previos reproducidos en macOS: cmd/vantare depende de símbolos Windows; TestProfileRejectsAbsolutePathWindows devuelve404 en lugar de400. No se modifican esos fallos ajenos al alcance ni se presentan los controles globales Go como verdes. Próximo paso: completar frontend, comprobar los contadores con widgets reales y revisar el candidato final. Seguimiento principal sigue [Asana, En curso](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218757534554194).
+
+
+### ISA-1315 · cierre técnico de la rama
+
+Implementación GPT-6 Sol en commits 34bec633, d4806bb9, 8540c1b8 y cc59e9fc. GPT-6 Astra aprobó infraestructura sobre8540c1b8 después de corregir recuperación `.failed`, colisión de IDs entre ventanas, rechazo de envío y snapshot OBS inválido. El último commit añade únicamente la comprobación de contadores. El orquestador revisó diff y evidencia; el seguimiento principal permanece en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218757534554194), En curso hasta la revisión visual de Isaac.
+
+Cambios: preferencia UI nativa persistida en SettingsService y eventos de idioma en cmd/server; contexto I18n en Hub, Desktop, OBS y Workshop; catálogos y presentación de Eficiencia; pruebas de autoridad, reconexión, concurrencia y rendimiento. Sin dependencias nuevas, cambios de política de calidad o modificación de códigos de sesión/telemetría. El roadmap modifica únicamente milestones:functional-widget-design y JSON generado desdee41f703c. Fragmento ISA-1315 añadido.
+
+Evidencia:
+
+- Frontend completo sobre8540: 468 archivos,3779 testsPASS,2skip; build ylintPASS. Encc59, dos casos de rendimientoPASS ylintPASS.
+- WidgetVisualHost real:100 frames conservan nodo, número de resoluciones de sesión, cargas de diccionario, lecturas/escrituras de almacenamiento y suscripciones/mensajes Wails. Cambiar idioma sí cambia etiqueta y conserva montaje. No se afirma coste CPU nulo durante una selección de idioma.
+- Reviewer independiente:10archivos/86testsPASS yGo focal con-racePASS. Persistencia, sidecar genérico y reinicio/concurrencia verificados.
+- Quality sobrecc59: aggregatePASS,NEW=0,MOVED=0,policy_changed=false; todos los analizadores terminaron. Un intento previo conNode26 falló al parsear dependency-cruiser; la ejecución válida usaNode22.23.2. No se modificaron reglas/baselines.
+- go test ./... se interrumpió tras unos6min esperando launcher.test; no está verde. cmd/vantare no compila enMac por símbolos Windows; TestProfileRejectsAbsolutePathWindows y dos DiagnosticsBridge fallan también enbasee41f703c, reproducido por orquestador. No se amplió alcance para ocultarlos o corregirlos aquí.
+- Preview local GPT-6 Luna:2be30c59 combina idioma conmotion317d31c4 (PR#1306) y conserva cambios aceptados. BuildPASS,172focalesPASS y luego2pruebas de contadoresPASS; árbol limpio. El merge local del preview no representa integración remota.
+
+Límites: no verificación físicaWindows/OBS ni visual automatizada, por restricción de acceso del navegador; no se eludió por otra herramienta. Workshop autónomo comparte idioma de su origen del navegador, sin prometer sincronía con una app nativa separada. El catálogo completado es Eficiencia; otros sistemas conservan textos pendientes. Sigue el comportamiento previo de mostrar el catálogo anterior mientras se carga otro: puede haber un breve desfase entre etiquetas estáticas de widgets y textoHub en la primera selección. Próximo paso: revisar el selector de idioma en Workshop y la sincronía física conDesktop/OBS. PRdraft a nightly; ninguna promoción autorizada ni realizada.

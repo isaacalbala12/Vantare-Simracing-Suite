@@ -10,12 +10,12 @@
   ],
   "testing": [
     "Suite frontend, build y lint superados; revisión independiente de infraestructura y pruebas Go focales con detector de carreras superadas.",
-    "Regresión con WidgetVisualHost real durante 100 actualizaciones de telemetría: conserva el nodo y no repite resolución de sesión ni acceso a almacenamiento; cambio de idioma actualiza la etiqueta sin remontar.",
+    "Dos regresiones con WidgetVisualHost real durante 100 actualizaciones de telemetría: conservan el nodo y no repiten resolución de sesión, carga de diccionario, acceso a almacenamiento, suscripciones ni mensajes Wails; cambiar idioma actualiza la etiqueta sin remontar.",
     "El preview local combina la implementación con las animaciones aceptadas de Delta y Standings; no equivale a integración de canales."
   ],
   "knownLimitations": [
     "Pendiente revisión visual física en Windows/OBS; las pruebas automatizadas de esta entrega no la sustituyen.",
-    "En macOS la suite Go global presenta fallos reproducidos en la base: símbolos de Windows en cmd/vantare, prueba de ruta Windows y dos pruebas de DiagnosticsBridge.",
+    "En macOS la suite Go global presenta fallos reproducidos en la base: símbolos de Windows en cmd/vantare, prueba de ruta Windows y dos pruebas de DiagnosticsBridge. La ejecución global se interrumpió tras unos seis minutos esperando una prueba de launcher ajena a esta tarea.",
     "La infraestructura cubre las entradas compartidas; el catálogo completado corresponde al sistema Eficiencia. No modifica el idioma del audio/contenido Engineer ni completa los catálogos de otros sistemas visuales."
   ]
 }

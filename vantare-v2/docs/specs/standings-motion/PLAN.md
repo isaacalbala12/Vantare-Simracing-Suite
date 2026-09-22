@@ -10,8 +10,12 @@
 ## Segundo bloque autorizado
 
 - [x] Confirmar autorización, base vigente y seguimiento Notion; registrar el diseño.
-- [ ] Implementar batalla discreta con autoridad numérica y umbrales estables.
-- [ ] Implementar entrada/salida de ventana con identidad y limpieza de recursos.
-- [ ] Añadir escenas individuales y regresiones del renderer/VM/harness.
-- [ ] Revisar el cambio e investigar el fallo remoto previo sin relajar controles.
-- [ ] Validar, actualizar roadmap/handoff/Notion y publicar el candidato en la misma PR.
+- [x] Implementar batalla discreta con autoridad numérica y umbrales estables.
+- [x] Implementar entrada/salida de ventana con identidad y limpieza de recursos.
+- [x] Añadir escenas individuales y regresiones del renderer/VM/harness.
+- [x] Revisar el cambio e investigar el fallo remoto previo sin relajar controles.
+- [x] Validar y preparar la entrega en la misma PR con roadmap, handoff y seguimiento Notion.
+
+Evidencia del segundo bloque: worker `78115bd9`, consolidado como `ed8d1985`; revisión independiente sin hallazgos y 152 pruebas / 7 suites PASS. Suite completa: 468 archivos, 3832 PASS y 2 omitidos; build/TypeScript, lint y ratchet PASS (NEW=0/MOVED=0, sin cambiar políticas). El fallo intermitente de voz del primer bloque pasó diez repeticiones locales y un rerun remoto del mismo código.
+
+La publicación y los checks del SHA final se verifican en VAN-41 / PR #1306. Quedan pendientes la revisión visual de Isaac de las escenas **Batalla cercana · conducción** y **Entrada y salida de ventana**, y LMU real; Standings no se declara terminado ni integrado por esta entrega.

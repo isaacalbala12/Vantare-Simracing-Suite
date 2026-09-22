@@ -37,6 +37,12 @@ El mismo subagente Astra que objetó el plan inicial revisó el diff de código 
 
 La protección remota de `nightly` exige los dos primeros checks y que la rama esté actualizada; el ratchet no figura como check obligatorio. No se rebajó la política para conseguir un resultado verde. El workflow de calidad no adjuntó su `last-run` porque `upload-artifact` omite archivos ocultos por defecto; el log conserva el resumen y el defecto heredado quedó en [una tarea Notion pendiente](https://app.notion.com/p/3e3e51695c6581c584c5c4138cebd380). También se registraron tareas pendientes para las [rutas Docker alternativas](https://app.notion.com/p/3e3e51695c6581448e14dd037a877708) y la [CLI administrativa](https://app.notion.com/p/3e3e51695c658132b644c6f7430242f8).
 
+### Estado de la comprobación posterior al commit documental
+
+El commit posterior `4bd4b43ddd6fee0c119eaf58534341d237150f9d` solo modifica cuatro documentos; el código, la toolchain y la política son idénticos a `49e6d4c4`. En ese SHA, el [primer intento del gate Windows](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/35785560562/job/106941521869) y su [repetición](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/35785560562/job/106942748461) fallaron en el mismo test fuera de alcance por agotar un plazo de ocho segundos. Ese test había pasado en el run del SHA de código. El [ratchet del SHA documental](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/35785560547/job/106941380652) repitió `REVIEW_REQUIRED`, con NEW/MOVED/RESOLVED=0 e integridad correcta.
+
+Por tanto, la build Wails y la suite completa **están acreditadas en el commit de código**, pero el PR no dispone aún de un gate Windows verde en su HEAD documental. No se atribuye el fallo intermitente a Go 1.27.1 ni se presenta como resuelto. El PR sigue en borrador y no puede recomendarse su integración con el check obligatorio rojo; la incidencia queda registrada en la tarea Notion principal, sin ampliar aquí el alcance a ese test.
+
 ## Recalibración del ratchet
 
 La comparación se hizo **antes** de aceptar el nuevo baseline. `staticcheck` 2026.2.1 y `deadcode` v0.49.0 se recompilaron localmente con Go 1.27.1; `go version` de ambos binarios confirmó esa toolchain. El `staticcheck` anterior tenía la misma versión nominal, pero estaba compilado con Go 1.26.8 y fallaba al analizar un módulo Go 1.27; se descartó ese falso diagnóstico de incompatibilidad del producto.

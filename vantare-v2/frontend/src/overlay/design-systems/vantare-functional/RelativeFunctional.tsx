@@ -61,7 +61,11 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
   const rowsFit = Number.isFinite(tableSpace) ? Math.max(0, Math.floor(tableSpace / rowMin)) : Number.POSITIVE_INFINITY;
   const visibleSlots = relativeVisibleSlots(model, rowsFit);
   const visibleRows = visibleSlots.filter((row) => row !== null);
-  const boundaryKey = [model.presentationKey, model.sessionLabel, motion, layout?.w, layout?.h, scale, model.rowHeightMode, columns.map((column) => `${column.id}:${column.metricId}:${column.widthPreset}`).join(",")].join("|");
+  const boundaryKey = [
+    model.presentationKey, model.sessionLabel, motion, layout?.w, layout?.h, scale, model.rowHeightMode,
+    hasMeta, hasFooter, slotsHeight, rowsFit, model.rangeAhead, model.rangeBehind,
+    columns.map((column) => `${column.id}:${column.metricId}:${resolveColumnWidthPixels(column, RELATIVE_COLUMN_TEMPLATES.find((template) => template.metricId === column.metricId)?.defaultWidth ?? 60)}`).join(","),
+  ].join("|");
   useRelativeMotion(model, motion, rootRef, boundaryKey, relativeStructureKey(visibleSlots));
 
   return (

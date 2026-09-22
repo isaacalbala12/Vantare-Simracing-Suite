@@ -9,12 +9,14 @@ export function relativeVisibleSlots(model: RelativeViewModel, rowsFit: number):
 
   const aheadSlots = Math.max(0, Math.min(model.rangeAhead ?? playerIndex, limit - 1));
   const ahead = aheadSlots > 0 ? model.rows.slice(0, playerIndex).slice(-aheadSlots) : [];
-  const behind = model.rows.slice(playerIndex + 1, playerIndex + 1 + Math.max(0, limit - aheadSlots - 1));
+  const behindSlots = Math.max(0, Math.min(model.rangeBehind ?? model.rows.length - playerIndex - 1, limit - aheadSlots - 1));
+  const behind = model.rows.slice(playerIndex + 1, playerIndex + 1 + behindSlots);
   return [
     ...Array<null>(Math.max(0, aheadSlots - ahead.length)).fill(null),
     ...ahead,
     model.rows[playerIndex]!,
     ...behind,
+    ...Array<null>(Math.max(0, behindSlots - behind.length)).fill(null),
   ];
 }
 

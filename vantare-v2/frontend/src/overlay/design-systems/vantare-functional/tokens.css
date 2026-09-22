@@ -121,11 +121,11 @@
    primera fila, así que también queda fuera. */
 .vf-relative .vf-table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; margin: 0; }
 .vf-relative .vf-table-wrap { position: relative; }
-.vf-relative .vf-relative-empty-slot td { height: 28px; box-shadow: none; }
 .vf-relative .vf-relative-exit { position: absolute; left: 0; width: 100%; pointer-events: none; }
 .vf-relative .vf-table td { position: relative; border: 0; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vf-relative .vf-table td:is([data-metric="position"], [data-metric="class"], [data-metric="carNumber"]) { padding: 0 4px; }
 .vf-relative .vf-table td { height: 28px; box-shadow: inset 0 -1px var(--vf-line); font-size: 13px; font-weight: 650; letter-spacing: -.02em; }
+.vf-relative .vf-table .vf-relative-empty-slot td { height: 28px; box-shadow: none; }
 .vf-relative .vf-table td[data-metric="position"] { font-weight: 600; color: #b9bbc1; }
 .vf-relative .vf-table td[data-metric="carNumber"] { color: #a5a5ab; font-size: 11px; font-weight: 600; }
 .vf-relative .vf-table td[data-metric="driverName"] { padding-left: 0; }

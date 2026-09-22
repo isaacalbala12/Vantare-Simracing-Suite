@@ -1415,3 +1415,16 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 - etiqueta.en: Plan
 - etiqueta.pt: Plano
 - etiqueta.it: Piano
+
+### Base de escritorio Wails beta.24
+
+- id: wails-v3-beta24
+- tipo: fix
+- titulo.en: Wails beta.24 desktop foundation
+- titulo.pt: Base de desktop Wails beta.24
+- titulo.it: Base desktop Wails beta.24
+- cuerpo: Vantare utiliza Wails v3 beta.24 con backend, runtime frontend y herramientas de compilación alineados. La build Windows ha superado las pruebas automatizadas y la comprobación manual de Isaac. Esta actualización no incorpora Streams ni declara mejoras de rendimiento.
+- cuerpo.en: Vantare uses Wails v3 beta.24 with aligned backend, frontend runtime and build tools. The Windows build passed automated tests and Isaac's manual check. This update does not introduce Streams or claim performance improvements.
+- cuerpo.pt: O Vantare utiliza Wails v3 beta.24 com backend, runtime frontend e ferramentas de compilação alinhados. A build Windows passou os testes automatizados e a verificação manual de Isaac. Esta atualização não inclui Streams nem declara melhorias de desempenho.
+- cuerpo.it: Vantare utilizza Wails v3 beta.24 con backend, runtime frontend e strumenti di compilazione allineati. La build Windows ha superato i test automatici e la verifica manuale di Isaac. Questo aggiornamento non introduce Streams né dichiara miglioramenti delle prestazioni.
+- etiqueta: ISA-1305

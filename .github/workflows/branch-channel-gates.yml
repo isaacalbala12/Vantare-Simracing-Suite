@@ -20,7 +20,7 @@ concurrency:
 env:
   NODE_VERSION: "22"
   PNPM_VERSION: "9.1.0"
-  WAILS_VERSION: "v3.0.0-alpha.98-tui"
+  WAILS_VERSION: "v3.0.0-beta.24"
   VANTARE_DIR: "vantare-v2"
   # ISA-860 se integra primero en auditoria. Cambiar a `enforce` requiere
   # migrar las PR vivas y una identidad distinta para Code Owner review.

@@ -211,7 +211,7 @@ Pasos principales del job `build`:
 2. Verificacion de entorno Supabase/licencia y del deploy surface de Supabase.
 3. Setup de Go desde `vantare-v2/go.mod` (`1.25.0`), Node `22`, pnpm `9.1.0`
    (tambien declarado en el `packageManager` raiz), NSIS `3.12.0` y Wails
-   `v3.0.0-alpha.98-tui`.
+   `v3.0.0-beta.24`.
 4. Gates antes de generar artefactos:
    - `pnpm install --frozen-lockfile` y `pnpm build` en
      `vantare-v2/frontend/`;

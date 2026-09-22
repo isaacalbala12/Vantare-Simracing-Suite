@@ -28,6 +28,23 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+2026-09-22 — [VAN-739](https://app.notion.com/p/3e3e51695c6581faa188fb4a1e8ca5eb)
+/ GitHub #1307 aborda las esperas artificiales del audio Windows, F1 de VAN-735.
+Microplan: [`repair-isa-1307.md`](../../engineer/repair-isa-1307.md).
+Base nightly1101. Contraste previo: CrewChief predeterminado usa NAudio/WAVEOUT
+con fin por PlaybackStopped; el margen de duración es solo timeout.
+El candidato implementa inicio y fin por eventos del player PowerShell/WPF
+existente, con cierre y errores explícitos, sin dependencias ni cambio de ACK.
+El CI previo 35737417800 demuestra éxito falso para un MP3 inexistente y
+fallos de eventos antes de reparar. Revisión independiente PASS acotado y
+40 paquetes focales, race/vet focal, compilación/vet Windows y calidad PASS.
+La prueba Stop exige muerte del hijo antes del timeout automático. Go global
+macOS conserva fallos ajenos detallados en el microplan, incluido un fixture
+voiceinput reproducido también en la base. Estado CI/SHA final en VAN-739. La escucha y latencia real siguen
+pendientes. Implementación local; reviewer reutilizado mientras Isaac conecta
+DeepSeek Harness. Las PR1295, 1300 y 1304 siguen separadas, sin integrar.
+
+
 2026-09-22 — [VAN-738](https://app.notion.com/p/3e3e51695c658171ac4cfd0e9498e642)
 / GitHub #1303 continúa la reparación actual sobre la ruta activa de Spotter.
 Microplan: [`repair-isa-1303.md`](../../engineer/repair-isa-1303.md).

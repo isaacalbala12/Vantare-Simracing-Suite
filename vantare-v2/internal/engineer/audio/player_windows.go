@@ -32,30 +32,44 @@ func NewPlayer() *Player {
 }
 
 // escapePSQuote escapes a PowerShell single-quoted string literal.
-// In PowerShell, ” inside a single-quoted string is a literal '.
+// PowerShell recognizes ASCII and typographic single quotes as delimiters;
+// doubling each one preserves the original character inside the literal.
 func escapePSQuote(path string) string {
-	return strings.ReplaceAll(path, "'", "''")
+	return strings.NewReplacer(
+		"'", "''", "‘", "‘‘", "’", "’’", "‚", "‚‚", "‛", "‛‛",
+	).Replace(path)
 }
 
 // buildPSScript returns a PowerShell script that plays the given
 // audio path using WPF MediaPlayer. The path must already be escaped
 // for single-quote context (see escapePSQuote).
 func buildPSScript(escapedPath string) string {
-	return fmt.Sprintf(
-		`try { `+
-			`Add-Type -AssemblyName presentationCore -ErrorAction Stop; `+
-			`$p = New-Object System.Windows.Media.MediaPlayer; `+
-			`$p.Open([uri]'%s'); `+
-			`Start-Sleep -Milliseconds 200; `+
-			`if ($p.NaturalDuration.HasTimeSpan) { `+
-			`$secs = [math]::Ceiling($p.NaturalDuration.TimeSpan.TotalSeconds + 0.5) `+
-			`} else { $secs = 3 }; `+
-			`$p.Play(); `+
-			`Start-Sleep -Seconds $secs; `+
-			`$p.Close() `+
-			`} catch { exit 1 }`,
-		escapedPath,
-	)
+	// WPF delivers media events through its dispatcher. Handlers mutate a
+	// shared object because PowerShell delegates execute in a local scope.
+	return fmt.Sprintf(`$ErrorActionPreference = 'Stop';
+$state = @{ ExitCode = 1 };
+$p = $null;
+try {
+    Add-Type -AssemblyName PresentationCore;
+    $p = New-Object System.Windows.Media.MediaPlayer;
+    $frame = New-Object System.Windows.Threading.DispatcherFrame;
+    $p.add_MediaOpened({
+        try { $p.Play() }
+        catch { $state.ExitCode = 1; $frame.Continue = $false }
+    });
+    $p.add_MediaEnded({ $state.ExitCode = 0; $frame.Continue = $false });
+    $p.add_MediaFailed({ $state.ExitCode = 1; $frame.Continue = $false });
+    $p.Open([uri]'%s');
+    [System.Windows.Threading.Dispatcher]::PushFrame($frame);
+} catch {
+    $state.ExitCode = 1;
+} finally {
+    if ($null -ne $p) {
+        try { $p.Close() }
+        catch { $state.ExitCode = 1 }
+    }
+}
+exit $state.ExitCode;`, escapedPath)
 }
 
 // encodePSCommand encodes a PowerShell script as UTF-16LE base64
@@ -111,7 +125,7 @@ func (p *Player) PlayContext(ctx context.Context, path string) error {
 	psScript := buildPSScript(escapePSQuote(absPath))
 	encoded := encodePSCommand(psScript)
 
-	cmd := exec.CommandContext(playCtx, "powershell", "-NoProfile", "-NonInteractive", "-EncodedCommand", encoded)
+	cmd := exec.CommandContext(playCtx, "powershell", "-NoProfile", "-NonInteractive", "-STA", "-EncodedCommand", encoded)
 	// Do NOT set cmd.Stderr — it creates a pipe that blocks cmd.Wait()
 	// after Kill(). We rely on the exit code for error detection.
 

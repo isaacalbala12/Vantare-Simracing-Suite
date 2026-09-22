@@ -39,8 +39,8 @@ function functionalRelativeFrame(sceneId: string, sceneFrame: number) {
   ).overlayV2Frame!;
 }
 
-function functionalRelativeModel(sceneId: string, sceneFrame: number) {
-  const input = scenario("relative", sceneId, sceneFrame, "vantare-functional");
+function functionalRelativeModel(sceneId: string, sceneFrame: number, session: WorkshopV2Scenario["session"] = "race") {
+  const input = { ...scenario("relative", sceneId, sceneFrame, "vantare-functional"), session };
   const runtime = buildWorkshopFrameV2(input);
   const widget = createScenarioWidget(input);
   return buildRelativeViewModelV2(runtime.overlayV2Frame!, runtime.overlayV2Source!, parseRelativeContent(widget.content));
@@ -96,6 +96,29 @@ describe("animation scene catalog", () => {
     expect(functional).not.toContain("relative-cross");
     expect(functional).not.toContain("relative-enter");
     expect(listAnimationScenes("relative", "vantare-endurance").map((scene) => scene.id)).toContain("relative-enter");
+  });
+
+  it("Functional Relative captions and visible drivers use the real grid names in every session", () => {
+    const sceneIds = [
+      "relative-functional-cross-ahead", "relative-functional-cross-behind",
+      "relative-functional-window-cycle", "relative-functional-fast-reversal",
+      "relative-functional-stable-values", "relative-functional-sequence",
+    ];
+    for (const session of ["practice", "qualifying", "race"] as const) {
+      for (const sceneId of sceneIds) {
+        const scene = getAnimationScene(sceneId)!;
+        expect(scene.frames.some((frame) => frame.caption.includes("Nico Pino") || frame.caption.includes("Mikkel Jensen"))).toBe(true);
+        expect(`${scene.watchFor} ${scene.frames.map((frame) => frame.caption).join(" ")}`).not.toMatch(/Bruni|Birch/);
+        scene.frames.forEach((frame, index) => {
+          const visibleNames = functionalRelativeModel(sceneId, index, session).rows.map((row) => row.driverName);
+          for (const [name, patch] of Object.entries(frame.cars ?? {})) {
+            expect(["Nico Pino", "Mikkel Jensen"]).toContain(name);
+            expect(visibleNames.includes(name), `${session} ${sceneId} frame ${index}: ${name}`)
+              .toBe(patch.absent !== true);
+          }
+        });
+      }
+    }
   });
 
   it("only flags gaps declared by the V2 presentation contract", () => {

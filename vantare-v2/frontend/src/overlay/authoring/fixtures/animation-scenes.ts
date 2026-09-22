@@ -357,10 +357,10 @@ const RELATIVE_FUNCTIONAL_CROSS_AHEAD_SCENE: AnimationScene = {
     "Sigue al mismo rival y deja fijo al jugador: la fila cruza de detrás a delante cuando el gap cambia de signo, con un acento de color muy tenue solo en el cruce y cifras quietas.",
   frameMs: 1200,
   frames: [
-    { caption: "Bruni detrás del jugador: −0,65 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: -0.65 } } },
-    { caption: "Se acerca: −0,12 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: -0.12 } } },
-    { caption: "Cruza hacia delante: +0,12 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: 0.12 } } },
-    { caption: "Se aleja delante: +0,65 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: 0.65 } } },
+    { caption: "Nico Pino detrás del jugador: −0,65 s", cars: { "Nico Pino": { timeGapToPlayer: -0.65 } } },
+    { caption: "Se acerca: −0,12 s", cars: { "Nico Pino": { timeGapToPlayer: -0.12 } } },
+    { caption: "Cruza hacia delante: +0,12 s", cars: { "Nico Pino": { timeGapToPlayer: 0.12 } } },
+    { caption: "Se aleja delante: +0,65 s", cars: { "Nico Pino": { timeGapToPlayer: 0.65 } } },
   ],
 };
 
@@ -372,10 +372,10 @@ const RELATIVE_FUNCTIONAL_CROSS_BEHIND_SCENE: AnimationScene = {
     "Sigue al mismo rival y deja fijo al jugador: la fila cruza de delante a detrás cuando el gap cambia de signo, con un acento de color muy tenue solo en el cruce y cifras quietas.",
   frameMs: 1200,
   frames: [
-    { caption: "Bruni delante del jugador: +0,65 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: 0.65 } } },
-    { caption: "Se acerca: +0,12 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: 0.12 } } },
-    { caption: "Cruza hacia detrás: −0,12 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: -0.12 } } },
-    { caption: "Se aleja detrás: −0,65 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: -0.65 } } },
+    { caption: "Nico Pino delante del jugador: +0,65 s", cars: { "Nico Pino": { timeGapToPlayer: 0.65 } } },
+    { caption: "Se acerca: +0,12 s", cars: { "Nico Pino": { timeGapToPlayer: 0.12 } } },
+    { caption: "Cruza hacia detrás: −0,12 s", cars: { "Nico Pino": { timeGapToPlayer: -0.12 } } },
+    { caption: "Se aleja detrás: −0,65 s", cars: { "Nico Pino": { timeGapToPlayer: -0.65 } } },
   ],
 };
 
@@ -384,16 +384,16 @@ const RELATIVE_FUNCTIONAL_WINDOW_SCENE: AnimationScene = {
   widget: "relative",
   label: "Entrada, salida y reentrada",
   watchFor:
-    "Birch sale y reentra con la misma identidad mientras la fila del jugador conserva su ID y posición. Revisa entrada y salida por opacidad, alrededor de 120 ms, y confirma que las cifras no pulsan.",
+    "Mikkel Jensen sale y reentra con la misma identidad mientras la fila del jugador conserva su ID y posición. Revisa entrada y salida por opacidad, alrededor de 120 ms, y confirma que las cifras no pulsan.",
   frameMs: 1200,
   frames: [
-    { caption: "Birch aún fuera de la ventana", cars: { "Michael Birch": { absent: true } } },
-    { caption: "Entra en la ventana: gap estable de −2,6 s", cars: { "Michael Birch": { timeGapToPlayer: -2.6 } } },
-    { caption: "Birch ya asentado; las cifras siguen iguales", cars: { "Michael Birch": { timeGapToPlayer: -2.6 } } },
-    { caption: "Sale de la ventana visible", cars: { "Michael Birch": { absent: true } } },
-    { caption: "Continúa fuera", cars: { "Michael Birch": { absent: true } } },
-    { caption: "Reentra con la misma fila y el mismo gap", cars: { "Michael Birch": { timeGapToPlayer: -2.6 } } },
-    { caption: "Reentrada asentada: −2,6 s", cars: { "Michael Birch": { timeGapToPlayer: -2.6 } } },
+    { caption: "Mikkel Jensen aún fuera de la ventana", cars: { "Mikkel Jensen": { absent: true } } },
+    { caption: "Entra en la ventana: gap estable de −2,6 s", cars: { "Mikkel Jensen": { timeGapToPlayer: -2.6 } } },
+    { caption: "Mikkel Jensen ya asentado; las cifras siguen iguales", cars: { "Mikkel Jensen": { timeGapToPlayer: -2.6 } } },
+    { caption: "Sale de la ventana visible", cars: { "Mikkel Jensen": { absent: true } } },
+    { caption: "Continúa fuera", cars: { "Mikkel Jensen": { absent: true } } },
+    { caption: "Reentra con la misma fila y el mismo gap", cars: { "Mikkel Jensen": { timeGapToPlayer: -2.6 } } },
+    { caption: "Reentrada asentada: −2,6 s", cars: { "Mikkel Jensen": { timeGapToPlayer: -2.6 } } },
   ],
 };
 
@@ -405,10 +405,10 @@ const RELATIVE_FUNCTIONAL_FAST_REVERSAL_SCENE: AnimationScene = {
     "Escena de estrés: el mismo rival cambia de lado cada 180 ms (<300 ms). Comprueba que no se pierde la fila ni el jugador y que el acento tenue solo aparece en cada cruce real.",
   frameMs: 180,
   frames: [
-    { caption: "Detrás: −0,14 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: -0.14 } } },
-    { caption: "Cruza delante en 180 ms: +0,14 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: 0.14 } } },
-    { caption: "Invierte y vuelve detrás en 180 ms: −0,14 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: -0.14 } } },
-    { caption: "Cruza delante otra vez en 180 ms: +0,14 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: 0.14 } } },
+    { caption: "Nico Pino detrás: −0,14 s", cars: { "Nico Pino": { timeGapToPlayer: -0.14 } } },
+    { caption: "Cruza delante en 180 ms: +0,14 s", cars: { "Nico Pino": { timeGapToPlayer: 0.14 } } },
+    { caption: "Invierte y vuelve detrás en 180 ms: −0,14 s", cars: { "Nico Pino": { timeGapToPlayer: -0.14 } } },
+    { caption: "Cruza delante otra vez en 180 ms: +0,14 s", cars: { "Nico Pino": { timeGapToPlayer: 0.14 } } },
   ],
 };
 
@@ -421,24 +421,24 @@ const RELATIVE_FUNCTIONAL_STABLE_SCENE: AnimationScene = {
   frameMs: 1200,
   frames: [
     {
-      caption: "Muestra 1: Bruni −0,30 s; Birch −2,6 s",
+      caption: "Muestra 1: Nico Pino −0,30 s; Mikkel Jensen −2,6 s",
       cars: {
-        "Gianmaria Bruni": { timeGapToPlayer: -0.3 },
-        "Michael Birch": { timeGapToPlayer: -2.6 },
+        "Nico Pino": { timeGapToPlayer: -0.3 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.6 },
       },
     },
     {
-      caption: "Muestra 2: Bruni −0,27 s; Birch −2,5 s",
+      caption: "Muestra 2: Nico Pino −0,27 s; Mikkel Jensen −2,5 s",
       cars: {
-        "Gianmaria Bruni": { timeGapToPlayer: -0.27 },
-        "Michael Birch": { timeGapToPlayer: -2.5 },
+        "Nico Pino": { timeGapToPlayer: -0.27 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.5 },
       },
     },
     {
-      caption: "Muestra 3: Bruni −0,24 s; Birch −2,4 s",
+      caption: "Muestra 3: Nico Pino −0,24 s; Mikkel Jensen −2,4 s",
       cars: {
-        "Gianmaria Bruni": { timeGapToPlayer: -0.24 },
-        "Michael Birch": { timeGapToPlayer: -2.4 },
+        "Nico Pino": { timeGapToPlayer: -0.24 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.4 },
       },
     },
   ],
@@ -449,70 +449,70 @@ const RELATIVE_FUNCTIONAL_SEQUENCE_SCENE: AnimationScene = {
   widget: "relative",
   label: "Secuencia completa",
   watchFor:
-    "Usa Reproducir para ver la secuencia completa o el deslizador para detenerte en cada muestra: cruce en ambos sentidos, salida y reentrada de Birch, y un tramo final con distancias cambiantes sin mover las filas.",
+    "Usa Reproducir para ver la secuencia completa o el deslizador para detenerte en cada muestra: cruce en ambos sentidos, salida y reentrada de Mikkel Jensen, y un tramo final con distancias cambiantes sin mover las filas.",
   frameMs: 900,
   frames: [
     {
-      caption: "Inicio: Bruni detrás (−0,45 s); Birch fuera de la ventana",
+      caption: "Inicio: Nico Pino detrás (−0,45 s); Mikkel Jensen fuera de la ventana",
       cars: {
-        "Gianmaria Bruni": { timeGapToPlayer: -0.45 },
-        "Michael Birch": { absent: true },
+        "Nico Pino": { timeGapToPlayer: -0.45 },
+        "Mikkel Jensen": { absent: true },
       },
     },
     {
-      caption: "Bruni se acerca: −0,12 s",
+      caption: "Nico Pino se acerca: −0,12 s",
       cars: {
-        "Gianmaria Bruni": { timeGapToPlayer: -0.12 },
-        "Michael Birch": { absent: true },
+        "Nico Pino": { timeGapToPlayer: -0.12 },
+        "Mikkel Jensen": { absent: true },
       },
     },
     {
-      caption: "Primer cruce: Bruni queda delante (+0,12 s); Birch entra",
+      caption: "Primer cruce: Nico Pino queda delante (+0,12 s); Mikkel Jensen entra",
       cars: {
-        "Gianmaria Bruni": { timeGapToPlayer: 0.12 },
-        "Michael Birch": { timeGapToPlayer: -2.6 },
+        "Nico Pino": { timeGapToPlayer: 0.12 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.6 },
       },
     },
     {
-      caption: "Birch asentado en la ventana; Bruni mantiene +0,45 s",
+      caption: "Mikkel Jensen asentado en la ventana; Nico Pino mantiene +0,45 s",
       cars: {
-        "Gianmaria Bruni": { timeGapToPlayer: 0.45 },
-        "Michael Birch": { timeGapToPlayer: -2.6 },
+        "Nico Pino": { timeGapToPlayer: 0.45 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.6 },
       },
     },
     {
-      caption: "Birch sale de la ventana; Bruni sigue delante",
+      caption: "Mikkel Jensen sale de la ventana; Nico Pino sigue delante",
       cars: {
-        "Gianmaria Bruni": { timeGapToPlayer: 0.45 },
-        "Michael Birch": { absent: true },
+        "Nico Pino": { timeGapToPlayer: 0.45 },
+        "Mikkel Jensen": { absent: true },
       },
     },
     {
-      caption: "Birch reentra con el mismo gap: −2,6 s",
+      caption: "Mikkel Jensen reentra con el mismo gap: −2,6 s",
       cars: {
-        "Gianmaria Bruni": { timeGapToPlayer: 0.45 },
-        "Michael Birch": { timeGapToPlayer: -2.6 },
+        "Nico Pino": { timeGapToPlayer: 0.45 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.6 },
       },
     },
     {
-      caption: "Bruni se acerca desde delante: +0,12 s",
+      caption: "Nico Pino se acerca desde delante: +0,12 s",
       cars: {
-        "Gianmaria Bruni": { timeGapToPlayer: 0.12 },
-        "Michael Birch": { timeGapToPlayer: -2.6 },
+        "Nico Pino": { timeGapToPlayer: 0.12 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.6 },
       },
     },
     {
-      caption: "Segundo cruce: Bruni vuelve detrás (−0,12 s)",
+      caption: "Segundo cruce: Nico Pino vuelve detrás (−0,12 s)",
       cars: {
-        "Gianmaria Bruni": { timeGapToPlayer: -0.12 },
-        "Michael Birch": { timeGapToPlayer: -2.6 },
+        "Nico Pino": { timeGapToPlayer: -0.12 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.6 },
       },
     },
     {
-      caption: "Cierre estable: Bruni −0,45 s; Birch −2,6 s",
+      caption: "Cierre estable: Nico Pino −0,45 s; Mikkel Jensen −2,6 s",
       cars: {
-        "Gianmaria Bruni": { timeGapToPlayer: -0.45 },
-        "Michael Birch": { timeGapToPlayer: -2.6 },
+        "Nico Pino": { timeGapToPlayer: -0.45 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.6 },
       },
     },
   ],

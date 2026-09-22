@@ -6,7 +6,17 @@
 > Este handoff conserva evidencia técnica fechada; sus estados antiguos no
 > sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
 
-## Actualización — rebuild solicitada y VirusTotal preparado (2026-09-22)
+## Actualización — QA final de composición y límite funcional (2026-09-22)
+
+Isaac completa VirusTotal: el asset regenerado obtiene 0/62, incluido Microsoft sin detección; no se afirma identidad con el original en cuarentena. Resultado enlazado en la auditoría de ISA-1322. La build normal vuelve a funcionar sin cambios de protección.
+
+Al contrastar su nueva captura, root encuentra que un selector CSS más específico anulaba los mínimos de altura. GPT-6 Sol medium corrige sólo el valor genérico usando `:where`; lint y build localdev pasan. Root comprueba de nuevo COTA en nativo, normal 1266×793 y maximizada 1920×1033, con el DuckDB original intacto. Inspector Reglas/Pilotos accesible. Capturas finales actualizadas en la [evidencia](../../strategy-planner/evidence/isa-1322/README.md). Revisor visual GPT-6 Sol medium: 9,1 normal, 9,0 maximizada, 9,1 conjunta redondeada; listo para revisión de Isaac, no aceptación humana ni paridad píxel a píxel.
+
+La preparación visual queda revisada, pero no terminada funcionalmente: reglas/pilotos sin configurar aparecen «Por confirmar», mientras ritmo y combustible aparecen «Pendiente de datos» porque esta vista aún no recibe la proyección exacta adoptada. Son causas diferentes; abrir correctamente el archivo no acredita las tarjetas ni T22. La siguiente conexión debe reutilizar la autoridad de Analysis existente, sin cálculos paralelos ni valores de ejemplo. La consola transitoria del lector sigue observada. No se cambia ese alcance en esta corrección CSS.
+
+Ejecutable recompilado `bin/vantare-localdev.exe`, SHA-256 `C482206A48BFE941F1F654064494FF8E3595B673B9649B9A580A8A6439E40239`, dejado abierto en preparación. Rama `vantareapp/isa-1322-strategy-desk-fidelity`; entrega aislada, sin push, PR, CI remota, merge, promoción o release. `data/` local excluido.
+
+## Antecedente — rebuild solicitada y VirusTotal preparado (2026-09-22)
 
 Isaac pide regenerar la build para disponer del archivo y analizarlo en VirusTotal. El helper normal termina con salida 0 sobre código 4bc2cd02; no se modifica Defender, y se comprueba antivirus/protección en tiempo real activos. Ejecutable `bin/vantare-localdev.exe`, SHA-256 `54EF6CF185867424F37F9A49D8F40EC3626D095D96B4B2520E5EBCF38B6618B5`. Log `C:/tmp/isa1322-rebuild-for-analysis.log`.
 

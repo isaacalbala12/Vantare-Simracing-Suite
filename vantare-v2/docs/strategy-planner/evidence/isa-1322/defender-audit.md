@@ -4,6 +4,8 @@ Fecha: 2026-09-22. Solicitud de Isaac: verificar antes de considerar una autoriz
 
 ## Conclusión
 
+Actualización posterior, 22-sep: Isaac completó el envío a VirusTotal del asset regenerado `RacesOrbitPage-Dt74rd-E.js`. Resultado observado: **0/62**, incluido Microsoft sin detección. SHA-256 `e8fbf2fa87c4f1bc336f0718c687c0fce3e9822dbaecde331698246c89015d15`, 25.230 bytes. [Informe](https://www.virustotal.com/gui/file/e8fbf2fa87c4f1bc336f0718c687c0fce3e9822dbaecde331698246c89015d15). La build normal solicitada terminó correctamente sin modificar protección ni restaurar archivos. Este resultado corresponde al asset regenerado, no acredita identidad con el original en cuarentena ni ausencia absoluta de malware. Los apartados siguientes conservan la investigación anterior a ese envío.
+
 **Falso positivo probable, no confirmado.** No se halló comportamiento malicioso en el fuente revisado ni diferencias en los 168 archivos oficiales comparados de seis paquetes instalados. No se ha podido inspeccionar el JavaScript exacto marcado porque está en cuarentena. Esto no certifica la ausencia de malware en el bundle ni identifica la secuencia que dispara la detección.
 
 ## Evidencia local

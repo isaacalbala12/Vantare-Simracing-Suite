@@ -30,7 +30,8 @@
 .strategy-preparation__combination-panel .strategy-recorded-combination__identity{grid-template-columns:1fr;padding:13px}
 .strategy-preparation__combination-panel :is(select,.strategy-recorded-combination__sim){min-height:40px}
 .strategy-preparation__main{grid-column:2;grid-row:1;display:grid;grid-template-rows:auto auto minmax(175px,auto);align-content:start;gap:12px;min-width:0;min-height:690px}
-.strategy-preparation__main>section{display:flex;flex-direction:column;min-width:0;min-height:0;border:1px solid var(--orbit-line);border-radius:var(--orbit-radius-control);background:var(--orbit-surface-0);overflow:hidden}
+:where(.strategy-preparation__main>section){min-height:0}
+.strategy-preparation__main>section{display:flex;flex-direction:column;min-width:0;border:1px solid var(--orbit-line);border-radius:var(--orbit-radius-control);background:var(--orbit-surface-0);overflow:hidden}
 .strategy-preparation__main>section>header{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:54px;flex:none;padding:0 18px;border-bottom:1px solid var(--orbit-line)}
 .strategy-preparation__main>section>header h3{margin:0;font-size:13px;font-weight:600;letter-spacing:-.02em}
 .strategy-preparation__main>section>header span{font-size:11px;color:var(--orbit-ink-3)}

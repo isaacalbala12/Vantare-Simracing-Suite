@@ -741,6 +741,9 @@
           "v": 4.5,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 1,
@@ -762,6 +765,9 @@
         "position": 3,
         "gap": {
           "v": 9,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -787,6 +793,9 @@
           "v": 13.5,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 3,
@@ -808,6 +817,9 @@
         "position": 5,
         "gap": {
           "v": 18,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -833,6 +845,9 @@
           "v": 22.5,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 5,
@@ -854,6 +869,9 @@
         "position": 7,
         "gap": {
           "v": 27,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -879,6 +897,9 @@
           "v": 31.5,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 7,
@@ -900,6 +921,9 @@
         "position": 9,
         "gap": {
           "v": 36,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -924,6 +948,9 @@
         "gap": {
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "q": "fresh"
         },
@@ -941,6 +968,9 @@
         "position": 20,
         "gap": {
           "v": -4.5,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -966,6 +996,9 @@
           "v": -9,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 18,
@@ -987,6 +1020,9 @@
         "position": 18,
         "gap": {
           "v": -13.5,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -1012,6 +1048,9 @@
           "v": -18,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 16,
@@ -1033,6 +1072,9 @@
         "position": 16,
         "gap": {
           "v": -22.5,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -1058,6 +1100,9 @@
           "v": -27,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 14,
@@ -1081,6 +1126,9 @@
           "v": -31.5,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 13,
@@ -1102,6 +1150,9 @@
         "position": 13,
         "gap": {
           "v": -36,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -1129,6 +1180,9 @@
           "v": 4.5,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 1,
@@ -1150,6 +1204,9 @@
         "position": 3,
         "gap": {
           "v": 9,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -1175,6 +1232,9 @@
           "v": 13.5,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 3,
@@ -1196,6 +1256,9 @@
         "position": 5,
         "gap": {
           "v": 18,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -1221,6 +1284,9 @@
           "v": 22.5,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 5,
@@ -1242,6 +1308,9 @@
         "position": 7,
         "gap": {
           "v": 27,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -1267,6 +1336,9 @@
           "v": 31.5,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 7,
@@ -1288,6 +1360,9 @@
         "position": 9,
         "gap": {
           "v": 36,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -1312,6 +1387,9 @@
         "gap": {
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "q": "fresh"
         },
@@ -1329,6 +1407,9 @@
         "position": 20,
         "gap": {
           "v": -4.5,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -1354,6 +1435,9 @@
           "v": -9,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 18,
@@ -1375,6 +1459,9 @@
         "position": 18,
         "gap": {
           "v": -13.5,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -1400,6 +1487,9 @@
           "v": -18,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 16,
@@ -1421,6 +1511,9 @@
         "position": 16,
         "gap": {
           "v": -22.5,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -1446,6 +1539,9 @@
           "v": -27,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 14,
@@ -1469,6 +1565,9 @@
           "v": -31.5,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 13,
@@ -1490,6 +1589,9 @@
         "position": 13,
         "gap": {
           "v": -36,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {

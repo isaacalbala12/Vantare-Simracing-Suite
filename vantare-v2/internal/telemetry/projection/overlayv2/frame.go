@@ -233,9 +233,11 @@ type StandingRowV2 struct {
 }
 
 type RelativeRowV2 struct {
-	VehicleID      string                   `json:"id"`
-	Position       int32                    `json:"position"`
-	GapSeconds     QValue[float64]          `json:"gap"`
+	VehicleID  string          `json:"id"`
+	Position   int32           `json:"position"`
+	GapSeconds QValue[float64] `json:"gap"`
+	// LapDelta is the classification lap difference: positive means the rival has
+	// more laps than the player, independent of physical side or temporal gap.
 	LapDelta       QValue[int32]            `json:"lapDelta"`
 	GroundPosition QValue[GroundPositionV2] `json:"groundPosition"`
 	LastLapSeconds QValue[float64]          `json:"lastLap"`

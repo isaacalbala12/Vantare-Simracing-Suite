@@ -28,6 +28,22 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+2026-09-22 — [VAN-738](https://app.notion.com/p/3e3e51695c658171ac4cfd0e9498e642)
+/ GitHub #1303 continúa la reparación actual sobre la ruta activa de Spotter.
+Microplan: [`repair-isa-1303.md`](../../engineer/repair-isa-1303.md).
+El ciclo fijado es plan y contraste con CrewChief predeterminado → desarrollo
+con regresiones → segundo contraste con la misma fuente y revisión independiente.
+La fuente fijada exige deltas de velocidad mundo inferiores a 12 m/s en cada
+eje horizontal para admitir un solape nuevo, y clear estrictamente después de
+150 ms desde el primer vacío. La ocupación observada debe separarse del contexto
+de mensajes pendientes para revalidar el inicio y las reapariciones.
+Vantare usa velocidad canónica orientada; el estimador RF2 por historial, el
+modo oval, dos rivales en el mismo lado y audio físico permanecen fuera del corte.
+Base de revalidación `7f3650e4`, con VAN-737/#1302 ya integrada desde su tarea
+propietaria. VAN-736/#1300 (Fuel/Timings) y la PR documental aceptada #1295
+siguen como candidatos separados, ahora actualizados sobre esa misma base.
+Implementación y revisión de #1303 en curso; sin integración ni promoción.
+
 ISA-940 conecta el nivel efectivo publicado por la política de rendimiento con
 la salida de Ingeniero: en niveles 4–5 invalida y bloquea subtítulos y toda
 presentación visual, pero conserva sin cambios la decisión y reproducción de

@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1303",
+  "type": "fix",
+  "summary": "Spotter filtra los nuevos solapes por velocidad y adelanta el aviso de lado libre al momento comprobado con CrewChief.",
+  "technicalNotes": [
+    "Los nuevos solapes requieren una diferencia de velocidad inferior a 12 m/s en cada eje horizontal del mundo; cada coche usa su propia orientación.",
+    "El aviso libre pasa a ser elegible después de 150 ms desde la primera observación sin solape, sin la espera adicional de 350 ms.",
+    "La ocupación observada se separa del contexto del aviso para filtrar reapariciones y rechazar inicios obsoletos. Se conservan las reglas de entrega y caducidad."
+  ],
+  "testing": [
+    "Comprobar que un rival parado no inicia un aviso de solape nuevo cuando la diferencia de velocidad supera el límite, y que un coche que circula en paralelo sí lo inicia.",
+    "Tras un aviso iniciado y una separación persistente, comprobar el aviso libre. Si un rival válido reaparece durante la espera, no debe anunciarse libre.",
+    "Comprobar que un aviso de coche al lado que seguía pendiente no empieza después de observar la separación."
+  ],
+  "knownLimitations": [
+    "La comparación cubre el filtro de admisión y el clear normal. La velocidad canónica Vantare no reproduce el arranque ni el muestreo del estimador RF2 de CrewChief.",
+    "El modo oval, dos rivales en un mismo lado y la paridad completa del Spotter quedan pendientes.",
+    "Los tiempos de política no certifican el primer sonido; falta la validación física Windows/Le Mans Ultimate."
+  ]
+}

@@ -3,6 +3,9 @@
 Estado: ejecución autorizada por Isaac como continuación de la reparación.
 Tarea: https://app.notion.com/p/3e3e51695c658171ac4cfd0e9498e642
 Base inicial: nightly@1e9932c4d8ca3d53a58d093449cfb840f7108e8f.
+Base de revalidación: nightly@7f3650e4f9201e347dddeab6df6d1deca3dee7b2;
+incluye la reparación de CI VAN-737/#1302 integrada por su tarea propietaria.
+No cambia el producto respecto a la base inicial.
 Rama: `vantareapp/isa-1303-spotter-parity-repair`.
 
 ## Ciclo por corte

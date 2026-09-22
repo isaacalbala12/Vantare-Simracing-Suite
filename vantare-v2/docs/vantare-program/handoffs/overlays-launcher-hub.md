@@ -3077,3 +3077,9 @@ aislada a `nightly` (pendiente review/merge):
 - Resuelta además la aceptación de claves heredadas en IDs de perfiles; cobertura de normalizador y V3/V4 para sistema por defecto, widgets y memorias. Aliases y contratos persistidos conservados.
 - Suite frontend: 466 archivos, 3772 PASS y 2 omitidos. Build/TypeScript, lint y 69 focales finales PASS. Revisión independiente: sin bloqueantes, 83 pruebas PASS. Equivalencia estática CSS: 445 selectores activos sin cambios de declaraciones finales.
 - Informe completo y revisión previa en `docs/engineer/audits/2026-09-22-widget-local-sync-quality.md`. Sin nueva certificación visual ni LMU en vivo; PR en borrador, integración a nightly pendiente de aceptación.
+
+### ISA-1221 — Delta sin pulso numérico al cruzar cero (2026-09-22)
+
+- [VAN-41](https://app.notion.com/p/3dbe51695c658125b1c2efc198edfc94). Isaac señala un salto del número al cambiar verde↔rojo en el Workshop. Rama aislada `vantareapp/isa-1221-delta-stable-zero`, sobre el candidato `6c59caf2`; la integración anterior de PR #1298 sigue a cargo del subagente.
+- Causa: dos reglas de `data-cross` aplicaban `scale(1.04)` durante 700 ms y retiraban el efecto después. Se eliminan esas dos reglas, tanto Instrument como Capsule. El valor Instrument conserva `translateX(-50%)`; no se cambia el valor de telemetría, la barra, el color ni los avisos de vuelta.
+- 22 pruebas focales Delta/motor de animación PASS; build/TypeScript PASS, ratchet PASS (NEW=0, sin cambios de política) y diff limpio. Workshop sirve esta rama en `127.0.0.1:5177`. Pendiente revisión visual de Isaac; no se declara medición de navegador ni se mezcla esta corrección con la integración ya autorizada de #1298.

@@ -16,10 +16,8 @@ export function buildPedalsTelemetryViewModelV2(
   source: OverlaySourceStatusV2,
   content: PedalsTelemetryContent,
 ): PedalsTelemetryViewModel {
-  const unavailable = source.state === "error" || source.state === "stopped";
-  const speedKph = unavailable ? undefined : speedInKph(frame.player.speed, frame.units.speed);
-  const rpm = unavailable ? undefined : displayedNumber(frame.player.rpm);
-  const gear = unavailable ? undefined : displayedNumber(frame.player.gear);
+  const { unavailable, speedKph, rpm, gear } = readPedalsTelemetryInstruments(frame, source);
+  const steering = unavailable ? 0 : Math.max(-1, Math.min(1, displayedNumber(frame.player.steering) ?? 0));
   const status = unavailable
     ? source.state === "error" ? "error" : "disconnected"
     : source.state === "stale" || hasStalePlayerValue(frame)
@@ -35,6 +33,7 @@ export function buildPedalsTelemetryViewModelV2(
     speedKph,
     rpm,
     gear,
+    steering,
     speedText: formatPedalsTelemetrySpeed(speedKph),
     rpmText: formatPedalsTelemetryRpm(rpm),
     gearText: formatPedalsTelemetryGear(gear),
@@ -81,8 +80,18 @@ function hasStalePlayerValue(frame: OverlayFrameV2): boolean {
     frame.player.speed,
     frame.player.rpm,
     frame.player.gear,
+    frame.player.steering,
     frame.player.throttle,
     frame.player.brake,
     frame.player.clutch,
   ].some((value) => value.q === "stale");
+}
+
+/** Shared instruments; each presentation retains its own input clamps and stale policy. */
+export function readPedalsTelemetryInstruments(frame: OverlayFrameV2, source: OverlaySourceStatusV2) {
+  const unavailable = source.state === "error" || source.state === "stopped";
+  const speedKph = unavailable ? undefined : speedInKph(frame.player.speed, frame.units.speed);
+  const rpm = unavailable ? undefined : displayedNumber(frame.player.rpm);
+  const gear = unavailable ? undefined : displayedNumber(frame.player.gear);
+  return { unavailable, speedKph, rpm, gear };
 }

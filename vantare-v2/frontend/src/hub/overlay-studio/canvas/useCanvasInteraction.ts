@@ -8,6 +8,7 @@ import {
   DEFAULT_LAYOUT_VIEWPORT,
   type LayoutViewport,
 } from '../../../overlay/core/layout-viewport';
+import { isEfficiencySystem } from '../../../overlay/core/design-system-names';
 import { widgetTypeRegistry } from '../../../overlay/core/widget-registry';
 import {
   resolveStandingsFrameLayout,
@@ -207,15 +208,15 @@ export function applyResizePreview(input: {
   layoutViewport: LayoutViewport;
 }): { layout: WidgetLayoutV3; guides: SnapGuide[] } {
   const definition = widgetTypeRegistry.get(input.widget.type);
-  const functionalMinimum = input.widget.visual.systemId === 'vantare-functional'
+  const efficiencyMinimum = isEfficiencySystem(input.widget.visual.systemId)
     ? resolveStandingsMinimumSize(input.widget)
     : undefined;
-  const start = functionalMinimum
+  const start = efficiencyMinimum
     ? resolveStandingsFrameLayout(input.widget, input.start, input.layoutViewport.width, input.layoutViewport.height)
     : input.start;
   const minSize = {
-    width: Math.max(definition.capabilities.minimumSize.width, functionalMinimum?.width ?? 0),
-    height: Math.max(definition.capabilities.minimumSize.height, functionalMinimum?.height ?? 0),
+    width: Math.max(definition.capabilities.minimumSize.width, efficiencyMinimum?.width ?? 0),
+    height: Math.max(definition.capabilities.minimumSize.height, efficiencyMinimum?.height ?? 0),
   };
   const pointerDelta = {
     dx: input.pointerCurrent.x - input.pointerOrigin.x,

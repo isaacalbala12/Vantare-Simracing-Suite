@@ -55,6 +55,18 @@ describe("fuel strategy v2 view model", () => {
     expect(off.fuelLiters).toBe(frame.fuel.remaining.v);
   });
 
+  it("does not reinterpret Fuel as Virtual Energy before the live VE signal exists", () => {
+    const model = buildFuelStrategyViewModelV2(
+      goldenFrame(20),
+      { state: "live" },
+      fuelStrategyDefinition.parseContent({ source: "virtual-energy" }),
+    );
+    expect(model.source).toBe("virtual-energy");
+    expect(model.sourceUnavailable).toBe(true);
+    expect(model.fuelLiters).toBeUndefined();
+    expect(model.history).toEqual([]);
+  });
+
   it("preserves an empty tank as a zero and a missing tank as undefined", () => {
     const frame = goldenFrame(20);
     const empty = buildFuelStrategyViewModelV2(

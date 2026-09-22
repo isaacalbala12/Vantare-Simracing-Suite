@@ -3,7 +3,7 @@ import type {
   OverlayQValue,
   OverlaySourceStatusV2,
 } from "../../../generated/telemetry";
-import { speedInKph } from "../pedals-telemetry/pedals-telemetry-view-model-v2";
+import { readPedalsTelemetryInstruments } from "../pedals-telemetry/pedals-telemetry-view-model-v2";
 import type { PedalsTelemetryCompactContent } from "./pedals-telemetry-compact-definition";
 import type { PedalsTelemetryCompactViewModel } from "./pedals-telemetry-compact-view-model";
 import {
@@ -44,7 +44,7 @@ function clampSteering(value: number): number {
  * Variante de presentación de `pedals-telemetry`: mismos instrumentos
  * (`player.throttle/brake/clutch/speed/rpm/gear`) y mismos formateadores,
  * pero con flags de visibilidad propios (`showSpeed/showRpm/showClutch`).
- * Reutiliza `speedInKph` y los `format*` del VM hermano para no duplicarlos.
+ * Reutiliza `readPedalsTelemetryInstruments` y los `format*` del VM hermano para no duplicarlos.
  *
  * `positionText` no existe en compacto y por tanto no se mapea; el frame v2
  * no transporta posición; este VM nunca inventa valores.
@@ -54,10 +54,7 @@ export function buildPedalsTelemetryCompactViewModelV2(
   source: OverlaySourceStatusV2,
   content: PedalsTelemetryCompactContent,
 ): PedalsTelemetryCompactViewModel {
-  const unavailable = source.state === "error" || source.state === "stopped";
-  const speedKph = unavailable ? undefined : speedInKph(frame.player.speed, frame.units.speed);
-  const rpm = unavailable ? undefined : displayedNumber(frame.player.rpm);
-  const gear = unavailable ? undefined : displayedNumber(frame.player.gear);
+  const { unavailable, speedKph, rpm, gear } = readPedalsTelemetryInstruments(frame, source);
   const status = unavailable
     ? source.state === "error"
       ? "error"

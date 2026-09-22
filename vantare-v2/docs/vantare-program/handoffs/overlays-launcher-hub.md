@@ -3061,3 +3061,26 @@ aislada a `nightly` (pendiente review/merge):
   `GOOS=windows go build ./cmd/vantare` PASS.
 - Pendiente humano: verificación visual de la campana en la app real
   (Wails/WebView2) y toast Windows; son parte del paquete de validación beta.
+
+## ISA-1221 — recuperación del trabajo local de widgets (2026-09-22)
+
+- [Tarea principal VAN-41](https://app.notion.com/p/3dbe51695c658125b1c2efc198edfc94), proyecto Overlay Studio. Isaac pide subir al remoto los cambios locales pendientes.
+- Rama `vantareapp/isa-1221-widgets-local-sync`, basada en `origin/nightly@1e9932c4d8ca3d53a58d093449cfb840f7108e8f`. Snapshot `44a33047af0a05c71ad7d550fa4a9f60ae90d456` conserva el trabajo de `vantare-isa1221-workshop` sobre `c3e6e44c`; el checkout original y su índice permanecen intactos.
+- Recupera Delta, Relative (orden delante de cercano a lejano), Standings compacto/podio, Pedals Eficiencia/iRacing, Fuel Strategy, aliases Efficiency y controles de Workshop, con documentos y capturas locales. Conserva las optimizaciones vigentes de nightly en host, coordinador y geometría. Redline tower mantiene su prueba explícita de viewport; las previews ordinarias usan la envolvente externa.
+- Frontend con Node 22.23.2 y dependencias del lockfile: 466 suites PASS, 3766 pruebas PASS y 2 omitidas. Build (incluye TypeScript) y lint verificados. Go overlayv2: tests y vet PASS. Las pruebas globales Go fallan en macOS por launcher Windows y diagnósticos/sqlite; reproducido también en la base nightly para los fallos de diagnósticos/sqlite.
+- Calidad: FAIL, 55 nuevos hallazgos bloqueantes (34 Knip, 18 duplicaciones, 3 ciclos de dependencias). Sin relajación de reglas ni baseline. Inventario en `docs/engineer/audits/2026-09-22-widget-local-sync-quality.md`. La recuperación se publica como borrador, no como entrega certificada.
+- Pendiente: resolver calidad, CI del SHA publicado, revisión visual de Isaac y certificación LMU real. Sin merge, testers, master ni release. Roadmap required: `milestones:functional-widget-design`; el porcentaje del área no avanza por publicar un borrador; digest basado en la nightly confiable.
+
+### ISA-1221 — corrección de los avisos revisados (2026-09-22)
+
+- Continúa [VAN-41](https://app.notion.com/p/3dbe51695c658125b1c2efc198edfc94) / PR #1298. Corregidos los 55 avisos: ratchet PASS, NEW=0 y MOVED=0 en todos los analizadores, sin cambiar política/baseline/excepciones.
+- Resuelta además la aceptación de claves heredadas en IDs de perfiles; cobertura de normalizador y V3/V4 para sistema por defecto, widgets y memorias. Aliases y contratos persistidos conservados.
+- Suite frontend: 466 archivos, 3772 PASS y 2 omitidos. Build/TypeScript, lint y 69 focales finales PASS. Revisión independiente: sin bloqueantes, 83 pruebas PASS. Equivalencia estática CSS: 445 selectores activos sin cambios de declaraciones finales.
+- Informe completo y revisión previa en `docs/engineer/audits/2026-09-22-widget-local-sync-quality.md`. Sin nueva certificación visual ni LMU en vivo; PR en borrador, integración a nightly pendiente de aceptación.
+
+
+### ISA-1221 — integración inicial autorizada (2026-09-22)
+
+- Isaac autoriza expresamente integrar PR #1298 en nightly mediante subagente. La dependencia de CI #1302 / VAN-737 corrige la prueba negativa que asumía cambios de política en cualquier PR; mantiene los controles y cuenta con revisión independiente.
+- El candidato de widgets conserva el código revisado en `6c59caf2`; esta conciliación solo incorpora la dependencia de tooling y documentación de aceptación. El nuevo ajuste de animación Delta `e492aa88` está en otra rama y no forma parte de #1298; Isaac lo aprobó visualmente durante esta integración y se seguirá por separado.
+- Verificación remota de SHA/canal y checks en [VAN-41](https://app.notion.com/p/3dbe51695c658125b1c2efc198edfc94). La revisión visual continúa en Workshop y la certificación LMU activa permanece pendiente; sin testers/master/release.

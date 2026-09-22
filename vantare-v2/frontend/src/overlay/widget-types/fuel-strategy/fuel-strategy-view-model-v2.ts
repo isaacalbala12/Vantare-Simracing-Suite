@@ -3,7 +3,7 @@ import type {
   OverlayQValue,
   OverlaySourceStatusV2,
 } from "../../../generated/telemetry";
-import type { FuelStrategyContent } from "./fuel-strategy-definition";
+import type { FuelStrategyContent } from "./fuel-strategy-content";
 import type { FuelStrategyViewModel } from "./fuel-strategy-view-model";
 
 /**
@@ -49,19 +49,25 @@ export function buildFuelStrategyViewModelV2(
 ): FuelStrategyViewModel {
   const status = resolveStatus(source.state);
   const unavailable = status === "missing" || status === "disconnected" || status === "error";
+  // The selector is wired before the live VE field is admitted to Overlay v2.
+  // Never reinterpret fuel as virtual energy: show an explicit unavailable
+  // state until LMU REST/SHM publishes a certified VE signal.
+  const sourceUnavailable = content.source === "virtual-energy";
   return {
     type: "fuel-strategy",
     status,
     statusMessage: source.reason || undefined,
-    fuelLiters: unavailable ? undefined : displayedNumber(frame.fuel.remaining),
-    avgPerLap: unavailable ? undefined : displayedNumber(frame.fuel.perLap),
-    lapsRemaining: unavailable || !content.showProjection
+    source: content.source,
+    sourceUnavailable,
+    fuelLiters: unavailable || sourceUnavailable ? undefined : displayedNumber(frame.fuel.remaining),
+    avgPerLap: unavailable || sourceUnavailable ? undefined : displayedNumber(frame.fuel.perLap),
+    lapsRemaining: unavailable || sourceUnavailable || !content.showProjection
       ? undefined
       : displayedNumber(frame.fuel.estimatedLaps),
-    requiredFuel: unavailable || !content.showProjection
+    requiredFuel: unavailable || sourceUnavailable || !content.showProjection
       ? undefined
       : displayedNumber(frame.fuel.requiredFuel),
-    history: unavailable ? [] : decodeFuelHistory(frame, content.historyRows),
+    history: unavailable || sourceUnavailable ? [] : decodeFuelHistory(frame, content.historyRows),
     units: content.units,
     showProjection: content.showProjection,
   };

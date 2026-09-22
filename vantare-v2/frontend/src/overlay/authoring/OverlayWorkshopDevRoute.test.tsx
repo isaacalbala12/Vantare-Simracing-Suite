@@ -54,6 +54,22 @@ describe("OverlayWorkshopDevRoute", () => {
     expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.height).toBe("240px");
   });
 
+  it("keeps the real widget layout inside a resizable harness preview", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=pedals&system=vantare-original&state=ready&surface=harness&variant=default&width=640&height=240" />);
+    await waitFor(() => expect(document.querySelector('[data-widget-renderer="pedals"]')).toBeTruthy());
+
+    const root = document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement;
+    const preview = document.querySelector("[data-overlay-workshop-widget-preview]") as HTMLElement;
+    const viewport = screen.getByTestId("overlay-workshop-viewport");
+    expect(root.style.width).toBe("640px");
+    expect(root.style.height).toBe("240px");
+    expect(preview.dataset.overlayWorkshopIntrinsicWidth).toBe("120");
+    expect(preview.dataset.overlayWorkshopIntrinsicHeight).toBe("160");
+    expect(viewport.style.width).toBe("120px");
+    expect(viewport.style.height).toBe("160px");
+    expect(viewport.style.transform).toBe("scale(1)");
+  });
+
   it("exposes the Functional Racing Flags probe, text color, and live dimensions in Harness", async () => {
     render(<OverlayWorkshopDevRoute search="?widget=racing-flags&system=vantare-functional&state=ready&surface=harness&variant=default&flag=yellow&textColor=%23ffcc00&width=360&height=96" />);
     await waitFor(() => expect(document.querySelector('[data-widget-renderer="racing-flags"]')).toBeTruthy());
@@ -150,6 +166,22 @@ describe("OverlayWorkshopDevRoute", () => {
     await waitFor(() => expect(document.querySelector("[data-widget-renderer=standings]")).toBeTruthy());
   });
 
+  it("clears a previous preview override when changing widgets", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-original&state=ready&surface=harness&variant=default&width=640&height=240" />);
+    await waitFor(() => expect(document.querySelector('[data-widget-renderer="delta"]')).toBeTruthy());
+
+    fireEvent.change(screen.getByLabelText("Widget"), { target: { value: "pedals" } });
+    await waitFor(() => expect(document.querySelector('[data-widget-renderer="pedals"]')).toBeTruthy());
+
+    const root = document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement;
+    expect(root.style.width).toBe("120px");
+    expect(root.style.height).toBe("160px");
+    expect(document.querySelector("[data-overlay-workshop-query]")?.textContent).not.toContain("width=");
+    expect(document.querySelector("[data-overlay-workshop-query]")?.textContent).not.toContain("height=");
+    expect((screen.getByLabelText("Ancho") as HTMLInputElement).value).toBe("120");
+    expect((screen.getByLabelText("Alto") as HTMLInputElement).value).toBe("160");
+  });
+
   it("keeps the scene transport inside the stage under the study view", async () => {
     render(
       <OverlayWorkshopDevRoute search="?widget=standings&system=vantare-endurance&design=standings-endurance-redline&state=ready&surface=obs&scene=standings-fastest-lap" />,
@@ -215,25 +247,33 @@ describe("OverlayWorkshopDevRoute", () => {
     expect(window.location.search).toContain("around=0");
   });
 
-  it("projects normal classification and the player window through every Efficiency style", async () => {
+  it("keeps the player window in Default without changing the visible-count semantics of V1 and Foco", async () => {
     for (const study of ["v1", "default", "v2-focus"] as const) {
       cleanup();
       render(<OverlayWorkshopDevRoute search={`?widget=standings&system=vantare-functional&variant=default&study=${study}&rows=12&playerPosition=9&around=4&state=ready&surface=obs`} />);
 
-      await waitFor(() => expect(document.querySelectorAll("[data-standings-row]")).toHaveLength(8));
+      const expectedPositions = study === "default"
+        ? ["1", "2", "3", "7", "8", "9", "10", "11"]
+        : Array.from({ length: 12 }, (_, index) => String(index + 1));
+      await waitFor(() => expect(document.querySelectorAll("[data-standings-row]")).toHaveLength(expectedPositions.length));
       const root = document.querySelector('[data-widget-renderer="standings"]');
       expect(root?.getAttribute("data-classification-mode")).toBe("normal");
       expect(root?.getAttribute("data-multiclass")).toBeNull();
       expect(document.querySelectorAll(".vf-class-band")).toHaveLength(0);
-      expect([...document.querySelectorAll("[data-standings-row] [data-metric=position]")].map((cell) => cell.textContent)).toEqual([
-        "1", "2", "3", "7", "8", "9", "10", "11",
-      ]);
-      expect(document.querySelector("[data-standings-row][data-player] [data-metric=position]")?.textContent).toBe("9");
-      expect((screen.getByLabelText("Pilotos alrededor") as HTMLSelectElement).value).toBe("4");
+      expect([...document.querySelectorAll("[data-standings-row] [data-metric=position]")].map((cell) => cell.textContent)).toEqual(expectedPositions);
+      expect(document.querySelector('[data-standings-row][data-player] [data-metric=position]')?.textContent).toBe("9");
+
+      if (study === "default") {
+        expect(screen.getByLabelText("Pilotos totales")).toBeTruthy();
+        expect((screen.getByLabelText("Pilotos alrededor") as HTMLSelectElement).value).toBe("4");
+      } else {
+        expect(screen.getByLabelText("Pilotos")).toBeTruthy();
+        expect(screen.queryByLabelText("Pilotos alrededor")).toBeNull();
+      }
     }
   });
 
-  it("keeps multiclass explicit while sharing the same player window policy", async () => {
+  it("keeps multiclass as an explicit classification while sharing the same window policy", async () => {
     render(<OverlayWorkshopDevRoute search="?widget=standings&system=vantare-functional&variant=standings-multiclass&study=v2-focus&rows=12&playerPosition=9&around=4&state=ready&surface=obs" />);
 
     await waitFor(() => expect(document.querySelectorAll("[data-standings-row]").length).toBeGreaterThan(0));
@@ -241,7 +281,7 @@ describe("OverlayWorkshopDevRoute", () => {
     expect(root?.getAttribute("data-classification-mode")).toBe("multiclass");
     expect(root?.getAttribute("data-multiclass")).toBe("true");
     expect(document.querySelectorAll(".vf-class-band").length).toBeGreaterThan(0);
-    expect(document.querySelector("[data-standings-row][data-player] [data-metric=position]")?.textContent).toBe("3");
+    expect(document.querySelector('[data-standings-row][data-player] [data-metric=position]')?.textContent).toBe("3");
   });
 
   it("renders Input history from the canonical V2 frame without seeding", async () => {
@@ -297,6 +337,24 @@ describe("OverlayWorkshopDevRoute", () => {
       expect(screen.queryByLabelText("Variante")).toBeNull();
       expect(screen.getByText("Fixture: default")).toBeTruthy();
     }
+  });
+
+  it("exposes isolated Functional Pedals background and overlay presentations", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=pedals&system=vantare-functional&variant=default&state=ready&surface=obs" />);
+    await waitFor(() => expect(document.querySelector("[data-widget-renderer=pedals]")).toBeTruthy());
+
+    expect(screen.getByRole("button", { name: "Con fondo" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Sin fondo · Solo barras" }).getAttribute("aria-pressed")).toBe("false");
+    expect(document.querySelector("[data-widget-renderer=pedals]")?.getAttribute("data-transparent")).toBe("false");
+
+    fireEvent.click(screen.getByRole("button", { name: "Sin fondo · Solo barras" }));
+    await waitFor(() => expect(document.querySelector("[data-widget-renderer=pedals]")?.getAttribute("data-transparent")).toBe("true"));
+    expect(window.location.search).toContain("design=pedals-functional-overlay");
+    expect(document.querySelectorAll("[data-widget-renderer=pedals] .vf-pedal")).toHaveLength(3);
+
+    fireEvent.click(screen.getByRole("button", { name: "Con fondo" }));
+    await waitFor(() => expect(document.querySelector("[data-widget-renderer=pedals]")?.getAttribute("data-transparent")).toBe("false"));
+    expect(window.location.search).toContain("design=pedals-functional-signature");
   });
 
   it("builds the widget from the scene, not just the telemetry", async () => {

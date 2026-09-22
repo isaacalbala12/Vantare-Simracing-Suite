@@ -30,12 +30,6 @@ export const WIDGET_PROJECTION_GAPS: Partial<Record<WidgetType, readonly Project
     },
   ],
   relative: [CAR_NUMBER_GAP],
-  delta: [
-    {
-      field: "bestLapText",
-      consequence: "la referencia de mejor vuelta no cambia en el widget Delta",
-    },
-  ],
 };
 
 export function projectionGapsFor(widget: WidgetType): readonly ProjectionGap[] {

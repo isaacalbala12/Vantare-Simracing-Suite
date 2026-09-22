@@ -2273,6 +2273,7 @@ func main() {
 		// decision only, never the license. Studio/Desktop use the native
 		// snapshot and widget-policy:changed events from the same authority.
 		WidgetPolicy: licenseSvc,
+		UILocale:     settingsSvc,
 	})
 	httpSrv.Start()
 	wailsApp.Event.On("obs:url:get", func(*application.CustomEvent) {
@@ -2801,6 +2802,39 @@ func main() {
 			telemetryCoreRuntime.EmitPerformanceLevel()
 		}
 	})
+	wailsApp.Event.On("ui-locale:get", func(_ *application.CustomEvent) {
+		emitter.Emit("ui-locale:snapshot", settingsSvc.UILocaleSnapshot())
+	})
+	wailsApp.Event.On("ui-locale:set", func(event *application.CustomEvent) {
+		var request struct {
+			Locale    string `json:"locale"`
+			RequestID string `json:"requestId"`
+		}
+		if raw, err := json.Marshal(event.Data); err == nil {
+			_ = json.Unmarshal(raw, &request)
+		}
+		snapshot, err := settingsSvc.SetUILocale(request.Locale)
+		if err != nil {
+			emitter.Emit("ui-locale:error", map[string]any{"requestId": request.RequestID, "message": err.Error()})
+			return
+		}
+		emitter.Emit("ui-locale:changed", snapshot)
+		emitter.Emit("ui-locale:confirmed", map[string]any{"requestId": request.RequestID, "locale": snapshot.Locale, "revision": snapshot.Revision})
+	})
+	wailsApp.Event.On("ui-locale:initialize", func(event *application.CustomEvent) {
+		var request struct {
+			Locale string `json:"locale"`
+		}
+		if raw, err := json.Marshal(event.Data); err == nil {
+			_ = json.Unmarshal(raw, &request)
+		}
+		snapshot, err := settingsSvc.InitializeUILocale(request.Locale)
+		if err != nil {
+			emitter.Emit("ui-locale:error", map[string]any{"message": err.Error()})
+			return
+		}
+		emitter.Emit("ui-locale:snapshot", snapshot)
+	})
 
 	wailsApp.Event.On("settings:save", func(event *application.CustomEvent) {
 		var request struct {
@@ -2827,8 +2861,10 @@ func main() {
 		confirmed, _, err := performanceSaves.Execute(func() error {
 			return settingsSvc.Update(func(live *app.AppSettings) {
 				liveEngineer := live.Engineer
+				liveUILocale := live.UILocale
 				*live = s
 				live.Engineer = liveEngineer
+				live.UILocale = liveUILocale
 			})
 		})
 		if err != nil {

@@ -106,10 +106,12 @@ func BenchmarkObservationToRadioStarted(b *testing.B) {
 }
 
 func benchmarkObservation(tb testing.TB, rivalX ...float64) engineer.ObservationSnapshotV1 {
+	return spotterObservation(tb, nil, rivalX...)
+}
+
+func spotterObservation(tb testing.TB, edit func(*telemetrycore.ObservedState), rivalX ...float64) engineer.ObservationSnapshotV1 {
 	tb.Helper()
 	run := identity.RunIdentity{Event: "event", Session: "session", Vehicle: "player", Team: "team", Driver: "driver"}
-	clock := schema.NewClock(benchmarkField(tb, time.Second), benchmarkField(tb, time.Second), time.Now().UTC())
-	header := envelope.Header{Source: "spotter-benchmark", Cursor: schema.Cursor{Epoch: 1, Sequence: 1}, Clock: clock, Identity: run}
 	orientation := spatial.Orientation{Row0: spatial.Vector3{X: 1}, Row1: spatial.Vector3{Y: 1}, Row2: spatial.Vector3{Z: 1}}
 	player := telemetrycore.VehicleState{
 		Identity: run, Player: benchmarkField(tb, true), LapNumber: benchmarkField(tb, session.LapNumber(1)),
@@ -129,6 +131,11 @@ func benchmarkObservation(tb testing.TB, rivalX ...float64) engineer.Observation
 		SourceTime: benchmarkField(tb, time.Second), PlayerPresent: benchmarkField(tb, true),
 		VehicleCount: benchmarkField(tb, schema.Count(len(vehicles))), Vehicles: vehicles,
 	}}
+	if edit != nil {
+		edit(&state.Observed)
+	}
+	clock := schema.NewClock(state.Observed.SourceTime, state.Observed.SourceTime, time.Now().UTC())
+	header := envelope.Header{Source: "spotter-benchmark", Cursor: schema.Cursor{Epoch: 1, Sequence: 1}, Clock: clock, Identity: run}
 	snapshot, err := envelope.NewSnapshot(header, state, func(value derive.FinalState) derive.FinalState {
 		value.Observed.Vehicles = slices.Clone(value.Observed.Vehicles)
 		return value

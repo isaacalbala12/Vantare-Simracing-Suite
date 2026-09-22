@@ -28,6 +28,30 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+2026-09-22 — [VAN-738](https://app.notion.com/p/3e3e51695c658171ac4cfd0e9498e642)
+/ GitHub #1303 continúa la reparación actual sobre la ruta activa de Spotter.
+Microplan: [`repair-isa-1303.md`](../../engineer/repair-isa-1303.md).
+El ciclo fijado es plan y contraste con CrewChief predeterminado → desarrollo
+con regresiones → segundo contraste con la misma fuente y revisión independiente.
+La fuente fijada exige deltas de velocidad mundo inferiores a 12 m/s en cada
+eje horizontal para admitir un solape nuevo, y clear estrictamente después de
+150 ms desde el primer vacío. La ocupación observada debe separarse del contexto
+de mensajes pendientes para revalidar el inicio y las reapariciones.
+Vantare usa velocidad canónica orientada; el estimador RF2 por historial, el
+modo oval, dos rivales en el mismo lado y audio físico permanecen fuera del corte.
+Base final `1101f735`, con VAN-737/#1302 y Widgets #1298 ya integradas desde sus
+tareas propietarias. VAN-736/#1300 (Fuel/Timings) y la PR documental aceptada
+#1295 siguen como candidatos separados, actualizados sobre esa misma base.
+Código `f81e98db`, aplicado como `552734e0`: únicamente productor y policy
+cambian producto. 41 paquetes focales, race, vet focal, build, calidad local y
+contrato roadmap PASS. Revisión independiente PASS acotado, sin P1/P2; repite
+los dos probes Spotter originales ahora verdes y conserva el control positivo.
+Clear a 1250 ms en la secuencia auditada. El replay mantiene sus 61 eventos:
+solo cambian 47 timestamps +1/+2 ms por dos ticks de 150 a 151 ms.
+Go/vet global tienen limitaciones macOS registradas en el microplan: base y
+candidato repiten 119 paquetes verdes y los mismos cuatro paquetes fallidos.
+CI remoto, PR y siguiente paso se mantienen en VAN-738. Sin integración ni promoción.
+
 ### 2026-09-22 — Reparación del camino activo y ciclo de paridad
 
 [VAN-736](https://app.notion.com/p/3e3e51695c6581ed8370e2a4b5302ae6),

@@ -1,0 +1,265 @@
+[
+  {
+    "id": "TIM-CORNERS-001",
+    "name": "Cruce fresco con lectura activada",
+    "basis": "contract_adaptation",
+    "anchors": [
+      "trigger",
+      "corner_query",
+      "corner_control",
+      "advice",
+      "landmark_history",
+      "landmark_input",
+      "landmark_select",
+      "rf2_laps",
+      "rf2_landmark",
+      "fragment_availability"
+    ],
+    "evolutions": [],
+    "input": {
+      "play_corner_names": true,
+      "new_midpoint": "C1",
+      "current_lap": 3,
+      "phase": "Green"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "corner_candidate",
+      "facts": {
+        "priority": 10,
+        "ttl_ms": 2000
+      }
+    },
+    "accepted_expected": {
+      "outcome": "corner_candidate",
+      "facts": {
+        "priority": "P2",
+        "ttl_ms": 2000,
+        "p0_preempts": true
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-CORNERS-002",
+    "name": "Nueva vuelta desactiva lectura",
+    "basis": "source",
+    "anchors": [
+      "trigger",
+      "corner_query",
+      "corner_control",
+      "advice",
+      "landmark_history",
+      "landmark_input",
+      "landmark_select",
+      "rf2_laps",
+      "rf2_landmark",
+      "fragment_availability"
+    ],
+    "evolutions": [],
+    "input": {
+      "play_corner_names": true,
+      "new_lap": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "corner_mode",
+      "facts": {
+        "enabled": false
+      }
+    },
+    "accepted_expected": {
+      "outcome": "corner_mode",
+      "facts": {
+        "enabled": false
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-CORNERS-003",
+    "name": "Nombres se evalúan antes de enable gap messages",
+    "basis": "contract_adaptation",
+    "anchors": [
+      "trigger",
+      "corner_query",
+      "corner_control",
+      "advice",
+      "landmark_history",
+      "landmark_input",
+      "landmark_select",
+      "rf2_laps",
+      "rf2_landmark",
+      "fragment_availability"
+    ],
+    "evolutions": [],
+    "input": {
+      "play_corner_names": true,
+      "new_midpoint": "C1",
+      "enable_gap_messages": false,
+      "phase": "Green"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "corner_candidate",
+      "facts": {
+        "priority": 10,
+        "ttl_ms": 2000
+      }
+    },
+    "accepted_expected": {
+      "outcome": "corner_candidate",
+      "facts": {
+        "priority": "P2",
+        "ttl_ms": 2000
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-CORNERS-004",
+    "name": "A9 midpoint retenido después de primer started",
+    "basis": "accepted_evolution",
+    "anchors": [
+      "trigger",
+      "corner_query",
+      "corner_control",
+      "advice",
+      "landmark_history",
+      "landmark_input",
+      "landmark_select",
+      "rf2_laps",
+      "rf2_landmark",
+      "fragment_availability"
+    ],
+    "evolutions": [
+      "A9"
+    ],
+    "input": {
+      "crossing_id": "lap3:C1:1",
+      "midpoint": "C1",
+      "next_tick_valid": false,
+      "first_message_started": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "midpoint_crossing"
+      },
+      {
+        "at_ms": 100,
+        "event": "started"
+      },
+      {
+        "at_ms": 200,
+        "event": "frozen_tick"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "enqueue_attempt_again",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "no_repeat",
+      "facts": {}
+    },
+    "note": "La fuente conserva midpoint al salir pronto. Se afirma intento repetido, no doble sonido; dedup puede ocultarlo mientras está pendiente."
+  },
+  {
+    "id": "TIM-CORNERS-005",
+    "name": "Landmark exige tres muestras por lado",
+    "basis": "source",
+    "anchors": [
+      "trigger",
+      "corner_query",
+      "corner_control",
+      "advice",
+      "landmark_history",
+      "landmark_input",
+      "landmark_select",
+      "rf2_laps",
+      "rf2_landmark",
+      "fragment_availability"
+    ],
+    "evolutions": [],
+    "input": {
+      "player_landmark_samples": 3,
+      "opponent_landmark_samples": 2
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "no_advice",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "no_advice",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-CORNERS-006",
+    "name": "Landmark no aprende antes de 30 segundos",
+    "basis": "source",
+    "anchors": [
+      "trigger",
+      "corner_query",
+      "corner_control",
+      "advice",
+      "landmark_history",
+      "landmark_input",
+      "landmark_select",
+      "rf2_laps",
+      "rf2_landmark",
+      "fragment_availability"
+    ],
+    "evolutions": [],
+    "input": {
+      "game_time_s": 29.999,
+      "distance_m": 100,
+      "speed_mps": 20,
+      "moving": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "no_landmark_sample",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "no_landmark_sample",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  }
+]

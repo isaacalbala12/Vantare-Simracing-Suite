@@ -1,0 +1,468 @@
+[
+  {
+    "id": "TIM-END-001",
+    "name": "Tiempo restante -1",
+    "basis": "source",
+    "anchors": [
+      "end",
+      "track_length",
+      "rf2_laps"
+    ],
+    "evolutions": [],
+    "input": {
+      "fixed_time": true,
+      "remaining_s": -1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": false
+      }
+    },
+    "accepted_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": false
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-END-002",
+    "name": "Tiempo restante -0.5",
+    "basis": "source",
+    "anchors": [
+      "end",
+      "track_length",
+      "rf2_laps"
+    ],
+    "evolutions": [],
+    "input": {
+      "fixed_time": true,
+      "remaining_s": -0.5
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": true
+      }
+    },
+    "accepted_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": true
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-END-003",
+    "name": "Tiempo restante 0",
+    "basis": "source",
+    "anchors": [
+      "end",
+      "track_length",
+      "rf2_laps"
+    ],
+    "evolutions": [],
+    "input": {
+      "fixed_time": true,
+      "remaining_s": 0
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": true
+      }
+    },
+    "accepted_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": true
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-END-004",
+    "name": "Tiempo restante 119.999",
+    "basis": "source",
+    "anchors": [
+      "end",
+      "track_length",
+      "rf2_laps"
+    ],
+    "evolutions": [],
+    "input": {
+      "fixed_time": true,
+      "remaining_s": 119.999
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": true
+      }
+    },
+    "accepted_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": true
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-END-005",
+    "name": "Tiempo restante 120",
+    "basis": "source",
+    "anchors": [
+      "end",
+      "track_length",
+      "rf2_laps"
+    ],
+    "evolutions": [],
+    "input": {
+      "fixed_time": true,
+      "remaining_s": 120
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": false
+      }
+    },
+    "accepted_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": false
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-END-006",
+    "name": "Última vuelta 10000m sector 1",
+    "basis": "source",
+    "anchors": [
+      "end",
+      "track_length",
+      "rf2_laps"
+    ],
+    "evolutions": [],
+    "input": {
+      "fixed_time": false,
+      "laps_remaining": 0,
+      "length_m": 10000,
+      "sector": 1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": true
+      }
+    },
+    "accepted_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": true
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-END-007",
+    "name": "Última vuelta 10001m sector 1",
+    "basis": "source",
+    "anchors": [
+      "end",
+      "track_length",
+      "rf2_laps"
+    ],
+    "evolutions": [],
+    "input": {
+      "fixed_time": false,
+      "laps_remaining": 0,
+      "length_m": 10001,
+      "sector": 1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": false
+      }
+    },
+    "accepted_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": false
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-END-008",
+    "name": "Última vuelta 10001m sector 2",
+    "basis": "source",
+    "anchors": [
+      "end",
+      "track_length",
+      "rf2_laps"
+    ],
+    "evolutions": [],
+    "input": {
+      "fixed_time": false,
+      "laps_remaining": 0,
+      "length_m": 10001,
+      "sector": 2
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": true
+      }
+    },
+    "accepted_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": true
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-END-009",
+    "name": "Última vuelta 20000m sector 2",
+    "basis": "source",
+    "anchors": [
+      "end",
+      "track_length",
+      "rf2_laps"
+    ],
+    "evolutions": [],
+    "input": {
+      "fixed_time": false,
+      "laps_remaining": 0,
+      "length_m": 20000,
+      "sector": 2
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": true
+      }
+    },
+    "accepted_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": true
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-END-010",
+    "name": "Última vuelta 20001m sector 2",
+    "basis": "source",
+    "anchors": [
+      "end",
+      "track_length",
+      "rf2_laps"
+    ],
+    "evolutions": [],
+    "input": {
+      "fixed_time": false,
+      "laps_remaining": 0,
+      "length_m": 20001,
+      "sector": 2
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": false
+      }
+    },
+    "accepted_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": false
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-END-011",
+    "name": "Última vuelta 20001m sector 3",
+    "basis": "source",
+    "anchors": [
+      "end",
+      "track_length",
+      "rf2_laps"
+    ],
+    "evolutions": [],
+    "input": {
+      "fixed_time": false,
+      "laps_remaining": 0,
+      "length_m": 20001,
+      "sector": 3
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": true
+      }
+    },
+    "accepted_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": true
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-END-012",
+    "name": "Vueltas negativas no son cero",
+    "basis": "source",
+    "anchors": [
+      "end",
+      "track_length",
+      "rf2_laps"
+    ],
+    "evolutions": [],
+    "input": {
+      "fixed_time": false,
+      "laps_remaining": -1,
+      "length_m": 5000,
+      "sector": 3
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": false
+      }
+    },
+    "accepted_expected": {
+      "outcome": "near_end",
+      "facts": {
+        "suppressed": false
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-END-013",
+    "name": "Duración ausente",
+    "basis": "contract_adaptation",
+    "anchors": [
+      "end",
+      "track_length",
+      "rf2_laps"
+    ],
+    "evolutions": [],
+    "input": {
+      "fixed_time": null,
+      "remaining_s": null,
+      "quality": "missing"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "requires_duration",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "silent_unknown",
+      "facts": {}
+    },
+    "note": "No inferir remaining=0 ni carrera por vueltas desde missing; contrato Vantare de información insuficiente."
+  }
+]

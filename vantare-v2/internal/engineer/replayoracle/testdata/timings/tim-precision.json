@@ -1,0 +1,650 @@
+[
+  {
+    "id": "TIM-PRECISION-001",
+    "name": "Precisión 0.49 oval=False hundredths=True",
+    "basis": "source",
+    "anchors": [
+      "precision",
+      "precision_class",
+      "rounding",
+      "reader_selection",
+      "reader_en",
+      "reader_it",
+      "reader_it2",
+      "reader_pt",
+      "delta_content",
+      "fragment_availability"
+    ],
+    "evolutions": [],
+    "input": {
+      "locale": "en",
+      "gap_s": 0.49,
+      "class_hundredths": true,
+      "oval": false,
+      "reader_pack_version": 107
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "precision",
+      "facts": {
+        "precision": "hundredths"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "precision",
+      "facts": {
+        "precision": "hundredths"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-PRECISION-002",
+    "name": "Precisión 0.5 oval=False hundredths=True",
+    "basis": "source",
+    "anchors": [
+      "precision",
+      "precision_class",
+      "rounding",
+      "reader_selection",
+      "reader_en",
+      "reader_it",
+      "reader_it2",
+      "reader_pt",
+      "delta_content",
+      "fragment_availability"
+    ],
+    "evolutions": [],
+    "input": {
+      "locale": "en",
+      "gap_s": 0.5,
+      "class_hundredths": true,
+      "oval": false,
+      "reader_pack_version": 107
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "precision",
+      "facts": {
+        "precision": "tenths"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "precision",
+      "facts": {
+        "precision": "tenths"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-PRECISION-003",
+    "name": "Precisión 10 oval=False hundredths=True",
+    "basis": "source",
+    "anchors": [
+      "precision",
+      "precision_class",
+      "rounding",
+      "reader_selection",
+      "reader_en",
+      "reader_it",
+      "reader_it2",
+      "reader_pt",
+      "delta_content",
+      "fragment_availability"
+    ],
+    "evolutions": [],
+    "input": {
+      "locale": "en",
+      "gap_s": 10,
+      "class_hundredths": true,
+      "oval": false,
+      "reader_pack_version": 107
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "precision",
+      "facts": {
+        "precision": "tenths"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "precision",
+      "facts": {
+        "precision": "tenths"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-PRECISION-004",
+    "name": "Precisión 10.001 oval=False hundredths=True",
+    "basis": "source",
+    "anchors": [
+      "precision",
+      "precision_class",
+      "rounding",
+      "reader_selection",
+      "reader_en",
+      "reader_it",
+      "reader_it2",
+      "reader_pt",
+      "delta_content",
+      "fragment_availability"
+    ],
+    "evolutions": [],
+    "input": {
+      "locale": "en",
+      "gap_s": 10.001,
+      "class_hundredths": true,
+      "oval": false,
+      "reader_pack_version": 107
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "precision",
+      "facts": {
+        "precision": "seconds"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "precision",
+      "facts": {
+        "precision": "seconds"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-PRECISION-005",
+    "name": "Precisión 0.49 oval=True hundredths=True",
+    "basis": "source",
+    "anchors": [
+      "precision",
+      "precision_class",
+      "rounding",
+      "reader_selection",
+      "reader_en",
+      "reader_it",
+      "reader_it2",
+      "reader_pt",
+      "delta_content",
+      "fragment_availability"
+    ],
+    "evolutions": [],
+    "input": {
+      "locale": "en",
+      "gap_s": 0.49,
+      "class_hundredths": true,
+      "oval": true,
+      "reader_pack_version": 107
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "precision",
+      "facts": {
+        "precision": "hundredths"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "precision",
+      "facts": {
+        "precision": "hundredths"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-PRECISION-006",
+    "name": "Precisión 0.49 oval=False hundredths=False",
+    "basis": "source",
+    "anchors": [
+      "precision",
+      "precision_class",
+      "rounding",
+      "reader_selection",
+      "reader_en",
+      "reader_it",
+      "reader_it2",
+      "reader_pt",
+      "delta_content",
+      "fragment_availability"
+    ],
+    "evolutions": [],
+    "input": {
+      "locale": "en",
+      "gap_s": 0.49,
+      "class_hundredths": false,
+      "oval": false,
+      "reader_pack_version": 107
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "precision",
+      "facts": {
+        "precision": "tenths"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "precision",
+      "facts": {
+        "precision": "tenths"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-PRECISION-007",
+    "name": "A6 it cifra corta",
+    "basis": "accepted_evolution",
+    "anchors": [
+      "precision",
+      "precision_class",
+      "rounding",
+      "reader_selection",
+      "reader_en",
+      "reader_it",
+      "reader_it2",
+      "reader_pt",
+      "delta_content",
+      "fragment_availability"
+    ],
+    "evolutions": [
+      "A6"
+    ],
+    "input": {
+      "locale": "it",
+      "gap_s": 0.46,
+      "class_hundredths": true,
+      "oval": false,
+      "reader_path": "long"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "number",
+      "facts": {
+        "precision": "hundredths",
+        "rendered_s": 0.5
+      }
+    },
+    "accepted_expected": {
+      "outcome": "number",
+      "facts": {
+        "precision": "hundredths",
+        "rendered_s": 0.46
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-PRECISION-008",
+    "name": "A6 it2 cifra corta",
+    "basis": "accepted_evolution",
+    "anchors": [
+      "precision",
+      "precision_class",
+      "rounding",
+      "reader_selection",
+      "reader_en",
+      "reader_it",
+      "reader_it2",
+      "reader_pt",
+      "delta_content",
+      "fragment_availability"
+    ],
+    "evolutions": [
+      "A6"
+    ],
+    "input": {
+      "locale": "it",
+      "gap_s": 0.46,
+      "class_hundredths": true,
+      "oval": false,
+      "reader_path": "long",
+      "reader_pack_version": 150,
+      "reader": "It2"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "number",
+      "facts": {
+        "precision": "hundredths",
+        "rendered_s": 0.5
+      }
+    },
+    "accepted_expected": {
+      "outcome": "number",
+      "facts": {
+        "precision": "hundredths",
+        "rendered_s": 0.46
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-PRECISION-009",
+    "name": "A6 pt-BR cifra corta",
+    "basis": "accepted_evolution",
+    "anchors": [
+      "precision",
+      "precision_class",
+      "rounding",
+      "reader_selection",
+      "reader_en",
+      "reader_it",
+      "reader_it2",
+      "reader_pt",
+      "delta_content",
+      "fragment_availability"
+    ],
+    "evolutions": [
+      "A6"
+    ],
+    "input": {
+      "locale": "pt-BR",
+      "gap_s": 0.46,
+      "class_hundredths": true,
+      "oval": false,
+      "reader_path": "long"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "number",
+      "facts": {
+        "precision": "hundredths",
+        "rendered_s": 0.5
+      }
+    },
+    "accepted_expected": {
+      "outcome": "number",
+      "facts": {
+        "precision": "hundredths",
+        "rendered_s": 0.46
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-PRECISION-010",
+    "name": "A6 cifra superior a diez",
+    "basis": "accepted_evolution",
+    "anchors": [
+      "precision",
+      "precision_class",
+      "rounding",
+      "reader_selection",
+      "reader_en",
+      "reader_it",
+      "reader_it2",
+      "reader_pt",
+      "delta_content",
+      "fragment_availability"
+    ],
+    "evolutions": [
+      "A6"
+    ],
+    "input": {
+      "locale": "it",
+      "gap_s": 10.6,
+      "class_hundredths": false,
+      "reader_path": "long"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "number",
+      "facts": {
+        "precision": "seconds",
+        "rendered_s": 10.6
+      }
+    },
+    "accepted_expected": {
+      "outcome": "number",
+      "facts": {
+        "precision": "seconds",
+        "rendered_s": 10
+      }
+    },
+    "note": "Objetivo numérico equivalente al lector EN moderno; realización y escucha propia pendientes."
+  },
+  {
+    "id": "TIM-PRECISION-011",
+    "name": "Español de referencia usa factory EN",
+    "basis": "source",
+    "anchors": [
+      "precision",
+      "precision_class",
+      "rounding",
+      "reader_selection",
+      "reader_en",
+      "reader_it",
+      "reader_it2",
+      "reader_pt",
+      "delta_content",
+      "fragment_availability"
+    ],
+    "evolutions": [],
+    "input": {
+      "locale": "es",
+      "reader_pack_version": 107,
+      "gap_s": 0.46,
+      "class_hundredths": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "number",
+      "facts": {
+        "reader": "en",
+        "rendered_s": 0.46
+      }
+    },
+    "accepted_expected": {
+      "outcome": "number",
+      "facts": {
+        "reader": "en",
+        "rendered_s": 0.46
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-PRECISION-012",
+    "name": "Umbral oval 1.999",
+    "basis": "source",
+    "anchors": [
+      "precision",
+      "precision_class",
+      "rounding",
+      "reader_selection",
+      "reader_en",
+      "reader_it",
+      "reader_it2",
+      "reader_pt",
+      "delta_content",
+      "fragment_availability"
+    ],
+    "evolutions": [],
+    "input": {
+      "locale": "en",
+      "gap_s": 1.999,
+      "class_hundredths": true,
+      "oval": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "precision",
+      "facts": {
+        "precision": "hundredths"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "precision",
+      "facts": {
+        "precision": "hundredths"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-PRECISION-013",
+    "name": "Umbral oval 2",
+    "basis": "source",
+    "anchors": [
+      "precision",
+      "precision_class",
+      "rounding",
+      "reader_selection",
+      "reader_en",
+      "reader_it",
+      "reader_it2",
+      "reader_pt",
+      "delta_content",
+      "fragment_availability"
+    ],
+    "evolutions": [],
+    "input": {
+      "locale": "en",
+      "gap_s": 2,
+      "class_hundredths": true,
+      "oval": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "precision",
+      "facts": {
+        "precision": "tenths"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "precision",
+      "facts": {
+        "precision": "tenths"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-PRECISION-014",
+    "name": "Carry de milisegundos superior a 949",
+    "basis": "source",
+    "anchors": [
+      "precision",
+      "precision_class",
+      "rounding",
+      "reader_selection",
+      "reader_en",
+      "reader_it",
+      "reader_it2",
+      "reader_pt",
+      "delta_content",
+      "fragment_availability"
+    ],
+    "evolutions": [],
+    "input": {
+      "locale": "en",
+      "gap_s": 0.95,
+      "class_hundredths": true,
+      "oval": true,
+      "reader_pack_version": 107
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "number",
+      "facts": {
+        "precision": "hundredths",
+        "rendered_s": 1
+      }
+    },
+    "accepted_expected": {
+      "outcome": "number",
+      "facts": {
+        "precision": "hundredths",
+        "rendered_s": 1
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  }
+]

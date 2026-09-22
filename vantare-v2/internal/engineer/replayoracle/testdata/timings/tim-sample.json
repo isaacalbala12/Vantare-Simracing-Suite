@@ -1,0 +1,510 @@
+[
+  {
+    "id": "TIM-SAMPLE-001",
+    "name": "Cruce exacto",
+    "basis": "source",
+    "anchors": [
+      "sampling",
+      "gap_points",
+      "track_constants",
+      "rf2_track",
+      "rf2_hardparts",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "previous_distance_m": 779,
+      "distance_m": 780,
+      "gap_points_m": [
+        780,
+        1560
+      ],
+      "new_sector": false
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "sample",
+      "facts": {
+        "opportunities": 1
+      }
+    },
+    "accepted_expected": {
+      "outcome": "sample",
+      "facts": {
+        "opportunities": 1
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SAMPLE-002",
+    "name": "Ya estaba en el punto",
+    "basis": "source",
+    "anchors": [
+      "sampling",
+      "gap_points",
+      "track_constants",
+      "rf2_track",
+      "rf2_hardparts",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "previous_distance_m": 780,
+      "distance_m": 781,
+      "gap_points_m": [
+        780
+      ],
+      "new_sector": false
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "sample",
+      "facts": {
+        "opportunities": 0
+      }
+    },
+    "accepted_expected": {
+      "outcome": "sample",
+      "facts": {
+        "opportunities": 0
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SAMPLE-003",
+    "name": "Dos puntos cruzados cuentan una vez",
+    "basis": "source",
+    "anchors": [
+      "sampling",
+      "gap_points",
+      "track_constants",
+      "rf2_track",
+      "rf2_hardparts",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "previous_distance_m": 700,
+      "distance_m": 1600,
+      "gap_points_m": [
+        780,
+        1560
+      ],
+      "new_sector": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "sample",
+      "facts": {
+        "opportunities": 1
+      }
+    },
+    "accepted_expected": {
+      "outcome": "sample",
+      "facts": {
+        "opportunities": 1
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SAMPLE-004",
+    "name": "Duplicado",
+    "basis": "source",
+    "anchors": [
+      "sampling",
+      "gap_points",
+      "track_constants",
+      "rf2_track",
+      "rf2_hardparts",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "previous_distance_m": 780,
+      "distance_m": 780,
+      "gap_points_m": [
+        780
+      ],
+      "new_sector": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "sample",
+      "facts": {
+        "opportunities": 0
+      }
+    },
+    "accepted_expected": {
+      "outcome": "sample",
+      "facts": {
+        "opportunities": 0
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SAMPLE-005",
+    "name": "Meta no cruza un gap point hacia delante",
+    "basis": "source",
+    "anchors": [
+      "sampling",
+      "gap_points",
+      "track_constants",
+      "rf2_track",
+      "rf2_hardparts",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "previous_distance_m": 4950,
+      "distance_m": 30,
+      "gap_points_m": [
+        780,
+        4950
+      ],
+      "new_sector": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "sample",
+      "facts": {
+        "opportunities": 0
+      }
+    },
+    "accepted_expected": {
+      "outcome": "sample",
+      "facts": {
+        "opportunities": 0
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SAMPLE-006",
+    "name": "Retroceso",
+    "basis": "source",
+    "anchors": [
+      "sampling",
+      "gap_points",
+      "track_constants",
+      "rf2_track",
+      "rf2_hardparts",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "previous_distance_m": 800,
+      "distance_m": 700,
+      "gap_points_m": [
+        780
+      ],
+      "new_sector": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "sample",
+      "facts": {
+        "opportunities": 0
+      }
+    },
+    "accepted_expected": {
+      "outcome": "sample",
+      "facts": {
+        "opportunities": 0
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SAMPLE-007",
+    "name": "Sin gap points se usa sector",
+    "basis": "source",
+    "anchors": [
+      "sampling",
+      "gap_points",
+      "track_constants",
+      "rf2_track",
+      "rf2_hardparts",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "previous_distance_m": 200,
+      "distance_m": 210,
+      "gap_points_m": [],
+      "new_sector": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "sample",
+      "facts": {
+        "opportunities": 1
+      }
+    },
+    "accepted_expected": {
+      "outcome": "sample",
+      "facts": {
+        "opportunities": 1
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SAMPLE-008",
+    "name": "Gap points sustituyen sector",
+    "basis": "source",
+    "anchors": [
+      "sampling",
+      "gap_points",
+      "track_constants",
+      "rf2_track",
+      "rf2_hardparts",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "previous_distance_m": 100,
+      "distance_m": 110,
+      "gap_points_m": [
+        780
+      ],
+      "new_sector": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "sample",
+      "facts": {
+        "opportunities": 0
+      }
+    },
+    "accepted_expected": {
+      "outcome": "sample",
+      "facts": {
+        "opportunities": 0
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SAMPLE-009",
+    "name": "Pista de dos sectores",
+    "basis": "source",
+    "anchors": [
+      "sampling",
+      "gap_points",
+      "track_constants",
+      "rf2_track",
+      "rf2_hardparts",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "length_m": 5000,
+      "sectors": 2
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "gap_points",
+      "facts": {
+        "points_m": [
+          2500,
+          4950
+        ]
+      }
+    },
+    "accepted_expected": {
+      "outcome": "gap_points",
+      "facts": {
+        "points_m": [
+          2500,
+          4950
+        ]
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SAMPLE-010",
+    "name": "Longitud exacta 3300",
+    "basis": "source",
+    "anchors": [
+      "sampling",
+      "gap_points",
+      "track_constants",
+      "rf2_track",
+      "rf2_hardparts",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "length_m": 3300,
+      "sectors": 3
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "gap_points",
+      "facts": {
+        "points_m": []
+      }
+    },
+    "accepted_expected": {
+      "outcome": "gap_points",
+      "facts": {
+        "points_m": []
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SAMPLE-011",
+    "name": "Por encima de 3300",
+    "basis": "source",
+    "anchors": [
+      "sampling",
+      "gap_points",
+      "track_constants",
+      "rf2_track",
+      "rf2_hardparts",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "length_m": 3301,
+      "sectors": 3
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "gap_points",
+      "facts": {
+        "points_m": [
+          780,
+          1560,
+          2340,
+          3251
+        ]
+      }
+    },
+    "accepted_expected": {
+      "outcome": "gap_points",
+      "facts": {
+        "points_m": [
+          780,
+          1560,
+          2340,
+          3251
+        ]
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SAMPLE-012",
+    "name": "Hard part incluye ambos extremos",
+    "basis": "source",
+    "anchors": [
+      "sampling",
+      "gap_points",
+      "track_constants",
+      "rf2_track",
+      "rf2_hardparts",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "gap_point_m": 780,
+      "hard_part_start_m": 780,
+      "hard_part_end_m": 900
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "adjust_point",
+      "facts": {
+        "point_m": 900,
+        "next_candidate_m": 1680
+      }
+    },
+    "accepted_expected": {
+      "outcome": "adjust_point",
+      "facts": {
+        "point_m": 900,
+        "next_candidate_m": 1680
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  }
+]

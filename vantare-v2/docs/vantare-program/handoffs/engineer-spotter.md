@@ -28,6 +28,31 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+### 2026-09-22 — T0b: corpus independiente y taxonomía de señales
+
+[VAN-745](https://app.notion.com/p/3e3e51695c65815a882dceaf13cde9e6) / #1316,
+rama `vantareapp/isa-1316-timings-fixtures`, base nightly `e41f703c`.
+La reparación conjunta PR1311 ya está integrada en esa base; la entrada de
+composición siguiente conserva su estado histórico anterior al merge.
+T0a y A1–A9 están aceptados en VAN-743. Su PR1313 sigue como entrega separada;
+se usa su ledger fijado en `166ff3c5` sin fusionar/copiar commits pendientes.
+
+[Corpus](../../../internal/engineer/replayoracle/testdata/timings/README.md):
+141 escenarios de las 15 reglas, 36 defaults, expected escrito desde fuente
+CrewChief `4c3865e0` y objetivo aceptado separado, reloj virtual/sorteos
+inyectados. [Matriz](../../analysis/engineer/timings/data-matrix.md) con
+procedencia/calidad por señal y decisión: ObservationV1 sirve para iniciar
+T1 sintético; delta temporal de pasos, geometría, fase/banderas y contexto pits
+siguen bloqueando paridad LMU. No cambia el runtime, proyección ni audio.
+
+GPT-6 Sol revisa fuente/señales y GPT-6 Luna integridad del corpus. La revisión
+corrige precondiciones de líder/último, selección e It2 y endurece el perfil
+completo de ajustes. Hashes de 23 fuentes/120 anclas comprobados contra el pin.
+Checks y SHA/CI final se conservan en Notion/PR. El PASS del corpus no ejecuta
+CrewChief ni demuestra comportamiento Vantare, voz o primer sonido: esos gates
+siguen NOT_RUN. VAN-744 y VAN-741 no se cierran. Siguiente: review de T0b y tarea
+T1 propia, con fixtures RED del producto. Sin promoción de canal en este corte.
+
 ### 2026-09-22 — Composición revisada sobre Wails beta.24
 
 [VAN-742](https://app.notion.com/p/3e3e51695c6581a5aeb7ffca7dec48f6) / #1310

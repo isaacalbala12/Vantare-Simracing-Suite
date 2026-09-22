@@ -1,0 +1,807 @@
+[
+  {
+    "id": "TIM-STATE-001",
+    "name": "Dos muestras aunque sean cercanas",
+    "basis": "source",
+    "anchors": [
+      "state_classification",
+      "samples",
+      "trigger"
+    ],
+    "evolutions": [],
+    "input": {
+      "latest_first_gaps_s": [
+        0.3,
+        0.3
+      ],
+      "rival_ids": [
+        "B",
+        "B"
+      ],
+      "last_reported_s": -1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "NONE"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "NONE"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-STATE-002",
+    "name": "Muestra cero",
+    "basis": "source",
+    "anchors": [
+      "state_classification",
+      "samples",
+      "trigger"
+    ],
+    "evolutions": [],
+    "input": {
+      "latest_first_gaps_s": [
+        2,
+        0,
+        2
+      ],
+      "rival_ids": [
+        "B",
+        "B",
+        "B"
+      ],
+      "last_reported_s": -1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "NONE"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "NONE"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-STATE-003",
+    "name": "Veinte segundos exactos",
+    "basis": "source",
+    "anchors": [
+      "state_classification",
+      "samples",
+      "trigger"
+    ],
+    "evolutions": [],
+    "input": {
+      "latest_first_gaps_s": [
+        20,
+        19,
+        18
+      ],
+      "rival_ids": [
+        "B",
+        "B",
+        "B"
+      ],
+      "last_reported_s": -1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "INCREASING"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "INCREASING"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-STATE-004",
+    "name": "Mayor de veinte",
+    "basis": "source",
+    "anchors": [
+      "state_classification",
+      "samples",
+      "trigger"
+    ],
+    "evolutions": [],
+    "input": {
+      "latest_first_gaps_s": [
+        20.001,
+        19,
+        18
+      ],
+      "rival_ids": [
+        "B",
+        "B",
+        "B"
+      ],
+      "last_reported_s": -1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "NONE"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "NONE"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-STATE-005",
+    "name": "Salto exacto cinco",
+    "basis": "source",
+    "anchors": [
+      "state_classification",
+      "samples",
+      "trigger"
+    ],
+    "evolutions": [],
+    "input": {
+      "latest_first_gaps_s": [
+        10,
+        5,
+        4
+      ],
+      "rival_ids": [
+        "B",
+        "B",
+        "B"
+      ],
+      "last_reported_s": -1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "INCREASING"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "INCREASING"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-STATE-006",
+    "name": "Salto mayor cinco",
+    "basis": "source",
+    "anchors": [
+      "state_classification",
+      "samples",
+      "trigger"
+    ],
+    "evolutions": [],
+    "input": {
+      "latest_first_gaps_s": [
+        10.001,
+        5,
+        4
+      ],
+      "rival_ids": [
+        "B",
+        "B",
+        "B"
+      ],
+      "last_reported_s": -1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "NONE"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "NONE"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-STATE-007",
+    "name": "Cercano dos últimas",
+    "basis": "source",
+    "anchors": [
+      "state_classification",
+      "samples",
+      "trigger"
+    ],
+    "evolutions": [],
+    "input": {
+      "latest_first_gaps_s": [
+        0.49,
+        0.49,
+        2
+      ],
+      "rival_ids": [
+        "B",
+        "B",
+        "B"
+      ],
+      "last_reported_s": -1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "CLOSE"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "CLOSE"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-STATE-008",
+    "name": "Exacto 0.5 no activa par",
+    "basis": "source",
+    "anchors": [
+      "state_classification",
+      "samples",
+      "trigger"
+    ],
+    "evolutions": [],
+    "input": {
+      "latest_first_gaps_s": [
+        0.5,
+        0.5,
+        2
+      ],
+      "rival_ids": [
+        "B",
+        "B",
+        "B"
+      ],
+      "last_reported_s": -1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "NONE"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "NONE"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-STATE-009",
+    "name": "Cercano tres",
+    "basis": "source",
+    "anchors": [
+      "state_classification",
+      "samples",
+      "trigger"
+    ],
+    "evolutions": [],
+    "input": {
+      "latest_first_gaps_s": [
+        0.69,
+        0.69,
+        0.69
+      ],
+      "rival_ids": [
+        "B",
+        "B",
+        "B"
+      ],
+      "last_reported_s": -1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "CLOSE"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "CLOSE"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-STATE-010",
+    "name": "Exacto 0.7 en tres",
+    "basis": "source",
+    "anchors": [
+      "state_classification",
+      "samples",
+      "trigger"
+    ],
+    "evolutions": [],
+    "input": {
+      "latest_first_gaps_s": [
+        0.7,
+        0.7,
+        0.7
+      ],
+      "rival_ids": [
+        "B",
+        "B",
+        "B"
+      ],
+      "last_reported_s": -1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "OTHER"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "OTHER"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-STATE-011",
+    "name": "Cercano cuatro",
+    "basis": "source",
+    "anchors": [
+      "state_classification",
+      "samples",
+      "trigger"
+    ],
+    "evolutions": [],
+    "input": {
+      "latest_first_gaps_s": [
+        0.79,
+        0.79,
+        0.79,
+        0.79
+      ],
+      "rival_ids": [
+        "B",
+        "B",
+        "B",
+        "B"
+      ],
+      "last_reported_s": -1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "CLOSE"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "CLOSE"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-STATE-012",
+    "name": "Exacto 0.8 en cuatro",
+    "basis": "source",
+    "anchors": [
+      "state_classification",
+      "samples",
+      "trigger"
+    ],
+    "evolutions": [],
+    "input": {
+      "latest_first_gaps_s": [
+        0.8,
+        0.8,
+        0.8,
+        0.8
+      ],
+      "rival_ids": [
+        "B",
+        "B",
+        "B",
+        "B"
+      ],
+      "last_reported_s": -1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "OTHER"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "OTHER"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-STATE-013",
+    "name": "Monotonía desaparece al redondear",
+    "basis": "source",
+    "anchors": [
+      "state_classification",
+      "samples",
+      "trigger"
+    ],
+    "evolutions": [],
+    "input": {
+      "latest_first_gaps_s": [
+        2.04,
+        2.03,
+        2.02
+      ],
+      "rival_ids": [
+        "B",
+        "B",
+        "B"
+      ],
+      "last_reported_s": -1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "OTHER"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "OTHER"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-STATE-014",
+    "name": "Diferencia exacta uno no es estable",
+    "basis": "source",
+    "anchors": [
+      "state_classification",
+      "samples",
+      "trigger"
+    ],
+    "evolutions": [],
+    "input": {
+      "latest_first_gaps_s": [
+        3,
+        2,
+        3
+      ],
+      "rival_ids": [
+        "B",
+        "B",
+        "B"
+      ],
+      "last_reported_s": -1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "NONE"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "NONE"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-STATE-015",
+    "name": "Último reportado usa entero midpoint par",
+    "basis": "source",
+    "anchors": [
+      "state_classification",
+      "samples",
+      "trigger"
+    ],
+    "evolutions": [],
+    "input": {
+      "latest_first_gaps_s": [
+        2.3,
+        2.4,
+        2.5
+      ],
+      "rival_ids": [
+        "B",
+        "B",
+        "B"
+      ],
+      "last_reported_s": 2.5
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "OTHER",
+        "rounded_last_reported": 2
+      }
+    },
+    "accepted_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "OTHER",
+        "rounded_last_reported": 2
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-STATE-016",
+    "name": "A1 tercera muestra detrás",
+    "basis": "accepted_evolution",
+    "anchors": [
+      "state_classification",
+      "samples",
+      "trigger"
+    ],
+    "evolutions": [
+      "A1"
+    ],
+    "input": {
+      "relation": "race_rear",
+      "chronological_gaps_s": [
+        3.2,
+        3.0,
+        2.8
+      ],
+      "rival_id": "B",
+      "last_reported_s": -1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "sample"
+      },
+      {
+        "at_ms": 1000,
+        "event": "sample"
+      },
+      {
+        "at_ms": 2000,
+        "event": "sample"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "NONE"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "DECREASING"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-STATE-017",
+    "name": "A1 cambio de tendencia en muestra actual",
+    "basis": "accepted_evolution",
+    "anchors": [
+      "state_classification",
+      "samples",
+      "trigger"
+    ],
+    "evolutions": [
+      "A1"
+    ],
+    "input": {
+      "relation": "race_rear",
+      "chronological_gaps_s": [
+        3.2,
+        3.0,
+        2.8,
+        4.0
+      ],
+      "rival_id": "B",
+      "last_reported_s": -1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "DECREASING"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "NONE"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-STATE-018",
+    "name": "A2 helper aislado con rivales mezclados",
+    "basis": "accepted_evolution",
+    "anchors": [
+      "state_classification",
+      "samples",
+      "trigger"
+    ],
+    "evolutions": [
+      "A2"
+    ],
+    "input": {
+      "latest_first_gaps_s": [
+        3,
+        2,
+        1
+      ],
+      "rival_ids": [
+        "B",
+        "C",
+        "D"
+      ],
+      "last_reported_s": -1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "INCREASING"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "state",
+      "facts": {
+        "state": "NONE"
+      }
+    },
+    "note": "Helper aislado: los resets exteriores pueden impedir llegar aquí en LMU; no se afirma reproducción end-to-end."
+  }
+]

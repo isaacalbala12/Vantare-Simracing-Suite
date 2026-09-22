@@ -1,0 +1,446 @@
+[
+  {
+    "id": "TIM-SILENCE-001",
+    "name": "Amarillo local",
+    "basis": "source",
+    "anchors": [
+      "phase",
+      "dispatch",
+      "trigger",
+      "not_racing",
+      "quiet",
+      "wake",
+      "queue_filter",
+      "regular",
+      "moderator_queue",
+      "verbosity",
+      "rf2_flags",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "local_yellow": true,
+      "all_other_automatic_gates": "valid"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SILENCE-002",
+    "name": "Azul",
+    "basis": "source",
+    "anchors": [
+      "phase",
+      "dispatch",
+      "trigger",
+      "not_racing",
+      "quiet",
+      "wake",
+      "queue_filter",
+      "regular",
+      "moderator_queue",
+      "verbosity",
+      "rf2_flags",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "blue": true,
+      "all_other_automatic_gates": "valid"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SILENCE-003",
+    "name": "FCY vuelta actual",
+    "basis": "source",
+    "anchors": [
+      "phase",
+      "dispatch",
+      "trigger",
+      "not_racing",
+      "quiet",
+      "wake",
+      "queue_filter",
+      "regular",
+      "moderator_queue",
+      "verbosity",
+      "rf2_flags",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "current_lap_fcy": true,
+      "all_other_automatic_gates": "valid"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SILENCE-004",
+    "name": "Pitlane",
+    "basis": "source",
+    "anchors": [
+      "phase",
+      "dispatch",
+      "trigger",
+      "not_racing",
+      "quiet",
+      "wake",
+      "queue_filter",
+      "regular",
+      "moderator_queue",
+      "verbosity",
+      "rf2_flags",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "in_pitlane": true,
+      "all_other_automatic_gates": "valid"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SILENCE-005",
+    "name": "Intención confirmada",
+    "basis": "source",
+    "anchors": [
+      "phase",
+      "dispatch",
+      "trigger",
+      "not_racing",
+      "quiet",
+      "wake",
+      "queue_filter",
+      "regular",
+      "moderator_queue",
+      "verbosity",
+      "rf2_flags",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "pitting_this_lap": true,
+      "all_other_automatic_gates": "valid"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SILENCE-006",
+    "name": "Formación manual",
+    "basis": "source",
+    "anchors": [
+      "phase",
+      "dispatch",
+      "trigger",
+      "not_racing",
+      "quiet",
+      "wake",
+      "queue_filter",
+      "regular",
+      "moderator_queue",
+      "verbosity",
+      "rf2_flags",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "manual_formation": true,
+      "all_other_automatic_gates": "valid"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SILENCE-007",
+    "name": "Fase no válida",
+    "basis": "source",
+    "anchors": [
+      "phase",
+      "dispatch",
+      "trigger",
+      "not_racing",
+      "quiet",
+      "wake",
+      "queue_filter",
+      "regular",
+      "moderator_queue",
+      "verbosity",
+      "rf2_flags",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "phase": "Formation",
+      "all_other_automatic_gates": "valid"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SILENCE-008",
+    "name": "Vuelta verde exacta mantiene silencio",
+    "basis": "source",
+    "anchors": [
+      "phase",
+      "dispatch",
+      "trigger",
+      "not_racing",
+      "quiet",
+      "wake",
+      "queue_filter",
+      "regular",
+      "moderator_queue",
+      "verbosity",
+      "rf2_flags",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "previous_completed_laps": 10,
+      "last_green_lap": 10,
+      "all_other_automatic_gates": "valid"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SILENCE-009",
+    "name": "Bandera missing no se convierte en false",
+    "basis": "contract_adaptation",
+    "anchors": [
+      "phase",
+      "dispatch",
+      "trigger",
+      "not_racing",
+      "quiet",
+      "wake",
+      "queue_filter",
+      "regular",
+      "moderator_queue",
+      "verbosity",
+      "rf2_flags",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "local_yellow": null,
+      "quality": "missing"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "requires_source_flag",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "silent_unknown",
+      "facts": {}
+    },
+    "note": "Contrato Vantare de datos ausentes; CrewChief requiere estado mapeado. No atribuye null a una bandera booleana CrewChief."
+  },
+  {
+    "id": "TIM-SILENCE-010",
+    "name": "Silencio por voz no se salta con playEvenWhenSilenced",
+    "basis": "source",
+    "anchors": [
+      "phase",
+      "dispatch",
+      "trigger",
+      "not_racing",
+      "quiet",
+      "wake",
+      "queue_filter",
+      "regular",
+      "moderator_queue",
+      "verbosity",
+      "rf2_flags",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "speak_only_when_spoken_to": true,
+      "play_even_when_silenced": true,
+      "sound_type": "REGULAR"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SILENCE-011",
+    "name": "Clase NONE rechaza regular",
+    "basis": "source",
+    "anchors": [
+      "phase",
+      "dispatch",
+      "trigger",
+      "not_racing",
+      "quiet",
+      "wake",
+      "queue_filter",
+      "regular",
+      "moderator_queue",
+      "verbosity",
+      "rf2_flags",
+      "hardparts_control"
+    ],
+    "evolutions": [],
+    "input": {
+      "enabled_message_types": [
+        "NONE"
+      ],
+      "sound_type": "REGULAR"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  }
+]

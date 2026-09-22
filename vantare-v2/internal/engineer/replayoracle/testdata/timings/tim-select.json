@@ -1,0 +1,233 @@
+[
+  {
+    "id": "TIM-SELECT-001",
+    "name": "Empate elige detrás",
+    "basis": "source",
+    "anchors": [
+      "selection",
+      "samples"
+    ],
+    "evolutions": [],
+    "input": {
+      "front_gap_s": 2,
+      "rear_gap_s": 2,
+      "front_state": "OTHER",
+      "rear_state": "OTHER",
+      "front_due": true,
+      "rear_due": true,
+      "lap_deltas": [
+        0,
+        0
+      ],
+      "front_history_present": true,
+      "rear_history_present": true,
+      "on_track_candidate": null
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "select",
+      "facts": {
+        "relation": "race_rear"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "select",
+      "facts": {
+        "relation": "race_rear"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SELECT-002",
+    "name": "No salta a lado lejano si el cercano no está listo",
+    "basis": "source",
+    "anchors": [
+      "selection",
+      "samples"
+    ],
+    "evolutions": [],
+    "input": {
+      "front_gap_s": 1,
+      "rear_gap_s": 2,
+      "front_state": "OTHER",
+      "rear_state": "OTHER",
+      "front_due": false,
+      "rear_due": true,
+      "lap_deltas": [
+        0,
+        0
+      ],
+      "front_history_present": true,
+      "rear_history_present": true,
+      "on_track_candidate": null
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SELECT-003",
+    "name": "Ontrack cercano prima al estar listo",
+    "basis": "source",
+    "anchors": [
+      "selection",
+      "samples"
+    ],
+    "evolutions": [],
+    "input": {
+      "on_track_gap_s": 5,
+      "on_track_state": "DECREASING",
+      "on_track_position": 2,
+      "player_position": 5,
+      "on_track_due": true,
+      "race_front_due": true,
+      "on_track_same_class": true,
+      "different_from_race_rear": true,
+      "on_track_racing": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "select",
+      "facts": {
+        "relation": "on_track_rear"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "select",
+      "facts": {
+        "relation": "on_track_rear"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SELECT-004",
+    "name": "Candidato ontrack cercano bloquea rear aun no listo",
+    "basis": "source",
+    "anchors": [
+      "selection",
+      "samples"
+    ],
+    "evolutions": [],
+    "input": {
+      "on_track_gap_s": 5,
+      "on_track_state": "DECREASING",
+      "on_track_position": 2,
+      "player_position": 5,
+      "on_track_due": false,
+      "rear_due": true,
+      "front_due": false,
+      "on_track_same_class": true,
+      "different_from_race_rear": true,
+      "on_track_racing": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SELECT-005",
+    "name": "Just the facts no habla CLOSE",
+    "basis": "source",
+    "anchors": [
+      "selection",
+      "samples"
+    ],
+    "evolutions": [],
+    "input": {
+      "front_state": "CLOSE",
+      "rear_state": "CLOSE",
+      "just_the_facts": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-SELECT-006",
+    "name": "A3 candidato estable con peor posición",
+    "basis": "accepted_evolution",
+    "anchors": [
+      "selection",
+      "samples"
+    ],
+    "evolutions": [
+      "A3"
+    ],
+    "input": {
+      "on_track_position": 8,
+      "player_position": 5,
+      "on_track_gap_s": 2,
+      "on_track_state": "DECREASING",
+      "proved_lap_relation": null
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "filtered",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "filtered",
+      "facts": {}
+    },
+    "note": "La aprobación exige probar la relación de vueltas antes de ampliar avisos. No inventa un anuncio de desdoblaje ni declara rama absolutamente inalcanzable."
+  }
+]

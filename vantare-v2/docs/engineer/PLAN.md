@@ -11,8 +11,10 @@
 - Contrato: [diseño de paridad](../specs/2026-09-19-crewchief-lmu-parity-design.md)
 - Voz y estilo: [persona y estilo nativo](../specs/2026-09-20-engineer-persona-native-style-design.md)
 - Decisión arquitectónica: [ADR 0010](../adr/0010-engineer-cloud-dialogue-and-offline-parity.md)
-- Estado: diseño documental aceptado por Isaac; T0–T8 no iniciados. La reparación
-  del runtime actual continúa por separado en VAN-736 / GitHub #1299.
+- Estado: diseño aceptado y reparación conjunta integrada en nightly mediante
+  PR1311 (`e41f703c`). T0a y las nueve evoluciones aceptados por Isaac;
+  T0b aporta corpus independiente y taxonomía en VAN-745 / #1316. T1–T8
+  pendientes; integridad de fixtures no implica paridad funcional.
 
 Este fichero no sustituye el `PLAN.md` de la raíz de `vantare-v2`, que pertenece
 a VAN-727. Tampoco convierte #1294 en una issue de implementación: su diff debe
@@ -163,6 +165,17 @@ aditiva; nunca se introduce otro lector LMU ni `telemetry.Frame` nuevo.
 
 **Gate.** T0a y T0b revisados, cero esperado derivado de Vantare y una tarea
 Notion propia para T1.
+
+**Evidencia T0b (22 de septiembre de 2026).**
+[VAN-745](https://app.notion.com/p/3e3e51695c65815a882dceaf13cde9e6) / #1316
+conserva [141 escenarios](../../internal/engineer/replayoracle/testdata/timings/README.md)
+de las 15 reglas, con expected fuente/objetivo separado, decisiones A1–A9,
+reloj virtual, sorteos inyectados y tests de integridad. La
+[matriz de datos](../analysis/engineer/timings/data-matrix.md) permite iniciar
+T1 sintético con ObservationV1, pero bloquea avisos LMU hasta demostrar delta
+de pasos, geometría, fase/banderas y pits. No introduce extensión de proyección
+ni comportamiento productivo. Referencia T0a inmutable `166ff3c5`, aceptada
+después de su snapshot documental; sus commits no se incorporan aquí.
 
 ### T1 — Relaciones de carrera demostrables
 

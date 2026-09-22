@@ -1,0 +1,481 @@
+[
+  {
+    "id": "TIM-QUERY-001",
+    "name": "Consulta gap cero no tiene datos",
+    "basis": "source",
+    "anchors": [
+      "race_query",
+      "track_query",
+      "leader_query",
+      "query_no_data",
+      "last",
+      "delta_relative",
+      "delta_content",
+      "immediate"
+    ],
+    "evolutions": [],
+    "input": {
+      "command": "race_front",
+      "session": "Race",
+      "gap_s": 0,
+      "player_is_leader": false
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "no_data",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "no_data",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-QUERY-002",
+    "name": "Consulta no aplica filtro automático de veinte segundos",
+    "basis": "source",
+    "anchors": [
+      "race_query",
+      "track_query",
+      "leader_query",
+      "query_no_data",
+      "last",
+      "delta_relative",
+      "delta_content",
+      "immediate"
+    ],
+    "evolutions": [],
+    "input": {
+      "command": "race_front",
+      "session": "Race",
+      "gap_s": 21,
+      "rival_id": "F",
+      "valid": true,
+      "player_is_leader": false
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "answer",
+      "facts": {
+        "gap_s": 21
+      }
+    },
+    "accepted_expected": {
+      "outcome": "answer",
+      "facts": {
+        "gap_s": 21
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-QUERY-003",
+    "name": "Consulta detrás última posición inicial difiere de actual",
+    "basis": "source",
+    "anchors": [
+      "race_query",
+      "track_query",
+      "leader_query",
+      "query_no_data",
+      "last",
+      "delta_relative",
+      "delta_content",
+      "immediate"
+    ],
+    "evolutions": [],
+    "input": {
+      "command": "race_rear",
+      "class_position": 8,
+      "initial_class_count": 10,
+      "current_class_count": 8,
+      "gap_s": 0,
+      "session": "Race"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "no_data",
+      "facts": {
+        "source_is_last_initial": false,
+        "automatic_is_last_current": true
+      }
+    },
+    "accepted_expected": {
+      "outcome": "no_data",
+      "facts": {
+        "source_is_last_initial": false,
+        "automatic_is_last_current": true
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-QUERY-004",
+    "name": "Consulta de pista permite otra clase",
+    "basis": "source",
+    "anchors": [
+      "race_query",
+      "track_query",
+      "leader_query",
+      "query_no_data",
+      "last",
+      "delta_relative",
+      "delta_content",
+      "immediate"
+    ],
+    "evolutions": [],
+    "input": {
+      "command": "track_rear",
+      "player_class": "GT",
+      "rival_class": "PROTO",
+      "delta_s": 2,
+      "lap_difference": 1,
+      "rival_id": "X",
+      "rival_speed_mps": 30,
+      "in_lap": false,
+      "spatially_nearest_behind": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "answer",
+      "facts": {
+        "rival": "X",
+        "delta_s": 2,
+        "lap_difference": 1
+      }
+    },
+    "accepted_expected": {
+      "outcome": "answer",
+      "facts": {
+        "rival": "X",
+        "delta_s": 2,
+        "lap_difference": 1
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-QUERY-005",
+    "name": "Leader lap del rival completadas más uno",
+    "basis": "source",
+    "anchors": [
+      "race_query",
+      "track_query",
+      "leader_query",
+      "query_no_data",
+      "last",
+      "delta_relative",
+      "delta_content",
+      "immediate"
+    ],
+    "evolutions": [],
+    "input": {
+      "command": "leader_lap",
+      "session": "Race",
+      "player_is_leader": false,
+      "leader_completed_laps": 12,
+      "lap_difference": 0
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "answer",
+      "facts": {
+        "lap": 13
+      }
+    },
+    "accepted_expected": {
+      "outcome": "answer",
+      "facts": {
+        "lap": 13
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-QUERY-006",
+    "name": "Sin snapshot no inventa respuesta",
+    "basis": "source",
+    "anchors": [
+      "race_query",
+      "track_query",
+      "leader_query",
+      "query_no_data",
+      "last",
+      "delta_relative",
+      "delta_content",
+      "immediate"
+    ],
+    "evolutions": [],
+    "input": {
+      "command": "race_front",
+      "snapshot": null
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-QUERY-007",
+    "name": "Consulta de carrera fuera de Race",
+    "basis": "source",
+    "anchors": [
+      "race_query",
+      "track_query",
+      "leader_query",
+      "query_no_data",
+      "last",
+      "delta_relative",
+      "delta_content",
+      "immediate"
+    ],
+    "evolutions": [],
+    "input": {
+      "command": "race_front",
+      "session": "Practice",
+      "gap_s": 2
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "no_data",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "no_data",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-QUERY-008",
+    "name": "Gap al líder estando líder",
+    "basis": "source",
+    "anchors": [
+      "race_query",
+      "track_query",
+      "leader_query",
+      "query_no_data",
+      "last",
+      "delta_relative",
+      "delta_content",
+      "immediate"
+    ],
+    "evolutions": [],
+    "input": {
+      "command": "gap_to_leader",
+      "session": "Qualifying",
+      "player_class_position": 1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "leading",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "leading",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-QUERY-009",
+    "name": "Gap relativo al líder con dirección en clasificación",
+    "basis": "source",
+    "anchors": [
+      "race_query",
+      "track_query",
+      "leader_query",
+      "query_no_data",
+      "last",
+      "delta_relative",
+      "delta_content",
+      "immediate"
+    ],
+    "evolutions": [],
+    "input": {
+      "command": "gap_to_leader",
+      "session": "Qualifying",
+      "player_class_position": 3,
+      "leader_id": "L",
+      "leader_class_matches": true,
+      "relative_delta_s": -2,
+      "lap_difference": 0
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "answer",
+      "facts": {
+        "delta_s": -2,
+        "direction": "ahead",
+        "lap_difference": 0
+      }
+    },
+    "accepted_expected": {
+      "outcome": "answer",
+      "facts": {
+        "delta_s": -2,
+        "direction": "ahead",
+        "lap_difference": 0
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-QUERY-010",
+    "name": "Gap al líder que llega por detrás",
+    "basis": "source",
+    "anchors": [
+      "race_query",
+      "track_query",
+      "leader_query",
+      "query_no_data",
+      "last",
+      "delta_relative",
+      "delta_content",
+      "immediate"
+    ],
+    "evolutions": [],
+    "input": {
+      "command": "gap_to_leader",
+      "session": "Race",
+      "player_class_position": 3,
+      "leader_id": "L",
+      "leader_class_matches": true,
+      "relative_delta_s": 2,
+      "lap_difference": 1
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "answer",
+      "facts": {
+        "delta_s": 2,
+        "direction": "behind",
+        "lap_difference": 1
+      }
+    },
+    "accepted_expected": {
+      "outcome": "answer",
+      "facts": {
+        "delta_s": 2,
+        "direction": "behind",
+        "lap_difference": 1
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-QUERY-011",
+    "name": "Consulta delante en pista con signo válido",
+    "basis": "source",
+    "anchors": [
+      "race_query",
+      "track_query",
+      "leader_query",
+      "query_no_data",
+      "last",
+      "delta_relative",
+      "delta_content",
+      "immediate"
+    ],
+    "evolutions": [],
+    "input": {
+      "command": "track_front",
+      "rival_id": "F",
+      "rival_speed_mps": 30,
+      "in_lap": false,
+      "spatially_nearest_front": true,
+      "delta_s": -2,
+      "lap_difference": 0
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "answer",
+      "facts": {
+        "rival": "F",
+        "delta_s": -2,
+        "lap_difference": 0
+      }
+    },
+    "accepted_expected": {
+      "outcome": "answer",
+      "facts": {
+        "rival": "F",
+        "delta_s": -2,
+        "lap_difference": 0
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  }
+]

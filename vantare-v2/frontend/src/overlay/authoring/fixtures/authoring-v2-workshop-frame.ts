@@ -931,8 +931,12 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
   // determinista; no existe una variante alternativa para esta presentación.
   if (usesRelativeStudyProjection(scenario)) {
     const playerId = frame.player.id ?? "";
-    const ahead = scenario.rangeAhead ?? RELATIVE_RANGE_AHEAD;
-    const behind = scenario.rangeBehind ?? RELATIVE_RANGE_BEHIND;
+    // Una escena puede sacar o cruzar un coche: la selección 3+3 la hace la
+    // VM después del parche, con el resto del campo disponible para rellenar
+    // el hueco. Recortar aquí dejaría permanentemente una fila sin rival.
+    const hasRelativeScene = scenario.sceneId && getAnimationScene(scenario.sceneId)?.widget === "relative";
+    const ahead = hasRelativeScene ? Number.POSITIVE_INFINITY : scenario.rangeAhead ?? RELATIVE_RANGE_AHEAD;
+    const behind = hasRelativeScene ? Number.POSITIVE_INFINITY : scenario.rangeBehind ?? RELATIVE_RANGE_BEHIND;
     frame = {
       ...frame,
       relative: relativeDevWindow(frame.relative, playerId, quality, ahead, behind),

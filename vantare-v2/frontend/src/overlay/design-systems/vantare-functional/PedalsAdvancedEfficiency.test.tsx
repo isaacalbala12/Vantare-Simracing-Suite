@@ -59,12 +59,12 @@ describe("PedalsAdvancedEfficiency", () => {
     expect(container.querySelector(".vf-pedals-adv-wheel")).toBeTruthy();
   });
 
-  it.each(["stale", "disconnected", "error"] as const)("keeps an accessible status for %s", (status) => {
+  it.each([["stale", "DATOS ANTIGUOS"], ["disconnected", "DESCONECTADO"], ["error", "ERROR DE DATOS"]] as const)("localizes the accessible status for %s", (status, label) => {
     const { container, getByRole } = render(
       <PedalsAdvancedEfficiency model={{ ...model, status, statusMessage: "Telemetry unavailable" }} settings={{}} renderMode="harness" />,
     );
 
     expect(container.querySelector(`[data-status="${status}"]`)).toBeTruthy();
-    expect(getByRole("status").textContent).toBe("Telemetry unavailable");
+    expect(getByRole("status").textContent).toBe(label);
   });
 });

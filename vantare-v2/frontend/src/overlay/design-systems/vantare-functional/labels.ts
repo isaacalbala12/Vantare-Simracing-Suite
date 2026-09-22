@@ -14,6 +14,11 @@ const en = {
   fuel: "FUEL", virtualEnergy: "VIRTUAL ENERGY", virtualEnergyUnavailable: "VIRTUAL ENERGY SIGNAL UNAVAILABLE", avg: "AVG", laps: "LAPS", required: "REQ", history: "HISTORY", estFinish: "EST. FINISH",
   aero: "AERO", body: "BODY", suspension: "SUSP", tyre: "TYRE", damage: "DAMAGE",
   speed: "SPEED", rpm: "RPM", gear: "GEAR",
+  leader: "LEADER", ahead: "AHEAD", behind: "BEHIND", rival: "RIVAL", noRival: "NO RIVAL",
+  caution: "CAUTION", flag: "FLAG", sectors: "SECTORS", green: "GREEN", yellow: "YELLOW", red: "RED", blue: "BLUE", black: "BLACK", white: "WHITE", checkered: "CHECKERED",
+  gaining: "GAINING", losing: "LOSING", stable: "STABLE", deltaTrace: "DELTA TRACE", trackMap: "TRACK MAP",
+  noTelemetry: "NO TELEMETRY", trackNotMapped: "TRACK NOT MAPPED", reference: "REFERENCE", classUnavailable: "CLASS N/A",
+  schedule: "SCHEDULE", noEvents: "NO EVENTS", pedalInputs: "PEDAL INPUTS", preview: "PREVIEW",
 };
 
 export const functionalLabels: Record<Locale, typeof en> = {
@@ -26,7 +31,11 @@ export const functionalLabels: Record<Locale, typeof en> = {
     trackTemp: "PISTA", ambientTemp: "AIRE", wind: "VIENTO", track: "PISTA",
     rain: "LLUVIA", wetness: "HÚMEDO", dry: "SECO", pressure: "PRES",
     relative: "RELATIVO", pedals: "PEDALES", playerGap: "A TI", estFinish: "EST. META",
-    clutch: "EMBRAGUE", brake: "FRENO", throttle: "ACELERADOR", virtualEnergy: "ENERGÍA VIRTUAL", virtualEnergyUnavailable: "ENERGÍA VIRTUAL NO DISPONIBLE EN LA SEÑAL EN VIVO" },
+    clutch: "EMBRAGUE", brake: "FRENO", throttle: "ACELERADOR", virtualEnergy: "ENERGÍA VIRTUAL", virtualEnergyUnavailable: "ENERGÍA VIRTUAL NO DISPONIBLE EN LA SEÑAL EN VIVO",
+    fuel: "COMBUSTIBLE", avg: "MED.", laps: "VUELTAS", required: "NEC.", history: "HISTORIAL", body: "CARROC.", tyre: "NEUM.", damage: "DAÑOS", speed: "VELOCIDAD", gear: "MARCHA",
+    leader: "LÍDER", ahead: "DELANTE", behind: "DETRÁS", rival: "RIVAL", noRival: "SIN RIVAL", caution: "PRECAUCIÓN", flag: "BANDERA", sectors: "SECTORES",
+    green: "VERDE", yellow: "AMARILLA", red: "ROJA", blue: "AZUL", black: "NEGRA", white: "BLANCA", checkered: "CUADROS",
+    gaining: "GANANDO", losing: "PERDIENDO", stable: "ESTABLE", deltaTrace: "TRAZA DELTA", trackMap: "MAPA DE PISTA", noTelemetry: "SIN TELEMETRÍA", trackNotMapped: "PISTA SIN MAPA", reference: "REFERENCIA", classUnavailable: "CLASE N/D", schedule: "CALENDARIO", noEvents: "SIN EVENTOS", pedalInputs: "PEDALES", preview: "VISTA PREVIA" },
   pt: { ...en, driverName: "PILOTO", vehicleClass: "CLASSE", gap: "AO LÍDER", paceGap: "AO MELHOR",
     interval: "INTERVALO", currentLap: "VOLTA", lastLap: "ÚLT. VOLTA", bestLap: "MELHOR V.", personalBest: "MELHOR PESSOAL",
     tireCompound: "PNEU", you: "VOCÊ", remaining: "RESTANTE", race: "CORRIDA", practice: "TREINO",
@@ -34,7 +43,11 @@ export const functionalLabels: Record<Locale, typeof en> = {
     trackTemperature: "PISTA", airTemperature: "AR", estimatedLaps: "V. REST. EST.", totalLaps: "V. TOTAIS",
     trackTemp: "PISTA", ambientTemp: "AR", wind: "VENTO", track: "PISTA",
     relative: "RELATIVO", pedals: "PEDAIS", playerGap: "A VOCÊ", estFinish: "EST. FIM",
-    clutch: "EMBREAGEM", brake: "FREIO", throttle: "ACELERADOR", virtualEnergy: "ENERGIA VIRTUAL", virtualEnergyUnavailable: "SINAL DE ENERGIA VIRTUAL INDISPONÍVEL" },
+    clutch: "EMBREAGEM", brake: "FREIO", throttle: "ACELERADOR", virtualEnergy: "ENERGIA VIRTUAL", virtualEnergyUnavailable: "SINAL DE ENERGIA VIRTUAL INDISPONÍVEL",
+    fuel: "COMBUSTÍVEL", avg: "MÉD.", laps: "VOLTAS", required: "NEC.", history: "HISTÓRICO", body: "CARROC.", tyre: "PNEU", damage: "DANOS", speed: "VELOCIDADE", gear: "MARCHA",
+    rain: "CHUVA", wetness: "MOLHADO", dry: "SECO", pressure: "PRESS", leader: "LÍDER", ahead: "À FRENTE", behind: "ATRÁS", rival: "RIVAL", noRival: "SEM RIVAL", caution: "ATENÇÃO", flag: "BANDEIRA", sectors: "SETORES",
+    green: "VERDE", yellow: "AMARELA", red: "VERMELHA", blue: "AZUL", black: "PRETA", white: "BRANCA", checkered: "QUADRICULADA",
+    gaining: "GANHANDO", losing: "PERDENDO", stable: "ESTÁVEL", deltaTrace: "TRAÇO DELTA", trackMap: "MAPA DA PISTA", noTelemetry: "SEM TELEMETRIA", trackNotMapped: "PISTA SEM MAPA", reference: "REFERÊNCIA", classUnavailable: "CLASSE N/D", schedule: "AGENDA", noEvents: "SEM EVENTOS", pedalInputs: "PEDAIS", preview: "PRÉVIA" },
   it: { ...en, driverName: "PILOTA", vehicleClass: "CLASSE", gap: "DAL LEADER", paceGap: "DAL MIGLIORE",
     interval: "INTERVALLO", currentLap: "GIRO", lastLap: "ULT. GIRO", bestLap: "MIGLIORE", personalBest: "MIGLIOR PERSONALE",
     tireCompound: "GOMMA", you: "TU", remaining: "RIMANENTE", race: "GARA", practice: "PROVE",
@@ -42,5 +55,16 @@ export const functionalLabels: Record<Locale, typeof en> = {
     trackTemperature: "PISTA", airTemperature: "ARIA", estimatedLaps: "GIRI REST. ST.", totalLaps: "GIRI TOTALI",
     trackTemp: "PISTA", ambientTemp: "ARIA", wind: "VENTO", track: "PISTA",
     relative: "RELATIVO", pedals: "PEDALI", playerGap: "A TE", estFinish: "STIMA FINALE",
-    clutch: "FRIZIONE", brake: "FRENO", throttle: "ACCELERATORE", virtualEnergy: "ENERGIA VIRTUALE", virtualEnergyUnavailable: "SEGNALE ENERGIA VIRTUALE NON DISPONIBILE" },
+    clutch: "FRIZIONE", brake: "FRENO", throttle: "ACCELERATORE", virtualEnergy: "ENERGIA VIRTUALE", virtualEnergyUnavailable: "SEGNALE ENERGIA VIRTUALE NON DISPONIBILE",
+    fuel: "CARBURANTE", avg: "MED.", laps: "GIRI", required: "NEC.", history: "STORICO", body: "CARROZZ.", tyre: "GOMMA", damage: "DANNI", speed: "VELOCITÀ", gear: "MARCIA",
+    rain: "PIOGGIA", wetness: "BAGNATO", dry: "ASCIUTTO", pressure: "PRESS", leader: "LEADER", ahead: "DAVANTI", behind: "DIETRO", rival: "RIVALE", noRival: "NESSUN RIVALE", caution: "ATTENZIONE", flag: "BANDIERA", sectors: "SETTORI",
+    green: "VERDE", yellow: "GIALLA", red: "ROSSA", blue: "BLU", black: "NERA", white: "BIANCA", checkered: "SCACCHI",
+    gaining: "GUADAGNO", losing: "PERDITA", stable: "STABILE", deltaTrace: "TRACCIA DELTA", trackMap: "MAPPA PISTA", noTelemetry: "SENZA TELEMETRIA", trackNotMapped: "PISTA NON MAPPATA", reference: "RIFERIMENTO", classUnavailable: "CLASSE N/D", schedule: "CALENDARIO", noEvents: "NESSUN EVENTO", pedalInputs: "PEDALI", preview: "ANTEPRIMA" },
 };
+
+export function sessionDisplayLabel(locale: Locale, sessionCode: string | undefined): string {
+	if (!sessionCode) return "";
+  const code = sessionCode.toLowerCase();
+  if (code === "race" || code === "practice" || code === "qualifying") return functionalLabels[locale][code];
+  return sessionCode;
+}

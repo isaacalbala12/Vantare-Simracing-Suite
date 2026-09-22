@@ -3,9 +3,11 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+import { Events } from "@wailsio/runtime";
 import {
   DEFAULT_LOCALE,
   getDictionary,
@@ -14,10 +16,12 @@ import {
   normalizeLocale,
   translate,
   type Locale,
+  isLocale,
 } from "./i18n";
 import { I18nContext, LANGUAGE_OPTIONS } from "./i18n-context";
 
 const STORAGE_KEY = "vantare.locale";
+let requestSerial = 0;
 
 function readStoredLocale(): Locale {
   try {
@@ -28,7 +32,9 @@ function readStoredLocale(): Locale {
   }
 }
 
-export function I18nProvider({ children }: { children: ReactNode }) {
+export type UILocaleMode = "browser" | "native-hub" | "native-consumer" | "obs";
+
+export function I18nProvider({ children, mode = "browser" }: { children: ReactNode; mode?: UILocaleMode }) {
   const parent = useContext(I18nContext);
   // Si ya existe un I18nProvider padre (p.ej. el provider global en HubApp),
   // este provider es transparente: delega al contexto existente para que
@@ -37,10 +43,28 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  return <I18nProviderInner>{children}</I18nProviderInner>;
+  return <I18nProviderInner mode={mode}>{children}</I18nProviderInner>;
 }
 
-function I18nProviderInner({ children }: { children: ReactNode }) {
+type LocaleSnapshot = { locale: Locale | ""; revision: number };
+
+function parseSnapshot(value: unknown): LocaleSnapshot | null {
+  if (!value || typeof value !== "object") return null;
+  const item = value as Partial<LocaleSnapshot>;
+  if (item.locale !== "" && !isLocale(item.locale)) return null;
+  if (!Number.isSafeInteger(item.revision) || (item.revision ?? -1) < 0) return null;
+  return item as LocaleSnapshot;
+}
+
+function I18nProviderInner({ children, mode }: { children: ReactNode; mode: UILocaleMode }) {
+  const desiredLocale = useRef<Locale | null>(null);
+  const inFlight = useRef<{ id: string; locale: Locale } | null>(null);
+  const dispatch = useCallback(() => {
+    if (inFlight.current || !desiredLocale.current) return;
+    const request = { id: String(++requestSerial), locale: desiredLocale.current };
+    inFlight.current = request;
+    Events.Emit("ui-locale:set", { locale: request.locale, requestId: request.id });
+  }, []);
   const [locale, setLocaleState] = useState<Locale>(readStoredLocale);
   // El diccionario activo se conserva mientras carga el siguiente: al
   // cambiar de idioma la UI sigue en el anterior un frame en vez de caer
@@ -49,6 +73,75 @@ function I18nProviderInner({ children }: { children: ReactNode }) {
   // El idioma por defecto viene eager; si el guardado es otro, el primer
   // render espera al chunk del diccionario en vez de montar en español.
   const [ready, setReady] = useState(() => isDictionaryLoaded(readStoredLocale()));
+
+  useEffect(() => {
+    if (mode === "browser") {
+      const onStorage = (event: StorageEvent) => {
+        if (event.key === STORAGE_KEY && isLocale(event.newValue)) setLocaleState(event.newValue);
+      };
+      window.addEventListener("storage", onStorage);
+      return () => window.removeEventListener("storage", onStorage);
+    }
+    let active = true;
+    let currentRevision = -1;
+    let initialized = false;
+    const legacy = readStoredLocale();
+    const apply = (raw: unknown, snapshotEvent: boolean) => {
+      if (!active) return;
+      const snapshot = parseSnapshot(raw);
+      if (!snapshot || (initialized && snapshot.revision < currentRevision)) return;
+      initialized = true;
+      currentRevision = snapshot.revision;
+      if (snapshot.locale === "") {
+        if (mode === "native-hub") Events.Emit("ui-locale:initialize", { locale: legacy });
+        return;
+      }
+      // The first SSE snapshot is authoritative after a native restart.
+      if (snapshotEvent || snapshot.revision >= currentRevision) {
+        setLocaleState(snapshot.locale);
+        try { localStorage.setItem(STORAGE_KEY, snapshot.locale); } catch { /* restricted storage */ }
+      }
+    };
+    if (mode === "obs") {
+      let generation = 0;
+      const source = new EventSource("/api/ui-locale/stream");
+      const mine = ++generation;
+      const onSnapshot = (event: MessageEvent<string>) => {
+        if (!active || mine !== generation) return;
+        try { currentRevision = -1; initialized = false; apply(JSON.parse(event.data), true); } catch { /* invalid event */ }
+      };
+      const onChanged = (event: MessageEvent<string>) => {
+        if (!active || mine !== generation) return;
+        try { apply(JSON.parse(event.data), false); } catch { /* invalid event */ }
+      };
+      source.addEventListener("ui-locale:snapshot", onSnapshot as EventListener);
+      source.addEventListener("ui-locale:changed", onChanged as EventListener);
+      return () => { active = false; generation++; source.close(); };
+    }
+    const unwrap = (event: unknown): unknown => {
+      const data = event && typeof event === "object" && "data" in event ? (event as { data: unknown }).data : event;
+      return Array.isArray(data) ? data[0] : data;
+    };
+    const snapshotOff = Events.On("ui-locale:snapshot", (event: unknown) => apply(unwrap(event), true));
+    const changedOff = Events.On("ui-locale:changed", (event: unknown) => apply(unwrap(event), false));
+    const confirmedOff = Events.On("ui-locale:confirmed", (event: unknown) => {
+      const data = unwrap(event) as { requestId?: unknown; locale?: unknown };
+      if (!active || !inFlight.current || data?.requestId !== inFlight.current.id) return;
+      inFlight.current = null;
+      if (desiredLocale.current === data.locale) desiredLocale.current = null;
+      dispatch();
+    });
+    const errorOff = Events.On("ui-locale:error", (event: unknown) => {
+      const data = unwrap(event) as { requestId?: unknown };
+      if (!active || !inFlight.current || data?.requestId !== inFlight.current.id) return;
+      const failed = inFlight.current.locale;
+      inFlight.current = null;
+      if (desiredLocale.current === failed) desiredLocale.current = null;
+      dispatch();
+    });
+    Events.Emit("ui-locale:get");
+    return () => { active = false; snapshotOff?.(); changedOff?.(); confirmedOff?.(); errorOff?.(); inFlight.current = null; desiredLocale.current = null; };
+  }, [mode, dispatch]);
 
   useEffect(() => {
     let active = true;
@@ -65,14 +158,14 @@ function I18nProviderInner({ children }: { children: ReactNode }) {
   }, [locale]);
 
   const setLocale = useCallback((newLocale: Locale) => {
-    const safe = normalizeLocale(newLocale);
-    setLocaleState(safe);
-    try {
-      localStorage.setItem(STORAGE_KEY, safe);
-    } catch {
-      // SSR or restricted environment — ignore
+    if (!isLocale(newLocale)) return;
+    if (mode !== "browser") {
+      if (mode !== "obs") { desiredLocale.current = newLocale; dispatch(); }
+      return;
     }
-  }, []);
+    setLocaleState(newLocale);
+    try { localStorage.setItem(STORAGE_KEY, newLocale); } catch { /* restricted storage */ }
+  }, [mode, dispatch]);
 
   const t = useCallback(
     (key: string) => activeDict?.[key] ?? translate(DEFAULT_LOCALE, key),

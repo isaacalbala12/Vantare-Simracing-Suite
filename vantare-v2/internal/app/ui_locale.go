@@ -89,7 +89,7 @@ func (s *SettingsService) writeUILocale(locale string, onlyIfMissing bool) (UILo
 	if err != nil {
 		return current, fmt.Errorf("marshal UI locale: %w", err)
 	}
-	if err := s.saveWithRetry(candidate, data, 0); err != nil {
+	if err := s.saveWithRetryMode(candidate, data, 0, false); err != nil {
 		return current, err
 	}
 	return s.uiLocaleSnapshotLocked(), nil

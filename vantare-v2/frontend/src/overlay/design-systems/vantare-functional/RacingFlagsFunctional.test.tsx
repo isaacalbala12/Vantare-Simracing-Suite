@@ -35,8 +35,8 @@ describe("Functional Racing Flags", () => {
     expect(root?.dataset.effects).toBe("full");
     expect(root?.dataset.textColor).toBe("#ffcc00");
     expect(root?.style.getPropertyValue("--vf-racing-flags-text-color")).toBe("#ffcc00");
-    expect(root?.querySelector(".vf-racing-flags-banner strong")?.textContent).toBe("YELLOW");
-    expect(root?.querySelector(".vf-racing-flags-banner small")?.textContent).toBe("CAUTION");
+    expect(root?.querySelector(".vf-racing-flags-banner strong")?.textContent).toBe("AMARILLA");
+    expect(root?.querySelector(".vf-racing-flags-banner small")?.textContent).toBe("PRECAUCIÓN");
   });
 
   it.each(["reduced", "minimal"] as const)("keeps the flag semantic state under %s motion", (motion) => {

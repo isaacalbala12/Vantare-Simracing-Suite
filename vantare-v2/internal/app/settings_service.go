@@ -1062,6 +1062,10 @@ func (s *SettingsService) Update(mutate func(*AppSettings)) error {
 // and an older snapshot can never overwrite a newer state, in memory or on
 // disk. s.mu is a write mutex here; readers wait for the duration of the I/O.
 func (s *SettingsService) saveWithRetry(settings *AppSettings, data []byte, attempt int) error {
+	return s.saveWithRetryMode(settings, data, attempt, true)
+}
+
+func (s *SettingsService) saveWithRetryMode(settings *AppSettings, data []byte, attempt int, writeSidecar bool) error {
 	if dir := filepath.Dir(s.path); dir != "" && dir != "." {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return fmt.Errorf("mkdir: %w", err)
@@ -1094,10 +1098,12 @@ func (s *SettingsService) saveWithRetry(settings *AppSettings, data []byte, atte
 	}
 	if attempt+1 < len(saveBackoffs) {
 		time.Sleep(saveBackoffs[attempt+1])
-		return s.saveWithRetry(settings, data, attempt+1)
+		return s.saveWithRetryMode(settings, data, attempt+1, writeSidecar)
 	}
 	// Exhausted: write payload to sidecar file.
-	_ = os.WriteFile(s.path+".failed", data, 0o644)
+	if writeSidecar {
+		_ = os.WriteFile(s.path+".failed", data, 0o644)
+	}
 	return fmt.Errorf("save failed after retries: %w", err)
 }
 

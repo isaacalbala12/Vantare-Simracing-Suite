@@ -1,8 +1,9 @@
+import { useMemo } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { WidgetRendererProps } from "../../core/design-system-definition";
 import type { BroadcastTowerViewModel } from "../../widget-types/broadcast-tower/broadcast-tower-view-model";
 import { resolveFunctionalClassAccent } from "../../widget-types/standings/functional-class-accent";
-import { functionalLabels } from "./labels";
+import { functionalLabels, sessionDisplayLabel } from "./labels";
 
 // Horizontal Standings: tira de ancho completo a 71px — bloque de sesión,
 // stream de tarjetas por piloto repartiendo el ancho, y datos de pista/SOF
@@ -17,6 +18,7 @@ const shortName = (name: string) => {
 export function BroadcastTowerFunctional({ model, effects }: WidgetRendererProps<BroadcastTowerViewModel>) {
   const { locale } = useI18n();
   const labels = functionalLabels[locale];
+  const sessionLabel = useMemo(() => sessionDisplayLabel(locale, model.sessionLabel), [locale, model.sessionLabel]);
   const gapText = (gap: number | undefined) =>
     gap === undefined || gap === null ? "—" : `${gap > 0 ? "+" : ""}${gap.toFixed(3)}`;
   const statusText = model.status !== "ready" ? labels[model.status] : undefined;
@@ -31,7 +33,7 @@ export function BroadcastTowerFunctional({ model, effects }: WidgetRendererProps
       data-effects={effects}
     >
       <div className="vf-bt-lead">
-        <span className="vf-bt-session">{model.sessionLabel}</span>
+        <span className="vf-bt-session">{sessionLabel}</span>
         <b className="vf-bt-lap">
           {labels.currentLap} {model.lap ?? "—"}
           {model.totalLaps !== undefined && <span className="vf-bt-lap-total">/{model.totalLaps}</span>}
@@ -56,7 +58,7 @@ export function BroadcastTowerFunctional({ model, effects }: WidgetRendererProps
                   {row.number !== "—" && <span className="vf-bt-number">#{row.number}</span>}
                 </span>
               </span>
-              <span className="vf-bt-gap">{row.place === 1 ? "LEADER" : gapText(row.gap)}</span>
+              <span className="vf-bt-gap">{row.place === 1 ? labels.leader : gapText(row.gap)}</span>
             </div>
           ))}
         </div>

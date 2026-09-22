@@ -70,6 +70,19 @@ func TestUILocaleRejectsInvalidAndFailedWritesWithoutEvents(t *testing.T) {
 		t.Fatalf("failed write published %+v", event)
 	default:
 	}
+	if _, err := os.Stat(path + ".failed"); !os.IsNotExist(err) {
+		t.Fatalf("failed locale left recoverable sidecar: %v", err)
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	reloaded := app.NewSettingsService(path, nil, nil)
+	if err := reloaded.Load(); err != nil {
+		t.Fatal(err)
+	}
+	if got := reloaded.UILocaleSnapshot().Locale; got != "" {
+		t.Fatalf("failed locale restored on restart: %q", got)
+	}
 }
 
 func TestUILocaleSubscriptionIsAtomicAndKeepsLatest(t *testing.T) {

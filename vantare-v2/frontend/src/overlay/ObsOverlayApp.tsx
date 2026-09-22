@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { I18nProvider } from "../i18n/I18nProvider";
 import { Events } from "@wailsio/runtime";
 import type { CalendarReminderPayload } from "../calendar/calendar-types";
 import { parseProfileDocumentV3, type ProfileDocumentV3 } from "./core/profile-document";
@@ -35,6 +36,10 @@ type ObsGeneration = Readonly<{
 }>;
 
 export function ObsOverlayApp() {
+  return <I18nProvider mode="obs"><ObsOverlayAppInner /></I18nProvider>;
+}
+
+function ObsOverlayAppInner() {
   const [studioPreview] = useState(
     () => readOverlayRouteParams(typeof window !== "undefined" ? window.location.search : "").studioPreview,
   );

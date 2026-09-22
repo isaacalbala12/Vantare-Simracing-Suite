@@ -7,6 +7,7 @@ import vantareLite from "./themes/vantare-lite.json";
 import vantareOrbit from "./themes/vantare-orbit.json";
 import { initializeDensity } from "./lib/density";
 import { AppBootFallback } from "./AppBootFallback";
+import { I18nProvider } from "./i18n/I18nProvider";
 const OverlayWorkshopDevRoute = import.meta.env.DEV
   ? lazy(async () => ({ default: (await import("./overlay/authoring/OverlayWorkshopDevRoute")).OverlayWorkshopDevRoute }))
   : null;
@@ -31,7 +32,7 @@ export function App() {
   if (import.meta.env.DEV && OverlayWorkshopDevRoute && path === "/workshop") {
     return (
       <Suspense fallback={<AppBootFallback />}>
-        <OverlayWorkshopDevRoute />
+        <I18nProvider mode="browser"><OverlayWorkshopDevRoute /></I18nProvider>
       </Suspense>
     );
   }

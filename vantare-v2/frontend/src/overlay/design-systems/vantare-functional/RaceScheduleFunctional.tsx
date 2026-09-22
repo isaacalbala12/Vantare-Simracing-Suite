@@ -1,7 +1,11 @@
 import type { WidgetRendererProps } from "../../core/design-system-definition";
 import type { RaceScheduleViewModel } from "../../widget-types/race-schedule/race-schedule-view-model";
+import { useI18n } from "../../../i18n/I18nProvider";
+import { functionalLabels } from "./labels";
 
 export function RaceScheduleFunctional({ model, effects }: WidgetRendererProps<RaceScheduleViewModel>) {
+  const { locale } = useI18n();
+  const labels = functionalLabels[locale];
   return (
     <section
       className="vf-race-schedule"
@@ -11,7 +15,7 @@ export function RaceScheduleFunctional({ model, effects }: WidgetRendererProps<R
       data-effects={effects}
     >
       <header className="vf-race-schedule-header">
-        <span className="vf-race-schedule-title">Schedule</span>
+        <span className="vf-race-schedule-title">{labels.schedule}</span>
         <span className="vf-race-schedule-tz">{model.timeZone}</span>
       </header>
       <div className="vf-race-schedule-list">
@@ -30,7 +34,7 @@ export function RaceScheduleFunctional({ model, effects }: WidgetRendererProps<R
             </article>
           ))
         ) : (
-          <p className="vf-status-message">No events available</p>
+          <p className="vf-status-message">{labels.noEvents}</p>
         )}
       </div>
     </section>

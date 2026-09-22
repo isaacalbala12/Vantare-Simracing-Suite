@@ -2810,23 +2810,36 @@ func main() {
 			Locale    string `json:"locale"`
 			RequestID string `json:"requestId"`
 		}
-		if raw, err := json.Marshal(event.Data); err == nil {
-			_ = json.Unmarshal(raw, &request)
+		raw, err := json.Marshal(event.Data)
+		if err == nil {
+			err = json.Unmarshal(raw, &request)
 		}
+		if err != nil || request.RequestID == "" {
+			emitter.Emit("ui-locale:error", map[string]any{"message": "invalid UI locale request"})
+			return
+		}
+		before := settingsSvc.UILocaleSnapshot()
 		snapshot, err := settingsSvc.SetUILocale(request.Locale)
 		if err != nil {
 			emitter.Emit("ui-locale:error", map[string]any{"requestId": request.RequestID, "message": err.Error()})
 			return
 		}
-		emitter.Emit("ui-locale:changed", snapshot)
+		if snapshot.Revision != before.Revision {
+			emitter.Emit("ui-locale:changed", snapshot)
+		}
 		emitter.Emit("ui-locale:confirmed", map[string]any{"requestId": request.RequestID, "locale": snapshot.Locale, "revision": snapshot.Revision})
 	})
 	wailsApp.Event.On("ui-locale:initialize", func(event *application.CustomEvent) {
 		var request struct {
 			Locale string `json:"locale"`
 		}
-		if raw, err := json.Marshal(event.Data); err == nil {
-			_ = json.Unmarshal(raw, &request)
+		raw, err := json.Marshal(event.Data)
+		if err == nil {
+			err = json.Unmarshal(raw, &request)
+		}
+		if err != nil {
+			emitter.Emit("ui-locale:error", map[string]any{"message": "invalid UI locale request"})
+			return
 		}
 		snapshot, err := settingsSvc.InitializeUILocale(request.Locale)
 		if err != nil {

@@ -33,8 +33,10 @@ CrewChief, Pit Manager y wake word.
 Microplan: [`repair-isa-1307.md`](../../engineer/repair-isa-1307.md).
 Base nightly1101. Contraste previo: CrewChief predeterminado usa NAudio/WAVEOUT
 con fin por PlaybackStopped; el margen de duración es solo timeout.
-Se prepara una reparación del player PowerShell/WPF existente y regresiones
-Windows, sin dependencias ni cambio de ACK. La escucha y latencia real siguen
+El candidato implementa inicio y fin por eventos del player PowerShell/WPF
+existente, con cierre y errores explícitos, sin dependencias ni cambio de ACK.
+El CI previo 35737417800 demuestra éxito falso para un MP3 inexistente y
+fallos de eventos antes de reparar. Segundo CI y revisión final en curso. La escucha y latencia real siguen
 pendientes. Implementación local; reviewer reutilizado mientras Isaac conecta
 DeepSeek Harness. Las PR1295, 1300 y 1304 siguen separadas, sin integrar.
 

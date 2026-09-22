@@ -2,12 +2,15 @@
   "schemaVersion": 1,
   "issue": "ISA-1307",
   "type": "fix",
-  "summary": "En reparación: retirar las esperas artificiales del audio Windows del Ingeniero.",
+  "summary": "El audio Windows del Ingeniero reproduce y finaliza por eventos, sin esperas artificiales.",
   "technicalNotes": [
-    "Microplan y comparación previa con CrewChief predeterminado; implementación y segunda comparación pendientes."
+    "Inicio al abrir el medio, finalización por MediaEnded y error por MediaFailed; se mantienen el límite y la cancelación del proceso.",
+    "Las rutas con comillas simples ASCII y tipográficas se conservan como datos literales."
   ],
   "testing": [
-    "Reproducir los fallos de ciclo de eventos en Windows antes de modificar el player; repetir los mismos casos tras la reparación."
+    "Escuchar secuencias de clips cortos y largos: sin silencios añadidos ni cortes prematuros.",
+    "Interrumpir Engineer con una prioridad Spotter y cancelar la sesión: el audio previo debe detenerse.",
+    "Probar archivo no reproducible y rutas con comillas: los fallos deben ser explícitos."
   ],
   "knownLimitations": [
     "La escucha Windows/LMU y la latencia hasta el primer sonido requieren medición física.",

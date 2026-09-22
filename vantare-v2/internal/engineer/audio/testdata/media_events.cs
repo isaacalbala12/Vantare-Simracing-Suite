@@ -9,7 +9,7 @@ public class MediaEventsFixture
     public static string ExpectedPath;
     public event EventHandler MediaOpened;
     public event EventHandler MediaEnded;
-    public event EventHandler MediaFailed;
+    public event EventHandler<System.Windows.Media.ExceptionEventArgs> MediaFailed;
     private bool opened;
 
     public object NaturalDuration
@@ -65,11 +65,15 @@ public class MediaEventsFixture
     private void Fail()
     {
         Console.WriteLine("failed");
-        if (MediaFailed != null) MediaFailed(this, EventArgs.Empty);
+        // Its WPF argument constructor is internal; the production callback
+        // only consumes the failure signal, not its payload.
+        if (MediaFailed != null) MediaFailed(this, null);
     }
 
     public void Close()
     {
         Console.WriteLine("close");
+        if (Scenario == "close-throws")
+            throw new InvalidOperationException("Close failed");
     }
 }

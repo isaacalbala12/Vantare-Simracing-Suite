@@ -18,6 +18,8 @@ Revisión funcional: corregidos selección múltiple, retorno al borrador, descu
 
 La build productiva local compila y abre `C:/tmp/vantare-isa1314/vantare-v2/bin/vantare.exe` (PID inicial 21588, canal local configurado nightly; esto no es promoción). Computer Use nativo sí localiza y captura la ventana, pero se detiene ante el inicio de sesión. Se ha pedido al usuario que inicie sesión; no se automatiza autenticación ni se modifica licencia/configuración de acceso. Runtime DuckDB v1.5.5 verificado, manifest `700201f90266ae6b829372d9989408c6b0efd86725a50980d46fc05adfc24869`. LMU permanece abierto y no se interviene.
 
+Implementación y contrato guardados en el commit local `421ea6580a02ff7f09da8b6275062014e4805dc8`, sin push.
+
 Evidencia y checks: [entrega local ISA-1314](../../strategy-planner/evidence/isa-1314/README.md). La aprobación del HTML y los tests no acreditan el render nativo de Strategy; no se hereda la nota 9,2/10 de A4. **Siguiente acción:** tras acceso del usuario, recorrer menú/manual/biblioteca/DuckDB/Plan con Computer Use, corregir hallazgos y capturar paridad v5. T22 integral, validación empírica y live no quedan cerrados por esta entrega. Sin integración, promoción ni release.
 
 ## Antecedente — #1277 T18 reforzado con recorrido adversarial Computer Use

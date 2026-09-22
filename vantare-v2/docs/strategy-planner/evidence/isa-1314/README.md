@@ -39,7 +39,7 @@ Antes de la revisión se registraron sólo hashes de dos originales candidatos (
 
 ## Estado Git y entrega
 
-Rama `vantareapp/isa-1314-strategy-menu-desk`; base `7ff79ead4c125d63730b0ec3aa181e6c630453ab` (ISA-1277). El checkout principal y los cambios ajenos de calendario permanecen intactos. Entrega local sin push, PR, CI remota, merge, promoción ni release. No se cierra la issue como integrada.
+Commit de implementación `421ea6580a02ff7f09da8b6275062014e4805dc8`. Rama `vantareapp/isa-1314-strategy-menu-desk`; base `7ff79ead4c125d63730b0ec3aa181e6c630453ab` (ISA-1277). El checkout principal y los cambios ajenos de calendario permanecen intactos. Entrega local sin push, PR, CI remota, merge, promoción ni release. No se cierra la issue como integrada.
 
 ## Archivos
 

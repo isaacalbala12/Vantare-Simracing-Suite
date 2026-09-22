@@ -507,24 +507,92 @@ class TestInvalidBaseIsError(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 class TestCmdCheckExitCode(unittest.TestCase):
-    """Circuito real: si cmd_check se rompe (return 0 siempre), estos tests fallan.
-    Ejecuta cmd_check de verdad y comprueba el exit code."""
+    """Git real aislado -> policy_changed -> cmd_check -> exit del proceso.
 
-    def test_check_exit_code_is_nonzero_when_policy_changed(self):
-        """Este PR toca tools/quality/**, asi que check debe dar exit != 0
-        (REVIEW_REQUIRED o FAIL, ambos non-zero). Si cmd_check se rompe a
-        return 0, este test falla."""
-        proc = subprocess.run(
-            [sys.executable, "-B", str(REPO_ROOT / "tools" / "quality" / "vantare_quality.py"), "check"],
-            cwd=str(REPO_ROOT), capture_output=True, text=True, timeout=300,
-        )
-        self.assertNotEqual(proc.returncode, 0,
-                            f"check debe dar exit != 0 (policy_changed); got exit {proc.returncode}\n"
-                            f"stdout: {proc.stdout[-500:]}\nstderr: {proc.stderr[-500:]}")
-        # El agregado debe ser FAIL o REVIEW_REQUIRED (nunca PASS).
-        self.assertTrue("FAIL" in proc.stdout or "REVIEW_REQUIRED" in proc.stdout,
-                        f"aggregate debe ser FAIL o REVIEW_REQUIRED; stdout: {proc.stdout[-300:]}")
-        self.assertNotIn("aggregate: PASS", proc.stdout, "policy_changed no puede dar PASS")
+    Solo se inyectan resultados de analizadores: las otras clases ejercitan
+    sus binarios reales. Ni el diff Git, ni el detector, ni el agregado se mockean.
+    """
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.repo = Path(self.temp.name)
+        policy = self.repo / "tools" / "quality"
+        policy.mkdir(parents=True)
+        (policy / "scope.json").write_text(SCOPE_PATH.read_text(), encoding="utf-8")
+        self.policy_file = policy / "policy.txt"
+        self.policy_file.write_text("base\n", encoding="utf-8")
+        self._git("init", "--quiet")
+        self._git("add", "tools/quality")
+        self._git("commit", "--quiet", "-m", "fixture base")
+        self.base = self._git("rev-parse", "HEAD").strip()
+
+    def _git(self, *args):
+        return subprocess.run(
+            ["git", "-c", "user.name=Quality test", "-c", "user.email=quality@example.invalid",
+             "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", *args],
+            cwd=self.repo, check=True, capture_output=True, text=True,
+        ).stdout
+
+    def _check(self, expected, paths=(), analyzer_failure=False):
+        # Ejecutar en proceso propio: cmd_check y su codigo de salida son reales.
+        # El informe queda fuera del fixture Git para no contaminar su diff.
+        runner = r"""
+import argparse
+import sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+import vantare_quality as vq
+vq.REPO_ROOT = Path(sys.argv[2])
+vq.LAST_RUN_PATH = Path(sys.argv[3])
+results = []
+for analyzer in sorted(vq.RATCHET_ANALYZERS | vq.NO_BASELINE_ANALYZERS):
+    baseline = vq.load_baseline(analyzer)
+    configs = baseline["header"]["configs"] if baseline else ["frontend"]
+    for config in configs:
+        result = vq.ToolResult(analyzer, config, vq.PASS, 0)
+        if analyzer == "dependency-cruiser" and sys.argv[5] == "fail":
+            result = vq.ToolResult(analyzer, config, vq.FAIL, 1, findings=[
+                vq.Finding(analyzer, "fixture-violation", "fixture.ts", msg_norm="forbidden dependency")])
+        results.append(result)
+vq._run_all = lambda scope, versions: results
+raise SystemExit(vq.cmd_check(argparse.Namespace(ci=True, base=sys.argv[4], json=False)))
+"""
+        with tempfile.TemporaryDirectory() as report_dir:
+            report_path = Path(report_dir) / "last-run.json"
+            proc = subprocess.run(
+                [sys.executable, "-B", "-c", runner, str(SCOPE_PATH.parent),
+                 str(self.repo), str(report_path), self.base,
+                 "fail" if analyzer_failure else "pass"],
+                cwd=self.repo, capture_output=True, text=True, timeout=30,
+            )
+            self.assertEqual(proc.returncode, 0 if expected == PASS else 1,
+                             f"stdout: {proc.stdout}\nstderr: {proc.stderr}")
+            report = json.loads(report_path.read_text(encoding="utf-8"))
+        self.assertEqual(report["aggregate"], expected)
+        self.assertEqual(report["integrity_issues"], [])
+        self.assertEqual(report["policy_changed"], bool(paths))
+        self.assertEqual(sorted(report["policy_changed_paths"]), sorted(paths))
+
+    def test_unchanged_policy_passes(self):
+        self._check(PASS)
+
+    def test_uncommitted_policy_change_requires_review(self):
+        self.policy_file.write_text("changed\n", encoding="utf-8")
+        self._check(REVIEW_REQUIRED, ["tools/quality/policy.txt"])
+
+    def test_committed_policy_change_requires_review(self):
+        self.policy_file.write_text("changed\n", encoding="utf-8")
+        self._git("add", "tools/quality/policy.txt")
+        self._git("commit", "--quiet", "-m", "change policy")
+        self._check(REVIEW_REQUIRED, ["tools/quality/policy.txt"])
+
+    def test_untracked_policy_change_requires_review(self):
+        (self.policy_file.parent / "new-policy.txt").write_text("new\n", encoding="utf-8")
+        self._check(REVIEW_REQUIRED, ["tools/quality/new-policy.txt"])
+
+    def test_analyzer_failure_without_policy_change_fails(self):
+        self._check(FAIL, analyzer_failure=True)
 
 
 # ---------------------------------------------------------------------------

@@ -183,8 +183,6 @@
 .vf-delta[data-cross] .vf-delta-center, .vf-delta[data-cross] .vf-delta-capsule-center { transition: background-color 350ms ease, box-shadow 350ms ease; }
 .vf-delta[data-cross="gaining"] .vf-delta-center, .vf-delta[data-cross="gaining"] .vf-delta-capsule-center { background: var(--vf-gain); box-shadow: 0 0 8px rgb(127 182 134 / 70%); }
 .vf-delta[data-cross="losing"] .vf-delta-center, .vf-delta[data-cross="losing"] .vf-delta-capsule-center { background: var(--vf-loss); box-shadow: 0 0 8px rgb(217 83 96 / 70%); }
-.vf-delta[data-cross] .vf-delta-value { transform: translateX(-50%) scale(1.04); transition: transform 180ms ease-out; }
-.vf-delta[data-cross] .vf-delta-capsule-value { transform: scale(1.04); transition: transform 180ms ease-out; }
 .vf-standings [data-standings-row][data-motion], .vf-relative [data-relative-row][data-cross] { transition: background-color 500ms ease-out; }
 .vf-standings [data-standings-row][data-motion="rise"], .vf-relative [data-relative-row][data-cross="rise"] { background-color: rgb(127 182 134 / 12%); }
 .vf-standings [data-standings-row][data-motion="fall"], .vf-relative [data-relative-row][data-cross="fall"] { background-color: rgb(217 83 96 / 12%); }

@@ -3084,3 +3084,8 @@ aislada a `nightly` (pendiente review/merge):
 - Isaac autoriza expresamente integrar PR #1298 en nightly mediante subagente. La dependencia de CI #1302 / VAN-737 corrige la prueba negativa que asumía cambios de política en cualquier PR; mantiene los controles y cuenta con revisión independiente.
 - El candidato de widgets conserva el código revisado en `6c59caf2`; esta conciliación solo incorpora la dependencia de tooling y documentación de aceptación. El nuevo ajuste de animación Delta `e492aa88` está en otra rama y no forma parte de #1298; Isaac lo aprobó visualmente durante esta integración y se seguirá por separado.
 - Verificación remota de SHA/canal y checks en [VAN-41](https://app.notion.com/p/3dbe51695c658125b1c2efc198edfc94). La revisión visual continúa en Workshop y la certificación LMU activa permanece pendiente; sin testers/master/release.
+
+
+## 2026-09-22 · ISA-1315 inicio: idioma común sin trabajo por muestra
+
+Isaac aprobó compartir el idioma de la app con las etiquetas de widgets y exigió separar toda resolución de traducciones de la telemetría. Seguimiento de widgets en [Asana, En curso](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218757534554194), por su instrucción expresa; [#1315](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1315) conserva el puente CI. [Diseño y plan aprobado](../../plans/2026-09-22-isa-1315-widget-locale.md). Base nightly e41f703c, worktree aislado vantare-widget-locale, rama vantareapp/isa-1315-widget-locale. Próximo paso: implementación mediante worker y revisión independiente de persistencia/concurrencia. PR #1306 continúa separada; sin integración ni promoción de canales.

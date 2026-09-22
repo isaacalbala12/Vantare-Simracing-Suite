@@ -85,15 +85,15 @@ describe("animation scene catalog", () => {
     }
   });
 
-  it("warns that the tire disc never fires against live telemetry", () => {
+  it("warns only for signals that still cannot fire against live telemetry", () => {
     expect(getAnimationScene("standings-tire-change")?.unsupportedSignal).toBe(
       "rows[].tireCompound",
     );
     expect(getAnimationScene("standings-full")?.unsupportedSignal).toBe("rows[].tireCompound");
-    expect(getAnimationScene("delta-new-best")?.unsupportedSignal).toBe("bestLapText");
+    expect(getAnimationScene("delta-new-best")?.unsupportedSignal).toBeUndefined();
     const deltaCaptions = getAnimationScene("delta-new-best")?.frames.map((frame) => frame.caption) ?? [];
-    expect(deltaCaptions.every((caption) => /no disponible|placeholder/.test(caption))).toBe(true);
-    expect(deltaCaptions.join(" ")).not.toMatch(/\d+:\d+|barrido/i);
+    expect(deltaCaptions.join(" ")).toMatch(/personal|aviso/i);
+    expect(deltaCaptions.join(" ")).not.toMatch(/no disponible|placeholder/i);
   });
 });
 

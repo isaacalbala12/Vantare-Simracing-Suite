@@ -39,6 +39,48 @@ describe("pedals v2 view model", () => {
     expect(model.throttleText).toBe("75%");
     expect(model.brakeText).toBe("13%");
     expect(model.clutchText).toBe("0%");
+    expect(model.flag).toBe("unknown");
+    expect(model.sessionPhase).toBe("race");
+  });
+
+  it("consume la bandera y la fase de SessionV2 sin alterar los canales de pedal", () => {
+    const frame = buildSyntheticFrame({
+      throttle: { v: 0.75, q: "fresh" },
+      brake: { v: 0.125, q: "fresh" },
+      clutch: { v: 0.06, q: "fresh" },
+    });
+    const flagged = {
+      ...frame,
+      session: {
+        ...frame.session,
+        flag: { v: "yellow", q: "fresh" as const },
+        phase: { v: "race", q: "fresh" as const },
+      },
+    };
+    const model = buildPedalsViewModelV2(flagged, { state: "live" }, {});
+
+    expect(model.flag).toBe("yellow");
+    expect(model.sessionPhase).toBe("race");
+    expect(model.throttleText).toBe("75%");
+    expect(model.brakeText).toBe("13%");
+    expect(model.clutchText).toBe("6%");
+  });
+
+  it("no convierte una bandera ausente, inválida o stale en verde", () => {
+    const frame = buildSyntheticFrame();
+    const missing = buildPedalsViewModelV2(frame, { state: "live" }, {});
+    const invalid = buildPedalsViewModelV2({
+      ...frame,
+      session: { ...frame.session, flag: { v: "not-a-flag", q: "fresh" } },
+    }, { state: "live" }, {});
+    const stale = buildPedalsViewModelV2({
+      ...frame,
+      session: { ...frame.session, flag: { v: "yellow", q: "stale" } },
+    }, { state: "live" }, {});
+
+    expect(missing.flag).toBe("unknown");
+    expect(invalid.flag).toBe("unknown");
+    expect(stale.flag).toBe("unknown");
   });
 
   it("placeholders cuando faltan señales (q=missing)", () => {
@@ -102,6 +144,8 @@ describe("pedals v2 view model", () => {
 
   it("expone proyección estable para comparación", () => {
     const displayed = pedalsDisplayedValues(buildPedalsViewModelV2(goldenFrame(), { state: "live" }, {}));
-    expect(Object.keys(displayed).sort()).toEqual(["brake", "clutch", "status", "throttle"]);
+    expect(Object.keys(displayed).sort()).toEqual(["brake", "clutch", "flag", "sessionPhase", "status", "throttle"]);
+    expect(displayed.flag).toBe("unknown");
+    expect(displayed.sessionPhase).toBe("race");
   });
 });

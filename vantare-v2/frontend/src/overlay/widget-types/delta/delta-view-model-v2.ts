@@ -3,7 +3,7 @@ import type {
   OverlayQValue,
   OverlaySourceStatusV2,
 } from "../../../generated/telemetry";
-import type { DeltaContent } from "./delta-definition";
+import type { DeltaContent, DeltaReference } from "./delta-content";
 import type { DeltaTone, DeltaViewModel } from "./delta-view-model";
 
 const PLACEHOLDER = "—";
@@ -27,9 +27,10 @@ const DELTA_PROGRESS_SCALE_SECONDS = 1.5;
  * detect and surface the difference where it matters.
  *
  * Fields with no canonical signal behind them stay at the placeholder and are
- * declared for the shadow comparator instead of invented: bestLapText (no best
- * lap in the frame), lapText (the frame carries completed laps, not the lap
- * number Overlay v1 displayed) and predictedLapText (no estimated lap time).
+ * declared for the shadow comparator instead of invented: lapText (the frame
+ * carries completed laps, not the lap number Overlay v1 displayed),
+ * predictedLapText (no estimated lap time) and trend. The player's best lap is
+ * available on the canonical standings row and is therefore safe to project.
  */
 export function buildDeltaViewModelV2(
   frame: OverlayFrameV2,
@@ -40,7 +41,12 @@ export function buildDeltaViewModelV2(
   }
 
   const seconds = displayedNumber(frame.delta.seconds);
-  const lastLapText = formatLapTime(playerLastLapSeconds(frame));
+  const playerRow = playerStandingRow(frame);
+  const lastLapText = formatLapTime(displayedNumber(playerRow?.lastLap));
+  const bestLapText = formatLapTime(displayedNumber(playerRow?.bestLap));
+  const completedLap = playerRow?.laps;
+  const reference = deltaReference(frame.delta.reference);
+  const sessionIdentity = `${frame.sessionId}:${frame.epoch}`;
   const status = source.state === "stale" ? "stale" : seconds === undefined ? "missing" : "ready";
   if (seconds === undefined) {
     return {
@@ -50,8 +56,11 @@ export function buildDeltaViewModelV2(
       tone: "neutral",
       deltaText: PLACEHOLDER,
       lastLapText,
-      bestLapText: PLACEHOLDER,
+      bestLapText,
       progress: 0,
+      completedLap,
+      reference,
+      sessionIdentity,
     };
   }
 
@@ -63,9 +72,12 @@ export function buildDeltaViewModelV2(
     tone: resolveTone(seconds),
     deltaText,
     lastLapText,
-    bestLapText: PLACEHOLDER,
+    bestLapText,
     progress: clampProgress(seconds),
     splitText: deltaText,
+    completedLap,
+    reference,
+    sessionIdentity,
   };
 }
 
@@ -94,7 +106,6 @@ export function deltaDisplayedValues(model: DeltaViewModel): Readonly<Record<str
 
 /** Fields with no canonical signal behind them; declared, never compared. */
 export const OVERLAY_V2_DELTA_DECLARED_GAPS: readonly string[] = Object.freeze([
-  "bestLapText",
   "lapText",
   "predictedLapText",
   "trend",
@@ -113,9 +124,15 @@ function unavailable(status: DeltaViewModel["status"], statusMessage?: string): 
   };
 }
 
-function playerLastLapSeconds(frame: OverlayFrameV2): number | undefined {
-  const row = frame.standings.find((candidate) => candidate.id === frame.player.id);
-  return row === undefined ? undefined : displayedNumber(row.lastLap);
+function playerStandingRow(frame: OverlayFrameV2) {
+  return frame.standings.find((candidate) => candidate.id === frame.player.id);
+}
+
+function deltaReference(value: string | undefined): DeltaReference | undefined {
+  if (value === "personal-best" || value === "session-best" || value === "previous-lap") {
+    return value;
+  }
+  return undefined;
 }
 
 function formatDeltaText(deltaSeconds: number): string {
@@ -146,8 +163,8 @@ function clampProgress(deltaSeconds: number): number {
   return Math.max(-1, Math.min(1, deltaSeconds / DELTA_PROGRESS_SCALE_SECONDS));
 }
 
-function displayedNumber(value: OverlayQValue<number>): number | undefined {
-  if (value.q === "missing" || value.q === "invalid") return undefined;
+function displayedNumber(value: OverlayQValue<number> | undefined): number | undefined {
+  if (value === undefined || value.q === "missing" || value.q === "invalid") return undefined;
   // Go omitempty elides legitimate zeroes. Quality is the presence bit.
   return value.v ?? 0;
 }

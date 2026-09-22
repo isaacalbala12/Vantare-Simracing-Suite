@@ -40,8 +40,33 @@ describe("buildBroadcastTowerViewModelV2", () => {
     expect(model.rows).toHaveLength(5);
     expect(model.rows[0]).toMatchObject({ place: 1, isPlayer: true });
     expect(model.sessionLabel).toBe("RACE");
+    expect(model.flag).toBe("unknown");
     expect(model.trackTempC).toBeUndefined();
     expect(model.sof).toBeUndefined();
+  });
+
+  it.each([
+    ["green", "green"],
+    ["yellow", "yellow"],
+    ["blue", "blue"],
+    ["red", "red"],
+    ["white", "white"],
+    ["black", "black"],
+    ["checkered", "checkered"],
+    ["chequered", "checkered"],
+    ["not-a-flag", "unknown"],
+  ] as const)("projects a fresh session flag %s as %s", (raw, expected) => {
+    const input = frame(5);
+    input.session.flag = { q: "fresh", v: raw };
+    const model = buildBroadcastTowerViewModelV2(input, { state: "live" } as OverlaySourceStatusV2, { rowCount: 5, showWeather: false, showSof: false });
+    expect(model.flag).toBe(expected);
+  });
+
+  it("does not present a stale session flag as current", () => {
+    const input = frame(5);
+    input.session.flag = { q: "fresh", v: "yellow" };
+    const model = buildBroadcastTowerViewModelV2(input, { state: "stale" } as OverlaySourceStatusV2, { rowCount: 5, showWeather: false, showSof: false });
+    expect(model.flag).toBe("unknown");
   });
 
   it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 2147483647])("does not expose invalid or unlimited max laps %s", (value) => {

@@ -175,3 +175,20 @@
 .functional-study[data-study-style="v2-focus"] .vf-class { background: transparent; color: #d6d6da; border: 1px solid rgb(245 245 245 / 22%); border-radius: 3px; font-weight: 600; }
 .functional-study[data-study-style="v2-focus"] .vf-table thead th { font-size: 10px; color: #9a9aa0; letter-spacing: .1em; }
 .functional-study[data-study-style="v2-focus"] .vf-table .vf-column-label::after { display: none; }
+
+/* Default · separación tonal mínima del top 3. Es una decisión de
+   presentación del Workshop: no altera la proyección, la altura ni los otros
+   estudios. */
+.functional-study[data-study-style="default"] .vf-standings[data-classification-mode="normal"] .vf-table tr[data-standings-group="podium"]:not([data-player="true"]) td {
+  background-color: rgb(255 255 255 / 3%);
+}
+.functional-study[data-study-style="default"] .vf-standings[data-classification-mode="normal"] .vf-table tr[data-standings-context-start="true"] td::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: rgb(245 245 245 / 16%);
+  pointer-events: none;
+}

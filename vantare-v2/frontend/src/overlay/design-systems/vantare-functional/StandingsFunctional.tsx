@@ -115,6 +115,10 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
   const availableBodyHeight = tableSpace - tableHeaderHeight;
   const visibleRows = takeFunctionalStandingsRows(model.rows, classificationMode, availableBodyHeight);
   const entries = buildFunctionalStandingsEntries(visibleRows, classificationMode);
+  const tonalPodium = classificationMode === "normal";
+  const firstContextRowId = tonalPodium
+    ? visibleRows.find((row) => row.position > 3)?.id
+    : undefined;
   // Keep the PIT badge outside the table's geometry. The rail mirrors the
   // table rows, so the badge stays aligned without reserving a fake metric
   // column or changing the width of the standings card.
@@ -161,7 +165,13 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
               </th>
             </tr>
           ) : (
-            <tr key={entry.key} data-standings-row={entry.row.id} data-player={entry.row.isPlayer || undefined}>
+            <tr
+              key={entry.key}
+              data-standings-row={entry.row.id}
+              data-player={entry.row.isPlayer || undefined}
+              data-standings-group={tonalPodium ? (entry.row.position <= 3 ? "podium" : "context") : undefined}
+              data-standings-context-start={tonalPodium && entry.row.id === firstContextRowId ? "true" : undefined}
+            >
               {columns.map((column) => {
                 const row = entry.row;
                 const value = column.metricId === "position"

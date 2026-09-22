@@ -9,6 +9,7 @@ export type StandingsWindowRuntime = Readonly<{
   around: StandingsWindowAround;
 }>;
 
+
 /**
  * Keeps the first three positions visible and adds a player-centered window.
  * `around` counts neighbouring rows only; the player is included separately.

@@ -1,0 +1,6 @@
+/*
+ * Compatibility entry point for the canonical Efficiency path.
+ * The imported selectors intentionally keep data-widget-system="vantare-functional"
+ * so existing DOM contracts and screenshots remain unchanged.
+ */
+@import "../vantare-functional/tokens.css";

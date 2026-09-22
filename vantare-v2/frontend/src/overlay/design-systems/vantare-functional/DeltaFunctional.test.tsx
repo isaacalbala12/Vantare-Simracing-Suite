@@ -1,5 +1,5 @@
 import { cleanup, render } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { WidgetVisualHost } from "../../core/WidgetVisualHost";
 import { buildWorkshopFrameV2, createScenarioWidget } from "../../authoring/fixtures/authoring-v2-workshop-frame";
 import type { DeltaViewModel } from "../../widget-types/delta/delta-view-model";
@@ -10,18 +10,40 @@ afterEach(cleanup);
 const model: DeltaViewModel = {
   type: "delta", status: "ready", tone: "gaining", deltaText: "-0.280",
   lastLapText: "1:31.234", bestLapText: "1:30.980", progress: -0.5,
+  completedLap: 127, sessionIdentity: "race:1",
 };
 
 describe("Functional Delta", () => {
-  it("shows the delta value with its tone, the last lap in the header and a fill that grows from center", () => {
-    const { container } = render(<DeltaFunctional model={model} settings={{}} renderMode="harness" />);
+  it("keeps lap notices hidden while idle and shows the last lap only after a completed lap", () => {
+    const { container, rerender } = render(<DeltaFunctional model={model} settings={{}} renderMode="harness" />);
     expect(container.querySelector(".vf-delta")?.getAttribute("data-tone")).toBe("gaining");
     expect(container.querySelector(".vf-delta-value")?.textContent).toBe("▲-0.280");
     expect(container.querySelector(".vf-delta-arrow")?.textContent).toBe("▲");
     expect(container.querySelector(".vf-delta-last .vf-clock")?.textContent).toBe("1:31.234");
+    expect(container.querySelector(".vf-delta")?.getAttribute("data-delta-event")).toBeNull();
+    rerender(<DeltaFunctional model={{ ...model, lastLapText: "1:31.111", completedLap: 128 }} settings={{}} renderMode="harness" />);
+    expect(container.querySelector(".vf-delta")?.getAttribute("data-delta-event")).toBe("lap-completed");
+    expect(container.querySelector(".vf-delta-last .vf-clock")?.textContent).toBe("1:31.111");
     const fill = container.querySelector<HTMLElement>(".vf-delta-fill");
     expect(fill?.style.left).toBe("25%");
     expect(fill?.style.width).toBe("25%");
+  });
+
+  it("shows the personal best on the left when a new personal best arrives", () => {
+    vi.useFakeTimers();
+    const { container, rerender } = render(<DeltaFunctional model={model} settings={{}} renderMode="harness" />);
+    rerender(<DeltaFunctional model={{ ...model, lastLapText: "1:30.700", bestLapText: "1:30.700", completedLap: 128 }} settings={{}} renderMode="harness" />);
+    expect(container.querySelector(".vf-delta")?.getAttribute("data-delta-event")).toBe("personal-best");
+    expect(container.querySelector(".vf-delta-reference .vf-clock")?.textContent).toBe("1:30.700");
+    expect(container.querySelector(".vf-delta-last .vf-clock")?.textContent).toBe("1:30.700");
+    vi.advanceTimersByTime(4000);
+    expect(container.querySelector(".vf-delta")?.getAttribute("data-delta-event")).toBeNull();
+  });
+
+  it("does not classify a slower best as a personal-best event", () => {
+    const { container, rerender } = render(<DeltaFunctional model={model} settings={{}} renderMode="harness" />);
+    rerender(<DeltaFunctional model={{ ...model, lastLapText: "1:32.000", bestLapText: "1:31.100", completedLap: 128 }} settings={{}} renderMode="harness" />);
+    expect(container.querySelector(".vf-delta")?.getAttribute("data-delta-event")).toBe("lap-completed");
   });
 
   it("mirrors the fill to the right of center when losing", () => {

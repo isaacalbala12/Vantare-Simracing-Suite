@@ -1,10 +1,10 @@
+import { resolveFunctionalClassAccent, type FunctionalClassAccent } from "./functional-class-accent";
 import type { StandingsClassificationMode } from "./standings-content";
 import type { StandingsRowViewModel } from "./standings-view-model";
 
 /** Altura de una banda de clase dentro de la tabla de Eficiencia V1. */
 export const FUNCTIONAL_STANDINGS_CLASS_BAND_HEIGHT = 28;
 
-type FunctionalStandingsClassAccent = "red" | "blue" | "amber" | "neutral";
 
 export type FunctionalStandingsEntry =
   | {
@@ -12,7 +12,7 @@ export type FunctionalStandingsEntry =
       key: string;
       classId: string;
       label: string;
-      accent: FunctionalStandingsClassAccent;
+      accent: FunctionalClassAccent;
     }
   | {
       kind: "row";
@@ -25,13 +25,6 @@ function normalizedClassId(value: string): string {
   return value.trim().toUpperCase();
 }
 
-function resolveFunctionalStandingsClassAccent(classId: string): FunctionalStandingsClassAccent {
-  const normalized = normalizedClassId(classId);
-  if (normalized === "HYP" || normalized.includes("HYPER") || normalized === "DP") return "red";
-  if (normalized.includes("LMP") || normalized === "P2") return "blue";
-  if (normalized.includes("GTE") || normalized.includes("GT3")) return "amber";
-  return "neutral";
-}
 
 /**
  * Returns the same pilot rows in normal mode and class blocks in multiclass.
@@ -75,7 +68,7 @@ export function buildFunctionalStandingsEntries(
       key: `class:${classId}`,
       classId,
       label: classId,
-      accent: resolveFunctionalStandingsClassAccent(classId),
+      accent: resolveFunctionalClassAccent(classId),
     });
     for (const row of classRows) {
       entries.push({

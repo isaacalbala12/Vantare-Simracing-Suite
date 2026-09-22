@@ -32,7 +32,7 @@ const (
 //
 // Overlay v1 selected and ordered the rows in the widget
 // (relative-row-selection.ts:9-48): it walked outwards from the player over a
-// lap-distance ordering and produced [ahead far→near, player, behind
+// lap-distance ordering and produced [ahead near→far, player, behind
 // near→far]. That selection is domain, not presentation, so it lives here now.
 //
 // LapDistance is the physical ordering signal. RelativeTime is display data:
@@ -139,10 +139,7 @@ func selectPhysicalRelativeWindow(vehicles []core.VehicleState) (physicalRelativ
 		}
 	}
 
-	window.ahead = make([]core.VehicleState, 0, len(aheadNearToFar))
-	for index := len(aheadNearToFar) - 1; index >= 0; index-- {
-		window.ahead = append(window.ahead, aheadNearToFar[index])
-	}
+	window.ahead = aheadNearToFar
 	return window, true
 }
 

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { WidgetVisualHost } from "../core/WidgetVisualHost";
 import { WidgetVisualViewport } from "../core/WidgetVisualViewport";
 import type { WidgetInstanceV3 } from "../core/profile-document";
+import { EFFICIENCY_SYSTEM_ID } from "../core/design-system-names";
 import { buildEngineerPresentationFixture } from "../../engineer/engineer-presentation-fixtures";
 import {
   buildWorkshopFrameV2,
@@ -19,7 +20,7 @@ import {
   type OverlayWorkshopQuery,
 } from "./overlay-workshop-query";
 import "./overlay-workshop.css";
-import { FunctionalStudyControls } from "./FunctionalStudyControls";
+import { EfficiencyStudyControls } from "./EfficiencyStudyControls";
 import { parseStandingsContent } from "../widget-types/standings/standings-content";
 import { buildStandingsViewModelV2 } from "../widget-types/standings/standings-view-model-v2";
 import { parseRelativeContent } from "../widget-types/relative/relative-content";
@@ -61,14 +62,14 @@ function createRouteScenarioWidget(query: OverlayWorkshopQuery): WidgetInstanceV
 
 /**
  * The Workshop uses the same projected rows as the productive renderer. The
- * selected classification/window therefore needs to participate in the
- * intrinsic height calculation before the preview is painted.
+ * declared grid is resolved first, then the selected classification/window is
+ * applied, so sizing must follow the rows that can actually be rendered.
  */
 function fitFunctionalStandingsToRuntime(
   widget: WidgetInstanceV3,
   runtime: WidgetRuntimeInput,
 ): WidgetInstanceV3 {
-  if (widget.type !== "standings" || widget.visual.systemId !== "vantare-functional") {
+  if (widget.type !== "standings" || widget.visual.systemId !== EFFICIENCY_SYSTEM_ID) {
     return widget;
   }
   const frame = runtime.overlayV2Frame;
@@ -86,8 +87,13 @@ function fitFunctionalStandingsToRuntime(
       30,
       countFunctionalStandingsClassBands(model.rows, model.classificationMode),
     );
-    return { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height } };
+    return {
+      ...widget,
+      layout: { ...widget.layout, w: minimum.width, h: minimum.height },
+    };
   } catch {
+    // WidgetVisualHost remains the source of diagnostics for invalid content;
+    // sizing must not make the Workshop itself fail closed.
     return widget;
   }
 }
@@ -102,11 +108,25 @@ function setSearch(query: OverlayWorkshopQuery, mode: "push" | "replace" = "push
   }
 }
 
-function WorkshopSurface({ widget, runtime, profileId, surface, query, comparison = false }: { widget: WidgetInstanceV3; runtime: WidgetRuntimeInput; profileId: string; surface: OverlayWorkshopQuery["surface"]; query: OverlayWorkshopQuery; comparison?: boolean }): React.ReactElement {
-  const width = query.width ?? widget.layout.w;
-  const height = query.height ?? widget.layout.h;
+function WorkshopSurface({ widget: sourceWidget, runtime, profileId, surface, query, comparison = false }: { widget: WidgetInstanceV3; runtime: WidgetRuntimeInput; profileId: string; surface: OverlayWorkshopQuery["surface"]; query: OverlayWorkshopQuery; comparison?: boolean }): React.ReactElement {
+  // The Redline laboratory explicitly tests clipping at a selected viewport.
+  // Keep that existing contract while ordinary widget previews scale outside
+  // the productive layout.
+  const widget = sourceWidget.type === "standings" && query.system === "vantare-endurance" && query.redlineTheme === "tower"
+    ? { ...sourceWidget, layout: { ...sourceWidget.layout, w: query.width ?? sourceWidget.layout.w, h: query.height ?? sourceWidget.layout.h } }
+    : sourceWidget;
+  // `widget.layout` is the product geometry. Width/height in the Workshop URL
+  // only resize the outer preview frame; they must never be injected into the
+  // productive host or viewport, or one widget's preview size can distort the
+  // next widget's real composition.
+  const intrinsicWidth = widget.layout.w;
+  const intrinsicHeight = widget.layout.h;
+  const previewWidth = query.width ?? intrinsicWidth;
+  const previewHeight = query.height ?? intrinsicHeight;
+  const previewScaleX = previewWidth / intrinsicWidth;
+  const previewScaleY = previewHeight / intrinsicHeight;
   const pitOverflow = (() => {
-    if (widget.type !== "standings" || query.system !== "vantare-functional") return false;
+    if (widget.type !== "standings" || query.system !== EFFICIENCY_SYSTEM_ID) return false;
     try {
       return parseStandingsContent(widget.content).columns.some((column) => column.metricId === "pit" && column.enabled);
     } catch {
@@ -122,19 +142,27 @@ function WorkshopSurface({ widget, runtime, profileId, surface, query, compariso
     relativeViewModelInstanceKey: `${profileId}:${widget.id}`,
   };
   const host = (
-    <div className={`overlay-workshop-widget-root${pitOverflow ? " overlay-workshop-widget-root--pit-overflow" : ""}`} data-overlay-workshop-widget-root style={{ width, height, transform: reference ? undefined : `scale(${query.scale})`, transformOrigin: reference ? "top left" : "center" }}>
-      <WidgetVisualViewport widgetType={widget.type} visual={widget.visual} layout={{ ...widget.layout, w: width, h: height }} testId="overlay-workshop-viewport">
-        <WidgetVisualHost widget={{ ...widget, layout: { ...widget.layout, w: width, h: height } }} renderMode={surface}
-          authoringModel={reference ? REDLINE_TOWER_REFERENCE : undefined}
-          runtime={widget.type === "engineer-radio" ? { ...runtimeInput, engineerPresentation: query.state === "ready" ? buildEngineerPresentationFixture() : null } : runtimeInput} />
-      </WidgetVisualViewport>
+    <div className={`overlay-workshop-widget-root${pitOverflow ? " overlay-workshop-widget-root--pit-overflow" : ""}`} data-overlay-workshop-widget-root style={{ width: previewWidth, height: previewHeight, transform: reference ? undefined : `scale(${query.scale})`, transformOrigin: reference ? "top left" : "center" }}>
+      <div
+        className="overlay-workshop-widget-preview"
+        data-overlay-workshop-widget-preview
+        data-overlay-workshop-intrinsic-width={intrinsicWidth}
+        data-overlay-workshop-intrinsic-height={intrinsicHeight}
+        style={{ width: intrinsicWidth, height: intrinsicHeight, transform: `scale(${previewScaleX}, ${previewScaleY})`, transformOrigin: "top left" }}
+      >
+        <WidgetVisualViewport widgetType={widget.type} visual={widget.visual} layout={widget.layout} testId="overlay-workshop-viewport">
+          <WidgetVisualHost widget={widget} renderMode={surface}
+            authoringModel={reference ? REDLINE_TOWER_REFERENCE : undefined}
+            runtime={widget.type === "engineer-radio" ? { ...runtimeInput, engineerPresentation: query.state === "ready" ? buildEngineerPresentationFixture() : null } : runtimeInput} />
+        </WidgetVisualViewport>
+      </div>
     </div>
   );
   return <div className="overlay-workshop-surface" data-overlay-workshop-surface={surface} data-overlay-workshop-comparison={comparison || undefined}>
     {surface !== "obs" && <span className="overlay-workshop-surface-label">{surface}</span>}
     {reference ? (
-      <div style={{ width: (width + margin * 2) * query.scale, height: (height + margin * 2) * query.scale }}>
-        <div className={`overlay-workshop-reference-canvas overlay-workshop-reference-canvas--${query.background}`} style={{ width: width + margin * 2, height: height + margin * 2, padding: margin, transform: `scale(${query.scale})`, transformOrigin: "top left" }}>
+      <div style={{ width: (previewWidth + margin * 2) * query.scale, height: (previewHeight + margin * 2) * query.scale }}>
+        <div className={`overlay-workshop-reference-canvas overlay-workshop-reference-canvas--${query.background}`} style={{ width: previewWidth + margin * 2, height: previewHeight + margin * 2, padding: margin, transform: `scale(${query.scale})`, transformOrigin: "top left" }}>
           {host}
         </div>
       </div>
@@ -311,8 +339,16 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
         ...(standingRows !== undefined ? { standingRows } : {}),
         ...(parsed.playerPosition !== undefined ? { playerPosition: parsed.playerPosition } : {}),
       });
-      if (parsed.widget === "standings" && parsed.system === "vantare-functional" && parsed.around !== undefined) {
-        return { ...baseRuntime, standingsWindow: { mode: "podium-around-player", around: parsed.around } };
+      if (
+        parsed.widget === "standings"
+        && parsed.system === "vantare-functional"
+        && parsed.studyStyle === "default"
+        && parsed.around !== undefined
+      ) {
+        return {
+          ...baseRuntime,
+          standingsWindow: { mode: "podium-around-player", around: parsed.around },
+        };
       }
       return baseRuntime;
     } catch {
@@ -320,6 +356,9 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
     }
   }, [parsed, widget, sampledMs, replayFrame, scene, loop]);
 
+  // The data projection determines how many rows the selected mode really
+  // shows. This second pass only changes the Workshop's intrinsic preview
+  // geometry; the URL dimensions remain the outer harness dimensions.
   const visualWidget = useMemo(
     () => widget && runtime ? fitFunctionalStandingsToRuntime(widget, runtime) : widget,
     [widget, runtime],
@@ -351,7 +390,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
     // La vista de estudio es el único harness: no hay chrome genérico que se
     // pueda mezclar; todas las selecciones viven en el panel lateral.
     <main className="overlay-workshop functional-study" data-overlay-workshop-page data-study-style={parsed.studyStyle}>
-      <FunctionalStudyControls query={parsed} update={update} onRunScene={runScene} onReset={reset} />
+      <EfficiencyStudyControls query={parsed} widgetLayout={visualWidget?.layout} update={update} onRunScene={runScene} onReset={reset} />
       <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage data-stage-label={`${parsed.widget.toUpperCase().replace(/-/g, " ")} / ESTUDIO 01`}>
         {rejected && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-rejected>URL rechazada ({rejected}) — se cargaron los valores por defecto.</p>}
         {fixtureError && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-fixture-error>Selección inválida: {fixtureError}</p>}

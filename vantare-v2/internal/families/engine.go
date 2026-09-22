@@ -34,6 +34,12 @@ type Evidence struct {
 	Ready             bool
 	PlayerReady       bool
 	Subject           string
+	SessionType       string
+	SessionTypeKnown  bool
+	EndTime           float64
+	EndTimeKnown      bool
+	Remaining         float64
+	RemainingKnown    bool
 	FuelLitres        float64
 	FuelKnown         bool
 	FuelCapacity      float64
@@ -90,8 +96,8 @@ func familyTable() []registration {
 		},
 		{
 			name: "timings", family: timingsFamily{}, state: &timingsState{}, intents: familyIntents("timings"),
-			capabilities: []engineer.CapabilityID{engineer.CapabilitySession, engineer.CapabilityStandings, engineer.CapabilityGaps},
-			ready:        func(e Evidence) bool { return e.GapLeaderKnown || e.GapNextKnown },
+			capabilities: []engineer.CapabilityID{engineer.CapabilitySession, engineer.CapabilityStandings, engineer.CapabilityGaps, engineer.CapabilityPit},
+			ready:        timingsReady,
 		},
 		{
 			name: "pitstops", family: pitstopsFamily{}, state: &pitstopsState{}, intents: familyIntents("pitstops"),
@@ -270,6 +276,9 @@ func evidenceFromObservation(snapshot engineer.ObservationSnapshotV1, nowMS int6
 	evidence := Evidence{NowMS: nowMS, Subject: string(snapshot.Player.ID)}
 	evidence.Ready = snapshot.Context.Complete()
 	evidence.PlayerReady = presentOK && present
+	evidence.SessionType, evidence.SessionTypeKnown = usable(snapshot.SessionType)
+	evidence.EndTime, evidence.EndTimeKnown = usable(snapshot.EndTime)
+	evidence.Remaining, evidence.RemainingKnown = usable(snapshot.Remaining)
 	evidence.FuelLitres, evidence.FuelKnown = usable(snapshot.Player.FuelLiters)
 	evidence.FuelCapacity, evidence.FuelCapacityKnown = usable(snapshot.Player.FuelCapacity)
 	evidence.Lap, evidence.LapKnown = usable(snapshot.Player.LapNumber)

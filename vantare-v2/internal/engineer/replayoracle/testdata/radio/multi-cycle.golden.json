@@ -382,26 +382,26 @@
       "sequence": 42,
       "step": 9,
       "atMs": 5454,
-      "event": "submitted",
-      "family": "fuel",
-      "intent": "fuel.for_pit_now",
-      "messageId": "families-13-fuel.for_pit_now"
+      "event": "rejected",
+      "family": "timings",
+      "intent": "timings.gap_report",
+      "reason": "queue_pressure_or_cooldown",
+      "messageId": "families-13-timings.gap_report"
     },
     {
       "sequence": 43,
       "step": 9,
       "atMs": 5454,
-      "event": "rejected",
-      "family": "timings",
-      "intent": "timings.gap_report",
-      "reason": "queue_pressure_or_cooldown",
-      "messageId": "families-14-timings.gap_report"
+      "event": "ack_queued",
+      "family": "fuel",
+      "intent": "fuel.low_2l",
+      "messageId": "families-11-fuel.low_2l"
     },
     {
       "sequence": 44,
       "step": 9,
       "atMs": 5454,
-      "event": "ack_queued",
+      "event": "ack_started",
       "family": "fuel",
       "intent": "fuel.low_2l",
       "messageId": "families-11-fuel.low_2l"
@@ -410,7 +410,7 @@
       "sequence": 45,
       "step": 9,
       "atMs": 5454,
-      "event": "ack_started",
+      "event": "ack_completed",
       "family": "fuel",
       "intent": "fuel.low_2l",
       "messageId": "families-11-fuel.low_2l"
@@ -419,16 +419,16 @@
       "sequence": 46,
       "step": 9,
       "atMs": 5454,
-      "event": "ack_completed",
+      "event": "ack_queued",
       "family": "fuel",
-      "intent": "fuel.low_2l",
-      "messageId": "families-11-fuel.low_2l"
+      "intent": "fuel.laps_remaining_1",
+      "messageId": "families-12-fuel.laps_remaining_1"
     },
     {
       "sequence": 47,
       "step": 9,
       "atMs": 5454,
-      "event": "ack_queued",
+      "event": "ack_started",
       "family": "fuel",
       "intent": "fuel.laps_remaining_1",
       "messageId": "families-12-fuel.laps_remaining_1"
@@ -437,132 +437,96 @@
       "sequence": 48,
       "step": 9,
       "atMs": 5454,
-      "event": "ack_started",
+      "event": "ack_completed",
       "family": "fuel",
       "intent": "fuel.laps_remaining_1",
       "messageId": "families-12-fuel.laps_remaining_1"
     },
     {
       "sequence": 49,
-      "step": 9,
-      "atMs": 5454,
-      "event": "ack_completed",
-      "family": "fuel",
-      "intent": "fuel.laps_remaining_1",
-      "messageId": "families-12-fuel.laps_remaining_1"
-    },
-    {
-      "sequence": 50,
-      "step": 9,
-      "atMs": 5454,
-      "event": "ack_queued",
-      "family": "fuel",
-      "intent": "fuel.for_pit_now",
-      "messageId": "families-13-fuel.for_pit_now"
-    },
-    {
-      "sequence": 51,
-      "step": 9,
-      "atMs": 5454,
-      "event": "ack_started",
-      "family": "fuel",
-      "intent": "fuel.for_pit_now",
-      "messageId": "families-13-fuel.for_pit_now"
-    },
-    {
-      "sequence": 52,
-      "step": 9,
-      "atMs": 5454,
-      "event": "ack_completed",
-      "family": "fuel",
-      "intent": "fuel.for_pit_now",
-      "messageId": "families-13-fuel.for_pit_now"
-    },
-    {
-      "sequence": 53,
       "step": 10,
       "atMs": 5455,
       "event": "submitted",
       "family": "fuel",
       "intent": "fuel.low_1l",
-      "messageId": "families-15-fuel.low_1l"
+      "messageId": "families-14-fuel.low_1l"
     },
     {
-      "sequence": 54,
+      "sequence": 50,
       "step": 10,
       "atMs": 5455,
       "event": "submitted",
       "family": "fuel",
       "intent": "fuel.laps_remaining_2",
-      "messageId": "families-16-fuel.laps_remaining_2"
+      "messageId": "families-15-fuel.laps_remaining_2"
     },
     {
-      "sequence": 55,
+      "sequence": 51,
       "step": 10,
       "atMs": 5455,
       "event": "rejected",
       "family": "timings",
       "intent": "timings.gap_report",
       "reason": "queue_pressure_or_cooldown",
-      "messageId": "families-17-timings.gap_report"
+      "messageId": "families-16-timings.gap_report"
+    },
+    {
+      "sequence": 52,
+      "step": 10,
+      "atMs": 5455,
+      "event": "ack_queued",
+      "family": "fuel",
+      "intent": "fuel.low_1l",
+      "messageId": "families-14-fuel.low_1l"
+    },
+    {
+      "sequence": 53,
+      "step": 10,
+      "atMs": 5455,
+      "event": "ack_started",
+      "family": "fuel",
+      "intent": "fuel.low_1l",
+      "messageId": "families-14-fuel.low_1l"
+    },
+    {
+      "sequence": 54,
+      "step": 10,
+      "atMs": 5455,
+      "event": "ack_completed",
+      "family": "fuel",
+      "intent": "fuel.low_1l",
+      "messageId": "families-14-fuel.low_1l"
+    },
+    {
+      "sequence": 55,
+      "step": 10,
+      "atMs": 5455,
+      "event": "ack_queued",
+      "family": "fuel",
+      "intent": "fuel.laps_remaining_2",
+      "messageId": "families-15-fuel.laps_remaining_2"
     },
     {
       "sequence": 56,
       "step": 10,
       "atMs": 5455,
-      "event": "ack_queued",
+      "event": "ack_started",
       "family": "fuel",
-      "intent": "fuel.low_1l",
-      "messageId": "families-15-fuel.low_1l"
+      "intent": "fuel.laps_remaining_2",
+      "messageId": "families-15-fuel.laps_remaining_2"
     },
     {
       "sequence": 57,
       "step": 10,
       "atMs": 5455,
-      "event": "ack_started",
-      "family": "fuel",
-      "intent": "fuel.low_1l",
-      "messageId": "families-15-fuel.low_1l"
-    },
-    {
-      "sequence": 58,
-      "step": 10,
-      "atMs": 5455,
-      "event": "ack_completed",
-      "family": "fuel",
-      "intent": "fuel.low_1l",
-      "messageId": "families-15-fuel.low_1l"
-    },
-    {
-      "sequence": 59,
-      "step": 10,
-      "atMs": 5455,
-      "event": "ack_queued",
-      "family": "fuel",
-      "intent": "fuel.laps_remaining_2",
-      "messageId": "families-16-fuel.laps_remaining_2"
-    },
-    {
-      "sequence": 60,
-      "step": 10,
-      "atMs": 5455,
-      "event": "ack_started",
-      "family": "fuel",
-      "intent": "fuel.laps_remaining_2",
-      "messageId": "families-16-fuel.laps_remaining_2"
-    },
-    {
-      "sequence": 61,
-      "step": 10,
-      "atMs": 5455,
       "event": "ack_completed",
       "family": "fuel",
       "intent": "fuel.laps_remaining_2",
-      "messageId": "families-16-fuel.laps_remaining_2"
+      "messageId": "families-15-fuel.laps_remaining_2"
     }
   ],
   "metrics": {
-    "samples": 13,
+    "samples": 12,
     "p95MS": 0,
     "maximumMS": 0
   }

@@ -1164,6 +1164,11 @@ func canonicalObservation(t *testing.T, epoch, sequence uint64, lap int, fuel, c
 
 func canonicalObservationWithPenalty(t *testing.T, epoch, sequence uint64, lap int, fuel, capacity float64, familySignals bool, penaltyCount int, rivalX ...float64) engineerprojection.ObservationSnapshotV1 {
 	t.Helper()
+	return canonicalObservationWithState(t, epoch, sequence, lap, fuel, capacity, familySignals, penaltyCount, nil, rivalX...)
+}
+
+func canonicalObservationWithState(t *testing.T, epoch, sequence uint64, lap int, fuel, capacity float64, familySignals bool, penaltyCount int, change func(*derive.FinalState), rivalX ...float64) engineerprojection.ObservationSnapshotV1 {
+	t.Helper()
 	run := identity.RunIdentity{Event: "event", Session: "session", Vehicle: "player", Team: "team", Driver: "driver"}
 	sourceTime := time.Duration(sequence) * time.Second
 	clock := schema.NewClock(observedField(t, sourceTime), observedField(t, sourceTime), time.Now().UTC())
@@ -1213,6 +1218,9 @@ func canonicalObservationWithPenalty(t *testing.T, epoch, sequence uint64, lap i
 		VehicleCount:  observedField(t, schema.Count(len(vehicles))),
 		Vehicles:      vehicles,
 	}}
+	if change != nil {
+		change(&state)
+	}
 	snapshot, err := envelope.NewSnapshot(header, state, func(value derive.FinalState) derive.FinalState {
 		value.Observed.Vehicles = slices.Clone(value.Observed.Vehicles)
 		return value

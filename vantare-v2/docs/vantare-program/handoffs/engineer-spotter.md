@@ -28,6 +28,42 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+### 2026-09-22 — Reparación del camino activo y ciclo de paridad
+
+[VAN-736](https://app.notion.com/p/3e3e51695c6581ed8370e2a4b5302ae6),
+puente GitHub #1299, repara primero Fuel y los silencios Timings del runtime
+actual. Isaac ya aceptó el diseño documental de PR #1295 y autorizó continuar
+con esta reparación; esa aceptación no afirma integración del candidato.
+El [microplan](../../engineer/repair-isa-1299.md) fija el ciclo por corte:
+plan y contraste CrewChief predeterminado → desarrollo con regresiones →
+segunda comparación contra la misma referencia y evidencia de límites.
+
+La ruta por defecto es `internal/families` → servicio → `internal/radio`;
+el antiguo monitor `internal/engineer/timings` no gobierna esa salida.
+La reparación exige carrera y pit usables para Timings, silencia el final
+cronometrado y cancela avisos todavía no iniciados al perder ese contexto.
+También exige EndTime usable; no deduce una carrera por vueltas de un dato
+ausente. El ACK final comparte el mutex de la actualización de contexto y
+recomprueba cancelación antes de registrar started y consumir cooldown.
+Fuel conserva avisos de litros y autonomía, pero retira la orden automática
+de parar que se disparaba con menos de cuatro vueltas sin necesidad demostrada.
+La orden correcta requiere vueltas restantes, armamento y punto de aviso que
+este corte no inventa. No se declara paridad completa Fuel ni Timings.
+
+Base del candidato: `nightly@1e9932c4d8ca3d53a58d093449cfb840f7108e8f`.
+Referencia CrewChief: `4c3865e09a347d4c806c0bc0cd66aae335fbc610`.
+La validación y las diferencias pendientes se registran en el microplan. Audio
+Windows, discrepancias Spotter y T0a/T0b → T1–T8 continúan en cortes propios
+según el plan aceptado. La espera del reproductor y los demás hallazgos están
+en [VAN-735](https://app.notion.com/p/3e3e51695c6581d8bc9cc694b5d59716).
+Revisión independiente del runtime hasta `50026e4f`: PASS acotado; 40 paquetes
+focales, race de cuatro, vet y calidad local PASS. La repetición de la auditoría
+resuelve 6 de 9 diferencias y conserva ambos controles. Go global reproduce
+los mismos cuatro paquetes fallidos de la base en macOS; no es PASS global.
+El CI de calidad tiene además el bloqueo separado
+[VAN-737](https://app.notion.com/p/3e3e51695c6581bc88fbda9b7d057975), pendiente.
+Las entradas siguientes conservan su carácter de evidencia histórica.
+
 ### 2026-09-22 — Ciclo de comparación antes y después
 
 Isaac confirma que ya aceptó la PR documental #1295 y pide continuar reparando

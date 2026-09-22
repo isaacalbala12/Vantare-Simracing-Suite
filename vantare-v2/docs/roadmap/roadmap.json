@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-20T15:02:17Z",
+  "generatedAt": "2026-09-22T12:59:14Z",
   "digest": {
-    "lastCommit": "1e9932c4d8ca3d53a58d093449cfb840f7108e8f"
+    "lastCommit": "7f3650e4f9201e347dddeab6df6d1deca3dee7b2"
   },
   "phases": [
     {
@@ -1579,10 +1579,10 @@
         "it": "Analisi Linux del grafo Wails"
       },
       "body": {
-        "es": "El candidato de CI prepara GTK4 y WebKitGTK 6.0 en los dos jobs Linux para que govet y deadcode analicen el grafo Wails declarado sin recortar paquetes. Los fallos de instalación, integridad y hallazgos NEW siguen cerrando el gate; no cambia baselines. Pendiente de revisión externa e integración en Nightly.",
-        "en": "The CI candidate prepares GTK4 and WebKitGTK 6.0 in both Linux jobs so govet and deadcode can analyse the declared Wails graph without dropping packages. Installation failures, integrity errors and NEW findings still fail the gate; baselines remain unchanged. External review and Nightly integration are pending.",
-        "pt": "O candidato de CI prepara GTK4 e WebKitGTK 6.0 nos dois jobs Linux para que govet e deadcode analisem o grafo Wails declarado sem excluir pacotes. Falhas de instalação, erros de integridade e achados NEW continuam a fechar o gate; os baselines não mudam. A revisão externa e a integração no Nightly estão pendentes.",
-        "it": "Il candidato CI prepara GTK4 e WebKitGTK 6.0 in entrambi i job Linux affinché govet e deadcode analizzino il grafo Wails dichiarato senza escludere pacchetti. Errori di installazione, integrità e rilievi NEW continuano a bloccare il gate; i baseline restano invariati. La revisione esterna e l'integrazione in Nightly sono in attesa."
+        "es": "El candidato de CI prepara GTK4 y WebKitGTK 6.0 en los dos jobs Linux para que govet y deadcode analicen el grafo Wails declarado sin recortar paquetes. Los fallos de instalación, integridad y hallazgos NEW siguen cerrando el gate; no cambia baselines. La infraestructura está integrada en Nightly mediante PR #1297. La reparación de la prueba negativa de cambios de política usa un repositorio Git temporal y sigue en revisión separada; no modifica los analizadores ni sus reglas.",
+        "en": "The CI candidate prepares GTK4 and WebKitGTK 6.0 in both Linux jobs so govet and deadcode can analyse the declared Wails graph without dropping packages. Installation failures, integrity errors and NEW findings still fail the gate; baselines remain unchanged. The infrastructure is integrated into Nightly through PR #1297. A separate candidate repairs the policy-change negative test using a temporary Git repository; analyzers and their rules remain unchanged.",
+        "pt": "O candidato de CI prepara GTK4 e WebKitGTK 6.0 nos dois jobs Linux para que govet e deadcode analisem o grafo Wails declarado sem excluir pacotes. Falhas de instalação, erros de integridade e achados NEW continuam a fechar o gate; os baselines não mudam. A infraestrutura está integrada no Nightly pela PR #1297. Um candidato separado corrige o teste negativo de mudanças de política usando um repositório Git temporário; os analisadores e suas regras permanecem inalterados.",
+        "it": "Il candidato CI prepara GTK4 e WebKitGTK 6.0 in entrambi i job Linux affinché govet e deadcode analizzino il grafo Wails dichiarato senza escludere pacchetti. Errori di installazione, integrità e rilievi NEW continuano a bloccare il gate; i baseline restano invariati. L’infrastruttura è integrata in Nightly tramite PR #1297. Un candidato separato corregge il test negativo delle modifiche alla policy usando un repository Git temporaneo; analizzatori e regole restano invariati."
       },
       "label": {
         "es": "Candidato",
@@ -2189,6 +2189,16 @@
       "date": "2026-09-15",
       "entries": [
         {
+          "kind": "perf",
+          "scope": "",
+          "text": "Segunda ronda de optimización dirigida por hechos + overnight consolidada"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-928 · Persistir controles y avisar Spotter no disponible"
+        },
+        {
           "kind": "change",
           "scope": "",
           "text": "Workshop: study view como único harness"
@@ -2207,16 +2217,6 @@
           "kind": "fix",
           "scope": "engineer",
           "text": "Cierra el contrato de evento UI del widget radio"
-        },
-        {
-          "kind": "perf",
-          "scope": "",
-          "text": "Segunda ronda de optimización dirigida por hechos + overnight consolidada"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-928 · Persistir controles y avisar Spotter no disponible"
         }
       ]
     },

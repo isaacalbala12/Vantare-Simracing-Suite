@@ -28,6 +28,78 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+### 2026-09-22 — Ciclo de comparación antes y después
+
+Isaac confirma que ya aceptó la PR documental #1295 y pide continuar reparando
+el ingeniero actual. [VAN-732](https://app.notion.com/p/3e1e51695c6581daa4cce76fca3a54bc)
+explicita en el [plan](../../engineer/PLAN.md#forma-de-ejecución) el ciclo por
+corte: plan y contraste CrewChief con ajustes predeterminados, desarrollo con
+regresiones y segundo contraste con la misma referencia. Se corrige además el
+diagnóstico: el camino por defecto es familias → servicio → radio; el monitor
+alpha sólo interviene en rollback legacy. La reparación de runtime pertenece
+a [VAN-736](https://app.notion.com/p/3e3e51695c6581ed8370e2a4b5302ae6) / #1299,
+en una rama distinta. Esta precisión no cambia el alcance documental de #1295
+ni declara cerradas T0a/T0b, la paridad completa o la integración del candidato.
+
+### 2026-09-20 — Diseño aprobado y plan ejecutable trazado en VAN-732
+
+La rama `vantareapp/isa-1294-crewchief-parity-plan`, antes llamada
+`codex/crewchief-lmu-parity-design`, sobre
+`origin/nightly@8a0620e8abe75914efed41de4117490f3e47a3b4`, contiene la
+[precisión contractual](../../specs/2026-09-19-crewchief-lmu-parity-design.md)
+y el [ADR 0010](../../adr/0010-engineer-cloud-dialogue-and-offline-parity.md),
+aprobados por Isaac el 2026-09-20 para planificación y primeras pruebas.
+Los commits `9cc51122` y `5f374b15` son evidencia de diseño/revisión, no
+implementación, aprobación de los detalles, paridad ni integración en Nightly.
+La segunda revisión separa redacción abierta de hechos canónicos y registra
+la brecha de nombre literal frente a identidad funcional. `DEV-NAME-001` queda
+resuelto por Isaac el 2026-09-20: cuando CrewChief pronuncia un nombre, Vantare
+debe cubrirlo con un fragmento local; una sustitución funcional es degradación
+segura pero FAIL de paridad. Los gates humanos anteriores permanecen pendientes
+donde no haya evidencia independiente.
+
+La pasada adversarial final sobre `7f2837f5` corrige la invalidación de
+plan/hash/audio al recomponer y la revalidación de cada bloque de una respuesta
+compuesta, conservando un terminal por job y sin renovar deadlines. Corrige
+también el filtro de posición de clase del resumen por vuelta de CrewChief:
+su nombre interno no demuestra una diferencia de vueltas. Explicita el avance
+de contadores aunque una muestra sea duplicada y la diferencia de “último”
+entre consulta y automático/STATUS tras retiradas. Son precisiones
+documentales aceptadas, no nuevo runtime ni un gate PASS.
+`DEC-FEEDBACK-P0-001` queda resuelta por Isaac el 2026-09-20: una salida P0
+activa nunca se interrumpe, atenúa ni mezcla. La UI acusa recepción en <=150 ms
+y un único ACK audible espera la primera oportunidad posterior a P0, sujeto a
+revalidación y descarte si el turno ya no está vigente o empezó la respuesta
+útil. La demora se registra `blocked_by_p0` y se evalúa en cohorte separada; no
+pausa deadlines ni altera la prioridad crítica.
+
+Isaac acepta el 2026-09-20 el riesgo residual del discurso generativo para
+primeras pruebas y exige reducirlo al máximo. Se añade el
+[diseño de persona y estilo nativo](../../specs/2026-09-20-engineer-persona-native-style-design.md):
+`calm_race_engineer`, packs escritos originalmente por locale, cápsula compacta,
+StyleGate local fail-closed y fallback canónico. Presupuesto inicial: modelo
+8K mínimo, entrada objetivo <2.000 tokens, máximo 3.000 y persona/estilo <=350.
+No existe máximo editorial de salida: la brevedad procede de normas/system
+prompt; una generación incompleta o fuera de deadline se descarta, no se trunca.
+
+Seguimiento verificado el 2026-09-20: [VAN-732](https://app.notion.com/p/3e1e51695c6581daa4cce76fca3a54bc)
+es la tarea ejecutable nativa del proyecto
+[Engineer / Spotter](https://app.notion.com/p/3dae51695c65811a8485ca41bc5c9a8e).
+Está vinculada al roadmap [Paridad casi completa con CrewChief](https://app.notion.com/p/3e0e51695c658121b9b7f6aca13ff789)
+y al puente técnico [GitHub #1294](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1294).
+La rama se renombra `vantareapp/isa-1294-crewchief-parity-plan` y conserva como
+base `origin/nightly@8a0620e8abe75914efed41de4117490f3e47a3b4`.
+
+El [plan ejecutable](../../engineer/PLAN.md) divide Timings en P0 y T0–T8.
+Identifica el monitor actual como alpha, fija el oráculo independiente, separa
+señal insuficiente de fallo de interpretación e integra desde el primer corte
+audible `FactBundle`, `UtterancePlan`, StyleGate, LLM cloud y fallback offline.
+La primera acción posterior es T0a, extracción reproducible del oráculo. T1,
+runtime y proveedor cloud permanecen bloqueados hasta cerrar/revisar T0 y crear
+sus tareas/puentes propios. #1294 no autoriza implementación ni promoción.
+
+### Evidencia histórica anterior (no estado de la revisión de paridad)
+
 ISA-940 conecta el nivel efectivo publicado por la política de rendimiento con
 la salida de Ingeniero: en niveles 4–5 invalida y bloquea subtítulos y toda
 presentación visual, pero conserva sin cambios la decisión y reproducción de
@@ -396,14 +468,14 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | Cerrada técnicamente | ISA-109 / TC-08B, entrada pura completa sin wiring |
 | Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
 
-## Siguiente acción exacta
+## Siguiente acción histórica (no autoriza el corte de paridad)
 
 Revisar ISA-928 y, tras autorización de integración, dejar que los testers de
 Nightly ejecuten el gate LMU descrito en `docs/engineer/families-radio-isa-718.md`
 y el gate Spotter de ISA-717. Hasta esa evidencia no se borra el stack legacy
 ni se declara validación física LMU o promoción.
 
-## Última actualización
+## Actualizaciones históricas anteriores
 
 2026-08-28, ISA-928 añade persistencia focal a la configuración Engineer y un
 estado Spotter independiente de `connected`. La UI localizada muestra la

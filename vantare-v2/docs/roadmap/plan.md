@@ -1186,6 +1186,21 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - etiqueta.pt: Em revisão
 - etiqueta.it: In revisione
 
+### Paridad observable CrewChief para Engineer
+
+- id: engineer-crewchief-parity
+- tipo: plan
+- titulo.en: Observable CrewChief parity for Engineer
+- titulo.pt: Paridade observável com CrewChief para o Engineer
+- titulo.it: Parità osservabile con CrewChief per Engineer
+- cuerpo: Programa futuro por cortes T0–T8 para reproducir en LMU el comportamiento observable de CrewChief, empezando por Timings: relaciones, muestreo, silencios, cadencia, consultas y cierre con replay, voz y sesión real. Los hechos y acciones seguirán siendo deterministas; el LLM cloud sólo interpretará y redactará con StyleGate, y el fallback offline usará frases locales precacheadas. La documentación aprobada no implica implementación ni paridad funcional.
+- cuerpo.en: Future T0–T8 programme to reproduce CrewChief's observable behaviour in LMU, starting with Timings: relationships, sampling, silence rules, cadence, queries, and closure through replay, voice, and a real session. Facts and actions remain deterministic; the cloud LLM only interprets and writes behind a StyleGate, while offline fallback uses local precached phrases. The approved documentation does not imply implementation or functional parity.
+- cuerpo.pt: Programa futuro em cortes T0–T8 para reproduzir no LMU o comportamento observável do CrewChief, começando por Timings: relações, amostragem, silêncios, cadência, consultas e fecho com replay, voz e sessão real. Factos e ações continuam determinísticos; o LLM cloud apenas interpreta e redige com StyleGate, e o fallback offline usa frases locais pré-armazenadas. A documentação aprovada não implica implementação nem paridade funcional.
+- cuerpo.it: Programma futuro in tagli T0–T8 per riprodurre in LMU il comportamento osservabile di CrewChief, iniziando da Timings: relazioni, campionamento, silenzi, cadenza, query e chiusura con replay, voce e sessione reale. Fatti e azioni restano deterministici; l'LLM cloud interpreta e redige soltanto dietro StyleGate, mentre il fallback offline usa frasi locali precaricate. La documentazione approvata non implica implementazione né parità funzionale.
+- etiqueta: Plan
+- etiqueta.pt: Plano
+- etiqueta.it: Piano
+
 ### Licencias con credencial offline
 
 - id: licensing-offline

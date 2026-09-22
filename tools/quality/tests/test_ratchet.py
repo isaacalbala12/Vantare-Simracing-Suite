@@ -10,7 +10,10 @@ from __future__ import annotations
 import os
 import sys
 import unittest
+from contextlib import redirect_stdout
+from io import StringIO
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from vantare_quality import (  # noqa: E402
@@ -20,6 +23,7 @@ from vantare_quality import (  # noqa: E402
     msg_norm,
     norm_path,
     REPO_ROOT,
+    cmd_doctor,
 )
 
 
@@ -28,6 +32,26 @@ def F(analyzer, rule, path, msg_norm="", symbol="", content_hash=""):
         analyzer=analyzer, rule=rule, path=path,
         msg_norm=msg_norm, symbol=symbol, content_hash=content_hash,
     )
+
+
+class DoctorToolchainTests(unittest.TestCase):
+    def test_doctor_uses_declared_go_version(self):
+        def check(go_version):
+            def fake_run(cmd, **_kwargs):
+                reported = {
+                    "go": f"go version go{go_version} darwin/arm64",
+                    "node": "v22.23.2",
+                    "pnpm": "9.1.0",
+                }.get(cmd[0], "staticcheck 2026.2.1 (0.8.1)")
+                return 0, reported, "", 0
+
+            output = StringIO()
+            with patch("vantare_quality.run_cmd", side_effect=fake_run), redirect_stdout(output):
+                cmd_doctor(None)
+            return output.getvalue()
+
+        self.assertIn("go: OK -> go version go1.27.1", check("1.27.1"))
+        self.assertIn("go: MISMATCH -> go version go1.25.0", check("1.25.0"))
 
 
 class NormTests(unittest.TestCase):

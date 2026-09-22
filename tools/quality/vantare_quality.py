@@ -773,7 +773,8 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     versions = load_json(VERSIONS_PATH)
     issues = 0
     print("\n[toolchain]")
-    for name, want in (("go", "1.25.0"), ("node", "22.23.2"), ("pnpm", "9.1.0")):
+    for name in ("go", "node", "pnpm"):
+        want = versions["toolchain"][name]["version"]
         if name == "go":
             rc, out, _err, _ = run_cmd(["go", "version"], cwd=REPO_ROOT, timeout=10)
         else:

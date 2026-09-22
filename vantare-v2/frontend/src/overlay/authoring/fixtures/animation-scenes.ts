@@ -1,4 +1,4 @@
-import type { WidgetType } from "../../core/profile-document";
+import type { DesignSystemId, WidgetType } from "../../core/profile-document";
 
 /**
  * A single car's state for one frame of a scene. Anything omitted keeps the
@@ -52,6 +52,7 @@ export type AnimationScene = {
    * typed V2 presentation-gap catalog.
    */
   unsupportedSignal?: string;
+  sessions?: readonly string[];
 };
 
 /**
@@ -421,7 +422,34 @@ const PEDALS_CLUTCH_SCENE: AnimationScene = {
   ],
 };
 
+// Escenas del renderer Eficiencia: solo efectos que implementa, sobre filas
+// visibles en su ventana inicial. No cambian la clasificación elegida.
+const FUNCTIONAL_STANDINGS_SCENES: readonly AnimationScene[] = [
+  {
+    id: "standings-functional-position", sessions: ["race"], widget: "standings", label: "Cambio de posición · por piloto",
+    watchFor: "Ben Hanley y Filipe Albuquerque intercambian posición. Cada fila se desliza y recibe un destello verde o rojo. Pulsa Reproducir para verlo.",
+    frameMs: 1600,
+    frames: [
+      { caption: "Posiciones iniciales.", cars: {} },
+      { caption: "Albuquerque gana posición; Hanley la pierde.", cars: { "Ben Hanley": { place: 5 }, "Filipe Albuquerque": { place: 2 } } },
+      { caption: "Clasificación estable tras el cambio.", cars: { "Ben Hanley": { place: 5 }, "Filipe Albuquerque": { place: 2 } } },
+    ],
+  },
+  {
+    id: "standings-functional-pit", widget: "standings", label: "Entrada y salida de boxes",
+    watchFor: "La etiqueta PIT aparece junto a André Lotterer al entrar en boxes y desaparece al salir. Activa Estado en boxes; este estado no añade un efecto de movimiento.",
+    frameMs: 1600,
+    frames: [
+      { caption: "Lotterer está en pista.", cars: { "André Lotterer": { inPits: false } } },
+      { caption: "Lotterer entra en boxes: aparece PIT.", cars: { "André Lotterer": { inPits: true } } },
+      { caption: "Lotterer sigue en boxes.", cars: { "André Lotterer": { inPits: true } } },
+      { caption: "Lotterer vuelve a pista: desaparece PIT.", cars: { "André Lotterer": { inPits: false } } },
+    ],
+  },
+];
+
 export const ANIMATION_SCENES: readonly AnimationScene[] = [
+  ...FUNCTIONAL_STANDINGS_SCENES,
   OVERTAKE_SCENE,
   BATTLE_SCENE,
   CLASS_BATTLE_SCENE,
@@ -446,12 +474,18 @@ export function isAnimationSceneId(value: unknown): value is string {
   return typeof value === "string" && ANIMATION_SCENE_IDS.includes(value);
 }
 
-export function getAnimationScene(id: string): AnimationScene | undefined {
-  return ANIMATION_SCENES.find((scene) => scene.id === id);
+export function getAnimationScene(id: string, system?: DesignSystemId, session?: string): AnimationScene | undefined {
+  const scene = ANIMATION_SCENES.find((scene) => scene.id === id);
+  if (scene?.sessions && session && !scene.sessions.includes(session)) return undefined;
+  if (scene?.widget === "standings" && system === "vantare-functional") {
+    return FUNCTIONAL_STANDINGS_SCENES.find((candidate) => candidate.id === id);
+  }
+  return scene;
 }
 
-export function listAnimationScenes(widget: WidgetType): readonly AnimationScene[] {
-  return ANIMATION_SCENES.filter((scene) => scene.widget === widget);
+export function listAnimationScenes(widget: WidgetType, system?: DesignSystemId, session?: string): readonly AnimationScene[] {
+  if (widget === "standings" && system === "vantare-functional") return FUNCTIONAL_STANDINGS_SCENES.filter((scene) => !session || !scene.sessions || scene.sessions.includes(session));
+  return ANIMATION_SCENES.filter((scene) => scene.widget === widget && (!system || !FUNCTIONAL_STANDINGS_SCENES.includes(scene)));
 }
 
 /** Wraps so the transport can loop and step backwards past zero. */

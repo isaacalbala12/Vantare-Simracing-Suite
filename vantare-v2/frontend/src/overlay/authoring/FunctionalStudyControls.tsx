@@ -55,10 +55,6 @@ const RELATIVE_RANGE_OPTIONS = Array.from({ length: RELATIVE_RANGE_LIMIT + 1 }, 
 const STUDY_STYLE_OPTIONS = FUNCTIONAL_STUDY_STYLES.map(({ id, label }) => [id, label] as const);
 const STANDINGS_WINDOW_OPTIONS = STANDINGS_WINDOW_AROUND_OPTIONS.map((count) => [String(count), String(count)] as const);
 const FLAG_OPTIONS = PEDALS_KNOWN_FLAGS.map((flag) => [flag, flag === "yellow" ? "Amarilla" : flag === "green" ? "Verde" : flag === "blue" ? "Azul" : flag === "red" ? "Roja" : flag === "white" ? "Blanca" : flag === "black" ? "Negra" : "A cuadros"] as const);
-// `default` conserva la parrilla funcional histórica cuando la URL no declara
-// módulos. En la variante de estudio el valor por defecto sigue siendo el
-// preset deliberadamente más corto de `functional-study-options`.
-const FUNCTIONAL_DEFAULT_STANDINGS_MODULES: readonly string[] = ["gap", "lastLap", "pit"];
 
 // Resolución de la previsualización del harness: el widget/profile mantiene
 // siempre su layout real; estos valores solo fijan el tamaño exterior de la
@@ -93,7 +89,8 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
   const defaultDesign = designs.find((design) => design.isDefault) ?? designs[0];
   // Cada variante declarada pertenece a un widget por su prefijo; el resto
   // produciría una query inválida.
-  const scenes = listAnimationScenes(query.widget);
+  const scenes = listAnimationScenes(query.widget, query.system, query.session);
+  const selectedScene = scenes.find((item) => item.id === query.sceneId);
   const gaps = projectionGapsFor(query.widget);
   const isFunctional = query.system === "vantare-functional";
   const isStandings = query.widget === "standings";
@@ -270,7 +267,7 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
       {FUNCTIONAL_STUDY_MODULES.map((item) => {
         const modules = query.modules ?? (query.variant === "standings-functional-study"
           ? FUNCTIONAL_STUDY_DEFAULT_MODULES
-          : FUNCTIONAL_DEFAULT_STANDINGS_MODULES);
+          : ["gap", query.session === "race" ? "lastLap" : "bestLap", "pit"]);
         return <label key={item.id} className="functional-study-toggle"><span>{item.label}</span><input type="checkbox" checked={modules.includes(item.id)} onChange={() => update({ ...query, modules: modules.includes(item.id) ? modules.filter((id) => id !== item.id) : [...modules, item.id] })} /></label>;
       })}
     </fieldset>}
@@ -320,11 +317,11 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
     <fieldset><legend>Animación</legend>
       {scenes.length === 0 ? <p className="functional-study-note">Este widget todavía no tiene animaciones declaradas.</p> : (
         <div className="functional-study-scene">
-          <Select label="Escena" value={query.sceneId ?? ""} onChange={chooseScene}>
+          <Select label="Escena" value={selectedScene?.id ?? ""} onChange={chooseScene}>
             <option value="">Sin animación</option>
             {scenes.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
           </Select>
-          {query.sceneId && <button type="button" className="functional-study-play" onClick={() => onRunScene(query.sceneId!)} data-testid="workshop-scene-run">▶ Reproducir</button>}
+          {selectedScene && <button type="button" className="functional-study-play" onClick={() => onRunScene(selectedScene.id)} data-testid="workshop-scene-run">▶ Reproducir</button>}
         </div>
       )}
       {gaps.length > 0 && <div className="functional-study-gaps"><strong>Más de lo que llega en carrera.</strong><ul>{gaps.map((gap) => <li key={gap.field}><code>{gap.field}</code> — {gap.consequence}</li>)}</ul></div>}

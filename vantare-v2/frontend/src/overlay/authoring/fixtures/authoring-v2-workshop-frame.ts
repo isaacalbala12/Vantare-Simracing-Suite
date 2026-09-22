@@ -1,3 +1,4 @@
+import { rankDemoStandings, withFunctionalStandingsDemo } from "./functional-standings-demo";
 import crystalReferenceManifest from "../../../../testdata/crystal-reference/manifest.json";
 import type {
   OverlayControlsHistoryV2,
@@ -95,12 +96,13 @@ function workshopDesignMeta(designId: string): { designId: string; width: number
 
 function shapeVariantFor(input: {
   widget: WidgetType;
+  system: DesignSystemId;
   variant: WorkshopV2Variant;
   sceneId?: string;
 }): AuthoringV2Variant {
   // La escena también da forma al widget: sin multiclass la escena de
   // fastest-lap entregaría la corona entre coches fuera de pantalla.
-  if (input.sceneId && input.widget === "standings") {
+  if (input.sceneId && input.widget === "standings" && input.system !== EFFICIENCY_SYSTEM_ID) {
     return "standings-multiclass";
   }
   if ((AUTHORING_V2_VARIANTS as readonly string[]).includes(input.variant)) {
@@ -752,7 +754,7 @@ function applyScene(
   scenario: WorkshopV2Scenario,
   quality: OverlayQualityV2,
 ): OverlayFrameV2 {
-  const scene = scenario.sceneId ? getAnimationScene(scenario.sceneId) : undefined;
+  const scene = scenario.sceneId ? getAnimationScene(scenario.sceneId, scenario.system, scenario.session) : undefined;
   if (!scene || scene.widget !== scenario.widget) return frame;
   const state = scenario.sceneState ?? sceneFrameAt(scene, scenario.sceneFrame ?? 0);
   let standings = frame.standings;
@@ -799,6 +801,11 @@ function applyScene(
         ];
       });
       standings = [...standings].sort((left, right) => left.position - right.position);
+      if (scene.id === "standings-functional-position") {
+        standings = rankDemoStandings(standings).map((row, index) => ({
+          ...row, gap: frame.standings[index]!.gap,
+        }));
+      }
     }
     warnDroppedScenePatches(scene.id, Object.keys(state.cars), resolved);
   }
@@ -941,6 +948,10 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
   }
   if (scenario.widget === "standings" && scenario.playerPosition !== undefined) {
     frame = withWorkshopPlayerPosition(frame, scenario.playerPosition);
+  }
+  if (scenario.widget === "standings" && scenario.system === EFFICIENCY_SYSTEM_ID
+    && (scenario.variant === "default" || scenario.variant === "standings-multiclass")) {
+    frame = withFunctionalStandingsDemo(frame, scenario, quality);
   }
   frame = applyScene(frame, scenario, quality);
   return { ...runtime, overlayV2Frame: frame };

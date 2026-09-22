@@ -8,13 +8,15 @@
     "La mejor vuelta personal recibe un barrido verde y el récord de sesión un acento morado. Las cifras conservan tamaño y alineación; como máximo aparecen tres avisos simultáneos.",
     "La mejor vuelta se resuelve sobre todo el campo configurado antes de recortar las filas. Se respetan movimiento reducido, cambios de fuente y limpieza de animaciones al retirar pilotos o desconectar.",
     "Una batalla cercana de la misma clase recibe un acento discreto con prioridad del jugador y margen de activación para evitar parpadeos. Solo usa distancias frescas válidas; los pilotos que entran o salen de la ventana se desvanecen y las filas restantes se recolocan suavemente.",
-    "Workshop incluye escenas individuales y una secuencia combinada con posiciones, vueltas, boxes, batalla y ventana, también en V1; conserva los datos propios por sesión y Delta sin el pulso numérico al cruzar cero aprobado por Isaac."
+    "Workshop incluye escenas individuales y una secuencia combinada con posiciones, vueltas, boxes, batalla y ventana, también en V1; conserva los datos propios por sesión y Delta sin el pulso numérico al cruzar cero aprobado por Isaac.",
+    "Los pasos y leyendas del harness coinciden con los hechos; el avance manual llega al fotograma exacto. La ventana usa pilotos presentes en la parrilla, conserva las distancias y mantiene el encuadre estable al cambiar las filas."
   ],
   "testing": [
     "En Workshop, seleccionar Standings, Eficiencia y Carrera; activar Mejor vuelta y Estado en boxes. Elegir Secuencia combinada · conducción y pulsar Reproducir: tras posiciones, vueltas y PIT aparecen la batalla y los cambios de ventana.",
     "Comprobar las escenas de posiciones, mejora personal, récord de sesión y boxes por separado; repetir las de vuelta en Práctica y Clasificación.",
     "Reproducir las escenas de batalla y ventana: comprobar acercamiento/separación, entrada/retirada y reajuste de filas con PIT; repetir Normal y Multiclase. No deben aparecer avisos de puestos por un simple recorte.",
-    "Activar la preferencia de movimiento reducido y comprobar actualizaciones directas sin avisos animados."
+    "Activar la preferencia de movimiento reducido y comprobar actualizaciones directas sin avisos animados.",
+    "En la secuencia combinada, revisar pasos 8–12 con Default y 10 pilotos: separación, PIT y ventana P1→P7→P9→P1. El contador debe coincidir con el cambio y la tarjeta no debe saltar verticalmente."
   ],
   "knownLimitations": [
     "Candidato pendiente de revisión visual de Isaac e integración autorizada; las pruebas automatizadas no certifican una sesión LMU real."

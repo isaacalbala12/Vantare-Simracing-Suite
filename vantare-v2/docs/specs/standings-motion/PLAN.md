@@ -26,3 +26,10 @@ La publicación y los checks del SHA final se verifican en VAN-41 / PR #1306. Qu
 - [x] Aplicar el recorte de demostración también en V1 sin modificar el estilo seleccionado.
 - [x] Corregir el redondeo del reloj que aparcaba ciertos fotogramas en la muestra anterior y proteger límites exactos a 15/30 Hz.
 - [x] Verificar las 170 pruebas de autoría / 13 suites, build/TypeScript y lint; reflejar el ajuste en roadmap y handoff.
+
+## Revisión de los pasos 8–12
+
+- [x] Reproducir ancla fuera del recorte, último paso repetido, contador anticipado, salto de encuadre y reinicio de gaps.
+- [x] Corregir los datos y el transporte del harness; reservar sólo espacio externo y conservar geometría productiva.
+- [x] Verificar cuatro regresiones que fallaban antes y pasan después, 173 pruebas de autoría y 3839 globales (2 omitidas), build/TypeScript y lint.
+- [ ] Aceptación visual de Isaac sobre la secuencia corregida; el acceso automatizado al navegador sigue bloqueado por la política del administrador.

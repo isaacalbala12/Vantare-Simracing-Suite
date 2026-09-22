@@ -381,6 +381,22 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 
 ## Hitos
 
+### Desarrollo local sin cuenta comercial
+
+- id: local-development-profile
+- tipo: feature
+- titulo.en: Local development without a commercial account
+- titulo.pt: Desenvolvimento local sem conta comercial
+- titulo.it: Sviluppo locale senza account commerciale
+- cuerpo: La compilación local de desarrollo permite trabajar con los servicios reales sin iniciar sesión. El acceso temporal y el perfil del navegador están separados de la cuenta habitual; las compilaciones de distribución conservan la autenticación y la licencia normales.
+- cuerpo.en: The local development build runs real services without signing in. Temporary access and the browser profile are separate from the usual account; distribution builds retain normal authentication and licensing.
+- cuerpo.pt: A compilação local de desenvolvimento usa os serviços reais sem iniciar sessão. O acesso temporário e o perfil do navegador são separados da conta habitual; as compilações de distribuição mantêm a autenticação e a licença normais.
+- cuerpo.it: La build locale di sviluppo usa i servizi reali senza accesso. I permessi temporanei e il profilo del browser sono separati dall'account abituale; le build di distribuzione mantengono autenticazione e licenza normali.
+- etiqueta: Desarrollo
+- etiqueta.en: Development
+- etiqueta.pt: Desenvolvimento
+- etiqueta.it: Sviluppo
+
 ### Cuenta e inicio de sesión renovados
 
 - id: account-identity

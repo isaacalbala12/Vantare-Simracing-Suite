@@ -26,6 +26,8 @@ export default defineConfig(({ mode }) => {
     alias["@wailsio/runtime"] = useTopbarMock ? topbarMockPath : wailsMockPath;
   }
   return {
+    // The local binary's helper must not read account configuration from .env.
+    envDir: mode === "localdev" ? false : undefined,
     plugins: [react(), tailwindcss()],
     server: { strictPort: true, port: 5173 },
     build: {

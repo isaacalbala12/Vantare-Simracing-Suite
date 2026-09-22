@@ -354,6 +354,24 @@ func TestAuthCallbackServesHTML(t *testing.T) {
 	}
 }
 
+func TestDisabledAuthRoutesNeverAcceptOrForwardTokens(t *testing.T) {
+	em := &testEmitter{}
+	srv := server.New(server.ServerConfig{Emitter: em, DisableAuth: true})
+	for _, request := range []*http.Request{
+		httptest.NewRequest(http.MethodGet, "/auth/callback", nil),
+		httptest.NewRequest(http.MethodPost, "/auth/token", strings.NewReader(`{"access_token":"test","refresh_token":"test"}`)),
+	} {
+		rr := httptest.NewRecorder()
+		srv.Handler().ServeHTTP(rr, request)
+		if rr.Code != http.StatusNotFound {
+			t.Fatalf("%s %s = %d, want 404", request.Method, request.URL.Path, rr.Code)
+		}
+	}
+	if len(em.calls) != 0 {
+		t.Fatal("disabled auth route forwarded account events")
+	}
+}
+
 func TestAuthCallbackRejectsUnsolicitedLogin(t *testing.T) {
 	srv := server.New(server.ServerConfig{})
 	req := httptest.NewRequest(http.MethodGet, "/auth/callback", nil)

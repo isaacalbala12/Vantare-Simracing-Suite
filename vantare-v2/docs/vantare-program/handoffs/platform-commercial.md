@@ -7,6 +7,14 @@
 > sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
 
 
+## Estado vigente — ISA-1318, acceso local de desarrollo (2026-09-22)
+
+[GitHub #1318](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1318) rige este corte por AGENTS aportado expresamente por Isaac en el chat, por encima del banner histórico de seguimiento. El usuario pide desarrollar sin sesión comercial tras encontrar el login al revisar Strategy. Rama `vantareapp/isa-1318-local-development`, worktree `C:/tmp/vantare-isa1318`, base `e304ab26f4d0c0e2462bbfdfb2957639d141462b` de ISA-1314.
+
+Implementado: perfil `vantare_localdev && !production`, permisos de producto efímeros mediante las políticas existentes, sin roles operativos ni canales adicionales. No restaura ni persiste sesiones/caché comerciales; los callbacks HTTP de autenticación se deshabilitan. WebView predeterminado separado, ventana «Vantare — Desarrollo local» y helper que genera otro ejecutable. No hay cambio en Polar/Supabase, solver o lector. [Guía](../../local-development.md).
+
+Computer Use confirma en el ejecutable local: arranque sin login, bienvenida, Hub, menú Strategy v5, descubrimiento y apertura del DuckDB real de COTA. La app identifica circuito y coche desde los datos; SHA-256 del original intacto. Esta prueba no certifica licencias comerciales ni cierra todos los gates del SDD de Strategy. [Evidencia](../../evidence/isa-1318-local-development.md). Sin push, PR, CI remota, merge, promoción ni release.
+
 ## VAN-725 — Depuración documental del repositorio (2026-09-14)
 
 [Tarea Notion](https://app.notion.com/p/3dbe51695c658147aec0cf0aee3f3bb9), puente técnico GitHub #1256. Base nightly `60b47b7c`, rama `vantareapp/isa-1256-documentacion-vigente`. [Informe y evidencia](../../analysis/documentation-audit-2026-09-14.md), [inventario de 994 textos](../../analysis/documentation-audit-2026-09-14.tsv).

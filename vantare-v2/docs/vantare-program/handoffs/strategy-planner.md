@@ -6,7 +6,13 @@
 > Este handoff conserva evidencia técnica fechada; sus estados antiguos no
 > sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
 
-## Estado vigente — ISA-1314, menú y mesa v5, 2026-09-22
+## Actualización — ISA-1318 desbloquea QA local (2026-09-22)
+
+Isaac sustituye la petición anterior de login por un perfil explícito de desarrollo sin cuenta. [ISA-1318](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1318) parte del HEAD de ISA-1314 `e304ab26` y conserva su implementación visual. La build local abre Hub y Strategy sin sesión; Computer Use ha recorrido el menú y abierto el DuckDB real de COTA. Se obtiene Circuit of the Americas / Isotta TIPO6 2024 #11:LM y el hash del original permanece idéntico. [Guía](../../local-development.md) y [evidencia](../../evidence/isa-1318-local-development.md).
+
+El bloqueo por login ya no requiere intervención del usuario para desarrollo. Sigue pendiente el recorrido visual completo de v5 (manual/reglas/pilotos/Plan/stint/parada, tamaños e idiomas), revisión adversarial y T22 integral. La apertura correcta no acredita cálculo ni paridad visual completa. Se observan ventanas de consola transitorias al arrancar/abrir el lector; documentar aparte si se reproduce. Sin integración, promoción o release.
+
+## Antecedente de entrega — ISA-1314, menú y mesa v5, 2026-09-22
 
 Isaac aprobó el HTML v5 y autorizó su documento de diseño y aplicación productiva. [GitHub #1314](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1314) es la autoridad de este corte por instrucción expresa del usuario, por encima del banner histórico de seguimiento. El [contrato visual](../../strategy-planner/design/strategy-menu-desk-v5.md) sustituye el asistente A4 y el garaje como referencia; no altera la autoridad de Analysis ni el motor Go.
 

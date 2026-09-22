@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T19:23:18Z",
+  "generatedAt": "2026-09-22T19:50:30Z",
   "digest": {
     "lastCommit": "ae5a1482a85674963b30b1fe5f9cd54de8b19921"
   },
@@ -557,6 +557,28 @@
     }
   ],
   "milestones": [
+    {
+      "id": "local-development-profile",
+      "type": "feature",
+      "title": {
+        "es": "Desarrollo local sin cuenta comercial",
+        "en": "Local development without a commercial account",
+        "pt": "Desenvolvimento local sem conta comercial",
+        "it": "Sviluppo locale senza account commerciale"
+      },
+      "body": {
+        "es": "La compilación local de desarrollo permite trabajar con los servicios reales sin iniciar sesión. El acceso temporal y el perfil del navegador están separados de la cuenta habitual; las compilaciones de distribución conservan la autenticación y la licencia normales.",
+        "en": "The local development build runs real services without signing in. Temporary access and the browser profile are separate from the usual account; distribution builds retain normal authentication and licensing.",
+        "pt": "A compilação local de desenvolvimento usa os serviços reais sem iniciar sessão. O acesso temporário e o perfil do navegador são separados da conta habitual; as compilações de distribuição mantêm a autenticação e a licença normais.",
+        "it": "La build locale di sviluppo usa i servizi reali senza accesso. I permessi temporanei e il profilo del browser sono separati dall'account abituale; le build di distribuzione mantengono autenticazione e licenza normali."
+      },
+      "label": {
+        "es": "Desarrollo",
+        "en": "Development",
+        "pt": "Desenvolvimento",
+        "it": "Sviluppo"
+      }
+    },
     {
       "id": "account-identity",
       "type": "plan",

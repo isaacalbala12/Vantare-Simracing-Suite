@@ -120,6 +120,9 @@
    ni fila de etiquetas. La decoración de esquina dejaría ruido sobre la
    primera fila, así que también queda fuera. */
 .vf-relative .vf-table { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; margin: 0; }
+.vf-relative .vf-table-wrap { position: relative; }
+.vf-relative .vf-relative-empty-slot td { height: 28px; box-shadow: none; }
+.vf-relative .vf-relative-exit { position: absolute; left: 0; width: 100%; pointer-events: none; }
 .vf-relative .vf-table td { position: relative; border: 0; padding: 0 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vf-relative .vf-table td:is([data-metric="position"], [data-metric="class"], [data-metric="carNumber"]) { padding: 0 4px; }
 .vf-relative .vf-table td { height: 28px; box-shadow: inset 0 -1px var(--vf-line); font-size: 13px; font-weight: 650; letter-spacing: -.02em; }
@@ -185,9 +188,9 @@
 .vf-delta[data-cross="losing"] .vf-delta-center, .vf-delta[data-cross="losing"] .vf-delta-capsule-center { background: var(--vf-loss); box-shadow: 0 0 8px rgb(217 83 96 / 70%); }
 .vf-delta[data-cross] .vf-delta-value { transform: translateX(-50%) scale(1.04); transition: transform 180ms ease-out; }
 .vf-delta[data-cross] .vf-delta-capsule-value { transform: scale(1.04); transition: transform 180ms ease-out; }
-.vf-standings [data-standings-row][data-motion], .vf-relative [data-relative-row][data-cross] { transition: background-color 500ms ease-out; }
-.vf-standings [data-standings-row][data-motion="rise"], .vf-relative [data-relative-row][data-cross="rise"] { background-color: rgb(127 182 134 / 12%); }
-.vf-standings [data-standings-row][data-motion="fall"], .vf-relative [data-relative-row][data-cross="fall"] { background-color: rgb(217 83 96 / 12%); }
+.vf-standings [data-standings-row][data-motion] { transition: background-color 500ms ease-out; }
+.vf-standings [data-standings-row][data-motion="rise"] { background-color: rgb(127 182 134 / 12%); }
+.vf-standings [data-standings-row][data-motion="fall"] { background-color: rgb(217 83 96 / 12%); }
 .vf-delta[data-tone="gaining"] .vf-delta-fill { background: linear-gradient(90deg, rgb(127 182 134 / 30%), var(--vf-gain)); box-shadow: 0 0 7px rgb(127 182 134 / 40%); }
 .vf-delta[data-tone="losing"] .vf-delta-fill { background: linear-gradient(90deg, var(--vf-loss), rgb(217 83 96 / 30%)); box-shadow: 0 0 7px rgb(217 83 96 / 40%); }
 .vf-delta-scale { display: flex; justify-content: space-between; margin: 1px 16px 0; font-family: "JetBrains Mono", monospace; font-size: 7px; letter-spacing: .04em; color: var(--vf-faint); }

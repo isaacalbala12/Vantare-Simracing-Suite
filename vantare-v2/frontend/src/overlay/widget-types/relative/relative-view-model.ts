@@ -26,6 +26,9 @@ export type RelativeViewModel = WidgetViewModelBase & {
   presentationKey?: string;
   columns: readonly WidgetColumnV3[];
   rowHeightMode: RelativeContent["rowHeightMode"];
+  /** Visual slots around the player; selection remains in `rows`. */
+  rangeAhead?: number;
+  rangeBehind?: number;
   rows: readonly RelativeRowViewModel[];
   /** Datos extra opcionales para las barras de información (estructura de la
    *  referencia: meta arriba, reloj/ambiente abajo). Solo existen cuando la

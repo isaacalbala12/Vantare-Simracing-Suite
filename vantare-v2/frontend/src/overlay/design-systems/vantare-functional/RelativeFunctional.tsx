@@ -2,8 +2,6 @@ import type { CSSProperties } from "react";
 import { useMemo, useRef } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { WidgetRendererProps } from "../../core/design-system-definition";
-import { flipRows, useWidgetMotion } from "../../core/widget-motion";
-import { deriveSideCrosses } from "./functional-motion";
 import { resolveColumnWidthPixels } from "../../widget-types/shared/widget-column";
 import { RELATIVE_COLUMN_TEMPLATES } from "../../widget-types/relative/relative-content";
 import { resolveRelativeClassColor } from "../../widget-types/relative/relative-renderer-helpers";
@@ -11,6 +9,8 @@ import { resolveRelativeCellValue, type RelativeViewModel } from "../../widget-t
 import { functionalLabels, sessionDisplayLabel } from "./labels";
 import { FOOTER_SLOT_GAP_PX, FOOTER_SLOT_PAD_PX, FOOTER_SLOT_ROW_PX, footerSlotItemWidth, resolveFunctionalFooterSlots } from "./footer-slots";
 import { resolveWidgetVisualGeometryForType } from "../../core/widget-visual-geometry";
+import { relativeStructureKey, relativeVisibleSlots } from "./relative-presentation";
+import { useRelativeMotion } from "./use-relative-motion";
 
 const CENTERED = new Set(["position", "class", "carNumber", "gap"]);
 const LAP_METRICS = new Set(["bestLap", "lastLap"]);
@@ -23,28 +23,6 @@ const RELATIVE_ROW_PX = 28;
 export function RelativeFunctional({ model, settings, layout, motion = "full", effects }: WidgetRendererProps<RelativeViewModel>) {
   const { locale } = useI18n();
   const rootRef = useRef<HTMLElement | null>(null);
-  // Eficiencia: las filas se deslizan al cruzarse; los cruces parpadean una
-  // vez en "full".
-  useWidgetMotion(model, motion !== "minimal", rootRef, ({ prev, next, root, schedule, persist }) => {
-    // FLIP medido por id (ver standings): correcto también cuando la ventana
-    // rota miembros — un stride por índice mentía al entrar/salir filas.
-    flipRows(root, persist, {
-      rows: "[data-relative-row]",
-      id: (row) => row.dataset.relativeRow,
-      duration: (from) => Math.min(400, 240 + (Math.abs(from) / RELATIVE_ROW_PX) * 45),
-    });
-    if (motion === "full") {
-      const { gained, lost } = deriveSideCrosses(prev.rows, next.rows);
-      for (const [id, direction] of [...gained.map((id) => [id, "rise"] as const), ...lost.map((id) => [id, "fall"] as const)]) {
-        const row = root.querySelector<HTMLElement>(`[data-relative-row="${CSS.escape(id)}"]`);
-        if (!row) continue;
-        row.dataset.cross = direction;
-        schedule(600, () => { delete row.dataset.cross; }, `cross-${id}`);
-      }
-    }
-  }, (root) => {
-    root.querySelectorAll<HTMLElement>("[data-cross]").forEach((el) => { delete el.dataset.cross; });
-  });
   const labels = functionalLabels[locale];
   const sessionLabel = useMemo(() => sessionDisplayLabel(locale, model.sessionLabel), [locale, model.sessionLabel]);
   const columns = model.columns;
@@ -81,7 +59,10 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
     : layout.h - (hasMeta ? ambientReserve : 0) - slotsReserve - (slots.length === 0 && hasFooter ? ambientReserve : 0);
   const rowMin = RELATIVE_ROW_PX * scale;
   const rowsFit = Number.isFinite(tableSpace) ? Math.max(0, Math.floor(tableSpace / rowMin)) : Number.POSITIVE_INFINITY;
-  const visibleRows = Number.isFinite(tableSpace) ? model.rows.slice(0, rowsFit) : model.rows;
+  const visibleSlots = relativeVisibleSlots(model, rowsFit);
+  const visibleRows = visibleSlots.filter((row) => row !== null);
+  const boundaryKey = [model.presentationKey, model.sessionLabel, motion, layout?.w, layout?.h, scale, model.rowHeightMode, columns.map((column) => `${column.id}:${column.metricId}:${column.widthPreset}`).join(",")].join("|");
+  useRelativeMotion(model, motion, rootRef, boundaryKey, relativeStructureKey(visibleSlots));
 
   return (
     // Estructura de la referencia: barra de meta arriba (pista + posición del
@@ -100,7 +81,9 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
         <div className="vf-table-wrap">
         <table className="vf-table" aria-label={labels.relative}>
           <colgroup>{columns.map((column) => <col key={column.id} style={{ width: resolveColumnWidthPixels(column, RELATIVE_COLUMN_TEMPLATES.find((template) => template.metricId === column.metricId)?.defaultWidth ?? 60) }} />)}</colgroup>
-          <tbody>{visibleRows.map((row) => (
+          <tbody>{visibleSlots.map((row, index) => row === null
+            ? <tr key={`slot-${index}`} className="vf-relative-empty-slot" aria-hidden="true"><td colSpan={columns.length} /></tr>
+            : (
             <tr key={row.id} data-relative-row={row.id} data-player={row.isPlayer || undefined} data-side={row.side}>
               {columns.map((column) => {
                 const value = column.metricId === "gap" && row.isPlayer ? "—" : resolveRelativeCellValue(row, column.metricId);

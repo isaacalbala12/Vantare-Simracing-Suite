@@ -394,6 +394,7 @@ body:not(.hub) #root {
 @import "./overlay/design-systems/vantare-original/tokens.css";
 @import "./overlay/design-systems/vantare-crystal/tokens.css";
 @import "./overlay/design-systems/vantare-endurance/tokens.css";
+@import "./overlay/design-systems/pedals-advanced.css";
 @import "./overlay/design-systems/vantare-efficiency/tokens.css";
 @import "./overlay/design-systems/vantare-iracing/iracing-tokens.css";
 @import "./overlay/design-systems/vantare-crystal/isa93-sections-07-08.css";

@@ -2,7 +2,21 @@
 
 Registro del 22/09/2026 en `vantareapp/isa-1221-widgets-local-sync`, contra `origin/nightly@1e9932c4`. Publicación de recuperación en borrador solicitada por Isaac. Este registro no concede excepción ni habilita integración.
 
-Las 466 suites frontend pasan (3766 tests, 2 omitidos); el ratchet de calidad sigue bloqueado por los hallazgos listados. Resolver antes de promover a nightly.
+El registro inicial tenía 3766 tests PASS y un ratchet bloqueado. La sección siguiente documenta su corrección; los informes anteriores se conservan por trazabilidad.
+
+## Correcciones verificadas · 22/09/2026
+
+Estado actual: **resuelto el lote de 55 avisos y la regresión de IDs**. El registro original y la revisión previa se conservan más abajo como evidencia histórica; sus estados FAIL/pendiente no describen el candidato corregido.
+
+- `normalizeDesignSystemId` comprueba propiedad propia antes de leer el diccionario. Se mantienen los nombres válidos; los tipos se derivan del diccionario y los IDs persistidos no cambian. Se añadieron pruebas de rechazo de `constructor`, `__proto__` y una variante con espacios/mayúsculas en el normalizador y en los tres límites de lectura (sistema por defecto, sistema del widget y memorias), tanto V3 como V4. Antes del arreglo: 6 casos fallaban; después: PASS.
+- Se retiraron las 6 fachadas y exports sin consumidores, la constante de alias redundante, los dos símbolos no usados de Standings y el renderer sustituido. Las constantes geométricas usadas internamente se conservaron como privadas. Los acentos multiclass usan el resolver compartido con el mismo mapeo.
+- `DesignSystemId` ya no depende del lector de perfiles; `DeltaContent`/`DeltaReference` y `FuelStrategyContent`/`FuelStrategySource` viven en módulos de contrato sin dependencia hacia el renderer. Los tres ciclos desaparecen sin cambiar validación runtime.
+- La geometría de fixtures usa un helper en los mismos dos puntos de aplicación. Los ViewModels de pedales comparten lectura de instrumentos y conservan por separado sus políticas de stale, clamps y visibilidad.
+- CSS: se retiraron 41 reglas anteriores exactamente repetidas, conservando su última posición en la cascada; 11 declaraciones idénticas de Pedals Advanced pasan a un CSS común importado por `index.css`; se retiraron 18 selectores exclusivos del renderer obsoleto. Comparación AST de declaraciones finales de **445 selectores activos: cero cambios**, cero selectores activos retirados/introducidos. Es verificación estática, no una nueva certificación visual en navegador.
+- Pruebas: **466 suites, 3772 tests PASS, 2 omitidos**. Tras la última simplificación de tipos, 69 tests focales PASS y build/TypeScript PASS. Lint PASS; diff limpio.
+- Ratchet ejecutado de nuevo: **PASS**, NEW=0, MOVED=0 para todos los analizadores, `policy_changed=false`. Ninguna baseline, configuración o excepción añadida/modificada. La excepción tidy preexistente sigue registrada por el propio sistema.
+- Revisión independiente exigida por la guía de calidad: sin hallazgos bloqueantes; 4 suites / 83 tests PASS. Se aclaró el README de los puntos de entrada Efficiency según su observación documental.
+- Alcance de cierre: mantenimiento y validación corregidos. La revisión visual del candidato por Isaac y la certificación LMU real continúan como gates de producto; no hubo merge ni promoción.
 
 ## Revisión manual de los 55 avisos
 
@@ -147,3 +161,37 @@ Las 3766 pruebas anteriores siguen siendo evidencia de la suite existente, no pr
 - `dependency-cruiser` `src/overlay/core/design-system-names.ts` no-circular src/overlay/core/profile-document.ts
 - `dependency-cruiser` `src/overlay/widget-types/delta/delta-definition.ts` no-circular src/overlay/widget-types/delta/delta-view-model.ts
 - `dependency-cruiser` `src/overlay/widget-types/fuel-strategy/fuel-strategy-definition.ts` no-circular src/overlay/widget-types/fuel-strategy/fuel-strategy-view-model.ts
+
+## Ratchet tras las correcciones
+
+# Vantare quality report
+
+- generated_at: 2026-09-22T11:28:22Z
+- mode: check
+- aggregate: PASS
+- policy_changed: False
+
+## Analizadores
+| analyzer | config | status | exit | findings | ms |
+|---|---|---|---|---|---|
+| staticcheck | darwin-dev | FAIL | 1 | 86 | 767 |
+| govet | darwin-dev | PASS | 0 | 0 | 829 |
+| deadcode | darwin-dev | PASS | 0 | 3742 | 2359 |
+| go-mod-tidy | darwin-dev | FAIL | 0 | 1 | 0 |
+| knip | darwin-dev | FAIL | 1 | 427 | 1126 |
+| jscpd | darwin-dev | FAIL | 1 | 486 | 213 |
+| dependency-cruiser | darwin-dev | PASS | 0 | 0 | 1146 |
+| staticcheck | windows-amd64 | FAIL | 1 | 108 | 1245 |
+| govet | windows-amd64 | PASS | 0 | 0 | 903 |
+| deadcode | windows-amd64 | PASS | 0 | 636 | 2054 |
+
+## Ratchet
+| analyzer | NEW | NEW blocking | RESOLVED | MOVED |
+|---|---|---|---|---|
+| staticcheck | 0 | 0 | 0 | 0 |
+| govet | 0 | 0 | 0 | 0 |
+| deadcode | 0 | 0 | 0 | 0 |
+| go-mod-tidy | 0 | 0 | 0 | 0 |
+| knip | 0 | 0 | 72 | 0 |
+| jscpd | 0 | 0 | 28 | 0 |
+| dependency-cruiser | 0 | 0 | 0 | 0 |

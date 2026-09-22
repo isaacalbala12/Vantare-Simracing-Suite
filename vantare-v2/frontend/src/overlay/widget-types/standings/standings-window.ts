@@ -2,7 +2,6 @@ export const STANDINGS_WINDOW_AROUND_OPTIONS = [0, 2, 4, 6, 8] as const;
 export type StandingsWindowAround = (typeof STANDINGS_WINDOW_AROUND_OPTIONS)[number];
 
 export const STANDINGS_WINDOW_DEFAULT_AROUND: StandingsWindowAround = 4;
-export const STANDINGS_WINDOW_MAX_AROUND = 8;
 
 export type StandingsWindowRuntime = Readonly<{
   /** Shared Workshop row projection; this is not a visual study/style id. */
@@ -10,9 +9,6 @@ export type StandingsWindowRuntime = Readonly<{
   around: StandingsWindowAround;
 }>;
 
-export function isStandingsWindowAround(value: number): value is StandingsWindowAround {
-  return STANDINGS_WINDOW_AROUND_OPTIONS.includes(value as StandingsWindowAround);
-}
 
 /**
  * Keeps the first three positions visible and adds a player-centered window.

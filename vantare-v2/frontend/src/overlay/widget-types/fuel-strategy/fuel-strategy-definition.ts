@@ -1,10 +1,9 @@
+import type { FuelStrategyContent } from "./fuel-strategy-content";
 import { validateInspectorControls } from "../../core/inspector-control";
 import type { WidgetInstanceV3 } from "../../core/profile-document";
 import { getWidgetRequiredFeature, type WidgetTypeDefinition } from "../../core/widget-definition";
 import type { FuelStrategyViewModel } from "./fuel-strategy-view-model";
 
-export type FuelStrategySource = "fuel" | "virtual-energy";
-export type FuelStrategyContent = { historyRows: number; units: "liters"; showProjection: boolean; source: FuelStrategySource };
 const DEFAULT_CONTENT: FuelStrategyContent = { historyRows: 4, units: "liters", showProjection: true, source: "fuel" };
 const inspector = { content: [
   { kind: "select" as const, id: "source", labelKey: "studio.v3.inspector.fuelStrategy.source", path: "source", options: [

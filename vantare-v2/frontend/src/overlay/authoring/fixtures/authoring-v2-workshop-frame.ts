@@ -219,10 +219,7 @@ export function buildWorkshopWidget(input: {
   // siempre vio el formato completo y el recuento por defecto.
   if (input.widget === "standings" && input.system === EFFICIENCY_SYSTEM_ID
       && (input.rows !== undefined || input.nameFormat !== undefined || input.variant === "standings-multiclass")) {
-    const minimum = resolveStandingsMinimumSize(widget);
-    if (minimum) {
-      widget = { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height ?? widget.layout.h } };
-    }
+    widget = fitStandingsMinimum(widget);
   }
 
   // El selector de marca del panel hace de autoridad local (en producción la
@@ -270,10 +267,7 @@ export function buildWorkshopWidget(input: {
     // La altura derivada del estudio pertenece al widget que estamos
     // construyendo, no a una corrección posterior del harness. Así el layout
     // que recibe WidgetVisualHost sigue siendo la resolución real del profile.
-    const minimum = resolveStandingsMinimumSize(widget);
-    if (minimum) {
-      widget = { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height ?? widget.layout.h } };
-    }
+    widget = fitStandingsMinimum(widget);
   }
 
   // Huecos de datos del pie en standings/relative de Eficiencia.
@@ -950,4 +944,11 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
   }
   frame = applyScene(frame, scenario, quality);
   return { ...runtime, overlayV2Frame: frame };
+}
+
+function fitStandingsMinimum(widget: WidgetInstanceV3): WidgetInstanceV3 {
+  const minimum = resolveStandingsMinimumSize(widget);
+  return minimum
+    ? { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height ?? widget.layout.h } }
+    : widget;
 }

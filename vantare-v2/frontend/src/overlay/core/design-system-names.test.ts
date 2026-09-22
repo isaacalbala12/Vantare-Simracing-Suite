@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  EFFICIENCY_LEGACY_SYSTEM_ID,
   EFFICIENCY_SYSTEM_ID,
   EFFICIENCY_SYSTEM_NAME,
   isEfficiencySystem,
@@ -11,7 +10,6 @@ describe("Efficiency design-system naming", () => {
   it("uses Efficiency as the canonical name while retaining the stable public ID", () => {
     expect(EFFICIENCY_SYSTEM_NAME).toBe("Efficiency");
     expect(EFFICIENCY_SYSTEM_ID).toBe("vantare-functional");
-    expect(EFFICIENCY_LEGACY_SYSTEM_ID).toBe(EFFICIENCY_SYSTEM_ID);
   });
 
   it.each(["efficiency", "vantare-efficiency", "functional", "vantare-functional", " EFFICIENCY "]) (
@@ -27,4 +25,10 @@ describe("Efficiency design-system naming", () => {
     expect(isEfficiencySystem("not-a-system")).toBe(false);
     expect(isEfficiencySystem(undefined)).toBe(false);
   });
+});
+
+// Input keys must be dictionary entries, never inherited Object properties.
+it.each(["constructor", "__proto__", " CONSTRUCTOR "])("rejects inherited system key %s", (value) => {
+  expect(normalizeDesignSystemId(value)).toBeUndefined();
+  expect(isEfficiencySystem(value)).toBe(false);
 });

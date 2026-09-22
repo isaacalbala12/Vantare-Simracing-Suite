@@ -3,7 +3,7 @@ import type {
   OverlayQValue,
   OverlaySourceStatusV2,
 } from "../../../generated/telemetry";
-import type { FuelStrategyContent } from "./fuel-strategy-definition";
+import type { FuelStrategyContent } from "./fuel-strategy-content";
 import type { FuelStrategyViewModel } from "./fuel-strategy-view-model";
 
 /**

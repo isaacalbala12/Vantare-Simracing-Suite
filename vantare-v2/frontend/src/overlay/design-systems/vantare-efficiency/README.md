@@ -3,8 +3,9 @@
 `Efficiency` is the canonical product name. `Eficiencia`, `Eficiência` and
 `Efficienza` are its localized labels.
 
-The implementation is exposed from this directory under canonical names, but
-it deliberately reuses the existing renderer and token modules. The following
+This directory exposes the consumed canonical manifest, layout helpers and
+tokens. Renderers are imported directly from their existing implementation
+modules; unused facade modules and the catch-all barrel were removed. The following
 identifiers remain stable compatibility contracts:
 
 - `vantare-functional` is the persisted `DesignSystemId`, the Go/profile

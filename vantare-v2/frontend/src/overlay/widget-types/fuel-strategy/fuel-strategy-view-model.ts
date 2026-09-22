@@ -1,5 +1,5 @@
 import type { WidgetViewModelBase } from "../../core/widget-definition";
-import type { FuelStrategySource } from "./fuel-strategy-definition";
+import type { FuelStrategySource } from "./fuel-strategy-content";
 
 export type FuelStrategyViewModel = WidgetViewModelBase & {
   type: "fuel-strategy";

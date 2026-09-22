@@ -6,7 +6,7 @@ import {
   resolveLayoutViewport,
   type LayoutViewport,
 } from "./layout-viewport";
-import { isSupportedDesignSystemId, normalizeDesignSystemId } from "./design-system-names";
+import { isSupportedDesignSystemId, normalizeDesignSystemId, type DesignSystemId } from "./design-system-names";
 
 export const PROFILE_SCHEMA_VERSION_V3 = 3 as const;
 export const PROFILE_SCHEMA_VERSION_V4 = 4 as const;
@@ -36,7 +36,7 @@ export type WidgetType =
   | "car-damage-numbers"
   | "engineer-radio"
   | "track-map";
-export type DesignSystemId = "vantare-original" | "vantare-crystal" | "vantare-endurance" | "vantare-functional" | "vantare-iracing";
+export type { DesignSystemId } from "./design-system-names";
 export type SessionLayoutType = "general" | "practice" | "qualifying" | "race" | "endurance";
 export type DisplayMode = "racing" | "edit" | "streaming";
 

@@ -1,5 +1,5 @@
 import type { WidgetViewModelBase } from "../../core/widget-definition";
-import type { DeltaReference } from "./delta-definition";
+import type { DeltaReference } from "./delta-content";
 
 export type DeltaTone = "gaining" | "neutral" | "losing";
 

@@ -1,5 +1,3 @@
-import type { DesignSystemId } from "./profile-document";
-
 /**
  * Product name for the design system previously described as Functional in
  * implementation-facing code.
@@ -11,29 +9,18 @@ import type { DesignSystemId } from "./profile-document";
  */
 export const EFFICIENCY_SYSTEM_NAME = "Efficiency" as const;
 export const EFFICIENCY_SYSTEM_ID = "vantare-functional" as const;
-export const EFFICIENCY_LEGACY_SYSTEM_ID = EFFICIENCY_SYSTEM_ID;
 
-/** Non-persisted spellings accepted at compatibility boundaries. */
-export const EFFICIENCY_SYSTEM_ALIASES = [
-  "efficiency",
-  "vantare-efficiency",
-  "functional",
-  "vantare-functional",
-] as const;
-
-export type DesignSystemIdAlias =
-  | DesignSystemId
-  | (typeof EFFICIENCY_SYSTEM_ALIASES)[number];
-
-const SUPPORTED_DESIGN_SYSTEM_IDS: readonly DesignSystemId[] = [
+const SUPPORTED_DESIGN_SYSTEM_IDS = [
   "vantare-original",
   "vantare-crystal",
   "vantare-endurance",
   EFFICIENCY_SYSTEM_ID,
   "vantare-iracing",
-];
+] as const;
 
-const DESIGN_SYSTEM_ID_ALIASES: Readonly<Record<string, DesignSystemId>> = {
+export type DesignSystemId = (typeof SUPPORTED_DESIGN_SYSTEM_IDS)[number];
+
+const DESIGN_SYSTEM_ID_ALIASES = {
   "vantare-original": "vantare-original",
   "vantare-crystal": "vantare-crystal",
   "vantare-endurance": "vantare-endurance",
@@ -42,7 +29,10 @@ const DESIGN_SYSTEM_ID_ALIASES: Readonly<Record<string, DesignSystemId>> = {
   "vantare-efficiency": EFFICIENCY_SYSTEM_ID,
   functional: EFFICIENCY_SYSTEM_ID,
   "vantare-functional": EFFICIENCY_SYSTEM_ID,
-};
+} as const satisfies Readonly<Record<string, DesignSystemId>>;
+
+/** Input spellings accepted at compatibility boundaries. */
+export type DesignSystemIdAlias = keyof typeof DESIGN_SYSTEM_ID_ALIASES;
 
 /**
  * Resolves a user-facing or historical spelling to the persisted system ID.
@@ -53,7 +43,8 @@ export function normalizeDesignSystemId(value: unknown): DesignSystemId | undefi
   if (typeof value !== "string") {
     return undefined;
   }
-  return DESIGN_SYSTEM_ID_ALIASES[value.trim().toLowerCase()];
+  const key = value.trim().toLowerCase();
+  return Object.hasOwn(DESIGN_SYSTEM_ID_ALIASES, key) ? DESIGN_SYSTEM_ID_ALIASES[key as DesignSystemIdAlias] : undefined;
 }
 
 export function isSupportedDesignSystemId(value: unknown): value is DesignSystemId {

@@ -3,7 +3,7 @@ import type {
   OverlayQValue,
   OverlaySourceStatusV2,
 } from "../../../generated/telemetry";
-import type { DeltaContent, DeltaReference } from "./delta-definition";
+import type { DeltaContent, DeltaReference } from "./delta-content";
 import type { DeltaTone, DeltaViewModel } from "./delta-view-model";
 
 const PLACEHOLDER = "—";

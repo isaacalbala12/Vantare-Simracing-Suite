@@ -8,6 +8,3 @@ import { vantareFunctionalManifest } from "../vantare-functional/manifest";
  * `vantare-functional` for profile/URL/Go compatibility.
  */
 export const vantareEfficiencyManifest = vantareFunctionalManifest;
-
-/** @deprecated Use `vantareEfficiencyManifest`; kept for old imports. */
-export { vantareFunctionalManifest };

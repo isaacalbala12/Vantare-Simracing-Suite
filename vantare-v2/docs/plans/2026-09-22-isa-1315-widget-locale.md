@@ -28,3 +28,18 @@ Seguimiento principal por instrucción explícita de Isaac: [Asana](https://app.
 ## Límites de las afirmaciones
 
 El cambio de idioma sí requiere una actualización de interfaz; la garantía es no añadir trabajo de localización por frame/tick ni tráfico periódico para consultarlo. Tests y revisión de wiring no sustituyen verificación física Windows/OBS. La automatización de navegador está actualmente denegada por la herramienta; no se elude por otro canal.
+
+## Continuación GPT-6 y revisión preventiva
+
+Isaac pidió continuar la orquestación con GPT-6. GPT-6 Sol implementa; GPT-6 Astra realizó la revisión preventiva sobre nightly e41f703c, en otro worktree y sin modificar código. El worker anterior se detuvo sin cambios; se conservó el diseño aprobado.
+
+Criterios derivados de la revisión:
+
+- Distinguir preferencia canónica ausente de español elegido. Solo Hub puede importar la preferencia antigua mediante inicialización condicional; Desktop/OBS consumen y no fijan el fallback antes de esa migración.
+- Guardar formularios anteriores nunca revierte un idioma canónico más reciente, aunque el campo antiguo contenga otro idioma válido.
+- Persistencia, revisión y publicación mantienen el mismo orden. Fallar al escribir conserva estado anterior, revisión y eventos.
+- Snapshot inicial y alta del suscriptor son atómicos; cola acotada a último estado, sin consultas periódicas. Reconectar acepta una nueva autoridad con revisión menor tras reiniciar el backend.
+- Los tests deben recorrer ambas entradas de Desktop/OBS (AppShell y overlay-main), Workshop y Hub/Studio. La revisión de un handler aislado no demuestra su conexión al servidor productivo.
+- El cambio de idioma conserva el montaje de los widgets y los códigos de sesión usados por motion. Los catálogos grandes continúan cargándose bajo demanda.
+
+Esta revisión preventiva no sustituye la revisión del diff final ni verificación física en Windows/OBS. La base limpia compila y pasa quality check (NEW=0, MOVED=0); el análisis final debe ejecutarse sobre los cambios.

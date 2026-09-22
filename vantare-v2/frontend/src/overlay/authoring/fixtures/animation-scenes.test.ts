@@ -15,17 +15,28 @@ import { buildRelativeViewModelV2 } from "../../widget-types/relative/relative-v
 import { parseRelativeContent } from "../../widget-types/relative/relative-content";
 import { projectionGapsFor } from "./projection-gaps";
 
-function scenario(widget: "standings" | "relative", sceneId: string, sceneFrame: number): WorkshopV2Scenario {
+function scenario(
+  widget: "standings" | "relative",
+  sceneId: string,
+  sceneFrame: number,
+  system: WorkshopV2Scenario["system"] = "vantare-endurance",
+): WorkshopV2Scenario {
   return {
     session: "race",
     location: "track",
     state: "ready",
     widget,
-    system: "vantare-endurance",
+    system,
     variant: "default",
     sceneId,
     sceneFrame,
   };
+}
+
+function functionalRelativeFrame(sceneId: string, sceneFrame: number) {
+  return buildWorkshopFrameV2(
+    scenario("relative", sceneId, sceneFrame, "vantare-functional"),
+  ).overlayV2Frame!;
 }
 
 function relativeModelAt(sceneId: string, frame: number) {
@@ -208,6 +219,88 @@ describe("scenes drive the motion engine", () => {
     const before = relativeModelAt("relative-enter", 0);
     const after = relativeModelAt("relative-enter", 1);
     expect(deriveRelativeEvents(before, after).some((event) => event.kind === "enter")).toBe(true);
+  });
+
+  it.each([
+    ["relative-functional-cross-ahead", "behind", "ahead"],
+    ["relative-functional-cross-behind", "ahead", "behind"],
+  ] as const)("Functional Relative %s crosses the same row in both sections", (sceneId, from, to) => {
+    const scene = getAnimationScene(sceneId)!;
+    expect(listAnimationScenes("relative")).toContain(scene);
+
+    const before = functionalRelativeFrame(sceneId, 0);
+    const after = functionalRelativeFrame(sceneId, 2);
+    expect(after.player.id).toBe(before.player.id);
+
+    for (const section of ["relative", "relativeSettled"] as const) {
+      const priorRow = before[section].find((row) => row.position === 20)!;
+      const nextRow = after[section].find((row) => row.id === priorRow.id)!;
+      expect(priorRow.id).toBeDefined();
+      expect(priorRow.side).toBe(from);
+      expect(nextRow.side).toBe(to);
+      expect(priorRow.gap.v).toBe(from === "ahead" ? 0.65 : -0.65);
+      expect(nextRow.gap.v).toBe(to === "ahead" ? 0.12 : -0.12);
+      const priorIndex = before[section].findIndex((row) => row.id === priorRow.id);
+      const nextIndex = after[section].findIndex((row) => row.id === priorRow.id);
+      const playerIndex = before[section].findIndex((row) => row.id === before.player.id);
+      const nextPlayerIndex = after[section].findIndex((row) => row.id === after.player.id);
+      expect(from === "ahead" ? priorIndex < playerIndex : priorIndex > playerIndex).toBe(true);
+      expect(to === "ahead" ? nextIndex < nextPlayerIndex : nextIndex > nextPlayerIndex).toBe(true);
+    }
+  });
+
+  it("Functional Relative window scene exits and re-enters the same row without moving the player", () => {
+    const frames = [0, 1, 3, 5, 6].map((frame) => functionalRelativeFrame("relative-functional-window-cycle", frame));
+    const playerId = frames[0]!.player.id;
+    const birchAt = (frame: (typeof frames)[number]) => frame.relative.find((row) => row.position === 19);
+    const entered = birchAt(frames[1]!);
+    const reentered = birchAt(frames[3]!);
+
+    expect(birchAt(frames[0]!)).toBeUndefined();
+    expect(entered).toBeDefined();
+    expect(birchAt(frames[2]!)).toBeUndefined();
+    expect(reentered?.id).toBe(entered?.id);
+    expect(birchAt(frames[4]!)?.id).toBe(entered?.id);
+    expect(frames.every((frame) => frame.player.id === playerId)).toBe(true);
+  });
+
+  it("Functional Relative fast reversal keeps one rival and flips sides every 180 ms", () => {
+    const scene = getAnimationScene("relative-functional-fast-reversal")!;
+    expect(scene.frameMs).toBe(180);
+    expect(scene.frameMs).toBeLessThan(300);
+    const frames = scene.frames.map((_, index) => functionalRelativeFrame(scene.id, index));
+    const rows = frames.map((frame) => frame.relative.find((row) => row.position === 20)!);
+    expect(new Set(rows.map((row) => row.id)).size).toBe(1);
+    expect(frames.every((frame) => frame.player.id === frames[0]!.player.id)).toBe(true);
+    expect(rows.map((row) => row.side)).toEqual(["behind", "ahead", "behind", "ahead"]);
+    expect(rows.map((row) => row.gap.v)).toEqual([-0.14, 0.14, -0.14, 0.14]);
+  });
+
+  it("Functional Relative stable sample scene repeats identical row IDs and numeric values", () => {
+    const scene = getAnimationScene("relative-functional-stable-values")!;
+    const frames = scene.frames.map((_, index) => functionalRelativeFrame(scene.id, index));
+    const sample = (frame: (typeof frames)[number]) => frame.relative.map((row) => [row.id, row.gap.v]);
+    expect(frames.slice(1).every((frame) => frame.player.id === frames[0]!.player.id)).toBe(true);
+    expect(sample(frames[1]!)).toEqual(sample(frames[0]!));
+    expect(sample(frames[2]!)).toEqual(sample(frames[0]!));
+  });
+
+  it("Functional Relative combined scene is available for manual and play review", () => {
+    const scene = getAnimationScene("relative-functional-sequence")!;
+    expect(scene.label).toMatch(/manual \/ play/i);
+    expect(scene.watchFor).toMatch(/Reproducir.*scrubber/i);
+    const frames = scene.frames.map((_, index) => functionalRelativeFrame(scene.id, index));
+    const bruniAt = (frame: (typeof frames)[number]) => frame.relative.find((row) => row.position === 20)!;
+    const birchAt = (frame: (typeof frames)[number]) => frame.relative.find((row) => row.position === 19);
+
+    expect(bruniAt(frames[0]!).side).toBe("behind");
+    expect(bruniAt(frames[2]!).side).toBe("ahead");
+    expect(birchAt(frames[0]!)).toBeUndefined();
+    expect(birchAt(frames[2]!)).toBeDefined();
+    expect(birchAt(frames[4]!)).toBeUndefined();
+    expect(birchAt(frames[5]!)?.id).toBe(birchAt(frames[2]!)?.id);
+    expect(bruniAt(frames[7]!).side).toBe("behind");
+    expect(frames.every((frame) => frame.player.id === frames[0]!.player.id)).toBe(true);
   });
 
   it("delta chip scene moves a car several places at once", () => {

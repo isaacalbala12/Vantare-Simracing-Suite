@@ -349,6 +349,175 @@ const RELATIVE_ENTER_SCENE: AnimationScene = {
   ],
 };
 
+const RELATIVE_FUNCTIONAL_CROSS_AHEAD_SCENE: AnimationScene = {
+  id: "relative-functional-cross-ahead",
+  widget: "relative",
+  label: "Cruce detrás → delante",
+  watchFor:
+    "Sigue al mismo rival y deja fijo al jugador: la fila cruza de detrás a delante cuando el gap cambia de signo, con un acento de color muy tenue solo en el cruce y cifras quietas.",
+  frameMs: 1200,
+  frames: [
+    { caption: "Bruni detrás del jugador: −0,65 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: -0.65 } } },
+    { caption: "Se acerca: −0,12 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: -0.12 } } },
+    { caption: "Cruza hacia delante: +0,12 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: 0.12 } } },
+    { caption: "Se aleja delante: +0,65 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: 0.65 } } },
+  ],
+};
+
+const RELATIVE_FUNCTIONAL_CROSS_BEHIND_SCENE: AnimationScene = {
+  id: "relative-functional-cross-behind",
+  widget: "relative",
+  label: "Cruce delante → detrás",
+  watchFor:
+    "Sigue al mismo rival y deja fijo al jugador: la fila cruza de delante a detrás cuando el gap cambia de signo, con un acento de color muy tenue solo en el cruce y cifras quietas.",
+  frameMs: 1200,
+  frames: [
+    { caption: "Bruni delante del jugador: +0,65 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: 0.65 } } },
+    { caption: "Se acerca: +0,12 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: 0.12 } } },
+    { caption: "Cruza hacia detrás: −0,12 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: -0.12 } } },
+    { caption: "Se aleja detrás: −0,65 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: -0.65 } } },
+  ],
+};
+
+const RELATIVE_FUNCTIONAL_WINDOW_SCENE: AnimationScene = {
+  id: "relative-functional-window-cycle",
+  widget: "relative",
+  label: "Entrada, salida y reentrada",
+  watchFor:
+    "Birch sale y reentra con la misma identidad mientras la fila del jugador conserva su ID y posición. Revisa entrada y salida por opacidad, alrededor de 120 ms, y confirma que las cifras no pulsan.",
+  frameMs: 1200,
+  frames: [
+    { caption: "Birch aún fuera de la ventana", cars: { "Michael Birch": { absent: true } } },
+    { caption: "Entra en la ventana: gap estable de −2,6 s", cars: { "Michael Birch": { timeGapToPlayer: -2.6 } } },
+    { caption: "Birch ya asentado; las cifras siguen iguales", cars: { "Michael Birch": { timeGapToPlayer: -2.6 } } },
+    { caption: "Sale de la ventana visible", cars: { "Michael Birch": { absent: true } } },
+    { caption: "Continúa fuera", cars: { "Michael Birch": { absent: true } } },
+    { caption: "Reentra con la misma fila y el mismo gap", cars: { "Michael Birch": { timeGapToPlayer: -2.6 } } },
+    { caption: "Reentrada asentada: −2,6 s", cars: { "Michael Birch": { timeGapToPlayer: -2.6 } } },
+  ],
+};
+
+const RELATIVE_FUNCTIONAL_FAST_REVERSAL_SCENE: AnimationScene = {
+  id: "relative-functional-fast-reversal",
+  widget: "relative",
+  label: "Inversión rápida · 180 ms",
+  watchFor:
+    "Escena de estrés: el mismo rival cambia de lado cada 180 ms (<300 ms). Comprueba que no se pierde la fila ni el jugador y que el acento tenue solo aparece en cada cruce real.",
+  frameMs: 180,
+  frames: [
+    { caption: "Detrás: −0,14 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: -0.14 } } },
+    { caption: "Cruza delante en 180 ms: +0,14 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: 0.14 } } },
+    { caption: "Invierte y vuelve detrás en 180 ms: −0,14 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: -0.14 } } },
+    { caption: "Cruza delante otra vez en 180 ms: +0,14 s", cars: { "Gianmaria Bruni": { timeGapToPlayer: 0.14 } } },
+  ],
+};
+
+const RELATIVE_FUNCTIONAL_STABLE_SCENE: AnimationScene = {
+  id: "relative-functional-stable-values",
+  widget: "relative",
+  label: "Cifras estables",
+  watchFor:
+    "Las muestras repiten los mismos gaps y las mismas identidades. Revisa que el texto numérico permanezca quieto y que el jugador no se desplace sin un cambio de telemetría.",
+  frameMs: 1200,
+  frames: [
+    {
+      caption: "Muestra 1: Bruni −0,30 s; Birch −2,6 s",
+      cars: {
+        "Gianmaria Bruni": { timeGapToPlayer: -0.3 },
+        "Michael Birch": { timeGapToPlayer: -2.6 },
+      },
+    },
+    {
+      caption: "Muestra 2 idéntica: ningún número cambia",
+      cars: {
+        "Gianmaria Bruni": { timeGapToPlayer: -0.3 },
+        "Michael Birch": { timeGapToPlayer: -2.6 },
+      },
+    },
+    {
+      caption: "Muestra 3 idéntica: filas y cifras siguen quietas",
+      cars: {
+        "Gianmaria Bruni": { timeGapToPlayer: -0.3 },
+        "Michael Birch": { timeGapToPlayer: -2.6 },
+      },
+    },
+  ],
+};
+
+const RELATIVE_FUNCTIONAL_SEQUENCE_SCENE: AnimationScene = {
+  id: "relative-functional-sequence",
+  widget: "relative",
+  label: "Secuencia conjunta · manual / play",
+  watchFor:
+    "Usa Reproducir para ver la secuencia completa o el scrubber para detenerte en cada muestra: cruce en ambos sentidos, salida y reentrada de Birch, y un tramo final con cifras estables.",
+  frameMs: 900,
+  frames: [
+    {
+      caption: "Inicio: Bruni detrás (−0,45 s); Birch fuera de la ventana",
+      cars: {
+        "Gianmaria Bruni": { timeGapToPlayer: -0.45 },
+        "Michael Birch": { absent: true },
+      },
+    },
+    {
+      caption: "Bruni se acerca: −0,12 s",
+      cars: {
+        "Gianmaria Bruni": { timeGapToPlayer: -0.12 },
+        "Michael Birch": { absent: true },
+      },
+    },
+    {
+      caption: "Primer cruce: Bruni queda delante (+0,12 s); Birch entra",
+      cars: {
+        "Gianmaria Bruni": { timeGapToPlayer: 0.12 },
+        "Michael Birch": { timeGapToPlayer: -2.6 },
+      },
+    },
+    {
+      caption: "Birch asentado en la ventana; Bruni mantiene +0,45 s",
+      cars: {
+        "Gianmaria Bruni": { timeGapToPlayer: 0.45 },
+        "Michael Birch": { timeGapToPlayer: -2.6 },
+      },
+    },
+    {
+      caption: "Birch sale de la ventana; Bruni sigue delante",
+      cars: {
+        "Gianmaria Bruni": { timeGapToPlayer: 0.45 },
+        "Michael Birch": { absent: true },
+      },
+    },
+    {
+      caption: "Birch reentra con el mismo gap: −2,6 s",
+      cars: {
+        "Gianmaria Bruni": { timeGapToPlayer: 0.45 },
+        "Michael Birch": { timeGapToPlayer: -2.6 },
+      },
+    },
+    {
+      caption: "Bruni se acerca desde delante: +0,12 s",
+      cars: {
+        "Gianmaria Bruni": { timeGapToPlayer: 0.12 },
+        "Michael Birch": { timeGapToPlayer: -2.6 },
+      },
+    },
+    {
+      caption: "Segundo cruce: Bruni vuelve detrás (−0,12 s)",
+      cars: {
+        "Gianmaria Bruni": { timeGapToPlayer: -0.12 },
+        "Michael Birch": { timeGapToPlayer: -2.6 },
+      },
+    },
+    {
+      caption: "Cierre estable: Bruni −0,45 s; Birch −2,6 s",
+      cars: {
+        "Gianmaria Bruni": { timeGapToPlayer: -0.45 },
+        "Michael Birch": { timeGapToPlayer: -2.6 },
+      },
+    },
+  ],
+};
+
 /**
  * The delta reads the player, not the field, so its scenes drive the player's
  * own delta and best lap rather than anyone's position.
@@ -434,6 +603,12 @@ export const ANIMATION_SCENES: readonly AnimationScene[] = [
   FULL_SEQUENCE_SCENE,
   RELATIVE_CROSS_SCENE,
   RELATIVE_ENTER_SCENE,
+  RELATIVE_FUNCTIONAL_CROSS_AHEAD_SCENE,
+  RELATIVE_FUNCTIONAL_CROSS_BEHIND_SCENE,
+  RELATIVE_FUNCTIONAL_WINDOW_SCENE,
+  RELATIVE_FUNCTIONAL_FAST_REVERSAL_SCENE,
+  RELATIVE_FUNCTIONAL_STABLE_SCENE,
+  RELATIVE_FUNCTIONAL_SEQUENCE_SCENE,
   DELTA_CROSS_SCENE,
   DELTA_NEW_BEST_SCENE,
   PEDALS_LAP_SCENE,

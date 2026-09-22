@@ -6,6 +6,12 @@
 > Este handoff conserva evidencia técnica fechada; sus estados antiguos no
 > sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
 
+## Actualización — rebuild solicitada y VirusTotal preparado (2026-09-22)
+
+Isaac pide regenerar la build para disponer del archivo y analizarlo en VirusTotal. El helper normal termina con salida 0 sobre código 4bc2cd02; no se modifica Defender, y se comprueba antivirus/protección en tiempo real activos. Ejecutable `bin/vantare-localdev.exe`, SHA-256 `54EF6CF185867424F37F9A49D8F40EC3626D095D96B4B2520E5EBCF38B6618B5`. Log `C:/tmp/isa1322-rebuild-for-analysis.log`.
+
+Asset nuevo accesible `RacesOrbitPage-Dt74rd-E.js`, 25.230 bytes, SHA-256 `E8FBF2FA87C4F1BC336F0718C687C0FCE3E9822DBAECDE331698246C89015D15`. Es un artefacto regenerado; no se afirma equivalencia con el original BtqPDHOa en cuarentena. La consulta por hash en VirusTotal muestra Item not found. Archivo seleccionado y botón Confirm upload preparado: la aceptación de condiciones y compartición espera confirmación explícita del usuario por política de la herramienta de navegador. No se ha enviado la muestra ni se ha abierto el nuevo ejecutable. Aceptación visual >9 sigue pendiente.
+
 ## Actualización — auditoría de Defender ISA-1322 (2026-09-22)
 
 Isaac solicita verificar la detección antes de autorizar el archivo. Revisión de fuente y procedencia sin hallazgos maliciosos; 168 archivos de seis paquetes instalados coinciden con tarballs e integridades oficiales, y la caché pnpm no presenta modificaciones. El historial muestra la misma detección sobre Carreras el 15-sep, antes de este cambio. Conclusión: **falso positivo probable, no confirmado**, porque el bundle exacto está en cuarentena y no se inspeccionó. [Evidencia y límites](../../strategy-planner/evidence/isa-1322/defender-audit.md). Sin restauración, excepciones, renombrado, nueva build ni cambio de protección. La build final y aceptación visual permanecen pendientes; no se autoriza ni se realiza envío del código a Microsoft.

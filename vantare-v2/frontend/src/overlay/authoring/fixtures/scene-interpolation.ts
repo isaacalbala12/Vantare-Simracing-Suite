@@ -145,6 +145,7 @@ export function sampleAtRate(elapsedMs: number, updateHz: number): number {
   if (!Number.isFinite(updateHz) || updateHz <= 0) {
     return elapsedMs;
   }
-  const periodMs = 1000 / updateHz;
-  return Math.floor(elapsedMs / periodMs) * periodMs;
+  // Count samples before converting back to milliseconds: dividing by the
+  // repeating 15 Hz period can turn an exact keyframe into the previous sample.
+  return Math.floor(elapsedMs * updateHz / 1000) * 1000 / updateHz;
 }

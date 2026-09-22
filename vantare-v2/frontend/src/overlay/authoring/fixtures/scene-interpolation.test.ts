@@ -128,6 +128,13 @@ describe("sampling at the widget's telemetry rate", () => {
     expect(distinct.size).toBe(15);
   });
 
+  it.each([15, 30])("keeps exact keyframes at %i Hz without sampling ahead", (rate) => {
+    for (const ms of [1600, 8000, 14400, 16000]) {
+      expect(sampleAtRate(ms, rate)).toBe(ms);
+      expect(sampleAtRate(ms - 0.01, rate)).toBeLessThan(ms);
+    }
+  });
+
   it("gives delta and pedals twice that", () => {
     const distinct = new Set<number>();
     for (let ms = 0; ms < 1000; ms += 1000 / 60) {

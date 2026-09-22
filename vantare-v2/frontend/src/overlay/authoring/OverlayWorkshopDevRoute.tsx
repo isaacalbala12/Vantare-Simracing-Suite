@@ -342,7 +342,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
       if (
         parsed.widget === "standings"
         && parsed.system === "vantare-functional"
-        && parsed.studyStyle === "default"
+        && (parsed.studyStyle === "default" || head?.frame.standingsWindowPosition !== undefined)
         && parsed.around !== undefined
       ) {
         return {

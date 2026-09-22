@@ -19,3 +19,10 @@
 Evidencia del segundo bloque: worker `78115bd9`, consolidado como `ed8d1985`; revisión independiente sin hallazgos y 152 pruebas / 7 suites PASS. Suite completa: 468 archivos, 3832 PASS y 2 omitidos; build/TypeScript, lint y ratchet PASS (NEW=0/MOVED=0, sin cambiar políticas). El fallo intermitente de voz del primer bloque pasó diez repeticiones locales y un rerun remoto del mismo código.
 
 La publicación y los checks del SHA final se verifican en VAN-41 / PR #1306. Quedan pendientes la revisión visual de Isaac de las escenas **Batalla cercana · conducción** y **Entrada y salida de ventana**, y LMU real; Standings no se declara terminado ni integrado por esta entrega.
+
+## Seguimiento: ambas animaciones en la secuencia del harness
+
+- [x] Ampliar la secuencia combinada con batalla y ventana conservando el resultado de los eventos anteriores.
+- [x] Aplicar el recorte de demostración también en V1 sin modificar el estilo seleccionado.
+- [x] Corregir el redondeo del reloj que aparcaba ciertos fotogramas en la muestra anterior y proteger límites exactos a 15/30 Hz.
+- [x] Verificar las 170 pruebas de autoría / 13 suites, build/TypeScript y lint; reflejar el ajuste en roadmap y handoff.

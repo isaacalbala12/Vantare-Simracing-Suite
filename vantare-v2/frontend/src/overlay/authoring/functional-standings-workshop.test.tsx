@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OverlayWorkshopDevRoute } from "./OverlayWorkshopDevRoute";
 import { buildWorkshopFrameV2, buildWorkshopWidget, type WorkshopV2Scenario } from "./fixtures/authoring-v2-workshop-frame";
@@ -17,6 +17,7 @@ const frame = (patch: Partial<WorkshopV2Scenario> = {}) => buildWorkshopFrameV2(
 const animateDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "animate");
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   if (animateDescriptor) Object.defineProperty(HTMLElement.prototype, "animate", animateDescriptor);
   else Reflect.deleteProperty(HTMLElement.prototype, "animate");
 });
@@ -93,6 +94,36 @@ describe("Standings Eficiencia Workshop review", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "Estado en boxes" }));
     expect(document.querySelector('td[data-metric="bestLap"]')).not.toBeNull();
     expect(document.querySelector('td[data-metric="lastLap"]')).toBeNull();
+  });
+
+  it.each(["default", "standings-multiclass"])("includes battle and window motion in the combined harness review for %s", (variant) => {
+    vi.useFakeTimers();
+    Object.defineProperty(HTMLElement.prototype, "animate", { configurable: true, value: vi.fn(() => ({ playState: "running", cancel: vi.fn() })) });
+    render(<OverlayWorkshopDevRoute search={`${query.replace("variant=default", `variant=${variant}`).replace("study=default", "study=v1")}&scene=standings-functional-combined&modules=pit,gap,bestLap`} />);
+    const next = () => {
+      act(() => vi.advanceTimersByTime(1600));
+      fireEvent.click(screen.getByTestId("workshop-scene-next"));
+    };
+    for (let index = 0; index < 5; index += 1) next();
+    expect([...document.querySelectorAll("[data-battle]")].map((row) => row.getAttribute("data-standings-row")).sort()).toEqual(["vehicle-000", "vehicle-003"]);
+    next();
+    expect(document.querySelectorAll("[data-battle]")).toHaveLength(2);
+    next();
+    expect(document.querySelector("[data-battle]")).toBeNull();
+    next();
+    const ids = () => [...document.querySelectorAll("[data-standings-row]")].map((row) => row.getAttribute("data-standings-row"));
+    const initial = ids();
+    next();
+    expect(ids()).not.toEqual(initial);
+    expect(document.querySelector("[data-exiting-row]")).not.toBeNull();
+    expect(document.querySelector("[data-standings-row][data-motion]")).toBeNull();
+    next();
+    next();
+    expect(ids()).toEqual(initial);
+    expect(document.querySelector("[data-pit-indicator]")).not.toBeNull();
+    expect(document.querySelector("[data-standings-row][data-motion]")).toBeNull();
+    expect(document.querySelector("[data-study-style]")?.getAttribute("data-study-style")).toBe("v1");
+    expect(document.querySelector(".vf-standings")?.getAttribute("data-classification-mode")).toBe(variant === "default" ? "normal" : "multiclass");
   });
 
   it.each(["practice", "qualifying", "race"] as const)("drives real personal and session lap notices in %s", (session) => {

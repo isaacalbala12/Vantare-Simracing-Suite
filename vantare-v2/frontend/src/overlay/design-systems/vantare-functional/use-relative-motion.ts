@@ -1,10 +1,11 @@
 import { useRef, type RefObject } from "react";
-import { flipRows, useWidgetMotion, type MotionLevel, type MotionSchedule } from "../../core/widget-motion";
+import { flipRows, useWidgetMotion, type MotionLevel } from "../../core/widget-motion";
 import type { RelativeViewModel } from "../../widget-types/relative/relative-view-model";
 import { deriveSideCrosses } from "./functional-motion";
 
 type RowSnapshot = { row: HTMLTableRowElement; top: number };
 type Slide = { animation: Animation; from: number };
+type Ghost = { fade: Animation | undefined; startOpacity: number };
 const ROWS = "[data-relative-row]:not([data-player])";
 const TOPS = "relative-tops";
 
@@ -28,9 +29,9 @@ function fadeExits(
   root: HTMLElement,
   previous: Map<string, RowSnapshot>,
   nextIds: ReadonlySet<string>,
-  schedule: MotionSchedule,
   own: (animation: Animation) => void,
-  ghosts: Map<HTMLElement, Animation | undefined>,
+  ghosts: Map<HTMLElement, Ghost>,
+  timers: Map<HTMLElement, ReturnType<typeof setTimeout>>,
   visual: (id: string) => { offset: number; opacity: number },
 ): void {
   const wrap = root.querySelector<HTMLElement>(".vf-table-wrap");
@@ -58,8 +59,13 @@ function fadeExits(
       ? ghost.animate([{ opacity: current.opacity }, { opacity: 0 }], { duration: 120, easing: "ease-out", fill: "forwards" })
       : undefined;
     if (fade) own(fade);
-    ghosts.set(ghost, fade);
-    schedule(120, () => { fade?.cancel(); ghost.remove(); ghosts.delete(ghost); }, `relative-exit-${id}`);
+    ghosts.set(ghost, { fade, startOpacity: current.opacity });
+    timers.set(ghost, setTimeout(() => {
+      fade?.cancel();
+      ghost.remove();
+      ghosts.delete(ghost);
+      timers.delete(ghost);
+    }, 120));
   }
 }
 
@@ -76,7 +82,14 @@ export function useRelativeMotion(
   const slides = useRef<Map<string, Slide>>(new Map());
   const entrances = useRef<Map<string, Animation>>(new Map());
   const cues = useRef<Map<string, Animation>>(new Map());
-  const ghosts = useRef<Map<HTMLElement, Animation | undefined>>(new Map());
+  const ghosts = useRef<Map<HTMLElement, Ghost>>(new Map());
+  const ghostTimers = useRef<Map<HTMLElement, ReturnType<typeof setTimeout>>>(new Map());
+  const clearGhosts = () => {
+    for (const timer of ghostTimers.current.values()) clearTimeout(timer);
+    ghostTimers.current.clear();
+    for (const [ghost, { fade }] of ghosts.current) { fade?.cancel(); ghost.remove(); }
+    ghosts.current.clear();
+  };
   const own = (animation: Animation, preserve = false) => {
     owned.current.add(animation);
     if (preserve) independent.current.add(animation);
@@ -91,8 +104,7 @@ export function useRelativeMotion(
     slides.current.clear();
     entrances.current.clear();
     cues.current.clear();
-    for (const [ghost, animation] of ghosts.current) { animation?.cancel(); ghost.remove(); }
-    ghosts.current.clear();
+    clearGhosts();
   };
   const measure = (root: HTMLElement, persist: Map<string, unknown>) => {
     flipRows(root, persist, {
@@ -110,7 +122,7 @@ export function useRelativeMotion(
     });
   };
 
-  useWidgetMotion({ status: model.status, model, boundaryKey, structureKey }, motion !== "minimal", rootRef, ({ prev, next, root, schedule, persist }) => {
+  useWidgetMotion({ status: model.status, model, boundaryKey, structureKey }, motion !== "minimal", rootRef, ({ prev, next, root, persist }) => {
     const oldBoundary = persist.get("relative-boundary");
     const oldStructure = persist.get("relative-structure");
     if (oldBoundary === boundaryKey && oldStructure === structureKey) return;
@@ -124,17 +136,21 @@ export function useRelativeMotion(
       return;
     }
 
-    for (const [ghost, animation] of ghosts.current) { animation?.cancel(); ghost.remove(); }
-    ghosts.current.clear();
     const previous = persist.get("relative-snapshots") as Map<string, RowSnapshot> | undefined;
     const nextIds = new Set([...root.querySelectorAll<HTMLElement>(ROWS)].map((row) => row.dataset.relativeRow).filter((id): id is string => id !== undefined));
+    const progress = (animation: Animation | undefined) => {
+      const value = animation?.effect?.getComputedTiming().progress;
+      return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1;
+    };
+    const returningOpacity = new Map<string, number>();
+    for (const [ghost, { fade, startOpacity }] of ghosts.current) {
+      const id = ghost.dataset.relativeGhost;
+      if (id && nextIds.has(id)) returningOpacity.set(id, fade ? startOpacity * (1 - progress(fade)) : startOpacity);
+    }
+    clearGhosts();
     measure(root, persist);
     if (motion === "full") {
-      const progress = (animation: Animation | undefined) => {
-        const value = animation?.effect?.getComputedTiming().progress;
-        return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1;
-      };
-      fadeExits(root, previous ?? new Map(), nextIds, schedule, (animation) => own(animation, true), ghosts.current, (id) => {
+      fadeExits(root, previous ?? new Map(), nextIds, (animation) => own(animation, true), ghosts.current, ghostTimers.current, (id) => {
         const slide = slides.current.get(id);
         return { offset: slide ? slide.from * (1 - progress(slide.animation)) : 0, opacity: progress(entrances.current.get(id)) };
       });
@@ -142,7 +158,7 @@ export function useRelativeMotion(
       for (const row of root.querySelectorAll<HTMLElement>(ROWS)) {
         const id = row.dataset.relativeRow;
         if (id && !previousIds.has(id) && typeof row.animate === "function") {
-          const animation = row.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 120, easing: "ease-out" });
+          const animation = row.animate([{ opacity: returningOpacity.get(id) ?? 0 }, { opacity: 1 }], { duration: 120, easing: "ease-out" });
           own(animation, true);
           entrances.current.set(id, animation);
         }

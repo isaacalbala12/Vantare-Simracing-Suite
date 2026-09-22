@@ -88,10 +88,13 @@ describe("Relative presentation", () => {
     expect(ghost?.hasAttribute("inert")).toBe(true);
     expect(ghost?.textContent).toContain("Latest");
     expect(view.container.querySelectorAll('[data-relative-row="behind"]')).toHaveLength(0);
+    act(() => vi.advanceTimersByTime(60));
+    animationProgress = 0.5;
     view.rerender(<RelativeFunctional model={model([ahead, player, behind])} settings={{}} renderMode="harness" />);
     expect(view.container.querySelector('[data-relative-ghost="behind"]')).toBeNull();
     expect(view.container.querySelectorAll('[data-relative-row="behind"]')).toHaveLength(1);
-    expect(animations.some((entry) => entry.target === view.container.querySelector('[data-relative-row="behind"]') && entry.frames[0]?.opacity === 0)).toBe(true);
+    expect(animations.some((entry) => entry.target === view.container.querySelector('[data-relative-row="behind"]') && entry.frames[0]?.opacity === 0.5)).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
     act(() => vi.advanceTimersByTime(120));
     expect(view.container.querySelector("[data-relative-ghost]")).toBeNull();
   });

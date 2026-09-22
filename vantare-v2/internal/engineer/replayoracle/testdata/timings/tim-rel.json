@@ -1,0 +1,556 @@
+[
+  {
+    "id": "TIM-REL-001",
+    "name": "Multiclass: carrera y pista son relaciones diferentes",
+    "basis": "source",
+    "anchors": [
+      "relations",
+      "track_relations",
+      "map_gaps",
+      "map_identity",
+      "delta_init",
+      "delta_update",
+      "delta_relative",
+      "delta_race",
+      "pit_entry"
+    ],
+    "evolutions": [],
+    "input": {
+      "player": "P",
+      "length_m": 5000,
+      "cars": [
+        {
+          "id": "P",
+          "class": "GT",
+          "position": 5,
+          "laps": 10,
+          "distance_m": 4900
+        },
+        {
+          "id": "F",
+          "class": "GT",
+          "position": 3,
+          "laps": 10,
+          "distance_m": 300
+        },
+        {
+          "id": "X",
+          "class": "PROTO",
+          "position": 4,
+          "laps": 10,
+          "distance_m": 4950
+        },
+        {
+          "id": "B",
+          "class": "GT",
+          "position": 7,
+          "laps": 10,
+          "distance_m": 4800
+        },
+        {
+          "id": "Y",
+          "class": "PROTO",
+          "position": 6,
+          "laps": 10,
+          "distance_m": 4850
+        }
+      ],
+      "rival_preconditions": {
+        "speed_mps": 30,
+        "in_lap": false,
+        "identity_quality": "fresh"
+      }
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "relations",
+      "facts": {
+        "race_front": "F",
+        "race_rear": "B",
+        "track_front": "X",
+        "track_rear": "Y"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "relations",
+      "facts": {
+        "race_front": "F",
+        "race_rear": "B",
+        "track_front": "X",
+        "track_rear": "Y"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-REL-002",
+    "name": "Wrap delante sin otro coche entre medias",
+    "basis": "source",
+    "anchors": [
+      "relations",
+      "track_relations",
+      "map_gaps",
+      "map_identity",
+      "delta_init",
+      "delta_update",
+      "delta_relative",
+      "delta_race",
+      "pit_entry"
+    ],
+    "evolutions": [],
+    "input": {
+      "player_distance_m": 4900,
+      "length_m": 5000,
+      "rivals": [
+        {
+          "id": "F",
+          "distance_m": 100
+        }
+      ],
+      "passage_delta_s": -2,
+      "rival_preconditions": {
+        "speed_mps": 30,
+        "in_lap": false,
+        "identity_quality": "fresh"
+      }
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "track_front",
+      "facts": {
+        "rival": "F",
+        "distance_m": 200,
+        "delta_s": -2
+      }
+    },
+    "accepted_expected": {
+      "outcome": "track_front",
+      "facts": {
+        "rival": "F",
+        "distance_m": 200,
+        "delta_s": -2
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-REL-003",
+    "name": "Posición exactamente coincidente",
+    "basis": "source",
+    "anchors": [
+      "relations",
+      "track_relations",
+      "map_gaps",
+      "map_identity",
+      "delta_init",
+      "delta_update",
+      "delta_relative",
+      "delta_race",
+      "pit_entry"
+    ],
+    "evolutions": [],
+    "input": {
+      "player_distance_m": 100,
+      "rival_distance_m": 100,
+      "length_m": 5000
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "no_track_candidate",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "no_track_candidate",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-REL-004",
+    "name": "Velocidad exacta mínima",
+    "basis": "source",
+    "anchors": [
+      "relations",
+      "track_relations",
+      "map_gaps",
+      "map_identity",
+      "delta_init",
+      "delta_update",
+      "delta_relative",
+      "delta_race",
+      "pit_entry"
+    ],
+    "evolutions": [],
+    "input": {
+      "rival_speed_mps": 0.5,
+      "in_lap": false
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "not_racing",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "not_racing",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-REL-005",
+    "name": "Velocidad por encima del mínimo",
+    "basis": "source",
+    "anchors": [
+      "relations",
+      "track_relations",
+      "map_gaps",
+      "map_identity",
+      "delta_init",
+      "delta_update",
+      "delta_relative",
+      "delta_race",
+      "pit_entry"
+    ],
+    "evolutions": [],
+    "input": {
+      "rival_speed_mps": 0.501,
+      "in_lap": false
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "racing",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "racing",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-REL-006",
+    "name": "InLap excluye aunque todavía no esté en pitlane",
+    "basis": "source",
+    "anchors": [
+      "relations",
+      "track_relations",
+      "map_gaps",
+      "map_identity",
+      "delta_init",
+      "delta_update",
+      "delta_relative",
+      "delta_race",
+      "pit_entry"
+    ],
+    "evolutions": [],
+    "input": {
+      "rival_speed_mps": 25,
+      "in_lap": true,
+      "in_pitlane": false
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "not_racing",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "not_racing",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-REL-007",
+    "name": "Orden espacial no corrige signo temporal",
+    "basis": "source",
+    "anchors": [
+      "relations",
+      "track_relations",
+      "map_gaps",
+      "map_identity",
+      "delta_init",
+      "delta_update",
+      "delta_relative",
+      "delta_race",
+      "pit_entry"
+    ],
+    "evolutions": [],
+    "input": {
+      "query": "track_front",
+      "spatial_front": "F",
+      "passage_delta_s": 2
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "no_data",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "no_data",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-REL-008",
+    "name": "Empate de magnitud conserva primer delta",
+    "basis": "source",
+    "anchors": [
+      "relations",
+      "track_relations",
+      "map_gaps",
+      "map_identity",
+      "delta_init",
+      "delta_update",
+      "delta_relative",
+      "delta_race",
+      "pit_entry"
+    ],
+    "evolutions": [],
+    "input": {
+      "first_point_delta_s": -2,
+      "second_point_delta_s": 2,
+      "initial_lap_difference": 0,
+      "wrap_adjustment": 0
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "relative_delta",
+      "facts": {
+        "delta_s": -2
+      }
+    },
+    "accepted_expected": {
+      "outcome": "relative_delta",
+      "facts": {
+        "delta_s": -2
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-REL-009",
+    "name": "Identidad o calidad missing no es un gap cero",
+    "basis": "contract_adaptation",
+    "anchors": [
+      "relations",
+      "track_relations",
+      "map_gaps",
+      "map_identity",
+      "delta_init",
+      "delta_update",
+      "delta_relative",
+      "delta_race",
+      "pit_entry"
+    ],
+    "evolutions": [],
+    "input": {
+      "rival_id": null,
+      "gap_s": 0,
+      "quality": "missing"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "no_valid_relation",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "no_valid_relation",
+      "facts": {}
+    },
+    "note": "Contrato de entrada Vantare: fuente necesita clave e historial válidos; un valor numérico solo no demuestra relación."
+  },
+  {
+    "id": "TIM-REL-010",
+    "name": "Nueva epoch invalida relación pendiente",
+    "basis": "contract_adaptation",
+    "anchors": [
+      "relations",
+      "track_relations",
+      "map_gaps",
+      "map_identity",
+      "delta_init",
+      "delta_update",
+      "delta_relative",
+      "delta_race",
+      "pit_entry"
+    ],
+    "evolutions": [],
+    "input": {
+      "old_epoch": 1,
+      "new_epoch": 2,
+      "rival_id": "B",
+      "gap_s": 2
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "session_reset_required",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "session_reset_required",
+      "facts": {}
+    },
+    "note": "Adaptación explícita de clearState a la epoch de Telemetry Core; CrewChief no tiene este campo Vantare."
+  },
+  {
+    "id": "TIM-REL-011",
+    "name": "Ajuste relativo de vuelta -1",
+    "basis": "source",
+    "anchors": [
+      "relations",
+      "track_relations",
+      "map_gaps",
+      "map_identity",
+      "delta_init",
+      "delta_update",
+      "delta_relative",
+      "delta_race",
+      "pit_entry"
+    ],
+    "evolutions": [],
+    "input": {
+      "stage": "GetRelativeDelta intermediate arithmetic, not a physical trace",
+      "track_length_m": 5000,
+      "player_total_distance_m": 10400,
+      "rival_total_distance_m": 10600,
+      "primary_split_s": -4,
+      "reverse_split_s": 2,
+      "initial_lap_difference": 0
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "relative_delta",
+      "facts": {
+        "lap_difference": -1,
+        "delta_s": 2,
+        "selected_split": "reverse"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "relative_delta",
+      "facts": {
+        "lap_difference": -1,
+        "delta_s": 2,
+        "selected_split": "reverse"
+      }
+    },
+    "note": "Valores intermedios elegidos desde fuente fijada, no snapshot de deltaPoints ni resultado del derivador Vantare. Historia de pasos y señal LMU por demostrar en T1."
+  },
+  {
+    "id": "TIM-REL-012",
+    "name": "Ajuste relativo de vuelta +1",
+    "basis": "source",
+    "anchors": [
+      "relations",
+      "track_relations",
+      "map_gaps",
+      "map_identity",
+      "delta_init",
+      "delta_update",
+      "delta_relative",
+      "delta_race",
+      "pit_entry"
+    ],
+    "evolutions": [],
+    "input": {
+      "stage": "GetRelativeDelta intermediate arithmetic, not a physical trace",
+      "track_length_m": 5000,
+      "player_total_distance_m": 10600,
+      "rival_total_distance_m": 10400,
+      "primary_split_s": 4,
+      "reverse_split_s": -2,
+      "initial_lap_difference": 0
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "relative_delta",
+      "facts": {
+        "lap_difference": 1,
+        "delta_s": -2,
+        "selected_split": "reverse"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "relative_delta",
+      "facts": {
+        "lap_difference": 1,
+        "delta_s": -2,
+        "selected_split": "reverse"
+      }
+    },
+    "note": "Valores intermedios elegidos desde fuente fijada, no snapshot de deltaPoints ni resultado del derivador Vantare. Historia de pasos y señal LMU por demostrar en T1."
+  }
+]

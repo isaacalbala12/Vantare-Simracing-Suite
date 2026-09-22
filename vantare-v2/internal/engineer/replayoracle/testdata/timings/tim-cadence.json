@@ -1,0 +1,419 @@
+[
+  {
+    "id": "TIM-CADENCE-001",
+    "name": "Defaults cuentan oportunidades",
+    "basis": "source",
+    "anchors": [
+      "initial",
+      "cadence",
+      "samples",
+      "selection",
+      "front",
+      "rear",
+      "lapping",
+      "queue_resolve",
+      "queue_filter"
+    ],
+    "evolutions": [],
+    "input": {
+      "frequencies": [
+        7,
+        4,
+        5
+      ],
+      "randomness": 5
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "initial_wait",
+      "facts": {
+        "front": 4,
+        "rear": 7,
+        "on_track": 6,
+        "unit": "opportunities"
+      }
+    },
+    "accepted_expected": {
+      "outcome": "initial_wait",
+      "facts": {
+        "front": 4,
+        "rear": 7,
+        "on_track": 6,
+        "unit": "opportunities"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-CADENCE-002",
+    "name": "Sorteo inyectado front",
+    "basis": "source",
+    "anchors": [
+      "initial",
+      "cadence",
+      "samples",
+      "selection",
+      "front",
+      "rear",
+      "lapping",
+      "queue_resolve",
+      "queue_filter"
+    ],
+    "evolutions": [],
+    "input": {
+      "side": "front",
+      "randomness": 5
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [
+      {
+        "purpose": "cadence_front",
+        "min": 4,
+        "max_exclusive": 9,
+        "value": 8
+      }
+    ],
+    "source_expected": {
+      "outcome": "wait",
+      "facts": {
+        "opportunities": 8
+      }
+    },
+    "accepted_expected": {
+      "outcome": "wait",
+      "facts": {
+        "opportunities": 8
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-CADENCE-003",
+    "name": "Sorteo inyectado rear",
+    "basis": "source",
+    "anchors": [
+      "initial",
+      "cadence",
+      "samples",
+      "selection",
+      "front",
+      "rear",
+      "lapping",
+      "queue_resolve",
+      "queue_filter"
+    ],
+    "evolutions": [],
+    "input": {
+      "side": "rear",
+      "randomness": 5
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [
+      {
+        "purpose": "cadence_rear",
+        "min": 7,
+        "max_exclusive": 12,
+        "value": 11
+      }
+    ],
+    "source_expected": {
+      "outcome": "wait",
+      "facts": {
+        "opportunities": 11
+      }
+    },
+    "accepted_expected": {
+      "outcome": "wait",
+      "facts": {
+        "opportunities": 11
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-CADENCE-004",
+    "name": "Sorteo inyectado on_track",
+    "basis": "source",
+    "anchors": [
+      "initial",
+      "cadence",
+      "samples",
+      "selection",
+      "front",
+      "rear",
+      "lapping",
+      "queue_resolve",
+      "queue_filter"
+    ],
+    "evolutions": [],
+    "input": {
+      "side": "on_track",
+      "randomness": 5
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [
+      {
+        "purpose": "cadence_on_track",
+        "min": 6,
+        "max_exclusive": 11,
+        "value": 6
+      }
+    ],
+    "source_expected": {
+      "outcome": "wait",
+      "facts": {
+        "opportunities": 6
+      }
+    },
+    "accepted_expected": {
+      "outcome": "wait",
+      "facts": {
+        "opportunities": 6
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-CADENCE-005",
+    "name": "Frecuencia cero deshabilita",
+    "basis": "source",
+    "anchors": [
+      "initial",
+      "cadence",
+      "samples",
+      "selection",
+      "front",
+      "rear",
+      "lapping",
+      "queue_resolve",
+      "queue_filter"
+    ],
+    "evolutions": [],
+    "input": {
+      "frequency": 0,
+      "randomness": 5
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "disabled",
+      "facts": {
+        "wait": 2147483647
+      }
+    },
+    "accepted_expected": {
+      "outcome": "disabled",
+      "facts": {
+        "wait": 2147483647
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-CADENCE-006",
+    "name": "Gap duplicado sigue contando oportunidad",
+    "basis": "source",
+    "anchors": [
+      "initial",
+      "cadence",
+      "samples",
+      "selection",
+      "front",
+      "rear",
+      "lapping",
+      "queue_resolve",
+      "queue_filter"
+    ],
+    "evolutions": [],
+    "input": {
+      "previous_gap_s": 2,
+      "gap_s": 2,
+      "counter_before": 3,
+      "new_opportunity": true,
+      "lap_mode": false
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "counter",
+      "facts": {
+        "counter_after": 4
+      }
+    },
+    "accepted_expected": {
+      "outcome": "counter",
+      "facts": {
+        "counter_after": 4
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-CADENCE-007",
+    "name": "Modo por vuelta no incrementa cadencia normal",
+    "basis": "source",
+    "anchors": [
+      "initial",
+      "cadence",
+      "samples",
+      "selection",
+      "front",
+      "rear",
+      "lapping",
+      "queue_resolve",
+      "queue_filter"
+    ],
+    "evolutions": [],
+    "input": {
+      "counter_before": 3,
+      "new_opportunity": true,
+      "lap_mode": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "counter",
+      "facts": {
+        "counter_after": 3
+      }
+    },
+    "accepted_expected": {
+      "outcome": "counter",
+      "facts": {
+        "counter_after": 3
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-CADENCE-008",
+    "name": "Cambio candidato pista prepara oportunidad",
+    "basis": "source",
+    "anchors": [
+      "initial",
+      "cadence",
+      "samples",
+      "selection",
+      "front",
+      "rear",
+      "lapping",
+      "queue_resolve",
+      "queue_filter"
+    ],
+    "evolutions": [],
+    "input": {
+      "old_id": "B",
+      "new_id": "C",
+      "wait": 6,
+      "counter_before": 2,
+      "new_opportunity": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "counter",
+      "facts": {
+        "counter_after": 7
+      }
+    },
+    "accepted_expected": {
+      "outcome": "counter",
+      "facts": {
+        "counter_after": 7
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-CADENCE-009",
+    "name": "Sesgo midlap sin gap points",
+    "basis": "source",
+    "anchors": [
+      "initial",
+      "cadence",
+      "samples",
+      "selection",
+      "front",
+      "rear",
+      "lapping",
+      "queue_resolve",
+      "queue_filter"
+    ],
+    "evolutions": [],
+    "input": {
+      "gap_points_m": [],
+      "sector": 3,
+      "wait": 4,
+      "prefer_mid_lap": true,
+      "stage": "adjustForMidLapPreference, wait already drawn"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [
+      {
+        "purpose": "midlap_offset",
+        "min": 0,
+        "max_exclusive": 3,
+        "value": 2
+      }
+    ],
+    "source_expected": {
+      "outcome": "wait",
+      "facts": {
+        "opportunities": 6
+      }
+    },
+    "accepted_expected": {
+      "outcome": "wait",
+      "facts": {
+        "opportunities": 6
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  }
+]

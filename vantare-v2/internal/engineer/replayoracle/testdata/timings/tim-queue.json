@@ -1,0 +1,395 @@
+[
+  {
+    "id": "TIM-QUEUE-001",
+    "name": "TTL regular a 5000ms",
+    "basis": "source",
+    "anchors": [
+      "queue_create",
+      "queue_resolve",
+      "queue_filter",
+      "second_validation",
+      "wake",
+      "immediate",
+      "admission",
+      "priority",
+      "moderator_sound",
+      "moderator_queue"
+    ],
+    "evolutions": [],
+    "input": {
+      "created_ms": 0,
+      "ttl_ms": 5000,
+      "now_ms": 5000
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "expiry",
+      "facts": {
+        "expired": false
+      }
+    },
+    "accepted_expected": {
+      "outcome": "expiry",
+      "facts": {
+        "expired": false
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-QUEUE-002",
+    "name": "TTL regular a 5001ms",
+    "basis": "source",
+    "anchors": [
+      "queue_create",
+      "queue_resolve",
+      "queue_filter",
+      "second_validation",
+      "wake",
+      "immediate",
+      "admission",
+      "priority",
+      "moderator_sound",
+      "moderator_queue"
+    ],
+    "evolutions": [],
+    "input": {
+      "created_ms": 0,
+      "ttl_ms": 5000,
+      "now_ms": 5001
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "expiry",
+      "facts": {
+        "expired": true
+      }
+    },
+    "accepted_expected": {
+      "outcome": "expiry",
+      "facts": {
+        "expired": true
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-QUEUE-003",
+    "name": "Prioridad semántica sin copiar escala numérica",
+    "basis": "contract_adaptation",
+    "anchors": [
+      "queue_create",
+      "queue_resolve",
+      "queue_filter",
+      "second_validation",
+      "wake",
+      "immediate",
+      "admission",
+      "priority",
+      "moderator_sound",
+      "moderator_queue"
+    ],
+    "evolutions": [],
+    "input": {
+      "kind": "routine_gap",
+      "crewchief_priority": 5,
+      "ttl_ms": 5000
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "delivery",
+      "facts": {
+        "crewchief_priority": 5
+      }
+    },
+    "accepted_expected": {
+      "outcome": "delivery",
+      "facts": {
+        "vantare_priority": "P3",
+        "p0_preempts": true
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-QUEUE-004",
+    "name": "Consulta no hereda permiso infinito",
+    "basis": "contract_adaptation",
+    "anchors": [
+      "queue_create",
+      "queue_resolve",
+      "queue_filter",
+      "second_validation",
+      "wake",
+      "immediate",
+      "admission",
+      "priority",
+      "moderator_sound",
+      "moderator_queue"
+    ],
+    "evolutions": [],
+    "input": {
+      "kind": "query",
+      "crewchief_priority": 5,
+      "crewchief_ttl_ms": 0
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "query_policy",
+      "facts": {
+        "crewchief_priority": 5
+      }
+    },
+    "accepted_expected": {
+      "outcome": "query_policy",
+      "facts": {
+        "vantare_priority": "P2",
+        "vantare_freshness": "must_revalidate_before_started"
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-QUEUE-005",
+    "name": "A5 callback sin contenido",
+    "basis": "accepted_evolution",
+    "anchors": [
+      "queue_create",
+      "queue_resolve",
+      "queue_filter",
+      "second_validation",
+      "wake",
+      "immediate",
+      "admission",
+      "priority",
+      "moderator_sound",
+      "moderator_queue"
+    ],
+    "evolutions": [
+      "A5"
+    ],
+    "input": {
+      "resolved_content": false,
+      "counter_before": 7,
+      "wait_before": 7
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "enqueue"
+      },
+      {
+        "at_ms": 100,
+        "event": "resolve_empty"
+      },
+      {
+        "at_ms": 100,
+        "event": "cancel"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "callback_consumed",
+      "facts": {
+        "counter_after": 0
+      }
+    },
+    "accepted_expected": {
+      "outcome": "cancelled",
+      "facts": {
+        "consumed": false
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-QUEUE-006",
+    "name": "A5 expira después de resolver",
+    "basis": "accepted_evolution",
+    "anchors": [
+      "queue_create",
+      "queue_resolve",
+      "queue_filter",
+      "second_validation",
+      "wake",
+      "immediate",
+      "admission",
+      "priority",
+      "moderator_sound",
+      "moderator_queue"
+    ],
+    "evolutions": [
+      "A5"
+    ],
+    "input": {
+      "ttl_ms": 5000,
+      "resolved_content": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "enqueue"
+      },
+      {
+        "at_ms": 4900,
+        "event": "resolve"
+      },
+      {
+        "at_ms": 5001,
+        "event": "cancel"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "callback_consumed",
+      "facts": {
+        "consumed": true
+      }
+    },
+    "accepted_expected": {
+      "outcome": "cancelled",
+      "facts": {
+        "consumed": false
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-QUEUE-007",
+    "name": "A5 empieza con revalidación fresca",
+    "basis": "accepted_evolution",
+    "anchors": [
+      "queue_create",
+      "queue_resolve",
+      "queue_filter",
+      "second_validation",
+      "wake",
+      "immediate",
+      "admission",
+      "priority",
+      "moderator_sound",
+      "moderator_queue"
+    ],
+    "evolutions": [
+      "A5"
+    ],
+    "input": {
+      "ttl_ms": 5000,
+      "epoch": 1,
+      "rival_id": "B",
+      "gap_s": 2,
+      "quality": "fresh",
+      "revalidated": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "enqueue"
+      },
+      {
+        "at_ms": 100,
+        "event": "resolve"
+      },
+      {
+        "at_ms": 200,
+        "event": "started"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "callback_consumed",
+      "facts": {
+        "consumed": true
+      }
+    },
+    "accepted_expected": {
+      "outcome": "started",
+      "facts": {
+        "consumed": true
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-QUEUE-008",
+    "name": "A5 cambia rival antes de empezar",
+    "basis": "accepted_evolution",
+    "anchors": [
+      "queue_create",
+      "queue_resolve",
+      "queue_filter",
+      "second_validation",
+      "wake",
+      "immediate",
+      "admission",
+      "priority",
+      "moderator_sound",
+      "moderator_queue"
+    ],
+    "evolutions": [
+      "A5"
+    ],
+    "input": {
+      "ttl_ms": 5000,
+      "enqueued_rival": "B",
+      "current_rival": "C"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "enqueue"
+      },
+      {
+        "at_ms": 50,
+        "event": "resolve"
+      },
+      {
+        "at_ms": 100,
+        "event": "rival_change"
+      },
+      {
+        "at_ms": 200,
+        "event": "cancel"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "cached_content_from_old_rival",
+      "facts": {
+        "rival": "B",
+        "consumed": true
+      }
+    },
+    "accepted_expected": {
+      "outcome": "cancelled",
+      "facts": {
+        "consumed": false
+      }
+    },
+    "note": "El callback se resolvió con B antes del cambio: la validación genérica posterior no vuelve a calcular su identidad/contenido. El objetivo revalida y cancela antes del intento de started."
+  }
+]

@@ -1,0 +1,150 @@
+[
+  {
+    "id": "TIM-LAPPING-001",
+    "name": "Exacto 0.05 permitido por guard de callback",
+    "basis": "source",
+    "anchors": [
+      "lapping",
+      "relations",
+      "selection",
+      "delta_content"
+    ],
+    "evolutions": [],
+    "input": {
+      "gap_s": 0.05,
+      "same_candidate": true,
+      "racing": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "gap_eligible",
+      "facts": {
+        "eligible": true
+      }
+    },
+    "accepted_expected": {
+      "outcome": "gap_eligible",
+      "facts": {
+        "eligible": true
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-LAPPING-002",
+    "name": "Cooldown exacto cinco minutos",
+    "basis": "source",
+    "anchors": [
+      "lapping",
+      "relations",
+      "selection",
+      "delta_content"
+    ],
+    "evolutions": [],
+    "input": {
+      "last_warning_ms": 0,
+      "now_ms": 300000,
+      "same_candidate": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "silent",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-LAPPING-003",
+    "name": "A4 repetición después de cinco minutos",
+    "basis": "accepted_evolution",
+    "anchors": [
+      "lapping",
+      "relations",
+      "selection",
+      "delta_content"
+    ],
+    "evolutions": [
+      "A4"
+    ],
+    "input": {
+      "last_warning_ms": 0,
+      "now_ms": 300001,
+      "dictionary_contains_rival": true,
+      "same_candidate": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "duplicate_key_exception",
+      "facts": {
+        "regular_queue_cleared": true
+      }
+    },
+    "accepted_expected": {
+      "outcome": "update_timestamp",
+      "facts": {
+        "last_warning_ms": 300001
+      }
+    },
+    "note": "Fuente: Dictionary.Add lanza; AudioPlayer atrapa y limpia cola regular, no crash de proceso. Objetivo no duplica entrada."
+  },
+  {
+    "id": "TIM-LAPPING-004",
+    "name": "A8 contenedor presente sin gap",
+    "basis": "accepted_evolution",
+    "anchors": [
+      "lapping",
+      "relations",
+      "selection",
+      "delta_content"
+    ],
+    "evolutions": [
+      "A8"
+    ],
+    "input": {
+      "container_present": true,
+      "gap": null
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "callback_exception",
+      "facts": {
+        "regular_queue_cleared": true
+      }
+    },
+    "accepted_expected": {
+      "outcome": "cancelled",
+      "facts": {
+        "consumed": false
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  }
+]

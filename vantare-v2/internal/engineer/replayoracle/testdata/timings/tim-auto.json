@@ -1,0 +1,316 @@
+[
+  {
+    "id": "TIM-AUTO-001",
+    "name": "Gap normal 0.05",
+    "basis": "source",
+    "anchors": [
+      "trigger",
+      "samples",
+      "front",
+      "rear",
+      "advice",
+      "identity",
+      "landmark_history",
+      "landmark_select",
+      "fragment_availability"
+    ],
+    "evolutions": [],
+    "input": {
+      "gap_s": 0.05,
+      "state": "DECREASING",
+      "all_other_automatic_gates": "valid"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "gap_eligible",
+      "facts": {
+        "eligible": false
+      }
+    },
+    "accepted_expected": {
+      "outcome": "gap_eligible",
+      "facts": {
+        "eligible": false
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-AUTO-002",
+    "name": "Gap normal 0.051",
+    "basis": "source",
+    "anchors": [
+      "trigger",
+      "samples",
+      "front",
+      "rear",
+      "advice",
+      "identity",
+      "landmark_history",
+      "landmark_select",
+      "fragment_availability"
+    ],
+    "evolutions": [],
+    "input": {
+      "gap_s": 0.051,
+      "state": "DECREASING",
+      "all_other_automatic_gates": "valid"
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "gap_eligible",
+      "facts": {
+        "eligible": true
+      }
+    },
+    "accepted_expected": {
+      "outcome": "gap_eligible",
+      "facts": {
+        "eligible": true
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-AUTO-003",
+    "name": "Holding tras 60000ms",
+    "basis": "source",
+    "anchors": [
+      "trigger",
+      "samples",
+      "front",
+      "rear",
+      "advice",
+      "identity",
+      "landmark_history",
+      "landmark_select",
+      "fragment_availability"
+    ],
+    "evolutions": [],
+    "input": {
+      "relation": "race_front",
+      "state": "CLOSE",
+      "same_rival": true,
+      "holding_since_ms": 0,
+      "now_ms": 60000
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "holding_eligible",
+      "facts": {
+        "eligible": false
+      }
+    },
+    "accepted_expected": {
+      "outcome": "holding_eligible",
+      "facts": {
+        "eligible": false
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-AUTO-004",
+    "name": "Holding tras 60001ms",
+    "basis": "source",
+    "anchors": [
+      "trigger",
+      "samples",
+      "front",
+      "rear",
+      "advice",
+      "identity",
+      "landmark_history",
+      "landmark_select",
+      "fragment_availability"
+    ],
+    "evolutions": [],
+    "input": {
+      "relation": "race_front",
+      "state": "CLOSE",
+      "same_rival": true,
+      "holding_since_ms": 0,
+      "now_ms": 60001
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "holding_eligible",
+      "facts": {
+        "eligible": true
+      }
+    },
+    "accepted_expected": {
+      "outcome": "holding_eligible",
+      "facts": {
+        "eligible": true
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-AUTO-005",
+    "name": "Consejo tras 180000ms",
+    "basis": "source",
+    "anchors": [
+      "trigger",
+      "samples",
+      "front",
+      "rear",
+      "advice",
+      "identity",
+      "landmark_history",
+      "landmark_select",
+      "fragment_availability"
+    ],
+    "evolutions": [],
+    "input": {
+      "driver_raw_name": "B",
+      "last_advice_ms": 0,
+      "now_ms": 180000,
+      "landmark_samples_each": 3
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "advice_eligible",
+      "facts": {
+        "eligible": false
+      }
+    },
+    "accepted_expected": {
+      "outcome": "advice_eligible",
+      "facts": {
+        "eligible": false
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-AUTO-006",
+    "name": "Consejo tras 180001ms",
+    "basis": "source",
+    "anchors": [
+      "trigger",
+      "samples",
+      "front",
+      "rear",
+      "advice",
+      "identity",
+      "landmark_history",
+      "landmark_select",
+      "fragment_availability"
+    ],
+    "evolutions": [],
+    "input": {
+      "driver_raw_name": "B",
+      "last_advice_ms": 0,
+      "now_ms": 180001,
+      "landmark_samples_each": 3
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "advice_eligible",
+      "facts": {
+        "eligible": true
+      }
+    },
+    "accepted_expected": {
+      "outcome": "advice_eligible",
+      "facts": {
+        "eligible": true
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-AUTO-007",
+    "name": "A7 landmark sin audio invalida mensaje compuesto",
+    "basis": "accepted_evolution",
+    "anchors": [
+      "trigger",
+      "samples",
+      "front",
+      "rear",
+      "advice",
+      "identity",
+      "landmark_history",
+      "landmark_select",
+      "fragment_availability"
+    ],
+    "evolutions": [
+      "A7"
+    ],
+    "input": {
+      "gap_s": 2,
+      "landmark_audio_available": false,
+      "tts": "NEVER",
+      "sound_set": false,
+      "single_sound": false,
+      "available_sound": false,
+      "relation": "race_front",
+      "state": "DECREASING",
+      "same_rival": true,
+      "advice_cooldown_elapsed_ms": 180001,
+      "selected_landmark": "C1",
+      "landmark_samples_each": 3,
+      "traversal_advantage_fraction": 0.11,
+      "landmark_is_overtaking_spot": false
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "invalid_message",
+      "facts": {
+        "gap_delivered": false
+      }
+    },
+    "accepted_expected": {
+      "outcome": "gap_only",
+      "facts": {
+        "gap_s": 2,
+        "advice_consumed": false
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  }
+]

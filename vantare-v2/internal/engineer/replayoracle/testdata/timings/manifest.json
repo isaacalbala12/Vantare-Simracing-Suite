@@ -1,0 +1,1075 @@
+{
+  "schema_version": 1,
+  "task": "VAN-745 / #1316",
+  "reference": {
+    "crewchief_commit": "4c3865e09a347d4c806c0bc0cd66aae335fbc610",
+    "ledger_commit": "166ff3c5b040cb9c4b0b143675af2642043da848",
+    "ledger_sha256": "e0758d2aaa9b753ba5de1d80d31e1bf4e3e93aa5fe312af5a56bf8308e097f79"
+  },
+  "evidence": {
+    "crewchief_execution": "NOT_RUN",
+    "product_replay": "NOT_RUN",
+    "online_voice": "NOT_RUN",
+    "offline_voice": "NOT_RUN",
+    "acoustic": "NOT_RUN",
+    "lmu": "NOT_RUN"
+  },
+  "profile": {
+    "id": "synthetic-lmu-defaults-v1",
+    "settings": {
+      "revert_to_legacy_version_of_refactored_code": "False",
+      "frequency_of_gap_ahead_reports": "7",
+      "frequency_of_gap_behind_reports": "4",
+      "frequency_of_gap_behind_on_track_reports": "5",
+      "enable_gap_messages": "True",
+      "gap_message_randomness": "5",
+      "just_the_facts": "False",
+      "always_report_time_in_hundredths": "False",
+      "realistic_mode": "False",
+      "speak_only_when_spoken_to": "False",
+      "force_single_class": "False",
+      "enable_driver_names": "True",
+      "tts_setting_listprop": "NEVER",
+      "opponents_number_after_name": "True",
+      "enable_delayed_messages_on_hardparts": "False",
+      "allow_important_messages_even_when_silenced": "False",
+      "pause_between_messages": "0",
+      "update_interval": "100",
+      "priortise_messages_depending_on_situation": "False",
+      "reject_message_when_talking": "False",
+      "sre_respond_while_channel_still_open": "False",
+      "pace_notes_mute_all_messages": "True",
+      "interrupt_setting_listprop": "SPOTTER_MESSAGES",
+      "insert_beep_out_between_spotter_and_chief": "False",
+      "insert_beep_in_between_spotter_and_chief": "True",
+      "enable_radio_beeps": "True",
+      "use_alternate_beeps": "True",
+      "use_naudio": "True",
+      "naudio_output_interface_listprop": "WAVEOUT",
+      "chief_name": "Jim (default)",
+      "spotter_name": "Jim (default)",
+      "cache_sounds": "True",
+      "enable_breath_in": "True",
+      "enable_lmu_pit_lane_approach_heuristics": "False",
+      "enable_lmu_pit_state_during_fcy": "False",
+      "auto_is_oval": "False"
+    },
+    "session": "Race Green unless explicitly overridden",
+    "epoch": 1,
+    "player": "P",
+    "car_class": "GT synthetic, hundredths false unless overridden",
+    "track": "synthetic-5000m-3sectors-v1; non-oval; cases explicitly override geometry",
+    "catalog": "synthetic landmarks only; no CrewChief assets",
+    "locale": "en unless explicitly overridden",
+    "voice_pack": "not installed / not observed; numeric reader version 107 is a synthetic input, not an acoustic claim",
+    "runtime_defaults": {
+      "keep_quiet": false,
+      "mute": false,
+      "read_gaps_every_lap": false,
+      "prefer_mid_lap": true
+    },
+    "clock": "virtual monotonic milliseconds, case-local origin zero",
+    "random": "scripted draws by purpose; no text RNG, no dependency on a PRNG algorithm or wall clock"
+  },
+  "accepted_evolutions": {
+    "A1": {
+      "title": "Estado detrás anterior a la muestra actual",
+      "accepted": true,
+      "record": "Isaac, conversation 2026-09-22; VAN-743 acceptance after historical ledger snapshot"
+    },
+    "A2": {
+      "title": "Comprobación repetida de la primera identidad",
+      "accepted": true,
+      "record": "Isaac, conversation 2026-09-22; VAN-743 acceptance after historical ledger snapshot"
+    },
+    "A3": {
+      "title": "Filtro de posición frente a rama de desdoblaje",
+      "accepted": true,
+      "record": "Isaac, conversation 2026-09-22; VAN-743 acceptance after historical ledger snapshot"
+    },
+    "A4": {
+      "title": "Repetición después de cinco minutos con clave existente",
+      "accepted": true,
+      "record": "Isaac, conversation 2026-09-22; VAN-743 acceptance after historical ledger snapshot"
+    },
+    "A5": {
+      "title": "Resolución única y consumo antes de sonido",
+      "accepted": true,
+      "record": "Isaac, conversation 2026-09-22; VAN-743 acceptance after historical ledger snapshot"
+    },
+    "A6": {
+      "title": "Precisión seleccionada distinta de realización por locale",
+      "accepted": true,
+      "record": "Isaac, conversation 2026-09-22; VAN-743 acceptance after historical ledger snapshot"
+    },
+    "A7": {
+      "title": "Consejo con landmark sin audio",
+      "accepted": true,
+      "record": "Isaac, conversation 2026-09-22; VAN-743 acceptance after historical ledger snapshot"
+    },
+    "A8": {
+      "title": "Candidato ausente en callback o resumen por vuelta",
+      "accepted": true,
+      "record": "Isaac, conversation 2026-09-22; VAN-743 acceptance after historical ledger snapshot"
+    },
+    "A9": {
+      "title": "Midpoint retenido con telemetría congelada",
+      "accepted": true,
+      "record": "Isaac, conversation 2026-09-22; VAN-743 acceptance after historical ledger snapshot"
+    }
+  },
+  "sources": {
+    "timings": {
+      "path": "CrewChiefV4/Events/Timings.cs",
+      "blob": "caf01d9ad60e967ff514dee717a3a118bcf5df44",
+      "sha256": "9baea7e95455444e902ee8e27e9b88794110d32f5481f0125e97e1eeeb9bbb87",
+      "lines": 1461
+    },
+    "abstract": {
+      "path": "CrewChiefV4/Events/AbstractEvent.cs",
+      "blob": "fbee13e34af107bc1570cd162cfafe4dbb96dc0b",
+      "sha256": "55d6dfb08f7c82edacc0fa2d73fdbe2dee96f4244542006dce8be5be192b079b",
+      "lines": 355
+    },
+    "mapper": {
+      "path": "CrewChiefV4/GameState/GameStateMapper.cs",
+      "blob": "b06b77d086b35081dab6c9cd0140389202f69e87",
+      "sha256": "bab6df81baef6311ada65a6e381f1cec21c5bf9719e23a64a64ca01f94f2e5a7",
+      "lines": 444
+    },
+    "state": {
+      "path": "CrewChiefV4/GameState/GameStateData.cs",
+      "blob": "92ba977a10f045e2e2f34e04fd070ce87d04f7f4",
+      "sha256": "6aafc040f3a3209b41382ab43ab104ed0ee8a4037c72f6da0fd4525920640844",
+      "lines": 5288
+    },
+    "rf2": {
+      "path": "CrewChiefV4/RF2/RF2GameStateMapper.cs",
+      "blob": "c0acc5c9878b52ea202e95361a64faae2658eeda",
+      "sha256": "c2af7e87db6a2dcaf90e6720b9d46251da1dcf0e7b9214a5ea62d8d2223ea72a",
+      "lines": 3589
+    },
+    "track": {
+      "path": "CrewChiefV4/TrackData/TrackData.cs",
+      "blob": "ff67335461c176bd32d059354a74df4f39ce9661",
+      "sha256": "8d9d4c362a240beb956c0d0994342891e6c442ac5b4bd2d634994625ccd4dd34",
+      "lines": 1443
+    },
+    "opponents": {
+      "path": "CrewChiefV4/Events/Opponents.cs",
+      "blob": "53483d43fb73276848b830cc061068f5b622d016",
+      "sha256": "610ef10b89b9eb497c7771633545b2a8d4c064c6a31f0272be550b5e32372d18",
+      "lines": 1599
+    },
+    "opponent_messages": {
+      "path": "CrewChiefV4/Events/OpponentMessages.cs",
+      "blob": "fb48a3c9fb18683afcba8d110becac8b171880db",
+      "sha256": "be225beb3564eff95cac7acdfddc41e7a77b23ab0d25801bb980a77122b4562e",
+      "lines": 203
+    },
+    "actions": {
+      "path": "CrewChiefV4/Events/CommonActions.cs",
+      "blob": "5bb90a0236f34d38bafae729b2bb04b34b8fdb1b",
+      "sha256": "3def54a063902fa428afcfa0c7c62854b5fca8849b61e369d27d6258dea34506",
+      "lines": 877
+    },
+    "queue": {
+      "path": "CrewChiefV4/QueuedMessage.cs",
+      "blob": "f282bd915d8fd66478e12fc6a386dc6088bf469e",
+      "sha256": "1a533aebd522bffbc70cc3134673670dd57768caba155377c7b12a9d65d21c2f",
+      "lines": 565
+    },
+    "audio": {
+      "path": "CrewChiefV4/Audio/AudioPlayer.cs",
+      "blob": "e109dbd71e953417dcb77ae4bc62d82f73751ff1",
+      "sha256": "287fbae52afb03456dd8328ea5fae733fa2df348c8dce13c0d08095bdb962d41",
+      "lines": 2454
+    },
+    "moderator": {
+      "path": "CrewChiefV4/Audio/PlaybackModerator.cs",
+      "blob": "c6f1c9ef2487a0138cee37d0ae40391b2fa4eb56",
+      "sha256": "39f6b00e4c9eadd75066b87c084458ab11eff264f3f4f8e8ca5a706cc997f17e",
+      "lines": 503
+    },
+    "sound_metadata": {
+      "path": "CrewChiefV4/Audio/SoundMetadata.cs",
+      "blob": "f6f6fdca65d9d7a1cba4f7e0bd52fd07a94f5563",
+      "sha256": "0320898ca27e7c6099d8257dc7123a045a4640ce77f6b71112169d9abc2a8b13",
+      "lines": 65
+    },
+    "global": {
+      "path": "CrewChiefV4/GameState/GlobalBehaviourSettings.cs",
+      "blob": "a3b15a8cc8d081e7d3259b18754d59ea72133c8a",
+      "sha256": "0696e97f18d1a446f4c0ff0e3873637660f73d8e7cb05fd0404c1b3f6f018ee5",
+      "lines": 247
+    },
+    "time": {
+      "path": "CrewChiefV4/NumberProcessing/TimeSpanWrapper.cs",
+      "blob": "9d027f82ebc837373e8141a66c28834b1446bfef",
+      "sha256": "51dfc264d1711b964f0c90102606f38c5b4d19689db14f0710aeb2495fffe3f1",
+      "lines": 119
+    },
+    "numbers": {
+      "path": "CrewChiefV4/NumberProcessing/NumberReader.cs",
+      "blob": "cef98e5b85141a0c214e3c23210b654f88b16b9f",
+      "sha256": "d1bfa457d9b166bc8bb07abcd3190f4d80f489371934afc1342ccc6a135d7119",
+      "lines": 188
+    },
+    "number_factory": {
+      "path": "CrewChiefV4/NumberProcessing/NumberReaderFactory.cs",
+      "blob": "c467d1c9951bd2346e9cd7436fa4c7c754171bba",
+      "sha256": "b38b817152913b850f149d8b9e2f2d5da44a60e103216dd066acca264f559733",
+      "lines": 141
+    },
+    "en": {
+      "path": "CrewChiefV4/NumberReaderEn.cs",
+      "blob": "501205668a08db1ab4583fb749fc14ae845a2e03",
+      "sha256": "c1e8191cbfdf4a96757cc79a3ab6c3253e3a4bef1d322a9f4b3b43a0a543e106",
+      "lines": 428
+    },
+    "it": {
+      "path": "CrewChiefV4/NumberReaderIt.cs",
+      "blob": "f9b4c2a75b98a012d8de36dc28e74a52ef99e705",
+      "sha256": "7ee5e2e36523c231ef81373cec61fe8a0140b3284d3b932513850daca5e6ada9",
+      "lines": 313
+    },
+    "it2": {
+      "path": "CrewChiefV4/NumberReaderIt2.cs",
+      "blob": "59df94b4ebd16f881b4c6e082e303780e73048a3",
+      "sha256": "fc0fb74bc5c76a0cb8360230ee587f3b3f9660e898a8b784daee98879ec58cbe",
+      "lines": 597
+    },
+    "pt_br": {
+      "path": "CrewChiefV4/NumberReaderPtBr.cs",
+      "blob": "7fb2a8ed913b45eab22401cb57ebe6c03328a041",
+      "sha256": "4153acb4a533c4d1d344d5d10e2cbba134b58e853d9d99eaf735fb1eadc83060",
+      "lines": 448
+    },
+    "settings": {
+      "path": "CrewChiefV4/Properties/Settings.settings",
+      "blob": "13b19f78217111a8d2bbf4d7bbfbd340b68dc530",
+      "sha256": "2ab195c42db5c8a9e053fa67c66e007fbc4de0219b96e4cf3bd218b4ddfae9d8",
+      "lines": 1680
+    },
+    "chief": {
+      "path": "CrewChiefV4/CrewChief.cs",
+      "blob": "29e5ae8d4761add73c6315918bf428bf3dd15c85",
+      "sha256": "0e46a47c46fadd4a7e890d225f52dc655d79ef63fc659e8186dc8afa8ab80ddd",
+      "lines": 1576
+    }
+  },
+  "anchors": {
+    "route": {
+      "source": "chief",
+      "start": 337,
+      "end": 353,
+      "sha256": "267828364e17eba54cfaa40561e2c09527be81b2034d759bdf83debc45afe79e"
+    },
+    "dispatch": {
+      "source": "chief",
+      "start": 1273,
+      "end": 1289,
+      "sha256": "2c58d5853a3f72e6ac136bd5432eb4cde7bcfb1919aef2334a2fe7473259d987"
+    },
+    "timings_settings": {
+      "source": "timings",
+      "start": 55,
+      "end": 120,
+      "sha256": "d7fae6ac78cc3f5e5acecc780958928b2a29c4d32a8e078136e41736101ba476"
+    },
+    "initial": {
+      "source": "timings",
+      "start": 169,
+      "end": 240,
+      "sha256": "ac683639e80480d74b5d696316dd609ff1cb482ec3aa4dae348096ab21d182ac"
+    },
+    "cadence": {
+      "source": "timings",
+      "start": 242,
+      "end": 265,
+      "sha256": "f3c17244250a0ba19c2b769ec6836d57bf8e891e27096da838539a70400344fd"
+    },
+    "end": {
+      "source": "timings",
+      "start": 267,
+      "end": 290,
+      "sha256": "7acd2d6c608cdcdf57296d384239f66416b064ff10a164a6f90766976788f514"
+    },
+    "relations": {
+      "source": "timings",
+      "start": 297,
+      "end": 361,
+      "sha256": "42b61d7152bad00f3ebf489b72b83ac803de8be09b81857f38c8c02c06029b90"
+    },
+    "not_racing": {
+      "source": "timings",
+      "start": 364,
+      "end": 371,
+      "sha256": "9d6fff29317a8d97ff652187a869341069bfc8af05500dace1dc1a3a622f2c91"
+    },
+    "trigger": {
+      "source": "timings",
+      "start": 414,
+      "end": 474,
+      "sha256": "0286033b55250c081655dab4e0b6e06709bb7e1bbc63dbd4f3cf1ea1306e65f0"
+    },
+    "lapmode": {
+      "source": "timings",
+      "start": 476,
+      "end": 520,
+      "sha256": "3ce43973566146cea55d0ff46f544647410494b8d025e4b4c2edc187fd4dd5db"
+    },
+    "samples": {
+      "source": "timings",
+      "start": 582,
+      "end": 641,
+      "sha256": "f7e76ff2ff4b313c74c29c848ef15df9306622d98cbba96252cf260027bf36c8"
+    },
+    "selection": {
+      "source": "timings",
+      "start": 644,
+      "end": 689,
+      "sha256": "7f73afa9db14f9caae3e7720fbee96b04fa4cf1d3183614fe30f86a6f570a5c8"
+    },
+    "lapping": {
+      "source": "timings",
+      "start": 691,
+      "end": 765,
+      "sha256": "d4e356acbaa8aa67493c4170cd5ed6b379b8bf71689dcb91fbbd1643a057150c"
+    },
+    "front": {
+      "source": "timings",
+      "start": 767,
+      "end": 855,
+      "sha256": "d27424b04b82ef8f0c8d990c2712586fdcce9b9cf3be48ea5034cdc72b467be9"
+    },
+    "rear": {
+      "source": "timings",
+      "start": 857,
+      "end": 936,
+      "sha256": "d969c36b912577683cf998c38cf77c909d9cb937189ced51400cc6d476080ff8"
+    },
+    "advice": {
+      "source": "timings",
+      "start": 938,
+      "end": 1005,
+      "sha256": "e582ad2e18c1d52d4c125c47c015dcd3cbd279e8fd3c1b2ceb5009bf0b0af444"
+    },
+    "state_classification": {
+      "source": "timings",
+      "start": 1017,
+      "end": 1083,
+      "sha256": "0890c466b2f2dc060ca9816cf3293aef1ceb81e3fd7aa6abbf98a4448d49846c"
+    },
+    "commands": {
+      "source": "timings",
+      "start": 1114,
+      "end": 1128,
+      "sha256": "68b2c0e5ac7b8cc51dac577b8318e93575369031efa709a0c694982f29e3dd9d"
+    },
+    "status": {
+      "source": "timings",
+      "start": 1138,
+      "end": 1176,
+      "sha256": "1903ea0ac633a93444b9efa63a75adb1d0d2a738cee54196fd2510a8e47c78a9"
+    },
+    "corner_query": {
+      "source": "timings",
+      "start": 1178,
+      "end": 1208,
+      "sha256": "6dc18c08834cbb5adcd0b3b0139f81c315810d185ef3b64914e60a31466dc3b4"
+    },
+    "race_query": {
+      "source": "timings",
+      "start": 1210,
+      "end": 1266,
+      "sha256": "290297a1c35e4ea942553bca98ac928de2a76cb38466a48c656677386cd25c42"
+    },
+    "track_query": {
+      "source": "timings",
+      "start": 1268,
+      "end": 1313,
+      "sha256": "438d49db397f8baf39a65f656a6193c217636921c979cb853dec66230f0dda15"
+    },
+    "leader_query": {
+      "source": "timings",
+      "start": 1315,
+      "end": 1379,
+      "sha256": "bc37599acf1b875b1ba4fabbbf590c214a367b927060792af8f619d4223e2456"
+    },
+    "query_no_data": {
+      "source": "timings",
+      "start": 1382,
+      "end": 1418,
+      "sha256": "5c4b1c9f39b2360042139aad8300c773386d67e60b4901c58ca4e0092e34084b"
+    },
+    "sampling": {
+      "source": "timings",
+      "start": 1424,
+      "end": 1447,
+      "sha256": "1f26b8adce798f2fc3dcc9b93dbcee7fb7f93ac4ff538bd1626ff53ab7703b6b"
+    },
+    "phase": {
+      "source": "abstract",
+      "start": 163,
+      "end": 201,
+      "sha256": "93fbe7fd0d468e9bd678fe5c6ac957857e23fad391a3a758056d6733ba8908ba"
+    },
+    "map_gaps": {
+      "source": "mapper",
+      "start": 136,
+      "end": 214,
+      "sha256": "6135bf1b84e42ab408fc2311790df114f3a4312af57c0d60c219db49d988dac0"
+    },
+    "map_identity": {
+      "source": "mapper",
+      "start": 322,
+      "end": 362,
+      "sha256": "494712977316e04d823772d382e66d5bb05801c28e9af1f991cf4be2432d47ca"
+    },
+    "pit_entry": {
+      "source": "state",
+      "start": 1918,
+      "end": 1922,
+      "sha256": "7ea4349eb11032d72d4b3328bc71598af981eeb6bbb799162540d7cb4e83e182"
+    },
+    "landmark_select": {
+      "source": "state",
+      "start": 2410,
+      "end": 2472,
+      "sha256": "befc4717e7373643637004b4be13614fd11c66d87fcf43e6e1e920113527eb05"
+    },
+    "landmark_history": {
+      "source": "state",
+      "start": 2495,
+      "end": 2615,
+      "sha256": "ea4fa9018df7ae3a8068202fa9eea3a2d4e293629985aebae7962348522c0123"
+    },
+    "landmark_input": {
+      "source": "state",
+      "start": 2617,
+      "end": 2691,
+      "sha256": "07ff0841b1c41fafa572c5a755bdac4bd6450597b8cb14543e18cee24019d425"
+    },
+    "delta_init": {
+      "source": "state",
+      "start": 3437,
+      "end": 3503,
+      "sha256": "eeac3dc2fc314eca02dceba170b0b87279d08193e02373b7edfc945c9cb48103"
+    },
+    "delta_update": {
+      "source": "state",
+      "start": 3505,
+      "end": 3650,
+      "sha256": "3cb9d362c9f7e4f6090fca706b8de0fddeeb98b24e6d69ee250027934d70fede"
+    },
+    "delta_relative": {
+      "source": "state",
+      "start": 3660,
+      "end": 3714,
+      "sha256": "81fd83f3d82596c7e9a4664e4f98a5db49541ecf56a9d3080c598106e16e8275"
+    },
+    "delta_race": {
+      "source": "state",
+      "start": 3717,
+      "end": 3779,
+      "sha256": "2efea3c0cacba31d37f470724256390ee5c36c8fa14170e310f3582288894c60"
+    },
+    "last": {
+      "source": "state",
+      "start": 4635,
+      "end": 4663,
+      "sha256": "13c16c7d0057a9a8033478a440b03143071953462432b8941c176f346bf74dce"
+    },
+    "track_relations": {
+      "source": "state",
+      "start": 4759,
+      "end": 4842,
+      "sha256": "983dbf7554eab17feba01abd9c18bb27fb4f1fc0c2c4d2c00ca68e6ecb027a53"
+    },
+    "rf2_track": {
+      "source": "rf2",
+      "start": 725,
+      "end": 760,
+      "sha256": "9326b5999962fa7c8b20ea5f2b322b9231d5e60cdc1aa3eea532071b238da421"
+    },
+    "rf2_laps": {
+      "source": "rf2",
+      "start": 768,
+      "end": 875,
+      "sha256": "70863e66ff0f764938409f4794f9d1bbbfaf7b57d792e15615c18e83762dc484"
+    },
+    "rf2_flags": {
+      "source": "rf2",
+      "start": 1923,
+      "end": 1940,
+      "sha256": "ceca65be86670b69ee9e6a991d0a92fbbdb3a27440fc73e03c0ca072ab7d7a55"
+    },
+    "rf2_hardparts": {
+      "source": "rf2",
+      "start": 2198,
+      "end": 2208,
+      "sha256": "fc0e7f1c91bf3093fa3aea8e4cafd088dde7ea4328934355abba2e6476e1f98c"
+    },
+    "track_constants": {
+      "source": "track",
+      "start": 872,
+      "end": 884,
+      "sha256": "7d7c9dbb4675c192603f8aceda9a96990edfe379d7afff37dcbd868b7e4674dc"
+    },
+    "track_length": {
+      "source": "track",
+      "start": 1260,
+      "end": 1281,
+      "sha256": "26f38ece343f7c6d99733905ef14dde45355b8b9a0355c448d173d5a245ce4f3"
+    },
+    "gap_points": {
+      "source": "track",
+      "start": 1351,
+      "end": 1417,
+      "sha256": "3c0f503e743795a40187e356bca6ecd7d17e3693f766744479c192d70cc245db"
+    },
+    "identity": {
+      "source": "opponents",
+      "start": 1063,
+      "end": 1154,
+      "sha256": "ed519303b7154e9efba9fe2248cd7e6d8ea162e7adf313449109bbc3b9339864"
+    },
+    "delta_content": {
+      "source": "opponent_messages",
+      "start": 133,
+      "end": 200,
+      "sha256": "5a89e203e498aec084337dc0644bbfc9e8f963f0f07091dc2b9c7b440cf39d43"
+    },
+    "action_commands": {
+      "source": "actions",
+      "start": 112,
+      "end": 158,
+      "sha256": "2e07e483b75686ed78e61bb07acbc051f91e7eab5f4371842cb559b2410db1b9"
+    },
+    "lapmode_control": {
+      "source": "actions",
+      "start": 533,
+      "end": 561,
+      "sha256": "b6fdd0e74312e8a2959b1b687b1c96a9ce285c3a546c1232deee28f5966605a1"
+    },
+    "corner_control": {
+      "source": "actions",
+      "start": 642,
+      "end": 649,
+      "sha256": "e24313a853f9f002006e5cb5c71f4396ba743cc49a8da9452d905e7d7e4bebf2"
+    },
+    "status_composition": {
+      "source": "actions",
+      "start": 763,
+      "end": 792,
+      "sha256": "8613676768dbe51ff811f4acfc74fca01764fe95138aac989607c3f49965f79e"
+    },
+    "queue_create": {
+      "source": "queue",
+      "start": 251,
+      "end": 309,
+      "sha256": "311816fe63be3efb909c24468ccbf8c50decb223b2233fcbbd2f735f45f2c2d6"
+    },
+    "queue_resolve": {
+      "source": "queue",
+      "start": 353,
+      "end": 443,
+      "sha256": "e6b1b88bb4ce58ec836f7dc1f92d4953974f5ea246520bebc5f0a0e3cff25f0a"
+    },
+    "wake": {
+      "source": "audio",
+      "start": 943,
+      "end": 959,
+      "sha256": "4d17959914204c1ecfbefbb2febee8d84b152ed46eeb607b9e0ae934d3233de1"
+    },
+    "quiet": {
+      "source": "audio",
+      "start": 1303,
+      "end": 1315,
+      "sha256": "eb3dafca5ad2a902910aeb29c7d2c5f813fb1bcfa1a39b96ad7001b439fd98c1"
+    },
+    "queue_filter": {
+      "source": "audio",
+      "start": 1338,
+      "end": 1416,
+      "sha256": "91ae1f689cfc9d08207c31ff286d26aa302135bb92499f2f7d31b05a202c9053"
+    },
+    "second_validation": {
+      "source": "audio",
+      "start": 1588,
+      "end": 1613,
+      "sha256": "8dfd5fb4d9c74cdff57610e9007de1c1bf71482ee9d1d3e346739c359667de18"
+    },
+    "regular": {
+      "source": "audio",
+      "start": 1953,
+      "end": 1963,
+      "sha256": "55ece19bea71c1ee9f313bb750f48f7fe12e9b4ed551dfa02fbebc92f03c8830"
+    },
+    "immediate": {
+      "source": "audio",
+      "start": 2076,
+      "end": 2185,
+      "sha256": "43eef91eceaf3e7adcf867f34f7fdd7ad79d8d18a244b65d6e1e6f43901007e1"
+    },
+    "admission": {
+      "source": "audio",
+      "start": 2202,
+      "end": 2250,
+      "sha256": "3d17ed24725aa8c1d38d9c1a8db37d562cb44329520cf9b5198bb82d8e237c4a"
+    },
+    "name": {
+      "source": "audio",
+      "start": 2426,
+      "end": 2438,
+      "sha256": "d281e84cdab9b9018bd1852213c6b5f8177469701c01c41c22e4dcb980b96279"
+    },
+    "audio_options": {
+      "source": "audio",
+      "start": 25,
+      "end": 106,
+      "sha256": "8dfd210844a4020024cfdcc8ec22cecc1787ae7d43a6434358231cbe24f3e293"
+    },
+    "audio_backend": {
+      "source": "audio",
+      "start": 803,
+      "end": 818,
+      "sha256": "f0b250e95a8ca2bb39fb02cbeecd4deec4e1acc3e4bdbdcb8fe4b328f7533bce"
+    },
+    "language": {
+      "source": "audio",
+      "start": 898,
+      "end": 908,
+      "sha256": "cf65e1a715d0ac23ec4fa9364a6da5dee0f65a6a60ee419c1176939b71011ff1"
+    },
+    "moderator_options": {
+      "source": "moderator",
+      "start": 47,
+      "end": 100,
+      "sha256": "b693049a660faa04268e45165fa0be286e2f1a17f355d8612d9d5ef8fba37b3a"
+    },
+    "verbosity": {
+      "source": "moderator",
+      "start": 103,
+      "end": 167,
+      "sha256": "42aa7d4221a082e7f079cced54e18b1180346aeb16ad75abb8de60f0c0dc8630"
+    },
+    "moderator_sound": {
+      "source": "moderator",
+      "start": 283,
+      "end": 353,
+      "sha256": "41e9c668b2ddbe9651cec1a155fd518a255b6ff41a666b8e31596058a889ee5c"
+    },
+    "moderator_queue": {
+      "source": "moderator",
+      "start": 356,
+      "end": 418,
+      "sha256": "1e7f5682c15655dab1f9246e9120d1178d54dd667922019e18f0c0a89acf570a"
+    },
+    "priority": {
+      "source": "sound_metadata",
+      "start": 9,
+      "end": 63,
+      "sha256": "9dc02b2262d6d1209e5c316226c2f96a60e867155a838589c95f0c1afac458b0"
+    },
+    "global_options": {
+      "source": "global",
+      "start": 40,
+      "end": 61,
+      "sha256": "9cf360a693da95e88fc6632aaae76b9162fdb7824c4c6beb856543f48207675f"
+    },
+    "precision_class": {
+      "source": "global",
+      "start": 105,
+      "end": 117,
+      "sha256": "f8921609d90327bab8052a9617b09b576cb9657e71918c7df68c4b2fe1a8fbd1"
+    },
+    "oval": {
+      "source": "global",
+      "start": 179,
+      "end": 205,
+      "sha256": "596df04ddd1fe9d9b4852f298dea11488452d6d6e79d1f3b37f6556e16df005b"
+    },
+    "precision": {
+      "source": "time",
+      "start": 12,
+      "end": 77,
+      "sha256": "8b7cc905cd31a94e3a0c84bbf2facc6233d58d45ec84a446458b9d1990553314"
+    },
+    "rounding": {
+      "source": "numbers",
+      "start": 85,
+      "end": 169,
+      "sha256": "2ba17e410485d0761328afd2d7c3ba01247b1555fd51e40f109f5f40aae2a5e8"
+    },
+    "reader_selection": {
+      "source": "number_factory",
+      "start": 21,
+      "end": 49,
+      "sha256": "649d794bddc88c5b5c9663cc2c76bd96faa9e683332c8e97b1ba469bf8394ee7"
+    },
+    "reader_en": {
+      "source": "en",
+      "start": 123,
+      "end": 257,
+      "sha256": "6696d8a74069b60b8a6a409c0d2871d5d56e905466f95c64c20456b20da266c2"
+    },
+    "reader_it": {
+      "source": "it",
+      "start": 133,
+      "end": 239,
+      "sha256": "311bcbe334a8efe3fb97ae72b35c2bfa0736e3928efe99a62a84a801e0093100"
+    },
+    "reader_it2": {
+      "source": "it2",
+      "start": 151,
+      "end": 218,
+      "sha256": "5ba0d195eba49a2477c151742cfcb1fd1bde313106ca087fbcb7dc2a9958c55d"
+    },
+    "reader_pt": {
+      "source": "pt_br",
+      "start": 108,
+      "end": 156,
+      "sha256": "93caeb699ebe7a07744e9a3af5492eaeae42105ece74f25a59a6792de814b652"
+    },
+    "setting:revert_to_legacy_version_of_refactored_code": {
+      "source": "settings",
+      "start": 1574,
+      "end": 1576,
+      "sha256": "df01156af3b40a04039b94b48582546699cae4799ecc5190c5b5caaac94b13ab"
+    },
+    "setting:frequency_of_gap_ahead_reports": {
+      "source": "settings",
+      "start": 617,
+      "end": 619,
+      "sha256": "b47f06345c3d8280b0da93286ee9c79bb9c95dc9c4175ee82e3cce82b61ff16c"
+    },
+    "setting:frequency_of_gap_behind_reports": {
+      "source": "settings",
+      "start": 623,
+      "end": 625,
+      "sha256": "78d09ca605ca1ddb6d79401593436f8668dd07f4d3f4a8e2488c1310e57649e5"
+    },
+    "setting:frequency_of_gap_behind_on_track_reports": {
+      "source": "settings",
+      "start": 620,
+      "end": 622,
+      "sha256": "10032a381e0f7dd8e22a3833e80079332756a09c1043b4ab647bdcbbf8db11ab"
+    },
+    "setting:enable_gap_messages": {
+      "source": "settings",
+      "start": 320,
+      "end": 322,
+      "sha256": "ac2978d0f373dccdd56de76f9153a8a03ef3108761dbf287a8fd12ad56767f83"
+    },
+    "setting:gap_message_randomness": {
+      "source": "settings",
+      "start": 659,
+      "end": 661,
+      "sha256": "7bcf36b704d40464cc8979f31b8efbab44007fd010b636d0347d2c387a3463f2"
+    },
+    "setting:just_the_facts": {
+      "source": "settings",
+      "start": 788,
+      "end": 790,
+      "sha256": "9d0eba9bae9cb66b4f6b80638b07e3f0f5a90ef7bb3365289d4515274f5d34a1"
+    },
+    "setting:always_report_time_in_hundredths": {
+      "source": "settings",
+      "start": 71,
+      "end": 73,
+      "sha256": "b9c215df16df22b6413370e0e7c02be729091945bdc53d4b8060c1f35ae4384b"
+    },
+    "setting:realistic_mode": {
+      "source": "settings",
+      "start": 1178,
+      "end": 1180,
+      "sha256": "c9060e071572715e61520ef7098604cc128d2cabc05f659a879e286fe731037a"
+    },
+    "setting:speak_only_when_spoken_to": {
+      "source": "settings",
+      "start": 1277,
+      "end": 1279,
+      "sha256": "bccac26039d899b8588d58122cf7b157abd99f9a1859ba3ee322dbf6f8e5f00c"
+    },
+    "setting:force_single_class": {
+      "source": "settings",
+      "start": 602,
+      "end": 604,
+      "sha256": "df9f636a8bf76e65b085e707fd19c264028fb66f5fdb6fcb08cf7770446f8b71"
+    },
+    "setting:enable_driver_names": {
+      "source": "settings",
+      "start": 302,
+      "end": 304,
+      "sha256": "61ba1e13ae4a041d760dcf0930fd0726dce13dbed191b073a130dff60ca058f4"
+    },
+    "setting:tts_setting_listprop": {
+      "source": "settings",
+      "start": 1463,
+      "end": 1465,
+      "sha256": "5468973f4865129779b08acb9396f05ae7200914907e9b99f2947943e8482be7"
+    },
+    "setting:opponents_number_after_name": {
+      "source": "settings",
+      "start": 1022,
+      "end": 1024,
+      "sha256": "937b44e544c0d6840d119ddca1329fb6cbc05881f13f4523731c73453a3a8004"
+    },
+    "setting:enable_delayed_messages_on_hardparts": {
+      "source": "settings",
+      "start": 296,
+      "end": 298,
+      "sha256": "f1f14149ef4ef392b0fe15ef5c35e864d9613edcd775a9ed69289118c4e7be0f"
+    },
+    "setting:allow_important_messages_even_when_silenced": {
+      "source": "settings",
+      "start": 68,
+      "end": 70,
+      "sha256": "929b9769149dde94d2befa6ecf73c524b20d14b418f7e4f93847d71f16e7748d"
+    },
+    "setting:pause_between_messages": {
+      "source": "settings",
+      "start": 1034,
+      "end": 1036,
+      "sha256": "f37a186862f51dd4c1f1500f9d6d90c21c1bacfb366a6d438c8fcaa8fdfebfa9"
+    },
+    "setting:update_interval": {
+      "source": "settings",
+      "start": 1481,
+      "end": 1483,
+      "sha256": "13a2893f1a6d430bacc64ba9d52b160ab8cde94f6b39bf43dfbea35488ddeb90"
+    },
+    "setting:priortise_messages_depending_on_situation": {
+      "source": "settings",
+      "start": 1139,
+      "end": 1141,
+      "sha256": "02fdef3dae80be7d756e6635bf93d33a191e0ac175d42364e1b44fd535454105"
+    },
+    "setting:reject_message_when_talking": {
+      "source": "settings",
+      "start": 1184,
+      "end": 1186,
+      "sha256": "db2f6a7dc1b5b46c76e16398bf6acfbd89f517dfeb433895be6956e0f6d07734"
+    },
+    "setting:sre_respond_while_channel_still_open": {
+      "source": "settings",
+      "start": 1319,
+      "end": 1321,
+      "sha256": "5fa6f9c4961e360b42b5606fa9b0922f060cf7fb79f78a0db43b6c8fa3d7f375"
+    },
+    "setting:pace_notes_mute_all_messages": {
+      "source": "settings",
+      "start": 1028,
+      "end": 1030,
+      "sha256": "c3c728cc1267d5b26ee6fe12139a2b1507eaf82e2808319a4350398b610d736b"
+    },
+    "setting:interrupt_setting_listprop": {
+      "source": "settings",
+      "start": 734,
+      "end": 736,
+      "sha256": "8c8ffee3bf0851933b33e289c93a9e32cb300a34ed0910cd0051b525031c250a"
+    },
+    "setting:insert_beep_out_between_spotter_and_chief": {
+      "source": "settings",
+      "start": 731,
+      "end": 733,
+      "sha256": "d2584c054279252950ef93cb70a8ba8531dad865735ce7564fe4bd5a9e3ca7e2"
+    },
+    "setting:insert_beep_in_between_spotter_and_chief": {
+      "source": "settings",
+      "start": 728,
+      "end": 730,
+      "sha256": "884c0489d9c16b31de839a3a3d11fba70b00a7f5874f20dc4a6f4e273a5130e2"
+    },
+    "setting:enable_radio_beeps": {
+      "source": "settings",
+      "start": 407,
+      "end": 409,
+      "sha256": "023a4747699a3ee1892b189b7b780faf1547b18622212db1f6ff938408d36cad"
+    },
+    "setting:use_alternate_beeps": {
+      "source": "settings",
+      "start": 1493,
+      "end": 1495,
+      "sha256": "278b754d9bb3eeabc6e1000d3451151909e58659949dbcb34170368a1b5a6bcd"
+    },
+    "setting:use_naudio": {
+      "source": "settings",
+      "start": 1523,
+      "end": 1525,
+      "sha256": "bee136c452baf5d588fcd80d35feb98d84c237882923e738a5edea68237732e2"
+    },
+    "setting:naudio_output_interface_listprop": {
+      "source": "settings",
+      "start": 1004,
+      "end": 1006,
+      "sha256": "481f882dda34a12c0029df9db47f8bc1179c334c26e6e73b316e160c26df1472"
+    },
+    "setting:chief_name": {
+      "source": "settings",
+      "start": 137,
+      "end": 139,
+      "sha256": "6d4de3806ed488b0173d46ae5030ecb1a5a496740c8c3e214552840fbafd578e"
+    },
+    "setting:spotter_name": {
+      "source": "settings",
+      "start": 1298,
+      "end": 1300,
+      "sha256": "fc0ab9ce99ef30f4165e2964c22d2b29e69ad2812face2a564f38399aec9ca81"
+    },
+    "setting:cache_sounds": {
+      "source": "settings",
+      "start": 122,
+      "end": 124,
+      "sha256": "8b89fc68b816a48a8476a5f44e1614486c878eb30d5f343e4bd1b45662ca47c7"
+    },
+    "setting:enable_breath_in": {
+      "source": "settings",
+      "start": 272,
+      "end": 274,
+      "sha256": "ee807c841b2e44472f197e2f596550a5e0f82c649a7a5af2ab995d32d2efa1e1"
+    },
+    "setting:enable_lmu_pit_lane_approach_heuristics": {
+      "source": "settings",
+      "start": 347,
+      "end": 349,
+      "sha256": "f08e541b79680716d2d51d01e980bad635f1a0be3aa37a69e8f9cbc4ebc18a41"
+    },
+    "setting:enable_lmu_pit_state_during_fcy": {
+      "source": "settings",
+      "start": 350,
+      "end": 352,
+      "sha256": "04b97ba9ba1ab7a31f8df20c42048d6b0296130cd92cfc9b6fa878383220dce5"
+    },
+    "setting:auto_is_oval": {
+      "source": "settings",
+      "start": 1667,
+      "end": 1669,
+      "sha256": "f3705091289b533f84996a758add019844d254686745593fd2343cb9c47c3959"
+    },
+    "queue_exception": {
+      "source": "audio",
+      "start": 1254,
+      "end": 1268,
+      "sha256": "e7a011d324f3f6f99d5890ffb9551842ae6b5d3ac948f687fe5fca04eabab4e6"
+    },
+    "hardparts_control": {
+      "source": "actions",
+      "start": 493,
+      "end": 531,
+      "sha256": "b6404307f59f22d853f54117bc958c41344137f933038a58dc7eab7b5d67e4db"
+    },
+    "rf2_landmark": {
+      "source": "rf2",
+      "start": 1890,
+      "end": 1901,
+      "sha256": "4760812a99563af15a434486c8a4445373d11bf00bd990f9d48007d59ed9600d"
+    },
+    "event_exception": {
+      "source": "chief",
+      "start": 1489,
+      "end": 1528,
+      "sha256": "9fda3e790b10c1241eee9c801fe53785b399de8f543a0568c709783daf2e5eb7"
+    },
+    "fragment_availability": {
+      "source": "queue",
+      "start": 445,
+      "end": 498,
+      "sha256": "71619bc7a3e7f76aba96627241ddef85933888fa036fa32633b94bca0af4b8f5"
+    }
+  },
+  "rules": [
+    {
+      "id": "TIM-REL",
+      "file": "tim-rel.json",
+      "case_count": 12,
+      "sha256": "758036af842060670c19ed91adc5eaad6c3876052126e776980f5b00d85be1d2"
+    },
+    {
+      "id": "TIM-SAMPLE",
+      "file": "tim-sample.json",
+      "case_count": 12,
+      "sha256": "11c93a63fa27d281a17ca5fe1db02002fa1fd50f2d1a47e4fb709472a58023fb"
+    },
+    {
+      "id": "TIM-STATE",
+      "file": "tim-state.json",
+      "case_count": 18,
+      "sha256": "08acc65be5a0b23ddc055e3dde8d8d8453f7a84a4b940a3010ef32c0250e342f"
+    },
+    {
+      "id": "TIM-PRECISION",
+      "file": "tim-precision.json",
+      "case_count": 14,
+      "sha256": "431b36f609e957c30620a76f61d4080d5132c8c9d886c2dca26d32457fd13b3a"
+    },
+    {
+      "id": "TIM-CADENCE",
+      "file": "tim-cadence.json",
+      "case_count": 9,
+      "sha256": "8e92202ca856e6065ac228279232b4241cb433a60b1419044eefafa06fa5c126"
+    },
+    {
+      "id": "TIM-SELECT",
+      "file": "tim-select.json",
+      "case_count": 6,
+      "sha256": "38a740d7aaa23bf25f1363680a1c6c9f8477201f6f0323bd39bd8455b10e233b"
+    },
+    {
+      "id": "TIM-SILENCE",
+      "file": "tim-silence.json",
+      "case_count": 11,
+      "sha256": "be79e82813582966d5e9e0518ea0cf04802f6cb791454011315e681046ccd2fb"
+    },
+    {
+      "id": "TIM-END",
+      "file": "tim-end.json",
+      "case_count": 13,
+      "sha256": "da1b4d8531069c3b36369214af90397ff21e3be8decd0a57d5b9d7b3f1a59e7d"
+    },
+    {
+      "id": "TIM-AUTO",
+      "file": "tim-auto.json",
+      "case_count": 7,
+      "sha256": "8e9a7955a2e9ccb66fd01fbeaa52912da26195249543c460a7963c4cfbd02ec7"
+    },
+    {
+      "id": "TIM-QUEUE",
+      "file": "tim-queue.json",
+      "case_count": 8,
+      "sha256": "b437726123415d85da93a0636f9d1ca2098134c9e2d5ad0a9429d1cb67c705cf"
+    },
+    {
+      "id": "TIM-LAPPING",
+      "file": "tim-lapping.json",
+      "case_count": 4,
+      "sha256": "0a093055ef49df4bffb9850ed12c24ded14bc7aaa917b661032aea3bda669ced"
+    },
+    {
+      "id": "TIM-LAPMODE",
+      "file": "tim-lapmode.json",
+      "case_count": 5,
+      "sha256": "a20a59977a3061f23d9049129926a0030c0b945abe511920432f1252075000ab"
+    },
+    {
+      "id": "TIM-QUERY",
+      "file": "tim-query.json",
+      "case_count": 11,
+      "sha256": "0790db8afed1b145b268acc3de27a3d47b77b66943024a7587e50fc5b91a4e97"
+    },
+    {
+      "id": "TIM-STATUS",
+      "file": "tim-status.json",
+      "case_count": 5,
+      "sha256": "195ed28deb906e887fcab424e7d1dc050098e3367c038abe5175fd2870fa5e13"
+    },
+    {
+      "id": "TIM-CORNERS",
+      "file": "tim-corners.json",
+      "case_count": 6,
+      "sha256": "8f25ce3a4adec637da2766238834fb689cc351c28ae47fb745adaa34e17bdab5"
+    }
+  ]
+}

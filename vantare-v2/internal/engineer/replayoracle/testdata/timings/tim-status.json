@@ -1,0 +1,188 @@
+[
+  {
+    "id": "TIM-STATUS-001",
+    "name": "Líder exacto dos",
+    "basis": "source",
+    "anchors": [
+      "status",
+      "status_composition",
+      "last",
+      "immediate"
+    ],
+    "evolutions": [],
+    "input": {
+      "is_leader": true,
+      "is_last_current": false,
+      "gap_s": 2
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "silent_contribution",
+      "facts": {
+        "no_data_phrase": false
+      }
+    },
+    "accepted_expected": {
+      "outcome": "silent_contribution",
+      "facts": {
+        "no_data_phrase": false
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-STATUS-002",
+    "name": "Líder más de dos",
+    "basis": "source",
+    "anchors": [
+      "status",
+      "status_composition",
+      "last",
+      "immediate"
+    ],
+    "evolutions": [],
+    "input": {
+      "is_leader": true,
+      "is_last_current": false,
+      "gap_s": 2.001
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "rear_contribution",
+      "facts": {
+        "no_data_phrase": false
+      }
+    },
+    "accepted_expected": {
+      "outcome": "rear_contribution",
+      "facts": {
+        "no_data_phrase": false
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-STATUS-003",
+    "name": "Intermedio",
+    "basis": "source",
+    "anchors": [
+      "status",
+      "status_composition",
+      "last",
+      "immediate"
+    ],
+    "evolutions": [],
+    "input": {
+      "is_leader": false,
+      "is_last_current": false,
+      "gap_s": 3
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "front_contribution",
+      "facts": {
+        "no_data_phrase": false
+      }
+    },
+    "accepted_expected": {
+      "outcome": "front_contribution",
+      "facts": {
+        "no_data_phrase": false
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-STATUS-004",
+    "name": "Último no líder",
+    "basis": "source",
+    "anchors": [
+      "status",
+      "status_composition",
+      "last",
+      "immediate"
+    ],
+    "evolutions": [],
+    "input": {
+      "is_leader": false,
+      "is_last_current": true,
+      "gap_s": 3
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "silent_contribution",
+      "facts": {
+        "no_data_phrase": false
+      }
+    },
+    "accepted_expected": {
+      "outcome": "silent_contribution",
+      "facts": {
+        "no_data_phrase": false
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-STATUS-005",
+    "name": "STATUS no añade guard Race propio",
+    "basis": "source",
+    "anchors": [
+      "status",
+      "status_composition",
+      "last",
+      "immediate"
+    ],
+    "evolutions": [],
+    "input": {
+      "session": "Practice",
+      "is_leader": false,
+      "is_last_current": false,
+      "front_gap_s": 3
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "front_contribution",
+      "facts": {
+        "no_data_phrase": false
+      }
+    },
+    "accepted_expected": {
+      "outcome": "front_contribution",
+      "facts": {
+        "no_data_phrase": false
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  }
+]

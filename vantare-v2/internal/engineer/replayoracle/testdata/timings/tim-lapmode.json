@@ -1,0 +1,218 @@
+[
+  {
+    "id": "TIM-LAPMODE-001",
+    "name": "A8 líder sin candidato ontrack de clase anterior",
+    "basis": "accepted_evolution",
+    "anchors": [
+      "lapmode",
+      "relations",
+      "track_relations",
+      "lapmode_control",
+      "trigger",
+      "moderator_queue"
+    ],
+    "evolutions": [
+      "A8"
+    ],
+    "input": {
+      "new_lap": true,
+      "mode": true,
+      "is_leader": true,
+      "is_last_current": false,
+      "rear_gap_s": 2,
+      "on_track_candidate": null
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "trigger_exception",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "cancelled",
+      "facts": {
+        "consumed": false
+      }
+    },
+    "note": "El líder de clase no tiene otro rival de ClassPosition<=1. El contenedor existe con gap null; falla antes de encolar. Se cancela sin inventar resumen parcial."
+  },
+  {
+    "id": "TIM-LAPMODE-002",
+    "name": "Último actual omite detrás",
+    "basis": "contract_adaptation",
+    "anchors": [
+      "lapmode",
+      "relations",
+      "track_relations",
+      "lapmode_control",
+      "trigger",
+      "moderator_queue"
+    ],
+    "evolutions": [],
+    "input": {
+      "new_lap": true,
+      "mode": true,
+      "is_leader": false,
+      "is_last_current": true,
+      "front_gap_s": 2,
+      "on_track_candidate": {
+        "id": "T",
+        "gap_s": 0.01,
+        "same_class": true,
+        "different_from_race_rear": true,
+        "racing": true,
+        "class_position": 1
+      }
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "lap_summary",
+      "facts": {
+        "relations": [
+          "race_front"
+        ],
+        "priority": 10,
+        "ttl_ms": 5000
+      }
+    },
+    "accepted_expected": {
+      "outcome": "lap_summary",
+      "facts": {
+        "relations": [
+          "race_front"
+        ],
+        "priority": "P2",
+        "ttl_ms": 5000
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-LAPMODE-003",
+    "name": "Nombre de modo no demuestra vuelta perdida",
+    "basis": "source",
+    "anchors": [
+      "lapmode",
+      "relations",
+      "track_relations",
+      "lapmode_control",
+      "trigger",
+      "moderator_queue"
+    ],
+    "evolutions": [],
+    "input": {
+      "new_lap": true,
+      "mode": true,
+      "on_track_class_position": 2,
+      "player_class_position": 4,
+      "on_track_lap_delta": 0,
+      "on_track_gap_s": 2,
+      "different_from_race_rear": true
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "track_position_gap",
+      "facts": {
+        "lap_claim": false
+      }
+    },
+    "accepted_expected": {
+      "outcome": "track_position_gap",
+      "facts": {
+        "lap_claim": false
+      }
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  },
+  {
+    "id": "TIM-LAPMODE-004",
+    "name": "A8 candidato missing antes de encolar",
+    "basis": "accepted_evolution",
+    "anchors": [
+      "lapmode",
+      "relations",
+      "track_relations",
+      "lapmode_control",
+      "trigger",
+      "moderator_queue"
+    ],
+    "evolutions": [
+      "A8"
+    ],
+    "input": {
+      "new_lap": true,
+      "mode": true,
+      "on_track_container_present": true,
+      "on_track_gap": null
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "trigger_exception",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "cancelled",
+      "facts": {
+        "consumed": false
+      }
+    },
+    "note": "Con entrada incompleta se cancela este aviso, no se inventa un resumen parcial. Ruta diferente del catch de AudioPlayer."
+  },
+  {
+    "id": "TIM-LAPMODE-005",
+    "name": "Modo desactivado",
+    "basis": "source",
+    "anchors": [
+      "lapmode",
+      "relations",
+      "track_relations",
+      "lapmode_control",
+      "trigger",
+      "moderator_queue"
+    ],
+    "evolutions": [],
+    "input": {
+      "new_lap": true,
+      "mode": false
+    },
+    "steps": [
+      {
+        "at_ms": 0,
+        "event": "evaluate"
+      }
+    ],
+    "draws": [],
+    "source_expected": {
+      "outcome": "no_lap_summary",
+      "facts": {}
+    },
+    "accepted_expected": {
+      "outcome": "no_lap_summary",
+      "facts": {}
+    },
+    "note": "Resultado escrito desde las anclas de fuente; no ejecuta CrewChief ni Vantare."
+  }
+]

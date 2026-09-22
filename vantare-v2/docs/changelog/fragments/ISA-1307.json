@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1307",
+  "type": "fix",
+  "summary": "En reparación: retirar las esperas artificiales del audio Windows del Ingeniero.",
+  "technicalNotes": [
+    "Microplan y comparación previa con CrewChief predeterminado; implementación y segunda comparación pendientes."
+  ],
+  "testing": [
+    "Reproducir los fallos de ciclo de eventos en Windows antes de modificar el player; repetir los mismos casos tras la reparación."
+  ],
+  "knownLimitations": [
+    "La escucha Windows/LMU y la latencia hasta el primer sonido requieren medición física.",
+    "No cambia el ACK started ni se integra ninguna entrega en un canal."
+  ]
+}

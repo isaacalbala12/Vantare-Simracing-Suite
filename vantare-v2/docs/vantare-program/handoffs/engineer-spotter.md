@@ -28,6 +28,17 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+2026-09-22 — [VAN-739](https://app.notion.com/p/3e3e51695c6581faa188fb4a1e8ca5eb)
+/ GitHub #1307 aborda las esperas artificiales del audio Windows, F1 de VAN-735.
+Microplan: [`repair-isa-1307.md`](../../engineer/repair-isa-1307.md).
+Base nightly1101. Contraste previo: CrewChief predeterminado usa NAudio/WAVEOUT
+con fin por PlaybackStopped; el margen de duración es solo timeout.
+Se prepara una reparación del player PowerShell/WPF existente y regresiones
+Windows, sin dependencias ni cambio de ACK. La escucha y latencia real siguen
+pendientes. Implementación local; reviewer reutilizado mientras Isaac conecta
+DeepSeek Harness. Las PR1295, 1300 y 1304 siguen separadas, sin integrar.
+
+
 ISA-940 conecta el nivel efectivo publicado por la política de rendimiento con
 la salida de Ingeniero: en niveles 4–5 invalida y bloquea subtítulos y toda
 presentación visual, pero conserva sin cambios la decisión y reproducción de

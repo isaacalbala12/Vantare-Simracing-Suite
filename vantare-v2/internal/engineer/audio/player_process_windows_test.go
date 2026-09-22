@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"testing"
 	"time"
@@ -96,6 +97,10 @@ func TestPlayerTerminatesActiveProcess(t *testing.T) {
 			case "stop":
 				player.Stop()
 			}
+			wait := 3 * time.Second
+			if action == "timeout" {
+				wait += maxPlaybackDuration
+			}
 			select {
 			case err := <-done:
 				finished = true
@@ -108,7 +113,11 @@ func TestPlayerTerminatesActiveProcess(t *testing.T) {
 				if action == "timeout" && !errors.Is(err, context.DeadlineExceeded) {
 					t.Fatalf("timeout error = %v", err)
 				}
-			case <-time.After(maxPlaybackDuration + 3*time.Second):
+				var exitErr *exec.ExitError
+				if action == "stop" && !errors.As(err, &exitErr) {
+					t.Fatalf("Stop did not kill the process: %v", err)
+				}
+			case <-time.After(wait):
 				t.Fatal("playback did not return after termination")
 			}
 			if child.ProcessState == nil || child.ProcessState.Success() {

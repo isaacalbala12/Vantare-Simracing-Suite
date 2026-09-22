@@ -122,5 +122,26 @@ de eventos es sintética. Otro fixture ejecutable prueba PlayContext real con
 cancelación, Stop y timeout mientras el proceso está vivo, verificando que se
 recoge y se retira de current. No depende de un dispositivo de audio.
 
-Compilación y vet Windows cruzados PASS antes del segundo CI. Resultado final
-Windows, revisión independiente y resto de gates: pendientes de registrar.
+Compilación y vet Windows cruzados PASS. Revisión independiente PASS acotado
+sobre 8fe2016e más el ajuste posterior de Stop. Ese test ahora exige retorno
+antes de tres segundos y un error de salida del hijo; no puede pasar gracias
+al timeout de ocho segundos. El producto no cambió después de esa revisión.
+
+Validación local: 40 paquetes focales PASS; race y vet en audio, service y radio
+PASS; gofmt/diff-check, calidad (cero NEW, política intacta), contrato roadmap
+vivo y fragmento PASS. Dependencias y assets frontend reutilizados de la misma
+base nightly1101; no hay cambios frontend.
+
+La suite global macOS no es verde: 118 paquetes PASS y fallos en ejecutable
+Windows, Launcher, Server, Recording SQLite y un fixture voiceinput. Los
+primeros cuatro ya estaban reproducidos en la base (registro del corte
+anterior sobre el mismo1101). El fallo adicional se investiga y se reproduce
+independientemente sobre la base sin modificar: 6 fallos/50, frente a4/50 en
+el candidato. El helper escribe JSON y después PASS; la lectura estricta
+rechaza ambas líneas cuando llegan juntas. Se registra como pendiente en
+Notion y no se relaja el protocolo ni se modifica voz en esta entrega.
+
+El CI Windows requerido, su SHA y el estado operativo final se conservan en
+[VAN-739](https://app.notion.com/p/3e3e51695c6581faa188fb4a1e8ca5eb) y la
+[PR1308](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1308).
+No confundir la compilación cruzada con esos tests ejecutados en Windows.

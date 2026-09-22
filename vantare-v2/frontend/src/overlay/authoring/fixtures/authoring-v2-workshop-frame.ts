@@ -797,11 +797,16 @@ function applyScene(
             ...(patch.timeBehindLeader !== undefined ? { gap: patch.timeBehindLeader } : {}),
             ...(patch.inPits !== undefined ? { pit: patch.inPits } : {}),
             ...(patch.bestLapTime !== undefined ? { bestLap: patch.bestLapTime } : {}),
+            ...(patch.bestLapImprovement !== undefined && row.bestLap?.v !== undefined
+              ? { bestLap: row.bestLap.v - patch.bestLapImprovement } : {}),
           }, quality) ?? row,
         ];
       });
       standings = [...standings].sort((left, right) => left.position - right.position);
-      if (scene.id === "standings-functional-position") {
+      if (scene.id.startsWith("standings-functional-")) {
+        if (scenario.session !== "race") {
+          standings = [...standings].sort((left, right) => (left.bestLap.v ?? Infinity) - (right.bestLap.v ?? Infinity));
+        }
         standings = rankDemoStandings(standings).map((row, index) => ({
           ...row, gap: frame.standings[index]!.gap,
         }));

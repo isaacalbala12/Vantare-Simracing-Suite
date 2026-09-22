@@ -1,8 +1,7 @@
 import { useRef, type CSSProperties } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { WidgetRendererProps } from "../../core/design-system-definition";
-import { flipRows, useWidgetMotion } from "../../core/widget-motion";
-import { deriveOvertakes } from "./functional-motion";
+import { useStandingsMotion } from "./useStandingsMotion";
 import {
   FUNCTIONAL_BROADCAST_COLUMN_HEADER_HEIGHT,
   FUNCTIONAL_BROADCAST_SESSION_HEADER_HEIGHT,
@@ -33,31 +32,7 @@ import {
 export function StandingsFunctional({ model, settings, layout, motion = "full", effects }: WidgetRendererProps<StandingsViewModel>) {
   const { locale } = useI18n();
   const rootRef = useRef<HTMLElement | null>(null);
-  // Eficiencia: las filas se deslizan a su posición (FLIP) y los cambios de
-  // posición parpadean una vez. En "reduced" solo queda el deslizamiento.
-  useWidgetMotion(model, motion !== "minimal", rootRef, ({ prev, next, root, schedule, persist }) => {
-    // FLIP medido por id: la fila desliza desde su posición visual actual
-    // (incluido el resto de una animación en vuelo) hasta su nuevo sitio —
-    // no desde un stride por índice que teletransporta al re-target.
-    flipRows(root, persist, {
-      rows: "[data-standings-row]",
-      id: (row) => row.dataset.standingsRow,
-      duration: (from) => Math.min(460, 260 + (Math.abs(from) / 30) * 50),
-    });
-    if (motion === "full") {
-      const { gained, lost } = deriveOvertakes(prev.rows, next.rows);
-      for (const [id, direction] of [...gained.map((id) => [id, "rise"] as const), ...lost.map((id) => [id, "fall"] as const)]) {
-        const row = root.querySelector<HTMLElement>(`[data-standings-row="${CSS.escape(id)}"]`);
-        if (!row) continue;
-        row.dataset.motion = direction;
-        // La clave cancela el borrado anterior del mismo attr — sin ella el
-        // timer de un evento viejo apagaba el flash del siguiente.
-        schedule(650, () => { delete row.dataset.motion; }, `motion-${id}`);
-      }
-    }
-  }, (root) => {
-    root.querySelectorAll<HTMLElement>("[data-motion]").forEach((el) => { delete el.dataset.motion; });
-  });
+  useStandingsMotion(model, motion, rootRef);
   const labels = functionalLabels[locale];
   const config = parseFunctionalSettings(settings);
   const broadcast = config.templateId === "broadcast";
@@ -122,13 +97,13 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
   // Keep the PIT badge outside the table's geometry. The rail mirrors the
   // table rows, so the badge stays aligned without reserving a fake metric
   // column or changing the width of the standings card.
-  const pitIndicators: Array<{ key: string; top: number }> = [];
+  const pitIndicators: Array<{ key: string; id: string; top: number; active: boolean }> = [];
   if (pitEnabled) {
     let top = tableHeaderHeight;
     for (const entry of entries) {
       const entryHeight = entry.kind === "class" ? FUNCTIONAL_STANDINGS_CLASS_BAND_HEIGHT : 30;
-      if (entry.kind === "row" && entry.row.pitText) {
-        pitIndicators.push({ key: entry.key, top: top + entryHeight / 2 });
+      if (entry.kind === "row") {
+        pitIndicators.push({ key: entry.key, id: entry.row.id, top, active: Boolean(entry.row.pitText) });
       }
       top += entryHeight;
     }
@@ -169,6 +144,7 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
               key={entry.key}
               data-standings-row={entry.row.id}
               data-player={entry.row.isPlayer || undefined}
+              data-session-best={model.sessionBest?.rowId === entry.row.id || undefined}
               data-standings-group={tonalPodium ? (entry.row.position <= 3 ? "podium" : "context") : undefined}
               data-standings-context-start={tonalPodium && entry.row.id === firstContextRowId ? "true" : undefined}
             >
@@ -181,14 +157,17 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
                     : resolveStandingsCellValue(row, column.metricId);
                 const seconds = (column.metricId === "gap" || column.metricId === "interval") ? /^([+-]?\d+(?:\.\d+)?)(s)$/.exec(value) : null;
                 return <td key={column.id} data-metric={column.metricId} data-identity={IDENTITY.has(column.metricId) || undefined} aria-label={`${labelFor(column.metricId)}: ${value}`} style={{ textAlign: column.metricId === "gap" ? "center" : column.style?.align ?? (column.metricId === "driverName" ? "left" : IDENTITY.has(column.metricId) ? "center" : "right") }}>
-                  {column.metricId === "driverName" ? <span className="vf-driver"><span className="vf-driver-name" title={value}>{value}</span></span> : <span title={value} className={`vf-cell-value${seconds ? " vf-gap-number" : ""}`}>{seconds ? <>{seconds[1]}<small className="vf-time-unit">{seconds[2]}</small></> : value}</span>}
+                  {column.metricId === "driverName" ? <span className="vf-driver"><span className="vf-driver-name" title={value}>{value}</span><span className="vf-position-change" data-position-change aria-hidden="true" /></span> : <span title={value} className={`vf-cell-value${seconds ? " vf-gap-number" : ""}`}>{seconds ? <>{seconds[1]}<small className="vf-time-unit">{seconds[2]}</small></> : value}</span>}
+                  {column.metricId === "bestLap" && <><span className="vf-lap-sweep" aria-hidden="true" /><span className="vf-lap-record" aria-hidden="true">◆</span></>}
                 </td>;
               })}
             </tr>
           ))}</tbody>
         </table>
         {pitIndicators.length > 0 ? <div className="vf-pit-rail" aria-label={labels.pit}>
-          {pitIndicators.map((indicator) => <span key={indicator.key} className="vf-pit-label" data-pit-indicator role="img" aria-label={labels.pit} title={labels.pit} style={{ top: `${indicator.top}px` }}>{labels.pit}</span>)}
+          {pitIndicators.map((indicator) => <span key={indicator.key} className="vf-pit-row" data-pit-row={indicator.id} style={{ top: `${indicator.top}px` }}>
+            <span className="vf-pit-label" data-pit-indicator={indicator.active || undefined} data-pit-active={indicator.active || undefined} role={indicator.active ? "img" : undefined} aria-hidden={!indicator.active} aria-label={indicator.active ? labels.pit : undefined} title={indicator.active ? labels.pit : undefined}>{labels.pit}</span>
+          </span>)}
         </div> : null}
         </div>
       )}

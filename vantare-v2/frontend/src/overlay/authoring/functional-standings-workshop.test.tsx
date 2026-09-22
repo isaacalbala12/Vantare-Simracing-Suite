@@ -1,8 +1,11 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { OverlayWorkshopDevRoute } from "./OverlayWorkshopDevRoute";
-import { buildWorkshopFrameV2, type WorkshopV2Scenario } from "./fixtures/authoring-v2-workshop-frame";
+import { buildWorkshopFrameV2, buildWorkshopWidget, type WorkshopV2Scenario } from "./fixtures/authoring-v2-workshop-frame";
 import { getAnimationScene, listAnimationScenes } from "./fixtures/animation-scenes";
+import { buildStandingsViewModelV2 } from "../widget-types/standings/standings-view-model-v2";
+import { parseStandingsContent } from "../widget-types/standings/standings-content";
+import { deriveFunctionalStandingsEvents } from "../design-systems/vantare-functional/standings-motion";
 
 const scenario: WorkshopV2Scenario = {
   widget: "standings", system: "vantare-functional", variant: "default",
@@ -42,7 +45,8 @@ describe("Standings Eficiencia Workshop review", () => {
 
   it("filters unsupported effects and keeps the race position probe out of timed sessions", () => {
     expect(listAnimationScenes("standings", "vantare-functional", "race").map((scene) => scene.id)).toEqual([
-      "standings-functional-position", "standings-functional-pit",
+      "standings-functional-position", "standings-functional-pit", "standings-functional-personal-best",
+      "standings-functional-session-best", "standings-functional-combined",
     ]);
     expect(getAnimationScene("standings-fastest-lap", "vantare-functional")).toBeUndefined();
     expect(getAnimationScene("standings-fastest-lap", "vantare-endurance")).toBeDefined();
@@ -57,6 +61,19 @@ describe("Standings Eficiencia Workshop review", () => {
     fireEvent.click(screen.getByRole("checkbox", { name: "Estado en boxes" }));
     expect(document.querySelector('td[data-metric="bestLap"]')).not.toBeNull();
     expect(document.querySelector('td[data-metric="lastLap"]')).toBeNull();
+  });
+
+  it.each(["practice", "qualifying", "race"] as const)("drives real personal and session lap notices in %s", (session) => {
+    const config = { ...scenario, session, modules: ["bestLap", "pit", "gap"] };
+    const content = parseStandingsContent(buildWorkshopWidget(config).content);
+    const at = (sceneId: string, sceneFrame: number) => {
+      const runtime = buildWorkshopFrameV2({ ...config, sceneId, sceneFrame });
+      return buildStandingsViewModelV2(runtime.overlayV2Frame!, runtime.overlayV2Source!, content, { mode: "podium-around-player", around: 4 });
+    };
+    for (const [id, kind] of [["personal-best", "personal-best"], ["session-best", "session-best"]] as const) {
+      const sceneId = `standings-functional-${id}`;
+      expect(deriveFunctionalStandingsEvents(at(sceneId, 0), at(sceneId, 1))).toContainEqual({ rowId: "vehicle-003", kind });
+    }
   });
 
   it("shows and hides PIT through the actual module checkbox", () => {

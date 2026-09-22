@@ -76,6 +76,11 @@ export function buildStandingsViewModelV2(
   const phase = displayedText(frame.session.phase)?.toLowerCase();
   const paceSession = phase === "practice" || phase === "qualifying";
   const sessionBestLap = paceSession ? fastestLap(scoped) : undefined;
+  const sessionBestRow = scoped.reduce<OverlayStandingRowV2 | undefined>((best, row) => {
+    const seconds = row.bestLap?.q === "fresh" ? displayedNumber(row.bestLap) : undefined;
+    return seconds !== undefined && seconds > 0 && Number.isFinite(seconds)
+      && (!best || seconds < best.bestLap.v!) ? row : best;
+  }, undefined);
   const limited = scoped.slice(0, content.rowCount ?? 20);
   const nameColumn = columns.find((column) => column.metricId === "driverName");
   const weather = frame.weather;
@@ -96,6 +101,7 @@ export function buildStandingsViewModelV2(
       remainingText: formatRemainingTime(displayedNumber(frame.session.remaining)),
       trackName: displayedText(frame.session.track),
       totalRows: scoped.length,
+      sessionBest: sessionBestRow ? { rowId: sessionBestRow.id, seconds: sessionBestRow.bestLap.v! } : undefined,
       ambientTempText: formatTemp(displayedNumber(weather?.ambientC)),
       trackTempText: formatTemp(displayedNumber(weather?.trackC)),
       windText: formatWind(displayedNumber(weather?.windKph)),
@@ -201,6 +207,7 @@ function buildRow(
     currentLapText: row.laps === undefined ? "" : String(row.laps),
     lastLapText: formatLapTime(displayedNumber(row.lastLap)),
     bestLapText: formatLapTime(displayedNumber(row.bestLap)),
+    bestLapSeconds: row.bestLap?.q === "fresh" ? displayedNumber(row.bestLap) : undefined,
     pitText: row.pit === "pit" ? "PIT" : "",
     tireCompound: "",
     isPlayer: playerId !== undefined && row.id === playerId,

@@ -12,6 +12,8 @@ export type SceneOverride = {
   inPits?: boolean;
   tireCompound?: string;
   bestLapTime?: number;
+  /** Improvement against this session's demo baseline, in seconds. */
+  bestLapImprovement?: number;
   /** Drops the car from the field entirely (retirement / rejoin frames). */
   absent?: boolean;
 };
@@ -427,7 +429,7 @@ const PEDALS_CLUTCH_SCENE: AnimationScene = {
 const FUNCTIONAL_STANDINGS_SCENES: readonly AnimationScene[] = [
   {
     id: "standings-functional-position", sessions: ["race"], widget: "standings", label: "Cambio de posición · por piloto",
-    watchFor: "Ben Hanley y Filipe Albuquerque intercambian posición. Cada fila se desliza y recibe un destello verde o rojo. Pulsa Reproducir para verlo.",
+    watchFor: "Ben Hanley y Filipe Albuquerque intercambian posición. Cada fila se desliza, recibe un acento verde o rojo y muestra temporalmente los puestos ganados o perdidos. Pulsa Reproducir para verlo.",
     frameMs: 1600,
     frames: [
       { caption: "Posiciones iniciales.", cars: {} },
@@ -437,13 +439,46 @@ const FUNCTIONAL_STANDINGS_SCENES: readonly AnimationScene[] = [
   },
   {
     id: "standings-functional-pit", widget: "standings", label: "Entrada y salida de boxes",
-    watchFor: "La etiqueta PIT aparece junto a André Lotterer al entrar en boxes y desaparece al salir. Activa Estado en boxes; este estado no añade un efecto de movimiento.",
+    watchFor: "La etiqueta PIT aparece junto a André Lotterer al entrar en boxes y desaparece al salir. Activa Estado en boxes: la etiqueta entra y sale suavemente, ligada a su piloto.",
     frameMs: 1600,
     frames: [
       { caption: "Lotterer está en pista.", cars: { "André Lotterer": { inPits: false } } },
       { caption: "Lotterer entra en boxes: aparece PIT.", cars: { "André Lotterer": { inPits: true } } },
       { caption: "Lotterer sigue en boxes.", cars: { "André Lotterer": { inPits: true } } },
       { caption: "Lotterer vuelve a pista: desaparece PIT.", cars: { "André Lotterer": { inPits: false } } },
+    ],
+  },
+  {
+    id: "standings-functional-personal-best", widget: "standings", label: "Mejor vuelta personal",
+    watchFor: "Activa Mejor vuelta. Un barrido verde destaca la mejora de Antonio Giovinazzi; las cifras conservan su posición y tamaño.",
+    frameMs: 1700,
+    frames: [
+      { caption: "Referencia personal inicial.", cars: {} },
+      { caption: "Giovinazzi mejora su vuelta en 0,150 s.", cars: { "Antonio Giovinazzi": { bestLapImprovement: 0.15 } } },
+      { caption: "La nueva vuelta permanece; el aviso se retira.", cars: { "Antonio Giovinazzi": { bestLapImprovement: 0.15 } } },
+    ],
+  },
+  {
+    id: "standings-functional-session-best", widget: "standings", label: "Mejor vuelta de sesión",
+    watchFor: "Activa Mejor vuelta. El acento morado y el distintivo pasan al nuevo piloto más rápido, sin ampliar ni desplazar los tiempos.",
+    frameMs: 1700,
+    frames: [
+      { caption: "Lotterer tiene la referencia de la sesión.", cars: {} },
+      { caption: "Giovinazzi marca la mejor vuelta.", cars: { "Antonio Giovinazzi": { bestLapImprovement: 0.55 } } },
+      { caption: "Bovy mejora esa referencia y recibe el distintivo.", cars: { "Antonio Giovinazzi": { bestLapImprovement: 0.55 }, "Sarah Bovy": { bestLapImprovement: 0.9 } } },
+      { caption: "Los avisos se retiran; el récord queda identificado.", cars: { "Antonio Giovinazzi": { bestLapImprovement: 0.55 }, "Sarah Bovy": { bestLapImprovement: 0.9 } } },
+    ],
+  },
+  {
+    id: "standings-functional-combined", widget: "standings", sessions: ["race"], label: "Secuencia combinada · conducción",
+    watchFor: "Activa Mejor vuelta y Estado en boxes. Revisa la mejora personal, el cambio de posiciones con PIT unido a su fila y el récord morado. Los avisos temporales son breves y las cifras estables.",
+    frameMs: 1700,
+    frames: [
+      { caption: "Clasificación inicial.", cars: { "Ben Hanley": { inPits: false } } },
+      { caption: "Giovinazzi mejora su referencia personal.", cars: { "Ben Hanley": { inPits: false }, "Antonio Giovinazzi": { bestLapImprovement: 0.15 } } },
+      { caption: "Cambio de posición; PIT sigue a Albuquerque.", cars: { "Ben Hanley": { place: 5, inPits: false }, "Filipe Albuquerque": { place: 2, inPits: true }, "Antonio Giovinazzi": { bestLapImprovement: 0.15 } } },
+      { caption: "Giovinazzi marca el récord de sesión.", cars: { "Ben Hanley": { place: 5, inPits: false }, "Filipe Albuquerque": { place: 2, inPits: true }, "Antonio Giovinazzi": { bestLapImprovement: 0.55 } } },
+      { caption: "Albuquerque sale de boxes.", cars: { "Ben Hanley": { place: 5, inPits: false }, "Filipe Albuquerque": { place: 2, inPits: false }, "Antonio Giovinazzi": { bestLapImprovement: 0.55 } } },
     ],
   },
 ];

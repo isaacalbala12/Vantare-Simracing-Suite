@@ -23,6 +23,8 @@ export type StandingsRowViewModel = {
   currentLapText: string;
   lastLapText: string;
   bestLapText: string;
+  /** Fresh numeric authority for lap events; absent values never trigger motion. */
+  bestLapSeconds?: number;
   pitText: string;
   tireCompound: string;
   isPlayer: boolean;
@@ -45,6 +47,8 @@ export type StandingsViewModel = WidgetViewModelBase & {
   lapText?: string;
   trackName?: string;
   totalRows?: number;
+  /** Fastest fresh lap over the full configured field, before row/window limits. */
+  sessionBest?: { rowId: string; seconds: number };
   /** Datos ambientales opcionales para la banda inferior; solo existen cuando
    *  la fuente V2 los entrega (hoy LMU no los soporta — declared gap). */
   ambientTempText?: string;

@@ -33,6 +33,20 @@ function fullGoldenFrame(): OverlayFrameV2 {
 }
 
 describe("buildStandingsViewModelV2 session columns", () => {
+  it("keeps record authority outside the visible window and rejects old lap samples", () => {
+    const frame = frameForPhase("race");
+    frame.standings[1]!.bestLap = { q: "fresh", v: 239 };
+    const limited = { ...content, rowCount: 1 };
+    const value = buildStandingsViewModelV2(frame, { state: "live" }, limited);
+    expect(value.rows).toHaveLength(1);
+    expect(value.sessionBest).toEqual({ rowId: frame.standings[1]!.id, seconds: 239 });
+    expect(value.rows[0]!.bestLapSeconds).toBe(240);
+    frame.standings[0]!.bestLap = { q: "stale", v: 238 };
+    const old = buildStandingsViewModelV2(frame, { state: "live" }, limited);
+    expect(old.rows[0]!.bestLapSeconds).toBeUndefined();
+    expect(old.sessionBest?.seconds).toBe(239);
+  });
+
   it("projects session information without confusing fuel range with race laps", () => {
     const frame = frameForPhase("race");
     const model = buildStandingsViewModelV2({ ...frame,

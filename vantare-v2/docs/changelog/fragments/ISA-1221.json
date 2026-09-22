@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1221",
+  "type": "feature",
+  "summary": "Standings Eficiencia añade animaciones contenidas para seguir posiciones, mejores vueltas y boxes durante la conducción.",
+  "technicalNotes": [
+    "Las filas se desplazan desde el primer cambio y muestran brevemente los puestos ganados o perdidos. PIT acompaña al piloto y aparece o desaparece suavemente.",
+    "La mejor vuelta personal recibe un barrido verde y el récord de sesión un acento morado. Las cifras conservan tamaño y alineación; como máximo aparecen tres avisos simultáneos.",
+    "La mejor vuelta se resuelve sobre todo el campo configurado antes de recortar las filas. Se respetan movimiento reducido, cambios de fuente y limpieza de animaciones al retirar pilotos o desconectar.",
+    "Workshop incluye escenas individuales y combinada, datos propios de práctica, clasificación y carrera y controles de boxes coherentes. Se conserva Delta sin el pulso numérico al cruzar cero aprobado por Isaac."
+  ],
+  "testing": [
+    "En Workshop, seleccionar Standings, Eficiencia y Carrera; activar Mejor vuelta y Estado en boxes. Elegir Secuencia combinada · conducción y pulsar Reproducir.",
+    "Comprobar las escenas de posiciones, mejora personal, récord de sesión y boxes por separado; repetir las de vuelta en Práctica y Clasificación.",
+    "Activar la preferencia de movimiento reducido y comprobar actualizaciones directas sin avisos animados."
+  ],
+  "knownLimitations": [
+    "Candidato pendiente de revisión visual de Isaac e integración autorizada; las pruebas automatizadas no certifican una sesión LMU real.",
+    "Batallas y transiciones de entrada o salida de la ventana quedan para el siguiente bloque de revisión."
+  ]
+}

@@ -4,7 +4,11 @@ import type {
   OverlaySourceStatusV2,
 } from "../../../generated/telemetry";
 import type { PedalsContent } from "./pedals-definition";
-import type { PedalsViewModel } from "./pedals-view-model";
+import type {
+  PedalsFlag,
+  PedalsSessionPhase,
+  PedalsViewModel,
+} from "./pedals-view-model";
 
 function clampPedal(value: number): number {
   if (!Number.isFinite(value)) return 0;
@@ -31,7 +35,39 @@ function unavailable(status: PedalsViewModel["status"], statusMessage?: string):
     throttleText: "0%",
     brakeText: "0%",
     clutchText: "0%",
+    flag: "unknown",
+    sessionPhase: "unknown",
   };
+}
+
+function displayedFlag(value: OverlayQValue<string>): PedalsFlag {
+  if (value.q !== "fresh") return "unknown";
+  switch (value.v?.trim().toLowerCase()) {
+    case "green":
+    case "yellow":
+    case "blue":
+    case "red":
+    case "white":
+    case "black":
+      return value.v.trim().toLowerCase() as Exclude<PedalsFlag, "unknown" | "checkered">;
+    case "checkered":
+    case "chequered":
+      return "checkered";
+    default:
+      return "unknown";
+  }
+}
+
+function displayedSessionPhase(value: OverlayQValue<string>): PedalsSessionPhase {
+  if (value.q !== "fresh") return "unknown";
+  switch (value.v?.trim().toLowerCase()) {
+    case "practice":
+    case "qualifying":
+    case "race":
+      return value.v.trim().toLowerCase() as Exclude<PedalsSessionPhase, "unknown">;
+    default:
+      return "unknown";
+  }
 }
 
 /**
@@ -41,7 +77,10 @@ function unavailable(status: PedalsViewModel["status"], statusMessage?: string):
  * (mismos que `pedals-telemetry` e `input-telemetry`). No reimplementa
  * dominio: solo formatea 0..1 a porcentaje y propaga el lifecycle del source.
  * Cuando el frame omite el valor (q=missing/invalid) se muestra 0%, como en v1
- * cuando `snapshot.player.*` era undefined.
+ * cuando `snapshot.player.*` era undefined. La señal de sesión se consume
+ * aparte: `session.flag` y `session.phase` solo llegan a la línea de estado
+ * cuando son valores frescos y reconocidos; nunca se deduce una bandera del
+ * color o del valor de un pedal, ni se inventa verde por ausencia.
  */
 export function buildPedalsViewModelV2(
   frame: OverlayFrameV2,
@@ -73,6 +112,8 @@ export function buildPedalsViewModelV2(
     throttleText: formatPedalPercent(throttle),
     brakeText: formatPedalPercent(brake),
     clutchText: formatPedalPercent(clutch),
+    flag: displayedFlag(frame.session.flag),
+    sessionPhase: displayedSessionPhase(frame.session.phase),
   };
 }
 
@@ -82,6 +123,8 @@ export function pedalsDisplayedValues(model: PedalsViewModel): Readonly<Record<s
     throttle: model.throttleText,
     brake: model.brakeText,
     clutch: model.clutchText,
+    flag: model.flag ?? "unknown",
+    sessionPhase: model.sessionPhase ?? "unknown",
   });
 }
 

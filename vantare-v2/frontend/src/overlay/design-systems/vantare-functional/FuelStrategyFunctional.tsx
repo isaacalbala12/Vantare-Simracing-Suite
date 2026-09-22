@@ -10,7 +10,12 @@ import { functionalLabels } from "./labels";
 export function FuelStrategyFunctional({ model, effects }: WidgetRendererProps<FuelStrategyViewModel>) {
   const { locale } = useI18n();
   const labels = functionalLabels[locale];
-  const statusText = model.status !== "ready" ? labels[model.status] : undefined;
+  const source = model.source ?? "fuel";
+  const statusText = model.status !== "ready"
+    ? labels[model.status]
+    : model.sourceUnavailable
+      ? labels.virtualEnergyUnavailable
+      : undefined;
   const liters = (value: number | undefined, decimals = 1) =>
     value === undefined ? "—" : `${value.toFixed(decimals)} L`;
   const percent = model.fuelPercent === undefined
@@ -18,21 +23,19 @@ export function FuelStrategyFunctional({ model, effects }: WidgetRendererProps<F
     : Math.max(0, Math.min(100, model.fuelPercent));
 
   return (
-    <section className="vf-fuel-strategy" data-widget-system="vantare-functional" data-widget-renderer="fuel-strategy" data-status={model.status} data-effects={effects}>
+    <section className="vf-fuel-strategy" data-widget-system="vantare-functional" data-widget-renderer="fuel-strategy" data-status={model.status} data-source={source} data-effects={effects}>
       {statusText ? (
         <p className="vf-status" role="status">{statusText}</p>
       ) : (
         <>
           <div className="vf-fuel-main">
             <div className="vf-fuel-head">
-              <span className="vf-fuel-label">{labels.fuel}</span>
+              <span className="vf-fuel-label">{source === "virtual-energy" ? labels.virtualEnergy : labels.fuel}</span>
               <b className="vf-fuel-value">{liters(model.fuelLiters)}</b>
             </div>
-            {percent !== undefined && (
-              <div className="vf-fuel-bar" role="presentation">
-                <i style={{ width: `${percent}%` }} />
-              </div>
-            )}
+            <div className="vf-fuel-bar" role="presentation">
+              <i style={{ width: `${percent ?? 0}%` }} />
+            </div>
             <div className="vf-fuel-stats">
               <span className="vf-fuel-stat">
                 <em className="vf-fuel-stat-label">{labels.avg}</em>

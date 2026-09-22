@@ -110,7 +110,7 @@ func hashStandingsVehicle(sum uint64, vehicle *core.VehicleState) uint64 {
 // to the published window around the player. A signal the builder ignores (RPM,
 // world position, fuel) never marks the section dirty; changing the player or
 // any neighbour inside the window always does, even if the rest of the grid is
-// untouched. The hash is ordered far->near ahead, player, near->far behind.
+// untouched. The hash is ordered near->far ahead, player, near->far behind.
 func hashRelativeMark(final derive.FinalState) uint64 {
 	sum := fnvOffset64
 	window, found := selectPhysicalRelativeWindow(final.Observed.Vehicles)

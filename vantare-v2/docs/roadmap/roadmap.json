@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T13:07:52Z",
+  "generatedAt": "2026-09-22T13:10:46Z",
   "digest": {
-    "lastCommit": "7f3650e4f9201e347dddeab6df6d1deca3dee7b2"
+    "lastCommit": "1101f73579ddaa8798b7d9948bae8b4e2a77d850"
   },
   "phases": [
     {
@@ -2063,10 +2063,10 @@
         "it": "Sistema di design Efficienza"
       },
       "body": {
-        "es": "Eficiencia ofrece los estilos Signature y Broadcast para Standings, con transparencia suave, identidad Vantare, tipografía unificada y selección neutra. Cabecera y pie fino permiten elegir información de sesión; las diagonales reflejan la bandera sin animación cuando existe una señal vigente. La fuente REST LMU aporta temperaturas con calidad y caducidad y una bandera fail-closed; su equivalencia de códigos exige comprobación en sesión activa. Los perfiles conservan la selección y el marco adapta columnas, filas y pie en Studio, Desktop y OBS. La entrega conjunta quedó validada físicamente e integrada en Nightly mediante PR #1107; la equivalencia de bandera y temperatura sigue pendiente de una sesión LMU activa.",
-        "en": "Efficiency offers Signature and Broadcast Standings styles, with subtle transparency, Vantare identity, unified typography and neutral selection. The header and thin footer offer selectable session information; diagonal accents reflect the flag without animation when a current signal exists. The LMU REST source supplies temperatures with quality and expiry plus a fail-closed flag; its code mapping requires an active-session check. Profiles retain selections and the frame fits columns, rows and footer across Studio, Desktop and OBS. The joint delivery was physically validated and integrated into Nightly through PR #1107; flag and temperature equivalence still awaits an active LMU session.",
-        "pt": "Eficiência oferece os estilos Signature e Broadcast para Standings, com transparência suave, identidade Vantare, tipografia unificada e seleção neutra. Cabeçalho e rodapé fino permitem escolher informação da sessão; as diagonais refletem a bandeira sem animação quando existe um sinal atual. A fonte REST LMU fornece temperaturas com qualidade e expiração e uma bandeira fail-closed; o mapeamento dos códigos exige verificação numa sessão ativa. Os perfis preservam a seleção e o quadro adapta colunas, filas e rodapé no Studio, Desktop e OBS. A entrega conjunta foi validada fisicamente e integrada na Nightly através do PR #1107; a equivalência da bandeira e da temperatura continua pendente de uma sessão LMU ativa.",
-        "it": "Efficienza offre gli stili Signature e Broadcast per Standings, con trasparenza lieve, identità Vantare, tipografia unificata e selezione neutra. Intestazione e piè sottile permettono di scegliere informazioni di sessione; le diagonali riflettono la bandiera senza animazione quando esiste un segnale attuale. La fonte REST LMU fornisce temperature con qualità e scadenza e una bandiera fail-closed; la mappatura dei codici richiede una verifica in sessione attiva. I profili conservano la selezione e il riquadro adatta colonne, righe e piè in Studio, Desktop e OBS. La consegna congiunta è stata verificata fisicamente e integrata in Nightly tramite la PR #1107; l'equivalenza di bandiera e temperatura resta in attesa di una sessione LMU attiva."
+        "es": "Eficiencia ofrece los estilos Signature y Broadcast para Standings, con transparencia suave, identidad Vantare, tipografía unificada y selección neutra. Cabecera y pie fino permiten elegir información de sesión; las diagonales reflejan la bandera sin animación cuando existe una señal vigente. La fuente REST LMU aporta temperaturas con calidad y caducidad y una bandera fail-closed; su equivalencia de códigos exige comprobación en sesión activa. Los perfiles conservan la selección y el marco adapta columnas, filas y pie en Studio, Desktop y OBS. La entrega conjunta quedó validada físicamente e integrada en Nightly mediante PR #1107; la equivalencia de bandera y temperatura sigue pendiente de una sesión LMU activa. La recuperación de los ajustes locales de Delta, Relative, Standings, Pedals y Fuel Strategy ha pasado las pruebas funcionales y los controles de calidad; Isaac ha autorizado su integración inicial en Nightly y la revisión visual continúa en Workshop, sin certificar todavía LMU activo.",
+        "en": "Efficiency offers Signature and Broadcast Standings styles, with subtle transparency, Vantare identity, unified typography and neutral selection. The header and thin footer offer selectable session information; diagonal accents reflect the flag without animation when a current signal exists. The LMU REST source supplies temperatures with quality and expiry plus a fail-closed flag; its code mapping requires an active-session check. Profiles retain selections and the frame fits columns, rows and footer across Studio, Desktop and OBS. The joint delivery was physically validated and integrated into Nightly through PR #1107; flag and temperature equivalence still awaits an active LMU session. Recovery of local Delta, Relative, Standings, Pedals and Fuel Strategy refinements has passed functional tests and quality checks; Isaac has authorized initial Nightly integration and visual review continues in Workshop, without active LMU certification yet.",
+        "pt": "Eficiência oferece os estilos Signature e Broadcast para Standings, com transparência suave, identidade Vantare, tipografia unificada e seleção neutra. Cabeçalho e rodapé fino permitem escolher informação da sessão; as diagonais refletem a bandeira sem animação quando existe um sinal atual. A fonte REST LMU fornece temperaturas com qualidade e expiração e uma bandeira fail-closed; o mapeamento dos códigos exige verificação numa sessão ativa. Os perfis preservam a seleção e o quadro adapta colunas, filas e rodapé no Studio, Desktop e OBS. A entrega conjunta foi validada fisicamente e integrada na Nightly através do PR #1107; a equivalência da bandeira e da temperatura continua pendente de uma sessão LMU ativa. A recuperação dos ajustes locais de Delta, Relative, Standings, Pedals e Fuel Strategy passou nos testes funcionais e controlos de qualidade; Isaac autorizou a integração inicial na Nightly e a revisão visual continua no Workshop, ainda sem certificar LMU ativo.",
+        "it": "Efficienza offre gli stili Signature e Broadcast per Standings, con trasparenza lieve, identità Vantare, tipografia unificata e selezione neutra. Intestazione e piè sottile permettono di scegliere informazioni di sessione; le diagonali riflettono la bandiera senza animazione quando esiste un segnale attuale. La fonte REST LMU fornisce temperature con qualità e scadenza e una bandiera fail-closed; la mappatura dei codici richiede una verifica in sessione attiva. I profili conservano la selezione e il riquadro adatta colonne, righe e piè in Studio, Desktop e OBS. La consegna congiunta è stata verificata fisicamente e integrata in Nightly tramite la PR #1107; l'equivalenza di bandiera e temperatura resta in attesa di una sessione LMU attiva. Il recupero degli aggiornamenti locali di Delta, Relative, Standings, Pedals e Fuel Strategy ha superato i test funzionali e i controlli di qualità; Isaac ha autorizzato l’integrazione iniziale in Nightly e la revisione visiva continua in Workshop, senza certificare ancora LMU attivo."
       },
       "label": {
         "es": "ISA-1083",
@@ -2144,6 +2144,16 @@
   ],
   "delivered": [
     {
+      "date": "2026-09-22",
+      "entries": [
+        {
+          "kind": "feat",
+          "scope": "widgets",
+          "text": "Recuperar cambios locales de revisión"
+        }
+      ]
+    },
+    {
       "date": "2026-09-20",
       "entries": [
         {
@@ -2167,6 +2177,16 @@
       "date": "2026-09-15",
       "entries": [
         {
+          "kind": "perf",
+          "scope": "",
+          "text": "Segunda ronda de optimización dirigida por hechos + overnight consolidada"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-928 · Persistir controles y avisar Spotter no disponible"
+        },
+        {
           "kind": "change",
           "scope": "",
           "text": "Workshop: study view como único harness"
@@ -2185,16 +2205,6 @@
           "kind": "fix",
           "scope": "engineer",
           "text": "Cierra el contrato de evento UI del widget radio"
-        },
-        {
-          "kind": "perf",
-          "scope": "",
-          "text": "Segunda ronda de optimización dirigida por hechos + overnight consolidada"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-928 · Persistir controles y avisar Spotter no disponible"
         }
       ]
     },
@@ -2660,31 +2670,6 @@
           "kind": "fix",
           "scope": "studio",
           "text": "Evitar salto con movimiento reducido"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-23",
-      "entries": [
-        {
-          "kind": "perf",
-          "scope": "studio",
-          "text": "Cache SWR del documento — los widgets pintan al instante"
-        },
-        {
-          "kind": "docs",
-          "scope": "release",
-          "text": "Manifiesto v0.1.0.7-nightly.12 (núcleo de telemetría Go-first completo)"
-        },
-        {
-          "kind": "feat",
-          "scope": "overlay",
-          "text": "Registro v2 completo (18 widgets) y track-map con marcadores desde groundPosition"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-781/782: track-weather, broadcast-tower y posicion para track-map sobre v2"
         }
       ]
     }

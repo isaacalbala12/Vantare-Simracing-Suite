@@ -47,6 +47,8 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
   });
   const labels = functionalLabels[locale];
   const columns = model.columns;
+  const hasPositionColumn = columns.some((column) => column.metricId === "position");
+  const hasClassColumn = columns.some((column) => column.metricId === "class");
   const unavailable = model.status === "disconnected" || model.status === "missing" || model.status === "error";
   const statusText = model.status !== "ready" ? labels[model.status] : model.rows.length === 0 ? labels.missing : undefined;
   const hasMeta = Boolean(model.trackText || model.playerBadgeText);
@@ -103,9 +105,13 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
                 const value = column.metricId === "gap" && row.isPlayer ? "—" : resolveRelativeCellValue(row, column.metricId);
                 const align = column.style?.align ?? (CENTERED.has(column.metricId) ? "center" : column.metricId === "driverName" ? "left" : "right");
                 return <td key={column.id} data-metric={column.metricId} aria-label={`${labelFor(column.metricId)}: ${value}`} style={{ textAlign: align }}>
-                  {column.metricId === "class" ? <span className="vf-class-tick" style={{ background: resolveRelativeClassColor(row.vehicleClass, settings) } as CSSProperties} /> :
-                    column.metricId === "driverName" ? <span className="vf-driver"><span className="vf-driver-name" title={value}>{value}</span></span> :
-                      <span title={value} className={`vf-cell-value${LAP_METRICS.has(column.metricId) ? " vf-lap-value" : ""}`}>{value}</span>}
+                  {column.metricId === "class" ? hasPositionColumn ? null : <span className="vf-class-tick" style={{ background: resolveRelativeClassColor(row.vehicleClass, settings) } as CSSProperties} /> :
+                    column.metricId === "position" ? <span className={`vf-position-identity${hasClassColumn ? " vf-position-identity--with-class" : ""}`}>
+                      <span title={value} className="vf-cell-value">{value}</span>
+                      {hasClassColumn && <span className="vf-class-tick" aria-hidden="true" style={{ background: resolveRelativeClassColor(row.vehicleClass, settings) } as CSSProperties} />}
+                    </span> :
+                      column.metricId === "driverName" ? <span className="vf-driver"><span className="vf-driver-name" title={value}>{value}</span></span> :
+                        <span title={value} className={`vf-cell-value${LAP_METRICS.has(column.metricId) ? " vf-lap-value" : ""}`}>{value}</span>}
                 </td>;
               })}
             </tr>

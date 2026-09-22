@@ -5,6 +5,7 @@ import type {
   WidgetInstanceV3,
   WidgetType,
 } from "./profile-document";
+import { isEfficiencySystem } from "./design-system-names";
 
 /**
  * Decisión nativa de acceso y marca por widget (ISA-1097/ISA-1105).
@@ -182,7 +183,7 @@ export function resolveBrandMode(
   if (!effective) {
     // Fail-safe de arranque: Crystal/Efficiency exigen marca, Original y los
     // demás sistemas conservan su política (ninguna impuesta desde aquí).
-    return systemId === "vantare-crystal" || systemId === "vantare-functional"
+    return systemId === "vantare-crystal" || isEfficiencySystem(systemId)
       ? "required"
       : "none";
   }

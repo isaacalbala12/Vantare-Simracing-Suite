@@ -3,10 +3,11 @@ import type { WidgetRendererProps } from "../../core/design-system-definition";
 import type { PedalsViewModel } from "../../widget-types/pedals/pedals-view-model";
 import { functionalLabels } from "./labels";
 
-export function PedalsFunctional({ model, effects }: WidgetRendererProps<PedalsViewModel>) {
+export function PedalsFunctional({ model, settings, effects }: WidgetRendererProps<PedalsViewModel>) {
   const { locale } = useI18n();
   const labels = functionalLabels[locale];
   const statusText = model.status !== "ready" ? labels[model.status] : undefined;
+  const transparentBackground = settings.transparentBackground === true;
   const pedals = [
     { id: "clutch", value: model.clutch, text: model.clutchText, label: "C", name: labels.clutch },
     { id: "brake", value: model.brake, text: model.brakeText, label: "B", name: labels.brake },
@@ -15,7 +16,7 @@ export function PedalsFunctional({ model, effects }: WidgetRendererProps<PedalsV
 
   // Sin cabecera: las barras son el widget entero (decisión de Isaac).
   return (
-    <section className="vf-pedals" data-widget-system="vantare-functional" data-widget-renderer="pedals" data-status={model.status} data-session-header="false" data-effects={effects}>
+    <section className={`vf-pedals${transparentBackground ? " vf-pedals--overlay" : ""}`} data-widget-system="vantare-functional" data-widget-renderer="pedals" data-status={model.status} data-transparent={transparentBackground ? "true" : "false"} data-session={model.sessionPhase ?? "unknown"} data-flag={model.flag ?? "unknown"} data-session-header="false" data-effects={effects}>
       {statusText && <p className="vf-status" role="status">{statusText}</p>}
       {model.statusMessage && model.status !== "stale" && <p className="vf-detail">{model.statusMessage}</p>}
       <div className="vf-pedals-bars" role="group" aria-label={labels.pedals}>

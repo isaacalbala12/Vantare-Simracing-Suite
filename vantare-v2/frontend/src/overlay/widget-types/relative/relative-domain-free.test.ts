@@ -15,18 +15,14 @@ const CONTENT = relativeDefinition.parseContent({});
 
 describe("relative v2 view model", () => {
   it.each([20, 44, 104])(
-    "renders the window resolved in Go for the %i-vehicle golden without re-selecting",
+    "renders the Go window closest-first for the %i-vehicle golden without re-selecting",
     (vehicles) => {
       const frame = goldenFrame(vehicles);
       const model = buildRelativeViewModelV2(frame, { state: "live" }, CONTENT);
-      const anchor = frame.relative.findIndex((row) => row.side === "player");
-      const expected = [
-        ...frame.relative.slice(Math.max(0, anchor - CONTENT.rangeAhead), anchor),
-        frame.relative[anchor],
-        ...frame.relative.slice(anchor + 1, anchor + 1 + CONTENT.rangeBehind),
-      ];
-      expect(model.rows.map((row) => row.id)).toEqual(expected.map((row) => row.id));
-      expect(model.rows.map((row) => row.side)).toEqual(expected.map((row) => row.side));
+      expect(model.rows.map((row) => row.position)).toEqual([2, 3, 4, 1, vehicles, vehicles - 1, vehicles - 2]);
+      expect(model.rows.map((row) => row.side)).toEqual([
+        "ahead", "ahead", "ahead", "player", "behind", "behind", "behind",
+      ]);
     },
   );
 
@@ -487,7 +483,7 @@ describe("relative v2 view model", () => {
     const reordered = relativeScenarioFrame(base, 651, ["near", "far"], [], true, { far: 8.5 }, { far: 101, near: 102 });
     const model = buildRelativeViewModelV2(reordered, { state: "live" }, content, options);
 
-    expect(nonPlayerIds(model)).toEqual(["far", "near"]);
+    expect(nonPlayerIds(model)).toEqual(["near", "far"]);
     expect(model.rows.find((row) => row.id === "far")?.gapSeconds).toBe(8.5);
   });
 
@@ -600,6 +596,9 @@ function relativeScenarioFrame(
   gaps: Readonly<Record<string, number>> = {},
   groundXById: Readonly<Record<string, number>> = {},
 ): OverlayFrameV2 {
+  // Keep call sites readable as far→near scenarios while publishing the V2
+  // contract in its canonical near→far order.
+  const aheadNearToFar = [...aheadFarToNear].reverse();
   const playerId = base.player.id;
   const makeRow = (id: string, side: "ahead" | "behind", index: number) => ({
     id,
@@ -619,7 +618,7 @@ function relativeScenarioFrame(
       ? { ...row, pit: playerInPit ? "pit" : "track" }
       : row),
     relative: [
-      ...aheadFarToNear.map((id, index) => makeRow(id, "ahead", index)),
+      ...aheadNearToFar.map((id, index) => makeRow(id, "ahead", index)),
       { id: playerId, position: 99, gap: { q: "fresh", v: 0 }, groundPosition: { q: "fresh", v: { x: 950, z: 0 } }, lastLap: { q: "fresh", v: 89 }, side: "player", authority: "derived", name: "player", classId: "HYPERCAR" },
       ...behindNearToFar.map((id, index) => makeRow(id, "behind", index)),
     ] as OverlayFrameV2["relative"],

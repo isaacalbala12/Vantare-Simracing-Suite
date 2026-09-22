@@ -8,8 +8,12 @@ import {
 import { vantareCrystalManifest } from "../design-systems/vantare-crystal/manifest";
 import { vantareEnduranceManifest } from "../design-systems/vantare-endurance/manifest";
 import { vantareOriginalManifest } from "../design-systems/vantare-original/manifest";
-import { vantareFunctionalManifest } from "../design-systems/vantare-functional/manifest";
+import { vantareEfficiencyManifest } from "../design-systems/vantare-efficiency/manifest";
 import { vantareIracingManifest } from "../design-systems/vantare-iracing/manifest";
+import {
+  normalizeDesignSystemId,
+  type DesignSystemIdAlias,
+} from "./design-system-names";
 
 type MigrationStep = (settings: Record<string, unknown>) => Record<string, unknown>;
 
@@ -96,11 +100,14 @@ export class DesignSystemRegistry {
     this.definitions.set(key, definition);
   }
 
-  get(id: DesignSystemId, version: number): DesignSystemDefinition {
-    const definition = this.definitions.get(systemKey(id, version));
+  get(id: DesignSystemIdAlias, version: number): DesignSystemDefinition {
+    const normalizedId = normalizeDesignSystemId(id);
+    const definition = normalizedId === undefined
+      ? undefined
+      : this.definitions.get(systemKey(normalizedId, version));
     if (!definition) {
       throw new DesignSystemResolutionError(
-        id,
+        (normalizedId ?? id) as DesignSystemId,
         version,
         "delta",
         `unknown design system version: ${id}@${version}`,
@@ -113,12 +120,12 @@ export class DesignSystemRegistry {
     return [...this.definitions.values()];
   }
 
-  resolve(id: DesignSystemId, version: number, widgetType: WidgetType): ResolvedWidgetSystem {
+  resolve(id: DesignSystemIdAlias, version: number, widgetType: WidgetType): ResolvedWidgetSystem {
     const definition = this.get(id, version);
     const registration = definition.widgets.find((widget) => widget.widgetType === widgetType);
     if (!registration) {
       throw new DesignSystemResolutionError(
-        id,
+        definition.id,
         version,
         widgetType,
         `unsupported widget type for design system: ${id}@${version}/${widgetType}`,
@@ -136,5 +143,5 @@ export const designSystemRegistry = new DesignSystemRegistry();
 designSystemRegistry.register(vantareOriginalManifest);
 designSystemRegistry.register(vantareCrystalManifest);
 designSystemRegistry.register(vantareEnduranceManifest);
-designSystemRegistry.register(vantareFunctionalManifest);
+designSystemRegistry.register(vantareEfficiencyManifest);
 designSystemRegistry.register(vantareIracingManifest);

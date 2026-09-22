@@ -49,6 +49,8 @@ export type AnimationScene = {
   /** Milliseconds per frame. A battle needs room to breathe; a flash does not. */
   frameMs: number;
   frames: readonly SceneFrame[];
+  /** Workshop-only classification swap for a scene that needs a mid-pack player. */
+  positionSwap?: readonly [number, number];
   /**
    * Telemetry field this animation needs, when the live projection does not
    * deliver it. Workshop keeps the value absent, so the catalog cannot suggest
@@ -457,7 +459,7 @@ const RELATIVE_FUNCTIONAL_SEQUENCE_SCENE: AnimationScene = {
   frameMs: 900,
   frames: [
     {
-      caption: "Inicio: Nico Pino detrás (−0,45 s); Giovinazzi P4 delante con −1 V; Mikkel Jensen fuera de la ventana",
+    caption: "En carrera: Nico Pino detrás (−0,45 s); Giovinazzi P4 delante con −1 V; Mikkel Jensen fuera de la ventana",
       cars: {
         "Nico Pino": { timeGapToPlayer: -0.45 },
         "Antonio Giovinazzi": { lapDelta: -1 },
@@ -528,29 +530,32 @@ const RELATIVE_FUNCTIONAL_LAP_DIFFERENCE_SCENE: AnimationScene = {
   widget: "relative",
   label: "Diferencia de vueltas",
   watchFor:
-    "Escena solo de carrera. Compara la vuelta del rival con la tuya: el signo marca más o menos vueltas, no la posición física ni la clasificación. El jugador conserva su fila; cero y datos ausentes no llevan etiqueta.",
+    "Escena solo de carrera. Compara la vuelta del rival con la tuya: el signo marca más o menos vueltas, sin afirmar el lado físico del coche. El jugador conserva su fila; cero y datos ausentes no llevan etiqueta.",
+  positionSwap: [1, 10],
   frameMs: 1400,
   frames: [
     {
-      caption: "Carrera: Antonio Giovinazzi P4 delante, −1 V; Kévin Estre en la misma vuelta; Ben Hanley +1 V; Mikkel Jensen +2 V; Nico Pino −2 V",
+      caption: "Carrera: jugador P10; Ben Hanley P2 +2 V, Kévin Estre P3 +1 V, Giovinazzi P4 +1 V; Maro Engel P18 en la misma vuelta; Jensen P19 −1 V y Nico Pino P20 −2 V",
       cars: {
-        "Antonio Giovinazzi": { lapDelta: -1 },
-        "Kévin Estre": { lapDelta: 0 },
-        "Ben Hanley": { lapDelta: 1 },
-        "Mikkel Jensen": { lapDelta: 2 },
-        "Nico Pino": { lapDelta: -2 },
-        "Maro Engel": { lapDeltaQuality: "missing" },
+        "André Lotterer": { timeGapToPlayer: 0 },
+        "Antonio Giovinazzi": { timeGapToPlayer: 0.6, lapDelta: 1 },
+        "Kévin Estre": { timeGapToPlayer: 0.4, lapDelta: 1 },
+        "Ben Hanley": { timeGapToPlayer: 0.3, lapDelta: 2 },
+        "Mikkel Jensen": { timeGapToPlayer: -0.6, lapDelta: -1 },
+        "Nico Pino": { timeGapToPlayer: -0.9, lapDelta: -2 },
+        "Maro Engel": { timeGapToPlayer: -0.3, lapDelta: 0 },
       },
     },
     {
-      caption: "Diferencias de dos vueltas a ambos lados; Estre sigue en la misma vuelta",
+      caption: "Carrera: Ben Hanley P2 +3 V, Estre P3 y Giovinazzi P4 +2 V; Maro Engel P18 sin dato; Jensen P19 −1 V y Nico Pino P20 −2 V",
       cars: {
-        "Antonio Giovinazzi": { lapDelta: -2 },
-        "Kévin Estre": { lapDelta: 0 },
-        "Ben Hanley": { lapDelta: 2 },
-        "Mikkel Jensen": { lapDelta: 1 },
-        "Nico Pino": { lapDelta: -1 },
-        "Maro Engel": { lapDeltaQuality: "missing" },
+        "André Lotterer": { timeGapToPlayer: 0 },
+        "Antonio Giovinazzi": { timeGapToPlayer: 0.6, lapDelta: 2 },
+        "Kévin Estre": { timeGapToPlayer: 0.4, lapDelta: 2 },
+        "Ben Hanley": { timeGapToPlayer: 0.3, lapDelta: 3 },
+        "Mikkel Jensen": { timeGapToPlayer: -0.6, lapDelta: -1 },
+        "Nico Pino": { timeGapToPlayer: -0.9, lapDelta: -2 },
+        "Maro Engel": { timeGapToPlayer: -0.3, lapDeltaQuality: "missing" },
       },
     },
   ],

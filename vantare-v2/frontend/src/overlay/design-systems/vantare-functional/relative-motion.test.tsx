@@ -65,11 +65,11 @@ describe("Relative presentation", () => {
   });
 
   it("seeds the first frame, slides rivals without moving the player, and ignores 100 numeric frames", () => {
-    const first = model([ahead, player, behind]);
+    const first = model([ahead, player, behind], { sessionLabel: "RACE" });
     const view = render(<RelativeFunctional model={first} settings={{}} renderMode="harness" />);
     expect(animations).toHaveLength(0);
     const playerNode = view.container.querySelector('[data-player="true"]');
-    view.rerender(<RelativeFunctional model={model([behind, player, ahead])} settings={{}} renderMode="harness" />);
+    view.rerender(<RelativeFunctional model={model([behind, player, ahead], { sessionLabel: "RACE" })} settings={{}} renderMode="harness" />);
     expect(view.container.querySelector('[data-player="true"]')).toBe(playerNode);
     const slides = animations.filter((entry) => entry.frames[0]?.transform);
     expect(slides).toHaveLength(2);
@@ -79,11 +79,13 @@ describe("Relative presentation", () => {
     const effects = animations.length;
     const timer = vi.spyOn(globalThis, "setTimeout");
     for (let tick = 0; tick < 100; tick++) {
-      view.rerender(<RelativeFunctional model={model([behind, player, { ...ahead, gapText: `+${tick}` }])} settings={{}} renderMode="harness" />);
+      view.rerender(<RelativeFunctional model={model([behind, player, { ...ahead, gapText: `+${tick}`, lapDelta: tick % 2 === 0 ? 1 : -1 }], { sessionLabel: "RACE" })} settings={{}} renderMode="harness" />);
     }
     expect(rectangles.mock.calls.length).toBe(readings);
     expect(animations).toHaveLength(effects);
     expect(timer).not.toHaveBeenCalled();
+    expect(view.container.querySelectorAll(".vf-relative-lap-delta")).toHaveLength(1);
+    expect(view.container.querySelector(".vf-relative-lap-delta")?.textContent).toBe("−1 V");
   });
 
   it("fades entry and an inert exit briefly; a fast reentry removes the ghost", () => {

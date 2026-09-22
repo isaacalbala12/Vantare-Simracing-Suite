@@ -1,4 +1,4 @@
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { WidgetVisualHost } from "../../core/WidgetVisualHost";
 import { I18nProvider } from "../../../i18n/I18nProvider";

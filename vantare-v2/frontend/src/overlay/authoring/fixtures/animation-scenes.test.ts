@@ -113,7 +113,7 @@ describe("animation scene catalog", () => {
         scene.frames.forEach((frame, index) => {
           const visibleNames = functionalRelativeModel(sceneId, index, session).rows.map((row) => row.driverName);
           for (const [name, patch] of Object.entries(frame.cars ?? {})) {
-            expect(["Nico Pino", "Mikkel Jensen", "Antonio Giovinazzi", "Kévin Estre", "Ben Hanley", "Maro Engel"]).toContain(name);
+            expect(["Nico Pino", "Mikkel Jensen", "Antonio Giovinazzi", "Kévin Estre", "Ben Hanley", "Maro Engel", "André Lotterer"]).toContain(name);
             expect(visibleNames.includes(name), `${session} ${sceneId} frame ${index}: ${name}; visible=${visibleNames.join(", ")}`)
               .toBe(patch.absent !== true);
           }
@@ -384,16 +384,39 @@ describe("scenes drive the motion engine", () => {
     expect(sceneFrames.every((frame) => frame.relative.some((row) => row.id === baseFrame.player.id))).toBe(true);
     const rowsAt = (index: number) => sceneFrames[index]!.relative;
     const lapAt = (index: number, name: string) => rowsAt(index).find((row) => row.name === name)!.lapDelta;
-    expect(lapAt(0, "Antonio Giovinazzi")).toEqual({ q: "fresh", v: -1 });
-    expect(lapAt(0, "Kévin Estre")).toEqual({ q: "fresh", v: 0 });
-    expect(lapAt(0, "Ben Hanley")).toEqual({ q: "fresh", v: 1 });
-    expect(lapAt(0, "Mikkel Jensen")).toEqual({ q: "fresh", v: 2 });
+    expect(lapAt(0, "Antonio Giovinazzi")).toEqual({ q: "fresh", v: 1 });
+    expect(lapAt(0, "Kévin Estre")).toEqual({ q: "fresh", v: 1 });
+    expect(lapAt(0, "Ben Hanley")).toEqual({ q: "fresh", v: 2 });
+    expect(lapAt(0, "Mikkel Jensen")).toEqual({ q: "fresh", v: -1 });
     expect(lapAt(0, "Nico Pino")).toEqual({ q: "fresh", v: -2 });
-    expect(lapAt(0, "Maro Engel")).toEqual({ q: "missing" });
+    expect(lapAt(0, "Maro Engel")).toEqual({ q: "fresh", v: 0 });
+    expect(lapAt(1, "Maro Engel")).toEqual({ q: "missing" });
 
     const firstModel = functionalRelativeModel(scene.id, 0);
     const secondModel = functionalRelativeModel(scene.id, 1);
     expect(firstModel.rows.filter((row) => !row.isPlayer)).toHaveLength(6);
+    expect(firstModel.rows.find((row) => row.isPlayer)).toMatchObject({ driverName: "André Lotterer", position: 10 });
+    expect(firstModel.playerBadgeText).toMatch(/^P10\b/);
+    const standingsAt = (name: string) => sceneFrames[0]!.standings.find((row) => row.driver === name)?.position;
+    expect(standingsAt("André Lotterer")).toBe(10);
+    expect(standingsAt("Gianmaria Bruni")).toBe(1);
+    for (const name of ["Ben Hanley", "Kévin Estre", "Antonio Giovinazzi", "Maro Engel", "Mikkel Jensen", "Nico Pino"]) {
+      const relative = sceneFrames[0]!.relative.find((row) => row.name === name);
+      const settled = sceneFrames[0]!.relativeSettled.find((row) => row.name === name);
+      expect(settled?.position, `${name} settled position`).toBe(relative?.position);
+    }
+    expect(firstModel.rows.find((row) => row.driverName === "Ben Hanley")).toMatchObject({ position: 2, lapDelta: 2 });
+    expect(firstModel.rows.find((row) => row.driverName === "Kévin Estre")).toMatchObject({ position: 3, lapDelta: 1 });
+    expect(firstModel.rows.find((row) => row.driverName === "Antonio Giovinazzi")).toMatchObject({ position: 4, lapDelta: 1 });
+    expect(firstModel.rows.find((row) => row.driverName === "Maro Engel")).toMatchObject({ position: 18, lapDelta: null });
+    expect(firstModel.rows.find((row) => row.driverName === "Mikkel Jensen")).toMatchObject({ position: 19, lapDelta: -1 });
+    expect(firstModel.rows.find((row) => row.driverName === "Nico Pino")).toMatchObject({ position: 20, lapDelta: -2 });
+    const rankedFreshLapDeltas = [
+      ...rowsAt(0).filter((row) => row.lapDelta.q === "fresh").map((row) => ({ position: row.position, value: row.lapDelta.v })),
+      { position: 10, value: 0 }, // The player is the zero-difference anchor and is omitted from Relative's rival rows.
+    ].sort((left, right) => left.position - right.position);
+    expect(rankedFreshLapDeltas.map((row) => row.value)).toEqual([2, 1, 1, 0, 0, -1, -2]);
+    expect(rankedFreshLapDeltas.every((row, index) => index === 0 || rankedFreshLapDeltas[index - 1]!.value >= row.value)).toBe(true);
     expect(relativeStructureKey(firstModel.rows)).toBe(relativeStructureKey(secondModel.rows));
     expect(relativeDisplayedValues(firstModel).rows).not.toBe(relativeDisplayedValues(secondModel).rows);
   });
@@ -409,12 +432,19 @@ describe("scenes drive the motion engine", () => {
       buildRelativeViewModelV2(nextFrame, nextSource, content);
     const p4Lap = (model: ReturnType<typeof build>) =>
       model.rows.find((row) => row.position === 4)?.lapDelta;
-    expect(p4Lap(build())).toBe(-1);
+    expect(p4Lap(build())).toBe(1);
     expect(p4Lap(build(frame, { ...source, state: "stale" }))).toBeUndefined();
     expect(p4Lap(build({
       ...frame,
       session: { ...frame.session, phase: { q: "stale", v: "race" } },
     }))).toBeNull();
+
+    const staleLapData = {
+      ...frame,
+      relative: frame.relative.map((row) => row.position === 4 ? { ...row, lapDelta: { q: "stale" as const, v: -1 } } : row),
+      relativeSettled: frame.relativeSettled.map((row) => row.position === 4 ? { ...row, lapDelta: { q: "stale" as const, v: -1 } } : row),
+    };
+    expect(p4Lap(build(staleLapData))).toBeNull();
 
     const withoutLapData = {
       ...frame,

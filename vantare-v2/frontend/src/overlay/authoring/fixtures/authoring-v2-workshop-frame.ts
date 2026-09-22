@@ -491,6 +491,31 @@ function withWorkshopRaceLapDeltas(frame: OverlayFrameV2, quality: OverlayQualit
   };
 }
 
+function withWorkshopRelativePositionSwap(
+  frame: OverlayFrameV2,
+  firstPosition: number,
+  secondPosition: number,
+): OverlayFrameV2 {
+  const firstClassPosition = frame.standings.find((row) => row.position === firstPosition)?.classPosition;
+  const secondClassPosition = frame.standings.find((row) => row.position === secondPosition)?.classPosition;
+  const swap = (position: number): number =>
+    position === firstPosition ? secondPosition : position === secondPosition ? firstPosition : position;
+  return {
+    ...frame,
+    standings: frame.standings
+      .map((row) => ({
+        ...row,
+        position: swap(row.position),
+        classPosition: row.position === firstPosition
+          ? secondClassPosition ?? row.classPosition
+          : row.position === secondPosition ? firstClassPosition ?? row.classPosition : row.classPosition,
+      }))
+      .sort((left, right) => left.position - right.position),
+    relative: frame.relative.map((row) => ({ ...row, position: swap(row.position) })),
+    relativeSettled: frame.relativeSettled.map((row) => ({ ...row, position: swap(row.position) })),
+  };
+}
+
 function withWorkshopPlayerPosition(frame: OverlayFrameV2, position: number): OverlayFrameV2 {
   const target = frame.standings.find((row) => row.position === position);
   if (!target) return frame;
@@ -797,6 +822,12 @@ function applyScene(
       };
       relative = [...relative].sort(relativeOrder);
       settled = [...settled].sort(relativeOrder);
+      if (scene.positionSwap) {
+        const selectedNames = new Set(Object.keys(state.cars));
+        const playerId = frame.player.id ?? "";
+        relative = relative.filter((row) => row.id === playerId || selectedNames.has(row.name ?? ""));
+        settled = settled.filter((row) => row.id === playerId || selectedNames.has(row.name ?? ""));
+      }
     } else {
       standings = standings.flatMap((row) => {
         const key = (row.driver && state.cars![row.driver] ? row.driver : undefined) ?? seatNameAt(STANDINGS_DEV_SEAT_BY_DRIVER, row.position);
@@ -883,6 +914,10 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
   let frame = withWorkshopDemo(baseFrame, quality);
   if (scenario.widget === "relative" && scenario.session === "race") {
     frame = withWorkshopRaceLapDeltas(frame, quality);
+  }
+  const relativeScene = scenario.sceneId ? getAnimationScene(scenario.sceneId) : undefined;
+  if (scenario.widget === "relative" && relativeScene?.positionSwap) {
+    frame = withWorkshopRelativePositionSwap(frame, ...relativeScene.positionSwap);
   }
   if (scenario.widget === "pedals" || scenario.widget === "racing-flags") {
     // Racing Flags keeps the vivid green demo state by default, while Pedals

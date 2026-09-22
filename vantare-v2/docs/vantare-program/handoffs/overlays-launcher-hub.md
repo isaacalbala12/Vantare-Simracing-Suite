@@ -7,6 +7,19 @@
 > sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
 
 
+## ISA-1320 — Relative: movimiento discreto para conducción (2026-09-22)
+
+Seguimiento por decisión explícita de Isaac en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756738527745), En curso. Puente técnico [#1320](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1320). Base `nightly e6d7d2b5`, rama `vantareapp/isa-1320-relative-motion`.
+
+Isaac pide animaciones más suaves que Standings y elige «movimiento suave y una señal de color muy tenue». GPT-6 Sol implementa el renderer en worktree propio; GPT-6 Luna prepara escenas de Workshop aparte; GPT-6 Astra revisará el commit de producto independientemente. Deslizamiento de rivales sin rebote, jugador estable, cifras sin animación, fundidos breves al entrar/salir y color tenue únicamente ante cruce real. La telemetría ordinaria no debe reiniciar animaciones ni medir layout. Respetar modos de movimiento y limpiar efectos al cambiar sesión, fuente o geometría.
+
+La inspección inicial detecta reinicio de FLIP por cada modelo, ausencia de baseline inicial y descripciones de escenas que prometen efectos distintos del renderer. Se corrigen dentro de esta entrega. Pendientes: implementación, pruebas, revisión independiente y aceptación visual de Isaac. El acceso automatizado al navegador ha estado bloqueado; no se afirma validación visual ni física. Sin autorización de integración para esta entrega. La PR #1306 de Standings permanece separada.
+
+### Idioma — integración verificada
+
+La PR [#1317](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1317) fue integrada por squash en `nightly` como `e6d7d2b5e58f55b82c0ed2f6a79667476d897086`, después de la aceptación de Isaac. Head fuente `86249c3a`; checks remotos de promoción, blocking gates, ratchet y GitGuardian aprobados. Árbol remoto coincide con la entrega. Asana `1218757534554194` registra integración y conserva pendiente la revisión física Windows/OBS que Isaac hará en nightly. No se promovió a testers/master.
+
+
 ## ISA-1162 — enlace OBS restaurado al pie del dock del Studio (2026-09-11)
 
 Issue [#1162](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1162),

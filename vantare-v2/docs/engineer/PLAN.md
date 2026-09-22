@@ -6,13 +6,17 @@
 - Proyecto: [Engineer / Spotter](https://app.notion.com/p/3dae51695c65811a8485ca41bc5c9a8e)
 - Puente técnico de este plan: [GitHub #1294](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1294)
 - Rama documental: `vantareapp/isa-1294-crewchief-parity-plan`
-- Base verificada: `origin/nightly@8a0620e8abe75914efed41de4117490f3e47a3b4`
+- Base documental inicial: `origin/nightly@8a0620e8abe75914efed41de4117490f3e47a3b4`
+- Integración de P0 y reparaciones: [PR #1311](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1311),
+  `nightly@e41f703c3a015321024766cc5da55d9a6def1bcb` (22 de septiembre de 2026).
 - Oráculo CrewChief: `mr_belowski/CrewChiefV4@4c3865e09a347d4c806c0bc0cd66aae335fbc610`
 - Contrato: [diseño de paridad](../specs/2026-09-19-crewchief-lmu-parity-design.md)
 - Voz y estilo: [persona y estilo nativo](../specs/2026-09-20-engineer-persona-native-style-design.md)
 - Decisión arquitectónica: [ADR 0010](../adr/0010-engineer-cloud-dialogue-and-offline-parity.md)
-- Estado: diseño documental aceptado por Isaac; T0–T8 no iniciados. La reparación
-  del runtime actual continúa por separado en VAN-736 / GitHub #1299.
+- Estado: diseño documental aceptado por Isaac y P0 integrado con las reparaciones
+  Fuel/Timings, Spotter y audio. T0a entrega su inventario para revisión en
+  [VAN-743](https://app.notion.com/p/3e3e51695c6581f791a5ff927568f965) / GitHub #1312;
+  T0b–T8 no iniciados. [Expediente T0a](../analysis/engineer/timings/README.md).
 
 Este fichero no sustituye el `PLAN.md` de la raíz de `vantare-v2`, que pertenece
 a VAN-727. Tampoco convierte #1294 en una issue de implementación: su diff debe
@@ -87,7 +91,8 @@ Cada corte, incluidas las reparaciones del runtime actual, repite este ciclo:
 
 El ciclo no sustituye las puertas T0a/T0b ni autoriza promociones. La reparación
 inicial está trazada en [VAN-736](https://app.notion.com/p/3e3e51695c6581ed8370e2a4b5302ae6)
-y GitHub #1299; esta PR conserva alcance exclusivamente documental.
+y GitHub #1299, incorporada junto con Spotter y audio mediante PR #1311.
+T0a conserva alcance de inventario documental y su validador, sin runtime nuevo.
 
 - Un corte vertical equivale a una tarea hija en Notion, una referencia GitHub,
   una rama desde el `origin/nightly` vigente y una PR revisable.
@@ -141,6 +146,17 @@ de decisión explícita. No puede quedar implícita.
 
 **Gate.** Review humana del ledger y de las cuatro anomalías señaladas en la
 spec. Sin ella no comienza T0b.
+
+**Entrega para review (VAN-743 / #1312).** El
+[ledger](../analysis/engineer/timings/README.md) fija las quince reglas,
+23 fuentes, 36 ajustes predeterminados y nueve anomalías candidatas: las cuatro
+exigidas, la resolución/consumo de cola, la realización numérica por locale,
+el consejo sin audio de landmark, el candidato de pista desaparecido y el
+midpoint retenido con telemetría congelada.
+Las secuencias son inferencias estáticas con fuentes, no ejecuciones de CrewChief
+ni LMU. El validador comprueba integridad documental y once alteraciones negativas;
+ninguna recomendación aprueba una desviación. La review de este ledger es
+distinta de la aceptación previa del diseño y precede a T0b.
 
 ### T0b — Matriz ejecutable y taxonomía de datos
 
@@ -376,7 +392,8 @@ documentales ejecutan enlaces, formato, roadmap digest y anti-slop aplicable.
 
 ## Próxima acción autorizada
 
-Completar la comprobación técnica e integración de P0, cuyo diseño Isaac ya
-aceptó. Después, crear la tarea hija y el puente
-técnico de **T0a — extracción reproducible del oráculo** desde el `nightly`
-vigente. No empezar T1 ni implementar el proveedor LLM en la rama #1294.
+P0 y las reparaciones ya están integrados en nightly e41f703c; los gates
+posteriores de Windows y roadmap pasan. Revisar el resultado concreto de
+**T0a — extracción reproducible del oráculo** en VAN-743 / #1312 y resolver
+la clasificación de anomalías antes de T0b. La aceptación previa del diseño
+se mantiene. T1 y el proveedor LLM siguen fuera de este corte.

@@ -28,6 +28,29 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+### 2026-09-22 — Reparaciones integradas y ledger T0a para revisión
+
+Isaac autoriza integrar el lote mediante PR #1311. Squash en nightly
+`e41f703c3a015321024766cc5da55d9a6def1bcb`, a las 17:47:01 UTC; árbol idéntico
+al candidato revisado `95a4b701`. [VAN-742](https://app.notion.com/p/3e3e51695c6581a5aeb7ffca7dec48f6)
+registra gates posteriores Windows 35762895108 y digest 35762895165 PASS.
+Las PR #1295, #1300, #1304 y #1308 se cierran como incorporadas en el lote,
+sin merge individual. Las entradas inferiores conservan sus estados históricos.
+
+[VAN-743](https://app.notion.com/p/3e3e51695c6581f791a5ff927568f965) / #1312
+continúa T0a desde ese nightly. [Expediente](../../analysis/engineer/timings/README.md)
+con quince reglas, 23 fuentes fijadas por blob/hash/rango, 36 defaults y nueve
+anomalías candidatas. Incluye las cuatro exigidas y matices de cola, locale,
+landmarks sin audio, candidato desaparecido y midpoint con telemetría congelada. El validador y once rechazos
+comprueban integridad documental; las reproducciones descritas son inferencias
+estáticas, sin ejecución de CrewChief, fixtures T0b ni PASS de paridad.
+La fuente resuelve callbacks una vez y puede consumir cadencia sin audio;
+la vigencia al started y el consumo solo al iniciar son requisitos explícitos
+de Vantare, sujetos al registro de la diferencia. Review humana del ledger y
+anomalías antes de T0b; no reabrir la aceptación del diseño original.
+No hay runtime nuevo en T0a. Audio físico Windows/LMU, primer sonido y el
+fixture voiceinput VAN-741 siguen pendientes en sus cortes correspondientes.
+
 ### 2026-09-22 — Composición revisada sobre Wails beta.24
 
 [VAN-742](https://app.notion.com/p/3e3e51695c6581a5aeb7ffca7dec48f6) / #1310

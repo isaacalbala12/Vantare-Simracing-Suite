@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T15:22:56Z",
+  "generatedAt": "2026-09-22T18:14:24Z",
   "digest": {
-    "lastCommit": "ae5a1482a85674963b30b1fe5f9cd54de8b19921"
+    "lastCommit": "e41f703c3a015321024766cc5da55d9a6def1bcb"
   },
   "phases": [
     {
@@ -1821,10 +1821,10 @@
         "it": "Parità osservabile con CrewChief per Engineer"
       },
       "body": {
-        "es": "Programa futuro por cortes T0–T8 para reproducir en LMU el comportamiento observable de CrewChief, empezando por Timings: relaciones, muestreo, silencios, cadencia, consultas y cierre con replay, voz y sesión real. Los hechos y acciones seguirán siendo deterministas; el LLM cloud sólo interpretará y redactará con StyleGate, y el fallback offline usará frases locales precacheadas. La documentación aprobada no implica implementación ni paridad funcional.",
-        "en": "Future T0–T8 programme to reproduce CrewChief's observable behaviour in LMU, starting with Timings: relationships, sampling, silence rules, cadence, queries, and closure through replay, voice, and a real session. Facts and actions remain deterministic; the cloud LLM only interprets and writes behind a StyleGate, while offline fallback uses local precached phrases. The approved documentation does not imply implementation or functional parity.",
-        "pt": "Programa futuro em cortes T0–T8 para reproduzir no LMU o comportamento observável do CrewChief, começando por Timings: relações, amostragem, silêncios, cadência, consultas e fecho com replay, voz e sessão real. Factos e ações continuam determinísticos; o LLM cloud apenas interpreta e redige com StyleGate, e o fallback offline usa frases locais pré-armazenadas. A documentação aprovada não implica implementação nem paridade funcional.",
-        "it": "Programma futuro in tagli T0–T8 per riprodurre in LMU il comportamento osservabile di CrewChief, iniziando da Timings: relazioni, campionamento, silenzi, cadenza, query e chiusura con replay, voce e sessione reale. Fatti e azioni restano deterministici; l'LLM cloud interpreta e redige soltanto dietro StyleGate, mentre il fallback offline usa frasi locali precaricate. La documentazione approvata non implica implementazione né parità funzionale."
+        "es": "Plan por cortes T0–T8 para reproducir en LMU el comportamiento observable de CrewChief, empezando por Timings. El inventario T0a describe quince reglas, ajustes predeterminados y anomalías para revisión antes de la matriz ejecutable T0b. Los hechos y acciones seguirán siendo deterministas; el LLM cloud sólo interpretará y redactará con StyleGate, y el fallback offline usará frases locales precacheadas. El inventario documental no acredita paridad: quedan implementación, replay, voz y sesión real.",
+        "en": "T0–T8 plan to reproduce CrewChief observable behaviour in LMU, starting with Timings. The T0a inventory describes fifteen rules, default settings and anomalies for review before the T0b executable matrix. Facts and actions remain deterministic; the cloud LLM only interprets and writes behind a StyleGate, while offline fallback uses local precached phrases. The documentary inventory does not establish parity: implementation, replay, voice and a real session remain pending.",
+        "pt": "Plano em cortes T0–T8 para reproduzir no LMU o comportamento observável do CrewChief, começando por Timings. O inventário T0a descreve quinze regras, ajustes predefinidos e anomalias para revisão antes da matriz executável T0b. Factos e ações continuam determinísticos; o LLM cloud apenas interpreta e redige com StyleGate, e o fallback offline usa frases locais pré-armazenadas. O inventário documental não comprova paridade: implementação, replay, voz e sessão real continuam pendentes.",
+        "it": "Piano in tagli T0–T8 per riprodurre in LMU il comportamento osservabile di CrewChief, iniziando da Timings. L’inventario T0a descrive quindici regole, impostazioni predefinite e anomalie da rivedere prima della matrice eseguibile T0b. Fatti e azioni restano deterministici; l’LLM cloud interpreta e redige soltanto con StyleGate, mentre il fallback offline usa frasi locali precaricate. L’inventario documentale non dimostra parità: implementazione, replay, voce e sessione reale restano da verificare."
       },
       "label": {
         "es": "Plan",
@@ -2199,6 +2199,11 @@
           "kind": "fix",
           "scope": "platform",
           "text": "Actualizar Wails a beta.24"
+        },
+        {
+          "kind": "fix",
+          "scope": "engineer",
+          "text": "Reparar Fuel, Timings, Spotter y audio sobre Wails beta.24"
         }
       ]
     },

@@ -11,6 +11,8 @@ import { resolveMotionLevel, useReducedMotion } from "./widget-motion";
 import { buildSettledRelativeViewModelV2 } from "../widget-types/relative/relative-view-model-v2";
 import { isRelativeRedlineTemplateId } from "../design-systems/vantare-endurance/relative/relative-endurance-settings";
 import type { RelativeViewModel } from "../widget-types/relative/relative-view-model";
+import { FastestLapPresentation } from "../widget-types/fastest-lap/FastestLapPresentation";
+import type { FastestLapViewModel } from "../widget-types/fastest-lap/fastest-lap-view-model";
 
 export type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagnostics";
 
@@ -244,7 +246,11 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
         systemId={widget.visual.systemId}
         onError={(error) => reportDiagnostic(props, "renderer-exception", error.message)}
       >
-        <Renderer model={visualModel} settings={presentationSettings} renderMode={renderMode} layout={widget.layout} motion={motion} effects={effects} />
+        {widget.type === "fastest-lap"
+          ? <FastestLapPresentation key={widget.id} model={visualModel as FastestLapViewModel} renderMode={renderMode}>
+              {(noticeModel) => <Renderer model={noticeModel} settings={presentationSettings} renderMode={renderMode} layout={widget.layout} motion={motion} effects={effects} />}
+            </FastestLapPresentation>
+          : <Renderer model={visualModel} settings={presentationSettings} renderMode={renderMode} layout={widget.layout} motion={motion} effects={effects} />}
       </WidgetRenderBoundary>
     </>
   );

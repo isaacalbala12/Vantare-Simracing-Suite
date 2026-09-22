@@ -97,6 +97,28 @@ describe("createTelemetryRateCoordinator", () => {
     coordinator.dispose();
   });
 
+  it("wakes fastest-lap only for relevant timing or identity changes, even at minimum performance", () => {
+    const harness = controllableScheduler();
+    const coordinator = createTelemetryRateCoordinator({ createScheduler: harness.create, now: () => 0 });
+    const row = { id: "car", driver: "Isaac", classId: "GT3", laps: 2,
+      bestLap: { q: "fresh", v: 90 }, lastLap: { q: "fresh", v: 90 } };
+    const frame = (sequence: number, timing = row) => performanceFrame(sequence, 1, { "fastest-lap": "event" }, [timing], 5);
+    coordinator.setOverlayFrame(frame(1), { state: "live" });
+    const listener = vi.fn();
+    coordinator.subscribe("fastest-lap", listener);
+    coordinator.setOverlayFrame({ ...frame(2), standings: [{ ...row, overallPos: 2, lapDistance: 0.5 }] } as OverlayFrameV2, { state: "live" });
+    harness.tick();
+    expect(listener).not.toHaveBeenCalled();
+    const improved = { ...row, bestLap: { q: "fresh", v: 89 } };
+    coordinator.setOverlayFrame(frame(3, improved), { state: "live" });
+    harness.tick();
+    expect(listener).toHaveBeenCalledTimes(1);
+    coordinator.setOverlayFrame(frame(4, improved), { state: "live", retry: 1 });
+    harness.tick();
+    expect(listener).toHaveBeenCalledTimes(2);
+    coordinator.dispose();
+  });
+
   it("shares a single repaint loop for every subscriber whatever the requested hz", () => {
     const harness = controllableScheduler();
     const coordinator = createTelemetryRateCoordinator({ createScheduler: harness.create });

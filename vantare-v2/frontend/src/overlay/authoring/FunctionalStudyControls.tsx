@@ -33,6 +33,7 @@ const WIDGET_LABELS: Partial<Record<WidgetType, string>> = {
   "pedals-telemetry": "Pedals Telemetry",
   "pedals-telemetry-compact": "Pedales avanzados",
   "racing-flags": "Racing Flags",
+  "fastest-lap": "Vuelta rápida",
 };
 const widgetLabel = (widget: WidgetType) => WIDGET_LABELS[widget] ?? widget;
 

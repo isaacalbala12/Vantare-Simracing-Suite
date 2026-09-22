@@ -9,6 +9,18 @@ afterEach(() => {
 });
 
 describe("OverlayWorkshopDevRoute", () => {
+  it("can replay a fastest-lap event after seeking back without replaying the historical baseline", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=fastest-lap&surface=desktop&scene=fastest-lap-alert" />);
+    await waitFor(() => expect(document.querySelector('[data-widget-renderer="fastest-lap"]')).toBeTruthy());
+    expect(screen.queryByRole("status")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Fotograma siguiente" }));
+    expect(screen.getByRole("status").textContent).toContain("1:29.902");
+    fireEvent.click(screen.getByRole("button", { name: "Fotograma anterior" }));
+    expect(screen.queryByRole("status")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Fotograma siguiente" }));
+    expect(screen.getByRole("status").textContent).toContain("1:29.902");
+  });
+
   it("mounts the product visual host inside a root distinct from the authoring stage", async () => {
     render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-crystal&design=delta-crystal-simple&state=ready&surface=studio&variant=default" />);
 
@@ -296,10 +308,10 @@ describe("OverlayWorkshopDevRoute", () => {
   });
 
   it("renders each default widget marker", async () => {
-    expect(ALL_WIDGET_TYPES).toHaveLength(20);
+    expect(ALL_WIDGET_TYPES).toHaveLength(21);
     for (const widget of ALL_WIDGET_TYPES) {
       cleanup();
-      const system = widget === "engineer-radio" ? "vantare-crystal" : widget === "track-map" ? "vantare-endurance" : "vantare-original";
+      const system = widget === "fastest-lap" ? "vantare-functional" : widget === "engineer-radio" ? "vantare-crystal" : widget === "track-map" ? "vantare-endurance" : "vantare-original";
       render(<OverlayWorkshopDevRoute search={`?widget=${widget}&system=${system}&state=ready&surface=obs`} />);
       await waitFor(() =>
         expect(document.querySelector(`[data-widget-renderer="${widget}"]`)).toBeTruthy(),

@@ -131,6 +131,9 @@ describe("official-designs", () => {
       designSystemRegistry.get("vantare-iracing", 1).widgets.map((entry) => entry.widgetType),
     );
     const expectedPairs = widgetTypeRegistry.list().flatMap((definition) => {
+      if (definition.type === "fastest-lap") {
+        return ["fastest-lap:vantare-functional"];
+      }
       if (definition.type === "engineer-radio") {
         return [`${definition.type}:vantare-crystal`, `${definition.type}:vantare-functional`];
       }

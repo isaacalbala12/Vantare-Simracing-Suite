@@ -8,6 +8,18 @@ export const OFFICIAL_DESIGNS_SECTION_LABEL = "Diseños de Vantare";
 
 const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
   {
+    id: "fastest-lap-functional-signature",
+    name: "Signature",
+    widgetType: "fastest-lap",
+    systemId: "vantare-functional",
+    systemVersion: 1,
+    configVersion: 1,
+    visual: {},
+    includesContent: false,
+    origin: "vantare",
+    isDefault: true,
+  },
+  {
     id: "standings-functional-compact",
     name: "Signature",
     widgetType: "standings",

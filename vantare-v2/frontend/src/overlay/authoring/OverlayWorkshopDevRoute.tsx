@@ -213,6 +213,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
   // plays that animation once, start to finish, and stops on its last frame.
   const [playing, setPlaying] = useState(false);
   const [loop, setLoop] = useState(false);
+  const [playbackRun, setPlaybackRun] = useState(0);
   const [elapsedMs, setElapsedMs] = useState(
     () =>
       (initialQuery.sceneFrame ?? 0) *
@@ -350,11 +351,21 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
           standingsWindow: { mode: "podium-around-player", around: parsed.around },
         };
       }
+      if (parsed.widget === "fastest-lap" && baseRuntime.overlayV2Frame) {
+        // Deterministic sequence for the alert detector; each loop is a new
+        // fixture session, so a historical record is never replayed as live.
+        const cycle = scene && loop ? Math.floor(sampledMs / (scene.frames.length * scene.frameMs)) : 0;
+        return { ...baseRuntime, overlayV2Frame: {
+          ...baseRuntime.overlayV2Frame,
+          sessionId: `fastest-lap-workshop:${scene?.id ?? "static"}:${playbackRun}:${cycle}`,
+          sequence: Math.floor(sampledMs) + 1,
+        } };
+      }
       return baseRuntime;
     } catch {
       return null;
     }
-  }, [parsed, widget, sampledMs, replayFrame, scene, loop]);
+  }, [parsed, widget, sampledMs, replayFrame, scene, loop, playbackRun]);
 
   // The data projection determines how many rows the selected mode really
   // shows. This second pass only changes the Workshop's intrinsic preview
@@ -366,6 +377,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
 
   const parkFrame = (frame: number) => {
     setPlaying(false);
+    if (scene && frame * scene.frameMs < elapsedMs) setPlaybackRun(run => run + 1);
     setElapsedMs(scene ? frame * scene.frameMs : 0);
     update({ ...parsed, sceneFrame: frame }, "replace");
   };
@@ -376,6 +388,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
   };
   /** One click: this animation, from the top, once, at frame rate. */
   const runScene = (sceneId: string) => {
+    setPlaybackRun(run => run + 1);
     setElapsedMs(0);
     update({ ...parsed, sceneId, sceneFrame: 0 });
     setPlaying(true);

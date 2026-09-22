@@ -422,6 +422,19 @@ const PEDALS_CLUTCH_SCENE: AnimationScene = {
 };
 
 export const ANIMATION_SCENES: readonly AnimationScene[] = [
+  {
+    id: "fastest-lap-alert",
+    widget: "fastest-lap",
+    label: "Aviso de vuelta rápida",
+    watchFor: "El aviso aparece al mejorar la marca y se oculta tras seis segundos. En Studio se mantiene visible para colocarlo; Desktop y OBS muestran el aviso temporal.",
+    frameMs: 8000,
+    frames: [
+      { caption: "Giovinazzi tiene la mejor vuelta de Hypercar (1:30.904)", cars: { "Antonio Giovinazzi": { bestLapTime: 90.904 } } },
+      { caption: "Giovinazzi mejora su marca (1:29.902): aparece el aviso", cars: { "Antonio Giovinazzi": { bestLapTime: 89.902 } } },
+      { caption: "Conserva la marca: el aviso ya ha desaparecido", cars: { "Antonio Giovinazzi": { bestLapTime: 89.902 } } },
+      { caption: "Nueva mejora (1:29.402): vuelve a aparecer", cars: { "Antonio Giovinazzi": { bestLapTime: 89.402 } } },
+    ],
+  },
   OVERTAKE_SCENE,
   BATTLE_SCENE,
   CLASS_BATTLE_SCENE,

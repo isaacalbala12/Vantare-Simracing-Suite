@@ -1,5 +1,11 @@
 /** Overlay Studio V3 — Italiano */
 export const studioV3It: Record<string, string> = {
+  "studio.v3.widgetTypes.fastestLap": "Avviso giro più veloce",
+  "studio.v3.inspector.fastestLap.scope": "Ambito del giro più veloce",
+  "studio.v3.inspector.fastestLap.class": "La tua classe",
+  "studio.v3.inspector.fastestLap.session": "Tutta la sessione",
+  "studio.v3.inspector.fastestLap.duration": "Durata dell’avviso (secondi)",
+  "studio.v3.inspector.fastestLap.showDriver": "Mostra pilota",
   "studio.v3.recovery.profileFallback": "Profilo",
   "studio.v3.browserView.dialog.title": "Salva prima di Browser View",
   "studio.v3.browserView.dialog.body":

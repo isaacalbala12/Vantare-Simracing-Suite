@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T12:55:37Z",
+  "generatedAt": "2026-09-22T14:04:17Z",
   "digest": {
-    "lastCommit": "7f3650e4f9201e347dddeab6df6d1deca3dee7b2"
+    "lastCommit": "1101f73579ddaa8798b7d9948bae8b4e2a77d850"
   },
   "phases": [
     {
@@ -2140,9 +2140,41 @@
         "pt": "Plano",
         "it": "Piano"
       }
+    },
+    {
+      "id": "wails-v3-beta24",
+      "type": "fix",
+      "title": {
+        "es": "Base de escritorio Wails beta.24",
+        "en": "Wails beta.24 desktop foundation",
+        "pt": "Base de desktop Wails beta.24",
+        "it": "Base desktop Wails beta.24"
+      },
+      "body": {
+        "es": "Vantare utiliza Wails v3 beta.24 con backend, runtime frontend y herramientas de compilación alineados. La build Windows ha superado las pruebas automatizadas y la comprobación manual de Isaac. Esta actualización no incorpora Streams ni declara mejoras de rendimiento.",
+        "en": "Vantare uses Wails v3 beta.24 with aligned backend, frontend runtime and build tools. The Windows build passed automated tests and Isaac's manual check. This update does not introduce Streams or claim performance improvements.",
+        "pt": "O Vantare utiliza Wails v3 beta.24 com backend, runtime frontend e ferramentas de compilação alinhados. A build Windows passou os testes automatizados e a verificação manual de Isaac. Esta atualização não inclui Streams nem declara melhorias de desempenho.",
+        "it": "Vantare utilizza Wails v3 beta.24 con backend, runtime frontend e strumenti di compilazione allineati. La build Windows ha superato i test automatici e la verifica manuale di Isaac. Questo aggiornamento non introduce Streams né dichiara miglioramenti delle prestazioni."
+      },
+      "label": {
+        "es": "ISA-1305",
+        "en": "ISA-1305",
+        "pt": "ISA-1305",
+        "it": "ISA-1305"
+      }
     }
   ],
   "delivered": [
+    {
+      "date": "2026-09-22",
+      "entries": [
+        {
+          "kind": "feat",
+          "scope": "widgets",
+          "text": "Recuperar cambios locales de revisión"
+        }
+      ]
+    },
     {
       "date": "2026-09-20",
       "entries": [
@@ -2660,31 +2692,6 @@
           "kind": "fix",
           "scope": "studio",
           "text": "Evitar salto con movimiento reducido"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-23",
-      "entries": [
-        {
-          "kind": "perf",
-          "scope": "studio",
-          "text": "Cache SWR del documento — los widgets pintan al instante"
-        },
-        {
-          "kind": "docs",
-          "scope": "release",
-          "text": "Manifiesto v0.1.0.7-nightly.12 (núcleo de telemetría Go-first completo)"
-        },
-        {
-          "kind": "feat",
-          "scope": "overlay",
-          "text": "Registro v2 completo (18 widgets) y track-map con marcadores desde groundPosition"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-781/782: track-weather, broadcast-tower y posicion para track-map sobre v2"
         }
       ]
     }

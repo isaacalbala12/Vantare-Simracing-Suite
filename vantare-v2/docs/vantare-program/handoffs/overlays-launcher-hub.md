@@ -3061,3 +3061,7 @@ aislada a `nightly` (pendiente review/merge):
   `GOOS=windows go build ./cmd/vantare` PASS.
 - Pendiente humano: verificación visual de la campana en la app real
   (Wails/WebView2) y toast Windows; son parte del paquete de validación beta.
+
+## VAN-734 — prueba aislada Wails beta y Streams en macOS (2026-09-22)
+
+Tarea [VAN-734](https://app.notion.com/p/3e3e51695c6581b78f38d9060575e31c), rama local `spike/wails-beta-streams-mac` sobre `origin/nightly@1e9932c4`. Wails Go y runtime frontend fijados en beta.24. Vantare compiló y arrancó como `.app` ad hoc en macOS arm64; Hub y rutas `/health` y `/overlay` respondieron. Un spike nativo separado verificó 120 tramas de 64 KiB por Streams, en orden y con acuse por trama. El transporte productivo Overlay/OBS no cambió. [Evidencia y límites](../../analysis/2026-09-22-wails-beta-streams-macos-spike.md). Siguiente decisión: comparar Streams con el socket Overlay actual en Windows/WebView2 y LMU reales antes de sustituirlo. Sin PR, integración o release.

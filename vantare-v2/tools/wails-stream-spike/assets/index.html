@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="es">
+<meta charset="utf-8">
+<title>Vantare Streams Spike</title>
+<body style="font:16px system-ui;padding:24px">
+<h1>Prueba de Streams</h1>
+<p id="status">Conectando...</p>
+<script type="module">
+import { JSONStream } from "/wails/runtime.js";
+
+const status = document.getElementById("status");
+const stream = JSONStream("overlay-probe");
+let expected = 1;
+stream.onopen = () => stream.send({ ack: 0 });
+stream.onmessage = ({ data }) => {
+  if (data.sequence !== expected || data.payload.length !== 64 * 1024) {
+    status.textContent = `Error en frame ${expected}`;
+    stream.close();
+    return;
+  }
+  status.textContent = `Frame ${expected} de 120 recibido`;
+  stream.send({ ack: expected });
+  expected++;
+};
+stream.onerror = () => { status.textContent = "Error de Stream"; };
+</script>
+</body>
+</html>

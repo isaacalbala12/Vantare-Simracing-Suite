@@ -25,6 +25,13 @@ function frameForPhase(phase: "practice" | "qualifying" | "race"): OverlayFrameV
   };
 }
 
+function fullGoldenFrame(): OverlayFrameV2 {
+  return (JSON.parse(readFileSync(path.resolve(
+    process.cwd(),
+    "../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json",
+  ), "utf8")) as { frame: OverlayFrameV2 }).frame;
+}
+
 describe("buildStandingsViewModelV2 session columns", () => {
   it("projects session information without confusing fuel range with race laps", () => {
     const frame = frameForPhase("race");
@@ -171,5 +178,40 @@ describe("buildStandingsViewModelV2 session columns", () => {
 
     expect(model.rows).toHaveLength(2);
     expect(model.rows.map((row) => row.gapText)).toEqual(["+1.00s", "+3.00s"]);
+  });
+
+  it("separates normal global order from explicit multiclass presentation", () => {
+    const frame = fullGoldenFrame();
+    const normal = buildStandingsViewModelV2(
+      frame,
+      { state: "live" },
+      standingsDefinition.parseContent({ classScope: "all-classes", classificationMode: "normal", rowCount: 20 }),
+    );
+    const multiclass = buildStandingsViewModelV2(
+      frame,
+      { state: "live" },
+      standingsDefinition.parseContent({ classScope: "all-classes", classificationMode: "multiclass", rowCount: 20 }),
+    );
+
+    expect(normal.classificationMode).toBe("normal");
+    expect(normal.rows.slice(0, 7).map((row) => row.position)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(multiclass.classificationMode).toBe("multiclass");
+    expect(multiclass.rows.slice(0, 7).map((row) => row.position)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(multiclass.rows.slice(0, 3).map((row) => row.classPosition)).toEqual([1, 1, 1]);
+  });
+
+  it("applies the podium-plus-player window after normal global projection", () => {
+    const frame = fullGoldenFrame();
+    const player = frame.standings.find((row) => row.position === 9);
+    if (!player) throw new Error("golden frame missing position 9");
+    const model = buildStandingsViewModelV2(
+      { ...frame, player: { ...frame.player, id: player.id } },
+      { state: "live" },
+      standingsDefinition.parseContent({ classScope: "all-classes", classificationMode: "normal", rowCount: 12 }),
+      { mode: "podium-around-player", around: 4 },
+    );
+
+    expect(model.rows.map((row) => row.position)).toEqual([1, 2, 3, 7, 8, 9, 10, 11]);
+    expect(model.rows.find((row) => row.isPlayer)?.position).toBe(9);
   });
 });

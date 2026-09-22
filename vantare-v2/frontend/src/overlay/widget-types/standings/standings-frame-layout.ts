@@ -14,7 +14,7 @@ export function resolveStandingsMinimumSize(
       return resolveFunctionalStandingsSize(content.columns, content.rowCount ?? 20, {
         ...widget.visual.baseSettings, ...widget.visual.appearanceOverrides,
         ...(brandVisible === undefined ? {} : { brandVisible }),
-      }, rowHeight);
+      }, rowHeight, content.classificationMode === "multiclass" ? 1 : 0);
     } catch {
       // Invalid content is reported by WidgetVisualHost, without hiding its diagnostic.
       return undefined;

@@ -10,26 +10,46 @@ describe("Efficiency session geometry", () => {
     expect(resolveFunctionalStandingsSize(columns, 10, { templateId })).toEqual({ width: noFooter.width, height: noFooter.height + 30 });
   });
 
-  it("keeps the wide Signature combined header at 50 px with configurable information", () => {
+  it("keeps a single session header without the former numeric info band", () => {
     const wide = [...columns, { id: "lap", metricId: "bestLap", enabled: true, widthPreset: "sm" as const }];
-    // ISA-1221: con las columnas métricas compactas, 2 infos ya no caben junto a la cabecera y caen a la banda de 22 px.
-    expect(resolveFunctionalStandingsSize(wide, 10, { headerFirst: "trackTemperature", headerSecond: "estimatedLaps" }).height).toBe(402);
+    // ISA-1221: la cabecera de sesión mide 42px, las filas 300px y el pie
+    // ambiente 30px. No se reserva una segunda banda de 22px.
+    expect(resolveFunctionalStandingsSize(wide, 10, { headerFirst: "trackTemperature", headerSecond: "estimatedLaps" }).height).toBe(400);
   });
 
-  it.each(["signature", "broadcast"])("keeps selected header information visible in narrow %s layouts", templateId => {
+  it.each(["signature", "broadcast"])("removes the upper info band from %s layouts", templateId => {
     const compact = columns.slice(0, 2);
-    expect(resolveFunctionalHeaderInfoPlacement(compact, { templateId })).toBe("band");
+    const configured = resolveFunctionalStandingsSize(compact, 10, { templateId, headerFirst: "trackTemperature", headerSecond: "airTemperature" });
     const hidden = resolveFunctionalStandingsSize(compact, 10, { templateId, headerFirst: "none", headerSecond: "none" });
-    expect(resolveFunctionalStandingsSize(compact, 10, { templateId }).height).toBe(hidden.height + 22);
-    expect(resolveFunctionalHeaderInfoPlacement(columns, { templateId })).toBe("band");
+    expect(resolveFunctionalHeaderInfoPlacement(compact, { templateId })).toBe("none");
+    expect(resolveFunctionalHeaderInfoPlacement(columns, { templateId })).toBe("none");
+    expect(configured).toEqual(hidden);
     expect(resolveFunctionalHeaderInfoPlacement(compact, { templateId, showSessionHeader: false })).toBe("none");
-    expect(resolveFunctionalHeaderInfoPlacement(compact, { templateId, headerFirst: "none", headerSecond: "none" })).toBe("none");
   });
 
-  it("keeps timing columns compact so the right-side cluster does not reopen lateral voids (ISA-1221)", () => {
-    // Contenido más ancho medido: "+88.700 s" ≈ 63 px y "ÚLT. VUELTA" ≈ 62 px; con 20 px de padding el mínimo legible ronda 84 px.
-    for (const metricId of ["gap", "interval", "bestLap", "lastLap", "pit"]) {
-      expect(resolveFunctionalColumnWidth({ id: metricId, metricId, enabled: true, widthPreset: "sm" })).toBeLessThanOrEqual(88);
+  it("does not reserve a standalone Pit column", () => {
+    const withPit = [...columns, { id: "pit", metricId: "pit", enabled: true, widthPreset: "sm" as const }];
+    expect(resolveFunctionalStandingsSize(withPit, 10, { templateId: "signature" })).toEqual(
+      resolveFunctionalStandingsSize(columns, 10, { templateId: "signature" }),
+    );
+  });
+
+  it("keeps every standings metric in the compact width budget (ISA-1221)", () => {
+    const expected = {
+      position: 30,
+      driverNumber: 30,
+      driverName: 188,
+      vehicleClass: 54,
+      gap: 86,
+      interval: 76,
+      currentLap: 48,
+      lastLap: 76,
+      bestLap: 76,
+      pit: 32,
+      tireCompound: 44,
+    } as const;
+    for (const [metricId, width] of Object.entries(expected)) {
+      expect(resolveFunctionalColumnWidth({ id: metricId, metricId, enabled: true, widthPreset: "sm" })).toBe(width);
     }
   });
 
@@ -39,23 +59,26 @@ describe("Efficiency session geometry", () => {
         { id: "driverName", metricId: "driverName", enabled: true, widthPreset: "sm", format: { mode } },
         broadcast,
       );
-    expect(name("full")).toBe(204);
-    expect(name("initial")).toBe(152);
-    expect(name("surname")).toBe(128);
-    expect(name("full", true)).toBe(224);
-    expect(name("initial", true)).toBe(172);
-    expect(name("surname", true)).toBe(148);
+    expect(name("full")).toBe(188);
+    expect(name("initial")).toBe(140);
+    expect(name("surname")).toBe(124);
+    expect(name("full", true)).toBe(208);
+    expect(name("initial", true)).toBe(160);
+    expect(name("surname", true)).toBe(144);
     // truncate deriva del presupuesto de caracteres (≈8.4 px/carácter + padding).
     expect(name("truncate")).toBe(158);
   });
 
-  it("moves the session header to its own band when a short name narrows the identity prefix", () => {
-    const short = columns.map((column) =>
+  it("keeps the session header in the same composition when a short name narrows the text", () => {
+    const wide = ["position", "driverNumber", "driverName", "gap"].map(metricId =>
+      ({ id: metricId, metricId, enabled: true, widthPreset: "sm" as const }));
+    const short = wide.map((column) =>
       column.metricId === "driverName" ? { ...column, format: { mode: "surname" } } : column);
-    const wide = resolveFunctionalStandingsSize(columns, 10, { templateId: "signature" });
-    const narrow = resolveFunctionalStandingsSize(short, 10, { templateId: "signature" });
-    expect(narrow.width).toBe(wide.width - 76);
-    // El prefijo pos+nombre (162 px) ya no sostiene la cabecera: banda de 49 px.
-    expect(narrow.height).toBe(wide.height + 49);
+    const wideSize = resolveFunctionalStandingsSize(wide, 10, { templateId: "signature" });
+    const narrowSize = resolveFunctionalStandingsSize(short, 10, { templateId: "signature" });
+    expect(narrowSize.width).toBe(wideSize.width - 64);
+    // El formato visible no puede cambiar la estructura de la cabecera ni
+    // crear una banda nueva bajo ella.
+    expect(narrowSize.height).toBe(wideSize.height);
   });
 });

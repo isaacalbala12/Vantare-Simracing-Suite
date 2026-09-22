@@ -22,13 +22,57 @@ const model: StandingsViewModel = {
 };
 
 describe("Functional Standings", () => {
-  it("keeps pit, gap and last lap in separate configured cells and marks the player only by its row", () => {
+  it("integrates the Pit status into a label beyond the final metric", () => {
     const { container } = render(<StandingsFunctional model={model} settings={{}} renderMode="harness" />);
-    expect(container.querySelector('td[data-metric="lastLap"]')?.textContent).toBe("1:42.318");
+    expect(container.querySelector('td[data-metric="lastLap"] .vf-cell-value')?.textContent).toBe("1:42.318");
     expect(container.querySelector('td[data-metric="gap"]')?.textContent).toBe("+2.106s");
-    expect(container.querySelector('td[data-metric="pit"]')?.textContent).toBe("PIT");
+    expect(container.querySelector('th[data-metric="pit"]')).toBeNull();
+    expect(container.querySelector('td[data-metric="pit"]')).toBeNull();
+    const marker = container.querySelector('[data-pit-indicator]');
+    expect(marker).not.toBeNull();
+    expect(marker?.getAttribute("role")).toBe("img");
+    expect(marker?.getAttribute("aria-label")).toBe("PIT");
+    expect(marker?.parentElement?.classList.contains("vf-pit-rail")).toBe(true);
+    expect(container.querySelector('td[data-metric="lastLap"]')?.textContent).toBe("1:42.318");
+    expect(marker?.textContent).toBe("PIT");
     expect(container.querySelector('.vf-driver small')).toBeNull();
     expect(container.querySelector('tr[data-player="true"]')).not.toBeNull();
+  });
+
+  it("marks the projected top three and the first context row without changing the rows", () => {
+    const rows = [1, 2, 3, 7, 8].map((position) => ({
+      ...model.rows[0]!,
+      id: `row-${position}`,
+      position,
+      driverName: `Driver ${position}`,
+      isPlayer: position === 7,
+      isLeader: position === 1,
+    }));
+    const { container } = render(<StandingsFunctional model={{ ...model, rows, classificationMode: "normal" }} settings={{}} renderMode="harness" />);
+    const renderedRows = [...container.querySelectorAll<HTMLElement>("tr[data-standings-row]")];
+
+    expect(renderedRows).toHaveLength(rows.length);
+    expect(renderedRows.map((row) => row.dataset.standingsGroup)).toEqual([
+      "podium", "podium", "podium", "context", "context",
+    ]);
+    expect(renderedRows.filter((row) => row.dataset.standingsContextStart === "true")).toHaveLength(1);
+    expect(renderedRows[3]?.dataset.standingsContextStart).toBe("true");
+    expect(renderedRows[3]?.dataset.player).toBe("true");
+  });
+
+  it("does not add tonal grouping metadata to Multiclass", () => {
+    const rows = [1, 2, 3, 7].map((position) => ({
+      ...model.rows[0]!,
+      id: `class-row-${position}`,
+      position,
+      driverName: `Driver ${position}`,
+      isPlayer: position === 7,
+      isLeader: position === 1,
+    }));
+    const { container } = render(<StandingsFunctional model={{ ...model, rows, classScope: "all-classes", classificationMode: "multiclass" }} settings={{}} renderMode="harness" />);
+
+    expect(container.querySelector("[data-standings-group]")).toBeNull();
+    expect(container.querySelector("[data-standings-context-start]")).toBeNull();
   });
 
   it("drops the integrated brand when the injected decision hides it (ISA-1105)", () => {
@@ -112,8 +156,9 @@ describe("Functional Standings", () => {
   it("lets the name column absorb spare width so metric columns stay clustered (ISA-1221)", () => {
     const { container } = render(<StandingsFunctional model={model} settings={{}} renderMode="harness" />);
     const cols = [...container.querySelectorAll("colgroup col")];
-    expect(cols).toHaveLength(model.columns.length);
-    const nameCol = cols[model.columns.findIndex((column) => column.metricId === "driverName")]!;
+    const tableColumns = model.columns.filter((column) => column.metricId !== "pit");
+    expect(cols).toHaveLength(tableColumns.length);
+    const nameCol = cols[tableColumns.findIndex((column) => column.metricId === "driverName")]!;
     expect(nameCol.style.width).toBe("");
     for (const col of cols.filter((col) => col !== nameCol)) expect(col.style.width).not.toBe("");
   });
@@ -124,7 +169,7 @@ describe("Functional Standings", () => {
     race.unmount();
     const practice = render(<StandingsFunctional model={{ ...model, sessionLabel: "PRACTICE" }} settings={{}} renderMode="harness" />);
     expect(practice.container.querySelector('th[data-metric="gap"]')?.textContent).not.toBe(raceLabel);
-    expect(practice.container.querySelector('td[data-metric="lastLap"]')?.textContent).toBe("1:42.318");
+    expect(practice.container.querySelector('td[data-metric="lastLap"] .vf-cell-value')?.textContent).toBe("1:42.318");
   });
 
   it.each(["studio", "desktop", "obs", "harness"] as const)("uses both appearances through the shared host with V2 Workshop data on %s", (surface) => {

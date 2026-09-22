@@ -11,6 +11,7 @@ import type {
 import type { DesignSystemId, WidgetInstanceV3, WidgetType } from "../../core/profile-document";
 import type { WidgetRuntimeInput } from "../../core/widget-definition";
 import { EFFICIENCY_SYSTEM_ID } from "../../core/design-system-names";
+import { normalizeRacingFlagsTextColor } from "../../design-systems/vantare-functional/racing-flags-settings";
 import {
   AUTHORING_V2_VARIANTS,
   buildAuthoringV2ScenarioRuntime,
@@ -40,6 +41,7 @@ import { applyWidgetDesign } from "../../core/widget-design";
 import { getOfficialDesign, listOfficialDesigns } from "../../design-systems/official-designs";
 import { getAnimationScene, sceneFrameAt } from "./animation-scenes";
 import type { SceneFrame } from "./animation-scenes";
+import type { PedalsKnownFlag } from "../../widget-types/pedals/pedals-view-model";
 
 // Variantes dev de Workshop: transformaciones explícitas, deterministas y
 // acotadas sobre el golden canónico. La variante en sí declara el artificio;
@@ -170,6 +172,7 @@ export function buildWorkshopWidget(input: {
   behind?: number;
   nameFormat?: "full" | "initial" | "surname";
   rows?: number;
+  textColor?: string;
 }): WidgetInstanceV3 {
   let widget = createScenarioWidget({
     widget: input.widget,
@@ -215,7 +218,7 @@ export function buildWorkshopWidget(input: {
   // se re-encaja después de aplicarlos — el encaje base de createScenarioWidget
   // siempre vio el formato completo y el recuento por defecto.
   if (input.widget === "standings" && input.system === EFFICIENCY_SYSTEM_ID
-      && (input.rows !== undefined || input.nameFormat !== undefined)) {
+      && (input.rows !== undefined || input.nameFormat !== undefined || input.variant === "standings-multiclass")) {
     const minimum = resolveStandingsMinimumSize(widget);
     if (minimum) {
       widget = { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height ?? widget.layout.h } };
@@ -234,21 +237,43 @@ export function buildWorkshopWidget(input: {
     };
   }
 
-  // Módulos del estudio Standings: posición y piloto siempre visibles; el
-  // resto lo encienden los módulos elegidos. En el estudio cada columna toma
-  // ancho automático — el reparto lo decide el layout, no presets guardados.
-  if (input.system === EFFICIENCY_SYSTEM_ID && input.widget === "standings" && input.variant === "standings-functional-study") {
+  if (input.widget === "racing-flags" && input.system === EFFICIENCY_SYSTEM_ID && input.textColor !== undefined) {
+    widget = {
+      ...widget,
+      visual: {
+        ...widget.visual,
+        appearanceOverrides: {
+          ...(widget.visual.appearanceOverrides ?? {}),
+          textColor: normalizeRacingFlagsTextColor(input.textColor),
+        },
+      },
+    };
+  }
+
+  // Módulos de Standings Eficiencia: posición y piloto siempre visibles; el
+  // resto lo encienden los módulos elegidos. La selección también aplica a la
+  // variante canónica `default`, que es la que expone el Workshop.
+  if (input.system === EFFICIENCY_SYSTEM_ID && input.widget === "standings"
+    && (input.variant === "standings-functional-study" || input.modules !== undefined)) {
     const modules = input.modules ?? EFFICIENCY_STUDY_DEFAULT_MODULES;
     const content = widget.content as Record<string, unknown>;
     const columns = Array.isArray(content.columns)
       ? (content.columns as Record<string, unknown>[]).map((column) => ({
           ...column,
-          widthPreset: "auto" as const,
+          ...(input.variant === "standings-functional-study" ? { widthPreset: "auto" as const } : {}),
           enabled: column.metricId === "position" || column.metricId === "driverName" || modules.includes(String(column.metricId)),
         }))
       : content.columns;
-    // El estudio enseña siempre al menos 15 pilotos (decisión de Isaac).
-    widget = { ...widget, content: { ...content, columns, rowCount: 15 } };
+    // El estudio enseña siempre al menos 15 pilotos; la variante canónica
+    // conserva su recuento salvo que el selector Filas lo haya cambiado.
+    widget = { ...widget, content: { ...content, columns, ...(input.variant === "standings-functional-study" ? { rowCount: 15 } : {}) } };
+    // La altura derivada del estudio pertenece al widget que estamos
+    // construyendo, no a una corrección posterior del harness. Así el layout
+    // que recibe WidgetVisualHost sigue siendo la resolución real del profile.
+    const minimum = resolveStandingsMinimumSize(widget);
+    if (minimum) {
+      widget = { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height ?? widget.layout.h } };
+    }
   }
 
   // Huecos de datos del pie en standings/relative de Eficiencia.
@@ -301,6 +326,8 @@ export type WorkshopV2Scenario = {
   widget: WidgetType;
   system: DesignSystemId;
   variant: WorkshopV2Variant;
+  /** Dev-only explicit SessionV2 flag probe for flag-aware widgets. */
+  flag?: PedalsKnownFlag;
   replayFrame?: number;
   sceneId?: string;
   sceneFrame?: number;
@@ -310,6 +337,8 @@ export type WorkshopV2Scenario = {
   rangeBehind?: number;
   /** Filas declaradas por el Standings (1–30); el golden se completa en ciclo. */
   standingRows?: number;
+  /** Posición del jugador en la parrilla de demostración del Workshop. */
+  playerPosition?: number;
 };
 
 // Calendario auxiliar dev migrado del mock legacy: no es telemetría, solo
@@ -456,6 +485,12 @@ function withWorkshopDemo(frame: OverlayFrameV2, quality: OverlayQualityV2): Ove
       wetnessPct: qualityValue(0, quality),
     },
   };
+}
+
+function withWorkshopPlayerPosition(frame: OverlayFrameV2, position: number): OverlayFrameV2 {
+  const target = frame.standings.find((row) => row.position === position);
+  if (!target) return frame;
+  return { ...frame, player: { ...frame.player, id: target.id } };
 }
 
 // Asiento posicional de cada piloto dev en la parrilla legacy: las tablas dev
@@ -836,6 +871,24 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
     baseFrame = { ...baseFrame, standings: padStandings(baseFrame.standings, scenario.standingRows) };
   }
   let frame = withWorkshopDemo(baseFrame, quality);
+  if (scenario.widget === "pedals" || scenario.widget === "racing-flags") {
+    // Racing Flags keeps the vivid green demo state by default, while Pedals
+    // preserves the canonical missing flag unless the Workshop asks for an
+    // explicit probe. In both cases an explicit probe lets the harness inspect
+    // yellow and the other known SessionV2 flag values without inventing live
+    // telemetry.
+    frame = {
+      ...frame,
+      session: {
+        ...frame.session,
+        flag: scenario.flag === undefined
+          ? scenario.widget === "racing-flags"
+            ? qualityValue("green", quality)
+            : baseFrame.session.flag
+          : qualityValue(scenario.flag, quality),
+      },
+    };
+  }
   switch (scenario.variant) {
     case "standings-functional-study": {
       // Explicit visual-study data, never live telemetry. The original V2
@@ -891,6 +944,9 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
       relative: relativeDevWindow(frame.relative, playerId, quality, ahead, behind),
       relativeSettled: relativeDevWindow(frame.relativeSettled, playerId, quality, ahead, behind),
     };
+  }
+  if (scenario.widget === "standings" && scenario.playerPosition !== undefined) {
+    frame = withWorkshopPlayerPosition(frame, scenario.playerPosition);
   }
   frame = applyScene(frame, scenario, quality);
   return { ...runtime, overlayV2Frame: frame };

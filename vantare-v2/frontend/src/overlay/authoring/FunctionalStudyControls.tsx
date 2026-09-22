@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ALL_WIDGET_TYPES, type WidgetType } from "../core/profile-document";
+import { ALL_WIDGET_TYPES, type WidgetLayoutV3, type WidgetType } from "../core/profile-document";
 import { designSystemRegistry } from "../core/design-system-registry";
 import { listOfficialDesigns } from "../design-systems/official-designs";
 import { listAnimationScenes } from "./fixtures/animation-scenes";
@@ -8,6 +8,9 @@ import { serializeOverlayWorkshopQuery, type OverlayWorkshopQuery } from "./over
 import { FUNCTIONAL_STUDY_DEFAULT_MODULES, FUNCTIONAL_STUDY_MODULES, FUNCTIONAL_STUDY_SLOTS, FUNCTIONAL_STUDY_STYLES } from "./functional-study-options";
 import { RELATIVE_RANGE_AHEAD, RELATIVE_RANGE_BEHIND, RELATIVE_RANGE_LIMIT } from "../widget-types/relative/relative-content";
 import { STANDINGS_ROW_COUNT_OPTIONS } from "../widget-types/standings/standings-content";
+import { STANDINGS_WINDOW_AROUND_OPTIONS, STANDINGS_WINDOW_DEFAULT_AROUND } from "../widget-types/standings/standings-window";
+import { RACING_FLAGS_DEFAULT_TEXT_COLOR, RACING_FLAGS_WHITE_FLAG_TEXT_COLOR } from "../design-systems/vantare-functional/racing-flags-settings";
+import { PEDALS_KNOWN_FLAGS, type PedalsKnownFlag } from "../widget-types/pedals/pedals-view-model";
 
 const SYSTEM_LABELS: Record<string, string> = {
   "vantare-functional": "Eficiencia",
@@ -27,13 +30,14 @@ const WIDGET_LABELS: Partial<Record<WidgetType, string>> = {
   "fuel-strategy": "Fuel Strategy",
   "pedals-telemetry": "Pedals Telemetry",
   "pedals-telemetry-compact": "Pedales avanzados",
+  "racing-flags": "Racing Flags",
 };
 const widgetLabel = (widget: WidgetType) => WIDGET_LABELS[widget] ?? widget;
 
 // Cada widget aterriza en la variante canónica `default`; la escena de Delta
 // se conserva porque es parte del estudio del diseño, no una variante visual.
-const STUDY_LANDING: Partial<Record<WidgetType, Pick<OverlayWorkshopQuery, "variant" | "sceneId" | "sceneFrame">>> = {
-  standings: { variant: "default" },
+const STUDY_LANDING: Partial<Record<WidgetType, Pick<OverlayWorkshopQuery, "variant" | "sceneId" | "sceneFrame" | "studyStyle" | "around">>> = {
+  standings: { variant: "default", studyStyle: "default", around: STANDINGS_WINDOW_DEFAULT_AROUND },
   relative: { variant: "default" },
   delta: { variant: "default", sceneId: "delta-cross-zero", sceneFrame: 2 },
   pedals: { variant: "default" },
@@ -41,16 +45,24 @@ const STUDY_LANDING: Partial<Record<WidgetType, Pick<OverlayWorkshopQuery, "vari
 
 const STATE_OPTIONS = [["ready", "Recibiendo"], ["stale", "Datos antiguos"], ["disconnected", "Desconectado"], ["error", "Error"]] as const;
 const SESSION_OPTIONS = [["practice", "Práctica"], ["qualifying", "Clasificación"], ["race", "Carrera"]] as const;
+const STANDINGS_SCOPE_OPTIONS = [["default", "Normal"], ["standings-multiclass", "Multiclass"]] as const;
 const LOCATION_OPTIONS = [["track", "Pista"], ["pits", "Boxes"]] as const;
 const NAME_FORMAT_OPTIONS = [["full", "Completo"], ["initial", "N. Apellido"], ["surname", "Apellido"]] as const;
 const BACKGROUND_OPTIONS = [["context", "Mixto"], ["solid", "Oscuro"], ["transparent", "Claro"]] as const;
 const SURFACE_OPTIONS = [["studio", "Studio"], ["desktop", "Desktop"], ["obs", "OBS"], ["harness", "Harness"]] as const;
 const SCALE_OPTIONS = [["0.5", "0.5×"], ["1", "1×"], ["1.5", "1.5×"], ["2", "2×"]] as const;
 const RELATIVE_RANGE_OPTIONS = Array.from({ length: RELATIVE_RANGE_LIMIT + 1 }, (_, index) => [String(index), String(index)] as const);
+const STUDY_STYLE_OPTIONS = FUNCTIONAL_STUDY_STYLES.map(({ id, label }) => [id, label] as const);
+const STANDINGS_WINDOW_OPTIONS = STANDINGS_WINDOW_AROUND_OPTIONS.map((count) => [String(count), String(count)] as const);
+const FLAG_OPTIONS = PEDALS_KNOWN_FLAGS.map((flag) => [flag, flag === "yellow" ? "Amarilla" : flag === "green" ? "Verde" : flag === "blue" ? "Azul" : flag === "red" ? "Roja" : flag === "white" ? "Blanca" : flag === "black" ? "Negra" : "A cuadros"] as const);
+// `default` conserva la parrilla funcional histórica cuando la URL no declara
+// módulos. En la variante de estudio el valor por defecto sigue siendo el
+// preset deliberadamente más corto de `functional-study-options`.
+const FUNCTIONAL_DEFAULT_STANDINGS_MODULES: readonly string[] = ["gap", "lastLap", "pit"];
 
-// Resolución del lienzo (portado de la vista genérica retirada en ISA-1221):
-// el preset solo declara la intención; "Aplicar tamaño declarado" fija
-// width/height concretos en la query. Misma semántica que la vista vieja.
+// Resolución de la previsualización del harness: el widget/profile mantiene
+// siempre su layout real; estos valores solo fijan el tamaño exterior de la
+// preview para poder juzgar cómo se comporta en una superficie concreta.
 const PRESET_DIMENSIONS: Record<OverlayWorkshopQuery["preset"], readonly [number, number]> = {
   "720p": [1280, 720],
   "1080p": [1920, 1080],
@@ -66,8 +78,9 @@ function Segments(props: { options: readonly (readonly [string, string])[]; valu
   return <div className="functional-study-segments">{props.options.map(([id, label]) => <button type="button" key={id} aria-pressed={props.value === id} onClick={() => props.onChange(id)}>{label}</button>)}</div>;
 }
 
-export function FunctionalStudyControls({ query, update, onRunScene, onReset }: {
+export function FunctionalStudyControls({ query, widgetLayout, update, onRunScene, onReset }: {
   query: OverlayWorkshopQuery;
+  widgetLayout?: Pick<WidgetLayoutV3, "w" | "h">;
   update: (query: OverlayWorkshopQuery) => void;
   onRunScene: (sceneId: string) => void;
   onReset: () => void;
@@ -84,6 +97,11 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
   const gaps = projectionGapsFor(query.widget);
   const isFunctional = query.system === "vantare-functional";
   const isStandings = query.widget === "standings";
+  const isRacingFlags = query.widget === "racing-flags";
+  const isFlagWidget = query.widget === "pedals" || isRacingFlags;
+  const defaultStandingRows = isFunctional
+    ? query.variant === "standings-functional-study" ? 15 : 10
+    : 20;
   // Las fixtures de desarrollo siguen siendo útiles para pruebas internas,
   // pero el Workshop público tiene una única variante canónica.
   const displayedVariant = "default";
@@ -98,43 +116,88 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
       system,
       designId: undefined,
       studyStyle: undefined,
+      around: undefined,
       sceneId: undefined,
       sceneFrame: undefined,
       // La ventana del relative no existe en otros widgets; no la arrastramos.
       ahead: undefined,
       behind: undefined,
       // El recuento de filas solo existe en standings.
-      ...(widget === "standings" ? {} : { rows: undefined }),
+      ...(widget === "standings" ? {} : { rows: undefined, playerPosition: undefined }),
       // El formato de nombre solo existe donde hay columna Piloto.
       ...(widget === "standings" || widget === "relative" ? {} : { nameFormat: undefined }),
+      ...(widget === "racing-flags" ? {} : { textColor: undefined }),
+      ...(widget === "pedals" || widget === "racing-flags" ? {} : { flag: undefined }),
+      // Las dimensiones de preview pertenecen al widget anterior; al cambiar
+      // de widget se vuelve a la resolución real del nuevo profile/layout.
+      width: undefined,
+      height: undefined,
       ...landing,
     });
   };
-  const chooseSystem = (system: string) => update({
-    ...query,
-    system: system as OverlayWorkshopQuery["system"],
-    designId: undefined,
-    studyStyle: undefined,
-    variant: "default",
-  });
+  const chooseSystem = (system: string) => {
+    const nextSystem = system as OverlayWorkshopQuery["system"];
+    const keepsDefaultWindow = nextSystem === "vantare-functional" && isStandings;
+    return update({
+      ...query,
+      system: nextSystem,
+      designId: undefined,
+      studyStyle: keepsDefaultWindow ? "default" : undefined,
+      around: keepsDefaultWindow ? query.around ?? STANDINGS_WINDOW_DEFAULT_AROUND : undefined,
+      variant: "default",
+      textColor: undefined,
+    });
+  };
   const chooseDesign = (value: string) => update({ ...query, designId: value || undefined });
   const chooseScene = (value: string) => update({ ...query, sceneId: value || undefined, sceneFrame: value ? 0 : undefined });
   const chooseScale = (value: string) => update({ ...query, scale: Number(value) });
+  const chooseStandingsScope = (value: string) => update({
+    ...query,
+    variant: value as OverlayWorkshopQuery["variant"],
+    designId: undefined,
+    studyStyle: query.studyStyle ?? "default",
+    around: (query.studyStyle ?? "default") === "default"
+      ? query.around ?? STANDINGS_WINDOW_DEFAULT_AROUND
+      : undefined,
+  });
+  const chooseStudyStyle = (value: string) => {
+    const studyStyle = value as OverlayWorkshopQuery["studyStyle"];
+    return update({
+      ...query,
+      studyStyle,
+      around: studyStyle === "default"
+        ? query.around ?? STANDINGS_WINDOW_DEFAULT_AROUND
+        : undefined,
+    });
+  };
+  const chooseFlag = (value: string) => update({
+    ...query,
+    flag: value as PedalsKnownFlag,
+    ...(value === "white" && query.textColor === RACING_FLAGS_DEFAULT_TEXT_COLOR ? { textColor: undefined } : {}),
+  });
+  const defaultRacingFlagsTextColor = query.flag === "white"
+    ? RACING_FLAGS_WHITE_FLAG_TEXT_COLOR
+    : RACING_FLAGS_DEFAULT_TEXT_COLOR;
+  const selectedStudyStyle = query.studyStyle ?? "default";
+  const isDefaultStandingsStudy = isFunctional && isStandings && selectedStudyStyle === "default";
+
+  const resolvedWidth = query.width ?? widgetLayout?.w;
+  const resolvedHeight = query.height ?? widgetLayout?.h;
 
   // Borradores de texto para ancho/alto: la query solo se reescribe cuando las
   // dos dimensiones son enteros dentro de rango — una URL a medias sería
   // inválida al compartirla (el parser exige width y height a la vez).
   const [dimensionDraft, setDimensionDraft] = useState({
-    width: query.width?.toString() ?? "",
-    height: query.height?.toString() ?? "",
+    width: resolvedWidth?.toString() ?? "",
+    height: resolvedHeight?.toString() ?? "",
   });
-  // Si el tamaño cambia desde fuera (preset aplicado, Restablecer, el
-  // laboratorio tower o un aterrizaje de widget) el borrador refleja lo que la
-  // URL dice de verdad. Los cambios propios ya dejaron marca en appliedSize.
-  const [appliedSize, setAppliedSize] = useState<{ width?: number; height?: number }>({ width: query.width, height: query.height });
-  if (appliedSize.width !== query.width || appliedSize.height !== query.height) {
-    setAppliedSize({ width: query.width, height: query.height });
-    setDimensionDraft({ width: query.width?.toString() ?? "", height: query.height?.toString() ?? "" });
+  // Si el tamaño cambia desde fuera (preset aplicado, Restablecer, un
+  // aterrizaje de widget o el layout real de otra fixture) el borrador refleja
+  // la resolución efectiva. Los cambios propios ya dejaron marca en appliedSize.
+  const [appliedSize, setAppliedSize] = useState<{ width?: number; height?: number }>({ width: resolvedWidth, height: resolvedHeight });
+  if (appliedSize.width !== resolvedWidth || appliedSize.height !== resolvedHeight) {
+    setAppliedSize({ width: resolvedWidth, height: resolvedHeight });
+    setDimensionDraft({ width: resolvedWidth?.toString() ?? "", height: resolvedHeight?.toString() ?? "" });
   }
   const chooseDimension = (field: "width" | "height", value: string) => {
     const next = { ...dimensionDraft, [field]: value };
@@ -178,23 +241,36 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
       <Segments options={SESSION_OPTIONS} value={query.session} onChange={(value) => update({ ...query, session: value as OverlayWorkshopQuery["session"] })} />
     </fieldset>
 
-    {isFunctional && designs.length > 1 && <fieldset><legend>{query.widget === "pedals" ? "Presentación" : "Estilo"}</legend><div className="functional-study-segments">{designs.map((design) => <button type="button" key={design.id} aria-pressed={(query.designId ?? defaultDesign?.id) === design.id} onClick={() => update({ ...query, designId: design.id })}>{design.name}</button>)}</div></fieldset>}
+    {isFunctional && !isStandings && designs.length > 1 && <fieldset><legend>{query.widget === "pedals" ? "Presentación" : "Estilo"}</legend><div className="functional-study-segments">{designs.map((design) => <button type="button" key={design.id} aria-pressed={(query.designId ?? defaultDesign?.id) === design.id} onClick={() => update({ ...query, designId: design.id })}>{design.name}</button>)}</div></fieldset>}
     {isFunctional && query.widget !== "relative" && <fieldset><legend>Marca</legend><div className="functional-study-segments">
       <button type="button" aria-pressed={query.brand !== "off"} onClick={() => update({ ...query, brand: undefined })}>Con marca</button>
       <button type="button" aria-pressed={query.brand === "off"} onClick={() => update({ ...query, brand: "off" })}>Sin marca</button>
     </div></fieldset>}
-    {isFunctional && isStandings && <fieldset><legend>Dirección v2</legend><div className="functional-study-segments">
-      <button type="button" aria-pressed={!query.studyStyle} onClick={() => update({ ...query, studyStyle: undefined })}>V1</button>
-      {FUNCTIONAL_STUDY_STYLES.map((style) => <button type="button" key={style.id} aria-pressed={query.studyStyle === style.id} onClick={() => update({ ...query, designId: style.designId, studyStyle: style.id })}>{style.label}</button>)}
-    </div></fieldset>}
-    {isStandings && <fieldset><legend>Filas</legend><p className="functional-study-note">Pilotos visibles; la caja se adapta al recuento.</p>
-      <Select label="Pilotos" value={String(query.rows ?? 20)} onChange={(value) => update({ ...query, rows: Number(value) })}>
+    {isFunctional && isStandings && <fieldset><legend>Dirección v2</legend>
+      <Segments options={STUDY_STYLE_OPTIONS} value={selectedStudyStyle} onChange={chooseStudyStyle} />
+    </fieldset>}
+    {isFunctional && isStandings && <fieldset><legend>Clasificación</legend>
+      <Segments options={STANDINGS_SCOPE_OPTIONS} value={query.variant === "standings-multiclass" ? "standings-multiclass" : "default"} onChange={chooseStandingsScope} />
+    </fieldset>}
+    {isStandings && <fieldset><legend>Filas</legend><p className="functional-study-note">{isDefaultStandingsStudy ? "Pilotos totales; Default muestra el podio y la ventana alrededor del jugador." : "Pilotos visibles; la caja se adapta al recuento."}</p>
+      <Select label={isDefaultStandingsStudy ? "Pilotos totales" : "Pilotos"} value={String(query.rows ?? defaultStandingRows)} onChange={(value) => {
+        const rows = Number(value);
+        update({ ...query, rows, playerPosition: Math.min(query.playerPosition ?? 1, rows) });
+      }}>
         {STANDINGS_ROW_COUNT_OPTIONS.map((count) => <option key={count} value={count}>{count}</option>)}
       </Select>
+      {isFunctional && <Select label="Posición del jugador" value={String(query.playerPosition ?? 1)} onChange={(value) => update({ ...query, playerPosition: Number(value) })}>
+        {STANDINGS_ROW_COUNT_OPTIONS.map((position) => <option key={position} value={position} disabled={position > (query.rows ?? defaultStandingRows)}>{position}</option>)}
+      </Select>}
+      {isDefaultStandingsStudy && <Select label="Pilotos alrededor" value={String(query.around ?? STANDINGS_WINDOW_DEFAULT_AROUND)} onChange={(value) => update({ ...query, around: Number(value) as OverlayWorkshopQuery["around"] })}>
+        {STANDINGS_WINDOW_OPTIONS.map(([count, label]) => <option key={count} value={count}>{label}</option>)}
+      </Select>}
     </fieldset>}
     {isFunctional && isStandings && <fieldset><legend>Módulos</legend><p className="functional-study-note">Posición y piloto siempre visibles.</p>
       {FUNCTIONAL_STUDY_MODULES.map((item) => {
-        const modules = query.modules ?? FUNCTIONAL_STUDY_DEFAULT_MODULES;
+        const modules = query.modules ?? (query.variant === "standings-functional-study"
+          ? FUNCTIONAL_STUDY_DEFAULT_MODULES
+          : FUNCTIONAL_DEFAULT_STANDINGS_MODULES);
         return <label key={item.id} className="functional-study-toggle"><span>{item.label}</span><input type="checkbox" checked={modules.includes(item.id)} onChange={() => update({ ...query, modules: modules.includes(item.id) ? modules.filter((id) => id !== item.id) : [...modules, item.id] })} /></label>;
       })}
     </fieldset>}
@@ -255,6 +331,9 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
     </fieldset>
 
     <fieldset><legend>Datos</legend>
+      {isFlagWidget && <Select label="Bandera" value={query.flag ?? "green"} onChange={chooseFlag}>
+        {FLAG_OPTIONS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
+      </Select>}
       <Select label="Estado de la fuente" value={query.state} onChange={(value) => update({ ...query, state: value as OverlayWorkshopQuery["state"] })}>
         {STATE_OPTIONS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}
       </Select>
@@ -264,6 +343,7 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
     </fieldset>
 
     <fieldset><legend>Presentación</legend>
+      {isFunctional && isRacingFlags && <label className="functional-study-select"><span>Color de la letra</span><input aria-label="Color de la letra" type="color" value={query.textColor ?? defaultRacingFlagsTextColor} onChange={(event) => update({ ...query, textColor: event.target.value })} /></label>}
       <p className="functional-study-note">Fondo</p>
       <Segments options={BACKGROUND_OPTIONS} value={query.background} onChange={(value) => update({ ...query, background: value as OverlayWorkshopQuery["background"] })} />
       <Select label="Superficie" value={query.surface} onChange={(value) => update({ ...query, surface: value as OverlayWorkshopQuery["surface"] })}>
@@ -275,8 +355,9 @@ export function FunctionalStudyControls({ query, update, onRunScene, onReset }: 
       </Select>
       <p className="functional-study-note">Escala</p>
       <Segments options={SCALE_OPTIONS} value={String(query.scale)} onChange={chooseScale} />
-      {/* Portado de la vista genérica retirada (ISA-1221): el lienzo se
-          declara por preset (720p/1080p/1440p) o por ancho/alto libres. */}
+      <p className="functional-study-note">La resolución real del widget es la base; ancho y alto solo cambian la previsualización del harness.</p>
+      {/* El preview se declara por preset (720p/1080p/1440p) o por ancho/alto
+          libres, sin modificar el layout productivo del widget. */}
       <Select label="Resolución" value={query.preset} onChange={(value) => update({ ...query, preset: value as OverlayWorkshopQuery["preset"] })}>
         {(Object.keys(PRESET_DIMENSIONS) as OverlayWorkshopQuery["preset"][]).map((preset) => {
           const [width, height] = PRESET_DIMENSIONS[preset];

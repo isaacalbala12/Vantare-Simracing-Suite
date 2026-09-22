@@ -11,12 +11,15 @@ const model: PedalsViewModel = {
   type: "pedals", status: "ready",
   throttle: 0.85, brake: 0.2, clutch: 0,
   throttleText: "85%", brakeText: "20%", clutchText: "0%",
+  flag: "yellow", sessionPhase: "race",
 };
 
 describe("Functional Pedals", () => {
   it("renders the three channels with their model values", () => {
     const { container } = render(<PedalsFunctional model={model} settings={{}} renderMode="harness" />);
     expect(container.querySelector(".vf-pedals")?.getAttribute("data-transparent")).toBe("false");
+    expect(container.querySelector(".vf-pedals")?.getAttribute("data-flag")).toBe("yellow");
+    expect(container.querySelector(".vf-pedals")?.getAttribute("data-session")).toBe("race");
     const pedal = (id: string) => container.querySelector(`[data-pedal="${id}"]`);
     expect(pedal("throttle")?.querySelector(".vf-pedal-value")?.textContent).toBe("85%");
     expect(pedal("brake")?.querySelector(".vf-pedal-value")?.textContent).toBe("20%");
@@ -61,5 +64,15 @@ describe("Functional Pedals", () => {
     expect(overlay.container.querySelector(".vf-pedals")?.getAttribute("data-transparent")).toBe("true");
     expect(overlay.container.querySelector(".vf-pedals")?.classList.contains("vf-pedals--overlay")).toBe(true);
     expect(overlay.container.querySelectorAll(".vf-pedal")).toHaveLength(3);
+  });
+
+  it("keeps the green throttle channel independent from the race flag", () => {
+    const greenFlag = render(<PedalsFunctional model={{ ...model, flag: "green" }} settings={{}} renderMode="harness" />);
+    const yellowFlag = render(<PedalsFunctional model={{ ...model, flag: "yellow" }} settings={{}} renderMode="harness" />);
+
+    expect(greenFlag.container.querySelector(".vf-pedals")?.getAttribute("data-flag")).toBe("green");
+    expect(yellowFlag.container.querySelector(".vf-pedals")?.getAttribute("data-flag")).toBe("yellow");
+    expect(greenFlag.container.querySelector<HTMLElement>('[data-pedal="throttle"] .vf-pedal-fill')?.style.height).toBe("85%");
+    expect(yellowFlag.container.querySelector<HTMLElement>('[data-pedal="throttle"] .vf-pedal-fill')?.style.height).toBe("85%");
   });
 });

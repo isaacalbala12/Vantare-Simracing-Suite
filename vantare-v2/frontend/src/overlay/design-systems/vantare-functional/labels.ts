@@ -11,7 +11,7 @@ const en = {
   rain: "RAIN", wetness: "WET", dry: "DRY", pressure: "PRESS",
   relative: "RELATIVE", delta: "DELTA", pedals: "PEDALS", playerGap: "TO YOU",
   clutch: "CLUTCH", brake: "BRAKE", throttle: "THROTTLE",
-  fuel: "FUEL", avg: "AVG", laps: "LAPS", required: "REQ", history: "HISTORY", estFinish: "EST. FINISH",
+  fuel: "FUEL", virtualEnergy: "VIRTUAL ENERGY", virtualEnergyUnavailable: "VIRTUAL ENERGY SIGNAL UNAVAILABLE", avg: "AVG", laps: "LAPS", required: "REQ", history: "HISTORY", estFinish: "EST. FINISH",
   aero: "AERO", body: "BODY", suspension: "SUSP", tyre: "TYRE", damage: "DAMAGE",
   speed: "SPEED", rpm: "RPM", gear: "GEAR",
 };
@@ -26,7 +26,7 @@ export const functionalLabels: Record<Locale, typeof en> = {
     trackTemp: "PISTA", ambientTemp: "AIRE", wind: "VIENTO", track: "PISTA",
     rain: "LLUVIA", wetness: "HÚMEDO", dry: "SECO", pressure: "PRES",
     relative: "RELATIVO", pedals: "PEDALES", playerGap: "A TI", estFinish: "EST. META",
-    clutch: "EMBRAGUE", brake: "FRENO", throttle: "ACELERADOR" },
+    clutch: "EMBRAGUE", brake: "FRENO", throttle: "ACELERADOR", virtualEnergy: "ENERGÍA VIRTUAL", virtualEnergyUnavailable: "ENERGÍA VIRTUAL NO DISPONIBLE EN LA SEÑAL EN VIVO" },
   pt: { ...en, driverName: "PILOTO", vehicleClass: "CLASSE", gap: "AO LÍDER", paceGap: "AO MELHOR",
     interval: "INTERVALO", currentLap: "VOLTA", lastLap: "ÚLT. VOLTA", bestLap: "MELHOR V.", personalBest: "MELHOR PESSOAL",
     tireCompound: "PNEU", you: "VOCÊ", remaining: "RESTANTE", race: "CORRIDA", practice: "TREINO",
@@ -34,7 +34,7 @@ export const functionalLabels: Record<Locale, typeof en> = {
     trackTemperature: "PISTA", airTemperature: "AR", estimatedLaps: "V. REST. EST.", totalLaps: "V. TOTAIS",
     trackTemp: "PISTA", ambientTemp: "AR", wind: "VENTO", track: "PISTA",
     relative: "RELATIVO", pedals: "PEDAIS", playerGap: "A VOCÊ", estFinish: "EST. FIM",
-    clutch: "EMBREAGEM", brake: "FREIO", throttle: "ACELERADOR" },
+    clutch: "EMBREAGEM", brake: "FREIO", throttle: "ACELERADOR", virtualEnergy: "ENERGIA VIRTUAL", virtualEnergyUnavailable: "SINAL DE ENERGIA VIRTUAL INDISPONÍVEL" },
   it: { ...en, driverName: "PILOTA", vehicleClass: "CLASSE", gap: "DAL LEADER", paceGap: "DAL MIGLIORE",
     interval: "INTERVALLO", currentLap: "GIRO", lastLap: "ULT. GIRO", bestLap: "MIGLIORE", personalBest: "MIGLIOR PERSONALE",
     tireCompound: "GOMMA", you: "TU", remaining: "RIMANENTE", race: "GARA", practice: "PROVE",
@@ -42,5 +42,5 @@ export const functionalLabels: Record<Locale, typeof en> = {
     trackTemperature: "PISTA", airTemperature: "ARIA", estimatedLaps: "GIRI REST. ST.", totalLaps: "GIRI TOTALI",
     trackTemp: "PISTA", ambientTemp: "ARIA", wind: "VENTO", track: "PISTA",
     relative: "RELATIVO", pedals: "PEDALI", playerGap: "A TE", estFinish: "STIMA FINALE",
-    clutch: "FRIZIONE", brake: "FRENO", throttle: "ACCELERATORE" },
+    clutch: "FRIZIONE", brake: "FRENO", throttle: "ACCELERATORE", virtualEnergy: "ENERGIA VIRTUALE", virtualEnergyUnavailable: "SEGNALE ENERGIA VIRTUALE NON DISPONIBILE" },
 };

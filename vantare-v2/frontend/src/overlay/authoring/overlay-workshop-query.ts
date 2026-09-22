@@ -18,17 +18,23 @@ import {
 } from "./efficiency-study-options";
 import { RELATIVE_RANGE_LIMIT } from "../widget-types/relative/relative-content";
 import { STANDINGS_ROW_COUNT_MAX, STANDINGS_ROW_COUNT_MIN } from "../widget-types/standings/standings-content";
+import {
+  STANDINGS_WINDOW_AROUND_OPTIONS,
+  STANDINGS_WINDOW_DEFAULT_AROUND,
+  type StandingsWindowAround,
+} from "../widget-types/standings/standings-window";
 import { DRIVER_NAME_FORMATS, type DriverNameFormat } from "../widget-types/shared/driver-name";
+import { PEDALS_KNOWN_FLAGS, type PedalsKnownFlag } from "../widget-types/pedals/pedals-view-model";
+import { isRacingFlagsTextColor } from "../design-systems/vantare-functional/racing-flags-settings";
 
 export type OverlayWorkshopQuery = {
   widget: WidgetType;
   system: DesignSystemId;
   designId?: string;
-  /** Piel de estudio Eficiencia v2 (ISA-1120); solo aplica en la variante
-   * `standings-functional-study` y nunca se persiste en perfiles. */
+  /** Piel de estudio Eficiencia; solo vive en el Workshop y nunca se persiste. */
   studyStyle?: EfficiencyStudyStyleId;
-  /** Columnas opcionales del estudio (gap/bestLap/lastLap/pit). Misma regla:
-   *  solo dentro de `standings-functional-study`. */
+  /** Columnas opcionales del estudio (gap/bestLap/lastLap/pit), solo en
+   *  Standings de Eficiencia dentro del Workshop. */
   modules?: readonly string[];
   /** Huecos de datos del pie en standings/relative de Eficiencia. */
   slots?: readonly string[];
@@ -40,9 +46,17 @@ export type OverlayWorkshopQuery = {
   nameFormat?: DriverNameFormat;
   /** Filas del Standings (1–30): las que el contenido declara, como en Studio. */
   rows?: number;
+  /** Vecinos visibles alrededor del jugador en el estudio de Standings (0–8, pares). */
+  around?: StandingsWindowAround;
+  /** Posición del jugador en la parrilla de demostración del harness. */
+  playerPosition?: number;
   state: AuthoringV2Scenario["state"];
   surface: "studio" | "desktop" | "obs" | "harness";
   variant: WorkshopV2Variant;
+  /** Explicit dev-only SessionV2 flag probe for Pedals/Racing Flags. */
+  flag?: PedalsKnownFlag;
+  /** Eficiencia Racing Flags text color override for the Workshop. */
+  textColor?: string;
   session: AuthoringV2Scenario["session"];
   location: AuthoringV2Scenario["location"];
   background: "transparent" | "grid" | "solid" | "context";
@@ -101,6 +115,8 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   const state = (params.get("state") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.state) as AuthoringV2Scenario["state"];
   const surface = (params.get("surface") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.surface) as OverlayWorkshopQuery["surface"];
   const variant = (params.get("variant") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.variant) as WorkshopV2Variant;
+  const flagRaw = params.get("flag");
+  const textColorRaw = params.get("textColor");
   const designId = params.get("design") ?? undefined;
   const session = (params.get("session") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.session) as AuthoringV2Scenario["session"];
   const location = (params.get("location") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.location) as AuthoringV2Scenario["location"];
@@ -122,6 +138,12 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   if (!STATES.has(state)) return { error: `invalid state parameter: ${state}` };
   if (!SURFACES.has(surface)) return { error: `invalid surface parameter: ${surface}` };
   if (!isWorkshopV2Variant(variant)) return { error: `invalid variant parameter: ${variant}` };
+  if (flagRaw !== null && !(PEDALS_KNOWN_FLAGS as readonly string[]).includes(flagRaw)) {
+    return { error: `invalid flag parameter: ${flagRaw}` };
+  }
+  if (textColorRaw !== null && !isRacingFlagsTextColor(textColorRaw)) {
+    return { error: `invalid textColor parameter: ${textColorRaw}` };
+  }
   if (variant === "standings-functional-study" && (widget !== "standings" || system !== EFFICIENCY_SYSTEM_ID)) return { error: "standings-functional-study requires Functional Standings" };
   if (!SESSIONS.has(session)) return { error: `invalid session parameter: ${session}` };
   if (!LOCATIONS.has(location)) return { error: `invalid location parameter: ${location}` };
@@ -181,29 +203,31 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
     return { error: `invalid frame parameter: ${sceneFrameRaw}` };
   }
 
-  // La piel de estudio solo tiene sentido dentro del estudio Eficiencia: un
-  // valor desconocido es un error honesto, pero uno válido que sobrevive un
-  // cambio de variante se descarta en silencio en vez de romper la página.
+  // La piel de estudio solo tiene sentido en Standings de Eficiencia: un valor
+  // desconocido es un error honesto, pero uno válido fuera de ese ámbito se
+  // descarta en silencio en vez de romper la página.
   const studyStyleRaw = params.get("study");
   if (studyStyleRaw !== null && !EFFICIENCY_STUDY_STYLE_IDS.has(studyStyleRaw)) {
     return { error: `invalid study parameter: ${studyStyleRaw}` };
   }
-  const studyStyle = studyStyleRaw !== null && variant === "standings-functional-study" && system === EFFICIENCY_SYSTEM_ID
-    ? studyStyleRaw as EfficiencyStudyStyleId
+  const efficiencyStandings = widget === "standings" && system === EFFICIENCY_SYSTEM_ID;
+  const studyStyle = efficiencyStandings
+    ? (studyStyleRaw ?? "default") as EfficiencyStudyStyleId
     : undefined;
 
   const brand = params.get("brand");
   if (brand !== null && brand !== "off") return { error: `invalid brand parameter: ${brand}` };
 
-  // Módulos del estudio: misma regla que studyStyle — valor desconocido es
-  // error honesto, uno válido fuera del estudio se descarta en silencio.
+  // Módulos de Standings Eficiencia: el control vive en el Workshop aunque la
+  // piel siga siendo `default`; la variante no debe invalidar una selección
+  // reproducible que ya viaja en la URL.
   const modulesRaw = params.get("modules");
   let modules: readonly string[] | undefined;
   if (modulesRaw !== null) {
     const list = modulesRaw.split(",").filter(Boolean);
     const unknown = list.find((id) => !EFFICIENCY_STUDY_MODULE_IDS.has(id));
     if (unknown) return { error: `invalid modules parameter: ${modulesRaw}` };
-    if (variant === "standings-functional-study" && system === EFFICIENCY_SYSTEM_ID) {
+    if (widget === "standings" && system === EFFICIENCY_SYSTEM_ID) {
       modules = list;
     }
   }
@@ -254,6 +278,39 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
     return { error: `invalid rows parameter: ${rowsRaw}` };
   }
   const rows = widget === "standings" ? rowsParsed : undefined;
+  const playerPositionRaw = params.get("playerPosition");
+  const playerPositionParsed = playerPositionRaw === null ? undefined : Number(playerPositionRaw);
+  const defaultWorkshopRows = efficiencyStandings
+    ? variant === "standings-functional-study" ? 15 : 10
+    : 20;
+  const playerPositionLimit = rows ?? defaultWorkshopRows;
+  if (widget === "standings" && playerPositionParsed !== undefined && (
+    !Number.isInteger(playerPositionParsed)
+      || playerPositionParsed < STANDINGS_ROW_COUNT_MIN
+      || playerPositionParsed > Math.min(STANDINGS_ROW_COUNT_MAX, playerPositionLimit)
+  )) {
+    return { error: `invalid playerPosition parameter: ${playerPositionRaw}` };
+  }
+  const playerPosition = widget === "standings" ? playerPositionParsed : undefined;
+  const aroundRaw = params.get("around");
+  const aroundParsed = aroundRaw === null ? undefined : Number(aroundRaw);
+  if (aroundParsed !== undefined && (
+    !Number.isInteger(aroundParsed)
+    || !STANDINGS_WINDOW_AROUND_OPTIONS.includes(aroundParsed as StandingsWindowAround)
+  )) {
+    return { error: `invalid around parameter: ${aroundRaw}` };
+  }
+  const around: StandingsWindowAround | undefined = efficiencyStandings
+    ? aroundParsed === undefined
+      ? STANDINGS_WINDOW_DEFAULT_AROUND
+      : aroundParsed as StandingsWindowAround
+    : undefined;
+  const flag = (widget === "pedals" || widget === "racing-flags") && flagRaw !== null
+    ? flagRaw as PedalsKnownFlag
+    : undefined;
+  const textColor = widget === "racing-flags" && system === EFFICIENCY_SYSTEM_ID && textColorRaw !== null
+    ? textColorRaw.toLowerCase()
+    : undefined;
 
   // Tower lab options are validated here and applied as appearanceOverrides;
   // the productive settings parser re-validates them before rendering.
@@ -284,6 +341,10 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
     ...(sceneId ? { sceneId } : {}), ...(sceneFrame !== undefined ? { sceneFrame } : {}), ...(brand === "off" ? { brand } : {}), ...(modules ? { modules } : {}), ...(slots ? { slots } : {}),
     ...(ahead !== undefined ? { ahead } : {}), ...(behind !== undefined ? { behind } : {}), ...(nameFormat ? { nameFormat } : {}),
     ...(rows !== undefined ? { rows } : {}),
+    ...(around !== undefined ? { around } : {}),
+    ...(playerPosition !== undefined ? { playerPosition } : {}),
+    ...(flag !== undefined ? { flag } : {}),
+    ...(textColor !== undefined ? { textColor } : {}),
     ...(redlineThemeRaw ? { redlineTheme: redlineThemeRaw as OverlayWorkshopQuery["redlineTheme"] } : {}),
     ...(redlineData ? { redlineData } : {}),
     ...(redlineSelectionRaw ? { redlineSelection: redlineSelectionRaw as OverlayWorkshopQuery["redlineSelection"] } : {}),
@@ -322,6 +383,10 @@ export function serializeOverlayWorkshopQuery(query: OverlayWorkshopQuery): stri
   if (query.behind !== undefined) params.set("behind", String(query.behind));
   if (query.nameFormat) params.set("nameFormat", query.nameFormat);
   if (query.rows !== undefined) params.set("rows", String(query.rows));
+  if (query.around !== undefined) params.set("around", String(query.around));
+  if (query.playerPosition !== undefined) params.set("playerPosition", String(query.playerPosition));
+  if (query.flag) params.set("flag", query.flag);
+  if (query.textColor) params.set("textColor", query.textColor);
   if (query.redlineTheme) params.set("redlineTheme", query.redlineTheme);
   if (query.redlineData) params.set("redlineData", query.redlineData);
   if (query.redlineSelection) params.set("redlineSelection", query.redlineSelection);

@@ -55,15 +55,22 @@ export function buildAuthoringV2ScenarioWidget(input: {
   }
   if (input.widget === "standings") {
     const content = widget.content as Record<string, unknown>;
-    // El Workshop enseña el campo completo: el golden interclasa clases y el
-    // scope por defecto (player-class) dejaba solo las filas de la clase del
-    // jugador — posiciones 1,4,7… y filas estiradas al alto de la caja.
+    // La clasificación no pertenece al estudio visual. En Eficiencia las
+    // tres pieles comparten la parrilla global; solo la elección explícita de
+    // Multiclass activa las bandas y posiciones por clase.
+    const functional = input.system === EFFICIENCY_SYSTEM_ID;
+    const multiclass = input.variant === "standings-multiclass";
     const columns = input.variant === "standings-multiclass" && Array.isArray(content.columns)
       ? (content.columns as Record<string, unknown>[]).map((column) =>
           column.metricId === "bestLap" ? { ...column, enabled: true } : column,
         )
       : content.columns;
-    widget.content = { ...content, classScope: "all-classes", columns };
+    widget.content = {
+      ...content,
+      classScope: functional || multiclass ? "all-classes" : "player-class",
+      ...(functional ? { classificationMode: multiclass ? "multiclass" : "normal" } : {}),
+      columns,
+    };
   }
   if (
     input.widget === "standings" &&

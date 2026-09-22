@@ -132,6 +132,18 @@ describe("buildWorkshopFrameV2", () => {
     expect(frame.relative.every((row) => !/^Driver 0\d\d$/.test(row.name ?? ""))).toBe(true);
   });
 
+  it("keeps Racing Flags green by default and exposes an explicit yellow probe", () => {
+    const defaultFlags = buildWorkshopFrameV2(
+      scenario({ widget: "racing-flags", system: "vantare-functional" }),
+    ).overlayV2Frame!;
+    const yellowFlags = buildWorkshopFrameV2(
+      scenario({ widget: "racing-flags", system: "vantare-functional", flag: "yellow" }),
+    ).overlayV2Frame!;
+
+    expect(defaultFlags.session.flag).toEqual({ q: "fresh", v: "green" });
+    expect(yellowFlags.session.flag).toEqual({ q: "fresh", v: "yellow" });
+  });
+
   it("derives 60 stable rows for standings-stress60", () => {
     const canonical = buildWorkshopFrameV2(scenario()).overlayV2Frame!;
     const first = buildWorkshopFrameV2(scenario({ variant: "standings-stress60" })).overlayV2Frame!;
@@ -303,6 +315,19 @@ describe("buildWorkshopFrameV2", () => {
         expect(sample.clutch).toBe(expected);
       }
     }
+  });
+
+  it("keeps Pedals on the canonical flag absence unless a SessionV2 probe is explicit", () => {
+    const base = buildWorkshopFrameV2(scenario({ widget: "pedals" })).overlayV2Frame!;
+    const yellow = buildWorkshopFrameV2(scenario({ widget: "pedals", flag: "yellow" })).overlayV2Frame!;
+    const green = buildWorkshopFrameV2(scenario({ widget: "pedals", flag: "green" })).overlayV2Frame!;
+
+    expect(base.session.flag).toMatchObject({ q: "missing" });
+    expect(base.session.flag.v).toBeUndefined();
+    expect(yellow.session.flag).toEqual({ q: "fresh", v: "yellow" });
+    expect(green.session.flag).toEqual({ q: "fresh", v: "green" });
+    expect(yellow.player.throttle).toEqual(base.player.throttle);
+    expect(green.player.throttle).toEqual(base.player.throttle);
   });
 
   it("applies scene frames observably without snapshot", () => {

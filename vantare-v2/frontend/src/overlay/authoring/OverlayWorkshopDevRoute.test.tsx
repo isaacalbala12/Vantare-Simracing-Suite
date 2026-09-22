@@ -54,6 +54,61 @@ describe("OverlayWorkshopDevRoute", () => {
     expect((document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement).style.height).toBe("240px");
   });
 
+  it("keeps the real widget layout inside a resizable harness preview", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=pedals&system=vantare-original&state=ready&surface=harness&variant=default&width=640&height=240" />);
+    await waitFor(() => expect(document.querySelector('[data-widget-renderer="pedals"]')).toBeTruthy());
+
+    const root = document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement;
+    const preview = document.querySelector("[data-overlay-workshop-widget-preview]") as HTMLElement;
+    const viewport = screen.getByTestId("overlay-workshop-viewport");
+    expect(root.style.width).toBe("640px");
+    expect(root.style.height).toBe("240px");
+    expect(preview.dataset.overlayWorkshopIntrinsicWidth).toBe("120");
+    expect(preview.dataset.overlayWorkshopIntrinsicHeight).toBe("160");
+    expect(viewport.style.width).toBe("120px");
+    expect(viewport.style.height).toBe("160px");
+    expect(viewport.style.transform).toBe("scale(1)");
+  });
+
+  it("exposes the Functional Racing Flags probe, text color, and live dimensions in Harness", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=racing-flags&system=vantare-functional&state=ready&surface=harness&variant=default&flag=yellow&textColor=%23ffcc00&width=360&height=96" />);
+    await waitFor(() => expect(document.querySelector('[data-widget-renderer="racing-flags"]')).toBeTruthy());
+
+    const root = document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement;
+    expect(root.style.width).toBe("360px");
+    expect(root.style.height).toBe("96px");
+    expect(document.querySelector('[data-widget-renderer="racing-flags"]')?.getAttribute("data-flag")).toBe("yellow");
+    expect(document.querySelector('[data-widget-renderer="racing-flags"]')?.getAttribute("data-text-color")).toBe("#ffcc00");
+    expect((screen.getByLabelText("Bandera") as HTMLSelectElement).value).toBe("yellow");
+    expect((screen.getByLabelText("Color de la letra") as HTMLInputElement).value).toBe("#ffcc00");
+
+    fireEvent.change(screen.getByLabelText("Ancho"), { target: { value: "420" } });
+    fireEvent.change(screen.getByLabelText("Alto"), { target: { value: "120" } });
+    await waitFor(() => {
+      expect(root.style.width).toBe("420px");
+      expect(root.style.height).toBe("120px");
+    });
+
+    fireEvent.change(screen.getByLabelText("Color de la letra"), { target: { value: "#ff00aa" } });
+    await waitFor(() => expect(document.querySelector('[data-widget-renderer="racing-flags"]')?.getAttribute("data-text-color")).toBe("#ff00aa"));
+    expect(window.location.search).toContain("textColor=%23ff00aa");
+
+    fireEvent.change(screen.getByLabelText("Bandera"), { target: { value: "green" } });
+    await waitFor(() => expect(document.querySelector('[data-widget-renderer="racing-flags"]')?.getAttribute("data-flag")).toBe("green"));
+    expect(window.location.search).toContain("flag=green");
+  });
+
+  it("uses black text for the white flag while keeping the color picker configurable", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=racing-flags&system=vantare-functional&state=ready&surface=harness&variant=default&flag=white&width=360&height=96" />);
+    await waitFor(() => expect(document.querySelector('[data-widget-renderer="racing-flags"]')).toBeTruthy());
+
+    expect(document.querySelector('[data-widget-renderer="racing-flags"]')?.getAttribute("data-text-color")).toBe("#141517");
+    expect((screen.getByLabelText("Color de la letra") as HTMLInputElement).value).toBe("#141517");
+
+    fireEvent.change(screen.getByLabelText("Color de la letra"), { target: { value: "#ffffff" } });
+    await waitFor(() => expect(document.querySelector('[data-widget-renderer="racing-flags"]')?.getAttribute("data-text-color")).toBe("#ffffff"));
+  });
+
   it("rejects invalid declared dimensions in the URL and falls back to defaults with a visible notice", async () => {
     render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-original&state=ready&surface=studio&variant=default&width=12&height=240" />);
     expect(screen.getByRole("alert").textContent).toContain("invalid declared dimensions");
@@ -111,6 +166,22 @@ describe("OverlayWorkshopDevRoute", () => {
     await waitFor(() => expect(document.querySelector("[data-widget-renderer=standings]")).toBeTruthy());
   });
 
+  it("clears a previous preview override when changing widgets", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=delta&system=vantare-original&state=ready&surface=harness&variant=default&width=640&height=240" />);
+    await waitFor(() => expect(document.querySelector('[data-widget-renderer="delta"]')).toBeTruthy());
+
+    fireEvent.change(screen.getByLabelText("Widget"), { target: { value: "pedals" } });
+    await waitFor(() => expect(document.querySelector('[data-widget-renderer="pedals"]')).toBeTruthy());
+
+    const root = document.querySelector("[data-overlay-workshop-widget-root]") as HTMLElement;
+    expect(root.style.width).toBe("120px");
+    expect(root.style.height).toBe("160px");
+    expect(document.querySelector("[data-overlay-workshop-query]")?.textContent).not.toContain("width=");
+    expect(document.querySelector("[data-overlay-workshop-query]")?.textContent).not.toContain("height=");
+    expect((screen.getByLabelText("Ancho") as HTMLInputElement).value).toBe("120");
+    expect((screen.getByLabelText("Alto") as HTMLInputElement).value).toBe("160");
+  });
+
   it("keeps the scene transport inside the stage under the study view", async () => {
     render(
       <OverlayWorkshopDevRoute search="?widget=standings&system=vantare-endurance&design=standings-endurance-redline&state=ready&surface=obs&scene=standings-fastest-lap" />,
@@ -157,7 +228,60 @@ describe("OverlayWorkshopDevRoute", () => {
     expect(document.querySelector("[data-widget-system=vantare-functional]")).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "V1" }));
-    expect(document.querySelector("[data-overlay-workshop-page]")?.getAttribute("data-study-style")).toBeNull();
+    expect(document.querySelector("[data-overlay-workshop-page]")?.getAttribute("data-study-style")).toBe("v1");
+  });
+
+  it("selects Efficiency Standings default and exposes the player-neighbour window", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=standings&system=vantare-functional&variant=default&rows=12&state=ready&surface=obs" />);
+
+    await waitFor(() => expect(document.querySelectorAll("[data-standings-row]").length).toBeGreaterThan(0));
+    expect(document.querySelector("[data-overlay-workshop-page]")?.getAttribute("data-study-style")).toBe("default");
+    expect((screen.getByLabelText("Pilotos alrededor") as HTMLSelectElement).value).toBe("4");
+    expect(document.querySelectorAll("[data-standings-row]")).toHaveLength(7);
+    expect([...document.querySelectorAll("[data-standings-row] [data-metric=position]")].map((cell) => cell.textContent)).toEqual([
+      "1", "2", "3", "4", "5", "6", "7",
+    ]);
+
+    fireEvent.change(screen.getByLabelText("Pilotos alrededor"), { target: { value: "0" } });
+    await waitFor(() => expect(document.querySelectorAll("[data-standings-row]")).toHaveLength(3));
+    expect(window.location.search).toContain("around=0");
+  });
+
+  it("keeps the player window in Default without changing the visible-count semantics of V1 and Foco", async () => {
+    for (const study of ["v1", "default", "v2-focus"] as const) {
+      cleanup();
+      render(<OverlayWorkshopDevRoute search={`?widget=standings&system=vantare-functional&variant=default&study=${study}&rows=12&playerPosition=9&around=4&state=ready&surface=obs`} />);
+
+      const expectedPositions = study === "default"
+        ? ["1", "2", "3", "7", "8", "9", "10", "11"]
+        : Array.from({ length: 12 }, (_, index) => String(index + 1));
+      await waitFor(() => expect(document.querySelectorAll("[data-standings-row]")).toHaveLength(expectedPositions.length));
+      const root = document.querySelector('[data-widget-renderer="standings"]');
+      expect(root?.getAttribute("data-classification-mode")).toBe("normal");
+      expect(root?.getAttribute("data-multiclass")).toBeNull();
+      expect(document.querySelectorAll(".vf-class-band")).toHaveLength(0);
+      expect([...document.querySelectorAll("[data-standings-row] [data-metric=position]")].map((cell) => cell.textContent)).toEqual(expectedPositions);
+      expect(document.querySelector('[data-standings-row][data-player] [data-metric=position]')?.textContent).toBe("9");
+
+      if (study === "default") {
+        expect(screen.getByLabelText("Pilotos totales")).toBeTruthy();
+        expect((screen.getByLabelText("Pilotos alrededor") as HTMLSelectElement).value).toBe("4");
+      } else {
+        expect(screen.getByLabelText("Pilotos")).toBeTruthy();
+        expect(screen.queryByLabelText("Pilotos alrededor")).toBeNull();
+      }
+    }
+  });
+
+  it("keeps multiclass as an explicit classification while sharing the same window policy", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=standings&system=vantare-functional&variant=standings-multiclass&study=v2-focus&rows=12&playerPosition=9&around=4&state=ready&surface=obs" />);
+
+    await waitFor(() => expect(document.querySelectorAll("[data-standings-row]").length).toBeGreaterThan(0));
+    const root = document.querySelector('[data-widget-renderer="standings"]');
+    expect(root?.getAttribute("data-classification-mode")).toBe("multiclass");
+    expect(root?.getAttribute("data-multiclass")).toBe("true");
+    expect(document.querySelectorAll(".vf-class-band").length).toBeGreaterThan(0);
+    expect(document.querySelector('[data-standings-row][data-player] [data-metric=position]')?.textContent).toBe("3");
   });
 
   it("renders Input history from the canonical V2 frame without seeding", async () => {

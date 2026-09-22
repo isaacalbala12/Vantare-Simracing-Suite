@@ -3089,3 +3089,10 @@ aislada a `nightly` (pendiente review/merge):
 ## 2026-09-22 · ISA-1315 inicio: idioma común sin trabajo por muestra
 
 Isaac aprobó compartir el idioma de la app con las etiquetas de widgets y exigió separar toda resolución de traducciones de la telemetría. Seguimiento de widgets en [Asana, En curso](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218757534554194), por su instrucción expresa; [#1315](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1315) conserva el puente CI. [Diseño y plan aprobado](../../plans/2026-09-22-isa-1315-widget-locale.md). Base nightly e41f703c, worktree aislado vantare-widget-locale, rama vantareapp/isa-1315-widget-locale. Próximo paso: implementación mediante worker y revisión independiente de persistencia/concurrencia. PR #1306 continúa separada; sin integración ni promoción de canales.
+
+
+### ISA-1315 · continuidad de la revisión GPT-6
+
+A petición expresa de Isaac, GPT-6 Sol retoma implementación y GPT-6 Astra revisa arquitectura y backend en checkout separado. El primer commit de implementación es 34bec633; no representa entrega final. La revisión detectó que la recuperación `.failed` podía aplicar tras reinicio un idioma rechazado: queda exigida corrección acotada y regresión. El frontend debe serializar elecciones rápidas porque Wails beta.24 ejecuta callbacks concurrentes.
+
+Base e41f703c + diseño67e9e9ce: frontend build PASS y quality PASS (NEW=0, MOVED=0). Fallos previos reproducidos en macOS: cmd/vantare depende de símbolos Windows; TestProfileRejectsAbsolutePathWindows devuelve404 en lugar de400. No se modifican esos fallos ajenos al alcance ni se presentan los controles globales Go como verdes. Próximo paso: completar frontend, comprobar los contadores con widgets reales y revisar el candidato final. Seguimiento principal sigue [Asana, En curso](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218757534554194).

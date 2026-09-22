@@ -3142,4 +3142,13 @@ Entrega de revisión publicada: [PR draft #1323](https://github.com/isaacalbala1
 
 La captura posterior a la entrega muestra un error en el guion: las escenas Eficiencia nombraban Bruni/Birch pero los asientos de la parrilla eran Nico Pino/Mikkel Jensen. `a7449ce8` corrige exclusivamente captions y claves de las seis escenas; conserva las escenas legacy. La regresión recorre cada muestra en práctica, clasificación y carrera y comprueba los nombres de los pilotos realmente visibles. 52 pruebas focales de escenas/Workshop, typecheck, lint y diff limpio PASS.
 
-También se observa un hueco antes del pie en el paso inicial que retira al segundo rival trasero. La reserva visual tiene un slot vacío, pero la base anterior ya fijaba el alto de la tabla y el pie mediante flex; eliminar ese slot por sí solo no elimina el espacio. No se ha modificado geometría a partir de esta captura: sigue pendiente que Isaac concrete el fallo señalado. No se considera Relative confirmado ni completado.
+También se observa un hueco antes del pie en el paso inicial que retira al segundo rival trasero. La reserva visual tiene un slot vacío, pero la base anterior ya fijaba el alto de la tabla y el pie mediante flex; eliminar ese slot por sí solo no elimina el espacio. Isaac concreta después que falta el sexto rival y no se recupera; la causa y corrección quedan registradas a continuación. No se considera Relative confirmado ni completado.
+
+
+### ISA-1320 — sexto rival recuperado en Workshop
+
+Isaac confirma que falta uno de los seis rivales configurados. Reproducción independiente sobre el preview `0b9dee71`: la ruta montada conserva a Jensen en el paso 6, pero solo muestra 6 filas totales en lugar de 7. La preparación del fixture recortaba a 3 delante + jugador + 3 detrás antes de aplicar cruces y ausencias; perdía los candidatos necesarios para rellenar la ventana.
+
+`956f6990` conserva el campo disponible en las escenas Relative antes de aplicar sus cambios. La selección productiva existente elige los tres rivales más cercanos por lado. Sin cambios de geometría, motor de animación ni telemetría productiva. Prueba permanente con un único WidgetVisualHost montado: nueve pasos, siete identidades únicas, salida/reentrada de Jensen y nodo del jugador estable. Fuente: 48 pruebas focales, tipos, build y lint PASS.
+
+Preview `f2cde704` incorpora solo ese ajuste sobre `0b9dee71`, conserva Delta/Standings y pasa 75 pruebas focales. Revisión independiente de la ruta Workshop completa con la URL del usuario: nueve pasos y saltos hacia atrás mantienen siete filas; la aserción que fallaba antes pasa después. Vite 5177 continúa sirviendo el ajuste sin reiniciar. Estas son pruebas DOM, no certificación visual. Asana sigue En curso hasta aceptación de Isaac; sin merge de #1323.

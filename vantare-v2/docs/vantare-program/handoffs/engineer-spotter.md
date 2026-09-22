@@ -39,10 +39,18 @@ eje horizontal para admitir un solape nuevo, y clear estrictamente después de
 de mensajes pendientes para revalidar el inicio y las reapariciones.
 Vantare usa velocidad canónica orientada; el estimador RF2 por historial, el
 modo oval, dos rivales en el mismo lado y audio físico permanecen fuera del corte.
-Base de revalidación `7f3650e4`, con VAN-737/#1302 ya integrada desde su tarea
-propietaria. VAN-736/#1300 (Fuel/Timings) y la PR documental aceptada #1295
-siguen como candidatos separados, ahora actualizados sobre esa misma base.
-Implementación y revisión de #1303 en curso; sin integración ni promoción.
+Base final `1101f735`, con VAN-737/#1302 y Widgets #1298 ya integradas desde sus
+tareas propietarias. VAN-736/#1300 (Fuel/Timings) y la PR documental aceptada
+#1295 siguen como candidatos separados, actualizados sobre esa misma base.
+Código `f81e98db`, aplicado como `552734e0`: únicamente productor y policy
+cambian producto. 41 paquetes focales, race, vet focal, build, calidad local y
+contrato roadmap PASS. Revisión independiente PASS acotado, sin P1/P2; repite
+los dos probes Spotter originales ahora verdes y conserva el control positivo.
+Clear a 1250 ms en la secuencia auditada. El replay mantiene sus 61 eventos:
+solo cambian 47 timestamps +1/+2 ms por dos ticks de 150 a 151 ms.
+Go/vet global tienen limitaciones macOS registradas en el microplan: base y
+candidato repiten 119 paquetes verdes y los mismos cuatro paquetes fallidos.
+CI remoto, PR y siguiente paso se mantienen en VAN-738. Sin integración ni promoción.
 
 ISA-940 conecta el nivel efectivo publicado por la política de rendimiento con
 la salida de Ingeniero: en niveles 4–5 invalida y bloquea subtítulos y toda

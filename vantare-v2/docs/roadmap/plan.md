@@ -1169,6 +1169,7 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - etiqueta.en: In review
 - etiqueta.pt: Em revisão
 - etiqueta.it: In revisione
+
 ### Carril experimental de voz de entrada
 
 - id: engineer-voice-input-experimental

@@ -1,11 +1,12 @@
 # Reparación Spotter — VAN-738 / GitHub #1303
 
-Estado: ejecución autorizada por Isaac como continuación de la reparación.
+Estado: candidato implementado y revisado, sin integración.
+CI remoto, PR y siguiente paso: consultar la tarea Notion enlazada.
 Tarea: https://app.notion.com/p/3e3e51695c658171ac4cfd0e9498e642
 Base inicial: nightly@1e9932c4d8ca3d53a58d093449cfb840f7108e8f.
-Base de revalidación: nightly@7f3650e4f9201e347dddeab6df6d1deca3dee7b2;
-incluye la reparación de CI VAN-737/#1302 integrada por su tarea propietaria.
-No cambia el producto respecto a la base inicial.
+Base final de revalidación: nightly@1101f73579ddaa8798b7d9948bae8b4e2a77d850.
+Incluye CI VAN-737/#1302 y Widgets #1298, integrados por sus tareas propietarias.
+Ninguno modifica Spotter, radio ni las familias Engineer de la base inicial.
 Rama: `vantareapp/isa-1303-spotter-parity-repair`.
 
 ## Ciclo por corte
@@ -94,5 +95,76 @@ VAN-736/#1300 permanece como entrega separada.
 | Properties/Settings.settings | `13b19f78217111a8d2bbf4d7bbfbd340b68dc530` |
 
 Repositorio primario: https://gitlab.com/mr_belowski/CrewChiefV4
-Evidencia posterior y estado final: se incorporan al cerrar este candidato,
-sin declarar integración ni paridad completa por adelantado.
+
+## Desarrollo y comprobación posterior
+
+Implementación worker `f81e98dbc965bf75e45b5a7f73ae2ec6affbe0b5`, aplicada
+como `552734e0` al candidato. Solo `producer.go` y `policy.go` cambian producto.
+La transformación usa la matriz propia de cada coche; el límite sigue siendo
+estricto por componente. La ocupación se actualiza en cada observación, mientras
+la entrega conserva su contexto y caducidad. Así, un aviso pendiente no puede
+empezar después de observar el vacío ni habilitar la admisión de otro coche.
+
+El worker registró los fallos antes de editar producto. Después se vuelve a
+leer la misma fuente y sus defaults; un reviewer independiente inspecciona el
+diff, repite race y ejecuta el probe original mediante un overlay de pruebas
+externo. Veredicto PASS acotado, sin P1/P2; no significa paridad integral.
+
+| Escenario | Antes | Después |
+| --- | --- | --- |
+| Rival parado; jugador a 40 m/s | Nuevo aviso lateral indebido | Silencio |
+| Control de igual velocidad | Aviso lateral | Aviso lateral conservado |
+| Deltas ±12 por eje | Admitidos | Excluidos; ±11,999 siguen admitidos |
+| Deltas 11,9 en ambos ejes | Admitidos | Admitidos: no se usa el módulo |
+| Orientaciones distintas | Sin filtro comparable | Comparación en mundo por coche |
+| Velocidad missing/stale/invalid | Podía admitir un solape nuevo | No lo admite |
+| Primer vacío 1050; ticks de 50 ms | Clear a 1550 | Clear a 1250 |
+| Vencimiento exacto 1200 | No se aislaba la frontera | Silencio en 1200; elegible en 1201 |
+| Aviso/reminder pendiente tras vacío | ACK podía aceptarlo | Inicio obsoleto rechazado |
+| Reaparición durante la espera | Heredaba ocupación del mensaje | Vuelve a pasar el filtro de admisión |
+
+Los dos casos Spotter de VAN-735 y su control se repiten sin modificar el probe:
+los tres pasan. El replay `multi-cycle` conserva sus 61 eventos y las métricas:
+exactamente 47 hojas `atMs` cambian +1/+2 ms por dos avances de 150 a 151 ms.
+Se comprueba estructuralmente; no se regenera el golden desde el resultado.
+Los IDs, intents, prioridades, estados y orden son idénticos.
+
+## Evidencia y reproducción
+
+Desde `vantare-v2`, con Go 1.25.0 y `TMPDIR=/private/tmp` en macOS:
+
+```sh
+go test -count=1 ./internal/spotter/... ./internal/radio/... ./internal/engineer/... ./internal/families/... ./internal/telemetry/projection/engineer/...
+go test -race -count=1 ./internal/spotter/... ./internal/radio/... ./internal/engineer/replayoracle/... ./internal/engineer/service/... ./internal/telemetry/projection/engineer/...
+go vet ./internal/spotter/... ./internal/radio/... ./internal/engineer/replayoracle/... ./internal/engineer/service/... ./internal/telemetry/projection/engineer/...
+go test -timeout 90s ./...
+```
+
+41 paquetes focales PASS. Race, vet focal, gofmt y diff-check PASS; también
+comprobados por revisión independiente en los paquetes afectados. Build de
+assets frontend PASS con Node 22.23.2; el corte no modifica frontend.
+Calidad local PASS contra la base final: cero hallazgos NEW y política intacta.
+Contrato de roadmap vivo PASS: exactamente `milestones:engineer-radio-spotter`;
+fragmento de cambios validado. No se cambia tooling, baseline ni dependencias.
+
+Go global y vet global no son verdes en este host macOS: el ejecutable depende
+de símbolos Windows. La suite global del candidato tiene 119 paquetes PASS
+y fallos en cmd/vantare, Launcher, Server y Recording SQLite. La base final se
+ejecuta con el mismo comando, toolchain y assets: también 119 paquetes PASS y
+los mismos cuatro paquetes fallidos. No se declara PASS global.
+
+## Verificación física pendiente
+
+En Windows/LMU, circuito normal, sensibilidad normal y ajustes predeterminados:
+
+1. Rodar en paralelo con un rival a velocidad similar: debe anunciar el lado.
+2. Pasar cerca de un rival parado con diferencia superior a 12 m/s: no debe
+   iniciar un solape nuevo por esa detección; uno ya establecido sigue su geometría.
+3. Separarse después de un aviso iniciado y observar la salida libre. Registrar
+   por separado último solape, primer vacío, decisión, ACK y primer sonido.
+4. Reaparecer en el lado antes del clear: una ocupación válida cancela el libre;
+   un aviso lateral aún pendiente no empieza si el lado ya está vacío.
+
+La prueba física no se ejecuta desde este host. No hay merge ni promoción en
+esta entrega. T0a/T0b, cadencias Timings, estimador RF2, oval/doble rival y audio
+siguen sus cortes y puertas propios; VAN-736/#1300 no forma parte de este diff.

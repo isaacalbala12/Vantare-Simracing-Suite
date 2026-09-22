@@ -3,10 +3,74 @@ package app_test
 import (
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/vantare/overlays/v2/internal/app"
 )
+
+func TestUILocaleConcurrentInitializationAndSubscription(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "settings.json")
+	svc := app.NewSettingsService(path, nil, nil)
+	if err := svc.Load(); err != nil {
+		t.Fatal(err)
+	}
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	for _, locale := range []string{"en", "it"} {
+		wg.Add(1)
+		go func(locale string) {
+			defer wg.Done()
+			<-start
+			if _, err := svc.InitializeUILocale(locale); err != nil {
+				t.Errorf("initialize: %v", err)
+			}
+		}(locale)
+	}
+	close(start)
+	wg.Wait()
+	winner := svc.UILocaleSnapshot()
+	if winner.Revision != 1 || (winner.Locale != "en" && winner.Locale != "it") {
+		t.Fatalf("winner %+v", winner)
+	}
+
+	start = make(chan struct{})
+	type subscription struct {
+		initial app.UILocaleSnapshot
+		updates <-chan app.UILocaleSnapshot
+		cancel  func()
+	}
+	result := make(chan subscription, 1)
+	go func() {
+		<-start
+		initial, updates, cancel := svc.SubscribeUILocale()
+		result <- subscription{initial, updates, cancel}
+	}()
+	writeDone := make(chan error, 1)
+	go func() { <-start; _, err := svc.SetUILocale("pt"); writeDone <- err }()
+	close(start)
+	sub := <-result
+	defer sub.cancel()
+	if err := <-writeDone; err != nil {
+		t.Fatal(err)
+	}
+	latest := svc.UILocaleSnapshot()
+	if latest.Locale != "pt" || latest.Revision != 2 {
+		t.Fatalf("latest %+v", latest)
+	}
+	if sub.initial.Revision < latest.Revision {
+		select {
+		case update := <-sub.updates:
+			if update != latest {
+				t.Fatalf("subscription update %+v, want %+v", update, latest)
+			}
+		default:
+			t.Fatal("subscription missed a write after its snapshot")
+		}
+	} else if sub.initial != latest {
+		t.Fatalf("snapshot %+v, want %+v", sub.initial, latest)
+	}
+}
 
 func TestUILocalePersistsAndOldSettingsCannotOverwriteIt(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")

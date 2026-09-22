@@ -1,5 +1,5 @@
 import type { WidgetRendererProps } from "../../core/design-system-definition";
-import type { TrackMapUnavailableReason, TrackMapViewModel } from "../../widget-types/track-map/track-map-view-model";
+import type { TrackMapViewModel } from "../../widget-types/track-map/track-map-view-model";
 import { resolveRelativeClassColor } from "../../widget-types/relative/relative-renderer-helpers";
 import { useI18n } from "../../../i18n/I18nProvider";
 import { functionalLabels } from "./labels";
@@ -7,7 +7,6 @@ import { functionalLabels } from "./labels";
 export function TrackMapFunctional({ model, settings, effects }: WidgetRendererProps<TrackMapViewModel>) {
   const { locale } = useI18n();
   const labels = functionalLabels[locale];
-  const unavailableLabel: Record<TrackMapUnavailableReason, string> = { "no-telemetry": labels.noTelemetry, "unknown-track": labels.trackNotMapped };
   return (
     <section
       className="vf-track-map"
@@ -35,7 +34,7 @@ export function TrackMapFunctional({ model, settings, effects }: WidgetRendererP
         </svg>
       ) : (
         <div className="vf-track-map-empty" data-track-map-empty>
-          <span>{unavailableLabel[model.unavailableReason ?? "unknown-track"]}</span>
+          <span>{model.unavailableReason === "no-telemetry" ? labels.noTelemetry : labels.trackNotMapped}</span>
         </div>
       )}
       {model.trackLabel && (

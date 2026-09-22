@@ -1,15 +1,31 @@
-import type { CSSProperties } from "react";
+import { useMemo, type CSSProperties } from "react";
 import type { WidgetRendererProps } from "../../core/design-system-definition";
 import type { RacingFlagsViewModel } from "../../widget-types/racing-flags/racing-flags-view-model";
 import { resolveRacingFlagsTextColor } from "./racing-flags-settings";
 import { useI18n } from "../../../i18n/I18nProvider";
 import { functionalLabels } from "./labels";
 
+function colorLabel(flag: string | undefined, labels: typeof functionalLabels.es): string | undefined {
+  switch (flag) {
+    case "green": return labels.green;
+    case "yellow": return labels.yellow;
+    case "red": return labels.red;
+    case "blue": return labels.blue;
+    case "black": return labels.black;
+    case "white": return labels.white;
+    case "checkered": return labels.checkered;
+    default: return undefined;
+  }
+}
+
 export function RacingFlagsFunctional({ model, settings, motion, effects }: WidgetRendererProps<RacingFlagsViewModel>) {
   const { locale } = useI18n();
   const labels = functionalLabels[locale];
   const textColor = resolveRacingFlagsTextColor(model.globalFlag, settings.textColor);
   const style = { "--vf-racing-flags-text-color": textColor } as CSSProperties;
+  const message = useMemo(() => model.message && model.message.toLowerCase() !== model.globalFlag
+    ? model.message
+    : colorLabel(model.globalFlag, labels) ?? "—", [model.message, model.globalFlag, labels]);
 
   if (model.hidden) {
     return (
@@ -25,9 +41,6 @@ export function RacingFlagsFunctional({ model, settings, motion, effects }: Widg
       />
     );
   }
-
-  const color = model.globalFlag;
-  const message = color && color in labels ? labels[color as keyof typeof labels] : (model.message ?? "—");
 
   return (
     <section

@@ -32,7 +32,7 @@ export function DeltaTraceFunctional({ model, effects }: WidgetRendererProps<Del
     >
       <div className="vf-delta-trace-head">
         <span className="vf-delta-trace-current">{deltaText(model.currentDelta)}</span>
-        <span className="vf-delta-trace-trend" data-trend={model.trend}>{labels[model.trend as keyof typeof labels] ?? model.trend.toUpperCase()}</span>
+        <span className="vf-delta-trace-trend" data-trend={model.trend}>{labels[model.trend]}</span>
       </div>
       <svg className="vf-delta-trace-graph" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" role="img" aria-label={labels.deltaTrace}>
         <line x1="0" y1={height / 2} x2={width} y2={height / 2} className="vf-delta-trace-zero" />

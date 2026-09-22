@@ -23,6 +23,26 @@ import { I18nContext, LANGUAGE_OPTIONS } from "./i18n-context";
 const STORAGE_KEY = "vantare.locale";
 let requestSerial = 0;
 
+function dispatchLocaleRequest(
+  desired: { current: Locale | null },
+  inFlight: { current: { id: string; locale: Locale } | null },
+  prefix: { current: string | null },
+): void {
+  if (inFlight.current || !desired.current) return;
+  prefix.current ??= globalThis.crypto?.randomUUID?.() ?? String(Math.random());
+  const request = { id: `${prefix.current}:${++requestSerial}`, locale: desired.current };
+  inFlight.current = request;
+  const failed = () => {
+    if (inFlight.current?.id !== request.id) return;
+    inFlight.current = null;
+    if (desired.current === request.locale) desired.current = null;
+    dispatchLocaleRequest(desired, inFlight, prefix);
+  };
+  try {
+    void Promise.resolve(Events.Emit("ui-locale:set", { locale: request.locale, requestId: request.id })).catch(failed);
+  } catch { failed(); }
+}
+
 function readStoredLocale(): Locale {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -57,14 +77,10 @@ function parseSnapshot(value: unknown): LocaleSnapshot | null {
 }
 
 function I18nProviderInner({ children, mode }: { children: ReactNode; mode: UILocaleMode }) {
+  const requestPrefix = useRef<string | null>(null);
   const desiredLocale = useRef<Locale | null>(null);
   const inFlight = useRef<{ id: string; locale: Locale } | null>(null);
-  const dispatch = useCallback(() => {
-    if (inFlight.current || !desiredLocale.current) return;
-    const request = { id: String(++requestSerial), locale: desiredLocale.current };
-    inFlight.current = request;
-    Events.Emit("ui-locale:set", { locale: request.locale, requestId: request.id });
-  }, []);
+  const dispatch = useCallback(() => dispatchLocaleRequest(desiredLocale, inFlight, requestPrefix), []);
   const [locale, setLocaleState] = useState<Locale>(readStoredLocale);
   // El diccionario activo se conserva mientras carga el siguiente: al
   // cambiar de idioma la UI sigue en el anterior un frame en vez de caer
@@ -85,6 +101,7 @@ function I18nProviderInner({ children, mode }: { children: ReactNode; mode: UILo
     let active = true;
     let currentRevision = -1;
     let initialized = false;
+    let initializationRequested = false;
     const legacy = readStoredLocale();
     const apply = (raw: unknown, snapshotEvent: boolean) => {
       if (!active) return;
@@ -93,7 +110,10 @@ function I18nProviderInner({ children, mode }: { children: ReactNode; mode: UILo
       initialized = true;
       currentRevision = snapshot.revision;
       if (snapshot.locale === "") {
-        if (mode === "native-hub") Events.Emit("ui-locale:initialize", { locale: legacy });
+        if (mode === "native-hub" && !initializationRequested) {
+          initializationRequested = true;
+          Events.Emit("ui-locale:initialize", { locale: legacy });
+        }
         return;
       }
       // The first SSE snapshot is authoritative after a native restart.
@@ -108,7 +128,13 @@ function I18nProviderInner({ children, mode }: { children: ReactNode; mode: UILo
       const mine = ++generation;
       const onSnapshot = (event: MessageEvent<string>) => {
         if (!active || mine !== generation) return;
-        try { currentRevision = -1; initialized = false; apply(JSON.parse(event.data), true); } catch { /* invalid event */ }
+        try {
+          const snapshot = parseSnapshot(JSON.parse(event.data));
+          if (!snapshot) return;
+          currentRevision = -1;
+          initialized = false;
+          apply(snapshot, true);
+        } catch { /* invalid event */ }
       };
       const onChanged = (event: MessageEvent<string>) => {
         if (!active || mine !== generation) return;

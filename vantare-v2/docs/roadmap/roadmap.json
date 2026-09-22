@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-22T19:09:55Z",
+  "generatedAt": "2026-09-22T21:09:41Z",
   "digest": {
-    "lastCommit": "e41f703c3a015321024766cc5da55d9a6def1bcb"
+    "lastCommit": "e6d7d2b5e58f55b82c0ed2f6a79667476d897086"
   },
   "phases": [
     {
@@ -1821,10 +1821,10 @@
         "it": "Parità osservabile con CrewChief per Engineer"
       },
       "body": {
-        "es": "Programa futuro por cortes T0–T8 para reproducir en LMU el comportamiento observable de CrewChief, empezando por Timings: relaciones, muestreo, silencios, cadencia, consultas y cierre con replay, voz y sesión real. Los hechos y acciones seguirán siendo deterministas; el LLM cloud sólo interpretará y redactará con StyleGate, y el fallback offline usará frases locales precacheadas. La documentación aprobada no implica implementación ni paridad funcional.",
-        "en": "Future T0–T8 programme to reproduce CrewChief's observable behaviour in LMU, starting with Timings: relationships, sampling, silence rules, cadence, queries, and closure through replay, voice, and a real session. Facts and actions remain deterministic; the cloud LLM only interprets and writes behind a StyleGate, while offline fallback uses local precached phrases. The approved documentation does not imply implementation or functional parity.",
-        "pt": "Programa futuro em cortes T0–T8 para reproduzir no LMU o comportamento observável do CrewChief, começando por Timings: relações, amostragem, silêncios, cadência, consultas e fecho com replay, voz e sessão real. Factos e ações continuam determinísticos; o LLM cloud apenas interpreta e redige com StyleGate, e o fallback offline usa frases locais pré-armazenadas. A documentação aprovada não implica implementação nem paridade funcional.",
-        "it": "Programma futuro in tagli T0–T8 per riprodurre in LMU il comportamento osservabile di CrewChief, iniziando da Timings: relazioni, campionamento, silenzi, cadenza, query e chiusura con replay, voce e sessione reale. Fatti e azioni restano deterministici; l'LLM cloud interpreta e redige soltanto dietro StyleGate, mentre il fallback offline usa frasi locali precaricate. La documentazione approvata non implica implementazione né parità funzionale."
+        "es": "Paridad CrewChief por cortes T0–T8. T0a y T0b tienen referencias y casos independientes revisados; T1 calcula relaciones sintéticas de clase y pista, y T2 añade muestreo por puntos o sectores con historial separado por rival. Ambas rutas están desactivadas por defecto y aún sin conexión a la voz. Faltan verificar las señales LMU reales y completar clasificación, silencios, cadencia, consultas y escucha. Los hechos seguirán siendo deterministas; el LLM cloud redactará con StyleGate y el fallback offline usará frases locales precacheadas. Este avance no acredita paridad funcional completa.",
+        "en": "CrewChief parity in T0–T8 stages. T0a and T0b have reviewed references and independent cases; T1 computes synthetic class and track relations, and T2 adds point or sector sampling with separate history per rival. Both paths are disabled by default and not yet connected to voice. Real LMU signals, classification, silence rules, cadence, queries and listening remain to be verified. Facts remain deterministic; the cloud LLM will write behind a StyleGate and offline fallback will use local precached phrases. This progress does not establish full functional parity.",
+        "pt": "Paridade CrewChief em etapas T0–T8. T0a e T0b têm referências e casos independentes revistos; T1 calcula relações sintéticas de classe e pista, e T2 acrescenta amostragem por pontos ou setores com histórico separado por rival. Ambas as rotas estão desativadas por padrão e ainda sem ligação à voz. Falta verificar sinais LMU reais e concluir classificação, silêncios, cadência, consultas e escuta. Os factos continuam determinísticos; o LLM cloud redigirá com StyleGate e o fallback offline usará frases locais pré-armazenadas. Este avanço não comprova paridade funcional completa.",
+        "it": "Parità CrewChief in fasi T0–T8. T0a e T0b dispongono di riferimenti e casi indipendenti revisionati; T1 calcola relazioni sintetiche di classe e pista, e T2 aggiunge campionamento per punti o settori con uno storico separato per avversario. Entrambi i percorsi sono disattivati per impostazione predefinita e non ancora collegati alla voce. Restano da verificare i segnali LMU reali e completare classificazione, silenzi, cadenza, query e ascolto. I fatti restano deterministici; il LLM cloud scriverà con StyleGate e il fallback offline userà frasi locali in cache. Questo avanzamento non dimostra la piena parità funzionale."
       },
       "label": {
         "es": "Plan",
@@ -2204,6 +2204,11 @@
           "kind": "fix",
           "scope": "engineer",
           "text": "Reparar Fuel, Timings, Spotter y audio sobre Wails beta.24"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Widgets: compartir idioma con la app sin trabajo por fotograma"
         }
       ]
     },

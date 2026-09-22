@@ -28,6 +28,42 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+### 2026-09-22 — T2 sintético de muestreo
+
+[VAN-748](https://app.notion.com/p/3e3e51695c6581569e14cee997a5f181) / #1326,
+`vantareapp/isa-1326-timings-sampling`, base nightly `e6d7d2b5` y dependencia
+original T1 `69e729de`/PR1324. El delta exclusivo T2 se revisa contra T1; la PR
+a nightly es acumulativa mientras T1 siga sin integrar. Sin merge/promoción.
+El [corte T2](../../engineer/t2-sampling-1326.md) aporta perfil inmutable,
+una oportunidad por cruce y tres historiales independientes por rival. A1/A2
+están aceptadas; clasificación y cadencia no se adelantan. API opt-in sin
+consumidor de producto. Fuente antes/después y revisión Go GPT-6 favorables;
+tests de recuperación y ventanas traseras completan la revisión.
+Isaac aplaza Windows/LMU y pide continuar desarrollo; siguiente corte T3.
+No hay catálogo live certificado ni evidencia acústica. Build auxiliar P0
+35782437738 falló en TestPlayerRejectsMissingMedia (timeout Windows), sin
+instalador ni release. Ese bloqueo de preparación real se registra en VAN-735,
+fuera del código T2; los checks de este corte se registran en VAN-748 y la PR.
+T3–T8 y VAN-741/VAN-744 continúan separados.
+
+### 2026-09-22 — T1 sintético de relaciones
+
+[VAN-746](https://app.notion.com/p/3e3e51695c6581bca1a6e38ff864077d) / #1321,
+`vantareapp/isa-1321-timings-relations`, base nightly `e6d7d2b5`.
+P0 ya se integró por PR1311; la entrada histórica inferior conserva su estado
+previo a merge. T0a `166ff3c5`/PR1313 y T0b `95f0dc81`/PR1319 se consultan como
+referencias inmutables revisadas, sin arrastrar sus commits ni declararlos integrados.
+El [corte T1](../../engineer/t1-relations-1321.md) calcula líder y vecinos de
+clase, candidatos espaciales y diferencias firmadas a partir de pasos reales
+sintéticos. Desactivado por defecto y sin consumidor de producto hasta T4.
+La revisión de fuente encontró marcas iniciales falsas, falta de continuidad,
+prioridad incorrecta del game gap y diferencia líder/race; se añadieron
+regresiones y correcciones. GPT-6 Sol y Luna: revisión acotada sin P1/P2
+restantes; guard cinemático y overflow también revisados. Implementación local.
+Los checks, SHA final y PR se registran en Notion y el microplan. T1 no certifica
+fuentes LMU, sesión acústica ni timings de voz; el usuario reserva esas pruebas
+para después. T2–T8 y VAN-741/VAN-744 siguen separados. Sin promoción.
+
 ### 2026-09-22 — Composición revisada sobre Wails beta.24
 
 [VAN-742](https://app.notion.com/p/3e3e51695c6581a5aeb7ffca7dec48f6) / #1310

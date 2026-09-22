@@ -3,6 +3,7 @@ package spotter
 import (
 	"errors"
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
@@ -45,7 +46,10 @@ func observationNotReady(reason UnavailableReason) error {
 	return &ObservationNotReadyError{Reason: reason}
 }
 
-const messageTTL = 3 * time.Second
+const (
+	messageTTL         = 3 * time.Second
+	maxClosingSpeedMPS = 12.0
+)
 
 type Clock interface{ NowMS() int64 }
 
@@ -166,6 +170,7 @@ func classify(snapshot engineer.ObservationSnapshotV1, sensitivity geometry.Sens
 		return false, false, UnavailableSpatial
 	}
 	config := geometry.ConfigForSensitivity(sensitivity)
+	playerVelocity, playerVelocityOK := worldVelocityXZ(snapshot.Player)
 	var left, right bool
 	for _, opponent := range snapshot.Vehicles {
 		if opponent.ID == snapshot.Player.ID {
@@ -185,6 +190,14 @@ func classify(snapshot engineer.ObservationSnapshotV1, sensitivity geometry.Sens
 		aligned := geometry.AlignOpponentXZ(yaw, vector(position), vector(opponentPosition))
 		existing := (aligned.X > 0 && activeLeft) || (aligned.X < 0 && activeRight)
 		overlap := geometry.ClassifyAlignedOverlap(aligned, existing, config)
+		if overlap.InOverlap && !existing {
+			opponentVelocity, opponentVelocityOK := worldVelocityXZ(opponent)
+			if !playerVelocityOK || !opponentVelocityOK ||
+				!(math.Abs(playerVelocity.X-opponentVelocity.X) < maxClosingSpeedMPS &&
+					math.Abs(playerVelocity.Z-opponentVelocity.Z) < maxClosingSpeedMPS) {
+				continue
+			}
+		}
 		if overlap.InOverlap && overlap.Side == geometry.SideLeft {
 			left = true
 		}
@@ -193,6 +206,20 @@ func classify(snapshot engineer.ObservationSnapshotV1, sensitivity geometry.Sens
 		}
 	}
 	return left, right, ""
+}
+
+// worldVelocityXZ rotates each car's observed local velocity into the common
+// world frame. Orientation columns are local axes expressed in world space.
+func worldVelocityXZ(car engineer.VehicleObservationV1) (geometry.Vec3, bool) {
+	local, velocityOK := usable(car.LocalVelocity)
+	orientation, orientationOK := usable(car.Orientation)
+	if !velocityOK || !orientationOK {
+		return geometry.Vec3{}, false
+	}
+	return geometry.Vec3{
+		X: orientation.Row0.X*local.X + orientation.Row0.Y*local.Y + orientation.Row0.Z*local.Z,
+		Z: orientation.Row2.X*local.X + orientation.Row2.Y*local.Y + orientation.Row2.Z*local.Z,
+	}, true
 }
 
 func usable[T comparable](field engineer.Field[T]) (T, bool) {

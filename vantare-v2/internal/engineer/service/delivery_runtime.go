@@ -234,6 +234,13 @@ func (s *EngineerService) dispatchRadioLocked(item *radio.Item) bool {
 	request := radio.Request{Version: radio.VersionV1, DeliveryID: deliveryID, DecidedAtMS: s.policyClock.NowMS(), Message: item.Message}
 	session, err := radio.NewSession(request, s.policyClock, s.radioMetrics, func(ack radio.Acknowledgement) error {
 		if ack.State == radio.StateStarted {
+			// Observation/reset and the final started ACK must be atomic with
+			// respect to each other, including the family's cursor and cooldown.
+			s.mu.Lock()
+			defer s.mu.Unlock()
+			if cause := context.Cause(item.Context); cause != nil {
+				return cause
+			}
 			if item.Message.Priority == radio.PriorityP0 && s.spotterProducer != nil {
 				if err := s.spotterProducer.AcknowledgeStarted(item.Message, ack.AtMS); err != nil {
 					return err

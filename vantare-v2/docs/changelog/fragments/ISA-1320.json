@@ -13,7 +13,8 @@
     "Suite frontend completa en c809d5e8: 469 archivos, 3795 pruebas superadas y 2 omitidas.",
     "Revisión independiente con WAAPI activo: escala, retarget, primera transición, StrictMode, cambio de movimiento sin nuevo modelo y limpieza superados.",
     "Tras refinar la reentrada: pruebas focales de opacidad/limpieza, tipos, build, lint y ratchet sin nuevas incidencias; la suite completa antecede a este refinamiento.",
-    "Escenas comprobadas con modelos visibles en práctica, clasificación y carrera."
+    "Escenas comprobadas con modelos visibles en práctica, clasificación y carrera.",
+    "Código final cf14f927: revisión independiente final de 7 pruebas Relative, typecheck/lint, build y ratchet aprobados; sin hallazgos pendientes en la revisión automatizada."
   ],
   "knownLimitations": [
     "Pendiente valoración visual de Isaac y prueba física en Windows/OBS. Las pruebas DOM y los fixtures no sustituyen esa revisión.",

@@ -39,6 +39,8 @@ it("opens manual preparation and saves a draft without invoking live or calculat
   const manual = await screen.findByRole("button", { name: /strategy.entry.startManual/ });
   await waitFor(() => expect((manual as HTMLButtonElement).disabled).toBe(false));
   fireEvent.click(manual);
+  expect(screen.queryByRole("combobox", { name: "strategy.journey.car" })).toBeNull();
+  fireEvent.click((await screen.findAllByRole("button", { name: /strategy.entry.changeCombination/ }))[0]);
   const car = await screen.findByRole("combobox", { name: "strategy.journey.car" });
   await waitFor(() => expect((car as HTMLSelectElement).disabled).toBe(false));
   fireEvent.change(car, { target: { value: JSON.stringify([combination.carClass, combination.carName]) } });
@@ -81,6 +83,7 @@ it("keeps preparation editable but waits for the native repository version befor
   const manual = await screen.findByRole("button", { name: /strategy.entry.startManual/ });
   await waitFor(() => expect((manual as HTMLButtonElement).disabled).toBe(false));
   fireEvent.click(manual);
+  fireEvent.click((await screen.findAllByRole("button", { name: /strategy.entry.changeCombination/ }))[0]);
   const car = await screen.findByRole("combobox", { name: "strategy.journey.car" });
   await waitFor(() => expect((car as HTMLSelectElement).disabled).toBe(false));
   fireEvent.change(car, { target: { value: JSON.stringify([combination.carClass, combination.carName]) } });

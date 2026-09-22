@@ -61,6 +61,7 @@ import {
   ROADMAP_CONTEXT_SLOT_ID,
   SETTINGS_CONTEXT_SLOT_ID,
   STRATEGY_CONTEXT_SLOT_ID,
+  STRATEGY_TOPBAR_SLOT_ID,
   TELEMETRY_CONTEXT_SLOT_ID,
 } from './orbit-slot-ids';
 import { ToastProvider } from '../../../ui/orbit/Toast';
@@ -496,7 +497,7 @@ function OrbitShellBody({
     activeView === 'ajustes'
       ? 0
       : blocks.filter((block) => !block.hiddenFor.includes(activeView)).length;
-  const columnAvailable = Boolean(contextNode) || visibleBlockCount > 0;
+  const columnAvailable = activeView !== 'estrategia' && (Boolean(contextNode) || visibleBlockCount > 0);
 
   const destinations: PaletteItem[] = useMemo(() => {
     const items: PaletteItem[] = railItems.map((item) => ({
@@ -580,9 +581,10 @@ function OrbitShellBody({
   );
 
   const shell = (
-    <div className="orbit-root" data-testid="orbit-shell">
+    <div className="orbit-root" data-testid="orbit-shell" data-view={activeView}>
       <div
         className="orbit-shell"
+        data-view={activeView}
         data-column={effectiveColumnOpen && columnAvailable ? 'open' : 'closed'}
       >
         <Rail
@@ -648,6 +650,8 @@ function OrbitShellBody({
               <div className="orbit-topbar__slot" id={LAUNCHER_TOPBAR_SLOT_ID} />
             ) : activeView === 'carreras' ? (
               <div className="orbit-topbar__slot" id={RACES_TOPBAR_SLOT_ID} />
+            ) : activeView === 'estrategia' ? (
+              <div className="orbit-topbar__slot" id={STRATEGY_TOPBAR_SLOT_ID} />
             ) : null}
           </Topbar>
           {activeView !== 'studio' ? <ScheduleReviewNotice owner={access.roles.includes('owner') && !access.isBlocked} onReview={(target) => navigate('ajustes', target)} /> : null}

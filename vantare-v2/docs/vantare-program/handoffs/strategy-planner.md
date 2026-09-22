@@ -6,6 +6,16 @@
 > Este handoff conserva evidencia técnica fechada; sus estados antiguos no
 > sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
 
+## Actualización — ISA-1322, fidelidad de preparación (2026-09-22)
+
+[ISA-1322](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1322) corrige el movimiento global de entrada y la composición de la preparación denunciados por Isaac. GitHub es la autoridad de este corte por su instrucción expresa. Rama `vantareapp/isa-1322-strategy-desk-fidelity`, worktree `C:/tmp/vantare-isa1322`, base `8466c4a0aaed803812be900252a69a18e643c685` de ISA-1318.
+
+La shell fija su geometría desde la ruta antes de montar el componente diferido y no anima la rejilla global. La preparación usa una sola cabecera productiva, contexto compacto con combinación desplegable, base/fuentes/referencias centrales e inspector de resumen/reglas/pilotos con acciones al pie. Se retira el resumen central duplicado. Los controles, validadores, persistencia y motor permanecen; no hay cambios Go ni dependencias nuevas. El documento de diseño se precisa contra `workflow.js` y `workflow.css` aprobados.
+
+Implementación GPT-6 Sol medium, dirección/revisión/documentación/QA nativa por root, y revisión visual independiente GPT-6 Sol medium. Un escritor por worktree. Computer Use comprueba abrir el DuckDB real de COTA, combinación, reglas, retorno al menú y entrada manual; 120 s manuales se reflejan como 2:00.000, identificados como estimación. Original intacto. Dos pasadas detectaron y corrigieron doble cabecera, pie recortado y tarjetas sobredimensionadas. Suite frontend 4.265/2 omitidas, 19 focales, tipos/lint/i18n y 44 checks de roadmap pasan. Última revisión nativa 8,9/10: todavía bajo el umbral >9. El CSS posterior queda sin captura porque Defender cuarentena un asset de Carreras y bloquea embed Go. No se elude ni se cambia la protección; Isaac debe revisar la detección antes de recompilar. Estado de checks y contraste final en la [evidencia de ISA-1322](../../strategy-planner/evidence/isa-1322/README.md).
+
+Las métricas telemétricas de las tarjetas de referencia siguen pendientes porque esta vista no expone la proyección exacta adoptada; no se sustituyen por datos de demostración. Este corte no cierra T22 integral, validación empírica, todas las vistas posteriores ni live. Sigue observado el antecedente de consola transitoria del lector. Sin push, PR, CI remota, merge, promoción ni release; pendiente de aceptación visual de Isaac.
+
 ## Actualización — ISA-1318 desbloquea QA local (2026-09-22)
 
 Isaac sustituye la petición anterior de login por un perfil explícito de desarrollo sin cuenta. [ISA-1318](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1318) parte del HEAD de ISA-1314 `e304ab26` y conserva su implementación visual. La build local abre Hub y Strategy sin sesión; Computer Use ha recorrido el menú y abierto el DuckDB real de COTA. Se obtiene Circuit of the Americas / Isotta TIPO6 2024 #11:LM y el hash del original permanece idéntico. [Guía](../../local-development.md) y [evidencia](../../evidence/isa-1318-local-development.md).

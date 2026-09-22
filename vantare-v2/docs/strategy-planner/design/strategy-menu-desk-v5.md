@@ -100,19 +100,25 @@ El contenido de una sesión procede de los clientes existentes. Los originales p
 
 ## 6. Mesa de preparación y edición
 
-La mesa continúa el lenguaje del menú: fondo sobrio, paneles grises, contenido bien alineado y jerarquía clara. Usa una columna de contexto a la izquierda, el área de trabajo en el centro y un inspector acoplado a la derecha. El inspector es una zona de la pantalla, con el patrón de Overlay Studio V3, y no tapa la carrera con un overlay oscuro.
+Corrección de Isaac del 22 de septiembre, ISA-1322: no basta con reutilizar un resumen previo y cambiar sus colores. La composición se toma directamente de `workflow.js` (`context`, `sourcePanel`, `entryPanel`, `sourceChoices`/`manualInputs`, `referenceCards`, `preparationInspector`) y `workflow.css` del HTML aprobado. El resumen general antiguo no se inserta de nuevo en el centro.
 
-La izquierda conserva la identidad de la combinación y el origen elegido. La zona central muestra la base de la carrera, sesiones o referencias manuales y, tras calcular, el plan. El lateral agrupa reglas, pilotos y el elemento seleccionado. La combinación, el calendario y las condiciones son accesibles directamente; no forman un recorrido obligatorio de cinco pantallas.
+| Zona | Contrato de composición |
+|---|---|
+| Cabecera | Compacta, junto a la identidad y acciones; sin otra banda de 120 px que desplace la mesa. Cambiar origen vuelve al menú y conserva el borrador. |
+| Tablero | Margen interior 16 px y separación 12 px; contexto y centro dentro del tablero, inspector acoplado fuera a la derecha. |
+| Contexto izquierdo | Panel gris con borde y radio. Identidad del circuito y coche, origen y acción explícita para cambiar combinación. El formulario se despliega sólo cuando hace falta; campos en columna, etiqueta encima y ancho completo. |
+| Centro, base | Tarjeta «Base de la estrategia»: cabecera de 54 px, cuerpo con titular humano sobre la base elegida, explicación y acción pertinente, motivo visual documental sobrio y pie de procedencia. |
+| Centro, fuentes | Tabla de las fuentes reales seleccionadas con acceso a biblioteca; en manual, referencias editables de ritmo, Fuel y VE aplicable. No una segunda fila de Evento/Reglas/Pilotos. |
+| Centro, referencias | Tarjetas de ritmo, combustible y energía virtual cuando sea aplicable. Sólo valores observados de la revisión adoptada o estimaciones manuales explícitas; lo ausente aparece pendiente. |
+| Inspector | 395 px en escritorio, 320 px bajo 1560 px. Resumen del evento con duración prominente, condiciones y pilotos. Pestañas/acciones para editar reglas y pilotos. Pie con acción principal visible, cuerpo con scroll independiente. |
 
-La edición reutiliza los controles y validadores productivos. La presentación puede ordenar los campos en secciones, pero no oculta restricciones ni crea valores predeterminados por comodidad visual. Lo ausente sigue pendiente; lo manual se identifica como estimación y lo observado conserva procedencia.
+No repetir circuito/coche/origen en varios resúmenes centrales. No encajar los selectores horizontales heredados en una columna de 215 px. Ningún nombre, control ni acción puede quedar recortado; los textos largos se ajustan o truncan de forma deliberada con acceso al valor completo. La geometría de circuito sólo se muestra si el recurso corresponde a la identidad real: no dibujar un circuito genérico como si fuera el observado.
 
-Manual recoge tres referencias explícitas: ritmo por vuelta, combustible por vuelta y energía virtual por vuelta cuando sea aplicable. Se conservan en un campo opcional del mismo borrador, compatible con los documentos anteriores, y se envían como overrides manuales al comando `calculate_orbit` existente. No se fabrica una proyección de telemetría. Los deltas de otros pilotos siguen el mecanismo actual y su carácter estimado permanece visible. La aceptación guarda origen manual; la ruta registrada mantiene sus revisiones exactas y no usa referencias manuales para saltarse una selección incompleta.
+La shell conoce la disposición compacta de Strategy desde el cambio de ruta, antes de cargar su componente diferido. No se anima la rejilla global ni se desplaza toda la interfaz al entrar. Los estados de hover/foco de controles pueden mantener su feedback local.
 
-Las reglas del evento viven junto a la carrera. Incluyen los campos que ya soporta el producto: formato y final, duración o vueltas, condiciones, recursos y reservas, tránsito y servicios, ventanas, neumáticos e inventario y conducción. Calendario conserva su referencia y snapshot; las actualizaciones del feed no reescriben silenciosamente la carrera.
+La edición reutiliza los controles y validadores productivos. Manual conserva referencias explícitas de ritmo, combustible y VE aplicable en el borrador y usa los overrides del comando Go existente. La ruta registrada mantiene las revisiones exactas y su autoridad de Analysis; no se fabrica una proyección para llenar las tarjetas.
 
-El ritmo estimado de otro piloto se identifica como tal. Seleccionar un stint o una parada da acceso a su edición y al efecto del cambio. Los controles existentes de Fuel, VE, neumáticos, pilotos y restricciones se conservan; la UI no inventa controles de variables que el backend aún no soporte.
-
-Guardar, calcular y aceptar son acciones distintas. Los cambios invalidan el resultado vigente conforme al contrato actual; la vista muestra que hace falta recalcular. Un resultado parcial o factible no se anuncia como óptimo. Los errores dejan accesibles las condiciones y el retorno al plan.
+Las reglas del evento, calendario, pilotos, límites, inventario, recursos y reservas conservan el alcance funcional actual. Los datos ausentes siguen pendientes; las estimaciones entre pilotos se identifican. Guardar, calcular y aceptar siguen siendo acciones distintas. Los errores mantienen accesible la edición y no anuncian como óptimo un resultado parcial o solamente factible.
 
 ## 7. Adaptación y accesibilidad
 
@@ -154,4 +160,8 @@ Se mantienen como antecedentes los documentos y capturas A4 de ISA-1277. Su asis
 
 ## 10. Estado del porte productivo
 
-ISA-1314 incorpora el menú y la mesa en React, reutilizando los controles y el motor existentes. La preparación abre Plan tras guardar su configuración; las vistas Datos/Revisiones/Plan y sus editores conservan su implementación productiva. El acabado visual nativo v5 sigue pendiente de contraste: la build abre y solicita inicio de sesión. Véase la [evidencia de entrega](../evidence/isa-1314/README.md). No se asigna una puntuación visual sin ese contraste.
+ISA-1314 incorpora el menú y la mesa en React, reutilizando los controles y el motor existentes. ISA-1318 permite probar la build local sin cuenta y mantiene separado el comportamiento comercial. ISA-1322 corrige la transición de entrada y la composición de la preparación tras la revisión nativa del usuario.
+
+La preparación abre Plan tras guardar su configuración; Datos/Revisiones/Plan y sus editores conservan su implementación productiva. La revisión de ISA-1322 cubre la preparación y su inspector; no acredita por extensión todas las pantallas posteriores ni el gate T22 integral. Las tarjetas de referencias de telemetría siguen pendientes hasta que esta vista disponga de la proyección de la revisión exacta; no se sustituyen con métricas de ejemplo.
+
+Véanse las evidencias de [ISA-1314](../evidence/isa-1314/README.md) y [ISA-1322](../evidence/isa-1322/README.md). La aprobación del HTML se distingue de la aceptación del porte productivo, que corresponde a Isaac.

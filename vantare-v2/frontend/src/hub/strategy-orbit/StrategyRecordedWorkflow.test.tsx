@@ -55,7 +55,7 @@ it("adds a second verified session from the desk library without replacing the f
   fireEvent.click(first[0]);
   await screen.findByRole("heading", { name: "strategy.entry.yourRace" });
   expect(within(document.querySelector(".strategy-preparation__source-list") as HTMLElement).getByText("actual-session.duckdb")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: /strategy.entry.openTelemetry/ }));
+  fireEvent.click(screen.getByRole("button", { name: /strategy.entry.changeSession/ }));
   const opened = await within(screen.getByTestId("strategy-recorded-source-screen")).findAllByRole("button", { name: "strategy.recorded.open" });
   expect((opened[0] as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(opened[1]);

@@ -44,7 +44,31 @@
   height: 100%;
   min-height: 790px;
   background: var(--orbit-canvas);
-  transition: grid-template-columns var(--orbit-move) var(--orbit-ease);
+}
+
+/* The rail and context column follow navigation in one frame. Interpolating
+   this grid moves the entire Hub when Strategy changes its workspace width. */
+.orbit-shell[data-view="estrategia"] {
+  --orbit-rail-w: 81px;
+  --orbit-shell-column: 0px;
+}
+.orbit-shell[data-view="estrategia"] .orbit-column { visibility: hidden; }
+
+@media (max-width: 1152px) {
+  :root:has(.orbit-root[data-view="estrategia"]) { --orbit-zoom: 1 !important; zoom: 1 !important; }
+  :root .orbit-root[data-view="estrategia"] { width: 100vw; height: 100vh; }
+  :root .orbit-shell[data-view="estrategia"] { min-width: 0; }
+  :root[data-orbit-zoom-floored="true"] .orbit-root[data-view="estrategia"] {
+    width: 100vw;
+    height: 100vh;
+    min-width: 320px;
+    overflow-x: hidden;
+    zoom: 1;
+  }
+  :root[data-orbit-zoom-floored="true"] .orbit-shell[data-view="estrategia"] { min-width: 0; }
+}
+@media (max-width: 600px) {
+  :root[data-orbit-zoom-floored="true"] .orbit-shell[data-view="estrategia"] { --orbit-rail-w: 48px; }
 }
 
 .orbit-shell[data-column="closed"] {

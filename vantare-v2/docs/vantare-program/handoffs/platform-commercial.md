@@ -999,3 +999,10 @@ cambiar idioma. Corregidos: listener de una publicacion sobrevive a navegacion
 hasta ACK/error y mantiene el recibo; cambiar traduccion conserva request pendiente.
 10 pruebas de flujo PASS. Fullfrontend previo: 3308 PASS/2 omitidas, build/lint
 PASS. Se revalidan cambios finales; Go completo en curso. No publicacion real.
+
+
+## VAN-737 / ISA-1301 — prueba negativa de política aislada (2026-09-22)
+
+- [Tarea Notion](https://app.notion.com/p/3e3e51695c6581bc88fbda9b7d057975), dependencia de la integración de widgets #1298 autorizada por Isaac. Base nightly `1e9932c4`; rama `vantareapp/isa-1301-quality-policy-test`.
+- La prueba anterior asumía que cualquier PR modificaba la política; un check correcto PASS hacía fallar CI. Se sustituye por un repositorio Git temporal: control limpio PASS, cambios de política sin commit/con commit/untracked REVIEW_REQUIRED y hallazgo de analizador FAIL. El diff Git, el detector de política, el agregado y el exit del proceso son reales; solo se inyectan resultados de analizadores, cuyos binarios ya prueban las otras clases.
+- Sin cambios de producto, motor de calidad, reglas, baselines ni excepciones. Roadmap required: `milestones:quality-linux-analysis`. Revisión independiente y gates remotos previos a nightly; sin testers/master/release.

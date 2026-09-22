@@ -6,6 +6,10 @@
 > Este handoff conserva evidencia técnica fechada; sus estados antiguos no
 > sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
 
+## Actualización — auditoría de Defender ISA-1322 (2026-09-22)
+
+Isaac solicita verificar la detección antes de autorizar el archivo. Revisión de fuente y procedencia sin hallazgos maliciosos; 168 archivos de seis paquetes instalados coinciden con tarballs e integridades oficiales, y la caché pnpm no presenta modificaciones. El historial muestra la misma detección sobre Carreras el 15-sep, antes de este cambio. Conclusión: **falso positivo probable, no confirmado**, porque el bundle exacto está en cuarentena y no se inspeccionó. [Evidencia y límites](../../strategy-planner/evidence/isa-1322/defender-audit.md). Sin restauración, excepciones, renombrado, nueva build ni cambio de protección. La build final y aceptación visual permanecen pendientes; no se autoriza ni se realiza envío del código a Microsoft.
+
 ## Actualización — ISA-1322, fidelidad de preparación (2026-09-22)
 
 [ISA-1322](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1322) corrige el movimiento global de entrada y la composición de la preparación denunciados por Isaac. GitHub es la autoridad de este corte por su instrucción expresa. Rama `vantareapp/isa-1322-strategy-desk-fidelity`, worktree `C:/tmp/vantare-isa1322`, base `8466c4a0aaed803812be900252a69a18e643c685` de ISA-1318.

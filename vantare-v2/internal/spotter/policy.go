@@ -3,7 +3,6 @@ package spotter
 import "github.com/vantare/overlays/v2/internal/radio"
 
 const (
-	detectionHoldMS    int64 = 350
 	clearDelayMS       int64 = 150
 	stillThereRepeatMS int64 = 3_000
 )
@@ -63,6 +62,7 @@ type pendingClear struct {
 // communication; selecting or queueing a message cannot authorize a clear.
 type Policy struct {
 	observed          bool
+	occupancy         Situation
 	situation         Situation
 	generation        uint64
 	startedSituation  Situation
@@ -75,16 +75,14 @@ type Policy struct {
 	clearLeftUntilMS  int64
 	clearRightUntilMS int64
 
-	seenLeft, seenRight         bool
-	lastSeenLeft, lastSeenRight int64
-	lastReminderMS              int64
-	pending                     pendingClear
+	lastReminderMS int64
+	pending        pendingClear
 }
 
 func (policy *Policy) Reset() { *policy = Policy{} }
 
 func (policy *Policy) ActiveSides() (left, right bool) {
-	return hasLeft(policy.situation), hasRight(policy.situation)
+	return hasLeft(policy.occupancy), hasRight(policy.occupancy)
 }
 
 func (policy *Policy) Coalescing(intent string) (uint64, radio.CoalesceValue) {
@@ -110,28 +108,18 @@ func (policy *Policy) Deadline(intent string, fallbackMS int64) int64 {
 }
 
 // Evaluate returns at most one intent for the proven situation at nowMS.
-func (policy *Policy) Evaluate(nowMS int64, currentLeft, currentRight bool) (string, bool) {
-	if currentLeft {
-		policy.seenLeft, policy.lastSeenLeft = true, nowMS
-	}
-	if currentRight {
-		policy.seenRight, policy.lastSeenRight = true, nowMS
-	}
-	left, right := currentLeft, currentRight
-	if !left && !currentRight && hasLeft(policy.situation) && policy.seenLeft && nowMS-policy.lastSeenLeft <= detectionHoldMS {
-		left = true
-	}
-	if !right && !currentLeft && hasRight(policy.situation) && policy.seenRight && nowMS-policy.lastSeenRight <= detectionHoldMS {
-		right = true
-	}
+func (policy *Policy) Evaluate(nowMS int64, left, right bool) (string, bool) {
 	target := situationFor(left, right)
+	// Observed occupancy changes immediately, while a clear keeps its delivery
+	// context until the first-empty delay has elapsed.
+	policy.occupancy = target
 
 	if (policy.pending.intent == IntentClearLeft && left) ||
 		(policy.pending.intent == IntentClearRight && right) ||
 		(policy.pending.intent == IntentAllClear && (left || right)) {
 		policy.pending = pendingClear{}
 	}
-	if policy.pending.intent != "" && nowMS >= policy.pending.dueMS {
+	if policy.pending.intent != "" && nowMS > policy.pending.dueMS {
 		clearIntent := policy.pending.intent
 		policy.pending = pendingClear{}
 		policy.transition(target, nowMS)
@@ -187,8 +175,22 @@ func (policy *Policy) Start(intent string, expiresAtMS, nowMS int64) bool {
 	if nowMS >= expiresAtMS {
 		return false
 	}
-	if intent == IntentStillThere {
-		return policy.situation == SituationLeft || policy.situation == SituationRight || policy.situation == SituationThreeWide
+	switch intent {
+	case IntentStillThere:
+		return hasLeft(policy.occupancy) || hasRight(policy.occupancy)
+	case IntentClearLeft:
+		if hasLeft(policy.occupancy) {
+			return false
+		}
+	case IntentClearRight:
+		if hasRight(policy.occupancy) {
+			return false
+		}
+	default:
+		observed, ok := selfContainedIntent(policy.occupancy)
+		if !ok || intent != observed {
+			return false
+		}
 	}
 	current, ok := selfContainedIntent(policy.situation)
 	contextualClear := policy.clearCanDeliver(intent, nowMS)

@@ -3077,3 +3077,10 @@ aislada a `nightly` (pendiente review/merge):
 - Resuelta además la aceptación de claves heredadas en IDs de perfiles; cobertura de normalizador y V3/V4 para sistema por defecto, widgets y memorias. Aliases y contratos persistidos conservados.
 - Suite frontend: 466 archivos, 3772 PASS y 2 omitidos. Build/TypeScript, lint y 69 focales finales PASS. Revisión independiente: sin bloqueantes, 83 pruebas PASS. Equivalencia estática CSS: 445 selectores activos sin cambios de declaraciones finales.
 - Informe completo y revisión previa en `docs/engineer/audits/2026-09-22-widget-local-sync-quality.md`. Sin nueva certificación visual ni LMU en vivo; PR en borrador, integración a nightly pendiente de aceptación.
+
+
+### ISA-1221 — integración inicial autorizada (2026-09-22)
+
+- Isaac autoriza expresamente integrar PR #1298 en nightly mediante subagente. La dependencia de CI #1302 / VAN-737 corrige la prueba negativa que asumía cambios de política en cualquier PR; mantiene los controles y cuenta con revisión independiente.
+- El candidato de widgets conserva el código revisado en `6c59caf2`; esta conciliación solo incorpora la dependencia de tooling y documentación de aceptación. El nuevo ajuste de animación Delta `e492aa88` está en otra rama pendiente de revisión visual y no forma parte de #1298.
+- Verificación remota de SHA/canal y checks en [VAN-41](https://app.notion.com/p/3dbe51695c658125b1c2efc198edfc94). La revisión visual continúa en Workshop y la certificación LMU activa permanece pendiente; sin testers/master/release.

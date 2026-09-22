@@ -88,33 +88,23 @@
       "step": 1,
       "atMs": 1100,
       "event": "rejected",
-      "family": "fuel",
-      "intent": "fuel.for_pit_now",
+      "family": "laps",
+      "intent": "laps.lap_completed",
       "reason": "queue_pressure_or_cooldown",
-      "messageId": "families-6-fuel.for_pit_now"
+      "messageId": "families-6-laps.lap_completed"
     },
     {
       "sequence": 11,
       "step": 1,
       "atMs": 1100,
       "event": "rejected",
-      "family": "laps",
-      "intent": "laps.lap_completed",
-      "reason": "queue_pressure_or_cooldown",
-      "messageId": "families-7-laps.lap_completed"
-    },
-    {
-      "sequence": 12,
-      "step": 1,
-      "atMs": 1100,
-      "event": "rejected",
       "family": "timings",
       "intent": "timings.gap_report",
       "reason": "queue_pressure_or_cooldown",
-      "messageId": "families-8-timings.gap_report"
+      "messageId": "families-7-timings.gap_report"
     },
     {
-      "sequence": 13,
+      "sequence": 12,
       "step": 2,
       "atMs": 1200,
       "event": "dropped",
@@ -123,7 +113,7 @@
       "messageId": "families-3-fuel.low_1l"
     },
     {
-      "sequence": 14,
+      "sequence": 13,
       "step": 2,
       "atMs": 1200,
       "event": "dropped",
@@ -132,7 +122,7 @@
       "messageId": "families-4-fuel.low_half_tank"
     },
     {
-      "sequence": 15,
+      "sequence": 14,
       "step": 2,
       "atMs": 1200,
       "event": "dropped",
@@ -141,7 +131,7 @@
       "messageId": "families-5-fuel.laps_remaining_2"
     },
     {
-      "sequence": 16,
+      "sequence": 15,
       "step": 2,
       "atMs": 1200,
       "event": "submitted",
@@ -150,7 +140,7 @@
       "messageId": "spotter-1-spotter.car_left"
     },
     {
-      "sequence": 17,
+      "sequence": 16,
       "step": 2,
       "atMs": 1200,
       "event": "preempted_active",
@@ -159,7 +149,7 @@
       "messageId": "spotter-1-spotter.car_left"
     },
     {
-      "sequence": 18,
+      "sequence": 17,
       "step": 2,
       "atMs": 1200,
       "event": "ack_interrupted",
@@ -169,68 +159,76 @@
       "messageId": "families-1-fuel.low_2l"
     },
     {
-      "sequence": 19,
+      "sequence": 18,
       "step": 2,
       "atMs": 1200,
       "event": "submitted",
       "family": "fuel",
       "intent": "fuel.low_1l",
-      "messageId": "families-9-fuel.low_1l"
+      "messageId": "families-8-fuel.low_1l"
     },
     {
-      "sequence": 20,
+      "sequence": 19,
       "step": 2,
       "atMs": 1200,
       "event": "submitted",
       "family": "fuel",
       "intent": "fuel.low_half_tank",
-      "messageId": "families-10-fuel.low_half_tank"
+      "messageId": "families-9-fuel.low_half_tank"
     },
     {
-      "sequence": 21,
+      "sequence": 20,
       "step": 2,
       "atMs": 1200,
       "event": "rejected",
       "family": "fuel",
       "intent": "fuel.laps_remaining_2",
       "reason": "queue_pressure_or_cooldown",
-      "messageId": "families-11-fuel.laps_remaining_2"
+      "messageId": "families-10-fuel.laps_remaining_2"
     },
     {
-      "sequence": 22,
-      "step": 2,
-      "atMs": 1200,
-      "event": "rejected",
-      "family": "fuel",
-      "intent": "fuel.for_pit_now",
-      "reason": "queue_pressure_or_cooldown",
-      "messageId": "families-12-fuel.for_pit_now"
-    },
-    {
-      "sequence": 23,
+      "sequence": 21,
       "step": 2,
       "atMs": 1200,
       "event": "rejected",
       "family": "laps",
       "intent": "laps.lap_completed",
       "reason": "queue_pressure_or_cooldown",
-      "messageId": "families-13-laps.lap_completed"
+      "messageId": "families-11-laps.lap_completed"
     },
     {
-      "sequence": 24,
+      "sequence": 22,
       "step": 2,
       "atMs": 1200,
       "event": "rejected",
       "family": "timings",
       "intent": "timings.gap_report",
       "reason": "queue_pressure_or_cooldown",
-      "messageId": "families-14-timings.gap_report"
+      "messageId": "families-12-timings.gap_report"
+    },
+    {
+      "sequence": 23,
+      "step": 2,
+      "atMs": 1200,
+      "event": "ack_queued",
+      "family": "spotter",
+      "intent": "spotter.car_left",
+      "messageId": "spotter-1-spotter.car_left"
+    },
+    {
+      "sequence": 24,
+      "step": 2,
+      "atMs": 1200,
+      "event": "ack_started",
+      "family": "spotter",
+      "intent": "spotter.car_left",
+      "messageId": "spotter-1-spotter.car_left"
     },
     {
       "sequence": 25,
       "step": 2,
       "atMs": 1200,
-      "event": "ack_queued",
+      "event": "ack_completed",
       "family": "spotter",
       "intent": "spotter.car_left",
       "messageId": "spotter-1-spotter.car_left"
@@ -239,201 +237,173 @@
       "sequence": 26,
       "step": 2,
       "atMs": 1200,
-      "event": "ack_started",
-      "family": "spotter",
-      "intent": "spotter.car_left",
-      "messageId": "spotter-1-spotter.car_left"
+      "event": "ack_queued",
+      "family": "fuel",
+      "intent": "fuel.low_1l",
+      "messageId": "families-8-fuel.low_1l"
     },
     {
       "sequence": 27,
       "step": 2,
       "atMs": 1200,
-      "event": "ack_completed",
-      "family": "spotter",
-      "intent": "spotter.car_left",
-      "messageId": "spotter-1-spotter.car_left"
+      "event": "ack_started",
+      "family": "fuel",
+      "intent": "fuel.low_1l",
+      "messageId": "families-8-fuel.low_1l"
     },
     {
       "sequence": 28,
       "step": 2,
       "atMs": 1200,
-      "event": "ack_queued",
+      "event": "ack_completed",
       "family": "fuel",
       "intent": "fuel.low_1l",
-      "messageId": "families-9-fuel.low_1l"
+      "messageId": "families-8-fuel.low_1l"
     },
     {
       "sequence": 29,
       "step": 2,
       "atMs": 1200,
-      "event": "ack_started",
+      "event": "ack_queued",
       "family": "fuel",
-      "intent": "fuel.low_1l",
-      "messageId": "families-9-fuel.low_1l"
+      "intent": "fuel.low_half_tank",
+      "messageId": "families-9-fuel.low_half_tank"
     },
     {
       "sequence": 30,
       "step": 2,
       "atMs": 1200,
-      "event": "ack_completed",
+      "event": "ack_started",
       "family": "fuel",
-      "intent": "fuel.low_1l",
-      "messageId": "families-9-fuel.low_1l"
+      "intent": "fuel.low_half_tank",
+      "messageId": "families-9-fuel.low_half_tank"
     },
     {
       "sequence": 31,
       "step": 2,
       "atMs": 1200,
-      "event": "ack_queued",
-      "family": "fuel",
-      "intent": "fuel.low_half_tank",
-      "messageId": "families-10-fuel.low_half_tank"
-    },
-    {
-      "sequence": 32,
-      "step": 2,
-      "atMs": 1200,
-      "event": "ack_started",
-      "family": "fuel",
-      "intent": "fuel.low_half_tank",
-      "messageId": "families-10-fuel.low_half_tank"
-    },
-    {
-      "sequence": 33,
-      "step": 2,
-      "atMs": 1200,
       "event": "ack_completed",
       "family": "fuel",
       "intent": "fuel.low_half_tank",
-      "messageId": "families-10-fuel.low_half_tank"
+      "messageId": "families-9-fuel.low_half_tank"
+    },
+    {
+      "sequence": 32,
+      "step": 3,
+      "atMs": 4300,
+      "event": "submitted",
+      "family": "spotter",
+      "intent": "spotter.still_there",
+      "messageId": "spotter-2-spotter.still_there"
+    },
+    {
+      "sequence": 33,
+      "step": 3,
+      "atMs": 4300,
+      "event": "submitted",
+      "family": "fuel",
+      "intent": "fuel.laps_remaining_2",
+      "messageId": "families-13-fuel.laps_remaining_2"
     },
     {
       "sequence": 34,
       "step": 3,
       "atMs": 4300,
       "event": "submitted",
-      "family": "spotter",
-      "intent": "spotter.still_there",
-      "messageId": "spotter-2-spotter.still_there"
+      "family": "laps",
+      "intent": "laps.lap_completed",
+      "messageId": "families-14-laps.lap_completed"
     },
     {
       "sequence": 35,
-      "step": 3,
-      "atMs": 4300,
-      "event": "submitted",
-      "family": "fuel",
-      "intent": "fuel.laps_remaining_2",
-      "messageId": "families-15-fuel.laps_remaining_2"
-    },
-    {
-      "sequence": 36,
-      "step": 3,
-      "atMs": 4300,
-      "event": "submitted",
-      "family": "fuel",
-      "intent": "fuel.for_pit_now",
-      "messageId": "families-16-fuel.for_pit_now"
-    },
-    {
-      "sequence": 37,
-      "step": 3,
-      "atMs": 4300,
-      "event": "rejected",
-      "family": "laps",
-      "intent": "laps.lap_completed",
-      "reason": "queue_pressure_or_cooldown",
-      "messageId": "families-17-laps.lap_completed"
-    },
-    {
-      "sequence": 38,
       "step": 3,
       "atMs": 4300,
       "event": "rejected",
       "family": "timings",
       "intent": "timings.gap_report",
       "reason": "queue_pressure_or_cooldown",
-      "messageId": "families-18-timings.gap_report"
+      "messageId": "families-15-timings.gap_report"
+    },
+    {
+      "sequence": 36,
+      "step": 3,
+      "atMs": 4300,
+      "event": "ack_queued",
+      "family": "spotter",
+      "intent": "spotter.still_there",
+      "messageId": "spotter-2-spotter.still_there"
+    },
+    {
+      "sequence": 37,
+      "step": 3,
+      "atMs": 4300,
+      "event": "ack_started",
+      "family": "spotter",
+      "intent": "spotter.still_there",
+      "messageId": "spotter-2-spotter.still_there"
+    },
+    {
+      "sequence": 38,
+      "step": 3,
+      "atMs": 4300,
+      "event": "ack_completed",
+      "family": "spotter",
+      "intent": "spotter.still_there",
+      "messageId": "spotter-2-spotter.still_there"
     },
     {
       "sequence": 39,
       "step": 3,
       "atMs": 4300,
       "event": "ack_queued",
-      "family": "spotter",
-      "intent": "spotter.still_there",
-      "messageId": "spotter-2-spotter.still_there"
+      "family": "fuel",
+      "intent": "fuel.laps_remaining_2",
+      "messageId": "families-13-fuel.laps_remaining_2"
     },
     {
       "sequence": 40,
       "step": 3,
       "atMs": 4300,
       "event": "ack_started",
-      "family": "spotter",
-      "intent": "spotter.still_there",
-      "messageId": "spotter-2-spotter.still_there"
+      "family": "fuel",
+      "intent": "fuel.laps_remaining_2",
+      "messageId": "families-13-fuel.laps_remaining_2"
     },
     {
       "sequence": 41,
       "step": 3,
       "atMs": 4300,
       "event": "ack_completed",
-      "family": "spotter",
-      "intent": "spotter.still_there",
-      "messageId": "spotter-2-spotter.still_there"
+      "family": "fuel",
+      "intent": "fuel.laps_remaining_2",
+      "messageId": "families-13-fuel.laps_remaining_2"
     },
     {
       "sequence": 42,
       "step": 3,
       "atMs": 4300,
       "event": "ack_queued",
-      "family": "fuel",
-      "intent": "fuel.laps_remaining_2",
-      "messageId": "families-15-fuel.laps_remaining_2"
+      "family": "laps",
+      "intent": "laps.lap_completed",
+      "messageId": "families-14-laps.lap_completed"
     },
     {
       "sequence": 43,
       "step": 3,
       "atMs": 4300,
       "event": "ack_started",
-      "family": "fuel",
-      "intent": "fuel.laps_remaining_2",
-      "messageId": "families-15-fuel.laps_remaining_2"
+      "family": "laps",
+      "intent": "laps.lap_completed",
+      "messageId": "families-14-laps.lap_completed"
     },
     {
       "sequence": 44,
       "step": 3,
       "atMs": 4300,
       "event": "ack_completed",
-      "family": "fuel",
-      "intent": "fuel.laps_remaining_2",
-      "messageId": "families-15-fuel.laps_remaining_2"
-    },
-    {
-      "sequence": 45,
-      "step": 3,
-      "atMs": 4300,
-      "event": "ack_queued",
-      "family": "fuel",
-      "intent": "fuel.for_pit_now",
-      "messageId": "families-16-fuel.for_pit_now"
-    },
-    {
-      "sequence": 46,
-      "step": 3,
-      "atMs": 4300,
-      "event": "ack_started",
-      "family": "fuel",
-      "intent": "fuel.for_pit_now",
-      "messageId": "families-16-fuel.for_pit_now"
-    },
-    {
-      "sequence": 47,
-      "step": 3,
-      "atMs": 4300,
-      "event": "ack_completed",
-      "family": "fuel",
-      "intent": "fuel.for_pit_now",
-      "messageId": "families-16-fuel.for_pit_now"
+      "family": "laps",
+      "intent": "laps.lap_completed",
+      "messageId": "families-14-laps.lap_completed"
     }
   ],
   "metrics": {

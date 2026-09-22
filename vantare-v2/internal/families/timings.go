@@ -12,9 +12,22 @@ func (state *timingsState) Started(radio.RadioMessage) {}
 
 type timingsFamily struct{}
 
+func timingsReady(e Evidence) bool {
+	if !e.SessionTypeKnown || (e.SessionType != "race" && e.SessionType != "endurance") ||
+		!e.PitKnown || e.InPit || (!e.GapLeaderKnown && !e.GapNextKnown) {
+		return false
+	}
+	// LMU/rF2 uses a positive session end time for fixed-time races, even
+	// with a lap limit. Do not infer the format from remaining time alone.
+	if e.EndTimeKnown && e.EndTime > 0 {
+		return e.RemainingKnown && e.Remaining >= 120
+	}
+	return true
+}
+
 func (timingsFamily) Evaluate(e Evidence, raw State) []radio.RadioMessage {
 	state := raw.(*timingsState)
-	if (!e.GapLeaderKnown && !e.GapNextKnown) || (e.PitKnown && e.InPit) {
+	if !timingsReady(e) {
 		return nil
 	}
 	if !state.initialized {

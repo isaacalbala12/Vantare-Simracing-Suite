@@ -94,6 +94,7 @@ func TestRadioLabMultiCycle(t *testing.T) {
 	assertRadioOutcome(t, report, "submitted", "fuel.low_half_tank")
 	assertRadioOutcome(t, report, "submitted", "fuel.low_2l")
 	assertRadioOutcome(t, report, "submitted", "fuel.low_1l")
+	assertRadioIntentAbsent(t, report, "fuel.for_pit_now")
 	assertRadioOutcome(t, report, "submitted", "laps.lap_completed")
 	assertRadioOutcome(t, report, "submitted", "timings.gap_report")
 	assertRadioOutcome(t, report, "rejected", "timings.gap_report")
@@ -125,7 +126,8 @@ func TestRadioLabSaturation(t *testing.T) {
 	report := runRadioScenario(t, "saturation", limits, steps)
 
 	assertRadioOutcome(t, report, "held", "fuel.low_2l")
-	assertRadioOutcome(t, report, "rejected", "fuel.for_pit_now")
+	assertRadioIntentAbsent(t, report, "fuel.for_pit_now")
+	assertRadioOutcome(t, report, "rejected", "fuel.laps_remaining_2")
 	assertRadioOutcome(t, report, "rejected", "laps.lap_completed")
 	assertRadioOutcome(t, report, "rejected", "timings.gap_report")
 	assertRadioOutcome(t, report, "dropped", "fuel.low_1l")
@@ -192,6 +194,15 @@ func assertRadioOutcome(t *testing.T, report radioReport, event, intent string) 
 		}
 	}
 	t.Fatalf("missing outcome %s %s: %+v", event, intent, report.Outcomes)
+}
+
+func assertRadioIntentAbsent(t *testing.T, report radioReport, intent string) {
+	t.Helper()
+	for _, outcome := range report.Outcomes {
+		if outcome.Intent == intent {
+			t.Fatalf("unauthorized intent %s: %+v", intent, outcome)
+		}
+	}
 }
 
 func assertRadioDetail(t *testing.T, report radioReport, event, detail string) {

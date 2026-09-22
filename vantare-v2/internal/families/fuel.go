@@ -123,9 +123,9 @@ func (fuelFamily) Evaluate(e Evidence, raw State) []radio.RadioMessage {
 		case estimated <= 4 && !state.playedFour:
 			result = append(result, message(IntentFuelLapsFour, e))
 		}
-		if estimated < 4 && !state.playedPitNow {
-			result = append(result, message(IntentFuelPitNow, e))
-		}
+		// A range estimate alone cannot authorize a pit-stop instruction.
+		// PitNow needs race-end, arming and track/sector evidence that this
+		// family does not yet own; keep the informational range warnings.
 	}
 	for index := range result {
 		result[index].ProducerRevision = state.intentGenerations[result[index].Intent]

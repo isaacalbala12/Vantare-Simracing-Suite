@@ -822,12 +822,6 @@ function applyScene(
       };
       relative = [...relative].sort(relativeOrder);
       settled = [...settled].sort(relativeOrder);
-      if (scene.positionSwap) {
-        const selectedNames = new Set(Object.keys(state.cars));
-        const playerId = frame.player.id ?? "";
-        relative = relative.filter((row) => row.id === playerId || selectedNames.has(row.name ?? ""));
-        settled = settled.filter((row) => row.id === playerId || selectedNames.has(row.name ?? ""));
-      }
     } else {
       standings = standings.flatMap((row) => {
         const key = (row.driver && state.cars![row.driver] ? row.driver : undefined) ?? seatNameAt(STANDINGS_DEV_SEAT_BY_DRIVER, row.position);

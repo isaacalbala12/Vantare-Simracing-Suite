@@ -155,7 +155,7 @@ export function prepareRelativeViewModelV2(
         rowHeightMode: content.rowHeightMode,
         rangeAhead: content.rangeAhead,
         rangeBehind: content.rangeBehind,
-        rows: retainedRows.map((row) => buildRow(row, nameColumn)),
+        rows: retainedRows.map((row) => buildRow(row, nameColumn, false)),
         ...buildRelativeMeta(frame),
       },
     };
@@ -177,6 +177,8 @@ export function prepareRelativeViewModelV2(
   const window = content.includePlayer
     ? stableWithPlayer
     : stableWithPlayer.filter((row) => row.side !== "player");
+  const freshRace = source.state === "live" &&
+    frame.session.phase.q === "fresh" && frame.session.phase.v === "race";
 
   return {
     state,
@@ -195,7 +197,7 @@ export function prepareRelativeViewModelV2(
     rowHeightMode: content.rowHeightMode,
     rangeAhead: content.rangeAhead,
     rangeBehind: content.rangeBehind,
-    rows: window.map((row) => buildRow(row, nameColumn)),
+    rows: window.map((row) => buildRow(row, nameColumn, freshRace)),
     ...buildRelativeMeta(frame),
     },
   };
@@ -241,6 +243,7 @@ export function relativeDisplayedValues(
       .map((row) => [
         row.id, row.position, row.vehicleClass, row.configuredDriverName ?? row.driverName,
         row.gapText, row.side, row.tone, row.isPlayer ? "player" : "",
+        row.lapDelta == null ? "" : String(row.lapDelta),
       ].join("~"))
       .join("|"),
   });
@@ -273,6 +276,7 @@ function sameClass(row: OverlayRelativeRowV2, player: OverlayRelativeRowV2 | und
 function buildRow(
   row: OverlayRelativeRowV2,
   nameColumn: WidgetColumnV3 | undefined,
+  freshRace: boolean,
 ): RelativeRowViewModel {
   const isPlayer = row.side === "player";
   const gapSeconds = displayedNumber(row.gap) ?? null;
@@ -291,7 +295,15 @@ function buildRow(
     side: row.side as RelativeRowViewModel["side"],
     tone: resolveRelativeTone(gapSeconds ?? undefined, isPlayer),
     gapSeconds,
+    lapDelta: freshRace ? freshLapDelta(row) : null,
   };
+}
+
+function freshLapDelta(row: OverlayRelativeRowV2): number | null {
+  const value = row.lapDelta;
+  return value?.q === "fresh" && Number.isFinite(value.v) && Number.isInteger(value.v) && value.v !== 0
+    ? value.v!
+    : null;
 }
 
 function stabilizeWindow(

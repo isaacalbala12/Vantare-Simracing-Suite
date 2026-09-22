@@ -40,7 +40,7 @@ import { resolveStandingsMinimumSize } from "../../widget-types/standings/standi
 import { applyWidgetDesign } from "../../core/widget-design";
 import { getOfficialDesign, listOfficialDesigns } from "../../design-systems/official-designs";
 import { getAnimationScene, sceneFrameAt } from "./animation-scenes";
-import type { SceneFrame } from "./animation-scenes";
+import type { SceneFrame, SceneOverride } from "./animation-scenes";
 import type { PedalsKnownFlag } from "../../widget-types/pedals/pedals-view-model";
 
 // Variantes dev de Workshop: transformaciones explícitas, deterministas y
@@ -481,6 +481,16 @@ function withWorkshopDemo(frame: OverlayFrameV2, quality: OverlayQualityV2): Ove
   };
 }
 
+function withWorkshopRaceLapDeltas(frame: OverlayFrameV2, quality: OverlayQualityV2): OverlayFrameV2 {
+  const lapDeltaAtPosition = (position: number): OverlayQValue<number> =>
+    position === 4 ? qualityValue(-1, quality) : { q: "missing" };
+  return {
+    ...frame,
+    relative: frame.relative.map((row) => ({ ...row, lapDelta: lapDeltaAtPosition(row.position) })),
+    relativeSettled: frame.relativeSettled.map((row) => ({ ...row, lapDelta: lapDeltaAtPosition(row.position) })),
+  };
+}
+
 function withWorkshopPlayerPosition(frame: OverlayFrameV2, position: number): OverlayFrameV2 {
   const target = frame.standings.find((row) => row.position === position);
   if (!target) return frame;
@@ -727,7 +737,7 @@ function warnDroppedScenePatches(
 
 function patchRelativeSection(
   rows: readonly OverlayRelativeRowV2[],
-  cars: Record<string, { timeGapToPlayer?: number; absent?: boolean }>,
+  cars: Record<string, SceneOverride>,
   quality: OverlayQualityV2,
   resolved?: Set<string>,
 ): OverlayRelativeRowV2[] {
@@ -736,13 +746,19 @@ function patchRelativeSection(
     const patch = key === undefined ? undefined : cars[key];
     if (key === undefined || !patch) return [row];
     resolved?.add(key);
-    // lapDistanceMeters no tiene campo en la fila V2: se ignora sin fingirlo.
     if (patch.absent) return [];
-    if (patch.timeGapToPlayer === undefined) return [row];
+    if (patch.timeGapToPlayer === undefined && patch.lapDelta === undefined && patch.lapDeltaQuality === undefined) return [row];
     return [{
       ...row,
-      gap: qualityValue(patch.timeGapToPlayer, quality),
-      side: sideForGap(patch.timeGapToPlayer, row.side),
+      ...(patch.timeGapToPlayer !== undefined ? {
+        gap: qualityValue(patch.timeGapToPlayer, quality),
+        side: sideForGap(patch.timeGapToPlayer, row.side),
+      } : {}),
+      ...(patch.lapDelta !== undefined || patch.lapDeltaQuality !== undefined ? {
+        lapDelta: patch.lapDelta === undefined
+          ? { q: patch.lapDeltaQuality ?? quality }
+          : qualityValue(patch.lapDelta, patch.lapDeltaQuality ?? quality),
+      } : {}),
     }];
   });
 }
@@ -865,6 +881,9 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
     baseFrame = { ...baseFrame, standings: padStandings(baseFrame.standings, scenario.standingRows) };
   }
   let frame = withWorkshopDemo(baseFrame, quality);
+  if (scenario.widget === "relative" && scenario.session === "race") {
+    frame = withWorkshopRaceLapDeltas(frame, quality);
+  }
   if (scenario.widget === "pedals" || scenario.widget === "racing-flags") {
     // Racing Flags keeps the vivid green demo state by default, while Pedals
     // preserves the canonical missing flag unless the Workshop asks for an

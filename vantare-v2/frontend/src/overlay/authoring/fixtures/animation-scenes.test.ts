@@ -11,9 +11,10 @@ import { parseStandingsContent } from "../../widget-types/standings/standings-co
 import { deriveStandingsEvents, deriveBattlePairs } from "../../design-systems/vantare-endurance/standings/standings-motion";
 import { groupRowsByClass } from "../../design-systems/vantare-endurance/standings/standings-endurance-shared";
 import { deriveRelativeEvents } from "../../design-systems/vantare-endurance/relative/relative-motion";
-import { buildRelativeViewModelV2 } from "../../widget-types/relative/relative-view-model-v2";
+import { buildRelativeViewModelV2, relativeDisplayedValues } from "../../widget-types/relative/relative-view-model-v2";
 import { parseRelativeContent } from "../../widget-types/relative/relative-content";
 import { projectionGapsFor } from "./projection-gaps";
+import { relativeStructureKey } from "../../design-systems/vantare-functional/relative-presentation";
 
 function scenario(
   widget: "standings" | "relative",
@@ -102,18 +103,18 @@ describe("animation scene catalog", () => {
     const sceneIds = [
       "relative-functional-cross-ahead", "relative-functional-cross-behind",
       "relative-functional-window-cycle", "relative-functional-fast-reversal",
-      "relative-functional-stable-values", "relative-functional-sequence",
+      "relative-functional-stable-values", "relative-functional-sequence", "relative-functional-lap-difference",
     ];
     for (const session of ["practice", "qualifying", "race"] as const) {
       for (const sceneId of sceneIds) {
         const scene = getAnimationScene(sceneId)!;
-        expect(scene.frames.some((frame) => frame.caption.includes("Nico Pino") || frame.caption.includes("Mikkel Jensen"))).toBe(true);
+        expect(scene.frames.some((frame) => Object.keys(frame.cars ?? {}).some((name) => frame.caption.includes(name)))).toBe(true);
         expect(`${scene.watchFor} ${scene.frames.map((frame) => frame.caption).join(" ")}`).not.toMatch(/Bruni|Birch/);
         scene.frames.forEach((frame, index) => {
           const visibleNames = functionalRelativeModel(sceneId, index, session).rows.map((row) => row.driverName);
           for (const [name, patch] of Object.entries(frame.cars ?? {})) {
-            expect(["Nico Pino", "Mikkel Jensen"]).toContain(name);
-            expect(visibleNames.includes(name), `${session} ${sceneId} frame ${index}: ${name}`)
+            expect(["Nico Pino", "Mikkel Jensen", "Antonio Giovinazzi", "Kévin Estre", "Ben Hanley", "Maro Engel"]).toContain(name);
+            expect(visibleNames.includes(name), `${session} ${sceneId} frame ${index}: ${name}; visible=${visibleNames.join(", ")}`)
               .toBe(patch.absent !== true);
           }
         });
@@ -357,6 +358,82 @@ describe("scenes drive the motion engine", () => {
       expect(visible.some((row) => row.position === 20)).toBe(true);
       expect(visible.some((row) => row.position === 19)).toBe(index === 2 || index === 5 || index === 7);
     }
+  });
+
+  it("keeps race lap differences explicit, localized by the renderer, and outside row structure", () => {
+    const defaultInput = {
+      ...scenario("relative", "relative-functional-lap-difference", 0, "vantare-functional"),
+      sceneId: undefined,
+    };
+    const baseRuntime = buildWorkshopFrameV2(defaultInput);
+    const baseFrame = baseRuntime.overlayV2Frame!;
+    const baseWidget = createScenarioWidget(defaultInput);
+    const baseContent = parseRelativeContent(baseWidget.content);
+    const raceDefault = buildRelativeViewModelV2(
+      baseFrame, baseRuntime.overlayV2Source!, baseContent,
+    );
+    const defaultGiovinazzi = raceDefault.rows.find((row) => row.driverName === "Antonio Giovinazzi");
+    expect(defaultGiovinazzi).toMatchObject({ position: 4, side: "ahead", lapDelta: -1 });
+    expect(raceDefault.rows.filter((row) => row.isPlayer)).toHaveLength(1);
+
+    const scene = getAnimationScene("relative-functional-lap-difference")!;
+    expect(listAnimationScenes("relative", "vantare-functional")).toContain(scene);
+    expect(scene.watchFor).toMatch(/solo de carrera/i);
+    const sceneFrames = scene.frames.map((_, index) => functionalRelativeFrame(scene.id, index));
+    expect(sceneFrames.every((frame) => frame.relative.length === sceneFrames[0]!.relative.length)).toBe(true);
+    expect(sceneFrames.every((frame) => frame.relative.some((row) => row.id === baseFrame.player.id))).toBe(true);
+    const rowsAt = (index: number) => sceneFrames[index]!.relative;
+    const lapAt = (index: number, name: string) => rowsAt(index).find((row) => row.name === name)!.lapDelta;
+    expect(lapAt(0, "Antonio Giovinazzi")).toEqual({ q: "fresh", v: -1 });
+    expect(lapAt(0, "Kévin Estre")).toEqual({ q: "fresh", v: 0 });
+    expect(lapAt(0, "Ben Hanley")).toEqual({ q: "fresh", v: 1 });
+    expect(lapAt(0, "Mikkel Jensen")).toEqual({ q: "fresh", v: 2 });
+    expect(lapAt(0, "Nico Pino")).toEqual({ q: "fresh", v: -2 });
+    expect(lapAt(0, "Maro Engel")).toEqual({ q: "missing" });
+
+    const firstModel = functionalRelativeModel(scene.id, 0);
+    const secondModel = functionalRelativeModel(scene.id, 1);
+    expect(firstModel.rows.filter((row) => !row.isPlayer)).toHaveLength(6);
+    expect(relativeStructureKey(firstModel.rows)).toBe(relativeStructureKey(secondModel.rows));
+    expect(relativeDisplayedValues(firstModel).rows).not.toBe(relativeDisplayedValues(secondModel).rows);
+  });
+
+  it("shows lap differences only from fresh canonical race values", () => {
+    const input = scenario("relative", "relative-functional-lap-difference", 0, "vantare-functional");
+    const runtime = buildWorkshopFrameV2(input);
+    const widget = createScenarioWidget(input);
+    const content = parseRelativeContent(widget.content);
+    const frame = runtime.overlayV2Frame!;
+    const source = runtime.overlayV2Source!;
+    const build = (nextFrame = frame, nextSource = source) =>
+      buildRelativeViewModelV2(nextFrame, nextSource, content);
+    const p4Lap = (model: ReturnType<typeof build>) =>
+      model.rows.find((row) => row.position === 4)?.lapDelta;
+    expect(p4Lap(build())).toBe(-1);
+    expect(p4Lap(build(frame, { ...source, state: "stale" }))).toBeUndefined();
+    expect(p4Lap(build({
+      ...frame,
+      session: { ...frame.session, phase: { q: "stale", v: "race" } },
+    }))).toBeNull();
+
+    const withoutLapData = {
+      ...frame,
+      relative: frame.relative.map((row) => row.position === 4 ? { ...row, lapDelta: { q: "missing" as const } } : row),
+      relativeSettled: frame.relativeSettled.map((row) => row.position === 4 ? { ...row, lapDelta: { q: "missing" as const } } : row),
+    };
+    expect(p4Lap(build(withoutLapData))).toBeNull();
+    const invalidLapData = {
+      ...frame,
+      relative: frame.relative.map((row) => row.position === 4 ? { ...row, lapDelta: { q: "invalid" as const, v: -1 } } : row),
+      relativeSettled: frame.relativeSettled.map((row) => row.position === 4 ? { ...row, lapDelta: { q: "invalid" as const, v: -1 } } : row),
+    };
+    expect(p4Lap(build(invalidLapData))).toBeNull();
+    const fractionalLapData = {
+      ...frame,
+      relative: frame.relative.map((row) => row.position === 4 ? { ...row, lapDelta: { q: "fresh" as const, v: -1.5 } } : row),
+      relativeSettled: frame.relativeSettled.map((row) => row.position === 4 ? { ...row, lapDelta: { q: "fresh" as const, v: -1.5 } } : row),
+    };
+    expect(p4Lap(build(fractionalLapData))).toBeNull();
   });
 
   it("delta chip scene moves a car several places at once", () => {

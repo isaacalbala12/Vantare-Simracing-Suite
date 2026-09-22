@@ -1,4 +1,5 @@
 import type { WidgetType } from "../../core/profile-document";
+import type { OverlayQualityV2 } from "../../../generated/telemetry";
 
 /**
  * A single car's state for one frame of a scene. Anything omitted keeps the
@@ -14,6 +15,9 @@ export type SceneOverride = {
   bestLapTime?: number;
   /** Drops the car from the field entirely (retirement / rejoin frames). */
   absent?: boolean;
+  /** Workshop-only override for canonical lap difference; never inferred from position or gaps. */
+  lapDelta?: number;
+  lapDeltaQuality?: OverlayQualityV2;
 };
 
 /** Player-owned values, for widgets that read the driver rather than the field. */
@@ -449,13 +453,14 @@ const RELATIVE_FUNCTIONAL_SEQUENCE_SCENE: AnimationScene = {
   widget: "relative",
   label: "Secuencia completa",
   watchFor:
-    "Usa Reproducir para ver la secuencia completa o el deslizador para detenerte en cada muestra: cruce en ambos sentidos, salida y reentrada de Mikkel Jensen, y un tramo final con distancias cambiantes sin mover las filas.",
+    "Usa Reproducir o el deslizador: cruce en ambos sentidos, entrada y salida de Mikkel Jensen y distancias que cambian sin mover filas. En carrera, Antonio Giovinazzi P4 aparece delante con −1 V respecto al jugador.",
   frameMs: 900,
   frames: [
     {
-      caption: "Inicio: Nico Pino detrás (−0,45 s); Mikkel Jensen fuera de la ventana",
+      caption: "Inicio: Nico Pino detrás (−0,45 s); Giovinazzi P4 delante con −1 V; Mikkel Jensen fuera de la ventana",
       cars: {
         "Nico Pino": { timeGapToPlayer: -0.45 },
+        "Antonio Giovinazzi": { lapDelta: -1 },
         "Mikkel Jensen": { absent: true },
       },
     },
@@ -513,6 +518,39 @@ const RELATIVE_FUNCTIONAL_SEQUENCE_SCENE: AnimationScene = {
       cars: {
         "Nico Pino": { timeGapToPlayer: -0.45 },
         "Mikkel Jensen": { timeGapToPlayer: -2.6 },
+      },
+    },
+  ],
+};
+
+const RELATIVE_FUNCTIONAL_LAP_DIFFERENCE_SCENE: AnimationScene = {
+  id: "relative-functional-lap-difference",
+  widget: "relative",
+  label: "Diferencia de vueltas",
+  watchFor:
+    "Escena solo de carrera. Compara la vuelta del rival con la tuya: el signo marca más o menos vueltas, no la posición física ni la clasificación. El jugador conserva su fila; cero y datos ausentes no llevan etiqueta.",
+  frameMs: 1400,
+  frames: [
+    {
+      caption: "Carrera: Antonio Giovinazzi P4 delante, −1 V; Kévin Estre en la misma vuelta; Ben Hanley +1 V; Mikkel Jensen +2 V; Nico Pino −2 V",
+      cars: {
+        "Antonio Giovinazzi": { lapDelta: -1 },
+        "Kévin Estre": { lapDelta: 0 },
+        "Ben Hanley": { lapDelta: 1 },
+        "Mikkel Jensen": { lapDelta: 2 },
+        "Nico Pino": { lapDelta: -2 },
+        "Maro Engel": { lapDeltaQuality: "missing" },
+      },
+    },
+    {
+      caption: "Diferencias de dos vueltas a ambos lados; Estre sigue en la misma vuelta",
+      cars: {
+        "Antonio Giovinazzi": { lapDelta: -2 },
+        "Kévin Estre": { lapDelta: 0 },
+        "Ben Hanley": { lapDelta: 2 },
+        "Mikkel Jensen": { lapDelta: 1 },
+        "Nico Pino": { lapDelta: -1 },
+        "Maro Engel": { lapDeltaQuality: "missing" },
       },
     },
   ],
@@ -609,6 +647,7 @@ export const ANIMATION_SCENES: readonly AnimationScene[] = [
   RELATIVE_FUNCTIONAL_FAST_REVERSAL_SCENE,
   RELATIVE_FUNCTIONAL_STABLE_SCENE,
   RELATIVE_FUNCTIONAL_SEQUENCE_SCENE,
+  RELATIVE_FUNCTIONAL_LAP_DIFFERENCE_SCENE,
   DELTA_CROSS_SCENE,
   DELTA_NEW_BEST_SCENE,
   PEDALS_LAP_SCENE,

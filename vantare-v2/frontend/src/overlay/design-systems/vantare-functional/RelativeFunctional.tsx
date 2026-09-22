@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { useMemo, useRef } from "react";
+import { memo, useMemo, useRef } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { WidgetRendererProps } from "../../core/design-system-definition";
 import { resolveColumnWidthPixels } from "../../widget-types/shared/widget-column";
@@ -19,6 +19,18 @@ const LAP_METRICS = new Set(["bestLap", "lastLap"]);
 // con getBoundingClientRect devuelve px YA escalados por el viewport — con
 // eso el presupuesto admitía ~40% más filas de las que caben.
 const RELATIVE_ROW_PX = 28;
+
+const RelativeLapDeltaBadge = memo(function RelativeLapDeltaBadge({ lapDelta }: { lapDelta?: number | null }) {
+  const { locale } = useI18n();
+  if (lapDelta == null || !Number.isInteger(lapDelta) || lapDelta === 0) return null;
+  const count = Math.abs(lapDelta);
+  const labels = functionalLabels[locale];
+  const description = lapDelta > 0
+    ? count === 1 ? labels.lapMoreOne : labels.lapsMore.replace("{count}", String(count))
+    : count === 1 ? labels.lapLessOne : labels.lapsLess.replace("{count}", String(count));
+  const value = `${lapDelta > 0 ? "+" : "−"}${count}V`;
+  return <span className="vf-relative-lap-delta" role="img" title={description} aria-label={description}>{value}</span>;
+});
 
 export function RelativeFunctional({ model, settings, layout, motion = "full", effects }: WidgetRendererProps<RelativeViewModel>) {
   const { locale } = useI18n();
@@ -98,7 +110,7 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
                       <span title={value} className="vf-cell-value">{value}</span>
                       {hasClassColumn && <span className="vf-class-tick" aria-hidden="true" style={{ background: resolveRelativeClassColor(row.vehicleClass, settings) } as CSSProperties} />}
                     </span> :
-                      column.metricId === "driverName" ? <span className="vf-driver"><span className="vf-driver-name" title={value}>{value}</span></span> :
+                      column.metricId === "driverName" ? <span className="vf-driver"><span className="vf-driver-name" title={value}>{value}</span>{model.status === "ready" && model.sessionLabel === "RACE" && !row.isPlayer ? <RelativeLapDeltaBadge lapDelta={row.lapDelta} /> : null}</span> :
                         <span title={value} className={`vf-cell-value${LAP_METRICS.has(column.metricId) ? " vf-lap-value" : ""}`}>{value}</span>}
                 </td>;
               })}

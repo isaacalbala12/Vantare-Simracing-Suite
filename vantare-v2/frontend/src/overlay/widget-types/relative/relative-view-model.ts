@@ -18,6 +18,8 @@ export type RelativeRowViewModel = {
   side: RelativeSide;
   tone: "ahead" | "behind" | "player" | "neutral";
   gapSeconds: number | null;
+  /** Vueltas respecto al jugador; solo cuando el dato canónico está fresco en carrera. */
+  lapDelta?: number | null;
 };
 
 export type RelativeViewModel = WidgetViewModelBase & {

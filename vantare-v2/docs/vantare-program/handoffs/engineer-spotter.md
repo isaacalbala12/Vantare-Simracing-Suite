@@ -51,6 +51,15 @@ anomalías antes de T0b; no reabrir la aceptación del diseño original.
 No hay runtime nuevo en T0a. Audio físico Windows/LMU, primer sonido y el
 fixture voiceinput VAN-741 siguen pendientes en sus cortes correspondientes.
 
+CI del candidato documental `1101900c` detectó una intermitencia heredada en
+`TestFactProjectionFailureIsBoundaryNotSkip`: una observación asíncrona correcta
+puede borrar `EngineerError` aunque el puerto conserva el bloqueo de facts.
+[VAN-744](https://app.notion.com/p/3e3e51695c6581a6957dd5f7b0c2ea8b) registra
+el fallo Windows, código idéntico a la base, repeticiones locales sin reproducir
+y contraste independiente. Ese diagnóstico solo tiene consumidores de test;
+no se demuestra falsa recuperación de la UI. No se cambia runtime ni se debilita
+el test en T0a. Resultados de CI y SHA final permanecen en VAN-743 y PR #1313.
+
 ### 2026-09-22 — Composición revisada sobre Wails beta.24
 
 [VAN-742](https://app.notion.com/p/3e3e51695c6581a5aeb7ffca7dec48f6) / #1310

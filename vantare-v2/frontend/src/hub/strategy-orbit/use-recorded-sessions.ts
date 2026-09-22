@@ -25,7 +25,7 @@ export type RecordedSessionsOptions = {
   readonly combinationId?: string;
   readonly revisions: readonly StrategyAnalysisRevisionRef[];
   readonly client?: AnalysisClient;
-  readonly onApply: (sessions: readonly RecordedSession[], signal: AbortSignal) => Promise<void>;
+  readonly onApply: (sessions: readonly RecordedSession[], signal: AbortSignal, replace?: boolean) => Promise<void>;
   readonly onRevision?: (session: RecordedSession, signal: AbortSignal) => Promise<void>;
   readonly onCleanupError: () => void;
 };
@@ -70,17 +70,18 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
     setSessions(next);
     setApplied(false);
   }
-  async function run(operation: (signal: AbortSignal) => Promise<void>) {
-    if (pending.current || corrections.isBusy()) return;
-    if (corrections.unresolved) { setError("recorded_pending_corrections"); return; }
+  async function run(operation: (signal: AbortSignal) => Promise<void>): Promise<boolean> {
+    if (pending.current || corrections.isBusy()) return false;
+    if (corrections.unresolved) { setError("recorded_pending_corrections"); return false; }
     const controller = new AbortController();
     pending.current = controller;
     setBusy(true);
     setError("");
-    try { await operation(controller.signal); } catch (failure) {
+    try { await operation(controller.signal); return true; } catch (failure) {
       if (alive.current && (!controller.signal.aborted || failure instanceof AggregateError)) {
         setError(failure instanceof Error ? failure.message : "unavailable");
       } else if (failure instanceof AggregateError) cleanupError.current();
+      return false;
     } finally {
       pending.current = null;
       if (alive.current) setBusy(false);
@@ -110,6 +111,38 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
       }
       update([...owned.current, session]);
     }),
+    // A deliberate source choice opens, validates and adopts in one operation.
+    // A partial source stays owned for inspection, while the draft stays intact.
+    openAndApply: (candidate: AnalysisCandidate) => run(async signal => {
+      if (candidate.state !== "ready" || candidate.walPresent) throw new Error("recorded_source_unavailable");
+      let session = owned.current.find(item => item.candidateId === candidate.id);
+      if (!session) {
+        if (owned.current.length >= 4) throw new Error("recorded_source_limit");
+        const openedSession = await openRecordedSession(client, candidate.id, undefined, revisions, signal);
+        if (signal.aborted || !alive.current) { await client.close(openedSession.opened.sessionId); signal.throwIfAborted(); throw new Error("recorded_source_unavailable"); }
+        if (owned.current.some(item => item.revision.sessionId === openedSession.revision.sessionId)) { await client.close(openedSession.opened.sessionId); throw new Error("recorded_source_unavailable"); }
+        session = openedSession;
+        update([...owned.current, openedSession]);
+      }
+      if (!session.combinationId || session.projectionUnavailableReason) throw new Error("recorded_combination_unavailable");
+      await onApply([session], signal, true);
+      signal.throwIfAborted();
+      const selected = session;
+      const other = owned.current.filter(item => item !== selected);
+      const closed = await Promise.allSettled(other.map(item => client.close(item.opened.sessionId)));
+      other.forEach((item, index) => { if (closed[index].status === "fulfilled") corrections.clear(item.opened.sessionId); });
+      if (closed.some(item => item.status === "rejected")) cleanupError.current();
+      if (alive.current) owned.current = [selected, ...other.filter((_, index) => closed[index].status === "rejected")];
+      if (alive.current) setSessions(owned.current);
+      if (alive.current) setApplied(true);
+    }),
+    clear: () => run(async () => {
+      const old = owned.current;
+      const closed = await Promise.allSettled(old.map(item => client.close(item.opened.sessionId)));
+      old.forEach((item, index) => { if (closed[index].status === "fulfilled") corrections.clear(item.opened.sessionId); });
+      if (alive.current) update(old.filter((_, index) => closed[index].status === "rejected"));
+      if (closed.some(item => item.status === "rejected")) throw new Error("recorded_cleanup_failed");
+    }),
     close: (session: RecordedSession) => run(async () => {
       await client.close(session.opened.sessionId);
       if (alive.current) { corrections.clear(session.opened.sessionId); update(owned.current.filter(item => item !== session)); }
@@ -137,4 +170,4 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
   };
 }
 
-export type RecordedSessionsController = Pick<ReturnType<typeof useRecordedSessions>, "candidates" | "sessions" | "busy" | "error" | "applied" | "cancel" | "discover" | "open" | "close" | "apply"> & { readonly locked?: boolean };
+export type RecordedSessionsController = Pick<ReturnType<typeof useRecordedSessions>, "candidates" | "sessions" | "busy" | "error" | "applied" | "cancel" | "discover" | "open" | "openAndApply" | "clear" | "close" | "apply"> & { readonly locked?: boolean };

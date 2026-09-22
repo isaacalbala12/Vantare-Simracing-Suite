@@ -4,8 +4,7 @@
 .strategy-recorded-tabs button:focus-visible { outline: 2px solid var(--orbit-red); outline-offset: -4px; }
 .strategy-recorded-editor-panel { display: flex; flex: 1; flex-direction: column; min-height: 0; }
 .strategy-recorded-editor-panel[hidden] { display: none; }
-.orbit-main:has(.strategy-recorded-workflow[data-view="editor"]) { background-image: linear-gradient(90deg,var(--orbit-canvas),transparent 50%),url('../../assets/strategy-recorded-garage.png'); background-size: 100% 100%,auto 830px; background-position: 0 0,right -15px; }
-.orbit-main:has(.strategy-recorded-workflow[data-view="editor"]:not([data-tab="race"])) { background-image: linear-gradient(180deg,transparent 266px,var(--orbit-canvas) 275px),linear-gradient(90deg,var(--orbit-canvas),transparent 60%),url('../../assets/strategy-recorded-garage-detail.png'); background-size: 100% 100%,100% 100%,auto 390px; background-position: 0 0,0 0,right -10px; background-repeat: no-repeat; }
+.orbit-main:has(.strategy-recorded-workflow[data-view="editor"]) { background: var(--orbit-canvas); }
 .strategy-recorded-data { color: var(--orbit-ink); padding: 24px 24px 20px; display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .strategy-recorded-data__heading { margin: 0 12px 20px; min-height: 78px; }
 .strategy-recorded-data__heading h2 { margin: 0 0 10px; font-size: clamp(28px,3vw,44px); line-height: 1.15; letter-spacing: -1.5px; font-weight: 700; }

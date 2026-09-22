@@ -34,17 +34,19 @@ function setup(options?: { delayLibrary?: boolean; plans?: StrategyApplicationRe
   const slot = document.createElement("div"); slot.id = STRATEGY_CONTEXT_SLOT_ID; document.body.append(slot);
   return { ...render(<ToastProvider><StrategyRecordedPage applicationClient={application} /></ToastProvider>), execute, slot, releaseLibrary };
 }
-it("mounts the recorded five-step route and saves a draft without invoking live or calculation commands", async () => {
+it("opens manual preparation and saves a draft without invoking live or calculation commands", async () => {
   const { execute } = setup();
-  expect(await screen.findByText("strategy.journey.start.title")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: /strategy.journey.next/ }));
+  const manual = await screen.findByRole("button", { name: /strategy.entry.startManual/ });
+  await waitFor(() => expect((manual as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(manual);
   const car = await screen.findByRole("combobox", { name: "strategy.journey.car" });
   await waitFor(() => expect((car as HTMLSelectElement).disabled).toBe(false));
   fireEvent.change(car, { target: { value: JSON.stringify([combination.carClass, combination.carName]) } });
   fireEvent.change(screen.getByRole("combobox", { name: "strategy.journey.track" }), { target: { value: combination.combinationId } });
-  for (let index = 0; index < 3; index++) fireEvent.click(screen.getByRole("button", { name: /strategy.journey.next/ }));
-  fireEvent.click(screen.getByRole("button", { name: /strategy.journey.openDraft/ }));
+  expect(screen.queryByRole("button", { name: "strategy.workspace.calculate" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: /strategy.entry.openRace/ }));
   await screen.findByText("strategy.workspace.saved");
+  expect(screen.getByRole("tab", { name: "strategy.data.tab.plan" }).getAttribute("aria-selected")).toBe("true");
   expect(execute.mock.calls.map(([command]) => command.operation)).toEqual(expect.arrayContaining(["list", "list_session_combinations", "list_events", "create"]));
   const create = execute.mock.calls.map(([command]) => command).find(command => command.operation === "create");
   expect(create).toMatchObject({ expectedRepositoryVersion: 4, draft: { payload: { draft: { combination: { combinationId: combination.combinationId }, race: { format: "timed" }, drivers: [], sessions: [] } } } });
@@ -76,16 +78,17 @@ it("prevents a pending reopen from replacing a newly started preparation", async
 });
 it("keeps preparation editable but waits for the native repository version before offering to save", async () => {
   const { execute, releaseLibrary } = setup({ delayLibrary: true });
-  fireEvent.click(screen.getByRole("button", { name: /strategy.journey.next/ }));
+  const manual = await screen.findByRole("button", { name: /strategy.entry.startManual/ });
+  await waitFor(() => expect((manual as HTMLButtonElement).disabled).toBe(false));
+  fireEvent.click(manual);
   const car = await screen.findByRole("combobox", { name: "strategy.journey.car" });
   await waitFor(() => expect((car as HTMLSelectElement).disabled).toBe(false));
   fireEvent.change(car, { target: { value: JSON.stringify([combination.carClass, combination.carName]) } });
   fireEvent.change(screen.getByRole("combobox", { name: "strategy.journey.track" }), { target: { value: combination.combinationId } });
-  for (let index = 0; index < 3; index++) fireEvent.click(screen.getByRole("button", { name: /strategy.journey.next/ }));
-  const save = screen.getByRole("button", { name: /strategy.journey.openDraft/ });
+  const save = screen.getByRole("button", { name: /strategy.entry.openRace/ });
   expect((save as HTMLButtonElement).disabled).toBe(true);
   expect(screen.getByText("strategy.workspace.repositoryLoading")).toBeTruthy();
-  fireEvent.submit(save.closest("form")!);
+  fireEvent.click(save);
   expect(execute.mock.calls.some(([command]) => command.operation === "create")).toBe(false);
   await act(async () => { releaseLibrary(); });
   await waitFor(() => expect((save as HTMLButtonElement).disabled).toBe(false));

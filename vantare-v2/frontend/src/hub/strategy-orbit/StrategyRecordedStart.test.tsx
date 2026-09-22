@@ -3,15 +3,16 @@ import { afterEach, expect, it, vi } from "vitest";
 import { StrategyRecordedStart } from "./StrategyRecordedStart";
 
 afterEach(cleanup);
-it("selects a preparation mode without importing or advancing implicitly", () => {
-  const onMode = vi.fn();
-  const props = { mode: "manual" as const, onMode, t: (key: string) => key };
-  const view = render(<StrategyRecordedStart {...props} />);
-  const automatic = screen.getByRole("button", { name: /strategy.journey.automatic / });
-  expect(automatic.getAttribute("aria-pressed")).toBe("false");
-  fireEvent.click(automatic);
-  expect(onMode).toHaveBeenCalledExactlyOnceWith("automatic");
-  view.rerender(<StrategyRecordedStart {...props} mode="automatic" />);
-  expect(automatic.getAttribute("aria-pressed")).toBe("true");
-  expect(screen.getByRole("button", { name: /strategy.journey.manual / }).getAttribute("aria-pressed")).toBe("false");
+it("shows real filenames without inferred identity and keeps manual independent", () => {
+  const onChoose = vi.fn(), onManual = vi.fn(), onLibrary = vi.fn();
+  const candidate = { id: "candidate", displayName: "Lusail_Ford_8laps.duckdb", state: "ready" as const, size: 1024, modifiedAt: "2026-09-09T12:00:00Z", walPresent: false };
+  render(<StrategyRecordedStart candidates={[candidate]} busy={false} onChoose={onChoose} onLibrary={onLibrary} onManual={onManual} onCancel={vi.fn()} t={key => key} />);
+  expect(screen.getByRole("heading", { name: "strategy.entry.title" })).toBeTruthy();
+  expect(screen.queryByText("Lusail", { exact: true })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: /strategy.entry.useSession/ }));
+  expect(onChoose).toHaveBeenCalledExactlyOnceWith(candidate);
+  fireEvent.click(screen.getByRole("button", { name: /strategy.entry.startManual/ }));
+  expect(onManual).toHaveBeenCalledOnce();
+  fireEvent.click(screen.getByRole("button", { name: "strategy.entry.openTelemetry" }));
+  expect(onLibrary).toHaveBeenCalledOnce();
 });

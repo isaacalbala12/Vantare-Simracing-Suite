@@ -6,7 +6,21 @@
 > Este handoff conserva evidencia técnica fechada; sus estados antiguos no
 > sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
 
-## Estado vigente — #1277 T18 reforzado con recorrido adversarial Computer Use
+## Estado vigente — ISA-1314, menú y mesa v5, 2026-09-22
+
+Isaac aprobó el HTML v5 y autorizó su documento de diseño y aplicación productiva. [GitHub #1314](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1314) es la autoridad de este corte por instrucción expresa del usuario, por encima del banner histórico de seguimiento. El [contrato visual](../../strategy-planner/design/strategy-menu-desk-v5.md) sustituye el asistente A4 y el garaje como referencia; no altera la autoridad de Analysis ni el motor Go.
+
+Worktree `C:/tmp/vantare-isa1314`, rama `vantareapp/isa-1314-strategy-menu-desk`, base `7ff79ead4c125d63730b0ec3aa181e6c630453ab` de ISA-1277. Se conservan los cambios de calendario ajenos del worktree anterior y el checkout principal. Implementación por GPT-6 Sol medium; planes, revisión del diff, documentación y prueba nativa por el orquestador. Un único escritor en cada momento, sin Astra/Devin/OpenCode.
+
+Implementado localmente: menú asimétrico con sesiones reales y entrada Manual; mesa de combinación, referencias, reglas y pilotos; biblioteca completa, retorno al borrador y acceso a Mis estrategias. Manual usa overrides explícitos del comando existente y guarda procedencia manual. Adoptar telemetría elimina las referencias manuales y conserva revisiones exactas. La preparación abre directamente Plan después de guardar; no vuelve a otro resumen obligatorio. Se conservan Datos, Revisiones y los editores de stint/parada.
+
+Revisión funcional: corregidos selección múltiple, retorno al borrador, descubrimiento con StrictMode, limpieza del inspector al cerrar una fuente, etiquetas por identidad persistente y cambio Manual→telemetría. Los tests comprueban estas rutas, la aceptación manual y el transporte al cálculo. No hay cambios Go, dependencias nuevas ni cálculo alternativo. Se retira sólo el componente visual del antiguo wizard y su CSS/test sin consumidores; los tipos y validadores persistidos se conservan.
+
+La build productiva local compila y abre `C:/tmp/vantare-isa1314/vantare-v2/bin/vantare.exe` (PID inicial 21588, canal local configurado nightly; esto no es promoción). Computer Use nativo sí localiza y captura la ventana, pero se detiene ante el inicio de sesión. Se ha pedido al usuario que inicie sesión; no se automatiza autenticación ni se modifica licencia/configuración de acceso. Runtime DuckDB v1.5.5 verificado, manifest `700201f90266ae6b829372d9989408c6b0efd86725a50980d46fc05adfc24869`. LMU permanece abierto y no se interviene.
+
+Evidencia y checks: [entrega local ISA-1314](../../strategy-planner/evidence/isa-1314/README.md). La aprobación del HTML y los tests no acreditan el render nativo de Strategy; no se hereda la nota 9,2/10 de A4. **Siguiente acción:** tras acceso del usuario, recorrer menú/manual/biblioteca/DuckDB/Plan con Computer Use, corregir hallazgos y capturar paridad v5. T22 integral, validación empírica y live no quedan cerrados por esta entrega. Sin integración, promoción ni release.
+
+## Antecedente — #1277 T18 reforzado con recorrido adversarial Computer Use
 
 Las 19 pantallas y estados principales de Strategy registrada se han llevado a
 la composición A4 aprobada: asistente único de cinco pasos, editor con sidebar

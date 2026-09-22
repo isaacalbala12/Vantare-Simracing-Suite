@@ -5,7 +5,7 @@ import type { RecordedDraftPayload } from "./strategy-recorded-payload";
 import { useRecordedCalculation } from "./use-recorded-calculation";
 import { createRecordedWizardDraft, type RecordedWizardDraft } from "./strategy-recorded-wizard";
 import { StrategyRecordedPlan } from "./StrategyRecordedPlan";
-import { recordedCalculationInput } from "./strategy-recorded-calculation";
+import { assessManualCalculation, recordedCalculationInput } from "./strategy-recorded-calculation";
 
 const revision = { sessionId: "race", baseDigest: "a".repeat(64), revisionId: "b".repeat(64), snapshotId: "c".repeat(64) };
 const draft: RecordedWizardDraft = {
@@ -30,6 +30,28 @@ function result(command: StrategyApplicationCommandV1<RecordedDraftPayload>, ext
 }
 
 describe("useRecordedCalculation", () => {
+  it("calculates explicit manual references without requesting a telemetry projection", async () => {
+    const manual = { ...draft, mode: "manual" as const, sessions: [], manualInputs: { paceSeconds: 90, fuelLitersPerLap: 2 } };
+    const execute = vi.fn(async (command: StrategyApplicationCommandV1<RecordedDraftPayload>) => result(command, { orbitCalculation: { plans: { "recorded-main": {} as never }, comparisons: {} } }));
+    const application: StrategyApplicationClient<RecordedDraftPayload> = { execute, cancel: vi.fn(() => true), dispose: vi.fn() };
+    const { result: hook } = renderHook(() => useRecordedCalculation(manual, 7, application));
+
+    await act(() => hook.current.calculate());
+
+    expect(hook.current.state.status).toBe("success");
+    expect(execute).toHaveBeenCalledOnce();
+    expect(execute.mock.calls[0][0]).toMatchObject({ operation: "calculate_orbit", input: { planningInputs: { overrides: {
+      base_pace_seconds: { value: 90, provenance: { kind: "manual" }, confidence: { sampleSize: 0 } },
+      fuel_per_lap_liters: { value: 2, provenance: { kind: "manual" }, confidence: { sampleSize: 0 } },
+    } } } });
+  });
+
+  it("keeps missing manual values partial and rejects stale telemetry references", () => {
+    const manual = { ...draft, mode: "manual" as const, sessions: [], manualInputs: { paceSeconds: 90 } };
+    expect(assessManualCalculation(manual)).toMatchObject({ status: "partial", coverage: { blockers: ["fuel"] } });
+    expect(() => assessManualCalculation({ ...manual, sessions: [revision] })).toThrow();
+  });
+
   it("prepares the exact revisions and dispatches one current calculation", async () => {
     const execute = vi.fn(async (command: StrategyApplicationCommandV1<RecordedDraftPayload>) => command.operation === "get_revision_planning_inputs"
       ? result(command, { planningInputStatus: "available", planningInputs: planning(command.generatedAt) })

@@ -23,6 +23,32 @@ function setup(options?: { repositoryVersion?: number }) {
   const hook = renderHook(() => useRecordedWorkflow({ eventId: "event", repositoryVersion: options ? options.repositoryVersion : 7, catalog: [], application, analysis: analysis as unknown as AnalysisClient, onCleanupError: vi.fn() }));
   return { ...hook, execute, close, analysis };
 }
+it("switches A → manual → B → A without stale revisions or retained handles", async () => {
+  const f = setup();
+  const second = { ...session, candidateId: "second", combinationId: "combo-b", combination: { ...session.combination!, id: "combo-b", trackName: "Spa" }, opened: { sessionId: "handle-b" }, revision: { ...session.revision, sessionId: "source-b" } } as RecordedSession;
+  vi.mocked(openRecordedSession).mockImplementation(async (_client, id) => id === "second" ? second : session);
+  const b = { ...candidate, id: "second" };
+  await act(() => f.result.current.sessions.openAndApply(candidate));
+  expect(f.result.current.draft.sessions).toEqual([session.revision]);
+  act(() => f.result.current.change({ ...f.result.current.draft, name: "My race" }));
+  await act(() => f.result.current.startManual());
+  expect(f.close).toHaveBeenCalledWith("handle");
+  expect(f.result.current.draft).toMatchObject({ name: "My race", mode: "manual", sessions: [], combination: undefined });
+  await act(() => f.result.current.sessions.openAndApply(b));
+  expect(f.result.current.draft).toMatchObject({ mode: "automatic", combination: { combinationId: "combo-b" }, sessions: [second.revision] });
+  await act(() => f.result.current.sessions.openAndApply(candidate));
+  expect(f.close).toHaveBeenCalledWith("handle-b");
+  expect(f.result.current.draft).toMatchObject({ name: "My race", combination: { combinationId: "combo" }, sessions: [session.revision] });
+  expect(f.result.current.sessions.sessions).toHaveLength(1);
+});
+it("changes a manual draft to telemetry when a library source is applied", async () => {
+  const f = setup();
+  await act(() => f.result.current.startManual());
+  act(() => f.result.current.change({ ...f.result.current.draft, manualInputs: { paceSeconds: 91, fuelLitersPerLap: 2.4 } }));
+  await act(() => f.result.current.sessions.open(candidate));
+  await act(() => f.result.current.sessions.apply());
+  expect(f.result.current.draft).toMatchObject({ mode: "automatic", sessions: [session.revision], manualInputs: undefined });
+});
 it("retains pending source edits and adopts only the selected revision without saving the plan", async () => {
   const f = setup();
   const base = { sessionId: "source", contentSha256: "a".repeat(64), sizeBytes: 1, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "analysis", segmentationDigest: "b".repeat(64) };
@@ -141,6 +167,19 @@ it("inspects an owned source without drafting, saving or calculating", async () 
   expect(f.result.current.draft.sessions).toEqual([]);
   await act(async () => {});
   expect(f.result.current.sessions.corrections.editor?.session).toBe(inspection);
+});
+it("releases inspected source data when switching from inspection to manual preparation", async () => {
+  const f = setup();
+  vi.mocked(openRecordedSession).mockResolvedValue(inspection);
+  f.analysis.load.mockResolvedValue(inspectionStored);
+  await act(() => f.result.current.sessions.open(inspectedCandidate));
+  act(() => { expect(f.result.current.inspect(inspection)).toBe(true); });
+  await act(async () => {});
+  expect(f.result.current.sessions.corrections.editor?.session).toBe(inspection);
+  await act(() => f.result.current.startManual());
+  expect(f.result.current.view).toBe("preparation");
+  expect(f.result.current.sessions.corrections.editor).toBeNull();
+  expect(f.close).toHaveBeenCalledWith("inspection-handle");
 });
 it("does not inspect during a pending race write", async () => {
   const f = setup();

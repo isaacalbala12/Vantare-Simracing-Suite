@@ -31,6 +31,13 @@ export function parseRecordedDraftPayload(value: unknown): RecordedDraftPayload 
   if (!RECORDED_WIZARD_STEPS.some(step => step === draft.step)) invalid("step");
   if (draft.mode !== "manual" && draft.mode !== "automatic") invalid("mode");
   if (draft.calculationMode !== undefined && draft.calculationMode !== "dry" && draft.calculationMode !== "wet") invalid("calculationMode");
+  if (draft.manualInputs !== undefined) {
+    const manual = object(draft.manualInputs, "manualInputs");
+    optionalNumbers(manual, ["paceSeconds", "fuelLitersPerLap", "virtualEnergyPercentPerLap"]);
+    if (manual.paceSeconds !== undefined && (manual.paceSeconds as number) <= 0) invalid("manualInputs.paceSeconds");
+    if (manual.fuelLitersPerLap !== undefined && (manual.fuelLitersPerLap as number) <= 0) invalid("manualInputs.fuelLitersPerLap");
+    if (manual.virtualEnergyPercentPerLap !== undefined && (manual.virtualEnergyPercentPerLap as number) < 0) invalid("manualInputs.virtualEnergyPercentPerLap");
+  }
   string(draft.name, "name");
   if (!Number.isSafeInteger(draft.invalidatedSessionCount) || (draft.invalidatedSessionCount as number) < 0) invalid("invalidatedSessionCount");
   const race = object(draft.race, "race");

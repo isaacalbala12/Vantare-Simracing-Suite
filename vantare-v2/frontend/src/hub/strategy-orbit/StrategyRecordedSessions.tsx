@@ -13,7 +13,7 @@ export function StrategyRecordedSessions(props: Props) {
   return <StrategyRecordedSessionsView controller={controller} t={props.t} />;
 }
 
-export function StrategyRecordedSessionsView({ controller, onInspect, t }: { readonly controller: RecordedSessionsController; readonly onInspect?: (session: RecordedSession) => void; readonly t: (key: string) => string }) {
+export function StrategyRecordedSessionsView({ controller, onInspect, onChoose, t }: { readonly controller: RecordedSessionsController; readonly onInspect?: (session: RecordedSession) => void; readonly onChoose?: (candidate: NonNullable<RecordedSessionsController["candidates"]>[number]) => void; readonly t: (key: string) => string }) {
   const { candidates, sessions, busy, error, applied } = controller;
   const locked = busy || controller.locked;
   const projectable = (session: RecordedSession) => Boolean(session.combinationId && !session.projectionUnavailableReason);
@@ -69,7 +69,7 @@ export function StrategyRecordedSessionsView({ controller, onInspect, t }: { rea
       <ul className="strategy-recorded-library__list" aria-label={t("strategy.recorded.files")}>
         {visible.map(candidate => <li className="orbit-strategy__session-row" key={candidate.id}>
           <span><b>{candidate.displayName ? breakableName(candidate.displayName) : t("strategy.recorded.unnamed")}</b><small>{new Date(candidate.modifiedAt).toLocaleString()} · {(candidate.size / 1048576).toFixed(1)} MB</small><small>{t(candidate.state === "ready" && !candidate.walPresent ? "strategy.recorded.ready" : "strategy.recorded.waiting")}</small></span>
-          <Button size="sm" disabled={locked || sessions.length >= 4 || candidate.state !== "ready" || candidate.walPresent || sessions.some(session => session.candidateId === candidate.id)} onClick={() => void controller.open(candidate)}>{t("strategy.recorded.open")}</Button>
+          <Button size="sm" disabled={locked || candidate.state !== "ready" || candidate.walPresent || (onChoose ? sessions.length >= 4 && !sessions.some(session => session.candidateId === candidate.id) : sessions.length >= 4 || sessions.some(session => session.candidateId === candidate.id))} onClick={() => onChoose ? onChoose(candidate) : void controller.open(candidate)}>{t(onChoose ? "strategy.entry.useSession" : "strategy.recorded.open")}</Button>
         </li>)}
       </ul>
       {pages > 1 ? <nav className="strategy-recorded-library__pages" aria-label={t("strategy.recorded.pages")}>

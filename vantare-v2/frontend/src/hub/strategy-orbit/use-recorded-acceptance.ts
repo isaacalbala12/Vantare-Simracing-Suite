@@ -63,7 +63,13 @@ export function useRecordedAcceptance(
     setState({ status: "accepting" });
     try {
       const payload = recordedRevisionPayload(eventId, draft, calculation);
-      const saved = await saveOrbitRevision(client, payload, draft.name.trim() || draft.combination?.trackName || "Recorded strategy", undefined, {
+      const manual = draft.mode === "manual" && draft.sessions.length === 0;
+      const saved = await saveOrbitRevision(client, payload, draft.name.trim() || draft.combination?.trackName || "Strategy", undefined, manual ? {
+        mode: "manual",
+        capabilities: ["manual_inputs", "fuel_strategy", "virtual_energy_strategy"],
+        provenance: { kind: "manual", sourceId: "strategy-manual" },
+        confidence: { level: "unknown" },
+      } : {
         mode: "assisted",
         capabilities: ["fuel_strategy", "telemetry_import", "virtual_energy_strategy"],
         provenance: { kind: "derived", sourceId: "strategy-recorded" },

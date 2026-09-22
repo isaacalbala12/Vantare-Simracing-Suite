@@ -68,7 +68,7 @@ export function StrategyRecordedPage({ applicationClient: supplied, analysisClie
     {active ? <StrategyRecordedWorkflow key={active.eventId} eventId={active.eventId} initial={active.initial} repositoryVersion={library.repositoryVersion}
       repositoryLoading={library.status === "loading"} onRetryRepository={library.refresh}
       catalog={catalog?.combinations ?? []} catalogState={catalogState} calendar={calendar.calendar} application={application} analysis={analysisClient}
-      onExit={exit} onCleanupError={() => toast.show(t("strategy.recorded.error"), t("strategy.workspace.cleanupFailed"))} t={t}
+      onExit={exit} onRequestSaved={() => { destination.current = "library"; }} onCleanupError={() => toast.show(t("strategy.recorded.error"), t("strategy.workspace.cleanupFailed"))} t={t}
       navigation={({ requestExit, draft, busy }) => slot ? createPortal(<RecordedContext active disabled={busy} draft={draft} t={t} onNew={() => { destination.current = "new"; requestExit(); }} onLibrary={() => { destination.current = "library"; requestExit(); }} />, slot) : null} />
       : <section className="strategy-recorded-library" aria-labelledby="recorded-library-title">
         {slot ? createPortal(<RecordedContext active={false} disabled={library.opening} t={t} onNew={() => { destination.current = "new"; exit(); }} onLibrary={library.refresh} />, slot) : null}

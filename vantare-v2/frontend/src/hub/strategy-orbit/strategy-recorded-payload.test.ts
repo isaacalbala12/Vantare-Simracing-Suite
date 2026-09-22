@@ -53,6 +53,13 @@ it("round-trips an explicit calculation condition while legacy v1 drafts stay un
   expect(parseRecordedDraftPayload(payload)).toEqual(payload);
   expect(() => parseRecordedDraftPayload({ ...payload, draft: { ...payload.draft, calculationMode: "eco" } })).toThrow();
 });
+it("round-trips optional manual references while earlier drafts stay unchanged", () => {
+  const manual = { ...payload, draft: { ...payload.draft, manualInputs: { paceSeconds: 90.5, fuelLitersPerLap: 2.25, virtualEnergyPercentPerLap: 0 } } };
+  expect(parseRecordedDraftPayload(manual)).toEqual(manual);
+  expect(parseRecordedDraftPayload(payload)).toEqual(payload);
+  expect(() => parseRecordedDraftPayload({ ...payload, draft: { ...payload.draft, manualInputs: { paceSeconds: 0 } } })).toThrow();
+  expect(() => parseRecordedDraftPayload({ ...payload, draft: { ...payload.draft, manualInputs: { fuelLitersPerLap: -1 } } })).toThrow();
+});
 it("round-trips pit windows and driver limits in contract units", () => {
   const draft = { ...payload.draft, drivers: [{ id: "a", name: "Alex" }], rules: { requiredWindows: [{ fromLap: 10, toLap: 20 }, { fromLap: 30, toLap: 40 }], mandatoryCompounds: ["hard", "wet"], allowedCompoundsByClimate: { dry: ["hard", "wet"], wet: ["soft"] }, driverLimits: { a: { minLaps: 12, maxLaps: 40, maxContinuousTimeSeconds: 1800, maxTotalTimeSeconds: 5400 } } } };
   expect(parseRecordedDraftPayload({ ...payload, draft }).draft).toEqual(draft);

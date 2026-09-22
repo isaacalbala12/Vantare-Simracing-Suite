@@ -14,7 +14,7 @@
 .strategy-recorded-context__identity p { display: grid; gap: 5px; margin: 0; }
 .strategy-recorded-context__identity small { color: var(--orbit-ink-2); font-size: 12px; }
 .strategy-recorded-context__identity strong { font-size: 12px; font-weight: 500; }
-.strategy-recorded-page > .strategy-recorded-library { flex: 1; padding: 42px 32px; color: var(--orbit-ink); background: var(--orbit-canvas) url('../../assets/strategy-recorded-garage.png') right top / auto 900px no-repeat; }
+.strategy-recorded-page > .strategy-recorded-library { flex: 1; padding: 42px 32px; color: var(--orbit-ink); background: var(--orbit-canvas); }
 .strategy-recorded-page > .strategy-recorded-library header { margin-bottom: 32px; }
 .strategy-recorded-page > .strategy-recorded-library h2 { font-size: 34px; margin: 0 0 10px; }
 .strategy-recorded-page > .strategy-recorded-library header p { color: var(--orbit-ink-2); }
@@ -40,11 +40,15 @@
 .strategy-plan-history__details dl div { display: grid; gap: 5px; padding: 12px; background: var(--orbit-surface-0); border-radius: 8px; }
 .strategy-plan-history__details dt { color: var(--orbit-ink-2); font-size: 12px; }
 .strategy-plan-history__details dd { margin: 0; font-size: 18px; font-weight: 600; }
-.orbit-shell:has(.strategy-recorded-workflow[data-view='editor']) { --orbit-shell-column: 0px; }
-.orbit-shell:has(.strategy-recorded-workflow[data-view='editor']) .orbit-column { visibility: hidden; }
+.orbit-shell:has(.strategy-recorded-workflow) { --orbit-shell-column: 0px; --orbit-rail-w: 81px; }
+.orbit-shell:has(.strategy-recorded-workflow) .orbit-column { visibility: hidden; }
 .strategy-recorded-workspace-head { display: flex; min-height: 40px; padding: 8px 24px 0; }
 .strategy-recorded-workspace-head .orbit-btn { min-height: 34px; padding-inline: 12px; }
-.strategy-recorded-source-screen { display: flex; flex: 1; min-width: 0; min-height: 100%; }
+.strategy-recorded-source-screen { display: flex; flex: 1; flex-direction: column; gap: 20px; min-width: 0; min-height: 100%; padding: 28px; background: var(--orbit-canvas); }
+.strategy-recorded-source-screen__head { display: flex; align-items: start; justify-content: space-between; gap: 20px; }
+.strategy-recorded-source-screen__head span { font-size: 10px; letter-spacing: .13em; text-transform: uppercase; color: var(--orbit-ink-4); }
+.strategy-recorded-source-screen__head h2 { font-size: 30px; font-weight: 550; margin: 8px 0; }
+.strategy-recorded-source-screen__head p { font-size: 12px; color: var(--orbit-ink-3); }
 .strategy-recorded-source-screen .strategy-recorded-frame__progress { border-bottom: 1px solid rgba(255,255,255,.06); background: rgba(6,8,10,.82); backdrop-filter: blur(10px); }
 .strategy-recorded-source-screen .strategy-recorded-frame[data-step] .strategy-recorded-frame__form { width: min(1040px,82vw); }
 .strategy-recorded-source-screen .orbit-strategy__sessions { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 14px 20px; padding: 0; border: 0; background: transparent; }
@@ -52,7 +56,7 @@
 .strategy-recorded-source-screen .orbit-strategy__sessions-head > b,
 .strategy-recorded-source-screen .orbit-strategy__sessions > p:first-of-type { display: none; }
 .strategy-recorded-source-screen .orbit-strategy__sessions > .orbit-btn--primary { grid-column: 1; grid-row: 1; justify-self: start; }
-.strategy-recorded-source-screen .strategy-recorded-library { grid-column: 1 / -1; padding: 20px; border: 1px solid var(--orbit-line-strong); border-radius: 10px; background: color-mix(in srgb,var(--orbit-surface-0) 95%,transparent); backdrop-filter: blur(10px); }
+.strategy-recorded-source-screen .strategy-recorded-library { grid-column: 1 / -1; padding: 20px; border: 1px solid var(--orbit-line-strong); border-radius: 10px; background: var(--orbit-surface-0); }
 .strategy-recorded-source-screen .strategy-recorded-library__list { display: grid; gap: 8px; }
 .strategy-recorded-source-screen .strategy-recorded-library__list .orbit-strategy__session-row { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; padding: 13px 14px; border: 1px solid var(--orbit-line); border-left: 2px solid transparent; border-radius: 7px; background: rgba(255,255,255,.018); }
 .strategy-recorded-source-screen .strategy-recorded-library__list .orbit-strategy__session-row:has(.orbit-btn:not(:disabled)) { border-left-color: var(--orbit-carmine); }

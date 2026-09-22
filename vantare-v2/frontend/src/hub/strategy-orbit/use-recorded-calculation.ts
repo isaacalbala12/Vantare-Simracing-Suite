@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { StrategyApplicationClient, StrategyOrbitCalculationInputV1, StrategyOrbitCalculationResultV1 } from "../../strategy/strategy-application-client";
 import type { RecordedDraftPayload } from "./strategy-recorded-payload";
-import { assessRecordedCalculation, type RecordedCalculationCoverage } from "./strategy-recorded-calculation";
+import { assessManualCalculation, assessRecordedCalculation, type RecordedCalculationCoverage } from "./strategy-recorded-calculation";
 import { prepareRecordedPlanningInputs } from "./strategy-recorded-planning-inputs";
 import { recordedPitComparisonInput, type RecordedPitConstraint } from "./strategy-recorded-pit-constraints";
 import { recordedStintComparisonInput, type RecordedStintConstraint } from "./strategy-recorded-stint-constraints";
@@ -81,6 +81,12 @@ export function useRecordedCalculation(
     active.current = prepareId;
     setState({ status: "preparing", key: calculationKey });
     try {
+      if (draft.mode === "manual" && draft.sessions.length === 0) {
+        const assessed = assessManualCalculation(draft);
+        if (assessed.status === "partial") { active.current = undefined; setState({ status: "partial", key: calculationKey, coverage: assessed.coverage }); return; }
+        await executeInput(assessed.input, current);
+        return;
+      }
       const planning = await prepareRecordedPlanningInputs(
         application as StrategyApplicationClient<unknown>, draft, repositoryVersion, prepareId, new Date().toISOString(),
       );

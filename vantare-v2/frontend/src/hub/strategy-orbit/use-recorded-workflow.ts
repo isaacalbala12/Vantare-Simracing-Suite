@@ -38,10 +38,12 @@ export function useRecordedWorkflow({ eventId, repositoryVersion, initial, catal
       setDraft({ ...draft, sessions: draft.sessions.map(ref => ref === previous ? session.revision : ref) });
       setDirty(true);
     },
-    onApply: async (selected, signal) => {
+    onApply: async (selected, signal, replace = false) => {
       signal.throwIfAborted();
       if (pending.current) throw new Error("recorded_save_in_progress");
-      const next = applyRecordedSourceSelection(draft, selected, catalog);
+      const base = replace ? { ...draft, combination: undefined, sessions: [], manualInputs: undefined, mode: "automatic" as const } : { ...draft, manualInputs: undefined, mode: "automatic" as const };
+      const next = applyRecordedSourceSelection(base, selected, catalog);
+      signal.throwIfAborted();
       setDraft(next);
       setDirty(true);
     },
@@ -52,7 +54,7 @@ export function useRecordedWorkflow({ eventId, repositoryVersion, initial, catal
   catch (failure) { proposalError = failure instanceof Error ? failure.message : "recorded_combination_conflict"; }
 
   async function save(openEditor: boolean) {
-    if (pending.current || sessions.busy || sessions.corrections.unresolved) return;
+    if (pending.current || sessions.busy || sessions.corrections.unresolved) return false;
     pending.current = true;
     setSaving(true);
     setError("");
@@ -63,12 +65,14 @@ export function useRecordedWorkflow({ eventId, repositoryVersion, initial, catal
       const saved = stored
         ? await saveRecordedDraft(application, stored, draft)
         : await createRecordedDraft(application, eventId, draft, repositoryVersion as number);
-      if (!alive.current) return;
+      if (!alive.current) return false;
       setStored(saved);
       setDirty(false);
       if (openEditor) setView("editor");
+      return true;
     } catch (failure) {
       if (alive.current) setError(failure instanceof Error ? failure.message : "recorded_save_failed");
+      return false;
     } finally {
       pending.current = false;
       if (alive.current) setSaving(false);
@@ -80,6 +84,13 @@ export function useRecordedWorkflow({ eventId, repositoryVersion, initial, catal
     change: (next: RecordedWizardDraft) => {
       if (pending.current || sessions.busy || sessions.corrections.unresolved) return;
       setDraft(next); setDirty(true); setError("");
+    },
+    startManual: async () => {
+      if (pending.current || sessions.busy || sessions.corrections.unresolved) return false;
+      if (!await sessions.clear()) return false;
+      setDraft({ ...draft, mode: "manual", combination: undefined, sessions: [], invalidatedSessionCount: draft.invalidatedSessionCount + draft.sessions.length });
+      setDirty(true); setError(""); setView("preparation");
+      return true;
     },
     prepare: () => { if (!pending.current && !sessions.busy && !sessions.corrections.unresolved) setView("preparation"); },
     // Inspection opens the same editor without drafting, saving or calculating.

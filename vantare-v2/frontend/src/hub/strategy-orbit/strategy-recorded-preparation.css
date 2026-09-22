@@ -1,0 +1,63 @@
+.strategy-preparation{display:flex;flex-direction:column;min-width:0;min-height:calc(100vh - 60px);color:var(--orbit-ink);background:var(--orbit-canvas)}
+.strategy-preparation__head{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:20px 28px;border-bottom:1px solid var(--orbit-line)}
+.strategy-preparation__micro{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--orbit-ink-4)}
+.strategy-preparation__head h2{font-size:26px;line-height:1.15;letter-spacing:-.04em;font-weight:550;margin:5px 0}
+.strategy-preparation__head p{font-size:11px;color:var(--orbit-ink-3);margin:0}
+.strategy-preparation__workspace{display:grid;grid-template-columns:minmax(220px,260px) minmax(0,1fr) minmax(310px,360px);flex:1;min-width:0;min-height:0}
+.strategy-preparation__context,.strategy-preparation__inspector{min-width:0;background:var(--orbit-column-bg)}
+.strategy-preparation__context{border-right:1px solid var(--orbit-line);padding:20px 16px;overflow-y:auto}
+.strategy-preparation__context>header{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px}
+.strategy-preparation__context>header span{font-size:9px;text-transform:uppercase;color:var(--orbit-ink-3)}
+.strategy-preparation__circuit-art{height:140px;display:grid;place-items:center;overflow:hidden;margin:18px 0;border:1px solid var(--orbit-line);background:radial-gradient(ellipse at 60% 40%,var(--orbit-surface-3),var(--orbit-surface-1) 75%)}
+.strategy-preparation__circuit-art span{font-size:35px;letter-spacing:-.07em;font-weight:700;text-transform:uppercase;color:var(--orbit-ink-4);opacity:.18;text-align:center;overflow-wrap:anywhere}
+.strategy-preparation__context .strategy-recorded-combination{display:block}
+.strategy-preparation fieldset{margin:0;padding:0;border:0;min-width:0}
+.strategy-preparation__context .strategy-recorded-combination__fields{display:grid;grid-template-columns:1fr}
+.strategy-preparation__context .strategy-recorded-combination__event{min-width:0}
+.strategy-preparation__context .strategy-recorded-combination__sources{display:grid;grid-template-columns:1fr}
+.strategy-preparation__context :is(select,input,button){max-width:100%}
+.strategy-preparation__main{min-width:0;padding:24px;overflow-y:auto}
+.strategy-preparation__origin{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:185px;padding:28px;border:1px solid var(--orbit-line-strong);border-radius:var(--orbit-radius-control);background:linear-gradient(120deg,var(--orbit-surface-2),var(--orbit-surface-1))}
+.strategy-preparation__origin h3{font-size:28px;line-height:1.15;letter-spacing:-.04em;font-weight:550;margin:10px 0}
+.strategy-preparation__origin p{max-width:400px;font-size:12px;line-height:1.5;color:var(--orbit-ink-3)}
+.strategy-preparation__origin button{flex:none}
+.strategy-preparation__manual-inputs{margin-top:20px;padding:20px;border:1px solid var(--orbit-line);border-radius:var(--orbit-radius-control);background:var(--orbit-surface-0)}
+.strategy-preparation__manual-inputs header{display:flex;justify-content:space-between;gap:10px;align-items:center}
+.strategy-preparation__manual-inputs h3{font-size:15px;margin:0}
+.strategy-preparation__manual-inputs header span{font-size:9px;text-transform:uppercase;color:var(--orbit-ink-3)}
+.strategy-preparation__manual-inputs>fieldset>div{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:18px}
+.strategy-preparation__manual-inputs label{display:grid;gap:7px;font-size:11px;color:var(--orbit-ink-2)}
+.strategy-preparation__manual-inputs input{min-width:0;width:100%;padding:10px;border:1px solid var(--orbit-line-strong);border-radius:6px;background:var(--orbit-surface-1);color:var(--orbit-ink)}
+.strategy-preparation__manual-inputs p{font-size:11px;color:var(--orbit-ink-3)}
+.strategy-preparation__source-list{margin-top:20px;padding:18px;border:1px solid var(--orbit-line);border-radius:var(--orbit-radius-control);background:var(--orbit-surface-0)}
+.strategy-preparation__source-list>header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.strategy-preparation__source-list h3{font-size:15px;margin:0}
+.strategy-preparation__source-list>header button{background:none;border:0;color:var(--orbit-ink-2);font-size:11px;cursor:pointer}
+.strategy-preparation__source-list ul{display:grid;gap:8px;list-style:none;margin:16px 0 0;padding:0}
+.strategy-preparation__source-list li{display:flex;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--orbit-line);border-radius:6px;background:var(--orbit-surface-1);font-size:11px;overflow-wrap:anywhere}
+.strategy-preparation__source-list li small{color:var(--orbit-ink-3)}
+.strategy-preparation__source-list>p{font-size:11px;color:var(--orbit-ink-3)}
+.strategy-preparation__main .strategy-recorded-overview{margin-top:20px}
+.strategy-preparation__main .strategy-recorded-overview__heading{display:none}
+.strategy-preparation__main .strategy-recorded-overview__grid{display:grid;grid-template-columns:1fr;gap:16px}
+.strategy-preparation__main .strategy-recorded-overview__configuration{min-width:0}
+.strategy-preparation__inspector{display:flex;flex-direction:column;border-left:1px solid var(--orbit-line);overflow:hidden}
+.strategy-preparation__inspector>header{padding:22px 20px 14px}
+.strategy-preparation__inspector>header h3{font-size:21px;font-weight:550;margin:6px 0 0}
+.strategy-preparation__inspector>nav{display:flex;gap:4px;padding:0 15px 12px;border-bottom:1px solid var(--orbit-line)}
+.strategy-preparation__inspector>nav button{flex:1;min-width:0;padding:8px 4px;background:none;border:0;border-bottom:2px solid transparent;color:var(--orbit-ink-3);font-size:11px;cursor:pointer}
+.strategy-preparation__inspector>nav button[aria-pressed=true]{border-bottom-color:var(--orbit-carmine);color:var(--orbit-ink)}
+.strategy-preparation__inspector-body{flex:1;min-height:0;overflow-y:auto;padding:18px 16px}
+.strategy-preparation__inspector-body .strategy-recorded-fields,.strategy-preparation__inspector-body .strategy-recorded-drivers{display:grid;grid-template-columns:1fr;min-width:0}
+.strategy-preparation__inspector-body :is(input,select,textarea){max-width:100%}
+.strategy-preparation__summary p{font-size:12px;color:var(--orbit-ink-3);line-height:1.5}
+.strategy-preparation__summary dl>div{display:flex;justify-content:space-between;gap:10px;padding:13px 0;border-bottom:1px solid var(--orbit-line);font-size:11px}
+.strategy-preparation__summary dt{color:var(--orbit-ink-3)}.strategy-preparation__summary dd{margin:0;text-align:right;overflow-wrap:anywhere}
+.strategy-preparation__inspector>footer{padding:15px;border-top:1px solid var(--orbit-line);background:var(--orbit-surface-0)}
+.strategy-preparation__inspector>footer>.orbit-btn{width:100%;justify-content:center}
+.strategy-preparation__inspector>footer p{font-size:11px;line-height:1.4;color:var(--orbit-ink-3)}
+.strategy-preparation__inspector>footer [role=alert]{color:var(--orbit-red)}
+.strategy-preparation button:focus-visible{outline:2px solid var(--orbit-red);outline-offset:2px}
+@media(max-width:1200px){.strategy-preparation__workspace{grid-template-columns:minmax(190px,220px) minmax(0,1fr) minmax(280px,320px)}.strategy-preparation__main{padding:16px}.strategy-preparation__origin{padding:20px}}
+@media(max-width:950px){.strategy-preparation__workspace{grid-template-columns:minmax(0,1fr) minmax(290px,38%)}.strategy-preparation__context{grid-column:1/-1;border-right:0;border-bottom:1px solid var(--orbit-line)}.strategy-preparation__context .strategy-recorded-combination__fields{grid-template-columns:repeat(3,minmax(0,1fr))}.strategy-preparation__circuit-art{display:none}}
+@media(max-width:650px){.strategy-preparation__head{padding:16px}.strategy-preparation__workspace{display:flex;flex-direction:column}.strategy-preparation__context,.strategy-preparation__main,.strategy-preparation__inspector{overflow:visible}.strategy-preparation__context .strategy-recorded-combination__fields{grid-template-columns:1fr}.strategy-preparation__origin{flex-direction:column;align-items:stretch}.strategy-preparation__manual-inputs>fieldset>div{grid-template-columns:1fr}.strategy-preparation__inspector{border-left:0;border-top:1px solid var(--orbit-line)}.strategy-preparation__inspector-body{overflow:visible}}

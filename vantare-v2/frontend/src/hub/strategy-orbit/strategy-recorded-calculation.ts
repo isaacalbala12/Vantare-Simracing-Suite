@@ -27,6 +27,44 @@ export function recordedCalculationInput(
   return assessed.input;
 }
 
+/** Uses explicit user estimates with the existing Orbit calculation command. */
+export function assessManualCalculation(draft: RecordedWizardDraft): RecordedCalculationAssessment {
+  if (draft.mode !== "manual" || draft.sessions.length !== 0 || !draft.combination || !draft.calculationMode) invalidInput();
+  const pace = draft.manualInputs?.paceSeconds;
+  const fuel = draft.manualInputs?.fuelLitersPerLap;
+  const energy = draft.manualInputs?.virtualEnergyPercentPerLap;
+  const virtualEnergyApplicable = draft.virtualEnergy?.applicability === "applicable";
+  const blockers: RecordedCalculationCoverage["blockers"] = [
+    ...(!positive(pace) ? ["pace" as const] : []),
+    ...(!positive(fuel) ? ["fuel" as const] : []),
+    ...(virtualEnergyApplicable && !nonNegative(energy) ? ["virtual_energy" as const] : []),
+  ];
+  const coverage: RecordedCalculationCoverage = {
+    ...(positive(pace) ? { paceSeconds: pace } : {}),
+    ...(positive(fuel) ? { fuelLitersPerLap: fuel } : {}),
+    ...(virtualEnergyApplicable && nonNegative(energy) ? { virtualEnergyPercentPerLap: energy } : {}),
+    virtualEnergyApplicable, blockers,
+  };
+  const event = recordedCalculationEvent(draft);
+  const deltas = recordedCalculationDriverDeltas(draft);
+  const variant = recordedCalculationVariant(draft, draft.calculationMode);
+  if (blockers.length) return { status: "partial", coverage };
+  const readyPace = pace as number;
+  if (draft.drivers.some(driver => !positive(readyPace + deltas[driver.id]))) invalidInput();
+  const manual = (value: number) => ({ value, presence: "valid" as const, provenance: { kind: "manual" as const, sourceId: "user" }, confidence: { sampleSize: 0, computationVersion: "manual.v1" } });
+  const planningInputs: StrategyPlanningInputsV2 = { overrides: {
+    base_pace_seconds: manual(readyPace),
+    fuel_per_lap_liters: manual(fuel as number),
+    ...(virtualEnergyApplicable ? { ve_per_lap_percent: manual(energy as number) } : {}),
+  } };
+  return { status: "ready", coverage, input: {
+    event,
+    drivers: draft.drivers.map(driver => ({ id: driver.id, name: driver.name, paceDeltaSeconds: deltas[driver.id] })),
+    variants: [variant], activeVariantId: variant.id,
+    planningInputs,
+  } };
+}
+
 /** Separates incomplete telemetry coverage from an invalid configuration. */
 export function assessRecordedCalculation(
   draft: RecordedWizardDraft,

@@ -1,4 +1,4 @@
-/* A4 approved composition; all content and state remain React-owned. */
+/* Strategy uses the native Orbit shell and a quiet, neutral canvas. */
 .strategy-recorded-wizard, .strategy-recorded-wizard > fieldset { display: flex; flex: 1; flex-direction: column; min-width: 0; min-height: 100%; margin: 0; padding: 0; border: 0; }
 .strategy-recorded-wizard__errors { margin-top: 18px; padding: 12px 16px; border-left: 2px solid var(--orbit-red); background: var(--orbit-surface-0); color: var(--orbit-ink); font-size: 13px; }
 .strategy-recorded-wizard__errors p { margin: 4px 0; }
@@ -25,11 +25,11 @@
   min-width: 0;
   min-height: 100%;
   color: var(--orbit-ink);
-  background: var(--orbit-canvas) url('../../assets/strategy-recorded-garage.png') right top / auto 900px no-repeat;
+  background: var(--orbit-canvas);
 }
 
 .orbit-main:has(.orbit-strategy--recorded) {
-  background: var(--orbit-canvas) url('../../assets/strategy-recorded-garage.png') right top / auto 900px no-repeat;
+  background: var(--orbit-canvas);
 }
 
 .orbit-main:has(.orbit-strategy--recorded) > .orbit-topbar {

@@ -20,9 +20,9 @@ algunos casos individuales ya pasaron. El handoff/issue conserva su estado actua
 | A01 | R01 | LMU real atraviesa reader normalizado y proyección; Strategy no contiene SQL/lector paralelo. Contrato no exige extensión DuckDB a futuros adapters. | Tests contrato/arquitectura + banco real; T08/T22. |
 | A02 | R02 | Abrir, corregir, copiar y recalcular conservan hash original. Copia verificada permite recuperar fuente ausente; copia fallida/cambiada no se ofrece como válida. | Hash antes/después, archivos temporales propios y casos permisos/espacio/colisión; T09/T22. |
 | A03 | R03 | Manual y Automático llegan al mismo evento/editor; descubrimiento autorizado propone fuentes sin abrirlas todas ni aceptar selección silenciosa. | E2E desde ambas entradas con catálogo vacío y poblado; T05/T08. |
-| A04 | R04 | Cinco pasos exactamente; Combinación no repite simulador/evento. Atrás/adelante/reabrir conserva el borrador y permite editar directamente. | Capturas + interacción/persistencia; T04–T07. |
+| A04 | R04 | Menú sin formulario: sesión o Manual llevan a una mesa con combinación/reglas/pilotos accesibles directamente. Volver/cambiar origen/reabrir conserva el borrador y no exige cinco pasos. | Capturas + interacción/persistencia; T04–T07. |
 | A05 | R05 | Evento de calendario real y carrera personalizada resuelven identidad. Cambiar combinación invalida derivados. Monomarca y multicar se distinguen. Feed ausente no inventa eventos. | Casos de provider/selector/documento y Wails; T05. |
-| A06 | R06/R19 | Todas las pantallas A4 portadas a producto, sidebar comprimido donde acordado, carmín moderado y sin resultados decorativos. Cada pantalla >9/10 en revisión adversarial visual. | Referencia/actual mismo viewport, rúbrica, hallazgos y correcciones; T18 y revisión final Isaac. |
+| A06 | R06/R19 | Menú y mesa v5 portados a producto, rail comprimido, grises Orbit y carmín puntual, sin resultados decorativos. La evidencia A4 queda como antecedente. Cada pantalla >9/10 en revisión adversarial visual. | Referencia/actual mismo viewport, rúbrica, hallazgos y correcciones; T18 y revisión final Isaac. |
 | A07 | R07 | Selección/corrección se hacen en Strategy con Analysis como owner; una revisión exacta llega al solver sin sustitución. | Test fronteras + flujo UI→Go; T10/T14/T15. |
 | A08 | R08 | Valor, uso por familia, clasificación y límite pueden corregirse donde hay target válido; motivo/original visibles. Restaurar crea revisión. Target ambiguo, conflicto y guardado incierto se manejan sin pérdida. | Regresiones contractuales + cuatro recorridos reales; T10–T14. |
 | A09 | R09/R10 | Invalidada sana, incidente, vuelta lenta sana y señal desconocida reciben tratamiento demostrable por familia. No ocultar Fuel sano al excluir ritmo. | Anotaciones independientes, confusión/cobertura por familia y test de derivados; T11/T12/T19/T20. |
@@ -41,12 +41,9 @@ algunos casos individuales ya pasaron. El handoff/issue conserva su estado actua
 
 ## 2. Escenarios completos obligatorios
 
-**E01 — carrera individual desde Manual.** Inicio → Combinación personalizada
-LMU → reglas → piloto → sesiones compatibles → revisar vuelta → corrección con
-motivo → calcular → aceptar → cerrar/reabrir → reproducir. Fuente original intacta.
+**E01 — carrera individual desde Manual.** Menú → Manual → mesa con combinación LMU, referencias explícitas, reglas y piloto → calcular sin proyección de telemetría → aceptar con procedencia manual → cerrar/reabrir → reproducir. Cambiar al origen telemetría no mezcla silenciosamente esas referencias.
 
-**E02 — resistencia desde Automático y calendario.** Descubrir → proponer
-combinación → seleccionar evento real compatible → reglas → piloto observado y
+**E02 — resistencia desde telemetría y calendario.** Menú → elegir sesión y verificar identidad → mesa → seleccionar evento real compatible → reglas → piloto observado y
 estimado → sesiones compatibles → propuesta → fijar stint/cambio de piloto →
 parada con servicios → recalcular → coste/recursos → aceptar. Si falta un dato,
 mostrar estado parcial y qué impide la propuesta completa.
@@ -87,7 +84,7 @@ de UI no altera selección ni abre fuentes ocultas. No truncar un resultado.
 | React/Playwright con fixture | Interacciones/estados/presentación del componente productivo. | Reader real, permisos o distribución. |
 | Wails diagnóstico con DuckDB real | Bridge/reader/selección/persistencia en runtime nativo identificado. | Login/entitlement o build de distribución. |
 | Wails distribución | Recorrido real con configuración/licencia de producto. | Aceptación humana o release publicada. |
-| Revisión visual | Semejanza A4 y usabilidad de pantallas revisadas. | Corrección matemática o precisión empírica. |
+| Revisión visual | Fidelidad v5 y usabilidad de pantallas revisadas; A4 es histórico. | Corrección matemática o precisión empírica. |
 
 No asignar porcentajes de cobertura arbitrarios como sustituto de casos críticos.
 Tests deben probar comportamiento y regresiones, no reflejar detalles internos.

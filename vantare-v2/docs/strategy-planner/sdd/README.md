@@ -1,6 +1,6 @@
 # SDD — Strategy sobre telemetría registrada
 
-Versión 1.21 · T18 corregido tras preflight nativo 2026-09-15 · ISA-1091/1277 · continuación de ISA-694/1028.
+Versión 1.22 · Dirección visual v5 aprobada 2026-09-22 · ISA-1091/1277/1314 · continuación de ISA-694/1028.
 
 ## Autoridad y propósito
 
@@ -18,7 +18,7 @@ entre tareas. El reparto vigente entre orquestador y ejecutor está en R19.
 
 Base histórica del SDD: `0240bc7806570be17832aea6153300631f392170` (ISA-1090).
 Revisión de continuidad contrastada en `c2d5b45b43bbf8ff0efb2cd16f1598f7a4925eff`,
-stack local ISA-1104. [execution.md §0](execution.md#0-punto-de-reanudación-comprobado--2026-09-13)
+stack local ISA-1104. [execution.md §0](execution.md#corte-vigente--isa-1314-2026-09-22)
 identifica capacidades presentes y cierres restantes. No se da T00–T12 por
 completo por haber cerrado T12. Ninguna evidencia local equivale a integración Nightly.
 
@@ -35,7 +35,7 @@ enlazan la evidencia; no duplican estados cambiantes de GitHub.
 Una persona configura una carrera dentro de Strategy, selecciona telemetría
 compatible, revisa y corrige lo que se usará, genera una propuesta optimizada,
 comprende sus límites, impone restricciones si lo desea y guarda una revisión
-reproducible. Todo con el diseño A4 aprobado y los colores actuales de Vantare.
+reproducible. Todo con el menú y la mesa v5 aprobados, en la escala de grises nativa de Vantare.
 
 Éxito significa completar ese recorrido en Wails con archivos reales, demostrar
 la corrección del motor bajo sus supuestos y medir por separado la validez de
@@ -51,10 +51,10 @@ spec aprobada #1028 para recuperar su significado.
 |---|---|---|
 | R01 | Primera entrega LMU/DuckDB; contratos abiertos a otros formatos incorporados por Vantare. No SQL ni DuckDB obligatorios para futuros simuladores. | A01 |
 | R02 | Originales intactos; ubicación original y copia opcional a carpeta elegida. | A02 |
-| R03 | Manual configura una carrera; Automático descubre y propone sesiones/combinaciones. Ambos convergen en el mismo editor y motor registrado. | A03 |
-| R04 | Asistente de cinco pasos: Inicio, Combinación, Reglas, Pilotos, Sesiones. Simulador y evento no son pasos adicionales. | A04 |
+| R03 | Manual usa referencias explícitas sin exigir telemetría; desde telemetría se descubre y adopta una sesión verificada. Ambos convergen en el mismo editor y motor existente. | A03 |
+| R04 | Menú de origen previo y mesa de preparación directa. Combinación, reglas, pilotos y fuentes son accesibles sin cinco pasos obligatorios. | A04 |
 | R05 | Combinación reúne simulador, evento personalizado/calendario Vantare, categoría/coche, circuito/trazado. Una categoría monomarca puede resolver el coche; multicar no se mezcla sin criterio. | A05 |
-| R06 | Diseño A4 y estilo videojuego aprobados; rojo/carmín moderado, superficies oscuras y sidebar comprimido en edición/cálculo. | A06 |
+| R06 | Concepto A v5 aprobado: grises Orbit, composición asimétrica Telemetría/Manual, rail comprimido y carmín puntual. Sustituye el asistente A4 y el garaje. | A06 |
 | R07 | Toda edición visible dentro de Strategy; Analysis conserva lectura, clasificación, correcciones y derivaciones. | A07 |
 | R08 | Se revisan sesiones, stints, vueltas y datos; visión avanzada para canales/muestras. Correcciones reversibles, con original, motivo y procedencia. | A08 |
 | R09 | Invalidada no equivale a inutilizable. Uso por familia; no inferir incidentes sólo de lentitud ni borrar degradación normal. | A09 |
@@ -90,15 +90,16 @@ Las notas antiguas «falta cliente/selección/productor» quedan superadas por
 #1082–1088. Las frases «no implementado» del ADR 0010 describen su fecha de
 redacción; no rehacer la mecánica ya existente. Las autorizaciones del PC y de
 acciones remotas se comprueban con la instrucción vigente del chat: el SDD no
-levanta restricciones posteriores. Esta revisión no abre app ni genera build
-de escritorio. Prueba diagnóstica, banco nativo y distribución son evidencias
+levanta restricciones posteriores. Las restricciones de ejecución se comprueban en cada corte; ISA-1314 incluye build y revisión nativa autorizadas. Prueba diagnóstica, banco nativo y distribución son evidencias
 distintas. El estado vivo y sus artefactos permanecen en el handoff único.
 
 ## 4. Contrato de experiencia
 
-### 4.1 Asistente
+### 4.1 Menú de origen y mesa
 
-- **Inicio:** Manual o Automático; abrir carrera guardada. No elegir dos motores.
+El [contrato visual v5](../design/strategy-menu-desk-v5.md) fija colores, composición, tipografía y comportamiento. Las secciones siguientes conviven en la mesa; no son pasos consecutivos.
+
+- **Inicio:** sesiones reales o Manual, con acceso a carreras guardadas. Seleccionar una sesión la abre y adopta sólo tras verificación; Manual entra sin fuente obligatoria.
 - **Combinación:** selector único con identidad canónica. Calendario usa el
   proveedor de Vantare existente. Se conserva referencia/versionado del evento
   y snapshot de reglas para reproducir; un cambio del calendario se ofrece,
@@ -115,9 +116,9 @@ distintas. El estado vivo y sus artefactos permanecen en el handoff único.
   exclusión y acceso a revisión. Configuración se puede guardar sin datos;
   calcular muestra exactamente qué puede obtenerse y qué falta.
 
-Atrás/adelante conserva el borrador. Cambiar combinación invalida derivados y
+Volver al menú y regresar a la mesa conserva el borrador. Cambiar combinación invalida derivados y
 señala selecciones incompatibles sin borrar correcciones de las fuentes. Abrir
-una carrera guardada no obliga a repetir todo el asistente. Ningún botón de
+una carrera guardada no obliga a repetir el menú. Ningún botón de
 avance importa todos los archivos ni acepta una propuesta por el usuario.
 
 ### 4.2 Editor y pantallas aprobadas
@@ -132,10 +133,12 @@ avance importa todos los archivos ni acepta una propuesta por el usuario.
 | Stint | Piloto, vueltas/duración, ritmo y procedencia, neumáticos, Fuel/VE al entrar/salir, restricciones y efectos. |
 | Parada | Entrada/salida, tránsito, servicios, cantidades, cambio de piloto/neumático, tareas paralelas/secuenciales y total. |
 
-Fuentes visuales: [prototipo](../prototypes/recorded-editor/README.md),
+Referencia vigente: [menú y mesa v5](../design/strategy-menu-desk-v5.md).
+
+Antecedentes visuales A4: [prototipo](../prototypes/recorded-editor/README.md),
 [recorrido](../evidence/isa-1063-all-screens),
 [stint/parada](../evidence/isa-1063-visual-loop).
-El último recorrido unificado prevalece sobre capturas anteriores con siete pasos.
+La decisión v5 de ISA-1314 prevalece sobre las capturas anteriores del asistente.
 Portar composición, jerarquía, espaciado e interacción; reutilizar tokens/kit
 Orbit. HTML/prototipo es referencia, no un renderer alternativo en producción.
 No usar fotografías generadas como datos observados ni cifras decorativas como
@@ -152,7 +155,8 @@ Elegir una fuente en UI constituye la acción explícita de apertura.
 ### 4.3 Estados y transiciones
 
 ```text
-borrador configurado -> fuentes seleccionadas -> revisión preparada
+menú -> telemetría verificada o referencias manuales -> mesa configurada
+ telemetría: fuentes seleccionadas -> revisión preparada
  -> entradas derivadas -> propuesta calculada -> plan aceptado
              cambio de entrada -> desactualizado -> recalcular
 ```

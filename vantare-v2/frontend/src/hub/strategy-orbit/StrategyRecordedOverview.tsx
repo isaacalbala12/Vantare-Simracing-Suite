@@ -4,8 +4,9 @@ import type { RecordedWizardDraft, RecordedWizardStep } from "./strategy-recorde
 import "./strategy-recorded-overview.css";
 
 /** Configuration summary only; selected sources are not evidence of a calculated plan. */
-export function StrategyRecordedOverview({ draft, dirty, busy, error, onEdit, onSources, onSave, t }: {
+export function StrategyRecordedOverview({ draft, dirty, busy, error, onEdit, onSources, onSave, hidePlan = false, t }: {
   readonly draft: RecordedWizardDraft; readonly dirty: boolean; readonly busy: boolean; readonly error?: string;
+  readonly hidePlan?: boolean;
   readonly onEdit: (step: RecordedWizardStep) => void; readonly onSources: () => void;
   readonly onSave: () => void; readonly t: (key: string) => string;
 }) {
@@ -39,10 +40,10 @@ export function StrategyRecordedOverview({ draft, dirty, busy, error, onEdit, on
           <div className="strategy-recorded-overview__observations"><h3>{t("strategy.workspace.observations")}</h3><strong>{t("strategy.workspace.validationPending")}</strong><p>{t("strategy.workspace.validationHint")}</p></div>
         </section>
       </div>
-      <section className="strategy-recorded-overview__plan" aria-label={t("strategy.workspace.plan")}>
+      {!hidePlan ? <section className="strategy-recorded-overview__plan" aria-label={t("strategy.workspace.plan")}>
         <h3><Icon name="i-estrategia" size={25} />{t("strategy.workspace.plan")}</h3>
         <div><div><strong>{t("strategy.workspace.notCalculated")}</strong><p>{t("strategy.workspace.calculateHint")}</p></div><button type="button" className="orbit-btn orbit-btn--primary" disabled>{t("strategy.workspace.calculate")}</button></div>
-      </section>
+      </section> : null}
     </div>
     {error ? <p role="alert" className="strategy-recorded-wizard__errors">{error}</p> : null}
     <footer className="strategy-recorded-overview__footer"><span>{t("strategy.recorded.originals")}</span>

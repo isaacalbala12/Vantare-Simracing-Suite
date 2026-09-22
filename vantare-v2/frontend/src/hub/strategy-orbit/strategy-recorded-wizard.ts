@@ -22,6 +22,12 @@ type RecordedCalculationEvent = StrategyOrbitCalculationInputV1["event"];
 export type RecordedWizardDraft = {
   readonly step: RecordedWizardStep;
   readonly mode: "manual" | "automatic";
+  /** Explicit driver-entered estimates; absent in earlier saved drafts. */
+  readonly manualInputs?: {
+    readonly paceSeconds?: number;
+    readonly fuelLitersPerLap?: number;
+    readonly virtualEnergyPercentPerLap?: number;
+  };
   /** Explicit fixed condition for the recorded proposal. Absent in legacy or incomplete drafts. */
   readonly calculationMode?: "dry" | "wet";
   readonly combination?: RecordedCombination;

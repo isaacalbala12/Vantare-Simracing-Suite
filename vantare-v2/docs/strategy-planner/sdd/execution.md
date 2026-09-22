@@ -2,7 +2,13 @@
 
 [Especificación](README.md) · [Aceptación](acceptance.md) · ISA-1091.
 
-## 0. Punto de reanudación comprobado — 2026-09-14
+## Corte vigente — ISA-1314, 2026-09-22
+
+Isaac aprueba el concepto A v5 y pide documentarlo y aplicarlo a la app. El [contrato de diseño](../design/strategy-menu-desk-v5.md) sustituye el asistente A4 y el garaje; conserva Analysis, Strategy y el motor Go. Menú de origen, mesa con inspector y ruta manual con overrides del cálculo existente, sin dependencia nueva. Base exacta: `7ff79ead4c125d63730b0ec3aa181e6c630453ab`, rama `vantareapp/isa-1314-strategy-menu-desk`, worktree `C:/tmp/vantare-isa1314`.
+
+Orden: implementación y regresiones → revisión del diff por el orquestador → build y recorrido nativo → documentación/evidencia y entrega aislada. Los estados y límites reales se registran en el handoff único y [GitHub #1314](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1314), autoridad indicada expresamente por Isaac. La aceptación v5 no hereda la puntuación visual A4. T19–T21, el cierre integral T22 y live mantienen sus propios gates.
+
+## 0. Punto histórico de reanudación — 2026-09-14
 
 Corte auditado: `c2d5b45b43bbf8ff0efb2cd16f1598f7a4925eff`, rama
 `vantareapp/isa-1104-recorded-classification`, worktree `C:/tmp/vantare-isa1104`.
@@ -27,7 +33,7 @@ Evidencia de los gaps: [matriz T02](../evidence/isa-1092/README.md),
 `StrategyRecordedWorkflow.tsx` bajo `frontend/src/hub/strategy-orbit/`.
 No repetir T12 ni declarar terminadas las entradas sólo por su posición en el DAG.
 
-**Siguiente corte elegible:** T18 valida visualmente el recorrido A4 completo, incluidos stint y parada, y corrige sólo hallazgos reproducibles. T17b #1276 ya conecta el contrato de parada de T17a: detalle editable, obsolescencia, recálculo y coste sin reimportar telemetría ni sumar otra fórmula. A12/A13/A14 quedan cubiertos localmente para el flujo funcional; la aceptación visual permanece en T18 y el recorrido Wails en T22. La disponibilidad horaria legacy necesita otra referencia temporal y permanece pendiente.
+**Siguiente corte elegible:** completar ISA-1314 según el orden anterior. T18 se contrasta ahora con v5; T17 y los contratos de stint/parada se conservan. La disponibilidad horaria legacy necesita otra referencia temporal y permanece pendiente.
 En paralelo lógico, preparar inventario T02 restante y preflight documental T22a;
 la ejecución física sigue siendo de un único escritor por worktree.
 
@@ -79,12 +85,7 @@ de alcance se propone con evidencia antes de ejecutar la parte nueva.
   instrucción vigente del PC; en la revisión documental actual no se ejecutan.
   No leer/copiar .env ni secretos. LMU permanece intacto y sólo se cierran
   procesos propios identificados.
-- El proveedor de ejecución es una elección operativa, no un contrato de
-  producto. Tras comprobar que las sesiones SWE-2 Max consumían mucho contexto
-  sin producir cambios, Isaac aceptó que el orquestador ejecute directamente
-  los cortes para no bloquear el avance. Devin queda disponible sólo si aporta
-  una ventaja concreta; no usar OpenCode. Astra puede asesorar cuando la
-  solución simple no esté clara, sin convertir su informe en aceptación.
+- Por instrucción de Isaac del 22-09, el ejecutor es GPT-6 Sol con razonamiento medio. El orquestador conserva planes, revisión, documentación y aceptación. No usar Astra, Devin ni OpenCode en este corte. Un único ejecutor, sin subdelegación.
 - Ante `resource_exhausted`, sesión perdida o adaptador no disponible, conservar
   archivos/logs y comprobar estado antes de reintentar. No lanzar bucles de
   sesiones ni duplicar trabajo. El orquestador puede ejecutar localmente el

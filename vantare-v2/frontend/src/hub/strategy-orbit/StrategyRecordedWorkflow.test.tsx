@@ -1,4 +1,5 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { StrictMode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AnalysisClient, AnalysisSaveRequest } from "../../strategy/analysis-client";
 import { parseAnalysisBase, parseAnalysisCandidates, parseAnalysisOpenedSession, parseAnalysisPage, parseCorrectionStoreResult } from "../../strategy/analysis-contract";
@@ -10,44 +11,79 @@ import { getHubSuspendBlockerReasons } from "../hub-suspend-guard";
 
 vi.mock("./strategy-recorded-session", () => ({ openRecordedSession: vi.fn() }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
-const candidate = { id: "candidate", state: "ready", size: 1024, modifiedAt: "2026-09-09T12:00:00Z", walPresent: false };
+const candidate = { id: "candidate", displayName: "actual-session.duckdb", state: "ready", size: 1024, modifiedAt: "2026-09-09T12:00:00Z", walPresent: false };
 const session = { candidateId: "candidate", combinationId: "combo", combination: { id: "combo", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Car", carClass: "LMP2" }, opened: { sessionId: "handle", session: { metadata: [] } }, base: { sessionId: "source" }, revision: { sessionId: "source", baseDigest: "a".repeat(64), revisionId: "b".repeat(64), snapshotId: "c".repeat(64) } } as RecordedSession;
-function setup(version: number | undefined = 7) {
+function setup(version: number | undefined = 7, strict = false) {
   const execute = vi.fn(async (command: StrategyApplicationCommandV1<RecordedDraftPayload>) => ({ protocolVersion: "strategy.application.v1" as const, commandId: command.commandId, repositoryVersion: 8, recoveredFromBackup: false, closed: false, ...("draft" in command ? { draft: structuredClone(command.draft) } : {}) }));
   const application: StrategyApplicationClient<RecordedDraftPayload> = { execute, cancel: vi.fn(), dispose: vi.fn() };
   const close = vi.fn().mockResolvedValue(undefined);
   const discover = vi.fn().mockResolvedValue([candidate]);
   const analysis = { discover, close } as unknown as AnalysisClient;
   const onExit = vi.fn();
+  const drafts: { sessions: number; mode: string }[] = [];
   vi.mocked(openRecordedSession).mockResolvedValue(session);
-  return { ...render(<StrategyRecordedWorkflow eventId="event" repositoryVersion={version} catalog={[]} catalogState="available" calendar={null} application={application} analysis={analysis} onExit={onExit} onCleanupError={vi.fn()} t={key => key} />), execute, close, discover, onExit };
+  const workflow = <StrategyRecordedWorkflow eventId="event" repositoryVersion={version} catalog={[]} catalogState="available" calendar={null} application={application} analysis={analysis} onExit={onExit} onCleanupError={vi.fn()} navigation={({ requestExit, draft }) => { drafts.push({ sessions: draft.sessions.length, mode: draft.mode }); return <button type="button" onClick={requestExit}>Leave Strategy</button>; }} t={key => key} />;
+  return { ...render(strict ? <StrictMode>{workflow}</StrictMode> : workflow), execute, close, discover, onExit, drafts };
 }
-it("completes the five-step bootstrap using only an explicitly opened and accepted source", async () => {
-  const { execute, close, unmount } = setup();
-  fireEvent.click(screen.getByRole("button", { name: /strategy.journey.next/ }));
+it("discovers recent candidates after StrictMode replays the mount effect", async () => {
+  const { discover } = setup(7, true);
+  expect(await screen.findByRole("button", { name: /strategy.entry.useSession/ })).toBeTruthy();
+  expect(discover).toHaveBeenCalledOnce();
+});
+it("returns from the origin menu to the existing manual preparation", async () => {
+  const { discover } = setup();
+  await waitFor(() => expect(discover).toHaveBeenCalledOnce());
+  const manual = await screen.findByRole<HTMLButtonElement>("button", { name: /strategy.entry.startManual/ });
+  await waitFor(() => expect(manual.disabled).toBe(false));
+  fireEvent.click(manual);
+  fireEvent.change(await screen.findByRole("spinbutton", { name: "strategy.entry.input.paceSeconds" }), { target: { value: "91" } });
+  fireEvent.click(screen.getByRole("button", { name: "strategy.entry.changeSource" }));
+  fireEvent.click(screen.getByRole("button", { name: /strategy.entry.resume/ }));
+  expect((screen.getByRole("spinbutton", { name: "strategy.entry.input.paceSeconds" }) as HTMLInputElement).value).toBe("91");
+});
+it("adds a second verified session from the desk library without replacing the first", async () => {
+  const second = { ...candidate, id: "candidate-b", displayName: "second.duckdb", modifiedAt: "2026-09-08T12:00:00Z" };
+  const { discover, drafts } = setup();
+  discover.mockResolvedValue([candidate, second]);
+  vi.mocked(openRecordedSession).mockImplementation(async (_client, id) => id === second.id
+    ? { ...session, candidateId: second.id, opened: { ...session.opened, sessionId: "handle-b" }, base: { ...session.base, sessionId: "source-b" }, revision: { ...session.revision, sessionId: "source-b" } }
+    : session);
+  fireEvent.click(screen.getByRole("button", { name: "strategy.entry.openTelemetry" }));
   fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.discover" }));
-  const sourceScreen = screen.getByTestId("strategy-recorded-source-screen");
-  fireEvent.click(await within(sourceScreen).findByRole("button", { name: "strategy.recorded.open" }));
-  fireEvent.click(await within(sourceScreen).findByRole("button", { name: "strategy.recorded.apply" }));
-  await within(sourceScreen).findByText("strategy.recorded.applied");
+  const library = screen.getByTestId("strategy-recorded-source-screen");
+  const first = await within(library).findAllByRole("button", { name: "strategy.entry.useSession" });
+  fireEvent.click(first[0]);
+  await screen.findByRole("heading", { name: "strategy.entry.yourRace" });
+  expect(within(document.querySelector(".strategy-preparation__source-list") as HTMLElement).getByText("actual-session.duckdb")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: /strategy.entry.openTelemetry/ }));
+  const opened = await within(screen.getByTestId("strategy-recorded-source-screen")).findAllByRole("button", { name: "strategy.recorded.open" });
+  expect((opened[0] as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(opened[1]);
+  const apply = screen.getByRole<HTMLButtonElement>("button", { name: "strategy.recorded.apply" });
+  await waitFor(() => expect(apply.disabled).toBe(false));
+  fireEvent.click(apply);
+  await waitFor(() => expect(drafts.at(-1)).toMatchObject({ sessions: 2, mode: "automatic" }));
+});
+it("opens and adopts a chosen recent session in one action, without persisting early", async () => {
+  const { execute, close, unmount } = setup();
+  fireEvent.click(await screen.findByRole("button", { name: /strategy.entry.useSession/ }));
+  await screen.findByRole("heading", { name: "strategy.entry.yourRace" });
+  expect(screen.queryByRole("button", { name: /strategy.journey.next/ })).toBeNull();
   expect(execute).not.toHaveBeenCalled();
-  fireEvent.click(within(sourceScreen).getByRole("button", { name: /strategy.journey.back/ }));
-  for (let step = 0; step < 3; step++) fireEvent.click(screen.getByRole("button", { name: /strategy.journey.next/ }));
-  fireEvent.click(screen.getByRole("button", { name: /strategy.journey.openDraft/ }));
-  await screen.findByText("strategy.workspace.saved");
-  // The guard is released by an effect after the saved view commits.
-  await waitFor(() => expect(getHubSuspendBlockerReasons()).not.toContain("strategy.workspace.unsaved"));
-  expect(execute.mock.calls[0][0]).toMatchObject({ operation: "create", draft: { payload: { draft: { combination: { combinationId: "combo" }, sessions: [session.revision] } } } });
-  fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.preparation" }));
+  expect(screen.getByText("strategy.entry.telemetryBase")).toBeTruthy();
   expect(getHubSuspendBlockerReasons()).toContain("strategy.workspace.unsaved");
   expect(close).not.toHaveBeenCalled();
   unmount();
   expect(getHubSuspendBlockerReasons()).not.toContain("strategy.workspace.unsaved");
   await waitFor(() => expect(close).toHaveBeenCalledExactlyOnceWith("handle"));
 });
-it("asks before discarding an unsaved preparation", () => {
+it("asks before discarding an unsaved manual preparation", async () => {
   const { onExit } = setup();
-  fireEvent.click(screen.getByRole("button", { name: /strategy.journey.back/ }));
+  const manual = await screen.findByRole<HTMLButtonElement>("button", { name: /strategy.entry.startManual/ });
+  await waitFor(() => expect(manual.disabled).toBe(false));
+  fireEvent.click(manual);
+  expect(await screen.findByRole("heading", { name: "strategy.entry.yourRace" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Leave Strategy" }));
   expect(onExit).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.leave" }));
   expect(onExit).toHaveBeenCalledOnce();
@@ -83,13 +119,13 @@ function inspectionJourney() {
   return { ...view, execute, close, load, save, resolve, project, buildResponse, partial, current, drafts };
 }
 async function advanceToCombination() {
-  fireEvent.click(screen.getByRole("button", { name: /strategy.journey.next/ }));
+  fireEvent.click(screen.getByRole("button", { name: "strategy.entry.openTelemetry" }));
   await screen.findByRole("button", { name: "strategy.recorded.discover" });
 }
 async function discoverAndOpen() {
   fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.discover" }));
   const sourceScreen = screen.getByTestId("strategy-recorded-source-screen");
-  fireEvent.click(await within(sourceScreen).findByRole("button", { name: "strategy.recorded.open" }));
+  fireEvent.click(await within(sourceScreen).findByRole("button", { name: "strategy.entry.useSession" }));
   await within(sourceScreen).findByRole("button", { name: "strategy.recorded.inspect" });
   return sourceScreen;
 }
@@ -110,7 +146,7 @@ async function applyScalarSample() {
   fireEvent.click(screen.getByRole("button", { name: "strategy.data.apply" }));
 }
 describe("recorded inspection journey", () => {
-  it("inspects a partial source, saves a scalar correction locally and returns to the wizard", async () => {
+  it("inspects a partial source, saves a scalar correction locally and returns to preparation", async () => {
     const f = inspectionJourney();
     expect(f.drafts[0]).toEqual({ step: "start", mode: "manual", sessions: 0, combination: undefined });
     await advanceToCombination();
@@ -137,8 +173,8 @@ describe("recorded inspection journey", () => {
     expect(within(history).getByText("strategy.workspace.notCalculated")).toBeTruthy();
     expect((screen.getByRole("button", { name: "strategy.history.reviewPinned" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.backToWizard" }));
-    await screen.findByRole("button", { name: /strategy.journey.next/ });
-    expect(f.drafts.at(-1)).toEqual({ step: "combination", mode: "manual", sessions: 0, combination: undefined });
+    await screen.findByRole("heading", { name: "strategy.entry.yourRace" });
+    expect(f.drafts.at(-1)).toEqual({ step: "start", mode: "manual", sessions: 0, combination: undefined });
     expect(f.execute).not.toHaveBeenCalled();
     expect(f.close).not.toHaveBeenCalled();
   });
@@ -152,7 +188,7 @@ describe("recorded inspection journey", () => {
     expect(f.save).toHaveBeenCalledOnce();
     expect((screen.getByRole("button", { name: "strategy.recorded.backToWizard" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.backToWizard" }));
-    expect(screen.queryByRole("button", { name: /strategy.journey.next/ })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "strategy.entry.yourRace" })).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "strategy.data.tab.race" }));
     fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.review" }));
     const drawer = screen.getByTestId("strategy-recorded-source-screen");
@@ -173,7 +209,7 @@ describe("recorded inspection journey", () => {
     expect(screen.queryByRole("alert")).toBeNull();
     expect((screen.getByRole("button", { name: "strategy.recorded.backToWizard" }) as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.backToWizard" }));
-    await screen.findByRole("button", { name: /strategy.journey.next/ });
+    await screen.findByRole("heading", { name: "strategy.entry.yourRace" });
     expect(f.execute).not.toHaveBeenCalled();
   });
   it("blocks leaving the editor with an unresolved correction", async () => {
@@ -187,7 +223,7 @@ describe("recorded inspection journey", () => {
     fireEvent.click(screen.getByRole("button", { name: "strategy.data.apply" }));
     expect((screen.getByRole("button", { name: "strategy.recorded.backToWizard" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.backToWizard" }));
-    expect(screen.queryByRole("button", { name: /strategy.journey.next/ })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "strategy.entry.yourRace" })).toBeNull();
     expect(f.execute).not.toHaveBeenCalled();
   });
   it("keeps arrow, home and end navigation with back outside the tablist", async () => {

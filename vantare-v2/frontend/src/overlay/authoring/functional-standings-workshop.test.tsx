@@ -96,6 +96,28 @@ describe("Standings Eficiencia Workshop review", () => {
     expect(document.querySelector('td[data-metric="lastLap"]')).toBeNull();
   });
 
+  it.each(["standings-functional-window", "standings-functional-combined"])("keeps every window step meaningful and the preview stationary in %s", (sceneId) => {
+    const firstWindowFrame = sceneId === "standings-functional-combined" ? 8 : 0;
+    render(<OverlayWorkshopDevRoute search={`${query}&scene=${sceneId}&frame=${firstWindowFrame}&modules=gap,lastLap,pit,bestLap`} />);
+    const root = document.querySelector<HTMLElement>("[data-overlay-workshop-widget-root]")!;
+    const height = root.style.height;
+    const ids = () => [...document.querySelectorAll("[data-standings-row]")].map((row) => row.getAttribute("data-standings-row"));
+    let previous = ids();
+    for (let step = 0; step < 3; step += 1) {
+      fireEvent.click(screen.getByTestId("workshop-scene-next"));
+      expect.soft(document.querySelector('[data-standings-row][data-player="true"]'), `window transition ${step + 1}`).not.toBeNull();
+      expect.soft(ids(), `window transition ${step + 1}`).not.toEqual(previous);
+      expect.soft(root.style.height, "the external preview must not recenter between windows").toBe(height);
+      previous = ids();
+    }
+  });
+
+  it("keeps race gaps stable when the combined review leaves the battle for the window", () => {
+    const before = frame({ sceneId: "standings-functional-combined", sceneFrame: 7 });
+    const after = frame({ sceneId: "standings-functional-combined", sceneFrame: 8 });
+    expect(after.standings.map((row) => [row.id, row.position, row.gap])).toEqual(before.standings.map((row) => [row.id, row.position, row.gap]));
+  });
+
   it.each(["default", "standings-multiclass"])("includes battle and window motion in the combined harness review for %s", (variant) => {
     vi.useFakeTimers();
     Object.defineProperty(HTMLElement.prototype, "animate", { configurable: true, value: vi.fn(() => ({ playState: "running", cancel: vi.fn() })) });

@@ -37,8 +37,8 @@ describe("Functional Relative", () => {
     };
     const { container, getByLabelText } = render(<RelativeFunctional model={race} settings={{}} renderMode="harness" />);
 
-    expect(getByLabelText("1 vuelta menos que tú").textContent).toBe("−1V");
-    expect(getByLabelText("2 vueltas más que tú").textContent).toBe("+2V");
+    expect(getByLabelText("1 vuelta menos que tú").textContent).toBe("−1 V");
+    expect(getByLabelText("2 vueltas más que tú").textContent).toBe("+2 V");
     expect(container.querySelector('tr[data-player="true"] .vf-relative-lap-delta')).toBeNull();
     expect(container.querySelectorAll(".vf-relative-lap-delta")).toHaveLength(2);
   });
@@ -61,10 +61,10 @@ describe("Functional Relative", () => {
   });
 
   it.each([
-    ["es", "1 vuelta menos que tú", "−1V"],
-    ["en", "1 lap fewer than you", "−1V"],
-    ["pt", "1 volta a menos que você", "−1V"],
-    ["it", "1 giro in meno di te", "−1V"],
+    ["es", "1 vuelta menos que tú", "−1 V"],
+    ["en", "1 lap fewer than you", "−1 L"],
+    ["pt", "1 volta a menos que você", "−1 V"],
+    ["it", "1 giro in meno di te", "−1 G"],
   ] as const)("localizes lap badge title and accessible name in %s", async (locale, title, value) => {
     localStorage.setItem("vantare.locale", locale);
     const race: RelativeViewModel = {

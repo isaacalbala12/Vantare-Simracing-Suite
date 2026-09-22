@@ -28,7 +28,7 @@ const RelativeLapDeltaBadge = memo(function RelativeLapDeltaBadge({ lapDelta }: 
   const description = lapDelta > 0
     ? count === 1 ? labels.lapMoreOne : labels.lapsMore.replace("{count}", String(count))
     : count === 1 ? labels.lapLessOne : labels.lapsLess.replace("{count}", String(count));
-  const value = `${lapDelta > 0 ? "+" : "−"}${count}V`;
+  const value = `${lapDelta > 0 ? "+" : "−"}${count} ${labels.lapUnit}`;
   return <span className="vf-relative-lap-delta" role="img" title={description} aria-label={description}>{value}</span>;
 });
 

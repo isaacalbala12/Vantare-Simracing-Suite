@@ -11,8 +11,10 @@
 - Contrato: [diseño de paridad](../specs/2026-09-19-crewchief-lmu-parity-design.md)
 - Voz y estilo: [persona y estilo nativo](../specs/2026-09-20-engineer-persona-native-style-design.md)
 - Decisión arquitectónica: [ADR 0010](../adr/0010-engineer-cloud-dialogue-and-offline-parity.md)
-- Estado: diseño documental aceptado por Isaac; T0–T8 no iniciados. La reparación
-  del runtime actual continúa por separado en VAN-736 / GitHub #1299.
+- Estado a 2026-09-22: diseño y evoluciones A1–A9 aceptados por Isaac. Reparación
+  P0 integrada mediante PR1311. T0a (PR1313/166ff3c5) y T0b (PR1319/95f0dc81)
+  revisados, sin integrar; T1 sintético en revisión en VAN-746/#1321 sobre
+  nightly e6d7d2b5. Pruebas reales y corte audible T4 pendientes.
 
 Este fichero no sustituye el `PLAN.md` de la raíz de `vantare-v2`, que pertenece
 a VAN-727. Tampoco convierte #1294 en una issue de implementación: su diff debe
@@ -165,6 +167,13 @@ aditiva; nunca se introduce otro lector LMU ni `telemetry.Frame` nuevo.
 Notion propia para T1.
 
 ### T1 — Relaciones de carrera demostrables
+
+**Corte sintético 2026-09-22.** [VAN-746](https://app.notion.com/p/3e3e51695c6581bca1a6e38ff864077d)
+/ #1321 implementa la API opt-in y regresiones desde ObservationV1.
+[Microplan y límites](t1-relations-1321.md): cubre semántica TIM-REL con pasos
+observados y adaptaciones conservadoras explícitas. No cierra T1 real ni
+certifica LMU: longitud/layout, velocidad e InLap reales siguen por verificar.
+Sin conexión a la radio; T2–T8 siguen pendientes.
 
 **Objetivo.** Producir líder de clase, delante/detrás de clase, delante/detrás
 en pista, candidato automático detrás en pista y diferencias temporal/de

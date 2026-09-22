@@ -54,6 +54,14 @@ describe("Relative presentation", () => {
     expect(view.container.querySelectorAll(".vf-relative-empty-slot[aria-hidden=true]")).toHaveLength(2);
     const stable = relativeVisibleSlots(model([ahead, player], { rangeBehind: 2 }), 5);
     expect(stable.map((item) => item?.id ?? "empty")).toEqual(["ahead", "player", "empty", "empty"]);
+    const near = row("near", "ahead", "+0.4");
+    const middle = row("middle", "ahead", "+1.8");
+    const far = row("far", "ahead", "+4.2");
+    const canonical = model([near, middle, far, player, behind], { rangeAhead: 3 });
+    expect(relativeVisibleSlots(canonical, 5).map((item) => item?.id))
+      .toEqual(["far", "middle", "near", "player", "behind"]);
+    expect(relativeVisibleSlots(canonical, 2).map((item) => item?.id))
+      .toEqual(["near", "player"]);
   });
 
   it("seeds the first frame, slides rivals without moving the player, and ignores 100 numeric frames", () => {

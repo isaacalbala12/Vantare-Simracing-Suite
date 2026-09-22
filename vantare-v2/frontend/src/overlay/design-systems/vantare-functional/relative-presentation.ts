@@ -8,7 +8,9 @@ export function relativeVisibleSlots(model: RelativeViewModel, rowsFit: number):
   if (playerIndex < 0) return model.rows.slice(0, limit);
 
   const aheadSlots = Math.max(0, Math.min(model.rangeAhead ?? playerIndex, limit - 1));
-  const ahead = aheadSlots > 0 ? model.rows.slice(0, playerIndex).slice(-aheadSlots) : [];
+  // V2 entrega los rivales delante de cerca a lejos. Elegimos los cercanos
+  // antes de invertirlos para que el más próximo quede junto al jugador.
+  const ahead = aheadSlots > 0 ? model.rows.slice(0, playerIndex).slice(0, aheadSlots).reverse() : [];
   const behindSlots = Math.max(0, Math.min(model.rangeBehind ?? model.rows.length - playerIndex - 1, limit - aheadSlots - 1));
   const behind = model.rows.slice(playerIndex + 1, playerIndex + 1 + behindSlots);
   return [

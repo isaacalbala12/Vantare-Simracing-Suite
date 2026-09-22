@@ -691,3 +691,8 @@
 .vf-pit-row .vf-pit-label { top: 50%; opacity: 0; translate: -5px 0; transition: opacity 200ms ease, translate 200ms ease; }
 .vf-pit-row .vf-pit-label[data-pit-active] { opacity: 1; translate: 0 0; }
 .vf-standings:is(:not([data-motion-level="full"]), :not([data-status="ready"])) :is(.vf-position-change, .vf-lap-record, .vf-pit-label) { transition: none; }
+.vf-standings .vf-battle-accent { position: absolute; inset: auto 8px 1px; height: 2px; pointer-events: none; background: linear-gradient(90deg, rgb(226 197 104 / 55%), rgb(226 197 104 / 10%) 80%, transparent); opacity: 0; transition: opacity 200ms ease; }
+.vf-standings [data-battle]:not([data-notice-priority]) .vf-battle-accent { opacity: 1; }
+.vf-standings:is(:not([data-motion-level="full"]), :not([data-status="ready"])) .vf-battle-accent { opacity: 0; transition: none; }
+.vf-standings-exit { position: absolute; z-index: 2; pointer-events: none; }
+.vf-standings-exit * { pointer-events: none; transition: none !important; }

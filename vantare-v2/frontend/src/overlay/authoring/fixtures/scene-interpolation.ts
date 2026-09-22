@@ -122,6 +122,7 @@ export function interpolateSceneAt(scene: AnimationScene, elapsedMs: number, loo
       ...(Object.keys(cars).length > 0 ? { cars } : {}),
       ...(blendPlayer(from.player, to.player, t) ? { player: blendPlayer(from.player, to.player, t) } : {}),
       ...(remainingSeconds !== undefined ? { remainingSeconds } : {}),
+      ...(from.standingsWindowPosition !== undefined ? { standingsWindowPosition: from.standingsWindowPosition } : {}),
     },
   };
 }

@@ -115,6 +115,8 @@ export function flipRows(
     key?: string;
     /** Retain ownership when React removes the node before teardown. */
     onAnimation?: (animation: Animation, row: HTMLElement) => void;
+    /** Independent effects (e.g. opacity) must survive transform retargeting. */
+    preserveAnimation?: (animation: Animation) => boolean;
   },
 ): void {
   const topsKey = opts.key ?? "flip-tops";
@@ -135,7 +137,8 @@ export function flipRows(
     const running = typeof row.getAnimations === "function"
       ? row.getAnimations().filter(
           (animation) =>
-            typeof CSSTransition === "undefined" || !(animation instanceof CSSTransition),
+            (typeof CSSTransition === "undefined" || !(animation instanceof CSSTransition))
+            && !opts.preserveAnimation?.(animation),
         )
       : [];
     const inFlight = running.length > 0 ? currentTranslateY(row) : 0;

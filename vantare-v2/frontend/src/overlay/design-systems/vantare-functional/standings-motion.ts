@@ -17,6 +17,38 @@ export function standingsMotionContinues(prev: StandingsViewModel, next: Standin
 
 const validLap = (seconds: number | undefined): seconds is number => seconds !== undefined && Number.isFinite(seconds) && seconds > 0;
 
+export type StandingsBattle = { aheadId: string; behindId: string; gap: number; player: boolean };
+
+/** One same-class duel, with hysteresis and no adjacency inferred from a crop. */
+export function selectStandingsBattle(
+  model: StandingsViewModel,
+  visibleIds: ReadonlySet<string>,
+  previous?: StandingsBattle,
+): StandingsBattle | undefined {
+  if (model.status !== "ready" || model.sessionLabel.toUpperCase() !== "RACE") return undefined;
+  const rows = model.rows.filter((row) => visibleIds.has(row.id));
+  const candidates: StandingsBattle[] = [];
+  for (const behind of rows) {
+    const classId = behind.vehicleClass.trim().toUpperCase();
+    if (!classId || !Number.isInteger(behind.classPosition) || behind.classPosition! < 2) continue;
+    const ahead = rows.find((row) => row.vehicleClass.trim().toUpperCase() === classId
+      && row.classPosition === behind.classPosition! - 1);
+    if (!ahead || ahead.pitText || behind.pitText) continue;
+    if (!Number.isInteger(ahead.position) || ahead.position < 1 || !Number.isInteger(behind.position)
+      || behind.position <= ahead.position) continue;
+    if (ahead.battleGapSeconds === undefined || behind.battleGapSeconds === undefined) continue;
+    const gap = behind.battleGapSeconds - ahead.battleGapSeconds;
+    if (!Number.isFinite(gap) || ahead.battleGapSeconds < 0 || gap < 0) continue;
+    const retained = previous && [previous.aheadId, previous.behindId].includes(ahead.id)
+      && [previous.aheadId, previous.behindId].includes(behind.id);
+    if (gap <= (retained ? 1.2 : 0.8)) candidates.push({ aheadId: ahead.id, behindId: behind.id, gap, player: ahead.isPlayer || behind.isPlayer });
+  }
+  const eligible = candidates.some((pair) => pair.player) ? candidates.filter((pair) => pair.player) : candidates;
+  return eligible.find((pair) => previous && [previous.aheadId, previous.behindId].includes(pair.aheadId)
+    && [previous.aheadId, previous.behindId].includes(pair.behindId))
+    ?? eligible.sort((a, b) => a.gap - b.gap)[0];
+}
+
 export function deriveFunctionalStandingsEvents(prev: StandingsViewModel, next: StandingsViewModel): FunctionalStandingsEvent[] {
   if (!standingsMotionContinues(prev, next)) return [];
   const before = new Map(prev.rows.map((row) => [row.id, row]));

@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { OverlayWorkshopDevRoute } from "./OverlayWorkshopDevRoute";
 import { buildWorkshopFrameV2, buildWorkshopWidget, type WorkshopV2Scenario } from "./fixtures/authoring-v2-workshop-frame";
 import { getAnimationScene, listAnimationScenes } from "./fixtures/animation-scenes";
@@ -14,7 +14,12 @@ const scenario: WorkshopV2Scenario = {
 const query = "?widget=standings&system=vantare-functional&variant=default&session=race&state=ready&surface=studio&study=default&around=4";
 const frame = (patch: Partial<WorkshopV2Scenario> = {}) => buildWorkshopFrameV2({ ...scenario, ...patch }).overlayV2Frame!;
 
-afterEach(cleanup);
+const animateDescriptor = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "animate");
+afterEach(() => {
+  cleanup();
+  if (animateDescriptor) Object.defineProperty(HTMLElement.prototype, "animate", animateDescriptor);
+  else Reflect.deleteProperty(HTMLElement.prototype, "animate");
+});
 
 describe("Standings Eficiencia Workshop review", () => {
   it.each(["practice", "qualifying"] as const)("orders %s by best lap and keeps best <= last lap", (session) => {
@@ -45,12 +50,39 @@ describe("Standings Eficiencia Workshop review", () => {
 
   it("filters unsupported effects and keeps the race position probe out of timed sessions", () => {
     expect(listAnimationScenes("standings", "vantare-functional", "race").map((scene) => scene.id)).toEqual([
+      "standings-functional-battle", "standings-functional-window",
       "standings-functional-position", "standings-functional-pit", "standings-functional-personal-best",
       "standings-functional-session-best", "standings-functional-combined",
     ]);
     expect(getAnimationScene("standings-fastest-lap", "vantare-functional")).toBeUndefined();
     expect(getAnimationScene("standings-fastest-lap", "vantare-endurance")).toBeDefined();
     expect(getAnimationScene("standings-functional-position", "vantare-functional", "qualifying")).toBeUndefined();
+  });
+
+  it.each(["default", "standings-multiclass"])("drives a stable battle and actual window presence through V2 and renderer in %s", (variant) => {
+    Object.defineProperty(HTMLElement.prototype, "animate", { configurable: true, value: vi.fn(() => ({ playState: "running", cancel: vi.fn() })) });
+    const selected = query.replace("variant=default", `variant=${variant}`);
+    const battle = render(<OverlayWorkshopDevRoute search={`${selected}&scene=standings-functional-battle`} />);
+    expect(document.querySelector("[data-battle]")).toBeNull();
+    fireEvent.click(screen.getByTestId("workshop-scene-next"));
+    expect([...document.querySelectorAll("[data-battle]")].map((row) => row.getAttribute("data-standings-row")).sort()).toEqual(["vehicle-000", "vehicle-003"]);
+    fireEvent.click(screen.getByTestId("workshop-scene-next"));
+    expect(document.querySelectorAll("[data-battle]")).toHaveLength(2);
+    fireEvent.click(screen.getByTestId("workshop-scene-next"));
+    expect(document.querySelector("[data-battle]")).toBeNull();
+    battle.unmount();
+    render(<OverlayWorkshopDevRoute search={`${selected}&scene=standings-functional-window&modules=pit,gap,bestLap`} />);
+    const ids = () => [...document.querySelectorAll("[data-standings-row]")].map((row) => row.getAttribute("data-standings-row"));
+    const initial = ids();
+    fireEvent.click(screen.getByTestId("workshop-scene-next"));
+    expect(ids()).not.toEqual(initial);
+    expect(document.querySelector("[data-exiting-row]")).not.toBeNull();
+    expect(document.querySelector("[data-standings-row][data-motion]")).toBeNull();
+    fireEvent.click(screen.getByTestId("workshop-scene-next"));
+    expect(document.querySelector("[data-standings-row][data-motion]")).toBeNull();
+    fireEvent.click(screen.getByTestId("workshop-scene-next"));
+    expect(ids()).toEqual(initial);
+    expect(document.querySelector("[data-standings-row][data-motion]")).toBeNull();
   });
 
   it.each(["practice", "qualifying"] as const)("keeps the module switches aligned with the columns in %s", (session) => {

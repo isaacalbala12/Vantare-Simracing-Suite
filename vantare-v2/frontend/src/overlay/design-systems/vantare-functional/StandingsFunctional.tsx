@@ -157,7 +157,7 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
                     : resolveStandingsCellValue(row, column.metricId);
                 const seconds = (column.metricId === "gap" || column.metricId === "interval") ? /^([+-]?\d+(?:\.\d+)?)(s)$/.exec(value) : null;
                 return <td key={column.id} data-metric={column.metricId} data-identity={IDENTITY.has(column.metricId) || undefined} aria-label={`${labelFor(column.metricId)}: ${value}`} style={{ textAlign: column.metricId === "gap" ? "center" : column.style?.align ?? (column.metricId === "driverName" ? "left" : IDENTITY.has(column.metricId) ? "center" : "right") }}>
-                  {column.metricId === "driverName" ? <span className="vf-driver"><span className="vf-driver-name" title={value}>{value}</span><span className="vf-position-change" data-position-change aria-hidden="true" /></span> : <span title={value} className={`vf-cell-value${seconds ? " vf-gap-number" : ""}`}>{seconds ? <>{seconds[1]}<small className="vf-time-unit">{seconds[2]}</small></> : value}</span>}
+                  {column.metricId === "driverName" ? <><span className="vf-battle-accent" aria-hidden="true" /><span className="vf-driver"><span className="vf-driver-name" title={value}>{value}</span><span className="vf-position-change" data-position-change aria-hidden="true" /></span></> : <span title={value} className={`vf-cell-value${seconds ? " vf-gap-number" : ""}`}>{seconds ? <>{seconds[1]}<small className="vf-time-unit">{seconds[2]}</small></> : value}</span>}
                   {column.metricId === "bestLap" && <><span className="vf-lap-sweep" aria-hidden="true" /><span className="vf-lap-record" aria-hidden="true">◆</span></>}
                 </td>;
               })}

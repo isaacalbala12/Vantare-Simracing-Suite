@@ -85,7 +85,8 @@ export function buildStandingsViewModelV2(
   const nameColumn = columns.find((column) => column.metricId === "driverName");
   const weather = frame.weather;
   const projectedRows = limited.map((row, index) =>
-    buildRow(row, index, playerId, paceSession, sessionBestLap, nameColumn),
+    buildRow(row, index, playerId, paceSession, sessionBestLap, nameColumn,
+      source.state === "live" && frame.session.phase.q === "fresh" && phase === "race"),
   );
   const rows = window
     ? selectDefaultStandingsWindow(projectedRows, window.around)
@@ -190,8 +191,10 @@ function buildRow(
   paceSession: boolean,
   sessionBestLap: number | undefined,
   nameColumn: WidgetColumnV3 | undefined,
+  freshRace: boolean,
 ): StandingsRowViewModel {
   const driverName = row.driver || PLACEHOLDER;
+  const gap = row.gap?.q === "fresh" ? displayedNumber(row.gap) : undefined;
   return {
     id: row.id,
     position: row.position,
@@ -208,6 +211,8 @@ function buildRow(
     lastLapText: formatLapTime(displayedNumber(row.lastLap)),
     bestLapText: formatLapTime(displayedNumber(row.bestLap)),
     bestLapSeconds: row.bestLap?.q === "fresh" ? displayedNumber(row.bestLap) : undefined,
+    battleGapSeconds: freshRace && row.pit === "track" && (row.gapLaps ?? 0) === 0
+      && gap !== undefined && Number.isFinite(gap) && gap >= 0 ? gap : undefined,
     pitText: row.pit === "pit" ? "PIT" : "",
     tireCompound: "",
     isPlayer: playerId !== undefined && row.id === playerId,

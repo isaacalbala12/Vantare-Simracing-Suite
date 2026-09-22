@@ -25,6 +25,8 @@ export type StandingsRowViewModel = {
   bestLapText: string;
   /** Fresh numeric authority for lap events; absent values never trigger motion. */
   bestLapSeconds?: number;
+  /** Fresh race gap to the common leader; absent for pits, lapped or invalid rows. */
+  battleGapSeconds?: number;
   pitText: string;
   tireCompound: string;
   isPlayer: boolean;

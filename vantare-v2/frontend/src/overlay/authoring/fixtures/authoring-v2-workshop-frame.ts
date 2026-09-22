@@ -808,13 +808,18 @@ function applyScene(
           standings = [...standings].sort((left, right) => (left.bestLap.v ?? Infinity) - (right.bestLap.v ?? Infinity));
         }
         standings = rankDemoStandings(standings).map((row, index) => ({
-          ...row, gap: frame.standings[index]!.gap,
+          ...row, gap: state.cars?.[row.driver ?? ""]?.timeBehindLeader !== undefined
+            ? row.gap : frame.standings[index]!.gap,
         }));
       }
     }
     warnDroppedScenePatches(scene.id, Object.keys(state.cars), resolved);
   }
   let player = frame.player;
+  if (state.standingsWindowPosition !== undefined) {
+    const anchor = standings.find((row) => row.position === state.standingsWindowPosition);
+    if (anchor) player = { ...player, id: anchor.id };
+  }
   let delta = frame.delta;
   let session = frame.session;
   if (state.player?.deltaSeconds !== undefined) {

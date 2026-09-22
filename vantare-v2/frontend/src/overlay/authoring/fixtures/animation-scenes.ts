@@ -34,6 +34,8 @@ export type SceneFrame = {
   player?: ScenePlayerOverride;
   /** Session clock for this frame, when the animation depends on it. */
   remainingSeconds?: number;
+  /** Review a different player-window anchor without changing any race positions. */
+  standingsWindowPosition?: number;
   /** Shown under the transport so it is clear what this frame is doing. */
   caption: string;
 };
@@ -427,6 +429,28 @@ const PEDALS_CLUTCH_SCENE: AnimationScene = {
 // Escenas del renderer Eficiencia: solo efectos que implementa, sobre filas
 // visibles en su ventana inicial. No cambian la clasificación elegida.
 const FUNCTIONAL_STANDINGS_SCENES: readonly AnimationScene[] = [
+  {
+    id: "standings-functional-battle", sessions: ["race"], widget: "standings", label: "Batalla cercana · conducción",
+    watchFor: "Lotterer y Giovinazzi son consecutivos de su clase. El acento ámbar entra al acercarse, se mantiene estable y se retira al separarse; no cambia el tamaño del texto ni pulsa continuamente.",
+    frameMs: 1700,
+    frames: [
+      { caption: "Giovinazzi a 2,00 s: aún no hay batalla.", cars: { "André Lotterer": { inPits: false }, "Ben Hanley": { timeBehindLeader: 0.7 }, "Kévin Estre": { timeBehindLeader: 1.4 }, "Antonio Giovinazzi": { timeBehindLeader: 2 } } },
+      { caption: "Se acerca a 0,65 s: aparece el acento de batalla.", cars: { "André Lotterer": { inPits: false }, "Ben Hanley": { timeBehindLeader: 0.2 }, "Kévin Estre": { timeBehindLeader: 0.4 }, "Antonio Giovinazzi": { timeBehindLeader: 0.65 } } },
+      { caption: "A 0,95 s el acento permanece estable.", cars: { "André Lotterer": { inPits: false }, "Ben Hanley": { timeBehindLeader: 0.3 }, "Kévin Estre": { timeBehindLeader: 0.6 }, "Antonio Giovinazzi": { timeBehindLeader: 0.95 } } },
+      { caption: "Se separa a 1,35 s: el acento se retira.", cars: { "André Lotterer": { inPits: false }, "Ben Hanley": { timeBehindLeader: 0.4 }, "Kévin Estre": { timeBehindLeader: 0.8 }, "Antonio Giovinazzi": { timeBehindLeader: 1.35 } } },
+    ],
+  },
+  {
+    id: "standings-functional-window", sessions: ["race"], widget: "standings", label: "Entrada y salida de ventana",
+    watchFor: "La revisión cambia el piloto de referencia entre P1, P9 y P12. Con Alrededor de 4, aparecen y se retiran filas/PIT mientras las demás se recolocan. Todas las posiciones reales permanecen iguales: no aparecen avisos de adelantamiento.",
+    frameMs: 1600,
+    frames: [
+      { caption: "Ventana alrededor de P1; posiciones estables.", standingsWindowPosition: 1, cars: { "Antonio Giovinazzi": { inPits: true } } },
+      { caption: "Ventana alrededor de P9: entran nuevos pilotos y salen otros.", standingsWindowPosition: 9, cars: { "Antonio Giovinazzi": { inPits: true } } },
+      { caption: "Ventana alrededor de P12: los supervivientes mantienen su identidad.", standingsWindowPosition: 12, cars: { "Antonio Giovinazzi": { inPits: true } } },
+      { caption: "Vuelta a P1: reaparecen sus pilotos y PIT.", standingsWindowPosition: 1, cars: { "Antonio Giovinazzi": { inPits: true } } },
+    ],
+  },
   {
     id: "standings-functional-position", sessions: ["race"], widget: "standings", label: "Cambio de posición · por piloto",
     watchFor: "Ben Hanley y Filipe Albuquerque intercambian posición. Cada fila se desliza, recibe un acento verde o rojo y muestra temporalmente los puestos ganados o perdidos. Pulsa Reproducir para verlo.",

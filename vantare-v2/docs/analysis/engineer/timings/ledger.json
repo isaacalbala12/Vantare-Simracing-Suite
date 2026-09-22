@@ -1,0 +1,2445 @@
+{
+  "schema_version": 1,
+  "scope": "T0a: inventario documental; no fixtures ejecutables T0b ni implementación.",
+  "task": {
+    "notion": "https://app.notion.com/p/3e3e51695c6581f791a5ff927568f965",
+    "github": 1312,
+    "base": "e41f703c3a015321024766cc5da55d9a6def1bcb"
+  },
+  "reference": {
+    "repository": "https://gitlab.com/mr_belowski/CrewChiefV4",
+    "commit": "4c3865e09a347d4c806c0bc0cd66aae335fbc610",
+    "settings": "predeterminados, confirmados por Isaac",
+    "read_method": "git show <commit>:<path>; bytes de objetos, sin checkout ni assets",
+    "source_hash": "SHA-256 de bytes originales; rangos inclusivos por líneas con terminadores originales"
+  },
+  "evidence": {
+    "kind": "inventario estático",
+    "crewchief_execution": "NOT_RUN",
+    "replay": "NOT_RUN",
+    "online_voice": "NOT_RUN",
+    "offline_fallback": "NOT_RUN",
+    "lmu": "NOT_RUN",
+    "fixture_hash": null,
+    "environment": "No se ejecuta binario CrewChief ni audio; lectura Git y validador Python estándar.",
+    "human_review": "pendiente",
+    "t0b_started": false
+  },
+  "sources": {
+    "timings": {
+      "path": "CrewChiefV4/Events/Timings.cs",
+      "blob": "caf01d9ad60e967ff514dee717a3a118bcf5df44",
+      "sha256": "9baea7e95455444e902ee8e27e9b88794110d32f5481f0125e97e1eeeb9bbb87",
+      "lines": 1461
+    },
+    "abstract": {
+      "path": "CrewChiefV4/Events/AbstractEvent.cs",
+      "blob": "fbee13e34af107bc1570cd162cfafe4dbb96dc0b",
+      "sha256": "55d6dfb08f7c82edacc0fa2d73fdbe2dee96f4244542006dce8be5be192b079b",
+      "lines": 355
+    },
+    "mapper": {
+      "path": "CrewChiefV4/GameState/GameStateMapper.cs",
+      "blob": "b06b77d086b35081dab6c9cd0140389202f69e87",
+      "sha256": "bab6df81baef6311ada65a6e381f1cec21c5bf9719e23a64a64ca01f94f2e5a7",
+      "lines": 444
+    },
+    "state": {
+      "path": "CrewChiefV4/GameState/GameStateData.cs",
+      "blob": "92ba977a10f045e2e2f34e04fd070ce87d04f7f4",
+      "sha256": "6aafc040f3a3209b41382ab43ab104ed0ee8a4037c72f6da0fd4525920640844",
+      "lines": 5288
+    },
+    "rf2": {
+      "path": "CrewChiefV4/RF2/RF2GameStateMapper.cs",
+      "blob": "c0acc5c9878b52ea202e95361a64faae2658eeda",
+      "sha256": "c2af7e87db6a2dcaf90e6720b9d46251da1dcf0e7b9214a5ea62d8d2223ea72a",
+      "lines": 3589
+    },
+    "track": {
+      "path": "CrewChiefV4/TrackData/TrackData.cs",
+      "blob": "ff67335461c176bd32d059354a74df4f39ce9661",
+      "sha256": "8d9d4c362a240beb956c0d0994342891e6c442ac5b4bd2d634994625ccd4dd34",
+      "lines": 1443
+    },
+    "opponents": {
+      "path": "CrewChiefV4/Events/Opponents.cs",
+      "blob": "53483d43fb73276848b830cc061068f5b622d016",
+      "sha256": "610ef10b89b9eb497c7771633545b2a8d4c064c6a31f0272be550b5e32372d18",
+      "lines": 1599
+    },
+    "opponent_messages": {
+      "path": "CrewChiefV4/Events/OpponentMessages.cs",
+      "blob": "fb48a3c9fb18683afcba8d110becac8b171880db",
+      "sha256": "be225beb3564eff95cac7acdfddc41e7a77b23ab0d25801bb980a77122b4562e",
+      "lines": 203
+    },
+    "actions": {
+      "path": "CrewChiefV4/Events/CommonActions.cs",
+      "blob": "5bb90a0236f34d38bafae729b2bb04b34b8fdb1b",
+      "sha256": "3def54a063902fa428afcfa0c7c62854b5fca8849b61e369d27d6258dea34506",
+      "lines": 877
+    },
+    "queue": {
+      "path": "CrewChiefV4/QueuedMessage.cs",
+      "blob": "f282bd915d8fd66478e12fc6a386dc6088bf469e",
+      "sha256": "1a533aebd522bffbc70cc3134673670dd57768caba155377c7b12a9d65d21c2f",
+      "lines": 565
+    },
+    "audio": {
+      "path": "CrewChiefV4/Audio/AudioPlayer.cs",
+      "blob": "e109dbd71e953417dcb77ae4bc62d82f73751ff1",
+      "sha256": "287fbae52afb03456dd8328ea5fae733fa2df348c8dce13c0d08095bdb962d41",
+      "lines": 2454
+    },
+    "moderator": {
+      "path": "CrewChiefV4/Audio/PlaybackModerator.cs",
+      "blob": "c6f1c9ef2487a0138cee37d0ae40391b2fa4eb56",
+      "sha256": "39f6b00e4c9eadd75066b87c084458ab11eff264f3f4f8e8ca5a706cc997f17e",
+      "lines": 503
+    },
+    "sound_metadata": {
+      "path": "CrewChiefV4/Audio/SoundMetadata.cs",
+      "blob": "f6f6fdca65d9d7a1cba4f7e0bd52fd07a94f5563",
+      "sha256": "0320898ca27e7c6099d8257dc7123a045a4640ce77f6b71112169d9abc2a8b13",
+      "lines": 65
+    },
+    "global": {
+      "path": "CrewChiefV4/GameState/GlobalBehaviourSettings.cs",
+      "blob": "a3b15a8cc8d081e7d3259b18754d59ea72133c8a",
+      "sha256": "0696e97f18d1a446f4c0ff0e3873637660f73d8e7cb05fd0404c1b3f6f018ee5",
+      "lines": 247
+    },
+    "time": {
+      "path": "CrewChiefV4/NumberProcessing/TimeSpanWrapper.cs",
+      "blob": "9d027f82ebc837373e8141a66c28834b1446bfef",
+      "sha256": "51dfc264d1711b964f0c90102606f38c5b4d19689db14f0710aeb2495fffe3f1",
+      "lines": 119
+    },
+    "numbers": {
+      "path": "CrewChiefV4/NumberProcessing/NumberReader.cs",
+      "blob": "cef98e5b85141a0c214e3c23210b654f88b16b9f",
+      "sha256": "d1bfa457d9b166bc8bb07abcd3190f4d80f489371934afc1342ccc6a135d7119",
+      "lines": 188
+    },
+    "number_factory": {
+      "path": "CrewChiefV4/NumberProcessing/NumberReaderFactory.cs",
+      "blob": "c467d1c9951bd2346e9cd7436fa4c7c754171bba",
+      "sha256": "b38b817152913b850f149d8b9e2f2d5da44a60e103216dd066acca264f559733",
+      "lines": 141
+    },
+    "en": {
+      "path": "CrewChiefV4/NumberReaderEn.cs",
+      "blob": "501205668a08db1ab4583fb749fc14ae845a2e03",
+      "sha256": "c1e8191cbfdf4a96757cc79a3ab6c3253e3a4bef1d322a9f4b3b43a0a543e106",
+      "lines": 428
+    },
+    "it": {
+      "path": "CrewChiefV4/NumberReaderIt.cs",
+      "blob": "f9b4c2a75b98a012d8de36dc28e74a52ef99e705",
+      "sha256": "7ee5e2e36523c231ef81373cec61fe8a0140b3284d3b932513850daca5e6ada9",
+      "lines": 313
+    },
+    "it2": {
+      "path": "CrewChiefV4/NumberReaderIt2.cs",
+      "blob": "59df94b4ebd16f881b4c6e082e303780e73048a3",
+      "sha256": "fc0fb74bc5c76a0cb8360230ee587f3b3f9660e898a8b784daee98879ec58cbe",
+      "lines": 597
+    },
+    "pt_br": {
+      "path": "CrewChiefV4/NumberReaderPtBr.cs",
+      "blob": "7fb2a8ed913b45eab22401cb57ebe6c03328a041",
+      "sha256": "4153acb4a533c4d1d344d5d10e2cbba134b58e853d9d99eaf735fb1eadc83060",
+      "lines": 448
+    },
+    "settings": {
+      "path": "CrewChiefV4/Properties/Settings.settings",
+      "blob": "13b19f78217111a8d2bbf4d7bbfbd340b68dc530",
+      "sha256": "2ab195c42db5c8a9e053fa67c66e007fbc4de0219b96e4cf3bd218b4ddfae9d8",
+      "lines": 1680
+    },
+    "chief": {
+      "path": "CrewChiefV4/CrewChief.cs",
+      "blob": "29e5ae8d4761add73c6315918bf428bf3dd15c85",
+      "sha256": "0e46a47c46fadd4a7e890d225f52dc655d79ef63fc659e8186dc8afa8ab80ddd",
+      "lines": 1576
+    }
+  },
+  "anchors": {
+    "route": {
+      "source": "chief",
+      "start": 337,
+      "end": 353,
+      "sha256": "267828364e17eba54cfaa40561e2c09527be81b2034d759bdf83debc45afe79e"
+    },
+    "dispatch": {
+      "source": "chief",
+      "start": 1273,
+      "end": 1289,
+      "sha256": "2c58d5853a3f72e6ac136bd5432eb4cde7bcfb1919aef2334a2fe7473259d987"
+    },
+    "timings_settings": {
+      "source": "timings",
+      "start": 55,
+      "end": 120,
+      "sha256": "d7fae6ac78cc3f5e5acecc780958928b2a29c4d32a8e078136e41736101ba476"
+    },
+    "initial": {
+      "source": "timings",
+      "start": 169,
+      "end": 240,
+      "sha256": "ac683639e80480d74b5d696316dd609ff1cb482ec3aa4dae348096ab21d182ac"
+    },
+    "cadence": {
+      "source": "timings",
+      "start": 242,
+      "end": 265,
+      "sha256": "f3c17244250a0ba19c2b769ec6836d57bf8e891e27096da838539a70400344fd"
+    },
+    "end": {
+      "source": "timings",
+      "start": 267,
+      "end": 290,
+      "sha256": "7acd2d6c608cdcdf57296d384239f66416b064ff10a164a6f90766976788f514"
+    },
+    "relations": {
+      "source": "timings",
+      "start": 297,
+      "end": 361,
+      "sha256": "42b61d7152bad00f3ebf489b72b83ac803de8be09b81857f38c8c02c06029b90"
+    },
+    "not_racing": {
+      "source": "timings",
+      "start": 364,
+      "end": 371,
+      "sha256": "9d6fff29317a8d97ff652187a869341069bfc8af05500dace1dc1a3a622f2c91"
+    },
+    "trigger": {
+      "source": "timings",
+      "start": 414,
+      "end": 474,
+      "sha256": "0286033b55250c081655dab4e0b6e06709bb7e1bbc63dbd4f3cf1ea1306e65f0"
+    },
+    "lapmode": {
+      "source": "timings",
+      "start": 476,
+      "end": 520,
+      "sha256": "3ce43973566146cea55d0ff46f544647410494b8d025e4b4c2edc187fd4dd5db"
+    },
+    "samples": {
+      "source": "timings",
+      "start": 582,
+      "end": 641,
+      "sha256": "f7e76ff2ff4b313c74c29c848ef15df9306622d98cbba96252cf260027bf36c8"
+    },
+    "selection": {
+      "source": "timings",
+      "start": 644,
+      "end": 689,
+      "sha256": "7f73afa9db14f9caae3e7720fbee96b04fa4cf1d3183614fe30f86a6f570a5c8"
+    },
+    "lapping": {
+      "source": "timings",
+      "start": 691,
+      "end": 765,
+      "sha256": "d4e356acbaa8aa67493c4170cd5ed6b379b8bf71689dcb91fbbd1643a057150c"
+    },
+    "front": {
+      "source": "timings",
+      "start": 767,
+      "end": 855,
+      "sha256": "d27424b04b82ef8f0c8d990c2712586fdcce9b9cf3be48ea5034cdc72b467be9"
+    },
+    "rear": {
+      "source": "timings",
+      "start": 857,
+      "end": 936,
+      "sha256": "d969c36b912577683cf998c38cf77c909d9cb937189ced51400cc6d476080ff8"
+    },
+    "advice": {
+      "source": "timings",
+      "start": 938,
+      "end": 1005,
+      "sha256": "e582ad2e18c1d52d4c125c47c015dcd3cbd279e8fd3c1b2ceb5009bf0b0af444"
+    },
+    "state_classification": {
+      "source": "timings",
+      "start": 1017,
+      "end": 1083,
+      "sha256": "0890c466b2f2dc060ca9816cf3293aef1ceb81e3fd7aa6abbf98a4448d49846c"
+    },
+    "commands": {
+      "source": "timings",
+      "start": 1114,
+      "end": 1128,
+      "sha256": "68b2c0e5ac7b8cc51dac577b8318e93575369031efa709a0c694982f29e3dd9d"
+    },
+    "status": {
+      "source": "timings",
+      "start": 1138,
+      "end": 1176,
+      "sha256": "1903ea0ac633a93444b9efa63a75adb1d0d2a738cee54196fd2510a8e47c78a9"
+    },
+    "corner_query": {
+      "source": "timings",
+      "start": 1178,
+      "end": 1208,
+      "sha256": "6dc18c08834cbb5adcd0b3b0139f81c315810d185ef3b64914e60a31466dc3b4"
+    },
+    "race_query": {
+      "source": "timings",
+      "start": 1210,
+      "end": 1266,
+      "sha256": "290297a1c35e4ea942553bca98ac928de2a76cb38466a48c656677386cd25c42"
+    },
+    "track_query": {
+      "source": "timings",
+      "start": 1268,
+      "end": 1313,
+      "sha256": "438d49db397f8baf39a65f656a6193c217636921c979cb853dec66230f0dda15"
+    },
+    "leader_query": {
+      "source": "timings",
+      "start": 1315,
+      "end": 1379,
+      "sha256": "bc37599acf1b875b1ba4fabbbf590c214a367b927060792af8f619d4223e2456"
+    },
+    "query_no_data": {
+      "source": "timings",
+      "start": 1382,
+      "end": 1418,
+      "sha256": "5c4b1c9f39b2360042139aad8300c773386d67e60b4901c58ca4e0092e34084b"
+    },
+    "sampling": {
+      "source": "timings",
+      "start": 1424,
+      "end": 1447,
+      "sha256": "1f26b8adce798f2fc3dcc9b93dbcee7fb7f93ac4ff538bd1626ff53ab7703b6b"
+    },
+    "phase": {
+      "source": "abstract",
+      "start": 163,
+      "end": 201,
+      "sha256": "93fbe7fd0d468e9bd678fe5c6ac957857e23fad391a3a758056d6733ba8908ba"
+    },
+    "map_gaps": {
+      "source": "mapper",
+      "start": 136,
+      "end": 214,
+      "sha256": "6135bf1b84e42ab408fc2311790df114f3a4312af57c0d60c219db49d988dac0"
+    },
+    "map_identity": {
+      "source": "mapper",
+      "start": 322,
+      "end": 362,
+      "sha256": "494712977316e04d823772d382e66d5bb05801c28e9af1f991cf4be2432d47ca"
+    },
+    "pit_entry": {
+      "source": "state",
+      "start": 1918,
+      "end": 1922,
+      "sha256": "7ea4349eb11032d72d4b3328bc71598af981eeb6bbb799162540d7cb4e83e182"
+    },
+    "landmark_select": {
+      "source": "state",
+      "start": 2410,
+      "end": 2472,
+      "sha256": "befc4717e7373643637004b4be13614fd11c66d87fcf43e6e1e920113527eb05"
+    },
+    "landmark_history": {
+      "source": "state",
+      "start": 2495,
+      "end": 2615,
+      "sha256": "ea4fa9018df7ae3a8068202fa9eea3a2d4e293629985aebae7962348522c0123"
+    },
+    "landmark_input": {
+      "source": "state",
+      "start": 2617,
+      "end": 2691,
+      "sha256": "07ff0841b1c41fafa572c5a755bdac4bd6450597b8cb14543e18cee24019d425"
+    },
+    "delta_init": {
+      "source": "state",
+      "start": 3437,
+      "end": 3503,
+      "sha256": "eeac3dc2fc314eca02dceba170b0b87279d08193e02373b7edfc945c9cb48103"
+    },
+    "delta_update": {
+      "source": "state",
+      "start": 3505,
+      "end": 3650,
+      "sha256": "3cb9d362c9f7e4f6090fca706b8de0fddeeb98b24e6d69ee250027934d70fede"
+    },
+    "delta_relative": {
+      "source": "state",
+      "start": 3660,
+      "end": 3714,
+      "sha256": "81fd83f3d82596c7e9a4664e4f98a5db49541ecf56a9d3080c598106e16e8275"
+    },
+    "delta_race": {
+      "source": "state",
+      "start": 3717,
+      "end": 3779,
+      "sha256": "2efea3c0cacba31d37f470724256390ee5c36c8fa14170e310f3582288894c60"
+    },
+    "last": {
+      "source": "state",
+      "start": 4635,
+      "end": 4663,
+      "sha256": "13c16c7d0057a9a8033478a440b03143071953462432b8941c176f346bf74dce"
+    },
+    "track_relations": {
+      "source": "state",
+      "start": 4759,
+      "end": 4842,
+      "sha256": "983dbf7554eab17feba01abd9c18bb27fb4f1fc0c2c4d2c00ca68e6ecb027a53"
+    },
+    "rf2_track": {
+      "source": "rf2",
+      "start": 725,
+      "end": 760,
+      "sha256": "9326b5999962fa7c8b20ea5f2b322b9231d5e60cdc1aa3eea532071b238da421"
+    },
+    "rf2_laps": {
+      "source": "rf2",
+      "start": 768,
+      "end": 875,
+      "sha256": "70863e66ff0f764938409f4794f9d1bbbfaf7b57d792e15615c18e83762dc484"
+    },
+    "rf2_flags": {
+      "source": "rf2",
+      "start": 1923,
+      "end": 1940,
+      "sha256": "ceca65be86670b69ee9e6a991d0a92fbbdb3a27440fc73e03c0ca072ab7d7a55"
+    },
+    "rf2_hardparts": {
+      "source": "rf2",
+      "start": 2198,
+      "end": 2208,
+      "sha256": "fc0e7f1c91bf3093fa3aea8e4cafd088dde7ea4328934355abba2e6476e1f98c"
+    },
+    "track_constants": {
+      "source": "track",
+      "start": 872,
+      "end": 884,
+      "sha256": "7d7c9dbb4675c192603f8aceda9a96990edfe379d7afff37dcbd868b7e4674dc"
+    },
+    "track_length": {
+      "source": "track",
+      "start": 1260,
+      "end": 1281,
+      "sha256": "26f38ece343f7c6d99733905ef14dde45355b8b9a0355c448d173d5a245ce4f3"
+    },
+    "gap_points": {
+      "source": "track",
+      "start": 1351,
+      "end": 1417,
+      "sha256": "3c0f503e743795a40187e356bca6ecd7d17e3693f766744479c192d70cc245db"
+    },
+    "identity": {
+      "source": "opponents",
+      "start": 1063,
+      "end": 1154,
+      "sha256": "ed519303b7154e9efba9fe2248cd7e6d8ea162e7adf313449109bbc3b9339864"
+    },
+    "delta_content": {
+      "source": "opponent_messages",
+      "start": 133,
+      "end": 200,
+      "sha256": "5a89e203e498aec084337dc0644bbfc9e8f963f0f07091dc2b9c7b440cf39d43"
+    },
+    "action_commands": {
+      "source": "actions",
+      "start": 112,
+      "end": 158,
+      "sha256": "2e07e483b75686ed78e61bb07acbc051f91e7eab5f4371842cb559b2410db1b9"
+    },
+    "lapmode_control": {
+      "source": "actions",
+      "start": 533,
+      "end": 561,
+      "sha256": "b6fdd0e74312e8a2959b1b687b1c96a9ce285c3a546c1232deee28f5966605a1"
+    },
+    "corner_control": {
+      "source": "actions",
+      "start": 642,
+      "end": 649,
+      "sha256": "e24313a853f9f002006e5cb5c71f4396ba743cc49a8da9452d905e7d7e4bebf2"
+    },
+    "status_composition": {
+      "source": "actions",
+      "start": 763,
+      "end": 792,
+      "sha256": "8613676768dbe51ff811f4acfc74fca01764fe95138aac989607c3f49965f79e"
+    },
+    "queue_create": {
+      "source": "queue",
+      "start": 251,
+      "end": 309,
+      "sha256": "311816fe63be3efb909c24468ccbf8c50decb223b2233fcbbd2f735f45f2c2d6"
+    },
+    "queue_resolve": {
+      "source": "queue",
+      "start": 353,
+      "end": 443,
+      "sha256": "e6b1b88bb4ce58ec836f7dc1f92d4953974f5ea246520bebc5f0a0e3cff25f0a"
+    },
+    "wake": {
+      "source": "audio",
+      "start": 943,
+      "end": 959,
+      "sha256": "4d17959914204c1ecfbefbb2febee8d84b152ed46eeb607b9e0ae934d3233de1"
+    },
+    "quiet": {
+      "source": "audio",
+      "start": 1303,
+      "end": 1315,
+      "sha256": "eb3dafca5ad2a902910aeb29c7d2c5f813fb1bcfa1a39b96ad7001b439fd98c1"
+    },
+    "queue_filter": {
+      "source": "audio",
+      "start": 1338,
+      "end": 1416,
+      "sha256": "91ae1f689cfc9d08207c31ff286d26aa302135bb92499f2f7d31b05a202c9053"
+    },
+    "second_validation": {
+      "source": "audio",
+      "start": 1588,
+      "end": 1613,
+      "sha256": "8dfd5fb4d9c74cdff57610e9007de1c1bf71482ee9d1d3e346739c359667de18"
+    },
+    "regular": {
+      "source": "audio",
+      "start": 1953,
+      "end": 1963,
+      "sha256": "55ece19bea71c1ee9f313bb750f48f7fe12e9b4ed551dfa02fbebc92f03c8830"
+    },
+    "immediate": {
+      "source": "audio",
+      "start": 2076,
+      "end": 2185,
+      "sha256": "43eef91eceaf3e7adcf867f34f7fdd7ad79d8d18a244b65d6e1e6f43901007e1"
+    },
+    "admission": {
+      "source": "audio",
+      "start": 2202,
+      "end": 2250,
+      "sha256": "3d17ed24725aa8c1d38d9c1a8db37d562cb44329520cf9b5198bb82d8e237c4a"
+    },
+    "name": {
+      "source": "audio",
+      "start": 2426,
+      "end": 2438,
+      "sha256": "d281e84cdab9b9018bd1852213c6b5f8177469701c01c41c22e4dcb980b96279"
+    },
+    "audio_options": {
+      "source": "audio",
+      "start": 25,
+      "end": 106,
+      "sha256": "8dfd210844a4020024cfdcc8ec22cecc1787ae7d43a6434358231cbe24f3e293"
+    },
+    "audio_backend": {
+      "source": "audio",
+      "start": 803,
+      "end": 818,
+      "sha256": "f0b250e95a8ca2bb39fb02cbeecd4deec4e1acc3e4bdbdcb8fe4b328f7533bce"
+    },
+    "language": {
+      "source": "audio",
+      "start": 898,
+      "end": 908,
+      "sha256": "cf65e1a715d0ac23ec4fa9364a6da5dee0f65a6a60ee419c1176939b71011ff1"
+    },
+    "moderator_options": {
+      "source": "moderator",
+      "start": 47,
+      "end": 100,
+      "sha256": "b693049a660faa04268e45165fa0be286e2f1a17f355d8612d9d5ef8fba37b3a"
+    },
+    "verbosity": {
+      "source": "moderator",
+      "start": 103,
+      "end": 167,
+      "sha256": "42aa7d4221a082e7f079cced54e18b1180346aeb16ad75abb8de60f0c0dc8630"
+    },
+    "moderator_sound": {
+      "source": "moderator",
+      "start": 283,
+      "end": 353,
+      "sha256": "41e9c668b2ddbe9651cec1a155fd518a255b6ff41a666b8e31596058a889ee5c"
+    },
+    "moderator_queue": {
+      "source": "moderator",
+      "start": 356,
+      "end": 418,
+      "sha256": "1e7f5682c15655dab1f9246e9120d1178d54dd667922019e18f0c0a89acf570a"
+    },
+    "priority": {
+      "source": "sound_metadata",
+      "start": 9,
+      "end": 63,
+      "sha256": "9dc02b2262d6d1209e5c316226c2f96a60e867155a838589c95f0c1afac458b0"
+    },
+    "global_options": {
+      "source": "global",
+      "start": 40,
+      "end": 61,
+      "sha256": "9cf360a693da95e88fc6632aaae76b9162fdb7824c4c6beb856543f48207675f"
+    },
+    "precision_class": {
+      "source": "global",
+      "start": 105,
+      "end": 117,
+      "sha256": "f8921609d90327bab8052a9617b09b576cb9657e71918c7df68c4b2fe1a8fbd1"
+    },
+    "oval": {
+      "source": "global",
+      "start": 179,
+      "end": 205,
+      "sha256": "596df04ddd1fe9d9b4852f298dea11488452d6d6e79d1f3b37f6556e16df005b"
+    },
+    "precision": {
+      "source": "time",
+      "start": 12,
+      "end": 77,
+      "sha256": "8b7cc905cd31a94e3a0c84bbf2facc6233d58d45ec84a446458b9d1990553314"
+    },
+    "rounding": {
+      "source": "numbers",
+      "start": 85,
+      "end": 169,
+      "sha256": "2ba17e410485d0761328afd2d7c3ba01247b1555fd51e40f109f5f40aae2a5e8"
+    },
+    "reader_selection": {
+      "source": "number_factory",
+      "start": 21,
+      "end": 49,
+      "sha256": "649d794bddc88c5b5c9663cc2c76bd96faa9e683332c8e97b1ba469bf8394ee7"
+    },
+    "reader_en": {
+      "source": "en",
+      "start": 123,
+      "end": 257,
+      "sha256": "6696d8a74069b60b8a6a409c0d2871d5d56e905466f95c64c20456b20da266c2"
+    },
+    "reader_it": {
+      "source": "it",
+      "start": 133,
+      "end": 239,
+      "sha256": "311bcbe334a8efe3fb97ae72b35c2bfa0736e3928efe99a62a84a801e0093100"
+    },
+    "reader_it2": {
+      "source": "it2",
+      "start": 151,
+      "end": 218,
+      "sha256": "5ba0d195eba49a2477c151742cfcb1fd1bde313106ca087fbcb7dc2a9958c55d"
+    },
+    "reader_pt": {
+      "source": "pt_br",
+      "start": 108,
+      "end": 156,
+      "sha256": "93caeb699ebe7a07744e9a3af5492eaeae42105ece74f25a59a6792de814b652"
+    },
+    "setting:revert_to_legacy_version_of_refactored_code": {
+      "source": "settings",
+      "start": 1574,
+      "end": 1576,
+      "sha256": "df01156af3b40a04039b94b48582546699cae4799ecc5190c5b5caaac94b13ab"
+    },
+    "setting:frequency_of_gap_ahead_reports": {
+      "source": "settings",
+      "start": 617,
+      "end": 619,
+      "sha256": "b47f06345c3d8280b0da93286ee9c79bb9c95dc9c4175ee82e3cce82b61ff16c"
+    },
+    "setting:frequency_of_gap_behind_reports": {
+      "source": "settings",
+      "start": 623,
+      "end": 625,
+      "sha256": "78d09ca605ca1ddb6d79401593436f8668dd07f4d3f4a8e2488c1310e57649e5"
+    },
+    "setting:frequency_of_gap_behind_on_track_reports": {
+      "source": "settings",
+      "start": 620,
+      "end": 622,
+      "sha256": "10032a381e0f7dd8e22a3833e80079332756a09c1043b4ab647bdcbbf8db11ab"
+    },
+    "setting:enable_gap_messages": {
+      "source": "settings",
+      "start": 320,
+      "end": 322,
+      "sha256": "ac2978d0f373dccdd56de76f9153a8a03ef3108761dbf287a8fd12ad56767f83"
+    },
+    "setting:gap_message_randomness": {
+      "source": "settings",
+      "start": 659,
+      "end": 661,
+      "sha256": "7bcf36b704d40464cc8979f31b8efbab44007fd010b636d0347d2c387a3463f2"
+    },
+    "setting:just_the_facts": {
+      "source": "settings",
+      "start": 788,
+      "end": 790,
+      "sha256": "9d0eba9bae9cb66b4f6b80638b07e3f0f5a90ef7bb3365289d4515274f5d34a1"
+    },
+    "setting:always_report_time_in_hundredths": {
+      "source": "settings",
+      "start": 71,
+      "end": 73,
+      "sha256": "b9c215df16df22b6413370e0e7c02be729091945bdc53d4b8060c1f35ae4384b"
+    },
+    "setting:realistic_mode": {
+      "source": "settings",
+      "start": 1178,
+      "end": 1180,
+      "sha256": "c9060e071572715e61520ef7098604cc128d2cabc05f659a879e286fe731037a"
+    },
+    "setting:speak_only_when_spoken_to": {
+      "source": "settings",
+      "start": 1277,
+      "end": 1279,
+      "sha256": "bccac26039d899b8588d58122cf7b157abd99f9a1859ba3ee322dbf6f8e5f00c"
+    },
+    "setting:force_single_class": {
+      "source": "settings",
+      "start": 602,
+      "end": 604,
+      "sha256": "df9f636a8bf76e65b085e707fd19c264028fb66f5fdb6fcb08cf7770446f8b71"
+    },
+    "setting:enable_driver_names": {
+      "source": "settings",
+      "start": 302,
+      "end": 304,
+      "sha256": "61ba1e13ae4a041d760dcf0930fd0726dce13dbed191b073a130dff60ca058f4"
+    },
+    "setting:tts_setting_listprop": {
+      "source": "settings",
+      "start": 1463,
+      "end": 1465,
+      "sha256": "5468973f4865129779b08acb9396f05ae7200914907e9b99f2947943e8482be7"
+    },
+    "setting:opponents_number_after_name": {
+      "source": "settings",
+      "start": 1022,
+      "end": 1024,
+      "sha256": "937b44e544c0d6840d119ddca1329fb6cbc05881f13f4523731c73453a3a8004"
+    },
+    "setting:enable_delayed_messages_on_hardparts": {
+      "source": "settings",
+      "start": 296,
+      "end": 298,
+      "sha256": "f1f14149ef4ef392b0fe15ef5c35e864d9613edcd775a9ed69289118c4e7be0f"
+    },
+    "setting:allow_important_messages_even_when_silenced": {
+      "source": "settings",
+      "start": 68,
+      "end": 70,
+      "sha256": "929b9769149dde94d2befa6ecf73c524b20d14b418f7e4f93847d71f16e7748d"
+    },
+    "setting:pause_between_messages": {
+      "source": "settings",
+      "start": 1034,
+      "end": 1036,
+      "sha256": "f37a186862f51dd4c1f1500f9d6d90c21c1bacfb366a6d438c8fcaa8fdfebfa9"
+    },
+    "setting:update_interval": {
+      "source": "settings",
+      "start": 1481,
+      "end": 1483,
+      "sha256": "13a2893f1a6d430bacc64ba9d52b160ab8cde94f6b39bf43dfbea35488ddeb90"
+    },
+    "setting:priortise_messages_depending_on_situation": {
+      "source": "settings",
+      "start": 1139,
+      "end": 1141,
+      "sha256": "02fdef3dae80be7d756e6635bf93d33a191e0ac175d42364e1b44fd535454105"
+    },
+    "setting:reject_message_when_talking": {
+      "source": "settings",
+      "start": 1184,
+      "end": 1186,
+      "sha256": "db2f6a7dc1b5b46c76e16398bf6acfbd89f517dfeb433895be6956e0f6d07734"
+    },
+    "setting:sre_respond_while_channel_still_open": {
+      "source": "settings",
+      "start": 1319,
+      "end": 1321,
+      "sha256": "5fa6f9c4961e360b42b5606fa9b0922f060cf7fb79f78a0db43b6c8fa3d7f375"
+    },
+    "setting:pace_notes_mute_all_messages": {
+      "source": "settings",
+      "start": 1028,
+      "end": 1030,
+      "sha256": "c3c728cc1267d5b26ee6fe12139a2b1507eaf82e2808319a4350398b610d736b"
+    },
+    "setting:interrupt_setting_listprop": {
+      "source": "settings",
+      "start": 734,
+      "end": 736,
+      "sha256": "8c8ffee3bf0851933b33e289c93a9e32cb300a34ed0910cd0051b525031c250a"
+    },
+    "setting:insert_beep_out_between_spotter_and_chief": {
+      "source": "settings",
+      "start": 731,
+      "end": 733,
+      "sha256": "d2584c054279252950ef93cb70a8ba8531dad865735ce7564fe4bd5a9e3ca7e2"
+    },
+    "setting:insert_beep_in_between_spotter_and_chief": {
+      "source": "settings",
+      "start": 728,
+      "end": 730,
+      "sha256": "884c0489d9c16b31de839a3a3d11fba70b00a7f5874f20dc4a6f4e273a5130e2"
+    },
+    "setting:enable_radio_beeps": {
+      "source": "settings",
+      "start": 407,
+      "end": 409,
+      "sha256": "023a4747699a3ee1892b189b7b780faf1547b18622212db1f6ff938408d36cad"
+    },
+    "setting:use_alternate_beeps": {
+      "source": "settings",
+      "start": 1493,
+      "end": 1495,
+      "sha256": "278b754d9bb3eeabc6e1000d3451151909e58659949dbcb34170368a1b5a6bcd"
+    },
+    "setting:use_naudio": {
+      "source": "settings",
+      "start": 1523,
+      "end": 1525,
+      "sha256": "bee136c452baf5d588fcd80d35feb98d84c237882923e738a5edea68237732e2"
+    },
+    "setting:naudio_output_interface_listprop": {
+      "source": "settings",
+      "start": 1004,
+      "end": 1006,
+      "sha256": "481f882dda34a12c0029df9db47f8bc1179c334c26e6e73b316e160c26df1472"
+    },
+    "setting:chief_name": {
+      "source": "settings",
+      "start": 137,
+      "end": 139,
+      "sha256": "6d4de3806ed488b0173d46ae5030ecb1a5a496740c8c3e214552840fbafd578e"
+    },
+    "setting:spotter_name": {
+      "source": "settings",
+      "start": 1298,
+      "end": 1300,
+      "sha256": "fc0ab9ce99ef30f4165e2964c22d2b29e69ad2812face2a564f38399aec9ca81"
+    },
+    "setting:cache_sounds": {
+      "source": "settings",
+      "start": 122,
+      "end": 124,
+      "sha256": "8b89fc68b816a48a8476a5f44e1614486c878eb30d5f343e4bd1b45662ca47c7"
+    },
+    "setting:enable_breath_in": {
+      "source": "settings",
+      "start": 272,
+      "end": 274,
+      "sha256": "ee807c841b2e44472f197e2f596550a5e0f82c649a7a5af2ab995d32d2efa1e1"
+    },
+    "setting:enable_lmu_pit_lane_approach_heuristics": {
+      "source": "settings",
+      "start": 347,
+      "end": 349,
+      "sha256": "f08e541b79680716d2d51d01e980bad635f1a0be3aa37a69e8f9cbc4ebc18a41"
+    },
+    "setting:enable_lmu_pit_state_during_fcy": {
+      "source": "settings",
+      "start": 350,
+      "end": 352,
+      "sha256": "04b97ba9ba1ab7a31f8df20c42048d6b0296130cd92cfc9b6fa878383220dce5"
+    },
+    "setting:auto_is_oval": {
+      "source": "settings",
+      "start": 1667,
+      "end": 1669,
+      "sha256": "f3705091289b533f84996a758add019844d254686745593fd2343cb9c47c3959"
+    },
+    "queue_exception": {
+      "source": "audio",
+      "start": 1254,
+      "end": 1268,
+      "sha256": "e7a011d324f3f6f99d5890ffb9551842ae6b5d3ac948f687fe5fca04eabab4e6"
+    },
+    "hardparts_control": {
+      "source": "actions",
+      "start": 493,
+      "end": 531,
+      "sha256": "b6404307f59f22d853f54117bc958c41344137f933038a58dc7eab7b5d67e4db"
+    },
+    "rf2_landmark": {
+      "source": "rf2",
+      "start": 1890,
+      "end": 1901,
+      "sha256": "4760812a99563af15a434486c8a4445373d11bf00bd990f9d48007d59ed9600d"
+    },
+    "event_exception": {
+      "source": "chief",
+      "start": 1489,
+      "end": 1528,
+      "sha256": "9fda3e790b10c1241eee9c801fe53785b399de8f543a0568c709783daf2e5eb7"
+    },
+    "fragment_availability": {
+      "source": "queue",
+      "start": 445,
+      "end": 498,
+      "sha256": "71619bc7a3e7f76aba96627241ddef85933888fa036fa32633b94bca0af4b8f5"
+    }
+  },
+  "settings": [
+    {
+      "key": "revert_to_legacy_version_of_refactored_code",
+      "type": "System.Boolean",
+      "default": "False",
+      "category": "ruta",
+      "effect": "false elige Timings actual; true selecciona legacy y exige otro ledger.",
+      "source": "setting:revert_to_legacy_version_of_refactored_code",
+      "uses": [
+        {
+          "source": "chief",
+          "line": 342
+        }
+      ]
+    },
+    {
+      "key": "frequency_of_gap_ahead_reports",
+      "type": "System.Int32",
+      "default": "7",
+      "category": "cadencia",
+      "effect": "0 deshabilita delante; positivo usa 11-clamp(f,1,10). Default 7: espera inicial 4 y sorteos [4,9).",
+      "source": "setting:frequency_of_gap_ahead_reports",
+      "uses": [
+        {
+          "source": "timings",
+          "line": 55
+        }
+      ]
+    },
+    {
+      "key": "frequency_of_gap_behind_reports",
+      "type": "System.Int32",
+      "default": "4",
+      "category": "cadencia",
+      "effect": "0 deshabilita detrás; default 4: inicial 7 y sorteos [7,12).",
+      "source": "setting:frequency_of_gap_behind_reports",
+      "uses": [
+        {
+          "source": "timings",
+          "line": 56
+        }
+      ]
+    },
+    {
+      "key": "frequency_of_gap_behind_on_track_reports",
+      "type": "System.Int32",
+      "default": "5",
+      "category": "cadencia",
+      "effect": "0 deshabilita candidato detrás en pista; default 5: inicial 6 y sorteos [6,11).",
+      "source": "setting:frequency_of_gap_behind_on_track_reports",
+      "uses": [
+        {
+          "source": "timings",
+          "line": 57
+        }
+      ]
+    },
+    {
+      "key": "enable_gap_messages",
+      "type": "System.Boolean",
+      "default": "True",
+      "category": "silencio",
+      "effect": "false corta gaps automáticos y modo por vuelta; no corta lectura de curvas previa ni consultas.",
+      "source": "setting:enable_gap_messages",
+      "uses": [
+        {
+          "source": "timings",
+          "line": 104
+        }
+      ]
+    },
+    {
+      "key": "gap_message_randomness",
+      "type": "System.Int32",
+      "default": "5",
+      "category": "cadencia",
+      "effect": "Se limita a 1..10; suma al mínimo para un máximo exclusivo. Default 5, no segundos.",
+      "source": "setting:gap_message_randomness",
+      "uses": [
+        {
+          "source": "timings",
+          "line": 105
+        }
+      ]
+    },
+    {
+      "key": "just_the_facts",
+      "type": "System.Boolean",
+      "default": "False",
+      "category": "selección",
+      "effect": "true suprime candidatos CLOSE de carrera y CLOSE del candidato cercano en pista; DECREASING conserva su elegibilidad.",
+      "source": "setting:just_the_facts",
+      "uses": [
+        {
+          "source": "global",
+          "line": 48
+        },
+        {
+          "source": "global",
+          "line": 102
+        }
+      ]
+    },
+    {
+      "key": "always_report_time_in_hundredths",
+      "type": "System.Boolean",
+      "default": "False",
+      "category": "precisión",
+      "effect": "OR con timesInHundredths de la clase; no fuerza centésimas en gaps >=0,5 s no ovales.",
+      "source": "setting:always_report_time_in_hundredths",
+      "uses": [
+        {
+          "source": "global",
+          "line": 41
+        },
+        {
+          "source": "global",
+          "line": 85
+        }
+      ]
+    },
+    {
+      "key": "realistic_mode",
+      "type": "System.Boolean",
+      "default": "False",
+      "category": "silencio",
+      "effect": "Puede importar enabledMessageTypes de la clase; NONE impide la cola regular. No condiciona el OR useHundredths en el código actual.",
+      "source": "setting:realistic_mode",
+      "uses": [
+        {
+          "source": "global",
+          "line": 40
+        },
+        {
+          "source": "global",
+          "line": 84
+        }
+      ]
+    },
+    {
+      "key": "speak_only_when_spoken_to",
+      "type": "System.Boolean",
+      "default": "False",
+      "category": "silencio",
+      "effect": "Admisión limitada a VOICE_COMMAND_RESPONSE y SPOTTER; playEvenWhenSilenced no evita este filtro.",
+      "source": "setting:speak_only_when_spoken_to",
+      "uses": [
+        {
+          "source": "global",
+          "line": 47
+        },
+        {
+          "source": "global",
+          "line": 101
+        }
+      ]
+    },
+    {
+      "key": "force_single_class",
+      "type": "System.Boolean",
+      "default": "False",
+      "category": "relaciones",
+      "effect": "Cambia el agrupamiento y qué gaps de clase/cantidad de coches se usan.",
+      "source": "setting:force_single_class",
+      "uses": [
+        {
+          "source": "chief",
+          "line": 331
+        }
+      ]
+    },
+    {
+      "key": "enable_driver_names",
+      "type": "System.Boolean",
+      "default": "True",
+      "category": "identidad",
+      "effect": "Desactivado hace que MkOpponentShort recurra a número y luego posición para estas llamadas.",
+      "source": "setting:enable_driver_names",
+      "uses": [
+        {
+          "source": "chief",
+          "line": 327
+        }
+      ]
+    },
+    {
+      "key": "tts_setting_listprop",
+      "type": "System.String",
+      "default": "NEVER",
+      "category": "identidad",
+      "effect": "NEVER por defecto; ANY_TIME y ONLY_WHEN_NECESSARY requieren voz apta. Cambia si el nombre es pronunciable.",
+      "source": "setting:tts_setting_listprop",
+      "uses": [
+        {
+          "source": "audio",
+          "line": 803
+        }
+      ]
+    },
+    {
+      "key": "opponents_number_after_name",
+      "type": "System.Boolean",
+      "default": "True",
+      "category": "identidad",
+      "effect": "No añade número a la variante Timings que pasa requestNumber=false; inventariada como opción compartida condicional.",
+      "source": "setting:opponents_number_after_name",
+      "uses": [
+        {
+          "source": "opponents",
+          "line": 59
+        }
+      ]
+    },
+    {
+      "key": "enable_delayed_messages_on_hardparts",
+      "type": "System.Boolean",
+      "default": "False",
+      "category": "cola",
+      "effect": "false por defecto. true retrasa despertar regular si velocidad>5, Green/Checkered, fuera de formación manual y en hard part.",
+      "source": "setting:enable_delayed_messages_on_hardparts",
+      "uses": [
+        {
+          "source": "audio",
+          "line": 32
+        }
+      ]
+    },
+    {
+      "key": "allow_important_messages_even_when_silenced",
+      "type": "System.Boolean",
+      "default": "False",
+      "category": "cola",
+      "effect": "false deja excepciones SPOTTER/VOICE_COMMAND_RESPONSE; true permite inmediatos. Ambos respetan playEvenWhenSilenced.",
+      "source": "setting:allow_important_messages_even_when_silenced",
+      "uses": [
+        {
+          "source": "audio",
+          "line": 33
+        }
+      ]
+    },
+    {
+      "key": "pause_between_messages",
+      "type": "System.Single",
+      "default": "0",
+      "category": "cola",
+      "effect": "Segundos entre mensajes regulares después del primero; default 0. Afecta ventana, no contador por sector.",
+      "source": "setting:pause_between_messages",
+      "uses": [
+        {
+          "source": "audio",
+          "line": 79
+        }
+      ]
+    },
+    {
+      "key": "update_interval",
+      "type": "System.Int32",
+      "default": "100",
+      "category": "transporte",
+      "effect": "Tick configurado 100 ms. QueuedMessage dueTime=0 con secondsDelay=0; el comentario de espera de un tick no corresponde al constructor actual.",
+      "source": "setting:update_interval",
+      "uses": [
+        {
+          "source": "queue",
+          "line": 192
+        },
+        {
+          "source": "chief",
+          "line": 328
+        }
+      ]
+    },
+    {
+      "key": "priortise_messages_depending_on_situation",
+      "type": "System.Boolean",
+      "default": "False",
+      "category": "cola",
+      "effect": "Ortografía exacta de la clave. true actualiza verbosidad por tráfico/final: mínimos FULL0/MED5/LOW10/SILENT20; prioridad5 no supera LOW.",
+      "source": "setting:priortise_messages_depending_on_situation",
+      "uses": [
+        {
+          "source": "moderator",
+          "line": 51
+        }
+      ]
+    },
+    {
+      "key": "reject_message_when_talking",
+      "type": "System.Boolean",
+      "default": "False",
+      "category": "cola",
+      "effect": "Bloquea sonidos durante reconocimiento/hold según modo de voz; puede ocurrir después de resolver el mensaje.",
+      "source": "setting:reject_message_when_talking",
+      "uses": [
+        {
+          "source": "moderator",
+          "line": 50
+        }
+      ]
+    },
+    {
+      "key": "sre_respond_while_channel_still_open",
+      "type": "System.Boolean",
+      "default": "False",
+      "category": "cola",
+      "effect": "Modifica la excepción al bloqueo por voz; fijar estado listening/hold en el futuro replay.",
+      "source": "setting:sre_respond_while_channel_still_open",
+      "uses": [
+        {
+          "source": "moderator",
+          "line": 52
+        }
+      ]
+    },
+    {
+      "key": "pace_notes_mute_all_messages",
+      "type": "System.Boolean",
+      "default": "True",
+      "category": "cola",
+      "effect": "Cuando hay pacenotes en reproducción/grabación, impide encolar otros mensajes regulares.",
+      "source": "setting:pace_notes_mute_all_messages",
+      "uses": [
+        {
+          "source": "moderator",
+          "line": 53
+        }
+      ]
+    },
+    {
+      "key": "interrupt_setting_listprop",
+      "type": "System.String",
+      "default": "SPOTTER_MESSAGES",
+      "category": "interrupción",
+      "effect": "NEVER, SPOTTER_MESSAGES, CRITICAL_MESSAGES o IMPORTANT_MESSAGES; umbral SoundType, distinto de prioridad numérica.",
+      "source": "setting:interrupt_setting_listprop",
+      "uses": [
+        {
+          "source": "moderator",
+          "line": 81
+        }
+      ]
+    },
+    {
+      "key": "insert_beep_out_between_spotter_and_chief",
+      "type": "System.Boolean",
+      "default": "False",
+      "category": "audio",
+      "effect": "Inserción de beep entre voces distintas; duración depende del pack, no medida aquí.",
+      "source": "setting:insert_beep_out_between_spotter_and_chief",
+      "uses": [
+        {
+          "source": "moderator",
+          "line": 48
+        }
+      ]
+    },
+    {
+      "key": "insert_beep_in_between_spotter_and_chief",
+      "type": "System.Boolean",
+      "default": "True",
+      "category": "audio",
+      "effect": "Inserción de beep al alternar voces; requiere registrar pack y voces para acústica.",
+      "source": "setting:insert_beep_in_between_spotter_and_chief",
+      "uses": [
+        {
+          "source": "moderator",
+          "line": 49
+        }
+      ]
+    },
+    {
+      "key": "enable_radio_beeps",
+      "type": "System.Boolean",
+      "default": "True",
+      "category": "audio",
+      "effect": "Afecta apertura/cierre audible, no se fija latencia física desde este valor.",
+      "source": "setting:enable_radio_beeps",
+      "uses": [
+        {
+          "source": "audio",
+          "line": 80
+        }
+      ]
+    },
+    {
+      "key": "use_alternate_beeps",
+      "type": "System.Boolean",
+      "default": "True",
+      "category": "audio",
+      "effect": "Variante de beep del Spotter y del Engineer según pack.",
+      "source": "setting:use_alternate_beeps",
+      "uses": [
+        {
+          "source": "audio",
+          "line": 78
+        }
+      ]
+    },
+    {
+      "key": "use_naudio",
+      "type": "System.Boolean",
+      "default": "True",
+      "category": "audio",
+      "effect": "Backend NAudio por defecto; variar exige volver a comprobar interrupción y latencia.",
+      "source": "setting:use_naudio",
+      "uses": [
+        {
+          "source": "audio",
+          "line": 30
+        },
+        {
+          "source": "audio",
+          "line": 306
+        },
+        {
+          "source": "audio",
+          "line": 807
+        },
+        {
+          "source": "audio",
+          "line": 888
+        },
+        {
+          "source": "audio",
+          "line": 985
+        },
+        {
+          "source": "audio",
+          "line": 2367
+        }
+      ]
+    },
+    {
+      "key": "naudio_output_interface_listprop",
+      "type": "System.String",
+      "default": "WAVEOUT",
+      "category": "audio",
+      "effect": "WAVEOUT por defecto. Inventario de transporte, sin medida de audio real.",
+      "source": "setting:naudio_output_interface_listprop",
+      "uses": [
+        {
+          "source": "audio",
+          "line": 809
+        }
+      ]
+    },
+    {
+      "key": "chief_name",
+      "type": "System.String",
+      "default": "Jim (default)",
+      "category": "audio",
+      "effect": "Identidad del pack de Engineer; la versión instalada se desconoce en este inventario de fuente.",
+      "source": "setting:chief_name",
+      "uses": [
+        {
+          "source": "audio",
+          "line": 728
+        },
+        {
+          "source": "moderator",
+          "line": 47
+        }
+      ]
+    },
+    {
+      "key": "spotter_name",
+      "type": "System.String",
+      "default": "Jim (default)",
+      "category": "audio",
+      "effect": "Identidad de Spotter influye en beeps y alternancia de voz.",
+      "source": "setting:spotter_name",
+      "uses": [
+        {
+          "source": "moderator",
+          "line": 47
+        }
+      ]
+    },
+    {
+      "key": "cache_sounds",
+      "type": "System.Boolean",
+      "default": "True",
+      "category": "audio",
+      "effect": "Cache del pack; no permite deducir tiempo al primer sonido.",
+      "source": "setting:cache_sounds",
+      "uses": [
+        {
+          "source": "audio",
+          "line": 106
+        }
+      ]
+    },
+    {
+      "key": "enable_breath_in",
+      "type": "System.Boolean",
+      "default": "True",
+      "category": "audio",
+      "effect": "Inserción condicionada a asset disponible; registrar en futura sesión acústica.",
+      "source": "setting:enable_breath_in",
+      "uses": [
+        {
+          "source": "global",
+          "line": 66
+        },
+        {
+          "source": "global",
+          "line": 95
+        }
+      ]
+    },
+    {
+      "key": "enable_lmu_pit_lane_approach_heuristics",
+      "type": "System.Boolean",
+      "default": "False",
+      "category": "mapping",
+      "effect": "Candidato de mapping de aproximación a pits; no sustituye InLap del rival ni intención confirmada del piloto.",
+      "source": "setting:enable_lmu_pit_lane_approach_heuristics",
+      "uses": [
+        {
+          "source": "rf2",
+          "line": 169
+        }
+      ]
+    },
+    {
+      "key": "enable_lmu_pit_state_during_fcy",
+      "type": "System.Boolean",
+      "default": "False",
+      "category": "mapping",
+      "effect": "Selecciona detalle de fases de pits en FCY; no equivale a banderas Vantare verificadas.",
+      "source": "setting:enable_lmu_pit_state_during_fcy",
+      "uses": [
+        {
+          "source": "rf2",
+          "line": 170
+        }
+      ]
+    },
+    {
+      "key": "auto_is_oval",
+      "type": "System.Boolean",
+      "default": "False",
+      "category": "pista",
+      "effect": "Heurística de definición de pista; el perfil LMU debe fijar isOval en su catálogo, sin confiar en un comentario.",
+      "source": "setting:auto_is_oval",
+      "uses": [
+        {
+          "source": "track",
+          "line": 709
+        }
+      ]
+    }
+  ],
+  "profile": {
+    "game": "LMU; las ramas de reputación iRacing/R3E se excluyen con motivo, no se importan sus ajustes ni assets.",
+    "car_class": "Entrada por fijar en T0b: identidad, timesInHundredths y enabledMessageTypes. No se inventa una clase LMU por defecto.",
+    "track": "Entrada por fijar en T0b: longitud, sectores, isOval=false para perfil LMU no oval, gapPoints derivados y hardParts aprendidos. Catálogo propio requerido.",
+    "audio": "Default de configuración inventariado; pack/versión/locale instalado/voz y backend efectivo no observados. No hay PASS acústico.",
+    "randomness": "Utilities.random compartido por cadencia, identidad y realización EN. T0b fijará semilla y secuencia por propósito; inventario no lo ejecuta.",
+    "runtime_defaults": [
+      {
+        "name": "readOpponentDeltasForEveryLap",
+        "default": false,
+        "source": "chief",
+        "line": 50,
+        "options": "TELL_ME_THE_GAPS / DONT_TELL_ME_THE_GAPS y toggle cambian modo."
+      },
+      {
+        "name": "keepQuiet",
+        "default": false,
+        "source": "audio",
+        "line": 89,
+        "options": "KEEP_QUIET y salida de quiet; no equivale a speakOnlyWhenSpokenTo."
+      },
+      {
+        "name": "mute",
+        "default": false,
+        "source": "audio",
+        "line": 28,
+        "options": "Control total y reproducción de trazas; no se elude por prioridad."
+      },
+      {
+        "name": "preferGapReportsMidLap",
+        "default": true,
+        "source": "timings",
+        "line": 63,
+        "options": "Constante interna; se aplica solo sin gapPoints."
+      }
+    ],
+    "option_scope": "Se incluyen ajustes de decisión, mapping relevante, realización e interacción de cola/voz de las dependencias citadas. Los catálogos, disponibilidad de assets, control de sesión/voz y hardware son entradas explícitas; no se afirma inventario de toda la aplicación CrewChief."
+  },
+  "delivery_profiles": {
+    "normal": {
+      "cc_priority": 5,
+      "cc_ttl_ms": 5000,
+      "cc_expiry": "expiry<now",
+      "cc_resolution": "Una vez, A5",
+      "vantare": "P3; P0 precedencia; revalidación al started; cancelación previa sin consumo."
+    },
+    "lapmode": {
+      "cc_priority": 10,
+      "cc_ttl_ms": 5000,
+      "cc_quiet_exception": true,
+      "cc_resolution": "Al trigger, sin callback",
+      "vantare": "P2; conserva P0 y filtros; vigencia al started."
+    },
+    "corners": {
+      "cc_priority": 10,
+      "cc_ttl_ms": 2000,
+      "cc_resolution": "Al midpoint, sin callback",
+      "vantare": "P2; no esperar LLM; P0 precedencia."
+    },
+    "query": {
+      "cc_priority": 5,
+      "cc_ttl_ms": 0,
+      "cc_ttl_meaning": "sin expiración en fuente",
+      "cc_type": "VOICE_COMMAND_RESPONSE en cola inmediata",
+      "vantare": "P2; vigencia de consulta debe fijarse explícitamente, no heredar TTL0 como permiso ilimitado."
+    },
+    "datos": {
+      "output": "Sin voz propia; alimenta decisiones."
+    },
+    "presentación": {
+      "output": "Conserva hechos y unidades, realización acústica pendiente."
+    }
+  },
+  "signal_policy": "Nombres semánticos requeridos, no una certificación de mapping. T0b clasificará observado/derivado/catálogo/ausente con calidad y freshness; missing no se transforma en false/green/0.",
+  "voice_contract": "Todas las reglas heredan NOT_RUN online/offline/LMU. LLM no decide hechos/cadencia/prioridad; fallback propio conserva contenido y TTL. Nombre literal o fallback funcional se fija con pack/identidad en T0b, sin copiar frases.",
+  "rules": [
+    {
+      "id": "TIM-REL",
+      "title": "Relaciones de carrera y de pista",
+      "status": "inventariado",
+      "sources": [
+        "relations",
+        "track_relations",
+        "map_gaps",
+        "map_identity",
+        "delta_init",
+        "delta_update",
+        "delta_relative",
+        "delta_race",
+        "pit_entry"
+      ],
+      "settings": [
+        "force_single_class"
+      ],
+      "signals": [
+        "identidad",
+        "clase",
+        "posición",
+        "distancia",
+        "vueltas",
+        "velocidad",
+        "inlap",
+        "delta_histórico"
+      ],
+      "behavior": [
+        "En carrera, rival inmediatamente delante/detrás de clase. En consultas de pista, búsqueda sin clase; candidato automático detrás en pista restringido a la clase del piloto y excluye al rival detrás en carrera.",
+        "En pista se escoge distancia hacia delante/detrás con envoltura de meta; posiciones exactamente coincidentes no satisfacen las comparaciones estrictas. Se comprueba el signo temporal, no basta el orden espacial.",
+        "GetRelativeDelta compara los tiempos de paso de ambos puntos y elige el de menor magnitud (empate conserva el primero); ajusta lapDifference al envolver. Delta de carrera y relativo no son intercambiables.",
+        "LMU monoclase, misma vuelta: delante puede usar gap del juego; detrás se deriva de pasos. Multiclase o diferencia de vueltas usa derivación absoluta. Identidad no-iRacing se actualiza por cambio de clave en cada tick."
+      ],
+      "boundaries": [
+        "Velocidad del rival >0,5 m/s; isEnteringPits significa currentLap.InLap, no solo InPitlane.",
+        "DeltaTime inicializa puntos con spacing por defecto 20 m; necesita historial válido. Ningún campo Vantare de nombre parecido prueba equivalencia.",
+        "Consultas de pista exigen delta<0 delante y >0 detrás; automático detrás admite >=0 antes de filtros posteriores."
+      ],
+      "temporal": "Datos del snapshot y del historial por punto; reinicios por sesión/rival. T1 demostrará su equivalencia sobre Telemetry Core.",
+      "queue": "datos",
+      "anomalies": [],
+      "evidence": "Lectura de fuente fijada; secuencias descritas para revisión. Sin ejecución de CrewChief ni fixtures T0b."
+    },
+    {
+      "id": "TIM-SAMPLE",
+      "title": "Puntos de muestreo",
+      "status": "inventariado",
+      "sources": [
+        "sampling",
+        "gap_points",
+        "track_constants",
+        "rf2_track",
+        "rf2_hardparts",
+        "hardparts_control"
+      ],
+      "settings": [],
+      "signals": [
+        "distancia",
+        "longitud",
+        "sectores",
+        "hardparts"
+      ],
+      "behavior": [
+        "Con gapPoints no se usa IsNewSector. Admite avance positivo que cruce al menos un punto desde debajo; varios puntos cruzados producen una oportunidad, no una por punto.",
+        "Dos sectores: round(longitud/2) y longitud-50. Si no son dos y longitud>3300, pasos iniciales de 780 mientras el punto sea <longitud-780, más longitud-50.",
+        "Al ajustar hard parts, un punto dentro del intervalo inclusivo se desplaza a su final y el siguiente se calcula desde allí. El mapper conserva el perfil y lo ajusta al aprender una vuelta mejor.",
+        "DONT_TALK_IN_THE_CORNERS activa delayMessagesInHardParts y aplica puntos ajustados; TALK_TO_ME_ANYWHERE desactiva y restaura setGapPoints. El cambio de puntos exige estado/pista y hardPartsMapped. KEEP_ME_INFORMED desactiva quiet. Estos controles alteran contexto y muestreo en la sesión."
+      ],
+      "boundaries": [
+        "Longitud 3300 sin dos sectores: sin puntos ad hoc; 3300+ sí.",
+        "Actual=punto y previo<punto admite; previo=punto no; vuelta atrás/meta con actual<=previo no.",
+        "El ajuste depende del historial de conducción; no se presenta 780 m como separación fija final."
+      ],
+      "temporal": "Una oportunidad por tick que cumple el cruce; fallback IsNewSector solo sin puntos.",
+      "queue": "datos",
+      "anomalies": [],
+      "evidence": "Lectura de fuente fijada; secuencias descritas para revisión. Sin ejecución de CrewChief ni fixtures T0b."
+    },
+    {
+      "id": "TIM-STATE",
+      "title": "Clasificación de historial",
+      "status": "pendiente de decisión",
+      "sources": [
+        "state_classification",
+        "samples",
+        "trigger"
+      ],
+      "settings": [],
+      "signals": [
+        "gap_histórico",
+        "identidad",
+        "último_reportado"
+      ],
+      "behavior": [
+        "NONE si hay menos de tres muestras, cualquiera de las tres recientes<=0, reciente>20 o salto reciente>5.",
+        "CLOSE con dos recientes<0,5; o tres<0,7; o cuatro<0,8. Se exige el mínimo general de tres. Después, INCREASING/DECREASING con monotonía estricta a una decimal y comparación contra último reportado redondeado a entero, salvo -1 inicial.",
+        "OTHER si ambas diferencias de reciente respecto a las otras dos son <1; en otro caso NONE. Math.Round usa midpoint al par sobre los valores binarios recibidos.",
+        "Delante inserta antes de clasificar; detrás clasifica antes; duplicado exacto se descarta de la lista, pero detrás sí calcula estado. isSameCar revisa repetidamente la primera clave: no se presume validación de todas."
+      ],
+      "boundaries": [
+        "20 y salto5 no disparan NONE por esos límites; >20/>5 sí.",
+        "0,5/0,7/0,8 son estrictos; igualdad puede caer en otra rama.",
+        "Último reportado 1,5 redondea a2; 2,5 también a2. Diferencia=1 no es OTHER."
+      ],
+      "temporal": "Historial más reciente primero; cambio de rival de carrera limpia lista/último reportado. Las anomalías impiden fijar la corrección como esperado.",
+      "queue": "datos",
+      "anomalies": [
+        "A1",
+        "A2"
+      ],
+      "evidence": "Lectura de fuente fijada; secuencias descritas para revisión. Sin ejecución de CrewChief ni fixtures T0b."
+    },
+    {
+      "id": "TIM-PRECISION",
+      "title": "Precisión y realización por locale",
+      "status": "pendiente de decisión",
+      "sources": [
+        "precision",
+        "precision_class",
+        "rounding",
+        "reader_selection",
+        "reader_en",
+        "reader_it",
+        "reader_it2",
+        "reader_pt",
+        "delta_content",
+        "fragment_availability"
+      ],
+      "settings": [
+        "always_report_time_in_hundredths"
+      ],
+      "signals": [
+        "gap",
+        "clase_timesInHundredths",
+        "locale",
+        "pack_version"
+      ],
+      "behavior": [
+        "AUTO_GAPS: >10 s selecciona SECONDS; en perfil no oval, <0,5 y useHundredths selecciona HUNDREDTHS; resto TENTHS. En oval, centésimas hasta <2 s si useHundredths.",
+        "useHundredths = timesInHundredths de clase OR ajuste always_report_time_in_hundredths. No depende de realistic_mode en esta asignación.",
+        "Selección de precisión y cifra audible son etapas distintas. NumberReader redondea fracciones al par, arrastra milisegundos >949 y no hace un redondeo uniforme de segundos al más cercano.",
+        "Factory: it con pack>=150 usa It2; it anterior usa It; pt-br usa PtBr; otros locales usan En. EN pack>106 tiene ruta compacta de centésimas/décimas/segundos; IT y PT-BR AUTO_GAPS usan la ruta larga de décimas aunque la precisión seleccionada sea otra. Ver A6.",
+        "ES no tiene lector propio en esta factory: cae en En. Esto no acredita soporte acústico español ni permite copiar frases."
+      ],
+      "boundaries": [
+        "0,499/0,500 y 10/10,001 son bordes de selección distintos.",
+        "EN moderno 10,600 s AUTO_GAPS selecciona SECONDS y realiza10; 10,950 realiza11 por acarreo. No escribir round(gap) como sustituto.",
+        "Con centésimas y no oval, gap<0,5; el acarreo general >949 afecta otras precisiones/perfiles. Las lecturas por locale requieren casos separados."
+      ],
+      "temporal": "Precisión seleccionada al componer/resolver; versionar clase, locale y pack. PRNG textual de EN puede variar la mención de unidad sin cambiar el hecho.",
+      "queue": "presentación",
+      "anomalies": [
+        "A6"
+      ],
+      "evidence": "Lectura de fuente fijada; secuencias descritas para revisión. Sin ejecución de CrewChief ni fixtures T0b."
+    },
+    {
+      "id": "TIM-CADENCE",
+      "title": "Contadores y sorteo",
+      "status": "pendiente de decisión",
+      "sources": [
+        "initial",
+        "cadence",
+        "samples",
+        "selection",
+        "front",
+        "rear",
+        "lapping",
+        "queue_resolve",
+        "queue_filter"
+      ],
+      "settings": [
+        "frequency_of_gap_ahead_reports",
+        "frequency_of_gap_behind_reports",
+        "frequency_of_gap_behind_on_track_reports",
+        "gap_message_randomness"
+      ],
+      "signals": [
+        "sector",
+        "gap_point",
+        "identidad",
+        "modo_por_vuelta"
+      ],
+      "behavior": [
+        "Tres contadores independientes empiezan en0; waits iniciales son mínimos salvo frecuencia0 que los pone a int.MaxValue.",
+        "Default delante f7: inicial4, siguientes [4,9); detrás f4:7,[7,12); pista f5:6,[6,11). Unidad= oportunidades de sector/punto, no segundos.",
+        "En modo normal avanzan los tres por cada trigger admitido aunque no se inserte muestra nueva. Modo por vuelta actualiza gaps sin llamar al incremento normal.",
+        "Cambio de rival detrás en pista limpia historial/último reportado y prepara contador=wait antes del incremento de selección. Delante/detrás limpian historial por cambio sin ese reset de contador.",
+        "Nuevo sorteo en cola al terminar callback, incluso potencialmente sin audio. En ausencia de puntos se añade 0/1/2 si (sector+wait-1)%3=0; no se vuelve a sortear por cada tick."
+      ],
+      "boundaries": [
+        "Frecuencia0 deshabilita. Para f>0, min=11-clamp(f,1,10); max exclusivo=min+clamp(randomness,1,10).",
+        "Tests futuros fijarán secuencia PRNG separando elecciones de identidad/texto. No exigir igualdad de dos PRNG no sincronizados."
+      ],
+      "temporal": "Consumo de fuente en resolución y caso sin contenido sujetos A5; Vantare exige cancelación antes de started sin consumir hecho.",
+      "queue": "normal",
+      "anomalies": [
+        "A5"
+      ],
+      "evidence": "Lectura de fuente fijada; secuencias descritas para revisión. Sin ejecución de CrewChief ni fixtures T0b."
+    },
+    {
+      "id": "TIM-SELECT",
+      "title": "Arbitraje entre relaciones",
+      "status": "pendiente de decisión",
+      "sources": [
+        "selection",
+        "samples"
+      ],
+      "settings": [
+        "frequency_of_gap_ahead_reports",
+        "frequency_of_gap_behind_reports",
+        "frequency_of_gap_behind_on_track_reports",
+        "just_the_facts"
+      ],
+      "signals": [
+        "estados",
+        "gaps",
+        "lap_delta",
+        "posición_general",
+        "contadores",
+        "oval"
+      ],
+      "behavior": [
+        "Candidato cercano detrás en pista: habilitado, gap<=5, DECREASING/CLOSE, posición general menor que la del piloto; CLOSE se excluye con justTheFacts. Tiene preferencia cuando vence su cadencia.",
+        "Carrera delante/detrás: frecuencia>0, estado!=NONE, lapDelta0; CLOSE excluido con justTheFacts u oval. Delante se bloquea por cualquier estado detrás-en-pista CLOSE; detrás por candidato cercano incluso si su cadencia no venció.",
+        "closerInFront requiere ambos historiales y gap delante<gap detrás. Delante exige closerInFront o frecuencia detrás<=0; detrás exige negación o frecuencia delante<=0, siempre su cadencia.",
+        "No se elige automáticamente el lado alternativo si el más cercano no puede hablar. El modo por vuelta no usa este arbitraje."
+      ],
+      "boundaries": [
+        "Igualdad favorece detrás; falta de historial puede impedir delante incluso siendo el único rival elegible.",
+        "Gap5 admite candidato, >5 no. Bloqueo de delante por CLOSE detrás en pista no exige frecuencia de pista habilitada.",
+        "La rama de desdoblaje necesita A3 antes de convertirse en esperado."
+      ],
+      "temporal": "Como máximo una encolación normal por oportunidad, orden pista→delante→detrás.",
+      "queue": "normal",
+      "anomalies": [
+        "A1",
+        "A2",
+        "A3"
+      ],
+      "evidence": "Lectura de fuente fijada; secuencias descritas para revisión. Sin ejecución de CrewChief ni fixtures T0b."
+    },
+    {
+      "id": "TIM-SILENCE",
+      "title": "Contexto y controles de silencio",
+      "status": "bloqueado por señal",
+      "sources": [
+        "phase",
+        "dispatch",
+        "trigger",
+        "not_racing",
+        "quiet",
+        "wake",
+        "queue_filter",
+        "regular",
+        "moderator_queue",
+        "verbosity",
+        "rf2_flags",
+        "hardparts_control"
+      ],
+      "settings": [
+        "enable_gap_messages",
+        "just_the_facts",
+        "speak_only_when_spoken_to",
+        "realistic_mode",
+        "enable_delayed_messages_on_hardparts",
+        "allow_important_messages_even_when_silenced",
+        "priortise_messages_depending_on_situation",
+        "pace_notes_mute_all_messages"
+      ],
+      "signals": [
+        "tipo",
+        "fase",
+        "vueltas_previas",
+        "última_verde",
+        "fcy_vuelta",
+        "amarilla_local",
+        "azul",
+        "pitlane",
+        "intención_pit",
+        "formación",
+        "audio_control"
+      ],
+      "behavior": [
+        "Automáticos exigen Race y fase Green/Countdown por dispatch; formación manual retorna. Bloqueo también mientras completedLaps del snapshot previo<=lapCountWhenLastWentGreen.",
+        "isNotRacing: currentLapIsFCY, isLocalYellow, azul, InPitlane o PitStops.isPittingThisLap. Missing en Vantare nunca significa ausencia de bandera.",
+        "KeepQuiet filtra cola con excepciones de tipo y playEvenWhenSilenced. SpeakOnlyWhenSpokenTo actúa al admitir y no se evita con ese flag. Clase con NONE impide cola regular.",
+        "Hardparts por defecto false; habilitado inhibe despertar regular bajo sus condiciones, no las respuestas inmediatas. Auto verbosity si se habilita puede impedir prioridad5 cuando mínimo10.",
+        "Dispatcher también suspende eventos ordinarios mientras DamageReporting espera confirmación tras accidente. Capturar ese estado en un replay compartido.",
+        "DONT_TALK_IN_THE_CORNERS activa delayMessagesInHardParts y aplica puntos ajustados; TALK_TO_ME_ANYWHERE desactiva y restaura setGapPoints. El cambio de puntos exige estado/pista y hardPartsMapped. KEEP_ME_INFORMED desactiva quiet. Estos controles alteran contexto y muestreo en la sesión."
+      ],
+      "boundaries": [
+        "Amarilla global candidata no demuestra amarilla local ni historial de FCY.",
+        "Completadas previas iguales a última_verde calla; mayores permiten continuar si el resto pasa.",
+        "Banderas/contexto deben ser conocidos antes de automatizar en LMU; T0b demostrará procedencia por señal."
+      ],
+      "temporal": "Trigger decide admisión; cancelación/revalidación tardía se trata por separado en A5. Lectura de curvas ocurre antes del filtro local.",
+      "queue": "normal",
+      "anomalies": [
+        "A5"
+      ],
+      "evidence": "Lectura de fuente fijada; secuencias descritas para revisión. Sin ejecución de CrewChief ni fixtures T0b."
+    },
+    {
+      "id": "TIM-END",
+      "title": "Silencio cerca del final",
+      "status": "pendiente de decisión",
+      "sources": [
+        "end",
+        "track_length",
+        "rf2_laps"
+      ],
+      "settings": [],
+      "signals": [
+        "tipo_duración",
+        "tiempo_restante",
+        "vueltas_restantes",
+        "longitud",
+        "sector"
+      ],
+      "behavior": [
+        "Con duración fija: silencio si restante>-1 y <120 s. Por vueltas: solo cuando vueltas restantes==0, según longitud y sector.",
+        "LONG (>10000 y <=20000 m) calla si sector>1; VERY_LONG (>20000 m) si sector==3; otras longitudes callan toda la última vuelta.",
+        "Vantare necesita conocer tipo/duración y restantes; missing no se normaliza a0 o a carrera por vueltas."
+      ],
+      "boundaries": [
+        "Restante -1 no activa ese predicado; -0,5 sí; 0 sí; 120 no. Eso no elimina los filtros de fase.",
+        "10000 no LONG; 20000 LONG; 20000+ VERY_LONG.",
+        "Vueltas restantes negativas no satisfacen ==0."
+      ],
+      "temporal": "Comprobado al trigger; no se presume que el callback repita esta comprobación.",
+      "queue": "normal",
+      "anomalies": [
+        "A5"
+      ],
+      "evidence": "Lectura de fuente fijada; secuencias descritas para revisión. Sin ejecución de CrewChief ni fixtures T0b."
+    },
+    {
+      "id": "TIM-AUTO",
+      "title": "Contenido automático y consejos",
+      "status": "pendiente de decisión",
+      "sources": [
+        "trigger",
+        "samples",
+        "front",
+        "rear",
+        "advice",
+        "identity",
+        "landmark_history",
+        "landmark_select",
+        "fragment_availability"
+      ],
+      "settings": [
+        "enable_driver_names",
+        "tts_setting_listprop",
+        "opponents_number_after_name",
+        "just_the_facts"
+      ],
+      "signals": [
+        "gap_actual",
+        "identidad",
+        "holding_since",
+        "historial_landmarks"
+      ],
+      "behavior": [
+        "INCREASING/DECREASING/OTHER expresan relación y gap actual del callback si >0,05. CLOSE delante retención solo después de >60 s desde holdingUsUp para el rival; salir de CLOSE temporalmente no borra ese reloj.",
+        "CLOSE detrás comunica presión; ataque en retención CLOSE con gap<6 o DECREASING<6; defensa CLOSE/DECREASING. No confundir consejo de curva con orden de maniobra.",
+        "Consejos: cooldown separado ataque/defensa por DriverRawName de3min; se exige ahora>último+3min. Usa historial de landmarks, distingue entrada y recorrido.",
+        "Timings pasa forVoiceCommand=false también a consultas faster/slower: tres tiempos como mínimo en cada lado y mejor entre cinco, primero overtaking spots y después resto. Umbrales normales recorrido>=10%, entrada>13% con recorrido>0; overtaking recorrido>=7%, entrada>10%. Si ambas candidatas, entrada si su delta>7%.",
+        "Identidad: sorteo 1/3 posición; resto nombre apto, luego número y después posición. requestNumber=false no agrega número tras nombre. Disponibilidad de assets afecta reproducción, no garantiza frase pronunciada."
+      ],
+      "boundaries": [
+        "Normal numérico =0,05 calla; detrás-en-pista tiene otro borde.",
+        "Retención exactamente60s calla; cooldown exactamente180s aún no permite.",
+        "La comprobación de audio de landmark ausente solo registra aviso y continúa construyendo fragmentos; registrar A7."
+      ],
+      "temporal": "Estado capturado en muestreo, cifra actualizada al resolver; cooldown consejo se consume al componer. Confirmación audible pendiente.",
+      "queue": "normal",
+      "anomalies": [
+        "A1",
+        "A2",
+        "A5",
+        "A7"
+      ],
+      "evidence": "Lectura de fuente fijada; secuencias descritas para revisión. Sin ejecución de CrewChief ni fixtures T0b."
+    },
+    {
+      "id": "TIM-QUEUE",
+      "title": "Cola, expiración y revalidación",
+      "status": "pendiente de decisión",
+      "sources": [
+        "queue_create",
+        "queue_resolve",
+        "queue_filter",
+        "second_validation",
+        "wake",
+        "immediate",
+        "admission",
+        "priority",
+        "moderator_sound",
+        "moderator_queue"
+      ],
+      "settings": [
+        "update_interval",
+        "pause_between_messages",
+        "interrupt_setting_listprop",
+        "reject_message_when_talking",
+        "sre_respond_while_channel_still_open",
+        "enable_delayed_messages_on_hardparts"
+      ],
+      "signals": [
+        "reloj",
+        "cola",
+        "prioridad",
+        "lifecycle",
+        "audio_control"
+      ],
+      "behavior": [
+        "Normal prioridad CC5, TTL5s desde creación. Sin secondsDelay, dueTime=0; no imponer el tick100ms mencionado en el comentario del constructor.",
+        "Callback normal comprueba isNotRacing y rival, actualiza cifra; no repite todos los filtros del trigger. Se resuelve una sola vez: la segunda comprobación conserva canBePlayed y contenido ya resuelto.",
+        "Quiet/expiry se calculan antes, pero resolver se ejecuta antes de decidir descartar. Resets y sorteos pueden ocurrir sin audio; A5 separa literal de contrato Vantare.",
+        "Orden numérico descendente por cola, empate conserva orden. Inmediatos paran procesamiento regular; Spotter fuerza20 y puede interrumpir con NAudio, sujeto a moderador.",
+        "Vantare: rutina P3, consulta/resumen P2, P0 precedencia. Cancelar antes de started no consume hecho. Esta es una política explícita de producto, no igualdad de números ni reproducción de los defectos."
+      ],
+      "boundaries": [
+        "Expira cuando expiry<ahora: a5000ms todavía no ha caducado por ese predicado; a5001sí.",
+        "Wake regular se comprueba con now>nextWake y después fija +200ms. No es una SLA acústica garantizada.",
+        "La ventana hasta sonido requiere cola/pack/backend reales; no inventar un máximo menor que TTL."
+      ],
+      "temporal": "Separar creación, resolución, admisión, started y sonido físico; A5 pendiente. No renovar TTL por fallback.",
+      "queue": "normal",
+      "anomalies": [
+        "A5"
+      ],
+      "evidence": "Lectura de fuente fijada; secuencias descritas para revisión. Sin ejecución de CrewChief ni fixtures T0b."
+    },
+    {
+      "id": "TIM-LAPPING",
+      "title": "Aviso del candidato detrás en pista",
+      "status": "pendiente de decisión",
+      "sources": [
+        "lapping",
+        "relations",
+        "selection",
+        "delta_content"
+      ],
+      "settings": [
+        "frequency_of_gap_behind_on_track_reports",
+        "just_the_facts"
+      ],
+      "signals": [
+        "identidad",
+        "gap",
+        "posición",
+        "lap_delta",
+        "reloj"
+      ],
+      "behavior": [
+        "En callback, exigir no isNotRacing y mismo candidato detrás en pista. Si gap<0,05 retorna.",
+        "CLOSE compone contexto por posición general, con control por rival de5min; fuera de CLOSE incluye posición y gap relativo con vueltas.",
+        "La fuente usa posición para contexto de doblaje; no demuestra por sí sola la relación de desdoblaje. Vantare no añadirá esa afirmación sin semántica de vueltas probada.",
+        "mkGapBehindOnTrack devuelve un contenedor aunque no tenga gap; el guard gap==null no protege gap.gap null en revalidación. Se registra A8."
+      ],
+      "boundaries": [
+        "0,05 pasa el guard (<), distinto de >0,05 de rutina numérica.",
+        "Exactamente300s no repite; >300 intenta Add sobre clave existente y puede lanzar excepción (A4)."
+      ],
+      "temporal": "Revalidación al resolver una vez; reset/sorteo final incluso cuando cooldown evita contenido, A5.",
+      "queue": "normal",
+      "anomalies": [
+        "A3",
+        "A4",
+        "A5",
+        "A8"
+      ],
+      "evidence": "Lectura de fuente fijada; secuencias descritas para revisión. Sin ejecución de CrewChief ni fixtures T0b."
+    },
+    {
+      "id": "TIM-LAPMODE",
+      "title": "Resumen pedido por vuelta",
+      "status": "pendiente de decisión",
+      "sources": [
+        "lapmode",
+        "relations",
+        "track_relations",
+        "lapmode_control",
+        "trigger",
+        "moderator_queue"
+      ],
+      "settings": [
+        "enable_gap_messages",
+        "speak_only_when_spoken_to"
+      ],
+      "signals": [
+        "nueva_vuelta",
+        "clase",
+        "posición",
+        "last",
+        "gaps"
+      ],
+      "behavior": [
+        "Modo dinámico activado por TELL_ME_THE_GAPS/toggle. Actualiza muestras en puntos pero no contadores normales.",
+        "En nueva vuelta combina delante salvo líder, detrás salvo isLast, y candidato detrás en pista de la misma clase con ClassPosition<=piloto, excluyendo detrás de carrera.",
+        "onlyIncludeCarsLappingThePlayer no comprueba lapDelta!=0. Gaps>0,05; delante/detrás sin nombres, candidato por posición y sin lapdiff ni afirmación de doblaje.",
+        "Prioridad CC10 TTL5s, playEvenWhenSilenced=true; contenido compuesto al trigger sin callback. Mantiene filtros de carrera/final/banderas/pits del trigger y admisión del moderador.",
+        "Si no hay candidato válido detrás en pista, el acceso bot?.gap.timeDelta no protege gap=null: puede fallar antes de encolar el resumen. A8 impide presuponer omisión segura."
+      ],
+      "boundaries": [
+        "0,05 no se añade. Frecuencias de las tres relaciones no gobiernan el resumen.",
+        "Quiet permite la excepción; speakOnlyWhenSpokenTo puede bloquearlo porque sigue siendo regular."
+      ],
+      "temporal": "IsNewLap, no cada sector. Últimos gaps reportados de carrera se escriben durante composición aunque luego no suene.",
+      "queue": "lapmode",
+      "anomalies": [
+        "A5",
+        "A8"
+      ],
+      "evidence": "Lectura de fuente fijada; secuencias descritas para revisión. Sin ejecución de CrewChief ni fixtures T0b."
+    },
+    {
+      "id": "TIM-QUERY",
+      "title": "Consultas directas",
+      "status": "inventariado",
+      "sources": [
+        "race_query",
+        "track_query",
+        "leader_query",
+        "query_no_data",
+        "last",
+        "delta_relative",
+        "delta_content",
+        "immediate"
+      ],
+      "settings": [
+        "force_single_class"
+      ],
+      "signals": [
+        "tipo",
+        "clase",
+        "posición",
+        "cantidad_inicial",
+        "cantidad_actual",
+        "gaps",
+        "vueltas"
+      ],
+      "behavior": [
+        "Delante/detrás de carrera solo Race, leading/last explícitos; gap0 no es dato. Consulta detrás usa isLastInStandings contra cantidad inicial, automático usa isLast contra actual.",
+        "Consultas en pista de cualquier clase exigen signo apropiado e incluyen diferencia de vueltas. Gap líder es relativo al líder de clase, con dirección explícita; puede responder en clasificación.",
+        "Vuelta líder solo Race: propio LapCount si líder; rival CompletedLaps+1 y lapdiff cuando distinto de0. No confundir gap líder con el rival delante.",
+        "Consulta delante/detrás actualiza último gap reportado; consulta detrás en pista también si misma clase y diferente del rival detrás de carrera. No reinicia contadores por ese solo hecho.",
+        "Sin snapshot retorna en silencio; consulta sin dato compone indisponibilidad. STATUS es excepción silenciosa."
+      ],
+      "boundaries": [
+        "Retirada: último entre activos puede no ser último de standings iniciales; no unificar predicados.",
+        "No aplicar automáticamente umbrales de rutina 20s/0,05 ni final120s a consultas: la función respond no los utiliza."
+      ],
+      "temporal": "Ruta inmediata, CCpriority por defecto5/VOICE_COMMAND_RESPONSE, TTL0 (sin expiración de fuente); Vantare P2 necesita su vigencia de producto explícita.",
+      "queue": "query",
+      "anomalies": [],
+      "evidence": "Lectura de fuente fijada; secuencias descritas para revisión. Sin ejecución de CrewChief ni fixtures T0b."
+    },
+    {
+      "id": "TIM-STATUS",
+      "title": "Contribución a estado global",
+      "status": "inventariado",
+      "sources": [
+        "status",
+        "status_composition",
+        "last",
+        "immediate"
+      ],
+      "settings": [],
+      "signals": [
+        "clase",
+        "posición",
+        "last",
+        "gap"
+      ],
+      "behavior": [
+        "Líder aporta gap detrás si >2s; no líder y no isLast aporta delante si >2s. No revisa isRace en esta rama.",
+        "En otros casos contribuye silencio y marca haveData para no añadir indisponibilidad. CommonActions compone con otras familias y llama una vez a Timings."
+      ],
+      "boundaries": [
+        "Exactamente2 calla; >2 permite. Último no líder calla aunque haya gap delante."
+      ],
+      "temporal": "Inmediata con contenido del snapshot de consulta, no contador automático.",
+      "queue": "query",
+      "anomalies": [],
+      "evidence": "Lectura de fuente fijada; secuencias descritas para revisión. Sin ejecución de CrewChief ni fixtures T0b."
+    },
+    {
+      "id": "TIM-CORNERS",
+      "title": "Curvas y consultas de ventaja",
+      "status": "bloqueado por señal",
+      "sources": [
+        "trigger",
+        "corner_query",
+        "corner_control",
+        "advice",
+        "landmark_history",
+        "landmark_input",
+        "landmark_select",
+        "rf2_laps",
+        "rf2_landmark",
+        "fragment_availability"
+      ],
+      "settings": [
+        "enable_gap_messages"
+      ],
+      "signals": [
+        "petición_curvas",
+        "midpoint",
+        "catálogo_propio",
+        "historial_landmarks",
+        "fase"
+      ],
+      "behavior": [
+        "PLAY_CORNER_NAMES activa lectura para la vuelta actual; RF2 conserva el flag y lo limpia en IsNewLap.",
+        "Timings emite al midpoint antes del filtro local formación/enable_gap_messages; siguen fase aplicable y filtros de cola. CC10 TTL2s, sin callback.",
+        "WHERE_AM_I_FASTER compara con delante de clase si no líder; SLOWER con detrás si no isLast. Comparten consejos/cooldowns de automático, incluyendo forVoiceCommand=false.",
+        "Se necesita catálogo propio/licenciado y tiempos de paso derivados; el ledger no importa landmarks, gramáticas ni sonidos de CrewChief."
+      ],
+      "boundaries": [
+        "UpdateLandmarkTiming requiere gameTime>=30, distancia>0, velocidad>0 y movimiento; consejo necesita tres registros por lado entre cinco.",
+        "Midpoint se limpia en la siguiente actualización válida; retornos tempranos con distancia congelada pueden retenerlo (A9). TTL2s, expiry estricta como cola; no esperar LLM."
+      ],
+      "temporal": "Vantare P2 sujeto a P0 y control total de audio. Catálogo/timing LMU aún no acreditados, bloqueo acotado a estas conductas.",
+      "queue": "corners",
+      "anomalies": [
+        "A7",
+        "A9"
+      ],
+      "evidence": "Lectura de fuente fijada; secuencias descritas para revisión. Sin ejecución de CrewChief ni fixtures T0b."
+    }
+  ],
+  "anomalies": [
+    {
+      "id": "A1",
+      "title": "Estado detrás anterior a la muestra actual",
+      "classification": "defecto candidato",
+      "evidence_level": "inferencia estática; ejecución y observabilidad LMU pendientes",
+      "sources": [
+        "samples",
+        "state_classification",
+        "selection"
+      ],
+      "rules": [
+        "TIM-STATE",
+        "TIM-SELECT",
+        "TIM-AUTO"
+      ],
+      "reproduction": [
+        "Rival estable B, lastReported=-1, historial detrás vacío.",
+        "Tras gaps distintos3,2/3,0/2,8 en tres oportunidades, la tercera clasifica con solo dos previos y da NONE; delante con los mismos datos ya clasifica DECREASING.",
+        "Cuarta oportunidad2,6: detrás clasifica [2,8,3,0,3,2] y el callback podría comunicar2,6."
+      ],
+      "impact": "Una oportunidad de retraso; estado y cifra describen instantes distintos. No es una traza ejecutada.",
+      "proposed_decision": "Recomiendo definir estado con la muestra admitida actual en Vantare; hasta aprobación conservar ambos resultados documentados, sin implementar ni marcar paridad.",
+      "decision": "pendiente de revisión humana",
+      "approved": false
+    },
+    {
+      "id": "A2",
+      "title": "Comprobación repetida de la primera identidad",
+      "classification": "defecto candidato",
+      "evidence_level": "inferencia estática; ejecución y observabilidad LMU pendientes",
+      "sources": [
+        "state_classification",
+        "map_identity",
+        "samples"
+      ],
+      "rules": [
+        "TIM-STATE",
+        "TIM-SELECT",
+        "TIM-AUTO"
+      ],
+      "reproduction": [
+        "Historial abstracto con claves [B,A,A], gaps [0,4,0,3,0,2] en orden reciente.",
+        "El bucle lee siempre clave de índice0: la comprobación acepta B en las tres iteraciones y permite CLOSE.",
+        "Mapeo no-iRacing y limpieza por rival pueden impedir que ese historial llegue a Timings en LMU; falta demostrar el camino."
+      ],
+      "impact": "No se acredita identidad estable de todas las muestras desde ese helper; tampoco se declara bug audible en LMU.",
+      "proposed_decision": "Recomiendo exigir todas las muestras del mismo rival y probar los resets reales; aprobar desviación únicamente con caso independiente que delimite cuándo afecta.",
+      "decision": "pendiente de revisión humana",
+      "approved": false
+    },
+    {
+      "id": "A3",
+      "title": "Filtro de posición frente a rama de desdoblaje",
+      "classification": "defecto candidato",
+      "evidence_level": "inferencia estática; ejecución y observabilidad LMU pendientes",
+      "sources": [
+        "selection",
+        "lapping"
+      ],
+      "rules": [
+        "TIM-SELECT",
+        "TIM-LAPPING"
+      ],
+      "reproduction": [
+        "PilotoP4 y candidato de misma claseP6 detrás en pista, gap0,4 y CLOSE: falla OverallPosition<carrera del piloto; no se agenda aviso de desdoblaje.",
+        "Si el candidato eraP2 al encolar y pasa aP6 antes del callback manteniendo clave, la segunda rama podría ser alcanzable; requiere trazas."
+      ],
+      "impact": "La rama else no demuestra cobertura de desdoblaje; tampoco puede calificarse universalmente inalcanzable.",
+      "proposed_decision": "Recomiendo modelar doblaje/desdoblaje desde relación temporal demostrada; no añadir el aviso ni dar PASS hasta clasificar con fixture independiente.",
+      "decision": "pendiente de revisión humana",
+      "approved": false
+    },
+    {
+      "id": "A4",
+      "title": "Repetición después de cinco minutos con clave existente",
+      "classification": "defecto candidato",
+      "evidence_level": "inferencia estática; ejecución y observabilidad LMU pendientes",
+      "sources": [
+        "lapping",
+        "queue_exception"
+      ],
+      "rules": [
+        "TIM-LAPPING"
+      ],
+      "reproduction": [
+        "Primera llamada CLOSE para rivalB agrega B a lastLappingWarning.",
+        "A+300s no entra en repetición; a+300s+epsilon sí y vuelve a Add(B,...).",
+        "Dictionary con esa clave rechaza Add duplicado antes de componer. La comparación de DateTime con null no representa ausencia; TryGetValue devuelve valor por defecto si falta."
+      ],
+      "impact": "El recorrido estático alcanza el catch de la cola regular y queuedClips.Clear(): puede perder otros mensajes regulares, no implica cierre del proceso. Ejecución y observabilidad LMU pendientes.",
+      "proposed_decision": "Recomiendo actualizar timestamp existente y conservar intervalo estricto>5min. No copiar excepción; aprobar la diferencia antes de esperado implementable.",
+      "decision": "pendiente de revisión humana",
+      "approved": false
+    },
+    {
+      "id": "A5",
+      "title": "Resolución única y consumo antes de sonido",
+      "classification": "defecto candidato",
+      "evidence_level": "inferencia estática; ejecución y observabilidad LMU pendientes",
+      "sources": [
+        "front",
+        "rear",
+        "lapping",
+        "queue_resolve",
+        "queue_filter",
+        "second_validation",
+        "lapmode"
+      ],
+      "rules": [
+        "TIM-CADENCE",
+        "TIM-SILENCE",
+        "TIM-END",
+        "TIM-AUTO",
+        "TIM-QUEUE",
+        "TIM-LAPPING",
+        "TIM-LAPMODE"
+      ],
+      "reproduction": [
+        "CLOSE delante con holdingUsUp<60s y sin consejo de reputación LMU: callback puede dejar contenido vacío, pero actualiza último gap y sortea nueva espera; getMessageFolders lo rechaza.",
+        "Mensaje ya expirado o quiet: AudioPlayer calcula esos flags, invoca isMessageStillValid y luego descarta; el callback puede haber consumido estado.",
+        "Resolver con rivalA y luego cambiar rival/pit/valor antes de segunda validación: delayMessageResolution=false evita nueva invocación. La segunda consulta conserva resultado.",
+        "El callback no repite tipo/fase/final/manualformation del trigger. Resumen por vuelta compone y escribe gaps al trigger, sin revalidación tardía."
+      ],
+      "impact": "Cancelar/no sonar no implica no consumir; dos llamadas de validación no equivalen a dos comprobaciones del contexto. Contrato Vantare exige vigencia al started.",
+      "proposed_decision": "Recomiendo mantener el contrato aprobado de Vantare: revalidar al started y consumir solo al iniciar. Registrar la divergencia deliberada frente a fuente; la aceptación del diseño no sustituye clasificación de estos casos.",
+      "decision": "pendiente de revisión humana",
+      "approved": false
+    },
+    {
+      "id": "A6",
+      "title": "Precisión seleccionada distinta de realización por locale",
+      "classification": "defecto candidato",
+      "evidence_level": "inferencia estática; ejecución y observabilidad LMU pendientes",
+      "sources": [
+        "precision",
+        "rounding",
+        "reader_selection",
+        "reader_it",
+        "reader_it2",
+        "reader_pt",
+        "reader_en"
+      ],
+      "rules": [
+        "TIM-PRECISION"
+      ],
+      "reproduction": [
+        "AUTO_GAPS0,46s, useHundredths=true: selector HUNDREDTHS; EN pack>106 usa fracción46, IT/PT-BR ruta larga usa tenths5.",
+        "AUTO_GAPS10,6s selecciona SECONDS: EN moderno usa segundos10; rutas largas IT/PT-BR añaden tenths6.",
+        "Sin instalar packs ni escuchar, solo se demuestra composición prevista por ramas, no disponibilidad de archivos ni sonido."
+      ],
+      "impact": "Un único esperado de precisión por enum puede ocultar diferencias audibles entre locales.",
+      "proposed_decision": "Recomiendo definir realización numérica coherente por locale de Vantare y conservar estos casos como desviación explícita pendiente; primero confirmar con harness y pack propios.",
+      "decision": "pendiente de revisión humana",
+      "approved": false
+    },
+    {
+      "id": "A7",
+      "title": "Consejo con landmark sin audio",
+      "classification": "defecto candidato",
+      "evidence_level": "inferencia estática; ejecución y observabilidad LMU pendientes",
+      "sources": [
+        "advice",
+        "queue_resolve",
+        "fragment_availability"
+      ],
+      "rules": [
+        "TIM-AUTO",
+        "TIM-CORNERS"
+      ],
+      "reproduction": [
+        "Historial produce landmarkL; no hay soundSet de curvaL, ni availableSound ni singleSound correspondiente. El Text final no es descargable y el default TTS=NEVER impide sustitución.",
+        "mkAttackAdvice/mkDefendAdvice registran falta, pero el bloque siguiente no es else: añade fragmentos y consume cooldown.",
+        "El fragmento de curva no resoluble al final deja canBePlayed=false: invalida el mensaje completo, incluido el gap o aviso principal. Faltar solo soundSets no basta para demostrar ese rechazo."
+      ],
+      "impact": "Cooldown puede consumirse y perderse todo el mensaje sin consejo audible. Exigir ausencia en las tres rutas de assets para el caso negativo; catálogo propio y disponibilidad son precondiciones. Recorrido estático, no ejecución.",
+      "proposed_decision": "Recomiendo consejo solo con realización funcional disponible y consumo al started; dejar pendiente hasta disponer de catálogo/fixtures.",
+      "decision": "pendiente de revisión humana",
+      "approved": false
+    },
+    {
+      "id": "A8",
+      "title": "Candidato ausente en callback o resumen por vuelta",
+      "classification": "defecto candidato",
+      "evidence_level": "inferencia estática; ejecución y observabilidad LMU pendientes",
+      "sources": [
+        "relations",
+        "lapping",
+        "queue_exception",
+        "lapmode",
+        "event_exception",
+        "track_relations"
+      ],
+      "rules": [
+        "TIM-LAPPING",
+        "TIM-LAPMODE"
+      ],
+      "reproduction": [
+        "Encolar con rivalB válido; antes de resolver no hay candidato detrás en pista.",
+        "mkGapBehindOnTrack devuelve contenedor con gap=null; el guard solo comprueba contenedor==null y después accede gap.gap.opponentKey.",
+        "Puede lanzar antes de devolver silencio; no se acredita ese recorrido en LMU real.",
+        "Modo por vuelta, IsNewLap y sin candidato válido: bot es contenedor no null, gap es null. El acceso de507 puede lanzar antes de encolación517, tras posibles escrituras de últimos gaps486/497. Este camino es del trigger, no del catch de cola regular.",
+        "Caso mínimo del resumen: piloto líder de clase P1; todos sus rivales de clase tienen posición>1. El filtro onlyIncludeCarsLappingThePlayer excluye a todos y devuelve contenedor gap=null. No requiere que desaparezca un rival durante una espera."
+      ],
+      "impact": "El guard no demuestra cancelación segura ante candidato desaparecido. En callback puede alcanzar el catch que vacía la cola regular; en resumen por vuelta puede abortar antes de encolar. Se distinguen recorridos estáticos, sin observación LMU. El fallo del trigger se captura en CrewChief.triggerEvent, donde se acumulan fallos y puede deshabilitarse el evento en la sesión, distinto del catch de audio.",
+      "proposed_decision": "Recomiendo cancelación sin consumo cuando no existe candidato; clasificar con caso independiente antes de implementación.",
+      "decision": "pendiente de revisión humana",
+      "approved": false
+    },
+    {
+      "id": "A9",
+      "title": "Midpoint retenido con telemetría congelada",
+      "classification": "defecto candidato",
+      "evidence_level": "inferencia estática; ejecución y observabilidad LMU pendientes",
+      "sources": [
+        "landmark_input",
+        "rf2_landmark",
+        "trigger",
+        "admission"
+      ],
+      "rules": [
+        "TIM-CORNERS"
+      ],
+      "reproduction": [
+        "Lectura de curvas activada y cruce válido de midpoint: updateLandmarkTiming fija atMidPointOfLandmark.",
+        "Siguiente snapshot con distancia idéntica (o velocidad<=0): retorna antes de limpiar el campo. RF2 reutiliza el mismo objeto de timings entre snapshots.",
+        "Timings puede intentar encolar otra vez el mismo nombre. La deduplicación mientras el primero sigue en cola puede ocultar esa repetición; no prueba repetición acústica."
+      ],
+      "impact": "La garantía de un tick solo vale si la siguiente actualización alcanza el reset; una señal congelada puede producir intentos repetidos. No observado en LMU.",
+      "proposed_decision": "Recomiendo identificar cada cruce y consumirlo una vez con señales vigentes, además de limpiar el estado transitorio. Confirmar por harness antes de aprobar la desviación.",
+      "decision": "pendiente de revisión humana",
+      "approved": false
+    }
+  ],
+  "commands": {
+    "timings": [
+      "NOTE_BAD_DRIVER_AHEAD_ON_TRACK",
+      "NOTE_BAD_DRIVER_BEHIND_ON_TRACK",
+      "SESSION_STATUS",
+      "STATUS",
+      "WHATS_MY_GAP_BEHIND",
+      "WHATS_MY_GAP_BEHIND_ON_TRACK",
+      "WHATS_MY_GAP_IN_FRONT",
+      "WHATS_MY_GAP_IN_FRONT_ON_TRACK",
+      "WHATS_MY_GAP_TO_LEADER",
+      "WHATS_THE_LEADER_LAP",
+      "WHERE_AM_I_FASTER",
+      "WHERE_AM_I_SLOWER"
+    ],
+    "common": [
+      "TELL_ME_THE_GAPS",
+      "DONT_TELL_ME_THE_GAPS",
+      "PLAY_CORNER_NAMES",
+      "KEEP_QUIET",
+      "ENABLE_MANUAL_FORMATION_LAP",
+      "DISABLE_MANUAL_FORMATION_LAP",
+      "KEEP_ME_INFORMED",
+      "TALK_TO_ME_ANYWHERE",
+      "DONT_TALK_IN_THE_CORNERS"
+    ],
+    "excluded": [
+      "NOTE_BAD_DRIVER_AHEAD_ON_TRACK",
+      "NOTE_BAD_DRIVER_BEHIND_ON_TRACK"
+    ],
+    "exclusion_reason": "Solo se ejecutan con Game.IRACING; no son conductas LMU. No se importan gramáticas.",
+    "sources": [
+      "commands",
+      "action_commands",
+      "lapmode_control",
+      "corner_control",
+      "hardparts_control"
+    ],
+    "control_effects": {
+      "KEEP_QUIET": "Activa keepQuiet.",
+      "KEEP_ME_INFORMED": "Desactiva keepQuiet.",
+      "TELL_ME_THE_GAPS": "Activa modo por vuelta.",
+      "DONT_TELL_ME_THE_GAPS": "Desactiva modo por vuelta; no desactiva gaps normales.",
+      "PLAY_CORNER_NAMES": "Activa lectura hasta siguiente vuelta.",
+      "ENABLE_MANUAL_FORMATION_LAP": "Activa modo de formación manual; ciclo de sesión decide onManualFormationLap.",
+      "DISABLE_MANUAL_FORMATION_LAP": "Desactiva modo de formación manual.",
+      "TALK_TO_ME_ANYWHERE": "Desactiva demora en hardparts y restaura setGapPoints cuando existen estado/pista y hardPartsMapped.",
+      "DONT_TALK_IN_THE_CORNERS": "Activa demora en hardparts y adjustGapPoints cuando existen estado/pista y hardPartsMapped."
+    }
+  },
+  "review_gate": {
+    "required": "Review humana del ledger y clasificación de anomalías antes de T0b; ninguna recomendación equivale a desviación aprobada.",
+    "next": "Construir fixtures independientes y taxonomía demostrada en tarea T0b tras review; no usar resultados de Vantare como expected."
+  }
+}

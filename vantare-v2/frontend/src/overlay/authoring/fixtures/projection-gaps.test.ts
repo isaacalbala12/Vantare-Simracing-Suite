@@ -24,9 +24,7 @@ describe("projection gaps", () => {
     expect(projectionGapsFor("relative").map((gap) => gap.field)).toEqual([
       "rows[].driverNumber",
     ]);
-    expect(projectionGapsFor("delta").map((gap) => gap.field)).toEqual([
-      "bestLapText",
-    ]);
+    expect(projectionGapsFor("delta")).toEqual([]);
     expect(OVERLAY_V2_STANDINGS_DECLARED_GAPS).toEqual(expect.arrayContaining(
       projectionGapsFor("standings").map((gap) => gap.field),
     ));
@@ -67,7 +65,7 @@ describe("projection gaps", () => {
     expect(relative.rows.length).toBeGreaterThan(0);
     expect(relative.rows.every((row) => row.driverNumber === "")).toBe(true);
 
-    expect(buildDeltaViewModelV2(source.overlayV2Frame!, source.overlayV2Source!).bestLapText).toBe("—");
+    expect(buildDeltaViewModelV2(source.overlayV2Frame!, source.overlayV2Source!).bestLapText).toMatch(/^\d+:\d{2}\.\d{3}$/);
   });
 
   it("keys every entry to a registered widget type", () => {

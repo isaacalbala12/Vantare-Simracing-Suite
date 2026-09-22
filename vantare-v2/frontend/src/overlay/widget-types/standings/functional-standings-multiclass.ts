@@ -4,7 +4,7 @@ import type { StandingsRowViewModel } from "./standings-view-model";
 /** Altura de una banda de clase dentro de la tabla de Eficiencia V1. */
 export const FUNCTIONAL_STANDINGS_CLASS_BAND_HEIGHT = 28;
 
-type FunctionalStandingsClassAccent = "red" | "blue" | "amber" | "neutral";
+export type FunctionalStandingsClassAccent = "red" | "blue" | "amber" | "neutral";
 
 export type FunctionalStandingsEntry =
   | {
@@ -25,7 +25,7 @@ function normalizedClassId(value: string): string {
   return value.trim().toUpperCase();
 }
 
-function resolveFunctionalStandingsClassAccent(classId: string): FunctionalStandingsClassAccent {
+export function resolveFunctionalStandingsClassAccent(classId: string): FunctionalStandingsClassAccent {
   const normalized = normalizedClassId(classId);
   if (normalized === "HYP" || normalized.includes("HYPER") || normalized === "DP") return "red";
   if (normalized.includes("LMP") || normalized === "P2") return "blue";

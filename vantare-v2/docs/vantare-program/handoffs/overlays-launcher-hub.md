@@ -3061,3 +3061,12 @@ aislada a `nightly` (pendiente review/merge):
   `GOOS=windows go build ./cmd/vantare` PASS.
 - Pendiente humano: verificación visual de la campana en la app real
   (Wails/WebView2) y toast Windows; son parte del paquete de validación beta.
+
+## ISA-1221 — recuperación del trabajo local de widgets (2026-09-22)
+
+- [Tarea principal VAN-41](https://app.notion.com/p/3dbe51695c658125b1c2efc198edfc94), proyecto Overlay Studio. Isaac pide subir al remoto los cambios locales pendientes.
+- Rama `vantareapp/isa-1221-widgets-local-sync`, basada en `origin/nightly@1e9932c4d8ca3d53a58d093449cfb840f7108e8f`. Snapshot `44a33047af0a05c71ad7d550fa4a9f60ae90d456` conserva el trabajo de `vantare-isa1221-workshop` sobre `c3e6e44c`; el checkout original y su índice permanecen intactos.
+- Recupera Delta, Relative (orden delante de cercano a lejano), Standings compacto/podio, Pedals Eficiencia/iRacing, Fuel Strategy, aliases Efficiency y controles de Workshop, con documentos y capturas locales. Conserva las optimizaciones vigentes de nightly en host, coordinador y geometría. Redline tower mantiene su prueba explícita de viewport; las previews ordinarias usan la envolvente externa.
+- Frontend con Node 22.23.2 y dependencias del lockfile: 466 suites PASS, 3766 pruebas PASS y 2 omitidas. Build (incluye TypeScript) y lint verificados. Go overlayv2: tests y vet PASS. Las pruebas globales Go fallan en macOS por launcher Windows y diagnósticos/sqlite; reproducido también en la base nightly para los fallos de diagnósticos/sqlite.
+- Calidad: FAIL, 55 nuevos hallazgos bloqueantes (34 Knip, 18 duplicaciones, 3 ciclos de dependencias). Sin relajación de reglas ni baseline. Inventario en `docs/engineer/audits/2026-09-22-widget-local-sync-quality.md`. La recuperación se publica como borrador, no como entrega certificada.
+- Pendiente: resolver calidad, CI del SHA publicado, revisión visual de Isaac y certificación LMU real. Sin merge, testers, master ni release. Roadmap required: `milestones:functional-widget-design`; el porcentaje del área no avanza por publicar un borrador; digest basado en la nightly confiable.

@@ -374,13 +374,12 @@ const DELTA_NEW_BEST_SCENE: AnimationScene = {
   widget: "delta",
   label: "Nueva vuelta de referencia",
   watchFor:
-    "La referencia permanece en su placeholder: OverlayFrame V2 todavía no entrega bestLapText al Delta.",
-  unsupportedSignal: "bestLapText",
+    "La nueva mejor vuelta dispara un aviso personal a la izquierda y mantiene la última vuelta a la derecha.",
   frameMs: 1500,
   frames: [
-    { caption: "Referencia no disponible: V2 mantiene el placeholder", player: { bestLapSeconds: 98.031 } },
-    { caption: "Mejor vuelta recibida fuera del modelo Delta; referencia no disponible", player: { bestLapSeconds: 97.402 } },
-    { caption: "Referencia no disponible: el placeholder no cambia", player: { bestLapSeconds: 97.402 } },
+    { caption: "Referencia personal 1:38.031", player: { bestLapSeconds: 98.031 } },
+    { caption: "Nueva vuelta personal: aparece el aviso a la izquierda", player: { bestLapSeconds: 97.402 } },
+    { caption: "El aviso permanece hasta retirarse", player: { bestLapSeconds: 97.402 } },
   ],
 };
 

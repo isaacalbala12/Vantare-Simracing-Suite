@@ -25,6 +25,16 @@ describe("Overlay Workshop query", () => {
     });
   });
 
+  it.each(["efficiency", "vantare-efficiency", "functional"]) (
+    "normalizes the %s Workshop alias to the stable URL contract",
+    (alias) => {
+      const parsed = parseOverlayWorkshopQuery(`?widget=relative&system=${alias}&variant=default`);
+      if ("error" in parsed) throw new Error(parsed.error);
+      expect(parsed.system).toBe("vantare-functional");
+      expect(serializeOverlayWorkshopQuery(parsed)).toContain("system=vantare-functional");
+    },
+  );
+
   it("round trips controls and rejects unsafe stage values", () => {
     const parsed = parseOverlayWorkshopQuery("?widget=delta&system=vantare-original&state=ready&surface=studio&variant=default&session=practice&location=pits&background=transparent&scale=1.25&preset=720p&width=640&height=240&compare=obs");
     if ("error" in parsed) throw new Error(parsed.error);
@@ -61,7 +71,7 @@ describe("Overlay Workshop query", () => {
     }
   });
 
-  it("selects the Efficiency Standings default and keeps study styles reproducible", () => {
+  it("selects Efficiency Standings default and keeps all three study styles reproducible", () => {
     const parsed = parseOverlayWorkshopQuery(
       "?widget=standings&system=vantare-functional&variant=standings-functional-study&design=standings-functional-compact&study=v2-focus",
     );
@@ -120,6 +130,27 @@ describe("Overlay Workshop query", () => {
     expect(serializeOverlayWorkshopQuery(unset)).not.toContain("brand=");
   });
 
+  it("keeps Functional Standings modules on the canonical variant", () => {
+    const parsed = parseOverlayWorkshopQuery(
+      "?widget=standings&system=vantare-functional&variant=default&modules=bestLap,pit",
+    );
+    if ("error" in parsed) throw new Error(parsed.error);
+    expect(parsed.modules).toEqual(["bestLap", "pit"]);
+    expect(serializeOverlayWorkshopQuery(parsed)).toContain("modules=bestLap%2Cpit");
+
+    const widget = buildWorkshopWidget({
+      widget: "standings",
+      system: "vantare-functional",
+      variant: "default",
+      session: "race",
+      modules: parsed.modules,
+    });
+    const columns = (widget.content.columns as { metricId: string; enabled: boolean }[])
+      .filter((column) => column.enabled)
+      .map((column) => column.metricId);
+    expect(columns).toEqual(["position", "driverName", "bestLap", "pit"]);
+  });
+
   it("keeps the development route inaccessible outside development and serializes the full selection", () => {
     expect(isOverlayWorkshopPath("/workshop", false)).toBe(false);
     expect(isOverlayWorkshopPath("/hub", true)).toBe(false);
@@ -165,23 +196,7 @@ describe("Overlay Workshop query", () => {
     expect(parseOverlayWorkshopQuery("?widget=standings&rows=2.5")).toHaveProperty("error");
   });
 
-  it("round-trips Functional Racing Flags probes and text color", () => {
-    const parsed = parseOverlayWorkshopQuery("?widget=racing-flags&system=vantare-functional&flag=yellow&textColor=%23ffcc00");
-    if ("error" in parsed) throw new Error(parsed.error);
-    expect(parsed.flag).toBe("yellow");
-    expect(parsed.textColor).toBe("#ffcc00");
-    expect(serializeOverlayWorkshopQuery(parsed)).toContain("flag=yellow");
-    expect(serializeOverlayWorkshopQuery(parsed)).toContain("textColor=%23ffcc00");
-    expect(parseOverlayWorkshopQuery("?widget=racing-flags&textColor=yellow")).toEqual({
-      error: "invalid textColor parameter: yellow",
-    });
-
-    const outside = parseOverlayWorkshopQuery("?widget=standings&textColor=%23ffcc00");
-    if ("error" in outside) throw new Error(outside.error);
-    expect(outside).not.toHaveProperty("textColor");
-  });
-
-  it("round-trips the standings neighbour window and player position", () => {
+  it("round-trips the shared standings neighbour window and player position", () => {
     const parsed = parseOverlayWorkshopQuery("?widget=standings&system=vantare-functional&study=v2-focus&rows=12&playerPosition=9&around=6");
     if ("error" in parsed) throw new Error(parsed.error);
     expect(parsed.around).toBe(6);
@@ -192,5 +207,37 @@ describe("Overlay Workshop query", () => {
     expect(parseOverlayWorkshopQuery("?widget=delta&around=4")).not.toHaveProperty("around");
     expect(parseOverlayWorkshopQuery("?widget=delta&playerPosition=4")).not.toHaveProperty("playerPosition");
     expect(parseOverlayWorkshopQuery("?widget=standings&rows=8&playerPosition=9")).toHaveProperty("error");
+  });
+
+  it("round-trips explicit SessionV2 flag probes for flag-aware widgets", () => {
+    const parsed = parseOverlayWorkshopQuery("?widget=pedals&flag=yellow");
+    if ("error" in parsed) throw new Error(parsed.error);
+    expect(parsed.flag).toBe("yellow");
+    expect(serializeOverlayWorkshopQuery(parsed)).toContain("flag=yellow");
+
+    const outside = parseOverlayWorkshopQuery("?widget=standings&flag=yellow");
+    if ("error" in outside) throw new Error(outside.error);
+    expect(outside).not.toHaveProperty("flag");
+    const racingFlags = parseOverlayWorkshopQuery("?widget=racing-flags&system=vantare-functional&flag=yellow");
+    if ("error" in racingFlags) throw new Error(racingFlags.error);
+    expect(racingFlags.flag).toBe("yellow");
+    expect(serializeOverlayWorkshopQuery(racingFlags)).toContain("flag=yellow");
+    expect(parseOverlayWorkshopQuery("?widget=pedals&flag=not-a-flag")).toEqual({
+      error: "invalid flag parameter: not-a-flag",
+    });
+  });
+
+  it("round-trips the Functional Racing Flags text color and rejects invalid colors", () => {
+    const parsed = parseOverlayWorkshopQuery("?widget=racing-flags&system=vantare-functional&textColor=%23ffcc00");
+    if ("error" in parsed) throw new Error(parsed.error);
+    expect(parsed.textColor).toBe("#ffcc00");
+    expect(serializeOverlayWorkshopQuery(parsed)).toContain("textColor=%23ffcc00");
+    expect(parseOverlayWorkshopQuery("?widget=racing-flags&system=vantare-functional&textColor=yellow")).toEqual({
+      error: "invalid textColor parameter: yellow",
+    });
+
+    const outside = parseOverlayWorkshopQuery("?widget=standings&textColor=%23ffcc00");
+    if ("error" in outside) throw new Error(outside.error);
+    expect(outside).not.toHaveProperty("textColor");
   });
 });

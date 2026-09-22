@@ -10,6 +10,7 @@ import type {
 } from "../../../generated/telemetry";
 import type { DesignSystemId, WidgetInstanceV3, WidgetType } from "../../core/profile-document";
 import type { WidgetRuntimeInput } from "../../core/widget-definition";
+import { EFFICIENCY_SYSTEM_ID } from "../../core/design-system-names";
 import { normalizeRacingFlagsTextColor } from "../../design-systems/vantare-functional/racing-flags-settings";
 import {
   AUTHORING_V2_VARIANTS,
@@ -30,25 +31,17 @@ import {
   computeRelativeIntrinsicWidth,
 } from "../../widget-types/relative/relative-renderer-helpers";
 import {
-  FUNCTIONAL_RELATIVE_BASE_WIDTH,
-  resolveFunctionalRelativeBaseHeight,
-  resolveFunctionalRelativeSlotsWidth,
-} from "../../design-systems/vantare-functional/relative-layout";
-import { FUNCTIONAL_STUDY_DEFAULT_MODULES } from "../functional-study-options";
+  EFFICIENCY_RELATIVE_BASE_WIDTH,
+  resolveEfficiencyRelativeBaseHeight,
+  resolveEfficiencyRelativeSlotsWidth,
+} from "../../design-systems/vantare-efficiency/relative-layout";
+import { EFFICIENCY_STUDY_DEFAULT_MODULES } from "../efficiency-study-options";
 import { resolveStandingsMinimumSize } from "../../widget-types/standings/standings-frame-layout";
 import { applyWidgetDesign } from "../../core/widget-design";
 import { getOfficialDesign, listOfficialDesigns } from "../../design-systems/official-designs";
 import { getAnimationScene, sceneFrameAt } from "./animation-scenes";
 import type { SceneFrame } from "./animation-scenes";
-import type { RacingFlagsKnownFlag } from "../../design-systems/vantare-functional/racing-flags-settings";
-import { mapAuthoringWidgetColumns } from "./authoring-v2-widget-columns";
-
-function fitFunctionalStandingsMinimum(widget: WidgetInstanceV3): WidgetInstanceV3 {
-  const minimum = resolveStandingsMinimumSize(widget);
-  return minimum
-    ? { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height ?? widget.layout.h } }
-    : widget;
-}
+import type { PedalsKnownFlag } from "../../widget-types/pedals/pedals-view-model";
 
 // Variantes dev de Workshop: transformaciones explícitas, deterministas y
 // acotadas sobre el golden canónico. La variante en sí declara el artificio;
@@ -75,7 +68,7 @@ function usesRelativeStudyProjection(input: {
   system: DesignSystemId;
   variant: WorkshopV2Variant;
 }): boolean {
-  return input.widget === "relative" && input.system === "vantare-functional" && input.variant === "default";
+  return input.widget === "relative" && input.system === EFFICIENCY_SYSTEM_ID && input.variant === "default";
 }
 
 const WORKSHOP_V2_VARIANT_SET: ReadonlySet<string> = new Set(WORKSHOP_V2_VARIANTS);
@@ -193,7 +186,7 @@ export function buildWorkshopWidget(input: {
   // los perfiles guardados no los toca nunca el renderer al cambiar la sesión.
   // Solo Standings tiene columnas de vuelta — Delta/Pedals no llevan
   // content.columns (antes este bloque explotaba sobre ellos).
-  if (input.system === "vantare-functional" && input.widget === "standings" && input.variant === "default" && input.session !== "race") {
+  if (input.system === EFFICIENCY_SYSTEM_ID && input.widget === "standings" && input.variant === "default" && input.session !== "race") {
     const content = widget.content as Record<string, unknown>;
     const columns = Array.isArray(content.columns)
       ? (content.columns as Record<string, unknown>[]).map((column) => column.metricId === "lastLap" ? { ...column, enabled: false } : column.metricId === "bestLap" ? { ...column, enabled: true } : column)
@@ -205,16 +198,17 @@ export function buildWorkshopWidget(input: {
   // la columna Piloto. Viaja por content.columns, nada fuera del contrato.
   if (input.nameFormat && (input.widget === "standings" || input.widget === "relative")) {
     const content = widget.content as Record<string, unknown>;
-    const columns = mapAuthoringWidgetColumns(content, (column) =>
-      column.metricId === "driverName"
-        ? { ...column, format: { ...(column.format as Record<string, unknown> | undefined), mode: input.nameFormat } }
-        : column);
+    const columns = Array.isArray(content.columns)
+      ? (content.columns as Record<string, unknown>[]).map((column) =>
+          column.metricId === "driverName"
+            ? { ...column, format: { ...(column.format as Record<string, unknown> | undefined), mode: input.nameFormat } }
+            : column)
+      : content.columns;
     widget = { ...widget, content: { ...content, columns } };
   }
 
   // Recuento de filas del Standings: el mismo `rowCount` que edita Studio;
-  // el view model recorta por él y en Eficiencia la caja se re-encaja como
-  // en la ventana del Relative — fila fija, marco que sigue al contenido.
+  // el view model recorta por él.
   if (input.widget === "standings" && input.rows !== undefined) {
     const content = widget.content as Record<string, unknown>;
     widget = { ...widget, content: { ...content, rowCount: input.rows } };
@@ -223,9 +217,12 @@ export function buildWorkshopWidget(input: {
   // El formato de nombre y el recuento cambian el tamaño intrínseco: la caja
   // se re-encaja después de aplicarlos — el encaje base de createScenarioWidget
   // siempre vio el formato completo y el recuento por defecto.
-  if (input.widget === "standings" && input.system === "vantare-functional"
+  if (input.widget === "standings" && input.system === EFFICIENCY_SYSTEM_ID
       && (input.rows !== undefined || input.nameFormat !== undefined || input.variant === "standings-multiclass")) {
-    widget = fitFunctionalStandingsMinimum(widget);
+    const minimum = resolveStandingsMinimumSize(widget);
+    if (minimum) {
+      widget = { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height ?? widget.layout.h } };
+    }
   }
 
   // El selector de marca del panel hace de autoridad local (en producción la
@@ -240,7 +237,7 @@ export function buildWorkshopWidget(input: {
     };
   }
 
-  if (input.widget === "racing-flags" && input.system === "vantare-functional" && input.textColor !== undefined) {
+  if (input.widget === "racing-flags" && input.system === EFFICIENCY_SYSTEM_ID && input.textColor !== undefined) {
     widget = {
       ...widget,
       visual: {
@@ -256,9 +253,9 @@ export function buildWorkshopWidget(input: {
   // Módulos de Standings Eficiencia: posición y piloto siempre visibles; el
   // resto lo encienden los módulos elegidos. La selección también aplica a la
   // variante canónica `default`, que es la que expone el Workshop.
-  if (input.system === "vantare-functional" && input.widget === "standings"
+  if (input.system === EFFICIENCY_SYSTEM_ID && input.widget === "standings"
     && (input.variant === "standings-functional-study" || input.modules !== undefined)) {
-    const modules = input.modules ?? FUNCTIONAL_STUDY_DEFAULT_MODULES;
+    const modules = input.modules ?? EFFICIENCY_STUDY_DEFAULT_MODULES;
     const content = widget.content as Record<string, unknown>;
     const columns = Array.isArray(content.columns)
       ? (content.columns as Record<string, unknown>[]).map((column) => ({
@@ -270,11 +267,17 @@ export function buildWorkshopWidget(input: {
     // El estudio enseña siempre al menos 15 pilotos; la variante canónica
     // conserva su recuento salvo que el selector Filas lo haya cambiado.
     widget = { ...widget, content: { ...content, columns, ...(input.variant === "standings-functional-study" ? { rowCount: 15 } : {}) } };
-    widget = fitFunctionalStandingsMinimum(widget);
+    // La altura derivada del estudio pertenece al widget que estamos
+    // construyendo, no a una corrección posterior del harness. Así el layout
+    // que recibe WidgetVisualHost sigue siendo la resolución real del profile.
+    const minimum = resolveStandingsMinimumSize(widget);
+    if (minimum) {
+      widget = { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height ?? widget.layout.h } };
+    }
   }
 
   // Huecos de datos del pie en standings/relative de Eficiencia.
-  if (input.slots && input.slots.length > 0 && input.system === "vantare-functional"
+  if (input.slots && input.slots.length > 0 && input.system === EFFICIENCY_SYSTEM_ID
     && (input.widget === "standings" || input.widget === "relative")) {
     widget = {
       ...widget,
@@ -299,12 +302,12 @@ export function buildWorkshopWidget(input: {
     widget = { ...widget, content: next };
     const rows = computeRelativeConfiguredRowCount(next);
     const settings = { ...widget.visual.baseSettings, ...widget.visual.appearanceOverrides };
-    if (input.system === "vantare-functional") {
+    if (input.system === EFFICIENCY_SYSTEM_ID) {
       const w = Math.max(
-        FUNCTIONAL_RELATIVE_BASE_WIDTH,
-        Math.ceil(resolveFunctionalRelativeSlotsWidth(settings)),
+        EFFICIENCY_RELATIVE_BASE_WIDTH,
+        Math.ceil(resolveEfficiencyRelativeSlotsWidth(settings)),
       );
-      const h = Math.ceil(resolveFunctionalRelativeBaseHeight(rows, settings) * (w / FUNCTIONAL_RELATIVE_BASE_WIDTH));
+      const h = Math.ceil(resolveEfficiencyRelativeBaseHeight(rows, settings) * (w / EFFICIENCY_RELATIVE_BASE_WIDTH));
       widget = { ...widget, layout: { ...widget.layout, w, h: next.rowHeightMode === "fill" ? Math.max(widget.layout.h, h) : h } };
     } else if (input.ahead !== undefined || input.behind !== undefined) {
       const w = computeRelativeIntrinsicWidth(getEnabledRelativeColumns(next));
@@ -323,8 +326,8 @@ export type WorkshopV2Scenario = {
   widget: WidgetType;
   system: DesignSystemId;
   variant: WorkshopV2Variant;
-  /** Dev-only explicit SessionV2 flag probe for Functional Racing Flags. */
-  flag?: RacingFlagsKnownFlag;
+  /** Dev-only explicit SessionV2 flag probe for flag-aware widgets. */
+  flag?: PedalsKnownFlag;
   replayFrame?: number;
   sceneId?: string;
   sceneFrame?: number;
@@ -649,7 +652,7 @@ function sideForGap(gap: number, fallback: string): string {
   return fallback;
 }
 
-// Ventana dev sobre el orden canónico: N ahead far→near, player, M behind
+// Ventana dev sobre el orden canónico: N ahead near→far, player, M behind
 // near→far, con N/M configurables (por defecto 3/3, el default de producto).
 // Una sola función para relative y relativeSettled.
 function relativeDevWindow(
@@ -662,17 +665,21 @@ function relativeDevWindow(
   const gapValue = (row: OverlayRelativeRowV2): number => row.gap.v ?? 0;
   const ahead = rows
     .filter((row) => row.side === "ahead")
-    .sort((left, right) => gapValue(right) - gapValue(left));
+    .sort((left, right) => gapValue(left) - gapValue(right));
   const behind = rows.filter((row) => row.side === "behind");
   const player = rows.find((row) => row.id === playerId);
   if (!player) {
     throw new Error("authoring-v2-workshop-frame: relative sin fila del jugador");
   }
-  const aheadRows = ahead.slice(-aheadCount);
+  const aheadRows = ahead.slice(0, aheadCount);
   const window = [...aheadRows, player, ...behind.slice(0, behindCount)];
   const playerIndex = aheadRows.length;
   return window.map((row, index) => {
-    const gap = relativeDevGap(playerIndex - index);
+    const gap = row.id === playerId
+      ? 0
+      : row.side === "ahead"
+        ? relativeDevGap(index + 1)
+        : relativeDevGap(playerIndex - index);
     return {
       ...row,
       gap: qualityValue(gap, quality),
@@ -768,11 +775,18 @@ function applyScene(
       relative = patchRelativeSection(frame.relative, state.cars, quality, resolved);
       settled = patchRelativeSection(frame.relativeSettled, state.cars, quality, resolved);
       // La VM confía en el orden canónico del frame: tras un cruce hay que
-      // reordenar como haría Go — gap a jugador descendente (delante arriba,
-      // jugador en medio, detrás abajo), si no el cambio de lado no se ve.
-      const byGapDesc = (a: OverlayRelativeRowV2, b: OverlayRelativeRowV2) => (b.gap.v ?? 0) - (a.gap.v ?? 0);
-      relative = [...relative].sort(byGapDesc);
-      settled = [...settled].sort(byGapDesc);
+      // reordenar como haría Go — delante cerca→lejos, jugador en medio,
+      // detrás cerca→lejos — si no el cambio de lado no se ve.
+      const relativeOrder = (left: OverlayRelativeRowV2, right: OverlayRelativeRowV2) => {
+        const sideRank = (side: string) => side === "ahead" ? 0 : side === "player" ? 1 : 2;
+        const rankDelta = sideRank(left.side) - sideRank(right.side);
+        if (rankDelta !== 0) return rankDelta;
+        const leftGap = left.gap.v ?? 0;
+        const rightGap = right.gap.v ?? 0;
+        return left.side === "behind" ? rightGap - leftGap : leftGap - rightGap;
+      };
+      relative = [...relative].sort(relativeOrder);
+      settled = [...settled].sort(relativeOrder);
     } else {
       standings = standings.flatMap((row) => {
         const key = (row.driver && state.cars![row.driver] ? row.driver : undefined) ?? seatNameAt(STANDINGS_DEV_SEAT_BY_DRIVER, row.position);
@@ -857,13 +871,20 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
     baseFrame = { ...baseFrame, standings: padStandings(baseFrame.standings, scenario.standingRows) };
   }
   let frame = withWorkshopDemo(baseFrame, quality);
-  if (scenario.widget === "racing-flags") {
+  if (scenario.widget === "pedals" || scenario.widget === "racing-flags") {
+    // Racing Flags keeps the vivid green demo state by default, while Pedals
+    // preserves the canonical missing flag unless the Workshop asks for an
+    // explicit probe. In both cases an explicit probe lets the harness inspect
+    // yellow and the other known SessionV2 flag values without inventing live
+    // telemetry.
     frame = {
       ...frame,
       session: {
         ...frame.session,
         flag: scenario.flag === undefined
-          ? qualityValue("green", quality)
+          ? scenario.widget === "racing-flags"
+            ? qualityValue("green", quality)
+            : baseFrame.session.flag
           : qualityValue(scenario.flag, quality),
       },
     };

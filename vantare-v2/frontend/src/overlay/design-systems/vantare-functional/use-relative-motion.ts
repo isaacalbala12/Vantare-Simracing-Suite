@@ -6,6 +6,7 @@ import { deriveSideCrosses } from "./functional-motion";
 type RowSnapshot = { row: HTMLTableRowElement; top: number };
 type Slide = { animation: Animation; from: number };
 type Ghost = { fade: Animation | undefined; startOpacity: number };
+type Entrance = { animation: Animation; startOpacity: number };
 const ROWS = "[data-relative-row]:not([data-player])";
 const TOPS = "relative-tops";
 
@@ -80,7 +81,7 @@ export function useRelativeMotion(
   const owned = useRef<Set<Animation>>(new Set());
   const independent = useRef<Set<Animation>>(new Set());
   const slides = useRef<Map<string, Slide>>(new Map());
-  const entrances = useRef<Map<string, Animation>>(new Map());
+  const entrances = useRef<Map<string, Entrance>>(new Map());
   const cues = useRef<Map<string, Animation>>(new Map());
   const ghosts = useRef<Map<HTMLElement, Ghost>>(new Map());
   const ghostTimers = useRef<Map<HTMLElement, ReturnType<typeof setTimeout>>>(new Map());
@@ -152,15 +153,20 @@ export function useRelativeMotion(
     if (motion === "full") {
       fadeExits(root, previous ?? new Map(), nextIds, (animation) => own(animation, true), ghosts.current, ghostTimers.current, (id) => {
         const slide = slides.current.get(id);
-        return { offset: slide ? slide.from * (1 - progress(slide.animation)) : 0, opacity: progress(entrances.current.get(id)) };
+        const entrance = entrances.current.get(id);
+        return {
+          offset: slide ? slide.from * (1 - progress(slide.animation)) : 0,
+          opacity: entrance ? entrance.startOpacity + (1 - entrance.startOpacity) * progress(entrance.animation) : 1,
+        };
       });
       const previousIds = new Set(previous?.keys());
       for (const row of root.querySelectorAll<HTMLElement>(ROWS)) {
         const id = row.dataset.relativeRow;
         if (id && !previousIds.has(id) && typeof row.animate === "function") {
-          const animation = row.animate([{ opacity: returningOpacity.get(id) ?? 0 }, { opacity: 1 }], { duration: 120, easing: "ease-out" });
+          const startOpacity = returningOpacity.get(id) ?? 0;
+          const animation = row.animate([{ opacity: startOpacity }, { opacity: 1 }], { duration: 120, easing: "ease-out" });
           own(animation, true);
-          entrances.current.set(id, animation);
+          entrances.current.set(id, { animation, startOpacity });
         }
       }
     const { gained, lost } = deriveSideCrosses(prev.model.rows, next.model.rows);
@@ -177,7 +183,7 @@ export function useRelativeMotion(
       }
     }
     for (const [id, slide] of slides.current) if (!nextIds.has(id)) { slide.animation.cancel(); slides.current.delete(id); }
-    for (const [id, animation] of entrances.current) if (!nextIds.has(id)) { animation.cancel(); entrances.current.delete(id); }
+    for (const [id, entrance] of entrances.current) if (!nextIds.has(id)) { entrance.animation.cancel(); entrances.current.delete(id); }
     for (const [id, animation] of cues.current) if (!nextIds.has(id)) { animation.cancel(); cues.current.delete(id); }
     persist.set("relative-structure", structureKey);
     rememberRows(root, persist);

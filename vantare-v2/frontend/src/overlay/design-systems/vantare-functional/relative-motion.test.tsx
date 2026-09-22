@@ -109,6 +109,19 @@ describe("Relative presentation", () => {
     expect(animations.find((entry) => entry.target === ghost)?.frames[0]?.opacity).toBe(1);
   });
 
+  it("continues opacity through exit, reentry, and another exit without a flash", () => {
+    const view = render(<RelativeFunctional model={model([ahead, player, behind])} settings={{}} renderMode="harness" />);
+    view.rerender(<RelativeFunctional model={model([ahead, player])} settings={{}} renderMode="harness" />);
+    animationProgress = 0.5;
+    view.rerender(<RelativeFunctional model={model([ahead, player, behind])} settings={{}} renderMode="harness" />);
+    const entrance = animations.findLast((entry) => entry.target === view.container.querySelector('[data-relative-row="behind"]') && entry.frames[0]?.opacity !== undefined);
+    expect(entrance?.frames[0]?.opacity).toBe(0.5);
+    view.rerender(<RelativeFunctional model={model([ahead, player])} settings={{}} renderMode="harness" />);
+    const ghost = view.container.querySelector('[data-relative-ghost="behind"]');
+    const exit = animations.findLast((entry) => entry.target === ghost);
+    expect(exit?.frames[0]?.opacity).toBe(0.75);
+  });
+
   it("shows one four-percent cue only for a real side crossing and clears motion on minimal or scope change", () => {
     const view = render(<RelativeFunctional model={model([ahead, player, behind])} settings={{}} renderMode="harness" />);
     view.rerender(<RelativeFunctional model={model([row("new", "ahead"), player, behind])} settings={{}} renderMode="harness" />);

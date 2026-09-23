@@ -88,7 +88,7 @@ func (s *EngineerService) Diagnostics() EngineerDiagnostics {
 	if status.LastError != "" {
 		status.LastError = "runtime_error"
 	}
-	status.RecentMessages = nil // selected delivery journal is the single history here
+	status.RecentMessages = []EngineerNotification{} // preserve the array contract; journal is the single history here
 	health := s.healthLocked()
 	if health.LastError != "" {
 		health.LastError = "runtime_error"

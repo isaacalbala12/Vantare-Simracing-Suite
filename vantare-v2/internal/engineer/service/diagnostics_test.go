@@ -242,6 +242,9 @@ func TestDiagnosticsPreservesSubtitlePreferenceWhenVisualsGated(t *testing.T) {
 	s.SetSubtitlesEnabled(true)
 	s.SetVisualPresentationEnabled(false)
 	d := s.Diagnostics()
+	if d.Status.RecentMessages == nil {
+		t.Fatal("diagnostics must serialize recentMessages as an array")
+	}
 	if !d.SubtitlesPreference || d.VisualPresentationEnabled || d.Status.SubtitlesEnabled {
 		t.Fatalf("diagnostics=%+v", d)
 	}

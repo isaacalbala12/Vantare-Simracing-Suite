@@ -87,9 +87,14 @@ describe("scene interpolation", () => {
     expect(interpolateSceneAt(scene, cycle + 500, true).keyframe).toBeLessThan(2);
   });
 
-  it("reports the keyframe being approached, so the caption leads the motion", () => {
+  it("keeps the step and caption with the current facts until the next keyframe", () => {
     expect(interpolateSceneAt(scene, 100, false).frame.caption).toBe("inicio");
-    expect(interpolateSceneAt(scene, 900, false).frame.caption).toBe("medio");
+    expect(interpolateSceneAt(scene, 900, false).frame.caption).toBe("inicio");
+    const beforePit = interpolateSceneAt(scene, 1900, false);
+    expect(beforePit.keyframe).toBe(1);
+    expect(beforePit.frame.caption).toBe("medio");
+    expect(beforePit.frame.cars?.A?.inPits).toBe(false);
+    expect(interpolateSceneAt(scene, 2000, false).keyframe).toBe(2);
   });
 
   it("states how long one pass takes", () => {
@@ -126,6 +131,13 @@ describe("sampling at the widget's telemetry rate", () => {
       distinct.add(sampleAtRate(ms, 15));
     }
     expect(distinct.size).toBe(15);
+  });
+
+  it.each([15, 30])("keeps exact keyframes at %i Hz without sampling ahead", (rate) => {
+    for (const ms of [1600, 8000, 14400, 16000]) {
+      expect(sampleAtRate(ms, rate)).toBe(ms);
+      expect(sampleAtRate(ms - 0.01, rate)).toBeLessThan(ms);
+    }
   });
 
   it("gives delta and pedals twice that", () => {

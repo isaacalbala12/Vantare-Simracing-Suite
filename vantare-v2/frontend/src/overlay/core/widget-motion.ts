@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type RefObject } from "react";
+import { useLayoutEffect, useRef, useSyncExternalStore, type RefObject } from "react";
 import type { OverlayPerformanceV2 } from "../../generated/telemetry";
 
 /**
@@ -113,6 +113,10 @@ export function flipRows(
     duration: (offsetPx: number) => number;
     easing?: string;
     key?: string;
+    /** Retain ownership when React removes the node before teardown. */
+    onAnimation?: (animation: Animation, row: HTMLElement) => void;
+    /** Independent effects (e.g. opacity) must survive transform retargeting. */
+    preserveAnimation?: (animation: Animation) => boolean;
   },
 ): void {
   const topsKey = opts.key ?? "flip-tops";
@@ -133,7 +137,8 @@ export function flipRows(
     const running = typeof row.getAnimations === "function"
       ? row.getAnimations().filter(
           (animation) =>
-            typeof CSSTransition === "undefined" || !(animation instanceof CSSTransition),
+            (typeof CSSTransition === "undefined" || !(animation instanceof CSSTransition))
+            && !opts.preserveAnimation?.(animation),
         )
       : [];
     const inFlight = running.length > 0 ? currentTranslateY(row) : 0;
@@ -151,10 +156,11 @@ export function flipRows(
     if (Math.abs(from) < 0.5) {
       continue;
     }
-    row.animate(
+    const animation = row.animate(
       [{ transform: `translateY(${from}px)` }, { transform: "translateY(0)" }],
       { duration: opts.duration(from), easing: opts.easing ?? "cubic-bezier(0.22, 0.9, 0.3, 1)" },
     );
+    opts.onAnimation?.(animation, row);
   }
   // Los ids que ya no están (filas retiradas) no acumulan entradas.
   for (const id of [...tops.keys()]) {
@@ -197,6 +203,7 @@ export function useWidgetMotion<TModel extends { status: string }>(
     persist: Map<string, unknown>;
   }) => void,
   teardown?: (root: HTMLElement) => void,
+  initialize?: (root: HTMLElement, persist: Map<string, unknown>) => void,
 ): void {
   const prevRef = useRef<TModel | null>(null);
   const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
@@ -207,6 +214,7 @@ export function useWidgetMotion<TModel extends { status: string }>(
   const effectsActiveRef = useRef(false);
   const applyRef = useRef(apply);
   const teardownRef = useRef(teardown);
+  const initializeRef = useRef(initialize);
   const stopAllRef = useRef<() => void>(() => {});
 
   const stopAll = () => {
@@ -233,10 +241,12 @@ export function useWidgetMotion<TModel extends { status: string }>(
   useLayoutEffect(() => {
     applyRef.current = apply;
     teardownRef.current = teardown;
+    initializeRef.current = initialize;
     stopAllRef.current = stopAll;
   });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    // Layout cleanup still owns the DOM ref; passive cleanup runs after detach.
     return () => stopAllRef.current();
   }, []);
 
@@ -253,7 +263,11 @@ export function useWidgetMotion<TModel extends { status: string }>(
     const prev = prevRef.current;
     prevRef.current = model;
     const root = rootRef.current;
-    if (!prev || !root) {
+    if (!root) return;
+    if (!prev) {
+      // Seed layout measurements without an event, so the first update can
+      // move from its actual origin rather than becoming the first baseline.
+      initializeRef.current?.(root, persistRef.current);
       return;
     }
     effectsActiveRef.current = true;

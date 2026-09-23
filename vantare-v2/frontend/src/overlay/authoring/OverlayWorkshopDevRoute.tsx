@@ -108,7 +108,7 @@ function setSearch(query: OverlayWorkshopQuery, mode: "push" | "replace" = "push
   }
 }
 
-function WorkshopSurface({ widget: sourceWidget, runtime, profileId, surface, query, comparison = false }: { widget: WidgetInstanceV3; runtime: WidgetRuntimeInput; profileId: string; surface: OverlayWorkshopQuery["surface"]; query: OverlayWorkshopQuery; comparison?: boolean }): React.ReactElement {
+function WorkshopSurface({ widget: sourceWidget, runtime, profileId, surface, query, previewFloorHeight, comparison = false }: { widget: WidgetInstanceV3; runtime: WidgetRuntimeInput; profileId: string; surface: OverlayWorkshopQuery["surface"]; query: OverlayWorkshopQuery; previewFloorHeight?: number; comparison?: boolean }): React.ReactElement {
   // The Redline laboratory explicitly tests clipping at a selected viewport.
   // Keep that existing contract while ordinary widget previews scale outside
   // the productive layout.
@@ -123,6 +123,9 @@ function WorkshopSurface({ widget: sourceWidget, runtime, profileId, surface, qu
   const intrinsicHeight = widget.layout.h;
   const previewWidth = query.width ?? intrinsicWidth;
   const previewHeight = query.height ?? intrinsicHeight;
+  // Reserve only authoring space. The productive viewport keeps its actual
+  // row geometry, while the centered preview stays put as the window changes.
+  const frameHeight = query.height ?? Math.max(previewHeight, previewFloorHeight ?? 0);
   const previewScaleX = previewWidth / intrinsicWidth;
   const previewScaleY = previewHeight / intrinsicHeight;
   const pitOverflow = (() => {
@@ -142,7 +145,7 @@ function WorkshopSurface({ widget: sourceWidget, runtime, profileId, surface, qu
     relativeViewModelInstanceKey: `${profileId}:${widget.id}`,
   };
   const host = (
-    <div className={`overlay-workshop-widget-root${pitOverflow ? " overlay-workshop-widget-root--pit-overflow" : ""}`} data-overlay-workshop-widget-root style={{ width: previewWidth, height: previewHeight, transform: reference ? undefined : `scale(${query.scale})`, transformOrigin: reference ? "top left" : "center" }}>
+    <div className={`overlay-workshop-widget-root${pitOverflow ? " overlay-workshop-widget-root--pit-overflow" : ""}`} data-overlay-workshop-widget-root style={{ width: previewWidth, height: frameHeight, transform: reference ? undefined : `scale(${query.scale})`, transformOrigin: reference ? "top left" : "center" }}>
       <div
         className="overlay-workshop-widget-preview"
         data-overlay-workshop-widget-preview
@@ -208,7 +211,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
   // Scene transport. The frame lives in local state while playing so the URL is
   // not rewritten sixty times a minute; pausing or stepping parks it in the
   // query, which is what makes a single frame linkable.
-  const scene = parsed.sceneId ? getAnimationScene(parsed.sceneId) : undefined;
+  const scene = parsed.sceneId ? getAnimationScene(parsed.sceneId, parsed.system, parsed.session) : undefined;
   // Nothing plays until asked. Selecting an animation arms it at rest; a run
   // plays that animation once, start to finish, and stops on its last frame.
   const [playing, setPlaying] = useState(false);
@@ -216,7 +219,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
   const [elapsedMs, setElapsedMs] = useState(
     () =>
       (initialQuery.sceneFrame ?? 0) *
-      (initialQuery.sceneId ? (getAnimationScene(initialQuery.sceneId)?.frameMs ?? 0) : 0),
+      (initialQuery.sceneId ? (getAnimationScene(initialQuery.sceneId, initialQuery.system, initialQuery.session)?.frameMs ?? 0) : 0),
   );
   const elapsedRef = useRef(0);
   // Última muestra cuantizada ya empujada al estado — el reloj corre a ritmo
@@ -260,7 +263,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
         return;
       }
       setRejected(undefined);
-      const nextScene = next.sceneId ? getAnimationScene(next.sceneId) : undefined;
+      const nextScene = next.sceneId ? getAnimationScene(next.sceneId, next.system, next.session) : undefined;
       setElapsedScene(next.sceneId);
       setElapsedMs(nextScene ? (next.sceneFrame ?? 0) * nextScene.frameMs : 0);
       setQuery(next);
@@ -294,7 +297,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
       const sampled = sampleAtRate(next, updateHz);
       if (sampled !== lastSampledRef.current) {
         lastSampledRef.current = sampled;
-        setElapsedMs(next);
+        setElapsedMs(sampled);
       }
       raf = requestAnimationFrame(tick);
     };
@@ -306,8 +309,9 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
   // sees a new snapshot at its own updateHz (standings 15, delta 30). Playing
   // the interpolation straight at 60fps made the Workshop four times smoother
   // than the product, which is the wrong thing to judge a design against.
-  // The clock advances at frame rate; the data is quantised to the widget's rate.
-  const sampledMs = scene ? sampleAtRate(elapsedMs, updateHz) : 0;
+  // Playback stores sampled timestamps; manual inspection lands exactly on
+  // the selected keyframe, even if its time is between telemetry samples.
+  const sampledMs = scene ? elapsedMs : 0;
   const playhead = scene ? interpolateSceneAt(scene, sampledMs, loop) : null;
   const currentKeyframe = playhead?.keyframe ?? 0;
 
@@ -342,7 +346,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
       if (
         parsed.widget === "standings"
         && parsed.system === "vantare-functional"
-        && parsed.studyStyle === "default"
+        && (parsed.studyStyle === "default" || head?.frame.standingsWindowPosition !== undefined)
         && parsed.around !== undefined
       ) {
         return {
@@ -363,6 +367,8 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
     () => widget && runtime ? fitFunctionalStandingsToRuntime(widget, runtime) : widget,
     [widget, runtime],
   );
+  const previewFloorHeight = scene?.frames.some((frame) => frame.standingsWindowPosition !== undefined)
+    ? widget?.layout.h : undefined;
 
   const parkFrame = (frame: number) => {
     setPlaying(false);
@@ -395,8 +401,8 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
         {rejected && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-rejected>URL rechazada ({rejected}) — se cargaron los valores por defecto.</p>}
         {fixtureError && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-fixture-error>Selección inválida: {fixtureError}</p>}
         {!fixtureError && visualWidget && runtime && (
-          <><WorkshopSurface widget={visualWidget} runtime={runtime} profileId={profileId} surface={parsed.surface} query={parsed} />
-          {parsed.compare && <WorkshopSurface widget={visualWidget} runtime={runtime} profileId={profileId} surface={parsed.compare} query={parsed} comparison />}</>
+          <><WorkshopSurface widget={visualWidget} runtime={runtime} profileId={profileId} surface={parsed.surface} query={parsed} previewFloorHeight={previewFloorHeight} />
+          {parsed.compare && <WorkshopSurface widget={visualWidget} runtime={runtime} profileId={profileId} surface={parsed.compare} query={parsed} previewFloorHeight={previewFloorHeight} comparison />}</>
         )}
         {scene ? (
           <div className="overlay-workshop-transport" data-overlay-workshop-transport>

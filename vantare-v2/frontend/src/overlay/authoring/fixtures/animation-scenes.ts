@@ -1,4 +1,4 @@
-import type { WidgetType } from "../../core/profile-document";
+import type { DesignSystemId, WidgetType } from "../../core/profile-document";
 
 /**
  * A single car's state for one frame of a scene. Anything omitted keeps the
@@ -12,6 +12,8 @@ export type SceneOverride = {
   inPits?: boolean;
   tireCompound?: string;
   bestLapTime?: number;
+  /** Improvement against this session's demo baseline, in seconds. */
+  bestLapImprovement?: number;
   /** Drops the car from the field entirely (retirement / rejoin frames). */
   absent?: boolean;
 };
@@ -32,6 +34,8 @@ export type SceneFrame = {
   player?: ScenePlayerOverride;
   /** Session clock for this frame, when the animation depends on it. */
   remainingSeconds?: number;
+  /** Review a different player-window anchor without changing any race positions. */
+  standingsWindowPosition?: number;
   /** Shown under the transport so it is clear what this frame is doing. */
   caption: string;
 };
@@ -52,6 +56,7 @@ export type AnimationScene = {
    * typed V2 presentation-gap catalog.
    */
   unsupportedSignal?: string;
+  sessions?: readonly string[];
 };
 
 /**
@@ -421,7 +426,113 @@ const PEDALS_CLUTCH_SCENE: AnimationScene = {
   ],
 };
 
+// Escenas del renderer Eficiencia: solo efectos que implementa, sobre filas
+// visibles en su ventana inicial. No cambian la clasificación elegida.
+const COMBINED_SETTLED_CARS: Record<string, SceneOverride> = {
+  "André Lotterer": { inPits: false },
+  "Ben Hanley": { place: 5, inPits: false },
+  "Filipe Albuquerque": { place: 2, inPits: false },
+  "Antonio Giovinazzi": { bestLapImprovement: 0.55 },
+};
+const COMBINED_SEPARATED_CARS: Record<string, SceneOverride> = {
+  ...COMBINED_SETTLED_CARS,
+  "Filipe Albuquerque": { place: 2, inPits: false, timeBehindLeader: 0.4 },
+  "Kévin Estre": { timeBehindLeader: 0.8 },
+  "Antonio Giovinazzi": { bestLapImprovement: 0.55, timeBehindLeader: 1.35 },
+};
+const COMBINED_WINDOW_CARS: Record<string, SceneOverride> = {
+  ...COMBINED_SEPARATED_CARS,
+  "Antonio Giovinazzi": { ...COMBINED_SEPARATED_CARS["Antonio Giovinazzi"], inPits: true },
+};
+
+const FUNCTIONAL_STANDINGS_SCENES: readonly AnimationScene[] = [
+  {
+    id: "standings-functional-battle", sessions: ["race"], widget: "standings", label: "Batalla cercana · conducción",
+    watchFor: "Lotterer y Giovinazzi son consecutivos de su clase. El acento ámbar entra al acercarse, se mantiene estable y se retira al separarse; no cambia el tamaño del texto ni pulsa continuamente.",
+    frameMs: 1700,
+    frames: [
+      { caption: "Giovinazzi a 2,00 s: aún no hay batalla.", cars: { "André Lotterer": { inPits: false }, "Ben Hanley": { timeBehindLeader: 0.7 }, "Kévin Estre": { timeBehindLeader: 1.4 }, "Antonio Giovinazzi": { timeBehindLeader: 2 } } },
+      { caption: "Se acerca a 0,65 s: aparece el acento de batalla.", cars: { "André Lotterer": { inPits: false }, "Ben Hanley": { timeBehindLeader: 0.2 }, "Kévin Estre": { timeBehindLeader: 0.4 }, "Antonio Giovinazzi": { timeBehindLeader: 0.65 } } },
+      { caption: "A 0,95 s el acento permanece estable.", cars: { "André Lotterer": { inPits: false }, "Ben Hanley": { timeBehindLeader: 0.3 }, "Kévin Estre": { timeBehindLeader: 0.6 }, "Antonio Giovinazzi": { timeBehindLeader: 0.95 } } },
+      { caption: "Se separa a 1,35 s: el acento se retira.", cars: { "André Lotterer": { inPits: false }, "Ben Hanley": { timeBehindLeader: 0.4 }, "Kévin Estre": { timeBehindLeader: 0.8 }, "Antonio Giovinazzi": { timeBehindLeader: 1.35 } } },
+    ],
+  },
+  {
+    id: "standings-functional-window", sessions: ["race"], widget: "standings", label: "Entrada y salida de ventana",
+    watchFor: "La revisión cambia el piloto de referencia entre P1, P7 y P9. Usa al menos 10 pilotos y Alrededor de 4: aparecen y se retiran filas/PIT mientras las demás se recolocan. Todas las posiciones reales permanecen iguales: no aparecen avisos de adelantamiento.",
+    frameMs: 1600,
+    frames: [
+      { caption: "Ventana alrededor de P1; posiciones estables.", standingsWindowPosition: 1, cars: { "Antonio Giovinazzi": { inPits: true } } },
+      { caption: "Ventana alrededor de P7: entran nuevos pilotos y salen otros.", standingsWindowPosition: 7, cars: { "Antonio Giovinazzi": { inPits: true } } },
+      { caption: "Ventana alrededor de P9: los supervivientes mantienen su identidad.", standingsWindowPosition: 9, cars: { "Antonio Giovinazzi": { inPits: true } } },
+      { caption: "Vuelta a P1: reaparecen sus pilotos y PIT.", standingsWindowPosition: 1, cars: { "Antonio Giovinazzi": { inPits: true } } },
+    ],
+  },
+  {
+    id: "standings-functional-position", sessions: ["race"], widget: "standings", label: "Cambio de posición · por piloto",
+    watchFor: "Ben Hanley y Filipe Albuquerque intercambian posición. Cada fila se desliza, recibe un acento verde o rojo y muestra temporalmente los puestos ganados o perdidos. Pulsa Reproducir para verlo.",
+    frameMs: 1600,
+    frames: [
+      { caption: "Posiciones iniciales.", cars: {} },
+      { caption: "Albuquerque gana posición; Hanley la pierde.", cars: { "Ben Hanley": { place: 5 }, "Filipe Albuquerque": { place: 2 } } },
+      { caption: "Clasificación estable tras el cambio.", cars: { "Ben Hanley": { place: 5 }, "Filipe Albuquerque": { place: 2 } } },
+    ],
+  },
+  {
+    id: "standings-functional-pit", widget: "standings", label: "Entrada y salida de boxes",
+    watchFor: "La etiqueta PIT aparece junto a André Lotterer al entrar en boxes y desaparece al salir. Activa Estado en boxes: la etiqueta entra y sale suavemente, ligada a su piloto.",
+    frameMs: 1600,
+    frames: [
+      { caption: "Lotterer está en pista.", cars: { "André Lotterer": { inPits: false } } },
+      { caption: "Lotterer entra en boxes: aparece PIT.", cars: { "André Lotterer": { inPits: true } } },
+      { caption: "Lotterer sigue en boxes.", cars: { "André Lotterer": { inPits: true } } },
+      { caption: "Lotterer vuelve a pista: desaparece PIT.", cars: { "André Lotterer": { inPits: false } } },
+    ],
+  },
+  {
+    id: "standings-functional-personal-best", widget: "standings", label: "Mejor vuelta personal",
+    watchFor: "Activa Mejor vuelta. Un barrido verde destaca la mejora de Antonio Giovinazzi; las cifras conservan su posición y tamaño.",
+    frameMs: 1700,
+    frames: [
+      { caption: "Referencia personal inicial.", cars: {} },
+      { caption: "Giovinazzi mejora su vuelta en 0,150 s.", cars: { "Antonio Giovinazzi": { bestLapImprovement: 0.15 } } },
+      { caption: "La nueva vuelta permanece; el aviso se retira.", cars: { "Antonio Giovinazzi": { bestLapImprovement: 0.15 } } },
+    ],
+  },
+  {
+    id: "standings-functional-session-best", widget: "standings", label: "Mejor vuelta de sesión",
+    watchFor: "Activa Mejor vuelta. El acento morado y el distintivo pasan al nuevo piloto más rápido, sin ampliar ni desplazar los tiempos.",
+    frameMs: 1700,
+    frames: [
+      { caption: "Lotterer tiene la referencia de la sesión.", cars: {} },
+      { caption: "Giovinazzi marca la mejor vuelta.", cars: { "Antonio Giovinazzi": { bestLapImprovement: 0.55 } } },
+      { caption: "Bovy mejora esa referencia y recibe el distintivo.", cars: { "Antonio Giovinazzi": { bestLapImprovement: 0.55 }, "Sarah Bovy": { bestLapImprovement: 0.9 } } },
+      { caption: "Los avisos se retiran; el récord queda identificado.", cars: { "Antonio Giovinazzi": { bestLapImprovement: 0.55 }, "Sarah Bovy": { bestLapImprovement: 0.9 } } },
+    ],
+  },
+  {
+    id: "standings-functional-combined", widget: "standings", sessions: ["race"], label: "Secuencia combinada · conducción",
+    watchFor: "Activa Mejor vuelta y Estado en boxes; usa al menos 10 pilotos y Alrededor de 4. Revisa mejoras de vuelta, posiciones, PIT, batalla cercana y entrada/salida de la ventana, en ese orden. Los avisos son breves y las cifras estables; el cambio de ventana no simula adelantamientos.",
+    frameMs: 1600,
+    frames: [
+      { caption: "Clasificación inicial.", cars: { "Ben Hanley": { inPits: false } } },
+      { caption: "Giovinazzi mejora su referencia personal.", cars: { "Ben Hanley": { inPits: false }, "Antonio Giovinazzi": { bestLapImprovement: 0.15 } } },
+      { caption: "Cambio de posición; PIT sigue a Albuquerque.", cars: { "Ben Hanley": { place: 5, inPits: false }, "Filipe Albuquerque": { place: 2, inPits: true }, "Antonio Giovinazzi": { bestLapImprovement: 0.15 } } },
+      { caption: "Giovinazzi marca el récord de sesión.", cars: { "Ben Hanley": { place: 5, inPits: false }, "Filipe Albuquerque": { place: 2, inPits: true }, "Antonio Giovinazzi": { bestLapImprovement: 0.55 } } },
+      { caption: "Albuquerque sale de boxes.", cars: { "Ben Hanley": { place: 5, inPits: false }, "Filipe Albuquerque": { place: 2, inPits: false }, "Antonio Giovinazzi": { bestLapImprovement: 0.55 } } },
+      { caption: "Giovinazzi se acerca a Lotterer: aparece el acento de batalla a 0,65 s.", cars: { ...COMBINED_SETTLED_CARS, "Filipe Albuquerque": { place: 2, inPits: false, timeBehindLeader: 0.2 }, "Kévin Estre": { timeBehindLeader: 0.4 }, "Antonio Giovinazzi": { bestLapImprovement: 0.55, timeBehindLeader: 0.65 } } },
+      { caption: "La batalla se mantiene estable a 0,95 s.", cars: { ...COMBINED_SETTLED_CARS, "Filipe Albuquerque": { place: 2, inPits: false, timeBehindLeader: 0.3 }, "Kévin Estre": { timeBehindLeader: 0.6 }, "Antonio Giovinazzi": { bestLapImprovement: 0.55, timeBehindLeader: 0.95 } } },
+      { caption: "Se separan a 1,35 s: desaparece el acento de batalla.", cars: COMBINED_SEPARATED_CARS },
+      { caption: "Giovinazzi entra en boxes; ventana alrededor de P1.", standingsWindowPosition: 1, cars: COMBINED_WINDOW_CARS },
+      { caption: "Ventana alrededor de P7: entran y salen pilotos con sus indicadores PIT.", standingsWindowPosition: 7, cars: COMBINED_WINDOW_CARS },
+      { caption: "Ventana alrededor de P9: las filas restantes se recolocan suavemente.", standingsWindowPosition: 9, cars: COMBINED_WINDOW_CARS },
+      { caption: "Vuelta a P1: reaparecen sus pilotos y PIT, sin avisos de adelantamiento.", standingsWindowPosition: 1, cars: COMBINED_WINDOW_CARS },
+    ],
+  },
+];
+
 export const ANIMATION_SCENES: readonly AnimationScene[] = [
+  ...FUNCTIONAL_STANDINGS_SCENES,
   OVERTAKE_SCENE,
   BATTLE_SCENE,
   CLASS_BATTLE_SCENE,
@@ -446,12 +557,18 @@ export function isAnimationSceneId(value: unknown): value is string {
   return typeof value === "string" && ANIMATION_SCENE_IDS.includes(value);
 }
 
-export function getAnimationScene(id: string): AnimationScene | undefined {
-  return ANIMATION_SCENES.find((scene) => scene.id === id);
+export function getAnimationScene(id: string, system?: DesignSystemId, session?: string): AnimationScene | undefined {
+  const scene = ANIMATION_SCENES.find((scene) => scene.id === id);
+  if (scene?.sessions && session && !scene.sessions.includes(session)) return undefined;
+  if (scene?.widget === "standings" && system === "vantare-functional") {
+    return FUNCTIONAL_STANDINGS_SCENES.find((candidate) => candidate.id === id);
+  }
+  return scene;
 }
 
-export function listAnimationScenes(widget: WidgetType): readonly AnimationScene[] {
-  return ANIMATION_SCENES.filter((scene) => scene.widget === widget);
+export function listAnimationScenes(widget: WidgetType, system?: DesignSystemId, session?: string): readonly AnimationScene[] {
+  if (widget === "standings" && system === "vantare-functional") return FUNCTIONAL_STANDINGS_SCENES.filter((scene) => !session || !scene.sessions || scene.sessions.includes(session));
+  return ANIMATION_SCENES.filter((scene) => scene.widget === widget && (!system || !FUNCTIONAL_STANDINGS_SCENES.includes(scene)));
 }
 
 /** Wraps so the transport can loop and step backwards past zero. */

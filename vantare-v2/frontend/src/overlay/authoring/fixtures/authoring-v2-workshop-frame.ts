@@ -1,3 +1,4 @@
+import { rankDemoStandings, withFunctionalStandingsDemo } from "./functional-standings-demo";
 import crystalReferenceManifest from "../../../../testdata/crystal-reference/manifest.json";
 import type {
   OverlayControlsHistoryV2,
@@ -95,12 +96,13 @@ function workshopDesignMeta(designId: string): { designId: string; width: number
 
 function shapeVariantFor(input: {
   widget: WidgetType;
+  system: DesignSystemId;
   variant: WorkshopV2Variant;
   sceneId?: string;
 }): AuthoringV2Variant {
   // La escena también da forma al widget: sin multiclass la escena de
   // fastest-lap entregaría la corona entre coches fuera de pantalla.
-  if (input.sceneId && input.widget === "standings") {
+  if (input.sceneId && input.widget === "standings" && input.system !== EFFICIENCY_SYSTEM_ID) {
     return "standings-multiclass";
   }
   if ((AUTHORING_V2_VARIANTS as readonly string[]).includes(input.variant)) {
@@ -752,7 +754,7 @@ function applyScene(
   scenario: WorkshopV2Scenario,
   quality: OverlayQualityV2,
 ): OverlayFrameV2 {
-  const scene = scenario.sceneId ? getAnimationScene(scenario.sceneId) : undefined;
+  const scene = scenario.sceneId ? getAnimationScene(scenario.sceneId, scenario.system, scenario.session) : undefined;
   if (!scene || scene.widget !== scenario.widget) return frame;
   const state = scenario.sceneState ?? sceneFrameAt(scene, scenario.sceneFrame ?? 0);
   let standings = frame.standings;
@@ -795,14 +797,29 @@ function applyScene(
             ...(patch.timeBehindLeader !== undefined ? { gap: patch.timeBehindLeader } : {}),
             ...(patch.inPits !== undefined ? { pit: patch.inPits } : {}),
             ...(patch.bestLapTime !== undefined ? { bestLap: patch.bestLapTime } : {}),
+            ...(patch.bestLapImprovement !== undefined && row.bestLap?.v !== undefined
+              ? { bestLap: row.bestLap.v - patch.bestLapImprovement } : {}),
           }, quality) ?? row,
         ];
       });
       standings = [...standings].sort((left, right) => left.position - right.position);
+      if (scene.id.startsWith("standings-functional-")) {
+        if (scenario.session !== "race") {
+          standings = [...standings].sort((left, right) => (left.bestLap.v ?? Infinity) - (right.bestLap.v ?? Infinity));
+        }
+        standings = rankDemoStandings(standings).map((row, index) => ({
+          ...row, gap: state.cars?.[row.driver ?? ""]?.timeBehindLeader !== undefined
+            ? row.gap : frame.standings[index]!.gap,
+        }));
+      }
     }
     warnDroppedScenePatches(scene.id, Object.keys(state.cars), resolved);
   }
   let player = frame.player;
+  if (state.standingsWindowPosition !== undefined) {
+    const anchor = standings.find((row) => row.position === state.standingsWindowPosition);
+    if (anchor) player = { ...player, id: anchor.id };
+  }
   let delta = frame.delta;
   let session = frame.session;
   if (state.player?.deltaSeconds !== undefined) {
@@ -941,6 +958,10 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
   }
   if (scenario.widget === "standings" && scenario.playerPosition !== undefined) {
     frame = withWorkshopPlayerPosition(frame, scenario.playerPosition);
+  }
+  if (scenario.widget === "standings" && scenario.system === EFFICIENCY_SYSTEM_ID
+    && (scenario.variant === "default" || scenario.variant === "standings-multiclass")) {
+    frame = withFunctionalStandingsDemo(frame, scenario, quality);
   }
   frame = applyScene(frame, scenario, quality);
   return { ...runtime, overlayV2Frame: frame };

@@ -84,8 +84,8 @@ function Start-Sleep { throw 'Artificial playback wait is forbidden' };
 func TestPlayerRejectsMissingMedia(t *testing.T) {
 	player := NewPlayer()
 	err := player.Play(filepath.Join(t.TempDir(), "missing.mp3"))
-	if err == nil {
-		t.Fatal("missing media reported successful playback")
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("missing media error = %v, want os.ErrNotExist", err)
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
 		t.Fatalf("missing media was not rejected by the player before timeout: %v", err)
@@ -97,5 +97,29 @@ func TestPlayerCancelledContext(t *testing.T) {
 	cancel()
 	if err := NewPlayer().PlayContext(ctx, "unused.mp3"); !errors.Is(err, context.Canceled) {
 		t.Fatalf("PlayContext error = %v, want context.Canceled", err)
+	}
+}
+
+// Filesystem rejection must not need PowerShell, a media device or a timer.
+func TestPlayerRejectsInvalidPathWithoutProcess(t *testing.T) {
+	t.Setenv("PATH", t.TempDir())
+	for _, tc := range []struct {
+		name string
+		path string
+		want error
+	}{
+		{"missing", filepath.Join(t.TempDir(), "missing.mp3"), os.ErrNotExist},
+		{"directory", t.TempDir(), os.ErrInvalid},
+		{"empty", "", os.ErrInvalid},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			player := NewPlayer()
+			if err := player.Play(tc.path); !errors.Is(err, tc.want) {
+				t.Fatalf("Play error = %v, want %v", err, tc.want)
+			}
+			if player.current != nil {
+				t.Fatal("invalid path started a playback process")
+			}
+		})
 	}
 }

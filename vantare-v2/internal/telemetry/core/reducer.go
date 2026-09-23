@@ -83,17 +83,19 @@ type VehicleState struct {
 // sessionInfo signal (ISA-1106, CarNumber precedent): they own presence and
 // freshness per field and never default to a usable value.
 type ObservedState struct {
-	SourceTime    schema.Field[time.Duration]
-	EndTime       schema.Field[session.EndTime]
-	MaximumLaps   schema.Field[session.MaximumLaps]
-	TrackName     schema.Field[string]
-	SessionType   schema.Field[session.Type]
-	VehicleCount  schema.Field[schema.Count]
-	PlayerPresent schema.Field[bool]
-	AmbientTemp   schema.Field[weather.Temperature]
-	TrackTemp     schema.Field[weather.Temperature]
-	SessionFlag   schema.Field[session.Flag]
-	Vehicles      []VehicleState
+	SourceTime      schema.Field[time.Duration]
+	EndTime         schema.Field[session.EndTime]
+	MaximumLaps     schema.Field[session.MaximumLaps]
+	TrackName       schema.Field[string]
+	SessionType     schema.Field[session.Type]
+	VehicleCount    schema.Field[schema.Count]
+	PlayerPresent   schema.Field[bool]
+	AmbientTemp     schema.Field[weather.Temperature]
+	TrackTemp       schema.Field[weather.Temperature]
+	RainFraction    schema.Field[weather.Fraction]
+	WetnessFraction schema.Field[weather.Fraction]
+	SessionFlag     schema.Field[session.Flag]
+	Vehicles        []VehicleState
 }
 
 // Batch carries one complete observed state and its canonical ordering header.

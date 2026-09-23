@@ -56,6 +56,7 @@ export const studioV3Pt: Record<string, string> = {
   "studio.v3.inspector.racingFlags.hideWhenGreen": "Ocultar em verde",
   "studio.v3.widgetTypes.broadcastTower": "Horizontal Standings",
   "studio.v3.inspector.broadcastTower.rowCount": "Número de linhas",
+  "studio.v3.inspector.broadcastTower.driverCarousel": "Carrossel de pilotos",
   "studio.v3.inspector.broadcastTower.showWeather": "Mostrar clima",
   "studio.v3.inspector.broadcastTower.showSof": "Mostrar SOF",
   "studio.v3.widgetTypes.headToHead": "Cara a cara",

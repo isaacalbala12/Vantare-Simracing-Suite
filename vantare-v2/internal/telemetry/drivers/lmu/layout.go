@@ -75,6 +75,7 @@ func (rows rowLayout) end() int {
 }
 
 type sessionLayout struct {
+	RainFraction layoutField
 	TrackName    layoutField
 	SessionType  layoutField
 	CurrentTime  layoutField
@@ -165,6 +166,7 @@ var lmu13Layout = layoutContract{
 	ScoringRows:   rowLayout{Base: 2192, Stride: 584, Maximum: lmu13MaxScoringRows},
 	TelemetryRows: rowLayout{Base: 128468, Stride: 1888, Maximum: lmu13MaxScoringRows},
 	Session: sessionLayout{
+		RainFraction: sessionField("session.rain_fraction", 1852, sourceFloat64, 1),
 		TrackName:    sessionField("session.track_name", 1632, sourceChar, 64),
 		SessionType:  sessionField("session.type", 1696, sourceInt32, 1),
 		CurrentTime:  sessionField("session.current_time", 1700, sourceFloat64, 1),
@@ -224,6 +226,7 @@ var lmu13Layout = layoutContract{
 func (layout layoutContract) admittedFields() []layoutField {
 	return []layoutField{
 		layout.Session.TrackName,
+		layout.Session.RainFraction,
 		layout.Session.SessionType,
 		layout.Session.CurrentTime,
 		layout.Session.EndTime,

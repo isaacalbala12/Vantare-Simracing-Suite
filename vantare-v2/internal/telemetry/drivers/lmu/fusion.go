@@ -234,6 +234,8 @@ func (state *Fusion) Merge(receivedUTC time.Time, elapsed time.Duration, inputs 
 	// widening the TTL.
 	result.AmbientTemp = scopedSessionField(rest.AmbientTemp, restStamp, elapsed, state.sessionFloor)
 	result.TrackTemp = scopedSessionField(rest.TrackTemp, restStamp, elapsed, state.sessionFloor)
+	result.RainFraction = ageGridField(elapsed, shmStamp, shm.SourceTime.Freshness() == schema.FreshnessStale, shm.RainFraction)
+	result.WetnessFraction = scopedSessionField(rest.WetnessFraction, restStamp, elapsed, state.sessionFloor)
 	result.SessionFlag = scopedSessionField(rest.SessionFlag, restStamp, elapsed, state.sessionFloor)
 	result.Vehicles = ageVehicleGrid(elapsed, shmStamp, shm.SourceTime, shm.Vehicles)
 	overlayCarNumbers(result.Vehicles, rest, elapsed, state.sessionFloor)

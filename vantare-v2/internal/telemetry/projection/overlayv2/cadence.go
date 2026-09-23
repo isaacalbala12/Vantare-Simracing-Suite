@@ -627,11 +627,12 @@ type dirtySignals struct {
 	remaining   schema.Field[session.RemainingTime]
 	// ambientTemp and trackTemp fingerprint exactly what BuildWeather
 	// projects for the session (ISA-1106, B4): value and quality both
-	// decide, following the fuel/standings signal pattern. Rain, wetness,
-	// wind and pressure stay missing with no admitted source, so they need
-	// no signal.
-	ambientTemp schema.Field[weather.Temperature]
-	trackTemp   schema.Field[weather.Temperature]
+	// decide, following the fuel/standings signal pattern. Admitted rain and
+	// wetness follow the same rule; wind and pressure remain missing.
+	ambientTemp     schema.Field[weather.Temperature]
+	trackTemp       schema.Field[weather.Temperature]
+	rainFraction    schema.Field[weather.Fraction]
+	wetnessFraction schema.Field[weather.Fraction]
 
 	playerFuel schema.Field[energy.Fuel]
 	fuelPerLap schema.Field[energy.FuelAmount]
@@ -671,6 +672,8 @@ func observeDirtySignals(header envelope.Header, final derive.FinalState, source
 		remaining:           final.Derived.SessionRemaining,
 		ambientTemp:         final.Observed.AmbientTemp,
 		trackTemp:           final.Observed.TrackTemp,
+		rainFraction:        final.Observed.RainFraction,
+		wetnessFraction:     final.Observed.WetnessFraction,
 		gapsFreshness:       final.Derived.Gaps.Freshness,
 		deltaFreshness:      final.Derived.Delta.Freshness,
 		fuelPerLap:          final.Derived.Fuel.PerLap,
@@ -711,7 +714,7 @@ func (signals dirtySignals) diff(previous dirtySignals) DirtySet {
 		signals.maximumLaps != previous.maximumLaps || signals.remaining != previous.remaining {
 		dirty = dirty.Mark(SectionSession)
 	}
-	if signals.ambientTemp != previous.ambientTemp || signals.trackTemp != previous.trackTemp {
+	if signals.ambientTemp != previous.ambientTemp || signals.trackTemp != previous.trackTemp || signals.rainFraction != previous.rainFraction || signals.wetnessFraction != previous.wetnessFraction {
 		dirty = dirty.Mark(SectionWeather)
 	}
 	// Standings depends only on its own fingerprint: the derived gap set feeds

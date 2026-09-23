@@ -196,12 +196,16 @@ export const vantareFunctionalManifest: DesignSystemDefinition = {
     {
       widgetType: "broadcast-tower",
       configVersion: 1,
-      defaultSettings: {},
+      defaultSettings: { driverCarousel: false },
       configMigrations: { 0: (settings) => ({ ...settings }) },
       parseSettings(input: unknown) {
-        return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
+        const value = input && typeof input === "object" && !Array.isArray(input) ? input as Record<string, unknown> : {};
+        if (value.driverCarousel !== undefined && typeof value.driverCarousel !== "boolean") throw new Error("driverCarousel must be boolean");
+        return { ...value, driverCarousel: value.driverCarousel ?? false };
       },
-      inspector: { appearance: [] },
+      inspector: { appearance: [
+        { kind: "toggle", id: "driver-carousel", labelKey: "studio.v3.inspector.broadcastTower.driverCarousel", path: "driverCarousel", defaultValue: false },
+      ] },
       Renderer: BroadcastTowerFunctional as ComponentType<WidgetRendererProps>,
     },
     {

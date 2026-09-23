@@ -99,14 +99,16 @@ type Observation struct {
 	// (ISA-1106, REST-joined like CarNumber: no SHM source, no matrix rule).
 	// SessionFlag carries the conservative global flag assertion: yellow
 	// only on positive evidence, missing otherwise, never green by absence.
-	AmbientTemp   schema.Field[weather.Temperature]
-	TrackTemp     schema.Field[weather.Temperature]
-	SessionFlag   schema.Field[session.Flag]
-	Vehicles      []VehicleObservation
-	REST          RESTObservation
-	MatrixVersion uint16
-	Decisions     []FieldDecision
-	Conflicts     []ConflictDiagnostic
+	AmbientTemp     schema.Field[weather.Temperature]
+	TrackTemp       schema.Field[weather.Temperature]
+	RainFraction    schema.Field[weather.Fraction]
+	WetnessFraction schema.Field[weather.Fraction]
+	SessionFlag     schema.Field[session.Flag]
+	Vehicles        []VehicleObservation
+	REST            RESTObservation
+	MatrixVersion   uint16
+	Decisions       []FieldDecision
+	Conflicts       []ConflictDiagnostic
 }
 
 // VehicleSourceID is the LMU slot ID for one continuously occupied row. It is
@@ -211,6 +213,13 @@ func parseWithProfile(buf []byte, received time.Time, profile compatibilityProfi
 	result.VehicleCount = validateCount(vehicles, 0, maxVehicles)
 	result.SessionType = validateSessionType(readInt32(buf, lmu13Layout.Session.SessionType.Offset))
 	result.SourceTime = validateDuration(currentSeconds)
+	if vehicles > 0 {
+		rain := readFloat64(buf, lmu13Layout.Session.RainFraction.Offset)
+		result.RainFraction = invalid[weather.Fraction]()
+		if finite(rain) && rain >= 0 && rain <= 1 {
+			result.RainFraction = observed(weather.Fraction(rain))
+		}
+	}
 	result.EndTime = invalid[session.EndTime]()
 	if finite(endSeconds) && (!finite(currentSeconds) || endSeconds >= currentSeconds) {
 		result.EndTime = observed(session.EndTime(endSeconds))

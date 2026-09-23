@@ -6,7 +6,8 @@
   "technicalNotes": [
     "La identidad canónica del piloto permanece estable al cambiar de puesto; no se usa posición o dorsal para animar.",
     "Los cambios numéricos salen antes de medir geometría, programar temporizadores o iniciar animaciones. Las transiciones rápidas retoman posición y opacidad vigentes; se respetan escala, modos de movimiento y cambios de fuente/sesión.",
-    "Workshop ofrece Secuencia completa, Cruce de posiciones, Inversión rápida, Salida y reentrada y Cifras sin reordenar, limitadas a Eficiencia. Los pasos manuales aterrizan exactamente en la muestra elegida."
+    "Workshop ofrece Secuencia completa, Cruce de posiciones, Inversión rápida, Salida y reentrada y Cifras sin reordenar, limitadas a Eficiencia. Los pasos manuales aterrizan exactamente en la muestra elegida.",
+    "Prueba opt-in driverCarousel en el renderer compartido: solo la franja gira con CSS, dos pasadas y clon decorativo inaccesible. Escena Carrusel de pilotos, vuelta127/180 y datos estables; presentación discreta por defecto conservada."
   ],
   "testing": [
     "Pruebas del renderer y ViewModel, suite frontend y revisión independiente sobre la implementación de movimiento aprobadas.",

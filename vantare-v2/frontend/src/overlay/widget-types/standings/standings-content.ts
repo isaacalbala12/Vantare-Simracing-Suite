@@ -1,3 +1,4 @@
+import { STANDINGS_WINDOW_AROUND_OPTIONS, type StandingsWindowAround } from "./standings-window";
 import {
   cloneWidgetColumns,
   updateWidgetColumn,
@@ -26,6 +27,8 @@ export type StandingsClassificationMode = "normal" | "multiclass";
 export type StandingsContent = {
   columns: WidgetColumnV3[];
   rowCount?: number;
+  playerWindow?: boolean;
+  windowAround?: StandingsWindowAround;
   classScope: StandingsClassScope;
   /** Classification is independent from the visual study/style. */
   classificationMode?: StandingsClassificationMode;
@@ -216,9 +219,11 @@ export function parseStandingsContent(input: unknown): StandingsContent {
         ? "multiclass"
         : "normal";
 
+  const playerWindow = inputRecord.playerWindow === true;
+  const windowAround = STANDINGS_WINDOW_AROUND_OPTIONS.find(value => value === inputRecord.windowAround) ?? 4;
   const rawColumns = inputRecord.columns;
   if (!Array.isArray(rawColumns)) {
-    return { ...defaults, rowCount: parsedRowCount, classScope, classificationMode };
+    return { ...defaults, rowCount: parsedRowCount, classScope, classificationMode, playerWindow, windowAround };
   }
   const columns = rawColumns.map((entry) => {
     if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
@@ -236,11 +241,11 @@ export function parseStandingsContent(input: unknown): StandingsContent {
     seenMetricIds.add(column.metricId);
   }
 
-  return { columns, rowCount: parsedRowCount, classScope, classificationMode };
+  return { columns, rowCount: parsedRowCount, classScope, classificationMode, playerWindow, windowAround };
 }
 
 export function getEnabledStandingsColumns(content: StandingsContent): WidgetColumnV3[] {
-  return content.columns.filter((column) => column.enabled);
+  return content.columns.filter((column) => column.enabled && column.metricId !== "tireCompound");
 }
 
 export function toggleStandingsColumn(content: StandingsContent, columnId: string): StandingsContent {

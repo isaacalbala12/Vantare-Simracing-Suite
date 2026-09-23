@@ -25,7 +25,7 @@ describe("StandingsContentInspector driver-name format", () => {
   it("offers the three formats on the Piloto column and none on the others", () => {
     renderInspector();
     expect(screen.getByTestId("studio-standings-column-name-format-driverName")).toBeTruthy();
-    expect(screen.getByRole("group", { name: "Nombre · Piloto" })).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Nombre · PILOTO" })).toBeTruthy();
     expect(screen.queryByRole("group", { name: "Nombre · Posición" })).toBeNull();
   });
 
@@ -35,7 +35,7 @@ describe("StandingsContentInspector driver-name format", () => {
     { option: "Completo", mode: "full" },
   ])("publishes format.mode=$mode keeping the rest of the column format", ({ option, mode }) => {
     const onContentChange = renderInspector();
-    const group = screen.getByRole("group", { name: "Nombre · Piloto" });
+    const group = screen.getByRole("group", { name: "Nombre · PILOTO" });
     fireEvent.click(within(group).getByRole("button", { name: option }));
     expect(onContentChange).toHaveBeenCalledTimes(1);
     const next = onContentChange.mock.calls[0]?.[0] as {

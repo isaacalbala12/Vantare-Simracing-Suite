@@ -162,6 +162,8 @@ type SessionV2 struct {
 }
 
 type PlayerInstrumentsV2 struct {
+	// Canonical current lap of the player; distinct from completed standings laps.
+	LapNumber QValue[int32]   `json:"lapNumber,omitempty"`
 	VehicleID string          `json:"id,omitempty"`
 	Speed     QValue[float64] `json:"speed"`
 	RPM       QValue[float64] `json:"rpm"`
@@ -217,21 +219,44 @@ type WeatherV2 struct {
 	PressureHpa QValue[float64] `json:"pressureHpa"`
 }
 
+type StandingQualityV2 struct {
+	Q             Quality `json:"q"`
+	Position      Quality `json:"position,omitempty"`
+	ClassPosition Quality `json:"classPosition,omitempty"`
+	Pit           Quality `json:"pit,omitempty"`
+	Laps          Quality `json:"laps,omitempty"`
+	GapLaps       Quality `json:"gapLaps,omitempty"`
+	ClassGap      Quality `json:"classGap,omitempty"`
+	ClassGapLaps  Quality `json:"classGapLaps,omitempty"`
+	Interval      Quality `json:"interval,omitempty"`
+	IntervalLaps  Quality `json:"intervalLaps,omitempty"`
+}
+
 type StandingRowV2 struct {
-	VehicleID      string                   `json:"id"`
-	Position       int32                    `json:"position"`
-	ClassPosition  int32                    `json:"classPosition"`
-	ClassID        string                   `json:"classId,omitempty"`
-	DriverName     string                   `json:"driver,omitempty"`
-	CarNumber      string                   `json:"number,omitempty"`
-	GapSeconds     QValue[float64]          `json:"gap"`
-	GapLaps        int32                    `json:"gapLaps,omitempty"`
-	PitState       string                   `json:"pit,omitempty"`
-	CompletedLaps  int32                    `json:"laps,omitempty"`
-	BestLapSeconds QValue[float64]          `json:"bestLap"`
-	LastLapSeconds QValue[float64]          `json:"lastLap"`
-	LapDistance    QValue[float64]          `json:"lapDistance"`
-	GroundPosition QValue[GroundPositionV2] `json:"groundPosition"`
+	// Quality explicitly declares a base for legacy scalar fields; per-field
+	// overrides preserve mixed freshness without repeating every fresh string.
+	Quality StandingQualityV2 `json:"quality,omitempty"`
+	// ClassRef is the authoritative absolute position of the class leader in
+	// this frame, never an array index. Missing reference means unknown.
+	ClassGap                  float64                  `json:"classGap,omitempty"`
+	ClassGapLaps              int32                    `json:"classGapLaps,omitempty"`
+	ClassGapReferencePosition int32                    `json:"classRef,omitempty"`
+	Interval                  float64                  `json:"interval,omitempty"`
+	IntervalLaps              int32                    `json:"intervalLaps,omitempty"`
+	VehicleID                 string                   `json:"id"`
+	Position                  int32                    `json:"position"`
+	ClassPosition             int32                    `json:"classPosition"`
+	ClassID                   string                   `json:"classId,omitempty"`
+	DriverName                string                   `json:"driver,omitempty"`
+	CarNumber                 string                   `json:"number,omitempty"`
+	GapSeconds                QValue[float64]          `json:"gap"`
+	GapLaps                   int32                    `json:"gapLaps,omitempty"`
+	PitState                  string                   `json:"pit,omitempty"`
+	CompletedLaps             int32                    `json:"laps"`
+	BestLapSeconds            QValue[float64]          `json:"bestLap"`
+	LastLapSeconds            QValue[float64]          `json:"lastLap"`
+	LapDistance               *QValue[float64]         `json:"lapDistance,omitempty"`
+	GroundPosition            QValue[GroundPositionV2] `json:"groundPosition"`
 }
 
 type RelativeRowV2 struct {

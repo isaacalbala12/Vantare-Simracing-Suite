@@ -20,10 +20,13 @@ describe("standings v2 view model", () => {
     ), "utf8").trim();
 
     const baseline = JSON.parse(expected);
-    expect(buildStandingsViewModelV2(update.frame, update.source, CONTENT)).toEqual({
+    const model = buildStandingsViewModelV2(update.frame, update.source, CONTENT);
+    expect(model).toEqual({
       ...baseline,
       trackName: update.frame.session.track.v,
       totalRows: 1,
+      lapText: "127",
+      playerRow: model.rows[0],
       flag: "unknown",
       sessionInfo: {
         trackTemperature: { text: "—", stale: false }, airTemperature: { text: "—", stale: false },
@@ -34,6 +37,7 @@ describe("standings v2 view model", () => {
       rows: baseline.rows.map((row: Record<string, unknown>, index: number) => ({
         ...row,
         classPosition: update.frame!.standings[index].classPosition,
+        vehicleClass: update.frame!.standings[index].classId,
       })),
     });
   });

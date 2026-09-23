@@ -4,7 +4,7 @@ export type StandingsWindowAround = (typeof STANDINGS_WINDOW_AROUND_OPTIONS)[num
 export const STANDINGS_WINDOW_DEFAULT_AROUND: StandingsWindowAround = 4;
 
 export type StandingsWindowRuntime = Readonly<{
-  /** Shared Workshop row projection; this is not a visual study/style id. */
+  /** Shared production/Workshop row projection; independent of visual style. */
   mode: "podium-around-player";
   around: StandingsWindowAround;
 }>;

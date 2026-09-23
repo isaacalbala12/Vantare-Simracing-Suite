@@ -430,7 +430,8 @@ function session(value: unknown, path: string): void {
 }
 
 function player(value: unknown, path: string): void {
-  objectWithKeys(value, path, ["speed", "rpm", "gear", "throttle", "brake", "clutch", "steering"], ["id"]);
+  objectWithKeys(value, path, ["speed", "rpm", "gear", "throttle", "brake", "clutch", "steering"], ["id", "lapNumber"]);
+  if (value.lapNumber !== undefined) qvalue(value.lapNumber, `${path}.lapNumber`, "number");
   optionalString(value.id, `${path}.id`);
   for (const key of ["speed", "rpm", "gear", "throttle", "brake", "clutch", "steering"] as const) {
     qvalue(value[key], `${path}.${key}`, "number");
@@ -499,14 +500,26 @@ function perMilleSeries(value: unknown, path: string): asserts value is readonly
   Object.freeze(value);
 }
 
+function validStandingQuality(value: unknown): boolean {
+ if (value === undefined) return true;
+ if (!objectHasKeys(value, ["q"], ["position", "classPosition", "pit", "laps", "gapLaps", "classGap", "classGapLaps", "interval", "intervalLaps"])) return false;
+ if (![value.q, value.position, value.classPosition, value.pit, value.laps, value.gapLaps, value.classGap, value.classGapLaps, value.interval, value.intervalLaps].every(q => q === undefined || ["fresh", "stale", "missing", "invalid"].includes(q as string))) return false;
+ if (value.q === undefined) return false;
+ Object.freeze(value);
+ return true;
+}
+
 function validStanding(value: unknown): boolean {
-  if (!objectHasKeys(value, ["id", "position", "classPosition", "gap", "bestLap", "lastLap", "lapDistance", "groundPosition"], ["classId", "driver", "number", "gapLaps", "pit", "laps"])) return false;
+  if (!objectHasKeys(value, ["id", "position", "classPosition", "gap", "bestLap", "lastLap", "groundPosition"], ["lapDistance", "classId", "driver", "number", "gapLaps", "pit", "laps", "quality", "classGap", "classGapLaps", "classRef", "interval", "intervalLaps"])) return false;
   const valid = typeof value.id === "string" && value.id.length > 0 &&
     Number.isSafeInteger(value.position) && Number.isSafeInteger(value.classPosition) &&
     validQValue(value.gap, "number") && validQValue(value.bestLap, "number") && validQValue(value.lastLap, "number") &&
-    validQValue(value.lapDistance, "number") && validGroundPosition(value.groundPosition) &&
+    (value.lapDistance === undefined || validQValue(value.lapDistance, "number")) && validGroundPosition(value.groundPosition) &&
     [value.classId, value.driver, value.number, value.pit].every(optionalStringValue) &&
-    [value.gapLaps, value.laps].every(optionalIntegerValue);
+    [value.gapLaps, value.laps].every(optionalIntegerValue) &&
+    optionalIntegerValue(value.classRef) &&
+    validStandingQuality(value.quality) &&
+    [value.classGap, value.interval].every(n => n === undefined || typeof n === "number" && Number.isFinite(n)) && [value.classGapLaps, value.intervalLaps].every(optionalIntegerValue);
   if (valid) Object.freeze(value);
   return valid;
 }

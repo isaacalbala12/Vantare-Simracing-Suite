@@ -6,6 +6,7 @@ function frame(rows: number): OverlayFrameV2 {
   const standings = Array.from({ length: rows }, (_, index) => ({
     id: `vehicle-${String(index).padStart(3, "0")}`,
     position: index + 1,
+    quality: { q: "fresh" as const },
     classPosition: (index % 3) + 1,
     classId: index < 2 ? "hypercar" : "lmp2",
     driver: `Driver ${index}`,
@@ -22,7 +23,7 @@ function frame(rows: number): OverlayFrameV2 {
     contract: 2, algorithm: 1, epoch: 3, sequence: 2, sessionId: "s", generatedAt: "2026-08-19T12:00:02Z",
     units: { speed: "mps", temperature: "celsius", pressure: "kpa", fuel: "liters" },
     session: { track: { q: "fresh", v: "Sebring" }, phase: { q: "fresh", v: "race" }, flag: { q: "missing" }, remaining: { q: "fresh", v: 7198 }, maxLaps: { q: "fresh", v: 240 } },
-    player: { id: "vehicle-000", speed: { q: "fresh", v: 50 }, rpm: { q: "fresh", v: 7200 }, gear: { q: "fresh", v: 4 }, throttle: { q: "fresh", v: 0.75 }, brake: { q: "fresh", v: 0.1 }, clutch: { q: "fresh", v: 0 }, steering: { q: "missing" } },
+    player: { id: "vehicle-000", lapNumber: {q:"fresh",v:34}, speed: { q: "fresh", v: 50 }, rpm: { q: "fresh", v: 7200 }, gear: { q: "fresh", v: 4 }, throttle: { q: "fresh", v: 0.75 }, brake: { q: "fresh", v: 0.1 }, clutch: { q: "fresh", v: 0 }, steering: { q: "missing" } },
     controls: { history: { q: "fresh", throttle: [750], brake: [125], clutch: [0] } },
     standings: standings as unknown as OverlayFrameV2["standings"],
     relative: [],
@@ -107,4 +108,14 @@ describe("buildBroadcastTowerViewModelV2", () => {
     expect(model.status).toBe("error");
     expect(model.rows).toHaveLength(0);
   });
+});
+
+it("current player lap stays independent of completed standings laps and crop", () => {
+ const input=frame(12); input.player.id="vehicle-011"; input.player.lapNumber={q:"fresh",v:35};
+ const content={rowCount:3,showWeather:true,showSof:false};
+ expect(buildBroadcastTowerViewModelV2(input,{state:"live"},content).lap).toBe(35);
+ input.player.lapNumber={q:"stale",v:35};
+ expect(buildBroadcastTowerViewModelV2(input,{state:"live"},content).lap).toBeUndefined();
+ input.player.lapNumber={q:"fresh"};
+ expect(buildBroadcastTowerViewModelV2(input,{state:"live"},content).lap).toBe(0);
 });

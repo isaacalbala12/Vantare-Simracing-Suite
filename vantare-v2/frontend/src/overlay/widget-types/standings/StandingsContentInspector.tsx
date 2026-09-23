@@ -1,3 +1,5 @@
+import { STANDINGS_WINDOW_AROUND_OPTIONS } from "./standings-window";
+import { functionalLabels } from "../../design-systems/vantare-functional/labels";
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { CustomInspectorProps } from '../../core/inspector-control';
 import { Check, Field, Seg, Select } from '../../../ui/orbit';
@@ -110,7 +112,7 @@ function OrderButton(props: {
 
 export function StandingsContentInspector(props: CustomInspectorProps): React.ReactElement {
   const { widget, disabled, onContentChange } = props;
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const content = parseStandingsContent(widget.content);
   const tower = isStandingsRedlineTowerVisual(widget.type, widget.visual);
   const redline = !tower && isStandingsRedlineWidget(widget);
@@ -147,6 +149,16 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
           </Field>
         </div>
 
+        <Check checked={content.playerWindow === true} disabled={disabled} label={t('studio.inspector.content.playerWindow')}
+          onChange={() => publish({ ...content, playerWindow: !content.playerWindow })}>
+          {t('studio.inspector.content.playerWindow')}
+        </Check>
+        {content.playerWindow && <Field label={t('studio.inspector.content.windowAround')}>
+          <Select label={t('studio.inspector.content.windowAround')} disabled={disabled} value={String(content.windowAround ?? 4)}
+            options={STANDINGS_WINDOW_AROUND_OPTIONS.map(value => ({ value: String(value), label: String(value) }))}
+            onChange={next => publish(parseStandingsContent({ ...content, windowAround: Number(next) }))} />
+        </Field>}
+
         {redline ? (
           <p className="orbit-studio-cols__note" data-testid="studio-standings-redline-fixed-note">
             {t('studio.inspector.content.redlineFixed')}
@@ -166,8 +178,8 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
         ) : null}
 
         {tower ? <p role="status" data-testid="studio-standings-tower-preview">{t('studio.inspector.content.towerPreview')}</p> : <ul className="orbit-studio-cols" data-testid="studio-standings-columns">
-          {content.columns.map((column, index) => {
-            const name = templateLabel(column.id);
+          {content.columns.filter(column => column.metricId !== "tireCompound").map((column, index) => {
+            const name = functionalLabels[locale][column.metricId as keyof typeof functionalLabels.en] ?? templateLabel(column.id);
             const align = (column.style?.align ?? 'left') as AlignOption;
             const fixed = redline && REDLINE_FIXED_METRICS.has(column.metricId);
             const flexibleIndex = flexibleColumns.findIndex((entry) => entry.id === column.id);

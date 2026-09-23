@@ -97,6 +97,8 @@ export const studioOrbitEn: Record<string, string> = {
   "studio.inspector.design.system": "System",
   "studio.inspector.design.variant": "Design",
   "studio.inspector.design.none": "No design applied",
+  "studio.inspector.content.playerWindow": "Podium and player window",
+  "studio.inspector.content.windowAround": "Drivers around player",
   "studio.inspector.content.rows": "Rows",
   "studio.inspector.content.width": "Width",
   "studio.inspector.content.align": "Alignment",

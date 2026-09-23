@@ -6,7 +6,7 @@ import { standingsDefinition } from "./standings-definition";
 import { buildStandingsViewModelV2, standingsDisplayedValues } from "./standings-view-model-v2";
 import { formatStandingsLapDifference, formatStandingsSecondsDifference } from "./standings-formatting";
 
-const content = standingsDefinition.parseContent({ classScope: "all-classes", rowCount: 20 });
+const content = standingsDefinition.parseContent({ classScope: "all-classes", classificationMode: "normal", rowCount: 20 });
 
 function frameForPhase(phase: "practice" | "qualifying" | "race"): OverlayFrameV2 {
   const frame = JSON.parse(readFileSync(path.resolve(
@@ -129,7 +129,8 @@ describe("buildStandingsViewModelV2 session columns", () => {
 
   it("keeps one- and two-digit seconds readable and spells lap gaps", () => {
     const frame = frameForPhase("race");
-    const [leader, oneDigit, twoDigits] = frame.standings;
+    const [leader, oneDigit] = frame.standings;
+    const twoDigits = oneDigit;
     const model = buildStandingsViewModelV2({
       ...frame,
       standings: [

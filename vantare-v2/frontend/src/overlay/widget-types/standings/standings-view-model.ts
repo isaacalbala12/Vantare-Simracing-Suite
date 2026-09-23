@@ -47,12 +47,14 @@ export type StandingsViewModel = WidgetViewModelBase & {
   sessionLabel: string;
   remainingText: string;
   lapText?: string;
+  /** Player data before presentation clipping. */
+  playerRow?: StandingsRowViewModel;
   trackName?: string;
   totalRows?: number;
   /** Fastest fresh lap over the full configured field, before row/window limits. */
   sessionBest?: { rowId: string; seconds: number };
   /** Datos ambientales opcionales para la banda inferior; solo existen cuando
-   *  la fuente V2 los entrega (hoy LMU no los soporta — declared gap). */
+   *  la fuente V2 los entrega con calidad actual. */
   ambientTempText?: string;
   trackTempText?: string;
   windText?: string;

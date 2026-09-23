@@ -383,3 +383,14 @@ class FakeEventSource implements OverlayFrameV2EventSourceLike {
     this.listeners.get(type)?.({ data });
   }
 }
+
+it("validates compact standings quality and preserves missing legacy authority", () => {
+ const input=golden();
+ const row=input.frame!.standings[0]!;
+ Object.assign(row,{quality:{q:"fresh",pit:"invalid",classGap:"missing"},classRef:1,interval:1.25,intervalLaps:0});
+ expect(decodeOverlayUpdateV2(input).frame!.standings[0]!.quality).toEqual({q:"fresh",pit:"invalid",classGap:"missing"});
+ Object.assign(row,{quality:{q:"fresh",pit:"invented"}});
+ expect(() => decodeOverlayUpdateV2(input)).toThrow();
+ Object.assign(row,{quality:undefined});
+ expect(decodeOverlayUpdateV2(input).frame!.standings[0]!.quality).toBeUndefined();
+});

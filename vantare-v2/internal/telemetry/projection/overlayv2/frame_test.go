@@ -220,7 +220,7 @@ func syntheticFullFrame(vehicles int) FrameV2 {
 			GapSeconds: QValue[float64]{V: float64(index) * 1.234, Q: QualityFresh}, GapLaps: int32(index / 40),
 			PitState: "track", CompletedLaps: 127,
 			BestLapSeconds: QValue[float64]{V: 88.123, Q: QualityFresh}, LastLapSeconds: QValue[float64]{V: 91.234, Q: QualityFresh},
-			LapDistance: QValue[float64]{V: float64(index) * 42.5, Q: QualityFresh}, GroundPosition: QValue[GroundPositionV2]{V: GroundPositionV2{X: float64(index) * 10, Z: float64(index) * -5}, Q: QualityFresh},
+			GroundPosition: QValue[GroundPositionV2]{V: GroundPositionV2{X: float64(index) * 10, Z: float64(index) * -5}, Q: QualityFresh},
 		}
 	}
 	// Productive cardinalities only: BuildRelative and the settler publish at

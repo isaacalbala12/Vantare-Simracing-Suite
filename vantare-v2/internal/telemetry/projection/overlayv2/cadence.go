@@ -681,7 +681,7 @@ func observeDirtySignals(header envelope.Header, final derive.FinalState, source
 		deltaReferences:     [3]schema.Field[session.DeltaSeconds]{final.Derived.Delta.PersonalBest, final.Derived.Delta.SessionBest, final.Derived.Delta.PreviousLap},
 		fuelPerLap:          final.Derived.Fuel.PerLap,
 		spatialMark:         schema.FreshnessMissing,
-		standingsMark:       fnvOffset64,
+		standingsMark:       hashFieldFloat(fnvOffset64, final.Observed.TrackLength),
 	}
 	for index := range final.Observed.Vehicles {
 		current := &final.Observed.Vehicles[index]

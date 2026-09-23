@@ -98,6 +98,8 @@ export const studioOrbitIt: Record<string, string> = {
   "studio.inspector.design.system": "Sistema",
   "studio.inspector.design.variant": "Design",
   "studio.inspector.design.none": "Nessun design applicato",
+  "studio.inspector.content.playerWindow": "Podio e finestra del giocatore",
+  "studio.inspector.content.windowAround": "Piloti intorno",
   "studio.inspector.content.rows": "Righe",
   "studio.inspector.content.width": "Larghezza",
   "studio.inspector.content.align": "Allineamento",

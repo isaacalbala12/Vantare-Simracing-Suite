@@ -60,7 +60,7 @@ export function deriveFunctionalStandingsEvents(prev: StandingsViewModel, next: 
     if (!old || old.vehicleClass !== row.vehicleClass) continue;
     const previousPosition = position(old);
     const currentPosition = position(row);
-    const places = previousPosition !== undefined && currentPosition !== undefined
+    const places = previousPosition !== undefined && previousPosition > 0 && currentPosition !== undefined && currentPosition > 0
       ? previousPosition - currentPosition : 0;
     const improved = validLap(old.bestLapSeconds) && validLap(row.bestLapSeconds)
       && row.bestLapSeconds < old.bestLapSeconds - 0.0005;

@@ -88,15 +88,11 @@ describe("Functional Standings", () => {
     expect(container.querySelector(".vf-session .vf-brand")).toBeNull();
   });
 
-  it("renders the ambient footer band only when the model carries those fields", () => {
-    const bare = render(<StandingsFunctional model={model} settings={{}} renderMode="harness" />);
-    expect(bare.container.querySelector(".vf-footer")).toBeNull();
-    bare.unmount();
+  it("does not replace the selected session footer when weather arrives", () => {
     const withWeather = { ...model, trackTempText: "28°", ambientTempText: "21°", windText: "18 km/h" };
-    const { container } = render(<StandingsFunctional model={withWeather} settings={{}} renderMode="harness" />);
-    const footer = container.querySelector(".vf-footer");
-    expect(footer?.textContent).toContain("28°");
-    expect(footer?.textContent).toContain("18 km/h");
+    const { container } = render(<StandingsFunctional model={withWeather} settings={{showSessionFooter:false}} renderMode="harness" />);
+    expect(container.querySelector("[data-session-footer]")).toBeNull();
+    expect(container.querySelector(".vf-footer")).toBeNull();
   });
 
   it("renders every selected data slot under the rows and they replace the ambient footer", () => {

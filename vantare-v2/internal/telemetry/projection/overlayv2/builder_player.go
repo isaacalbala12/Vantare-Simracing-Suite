@@ -9,6 +9,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/session"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
 )
 
@@ -130,7 +131,8 @@ func ProjectV2(
 func BuildPlayerInstruments(final derive.FinalState, preferences PreferencesV2) PlayerInstrumentsV2 {
 	preferences = normalizedPreferences(preferences)
 	result := PlayerInstrumentsV2{
-		Speed: missingValue[float64](), RPM: missingValue[float64](), Gear: missingValue[int32](),
+		LapNumber: missingValue[int32](),
+		Speed:     missingValue[float64](), RPM: missingValue[float64](), Gear: missingValue[int32](),
 		Throttle: missingValue[float64](), Brake: missingValue[float64](), Clutch: missingValue[float64](),
 		// Steering is not present in the current canonical state. Keeping it
 		// explicitly missing preserves the v2 contract without inventing data.
@@ -142,6 +144,9 @@ func BuildPlayerInstruments(final derive.FinalState, preferences PreferencesV2) 
 			continue
 		}
 		result.VehicleID = string(current.Identity.Vehicle)
+		if current.Player.Freshness() == schema.FreshnessFresh {
+			result.LapNumber = qualityValue(current.LapNumber, func(value session.LapNumber) int32 { return int32(value) })
+		}
 		result.Speed = qualityValue(current.SpeedMPS, func(value float64) float64 {
 			return convertSpeed(value, preferences.Speed)
 		})

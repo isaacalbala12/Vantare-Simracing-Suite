@@ -1,6 +1,6 @@
 import type { EngineerOutputMode, EngineerStatus } from "../../engineer/engineer-types";
 
-export type DeliveryDiagnostic = {
+type DeliveryDiagnostic = {
   id: string; lifecycle: number; intent: string; family: string; text: string;
   mode: EngineerOutputMode; selectedAt: number; updatedAt: number;
   state: string; reason: string; visual: boolean; audio: string;

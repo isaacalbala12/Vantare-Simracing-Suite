@@ -100,8 +100,12 @@ try {
       await page.getByRole("button",{name:"Descargar JSON",exact:true}).click();
       const file=await downloaded;const actual=fs.readFileSync(await file.path(),"utf8");
       if(actual!==preview)throw new Error("download differs from exact preview");
+      await page.getByRole("heading",{name:"Vista previa del informe",exact:true}).scrollIntoViewIfNeeded();
+      await page.screenshot({path:path.join(output,"engineer-report-preview.png")});
       await page.getByRole("button",{name:"Cerrar vista previa",exact:true}).click();
     }
+    await page.getByRole("heading",{name:"Registro de entregas",exact:true}).scrollIntoViewIfNeeded();
+    await page.screenshot({path:path.join(output,`engineer-history-${viewport.name}.png`)});
     const horizontal=await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth);
     if(horizontal)throw new Error(`${viewport.name}: document horizontal overflow`);
     await page.getByRole("heading",{name:"Ingeniero Vantare",exact:true}).scrollIntoViewIfNeeded();

@@ -48,13 +48,24 @@ exacta e inmutable antes de descargar/copiar. No hay subida automática.
   SQLite. No se ocultan ni se modifican en esta entrega.
 - Primer frontend global: 475 archivos PASS, 1 fallo i18n corregido, más una
   excepción de precarga al desmontar `OrbitShell` (código idéntico en la base).
-  Resultado final de la repetición y CI se registra al cerrar la entrega.
+  Repetición con cuatro workers: **476 archivos PASS, 3945 pruebas PASS y 2 omitidas**, sin error no manejado.
 - Harness `pnpm --dir frontend visual:orbit-engineer`: PASS a 1920×1080 y
   1280×800, controles reales de la página conectados a respuestas simuladas,
   filtros de ciclo, salidas, tono/cache miss y descarga idéntica al preview.
   Capturas revisadas. **No es prueba de audio Windows ni LMU.**
-- GPT-6 Sol: detectó y se corrigió el audio pendiente terminal; revisión de
-  concurrencia sin otro P1/P2. GPT-6 Luna: PASS acotado de UI/bridge/exportación.
+- GPT-6 Sol: detectó y se corrigió el audio pendiente terminal; re-review de
+  corrección, concurrencia y bridge sin otro P1/P2. GPT-6 Luna: PASS acotado de UI/bridge/exportación.
+
+## Hallazgo del gate de duplicación
+
+El ratchet detecta 42 identidades de clon nuevas tras retirar la CSS antigua,
+aunque las 10 hojas señaladas (home, kit, launcher, profiles, races, roadmap,
+settings, strategy, telemetry y testing) son idénticas byte a byte a la base.
+El detector reporta 486 emplazamientos en la base y 478 en el candidato: cambia
+cómo agrupa fragmentos existentes. No es duplicación añadida en esas pantallas,
+pero **el gate sigue fallando** y requiere tratamiento separado de calidad.
+No se restauró código muerto ni se cambió el baseline/reglas para ocultarlo.
+Los dos exports señalados por knip sí se corrigen dentro del cambio.
 
 ## Prueba manual Windows
 

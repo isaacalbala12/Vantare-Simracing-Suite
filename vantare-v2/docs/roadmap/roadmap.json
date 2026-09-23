@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-23T15:37:13Z",
+  "generatedAt": "2026-09-23T18:18:48Z",
   "digest": {
     "lastCommit": "b725c402c2e77350f348cfc26dcc1b008c0ae2bd"
   },
@@ -2215,17 +2215,7 @@
         {
           "kind": "change",
           "scope": "",
-          "text": "Engineer: pantalla funcional de pruebas y diagnóstico de audio real"
-        },
-        {
-          "kind": "fix",
-          "scope": "quality",
-          "text": "Verify source provenance before classifying clone regrouping"
-        },
-        {
-          "kind": "fix",
-          "scope": "engineer",
-          "text": "Validate Windows media before replacing playback"
+          "text": "Widgets: vuelta rápida personal y de clase"
         },
         {
           "kind": "change",
@@ -2233,9 +2223,19 @@
           "text": "Integra animaciones Eficiencia de Standings, Relative y Horizontal Standings"
         },
         {
+          "kind": "fix",
+          "scope": "engineer",
+          "text": "Validate Windows media before replacing playback"
+        },
+        {
+          "kind": "fix",
+          "scope": "quality",
+          "text": "Verify source provenance before classifying clone regrouping"
+        },
+        {
           "kind": "change",
           "scope": "",
-          "text": "Widgets: vuelta rápida personal y de clase"
+          "text": "Engineer: pantalla funcional de pruebas y diagnóstico de audio real"
         }
       ]
     },
@@ -2243,14 +2243,9 @@
       "date": "2026-09-22",
       "entries": [
         {
-          "kind": "change",
-          "scope": "",
-          "text": "Widgets: compartir idioma con la app sin trabajo por fotograma"
-        },
-        {
-          "kind": "fix",
-          "scope": "engineer",
-          "text": "Reparar Fuel, Timings, Spotter y audio sobre Wails beta.24"
+          "kind": "feat",
+          "scope": "widgets",
+          "text": "Recuperar cambios locales de revisión"
         },
         {
           "kind": "fix",
@@ -2258,9 +2253,14 @@
           "text": "Actualizar Wails a beta.24"
         },
         {
-          "kind": "feat",
-          "scope": "widgets",
-          "text": "Recuperar cambios locales de revisión"
+          "kind": "fix",
+          "scope": "engineer",
+          "text": "Reparar Fuel, Timings, Spotter y audio sobre Wails beta.24"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Widgets: compartir idioma con la app sin trabajo por fotograma"
         }
       ]
     },

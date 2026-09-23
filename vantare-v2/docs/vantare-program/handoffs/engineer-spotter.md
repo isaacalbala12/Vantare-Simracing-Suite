@@ -75,10 +75,14 @@ base mediante PR1311/e41f703c; la entrada anterior describe su entrega históric
 El harness prueba UI con datos sintéticos y no acredita audio físico ni LMU.
 Checks, revisión, head/PR/CI vigentes se registran en Notion y en el informe
 [de entrega](../../analysis/isa-1336-engineer-test-ui.md). El frontend global pasa
-3945 pruebas y el harness pasa en dos resoluciones. El gate de duplicación
-sigue fallando por reagrupación de clones en CSS sin modificar:
-[VAN-753](https://app.notion.com/p/3e4e51695c6581a8b409f12fcd1c3f39),
-pendiente separado antes de integrar. Sin merge ni promoción.
+3945 pruebas y el harness pasa en dos resoluciones. La dependencia de calidad
+[VAN-753](https://app.notion.com/p/3e4e51695c6581a8b409f12fcd1c3f39)
+se integró separadamente por PR1348 en nightlyf8ded356, tras Windows completo PASS
+y revisión explícita de política (NEW0/MOVED0, REVIEW_REQUIRED). La reparación
+de audio se integró antes por PR1351/247db1c7. Esta pantalla incorpora ambas
+bases sin cambios al código productivo revisado en 88e42e1d. La validación final
+y la integración autorizada de PR1340 se siguen en
+[VAN-759](https://app.notion.com/p/3e4e51695c658192a2def8aa6dc9fb2b).
 
 ### 2026-09-22 — Composición revisada sobre Wails beta.24
 
@@ -894,3 +898,15 @@ wiring, sin retirada legacy y sin promoción.
 Spotter normal, fuel, penalties genéricas, laps, timings y pit entry/exit;
 las familias parciales o sin capability quedan explícitamente bloqueadas. El
 bridge temporal solo existe en replay y no puede alimentar el runtime entero.
+
+## 2026-09-23 — Corrección aislada de calidad para la pantalla Engineer
+
+[VAN-753](https://app.notion.com/p/3e4e51695c6581a8b409f12fcd1c3f39) / #1346
+separa la reparación del detector de PR1340. Eliminar la antigua CSS genera
+42 registros NEW de 27 identidades en diez fuentes sin cambios. La corrección
+exige igualdad de fuente en la procedencia del baseline confiable, base real
+y disco, conserva cada registro como REGROUPED visible y no altera baseline
+ni producto. Copias nuevas, fuentes modificadas, MOVED y política siguen
+bloqueando. [Diseño y evidencia](../../analysis/isa-1346-quality-clone-regroup.md).
+La PR de tooling requiere revisión por política; CI y SHA vigentes en Notion.
+Sin integración de canal ni release.

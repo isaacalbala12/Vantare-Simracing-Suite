@@ -118,3 +118,21 @@ sin PowerShell, los tres casos fallan porque intentan lanzarlo. Tras la
 corrección, la prueba de proceso incluye un archivo existente y comprueba
 que rechazar una sustitución inválida conserva el hijo hasta Stop. Compilación
 y vet cruzado Windows PASS; revisión independiente sin P1/P2.
+
+## Actualización para integración autorizada — 2026-09-23
+
+[VAN-759](https://app.notion.com/p/3e4e51695c658192a2def8aa6dc9fb2b)
+registra la aceptación de Isaac. La protección de nightly impidió integrar la
+PR de calidad mientras fallaba el test heredado de audio. Se extrajeron los
+tres archivos de audio idénticos a 88e42e1d en PR1351, con calidad y Windows
+completos SUCCESS; integrados en 247db1c7. PR1348 se actualizó después, conservó
+NEW0/MOVED0 y REVIEW_REQUIRED por política revisada, pasó Windows completo y se
+integró en f8ded356. No se omitieron ni modificaron protecciones.
+
+PR1340 incorpora nightlyf8ded356. Su código productivo sigue idéntico al head
+88e42e1d ya revisado; la documentación conserva ambos cortes y el roadmap se
+regenera desde el JSON/SHA de la nueva base. El diff de producto excluye tooling
+y los tres archivos de audio ya integrados. Calidad y Windows se ejecutan de
+nuevo en el head final; resultados y SHA de integración en Notion/PR. Los
+fallos iniciales arriba son evidencia histórica, no el estado de este nuevo head.
+La validación acústica y LMU físico siguen pendientes.

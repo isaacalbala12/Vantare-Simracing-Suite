@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-23T14:12:07Z",
+  "generatedAt": "2026-09-23T14:21:20Z",
   "digest": {
-    "lastCommit": "247db1c716ca72269b4534373161d457c1493b42"
+    "lastCommit": "f8ded356dc82efcf372aa2513359fe4fb7fd927f"
   },
   "phases": [
     {
@@ -1579,10 +1579,10 @@
         "it": "Analisi Linux del grafo Wails"
       },
       "body": {
-        "es": "El candidato de CI prepara GTK4 y WebKitGTK 6.0 en los dos jobs Linux para que govet y deadcode analicen el grafo Wails declarado sin recortar paquetes. Los fallos de instalación, integridad y hallazgos NEW siguen cerrando el gate; no cambia baselines. La infraestructura está integrada en Nightly mediante PR #1297. La reparación de la prueba negativa de cambios de política usa un repositorio Git temporal y sigue en revisión separada; no modifica los analizadores ni sus reglas.",
-        "en": "The CI candidate prepares GTK4 and WebKitGTK 6.0 in both Linux jobs so govet and deadcode can analyse the declared Wails graph without dropping packages. Installation failures, integrity errors and NEW findings still fail the gate; baselines remain unchanged. The infrastructure is integrated into Nightly through PR #1297. A separate candidate repairs the policy-change negative test using a temporary Git repository; analyzers and their rules remain unchanged.",
-        "pt": "O candidato de CI prepara GTK4 e WebKitGTK 6.0 nos dois jobs Linux para que govet e deadcode analisem o grafo Wails declarado sem excluir pacotes. Falhas de instalação, erros de integridade e achados NEW continuam a fechar o gate; os baselines não mudam. A infraestrutura está integrada no Nightly pela PR #1297. Um candidato separado corrige o teste negativo de mudanças de política usando um repositório Git temporário; os analisadores e suas regras permanecem inalterados.",
-        "it": "Il candidato CI prepara GTK4 e WebKitGTK 6.0 in entrambi i job Linux affinché govet e deadcode analizzino il grafo Wails dichiarato senza escludere pacchetti. Errori di installazione, integrità e rilievi NEW continuano a bloccare il gate; i baseline restano invariati. L’infrastruttura è integrata in Nightly tramite PR #1297. Un candidato separato corregge il test negativo delle modifiche alla policy usando un repository Git temporaneo; analizzatori e regole restano invariati."
+        "es": "El candidato de CI prepara GTK4 y WebKitGTK 6.0 en los dos jobs Linux para que govet y deadcode analicen el grafo Wails declarado sin recortar paquetes. Los fallos de instalación, integridad y hallazgos NEW siguen cerrando el gate; no cambia baselines. La infraestructura está integrada en Nightly mediante PR #1297. La reparación de la prueba negativa de cambios de política usa un repositorio Git temporal y sigue en revisión separada; no modifica los analizadores ni sus reglas. El detector de duplicación distingue reagrupaciones mediante igualdad íntegra de las fuentes respecto a la procedencia aceptada y la base de la PR; conserva el bloqueo de copias nuevas y la revisión obligatoria de la política.",
+        "en": "The CI candidate prepares GTK4 and WebKitGTK 6.0 in both Linux jobs so govet and deadcode can analyse the declared Wails graph without dropping packages. Installation failures, integrity errors and NEW findings still fail the gate; baselines remain unchanged. The infrastructure is integrated into Nightly through PR #1297. A separate candidate repairs the policy-change negative test using a temporary Git repository; analyzers and their rules remain unchanged. The duplication gate distinguishes regrouping through complete source equality against accepted provenance and the PR base; new copies remain blocking and policy changes still require review.",
+        "pt": "O candidato de CI prepara GTK4 e WebKitGTK 6.0 nos dois jobs Linux para que govet e deadcode analisem o grafo Wails declarado sem excluir pacotes. Falhas de instalação, erros de integridade e achados NEW continuam a fechar o gate; os baselines não mudam. A infraestrutura está integrada no Nightly pela PR #1297. Um candidato separado corrige o teste negativo de mudanças de política usando um repositório Git temporário; os analisadores e suas regras permanecem inalterados. O detector distingue reagrupamentos pela igualdade integral das fontes com a procedência aceita e a base da PR; novas cópias continuam bloqueantes e alterações da política exigem revisão.",
+        "it": "Il candidato CI prepara GTK4 e WebKitGTK 6.0 in entrambi i job Linux affinché govet e deadcode analizzino il grafo Wails dichiarato senza escludere pacchetti. Errori di installazione, integrità e rilievi NEW continuano a bloccare il gate; i baseline restano invariati. L’infrastruttura è integrata in Nightly tramite PR #1297. Un candidato separato corregge il test negativo delle modifiche alla policy usando un repository Git temporaneo; analizzatori e regole restano invariati. Il controllo distingue i raggruppamenti tramite identità completa delle sorgenti rispetto alla provenienza accettata e alla base della PR; nuove copie restano bloccanti e le modifiche alla policy richiedono revisione."
       },
       "label": {
         "es": "Candidato",
@@ -2204,6 +2204,11 @@
           "kind": "fix",
           "scope": "engineer",
           "text": "Validate Windows media before replacing playback"
+        },
+        {
+          "kind": "fix",
+          "scope": "quality",
+          "text": "Verify source provenance before classifying clone regrouping"
         }
       ]
     },

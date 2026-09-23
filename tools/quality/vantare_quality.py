@@ -935,6 +935,13 @@ def _policy_changed(scope_base: dict, base_sha: str) -> tuple[bool, list[str]]:
     return bool(matched), matched
 
 
+def trusted_jscpd_baseline(baseline: dict, base_sha: str) -> dict:
+    trusted = json.loads(git_show_file(REPO_ROOT, base_sha, "tools/quality/baseline/jscpd.json"))
+    if trusted != baseline:
+        raise ToolError("jscpd: baseline candidato distinto del baseline de la base confiable")
+    return trusted
+
+
 def reconcile_jscpd_regrouping(classification: Classification, baseline: dict,
                               base_sha: str) -> list[dict]:
     """Keep regrouped findings visible when their entire source is unchanged.
@@ -946,9 +953,7 @@ def reconcile_jscpd_regrouping(classification: Classification, baseline: dict,
     """
     if not classification.new:
         return []
-    trusted = json.loads(git_show_file(REPO_ROOT, base_sha, "tools/quality/baseline/jscpd.json"))
-    if trusted != baseline:
-        raise ToolError("jscpd: baseline candidato distinto del baseline de la base confiable")
+    trusted = trusted_jscpd_baseline(baseline, base_sha)
     provenance = trusted.get("header", {}).get("base_sha", "")
     if not isinstance(provenance, str) or not re.fullmatch(r"[0-9a-f]{40}", provenance):
         raise ToolError("jscpd: procedencia del baseline invalida")
@@ -1105,6 +1110,16 @@ def cmd_check(args: argparse.Namespace) -> int:
             integrity_issues.append(f"{r.analyzer}: scope_hash del baseline distinto -> recalibrar")
         if not baseline_versions_match(r.analyzer, header, versions):
             integrity_issues.append(f"{r.analyzer}: versiones del baseline distintas -> recalibrar")
+        if r.analyzer == "jscpd" and header.get("versions_fingerprint") != versions_fingerprint(versions):
+            # The analyzer-specific version exception only applies to the exact
+            # trusted PR-base baseline, even when there are no NEW findings.
+            if not base_sha:
+                integrity_issues.append("jscpd: base confiable indeterminada")
+            else:
+                try:
+                    trusted_jscpd_baseline(bl, base_sha)
+                except (ToolError, json.JSONDecodeError, OSError) as e:
+                    integrity_issues.append(f"jscpd: baseline no confiable: {e}")
         classifications[r.analyzer] = classify_findings(baseline_findings(bl), actual_by_analyzer[r.analyzer])
         if r.analyzer == "jscpd" and base_sha and not integrity_issues:
             try:

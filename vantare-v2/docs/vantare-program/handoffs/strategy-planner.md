@@ -22,6 +22,8 @@ Corte 4a implementado: barra compacta única, contexto verificado compartido por
 
 Corte 4b implementado: Datos y Revisiones comparten la escala y composición de la mesa, con tablas de desplazamiento local, inspector proporcional y vacíos de altura intrínseca; se retiran gradientes y blur heredados que competían con el shell. Sólo CSS, sin cambiar controles/adopción. Focales existentes Data/Revisions 55/55 y diff-check pasan; root revisó los selectores y puntos de corte. Siguen Plan/Stint/Parada y biblioteca/historial. App sin abrir ni relanzar.
 
+Corte 4c implementado: Plan compacto comparte el contexto; al editar Stint o Parada permanecen visibles la cronología y el resumen calculados. Los controles del ajuste ocupan el inspector derecho y las propuestas no se muestran como resultado hasta recalcular. Volver bloquea ajustes sin recalcular; una invalidación sin plan permite recuperar la salida. El clima no cambia durante la edición. Focales Plan/Stint/Parada 14/14, tipos, ESLint focal, build frontend y diff-check pasan; root revisó la distribución y pruebas. Queda biblioteca e historial, luego gates finales. App sin abrir ni relanzar.
+
 ## Antecedente — QA de preparación y límite funcional (2026-09-22)
 
 Isaac completa VirusTotal: el asset regenerado obtiene 0/62, incluido Microsoft sin detección; no se afirma identidad con el original en cuarentena. Resultado enlazado en la auditoría de ISA-1322. La build normal vuelve a funcionar sin cambios de protección.

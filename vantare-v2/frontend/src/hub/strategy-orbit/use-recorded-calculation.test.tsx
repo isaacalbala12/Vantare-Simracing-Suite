@@ -1,4 +1,4 @@
-import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { StrategyApplicationClient, StrategyApplicationCommandV1, StrategyApplicationResultV1, StrategyOrbitCalculatedPlanV1, StrategyPlanningInputsV2 } from "../../strategy/strategy-application-client";
 import type { RecordedDraftPayload } from "./strategy-recorded-payload";
@@ -205,17 +205,23 @@ it("shows the exact calculated plan and accepts only through the acceptance cont
   expect(accept).toHaveBeenCalledOnce();
 
   fireEvent.click(screen.getByRole("button", { name: /strategy\.pitEdit\.title/ }));
+  expect(screen.getByRole("list", { name: "strategy.workspace.plan" })).toBeTruthy();
+  expect((within(view.container).getByLabelText("strategy.calculation.condition") as HTMLSelectElement).disabled).toBe(true);
   fireEvent.change(screen.getByLabelText("strategy.pitEdit.fuelAdded 1"), { target: { value: "6" } });
   expect(screen.queryByRole("button", { name: "strategy.plan.accept" })).toBeNull();
+  expect((screen.getByRole("button", { name: /strategy\.data\.tab\.plan/ }) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "strategy.pitEdit.reset" }));
+  expect((screen.getByRole("button", { name: /strategy\.data\.tab\.plan/ }) as HTMLButtonElement).disabled).toBe(false);
   fireEvent.change(screen.getByLabelText("strategy.pitEdit.fuelAdded 1"), { target: { value: "6" } });
   fireEvent.click(screen.getByRole("button", { name: "strategy.pitEdit.recalculate" }));
   expect(onRecalculatePits).toHaveBeenCalledWith([{ index: 0, fuelLiters: 6 }]);
 
   fireEvent.click(screen.getByRole("button", { name: /strategy\.data\.tab\.plan/ }));
   fireEvent.click(screen.getByRole("button", { name: /strategy\.stint\.title/ }));
+  expect(screen.getByRole("list", { name: "strategy.workspace.plan" })).toBeTruthy();
   fireEvent.change(screen.getByLabelText("strategy.stint.dragBoundary 1"), { target: { value: "1" } });
   expect(screen.queryByRole("button", { name: "strategy.plan.accept" })).toBeNull();
+  expect((screen.getByRole("button", { name: /strategy\.data\.tab\.plan/ }) as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "strategy.stint.recalculate" }));
   expect(onRecalculate).toHaveBeenCalledWith([
     { index: 0, driverId: "alex", laps: 1 },
@@ -224,6 +230,8 @@ it("shows the exact calculated plan and accepts only through the acceptance cont
 
   const constrainedInput = { ...input, activeVariantId: "recorded-stint-edit", variants: [...input.variants, { ...input.variants[0], id: "recorded-stint-edit" }] };
   view.rerender(<StrategyRecordedPlan acceptance={acceptance} draft={draft} state={{ status: "success", input: constrainedInput, result: { plans: { "recorded-main": plan, "recorded-stint-edit": { ...plan, total: 375 } }, comparisons: { "recorded-main": { totalDeltaSeconds: -5 } as never } } }} locked={false} onChange={vi.fn()} onCalculate={vi.fn()} onRecalculateStints={onRecalculate} onRecalculatePits={onRecalculatePits} onCancel={vi.fn()} t={key => key} />);
+  expect(screen.getByRole("list", { name: "strategy.workspace.plan" })).toBeTruthy();
+  expect(screen.getByText("6:15")).toBeTruthy();
   expect(screen.getByText("+5 s")).toBeTruthy();
 
   const pitInput = { ...constrainedInput, activeVariantId: "recorded-pit-edit", variants: [constrainedInput.variants[1], { ...constrainedInput.variants[1], id: "recorded-pit-edit", pitOverrides: { 0: { fuelLiters: 6 } } }] };
@@ -235,7 +243,9 @@ it("shows the exact calculated plan and accepts only through the acceptance cont
   fireEvent.click(screen.getByRole("button", { name: /strategy\.pitEdit\.title/ }));
   expect((screen.getByLabelText("strategy.pitEdit.fuelAdded 1") as HTMLInputElement).disabled).toBe(false);
 
-  view.rerender(<StrategyRecordedPlan acceptance={acceptance} draft={draft} state={{ status: "error", message: "infeasible", code: "calculation_infeasible" }} locked={false} onChange={vi.fn()} onCalculate={vi.fn()} onRecalculateStints={onRecalculate} onRecalculatePits={onRecalculatePits} onCancel={vi.fn()} t={key => key} />);
+  fireEvent.change(screen.getByLabelText("strategy.pitEdit.fuelAdded 1"), { target: { value: "7" } });
+  view.rerender(<StrategyRecordedPlan acceptance={acceptance} draft={draft} state={{ status: "error", message: "infeasible", code: "calculation_infeasible" }} locked onChange={vi.fn()} onCalculate={vi.fn()} onRecalculateStints={onRecalculate} onRecalculatePits={onRecalculatePits} onCancel={vi.fn()} t={key => key} />);
+  expect((screen.getByRole("button", { name: /strategy\.data\.tab\.plan/ }) as HTMLButtonElement).disabled).toBe(false);
   fireEvent.click(screen.getByRole("button", { name: /strategy\.data\.tab\.plan/ }));
   expect(screen.getByRole("button", { name: "strategy.calculation.retry" })).toBeTruthy();
 });

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import type { StrategyOrbitCalculatedPlanV1 } from "../../strategy/strategy-application-client";
 import { Button } from "../../ui/orbit";
 import { formatMessage } from "../orbit/format-message";
@@ -38,7 +38,7 @@ function CalculationStages({ state, t }: { readonly state: "idle" | "running" | 
   </ol>;
 }
 
-function PlanResult({ plan, draft, editors, t }: { readonly plan: StrategyOrbitCalculatedPlanV1; readonly draft: RecordedWizardDraft; readonly editors: ReactNode; readonly t: (key: string) => string }) {
+function PlanResult({ plan, draft, t }: { readonly plan: StrategyOrbitCalculatedPlanV1; readonly draft: RecordedWizardDraft; readonly t: (key: string) => string }) {
   return <>
     <div className="strategy-recorded-plan__status" data-optimality={plan.optimality ?? "unknown"}>
       <strong>{t(plan.optimality === "proven" ? "strategy.calculation.optimal" : plan.optimality === "not_proven" ? "strategy.calculation.feasible" : "strategy.calculation.optimalityUnknown")}</strong>
@@ -51,8 +51,7 @@ function PlanResult({ plan, draft, editors, t }: { readonly plan: StrategyOrbitC
       <div><dt>{t("strategy.plan.stops")}</dt><dd>{plan.stops}</dd></div>
       <div><dt>{t("strategy.plan.reserve")}</dt><dd>{number(plan.reserveLaps, 2)} / {number(plan.reserveRequiredLaps, 2)}</dd></div>
     </dl>
-    {editors}
-    <ol className="strategy-recorded-plan__timeline">
+    <ol className="strategy-recorded-plan__timeline" aria-label={t("strategy.workspace.plan")}>
       {plan.stints.flatMap((stint, index) => {
         const stop = plan.stopDetails[index];
         const items = [<li key={`stint:${stint.i}:${stint.lap0}`} data-kind="stint">
@@ -120,15 +119,30 @@ export function StrategyRecordedPlan({ draft, state, acceptance, locked, onChang
     : `${draft.race.durationMin ?? "—"} min`;
   const capacityParts = t("strategy.workspace.capacity").split("{{value}}");
   const editors = plan && state.status === "success" ? <nav className="strategy-recorded-plan__editors" aria-label={t("strategy.stint.eyebrow")}>
-    <button type="button" onClick={() => setEditor("stints")}><span>{t("strategy.stint.eyebrow")}</span><strong>{t("strategy.stint.title")}</strong><small>{t("strategy.stint.hint")}</small></button>
-    {plan.stopDetails.length ? <button type="button" onClick={() => setEditor("pits")}><span>{t("strategy.pitEdit.eyebrow")}</span><strong>{t("strategy.pitEdit.title")}</strong><small>{t("strategy.pitEdit.hint")}</small></button> : null}
+    <button type="button" aria-current={editor === "stints" ? "step" : undefined} disabled={stintDirty || pitDirty || locked || accepting} onClick={() => setEditor("stints")}><span>{t("strategy.stint.eyebrow")}</span><strong>{t("strategy.stint.title")}</strong><small>{t("strategy.stint.hint")}</small></button>
+    {plan.stopDetails.length ? <button type="button" aria-current={editor === "pits" ? "step" : undefined} disabled={stintDirty || pitDirty || locked || accepting} onClick={() => setEditor("pits")}><span>{t("strategy.pitEdit.eyebrow")}</span><strong>{t("strategy.pitEdit.title")}</strong><small>{t("strategy.pitEdit.hint")}</small></button> : null}
   </nav> : null;
+  const backToPlan = editor !== "plan" ? <div className="strategy-recorded-plan__editor-head"><Button variant="ghost" disabled={!!plan && (stintDirty || pitDirty || locked || accepting)} onClick={() => { setEditor("plan"); setStintDirty(false); setPitDirty(false); }}>← {t("strategy.data.tab.plan")}</Button></div> : null;
+  const planWorkspace = plan && state.status === "success" ? <div className="strategy-recorded-plan__workspace">
+    <div className="strategy-recorded-plan__work"><PlanResult plan={plan} draft={draft} t={t} />
+      <section className="strategy-recorded-plan__sources"><h3>{t("strategy.plan.sources")}</h3><ul>{state.input.planningInputs?.projection?.sourceRevisions?.map(ref => <li key={ref.sessionId}><strong>{ref.sessionId}</strong><code>{ref.revisionId.slice(0, 12)}</code></li>)}</ul></section>
+    </div>
+    <aside className="strategy-recorded-plan__inspector" aria-label={t(displayTitle)}>
+      <header><span>{t("strategy.data.tab.plan")}</span><h3>{t(displayTitle)}</h3></header>
+      {editors}
+      {backToPlan}
+      {stintComparison ? <div className="strategy-recorded-plan__cost" role="status"><strong>{t("strategy.stint.cost")}</strong><span>{-stintComparison.totalDeltaSeconds >= 0 ? "+" : ""}{number(-stintComparison.totalDeltaSeconds)} s</span><small>{t("strategy.stint.costHint")}</small></div> : null}
+      {pitComparison ? <div className="strategy-recorded-plan__cost" role="status"><strong>{t("strategy.pitEdit.cost")}</strong><span>{-pitComparison.totalDeltaSeconds >= 0 ? "+" : ""}{number(-pitComparison.totalDeltaSeconds)} s</span><small>{t("strategy.pitEdit.costHint")}</small></div> : null}
+      {editor === "stints" ? <StrategyRecordedStintEditor key={JSON.stringify(plan.stints.map(stint => [stint.d, stint.laps]))} plan={plan} drivers={draft.drivers} locked={locked || accepting || pitDirty || state.input.activeVariantId === RECORDED_PIT_EDIT_VARIANT_ID} onDirtyChange={setStintDirty} onRecalculate={constraints => { setStintDirty(false); onRecalculateStints(constraints); }} t={t} /> : null}
+      {editor === "pits" ? <StrategyRecordedPitEditor key={JSON.stringify(plan.stopDetails)} plan={plan} input={state.input} locked={locked || accepting || stintDirty} onDirtyChange={setPitDirty} onRecalculate={constraints => { setPitDirty(false); onRecalculatePits(constraints); }} t={t} /> : null}
+    </aside>
+  </div> : null;
   return <section className="strategy-recorded-plan" aria-labelledby="recorded-plan-title" data-editor={editor} data-status={state.status}>
     <header className="strategy-recorded-plan__heading">
-      <div><p>{t(editor === "plan" ? "strategy.data.tab.plan" : editor === "stints" ? "strategy.stint.eyebrow" : "strategy.pitEdit.eyebrow")}</p><h2 id="recorded-plan-title">{t(displayTitle)}</h2></div>
+      <div><p>{t("strategy.data.tab.plan")}</p><h2 id="recorded-plan-title">{t(title)}</h2></div>
       <label className="strategy-recorded-field">
         <span>{t("strategy.calculation.condition")}</span>
-        <select value={draft.calculationMode ?? ""} disabled={locked || running || accepting} onChange={event => onChange({ ...draft, calculationMode: event.target.value === "" ? undefined : event.target.value as "dry" | "wet" })}>
+        <select value={draft.calculationMode ?? ""} disabled={locked || running || accepting || editor !== "plan"} onChange={event => onChange({ ...draft, calculationMode: event.target.value === "" ? undefined : event.target.value as "dry" | "wet" })}>
           <option value="">{t("strategy.journey.choose")}</option>
           <option value="dry">{t("strategy.journey.climate.dry")}</option>
           <option value="wet">{t("strategy.journey.climate.wet")}</option>
@@ -155,15 +169,10 @@ export function StrategyRecordedPlan({ draft, state, acceptance, locked, onChang
       </dl>
       <p>{state.coverage.blockers.map(blocker => t(`strategy.calculation.blocker.${blocker}`)).join(" · ")}</p>
     </div><CalculationStages state="blocked" t={t} /></div> : null}
-    {plan && editor === "plan" ? <PlanResult plan={plan} draft={draft} editors={editors} t={t} /> : null}
-    {stintComparison ? <div className="strategy-recorded-plan__cost" role="status"><strong>{t("strategy.stint.cost")}</strong><span>{-stintComparison.totalDeltaSeconds >= 0 ? "+" : ""}{number(-stintComparison.totalDeltaSeconds)} s</span><small>{t("strategy.stint.costHint")}</small></div> : null}
-    {pitComparison ? <div className="strategy-recorded-plan__cost" role="status"><strong>{t("strategy.pitEdit.cost")}</strong><span>{-pitComparison.totalDeltaSeconds >= 0 ? "+" : ""}{number(-pitComparison.totalDeltaSeconds)} s</span><small>{t("strategy.pitEdit.costHint")}</small></div> : null}
-    {editor !== "plan" ? <div className="strategy-recorded-plan__editor-head"><Button variant="ghost" onClick={() => setEditor("plan")}>← {t("strategy.data.tab.plan")}</Button></div> : null}
-    {plan && state.status === "success" && editor === "stints" ? <StrategyRecordedStintEditor key={JSON.stringify(plan.stints.map(stint => [stint.d, stint.laps]))} plan={plan} drivers={draft.drivers} locked={locked || accepting || pitDirty || state.input.activeVariantId === RECORDED_PIT_EDIT_VARIANT_ID} onDirtyChange={setStintDirty} onRecalculate={constraints => { setStintDirty(false); onRecalculateStints(constraints); }} t={t} /> : null}
-    {plan && state.status === "success" && editor === "pits" ? <StrategyRecordedPitEditor key={JSON.stringify(plan.stopDetails)} plan={plan} input={state.input} locked={locked || accepting || stintDirty} onDirtyChange={setPitDirty} onRecalculate={constraints => { setPitDirty(false); onRecalculatePits(constraints); }} t={t} /> : null}
+    {planWorkspace}
+    {!plan ? backToPlan : null}
     {state.status === "cancelled" ? <div className="strategy-recorded-plan__message" role="status"><strong>{t(title)}</strong><p>{t("strategy.calculation.cancelledHint")}</p></div> : null}
     {state.status === "error" ? <div className="strategy-recorded-plan__state"><div className="strategy-recorded-plan__message strategy-recorded-plan__message--error" role="alert" data-code={state.code} data-field={state.field}><strong>{t("strategy.workspace.validationHint")}</strong><p>{t(state.code && errorKey[state.code] ? errorKey[state.code] : "strategy.calculation.errorHint")}</p></div><CalculationStages state="blocked" t={t} /></div> : null}
-    {state.status === "success" && editor === "plan" ? <section className="strategy-recorded-plan__sources"><h3>{t("strategy.plan.sources")}</h3><ul>{state.input.planningInputs?.projection?.sourceRevisions?.map(ref => <li key={ref.sessionId}><strong>{ref.sessionId}</strong><code>{ref.revisionId.slice(0, 12)}</code></li>)}</ul></section> : null}
     {acceptance.state.status === "accepted" && !stintDirty && !pitDirty ? <p role="status">{t("strategy.plan.accepted")}</p> : null}
     {acceptance.state.status === "error" ? <p role="alert">{t("strategy.plan.acceptanceUnavailable")}</p> : null}
     {acceptance.state.status === "recovery" ? <div role="alert" className="strategy-recorded-plan__recovery"><p>{t("strategy.plan.acceptancePending")}</p><Button variant="ghost" onClick={() => void acceptance.resolve()}>{t("strategy.plan.checkAcceptance")}</Button><Button variant="ghost" onClick={() => void acceptance.retry()}>{t("strategy.plan.retryAcceptance")}</Button><Button variant="ghost" onClick={() => void acceptance.dismiss()}>{t("strategy.plan.dismissAcceptance")}</Button></div> : null}

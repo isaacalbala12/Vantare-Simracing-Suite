@@ -1,0 +1,60 @@
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkOverlayPublication64 	     302	    391148 ns/op	  304028 B/op	     273 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkOverlayPublication64 	     325	    380362 ns/op	  304680 B/op	     273 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkOverlayPublication64 	     306	    390946 ns/op	  304203 B/op	     273 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkOverlayPublication64 	     321	    410706 ns/op	  304681 B/op	     273 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkOverlayPublication64 	     349	    381891 ns/op	  305171 B/op	     272 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkOverlayPublication64 	     296	    461967 ns/op	  305503 B/op	     273 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkOverlayPublication64 	     324	    385644 ns/op	  304574 B/op	     273 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkOverlayPublication64 	     331	    384354 ns/op	  304710 B/op	     272 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkOverlayPublication64 	     356	    377987 ns/op	  305441 B/op	     272 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD EPYC 9V74 80-Core Processor
+BenchmarkOverlayPublication64 	     325	    376159 ns/op	  304511 B/op	     273 allocs/op
+PASS

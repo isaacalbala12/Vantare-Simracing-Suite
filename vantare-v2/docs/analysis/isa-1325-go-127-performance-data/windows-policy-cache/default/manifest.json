@@ -1,0 +1,18 @@
+{
+  "note": "Local Go microbenchmark; not application CPU/RAM/GPU or LMU frametime evidence",
+  "baseline": "D:\\a\\_temp\\policy-cache-bin\\original-default.test.exe",
+  "baselineSHA256": "40A733A313BA31668B335D28BF7C20479B2D6DDB046E37C3FBE40BA4F9FFEDEB",
+  "candidate": "D:\\a\\_temp\\policy-cache-bin\\cached-default.test.exe",
+  "startedUtc": "2026-09-23T15:38:09.8506596Z",
+  "samples": 10,
+  "arguments": [
+    "-test.run=^$",
+    "-test.bench=BenchmarkOverlayPublication64",
+    "-test.benchmem",
+    "-test.benchtime=100ms",
+    "-test.cpu=1",
+    "-test.count=1"
+  ],
+  "cpu": "AMD EPYC 9V74 80-Core Processor                ",
+  "candidateSHA256": "F94256A2F41254AC564A2A07E73F28F05C4057B4BB7E52823FBCB3E5EE4018DD"
+}

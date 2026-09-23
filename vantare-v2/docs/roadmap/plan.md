@@ -279,10 +279,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Ecosystem
 - titulo.pt: Ecossistema
 - titulo.it: Ecosistema
-- resumen: Comunidad, planes de pago, multisim y analíticas reales cuando la base esté estable.
-- resumen.en: Community, paid plans, multisim and real analytics once the base is stable.
-- resumen.pt: Comunidade, planos pagos, multisim e analíticas reais quando a base estiver estável.
-- resumen.it: Community, piani a pagamento, multisim e analitiche reali quando la base è stabile.
+- resumen: Comunidad, planes de pago, multisim, opiniones voluntarias y analítica consentida con vista privada para Isaac cuando la base esté estable.
+- resumen.en: Community, paid plans, multisim, voluntary feedback and consent-based analytics with a private owner view once the base is stable.
+- resumen.pt: Comunidade, planos pagos, multisim, opiniões voluntárias e análises com consentimento e vista privada para Isaac quando a base estiver estável.
+- resumen.it: Community, piani a pagamento, multisim, opinioni volontarie e analisi con consenso e vista privata per Isaac quando la base è stabile.
 - item: Comunidad de overlays
 - item.en: Overlay community
 - item.pt: Comunidade de overlays
@@ -295,6 +295,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - item.en: Real race and progression data
 - item.pt: Dados reais de corrida e progressão
 - item.it: Dati reali di gara e progressione
+- item: Opiniones voluntarias y datos de uso con consentimiento, conectados a una vista privada de producto y negocio
+- item.en: Voluntary feedback and consent-based usage data connected to a private product and business view
+- item.pt: Opiniões voluntárias e dados de uso com consentimento ligados a uma vista privada de produto e negócio
+- item.it: Opinioni volontarie e dati di utilizzo con consenso collegati a una vista privata di prodotto e business
 
 ---
 

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-23T01:04:14Z",
+  "generatedAt": "2026-09-23T10:22:36Z",
   "digest": {
-    "lastCommit": "4bb11fdb5246566da8d1456f6152d7173d57dcd9"
+    "lastCommit": "8b25d076ea9a6ba6be8dc3065bcde978b6d24f07"
   },
   "phases": [
     {
@@ -413,10 +413,10 @@
       },
       "progress": 10,
       "summary": {
-        "es": "Comunidad, planes de pago, multisim y analíticas reales cuando la base esté estable.",
-        "en": "Community, paid plans, multisim and real analytics once the base is stable.",
-        "pt": "Comunidade, planos pagos, multisim e analíticas reais quando a base estiver estável.",
-        "it": "Community, piani a pagamento, multisim e analitiche reali quando la base è stabile."
+        "es": "Comunidad, planes de pago, multisim, opiniones voluntarias y analítica consentida con vista privada para Isaac cuando la base esté estable.",
+        "en": "Community, paid plans, multisim, voluntary feedback and consent-based analytics with a private owner view once the base is stable.",
+        "pt": "Comunidade, planos pagos, multisim, opiniões voluntárias e análises com consentimento e vista privada para Isaac quando a base estiver estável.",
+        "it": "Community, piani a pagamento, multisim, opinioni volontarie e analisi con consenso e vista privata per Isaac quando la base è stabile."
       },
       "highlights": [
         {
@@ -436,6 +436,12 @@
           "en": "Real race and progression data",
           "pt": "Dados reais de corrida e progressão",
           "it": "Dati reali di gara e progressione"
+        },
+        {
+          "es": "Opiniones voluntarias y datos de uso con consentimiento, conectados a una vista privada de producto y negocio",
+          "en": "Voluntary feedback and consent-based usage data connected to a private product and business view",
+          "pt": "Opiniões voluntárias e dados de uso com consentimento ligados a uma vista privada de produto e negócio",
+          "it": "Opinioni volontarie e dati di utilizzo con consenso collegati a una vista privata di prodotto e business"
         }
       ]
     }
@@ -2194,6 +2200,11 @@
           "kind": "change",
           "scope": "",
           "text": "Widgets: vuelta rápida personal y de clase"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Integra animaciones Eficiencia de Standings, Relative y Horizontal Standings"
         }
       ]
     },

@@ -53,6 +53,7 @@ export function buildBroadcastTowerViewModelV2(
   const rows: BroadcastTowerRow[] = standings
     .slice(0, Math.min(10, content.rowCount))
     .map((row, index) => ({
+      id: row.id,
       place: row.position ?? index + 1,
       number: row.number ?? PLACEHOLDER,
       name: row.driver ?? PLACEHOLDER,
@@ -85,7 +86,7 @@ export function buildBroadcastTowerViewModelV2(
 
   const status: BroadcastTowerViewModel["status"] = source.state === "stale" || source.state === "degraded" ? "stale" : "ready";
 
-  return {
+  const model: BroadcastTowerViewModel = {
     type: "broadcast-tower",
     status,
     statusMessage: source.reason || undefined,
@@ -100,6 +101,12 @@ export function buildBroadcastTowerViewModelV2(
     showWeather: content.showWeather,
     showSof: content.showSof,
   };
+  // Presentation metadata stays out of the enumerable V2/V1 comparison shape.
+  Object.defineProperty(model, "motionIdentity", {
+    value: `${frame.sessionId}:${frame.epoch}:${source.retry ?? 0}`,
+    enumerable: false,
+  });
+  return model;
 }
 
 export function broadcastTowerDisplayedValuesV2(model: BroadcastTowerViewModel): Readonly<Record<string, string>> {

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useSyncExternalStore, type RefObject } from "react";
+import { useLayoutEffect, useRef, useSyncExternalStore, type RefObject } from "react";
 import type { OverlayPerformanceV2 } from "../../generated/telemetry";
 
 /**
@@ -197,6 +197,7 @@ export function useWidgetMotion<TModel extends { status: string }>(
     persist: Map<string, unknown>;
   }) => void,
   teardown?: (root: HTMLElement) => void,
+  initialize?: (root: HTMLElement, persist: Map<string, unknown>) => void,
 ): void {
   const prevRef = useRef<TModel | null>(null);
   const timersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
@@ -207,6 +208,7 @@ export function useWidgetMotion<TModel extends { status: string }>(
   const effectsActiveRef = useRef(false);
   const applyRef = useRef(apply);
   const teardownRef = useRef(teardown);
+  const initializeRef = useRef(initialize);
   const stopAllRef = useRef<() => void>(() => {});
 
   const stopAll = () => {
@@ -233,10 +235,12 @@ export function useWidgetMotion<TModel extends { status: string }>(
   useLayoutEffect(() => {
     applyRef.current = apply;
     teardownRef.current = teardown;
+    initializeRef.current = initialize;
     stopAllRef.current = stopAll;
   });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    // The layout cleanup still owns the DOM ref; passive cleanup runs after detach.
     return () => stopAllRef.current();
   }, []);
 
@@ -253,7 +257,12 @@ export function useWidgetMotion<TModel extends { status: string }>(
     const prev = prevRef.current;
     prevRef.current = model;
     const root = rootRef.current;
-    if (!prev || !root) {
+    if (!root) {
+      return;
+    }
+    if (!prev) {
+      // Record the first layout so the first structural update has an origin.
+      initializeRef.current?.(root, persistRef.current);
       return;
     }
     effectsActiveRef.current = true;

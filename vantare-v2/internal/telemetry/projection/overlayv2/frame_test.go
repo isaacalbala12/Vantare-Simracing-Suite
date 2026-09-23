@@ -215,6 +215,7 @@ func syntheticFullFrame(vehicles int) FrameV2 {
 	for index := 0; index < vehicles; index++ {
 		id := fmt.Sprintf("vehicle-%03d", index+1)
 		standings[index] = StandingRowV2{
+			Quality: StandingQualityV2{Q: QualityFresh}, CarNumber: "007", ClassGap: float64(index) * 1.234, ClassGapLaps: int32(index / 40), ClassGapReferencePosition: 1, Interval: 1.234, IntervalLaps: int32(index / 80),
 			VehicleID: id, Position: int32(index + 1), ClassPosition: int32(index%24 + 1),
 			ClassID: "hypercar", DriverName: fmt.Sprintf("Driver %03d", index+1),
 			GapSeconds: QValue[float64]{V: float64(index) * 1.234, Q: QualityFresh}, GapLaps: int32(index / 40),
@@ -260,9 +261,13 @@ func syntheticFullFrame(vehicles int) FrameV2 {
 		Controls:  ControlsV2{History: controls},
 		Standings: standings, Relative: relative, RelativeSettled: relativeSettled,
 		RelativeSameClass: append([]RelativeRowV2{}, relative...),
-		Delta:             DeltaViewV2{Seconds: QValue[float64]{V: -.238, Q: QualityFresh}, Reference: "personal-best", Requested: "personal-best", Available: []string{"personal-best", "session-best", "previous-lap"}, Trend: "improving", Authority: AuthorityDerived},
-		Fuel:              FuelViewV2{Remaining: QValue[float64]{V: 42.1, Q: QualityFresh}, Capacity: QValue[float64]{V: 90, Q: QualityFresh}, PerLap: QValue[float64]{V: 3.4, Q: QualityFresh}, EstimatedLaps: QValue[float64]{V: 12.38, Q: QualityFresh}, SessionLaps: QValue[float64]{V: 79, Q: QualityFresh}, RequiredFuel: QValue[float64]{V: 268.6, Q: QualityFresh}, History: fuelHistory},
-		Spotter:           SpotterViewV2{Mode: "xy", Left: QValue[bool]{V: true, Q: QualityFresh}, Right: QValue[bool]{V: false, Q: QualityFresh}},
+		Delta: DeltaViewV2{References: []DeltaReferenceViewV2{
+			{Requested: DeltaReferencePersonalBest, Reference: DeltaReferencePersonalBest, Seconds: QValue[float64]{V: -.238, Q: QualityFresh}, Authority: AuthorityNative},
+			{Requested: DeltaReferenceSessionBest, Reference: DeltaReferenceSessionBest, Seconds: QValue[float64]{V: -.138, Q: QualityFresh}, Authority: AuthorityDerived},
+			{Requested: DeltaReferencePreviousLap, Reference: DeltaReferencePreviousLap, Seconds: QValue[float64]{V: -.038, Q: QualityFresh}, Authority: AuthorityDerived},
+		}, Seconds: QValue[float64]{V: -.238, Q: QualityFresh}, Reference: "personal-best", Requested: "personal-best", Available: []string{"personal-best", "session-best", "previous-lap"}, Trend: "improving", Authority: AuthorityDerived},
+		Fuel:    FuelViewV2{Remaining: QValue[float64]{V: 42.1, Q: QualityFresh}, Capacity: QValue[float64]{V: 90, Q: QualityFresh}, PerLap: QValue[float64]{V: 3.4, Q: QualityFresh}, EstimatedLaps: QValue[float64]{V: 12.38, Q: QualityFresh}, SessionLaps: QValue[float64]{V: 79, Q: QualityFresh}, RequiredFuel: QValue[float64]{V: 268.6, Q: QualityFresh}, History: fuelHistory},
+		Spotter: SpotterViewV2{Mode: "xy", Left: QValue[bool]{V: true, Q: QualityFresh}, Right: QValue[bool]{V: false, Q: QualityFresh}},
 		Damage: DamageViewV2{
 			Dents: QValue[[]uint16]{V: []uint16{1, 2, 3, 4, 5, 6, 7, 8}, Q: QualityFresh}, Overheating: QValue[bool]{V: false, Q: QualityFresh}, Detached: QValue[bool]{V: false, Q: QualityFresh}, WheelDetachedCount: QValue[uint8]{V: 0, Q: QualityFresh},
 		},

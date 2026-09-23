@@ -292,7 +292,7 @@ export function createOverlaySectionDecoder(): (text: string, request: unknown) 
   };
 }
 
-function frameFieldSizes(frame: OverlayFrameV2): Map<string, number> {
+function frameFieldSizes(frame: object): Map<string, number> {
   return new Map(Object.entries(frame).map(([key, value]) => [key, jsonBytes(key) + 1 + jsonBytes(value)]));
 }
 
@@ -333,10 +333,16 @@ export function parseOverlayPullJSON(text: string, sections?: SectionDecodeConte
         if (jsonBytes({...event.data, frame: null}) - 4 + frameBytes > OVERLAY_V2_MAX_PAYLOAD_BYTES) invalid("size");
         event.data = {...event.data, frame: {...base.update.frame, ...event.data.frame}};
       }
+      // Keep byte accounting in the wire representation. Standing timing cells
+      // expand once below, so measuring the normalized model would inflate a
+      // later section delta's safety budget without adding any wire bytes.
+      if (sections && !sizes && plainObject(event.data) && plainObject(event.data.frame)) {
+        sizes = frameFieldSizes(event.data.frame);
+      }
       // If the entire envelope fits, every contained update necessarily fits.
       // Larger envelopes retain the exact per-update byte check (e.g. status
       // plus a snapshot at the limit), not a relaxed transport-sized limit.
-      const update = sizes || bytes <= OVERLAY_V2_MAX_PAYLOAD_BYTES
+      const update = validatedBase || bytes <= OVERLAY_V2_MAX_PAYLOAD_BYTES
         ? validateOverlayUpdateV2(event.data, validatedBase)
         : decodeOverlayUpdateV2(event.data);
       // Retain upstream work in per-update diagnostics. Including the whole
@@ -397,7 +403,10 @@ function frame(value: unknown, path: string, validatedBase?: OverlayFrameV2): vo
   controls(value.controls, `${path}.controls`);
   // Only decoder-owned, previously validated and frozen arrays can be reused.
   // Fresh JSON arrays always differ by identity, even if their contents match.
-  if (!validatedBase || value.standings !== validatedBase.standings) rowArray(value.standings, `${path}.standings`, validStanding);
+  if (!validatedBase || value.standings !== validatedBase.standings) {
+    normalizeStandingRows(value.standings, `${path}.standings`);
+    rowArray(value.standings, `${path}.standings`, validStanding);
+  }
   if (!validatedBase || value.relative !== validatedBase.relative) relativeRowArray(value.relative, `${path}.relative`);
   if (!validatedBase || value.relativeSettled !== validatedBase.relativeSettled) relativeRowArray(value.relativeSettled, `${path}.relativeSettled`);
   if (!validatedBase || value.relativeSameClass !== validatedBase.relativeSameClass) relativeRowArray(value.relativeSameClass, `${path}.relativeSameClass`);
@@ -500,10 +509,60 @@ function perMilleSeries(value: unknown, path: string): asserts value is readonly
   Object.freeze(value);
 }
 
+// Only owned incoming arrays reach this boundary; decoder-owned frozen arrays
+// reused by a section delta bypass it. ViewModels always see ordinary QValue.
+function normalizeStandingRows(value: unknown, path: string): void {
+  if (!Array.isArray(value) || value.length > 104) invalid(path);
+  const aliases = { q: "quality", cg: "classGap", cl: "classGapLaps", cr: "classRef", i: "interval", il: "intervalLaps" } as const;
+  for (let index = 0; index < value.length; index += 1) {
+    const row = value[index];
+    const rowPath = `${path}[${index}]`;
+    if (!plainObject(row)) invalid(rowPath);
+    for (const [compact, descriptive] of Object.entries(aliases)) {
+      if (Object.hasOwn(row, compact)) {
+        if (Object.hasOwn(row, descriptive)) invalid(rowPath);
+        row[descriptive] = row[compact];
+        delete row[compact];
+      }
+    }
+    if (plainObject(row.quality)) {
+      const encoded = row.quality;
+      const aliases: Record<string, string> = { g: "gap", b: "bestLap", l: "lastLap" };
+      const qualities: Record<string, string> = { f: "fresh", s: "stale", m: "missing", i: "invalid" };
+      for (const [key, raw] of Object.entries(encoded)) {
+        const field = aliases[key] ?? key;
+        if (field !== key && Object.hasOwn(encoded, field)) invalid(rowPath);
+        if (field !== key) delete encoded[key];
+        encoded[field] = typeof raw === "string" ? qualities[raw] ?? raw : raw;
+      }
+    }
+    if (!validStandingQuality(row.quality)) invalid(rowPath);
+    const quality = row.quality as JSONObject | undefined;
+    for (const field of ["gap", "bestLap", "lastLap"] as const) {
+      const raw = row[field];
+      if (typeof raw !== "number") {
+        if (quality?.[field] !== undefined && (!plainObject(raw) || raw.q !== quality[field])) invalid(rowPath);
+        continue;
+      }
+      if (!Number.isFinite(raw) || !quality) invalid(rowPath);
+      const q = quality[field] ?? quality.q;
+      if (q === "missing" && raw !== 0) invalid(rowPath);
+      row[field] = raw === 0 ? { q } : { q, v: raw };
+    }
+    // Overrides belong to the scalar wire cells. The normalized model carries
+    // the same qualities in each QValue, alongside the unchanged scalar base.
+    if (quality && ["gap", "bestLap", "lastLap"].some(field => Object.hasOwn(quality, field))) {
+      const normalized = { ...quality };
+      for (const field of ["gap", "bestLap", "lastLap"]) delete normalized[field];
+      row.quality = normalized;
+    }
+  }
+}
+
 function validStandingQuality(value: unknown): boolean {
  if (value === undefined) return true;
- if (!objectHasKeys(value, ["q"], ["position", "classPosition", "pit", "laps", "gapLaps", "classGap", "classGapLaps", "interval", "intervalLaps"])) return false;
- if (![value.q, value.position, value.classPosition, value.pit, value.laps, value.gapLaps, value.classGap, value.classGapLaps, value.interval, value.intervalLaps].every(q => q === undefined || ["fresh", "stale", "missing", "invalid"].includes(q as string))) return false;
+ if (!objectHasKeys(value, ["q"], ["position", "classPosition", "pit", "laps", "gapLaps", "classGap", "classGapLaps", "interval", "intervalLaps", "gap", "bestLap", "lastLap"])) return false;
+ if (![value.q, value.position, value.classPosition, value.pit, value.laps, value.gapLaps, value.classGap, value.classGapLaps, value.interval, value.intervalLaps, value.gap, value.bestLap, value.lastLap].every(q => q === undefined || ["fresh", "stale", "missing", "invalid"].includes(q as string))) return false;
  if (value.q === undefined) return false;
  Object.freeze(value);
  return true;
@@ -572,12 +631,12 @@ function weather(value: unknown, path: string): void {
 }
 
 function validRelative(value: unknown): boolean {
-  if (!objectHasKeys(value, ["id", "position", "gap", "lapDelta", "lastLap", "bestLap", "side", "authority"], ["name", "classId", "number"])) return false;
+  if (!objectHasKeys(value, ["id", "position", "gap", "lapDelta", "lastLap", "bestLap", "side"], ["authority", "name", "classId", "number"])) return false;
   const valid = typeof value.id === "string" && value.id.length > 0 &&
     typeof value.position === "number" && Number.isSafeInteger(value.position) && value.position > 0 &&
     validQValue(value.gap, "number") && validQValue(value.lapDelta, "number") &&
     validQValue(value.bestLap, "number") && optionalStringValue(value.number) && validQValue(value.lastLap, "number") && ["ahead", "player", "behind"].includes(value.side as string) &&
-    ["native", "derived", "estimated"].includes(value.authority as string) &&
+    (value.authority === undefined || ["native", "derived", "estimated"].includes(value.authority as string)) &&
     optionalStringValue(value.name) && optionalStringValue(value.classId);
   if (valid) Object.freeze(value);
   return valid;

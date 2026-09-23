@@ -33,6 +33,7 @@ describe("OverlayFrame v2 store", () => {
 
   it("parses a pull response once while retaining strict immutable ingestion", () => {
     const update = golden();
+    const expected = decodeOverlayUpdateV2(update);
     const text = JSON.stringify({sessionId: "s", delivery: 1, events: [{name: OVERLAY_V2_SNAPSHOT_EVENT, data: update}]});
     const parse = vi.spyOn(JSON, "parse");
     try {
@@ -40,7 +41,7 @@ describe("OverlayFrame v2 store", () => {
       const owned = response.events[0]!.data;
       const store = createOverlayFrameV2Store();
       store.ingest(OVERLAY_V2_SNAPSHOT_EVENT, owned);
-      expect(store.getSnapshot().frame).toEqual(update.frame);
+      expect(store.getSnapshot().frame).toEqual(expected.frame);
       expect(parse).toHaveBeenCalledTimes(1);
       expect(Object.isFrozen(owned.frame?.standings[0])).toBe(true);
       expect(() => Object.assign(owned.source, {state: "error"})).toThrow();
@@ -62,7 +63,7 @@ describe("OverlayFrame v2 store", () => {
 
   it("decodes the generated Go contract strictly", () => {
     const update = golden();
-    expect(decodeOverlayUpdateV2(JSON.stringify(update))).toEqual(update);
+    expect(decodeOverlayUpdateV2(JSON.stringify(update))).toEqual(decodeOverlayUpdateV2(update));
     expect(() => decodeOverlayUpdateV2({ ...update, unexpected: true })).toThrow(
       "overlay-frame-v2:invalid-contract:update",
     );
@@ -75,7 +76,7 @@ describe("OverlayFrame v2 store", () => {
     expect(() => decodeOverlayUpdateV2(withoutBestLap)).toThrow(
       "overlay-frame-v2:invalid-contract:frame.standings[0]",
     );
-    for (const field of ["position", "bestLap", "lastLap", "lapDelta"] as const) {
+    for (const field of ["position", "bestLap", "lastLap", "lapDelta", "side"] as const) {
       const incomplete = JSON.parse(JSON.stringify(update)) as Record<string, unknown>;
       const frame = incomplete.frame as { relative: Record<string, unknown>[] };
       delete frame.relative[0]?.[field];
@@ -385,7 +386,7 @@ class FakeEventSource implements OverlayFrameV2EventSourceLike {
 }
 
 it("validates compact standings quality and preserves missing legacy authority", () => {
- const input=golden();
+ const input=JSON.parse(JSON.stringify(decodeOverlayUpdateV2(golden()))) as OverlayUpdateV2;
  const row=input.frame!.standings[0]!;
  Object.assign(row,{quality:{q:"fresh",pit:"invalid",classGap:"missing"},classRef:1,interval:1.25,intervalLaps:0});
  expect(decodeOverlayUpdateV2(input).frame!.standings[0]!.quality).toEqual({q:"fresh",pit:"invalid",classGap:"missing"});

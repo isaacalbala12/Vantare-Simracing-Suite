@@ -122,32 +122,26 @@
     },
     "standings": [
       {
-        "quality": {
-          "q": "fresh",
-          "interval": "missing",
-          "intervalLaps": "missing"
-        },
-        "classRef": 1,
+        "cr": 1,
         "id": "vehicle-000",
         "position": 1,
         "classPosition": 1,
         "classId": "hypercar",
         "driver": "Driver 000",
-        "gap": {
-          "q": "fresh"
-        },
         "pit": "pit",
         "laps": 127,
-        "bestLap": {
-          "q": "missing"
-        },
-        "lastLap": {
-          "v": 91.234,
-          "q": "fresh"
-        },
         "groundPosition": {
           "q": "fresh"
-        }
+        },
+        "q": {
+          "q": "f",
+          "b": "m",
+          "interval": "m",
+          "intervalLaps": "m"
+        },
+        "gap": 0,
+        "bestLap": 0,
+        "lastLap": 91.234
       }
     ],
     "relative": [
@@ -168,7 +162,6 @@
           "q": "fresh"
         },
         "side": "player",
-        "authority": "derived",
         "name": "Driver 000",
         "classId": "hypercar"
       }
@@ -191,7 +184,6 @@
           "q": "fresh"
         },
         "side": "player",
-        "authority": "derived",
         "name": "Driver 000",
         "classId": "hypercar"
       }
@@ -214,7 +206,6 @@
           "q": "fresh"
         },
         "side": "player",
-        "authority": "derived",
         "name": "Driver 000",
         "classId": "hypercar"
       }

@@ -220,6 +220,10 @@ type WeatherV2 struct {
 }
 
 type StandingQualityV2 struct {
+	// Timing overrides exist only in the compact wire form; QValue owns them in process.
+	Gap           Quality `json:"gap,omitempty"`
+	BestLap       Quality `json:"bestLap,omitempty"`
+	LastLap       Quality `json:"lastLap,omitempty"`
 	Q             Quality `json:"q"`
 	Position      Quality `json:"position,omitempty"`
 	ClassPosition Quality `json:"classPosition,omitempty"`
@@ -235,14 +239,14 @@ type StandingQualityV2 struct {
 type StandingRowV2 struct {
 	// Quality explicitly declares a base for legacy scalar fields; per-field
 	// overrides preserve mixed freshness without repeating every fresh string.
-	Quality StandingQualityV2 `json:"quality,omitempty"`
+	Quality StandingQualityV2 `json:"q,omitempty"`
 	// ClassRef is the authoritative absolute position of the class leader in
 	// this frame, never an array index. Missing reference means unknown.
-	ClassGap                  float64                  `json:"classGap,omitempty"`
-	ClassGapLaps              int32                    `json:"classGapLaps,omitempty"`
-	ClassGapReferencePosition int32                    `json:"classRef,omitempty"`
-	Interval                  float64                  `json:"interval,omitempty"`
-	IntervalLaps              int32                    `json:"intervalLaps,omitempty"`
+	ClassGap                  float64                  `json:"cg,omitempty"`
+	ClassGapLaps              int32                    `json:"cl,omitempty"`
+	ClassGapReferencePosition int32                    `json:"cr,omitempty"`
+	Interval                  float64                  `json:"i,omitempty"`
+	IntervalLaps              int32                    `json:"il,omitempty"`
 	VehicleID                 string                   `json:"id"`
 	Position                  int32                    `json:"position"`
 	ClassPosition             int32                    `json:"classPosition"`
@@ -270,7 +274,7 @@ type RelativeRowV2 struct {
 	LapDelta       QValue[int32]   `json:"lapDelta"`
 	LastLapSeconds QValue[float64] `json:"lastLap"`
 	Side           string          `json:"side"`
-	Authority      Authority       `json:"authority"`
+	Authority      Authority       `json:"authority,omitempty"`
 	DisplayName    string          `json:"name,omitempty"`
 	ClassID        string          `json:"classId,omitempty"`
 }

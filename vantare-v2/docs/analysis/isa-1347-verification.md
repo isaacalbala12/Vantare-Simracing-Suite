@@ -1,6 +1,6 @@
 # ISA-1347 — evidencia de corrección y límites de lanzamiento
 
-Base: `8b25d076` (`origin/nightly`). Rama `vantareapp/isa-1347-widgets-data-contract`. [Contrato](../specs/2026-09-23-accepted-widgets-data-contract.md). [Autoridad meteorológica](isa-1347-weather-authority.md). Revisión visual previa de los cinco widgets conservada; no incluye Fuel Strategy ni Pedals Telemetry.
+Base inicial: `8b25d076` (`origin/nightly`). Antes de publicar se incorporó `247db1c7` (PR #1351, audio Windows), sin cambios de widgets; tras entrar #1348 y #1340 en Nightly, la rama se rebasó linealmente sobre `origin/nightly@b725c402` y se regeneró el artefacto del roadmap. Rama `vantareapp/isa-1347-widgets-data-contract`. [Contrato](../specs/2026-09-23-accepted-widgets-data-contract.md). [Autoridad meteorológica](isa-1347-weather-authority.md). Revisión visual previa de los cinco widgets conservada; no incluye Fuel Strategy ni Pedals Telemetry.
 
 ## Cobertura funcional
 
@@ -37,7 +37,7 @@ El primer intento global Go no constituye PASS: faltaba la compilación frontend
 
 El hash de replay cambia por la nueva derivación de vueltas relativas y la representación del frame; la prueba sigue exigiendo el mismo digest entre reproducción paso a paso y temporizada. El inventario de campos conserva el orden real de `ObservedState`. El guard de conexión reconoce métodos JSON únicamente con firma exacta y declaración de interfaz estándar comprobada por Go; 14 casos positivos y negativos protegen ese reconocimiento, sin listas amplias de excepciones.
 
-Publicación de revisión: [PR draft #1352](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1352), candidato compuesto `cffd4748`, destino nightly. Push y HEAD remoto verificados; CI remoto en curso al crear. Contrato de roadmap validado con la issue viva obtenida mediante GitHub CLI: exactamente `milestones:functional-widget-design`. No hubo merge ni promoción.
+Publicación de revisión: [PR #1352](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1352), destino Nightly y rebasada sobre `b725c402`. El run remoto del head anterior `973d3b16` falló en la prueba de parseo compacto (2 ms frente al límite de 1,5 ms); el archivo focal completo pasa localmente en Windows después del rebase (4/4). El head actualizado requiere los dos gates remotos obligatorios antes del merge. Isaac autorizó explícitamente la integración a Nightly el 2026-09-23. El contrato de roadmap sigue siendo exactamente `milestones:functional-widget-design`; JSON regenerado desde la base actual. Todavía no hubo merge ni promoción.
 
 ## Prueba física que sigue pendiente
 

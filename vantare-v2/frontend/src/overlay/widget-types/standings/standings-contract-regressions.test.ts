@@ -86,3 +86,41 @@ it("production player window selects from the complete field", () => {
  const m=buildStandingsViewModelV2(f,{state:"live"},{...content,rowCount:1,playerWindow:true,windowAround:0});
  expect(m.rows.some(row => row.isPlayer)).toBe(true);
 });
+
+
+it("stopping clears retained telemetry in both standings models", () => {
+ const f=frame();
+ expect(buildStandingsViewModelV2(f,{state:"stopping"},content)).toMatchObject({status:"disconnected",rows:[]});
+ expect(buildBroadcastTowerViewModelV2(f,{state:"stopping"},towerContent)).toMatchObject({status:"disconnected",rows:[]});
+});
+
+it.each(["practice","qualifying"])("%s multiclass pace gaps use each class best before cropping", phase => {
+ const f=frame(); f.session.phase={q:"fresh",v:phase};
+ f.standings=[
+   {...f.standings[0]!,id:"h1",position:1,classPosition:1,classId:"HYP",quality:{q:"fresh"},bestLap:{q:"fresh",v:100}},
+   {...f.standings[1]!,id:"g1",position:2,classPosition:1,classId:"GT3",bestLap:{q:"fresh",v:120}},
+   {...f.standings[2]!,id:"g2",position:3,classPosition:2,classId:"GT3",bestLap:{q:"fresh",v:122}},
+ ];
+ const grouped={...content,classScope:"all-classes" as const,classificationMode:"multiclass" as const};
+ expect(buildStandingsViewModelV2(f,{state:"live"},grouped).rows.map(row => row.gapText)).toEqual(["Leader","Leader","+2.00s"]);
+ expect(buildStandingsViewModelV2(f,{state:"live"},{...grouped,rowCount:2}).rows[1]).toMatchObject({isLeader:true,gapText:"Leader"});
+ expect(buildStandingsViewModelV2(f,{state:"live"},{...grouped,classificationMode:"normal"}).rows[1]!.gapText).toBe("+20.00s");
+});
+
+it("class intervals never reuse a hidden other-class overall predecessor", () => {
+ const f=frame(); f.player.id="h3";
+ f.standings=[
+   {...f.standings[0]!,id:"h1",position:1,classPosition:1,classId:"HYP",quality:{q:"fresh"}},
+   {...f.standings[1]!,id:"g2",position:2,classPosition:1,classId:"GT3",quality:{q:"fresh"}},
+   {...f.standings[2]!,id:"h3",position:3,classPosition:2,classId:"HYP",quality:{q:"fresh"},interval:2,intervalLaps:0},
+ ];
+ const grouped={...content,classScope:"all-classes" as const,classificationMode:"multiclass" as const};
+ expect(buildStandingsViewModelV2(f,{state:"live"},content).rows.map(row => row.id)).toEqual(["h1","h3"]);
+ expect(buildStandingsViewModelV2(f,{state:"live"},content).rows[1]!.intervalText).toBe("—");
+ expect(buildStandingsViewModelV2(f,{state:"live"},grouped).rows[2]!.intervalText).toBe("—");
+ expect(buildStandingsViewModelV2(f,{state:"live"},{...grouped,classificationMode:"normal"}).rows[2]!.intervalText).toBe("+2.00s");
+ f.standings[1]!.classId="hyp";
+ expect(buildStandingsViewModelV2(f,{state:"live"},content).rows[2]!.intervalText).toBe("+2.00s");
+ f.standings[1]!.quality={q:"fresh",position:"stale"};
+ expect(buildStandingsViewModelV2(f,{state:"live"},content).rows[2]!.intervalText).toBe("—");
+});

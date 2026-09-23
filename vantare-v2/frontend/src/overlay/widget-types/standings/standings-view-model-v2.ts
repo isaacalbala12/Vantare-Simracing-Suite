@@ -38,7 +38,7 @@ export function buildStandingsViewModelV2(
   const columns = getEnabledStandingsColumns(content);
   const classificationMode = content.classificationMode
     ?? (content.classScope === "all-classes" ? "multiclass" : "normal");
-  if (source.state === "error" || source.state === "stopped" || source.state === "connecting" || source.state === "detecting") {
+  if (source.state === "error" || source.state === "stopped" || source.state === "stopping" || source.state === "connecting" || source.state === "detecting") {
     return withStandingsClassificationMode(withStandingsClassScope({
       type: "standings",
       status: source.state === "error" ? "error" : "disconnected",
@@ -68,10 +68,23 @@ export function buildStandingsViewModelV2(
       && (!best || seconds < best.bestLap.v!) ? row : best;
   }, undefined);
   const classGaps = content.classScope === "player-class" || classificationMode === "multiclass";
+  const classBestLaps = new Map<string, number>();
+  if (paceSession && classGaps) {
+    for (const row of scoped) {
+      const classId = (row.classId ?? "").trim().toUpperCase();
+      const lap = displayedNumber(row.bestLap);
+      if (classId && lap !== undefined && lap > 0 && lap < (classBestLaps.get(classId) ?? Infinity)) {
+        classBestLaps.set(classId, lap);
+      }
+    }
+  }
   const nameColumn = columns.find((column) => column.metricId === "driverName");
   const weather = frame.weather;
   const projectedRows = scoped.map((row) =>
-    buildRow(row, playerId, paceSession, sessionBestLap, nameColumn, columns, classGaps,
+    buildRow(row, playerId, paceSession,
+      classGaps ? classBestLaps.get((row.classId ?? "").trim().toUpperCase()) : sessionBestLap,
+      nameColumn, columns, classGaps,
+      !classGaps || hasSameClassPredecessor(row, frame.standings),
       source.state === "live" && frame.session.phase.q === "fresh" && phase === "race"),
   );
   const activeWindow = window ?? (content.playerWindow ? { around: content.windowAround ?? 4 } : undefined);
@@ -180,6 +193,7 @@ function buildRow(
   nameColumn: WidgetColumnV3 | undefined,
   columns: readonly WidgetColumnV3[],
   classGaps: boolean,
+  intervalAvailable: boolean,
   freshRace: boolean,
 ): StandingsRowViewModel {
   const driverName = row.driver || PLACEHOLDER;
@@ -195,7 +209,7 @@ function buildRow(
     teamCode: "",
     teamBrandColor: "",
     gapText: paceSession ? formatBestLapGap(row, sessionBestLap) : formatGap(row, classGaps),
-    intervalText: formatInterval(row),
+    intervalText: intervalAvailable ? formatInterval(row) : PLACEHOLDER,
     currentLapText: standingQuality(row, "laps") === "fresh" ? String(row.laps ?? 0) : PLACEHOLDER,
     lastLapText: formatStandingsLapTime(displayedNumber(row.lastLap), columns.find(column => column.metricId === "lastLap")),
     bestLapText: formatStandingsLapTime(displayedNumber(row.bestLap), columns.find(column => column.metricId === "bestLap")),
@@ -238,6 +252,17 @@ function formatGap(row: OverlayStandingRowV2, classGaps: boolean): string {
   if (laps !== 0) return formatStandingsLapDifference(laps);
   const gap = classGaps ? standingNumber(row, "classGap") : displayedNumber(row.gap);
   return gap !== undefined ? formatStandingsSecondsDifference(gap) : PLACEHOLDER;
+}
+
+/** Native intervals refer to the overall predecessor. In class views we can
+ * only display them when that authoritative predecessor belongs to this class.
+ * Otherwise no class interval is available; never reinterpret or subtract it. */
+function hasSameClassPredecessor(row: OverlayStandingRowV2, allRows: readonly OverlayStandingRowV2[]): boolean {
+  const classId = (row.classId ?? "").trim().toUpperCase();
+  if (!classId || standingQuality(row, "position") !== "fresh" || row.position <= 1) return false;
+  const predecessors = allRows.filter(candidate => standingQuality(candidate, "position") === "fresh"
+    && candidate.position === row.position - 1);
+  return predecessors.length === 1 && (predecessors[0]!.classId ?? "").trim().toUpperCase() === classId;
 }
 
 function formatInterval(row: OverlayStandingRowV2): string {

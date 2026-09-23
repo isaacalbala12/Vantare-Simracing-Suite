@@ -58,6 +58,15 @@ it("rounds a manual pace across the minute boundary in the reference card", () =
   expect(within(screen.getByRole("region", { name: "strategy.entry.referenceTitle" })).getByText("1:00.000")).toBeTruthy();
 });
 
+it("shows the verified COTA catalog outline in the race context without deriving a map from the filename", () => {
+  const input = props();
+  const cota = { ...combination, combinationId: "lmu:cota", trackName: "Circuit of the Americas", trackLayout: "Circuit of the Americas" };
+  render(<StrategyRecordedPreparation {...input} draft={{ ...input.draft, combination: cota }} />);
+  const context = screen.getByRole("complementary", { name: "strategy.entry.circuitAndSource" });
+  expect(within(context).getByRole("img", { name: "strategy.entry.catalogMap" }).querySelector("path")?.getAttribute("d")).toMatch(/^M /);
+  expect(within(context).getByText("strategy.entry.catalogMapSource")).toBeTruthy();
+});
+
 it("shows canonical observed values and a separate preview bucket without changing the race climate", () => {
   const input = props();
   const ref = { sessionId: "base-a", revisionId: "revision-a", baseDigest: "a".repeat(64), snapshotId: "b".repeat(64) };
@@ -105,6 +114,12 @@ it("does not substitute a climate mean for a missing bucket and labels a valid o
   expect(within(fuel).getByText("strategy.entry.referenceBucketMissing")).toBeTruthy();
   const energy = within(cards).getByText("strategy.entry.referenceEnergy").closest("article")!;
   expect(within(energy).getByText("strategy.entry.referenceInvalid")).toBeTruthy();
+  view.rerender(<StrategyRecordedPreparation {...input} draft={draft} references={{ status: "ready", planning: {
+    overrides: { fuel_per_lap_liters: { value: 0, presence: "valid", provenance: { kind: "manual" }, confidence: "high" } }, projection,
+  } as unknown as StrategyPlanningInputsV2 }} />);
+  expect(within(fuel).getByText("—")).toBeTruthy();
+  expect(within(fuel).getByText("strategy.entry.referenceInvalid")).toBeTruthy();
+  expect(fuel.textContent).not.toContain("strategy.entry.referenceManual");
   view.rerender(<StrategyRecordedPreparation {...input} draft={draft} references={{ status: "ready", planning: {
     overrides: { fuel_per_lap_liters: { value: 2.1, presence: "valid", provenance: { kind: "manual" }, confidence: "high" } }, projection,
   } as unknown as StrategyPlanningInputsV2 }} />);

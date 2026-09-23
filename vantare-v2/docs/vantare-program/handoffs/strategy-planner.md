@@ -16,6 +16,8 @@ Corte 1 implementado: inicio de ancho disponible con columna derecha de hasta tr
 
 Corte 2 implementado: preparación consulta `get_revision_planning_inputs` con selección exacta y handles abiertos de la misma sesión/base. Una cabeza más reciente no sustituye la revisión adoptada. La clave cancela/descarta respuestas de selecciones anteriores y no consulta por teclear reglas/nombre. Ritmo por bucket de vista previa, Fuel/VE y ajustes conservan presencia/procedencia; bucket ausente no usa la media como sustituto. Fuente cerrada ofrece apertura y error ofrece reintento. Manual no consulta Analysis. Focales 21/21, tipos, ESLint focal y diff-check pasan. Root revisó hook, cableado, CSS y casos de carrera asincrónica; no acredita datos nativos todavía. Siguiente: circuito y continuidad de editor.
 
+Corte 3 implementado: mapa del catálogo LMU con identidad y variante verificadas, excluyendo toda geometría sintética. COTA y Monza producen trazados reales distintos. Sin API histórica pública para contornos desconocidos, se indica ausencia; no se abre una sesión para decorar el menú. Ajustes numéricos inválidos no sustituyen silenciosamente su valor por la observación. Focales 21/21, tipos, ESLint focal y diff-check pasan; root revisó diff y pruebas. Siguiente: composición y navegación coherentes del editor. App sin abrir ni relanzar.
+
 ## Antecedente — QA de preparación y límite funcional (2026-09-22)
 
 Isaac completa VirusTotal: el asset regenerado obtiene 0/62, incluido Microsoft sin detección; no se afirma identidad con el original en cuarentena. Resultado enlazado en la auditoría de ISA-1322. La build normal vuelve a funcionar sin cambios de protección.

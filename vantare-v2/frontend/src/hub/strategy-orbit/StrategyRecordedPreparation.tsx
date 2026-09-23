@@ -7,6 +7,7 @@ import { Icon } from "../../ui/orbit";
 import { StrategyRecordedCombination } from "./StrategyRecordedCombination";
 import { StrategyRecordedRules } from "./StrategyRecordedRules";
 import { StrategyRecordedDrivers } from "./StrategyRecordedDrivers";
+import { StrategyRecordedCircuit } from "./StrategyRecordedCircuit";
 import { reconcileRecordedDriverOrder, selectRecordedCalendar, selectRecordedCombination, snapshotRecordedCalendar, type RecordedCombination, type RecordedWizardDraft, type RecordedWizardStep } from "./strategy-recorded-wizard";
 import { recordedWizardErrors } from "./strategy-recorded-validation";
 import type { RecordedReferencesState } from "./use-recorded-references";
@@ -69,16 +70,19 @@ export function StrategyRecordedPreparation({ draft, onChange, catalog, catalogS
   const paceOverride = planning?.overrides.base_pace_seconds;
   const fuelOverride = planning?.overrides.fuel_per_lap_liters;
   const energyOverride = planning?.overrides.ve_per_lap_percent;
+  const paceAdjusted = paceOverride?.presence === "valid";
+  const fuelAdjusted = fuelOverride?.presence === "valid";
+  const energyAdjusted = energyOverride?.presence === "valid";
   const observedPace = paceBuckets?.[previewBucket];
-  const paceValue = paceOverride?.presence === "valid" && positive(paceOverride.value) ? paceOverride.value
+  const paceValue = paceAdjusted ? positive(paceOverride.value) ? paceOverride.value : undefined
     : observedPace?.presence === "valid" && positive(observedPace.medianLapSeconds) ? observedPace.medianLapSeconds : undefined;
   const fuelFamily = projection?.fuelConsumption;
   const energyFamily = projection?.virtualEnergyConsumption;
   const observedFuel = fuelFamily?.byClimateBucket ? fuelFamily.byClimateBucket[previewBucket] : fuelFamily?.meanPerLap;
   const observedEnergy = energyFamily?.byClimateBucket ? energyFamily.byClimateBucket[previewBucket] : energyFamily?.meanPerLap;
-  const fuelValue = fuelOverride?.presence === "valid" && positive(fuelOverride.value) ? fuelOverride.value
+  const fuelValue = fuelAdjusted ? positive(fuelOverride.value) ? fuelOverride.value : undefined
     : fuelFamily?.presence === "valid" && positive(observedFuel) ? observedFuel : undefined;
-  const energyValue = energyOverride?.presence === "valid" && nonNegative(energyOverride.value) ? energyOverride.value
+  const energyValue = energyAdjusted ? nonNegative(energyOverride.value) ? energyOverride.value : undefined
     : energyFamily?.presence === "valid" && nonNegative(observedEnergy) ? observedEnergy : undefined;
   const evidence = (kind?: "manual" | "reference") => t(kind === "manual" ? "strategy.entry.referenceManual" : kind === "reference" ? "strategy.entry.referenceAdjusted" : "strategy.entry.referenceObserved");
   const observedScope = (hasBuckets: boolean) => t(hasBuckets ? `strategy.journey.climate.${previewBucket}` : "strategy.entry.referenceSessionMean");
@@ -86,9 +90,9 @@ export function StrategyRecordedPreparation({ draft, onChange, catalog, catalogS
     : presence === "invalid" || presence === "stale" || presence === "unsupported" ? "strategy.entry.referenceInvalid"
       : bucketed && (presence === "valid" || presence === undefined) ? "strategy.entry.referenceBucketMissing" : "strategy.entry.referenceMissing");
   const cards = [
-    { icon: "i-carreras" as const, title: t("strategy.entry.referencePace"), value: manual ? formatPace(positive(draft.manualInputs?.paceSeconds) ? draft.manualInputs?.paceSeconds : undefined) : formatPace(paceValue), unit: t("strategy.entry.paceUnit"), detail: manual ? t("strategy.entry.estimated") : `${evidence(paceOverride?.presence === "valid" ? paceOverride.provenance.kind : undefined)}${paceOverride?.presence === "valid" ? "" : ` · ${t(`strategy.journey.climate.${previewBucket}`)}`}`, missing: missing(observedPace?.presence, Boolean(paceBuckets)) },
-    { icon: "i-telemetria" as const, title: t("strategy.entry.referenceFuel"), value: manual ? formatNumber(positive(draft.manualInputs?.fuelLitersPerLap) ? draft.manualInputs?.fuelLitersPerLap : undefined, 2) : formatNumber(fuelValue, 2), unit: t("strategy.entry.fuelUnit"), detail: manual ? t("strategy.entry.estimated") : `${evidence(fuelOverride?.presence === "valid" ? fuelOverride.provenance.kind : undefined)}${fuelOverride?.presence === "valid" ? "" : ` · ${observedScope(Boolean(fuelFamily?.byClimateBucket))}`}`, missing: missing(fuelFamily?.presence, Boolean(fuelFamily?.byClimateBucket)) },
-    ...(draft.virtualEnergy?.applicability === "applicable" || (!manual && nonNegative(energyValue)) ? [{ icon: "i-ajustes" as const, title: t("strategy.entry.referenceEnergy"), value: manual ? formatNumber(nonNegative(draft.manualInputs?.virtualEnergyPercentPerLap) ? draft.manualInputs?.virtualEnergyPercentPerLap : undefined, 1) : formatNumber(energyValue, 1), unit: t("strategy.entry.energyUnit"), detail: manual ? t("strategy.entry.estimated") : `${evidence(energyOverride?.presence === "valid" ? energyOverride.provenance.kind : undefined)}${energyOverride?.presence === "valid" ? "" : ` · ${observedScope(Boolean(energyFamily?.byClimateBucket))}`}${draft.virtualEnergy?.applicability !== "applicable" ? ` · ${t(draft.virtualEnergy?.applicability === "not_applicable" ? "strategy.entry.referenceRuleNotApplicable" : "strategy.entry.referenceRulePending")}` : ""}`, missing: missing(energyFamily?.presence, Boolean(energyFamily?.byClimateBucket)) }] : []),
+    { icon: "i-carreras" as const, title: t("strategy.entry.referencePace"), value: manual ? formatPace(positive(draft.manualInputs?.paceSeconds) ? draft.manualInputs?.paceSeconds : undefined) : formatPace(paceValue), unit: t("strategy.entry.paceUnit"), detail: manual ? t("strategy.entry.estimated") : `${evidence(paceAdjusted ? paceOverride.provenance.kind : undefined)}${paceAdjusted ? "" : ` · ${t(`strategy.journey.climate.${previewBucket}`)}`}`, missing: missing(paceAdjusted ? "invalid" : observedPace?.presence, !paceAdjusted && Boolean(paceBuckets)) },
+    { icon: "i-telemetria" as const, title: t("strategy.entry.referenceFuel"), value: manual ? formatNumber(positive(draft.manualInputs?.fuelLitersPerLap) ? draft.manualInputs?.fuelLitersPerLap : undefined, 2) : formatNumber(fuelValue, 2), unit: t("strategy.entry.fuelUnit"), detail: manual ? t("strategy.entry.estimated") : `${evidence(fuelAdjusted ? fuelOverride.provenance.kind : undefined)}${fuelAdjusted ? "" : ` · ${observedScope(Boolean(fuelFamily?.byClimateBucket))}`}`, missing: missing(fuelAdjusted ? "invalid" : fuelFamily?.presence, !fuelAdjusted && Boolean(fuelFamily?.byClimateBucket)) },
+    ...(draft.virtualEnergy?.applicability === "applicable" || (!manual && nonNegative(energyValue)) ? [{ icon: "i-ajustes" as const, title: t("strategy.entry.referenceEnergy"), value: manual ? formatNumber(nonNegative(draft.manualInputs?.virtualEnergyPercentPerLap) ? draft.manualInputs?.virtualEnergyPercentPerLap : undefined, 1) : formatNumber(energyValue, 1), unit: t("strategy.entry.energyUnit"), detail: manual ? t("strategy.entry.estimated") : `${evidence(energyAdjusted ? energyOverride.provenance.kind : undefined)}${energyAdjusted ? "" : ` · ${observedScope(Boolean(energyFamily?.byClimateBucket))}`}${draft.virtualEnergy?.applicability !== "applicable" ? ` · ${t(draft.virtualEnergy?.applicability === "not_applicable" ? "strategy.entry.referenceRuleNotApplicable" : "strategy.entry.referenceRulePending")}` : ""}`, missing: missing(energyAdjusted ? "invalid" : energyFamily?.presence, !energyAdjusted && Boolean(energyFamily?.byClimateBucket)) }] : []),
   ];
 
   const navigation = <div className="strategy-preparation__navigation"><span>{t("strategy.entry.preparation")}{draft.combination ? ` · ${draft.combination.trackName}` : ""}</span><button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy} onClick={onExit}>{t("strategy.entry.changeSource")}</button></div>;
@@ -98,7 +102,7 @@ export function StrategyRecordedPreparation({ draft, onChange, catalog, catalogS
       <div className="strategy-preparation__board">
       <aside className="strategy-preparation__context" aria-label={t("strategy.entry.circuitAndSource")}>
         <header><strong>{t("strategy.entry.circuitAndSource")}</strong><Icon name="i-carreras" size={17} /></header>
-        <div className="strategy-preparation__circuit"><span className="strategy-preparation__micro">{t("strategy.journey.track")}</span><b>{draft.combination?.trackName || pending}</b><small>{draft.combination?.trackLayout || "Le Mans Ultimate"}</small></div>
+        <div className="strategy-preparation__circuit"><span className="strategy-preparation__micro">{t("strategy.journey.track")}</span><b>{draft.combination?.trackName || pending}</b><small>{draft.combination?.trackLayout || "Le Mans Ultimate"}</small><StrategyRecordedCircuit combination={draft.combination} t={t} /></div>
         <div className="strategy-preparation__car"><span className="strategy-preparation__micro">{draft.combination?.carClass || t("strategy.journey.car")}</span><b>{draft.combination?.carName || pending}</b><button type="button" className="strategy-preparation__text-action" disabled={busy} aria-expanded={combinationOpen} aria-controls="strategy-preparation-combination" onClick={() => setCombinationOpen(value => !value)}>{t("strategy.entry.changeCombination")} ↗</button></div>
         {combinationOpen ? <div id="strategy-preparation-combination" className="strategy-preparation__combination-panel"><fieldset disabled={busy}><StrategyRecordedCombination draft={draft} catalog={catalog} catalogState={catalogState} calendar={calendar} onDiscover={onDiscover} t={t}
           onCombination={id => change(selectRecordedCombination(draft, id, catalog))}

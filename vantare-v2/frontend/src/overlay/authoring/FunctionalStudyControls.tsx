@@ -96,7 +96,7 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
   const defaultDesign = designs.find((design) => design.isDefault) ?? designs[0];
   // Cada variante declarada pertenece a un widget por su prefijo; el resto
   // produciría una query inválida.
-  const scenes = listAnimationScenes(query.widget);
+  const scenes = listAnimationScenes(query.widget, query.system);
   const gaps = projectionGapsFor(query.widget);
   const isFunctional = query.system === "vantare-functional";
   const isStandings = query.widget === "standings";
@@ -141,9 +141,14 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
   const chooseSystem = (system: string) => {
     const nextSystem = system as OverlayWorkshopQuery["system"];
     const keepsDefaultWindow = nextSystem === "vantare-functional" && isStandings;
+    const sceneId = listAnimationScenes(query.widget, nextSystem).some((scene) => scene.id === query.sceneId)
+      ? query.sceneId
+      : undefined;
     return update({
       ...query,
       system: nextSystem,
+      sceneId,
+      sceneFrame: sceneId ? query.sceneFrame : undefined,
       designId: undefined,
       studyStyle: keepsDefaultWindow ? "default" : undefined,
       around: keepsDefaultWindow ? query.around ?? STANDINGS_WINDOW_DEFAULT_AROUND : undefined,

@@ -208,7 +208,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
   // Scene transport. The frame lives in local state while playing so the URL is
   // not rewritten sixty times a minute; pausing or stepping parks it in the
   // query, which is what makes a single frame linkable.
-  const scene = parsed.sceneId ? getAnimationScene(parsed.sceneId) : undefined;
+  const scene = parsed.sceneId ? getAnimationScene(parsed.sceneId, parsed.system) : undefined;
   // Nothing plays until asked. Selecting an animation arms it at rest; a run
   // plays that animation once, start to finish, and stops on its last frame.
   const [playing, setPlaying] = useState(false);
@@ -216,7 +216,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
   const [elapsedMs, setElapsedMs] = useState(
     () =>
       (initialQuery.sceneFrame ?? 0) *
-      (initialQuery.sceneId ? (getAnimationScene(initialQuery.sceneId)?.frameMs ?? 0) : 0),
+      (initialQuery.sceneId ? (getAnimationScene(initialQuery.sceneId, initialQuery.system)?.frameMs ?? 0) : 0),
   );
   const elapsedRef = useRef(0);
   // Última muestra cuantizada ya empujada al estado — el reloj corre a ritmo
@@ -260,7 +260,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
         return;
       }
       setRejected(undefined);
-      const nextScene = next.sceneId ? getAnimationScene(next.sceneId) : undefined;
+      const nextScene = next.sceneId ? getAnimationScene(next.sceneId, next.system) : undefined;
       setElapsedScene(next.sceneId);
       setElapsedMs(nextScene ? (next.sceneFrame ?? 0) * nextScene.frameMs : 0);
       setQuery(next);
@@ -294,7 +294,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
       const sampled = sampleAtRate(next, updateHz);
       if (sampled !== lastSampledRef.current) {
         lastSampledRef.current = sampled;
-        setElapsedMs(next);
+        setElapsedMs(sampled);
       }
       raf = requestAnimationFrame(tick);
     };
@@ -306,8 +306,8 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
   // sees a new snapshot at its own updateHz (standings 15, delta 30). Playing
   // the interpolation straight at 60fps made the Workshop four times smoother
   // than the product, which is the wrong thing to judge a design against.
-  // The clock advances at frame rate; the data is quantised to the widget's rate.
-  const sampledMs = scene ? sampleAtRate(elapsedMs, updateHz) : 0;
+  // Playback stores sampled times; manual frame links remain on the exact keyframe.
+  const sampledMs = scene ? elapsedMs : 0;
   const playhead = scene ? interpolateSceneAt(scene, sampledMs, loop) : null;
   const currentKeyframe = playhead?.keyframe ?? 0;
 

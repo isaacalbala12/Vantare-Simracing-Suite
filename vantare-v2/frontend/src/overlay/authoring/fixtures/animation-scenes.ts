@@ -1,4 +1,4 @@
-import type { WidgetType } from "../../core/profile-document";
+import type { DesignSystemId, WidgetType } from "../../core/profile-document";
 
 /**
  * A single car's state for one frame of a scene. Anything omitted keeps the
@@ -39,6 +39,8 @@ export type SceneFrame = {
 export type AnimationScene = {
   id: string;
   widget: WidgetType;
+  /** Optional design-system gate for authoring studies that are skin-specific. */
+  systems?: readonly DesignSystemId[];
   label: string;
   /** What to look at, so a scene is self-explanatory without reading the code. */
   watchFor: string;
@@ -421,6 +423,77 @@ const PEDALS_CLUTCH_SCENE: AnimationScene = {
   ],
 };
 
+const TOWER_SYSTEMS = ["vantare-functional"] as const;
+const TOWER_CROSSING_SCENE: AnimationScene = {
+  id: "broadcast-tower-crossing",
+  widget: "broadcast-tower",
+  systems: TOWER_SYSTEMS,
+  label: "Cruce de posiciones",
+  watchFor: "Albuquerque y Hanley intercambian posiciones con un desplazamiento suave y una señal de puesto tenue; sus cifras permanecen quietas.",
+  frameMs: 1200,
+  frames: [
+    { caption: "Ben Hanley P2; Filipe Albuquerque P5", cars: { "Ben Hanley": { place: 2, timeBehindLeader: 0.4 }, "Filipe Albuquerque": { place: 5, timeBehindLeader: 4.8 } } },
+    { caption: "Cruce: Albuquerque P2; Hanley P5", cars: { "Ben Hanley": { place: 5, timeBehindLeader: 4.4 }, "Filipe Albuquerque": { place: 2, timeBehindLeader: 0.1 } } },
+  ],
+};
+
+const TOWER_FAST_INVERSION_SCENE: AnimationScene = {
+  id: "broadcast-tower-fast-inversion",
+  widget: "broadcast-tower",
+  systems: TOWER_SYSTEMS,
+  label: "Inversión rápida",
+  watchFor: "Al reproducir, las tarjetas se invierten y vuelven rápidamente; la posición permanece legible y los números no se animan.",
+  frameMs: 180,
+  frames: [
+    { caption: "Inicio: Hanley P2; Albuquerque P5", cars: { "Ben Hanley": { place: 2, timeBehindLeader: 0.3 }, "Filipe Albuquerque": { place: 5, timeBehindLeader: 4.7 } } },
+    { caption: "Inversión: Albuquerque P2; Hanley P5", cars: { "Ben Hanley": { place: 5, timeBehindLeader: 4.5 }, "Filipe Albuquerque": { place: 2, timeBehindLeader: 0.1 } } },
+    { caption: "Vuelta inmediata: Hanley P2; Albuquerque P5", cars: { "Ben Hanley": { place: 2, timeBehindLeader: 0.2 }, "Filipe Albuquerque": { place: 5, timeBehindLeader: 4.6 } } },
+  ],
+};
+
+const TOWER_EXIT_REENTRY_SCENE: AnimationScene = {
+  id: "broadcast-tower-exit-reentry",
+  widget: "broadcast-tower",
+  systems: TOWER_SYSTEMS,
+  label: "Salida y reentrada",
+  watchFor: "Kévin Estre sale de la franja y vuelve a P3 con un fundido breve; las demás tarjetas se recolocan suavemente.",
+  frameMs: 1200,
+  frames: [
+    { caption: "Kévin Estre ocupa P3 entre los pilotos visibles", cars: { "Kévin Estre": { place: 3, timeBehindLeader: 1.8 } } },
+    { caption: "Estre deja la clasificación visible", cars: { "Kévin Estre": { absent: true } } },
+    { caption: "Estre reentra en P3", cars: { "Kévin Estre": { place: 3, timeBehindLeader: 2.1 } } },
+  ],
+};
+
+const TOWER_STABLE_VALUES_SCENE: AnimationScene = {
+  id: "broadcast-tower-stable-values",
+  widget: "broadcast-tower",
+  systems: TOWER_SYSTEMS,
+  label: "Cifras sin reordenar",
+  watchFor: "Cambia el gap de Ben Hanley mientras conserva P2. La vuelta y la temperatura de cabecera siguen visibles, sin mover las tarjetas.",
+  frameMs: 1200,
+  frames: [
+    { caption: "Ben Hanley permanece P2; gap al líder 0,4 s", cars: { "Ben Hanley": { place: 2, timeBehindLeader: 0.4 } } },
+    { caption: "Ben sigue P2; gap al líder 0,2 s", cars: { "Ben Hanley": { place: 2, timeBehindLeader: 0.2 } } },
+    { caption: "Ben sigue P2; gap al líder 0,3 s", cars: { "Ben Hanley": { place: 2, timeBehindLeader: 0.3 } } },
+  ],
+};
+
+const TOWER_SWEEP: AnimationScene = {
+  id: "broadcast-tower-overtake-sequence",
+  widget: "broadcast-tower",
+  systems: TOWER_SYSTEMS,
+  label: "Secuencia completa",
+  watchFor: "Las tarjetas de Albuquerque y Hanley cruzan, vuelven a su orden inicial y después Estre sale y reentra. Los cambios de gap no desplazan las tarjetas.",
+  frameMs: 1200,
+  frames: [
+    ...TOWER_CROSSING_SCENE.frames,
+    TOWER_FAST_INVERSION_SCENE.frames[2]!,
+    ...TOWER_EXIT_REENTRY_SCENE.frames.slice(1),
+    ...TOWER_STABLE_VALUES_SCENE.frames.slice(1),
+  ],
+};
+
 export const ANIMATION_SCENES: readonly AnimationScene[] = [
   OVERTAKE_SCENE,
   BATTLE_SCENE,
@@ -438,6 +511,11 @@ export const ANIMATION_SCENES: readonly AnimationScene[] = [
   DELTA_NEW_BEST_SCENE,
   PEDALS_LAP_SCENE,
   PEDALS_CLUTCH_SCENE,
+  TOWER_SWEEP,
+  TOWER_CROSSING_SCENE,
+  TOWER_FAST_INVERSION_SCENE,
+  TOWER_EXIT_REENTRY_SCENE,
+  TOWER_STABLE_VALUES_SCENE,
 ];
 
 export const ANIMATION_SCENE_IDS: readonly string[] = ANIMATION_SCENES.map((scene) => scene.id);
@@ -446,12 +524,16 @@ export function isAnimationSceneId(value: unknown): value is string {
   return typeof value === "string" && ANIMATION_SCENE_IDS.includes(value);
 }
 
-export function getAnimationScene(id: string): AnimationScene | undefined {
-  return ANIMATION_SCENES.find((scene) => scene.id === id);
+export function getAnimationScene(id: string, system?: DesignSystemId): AnimationScene | undefined {
+  return ANIMATION_SCENES.find((scene) =>
+    scene.id === id && (!system || !scene.systems || scene.systems.includes(system)),
+  );
 }
 
-export function listAnimationScenes(widget: WidgetType): readonly AnimationScene[] {
-  return ANIMATION_SCENES.filter((scene) => scene.widget === widget);
+export function listAnimationScenes(widget: WidgetType, system?: DesignSystemId): readonly AnimationScene[] {
+  return ANIMATION_SCENES.filter((scene) =>
+    scene.widget === widget && (!system || !scene.systems || scene.systems.includes(system)),
+  );
 }
 
 /** Wraps so the transport can loop and step backwards past zero. */

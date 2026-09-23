@@ -752,7 +752,7 @@ function applyScene(
   scenario: WorkshopV2Scenario,
   quality: OverlayQualityV2,
 ): OverlayFrameV2 {
-  const scene = scenario.sceneId ? getAnimationScene(scenario.sceneId) : undefined;
+  const scene = scenario.sceneId ? getAnimationScene(scenario.sceneId, scenario.system) : undefined;
   if (!scene || scene.widget !== scenario.widget) return frame;
   const state = scenario.sceneState ?? sceneFrameAt(scene, scenario.sceneFrame ?? 0);
   let standings = frame.standings;

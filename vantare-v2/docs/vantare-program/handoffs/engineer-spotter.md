@@ -28,6 +28,18 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+### 2026-09-23 — Reparación de rutas de audio Windows extraída para integración
+
+[VAN-760](https://app.notion.com/p/3e4e51695c65811689b6e260e5908ca0), puente #1350,
+extrae los tres archivos de audio de PR1340@88e42e1d sin alterar su contenido.
+La protección remota impide integrar PR1348 mientras falla el test heredado de
+medio ausente. Se integra primero esta reparación ya aceptada, después calidad
+y finalmente la pantalla, revalidando cada head. No cambia gates ni baselines.
+Las rutas inválidas fallan antes de PowerShell y conservan la reproducción actual;
+la cancelación mantiene prioridad. Revisión Luna y CI Windows de origen PASS;
+CI del head extraído e integración exacta quedan en Notion/PR. Audio acústico
+y LMU reales siguen pendientes.
+
 ### 2026-09-22 — Composición revisada sobre Wails beta.24
 
 [VAN-742](https://app.notion.com/p/3e3e51695c6581a5aeb7ffca7dec48f6) / #1310

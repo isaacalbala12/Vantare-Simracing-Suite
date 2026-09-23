@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -107,16 +108,31 @@ func (p *Player) PlayContext(ctx context.Context, path string) error {
 	playCtx, cancel := context.WithTimeout(ctx, maxPlaybackDuration)
 	defer cancel()
 
-	p.mu.Lock()
-
-	// Stop any currently playing audio.
-	p.stopLocked()
-
+	if err := playCtx.Err(); err != nil {
+		return fmt.Errorf("audio: playback cancelled: %w", err)
+	}
 	absPath, err := filepath.Abs(path)
 	if err != nil {
-		p.mu.Unlock()
 		return fmt.Errorf("audio: cannot resolve path: %w", err)
 	}
+	// Missing local media does not need WPF or its asynchronous failure event.
+	// Validate before stopping a valid playback. MediaFailed still handles a
+	// file removed after this check, unreadable content and decoder errors.
+	info, err := os.Stat(absPath)
+	if err != nil {
+		return fmt.Errorf("audio: cannot access media: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("audio: media is not a regular file: %w", os.ErrInvalid)
+	}
+
+	p.mu.Lock()
+	if err := playCtx.Err(); err != nil {
+		p.mu.Unlock()
+		return fmt.Errorf("audio: playback cancelled: %w", err)
+	}
+	// Stop any currently playing audio only after accepting the new request.
+	p.stopLocked()
 
 	// Build a PowerShell script with the path safely embedded via
 	// single-quote escaping (PS convention: '' inside '' = literal ').

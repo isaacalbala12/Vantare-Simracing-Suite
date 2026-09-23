@@ -89,10 +89,14 @@ it("opens a saved plan's history from the menu without reading a revision until 
   expect(screen.getByRole("alertdialog")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.leave" }));
   expect(await screen.findByTestId("strategy-plan-history")).toBeTruthy();
+  expect(screen.queryByRole("heading", { name: "strategy.home.saved" })).toBeNull();
   expect(execute.mock.calls.filter(([command]) => command.operation === "open")).toHaveLength(0);
   fireEvent.click(screen.getByRole("button", { name: "strategy.planHistory.choose" }));
   expect(await screen.findByText("2:03:40")).toBeTruthy();
   expect(execute.mock.calls.find(([command]) => command.operation === "open")?.[0]).toMatchObject({ revision: ref });
+  fireEvent.click(screen.getByRole("button", { name: "strategy.planHistory.close" }));
+  expect(await screen.findByRole("heading", { name: "strategy.home.saved" })).toBeTruthy();
+  expect(screen.queryByTestId("strategy-plan-history")).toBeNull();
 });
 it("prevents a pending reopen from replacing a newly started preparation", async () => {
   const { slot, execute } = setup();

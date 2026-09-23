@@ -1,7 +1,8 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { StrategyApplicationClient, StrategyPlanSummaryV1 } from "../../strategy/strategy-application-client";
 import type { PlanRevisionV1, RevisionRefV1 } from "../../strategy/strategy-contract-v1";
-import { Button, Drawer } from "../../ui/orbit";
+import { Button } from "../../ui/orbit";
+import { formatMessage } from "../orbit/format-message";
 import { clockTime } from "./strategy-orbit-model";
 
 type PlanFacts = { readonly laps: number; readonly seconds: number; readonly stops: number };
@@ -30,6 +31,7 @@ export function StrategyPlanHistory<TPayload>({ plan, application, onClose, t }:
   readonly t: (key: string) => string;
 }) {
   const request = useRef(0);
+  useEffect(() => () => { request.current += 1; }, []);
   const [selected, setSelected] = useState<RevisionRefV1>();
   const [revision, setRevision] = useState<PlanRevisionV1<unknown>>();
   const [state, setState] = useState<"idle" | "loading" | "error">("idle");
@@ -48,7 +50,7 @@ export function StrategyPlanHistory<TPayload>({ plan, application, onClose, t }:
         revision: ref,
       });
       if (request.current !== current) return;
-      if (!result.revision) throw new Error("recorded_revision_unavailable");
+      if (!sameRevision(result.revision, ref)) throw new Error("recorded_revision_unavailable");
       setRevision(result.revision);
       setState("idle");
     } catch {
@@ -59,20 +61,25 @@ export function StrategyPlanHistory<TPayload>({ plan, application, onClose, t }:
   const facts = revision ? planFacts(revision.payload) : undefined;
   const refs = plan.revisionRefs ?? [];
 
-  return <Drawer open title={t("strategy.planHistory.title")} closeLabel={t("strategy.planHistory.close")} onClose={close} data-testid="strategy-plan-history">
-    <section className="strategy-plan-history">
-      <header><p>{plan.name}</p><small>{t("strategy.planHistory.description")}</small></header>
-      {refs.length ? <ul aria-label={t("strategy.planHistory.revisions")}>{refs.map(ref => <li key={`${ref.revisionId}:${ref.contentHash}`}>
-        <div><strong>{ref.revisionId}</strong>{sameRevision(plan.latestRevision, ref) ? <small>{t("strategy.planHistory.latest")}</small> : null}</div>
-        <Button variant="ghost" disabled={state === "loading"} onClick={() => void load(ref)}>{t("strategy.planHistory.choose")}</Button>
-      </li>)}</ul> : plan.revisionCount > 0 ? <p>{t("strategy.planHistory.legacyUnavailable")}</p> : null}
-      {state === "loading" ? <p role="status">{t("strategy.planHistory.loading")}</p> : null}
-      {state === "error" ? <div role="alert"><p>{t("strategy.planHistory.error")}</p>{selected ? <Button variant="ghost" onClick={() => void load(selected)}>{t("strategy.planHistory.retry")}</Button> : null}</div> : null}
-      {revision ? <article className="strategy-plan-history__details">
+  return <section className="strategy-plan-history" aria-labelledby="strategy-plan-history-title" data-testid="strategy-plan-history">
+    <header className="strategy-plan-history__head"><div><span>{t("strategy.planHistory.savedPlans")}</span><h2 id="strategy-plan-history-title">{plan.name}</h2><p>{t("strategy.planHistory.description")}</p></div><Button variant="ghost" onClick={close}>{t("strategy.planHistory.close")}</Button></header>
+    <div className="strategy-plan-history__workspace">
+      <section className="strategy-plan-history__revisions" aria-label={t("strategy.planHistory.revisions")}>
+        <h3>{t("strategy.planHistory.revisions")}</h3>
+        {refs.length ? <ul>{refs.map((ref, index) => <li key={`${ref.revisionId}:${ref.contentHash}`}>
+          <div><strong>{formatMessage(t("strategy.planHistory.revisionLabel"), { n: index + 1 })}</strong><small>{ref.revisionId.slice(-8)}</small>{sameRevision(plan.latestRevision, ref) ? <small>{t("strategy.planHistory.latest")}</small> : null}</div>
+          <Button variant="ghost" aria-current={sameRevision(selected, ref) ? "true" : undefined} disabled={state === "loading"} onClick={() => void load(ref)}>{t("strategy.planHistory.choose")}</Button>
+        </li>)}</ul> : plan.revisionCount > 0 ? <p>{t("strategy.planHistory.legacyUnavailable")}</p> : null}
+      </section>
+      <section className="strategy-plan-history__result" aria-label={t("strategy.planHistory.title")}>
+        {state === "loading" ? <p role="status">{t("strategy.planHistory.loading")}</p> : null}
+        {state === "error" ? <div role="alert"><p>{t("strategy.planHistory.error")}</p>{selected ? <Button variant="ghost" onClick={() => void load(selected)}>{t("strategy.planHistory.retry")}</Button> : null}</div> : null}
+        {revision ? <article className="strategy-plan-history__details">
         <h4>{revision.name}</h4><time dateTime={revision.createdAt}>{new Date(revision.createdAt).toLocaleString()}</time>
         {facts ? <dl><div><dt>{t("strategy.planHistory.laps")}</dt><dd>{facts.laps}</dd></div><div><dt>{t("strategy.planHistory.duration")}</dt><dd>{clockTime(facts.seconds)}</dd></div><div><dt>{t("strategy.planHistory.stops")}</dt><dd>{facts.stops}</dd></div></dl>
           : <p>{t("strategy.planHistory.detailsUnavailable")}</p>}
-      </article> : null}
-    </section>
-  </Drawer>;
+        </article> : null}
+      </section>
+    </div>
+  </section>;
 }

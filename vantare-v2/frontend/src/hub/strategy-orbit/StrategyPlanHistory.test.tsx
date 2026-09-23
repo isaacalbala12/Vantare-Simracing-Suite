@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import type { StrategyApplicationClient, StrategyApplicationResultV1, StrategyPlanSummaryV1 } from "../../strategy/strategy-application-client";
 import type { PlanRevisionV1, RevisionRefV1 } from "../../strategy/strategy-contract-v1";
@@ -15,7 +15,7 @@ const revision = (ref: RevisionRefV1, payload: unknown): PlanRevisionV1<unknown>
   ...ref,
 }) as PlanRevisionV1<unknown>;
 const result = (opened: PlanRevisionV1<unknown>): StrategyApplicationResultV1<unknown> => ({ protocolVersion: "strategy.application.v1", commandId: "result", repositoryVersion: 8, recoveredFromBackup: false, closed: false, revision: opened });
-const t = (key: string) => key;
+const t = (key: string) => key === "strategy.planHistory.revisionLabel" ? "Revision {{n}}" : key;
 
 function setup(execute: StrategyApplicationClient<unknown>["execute"], summary: StrategyPlanSummaryV1 = plan) {
   const application: StrategyApplicationClient<unknown> = { execute, cancel: vi.fn(), dispose: vi.fn() };
@@ -29,7 +29,7 @@ it("does not open automatically and loads the exact revision selected by the per
   const execute = vi.fn(() => new Promise<StrategyApplicationResultV1<unknown>>(resolve => { resolveOpen = resolve; }));
   setup(execute);
   expect(execute).not.toHaveBeenCalled();
-  expect(screen.getByText("strategy.planHistory.latest").closest("li")?.textContent).toContain(refB.revisionId);
+  expect(screen.getByText("strategy.planHistory.latest").closest("li")?.textContent).toContain("Revision 2");
   fireEvent.click(screen.getAllByRole("button", { name: "strategy.planHistory.choose" })[0]);
   expect(execute).toHaveBeenCalledWith(expect.objectContaining({ operation: "open", revision: refA }));
   expect(screen.getByRole("status").textContent).toBe("strategy.planHistory.loading");
@@ -51,15 +51,39 @@ it("shows a recoverable error and retries the same complete reference", async ()
   expect(execute).toHaveBeenNthCalledWith(2, expect.objectContaining({ revision: refA }));
 });
 
-it("ignores a late response after the drawer closes", async () => {
+it("rejects a revision whose complete reference differs and retries it", async () => {
+  const execute = vi.fn()
+    .mockResolvedValueOnce(result(revision({ ...refA, contentHash: refB.contentHash }, { contractVersion: "strategy.orbit.revision.v1", calculatedPlan: { totalLaps: 99, total: 999, stops: 9 } })))
+    .mockResolvedValueOnce(result(revision(refA, { contractVersion: "strategy.orbit.revision.v1", calculatedPlan: { totalLaps: 10, total: 900, stops: 1 } })));
+  setup(execute);
+  fireEvent.click(screen.getAllByRole("button", { name: "strategy.planHistory.choose" })[0]);
+  expect(await screen.findByRole("alert")).toBeTruthy();
+  expect(screen.queryByText("16:39")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "strategy.planHistory.retry" }));
+  expect(await screen.findByText("15:00")).toBeTruthy();
+  expect(execute).toHaveBeenNthCalledWith(2, expect.objectContaining({ revision: refA }));
+});
+
+it("ignores a late response after the screen closes", async () => {
   let resolveOpen!: (value: StrategyApplicationResultV1<unknown>) => void;
   const execute = vi.fn(() => new Promise<StrategyApplicationResultV1<unknown>>(resolve => { resolveOpen = resolve; }));
   const { onClose } = setup(execute);
   fireEvent.click(screen.getAllByRole("button", { name: "strategy.planHistory.choose" })[0]);
   fireEvent.click(screen.getByRole("button", { name: "strategy.planHistory.close" }));
+  expect(onClose).toHaveBeenCalledOnce();
   resolveOpen(result(revision(refA, { contractVersion: "strategy.orbit.revision.v1", calculatedPlan: { totalLaps: 99, total: 999, stops: 9 } })));
   await waitFor(() => expect(screen.queryByText("16:39")).toBeNull());
-  expect(onClose).toHaveBeenCalledOnce();
+});
+
+it("ignores a pending revision read when navigation unmounts the screen", async () => {
+  let resolveOpen!: (value: StrategyApplicationResultV1<unknown>) => void;
+  const execute = vi.fn(() => new Promise<StrategyApplicationResultV1<unknown>>(resolve => { resolveOpen = resolve; }));
+  const view = setup(execute);
+  fireEvent.click(screen.getAllByRole("button", { name: "strategy.planHistory.choose" })[0]);
+  view.unmount();
+  await act(async () => resolveOpen(result(revision(refA, { contractVersion: "strategy.orbit.revision.v1", calculatedPlan: { totalLaps: 99, total: 999, stops: 9 } }))));
+  expect(screen.queryByTestId("strategy-plan-history")).toBeNull();
+  expect(view.onClose).not.toHaveBeenCalled();
 });
 
 it("explains legacy references and keeps incompatible payload metadata readable", async () => {

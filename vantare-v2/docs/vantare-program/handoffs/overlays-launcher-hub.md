@@ -7,6 +7,12 @@
 > sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
 
 
+## ISA-1332 — Horizontal Standings: animaciones (2026-09-23)
+
+Seguimiento principal en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756818225223), En curso por petición de Isaac. [Puente técnico #1332](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1332). Base `nightly e6d7d2b5`; rama `vantareapp/isa-1332-horizontal-motion`. [Plan](../../plans/2026-09-23-isa-1332-horizontal-motion.md).
+
+Isaac confirma Relative y Pedals; ambas revisiones se marcan completadas en Asana, sin confundir Pedals con Pedals telemetry ni aceptación con integración remota. El horizontal carece de animaciones en su renderer Eficiencia y usa una clave dependiente de la posición. Se implementan identidad canónica, movimiento horizontal discreto, fundidos de presencia y señal tenue de posición, con cifras estables y sin trabajo de animación por telemetría numérica. GPT-6 Sol trabaja renderer/VM/pruebas; GPT-6 Luna, escenas; el orquestador revisa y compone. Próximo paso: verificar e incorporar al preview combinado, preservando Delta/Standings/Relative. Sin merge ni certificación física.
+
 ## ISA-1162 — enlace OBS restaurado al pie del dock del Studio (2026-09-11)
 
 Issue [#1162](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1162),

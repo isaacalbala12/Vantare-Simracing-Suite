@@ -108,21 +108,18 @@ function setSearch(query: OverlayWorkshopQuery, mode: "push" | "replace" = "push
   }
 }
 
-function WorkshopSurface({ widget: sourceWidget, runtime, profileId, surface, query, comparison = false }: { widget: WidgetInstanceV3; runtime: WidgetRuntimeInput; profileId: string; surface: OverlayWorkshopQuery["surface"]; query: OverlayWorkshopQuery; comparison?: boolean }): React.ReactElement {
-  // The Redline laboratory explicitly tests clipping at a selected viewport.
-  // Keep that existing contract while ordinary widget previews scale outside
-  // the productive layout.
-  const widget = sourceWidget.type === "standings" && query.system === "vantare-endurance" && query.redlineTheme === "tower"
+function WorkshopSurface({ widget: sourceWidget, runtime, profileId, surface, query, authoringPlayback, comparison = false }: { widget: WidgetInstanceV3; runtime: WidgetRuntimeInput; profileId: string; surface: OverlayWorkshopQuery["surface"]; query: OverlayWorkshopQuery; authoringPlayback: boolean; comparison?: boolean }): React.ReactElement {
+  // Fastest-lap edits the real box, so typography reflows without distortion.
+  // Other previews retain their existing outer-scale contract.
+  const widget = sourceWidget.type === "fastest-lap"
+    ? { ...sourceWidget, layout: { ...sourceWidget.layout, w: Math.max(280, query.width ?? sourceWidget.layout.w), h: Math.max(72, query.height ?? sourceWidget.layout.h) } }
+    : sourceWidget.type === "standings" && query.system === "vantare-endurance" && query.redlineTheme === "tower"
     ? { ...sourceWidget, layout: { ...sourceWidget.layout, w: query.width ?? sourceWidget.layout.w, h: query.height ?? sourceWidget.layout.h } }
     : sourceWidget;
-  // `widget.layout` is the product geometry. Width/height in the Workshop URL
-  // only resize the outer preview frame; they must never be injected into the
-  // productive host or viewport, or one widget's preview size can distort the
-  // next widget's real composition.
   const intrinsicWidth = widget.layout.w;
   const intrinsicHeight = widget.layout.h;
-  const previewWidth = query.width ?? intrinsicWidth;
-  const previewHeight = query.height ?? intrinsicHeight;
+  const previewWidth = widget.type === "fastest-lap" ? intrinsicWidth : query.width ?? intrinsicWidth;
+  const previewHeight = widget.type === "fastest-lap" ? intrinsicHeight : query.height ?? intrinsicHeight;
   const previewScaleX = previewWidth / intrinsicWidth;
   const previewScaleY = previewHeight / intrinsicHeight;
   const pitOverflow = (() => {
@@ -153,6 +150,7 @@ function WorkshopSurface({ widget: sourceWidget, runtime, profileId, surface, qu
         <WidgetVisualViewport widgetType={widget.type} visual={widget.visual} layout={widget.layout} testId="overlay-workshop-viewport">
           <WidgetVisualHost widget={widget} renderMode={surface}
             authoringModel={reference ? REDLINE_TOWER_REFERENCE : undefined}
+            authoringPlayback={authoringPlayback}
             runtime={widget.type === "engineer-radio" ? { ...runtimeInput, engineerPresentation: query.state === "ready" ? buildEngineerPresentationFixture() : null } : runtimeInput} />
         </WidgetVisualViewport>
       </div>
@@ -214,6 +212,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
   const [playing, setPlaying] = useState(false);
   const [loop, setLoop] = useState(false);
   const [playbackRun, setPlaybackRun] = useState(0);
+  const [authoringPlayback, setAuthoringPlayback] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(
     () =>
       (initialQuery.sceneFrame ?? 0) *
@@ -241,6 +240,8 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
   const [elapsedScene, setElapsedScene] = useState(initialQuery.sceneId);
   if (elapsedScene !== parsed.sceneId) {
     setElapsedScene(parsed.sceneId);
+    setPlaying(false);
+    setAuthoringPlayback(false);
     setElapsedMs(scene ? (parsed.sceneFrame ?? 0) * scene.frameMs : 0);
   }
 
@@ -252,6 +253,8 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
   useEffect(() => {
     const onPopState = () => {
       setPlaying(false);
+      setAuthoringPlayback(false);
+      setPlaybackRun(run => run + 1);
       const next = parseOverlayWorkshopQuery(window.location.search);
       if ("error" in next) {
         setRejected(next.error);
@@ -377,6 +380,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
 
   const parkFrame = (frame: number) => {
     setPlaying(false);
+    setAuthoringPlayback(true);
     if (scene && frame * scene.frameMs < elapsedMs) setPlaybackRun(run => run + 1);
     setElapsedMs(scene ? frame * scene.frameMs : 0);
     update({ ...parsed, sceneFrame: frame }, "replace");
@@ -388,14 +392,24 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
   };
   /** One click: this animation, from the top, once, at frame rate. */
   const runScene = (sceneId: string) => {
+    setAuthoringPlayback(true);
     setPlaybackRun(run => run + 1);
     setElapsedMs(0);
     update({ ...parsed, sceneId, sceneFrame: 0 });
     setPlaying(true);
   };
 
+  const showDesign = () => {
+    setPlaying(false);
+    setAuthoringPlayback(false);
+    if (parsed.surface !== "studio" && parsed.surface !== "harness") {
+      update({ ...parsed, surface: "studio", compare: parsed.compare === "studio" ? undefined : parsed.compare });
+    }
+  };
+
   const reset = () => {
     setPlaying(false);
+    setAuthoringPlayback(false);
     update({ ...DEFAULT_OVERLAY_WORKSHOP_QUERY });
   };
 
@@ -403,13 +417,13 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
     // La vista de estudio es el único harness: no hay chrome genérico que se
     // pueda mezclar; todas las selecciones viven en el panel lateral.
     <main className="overlay-workshop functional-study" data-overlay-workshop-page data-study-style={parsed.studyStyle}>
-      <EfficiencyStudyControls query={parsed} widgetLayout={visualWidget?.layout} update={update} onRunScene={runScene} onReset={reset} />
+      <EfficiencyStudyControls query={parsed} widgetLayout={visualWidget?.layout} update={update} onRunScene={runScene} onShowDesign={showDesign} onReset={reset} />
       <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage data-stage-label={`${parsed.widget.toUpperCase().replace(/-/g, " ")} / ESTUDIO 01`}>
         {rejected && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-rejected>URL rechazada ({rejected}) — se cargaron los valores por defecto.</p>}
         {fixtureError && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-fixture-error>Selección inválida: {fixtureError}</p>}
         {!fixtureError && visualWidget && runtime && (
-          <><WorkshopSurface widget={visualWidget} runtime={runtime} profileId={profileId} surface={parsed.surface} query={parsed} />
-          {parsed.compare && <WorkshopSurface widget={visualWidget} runtime={runtime} profileId={profileId} surface={parsed.compare} query={parsed} comparison />}</>
+          <><WorkshopSurface widget={visualWidget} runtime={runtime} profileId={profileId} surface={parsed.surface} query={parsed} authoringPlayback={authoringPlayback} />
+          {parsed.compare && <WorkshopSurface widget={visualWidget} runtime={runtime} profileId={profileId} surface={parsed.compare} query={parsed} authoringPlayback={authoringPlayback} comparison />}</>
         )}
         {scene ? (
           <div className="overlay-workshop-transport" data-overlay-workshop-transport>

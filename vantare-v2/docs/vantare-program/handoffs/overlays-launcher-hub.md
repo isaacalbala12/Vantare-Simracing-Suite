@@ -3134,3 +3134,16 @@ Verificación manual: navegador con componente real y datos de demostración; es
 Límites: `go test -timeout 60s ./...` falla en macOS en cmd/vantare (símbolos Windows), launcher (timeout), ruta Windows, Diagnostics y SQLite; no se declara verde. `go vet ./...` también queda bloqueado por símbolos Windows; su ejecución focal y el ratchet Windows pasan. Pendientes revisión independiente y comprobación física LMU/Windows/OBS. Seguimiento en Asana permanece En curso con candidato entregado para revisión, porque el proyecto no tiene sección En revisión. No hay merge, promoción ni release; la siguiente acción es revisar el diseño y validar las señales en sesión real antes de autorizar integración.
 
 Entrega ISA-1328: [PR draft #1330](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1330), implementación `dbc35180`, rama publicada y adjunta a la tarea Codex. Los checks remotos se iniciaron al publicar; consultar el estado actual en la PR. Asana se actualiza con esta misma evidencia y queda sin completar, pendiente de aceptación.
+
+
+### 2026-09-23 · ISA-1328 · tamaño real, personal/clase y ciclo de animación
+
+Isaac conserva el diseño y pide tamaño editable, récord personal y de su clase, y corregir animaciones. Ajuste en la misma rama aislada y [PR draft #1330](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1330); seguimiento principal en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218762634127535). Sustituye la opción clase/sesión de la propuesta inicial por dos avisos activos por defecto. Mejor personal = sesión actual de la clasificación V2; si ambos récords coinciden, un único aviso de clase. Sin nueva autoridad de tiempos.
+
+- El viewport compartido entrega al renderer el ancho y alto reales, sin estirar la composición. Workshop ofrece controles visibles; mínimo 280×72, predeterminado 480×104. El perfil conserva layout y ambos controles de aviso.
+- Entrada reiniciada por ID de aviso, salida animada de 220 ms dentro de la duración configurada, un solo temporizador pendiente y limpieza en reinicios/desmontaje. Conserva motion off/minimal y prefers-reduced-motion.
+- Workshop distingue vista estática (Ver diseño) y reproducción temporal también en Studio. Fixture con personal, récord de rival de clase y doble récord; las etiquetas no adelantan eventos a mitad de fotograma.
+
+Evidencia actual: 470 archivos frontend PASS, 3832 pruebas y 2 omitidas; build/TypeScript y lint PASS. Quality PASS, NEW=0, MOVED=0, policy_changed=false. Prueba visual en navegador de 280×72 y 480×104, avisos personal/clase, prioridad de clase, reproducción automática en Studio y expiración sin nueva muestra. El aviso de fetch cancelado en teardown de happy-dom no causa fallo de suite (exit 0). Sin cambios Go; conserva la evidencia focal y los límites globales de macOS de la entrega anterior. Roadmap actualiza únicamente milestones:functional-widget-design y se regenera desde e6d7d2b5.
+
+Siguiente paso: aceptación visual de Isaac y validación independiente/LMU/Windows/OBS antes de autorizar integración. Asana permanece En curso y sin completar; no hay merge, promoción ni release.

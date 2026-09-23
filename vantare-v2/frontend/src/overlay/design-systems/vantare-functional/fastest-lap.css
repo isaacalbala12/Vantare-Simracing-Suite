@@ -17,8 +17,10 @@
   color: #f4f4f6;
   font-family: var(--font-ui, "Inter", sans-serif);
   container-type: inline-size;
-  animation: vf-lap-arrive 220ms ease-out both;
 }
+.vf-fastest-lap[data-preview] { animation: none; }
+.vf-fastest-lap:where(:not([data-preview])) { animation: vf-lap-arrive 220ms ease-out both; }
+.vf-fastest-lap:where(:not([data-preview])[data-notice-phase="leaving"]) { animation: vf-lap-leave 220ms ease-in both; }
 .vf-fastest-lap::after {
   content: "";
   position: absolute;
@@ -50,4 +52,12 @@
 .vf-fastest-lap[data-effects="flat"] { background: #121316; }
 .vf-fastest-lap[data-effects="flat"]::after { display: none; }
 @keyframes vf-lap-arrive { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes vf-lap-leave { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-6px); } }
+.vf-fastest-lap[data-compact] { padding: 8px 14px; gap: 12px; border-radius: 9px; }
+.vf-fastest-lap[data-compact] .vf-fastest-lap-icon { flex-basis: 38px; padding-right: 12px; }
+.vf-fastest-lap[data-compact] .vf-fastest-lap-icon svg { width: 28px; max-height: 40px; }
+.vf-fastest-lap[data-compact] .vf-fastest-lap-content { gap: 2px; }
+.vf-fastest-lap[data-compact] .vf-fastest-lap-heading { font-size: 10px; letter-spacing: .08em; gap: 6px; }
+.vf-fastest-lap[data-compact] .vf-fastest-lap-time { font-size: 22px; }
+.vf-fastest-lap[data-compact] .vf-fastest-lap-driver { font-size: 10px; }
 @media (prefers-reduced-motion: reduce) { .vf-fastest-lap { animation: none; } }

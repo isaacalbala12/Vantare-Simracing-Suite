@@ -39,14 +39,45 @@ describe("fastest lap through the shared host", () => {
     expect(view.getByRole("status").getAttribute("aria-live")).toBe("off");
     expect(view.getByRole("status").textContent).toContain("1:30.000");
   });
+  it("restarts the entry on consecutive records, and exposes an exit phase before removal", () => {
+    vi.useFakeTimers();
+    const draw = (sequence: number, best: number) => <WidgetVisualHost widget={widget} renderMode="desktop" runtime={runtime(sequence, best)} />;
+    const view = render(draw(1, 90));
+    view.rerender(draw(2, 89));
+    const first = view.getByRole("status");
+    view.rerender(draw(3, 88));
+    const second = view.getByRole("status");
+    expect(second).not.toBe(first);
+    expect(second.dataset.noticePhase).toBe("visible");
+    act(() => vi.advanceTimersByTime(5780));
+    expect(view.getByRole("status")).toBe(second);
+    expect(second.dataset.noticePhase).toBe("leaving");
+    act(() => vi.advanceTimersByTime(220));
+    expect(view.queryByRole("status")).toBeNull();
+  });
+  it("lets the Workshop replay transient notices in Studio and return to a static design", () => {
+    vi.useFakeTimers();
+    const draw = (sequence: number, best: number, authoringPlayback: boolean) => <WidgetVisualHost widget={widget} renderMode="studio" authoringPlayback={authoringPlayback} runtime={runtime(sequence, best)} />;
+    const view = render(draw(1, 90, false));
+    expect(view.getByRole("status").dataset.preview).toBe("true");
+    view.rerender(draw(1, 90, true));
+    expect(view.queryByRole("status")).toBeNull();
+    view.rerender(draw(2, 89, true));
+    expect(view.getByRole("status").dataset.preview).toBeUndefined();
+    act(() => vi.advanceTimersByTime(6000));
+    expect(view.queryByRole("status")).toBeNull();
+    view.rerender(draw(2, 89, false));
+    expect(view.getByRole("status").textContent).toContain("1:29.000");
+  });
   it("registers an Efficiency-only premium widget and accepts it in a saved profile", () => {
     const entry = deriveStudioCatalog().find(item => item.type === "fastest-lap");
     expect(entry?.requiredFeature).toBe("overlays.advanced");
     expect(entry?.compatibleSystems.map(system => system.systemId)).toEqual(["vantare-functional"]);
+    const resized = { ...widget, layout: { ...widget.layout, w: 360, h: 80, aspectLocked: false } };
     const document = {
       schemaVersion: 3, id: "lap-profile", name: "Lap profile", displayMode: "racing",
-      monitorIndex: 0, layouts: { general: { type: "general", widgets: [widget] } },
+      monitorIndex: 0, layouts: { general: { type: "general", widgets: [resized] } },
     };
-    expect(parseProfileDocumentV3(JSON.parse(JSON.stringify(document))).layouts.general.widgets).toEqual([widget]);
+    expect(parseProfileDocumentV3(JSON.parse(JSON.stringify(document))).layouts.general.widgets).toEqual([resized]);
   });
 });

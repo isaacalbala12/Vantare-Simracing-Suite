@@ -5,10 +5,8 @@ import type { FastestLapViewModel } from "./fastest-lap-view-model";
 import { parseFastestLapContent, type FastestLapContent } from "./fastest-lap-content";
 
 const inspector = { content: [
-  { kind: "select" as const, id: "scope", labelKey: "studio.v3.inspector.fastestLap.scope", path: "scope", defaultValue: "class", options: [
-    { value: "class", labelKey: "studio.v3.inspector.fastestLap.class" },
-    { value: "session", labelKey: "studio.v3.inspector.fastestLap.session" },
-  ] },
+  { kind: "toggle" as const, id: "personal", labelKey: "studio.v3.inspector.fastestLap.personal", path: "showPersonal", defaultValue: true },
+  { kind: "toggle" as const, id: "class", labelKey: "studio.v3.inspector.fastestLap.class", path: "showClass", defaultValue: true },
   { kind: "range" as const, id: "duration", labelKey: "studio.v3.inspector.fastestLap.duration", path: "durationSeconds", min: 3, max: 15, step: 1, defaultValue: 6 },
   { kind: "toggle" as const, id: "show-driver", labelKey: "studio.v3.inspector.fastestLap.showDriver", path: "showDriver", defaultValue: true },
 ] };

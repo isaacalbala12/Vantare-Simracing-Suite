@@ -2,16 +2,17 @@
   "schemaVersion": 1,
   "issue": "ISA-1328",
   "type": "feature",
-  "summary": "Nuevo aviso de vuelta rápida en Eficiencia: cronómetro morado, piloto y tiempo, con alcance y duración configurables.",
+  "summary": "Nuevo aviso de vuelta rápida en Eficiencia: mejor personal y de tu clase, tamaño editable y animaciones de entrada, salida y repetición.",
   "technicalNotes": [
-    "Widget fastest-lap registrado en Studio, perfiles V3 y permisos Overlays Advanced. Un solo renderer para Studio, Desktop, OBS y Workshop; idiomas es/en/pt/it.",
-    "La clasificación V2 aporta el tiempo. Primera muestra y reconexiones fijan la referencia sin avisos antiguos; descarta empates, muestras fuera de orden y récords heredados. Una mejora posterior activa un único temporizador local.",
-    "Política de eventos en todos los niveles de rendimiento; movimientos o posiciones sin cambios de tiempos no repintan el aviso. Sin nuevas dependencias, persistencia adicional ni fuentes de telemetría."
+    "Widget fastest-lap registrado en Studio, perfiles V3 y permisos Overlays Advanced; es/en/pt/it. Ancho y alto reales, mínimo 280×72, renderer fluido compartido Studio/Desktop/OBS/Workshop.",
+    "La clasificación V2 aporta mejor personal de la sesión y récord de la clase propia. Ambos avisos activos por defecto, prioridad a clase si coinciden, sin opción global. Primera muestra y reconexiones fijan referencias silenciosas; descarta empates, muestras fuera de orden y récords heredados.",
+    "Política de eventos en todos los niveles de rendimiento; movimientos o posiciones sin cambios de tiempos no repintan el aviso. Sin nuevas dependencias, persistencia adicional ni fuentes de telemetría.",
+    "Entrada reiniciada por cada nueva mejora y salida de 220 ms incluida en los seis segundos configurados (3–15 s). Un único temporizador pendiente. Workshop reproduce avisos temporales en Studio y ofrece Ver diseño para ajustar la composición."
   ],
   "testing": [
-    "Suite frontend completa: 3814 pruebas PASS y 2 omitidas; dos regresiones posteriores de la demostración incluidas en una ejecución focal de 44 pruebas PASS.",
-    "Build/TypeScript y lint PASS; pruebas Go de perfiles, rendimiento y permisos con detector de carreras PASS; go vet de los paquetes modificados PASS.",
-    "Ratchet de calidad PASS con NEW=0, MOVED=0 y sin cambios de políticas o baselines. Aviso, desaparición y repetición verificados en el navegador con datos de demostración."
+    "Revisión del 23/09: suite frontend completa PASS, 470 archivos, 3832 pruebas y 2 omitidas. Cubre avisos personales/de clase, prioridad doble, rivales, reentrada/salida, tamaño real y reproducción en Studio.",
+    "Build/TypeScript y lint PASS. Evidencia Go de la entrega anterior, sin cambios Go en esta revisión: perfiles, rendimiento y permisos con detector de carreras PASS; go vet focal PASS.",
+    "Ratchet de calidad PASS, NEW=0, MOVED=0, sin cambios de políticas o baselines. Navegador: 280×72 y 480×104, personal y clase, reproducción automática en Studio y desaparición sin nuevas muestras."
   ],
   "knownLimitations": [
     "Pendiente revisión independiente y prueba física con una sesión de LMU en Windows/OBS antes de integrar. La previsualización usa el componente real con telemetría de demostración.",

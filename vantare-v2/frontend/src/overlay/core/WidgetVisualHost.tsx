@@ -24,6 +24,8 @@ export type WidgetVisualHostProps = {
   runtime?: WidgetRuntimeInput;
   /** Explicit visual-authoring fixture. Never accepted by a production build. */
   authoringModel?: WidgetViewModelBase;
+  /** Workshop transport may exercise transient notices on the Studio surface. */
+  authoringPlayback?: boolean;
   /** Pure presentation decision resolved by the native widget policy. */
   brandVisible?: boolean;
 };
@@ -247,7 +249,7 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
         onError={(error) => reportDiagnostic(props, "renderer-exception", error.message)}
       >
         {widget.type === "fastest-lap"
-          ? <FastestLapPresentation key={widget.id} model={visualModel as FastestLapViewModel} renderMode={renderMode}>
+          ? <FastestLapPresentation key={widget.id} model={visualModel as FastestLapViewModel} renderMode={renderMode} authoringPlayback={import.meta.env.DEV && props.authoringPlayback}>
               {(noticeModel) => <Renderer model={noticeModel} settings={presentationSettings} renderMode={renderMode} layout={widget.layout} motion={motion} effects={effects} />}
             </FastestLapPresentation>
           : <Renderer model={visualModel} settings={presentationSettings} renderMode={renderMode} layout={widget.layout} motion={motion} effects={effects} />}

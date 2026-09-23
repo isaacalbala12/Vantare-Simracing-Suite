@@ -9,16 +9,43 @@ afterEach(() => {
 });
 
 describe("OverlayWorkshopDevRoute", () => {
-  it("can replay a fastest-lap event after seeking back without replaying the historical baseline", async () => {
-    render(<OverlayWorkshopDevRoute search="?widget=fastest-lap&surface=desktop&scene=fastest-lap-alert" />);
+  it.each(["studio", "desktop"])("can replay a fastest-lap event in %s after seeking back", async surface => {
+    render(<OverlayWorkshopDevRoute search={`?widget=fastest-lap&surface=${surface}&scene=fastest-lap-alert`} />);
     await waitFor(() => expect(document.querySelector('[data-widget-renderer="fastest-lap"]')).toBeTruthy());
-    expect(screen.queryByRole("status")).toBeNull();
+    if (surface === "desktop") expect(screen.queryByRole("status")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Fotograma siguiente" }));
-    expect(screen.getByRole("status").textContent).toContain("1:29.902");
+    expect(screen.getByRole("status").textContent).toContain("1:31.202");
     fireEvent.click(screen.getByRole("button", { name: "Fotograma anterior" }));
     expect(screen.queryByRole("status")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Fotograma siguiente" }));
+    expect(screen.getByRole("status").textContent).toContain("1:31.202");
+    expect(screen.getByRole("status").dataset.noticeKind).toBe("personal");
+    fireEvent.click(screen.getByRole("button", { name: "Fotograma siguiente" }));
     expect(screen.getByRole("status").textContent).toContain("1:29.902");
+    expect(screen.getByRole("status").dataset.noticeKind).toBe("class");
+    fireEvent.click(screen.getByRole("button", { name: "Fotograma siguiente" }));
+    expect(screen.getAllByRole("status")).toHaveLength(1);
+    expect(screen.getByRole("status").textContent).toContain("1:29.402");
+    expect(screen.getByRole("status").dataset.noticeKind).toBe("class");
+    fireEvent.click(screen.getByRole("button", { name: "Ver diseño" }));
+    expect(screen.getByRole("status").dataset.preview).toBe("true");
+    expect((screen.getByLabelText("Superficie") as HTMLSelectElement).value).toBe("studio");
+  });
+
+  it("edits the real fastest-lap size without stretching the preview and preserves it in the URL", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=fastest-lap&scene=fastest-lap-alert&surface=studio" />);
+    await waitFor(() => expect(screen.getByRole("status")).toBeTruthy());
+    fireEvent.change(screen.getByLabelText("Ancho"), { target: { value: "360" } });
+    fireEvent.change(screen.getByLabelText("Alto"), { target: { value: "80" } });
+    const viewport = screen.getByTestId("overlay-workshop-viewport");
+    expect(viewport.style.width).toBe("360px");
+    expect(viewport.style.height).toBe("80px");
+    expect(viewport.style.transform).toBe("scale(1)");
+    expect((document.querySelector("[data-overlay-workshop-widget-preview]") as HTMLElement).style.transform).toBe("scale(1, 1)");
+    expect(window.location.search).toContain("width=360&height=80");
+    expect(screen.queryByRole("button", { name: "Aplicar tamaño declarado" })).toBeNull();
+    fireEvent.change(screen.getByLabelText("Ancho"), { target: { value: "64" } });
+    expect(viewport.style.width).toBe("360px");
   });
 
   it("mounts the product visual host inside a root distinct from the authoring stage", async () => {

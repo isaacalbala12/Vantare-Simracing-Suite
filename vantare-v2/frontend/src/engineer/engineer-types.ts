@@ -1,6 +1,6 @@
 import type { EngineerPresentation } from "./engineer-presentation-store";
 
-export type EngineerNotification = EngineerPresentation;
+type EngineerNotification = EngineerPresentation;
 
 export type EngineerOutputMode = "audio" | "visual" | "both" | "disabled";
 

@@ -28,6 +28,62 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+### 2026-09-23 — Reparación de rutas de audio Windows extraída para integración
+
+[VAN-760](https://app.notion.com/p/3e4e51695c65811689b6e260e5908ca0), puente #1350,
+extrae los tres archivos de audio de PR1340@88e42e1d sin alterar su contenido.
+La protección remota impide integrar PR1348 mientras falla el test heredado de
+medio ausente. Se integra primero esta reparación ya aceptada, después calidad
+y finalmente la pantalla, revalidando cada head. No cambia gates ni baselines.
+Las rutas inválidas fallan antes de PowerShell y conservan la reproducción actual;
+la cancelación mantiene prioridad. Revisión Luna y CI Windows de origen PASS;
+PR1351 integrada en nightly247db1c7 tras calidad y Windows completos SUCCESS. Audio acústico
+y LMU reales siguen pendientes.
+
+### 2026-09-23 — Corrección del rechazo de medios Windows
+
+VAN-752 / PR1340 desarrolló la comprobación de medio local, ahora integrada
+por PR1351 como prerrequisito separado, antes de iniciar
+PowerShell o sustituir el sonido actual. Contexto cancelado conserva prioridad;
+un fichero ausente devuelve el error de sistema de archivos, y una ruta vacía
+o no regular falla explícitamente. Se conservan los eventos WPF, el límite de
+ocho segundos, Stop y la espera del hijo. Windows RED demostrado en
+run35852357505/head2cdc6a1d antes del cambio. Compilación/vet cruzado y revisión
+Go sin P1/P2; resultado Windows final en Notion/PR. La corrección de calidad
+VAN-753/#1346 permanece en su PR de tooling; no se mezcla la política con producto.
+
+### 2026-09-23 — Pantalla funcional para pruebas Windows
+
+[VAN-752](https://app.notion.com/p/3e4e51695c6581a9a63bcf66960e60bc) / #1336,
+base nightly `8b25d076`. Isaac autoriza reconstruir la pantalla existente para
+pruebas, priorizando funcionalidad. [Microplan](../../engineer/test-ui-1336.md).
+Se sustituyen voz/volumen WebView y acciones sin efecto por estado observado,
+controles persistidos con confirmación, prueba del player Go y registro de las
+últimas 200 entregas seleccionadas. La preferencia de subtítulos se conserva
+separada de su estado efectivo por rendimiento. La prueba requiere Engineer
+desactivado; Enable/Stop/cancelación la interrumpen y no puede solaparse con radio.
+
+El registro fija el modo al seleccionar y observa publicación visual, lookup de
+caché y resultado del player. No cubre candidatos anteriores a selección ni
+salidas del rollback legacy. No exporta rutas de audio: los errores generales
+se redactan y permanecen en el log local. La vista previa JSON se congela antes
+de copiar/descargar. La página consulta cada segundo solo mientras está montada
+y bloquea cambios ante estado desactualizado. Cuatro idiomas.
+
+No cambia timings CrewChief ni incorpora T1/T2 sin integrar. P0 sí está en esta
+base mediante PR1311/e41f703c; la entrada anterior describe su entrega histórica.
+El harness prueba UI con datos sintéticos y no acredita audio físico ni LMU.
+Checks, revisión, head/PR/CI vigentes se registran en Notion y en el informe
+[de entrega](../../analysis/isa-1336-engineer-test-ui.md). El frontend global pasa
+3945 pruebas y el harness pasa en dos resoluciones. La dependencia de calidad
+[VAN-753](https://app.notion.com/p/3e4e51695c6581a8b409f12fcd1c3f39)
+se integró separadamente por PR1348 en nightlyf8ded356, tras Windows completo PASS
+y revisión explícita de política (NEW0/MOVED0, REVIEW_REQUIRED). La reparación
+de audio se integró antes por PR1351/247db1c7. Esta pantalla incorpora ambas
+bases sin cambios al código productivo revisado en 88e42e1d. La validación final
+y la integración autorizada de PR1340 se siguen en
+[VAN-759](https://app.notion.com/p/3e4e51695c658192a2def8aa6dc9fb2b).
+
 ### 2026-09-22 — Composición revisada sobre Wails beta.24
 
 [VAN-742](https://app.notion.com/p/3e3e51695c6581a5aeb7ffca7dec48f6) / #1310
@@ -842,3 +898,15 @@ wiring, sin retirada legacy y sin promoción.
 Spotter normal, fuel, penalties genéricas, laps, timings y pit entry/exit;
 las familias parciales o sin capability quedan explícitamente bloqueadas. El
 bridge temporal solo existe en replay y no puede alimentar el runtime entero.
+
+## 2026-09-23 — Corrección aislada de calidad para la pantalla Engineer
+
+[VAN-753](https://app.notion.com/p/3e4e51695c6581a8b409f12fcd1c3f39) / #1346
+separa la reparación del detector de PR1340. Eliminar la antigua CSS genera
+42 registros NEW de 27 identidades en diez fuentes sin cambios. La corrección
+exige igualdad de fuente en la procedencia del baseline confiable, base real
+y disco, conserva cada registro como REGROUPED visible y no altera baseline
+ni producto. Copias nuevas, fuentes modificadas, MOVED y política siguen
+bloqueando. [Diseño y evidencia](../../analysis/isa-1346-quality-clone-regroup.md).
+La PR de tooling requiere revisión por política; CI y SHA vigentes en Notion.
+Sin integración de canal ni release.

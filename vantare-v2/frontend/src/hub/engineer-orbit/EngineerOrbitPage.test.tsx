@@ -1,218 +1,89 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { I18nProvider } from "../../i18n/I18nProvider";
-import { ToastProvider } from "../../ui/orbit/Toast";
-import type { EngineerNotification, EngineerStatus } from "../../engineer/engineer-types";
 import { EngineerOrbitPage } from "./EngineerOrbitPage";
-import type { EngineerBridge, VoiceRuntime } from "./engineer-orbit-bridge";
-
-vi.mock("@wailsio/runtime", () => ({
-  Events: { Emit: vi.fn(), On: () => () => undefined },
-}));
-
-function message(
-  id: string,
-  role: "spotter" | "engineer",
-  createdAt: number,
-  text: string,
-): EngineerNotification {
-  return {
-    version: 1,
-    id,
-    category: role === "spotter" ? "spotter" : "fuel",
-    severity: "info",
-    textKey: `${role}.key`,
-    text,
-    voiceText: text,
-    locale: "es",
-    role,
-    channel: role,
-    priority: 10,
-    createdAt,
-    expiresAt: createdAt + 10_000,
-    source: "telemetry-core",
-  };
-}
-
-const STATUS: EngineerStatus = {
-  enabled: true,
-  connected: true,
-  source: "telemetry-core",
-  presentationLifecycle: 1,
-  spotterEnabled: true,
-  spotterAvailability: { state: "ready" },
-  sensitivity: "normal",
-  ttsCacheCount: 0,
-  recentMessages: [
-    message("m1", "spotter", 1_000, "Coche a la izquierda"),
-    message("m2", "engineer", 2_000, "Ventana de boxes abierta"),
-  ],
-  outputModes: { spotter: "both", fuel: "audio" },
-  subtitlesEnabled: false,
+import type { EngineerBridge } from "./engineer-orbit-bridge";
+import type { EngineerDiagnostics } from "./engineer-orbit-types";
+vi.mock("@wailsio/runtime", () => ({ Events: { Emit: vi.fn(), On: () => () => undefined } }));
+const snapshot: EngineerDiagnostics = {
+ subtitlesPreference:true,visualPresentationEnabled:true,version:1,capturedAt:1000,running:true,playerAvailable:true,cacheOnly:true,locale:"es",spotterVoice:"ef_dora",engineerVoice:"ef_dora",audioTestActive:false,historyLimit:200,radioHistoryAvailable:true,
+ status:{enabled:false,connected:false,source:"telemetry-core",presentationLifecycle:2,spotterEnabled:true,spotterAvailability:{state:"waiting"},sensitivity:"normal",ttsCacheCount:0,recentMessages:[],outputModes:{fuel:"both",spotter:"both"},subtitlesEnabled:true,lastError:"runtime_error"},
+ health:{ok:false,dropCount:0,activeFamilies:0,policy:{pending:0,accepted:0,emitted:0,suppressed:0,expired:0,cancelled:0,unavailable:0},radioDelivery:{samples:1,p95MS:5,maximumMS:5}},
+ deliveries:[{id:"old",lifecycle:1,intent:"fuel.old",family:"fuel",text:"Ciclo anterior",mode:"audio",selectedAt:100,updatedAt:150,state:"completed",reason:"",visual:false,audio:"completed"},{id:"new",lifecycle:2,intent:"fuel.new",family:"fuel",text:"Quedan 12 litros",mode:"both",selectedAt:500,updatedAt:510,state:"completed",reason:"",visual:true,audio:"cache_miss"}],
 };
-
-/** Doble del puente: guarda lo escrito y republica el estado, como el servicio. */
-function fakeBridge(initial: EngineerStatus = STATUS) {
-  let status = { ...initial };
-  let push: ((next: EngineerStatus) => void) | null = null;
-  const calls: { event: string; value: unknown }[] = [];
-  const republish = (patch: Partial<EngineerStatus>) => {
-    status = { ...status, ...patch };
-    push?.(status);
-  };
-  const bridge: EngineerBridge = {
-    subscribe(onStatus) {
-      push = onStatus;
-      onStatus(status);
-      return () => {
-        push = null;
-      };
-    },
-    setEnabled: (value) => {
-      calls.push({ event: "enabled", value });
-      republish({ enabled: value });
-    },
-    setSpotterEnabled: (value) => {
-      calls.push({ event: "spotter", value });
-      republish({ spotterEnabled: value });
-    },
-    setSubtitlesEnabled: (value) => {
-      calls.push({ event: "subtitles", value });
-      republish({ subtitlesEnabled: value });
-    },
-    setSensitivity: (value) => {
-      calls.push({ event: "sensitivity", value });
-      republish({ sensitivity: value });
-    },
-    setOutputMode: (category, mode) => {
-      calls.push({ event: "output", value: { category, mode } });
-      republish({ outputModes: { ...status.outputModes, [category]: mode } });
-    },
-  };
-  return { bridge, calls, get status() { return status; } };
+function mount(initial=snapshot) {
+ let push: (s:EngineerDiagnostics)=>void = ()=>{};
+ const off=vi.fn();
+ const bridge:EngineerBridge={subscribe(cb){push=cb;cb(initial);return off},refresh:vi.fn(),change:vi.fn(async()=>({outcome:"saved",diagnostics:initial})),testAudio:vi.fn(async()=>({kind:"tone",outcome:"completed",finishedAt:2000}))};
+ const download=vi.fn();const copy=vi.fn(async()=>{});
+ const view=render(<I18nProvider><EngineerOrbitPage bridge={bridge} download={download} copy={copy}/></I18nProvider>);
+ return {bridge,off,download,copy,...view,push:(next:EngineerDiagnostics)=>act(()=>push(next))};
 }
+afterEach(()=>{cleanup();vi.useRealTimers()});
+describe("functional Engineer",()=>{
+ it("shows runtime error, cache miss and current cycle; history survives settings",()=>{
+  const page=mount();expect(screen.getByRole("alert").textContent).toContain("error");
+  expect(screen.getByText("Sin audio en caché")).toBeTruthy();expect(screen.queryByText("Ciclo anterior")).toBeNull();
+  fireEvent.change(screen.getByLabelText("Ciclos"),{target:{value:"all"}});expect(screen.getByText("Ciclo anterior")).toBeTruthy();
+  page.push({...snapshot,capturedAt:2000,status:{...snapshot.status,outputModes:{fuel:"disabled"}}});
+  expect(screen.getByText("Quedan 12 litros").closest("tr")?.textContent).toContain("Audio y visual");
+ });
+ it("waits for backend confirmation and exposes save failure",async()=>{
+  const {bridge}=mount();vi.mocked(bridge.change).mockResolvedValue({outcome:"save_failed",diagnostics:{...snapshot,status:{...snapshot.status,enabled:true}}});
+  fireEvent.click(screen.getByLabelText("Ingeniero de pista"));
+  await waitFor(()=>expect(screen.getByText(/no se ha podido guardar/i)).toBeTruthy());
+  expect(bridge.change).toHaveBeenCalledWith({action:"enabled",enabled:true});
+ });
+ it("uses real player test and exposes result",async()=>{
+  const {bridge}=mount();fireEvent.click(screen.getByRole("button",{name:"Probar sonido"}));
+  await waitFor(()=>expect(screen.getByText(/reproductor ha terminado/i)).toBeTruthy());expect(bridge.testAudio).toHaveBeenCalledWith("tone");
+ });
+ it("freezes exact export preview before download or copy",async()=>{
+  const page=mount();expect(screen.queryByRole("button",{name:"Descargar JSON"})).toBeNull();
+  fireEvent.click(screen.getByRole("button",{name:"Preparar informe"}));
+  const preview=screen.getByLabelText("Contenido del informe").textContent;
+  page.push({...snapshot,capturedAt:3000,deliveries:[]});
+  fireEvent.click(screen.getByRole("button",{name:"Descargar JSON"}));expect(page.download).toHaveBeenCalledWith(preview);
+  fireEvent.click(screen.getByRole("button",{name:"Copiar JSON"}));await waitFor(()=>expect(page.copy).toHaveBeenCalledWith(preview));
+  expect(JSON.parse(preview!).capturedAt).toBe(1000);
+ });
+ it("marks missing responses stale and releases polling",()=>{
+  vi.useFakeTimers();const page=mount();act(()=>vi.advanceTimersByTime(6000));
+  expect(screen.getByText(/sin respuesta reciente/i)).toBeTruthy();expect(screen.getByLabelText("Ingeniero de pista").closest("fieldset")).toHaveProperty("disabled",true);
+  const n=vi.mocked(page.bridge.refresh).mock.calls.length;page.unmount();act(()=>vi.advanceTimersByTime(3000));expect(page.off).toHaveBeenCalled();expect(page.bridge.refresh).toHaveBeenCalledTimes(n);
+ });
+ it("does not report success on command timeout",async()=>{
+  const {bridge}=mount();vi.mocked(bridge.change).mockRejectedValue(new Error("timeout"));fireEvent.click(screen.getByLabelText("Ingeniero de pista"));
+  await waitFor(()=>expect(screen.getByText(/no se ha recibido confirmación/i)).toBeTruthy());
+ });
+ it("keeps confirmed values until the backend replies",async()=>{
+  const {bridge}=mount();
+  let resolve!: (result:Awaited<ReturnType<EngineerBridge["change"]>>)=>void;
+  vi.mocked(bridge.change).mockImplementation(()=>new Promise(done=>{resolve=done}));
+  const control=screen.getByLabelText("Ingeniero de pista") as HTMLInputElement;
+  fireEvent.click(control);expect(control.checked).toBe(false);
+  expect(screen.getByText("Esperando confirmación…")).toBeTruthy();
+  await act(async()=>resolve({outcome:"saved",diagnostics:{...snapshot,status:{...snapshot.status,enabled:true}}}));
+  expect(control.checked).toBe(true);
+ });
+ it("routes every setting to a backend command",async()=>{
+  const {bridge}=mount();
+  fireEvent.click(screen.getByLabelText("Spotter",{selector:"input"}));
+  await waitFor(()=>expect(bridge.change).toHaveBeenCalledWith({action:"spotter",enabled:false}));
+  await waitFor(()=>expect(screen.getByText("Cambio aplicado y guardado.")).toBeTruthy());
+  fireEvent.click(screen.getByLabelText("Subtítulos"));
+  await waitFor(()=>expect(bridge.change).toHaveBeenCalledWith({action:"subtitles",enabled:false}));
+  await waitFor(()=>expect(screen.getByText("Cambio aplicado y guardado.")).toBeTruthy());
+  fireEvent.change(screen.getByLabelText("Sensibilidad del spotter"),{target:{value:"aggressive"}});
+  await waitFor(()=>expect(bridge.change).toHaveBeenCalledWith({action:"sensitivity",value:"aggressive"}));
+  await waitFor(()=>expect(screen.getByText("Cambio aplicado y guardado.")).toBeTruthy());
+  fireEvent.change(screen.getByLabelText("Combustible"),{target:{value:"audio"}});
+  await waitFor(()=>expect(bridge.change).toHaveBeenCalledWith({action:"output",category:"fuel",value:"audio"}));
+ });
+ it("retains subtitle preference while visual output is paused",()=>{
+  mount({...snapshot,visualPresentationEnabled:false,status:{...snapshot.status,subtitlesEnabled:false}});
+  expect(screen.getByLabelText("Subtítulos")).toHaveProperty("checked",true);
+  expect(screen.getByText(/política de rendimiento ha pausado/i)).toBeTruthy();
+ });
 
-const silentVoices: VoiceRuntime = {
-  list: () => [{ id: "v1", label: "Elvira · es-ES" }],
-  onChange: () => () => undefined,
-  speak: () => true,
-};
-
-function mount(bridge: EngineerBridge, voices: VoiceRuntime = silentVoices) {
-  return render(
-    <I18nProvider>
-      <ToastProvider>
-        <EngineerOrbitPage bridge={bridge} voices={voices} />
-      </ToastProvider>
-    </I18nProvider>,
-  );
-}
-
-afterEach(() => {
-  cleanup();
-  window.localStorage.clear();
-});
-
-describe("EngineerOrbitPage", () => {
-  it("atenúa el icono de los módulos apagados y deja Estrategia en vivo sin tocar", () => {
-    mount(fakeBridge().bridge);
-    expect(screen.getByTestId("orbit-eng-mod-engineer").dataset.on).toBe("true");
-    expect(screen.getByTestId("orbit-eng-mod-subtitles").dataset.on).toBe("false");
-    expect(screen.getByTestId("orbit-eng-mod-liveStrategy").dataset.on).toBe("false");
-    const soon = within(screen.getByTestId("orbit-eng-mod-liveStrategy")).getByRole("button");
-    expect(soon.hasAttribute("disabled")).toBe(true);
-  });
-
-  it("las salidas por categoría reflejan y persisten el estado real", async () => {
-    const fake = fakeBridge();
-    mount(fake.bridge);
-
-    const fuel = within(screen.getByTestId("orbit-engineer-output-fuel"));
-    expect(fuel.getByRole("button", { name: "A" }).getAttribute("aria-pressed")).toBe("true");
-
-    fireEvent.click(fuel.getByRole("button", { name: "Off" }));
-    await waitFor(() => {
-      expect(fuel.getByRole("button", { name: "Off" }).getAttribute("aria-pressed")).toBe("true");
-    });
-    expect(fake.calls).toContainEqual({
-      event: "output",
-      value: { category: "fuel", mode: "disabled" },
-    });
-    expect(fake.status.outputModes.fuel).toBe("disabled");
-  });
-
-  it("los módulos escriben en la configuración real", () => {
-    const fake = fakeBridge();
-    mount(fake.bridge);
-    fireEvent.click(
-      within(screen.getByTestId("orbit-eng-mod-subtitles")).getByRole("button", {
-        name: "Subtítulos",
-      }),
-    );
-    expect(fake.calls).toContainEqual({ event: "subtitles", value: true });
-  });
-
-  it("filtra el feed por origen", () => {
-    mount(fakeBridge().bridge);
-    const feed = screen.getByTestId("orbit-engineer-feed");
-    expect(within(feed).getAllByRole("listitem")).toHaveLength(2);
-    // El más reciente arriba.
-    expect(within(feed).getAllByRole("listitem")[0].textContent).toContain(
-      "Ventana de boxes abierta",
-    );
-
-    const filter = within(screen.getByRole("group", { name: "Filtro por origen" }));
-    fireEvent.click(filter.getByRole("button", { name: "Spotter" }));
-    expect(within(screen.getByTestId("orbit-engineer-feed")).getAllByRole("listitem")).toHaveLength(1);
-    expect(screen.getByTestId("orbit-engineer-feed").textContent).toContain("Coche a la izquierda");
-  });
-
-  it("dice la verdad cuando no hay mensajes de sesión", () => {
-    const fake = fakeBridge({ ...STATUS, connected: false, recentMessages: [] });
-    mount(fake.bridge);
-    expect(screen.getByTestId("orbit-engineer-feed-empty").textContent).toContain(
-      "Sin mensajes de sesión",
-    );
-  });
-
-  it("avisa si el Spotter no está disponible aunque la telemetría esté conectada", () => {
-    const fake = fakeBridge({
-      ...STATUS,
-      connected: true,
-      spotterAvailability: { state: "unavailable", reason: "capability" },
-    });
-    mount(fake.bridge);
-
-    const notice = screen.getByTestId("orbit-engineer-spotter-unavailable");
-    expect(notice.textContent).toContain("Spotter no disponible");
-    expect(notice.textContent).toContain("telemetría espacial");
-
-    fireEvent.click(
-      within(screen.getByTestId("orbit-eng-mod-spotter")).getByRole("button", { name: "Spotter" }),
-    );
-    expect(screen.queryByTestId("orbit-engineer-spotter-unavailable")).toBeNull();
-  });
-
-  it("no usa el atributo `title` nativo", () => {
-    mount(fakeBridge().bridge);
-    expect(screen.getByTestId("orbit-engineer").querySelectorAll("[title]")).toHaveLength(0);
-  });
-
-  it("«Probar voz» reproduce con la voz y el volumen elegidos", () => {
-    const speak = vi.fn(() => true);
-    mount(fakeBridge().bridge, { ...silentVoices, speak });
-    fireEvent.change(screen.getByTestId("orbit-engineer-volume"), { target: { value: "40" } });
-    fireEvent.click(screen.getByTestId("orbit-engineer-test-voice"));
-    expect(speak).toHaveBeenCalledWith(expect.any(String), { voiceId: "v1", volume: 0.4 });
-  });
-});
-
-describe("EngineerOrbitPage · cableado auditado", () => {
-  it("«Atenuar el juego» va deshabilitado con el motivo a la vista", () => {
-    mount(fakeBridge().bridge);
-    const duck = screen.getByRole("button", { name: "Atenuar el juego al hablar" }) as HTMLButtonElement;
-    expect(duck.disabled).toBe(true);
-    expect(duck.getAttribute("data-tip")).toBeTruthy();
-    expect(duck.getAttribute("title")).toBeNull();
-  });
 });

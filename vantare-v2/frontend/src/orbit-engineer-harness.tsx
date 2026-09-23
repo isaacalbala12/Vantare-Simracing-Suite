@@ -10,14 +10,7 @@ import { LauncherStoreProvider } from './hub/launcher/launcher-store';
 import { OrbitShell } from './hub/components/orbit/OrbitShell';
 import type { Section } from './hub/navigation';
 
-/**
- * Harness visual de Ingeniero (briefing 08).
- *
- * Monta la shell Orbit real contra el runtime simulado: la configuración y los
- * mensajes de radio llegan por `engineer:status` / `engineer:notification`,
- * igual que en el hub. El motor de voz del sistema no existe en Chromium
- * headless: la pantalla lo dice sola («Sin voces instaladas»).
- */
+/** UI-only harness. Synthetic diagnostics do not validate telemetry or OS audio. */
 applyTheme(orbitThemeJson as unknown as VantareTheme);
 initializeDensity();
 
@@ -26,6 +19,7 @@ export function Harness() {
 
   return (
     <LicenseProvider>
+      <div role="note" style={{padding:8,background:"#543f18",color:"white"}}>Harness sintético · no valida LMU ni audio real</div>
       <I18nProvider>
         <LauncherStoreProvider>
           <OrbitShell

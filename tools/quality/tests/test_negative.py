@@ -599,6 +599,204 @@ raise SystemExit(vq.cmd_check(argparse.Namespace(ci=True, base=sys.argv[4], json
 # VAN-733: el workflow prepara el stack Linux real de Wails en ambos jobs
 # ---------------------------------------------------------------------------
 
+class TestJscpdRegrouping(unittest.TestCase):
+    """Real jscpd + Git provenance -> production check, no baseline acceptance."""
+
+    def setUp(self):
+        import shutil
+        import vantare_quality as vq
+        from unittest.mock import patch
+        self.vq = vq
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.repo = Path(self.temp.name)
+        self.frontend = self.repo / 'vantare-v2/frontend'
+        self.src = self.frontend / 'src'
+        self.src.mkdir(parents=True)
+        policy = self.repo / 'tools/quality'
+        shutil.copytree(SCOPE_PATH.parent / 'baseline', policy / 'baseline')
+        for name in ('scope.json', 'versions.json', 'exceptions.json'):
+            shutil.copy2(SCOPE_PATH.parent / name, policy / name)
+        common = '\n'.join(f'  --shared-property-{n}: {n}px;' for n in range(25))
+        extra = '\n'.join(f'  --extra-property-{n}: {n}px;' for n in range(25))
+        for name, end in [('a', ''), ('b', extra), ('c', extra)]:
+            (self.src / f'{name}.css').write_text('.' + name + ' {\n' + common + '\n' + end + '\n}\n')
+        self._git('init', '--quiet')
+        self._git('add', '.')
+        self._git('commit', '--quiet', '-m', 'source snapshot')
+        self.provenance = self._git('rev-parse', 'HEAD').strip()
+        for key, value in {'REPO_ROOT': self.repo, 'BASELINE_DIR': policy / 'baseline',
+                           'LAST_RUN_PATH': self.repo / 'last-run.json'}.items():
+            patcher = patch.object(vq, key, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        findings = self._scan()
+        self.assertGreater(len(findings), 0)
+        vq.write_baseline('jscpd', findings, load_json(SCOPE_PATH), load_json(VERSIONS_PATH), ['frontend'])
+        self._git('add', 'tools/quality/baseline/jscpd.json')
+        self._git('commit', '--quiet', '-m', 'accepted baseline')
+        self.base = self._git('rev-parse', 'HEAD').strip()
+
+    def _git(self, *args):
+        return subprocess.run(
+            ['git', '-c', 'user.name=Quality test', '-c', 'user.email=quality@example.invalid',
+             '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', *args],
+            cwd=self.repo, check=True, capture_output=True, text=True).stdout
+
+    def _scan(self):
+        with tempfile.TemporaryDirectory() as output:
+            rc, out, err = _run(_find_bin('jscpd'), ['src', '--reporters', 'json',
+                '--min-lines', '5', '--min-tokens', '50', '--output', output], self.frontend)
+            self.assertIn(rc, (0, 1), out + err)
+            report = json.loads((Path(output) / 'jscpd-report.json').read_text())
+            return parse_jscpd(report, self.repo, self.frontend)
+
+    def _check(self, expected, jscpd_findings=None):
+        import argparse
+        from unittest.mock import patch
+        results = []
+        for analyzer in sorted(self.vq.RATCHET_ANALYZERS | self.vq.NO_BASELINE_ANALYZERS):
+            baseline = self.vq.load_baseline(analyzer)
+            configs = baseline['header']['configs'] if baseline else ['frontend']
+            for config in configs:
+                findings = (self._scan() if jscpd_findings is None else jscpd_findings) if analyzer == 'jscpd' else []
+                results.append(self.vq.ToolResult(analyzer, config, FAIL if findings else PASS, 0, findings=findings))
+        with patch.object(self.vq, '_run_all', return_value=results):
+            rc = self.vq.cmd_check(argparse.Namespace(ci=True, base=self.base, json=False))
+        report = json.loads(self.vq.LAST_RUN_PATH.read_text())
+        self.assertEqual(report['aggregate'], expected, report)
+        self.assertEqual(rc, 0 if expected == PASS else 1)
+        return report
+
+    def test_removing_anchor_reports_regrouped_without_new_duplication(self):
+        (self.src / 'a.css').unlink()
+        report = self._check(PASS)
+        self.assertEqual(report['classifications']['jscpd']['new'], 0)
+        self.assertEqual(len(report['regrouped_findings']), 2)
+        for evidence in report['regrouped_findings']:
+            self.assertEqual(evidence['source_sha'], self.provenance)
+            self.assertTrue(evidence['source_path'].startswith('vantare-v2/frontend/src/'))
+            self.assertEqual(len(evidence['blob_sha']), 40)
+
+    def test_multiple_pair_records_retain_each_regrouped_finding(self):
+        (self.src / 'a.css').unlink()
+        findings = self._scan()
+        # Pair reports can repeat one site. The PR1340 reproduction contains
+        # 42 new records for 27 identities in ten byte-identical source files.
+        report = self._check(PASS, findings + [findings[0]])
+        self.assertEqual(len(report['regrouped_findings']), len(findings) + 1)
+
+    def test_symlink_parent_is_not_unchanged_source(self):
+        (self.src / 'a.css').unlink()
+        target = self.frontend / 'original-src'
+        self.src.rename(target)
+        self.src.symlink_to(target, target_is_directory=True)
+        self._check(FAIL)
+
+    def test_new_third_file_still_blocks(self):
+        (self.src / 'a.css').unlink()
+        (self.src / 'd.css').write_bytes((self.src / 'b.css').read_bytes())
+        report = self._check(FAIL)
+        self.assertTrue(any(f['path'].endswith('/d.css') for f in report['new_blocking_findings']))
+
+    def test_second_copy_same_file_uncommitted_still_blocks(self):
+        (self.src / 'a.css').unlink()
+        path = self.src / 'b.css'
+        path.write_bytes(path.read_bytes() * 2)
+        report = self._check(FAIL)
+        self.assertTrue(any(f['path'].endswith('/b.css') for f in report['new_blocking_findings']))
+
+    def test_regrouped_source_changed_since_provenance_still_blocks(self):
+        # Being unchanged relative to PR base alone cannot grandfather debt.
+        (self.src / 'a.css').unlink()
+        path = self.src / 'b.css'
+        path.write_bytes(path.read_bytes() * 2)
+        self._git('add', 'vantare-v2')
+        self._git('commit', '--quiet', '-m', 'unaccepted duplicate before PR')
+        self.base = self._git('rev-parse', 'HEAD').strip()
+        self._check(FAIL)
+
+    def test_policy_change_remains_review_required(self):
+        (self.src / 'a.css').unlink()
+        (self.repo / 'tools/quality/policy.txt').write_text('change\n')
+        self._check(REVIEW_REQUIRED)
+
+    def test_missing_provenance_does_not_pass(self):
+        path = self.repo / 'tools/quality/baseline/jscpd.json'
+        data = json.loads(path.read_text())
+        data['header']['base_sha'] = 'f' * 40
+        path.write_text(json.dumps(data))
+        self._git('add', 'tools/quality/baseline/jscpd.json')
+        self._git('commit', '--quiet', '-m', 'unavailable provenance')
+        self.base = self._git('rev-parse', 'HEAD').strip()
+        (self.src / 'a.css').unlink()
+        self._check(FAIL)
+
+    def test_shallow_clone_fetches_only_missing_provenance(self):
+        with tempfile.TemporaryDirectory() as target:
+            clone = Path(target) / 'clone'
+            subprocess.run(['git', 'clone', '--quiet', '--depth=1', self.repo.as_uri(), str(clone)], check=True)
+            self.repo = clone
+            self.frontend = clone / 'vantare-v2/frontend'
+            self.src = self.frontend / 'src'
+            self.vq.REPO_ROOT = clone
+            self.vq.BASELINE_DIR = clone / 'tools/quality/baseline'
+            self.vq.LAST_RUN_PATH = clone / 'last-run.json'
+            missing = subprocess.run(['git', 'cat-file', '-e', self.provenance], cwd=clone, capture_output=True)
+            self.assertNotEqual(missing.returncode, 0)
+            (self.src / 'a.css').unlink()
+            self._check(PASS)
+            self.assertEqual(self._git('rev-parse', 'HEAD').strip(), self.base)
+            self._git('cat-file', '-e', self.provenance)
+
+    def test_historical_symlink_blob_is_not_regular_source(self):
+        findings = self._scan()
+        candidate = next(f for f in findings if f.path.endswith('/b.css'))
+        path = self.src / 'b.css'
+        path.unlink()
+        path.symlink_to('target')
+        self._git('add', 'vantare-v2')
+        self._git('commit', '--quiet', '-m', 'historical symlink')
+        provenance = self._git('rev-parse', 'HEAD').strip()
+        path.unlink()
+        path.write_text('target')
+        baseline_path = self.repo / 'tools/quality/baseline/jscpd.json'
+        baseline = json.loads(baseline_path.read_text())
+        baseline['header']['base_sha'] = provenance
+        baseline_path.write_text(json.dumps(baseline))
+        self._git('add', '.')
+        self._git('commit', '--quiet', '-m', 'regular file with identical git blob')
+        self.base = self._git('rev-parse', 'HEAD').strip()
+        new = Finding('jscpd', 'duplication', candidate.path, content_hash=content_hash('new grouping'))
+        self._check(FAIL, [new])
+
+    def test_candidate_baseline_cannot_grant_regrouping(self):
+        path = self.repo / 'tools/quality/baseline/jscpd.json'
+        data = json.loads(path.read_text())
+        data['header']['base_sha'] = self.base
+        path.write_text(json.dumps(data))
+        (self.src / 'a.css').unlink()
+        self._check(FAIL)
+
+
+    def test_existing_identity_surplus_remains_new(self):
+        findings = self._scan()
+        report = self._check(FAIL, findings + [findings[0]])
+        self.assertEqual(report['classifications']['jscpd']['new'], 1)
+        self.assertEqual(report['regrouped_findings'], [])
+
+    def test_revert_to_provenance_is_not_unchanged_in_pr(self):
+        path = self.src / 'b.css'
+        original = path.read_bytes()
+        path.write_bytes(original + b'/* changed in base */\n')
+        self._git('add', 'vantare-v2')
+        self._git('commit', '--quiet', '-m', 'change source after provenance')
+        self.base = self._git('rev-parse', 'HEAD').strip()
+        path.write_bytes(original)
+        (self.src / 'a.css').unlink()
+        self._check(FAIL)
+
+
 class TestQualityWorkflowWailsDependencies(unittest.TestCase):
     """Impide que quality-check o quality-audit pierdan GTK4/WebKitGTK 6.0."""
 

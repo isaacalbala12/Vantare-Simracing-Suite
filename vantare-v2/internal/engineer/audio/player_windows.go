@@ -115,9 +115,24 @@ func (p *Player) PlayContext(ctx context.Context, path string) error {
 	if err != nil {
 		return fmt.Errorf("audio: cannot resolve path: %w", err)
 	}
-	if _, err := os.Stat(absPath); err != nil {
+	// Missing local media does not need WPF or its asynchronous failure event.
+	// Validate before stopping a valid playback. MediaFailed still handles a
+	// file removed after this check, unreadable content and decoder errors.
+	info, err := os.Stat(absPath)
+	if err != nil {
 		return fmt.Errorf("audio: cannot access media: %w", err)
 	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("audio: media is not a regular file: %w", os.ErrInvalid)
+	}
+
+	p.mu.Lock()
+	if err := playCtx.Err(); err != nil {
+		p.mu.Unlock()
+		return fmt.Errorf("audio: playback cancelled: %w", err)
+	}
+	// Stop any currently playing audio only after accepting the new request.
+	p.stopLocked()
 
 	// Build a PowerShell script with the path safely embedded via
 	// single-quote escaping (PS convention: '' inside '' = literal ').
@@ -129,14 +144,6 @@ func (p *Player) PlayContext(ctx context.Context, path string) error {
 	cmd := exec.CommandContext(playCtx, "powershell", "-NoProfile", "-NonInteractive", "-STA", "-EncodedCommand", encoded)
 	// Do NOT set cmd.Stderr — it creates a pipe that blocks cmd.Wait()
 	// after Kill(). We rely on the exit code for error detection.
-	p.mu.Lock()
-	if err := playCtx.Err(); err != nil {
-		p.mu.Unlock()
-		return fmt.Errorf("audio: playback cancelled: %w", err)
-	}
-
-	// Stop any currently playing audio.
-	p.stopLocked()
 
 	if err := cmd.Start(); err != nil {
 		p.mu.Unlock()

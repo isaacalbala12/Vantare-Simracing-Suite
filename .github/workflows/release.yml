@@ -375,8 +375,11 @@ jobs:
       - name: Build release artifacts
         run: |
           wails3 task release:clean
+          if ($LASTEXITCODE -ne 0) { throw "Release cleanup failed" }
           wails3 task release:artifacts
+          if ($LASTEXITCODE -ne 0) { throw "Release artifact build failed" }
           wails3 task release:verify
+          if ($LASTEXITCODE -ne 0) { throw "Release verification failed" }
           $buildInfo = go version -m bin/vantare.exe
           if ($LASTEXITCODE -ne 0 -or -not ($buildInfo -match 'GOEXPERIMENT=nojsonv2')) {
             throw "Release executable was not built with GOEXPERIMENT=nojsonv2"

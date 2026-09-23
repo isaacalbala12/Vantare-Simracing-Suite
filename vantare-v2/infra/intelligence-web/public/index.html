@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0c1118" />
+    <title>Vantare · Inteligencia privada</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar" aria-label="Navegación principal">
+        <div class="brand">
+          <span class="brand__mark" aria-hidden="true">V</span
+          ><span>VANTARE<small>INTELLIGENCE</small></span>
+        </div>
+        <p class="sidebar__eyebrow">ESPACIO PRIVADO</p>
+        <nav id="navigation" class="navigation" aria-label="Secciones">
+          <button class="navigation__item is-active" data-view="overview" aria-current="page">
+            <span>01</span> Resumen
+          </button>
+          <button class="navigation__item" data-view="product"><span>02</span> Producto</button>
+          <button class="navigation__item" data-view="business"><span>03</span> Negocio</button>
+          <button class="navigation__item" data-view="feedback"><span>04</span> Opiniones</button>
+          <button class="navigation__item" data-view="growth"><span>05</span> Crecimiento</button>
+          <button class="navigation__item" data-view="market"><span>06</span> Mercado</button>
+        </nav>
+        <div class="sidebar__footer">
+          <span class="status-dot"></span> Consola de Isaac<br /><small
+            >Las cifras conservan su fuente y fecha.</small
+          >
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">CENTRO DE DECISIONES</p>
+            <h1 id="page-title">Resumen</h1>
+          </div>
+          <div class="topbar__controls">
+            <label class="environment-label" for="environment"
+              >Entorno comercial
+              <select id="environment">
+                <option value="production">Producción</option>
+                <option value="sandbox">Pruebas</option>
+              </select>
+            </label>
+            <button id="refresh" class="button button--outline" type="button">Actualizar</button>
+          </div>
+        </header>
+
+        <div id="load-state" class="load-state" role="status" aria-live="polite">
+          Cargando fuentes verificadas…
+        </div>
+
+        <section id="view-overview" class="view is-visible" aria-label="Resumen">
+          <div class="hero">
+            <div>
+              <p class="eyebrow eyebrow--light">SEÑAL SEMANAL</p>
+              <h2>Qué sabemos hoy.<br /><em>Qué debemos aprender después.</em></h2>
+              <p>
+                Una vista breve para decidir la próxima mejora de producto y distribución sin
+                confundir supuestos con resultados.
+              </p>
+            </div>
+            <div class="hero__stamp">
+              <span>CORTE DE DATOS</span><strong id="generated-at">—</strong
+              ><small id="environment-stamp">Producción</small>
+            </div>
+          </div>
+          <div class="metric-grid metric-grid--primary">
+            <article class="metric-card metric-card--accent">
+              <p>RETORNO D7–13</p>
+              <strong id="overview-return">—</strong
+              ><small id="overview-return-state">Pendiente de medición</small>
+            </article>
+            <article class="metric-card">
+              <p>MRR · POLAR</p>
+              <strong id="overview-mrr">—</strong
+              ><small id="overview-mrr-state">Comprobando Polar</small>
+            </article>
+            <article class="metric-card">
+              <p>PRIMERAS SESIONES</p>
+              <strong id="overview-sessions">—</strong
+              ><small id="overview-sessions-state">Registro manual</small>
+            </article>
+            <article class="metric-card">
+              <p>OPINIONES NUEVAS</p>
+              <strong id="overview-feedback">—</strong
+              ><small id="overview-feedback-state">Enviadas voluntariamente</small>
+            </article>
+          </div>
+          <div class="two-column">
+            <article class="panel">
+              <div class="panel__heading">
+                <div>
+                  <p class="eyebrow">CALIDAD DE LA LECTURA</p>
+                  <h3>Estado de las fuentes</h3>
+                </div>
+              </div>
+              <div id="source-list" class="source-list"></div>
+            </article>
+            <article class="panel panel--warm">
+              <p class="eyebrow">PRÓXIMA DECISIÓN</p>
+              <h3>Primero, observar el uso real</h3>
+              <p>
+                Un inicio de sesión o un dispositivo visto no demuestran que un piloto haya
+                utilizado un overlay. Hasta registrar sesiones confirmadas y cohortes maduras, el
+                retorno seguirá sin cifra.
+              </p>
+              <div class="target-row">
+                <span>Meta del primer mes público</span><strong>10 primeras sesiones</strong>
+              </div>
+              <div class="target-row">
+                <span>Revisión del día 90</span><strong>45 primeras sesiones</strong>
+              </div>
+              <p class="panel__foot">
+                El reloj empieza al verificar una apertura pública. Estas son metas de trabajo, no
+                ventas previstas.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section id="view-product" class="view" aria-label="Producto" hidden>
+          <div class="section-intro">
+            <p class="eyebrow">PRODUCTO</p>
+            <h2>Uso y retorno</h2>
+            <p>
+              Separamos señales de cuenta de sesiones reales para no atribuir actividad que aún no
+              hemos medido.
+            </p>
+          </div>
+          <div class="metric-grid">
+            <article class="metric-card">
+              <p>CUENTAS REGISTRADAS</p>
+              <strong id="product-accounts">—</strong
+              ><small id="product-accounts-state">Supabase Auth</small>
+            </article>
+            <article class="metric-card">
+              <p>CUENTAS NUEVAS · 30 DÍAS</p>
+              <strong id="product-new">—</strong><small id="product-new-state">Supabase Auth</small>
+            </article>
+            <article class="metric-card">
+              <p>INICIO DE SESIÓN · 30 DÍAS</p>
+              <strong id="product-signins">—</strong
+              ><small id="product-signins-state">Señal de acceso</small>
+            </article>
+            <article class="metric-card">
+              <p>DISPOSITIVOS VISTOS · 30 DÍAS</p>
+              <strong id="product-devices">—</strong
+              ><small id="product-devices-state">Señal operativa</small>
+            </article>
+          </div>
+          <div class="two-column">
+            <article class="panel">
+              <p class="eyebrow">EMBUDO</p>
+              <h3>De interés a primera sesión</h3>
+              <div class="funnel">
+                <div>
+                  <span>Visitas con intención · registro manual</span
+                  ><strong id="funnel-visits">—</strong>
+                </div>
+                <div>
+                  <span>Primera sesión confirmada · registro manual</span
+                  ><strong id="funnel-sessions">—</strong>
+                </div>
+                <div>
+                  <span>Retorno D7–13 · cohorte madura</span
+                  ><strong id="funnel-return">Sin medir</strong>
+                </div>
+              </div>
+              <p class="panel__foot">
+                Las entradas manuales se acumulan de las últimas 52 semanas disponibles. La tasa de
+                retorno necesita personas y fechas, no solo sumas semanales.
+              </p>
+            </article>
+            <article class="panel panel--warm">
+              <p class="eyebrow">DEFINICIÓN</p>
+              <h3>Qué cuenta como retorno</h3>
+              <p>
+                Un piloto completa una primera sesión real con Vantare y vuelve a usarlo entre los
+                días 7 y 13. Solo se calcula con cohortes maduras y resultado conocido; las personas
+                sin observación figuran como desconocidas.
+              </p>
+              <p class="panel__foot">
+                La captura automática requiere consentimiento específico, desactivado por defecto, y
+                se hará en otra entrega.
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section id="view-business" class="view" aria-label="Negocio" hidden>
+          <div class="section-intro">
+            <p class="eyebrow">NEGOCIO</p>
+            <h2>Ingresos con fuente</h2>
+            <p>
+              Polar es la fuente de las cifras comerciales. El entorno seleccionado siempre aparece
+              al lado de cada dato.
+            </p>
+          </div>
+          <div class="metric-grid">
+            <article class="metric-card metric-card--accent">
+              <p>MRR ACTUAL</p>
+              <strong id="business-mrr">—</strong
+              ><small id="business-mrr-state">Polar · producción</small>
+            </article>
+            <article class="metric-card">
+              <p>SUSCRIPCIONES ACTIVAS</p>
+              <strong id="business-subs">—</strong><small id="business-subs-state">Polar</small>
+            </article>
+            <article class="metric-card">
+              <p>COBROS NETOS · 30 DÍAS</p>
+              <strong id="business-net">—</strong><small id="business-net-state">Polar</small>
+            </article>
+            <article class="metric-card">
+              <p>COMPRAS ÚNICAS NETAS · 30 DÍAS</p>
+              <strong id="business-onetime">—</strong
+              ><small id="business-onetime-state">Fuera del MRR</small>
+            </article>
+          </div>
+          <div class="two-column">
+            <article class="panel">
+              <p class="eyebrow">CONCILIACIÓN</p>
+              <h3>Proyección de Vantare</h3>
+              <div class="detail-list">
+                <div>
+                  <span>Suscripciones heredadas excluidas</span
+                  ><strong id="business-legacy">—</strong>
+                </div>
+                <div>
+                  <span>Suscripciones en producción</span
+                  ><strong id="business-projection-production">—</strong>
+                </div>
+                <div>
+                  <span>Suscripciones en pruebas</span
+                  ><strong id="business-projection-sandbox">—</strong>
+                </div>
+                <div>
+                  <span>Última actualización</span><strong id="business-projection-date">—</strong>
+                </div>
+              </div>
+              <p class="panel__foot">
+                La proyección de Supabase muestra estado operativo; no calcula MRR ni reemplaza a
+                Polar.
+              </p>
+            </article>
+            <article class="panel panel--warm">
+              <p class="eyebrow">CRITERIO COMERCIAL</p>
+              <h3>Sin ingresos inventados</h3>
+              <p>
+                Una suscripción heredada con estado «activa» pero sin precio y periodo pagado
+                verificables no se cuenta como comprador actual. Las compras de Launch Edition se
+                enseñan aparte; una venta única no entra en MRR.
+              </p>
+              <p class="panel__foot">
+                Si Polar no responde o no se ha configurado el acceso de solo lectura, verás «Fuente
+                no disponible».
+              </p>
+            </article>
+          </div>
+        </section>
+
+        <section id="view-feedback" class="view" aria-label="Opiniones" hidden>
+          <div class="section-intro">
+            <p class="eyebrow">VOZ DEL PILOTO</p>
+            <h2>Opiniones enviadas desde la app</h2>
+            <p>
+              Solo aparece el texto que un piloto envía voluntariamente. No incluye archivos,
+              telemetría de carrera ni rutas.
+            </p>
+          </div>
+          <div class="feedback-toolbar">
+            <div><strong id="feedback-count">—</strong><span>opiniones vigentes</span></div>
+            <label
+              >Estado
+              <select id="feedback-filter">
+                <option value="all">Todos</option>
+                <option value="new">Nuevas</option>
+                <option value="reviewed">Revisadas</option>
+                <option value="action_created">Acción creada</option>
+                <option value="closed">Cerradas</option>
+              </select></label
+            >
+          </div>
+          <p id="feedback-empty" class="empty-state">Cargando opiniones…</p>
+          <div id="feedback-list" class="feedback-list"></div>
+          <p class="panel__foot">
+            Se muestran hasta 25 envíos recientes. El texto deja de ser visible a los 180 días. Una
+            opinión eliminada por su autor desaparece del buzón.
+          </p>
+        </section>
+
+        <section id="view-growth" class="view" aria-label="Crecimiento" hidden>
+          <div class="section-intro">
+            <p class="eyebrow">CRECIMIENTO SOSTENIBLE</p>
+            <h2>Una revisión por semana</h2>
+            <p>
+              Registra lo que observaste; Asana continúa siendo el lugar donde planificas el
+              contenido. Presupuesto base: 6 horas semanales, sin anuncios nuevos.
+            </p>
+          </div>
+          <div class="two-column two-column--growth">
+            <article class="panel">
+              <p class="eyebrow">REGISTRO MANUAL</p>
+              <h3>Actualizar una semana</h3>
+              <form id="weekly-form" class="weekly-form">
+                <label
+                  >Semana que empieza el lunes<input name="week_start" type="date" required
+                /></label>
+                <div class="form-grid">
+                  <label
+                    >Seguidores YouTube<input
+                      name="youtube_followers"
+                      type="number"
+                      min="0"
+                      placeholder="Sin dato" /></label
+                  ><label
+                    >Seguidores Instagram<input
+                      name="instagram_followers"
+                      type="number"
+                      min="0"
+                      placeholder="Sin dato" /></label
+                  ><label
+                    >Minutos de marketing<input
+                      name="marketing_minutes"
+                      type="number"
+                      min="0"
+                      max="10080"
+                      placeholder="Sin dato" /></label
+                  ><label
+                    >Visitas con intención<input
+                      name="qualified_visits"
+                      type="number"
+                      min="0"
+                      placeholder="Sin dato" /></label
+                  ><label
+                    >Primeras sesiones confirmadas<input
+                      name="first_sessions_confirmed"
+                      type="number"
+                      min="0"
+                      placeholder="Sin dato"
+                  /></label>
+                </div>
+                <label
+                  >Origen o nota breve, sin datos personales<input
+                    name="source_note"
+                    maxlength="300"
+                    placeholder="Ej.: analítica web y confirmaciones manuales" /></label
+                ><button class="button button--solid" type="submit">Guardar semana</button>
+                <p id="weekly-message" role="status" aria-live="polite"></p>
+              </form>
+            </article>
+            <article class="panel panel--warm">
+              <p class="eyebrow">OBJETIVOS DE 90 DÍAS</p>
+              <h3>Aprender sin sobrecarga</h3>
+              <div class="goal-list">
+                <div><strong>300</strong><span>visitas con intención</span></div>
+                <div><strong>45</strong><span>primeras sesiones confirmadas</span></div>
+                <div>
+                  <strong>35 %</strong><span>retorno D7–13 en cohortes maduras conocidas</span>
+                </div>
+                <div><strong>6 h</strong><span>de marketing por semana</span></div>
+              </div>
+              <p class="panel__foot">
+                Metas desde la apertura pública verificada. El retorno y la conversión no se estiman
+                con seguidores.
+              </p>
+            </article>
+          </div>
+          <article class="panel">
+            <div class="panel__heading">
+              <div>
+                <p class="eyebrow">HISTÓRICO</p>
+                <h3>Últimas semanas registradas</h3>
+              </div>
+              <span class="pill">Manual · sin sincronización social</span>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Semana</th>
+                    <th>YouTube</th>
+                    <th>Instagram</th>
+                    <th>Marketing</th>
+                    <th>Visitas</th>
+                    <th>Primeras sesiones</th>
+                  </tr>
+                </thead>
+                <tbody id="weekly-rows">
+                  <tr>
+                    <td colspan="6">Aún no hay semanas registradas.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="panel__foot">
+              Referencia personal documentada al 22/09/2026: YouTube 2.360 e Instagram 562. Las
+              cuentas propias de Vantare no se suman a esta cifra.
+            </p>
+          </article>
+        </section>
+
+        <section id="view-market" class="view" aria-label="Mercado" hidden>
+          <div class="section-intro">
+            <p class="eyebrow">TODO EL SIMRACING</p>
+            <h2>Escala, escenarios y límites</h2>
+            <p>
+              La comunicación puede dirigirse al sector completo desde el inicio. El mercado que
+              puede usar la app depende de cada compatibilidad publicada y probada.
+            </p>
+          </div>
+          <div class="market-grid">
+            <article class="market-fact">
+              <span>LE MANS ULTIMATE</span><strong>&gt;500.000</strong>
+              <p>copias acumuladas del juego base; no equivalen a usuarios mensuales.</p>
+              <a
+                href="https://motorsportgames.com/motorsport-games-reports-second-quarter-2026-financial-results/"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Fuente oficial ↗</a
+              >
+            </article>
+            <article class="market-fact">
+              <span>IRACING</span><strong>&gt;350.000</strong>
+              <p>
+                usuarios activos declarados en agosto de 2025; aún no servibles sin integración.
+              </p>
+              <a
+                href="https://www.iracing.com/cosworth-and-iracing-unite-to-redefine-data-analysis-in-sim-racing/"
+                target="_blank"
+                rel="noopener noreferrer"
+                >Fuente oficial ↗</a
+              >
+            </article>
+            <article class="market-fact">
+              <span>RACELAB</span><strong>&gt;50.000</strong>
+              <p>usuarios activos declarados por la propia herramienta; definición no publicada.</p>
+              <a href="https://racelab.app/" target="_blank" rel="noopener noreferrer"
+                >Fuente comercial ↗</a
+              >
+            </article>
+          </div>
+          <div class="two-column">
+            <article class="panel">
+              <p class="eyebrow">MODELO · 12 MESES</p>
+              <h3>Escenario editable</h3>
+              <p>
+                Valores hipotéticos tras una apertura pública verificada. No son una previsión
+                basada en datos propios.
+              </p>
+              <form id="scenario-form" class="scenario-form">
+                <label
+                  >Visitas con intención<input
+                    name="visits"
+                    type="number"
+                    min="0"
+                    value="2400" /></label
+                ><label
+                  >Primera sesión / visita (%)<input
+                    name="activation"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value="15" /></label
+                ><label
+                  >Retorno D7–13 (%)<input
+                    name="return"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value="35" /></label
+                ><label
+                  >Pago / retorno (%)<input
+                    name="payment"
+                    type="number"
+                    min="0"
+                    max="100"
+                    value="15"
+                /></label>
+              </form>
+              <div class="scenario-result">
+                <div>
+                  <small>Primeras sesiones</small><strong id="scenario-sessions">360</strong>
+                </div>
+                <div>
+                  <small>Suscripciones activas esperadas</small
+                  ><strong id="scenario-subs">14,2</strong>
+                </div>
+                <div><small>MRR modelado</small><strong id="scenario-mrr">92 €</strong></div>
+              </div>
+              <p class="panel__foot">
+                Supuestos fijos: 75 % de permanencia al cierre y precio medio 6,49 €/mes. Personas
+                decimales = valor esperado del modelo.
+              </p>
+            </article>
+            <article class="panel panel--warm">
+              <p class="eyebrow">TECHO Y EXPECTATIVA</p>
+              <h3>Lo que aún no puede fijarse</h3>
+              <p>
+                No existe un máximo numérico defendible para todo el simracing: las fuentes mezclan
+                jugadores, copias y plataformas, con personas solapadas. La escala visible es
+                grande, pero el techo de Vantare depende de compatibilidad, distribución y capacidad
+                de soporte.
+              </p>
+              <div class="detail-list">
+                <div>
+                  <span>Escenario prudente modelado</span><strong>60 sesiones · ~6 € MRR</strong>
+                </div>
+                <div>
+                  <span>Escenario central de trabajo</span><strong>360 sesiones · ~92 € MRR</strong>
+                </div>
+                <div>
+                  <span>Escenario alto condicionado</span
+                  ><strong>1.200 sesiones · ~584 € MRR</strong>
+                </div>
+              </div>
+              <p class="panel__foot">
+                Estos tres casos son hipótesis, no cifras observadas ni un máximo matemático.
+                <a
+                  href="https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1342"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >Leer estudio completo ↗</a
+                >
+              </p>
+            </article>
+          </div>
+        </section>
+        <footer class="footer">
+          Vantare Intelligence · privado · las fuentes sin verificar permanecen sin cifra
+        </footer>
+      </main>
+    </div>
+  </body>
+</html>

@@ -41,4 +41,6 @@ No se presenta un harness como prueba LMU ni audio físico.
 
 Rollback: revertir esta PR. Sin cambio de reglas CrewChief, T3/T4 o scheduler.
 Roadmap required: sólo milestones:engineer-radio-spotter, cuatro idiomas y JSON
-regenerado desde base. Entrega draft/push, no merge/promoción/release.
+regenerado desde base. La entrega inicial fue draft/push. Isaac autorizó después
+la integración en nightly, seguida en [VAN-759](https://app.notion.com/p/3e4e51695c658192a2def8aa6dc9fb2b);
+no incluye testers, master ni release.

@@ -56,7 +56,7 @@ exacta e inmutable antes de descargar/copiar. No hay subida automática.
 - GPT-6 Sol: detectó y se corrigió el audio pendiente terminal; re-review de
   corrección, concurrencia y bridge sin otro P1/P2. GPT-6 Luna: PASS acotado de UI/bridge/exportación.
 
-## Hallazgo del gate de duplicación
+## Hallazgo inicial del gate de duplicación
 
 El ratchet detecta 42 identidades de clon nuevas tras retirar la CSS antigua,
 aunque las 10 hojas señaladas (home, kit, launcher, profiles, races, roadmap,
@@ -89,8 +89,10 @@ No cambia reglas/timings CrewChief predeterminado ni incorpora T1/T2 sin integra
 El registro no contiene todos los candidatos suprimidos antes de selección ni
 el rollback legacy. Los contadores y latencias internas no miden primer sonido.
 El audio sigue cache-only. Persisten validación acústica, LMU físico y paridad
-completa. Notion/PR conservan SHA, CI y estado actualizado. Entrega draft;
-no merge, promoción ni release en esta tarea. Revertir la PR revierte el corte.
+completa. Notion/PR conservan SHA, CI y estado actualizado. La entrega inicial fue draft;
+Isaac autorizó después la integración en nightly mediante VAN-759. No incluye
+release ni otros canales. Revertir la PR revierte la pantalla; el arreglo de
+audio extraído como prerrequisito se revierte mediante PR1351.
 
 ## Corrección adicional autorizada — rechazo de medios ausentes
 

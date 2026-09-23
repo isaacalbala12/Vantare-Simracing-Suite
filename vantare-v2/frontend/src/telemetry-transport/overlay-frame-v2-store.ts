@@ -671,10 +671,7 @@ function dentsValue(value: unknown, path: string): void {
 
 /** groundPosition is a QValue whose `v` (when present) is a plain {x, z} in metres. */
 function validGroundPosition(value: unknown): boolean {
-  if (!plainObject(value) || !("q" in value)) return false;
-  const keys = Object.keys(value);
-  if (keys.length > 2 || (keys.length === 2 && keys[0] !== "q" && keys[1] !== "q") ||
-      (keys.length === 2 && keys[0] !== "v" && keys[1] !== "v")) return false;
+  if (!validQualityValueShape(value)) return false;
   if (!VALID_QUALITY_STATUSES.has(value.q as string)) return false;
   if (value.q === "missing" && value.v !== undefined) return false;
   if (value.v !== undefined) {
@@ -850,15 +847,23 @@ function qvalue(value: unknown, path: string, kind: "number" | "string" | "boole
 }
 
 function validQValue(value: unknown, kind: "number" | "string" | "boolean"): value is OverlayQValue<unknown> {
-  if (!plainObject(value) || !("q" in value)) return false;
-  const keys = Object.keys(value);
-  if (keys.length > 2 || (keys.length === 2 && keys[0] !== "q" && keys[1] !== "q") ||
-      (keys.length === 2 && keys[0] !== "v" && keys[1] !== "v")) return false;
+  if (!validQualityValueShape(value)) return false;
   if (!VALID_QUALITY_STATUSES.has(value.q as string)) return false;
   if (value.v !== undefined && (typeof value.v !== kind || (kind === "number" && !Number.isFinite(value.v)))) return false;
   if (value.q === "missing" && value.v !== undefined) return false;
   Object.freeze(value);
   return true;
+}
+
+// Shared by ordinary QValues and ground positions so both retain the same
+// strict wire shape without repeating the object-key walk.
+function validQualityValueShape(value: unknown): value is JSONObject {
+  if (!plainObject(value) || !("q" in value)) return false;
+  const keys = Object.keys(value);
+  return keys.length === 1
+    ? keys[0] === "q"
+    : keys.length === 2 &&
+      ((keys[0] === "q" && keys[1] === "v") || (keys[0] === "v" && keys[1] === "q"));
 }
 
 function quality(value: unknown, path: string): asserts value is OverlayQualityV2 {

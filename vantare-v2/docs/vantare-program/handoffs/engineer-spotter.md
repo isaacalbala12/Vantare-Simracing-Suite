@@ -842,3 +842,15 @@ wiring, sin retirada legacy y sin promoción.
 Spotter normal, fuel, penalties genéricas, laps, timings y pit entry/exit;
 las familias parciales o sin capability quedan explícitamente bloqueadas. El
 bridge temporal solo existe en replay y no puede alimentar el runtime entero.
+
+## 2026-09-23 — Corrección aislada de calidad para la pantalla Engineer
+
+[VAN-753](https://app.notion.com/p/3e4e51695c6581a8b409f12fcd1c3f39) / #1346
+separa la reparación del detector de PR1340. Eliminar la antigua CSS genera
+42 registros NEW de 27 identidades en diez fuentes sin cambios. La corrección
+exige igualdad de fuente en la procedencia del baseline confiable, base real
+y disco, conserva cada registro como REGROUPED visible y no altera baseline
+ni producto. Copias nuevas, fuentes modificadas, MOVED y política siguen
+bloqueando. [Diseño y evidencia](../../analysis/isa-1346-quality-clone-regroup.md).
+La PR de tooling requiere revisión por política; CI y SHA vigentes en Notion.
+Sin integración de canal ni release.

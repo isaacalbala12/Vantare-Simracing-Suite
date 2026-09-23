@@ -5,6 +5,12 @@ import (
 	"fmt"
 )
 
+// encoding/json invokes these methods through its standard interfaces.
+var (
+	_ json.Marshaler   = (*RelativeRowV2)(nil)
+	_ json.Unmarshaler = (*RelativeRowV2)(nil)
+)
+
 // relativeRowJSON avoids invoking RelativeRowV2's wire methods recursively.
 type relativeRowJSON RelativeRowV2
 

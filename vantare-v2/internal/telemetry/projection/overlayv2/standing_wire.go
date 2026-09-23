@@ -6,6 +6,13 @@ import (
 	"fmt"
 )
 
+// encoding/json invokes these methods through its standard interfaces.
+var (
+	_ json.Marshaler   = (*StandingRowV2)(nil)
+	_ json.Unmarshaler = (*StandingRowV2)(nil)
+	_ json.Unmarshaler = (*StandingQualityV2)(nil)
+)
+
 type standingRowJSON StandingRowV2
 
 // MarshalJSON shares the declared scalar quality with the three timing cells.

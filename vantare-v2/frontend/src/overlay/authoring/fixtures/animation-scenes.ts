@@ -746,6 +746,18 @@ const FUNCTIONAL_STANDINGS_SCENES: readonly AnimationScene[] = [
 ];
 
 const TOWER_SYSTEMS = ["vantare-functional"] as const;
+const TOWER_CAROUSEL_SCENE: AnimationScene = {
+  id: "broadcast-tower-carousel",
+  widget: "broadcast-tower",
+  systems: TOWER_SYSTEMS,
+  label: "Carrusel de pilotos",
+  watchFor: "La franja gira automáticamente de derecha a izquierda, incluso con los datos en pausa. Vuelta 127 y el lateral permanecen fijos. Observa el cierre del ciclo sin salto; la prueba recorre los pilotos seleccionados. Movimiento reducido muestra la franja quieta.",
+  frameMs: 30000,
+  frames: [
+    { caption: "Solo gira la franja de pilotos; vuelta y datos laterales fijos." },
+    { caption: "Mismos datos: el recorrido continúa sin reiniciarse." },
+  ],
+};
 const TOWER_CROSSING_SCENE: AnimationScene = {
   id: "broadcast-tower-crossing",
   widget: "broadcast-tower",
@@ -854,6 +866,7 @@ export const ANIMATION_SCENES: readonly AnimationScene[] = [
   DELTA_NEW_BEST_SCENE,
   PEDALS_LAP_SCENE,
   PEDALS_CLUTCH_SCENE,
+  TOWER_CAROUSEL_SCENE,
   TOWER_SWEEP,
   TOWER_CROSSING_SCENE,
   TOWER_FAST_INVERSION_SCENE,

@@ -266,6 +266,22 @@ describe("OverlayWorkshopDevRoute", () => {
     expect(window.location.search).not.toContain("scene=");
   });
 
+  it("runs the driver carousel only in its study while the lap block stays outside the rail", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=broadcast-tower&system=vantare-functional&session=race&scene=broadcast-tower-carousel&frame=0" />);
+    await waitFor(() => expect(document.querySelector(".vf-bt-carousel-rail")).toBeTruthy());
+    const rail = document.querySelector(".vf-bt-carousel-rail")!;
+    const lap = document.querySelector(".vf-bt-lead")!;
+    expect(lap.textContent).toContain("127");
+    expect(rail.contains(lap)).toBe(false);
+    expect(rail.contains(document.querySelector(".vf-bt-side"))).toBe(false);
+    fireEvent.change(screen.getByTestId("workshop-scene-scrub"), { target: { value: "1" } });
+    expect(document.querySelector(".vf-bt-carousel-rail")).toBe(rail);
+    expect(document.querySelector(".vf-bt-lead")).toBe(lap);
+    fireEvent.change(screen.getByLabelText("Escena"), { target: { value: "broadcast-tower-crossing" } });
+    await waitFor(() => expect(document.querySelector(".vf-bt-carousel-rail")).toBeNull());
+    expect(document.querySelectorAll("[data-bt-row]").length).toBeGreaterThan(0);
+  });
+
   it("declares the canvas size through the study view preset and free dimensions", async () => {
     render(
       <OverlayWorkshopDevRoute search="?widget=delta&system=vantare-original&state=ready&surface=studio&variant=default" />,

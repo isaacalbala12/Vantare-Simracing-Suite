@@ -184,6 +184,10 @@ export function buildWorkshopWidget(input: {
     ...(input.sceneId ? { sceneId: input.sceneId } : {}),
   });
 
+  if (input.widget === "broadcast-tower" && input.system === EFFICIENCY_SYSTEM_ID && input.sceneId === "broadcast-tower-carousel") {
+    widget.visual = { ...widget.visual, baseSettings: { ...widget.visual.baseSettings, driverCarousel: true } };
+  }
+
   // El estudio cambia explícitamente la columna de vuelta fuera de carrera;
   // los perfiles guardados no los toca nunca el renderer al cambiar la sesión.
   // Solo Standings tiene columnas de vuelta — Delta/Pedals no llevan
@@ -863,6 +867,11 @@ function applyScene(
   }
   let delta = frame.delta;
   let session = frame.session;
+  if (scene.id === "broadcast-tower-carousel") {
+    // Explicit review fixture: only the pilot strip moves, all data stay still.
+    standings = standings.map((row) => ({ ...row, laps: 127 }));
+    session = { ...session, maxLaps: qualityValue(180, quality) };
+  }
   if (state.player?.deltaSeconds !== undefined) {
     delta = { ...delta, seconds: qualityValue(state.player.deltaSeconds, quality) };
   }

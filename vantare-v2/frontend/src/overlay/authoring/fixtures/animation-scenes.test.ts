@@ -5,7 +5,7 @@ import {
   listAnimationScenes,
   sceneFrameAt,
 } from "./animation-scenes";
-import { buildWorkshopFrameV2, createScenarioWidget, type WorkshopV2Scenario } from "./authoring-v2-workshop-frame";
+import { buildWorkshopFrameV2, buildWorkshopWidget, createScenarioWidget, type WorkshopV2Scenario } from "./authoring-v2-workshop-frame";
 import { buildStandingsViewModelV2 } from "../../widget-types/standings/standings-view-model-v2";
 import { parseStandingsContent } from "../../widget-types/standings/standings-content";
 import { deriveStandingsEvents, deriveBattlePairs } from "../../design-systems/vantare-endurance/standings/standings-motion";
@@ -146,6 +146,7 @@ describe("animation scene catalog", () => {
   it("filters Horizontal Standings scenes to the Functional design system", () => {
     const ids = listAnimationScenes("broadcast-tower", "vantare-functional").map((scene) => scene.id);
     expect(ids).toEqual([
+      "broadcast-tower-carousel",
       "broadcast-tower-overtake-sequence",
       "broadcast-tower-crossing",
       "broadcast-tower-fast-inversion",
@@ -160,6 +161,19 @@ describe("animation scene catalog", () => {
     expect(parseOverlayWorkshopQuery("?widget=broadcast-tower&system=vantare-original&scene=broadcast-tower-crossing")).toEqual({
       error: "scene broadcast-tower-crossing requires system=vantare-functional",
     });
+  });
+
+  it("opts into the carousel only in its study and keeps the review data stable", () => {
+    const input = { widget: "broadcast-tower", system: "vantare-functional", variant: "default", session: "race" } as const;
+    const carousel = buildWorkshopWidget({ ...input, sceneId: "broadcast-tower-carousel" });
+    expect(carousel.visual.baseSettings.driverCarousel).toBe(true);
+    expect(buildWorkshopWidget({ ...input, sceneId: "broadcast-tower-crossing" }).visual.baseSettings.driverCarousel).toBeUndefined();
+    expect(buildWorkshopWidget({ ...input, system: "vantare-crystal", sceneId: "broadcast-tower-carousel" }).visual.baseSettings.driverCarousel).toBeUndefined();
+    const first = towerModelAt("broadcast-tower-carousel", 0);
+    const last = towerModelAt("broadcast-tower-carousel", 1);
+    expect(first).toMatchObject({ lap: 127, totalLaps: 180 });
+    expect(last).toEqual(first);
+    expect(parseOverlayWorkshopQuery("?widget=broadcast-tower&system=vantare-functional&scene=broadcast-tower-carousel")).toMatchObject({ sceneId: "broadcast-tower-carousel" });
   });
 
   it("only flags gaps declared by the V2 presentation contract", () => {

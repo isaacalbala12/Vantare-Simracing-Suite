@@ -491,8 +491,10 @@
 .vf-bt-session { font: 600 8px/1 Inter, Arial, sans-serif; letter-spacing: .16em; color: var(--vf-muted); text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .vf-bt-lap { font: 700 17px/1 Inter, Arial, sans-serif; letter-spacing: -.02em; color: var(--vf-ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .vf-bt-lap-total { margin-left: 1px; font-size: 10px; font-weight: 600; color: var(--vf-muted); }
-.vf-bt-stream { display: flex; flex: 1; min-width: 0; align-items: stretch; }
-.vf-bt-card { display: flex; align-items: center; gap: 9px; flex: 1 1 0; min-width: 0; padding: 0 12px; }
+.vf-bt-stream { position: relative; display: flex; flex: 1; min-width: 0; align-items: stretch; }
+.vf-bt-card { position: relative; display: flex; align-items: center; gap: 9px; flex: 1 1 0; min-width: 0; padding: 0 12px; }
+.vf-bt-cue { position: absolute; inset: 0; pointer-events: none; }
+.vf-bt-card[data-bt-ghost] { position: absolute; top: 0; bottom: 0; z-index: 2; pointer-events: none; }
 .vf-bt-card + .vf-bt-card { border-left: 1px solid var(--vf-line); }
 .vf-bt-card[data-player="true"] { background: var(--vf-player); box-shadow: inset 0 1px rgb(255 255 255 / 13%), inset 0 -1px rgb(255 255 255 / 8%); }
 .vf-bt-place { flex-shrink: 0; font: 650 15px/1 Inter, Arial, sans-serif; font-variant-numeric: tabular-nums; color: var(--vf-muted); }

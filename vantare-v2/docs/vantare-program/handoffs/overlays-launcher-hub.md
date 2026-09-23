@@ -19,6 +19,25 @@ La inspección inicial detecta reinicio de FLIP por cada modelo, ausencia de bas
 
 La PR [#1317](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1317) fue integrada por squash en `nightly` como `e6d7d2b5e58f55b82c0ed2f6a79667476d897086`, después de la aceptación de Isaac. Head fuente `86249c3a`; checks remotos de promoción, blocking gates, ratchet y GitGuardian aprobados. Árbol remoto coincide con la entrega. Asana `1218757534554194` registra integración y conserva pendiente la revisión física Windows/OBS que Isaac hará en nightly. No se promovió a testers/master.
 
+## ISA-1332 — Horizontal Standings: animaciones (2026-09-23)
+
+Seguimiento principal en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756818225223), En curso por petición de Isaac. [Puente técnico #1332](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1332). Base `nightly e6d7d2b5`; rama `vantareapp/isa-1332-horizontal-motion`. [Plan](../../plans/2026-09-23-isa-1332-horizontal-motion.md).
+
+Isaac confirma Relative y Pedals; ambas revisiones se marcan completadas en Asana, sin confundir Pedals con Pedals telemetry ni aceptación con integración remota. El horizontal carece de animaciones en su renderer Eficiencia y usa una clave dependiente de la posición. Se implementan identidad canónica, movimiento horizontal discreto, fundidos de presencia y señal tenue de posición, con cifras estables y sin trabajo de animación por telemetría numérica. GPT-6 Sol trabaja renderer/VM/pruebas; GPT-6 Luna, escenas; el orquestador revisa y compone. Próximo paso: verificar e incorporar al preview combinado, preservando Delta/Standings/Relative. Sin merge ni certificación física.
+
+### ISA-1332 — renderer verificado
+
+Renderer/VM de GPT-6 Sol en `6c67ed73`: IDs canónicos, desplazamiento horizontal de 250–360 ms, fundidos de 120 ms y señal verde/roja al 5 % durante 450 ms. Cifras no inician efectos; 100 muestras quietas y durante movimiento/entrada no añaden mediciones, timers ni animaciones. Modos reducidos, retarget a escala 1,5, salida durante entrada y StrictMode cubiertos. Worker: 44 pruebas focales, tipos/build/lint de archivos modificados PASS. Root: suite frontend completa sobre el renderer y documentación, 469 archivos, 3790 PASS y 2 omitidas; el warning AbortError de cierre del entorno DOM no produjo fallo. Se retiraron únicamente cinco PNG de revisión regenerados incidentalmente por la suite, manteniendo las referencias versionadas.
+
+GPT-6 Astra revisa independientemente los ocho archivos y pasa 40 pruebas: sin hallazgos bloqueantes. [Informe](../../analysis/isa-1332/motion-review.md). Los efectos React siguen ejecutándose y retornan antes de medir/animar; no se promete coste CPU nulo. Sin inspección visual de navegador/WAAPI físico. Próximo paso: incorporar y comprobar las escenas y el preview combinado.
+
+### ISA-1332 — entrega preparada para revisión visual
+
+Escenas de GPT-6 Luna `8d6f1239`: Secuencia completa, Cruce de posiciones, Inversión rápida, Salida y reentrada y Cifras sin reordenar. Filtro Eficiencia y pasos exactos en pausa; 65 pruebas focales y tipos PASS. Root compone el candidato fuente `4fcafa59`, idéntico al árbol comprobado `511489f0`: frontend completo 469 archivos, 3794 PASS y 2 omitidas; lint, build/TypeScript y ratchet PASS (NEW=0, MOVED=0, policy_changed=false). Contrato de roadmap verificado contra la issue viva: únicamente `milestones:functional-widget-design`. No se tocaron reglas, dependencias ni código Go; no se repitieron pruebas globales Go por ese alcance frontend.
+
+GPT-6 Sol integra en una copia del preview y resuelve los conflictos conservando los filtros por sistema/sesión, los pasos exactos y todas las escenas Relative/Standings. Preview limpio `752bc0cc`: 188 pruebas focales del conjunto, tipos/build y diff limpio PASS. Root revisa el diff respecto a `d3aea8bc`: el CSS modificado se limita a Horizontal Standings, sin recuperar las transformaciones Delta retiradas. El servidor existente 5177 sigue en el mismo directorio; su checkout pasa a `752bc0cc` únicamente tras comprobar la composición. La apertura de la pestaña se solicitó a Codex y quedó encolada; no equivale a inspección visual.
+
+Revisión manual: [Workshop · Secuencia completa](http://127.0.0.1:5177/workshop?widget=broadcast-tower&system=vantare-functional&session=race&scene=broadcast-tower-overtake-sequence&frame=0&brand=off) → Reproducir. Revisar después Inversión rápida y Salida y reentrada; repetir práctica/clasificación y movimiento reducido. Asana Horizontal Standings sigue En curso hasta aceptación de Isaac. Relative y Pedals están completados por su confirmación. Fuente `vantareapp/isa-1332-horizontal-motion` desde nightly `e6d7d2b5`; publicación como PR draft, sin merge ni promoción. El seguimiento Asana conserva la URL/SHA y el estado remoto actual tras publicar. Sin certificación visual nativa ni Windows/OBS.
 
 ## ISA-1162 — enlace OBS restaurado al pie del dock del Studio (2026-09-11)
 

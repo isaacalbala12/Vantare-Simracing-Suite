@@ -13,6 +13,9 @@ import { groupRowsByClass } from "../../design-systems/vantare-endurance/standin
 import { deriveRelativeEvents } from "../../design-systems/vantare-endurance/relative/relative-motion";
 import { buildRelativeViewModelV2, relativeDisplayedValues } from "../../widget-types/relative/relative-view-model-v2";
 import { parseRelativeContent } from "../../widget-types/relative/relative-content";
+import { broadcastTowerDefinition } from "../../widget-types/broadcast-tower/broadcast-tower-definition";
+import { buildBroadcastTowerViewModelV2 } from "../../widget-types/broadcast-tower/broadcast-tower-view-model-v2";
+import { parseOverlayWorkshopQuery } from "../overlay-workshop-query";
 import { projectionGapsFor } from "./projection-gaps";
 import { relativeStructureKey } from "../../design-systems/vantare-functional/relative-presentation";
 
@@ -62,6 +65,24 @@ function modelAt(sceneId: string, frame: number) {
   const widget = createScenarioWidget(input);
   return buildStandingsViewModelV2(
     runtime.overlayV2Frame!, runtime.overlayV2Source!, parseStandingsContent(widget.content),
+  );
+}
+
+function towerModelAt(sceneId: string, frame: number, session: "practice" | "qualifying" | "race" = "race") {
+  const input: WorkshopV2Scenario = {
+    session,
+    location: "track",
+    state: "ready",
+    widget: "broadcast-tower",
+    system: "vantare-functional",
+    variant: "default",
+    sceneId,
+    sceneFrame: frame,
+  };
+  const runtime = buildWorkshopFrameV2(input);
+  const widget = createScenarioWidget(input);
+  return buildBroadcastTowerViewModelV2(
+    runtime.overlayV2Frame!, runtime.overlayV2Source!, broadcastTowerDefinition.parseContent(widget.content),
   );
 }
 
@@ -120,6 +141,24 @@ describe("animation scene catalog", () => {
         });
       }
     }
+
+  it("filters Horizontal Standings scenes to the Functional design system", () => {
+    const ids = listAnimationScenes("broadcast-tower", "vantare-functional").map((scene) => scene.id);
+    expect(ids).toEqual([
+      "broadcast-tower-overtake-sequence",
+      "broadcast-tower-crossing",
+      "broadcast-tower-fast-inversion",
+      "broadcast-tower-exit-reentry",
+      "broadcast-tower-stable-values",
+    ]);
+    expect(listAnimationScenes("broadcast-tower", "vantare-original")).toEqual([]);
+    expect(listAnimationScenes("standings").some((scene) => scene.id === "standings-overtake")).toBe(true);
+    expect(parseOverlayWorkshopQuery("?widget=broadcast-tower&system=vantare-functional&scene=broadcast-tower-crossing")).toMatchObject({
+      widget: "broadcast-tower", system: "vantare-functional", sceneId: "broadcast-tower-crossing",
+    });
+    expect(parseOverlayWorkshopQuery("?widget=broadcast-tower&system=vantare-original&scene=broadcast-tower-crossing")).toEqual({
+      error: "scene broadcast-tower-crossing requires system=vantare-functional",
+    });
   });
 
   it("only flags gaps declared by the V2 presentation contract", () => {
@@ -148,6 +187,46 @@ describe("animation scene catalog", () => {
 });
 
 describe("scenes drive the motion engine", () => {
+  it("shows the full tower position sequence in practice, qualifying, and race", () => {
+    for (const session of ["practice", "qualifying", "race"] as const) {
+      const start = towerModelAt("broadcast-tower-overtake-sequence", 0, session);
+      const crossed = towerModelAt("broadcast-tower-overtake-sequence", 1, session);
+      const final = towerModelAt("broadcast-tower-overtake-sequence", 6, session);
+      expect(start.sessionLabel).toBe(session.toUpperCase());
+      expect(start.rows).toHaveLength(10);
+      expect(start.rows.slice(0, 6).map((row) => row.name)).toEqual([
+        "André Lotterer", "Ben Hanley", "Kévin Estre", "Antonio Giovinazzi", "Filipe Albuquerque", "Alessandro Pier Guidi",
+      ]);
+      expect(start.rows.find((row) => row.place === 2)?.name).toBe("Ben Hanley");
+      expect(crossed.rows.find((row) => row.place === 2)?.name).toBe("Filipe Albuquerque");
+      expect(crossed.rows.find((row) => row.place === 5)?.name).toBe("Ben Hanley");
+      expect(final.rows.find((row) => row.place === 2)?.name).toBe("Ben Hanley");
+      expect(final.rows.find((row) => row.place === 5)?.name).toBe("Filipe Albuquerque");
+    }
+  });
+
+  it("covers a single crossing, a fast reversal, exit/reentry, and changing numbers without reordering", () => {
+    const crossingBefore = towerModelAt("broadcast-tower-crossing", 0);
+    const crossingAfter = towerModelAt("broadcast-tower-crossing", 1);
+    expect(crossingBefore.rows.find((row) => row.place === 2)?.name).toBe("Ben Hanley");
+    expect(crossingAfter.rows.find((row) => row.place === 2)?.name).toBe("Filipe Albuquerque");
+    expect(towerModelAt("broadcast-tower-fast-inversion", 1).rows.find((row) => row.place === 2)?.name).toBe("Filipe Albuquerque");
+    expect(towerModelAt("broadcast-tower-fast-inversion", 2).rows.find((row) => row.place === 2)?.name).toBe("Ben Hanley");
+
+    const present = towerModelAt("broadcast-tower-exit-reentry", 0);
+    const absent = towerModelAt("broadcast-tower-exit-reentry", 1);
+    const reentered = towerModelAt("broadcast-tower-exit-reentry", 2);
+    expect(present.rows).toHaveLength(10);
+    expect(absent.rows.some((row) => row.name === "Kévin Estre")).toBe(false);
+    expect(absent.rows).toHaveLength(10);
+    expect(reentered.rows.find((row) => row.place === 3)?.name).toBe("Kévin Estre");
+
+    const steady = towerModelAt("broadcast-tower-stable-values", 0);
+    const updated = towerModelAt("broadcast-tower-stable-values", 1);
+    expect(steady.rows.map((row) => row.name)).toEqual(updated.rows.map((row) => row.name));
+    expect(steady.rows.find((row) => row.name === "Ben Hanley")?.gap).toBe(0.4);
+    expect(updated.rows.find((row) => row.name === "Ben Hanley")?.gap).toBe(0.2);
+  });
   it("overtake swaps two cars, which is what the engine reports", () => {
     const before = modelAt("standings-overtake", 1);
     const after = modelAt("standings-overtake", 2);

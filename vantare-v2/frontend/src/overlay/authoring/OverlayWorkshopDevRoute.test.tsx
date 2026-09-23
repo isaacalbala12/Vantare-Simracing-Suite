@@ -200,7 +200,7 @@ describe("OverlayWorkshopDevRoute", () => {
     );
 
     await waitFor(() => expect(document.querySelector("[data-widget-system=vantare-functional]")).toBeTruthy());
-    expect(screen.getByTestId("workshop-scene-watch").textContent).toMatch(/cruce en ambos sentidos.*salida y reentrada/i);
+    expect(screen.getByTestId("workshop-scene-watch").textContent).toMatch(/cruce en ambos sentidos.*entrada y salida/i);
 
     const scrub = screen.getByTestId("workshop-scene-scrub") as HTMLInputElement;
     fireEvent.change(scrub, { target: { value: "2" } });
@@ -209,6 +209,7 @@ describe("OverlayWorkshopDevRoute", () => {
 
     fireEvent.click(screen.getByTestId("workshop-scene-run"));
     await waitFor(() => expect(screen.getByTestId("workshop-scene-play").getAttribute("aria-pressed")).toBe("true"));
+  });
 
   it("shows Functional Horizontal Standings scenes and parks fast inversions on the exact keyframe", async () => {
     render(<OverlayWorkshopDevRoute search="?widget=broadcast-tower&system=vantare-functional&state=ready&surface=obs&scene=broadcast-tower-fast-inversion&frame=1" />);

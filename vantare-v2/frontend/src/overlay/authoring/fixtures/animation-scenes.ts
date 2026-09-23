@@ -876,7 +876,6 @@ export function listAnimationScenes(widget: WidgetType, system?: DesignSystemId,
     && !(system === "vantare-functional" && widget === "relative" && (scene.id === "relative-cross" || scene.id === "relative-enter")),
   );
 }
-}
 
 /** Wraps so the transport can loop and step backwards past zero. */
 export function sceneFrameAt(scene: AnimationScene, frame: number): SceneFrame {

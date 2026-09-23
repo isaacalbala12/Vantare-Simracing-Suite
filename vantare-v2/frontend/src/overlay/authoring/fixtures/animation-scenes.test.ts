@@ -141,6 +141,7 @@ describe("animation scene catalog", () => {
         });
       }
     }
+  });
 
   it("filters Horizontal Standings scenes to the Functional design system", () => {
     const ids = listAnimationScenes("broadcast-tower", "vantare-functional").map((scene) => scene.id);

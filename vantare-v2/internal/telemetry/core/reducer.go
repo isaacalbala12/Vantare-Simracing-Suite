@@ -96,6 +96,7 @@ type ObservedState struct {
 	WetnessFraction schema.Field[weather.Fraction]
 	SessionFlag     schema.Field[session.Flag]
 	Vehicles        []VehicleState
+	TrackLength     schema.Field[standings.LapDistance]
 }
 
 // Batch carries one complete observed state and its canonical ordering header.

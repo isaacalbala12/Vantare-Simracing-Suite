@@ -78,6 +78,7 @@ type Observation struct {
 	EndTime        schema.Field[session.EndTime]
 	MaximumLaps    schema.Field[session.MaximumLaps]
 	TrackName      schema.Field[string]
+	TrackLength    schema.Field[standings.LapDistance]
 	SessionType    schema.Field[session.Type]
 	VehicleCount   schema.Field[schema.Count]
 	PlayerPresent  schema.Field[bool]
@@ -210,6 +211,13 @@ func parseWithProfile(buf []byte, received time.Time, profile compatibilityProfi
 	result.Fingerprint = fmt.Sprintf(knownFingerprintFormat, profile.version, evidence, telemetryEvidence)
 	result.PlayerPresent = observed(playerPresent)
 	result.TrackName = observed(normalizeTrackName(track))
+	// LMUScoringInfo.mLapDist, audited header +88 (absolute 1720).
+	length := readFloat64(buf, lmu13Layout.Session.TrackLength.Offset)
+	if finite(length) && length > 0 {
+		result.TrackLength = observed(standings.LapDistance(length))
+	} else if length != 0 {
+		result.TrackLength = invalid[standings.LapDistance]()
+	}
 	result.VehicleCount = validateCount(vehicles, 0, maxVehicles)
 	result.SessionType = validateSessionType(readInt32(buf, lmu13Layout.Session.SessionType.Offset))
 	result.SourceTime = validateDuration(currentSeconds)

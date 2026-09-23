@@ -379,7 +379,7 @@ function sourceStatus(value: unknown, path: string): void {
 function frame(value: unknown, path: string, validatedBase?: OverlayFrameV2): void {
   objectWithKeys(value, path, [
     "contract", "algorithm", "epoch", "sequence", "sectionMask", "sessionId", "generatedAt", "units",
-    "session", "player", "controls", "standings", "relative", "relativeSettled", "delta", "fuel", "spotter", "capabilities", "damage", "weather",
+    "session", "player", "controls", "standings", "relative", "relativeSettled", "relativeSameClass", "delta", "fuel", "spotter", "capabilities", "damage", "weather",
   ]);
   if (value.contract !== 2) invalid(`${path}.contract`);
   positiveInteger(value.algorithm, `${path}.algorithm`);
@@ -400,6 +400,7 @@ function frame(value: unknown, path: string, validatedBase?: OverlayFrameV2): vo
   if (!validatedBase || value.standings !== validatedBase.standings) rowArray(value.standings, `${path}.standings`, validStanding);
   if (!validatedBase || value.relative !== validatedBase.relative) relativeRowArray(value.relative, `${path}.relative`);
   if (!validatedBase || value.relativeSettled !== validatedBase.relativeSettled) relativeRowArray(value.relativeSettled, `${path}.relativeSettled`);
+  if (!validatedBase || value.relativeSameClass !== validatedBase.relativeSameClass) relativeRowArray(value.relativeSameClass, `${path}.relativeSameClass`);
   delta(value.delta, `${path}.delta`);
   fuel(value.fuel, `${path}.fuel`);
   spotter(value.spotter, `${path}.spotter`);
@@ -558,11 +559,11 @@ function weather(value: unknown, path: string): void {
 }
 
 function validRelative(value: unknown): boolean {
-  if (!objectHasKeys(value, ["id", "position", "gap", "lapDelta", "groundPosition", "lastLap", "side", "authority"], ["name", "classId"])) return false;
+  if (!objectHasKeys(value, ["id", "position", "gap", "lapDelta", "lastLap", "bestLap", "side", "authority"], ["name", "classId", "number"])) return false;
   const valid = typeof value.id === "string" && value.id.length > 0 &&
     typeof value.position === "number" && Number.isSafeInteger(value.position) && value.position > 0 &&
-    validQValue(value.gap, "number") && validQValue(value.lapDelta, "number") && validGroundPosition(value.groundPosition) &&
-    validQValue(value.lastLap, "number") && ["ahead", "player", "behind"].includes(value.side as string) &&
+    validQValue(value.gap, "number") && validQValue(value.lapDelta, "number") &&
+    validQValue(value.bestLap, "number") && optionalStringValue(value.number) && validQValue(value.lastLap, "number") && ["ahead", "player", "behind"].includes(value.side as string) &&
     ["native", "derived", "estimated"].includes(value.authority as string) &&
     optionalStringValue(value.name) && optionalStringValue(value.classId);
   if (valid) Object.freeze(value);

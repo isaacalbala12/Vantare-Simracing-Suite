@@ -106,51 +106,31 @@ func hashStandingsVehicle(sum uint64, vehicle *core.VehicleState) uint64 {
 }
 
 // hashRelativeMark fingerprints exactly the fields BuildRelative projects, scoped
-// to the published window around the player. A signal the builder ignores (RPM,
+// to both published windows around the player. A signal the builder ignores (RPM,
 // world position, fuel) never marks the section dirty; changing the player or
 // any neighbour inside the window always does, even if the rest of the grid is
 // untouched. The hash is ordered near->far ahead, player, near->far behind.
 func hashRelativeMark(final derive.FinalState) uint64 {
 	sum := fnvOffset64
-	window, found := selectPhysicalRelativeWindow(final.Observed.Vehicles)
-	if !found {
-		sum = hashByte(sum, 0)
-		return sum
+	for _, rows := range [][]RelativeRowV2{BuildRelative(final), BuildRelativeSameClass(final)} {
+		sum = hashUint64(sum, uint64(len(rows)))
+		for _, row := range rows {
+			sum = hashRelativeRow(sum, row)
+		}
 	}
-	sum = hashByte(sum, 1)
-	gapsByVehicle := make(map[string]derive.VehicleGap, len(final.Derived.Gaps.Vehicles))
-	for _, gap := range final.Derived.Gaps.Vehicles {
-		gapsByVehicle[string(gap.Vehicle)] = gap
-	}
-	positions := make(map[string]int32, len(final.Observed.Vehicles))
-	for index, current := range orderedVehicles(final.Observed.Vehicles) {
-		positions[string(current.Identity.Vehicle)] = resolvedPosition(current, index)
-	}
-
-	for _, current := range window.ahead {
-		row := relativeRow(current, positions[string(current.Identity.Vehicle)], gapsByVehicle[string(current.Identity.Vehicle)], RelativeSideAhead)
-		sum = hashRelativeRow(sum, row)
-	}
-	sum = hashRelativeRow(sum, playerRelativeRow(window.player, positions[string(window.player.Identity.Vehicle)], gapsByVehicle[string(window.player.Identity.Vehicle)]))
-	for _, current := range window.behind {
-		row := relativeRow(current, positions[string(current.Identity.Vehicle)], gapsByVehicle[string(current.Identity.Vehicle)], RelativeSideBehind)
-		sum = hashRelativeRow(sum, row)
-	}
-	sum = hashUint64(sum, uint64(len(window.ahead)))
-	sum = hashUint64(sum, uint64(len(window.behind)))
 	return sum
 }
 
 func hashRelativeRow(sum uint64, row RelativeRowV2) uint64 {
 	sum = hashString(sum, row.VehicleID)
+	sum = hashString(sum, row.CarNumber)
+	sum = hashString(sum, string(row.BestLapSeconds.Q))
+	sum = hashUint64(sum, math.Float64bits(row.BestLapSeconds.V))
 	sum = hashUint64(sum, uint64(row.Position))
 	sum = hashString(sum, string(row.GapSeconds.Q))
 	sum = hashUint64(sum, math.Float64bits(row.GapSeconds.V))
 	sum = hashString(sum, string(row.LapDelta.Q))
 	sum = hashUint64(sum, uint64(uint32(row.LapDelta.V)))
-	sum = hashString(sum, string(row.GroundPosition.Q))
-	sum = hashUint64(sum, math.Float64bits(row.GroundPosition.V.X))
-	sum = hashUint64(sum, math.Float64bits(row.GroundPosition.V.Z))
 	sum = hashString(sum, string(row.LastLapSeconds.Q))
 	sum = hashUint64(sum, math.Float64bits(row.LastLapSeconds.V))
 	sum = hashString(sum, row.Side)

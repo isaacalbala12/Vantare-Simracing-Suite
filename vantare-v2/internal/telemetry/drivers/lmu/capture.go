@@ -1152,6 +1152,7 @@ func (sanitizer *FrameSanitizer) Sanitize(input []byte) ([]byte, error) {
 		lmu13Layout.Session.EndTime,
 		lmu13Layout.Session.MaximumLaps,
 		lmu13Layout.Session.RainFraction,
+		lmu13Layout.Session.TrackLength,
 		lmu13Layout.Session.VehicleCount,
 	} {
 		copyLayoutField(output, input, field, 0)

@@ -75,7 +75,7 @@ describe("OverlayFrame v2 store", () => {
     expect(() => decodeOverlayUpdateV2(withoutBestLap)).toThrow(
       "overlay-frame-v2:invalid-contract:frame.standings[0]",
     );
-    for (const field of ["position", "groundPosition", "lastLap", "lapDelta"] as const) {
+    for (const field of ["position", "bestLap", "lastLap", "lapDelta"] as const) {
       const incomplete = JSON.parse(JSON.stringify(update)) as Record<string, unknown>;
       const frame = incomplete.frame as { relative: Record<string, unknown>[] };
       delete frame.relative[0]?.[field];
@@ -113,7 +113,7 @@ describe("OverlayFrame v2 store", () => {
     })).toThrow("overlay-frame-v2:invalid-contract:frame.capabilities.performance.reason");
   });
 
-  it.each(["relative", "relativeSettled"] as const)("preserves signed lapDelta and its quality in %s independently of the time gap", (field) => {
+  it.each(["relative", "relativeSettled", "relativeSameClass"] as const)("preserves signed lapDelta and its quality in %s independently of the time gap", (field) => {
     const update = golden();
     if (!update.frame) throw new Error("golden frame missing");
     const values = [
@@ -131,7 +131,7 @@ describe("OverlayFrame v2 store", () => {
     }
   });
 
-  it.each(["relative", "relativeSettled"] as const)("rejects missing or malformed lapDelta and unknown fields in %s", (field) => {
+  it.each(["relative", "relativeSettled", "relativeSameClass"] as const)("rejects missing or malformed lapDelta and unknown fields in %s", (field) => {
     const update = golden();
     if (!update.frame) throw new Error("golden frame missing");
     const row = update.frame[field][0];
@@ -181,7 +181,7 @@ describe("OverlayFrame v2 store", () => {
       },
     })).not.toThrow();
 
-    for (const field of ["relative", "relativeSettled"] as const) {
+    for (const field of ["relative", "relativeSettled", "relativeSameClass"] as const) {
       expect(() => decodeOverlayUpdateV2({
         ...update,
         frame: { ...update.frame, [field]: [...seventeen, { ...row, id: `${field}-overflow` }] },

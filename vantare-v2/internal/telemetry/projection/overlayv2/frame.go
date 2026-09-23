@@ -143,12 +143,14 @@ type FrameV2 struct {
 	// reference projector publishes Relative here; only CachedProjector owns
 	// the historical authority needed to settle it.
 	RelativeSettled []RelativeRowV2 `json:"relativeSettled"`
-	Delta           DeltaViewV2     `json:"delta"`
-	Fuel            FuelViewV2      `json:"fuel"`
-	Spotter         SpotterViewV2   `json:"spotter"`
-	Damage          DamageViewV2    `json:"damage"`
-	Weather         WeatherV2       `json:"weather"`
-	Capabilities    CapabilitiesV2  `json:"capabilities"`
+	// RelativeSameClass is the independently selected, bounded immediate class window.
+	RelativeSameClass []RelativeRowV2 `json:"relativeSameClass"`
+	Delta             DeltaViewV2     `json:"delta"`
+	Fuel              FuelViewV2      `json:"fuel"`
+	Spotter           SpotterViewV2   `json:"spotter"`
+	Damage            DamageViewV2    `json:"damage"`
+	Weather           WeatherV2       `json:"weather"`
+	Capabilities      CapabilitiesV2  `json:"capabilities"`
 }
 
 type SessionV2 struct {
@@ -233,18 +235,19 @@ type StandingRowV2 struct {
 }
 
 type RelativeRowV2 struct {
-	VehicleID  string          `json:"id"`
-	Position   int32           `json:"position"`
-	GapSeconds QValue[float64] `json:"gap"`
+	CarNumber      string          `json:"number,omitempty"`
+	BestLapSeconds QValue[float64] `json:"bestLap"`
+	VehicleID      string          `json:"id"`
+	Position       int32           `json:"position"`
+	GapSeconds     QValue[float64] `json:"gap"`
 	// LapDelta is the classification lap difference: positive means the rival has
 	// more laps than the player, independent of physical side or temporal gap.
-	LapDelta       QValue[int32]            `json:"lapDelta"`
-	GroundPosition QValue[GroundPositionV2] `json:"groundPosition"`
-	LastLapSeconds QValue[float64]          `json:"lastLap"`
-	Side           string                   `json:"side"`
-	Authority      Authority                `json:"authority"`
-	DisplayName    string                   `json:"name,omitempty"`
-	ClassID        string                   `json:"classId,omitempty"`
+	LapDelta       QValue[int32]   `json:"lapDelta"`
+	LastLapSeconds QValue[float64] `json:"lastLap"`
+	Side           string          `json:"side"`
+	Authority      Authority       `json:"authority"`
+	DisplayName    string          `json:"name,omitempty"`
+	ClassID        string          `json:"classId,omitempty"`
 }
 
 // DeltaReferenceViewV2 resolves one widget reference request in Go.

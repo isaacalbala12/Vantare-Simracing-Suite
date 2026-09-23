@@ -137,3 +137,16 @@ describe("Functional Relative", () => {
     expect(container.querySelector('[data-testid="widget-host-diagnostic"]')).toBeNull();
   });
 });
+
+it("marks only the stale lap cell while preserving fresh gap and lap badge", () => {
+  const { container } = render(<RelativeFunctional model={{ ...model, sessionLabel: "RACE", rows: model.rows.map((row) => ({
+    ...row, fieldQuality: { gap: "fresh", bestLap: "stale" }, lapDelta: row.isPlayer ? null : -1,
+  })) }} settings={{}} renderMode="harness" />);
+  const best = container.querySelector<HTMLElement>('[data-relative-row="ahead"] [data-metric="bestLap"]')!;
+  const gap = container.querySelector<HTMLElement>('[data-relative-row="ahead"] [data-metric="gap"]')!;
+  expect(best.dataset.quality).toBe("stale");
+  expect(best.style.opacity).toBe("0.6");
+  expect(gap.dataset.quality).toBe("fresh");
+  expect(gap.style.opacity).toBe("");
+  expect(container.querySelector('[data-relative-row="ahead"] .vf-relative-lap-delta')).not.toBeNull();
+});

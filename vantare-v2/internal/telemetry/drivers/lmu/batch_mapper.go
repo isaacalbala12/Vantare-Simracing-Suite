@@ -293,6 +293,7 @@ func (state *batchMapperState) mapObservation(observation Observation) (telemetr
 			WetnessFraction: observation.WetnessFraction,
 			SessionFlag:     observation.SessionFlag,
 			Vehicles:        vehicles,
+			TrackLength:     observation.TrackLength,
 		},
 	}, nil
 }

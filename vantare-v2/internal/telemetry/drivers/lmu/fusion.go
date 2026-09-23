@@ -221,6 +221,7 @@ func (state *Fusion) Merge(receivedUTC time.Time, elapsed time.Duration, inputs 
 	shm := sharedEntry.Value
 	rest := restEntry.Value.REST
 	shmStamp := sharedStamp
+	result.TrackLength = fieldAt(elapsed, shmStamp, defaultFreshnessLimit, shm.TrackLength)
 	result.SourceTime = chooseSourceTime(elapsed, ruleFor(catalog.SignalSessionSourceTime), shm.SourceTime, shmStamp, rest.SourceTime.Field, timedStamp(rest.SourceTime, restStamp), &result)
 	result.TrackName = chooseField(elapsed, ruleFor(catalog.SignalSessionTrackName), shm.TrackName, shmStamp, rest.TrackName.Field, timedStamp(rest.TrackName, restStamp), &result)
 	result.SessionType = chooseField(elapsed, ruleFor(catalog.SignalSessionType), shm.SessionType, shmStamp, rest.SessionType.Field, timedStamp(rest.SessionType, restStamp), &result)

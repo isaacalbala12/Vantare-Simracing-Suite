@@ -572,6 +572,7 @@ func (projector *CachedProjector) Project(
 	if plan.Rebuild(SectionRelative) {
 		frame.Relative = projector.builders.Relative(final, preferences, source)
 		frame.RelativeSettled = projector.settled.project(final, frame.Relative, header, now)
+		frame.RelativeSameClass = BuildRelativeSameClass(final)
 	}
 	if plan.Rebuild(SectionSpotter) {
 		frame.Spotter = projector.builders.Spotter(final, preferences, source)

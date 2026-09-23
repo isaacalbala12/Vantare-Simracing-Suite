@@ -18,6 +18,8 @@ export type RelativeRowViewModel = {
   side: RelativeSide;
   tone: "ahead" | "behind" | "player" | "neutral";
   gapSeconds: number | null;
+  /** Per-cell provenance stays independent from source lifecycle. */
+  fieldQuality?: Partial<Record<string, "fresh" | "stale" | "missing" | "invalid">>;
   /** Vueltas respecto al jugador; solo cuando el dato canónico está fresco en carrera. */
   lapDelta?: number | null;
 };

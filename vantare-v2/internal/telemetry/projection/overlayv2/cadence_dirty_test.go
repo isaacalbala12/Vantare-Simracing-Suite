@@ -335,11 +335,11 @@ func TestRelativeWindowFarVehicleStaysClean(t *testing.T) {
 	if !ok {
 		t.Fatal("missing final state")
 	}
-	// Player is vehicle-000 at the front; window is 8 behind. Vehicle 090 is far.
+	// Player is vehicle-000 at the front; window is 8 behind. Vehicle 050 is outside both global and class windows.
 	before := cloneFinalState(base)
 	after := cloneFinalState(base)
 	for index := range after.Derived.Gaps.Vehicles {
-		if string(after.Derived.Gaps.Vehicles[index].Vehicle) == "vehicle-090" {
+		if string(after.Derived.Gaps.Vehicles[index].Vehicle) == "vehicle-050" {
 			field, _ := schema.NewField(standings.RelativeTime(-999.0), schema.ProvenanceDerived, schema.FreshnessFresh)
 			after.Derived.Gaps.Vehicles[index].Time = field
 		}
@@ -347,7 +347,7 @@ func TestRelativeWindowFarVehicleStaysClean(t *testing.T) {
 	// Also change observed fields of far vehicle that are projected if it were inside window,
 	// but since it is outside, the change should not dirty relative.
 	for index := range after.Observed.Vehicles {
-		if string(after.Observed.Vehicles[index].Identity.Vehicle) == "vehicle-090" {
+		if string(after.Observed.Vehicles[index].Identity.Vehicle) == "vehicle-050" {
 			after.Observed.Vehicles[index].DriverName = builderPresent(identity.DriverName("FarDriverChanged"))
 			after.Observed.Vehicles[index].VehicleClass = builderPresent(standings.VehicleClass("lmp2"))
 		}

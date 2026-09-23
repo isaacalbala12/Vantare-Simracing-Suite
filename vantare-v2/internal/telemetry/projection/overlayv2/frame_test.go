@@ -166,16 +166,16 @@ func withStringWidths(frame FrameV2, width int) {
 		frame.Standings[index].DriverName = name(index)
 		frame.Standings[index].ClassID = class
 	}
-	for index := range frame.Relative {
-		frame.Relative[index].VehicleID = vehicle(index)
-		frame.Relative[index].DisplayName = name(index)
-		frame.Relative[index].ClassID = class
+	for _, rows := range [][]RelativeRowV2{frame.Relative, frame.RelativeSettled, frame.RelativeSameClass} {
+		for index := range rows {
+			rows[index].VehicleID = vehicle(index)
+			rows[index].DisplayName = name(index)
+			rows[index].ClassID = class
+			rows[index].CarNumber = "007"
+			rows[index].BestLapSeconds = QValue[float64]{V: 90.123, Q: QualityFresh}
+		}
 	}
-	for index := range frame.RelativeSettled {
-		frame.RelativeSettled[index].VehicleID = vehicle(index)
-		frame.RelativeSettled[index].DisplayName = name(index)
-		frame.RelativeSettled[index].ClassID = class
-	}
+
 	if frame.Player.VehicleID != "" {
 		frame.Player.VehicleID = vehicle(0)
 	}
@@ -235,6 +235,7 @@ func syntheticFullFrame(vehicles int) FrameV2 {
 	for index := 0; index < relativeCount; index++ {
 		id := fmt.Sprintf("vehicle-%03d", index+1)
 		row := RelativeRowV2{
+			Position: int32(index + 1), LapDelta: QValue[int32]{V: 1, Q: QualityFresh}, LastLapSeconds: QValue[float64]{V: 91.234, Q: QualityFresh}, BestLapSeconds: QValue[float64]{V: 90.123, Q: QualityFresh}, CarNumber: "007",
 			VehicleID: id, GapSeconds: QValue[float64]{V: float64(index-8) * 0.314, Q: QualityFresh},
 			Side: "ahead", Authority: AuthorityDerived, DisplayName: fmt.Sprintf("Driver %03d", index+1),
 		}
@@ -258,9 +259,10 @@ func syntheticFullFrame(vehicles int) FrameV2 {
 		},
 		Controls:  ControlsV2{History: controls},
 		Standings: standings, Relative: relative, RelativeSettled: relativeSettled,
-		Delta:   DeltaViewV2{Seconds: QValue[float64]{V: -.238, Q: QualityFresh}, Reference: "personal-best", Requested: "personal-best", Available: []string{"personal-best", "session-best", "previous-lap"}, Trend: "improving", Authority: AuthorityDerived},
-		Fuel:    FuelViewV2{Remaining: QValue[float64]{V: 42.1, Q: QualityFresh}, Capacity: QValue[float64]{V: 90, Q: QualityFresh}, PerLap: QValue[float64]{V: 3.4, Q: QualityFresh}, EstimatedLaps: QValue[float64]{V: 12.38, Q: QualityFresh}, SessionLaps: QValue[float64]{V: 79, Q: QualityFresh}, RequiredFuel: QValue[float64]{V: 268.6, Q: QualityFresh}, History: fuelHistory},
-		Spotter: SpotterViewV2{Mode: "xy", Left: QValue[bool]{V: true, Q: QualityFresh}, Right: QValue[bool]{V: false, Q: QualityFresh}},
+		RelativeSameClass: append([]RelativeRowV2{}, relative...),
+		Delta:             DeltaViewV2{Seconds: QValue[float64]{V: -.238, Q: QualityFresh}, Reference: "personal-best", Requested: "personal-best", Available: []string{"personal-best", "session-best", "previous-lap"}, Trend: "improving", Authority: AuthorityDerived},
+		Fuel:              FuelViewV2{Remaining: QValue[float64]{V: 42.1, Q: QualityFresh}, Capacity: QValue[float64]{V: 90, Q: QualityFresh}, PerLap: QValue[float64]{V: 3.4, Q: QualityFresh}, EstimatedLaps: QValue[float64]{V: 12.38, Q: QualityFresh}, SessionLaps: QValue[float64]{V: 79, Q: QualityFresh}, RequiredFuel: QValue[float64]{V: 268.6, Q: QualityFresh}, History: fuelHistory},
+		Spotter:           SpotterViewV2{Mode: "xy", Left: QValue[bool]{V: true, Q: QualityFresh}, Right: QValue[bool]{V: false, Q: QualityFresh}},
 		Damage: DamageViewV2{
 			Dents: QValue[[]uint16]{V: []uint16{1, 2, 3, 4, 5, 6, 7, 8}, Q: QualityFresh}, Overheating: QValue[bool]{V: false, Q: QualityFresh}, Detached: QValue[bool]{V: false, Q: QualityFresh}, WheelDetachedCount: QValue[uint8]{V: 0, Q: QualityFresh},
 		},

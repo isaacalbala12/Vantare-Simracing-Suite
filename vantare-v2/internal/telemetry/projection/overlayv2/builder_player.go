@@ -108,13 +108,14 @@ func ProjectV2(
 		Relative:  BuildRelative(final),
 		// ProjectV2 is deliberately pure. This is the bootstrap view, not a
 		// second settling authority; CachedProjector replaces it with history.
-		RelativeSettled: BuildRelative(final),
-		Delta:           BuildDelta(final, preferences),
-		Fuel:            BuildFuel(final, preferences),
-		Spotter:         BuildSpotter(final),
-		Damage:          BuildDamage(final),
-		Weather:         BuildWeather(final),
-		Capabilities:    BuildCapabilities(final, source),
+		RelativeSettled:   BuildRelative(final),
+		RelativeSameClass: BuildRelativeSameClass(final),
+		Delta:             BuildDelta(final, preferences),
+		Fuel:              BuildFuel(final, preferences),
+		Spotter:           BuildSpotter(final),
+		Damage:            BuildDamage(final),
+		Weather:           BuildWeather(final),
+		Capabilities:      BuildCapabilities(final, source),
 	}
 	return UpdateV2{
 		DeliveryRevision: deliveryRevision,

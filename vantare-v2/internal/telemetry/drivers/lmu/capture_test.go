@@ -1058,6 +1058,7 @@ func diagnosticAllowedByteMask(input []byte) []bool {
 		lmu13Layout.Session.CurrentTime, lmu13Layout.Session.EndTime,
 		lmu13Layout.Session.MaximumLaps,
 		lmu13Layout.Session.RainFraction, lmu13Layout.Session.VehicleCount,
+		lmu13Layout.Session.TrackLength,
 	} {
 		mark(field.Offset, field.width())
 	}

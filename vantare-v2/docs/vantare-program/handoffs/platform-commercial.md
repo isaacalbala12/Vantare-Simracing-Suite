@@ -10,6 +10,8 @@ Go 1.27.1 se ha descargado y seleccionado localmente; cuatro `go mod tidy -diff`
 
 **Bloqueo posterior:** el commit `4bd4b43d` solo cambió documentación, pero dos ejecuciones del gate Windows en ese SHA fallaron en el mismo test fuera del alcance de esta migración por timeout de ocho segundos. Ese test pasó en `49e6d4c4`; no hay diagnóstico suficiente para atribuir el fallo a Go 1.27.1 o declararlo resuelto. El ratchet del SHA documental repitió `REVIEW_REQUIRED` sin NEW/MOVED/integridad. El PR queda en borrador con gate obligatorio rojo; no hay promoción, release ni modificación del runtime nativo publicado. Siguiente paso: resolver por separado la inestabilidad del test y volver a validar el HEAD antes de pedir aceptación humana.
 
+**Reanudación 2026-09-23:** Isaac autorizó completar la migración, incluyendo ese test concreto. El candidato comprueba la existencia del archivo de audio antes de iniciar PowerShell, conserva cancelación y proceso activo, y ajusta sus pruebas Windows. Gofmt, test local del paquete, compilación cruzada del ejecutable de pruebas y `GOOS=windows go vet ./...` PASS. El gate Windows remoto debe volver a ejecutarse en el nuevo SHA antes de cambiar el estado del PR. [Plan ampliado](../../specs/go-127-toolchain/PLAN.md) y [evidencia](../../analysis/isa-1325-go-127-verification.md); Nightly, release y runtime publicado siguen sin cambios.
+
 ## VAN-740 / ISA-1305 — Wails beta.24 aceptado para Nightly (2026-09-22)
 
 [Tarea Notion VAN-740](https://app.notion.com/p/3e3e51695c6581f7a1aae9d4db50ee38), puente técnico [GitHub #1305](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1305).

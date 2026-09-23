@@ -87,8 +87,8 @@ func TestPlayerRejectsMissingMedia(t *testing.T) {
 	if err == nil {
 		t.Fatal("missing media reported successful playback")
 	}
-	if errors.Is(err, context.DeadlineExceeded) {
-		t.Fatalf("missing media was not rejected by the player before timeout: %v", err)
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("missing media error = %v, want os.ErrNotExist", err)
 	}
 }
 

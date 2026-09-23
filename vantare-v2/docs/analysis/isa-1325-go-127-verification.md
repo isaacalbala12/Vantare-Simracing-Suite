@@ -43,6 +43,12 @@ El commit posterior `4bd4b43ddd6fee0c119eaf58534341d237150f9d` solo modifica cua
 
 Por tanto, la build Wails y la suite completa **están acreditadas en el commit de código**, pero el PR no dispone aún de un gate Windows verde en su HEAD documental. No se atribuye el fallo intermitente a Go 1.27.1 ni se presenta como resuelto. El PR sigue en borrador y no puede recomendarse su integración con el check obligatorio rojo; la incidencia queda registrada en la tarea Notion principal, sin ampliar aquí el alcance a ese test.
 
+### Reanudación y candidato de corrección · 23-09-2026
+
+Isaac autorizó completar la migración, incluida la corrección acotada de ese test. La inspección del código mostró que `PlayContext` esperaba una señal de error de WPF al recibir una ruta inexistente; en tres runs Windows la señal no llegó antes del timeout de ocho segundos. El candidato valida la existencia del archivo antes de iniciar PowerShell y devuelve el error de sistema envuelto. La prueba exige `os.ErrNotExist`; la prueba de ciclo de vida crea un archivo de prueba para seguir ejercitando un proceso activo. Se conserva la cancelación de contexto y no se cambia el script WPF ni el límite de duración.
+
+Comprobaciones locales del candidato: `gofmt -d` sin diferencias; test del paquete en macOS PASS, compilación de su ejecutable de pruebas para Windows PASS y `GOOS=windows go vet ./...` PASS con Go 1.27.1. `go vet ./...` sobre macOS continúa fallando por una referencia de plataforma fuera de este diff; la ejecución real de los tests Windows queda pendiente del nuevo run del PR. Este apartado no afirma que el gate ya esté reparado.
+
 ## Recalibración del ratchet
 
 La comparación se hizo **antes** de aceptar el nuevo baseline. `staticcheck` 2026.2.1 y `deadcode` v0.49.0 se recompilaron localmente con Go 1.27.1; `go version` de ambos binarios confirmó esa toolchain. El `staticcheck` anterior tenía la misma versión nominal, pero estaba compilado con Go 1.26.8 y fallaba al analizar un módulo Go 1.27; se descartó ese falso diagnóstico de incompatibilidad del producto.

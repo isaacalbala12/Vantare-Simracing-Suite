@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -107,15 +108,15 @@ func (p *Player) PlayContext(ctx context.Context, path string) error {
 	playCtx, cancel := context.WithTimeout(ctx, maxPlaybackDuration)
 	defer cancel()
 
-	p.mu.Lock()
-
-	// Stop any currently playing audio.
-	p.stopLocked()
-
+	if err := playCtx.Err(); err != nil {
+		return fmt.Errorf("audio: playback cancelled: %w", err)
+	}
 	absPath, err := filepath.Abs(path)
 	if err != nil {
-		p.mu.Unlock()
 		return fmt.Errorf("audio: cannot resolve path: %w", err)
+	}
+	if _, err := os.Stat(absPath); err != nil {
+		return fmt.Errorf("audio: cannot access media: %w", err)
 	}
 
 	// Build a PowerShell script with the path safely embedded via
@@ -128,6 +129,14 @@ func (p *Player) PlayContext(ctx context.Context, path string) error {
 	cmd := exec.CommandContext(playCtx, "powershell", "-NoProfile", "-NonInteractive", "-STA", "-EncodedCommand", encoded)
 	// Do NOT set cmd.Stderr — it creates a pipe that blocks cmd.Wait()
 	// after Kill(). We rely on the exit code for error detection.
+	p.mu.Lock()
+	if err := playCtx.Err(); err != nil {
+		p.mu.Unlock()
+		return fmt.Errorf("audio: playback cancelled: %w", err)
+	}
+
+	// Stop any currently playing audio.
+	p.stopLocked()
 
 	if err := cmd.Start(); err != nil {
 		p.mu.Unlock()

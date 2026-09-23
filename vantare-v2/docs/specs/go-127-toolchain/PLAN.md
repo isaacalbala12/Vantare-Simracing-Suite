@@ -11,3 +11,7 @@ Diseño y autoridad: [diseño del 22-09-2026](../2026-09-22-go-127-toolchain-des
 7. Registrar en handoff y Notion versiones observadas, comandos, CI, omisiones y riesgo residual. Entregar el candidato para aprobación humana de promoción; no fusionar ni publicar.
 
 Aceptación: pins coherentes del pipeline activo, dependencias y roadmap sin deriva, revisión Astra incorporada, análisis de calidad sin errores de integridad ni nuevas incidencias aceptadas automáticamente, gates Windows/Wails del PR observados y evidencia enlazada a SHA exacto. `quality-check` conserva su resultado real; una revisión satisfecha no simula `success`.
+
+## Ampliación acotada autorizada el 23-09-2026
+
+Isaac pidió terminar la migración tras tres fallos consecutivos del gate Windows en el mismo test. Corregir únicamente el manejo del archivo ausente que bloquea ese gate, mantener las pruebas de cancelación y ciclo de vida, y repetir CI completo en el PR. No se abre una reforma del subsistema ni se modifica otra decisión de roadmap. La entrega sigue requiriendo gates obligatorios verdes en el HEAD y revisión del diff final antes de cualquier integración.

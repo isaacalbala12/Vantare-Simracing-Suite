@@ -46,6 +46,11 @@ func TestPlayerTerminatesActiveProcess(t *testing.T) {
 	for _, action := range []string{"cancel", "stop", "timeout"} {
 		t.Run(action, func(t *testing.T) {
 			readyPath := filepath.Join(t.TempDir(), "ready")
+			// The fixture bypasses decoding, but playback still validates its input.
+			mediaPath := filepath.Join(t.TempDir(), "blocked.mp3")
+			if err := os.WriteFile(mediaPath, []byte("fixture"), 0o600); err != nil {
+				t.Fatal(err)
+			}
 			t.Setenv(processFixtureReady, readyPath)
 			ctx, cancel := context.WithCancel(context.Background())
 			player := NewPlayer()
@@ -62,7 +67,7 @@ func TestPlayerTerminatesActiveProcess(t *testing.T) {
 					}
 				}
 			})
-			go func() { done <- player.PlayContext(ctx, "blocked.mp3") }()
+			go func() { done <- player.PlayContext(ctx, mediaPath) }()
 			// Poll a child-written readiness marker, not an assumed startup
 			// duration, before requesting cancellation or Stop.
 			poll := time.NewTicker(10 * time.Millisecond)

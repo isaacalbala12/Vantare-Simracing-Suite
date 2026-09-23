@@ -65,7 +65,11 @@ El detector reporta 486 emplazamientos en la base y 478 en el candidato: cambia
 cómo agrupa fragmentos existentes. No es duplicación añadida en esas pantallas,
 pero **el gate sigue fallando** y requiere tratamiento separado de calidad.
 No se restauró código muerto ni se cambió el baseline/reglas para ocultarlo.
-Los dos exports señalados por knip sí se corrigen dentro del cambio.
+Los dos exports señalados por knip sí se corrigen dentro del cambio: knip NEW=0.
+El resto de analizadores tampoco añade hallazgos. Seguimiento separado:
+[VAN-753](https://app.notion.com/p/3e4e51695c6581a8b409f12fcd1c3f39).
+El gate fallido impide declarar la entrega lista para integrar; no impide
+probar la rama aislada.
 
 ## Prueba manual Windows
 

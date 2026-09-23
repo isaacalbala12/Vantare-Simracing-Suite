@@ -50,7 +50,11 @@ No cambia timings CrewChief ni incorpora T1/T2 sin integrar. P0 sí está en est
 base mediante PR1311/e41f703c; la entrada anterior describe su entrega histórica.
 El harness prueba UI con datos sintéticos y no acredita audio físico ni LMU.
 Checks, revisión, head/PR/CI vigentes se registran en Notion y en el informe
-[de entrega](../../analysis/isa-1336-engineer-test-ui.md). Sin merge ni promoción.
+[de entrega](../../analysis/isa-1336-engineer-test-ui.md). El frontend global pasa
+3945 pruebas y el harness pasa en dos resoluciones. El gate de duplicación
+sigue fallando por reagrupación de clones en CSS sin modificar:
+[VAN-753](https://app.notion.com/p/3e4e51695c6581a8b409f12fcd1c3f39),
+pendiente separado antes de integrar. Sin merge ni promoción.
 
 ### 2026-09-22 — Composición revisada sobre Wails beta.24
 

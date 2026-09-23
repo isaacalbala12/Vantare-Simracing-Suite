@@ -230,6 +230,8 @@ type TelemetryCoreRuntime struct {
 	overlayV2DeliveryRevision uint64
 	performancePolicy         performancepolicy.Policy
 	performanceRevision       uint64
+	overlayPolicyRevision     uint64
+	overlayPolicy             overlayv2.PerformanceV2
 }
 
 // NewTelemetryCoreRuntime is side-effect free; Start owns all goroutines and
@@ -1088,6 +1090,13 @@ func (runtime *TelemetryCoreRuntime) publishOverlayV2(
 	policy := runtime.performancePolicy
 	performanceRevision := runtime.performanceRevision
 	sourceHz := runtime.sourceHz
+	if runtime.overlayPolicyRevision != performanceRevision {
+		// Widget rates are immutable until SetPerformancePolicy advances the revision.
+		runtime.overlayPolicy = overlayPerformancePolicy(policy, 0)
+		runtime.overlayPolicyRevision = performanceRevision
+	}
+	performance := runtime.overlayPolicy
+	performance.SourceHz = sourceHz
 	runtime.mu.Unlock()
 	age := runtime.now().Sub(lastFrameAt).Milliseconds()
 	if age < 0 {
@@ -1107,7 +1116,7 @@ func (runtime *TelemetryCoreRuntime) publishOverlayV2(
 		DescriptorCapabilities: runtime.descriptorCapabilities,
 		Modes:                  overlayCapabilityModes(runtime.capabilityDeclaration, value),
 		PerformanceRevision:    performanceRevision,
-		Performance:            overlayPerformancePolicy(policy, sourceHz),
+		Performance:            performance,
 	}, overlayv2.DefaultPreferencesV2(), 0)
 	runtime.metricStore.observeOverlayV2BuildDuration(time.Since(started))
 	if err != nil {

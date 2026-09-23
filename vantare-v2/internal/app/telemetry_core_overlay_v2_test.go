@@ -43,9 +43,17 @@ func TestOverlayV2AppliesHotPerformancePolicyOnNextTick(t *testing.T) {
 	if first.Frame == nil || first.Frame.Capabilities.Performance == nil || first.Frame.Capabilities.Performance.Level != 1 || first.Frame.Capabilities.Performance.RafCap != nil {
 		t.Fatalf("first performance = %+v", first.Frame.Capabilities.Performance)
 	}
+	if got := string(first.Frame.Capabilities.Performance.WidgetHz["standings"]); got != "4" {
+		t.Fatalf("first standings rate = %s, want 4", got)
+	}
+
+	// Publish again without changing policy to exercise the cached revision.
+	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(2, 1)); err != nil {
+		t.Fatal(err)
+	}
 
 	runtime.SetPerformancePolicy(performancepolicy.Policy{Mode: performancepolicy.ModeLevel, Level: performancepolicy.LevelMinimum})
-	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(2, 1)); err != nil {
+	if err := (runtimeBatchSink{runtime: runtime}).WriteBatch(context.Background(), hardeningBatch(3, 1)); err != nil {
 		t.Fatal(err)
 	}
 	secondEvent, ok := publisher.ReplaySnapshot()
@@ -62,6 +70,12 @@ func TestOverlayV2AppliesHotPerformancePolicyOnNextTick(t *testing.T) {
 	}
 	if performance.Level != 5 || performance.RafCap == nil || *performance.RafCap != 20 || performance.Mode != overlayv2.PerformanceModeManual {
 		t.Fatalf("next tick performance = %+v", performance)
+	}
+	if got := string(performance.WidgetHz["standings"]); got != "2" {
+		t.Fatalf("updated standings rate = %s, want 2", got)
+	}
+	if got := string(performance.WidgetHz["race-schedule"]); got != `"dirty"` {
+		t.Fatalf("updated race schedule rate = %s, want dirty", got)
 	}
 }
 

@@ -64,6 +64,33 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "Go 1.27 compilation failed: $($case.Name)" }
           }
 
+      - name: Compile same tree with Go 1.27.1 and legacy JSON backend
+        shell: pwsh
+        working-directory: vantare-v2
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:GOTOOLCHAIN = 'local'
+          $env:GOEXPERIMENT = 'nojsonv2'
+          $bin = Join-Path $env:RUNNER_TEMP 'isa-1325-bench-bin'
+          go version
+          foreach ($case in @(
+            @{ Name = 'overlay'; Package = './internal/telemetry/projection/overlayv2' },
+            @{ Name = 'transport'; Package = './internal/app/telemetrytransport' },
+            @{ Name = 'app'; Package = './internal/app' }
+          )) {
+            go test -c -o (Join-Path $bin "$($case.Name)-go127-nojsonv2.test.exe") $case.Package
+            if ($LASTEXITCODE -ne 0) { throw "Go 1.27 nojsonv2 compilation failed: $($case.Name)" }
+          }
+
+      - name: Verify overlay contracts with legacy JSON backend
+        shell: pwsh
+        working-directory: vantare-v2
+        run: |
+          $env:GOTOOLCHAIN = 'local'
+          $env:GOEXPERIMENT = 'nojsonv2'
+          go test ./internal/telemetry/projection/overlayv2 ./internal/app/telemetrytransport ./internal/app
+          if ($LASTEXITCODE -ne 0) { throw 'Focused nojsonv2 tests failed' }
+
       - name: Run alternating benchmarks
         shell: pwsh
         working-directory: vantare-v2
@@ -83,6 +110,7 @@ jobs:
             Push-Location $case.Directory
             try {
               & $script -Baseline (Join-Path $bin "$($case.Name)-go125.test.exe") -Candidate (Join-Path $bin "$($case.Name)-go127.test.exe") -Benchmark $case.Pattern -OutputDirectory (Join-Path $evidence $case.Name) -Samples 10
+              & $script -Baseline (Join-Path $bin "$($case.Name)-go127.test.exe") -Candidate (Join-Path $bin "$($case.Name)-go127-nojsonv2.test.exe") -Benchmark $case.Pattern -OutputDirectory (Join-Path $evidence "$($case.Name)-json-backend") -Samples 10
             } finally {
               Pop-Location
             }

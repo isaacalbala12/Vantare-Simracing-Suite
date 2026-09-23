@@ -1,5 +1,5 @@
 import { decodeOverlayUpdateV2 } from "../../telemetry-transport/overlay-frame-v2-store";
-﻿import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProfileDocumentV3 } from "../core/profile-document";
 import { createTestTelemetryCoordinator } from "../../hub/overlay-studio/test-helpers";

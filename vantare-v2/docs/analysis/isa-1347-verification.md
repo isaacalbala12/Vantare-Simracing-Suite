@@ -24,6 +24,19 @@ La primera suite frontend integrada detectó incompatibilidades de fixtures, un 
 
 El primer intento global Go no constituye PASS: faltaba la compilación frontend que se incrusta en Go; encontró además la fixture de benchmark con el antiguo tipo LapDistance y dos fallos de diagnostics. La fixture se adaptó, frontend se compiló y el build cruzado Windows aprobó. El paquete launcher quedó ejecutándose sin concluir y se detuvo tras más de siete minutos. Los dos fallos de diagnostics (`TestDiagnosticsBridgeCreatesPrivateEmptyCatalog` y `TestDiagnosticsBridgeRealCatalogDoesNotExposeStorageIdentity`) se reprodujeron independientemente en el checkout limpio de base `8b25d076`, con el mismo resultado. Se repetirá la suite con un límite de tiempo explícito en el corte final; estos intentos no se presentan como validación final.
 
+## Cierre automatizado del producto `95ad1dc3`
+
+- Frontend completo: **480 archivos, 4.037 pruebas aprobadas, 2 omitidas**, sin errores no controlados. Aviso de acceso remoto al roadmap no causó fallo.
+- Compilación frontend/TypeScript y lint completo aprobados tras los últimos ajustes de lector y fixtures.
+- Go: paquetes telemetry (guard de conexión), core, driver LMU, derive, overlayv2, transporte y replay aprobados. Generador de tipos `-check` aprobado.
+- Build cruzado `GOOS=windows CGO_ENABLED=0 go build ./...`: aprobado. No equivale a ejecutar la app en Windows.
+- Presupuestos Go de wire y goldens aprobados: 64.880 / 71.120 / 73.096 bytes según escenario documentado. Pruebas del lector conservan precisión, calidad, límite estricto y actualización atómica.
+- Calidad sobre el conjunto: **PASS, NEW=0, MOVED=0, policy_changed=false**, sin modificaciones de política ni baseline.
+- Revisión independiente de implementación y del formato compacto: aprobada. Encontró posición desconocida Relative que rechazaba el frame y se corrigió antes de cerrar; la regresión atraviesa el lector. [Informe final](isa-1347/final-review.md), [wire](isa-1347/wire-review.md), [primera revisión y revalidación](isa-1347/independent-review.md).
+- Suite global Go: **no aprobada en macOS**. Los fallos de diagnostics, SQLite y launcher se reprodujeron en la base `8b25d076`; launcher agota el tiempo y el ejecutable usa símbolos exclusivos de Windows. [Comparación de base](isa-1347/base-platform.md). Las incompatibilidades propias de esta entrega (inventario de campos, hash replay y detección de interfaces JSON) fueron corregidas y sus paquetes pasan. No se silenció ninguno de los fallos previos.
+
+El hash de replay cambia por la nueva derivación de vueltas relativas y la representación del frame; la prueba sigue exigiendo el mismo digest entre reproducción paso a paso y temporizada. El inventario de campos conserva el orden real de `ObservedState`. El guard de conexión reconoce métodos JSON únicamente con firma exacta y declaración de interfaz estándar comprobada por Go; 14 casos positivos y negativos protegen ese reconocimiento, sin listas amplias de excepciones.
+
 ## Prueba física que sigue pendiente
 
 En el mismo build candidato de Windows: comparar widgets con la sesión real de LMU en práctica, clasificación y carrera; probar parada/reconexión y cambio de sesión; verificar pedales sueltos/a fondo y ausencia de canal; comparar Delta con las tres referencias; doblaje/desdoblaje y cruces de meta; parrilla multiclase y ventana con jugador fuera de las filas visibles; repetir lectura en Desktop y OBS. Contrastar temperaturas, pista mojada y lluvia no-cero con el simulador, y correlacionar el código de bandera REST.

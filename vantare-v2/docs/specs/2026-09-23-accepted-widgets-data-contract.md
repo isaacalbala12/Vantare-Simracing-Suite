@@ -49,3 +49,15 @@ La REST API de LMU proporciona meteorología en `/rest/watch/sessionInfo`. Se co
 Regresiones de los defectos encontrados, pruebas de fronteras y calidad por campo, cambios de sesión, transporte/lector/ViewModel/renderer y configuración. Medición del frame representativo y adverso, pruebas de frecuencia e identidad, suite frontend, pruebas Go aplicables, tipos, compilación y ratchet. Una revisión independiente lee el diff integrado y repite verificaciones críticas.
 
 La entrega identifica exactamente qué se ha comprobado y sobre qué árbol. Para certificar la salida pública todavía se necesita evidencia de una sesión LMU activa en Windows, reconexión y consumidores Desktop/OBS. La aceptación visual anterior permanece; las tareas de corrección siguen abiertas hasta su verificación. No se deduce autorización de merge, promoción ni publicación de este contrato.
+
+## Representación y compatibilidad del transporte
+
+Go conserva QValues y nombres descriptivos internamente. En Standings, los tiempos `gap`, `bestLap` y `lastLap` viajan como números sin pérdida de precisión y heredan una calidad base con overrides explícitos. Alias del wire: `q=quality`, `cg=classGap`, `cl=classGapLaps`, `cr=classRef`, `i=interval`, `il=intervalLaps`. Dentro de calidad, `g/b/l` representan los tres tiempos; los códigos `f/s/m/i` significan fresh/stale/missing/invalid. No se agrupan metadatos entre secciones con distinta frecuencia.
+
+El lector admite tanto QValues anteriores como esta representación; valida y expande únicamente las filas nuevas en la entrada. Las filas congeladas reutilizadas por una actualización parcial no se vuelven a normalizar. Los widgets reciben siempre su modelo descriptivo habitual. Los tipos generados separan explícitamente `OverlayWireUpdateV2`/`OverlayStandingWireRowV2` de los modelos normalizados. Las actualizaciones parciales conservan el cómputo de bytes originales, no el tamaño expandido en memoria; un rechazo no modifica la base anterior.
+
+En Relative, ausencia de `authority` significa `derived`; `native` y `estimated` siguen explícitos y un valor desconocido se rechaza. Posición `0` significa desconocida, conserva el frame y se presenta como «—»; negativos y posiciones fraccionarias se rechazan.
+
+Compatibilidad unidireccional: el lector nuevo admite el wire anterior; un lector viejo estricto no tiene por qué admitir la representación nueva. Backend y frontend se distribuyen juntos y Desktop/OBS deben cargar los recursos del mismo build. No se presenta como compatibilidad entre versiones arbitrarias.
+
+Presupuestos sin ampliar: 65.536 bytes para el escenario representativo y 73.728 para el adverso. Con 104 coches, tres referencias Delta, historial de 120 y las tres ventanas Relative, el corte integrado mide 64.880 bytes (nombres de 20 caracteres), 71.120 (32 caracteres) y 73.096 al mezclar tres calidades en todas las filas. No equivale a afirmar que cualquier longitud de texto o cualquier combinación imaginable cabe; el límite duro sigue rechazando excesos.

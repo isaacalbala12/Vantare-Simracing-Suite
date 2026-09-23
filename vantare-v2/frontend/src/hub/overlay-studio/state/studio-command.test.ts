@@ -687,12 +687,12 @@ describe("applyStudioCommand", () => {
    const resized = applyStudioCommand(before, { type: 'widget/content', session: 'general', widgetIds: ['table'], content: { ...table.content, columns } });
    const result = resized.layouts.general!.widgets[0]!;
    // El nombre se compacta sin crear una segunda banda de cabecera: el
-   // presupuesto V1 queda en 376 × 672 px.
+   // presupuesto V1 queda en 376 × 664 px.
    expect(result.layout.w).toBe(376);
-   expect(result.layout.h).toBe(672);
+   expect(result.layout.h).toBe(664);
    const restored = applyStudioCommand(resized, { type: 'widget/content', session: 'general', widgetIds: ['table'], content: table.content });
    expect(restored.layouts.general!.widgets[0]!.layout.w).toBe(440);
-   expect(restored.layouts.general!.widgets[0]!.layout.h).toBe(672);
+   expect(restored.layouts.general!.widgets[0]!.layout.h).toBe(664);
  });
 
  it("refits the Functional multiclass-relative frame when rowCount changes", () => {

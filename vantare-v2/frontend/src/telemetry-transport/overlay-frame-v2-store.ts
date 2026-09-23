@@ -633,7 +633,7 @@ function weather(value: unknown, path: string): void {
 function validRelative(value: unknown): boolean {
   if (!objectHasKeys(value, ["id", "position", "gap", "lapDelta", "lastLap", "bestLap", "side"], ["authority", "name", "classId", "number"])) return false;
   const valid = typeof value.id === "string" && value.id.length > 0 &&
-    typeof value.position === "number" && Number.isSafeInteger(value.position) && value.position > 0 &&
+    typeof value.position === "number" && Number.isSafeInteger(value.position) && value.position >= 0 &&
     validQValue(value.gap, "number") && validQValue(value.lapDelta, "number") &&
     validQValue(value.bestLap, "number") && optionalStringValue(value.number) && validQValue(value.lastLap, "number") && ["ahead", "player", "behind"].includes(value.side as string) &&
     (value.authority === undefined || ["native", "derived", "estimated"].includes(value.authority as string)) &&

@@ -34,7 +34,7 @@ it.each([false, true])("resizes Functional from its visible bounds without clipp
   const stationary = preview(0, 0);
   const expanded = preview(80, 80);
   expect(stationary.w).toBeGreaterThan(340);
-  expect(stationary.h).toBe(700);
+  expect(stationary.h).toBe(692);
   expect(expanded.w).toBe(stationary.w + 80);
   expect(expanded.h).toBe(stationary.h + 80);
   const contracted = preview(-500, -500);

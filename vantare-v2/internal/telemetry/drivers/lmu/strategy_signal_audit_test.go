@@ -304,7 +304,7 @@ func TestStrategySignalAuditV1HasExactReviewedProductionSurfaces(t *testing.T) {
 			"Identity", "DriverName", "Name", "VehicleClass", "CarNumber", "Player", "Sector", "LapDistance", "LapProgressTime", "BestLapTime", "LastLapTime", "EstimatedLapTime", "LapNumber", "Gear", "EngineRPM", "SpeedMPS", "Throttle", "Brake", "Clutch", "Position", "CompletedLaps", "InPit", "PitStopCount", "PenaltyCount", "TimeBehindLeader", "LapsBehindLeader", "TimeBehindNext", "LapsBehindNext", "Fuel", "DeltaBest", "WorldPosition", "LocalVelocity", "Orientation", "Damage",
 		}},
 		{name: "core.ObservedState", typeOf: reflect.TypeOf(telemetrycore.ObservedState{}), fields: []string{
-			"SourceTime", "EndTime", "MaximumLaps", "TrackName", "TrackLength", "SessionType", "VehicleCount", "PlayerPresent", "AmbientTemp", "TrackTemp", "RainFraction", "WetnessFraction", "SessionFlag", "Vehicles",
+			"SourceTime", "EndTime", "MaximumLaps", "TrackName", "SessionType", "VehicleCount", "PlayerPresent", "AmbientTemp", "TrackTemp", "RainFraction", "WetnessFraction", "SessionFlag", "Vehicles", "TrackLength",
 		}},
 		{name: "strategy.SnapshotV1", typeOf: reflect.TypeOf(strategyprojection.SnapshotV1{}), fields: []string{"Metadata", "PayloadV1"}},
 		{name: "strategy.PayloadV1", typeOf: reflect.TypeOf(strategyprojection.PayloadV1{}), fields: []string{"Capabilities", "TrackName", "SessionType", "SourceTime", "EndTime", "Remaining", "MaximumLaps", "Player"}},

@@ -6,6 +6,20 @@ const fixture = (count = 1) => JSON.parse(readFileSync(`../internal/telemetry/pr
 const bytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).byteLength;
 
 describe("lossless compact standings wire", () => {
+  it("accepts unknown Relative ranks without dropping the frame, but rejects impossible ranks", () => {
+    const input = fixture(20);
+    for (const section of ["relative", "relativeSettled", "relativeSameClass"]) {
+      input.frame[section][0].position = 0;
+    }
+    const decoded = decodeOverlayUpdateV2(input);
+    expect(decoded.frame!.relative[0]!.position).toBe(0);
+    expect(decoded.frame!.standings).toHaveLength(20);
+    for (const position of [-1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+      input.frame.relative[0].position = position;
+      expect(() => decodeOverlayUpdateV2(input)).toThrow("frame.relative");
+    }
+  });
+
   it("normalizes scalar timings and quality codes once, preserving zero and precision", () => {
     const input = fixture();
     Object.assign(input.frame.standings[0], {

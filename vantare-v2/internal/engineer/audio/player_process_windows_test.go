@@ -43,7 +43,7 @@ func TestPlayerTerminatesActiveProcess(t *testing.T) {
 	// Only the process-lifecycle tests substitute the executable. The media
 	// event tests use Windows PowerShell and WPF themselves.
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
-	for _, action := range []string{"cancel", "stop", "timeout"} {
+	for _, action := range []string{"cancel", "stop", "timeout", "invalid-file"} {
 		t.Run(action, func(t *testing.T) {
 			readyPath := filepath.Join(t.TempDir(), "ready")
 			t.Setenv(processFixtureReady, readyPath)
@@ -62,7 +62,11 @@ func TestPlayerTerminatesActiveProcess(t *testing.T) {
 					}
 				}
 			})
-			go func() { done <- player.PlayContext(ctx, "blocked.mp3") }()
+			mediaPath := filepath.Join(t.TempDir(), "blocked.mp3")
+			if err := os.WriteFile(mediaPath, []byte("process lifecycle fixture"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			go func() { done <- player.PlayContext(ctx, mediaPath) }()
 			// Poll a child-written readiness marker, not an assumed startup
 			// duration, before requesting cancellation or Stop.
 			poll := time.NewTicker(10 * time.Millisecond)
@@ -96,6 +100,23 @@ func TestPlayerTerminatesActiveProcess(t *testing.T) {
 				cancel()
 			case "stop":
 				player.Stop()
+			case "invalid-file":
+				if err := player.Play(filepath.Join(t.TempDir(), "missing.mp3")); !errors.Is(err, os.ErrNotExist) {
+					t.Fatalf("invalid replacement error = %v, want os.ErrNotExist", err)
+				}
+				player.mu.Lock()
+				stillCurrent := player.current == child
+				player.mu.Unlock()
+				if !stillCurrent {
+					t.Fatal("invalid replacement interrupted the active playback")
+				}
+				select {
+				case err := <-done:
+					finished = true
+					t.Fatalf("invalid replacement terminated playback: %v", err)
+				default:
+				}
+				player.Stop()
 			}
 			wait := 3 * time.Second
 			if action == "timeout" {
@@ -114,7 +135,7 @@ func TestPlayerTerminatesActiveProcess(t *testing.T) {
 					t.Fatalf("timeout error = %v", err)
 				}
 				var exitErr *exec.ExitError
-				if action == "stop" && !errors.As(err, &exitErr) {
+				if (action == "stop" || action == "invalid-file") && !errors.As(err, &exitErr) {
 					t.Fatalf("Stop did not kill the process: %v", err)
 				}
 			case <-time.After(wait):

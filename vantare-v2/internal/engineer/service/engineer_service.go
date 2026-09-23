@@ -120,10 +120,12 @@ type EngineerService struct {
 	// Audio playback opcional. El puerto productivo resuelve una ruta ya
 	// disponible y la reproduce con contexto cancelable. La síntesis TTS no
 	// pertenece a este corte y nunca debe bloquear este resolver.
-	audioPlayer   AudioPlayer
-	audioResolver AudioResolver
-	audioConfig   *audio.AudioConfig
-	audioRouter   *audio.AudioRouter
+	deliveryJournal deliveryJournal
+	audioTestCancel context.CancelFunc
+	audioPlayer     AudioPlayer
+	audioResolver   AudioResolver
+	audioConfig     *audio.AudioConfig
+	audioRouter     *audio.AudioRouter
 
 	deliveryPort    delivery.Port
 	deliveryMetrics *delivery.Metrics
@@ -623,6 +625,9 @@ func (s *EngineerService) Locale() presentation.Locale {
 // Stop cancels the running loops and waits for them to terminate.
 func (s *EngineerService) Stop() {
 	s.mu.Lock()
+	if s.audioTestCancel != nil {
+		s.audioTestCancel()
+	}
 	if s.scheduler != nil {
 		s.scheduler.Cancel(messagepolicy.ReasonLifecycleBoundary)
 	}
@@ -877,6 +882,9 @@ func (s *EngineerService) SetEnabled(enabled bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if enabled && s.audioTestCancel != nil {
+		s.audioTestCancel()
+	}
 	s.enabled = enabled
 	s.resetSpotterAvailabilityLocked()
 	s.syncLegacyRuntimeLocked()
@@ -1446,6 +1454,10 @@ type EngineerPolicyMetrics struct {
 func (s *EngineerService) Health() EngineerHealth {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return s.healthLocked()
+}
+
+func (s *EngineerService) healthLocked() EngineerHealth {
 	var policyMetrics EngineerPolicyMetrics
 	if s.scheduler != nil {
 		state := s.scheduler.State()

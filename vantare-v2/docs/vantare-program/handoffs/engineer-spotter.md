@@ -28,6 +28,30 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+### 2026-09-23 — Pantalla funcional para pruebas Windows
+
+[VAN-752](https://app.notion.com/p/3e4e51695c6581a9a63bcf66960e60bc) / #1336,
+base nightly `8b25d076`. Isaac autoriza reconstruir la pantalla existente para
+pruebas, priorizando funcionalidad. [Microplan](../../engineer/test-ui-1336.md).
+Se sustituyen voz/volumen WebView y acciones sin efecto por estado observado,
+controles persistidos con confirmación, prueba del player Go y registro de las
+últimas 200 entregas seleccionadas. La preferencia de subtítulos se conserva
+separada de su estado efectivo por rendimiento. La prueba requiere Engineer
+desactivado; Enable/Stop/cancelación la interrumpen y no puede solaparse con radio.
+
+El registro fija el modo al seleccionar y observa publicación visual, lookup de
+caché y resultado del player. No cubre candidatos anteriores a selección ni
+salidas del rollback legacy. No exporta rutas de audio: los errores generales
+se redactan y permanecen en el log local. La vista previa JSON se congela antes
+de copiar/descargar. La página consulta cada segundo solo mientras está montada
+y bloquea cambios ante estado desactualizado. Cuatro idiomas.
+
+No cambia timings CrewChief ni incorpora T1/T2 sin integrar. P0 sí está en esta
+base mediante PR1311/e41f703c; la entrada anterior describe su entrega histórica.
+El harness prueba UI con datos sintéticos y no acredita audio físico ni LMU.
+Checks, revisión, head/PR/CI vigentes se registran en Notion y en el informe
+[de entrega](../../analysis/isa-1336-engineer-test-ui.md). Sin merge ni promoción.
+
 ### 2026-09-22 — Composición revisada sobre Wails beta.24
 
 [VAN-742](https://app.notion.com/p/3e3e51695c6581a5aeb7ffca7dec48f6) / #1310

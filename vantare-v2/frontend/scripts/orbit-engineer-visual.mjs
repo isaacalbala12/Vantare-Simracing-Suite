@@ -4,19 +4,17 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
-import { hideToasts, settle, stillPage } from "./lib/orbit-still.mjs";
+import { hideToasts } from "./lib/orbit-still.mjs";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/08-ingeniero");
+const output = process.env.VANTARE_ENGINEER_EVIDENCE_DIR || path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/08-ingeniero");
 const port = 5198;
 const url = `http://127.0.0.1:${port}/orbit-engineer-harness.html?view=ingeniero`;
 
-// Reloj congelado: los mensajes sembrados se anclan a esta sesión.
-const FROZEN_CLOCK = new Date("2026-07-07T18:44:30Z");
 
 const viewports = [
   { name: "1920x1080", width: 1920, height: 1080, interact: true },
-  { name: "1920x900", width: 1920, height: 900, interact: false },
+  { name: "1280x800", width: 1280, height: 800, interact: false },
 ];
 
 fs.mkdirSync(output, { recursive: true });
@@ -72,144 +70,45 @@ async function waitForServer() {
   throw new Error(`Orbit engineer harness did not start.\n${serverOutput}`);
 }
 
-function contractOf() {
-  const root = document.querySelector(".orbit-engineer");
-  const feed = document.querySelector('[data-testid="orbit-engineer-feed"]');
-  return {
-    scrollHeight: document.documentElement.scrollHeight,
-    innerHeight: window.innerHeight,
-    scrollWidth: document.documentElement.scrollWidth,
-    innerWidth: window.innerWidth,
-    rows: document.querySelectorAll('[data-testid^="orbit-rf-"]').length,
-    modules: document.querySelectorAll('[data-testid^="orbit-eng-mod-"]').length,
-    outputs: document.querySelectorAll('[data-testid^="orbit-engineer-output-"]').length,
-    feedScrollY: feed ? feed.scrollHeight > feed.clientHeight + 0.5 : null,
-    nativeTitles: root ? root.querySelectorAll("[title]").length : -1,
-  };
-}
-
 let browser;
 try {
   await waitForServer();
   browser = await chromium.launch({ headless: true });
-
   for (const viewport of viewports) {
-    const page = await stillPage(browser, {
-      viewport: { width: viewport.width, height: viewport.height },
-      deviceScaleFactor: 1,
-      timezoneId: "Europe/Madrid",
-    });
-    const problems = [];
-    const isWailsRuntimeNoise = (error) => (error.stack ?? "").includes("wailsio_runtime");
-    page.on("pageerror", (error) => {
-      if (!isWailsRuntimeNoise(error)) problems.push(`pageerror: ${error.message}`);
-    });
-
-    await page.clock.install({ time: FROZEN_CLOCK });
-    await page.goto(url, { waitUntil: "networkidle" });
-    await page.getByTestId("orbit-engineer").waitFor();
-    await page.getByTestId("orbit-engineer-modules").waitFor();
-    await page.locator('[data-testid^="orbit-rf-"]').first().waitFor();
+    const page = await browser.newPage({viewport:{width:viewport.width,height:viewport.height},acceptDownloads:true});
+    const problems=[];
+    page.on("pageerror",error=>{if(!(error.stack??"").includes("wailsio_runtime"))problems.push(error.message)});
+    await page.goto(url,{waitUntil:"networkidle"});
+    await page.getByRole("heading",{name:"Ingeniero Vantare",exact:true}).waitFor();
+    await page.getByText("Estado actualizado desde el servicio.").waitFor();
     await hideToasts(page);
-    await settle(page);
-
-    const summary = await page.evaluate(contractOf);
-    if (summary.scrollHeight > summary.innerHeight) {
-      throw new Error(`${viewport.name}: la página hace scroll vertical (${summary.scrollHeight} > ${summary.innerHeight})`);
+    if(await page.locator(".engineer-test-outputs select").count()!==7)throw new Error("missing real output controls");
+    if(await page.locator(".engineer-test tbody tr").count()!==19)throw new Error("current-cycle history incorrect");
+    if(viewport.interact){
+      await page.getByLabel("Ciclos",{exact:true}).selectOption("all");
+      if(await page.locator(".engineer-test tbody tr").count()!==20)throw new Error("all-cycle history incorrect");
+      await page.getByLabel("Vueltas",{exact:true}).selectOption("disabled");
+      await page.getByText("Cambio aplicado y guardado.").waitFor();
+      await page.getByLabel("Ingeniero de pista",{exact:true}).uncheck();
+      await page.getByRole("button",{name:"Probar sonido",exact:true}).click();
+      await page.getByText("El reproductor ha terminado sin error.",{exact:true}).waitFor();
+      await page.getByRole("button",{name:"Probar frase en caché",exact:true}).click();
+      await page.getByText("La frase no está en caché: no se ha reproducido audio.",{exact:true}).waitFor();
+      await page.getByRole("button",{name:"Preparar informe",exact:true}).click();
+      const preview=await page.getByLabel("Contenido del informe",{exact:true}).textContent();
+      const downloaded=page.waitForEvent("download");
+      await page.getByRole("button",{name:"Descargar JSON",exact:true}).click();
+      const file=await downloaded;const actual=fs.readFileSync(await file.path(),"utf8");
+      if(actual!==preview)throw new Error("download differs from exact preview");
+      await page.getByRole("button",{name:"Cerrar vista previa",exact:true}).click();
     }
-    if (summary.scrollWidth > summary.innerWidth) {
-      throw new Error(`${viewport.name}: la página hace scroll horizontal (${summary.scrollWidth} > ${summary.innerWidth})`);
-    }
-    if (summary.modules !== 4) {
-      throw new Error(`${viewport.name}: la fila de módulos tiene ${summary.modules} tarjetas`);
-    }
-    if (summary.outputs !== 6) {
-      throw new Error(`${viewport.name}: hay ${summary.outputs} categorías de salida`);
-    }
-    if (summary.rows !== 20) {
-      throw new Error(`${viewport.name}: el feed muestra ${summary.rows} mensajes (esperados 20)`);
-    }
-    if (summary.feedScrollY !== true) {
-      throw new Error(`${viewport.name}: el feed no tiene scroll interno`);
-    }
-    if (summary.nativeTitles !== 0) {
-      throw new Error(`${viewport.name}: la vista usa \`title\` nativo (${summary.nativeTitles})`);
-    }
-
-    await hideToasts(page);
-
-    await settle(page);
-    await page.screenshot({
-      path: path.join(output, `orbit-ingeniero-${viewport.name}.png`),
-      fullPage: false,
-    });
-
-    if (viewport.interact) {
-      // ── Filtro del feed: Spotter deja solo los mensajes del spotter.
-      const filter = page.getByRole("group", { name: "Filtro por origen" });
-      await filter.getByRole("button", { name: "Spotter" }).click();
-      await page.waitForFunction(
-        () => document.querySelectorAll('[data-testid^="orbit-rf-"]').length === 8,
-      );
-      await hideToasts(page);
-      await settle(page);
-      await page.screenshot({
-        path: path.join(output, `orbit-ingeniero-filtro-spotter-${viewport.name}.png`),
-        fullPage: false,
-      });
-      await filter.getByRole("button", { name: "Todo" }).click();
-
-      // ── Salidas: el cambio va al servicio y vuelve por `engineer:status`.
-      const laps = page.getByTestId("orbit-engineer-output-laps");
-      await laps.getByRole("button", { name: "Off" }).click();
-      await page.waitForFunction(() => {
-        const row = document.querySelector('[data-testid="orbit-engineer-output-laps"]');
-        const off = row?.querySelectorAll("button")[3];
-        return off?.getAttribute("aria-pressed") === "true";
-      });
-
-      // ── Módulo apagado: el icono de Subtítulos pierde el degradado.
-      const subtitles = page.getByTestId("orbit-eng-mod-subtitles");
-      await subtitles.getByRole("button", { name: "Subtítulos" }).click();
-      await page.waitForFunction(
-        () =>
-          document.querySelector('[data-testid="orbit-eng-mod-subtitles"]')
-            ?.getAttribute("data-on") === "false",
-      );
-      const dimmed = await page.evaluate(() => {
-        const node = document.querySelector('[data-testid="orbit-eng-ico-subtitles"]');
-        return node ? getComputedStyle(node).opacity : null;
-      });
-      if (dimmed === null || Number(dimmed) >= 1) {
-        throw new Error(`${viewport.name}: el icono del módulo apagado no se atenúa (${dimmed})`);
-      }
-
-      const after = await page.evaluate(contractOf);
-      if (after.scrollHeight > after.innerHeight) {
-        throw new Error(`${viewport.name}: la vista hace scroll de página tras interactuar`);
-      }
-      if (after.nativeTitles !== 0) {
-        throw new Error(`${viewport.name}: la vista usa \`title\` nativo tras interactuar`);
-      }
-
-      await hideToasts(page);
-
-      await settle(page);
-      await page.screenshot({
-        path: path.join(output, `orbit-ingeniero-modulos-${viewport.name}.png`),
-        fullPage: false,
-      });
-    }
-
-    if (problems.length) {
-      throw new Error(`${viewport.name}: la consola no está limpia\n${problems.join("\n")}`);
-    }
-
+    const horizontal=await page.evaluate(()=>document.documentElement.scrollWidth>window.innerWidth);
+    if(horizontal)throw new Error(`${viewport.name}: document horizontal overflow`);
+    await page.getByRole("heading",{name:"Ingeniero Vantare",exact:true}).scrollIntoViewIfNeeded();
+    await page.screenshot({path:path.join(output,`engineer-functional-${viewport.name}.png`),fullPage:true});
+    if(problems.length)throw new Error(problems.join("\n"));
     await page.close();
   }
-
-  console.log(`Orbit engineer visual PASS. Captures: ${output}`);
-} finally {
-  await browser?.close();
-  stopServer();
-}
+  fs.writeFileSync(path.join(output,"visual-check.json"),JSON.stringify({result:"PASS",scope:"synthetic UI, not LMU or OS audio",viewports},null,2));
+  console.log(`Engineer functional UI PASS (synthetic). Captures: ${output}`);
+} finally {await browser?.close();stopServer();}

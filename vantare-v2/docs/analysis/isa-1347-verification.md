@@ -37,6 +37,8 @@ El primer intento global Go no constituye PASS: faltaba la compilación frontend
 
 El hash de replay cambia por la nueva derivación de vueltas relativas y la representación del frame; la prueba sigue exigiendo el mismo digest entre reproducción paso a paso y temporizada. El inventario de campos conserva el orden real de `ObservedState`. El guard de conexión reconoce métodos JSON únicamente con firma exacta y declaración de interfaz estándar comprobada por Go; 14 casos positivos y negativos protegen ese reconocimiento, sin listas amplias de excepciones.
 
+Publicación de revisión: [PR draft #1352](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1352), candidato compuesto `cffd4748`, destino nightly. Push y HEAD remoto verificados; CI remoto en curso al crear. Contrato de roadmap validado con la issue viva obtenida mediante GitHub CLI: exactamente `milestones:functional-widget-design`. No hubo merge ni promoción.
+
 ## Prueba física que sigue pendiente
 
 En el mismo build candidato de Windows: comparar widgets con la sesión real de LMU en práctica, clasificación y carrera; probar parada/reconexión y cambio de sesión; verificar pedales sueltos/a fondo y ausencia de canal; comparar Delta con las tres referencias; doblaje/desdoblaje y cruces de meta; parrilla multiclase y ventana con jugador fuera de las filas visibles; repetir lectura en Desktop y OBS. Contrastar temperaturas, pista mojada y lluvia no-cero con el simulador, y correlacionar el código de bandera REST.

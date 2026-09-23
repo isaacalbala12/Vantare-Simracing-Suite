@@ -28,9 +28,22 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+### 2026-09-23 — Reparación de rutas de audio Windows extraída para integración
+
+[VAN-760](https://app.notion.com/p/3e4e51695c65811689b6e260e5908ca0), puente #1350,
+extrae los tres archivos de audio de PR1340@88e42e1d sin alterar su contenido.
+La protección remota impide integrar PR1348 mientras falla el test heredado de
+medio ausente. Se integra primero esta reparación ya aceptada, después calidad
+y finalmente la pantalla, revalidando cada head. No cambia gates ni baselines.
+Las rutas inválidas fallan antes de PowerShell y conservan la reproducción actual;
+la cancelación mantiene prioridad. Revisión Luna y CI Windows de origen PASS;
+PR1351 integrada en nightly247db1c7 tras calidad y Windows completos SUCCESS. Audio acústico
+y LMU reales siguen pendientes.
+
 ### 2026-09-23 — Corrección del rechazo de medios Windows
 
-VAN-752 / PR1340 incorpora comprobación de medio local antes de iniciar
+VAN-752 / PR1340 desarrolló la comprobación de medio local, ahora integrada
+por PR1351 como prerrequisito separado, antes de iniciar
 PowerShell o sustituir el sonido actual. Contexto cancelado conserva prioridad;
 un fichero ausente devuelve el error de sistema de archivos, y una ruta vacía
 o no regular falla explícitamente. Se conservan los eventos WPF, el límite de

@@ -1,12 +1,26 @@
 import type { AnalysisCandidate } from "../../strategy/analysis-contract";
+import type { StrategyPlanSummaryV1 } from "../../strategy/strategy-application-client";
 import { Icon } from "../../ui/orbit";
 import "./strategy-recorded-entry.css";
 
+export type StrategyEntrySaved = {
+  readonly status: "loading" | "ready" | "error";
+  readonly opening: boolean;
+  readonly drafts: readonly StrategyPlanSummaryV1[];
+  readonly plans: readonly StrategyPlanSummaryV1[];
+  readonly recoveredFromBackup: boolean;
+  readonly error?: string;
+  readonly onRetry: () => void;
+  readonly onOpenDraft: (draftId: string) => void;
+  readonly onOpenPlan: (plan: StrategyPlanSummaryV1) => void;
+};
+
 /** The filename is only a locator. Car, track and lap count are unknown here. */
-export function StrategyRecordedStart({ candidates, busy, error, onChoose, onLibrary, onManual, onResume, onSaved, onCancel, t }: {
+export function StrategyRecordedStart({ candidates, busy, error, saved, onChoose, onLibrary, onManual, onResume, onSaved, onCancel, t }: {
   readonly candidates: readonly AnalysisCandidate[] | null;
   readonly busy: boolean;
   readonly error?: string;
+  readonly saved?: StrategyEntrySaved;
   readonly onChoose: (candidate: AnalysisCandidate) => void;
   readonly onLibrary: () => void;
   readonly onManual: () => void;
@@ -17,7 +31,7 @@ export function StrategyRecordedStart({ candidates, busy, error, onChoose, onLib
 }) {
   const recent = [...(candidates ?? [])].sort((a, b) => Date.parse(b.modifiedAt) - Date.parse(a.modifiedAt) || a.id.localeCompare(b.id)).slice(0, 2);
   return <section className="strategy-entry" aria-labelledby="strategy-entry-title">
-    <header className="strategy-entry__heading"><div><span className="strategy-entry__micro">{t("strategy.entry.new")}</span><h2 id="strategy-entry-title">{t("strategy.entry.title")}</h2><p>{t("strategy.entry.description")}</p></div><div className="strategy-entry__head-actions">{onSaved ? <button type="button" className="orbit-btn orbit-btn--ghost" onClick={onSaved}>{t("strategy.home.saved")}</button> : null}{onResume ? <button type="button" className="orbit-btn orbit-btn--ghost" onClick={onResume}>{t("strategy.entry.resume")} ↗</button> : <Icon name="i-estrategia" size={54} />}</div></header>
+    <header className="strategy-entry__heading"><div><span className="strategy-entry__micro">{t("strategy.entry.new")}</span><h2 id="strategy-entry-title">{t("strategy.entry.title")}</h2><p>{t("strategy.entry.description")}</p></div><div className="strategy-entry__head-actions">{onSaved && !saved ? <button type="button" className="orbit-btn orbit-btn--ghost" onClick={onSaved}>{t("strategy.home.saved")}</button> : null}{onResume ? <button type="button" className="orbit-btn orbit-btn--ghost" onClick={onResume}>{t("strategy.entry.resume")} ↗</button> : <Icon name="i-estrategia" size={54} />}</div></header>
     <div className="strategy-entry__choices">
       <section className="strategy-entry__telemetry" aria-labelledby="strategy-entry-telemetry">
         <header className="strategy-entry__section-head"><div><span className="strategy-entry__micro">{t("strategy.entry.fromLaps")}</span><h3 id="strategy-entry-telemetry">{t("strategy.entry.telemetry")}</h3></div><small>LMU | .duckdb</small></header>
@@ -25,7 +39,7 @@ export function StrategyRecordedStart({ candidates, busy, error, onChoose, onLib
           {recent.map(candidate => {
             const ready = candidate.state === "ready" && !candidate.walPresent;
             return <button key={candidate.id} type="button" className="strategy-entry__session" disabled={busy || !ready} onClick={() => onChoose(candidate)} aria-label={`${t("strategy.entry.useSession")} ${candidate.displayName || t("strategy.recorded.unnamed")}`}>
-              <span className="strategy-entry__poster" aria-hidden="true"><small>.DUCKDB</small><b>LMU</b><i /></span>
+              <span className="strategy-entry__poster" aria-hidden="true"><small>.DUCKDB</small><b>LMU</b></span>
               <span className="strategy-entry__session-copy"><span><small>{t("strategy.entry.recordedSession")}</small><strong>{candidate.displayName || t("strategy.recorded.unnamed")}</strong><small>{ready ? t("strategy.recorded.ready") : t("strategy.recorded.waiting")}</small></span><span className="strategy-entry__open" aria-hidden="true">↗</span></span>
               <span className="strategy-entry__session-foot"><span><Icon name="i-telemetria" size={12} />{new Date(candidate.modifiedAt).toLocaleString()}</span><span>{(candidate.size / 1048576).toFixed(1)} MB</span></span>
             </button>;
@@ -39,6 +53,15 @@ export function StrategyRecordedStart({ candidates, busy, error, onChoose, onLib
         <div className="strategy-entry__manual-copy"><h3 id="strategy-entry-manual">{t("strategy.entry.manualTitle")}</h3><p>{t("strategy.entry.manualDescription")}</p><div><span>{t("strategy.entry.pace")}</span><span>{t("strategy.entry.fuel")}</span><span>{t("strategy.entry.energy")}</span></div></div>
         <button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy} onClick={onManual}>{t("strategy.entry.startManual")} ↗</button><small>{t("strategy.entry.noTelemetry")}</small>
       </section>
+      {saved ? <aside className="strategy-entry__saved" data-testid="strategy-entry-saved" aria-label={t("strategy.home.saved")}>
+        <header><div><span className="strategy-entry__micro">{t("strategy.home.saved")}</span><h3>{t("strategy.home.saved")}</h3></div>{onSaved ? <button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy || saved.opening} onClick={onSaved}>{t("strategy.entry.viewAll")} ↗</button> : null}</header>
+        {saved.status === "loading" || saved.opening ? <p role="status">{t(saved.opening ? "strategy.journey.opening" : "strategy.workspace.loading")}</p> : null}
+        {saved.status === "error" || saved.error ? <div role="alert"><p>{t("strategy.workspace.libraryError")}</p><button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy || saved.opening} onClick={saved.onRetry}>{t("strategy.workspace.refresh")}</button></div> : null}
+        {saved.recoveredFromBackup ? <p role="status">{t("strategy.workspace.recovered")}</p> : null}
+        {saved.status === "ready" && saved.drafts.length === 0 && saved.plans.length === 0 ? <p>{t("strategy.entry.noSaved")}</p> : null}
+        {saved.status === "ready" && saved.drafts.length > 0 ? <section aria-label={t("strategy.entry.savedDrafts")}><h4>{t("strategy.entry.savedDrafts")}</h4><ul>{saved.drafts.slice(0, 3).map(plan => <li key={plan.draftId}><div><strong>{plan.name}</strong><small>{new Date(plan.updatedAt).toLocaleString()}</small></div><button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy || saved.opening} onClick={() => { if (plan.draftId) saved.onOpenDraft(plan.draftId); }}>{t("strategy.workspace.open")}</button></li>)}</ul></section> : null}
+        {saved.status === "ready" && saved.plans.length > 0 ? <section aria-label={t("strategy.planHistory.savedPlans")}><h4>{t("strategy.planHistory.savedPlans")}</h4><ul>{saved.plans.slice(0, 3).map(plan => <li key={`${plan.planId}:${plan.variantId}`}><div><strong>{plan.name}</strong><small>{plan.revisionCount} {t("strategy.planHistory.revisions")}</small></div><button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy || saved.opening} onClick={() => saved.onOpenPlan(plan)}>{t("strategy.planHistory.open")}</button></li>)}</ul></section> : null}
+      </aside> : null}
     </div>
     {busy ? <p role="status" className="strategy-entry__status">{t("strategy.recorded.busy")} <button type="button" onClick={onCancel}>{t("strategy.recorded.cancel")}</button></p> : null}
     {error ? <p role="alert" className="strategy-entry__status">{error}</p> : null}

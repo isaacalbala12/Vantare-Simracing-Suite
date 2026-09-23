@@ -10,7 +10,9 @@
 
 Isaac rechaza el carácter incompleto del porte mediante tres capturas: inicio centrado sin guardadas visibles, preparación con referencias vacías y editor posterior heredado. [Issue #1331](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1331) y [plan root](../../strategy-planner/sdd/strategy-v5-completion-1331.md) fijan guardadas a la derecha, ancho aprovechado, circuito real, conexión canónica de referencias y composición consistente en todas las vistas. La nota anterior no acepta ese recorrido.
 
-Base `4f3d029f23efa056ef3fdd59ca46aad06148dcb3`, rama `vantareapp/isa-1331-strategy-v5-complete`, worktree `C:/tmp/vantare-isa1331`. Inventario en curso, sin nuevos cambios productivos todavía. Backend y originales se preservan; generación de circuito histórica sólo con soporte real del proveedor. Un ejecutor GPT-6 Sol medium, sin delegación adicional. Sin push/PR/CI remota/integración/publicación. GitHub prevalece por instrucción de Isaac sobre banners históricos de Notion.
+Base `4f3d029f23efa056ef3fdd59ca46aad06148dcb3`, rama `vantareapp/isa-1331-strategy-v5-complete`, worktree `C:/tmp/vantare-isa1331`. Inventario cerrado: repositorio/lista existentes, proyección exacta con handles vivos y 15 contornos LMU sin API histórica pública. Backend y originales se preservan. Un ejecutor GPT-6 Sol medium, sin delegación adicional. Sin push/PR/CI remota/integración/publicación. GitHub prevalece por instrucción de Isaac sobre banners históricos de Notion.
+
+Corte 1 implementado: inicio de ancho disponible con columna derecha de hasta tres borradores y tres planes, reapertura/historial y biblioteca completa. Destinos diferidos protegen el borrador ante cancelación. Óvalo decorativo retirado. Focales Start/Page 10/10, tipos y lint pasan; root revisa el diff y los estados. Sigue el corte de referencias canónicas. Isaac ordena **no abrir ni relanzar la app hasta que lo indique**: sólo código/tests/build sin lanzamiento; QA nativa y visual pendiente, sin heredar notas anteriores.
 
 ## Antecedente — QA de preparación y límite funcional (2026-09-22)
 

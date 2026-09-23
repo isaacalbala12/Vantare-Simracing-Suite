@@ -67,6 +67,33 @@ it("routes context navigation through discard protection and reopens a native sa
   expect(execute.mock.calls.filter(([command]) => command.operation === "open")).toHaveLength(1);
   expect(execute.mock.calls.some(([command]) => command.operation === "create")).toBe(false);
 });
+
+it("keeps the unsaved menu draft when direct saved opening is cancelled, then reopens only after confirmation", async () => {
+  const { execute } = setup();
+  const open = await screen.findByRole("button", { name: "strategy.workspace.open" });
+  fireEvent.click(open);
+  expect(screen.getByRole("alertdialog")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.cancel" }));
+  expect(screen.getByRole("button", { name: /strategy.entry.startManual/ })).toBeTruthy();
+  expect(execute.mock.calls.some(([command]) => command.operation === "open")).toBe(false);
+  fireEvent.click(open);
+  fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.leave" }));
+  await screen.findByText("strategy.workspace.saved");
+  expect(execute.mock.calls.filter(([command]) => command.operation === "open")).toHaveLength(1);
+});
+
+it("opens a saved plan's history from the menu without reading a revision until chosen", async () => {
+  const ref = { planId: "recorded-plan:history", variantId: "recorded-main", revisionId: "revision-a", contentHash: "a".repeat(64) };
+  const { execute } = setup({ plans: [{ ...ref, name: "Historical Le Mans", mode: "manual", updatedAt: "2026-09-14T12:00:00Z", hasDraft: false, revisionCount: 1, revisionRefs: [ref], latestRevision: ref }] });
+  fireEvent.click(await screen.findByRole("button", { name: "strategy.planHistory.open" }));
+  expect(screen.getByRole("alertdialog")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.leave" }));
+  expect(await screen.findByTestId("strategy-plan-history")).toBeTruthy();
+  expect(execute.mock.calls.filter(([command]) => command.operation === "open")).toHaveLength(0);
+  fireEvent.click(screen.getByRole("button", { name: "strategy.planHistory.choose" }));
+  expect(await screen.findByText("2:03:40")).toBeTruthy();
+  expect(execute.mock.calls.find(([command]) => command.operation === "open")?.[0]).toMatchObject({ revision: ref });
+});
 it("prevents a pending reopen from replacing a newly started preparation", async () => {
   const { slot, execute } = setup();
   fireEvent.click(await within(slot).findByRole("button", { name: "strategy.home.saved" }));

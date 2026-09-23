@@ -61,31 +61,42 @@ export function StrategyRecordedPage({ applicationClient: supplied, analysisClie
     return () => { current = false; };
   }, [application, catalogRetry]);
   const exit = () => {
+    setHistoryPlan(undefined);
     setActive(destination.current === "new" ? { eventId: globalThis.crypto.randomUUID() } : null);
     library.refresh(); setCatalogState("loading"); setCatalogRetry(value => value + 1);
   };
+  const openSavedDraft = (draftId: string) => {
+    setHistoryPlan(undefined);
+    setActive(null);
+    void library.open(draftId).then(opened => {
+      if (opened) setActive({ eventId: opened.document.payload.eventId, initial: opened });
+    });
+  };
+  const openSavedPlan = (plan: StrategyPlanSummaryV1) => { setActive(null); setHistoryPlan(plan); };
   return <div className="orbit-strategy orbit-strategy--recorded strategy-recorded-page" data-testid="orbit-strategy">
     {active ? <StrategyRecordedWorkflow key={active.eventId} eventId={active.eventId} initial={active.initial} repositoryVersion={library.repositoryVersion}
       repositoryLoading={library.status === "loading"} onRetryRepository={library.refresh}
       catalog={catalog?.combinations ?? []} catalogState={catalogState} calendar={calendar.calendar} application={application} analysis={analysisClient}
-      onExit={exit} onRequestSaved={() => { destination.current = "library"; }} onCleanupError={() => toast.show(t("strategy.recorded.error"), t("strategy.workspace.cleanupFailed"))} t={t}
-      navigation={({ requestExit, draft, busy }) => slot ? createPortal(<RecordedContext active disabled={busy} draft={draft} t={t} onNew={() => { destination.current = "new"; requestExit(); }} onLibrary={() => { destination.current = "library"; requestExit(); }} />, slot) : null} />
+      onExit={exit} onRequestSaved={() => { destination.current = "library"; }} onOpenSavedDraft={openSavedDraft} onOpenSavedPlan={openSavedPlan}
+      saved={{ status: library.status, opening: library.opening, drafts: library.plans, plans: library.savedPlans, error: library.error, recoveredFromBackup: library.recoveredFromBackup, onRetry: library.refresh }}
+      onCleanupError={() => toast.show(t("strategy.recorded.error"), t("strategy.workspace.cleanupFailed"))} t={t}
+      navigation={({ requestExit, draft, busy }) => slot ? createPortal(<RecordedContext active disabled={busy} draft={draft} t={t} onNew={() => requestExit(() => { destination.current = "new"; exit(); })} onLibrary={() => requestExit(() => { destination.current = "library"; exit(); })} />, slot) : null} />
       : <section className="strategy-recorded-library" aria-labelledby="recorded-library-title">
         {slot ? createPortal(<RecordedContext active={false} disabled={library.opening} t={t} onNew={() => { destination.current = "new"; exit(); }} onLibrary={library.refresh} />, slot) : null}
         <header><h2 id="recorded-library-title">{t("strategy.home.saved")}</h2><p>{t("strategy.workspace.libraryHint")}</p></header>
         <div className="strategy-recorded-library__tools"><label>{t("strategy.workspace.search")}<input type="search" value={library.query} onChange={event => library.setQuery(event.currentTarget.value)} /></label>
           <Button variant="ghost" disabled={library.opening || library.status === "loading"} onClick={library.refresh}>{t("strategy.workspace.refresh")}</Button>
-          <Button disabled={library.opening} onClick={() => setActive({ eventId: globalThis.crypto.randomUUID() })}>{t("strategy.home.new")}</Button></div>
+          <Button disabled={library.opening} onClick={() => { setHistoryPlan(undefined); setActive({ eventId: globalThis.crypto.randomUUID() }); }}>{t("strategy.home.new")}</Button></div>
         {library.status === "loading" ? <p role="status">{t("strategy.workspace.loading")}</p> : null}
         {library.opening ? <p role="status">{t("strategy.journey.opening")}</p> : null}
         {library.error ? <p role="alert">{t("strategy.workspace.libraryError")}</p> : null}
         {library.recoveredFromBackup ? <p role="status">{t("strategy.workspace.recovered")}</p> : null}
         {library.status === "ready" && library.plans.length === 0 && library.savedPlans.length === 0 ? <p>{t("strategy.workspace.emptyLibrary")}</p> : null}
         <ul>{library.plans.map(plan => <li key={plan.draftId}><div><strong>{plan.name}</strong><small>{new Date(plan.updatedAt).toLocaleString()}</small></div>
-          <Button variant="ghost" disabled={library.opening || library.status !== "ready"} onClick={() => { if (!plan.draftId) return; void library.open(plan.draftId).then(opened => { if (opened) setActive({ eventId: opened.document.payload.eventId, initial: opened }); }); }}>{t("strategy.workspace.open")}</Button></li>)}</ul>
+          <Button variant="ghost" disabled={library.opening || library.status !== "ready"} onClick={() => { if (plan.draftId) openSavedDraft(plan.draftId); }}>{t("strategy.workspace.open")}</Button></li>)}</ul>
         {library.savedPlans.length ? <section className="strategy-recorded-library__history" aria-labelledby="recorded-history-title"><h3 id="recorded-history-title">{t("strategy.planHistory.savedPlans")}</h3>
           <ul>{library.savedPlans.map(plan => <li key={`${plan.planId}:${plan.variantId}`}><div><strong>{plan.name}</strong><small>{plan.revisionCount} {t("strategy.planHistory.revisions")}</small></div>
-            <Button variant="ghost" disabled={library.opening || library.status !== "ready"} onClick={() => setHistoryPlan(plan)}>{t("strategy.planHistory.open")}</Button></li>)}</ul>
+            <Button variant="ghost" disabled={library.opening || library.status !== "ready"} onClick={() => openSavedPlan(plan)}>{t("strategy.planHistory.open")}</Button></li>)}</ul>
         </section> : null}
         {historyPlan ? <StrategyPlanHistory key={`${historyPlan.planId}:${historyPlan.variantId}`} plan={historyPlan} application={application} onClose={() => setHistoryPlan(undefined)} t={t} /> : null}
       </section>}

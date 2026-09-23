@@ -10,6 +10,7 @@ const INTEGER_FIELDS = [
   'qualified_visits',
   'first_sessions_confirmed',
 ];
+const COHORT_FIELDS = ['cohort_mature', 'cohort_returned_d7_13', 'cohort_unknown'];
 const FEEDBACK_STATUSES = new Set(['new', 'reviewed', 'action_created', 'closed']);
 
 function metric(value, source, observedAt, detail = '') {
@@ -134,11 +135,42 @@ function validWeeklyRow(row) {
     row &&
     typeof row.week_start === 'string' &&
     /^\d{4}-\d{2}-\d{2}$/.test(row.week_start) &&
-    INTEGER_FIELDS.every((field) => row[field] === null || nonnegativeInteger(row[field])) &&
+    [...INTEGER_FIELDS, ...COHORT_FIELDS].every(
+      (field) => row[field] === null || nonnegativeInteger(row[field]),
+    ) &&
+    (COHORT_FIELDS.every((field) => row[field] === null) ||
+      (COHORT_FIELDS.every((field) => row[field] !== null) &&
+        row.first_sessions_confirmed !== null &&
+        row.cohort_mature <= row.first_sessions_confirmed &&
+        row.cohort_returned_d7_13 + row.cohort_unknown <= row.cohort_mature)) &&
     (row.source_note === null || typeof row.source_note === 'string') &&
     typeof row.updated_at === 'string' &&
     !Number.isNaN(Date.parse(row.updated_at))
   );
+}
+
+function manualReturnMetric(rows) {
+  const cohortRows = rows.filter((row) => row.cohort_mature !== null);
+  const eligible = cohortRows.reduce((sum, row) => sum + row.cohort_mature, 0);
+  const source = 'Cohortes maduras · registro manual';
+  if (eligible === 0)
+    return absent(SOURCE_STATUS.notMeasured, source, 'Aún no hay cohortes maduras registradas.');
+  const returned = cohortRows.reduce((sum, row) => sum + row.cohort_returned_d7_13, 0);
+  const unknown = cohortRows.reduce((sum, row) => sum + row.cohort_unknown, 0);
+  const known = eligible - unknown;
+  const observedAt = cohortRows.map((row) => row.updated_at).sort().at(-1);
+  return {
+    ...metric(
+      Math.round((100 * returned) / eligible),
+      source,
+      observedAt,
+      `${returned}/${eligible} retornos confirmados; ${unknown} sin resultado. Cota mínima, no tasa observada de toda la base.`,
+    ),
+    eligible,
+    returned,
+    unknown,
+    knownRatePct: known > 0 ? Math.round((100 * returned) / known) : null,
+  };
 }
 
 async function readGrowth(env, fetcher) {
@@ -146,7 +178,7 @@ async function readGrowth(env, fetcher) {
   try {
     const response = await supabaseRequest(
       env,
-      'intelligence_weekly_growth?select=week_start,youtube_followers,instagram_followers,marketing_minutes,qualified_visits,first_sessions_confirmed,source_note,updated_at&order=week_start.desc&limit=52',
+      'intelligence_weekly_growth?select=week_start,youtube_followers,instagram_followers,marketing_minutes,qualified_visits,first_sessions_confirmed,cohort_mature,cohort_returned_d7_13,cohort_unknown,source_note,updated_at&order=week_start.desc&limit=52',
       fetcher,
     );
     const rows = await response.json();
@@ -160,6 +192,7 @@ async function readGrowth(env, fetcher) {
       status: ordered.length ? SOURCE_STATUS.measured : SOURCE_STATUS.notMeasured,
       observedAt,
       entries: ordered,
+      returnD7to13: manualReturnMetric(ordered),
       firstSessions: hasSessions
         ? metric(
             ordered.reduce((sum, row) => sum + (row.first_sessions_confirmed ?? 0), 0),
@@ -182,6 +215,7 @@ async function readGrowth(env, fetcher) {
       status: SOURCE_STATUS.unavailable,
       observedAt: null,
       entries: [],
+      returnD7to13: absent(SOURCE_STATUS.unavailable, source, 'No se pudo verificar la fuente.'),
       firstSessions: absent(SOURCE_STATUS.unavailable, source, 'No se pudo verificar la fuente.'),
       qualifiedVisits: absent(SOURCE_STATUS.unavailable, source, 'No se pudo verificar la fuente.'),
     };
@@ -364,11 +398,7 @@ export async function buildSnapshot(env, environment, fetcher = fetch, now = Dat
     growth,
     polar,
     feedback,
-    returnD7to13: absent(
-      SOURCE_STATUS.notMeasured,
-      'Uso consentido o confirmación de cohorte',
-      'Todavía no existe una fuente de sesiones repetidas verificadas.',
-    ),
+    returnD7to13: growth.returnD7to13,
     goals: {
       firstMonthSessions: 10,
       day90Sessions: 45,
@@ -402,6 +432,22 @@ export function validateWeeklyEntry(input, now = Date.now()) {
       return null;
     row[field] = value;
   }
+  for (const field of COHORT_FIELDS) {
+    const value = input[field] ?? null;
+    if (value !== null && (!nonnegativeInteger(value) || value > 10000000)) return null;
+    row[field] = value;
+  }
+  const noCohort = COHORT_FIELDS.every((field) => row[field] === null);
+  const fullCohort = COHORT_FIELDS.every((field) => row[field] !== null);
+  if (
+    !noCohort &&
+    (!fullCohort ||
+      parsed.getTime() > now - 13 * 86400000 ||
+      row.first_sessions_confirmed === null ||
+      row.cohort_mature > row.first_sessions_confirmed ||
+      row.cohort_returned_d7_13 + row.cohort_unknown > row.cohort_mature)
+  )
+    return null;
   if (INTEGER_FIELDS.every((field) => row[field] === null)) return null;
   if (
     input.source_note !== undefined &&
@@ -411,6 +457,7 @@ export function validateWeeklyEntry(input, now = Date.now()) {
     return null;
   const note = input.source_note?.trim() ?? null;
   if (note && note.length > 300) return null;
+  if (!noCohort && !note) return null;
   row.source_note = note || null;
   row.updated_at = new Date(now).toISOString();
   return row;

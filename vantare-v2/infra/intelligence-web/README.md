@@ -14,7 +14,7 @@ distintos de `DASHBOARD_HOSTNAME`, incluido `workers.dev`.
 | Negocio | `GET /v1/metrics/` de Polar, separado por producción/sandbox | MRR, suscripciones y cobros netos en céntimos. Nunca se extrapolan importes desde filas legacy. |
 | Opiniones | `product_feedback` en Supabase | Solo texto voluntario sin caducar, con estado de revisión. Necesita la migración de opiniones de VAN-757. |
 | Crecimiento | `intelligence_weekly_growth` en Supabase | Registro manual fechado de redes, visitas cualificadas y primeras sesiones confirmadas. |
-| Retorno D7–13 | Sin fuente todavía | Siempre se muestra «sin medir» hasta integrar una cohorte verificable con consentimiento. |
+| Retorno D7–13 | Cohortes introducidas manualmente en `intelligence_weekly_growth` | Cota mínima: retornos confirmados divididos entre pilotos maduros elegibles; los desconocidos se muestran aparte. Sin registros, «sin medir». |
 | Mercado | Estudio fechado | Escenarios y objetivos, nunca presentados como ventas observadas. |
 
 Una petición fallida aparece como «no disponible»; un cero de una respuesta
@@ -59,6 +59,13 @@ El Worker conserva como máximo 25 opiniones recientes en cada respuesta; la
 tabla limita la retención a 180 días. El registro semanal acepta una fila por
 lunes y no contiene identificadores de clientes. La API no ofrece listas de
 identidades, pagos ni eventos de carrera.
+
+La cohorte manual de cada lunes admite tres recuentos juntos: pilotos ya maduros,
+retornos confirmados entre D7 y D13 y casos sin resultado. Exige una nota de
+procedencia, al menos 13 días desde el inicio de la semana y no permite que
+retornos más desconocidos superen los elegibles.
+La cifra principal es una **cota mínima**; el porcentaje entre casos conocidos
+se muestra aparte. La captura automática consentida pertenece a otra entrega.
 
 ## Desarrollo local
 

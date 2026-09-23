@@ -622,6 +622,14 @@ a:focus-visible {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 13px;
 }
+.form-note {
+  margin: 3px 0 0;
+  border-top: 1px solid #39434b;
+  padding-top: 14px;
+  color: #9cabb6;
+  font-size: 11px;
+  line-height: 1.6;
+}
 .weekly-form .button {
   justify-self: start;
 }

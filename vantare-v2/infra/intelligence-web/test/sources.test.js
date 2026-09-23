@@ -69,6 +69,38 @@ test('feedback inbox remains visible if its separate new-count request fails', a
   assert.equal(result.feedback.entries.length, 1);
 });
 
+test('manual mature cohorts show confirmed lower bound and unknown coverage', async () => {
+  const makeRow = (week, sessions, mature, returned, unknown) => ({
+    week_start: week,
+    youtube_followers: null,
+    instagram_followers: null,
+    marketing_minutes: null,
+    qualified_visits: null,
+    first_sessions_confirmed: sessions,
+    cohort_mature: mature,
+    cohort_returned_d7_13: returned,
+    cohort_unknown: unknown,
+    source_note: 'Confirmaciones directas',
+    updated_at: '2026-09-23T10:00:00Z',
+  });
+  const fetcher = async (url) => {
+    if (url.includes('intelligence_weekly_growth'))
+      return Response.json([
+        makeRow('2026-09-07', 10, 6, 2, 2),
+        makeRow('2026-08-31', 5, 4, 1, 1),
+      ]);
+    return new Response('down', { status: 503 });
+  };
+  const result = await buildSnapshot(env, 'production', fetcher, fixedNow);
+  assert.equal(result.growth.firstSessions.value, 15);
+  assert.equal(result.returnD7to13.status, 'measured');
+  assert.equal(result.returnD7to13.value, 30);
+  assert.equal(result.returnD7to13.eligible, 10);
+  assert.equal(result.returnD7to13.returned, 3);
+  assert.equal(result.returnD7to13.unknown, 3);
+  assert.equal(result.returnD7to13.knownRatePct, 43);
+});
+
 test('Polar production and sandbox remain separate and only API metrics set MRR', async () => {
   const urls = [];
   const fetcher = async (url) => {
@@ -112,6 +144,24 @@ test('weekly entry validates Monday, bounds and real missing values', async () =
   );
   assert.equal(validateWeeklyEntry({ ...valid, youtube_followers: -1 }, fixedNow), null);
   assert.equal(validateWeeklyEntry({ week_start: '2026-09-21' }, fixedNow), null);
+  assert.equal(
+    validateWeeklyEntry({ ...valid, week_start: '2026-09-21' }, Date.parse('2026-09-20T23:00:00Z'))?.week_start,
+    '2026-09-21',
+  );
+  const cohort = {
+    ...valid,
+    week_start: '2026-09-07',
+    first_sessions_confirmed: 8,
+    cohort_mature: 6,
+    cohort_returned_d7_13: 2,
+    cohort_unknown: 3,
+  };
+  assert.equal(validateWeeklyEntry(cohort, fixedNow).cohort_mature, 6);
+  assert.equal(validateWeeklyEntry({ ...cohort, week_start: '2026-09-21' }, fixedNow), null);
+  assert.equal(validateWeeklyEntry({ ...cohort, cohort_unknown: 5 }, fixedNow), null);
+  assert.equal(validateWeeklyEntry({ ...cohort, cohort_mature: 9 }, fixedNow), null);
+  assert.equal(validateWeeklyEntry({ ...cohort, cohort_unknown: null }, fixedNow), null);
+  assert.equal(validateWeeklyEntry({ ...cohort, source_note: '' }, fixedNow), null);
   let sent;
   const fetcher = async (url, options) => {
     sent = { url, options };

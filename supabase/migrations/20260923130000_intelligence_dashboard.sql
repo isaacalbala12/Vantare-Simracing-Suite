@@ -34,8 +34,24 @@ create table public.intelligence_weekly_growth (
   marketing_minutes integer check (marketing_minutes >= 0 and marketing_minutes <= 10080),
   qualified_visits integer check (qualified_visits >= 0),
   first_sessions_confirmed integer check (first_sessions_confirmed >= 0),
+  cohort_mature integer check (cohort_mature >= 0),
+  cohort_returned_d7_13 integer check (cohort_returned_d7_13 >= 0),
+  cohort_unknown integer check (cohort_unknown >= 0),
   source_note text check (source_note is null or length(source_note) <= 300),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint intelligence_weekly_growth_cohort_check check (
+    (cohort_mature is null and cohort_returned_d7_13 is null and cohort_unknown is null)
+    or (
+      cohort_mature is not null
+      and cohort_returned_d7_13 is not null
+      and cohort_unknown is not null
+      and first_sessions_confirmed is not null
+      and cohort_mature <= first_sessions_confirmed
+      and cohort_returned_d7_13::bigint + cohort_unknown::bigint <= cohort_mature
+      and source_note is not null
+      and length(btrim(source_note)) > 0
+    )
+  )
 );
 
 alter table public.intelligence_weekly_growth enable row level security;
@@ -43,4 +59,4 @@ revoke all on table public.intelligence_weekly_growth from public, anon, authent
 grant select, insert, update on table public.intelligence_weekly_growth to service_role;
 
 comment on table public.intelligence_weekly_growth is
-  'Manual weekly owner scorecard. No implicit app telemetry and no customer identifiers.';
+  'Manual weekly owner scorecard and mature return cohorts. No implicit app telemetry or customer identifiers.';

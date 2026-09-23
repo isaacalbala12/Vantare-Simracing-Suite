@@ -14,8 +14,19 @@ const feedbackStatusLabels = {
 };
 const feedbackCategoryLabels = { problem: 'Problema', idea: 'Idea', experience: 'Experiencia' };
 const numberFormat = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 0 });
+const WEEKLY_FIELDS = [
+  'youtube_followers',
+  'instagram_followers',
+  'marketing_minutes',
+  'qualified_visits',
+  'first_sessions_confirmed',
+  'cohort_mature',
+  'cohort_returned_d7_13',
+  'cohort_unknown',
+];
 let snapshot = null;
 let requestSequence = 0;
+let weekFormDirty = false;
 
 function node(id) {
   return document.getElementById(id);
@@ -85,6 +96,11 @@ function renderOverview(data) {
     'overview-return-state',
     (value) => `${value} %`,
   );
+  if (data.returnD7to13.status === 'measured')
+    put(
+      'overview-return-state',
+      `${data.returnD7to13.returned}/${data.returnD7to13.eligible} · ${data.returnD7to13.unknown} sin resultado`,
+    );
   showMetric(data.polar.mrrCents, 'overview-mrr', 'overview-mrr-state', (value) =>
     money(value, data.polar.currency),
   );
@@ -136,7 +152,19 @@ function renderProduct(data) {
   );
   put(
     'funnel-return',
-    data.returnD7to13.status === 'measured' ? `${data.returnD7to13.value} %` : 'Sin medir',
+    data.returnD7to13.status === 'measured'
+      ? `${data.returnD7to13.value} %`
+      : data.returnD7to13.status === 'unavailable'
+        ? 'Fuente no disponible'
+        : 'Sin medir',
+  );
+  put(
+    'return-coverage',
+    data.returnD7to13.status === 'measured'
+      ? `${data.returnD7to13.returned} de ${data.returnD7to13.eligible} retornos confirmados; ${data.returnD7to13.unknown} sin resultado. ${data.returnD7to13.knownRatePct === null ? 'No hay tasa entre casos conocidos.' : `Entre casos conocidos: ${data.returnD7to13.knownRatePct} %.`}`
+      : data.returnD7to13.status === 'unavailable'
+        ? 'No se pudo comprobar el registro manual de cohortes.'
+        : 'Las cohortes maduras aún no tienen un recuento verificado.',
   );
 }
 
@@ -265,7 +293,7 @@ function renderGrowth(data) {
         ? 'Fuente no disponible.'
         : 'Aún no hay semanas registradas.',
     );
-    td.colSpan = 6;
+    td.colSpan = 7;
     tr.append(td);
     tbody.append(tr);
     return;
@@ -278,6 +306,12 @@ function renderGrowth(data) {
     cell(tr, entry.marketing_minutes === null ? '—' : `${count(entry.marketing_minutes)} min`);
     cell(tr, entry.qualified_visits === null ? '—' : count(entry.qualified_visits));
     cell(tr, entry.first_sessions_confirmed === null ? '—' : count(entry.first_sessions_confirmed));
+    cell(
+      tr,
+      entry.cohort_mature === null
+        ? '—'
+        : `${count(entry.cohort_returned_d7_13)} / ${count(entry.cohort_mature)} · ${count(entry.cohort_unknown)} sin resultado`,
+    );
     tbody.append(tr);
   }
 }
@@ -289,6 +323,15 @@ function render(data) {
   renderBusiness(data);
   renderFeedback(data);
   renderGrowth(data);
+  if (!weekFormDirty) populateWeekForm();
+}
+
+function populateWeekForm() {
+  const form = node('weekly-form');
+  const row = snapshot?.growth.entries.find((entry) => entry.week_start === form.elements.week_start.value);
+  for (const field of WEEKLY_FIELDS)
+    form.elements[field].value = row?.[field] === null || row?.[field] === undefined ? '' : row[field];
+  form.elements.source_note.value = row?.source_note ?? '';
 }
 
 async function loadSnapshot() {
@@ -366,13 +409,7 @@ async function saveWeek(event) {
   const button = form.querySelector('button[type=submit]');
   const data = new FormData(form);
   const body = { week_start: data.get('week_start'), source_note: data.get('source_note') };
-  for (const field of [
-    'youtube_followers',
-    'instagram_followers',
-    'marketing_minutes',
-    'qualified_visits',
-    'first_sessions_confirmed',
-  ]) {
+  for (const field of WEEKLY_FIELDS) {
     const raw = data.get(field);
     body[field] = raw === '' ? null : Number(raw);
   }
@@ -386,6 +423,7 @@ async function saveWeek(event) {
     });
     if (!response.ok) throw new Error('save_failed');
     put('weekly-message', 'Semana guardada. Los datos son manuales y quedan fechados.');
+    weekFormDirty = false;
     await loadSnapshot();
   } catch {
     put('weekly-message', 'No se pudo guardar. Revisa la semana y vuelve a intentarlo.');
@@ -402,6 +440,13 @@ node('feedback-filter').addEventListener('change', () => {
   if (snapshot) renderFeedback(snapshot);
 });
 node('weekly-form').addEventListener('submit', saveWeek);
+node('weekly-form').addEventListener('input', (event) => {
+  if (event.target.name !== 'week_start') weekFormDirty = true;
+});
+node('weekly-form').elements.week_start.addEventListener('change', () => {
+  weekFormDirty = false;
+  populateWeekForm();
+});
 node('weekly-form').elements.week_start.value = mondayLocal();
 node('scenario-form').addEventListener('input', renderScenario);
 selectView(location.hash.slice(1));

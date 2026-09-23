@@ -72,7 +72,7 @@
           </div>
           <div class="metric-grid metric-grid--primary">
             <article class="metric-card metric-card--accent">
-              <p>RETORNO D7–13</p>
+              <p>RETORNO CONFIRMADO D7–13</p>
               <strong id="overview-return">—</strong
               ><small id="overview-return-state">Pendiente de medición</small>
             </article>
@@ -168,13 +168,13 @@
                   ><strong id="funnel-sessions">—</strong>
                 </div>
                 <div>
-                  <span>Retorno D7–13 · cohorte madura</span
+                  <span>Retorno confirmado D7–13 · cota mínima</span
                   ><strong id="funnel-return">Sin medir</strong>
                 </div>
               </div>
               <p class="panel__foot">
-                Las entradas manuales se acumulan de las últimas 52 semanas disponibles. La tasa de
-                retorno necesita personas y fechas, no solo sumas semanales.
+                <span id="return-coverage">Las cohortes maduras aún no tienen un recuento verificado.</span>
+                Las entradas manuales se acumulan de las últimas 52 semanas disponibles.
               </p>
             </article>
             <article class="panel panel--warm">
@@ -182,8 +182,9 @@
               <h3>Qué cuenta como retorno</h3>
               <p>
                 Un piloto completa una primera sesión real con Vantare y vuelve a usarlo entre los
-                días 7 y 13. Solo se calcula con cohortes maduras y resultado conocido; las personas
-                sin observación figuran como desconocidas.
+                días 7 y 13. La cifra principal divide retornos confirmados entre todos los
+                elegibles maduros; muestra también cuántos siguen sin resultado. Es una cota
+                inferior cuando faltan observaciones.
               </p>
               <p class="panel__foot">
                 La captura automática requiere consentimiento específico, desactivado por defecto, y
@@ -345,6 +346,32 @@
                       placeholder="Sin dato"
                   /></label>
                 </div>
+                <p class="form-note">
+                  Cohorte de esa semana: rellena los tres campos solo cuando haya pilotos que ya
+                  cumplieron 13 días desde su primera sesión. Cuenta personas únicas y explica la
+                  fuente en la nota.
+                </p>
+                <div class="form-grid">
+                  <label
+                    >Pilotos maduros elegibles<input
+                      name="cohort_mature"
+                      type="number"
+                      min="0"
+                      placeholder="Sin dato" /></label
+                  ><label
+                    >Volvieron en D7–13<input
+                      name="cohort_returned_d7_13"
+                      type="number"
+                      min="0"
+                      placeholder="Sin dato" /></label
+                  ><label
+                    >Sin resultado conocido<input
+                      name="cohort_unknown"
+                      type="number"
+                      min="0"
+                      placeholder="Sin dato"
+                  /></label>
+                </div>
                 <label
                   >Origen o nota breve, sin datos personales<input
                     name="source_note"
@@ -389,11 +416,12 @@
                     <th>Marketing</th>
                     <th>Visitas</th>
                     <th>Primeras sesiones</th>
+                    <th>Retorno D7–13</th>
                   </tr>
                 </thead>
                 <tbody id="weekly-rows">
                   <tr>
-                    <td colspan="6">Aún no hay semanas registradas.</td>
+                    <td colspan="7">Aún no hay semanas registradas.</td>
                   </tr>
                 </tbody>
               </table>

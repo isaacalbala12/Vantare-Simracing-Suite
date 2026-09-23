@@ -2,7 +2,11 @@
 
 [Especificación](README.md) · [Aceptación](acceptance.md) · ISA-1091.
 
-## Corte vigente — ISA-1314, 2026-09-22
+## Corte vigente — ISA-1331, 2026-09-23
+
+Isaac identifica el porte incompleto: falta lista derecha de estrategias guardadas, circuito correlacionado, referencias de telemetría y continuidad visual de todas las pantallas posteriores. Ejecutar [el plan de finalización v5](strategy-v5-completion-1331.md) sobre `4f3d029f` en `C:/tmp/vantare-isa1331`. Reutilizar repositorio, Analysis y SolverV2; raíz mantiene dirección y revisión, GPT-6 Sol medium implementa cortes secuenciales. No se hereda aceptación de una nota parcial. Handoff e issue #1331 mantienen el estado real.
+
+## Antecedente — ISA-1314, 2026-09-22
 
 Isaac aprueba el concepto A v5 y pide documentarlo y aplicarlo a la app. El [contrato de diseño](../design/strategy-menu-desk-v5.md) sustituye el asistente A4 y el garaje; conserva Analysis, Strategy y el motor Go. Menú de origen, mesa con inspector y ruta manual con overrides del cálculo existente, sin dependencia nueva. Base exacta: `7ff79ead4c125d63730b0ec3aa181e6c630453ab`, rama `vantareapp/isa-1314-strategy-menu-desk`, worktree `C:/tmp/vantare-isa1314`.
 

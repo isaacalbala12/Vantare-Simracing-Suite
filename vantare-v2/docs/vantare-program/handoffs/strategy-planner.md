@@ -6,7 +6,13 @@
 > Este handoff conserva evidencia técnica fechada; sus estados antiguos no
 > sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
 
-## Actualización — QA final de composición y límite funcional (2026-09-22)
+## Actualización — ISA-1331, finalización del recorrido v5 (2026-09-23)
+
+Isaac rechaza el carácter incompleto del porte mediante tres capturas: inicio centrado sin guardadas visibles, preparación con referencias vacías y editor posterior heredado. [Issue #1331](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1331) y [plan root](../../strategy-planner/sdd/strategy-v5-completion-1331.md) fijan guardadas a la derecha, ancho aprovechado, circuito real, conexión canónica de referencias y composición consistente en todas las vistas. La nota anterior no acepta ese recorrido.
+
+Base `4f3d029f23efa056ef3fdd59ca46aad06148dcb3`, rama `vantareapp/isa-1331-strategy-v5-complete`, worktree `C:/tmp/vantare-isa1331`. Inventario en curso, sin nuevos cambios productivos todavía. Backend y originales se preservan; generación de circuito histórica sólo con soporte real del proveedor. Un ejecutor GPT-6 Sol medium, sin delegación adicional. Sin push/PR/CI remota/integración/publicación. GitHub prevalece por instrucción de Isaac sobre banners históricos de Notion.
+
+## Antecedente — QA de preparación y límite funcional (2026-09-22)
 
 Isaac completa VirusTotal: el asset regenerado obtiene 0/62, incluido Microsoft sin detección; no se afirma identidad con el original en cuarentena. Resultado enlazado en la auditoría de ISA-1322. La build normal vuelve a funcionar sin cambios de protección.
 

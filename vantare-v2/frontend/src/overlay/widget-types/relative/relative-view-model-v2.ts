@@ -73,8 +73,7 @@ export function createRelativeViewModelCommitAuthority(): RelativeViewModelCommi
  * and formats the gap. Every visible field comes from the same Relative row;
  * the view model never joins a differently scheduled standings section.
  *
- * Fields with no canonical signal behind them stay at the placeholder and are
- * declared rather than invented: driverNumber and bestLapText.
+ * Number and lap times carry the canonical values from this same projection.
  */
 export function buildRelativeViewModelV2(
   frame: OverlayFrameV2,
@@ -98,7 +97,13 @@ export function buildSettledRelativeViewModelV2(
   content: RelativeContent,
 ): RelativeViewModel {
   return prepareRelativeViewModelV2(
-    { ...frame, relative: frame.relativeSettled },
+    {
+      ...frame, relative: frame.relativeSettled,
+      // Redline retains its legacy settled-window filter. The independently
+      // selected class window belongs to the immediate Relative contract.
+      relativeSameClass: frame.relativeSettled.filter((row) =>
+        (row.classId ?? "").toUpperCase() === (frame.relativeSettled.find((item) => item.side === "player")?.classId ?? "").toUpperCase()),
+    },
     source,
     content,
   ).model;
@@ -161,10 +166,7 @@ export function prepareRelativeViewModelV2(
     };
   }
 
-  const playerIndex = frame.relative.findIndex((row) => row.side === "player");
-  const scoped = content.classScope === "sameClass"
-    ? frame.relative.filter((row) => sameClass(row, frame.relative[playerIndex]))
-    : frame.relative;
+  const scoped = content.classScope === "sameClass" ? frame.relativeSameClass : frame.relative;
   const anchor = scoped.findIndex((row) => row.side === "player");
   const candidateWithPlayer = anchor < 0
     ? []
@@ -242,6 +244,7 @@ export function relativeDisplayedValues(
     rows: model.rows
       .map((row) => [
         row.id, row.position, row.vehicleClass, row.configuredDriverName ?? row.driverName,
+        row.driverNumber, row.bestLapText, row.lastLapText,
         row.gapText, row.side, row.tone, row.isPlayer ? "player" : "",
         row.lapDelta == null ? "" : String(row.lapDelta),
       ].join("~"))
@@ -251,8 +254,6 @@ export function relativeDisplayedValues(
 
 /** Fields with no canonical signal behind them; declared, never compared. */
 export const OVERLAY_V2_RELATIVE_DECLARED_GAPS: readonly string[] = Object.freeze([
-  "rows[].driverNumber",
-  "rows[].bestLapText",
 ]);
 
 function unavailableStatus(state: string): RelativeViewModel["status"] {
@@ -268,10 +269,6 @@ function unavailableStatus(state: string): RelativeViewModel["status"] {
   }
 }
 
-function sameClass(row: OverlayRelativeRowV2, player: OverlayRelativeRowV2 | undefined): boolean {
-  if (player === undefined) return false;
-  return (row.classId ?? "").toUpperCase() === (player.classId ?? "").toUpperCase();
-}
 
 function buildRow(
   row: OverlayRelativeRowV2,
@@ -285,16 +282,17 @@ function buildRow(
     id: row.id,
     position: row.position,
     vehicleClass: row.classId ?? "",
-    driverNumber: "",
+    driverNumber: row.number ?? "",
     driverName,
     configuredDriverName: formatDriverName(driverName, nameColumn),
     gapText: isPlayer || gapSeconds === null ? PLACEHOLDER : formatGap(gapSeconds),
-    bestLapText: PLACEHOLDER,
+    bestLapText: formatLapTime(displayedNumber(row.bestLap)),
     lastLapText: formatLapTime(displayedNumber(row.lastLap)),
     isPlayer,
     side: row.side as RelativeRowViewModel["side"],
     tone: resolveRelativeTone(gapSeconds ?? undefined, isPlayer),
     gapSeconds,
+    fieldQuality: { gap: row.gap.q, bestLap: row.bestLap?.q ?? "missing", lastLap: row.lastLap.q },
     lapDelta: freshRace ? freshLapDelta(row) : null,
   };
 }
@@ -507,7 +505,8 @@ function formatGap(seconds: number): string {
 
 function formatLapTime(seconds: number | undefined): string {
   if (seconds === undefined || !Number.isFinite(seconds) || seconds <= 0) return PLACEHOLDER;
-  return `${Math.floor(seconds / 60)}:${(seconds % 60).toFixed(3).padStart(6, "0")}`;
+  const milliseconds = Math.round(seconds * 1000);
+  return `${Math.floor(milliseconds / 60000)}:${(Math.floor(milliseconds / 1000) % 60).toString().padStart(2, "0")}.${(milliseconds % 1000).toString().padStart(3, "0")}`;
 }
 
 function formatRemainingTime(seconds: number | undefined): string | undefined {
@@ -521,7 +520,7 @@ function formatRemainingTime(seconds: number | undefined): string | undefined {
 
 // Las barras de info rellenan solo lo que la fuente entrega: fase/pista/reloj
 // de session, posición y clase del jugador desde su fila relative, y clima
-// cuando existe (en LMU no existe — hueco declarado honesto).
+// cuando existe en la señal canónica.
 function buildRelativeMeta(frame: OverlayFrameV2): Pick<
   RelativeViewModel,
   "sessionLabel" | "remainingText" | "trackText" | "playerBadgeText" | "ambientTempText" | "trackTempText" | "windText"
@@ -534,15 +533,16 @@ function buildRelativeMeta(frame: OverlayFrameV2): Pick<
   const track = displayedText(frame.session.track);
   if (track) meta.trackText = track.toUpperCase();
   const player = frame.relative.find((row) => row.side === "player");
-  if (player) {
+  if (player && Number.isInteger(player.position) && player.position > 0) {
     meta.playerBadgeText = `P${player.position}${player.classId ? ` · ${player.classId.toUpperCase()}` : ""}`;
   }
   const weather = frame.weather;
   const ambient = displayedNumber(weather?.ambientC);
   const trackC = displayedNumber(weather?.trackC);
   const wind = displayedNumber(weather?.windKph);
-  if (ambient !== undefined) meta.ambientTempText = `${Math.round(ambient)}°`;
-  if (trackC !== undefined) meta.trackTempText = `${Math.round(trackC)}°`;
+  const temperature = (celsius: number) => Math.round(frame.units.temperature === "fahrenheit" ? celsius * 9 / 5 + 32 : celsius);
+  if (ambient !== undefined) meta.ambientTempText = `${temperature(ambient)}°`;
+  if (trackC !== undefined) meta.trackTempText = `${temperature(trackC)}°`;
   if (wind !== undefined) meta.windText = `${Math.round(wind)} km/h`;
   return meta;
 }

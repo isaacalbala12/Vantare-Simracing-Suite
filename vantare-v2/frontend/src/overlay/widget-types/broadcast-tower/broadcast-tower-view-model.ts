@@ -10,6 +10,7 @@ export type BroadcastTowerRow = {
   className: string;
   brandColor?: string;
   gap?: number;
+  gapLaps?: number;
   isPlayer: boolean;
 };
-export type BroadcastTowerViewModel = WidgetViewModelBase & { type: "broadcast-tower"; sessionLabel: string; lap?: number; totalLaps?: number; trackTempC?: number; sof?: number; flag?: string; rows: readonly BroadcastTowerRow[]; rowCount: number; showWeather: boolean; showSof: boolean; motionIdentity?: string };
+export type BroadcastTowerViewModel = WidgetViewModelBase & { type: "broadcast-tower"; sessionLabel: string; lap?: number; totalLaps?: number; trackTempC?: number; trackTempText?: string; sof?: number; flag?: string; rows: readonly BroadcastTowerRow[]; rowCount: number; showWeather: boolean; showSof: boolean; motionIdentity?: string };

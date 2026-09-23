@@ -457,6 +457,15 @@ function withWorkshopDemo(frame: OverlayFrameV2, quality: OverlayQualityV2): Ove
     delta: {
       ...frame.delta,
       seconds: qualityValue(0.214, quality),
+      requested: "personal-best",
+      reference: "personal-best",
+      authority: "native",
+      available: ["personal-best", "session-best", "previous-lap"],
+      references: [
+        { requested: "personal-best", reference: "personal-best", seconds: qualityValue(0.214, quality), authority: "native" },
+        { requested: "session-best", reference: "session-best", seconds: qualityValue(-0.08, quality), authority: "derived" },
+        { requested: "previous-lap", reference: "previous-lap", seconds: qualityValue(0.43, quality), authority: "derived" },
+      ],
       history: demoDeltaHistory(quality),
     },
     session: { ...frame.session, flag: qualityValue("green", quality) },
@@ -864,7 +873,12 @@ function applyScene(
   let delta = frame.delta;
   let session = frame.session;
   if (state.player?.deltaSeconds !== undefined) {
-    delta = { ...delta, seconds: qualityValue(state.player.deltaSeconds, quality) };
+    const seconds = qualityValue(state.player.deltaSeconds, quality);
+    delta = {
+      ...delta,
+      seconds,
+      references: delta.references?.map((entry) => entry.requested === delta.requested ? { ...entry, seconds } : entry),
+    };
   }
   if (state.player?.throttle !== undefined) {
     player = { ...player, throttle: qualityValue(state.player.throttle, quality) };

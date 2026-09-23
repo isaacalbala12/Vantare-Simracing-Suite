@@ -7,8 +7,11 @@ import {
 } from "./overlay-frame-v2-store";
 
 describe("OverlayFrame v2 parse budget", () => {
-  it("TestOverlayFrameV2ParsesUnderBudgetP99", () => {
-    const encoded = JSON.stringify(syntheticFullUpdate(104));
+  it.each(["legacy", "compact"])("TestOverlayFrameV2ParsesUnderBudgetP99 %s", (format) => {
+    const update = syntheticFullUpdate(104);
+    const encoded = JSON.stringify(format === "legacy" ? update : { ...update, frame: { ...update.frame,
+      standings: update.frame.standings.map(row => ({ ...row, q: { q: "f" }, gap: row.gap.v, bestLap: row.bestLap.v, lastLap: row.lastLap.v })),
+    } });
     for (let index = 0; index < 100; index += 1) decodeOverlayUpdateV2(encoded);
     // Three trials isolate the decoder from transient work in the shared test
     // runner. As in Go benchmarks, the best stable trial is the gate value.
@@ -129,7 +132,8 @@ function syntheticFullUpdate(vehicles: number) {
     position: row.position,
     gap: fresh((index - 8) * 0.25),
     lapDelta: fresh(0),
-    groundPosition: row.groundPosition,
+    bestLap: row.bestLap,
+    number: "007",
     lastLap: row.lastLap,
     side: index < 8 ? "ahead" : index === 8 ? "player" : "behind",
     authority: "native" as const,
@@ -174,6 +178,7 @@ function syntheticFullUpdate(vehicles: number) {
       standings,
       relative,
       relativeSettled: relative,
+      relativeSameClass: relative,
       delta: { seconds: fresh(-0.245), reference: "best", requested: "best", available: ["best", "last"], trend: "gaining", authority: "derived", history: { q: "missing" } },
       fuel: { remaining: fresh(42), capacity: fresh(100), perLap: fresh(2.4), estimatedLaps: fresh(17.5), sessionLaps: fresh(79), requiredFuel: fresh(189.6), history: { q: "missing" } },
       spotter: { mode: "official", left: fresh(false), right: fresh(true) },

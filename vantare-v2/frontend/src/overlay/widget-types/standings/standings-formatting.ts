@@ -25,10 +25,10 @@ function formatStandingsDriverName(name: string | undefined, column: WidgetColum
   return formatDriverName(name, column);
 }
 
-function formatStandingsLapTime(seconds: number | undefined, column: WidgetColumnV3): string {
-  if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return "-";
+export function formatStandingsLapTime(seconds: number | undefined, column?: WidgetColumnV3): string {
+  if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return PLACEHOLDER;
 
-  const format = column.format;
+  const format = column?.format;
   const display = readString(format?.display) === "compact" ? "compact" : "full";
   const decimals = clampDecimals(format?.decimals);
 

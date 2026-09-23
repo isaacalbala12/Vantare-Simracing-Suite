@@ -48,6 +48,7 @@ type Observation struct {
 	ReceivedUTC   time.Time
 	SourceTime    schema.Field[time.Duration]
 	TrackName     schema.Field[string]
+	TrackLength   schema.Field[standings.LapDistance]
 	SessionType   schema.Field[session.Type]
 	VehicleCount  schema.Field[schema.Count]
 	PlayerPresent schema.Field[bool]

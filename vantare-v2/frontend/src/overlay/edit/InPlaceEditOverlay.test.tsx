@@ -1,4 +1,5 @@
-﻿import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { decodeOverlayUpdateV2 } from "../../telemetry-transport/overlay-frame-v2-store";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ProfileDocumentV3 } from "../core/profile-document";
 import { createTestTelemetryCoordinator } from "../../hub/overlay-studio/test-helpers";
@@ -131,7 +132,7 @@ function buildRaceDocument(): ProfileDocumentV3 {
 
 function renderOverlay(document: ProfileDocumentV3, revision = "rev-1") {
   const coordinator = createTestTelemetryCoordinator();
-  const update = JSON.parse(goldenV2Raw) as OverlayUpdateV2;
+  const update = structuredClone(decodeOverlayUpdateV2(JSON.parse(goldenV2Raw))) as OverlayUpdateV2;
   coordinator.setOverlayFrame(update.frame ?? undefined, update.source);
   render(
     <InPlaceEditOverlay

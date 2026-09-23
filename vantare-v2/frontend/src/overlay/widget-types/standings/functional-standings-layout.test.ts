@@ -5,16 +5,16 @@ import type { WidgetColumnV3 } from "../shared/widget-column";
 const columns: WidgetColumnV3[] = ["position", "driverName", "gap"].map(metricId => ({ id: metricId, metricId, enabled: true, widthPreset: "sm" }));
 
 describe("Efficiency session geometry", () => {
-  it.each(["signature", "broadcast"])("reserves exactly the ambient footer height in %s without altering columns", templateId => {
+  it.each(["signature", "broadcast"])("reserves exactly the configured session footer height in %s without altering columns", templateId => {
     const noFooter = resolveFunctionalStandingsSize(columns, 10, { templateId, showSessionFooter: false });
-    expect(resolveFunctionalStandingsSize(columns, 10, { templateId })).toEqual({ width: noFooter.width, height: noFooter.height + 30 });
+    expect(resolveFunctionalStandingsSize(columns, 10, { templateId })).toEqual({ width: noFooter.width, height: noFooter.height + 22 });
   });
 
   it("keeps a single session header without the former numeric info band", () => {
     const wide = [...columns, { id: "lap", metricId: "bestLap", enabled: true, widthPreset: "sm" as const }];
     // ISA-1221: la cabecera de sesión mide 42px, las filas 300px y el pie
-    // ambiente 30px. No se reserva una segunda banda de 22px.
-    expect(resolveFunctionalStandingsSize(wide, 10, { headerFirst: "trackTemperature", headerSecond: "estimatedLaps" }).height).toBe(400);
+    // configurable 22px. No se reserva una segunda banda de 22px.
+    expect(resolveFunctionalStandingsSize(wide, 10, { headerFirst: "trackTemperature", headerSecond: "estimatedLaps" }).height).toBe(392);
   });
 
   it.each(["signature", "broadcast"])("removes the upper info band from %s layouts", templateId => {

@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../telemetry-transport/overlay-frame-v2-store";
 import { describe, expect, it } from "vitest";
 import { overlayV2ViewModelRegistry, getOverlayV2ViewModelEntry } from "./overlay-v2-view-models";
 import { widgetTypeRegistry } from "./widget-registry";
@@ -8,7 +9,7 @@ import golden44Raw from "../../../../internal/telemetry/projection/overlayv2/tes
 import golden104Raw from "../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_104.golden.json?raw";
 
 const CANONICAL_UPDATES = [golden1Raw, golden20Raw, golden44Raw, golden104Raw]
-  .map((raw) => JSON.parse(raw) as OverlayUpdateV2);
+  .map((raw) => structuredClone(decodeOverlayUpdateV2(JSON.parse(raw))) as OverlayUpdateV2);
 
 describe("overlay-v2 view model registry", () => {
   it("registra exactamente los 19 widgets con VM v2 directa, sin catálogo", () => {

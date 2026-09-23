@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../telemetry-transport/overlay-frame-v2-store";
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createTelemetryRateCoordinator as createBaseTelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
@@ -11,7 +12,7 @@ import type { OverlayUpdateV2 } from "../../generated/telemetry";
 
 function createTelemetryRateCoordinator() {
   const coordinator = createBaseTelemetryRateCoordinator();
-  const update = JSON.parse(goldenV2Raw) as OverlayUpdateV2;
+  const update = structuredClone(decodeOverlayUpdateV2(JSON.parse(goldenV2Raw))) as OverlayUpdateV2;
   coordinator.setOverlayFrame(update.frame ?? undefined, update.source);
   return coordinator;
 }

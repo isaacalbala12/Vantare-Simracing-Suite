@@ -149,6 +149,13 @@ func generate() ([]byte, error) {
 		}
 	}
 
+	// StandingRowV2 has a compact JSON serializer while consumers retain QValue.
+	body.WriteString("/** Transport input: scalar timings use q.q plus g/b/l overrides (gap/bestLap/lastLap). Codes f/s/m/i mean fresh/stale/missing/invalid. Legacy QValue cells remain accepted. */\n")
+	body.WriteString("/** Wire aliases: q=quality, cg=classGap, cl=classGapLaps, cr=classRef, i=interval, il=intervalLaps. */\n")
+	body.WriteString("export type OverlayStandingWireRowV2 = Omit<OverlayStandingRowV2, \"gap\" | \"bestLap\" | \"lastLap\"> & { readonly gap: number | OverlayQValue<number>; readonly bestLap: number | OverlayQValue<number>; readonly lastLap: number | OverlayQValue<number>; readonly q?: OverlayStandingWireQualityV2 | Overlayv2StandingQualityV2; readonly cg?: number; readonly cl?: number; readonly cr?: number; readonly i?: number; readonly il?: number };\n")
+	body.WriteString("export type OverlayWireFrameV2 = Omit<OverlayFrameV2, \"standings\"> & { readonly standings: readonly OverlayStandingWireRowV2[] };\n")
+	body.WriteString("export type OverlayWireUpdateV2 = Omit<OverlayUpdateV2, \"frame\"> & { readonly frame: OverlayWireFrameV2 | null };\n\n")
+
 	// EventFact remains a reserved Go wire kind after F4. This compatibility
 	// envelope keeps the existing frontend API compiling until F7 owns facts.
 	body.WriteString("/** @deprecated Reserved for the F7 Engineer facts port; no live fact transport exists in F5. */\n")
@@ -279,7 +286,10 @@ func newGenerator() *generator {
 	g.addStruct(reflect.TypeFor[overlayv2.ControlsV2](), "OverlayControlsV2")
 	g.addStruct(reflect.TypeFor[overlayv2.ControlsHistoryV2](), "OverlayControlsHistoryV2")
 	g.addStruct(reflect.TypeFor[overlayv2.StandingRowV2](), "OverlayStandingRowV2")
+	g.addStruct(reflect.TypeFor[overlayv2.StandingWireQualityV2](), "OverlayStandingWireQualityV2")
+	g.addEnum(reflect.TypeFor[overlayv2.WireQualityV2](), "OverlayWireQualityV2", []string{"f", "s", "m", "i"})
 	g.addStruct(reflect.TypeFor[overlayv2.RelativeRowV2](), "OverlayRelativeRowV2")
+	g.addStruct(reflect.TypeFor[overlayv2.DeltaReferenceViewV2](), "OverlayDeltaReferenceViewV2")
 	g.addStruct(reflect.TypeFor[overlayv2.DeltaViewV2](), "OverlayDeltaViewV2")
 	g.addStruct(reflect.TypeFor[overlayv2.FuelViewV2](), "OverlayFuelViewV2")
 	g.addStruct(reflect.TypeFor[overlayv2.SpotterViewV2](), "OverlaySpotterViewV2")
@@ -373,8 +383,16 @@ func (g *generator) writeInterface(output *bytes.Buffer, root structRoot) error 
 	if err != nil {
 		return fmt.Errorf("generate %s: %w", root.name, err)
 	}
+	if root.name == "OverlayStandingRowV2" || root.name == "OverlayFrameV2" || root.name == "OverlayUpdateV2" {
+		output.WriteString("/** Normalized consumer model; use the corresponding Wire type for transport input. */\n")
+	}
 	fmt.Fprintf(output, "export interface %s {\n", root.name)
 	for _, field := range fields {
+		if root.name == "OverlayStandingRowV2" {
+			if descriptive := map[string]string{"q": "quality", "cg": "classGap", "cl": "classGapLaps", "cr": "classRef", "i": "interval", "il": "intervalLaps"}[field.name]; descriptive != "" {
+				field.name = descriptive
+			}
+		}
 		typeName, err := g.typeScriptType(field.typeOf)
 		if err != nil {
 			return fmt.Errorf("generate %s.%s: %w", root.name, field.name, err)

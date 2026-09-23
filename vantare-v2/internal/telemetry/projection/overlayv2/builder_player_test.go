@@ -211,7 +211,8 @@ func builderBatch(count int, sequence uint64) core.Batch {
 		},
 		State: core.ObservedState{
 			SourceTime: sourceTime, EndTime: builderPresent(session.EndTime(7200)), MaximumLaps: builderPresent(session.MaximumLaps(0)),
-			TrackName: builderPresent("Sebring"), SessionType: builderPresent(session.TypeRace),
+			TrackLength: builderPresent(standings.LapDistance(float64(count) * 42.5)),
+			TrackName:   builderPresent("Sebring"), SessionType: builderPresent(session.TypeRace),
 			VehicleCount: builderPresent(schema.Count(count)), PlayerPresent: builderPresent(true), Vehicles: vehicles,
 		},
 	}

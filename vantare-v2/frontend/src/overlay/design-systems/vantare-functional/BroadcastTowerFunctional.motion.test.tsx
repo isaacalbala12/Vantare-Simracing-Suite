@@ -111,6 +111,76 @@ function renderTower(model: BroadcastTowerViewModel, motion: "full" | "reduced" 
 }
 
 describe("Functional horizontal standings motion", () => {
+  it.each([undefined, false, "true"])("keeps the existing strip unless carousel is explicitly true (%s)", (driverCarousel) => {
+    const { container, getAllByRole } = render(<BroadcastTowerFunctional model={makeModel(["A", "B", "C"])} settings={{ driverCarousel }} renderMode="harness" />);
+    expect(container.querySelector(".vf-bt-carousel-rail")).toBeNull();
+    expect(container.querySelector(".vf-bt-stream")).toBeTruthy();
+    expect(getAllByRole("listitem")).toHaveLength(3);
+    expect(records).toHaveLength(0);
+  });
+
+  it("duplicates only the selected drivers while leaving session and weather outside the carousel", () => {
+    const model = makeModel(["A", "B", "C", "D"], { lap: 127, totalLaps: 180, showWeather: true, showSof: true, trackTempC: 29, sof: 2100 });
+    const { container, getAllByRole } = render(<BroadcastTowerFunctional model={model} settings={{ driverCarousel: true }} renderMode="harness" />);
+    const rail = container.querySelector(".vf-bt-carousel-rail")!;
+    const groups = rail.querySelectorAll(".vf-bt-carousel-group");
+    expect(groups).toHaveLength(2);
+    expect(groups[0].textContent).toBe(groups[1].textContent);
+    expect(groups[0].querySelectorAll(".vf-bt-card")).toHaveLength(3);
+    expect(groups[1].getAttribute("aria-hidden")).toBe("true");
+    expect(groups[1].hasAttribute("inert")).toBe(true);
+    expect(groups[1].querySelectorAll("[data-bt-row], [role=listitem], [id]")).toHaveLength(0);
+    expect(getAllByRole("list")).toHaveLength(1);
+    expect(getAllByRole("listitem")).toHaveLength(3);
+    expect(rail.querySelector(".vf-bt-lead, .vf-bt-side")).toBeNull();
+    expect(container.querySelectorAll(".vf-bt-lead, .vf-bt-side")).toHaveLength(2);
+    expect(container.querySelector('[data-bt-row="D"]')).toBeNull();
+    expect(rectReads).toBe(0);
+    expect(widthReads).toBe(0);
+    expect(records).toHaveLength(0);
+  });
+
+  it("keeps the carousel rail and both copies mounted through 100 updates and reorders without a JS motion loop", () => {
+    const timer = vi.spyOn(globalThis, "setTimeout");
+    const raf = vi.spyOn(globalThis, "requestAnimationFrame");
+    const show = (model: BroadcastTowerViewModel) => <StrictMode><BroadcastTowerFunctional model={model} settings={{ driverCarousel: true }} renderMode="harness" /></StrictMode>;
+    const { container, rerender, unmount } = render(show(makeModel(["A", "B", "C"], { showWeather: true })));
+    const rail = container.querySelector(".vf-bt-carousel-rail");
+    const groups = [...container.querySelectorAll(".vf-bt-carousel-group")];
+    const driver = container.querySelector('[data-bt-row="A"]');
+    const lead = container.querySelector(".vf-bt-lead");
+    const side = container.querySelector(".vf-bt-side");
+    for (let tick = 1; tick <= 100; tick++) {
+      const model = makeModel(tick % 2 ? ["B", "A", "C"] : ["A", "B", "C"], { showWeather: true });
+      model.rows = model.rows.map((row) => ({ ...row, gap: tick / 1000 }));
+      rerender(show(model));
+      expect(container.querySelector(".vf-bt-carousel-rail")).toBe(rail);
+      const currentGroups = [...container.querySelectorAll(".vf-bt-carousel-group")];
+      expect(currentGroups[0]).toBe(groups[0]);
+      expect(currentGroups[1]).toBe(groups[1]);
+      expect(currentGroups[0].textContent).toBe(currentGroups[1].textContent);
+      expect(container.querySelector('[data-bt-row="A"]')).toBe(driver);
+    }
+    expect(container.querySelector(".vf-bt-lead")).toBe(lead);
+    expect(container.querySelector(".vf-bt-side")).toBe(side);
+    unmount();
+    expect(rectReads).toBe(0);
+    expect(widthReads).toBe(0);
+    expect(records).toHaveLength(0);
+    expect(timer).not.toHaveBeenCalled();
+    expect(raf).not.toHaveBeenCalled();
+  });
+
+  it.each(["reduced", "minimal"] as const)("renders a single static pass at %s motion", (motion) => {
+    const { container, getAllByRole } = render(<BroadcastTowerFunctional model={makeModel(["A", "B", "C"])} settings={{ driverCarousel: true }} motion={motion} renderMode="harness" />);
+    expect(container.querySelectorAll(".vf-bt-carousel-group")).toHaveLength(1);
+    expect(container.querySelector("[data-bt-carousel-copy]")).toBeNull();
+    expect(getAllByRole("listitem")).toHaveLength(3);
+    expect(container.querySelector("section")?.dataset.motionLevel).toBe(motion);
+    expect(rectReads).toBe(0);
+    expect(records).toHaveLength(0);
+  });
+
   it("uses canonical IDs and performs no visual work for 100 numeric samples", () => {
     const { container, rerender } = renderTower(makeModel(["A", "B", "C"]));
     const first = container.querySelector('[data-bt-row="A"]');
@@ -223,6 +293,16 @@ describe("Functional horizontal standings motion", () => {
     rerender(<BroadcastTowerFunctional model={{ ...legacy, rows: [...legacy.rows].reverse() }} settings={{}} renderMode="harness" motion="full" layout={{ w: 360, h: 71 }} />);
     expect(records).toHaveLength(0);
     expect(rectReads).toBe(0);
+  });
+
+  it("clears the motion baseline when positions lose authority", () => {
+    const { rerender } = renderTower(makeModel(["A", "B", "C"]));
+    const missing = makeModel(["C", "B", "A"]);
+    missing.rows = missing.rows.map((row) => ({ ...row, place: 0 }));
+    rerender(<BroadcastTowerFunctional model={missing} settings={{}} renderMode="harness" motion="full" layout={{ w: 360, h: 71 }} />);
+    expect(records).toHaveLength(0);
+    rerender(<BroadcastTowerFunctional model={makeModel(["C", "B", "A"])} settings={{}} renderMode="harness" motion="full" layout={{ w: 360, h: 71 }} />);
+    expect(records).toHaveLength(0);
   });
 
   it("clears ghost timers and animations on a StrictMode unmount", () => {

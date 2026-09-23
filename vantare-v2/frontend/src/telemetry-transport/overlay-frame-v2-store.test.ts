@@ -33,6 +33,7 @@ describe("OverlayFrame v2 store", () => {
 
   it("parses a pull response once while retaining strict immutable ingestion", () => {
     const update = golden();
+    const expected = decodeOverlayUpdateV2(update);
     const text = JSON.stringify({sessionId: "s", delivery: 1, events: [{name: OVERLAY_V2_SNAPSHOT_EVENT, data: update}]});
     const parse = vi.spyOn(JSON, "parse");
     try {
@@ -40,7 +41,7 @@ describe("OverlayFrame v2 store", () => {
       const owned = response.events[0]!.data;
       const store = createOverlayFrameV2Store();
       store.ingest(OVERLAY_V2_SNAPSHOT_EVENT, owned);
-      expect(store.getSnapshot().frame).toEqual(update.frame);
+      expect(store.getSnapshot().frame).toEqual(expected.frame);
       expect(parse).toHaveBeenCalledTimes(1);
       expect(Object.isFrozen(owned.frame?.standings[0])).toBe(true);
       expect(() => Object.assign(owned.source, {state: "error"})).toThrow();
@@ -62,7 +63,7 @@ describe("OverlayFrame v2 store", () => {
 
   it("decodes the generated Go contract strictly", () => {
     const update = golden();
-    expect(decodeOverlayUpdateV2(JSON.stringify(update))).toEqual(update);
+    expect(decodeOverlayUpdateV2(JSON.stringify(update))).toEqual(decodeOverlayUpdateV2(update));
     expect(() => decodeOverlayUpdateV2({ ...update, unexpected: true })).toThrow(
       "overlay-frame-v2:invalid-contract:update",
     );
@@ -75,7 +76,7 @@ describe("OverlayFrame v2 store", () => {
     expect(() => decodeOverlayUpdateV2(withoutBestLap)).toThrow(
       "overlay-frame-v2:invalid-contract:frame.standings[0]",
     );
-    for (const field of ["position", "groundPosition", "lastLap", "lapDelta"] as const) {
+    for (const field of ["position", "bestLap", "lastLap", "lapDelta", "side"] as const) {
       const incomplete = JSON.parse(JSON.stringify(update)) as Record<string, unknown>;
       const frame = incomplete.frame as { relative: Record<string, unknown>[] };
       delete frame.relative[0]?.[field];
@@ -113,7 +114,7 @@ describe("OverlayFrame v2 store", () => {
     })).toThrow("overlay-frame-v2:invalid-contract:frame.capabilities.performance.reason");
   });
 
-  it.each(["relative", "relativeSettled"] as const)("preserves signed lapDelta and its quality in %s independently of the time gap", (field) => {
+  it.each(["relative", "relativeSettled", "relativeSameClass"] as const)("preserves signed lapDelta and its quality in %s independently of the time gap", (field) => {
     const update = golden();
     if (!update.frame) throw new Error("golden frame missing");
     const values = [
@@ -131,7 +132,7 @@ describe("OverlayFrame v2 store", () => {
     }
   });
 
-  it.each(["relative", "relativeSettled"] as const)("rejects missing or malformed lapDelta and unknown fields in %s", (field) => {
+  it.each(["relative", "relativeSettled", "relativeSameClass"] as const)("rejects missing or malformed lapDelta and unknown fields in %s", (field) => {
     const update = golden();
     if (!update.frame) throw new Error("golden frame missing");
     const row = update.frame[field][0];
@@ -181,7 +182,7 @@ describe("OverlayFrame v2 store", () => {
       },
     })).not.toThrow();
 
-    for (const field of ["relative", "relativeSettled"] as const) {
+    for (const field of ["relative", "relativeSettled", "relativeSameClass"] as const) {
       expect(() => decodeOverlayUpdateV2({
         ...update,
         frame: { ...update.frame, [field]: [...seventeen, { ...row, id: `${field}-overflow` }] },
@@ -383,3 +384,14 @@ class FakeEventSource implements OverlayFrameV2EventSourceLike {
     this.listeners.get(type)?.({ data });
   }
 }
+
+it("validates compact standings quality and preserves missing legacy authority", () => {
+ const input=JSON.parse(JSON.stringify(decodeOverlayUpdateV2(golden()))) as OverlayUpdateV2;
+ const row=input.frame!.standings[0]!;
+ Object.assign(row,{quality:{q:"fresh",pit:"invalid",classGap:"missing"},classRef:1,interval:1.25,intervalLaps:0});
+ expect(decodeOverlayUpdateV2(input).frame!.standings[0]!.quality).toEqual({q:"fresh",pit:"invalid",classGap:"missing"});
+ Object.assign(row,{quality:{q:"fresh",pit:"invented"}});
+ expect(() => decodeOverlayUpdateV2(input)).toThrow();
+ Object.assign(row,{quality:undefined});
+ expect(decodeOverlayUpdateV2(input).frame!.standings[0]!.quality).toBeUndefined();
+});

@@ -1,3 +1,5 @@
+import { resolveRelativeCellValue } from "./relative-view-model";
+import { decodeOverlayUpdateV2 } from "../../../telemetry-transport/overlay-frame-v2-store";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -14,6 +16,24 @@ import {
 const CONTENT = relativeDefinition.parseContent({});
 
 describe("relative v2 view model", () => {
+  it("keeps unknown rank unavailable and uses the declared temperature unit", () => {
+    const frame = goldenFrame(20);
+    frame.relative = frame.relative.map(row => ({ ...row, position: 0 }));
+    frame.weather = { ...frame.weather, ambientC: { q: "fresh", v: 0 }, trackC: { q: "fresh", v: 100 } };
+    frame.units = { ...frame.units, temperature: "fahrenheit" };
+    const model = buildRelativeViewModelV2(frame, { state: "live" }, CONTENT);
+    expect(model.playerBadgeText).toBeUndefined();
+    expect(model.ambientTempText).toBe("32°");
+    expect(model.trackTempText).toBe("212°");
+    expect(model.rows.length).toBeGreaterThan(0);
+    for (const row of model.rows) expect(resolveRelativeCellValue(row, "position")).toBe("—");
+    frame.units = { ...frame.units, temperature: "celsius" };
+    frame.weather.ambientC = { q: "missing" };
+    const celsius = buildRelativeViewModelV2(frame, { state: "live" }, CONTENT);
+    expect(celsius.ambientTempText).toBeUndefined();
+    expect(celsius.trackTempText).toBe("100°");
+  });
+
   it.each([20, 44, 104])(
     "renders the Go window closest-first for the %i-vehicle golden without re-selecting",
     (vehicles) => {
@@ -525,7 +545,7 @@ describe("relative v2 view model", () => {
       expect(row.driverNumber).toBe("");
       expect(row.bestLapText).toBe("—");
     }
-    expect(OVERLAY_V2_RELATIVE_DECLARED_GAPS).toContain("rows[].driverNumber");
+    expect(OVERLAY_V2_RELATIVE_DECLARED_GAPS).toEqual([]);
   });
 
   it("propagates the source lifecycle instead of rendering stale rows as ready", () => {
@@ -579,10 +599,10 @@ describe("relative v2 view model", () => {
 });
 
 function goldenFrame(vehicles: number): OverlayFrameV2 {
-  const update = JSON.parse(readFileSync(path.resolve(
+  const update = structuredClone(decodeOverlayUpdateV2(JSON.parse(readFileSync(path.resolve(
     process.cwd(),
     `../internal/telemetry/projection/overlayv2/testdata/overlay_v2_${vehicles}.golden.json`,
-  ), "utf8")) as OverlayUpdateV2;
+  ), "utf8")))) as OverlayUpdateV2;
   if (!update.frame) throw new Error("golden frame missing");
   return update.frame;
 }
@@ -606,6 +626,7 @@ function relativeScenarioFrame(
     gap: { q: "fresh" as const, v: gaps[id] ?? (side === "ahead" ? index + 1 : -(index + 1)) },
     groundPosition: { q: "fresh" as const, v: { x: groundXById[id] ?? 1000 + index * 10, z: 0 } },
     lastLap: { q: "fresh" as const, v: 90 + index },
+    bestLap: { q: "missing" as const },
     side,
     authority: "derived" as const,
     name: id,
@@ -619,7 +640,7 @@ function relativeScenarioFrame(
       : row),
     relative: [
       ...aheadNearToFar.map((id, index) => makeRow(id, "ahead", index)),
-      { id: playerId, position: 99, gap: { q: "fresh", v: 0 }, groundPosition: { q: "fresh", v: { x: 950, z: 0 } }, lastLap: { q: "fresh", v: 89 }, side: "player", authority: "derived", name: "player", classId: "HYPERCAR" },
+      { id: playerId, position: 99, bestLap: { q: "missing" }, gap: { q: "fresh", v: 0 }, groundPosition: { q: "fresh", v: { x: 950, z: 0 } }, lastLap: { q: "fresh", v: 89 }, side: "player", authority: "derived", name: "player", classId: "HYPERCAR" },
       ...behindNearToFar.map((id, index) => makeRow(id, "behind", index)),
     ] as OverlayFrameV2["relative"],
   };
@@ -628,3 +649,45 @@ function relativeScenarioFrame(
 function nonPlayerIds(model: ReturnType<typeof buildRelativeViewModelV2>): string[] {
   return model.rows.filter((row) => !row.isPlayer).map((row) => row.id);
 }
+
+describe("Relative audited data contract", () => {
+  it("selects three physical neighbours per side from the independent same-class window", () => {
+    const frame = goldenFrame(44);
+    const model = buildRelativeViewModelV2(frame, { state: "live" }, { ...CONTENT, classScope: "sameClass" });
+    expect(model.rows.map((row) => row.id)).toEqual([
+      "vehicle-003", "vehicle-006", "vehicle-009", "vehicle-000", "vehicle-042", "vehicle-039", "vehicle-036",
+    ]);
+    expect(frame.relative.some((row) => row.id === "vehicle-009")).toBe(false);
+    expect(model.rows.every((row) => row.vehicleClass === "hypercar")).toBe(true);
+  });
+
+  it.each([59.9999, 119.9999])("rounds the entire %s-second lap before separating minutes", (seconds) => {
+    const frame = goldenFrame(44);
+    const model = buildRelativeViewModelV2({ ...frame, relative: frame.relative.map((row) => ({
+      ...row, number: "007", bestLap: { q: "stale", v: seconds }, lastLap: { q: "fresh", v: seconds },
+    })) }, { state: "live" }, CONTENT);
+    expect(model.rows[0].driverNumber).toBe("007");
+    expect(model.rows[0].bestLapText).toBe(seconds < 60 ? "1:00.000" : "2:00.000");
+    expect(model.rows[0].lastLapText).toBe(model.rows[0].bestLapText);
+    expect(model.rows[0].fieldQuality).toMatchObject({ bestLap: "stale", lastLap: "fresh" });
+    expect(model.status).toBe("ready");
+  });
+
+  it("does not join number or best lap from a differently scheduled standings section", () => {
+    const frame = goldenFrame(44);
+    const model = buildRelativeViewModelV2({ ...frame,
+      standings: frame.standings.map((row) => ({ ...row, number: "999", bestLap: { q: "fresh", v: 45 } })),
+      relative: frame.relative.map((row) => ({ ...row, number: "007", bestLap: { q: "fresh", v: 90.123 } })),
+    }, { state: "live" }, CONTENT);
+    expect(model.rows[0].driverNumber).toBe("007");
+    expect(model.rows[0].bestLapText).toBe("1:30.123");
+  });
+
+  it.each(["missing", "invalid"] as const)("keeps %s lap fields unavailable", (q) => {
+    const frame = goldenFrame(44);
+    const model = buildRelativeViewModelV2({ ...frame, relative: frame.relative.map((row) => ({
+      ...row, bestLap: { q }, lastLap: { q },
+    })) }, { state: "live" }, CONTENT);
+    expect(model.rows.every((row) => row.bestLapText === "—" && row.lastLapText === "—")).toBe(true);
+  });
+});

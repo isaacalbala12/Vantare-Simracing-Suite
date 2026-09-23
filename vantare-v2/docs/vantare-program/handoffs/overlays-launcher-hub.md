@@ -1,10 +1,21 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
-> **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
-> Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,
-> bloquear, entregar y verificar merge. [Contrato](../notion-transition.md).
+> **Seguimiento de widgets en [Asana](https://app.asana.com/0/1218742976551956/list), por instrucción de Isaac.**
+> GitHub Issues conserva el puente técnico y su estado de entrega.
 > Este handoff conserva evidencia técnica fechada; sus estados antiguos no
-> sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
+> sustituyen el estado vivo ni autorizan nuevas tareas.
+
+
+
+## ISA-1347 — contratos y correcciones de datos de widgets aceptados (2026-09-23)
+
+Seguimiento por instrucción explícita de Isaac en [Asana · Desarrollo](https://app.asana.com/0/1218742976551956/list). Correcciones Delta `1218777895248782`, Pedals `1218777754821855`, Standings `1218777832104952`, Relative `1218778048433037` y Horizontal `1218777895238689`, todas En curso y releídas tras actualizar. Se preserva la aceptación visual previa. [Puente #1347](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1347), base inicial `nightly 8b25d076`, rebasada linealmente sobre `origin/nightly@b725c402`, rama `vantareapp/isa-1347-widgets-data-contract`.
+
+[Contrato común](../../specs/2026-09-23-accepted-widgets-data-contract.md) y [plan](../../plans/isa-1347/PLAN.md). Tres workers GPT-6 en worktrees separados entregan correcciones; root integra y repite comprobaciones. Delta resuelve las tres referencias en Go; Pedals distingue ausencia de cero; Standings conserva calidad y referencias de clase/intervalo; Relative usa proximidad circular y progreso real para doblados; Horizontal conserva gaps en vueltas y ofrece el carrusel aceptado como control productivo. SOF fuera por decisión de Isaac. Bloque Vuelta ligado a vuelta actual del jugador, supuesto recomendado comunicado tras la consulta opcional.
+
+Humedad de pista REST 0–1 y severidad de lluvia nativa SHM 0–1 conectadas con caducidad por campo. [Autoridad meteorológica](../../analysis/isa-1347-weather-authority.md). Viento sin unidad probada, dirección y presión sin autoridad permanecen ausentes. Bandera REST requiere correlación positiva con una sesión activa. No confundir pruebas de fixtures con certificación del simulador activo.
+
+Producto validado en `95ad1dc3`, tras corregir los hallazgos de las revisiones independientes y el lector de posiciones Relative desconocidas. En ese árbol: frontend completo, 480 archivos, 4.037 PASS y 2 omitidas; Go focal de siete paquetes, tipos/generador, build frontend, build cruzado Windows, lint y ratchet aprobados (NEW=0, MOVED=0, policy_changed=false). Compactación sin pérdida ni aumento de presupuesto: 64.880 / 71.120 / 73.096 bytes. Backend/frontend requieren el mismo build; lector nuevo admite wire anterior. [Evidencia y límites](../../analysis/isa-1347-verification.md). Suite global Go en macOS sigue roja por fallos reproducidos en la base (diagnostics, SQLite y launcher), no se ocultan. La [PR #1352](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1352) se rebasó sobre `origin/nightly@b725c402` y se regeneró `roadmap.json`. El head remoto `c2999ac5` falló el gate compacto (1,906 ms frente a 1,5 ms). El siguiente head `5bf052c8` aprobó promoción, gates bloqueantes y GitGuardian, pero el ratchet reportó `jscpd NEW=2` en validaciones de forma repetidas. El ajuste local actual extrae `validQualityValueShape`; el scan directo solo conserva un duplicado cuyo hash ya figura en el baseline. Pruebas dirigidas 39/39; última muestra de rendimiento bajo carga: legacy 1,188 ms y compacto 1,440 ms; suite completa 481 archivos, 4.035 PASS y 2 omitidas al limitar Vitest a dos workers; build, typecheck y lint PASS. El CI remoto del seguimiento del ratchet aún está pendiente. Isaac solicitó explícitamente integrar la PR a Nightly el 2026-09-23; todavía no hay merge. Sin promoción adicional ni release. Próximo paso: publicar la corrección de duplicación, esperar todos los gates remotos y después continuar la verificación física en LMU/Windows/Desktop/OBS antes de cerrar las cinco correcciones de Asana.
 
 
 ## ISA-1320 — Relative: movimiento discreto para conducción (2026-09-22)

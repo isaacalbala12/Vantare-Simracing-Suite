@@ -81,3 +81,10 @@ export function sessionDisplayLabel(locale: Locale, sessionCode: string | undefi
   if (code === "race" || code === "practice" || code === "qualifying") return functionalLabels[locale][code];
   return sessionCode;
 }
+
+/** Localize semantic markers from legacy and V2 timing formatters at render time. */
+export function localizeStandingsValue(value: string, labels: typeof en): string {
+ if (value.toUpperCase() === "LEADER") return labels.leader;
+ const laps = /^([+-]\d+) vueltas?$/.exec(value);
+ return laps ? `${laps[1]} ${labels.lapUnit}` : value;
+}

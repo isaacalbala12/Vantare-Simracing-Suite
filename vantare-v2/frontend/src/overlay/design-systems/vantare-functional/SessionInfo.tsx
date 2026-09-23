@@ -9,7 +9,7 @@ export function SessionInfo({ choices, model, labels, className }: {
   className: string;
 }) {
   const available = model.status === "ready" || model.status === "stale";
-  return <div className={className}>
+  return <div className={className} data-session-footer={className === "vf-session-footer" || undefined}>
     {choices.map((metric, index) => {
       if (metric === "none") return null;
       const value = available ? model.sessionInfo?.[metric] : undefined;

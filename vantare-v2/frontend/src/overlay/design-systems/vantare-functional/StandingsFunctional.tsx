@@ -17,7 +17,7 @@ import {
   takeFunctionalStandingsRows,
 } from "../../widget-types/standings/functional-standings-multiclass";
 import { resolveStandingsCellValue, type StandingsViewModel } from "../../widget-types/standings/standings-view-model";
-import { functionalLabels, sessionDisplayLabel } from "./labels";
+import { functionalLabels, sessionDisplayLabel, localizeStandingsValue } from "./labels";
 import vantareMark from "../../../assets/orbit/vantare-mark.png";
 import { parseFunctionalSettings } from "./session-info-settings";
 import { SessionInfo } from "./SessionInfo";
@@ -54,7 +54,7 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
   const footerSlotIds = Array.isArray(settings.footerSlots)
     ? settings.footerSlots.filter((slot): slot is string => typeof slot === "string")
     : [];
-  const footerSlots = resolveFunctionalFooterSlots(model, footerSlotIds, labels);
+  const footerSlots = config.showSessionFooter ? resolveFunctionalFooterSlots(model, footerSlotIds, labels) : [];
   const innerWidth = Math.max(80, (layout?.w ?? 0) - 24);
   const slotsTotal = footerSlots.reduce(
     (sum, slot) => sum + footerSlotItemWidth(slot.label, slot.value),
@@ -63,7 +63,6 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
   const slotScale = layout?.w !== undefined && footerSlots.length > 0 && footerSlots.length <= 5
     ? Math.min(1, (innerWidth * 0.97) / slotsTotal)
     : 1;
-  const hasAmbientFooter = Boolean(model.trackTempText || model.ambientTempText || model.windText);
   const classScope = model.classScope ?? "player-class";
   const classificationMode = model.classificationMode
     ?? (classScope === "all-classes" ? "multiclass" : "normal");
@@ -74,7 +73,7 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
   const labelFor = (metric: string) => metric === "gap" && paceSession ? labels.paceGap : labels[metric as keyof typeof labels] ?? metric;
   const slotRows = footerSlots.length <= 5 ? (footerSlots.length > 0 ? 1 : 0) : Math.ceil(slotsTotal / innerWidth);
   const slotsHeight = slotRows > 0 ? FOOTER_SLOT_PAD_PX + slotRows * FOOTER_SLOT_ROW_PX : 0;
-  const footerHeight = slotsHeight || (hasAmbientFooter ? 30 : config.showSessionFooter ? 22 : 0);
+  const footerHeight = slotsHeight || (config.showSessionFooter ? 22 : 0);
   const brandBandHeight = !hasHeader && brandVisible ? 22 : 0;
   const looseHeaderHeight = externalHeader && hasHeader
     ? (broadcast ? FUNCTIONAL_BROADCAST_SESSION_HEADER_HEIGHT : FUNCTIONAL_SIGNATURE_SESSION_HEADER_HEIGHT)
@@ -151,11 +150,11 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
               {columns.map((column) => {
                 const row = entry.row;
                 const value = column.metricId === "position"
-                  ? String(entry.displayPosition)
+                  ? entry.displayPosition > 0 ? String(entry.displayPosition) : "—"
                   : column.metricId === "driverName"
                     ? row.configuredDriverName ?? row.driverName
                     : resolveStandingsCellValue(row, column.metricId);
-                const displayValue = value === "LEADER" ? labels.leader : value;
+                const displayValue = localizeStandingsValue(value, labels);
                 const seconds = (column.metricId === "gap" || column.metricId === "interval") ? /^([+-]?\d+(?:\.\d+)?)(s)$/.exec(value) : null;
                 return <td key={column.id} data-metric={column.metricId} data-identity={IDENTITY.has(column.metricId) || undefined} aria-label={`${labelFor(column.metricId)}: ${displayValue}`} style={{ textAlign: column.metricId === "gap" ? "center" : column.style?.align ?? (column.metricId === "driverName" ? "left" : IDENTITY.has(column.metricId) ? "center" : "right") }}>
                   {column.metricId === "driverName" ? <><span className="vf-battle-accent" aria-hidden="true" /><span className="vf-driver"><span className="vf-driver-name" title={value}>{value}</span><span className="vf-position-change" data-position-change aria-hidden="true" /></span></> : <span title={displayValue} className={`vf-cell-value${seconds ? " vf-gap-number" : ""}`}>{seconds ? <>{seconds[1]}<small className="vf-time-unit">{seconds[2]}</small></> : displayValue}</span>}
@@ -175,12 +174,6 @@ export function StandingsFunctional({ model, settings, layout, motion = "full", 
       {footerSlots.length > 0 && !unavailable ? (
         <div className="vf-slots" data-footer-slots data-fit={footerSlots.length <= 5 ? "one-line" : undefined} style={{ "--vf-slot-scale": slotScale.toFixed(3) } as CSSProperties}>
           {footerSlots.map((slot) => <span key={slot.id} className="vf-slot" data-slot={slot.id}><span className="vf-slot-label">{slot.label}</span><b className="vf-slot-value">{slot.value}</b></span>)}
-        </div>
-      ) : hasAmbientFooter && !unavailable ? (
-        <div className="vf-footer" data-session-footer>
-          {model.trackTempText ? <span className="vf-footer-item">{labels.trackTemp} <b>{model.trackTempText}</b></span> : null}
-          {model.ambientTempText ? <span className="vf-footer-item">{labels.ambientTemp} <b>{model.ambientTempText}</b></span> : null}
-          {model.windText ? <span className="vf-footer-item">{labels.wind} <b>{model.windText}</b></span> : null}
         </div>
       ) : config.showSessionFooter ? (
         <SessionInfo className="vf-session-footer" choices={[config.footerFirst, config.footerSecond]} model={model} labels={labels} />

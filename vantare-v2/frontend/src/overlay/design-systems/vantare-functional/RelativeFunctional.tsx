@@ -38,6 +38,7 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
   const labels = functionalLabels[locale];
   const sessionLabel = useMemo(() => sessionDisplayLabel(locale, model.sessionLabel), [locale, model.sessionLabel]);
   const columns = model.columns;
+  const playerQuality = model.rows.find((row) => row.isPlayer)?.fieldQuality;
   const hasPositionColumn = columns.some((column) => column.metricId === "position");
   const hasClassColumn = columns.some((column) => column.metricId === "class");
   const unavailable = model.status === "disconnected" || model.status === "missing" || model.status === "error";
@@ -104,7 +105,7 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
               {columns.map((column) => {
                 const value = column.metricId === "gap" && row.isPlayer ? "—" : resolveRelativeCellValue(row, column.metricId);
                 const align = column.style?.align ?? (CENTERED.has(column.metricId) ? "center" : column.metricId === "driverName" ? "left" : "right");
-                return <td key={column.id} data-metric={column.metricId} aria-label={`${labelFor(column.metricId)}: ${value}`} style={{ textAlign: align }}>
+                return <td key={column.id} data-quality={row.fieldQuality?.[column.metricId]} data-metric={column.metricId} aria-label={`${labelFor(column.metricId)}: ${value}${row.fieldQuality?.[column.metricId] === "stale" ? ` · ${labels.stale}` : ""}`} style={{ textAlign: align, opacity: row.fieldQuality?.[column.metricId] === "stale" ? 0.6 : undefined }}>
                   {column.metricId === "class" ? hasPositionColumn ? null : <span className="vf-class-tick" style={{ background: resolveRelativeClassColor(row.vehicleClass, settings) } as CSSProperties} /> :
                     column.metricId === "position" ? <span className={`vf-position-identity${hasClassColumn ? " vf-position-identity--with-class" : ""}`}>
                       <span title={value} className="vf-cell-value">{value}</span>
@@ -121,7 +122,7 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
       )}
       {slots.length > 0 && !unavailable && (
         <div className="vf-slots" data-footer-slots data-fit={slots.length <= 5 ? "one-line" : undefined} style={{ "--vf-slot-scale": slotScale.toFixed(3) } as CSSProperties}>
-          {slots.map((slot) => <span key={slot.id} className="vf-slot" data-slot={slot.id}><span className="vf-slot-label">{slot.label}</span><b className="vf-slot-value">{slot.value}</b></span>)}
+          {slots.map((slot) => <span key={slot.id} className="vf-slot" data-slot={slot.id} data-quality={playerQuality?.[slot.id]} aria-label={playerQuality?.[slot.id] === "stale" ? `${slot.label}: ${slot.value} · ${labels.stale}` : undefined} style={{ opacity: playerQuality?.[slot.id] === "stale" ? 0.6 : undefined }}><span className="vf-slot-label">{slot.label}</span><b className="vf-slot-value">{slot.value}</b></span>)}
         </div>
       )}
       {hasFooter && (

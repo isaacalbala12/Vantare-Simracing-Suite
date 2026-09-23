@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../telemetry-transport/overlay-frame-v2-store";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -19,9 +20,9 @@ import type { PedalsViewModel } from "../widget-types/pedals/pedals-view-model";
 import { countFunctionalStandingsClassBands } from "../widget-types/standings/functional-standings-multiclass";
 
 function goldenFrame(): OverlayFrameV2 {
-  return (JSON.parse(readFileSync(resolve(process.cwd(),
+  return (structuredClone(decodeOverlayUpdateV2(JSON.parse(readFileSync(resolve(process.cwd(),
     "../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json"),
-  "utf8")) as { frame: OverlayFrameV2 }).frame;
+  "utf8")))) as { frame: OverlayFrameV2 }).frame;
 }
 
 function crystalCss(): string {

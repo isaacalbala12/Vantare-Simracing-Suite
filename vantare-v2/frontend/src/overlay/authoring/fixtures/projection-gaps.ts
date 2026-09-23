@@ -16,20 +16,14 @@ export type ProjectionGap = {
   consequence: string;
 };
 
-const CAR_NUMBER_GAP: ProjectionGap = {
-  field: "rows[].driverNumber",
-  consequence: "los dorsales quedan vacíos: cada fila muestra solo la almohadilla",
-};
-
 export const WIDGET_PROJECTION_GAPS: Partial<Record<WidgetType, readonly ProjectionGap[]>> = {
   standings: [
-    CAR_NUMBER_GAP,
     {
       field: "rows[].tireCompound",
       consequence: "el disco de compuesto tras la parada no llega a aparecer",
     },
   ],
-  relative: [CAR_NUMBER_GAP],
+  relative: [],
 };
 
 export function projectionGapsFor(widget: WidgetType): readonly ProjectionGap[] {

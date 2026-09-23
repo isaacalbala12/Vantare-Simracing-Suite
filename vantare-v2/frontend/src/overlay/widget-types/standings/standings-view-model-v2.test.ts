@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../../telemetry-transport/overlay-frame-v2-store";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -6,13 +7,13 @@ import { standingsDefinition } from "./standings-definition";
 import { buildStandingsViewModelV2, standingsDisplayedValues } from "./standings-view-model-v2";
 import { formatStandingsLapDifference, formatStandingsSecondsDifference } from "./standings-formatting";
 
-const content = standingsDefinition.parseContent({ classScope: "all-classes", rowCount: 20 });
+const content = standingsDefinition.parseContent({ classScope: "all-classes", classificationMode: "normal", rowCount: 20 });
 
 function frameForPhase(phase: "practice" | "qualifying" | "race"): OverlayFrameV2 {
-  const frame = JSON.parse(readFileSync(path.resolve(
+  const frame = structuredClone(decodeOverlayUpdateV2(JSON.parse(readFileSync(path.resolve(
     process.cwd(),
     "../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json",
-  ), "utf8")) as { frame: OverlayFrameV2 };
+  ), "utf8")))) as { frame: OverlayFrameV2 };
   return {
     ...frame.frame,
     session: { ...frame.frame.session, phase: { q: "fresh", v: phase } },
@@ -26,10 +27,10 @@ function frameForPhase(phase: "practice" | "qualifying" | "race"): OverlayFrameV
 }
 
 function fullGoldenFrame(): OverlayFrameV2 {
-  return (JSON.parse(readFileSync(path.resolve(
+  return (structuredClone(decodeOverlayUpdateV2(JSON.parse(readFileSync(path.resolve(
     process.cwd(),
     "../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json",
-  ), "utf8")) as { frame: OverlayFrameV2 }).frame;
+  ), "utf8")))) as { frame: OverlayFrameV2 }).frame;
 }
 
 describe("buildStandingsViewModelV2 session columns", () => {
@@ -129,7 +130,8 @@ describe("buildStandingsViewModelV2 session columns", () => {
 
   it("keeps one- and two-digit seconds readable and spells lap gaps", () => {
     const frame = frameForPhase("race");
-    const [leader, oneDigit, twoDigits] = frame.standings;
+    const [leader, oneDigit] = frame.standings;
+    const twoDigits = oneDigit;
     const model = buildStandingsViewModelV2({
       ...frame,
       standings: [

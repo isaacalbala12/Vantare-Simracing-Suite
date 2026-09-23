@@ -1,6 +1,6 @@
 import type { StandingsViewModel } from "../../widget-types/standings/standings-view-model";
 import type { RelativeViewModel } from "../../widget-types/relative/relative-view-model";
-import type { functionalLabels } from "./labels";
+import { localizeStandingsValue, type functionalLabels } from "./labels";
 
 type Labels = (typeof functionalLabels)["en"];
 
@@ -28,7 +28,7 @@ export function resolveFunctionalFooterSlots(
   slotIds: readonly string[],
   labels: Labels,
 ): FooterSlotCell[] {
-  const player = model.rows.find((row) => row.isPlayer);
+  const player = model.type === "standings" ? model.playerRow ?? model.rows.find(row => row.isPlayer) : model.rows.find(row => row.isPlayer);
   const lapText = model.type === "standings" ? model.lapText : undefined;
   // Misma regla que la cabecera de columna: fuera de carrera la diferencia se
   // mide contra la mejor vuelta, no contra el líder.
@@ -37,7 +37,7 @@ export function resolveFunctionalFooterSlots(
   const values: Record<string, string | undefined> = {
     time: model.remainingText,
     lap: lapText,
-    position: player ? String(player.position) : undefined,
+    position: player && player.position > 0 ? String(player.position) : undefined,
     gap: player?.gapText,
     bestLap: player?.bestLapText,
     lastLap: player?.lastLapText,
@@ -48,7 +48,7 @@ export function resolveFunctionalFooterSlots(
   return slotIds.map((id) => ({
     id,
     label: footerSlotLabel(id, labels, paceSession),
-    value: values[id] ?? "—",
+    value: localizeStandingsValue(values[id] ?? "—", labels),
   }));
 }
 

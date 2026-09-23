@@ -15,6 +15,14 @@ const model: PedalsViewModel = {
 };
 
 describe("Functional Pedals", () => {
+  it("renders a missing channel as a placeholder while retaining valid channel measurements", () => {
+    const { container } = render(<PedalsFunctional model={{ ...model, status: "missing", brake: 0, brakeText: "—" }} settings={{}} renderMode="harness" />);
+    expect(container.querySelector('[data-pedal="brake"] .vf-pedal-value')?.textContent).toBe("—");
+    expect(container.querySelector('[data-pedal="clutch"] .vf-pedal-value')?.textContent).toBe("0%");
+    expect(container.querySelector('[data-pedal="throttle"] .vf-pedal-value')?.textContent).toBe("85%");
+    expect(container.querySelector('[data-pedal="brake"]')?.getAttribute("title")).toContain("—");
+  });
+
   it("renders the three channels with their model values", () => {
     const { container } = render(<PedalsFunctional model={model} settings={{}} renderMode="harness" />);
     expect(container.querySelector(".vf-pedals")?.getAttribute("data-transparent")).toBe("false");

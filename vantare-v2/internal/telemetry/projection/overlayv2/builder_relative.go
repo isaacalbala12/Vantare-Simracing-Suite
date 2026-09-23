@@ -3,11 +3,12 @@ package overlayv2
 import (
 	"math"
 	"sort"
+	"strings"
 
 	"github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
-	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
+
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
 
@@ -19,7 +20,7 @@ const (
 )
 
 // MaxRelativeAhead and MaxRelativeBehind bound the published window. The
-// widget configures a smaller range (2/2 by default) and slices what it needs
+// widget configures a smaller range (3/3 by default) and slices what it needs
 // from an already ordered list; publishing a fixed, generous window keeps the
 // frame one per tick instead of one per widget, and keeps its size bounded
 // regardless of the grid size.
@@ -42,8 +43,17 @@ const (
 // With no player in the state the window is empty: it is a declared outcome,
 // not a fallback to the first vehicles of the grid.
 func BuildRelative(final derive.FinalState) []RelativeRowV2 {
+	return buildRelativeWindow(final, false)
+}
+
+// BuildRelativeSameClass selects class neighbours before applying the bounded range.
+func BuildRelativeSameClass(final derive.FinalState) []RelativeRowV2 {
+	return buildRelativeWindow(final, true)
+}
+
+func buildRelativeWindow(final derive.FinalState, sameClass bool) []RelativeRowV2 {
 	rows := make([]RelativeRowV2, 0, MaxRelativeAhead+MaxRelativeBehind+1)
-	window, found := selectPhysicalRelativeWindow(final.Observed.Vehicles)
+	window, found := selectPhysicalRelativeWindow(final.Observed, sameClass)
 	if !found {
 		return rows
 	}
@@ -64,7 +74,7 @@ func BuildRelative(final derive.FinalState) []RelativeRowV2 {
 }
 
 // resolvedRelativePositions is shared by the immediate and settled views so
-// a missing observed Position takes the same canonical ordered fallback.
+// a missing observed Position stays unknown (zero), never an invented rank.
 func resolvedRelativePositions(vehicles []core.VehicleState) map[string]int32 {
 	positions := make(map[string]int32, len(vehicles))
 	for index, current := range orderedVehicles(vehicles) {
@@ -79,67 +89,68 @@ type physicalRelativeWindow struct {
 	behind []core.VehicleState
 }
 
-func selectPhysicalRelativeWindow(vehicles []core.VehicleState) (physicalRelativeWindow, bool) {
-	player, found := playerVehicle(vehicles)
+// Each rival belongs to its shortest metric arc. The exact half-lap tie goes
+// ahead; coincident cars use stable identity order. Neither classification nor
+// the temporal gap can choose a side. Without observed circuit length only the
+// player anchor is published: a wrap cannot be resolved safely.
+func selectPhysicalRelativeWindow(observed core.ObservedState, sameClass bool) (physicalRelativeWindow, bool) {
+	player, found := playerVehicle(observed.Vehicles)
 	if !found {
 		return physicalRelativeWindow{}, false
 	}
 	window := physicalRelativeWindow{player: player}
-	if _, usable := usableLapDistance(player.LapDistance); !usable {
+	length, validLength := usableLapDistance(observed.TrackLength)
+	playerDistance, validPlayer := usableLapDistance(player.LapDistance)
+	if !validLength || length <= 0 || !validPlayer || playerDistance > length {
 		return window, true
 	}
 	type candidate struct {
-		vehicle  core.VehicleState
-		distance float64
+		vehicle core.VehicleState
+		arc     float64
 	}
-	candidates := make([]candidate, 0, len(vehicles))
-	for _, current := range vehicles {
-		distance, usable := usableLapDistance(current.LapDistance)
-		if !usable {
+	var ahead, behind []candidate
+	seen := map[string]bool{string(player.Identity.Vehicle): true}
+	for _, current := range observed.Vehicles {
+		id := string(current.Identity.Vehicle)
+		if seen[id] {
 			continue
 		}
-		candidates = append(candidates, candidate{vehicle: current, distance: distance})
-	}
-	sort.SliceStable(candidates, func(left, right int) bool {
-		if candidates[left].distance != candidates[right].distance {
-			return candidates[left].distance < candidates[right].distance
+		seen[id] = true
+		if sameClass && (vehicleClassID(player) == "" || !strings.EqualFold(vehicleClassID(current), vehicleClassID(player))) {
+			continue
 		}
-		return candidates[left].vehicle.Identity.Vehicle < candidates[right].vehicle.Identity.Vehicle
-	})
-	playerIndex := -1
-	for index := range candidates {
-		if candidates[index].vehicle.Identity.Vehicle == player.Identity.Vehicle {
-			playerIndex = index
-			break
+		distance, valid := usableLapDistance(current.LapDistance)
+		if !valid || distance > length {
+			continue
+		}
+		arc := math.Mod(distance-playerDistance+length, length)
+		if arc > length/2 {
+			arc -= length
+		}
+		if arc < 0 || (arc == 0 && current.Identity.Vehicle < player.Identity.Vehicle) {
+			behind = append(behind, candidate{current, -arc})
+		} else {
+			ahead = append(ahead, candidate{current, arc})
 		}
 	}
-	if playerIndex < 0 {
-		return window, true
-	}
-
-	selected := map[identity.VehicleID]struct{}{player.Identity.Vehicle: {}}
-	aheadNearToFar := make([]core.VehicleState, 0, MaxRelativeAhead)
-	window.behind = make([]core.VehicleState, 0, MaxRelativeBehind)
-	for offset := 1; offset < len(candidates) && (len(aheadNearToFar) < MaxRelativeAhead || len(window.behind) < MaxRelativeBehind); offset++ {
-		ahead := candidates[(playerIndex+offset)%len(candidates)].vehicle
-		if len(aheadNearToFar) < MaxRelativeAhead {
-			if _, exists := selected[ahead.Identity.Vehicle]; !exists {
-				selected[ahead.Identity.Vehicle] = struct{}{}
-				aheadNearToFar = append(aheadNearToFar, ahead)
+	selectSide := func(candidates []candidate, limit int) []core.VehicleState {
+		sort.Slice(candidates, func(i, j int) bool {
+			if candidates[i].arc != candidates[j].arc {
+				return candidates[i].arc < candidates[j].arc
 			}
+			return candidates[i].vehicle.Identity.Vehicle < candidates[j].vehicle.Identity.Vehicle
+		})
+		if len(candidates) > limit {
+			candidates = candidates[:limit]
 		}
-
-		behindIndex := (playerIndex - offset + len(candidates)) % len(candidates)
-		behindCandidate := candidates[behindIndex].vehicle
-		if len(window.behind) < MaxRelativeBehind {
-			if _, exists := selected[behindCandidate.Identity.Vehicle]; !exists {
-				selected[behindCandidate.Identity.Vehicle] = struct{}{}
-				window.behind = append(window.behind, behindCandidate)
-			}
+		rows := make([]core.VehicleState, 0, len(candidates))
+		for _, candidate := range candidates {
+			rows = append(rows, candidate.vehicle)
 		}
+		return rows
 	}
-
-	window.ahead = aheadNearToFar
+	window.ahead = selectSide(ahead, MaxRelativeAhead)
+	window.behind = selectSide(behind, MaxRelativeBehind)
 	return window, true
 }
 
@@ -190,10 +201,11 @@ func relativeRow(
 ) RelativeRowV2 {
 	return RelativeRowV2{
 		VehicleID:      string(vehicle.Identity.Vehicle),
+		CarNumber:      observedCarNumber(vehicle.CarNumber),
+		BestLapSeconds: qualityValue(vehicle.BestLapTime, func(value standings.LapTime) float64 { return float64(value) }),
 		Position:       position,
 		GapSeconds:     canonicalRelativeGap(gap.Time, side),
 		LapDelta:       qualityValue(gap.Laps, func(value standings.RelativeLaps) int32 { return int32(value) }),
-		GroundPosition: groundPositionValue(vehicle.WorldPosition),
 		LastLapSeconds: qualityValue(vehicle.LastLapTime, func(value standings.LapTime) float64 { return float64(value) }),
 		Side:           side,
 		Authority:      relativeAuthority(gap.Time),

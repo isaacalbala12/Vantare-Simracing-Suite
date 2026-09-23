@@ -1,3 +1,4 @@
+import { standingQuality, standingNumber } from "../standings/standings-signals-v2";
 import type {
   OverlayFrameV2,
   OverlayQValue,
@@ -9,6 +10,7 @@ import { getEnabledStandingsColumns } from "./standings-content";
 import { selectDefaultStandingsWindow, type StandingsWindowRuntime } from "./standings-window";
 import {
   formatRemainingTime,
+  formatStandingsLapTime,
   formatStandingsLapDifference,
   formatStandingsSecondsDifference,
 } from "./standings-formatting";
@@ -26,23 +28,7 @@ import {
 
 const PLACEHOLDER = "—";
 
-/**
- * Standings view model over the Overlay v2 contract.
- *
- * The ordering is NOT recomputed here: `frame.standings` arrives already
- * resolved by the Go builder, including the fallback that Overlay v1 applied
- * silently inside standings-view-model.ts. This module only formats, filters
- * by the widget's own presentation config (class scope, row count, and the
- * Workshop-only player window) and picks authorised fields — no sorting, no
- * gap arithmetic beyond rendering what the frame declares.
- *
- * Fields the canonical state does not carry stay at the placeholder and are
- * declared unsupported for the shadow comparator rather than invented:
- * teamCode, teamBrandColor, tireCompound and the
- * interval to the car ahead (the frame carries the gap to the leader only).
- * The optional wire number is displayed if supplied; the current Core
- * producer does not emit it, tracked separately in ISA-1072.
- */
+/** Formatting and scope only; Go owns ordering, gap reference and signal quality. */
 export function buildStandingsViewModelV2(
   frame: OverlayFrameV2,
   source: OverlaySourceStatusV2,
@@ -52,7 +38,7 @@ export function buildStandingsViewModelV2(
   const columns = getEnabledStandingsColumns(content);
   const classificationMode = content.classificationMode
     ?? (content.classScope === "all-classes" ? "multiclass" : "normal");
-  if (source.state === "error" || source.state === "stopped") {
+  if (source.state === "error" || source.state === "stopped" || source.state === "stopping" || source.state === "connecting" || source.state === "detecting") {
     return withStandingsClassificationMode(withStandingsClassScope({
       type: "standings",
       status: source.state === "error" ? "error" : "disconnected",
@@ -81,30 +67,47 @@ export function buildStandingsViewModelV2(
     return seconds !== undefined && seconds > 0 && Number.isFinite(seconds)
       && (!best || seconds < best.bestLap.v!) ? row : best;
   }, undefined);
-  const limited = scoped.slice(0, content.rowCount ?? 20);
+  const classGaps = content.classScope === "player-class" || classificationMode === "multiclass";
+  const classBestLaps = new Map<string, number>();
+  if (paceSession && classGaps) {
+    for (const row of scoped) {
+      const classId = (row.classId ?? "").trim().toUpperCase();
+      const lap = displayedNumber(row.bestLap);
+      if (classId && lap !== undefined && lap > 0 && lap < (classBestLaps.get(classId) ?? Infinity)) {
+        classBestLaps.set(classId, lap);
+      }
+    }
+  }
   const nameColumn = columns.find((column) => column.metricId === "driverName");
   const weather = frame.weather;
-  const projectedRows = limited.map((row, index) =>
-    buildRow(row, index, playerId, paceSession, sessionBestLap, nameColumn,
+  const projectedRows = scoped.map((row) =>
+    buildRow(row, playerId, paceSession,
+      classGaps ? classBestLaps.get((row.classId ?? "").trim().toUpperCase()) : sessionBestLap,
+      nameColumn, columns, classGaps,
+      !classGaps || hasSameClassPredecessor(row, frame.standings),
       source.state === "live" && frame.session.phase.q === "fresh" && phase === "race"),
   );
-  const rows = window
-    ? selectDefaultStandingsWindow(projectedRows, window.around)
-    : projectedRows;
+  const activeWindow = window ?? (content.playerWindow ? { around: content.windowAround ?? 4 } : undefined);
+  const rows = activeWindow
+    ? selectDefaultStandingsWindow(projectedRows, activeWindow.around)
+    : projectedRows.slice(0, content.rowCount ?? 20);
+  const playerRow = projectedRows.find(row => row.isPlayer);
 
   return withStandingsMotionIdentity(
     withStandingsClassificationMode(withStandingsClassScope({
       type: "standings",
-      status: source.state === "stale" ? "stale" : "ready",
+      status: source.state === "stale" || source.state === "degraded" ? "stale" : "ready",
       statusMessage: source.reason || undefined,
       activeClass,
       sessionLabel: displayedText(frame.session.phase)?.toUpperCase() ?? PLACEHOLDER,
       remainingText: formatRemainingTime(displayedNumber(frame.session.remaining)),
       trackName: displayedText(frame.session.track),
       totalRows: scoped.length,
+      playerRow,
+      lapText: playerRow?.currentLapText,
       sessionBest: sessionBestRow ? { rowId: sessionBestRow.id, seconds: sessionBestRow.bestLap.v! } : undefined,
-      ambientTempText: formatTemp(displayedNumber(weather?.ambientC)),
-      trackTempText: formatTemp(displayedNumber(weather?.trackC)),
+      ambientTempText: formatTemp(displayedNumber(weather?.ambientC), frame.units.temperature),
+      trackTempText: formatTemp(displayedNumber(weather?.trackC), frame.units.temperature),
       windText: formatWind(displayedNumber(weather?.windKph)),
       flag: source.state === "live" ? currentFlag(frame.session.flag) : "unknown",
       sessionInfo: sessionInformation(frame, phase === "race"),
@@ -127,7 +130,7 @@ function currentFlag(value: OverlayQValue<string>): StandingsFlag {
 
 function sessionInformation(frame: OverlayFrameV2, race: boolean): NonNullable<StandingsViewModel["sessionInfo"]> {
   const numberInfo = (value: OverlayQValue<number>, format: (n: number) => string): StandingsInfoValue => {
-    const number = displayedNumber(value);
+    const number = value.q === "stale" ? value.v ?? 0 : displayedNumber(value);
     return { text: number !== undefined && Number.isFinite(number) ? format(number) : PLACEHOLDER, stale: value.q === "stale" };
   };
   const temperature = (celsius: number) => {
@@ -177,46 +180,46 @@ export function standingsDisplayedValues(
 
 /** Gaps of the current Core producer, not a ban on optional wire values. */
 export const OVERLAY_V2_STANDINGS_DECLARED_GAPS: readonly string[] = Object.freeze([
-  "rows[].driverNumber",
   "rows[].teamCode",
   "rows[].teamBrandColor",
   "rows[].tireCompound",
-  "rows[].intervalText",
 ]);
 
 function buildRow(
   row: OverlayStandingRowV2,
-  index: number,
   playerId: string | undefined,
   paceSession: boolean,
   sessionBestLap: number | undefined,
   nameColumn: WidgetColumnV3 | undefined,
+  columns: readonly WidgetColumnV3[],
+  classGaps: boolean,
+  intervalAvailable: boolean,
   freshRace: boolean,
 ): StandingsRowViewModel {
   const driverName = row.driver || PLACEHOLDER;
   const gap = row.gap?.q === "fresh" ? displayedNumber(row.gap) : undefined;
   return {
     id: row.id,
-    position: row.position,
-    classPosition: row.classPosition,
+    position: standingQuality(row, "position") === "fresh" ? row.position : 0,
+    classPosition: standingQuality(row, "classPosition") === "fresh" ? row.classPosition : 0,
     driverNumber: row.number ?? "",
     driverName,
     configuredDriverName: formatDriverName(driverName, nameColumn),
     vehicleClass: row.classId ?? "",
     teamCode: "",
     teamBrandColor: "",
-    gapText: paceSession ? formatBestLapGap(row, sessionBestLap) : formatGap(row, index),
-    intervalText: PLACEHOLDER,
-    currentLapText: row.laps === undefined ? "" : String(row.laps),
-    lastLapText: formatLapTime(displayedNumber(row.lastLap)),
-    bestLapText: formatLapTime(displayedNumber(row.bestLap)),
+    gapText: paceSession ? formatBestLapGap(row, sessionBestLap) : formatGap(row, classGaps),
+    intervalText: intervalAvailable ? formatInterval(row) : PLACEHOLDER,
+    currentLapText: standingQuality(row, "laps") === "fresh" ? String(row.laps ?? 0) : PLACEHOLDER,
+    lastLapText: formatStandingsLapTime(displayedNumber(row.lastLap), columns.find(column => column.metricId === "lastLap")),
+    bestLapText: formatStandingsLapTime(displayedNumber(row.bestLap), columns.find(column => column.metricId === "bestLap")),
     bestLapSeconds: row.bestLap?.q === "fresh" ? displayedNumber(row.bestLap) : undefined,
-    battleGapSeconds: freshRace && row.pit === "track" && (row.gapLaps ?? 0) === 0
+    battleGapSeconds: freshRace && standingQuality(row, "position") === "fresh" && standingQuality(row, "pit") === "fresh" && row.pit === "track" && standingQuality(row, "gapLaps") === "fresh" && (row.gapLaps ?? 0) === 0
       && gap !== undefined && Number.isFinite(gap) && gap >= 0 ? gap : undefined,
-    pitText: row.pit === "pit" ? "PIT" : "",
+    pitText: standingQuality(row, "pit") === "fresh" && row.pit === "pit" ? "PIT" : "",
     tireCompound: "",
     isPlayer: playerId !== undefined && row.id === playerId,
-    isLeader: index === 0,
+    isLeader: classGaps ? standingQuality(row, "classPosition") === "fresh" && row.classPosition === 1 : standingQuality(row, "position") === "fresh" && row.position === 1,
   };
 }
 
@@ -238,20 +241,39 @@ function formatBestLapGap(row: OverlayStandingRowV2, sessionBestLap: number | un
   return gap <= 0.0005 ? "Leader" : formatStandingsSecondsDifference(gap);
 }
 
-function formatGap(row: OverlayStandingRowV2, index: number): string {
-  if (index === 0) return "Leader";
-  if (row.gapLaps !== undefined && row.gapLaps !== 0) return formatStandingsLapDifference(row.gapLaps);
-  const gap = displayedNumber(row.gap);
-  return gap !== undefined && gap !== 0 ? formatStandingsSecondsDifference(gap) : PLACEHOLDER;
+function formatGap(row: OverlayStandingRowV2, classGaps: boolean): string {
+  if (classGaps && !(row.classRef !== undefined && row.classRef > 0)) return PLACEHOLDER;
+  const leader = classGaps
+    ? standingQuality(row, "classPosition") === "fresh" && row.classPosition === 1 && row.classRef === row.position
+    : standingQuality(row, "position") === "fresh" && row.position === 1;
+  if (leader) return "Leader";
+  const laps = classGaps ? standingNumber(row, "classGapLaps") : standingQuality(row, "gapLaps") === "fresh" ? row.gapLaps ?? 0 : undefined;
+  if (laps === undefined) return PLACEHOLDER;
+  if (laps !== 0) return formatStandingsLapDifference(laps);
+  const gap = classGaps ? standingNumber(row, "classGap") : displayedNumber(row.gap);
+  return gap !== undefined ? formatStandingsSecondsDifference(gap) : PLACEHOLDER;
 }
 
-function formatLapTime(seconds: number | undefined): string {
-  if (seconds === undefined || seconds <= 0 || !Number.isFinite(seconds)) return PLACEHOLDER;
-  return `${Math.floor(seconds / 60)}:${(seconds % 60).toFixed(3).padStart(6, "0")}`;
+/** Native intervals refer to the overall predecessor. In class views we can
+ * only display them when that authoritative predecessor belongs to this class.
+ * Otherwise no class interval is available; never reinterpret or subtract it. */
+function hasSameClassPredecessor(row: OverlayStandingRowV2, allRows: readonly OverlayStandingRowV2[]): boolean {
+  const classId = (row.classId ?? "").trim().toUpperCase();
+  if (!classId || standingQuality(row, "position") !== "fresh" || row.position <= 1) return false;
+  const predecessors = allRows.filter(candidate => standingQuality(candidate, "position") === "fresh"
+    && candidate.position === row.position - 1);
+  return predecessors.length === 1 && (predecessors[0]!.classId ?? "").trim().toUpperCase() === classId;
 }
 
-function formatTemp(value: number | undefined): string | undefined {
-  return value === undefined ? undefined : `${Math.round(value)}°`;
+function formatInterval(row: OverlayStandingRowV2): string {
+  const laps = standingNumber(row, "intervalLaps");
+  if (laps === undefined) return PLACEHOLDER;
+  if (laps !== 0) return formatStandingsLapDifference(laps);
+  return formatStandingsSecondsDifference(standingNumber(row, "interval"));
+}
+
+function formatTemp(value: number | undefined, unit: string): string | undefined {
+  return value === undefined ? undefined : `${Math.round(unit === "fahrenheit" ? value * 9 / 5 + 32 : value)}°`;
 }
 
 function formatWind(value: number | undefined): string | undefined {
@@ -267,13 +289,13 @@ function resolveActiveClass(
   return chosen === "" ? PLACEHOLDER : chosen.toUpperCase();
 }
 
-function displayedNumber(value: OverlayQValue<number> | undefined): number | undefined {
-  if (!value || value.q === "missing" || value.q === "invalid") return undefined;
+function displayedNumber(value: OverlayQValue<number> | null | undefined): number | undefined {
+  if (!value || value.q !== "fresh" || (value.v !== undefined && !Number.isFinite(value.v))) return undefined;
   // Go omitempty elides legitimate zeroes. Quality is the presence bit.
   return value.v ?? 0;
 }
 
 function displayedText(value: OverlayQValue<string>): string | undefined {
-  if (value.q === "missing" || value.q === "invalid") return undefined;
+  if (value.q !== "fresh") return undefined;
   return value.v ?? "";
 }

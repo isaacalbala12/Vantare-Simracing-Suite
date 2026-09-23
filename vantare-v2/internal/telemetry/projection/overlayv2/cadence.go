@@ -572,6 +572,7 @@ func (projector *CachedProjector) Project(
 	if plan.Rebuild(SectionRelative) {
 		frame.Relative = projector.builders.Relative(final, preferences, source)
 		frame.RelativeSettled = projector.settled.project(final, frame.Relative, header, now)
+		frame.RelativeSameClass = BuildRelativeSameClass(final)
 	}
 	if plan.Rebuild(SectionSpotter) {
 		frame.Spotter = projector.builders.Spotter(final, preferences, source)
@@ -627,11 +628,12 @@ type dirtySignals struct {
 	remaining   schema.Field[session.RemainingTime]
 	// ambientTemp and trackTemp fingerprint exactly what BuildWeather
 	// projects for the session (ISA-1106, B4): value and quality both
-	// decide, following the fuel/standings signal pattern. Rain, wetness,
-	// wind and pressure stay missing with no admitted source, so they need
-	// no signal.
-	ambientTemp schema.Field[weather.Temperature]
-	trackTemp   schema.Field[weather.Temperature]
+	// decide, following the fuel/standings signal pattern. Admitted rain and
+	// wetness follow the same rule; wind and pressure remain missing.
+	ambientTemp     schema.Field[weather.Temperature]
+	trackTemp       schema.Field[weather.Temperature]
+	rainFraction    schema.Field[weather.Fraction]
+	wetnessFraction schema.Field[weather.Fraction]
 
 	playerFuel schema.Field[energy.Fuel]
 	fuelPerLap schema.Field[energy.FuelAmount]
@@ -646,12 +648,13 @@ type dirtySignals struct {
 	// standingsMark fingerprints exactly the fields BuildStandings projects
 	// (see hashStandingsVehicle), so a signal the builder ignores never marks
 	// the section dirty and any projected change always does.
-	standingsMark  uint64
-	relativeMark   uint64
-	gapsFreshness  schema.Freshness
-	deltaFreshness schema.Freshness
-	spatialMark    schema.Freshness
-	playerDamage   schema.Field[damage.State]
+	standingsMark   uint64
+	relativeMark    uint64
+	gapsFreshness   schema.Freshness
+	deltaReferences [3]schema.Field[session.DeltaSeconds]
+	deltaFreshness  schema.Freshness
+	spatialMark     schema.Freshness
+	playerDamage    schema.Field[damage.State]
 }
 
 func observeDirtySignals(header envelope.Header, final derive.FinalState, source SourceContextV2) dirtySignals {
@@ -671,11 +674,14 @@ func observeDirtySignals(header envelope.Header, final derive.FinalState, source
 		remaining:           final.Derived.SessionRemaining,
 		ambientTemp:         final.Observed.AmbientTemp,
 		trackTemp:           final.Observed.TrackTemp,
+		rainFraction:        final.Observed.RainFraction,
+		wetnessFraction:     final.Observed.WetnessFraction,
 		gapsFreshness:       final.Derived.Gaps.Freshness,
 		deltaFreshness:      final.Derived.Delta.Freshness,
+		deltaReferences:     [3]schema.Field[session.DeltaSeconds]{final.Derived.Delta.PersonalBest, final.Derived.Delta.SessionBest, final.Derived.Delta.PreviousLap},
 		fuelPerLap:          final.Derived.Fuel.PerLap,
 		spatialMark:         schema.FreshnessMissing,
-		standingsMark:       fnvOffset64,
+		standingsMark:       hashFieldFloat(fnvOffset64, final.Observed.TrackLength),
 	}
 	for index := range final.Observed.Vehicles {
 		current := &final.Observed.Vehicles[index]
@@ -711,7 +717,7 @@ func (signals dirtySignals) diff(previous dirtySignals) DirtySet {
 		signals.maximumLaps != previous.maximumLaps || signals.remaining != previous.remaining {
 		dirty = dirty.Mark(SectionSession)
 	}
-	if signals.ambientTemp != previous.ambientTemp || signals.trackTemp != previous.trackTemp {
+	if signals.ambientTemp != previous.ambientTemp || signals.trackTemp != previous.trackTemp || signals.rainFraction != previous.rainFraction || signals.wetnessFraction != previous.wetnessFraction {
 		dirty = dirty.Mark(SectionWeather)
 	}
 	// Standings depends only on its own fingerprint: the derived gap set feeds
@@ -722,7 +728,7 @@ func (signals dirtySignals) diff(previous dirtySignals) DirtySet {
 	if signals.relativeMark != previous.relativeMark {
 		dirty = dirty.Mark(SectionRelative)
 	}
-	if signals.deltaFreshness != previous.deltaFreshness {
+	if signals.deltaFreshness != previous.deltaFreshness || signals.deltaReferences != previous.deltaReferences {
 		dirty = dirty.Mark(SectionDelta)
 	}
 	if signals.spotterView != previous.spotterView {

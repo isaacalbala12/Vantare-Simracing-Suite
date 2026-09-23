@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../../telemetry-transport/overlay-frame-v2-store";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -5,12 +6,12 @@ import type { OverlayFrameV2, OverlayUpdateV2 } from "../../../generated/telemet
 import { buildPedalsViewModelV2, pedalsDisplayedValues } from "./pedals-view-model-v2";
 
 function golden(vehicles: number): OverlayUpdateV2 {
-  return JSON.parse(
-    readFileSync(
+  return structuredClone(decodeOverlayUpdateV2(
+    JSON.parse(readFileSync(
       path.resolve(process.cwd(), `../internal/telemetry/projection/overlayv2/testdata/overlay_v2_${vehicles}.golden.json`),
       "utf8",
-    ),
-  ) as OverlayUpdateV2;
+    )),
+  )) as OverlayUpdateV2;
 }
 
 function goldenFrame(): OverlayFrameV2 {
@@ -31,7 +32,7 @@ describe("pedals v2 view model", () => {
   it("construye modelo completo desde el frame v2", () => {
     const frame = goldenFrame();
     const model = buildPedalsViewModelV2(frame, { state: "live" }, {});
-    // golden 20: throttle 0.75, brake 0.125, clutch missing -> 0
+    // The golden clutch is fresh zero, legitimately omitted by Go omitempty.
     expect(model.status).toBe("ready");
     expect(model.throttle).toBeCloseTo(0.75, 9);
     expect(model.brake).toBeCloseTo(0.125, 9);
@@ -90,11 +91,13 @@ describe("pedals v2 view model", () => {
       clutch: { q: "missing" },
     });
     const model = buildPedalsViewModelV2(frame, { state: "live" }, {});
-    // Sin señal el VM cae a 0% como v1 cuando snapshot.player.* era undefined.
+    expect(model.status).toBe("missing");
     expect(model.throttle).toBe(0);
     expect(model.brake).toBe(0);
     expect(model.clutch).toBe(0);
-    expect(model.throttleText).toBe("0%");
+    expect(model.throttleText).toBe("—");
+    expect(model.brakeText).toBe("—");
+    expect(model.clutchText).toBe("—");
   });
 
   it("propaga lifecycle del source", () => {

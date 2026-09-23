@@ -94,9 +94,8 @@ export function resolveFunctionalStandingsSize(
     ? FUNCTIONAL_BROADCAST_COLUMN_HEADER_HEIGHT + (settings.showSessionHeader === false ? 0 : FUNCTIONAL_BROADCAST_SESSION_HEADER_HEIGHT)
     : signatureTableHeader
       + (identitySpan === 0 && settings.showSessionHeader !== false ? FUNCTIONAL_SIGNATURE_SESSION_HEADER_HEIGHT : 0);
-  // El pie ambiente (pista/aire/viento) mide 30px y prevalece sobre el pie de
-  // sesión de 22px cuando hay datos — el tamaño mínimo presupone el caso real.
-  const footer = settings.showSessionFooter === false ? 0 : 30;
+  // SessionInfo reserves the same 22px for session and selected weather fields.
+  const footer = settings.showSessionFooter === false ? 0 : 22;
   const brandBand = settings.brandVisible === true && settings.showSessionHeader === false ? 22 : 0;
   return {
     width: Math.max(broadcast ? 258 : 238, width),

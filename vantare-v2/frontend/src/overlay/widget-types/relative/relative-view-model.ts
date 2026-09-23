@@ -18,6 +18,8 @@ export type RelativeRowViewModel = {
   side: RelativeSide;
   tone: "ahead" | "behind" | "player" | "neutral";
   gapSeconds: number | null;
+  /** Per-cell provenance stays independent from source lifecycle. */
+  fieldQuality?: Partial<Record<string, "fresh" | "stale" | "missing" | "invalid">>;
   /** Vueltas respecto al jugador; solo cuando el dato canónico está fresco en carrera. */
   lapDelta?: number | null;
 };
@@ -47,7 +49,7 @@ export type RelativeViewModel = WidgetViewModelBase & {
 export function resolveRelativeCellValue(row: RelativeRowViewModel, metricId: string): string {
   switch (metricId) {
     case "position":
-      return String(row.position);
+      return Number.isInteger(row.position) && row.position > 0 ? String(row.position) : "—";
     case "class":
       return row.vehicleClass;
     case "carNumber":

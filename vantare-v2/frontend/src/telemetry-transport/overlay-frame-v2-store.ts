@@ -292,7 +292,7 @@ export function createOverlaySectionDecoder(): (text: string, request: unknown) 
   };
 }
 
-function frameFieldSizes(frame: OverlayFrameV2): Map<string, number> {
+function frameFieldSizes(frame: object): Map<string, number> {
   return new Map(Object.entries(frame).map(([key, value]) => [key, jsonBytes(key) + 1 + jsonBytes(value)]));
 }
 
@@ -333,10 +333,16 @@ export function parseOverlayPullJSON(text: string, sections?: SectionDecodeConte
         if (jsonBytes({...event.data, frame: null}) - 4 + frameBytes > OVERLAY_V2_MAX_PAYLOAD_BYTES) invalid("size");
         event.data = {...event.data, frame: {...base.update.frame, ...event.data.frame}};
       }
+      // Keep byte accounting in the wire representation. Standing timing cells
+      // expand once below, so measuring the normalized model would inflate a
+      // later section delta's safety budget without adding any wire bytes.
+      if (sections && !sizes && plainObject(event.data) && plainObject(event.data.frame)) {
+        sizes = frameFieldSizes(event.data.frame);
+      }
       // If the entire envelope fits, every contained update necessarily fits.
       // Larger envelopes retain the exact per-update byte check (e.g. status
       // plus a snapshot at the limit), not a relaxed transport-sized limit.
-      const update = sizes || bytes <= OVERLAY_V2_MAX_PAYLOAD_BYTES
+      const update = validatedBase || bytes <= OVERLAY_V2_MAX_PAYLOAD_BYTES
         ? validateOverlayUpdateV2(event.data, validatedBase)
         : decodeOverlayUpdateV2(event.data);
       // Retain upstream work in per-update diagnostics. Including the whole
@@ -379,7 +385,7 @@ function sourceStatus(value: unknown, path: string): void {
 function frame(value: unknown, path: string, validatedBase?: OverlayFrameV2): void {
   objectWithKeys(value, path, [
     "contract", "algorithm", "epoch", "sequence", "sectionMask", "sessionId", "generatedAt", "units",
-    "session", "player", "controls", "standings", "relative", "relativeSettled", "delta", "fuel", "spotter", "capabilities", "damage", "weather",
+    "session", "player", "controls", "standings", "relative", "relativeSettled", "relativeSameClass", "delta", "fuel", "spotter", "capabilities", "damage", "weather",
   ]);
   if (value.contract !== 2) invalid(`${path}.contract`);
   positiveInteger(value.algorithm, `${path}.algorithm`);
@@ -397,9 +403,13 @@ function frame(value: unknown, path: string, validatedBase?: OverlayFrameV2): vo
   controls(value.controls, `${path}.controls`);
   // Only decoder-owned, previously validated and frozen arrays can be reused.
   // Fresh JSON arrays always differ by identity, even if their contents match.
-  if (!validatedBase || value.standings !== validatedBase.standings) rowArray(value.standings, `${path}.standings`, validStanding);
+  if (!validatedBase || value.standings !== validatedBase.standings) {
+    normalizeStandingRows(value.standings, `${path}.standings`);
+    rowArray(value.standings, `${path}.standings`, validStanding);
+  }
   if (!validatedBase || value.relative !== validatedBase.relative) relativeRowArray(value.relative, `${path}.relative`);
   if (!validatedBase || value.relativeSettled !== validatedBase.relativeSettled) relativeRowArray(value.relativeSettled, `${path}.relativeSettled`);
+  if (!validatedBase || value.relativeSameClass !== validatedBase.relativeSameClass) relativeRowArray(value.relativeSameClass, `${path}.relativeSameClass`);
   delta(value.delta, `${path}.delta`);
   fuel(value.fuel, `${path}.fuel`);
   spotter(value.spotter, `${path}.spotter`);
@@ -429,7 +439,8 @@ function session(value: unknown, path: string): void {
 }
 
 function player(value: unknown, path: string): void {
-  objectWithKeys(value, path, ["speed", "rpm", "gear", "throttle", "brake", "clutch", "steering"], ["id"]);
+  objectWithKeys(value, path, ["speed", "rpm", "gear", "throttle", "brake", "clutch", "steering"], ["id", "lapNumber"]);
+  if (value.lapNumber !== undefined) qvalue(value.lapNumber, `${path}.lapNumber`, "number");
   optionalString(value.id, `${path}.id`);
   for (const key of ["speed", "rpm", "gear", "throttle", "brake", "clutch", "steering"] as const) {
     qvalue(value[key], `${path}.${key}`, "number");
@@ -498,14 +509,138 @@ function perMilleSeries(value: unknown, path: string): asserts value is readonly
   Object.freeze(value);
 }
 
+const STANDING_WIRE_ALIASES = [
+  ["q", "quality"], ["cg", "classGap"], ["cl", "classGapLaps"],
+  ["cr", "classRef"], ["i", "interval"], ["il", "intervalLaps"],
+] as const;
+const STANDING_QUALITY_ALIASES = [["g", "gap"], ["b", "bestLap"], ["l", "lastLap"]] as const;
+const STANDING_QUALITY_FIELDS = [
+  "q", "position", "classPosition", "pit", "laps", "gapLaps", "classGap", "classGapLaps",
+  "interval", "intervalLaps", "gap", "bestLap", "lastLap",
+] as const;
+const STANDING_QUALITY_FIELD_SET = new Set<string>(STANDING_QUALITY_FIELDS);
+const STANDING_FIELD_SET = new Set([
+  "id", "position", "classPosition", "gap", "bestLap", "lastLap", "groundPosition", "lapDistance",
+  "classId", "driver", "number", "gapLaps", "pit", "laps", "quality", "classGap", "classGapLaps",
+  "classRef", "interval", "intervalLaps",
+]);
+const STANDING_TIMING_FIELDS = ["gap", "bestLap", "lastLap"] as const;
+const COMPACT_QUALITY_CODES = { f: "fresh", s: "stale", m: "missing", i: "invalid" } as const;
+const VALID_QUALITY_STATUSES = new Set(["fresh", "stale", "missing", "invalid"]);
+
+// Only owned incoming arrays reach this boundary; decoder-owned frozen arrays
+// reused by a section delta bypass it. ViewModels always see ordinary QValue.
+function normalizeStandingRows(value: unknown, path: string): void {
+  if (!Array.isArray(value) || value.length > 104) invalid(path);
+  for (let index = 0; index < value.length; index += 1) {
+    const row = value[index];
+    const rowPath = `${path}[${index}]`;
+    if (!plainObject(row)) invalid(rowPath);
+
+    // Most frames already use the descriptive legacy contract. Avoid building
+    // alias maps and revisiting quality for every row unless compact wire data
+    // is actually present.
+    const compactRow = Object.hasOwn(row, "q") || Object.hasOwn(row, "cg") || Object.hasOwn(row, "cl") ||
+      Object.hasOwn(row, "cr") || Object.hasOwn(row, "i") || Object.hasOwn(row, "il") ||
+      typeof row.gap === "number" || typeof row.bestLap === "number" || typeof row.lastLap === "number" ||
+      hasCompactStandingQuality(row.quality);
+    if (!compactRow) continue;
+
+    for (const [compact, descriptive] of STANDING_WIRE_ALIASES) {
+      if (Object.hasOwn(row, compact)) {
+        if (Object.hasOwn(row, descriptive)) invalid(rowPath);
+        row[descriptive] = row[compact];
+        delete row[compact];
+      }
+    }
+    if (plainObject(row.quality)) {
+      const encoded = row.quality;
+      for (const [compact, descriptive] of STANDING_QUALITY_ALIASES) {
+        if (Object.hasOwn(encoded, compact)) {
+          if (Object.hasOwn(encoded, descriptive)) invalid(rowPath);
+          encoded[descriptive] = encoded[compact];
+          delete encoded[compact];
+        }
+      }
+      for (const field of Object.keys(encoded)) {
+        if (!STANDING_QUALITY_FIELD_SET.has(field)) continue;
+        const raw = encoded[field];
+        if (typeof raw === "string" && Object.hasOwn(COMPACT_QUALITY_CODES, raw)) {
+          encoded[field] = COMPACT_QUALITY_CODES[raw as keyof typeof COMPACT_QUALITY_CODES];
+        }
+      }
+    }
+    const quality = plainObject(row.quality) ? row.quality : undefined;
+    for (const field of STANDING_TIMING_FIELDS) {
+      const raw = row[field];
+      if (typeof raw !== "number") {
+        if (quality?.[field] !== undefined && (!plainObject(raw) || raw.q !== quality[field])) invalid(rowPath);
+        continue;
+      }
+      if (!Number.isFinite(raw) || !quality) invalid(rowPath);
+      const override = quality[field];
+      if (override !== undefined && typeof override !== "string") invalid(rowPath);
+      const q = override ?? quality.q;
+      if (q === "missing" && raw !== 0) invalid(rowPath);
+      row[field] = raw === 0 ? { q } : { q, v: raw };
+    }
+    // Overrides belong to the scalar wire cells. The normalized model carries
+    // the same qualities in each QValue, alongside the unchanged scalar base.
+    let hasQualityOverrides = false;
+    if (quality) {
+      for (const field of STANDING_TIMING_FIELDS) hasQualityOverrides ||= Object.hasOwn(quality, field);
+    }
+    if (quality && hasQualityOverrides) {
+      const normalized = { ...quality };
+      for (const field of STANDING_TIMING_FIELDS) delete normalized[field];
+      row.quality = normalized;
+    }
+  }
+}
+
+function hasCompactStandingQuality(value: unknown): boolean {
+  if (!plainObject(value)) return false;
+  for (const [compact] of STANDING_QUALITY_ALIASES) {
+    if (Object.hasOwn(value, compact)) return true;
+  }
+  for (const field of STANDING_QUALITY_FIELDS) {
+    const status = value[field];
+    if (typeof status === "string" && Object.hasOwn(COMPACT_QUALITY_CODES, status)) return true;
+  }
+  return false;
+}
+
+function validStandingQuality(value: unknown): boolean {
+  if (value === undefined) return true;
+  if (!plainObject(value) || !Object.hasOwn(value, "q")) return false;
+  for (const field of Object.keys(value)) {
+    if (!STANDING_QUALITY_FIELD_SET.has(field)) return false;
+    const status = value[field];
+    if (status !== undefined && (typeof status !== "string" || !VALID_QUALITY_STATUSES.has(status))) return false;
+  }
+  if (value.q === undefined) return false;
+  Object.freeze(value);
+  return true;
+}
+
 function validStanding(value: unknown): boolean {
-  if (!objectHasKeys(value, ["id", "position", "classPosition", "gap", "bestLap", "lastLap", "lapDistance", "groundPosition"], ["classId", "driver", "number", "gapLaps", "pit", "laps"])) return false;
+  if (!plainObject(value) || !Object.hasOwn(value, "id") || !Object.hasOwn(value, "position") ||
+      !Object.hasOwn(value, "classPosition") || !Object.hasOwn(value, "gap") || !Object.hasOwn(value, "bestLap") ||
+      !Object.hasOwn(value, "lastLap") || !Object.hasOwn(value, "groundPosition")) return false;
+  for (const field of Object.keys(value)) {
+    if (!STANDING_FIELD_SET.has(field)) return false;
+  }
   const valid = typeof value.id === "string" && value.id.length > 0 &&
     Number.isSafeInteger(value.position) && Number.isSafeInteger(value.classPosition) &&
     validQValue(value.gap, "number") && validQValue(value.bestLap, "number") && validQValue(value.lastLap, "number") &&
-    validQValue(value.lapDistance, "number") && validGroundPosition(value.groundPosition) &&
-    [value.classId, value.driver, value.number, value.pit].every(optionalStringValue) &&
-    [value.gapLaps, value.laps].every(optionalIntegerValue);
+    (value.lapDistance === undefined || validQValue(value.lapDistance, "number")) && validGroundPosition(value.groundPosition) &&
+    optionalStringValue(value.classId) && optionalStringValue(value.driver) && optionalStringValue(value.number) && optionalStringValue(value.pit) &&
+    optionalIntegerValue(value.gapLaps) && optionalIntegerValue(value.laps) &&
+    optionalIntegerValue(value.classRef) &&
+    validStandingQuality(value.quality) &&
+    (value.classGap === undefined || typeof value.classGap === "number" && Number.isFinite(value.classGap)) &&
+    (value.interval === undefined || typeof value.interval === "number" && Number.isFinite(value.interval)) &&
+    optionalIntegerValue(value.classGapLaps) && optionalIntegerValue(value.intervalLaps);
   if (valid) Object.freeze(value);
   return valid;
 }
@@ -536,13 +671,17 @@ function dentsValue(value: unknown, path: string): void {
 
 /** groundPosition is a QValue whose `v` (when present) is a plain {x, z} in metres. */
 function validGroundPosition(value: unknown): boolean {
-  if (!objectHasKeys(value, ["q"], ["v"])) return false;
-  if (!["fresh", "stale", "missing", "invalid"].includes(value.q as string)) return false;
+  if (!validQualityValueShape(value)) return false;
+  if (!VALID_QUALITY_STATUSES.has(value.q as string)) return false;
   if (value.q === "missing" && value.v !== undefined) return false;
   if (value.v !== undefined) {
-    if (!objectHasKeys(value.v, ["x", "z"])) return false;
-    if (!Number.isFinite(value.v.x) || !Number.isFinite(value.v.z)) return false;
-    Object.freeze(value.v);
+    const coordinates = value.v;
+    if (!plainObject(coordinates) || !("x" in coordinates) || !("z" in coordinates)) return false;
+    const coordinateKeys = Object.keys(coordinates);
+    if (coordinateKeys.length !== 2 || (coordinateKeys[0] !== "x" && coordinateKeys[1] !== "x") ||
+        (coordinateKeys[0] !== "z" && coordinateKeys[1] !== "z") ||
+        !Number.isFinite(coordinates.x) || !Number.isFinite(coordinates.z)) return false;
+    Object.freeze(coordinates);
   }
   Object.freeze(value);
   return true;
@@ -558,23 +697,40 @@ function weather(value: unknown, path: string): void {
 }
 
 function validRelative(value: unknown): boolean {
-  if (!objectHasKeys(value, ["id", "position", "gap", "lapDelta", "groundPosition", "lastLap", "side", "authority"], ["name", "classId"])) return false;
+  if (!objectHasKeys(value, ["id", "position", "gap", "lapDelta", "lastLap", "bestLap", "side"], ["authority", "name", "classId", "number"])) return false;
   const valid = typeof value.id === "string" && value.id.length > 0 &&
-    typeof value.position === "number" && Number.isSafeInteger(value.position) && value.position > 0 &&
-    validQValue(value.gap, "number") && validQValue(value.lapDelta, "number") && validGroundPosition(value.groundPosition) &&
-    validQValue(value.lastLap, "number") && ["ahead", "player", "behind"].includes(value.side as string) &&
-    ["native", "derived", "estimated"].includes(value.authority as string) &&
+    typeof value.position === "number" && Number.isSafeInteger(value.position) && value.position >= 0 &&
+    validQValue(value.gap, "number") && validQValue(value.lapDelta, "number") &&
+    validQValue(value.bestLap, "number") && optionalStringValue(value.number) && validQValue(value.lastLap, "number") && ["ahead", "player", "behind"].includes(value.side as string) &&
+    (value.authority === undefined || ["native", "derived", "estimated"].includes(value.authority as string)) &&
     optionalStringValue(value.name) && optionalStringValue(value.classId);
   if (valid) Object.freeze(value);
   return valid;
 }
 
 function delta(value: unknown, path: string): void {
-  objectWithKeys(value, path, ["seconds", "available", "history"], ["reference", "requested", "trend", "authority"]);
+  objectWithKeys(value, path, ["seconds", "available", "history"], ["reference", "requested", "trend", "authority", "references"]);
   qvalue(value.seconds, `${path}.seconds`, "number");
   array(value.available, `${path}.available`, nonEmptyString);
   for (const key of ["reference", "requested", "trend"] as const) optionalString(value[key], `${path}.${key}`);
   if (value.authority !== undefined) enumValue<OverlayAuthorityV2>(value.authority, `${path}.authority`, ["native", "derived", "estimated"]);
+  if (value.references !== undefined) {
+    if (!Array.isArray(value.references) || value.references.length !== 3) invalid(`${path}.references`);
+    const requests = new Set<string>();
+    for (const entry of value.references) {
+      objectWithKeys(entry, `${path}.references`, ["requested", "seconds"], ["reference", "authority"]);
+      enumValue(entry.requested, `${path}.references.requested`, ["personal-best", "session-best", "previous-lap"]);
+      if (requests.has(entry.requested as string)) invalid(`${path}.references.requested`);
+      requests.add(entry.requested as string);
+      qvalue(entry.seconds, `${path}.references.seconds`, "number");
+      if (entry.reference !== undefined) enumValue(entry.reference, `${path}.references.reference`, ["personal-best", "session-best", "previous-lap"]);
+      if (entry.authority !== undefined) enumValue<OverlayAuthorityV2>(entry.authority, `${path}.references.authority`, ["native", "derived", "estimated"]);
+      const usable = entry.seconds.q === "fresh" || entry.seconds.q === "stale";
+      if (usable !== (entry.reference !== undefined) || usable !== (entry.authority !== undefined)) invalid(`${path}.references.resolution`);
+      Object.freeze(entry);
+    }
+    Object.freeze(value.references);
+  }
   deltaHistory(value.history, `${path}.history`);
   Object.freeze(value);
 }
@@ -691,12 +847,23 @@ function qvalue(value: unknown, path: string, kind: "number" | "string" | "boole
 }
 
 function validQValue(value: unknown, kind: "number" | "string" | "boolean"): value is OverlayQValue<unknown> {
-  if (!objectHasKeys(value, ["q"], ["v"])) return false;
-  if (!["fresh", "stale", "missing", "invalid"].includes(value.q as string)) return false;
+  if (!validQualityValueShape(value)) return false;
+  if (!VALID_QUALITY_STATUSES.has(value.q as string)) return false;
   if (value.v !== undefined && (typeof value.v !== kind || (kind === "number" && !Number.isFinite(value.v)))) return false;
   if (value.q === "missing" && value.v !== undefined) return false;
   Object.freeze(value);
   return true;
+}
+
+// Shared by ordinary QValues and ground positions so both retain the same
+// strict wire shape without repeating the object-key walk.
+function validQualityValueShape(value: unknown): value is JSONObject {
+  if (!plainObject(value) || !("q" in value)) return false;
+  const keys = Object.keys(value);
+  return keys.length === 1
+    ? keys[0] === "q"
+    : keys.length === 2 &&
+      ((keys[0] === "q" && keys[1] === "v") || (keys[0] === "v" && keys[1] === "q"));
 }
 
 function quality(value: unknown, path: string): asserts value is OverlayQualityV2 {

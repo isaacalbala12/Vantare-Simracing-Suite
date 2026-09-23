@@ -209,6 +209,7 @@ describe("StandingsRedlineTemplate", () => {
       isPlayer: index === 7,
       vehicleClass: "HYPERCAR",
       gapText: index === 8 ? "+14.4s" : index === 7 ? "+14.0s" : `+${index * 2}.0s`,
+      battleGapSeconds: index === 8 ? 14.4 : index * 2,
       pitText: "",
     }));
     const rows = fitStandingsRowsToHeight(expandedRows, {

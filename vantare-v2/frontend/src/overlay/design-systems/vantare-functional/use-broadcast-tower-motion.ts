@@ -47,7 +47,8 @@ export function useBroadcastTowerMotion(
   // Old preview models have no canonical IDs. They still render, but a number
   // or place is not a safe motion identity across telemetry samples.
   const hasCanonicalIds = ids.every((id): id is string => typeof id === "string" && id.length > 0)
-    && new Set(ids).size === ids.length;
+    && new Set(ids).size === ids.length
+    && visible.every((row) => Number.isInteger(row.place) && row.place > 0);
   const structureKey = hasCanonicalIds ? ids.join("\u001f") : "";
   const boundaryKey = [model.motionIdentity, model.sessionLabel, geometry.w, geometry.h, model.rowCount, model.showWeather, model.showSof, motion].join("\u001f");
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { AnimationScene } from "./animation-scenes";
+import { getAnimationScene, type AnimationScene } from "./animation-scenes";
 import { interpolateSceneAt, sampleAtRate, sceneDurationMs } from "./scene-interpolation";
 
 const scene: AnimationScene = {
@@ -19,6 +19,20 @@ const gapAt = (ms: number, loop = false) =>
   interpolateSceneAt(scene, ms, loop).frame.cars?.A?.timeBehindLeader;
 
 describe("scene interpolation", () => {
+  it("keeps the fastest-lap record discrete and restores the baseline at each complete loop", () => {
+    const lapScene = getAnimationScene("fastest-lap-alert")!;
+    const bestAt = (ms: number) => interpolateSceneAt(lapScene, ms, true).frame.cars?.["Antonio Giovinazzi"]?.bestLapTime;
+    expect(bestAt(0)).toBe(90.904);
+    expect(bestAt(7999)).toBe(90.904);
+    expect(bestAt(8000)).toBe(90.904);
+    expect(bestAt(16000)).toBe(89.902);
+    expect(bestAt(24000)).toBe(89.902);
+    expect(interpolateSceneAt(lapScene, 7999, true).keyframe).toBe(0);
+    expect(interpolateSceneAt(lapScene, 7999, true).frame.player?.bestLapSeconds).toBe(92.304);
+    expect(interpolateSceneAt(lapScene, 8000, true).frame.player?.bestLapSeconds).toBe(91.202);
+    expect(interpolateSceneAt(lapScene, 24000, true).frame.player?.bestLapSeconds).toBe(89.402);
+    expect(bestAt(32000)).toBe(90.904);
+  });
   it("holds the first keyframe at the start", () => {
     expect(gapAt(0)).toBe(10);
   });

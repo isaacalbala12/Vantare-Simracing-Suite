@@ -67,8 +67,8 @@ describe("WidgetVisualHost D1 sin legacy", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("los 18 tipos V2 exigen frame y source, y los auxiliares siguen por su canal explícito", () => {
-    expect(overlayV2ViewModelRegistry.size).toBe(18);
+  it("los 19 tipos V2 exigen frame y source, y los auxiliares siguen por su canal explícito", () => {
+    expect(overlayV2ViewModelRegistry.size).toBe(19);
     expect(getOverlayV2ViewModelEntry("race-schedule" as never)).toBeUndefined();
     expect(getOverlayV2ViewModelEntry("engineer-radio" as never)).toBeUndefined();
   });

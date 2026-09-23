@@ -201,6 +201,15 @@ export function createTelemetryRateCoordinator(
       case "car-damage-numbers": case "car-damage-visual": return overlayFrame.damage;
       case "track-weather": return overlayFrame.weather;
       case "racing-flags": return overlayFrame.session;
+      case "fastest-lap": return {
+        timings: overlayFrame.standings.map(row => [
+          row.id, row.driver, row.classId, row.bestLap.q, row.bestLap.v,
+          row.lastLap.q, row.lastLap.v, row.laps,
+        ]),
+        playerId: overlayFrame.player.id,
+        sessionId: overlayFrame.sessionId,
+        epoch: overlayFrame.epoch,
+      };
       case "race-schedule": return "external-calendar-events";
       case "engineer-radio": return "external-engineer-event";
       default: return undefined;

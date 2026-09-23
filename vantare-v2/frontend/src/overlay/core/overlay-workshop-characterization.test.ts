@@ -43,12 +43,13 @@ describe("Overlay Workshop characterization", () => {
     const crystal = designs.filter((design) => design.systemId === "vantare-crystal");
     const historical = historicalCrystalManifest.entries;
 
-    expect(ALL_WIDGET_TYPES).toHaveLength(20);
+    expect(ALL_WIDGET_TYPES).toHaveLength(21);
     expect(designSystemRegistry.list().map((system) => [system.id, system.widgets.length])).toEqual([
-      ["vantare-original", 18], ["vantare-crystal", 19], ["vantare-endurance", 5], ["vantare-functional", 18], ["vantare-iracing", 1],
+      ["vantare-original", 18], ["vantare-crystal", 19], ["vantare-endurance", 5], ["vantare-functional", 19], ["vantare-iracing", 1],
     ]);
-    expect(designs).toHaveLength(87);
+    expect(designs).toHaveLength(88);
     expect(designs.filter((design) => design.systemId === "vantare-functional").map((design) => design.id)).toEqual([
+      "fastest-lap-functional-signature",
       "standings-functional-compact", "standings-functional-broadcast",
       "relative-functional-signature", "delta-functional-signature", "delta-functional-capsule", "pedals-functional-signature", "pedals-functional-overlay",
       "track-weather-functional-signature", "track-map-functional-signature", "pedals-telemetry-functional-signature",

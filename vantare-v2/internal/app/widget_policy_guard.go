@@ -49,7 +49,7 @@ func widgetRequiredFeature(widgetType config.WidgetTypeV3) (widgetPolicyFeature,
 	case "engineer-radio":
 		return widgetFeatureEngineer, true
 	case "delta", "relative", "pedals-telemetry", "pedals-telemetry-compact",
-		"racing-flags", "broadcast-tower", "head-to-head", "input-telemetry",
+		"racing-flags", "fastest-lap", "broadcast-tower", "head-to-head", "input-telemetry",
 		"multiclass-relative", "delta-advanced", "fuel-strategy", "delta-trace",
 		"race-schedule", "track-weather", "car-damage-visual", "car-damage-numbers",
 		"track-map":

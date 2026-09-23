@@ -178,7 +178,7 @@ describe("OverlayParityHarness", () => {
   });
 
   it("renders each default widget marker", () => {
-    expect(ALL_WIDGET_TYPES).toHaveLength(20);
+    expect(ALL_WIDGET_TYPES).toHaveLength(21);
     for (const widget of ALL_WIDGET_TYPES) {
       cleanup();
       const parsed = parseHarnessQuery(`?widget=${widget}`);
@@ -262,6 +262,10 @@ describe("OverlayParityHarness", () => {
         expect(markups[0]).toContain('data-preview="true"');
         expect(markups[0]).toContain("PREVIEW");
         expect(markups[1]).not.toContain("data-preview");
+      } else if (widget === "fastest-lap") {
+        // The canonical parity fixture has no fresh best-lap times.
+        // The host integration test covers the populated Studio preview.
+        expect(markups.every(markup => markup.includes("vf-fastest-lap-empty"))).toBe(true);
       } else {
         expect(markups[0]).toBe(markups[1]);
       }

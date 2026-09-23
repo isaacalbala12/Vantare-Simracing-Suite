@@ -1,5 +1,10 @@
 /** Overlay Studio V3 — Spanish (source locale for studio.v3.* keys). */
 export const studioV3Es: Record<string, string> = {
+  "studio.v3.widgetTypes.fastestLap": "Aviso de vuelta rápida",
+  "studio.v3.inspector.fastestLap.personal": "Mejor vuelta personal",
+  "studio.v3.inspector.fastestLap.class": "Vuelta rápida de tu clase",
+  "studio.v3.inspector.fastestLap.duration": "Duración del aviso (segundos)",
+  "studio.v3.inspector.fastestLap.showDriver": "Mostrar piloto",
   "studio.v3.recovery.profileFallback": "Perfil",
   "studio.v3.browserView.dialog.title": "Guardar antes de Browser View",
   "studio.v3.browserView.dialog.body":

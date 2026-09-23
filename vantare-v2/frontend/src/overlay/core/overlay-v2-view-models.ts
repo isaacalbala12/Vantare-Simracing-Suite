@@ -8,6 +8,7 @@ import { buildFuelStrategyViewModelV2 } from "../widget-types/fuel-strategy/fuel
 import { buildPedalsTelemetryViewModelV2 } from "../widget-types/pedals-telemetry/pedals-telemetry-view-model-v2";
 import { buildInputTelemetryViewModelV2 } from "../widget-types/input-telemetry/input-telemetry-view-model-v2";
 import { buildRacingFlagsViewModelV2 } from "../widget-types/racing-flags/racing-flags-view-model-v2";
+import { buildFastestLapViewModelV2 } from "../widget-types/fastest-lap/fastest-lap-view-model";
 import { buildDeltaAdvancedViewModelV2 } from "../widget-types/delta-advanced/delta-advanced-view-model-v2";
 import { buildDeltaTraceViewModelV2 } from "../widget-types/delta-trace/delta-trace-view-model-v2";
 import { buildPedalsViewModelV2 } from "../widget-types/pedals/pedals-view-model-v2";
@@ -44,6 +45,7 @@ export const overlayV2ViewModelRegistry: ReadonlyMap<WidgetType, OverlayV2ViewMo
   WidgetType,
   OverlayV2ViewModelEntry
 >([
+  ["fastest-lap", { buildViewModelV2: (frame, source, content) => buildFastestLapViewModelV2(frame, source, content as never) }],
   [
     "standings",
     {

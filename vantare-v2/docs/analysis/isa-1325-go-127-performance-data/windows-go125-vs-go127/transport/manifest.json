@@ -1,0 +1,18 @@
+{
+  "baseline": "D:\\a\\_temp\\isa-1325-bench-bin\\transport-go125.test.exe",
+  "samples": 10,
+  "candidateSHA256": "18FDEE753E0C4E2E937D867033BFEC1EB0AFB5AA2C1F4D732D18B9E61C662531",
+  "startedUtc": "2026-09-23T10:20:31.0526315Z",
+  "note": "Local Go microbenchmark; not application CPU/RAM/GPU or LMU frametime evidence",
+  "baselineSHA256": "88F6EAF1C94AF5E82822773D9399E71C5208E99441F6EFD1894A459AC1406EF8",
+  "candidate": "D:\\a\\_temp\\isa-1325-bench-bin\\transport-go127.test.exe",
+  "cpu": "AMD EPYC 7763 64-Core Processor                ",
+  "arguments": [
+    "-test.run=^$",
+    "-test.bench=BenchmarkOverlayTypedSections",
+    "-test.benchmem",
+    "-test.benchtime=100ms",
+    "-test.cpu=1",
+    "-test.count=1"
+  ]
+}

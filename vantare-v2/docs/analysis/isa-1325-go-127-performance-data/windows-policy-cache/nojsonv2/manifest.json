@@ -1,0 +1,18 @@
+{
+  "note": "Local Go microbenchmark; not application CPU/RAM/GPU or LMU frametime evidence",
+  "baseline": "D:\\a\\_temp\\policy-cache-bin\\original-nojsonv2.test.exe",
+  "baselineSHA256": "7EDE9CE19D2ACB845C5053678188B1CA504C388C9067C456E332E85A7F539465",
+  "candidate": "D:\\a\\_temp\\policy-cache-bin\\cached-nojsonv2.test.exe",
+  "startedUtc": "2026-09-23T15:38:14.4753216Z",
+  "samples": 10,
+  "arguments": [
+    "-test.run=^$",
+    "-test.bench=BenchmarkOverlayPublication64",
+    "-test.benchmem",
+    "-test.benchtime=100ms",
+    "-test.cpu=1",
+    "-test.count=1"
+  ],
+  "cpu": "AMD EPYC 9V74 80-Core Processor                ",
+  "candidateSHA256": "EAB5475C4DCA11788B30BD3D0BF34CEA358D6B86F67DE103E8629703D9DE8C00"
+}

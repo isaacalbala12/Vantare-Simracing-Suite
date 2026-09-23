@@ -1,0 +1,18 @@
+{
+  "baseline": "D:\\a\\_temp\\isa-1325-bench-bin\\app-go125.test.exe",
+  "samples": 10,
+  "candidateSHA256": "C8AA29A481A63ED00A0B672ED7AFE4C6C7C0A67BB25FF651935CA84E616F53F2",
+  "startedUtc": "2026-09-23T10:20:37.2944918Z",
+  "note": "Local Go microbenchmark; not application CPU/RAM/GPU or LMU frametime evidence",
+  "baselineSHA256": "65D21AFACB0C9774F56C7F20E95A79C4015CA80CFDCBB721BD4F389559048B9E",
+  "candidate": "D:\\a\\_temp\\isa-1325-bench-bin\\app-go127.test.exe",
+  "cpu": "AMD EPYC 7763 64-Core Processor                ",
+  "arguments": [
+    "-test.run=^$",
+    "-test.bench=BenchmarkOverlayPublication64",
+    "-test.benchmem",
+    "-test.benchtime=100ms",
+    "-test.cpu=1",
+    "-test.count=1"
+  ]
+}

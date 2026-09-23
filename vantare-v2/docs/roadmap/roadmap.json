@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-23T14:21:20Z",
+  "generatedAt": "2026-09-23T18:18:48Z",
   "digest": {
-    "lastCommit": "f8ded356dc82efcf372aa2513359fe4fb7fd927f"
+    "lastCommit": "b725c402c2e77350f348cfc26dcc1b008c0ae2bd"
   },
   "phases": [
     {
@@ -2184,6 +2184,28 @@
         "pt": "ISA-1305",
         "it": "ISA-1305"
       }
+    },
+    {
+      "id": "go-127-toolchain",
+      "type": "fix",
+      "title": {
+        "es": "Toolchain Go 1.27.1 para el pipeline Windows",
+        "en": "Go 1.27.1 toolchain for the Windows pipeline",
+        "pt": "Toolchain Go 1.27.1 para o pipeline Windows",
+        "it": "Toolchain Go 1.27.1 per la pipeline Windows"
+      },
+      "body": {
+        "es": "El módulo principal y los controles activos de compilación y calidad pasan a Go 1.27.1. La build Windows se valida antes de integrar el cambio. El runtime nativo de telemetría y los builds Docker alternativos mantienen cadenas separadas.",
+        "en": "The main module and active build and quality checks move to Go 1.27.1. The Windows build is validated before integration. The native telemetry runtime and alternative Docker builds retain separate toolchains.",
+        "pt": "O módulo principal e as verificações ativas de build e qualidade passam para Go 1.27.1. A build Windows é validada antes da integração. O runtime nativo de telemetria e os builds Docker alternativos mantêm toolchains separadas.",
+        "it": "Il modulo principale e i controlli attivi di build e qualità passano a Go 1.27.1. La build Windows viene verificata prima dell'integrazione. Il runtime nativo della telemetria e le build Docker alternative mantengono toolchain separate."
+      },
+      "label": {
+        "es": "ISA-1325",
+        "en": "ISA-1325",
+        "pt": "ISA-1325",
+        "it": "ISA-1325"
+      }
     }
   ],
   "delivered": [
@@ -2209,6 +2231,11 @@
           "kind": "fix",
           "scope": "quality",
           "text": "Verify source provenance before classifying clone regrouping"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Engineer: pantalla funcional de pruebas y diagnóstico de audio real"
         }
       ]
     },

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -520,6 +521,7 @@ class TestCmdCheckExitCode(unittest.TestCase):
         policy = self.repo / "tools" / "quality"
         policy.mkdir(parents=True)
         (policy / "scope.json").write_text(SCOPE_PATH.read_text(), encoding="utf-8")
+        shutil.copytree(SCOPE_PATH.parent / "baseline", policy / "baseline")
         self.policy_file = policy / "policy.txt"
         self.policy_file.write_text("base\n", encoding="utf-8")
         self._git("init", "--quiet")
@@ -544,6 +546,7 @@ from pathlib import Path
 sys.path.insert(0, sys.argv[1])
 import vantare_quality as vq
 vq.REPO_ROOT = Path(sys.argv[2])
+vq.BASELINE_DIR = vq.REPO_ROOT / "tools/quality/baseline"
 vq.LAST_RUN_PATH = Path(sys.argv[3])
 results = []
 for analyzer in sorted(vq.RATCHET_ANALYZERS | vq.NO_BASELINE_ANALYZERS):
@@ -603,7 +606,6 @@ class TestJscpdRegrouping(unittest.TestCase):
     """Real jscpd + Git provenance -> production check, no baseline acceptance."""
 
     def setUp(self):
-        import shutil
         import vantare_quality as vq
         from unittest.mock import patch
         self.vq = vq
@@ -777,6 +779,17 @@ class TestJscpdRegrouping(unittest.TestCase):
         path.write_text(json.dumps(data))
         (self.src / 'a.css').unlink()
         self._check(FAIL)
+
+    def test_version_exception_rejects_baseline_that_absorbs_findings(self):
+        path = self.repo / 'tools/quality/baseline/jscpd.json'
+        data = json.loads(path.read_text())
+        data['header']['versions_fingerprint'] = '0' * 64
+        data['findings'].append(data['findings'][0])
+        path.write_text(json.dumps(data))
+        report = self._check(FAIL)
+        self.assertEqual(report['classifications']['jscpd']['new'], 0)
+        self.assertTrue(any('baseline candidato distinto' in issue
+                            for issue in report['integrity_issues']))
 
 
     def test_existing_identity_surplus_remains_new(self):

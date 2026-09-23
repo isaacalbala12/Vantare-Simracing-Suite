@@ -1,0 +1,60 @@
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkOverlayPublication64 	     333	    344043 ns/op	  308360 B/op	     374 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkOverlayPublication64 	     354	    337814 ns/op	  308782 B/op	     373 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkOverlayPublication64 	     339	    351726 ns/op	  308668 B/op	     374 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkOverlayPublication64 	     343	    348471 ns/op	  308905 B/op	     374 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkOverlayPublication64 	     357	    339616 ns/op	  309002 B/op	     373 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkOverlayPublication64 	     348	    348014 ns/op	  308892 B/op	     373 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkOverlayPublication64 	     367	    328437 ns/op	  309054 B/op	     373 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkOverlayPublication64 	     354	    337651 ns/op	  309031 B/op	     373 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkOverlayPublication64 	     375	    344151 ns/op	  309431 B/op	     373 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkOverlayPublication64 	     378	    332722 ns/op	  309455 B/op	     373 allocs/op
+PASS

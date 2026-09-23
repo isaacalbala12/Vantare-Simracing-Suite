@@ -1,0 +1,18 @@
+{
+  "cpu": "AMD EPYC 7763 64-Core Processor                ",
+  "baseline": "D:\\a\\_temp\\isa-1325-bench-bin\\overlay-go127.test.exe",
+  "baselineSHA256": "975CEBEF3C19018736CC43D01910F8932093A59DCD647D354C07B78FBAE18C9A",
+  "samples": 10,
+  "note": "Local Go microbenchmark; not application CPU/RAM/GPU or LMU frametime evidence",
+  "candidateSHA256": "F96AA9DB2A125C9F8D964120670AE6BF195D90B38CE67E4DA6C2F8CBB4A8FF63",
+  "startedUtc": "2026-09-23T10:26:24.3364540Z",
+  "arguments": [
+    "-test.run=^$",
+    "-test.bench=BenchmarkOverlayV2ByCadence|BenchmarkProjectV2",
+    "-test.benchmem",
+    "-test.benchtime=100ms",
+    "-test.cpu=1",
+    "-test.count=1"
+  ],
+  "candidate": "D:\\a\\_temp\\isa-1325-bench-bin\\overlay-go127-nojsonv2.test.exe"
+}

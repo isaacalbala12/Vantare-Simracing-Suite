@@ -1,0 +1,70 @@
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app/telemetrytransport
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkOverlayTypedSections/canonical-marshal         	     673	    161111 ns/op	   28276 B/op	      37 allocs/op
+BenchmarkOverlayTypedSections/typed-sections-full       	     558	    212877 ns/op	  121063 B/op	     109 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app/telemetrytransport
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkOverlayTypedSections/canonical-marshal         	     742	    171893 ns/op	   28260 B/op	      37 allocs/op
+BenchmarkOverlayTypedSections/typed-sections-full       	     546	    212201 ns/op	  121064 B/op	     109 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app/telemetrytransport
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkOverlayTypedSections/canonical-marshal         	     765	    162974 ns/op	   28256 B/op	      37 allocs/op
+BenchmarkOverlayTypedSections/typed-sections-full       	     574	    207656 ns/op	  121063 B/op	     109 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app/telemetrytransport
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkOverlayTypedSections/canonical-marshal         	     674	    177824 ns/op	   28276 B/op	      37 allocs/op
+BenchmarkOverlayTypedSections/typed-sections-full       	     556	    213292 ns/op	  121064 B/op	     109 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app/telemetrytransport
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkOverlayTypedSections/canonical-marshal         	     730	    173935 ns/op	   28263 B/op	      37 allocs/op
+BenchmarkOverlayTypedSections/typed-sections-full       	     558	    222309 ns/op	  121063 B/op	     109 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app/telemetrytransport
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkOverlayTypedSections/canonical-marshal         	     714	    157830 ns/op	   28266 B/op	      37 allocs/op
+BenchmarkOverlayTypedSections/typed-sections-full       	     644	    200799 ns/op	  121061 B/op	     109 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app/telemetrytransport
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkOverlayTypedSections/canonical-marshal         	     738	    171056 ns/op	   28261 B/op	      37 allocs/op
+BenchmarkOverlayTypedSections/typed-sections-full       	     578	    208862 ns/op	  121063 B/op	     109 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app/telemetrytransport
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkOverlayTypedSections/canonical-marshal         	     705	    162220 ns/op	   28268 B/op	      37 allocs/op
+BenchmarkOverlayTypedSections/typed-sections-full       	     619	    200806 ns/op	  121061 B/op	     109 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app/telemetrytransport
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkOverlayTypedSections/canonical-marshal         	     754	    155314 ns/op	   28257 B/op	      37 allocs/op
+BenchmarkOverlayTypedSections/typed-sections-full       	     670	    189934 ns/op	  121060 B/op	     109 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/app/telemetrytransport
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkOverlayTypedSections/canonical-marshal         	     765	    171430 ns/op	   28256 B/op	      37 allocs/op
+BenchmarkOverlayTypedSections/typed-sections-full       	     574	    208712 ns/op	  121063 B/op	     109 allocs/op
+PASS

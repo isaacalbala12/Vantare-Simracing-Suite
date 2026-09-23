@@ -1,0 +1,26 @@
+[
+  {
+    "Side": "baseline",
+    "Benchmark": "BenchmarkOverlayPublication64",
+    "Samples": 10,
+    "MedianNs": 332882.5,
+    "MinNs": 320208.0,
+    "MaxNs": 380329.0,
+    "MinBytes": 308215.0,
+    "MaxBytes": 310542.0,
+    "MinAllocs": 373.0,
+    "MaxAllocs": 374.0
+  },
+  {
+    "Side": "candidate",
+    "Benchmark": "BenchmarkOverlayPublication64",
+    "Samples": 10,
+    "MedianNs": 462977.5,
+    "MinNs": 442210.0,
+    "MaxNs": 510039.0,
+    "MinBytes": 412771.0,
+    "MaxBytes": 419543.0,
+    "MinAllocs": 404.0,
+    "MaxAllocs": 405.0
+  }
+]

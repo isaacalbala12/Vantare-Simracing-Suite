@@ -15,7 +15,9 @@ configuración autorizada de `frontend/.env.local` en compile-time:
    `VANTARE_LICENSE_PUBLIC_KEYS` cuando esté configurado.
 2. Ejecutar `corepack pnpm --dir frontend build`.
 3. Ejecutar `tools/generate_supabase_config.ps1` y después `go build` en el
-   mismo proceso, eliminando el Go generado al terminar.
+   mismo proceso, eliminando el Go generado al terminar. La build de medida
+   fija temporalmente `GOEXPERIMENT=nojsonv2` y comprueba ese dato con
+   `go version -m` para corresponder al ejecutable Windows de este candidato.
 4. Verificar por CDP que `license:changed` no devuelve `unconfigured` antes de
    empezar a muestrear.
 

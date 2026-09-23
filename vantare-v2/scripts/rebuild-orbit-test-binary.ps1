@@ -22,10 +22,17 @@ foreach ($line in $envFile) {
 }
 
 powershell -NoProfile -ExecutionPolicy Bypass -File .\tools\generate_supabase_config.ps1 -OutFile .\cmd\vantare\supabase_build.go
+$previousGOEXPERIMENT = [Environment]::GetEnvironmentVariable('GOEXPERIMENT', 'Process')
 try {
+  [Environment]::SetEnvironmentVariable('GOEXPERIMENT', 'nojsonv2', 'Process')
   go build -tags production -trimpath -buildvcs=false -ldflags "-w -s -H windowsgui" -o .\bin\vantare.exe .\cmd\vantare
   if ($LASTEXITCODE -ne 0) { throw "go build failed" }
+  $buildInfo = go version -m .\bin\vantare.exe
+  if ($LASTEXITCODE -ne 0 -or -not ($buildInfo -match 'GOEXPERIMENT=nojsonv2')) {
+    throw "Orbit test binary was not built with GOEXPERIMENT=nojsonv2"
+  }
 } finally {
+  [Environment]::SetEnvironmentVariable('GOEXPERIMENT', $previousGOEXPERIMENT, 'Process')
   Remove-Item .\cmd\vantare\supabase_build.go -ErrorAction SilentlyContinue
 }
 Write-Output "ok: bin\vantare.exe"

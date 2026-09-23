@@ -28,6 +28,7 @@ $names = @(
 )
 $previous = @{}
 foreach ($name in $names) { $previous[$name] = [Environment]::GetEnvironmentVariable($name, 'Process') }
+$previousGOEXPERIMENT = [Environment]::GetEnvironmentVariable('GOEXPERIMENT', 'Process')
 
 try {
     $values = @{}
@@ -90,8 +91,13 @@ try {
         # El banco necesita el puerto CDP, que está deliberadamente ausente de
         # builds `production`; sigue siendo una build real con frontend y
         # Supabase embebidos, pero conserva solo los ganchos de diagnóstico.
+        [Environment]::SetEnvironmentVariable('GOEXPERIMENT', 'nojsonv2', 'Process')
         go build -trimpath -buildvcs=false -ldflags "-w -s -H windowsgui -X main.buildChannel=$BuildChannel" -o $outPath .\cmd\vantare
         if ($LASTEXITCODE -ne 0) { throw "go build falló con código $LASTEXITCODE." }
+        $buildInfo = go version -m $outPath
+        if ($LASTEXITCODE -ne 0 -or -not ($buildInfo -match 'GOEXPERIMENT=nojsonv2')) {
+            throw 'La build de medida no incorpora GOEXPERIMENT=nojsonv2.'
+        }
         $hash = (Get-FileHash -LiteralPath $outPath -Algorithm SHA256).Hash.ToLowerInvariant()
         Write-Host "Build de medida creada: $outPath"
         Write-Host "SHA-256: $hash"
@@ -103,4 +109,5 @@ try {
     foreach ($name in $names) {
         [Environment]::SetEnvironmentVariable($name, $previous[$name], 'Process')
     }
+    [Environment]::SetEnvironmentVariable('GOEXPERIMENT', $previousGOEXPERIMENT, 'Process')
 }

@@ -253,6 +253,7 @@ export interface OverlayRelativeRowV2 {
   readonly gap: OverlayQValue<number>;
   readonly groundPosition: OverlayQValue<Overlayv2GroundPositionV2>;
   readonly id: string;
+  readonly lapDelta: OverlayQValue<number>;
   readonly lastLap: OverlayQValue<number>;
   readonly name?: string | undefined;
   readonly position: number;

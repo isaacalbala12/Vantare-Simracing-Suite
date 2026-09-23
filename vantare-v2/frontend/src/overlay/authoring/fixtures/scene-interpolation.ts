@@ -72,8 +72,8 @@ export type InterpolatedScene = {
 
 /**
  * State of a scene at a point in time, in milliseconds from its start.
- * `frame.caption` belongs to the keyframe being approached, so the caption
- * describes what is happening rather than what already happened.
+ * The step and caption describe the current keyframe. Continuous values
+ * approach the next one, but discrete facts only change on arrival.
  */
 export function interpolateSceneAt(scene: AnimationScene, elapsedMs: number, loop: boolean): InterpolatedScene {
   const count = scene.frames.length;
@@ -115,13 +115,13 @@ export function interpolateSceneAt(scene: AnimationScene, elapsedMs: number, loo
       : (to.remainingSeconds ?? from.remainingSeconds);
 
   return {
-    // The caption belongs to the keyframe being approached once past halfway.
-    keyframe: t >= 0.5 ? nextIndex : index,
+    keyframe: index,
     frame: {
-      caption: (t >= 0.5 ? to : from).caption,
+      caption: from.caption,
       ...(Object.keys(cars).length > 0 ? { cars } : {}),
       ...(blendPlayer(from.player, to.player, t) ? { player: blendPlayer(from.player, to.player, t) } : {}),
       ...(remainingSeconds !== undefined ? { remainingSeconds } : {}),
+      ...(from.standingsWindowPosition !== undefined ? { standingsWindowPosition: from.standingsWindowPosition } : {}),
     },
   };
 }
@@ -144,6 +144,7 @@ export function sampleAtRate(elapsedMs: number, updateHz: number): number {
   if (!Number.isFinite(updateHz) || updateHz <= 0) {
     return elapsedMs;
   }
-  const periodMs = 1000 / updateHz;
-  return Math.floor(elapsedMs / periodMs) * periodMs;
+  // Count samples before converting back to milliseconds: dividing by the
+  // repeating 15 Hz period can turn an exact keyframe into the previous sample.
+  return Math.floor(elapsedMs * updateHz / 1000) * 1000 / updateHz;
 }

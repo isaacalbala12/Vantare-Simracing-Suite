@@ -13,6 +13,7 @@ import { MulticlassRelativeFunctional } from "./MulticlassRelativeFunctional";
 import { PedalsFunctional } from "./PedalsFunctional";
 import { PedalsAdvancedEfficiency } from "./PedalsAdvancedEfficiency";
 import { RacingFlagsFunctional } from "./RacingFlagsFunctional";
+import { FastestLapFunctional } from "./FastestLapFunctional";
 import {
   normalizeRacingFlagsTextColor,
   RACING_FLAGS_DEFAULT_TEXT_COLOR,
@@ -32,6 +33,15 @@ export const vantareFunctionalManifest: DesignSystemDefinition = {
   label: "Efficiency",
   systemMigrations: { 0: (_widgetType, settings) => ({ ...settings }) },
   widgets: [
+    {
+      widgetType: "fastest-lap",
+      configVersion: 1,
+      defaultSettings: {},
+      configMigrations: { 0: (settings) => ({ ...settings }) },
+      parseSettings: () => ({}),
+      inspector: { appearance: [] },
+      Renderer: FastestLapFunctional as ComponentType<WidgetRendererProps>,
+    },
     {
       widgetType: "standings",
       configVersion: 1,

@@ -32,7 +32,7 @@ describe("Functional Standings", () => {
     expect(marker).not.toBeNull();
     expect(marker?.getAttribute("role")).toBe("img");
     expect(marker?.getAttribute("aria-label")).toBe("PIT");
-    expect(marker?.parentElement?.classList.contains("vf-pit-rail")).toBe(true);
+    expect(Boolean(marker?.closest(".vf-pit-rail"))).toBe(true);
     expect(container.querySelector('td[data-metric="lastLap"]')?.textContent).toBe("1:42.318");
     expect(marker?.textContent).toBe("PIT");
     expect(container.querySelector('.vf-driver small')).toBeNull();

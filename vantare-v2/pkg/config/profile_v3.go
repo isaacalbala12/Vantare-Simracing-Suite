@@ -39,6 +39,7 @@ const (
 	WidgetTypePedalsTelemetry        WidgetTypeV3 = "pedals-telemetry"
 	WidgetTypePedalsTelemetryCompact WidgetTypeV3 = "pedals-telemetry-compact"
 	WidgetTypeRacingFlags            WidgetTypeV3 = "racing-flags"
+	WidgetTypeFastestLap             WidgetTypeV3 = "fastest-lap"
 	WidgetTypeDeltaTrace             WidgetTypeV3 = "delta-trace"
 	WidgetTypeRaceSchedule           WidgetTypeV3 = "race-schedule"
 	WidgetTypeHeadToHead             WidgetTypeV3 = "head-to-head"

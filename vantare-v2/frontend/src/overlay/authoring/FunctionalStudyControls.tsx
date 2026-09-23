@@ -33,6 +33,7 @@ const WIDGET_LABELS: Partial<Record<WidgetType, string>> = {
   "pedals-telemetry": "Pedals Telemetry",
   "pedals-telemetry-compact": "Pedales avanzados",
   "racing-flags": "Racing Flags",
+  "fastest-lap": "Vuelta rápida",
 };
 const widgetLabel = (widget: WidgetType) => WIDGET_LABELS[widget] ?? widget;
 
@@ -57,10 +58,6 @@ const RELATIVE_RANGE_OPTIONS = Array.from({ length: RELATIVE_RANGE_LIMIT + 1 }, 
 const STUDY_STYLE_OPTIONS = FUNCTIONAL_STUDY_STYLES.map(({ id, label }) => [id, label] as const);
 const STANDINGS_WINDOW_OPTIONS = STANDINGS_WINDOW_AROUND_OPTIONS.map((count) => [String(count), String(count)] as const);
 const FLAG_OPTIONS = PEDALS_KNOWN_FLAGS.map((flag) => [flag, flag === "yellow" ? "Amarilla" : flag === "green" ? "Verde" : flag === "blue" ? "Azul" : flag === "red" ? "Roja" : flag === "white" ? "Blanca" : flag === "black" ? "Negra" : "A cuadros"] as const);
-// `default` conserva la parrilla funcional histórica cuando la URL no declara
-// módulos. En la variante de estudio el valor por defecto sigue siendo el
-// preset deliberadamente más corto de `functional-study-options`.
-const FUNCTIONAL_DEFAULT_STANDINGS_MODULES: readonly string[] = ["gap", "lastLap", "pit"];
 
 // Resolución de la previsualización del harness: el widget/profile mantiene
 // siempre su layout real; estos valores solo fijan el tamaño exterior de la
@@ -80,11 +77,12 @@ function Segments(props: { options: readonly (readonly [string, string])[]; valu
   return <div className="functional-study-segments">{props.options.map(([id, label]) => <button type="button" key={id} aria-pressed={props.value === id} onClick={() => props.onChange(id)}>{label}</button>)}</div>;
 }
 
-export function FunctionalStudyControls({ query, widgetLayout, update, onRunScene, onReset }: {
+export function FunctionalStudyControls({ query, widgetLayout, update, onRunScene, onShowDesign, onReset }: {
   query: OverlayWorkshopQuery;
   widgetLayout?: Pick<WidgetLayoutV3, "w" | "h">;
   update: (query: OverlayWorkshopQuery) => void;
   onRunScene: (sceneId: string) => void;
+  onShowDesign?: () => void;
   onReset: () => void;
 }) {
   const { locale, setLocale, options } = useI18n();
@@ -96,10 +94,13 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
   const defaultDesign = designs.find((design) => design.isDefault) ?? designs[0];
   // Cada variante declarada pertenece a un widget por su prefijo; el resto
   // produciría una query inválida.
-  const scenes = listAnimationScenes(query.widget);
+  const scenes = listAnimationScenes(query.widget, query.system, query.session);
+  const selectedScene = scenes.find((item) => item.id === query.sceneId);
   const gaps = projectionGapsFor(query.widget);
   const isFunctional = query.system === "vantare-functional";
   const isStandings = query.widget === "standings";
+  const isFastestLap = query.widget === "fastest-lap";
+  const dimensionLimits = isFastestLap ? { width: [280, 3840], height: [72, 2160] } : DIMENSION_LIMITS;
   const isRacingFlags = query.widget === "racing-flags";
   const isFlagWidget = query.widget === "pedals" || isRacingFlags;
   const defaultStandingRows = isFunctional
@@ -141,9 +142,14 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
   const chooseSystem = (system: string) => {
     const nextSystem = system as OverlayWorkshopQuery["system"];
     const keepsDefaultWindow = nextSystem === "vantare-functional" && isStandings;
+    const sceneId = listAnimationScenes(query.widget, nextSystem, query.session).some((scene) => scene.id === query.sceneId)
+      ? query.sceneId
+      : undefined;
     return update({
       ...query,
       system: nextSystem,
+      sceneId,
+      sceneFrame: sceneId ? query.sceneFrame : undefined,
       designId: undefined,
       studyStyle: keepsDefaultWindow ? "default" : undefined,
       around: keepsDefaultWindow ? query.around ?? STANDINGS_WINDOW_DEFAULT_AROUND : undefined,
@@ -184,8 +190,8 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
   const selectedStudyStyle = query.studyStyle ?? "default";
   const isDefaultStandingsStudy = isFunctional && isStandings && selectedStudyStyle === "default";
 
-  const resolvedWidth = query.width ?? widgetLayout?.w;
-  const resolvedHeight = query.height ?? widgetLayout?.h;
+  const resolvedWidth = isFastestLap ? Math.max(280, query.width ?? widgetLayout?.w ?? 480) : query.width ?? widgetLayout?.w;
+  const resolvedHeight = isFastestLap ? Math.max(72, query.height ?? widgetLayout?.h ?? 104) : query.height ?? widgetLayout?.h;
 
   // Borradores de texto para ancho/alto: la query solo se reescribe cuando las
   // dos dimensiones son enteros dentro de rango — una URL a medias sería
@@ -207,8 +213,8 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
     setDimensionDraft(next);
     const width = Number(next.width);
     const height = Number(next.height);
-    const widthValid = next.width !== "" && Number.isInteger(width) && width >= DIMENSION_LIMITS.width[0] && width <= DIMENSION_LIMITS.width[1];
-    const heightValid = next.height !== "" && Number.isInteger(height) && height >= DIMENSION_LIMITS.height[0] && height <= DIMENSION_LIMITS.height[1];
+    const widthValid = next.width !== "" && Number.isInteger(width) && width >= dimensionLimits.width[0] && width <= dimensionLimits.width[1];
+    const heightValid = next.height !== "" && Number.isInteger(height) && height >= dimensionLimits.height[0] && height <= dimensionLimits.height[1];
     if (widthValid && heightValid) {
       setAppliedSize({ width, height });
       update({ ...query, width, height });
@@ -220,6 +226,11 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
     setAppliedSize({ width, height });
     update({ ...query, width, height });
   };
+
+  const dimensionInputs = <>
+      <label className="functional-study-select"><span>Ancho</span><input type="number" min={dimensionLimits.width[0]} max={dimensionLimits.width[1]} step={1} value={dimensionDraft.width} onChange={(event) => chooseDimension("width", event.target.value)} /></label>
+      <label className="functional-study-select"><span>Alto</span><input type="number" min={dimensionLimits.height[0]} max={dimensionLimits.height[1]} step={1} value={dimensionDraft.height} onChange={(event) => chooseDimension("height", event.target.value)} /></label>
+  </>;
 
   return <aside className="functional-study-controls" aria-label={`Diseño de ${query.widget}`}>
     <div className="functional-study-title"><span>VANTARE / WORKSHOP</span><h1>{systemLabel(query.system)}.</h1><p>{widgetLabel(query.widget)} · Sistema {systemLabel(query.system)}</p></div>
@@ -246,6 +257,11 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
       </Select>}
       <p className="functional-study-note">Fixture: {displayedVariant}</p>
     </fieldset>
+
+    {isFastestLap && <fieldset><legend>Tamaño del widget</legend>
+      {dimensionInputs}
+      <p className="functional-study-note">Ancho y alto en píxeles. El panel se adapta al tamaño real sin deformar el texto.</p>
+    </fieldset>}
 
     <fieldset><legend>Sesión</legend>
       <Segments options={SESSION_OPTIONS} value={query.session} onChange={(value) => update({ ...query, session: value as OverlayWorkshopQuery["session"] })} />
@@ -280,7 +296,7 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
       {FUNCTIONAL_STUDY_MODULES.map((item) => {
         const modules = query.modules ?? (query.variant === "standings-functional-study"
           ? FUNCTIONAL_STUDY_DEFAULT_MODULES
-          : FUNCTIONAL_DEFAULT_STANDINGS_MODULES);
+          : ["gap", query.session === "race" ? "lastLap" : "bestLap", "pit"]);
         return <label key={item.id} className="functional-study-toggle"><span>{item.label}</span><input type="checkbox" checked={modules.includes(item.id)} onChange={() => update({ ...query, modules: modules.includes(item.id) ? modules.filter((id) => id !== item.id) : [...modules, item.id] })} /></label>;
       })}
     </fieldset>}
@@ -330,11 +346,12 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
     <fieldset><legend>Animación</legend>
       {scenes.length === 0 ? <p className="functional-study-note">Este widget todavía no tiene animaciones declaradas.</p> : (
         <div className="functional-study-scene">
-          <Select label="Escena" value={query.sceneId ?? ""} onChange={chooseScene}>
+          <Select label="Escena" value={selectedScene?.id ?? ""} onChange={chooseScene}>
             <option value="">Sin animación</option>
             {scenes.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}
           </Select>
-          {query.sceneId && <button type="button" className="functional-study-play" onClick={() => onRunScene(query.sceneId!)} data-testid="workshop-scene-run">▶ Reproducir</button>}
+          {selectedScene && <button type="button" className="functional-study-play" onClick={() => onRunScene(selectedScene.id)} data-testid="workshop-scene-run">▶ Reproducir</button>}
+          {isFastestLap && onShowDesign && <button type="button" className="functional-study-play" onClick={onShowDesign}>Ver diseño</button>}
         </div>
       )}
       {gaps.length > 0 && <div className="functional-study-gaps"><strong>Más de lo que llega en carrera.</strong><ul>{gaps.map((gap) => <li key={gap.field}><code>{gap.field}</code> — {gap.consequence}</li>)}</ul></div>}
@@ -365,6 +382,7 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
       </Select>
       <p className="functional-study-note">Escala</p>
       <Segments options={SCALE_OPTIONS} value={String(query.scale)} onChange={chooseScale} />
+      {!isFastestLap && <>
       <p className="functional-study-note">La resolución real del widget es la base; ancho y alto solo cambian la previsualización del harness.</p>
       {/* El preview se declara por preset (720p/1080p/1440p) o por ancho/alto
           libres, sin modificar el layout productivo del widget. */}
@@ -374,9 +392,9 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
           return <option key={preset} value={preset}>{preset} · {width}×{height}</option>;
         })}
       </Select>
-      <label className="functional-study-select"><span>Ancho</span><input type="number" min={DIMENSION_LIMITS.width[0]} max={DIMENSION_LIMITS.width[1]} step={1} value={dimensionDraft.width} onChange={(event) => chooseDimension("width", event.target.value)} /></label>
-      <label className="functional-study-select"><span>Alto</span><input type="number" min={DIMENSION_LIMITS.height[0]} max={DIMENSION_LIMITS.height[1]} step={1} value={dimensionDraft.height} onChange={(event) => chooseDimension("height", event.target.value)} /></label>
+      {dimensionInputs}
       <button type="button" className="functional-study-play functional-study-apply" onClick={applyPreset}>Aplicar tamaño declarado</button>
+      </>}
     </fieldset>
 
     <div className="functional-study-provenance"><span className="functional-study-dot" />Escenario de diseño<p>Datos de demostración. El widget usa el mismo componente que la aplicación.</p>

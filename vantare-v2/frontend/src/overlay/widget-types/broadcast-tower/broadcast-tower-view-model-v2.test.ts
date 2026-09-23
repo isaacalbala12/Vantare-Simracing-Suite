@@ -39,10 +39,25 @@ describe("buildBroadcastTowerViewModelV2", () => {
     const model = buildBroadcastTowerViewModelV2(frame(12), { state: "live" } as OverlaySourceStatusV2, { rowCount: 5, showWeather: true, showSof: true });
     expect(model.rows).toHaveLength(5);
     expect(model.rows[0]).toMatchObject({ place: 1, isPlayer: true });
+    expect(model.rows[0].id).toBe("vehicle-000");
     expect(model.sessionLabel).toBe("RACE");
     expect(model.flag).toBe("unknown");
     expect(model.trackTempC).toBeUndefined();
     expect(model.sof).toBeUndefined();
+  });
+
+  it("preserves canonical row IDs and resets presentation identity for session, epoch, and retry", () => {
+    const input = frame(3);
+    const source = { state: "live", retry: 0 } as OverlaySourceStatusV2;
+    const content = { rowCount: 3, showWeather: false, showSof: false };
+    const initial = buildBroadcastTowerViewModelV2(input, source, content);
+    expect(initial.rows.map((row) => row.id)).toEqual(["vehicle-000", "vehicle-001", "vehicle-002"]);
+    expect(initial.motionIdentity).toBe("s:3:0");
+    expect(Object.keys(initial)).not.toContain("motionIdentity");
+    const newEpoch = buildBroadcastTowerViewModelV2({ ...input, epoch: 4 }, source, content);
+    const newSession = buildBroadcastTowerViewModelV2({ ...input, sessionId: "other" }, source, content);
+    const retried = buildBroadcastTowerViewModelV2(input, { ...source, retry: 1 }, content);
+    expect([newEpoch.motionIdentity, newSession.motionIdentity, retried.motionIdentity]).toEqual(["s:4:0", "other:3:0", "s:3:1"]);
   });
 
   it.each([

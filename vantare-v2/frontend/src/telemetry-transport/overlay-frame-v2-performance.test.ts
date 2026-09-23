@@ -128,6 +128,7 @@ function syntheticFullUpdate(vehicles: number) {
     id: row.id,
     position: row.position,
     gap: fresh((index - 8) * 0.25),
+    lapDelta: fresh(0),
     groundPosition: row.groundPosition,
     lastLap: row.lastLap,
     side: index < 8 ? "ahead" : index === 8 ? "player" : "behind",

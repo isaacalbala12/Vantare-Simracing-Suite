@@ -6,7 +6,6 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
-	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
 
 // Fine-grained dirty detection.
@@ -119,9 +118,9 @@ func hashRelativeMark(final derive.FinalState) uint64 {
 		return sum
 	}
 	sum = hashByte(sum, 1)
-	gapsByVehicle := make(map[string]schema.Field[standings.RelativeTime], len(final.Derived.Gaps.Vehicles))
+	gapsByVehicle := make(map[string]derive.VehicleGap, len(final.Derived.Gaps.Vehicles))
 	for _, gap := range final.Derived.Gaps.Vehicles {
-		gapsByVehicle[string(gap.Vehicle)] = gap.Time
+		gapsByVehicle[string(gap.Vehicle)] = gap
 	}
 	positions := make(map[string]int32, len(final.Observed.Vehicles))
 	for index, current := range orderedVehicles(final.Observed.Vehicles) {
@@ -147,6 +146,8 @@ func hashRelativeRow(sum uint64, row RelativeRowV2) uint64 {
 	sum = hashUint64(sum, uint64(row.Position))
 	sum = hashString(sum, string(row.GapSeconds.Q))
 	sum = hashUint64(sum, math.Float64bits(row.GapSeconds.V))
+	sum = hashString(sum, string(row.LapDelta.Q))
+	sum = hashUint64(sum, uint64(uint32(row.LapDelta.V)))
 	sum = hashString(sum, string(row.GroundPosition.Q))
 	sum = hashUint64(sum, math.Float64bits(row.GroundPosition.V.X))
 	sum = hashUint64(sum, math.Float64bits(row.GroundPosition.V.Z))

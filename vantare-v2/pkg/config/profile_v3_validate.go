@@ -175,7 +175,7 @@ func isSupportedWidgetTypeV3(widgetType WidgetTypeV3) bool {
 	case WidgetTypeDelta, WidgetTypeStandings, WidgetTypeRelative, WidgetTypePedals:
 		return true
 	case WidgetTypeBroadcastTower, WidgetTypeFuelStrategy, WidgetTypePedalsTelemetry,
-		WidgetTypePedalsTelemetryCompact, WidgetTypeRacingFlags, WidgetTypeDeltaTrace,
+		WidgetTypePedalsTelemetryCompact, WidgetTypeRacingFlags, WidgetTypeFastestLap, WidgetTypeDeltaTrace,
 		WidgetTypeRaceSchedule, WidgetTypeHeadToHead, WidgetTypeDeltaAdvanced,
 		WidgetTypeInputTelemetry, WidgetTypeMulticlassRelative, WidgetTypeTrackWeather,
 		WidgetTypeCarDamageVisual, WidgetTypeCarDamageNumbers, WidgetTypeEngineerRadio,

@@ -1,4 +1,5 @@
-import type { WidgetType } from "../../core/profile-document";
+import type { DesignSystemId, WidgetType } from "../../core/profile-document";
+import type { OverlayQualityV2 } from "../../../generated/telemetry";
 
 /**
  * A single car's state for one frame of a scene. Anything omitted keeps the
@@ -12,8 +13,13 @@ export type SceneOverride = {
   inPits?: boolean;
   tireCompound?: string;
   bestLapTime?: number;
+  /** Improvement against this session's demo baseline, in seconds. */
+  bestLapImprovement?: number;
   /** Drops the car from the field entirely (retirement / rejoin frames). */
   absent?: boolean;
+  /** Workshop-only override for canonical lap difference; never inferred from position or gaps. */
+  lapDelta?: number;
+  lapDeltaQuality?: OverlayQualityV2;
 };
 
 /** Player-owned values, for widgets that read the driver rather than the field. */
@@ -32,6 +38,8 @@ export type SceneFrame = {
   player?: ScenePlayerOverride;
   /** Session clock for this frame, when the animation depends on it. */
   remainingSeconds?: number;
+  /** Review a different player-window anchor without changing any race positions. */
+  standingsWindowPosition?: number;
   /** Shown under the transport so it is clear what this frame is doing. */
   caption: string;
 };
@@ -39,12 +47,16 @@ export type SceneFrame = {
 export type AnimationScene = {
   id: string;
   widget: WidgetType;
+  /** Optional design-system gate for authoring studies that are skin-specific. */
+  systems?: readonly DesignSystemId[];
   label: string;
   /** What to look at, so a scene is self-explanatory without reading the code. */
   watchFor: string;
   /** Milliseconds per frame. A battle needs room to breathe; a flash does not. */
   frameMs: number;
   frames: readonly SceneFrame[];
+  /** Workshop-only classification swap for a scene that needs a mid-pack player. */
+  positionSwap?: readonly [number, number];
   /**
    * Telemetry field this animation needs, when the live projection does not
    * deliver it. Workshop keeps the value absent, so the catalog cannot suggest
@@ -52,6 +64,7 @@ export type AnimationScene = {
    * typed V2 presentation-gap catalog.
    */
   unsupportedSignal?: string;
+  sessions?: readonly string[];
 };
 
 /**
@@ -349,6 +362,212 @@ const RELATIVE_ENTER_SCENE: AnimationScene = {
   ],
 };
 
+const RELATIVE_FUNCTIONAL_CROSS_AHEAD_SCENE: AnimationScene = {
+  id: "relative-functional-cross-ahead",
+  widget: "relative",
+  label: "Cruce detrás → delante",
+  watchFor:
+    "Sigue al mismo rival y deja fijo al jugador: la fila cruza de detrás a delante cuando el gap cambia de signo, con un acento de color muy tenue solo en el cruce y cifras quietas.",
+  frameMs: 1200,
+  frames: [
+    { caption: "Nico Pino detrás del jugador: −0,65 s", cars: { "Nico Pino": { timeGapToPlayer: -0.65 } } },
+    { caption: "Se acerca: −0,12 s", cars: { "Nico Pino": { timeGapToPlayer: -0.12 } } },
+    { caption: "Cruza hacia delante: +0,12 s", cars: { "Nico Pino": { timeGapToPlayer: 0.12 } } },
+    { caption: "Se aleja delante: +0,65 s", cars: { "Nico Pino": { timeGapToPlayer: 0.65 } } },
+  ],
+};
+
+const RELATIVE_FUNCTIONAL_CROSS_BEHIND_SCENE: AnimationScene = {
+  id: "relative-functional-cross-behind",
+  widget: "relative",
+  label: "Cruce delante → detrás",
+  watchFor:
+    "Sigue al mismo rival y deja fijo al jugador: la fila cruza de delante a detrás cuando el gap cambia de signo, con un acento de color muy tenue solo en el cruce y cifras quietas.",
+  frameMs: 1200,
+  frames: [
+    { caption: "Nico Pino delante del jugador: +0,65 s", cars: { "Nico Pino": { timeGapToPlayer: 0.65 } } },
+    { caption: "Se acerca: +0,12 s", cars: { "Nico Pino": { timeGapToPlayer: 0.12 } } },
+    { caption: "Cruza hacia detrás: −0,12 s", cars: { "Nico Pino": { timeGapToPlayer: -0.12 } } },
+    { caption: "Se aleja detrás: −0,65 s", cars: { "Nico Pino": { timeGapToPlayer: -0.65 } } },
+  ],
+};
+
+const RELATIVE_FUNCTIONAL_WINDOW_SCENE: AnimationScene = {
+  id: "relative-functional-window-cycle",
+  widget: "relative",
+  label: "Entrada, salida y reentrada",
+  watchFor:
+    "Mikkel Jensen sale y reentra con la misma identidad mientras la fila del jugador conserva su ID y posición. Revisa entrada y salida por opacidad, alrededor de 120 ms, y confirma que las cifras no pulsan.",
+  frameMs: 1200,
+  frames: [
+    { caption: "Mikkel Jensen aún fuera de la ventana", cars: { "Mikkel Jensen": { absent: true } } },
+    { caption: "Entra en la ventana: gap estable de −2,6 s", cars: { "Mikkel Jensen": { timeGapToPlayer: -2.6 } } },
+    { caption: "Mikkel Jensen ya asentado; las cifras siguen iguales", cars: { "Mikkel Jensen": { timeGapToPlayer: -2.6 } } },
+    { caption: "Sale de la ventana visible", cars: { "Mikkel Jensen": { absent: true } } },
+    { caption: "Continúa fuera", cars: { "Mikkel Jensen": { absent: true } } },
+    { caption: "Reentra con la misma fila y el mismo gap", cars: { "Mikkel Jensen": { timeGapToPlayer: -2.6 } } },
+    { caption: "Reentrada asentada: −2,6 s", cars: { "Mikkel Jensen": { timeGapToPlayer: -2.6 } } },
+  ],
+};
+
+const RELATIVE_FUNCTIONAL_FAST_REVERSAL_SCENE: AnimationScene = {
+  id: "relative-functional-fast-reversal",
+  widget: "relative",
+  label: "Inversión rápida · 180 ms",
+  watchFor:
+    "Escena de estrés: el mismo rival cambia de lado cada 180 ms (<300 ms). Comprueba que no se pierde la fila ni el jugador y que el acento tenue solo aparece en cada cruce real.",
+  frameMs: 180,
+  frames: [
+    { caption: "Nico Pino detrás: −0,14 s", cars: { "Nico Pino": { timeGapToPlayer: -0.14 } } },
+    { caption: "Cruza delante en 180 ms: +0,14 s", cars: { "Nico Pino": { timeGapToPlayer: 0.14 } } },
+    { caption: "Invierte y vuelve detrás en 180 ms: −0,14 s", cars: { "Nico Pino": { timeGapToPlayer: -0.14 } } },
+    { caption: "Cruza delante otra vez en 180 ms: +0,14 s", cars: { "Nico Pino": { timeGapToPlayer: 0.14 } } },
+  ],
+};
+
+const RELATIVE_FUNCTIONAL_STABLE_SCENE: AnimationScene = {
+  id: "relative-functional-stable-values",
+  widget: "relative",
+  label: "Datos cambian, filas quietas",
+  watchFor:
+    "Las distancias cambian sin cruzar al jugador ni alterar el orden visible. Revisa que los números se actualicen sin mover las filas ni reiniciar transiciones.",
+  frameMs: 1200,
+  frames: [
+    {
+      caption: "Muestra 1: Nico Pino −0,30 s; Mikkel Jensen −2,6 s",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: -0.3 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.6 },
+      },
+    },
+    {
+      caption: "Muestra 2: Nico Pino −0,27 s; Mikkel Jensen −2,5 s",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: -0.27 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.5 },
+      },
+    },
+    {
+      caption: "Muestra 3: Nico Pino −0,24 s; Mikkel Jensen −2,4 s",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: -0.24 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.4 },
+      },
+    },
+  ],
+};
+
+const RELATIVE_FUNCTIONAL_SEQUENCE_SCENE: AnimationScene = {
+  id: "relative-functional-sequence",
+  widget: "relative",
+  label: "Secuencia completa",
+  watchFor:
+    "Usa Reproducir o el deslizador: cruce en ambos sentidos, entrada y salida de Mikkel Jensen y distancias que cambian sin mover filas. En carrera, Antonio Giovinazzi P4 aparece delante con −1 V respecto al jugador.",
+  frameMs: 900,
+  frames: [
+    {
+    caption: "En carrera: Nico Pino detrás (−0,45 s); Giovinazzi P4 delante con −1 V; Mikkel Jensen fuera de la ventana",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: -0.45 },
+        "Antonio Giovinazzi": { lapDelta: -1 },
+        "Mikkel Jensen": { absent: true },
+      },
+    },
+    {
+      caption: "Nico Pino se acerca: −0,12 s",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: -0.12 },
+        "Mikkel Jensen": { absent: true },
+      },
+    },
+    {
+      caption: "Primer cruce: Nico Pino queda delante (+0,12 s); Mikkel Jensen entra",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: 0.12 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.6 },
+      },
+    },
+    {
+      caption: "Mikkel Jensen asentado en la ventana; Nico Pino mantiene +0,45 s",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: 0.45 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.6 },
+      },
+    },
+    {
+      caption: "Mikkel Jensen sale de la ventana; Nico Pino sigue delante",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: 0.45 },
+        "Mikkel Jensen": { absent: true },
+      },
+    },
+    {
+      caption: "Mikkel Jensen reentra con el mismo gap: −2,6 s",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: 0.45 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.6 },
+      },
+    },
+    {
+      caption: "Nico Pino se acerca desde delante: +0,12 s",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: 0.12 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.6 },
+      },
+    },
+    {
+      caption: "Segundo cruce: Nico Pino vuelve detrás (−0,12 s)",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: -0.12 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.6 },
+      },
+    },
+    {
+      caption: "Cierre estable: Nico Pino −0,45 s; Mikkel Jensen −2,6 s",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: -0.45 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.6 },
+      },
+    },
+  ],
+};
+
+const RELATIVE_FUNCTIONAL_LAP_DIFFERENCE_SCENE: AnimationScene = {
+  id: "relative-functional-lap-difference",
+  widget: "relative",
+  label: "Diferencia de vueltas",
+  watchFor:
+    "Escena solo de carrera. Compara la vuelta del rival con la tuya: el signo marca más o menos vueltas, sin afirmar el lado físico del coche. El jugador conserva su fila; cero y datos ausentes no llevan etiqueta.",
+  positionSwap: [1, 10],
+  frameMs: 1400,
+  frames: [
+    {
+      caption: "Carrera: jugador P10; Ben Hanley P2 +2 V, Kévin Estre P3 +1 V, Giovinazzi P4 +1 V; Maro Engel P18 en la misma vuelta; Jensen P19 −1 V y Nico Pino P20 −2 V",
+      cars: {
+        "André Lotterer": { timeGapToPlayer: 0 },
+        "Antonio Giovinazzi": { timeGapToPlayer: 0.6, lapDelta: 1 },
+        "Kévin Estre": { timeGapToPlayer: 0.4, lapDelta: 1 },
+        "Ben Hanley": { timeGapToPlayer: 0.3, lapDelta: 2 },
+        "Mikkel Jensen": { timeGapToPlayer: -0.6, lapDelta: -1 },
+        "Nico Pino": { timeGapToPlayer: -0.9, lapDelta: -2 },
+        "Maro Engel": { timeGapToPlayer: -0.3, lapDelta: 0 },
+      },
+    },
+    {
+      caption: "Carrera: Ben Hanley P2 +3 V, Estre P3 y Giovinazzi P4 +2 V; Maro Engel P18 sin dato; Jensen P19 −1 V y Nico Pino P20 −2 V",
+      cars: {
+        "André Lotterer": { timeGapToPlayer: 0 },
+        "Antonio Giovinazzi": { timeGapToPlayer: 0.6, lapDelta: 2 },
+        "Kévin Estre": { timeGapToPlayer: 0.4, lapDelta: 2 },
+        "Ben Hanley": { timeGapToPlayer: 0.3, lapDelta: 3 },
+        "Mikkel Jensen": { timeGapToPlayer: -0.6, lapDelta: -1 },
+        "Nico Pino": { timeGapToPlayer: -0.9, lapDelta: -2 },
+        "Maro Engel": { timeGapToPlayer: -0.3, lapDeltaQuality: "missing" },
+      },
+    },
+  ],
+};
+
 /**
  * The delta reads the player, not the field, so its scenes drive the player's
  * own delta and best lap rather than anyone's position.
@@ -421,7 +640,197 @@ const PEDALS_CLUTCH_SCENE: AnimationScene = {
   ],
 };
 
+// Escenas del renderer Eficiencia: solo efectos que implementa, sobre filas
+// visibles en su ventana inicial. No cambian la clasificación elegida.
+const COMBINED_SETTLED_CARS: Record<string, SceneOverride> = {
+  "André Lotterer": { inPits: false },
+  "Ben Hanley": { place: 5, inPits: false },
+  "Filipe Albuquerque": { place: 2, inPits: false },
+  "Antonio Giovinazzi": { bestLapImprovement: 0.55 },
+};
+const COMBINED_SEPARATED_CARS: Record<string, SceneOverride> = {
+  ...COMBINED_SETTLED_CARS,
+  "Filipe Albuquerque": { place: 2, inPits: false, timeBehindLeader: 0.4 },
+  "Kévin Estre": { timeBehindLeader: 0.8 },
+  "Antonio Giovinazzi": { bestLapImprovement: 0.55, timeBehindLeader: 1.35 },
+};
+const COMBINED_WINDOW_CARS: Record<string, SceneOverride> = {
+  ...COMBINED_SEPARATED_CARS,
+  "Antonio Giovinazzi": { ...COMBINED_SEPARATED_CARS["Antonio Giovinazzi"], inPits: true },
+};
+
+const FUNCTIONAL_STANDINGS_SCENES: readonly AnimationScene[] = [
+  {
+    id: "standings-functional-battle", sessions: ["race"], widget: "standings", label: "Batalla cercana · conducción",
+    watchFor: "Lotterer y Giovinazzi son consecutivos de su clase. El acento ámbar entra al acercarse, se mantiene estable y se retira al separarse; no cambia el tamaño del texto ni pulsa continuamente.",
+    frameMs: 1700,
+    frames: [
+      { caption: "Giovinazzi a 2,00 s: aún no hay batalla.", cars: { "André Lotterer": { inPits: false }, "Ben Hanley": { timeBehindLeader: 0.7 }, "Kévin Estre": { timeBehindLeader: 1.4 }, "Antonio Giovinazzi": { timeBehindLeader: 2 } } },
+      { caption: "Se acerca a 0,65 s: aparece el acento de batalla.", cars: { "André Lotterer": { inPits: false }, "Ben Hanley": { timeBehindLeader: 0.2 }, "Kévin Estre": { timeBehindLeader: 0.4 }, "Antonio Giovinazzi": { timeBehindLeader: 0.65 } } },
+      { caption: "A 0,95 s el acento permanece estable.", cars: { "André Lotterer": { inPits: false }, "Ben Hanley": { timeBehindLeader: 0.3 }, "Kévin Estre": { timeBehindLeader: 0.6 }, "Antonio Giovinazzi": { timeBehindLeader: 0.95 } } },
+      { caption: "Se separa a 1,35 s: el acento se retira.", cars: { "André Lotterer": { inPits: false }, "Ben Hanley": { timeBehindLeader: 0.4 }, "Kévin Estre": { timeBehindLeader: 0.8 }, "Antonio Giovinazzi": { timeBehindLeader: 1.35 } } },
+    ],
+  },
+  {
+    id: "standings-functional-window", sessions: ["race"], widget: "standings", label: "Entrada y salida de ventana",
+    watchFor: "La revisión cambia el piloto de referencia entre P1, P7 y P9. Usa al menos 10 pilotos y Alrededor de 4: aparecen y se retiran filas/PIT mientras las demás se recolocan. Todas las posiciones reales permanecen iguales: no aparecen avisos de adelantamiento.",
+    frameMs: 1600,
+    frames: [
+      { caption: "Ventana alrededor de P1; posiciones estables.", standingsWindowPosition: 1, cars: { "Antonio Giovinazzi": { inPits: true } } },
+      { caption: "Ventana alrededor de P7: entran nuevos pilotos y salen otros.", standingsWindowPosition: 7, cars: { "Antonio Giovinazzi": { inPits: true } } },
+      { caption: "Ventana alrededor de P9: los supervivientes mantienen su identidad.", standingsWindowPosition: 9, cars: { "Antonio Giovinazzi": { inPits: true } } },
+      { caption: "Vuelta a P1: reaparecen sus pilotos y PIT.", standingsWindowPosition: 1, cars: { "Antonio Giovinazzi": { inPits: true } } },
+    ],
+  },
+  {
+    id: "standings-functional-position", sessions: ["race"], widget: "standings", label: "Cambio de posición · por piloto",
+    watchFor: "Ben Hanley y Filipe Albuquerque intercambian posición. Cada fila se desliza, recibe un acento verde o rojo y muestra temporalmente los puestos ganados o perdidos. Pulsa Reproducir para verlo.",
+    frameMs: 1600,
+    frames: [
+      { caption: "Posiciones iniciales.", cars: {} },
+      { caption: "Albuquerque gana posición; Hanley la pierde.", cars: { "Ben Hanley": { place: 5 }, "Filipe Albuquerque": { place: 2 } } },
+      { caption: "Clasificación estable tras el cambio.", cars: { "Ben Hanley": { place: 5 }, "Filipe Albuquerque": { place: 2 } } },
+    ],
+  },
+  {
+    id: "standings-functional-pit", widget: "standings", label: "Entrada y salida de boxes",
+    watchFor: "La etiqueta PIT aparece junto a André Lotterer al entrar en boxes y desaparece al salir. Activa Estado en boxes: la etiqueta entra y sale suavemente, ligada a su piloto.",
+    frameMs: 1600,
+    frames: [
+      { caption: "Lotterer está en pista.", cars: { "André Lotterer": { inPits: false } } },
+      { caption: "Lotterer entra en boxes: aparece PIT.", cars: { "André Lotterer": { inPits: true } } },
+      { caption: "Lotterer sigue en boxes.", cars: { "André Lotterer": { inPits: true } } },
+      { caption: "Lotterer vuelve a pista: desaparece PIT.", cars: { "André Lotterer": { inPits: false } } },
+    ],
+  },
+  {
+    id: "standings-functional-personal-best", widget: "standings", label: "Mejor vuelta personal",
+    watchFor: "Activa Mejor vuelta. Un barrido verde destaca la mejora de Antonio Giovinazzi; las cifras conservan su posición y tamaño.",
+    frameMs: 1700,
+    frames: [
+      { caption: "Referencia personal inicial.", cars: {} },
+      { caption: "Giovinazzi mejora su vuelta en 0,150 s.", cars: { "Antonio Giovinazzi": { bestLapImprovement: 0.15 } } },
+      { caption: "La nueva vuelta permanece; el aviso se retira.", cars: { "Antonio Giovinazzi": { bestLapImprovement: 0.15 } } },
+    ],
+  },
+  {
+    id: "standings-functional-session-best", widget: "standings", label: "Mejor vuelta de sesión",
+    watchFor: "Activa Mejor vuelta. El acento morado y el distintivo pasan al nuevo piloto más rápido, sin ampliar ni desplazar los tiempos.",
+    frameMs: 1700,
+    frames: [
+      { caption: "Lotterer tiene la referencia de la sesión.", cars: {} },
+      { caption: "Giovinazzi marca la mejor vuelta.", cars: { "Antonio Giovinazzi": { bestLapImprovement: 0.55 } } },
+      { caption: "Bovy mejora esa referencia y recibe el distintivo.", cars: { "Antonio Giovinazzi": { bestLapImprovement: 0.55 }, "Sarah Bovy": { bestLapImprovement: 0.9 } } },
+      { caption: "Los avisos se retiran; el récord queda identificado.", cars: { "Antonio Giovinazzi": { bestLapImprovement: 0.55 }, "Sarah Bovy": { bestLapImprovement: 0.9 } } },
+    ],
+  },
+  {
+    id: "standings-functional-combined", widget: "standings", sessions: ["race"], label: "Secuencia combinada · conducción",
+    watchFor: "Activa Mejor vuelta y Estado en boxes; usa al menos 10 pilotos y Alrededor de 4. Revisa mejoras de vuelta, posiciones, PIT, batalla cercana y entrada/salida de la ventana, en ese orden. Los avisos son breves y las cifras estables; el cambio de ventana no simula adelantamientos.",
+    frameMs: 1600,
+    frames: [
+      { caption: "Clasificación inicial.", cars: { "Ben Hanley": { inPits: false } } },
+      { caption: "Giovinazzi mejora su referencia personal.", cars: { "Ben Hanley": { inPits: false }, "Antonio Giovinazzi": { bestLapImprovement: 0.15 } } },
+      { caption: "Cambio de posición; PIT sigue a Albuquerque.", cars: { "Ben Hanley": { place: 5, inPits: false }, "Filipe Albuquerque": { place: 2, inPits: true }, "Antonio Giovinazzi": { bestLapImprovement: 0.15 } } },
+      { caption: "Giovinazzi marca el récord de sesión.", cars: { "Ben Hanley": { place: 5, inPits: false }, "Filipe Albuquerque": { place: 2, inPits: true }, "Antonio Giovinazzi": { bestLapImprovement: 0.55 } } },
+      { caption: "Albuquerque sale de boxes.", cars: { "Ben Hanley": { place: 5, inPits: false }, "Filipe Albuquerque": { place: 2, inPits: false }, "Antonio Giovinazzi": { bestLapImprovement: 0.55 } } },
+      { caption: "Giovinazzi se acerca a Lotterer: aparece el acento de batalla a 0,65 s.", cars: { ...COMBINED_SETTLED_CARS, "Filipe Albuquerque": { place: 2, inPits: false, timeBehindLeader: 0.2 }, "Kévin Estre": { timeBehindLeader: 0.4 }, "Antonio Giovinazzi": { bestLapImprovement: 0.55, timeBehindLeader: 0.65 } } },
+      { caption: "La batalla se mantiene estable a 0,95 s.", cars: { ...COMBINED_SETTLED_CARS, "Filipe Albuquerque": { place: 2, inPits: false, timeBehindLeader: 0.3 }, "Kévin Estre": { timeBehindLeader: 0.6 }, "Antonio Giovinazzi": { bestLapImprovement: 0.55, timeBehindLeader: 0.95 } } },
+      { caption: "Se separan a 1,35 s: desaparece el acento de batalla.", cars: COMBINED_SEPARATED_CARS },
+      { caption: "Giovinazzi entra en boxes; ventana alrededor de P1.", standingsWindowPosition: 1, cars: COMBINED_WINDOW_CARS },
+      { caption: "Ventana alrededor de P7: entran y salen pilotos con sus indicadores PIT.", standingsWindowPosition: 7, cars: COMBINED_WINDOW_CARS },
+      { caption: "Ventana alrededor de P9: las filas restantes se recolocan suavemente.", standingsWindowPosition: 9, cars: COMBINED_WINDOW_CARS },
+      { caption: "Vuelta a P1: reaparecen sus pilotos y PIT, sin avisos de adelantamiento.", standingsWindowPosition: 1, cars: COMBINED_WINDOW_CARS },
+    ],
+  },
+];
+
+const TOWER_SYSTEMS = ["vantare-functional"] as const;
+const TOWER_CROSSING_SCENE: AnimationScene = {
+  id: "broadcast-tower-crossing",
+  widget: "broadcast-tower",
+  systems: TOWER_SYSTEMS,
+  label: "Cruce de posiciones",
+  watchFor: "Albuquerque y Hanley intercambian posiciones con un desplazamiento suave y una señal de puesto tenue; sus cifras permanecen quietas.",
+  frameMs: 1200,
+  frames: [
+    { caption: "Ben Hanley P2; Filipe Albuquerque P5", cars: { "Ben Hanley": { place: 2, timeBehindLeader: 0.4 }, "Filipe Albuquerque": { place: 5, timeBehindLeader: 4.8 } } },
+    { caption: "Cruce: Albuquerque P2; Hanley P5", cars: { "Ben Hanley": { place: 5, timeBehindLeader: 4.4 }, "Filipe Albuquerque": { place: 2, timeBehindLeader: 0.1 } } },
+  ],
+};
+
+const TOWER_FAST_INVERSION_SCENE: AnimationScene = {
+  id: "broadcast-tower-fast-inversion",
+  widget: "broadcast-tower",
+  systems: TOWER_SYSTEMS,
+  label: "Inversión rápida",
+  watchFor: "Al reproducir, las tarjetas se invierten y vuelven rápidamente; la posición permanece legible y los números no se animan.",
+  frameMs: 180,
+  frames: [
+    { caption: "Inicio: Hanley P2; Albuquerque P5", cars: { "Ben Hanley": { place: 2, timeBehindLeader: 0.3 }, "Filipe Albuquerque": { place: 5, timeBehindLeader: 4.7 } } },
+    { caption: "Inversión: Albuquerque P2; Hanley P5", cars: { "Ben Hanley": { place: 5, timeBehindLeader: 4.5 }, "Filipe Albuquerque": { place: 2, timeBehindLeader: 0.1 } } },
+    { caption: "Vuelta inmediata: Hanley P2; Albuquerque P5", cars: { "Ben Hanley": { place: 2, timeBehindLeader: 0.2 }, "Filipe Albuquerque": { place: 5, timeBehindLeader: 4.6 } } },
+  ],
+};
+
+const TOWER_EXIT_REENTRY_SCENE: AnimationScene = {
+  id: "broadcast-tower-exit-reentry",
+  widget: "broadcast-tower",
+  systems: TOWER_SYSTEMS,
+  label: "Salida y reentrada",
+  watchFor: "Kévin Estre sale de la franja y vuelve a P3 con un fundido breve; las demás tarjetas se recolocan suavemente.",
+  frameMs: 1200,
+  frames: [
+    { caption: "Kévin Estre ocupa P3 entre los pilotos visibles", cars: { "Kévin Estre": { place: 3, timeBehindLeader: 1.8 } } },
+    { caption: "Estre deja la clasificación visible", cars: { "Kévin Estre": { absent: true } } },
+    { caption: "Estre reentra en P3", cars: { "Kévin Estre": { place: 3, timeBehindLeader: 2.1 } } },
+  ],
+};
+
+const TOWER_STABLE_VALUES_SCENE: AnimationScene = {
+  id: "broadcast-tower-stable-values",
+  widget: "broadcast-tower",
+  systems: TOWER_SYSTEMS,
+  label: "Cifras sin reordenar",
+  watchFor: "Cambia el gap de Ben Hanley mientras conserva P2. La vuelta y la temperatura de cabecera siguen visibles, sin mover las tarjetas.",
+  frameMs: 1200,
+  frames: [
+    { caption: "Ben Hanley permanece P2; gap al líder 0,4 s", cars: { "Ben Hanley": { place: 2, timeBehindLeader: 0.4 } } },
+    { caption: "Ben sigue P2; gap al líder 0,2 s", cars: { "Ben Hanley": { place: 2, timeBehindLeader: 0.2 } } },
+    { caption: "Ben sigue P2; gap al líder 0,3 s", cars: { "Ben Hanley": { place: 2, timeBehindLeader: 0.3 } } },
+  ],
+};
+
+const TOWER_SWEEP: AnimationScene = {
+  id: "broadcast-tower-overtake-sequence",
+  widget: "broadcast-tower",
+  systems: TOWER_SYSTEMS,
+  label: "Secuencia completa",
+  watchFor: "Las tarjetas de Albuquerque y Hanley cruzan, vuelven a su orden inicial y después Estre sale y reentra. Los cambios de gap no desplazan las tarjetas.",
+  frameMs: 1200,
+  frames: [
+    ...TOWER_CROSSING_SCENE.frames,
+    TOWER_FAST_INVERSION_SCENE.frames[2]!,
+    ...TOWER_EXIT_REENTRY_SCENE.frames.slice(1),
+    ...TOWER_STABLE_VALUES_SCENE.frames.slice(1),
+  ],
+};
+
 export const ANIMATION_SCENES: readonly AnimationScene[] = [
+  ...FUNCTIONAL_STANDINGS_SCENES,
+  {
+    id: "fastest-lap-alert",
+    widget: "fastest-lap",
+    label: "Aviso de vuelta rápida",
+    watchFor: "Reproducir muestra mejor personal, récord de tu clase y una vuelta que consigue ambos (un solo aviso de clase). Cada aviso entra y sale en seis segundos. Ver diseño mantiene el panel visible para ajustar su tamaño.",
+    frameMs: 8000,
+    frames: [
+      { caption: "Referencias iniciales: personal 1:32.304 y Hypercar 1:30.904", player: { bestLapSeconds: 92.304 }, cars: { "Antonio Giovinazzi": { bestLapTime: 90.904 } } },
+      { caption: "Mejor personal de Lotterer (1:31.202): aviso personal", player: { bestLapSeconds: 91.202 }, cars: { "Antonio Giovinazzi": { bestLapTime: 90.904 } } },
+      { caption: "Giovinazzi bate el récord de Hypercar (1:29.902): aviso de clase", player: { bestLapSeconds: 91.202 }, cars: { "Antonio Giovinazzi": { bestLapTime: 89.902 } } },
+      { caption: "Lotterer consigue ambas marcas (1:29.402): un único aviso de clase", player: { bestLapSeconds: 89.402 }, cars: { "Antonio Giovinazzi": { bestLapTime: 89.902 } } },
+    ],
+  },
   OVERTAKE_SCENE,
   BATTLE_SCENE,
   CLASS_BATTLE_SCENE,
@@ -434,10 +843,22 @@ export const ANIMATION_SCENES: readonly AnimationScene[] = [
   FULL_SEQUENCE_SCENE,
   RELATIVE_CROSS_SCENE,
   RELATIVE_ENTER_SCENE,
+  RELATIVE_FUNCTIONAL_CROSS_AHEAD_SCENE,
+  RELATIVE_FUNCTIONAL_CROSS_BEHIND_SCENE,
+  RELATIVE_FUNCTIONAL_WINDOW_SCENE,
+  RELATIVE_FUNCTIONAL_FAST_REVERSAL_SCENE,
+  RELATIVE_FUNCTIONAL_STABLE_SCENE,
+  RELATIVE_FUNCTIONAL_SEQUENCE_SCENE,
+  RELATIVE_FUNCTIONAL_LAP_DIFFERENCE_SCENE,
   DELTA_CROSS_SCENE,
   DELTA_NEW_BEST_SCENE,
   PEDALS_LAP_SCENE,
   PEDALS_CLUTCH_SCENE,
+  TOWER_SWEEP,
+  TOWER_CROSSING_SCENE,
+  TOWER_FAST_INVERSION_SCENE,
+  TOWER_EXIT_REENTRY_SCENE,
+  TOWER_STABLE_VALUES_SCENE,
 ];
 
 export const ANIMATION_SCENE_IDS: readonly string[] = ANIMATION_SCENES.map((scene) => scene.id);
@@ -446,12 +867,27 @@ export function isAnimationSceneId(value: unknown): value is string {
   return typeof value === "string" && ANIMATION_SCENE_IDS.includes(value);
 }
 
-export function getAnimationScene(id: string): AnimationScene | undefined {
-  return ANIMATION_SCENES.find((scene) => scene.id === id);
+export function getAnimationScene(id: string, system?: DesignSystemId, session?: string): AnimationScene | undefined {
+  const scene = ANIMATION_SCENES.find((candidate) => candidate.id === id);
+  if (scene?.sessions && session && !scene.sessions.includes(session)) return undefined;
+  if (scene?.systems && system && !scene.systems.includes(system)) return undefined;
+  if (scene?.widget === "standings" && system === "vantare-functional") {
+    return FUNCTIONAL_STANDINGS_SCENES.find((candidate) => candidate.id === id);
+  }
+  return scene;
 }
 
-export function listAnimationScenes(widget: WidgetType): readonly AnimationScene[] {
-  return ANIMATION_SCENES.filter((scene) => scene.widget === widget);
+export function listAnimationScenes(widget: WidgetType, system?: DesignSystemId, session?: string): readonly AnimationScene[] {
+  if (widget === "standings" && system === "vantare-functional") {
+    return FUNCTIONAL_STANDINGS_SCENES.filter((scene) => !session || !scene.sessions || scene.sessions.includes(session));
+  }
+  return ANIMATION_SCENES.filter((scene) =>
+    scene.widget === widget
+    && (!system || !scene.systems || scene.systems.includes(system))
+    && (!session || !scene.sessions || scene.sessions.includes(session))
+    && (!system || !FUNCTIONAL_STANDINGS_SCENES.includes(scene))
+    && !(system === "vantare-functional" && widget === "relative" && (scene.id === "relative-cross" || scene.id === "relative-enter")),
+  );
 }
 
 /** Wraps so the transport can loop and step backwards past zero. */

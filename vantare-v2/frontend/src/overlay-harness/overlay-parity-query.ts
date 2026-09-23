@@ -43,11 +43,13 @@ const DEFAULT_QUERY: HarnessQuery = {
 };
 
 const DEFAULT_SYSTEM_BY_WIDGET: Partial<Record<HarnessWidget, HarnessSystem>> = {
+  "fastest-lap": "vantare-functional",
   "engineer-radio": "vantare-crystal",
   "track-map": "vantare-endurance",
 };
 
 const SYSTEMS = new Set<HarnessSystem>([
+  "vantare-functional",
   "vantare-original",
   "vantare-crystal",
   "vantare-endurance",
@@ -120,6 +122,9 @@ export function parseHarnessQuery(search: string): HarnessQuery | { error: strin
   }
   if (widget === "engineer-radio" && system !== "vantare-crystal") {
     return { error: "engineer-radio requires system=vantare-crystal" };
+  }
+  if (widget === "fastest-lap" && system !== "vantare-functional") {
+    return { error: "fastest-lap requires system=vantare-functional" };
   }
 
   return {

@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { WidgetRendererProps } from "../../core/design-system-definition";
 import type { BroadcastTowerViewModel } from "../../widget-types/broadcast-tower/broadcast-tower-view-model";
 import { resolveFunctionalClassAccent } from "../../widget-types/standings/functional-class-accent";
 import { functionalLabels, sessionDisplayLabel } from "./labels";
+import { useBroadcastTowerMotion } from "./use-broadcast-tower-motion";
 
 // Horizontal Standings: tira de ancho completo a 71px — bloque de sesión,
 // stream de tarjetas por piloto repartiendo el ancho, y datos de pista/SOF
@@ -15,7 +16,9 @@ const shortName = (name: string) => {
   return words.length > 1 ? `${words[0][0]}. ${words.slice(1).join(" ")}` : name;
 };
 
-export function BroadcastTowerFunctional({ model, effects }: WidgetRendererProps<BroadcastTowerViewModel>) {
+export function BroadcastTowerFunctional({ model, layout, motion = "full", effects }: WidgetRendererProps<BroadcastTowerViewModel>) {
+  const rootRef = useRef<HTMLElement | null>(null);
+  useBroadcastTowerMotion(model, motion, rootRef, { w: layout?.w, h: layout?.h });
   const { locale } = useI18n();
   const labels = functionalLabels[locale];
   const sessionLabel = useMemo(() => sessionDisplayLabel(locale, model.sessionLabel), [locale, model.sessionLabel]);
@@ -25,12 +28,14 @@ export function BroadcastTowerFunctional({ model, effects }: WidgetRendererProps
 
   return (
     <section
+      ref={rootRef}
       className="vf-broadcast-tower"
       data-widget-system="vantare-functional"
       data-widget-renderer="broadcast-tower"
       data-status={model.status}
       data-flag={model.flag ?? "unknown"}
       data-effects={effects}
+      data-motion-level={motion}
     >
       <div className="vf-bt-lead">
         <span className="vf-bt-session">{sessionLabel}</span>
@@ -43,13 +48,15 @@ export function BroadcastTowerFunctional({ model, effects }: WidgetRendererProps
         <p className="vf-status" role="status">{statusText}</p>
       ) : (
         <div className="vf-bt-stream" role="list">
-          {model.rows.slice(0, model.rowCount).map((row) => (
+          {model.rows.slice(0, model.rowCount).map((row, index) => (
             <div
-              key={`${row.place}-${row.number}`}
+              key={row.id ?? `${row.place}-${row.number}-${index}`}
               className="vf-bt-card"
               data-player={row.isPlayer}
+              data-bt-row={row.id}
               role="listitem"
             >
+              <span className="vf-bt-cue" aria-hidden="true" />
               <span className="vf-bt-place">{row.place}</span>
               <span className="vf-bt-id">
                 <b className="vf-bt-name">{shortName(row.name)}</b>

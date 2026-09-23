@@ -19,6 +19,12 @@ function visual(
 }
 
 describe("WidgetVisualViewport", () => {
+  it.each([[280, 72], [360, 80], [640, 120]])("gives fastest-lap its actual %i × %i box", (w, h) => {
+    render(<WidgetVisualViewport widgetType="fastest-lap" visual={visual("vantare-functional")} layout={{ w, h }} testId="viewport"><div /></WidgetVisualViewport>);
+    expect(screen.getByTestId("viewport").style.width).toBe(`${w}px`);
+    expect(screen.getByTestId("viewport").style.height).toBe(`${h}px`);
+    expect(screen.getByTestId("viewport").style.transform).toBe("scale(1)");
+  });
   it.each([238, 324, 428, 574])("keeps Functional typography at its native size with %i px of modules", (width) => {
     render(<WidgetVisualViewport widgetType="standings" visual={visual("vantare-functional")} layout={{ w: width, h: 400 }} testId="viewport"><div /></WidgetVisualViewport>);
     expect(screen.getByTestId("viewport").style.width).toBe(`${width}px`);

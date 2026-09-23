@@ -37,6 +37,7 @@ grant select (id, category, message, app_version, channel, reply_opt_in,
 grant insert (category, message, app_version, channel, reply_opt_in)
   on public.product_feedback to authenticated;
 grant delete on public.product_feedback to authenticated;
+grant select, update on public.product_feedback to service_role;
 
 create policy product_feedback_select_own on public.product_feedback
   for select to authenticated

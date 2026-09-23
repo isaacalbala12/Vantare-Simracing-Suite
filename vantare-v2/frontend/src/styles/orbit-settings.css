@@ -1156,15 +1156,10 @@
 
 .orbit-set-feedback__form select,
 .orbit-set-feedback__form textarea {
-  width: 100%;
   max-width: 700px;
   min-width: 0;
+  margin: 0;
   padding: 10px 12px;
-  border: 1px solid var(--orbit-line);
-  border-radius: var(--orbit-radius);
-  background: var(--orbit-panel-bg);
-  color: var(--orbit-ink);
-  font: inherit;
 }
 
 .orbit-set-feedback__form textarea { resize: vertical; }
@@ -1190,6 +1185,7 @@
 
 .orbit-set-feedback__message,
 .orbit-set-feedback__history li p {
+  margin: 0;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
 }
@@ -1223,9 +1219,8 @@
   flex-wrap: wrap;
 }
 .orbit-set-feedback__history li > div span { color: var(--orbit-ink-3); }
-.orbit-set-feedback__history li p { margin: 0; }
 
-/* ------------------------------------------------------------- COLUMNA */
+/* ------------------------------------------------------------- CONTEXTO */
 
 .orbit-set__context {
   display: flex;
@@ -1245,15 +1240,20 @@
 
 /* El campo vive en la columna de contexto, encima de la lista de secciones:
    mientras hay consulta, la lista se sustituye por resultados. */
-.orbit-set-search {
+.orbit-set-search,
+.orbit-set-feedback__form select,
+.orbit-set-feedback__form textarea {
   width: 100%;
-  margin: 10px 0 12px;
-  padding: 8px 12px;
   border: 1px solid var(--orbit-line);
   border-radius: var(--orbit-radius);
   background: var(--orbit-panel-bg);
   color: var(--orbit-ink);
   font: inherit;
+}
+
+.orbit-set-search {
+  margin: 10px 0 12px;
+  padding: 8px 12px;
   font-size: var(--orbit-fs-body);
 }
 

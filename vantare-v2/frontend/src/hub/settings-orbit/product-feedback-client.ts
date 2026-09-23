@@ -2,7 +2,7 @@ import { getSession, getSupabaseClient } from "../../lib/supabase-auth";
 
 export type ProductFeedbackCategory = "problem" | "idea" | "experience";
 export type ProductFeedbackChannel = "stable" | "testers" | "nightly" | "unknown";
-export type ProductFeedbackStatus = "new" | "reviewed" | "action_created" | "closed";
+type ProductFeedbackStatus = "new" | "reviewed" | "action_created" | "closed";
 
 export type ProductFeedbackInput = {
   category: ProductFeedbackCategory;

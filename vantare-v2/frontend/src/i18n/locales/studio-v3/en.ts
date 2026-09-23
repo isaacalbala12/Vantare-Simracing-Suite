@@ -58,7 +58,6 @@ export const studioV3En: Record<string, string> = {
   "studio.v3.inspector.broadcastTower.rowCount": "Row count",
   "studio.v3.inspector.broadcastTower.driverCarousel": "Driver carousel",
   "studio.v3.inspector.broadcastTower.showWeather": "Show weather",
-  "studio.v3.inspector.broadcastTower.showSof": "Show SOF",
   "studio.v3.widgetTypes.headToHead": "Head to head",
   "studio.v3.inspector.headToHead.target": "Target rival",
   "studio.v3.inspector.headToHead.ahead": "Ahead",

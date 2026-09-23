@@ -178,7 +178,7 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
         ) : null}
 
         {tower ? <p role="status" data-testid="studio-standings-tower-preview">{t('studio.inspector.content.towerPreview')}</p> : <ul className="orbit-studio-cols" data-testid="studio-standings-columns">
-          {content.columns.filter(column => column.metricId !== "tireCompound").map((column, index) => {
+          {content.columns.map((column, index) => {
             const name = functionalLabels[locale][column.metricId as keyof typeof functionalLabels.en] ?? templateLabel(column.id);
             const align = (column.style?.align ?? 'left') as AlignOption;
             const fixed = redline && REDLINE_FIXED_METRICS.has(column.metricId);
@@ -199,7 +199,7 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
                   <Check
                     checked={fixed || column.enabled}
                     data-testid={`studio-standings-column-toggle-${column.id}`}
-                    disabled={disabled || fixed}
+                    disabled={disabled || fixed || column.metricId === "tireCompound"}
                     label={name}
                     onChange={() => publish(toggleStandingsColumn(content, column.id))}
                   >

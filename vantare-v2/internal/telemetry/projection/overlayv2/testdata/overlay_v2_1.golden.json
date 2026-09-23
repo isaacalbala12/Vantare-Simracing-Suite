@@ -38,6 +38,9 @@
       }
     },
     "player": {
+      "lapNumber": {
+        "q": "missing"
+      },
       "id": "vehicle-000",
       "speed": {
         "v": 50,
@@ -119,6 +122,12 @@
     },
     "standings": [
       {
+        "quality": {
+          "q": "fresh",
+          "interval": "missing",
+          "intervalLaps": "missing"
+        },
+        "classRef": 1,
         "id": "vehicle-000",
         "position": 1,
         "classPosition": 1,
@@ -136,9 +145,6 @@
           "v": 91.234,
           "q": "fresh"
         },
-        "lapDistance": {
-          "q": "fresh"
-        },
         "groundPosition": {
           "q": "fresh"
         }
@@ -146,15 +152,15 @@
     ],
     "relative": [
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-000",
         "position": 1,
         "gap": {
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
           "q": "fresh"
         },
         "lastLap": {
@@ -169,6 +175,9 @@
     ],
     "relativeSettled": [
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-000",
         "position": 1,
         "gap": {
@@ -177,7 +186,27 @@
         "lapDelta": {
           "q": "fresh"
         },
-        "groundPosition": {
+        "lastLap": {
+          "v": 91.234,
+          "q": "fresh"
+        },
+        "side": "player",
+        "authority": "derived",
+        "name": "Driver 000",
+        "classId": "hypercar"
+      }
+    ],
+    "relativeSameClass": [
+      {
+        "bestLap": {
+          "q": "missing"
+        },
+        "id": "vehicle-000",
+        "position": 1,
+        "gap": {
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "lastLap": {
@@ -191,6 +220,26 @@
       }
     ],
     "delta": {
+      "references": [
+        {
+          "requested": "personal-best",
+          "seconds": {
+            "q": "missing"
+          }
+        },
+        {
+          "requested": "session-best",
+          "seconds": {
+            "q": "missing"
+          }
+        },
+        {
+          "requested": "previous-lap",
+          "seconds": {
+            "q": "missing"
+          }
+        }
+      ],
       "seconds": {
         "q": "missing"
       },

@@ -245,7 +245,7 @@ export function parseStandingsContent(input: unknown): StandingsContent {
 }
 
 export function getEnabledStandingsColumns(content: StandingsContent): WidgetColumnV3[] {
-  return content.columns.filter((column) => column.enabled && column.metricId !== "tireCompound");
+  return content.columns.filter((column) => column.enabled);
 }
 
 export function toggleStandingsColumn(content: StandingsContent, columnId: string): StandingsContent {

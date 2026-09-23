@@ -212,6 +212,7 @@ export interface OverlayFrameV2 {
   readonly generatedAt: string;
   readonly player: OverlayPlayerInstrumentsV2;
   readonly relative: readonly OverlayRelativeRowV2[];
+  readonly relativeSameClass: readonly OverlayRelativeRowV2[];
   readonly relativeSettled: readonly OverlayRelativeRowV2[];
   readonly sectionMask: number;
   readonly sequence: number;
@@ -249,6 +250,7 @@ export interface OverlayPlayerInstrumentsV2 {
   readonly clutch: OverlayQValue<number>;
   readonly gear: OverlayQValue<number>;
   readonly id?: string | undefined;
+  readonly lapNumber?: OverlayQValue<number> | undefined;
   readonly rpm: OverlayQValue<number>;
   readonly speed: OverlayQValue<number>;
   readonly steering: OverlayQValue<number>;
@@ -257,13 +259,14 @@ export interface OverlayPlayerInstrumentsV2 {
 
 export interface OverlayRelativeRowV2 {
   readonly authority: OverlayAuthorityV2;
+  readonly bestLap: OverlayQValue<number>;
   readonly classId?: string | undefined;
   readonly gap: OverlayQValue<number>;
-  readonly groundPosition: OverlayQValue<Overlayv2GroundPositionV2>;
   readonly id: string;
   readonly lapDelta: OverlayQValue<number>;
   readonly lastLap: OverlayQValue<number>;
   readonly name?: string | undefined;
+  readonly number?: string | undefined;
   readonly position: number;
   readonly side: string;
 }
@@ -291,19 +294,25 @@ export interface OverlaySpotterViewV2 {
 
 export interface OverlayStandingRowV2 {
   readonly bestLap: OverlayQValue<number>;
+  readonly classGap?: number | undefined;
+  readonly classGapLaps?: number | undefined;
   readonly classId?: string | undefined;
   readonly classPosition: number;
+  readonly classRef?: number | undefined;
   readonly driver?: string | undefined;
   readonly gap: OverlayQValue<number>;
   readonly gapLaps?: number | undefined;
   readonly groundPosition: OverlayQValue<Overlayv2GroundPositionV2>;
   readonly id: string;
-  readonly lapDistance: OverlayQValue<number>;
-  readonly laps?: number | undefined;
+  readonly interval?: number | undefined;
+  readonly intervalLaps?: number | undefined;
+  readonly lapDistance?: OverlayQValue<number> | null | undefined;
+  readonly laps: number;
   readonly lastLap: OverlayQValue<number>;
   readonly number?: string | undefined;
   readonly pit?: string | undefined;
   readonly position: number;
+  readonly quality?: Overlayv2StandingQualityV2 | undefined;
 }
 
 export interface OverlayUnitsV2 {
@@ -411,6 +420,19 @@ export interface Overlayv2FuelHistoryV2 {
 export interface Overlayv2GroundPositionV2 {
   readonly x: number;
   readonly z: number;
+}
+
+export interface Overlayv2StandingQualityV2 {
+  readonly classGap?: OverlayQualityV2 | undefined;
+  readonly classGapLaps?: OverlayQualityV2 | undefined;
+  readonly classPosition?: OverlayQualityV2 | undefined;
+  readonly gapLaps?: OverlayQualityV2 | undefined;
+  readonly interval?: OverlayQualityV2 | undefined;
+  readonly intervalLaps?: OverlayQualityV2 | undefined;
+  readonly laps?: OverlayQualityV2 | undefined;
+  readonly pit?: OverlayQualityV2 | undefined;
+  readonly position?: OverlayQualityV2 | undefined;
+  readonly q: OverlayQualityV2;
 }
 
 export interface Overlayv2WeatherV2 {

@@ -295,6 +295,16 @@ describe("Functional horizontal standings motion", () => {
     expect(rectReads).toBe(0);
   });
 
+  it("clears the motion baseline when positions lose authority", () => {
+    const { rerender } = renderTower(makeModel(["A", "B", "C"]));
+    const missing = makeModel(["C", "B", "A"]);
+    missing.rows = missing.rows.map((row) => ({ ...row, place: 0 }));
+    rerender(<BroadcastTowerFunctional model={missing} settings={{}} renderMode="harness" motion="full" layout={{ w: 360, h: 71 }} />);
+    expect(records).toHaveLength(0);
+    rerender(<BroadcastTowerFunctional model={makeModel(["C", "B", "A"])} settings={{}} renderMode="harness" motion="full" layout={{ w: 360, h: 71 }} />);
+    expect(records).toHaveLength(0);
+  });
+
   it("clears ghost timers and animations on a StrictMode unmount", () => {
     vi.useFakeTimers();
     const renderModel = (model: BroadcastTowerViewModel) => (

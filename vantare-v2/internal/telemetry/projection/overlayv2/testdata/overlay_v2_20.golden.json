@@ -38,6 +38,9 @@
       }
     },
     "player": {
+      "lapNumber": {
+        "q": "missing"
+      },
       "id": "vehicle-000",
       "speed": {
         "v": 50,
@@ -119,6 +122,12 @@
     },
     "standings": [
       {
+        "quality": {
+          "q": "fresh",
+          "interval": "missing",
+          "intervalLaps": "missing"
+        },
+        "classRef": 1,
         "id": "vehicle-000",
         "position": 1,
         "classPosition": 1,
@@ -136,14 +145,17 @@
           "v": 91.234,
           "q": "fresh"
         },
-        "lapDistance": {
-          "q": "fresh"
-        },
         "groundPosition": {
           "q": "fresh"
         }
       },
       {
+        "quality": {
+          "q": "fresh",
+          "interval": "missing",
+          "intervalLaps": "missing"
+        },
+        "classRef": 2,
         "id": "vehicle-001",
         "position": 2,
         "classPosition": 1,
@@ -162,10 +174,6 @@
           "v": 91.28399999999999,
           "q": "fresh"
         },
-        "lapDistance": {
-          "v": 42.5,
-          "q": "fresh"
-        },
         "groundPosition": {
           "v": {
             "x": 1,
@@ -175,6 +183,12 @@
         }
       },
       {
+        "quality": {
+          "q": "fresh",
+          "interval": "missing",
+          "intervalLaps": "missing"
+        },
+        "classRef": 3,
         "id": "vehicle-002",
         "position": 3,
         "classPosition": 1,
@@ -193,10 +207,6 @@
           "v": 91.33399999999999,
           "q": "fresh"
         },
-        "lapDistance": {
-          "v": 85,
-          "q": "fresh"
-        },
         "groundPosition": {
           "v": {
             "x": 2,
@@ -206,6 +216,14 @@
         }
       },
       {
+        "quality": {
+          "q": "fresh",
+          "classGap": "missing",
+          "classGapLaps": "missing",
+          "interval": "missing",
+          "intervalLaps": "missing"
+        },
+        "classRef": 1,
         "id": "vehicle-003",
         "position": 4,
         "classPosition": 2,
@@ -224,10 +242,6 @@
           "v": 91.384,
           "q": "fresh"
         },
-        "lapDistance": {
-          "v": 127.5,
-          "q": "fresh"
-        },
         "groundPosition": {
           "v": {
             "x": 3,
@@ -237,6 +251,14 @@
         }
       },
       {
+        "quality": {
+          "q": "fresh",
+          "classGap": "missing",
+          "classGapLaps": "missing",
+          "interval": "missing",
+          "intervalLaps": "missing"
+        },
+        "classRef": 2,
         "id": "vehicle-004",
         "position": 5,
         "classPosition": 2,
@@ -255,10 +277,6 @@
           "v": 91.434,
           "q": "fresh"
         },
-        "lapDistance": {
-          "v": 170,
-          "q": "fresh"
-        },
         "groundPosition": {
           "v": {
             "x": 4,
@@ -268,6 +286,14 @@
         }
       },
       {
+        "quality": {
+          "q": "fresh",
+          "classGap": "missing",
+          "classGapLaps": "missing",
+          "interval": "missing",
+          "intervalLaps": "missing"
+        },
+        "classRef": 3,
         "id": "vehicle-005",
         "position": 6,
         "classPosition": 2,
@@ -286,10 +312,6 @@
           "v": 91.484,
           "q": "fresh"
         },
-        "lapDistance": {
-          "v": 212.5,
-          "q": "fresh"
-        },
         "groundPosition": {
           "v": {
             "x": 5,
@@ -299,6 +321,14 @@
         }
       },
       {
+        "quality": {
+          "q": "fresh",
+          "classGap": "missing",
+          "classGapLaps": "missing",
+          "interval": "missing",
+          "intervalLaps": "missing"
+        },
+        "classRef": 1,
         "id": "vehicle-006",
         "position": 7,
         "classPosition": 3,
@@ -317,10 +347,6 @@
           "v": 91.53399999999999,
           "q": "fresh"
         },
-        "lapDistance": {
-          "v": 255,
-          "q": "fresh"
-        },
         "groundPosition": {
           "v": {
             "x": 6,
@@ -330,6 +356,14 @@
         }
       },
       {
+        "quality": {
+          "q": "fresh",
+          "classGap": "missing",
+          "classGapLaps": "missing",
+          "interval": "missing",
+          "intervalLaps": "missing"
+        },
+        "classRef": 2,
         "id": "vehicle-007",
         "position": 8,
         "classPosition": 3,
@@ -348,10 +382,6 @@
           "v": 91.58399999999999,
           "q": "fresh"
         },
-        "lapDistance": {
-          "v": 297.5,
-          "q": "fresh"
-        },
         "groundPosition": {
           "v": {
             "x": 7,
@@ -361,6 +391,13 @@
         }
       },
       {
+        "quality": {
+          "q": "fresh",
+          "interval": "missing",
+          "intervalLaps": "missing"
+        },
+        "classGap": 7.404,
+        "classRef": 3,
         "id": "vehicle-008",
         "position": 9,
         "classPosition": 3,
@@ -379,10 +416,6 @@
           "v": 91.634,
           "q": "fresh"
         },
-        "lapDistance": {
-          "v": 340,
-          "q": "fresh"
-        },
         "groundPosition": {
           "v": {
             "x": 8,
@@ -392,6 +425,13 @@
         }
       },
       {
+        "quality": {
+          "q": "fresh",
+          "interval": "missing",
+          "intervalLaps": "missing"
+        },
+        "classGap": 11.106,
+        "classRef": 1,
         "id": "vehicle-009",
         "position": 10,
         "classPosition": 4,
@@ -410,10 +450,6 @@
           "v": 91.684,
           "q": "fresh"
         },
-        "lapDistance": {
-          "v": 382.5,
-          "q": "fresh"
-        },
         "groundPosition": {
           "v": {
             "x": 9,
@@ -423,6 +459,13 @@
         }
       },
       {
+        "quality": {
+          "q": "fresh",
+          "interval": "missing",
+          "intervalLaps": "missing"
+        },
+        "classGap": 11.106,
+        "classRef": 2,
         "id": "vehicle-010",
         "position": 11,
         "classPosition": 4,
@@ -441,10 +484,6 @@
           "v": 91.734,
           "q": "fresh"
         },
-        "lapDistance": {
-          "v": 425,
-          "q": "fresh"
-        },
         "groundPosition": {
           "v": {
             "x": 10,
@@ -454,6 +493,13 @@
         }
       },
       {
+        "quality": {
+          "q": "fresh",
+          "interval": "missing",
+          "intervalLaps": "missing"
+        },
+        "classGap": 11.106,
+        "classRef": 3,
         "id": "vehicle-011",
         "position": 12,
         "classPosition": 4,
@@ -472,10 +518,6 @@
           "v": 91.78399999999999,
           "q": "fresh"
         },
-        "lapDistance": {
-          "v": 467.5,
-          "q": "fresh"
-        },
         "groundPosition": {
           "v": {
             "x": 11,
@@ -485,6 +527,13 @@
         }
       },
       {
+        "quality": {
+          "q": "fresh",
+          "interval": "missing",
+          "intervalLaps": "missing"
+        },
+        "classGap": 14.808,
+        "classRef": 1,
         "id": "vehicle-012",
         "position": 13,
         "classPosition": 5,
@@ -503,10 +552,6 @@
           "v": 91.83399999999999,
           "q": "fresh"
         },
-        "lapDistance": {
-          "v": 510,
-          "q": "fresh"
-        },
         "groundPosition": {
           "v": {
             "x": 12,
@@ -516,6 +561,13 @@
         }
       },
       {
+        "quality": {
+          "q": "fresh",
+          "interval": "missing",
+          "intervalLaps": "missing"
+        },
+        "classGap": 14.808000000000002,
+        "classRef": 2,
         "id": "vehicle-013",
         "position": 14,
         "classPosition": 5,
@@ -534,10 +586,6 @@
           "v": 91.884,
           "q": "fresh"
         },
-        "lapDistance": {
-          "v": 552.5,
-          "q": "fresh"
-        },
         "groundPosition": {
           "v": {
             "x": 13,
@@ -547,6 +595,13 @@
         }
       },
       {
+        "quality": {
+          "q": "fresh",
+          "interval": "missing",
+          "intervalLaps": "missing"
+        },
+        "classGap": 14.808,
+        "classRef": 3,
         "id": "vehicle-014",
         "position": 15,
         "classPosition": 5,
@@ -565,10 +620,6 @@
           "v": 91.934,
           "q": "fresh"
         },
-        "lapDistance": {
-          "v": 595,
-          "q": "fresh"
-        },
         "groundPosition": {
           "v": {
             "x": 14,
@@ -578,6 +629,13 @@
         }
       },
       {
+        "quality": {
+          "q": "fresh",
+          "interval": "missing",
+          "intervalLaps": "missing"
+        },
+        "classGap": 18.509999999999998,
+        "classRef": 1,
         "id": "vehicle-015",
         "position": 16,
         "classPosition": 6,
@@ -596,10 +654,6 @@
           "v": 91.984,
           "q": "fresh"
         },
-        "lapDistance": {
-          "v": 637.5,
-          "q": "fresh"
-        },
         "groundPosition": {
           "v": {
             "x": 15,
@@ -609,6 +663,14 @@
         }
       },
       {
+        "quality": {
+          "q": "fresh",
+          "classGap": "missing",
+          "interval": "missing",
+          "intervalLaps": "missing"
+        },
+        "classGapLaps": 1,
+        "classRef": 2,
         "id": "vehicle-016",
         "position": 17,
         "classPosition": 6,
@@ -627,10 +689,6 @@
           "v": 92.03399999999999,
           "q": "fresh"
         },
-        "lapDistance": {
-          "v": 680,
-          "q": "fresh"
-        },
         "groundPosition": {
           "v": {
             "x": 16,
@@ -640,6 +698,14 @@
         }
       },
       {
+        "quality": {
+          "q": "fresh",
+          "classGap": "missing",
+          "interval": "missing",
+          "intervalLaps": "missing"
+        },
+        "classGapLaps": 1,
+        "classRef": 3,
         "id": "vehicle-017",
         "position": 18,
         "classPosition": 6,
@@ -658,10 +724,6 @@
           "v": 92.08399999999999,
           "q": "fresh"
         },
-        "lapDistance": {
-          "v": 722.5,
-          "q": "fresh"
-        },
         "groundPosition": {
           "v": {
             "x": 17,
@@ -671,6 +733,14 @@
         }
       },
       {
+        "quality": {
+          "q": "fresh",
+          "classGap": "missing",
+          "interval": "missing",
+          "intervalLaps": "missing"
+        },
+        "classGapLaps": 1,
+        "classRef": 1,
         "id": "vehicle-018",
         "position": 19,
         "classPosition": 7,
@@ -689,10 +759,6 @@
           "v": 92.134,
           "q": "fresh"
         },
-        "lapDistance": {
-          "v": 765,
-          "q": "fresh"
-        },
         "groundPosition": {
           "v": {
             "x": 18,
@@ -702,6 +768,14 @@
         }
       },
       {
+        "quality": {
+          "q": "fresh",
+          "classGap": "missing",
+          "interval": "missing",
+          "intervalLaps": "missing"
+        },
+        "classGapLaps": 1,
+        "classRef": 2,
         "id": "vehicle-019",
         "position": 20,
         "classPosition": 7,
@@ -720,10 +794,6 @@
           "v": 92.184,
           "q": "fresh"
         },
-        "lapDistance": {
-          "v": 807.5,
-          "q": "fresh"
-        },
         "groundPosition": {
           "v": {
             "x": 19,
@@ -735,6 +805,9 @@
     ],
     "relative": [
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-001",
         "position": 2,
         "gap": {
@@ -742,13 +815,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 1,
-            "z": -2
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -761,6 +827,9 @@
         "classId": "lmp2"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-002",
         "position": 3,
         "gap": {
@@ -768,13 +837,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 2,
-            "z": -4
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -787,6 +849,9 @@
         "classId": "gte"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-003",
         "position": 4,
         "gap": {
@@ -794,13 +859,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 3,
-            "z": -6
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -813,6 +871,9 @@
         "classId": "hypercar"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-004",
         "position": 5,
         "gap": {
@@ -820,13 +881,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 4,
-            "z": -8
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -839,6 +893,9 @@
         "classId": "lmp2"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-005",
         "position": 6,
         "gap": {
@@ -846,13 +903,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 5,
-            "z": -10
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -865,6 +915,9 @@
         "classId": "gte"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-006",
         "position": 7,
         "gap": {
@@ -872,13 +925,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 6,
-            "z": -12
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -891,6 +937,9 @@
         "classId": "hypercar"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-007",
         "position": 8,
         "gap": {
@@ -898,13 +947,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 7,
-            "z": -14
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -917,6 +959,9 @@
         "classId": "lmp2"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-008",
         "position": 9,
         "gap": {
@@ -924,13 +969,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 8,
-            "z": -16
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -943,15 +981,15 @@
         "classId": "gte"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-000",
         "position": 1,
         "gap": {
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
           "q": "fresh"
         },
         "lastLap": {
@@ -964,6 +1002,9 @@
         "classId": "hypercar"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-019",
         "position": 20,
         "gap": {
@@ -971,13 +1012,7 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 19,
-            "z": -38
-          },
+          "v": -1,
           "q": "fresh"
         },
         "lastLap": {
@@ -990,6 +1025,9 @@
         "classId": "lmp2"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-018",
         "position": 19,
         "gap": {
@@ -997,13 +1035,7 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 18,
-            "z": -36
-          },
+          "v": -1,
           "q": "fresh"
         },
         "lastLap": {
@@ -1016,6 +1048,9 @@
         "classId": "hypercar"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-017",
         "position": 18,
         "gap": {
@@ -1023,13 +1058,7 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 17,
-            "z": -34
-          },
+          "v": -1,
           "q": "fresh"
         },
         "lastLap": {
@@ -1042,6 +1071,9 @@
         "classId": "gte"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-016",
         "position": 17,
         "gap": {
@@ -1049,13 +1081,7 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 16,
-            "z": -32
-          },
+          "v": -1,
           "q": "fresh"
         },
         "lastLap": {
@@ -1068,6 +1094,9 @@
         "classId": "lmp2"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-015",
         "position": 16,
         "gap": {
@@ -1075,13 +1104,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 15,
-            "z": -30
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -1094,6 +1116,9 @@
         "classId": "hypercar"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-014",
         "position": 15,
         "gap": {
@@ -1101,13 +1126,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 14,
-            "z": -28
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -1120,6 +1138,9 @@
         "classId": "gte"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-013",
         "position": 14,
         "gap": {
@@ -1127,13 +1148,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 13,
-            "z": -26
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -1146,6 +1160,9 @@
         "classId": "lmp2"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-012",
         "position": 13,
         "gap": {
@@ -1153,13 +1170,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 12,
-            "z": -24
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -1174,6 +1184,9 @@
     ],
     "relativeSettled": [
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-001",
         "position": 2,
         "gap": {
@@ -1181,13 +1194,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 1,
-            "z": -2
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -1200,6 +1206,9 @@
         "classId": "lmp2"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-002",
         "position": 3,
         "gap": {
@@ -1207,13 +1216,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 2,
-            "z": -4
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -1226,6 +1228,9 @@
         "classId": "gte"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-003",
         "position": 4,
         "gap": {
@@ -1233,13 +1238,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 3,
-            "z": -6
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -1252,6 +1250,9 @@
         "classId": "hypercar"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-004",
         "position": 5,
         "gap": {
@@ -1259,13 +1260,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 4,
-            "z": -8
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -1278,6 +1272,9 @@
         "classId": "lmp2"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-005",
         "position": 6,
         "gap": {
@@ -1285,13 +1282,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 5,
-            "z": -10
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -1304,6 +1294,9 @@
         "classId": "gte"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-006",
         "position": 7,
         "gap": {
@@ -1311,13 +1304,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 6,
-            "z": -12
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -1330,6 +1316,9 @@
         "classId": "hypercar"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-007",
         "position": 8,
         "gap": {
@@ -1337,13 +1326,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 7,
-            "z": -14
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -1356,6 +1338,9 @@
         "classId": "lmp2"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-008",
         "position": 9,
         "gap": {
@@ -1363,13 +1348,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 8,
-            "z": -16
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -1382,15 +1360,15 @@
         "classId": "gte"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-000",
         "position": 1,
         "gap": {
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
           "q": "fresh"
         },
         "lastLap": {
@@ -1403,6 +1381,9 @@
         "classId": "hypercar"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-019",
         "position": 20,
         "gap": {
@@ -1410,13 +1391,7 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 19,
-            "z": -38
-          },
+          "v": -1,
           "q": "fresh"
         },
         "lastLap": {
@@ -1429,6 +1404,9 @@
         "classId": "lmp2"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-018",
         "position": 19,
         "gap": {
@@ -1436,13 +1414,7 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 18,
-            "z": -36
-          },
+          "v": -1,
           "q": "fresh"
         },
         "lastLap": {
@@ -1455,6 +1427,9 @@
         "classId": "hypercar"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-017",
         "position": 18,
         "gap": {
@@ -1462,13 +1437,7 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 17,
-            "z": -34
-          },
+          "v": -1,
           "q": "fresh"
         },
         "lastLap": {
@@ -1481,6 +1450,9 @@
         "classId": "gte"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-016",
         "position": 17,
         "gap": {
@@ -1488,13 +1460,7 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 16,
-            "z": -32
-          },
+          "v": -1,
           "q": "fresh"
         },
         "lastLap": {
@@ -1507,6 +1473,9 @@
         "classId": "lmp2"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-015",
         "position": 16,
         "gap": {
@@ -1514,13 +1483,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 15,
-            "z": -30
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -1533,6 +1495,9 @@
         "classId": "hypercar"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-014",
         "position": 15,
         "gap": {
@@ -1540,13 +1505,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 14,
-            "z": -28
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -1559,6 +1517,9 @@
         "classId": "gte"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-013",
         "position": 14,
         "gap": {
@@ -1566,13 +1527,6 @@
           "q": "fresh"
         },
         "lapDelta": {
-          "q": "fresh"
-        },
-        "groundPosition": {
-          "v": {
-            "x": 13,
-            "z": -26
-          },
           "q": "fresh"
         },
         "lastLap": {
@@ -1585,6 +1539,9 @@
         "classId": "lmp2"
       },
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-012",
         "position": 13,
         "gap": {
@@ -1594,11 +1551,160 @@
         "lapDelta": {
           "q": "fresh"
         },
-        "groundPosition": {
-          "v": {
-            "x": 12,
-            "z": -24
-          },
+        "lastLap": {
+          "v": 91.83399999999999,
+          "q": "fresh"
+        },
+        "side": "behind",
+        "authority": "derived",
+        "name": "Driver 012",
+        "classId": "hypercar"
+      }
+    ],
+    "relativeSameClass": [
+      {
+        "bestLap": {
+          "q": "missing"
+        },
+        "id": "vehicle-003",
+        "position": 4,
+        "gap": {
+          "v": 13.5,
+          "q": "fresh"
+        },
+        "lapDelta": {
+          "q": "fresh"
+        },
+        "lastLap": {
+          "v": 91.384,
+          "q": "fresh"
+        },
+        "side": "ahead",
+        "authority": "derived",
+        "name": "Driver 003",
+        "classId": "hypercar"
+      },
+      {
+        "bestLap": {
+          "q": "missing"
+        },
+        "id": "vehicle-006",
+        "position": 7,
+        "gap": {
+          "v": 27,
+          "q": "fresh"
+        },
+        "lapDelta": {
+          "q": "fresh"
+        },
+        "lastLap": {
+          "v": 91.53399999999999,
+          "q": "fresh"
+        },
+        "side": "ahead",
+        "authority": "derived",
+        "name": "Driver 006",
+        "classId": "hypercar"
+      },
+      {
+        "bestLap": {
+          "q": "missing"
+        },
+        "id": "vehicle-009",
+        "position": 10,
+        "gap": {
+          "v": 40.5,
+          "q": "fresh"
+        },
+        "lapDelta": {
+          "q": "fresh"
+        },
+        "lastLap": {
+          "v": 91.684,
+          "q": "fresh"
+        },
+        "side": "ahead",
+        "authority": "derived",
+        "name": "Driver 009",
+        "classId": "hypercar"
+      },
+      {
+        "bestLap": {
+          "q": "missing"
+        },
+        "id": "vehicle-000",
+        "position": 1,
+        "gap": {
+          "q": "fresh"
+        },
+        "lapDelta": {
+          "q": "fresh"
+        },
+        "lastLap": {
+          "v": 91.234,
+          "q": "fresh"
+        },
+        "side": "player",
+        "authority": "derived",
+        "name": "Driver 000",
+        "classId": "hypercar"
+      },
+      {
+        "bestLap": {
+          "q": "missing"
+        },
+        "id": "vehicle-018",
+        "position": 19,
+        "gap": {
+          "v": -9,
+          "q": "fresh"
+        },
+        "lapDelta": {
+          "v": -1,
+          "q": "fresh"
+        },
+        "lastLap": {
+          "v": 92.134,
+          "q": "fresh"
+        },
+        "side": "behind",
+        "authority": "derived",
+        "name": "Driver 018",
+        "classId": "hypercar"
+      },
+      {
+        "bestLap": {
+          "q": "missing"
+        },
+        "id": "vehicle-015",
+        "position": 16,
+        "gap": {
+          "v": -22.5,
+          "q": "fresh"
+        },
+        "lapDelta": {
+          "q": "fresh"
+        },
+        "lastLap": {
+          "v": 91.984,
+          "q": "fresh"
+        },
+        "side": "behind",
+        "authority": "derived",
+        "name": "Driver 015",
+        "classId": "hypercar"
+      },
+      {
+        "bestLap": {
+          "q": "missing"
+        },
+        "id": "vehicle-012",
+        "position": 13,
+        "gap": {
+          "v": -36,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "lastLap": {
@@ -1612,6 +1718,26 @@
       }
     ],
     "delta": {
+      "references": [
+        {
+          "requested": "personal-best",
+          "seconds": {
+            "q": "missing"
+          }
+        },
+        {
+          "requested": "session-best",
+          "seconds": {
+            "q": "missing"
+          }
+        },
+        {
+          "requested": "previous-lap",
+          "seconds": {
+            "q": "missing"
+          }
+        }
+      ],
       "seconds": {
         "q": "missing"
       },

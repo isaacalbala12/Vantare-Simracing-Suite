@@ -30,7 +30,7 @@ func BuildStandings(final derive.FinalState) []StandingRowV2 {
 	incompleteClasses := make(map[string]bool)
 	unknownClass := false
 	for _, current := range ordered {
-		classID := vehicleClassID(current)
+		classID := strings.ToUpper(vehicleClassID(current))
 		if classID == "" {
 			unknownClass = true
 		}
@@ -40,7 +40,7 @@ func BuildStandings(final derive.FinalState) []StandingRowV2 {
 	}
 	classLeaders := make(map[string]core.VehicleState)
 	for _, current := range ordered {
-		classID := vehicleClassID(current)
+		classID := strings.ToUpper(vehicleClassID(current))
 		position, positioned := usablePosition(current)
 		classQuality := QualityMissing
 		classPosition := int32(0)
@@ -67,7 +67,7 @@ func BuildStandings(final derive.FinalState) []StandingRowV2 {
 			ClassGap:      classGap.V, ClassGapLaps: classLaps.V, ClassGapReferencePosition: referencePosition,
 			Interval:       interval.V,
 			IntervalLaps:   intervalLaps.V,
-			ClassID:        classID,
+			ClassID:        vehicleClassID(current),
 			DriverName:     observedString(current.DriverName),
 			CarNumber:      observedCarNumber(current.CarNumber),
 			GapSeconds:     qualityValue(current.TimeBehindLeader, func(value standings.TimeGap) float64 { return float64(value) }),
@@ -114,7 +114,7 @@ func vehicleClassID(vehicle core.VehicleState) string {
 	if !present || qualityFromFreshness(vehicle.VehicleClass.Freshness()) != QualityFresh {
 		return ""
 	}
-	return strings.ToUpper(strings.TrimSpace(string(value)))
+	return strings.TrimSpace(string(value))
 }
 
 func pitState(field schema.Field[pit.InPit]) string {

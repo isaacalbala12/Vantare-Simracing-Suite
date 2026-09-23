@@ -41,7 +41,7 @@ const (
 var canonicalAlgorithmVersions = []AlgorithmVersion{
 	{ID: DerivationControlsHistory, Version: 1},
 	{ID: DerivationSessionRemaining, Version: 1},
-	{ID: DerivationRelativeGaps, Version: 2},
+	{ID: DerivationRelativeGaps, Version: 3},
 	{ID: DerivationSelfDelta, Version: 1},
 	{ID: DerivationFuelUsage, Version: 1},
 }
@@ -206,7 +206,7 @@ func (pipeline *Pipeline) Prepare(
 		Observed: observedState,
 		Derived: DerivedState{
 			SessionRemaining: deriveSessionRemaining(observedState.SourceTime, observedState.EndTime),
-			Gaps:             deriveRelativeGaps(header.Identity.Vehicle, observedState.PlayerPresent, observedState.Vehicles),
+			Gaps:             deriveRelativeGaps(header.Identity.Vehicle, observedState.PlayerPresent, observedState.Vehicles, observedState.TrackLength),
 			Delta:            deltaTracker.Apply(header, observedState),
 			Fuel:             fuelTracker.Apply(header, observedState),
 			ControlsHistory:  derivedHistory,

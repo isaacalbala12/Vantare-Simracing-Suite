@@ -22,15 +22,15 @@ Acelerador, freno y embrague representan lecturas normalizadas 0–1, presentada
 
 ## Standings
 
-Orden por clasificación, distinta del orden físico en pista. Posición, posición de clase, vueltas, boxes e identidad requieren evidencia propia. En práctica/clasificación se muestran tiempos de vuelta válidos; en carrera los gaps usan una referencia explícita. El intervalo corresponde al rival inmediatamente anterior de la clasificación indicada; un gap al líder no se reutiliza como intervalo.
+Orden por clasificación, distinta del orden físico en pista. Posición, posición de clase, vueltas, boxes e identidad requieren evidencia propia. En práctica/clasificación se muestran tiempos de vuelta válidos; en carrera los gaps usan una referencia explícita. El intervalo corresponde al rival inmediatamente anterior de la clasificación indicada; un gap al líder no se reutiliza como intervalo. En vista de clase, el intervalo nativo solo se presenta si el predecesor absoluto comprobado pertenece a esa misma clase; en otro caso se muestra «—». No se estima restando gaps al líder. Las comparaciones de ritmo en práctica/clasificación usan el mejor tiempo de la clase presentada.
 
-En multiclase no se mezclan segundos al líder absoluto con un rótulo de líder de clase. Una diferencia de vueltas no se calcula solo restando contadores en la línea: se considera progreso en pista y longitud real. Sin una comparación fiable se muestra «—». Vueltas cero son distintas de vueltas desconocidas. El jugador no necesita estar en la ventana visible para alimentar datos de sesión. Los controles del pie se respetan y la geometría se adapta al contenido activo.
+En multiclase no se mezclan segundos al líder absoluto con un rótulo de líder de clase. Una diferencia de vueltas no se calcula solo restando contadores en la línea: se considera progreso en pista y longitud real. Sin una comparación fiable se muestra «—». Vueltas cero son distintas de vueltas desconocidas. El jugador no necesita estar en la ventana visible para alimentar datos de sesión. Los controles del pie se respetan y la geometría se adapta al contenido activo. El compuesto de neumático carece de fuente V2: su activación permanece deshabilitada; los perfiles antiguos conservan su columna vacía y geometría.
 
 ## Relative
 
 Orden por proximidad física circular en pista respecto al jugador, independientemente de la clasificación. Se requieren distancia y longitud de pista reales; no se deduce el lado usando posiciones de carrera ni gaps temporales. Cada rival aparece una sola vez, con los más cercanos junto al jugador. Rejillas pequeñas, cruces de meta y desapariciones no inventan filas.
 
-El filtro de misma clase se aplica antes de limitar los vecinos. Número de coche y mejor vuelta llegan del contrato real. La señal de doblado expresa diferencia de progreso respecto al jugador, con calidad válida; estar delante físicamente no implica ir delante en la clasificación. Movimiento suave y color muy tenue; jugador y cifras estables. Reentradas recuperan su fila y opacidad.
+El filtro de misma clase se aplica antes de limitar los vecinos. Número de coche y mejor vuelta llegan del contrato real. La señal de doblado expresa diferencia de progreso respecto al jugador, con calidad válida y solo por circuitos completos de separación. Cruzar la línea de meta sin completar un circuito de diferencia no crea una señal. Estar delante físicamente no implica ir delante en la clasificación. Movimiento suave y color muy tenue; jugador y cifras estables. Reentradas recuperan su fila y opacidad.
 
 ## Horizontal Standings
 
@@ -42,7 +42,7 @@ El bloque «Vuelta» usa la vuelta actual del jugador, campo canónico independi
 
 Decisión explícita de Isaac: **SOF no debe salir por ahora**. No se ofrece en los controles públicos ni se activa por configuraciones importadas antiguas.
 
-La REST API de LMU proporciona meteorología en `/rest/watch/sessionInfo`. Se conectan las lecturas demostradas con sus unidades y calidad; `/rest/sessions/weather` contiene configuración/previsión y no sustituye observaciones actuales. Temperatura ambiente y de pista son campos independientes. La humedad de pista REST se convierte desde 0–1. La lluvia usa severidad nativa SHM 0–1. Viento REST carece aún de unidad demostrada y permanece ausente; véase [evidencia](../analysis/isa-1347-weather-authority.md). La dirección cardinal y la presión no se inventan si no hay autoridad demostrada. Una prueba de fixture no equivale a comprobar la sesión física actual de LMU.
+La REST API de LMU proporciona meteorología en `/rest/watch/sessionInfo`. Se conectan las lecturas demostradas con sus unidades y calidad; `/rest/sessions/weather` contiene configuración/previsión y no sustituye observaciones actuales. Temperatura ambiente y de pista son campos independientes. La humedad de pista REST se convierte desde 0–1. La lluvia usa severidad nativa SHM 0–1, presentada como porcentaje de intensidad, no como probabilidad de precipitación. Viento REST carece aún de unidad demostrada y permanece ausente; véase [evidencia](../analysis/isa-1347-weather-authority.md). La dirección cardinal y la presión no se inventan si no hay autoridad demostrada. Una prueba de fixture no equivale a comprobar la sesión física actual de LMU.
 
 ## Verificación y aceptación
 

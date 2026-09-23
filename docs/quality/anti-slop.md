@@ -38,6 +38,24 @@ un hallazgo NUEVO (no en baseline, no exceptuado):
   y una segunda aparición de la misma identidad en el mismo archivo también
   es NUEVO.
 
+### Reagrupaciones de jscpd con evidencia de fuente
+
+El detector puede cambiar fragmentos y repetir un mismo sitio en varios pares
+al eliminar otro archivo. `check` conserva el ratchet por identidad y registra
+como `REGROUPED` únicamente identidades nuevas en paths ya conocidos por el
+baseline, cuando la fuente completa es idéntica en **procedencia del baseline,
+base real del PR y disco**. No se aplica a excedentes de identidades ya conocidas
+ni a MOVED. Una copia física añadida en el mismo archivo cambia sus bytes;
+una copia en otro path no tiene esa evidencia. Ambas siguen bloqueando.
+
+El baseline debe ser idéntico al leído de la base real del PR. Solo se aceptan
+fuentes regulares Git y rutas canónicas sin symlinks. Si falta el commit histórico
+tras un squash o un checkout superficial, se intenta recuperar ese SHA exacto
+desde `origin` con un límite de 60 segundos, sin cambiar HEAD ni ramas. Si no se
+puede comprobar, el gate falla cerrado. No se acepta ni reescribe el baseline.
+El informe enumera cada registro reagrupado, path real, blob y SHA de procedencia.
+Los cambios de política siguen exigiendo revisión y devolviendo exit distinto de cero.
+
 ### Informativas (no bloqueantes)
 
 - **deadcode**: código inalcanzable. Informativo porque en Go el análisis

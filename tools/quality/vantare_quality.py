@@ -923,6 +923,81 @@ def _policy_changed(scope_base: dict, base_sha: str) -> tuple[bool, list[str]]:
     return bool(matched), matched
 
 
+def reconcile_jscpd_regrouping(classification: Classification, baseline: dict,
+                              base_sha: str) -> list[dict]:
+    """Keep regrouped findings visible when their entire source is unchanged.
+
+    Trust provenance only from the PR base's baseline, never a candidate header.
+    Compare source blobs at provenance, PR base and on disk. This is deliberately
+    conservative: any edited source keeps the normal identity/multiset ratchet.
+    MOVED is never exempted. No baseline, threshold or finding is discarded.
+    """
+    if not classification.new:
+        return []
+    trusted = json.loads(git_show_file(REPO_ROOT, base_sha, "tools/quality/baseline/jscpd.json"))
+    if trusted != baseline:
+        raise ToolError("jscpd: baseline candidato distinto del baseline de la base confiable")
+    provenance = trusted.get("header", {}).get("base_sha", "")
+    if not isinstance(provenance, str) or not re.fullmatch(r"[0-9a-f]{40}", provenance):
+        raise ToolError("jscpd: procedencia del baseline invalida")
+    rc, _, err, _ = run_cmd(["git", "cat-file", "-e", f"{provenance}^{{commit}}"], cwd=REPO_ROOT, timeout=15)
+    if rc != 0:
+        # A reviewed baseline may reference a source commit later squash-merged.
+        # Fetch only that trusted immutable object; never accept missing evidence.
+        rc, _, _, _ = run_cmd(["git", "fetch", "--no-tags", "--no-write-fetch-head",
+                              "origin", provenance], cwd=REPO_ROOT, timeout=60)
+        if rc != 0:
+            raise ToolError("jscpd: procedencia no disponible localmente ni en origin")
+        rc, _, _, _ = run_cmd(["git", "cat-file", "-e", f"{provenance}^{{commit}}"], cwd=REPO_ROOT, timeout=15)
+        if rc != 0:
+            raise ToolError("jscpd: origin no proporciono el commit de procedencia")
+
+    known = baseline_findings(trusted)
+    known_paths = {f.path for f in known}
+    known_ids = {f.identity() for f in known}
+    eligible = [f for f in classification.new if f.identity() not in known_ids
+                and re.fullmatch(r"[0-9a-f]{64}", f.content_hash)]
+    evidence_by_path: dict[str, dict] = {}
+    prefix = "vantare-v2/frontend/"
+    source_root = REPO_ROOT.resolve() / prefix / "src"
+    for path in sorted({f.path for f in eligible} & known_paths):
+        # jscpd's report names are relative to the scanned 'src' directory.
+        # Keep the existing baseline identities; resolve their actual source
+        # explicitly instead of silently migrating every stored finding.
+        if not path.startswith(prefix):
+            continue
+        relative = PurePosixPath(path.removeprefix(prefix))
+        if relative.is_absolute() or ".." in relative.parts:
+            continue
+        source = source_root / relative
+        if not source.is_file() or source.resolve() != source:
+            continue
+        source_path = (PurePosixPath(prefix) / "src" / relative).as_posix()
+        blobs = []
+        for revision in (provenance, base_sha):
+            rc, out, _, _ = run_cmd(["git", "ls-tree", "-z", revision, "--", source_path], cwd=REPO_ROOT, timeout=15)
+            metadata, _, name = out.partition("\t")
+            fields = metadata.split()
+            if (rc != 0 or len(fields) != 3 or fields[0] not in ("100644", "100755")
+                    or fields[1] != "blob" or name != source_path + "\0"):
+                break  # No regular source evidence: leave the finding NEW.
+            blobs.append(fields[2])
+        if len(blobs) != 2 or blobs[0] != blobs[1]:
+            continue
+        rc, current, err, _ = run_cmd(["git", "hash-object", "--no-filters", "--", str(source)], cwd=REPO_ROOT, timeout=15)
+        if rc != 0:
+            raise ToolError(f"jscpd: no se pudo comprobar fuente: {err.strip()[:200]}")
+        if current.strip() == blobs[0]:
+            evidence_by_path[path] = {"source_path": source_path,
+                                      "source_sha": provenance, "blob_sha": blobs[0]}
+
+    regrouped = [{"finding": asdict(f), **evidence_by_path[f.path]}
+                 for f in eligible if f.path in evidence_by_path]
+    regrouped_ids = {f.identity() for f in eligible if f.path in evidence_by_path}
+    classification.new = [f for f in classification.new if f.identity() not in regrouped_ids]
+    return regrouped
+
+
 def cmd_check(args: argparse.Namespace) -> int:
     print("== check: controles frecuentes + ratchet ==")
     scope = load_json(SCOPE_PATH)
@@ -972,6 +1047,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     results = _run_all(scope, versions)
 
     classifications: dict[str, Classification] = {}
+    regrouped_findings: list[dict] = []
     excepted_findings: dict[str, list[dict]] = {}
     actual_by_analyzer: dict[str, list[Finding]] = {}
     for r in results:
@@ -1018,6 +1094,11 @@ def cmd_check(args: argparse.Namespace) -> int:
         if header.get("versions_fingerprint") != versions_fingerprint(versions):
             integrity_issues.append(f"{r.analyzer}: versiones del baseline distintas -> recalibrar")
         classifications[r.analyzer] = classify_findings(baseline_findings(bl), actual_by_analyzer[r.analyzer])
+        if r.analyzer == "jscpd" and base_sha and not integrity_issues:
+            try:
+                regrouped_findings = reconcile_jscpd_regrouping(classifications[r.analyzer], bl, base_sha)
+            except (ToolError, json.JSONDecodeError, OSError) as e:
+                integrity_issues.append(f"jscpd: no se pudo verificar reagrupacion: {e}")
 
     # DEFENSA: analizador con baseline que no produjo resultado -> NOT_RUN -> FAIL.
     # Solo se esperan RATCHET_ANALYZERS (con baseline) y NO_BASELINE_ANALYZERS (control objetivo).
@@ -1073,7 +1154,7 @@ def cmd_check(args: argparse.Namespace) -> int:
                    classifications={a: {"new": len(c.new), "new_blocking": len(c.new_blocking), "resolved": len(c.resolved), "moved": len(c.moved)} for a, c in classifications.items()},
                    moved_findings=[asdict(f) for c in classifications.values() for f in c.moved],
                    new_blocking_findings=[asdict(f) for c in classifications.values() for f in c.new_blocking],
-                   excepted_findings=excepted_findings)
+                   excepted_findings=excepted_findings, regrouped_findings=regrouped_findings)
 
     print(f"\n  base_sha: {base_sha or '(indeterminada)'} [{base_source}]")
     print("\n== ratchet ==")
@@ -1093,6 +1174,10 @@ def cmd_check(args: argparse.Namespace) -> int:
         for a, exs in excepted_findings.items():
             for e in exs:
                 print(f"    - [{a}] {e['finding']['path']} {e['finding']['rule']} -> {e['exception']}")
+    if regrouped_findings:
+        print("\n  REGROUPED (fuente identica en procedencia, base y disco):")
+        for evidence in regrouped_findings:
+            print(f"    - {evidence['source_path']} {evidence['blob_sha'][:12]} ({evidence['finding']['content_hash'][:12]})")
     print(f"\n  policy_changed: {policy_changed} {policy_paths}")
     print(f"  aggregate: {aggregate}")
     return 1 if aggregate in (FAIL, ERROR, BLOCKED, REVIEW_REQUIRED) else 0
@@ -1125,6 +1210,11 @@ def cmd_report(args: argparse.Namespace) -> int:
             lines += ["", f"## {section}"]
             for f in last[key]:
                 lines.append(f"- `{f['analyzer']}` `{f['path']}` {f['rule']} {f.get('msg_norm') or f.get('symbol') or (f.get('content_hash','')[:12])}")
+    if last.get("regrouped_findings"):
+        lines += ["", "## REGROUPED (fuente sin cambios; no es duplicacion nueva)"]
+        for evidence in last["regrouped_findings"]:
+            lines.append(f"- `{evidence['source_path']}` blob `{evidence['blob_sha']}`; "
+                         f"procedencia `{evidence['source_sha']}`; hallazgo `{evidence['finding']['content_hash']}`")
     if last.get("integrity_issues"):
         lines += ["", "## Integridad"]
         lines.extend(f"- {i}" for i in last["integrity_issues"])

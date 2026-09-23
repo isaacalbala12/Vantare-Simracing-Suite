@@ -279,10 +279,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Ecosystem
 - titulo.pt: Ecossistema
 - titulo.it: Ecosistema
-- resumen: Comunidad, planes de pago, multisim y analíticas reales cuando la base esté estable.
-- resumen.en: Community, paid plans, multisim and real analytics once the base is stable.
-- resumen.pt: Comunidade, planos pagos, multisim e analíticas reais quando a base estiver estável.
-- resumen.it: Community, piani a pagamento, multisim e analitiche reali quando la base è stabile.
+- resumen: Comunidad, planes de pago, multisim y medición verificable del producto y negocio. La consola privada se prepara antes de afirmar cifras de uso real.
+- resumen.en: Community, paid plans, multisim and verifiable product and business measurement. The private console is being prepared before claiming real usage figures.
+- resumen.pt: Comunidade, planos pagos, multisim e medição verificável do produto e do negócio. A consola privada está em preparação antes de afirmar números de uso real.
+- resumen.it: Community, piani a pagamento, multisim e misurazione verificabile di prodotto e attività. La console privata è in preparazione prima di dichiarare cifre di utilizzo reale.
 - item: Comunidad de overlays
 - item.en: Overlay community
 - item.pt: Comunidade de overlays
@@ -295,6 +295,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - item.en: Real race and progression data
 - item.pt: Dados reais de corrida e progressão
 - item.it: Dati reali di gara e progressione
+- item: Consola privada de producto, Polar, opiniones y crecimiento con fuentes verificadas
+- item.en: Private console for product, Polar, feedback and growth with verified sources
+- item.pt: Consola privada de produto, Polar, opiniões e crescimento com fontes verificadas
+- item.it: Console privata per prodotto, Polar, opinioni e crescita con fonti verificate
 
 ---
 

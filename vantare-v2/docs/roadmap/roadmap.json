@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-23T01:04:14Z",
+  "generatedAt": "2026-09-23T11:23:53Z",
   "digest": {
-    "lastCommit": "4bb11fdb5246566da8d1456f6152d7173d57dcd9"
+    "lastCommit": "8b25d076ea9a6ba6be8dc3065bcde978b6d24f07"
   },
   "phases": [
     {
@@ -413,10 +413,10 @@
       },
       "progress": 10,
       "summary": {
-        "es": "Comunidad, planes de pago, multisim y analíticas reales cuando la base esté estable.",
-        "en": "Community, paid plans, multisim and real analytics once the base is stable.",
-        "pt": "Comunidade, planos pagos, multisim e analíticas reais quando a base estiver estável.",
-        "it": "Community, piani a pagamento, multisim e analitiche reali quando la base è stabile."
+        "es": "Comunidad, planes de pago, multisim y medición verificable del producto y negocio. La consola privada se prepara antes de afirmar cifras de uso real.",
+        "en": "Community, paid plans, multisim and verifiable product and business measurement. The private console is being prepared before claiming real usage figures.",
+        "pt": "Comunidade, planos pagos, multisim e medição verificável do produto e do negócio. A consola privada está em preparação antes de afirmar números de uso real.",
+        "it": "Community, piani a pagamento, multisim e misurazione verificabile di prodotto e attività. La console privata è in preparazione prima di dichiarare cifre di utilizzo reale."
       },
       "highlights": [
         {
@@ -436,6 +436,12 @@
           "en": "Real race and progression data",
           "pt": "Dados reais de corrida e progressão",
           "it": "Dati reali di gara e progressione"
+        },
+        {
+          "es": "Consola privada de producto, Polar, opiniones y crecimiento con fuentes verificadas",
+          "en": "Private console for product, Polar, feedback and growth with verified sources",
+          "pt": "Consola privada de produto, Polar, opiniões e crescimento com fontes verificadas",
+          "it": "Console privata per prodotto, Polar, opinioni e crescita con fonti verificate"
         }
       ]
     }
@@ -2194,6 +2200,11 @@
           "kind": "change",
           "scope": "",
           "text": "Widgets: vuelta rápida personal y de clase"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Integra animaciones Eficiencia de Standings, Relative y Horizontal Standings"
         }
       ]
     },

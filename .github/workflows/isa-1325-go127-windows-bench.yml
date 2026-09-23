@@ -1,0 +1,97 @@
+name: ISA-1325 Go 1.27 Windows benchmark
+
+on:
+  push:
+    branches: [bench/isa-1325-go127-windows-20260923]
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: '1.25.0'
+          cache: false
+
+      - name: Compile same tree with Go 1.25.0
+        shell: pwsh
+        working-directory: vantare-v2
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:GOTOOLCHAIN = 'local'
+          $bin = Join-Path $env:RUNNER_TEMP 'isa-1325-bench-bin'
+          New-Item -ItemType Directory -Path $bin -Force | Out-Null
+          $mod = Join-Path $env:RUNNER_TEMP 'isa-1325-go125.mod'
+          $source = Get-Content -LiteralPath go.mod -Raw
+          if (-not $source.Contains('go 1.27.1')) { throw 'Unexpected go.mod version' }
+          [System.IO.File]::WriteAllText($mod, $source.Replace('go 1.27.1', 'go 1.25.0'))
+          Copy-Item -LiteralPath go.sum -Destination (Join-Path $env:RUNNER_TEMP 'isa-1325-go125.sum')
+          go version
+          foreach ($case in @(
+            @{ Name = 'overlay'; Package = './internal/telemetry/projection/overlayv2' },
+            @{ Name = 'transport'; Package = './internal/app/telemetrytransport' },
+            @{ Name = 'app'; Package = './internal/app' }
+          )) {
+            go test -c -modfile $mod -o (Join-Path $bin "$($case.Name)-go125.test.exe") $case.Package
+            if ($LASTEXITCODE -ne 0) { throw "Go 1.25 compilation failed: $($case.Name)" }
+          }
+
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: '1.27.1'
+          cache: false
+
+      - name: Compile same tree with Go 1.27.1
+        shell: pwsh
+        working-directory: vantare-v2
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:GOTOOLCHAIN = 'local'
+          $bin = Join-Path $env:RUNNER_TEMP 'isa-1325-bench-bin'
+          go version
+          foreach ($case in @(
+            @{ Name = 'overlay'; Package = './internal/telemetry/projection/overlayv2' },
+            @{ Name = 'transport'; Package = './internal/app/telemetrytransport' },
+            @{ Name = 'app'; Package = './internal/app' }
+          )) {
+            go test -c -o (Join-Path $bin "$($case.Name)-go127.test.exe") $case.Package
+            if ($LASTEXITCODE -ne 0) { throw "Go 1.27 compilation failed: $($case.Name)" }
+          }
+
+      - name: Run alternating benchmarks
+        shell: pwsh
+        working-directory: vantare-v2
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:GOMAXPROCS = '1'
+          $bin = Join-Path $env:RUNNER_TEMP 'isa-1325-bench-bin'
+          $evidence = Join-Path $env:RUNNER_TEMP 'isa-1325-bench-evidence'
+          New-Item -ItemType Directory -Path $evidence -Force | Out-Null
+          git rev-parse HEAD | Set-Content -LiteralPath (Join-Path $evidence 'source-sha.txt')
+          $script = (Resolve-Path ./scripts/bench/telemetry-microbench.ps1).Path
+          foreach ($case in @(
+            @{ Name = 'overlay'; Directory = 'internal/telemetry/projection/overlayv2'; Pattern = 'BenchmarkOverlayV2ByCadence|BenchmarkProjectV2' },
+            @{ Name = 'transport'; Directory = 'internal/app/telemetrytransport'; Pattern = 'BenchmarkOverlayTypedSections' },
+            @{ Name = 'app'; Directory = 'internal/app'; Pattern = 'BenchmarkOverlayPublication64' }
+          )) {
+            Push-Location $case.Directory
+            try {
+              & $script -Baseline (Join-Path $bin "$($case.Name)-go125.test.exe") -Candidate (Join-Path $bin "$($case.Name)-go127.test.exe") -Benchmark $case.Pattern -OutputDirectory (Join-Path $evidence $case.Name) -Samples 10
+            } finally {
+              Pop-Location
+            }
+          }
+
+      - uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        if: always()
+        with:
+          name: isa-1325-go127-windows-benchmark
+          path: ${{ runner.temp }}/isa-1325-bench-evidence/
+          if-no-files-found: warn
+          retention-days: 14

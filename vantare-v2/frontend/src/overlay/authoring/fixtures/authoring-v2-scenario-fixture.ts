@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../../telemetry-transport/overlay-frame-v2-store";
 import goldenV2Raw from "../../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json?raw";
 import type {
   OverlayFrameV2,
@@ -10,7 +11,7 @@ import type { WidgetRuntimeInput } from "../../core/widget-definition";
 // El golden es la única semilla: si carece de frame, source o standings no
 // hay fixture honesto que construir y se falla rápido en la carga, sin
 // fallbacks undefined/[] sintéticos.
-const canonical = JSON.parse(goldenV2Raw) as OverlayUpdateV2;
+const canonical = decodeOverlayUpdateV2(goldenV2Raw) as OverlayUpdateV2;
 
 function requireCanonicalFrame(): OverlayFrameV2 {
   const frame = canonical.frame;

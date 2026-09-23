@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../../telemetry-transport/overlay-frame-v2-store";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -15,9 +16,9 @@ import { buildRelativeViewModelV2 } from "../../widget-types/relative/relative-v
 import { StandingsCrystal } from "./standings/StandingsCrystal";
 
 function goldenFrame(): OverlayFrameV2 {
-  return (JSON.parse(readFileSync(resolve(process.cwd(),
+  return (structuredClone(decodeOverlayUpdateV2(readFileSync(resolve(process.cwd(),
     "../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json"),
-  "utf8")) as { frame: OverlayFrameV2 }).frame;
+  "utf8"))) as { frame: OverlayFrameV2 }).frame;
 }
 
 function productiveCss(): string {

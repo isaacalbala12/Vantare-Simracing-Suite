@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../../telemetry-transport/overlay-frame-v2-store";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -9,7 +10,7 @@ import {
   type AuthoringV2Scenario,
 } from "./authoring-v2-scenario-fixture";
 
-const canonical = JSON.parse(goldenV2Raw) as OverlayUpdateV2;
+const canonical = structuredClone(decodeOverlayUpdateV2(goldenV2Raw)) as OverlayUpdateV2;
 
 function scenario(overrides: Partial<AuthoringV2Scenario> = {}): AuthoringV2Scenario {
   return {

@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../telemetry-transport/overlay-frame-v2-store";
 import { afterAll, bench, describe } from "vitest";
 import { render, act } from "@testing-library/react";
 import { createTelemetryRateCoordinator } from "../core/telemetry-rate-coordinator";
@@ -13,7 +14,7 @@ import type { OverlayUpdateV2 } from "../../generated/telemetry";
 // parseContent + migracion + merge + parseSettings (dos structuredClone por
 // widget y frame notificado). Host + renderer completos, no solo el merge.
 
-const update = JSON.parse(goldenV2Raw) as OverlayUpdateV2;
+const update = structuredClone(decodeOverlayUpdateV2(goldenV2Raw)) as OverlayUpdateV2;
 
 function createManualCoordinator() {
   let onFrame: () => void = () => undefined;

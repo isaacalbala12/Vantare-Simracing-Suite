@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../../telemetry-transport/overlay-frame-v2-store";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -65,7 +66,7 @@ describe("car damage C1: definitions sin passthrough V1 (rama B)", () => {
 });
 
 function goldenFrame(vehicles: number): OverlayFrameV2 {
-  const update = JSON.parse(
+  const update = structuredClone(decodeOverlayUpdateV2(
     readFileSync(
       path.resolve(
         process.cwd(),
@@ -73,7 +74,7 @@ function goldenFrame(vehicles: number): OverlayFrameV2 {
       ),
       "utf8",
     ),
-  ) as OverlayUpdateV2;
+  )) as OverlayUpdateV2;
   if (!update.frame) throw new Error("golden frame missing");
   return update.frame;
 }

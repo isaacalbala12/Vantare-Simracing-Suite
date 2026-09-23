@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../../telemetry-transport/overlay-frame-v2-store";
 import { buildPedalsTelemetryViewModelV2 } from "../pedals-telemetry/pedals-telemetry-view-model-v2";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -11,12 +12,12 @@ import {
 } from "../pedals-telemetry/pedals-telemetry-view-model";
 
 function golden(vehicles: number): OverlayUpdateV2 {
-  return JSON.parse(
+  return structuredClone(decodeOverlayUpdateV2(
     readFileSync(
       path.resolve(process.cwd(), `../internal/telemetry/projection/overlayv2/testdata/overlay_v2_${vehicles}.golden.json`),
       "utf8",
     ),
-  ) as OverlayUpdateV2;
+  )) as OverlayUpdateV2;
 }
 
 function goldenFrame(): OverlayFrameV2 {

@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../telemetry-transport/overlay-frame-v2-store";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { act, cleanup, render } from "@testing-library/react";
@@ -47,10 +48,10 @@ function documentWithStandings(x = 64): ProfileDocumentV3 {
 }
 
 function golden(): OverlayUpdateV2 {
-  return JSON.parse(readFileSync(path.resolve(
+  return structuredClone(decodeOverlayUpdateV2(readFileSync(path.resolve(
     process.cwd(),
     "../internal/telemetry/projection/overlayv2/testdata/overlay_v2_1.golden.json",
-  ), "utf8")) as OverlayUpdateV2;
+  ), "utf8"))) as OverlayUpdateV2;
 }
 
 function updateFor(sequence: number, level: 1 | 5): OverlayUpdateV2 {

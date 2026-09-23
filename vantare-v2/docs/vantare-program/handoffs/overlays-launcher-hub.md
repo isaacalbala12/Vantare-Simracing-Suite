@@ -7,6 +7,18 @@
 > sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
 
 
+
+## ISA-1347 — contratos y correcciones de datos de widgets aceptados (2026-09-23)
+
+Seguimiento por instrucción explícita de Isaac en [Asana · Desarrollo](https://app.asana.com/0/1218742976551956/list). Correcciones Delta `1218777895248782`, Pedals `1218777754821855`, Standings `1218777832104952`, Relative `1218778048433037` y Horizontal `1218777895238689`, todas En curso y releídas tras actualizar. Se preserva la aceptación visual previa. [Puente #1347](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1347), base `nightly 8b25d076`, rama `vantareapp/isa-1347-widgets-data-contract`.
+
+[Contrato común](../../specs/2026-09-23-accepted-widgets-data-contract.md) y [plan](../../plans/isa-1347/PLAN.md). Tres workers GPT-6 en worktrees separados entregan correcciones; root integra y repite comprobaciones. Delta resuelve las tres referencias en Go; Pedals distingue ausencia de cero; Standings conserva calidad y referencias de clase/intervalo; Relative usa proximidad circular y progreso real para doblados; Horizontal conserva gaps en vueltas y ofrece el carrusel aceptado como control productivo. SOF fuera por decisión de Isaac. Bloque Vuelta ligado a vuelta actual del jugador, supuesto recomendado comunicado tras la consulta opcional.
+
+Humedad de pista REST 0–1 y severidad de lluvia nativa SHM 0–1 conectadas con caducidad por campo. [Autoridad meteorológica](../../analysis/isa-1347-weather-authority.md). Viento sin unidad probada, dirección y presión sin autoridad permanecen ausentes. Bandera REST requiere correlación positiva con una sesión activa. No confundir pruebas de fixtures con certificación del simulador activo.
+
+Corte `ecc6051a`: revisión independiente detectó cuatro casos adicionales y se implementaron sus regresiones (stopping, ritmo entre clases, intervalo contra rival de otra clase, falso doblado cerca de meta). Comprobación global aún en curso y optimización de representación del contrato para conservar los presupuestos originales de transporte sin pérdida de valores/calidad. Siguiente paso: integrar compactación, repetir suites y revisión independiente, adjuntar evidencia/PR draft. No hay merge, promoción ni release. La validación física de reconexión, LMU/Windows/Desktop/OBS sigue requerida antes de cerrar las correcciones.
+
+
 ## ISA-1320 — Relative: movimiento discreto para conducción (2026-09-22)
 
 Seguimiento por decisión explícita de Isaac en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756738527745), En curso. Puente técnico [#1320](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1320). Base `nightly e6d7d2b5`, rama `vantareapp/isa-1320-relative-motion`.

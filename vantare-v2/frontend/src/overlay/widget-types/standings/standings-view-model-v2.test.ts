@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../../telemetry-transport/overlay-frame-v2-store";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -9,10 +10,10 @@ import { formatStandingsLapDifference, formatStandingsSecondsDifference } from "
 const content = standingsDefinition.parseContent({ classScope: "all-classes", classificationMode: "normal", rowCount: 20 });
 
 function frameForPhase(phase: "practice" | "qualifying" | "race"): OverlayFrameV2 {
-  const frame = JSON.parse(readFileSync(path.resolve(
+  const frame = structuredClone(decodeOverlayUpdateV2(readFileSync(path.resolve(
     process.cwd(),
     "../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json",
-  ), "utf8")) as { frame: OverlayFrameV2 };
+  ), "utf8"))) as { frame: OverlayFrameV2 };
   return {
     ...frame.frame,
     session: { ...frame.frame.session, phase: { q: "fresh", v: phase } },
@@ -26,10 +27,10 @@ function frameForPhase(phase: "practice" | "qualifying" | "race"): OverlayFrameV
 }
 
 function fullGoldenFrame(): OverlayFrameV2 {
-  return (JSON.parse(readFileSync(path.resolve(
+  return (structuredClone(decodeOverlayUpdateV2(readFileSync(path.resolve(
     process.cwd(),
     "../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json",
-  ), "utf8")) as { frame: OverlayFrameV2 }).frame;
+  ), "utf8"))) as { frame: OverlayFrameV2 }).frame;
 }
 
 describe("buildStandingsViewModelV2 session columns", () => {

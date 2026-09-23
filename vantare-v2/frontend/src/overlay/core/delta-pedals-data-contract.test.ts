@@ -8,7 +8,7 @@ import { buildPedalsViewModelV2 } from "../widget-types/pedals/pedals-view-model
 import { getOverlayV2ViewModelEntry } from "./overlay-v2-view-models";
 
 function fixture(): OverlayUpdateV2 & { frame: OverlayFrameV2 } {
-  const update = JSON.parse(readFileSync("../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json", "utf8")) as OverlayUpdateV2;
+  const update = structuredClone(decodeOverlayUpdateV2(readFileSync("../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json", "utf8"))) as OverlayUpdateV2;
   if (!update.frame) throw new Error("fixture frame missing");
   const delta = JSON.parse(readFileSync("../internal/telemetry/projection/overlayv2/testdata/delta_references.golden.json", "utf8")) as OverlayDeltaViewV2;
   return { ...update, source: { state: "live" }, frame: { ...update.frame, delta } };

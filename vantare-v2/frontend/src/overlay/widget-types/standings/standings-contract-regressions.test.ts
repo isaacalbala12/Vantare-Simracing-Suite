@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../../telemetry-transport/overlay-frame-v2-store";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import type { OverlayFrameV2 } from "../../../generated/telemetry";
@@ -8,7 +9,7 @@ import { resolveFunctionalFooterSlots } from "../../design-systems/vantare-funct
 import { functionalLabels } from "../../design-systems/vantare-functional/labels";
 const content = standingsDefinition.parseContent({classScope:"player-class",rowCount:30});
 function frame() {
- const f = JSON.parse(readFileSync("../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json","utf8")).frame as OverlayFrameV2;
+ const f = structuredClone(decodeOverlayUpdateV2(readFileSync("../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json","utf8"))).frame as OverlayFrameV2;
  f.session.phase={q:"fresh",v:"race"};
  f.player.id="gt1";
  f.standings=[

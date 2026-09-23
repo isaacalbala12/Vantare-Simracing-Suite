@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../../../telemetry-transport/overlay-frame-v2-store";
 // @vitest-environment node
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -17,7 +18,7 @@ const FRAME_HEIGHT = 420;
 function renderRuntimeFrame(status: "ready" | "missing", brake?: number): string {
   const telemetry = createTelemetryRateCoordinator();
   if (status === "ready") {
-    const update = JSON.parse(goldenV2Raw) as OverlayUpdateV2;
+    const update = structuredClone(decodeOverlayUpdateV2(goldenV2Raw)) as OverlayUpdateV2;
     if (brake !== undefined) {
       update.frame!.player.brake.v = brake;
     }

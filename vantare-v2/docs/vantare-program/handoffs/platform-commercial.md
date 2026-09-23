@@ -1016,3 +1016,10 @@ PASS. Se revalidan cambios finales; Go completo en curso. No publicacion real.
 - [Tarea Notion](https://app.notion.com/p/3e3e51695c6581bc88fbda9b7d057975), dependencia de la integración de widgets #1298 autorizada por Isaac. Base nightly `1e9932c4`; rama `vantareapp/isa-1301-quality-policy-test`.
 - La prueba anterior asumía que cualquier PR modificaba la política; un check correcto PASS hacía fallar CI. Se sustituye por un repositorio Git temporal: control limpio PASS, cambios de política sin commit/con commit/untracked REVIEW_REQUIRED y hallazgo de analizador FAIL. El diff Git, el detector de política, el agregado y el exit del proceso son reales; solo se inyectan resultados de analizadores, cuyos binarios ya prueban las otras clases.
 - Sin cambios de producto, motor de calidad, reglas, baselines ni excepciones. Roadmap required: `milestones:quality-linux-analysis`. Revisión independiente y gates remotos previos a nightly; sin testers/master/release.
+
+## ISA-1338 — inteligencia de producto y negocio (2026-09-23)
+
+- Isaac aprobó dos resultados separados: pilotos que vuelven e ingresos recurrentes. La consola será una web privada en Cloudflare para una sola persona; Vantare recogerá opiniones mediante envío explícito y la analítica automática seguirá desactivada por defecto hasta el corte de consentimiento de #764.
+- `docs/specs/2026-09-23-vantare-intelligence-design.md` y `docs/specs/vantare-intelligence/PLAN.md` fijan métricas, fuentes, secuencia y criterios de cierre. La fase Ecosistema incorpora este trabajo como futuro, sin declarar entrega.
+- Polar sigue siendo autoridad para orders, subscriptions y refunds. La proyección de Supabase y el snapshot BIL-10 permiten operación y reconciliación, pero el snapshot actual no calcula MRR ni cobros netos. Un lector comercial acotado se implementará en una issue propia antes de mostrar cifras en la consola.
+- Rama de documentación `vantareapp/isa-1338-inteligencia-vantare`, base `origin/nightly@8b25d076`. No hay migración, Worker nuevo desplegado, venta pública, promoción ni datos de clientes consultados en este corte.

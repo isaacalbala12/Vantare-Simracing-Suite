@@ -91,3 +91,21 @@ el rollback legacy. Los contadores y latencias internas no miden primer sonido.
 El audio sigue cache-only. Persisten validación acústica, LMU físico y paridad
 completa. Notion/PR conservan SHA, CI y estado actualizado. Entrega draft;
 no merge, promoción ni release en esta tarea. Revertir la PR revierte el corte.
+
+## Corrección adicional autorizada — rechazo de medios ausentes
+
+Isaac autoriza corregir los pendientes de esta entrega. Windows repitió el
+timeout de TestPlayerRejectsMissingMedia en run35849145213/intento1 y el
+anterior35782437738. El player espera MediaFailed incluso si el archivo no
+existe. Se fija el contrato: contexto cancelado prevalece; medio inexistente,
+directorio y ruta vacía se rechazan en Go antes de lanzar PowerShell y antes
+de interrumpir una reproducción válida. Un archivo desaparecido después de
+la comprobación sigue cubierto por MediaFailed/timeout. No se aumenta el
+límite de ocho segundos ni se añade una espera.
+
+Contraste previo/posterior CrewChief: se conserva el contrato de fin por evento
+y error explícito documentado en [reparación de audio](../engineer/repair-isa-1307.md).
+Este cambio valida la entrada local; no modifica reglas ni timings y no
+acredita latencia acústica. La regresión exige el error del sistema de archivos
+sin PowerShell disponible; las pruebas de eventos y procesos se mantienen.
+Resultado Windows y SHA definitivos en Notion/PR.

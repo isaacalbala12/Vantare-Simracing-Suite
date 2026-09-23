@@ -109,3 +109,10 @@ Este cambio valida la entrada local; no modifica reglas ni timings y no
 acredita latencia acústica. La regresión exige el error del sistema de archivos
 sin PowerShell disponible; las pruebas de eventos y procesos se mantienen.
 Resultado Windows y SHA definitivos en Notion/PR.
+
+Regresión previa confirmada en Windows: run35852357505, head2cdc6a1d.
+El medio ausente devuelve un error del proceso en vez de os.ErrNotExist;
+sin PowerShell, los tres casos fallan porque intentan lanzarlo. Tras la
+corrección, la prueba de proceso incluye un archivo existente y comprueba
+que rechazar una sustitución inválida conserva el hijo hasta Stop. Compilación
+y vet cruzado Windows PASS; revisión independiente sin P1/P2.

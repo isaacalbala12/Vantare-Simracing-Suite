@@ -28,6 +28,17 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+### 2026-09-23 — Corrección del rechazo de medios Windows
+
+VAN-752 / PR1340 incorpora comprobación de medio local antes de iniciar
+PowerShell o sustituir el sonido actual. Contexto cancelado conserva prioridad;
+un fichero ausente devuelve el error de sistema de archivos, y una ruta vacía
+o no regular falla explícitamente. Se conservan los eventos WPF, el límite de
+ocho segundos, Stop y la espera del hijo. Windows RED demostrado en
+run35852357505/head2cdc6a1d antes del cambio. Compilación/vet cruzado y revisión
+Go sin P1/P2; resultado Windows final en Notion/PR. La corrección de calidad
+VAN-753/#1346 permanece en su PR de tooling; no se mezcla la política con producto.
+
 ### 2026-09-23 — Pantalla funcional para pruebas Windows
 
 [VAN-752](https://app.notion.com/p/3e4e51695c6581a9a63bcf66960e60bc) / #1336,

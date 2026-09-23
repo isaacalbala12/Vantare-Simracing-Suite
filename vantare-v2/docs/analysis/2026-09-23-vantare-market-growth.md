@@ -21,6 +21,12 @@ La decisión práctica es medir un embudo de Vantare, no aplicar al producto un 
 
 Se descartaron titulares de “mercado global del simracing” que mezclan hardware, juegos, competición y espectadores: no miden compradores de software de overlays. No se estimó TAM en euros multiplicando jugadores por el precio de Vantare, porque la compatibilidad, el uso de overlays y la disposición a pagar no están medidos. El **techo defendible por ahora es cualitativo**: mercado de PC de cientos de miles como mínimo en simuladores relevantes; categoría de overlays con al menos un competidor que declara decenas de miles de activos. El techo de una empresa de una persona será menor y depende de soporte y calidad.
 
+### Línea base interna verificable
+
+Una lectura agregada y de solo lectura del proyecto Supabase activo de Vantare el **23/09/2026** obtuvo **8 cuentas** en `auth.users`, **1 cuenta con inicio de sesión en los últimos 30 días**, **4 dispositivos** en `devices`, de los cuales **2** tienen `last_seen_at` en ese periodo. Inicio de sesión y presencia de dispositivo son señales operativas; **no demuestran que se abriera un overlay ni que se terminara una sesión de carrera**. Ninguna de las ocho cuentas fue creada en los últimos 30 días.
+
+La proyección comercial contiene **3 suscripciones Polar con estado `active`, todas en entorno `legacy`**, sin `provider_price_id` ni `paid_through` futuro. Los **3 clientes Polar** carecen de entorno clasificado; el ledger de pedidos y devoluciones, y la bandeja de webhooks, no tienen filas. Estos datos **no permiten contar tres compradores actuales ni calcular MRR real**. Su estado en el futuro panel será “sin fuente comercial verificada”, no 0 €. Esta línea base es interna, de muestra mínima y no se usa para estimar tasas de mercado o conversión.
+
 ## Embudo y escenarios a doce meses
 
 Horizonte: los doce meses posteriores a una apertura pública verificada. Unidad inicial: **visitas con intención** a la página de Vantare desde pilotos de simulación de PC; contarlas con una definición y fuente consistentes, deduplicando cuando sea posible. Todavía no existen cifras observadas de este embudo. Los tres casos siguientes son **hipótesis de planificación**, no predicciones estadísticas ni compromisos comerciales.

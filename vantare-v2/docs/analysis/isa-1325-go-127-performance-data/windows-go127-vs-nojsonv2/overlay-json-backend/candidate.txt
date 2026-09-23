@@ -1,0 +1,110 @@
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkProjectV2/vehicles_1         	   13726	      8684 ns/op	   37204 B/op	      43 allocs/op
+BenchmarkProjectV2/vehicles_20        	    3102	     35596 ns/op	  134256 B/op	      80 allocs/op
+BenchmarkProjectV2/vehicles_44        	    1693	     60787 ns/op	  264369 B/op	      80 allocs/op
+BenchmarkProjectV2/vehicles_104       	     943	    119948 ns/op	  545073 B/op	      80 allocs/op
+BenchmarkOverlayV2ByCadence/plana     	     322	    360743 ns/op	   2670820 B/s	       480.0 builds/s	        60.00 marshals/s	  686450 B/op	     159 allocs/op
+BenchmarkOverlayV2ByCadence/regulada_20hz_4hz         	     468	    259556 ns/op	   2670658 B/s	        55.13 builds/s	        60.00 marshals/s	  311709 B/op	      95 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkProjectV2/vehicles_1         	   12354	      8839 ns/op	   37204 B/op	      43 allocs/op
+BenchmarkProjectV2/vehicles_20        	    2952	     36422 ns/op	  134257 B/op	      80 allocs/op
+BenchmarkProjectV2/vehicles_44        	    1756	     61626 ns/op	  264366 B/op	      80 allocs/op
+BenchmarkProjectV2/vehicles_104       	     920	    119453 ns/op	  545081 B/op	      80 allocs/op
+BenchmarkOverlayV2ByCadence/plana     	     301	    405951 ns/op	   2670818 B/s	       480.0 builds/s	        60.00 marshals/s	  686433 B/op	     159 allocs/op
+BenchmarkOverlayV2ByCadence/regulada_20hz_4hz         	     411	    310386 ns/op	   2670656 B/s	        55.18 builds/s	        60.00 marshals/s	  311664 B/op	      95 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkProjectV2/vehicles_1         	   12906	      8844 ns/op	   37204 B/op	      43 allocs/op
+BenchmarkProjectV2/vehicles_20        	    2926	     37631 ns/op	  134257 B/op	      80 allocs/op
+BenchmarkProjectV2/vehicles_44        	    1812	     61272 ns/op	  264364 B/op	      80 allocs/op
+BenchmarkProjectV2/vehicles_104       	     907	    119769 ns/op	  545086 B/op	      80 allocs/op
+BenchmarkOverlayV2ByCadence/plana     	     315	    382652 ns/op	   2670819 B/s	       480.0 builds/s	        60.00 marshals/s	  686444 B/op	     159 allocs/op
+BenchmarkOverlayV2ByCadence/regulada_20hz_4hz         	     415	    294455 ns/op	   2670657 B/s	        55.37 builds/s	        60.00 marshals/s	  311605 B/op	      95 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkProjectV2/vehicles_1         	   13429	      8611 ns/op	   37204 B/op	      43 allocs/op
+BenchmarkProjectV2/vehicles_20        	    3127	     34982 ns/op	  134256 B/op	      80 allocs/op
+BenchmarkProjectV2/vehicles_44        	    1640	     61611 ns/op	  264372 B/op	      80 allocs/op
+BenchmarkProjectV2/vehicles_104       	     907	    128202 ns/op	  545086 B/op	      80 allocs/op
+BenchmarkOverlayV2ByCadence/plana     	     316	    373644 ns/op	   2670819 B/s	       480.0 builds/s	        60.00 marshals/s	  686444 B/op	     159 allocs/op
+BenchmarkOverlayV2ByCadence/regulada_20hz_4hz         	     447	    273319 ns/op	   2670658 B/s	        55.44 builds/s	        60.00 marshals/s	  312006 B/op	      95 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkProjectV2/vehicles_1         	   11486	      9662 ns/op	   37204 B/op	      43 allocs/op
+BenchmarkProjectV2/vehicles_20        	    2865	     36206 ns/op	  134258 B/op	      80 allocs/op
+BenchmarkProjectV2/vehicles_44        	    1893	     60922 ns/op	  264360 B/op	      80 allocs/op
+BenchmarkProjectV2/vehicles_104       	     902	    124688 ns/op	  545088 B/op	      80 allocs/op
+BenchmarkOverlayV2ByCadence/plana     	     254	    440956 ns/op	   2670814 B/s	       480.0 builds/s	        60.00 marshals/s	  686383 B/op	     159 allocs/op
+BenchmarkOverlayV2ByCadence/regulada_20hz_4hz         	     423	    287098 ns/op	   2670657 B/s	        55.74 builds/s	        60.00 marshals/s	  312388 B/op	      95 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkProjectV2/vehicles_1         	   11978	      8641 ns/op	   37204 B/op	      43 allocs/op
+BenchmarkProjectV2/vehicles_20        	    2882	     35982 ns/op	  134258 B/op	      80 allocs/op
+BenchmarkProjectV2/vehicles_44        	    1796	     60296 ns/op	  264364 B/op	      80 allocs/op
+BenchmarkProjectV2/vehicles_104       	    1006	    116628 ns/op	  545051 B/op	      80 allocs/op
+BenchmarkOverlayV2ByCadence/plana     	     326	    365648 ns/op	   2670820 B/s	       480.0 builds/s	        60.00 marshals/s	  686453 B/op	     159 allocs/op
+BenchmarkOverlayV2ByCadence/regulada_20hz_4hz         	     470	    255920 ns/op	   2670658 B/s	        55.28 builds/s	        60.00 marshals/s	  311683 B/op	      95 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkProjectV2/vehicles_1         	   12686	      8996 ns/op	   37204 B/op	      43 allocs/op
+BenchmarkProjectV2/vehicles_20        	    3339	     34941 ns/op	  134255 B/op	      80 allocs/op
+BenchmarkProjectV2/vehicles_44        	    1819	     58943 ns/op	  264363 B/op	      80 allocs/op
+BenchmarkProjectV2/vehicles_104       	     897	    124971 ns/op	  545090 B/op	      80 allocs/op
+BenchmarkOverlayV2ByCadence/plana     	     310	    367219 ns/op	   2670819 B/s	       480.0 builds/s	        60.00 marshals/s	  686438 B/op	     159 allocs/op
+BenchmarkOverlayV2ByCadence/regulada_20hz_4hz         	     456	    260880 ns/op	   2670658 B/s	        55.26 builds/s	        60.00 marshals/s	  311876 B/op	      95 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkProjectV2/vehicles_1         	   12435	      8713 ns/op	   37204 B/op	      43 allocs/op
+BenchmarkProjectV2/vehicles_20        	    2880	     37354 ns/op	  134258 B/op	      80 allocs/op
+BenchmarkProjectV2/vehicles_44        	    1728	     59478 ns/op	  264368 B/op	      80 allocs/op
+BenchmarkProjectV2/vehicles_104       	     948	    116984 ns/op	  545071 B/op	      80 allocs/op
+BenchmarkOverlayV2ByCadence/plana     	     327	    366298 ns/op	   2670820 B/s	       480.0 builds/s	        60.00 marshals/s	  686454 B/op	     159 allocs/op
+BenchmarkOverlayV2ByCadence/regulada_20hz_4hz         	     446	    285411 ns/op	   2670658 B/s	        55.56 builds/s	        60.00 marshals/s	  312021 B/op	      95 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkProjectV2/vehicles_1         	   13693	      8858 ns/op	   37204 B/op	      43 allocs/op
+BenchmarkProjectV2/vehicles_20        	    3237	     34212 ns/op	  134255 B/op	      80 allocs/op
+BenchmarkProjectV2/vehicles_44        	    1886	     58994 ns/op	  264361 B/op	      80 allocs/op
+BenchmarkProjectV2/vehicles_104       	     976	    113719 ns/op	  545061 B/op	      80 allocs/op
+BenchmarkOverlayV2ByCadence/plana     	     330	    370354 ns/op	   2670820 B/s	       480.0 builds/s	        60.00 marshals/s	  686456 B/op	     159 allocs/op
+BenchmarkOverlayV2ByCadence/regulada_20hz_4hz         	     442	    259855 ns/op	   2670658 B/s	        55.66 builds/s	        60.00 marshals/s	  312082 B/op	      95 allocs/op
+PASS
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2
+cpu: AMD EPYC 7763 64-Core Processor
+BenchmarkProjectV2/vehicles_1         	   13256	      8882 ns/op	   37204 B/op	      43 allocs/op
+BenchmarkProjectV2/vehicles_20        	    2889	     40685 ns/op	  134258 B/op	      80 allocs/op
+BenchmarkProjectV2/vehicles_44        	    1896	     60652 ns/op	  264360 B/op	      80 allocs/op
+BenchmarkProjectV2/vehicles_104       	     945	    114673 ns/op	  545072 B/op	      80 allocs/op
+BenchmarkOverlayV2ByCadence/plana     	     324	    361217 ns/op	   2670820 B/s	       480.0 builds/s	        60.00 marshals/s	  686451 B/op	     159 allocs/op
+BenchmarkOverlayV2ByCadence/regulada_20hz_4hz         	     453	    275517 ns/op	   2670658 B/s	        55.36 builds/s	        60.00 marshals/s	  311919 B/op	      95 allocs/op
+PASS

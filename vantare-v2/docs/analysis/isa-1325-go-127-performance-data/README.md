@@ -1,0 +1,8 @@
+# ISA-1325 — evidencia cruda de rendimiento Windows
+
+Ambos conjuntos proceden de un único runner Windows por run. Los commits de ensayo solo añaden o amplían el workflow temporal sobre el código de producto `5fc8fff8dd253ab042e51dbe263bf6ab4e4b983e`.
+
+- [`windows-go125-vs-go127/`](windows-go125-vs-go127/): [run 35847915247](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/35847915247), commit de ensayo `11d958469370d5f70028037fc0945216e15e2012`. En cada paquete, `baseline.txt` es Go 1.25.0 y `candidate.txt` es Go 1.27.1 predeterminado.
+- [`windows-go127-vs-nojsonv2/`](windows-go127-vs-nojsonv2/): [run 35848374505](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/35848374505), commit de ensayo `1c318406d4ca755be3476d12b8143dc07aa4d93d`. En cada paquete, `baseline.txt` es Go 1.27.1 predeterminado y `candidate.txt` es Go 1.27.1 con `GOEXPERIMENT=nojsonv2`.
+
+Cada directorio de paquete contiene diez muestras alternas por variante, `manifest.json` con hashes SHA-256 de los ejecutables y el entorno, y `summary.json` generado por [`telemetry-microbench.ps1`](../../../scripts/bench/telemetry-microbench.ps1). Los datos se copiaron del artefacto con finales de línea y espacios finales normalizados; no se alteraron las muestras ni los valores. El `summary.json` de `overlay` omite las dos filas `OverlayV2ByCadence` porque el parser no acepta las métricas personalizadas intermedias; **sus diez muestras sí constan en los TXT** y fueron incluidas en `benchstat` para el [informe](../isa-1325-go-127-performance.md). Los artefactos originales de Actions tenían retención de 14 días; estas copias permiten revisar los cálculos después de su caducidad.

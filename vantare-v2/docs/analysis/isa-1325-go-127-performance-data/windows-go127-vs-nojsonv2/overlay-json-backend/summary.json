@@ -1,0 +1,98 @@
+[
+  {
+    "Side": "baseline",
+    "Benchmark": "BenchmarkProjectV2/vehicles_1",
+    "Samples": 10,
+    "MedianNs": 8840.5,
+    "MinNs": 8597.0,
+    "MaxNs": 10014.0,
+    "MinBytes": 37204.0,
+    "MaxBytes": 37204.0,
+    "MinAllocs": 43.0,
+    "MaxAllocs": 43.0
+  },
+  {
+    "Side": "baseline",
+    "Benchmark": "BenchmarkProjectV2/vehicles_104",
+    "Samples": 10,
+    "MedianNs": 117878.0,
+    "MinNs": 113696.0,
+    "MaxNs": 126679.0,
+    "MinBytes": 545055.0,
+    "MaxBytes": 545118.0,
+    "MinAllocs": 80.0,
+    "MaxAllocs": 80.0
+  },
+  {
+    "Side": "baseline",
+    "Benchmark": "BenchmarkProjectV2/vehicles_20",
+    "Samples": 10,
+    "MedianNs": 35575.5,
+    "MinNs": 34438.0,
+    "MaxNs": 37962.0,
+    "MinBytes": 134255.0,
+    "MaxBytes": 134257.0,
+    "MinAllocs": 80.0,
+    "MaxAllocs": 80.0
+  },
+  {
+    "Side": "baseline",
+    "Benchmark": "BenchmarkProjectV2/vehicles_44",
+    "Samples": 10,
+    "MedianNs": 59054.0,
+    "MinNs": 57854.0,
+    "MaxNs": 70758.0,
+    "MinBytes": 264356.0,
+    "MaxBytes": 264371.0,
+    "MinAllocs": 80.0,
+    "MaxAllocs": 80.0
+  },
+  {
+    "Side": "candidate",
+    "Benchmark": "BenchmarkProjectV2/vehicles_1",
+    "Samples": 10,
+    "MedianNs": 8841.5,
+    "MinNs": 8611.0,
+    "MaxNs": 9662.0,
+    "MinBytes": 37204.0,
+    "MaxBytes": 37204.0,
+    "MinAllocs": 43.0,
+    "MaxAllocs": 43.0
+  },
+  {
+    "Side": "candidate",
+    "Benchmark": "BenchmarkProjectV2/vehicles_104",
+    "Samples": 10,
+    "MedianNs": 119611.0,
+    "MinNs": 113719.0,
+    "MaxNs": 128202.0,
+    "MinBytes": 545051.0,
+    "MaxBytes": 545090.0,
+    "MinAllocs": 80.0,
+    "MaxAllocs": 80.0
+  },
+  {
+    "Side": "candidate",
+    "Benchmark": "BenchmarkProjectV2/vehicles_20",
+    "Samples": 10,
+    "MedianNs": 36094.0,
+    "MinNs": 34212.0,
+    "MaxNs": 40685.0,
+    "MinBytes": 134255.0,
+    "MaxBytes": 134258.0,
+    "MinAllocs": 80.0,
+    "MaxAllocs": 80.0
+  },
+  {
+    "Side": "candidate",
+    "Benchmark": "BenchmarkProjectV2/vehicles_44",
+    "Samples": 10,
+    "MedianNs": 60719.5,
+    "MinNs": 58943.0,
+    "MaxNs": 61626.0,
+    "MinBytes": 264360.0,
+    "MaxBytes": 264372.0,
+    "MinAllocs": 80.0,
+    "MaxAllocs": 80.0
+  }
+]

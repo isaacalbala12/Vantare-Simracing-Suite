@@ -2,7 +2,7 @@
 
 - Tarea principal: [Notion VAN-747](https://app.notion.com/p/3e3e51695c6581329168eec61e2dbb7e).
 - Referencia técnica: [GitHub #1325](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1325).
-- Base exacta: `origin/nightly@e6d7d2b5e58f55b82c0ed2f6a79667476d897086`.
+- Base inicial: `origin/nightly@e6d7d2b5e58f55b82c0ed2f6a79667476d897086`; base actual incorporada: `origin/nightly@8b25d076ea9a6ba6be8dc3065bcde978b6d24f07` en `5fc8fff8dd253ab042e51dbe263bf6ab4e4b983e`.
 - Alcance: módulo Go principal, workflows activos, política de calidad y roadmap. Wails permanece en beta.24. Sin cambios del helper nativo publicado ni de las rutas Docker alternativas.
 
 ## Revisión previa del plan
@@ -80,3 +80,9 @@ Los 20 hallazgos añadidos son el mismo `SA4023` en `cmd/vantare-admin/main.go`,
 - `quality-check (ratchet)` terminó en `REVIEW_REQUIRED` por el cambio de workflows, manifiesto, test y baselines. La revisión independiente se completó; el job continúa registrado como fallo de política previsto.
 - La ruta Docker alternativa usa Garble v0.16.0 y compila `.` desde una raíz sin archivos Go; no forma parte del gate Windows ordinario y este host no dispone de Docker. El helper de telemetría que se empaqueta procede de una build aprobada con manifiesto/hash fijados; no se reconstruye aquí.
 - `release.yml` exige fuente perteneciente a Nightly o Testers y puede publicar artefactos; no se disparará desde esta rama de issue. Sus pins y la ruta compartida de build se comprobarán sin promover canales.
+
+## Actualización a Nightly vigente y rendimiento · 23-09-2026
+
+Por petición de Isaac, el PR #1327 incorporó `nightly@8b25d076` mediante el merge `5fc8fff8`. El único conflicto fue `docs/roadmap/roadmap.json`, un artefacto generado; se regeneró con `--ref origin/nightly` y su `--check` pasó. La rama está actualizada con esa base. En el [run del SHA combinado](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/35847190898), promoción/roadmap, suite Go y frontend, gate visual y build Wails en Windows terminaron **SUCCESS**. [Quality](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/35847191220/job/107136083019) repitió **FAILURE / REVIEW_REQUIRED** por las diez rutas de política modificadas, con NEW=0, MOVED=0 y una resolución en knip. GitGuardian terminó SUCCESS.
+
+El [análisis de rendimiento previo a integrar](isa-1325-go-127-performance.md) compara el mismo código combinado con Go 1.25.0 y 1.27.1 en Windows. El microbenchmark de `WriteBatch` de overlay con demanda registrada, sin entrega al frontend, empeoró un **39,1 % en tiempo** y **34,8 % en bytes asignados**; diez de diez pares fueron más lentos. La proyección pura de 104 vehículos mejoró un 14,4 %, mientras que JSON canónico de 44 vehículos empeoró un 51,6 %. Una segunda comparación Windows del mismo árbol con `GOEXPERIMENT=nojsonv2` recuperó un 30,5 % de tiempo y 25,6 % de bytes en `WriteBatch`; pasaron los tests focales de overlay y aplicación. El opt-out temporal se incorporó a las builds Windows canónicas y a los gates de producto/release con comprobación del metadato del ejecutable. El PR permanece en borrador hasta que su pipeline completo valide esta configuración.

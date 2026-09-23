@@ -69,6 +69,8 @@ permissions:
 
 env:
   GO_VERSION: "1.27.1"
+  # Temporary performance safeguard for Go 1.27 overlay JSON on Windows.
+  GOEXPERIMENT: nojsonv2
   POWERSHELL_VERSION: "7.6.5"
   WAILS_VERSION: "v3.0.0-beta.24"
   NODE_VERSION: "22"
@@ -375,6 +377,10 @@ jobs:
           wails3 task release:clean
           wails3 task release:artifacts
           wails3 task release:verify
+          $buildInfo = go version -m bin/vantare.exe
+          if ($LASTEXITCODE -ne 0 -or -not ($buildInfo -match 'GOEXPERIMENT=nojsonv2')) {
+            throw "Release executable was not built with GOEXPERIMENT=nojsonv2"
+          }
 
       - name: Verify artifact set
         run: |

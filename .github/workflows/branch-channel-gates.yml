@@ -111,6 +111,10 @@ jobs:
     name: Validate Vantare blocking gates
     needs: policy
     runs-on: windows-latest
+    env:
+      # Go 1.27 JSON v2 regresses the overlay publication path on Windows.
+      # Revisit after a measured encoder change; this opt-out is temporary.
+      GOEXPERIMENT: nojsonv2
     defaults:
       run:
         shell: powershell
@@ -223,6 +227,13 @@ jobs:
         env:
           VANTARE_BUILD_CHANNEL: nightly
         run: wails3 task windows:build
+
+      - name: Verify Windows JSON backend
+        run: |
+          $buildInfo = go version -m bin/vantare.exe
+          if ($LASTEXITCODE -ne 0 -or -not ($buildInfo -match 'GOEXPERIMENT=nojsonv2')) {
+            throw "Wails executable was not built with GOEXPERIMENT=nojsonv2"
+          }
 
       - name: Overlay Studio visual baselines (human-channel advisory)
         continue-on-error: true

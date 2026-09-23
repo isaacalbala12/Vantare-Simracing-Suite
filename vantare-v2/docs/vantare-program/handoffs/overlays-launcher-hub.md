@@ -3147,3 +3147,10 @@ Isaac conserva el diseño y pide tamaño editable, récord personal y de su clas
 Evidencia actual: 470 archivos frontend PASS, 3832 pruebas y 2 omitidas; build/TypeScript y lint PASS. Quality PASS, NEW=0, MOVED=0, policy_changed=false. Prueba visual en navegador de 280×72 y 480×104, avisos personal/clase, prioridad de clase, reproducción automática en Studio y expiración sin nueva muestra. El aviso de fetch cancelado en teardown de happy-dom no causa fallo de suite (exit 0). Sin cambios Go; conserva la evidencia focal y los límites globales de macOS de la entrega anterior. Roadmap actualiza únicamente milestones:functional-widget-design y se regenera desde e6d7d2b5.
 
 Siguiente paso: aceptación visual de Isaac y validación independiente/LMU/Windows/OBS antes de autorizar integración. Asana permanece En curso y sin completar; no hay merge, promoción ni release.
+
+
+### 2026-09-23 · ISA-1328 · aceptación e integración inicial autorizada
+
+Isaac revisa los ajustes de tamaño, avisos personal/clase y animaciones en Workshop, los acepta y pide expresamente integrar la [PR #1330](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1330) en `nightly`. El código aceptado es `8411ecdb692e1444c110719c5834a2b46300c2fb`; este cierre solo registra la aceptación en documentación, roadmap y fragmento, sin cambiar producto.
+
+Se conserva la evidencia de 3832 pruebas frontend PASS (2 omitidas), build/TypeScript, lint y quality PASS. La incorporación se hace por PR normal con los controles remotos vigentes; el SHA de integración y su pertenencia a `origin/nightly` se registrarán y releerán en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218762634127535). No se declara un merge antes de verificarlo. No hay revisión externa registrada; la aceptación visual es de Isaac. La validación física LMU/Windows/OBS continúa en Nightly y no se presenta como ya superada. Esta autorización no incluye Testers, Master, una release o un anuncio público.

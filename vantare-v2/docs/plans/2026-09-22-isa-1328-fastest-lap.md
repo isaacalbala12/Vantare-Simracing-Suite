@@ -53,3 +53,8 @@ Implementados tamaño real fluido, controles Ancho/Alto visibles en Workshop, av
 Frontend completo PASS: 470 archivos, 3832 pruebas y 2 omitidas; build/TypeScript y lint PASS. Quality PASS, NEW=0, MOVED=0, policy_changed=false. Navegador: geometría mínima 280×72 y predeterminada 480×104, etiquetas personal/clase, prioridad única, caducidad sin nuevos datos, reproducción automática en Studio. La suite emite un aviso de fetch cancelado durante teardown de happy-dom; finaliza con código 0 y ninguna prueba fallida. Sin cambios Go respecto a la evidencia anterior.
 
 La misma PR draft #1330 y tarea Asana recogen esta revisión. Pendientes revisión independiente y validación física LMU/Windows/OBS; sin merge ni release.
+
+
+## Aceptación e integración inicial autorizada (23/09/2026)
+
+Isaac acepta el resultado visual y solicita expresamente integrar la PR #1330 en Nightly. Código aceptado: `8411ecdb692e1444c110719c5834a2b46300c2fb`. Solo se actualiza documentación para esta aceptación; la integración exige los controles remotos vigentes y verificación posterior del SHA en `origin/nightly`, registrada en Asana. Validación física LMU/Windows/OBS pendiente en el canal. No hay revisión externa registrada ni autorización de Testers/Master/release.

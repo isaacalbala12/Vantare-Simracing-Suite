@@ -279,10 +279,14 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Ecosystem
 - titulo.pt: Ecossistema
 - titulo.it: Ecosistema
-- resumen: Comunidad, planes de pago, multisim y analíticas reales cuando la base esté estable.
-- resumen.en: Community, paid plans, multisim and real analytics once the base is stable.
-- resumen.pt: Comunidade, planos pagos, multisim e analíticas reais quando a base estiver estável.
-- resumen.it: Community, piani a pagamento, multisim e analitiche reali quando la base è stabile.
+- resumen: Opiniones voluntarias, comunidad, planes de pago, multisim y analíticas reales cuando la base esté estable.
+- resumen.en: Voluntary feedback, community, paid plans, multisim and real analytics once the base is stable.
+- resumen.pt: Opiniões voluntárias, comunidade, planos pagos, multisim e analíticas reais quando a base estiver estável.
+- resumen.it: Opinioni volontarie, community, piani a pagamento, multisim e analitiche reali quando la base è stabile.
+- item: Opiniones dentro de la app con envío explícito, consulta y borrado propios
+- item.en: In-app feedback with explicit submission and personal review and deletion
+- item.pt: Opiniões na app com envio explícito, consulta e eliminação das próprias mensagens
+- item.it: Opinioni nell'app con invio esplicito, consultazione ed eliminazione dei propri messaggi
 - item: Comunidad de overlays
 - item.en: Overlay community
 - item.pt: Comunidade de overlays

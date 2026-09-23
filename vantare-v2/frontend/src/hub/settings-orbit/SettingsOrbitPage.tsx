@@ -79,6 +79,7 @@ import type { PreparedDiagnostics } from "../settings/diagnostics/contracts";
 import { DowngradeModal } from "../settings/DowngradeModal";
 import { ScheduleImportSection } from "./ScheduleImportSection";
 import { CurationPrivacySection } from "./CurationPrivacySection";
+import { ProductFeedbackSection } from "./ProductFeedbackSection";
 import {
   applyReduceMotion,
   conflictingHotkeys,
@@ -271,6 +272,7 @@ type AccessFeedback = "idle" | "checking" | "ok" | "none" | "error";
 function AccountSection() {
   const { t } = useI18n();
   const { result: license, clearLicense } = useLicense();
+  const updater = useUpdaterSettings();
   const access = useAccess();
   const [checking, setChecking] = useState<AccessFeedback>("idle");
   const [resetting, setResetting] = useState(false);
@@ -467,6 +469,11 @@ function AccountSection() {
           </div>
         </Surface>
       </div>
+
+      <ProductFeedbackSection
+        appVersion={updater.info?.currentVersion ?? null}
+        channel={updater.settings.channel ?? "unknown"}
+      />
 
       {checking !== "idle" && checking !== "checking" ? (
         <SubtleStatus tone={checking === "ok" ? "ok" : "attn"}>

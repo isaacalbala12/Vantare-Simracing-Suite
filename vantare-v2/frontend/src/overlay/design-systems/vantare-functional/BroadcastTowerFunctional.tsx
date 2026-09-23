@@ -16,19 +16,61 @@ const shortName = (name: string) => {
   return words.length > 1 ? `${words[0][0]}. ${words.slice(1).join(" ")}` : name;
 };
 
-export function BroadcastTowerFunctional({ model, layout, motion = "full", effects }: WidgetRendererProps<BroadcastTowerViewModel>) {
-  const rootRef = useRef<HTMLElement | null>(null);
+const gapText = (gap: number | undefined) =>
+  gap === undefined || gap === null ? "—" : `${gap > 0 ? "+" : ""}${gap.toFixed(3)}`;
+
+type DriverCardsProps = { model: BroadcastTowerViewModel; leaderLabel: string; duplicate?: boolean };
+
+function DriverCards({ model, leaderLabel, duplicate = false }: DriverCardsProps) {
+  return model.rows.slice(0, model.rowCount).map((row, index) => (
+    <div
+      key={row.id ?? `${row.place}-${row.number}-${index}`}
+      className="vf-bt-card"
+      data-player={row.isPlayer}
+      data-bt-row={duplicate ? undefined : row.id}
+      role={duplicate ? undefined : "listitem"}
+    >
+      <span className="vf-bt-cue" aria-hidden="true" />
+      <span className="vf-bt-place">{row.place}</span>
+      <span className="vf-bt-id">
+        <b className="vf-bt-name">{shortName(row.name)}</b>
+        <span className="vf-bt-sub">
+          {row.team !== "—" && <span className="vf-bt-class" data-class-accent={resolveFunctionalClassAccent(row.team)}>{classLabel(row.team)}</span>}
+          {row.number !== "—" && <span className="vf-bt-number">#{row.number}</span>}
+        </span>
+      </span>
+      <span className="vf-bt-gap">{row.place === 1 ? leaderLabel : gapText(row.gap)}</span>
+    </div>
+  ));
+}
+
+function DiscreteDriverStrip({ model, leaderLabel, layout, motion }: DriverCardsProps & Pick<WidgetRendererProps, "layout"> & { motion: "full" | "reduced" | "minimal" }) {
+  const rootRef = useRef<HTMLDivElement | null>(null);
   useBroadcastTowerMotion(model, motion, rootRef, { w: layout?.w, h: layout?.h });
+  return <div className="vf-bt-driver-strip" ref={rootRef}>
+    <div className="vf-bt-stream" role="list"><DriverCards model={model} leaderLabel={leaderLabel} /></div>
+  </div>;
+}
+
+function CarouselDriverStrip({ model, leaderLabel, motion }: DriverCardsProps & { motion: "full" | "reduced" | "minimal" }) {
+  return <div className="vf-bt-driver-strip vf-bt-carousel">
+    <div className="vf-bt-carousel-rail">
+      <div className="vf-bt-carousel-group" role="list"><DriverCards model={model} leaderLabel={leaderLabel} /></div>
+      {motion === "full" && <div className="vf-bt-carousel-group" data-bt-carousel-copy aria-hidden="true" inert>
+        <DriverCards model={model} leaderLabel={leaderLabel} duplicate />
+      </div>}
+    </div>
+  </div>;
+}
+
+export function BroadcastTowerFunctional({ model, settings, layout, motion = "full", effects }: WidgetRendererProps<BroadcastTowerViewModel>) {
   const { locale } = useI18n();
   const labels = functionalLabels[locale];
   const sessionLabel = useMemo(() => sessionDisplayLabel(locale, model.sessionLabel), [locale, model.sessionLabel]);
-  const gapText = (gap: number | undefined) =>
-    gap === undefined || gap === null ? "—" : `${gap > 0 ? "+" : ""}${gap.toFixed(3)}`;
   const statusText = model.status !== "ready" ? labels[model.status] : undefined;
 
   return (
     <section
-      ref={rootRef}
       className="vf-broadcast-tower"
       data-widget-system="vantare-functional"
       data-widget-renderer="broadcast-tower"
@@ -46,29 +88,10 @@ export function BroadcastTowerFunctional({ model, layout, motion = "full", effec
       </div>
       {statusText ? (
         <p className="vf-status" role="status">{statusText}</p>
+      ) : settings.driverCarousel === true ? (
+        <CarouselDriverStrip model={model} leaderLabel={labels.leader} motion={motion} />
       ) : (
-        <div className="vf-bt-stream" role="list">
-          {model.rows.slice(0, model.rowCount).map((row, index) => (
-            <div
-              key={row.id ?? `${row.place}-${row.number}-${index}`}
-              className="vf-bt-card"
-              data-player={row.isPlayer}
-              data-bt-row={row.id}
-              role="listitem"
-            >
-              <span className="vf-bt-cue" aria-hidden="true" />
-              <span className="vf-bt-place">{row.place}</span>
-              <span className="vf-bt-id">
-                <b className="vf-bt-name">{shortName(row.name)}</b>
-                <span className="vf-bt-sub">
-                  {row.team !== "—" && <span className="vf-bt-class" data-class-accent={resolveFunctionalClassAccent(row.team)}>{classLabel(row.team)}</span>}
-                  {row.number !== "—" && <span className="vf-bt-number">#{row.number}</span>}
-                </span>
-              </span>
-              <span className="vf-bt-gap">{row.place === 1 ? labels.leader : gapText(row.gap)}</span>
-            </div>
-          ))}
-        </div>
+        <DiscreteDriverStrip model={model} leaderLabel={labels.leader} motion={motion} layout={layout} />
       )}
       {(model.showWeather || model.showSof) && (
         <aside className="vf-bt-side">

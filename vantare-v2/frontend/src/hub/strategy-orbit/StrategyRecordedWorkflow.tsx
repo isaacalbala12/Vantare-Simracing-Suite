@@ -79,6 +79,11 @@ export function StrategyRecordedWorkflow({ eventId, repositoryVersion, repositor
   };
   const error = flow.error || flow.proposalError ? t("strategy.workspace.operationFailed") : undefined;
   const sessionLabels = Object.fromEntries((flow.sessions.candidates ?? []).filter(item => item.displayName).map(item => [item.id, item.displayName!]));
+  const sourceLabels: Record<string, string> = {};
+  for (const session of flow.sessions.sessions) {
+    const label = sessionLabels[session.candidateId];
+    if (label) sourceLabels[session.opened.sessionId] = label;
+  }
   const revisionKey = `${flow.sessions.corrections.editor?.session.opened.sessionId ?? "none"}:${flow.sessions.corrections.editor?.current.revision.revisionId ?? "none"}`;
   // Inspection navigates only on acceptance, never on load success: a failed
   // read keeps an empty editor with its cause instead of previous data.
@@ -119,7 +124,7 @@ export function StrategyRecordedWorkflow({ eventId, repositoryVersion, repositor
         <div className="strategy-recorded-editor-workspace"><StrategyRecordedRaceContext draft={flow.draft} sessions={flow.sessions.sessions} sessionLabels={sessionLabels} busy={flow.busy || formPending || strategyBusy} onSources={() => setLibraryOpen(true)} t={t} /><div className="strategy-recorded-editor-panels">
         <div className="strategy-recorded-editor-panel" id="recorded-panel-race" role="tabpanel" aria-labelledby="recorded-tab-race" hidden={tab !== "race"}><StrategyRecordedOverview draft={flow.draft} calculation={calculation.state} dirty={flow.dirty} busy={flow.busy || formPending || strategyBusy} error={error} onEdit={edit} onPlan={() => { setPlanVisited(true); setTab("plan"); }} onSave={() => void flow.save()} t={t} /></div>
         {dataVisited ? <div className="strategy-recorded-editor-panel" id="recorded-panel-data" role="tabpanel" aria-labelledby="recorded-tab-data" hidden={tab !== "data"}><StrategyRecordedData key={revisionKey} controller={flow.sessions.corrections} sessionLabels={sessionLabels} sessions={flow.sessions.sessions} selectedRevisions={flow.draft.sessions} catalog={catalog} busy={flow.busy || historyPending || strategyBusy} onSources={() => setLibraryOpen(true)} onPendingChange={setDataPending} view={dataView} onViewChange={setDataView} t={t} /></div> : null}
-        <div className="strategy-recorded-editor-panel" id="recorded-panel-plan" role="tabpanel" aria-labelledby="recorded-tab-plan" hidden={tab !== "plan"}><StrategyRecordedPlan draft={flow.draft} state={calculation.state} acceptance={acceptance} locked={flow.busy || formPending || repositoryVersion === undefined} onChange={flow.change} onCalculate={() => void calculation.calculate()} onRecalculateStints={constraints => void calculation.recalculateStints(constraints)} onRecalculatePits={constraints => void calculation.recalculatePits(constraints)} onCancel={calculation.cancel} t={t} /></div>
+        <div className="strategy-recorded-editor-panel" id="recorded-panel-plan" role="tabpanel" aria-labelledby="recorded-tab-plan" hidden={tab !== "plan"}><StrategyRecordedPlan draft={flow.draft} state={calculation.state} acceptance={acceptance} sourceLabels={sourceLabels} locked={flow.busy || formPending || repositoryVersion === undefined} onChange={flow.change} onCalculate={() => void calculation.calculate()} onRecalculateStints={constraints => void calculation.recalculateStints(constraints)} onRecalculatePits={constraints => void calculation.recalculatePits(constraints)} onCancel={calculation.cancel} t={t} /></div>
         {historyVisited ? <div className="strategy-recorded-editor-panel" id="recorded-panel-revisions" role="tabpanel" aria-labelledby="recorded-tab-revisions" hidden={tab !== "revisions"}><StrategyRecordedRevisions key={revisionKey} controller={flow.sessions.corrections} sessions={flow.sessions.sessions} selectedRevisions={flow.draft.sessions} sessionLabels={sessionLabels} busy={flow.busy || dataPending || strategyBusy} configurationSaved={Boolean(flow.stored)} configurationDirty={flow.dirty} onSources={() => setLibraryOpen(true)} onPendingChange={setHistoryPending} t={t} /></div> : null}
         </div></div>
       </>}

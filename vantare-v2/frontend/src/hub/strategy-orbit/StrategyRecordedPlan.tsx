@@ -78,10 +78,11 @@ function PlanResult({ plan, draft, t }: { readonly plan: StrategyOrbitCalculated
   </>;
 }
 
-export function StrategyRecordedPlan({ draft, state, acceptance, locked, onChange, onCalculate, onRecalculateStints, onRecalculatePits, onCancel, t }: {
+export function StrategyRecordedPlan({ draft, state, acceptance, sourceLabels = {}, locked, onChange, onCalculate, onRecalculateStints, onRecalculatePits, onCancel, t }: {
   readonly draft: RecordedWizardDraft;
   readonly state: RecordedCalculationState;
   readonly acceptance: RecordedAcceptanceController;
+  readonly sourceLabels?: Readonly<Record<string, string>>;
   readonly locked: boolean;
   readonly onChange: (draft: RecordedWizardDraft) => void;
   readonly onCalculate: () => void;
@@ -125,7 +126,7 @@ export function StrategyRecordedPlan({ draft, state, acceptance, locked, onChang
   const backToPlan = editor !== "plan" ? <div className="strategy-recorded-plan__editor-head"><Button variant="ghost" disabled={!!plan && (stintDirty || pitDirty || locked || accepting)} onClick={() => { setEditor("plan"); setStintDirty(false); setPitDirty(false); }}>← {t("strategy.data.tab.plan")}</Button></div> : null;
   const planWorkspace = plan && state.status === "success" ? <div className="strategy-recorded-plan__workspace">
     <div className="strategy-recorded-plan__work"><PlanResult plan={plan} draft={draft} t={t} />
-      <section className="strategy-recorded-plan__sources"><h3>{t("strategy.plan.sources")}</h3><ul>{state.input.planningInputs?.projection?.sourceRevisions?.map(ref => <li key={ref.sessionId}><strong>{ref.sessionId}</strong><code>{ref.revisionId.slice(0, 12)}</code></li>)}</ul></section>
+      <section className="strategy-recorded-plan__sources"><h3>{t("strategy.plan.sources")}</h3><ul>{state.input.planningInputs?.projection?.sourceRevisions?.map(ref => <li key={ref.sessionId}><strong>{sourceLabels[ref.sessionId] || t("strategy.recorded.unnamed")}</strong><code>{ref.revisionId.slice(0, 12)}</code></li>)}</ul></section>
     </div>
     <aside className="strategy-recorded-plan__inspector" aria-label={t(displayTitle)}>
       <header><span>{t("strategy.data.tab.plan")}</span><h3>{t(displayTitle)}</h3></header>

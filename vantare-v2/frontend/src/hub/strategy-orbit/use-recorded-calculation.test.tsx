@@ -196,11 +196,13 @@ it("shows the exact calculated plan and accepts only through the acceptance cont
     ],
     stopDetails: [{ index: 0, lap: 2, fuelInLiters: 1, fuelOutLiters: 5, pitLossSeconds: 10, pitTransitSeconds: 6, pitServiceSeconds: 4, pitOverlapSeconds: 0, pitBreakdownAvailable: true }],
   };
-  const view = render(<StrategyRecordedPlan acceptance={acceptance} draft={draft} state={{ status: "success", input, result: { plans: { "recorded-main": plan }, comparisons: {} } }} locked={false} onChange={vi.fn()} onCalculate={vi.fn()} onRecalculateStints={onRecalculate} onRecalculatePits={onRecalculatePits} onCancel={vi.fn()} t={key => key} />);
+  const view = render(<StrategyRecordedPlan acceptance={acceptance} draft={draft} state={{ status: "success", input, result: { plans: { "recorded-main": plan }, comparisons: {} } }} sourceLabels={{ [revision.sessionId]: "Imola_R.duckdb" }} locked={false} onChange={vi.fn()} onCalculate={vi.fn()} onRecalculateStints={onRecalculate} onRecalculatePits={onRecalculatePits} onCancel={vi.fn()} t={key => key} />);
 
   expect(screen.getByText("strategy.calculation.optimal")).toBeTruthy();
   expect(screen.getAllByText("strategy.plan.stop 1")).toHaveLength(1);
-  expect(screen.getByText(revision.sessionId)).toBeTruthy();
+  expect(screen.getByText("Imola_R.duckdb")).toBeTruthy();
+  expect(screen.queryByText(revision.sessionId)).toBeNull();
+  expect(screen.getByText(revision.revisionId.slice(0, 12))).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "strategy.plan.accept" }));
   expect(accept).toHaveBeenCalledOnce();
 
@@ -230,6 +232,7 @@ it("shows the exact calculated plan and accepts only through the acceptance cont
 
   const constrainedInput = { ...input, activeVariantId: "recorded-stint-edit", variants: [...input.variants, { ...input.variants[0], id: "recorded-stint-edit" }] };
   view.rerender(<StrategyRecordedPlan acceptance={acceptance} draft={draft} state={{ status: "success", input: constrainedInput, result: { plans: { "recorded-main": plan, "recorded-stint-edit": { ...plan, total: 375 } }, comparisons: { "recorded-main": { totalDeltaSeconds: -5 } as never } } }} locked={false} onChange={vi.fn()} onCalculate={vi.fn()} onRecalculateStints={onRecalculate} onRecalculatePits={onRecalculatePits} onCancel={vi.fn()} t={key => key} />);
+  expect(screen.getByText("strategy.recorded.unnamed")).toBeTruthy();
   expect(screen.getByRole("list", { name: "strategy.workspace.plan" })).toBeTruthy();
   expect(screen.getByText("6:15")).toBeTruthy();
   expect(screen.getByText("+5 s")).toBeTruthy();

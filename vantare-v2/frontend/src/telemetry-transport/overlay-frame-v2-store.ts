@@ -22,6 +22,8 @@ export const OVERLAY_V2_PROJECTION_ROUTE = "/telemetry/overlay-v2/projection";
 // 64 KiB sigue siendo el objetivo de rendimiento representativo; el
 // transporte general conserva sus 256 KiB en telemetry-transport/contracts.
 export const OVERLAY_V2_MAX_PAYLOAD_BYTES = 72 * 1024;
+const UTF8_ENCODER = new TextEncoder();
+const NON_ASCII_TEXT = /\P{ASCII}/u;
 
 export type OverlayFrameV2State = Readonly<{
   revision: number;
@@ -875,7 +877,11 @@ type JSONObject = Record<string, unknown>;
 function cloneJSONInput(input: unknown): JSONObject {
   try {
     const text = typeof input === "string" ? input : JSON.stringify(input);
-    if (new TextEncoder().encode(text).byteLength > OVERLAY_V2_MAX_PAYLOAD_BYTES) invalid("size");
+    if (
+      typeof text === "string" &&
+      (text.length > OVERLAY_V2_MAX_PAYLOAD_BYTES ||
+        (NON_ASCII_TEXT.test(text) && UTF8_ENCODER.encode(text).byteLength > OVERLAY_V2_MAX_PAYLOAD_BYTES))
+    ) invalid("size");
     const value = JSON.parse(text) as unknown;
     if (!plainObject(value)) invalid("update");
     return value;

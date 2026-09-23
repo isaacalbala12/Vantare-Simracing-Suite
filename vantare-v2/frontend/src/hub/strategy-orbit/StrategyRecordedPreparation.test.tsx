@@ -36,18 +36,18 @@ it("keeps combination folded while the race desk shows references and saves the 
   expect(screen.getByRole("spinbutton", { name: "strategy.journey.fuel.capacity" })).toBeTruthy();
 });
 
-it("labels only the selected exact revision and leaves telemetry reference values pending", () => {
+it("labels a pinned revision from the same open source even when its head has advanced", () => {
   const input = props();
   const selected = { sessionId: "base-a", revisionId: "revision-a", baseDigest: "a".repeat(64), snapshotId: "b".repeat(64) };
   const draft = { ...input.draft, mode: "automatic" as const, combination, sessions: [selected] };
-  const sessions = [{ candidateId: "candidate", revision: { sessionId: "base-a", revisionId: "revision-b" } }];
+  const sessions = [{ candidateId: "candidate", revision: { sessionId: "base-a", baseDigest: selected.baseDigest, revisionId: "revision-b" } }];
   const view = render(<StrategyRecordedPreparation {...input} draft={draft} sessions={sessions} sessionLabels={{ candidate: "actual-session.duckdb" }} />);
-  expect(screen.queryByText("actual-session.duckdb")).toBeNull();
+  expect(screen.getAllByText("actual-session.duckdb")).toHaveLength(2);
   expect(screen.getByRole("heading", { name: "strategy.entry.fromLapsRace" })).toBeTruthy();
   const references = screen.getByRole("region", { name: "strategy.entry.referenceTitle" });
   expect(within(references).getAllByText("—")).toHaveLength(2);
-  view.rerender(<StrategyRecordedPreparation {...input} draft={draft} sessions={[{ ...sessions[0], revision: { sessionId: "base-a", revisionId: "revision-a" } }]} sessionLabels={{ candidate: "actual-session.duckdb" }} />);
-  expect(screen.getAllByText("actual-session.duckdb")).toHaveLength(2);
+  view.rerender(<StrategyRecordedPreparation {...input} draft={draft} sessions={[{ ...sessions[0], revision: { sessionId: "base-a", baseDigest: "d".repeat(64), revisionId: "revision-a" } }]} sessionLabels={{ candidate: "actual-session.duckdb" }} />);
+  expect(screen.queryByText("actual-session.duckdb")).toBeNull();
   expect(within(references).getAllByText("—")).toHaveLength(2);
 });
 

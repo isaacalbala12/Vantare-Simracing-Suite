@@ -22,7 +22,7 @@ function setup(version: number | undefined = 7, strict = false) {
   const onExit = vi.fn();
   const drafts: { sessions: number; mode: string }[] = [];
   vi.mocked(openRecordedSession).mockResolvedValue(session);
-  const workflow = <StrategyRecordedWorkflow eventId="event" repositoryVersion={version} catalog={[]} catalogState="available" calendar={null} application={application} analysis={analysis} onExit={onExit} onCleanupError={vi.fn()} navigation={({ requestExit, draft }) => { drafts.push({ sessions: draft.sessions.length, mode: draft.mode }); return <button type="button" onClick={requestExit}>Leave Strategy</button>; }} t={key => key} />;
+  const workflow = <StrategyRecordedWorkflow eventId="event" repositoryVersion={version} catalog={[]} catalogState="available" calendar={null} application={application} analysis={analysis} onExit={onExit} onCleanupError={vi.fn()} navigation={({ requestExit, draft }) => { drafts.push({ sessions: draft.sessions.length, mode: draft.mode }); return <button type="button" onClick={() => requestExit()}>Leave Strategy</button>; }} t={key => key} />;
   return { ...render(strict ? <StrictMode>{workflow}</StrictMode> : workflow), execute, close, discover, onExit, drafts };
 }
 it("discovers recent candidates after StrictMode replays the mount effect", async () => {
@@ -69,7 +69,7 @@ it("opens and adopts a chosen recent session in one action, without persisting e
   fireEvent.click(await screen.findByRole("button", { name: /strategy.entry.useSession/ }));
   await screen.findByRole("heading", { name: "strategy.entry.yourRace" });
   expect(screen.queryByRole("button", { name: /strategy.journey.next/ })).toBeNull();
-  expect(execute).not.toHaveBeenCalled();
+  expect(execute.mock.calls.some(([command]) => command.operation !== "get_revision_planning_inputs")).toBe(false);
   expect(screen.getByText("strategy.entry.telemetryBase")).toBeTruthy();
   expect(getHubSuspendBlockerReasons()).toContain("strategy.workspace.unsaved");
   expect(close).not.toHaveBeenCalled();
@@ -137,6 +137,25 @@ async function inspectPartial() {
   await screen.findByRole("button", { name: "strategy.laps.advanced" });
   return f;
 }
+it("keeps the verified race context across tabs and opens the existing Plan", async () => {
+  await inspectPartial();
+  expect(screen.getByRole("complementary", { name: "strategy.entry.circuitAndSource" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("tab", { name: "strategy.data.tab.race" }));
+  fireEvent.click(screen.getByRole("button", { name: "strategy.entry.openPlan" }));
+  expect(screen.getByRole("tab", { name: "strategy.data.tab.plan" }).getAttribute("aria-selected")).toBe("true");
+  expect(screen.getByRole("complementary", { name: "strategy.entry.circuitAndSource" })).toBeTruthy();
+  expect(document.getElementById("recorded-panel-race")?.hidden).toBe(true);
+});
+it.each(["combination", "rules", "drivers"] as const)("opens %s directly when editing from the race desk", async step => {
+  const f = await inspectPartial();
+  fireEvent.click(screen.getByRole("tab", { name: "strategy.data.tab.race" }));
+  fireEvent.click(screen.getByRole("button", { name: `strategy.workspace.edit ${step === "combination" ? "strategy.workspace.event" : `strategy.journey.step.${step}`}` }));
+  expect(screen.getByRole("region", { name: "strategy.entry.preparation" })).toBeTruthy();
+  if (step === "combination") expect(screen.getByRole("button", { name: /strategy.entry.changeCombination/, expanded: true })).toBeTruthy();
+  else if (step === "rules") expect(screen.getByRole("spinbutton", { name: "strategy.journey.fuel.capacity" })).toBeTruthy();
+  else expect(screen.getByRole("button", { name: /strategy.journey.driver.add/ })).toBeTruthy();
+  expect(f.drafts.at(-1)?.step).toBe("start");
+});
 async function applyScalarSample() {
   fireEvent.click(screen.getByRole("button", { name: "strategy.laps.advanced" }));
   fireEvent.change(await screen.findByLabelText("strategy.data.channel"), { target: { value: "fuel" } });
@@ -172,7 +191,7 @@ describe("recorded inspection journey", () => {
     expect(history.hidden).toBe(false);
     expect(within(history).getByText("strategy.workspace.notCalculated")).toBeTruthy();
     expect((screen.getByRole("button", { name: "strategy.history.reviewPinned" }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.backToWizard" }));
+    fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.preparation" }));
     await screen.findByRole("heading", { name: "strategy.entry.yourRace" });
     expect(f.drafts.at(-1)).toEqual({ step: "start", mode: "manual", sessions: 0, combination: undefined });
     expect(f.execute).not.toHaveBeenCalled();
@@ -186,8 +205,8 @@ describe("recorded inspection journey", () => {
     fireEvent.click(screen.getByRole("button", { name: "strategy.data.save" }));
     await screen.findByRole("button", { name: "strategy.data.resolve" });
     expect(f.save).toHaveBeenCalledOnce();
-    expect((screen.getByRole("button", { name: "strategy.recorded.backToWizard" }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.backToWizard" }));
+    expect((screen.getByRole("button", { name: "strategy.workspace.preparation" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.preparation" }));
     expect(screen.queryByRole("heading", { name: "strategy.entry.yourRace" })).toBeNull();
     fireEvent.click(screen.getByRole("tab", { name: "strategy.data.tab.race" }));
     fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.review" }));
@@ -207,8 +226,8 @@ describe("recorded inspection journey", () => {
     expect(f.save).toHaveBeenCalledOnce();
     expect(f.project).not.toHaveBeenCalled();
     expect(screen.queryByRole("alert")).toBeNull();
-    expect((screen.getByRole("button", { name: "strategy.recorded.backToWizard" }) as HTMLButtonElement).disabled).toBe(false);
-    fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.backToWizard" }));
+    expect((screen.getByRole("button", { name: "strategy.workspace.preparation" }) as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.preparation" }));
     await screen.findByRole("heading", { name: "strategy.entry.yourRace" });
     expect(f.execute).not.toHaveBeenCalled();
   });
@@ -218,19 +237,19 @@ describe("recorded inspection journey", () => {
     fireEvent.change(await screen.findByLabelText("strategy.data.channel"), { target: { value: "fuel" } });
     fireEvent.click(await screen.findByRole("button", { name: "strategy.data.sample 0" }));
     fireEvent.change(screen.getByLabelText("strategy.data.correctedValue"), { target: { value: "0" } });
-    expect((screen.getByRole("button", { name: "strategy.recorded.backToWizard" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "strategy.workspace.preparation" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.change(screen.getByLabelText("strategy.data.reason"), { target: { value: "Checked observation" } });
     fireEvent.click(screen.getByRole("button", { name: "strategy.data.apply" }));
-    expect((screen.getByRole("button", { name: "strategy.recorded.backToWizard" }) as HTMLButtonElement).disabled).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.backToWizard" }));
+    expect((screen.getByRole("button", { name: "strategy.workspace.preparation" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.preparation" }));
     expect(screen.queryByRole("heading", { name: "strategy.entry.yourRace" })).toBeNull();
     expect(f.execute).not.toHaveBeenCalled();
   });
   it("keeps arrow, home and end navigation with back outside the tablist", async () => {
     await inspectPartial();
     const tablist = screen.getByRole("tablist");
-    expect(within(tablist).queryByRole("button", { name: "strategy.recorded.backToWizard" })).toBeNull();
-    expect(screen.getByRole("button", { name: "strategy.recorded.backToWizard" })).toBeTruthy();
+    expect(within(tablist).queryByRole("button", { name: "strategy.workspace.preparation" })).toBeNull();
+    expect(screen.getByRole("button", { name: "strategy.workspace.preparation" })).toBeTruthy();
     fireEvent.click(screen.getByRole("tab", { name: "strategy.data.tab.race" }));
     const race = screen.getByRole("tab", { name: "strategy.data.tab.race" });
     fireEvent.keyDown(race, { key: "ArrowRight" });

@@ -1,13 +1,37 @@
 import { Icon, type IconName } from "../../ui/orbit/Icon";
 import { formatMessage } from "../orbit/format-message";
+import { StrategyRecordedCircuit } from "./StrategyRecordedCircuit";
+import type { RecordedSession } from "./strategy-recorded-session";
 import type { RecordedWizardDraft, RecordedWizardStep } from "./strategy-recorded-wizard";
+import type { RecordedCalculationState } from "./use-recorded-calculation";
+import { currentRecordedPlan } from "./strategy-recorded-result";
 import "./strategy-recorded-overview.css";
 
-/** Configuration summary only; selected sources are not evidence of a calculated plan. */
-export function StrategyRecordedOverview({ draft, dirty, busy, error, onEdit, onSources, onSave, hidePlan = false, t }: {
-  readonly draft: RecordedWizardDraft; readonly dirty: boolean; readonly busy: boolean; readonly error?: string;
-  readonly hidePlan?: boolean;
-  readonly onEdit: (step: RecordedWizardStep) => void; readonly onSources: () => void;
+/** The same verified context remains visible while switching editor tabs. */
+export function StrategyRecordedRaceContext({ draft, sessions, sessionLabels, busy, onSources, t }: {
+  readonly draft: RecordedWizardDraft; readonly sessions: readonly RecordedSession[];
+  readonly sessionLabels: Readonly<Record<string, string>>; readonly busy: boolean;
+  readonly onSources: () => void; readonly t: (key: string) => string;
+}) {
+  const pending = t("strategy.workspace.pending");
+  const selected = draft.sessions[0];
+  const opened = selected && sessions.find(item => item.revision.sessionId === selected.sessionId && item.revision.baseDigest === selected.baseDigest);
+  const sourceName = opened ? sessionLabels[opened.candidateId] : undefined;
+  const trackDetail = draft.combination?.trackLayout && draft.combination.trackLayout !== draft.combination.trackName
+    ? draft.combination.trackLayout : draft.combination?.simId.toUpperCase() || pending;
+  return <aside className="strategy-recorded-editor-context" aria-label={t("strategy.entry.circuitAndSource")}>
+    <header><h3>{t("strategy.entry.circuitAndSource")}</h3><Icon name="i-carreras" size={16} /></header>
+    <div className="strategy-recorded-overview__context-body"><span>{t("strategy.journey.track")}</span><strong>{draft.combination?.trackName || pending}</strong><small>{trackDetail}</small><StrategyRecordedCircuit combination={draft.combination} t={t} /></div>
+    <div className="strategy-recorded-overview__context-body"><span>{t("strategy.journey.car")}</span><strong>{draft.combination?.carName || pending}</strong><small>{draft.combination?.carClass || pending}</small></div>
+    <div className="strategy-recorded-overview__context-body"><span>{t("strategy.workspace.sources")}</span><strong>{sourceName || (draft.sessions.length ? t("strategy.entry.referenceOpenSources") : t("strategy.workspace.noSources"))}</strong><small>{draft.sessions.length > 1 ? formatMessage(t("strategy.workspace.selectedSources"), { count: draft.sessions.length }) : null}</small><button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy} onClick={onSources}>{t("strategy.workspace.review")}</button></div>
+  </aside>;
+}
+
+/** Compact race desk. Plan navigation uses the calculation already owned by Workflow. */
+export function StrategyRecordedOverview({ draft, calculation, dirty, busy, error, onEdit, onPlan, onSave, t }: {
+  readonly draft: RecordedWizardDraft; readonly calculation: RecordedCalculationState;
+  readonly dirty: boolean; readonly busy: boolean; readonly error?: string;
+  readonly onEdit: (step: RecordedWizardStep) => void; readonly onPlan: () => void;
   readonly onSave: () => void; readonly t: (key: string) => string;
 }) {
   const pending = t("strategy.workspace.pending");
@@ -15,40 +39,34 @@ export function StrategyRecordedOverview({ draft, dirty, busy, error, onEdit, on
     ? draft.race.durationMin === undefined ? pending : formatMessage(t("strategy.workspace.minutes"), { value: draft.race.durationMin })
     : draft.race.laps === undefined ? pending : formatMessage(t("strategy.workspace.laps"), { value: draft.race.laps });
   const rows: { step: RecordedWizardStep; icon: IconName; title: string; value: string; detail: string }[] = [
-    { step: "combination", icon: "i-carreras", title: t("strategy.workspace.event"), value: draft.calendar?.series.name ?? t("strategy.workspace.custom"), detail: [draft.combination?.trackName, draft.combination?.trackLayout].filter(Boolean).join(" · ") || pending },
+    { step: "combination", icon: "i-carreras", title: t("strategy.workspace.event"), value: draft.calendar?.series.name || draft.name || pending, detail: draft.calendar ? draft.name && draft.name !== draft.calendar.series.name ? draft.name : t("strategy.journey.calendar") : t("strategy.workspace.custom") },
     { step: "rules", icon: "i-ajustes", title: t("strategy.journey.step.rules"), value: race, detail: draft.tankLiters === undefined ? pending : formatMessage(t("strategy.workspace.capacity"), { value: draft.tankLiters }) },
-    { step: "drivers", icon: "i-cuenta", title: t("strategy.journey.step.drivers"), value: draft.drivers.map(driver => driver.name).join(" · ") || pending, detail: t("strategy.journey.driver.pacePending") },
+    { step: "drivers", icon: "i-cuenta", title: t("strategy.journey.step.drivers"), value: draft.drivers.map(driver => driver.name).filter(Boolean).join(" · ") || pending, detail: draft.drivers.length ? "" : t("strategy.journey.driver.pacePending") },
   ];
+  const planStatus = calculation.status === "success" ? currentRecordedPlan(calculation) ? "strategy.calculation.ready" : "strategy.calculation.missing"
+    : calculation.status === "partial" ? "strategy.calculation.partial"
+      : calculation.status === "error" ? "strategy.calculation.error"
+        : calculation.status === "cancelled" ? "strategy.calculation.cancelled"
+          : calculation.status === "idle" ? "strategy.workspace.notCalculated" : "strategy.calculation.loading";
+  const planHint = calculation.status === "partial" ? "strategy.calculation.partialHint"
+    : calculation.status === "error" ? "strategy.calculation.errorHint"
+      : calculation.status === "idle" ? "strategy.workspace.calculateHint" : "strategy.entry.openPlanHint";
   return <section className="strategy-recorded-overview" aria-labelledby="recorded-overview-title">
-    <header className="strategy-recorded-overview__heading">
-      <h2 id="recorded-overview-title">{formatMessage(t("strategy.workspace.title"), { name: draft.name || draft.combination?.trackName || pending })}</h2>
-      <p>{t("strategy.workspace.description")}</p>
-    </header>
-    <div className="strategy-recorded-overview__grid">
-      <div className="strategy-recorded-overview__configuration">
-        <div className="strategy-recorded-overview__rows">{rows.map(row => <article key={row.step}>
-          <Icon name={row.icon} size={24} /><span>{row.title}</span>
-          <div><strong>{row.value}</strong><small>{row.detail}</small></div>
-          <button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy} aria-label={`${t("strategy.workspace.edit")} ${row.title}`} onClick={() => onEdit(row.step)}>{t("strategy.workspace.edit")}</button>
-        </article>)}</div>
-        <section className="strategy-recorded-overview__sources" aria-label={t("strategy.workspace.sources")}>
-          <h3>{t("strategy.workspace.sources")}</h3>
-          <div className="strategy-recorded-overview__source-row"><Icon name="i-telemetria" size={32} />
-            <div><strong>{draft.sessions.length === 0 ? t("strategy.workspace.noSources") : formatMessage(t(draft.sessions.length === 1 ? "strategy.workspace.selectedSource" : "strategy.workspace.selectedSources"), { count: draft.sessions.length })}</strong><p>{t("strategy.workspace.sourceStatus")}</p></div>
-            <button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy} onClick={onSources}>{t("strategy.workspace.review")}</button>
-          </div>
-          <div className="strategy-recorded-overview__observations"><h3>{t("strategy.workspace.observations")}</h3><strong>{t("strategy.workspace.validationPending")}</strong><p>{t("strategy.workspace.validationHint")}</p></div>
-        </section>
-      </div>
-      {!hidePlan ? <section className="strategy-recorded-overview__plan" aria-label={t("strategy.workspace.plan")}>
-        <h3><Icon name="i-estrategia" size={25} />{t("strategy.workspace.plan")}</h3>
-        <div><div><strong>{t("strategy.workspace.notCalculated")}</strong><p>{t("strategy.workspace.calculateHint")}</p></div><button type="button" className="orbit-btn orbit-btn--primary" disabled>{t("strategy.workspace.calculate")}</button></div>
-      </section> : null}
+    <div className="strategy-recorded-overview__work">
+      <header className="strategy-recorded-overview__heading"><span>{t("strategy.data.tab.race")}</span><h2 id="recorded-overview-title">{draft.name || t("strategy.entry.yourRace")}</h2><p>{t("strategy.workspace.description")}</p></header>
+      <div className="strategy-recorded-overview__rows">{rows.map(row => <article key={row.step}>
+        <Icon name={row.icon} size={19} /><div><span>{row.title}</span><strong>{row.value}</strong><small>{row.detail}</small></div>
+        <button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy} aria-label={`${t("strategy.workspace.edit")} ${row.title}`} onClick={() => onEdit(row.step)}>{t("strategy.workspace.edit")}</button>
+      </article>)}</div>
     </div>
-    {error ? <p role="alert" className="strategy-recorded-wizard__errors">{error}</p> : null}
+    <aside className="strategy-recorded-overview__plan" aria-label={t("strategy.workspace.plan")}>
+      <header><Icon name="i-estrategia" size={20} /><h3>{t("strategy.workspace.plan")}</h3></header>
+      <div><span>{t("strategy.entry.planStatus")}</span><strong>{t(planStatus)}</strong><p>{t(planHint)}</p></div>
+      <button type="button" className="orbit-btn orbit-btn--primary" onClick={onPlan}>{t("strategy.entry.openPlan")}</button>
+    </aside>
+    {error ? <p role="alert" className="strategy-recorded-overview__error">{error}</p> : null}
     <footer className="strategy-recorded-overview__footer"><span>{t("strategy.recorded.originals")}</span>
       <p role="status">{t(busy ? "strategy.workspace.saving" : dirty ? "strategy.workspace.unsaved" : "strategy.workspace.saved")}</p>
-      <button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy} onClick={() => onEdit("start")}>{t("strategy.workspace.preparation")}</button>
       <button type="button" className="orbit-btn orbit-btn--primary" disabled={busy || !dirty} onClick={onSave}>{t("strategy.workspace.save")}</button>
     </footer>
   </section>;

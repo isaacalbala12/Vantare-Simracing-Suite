@@ -15,9 +15,10 @@ import "./strategy-recorded-preparation.css";
 
 type Props = {
   readonly draft: RecordedWizardDraft; readonly onChange: (draft: RecordedWizardDraft) => void;
+  readonly initialPanel?: "summary" | "combination" | "rules" | "drivers";
   readonly catalog: readonly RecordedCombination[]; readonly catalogState: "loading" | "available" | "unavailable";
   readonly calendar: Calendar | null; readonly onDiscover: () => void;
-  readonly sessions: readonly { revision: { sessionId: string; revisionId: string }; candidateId: string }[];
+  readonly sessions: readonly { revision: { sessionId: string; baseDigest: string; revisionId: string }; candidateId: string }[];
   readonly sessionLabels: Readonly<Record<string, string>>;
   readonly onOpenDraft: () => void; readonly onExit: () => void; readonly onSave: () => void;
   readonly busy: boolean; readonly dirty: boolean; readonly canOpenDraft: boolean; readonly openDraftHint: string;
@@ -38,19 +39,21 @@ const nonNegative = (value: number | undefined): value is number => value !== un
 type ClimateBucket = "dry" | "humid" | "wet";
 
 /** One working draft, with the existing combination, rules and driver editors. */
-export function StrategyRecordedPreparation({ draft, onChange, catalog, catalogState, calendar, sessions, sessionLabels, onDiscover, onOpenDraft, onExit, onSave, busy, dirty, canOpenDraft, openDraftHint, onRetryOpenDraft, references, onRetryReferences, error, t }: Props) {
+export function StrategyRecordedPreparation({ draft, onChange, initialPanel = "summary", catalog, catalogState, calendar, sessions, sessionLabels, onDiscover, onOpenDraft, onExit, onSave, busy, dirty, canOpenDraft, openDraftHint, onRetryOpenDraft, references, onRetryReferences, error, t }: Props) {
   const topbarSlot = useOrbitSlot(STRATEGY_TOPBAR_SLOT_ID);
-  const [inspector, setInspector] = useState<"summary" | "rules" | "drivers">("summary");
-  const [combinationOpen, setCombinationOpen] = useState(false);
+  const [inspector, setInspector] = useState<"summary" | "rules" | "drivers">(initialPanel === "rules" || initialPanel === "drivers" ? initialPanel : "summary");
+  const [combinationOpen, setCombinationOpen] = useState(initialPanel === "combination");
   const [errors, setErrors] = useState<string[]>([]);
   const [chosenPreviewBucket, setChosenPreviewBucket] = useState<ClimateBucket>();
   const manual = draft.mode === "manual";
   const selectedSessions = draft.sessions.map(ref => {
-    const opened = sessions.find(item => item.revision.sessionId === ref.sessionId && item.revision.revisionId === ref.revisionId);
+    const opened = sessions.find(item => item.revision.sessionId === ref.sessionId && item.revision.baseDigest === ref.baseDigest);
     return { id: ref.sessionId, name: opened ? sessionLabels[opened.candidateId] || t("strategy.recorded.unnamed") : t("strategy.recorded.unnamed") };
   });
   const sourceName = manual ? t("strategy.entry.manualBase") : selectedSessions[0]?.name ?? t("strategy.workspace.pending");
   const pending = t("strategy.workspace.pending");
+  const trackDetail = draft.combination?.trackLayout && draft.combination.trackLayout !== draft.combination.trackName
+    ? draft.combination.trackLayout : draft.combination?.simId.toUpperCase() || pending;
   const raceValue = draft.race.format === "timed" ? draft.race.durationMin : draft.race.laps;
   const rulesIncomplete = raceValue === undefined || draft.tankLiters === undefined || draft.pitLossSeconds === undefined;
   const change = (next: RecordedWizardDraft) => { setErrors([]); onChange(next); };
@@ -102,7 +105,7 @@ export function StrategyRecordedPreparation({ draft, onChange, catalog, catalogS
       <div className="strategy-preparation__board">
       <aside className="strategy-preparation__context" aria-label={t("strategy.entry.circuitAndSource")}>
         <header><strong>{t("strategy.entry.circuitAndSource")}</strong><Icon name="i-carreras" size={17} /></header>
-        <div className="strategy-preparation__circuit"><span className="strategy-preparation__micro">{t("strategy.journey.track")}</span><b>{draft.combination?.trackName || pending}</b><small>{draft.combination?.trackLayout || "Le Mans Ultimate"}</small><StrategyRecordedCircuit combination={draft.combination} t={t} /></div>
+        <div className="strategy-preparation__circuit"><span className="strategy-preparation__micro">{t("strategy.journey.track")}</span><b>{draft.combination?.trackName || pending}</b><small>{trackDetail}</small><StrategyRecordedCircuit combination={draft.combination} t={t} /></div>
         <div className="strategy-preparation__car"><span className="strategy-preparation__micro">{draft.combination?.carClass || t("strategy.journey.car")}</span><b>{draft.combination?.carName || pending}</b><button type="button" className="strategy-preparation__text-action" disabled={busy} aria-expanded={combinationOpen} aria-controls="strategy-preparation-combination" onClick={() => setCombinationOpen(value => !value)}>{t("strategy.entry.changeCombination")} ↗</button></div>
         {combinationOpen ? <div id="strategy-preparation-combination" className="strategy-preparation__combination-panel"><fieldset disabled={busy}><StrategyRecordedCombination draft={draft} catalog={catalog} catalogState={catalogState} calendar={calendar} onDiscover={onDiscover} t={t}
           onCombination={id => change(selectRecordedCombination(draft, id, catalog))}

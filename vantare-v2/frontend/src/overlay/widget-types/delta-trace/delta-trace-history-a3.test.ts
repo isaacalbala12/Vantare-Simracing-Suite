@@ -7,10 +7,10 @@ import { buildDeltaTraceViewModelV2 } from "./delta-trace-view-model-v2";
 
 function goldenFrame(): OverlayFrameV2 {
   const update = structuredClone(decodeOverlayUpdateV2(
-    readFileSync(
+    JSON.parse(readFileSync(
       path.resolve(process.cwd(), `../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json`),
       "utf8",
-    ),
+    )),
   )) as OverlayUpdateV2;
   if (!update.frame) throw new Error("golden frame missing");
   return update.frame;

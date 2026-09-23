@@ -49,7 +49,7 @@ export type RelativeViewModel = WidgetViewModelBase & {
 export function resolveRelativeCellValue(row: RelativeRowViewModel, metricId: string): string {
   switch (metricId) {
     case "position":
-      return String(row.position);
+      return Number.isInteger(row.position) && row.position > 0 ? String(row.position) : "—";
     case "class":
       return row.vehicleClass;
     case "carNumber":

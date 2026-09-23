@@ -18,7 +18,7 @@ const FRAME_HEIGHT = 420;
 function renderRuntimeFrame(status: "ready" | "missing", brake?: number): string {
   const telemetry = createTelemetryRateCoordinator();
   if (status === "ready") {
-    const update = structuredClone(decodeOverlayUpdateV2(goldenV2Raw)) as OverlayUpdateV2;
+    const update = structuredClone(decodeOverlayUpdateV2(JSON.parse(goldenV2Raw))) as OverlayUpdateV2;
     if (brake !== undefined) {
       update.frame!.player.brake.v = brake;
     }

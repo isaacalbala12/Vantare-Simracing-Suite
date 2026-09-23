@@ -13,10 +13,10 @@ import {
 
 function golden(vehicles: number): OverlayUpdateV2 {
   return structuredClone(decodeOverlayUpdateV2(
-    readFileSync(
+    JSON.parse(readFileSync(
       path.resolve(process.cwd(), `../internal/telemetry/projection/overlayv2/testdata/overlay_v2_${vehicles}.golden.json`),
       "utf8",
-    ),
+    )),
   )) as OverlayUpdateV2;
 }
 

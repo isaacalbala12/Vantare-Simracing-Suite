@@ -9,7 +9,7 @@ import golden44Raw from "../../../../internal/telemetry/projection/overlayv2/tes
 import golden104Raw from "../../../../internal/telemetry/projection/overlayv2/testdata/overlay_v2_104.golden.json?raw";
 
 const CANONICAL_UPDATES = [golden1Raw, golden20Raw, golden44Raw, golden104Raw]
-  .map((raw) => structuredClone(decodeOverlayUpdateV2(raw)) as OverlayUpdateV2);
+  .map((raw) => structuredClone(decodeOverlayUpdateV2(JSON.parse(raw))) as OverlayUpdateV2);
 
 describe("overlay-v2 view model registry", () => {
   it("registra exactamente los 19 widgets con VM v2 directa, sin catálogo", () => {

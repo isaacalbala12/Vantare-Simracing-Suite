@@ -132,7 +132,7 @@ function buildRaceDocument(): ProfileDocumentV3 {
 
 function renderOverlay(document: ProfileDocumentV3, revision = "rev-1") {
   const coordinator = createTestTelemetryCoordinator();
-  const update = structuredClone(decodeOverlayUpdateV2(goldenV2Raw)) as OverlayUpdateV2;
+  const update = structuredClone(decodeOverlayUpdateV2(JSON.parse(goldenV2Raw))) as OverlayUpdateV2;
   coordinator.setOverlayFrame(update.frame ?? undefined, update.source);
   render(
     <InPlaceEditOverlay

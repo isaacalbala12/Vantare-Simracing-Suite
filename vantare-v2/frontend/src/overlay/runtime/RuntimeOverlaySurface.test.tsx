@@ -50,7 +50,7 @@ let resizeObservers: ResizeObserverHarness[] = [];
 
 function createTelemetryRateCoordinator() {
   const coordinator = createBaseTelemetryRateCoordinator();
-  const update = structuredClone(decodeOverlayUpdateV2(goldenV2Raw)) as OverlayUpdateV2;
+  const update = structuredClone(decodeOverlayUpdateV2(JSON.parse(goldenV2Raw))) as OverlayUpdateV2;
   coordinator.setOverlayFrame(update.frame ?? undefined, update.source);
   return coordinator;
 }
@@ -137,7 +137,7 @@ function buildMaximumRedlineContent(): StandingsContent {
 describe("RuntimeOverlaySurface", () => {
   it.each(["desktop", "obs"] as const)("fits Functional modules and twenty rows from a legacy frame in %s", (renderMode) => {
     const coordinator = createBaseTelemetryRateCoordinator();
-    const update = structuredClone(decodeOverlayUpdateV2(goldenV2TwentyRaw)) as OverlayUpdateV2;
+    const update = structuredClone(decodeOverlayUpdateV2(JSON.parse(goldenV2TwentyRaw))) as OverlayUpdateV2;
     coordinator.setOverlayFrame(update.frame ?? undefined, update.source);
     const document = buildDocument();
     const widget = standingsDefinition.createDefault("functional");
@@ -163,7 +163,7 @@ describe("RuntimeOverlaySurface", () => {
   ] as const)(
     "shows the productive %s %s diagnostic with role=alert and a stable code",
     (renderMode, failure) => {
-      const update = structuredClone(decodeOverlayUpdateV2(goldenV2Raw)) as OverlayUpdateV2;
+      const update = structuredClone(decodeOverlayUpdateV2(JSON.parse(goldenV2Raw))) as OverlayUpdateV2;
       if (!update.frame) throw new Error("golden V2 frame missing");
       const coordinator = createBaseTelemetryRateCoordinator();
       coordinator.setOverlayFrame(
@@ -224,7 +224,7 @@ describe("RuntimeOverlaySurface", () => {
       measuredWidth = 1920;
       measuredHeight = 1080;
       const coordinator = createBaseTelemetryRateCoordinator();
-      const twentyCarUpdate = structuredClone(decodeOverlayUpdateV2(goldenV2TwentyRaw)) as OverlayUpdateV2;
+      const twentyCarUpdate = structuredClone(decodeOverlayUpdateV2(JSON.parse(goldenV2TwentyRaw))) as OverlayUpdateV2;
       coordinator.setOverlayFrame(twentyCarUpdate.frame ?? undefined, twentyCarUpdate.source);
       const document = buildDocument();
       const widget = standingsDefinition.createDefault(`standings-redline-${renderMode}-${persistedWidth}`);

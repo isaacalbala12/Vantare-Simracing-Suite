@@ -126,8 +126,8 @@ function withDelta(update: OverlayUpdateV2, delta: OverlayFrameV2["delta"]): Ove
 }
 
 function golden(vehicles: number): OverlayUpdateV2 {
-  return structuredClone(decodeOverlayUpdateV2(readFileSync(path.resolve(
+  return structuredClone(decodeOverlayUpdateV2(JSON.parse(readFileSync(path.resolve(
     process.cwd(),
     `../internal/telemetry/projection/overlayv2/testdata/overlay_v2_${vehicles}.golden.json`,
-  ), "utf8"))) as OverlayUpdateV2;
+  ), "utf8")))) as OverlayUpdateV2;
 }

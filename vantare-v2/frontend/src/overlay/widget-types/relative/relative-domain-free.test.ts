@@ -1,3 +1,4 @@
+import { resolveRelativeCellValue } from "./relative-view-model";
 import { decodeOverlayUpdateV2 } from "../../../telemetry-transport/overlay-frame-v2-store";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -15,6 +16,24 @@ import {
 const CONTENT = relativeDefinition.parseContent({});
 
 describe("relative v2 view model", () => {
+  it("keeps unknown rank unavailable and uses the declared temperature unit", () => {
+    const frame = goldenFrame(20);
+    frame.relative = frame.relative.map(row => ({ ...row, position: 0 }));
+    frame.weather = { ...frame.weather, ambientC: { q: "fresh", v: 0 }, trackC: { q: "fresh", v: 100 } };
+    frame.units = { ...frame.units, temperature: "fahrenheit" };
+    const model = buildRelativeViewModelV2(frame, { state: "live" }, CONTENT);
+    expect(model.playerBadgeText).toBeUndefined();
+    expect(model.ambientTempText).toBe("32°");
+    expect(model.trackTempText).toBe("212°");
+    expect(model.rows.length).toBeGreaterThan(0);
+    for (const row of model.rows) expect(resolveRelativeCellValue(row, "position")).toBe("—");
+    frame.units = { ...frame.units, temperature: "celsius" };
+    frame.weather.ambientC = { q: "missing" };
+    const celsius = buildRelativeViewModelV2(frame, { state: "live" }, CONTENT);
+    expect(celsius.ambientTempText).toBeUndefined();
+    expect(celsius.trackTempText).toBe("100°");
+  });
+
   it.each([20, 44, 104])(
     "renders the Go window closest-first for the %i-vehicle golden without re-selecting",
     (vehicles) => {
@@ -580,10 +599,10 @@ describe("relative v2 view model", () => {
 });
 
 function goldenFrame(vehicles: number): OverlayFrameV2 {
-  const update = structuredClone(decodeOverlayUpdateV2(readFileSync(path.resolve(
+  const update = structuredClone(decodeOverlayUpdateV2(JSON.parse(readFileSync(path.resolve(
     process.cwd(),
     `../internal/telemetry/projection/overlayv2/testdata/overlay_v2_${vehicles}.golden.json`,
-  ), "utf8"))) as OverlayUpdateV2;
+  ), "utf8")))) as OverlayUpdateV2;
   if (!update.frame) throw new Error("golden frame missing");
   return update.frame;
 }

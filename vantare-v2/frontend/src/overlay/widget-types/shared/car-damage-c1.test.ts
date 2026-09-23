@@ -67,13 +67,13 @@ describe("car damage C1: definitions sin passthrough V1 (rama B)", () => {
 
 function goldenFrame(vehicles: number): OverlayFrameV2 {
   const update = structuredClone(decodeOverlayUpdateV2(
-    readFileSync(
+    JSON.parse(readFileSync(
       path.resolve(
         process.cwd(),
         `../internal/telemetry/projection/overlayv2/testdata/overlay_v2_${vehicles}.golden.json`,
       ),
       "utf8",
-    ),
+    )),
   )) as OverlayUpdateV2;
   if (!update.frame) throw new Error("golden frame missing");
   return update.frame;

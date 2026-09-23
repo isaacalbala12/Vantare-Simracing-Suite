@@ -16,9 +16,9 @@ import { buildRelativeViewModelV2 } from "../../widget-types/relative/relative-v
 import { StandingsCrystal } from "./standings/StandingsCrystal";
 
 function goldenFrame(): OverlayFrameV2 {
-  return (structuredClone(decodeOverlayUpdateV2(readFileSync(resolve(process.cwd(),
+  return (structuredClone(decodeOverlayUpdateV2(JSON.parse(readFileSync(resolve(process.cwd(),
     "../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json"),
-  "utf8"))) as { frame: OverlayFrameV2 }).frame;
+  "utf8")))) as { frame: OverlayFrameV2 }).frame;
 }
 
 function productiveCss(): string {

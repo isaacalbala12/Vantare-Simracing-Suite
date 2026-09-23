@@ -10,7 +10,7 @@ import {
   type AuthoringV2Scenario,
 } from "./authoring-v2-scenario-fixture";
 
-const canonical = structuredClone(decodeOverlayUpdateV2(goldenV2Raw)) as OverlayUpdateV2;
+const canonical = structuredClone(decodeOverlayUpdateV2(JSON.parse(goldenV2Raw))) as OverlayUpdateV2;
 
 function scenario(overrides: Partial<AuthoringV2Scenario> = {}): AuthoringV2Scenario {
   return {

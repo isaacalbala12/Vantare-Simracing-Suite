@@ -12,7 +12,7 @@ import type { OverlayUpdateV2 } from "../../generated/telemetry";
 
 function createTelemetryRateCoordinator() {
   const coordinator = createBaseTelemetryRateCoordinator();
-  const update = structuredClone(decodeOverlayUpdateV2(goldenV2Raw)) as OverlayUpdateV2;
+  const update = structuredClone(decodeOverlayUpdateV2(JSON.parse(goldenV2Raw))) as OverlayUpdateV2;
   coordinator.setOverlayFrame(update.frame ?? undefined, update.source);
   return coordinator;
 }

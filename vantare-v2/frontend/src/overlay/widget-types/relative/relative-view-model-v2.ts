@@ -533,15 +533,16 @@ function buildRelativeMeta(frame: OverlayFrameV2): Pick<
   const track = displayedText(frame.session.track);
   if (track) meta.trackText = track.toUpperCase();
   const player = frame.relative.find((row) => row.side === "player");
-  if (player) {
+  if (player && Number.isInteger(player.position) && player.position > 0) {
     meta.playerBadgeText = `P${player.position}${player.classId ? ` · ${player.classId.toUpperCase()}` : ""}`;
   }
   const weather = frame.weather;
   const ambient = displayedNumber(weather?.ambientC);
   const trackC = displayedNumber(weather?.trackC);
   const wind = displayedNumber(weather?.windKph);
-  if (ambient !== undefined) meta.ambientTempText = `${Math.round(ambient)}°`;
-  if (trackC !== undefined) meta.trackTempText = `${Math.round(trackC)}°`;
+  const temperature = (celsius: number) => Math.round(frame.units.temperature === "fahrenheit" ? celsius * 9 / 5 + 32 : celsius);
+  if (ambient !== undefined) meta.ambientTempText = `${temperature(ambient)}°`;
+  if (trackC !== undefined) meta.trackTempText = `${temperature(trackC)}°`;
   if (wind !== undefined) meta.windText = `${Math.round(wind)} km/h`;
   return meta;
 }

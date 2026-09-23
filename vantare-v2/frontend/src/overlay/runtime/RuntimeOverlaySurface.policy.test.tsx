@@ -177,7 +177,7 @@ describe("RuntimeOverlaySurface widget policy", () => {
     "brand follows the native mode in %s: required free, opt-in paid",
     (renderMode) => {
       installViewportResizeObserver(1600, 900);
-      const update = structuredClone(decodeOverlayUpdateV2(goldenV2Raw)) as OverlayUpdateV2;
+      const update = structuredClone(decodeOverlayUpdateV2(JSON.parse(goldenV2Raw))) as OverlayUpdateV2;
       const coordinator = createTelemetryRateCoordinator();
       coordinator.setOverlayFrame(update.frame ?? undefined, update.source);
 

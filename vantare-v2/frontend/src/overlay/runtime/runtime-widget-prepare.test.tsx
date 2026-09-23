@@ -44,7 +44,7 @@ function createManualCoordinator() {
   };
 }
 
-const update = structuredClone(decodeOverlayUpdateV2(goldenV2Raw)) as OverlayUpdateV2;
+const update = structuredClone(decodeOverlayUpdateV2(JSON.parse(goldenV2Raw))) as OverlayUpdateV2;
 
 function publishFrame(coordinator: ReturnType<typeof createManualCoordinator>["coordinator"], sequence: number) {
   coordinator.setOverlayFrame(

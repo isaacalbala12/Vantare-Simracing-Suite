@@ -74,7 +74,7 @@ func buildRelativeWindow(final derive.FinalState, sameClass bool) []RelativeRowV
 }
 
 // resolvedRelativePositions is shared by the immediate and settled views so
-// a missing observed Position takes the same canonical ordered fallback.
+// a missing observed Position stays unknown (zero), never an invented rank.
 func resolvedRelativePositions(vehicles []core.VehicleState) map[string]int32 {
 	positions := make(map[string]int32, len(vehicles))
 	for index, current := range orderedVehicles(vehicles) {

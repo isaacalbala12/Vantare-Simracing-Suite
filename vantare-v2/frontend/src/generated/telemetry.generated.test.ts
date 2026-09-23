@@ -71,7 +71,7 @@ describe("generated telemetry contract", () => {
     "types the compact Go golden %s without a handwritten mirror",
     (relativePath) => {
       const update = structuredClone(decodeOverlayUpdateV2(
-        readFileSync(path.resolve(process.cwd(), relativePath), "utf8"),
+        JSON.parse(readFileSync(path.resolve(process.cwd(), relativePath), "utf8")),
       )) as OverlayUpdateV2;
       expect(update.frame?.contract).toBe(2);
       // F8 poblo standings; el golden ya no lo trae vacio. Lo que este test

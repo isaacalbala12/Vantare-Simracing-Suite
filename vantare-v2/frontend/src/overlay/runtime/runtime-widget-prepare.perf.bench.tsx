@@ -14,7 +14,7 @@ import type { OverlayUpdateV2 } from "../../generated/telemetry";
 // parseContent + migracion + merge + parseSettings (dos structuredClone por
 // widget y frame notificado). Host + renderer completos, no solo el merge.
 
-const update = structuredClone(decodeOverlayUpdateV2(goldenV2Raw)) as OverlayUpdateV2;
+const update = structuredClone(decodeOverlayUpdateV2(JSON.parse(goldenV2Raw))) as OverlayUpdateV2;
 
 function createManualCoordinator() {
   let onFrame: () => void = () => undefined;

@@ -9,7 +9,7 @@ import { resolveFunctionalFooterSlots } from "../../design-systems/vantare-funct
 import { functionalLabels } from "../../design-systems/vantare-functional/labels";
 const content = standingsDefinition.parseContent({classScope:"player-class",rowCount:30});
 function frame() {
- const f = structuredClone(decodeOverlayUpdateV2(readFileSync("../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json","utf8"))).frame as OverlayFrameV2;
+ const f = structuredClone(decodeOverlayUpdateV2(JSON.parse(readFileSync("../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json","utf8")))).frame as OverlayFrameV2;
  f.session.phase={q:"fresh",v:"race"};
  f.player.id="gt1";
  f.standings=[

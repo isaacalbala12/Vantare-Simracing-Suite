@@ -71,7 +71,7 @@ describe("car damage v2 view model", () => {
 
 function goldenFrame(vehicles: number): OverlayFrameV2 {
   const update = structuredClone(decodeOverlayUpdateV2(
-    readFileSync(path.resolve(process.cwd(), `../internal/telemetry/projection/overlayv2/testdata/overlay_v2_${vehicles}.golden.json`), "utf8"),
+    JSON.parse(readFileSync(path.resolve(process.cwd(), `../internal/telemetry/projection/overlayv2/testdata/overlay_v2_${vehicles}.golden.json`), "utf8")),
   )) as OverlayUpdateV2;
   if (!update.frame) throw new Error("golden frame missing");
   return update.frame;

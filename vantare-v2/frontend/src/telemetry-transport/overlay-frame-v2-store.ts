@@ -570,11 +570,28 @@ function validRelative(value: unknown): boolean {
 }
 
 function delta(value: unknown, path: string): void {
-  objectWithKeys(value, path, ["seconds", "available", "history"], ["reference", "requested", "trend", "authority"]);
+  objectWithKeys(value, path, ["seconds", "available", "history"], ["reference", "requested", "trend", "authority", "references"]);
   qvalue(value.seconds, `${path}.seconds`, "number");
   array(value.available, `${path}.available`, nonEmptyString);
   for (const key of ["reference", "requested", "trend"] as const) optionalString(value[key], `${path}.${key}`);
   if (value.authority !== undefined) enumValue<OverlayAuthorityV2>(value.authority, `${path}.authority`, ["native", "derived", "estimated"]);
+  if (value.references !== undefined) {
+    if (!Array.isArray(value.references) || value.references.length !== 3) invalid(`${path}.references`);
+    const requests = new Set<string>();
+    for (const entry of value.references) {
+      objectWithKeys(entry, `${path}.references`, ["requested", "seconds"], ["reference", "authority"]);
+      enumValue(entry.requested, `${path}.references.requested`, ["personal-best", "session-best", "previous-lap"]);
+      if (requests.has(entry.requested as string)) invalid(`${path}.references.requested`);
+      requests.add(entry.requested as string);
+      qvalue(entry.seconds, `${path}.references.seconds`, "number");
+      if (entry.reference !== undefined) enumValue(entry.reference, `${path}.references.reference`, ["personal-best", "session-best", "previous-lap"]);
+      if (entry.authority !== undefined) enumValue<OverlayAuthorityV2>(entry.authority, `${path}.references.authority`, ["native", "derived", "estimated"]);
+      const usable = entry.seconds.q === "fresh" || entry.seconds.q === "stale";
+      if (usable !== (entry.reference !== undefined) || usable !== (entry.authority !== undefined)) invalid(`${path}.references.resolution`);
+      Object.freeze(entry);
+    }
+    Object.freeze(value.references);
+  }
   deltaHistory(value.history, `${path}.history`);
   Object.freeze(value);
 }

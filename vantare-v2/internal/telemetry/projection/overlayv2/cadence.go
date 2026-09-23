@@ -647,12 +647,13 @@ type dirtySignals struct {
 	// standingsMark fingerprints exactly the fields BuildStandings projects
 	// (see hashStandingsVehicle), so a signal the builder ignores never marks
 	// the section dirty and any projected change always does.
-	standingsMark  uint64
-	relativeMark   uint64
-	gapsFreshness  schema.Freshness
-	deltaFreshness schema.Freshness
-	spatialMark    schema.Freshness
-	playerDamage   schema.Field[damage.State]
+	standingsMark   uint64
+	relativeMark    uint64
+	gapsFreshness   schema.Freshness
+	deltaReferences [3]schema.Field[session.DeltaSeconds]
+	deltaFreshness  schema.Freshness
+	spatialMark     schema.Freshness
+	playerDamage    schema.Field[damage.State]
 }
 
 func observeDirtySignals(header envelope.Header, final derive.FinalState, source SourceContextV2) dirtySignals {
@@ -676,6 +677,7 @@ func observeDirtySignals(header envelope.Header, final derive.FinalState, source
 		wetnessFraction:     final.Observed.WetnessFraction,
 		gapsFreshness:       final.Derived.Gaps.Freshness,
 		deltaFreshness:      final.Derived.Delta.Freshness,
+		deltaReferences:     [3]schema.Field[session.DeltaSeconds]{final.Derived.Delta.PersonalBest, final.Derived.Delta.SessionBest, final.Derived.Delta.PreviousLap},
 		fuelPerLap:          final.Derived.Fuel.PerLap,
 		spatialMark:         schema.FreshnessMissing,
 		standingsMark:       fnvOffset64,
@@ -725,7 +727,7 @@ func (signals dirtySignals) diff(previous dirtySignals) DirtySet {
 	if signals.relativeMark != previous.relativeMark {
 		dirty = dirty.Mark(SectionRelative)
 	}
-	if signals.deltaFreshness != previous.deltaFreshness {
+	if signals.deltaFreshness != previous.deltaFreshness || signals.deltaReferences != previous.deltaReferences {
 		dirty = dirty.Mark(SectionDelta)
 	}
 	if signals.spotterView != previous.spotterView {

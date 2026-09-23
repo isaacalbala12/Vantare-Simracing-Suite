@@ -14,6 +14,22 @@ const model: DeltaViewModel = {
 };
 
 describe("Functional Delta", () => {
+  it("discloses a fallback even when its measurement is stale", () => {
+    const { getByRole } = render(<DeltaFunctional model={{ ...model, status: "stale", requestedReference: "previous-lap", reference: "personal-best" }} settings={{}} renderMode="harness" />);
+    expect(getByRole("note").textContent).toMatch(/Vuelta anterior.*no disponible.*Mejor personal/i);
+  });
+
+  it("discloses an unavailable requested reference", () => {
+    const { getByRole } = render(<DeltaFunctional model={{ ...model, status: "missing", requestedReference: "previous-lap", reference: undefined }} settings={{}} renderMode="harness" />);
+    expect(getByRole("note").textContent).toMatch(/Vuelta anterior.*no disponible/i);
+  });
+
+  it("does not animate a reference switch as driving improvement", () => {
+    const { container, rerender } = render(<DeltaFunctional model={{ ...model, tone: "losing", requestedReference: "personal-best", reference: "personal-best" }} settings={{}} renderMode="harness" />);
+    rerender(<DeltaFunctional model={{ ...model, requestedReference: "previous-lap", reference: "previous-lap" }} settings={{}} renderMode="harness" />);
+    expect(container.querySelector(".vf-delta")?.getAttribute("data-cross")).toBeNull();
+  });
+
   it("keeps lap notices hidden while idle and shows the last lap only after a completed lap", () => {
     const { container, rerender } = render(<DeltaFunctional model={model} settings={{}} renderMode="harness" />);
     expect(container.querySelector(".vf-delta")?.getAttribute("data-tone")).toBe("gaining");

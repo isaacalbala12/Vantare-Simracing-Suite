@@ -35,10 +35,9 @@ export type OverlayV2ViewModelEntry = Readonly<{
 function deltaBuilder(
   frame: OverlayFrameV2,
   source: OverlaySourceStatusV2,
-  _content: Record<string, unknown>,
+  content: Record<string, unknown>,
 ): WidgetViewModelBase {
-  void _content;
-  return buildDeltaViewModelV2(frame, source);
+  return buildDeltaViewModelV2(frame, source, content as never);
 }
 
 export const overlayV2ViewModelRegistry: ReadonlyMap<WidgetType, OverlayV2ViewModelEntry> = new Map<

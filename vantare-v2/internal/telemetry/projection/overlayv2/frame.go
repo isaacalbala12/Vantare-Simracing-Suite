@@ -247,14 +247,24 @@ type RelativeRowV2 struct {
 	ClassID        string                   `json:"classId,omitempty"`
 }
 
-type DeltaViewV2 struct {
-	Seconds   QValue[float64] `json:"seconds"`
+// DeltaReferenceViewV2 resolves one widget reference request in Go.
+// Exactly three resolutions share the frame, without copying the history.
+type DeltaReferenceViewV2 struct {
+	Requested string          `json:"requested"`
 	Reference string          `json:"reference,omitempty"`
-	Requested string          `json:"requested,omitempty"`
-	Available []string        `json:"available"`
-	Trend     string          `json:"trend,omitempty"`
+	Seconds   QValue[float64] `json:"seconds"`
 	Authority Authority       `json:"authority,omitempty"`
-	History   DeltaHistoryV2  `json:"history"`
+}
+
+type DeltaViewV2 struct {
+	References []DeltaReferenceViewV2 `json:"references,omitempty"`
+	Seconds    QValue[float64]        `json:"seconds"`
+	Reference  string                 `json:"reference,omitempty"`
+	Requested  string                 `json:"requested,omitempty"`
+	Available  []string               `json:"available"`
+	Trend      string                 `json:"trend,omitempty"`
+	Authority  Authority              `json:"authority,omitempty"`
+	History    DeltaHistoryV2         `json:"history"`
 }
 
 // DeltaHistoryV2 carries the player's recent delta series. It is the player

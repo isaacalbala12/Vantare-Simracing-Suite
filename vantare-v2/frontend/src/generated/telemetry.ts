@@ -182,11 +182,19 @@ export interface OverlayControlsV2 {
   readonly history: OverlayControlsHistoryV2;
 }
 
+export interface OverlayDeltaReferenceViewV2 {
+  readonly authority?: OverlayAuthorityV2 | undefined;
+  readonly reference?: string | undefined;
+  readonly requested: string;
+  readonly seconds: OverlayQValue<number>;
+}
+
 export interface OverlayDeltaViewV2 {
   readonly authority?: OverlayAuthorityV2 | undefined;
   readonly available: readonly string[];
   readonly history: Overlayv2DeltaHistoryV2;
   readonly reference?: string | undefined;
+  readonly references?: readonly OverlayDeltaReferenceViewV2[] | undefined;
   readonly requested?: string | undefined;
   readonly seconds: OverlayQValue<number>;
   readonly trend?: string | undefined;

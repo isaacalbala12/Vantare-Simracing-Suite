@@ -9,45 +9,29 @@ import type { DeltaTone, DeltaViewModel } from "./delta-view-model";
 const PLACEHOLDER = "—";
 const DELTA_PROGRESS_SCALE_SECONDS = 1.5;
 
-/**
- * Delta view model over the Overlay v2 contract.
- *
- * The reference resolution is NOT redone here. Overlay v1 chose the reference
- * inside delta-view-model.ts (:111-118) — requested reference, then a silent
- * fallback to `player.deltaSeconds` — and never told anybody which one it had
- * used. In v2 the Go builder resolves it and the frame carries `requested`,
- * `reference` (the effective one) and `available`; this module only formats
- * the sign, the decimals and the tone.
- *
- * The widget's own `content.reference` is deliberately NOT used to pick a
- * value: the frame is one per tick and the requested reference is a runtime
- * preference, so a widget asking for another one renders the effective
- * reference the frame does carry instead of recomputing anything. The builder
- * takes no widget content at all for that reason; use `deltaHonoursRequest` to
- * detect and surface the difference where it matters.
- *
- * Fields with no canonical signal behind them stay at the placeholder and are
- * declared for the shadow comparator instead of invented: lapText (the frame
- * carries completed laps, not the lap number Overlay v1 displayed),
- * predictedLapText (no estimated lap time) and trend. The player's best lap is
- * available on the canonical standings row and is therefore safe to project.
+/** Format the Go-resolved response for this widget's requested reference.
+ * No lap reconstruction or fallback resolution takes place in the frontend.
  */
 export function buildDeltaViewModelV2(
   frame: OverlayFrameV2,
   source: OverlaySourceStatusV2,
+  content: DeltaContent = {},
 ): DeltaViewModel {
-  if (source.state === "error" || source.state === "stopped") {
+  if (!["live", "degraded", "stale"].includes(source.state)) {
     return unavailable(source.state === "error" ? "error" : "disconnected", source.reason || undefined);
   }
 
-  const seconds = displayedNumber(frame.delta.seconds);
+  const requestedReference = content.reference ?? "personal-best";
+  const resolved = resolvedReference(frame, content);
+  const seconds = displayedNumber(resolved?.seconds);
   const playerRow = playerStandingRow(frame);
   const lastLapText = formatLapTime(displayedNumber(playerRow?.lastLap));
   const bestLapText = formatLapTime(displayedNumber(playerRow?.bestLap));
   const completedLap = playerRow?.laps;
-  const reference = deltaReference(frame.delta.reference);
+  const reference = deltaReference(resolved?.reference);
   const sessionIdentity = `${frame.sessionId}:${frame.epoch}`;
-  const status = source.state === "stale" ? "stale" : seconds === undefined ? "missing" : "ready";
+  const hasStaleField = [resolved?.seconds, playerRow?.lastLap, playerRow?.bestLap].some((value) => value?.q === "stale");
+  const status = source.state === "stale" || hasStaleField ? "stale" : seconds === undefined ? "missing" : "ready";
   if (seconds === undefined) {
     return {
       type: "delta",
@@ -60,6 +44,7 @@ export function buildDeltaViewModelV2(
       progress: 0,
       completedLap,
       reference,
+      requestedReference,
       sessionIdentity,
     };
   }
@@ -77,19 +62,30 @@ export function buildDeltaViewModelV2(
     splitText: deltaText,
     completedLap,
     reference,
+    requestedReference,
     sessionIdentity,
   };
 }
 
 /** Effective reference actually rendered, for the inspector and the evidence. */
-export function deltaEffectiveReference(frame: OverlayFrameV2): string | undefined {
-  return frame.delta.reference || undefined;
+export function deltaEffectiveReference(frame: OverlayFrameV2, content: DeltaContent = {}): string | undefined {
+  return resolvedReference(frame, content)?.reference || undefined;
 }
 
 /** Whether the frame could honour the reference this widget asked for. */
 export function deltaHonoursRequest(frame: OverlayFrameV2, content: DeltaContent): boolean {
   const requested = content.reference ?? "personal-best";
-  return frame.delta.reference === requested;
+  return deltaEffectiveReference(frame, content) === requested;
+}
+
+function resolvedReference(frame: OverlayFrameV2, content: DeltaContent) {
+  const requested = content.reference ?? "personal-best";
+  if (frame.delta.references !== undefined) {
+    return frame.delta.references.find((entry) => entry.requested === requested);
+  }
+  // Older frames carry one response. Only consume it for its actual request;
+  // an unavailable per-widget response must never borrow another comparison.
+  return (frame.delta.requested ?? frame.delta.reference) === requested ? frame.delta : undefined;
 }
 
 export function deltaDisplayedValues(model: DeltaViewModel): Readonly<Record<string, string>> {
@@ -166,5 +162,6 @@ function clampProgress(deltaSeconds: number): number {
 function displayedNumber(value: OverlayQValue<number> | undefined): number | undefined {
   if (value === undefined || value.q === "missing" || value.q === "invalid") return undefined;
   // Go omitempty elides legitimate zeroes. Quality is the presence bit.
-  return value.v ?? 0;
+  const number = value.v ?? 0;
+  return Number.isFinite(number) ? number : undefined;
 }

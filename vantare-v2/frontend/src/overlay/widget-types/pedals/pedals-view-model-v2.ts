@@ -15,13 +15,14 @@ function clampPedal(value: number): number {
   return Math.max(0, Math.min(1, value));
 }
 
-function formatPedalPercent(value: number): string {
-  return `${Math.round(value * 100)}%`;
+function formatPedalPercent(value: number | undefined): string {
+  return value === undefined ? "—" : `${Math.round(value * 100)}%`;
 }
 
 function displayedNumber(value: OverlayQValue<number>): number | undefined {
   if (value.q === "missing" || value.q === "invalid") return undefined;
-  return value.v ?? 0;
+  const number = value.v ?? 0;
+  return Number.isFinite(number) ? clampPedal(number) : undefined;
 }
 
 function unavailable(status: PedalsViewModel["status"], statusMessage?: string): PedalsViewModel {
@@ -32,9 +33,9 @@ function unavailable(status: PedalsViewModel["status"], statusMessage?: string):
     throttle: 0,
     brake: 0,
     clutch: 0,
-    throttleText: "0%",
-    brakeText: "0%",
-    clutchText: "0%",
+    throttleText: "—",
+    brakeText: "—",
+    clutchText: "—",
     flag: "unknown",
     sessionPhase: "unknown",
   };
@@ -76,8 +77,8 @@ function displayedSessionPhase(value: OverlayQValue<string>): PedalsSessionPhase
  * Consume `player.throttle / brake / clutch` publicados por el frame v2
  * (mismos que `pedals-telemetry` e `input-telemetry`). No reimplementa
  * dominio: solo formatea 0..1 a porcentaje y propaga el lifecycle del source.
- * Cuando el frame omite el valor (q=missing/invalid) se muestra 0%, como en v1
- * cuando `snapshot.player.*` era undefined. La señal de sesión se consume
+ * Missing/invalid se muestra como ausencia por canal; cero fresco sigue
+ * siendo una medición válida. La señal de sesión se consume
  * aparte: `session.flag` y `session.phase` solo llegan a la línea de estado
  * cuando son valores frescos y reconocidos; nunca se deduce una bandera del
  * color o del valor de un pedal, ni se inventa verde por ausencia.
@@ -88,27 +89,28 @@ export function buildPedalsViewModelV2(
   _content: PedalsContent,
 ): PedalsViewModel {
   void _content;
-  if (source.state === "error" || source.state === "stopped") {
+  if (!["live", "degraded", "stale"].includes(source.state)) {
     return unavailable(source.state === "error" ? "error" : "disconnected", source.reason || undefined);
   }
 
   const hasStalePedal = [frame.player.throttle, frame.player.brake, frame.player.clutch].some(
     (value) => value.q === "stale",
   );
+  const throttle = displayedNumber(frame.player.throttle);
+  const brake = displayedNumber(frame.player.brake);
+  const clutch = displayedNumber(frame.player.clutch);
+  const hasMissingPedal = [throttle, brake, clutch].some((value) => value === undefined);
   const status: PedalsViewModel["status"] =
-    source.state === "stale" || hasStalePedal ? "stale" : "ready";
-
-  const throttle = clampPedal(displayedNumber(frame.player.throttle) ?? 0);
-  const brake = clampPedal(displayedNumber(frame.player.brake) ?? 0);
-  const clutch = clampPedal(displayedNumber(frame.player.clutch) ?? 0);
+    source.state === "stale" || hasStalePedal ? "stale" : hasMissingPedal ? "missing" : "ready";
 
   return {
     type: "pedals",
     status,
     statusMessage: source.reason || undefined,
-    throttle,
-    brake,
-    clutch,
+    // Zero only positions an empty bar; the text preserves channel absence.
+    throttle: throttle ?? 0,
+    brake: brake ?? 0,
+    clutch: clutch ?? 0,
     throttleText: formatPedalPercent(throttle),
     brakeText: formatPedalPercent(brake),
     clutchText: formatPedalPercent(clutch),

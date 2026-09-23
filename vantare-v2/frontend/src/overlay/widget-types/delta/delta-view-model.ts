@@ -14,6 +14,8 @@ export type DeltaViewModel = WidgetViewModelBase & {
   completedLap?: number;
   /** Effective reference resolved by the Overlay v2 builder. */
   reference?: DeltaReference;
+  /** The widget request, retained to disclose fallback or unavailable reference. */
+  requestedReference?: DeltaReference;
   /** Session/epoch continuity key; prevents notices across session resets. */
   sessionIdentity?: string;
   lapText?: string;

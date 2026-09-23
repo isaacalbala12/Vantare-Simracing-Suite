@@ -280,6 +280,7 @@ func newGenerator() *generator {
 	g.addStruct(reflect.TypeFor[overlayv2.ControlsHistoryV2](), "OverlayControlsHistoryV2")
 	g.addStruct(reflect.TypeFor[overlayv2.StandingRowV2](), "OverlayStandingRowV2")
 	g.addStruct(reflect.TypeFor[overlayv2.RelativeRowV2](), "OverlayRelativeRowV2")
+	g.addStruct(reflect.TypeFor[overlayv2.DeltaReferenceViewV2](), "OverlayDeltaReferenceViewV2")
 	g.addStruct(reflect.TypeFor[overlayv2.DeltaViewV2](), "OverlayDeltaViewV2")
 	g.addStruct(reflect.TypeFor[overlayv2.FuelViewV2](), "OverlayFuelViewV2")
 	g.addStruct(reflect.TypeFor[overlayv2.SpotterViewV2](), "OverlaySpotterViewV2")

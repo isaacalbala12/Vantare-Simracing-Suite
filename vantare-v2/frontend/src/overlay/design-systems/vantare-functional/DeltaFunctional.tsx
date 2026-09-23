@@ -5,6 +5,7 @@ import type { WidgetRendererProps } from "../../core/design-system-definition";
 import { useWidgetMotion } from "../../core/widget-motion";
 import type { DeltaViewModel } from "../../widget-types/delta/delta-view-model";
 import { functionalLabels } from "./labels";
+import { deltaReferenceNotice } from "./delta-reference-notice";
 import { deltaSide, deriveDeltaCross } from "./functional-motion";
 
 type DeltaEvent = "lap-completed" | "personal-best";
@@ -53,6 +54,10 @@ export function DeltaFunctional({ model, settings, motion = "full", effects }: W
   useWidgetMotion(model, motion === "full", rootRef, ({ prev, next, root, schedule, persist }) => {
     // Memoria del último lado no neutro: perder→neutro→ganar debe marcar el
     // cruce igual que perder→ganar — el par (neutro, ganar) solo no basta.
+    if (prev.reference !== next.reference || prev.requestedReference !== next.requestedReference) {
+      persist.set("deltaSide", deltaSide(next.tone));
+      return;
+    }
     const lastSide = (persist.get("deltaSide") as "gaining" | "losing" | null | undefined) ?? null;
     const cross = deriveDeltaCross(prev, next, lastSide);
     persist.set("deltaSide", deltaSide(next.tone) ?? lastSide);
@@ -71,6 +76,7 @@ export function DeltaFunctional({ model, settings, motion = "full", effects }: W
     delete root.dataset.deltaEvent;
   });
   const labels = functionalLabels[locale];
+  const referenceNotice = deltaReferenceNotice(locale, model.requestedReference, model.reference);
   const statusText = model.status !== "ready" ? labels[model.status] : undefined;
   // El relleno siempre se posiciona con left+width para que el cruce de cero
   // sea continuo: la barra drena hacia el ancla y crece por el otro lado en
@@ -102,6 +108,7 @@ export function DeltaFunctional({ model, settings, motion = "full", effects }: W
   return (
     <section ref={rootRef} className="vf-delta" data-widget-system="vantare-functional" data-widget-renderer="delta" data-status={model.status} data-tone={model.tone} data-session-header="false" data-template={capsule ? "capsule" : "instrument"} data-effects={effects}>
       {statusText && <p className="vf-status" role="status">{statusText}</p>}
+      {referenceNotice && <p className="vf-detail" role="note">{referenceNotice}</p>}
       {model.statusMessage && model.status !== "stale" && <p className="vf-detail">{model.statusMessage}</p>}
       {capsule ? (
         <div className="vf-delta-capsule">

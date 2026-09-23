@@ -40,8 +40,6 @@
 .strategy-plan-history__details dl div { display: grid; gap: 5px; padding: 12px; background: var(--orbit-surface-0); border-radius: 8px; }
 .strategy-plan-history__details dt { color: var(--orbit-ink-2); font-size: 12px; }
 .strategy-plan-history__details dd { margin: 0; font-size: 18px; font-weight: 600; }
-.strategy-recorded-workspace-head { display: flex; min-height: 40px; padding: 8px 24px 0; }
-.strategy-recorded-workspace-head .orbit-btn { min-height: 34px; padding-inline: 12px; }
 .strategy-recorded-source-screen { display: flex; flex: 1; flex-direction: column; gap: 20px; min-width: 0; min-height: 100%; padding: 28px; background: var(--orbit-canvas); }
 .strategy-recorded-source-screen__head { display: flex; align-items: start; justify-content: space-between; gap: 20px; }
 .strategy-recorded-source-screen__head span { font-size: 10px; letter-spacing: .13em; text-transform: uppercase; color: var(--orbit-ink-4); }
@@ -66,10 +64,6 @@
 /* Strategy has explicit responsive acceptance gates. Below Orbit's global
    legibility floor, let this section use its own layout instead of shrinking
    a 1180 px canvas. Other sections keep the shell's canonical floor. */
-@media (max-width: 1152px) {
-  .strategy-recorded-tabs { margin: 0 16px; padding: 0 8px; border: 1px solid rgba(255,255,255,.08); border-radius: 10px; background: rgba(7,9,11,.9); backdrop-filter: blur(10px); }
-  .strategy-recorded-data__heading, .strategy-recorded-plan__heading { padding: 14px 16px; border-radius: 10px; background: linear-gradient(90deg,rgba(7,9,11,.96),rgba(7,9,11,.82)); }
-}
 @media (max-width: 600px) {
   :root[data-orbit-zoom-floored="true"] .orbit-root[data-view='estrategia'] .strategy-recorded-choice { width: calc(100% - 18px); }
   :root[data-orbit-zoom-floored="true"] .orbit-root[data-view='estrategia'] .strategy-recorded-tabs { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); }

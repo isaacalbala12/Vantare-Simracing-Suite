@@ -20,6 +20,8 @@ Corte 3 implementado: mapa del catálogo LMU con identidad y variante verificada
 
 Corte 4a implementado: barra compacta única, contexto verificado compartido por Carrera/Datos/Plan/Revisiones y Carrera con inspector de plan que refleja el estado de cálculo real y abre Plan. Editar combinación, reglas y pilotos dirige al panel correcto; la fuente abierta se reconoce por sesión y base incluso si su revisión cabeza avanzó. Se preserva navegación por teclado y bloqueo de operaciones. Focales 27/27, tipos, ESLint focal y diff-check pasan; root revisó diff de componentes, CSS y regresiones. Siguen Data/Revisiones, Plan/Stint/Parada y biblioteca/historial. App sin abrir ni relanzar.
 
+Corte 4b implementado: Datos y Revisiones comparten la escala y composición de la mesa, con tablas de desplazamiento local, inspector proporcional y vacíos de altura intrínseca; se retiran gradientes y blur heredados que competían con el shell. Sólo CSS, sin cambiar controles/adopción. Focales existentes Data/Revisions 55/55 y diff-check pasan; root revisó los selectores y puntos de corte. Siguen Plan/Stint/Parada y biblioteca/historial. App sin abrir ni relanzar.
+
 ## Antecedente — QA de preparación y límite funcional (2026-09-22)
 
 Isaac completa VirusTotal: el asset regenerado obtiene 0/62, incluido Microsoft sin detección; no se afirma identidad con el original en cuarentena. Resultado enlazado en la auditoría de ISA-1322. La build normal vuelve a funcionar sin cambios de protección.

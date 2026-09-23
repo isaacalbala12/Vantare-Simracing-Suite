@@ -11,7 +11,7 @@ const CANONICAL_UPDATES = [golden1Raw, golden20Raw, golden44Raw, golden104Raw]
   .map((raw) => JSON.parse(raw) as OverlayUpdateV2);
 
 describe("overlay-v2 view model registry", () => {
-  it("registra exactamente los 18 widgets con VM v2 directa, sin catálogo", () => {
+  it("registra exactamente los 19 widgets con VM v2 directa, sin catálogo", () => {
     const expected = [
       "standings",
       "relative",
@@ -20,6 +20,7 @@ describe("overlay-v2 view model registry", () => {
       "pedals-telemetry",
       "input-telemetry",
       "racing-flags",
+      "fastest-lap",
       "delta-advanced",
       "delta-trace",
       "pedals",

@@ -17,6 +17,7 @@ export const WIDGET_REQUIRED_FEATURE_BY_TYPE: Partial<Record<WidgetType, Feature
   "pedals-telemetry": "overlays.advanced",
   "pedals-telemetry-compact": "overlays.advanced",
   "racing-flags": "overlays.advanced",
+  "fastest-lap": "overlays.advanced",
   "broadcast-tower": "overlays.advanced",
   "head-to-head": "overlays.advanced",
   "input-telemetry": "overlays.advanced",

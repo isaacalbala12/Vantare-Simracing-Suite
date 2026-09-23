@@ -114,11 +114,13 @@ export function interpolateSceneAt(scene: AnimationScene, elapsedMs: number, loo
       ? lerp(from.remainingSeconds, to.remainingSeconds, t)
       : (to.remainingSeconds ?? from.remainingSeconds);
 
+  // Lap records are discrete events: their caption must not precede the lap.
+  const captionIndex = scene.widget === "fastest-lap" ? index : t >= 0.5 ? nextIndex : index;
   return {
     // The caption belongs to the keyframe being approached once past halfway.
-    keyframe: t >= 0.5 ? nextIndex : index,
+    keyframe: captionIndex,
     frame: {
-      caption: (t >= 0.5 ? to : from).caption,
+      caption: scene.frames[captionIndex].caption,
       ...(Object.keys(cars).length > 0 ? { cars } : {}),
       ...(blendPlayer(from.player, to.player, t) ? { player: blendPlayer(from.player, to.player, t) } : {}),
       ...(remainingSeconds !== undefined ? { remainingSeconds } : {}),

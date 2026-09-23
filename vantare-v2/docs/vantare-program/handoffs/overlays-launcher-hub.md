@@ -3116,3 +3116,41 @@ Evidencia:
 - Preview local de GPT-6 Luna: `2be30c59` combina idioma con motion `317d31c4` (PR #1306) y conserva los cambios aceptados. Build PASS, 172 pruebas focales PASS y después dos pruebas de contadores PASS; árbol limpio. El servidor del preview está activo en el puerto 5177. El merge local del preview no representa integración remota.
 
 Límites: sin verificación física Windows/OBS ni visual automatizada, por la restricción de acceso del navegador; no se eludió por otra herramienta. Workshop autónomo comparte el idioma de su origen del navegador, sin prometer sincronía con una app nativa separada. El catálogo completado es Eficiencia; otros sistemas conservan textos pendientes. Sigue el comportamiento previo de mantener el catálogo anterior mientras se carga otro: puede haber un breve desfase entre etiquetas estáticas de widgets y texto del Hub en la primera selección. Próximo paso: revisar el selector de idioma en Workshop y la sincronía física con Desktop/OBS.
+
+
+## 2026-09-22 · ISA-1328 · Aviso de vuelta rápida, candidato para revisión
+
+Isaac pide convertir en producto el concepto morado aprobado en marketing. Seguimiento principal, por su instrucción expresa: [Asana · Widget · Aviso de vuelta rápida](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218762634127535); [GitHub #1328](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1328) sirve como puente CI. Base `nightly` `e6d7d2b5e58f55b82c0ed2f6a79667476d897086`; rama aislada `vantareapp/isa-1328-fastest-lap`. [Diseño y plan](../../plans/2026-09-22-isa-1328-fastest-lap.md).
+
+- Widget independiente `fastest-lap` de Eficiencia: cronómetro morado, panel oscuro, diagonales rojas, piloto y tiempo. Catálogo Studio, perfiles V3 y permisos Overlays Advanced; es/en/pt/it. Alcance inicial de clase propia, seleccionable sesión completa; duración 3–15 s (6 por defecto), piloto opcional.
+- Un renderer puro compartido por WidgetVisualHost. La presentación temporal local establece la referencia sin aviso al abrir, cambiar de sesión/epoch/alcance o reconectar. Solo mejoras observadas de tiempos frescos y positivos, a milisegundos; no empates, frames fuera de orden ni marcas heredadas al entrar/cambiar de piloto. Un único timer sustituible, sin polling, IPC, almacenamiento ni nuevas dependencias.
+- Se suscribe a cambios de tiempos/identidad por eventos incluso en el nivel mínimo de rendimiento. Posiciones/distancias sin cambios de tiempos no despiertan el widget. Sin benchmark físico ni afirmación de coste CPU cero.
+- Escena Workshop reproducible: baseline, mejora, caducidad, segunda mejora. El modo Studio muestra una previsualización persistente cuando hay una marca fresca; Desktop/OBS son temporales. Adelantar, retroceder y volver a reproducir reinician la referencia de demostración sin relajar el rechazo de muestras fuera de orden en producto.
+
+Evidencia: suite frontend completa (470 archivos, 3814 PASS, 2 omitidos); tras corregir el escenario, 44 pruebas focales PASS. Build/TypeScript y lint PASS. Go config y performance completos con `-race`, guardas de permisos y nuevo widget con `-race`, y `go vet` de paquetes modificados PASS. Quality PASS: NEW=0, MOVED=0, policy_changed=false. Roadmap modifica solo `milestones:functional-widget-design`; JSON generado con el script de la base y commits alcanzables desde `e6d7d2b5`. Fragmento ISA-1328.
+
+Verificación manual: navegador con componente real y datos de demostración; estado inicial silencioso, mejora visible 1:29.902, desaparición sin nuevas muestras, repetición tras retroceder, cambio es/en y composición 480×104 / previsualización 280×72. Preview local en `http://127.0.0.1:5188/workshop?widget=fastest-lap&system=vantare-functional&surface=studio&scene=fastest-lap-alert` (requiere servidor local activo).
+
+Límites: `go test -timeout 60s ./...` falla en macOS en cmd/vantare (símbolos Windows), launcher (timeout), ruta Windows, Diagnostics y SQLite; no se declara verde. `go vet ./...` también queda bloqueado por símbolos Windows; su ejecución focal y el ratchet Windows pasan. Pendientes revisión independiente y comprobación física LMU/Windows/OBS. Seguimiento en Asana permanece En curso con candidato entregado para revisión, porque el proyecto no tiene sección En revisión. No hay merge, promoción ni release; la siguiente acción es revisar el diseño y validar las señales en sesión real antes de autorizar integración.
+
+Entrega ISA-1328: [PR draft #1330](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1330), implementación `dbc35180`, rama publicada y adjunta a la tarea Codex. Los checks remotos se iniciaron al publicar; consultar el estado actual en la PR. Asana se actualiza con esta misma evidencia y queda sin completar, pendiente de aceptación.
+
+
+### 2026-09-23 · ISA-1328 · tamaño real, personal/clase y ciclo de animación
+
+Isaac conserva el diseño y pide tamaño editable, récord personal y de su clase, y corregir animaciones. Ajuste en la misma rama aislada y [PR draft #1330](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1330); seguimiento principal en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218762634127535). Sustituye la opción clase/sesión de la propuesta inicial por dos avisos activos por defecto. Mejor personal = sesión actual de la clasificación V2; si ambos récords coinciden, un único aviso de clase. Sin nueva autoridad de tiempos.
+
+- El viewport compartido entrega al renderer el ancho y alto reales, sin estirar la composición. Workshop ofrece controles visibles; mínimo 280×72, predeterminado 480×104. El perfil conserva layout y ambos controles de aviso.
+- Entrada reiniciada por ID de aviso, salida animada de 220 ms dentro de la duración configurada, un solo temporizador pendiente y limpieza en reinicios/desmontaje. Conserva motion off/minimal y prefers-reduced-motion.
+- Workshop distingue vista estática (Ver diseño) y reproducción temporal también en Studio. Fixture con personal, récord de rival de clase y doble récord; las etiquetas no adelantan eventos a mitad de fotograma.
+
+Evidencia actual: 470 archivos frontend PASS, 3832 pruebas y 2 omitidas; build/TypeScript y lint PASS. Quality PASS, NEW=0, MOVED=0, policy_changed=false. Prueba visual en navegador de 280×72 y 480×104, avisos personal/clase, prioridad de clase, reproducción automática en Studio y expiración sin nueva muestra. El aviso de fetch cancelado en teardown de happy-dom no causa fallo de suite (exit 0). Sin cambios Go; conserva la evidencia focal y los límites globales de macOS de la entrega anterior. Roadmap actualiza únicamente milestones:functional-widget-design y se regenera desde e6d7d2b5.
+
+Siguiente paso: aceptación visual de Isaac y validación independiente/LMU/Windows/OBS antes de autorizar integración. Asana permanece En curso y sin completar; no hay merge, promoción ni release.
+
+
+### 2026-09-23 · ISA-1328 · aceptación e integración inicial autorizada
+
+Isaac revisa los ajustes de tamaño, avisos personal/clase y animaciones en Workshop, los acepta y pide expresamente integrar la [PR #1330](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1330) en `nightly`. El código aceptado es `8411ecdb692e1444c110719c5834a2b46300c2fb`; este cierre solo registra la aceptación en documentación, roadmap y fragmento, sin cambiar producto.
+
+Se conserva la evidencia de 3832 pruebas frontend PASS (2 omitidas), build/TypeScript, lint y quality PASS. La incorporación se hace por PR normal con los controles remotos vigentes; el SHA de integración y su pertenencia a `origin/nightly` se registrarán y releerán en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218762634127535). No se declara un merge antes de verificarlo. No hay revisión externa registrada; la aceptación visual es de Isaac. La validación física LMU/Windows/OBS continúa en Nightly y no se presenta como ya superada. Esta autorización no incluye Testers, Master, una release o un anuncio público.

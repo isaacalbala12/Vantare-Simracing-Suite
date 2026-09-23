@@ -1,6 +1,7 @@
 import type { Locale } from "../../../i18n/i18n";
 
 const en = {
+  fastestLap: "FASTEST LAP",
   position: "POS", driverNumber: "NO", driverName: "DRIVER", vehicleClass: "CLASS",
   gap: "TO LEADER", paceGap: "TO BEST", interval: "INTERVAL", currentLap: "LAP",
   lastLap: "LAST LAP", bestLap: "BEST LAP", personalBest: "PERSONAL BEST", pit: "PIT", tireCompound: "TYRE",
@@ -23,7 +24,7 @@ const en = {
 
 export const functionalLabels: Record<Locale, typeof en> = {
   en,
-  es: { ...en, driverName: "PILOTO", vehicleClass: "CLASE", gap: "AL LÍDER", paceGap: "AL MEJOR",
+  es: { ...en, fastestLap: "VUELTA RÁPIDA", driverName: "PILOTO", vehicleClass: "CLASE", gap: "AL LÍDER", paceGap: "AL MEJOR",
     interval: "INTERVALO", currentLap: "VUELTA", lastLap: "ÚLT. VUELTA", bestLap: "MEJOR V.", personalBest: "MEJOR PERSONAL",
     tireCompound: "NEUM.", you: "TÚ", remaining: "RESTANTE", race: "CARRERA", practice: "PRÁCTICA",
     qualifying: "CLASIFICACIÓN", stale: "DATOS ANTIGUOS", disconnected: "DESCONECTADO", missing: "SIN DATOS", error: "ERROR DE DATOS",
@@ -36,7 +37,7 @@ export const functionalLabels: Record<Locale, typeof en> = {
     leader: "LÍDER", ahead: "DELANTE", behind: "DETRÁS", rival: "RIVAL", noRival: "SIN RIVAL", caution: "PRECAUCIÓN", flag: "BANDERA", sectors: "SECTORES",
     green: "VERDE", yellow: "AMARILLA", red: "ROJA", blue: "AZUL", black: "NEGRA", white: "BLANCA", checkered: "CUADROS",
     gaining: "GANANDO", losing: "PERDIENDO", stable: "ESTABLE", unknown: "DESCONOCIDO", deltaTrace: "TRAZA DELTA", trackMap: "MAPA DE PISTA", noTelemetry: "SIN TELEMETRÍA", trackNotMapped: "PISTA SIN MAPA", reference: "REFERENCIA", classUnavailable: "CLASE N/D", schedule: "CALENDARIO", noEvents: "SIN EVENTOS", pedalInputs: "PEDALES", preview: "VISTA PREVIA" },
-  pt: { ...en, driverName: "PILOTO", vehicleClass: "CLASSE", gap: "AO LÍDER", paceGap: "AO MELHOR",
+  pt: { ...en, fastestLap: "VOLTA MAIS RÁPIDA", driverName: "PILOTO", vehicleClass: "CLASSE", gap: "AO LÍDER", paceGap: "AO MELHOR",
     interval: "INTERVALO", currentLap: "VOLTA", lastLap: "ÚLT. VOLTA", bestLap: "MELHOR V.", personalBest: "MELHOR PESSOAL",
     tireCompound: "PNEU", you: "VOCÊ", remaining: "RESTANTE", race: "CORRIDA", practice: "TREINO",
     qualifying: "CLASSIFICAÇÃO", stale: "DADOS ANTIGOS", disconnected: "DESCONECTADO", missing: "SEM DADOS", error: "ERRO DE DADOS",
@@ -48,7 +49,7 @@ export const functionalLabels: Record<Locale, typeof en> = {
     rain: "CHUVA", wetness: "MOLHADO", dry: "SECO", pressure: "PRESS", leader: "LÍDER", ahead: "À FRENTE", behind: "ATRÁS", rival: "RIVAL", noRival: "SEM RIVAL", caution: "ATENÇÃO", flag: "BANDEIRA", sectors: "SETORES",
     green: "VERDE", yellow: "AMARELA", red: "VERMELHA", blue: "AZUL", black: "PRETA", white: "BRANCA", checkered: "QUADRICULADA",
     gaining: "GANHANDO", losing: "PERDENDO", stable: "ESTÁVEL", unknown: "DESCONHECIDO", deltaTrace: "TRAÇO DELTA", trackMap: "MAPA DA PISTA", noTelemetry: "SEM TELEMETRIA", trackNotMapped: "PISTA SEM MAPA", reference: "REFERÊNCIA", classUnavailable: "CLASSE N/D", schedule: "AGENDA", noEvents: "SEM EVENTOS", pedalInputs: "PEDAIS", preview: "PRÉVIA" },
-  it: { ...en, driverName: "PILOTA", vehicleClass: "CLASSE", gap: "DAL LEADER", paceGap: "DAL MIGLIORE",
+  it: { ...en, fastestLap: "GIRO PIÙ VELOCE", driverName: "PILOTA", vehicleClass: "CLASSE", gap: "DAL LEADER", paceGap: "DAL MIGLIORE",
     interval: "INTERVALLO", currentLap: "GIRO", lastLap: "ULT. GIRO", bestLap: "MIGLIORE", personalBest: "MIGLIOR PERSONALE",
     tireCompound: "GOMMA", you: "TU", remaining: "RIMANENTE", race: "GARA", practice: "PROVE",
     qualifying: "QUALIFICHE", stale: "DATI NON AGGIORNATI", disconnected: "DISCONNESSO", missing: "NESSUN DATO", error: "ERRORE DATI",

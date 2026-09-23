@@ -25,6 +25,7 @@ export type WidgetType =
   | "pedals-telemetry"
   | "pedals-telemetry-compact"
   | "racing-flags"
+  | "fastest-lap"
   | "delta-trace"
   | "race-schedule"
   | "head-to-head"
@@ -50,6 +51,7 @@ export const ALL_WIDGET_TYPES = [
   "pedals-telemetry",
   "pedals-telemetry-compact",
   "racing-flags",
+  "fastest-lap",
   "delta-trace",
   "race-schedule",
   "head-to-head",

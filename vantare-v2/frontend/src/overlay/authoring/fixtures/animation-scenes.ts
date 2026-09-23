@@ -422,6 +422,19 @@ const PEDALS_CLUTCH_SCENE: AnimationScene = {
 };
 
 export const ANIMATION_SCENES: readonly AnimationScene[] = [
+  {
+    id: "fastest-lap-alert",
+    widget: "fastest-lap",
+    label: "Aviso de vuelta rápida",
+    watchFor: "Reproducir muestra mejor personal, récord de tu clase y una vuelta que consigue ambos (un solo aviso de clase). Cada aviso entra y sale en seis segundos. Ver diseño mantiene el panel visible para ajustar su tamaño.",
+    frameMs: 8000,
+    frames: [
+      { caption: "Referencias iniciales: personal 1:32.304 y Hypercar 1:30.904", player: { bestLapSeconds: 92.304 }, cars: { "Antonio Giovinazzi": { bestLapTime: 90.904 } } },
+      { caption: "Mejor personal de Lotterer (1:31.202): aviso personal", player: { bestLapSeconds: 91.202 }, cars: { "Antonio Giovinazzi": { bestLapTime: 90.904 } } },
+      { caption: "Giovinazzi bate el récord de Hypercar (1:29.902): aviso de clase", player: { bestLapSeconds: 91.202 }, cars: { "Antonio Giovinazzi": { bestLapTime: 89.902 } } },
+      { caption: "Lotterer consigue ambas marcas (1:29.402): un único aviso de clase", player: { bestLapSeconds: 89.402 }, cars: { "Antonio Giovinazzi": { bestLapTime: 89.902 } } },
+    ],
+  },
   OVERTAKE_SCENE,
   BATTLE_SCENE,
   CLASS_BATTLE_SCENE,

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1328",
+  "type": "feature",
+  "summary": "Nuevo aviso de vuelta rápida en Eficiencia: mejor personal y de tu clase, tamaño editable y animaciones de entrada, salida y repetición.",
+  "technicalNotes": [
+    "Widget fastest-lap registrado en Studio, perfiles V3 y permisos Overlays Advanced; es/en/pt/it. Ancho y alto reales, mínimo 280×72, renderer fluido compartido Studio/Desktop/OBS/Workshop.",
+    "La clasificación V2 aporta mejor personal de la sesión y récord de la clase propia. Ambos avisos activos por defecto, prioridad a clase si coinciden, sin opción global. Primera muestra y reconexiones fijan referencias silenciosas; descarta empates, muestras fuera de orden y récords heredados.",
+    "Política de eventos en todos los niveles de rendimiento; movimientos o posiciones sin cambios de tiempos no repintan el aviso. Sin nuevas dependencias, persistencia adicional ni fuentes de telemetría.",
+    "Entrada reiniciada por cada nueva mejora y salida de 220 ms incluida en los seis segundos configurados (3–15 s). Un único temporizador pendiente. Workshop reproduce avisos temporales en Studio y ofrece Ver diseño para ajustar la composición."
+  ],
+  "testing": [
+    "Revisión del 23/09: suite frontend completa PASS, 470 archivos, 3832 pruebas y 2 omitidas. Cubre avisos personales/de clase, prioridad doble, rivales, reentrada/salida, tamaño real y reproducción en Studio.",
+    "Build/TypeScript y lint PASS. Evidencia Go de la entrega anterior, sin cambios Go en esta revisión: perfiles, rendimiento y permisos con detector de carreras PASS; go vet focal PASS.",
+    "Ratchet de calidad PASS, NEW=0, MOVED=0, sin cambios de políticas o baselines. Navegador: 280×72 y 480×104, personal y clase, reproducción automática en Studio y desaparición sin nuevas muestras."
+  ],
+  "knownLimitations": [
+    "Isaac ha aceptado el diseño y autorizado su integración inicial en Nightly. Pendiente prueba física con una sesión de LMU en Windows/OBS; la previsualización usa el componente real con telemetría de demostración. No hay revisión externa registrada.",
+    "La suite Go global no está verde en macOS: símbolos Windows, pruebas de launcher con timeout, ruta Windows y pruebas de Diagnostics/SQLite. Los paquetes y casos modificados pasan sus comprobaciones focales.",
+    "Esta aceptación cubre la incorporación inicial a Nightly por PR con controles remotos; no supone promoción a Testers/Master ni publicación de una release."
+  ]
+}

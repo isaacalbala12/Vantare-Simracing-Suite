@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
+import type { StrategyPlanningInputsV2 } from "../../strategy/strategy-application-client";
 import { createRecordedWizardDraft } from "./strategy-recorded-wizard";
 import { StrategyRecordedPreparation } from "./StrategyRecordedPreparation";
 
@@ -55,4 +56,58 @@ it("rounds a manual pace across the minute boundary in the reference card", () =
   const draft = { ...input.draft, manualInputs: { paceSeconds: 59.9999 } };
   render(<StrategyRecordedPreparation {...input} draft={draft} />);
   expect(within(screen.getByRole("region", { name: "strategy.entry.referenceTitle" })).getByText("1:00.000")).toBeTruthy();
+});
+
+it("shows canonical observed values and a separate preview bucket without changing the race climate", () => {
+  const input = props();
+  const ref = { sessionId: "base-a", revisionId: "revision-a", baseDigest: "a".repeat(64), snapshotId: "b".repeat(64) };
+  const draft = { ...input.draft, mode: "automatic" as const, combination, sessions: [ref] };
+  const valid = { presence: "valid", provenance: { kind: "analysis" }, confidence: "high" };
+  const planning = { overrides: {}, projection: {
+    representativePaceByClimateBucket: { dry: { ...valid, medianLapSeconds: 122.345 }, humid: { ...valid, presence: "missing" }, wet: { ...valid, medianLapSeconds: 131 } },
+    fuelConsumption: { ...valid, meanPerLap: 2.37 }, virtualEnergyConsumption: { ...valid, meanPerLap: 0.8 },
+  } } as unknown as StrategyPlanningInputsV2;
+  render(<StrategyRecordedPreparation {...input} draft={draft} references={{ status: "ready", planning }} />);
+  const cards = screen.getByRole("region", { name: "strategy.entry.referenceTitle" });
+  expect(within(cards).getByText("2:02.345")).toBeTruthy();
+  expect(within(cards).getByText("2.37")).toBeTruthy();
+  expect(within(cards).getByText("0.8")).toBeTruthy();
+  fireEvent.change(within(cards).getByRole("combobox", { name: "strategy.entry.previewClimate" }), { target: { value: "humid" } });
+  expect(within(cards).queryByText("2:02.345")).toBeNull();
+  expect(within(cards).getByText("strategy.entry.referenceMissing")).toBeTruthy();
+  expect(input.onChange).not.toHaveBeenCalled();
+});
+
+it("shows a source-opening cause and action for a saved draft without a live handle", () => {
+  const input = props();
+  render(<StrategyRecordedPreparation {...input} draft={{ ...input.draft, mode: "automatic" }} references={{ status: "open_sources" }} />);
+  const cards = screen.getByRole("region", { name: "strategy.entry.referenceTitle" });
+  expect(within(cards).getByText("strategy.entry.referenceOpenSources")).toBeTruthy();
+  fireEvent.click(within(cards).getByRole("button", { name: "strategy.entry.openTelemetry" }));
+  expect(input.onDiscover).toHaveBeenCalledOnce();
+});
+
+it("does not substitute a climate mean for a missing bucket and labels a valid override", () => {
+  const input = props();
+  const ref = { sessionId: "base-a", revisionId: "revision-a", baseDigest: "a".repeat(64), snapshotId: "b".repeat(64) };
+  const draft = { ...input.draft, mode: "automatic" as const, combination, sessions: [ref], virtualEnergy: { applicability: "applicable" as const } };
+  const valid = { presence: "valid", provenance: { kind: "analysis" }, confidence: "high" };
+  const projection = {
+    representativePaceByClimateBucket: { dry: { ...valid, medianLapSeconds: 122 }, wet: { ...valid, medianLapSeconds: 130 } },
+    fuelConsumption: { ...valid, meanPerLap: 2.37, byClimateBucket: { dry: 2.5 } },
+    virtualEnergyConsumption: { ...valid, presence: "invalid", meanPerLap: 0 },
+  };
+  const view = render(<StrategyRecordedPreparation {...input} draft={draft} references={{ status: "ready", planning: { overrides: {}, projection } as unknown as StrategyPlanningInputsV2 }} />);
+  const cards = screen.getByRole("region", { name: "strategy.entry.referenceTitle" });
+  fireEvent.change(within(cards).getByRole("combobox", { name: "strategy.entry.previewClimate" }), { target: { value: "wet" } });
+  const fuel = within(cards).getByText("strategy.entry.referenceFuel").closest("article")!;
+  expect(within(fuel).getByText("—")).toBeTruthy();
+  expect(within(fuel).getByText("strategy.entry.referenceBucketMissing")).toBeTruthy();
+  const energy = within(cards).getByText("strategy.entry.referenceEnergy").closest("article")!;
+  expect(within(energy).getByText("strategy.entry.referenceInvalid")).toBeTruthy();
+  view.rerender(<StrategyRecordedPreparation {...input} draft={draft} references={{ status: "ready", planning: {
+    overrides: { fuel_per_lap_liters: { value: 2.1, presence: "valid", provenance: { kind: "manual" }, confidence: "high" } }, projection,
+  } as unknown as StrategyPlanningInputsV2 }} />);
+  expect(within(fuel).getByText("2.10")).toBeTruthy();
+  expect(fuel.textContent).toContain("strategy.entry.referenceManual");
 });

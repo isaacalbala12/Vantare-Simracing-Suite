@@ -9,6 +9,7 @@ import { StrategyRecordedRules } from "./StrategyRecordedRules";
 import { StrategyRecordedDrivers } from "./StrategyRecordedDrivers";
 import { reconcileRecordedDriverOrder, selectRecordedCalendar, selectRecordedCombination, snapshotRecordedCalendar, type RecordedCombination, type RecordedWizardDraft, type RecordedWizardStep } from "./strategy-recorded-wizard";
 import { recordedWizardErrors } from "./strategy-recorded-validation";
+import type { RecordedReferencesState } from "./use-recorded-references";
 import "./strategy-recorded-preparation.css";
 
 type Props = {
@@ -20,6 +21,7 @@ type Props = {
   readonly onOpenDraft: () => void; readonly onExit: () => void; readonly onSave: () => void;
   readonly busy: boolean; readonly dirty: boolean; readonly canOpenDraft: boolean; readonly openDraftHint: string;
   readonly onRetryOpenDraft?: () => void; readonly error?: string; readonly t: (key: string) => string;
+  readonly references?: RecordedReferencesState; readonly onRetryReferences?: () => void;
 };
 
 const formatPace = (seconds: number | undefined) => {
@@ -30,13 +32,17 @@ const formatPace = (seconds: number | undefined) => {
   return `${minutes}:${String(Math.floor(remainder / 1000)).padStart(2, "0")}.${String(remainder % 1000).padStart(3, "0")}`;
 };
 const formatNumber = (value: number | undefined, digits: number) => value !== undefined && Number.isFinite(value) ? value.toFixed(digits) : "—";
+const positive = (value: number | undefined): value is number => value !== undefined && Number.isFinite(value) && value > 0;
+const nonNegative = (value: number | undefined): value is number => value !== undefined && Number.isFinite(value) && value >= 0;
+type ClimateBucket = "dry" | "humid" | "wet";
 
 /** One working draft, with the existing combination, rules and driver editors. */
-export function StrategyRecordedPreparation({ draft, onChange, catalog, catalogState, calendar, sessions, sessionLabels, onDiscover, onOpenDraft, onExit, onSave, busy, dirty, canOpenDraft, openDraftHint, onRetryOpenDraft, error, t }: Props) {
+export function StrategyRecordedPreparation({ draft, onChange, catalog, catalogState, calendar, sessions, sessionLabels, onDiscover, onOpenDraft, onExit, onSave, busy, dirty, canOpenDraft, openDraftHint, onRetryOpenDraft, references, onRetryReferences, error, t }: Props) {
   const topbarSlot = useOrbitSlot(STRATEGY_TOPBAR_SLOT_ID);
   const [inspector, setInspector] = useState<"summary" | "rules" | "drivers">("summary");
   const [combinationOpen, setCombinationOpen] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
+  const [chosenPreviewBucket, setChosenPreviewBucket] = useState<ClimateBucket>();
   const manual = draft.mode === "manual";
   const selectedSessions = draft.sessions.map(ref => {
     const opened = sessions.find(item => item.revision.sessionId === ref.sessionId && item.revision.revisionId === ref.revisionId);
@@ -52,12 +58,37 @@ export function StrategyRecordedPreparation({ draft, onChange, catalog, catalogS
     setErrors(invalid);
     if (invalid.length === 0 && canOpenDraft) onOpenDraft();
   };
-  // The selected revision has no read-only projection in this view. Never
-  // substitute values from a newly opened handle or an illustrative session.
-  const references = [
-    { icon: "i-carreras" as const, title: t("strategy.entry.referencePace"), value: manual ? formatPace(draft.manualInputs?.paceSeconds) : "—", unit: t("strategy.entry.paceUnit") },
-    { icon: "i-telemetria" as const, title: t("strategy.entry.referenceFuel"), value: manual ? formatNumber(draft.manualInputs?.fuelLitersPerLap, 2) : "—", unit: t("strategy.entry.fuelUnit") },
-    ...(draft.virtualEnergy?.applicability === "applicable" ? [{ icon: "i-ajustes" as const, title: t("strategy.entry.referenceEnergy"), value: manual ? formatNumber(draft.manualInputs?.virtualEnergyPercentPerLap, 1) : "—", unit: t("strategy.entry.energyUnit") }] : []),
+  const planning = references?.status === "ready" ? references.planning : undefined;
+  const projection = planning?.projection;
+  const paceBuckets = projection?.representativePaceByClimateBucket;
+  const firstAvailableBucket = (["dry", "humid", "wet"] as const).find(bucket => {
+    const family = paceBuckets?.[bucket];
+    return family?.presence === "valid" && positive(family.medianLapSeconds);
+  });
+  const previewBucket = chosenPreviewBucket ?? draft.calculationMode ?? firstAvailableBucket ?? "dry";
+  const paceOverride = planning?.overrides.base_pace_seconds;
+  const fuelOverride = planning?.overrides.fuel_per_lap_liters;
+  const energyOverride = planning?.overrides.ve_per_lap_percent;
+  const observedPace = paceBuckets?.[previewBucket];
+  const paceValue = paceOverride?.presence === "valid" && positive(paceOverride.value) ? paceOverride.value
+    : observedPace?.presence === "valid" && positive(observedPace.medianLapSeconds) ? observedPace.medianLapSeconds : undefined;
+  const fuelFamily = projection?.fuelConsumption;
+  const energyFamily = projection?.virtualEnergyConsumption;
+  const observedFuel = fuelFamily?.byClimateBucket ? fuelFamily.byClimateBucket[previewBucket] : fuelFamily?.meanPerLap;
+  const observedEnergy = energyFamily?.byClimateBucket ? energyFamily.byClimateBucket[previewBucket] : energyFamily?.meanPerLap;
+  const fuelValue = fuelOverride?.presence === "valid" && positive(fuelOverride.value) ? fuelOverride.value
+    : fuelFamily?.presence === "valid" && positive(observedFuel) ? observedFuel : undefined;
+  const energyValue = energyOverride?.presence === "valid" && nonNegative(energyOverride.value) ? energyOverride.value
+    : energyFamily?.presence === "valid" && nonNegative(observedEnergy) ? observedEnergy : undefined;
+  const evidence = (kind?: "manual" | "reference") => t(kind === "manual" ? "strategy.entry.referenceManual" : kind === "reference" ? "strategy.entry.referenceAdjusted" : "strategy.entry.referenceObserved");
+  const observedScope = (hasBuckets: boolean) => t(hasBuckets ? `strategy.journey.climate.${previewBucket}` : "strategy.entry.referenceSessionMean");
+  const missing = (presence?: string, bucketed = false) => t(manual || references?.status !== "ready" ? "strategy.entry.referencePending"
+    : presence === "invalid" || presence === "stale" || presence === "unsupported" ? "strategy.entry.referenceInvalid"
+      : bucketed && (presence === "valid" || presence === undefined) ? "strategy.entry.referenceBucketMissing" : "strategy.entry.referenceMissing");
+  const cards = [
+    { icon: "i-carreras" as const, title: t("strategy.entry.referencePace"), value: manual ? formatPace(positive(draft.manualInputs?.paceSeconds) ? draft.manualInputs?.paceSeconds : undefined) : formatPace(paceValue), unit: t("strategy.entry.paceUnit"), detail: manual ? t("strategy.entry.estimated") : `${evidence(paceOverride?.presence === "valid" ? paceOverride.provenance.kind : undefined)}${paceOverride?.presence === "valid" ? "" : ` · ${t(`strategy.journey.climate.${previewBucket}`)}`}`, missing: missing(observedPace?.presence, Boolean(paceBuckets)) },
+    { icon: "i-telemetria" as const, title: t("strategy.entry.referenceFuel"), value: manual ? formatNumber(positive(draft.manualInputs?.fuelLitersPerLap) ? draft.manualInputs?.fuelLitersPerLap : undefined, 2) : formatNumber(fuelValue, 2), unit: t("strategy.entry.fuelUnit"), detail: manual ? t("strategy.entry.estimated") : `${evidence(fuelOverride?.presence === "valid" ? fuelOverride.provenance.kind : undefined)}${fuelOverride?.presence === "valid" ? "" : ` · ${observedScope(Boolean(fuelFamily?.byClimateBucket))}`}`, missing: missing(fuelFamily?.presence, Boolean(fuelFamily?.byClimateBucket)) },
+    ...(draft.virtualEnergy?.applicability === "applicable" || (!manual && nonNegative(energyValue)) ? [{ icon: "i-ajustes" as const, title: t("strategy.entry.referenceEnergy"), value: manual ? formatNumber(nonNegative(draft.manualInputs?.virtualEnergyPercentPerLap) ? draft.manualInputs?.virtualEnergyPercentPerLap : undefined, 1) : formatNumber(energyValue, 1), unit: t("strategy.entry.energyUnit"), detail: manual ? t("strategy.entry.estimated") : `${evidence(energyOverride?.presence === "valid" ? energyOverride.provenance.kind : undefined)}${energyOverride?.presence === "valid" ? "" : ` · ${observedScope(Boolean(energyFamily?.byClimateBucket))}`}${draft.virtualEnergy?.applicability !== "applicable" ? ` · ${t(draft.virtualEnergy?.applicability === "not_applicable" ? "strategy.entry.referenceRuleNotApplicable" : "strategy.entry.referenceRulePending")}` : ""}`, missing: missing(energyFamily?.presence, Boolean(energyFamily?.byClimateBucket)) }] : []),
   ];
 
   const navigation = <div className="strategy-preparation__navigation"><span>{t("strategy.entry.preparation")}{draft.combination ? ` · ${draft.combination.trackName}` : ""}</span><button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy} onClick={onExit}>{t("strategy.entry.changeSource")}</button></div>;
@@ -81,7 +112,15 @@ export function StrategyRecordedPreparation({ draft, onChange, catalog, catalogS
           <footer>{manual ? t("strategy.entry.estimatedHint") : selectedSessions.length ? t("strategy.entry.baseSelected") : t("strategy.entry.telemetryHint")}</footer></section>
         {manual ? <section className="strategy-preparation__manual-inputs" aria-label={t("strategy.entry.ownReferences")}><header><h3>{t("strategy.entry.ownReferences")}</h3><span>{t("strategy.entry.estimated")}</span></header><fieldset disabled={busy}><div>{(["paceSeconds", "fuelLitersPerLap", "virtualEnergyPercentPerLap"] as const).filter(field => field !== "virtualEnergyPercentPerLap" || draft.virtualEnergy?.applicability === "applicable").map(field => <label key={field}><span>{t(`strategy.entry.input.${field}`)}</span><input type="number" inputMode="decimal" min={field === "virtualEnergyPercentPerLap" ? 0 : 0.001} step="any" value={draft.manualInputs?.[field] ?? ""} onChange={event => change({ ...draft, manualInputs: { ...draft.manualInputs, [field]: event.target.value === "" ? undefined : Number(event.target.value) } })} /></label>)}</div></fieldset><p>{t("strategy.entry.estimatedHint")}</p></section>
           : <section className="strategy-preparation__source-list" aria-label={t("strategy.entry.sessionReferences")}><header><h3>{t("strategy.entry.sessionReferences")}</h3><button type="button" disabled={busy} onClick={onDiscover}>{t("strategy.workspace.review")} ↗</button></header>{selectedSessions.length ? <ul>{selectedSessions.map(item => <li key={item.id}><Icon name="i-telemetria" size={18} /><strong>{item.name}</strong><small>{t("strategy.entry.baseSelected")}</small></li>)}</ul> : <p>{t("strategy.workspace.noSources")}</p>}<footer>{t("strategy.recorded.originals")}</footer></section>}
-        <section className="strategy-preparation__references" aria-label={t("strategy.entry.referenceTitle")}><header><h3>{t("strategy.entry.referenceTitle")}</h3><span>{manual ? t("strategy.entry.estimated") : t("strategy.entry.referencePending")}</span></header><div>{references.map(item => <article key={item.title}><header><Icon name={item.icon} size={15} /><b>{item.title}</b></header><strong>{item.value}</strong><small>{item.value === "—" ? t("strategy.entry.referencePending") : item.unit}</small></article>)}</div></section>
+        <section className="strategy-preparation__references" aria-label={t("strategy.entry.referenceTitle")}><header><h3>{t("strategy.entry.referenceTitle")}</h3><span>{manual ? t("strategy.entry.estimated") : references?.status === "ready" ? t("strategy.entry.referenceRevision") : t("strategy.entry.referencePending")}</span></header>
+          {!manual && references?.status === "ready" ? <label className="strategy-preparation__preview-bucket">{t("strategy.entry.previewClimate")}<select value={previewBucket} onChange={event => setChosenPreviewBucket(event.currentTarget.value as ClimateBucket)}>{(["dry", "humid", "wet"] as const).map(bucket => <option key={bucket} value={bucket}>{t(`strategy.journey.climate.${bucket}`)}</option>)}</select></label> : null}
+          {!manual && references?.status === "open_sources" ? <p className="strategy-preparation__reference-message">{t("strategy.entry.referenceOpenSources")} <button type="button" disabled={busy} onClick={onDiscover}>{t("strategy.entry.openTelemetry")}</button></p> : null}
+          {!manual && references?.status === "no_sources" ? <p className="strategy-preparation__reference-message">{t("strategy.entry.referenceNoSources")} <button type="button" disabled={busy} onClick={onDiscover}>{t("strategy.entry.openTelemetry")}</button></p> : null}
+          {!manual && references?.status === "no_combination" ? <p className="strategy-preparation__reference-message">{t("strategy.entry.referenceNoCombination")}</p> : null}
+          {!manual && references?.status === "repository_unavailable" ? <p className="strategy-preparation__reference-message">{t("strategy.workspace.repositoryUnavailable")} {onRetryOpenDraft ? <button type="button" disabled={busy} onClick={onRetryOpenDraft}>{t("strategy.workspace.refresh")}</button> : null}</p> : null}
+          {!manual && references?.status === "loading" ? <p className="strategy-preparation__reference-message" role="status">{t("strategy.workspace.loading")}</p> : null}
+          {!manual && references?.status === "error" ? <p className="strategy-preparation__reference-message" role="alert">{t("strategy.entry.referenceUnavailable")} {onRetryReferences ? <button type="button" disabled={busy} onClick={onRetryReferences}>{t("strategy.workspace.refresh")}</button> : null}</p> : null}
+          <div>{cards.map(item => <article key={item.title}><header><Icon name={item.icon} size={15} /><b>{item.title}</b></header><strong>{item.value}</strong><small>{item.value === "—" ? item.missing : `${item.unit} · ${item.detail}`}</small></article>)}</div></section>
       </main>
       </div>
       <aside className="strategy-preparation__inspector" aria-label={t("strategy.entry.settings")}><header><span className="strategy-preparation__micro">{t("strategy.entry.preparation")}</span><h3>{inspector === "summary" ? t("strategy.entry.yourRace") : t(`strategy.entry.panel.${inspector}`)}</h3><p>{t("strategy.entry.summaryHint")}</p></header><nav aria-label={t("strategy.entry.settings")}>{(["summary", "drivers", "rules"] as const).map(item => <button key={item} type="button" aria-pressed={inspector === item} onClick={() => setInspector(item)}>{t(`strategy.entry.panel.${item}`)}</button>)}</nav><div className="strategy-preparation__inspector-body">

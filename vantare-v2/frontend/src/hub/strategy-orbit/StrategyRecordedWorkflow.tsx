@@ -18,6 +18,7 @@ import { StrategyRecordedRevisions } from "./StrategyRecordedRevisions";
 import { StrategyRecordedPlan } from "./StrategyRecordedPlan";
 import { useRecordedCalculation } from "./use-recorded-calculation";
 import { useRecordedAcceptance } from "./use-recorded-acceptance";
+import { useRecordedReferences } from "./use-recorded-references";
 
 /** Mount once per event. Views never own or dispose the opened Analysis files. */
 export function StrategyRecordedWorkflow({ eventId, repositoryVersion, repositoryLoading = false, onRetryRepository, initial, catalog, catalogState, calendar, application, analysis, saved, onExit, onRequestSaved, onOpenSavedDraft, onOpenSavedPlan, onCleanupError, navigation, t }: {
@@ -32,6 +33,7 @@ export function StrategyRecordedWorkflow({ eventId, repositoryVersion, repositor
   readonly navigation?: (state: { requestExit: (action?: () => void) => void; draft: RecordedWizardDraft; view: "preparation" | "editor"; busy: boolean }) => ReactNode;
 }) {
   const flow = useRecordedWorkflow({ eventId, repositoryVersion, initial, catalog, application, analysis, onCleanupError });
+  const references = useRecordedReferences(flow.draft, repositoryVersion, flow.sessions.sessions, application as StrategyApplicationClient<unknown>);
   const calculation = useRecordedCalculation(flow.draft, repositoryVersion, application);
   const [planVisited, setPlanVisited] = useState(false);
   const acceptance = useRecordedAcceptance(eventId, flow.draft, calculation.state, application, planVisited);
@@ -99,7 +101,7 @@ export function StrategyRecordedWorkflow({ eventId, repositoryVersion, repositor
       canOpenDraft={!flow.busy && (flow.stored !== undefined || repositoryVersion !== undefined)}
       openDraftHint={t(flow.sessions.busy ? "strategy.recorded.busy" : repositoryLoading ? "strategy.workspace.repositoryLoading" : "strategy.workspace.repositoryUnavailable")}
       onRetryOpenDraft={!flow.busy && !repositoryLoading ? onRetryRepository : undefined}
-      onDiscover={discover} onOpenDraft={() => { void flow.openEditor().then(opened => { if (opened) { setPlanVisited(true); setTab("plan"); } }); }} onExit={() => setMenuOpen(true)} onSave={() => void flow.save()} busy={flow.busy || formPending || strategyBusy} dirty={flow.dirty} error={error} t={t} />
+      onDiscover={discover} onOpenDraft={() => { void flow.openEditor().then(opened => { if (opened) { setPlanVisited(true); setTab("plan"); } }); }} onExit={() => setMenuOpen(true)} onSave={() => void flow.save()} busy={flow.busy || formPending || strategyBusy} dirty={flow.dirty} references={references.state} onRetryReferences={references.retry} error={error} t={t} />
       : <>
         <div className="strategy-recorded-workspace-head"><Button aria-label={t("strategy.recorded.backToWizard")} variant="ghost" disabled={backBlocked} onClick={backToPreparation}>← {t("strategy.recorded.backToWizard")}</Button></div>
         <nav className="strategy-recorded-tabs" role="tablist" aria-label={t("strategy.data.editorTabs")}>{(["race", "data", "plan", "revisions"] as const).map((item, index, tabs) => <button key={item} id={`recorded-tab-${item}`} type="button" role="tab" aria-selected={tab === item} aria-controls={`recorded-panel-${item}`} tabIndex={tab === item ? 0 : -1} onClick={() => { setTab(item); if (item === "data") setDataVisited(true); if (item === "plan") setPlanVisited(true); if (item === "revisions") setHistoryVisited(true); }} onKeyDown={event => {

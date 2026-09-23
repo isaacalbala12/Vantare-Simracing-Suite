@@ -51,7 +51,7 @@
 .strategy-entry__manual>small{text-align:center;margin-top:12px;font-size:9px;color:var(--orbit-ink-4)}
 .strategy-entry__saved{display:flex;flex-direction:column;gap:15px;grid-column:3;grid-row:1;min-width:0;max-height:650px;padding:20px;border:1px solid var(--orbit-line-strong);border-radius:var(--orbit-radius);background:var(--orbit-column-bg);overflow-y:auto}
 .strategy-entry__saved>header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:13px;border-bottom:1px solid var(--orbit-line)}
-.strategy-entry__saved>header h3{font-size:21px;line-height:1.2;font-weight:550;margin:6px 0 0}
+.strategy-entry__saved>header h3{font-size:21px;line-height:1.2;font-weight:550;margin:0}
 .strategy-entry__saved>header .orbit-btn{min-height:34px;padding:7px 9px;font-size:11px;white-space:nowrap}
 .strategy-entry__saved>section{min-width:0}
 .strategy-entry__saved>section h4{margin:0 0 9px;color:var(--orbit-ink-3);font-size:11px;font-weight:550}

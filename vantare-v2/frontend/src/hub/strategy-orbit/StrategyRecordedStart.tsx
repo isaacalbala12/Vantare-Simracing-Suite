@@ -54,7 +54,7 @@ export function StrategyRecordedStart({ candidates, busy, error, saved, onChoose
         <button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy} onClick={onManual}>{t("strategy.entry.startManual")} ↗</button><small>{t("strategy.entry.noTelemetry")}</small>
       </section>
       {saved ? <aside className="strategy-entry__saved" data-testid="strategy-entry-saved" aria-label={t("strategy.home.saved")}>
-        <header><div><span className="strategy-entry__micro">{t("strategy.home.saved")}</span><h3>{t("strategy.home.saved")}</h3></div>{onSaved ? <button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy || saved.opening} onClick={onSaved}>{t("strategy.entry.viewAll")} ↗</button> : null}</header>
+        <header><h3>{t("strategy.home.saved")}</h3>{onSaved ? <button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy || saved.opening} onClick={onSaved}>{t("strategy.entry.viewAll")} ↗</button> : null}</header>
         {saved.status === "loading" || saved.opening ? <p role="status">{t(saved.opening ? "strategy.journey.opening" : "strategy.workspace.loading")}</p> : null}
         {saved.status === "error" || saved.error ? <div role="alert"><p>{t("strategy.workspace.libraryError")}</p><button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy || saved.opening} onClick={saved.onRetry}>{t("strategy.workspace.refresh")}</button></div> : null}
         {saved.recoveredFromBackup ? <p role="status">{t("strategy.workspace.recovered")}</p> : null}

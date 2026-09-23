@@ -14,6 +14,8 @@ Base `4f3d029f23efa056ef3fdd59ca46aad06148dcb3`, rama `vantareapp/isa-1331-strat
 
 Corte 1 implementado: inicio de ancho disponible con columna derecha de hasta tres borradores y tres planes, reapertura/historial y biblioteca completa. Destinos diferidos protegen el borrador ante cancelación. Óvalo decorativo retirado. Focales Start/Page 10/10, tipos y lint pasan; root revisa el diff y los estados. Sigue el corte de referencias canónicas. Isaac ordena **no abrir ni relanzar la app hasta que lo indique**: sólo código/tests/build sin lanzamiento; QA nativa y visual pendiente, sin heredar notas anteriores.
 
+Corte 2 implementado: preparación consulta `get_revision_planning_inputs` con selección exacta y handles abiertos de la misma sesión/base. Una cabeza más reciente no sustituye la revisión adoptada. La clave cancela/descarta respuestas de selecciones anteriores y no consulta por teclear reglas/nombre. Ritmo por bucket de vista previa, Fuel/VE y ajustes conservan presencia/procedencia; bucket ausente no usa la media como sustituto. Fuente cerrada ofrece apertura y error ofrece reintento. Manual no consulta Analysis. Focales 21/21, tipos, ESLint focal y diff-check pasan. Root revisó hook, cableado, CSS y casos de carrera asincrónica; no acredita datos nativos todavía. Siguiente: circuito y continuidad de editor.
+
 ## Antecedente — QA de preparación y límite funcional (2026-09-22)
 
 Isaac completa VirusTotal: el asset regenerado obtiene 0/62, incluido Microsoft sin detección; no se afirma identidad con el original en cuarentena. Resultado enlazado en la auditoría de ISA-1322. La build normal vuelve a funcionar sin cambios de protección.

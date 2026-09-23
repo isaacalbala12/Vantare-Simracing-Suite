@@ -6,7 +6,7 @@
 > Este handoff conserva evidencia técnica fechada; sus estados antiguos no
 > sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
 
-## Actualización — ISA-1331, finalización del recorrido v5 (2026-09-23)
+## Actualización — ISA-1331, finalización del recorrido v5 (2026-09-23/24)
 
 Isaac rechaza el carácter incompleto del porte mediante tres capturas: inicio centrado sin guardadas visibles, preparación con referencias vacías y editor posterior heredado. [Issue #1331](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1331) y [plan root](../../strategy-planner/sdd/strategy-v5-completion-1331.md) fijan guardadas a la derecha, ancho aprovechado, circuito real, conexión canónica de referencias y composición consistente en todas las vistas. La nota anterior no acepta ese recorrido.
 
@@ -25,6 +25,10 @@ Corte 4b implementado: Datos y Revisiones comparten la escala y composición de 
 Corte 4c implementado: Plan compacto comparte el contexto; al editar Stint o Parada permanecen visibles la cronología y el resumen calculados. Los controles del ajuste ocupan el inspector derecho y las propuestas no se muestran como resultado hasta recalcular. Volver bloquea ajustes sin recalcular; una invalidación sin plan permite recuperar la salida. El clima no cambia durante la edición. Focales Plan/Stint/Parada 14/14, tipos, ESLint focal, build frontend y diff-check pasan; root revisó la distribución y pruebas. Queda biblioteca e historial, luego gates finales. App sin abrir ni relanzar.
 
 Corte 4d implementado: biblioteca a ancho completo con borradores y planes en columnas; historial de plan como pantalla propia con lista y detalle, no Drawer. Abrir una revisión comprueba referencia completa; error y reintento son recuperables, respuesta tardía se ignora al cerrar o desmontar. Selección sigue explícita. Navegador de fuentes compacto y sin blur. Focales Page/History 13/13, tipos, ESLint focal, build frontend y diff-check pasan; root revisó flujo, render y pruebas. Restan gates completos, documentación final y QA visual/nativa pendiente por orden de Isaac. App sin abrir ni relanzar.
+
+Verificación estática final: el Plan enseña el nombre real de la sesión y conserva la revisión exacta discreta; si falta nombre usa el estado localizado existente. Se retiraron tres textos sin consumidores en los cuatro idiomas. La suite completa terminó con 4.292 pruebas superadas y 2 omitidas (492 archivos); un primer pase concurrente tuvo dos fallos de i18n, corregido el texto huérfano y repetidos los tests de idioma 4/4 antes del pase final. Typecheck, lint completo, auditoría i18n, build frontend y 44 tests de roadmap pasan. `plan.md` describe la entrega real y `roadmap.json` se regeneró desde `origin/nightly`.
+
+La build localdev **no pasa**: TypeScript y Vite completan, pero Go no puede embeber `frontend/dist/assets/RacesOrbitPage-DPXWk2KF.js` porque Defender lo detecta como `Trojan:Script/ObfusScript.A!ml` (ThreatID 2147842389, acción registrada como satisfactoria a las 00:54 del 24-sep). [Issue #1353](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1353) registra este bloqueo independiente. Log `C:/tmp/isa1331-localdev-build-final.log`. Es un artefacto generado de Carreras; no se ha restaurado, exceptuado, renombrado ni ejecutado, y no se afirma falsedad de la detección para este archivo. La QA nativa con DuckDB real y la aceptación visual quedan sin realizar por orden de Isaac. La base `4f3d029f` tampoco pertenece a `origin/nightly` actual; entrega local aislada, sin push, PR, CI remota, merge, promoción ni release.
 
 ## Antecedente — QA de preparación y límite funcional (2026-09-22)
 

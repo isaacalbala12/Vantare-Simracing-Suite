@@ -6,7 +6,7 @@ Decisión aprobada por Isaac el 23/09/2026. Issue de diseño: #1338. Esta especi
 
 Una sola persona debe poder decidir cada semana si mejora la primera sesión, el retorno, la oferta o la distribución. Los dos resultados principales son **pilotos que vuelven a usar Vantare** e **ingresos recurrentes**. Ambos se muestran por separado. Las ventas únicas de Launch Edition y los cobros netos se muestran aparte de MRR.
 
-El primer segmento es pilotos de Le Mans Ultimate en Windows. La expansión a otros simuladores se modela después de verificar disponibilidad y uso reales. La capacidad de marketing vigente es 6 h por semana y 8 h en la semana objetivo de apertura, sin publicidad ni nuevas suscripciones en el plan base. Asana conserva la planificación de contenido; la consola no crea un segundo calendario editorial.
+La comunicación y la investigación abarcan **todo el simracing desde el inicio**, por decisión de Isaac. El mercado que puede utilizar hoy Vantare se limita a las compatibilidades realmente publicadas y verificadas; actualmente la referencia inicial es Le Mans Ultimate en Windows. La expansión funcional a otros simuladores se modela después de verificar disponibilidad y uso reales. La capacidad de marketing vigente es 6 h por semana y 8 h en la semana objetivo de apertura, sin publicidad ni nuevas suscripciones en el plan base. Asana conserva la planificación de contenido; la consola no crea un segundo calendario editorial.
 
 Fuentes que controlan este diseño:
 
@@ -72,7 +72,7 @@ El envío automático requiere consentimiento específico, desactivado por defec
 
 El estudio produce un modelo editable y fechado, con enlaces a fuentes originales y una columna que distingue hecho, estimación y supuesto. Calcula tres magnitudes distintas:
 
-1. **Techo del segmento inicial:** pilotos potenciales de LMU en Windows que podrían usar software de este tipo. La concurrencia de Steam no se tratará como usuarios únicos mensuales. Se contrastarán cifras oficiales, distribución y competencia; si faltan datos, se dará un intervalo.
+1. **Techo sectorial y mercado servible:** considerar todo el simracing para alcance y comunicación, y separar los pilotos que pueden usar las compatibilidades verificadas de Vantare. La concurrencia de Steam no se tratará como usuarios únicos mensuales. Se contrastarán cifras oficiales, distribución y competencia; si faltan datos, no se inventará un máximo numérico.
 2. **Crecimiento esperable a 12 meses:** escenarios prudente, central y alto mediante un embudo desde alcance cualificado hasta primera sesión, retorno y pago. Las tasas sin histórico serán supuestos explícitos y se sustituirán por cohortes observadas.
 3. **Objetivos operativos de 90 días:** hitos de uso e ingresos que una persona pueda atender. Se comprobarán contra las 6 h semanales de marketing, el tiempo de soporte y la disponibilidad comercial real. El techo de capacidad de Isaac se reporta separado del tamaño de mercado.
 

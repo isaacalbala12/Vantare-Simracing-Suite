@@ -41,13 +41,24 @@ La protección remota de `nightly` exige los dos primeros checks y que la rama e
 
 El commit posterior `4bd4b43ddd6fee0c119eaf58534341d237150f9d` solo modifica cuatro documentos; el código, la toolchain y la política son idénticos a `49e6d4c4`. En ese SHA, el [primer intento del gate Windows](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/35785560562/job/106941521869) y su [repetición](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/35785560562/job/106942748461) fallaron en el mismo test fuera de alcance por agotar un plazo de ocho segundos. Ese test había pasado en el run del SHA de código. El [ratchet del SHA documental](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/35785560547/job/106941380652) repitió `REVIEW_REQUIRED`, con NEW/MOVED/RESOLVED=0 e integridad correcta.
 
-Por tanto, la build Wails y la suite completa **están acreditadas en el commit de código**, pero el PR no dispone aún de un gate Windows verde en su HEAD documental. No se atribuye el fallo intermitente a Go 1.27.1 ni se presenta como resuelto. El PR sigue en borrador y no puede recomendarse su integración con el check obligatorio rojo; la incidencia queda registrada en la tarea Notion principal, sin ampliar aquí el alcance a ese test.
+En aquel momento, la build Wails y la suite completa estaban acreditadas en el commit de código, pero el PR no disponía de un gate Windows verde en su HEAD documental. No se atribuye el fallo intermitente a Go 1.27.1. La corrección acotada y su verificación posterior figuran a continuación.
 
 ### Reanudación y candidato de corrección · 23-09-2026
 
 Isaac autorizó completar la migración, incluida la corrección acotada de ese test. La inspección del código mostró que `PlayContext` esperaba una señal de error de WPF al recibir una ruta inexistente; en tres runs Windows la señal no llegó antes del timeout de ocho segundos. El candidato valida la existencia del archivo antes de iniciar PowerShell y devuelve el error de sistema envuelto. La prueba exige `os.ErrNotExist`; la prueba de ciclo de vida crea un archivo de prueba para seguir ejercitando un proceso activo. Se conserva la cancelación de contexto y no se cambia el script WPF ni el límite de duración.
 
-Comprobaciones locales del candidato: `gofmt -d` sin diferencias; test del paquete en macOS PASS, compilación de su ejecutable de pruebas para Windows PASS y `GOOS=windows go vet ./...` PASS con Go 1.27.1. `go vet ./...` sobre macOS continúa fallando por una referencia de plataforma fuera de este diff; la ejecución real de los tests Windows queda pendiente del nuevo run del PR. Este apartado no afirma que el gate ya esté reparado.
+Comprobaciones locales del candidato: `gofmt -d` sin diferencias; test del paquete en macOS PASS, compilación de su ejecutable de pruebas para Windows PASS, `GOOS=windows go vet ./...` y staticcheck focal PASS con Go 1.27.1. `go vet ./...` sobre macOS continúa fallando por una referencia de plataforma fuera de este diff.
+
+### Verificación remota de la corrección en `3cca49f6`
+
+| Comprobación | Resultado observado |
+| --- | --- |
+| [Promoción y contrato de roadmap](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/35802080443/job/106994475202) | **SUCCESS** |
+| [Gate Windows](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/35802080443/job/106994546114) | **SUCCESS**; pasaron `go test ./...`, incluido `TestPlayerRejectsMissingMedia`, build y tests frontend, contrato TypeScript, lint de archivos modificados, gate visual y `wails3 task windows:build` |
+| [Ratchet de calidad](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/35802080441/job/106994474355) | **FAILURE / REVIEW_REQUIRED** por rutas de política modificadas; en el paso CI final todos los analizadores terminaron con NEW=0, MOVED=0, RESOLVED=0 e integridad correcta. La revisión Astra previa cubrió esas rutas y baselines; el pequeño cambio posterior de código fue revisado manualmente y pasó el gate Windows |
+| GitGuardian | **SUCCESS** |
+
+Estos resultados corresponden al SHA `3cca49f6b63ff8d05a0e60b5a1b6001acdde06af`. El PR continúa en borrador. Sus checks obligatorios del HEAD final y la base remota Nightly se comprueban de nuevo antes de solicitar integración.
 
 ## Recalibración del ratchet
 
@@ -65,7 +76,7 @@ Los 20 hallazgos añadidos son el mismo `SA4023` en `cmd/vantare-admin/main.go`,
 ## Límites de la prueba
 
 - La ejecución completa de `go test ./...` en este host macOS no pasó: hubo fallos en launcher y diagnóstico, y un test de cancelación agotó sus diez minutos. También fallaron pruebas de grabación/SQLite por permisos y una sesión activa. Esta ejecución no se usó como señal verde; el gate Windows del PR es la prueba del sistema objetivo. No se ha atribuido todavía cada fallo macOS a una causa anterior o nueva.
-- La build Windows de `wails3 task windows:build` pasó en CI sobre el commit de código `49e6d4c4`. Ni esa build ni la compilación cruzada local prueban el arranque físico de la aplicación o flujos con LMU.
+- La build Windows de `wails3 task windows:build` pasó en CI sobre `49e6d4c4` y `3cca49f6`. Ni esa build ni la compilación cruzada local prueban el arranque físico de la aplicación o flujos con LMU.
 - `quality-check (ratchet)` terminó en `REVIEW_REQUIRED` por el cambio de workflows, manifiesto, test y baselines. La revisión independiente se completó; el job continúa registrado como fallo de política previsto.
 - La ruta Docker alternativa usa Garble v0.16.0 y compila `.` desde una raíz sin archivos Go; no forma parte del gate Windows ordinario y este host no dispone de Docker. El helper de telemetría que se empaqueta procede de una build aprobada con manifiesto/hash fijados; no se reconstruye aquí.
 - `release.yml` exige fuente perteneciente a Nightly o Testers y puede publicar artefactos; no se disparará desde esta rama de issue. Sus pins y la ruta compartida de build se comprobarán sin promover canales.

@@ -233,6 +233,39 @@ describe("OverlayWorkshopDevRoute", () => {
     expect(screen.getByTestId("workshop-scene-scrub")).toBeTruthy();
   });
 
+  it("reviews the Functional Relative combined sequence by scrubbing or playing it", async () => {
+    render(
+      <OverlayWorkshopDevRoute search="?widget=relative&system=vantare-functional&variant=default&state=ready&surface=obs&scene=relative-functional-sequence&sceneFrame=0" />,
+    );
+
+    await waitFor(() => expect(document.querySelector("[data-widget-system=vantare-functional]")).toBeTruthy());
+    expect(screen.getByTestId("workshop-scene-watch").textContent).toMatch(/cruce en ambos sentidos.*entrada y salida/i);
+
+    const scrub = screen.getByTestId("workshop-scene-scrub") as HTMLInputElement;
+    fireEvent.change(scrub, { target: { value: "2" } });
+    expect(screen.getByTestId("workshop-scene-caption").textContent).toContain("Primer cruce");
+    expect(scrub.value).toBe("2");
+
+    fireEvent.click(screen.getByTestId("workshop-scene-run"));
+    await waitFor(() => expect(screen.getByTestId("workshop-scene-play").getAttribute("aria-pressed")).toBe("true"));
+  });
+
+  it("shows Functional Horizontal Standings scenes and parks fast inversions on the exact keyframe", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=broadcast-tower&system=vantare-functional&state=ready&surface=obs&scene=broadcast-tower-fast-inversion&frame=1" />);
+
+    await waitFor(() => expect(document.querySelector("[data-widget-renderer=broadcast-tower]")).toBeTruthy());
+    const sceneSelect = screen.getByLabelText("Escena") as HTMLSelectElement;
+    expect([...sceneSelect.options].map((option) => option.value)).toContain("broadcast-tower-fast-inversion");
+    const p2 = [...document.querySelectorAll(".vf-bt-card")].find((card) => card.querySelector(".vf-bt-place")?.textContent === "2");
+    expect(p2?.querySelector(".vf-bt-name")?.textContent).toBe("F. Albuquerque");
+    expect(screen.getByTestId("workshop-scene-scrub")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Sistema de diseño"), { target: { value: "vantare-original" } });
+    await waitFor(() => expect((screen.getByLabelText("Sistema de diseño") as HTMLSelectElement).value).toBe("vantare-original"));
+    expect(screen.queryByLabelText("Escena")).toBeNull();
+    expect(window.location.search).not.toContain("scene=");
+  });
+
   it("declares the canvas size through the study view preset and free dimensions", async () => {
     render(
       <OverlayWorkshopDevRoute search="?widget=delta&system=vantare-original&state=ready&surface=studio&variant=default" />,

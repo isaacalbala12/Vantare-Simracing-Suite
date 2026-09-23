@@ -75,7 +75,7 @@ describe("OverlayFrame v2 store", () => {
     expect(() => decodeOverlayUpdateV2(withoutBestLap)).toThrow(
       "overlay-frame-v2:invalid-contract:frame.standings[0]",
     );
-    for (const field of ["position", "groundPosition", "lastLap"] as const) {
+    for (const field of ["position", "groundPosition", "lastLap", "lapDelta"] as const) {
       const incomplete = JSON.parse(JSON.stringify(update)) as Record<string, unknown>;
       const frame = incomplete.frame as { relative: Record<string, unknown>[] };
       delete frame.relative[0]?.[field];
@@ -111,6 +111,47 @@ describe("OverlayFrame v2 store", () => {
         },
       },
     })).toThrow("overlay-frame-v2:invalid-contract:frame.capabilities.performance.reason");
+  });
+
+  it.each(["relative", "relativeSettled"] as const)("preserves signed lapDelta and its quality in %s independently of the time gap", (field) => {
+    const update = golden();
+    if (!update.frame) throw new Error("golden frame missing");
+    const values = [
+      { q: "fresh", v: -2 }, { q: "fresh", v: 0 }, { q: "fresh", v: 3 },
+      { q: "fresh" }, { q: "stale", v: -1 }, { q: "missing" }, { q: "invalid" },
+    ];
+    for (const lapDelta of values) {
+      const rows = update.frame[field].map((row, index) => index === 0
+        ? { ...row, gap: { q: "missing" }, lapDelta }
+        : row);
+      const decoded = decodeOverlayUpdateV2({ ...update, frame: { ...update.frame, [field]: rows } });
+      expect(decoded.frame?.[field][0]?.lapDelta).toEqual(lapDelta);
+      expect(decoded.frame?.[field][0]?.gap).toEqual({ q: "missing" });
+      expect(Object.isFrozen(decoded.frame?.[field][0]?.lapDelta)).toBe(true);
+    }
+  });
+
+  it.each(["relative", "relativeSettled"] as const)("rejects missing or malformed lapDelta and unknown fields in %s", (field) => {
+    const update = golden();
+    if (!update.frame) throw new Error("golden frame missing");
+    const row = update.frame[field][0];
+    if (!row) throw new Error("golden Relative row missing");
+    const malformed: unknown[] = [
+      undefined, null, 1, {}, [], { v: 1 }, { q: "unknown", v: 1 },
+      { q: "fresh", v: "1" }, { q: "fresh", v: true }, { q: "fresh", v: null },
+      { q: "fresh", v: Number.NaN }, { q: "fresh", v: Number.POSITIVE_INFINITY },
+      { q: "missing", v: 0 }, { q: "fresh", v: 1, unexpected: true },
+    ];
+    const rejectedRows = [
+      ...malformed.map((lapDelta) => ({ ...row, lapDelta })),
+      { ...row, unexpected: true },
+    ];
+    for (const rejected of rejectedRows) {
+      expect(() => decodeOverlayUpdateV2({
+        ...update,
+        frame: { ...update.frame, [field]: [rejected, ...update.frame![field].slice(1)] },
+      })).toThrow(`overlay-frame-v2:invalid-contract:frame.${field}[0]`);
+    }
   });
 
   it("requires and bounds both Relative windows to the canonical 8+player+8 contract", () => {

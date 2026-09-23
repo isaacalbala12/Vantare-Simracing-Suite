@@ -1489,6 +1489,9 @@
           "v": 2.0454545454545454,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 1,
@@ -1510,6 +1513,9 @@
         "position": 3,
         "gap": {
           "v": 4.090909090909091,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -1535,6 +1541,9 @@
           "v": 6.136363636363637,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 3,
@@ -1556,6 +1565,9 @@
         "position": 5,
         "gap": {
           "v": 8.181818181818182,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -1581,6 +1593,9 @@
           "v": 10.227272727272727,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 5,
@@ -1602,6 +1617,9 @@
         "position": 7,
         "gap": {
           "v": 12.272727272727273,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -1627,6 +1645,9 @@
           "v": 14.318181818181818,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 7,
@@ -1648,6 +1669,9 @@
         "position": 9,
         "gap": {
           "v": 16.363636363636363,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -1672,6 +1696,9 @@
         "gap": {
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "q": "fresh"
         },
@@ -1689,6 +1716,10 @@
         "position": 44,
         "gap": {
           "v": -2.0454545454545467,
+          "q": "fresh"
+        },
+        "lapDelta": {
+          "v": -1,
           "q": "fresh"
         },
         "groundPosition": {
@@ -1714,6 +1745,10 @@
           "v": -4.0909090909090935,
           "q": "fresh"
         },
+        "lapDelta": {
+          "v": -1,
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 42,
@@ -1735,6 +1770,10 @@
         "position": 42,
         "gap": {
           "v": -6.13636363636364,
+          "q": "fresh"
+        },
+        "lapDelta": {
+          "v": -1,
           "q": "fresh"
         },
         "groundPosition": {
@@ -1760,6 +1799,10 @@
           "v": -8.181818181818187,
           "q": "fresh"
         },
+        "lapDelta": {
+          "v": -1,
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 40,
@@ -1781,6 +1824,9 @@
         "position": 40,
         "gap": {
           "v": -10.227272727272734,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -1806,6 +1852,9 @@
           "v": -12.272727272727266,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 38,
@@ -1829,6 +1878,9 @@
           "v": -14.318181818181813,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 37,
@@ -1850,6 +1902,9 @@
         "position": 37,
         "gap": {
           "v": -16.36363636363636,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -1877,6 +1932,9 @@
           "v": 2.0454545454545454,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 1,
@@ -1898,6 +1956,9 @@
         "position": 3,
         "gap": {
           "v": 4.090909090909091,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -1923,6 +1984,9 @@
           "v": 6.136363636363637,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 3,
@@ -1944,6 +2008,9 @@
         "position": 5,
         "gap": {
           "v": 8.181818181818182,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -1969,6 +2036,9 @@
           "v": 10.227272727272727,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 5,
@@ -1990,6 +2060,9 @@
         "position": 7,
         "gap": {
           "v": 12.272727272727273,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -2015,6 +2088,9 @@
           "v": 14.318181818181818,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 7,
@@ -2036,6 +2112,9 @@
         "position": 9,
         "gap": {
           "v": 16.363636363636363,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -2060,6 +2139,9 @@
         "gap": {
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "q": "fresh"
         },
@@ -2077,6 +2159,10 @@
         "position": 44,
         "gap": {
           "v": -2.0454545454545467,
+          "q": "fresh"
+        },
+        "lapDelta": {
+          "v": -1,
           "q": "fresh"
         },
         "groundPosition": {
@@ -2102,6 +2188,10 @@
           "v": -4.0909090909090935,
           "q": "fresh"
         },
+        "lapDelta": {
+          "v": -1,
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 42,
@@ -2123,6 +2213,10 @@
         "position": 42,
         "gap": {
           "v": -6.13636363636364,
+          "q": "fresh"
+        },
+        "lapDelta": {
+          "v": -1,
           "q": "fresh"
         },
         "groundPosition": {
@@ -2148,6 +2242,10 @@
           "v": -8.181818181818187,
           "q": "fresh"
         },
+        "lapDelta": {
+          "v": -1,
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 40,
@@ -2169,6 +2267,9 @@
         "position": 40,
         "gap": {
           "v": -10.227272727272734,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {
@@ -2194,6 +2295,9 @@
           "v": -12.272727272727266,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 38,
@@ -2217,6 +2321,9 @@
           "v": -14.318181818181813,
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "v": {
             "x": 37,
@@ -2238,6 +2345,9 @@
         "position": 37,
         "gap": {
           "v": -16.36363636363636,
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {

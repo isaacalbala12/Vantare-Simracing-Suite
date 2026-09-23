@@ -199,6 +199,9 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
     const scene = getAnimationScene(sceneId);
     if (!scene) return { error: `invalid scene parameter: ${sceneId}` };
     if (scene.widget !== widget) return { error: `scene ${sceneId} requires widget=${scene.widget}` };
+    if (scene.systems && !scene.systems.includes(system)) {
+      return { error: `scene ${sceneId} requires system=${scene.systems.join(",")}` };
+    }
   }
   const sceneFrameRaw = params.get("frame");
   const sceneFrame = sceneFrameRaw === null ? undefined : Number(sceneFrameRaw);

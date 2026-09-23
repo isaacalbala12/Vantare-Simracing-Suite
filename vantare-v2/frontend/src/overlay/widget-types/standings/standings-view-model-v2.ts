@@ -76,11 +76,17 @@ export function buildStandingsViewModelV2(
   const phase = displayedText(frame.session.phase)?.toLowerCase();
   const paceSession = phase === "practice" || phase === "qualifying";
   const sessionBestLap = paceSession ? fastestLap(scoped) : undefined;
+  const sessionBestRow = scoped.reduce<OverlayStandingRowV2 | undefined>((best, row) => {
+    const seconds = row.bestLap?.q === "fresh" ? displayedNumber(row.bestLap) : undefined;
+    return seconds !== undefined && seconds > 0 && Number.isFinite(seconds)
+      && (!best || seconds < best.bestLap.v!) ? row : best;
+  }, undefined);
   const limited = scoped.slice(0, content.rowCount ?? 20);
   const nameColumn = columns.find((column) => column.metricId === "driverName");
   const weather = frame.weather;
   const projectedRows = limited.map((row, index) =>
-    buildRow(row, index, playerId, paceSession, sessionBestLap, nameColumn),
+    buildRow(row, index, playerId, paceSession, sessionBestLap, nameColumn,
+      source.state === "live" && frame.session.phase.q === "fresh" && phase === "race"),
   );
   const rows = window
     ? selectDefaultStandingsWindow(projectedRows, window.around)
@@ -96,6 +102,7 @@ export function buildStandingsViewModelV2(
       remainingText: formatRemainingTime(displayedNumber(frame.session.remaining)),
       trackName: displayedText(frame.session.track),
       totalRows: scoped.length,
+      sessionBest: sessionBestRow ? { rowId: sessionBestRow.id, seconds: sessionBestRow.bestLap.v! } : undefined,
       ambientTempText: formatTemp(displayedNumber(weather?.ambientC)),
       trackTempText: formatTemp(displayedNumber(weather?.trackC)),
       windText: formatWind(displayedNumber(weather?.windKph)),
@@ -184,8 +191,10 @@ function buildRow(
   paceSession: boolean,
   sessionBestLap: number | undefined,
   nameColumn: WidgetColumnV3 | undefined,
+  freshRace: boolean,
 ): StandingsRowViewModel {
   const driverName = row.driver || PLACEHOLDER;
+  const gap = row.gap?.q === "fresh" ? displayedNumber(row.gap) : undefined;
   return {
     id: row.id,
     position: row.position,
@@ -201,6 +210,9 @@ function buildRow(
     currentLapText: row.laps === undefined ? "" : String(row.laps),
     lastLapText: formatLapTime(displayedNumber(row.lastLap)),
     bestLapText: formatLapTime(displayedNumber(row.bestLap)),
+    bestLapSeconds: row.bestLap?.q === "fresh" ? displayedNumber(row.bestLap) : undefined,
+    battleGapSeconds: freshRace && row.pit === "track" && (row.gapLaps ?? 0) === 0
+      && gap !== undefined && Number.isFinite(gap) && gap >= 0 ? gap : undefined,
     pitText: row.pit === "pit" ? "PIT" : "",
     tireCompound: "",
     isPlayer: playerId !== undefined && row.id === playerId,

@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import type { OverlayFrameV2 } from "../../../generated/telemetry";
+import type { OverlayFrameV2, OverlayStandingRowV2, OverlaySourceStatusV2 } from "../../../generated/telemetry";
 import { standingsDefinition } from "./standings-definition";
 import { buildStandingsViewModelV2, standingsDisplayedValues } from "./standings-view-model-v2";
 import { formatStandingsLapDifference, formatStandingsSecondsDifference } from "./standings-formatting";
@@ -33,6 +33,34 @@ function fullGoldenFrame(): OverlayFrameV2 {
 }
 
 describe("buildStandingsViewModelV2 session columns", () => {
+  it("projects fresh race-gap authority only for non-lapped cars known to be on track", () => {
+    const base = frameForPhase("race");
+    const first = { ...base.standings[0]!, pit: "track", gapLaps: 0, gap: { q: "fresh" as const } };
+    const project = (patch: Partial<OverlayStandingRowV2> = {}, phase = base.session.phase, source: OverlaySourceStatusV2 = { state: "live" }) => buildStandingsViewModelV2({ ...base, session: { ...base.session, phase }, standings: [{ ...first, ...patch }] }, source, content).rows[0]!.battleGapSeconds;
+    expect(project()).toBe(0); // Go omitempty retains fresh zero through quality.
+    expect(project({ gap: { q: "fresh", v: 0.6 } })).toBe(0.6);
+    for (const q of ["stale", "invalid", "missing"] as const) expect(project({ gap: { q, v: 0.6 } })).toBeUndefined();
+    for (const v of [-1, Infinity, NaN]) expect(project({ gap: { q: "fresh", v } })).toBeUndefined();
+    for (const pit of ["pit", "unknown", undefined]) expect(project({ pit })).toBeUndefined();
+    expect(project({ gapLaps: 1 })).toBeUndefined();
+    expect(project({}, { q: "fresh", v: "practice" })).toBeUndefined();
+    expect(project({}, { q: "stale", v: "race" })).toBeUndefined();
+    expect(project({}, base.session.phase, { state: "stale" })).toBeUndefined();
+  });
+  it("keeps record authority outside the visible window and rejects old lap samples", () => {
+    const frame = frameForPhase("race");
+    frame.standings[1]!.bestLap = { q: "fresh", v: 239 };
+    const limited = { ...content, rowCount: 1 };
+    const value = buildStandingsViewModelV2(frame, { state: "live" }, limited);
+    expect(value.rows).toHaveLength(1);
+    expect(value.sessionBest).toEqual({ rowId: frame.standings[1]!.id, seconds: 239 });
+    expect(value.rows[0]!.bestLapSeconds).toBe(240);
+    frame.standings[0]!.bestLap = { q: "stale", v: 238 };
+    const old = buildStandingsViewModelV2(frame, { state: "live" }, limited);
+    expect(old.rows[0]!.bestLapSeconds).toBeUndefined();
+    expect(old.sessionBest?.seconds).toBe(239);
+  });
+
   it("projects session information without confusing fuel range with race laps", () => {
     const frame = frameForPhase("race");
     const model = buildStandingsViewModelV2({ ...frame,

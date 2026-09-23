@@ -55,6 +55,9 @@ desde `origin` con un límite de 60 segundos, sin cambiar HEAD ni ramas. Si no s
 puede comprobar, el gate falla cerrado. No se acepta ni reescribe el baseline.
 El informe enumera cada registro reagrupado, path real, blob y SHA de procedencia.
 Los cambios de política siguen exigiendo revisión y devolviendo exit distinto de cero.
+Si cambia la versión de otra herramienta, el baseline de jscpd de la base del PR
+sigue siendo válido mientras la versión de jscpd sea la misma. La igualdad con
+el baseline confiable y las comprobaciones de fuente siguen siendo obligatorias.
 
 ### Informativas (no bloqueantes)
 
@@ -112,7 +115,9 @@ manejo de errores son controles de runtime que los tipos no reemplazan.
   procedencia del host de la cobertura semántica. Darwin y Linux producen
   el mismo conjunto de configs, así el baseline es comparable entre plataformas.
 - `check` da ERROR si el `scope_hash` o las versiones de las herramientas
-  difieren de la configuración actual: obliga recalibración explícita.
+  difieren de la configuración actual: obliga recalibración explícita. La única
+  excepción es jscpd cuando solo cambian versiones de otras herramientas;
+  exige su misma versión y el baseline exacto de la base confiable del PR.
 - `check` da FAIL si un analizador con baseline no produjo resultado (NOT_RUN):
   un analizador no puede desaparecer en silencio.
 - La cabecera del baseline guarda `base_sha` como **procedencia** (de qué

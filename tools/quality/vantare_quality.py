@@ -312,6 +312,17 @@ def versions_fingerprint(versions: dict) -> str:
     return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
 
 
+def baseline_versions_match(analyzer: str, header: dict, versions: dict) -> bool:
+    if header.get("versions_fingerprint") == versions_fingerprint(versions):
+        return True
+    # jscpd's trusted PR-base baseline is unchanged by Go-only tool upgrades.
+    # Its own version must still match; source provenance is checked below.
+    if analyzer == "jscpd":
+        expected = versions.get("analyzers", {}).get("jscpd", {}).get("version")
+        return bool(expected) and header.get("tool_versions", {}).get("jscpd") == expected
+    return False
+
+
 # ---------------------------------------------------------------------------
 # Configs: fisicas (ejecucion) y semanticas (baselines portables)
 # ---------------------------------------------------------------------------
@@ -1092,7 +1103,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         header = bl.get("header", {})
         if header.get("scope_hash") != scope_hash(scope):
             integrity_issues.append(f"{r.analyzer}: scope_hash del baseline distinto -> recalibrar")
-        if header.get("versions_fingerprint") != versions_fingerprint(versions):
+        if not baseline_versions_match(r.analyzer, header, versions):
             integrity_issues.append(f"{r.analyzer}: versiones del baseline distintas -> recalibrar")
         classifications[r.analyzer] = classify_findings(baseline_findings(bl), actual_by_analyzer[r.analyzer])
         if r.analyzer == "jscpd" and base_sha and not integrity_issues:

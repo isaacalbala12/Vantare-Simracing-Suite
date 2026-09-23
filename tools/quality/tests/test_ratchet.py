@@ -18,12 +18,14 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from vantare_quality import (  # noqa: E402
     Finding,
+    baseline_versions_match,
     classify_findings,
     content_hash,
     msg_norm,
     norm_path,
     REPO_ROOT,
     cmd_doctor,
+    versions_fingerprint,
 )
 
 
@@ -52,6 +54,31 @@ class DoctorToolchainTests(unittest.TestCase):
 
         self.assertIn("go: OK -> go version go1.27.1", check("1.27.1"))
         self.assertIn("go: MISMATCH -> go version go1.25.0", check("1.25.0"))
+
+
+class BaselineVersionTests(unittest.TestCase):
+    def test_jscpd_baseline_survives_unrelated_go_upgrade(self):
+        old = {"analyzers": {"jscpd": {"version": "5.1.2"}, "govet": {"version": "go1.25.0"}}}
+        current = {"analyzers": {"jscpd": {"version": "5.1.2"}, "govet": {"version": "go1.27.1"}}}
+        header = {
+            "versions_fingerprint": versions_fingerprint(old),
+            "tool_versions": {"jscpd": "5.1.2", "govet": "go1.25.0"},
+        }
+        self.assertTrue(baseline_versions_match("jscpd", header, current))
+        self.assertFalse(baseline_versions_match("govet", header, current))
+
+    def test_jscpd_baseline_rejects_own_version_change(self):
+        old = {"analyzers": {"jscpd": {"version": "5.1.1"}}}
+        current = {"analyzers": {"jscpd": {"version": "5.1.2"}}}
+        header = {
+            "versions_fingerprint": versions_fingerprint(old),
+            "tool_versions": {"jscpd": "5.1.1"},
+        }
+        self.assertFalse(baseline_versions_match("jscpd", header, current))
+
+    def test_matching_fingerprint_still_passes(self):
+        current = {"analyzers": {"govet": {"version": "go1.27.1"}}}
+        self.assertTrue(baseline_versions_match("govet", {"versions_fingerprint": versions_fingerprint(current)}, current))
 
 
 class NormTests(unittest.TestCase):

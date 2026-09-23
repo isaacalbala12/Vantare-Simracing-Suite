@@ -1,11 +1,13 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { WidgetVisualHost } from "../../core/WidgetVisualHost";
+import { I18nProvider } from "../../../i18n/I18nProvider";
 import { buildWorkshopFrameV2, createScenarioWidget } from "../../authoring/fixtures/authoring-v2-workshop-frame";
 import type { RelativeViewModel } from "../../widget-types/relative/relative-view-model";
 import { RelativeFunctional } from "./RelativeFunctional";
 
 afterEach(cleanup);
+afterEach(() => localStorage.clear());
 
 const model: RelativeViewModel = {
   type: "relative", status: "ready", rowHeightMode: "auto",
@@ -24,6 +26,58 @@ const model: RelativeViewModel = {
 };
 
 describe("Functional Relative", () => {
+  it("renders a neutral lap badge only for non-player integer differences in race", () => {
+    const race: RelativeViewModel = {
+      ...model,
+      sessionLabel: "RACE",
+      rows: model.rows.map((row) => ({
+        ...row,
+        lapDelta: row.id === "ahead" ? -1 : row.id === "behind" ? 2 : 0,
+      })),
+    };
+    const { container, getByLabelText } = render(<RelativeFunctional model={race} settings={{}} renderMode="harness" />);
+
+    expect(getByLabelText("1 vuelta menos que tú").textContent).toBe("−1 V");
+    expect(getByLabelText("2 vueltas más que tú").textContent).toBe("+2 V");
+    expect(container.querySelector('tr[data-player="true"] .vf-relative-lap-delta')).toBeNull();
+    expect(container.querySelectorAll(".vf-relative-lap-delta")).toHaveLength(2);
+  });
+
+  it.each([
+    ["PRÁCTICA", "ready", -1],
+    ["QUALIFYING", "ready", -1],
+    ["RACE", "stale", -1],
+    ["RACE", "ready", 0],
+    ["RACE", "ready", null],
+  ] as const)("does not render a lap badge for session=%s status=%s delta=%s", (sessionLabel, status, lapDelta) => {
+    const noBadge: RelativeViewModel = {
+      ...model,
+      sessionLabel,
+      status,
+      rows: model.rows.map((row) => ({ ...row, lapDelta })),
+    };
+    const { container } = render(<RelativeFunctional model={noBadge} settings={{}} renderMode="harness" />);
+    expect(container.querySelector(".vf-relative-lap-delta")).toBeNull();
+  });
+
+  it.each([
+    ["es", "1 vuelta menos que tú", "−1 V"],
+    ["en", "1 lap fewer than you", "−1 L"],
+    ["pt", "1 volta a menos que você", "−1 V"],
+    ["it", "1 giro in meno di te", "−1 G"],
+  ] as const)("localizes lap badge title and accessible name in %s", async (locale, title, value) => {
+    localStorage.setItem("vantare.locale", locale);
+    const race: RelativeViewModel = {
+      ...model,
+      sessionLabel: "RACE",
+      rows: model.rows.map((row) => ({ ...row, lapDelta: row.id === "ahead" ? -1 : null })),
+    };
+    const { findByLabelText } = render(
+      <I18nProvider><RelativeFunctional model={race} settings={{}} renderMode="harness" /></I18nProvider>,
+    );
+    expect((await findByLabelText(title)).textContent).toBe(value);
+  });
+
   it("renders rows only — no brand header, no column-label row — with the player band", () => {
     const { container } = render(<RelativeFunctional model={model} settings={{}} renderMode="harness" />);
     expect(container.querySelector(".vf-session")).toBeNull();

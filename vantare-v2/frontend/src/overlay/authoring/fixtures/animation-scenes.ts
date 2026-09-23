@@ -1,4 +1,5 @@
 import type { DesignSystemId, WidgetType } from "../../core/profile-document";
+import type { OverlayQualityV2 } from "../../../generated/telemetry";
 
 /**
  * A single car's state for one frame of a scene. Anything omitted keeps the
@@ -16,6 +17,9 @@ export type SceneOverride = {
   bestLapImprovement?: number;
   /** Drops the car from the field entirely (retirement / rejoin frames). */
   absent?: boolean;
+  /** Workshop-only override for canonical lap difference; never inferred from position or gaps. */
+  lapDelta?: number;
+  lapDeltaQuality?: OverlayQualityV2;
 };
 
 /** Player-owned values, for widgets that read the driver rather than the field. */
@@ -49,6 +53,8 @@ export type AnimationScene = {
   /** Milliseconds per frame. A battle needs room to breathe; a flash does not. */
   frameMs: number;
   frames: readonly SceneFrame[];
+  /** Workshop-only classification swap for a scene that needs a mid-pack player. */
+  positionSwap?: readonly [number, number];
   /**
    * Telemetry field this animation needs, when the live projection does not
    * deliver it. Workshop keeps the value absent, so the catalog cannot suggest
@@ -354,6 +360,212 @@ const RELATIVE_ENTER_SCENE: AnimationScene = {
   ],
 };
 
+const RELATIVE_FUNCTIONAL_CROSS_AHEAD_SCENE: AnimationScene = {
+  id: "relative-functional-cross-ahead",
+  widget: "relative",
+  label: "Cruce detrás → delante",
+  watchFor:
+    "Sigue al mismo rival y deja fijo al jugador: la fila cruza de detrás a delante cuando el gap cambia de signo, con un acento de color muy tenue solo en el cruce y cifras quietas.",
+  frameMs: 1200,
+  frames: [
+    { caption: "Nico Pino detrás del jugador: −0,65 s", cars: { "Nico Pino": { timeGapToPlayer: -0.65 } } },
+    { caption: "Se acerca: −0,12 s", cars: { "Nico Pino": { timeGapToPlayer: -0.12 } } },
+    { caption: "Cruza hacia delante: +0,12 s", cars: { "Nico Pino": { timeGapToPlayer: 0.12 } } },
+    { caption: "Se aleja delante: +0,65 s", cars: { "Nico Pino": { timeGapToPlayer: 0.65 } } },
+  ],
+};
+
+const RELATIVE_FUNCTIONAL_CROSS_BEHIND_SCENE: AnimationScene = {
+  id: "relative-functional-cross-behind",
+  widget: "relative",
+  label: "Cruce delante → detrás",
+  watchFor:
+    "Sigue al mismo rival y deja fijo al jugador: la fila cruza de delante a detrás cuando el gap cambia de signo, con un acento de color muy tenue solo en el cruce y cifras quietas.",
+  frameMs: 1200,
+  frames: [
+    { caption: "Nico Pino delante del jugador: +0,65 s", cars: { "Nico Pino": { timeGapToPlayer: 0.65 } } },
+    { caption: "Se acerca: +0,12 s", cars: { "Nico Pino": { timeGapToPlayer: 0.12 } } },
+    { caption: "Cruza hacia detrás: −0,12 s", cars: { "Nico Pino": { timeGapToPlayer: -0.12 } } },
+    { caption: "Se aleja detrás: −0,65 s", cars: { "Nico Pino": { timeGapToPlayer: -0.65 } } },
+  ],
+};
+
+const RELATIVE_FUNCTIONAL_WINDOW_SCENE: AnimationScene = {
+  id: "relative-functional-window-cycle",
+  widget: "relative",
+  label: "Entrada, salida y reentrada",
+  watchFor:
+    "Mikkel Jensen sale y reentra con la misma identidad mientras la fila del jugador conserva su ID y posición. Revisa entrada y salida por opacidad, alrededor de 120 ms, y confirma que las cifras no pulsan.",
+  frameMs: 1200,
+  frames: [
+    { caption: "Mikkel Jensen aún fuera de la ventana", cars: { "Mikkel Jensen": { absent: true } } },
+    { caption: "Entra en la ventana: gap estable de −2,6 s", cars: { "Mikkel Jensen": { timeGapToPlayer: -2.6 } } },
+    { caption: "Mikkel Jensen ya asentado; las cifras siguen iguales", cars: { "Mikkel Jensen": { timeGapToPlayer: -2.6 } } },
+    { caption: "Sale de la ventana visible", cars: { "Mikkel Jensen": { absent: true } } },
+    { caption: "Continúa fuera", cars: { "Mikkel Jensen": { absent: true } } },
+    { caption: "Reentra con la misma fila y el mismo gap", cars: { "Mikkel Jensen": { timeGapToPlayer: -2.6 } } },
+    { caption: "Reentrada asentada: −2,6 s", cars: { "Mikkel Jensen": { timeGapToPlayer: -2.6 } } },
+  ],
+};
+
+const RELATIVE_FUNCTIONAL_FAST_REVERSAL_SCENE: AnimationScene = {
+  id: "relative-functional-fast-reversal",
+  widget: "relative",
+  label: "Inversión rápida · 180 ms",
+  watchFor:
+    "Escena de estrés: el mismo rival cambia de lado cada 180 ms (<300 ms). Comprueba que no se pierde la fila ni el jugador y que el acento tenue solo aparece en cada cruce real.",
+  frameMs: 180,
+  frames: [
+    { caption: "Nico Pino detrás: −0,14 s", cars: { "Nico Pino": { timeGapToPlayer: -0.14 } } },
+    { caption: "Cruza delante en 180 ms: +0,14 s", cars: { "Nico Pino": { timeGapToPlayer: 0.14 } } },
+    { caption: "Invierte y vuelve detrás en 180 ms: −0,14 s", cars: { "Nico Pino": { timeGapToPlayer: -0.14 } } },
+    { caption: "Cruza delante otra vez en 180 ms: +0,14 s", cars: { "Nico Pino": { timeGapToPlayer: 0.14 } } },
+  ],
+};
+
+const RELATIVE_FUNCTIONAL_STABLE_SCENE: AnimationScene = {
+  id: "relative-functional-stable-values",
+  widget: "relative",
+  label: "Datos cambian, filas quietas",
+  watchFor:
+    "Las distancias cambian sin cruzar al jugador ni alterar el orden visible. Revisa que los números se actualicen sin mover las filas ni reiniciar transiciones.",
+  frameMs: 1200,
+  frames: [
+    {
+      caption: "Muestra 1: Nico Pino −0,30 s; Mikkel Jensen −2,6 s",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: -0.3 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.6 },
+      },
+    },
+    {
+      caption: "Muestra 2: Nico Pino −0,27 s; Mikkel Jensen −2,5 s",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: -0.27 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.5 },
+      },
+    },
+    {
+      caption: "Muestra 3: Nico Pino −0,24 s; Mikkel Jensen −2,4 s",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: -0.24 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.4 },
+      },
+    },
+  ],
+};
+
+const RELATIVE_FUNCTIONAL_SEQUENCE_SCENE: AnimationScene = {
+  id: "relative-functional-sequence",
+  widget: "relative",
+  label: "Secuencia completa",
+  watchFor:
+    "Usa Reproducir o el deslizador: cruce en ambos sentidos, entrada y salida de Mikkel Jensen y distancias que cambian sin mover filas. En carrera, Antonio Giovinazzi P4 aparece delante con −1 V respecto al jugador.",
+  frameMs: 900,
+  frames: [
+    {
+    caption: "En carrera: Nico Pino detrás (−0,45 s); Giovinazzi P4 delante con −1 V; Mikkel Jensen fuera de la ventana",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: -0.45 },
+        "Antonio Giovinazzi": { lapDelta: -1 },
+        "Mikkel Jensen": { absent: true },
+      },
+    },
+    {
+      caption: "Nico Pino se acerca: −0,12 s",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: -0.12 },
+        "Mikkel Jensen": { absent: true },
+      },
+    },
+    {
+      caption: "Primer cruce: Nico Pino queda delante (+0,12 s); Mikkel Jensen entra",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: 0.12 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.6 },
+      },
+    },
+    {
+      caption: "Mikkel Jensen asentado en la ventana; Nico Pino mantiene +0,45 s",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: 0.45 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.6 },
+      },
+    },
+    {
+      caption: "Mikkel Jensen sale de la ventana; Nico Pino sigue delante",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: 0.45 },
+        "Mikkel Jensen": { absent: true },
+      },
+    },
+    {
+      caption: "Mikkel Jensen reentra con el mismo gap: −2,6 s",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: 0.45 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.6 },
+      },
+    },
+    {
+      caption: "Nico Pino se acerca desde delante: +0,12 s",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: 0.12 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.6 },
+      },
+    },
+    {
+      caption: "Segundo cruce: Nico Pino vuelve detrás (−0,12 s)",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: -0.12 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.6 },
+      },
+    },
+    {
+      caption: "Cierre estable: Nico Pino −0,45 s; Mikkel Jensen −2,6 s",
+      cars: {
+        "Nico Pino": { timeGapToPlayer: -0.45 },
+        "Mikkel Jensen": { timeGapToPlayer: -2.6 },
+      },
+    },
+  ],
+};
+
+const RELATIVE_FUNCTIONAL_LAP_DIFFERENCE_SCENE: AnimationScene = {
+  id: "relative-functional-lap-difference",
+  widget: "relative",
+  label: "Diferencia de vueltas",
+  watchFor:
+    "Escena solo de carrera. Compara la vuelta del rival con la tuya: el signo marca más o menos vueltas, sin afirmar el lado físico del coche. El jugador conserva su fila; cero y datos ausentes no llevan etiqueta.",
+  positionSwap: [1, 10],
+  frameMs: 1400,
+  frames: [
+    {
+      caption: "Carrera: jugador P10; Ben Hanley P2 +2 V, Kévin Estre P3 +1 V, Giovinazzi P4 +1 V; Maro Engel P18 en la misma vuelta; Jensen P19 −1 V y Nico Pino P20 −2 V",
+      cars: {
+        "André Lotterer": { timeGapToPlayer: 0 },
+        "Antonio Giovinazzi": { timeGapToPlayer: 0.6, lapDelta: 1 },
+        "Kévin Estre": { timeGapToPlayer: 0.4, lapDelta: 1 },
+        "Ben Hanley": { timeGapToPlayer: 0.3, lapDelta: 2 },
+        "Mikkel Jensen": { timeGapToPlayer: -0.6, lapDelta: -1 },
+        "Nico Pino": { timeGapToPlayer: -0.9, lapDelta: -2 },
+        "Maro Engel": { timeGapToPlayer: -0.3, lapDelta: 0 },
+      },
+    },
+    {
+      caption: "Carrera: Ben Hanley P2 +3 V, Estre P3 y Giovinazzi P4 +2 V; Maro Engel P18 sin dato; Jensen P19 −1 V y Nico Pino P20 −2 V",
+      cars: {
+        "André Lotterer": { timeGapToPlayer: 0 },
+        "Antonio Giovinazzi": { timeGapToPlayer: 0.6, lapDelta: 2 },
+        "Kévin Estre": { timeGapToPlayer: 0.4, lapDelta: 2 },
+        "Ben Hanley": { timeGapToPlayer: 0.3, lapDelta: 3 },
+        "Mikkel Jensen": { timeGapToPlayer: -0.6, lapDelta: -1 },
+        "Nico Pino": { timeGapToPlayer: -0.9, lapDelta: -2 },
+        "Maro Engel": { timeGapToPlayer: -0.3, lapDeltaQuality: "missing" },
+      },
+    },
+  ],
+};
+
 /**
  * The delta reads the player, not the field, so its scenes drive the player's
  * own delta and best lap rather than anyone's position.
@@ -545,6 +757,13 @@ export const ANIMATION_SCENES: readonly AnimationScene[] = [
   FULL_SEQUENCE_SCENE,
   RELATIVE_CROSS_SCENE,
   RELATIVE_ENTER_SCENE,
+  RELATIVE_FUNCTIONAL_CROSS_AHEAD_SCENE,
+  RELATIVE_FUNCTIONAL_CROSS_BEHIND_SCENE,
+  RELATIVE_FUNCTIONAL_WINDOW_SCENE,
+  RELATIVE_FUNCTIONAL_FAST_REVERSAL_SCENE,
+  RELATIVE_FUNCTIONAL_STABLE_SCENE,
+  RELATIVE_FUNCTIONAL_SEQUENCE_SCENE,
+  RELATIVE_FUNCTIONAL_LAP_DIFFERENCE_SCENE,
   DELTA_CROSS_SCENE,
   DELTA_NEW_BEST_SCENE,
   PEDALS_LAP_SCENE,
@@ -568,7 +787,7 @@ export function getAnimationScene(id: string, system?: DesignSystemId, session?:
 
 export function listAnimationScenes(widget: WidgetType, system?: DesignSystemId, session?: string): readonly AnimationScene[] {
   if (widget === "standings" && system === "vantare-functional") return FUNCTIONAL_STANDINGS_SCENES.filter((scene) => !session || !scene.sessions || scene.sessions.includes(session));
-  return ANIMATION_SCENES.filter((scene) => scene.widget === widget && (!system || !FUNCTIONAL_STANDINGS_SCENES.includes(scene)));
+  return ANIMATION_SCENES.filter((scene) => scene.widget === widget && (!system || !FUNCTIONAL_STANDINGS_SCENES.includes(scene)) && (!session || !scene.sessions || scene.sessions.includes(session)) && !(system === "vantare-functional" && widget === "relative" && (scene.id === "relative-cross" || scene.id === "relative-enter")));
 }
 
 /** Wraps so the transport can loop and step backwards past zero. */

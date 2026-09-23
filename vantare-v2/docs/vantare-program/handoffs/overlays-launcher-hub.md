@@ -7,6 +7,19 @@
 > sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
 
 
+## ISA-1320 — Relative: movimiento discreto para conducción (2026-09-22)
+
+Seguimiento por decisión explícita de Isaac en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756738527745), En curso. Puente técnico [#1320](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1320). Base `nightly e6d7d2b5`, rama `vantareapp/isa-1320-relative-motion`.
+
+Isaac pide animaciones más suaves que Standings y elige «movimiento suave y una señal de color muy tenue». GPT-6 Sol implementa el renderer en worktree propio; GPT-6 Luna prepara escenas de Workshop aparte; GPT-6 Astra revisará el commit de producto independientemente. Deslizamiento de rivales sin rebote, jugador estable, cifras sin animación, fundidos breves al entrar/salir y color tenue únicamente ante cruce real. La telemetría ordinaria no debe reiniciar animaciones ni medir layout. Respetar modos de movimiento y limpiar efectos al cambiar sesión, fuente o geometría.
+
+La inspección inicial detecta reinicio de FLIP por cada modelo, ausencia de baseline inicial y descripciones de escenas que prometen efectos distintos del renderer. Se corrigen dentro de esta entrega. Implementación y escenas presentes en `c809d5e8`: deslizamiento de 220–300 ms, señal de color de hasta 4 %, entradas/salidas de 120 ms, huecos delante/detrás que estabilizan jugador y pie. Solo un cue por rival; cambios de cifras no reinician FLIP. Los cambios de tamaño o movimiento reaccionan aun conservando el mismo modelo. La revisión independiente GPT-6 Astra pasa 50 tests y comprobaciones WAAPI activas de StrictMode, escala 1,5, retarget, salida a mitad de movimiento y desmontaje. Root verifica 43 tests focales y comprueba los participantes visibles de todas las escenas en práctica, clasificación y carrera. La suite frontend completa del conjunto `c809d5e8` pasa 469 archivos y 3795 pruebas (2 omitidas). El refinamiento posterior `b7a19184` conserva opacidad en reentrada y cancela temporizadores; pasa 39 pruebas focales, typecheck, build, lint y ratchet (NEW=0, MOVED=0, policy_changed=false). La corrección `cf14f927` conserva también la opacidad en una segunda salida durante esa reentrada. Revisión independiente final GPT-6 Astra en `d869f521`: 7/7 pruebas Relative y diff limpio, sin hallazgos pendientes. Root repite build y ratchet sobre ese árbol final: PASS, NEW=0, MOVED=0, policy_changed=false; tipos y lint también pasan tras `cf14f927`. La suite completa antecede a esos refinamientos acotados; no se presenta como repetida sobre el último SHA. Pendiente aceptación visual de Isaac. El acceso automatizado al navegador ha estado bloqueado; no se afirma validación visual ni física. Sin autorización de integración para esta entrega. La PR #1306 de Standings permanece separada.
+
+### Idioma — integración verificada
+
+La PR [#1317](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1317) fue integrada por squash en `nightly` como `e6d7d2b5e58f55b82c0ed2f6a79667476d897086`, después de la aceptación de Isaac. Head fuente `86249c3a`; checks remotos de promoción, blocking gates, ratchet y GitGuardian aprobados. Árbol remoto coincide con la entrega. Asana `1218757534554194` registra integración y conserva pendiente la revisión física Windows/OBS que Isaac hará en nightly. No se promovió a testers/master.
+
+
 ## ISA-1162 — enlace OBS restaurado al pie del dock del Studio (2026-09-11)
 
 Issue [#1162](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1162),
@@ -3152,3 +3165,44 @@ Límites: sin verificación física Windows/OBS ni visual automatizada, por la r
 - **Evidencia local:** 173 pruebas de autoría / 13 suites y 3839 globales / 468 archivos PASS (2 omitidas), build/TypeScript, lint y ratchet PASS (NEW=0/MOVED=0, policy_changed=false). Revisión independiente final PASS: 83 pruebas / 4 suites, reserva externa estable a escalas 0,3/1/2, tamaño explícito de 700×240 respetado y avance/reproducción de escenas de 1700 ms comprobados. **Veredicto técnico:** PASS acotado al harness, sin nuevos hallazgos. El servidor 5177 sirve el mismo worktree candidato; no se afirma inspección visual porque el control del navegador no pudo verificar la política del administrador y denegó acceso.
 - **Estado y límites:** candidato sobre nightly `1101f735`; durante la revisión nightly avanzó a `ae5a1482` por Wails beta.24 (#1309), sin cambios en estas animaciones. Esta entrega mantiene su base y no integra esa actualización de plataforma. Roadmap del candidato generado desde su base confiable explícita. Pendientes aceptación visual de Isaac, LMU real y la integración autorizada con la base vigente; sin merge/promoción/release.
 - **Revisión manual:** pulsar Reproducir y observar pasos 8–12; el paso 9 mantiene la distancia y activa PIT, 10 centra P7, 11 centra P9 y 12 vuelve a P1. Confirmar que el podio y el marco no saltan verticalmente, cada ventana tiene jugador visible y los pasos coinciden con lo que se muestra.
+
+### ISA-1320 — verificación y revisión manual
+
+Cambios de producto: `RelativeFunctional.tsx`, `relative-presentation.ts`, `use-relative-motion.ts`, estilos Relative y presupuesto presentacional en el ViewModel V2. El motor común añade inicialización y seguimiento optativos, preservando consumidores existentes. Escenas y controles de Workshop filtran los antiguos guiones de Relative para Eficiencia y ofrecen cruces en ambos sentidos, entrada/salida/reentrada, inversión de 180 ms, datos cambiantes con filas quietas y secuencia completa.
+
+Revisión manual: seleccionar Relative/Eficiencia → Animaciones → Secuencia completa → Reproducir; después probar Inversión rápida y Datos cambian, filas quietas. Comprobar jugador/pie estables, señal tenue solo en cruces y cifras sin pulso. Repetir con preferencia de movimiento reducido y diferentes escalas. Los fixtures no certifican conducción real ni Windows/OBS. El preview local conserva también Delta/Standings de la PR #1306; esa composición local no implica que #1306 esté integrada en nightly.
+
+Entrega de revisión publicada: [PR draft #1323](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1323), rama `vantareapp/isa-1320-relative-motion`, código `cf14f927`, sin merge. Preview local limpio `cf18f9d6` activo en `http://127.0.0.1:5177/workshop?widget=relative&system=vantare-functional&session=practice&scene=relative-functional-sequence&frame=0`; combina con `2be30c59` y conserva las correcciones aceptadas de Delta/Standings. Validación del conjunto: 185 pruebas focales, tipos y build PASS; después de retirar dos reglas Delta antiguas introducidas al resolver el CSS, 14 pruebas Delta PASS y diff de Delta sin regresión respecto al preview anterior. CI remoto de la PR en curso; controles locales aprobados. Asana Relative permanece En curso, pendiente de la valoración visual de Isaac.
+
+### ISA-1320 — revisión de captura de Isaac, 22:22
+
+La captura posterior a la entrega muestra un error en el guion: las escenas Eficiencia nombraban Bruni/Birch pero los asientos de la parrilla eran Nico Pino/Mikkel Jensen. `a7449ce8` corrige exclusivamente captions y claves de las seis escenas; conserva las escenas legacy. La regresión recorre cada muestra en práctica, clasificación y carrera y comprueba los nombres de los pilotos realmente visibles. 52 pruebas focales de escenas/Workshop, typecheck, lint y diff limpio PASS.
+
+También se observa un hueco antes del pie en el paso inicial que retira al segundo rival trasero. La reserva visual tiene un slot vacío, pero la base anterior ya fijaba el alto de la tabla y el pie mediante flex; eliminar ese slot por sí solo no elimina el espacio. Isaac concreta después que falta el sexto rival y no se recupera; la causa y corrección quedan registradas a continuación. No se considera Relative confirmado ni completado.
+
+
+### ISA-1320 — sexto rival recuperado en Workshop
+
+Isaac confirma que falta uno de los seis rivales configurados. Reproducción independiente sobre el preview `0b9dee71`: la ruta montada conserva a Jensen en el paso 6, pero solo muestra 6 filas totales en lugar de 7. La preparación del fixture recortaba a 3 delante + jugador + 3 detrás antes de aplicar cruces y ausencias; perdía los candidatos necesarios para rellenar la ventana.
+
+`956f6990` conserva el campo disponible en las escenas Relative antes de aplicar sus cambios. La selección productiva existente elige los tres rivales más cercanos por lado. Sin cambios de geometría, motor de animación ni telemetría productiva. Prueba permanente con un único WidgetVisualHost montado: nueve pasos, siete identidades únicas, salida/reentrada de Jensen y nodo del jugador estable. Fuente: 48 pruebas focales, tipos, build y lint PASS.
+
+Preview `f2cde704` incorpora solo ese ajuste sobre `0b9dee71`, conserva Delta/Standings y pasa 75 pruebas focales. Revisión independiente de la ruta Workshop completa con la URL del usuario: nueve pasos y saltos hacia atrás mantienen siete filas; la aserción que fallaba antes pasa después. Vite 5177 continúa sirviendo el ajuste sin reiniciar. Estas son pruebas DOM, no certificación visual. Asana sigue En curso hasta aceptación de Isaac; sin merge de #1323.
+
+
+### ISA-1320 — orden espacial junto al jugador
+
+Isaac señala los rivales invertidos, citando el 18 frente al 16 por detrás en la secuencia, frame4. Confirmado delante: el contrato V2 entrega cerca→lejos, pero la presentación lo pintaba igual de arriba abajo; dejaba el rival lejano junto al jugador. `2cb3e2a3` selecciona primero los rivales cercanos dentro del presupuesto y después invierte solo el grupo delantero para mostrar lejos→cerca→jugador. Detrás mantiene cerca→lejos; sin reordenar telemetría, posición de carrera ni datos por muestra.
+
+La prueba DOM de orden falla antes y pasa después. 66 pruebas focales, tipos, build y lint PASS. Revisión independiente de ruta completa en práctica, clasificación y carrera: nueve pasos y saltos hacia atrás mantienen seis rivales, con gaps descendentes de arriba abajo en ambos grupos. Se conserva la identidad del jugador y el arreglo del sexto rival.
+
+El ejemplo trasero requiere distinguir clasificación y distancia: frame4 asigna18=−5,1s,17=−7s,16=−8,9s, por lo que18 es el más cercano según esos datos. Se ha preguntado a Isaac por el criterio esperado; no se inventan gaps ni se invierte detrás para cumplir el número de posición. Pendiente su valoración visual; Asana En curso, sin merge.
+
+
+### ISA-1320 — señal de diferencia de vueltas en carrera
+
+Isaac autoriza una señal discreta para entender por qué un coche peor clasificado puede circular delante del jugador. [Plan](../../plans/2026-09-22-isa-1320-relative-lap-signal.md). Etiqueta junto al nombre: −N indica menos vueltas que el jugador y +N más; unidad V/L/V/G en es/en/pt/it y descripción accesible completa. Solo carrera, fuente live, fase fresh y diferencia entera vigente; jugador, cero, datos antiguos/inválidos/ausentes y otras sesiones no generan etiqueta.
+
+Se reutiliza `derive.VehicleGap.Laps`, derivada de los datos de clasificación `LapsBehindLeader` del simulador. `RelativeRowV2.lapDelta` conserva valor y calidad en immediate y settled, y su fingerprint publica cambios de valor/calidad. No se calcula una segunda diferencia desde CompletedLaps, LapDistance, posiciones, clases o gaps temporales. El renderer solo presenta el valor; etiqueta memoizada y diccionarios estáticos, sin temporizadores ni lectura de geometría nueva. La señal se describe como diferencia de vueltas de clasificación; no certifica por sí sola cada transición física al doblar en una sesión LMU real.
+
+Backend 661f1ea9 + 6fdf4fd8: suite overlayv2, vet, contrato generado y tests de calidad/signo/cadencia/settled PASS; root revisa diff y ejecuta con race las suites completas overlayv2 y derive, PASS. UI 6e635540 y unidad corregida eafc2858: primera revisión focal92PASS, revisión independiente renderer/window/motion29PASS. Verificación final de UI en d26a8cb7: 99 pruebas focales, tipos, build y lint PASS. Root ratchet PASS, NEW=0/MOVED=0 y policy_changed=false. El refinamiento 27df6697 retira un recorte innecesario de seis líneas para conservar el campo completo; 28 pruebas de escenas/ventana PASS. Root verifica además la ruta Workshop montada: cuatro pruebas PASS en carrera/práctica/clasificación y cambio manual de paso, con siete filas y nodo del jugador estable. La escena combinada conserva AndréP1/GiovinazziP4−1V; la escena específica de diferencias de vueltas utiliza una clasificación intermedia coherente para mostrar ambos signos. Pendiente revisión visual de Isaac; no merge ni certificación Windows/OBS.

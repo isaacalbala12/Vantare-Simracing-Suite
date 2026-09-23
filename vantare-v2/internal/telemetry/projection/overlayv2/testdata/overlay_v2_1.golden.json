@@ -151,6 +151,9 @@
         "gap": {
           "q": "fresh"
         },
+        "lapDelta": {
+          "q": "fresh"
+        },
         "groundPosition": {
           "q": "fresh"
         },
@@ -169,6 +172,9 @@
         "id": "vehicle-000",
         "position": 1,
         "gap": {
+          "q": "fresh"
+        },
+        "lapDelta": {
           "q": "fresh"
         },
         "groundPosition": {

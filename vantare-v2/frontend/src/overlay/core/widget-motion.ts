@@ -114,7 +114,7 @@ export function flipRows(
     easing?: string;
     key?: string;
     /** Retain ownership when React removes the node before teardown. */
-    onAnimation?: (animation: Animation, row: HTMLElement) => void;
+    onAnimation?: (animation: Animation, row: HTMLElement, from: number) => void;
     /** Independent effects (e.g. opacity) must survive transform retargeting. */
     preserveAnimation?: (animation: Animation) => boolean;
   },
@@ -160,7 +160,7 @@ export function flipRows(
       [{ transform: `translateY(${from}px)` }, { transform: "translateY(0)" }],
       { duration: opts.duration(from), easing: opts.easing ?? "cubic-bezier(0.22, 0.9, 0.3, 1)" },
     );
-    opts.onAnimation?.(animation, row);
+    opts.onAnimation?.(animation, row, from);
   }
   // Los ids que ya no están (filas retiradas) no acumulan entradas.
   for (const id of [...tops.keys()]) {

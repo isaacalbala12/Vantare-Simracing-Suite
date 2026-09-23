@@ -41,7 +41,7 @@ import { resolveStandingsMinimumSize } from "../../widget-types/standings/standi
 import { applyWidgetDesign } from "../../core/widget-design";
 import { getOfficialDesign, listOfficialDesigns } from "../../design-systems/official-designs";
 import { getAnimationScene, sceneFrameAt } from "./animation-scenes";
-import type { SceneFrame } from "./animation-scenes";
+import type { SceneFrame, SceneOverride } from "./animation-scenes";
 import type { PedalsKnownFlag } from "../../widget-types/pedals/pedals-view-model";
 
 // Variantes dev de Workshop: transformaciones explícitas, deterministas y
@@ -483,6 +483,41 @@ function withWorkshopDemo(frame: OverlayFrameV2, quality: OverlayQualityV2): Ove
   };
 }
 
+function withWorkshopRaceLapDeltas(frame: OverlayFrameV2, quality: OverlayQualityV2): OverlayFrameV2 {
+  const lapDeltaAtPosition = (position: number): OverlayQValue<number> =>
+    position === 4 ? qualityValue(-1, quality) : { q: "missing" };
+  return {
+    ...frame,
+    relative: frame.relative.map((row) => ({ ...row, lapDelta: lapDeltaAtPosition(row.position) })),
+    relativeSettled: frame.relativeSettled.map((row) => ({ ...row, lapDelta: lapDeltaAtPosition(row.position) })),
+  };
+}
+
+function withWorkshopRelativePositionSwap(
+  frame: OverlayFrameV2,
+  firstPosition: number,
+  secondPosition: number,
+): OverlayFrameV2 {
+  const firstClassPosition = frame.standings.find((row) => row.position === firstPosition)?.classPosition;
+  const secondClassPosition = frame.standings.find((row) => row.position === secondPosition)?.classPosition;
+  const swap = (position: number): number =>
+    position === firstPosition ? secondPosition : position === secondPosition ? firstPosition : position;
+  return {
+    ...frame,
+    standings: frame.standings
+      .map((row) => ({
+        ...row,
+        position: swap(row.position),
+        classPosition: row.position === firstPosition
+          ? secondClassPosition ?? row.classPosition
+          : row.position === secondPosition ? firstClassPosition ?? row.classPosition : row.classPosition,
+      }))
+      .sort((left, right) => left.position - right.position),
+    relative: frame.relative.map((row) => ({ ...row, position: swap(row.position) })),
+    relativeSettled: frame.relativeSettled.map((row) => ({ ...row, position: swap(row.position) })),
+  };
+}
+
 function withWorkshopPlayerPosition(frame: OverlayFrameV2, position: number): OverlayFrameV2 {
   const target = frame.standings.find((row) => row.position === position);
   if (!target) return frame;
@@ -729,7 +764,7 @@ function warnDroppedScenePatches(
 
 function patchRelativeSection(
   rows: readonly OverlayRelativeRowV2[],
-  cars: Record<string, { timeGapToPlayer?: number; absent?: boolean }>,
+  cars: Record<string, SceneOverride>,
   quality: OverlayQualityV2,
   resolved?: Set<string>,
 ): OverlayRelativeRowV2[] {
@@ -738,13 +773,19 @@ function patchRelativeSection(
     const patch = key === undefined ? undefined : cars[key];
     if (key === undefined || !patch) return [row];
     resolved?.add(key);
-    // lapDistanceMeters no tiene campo en la fila V2: se ignora sin fingirlo.
     if (patch.absent) return [];
-    if (patch.timeGapToPlayer === undefined) return [row];
+    if (patch.timeGapToPlayer === undefined && patch.lapDelta === undefined && patch.lapDeltaQuality === undefined) return [row];
     return [{
       ...row,
-      gap: qualityValue(patch.timeGapToPlayer, quality),
-      side: sideForGap(patch.timeGapToPlayer, row.side),
+      ...(patch.timeGapToPlayer !== undefined ? {
+        gap: qualityValue(patch.timeGapToPlayer, quality),
+        side: sideForGap(patch.timeGapToPlayer, row.side),
+      } : {}),
+      ...(patch.lapDelta !== undefined || patch.lapDeltaQuality !== undefined ? {
+        lapDelta: patch.lapDelta === undefined
+          ? { q: patch.lapDeltaQuality ?? quality }
+          : qualityValue(patch.lapDelta, patch.lapDeltaQuality ?? quality),
+      } : {}),
     }];
   });
 }
@@ -882,6 +923,13 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
     baseFrame = { ...baseFrame, standings: padStandings(baseFrame.standings, scenario.standingRows) };
   }
   let frame = withWorkshopDemo(baseFrame, quality);
+  if (scenario.widget === "relative" && scenario.session === "race") {
+    frame = withWorkshopRaceLapDeltas(frame, quality);
+  }
+  const relativeScene = scenario.sceneId ? getAnimationScene(scenario.sceneId) : undefined;
+  if (scenario.widget === "relative" && relativeScene?.positionSwap) {
+    frame = withWorkshopRelativePositionSwap(frame, ...relativeScene.positionSwap);
+  }
   if (scenario.widget === "pedals" || scenario.widget === "racing-flags") {
     // Racing Flags keeps the vivid green demo state by default, while Pedals
     // preserves the canonical missing flag unless the Workshop asks for an
@@ -948,8 +996,12 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
   // determinista; no existe una variante alternativa para esta presentación.
   if (usesRelativeStudyProjection(scenario)) {
     const playerId = frame.player.id ?? "";
-    const ahead = scenario.rangeAhead ?? RELATIVE_RANGE_AHEAD;
-    const behind = scenario.rangeBehind ?? RELATIVE_RANGE_BEHIND;
+    // Una escena puede sacar o cruzar un coche: la selección 3+3 la hace la
+    // VM después del parche, con el resto del campo disponible para rellenar
+    // el hueco. Recortar aquí dejaría permanentemente una fila sin rival.
+    const hasRelativeScene = scenario.sceneId && getAnimationScene(scenario.sceneId)?.widget === "relative";
+    const ahead = hasRelativeScene ? Number.POSITIVE_INFINITY : scenario.rangeAhead ?? RELATIVE_RANGE_AHEAD;
+    const behind = hasRelativeScene ? Number.POSITIVE_INFINITY : scenario.rangeBehind ?? RELATIVE_RANGE_BEHIND;
     frame = {
       ...frame,
       relative: relativeDevWindow(frame.relative, playerId, quality, ahead, behind),

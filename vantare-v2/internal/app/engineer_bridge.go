@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -43,6 +44,29 @@ func NewEngineerBridge(wailsApp *application.App, emitter EventEmitter, svc *ser
 func (b *EngineerBridge) Start() {
 	var unsubs []func()
 
+	unsubs = append(unsubs, b.wailsApp.Event.On("engineer:diagnostics:get", func(event *application.CustomEvent) {
+		b.emitter.Emit("engineer:diagnostics", b.service.Diagnostics())
+	}))
+	unsubs = append(unsubs, b.wailsApp.Event.On("engineer:command", func(event *application.CustomEvent) {
+		b.handleCommand(event.Data)
+	}))
+	unsubs = append(unsubs, b.wailsApp.Event.On("engineer:audio-test", func(event *application.CustomEvent) {
+		var request struct {
+			RequestID string `json:"requestId"`
+			Kind      string `json:"kind"`
+		}
+		raw, err := json.Marshal(event.Data)
+		if err != nil || json.Unmarshal(raw, &request) != nil || request.RequestID == "" || len(request.RequestID) > 80 {
+			return
+		}
+		go func() {
+			result := b.service.TestAudio(context.Background(), request.Kind)
+			b.emitter.Emit("engineer:audio-test:result", struct {
+				RequestID string                  `json:"requestId"`
+				Result    service.AudioTestResult `json:"result"`
+			}{request.RequestID, result})
+		}()
+	}))
 	unsubs = append(unsubs, b.wailsApp.Event.On("engineer:status:get", func(event *application.CustomEvent) {
 		b.emitter.Emit("engineer:status", b.service.Status())
 	}))
@@ -114,19 +138,22 @@ func (b *EngineerBridge) Start() {
 
 // mutateAndPersist runs a service mutation and persists the resulting
 // settings atomically under settingsMu.
-func (b *EngineerBridge) mutateAndPersist(name string, mutate func() error) {
+func (b *EngineerBridge) mutateAndPersist(name string, mutate func() error) string {
 	b.settingsMu.Lock()
 	defer b.settingsMu.Unlock()
 	if err := mutate(); err != nil {
 		log.Printf("EngineerBridge: error setting %s: %v", name, err)
-		return
+		return "rejected"
 	}
-	b.persistSettings()
+	if err := b.persistSettings(); err != nil {
+		return "save_failed"
+	}
+	return "saved"
 }
 
-func (b *EngineerBridge) persistSettings() {
+func (b *EngineerBridge) persistSettings() error {
 	if b.settings == nil {
-		return
+		return fmt.Errorf("engineer settings unavailable")
 	}
 	status := b.service.Status()
 	outputModes := make(map[string]string, len(status.OutputModes))
@@ -139,11 +166,12 @@ func (b *EngineerBridge) persistSettings() {
 		OutputModes: outputModes,
 	}); err != nil {
 		log.Printf("EngineerBridge: error persisting settings: %v", err)
-		return
+		return err
 	}
 	if b.emitter != nil {
 		b.emitter.Emit("settings", b.settings.Settings())
 	}
+	return nil
 }
 
 // Stop unregisters all event listeners.

@@ -13,6 +13,12 @@ Seguimiento principal en [Asana](https://app.asana.com/1/1210926733859493/projec
 
 Isaac confirma Relative y Pedals; ambas revisiones se marcan completadas en Asana, sin confundir Pedals con Pedals telemetry ni aceptación con integración remota. El horizontal carece de animaciones en su renderer Eficiencia y usa una clave dependiente de la posición. Se implementan identidad canónica, movimiento horizontal discreto, fundidos de presencia y señal tenue de posición, con cifras estables y sin trabajo de animación por telemetría numérica. GPT-6 Sol trabaja renderer/VM/pruebas; GPT-6 Luna, escenas; el orquestador revisa y compone. Próximo paso: verificar e incorporar al preview combinado, preservando Delta/Standings/Relative. Sin merge ni certificación física.
 
+### ISA-1332 — renderer verificado
+
+Renderer/VM de GPT-6 Sol en `6c67ed73`: IDs canónicos, desplazamiento horizontal de 250–360 ms, fundidos de 120 ms y señal verde/roja al 5 % durante 450 ms. Cifras no inician efectos; 100 muestras quietas y durante movimiento/entrada no añaden mediciones, timers ni animaciones. Modos reducidos, retarget a escala 1,5, salida durante entrada y StrictMode cubiertos. Worker: 44 pruebas focales, tipos/build/lint de archivos modificados PASS. Root: suite frontend completa sobre el renderer y documentación, 469 archivos, 3790 PASS y 2 omitidas; el warning AbortError de cierre del entorno DOM no produjo fallo. Se retiraron únicamente cinco PNG de revisión regenerados incidentalmente por la suite, manteniendo las referencias versionadas.
+
+GPT-6 Astra revisa independientemente los ocho archivos y pasa 40 pruebas: sin hallazgos bloqueantes. [Informe](../../analysis/isa-1332/motion-review.md). Los efectos React siguen ejecutándose y retornan antes de medir/animar; no se promete coste CPU nulo. Sin inspección visual de navegador/WAAPI físico. Próximo paso: incorporar y comprobar las escenas y el preview combinado.
+
 ## ISA-1162 — enlace OBS restaurado al pie del dock del Studio (2026-09-11)
 
 Issue [#1162](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1162),

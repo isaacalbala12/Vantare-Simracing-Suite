@@ -1,0 +1,75 @@
+name: ISA-1325 policy cache Windows benchmark
+
+on:
+  push:
+    branches: [bench/isa-1325-policy-cache-20260923]
+
+permissions:
+  contents: read
+
+jobs:
+  compare:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version: '1.27.1'
+          cache: false
+
+      - name: Compile original and cached publication
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:GOTOOLCHAIN = 'local'
+          $root = (Get-Location).Path
+          $original = Join-Path $env:RUNNER_TEMP 'policy-cache-original'
+          $bin = Join-Path $env:RUNNER_TEMP 'policy-cache-bin'
+          New-Item -ItemType Directory -Path $bin -Force | Out-Null
+          git worktree add --detach $original 9b42d74f60641c5b4686e158c093a3159a2cd44f
+          if ($LASTEXITCODE -ne 0) { throw 'Original checkout failed' }
+          foreach ($variant in @('default', 'nojsonv2')) {
+            if ($variant -eq 'default') { $env:GOEXPERIMENT = '' } else { $env:GOEXPERIMENT = 'nojsonv2' }
+            foreach ($entry in @(
+              @{ Name = 'original'; Root = $original },
+              @{ Name = 'cached'; Root = $root }
+            )) {
+              Push-Location (Join-Path $entry.Root 'vantare-v2')
+              try {
+                go test -c -o (Join-Path $bin "$($entry.Name)-$variant.test.exe") ./internal/app
+                if ($LASTEXITCODE -ne 0) { throw "Compilation failed: $($entry.Name) $variant" }
+              } finally {
+                Pop-Location
+              }
+            }
+          }
+
+      - name: Run alternating benchmark pairs
+        shell: pwsh
+        working-directory: vantare-v2/internal/app
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:GOMAXPROCS = '1'
+          $bin = Join-Path $env:RUNNER_TEMP 'policy-cache-bin'
+          $evidence = Join-Path $env:RUNNER_TEMP 'policy-cache-evidence'
+          New-Item -ItemType Directory -Path $evidence -Force | Out-Null
+          git rev-parse HEAD | Set-Content -LiteralPath (Join-Path $evidence 'candidate-sha.txt')
+          '9b42d74f60641c5b4686e158c093a3159a2cd44f' | Set-Content -LiteralPath (Join-Path $evidence 'original-sha.txt')
+          go version | Set-Content -LiteralPath (Join-Path $evidence 'go-version.txt')
+          $script = (Resolve-Path ../../scripts/bench/telemetry-microbench.ps1).Path
+          foreach ($variant in @('default', 'nojsonv2')) {
+            & $script -Baseline (Join-Path $bin "original-$variant.test.exe") -Candidate (Join-Path $bin "cached-$variant.test.exe") -Benchmark 'BenchmarkOverlayPublication64' -OutputDirectory (Join-Path $evidence $variant) -Samples 10
+            if ($LASTEXITCODE -ne 0) { throw "Benchmark failed: $variant" }
+          }
+
+      - uses: actions/upload-artifact@65c4c4a1ddee5b72f698fdd19549f0f0fb45cf08 # v4.6.0
+        if: always()
+        with:
+          name: isa-1325-policy-cache-windows
+          path: ${{ runner.temp }}/policy-cache-evidence/
+          if-no-files-found: warn
+          retention-days: 14

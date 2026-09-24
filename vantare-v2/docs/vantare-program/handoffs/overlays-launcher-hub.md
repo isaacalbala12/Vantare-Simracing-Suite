@@ -7,6 +7,16 @@
 
 
 
+## ISA-1355 — Pedales avanzados y compatibilidad del compacto (2026-09-24)
+
+Ampliación de [Asana · Pedals telemetry](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756738610082) en la [PR draft #1356](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1356), segundo commit separado sobre `bf2b12e9`, misma rama/worktree aislados. Aprobado por el orquestador: el compacto sale de los catálogos de creación, pero conserva definición, manifests, IDs de diseños y contratos frontend/Go para perfiles guardados. No se convierte al principal porque sus banderas `showSpeed`/`showRpm`, tamaño y presentación iRacing son diferentes.
+
+`pedals-telemetry` se presenta como **Pedales avanzados**; `pedals-telemetry-compact` como **Pedales antiguos**. Etiquetas ES/EN/PT/IT, catálogo de añadir, nombres de tipo sin nombre personalizado en Orbit y rótulo Workshop actualizados. Los nombres que escribió el usuario se conservan. Hay 20 tipos seleccionables y 21 aceptados. Un enlace antiguo de Workshop al compacto sigue dibujándolo y muestra una opción deshabilitada/aviso; no lo ofrece desde las demás selecciones. El guardado no migra IDs ni borra ajustes. No se toca el Workshop 5178.
+
+Verificación: 483 archivos / 4093 pruebas aprobadas / 2 omitidas con Node 22.23.2; 109 pruebas focales y 103 adicionales tras el último ajuste de etiqueta. Perfiles mixtos V3→V4 y roundtrip conservan contenido, layout, visibilidad, memorias visuales, procedencia, política de rendimiento y volante Ligier; los tres sistemas antiguos renderizan en Studio/Desktop/OBS. Typecheck, lint, build y ratchet PASS (NEW=0, MOVED=0, sin cambios de política). Revisión en Safari 5188: nombre **Pedales avanzados**, volante visible y menú con 20 entradas sin compacto. Capturas locales `/tmp/vantare-wheel-review/pedals-advanced-renamed.png` y `pedals-advanced-catalogue.png`. La galería anterior contiene 32 figuras (5 filas de 6 y una de 2), verificadas contra los 31 IDs LMU más genérico.
+
+Pendientes: revisión final del orquestador, aceptación visual de Isaac, CI remoto del nuevo SHA y validación física LMU/Windows/OBS. La auditoría de telemetría va separada; no afirmar dirección física validada. Sin merge, promoción ni release.
+
 ## ISA-1355 — volantes LMU intercambiables (2026-09-24)
 
 [Asana · Pedals telemetry](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756738610082), puente [#1355](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1355). Worker GPT-6 Astra Max, rama `vantareapp/isa-1355-lmu-steering-wheels`, worktree `vantare-lmu-steering-wheels`, base `nightly f50ab4ab`. [Diseño](../../plans/2026-09-24-lmu-steering-wheels.md) y [catálogo/evidencia](../../analysis/lmu-steering-wheels.md).

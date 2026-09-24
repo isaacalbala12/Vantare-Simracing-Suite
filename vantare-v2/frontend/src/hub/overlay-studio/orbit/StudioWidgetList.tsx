@@ -100,9 +100,9 @@ export function StudioWidgetList(): React.ReactElement {
       return ordered;
     }
     return ordered.filter((widget) =>
-      `${widgetLabel(widget)} ${widget.type} ${widget.id}`.toLowerCase().includes(normalized),
+      `${widgetLabel(widget, t)} ${widget.type} ${widget.id}`.toLowerCase().includes(normalized),
     );
-  }, [activeLayout?.widgets, query]);
+  }, [activeLayout?.widgets, query, t]);
 
   const handleAddWidget = (type: WidgetType) => {
     const definition = widgetTypeRegistry.get(type);
@@ -145,7 +145,7 @@ export function StudioWidgetList(): React.ReactElement {
         ) : null}
         {widgets.map((widget) => {
           const enabled = widget.behavior.enabled;
-          const name = widgetLabel(widget);
+          const name = widgetLabel(widget, t);
           return (
             <div
               className="orbit-studio-witem"

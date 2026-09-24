@@ -2,7 +2,8 @@ import { LMU_STEERING_WHEELS, normalizeSteeringWheel, STEERING_WHEEL_CATEGORIES 
 import { useState } from "react";
 import { useI18n } from "../../i18n/I18nProvider";
 import type { Locale } from "../../i18n/i18n";
-import { ALL_WIDGET_TYPES, type WidgetLayoutV3, type WidgetType } from "../core/profile-document";
+import type { WidgetLayoutV3, WidgetType } from "../core/profile-document";
+import { widgetTypeRegistry } from "../core/widget-registry";
 import { designSystemRegistry } from "../core/design-system-registry";
 import { listOfficialDesigns } from "../design-systems/official-designs";
 import { listAnimationScenes } from "./fixtures/animation-scenes";
@@ -31,8 +32,8 @@ const WIDGET_LABELS: Partial<Record<WidgetType, string>> = {
   pedals: "Pedals",
   "broadcast-tower": "Horizontal Standings",
   "fuel-strategy": "Fuel Strategy",
-  "pedals-telemetry": "Pedals Telemetry",
-  "pedals-telemetry-compact": "Pedales avanzados",
+  "pedals-telemetry": "Pedales avanzados",
+  "pedals-telemetry-compact": "Pedales antiguos",
   "racing-flags": "Racing Flags",
   "fastest-lap": "Vuelta rápida",
 };
@@ -247,8 +248,10 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
 
     <fieldset><legend>Widget</legend>
       <Select label="Widget" value={query.widget} onChange={(value) => chooseWidget(value as WidgetType)}>
-        {ALL_WIDGET_TYPES.map((widget) => <option key={widget} value={widget}>{widgetLabel(widget)}</option>)}
+        {widgetTypeRegistry.get(query.widget).retired && <option value={query.widget} disabled>{widgetLabel(query.widget)}</option>}
+        {widgetTypeRegistry.list().filter((definition) => !definition.retired).map(({ type }) => <option key={type} value={type}>{widgetLabel(type)}</option>)}
       </Select>
+      {widgetTypeRegistry.get(query.widget).retired && <p className="functional-study-note">Vista de compatibilidad de un widget retirado. Para nuevos diseños, elige Pedales avanzados.</p>}
       <Select label="Sistema de diseño" value={query.system} onChange={chooseSystem}>
         {systems.map((system) => <option key={system} value={system}>{systemLabel(system)}</option>)}
       </Select>

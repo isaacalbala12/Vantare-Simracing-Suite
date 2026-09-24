@@ -17,4 +17,10 @@ Las temporadas/evoluciones que no documentan otro volante comparten diseño. La 
 3. Probar selección, normalización, persistencia y paridad de superficies; revisar visualmente a escala real.
 4. Ejecutar checks de frontend y calidad aplicables; actualizar roadmap, changelog y handoff; entregar candidato sin merge.
 
-La auditoría de señales y el cambio de nombre/eliminación del widget compacto son tareas de otros agentes; este cambio no modifica sus contratos.
+## Ampliación aprobada: un único Pedales avanzados
+
+Isaac solicita retirar el duplicado del catálogo y renombrar el widget con volantes. El orquestador aprueba el 24/09/2026 un segundo commit en #1356, porque el gate exige base `nightly`.
+
+Se evaluaron tres opciones: borrar el tipo compacto (rompería perfiles), convertirlo al principal (perdería `showSpeed`/`showRpm`, tamaño y presentación iRacing), o retirarlo del catálogo manteniendo compatibilidad. Se elige la tercera: `pedals-telemetry-compact` sigue aceptado y renderizable, pero no se ofrece para añadir en Studio ni elegir en Workshop. Su etiqueta de tipo es «Pedales antiguos»; los nombres personalizados no se modifican. `pedals-telemetry` pasa a «Pedales avanzados» en ES, EN, PT e IT y conserva el selector y sus identificadores. Los enlaces directos antiguos de Workshop conservan la vista de compatibilidad con un aviso y opción deshabilitada; no aparece en el catálogo normal y los perfiles no se reescriben.
+
+Plan: declarar retirada en la definición; filtrar catálogos y actualizar etiquetas visibles; probar perfiles mixtos V3/V4 con ajustes, memorias, procedencia y políticas; verificar selector, renderer antiguo, idiomas, frontend y revisión visual. Mantener manifest, parser, backend y IDs de diseños antiguos para resolver perfiles existentes. La auditoría de señales sigue separada. Sin merge ni cambio al Workshop 5178.

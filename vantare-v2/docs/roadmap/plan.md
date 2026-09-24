@@ -1366,10 +1366,10 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 - titulo.en: Interface color palettes
 - titulo.pt: Paletas de cores da interface
 - titulo.it: Tavolozze colori dell'interfaccia
-- cuerpo: Ajustes ofrece las paletas Vantare, Océano e Iris con apariencia clara, oscura o según Windows. La selección se aplica al instante a Command Orbit y se recuerda en este equipo; los diseños de widgets del overlay se configuran por separado.
-- cuerpo.en: Settings offers Vantare, Ocean and Iris palettes with light, dark or Windows appearance. Changes apply immediately to Command Orbit and are remembered on this device; overlay widget designs remain separate.
-- cuerpo.pt: As Definições oferecem as paletas Vantare, Oceano e Íris com aparência clara, escura ou conforme o Windows. A seleção aplica-se imediatamente ao Command Orbit e fica guardada neste equipamento; os designs dos widgets de overlay são configurados separadamente.
-- cuerpo.it: Le Impostazioni offrono le tavolozze Vantare, Oceano e Iris con aspetto chiaro, scuro o secondo Windows. La scelta si applica subito a Command Orbit e resta memorizzata su questo dispositivo; i design dei widget overlay si configurano separatamente.
+- cuerpo: Ajustes ofrece las paletas Vantare, Océano e Iris con apariencia clara, oscura o según Windows. La selección se aplica al instante a Command Orbit, incluido Overlay Studio, y se recuerda en este equipo; los diseños de widgets del overlay se configuran por separado.
+- cuerpo.en: Settings offers Vantare, Ocean and Iris palettes with light, dark or Windows appearance. Changes apply immediately to Command Orbit, including Overlay Studio, and are remembered on this device; overlay widget designs remain separate.
+- cuerpo.pt: As Definições oferecem as paletas Vantare, Oceano e Íris com aparência clara, escura ou conforme o Windows. A seleção aplica-se imediatamente ao Command Orbit, incluindo o Overlay Studio, e fica guardada neste equipamento; os designs dos widgets de overlay são configurados separadamente.
+- cuerpo.it: Le Impostazioni offrono le tavolozze Vantare, Oceano e Iris con aspetto chiaro, scuro o secondo Windows. La scelta si applica subito a Command Orbit, incluso Overlay Studio, e resta memorizzata su questo dispositivo; i design dei widget overlay si configurano separatamente.
 - etiqueta: Feature
 
 ### Sistema de diseño Eficiencia

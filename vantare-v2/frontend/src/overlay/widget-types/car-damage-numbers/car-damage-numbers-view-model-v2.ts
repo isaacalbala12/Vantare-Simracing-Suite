@@ -31,27 +31,29 @@ export function buildCarDamageNumbersViewModelV2(
   source: OverlaySourceStatusV2,
   content: CarDamageNumbersContent,
 ): CarDamageNumbersViewModel {
-  const status = resolveStatus(source.state);
+  const sourceStatus = resolveStatus(source.state);
+  const status = sourceStatus === "ready" && frame.damage.dents.q === "stale" ? "stale" : sourceStatus;
   const unavailable = status === "missing" || status === "disconnected" || status === "error";
-  if (unavailable || frame.damage.dents.q === "missing" || frame.damage.dents.q === "invalid") {
+  const dents = frame.damage.dents.v;
+  if (unavailable || (frame.damage.dents.q !== "fresh" && frame.damage.dents.q !== "stale")
+    || !dents || dents.length !== 8 || !dents.every((dent) => Number.isFinite(dent) && dent >= 0)) {
     return {
       type: "car-damage-numbers",
-      status,
+      status: status === "ready" ? "missing" : status,
       showTyres: content.showTyres,
       format: content.format,
     };
   }
-  const dents = frame.damage.dents.v ?? [0, 0, 0, 0, 0, 0, 0, 0];
-  const fractions = dents.map((d) => Math.min((d ?? 0) / 2, 1));
-  const aero = Math.max(fractions[0] ?? 0, fractions[1] ?? 0);
-  const suspension = Math.max(fractions[2] ?? 0, fractions[3] ?? 0);
+  const fractions = dents.map((dent) => Math.min(dent / 2, 1));
+  const aero = Math.max(fractions[0]!, fractions[1]!);
+  const suspension = Math.max(fractions[2]!, fractions[3]!);
   const body = Math.max(...fractions);
   return {
     type: "car-damage-numbers",
     status,
-    body: body || undefined,
-    aero: aero || undefined,
-    suspension: suspension || undefined,
+    body,
+    aero,
+    suspension,
     tyres: undefined,
     showTyres: content.showTyres,
     format: content.format,
@@ -95,10 +97,12 @@ function resolveStatus(state: string): CarDamageNumbersViewModel["status"] {
     case "live":
       return "ready";
     case "stale":
+    case "degraded":
       return "stale";
     case "error":
       return "error";
     case "stopped":
+    case "stopping":
       return "disconnected";
     default:
       return "missing";

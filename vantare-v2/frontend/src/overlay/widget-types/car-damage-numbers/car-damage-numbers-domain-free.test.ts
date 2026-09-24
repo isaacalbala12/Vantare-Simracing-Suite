@@ -33,15 +33,16 @@ describe("car damage v2 view model", () => {
     );
   });
 
-  it("maps fresh zero dents to missing and preserves invalid", () => {
+  it("keeps observed zero damage distinct from missing damage", () => {
     const frame = goldenFrame(20);
     const zero = {
       ...frame,
       damage: { ...frame.damage, dents: { q: "fresh", v: [0, 0, 0, 0, 0, 0, 0, 0] } },
     } as OverlayFrameV2;
     const model = buildCarDamageNumbersViewModelV2(zero, { state: "live" }, CONTENT);
-    expect(model.body).toBeUndefined();
-    expect(model.aero).toBeUndefined();
+    expect(model.body).toBe(0);
+    expect(model.aero).toBe(0);
+    expect(model.suspension).toBe(0);
 
     const missing = buildCarDamageNumbersViewModelV2(
       { ...frame, damage: { ...frame.damage, dents: { q: "missing" } } },
@@ -49,12 +50,25 @@ describe("car damage v2 view model", () => {
       CONTENT,
     );
     expect(missing.body).toBeUndefined();
-    expect(missing.status).toBe("ready");
+    expect(missing.status).toBe("missing");
+    const absentValue = buildCarDamageNumbersViewModelV2(
+      { ...frame, damage: { ...frame.damage, dents: { q: "fresh" } } },
+      { state: "live" },
+      CONTENT,
+    );
+    expect(absentValue.body).toBeUndefined();
+    expect(absentValue.status).toBe("missing");
   });
 
   it("propagates the source lifecycle instead of rendering a stale dent as ready", () => {
     const frame = goldenFrame(20);
     expect(buildCarDamageNumbersViewModelV2(frame, { state: "stale" }, CONTENT).status).toBe("stale");
+    expect(buildCarDamageNumbersViewModelV2(frame, { state: "degraded" }, CONTENT).status).toBe("stale");
+    expect(buildCarDamageNumbersViewModelV2(
+      { ...frame, damage: { ...frame.damage, dents: { ...frame.damage.dents, q: "stale" } } },
+      { state: "live" },
+      CONTENT,
+    ).status).toBe("stale");
     const stopped = buildCarDamageNumbersViewModelV2(frame, { state: "stopped" }, CONTENT);
     expect(stopped.status).toBe("disconnected");
     expect(stopped.body).toBeUndefined();

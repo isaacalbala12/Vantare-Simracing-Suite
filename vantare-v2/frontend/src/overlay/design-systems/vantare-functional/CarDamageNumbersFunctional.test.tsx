@@ -1,5 +1,10 @@
 import { cleanup, render } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import { decodeOverlayUpdateV2 } from "../../../telemetry-transport/overlay-frame-v2-store";
+import { carDamageNumbersDefinition } from "../../widget-types/car-damage-numbers/car-damage-numbers-definition";
+import { buildCarDamageNumbersViewModelV2 } from "../../widget-types/car-damage-numbers/car-damage-numbers-view-model-v2";
 import type { CarDamageNumbersViewModel } from "../../widget-types/car-damage-numbers/car-damage-numbers-view-model";
 import { CarDamageNumbersFunctional } from "./CarDamageNumbersFunctional";
 
@@ -17,6 +22,18 @@ const model: CarDamageNumbersViewModel = {
 };
 
 describe("CarDamageNumbersFunctional", () => {
+  it("renders the damage published in an Overlay v2 frame", () => {
+    const wire = JSON.parse(readFileSync(path.resolve(process.cwd(), "../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json"), "utf8"));
+    const frame = decodeOverlayUpdateV2(wire).frame;
+    expect(frame).toBeDefined();
+    const damage = buildCarDamageNumbersViewModelV2(frame!, { state: "live" }, carDamageNumbersDefinition.parseContent({}));
+    const { container } = render(<CarDamageNumbersFunctional model={damage} settings={{}} renderMode="harness" />);
+    for (const field of ["aero", "body", "suspension"]) {
+      expect(container.querySelector(`[data-damage="${field}"] .vf-car-damage-value`)?.textContent).toBe("100%");
+    }
+    expect(container.querySelector('[data-damage="tyre"] .vf-car-damage-value')?.textContent).toBe("—");
+  });
+
   it("shows four rows and one aggregated tyre value", () => {
     const { container } = render(<CarDamageNumbersFunctional model={model} settings={{}} renderMode="harness" />);
     expect(container.querySelectorAll(".vf-car-damage-slot")).toHaveLength(4);

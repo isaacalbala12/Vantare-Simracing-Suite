@@ -20,7 +20,7 @@ Necesito un miniplan pequeno y verificable para:
 Contexto:
 - Repo: `vantare-v2`
 - Lee `AGENTS.md`.
-- Lee `docs/roadmap/plan.md`.
+- Lee la tarea Notion y el handoff vivo.
 - Lee docs relevantes.
 
 El miniplan debe incluir:

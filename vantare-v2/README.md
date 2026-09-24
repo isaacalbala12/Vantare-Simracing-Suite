@@ -31,4 +31,4 @@ Este comando abre la app Wails con los assets compilados. `-live=false` deja la 
 | [frontend/src/hub](frontend/src/hub/) | Hub y pantallas de la suite |
 | [frontend/src/overlay](frontend/src/overlay/) | Renderizado compartido de widgets |
 
-[Arquitectura](docs/architecture.md) · [Documentación vigente](docs/README.md) · [Roadmap](docs/roadmap/plan.md) · [Histórico](docs/documentation-inventory.md).
+[Arquitectura](docs/architecture.md) · [Documentación vigente](docs/README.md) · [Roadmap](docs/roadmap-maintenance.md) · [Histórico](docs/documentation-inventory.md).

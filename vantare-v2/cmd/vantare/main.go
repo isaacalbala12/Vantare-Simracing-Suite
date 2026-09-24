@@ -42,6 +42,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/license"
 	"github.com/vantare/overlays/v2/internal/notify"
 	"github.com/vantare/overlays/v2/internal/ops"
+	"github.com/vantare/overlays/v2/internal/roadmap"
 	"github.com/vantare/overlays/v2/internal/server"
 	"github.com/vantare/overlays/v2/internal/startup"
 	"github.com/vantare/overlays/v2/internal/storage"
@@ -2400,6 +2401,7 @@ func main() {
 	// its original validity; being offline does not make an expired schedule valid.
 	schedulePublisher := calendar.NewSchedulePublisher(supabaseURLResolved, supabaseAnonKeyResolved)
 	scheduleImportSvc := app.NewScheduleImportService(schedulePublisher, emitter)
+	roadmapSvc := roadmap.NewService(supabaseURLResolved, supabaseAnonKeyResolved)
 	calendarDiscordInbox, inboxErr := discordbot.NewInbox(filepath.Join(cfgDir, "calendar-discord-inbox.json"))
 	if inboxErr != nil {
 		log.Printf("warning: Discord calendar inbox unavailable: %v", inboxErr)
@@ -3572,6 +3574,87 @@ func main() {
 			return
 		}
 		emitter.Emit("schedule:discord:inbox", map[string]any{"candidates": candidates})
+	})
+
+	wailsApp.Event.On("roadmap:current:get", func(event *application.CustomEvent) {
+		var payload struct {
+			RequestID string `json:"requestId"`
+		}
+		decodeEventPayload(event, &payload)
+		go func() {
+			current, err := roadmapSvc.Current(ctx)
+			if err != nil {
+				emitter.Emit("roadmap:error", map[string]any{"requestId": payload.RequestID, "message": err.Error()})
+				return
+			}
+			emitter.Emit("roadmap:current", map[string]any{"requestId": payload.RequestID, "publication": current})
+		}()
+	})
+
+	wailsApp.Event.On("roadmap:draft:get", func(event *application.CustomEvent) {
+		var payload struct {
+			RequestID string `json:"requestId"`
+		}
+		decodeEventPayload(event, &payload)
+		session, err := authManager.Restore()
+		if err != nil {
+			emitter.Emit("roadmap:error", map[string]any{"requestId": payload.RequestID, "message": "Inicia sesión para editar el roadmap"})
+			return
+		}
+		go func() {
+			draft, err := roadmapSvc.MyDraft(ctx, session.AccessToken)
+			if err != nil {
+				emitter.Emit("roadmap:error", map[string]any{"requestId": payload.RequestID, "message": err.Error()})
+				return
+			}
+			emitter.Emit("roadmap:draft", map[string]any{"requestId": payload.RequestID, "publication": draft})
+		}()
+	})
+
+	wailsApp.Event.On("roadmap:draft:save", func(event *application.CustomEvent) {
+		var payload struct {
+			RequestID string           `json:"requestId"`
+			Document  roadmap.Document `json:"document"`
+		}
+		decodeEventPayload(event, &payload)
+		session, err := authManager.Restore()
+		if err != nil {
+			emitter.Emit("roadmap:error", map[string]any{"requestId": payload.RequestID, "message": "Inicia sesión para editar el roadmap"})
+			return
+		}
+		go func() {
+			id, err := roadmapSvc.SaveDraft(ctx, session.AccessToken, payload.Document)
+			if err != nil {
+				emitter.Emit("roadmap:error", map[string]any{"requestId": payload.RequestID, "message": err.Error()})
+				return
+			}
+			emitter.Emit("roadmap:saved", map[string]any{"requestId": payload.RequestID, "draftId": id})
+		}()
+	})
+
+	wailsApp.Event.On("roadmap:publish", func(event *application.CustomEvent) {
+		var payload struct {
+			RequestID string `json:"requestId"`
+			DraftID   string `json:"draftId"`
+		}
+		decodeEventPayload(event, &payload)
+		session, err := authManager.Restore()
+		if err != nil {
+			emitter.Emit("roadmap:error", map[string]any{"requestId": payload.RequestID, "message": "Inicia sesión para publicar el roadmap"})
+			return
+		}
+		go func() {
+			if err := roadmapSvc.Publish(ctx, session.AccessToken, payload.DraftID); err != nil {
+				emitter.Emit("roadmap:error", map[string]any{"requestId": payload.RequestID, "message": err.Error()})
+				return
+			}
+			current, err := roadmapSvc.Current(ctx)
+			if err != nil {
+				emitter.Emit("roadmap:error", map[string]any{"requestId": payload.RequestID, "message": err.Error()})
+				return
+			}
+			emitter.Emit("roadmap:published", map[string]any{"requestId": payload.RequestID, "publication": current})
+		}()
 	})
 
 	wailsApp.Event.On("calendar:import", func(event *application.CustomEvent) {

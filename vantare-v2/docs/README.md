@@ -30,9 +30,9 @@ Este índice es la entrada de lectura. El [inventario](documentation-inventory.m
 
 ## Gobierno
 
-[Workflow](agent-workflow.md) · [Notion primero](vantare-program/notion-transition.md) · [Canales](branch-channels.md) · [Roadmap público](roadmap/plan.md) · [Mantenimiento del roadmap](roadmap-maintenance.md).
+[Workflow](agent-workflow.md) · [Notion primero](vantare-program/notion-transition.md) · [Canales](branch-channels.md) · [Roadmap público](roadmap-maintenance.md).
 
-Notion contiene alcance y estado operativo. GitHub prueba código, PR, CI, canal y release. El roadmap es editorial: `plan.md` se edita y `roadmap.json` se genera. Los planes de `superpowers/` solo se ejecutan cuando la tarea vigente los adopta; la carpeta no significa que todos estén aprobados o pendientes.
+Notion contiene alcance y estado operativo. GitHub prueba código, PR, CI, canal y release. El roadmap público se edita y publica visualmente en la app. Los planes de `superpowers/` solo se ejecutan cuando la tarea vigente los adopta; la carpeta no significa que todos estén aprobados o pendientes.
 
 ## Histórico
 

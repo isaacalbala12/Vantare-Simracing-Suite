@@ -1,108 +1,19 @@
-# Mantenimiento del roadmap
+# Mantenimiento del roadmap público
 
-> **Notion primero (2026-09-14):** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192)
-> y leer la tarea y su proyecto antes de ejecutar. Actualizar Notion al empezar,
-> bloquear, entregar y verificar una integración; releer para comprobar la escritura.
-> [Contrato vigente](vantare-program/notion-transition.md). GitHub conserva código, PR, CI y releases;
-> las referencias ISA exigidas por los controles son un puente técnico temporal.
-> Su adaptación pendiente nunca permite omitir el seguimiento en Notion.
+El roadmap público se edita en el Hub de Vantare. No hay un archivo de contenido que mantener ni un generador que ejecutar.
 
+## Edición
 
-Este documento describe el procedimiento vigente para mantener el roadmap
-publico de Vantare. La autoridad del planning no se duplica en un registro de
-ejecucion historico.
+1. Inicia sesión con la cuenta Owner y abre **Roadmap**.
+2. Pulsa **Editar**, añade las tarjetas y elige **Ahora**, **Después** o **Hecho**.
+3. Escribe título y descripción en español. Las traducciones a inglés, portugués e italiano son opcionales; si faltan, la app muestra el texto español. Puedes cambiar el orden, la sección o eliminar tarjetas.
+4. Pulsa **Guardar borrador**. Los demás usuarios siguen viendo la última versión publicada.
+5. Revisa el contenido y pulsa **Publicar**. La publicación queda disponible para todos los usuarios, en cualquier equipo, al volver a cargar la sección.
 
-## Fuentes de verdad
+El seguimiento interno, las dependencias y las decisiones siguen en Notion. Publicar el roadmap es una decisión editorial de Isaac y no cambia por sí solo el estado de una tarea, PR, canal o release.
 
-Cada documento tiene una responsabilidad distinta:
+## Contrato técnico
 
-| Fuente | Responsabilidad |
-|---|---|
-| Tarea Notion `VAN-N` | Alcance, dependencias, estado operativo, rama y entrega |
-| Handoff vivo | Continuidad tecnica, decisiones, evidencia, riesgos y siguiente accion |
-| `docs/roadmap/plan.md` | Fases, areas, hitos, alcance futuro y estado publico |
-| `docs/roadmap/roadmap.json` | Artefacto generado que consume la app; no se edita a mano |
-| `docs/current-plan.md` | Registro historico; no se actualiza como parte del flujo normal |
-| `docs/roadmap-execution-board.md` | Tablero historico; no se actualiza como parte del flujo normal |
+La migración `supabase/migrations/20260924000000_visual_roadmap.sql` crea el almacenamiento compartido. La lectura pública usa `visual_roadmap_current`; el borrador, guardado y publicación exigen la sesión Owner y se validan en la base de datos. El cliente Wails conecta estas operaciones con la pantalla. No se debe publicar un borrador por un proceso automático.
 
-Si hay conflicto, prevalecen la tarea Notion y el handoff técnico para la ejecucion, y
-`docs/roadmap/plan.md` para el planning publico. El roadmap no sustituye los
-contratos tecnicos ni el handoff.
-
-## Cuando actualizar el roadmap
-
-El cambio se hace en el mismo PR que introduce el cambio material:
-
-1. Al iniciar un planning que cambia el alcance publico: anadir o modificar la
-   fase, area, hito o pendiente que queda a la espera de una decision.
-2. Al retirar, reordenar o cambiar el estado de una fase, area o hito.
-3. Al completar una entrega que el roadmap anuncia: cambiar el hito de `plan` a
-   `feature`, `fix` o `release`, reescribir su cuerpo para describir lo que
-   funciona hoy y actualizar el progreso o los items de la fase si corresponde.
-4. Al cerrar una issue sin cambio de alcance publico: actualizar la tarea Notion y el
-   handoff técnico; no hace falta tocar el roadmap solo por cambiar el estado interno.
-
-Un hito entregado no puede seguir presentandose como una promesa pendiente.
-
-## Formato de `plan.md`
-
-El archivo es deliberadamente plano para que una persona pueda editarlo:
-
-- `## Fases`, `## Areas` y `## Hitos` abren las secciones.
-- Cada `###` abre una entrada; su titulo es el texto base en espanol.
-- `- clave: valor` declara un campo.
-- `- clave.en: valor`, `.pt` o `.it` anade una traduccion.
-- `- item:` anade un punto a una fase; las claves localizadas traducen el ultimo
-  item anadido.
-
-Estados validos: `done`, `in-progress`, `planned` y `future`. Solo una fase
-puede estar en `in-progress`. Los tipos de hito son `release`, `feature`, `fix`
-y `plan`.
-
-El generador valida ids, estados, progreso, traducciones y duplicados. No se
-anade un porcentaje separado para las tareas: el digest de entregas procede de
-los commits y la estimacion de fase sigue siendo editorial.
-
-## Artefacto generado y digest
-
-`.github/scripts/roadmap_digest.py` combina `plan.md` con los commits alcanzables
-desde la referencia indicada:
-
-- publica `feat`, `fix`, `perf` y `docs`;
-- descarta merges, promociones, chores, builds, tests, estilos y refactors;
-- elimina ruido de issues y PRs del asunto visible;
-- agrupa las entregas por dia, elimina duplicados y conserva una ventana acotada;
-- guarda el ultimo SHA procesado en `roadmap.json`.
-
-El workflow `.github/workflows/roadmap-digest.yml` ejecuta el generador sobre
-`nightly`, comprueba el resultado y abre una PR de bot contra `nightly`. No hace
-push directo a la rama protegida.
-
-Comprobacion local del parser y del digest:
-
-```powershell
-python .github/scripts/tests/test_roadmap_digest.py
-python .github/scripts/roadmap_digest.py --repo . --ref origin/nightly --check
-```
-
-Si `--check` detecta que el artefacto empaquetado esta atrasado, se regenera en
-una PR del digest; no se edita `roadmap.json` manualmente.
-
-## Cambios visibles para testers
-
-Si una issue cambia comportamiento que los testers deben conocer, el worker
-anade `docs/changelog/fragments/ISA-N.json` siguiendo su schema. El changelog y
-los anuncios de canal se generan en sus pasos propios; una rama de issue no
-publica anuncios por su cuenta.
-
-## Documentos historicos
-
-`docs/current-plan.md`, `docs/roadmap-execution-board.md`,
-`docs/master-feature-plan.md` y los planes antiguos pueden conservar decisiones
-o evidencia. No son fuentes normativas para iniciar trabajo nuevo. Si un dato
-historico contradice el roadmap o la issue, se conserva como contexto y se
-aplica la fuente vigente.
-
-La antigua ruta de proyectos/snapshots publicos se conserva solo como
-compatibilidad historica hasta una issue especifica. No es necesario modificar
-ese material para anadir fases, areas o hitos al roadmap editorial actual.
+Antes de habilitar el flujo en un entorno, aplicar la migración y verificar manualmente con dos sesiones: Owner guarda sin publicar y un lector sigue viendo la versión anterior; Owner publica y el lector ve la nueva versión tras recargar. Si todavía no existe una publicación, se muestra un estado vacío honesto.

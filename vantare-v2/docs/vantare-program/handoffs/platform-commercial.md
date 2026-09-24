@@ -1,5 +1,24 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## VAN-763 / ISA-1377 — roadmap visual (2026-09-24)
+
+[Tarea Notion VAN-763](https://app.notion.com/p/3e5e51695c6581debbcbfef649a86d59),
+[referencia GitHub #1377](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1377).
+Isaac decidió sustituir por completo el roadmap basado en archivos por una
+edición visual en la app, con borrador privado Owner y publicación para todos
+los usuarios. Rama aislada `vantareapp/isa-1377-roadmap-sencillo`, base
+`origin/nightly@5c73013ed59a4d69775a94fcc188d168310c59a5`.
+
+La implementación local retira `plan.md`, JSON, digest, formulario y gate del
+roadmap anterior; añade persistencia Supabase con funciones públicas de lectura
+y funciones Owner para borrador/publicación, servicio Go y editor en Hub.
+Checks locales: frontend completo 481 archivos, 4.048 pruebas PASS y 2 omitidas;
+Go `./...` PASS; Python Discord 57/57 y canales 45/45 PASS; typecheck, build y
+lint PASS. La migración y el flujo Owner/lector necesitan validación real antes
+de activar la entrega. No hay merge, promoción ni release. El contenido inicial quedará
+vacío hasta la primera publicación visual de Isaac; no se importa el plan
+histórico ni se publica automáticamente.
+
 ## VAN-740 / ISA-1305 — Wails beta.24 aceptado para Nightly (2026-09-22)
 
 [Tarea Notion VAN-740](https://app.notion.com/p/3e3e51695c6581f7a1aae9d4db50ee38), puente técnico [GitHub #1305](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1305).

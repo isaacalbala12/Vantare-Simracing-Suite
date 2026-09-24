@@ -1,11 +1,11 @@
 /** `roadmap.*` catalogue for Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`).
     "What's next" view (D-R3-F-1): a single narrative column NOW / NEXT / DONE.
-    Labels only: phases and milestones come from `docs/roadmap/roadmap.json`. */
+    Public content is edited and published in the app. */
 export const roadmapOrbitEn: Record<string, string> = {
   "roadmap.eyebrow": "Product direction",
   "roadmap.title": "Roadmap",
   "roadmap.lead":
-    "What is being worked on now, what comes next and what already shipped, exactly as docs/roadmap/plan.md declares it.",
+    "Now, next and done. The team edits and publishes this space from the app.",
 
   "roadmap.source.loading": "Loading the source…",
   "roadmap.source.ok": "Source available · {{version}}",
@@ -53,4 +53,30 @@ export const roadmapOrbitEn: Record<string, string> = {
   "roadmap.context.nextSub": "to plan and future",
   "roadmap.context.doneSub": "completed and shipped",
   "roadmap.context.hint": "Click a section to jump to it.",
+  "roadmap.editor.open": "Edit",
+  "roadmap.editor.close": "Close editor",
+  "roadmap.editor.unpublished": "No roadmap has been published yet.",
+  "roadmap.editor.help": "Write in Spanish; translations are optional. Save a draft before publishing.",
+  "roadmap.editor.translations": "Optional translations",
+  "roadmap.editor.add": "Add item",
+  "roadmap.editor.save": "Save draft",
+  "roadmap.editor.saving": "Saving…",
+  "roadmap.editor.publish": "Publish for everyone",
+  "roadmap.editor.publishing": "Publishing…",
+  "roadmap.editor.saved": "Draft saved.",
+  "roadmap.editor.published": "Roadmap published.",
+  "roadmap.editor.item": "Item",
+  "roadmap.editor.section": "Section",
+  "roadmap.editor.itemTitle": "Title",
+  "roadmap.editor.itemBody": "Description",
+  "roadmap.editor.up": "Move up",
+  "roadmap.editor.down": "Move down",
+  "roadmap.editor.delete": "Delete",
+  "roadmap.editor.connectionError": "Could not connect to the roadmap.",
+  "roadmap.editor.invalidRemote": "The received roadmap is invalid.",
+  "roadmap.editor.invalid.size": "There are too many items or the content is too long.",
+  "roadmap.editor.invalid.id": "An item ID is invalid or duplicated.",
+  "roadmap.editor.invalid.section": "A section is invalid.",
+  "roadmap.editor.invalid.title": "Complete titles in all four languages.",
+  "roadmap.editor.invalid.body": "A description is too long.",
 };

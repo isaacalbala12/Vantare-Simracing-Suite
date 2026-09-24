@@ -1,450 +1,208 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Events } from "@wailsio/runtime";
 import { useI18n } from "../../i18n/I18nProvider";
-import { Accordion, Featured, Kbd, ListRow, Pill, StateChip, SubtleStatus, Surface } from "../../ui/orbit";
-import { formatMessage } from "../orbit/format-message";
-import { useOrbitSlot } from "../orbit/use-orbit-slot";
-import { pickText, ROADMAP_FALLBACK, type RoadmapDataset } from "../roadmap/roadmap-data";
+import { useAccess } from "../../lib/access";
+import { Button, Surface } from "../../ui/orbit";
 import {
-  buildNarrative,
-  deliveredCount,
-  formatDeliveredDate,
-  loadRoadmapSource,
-  ROADMAP_SECTIONS,
-  sectionCount,
-  visualState,
-  type RoadmapSection,
-  type RoadmapSourceState,
-} from "./roadmap-orbit-model";
-import { ROADMAP_CONTEXT_SLOT_ID } from "../components/orbit/orbit-slot-ids";
+  emptyDocument, newItem, parsePublication, ROADMAP_LOCALES, ROADMAP_SECTIONS,
+  validateDocument, type RoadmapDocument, type RoadmapItem, type RoadmapLocale,
+  type RoadmapPublication, type RoadmapSection,
+} from "./roadmap-contract";
 import "../../styles/orbit-roadmap.css";
 
-/** Hueco que la shell reserva para Roadmap. El id vive en `orbit-slot-ids`
-    para que la shell no importe la página entera. */
-export { ROADMAP_CONTEXT_SLOT_ID };
-
-/** Canal de actualización activo. La shell solo conoce testers/nightly. */
-export type RoadmapChannel = "stable" | "testers" | "nightly";
-
-/** Milisegundos que dura el resaltado carmín tras saltar a una sección (`07`). */
-const FOCUS_MS = 1600;
-
-export interface RoadmapOrbitPageProps {
-  channel?: RoadmapChannel;
-  /** Semilla para tests y harness: evita esperar a la red. */
-  dataset?: RoadmapDataset;
-  sourceState?: RoadmapSourceState;
-  /** Estado inicial del plegable HECHO. Solo lo usan tests y harness. */
-  doneOpen?: boolean;
+type Response = { requestId?: string; publication?: unknown; draftId?: string; message?: string };
+function responseOf(event: unknown): Response {
+  const data = event && typeof event === "object" ? (event as { data?: unknown }).data : null;
+  return data && typeof data === "object" ? data as Response : {};
 }
 
-/**
- * Roadmap de Command Orbit — vista «Qué viene» (`15-briefings/10-roadmap.md`,
- * decisión D-R3-F-1).
- *
- * Una sola columna narrativa, tipo changelog invertido: arriba lo que se está
- * haciendo AHORA, después LO PRÓXIMO y al final LO HECHO plegado. Sin
- * porcentajes ni rejilla de tarjetas: la escala 0/10/25/50/75/100 de la fuente
- * es una estimación a mano y pintarla como barra la vendía como medida.
- *
- * Nada de lo que se lee aquí lo escribe la pantalla: fases e hitos salen de
- * `docs/roadmap-source.json` por el mismo cargador que usaba la página v5.2,
- * en el idioma activo del hub. Los únicos textos propios son los rótulos
- * (`roadmap.*`). Si la fuente remota no está disponible, la cabecera lo dice
- * en vez de presentar la copia empaquetada como la fuente.
- */
-export function RoadmapOrbitPage({
-  channel = "stable",
-  dataset,
-  sourceState,
-  doneOpen = false,
-}: RoadmapOrbitPageProps) {
+export function RoadmapOrbitPage() {
   const { t, locale } = useI18n();
-  const contextSlot = useOrbitSlot(ROADMAP_CONTEXT_SLOT_ID);
-  const columnRef = useRef<HTMLDivElement | null>(null);
-  const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const access = useAccess();
+  const owner = access.roles.includes("owner") && !access.isBlocked;
+  const language: RoadmapLocale = ROADMAP_LOCALES.includes(locale as RoadmapLocale) ? locale as RoadmapLocale : "es";
+  const [published, setPublished] = useState<RoadmapPublication | null>(null);
+  const [draft, setDraft] = useState<RoadmapDocument>(emptyDocument);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  const [busy, setBusy] = useState<"save" | "publish" | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const requests = useRef({ current: "", draft: "", mutation: "" });
+  const translate = useRef(t);
+  useEffect(() => { translate.current = t; }, [t]);
 
-  const seeded = dataset !== undefined;
-  const [loaded, setLoaded] = useState<RoadmapDataset>(dataset ?? ROADMAP_FALLBACK);
-  const [state, setState] = useState<RoadmapSourceState>(
-    sourceState ?? (seeded ? "remote" : "loading"),
-  );
-  const [focused, setFocused] = useState<RoadmapSection | null>(null);
-  // El plegable de HECHO nace cerrado: lo publicado es contexto, no la lectura
-  // principal. El estado vive aquí para que `<details>` no se descontrole al
-  // repintar la sección.
-  const [openDone, setOpenDone] = useState(doneOpen);
-
-  useEffect(() => {
-    if (seeded) return;
-    let active = true;
-    const controller = new AbortController();
-    loadRoadmapSource(controller.signal)
-      .then((result) => {
-        if (!active) return;
-        setLoaded(result.dataset);
-        setState(result.state);
-      })
-      .catch(() => {
-        if (active) setState("fallback");
-      });
-    return () => {
-      active = false;
-      controller.abort();
+  const send = useCallback((name: string, payload: object) => {
+    const failed = () => {
+      if (name === "roadmap:current:get") setLoaded(true);
+      if (name === "roadmap:draft:get") setDraftLoaded(true);
+      setError(translate.current("roadmap.editor.connectionError")); setBusy(null);
     };
-  }, [seeded]);
-
-  useEffect(
-    () => () => {
-      if (focusTimer.current) clearTimeout(focusTimer.current);
-    },
-    [],
-  );
-
-  const data = dataset ?? loaded;
-  const text = useCallback(
-    (value: Parameters<typeof pickText>[0]) => pickText(value, locale),
-    [locale],
-  );
-
-  const narrative = useMemo(() => buildNarrative(data), [data]);
-  const version = narrative.now ? text(narrative.now.target) : "";
-
-  const focusSection = useCallback((section: RoadmapSection) => {
-    setFocused(section);
-    const node = columnRef.current?.querySelector<HTMLElement>(`[data-section="${section}"]`);
-    // jsdom no implementa `scrollIntoView`; el salto es un extra sobre el
-    // resaltado, que es lo que de verdad señala la sección.
-    node?.scrollIntoView?.({ behavior: "smooth", block: "start" });
-    if (focusTimer.current) clearTimeout(focusTimer.current);
-    focusTimer.current = setTimeout(() => setFocused(null), FOCUS_MS);
+    try {
+      Promise.resolve(Events.Emit(name, payload)).catch(failed);
+    } catch {
+      failed();
+    }
   }, []);
 
-  const derived = t("roadmap.derived");
+  useEffect(() => {
+    const currentID = crypto.randomUUID();
+    const draftRequestID = crypto.randomUUID();
+    requests.current.current = currentID;
+    requests.current.draft = draftRequestID;
+    const off = [
+      Events.On("roadmap:current", (event: unknown) => {
+        const value = responseOf(event);
+        if (value.requestId !== currentID) return;
+        const result = parsePublication(value.publication);
+        if (value.publication && !result) { setError(translate.current("roadmap.editor.invalidRemote")); setLoaded(true); return; }
+        setPublished(result);
+        setLoaded(true);
+      }),
+      Events.On("roadmap:draft", (event: unknown) => {
+        const value = responseOf(event);
+        if (value.requestId !== draftRequestID) return;
+        const result = parsePublication(value.publication);
+        if (value.publication && !result) { setError(translate.current("roadmap.editor.invalidRemote")); setDraftLoaded(true); return; }
+        if (result) { setDraft(result.document); setDraftId(result.id); }
+        setDraftLoaded(true);
+      }),
+      Events.On("roadmap:saved", (event: unknown) => {
+        const value = responseOf(event);
+        if (value.requestId !== requests.current.mutation || !value.draftId) return;
+        setDraftId(value.draftId); setDirty(false); setBusy(null); setMessage(translate.current("roadmap.editor.saved"));
+      }),
+      Events.On("roadmap:published", (event: unknown) => {
+        const value = responseOf(event);
+        if (value.requestId !== requests.current.mutation) return;
+        const result = parsePublication(value.publication);
+        if (!result) setError(translate.current("roadmap.editor.invalidRemote"));
+        else { setPublished(result); setDraftId(null); setEditing(false); setMessage(translate.current("roadmap.editor.published")); }
+        setBusy(null);
+      }),
+      Events.On("roadmap:error", (event: unknown) => {
+        const value = responseOf(event);
+        if (![currentID, draftRequestID, requests.current.mutation].includes(value.requestId ?? "")) return;
+        if (value.requestId === currentID) setLoaded(true);
+        if (value.requestId === draftRequestID) setDraftLoaded(true);
+        setError(value.message ?? translate.current("roadmap.editor.connectionError")); setBusy(null);
+      }),
+    ];
+    send("roadmap:current:get", { requestId: currentID });
+    if (owner) send("roadmap:draft:get", { requestId: draftRequestID });
+    return () => off.forEach((unsubscribe) => unsubscribe());
+  }, [owner, send]);
 
-  /** Marca de derivación: se repite junto a cada bloque que no declara la fuente. */
-  const derivedMark = (
-    <span className="orbit-rm__derived" data-testid="orbit-roadmap-derived">
-      {derived}
-    </span>
-  );
-
-  const stateChipTone = (status: RoadmapDataset["phases"][number]["status"]) =>
-    status === "done" ? "ok" : status === "planned" ? "warn" : "draft";
-
-  /**
-   * La fuente escribe el objetivo a mano y, en las fases sin versión, repite
-   * el propio estado («Por planear», «Futuro»). Junto al chip de estado eso se
-   * lee dos veces, así que ahí no se repite: el chip ya lo dice.
-   */
-  const targetOf = (phase: RoadmapDataset["phases"][number]) => {
-    const target = text(phase.target);
-    const label = t(`roadmap.state.${visualState(phase.status)}`);
-    return target.trim().toLowerCase() === label.trim().toLowerCase() ? null : target;
+  const updateItem = (id: string, change: (item: RoadmapItem) => RoadmapItem) => {
+    setDraft((current) => ({ ...current, items: current.items.map((item) => item.id === id ? change(item) : item) }));
+    setDirty(true); setMessage(null);
+  };
+  const move = (index: number, offset: number) => {
+    const target = index + offset;
+    if (target < 0 || target >= draft.items.length) return;
+    setDraft((current) => {
+      const items = [...current.items];
+      [items[index], items[target]] = [items[target], items[index]];
+      return { ...current, items };
+    });
+    setDirty(true);
+  };
+  const save = () => {
+    const invalid = validateDocument(draft);
+    if (invalid) { setError(t(`roadmap.editor.invalid.${invalid}`)); return; }
+    const requestId = crypto.randomUUID();
+    requests.current.mutation = requestId;
+    setBusy("save"); setError(null);
+    send("roadmap:draft:save", { requestId, document: draft });
+  };
+  const publish = () => {
+    if (!draftId || dirty) return;
+    const requestId = crypto.randomUUID();
+    requests.current.mutation = requestId;
+    setBusy("publish"); setError(null);
+    send("roadmap:publish", { requestId, draftId });
+  };
+  const beginEditing = () => {
+    if (!dirty && !draftId) setDraft(structuredClone(published?.document ?? emptyDocument()));
+    setError(null); setMessage(null); setEditing(true);
   };
 
   return (
-    <div className="orbit-rm" data-source={state} data-testid="orbit-roadmap">
+    <div className="orbit-rm" data-testid="orbit-roadmap">
       <header className="orbit-rm__head">
         <div className="orbit-rm__head-copy">
           <span className="orbit-eyebrow">{t("roadmap.eyebrow")}</span>
           <h2>{t("roadmap.title")}</h2>
           <p>{t("roadmap.lead")}</p>
         </div>
-        <div className="orbit-rm__actions">
-          <Pill dot="ring">
-            <span data-testid="orbit-roadmap-channel">{t(`roadmap.channel.${channel}`)}</span>
-          </Pill>
-          <span data-testid="orbit-roadmap-status">
-            <SubtleStatus
-              tone={state === "remote" ? "ok" : state === "fallback" ? "attn" : "neutral"}
-            >
-              {state === "loading"
-                ? t("roadmap.source.loading")
-                : formatMessage(
-                    t(state === "remote" ? "roadmap.source.ok" : "roadmap.source.fallback"),
-                    { version },
-                  )}
-            </SubtleStatus>
-          </span>
-        </div>
+        {owner && loaded && draftLoaded ? (
+          <Button size="sm" onClick={() => editing ? setEditing(false) : beginEditing()}>
+            {editing ? t("roadmap.editor.close") : t("roadmap.editor.open")}
+          </Button>
+        ) : null}
       </header>
-
       <Surface aria-label={t("roadmap.title")} className="orbit-rm__reader" fill>
-        <div className="orbit-rm__column" ref={columnRef}>
-          {/* ───────────────────────────────────────────────────────── AHORA */}
-          <section
-            className="orbit-rm__section"
-            data-focus={focused === "now" ? "true" : undefined}
-            data-section="now"
-            data-testid="orbit-roadmap-now"
-          >
-            <h3 className="orbit-rm__rule">
-              <span>{t("roadmap.now.title")}</span>
-            </h3>
-
-            {narrative.now ? (
-              <Featured className="orbit-rm__now">
-                <div className="orbit-rm__now-head">
-                  <span className="orbit-eyebrow">{text(narrative.now.phaseLabel)}</span>
-                  {narrative.nowIndex > 0 ? (
-                    <span className="orbit-rm__position" data-testid="orbit-roadmap-position">
-                      {formatMessage(t("roadmap.now.position"), {
-                        n: narrative.nowIndex,
-                        total: narrative.total,
-                      })}
-                    </span>
-                  ) : null}
-                </div>
-                <div className="orbit-rm__now-title">
-                  <b>{text(narrative.now.title)}</b>
-                  <Kbd keys={[text(narrative.now.target)]} />
-                </div>
-                {text(narrative.now.summary) ? (
-                  <p className="orbit-rm__now-summary">{text(narrative.now.summary)}</p>
-                ) : null}
-
-                <ul className="orbit-rm__checklist" data-testid="orbit-roadmap-highlights">
-                  {narrative.now.highlights.map((highlight, index) => (
-                    <li className="orbit-rm__check" key={`now-${index}`}>
-                      <i aria-hidden="true" />
-                      <span>{text(highlight)}</span>
-                    </li>
-                  ))}
-                </ul>
-              </Featured>
-            ) : (
-              <p className="orbit-rm__empty">{t("roadmap.now.none")}</p>
-            )}
-
-            {narrative.nowMilestones.length > 0 ? (
-              <div className="orbit-rm__anchored" data-testid="orbit-roadmap-now-milestones">
-                <div className="orbit-rm__anchored-head">
-                  <span className="orbit-eyebrow">{t("roadmap.now.anchored")}</span>
-                  {derivedMark}
-                </div>
-                <p className="orbit-rm__note">{t("roadmap.derivedNote")}</p>
-                <ul className="orbit-rm__stones">
-                  {narrative.nowMilestones.map((milestone) => (
-                    <li
-                      data-testid={`orbit-roadmap-milestone-${milestone.id}`}
-                      key={milestone.id}
-                      data-state="active"
-                    >
-                      <b>{text(milestone.title)}</b>
-                      <span>{text(milestone.body)}</span>
-                      <em>{text(milestone.label)}</em>
-                    </li>
-                  ))}
-                </ul>
+        <div className="orbit-rm__column">
+          {!loaded ? <p className="orbit-rm__empty">{t("roadmap.source.loading")}</p> : null}
+          {loaded && !editing && !published ? <p className="orbit-rm__empty">{t("roadmap.editor.unpublished")}</p> : null}
+          {editing ? (
+            <div className="orbit-rm__editor" data-testid="roadmap-editor">
+              <p>{t("roadmap.editor.help")}</p>
+              <div className="orbit-rm__editor-actions">
+                <Button size="sm" disabled={busy !== null || draft.items.length >= 40} onClick={() => { setDraft((current) => ({ ...current, items: [...current.items, newItem()] })); setDirty(true); }}>{t("roadmap.editor.add")}</Button>
+                <Button size="sm" disabled={busy !== null || (!dirty && Boolean(draftId))} onClick={save}>{busy === "save" ? t("roadmap.editor.saving") : t("roadmap.editor.save")}</Button>
+                <Button size="sm" disabled={busy !== null || !draftId || dirty} onClick={publish}>{busy === "publish" ? t("roadmap.editor.publishing") : t("roadmap.editor.publish")}</Button>
               </div>
-            ) : null}
-          </section>
-
-          {/* ─────────────────────────────────────────────────────── PRÓXIMO */}
-          <section
-            className="orbit-rm__section"
-            data-focus={focused === "next" ? "true" : undefined}
-            data-section="next"
-            data-testid="orbit-roadmap-next"
-          >
-            <h3 className="orbit-rm__rule">
-              <span>{t("roadmap.next.title")}</span>
-            </h3>
-
-            {narrative.next.length === 0 ? (
-              <p className="orbit-rm__empty">{t("roadmap.next.none")}</p>
-            ) : (
-              <ol className="orbit-rm__next">
-                {narrative.next.map((phase) => (
-                  <li
-                    data-state={visualState(phase.status)}
-                    data-testid={`orbit-roadmap-phase-${phase.id}`}
-                    key={phase.id}
-                  >
-                    <div className="orbit-rm__next-head">
-                      <b>{text(phase.title)}</b>
-                      {targetOf(phase) ? (
-                        <span className="orbit-rm__target">{targetOf(phase)}</span>
-                      ) : null}
-                      <StateChip state={stateChipTone(phase.status)}>
-                        {t(`roadmap.state.${visualState(phase.status)}`)}
-                      </StateChip>
-                    </div>
-                    <ul className="orbit-rm__bullets">
-                      {phase.highlights.slice(0, 3).map((highlight, index) => (
-                        <li key={`${phase.id}-${index}`}>{text(highlight)}</li>
-                      ))}
-                    </ul>
-                  </li>
-                ))}
-              </ol>
-            )}
-
-            {narrative.nextMilestones.length > 0 ? (
-              <div className="orbit-rm__anchored" data-testid="orbit-roadmap-next-milestones">
-                <div className="orbit-rm__anchored-head">
-                  <span className="orbit-eyebrow">{t("roadmap.next.plans")}</span>
-                  {derivedMark}
-                </div>
-                <ul className="orbit-rm__stones">
-                  {narrative.nextMilestones.map((milestone) => (
-                    <li
-                      data-state="planned"
-                      data-testid={`orbit-roadmap-milestone-${milestone.id}`}
-                      key={milestone.id}
-                    >
-                      <b>{text(milestone.title)}</b>
-                      <span>{text(milestone.body)}</span>
-                      <em>{text(milestone.label)}</em>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </section>
-
-          {/* ────────────────────────────────────────────────────────── HECHO */}
-          <section
-            className="orbit-rm__section"
-            data-focus={focused === "done" ? "true" : undefined}
-            data-section="done"
-            data-testid="orbit-roadmap-done"
-          >
-            <h3 className="orbit-rm__rule">
-              <span>{t("roadmap.done.title")}</span>
-            </h3>
-
-            <Accordion
-              className="orbit-rm__done"
-              onToggle={setOpenDone}
-              open={openDone}
-              summary={formatMessage(t("roadmap.done.summary"), {
-                phases: narrative.done.length,
-                releases: narrative.doneMilestones.length,
-              })}
-              title={t("roadmap.done.accordion")}
-            >
-              <div data-testid="orbit-roadmap-done-body">
-                {narrative.done.length === 0 ? (
-                  <p className="orbit-rm__empty">{t("roadmap.done.none")}</p>
-                ) : (
-                  <ol className="orbit-rm__next orbit-rm__next--done">
-                    {narrative.done.map((phase) => (
-                      <li
-                        data-state="done"
-                        data-testid={`orbit-roadmap-phase-${phase.id}`}
-                        key={phase.id}
-                      >
-                        <div className="orbit-rm__next-head">
-                          <b>{text(phase.title)}</b>
-                          {targetOf(phase) ? (
-                            <span className="orbit-rm__target">{targetOf(phase)}</span>
-                          ) : null}
-                          <StateChip state="ok">{t("roadmap.state.done")}</StateChip>
-                        </div>
-                        <ul className="orbit-rm__bullets">
-                          {phase.highlights.map((highlight, index) => (
-                            <li key={`${phase.id}-${index}`}>{text(highlight)}</li>
-                          ))}
-                        </ul>
-                      </li>
+              {draft.items.map((item, index) => (
+                <fieldset className="orbit-rm__edit-card" disabled={busy !== null} key={item.id}>
+                  <legend>{t("roadmap.editor.item")} {index + 1}</legend>
+                  <label>{t("roadmap.editor.section")}
+                    <select value={item.section} onChange={(event) => updateItem(item.id, (current) => ({ ...current, section: event.target.value as RoadmapSection }))}>
+                      {ROADMAP_SECTIONS.map((section) => <option key={section} value={section}>{t(`roadmap.${section}.title`)}</option>)}
+                    </select>
+                  </label>
+                  <div className="orbit-rm__edit-language">
+                    <b>ES</b>
+                    <label>{t("roadmap.editor.itemTitle")}<input maxLength={120} value={item.title.es} onChange={(event) => updateItem(item.id, (current) => ({ ...current, title: { ...current.title, es: event.target.value } }))} /></label>
+                    <label>{t("roadmap.editor.itemBody")}<textarea maxLength={600} value={item.body.es} onChange={(event) => updateItem(item.id, (current) => ({ ...current, body: { ...current.body, es: event.target.value } }))} /></label>
+                  </div>
+                  <details>
+                    <summary>{t("roadmap.editor.translations")}</summary>
+                    {ROADMAP_LOCALES.filter((lang) => lang !== "es").map((lang) => (
+                      <div className="orbit-rm__edit-language" key={lang}>
+                        <b>{lang.toUpperCase()}</b>
+                        <label>{t("roadmap.editor.itemTitle")}<input maxLength={120} value={item.title[lang]} onChange={(event) => updateItem(item.id, (current) => ({ ...current, title: { ...current.title, [lang]: event.target.value } }))} /></label>
+                        <label>{t("roadmap.editor.itemBody")}<textarea maxLength={600} value={item.body[lang]} onChange={(event) => updateItem(item.id, (current) => ({ ...current, body: { ...current.body, [lang]: event.target.value } }))} /></label>
+                      </div>
                     ))}
-                  </ol>
-                )}
-
-                {/* Entregado recientemente: lo único de esta pantalla que no
-                    sale del plan manual, sino de los commits mergeados a
-                    nightly. Va aquí abajo y marcado, porque es un registro de
-                    lo que ya pasó, no una promesa. */}
-                {narrative.delivered.length > 0 ? (
-                  <div className="orbit-rm__anchored" data-testid="orbit-roadmap-delivered">
-                    <div className="orbit-rm__anchored-head">
-                      <span className="orbit-eyebrow">{t("roadmap.delivered.title")}</span>
-                      {derivedMark}
-                    </div>
-                    <p className="orbit-rm__note">
-                      {formatMessage(t("roadmap.delivered.note"), {
-                        n: deliveredCount(narrative),
-                      })}
-                    </p>
-                    <ol className="orbit-rm__delivered">
-                      {narrative.delivered.map((day) => (
-                        <li data-testid={`orbit-roadmap-delivered-${day.date}`} key={day.date}>
-                          <b>{formatDeliveredDate(day.date, locale)}</b>
-                          <ul>
-                            {day.entries.map((entry, index) => (
-                              <li key={`${day.date}-${index}`}>
-                                <em data-kind={entry.kind}>
-                                  {t(`roadmap.delivered.kind.${entry.kind}`)}
-                                  {entry.scope ? ` · ${entry.scope}` : ""}
-                                </em>
-                                <span>{entry.text}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </li>
-                      ))}
-                    </ol>
+                  </details>
+                  <div className="orbit-rm__edit-controls">
+                    <Button size="sm" disabled={index === 0} onClick={() => move(index, -1)}>{t("roadmap.editor.up")}</Button>
+                    <Button size="sm" disabled={index === draft.items.length - 1} onClick={() => move(index, 1)}>{t("roadmap.editor.down")}</Button>
+                    <Button size="sm" onClick={() => { setDraft((current) => ({ ...current, items: current.items.filter((entry) => entry.id !== item.id) })); setDirty(true); }}>{t("roadmap.editor.delete")}</Button>
                   </div>
-                ) : null}
-
-                {narrative.doneMilestones.length > 0 ? (
-                  <div className="orbit-rm__anchored">
-                    <div className="orbit-rm__anchored-head">
-                      <span className="orbit-eyebrow">{t("roadmap.done.released")}</span>
-                      {derivedMark}
-                    </div>
-                    <ul className="orbit-rm__stones">
-                      {narrative.doneMilestones.map((milestone) => (
-                        <li
-                          data-state="done"
-                          data-testid={`orbit-roadmap-milestone-${milestone.id}`}
-                          key={milestone.id}
-                        >
-                          <b>{text(milestone.title)}</b>
-                          <span>{text(milestone.body)}</span>
-                          <em>{text(milestone.label)}</em>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
-              </div>
-            </Accordion>
-          </section>
+                </fieldset>
+              ))}
+            </div>
+          ) : loaded && published ? ROADMAP_SECTIONS.map((section) => {
+            const items = published.document.items.filter((item) => item.section === section);
+            if (items.length === 0) return null;
+            return (
+              <section className="orbit-rm__section" data-testid={`orbit-roadmap-${section}`} key={section}>
+                <h3 className="orbit-rm__rule"><span>{t(`roadmap.${section}.title`)}</span></h3>
+                <ul className="orbit-rm__simple-list">
+                  {items.map((item) => <li key={item.id}><strong>{item.title[language]?.trim() || item.title.es}</strong>{(item.body[language]?.trim() || item.body.es) ? <p>{item.body[language]?.trim() || item.body.es}</p> : null}</li>)}
+                </ul>
+              </section>
+            );
+          }) : null}
+          {message ? <p role="status">{message}</p> : null}
+          {error ? <p role="alert">{error}</p> : null}
         </div>
       </Surface>
-
-      {contextSlot
-        ? createPortal(
-            <div className="orbit-rm__context">
-              <section aria-label={t("roadmap.context.title")} className="orbit-block">
-                <div className="orbit-block__head">
-                  <span className="orbit-eyebrow">{t("roadmap.context.title")}</span>
-                </div>
-                <div className="orbit-list" data-testid="orbit-roadmap-context">
-                  {ROADMAP_SECTIONS.map((section) => (
-                    <ListRow
-                      key={section}
-                      onClick={() => focusSection(section)}
-                      selected={focused === section}
-                      subtitle={t(`roadmap.context.${section}Sub`)}
-                      title={t(`roadmap.${section}.title`)}
-                      trailing={
-                        <span className="orbit-rm__context-count">
-                          {sectionCount(narrative, section)}
-                        </span>
-                      }
-                    />
-                  ))}
-                </div>
-              </section>
-              <p className="orbit-rm__context-hint">{t("roadmap.context.hint")}</p>
-            </div>,
-            contextSlot,
-          )
-        : null}
     </div>
   );
 }

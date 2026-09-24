@@ -21,7 +21,7 @@ aplicaciones independientes.
 
 El producto sirve a pilotos casuales, competitivos y de resistencia. La decisión del 2026-09-11 prevé una beta pública reiniciada, versiones
 iterativas y después lanzamiento estable. Sustituye la decisión anterior de
-lanzamiento directo sin beta abierta. Consultar [etapas y decisiones aún pendientes](../plan-beta-publica-y-lanzamiento.md) y el [roadmap](../roadmap/plan.md);
+lanzamiento directo sin beta abierta. Consultar [etapas y decisiones aún pendientes](../plan-beta-publica-y-lanzamiento.md) y el [roadmap](../roadmap-maintenance.md);
 este contrato no anuncia apertura ni fija una fecha nueva.
 
 El lanzamiento debe incluir Hub, Launcher, Overlay Studio, los widgets

@@ -1,11 +1,11 @@
 /** Catálogo `roadmap.*` do Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`).
     Vista «O que vem» (D-R3-F-1): uma coluna narrativa AGORA / PRÓXIMO / FEITO.
-    Só rótulos: fases e marcos vêm de `docs/roadmap/roadmap.json`. */
+    O conteúdo público é editado e publicado no app. */
 export const roadmapOrbitPt: Record<string, string> = {
   "roadmap.eyebrow": "Direção do produto",
   "roadmap.title": "Roadmap",
   "roadmap.lead":
-    "O que está a ser feito agora, o que vem a seguir e o que já foi publicado, tal como declara docs/roadmap/plan.md.",
+    "Agora, a seguir e concluído. A equipa edita e publica este espaço na aplicação.",
 
   "roadmap.source.loading": "A carregar a fonte…",
   "roadmap.source.ok": "Fonte disponível · {{version}}",
@@ -53,4 +53,30 @@ export const roadmapOrbitPt: Record<string, string> = {
   "roadmap.context.nextSub": "por planear e futuras",
   "roadmap.context.doneSub": "concluídas e publicadas",
   "roadmap.context.hint": "Carrega numa secção para saltar para ela.",
+  "roadmap.editor.open": "Editar",
+  "roadmap.editor.close": "Fechar editor",
+  "roadmap.editor.unpublished": "Ainda não há um roadmap publicado.",
+  "roadmap.editor.help": "Escreve em espanhol; as traduções são opcionais. Guarda um rascunho antes de publicar.",
+  "roadmap.editor.translations": "Traduções opcionais",
+  "roadmap.editor.add": "Adicionar item",
+  "roadmap.editor.save": "Guardar rascunho",
+  "roadmap.editor.saving": "A guardar…",
+  "roadmap.editor.publish": "Publicar para todos",
+  "roadmap.editor.publishing": "A publicar…",
+  "roadmap.editor.saved": "Rascunho guardado.",
+  "roadmap.editor.published": "Roadmap publicado.",
+  "roadmap.editor.item": "Item",
+  "roadmap.editor.section": "Secção",
+  "roadmap.editor.itemTitle": "Título",
+  "roadmap.editor.itemBody": "Descrição",
+  "roadmap.editor.up": "Subir",
+  "roadmap.editor.down": "Descer",
+  "roadmap.editor.delete": "Eliminar",
+  "roadmap.editor.connectionError": "Não foi possível ligar ao roadmap.",
+  "roadmap.editor.invalidRemote": "O roadmap recebido é inválido.",
+  "roadmap.editor.invalid.size": "Há demasiados itens ou o conteúdo é demasiado longo.",
+  "roadmap.editor.invalid.id": "Um ID de item é inválido ou duplicado.",
+  "roadmap.editor.invalid.section": "Uma secção é inválida.",
+  "roadmap.editor.invalid.title": "Preenche os títulos nos quatro idiomas.",
+  "roadmap.editor.invalid.body": "Uma descrição é demasiado longa.",
 };

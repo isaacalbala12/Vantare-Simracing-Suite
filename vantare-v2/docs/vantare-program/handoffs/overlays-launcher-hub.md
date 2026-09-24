@@ -7,6 +7,16 @@
 
 
 
+## ISA-1355 — integración de datos, volantes y catálogo (2026-09-24)
+
+La [PR draft #1356](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1356) reúne las tres entregas coordinadas en [Asana · Pedals telemetry](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756738610082). Sobre `bf2b12e9` (volantes) y `82883459` (renombre/compatibilidad), el tercer commit incorpora con `cherry-pick -x` el parche de datos `fb8590878d46988def86b55c2c0aa4add32c497b`, revisado contra sus cinco pruebas y consumidores. Rama `vantareapp/isa-1355-lmu-steering-wheels`, misma base `nightly f50ab4ab`; no hay conflicto semántico ni conversión de perfiles.
+
+El ViewModel distingue ceros de señales ausentes/invalidas, limita pedales a 0–1 y elimina datos anteriores en conexión, detección o parada. El embrague oculto y la dirección opcional no degradan la calidad del widget. El compacto hereda el vaciado de instrumentos; la conversión compartida de velocidad descarta valores no finitos. El primer ratchet detectó dos emplazamientos de una normalización duplicada con Pedals: por autorización del orquestador, ambos reutilizan `pedalValue` con reglas exactamente equivalentes. Se conserva el comportamiento anterior de Pedals y no se cambian políticas ni baseline.
+
+Verificación final tras esa reutilización: 159 pruebas focales; frontend completo con Node 22.23.2, **484 archivos / 4098 PASS / 2 omitidas**; typecheck, lint y build PASS; ratchet PASS, **NEW=0, MOVED=0, policy_changed=false**. La suite emite el aviso conocido de cancelación de fetch al cerrar happy-dom, sin fallo. Se restauran los cinco PNG incidentales de Horizontal Standings. La revisión visual anterior del selector/nombres sigue aplicando: este commit solo modifica adaptación de datos y documentación.
+
+Límites: producción sigue sin señal de dirección validada y con posición V2 ausente; la rotación de Workshop proviene del fixture. Pendientes revisión del orquestador, aceptación visual de Isaac, CI remoto del tercer commit y validación física LMU/Windows/OBS. Los dos primeros commits ya pasaron CI. No se modifica Workshop 5178 ni se integra, promociona o publica una release.
+
 ## ISA-1355 — Pedales avanzados y compatibilidad del compacto (2026-09-24)
 
 Ampliación de [Asana · Pedals telemetry](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756738610082) en la [PR draft #1356](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1356), segundo commit separado sobre `bf2b12e9`, misma rama/worktree aislados. Aprobado por el orquestador: el compacto sale de los catálogos de creación, pero conserva definición, manifests, IDs de diseños y contratos frontend/Go para perfiles guardados. No se convierte al principal porque sus banderas `showSpeed`/`showRpm`, tamaño y presentación iRacing son diferentes.

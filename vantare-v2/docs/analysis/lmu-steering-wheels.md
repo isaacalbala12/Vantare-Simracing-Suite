@@ -21,9 +21,9 @@ Referencias visuales verificables: [Ferrari, creación del volante 499P](https:/
 
 El ajuste `steeringWheel` pertenece a la apariencia guardada del widget `pedals-telemetry`. Valores ausentes o desconocidos recuperan el genérico, sin cambiar contenido, tamaño o datos. Studio, Desktop, OBS y Workshop comparten renderer. Workshop usa el parámetro `steeringWheel`, validado y descartado fuera del widget/sistema correspondientes. No existe selección automática del coche del jugador.
 
-La dirección de producción permanece sin señal validada en el contrato LMU de esta base. Los dibujos quedan centrados si no llega dirección; la demostración usa la señal de su fixture. La rotación existente de ±450° es una convención del widget, **no un ángulo físico validado por vehículo**. La auditoría de datos y la eliminación/renombrado del widget compacto están en ramas independientes.
+La dirección de producción permanece sin señal validada en el contrato LMU de esta base. Los dibujos quedan centrados si no llega dirección; la demostración usa la señal de su fixture. La rotación existente de ±450° es una convención del widget, **no un ángulo físico validado por vehículo**. La revisión de datos y la retirada/renombrado del compacto se incorporan después en commits separados de la misma PR #1356; el [handoff](../vantare-program/handoffs/overlays-launcher-hub.md) registra la verificación conjunta. La posición V2 también permanece sin dato.
 
-## Verificación
+## Verificación del primer commit de volantes
 
 - 172 pruebas focales finales, incluidos idiomas: guardado/lectura de perfil V4 mediante el control de Studio, recuperación del genérico, cobertura de los 31 dibujos, conservación de cifras/pedales, navegación del selector y paridad de las cuatro superficies.
 - Suite frontend completa con Node 22.23.2 y cuatro workers: **482 archivos, 4080 pruebas aprobadas y 2 omitidas**. La primera ejecución con Node 26 alpha falló por incompatibilidad de `localStorage` y workers; no se ocultó ni se modificaron las pruebas para evitarla.

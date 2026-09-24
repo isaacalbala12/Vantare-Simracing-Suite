@@ -2,20 +2,21 @@
   "schemaVersion": 1,
   "issue": "ISA-1355",
   "type": "feature",
-  "summary": "Pedales avanzados permite seleccionar y guardar volantes LMU; el widget compacto se retira del catálogo conservando los perfiles existentes.",
+  "summary": "Pedales avanzados permite guardar volantes LMU y respeta la calidad de los datos; el compacto se retira del catálogo conservando los perfiles existentes.",
   "technicalNotes": [
     "31 opciones LMU con dibujos SVG propios simplificados y el genérico original como predeterminado.",
-    "Ajuste de apariencia compartido por Studio, Desktop, OBS y Workshop; sin modificar señales ni calibración física.",
+    "Ajuste de apariencia compartido por Studio, Desktop, OBS y Workshop; la selección no modifica la calibración física.",
     "Catálogo contrastado con fuentes oficiales hasta el 24 de septiembre de 2026; evoluciones agrupadas por familia y BMW anterior/posterior a Le Mans 2024 separado.",
-    "El identificador pedals-telemetry sigue estable; pedals-telemetry-compact se mantiene solo por compatibilidad, con etiqueta Pedales antiguos y sin conversión de datos."
+    "El identificador pedals-telemetry sigue estable; pedals-telemetry-compact se mantiene solo por compatibilidad, con etiqueta Pedales antiguos y sin conversión de datos.",
+    "ViewModel: distingue ausencia de cero, limita pedales a 0–1, respeta la visibilidad del embrague y vacía valores durante conexión o parada; normalización compartida con Pedals sin alterar sus reglas."
   ],
   "testing": [
-    "109 pruebas focales de renombre/compatibilidad y 103 adicionales tras la última etiqueta; selección, persistencia V4, idiomas y paridad de superficies.",
-    "Frontend completo con Node 22: 483 archivos, 4093 pruebas aprobadas y 2 omitidas; cobertura de perfiles mixtos V3/V4 y renderizado antiguo en tres sistemas.",
-    "Typecheck, lint, build y ratchet aprobados; revisión visual en Safari."
+    "159 pruebas focales de ViewModels, consumidores compartidos, perfiles mixtos V3/V4, volantes y paridad.",
+    "Frontend completo final con Node 22: 484 archivos, 4098 pruebas aprobadas y 2 omitidas.",
+    "Typecheck, lint, build y ratchet aprobados tras la integración; NEW=0, MOVED=0 y sin cambios de política. Revisión visual previa en Safari."
   ],
   "knownLimitations": [
     "Dibujos simplificados pendientes de aceptación visual, sin certificar cada control ni variante histórica.",
-    "La señal de dirección LMU y la validación física Windows/OBS siguen pendientes en la auditoría independiente."
+    "La dirección física LMU y la posición V2 siguen sin dato validado; pendiente comprobación real de LMU/Windows/OBS."
   ]
 }

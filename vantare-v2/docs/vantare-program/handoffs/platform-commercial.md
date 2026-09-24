@@ -6,6 +6,8 @@ Isaac facilitó el texto oficial de 12 series. La importación no aceptaba el
 miércoles de prueba, el slot único de viernes ni la cadencia de sábado/domingo
 desde las 02:00 UTC. ISA-1372 corrige esas formas en rama aislada reconciliada
 con `nightly@5c73013e`, con prueba RED previa y fixture del texto normalizado.
+PR draft [#1374](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1374)
+abierto; revisión y CI completo pendientes.
 
 El seed nuevo permanece como candidato local: `C:/tmp/calendar-2026-09-22-candidate.json`.
 No se incluye ni publica porque el registro de identidades de telemetría carece

@@ -2536,6 +2536,15 @@ Launcher frontend, Go focal, typecheck, build, lint y vet pasan. Faltan CI
 del HEAD publicado, arranque real de Windows y prueba de preguntas al entrar
 en el Hub. No se afirma aptitud de lanzamiento todavía.
 
+Duodécimo avance de #1368 (candidato local): el arranque con flag comprueba
+que el perfil aún existe y que cada paso apunta a un archivo local antes de
+abrir una cadena. Una ruta ausente o una carpeta se omiten con registro local,
+sin mostrar un error tardío al usuario. Si el perfil ya no existe, se retira
+su valor Run para que no reaparezca en cada inicio de Windows. La prueba del
+perfil obsoleto y las de ruta ausente/carpeta fallaron antes y pasan después;
+Go focal y vet pasan. El chequeo es de existencia/ruta, no certifica que el
+archivo sea un binario válido ni sustituye la prueba física del programa.
+
 ## Hub
 
 Conservar estructura. Solo consistencia visual, estados reales, responsive,

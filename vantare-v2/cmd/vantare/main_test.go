@@ -1990,6 +1990,19 @@ func TestHandleLaunchFlagIgnoresMissingFlag(t *testing.T) {
 	}
 }
 
+func TestHandleLaunchFlagRemovesObsoleteStartupEntryWithoutOpeningChain(t *testing.T) {
+	svc, _ := newTestLauncherService(t)
+	emitter := &spyMainEmitter{}
+	removed := ""
+	handleLaunchFlag([]string{"--launch=gone"}, func(id string) error {
+		removed = id
+		return nil
+	}, svc, emitter)
+	if removed != "gone" || len(emitter.Events()) != 0 {
+		t.Fatalf("obsolete autostart was not silently removed: removed=%q events=%v", removed, emitter.Events())
+	}
+}
+
 func TestCancelAllNoPanic(t *testing.T) {
 	svc, _ := newTestLauncherService(t)
 	// Seed a profile.

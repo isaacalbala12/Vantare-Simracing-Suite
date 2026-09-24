@@ -551,6 +551,34 @@ func (s *Service) LaunchProfile(ctx context.Context, profileID string) error {
 	return nil
 }
 
+// CheckAutostartProfile avoids opening a chain at sign-in when its saved
+// profile or an executable needed for a step has disappeared.
+func (s *Service) CheckAutostartProfile(profileID string) error {
+	var profile *app.LaunchProfile
+	for _, candidate := range s.settings.GetLauncherProfiles() {
+		if candidate.ID == profileID {
+			copy := candidate
+			profile = &copy
+			break
+		}
+	}
+	if profile == nil {
+		return fmt.Errorf("%w: %s", ErrProfileNotFound, profileID)
+	}
+	if len(profile.Steps) == 0 {
+		return fmt.Errorf("%w: autostart profile has no steps", ErrInvalidConfig)
+	}
+	apps := s.settings.GetLauncherApps()
+	for _, step := range profile.Steps {
+		entry, ok := apps[step.AppID]
+		if !ok || (entry.LaunchMethod != "executable" && entry.LaunchMethod != "steam-uri") ||
+			(entry.LaunchMethod == "steam-uri" && entry.SteamAppID <= 0) || !fileExists(entry.ExecutablePath) {
+			return fmt.Errorf("%w: autostart app %q is unavailable", ErrInvalidConfig, step.AppID)
+		}
+	}
+	return nil
+}
+
 // RetryFailedProfile retries failed and unattempted steps from the most recent
 // failed chain. Completed steps are never launched a second time by this action.
 func (s *Service) RetryFailedProfile(ctx context.Context, profileID string) error {

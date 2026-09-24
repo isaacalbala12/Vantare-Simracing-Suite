@@ -1345,9 +1345,18 @@ func handleAppFavorite(id string, favorite bool, settingsSvc *app.SettingsServic
 // When the flag is present and valid it launches the profile immediately via
 // the chain runner. This is the entry point for Windows autostart
 // (HKCU\...\Run → vantare.exe --launch=<id>).
-func handleLaunchFlag(args []string, settingsSvc *app.SettingsService, svc *launcher.Service, emitter app.EventEmitter) {
+func handleLaunchFlag(args []string, unregister func(string) error, svc *launcher.Service, emitter app.EventEmitter) {
 	id, ok := launcher.ParseLaunchFlag(args)
 	if !ok {
+		return
+	}
+	if err := svc.CheckAutostartProfile(id); err != nil {
+		if errors.Is(err, launcher.ErrProfileNotFound) && unregister != nil {
+			if removeErr := unregister(id); removeErr != nil {
+				log.Printf("launcher: remove obsolete autostart entry: %v", removeErr)
+			}
+		}
+		log.Printf("launcher: skipped unavailable startup profile %q: %v", id, err)
 		return
 	}
 	if err := svc.LaunchProfile(context.Background(), id); err != nil {
@@ -3802,7 +3811,7 @@ func main() {
 	})
 
 	launcherStartup.Ready(func(id string) {
-		handleLaunchFlag([]string{"--launch=" + id}, nil, launcherSvc, emitter)
+		handleLaunchFlag([]string{"--launch=" + id}, launcher.UnregisterAutostart, launcherSvc, emitter)
 	})
 	if err := wailsApp.Run(); err != nil {
 		// log.Fatal exits without running defers, so the capture is flushed

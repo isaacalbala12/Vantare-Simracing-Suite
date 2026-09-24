@@ -37,8 +37,8 @@ func fileExists(path string) bool {
 	if path == "" {
 		return false
 	}
-	_, err := os.Stat(path)
-	return err == nil
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
 }
 
 // KnownLaunchMethods lista los métodos de lanzamiento aceptados.

@@ -166,9 +166,17 @@ el puente GPS. Esta distinción impide presentar la prueba como paridad de la
 proyección final.
 
 Prueba focal RED por falta del acumulador y luego PASS. La suite completa de
-Go y `go vet ./internal/telemetryanalysis` PASS. Las variables opt-in
-`ISA1088_REAL_SOURCE`, `ISA1104_REAL_TARGET_SOURCE` y `ISA1088_RUNTIME_APP`
-no están configuradas en esta sesión, por lo que no hubo banco real ni hashes
-nuevos. El servicio sigue reuniendo todas las páginas y este corte no reduce
-su memoria pico. Próximo experimento: resolver el reloj GPS por ventanas sin
+Go, paquete `internal/telemetryanalysis` fresco y `go vet` PASS. Tras localizar
+las fuentes y verificar la ausencia de WAL y el manifiesto del runtime,
+`TestRecordedStrategyRealDuckDB` pasó con S266 Algarve como primaria y S026
+Monza como objetivo en 94,31 s. Conserva 71 eventos, 70 reinicios, 66 vueltas
+completas, ritmo seco 95,190 s (N=58), Fuel 2,135 L/vuelta (N=58) y un plan
+de 38 vueltas/0 paradas con `optimality=proven` **sólo para el evento supuesto**.
+Preparación, proyección, clasificación, identidad, correcciones por familia,
+restauración y reapertura pasaron. Los SHA-256 originales quedaron intactos:
+Algarve `6b912640e5b68da087fbe86ce70401101edbdc89cb89cb93df30c9ef396d9362`
+y Monza `08a1e626d7154becd493aa84addbf146cc7f0f229c8a7aa39664766813495538`.
+Este banco no comparó memoria pico ni estableció velocidad A/B. El servicio
+sigue reuniendo todas las páginas y este corte no reduce su memoria pico de
+forma demostrada. Próximo experimento: resolver el reloj GPS por ventanas sin
 retener la señal completa y comparar validez/correcciones con una fuente real.

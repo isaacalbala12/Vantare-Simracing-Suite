@@ -9,10 +9,15 @@ Una prueba compara ambas rutas y otra alimenta el estado desde
 Conserva el fallback anterior si las páginas están desordenadas. Las páginas
 crudas aún requieren el puente GPS antes de publicar tiempos de reinicio;
 esta paridad de índices no sustituye la alineación. La suite Go completa y
-`go vet` del paquete pasan; el banco DuckDB real no se ejecutó porque las tres
-rutas opt-in no están presentes. `withCorrectionInput` continúa materializando
-todas las páginas: no se ha medido un nuevo pico ni se acredita soporte de
-resistencia. Siguiente corte: cruce GPS por ventanas y consumidor de validez
+`go vet` del paquete pasan. Banco real posterior con S266 Algarve como fuente
+y S026 Monza como objetivo: PASS en 94,31 s, 71 eventos, 70 reinicios, 66
+vueltas completas; ritmo seco 95,190 s (N=58), Fuel 2,135 L/vuelta (N=58),
+38 vueltas/0 paradas y optimalidad probada sólo para el evento supuesto.
+Correcciones, clasificación, identidad, familias, restauración y reapertura
+pasaron; ambos SHA-256 originales permanecieron intactos. No se midió una
+paridad A/B numérica de memoria o tiempo. `withCorrectionInput` continúa
+materializando todas las páginas: no se ha medido un nuevo pico ni se acredita
+soporte de resistencia. Siguiente corte: cruce GPS por ventanas y consumidor de validez
 sin retención, con comparación real antes de sustituir producción. Rama local
 sin push, PR, CI, merge, promoción ni release.
 

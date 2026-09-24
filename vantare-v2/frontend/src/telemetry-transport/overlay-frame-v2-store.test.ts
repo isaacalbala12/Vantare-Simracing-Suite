@@ -23,6 +23,10 @@ describe("OverlayFrame v2 store", () => {
     expect(atLimit.length).toBe(OVERLAY_V2_MAX_PAYLOAD_BYTES);
     expect(() => decodeOverlayUpdateV2(atLimit)).toThrow("overlay-frame-v2:invalid-contract:update");
 
+    const unicodeAtLimit = JSON.stringify({ value: "é".repeat((OVERLAY_V2_MAX_PAYLOAD_BYTES - 12) / 2) });
+    expect(new TextEncoder().encode(unicodeAtLimit).byteLength).toBe(OVERLAY_V2_MAX_PAYLOAD_BYTES);
+    expect(() => decodeOverlayUpdateV2(unicodeAtLimit)).toThrow("overlay-frame-v2:invalid-contract:update");
+
     const asciiOverLimit = JSON.stringify({ value: "x".repeat(OVERLAY_V2_MAX_PAYLOAD_BYTES - 11) });
     expect(() => decodeOverlayUpdateV2(asciiOverLimit)).toThrow("overlay-frame-v2:invalid-contract:size");
 

@@ -55,6 +55,16 @@ func TestLapDistResetObservationsMatchSortedPath(t *testing.T) {
 		got[0].seconds == nil || *got[0].seconds != 10.2 || !got[0].qualityValid {
 		t.Fatalf("unexpected ordered lap resets: %v, frequency %d", got, frequency)
 	}
+	var scan orderedLapDistResetScan
+	for _, page := range ordered {
+		if !scan.accept(page) {
+			t.Fatal("ordered page was rejected")
+		}
+	}
+	streamed, streamedFrequency := scan.finish()
+	if streamedFrequency != frequency || !reflect.DeepEqual(streamed, got) {
+		t.Fatalf("page-fed resets (%v, %d) differ from materialized (%v, %d)", streamed, streamedFrequency, got, frequency)
+	}
 }
 
 func TestChannelCoverageWindowKeepsUnorderedSemantics(t *testing.T) {

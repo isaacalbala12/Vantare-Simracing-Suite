@@ -167,3 +167,32 @@ func TestCorrectionInputReadsBoundedRecordedSource(t *testing.T) {
 		t.Fatal("read without artifact", err)
 	}
 }
+
+func TestCorrectionPageVisitorFeedsUnalignedLapDistResetsWithoutRetainingPages(t *testing.T) {
+	model := correctionSourceExample(t)
+	sampling := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 10, Origin: TimeOriginUnknown}
+	channel := HistoricalChannel{ID: "lap-dist", SourceName: "Lap Dist", Sampling: sampling}
+	model.Session.Channels = []HistoricalChannel{channel}
+	values := []float64{900, 950, 10, 980, 990, 20}
+	page := HistoricalPage{ChannelID: channel.ID, Sampling: sampling}
+	for index, value := range values {
+		page.Samples = append(page.Samples, HistoricalSample{Index: int64(index), Values: []HistoricalValue{numberValue("Lap Dist", value)}})
+	}
+	reader := &correctionInputReader{session: model.Session, pages: []HistoricalPage{page}}
+	var scan orderedLapDistResetScan
+	limits := CorrectionReadLimits{PageRows: 2, MaxSamples: 10, MaxValues: 10, MaxTextBytes: 1024}
+	_, err := VisitCorrectionPages(context.Background(), reader, model.Artifact, limits, func(_ HistoricalChannel, current HistoricalPage) error {
+		if !scan.accept(current) {
+			t.Fatal("authorized reader returned unordered Lap Dist")
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, frequency := scan.finish()
+	want, wantFrequency := readLapDistResetObservations([]HistoricalPage{page})
+	if frequency != wantFrequency || !reflect.DeepEqual(got, want) || reader.calls < 3 || len(got) != 2 || got[0].seconds != nil {
+		t.Fatalf("visited resets (%v, %d) differ from materialized (%v, %d), reads=%d", got, frequency, want, wantFrequency, reader.calls)
+	}
+}

@@ -151,3 +151,24 @@ opt-in: las tres variables de selección de fuentes/runtime no estaban
 configuradas en esta sesión. El escáner aún no sustituye a
 `withCorrectionInput`; este corte no reduce memoria pico, no cambia las cuotas
 y no acredita carreras de 24 h ni Wails.
+
+## Octavo corte: reinicios Lap Dist alimentables por páginas
+
+El acumulador de reinicios conserva sólo la muestra anterior y los reinicios
+detectados al recibir páginas ordenadas; la función pura existente utiliza el
+mismo estado y mantiene su ruta ordenada general para entradas desordenadas.
+La regresión compara ambos resultados en páginas partidas, huecos, origen
+temporal desconocido y frecuencia incompatible. Otra prueba entrega páginas
+crudas mediante `VisitCorrectionPages` y compara reinicios/frecuencia con la
+ruta materializada **antes de la alineación GPS**. Los índices y la calidad
+coinciden; el tiempo de un reinicio crudo permanece ausente hasta resolver
+el puente GPS. Esta distinción impide presentar la prueba como paridad de la
+proyección final.
+
+Prueba focal RED por falta del acumulador y luego PASS. La suite completa de
+Go y `go vet ./internal/telemetryanalysis` PASS. Las variables opt-in
+`ISA1088_REAL_SOURCE`, `ISA1104_REAL_TARGET_SOURCE` y `ISA1088_RUNTIME_APP`
+no están configuradas en esta sesión, por lo que no hubo banco real ni hashes
+nuevos. El servicio sigue reuniendo todas las páginas y este corte no reduce
+su memoria pico. Próximo experimento: resolver el reloj GPS por ventanas sin
+retener la señal completa y comparar validez/correcciones con una fuente real.

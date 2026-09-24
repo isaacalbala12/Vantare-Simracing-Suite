@@ -1,5 +1,21 @@
 # Handoff vivo — Strategy Planner
 
+## Reinicios de vuelta alimentables por páginas — ISA-1375 (2026-09-25)
+
+La detección ordenada de reinicios `Lap Dist` comparte ahora un acumulador
+entre la ruta materializada y una visita paginada sin retener la señal continua.
+Una prueba compara ambas rutas y otra alimenta el estado desde
+`VisitCorrectionPages` con páginas crudas de origen temporal desconocido.
+Conserva el fallback anterior si las páginas están desordenadas. Las páginas
+crudas aún requieren el puente GPS antes de publicar tiempos de reinicio;
+esta paridad de índices no sustituye la alineación. La suite Go completa y
+`go vet` del paquete pasan; el banco DuckDB real no se ejecutó porque las tres
+rutas opt-in no están presentes. `withCorrectionInput` continúa materializando
+todas las páginas: no se ha medido un nuevo pico ni se acredita soporte de
+resistencia. Siguiente corte: cruce GPS por ventanas y consumidor de validez
+sin retención, con comparación real antes de sustituir producción. Rama local
+sin push, PR, CI, merge, promoción ni release.
+
 ## Reloj GPS alimentable por páginas — ISA-1375 (2026-09-24)
 
 El reloj ordenado reutiliza ahora un acumulador de último índice/instante y monotonía, apto para recibir páginas sucesivas sin retenerlas. Paridad con el reloj materializado y con `VisitCorrectionPages` sobre el lector controlado PASS; paquete `internal/telemetryanalysis` completo PASS. La suite Go global terminó roja por dos timeouts externos (`voiceinput` e Imola Strategy), ambos verdes en repetición aislada. No se ejecutó el banco real porque las variables opt-in de fuente primaria, destino y runtime no están presentes en esta sesión. [Evidencia y límites](../../strategy-planner/evidence/isa-1375/allocation-dependencies-2026-09-24.md). `withCorrectionInput` sigue reteniendo todas las páginas: falta consumidor incremental, memoria pico medida, paridad real y Wails. #1375 permanece abierta; sin push, PR, CI, merge, promoción ni release.

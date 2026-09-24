@@ -305,37 +305,59 @@ func readEvents(pages []HistoricalPage) []observedEvent {
 func readLapDistResetObservations(pages []HistoricalPage) ([]observedLapReset, int) {
 	// Recorded pages arrive in sample order. Keep only the previous sample on
 	// that path; retain the sorted path for callers with unordered pages.
-	var resets []observedLapReset
-	var previous HistoricalSample
-	havePrevious := false
-	frequency := 0
+	var scan orderedLapDistResetScan
 	for _, page := range pages {
-		if page.Sampling.Kind != SamplingContinuousImplicitFrequency || page.Sampling.FrequencyHz <= 0 {
-			continue
-		}
-		if frequency == 0 {
-			frequency = page.Sampling.FrequencyHz
-		}
-		if page.Sampling.FrequencyHz != frequency {
-			return nil, 0
-		}
-		for _, sample := range page.Samples {
-			if page.Sampling.Origin != TimeOriginSourceTimestamp {
-				sample.TimestampSeconds = nil
-			}
-			if havePrevious && sample.Index <= previous.Index {
-				return readUnorderedLapDistResetObservations(pages)
-			}
-			if havePrevious {
-				if reset, ok := lapDistResetBetween(previous, sample); ok {
-					resets = append(resets, reset)
-				}
-			}
-			previous = sample
-			havePrevious = true
+		if !scan.accept(page) {
+			return readUnorderedLapDistResetObservations(pages)
 		}
 	}
-	return resets, frequency
+	return scan.finish()
+}
+
+// The authorized reader supplies Lap Dist pages in index order. This state can
+// consume them as they arrive without retaining the continuous signal. Raw LMU
+// pages still need GPS alignment before their reset timestamps can be used.
+type orderedLapDistResetScan struct {
+	resets       []observedLapReset
+	previous     HistoricalSample
+	havePrevious bool
+	frequency    int
+	invalid      bool
+}
+
+func (scan *orderedLapDistResetScan) accept(page HistoricalPage) bool {
+	if scan.invalid || page.Sampling.Kind != SamplingContinuousImplicitFrequency || page.Sampling.FrequencyHz <= 0 {
+		return true
+	}
+	if scan.frequency == 0 {
+		scan.frequency = page.Sampling.FrequencyHz
+	}
+	if page.Sampling.FrequencyHz != scan.frequency {
+		scan.invalid = true
+		return true
+	}
+	for _, sample := range page.Samples {
+		if page.Sampling.Origin != TimeOriginSourceTimestamp {
+			sample.TimestampSeconds = nil
+		}
+		if scan.havePrevious && sample.Index <= scan.previous.Index {
+			return false
+		}
+		if scan.havePrevious {
+			if reset, ok := lapDistResetBetween(scan.previous, sample); ok {
+				scan.resets = append(scan.resets, reset)
+			}
+		}
+		scan.previous, scan.havePrevious = sample, true
+	}
+	return true
+}
+
+func (scan orderedLapDistResetScan) finish() ([]observedLapReset, int) {
+	if scan.invalid {
+		return nil, 0
+	}
+	return scan.resets, scan.frequency
 }
 
 func readUnorderedLapDistResetObservations(pages []HistoricalPage) ([]observedLapReset, int) {

@@ -70,7 +70,7 @@ it("shows the verified COTA catalog outline in the race context without deriving
 it("shows canonical observed values and a separate preview bucket without changing the race climate", () => {
   const input = props();
   const ref = { sessionId: "base-a", revisionId: "revision-a", baseDigest: "a".repeat(64), snapshotId: "b".repeat(64) };
-  const draft = { ...input.draft, mode: "automatic" as const, combination, sessions: [ref] };
+  const draft = { ...input.draft, mode: "automatic" as const, combination: { ...combination, carClass: "LMGT3" }, sessions: [ref] };
   const valid = { presence: "valid", provenance: { kind: "analysis" }, confidence: "high" };
   const planning = { overrides: {}, projection: {
     representativePaceByClimateBucket: { dry: { ...valid, medianLapSeconds: 122.345 }, humid: { ...valid, presence: "missing" }, wet: { ...valid, medianLapSeconds: 131 } },
@@ -102,6 +102,16 @@ it("shows observed uncertain laps without presenting them as valid calculation i
   expect(within(cards).getAllByText("strategy.entry.referenceUncertain")).toHaveLength(2);
 });
 
+it("does not present a constant virtual-energy channel as consumption for LMU LMP2", () => {
+  const input = props();
+  const draft = { ...input.draft, mode: "automatic" as const, combination };
+  const planning = { overrides: {}, projection: {
+    virtualEnergyConsumption: { presence: "unknown", provenance: { kind: "derived", sourceId: "race" }, confidence: { sampleSize: 8, computationVersion: "real" }, meanPerLap: 0 },
+  } } as unknown as StrategyPlanningInputsV2;
+  render(<StrategyRecordedPreparation {...input} draft={draft} references={{ status: "ready", planning }} />);
+  expect(within(screen.getByRole("region", { name: "strategy.entry.referenceTitle" })).queryByText("strategy.entry.referenceEnergy")).toBeNull();
+});
+
 it("explains an opened session with no complete laps", () => {
   const input = props();
   const draft = { ...input.draft, mode: "automatic" as const, combination, sessions: [{ sessionId: "pit", revisionId: "revision", baseDigest: "a".repeat(64), snapshotId: "b".repeat(64) }] };
@@ -126,7 +136,7 @@ it("shows a source-opening cause and action for a saved draft without a live han
 it("does not substitute a climate mean for a missing bucket and labels a valid override", () => {
   const input = props();
   const ref = { sessionId: "base-a", revisionId: "revision-a", baseDigest: "a".repeat(64), snapshotId: "b".repeat(64) };
-  const draft = { ...input.draft, mode: "automatic" as const, combination, sessions: [ref], virtualEnergy: { applicability: "applicable" as const } };
+  const draft = { ...input.draft, mode: "automatic" as const, combination: { ...combination, carClass: "Hypercar" }, sessions: [ref], virtualEnergy: { applicability: "applicable" as const } };
   const valid = { presence: "valid", provenance: { kind: "analysis" }, confidence: "high" };
   const projection = {
     representativePaceByClimateBucket: { dry: { ...valid, medianLapSeconds: 122 }, wet: { ...valid, medianLapSeconds: 130 } },

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Calendar, RaceSeries } from "../../calendar/calendar-types";
 import type { StrategySessionCombinationV1 } from "../../strategy/strategy-application-client";
-import { createRecordedWizardDraft, moveRecordedWizard, recordedCalendarCombinations, selectRecordedCalendar, selectRecordedCombination, selectRecordedSessions, snapshotRecordedCalendar } from "./strategy-recorded-wizard";
+import { createRecordedWizardDraft, lmuVirtualEnergyCapability, moveRecordedWizard, recordedCalendarCombinations, selectRecordedCalendar, selectRecordedCombination, selectRecordedSessions, snapshotRecordedCalendar } from "./strategy-recorded-wizard";
 
 const series: RaceSeries = {
   id: "endurance", name: "Endurance", tier: "advanced", licenseLabel: "Gold", track: "Spa",
@@ -18,6 +18,16 @@ const otherCar = { ...car, combinationId: "lmu:other", carName: "Other car" };
 const ref = { sessionId: "session", baseDigest: "base", revisionId: "revision", snapshotId: "snapshot" };
 
 describe("recorded wizard working draft", () => {
+  it("uses virtual energy only for LMU GT3 and Hypercar combinations", () => {
+    expect(lmuVirtualEnergyCapability(car)).toBe(false);
+    expect(lmuVirtualEnergyCapability({ ...car, carClass: "LMGT3" })).toBe(true);
+    expect(lmuVirtualEnergyCapability({ ...car, carClass: "Hypercar" })).toBe(true);
+    expect(lmuVirtualEnergyCapability({ ...car, carClass: "Hyper" })).toBe(true);
+    expect(lmuVirtualEnergyCapability({ ...car, simId: "other" })).toBeUndefined();
+    expect(selectRecordedCombination(createRecordedWizardDraft(), car.combinationId, [car]).virtualEnergy).toEqual({ applicability: "not_applicable" });
+    const gt3 = { ...car, combinationId: "lmu:gt3", carClass: "LMGT3" };
+    expect(selectRecordedCombination(createRecordedWizardDraft(), gt3.combinationId, [gt3]).virtualEnergy).toEqual({ applicability: "unknown" });
+  });
   it("selects a prepared native identity without requiring or fabricating session statistics", () => {
     const identity = { combinationId: car.combinationId, simId: car.simId, trackName: car.trackName, trackLayout: car.trackLayout, carName: car.carName, carClass: car.carClass };
     const snapshot = snapshotRecordedCalendar(calendar, series.id, "lmu", capturedAt);

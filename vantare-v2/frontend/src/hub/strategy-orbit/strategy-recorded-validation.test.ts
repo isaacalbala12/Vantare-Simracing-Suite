@@ -26,6 +26,10 @@ it.each<[Partial<RecordedWizardDraft>, string]>([
 it("does not apply retained VE values after explicitly marking the resource inapplicable", () => {
   expect(recordedWizardErrors({ ...empty, virtualEnergy: { applicability: "not_applicable", capacityPercent: 75, initialPercent: 80 } }, "rules")).toEqual([]);
 });
+it("rejects a stale applicable-VE setting for an LMU LMP2", () => {
+  const combination = { combinationId: "lmu:oreca", simId: "lmu", trackName: "COTA", trackLayout: "GP", carName: "Oreca 07", carClass: "LMP2_ELMS" };
+  expect(recordedWizardErrors({ ...empty, combination, virtualEnergy: { applicability: "applicable" } }, "rules")).toContain("energy");
+});
 it.each([
   { minLaps: 40, maxLaps: 12 },
   { minLaps: 12.5 },

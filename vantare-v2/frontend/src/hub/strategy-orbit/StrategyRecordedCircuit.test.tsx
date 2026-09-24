@@ -8,6 +8,12 @@ const combination = (trackName: string, trackLayout = trackName, simId = "lmu") 
   combinationId: `${simId}:${trackName}`, simId, trackName, trackLayout, carName: "Car", carClass: "LMP2",
 });
 
+it("shows no unavailable-map warning before a circuit is selected", () => {
+  const { container } = render(<StrategyRecordedCircuit t={t} />);
+  expect(container.firstChild).toBeNull();
+  expect(screen.queryByText("strategy.entry.mapUnavailable")).toBeNull();
+});
+
 it("draws distinct real catalog outlines for verified COTA and Monza identities", () => {
   const view = render(<StrategyRecordedCircuit combination={combination("Circuit of the Americas")} t={t} />);
   const cota = screen.getByRole("img", { name: "strategy.entry.catalogMap" }).querySelector("path")?.getAttribute("d");

@@ -8,6 +8,7 @@ it("shows real filenames without inferred identity and keeps manual independent"
   const candidate = { id: "candidate", displayName: "Lusail_Ford_8laps.duckdb", state: "ready" as const, size: 1024, modifiedAt: "2026-09-09T12:00:00Z", walPresent: false };
   render(<StrategyRecordedStart candidates={[candidate]} busy={false} onChoose={onChoose} onLibrary={onLibrary} onManual={onManual} onCancel={vi.fn()} t={key => key} />);
   expect(screen.getByRole("heading", { name: "strategy.entry.title" })).toBeTruthy();
+  expect(screen.getByText("strategy.entry.new")).toBeTruthy();
   expect(screen.queryByText("Lusail", { exact: true })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: /strategy.entry.useSession/ }));
   expect(onChoose).toHaveBeenCalledExactlyOnceWith(candidate);
@@ -15,6 +16,12 @@ it("shows real filenames without inferred identity and keeps manual independent"
   expect(onManual).toHaveBeenCalledOnce();
   fireEvent.click(screen.getByRole("button", { name: "strategy.entry.openTelemetry" }));
   expect(onLibrary).toHaveBeenCalledOnce();
+});
+
+it("labels the source menu as a change when returning to an existing race", () => {
+  render(<StrategyRecordedStart candidates={[]} busy={false} onChoose={vi.fn()} onLibrary={vi.fn()} onManual={vi.fn()} onCancel={vi.fn()} onResume={vi.fn()} t={key => key} />);
+  expect(screen.getByText("strategy.entry.changeSource")).toBeTruthy();
+  expect(screen.queryByText("strategy.entry.new")).toBeNull();
 });
 
 it("shows saved drafts and plans separately with direct actions and a full-library link", () => {

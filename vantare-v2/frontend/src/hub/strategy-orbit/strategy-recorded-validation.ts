@@ -1,5 +1,5 @@
 import { validateStrategyEventRules } from "../../strategy/strategy-event-rules";
-import { effectiveRecordedDriverOrder, type RecordedWizardDraft, type RecordedWizardStep } from "./strategy-recorded-wizard";
+import { effectiveRecordedDriverOrder, lmuVirtualEnergyCapability, type RecordedWizardDraft, type RecordedWizardStep } from "./strategy-recorded-wizard";
 
 /** Validate supplied configuration; missing telemetry is not a draft error. */
 export function recordedWizardErrors(draft: RecordedWizardDraft, step: RecordedWizardStep): string[] {
@@ -12,7 +12,7 @@ export function recordedWizardErrors(draft: RecordedWizardDraft, step: RecordedW
       (draft.tankLiters !== undefined && (draft.initialFuelLiters !== undefined && draft.initialFuelLiters > draft.tankLiters || draft.fuelReserveLiters !== undefined && draft.fuelReserveLiters > draft.tankLiters))) errors.push("fuel");
     if (!valid(draft.pitLossSeconds, 0)) errors.push("pit");
     const energy = draft.virtualEnergy;
-    if (energy?.applicability === "applicable" && (!valid(energy.capacityPercent, 0.001, 100) || !valid(energy.initialPercent, 0, 100) || !valid(energy.reservePercent, 0, 100) ||
+    if (energy?.applicability === "applicable" && (lmuVirtualEnergyCapability(draft.combination) === false || !valid(energy.capacityPercent, 0.001, 100) || !valid(energy.initialPercent, 0, 100) || !valid(energy.reservePercent, 0, 100) ||
       (energy.capacityPercent !== undefined && (energy.initialPercent !== undefined && energy.initialPercent > energy.capacityPercent || energy.reservePercent !== undefined && energy.reservePercent > energy.capacityPercent)))) errors.push("energy");
     if (draft.rules) {
       try { validateStrategyEventRules(draft.rules, "rules"); } catch { errors.push("rules"); }

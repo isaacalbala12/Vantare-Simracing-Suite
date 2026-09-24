@@ -223,7 +223,8 @@ describe("recordedCalculationInput", () => {
       ...inputs,
       projection: { ...inputs.projection, virtualEnergyConsumption: { ...inputs.projection.virtualEnergyConsumption, presence: "valid" } },
     });
-    const applicable = assessRecordedCalculation({ ...readyDraft("dry"), virtualEnergy: { applicability: "applicable", capacityPercent: 100, reservePercent: 0 } }, {
+    const applicableDraft = readyDraft("dry");
+    const applicable = assessRecordedCalculation({ ...applicableDraft, combination: { ...applicableDraft.combination!, carClass: "Hypercar" }, virtualEnergy: { applicability: "applicable", capacityPercent: 100, reservePercent: 0 } }, {
       ...inputs,
       projection: { ...inputs.projection, virtualEnergyConsumption: { ...inputs.projection.virtualEnergyConsumption, presence: "valid" } },
     });

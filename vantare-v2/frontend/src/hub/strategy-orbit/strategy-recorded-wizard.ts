@@ -7,6 +7,11 @@ export const RECORDED_WIZARD_STEPS = ["start", "combination", "rules", "drivers"
 export type RecordedWizardStep = typeof RECORDED_WIZARD_STEPS[number];
 export type RecordedCombination = Pick<StrategySessionCombinationV1, "combinationId" | "simId" | "trackName" | "trackLayout" | "carName" | "carClass">;
 
+export function lmuVirtualEnergyCapability(combination?: Pick<RecordedCombination, "simId" | "carClass">): boolean | undefined {
+  if (combination?.simId !== "lmu") return undefined;
+  return /^(?:LMGT3|GT3|HYPERCAR|HYPER)(?:_|$)/i.test(combination.carClass);
+}
+
 export type RecordedCalendarSnapshot = {
   readonly simulator: string;
   readonly version: number;
@@ -114,6 +119,7 @@ export function selectRecordedCombination(draft: RecordedWizardDraft, id: string
   return {
     ...draft,
     combination: { combinationId, simId, trackName, trackLayout, carName, carClass },
+    virtualEnergy: changed ? { applicability: lmuVirtualEnergyCapability(selected) === false ? "not_applicable" : "unknown" } : draft.virtualEnergy,
     step: changed ? "combination" : draft.step,
     sessions: changed ? [] : draft.sessions,
     invalidatedSessionCount: changed ? draft.invalidatedSessionCount + draft.sessions.length : draft.invalidatedSessionCount,

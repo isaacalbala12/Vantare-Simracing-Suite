@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { STRATEGY_COMPOUNDS, type StrategyCompound } from "../../strategy/strategy-tyre";
-import type { RecordedWizardDraft } from "./strategy-recorded-wizard";
+import { lmuVirtualEnergyCapability, type RecordedWizardDraft } from "./strategy-recorded-wizard";
 import "./strategy-recorded-fields.css";
 
 type EventRules = NonNullable<RecordedWizardDraft["rules"]>;
@@ -47,7 +47,9 @@ export function StrategyRecordedRules({ draft, onChange, t }: {
   const placeholder = t("strategy.journey.unconfirmed");
   const number = (key: "tankLiters" | "initialFuelLiters" | "fuelReserveLiters" | "pitLossSeconds", label: string, min = 0) =>
     <NumberField label={t(label)} value={draft[key]} min={min} placeholder={placeholder} onChange={value => onChange({ ...draft, [key]: value })} />;
-  const energy = draft.virtualEnergy ?? { applicability: "unknown" as const };
+  const classEnergy = lmuVirtualEnergyCapability(draft.combination);
+  const energy = classEnergy === false ? { ...draft.virtualEnergy, applicability: "not_applicable" as const }
+    : draft.virtualEnergy ?? { applicability: "unknown" as const };
   const publishedDuration = draft.calendar?.series.raceDurationMin ?? draft.calendar?.series.durationMin;
   const windows = draft.rules?.requiredWindows ?? [];
   const mandatoryCompounds = draft.rules?.mandatoryCompounds ?? [];
@@ -89,7 +91,7 @@ export function StrategyRecordedRules({ draft, onChange, t }: {
         {number("tankLiters", "strategy.journey.fuel.capacity", 0.001)}
         {number("initialFuelLiters", "strategy.journey.fuel.initial")}
         {number("fuelReserveLiters", "strategy.journey.fuel.reserve")}
-        <label className="strategy-recorded-field"><span>{t("strategy.journey.energy")}</span><select value={energy.applicability} onChange={event => {
+        <label className="strategy-recorded-field"><span>{t("strategy.journey.energy")}</span><select value={energy.applicability} disabled={classEnergy === false} onChange={event => {
           const applicability = event.target.value as typeof energy.applicability;
           onChange({ ...draft, virtualEnergy: { ...energy, applicability } });
         }}>

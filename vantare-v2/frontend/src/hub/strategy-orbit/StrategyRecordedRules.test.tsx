@@ -36,6 +36,16 @@ it("requires explicit applicability before editing virtual energy and preserves 
   expect((screen.getByRole("spinbutton", { name: "strategy.journey.energy.reservePercent" }) as HTMLInputElement).value).toBe("5");
 });
 
+it("locks LMU LMP2 virtual energy as not applicable", () => {
+  render(<Editor initial={{ ...createRecordedWizardDraft(), combination: {
+    combinationId: "lmu:oreca", simId: "lmu", trackName: "COTA", trackLayout: "GP", carName: "Oreca 07", carClass: "LMP2_ELMS",
+  }, virtualEnergy: { applicability: "not_applicable" } }} />);
+  const energy = screen.getByRole("combobox", { name: "strategy.journey.energy" }) as HTMLSelectElement;
+  expect(energy.value).toBe("not_applicable");
+  expect(energy.disabled).toBe(true);
+  expect(screen.queryByRole("spinbutton", { name: "strategy.journey.energy.reservePercent" })).toBeNull();
+});
+
 it("does not reinterpret minutes as laps when changing the race format", () => {
   const changed = vi.fn();
   render(<Editor initial={{ ...createRecordedWizardDraft(), race: { format: "timed", durationMin: 120 } }} changed={changed} />);

@@ -95,7 +95,7 @@ export function HubToast({
                 data-testid="hub-toast-retry"
                 className="px-3 py-1 rounded-lg border border-orbit-ember/40 text-[10px] uppercase tracking-[.18em] text-orbit-ember hover:bg-orbit-ember/10 transition-colors"
               >
-                Reiniciar perfil completo
+                Reintentar pasos pendientes
               </button>
             </div>
           )}

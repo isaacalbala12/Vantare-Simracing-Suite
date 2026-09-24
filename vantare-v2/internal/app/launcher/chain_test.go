@@ -2,6 +2,7 @@ package launcher
 
 import (
 	"context"
+	"errors"
 	"os/exec"
 	"runtime"
 	"sync"
@@ -404,8 +405,8 @@ func TestCancelDoesNotPermitOverlappingRelaunch(t *testing.T) {
 		t.Fatal("first chain was not cancellable")
 	}
 	runner.StartChain(context.Background(), profile)
-	if emit.count("launcher:chain:error") != 1 {
-		t.Fatal("a new chain started before the cancelled chain exited")
+	if emit.count("launcher:chain:error") != 0 {
+		t.Fatal("duplicate launch must not overwrite the running chain with an error")
 	}
 }
 
@@ -571,21 +572,17 @@ func TestChainRunnerRejectsDoubleLaunch(t *testing.T) {
 	}
 
 	// First launch starts the chain (step 0 completes instantly, step 1 waits).
-	runner.StartChain(context.Background(), profile)
-	time.Sleep(20 * time.Millisecond) // let the goroutine register in active map
+	if err := runner.StartChain(context.Background(), profile); err != nil {
+		t.Fatal(err)
+	}
 
 	// Second launch for the same profileID must be rejected.
-	runner.StartChain(context.Background(), profile)
-
-	// Verify the error event was emitted.
-	if emit.count("launcher:chain:error") != 1 {
-		t.Errorf("expected 1 chain:error for double launch, got %d", emit.count("launcher:chain:error"))
+	if err := runner.StartChain(context.Background(), profile); !errors.Is(err, ErrProfileInProgress) {
+		t.Fatalf("second launch must report profile in progress, got %v", err)
 	}
-	// Check the error message.
-	if p, ok := emit.lastPayload("launcher:chain:error"); ok {
-		if p.Message != "perfil ya en curso" {
-			t.Errorf("expected message 'perfil ya en curso', got %q", p.Message)
-		}
+
+	if emit.count("launcher:chain:error") != 0 {
+		t.Fatal("duplicate launch must leave the first chain's progress intact")
 	}
 
 	// Cancel the first chain so the goroutine doesn't keep running.

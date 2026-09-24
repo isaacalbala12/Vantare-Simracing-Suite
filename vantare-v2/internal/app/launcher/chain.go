@@ -75,20 +75,15 @@ type livenessResult struct {
 }
 
 // StartChain creates a derived context and runs RunChain on a goroutine.
-// It rejects a second call for the same profileID by emitting
-// launcher:chain:error with message "perfil ya en curso".
+// It rejects a second call for the same profileID without changing the
+// running chain's progress.
 // When the chain finishes it records telemetry: RecordProfileAttempt always,
 // RecordProfileSuccess only when the chain succeeds.
-func (r *ChainRunner) StartChain(parent context.Context, profile app.LaunchProfile) {
+func (r *ChainRunner) StartChain(parent context.Context, profile app.LaunchProfile) error {
 	r.mu.Lock()
 	if _, exists := r.active[profile.ID]; exists {
 		r.mu.Unlock()
-		r.emit.Emit("launcher:chain:error", ChainProgress{
-			ProfileID: profile.ID,
-			Status:    "failed",
-			Message:   "perfil ya en curso",
-		})
-		return
+		return ErrProfileInProgress
 	}
 	ctx, cancel := context.WithCancel(parent)
 	chain := &activeChain{cancel: cancel}
@@ -104,6 +99,7 @@ func (r *ChainRunner) StartChain(parent context.Context, profile app.LaunchProfi
 		}()
 		r.RunChain(ctx, profile)
 	}()
+	return nil
 }
 
 // CancelChain cancels the active chain for a profile. Returns true if a chain

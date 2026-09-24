@@ -14,6 +14,7 @@ var (
 	ErrAppNotFound       = errors.New("launcher: app not found")
 	ErrProfileNotFound   = errors.New("launcher: profile not found")
 	ErrProfileDuplicate  = errors.New("launcher: profile id already exists")
+	ErrProfileInProgress = errors.New("launcher: profile already in progress")
 	ErrInvalidStep       = errors.New("launcher: invalid step")
 )
 

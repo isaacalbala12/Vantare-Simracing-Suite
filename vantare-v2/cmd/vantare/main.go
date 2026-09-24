@@ -1258,11 +1258,10 @@ func handleChainError(profileID string, stepIndex int, message string, svc *laun
 	}
 }
 
-// handleProfileRetryFailed re-launches a profile from scratch as a retry of
-// the entire chain. The frontend emits this when the user clicks
-// "Reintentar fallidos" in the native toast after a partial/failed chain.
+// handleProfileRetryFailed re-launches only failed and unattempted steps from
+// the latest failed chain.
 func handleProfileRetryFailed(profileID string, svc *launcher.Service, emitter app.EventEmitter, parentCtx context.Context) {
-	if err := svc.LaunchProfile(parentCtx, profileID); err != nil {
+	if err := svc.RetryFailedProfile(parentCtx, profileID); err != nil {
 		log.Printf("launcher:profile:retry:failed error: %v", err)
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return

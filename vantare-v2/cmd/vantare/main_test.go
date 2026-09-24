@@ -1657,22 +1657,12 @@ func TestHandleProfileRetryFailed(t *testing.T) {
 		t.Fatalf("seed profile: %v", err)
 	}
 	ctx := context.Background()
-	// Retry must not return an immediate error (the chain runs on a goroutine).
+	// Without a failed chain, retry must not silently launch the entire profile.
 	handleProfileRetryFailed("creator", svc, emitter, ctx)
-	// La cadena corre en una goroutine y emite de forma asíncrona a través de
-	// ChainRunner/serviceEmitter; esperamos de forma acotada a que el emitter
-	// registre al menos un evento de la cadena antes de verificar que no hubo
-	// error, evitando el sleep arbitrario y la carrera sin sincronizar.
-	events, _ := waitForEmitterCondition(t, emitter, 2*time.Second, func(events []string, _ []any) bool {
-		return len(events) > 0
-	})
-	for _, e := range events {
-		if e == "launcher:error" {
-			t.Fatal("retry failed must not emit launcher:error for a valid profile")
-		}
+	events := emitter.Events()
+	if len(events) != 1 || events[0] != "launcher:error" {
+		t.Fatalf("retry without failed chain must emit launcher:error, got %v", events)
 	}
-	// Limpieza: cancela la cadena pendiente para no dejar goroutines huérfanas.
-	svc.CancelAll()
 }
 
 func TestHandleProfileStatsSave(t *testing.T) {

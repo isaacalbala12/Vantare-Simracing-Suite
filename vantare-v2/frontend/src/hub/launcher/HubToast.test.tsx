@@ -28,7 +28,7 @@ describe("HubToast", () => {
     expect(screen.getByTestId("hub-toast-message").textContent).toBe(
       "Creator · 3/4 apps listas, falló OBS",
     );
-    expect(screen.getByTestId("hub-toast-retry").textContent).toBe("Reiniciar perfil completo");
+    expect(screen.getByTestId("hub-toast-retry").textContent).toBe("Reintentar pasos pendientes");
   });
 
   it("emits retry event on retry button click", () => {

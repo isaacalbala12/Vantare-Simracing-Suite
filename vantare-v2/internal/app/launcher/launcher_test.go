@@ -125,7 +125,7 @@ func TestServiceSnapshotTracksActiveChainProgress(t *testing.T) {
 	if len(snapshot.ActiveChains) != 1 {
 		t.Fatalf("expected one active chain, got %+v", snapshot.ActiveChains)
 	}
-	if snapshot.ActiveChains[0].Steps[0].PID != 42 || snapshot.ActiveChains[0].Status != "ready" {
+	if snapshot.ActiveChains[0].Steps[0].PID != 42 || snapshot.ActiveChains[0].Status != "running" {
 		t.Fatalf("unexpected active chain state: %+v", snapshot.ActiveChains[0])
 	}
 }
@@ -225,6 +225,113 @@ func TestLaunchProfileRejectsEmptyChain(t *testing.T) {
 	if err := svc.LaunchProfile(context.Background(), "empty"); err == nil {
 		t.Fatal("empty chain must not report a successful launch")
 	}
+}
+
+func TestRetryProfileSelectsFailedAndUnattemptedSteps(t *testing.T) {
+	profile := app.LaunchProfile{
+		ID: "creator", Name: "Creator",
+		Policy: &app.LaunchPolicy{FirstStepDelay: 7},
+		Steps:  []app.LaunchStep{{AppID: "lmu"}, {AppID: "obs", Delay: 2}, {AppID: "crewchief", Delay: 3}},
+	}
+	completed := LauncherActiveChain{ProfileID: "creator", Status: "failed", Steps: []LauncherActiveStep{
+		{AppID: "lmu", Status: "done"},
+		{AppID: "obs", Status: "failed"},
+	}}
+	retry, indices, err := retryProfile(profile, completed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(retry.Steps) != 2 || retry.Steps[0].AppID != "obs" || retry.Steps[1].AppID != "crewchief" {
+		t.Fatalf("retry launched completed or omitted pending steps: %+v", retry.Steps)
+	}
+	if len(indices) != 2 || indices[0] != 1 || indices[1] != 2 {
+		t.Fatalf("retry lost original step positions: %v", indices)
+	}
+	if retry.Policy.FirstStepDelay != 2 {
+		t.Fatalf("first retried step must keep its configured delay, got %d", retry.Policy.FirstStepDelay)
+	}
+}
+
+func TestRetryFailedProfileStartsOnlyPendingSteps(t *testing.T) {
+	backend := newBackendWithLMU()
+	backend.apps["obs"] = app.LauncherAppEntry{ID: "obs", DisplayName: "OBS", LaunchMethod: "executable", ExecutablePath: `C:\Windows\System32\cmd.exe`}
+	backend.profiles = []app.LaunchProfile{{
+		ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}, {AppID: "obs"}},
+	}}
+	emit := &blockingStepEmitter{entered: make(chan struct{}), release: make(chan struct{})}
+	svc := NewService(backend, emit, stubChainExec)
+	svc.recordChainEvent("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 0, AppID: "lmu", Status: "done"})
+	svc.recordChainEvent("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 1, AppID: "obs", Status: "failed"})
+	svc.recordChainEvent("launcher:chain:done", ChainProgress{ProfileID: "creator", Success: false})
+	if err := svc.RetryFailedProfile(context.Background(), "creator"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-emit.entered:
+	case <-time.After(time.Second):
+		close(emit.release)
+		t.Fatal("retry chain did not emit pending step")
+	}
+	snapshot := svc.Snapshot()
+	if len(snapshot.ActiveChains) != 1 || len(snapshot.ActiveChains[0].Steps) != 2 || snapshot.ActiveChains[0].Steps[0].AppID != "lmu" || snapshot.ActiveChains[0].Steps[0].Status != "done" || snapshot.ActiveChains[0].Steps[1].AppID != "obs" {
+		t.Fatalf("retry must start fresh with only the failed app, got %+v", snapshot.ActiveChains)
+	}
+	close(emit.release)
+	svc.CancelAll()
+}
+
+func TestDuplicateLaunchDoesNotFailRunningSnapshot(t *testing.T) {
+	backend := newBackendWithLMU()
+	backend.profiles = []app.LaunchProfile{{
+		ID: "creator", Name: "Creator", Policy: &app.LaunchPolicy{FirstStepDelay: 30},
+		Steps: []app.LaunchStep{{AppID: "lmu"}},
+	}}
+	emit := &blockingStepEmitter{entered: make(chan struct{}), release: make(chan struct{})}
+	svc := NewService(backend, emit, stubChainExec)
+	if err := svc.LaunchProfile(context.Background(), "creator"); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { close(emit.release); svc.CancelAll() }()
+	select {
+	case <-emit.entered:
+	case <-time.After(time.Second):
+		t.Fatal("first chain did not start")
+	}
+	if err := svc.LaunchProfile(context.Background(), "creator"); !errors.Is(err, ErrProfileInProgress) {
+		t.Fatalf("duplicate launch must report active profile, got %v", err)
+	}
+	chains := svc.Snapshot().ActiveChains
+	if len(chains) != 1 || chains[0].ProfileID != "creator" || chains[0].Status != "running" {
+		t.Fatalf("duplicate launch changed the running chain: %+v", chains)
+	}
+}
+
+func TestRepeatedRetryUsesLastAttemptInsteadOfFullProfile(t *testing.T) {
+	backend := newBackendWithLMU()
+	backend.apps["obs"] = app.LauncherAppEntry{ID: "obs", DisplayName: "OBS", LaunchMethod: "executable", ExecutablePath: `C:\Windows\System32\cmd.exe`}
+	backend.apps["crewchief"] = app.LauncherAppEntry{ID: "crewchief", DisplayName: "CrewChief", LaunchMethod: "executable", ExecutablePath: `C:\Windows\System32\cmd.exe`}
+	backend.profiles = []app.LaunchProfile{{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}, {AppID: "obs"}, {AppID: "crewchief"}}}}
+	emit := &blockingStepEmitter{entered: make(chan struct{}), release: make(chan struct{})}
+	svc := NewService(backend, emit, stubChainExec)
+	svc.recordChainEvent("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 0, AppID: "lmu", Status: "done"})
+	svc.recordChainEvent("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 1, AppID: "obs", Status: "done"})
+	svc.recordChainEvent("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 2, AppID: "crewchief", Status: "failed"})
+	svc.recordChainEvent("launcher:chain:done", ChainProgress{ProfileID: "creator", Success: false})
+	if err := svc.RetryFailedProfile(context.Background(), "creator"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-emit.entered:
+	case <-time.After(time.Second):
+		close(emit.release)
+		t.Fatal("second retry did not start")
+	}
+	chains := svc.Snapshot().ActiveChains
+	if len(chains) != 1 || len(chains[0].Steps) != 3 || chains[0].Steps[0].Status != "done" || chains[0].Steps[1].Status != "done" || chains[0].Steps[2].AppID != "crewchief" {
+		t.Fatalf("second retry relaunched earlier completed apps: %+v", chains)
+	}
+	close(emit.release)
+	svc.CancelAll()
 }
 
 func TestDuplicateProfileThroughService(t *testing.T) {
@@ -352,7 +459,7 @@ func TestTerminalCleanupLeavesARelaunchedChainAlive(t *testing.T) {
 	// chain is still present: the timer must not drop a running chain.
 	time.Sleep(700 * time.Millisecond)
 	chains := svc.Snapshot().ActiveChains
-	if len(chains) != 1 || chains[0].Status != "launching" {
+	if len(chains) != 1 || chains[0].Status != "running" {
 		t.Fatalf("relaunched chain must survive the stale cleanup timer, got %+v", chains)
 	}
 }

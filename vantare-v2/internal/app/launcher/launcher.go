@@ -43,9 +43,11 @@ type Service struct {
 	settings           LauncherSettingsBackend
 	emit               Emitter
 	chain              *ChainRunner
+	launchMu           sync.Mutex
 	revision           atomic.Uint64
 	activeMu           sync.Mutex
 	active             map[string]LauncherActiveChain
+	retryStepIndices   map[string][]int
 	chainCleanupDelay  time.Duration
 	chainCleanupTimers map[string]*time.Timer
 	discoveryMu        sync.RWMutex
@@ -60,10 +62,28 @@ type serviceEmitter struct {
 }
 
 func (e serviceEmitter) Emit(name string, data any) {
+	if name == "launcher:chain:step" {
+		if progress, ok := data.(ChainProgress); ok {
+			e.service.activeMu.Lock()
+			indices := e.service.retryStepIndices[progress.ProfileID]
+			if progress.StepIndex >= 0 && progress.StepIndex < len(indices) {
+				progress.StepIndex = indices[progress.StepIndex]
+			}
+			e.service.activeMu.Unlock()
+			data = progress
+		}
+	}
 	e.service.recordChainEvent(name, data)
 	e.downstream.Emit(name, data)
 	if name == "launcher:chain:step" || name == "launcher:chain:done" || name == "launcher:chain:error" {
 		e.downstream.Emit("launcher:snapshot", e.service.Snapshot())
+	}
+	if name == "launcher:chain:done" {
+		e.service.activeMu.Lock()
+		if progress, ok := data.(ChainProgress); ok {
+			delete(e.service.retryStepIndices, progress.ProfileID)
+		}
+		e.service.activeMu.Unlock()
 	}
 }
 
@@ -79,6 +99,7 @@ func NewService(settings LauncherSettingsBackend, emit Emitter, execFn execLaunc
 		settings:           settings,
 		emit:               emit,
 		active:             make(map[string]LauncherActiveChain),
+		retryStepIndices:   make(map[string][]int),
 		discovery:          LauncherDiscovery{},
 		chainCleanupDelay:  defaultChainCleanupDelay,
 		chainCleanupTimers: make(map[string]*time.Timer),
@@ -106,6 +127,11 @@ func (s *Service) recordChainEvent(name string, data any) {
 	terminal := false
 	s.activeMu.Lock()
 	chain := s.active[progress.ProfileID]
+	if name == "launcher:chain:step" && (chain.Status == "done" || chain.Status == "failed") {
+		if _, retry := s.retryStepIndices[progress.ProfileID]; !retry {
+			chain = LauncherActiveChain{}
+		}
+	}
 	if chain.ProfileID == "" {
 		chain = LauncherActiveChain{ProfileID: progress.ProfileID, Status: "running", StartedAt: time.UnixMilli(progress.StartedAt)}
 	}
@@ -121,7 +147,9 @@ func (s *Service) recordChainEvent(name string, data any) {
 		terminal = true
 		chain.Status = "failed"
 	default:
-		chain.Status = progress.Status
+		if chain.Status != "stopped" {
+			chain.Status = "running"
+		}
 		for len(chain.Steps) <= progress.StepIndex {
 			chain.Steps = append(chain.Steps, LauncherActiveStep{})
 		}
@@ -385,6 +413,8 @@ func (s *Service) DuplicateProfile(id, newID, newName string) error {
 // Returns ErrProfileNotFound when there is no profile with the given ID. The
 // chain runs on a goroutine (StartChain), so this call returns immediately.
 func (s *Service) LaunchProfile(ctx context.Context, profileID string) error {
+	s.launchMu.Lock()
+	defer s.launchMu.Unlock()
 	profiles := s.settings.GetLauncherProfiles()
 	var profile *app.LaunchProfile
 	for i := range profiles {
@@ -399,8 +429,90 @@ func (s *Service) LaunchProfile(ctx context.Context, profileID string) error {
 	if len(profile.Steps) == 0 {
 		return fmt.Errorf("%w: profile has no steps", ErrInvalidConfig)
 	}
-	s.chain.StartChain(ctx, *profile)
+	copy := *profile
+	copy.Steps = append([]app.LaunchStep(nil), profile.Steps...)
+	copy.Policy = app.NormalizeLaunchPolicy(profile.Policy)
+	s.activeMu.Lock()
+	previous, hadPrevious := s.retryStepIndices[profileID]
+	delete(s.retryStepIndices, profileID)
+	s.activeMu.Unlock()
+	if err := s.chain.StartChain(ctx, copy); err != nil {
+		s.activeMu.Lock()
+		if hadPrevious {
+			s.retryStepIndices[profileID] = previous
+		}
+		s.activeMu.Unlock()
+		return err
+	}
 	return nil
+}
+
+// RetryFailedProfile retries failed and unattempted steps from the most recent
+// failed chain. Completed steps are never launched a second time by this action.
+func (s *Service) RetryFailedProfile(ctx context.Context, profileID string) error {
+	s.launchMu.Lock()
+	defer s.launchMu.Unlock()
+	var profile *app.LaunchProfile
+	for _, candidate := range s.settings.GetLauncherProfiles() {
+		if candidate.ID == profileID {
+			copy := candidate
+			profile = &copy
+			break
+		}
+	}
+	if profile == nil {
+		return fmt.Errorf("%w: %s", ErrProfileNotFound, profileID)
+	}
+	s.activeMu.Lock()
+	completed, ok := s.active[profileID]
+	completed.Steps = append([]LauncherActiveStep(nil), completed.Steps...)
+	s.activeMu.Unlock()
+	if !ok {
+		return fmt.Errorf("%w: no recent chain for retry", ErrInvalidConfig)
+	}
+	retry, indices, err := retryProfile(*profile, completed)
+	if err != nil {
+		return err
+	}
+	s.activeMu.Lock()
+	previous, hadPrevious := s.retryStepIndices[profileID]
+	s.retryStepIndices[profileID] = indices
+	s.activeMu.Unlock()
+	if err := s.chain.StartChain(ctx, retry); err != nil {
+		s.activeMu.Lock()
+		if hadPrevious {
+			s.retryStepIndices[profileID] = previous
+		} else {
+			delete(s.retryStepIndices, profileID)
+		}
+		s.activeMu.Unlock()
+		return err
+	}
+	return nil
+}
+
+func retryProfile(profile app.LaunchProfile, completed LauncherActiveChain) (app.LaunchProfile, []int, error) {
+	if completed.ProfileID != profile.ID || completed.Status != "failed" {
+		return app.LaunchProfile{}, nil, fmt.Errorf("%w: retry requires a failed chain", ErrInvalidConfig)
+	}
+	retry := profile
+	retry.Steps = nil
+	retry.Policy = app.NormalizeLaunchPolicy(profile.Policy)
+	indices := make([]int, 0, len(profile.Steps))
+	for i, step := range profile.Steps {
+		if i < len(completed.Steps) && completed.Steps[i].AppID == step.AppID && completed.Steps[i].Status == "done" {
+			continue
+		}
+		if len(retry.Steps) == 0 && i > 0 {
+			retry.Policy.FirstStepDelay = step.Delay
+		}
+		retry.Steps = append(retry.Steps, step)
+		indices = append(indices, i)
+	}
+	if len(retry.Steps) == 0 {
+		return app.LaunchProfile{}, nil, fmt.Errorf("%w: no pending steps to retry", ErrInvalidConfig)
+	}
+	return retry, indices, nil
 }
 
 // CancelChain cancels the active launch chain for a profile, if any.

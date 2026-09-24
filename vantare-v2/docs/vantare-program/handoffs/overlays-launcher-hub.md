@@ -2376,7 +2376,18 @@ su margen habitual. Pruebas Go focales, 11 frontend, typecheck, build y lint
 pasaron localmente; falta el CI del nuevo HEAD y validación visual real.
 El toast que relanza la cadena completa ya lo dice explícitamente; el evento
 legacy aún se llama `retry:failed` y el reintento solo de pasos fallidos sigue
-pendiente de implementación.
+pendiente de implementación en ese corte.
+
+Tercer avance de #1368: `a22ff8e8` pasó gates bloqueantes, ratchet,
+promoción de ruta y GitGuardian en la PR draft #1369. El reintento del toast
+ahora selecciona solo pasos fallidos y no ejecutados; conserva los índices del
+perfil original en snapshot/Orbit, de modo que una app ya completada sigue
+mostrándose como tal. Reintentos sucesivos tampoco relanzan pasos completos.
+Un intento simultáneo devuelve error sin sustituir el progreso de la cadena
+activa. Las pruebas Go del orquestador y `cmd/vantare` pasaron localmente;
+también 11 pruebas frontend, build y lint. El nuevo HEAD aún debe pasar CI.
+Siguen pendientes la aplicación completa de políticas, el autostart de una
+instancia y la comprobación física de Wails/Steam/LMU/instalador. **NO-GO.**
 
 ## Hub
 

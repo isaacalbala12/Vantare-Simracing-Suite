@@ -48,7 +48,7 @@ it("opens manual preparation and saves a draft without invoking live or calculat
   expect(screen.queryByRole("button", { name: "strategy.workspace.calculate" })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: /strategy.entry.openRace/ }));
   await screen.findByText("strategy.workspace.saved");
-  expect(screen.getByRole("tab", { name: "strategy.data.tab.plan" }).getAttribute("aria-selected")).toBe("true");
+  expect(screen.getByRole("tab", { name: "strategy.data.tab.race" }).getAttribute("aria-selected")).toBe("true");
   expect(execute.mock.calls.map(([command]) => command.operation)).toEqual(expect.arrayContaining(["list", "list_session_combinations", "list_events", "create"]));
   const create = execute.mock.calls.map(([command]) => command).find(command => command.operation === "create");
   expect(create).toMatchObject({ expectedRepositoryVersion: 4, draft: { payload: { draft: { combination: { combinationId: combination.combinationId }, race: { format: "timed" }, drivers: [], sessions: [] } } } });

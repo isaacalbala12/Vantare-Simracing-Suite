@@ -1,5 +1,9 @@
 # Handoff vivo — Strategy Planner
 
+## Entrada a la mesa v5 desde preparación — ISA-1331 (2026-09-24)
+
+El recorrido en navegador interno reprodujo que «Abrir mesa de carrera» seleccionaba Plan aun con evento, reglas y pilotos pendientes. El botón abre ahora Carrera, que presenta las tres ediciones y el estado del plan; Plan sigue disponible por pestaña. Regresión RED→PASS, 492 archivos/4301 tests frontend PASS (2 omitidos), tipos, lint, i18n y build PASS. El recorrido visual se hizo con el harness mock, no con DuckDB/Wails real; no valida persistencia nativa ni acepta T22. Rama aislada sin push, PR, CI, merge, promoción ni release.
+
 ## Ensayos de dominancia Hypercar — ISA-1367 (2026-09-24)
 
 Dos cambios mínimos se probaron y retiraron en el worktree aislado de #1367. Filtrar por Fuel/VE antes de comparar conserva la suite solver, pero el banco real S026 Monza pasa a `calculation_timeout`; recorrer una vez la frontera también conserva la suite, pero continúa en `calculation_overflow`. La fuente conserva sus hashes y proyecta ritmo, Fuel y VE válidos. La [issue #1367](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1367) registra los resultados. El siguiente corte requiere reducir la generación de estados con un oráculo exhaustivo acotado; no hay optimización lista para integrar ni se declara probado un plan incompleto.

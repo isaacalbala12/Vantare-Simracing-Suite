@@ -77,6 +77,15 @@ it("opens and adopts a chosen recent session in one action, without persisting e
   expect(getHubSuspendBlockerReasons()).not.toContain("strategy.workspace.unsaved");
   await waitFor(() => expect(close).toHaveBeenCalledExactlyOnceWith("handle"));
 });
+it("opens the race desk at the editable race when preparation is incomplete", async () => {
+  setup();
+  fireEvent.click(await screen.findByRole("button", { name: /strategy.entry.useSession/ }));
+  await screen.findByRole("heading", { name: "strategy.entry.yourRace" });
+  fireEvent.click(screen.getByRole("button", { name: /strategy.entry.openRace/ }));
+  await waitFor(() => expect(screen.getByRole("tab", { name: "strategy.data.tab.race" }).getAttribute("aria-selected")).toBe("true"));
+  expect(screen.getByRole("button", { name: "strategy.workspace.edit strategy.journey.step.rules" })).toBeTruthy();
+  expect(screen.getByRole("tab", { name: "strategy.data.tab.plan" }).getAttribute("aria-selected")).toBe("false");
+});
 it("asks before discarding an unsaved manual preparation", async () => {
   const { onExit } = setup();
   const manual = await screen.findByRole<HTMLButtonElement>("button", { name: /strategy.entry.startManual/ });

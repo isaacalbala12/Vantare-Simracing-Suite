@@ -2594,6 +2594,14 @@ El HEAD de código `856b06eca8735cbc8179cbf045f272f8f3fe9acf` pasó el
 gate bloqueante remoto completo (Go, frontend y build Wails Windows), el
 ratchet, la ruta de promoción y GitGuardian. El handoff añade esta evidencia
 en un commit documental posterior, cuyos checks deben verificarse por separado.
+El commit documental `d817f55b24ad57a4012b352b80e1fec0444c2913` pasó
+también todos los checks de PR: gate bloqueante, ratchet, ruta de promoción y
+GitGuardian. Las cuatro suites locales del instalador Windows pasan: modelo
+transaccional NSIS, tamaño mínimo del ejecutable, preflight de release y
+empaquetado del runtime confiable. Usan fixtures; no se construyó ni instaló
+un candidato real porque este worktree carece de `bin/vantare.exe` y del
+runtime de release. El cambio documental que registra estas pruebas debe
+verificar sus propios checks remotos antes de considerarlos vigentes.
 La comprobación física de Wails/Steam/LMU/instalador sigue pendiente: Isaac
 prohibió por ahora usar computer use en el escritorio, pero permite una
 revisión del servidor en el navegador de Codex. **NO-GO** hasta tener esa

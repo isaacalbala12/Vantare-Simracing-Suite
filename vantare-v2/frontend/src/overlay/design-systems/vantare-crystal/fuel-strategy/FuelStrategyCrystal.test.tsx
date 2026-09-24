@@ -32,6 +32,8 @@ describe("FuelStrategyCrystal", () => {
     expect(root.querySelectorAll(".vc-fuel-stats > span")).toHaveLength(3);
     expect(root.querySelectorAll(".vc-fuel-history-list > div")).toHaveLength(4);
     expect((root.querySelector(".vc-fuel-bar i") as HTMLElement).style.width).toBe("31%");
+    expect(root.textContent).toContain("TOTAL REQ.");
+    expect(root.textContent).not.toContain("REFUEL REQ.");
     expect(root.querySelectorAll("button, input, textarea, [contenteditable='true']")).toHaveLength(0);
   });
 });

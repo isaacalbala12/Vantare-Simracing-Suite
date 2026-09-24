@@ -14,23 +14,22 @@ import {
 const CONTENT = fuelStrategyDefinition.parseContent({});
 
 describe("fuel strategy v2 view model", () => {
-  it("reads the tank and the laps projection resolved in Go without recomputing", () => {
+  it("reads the tank but never presents session laps as fuel range", () => {
     const frame = goldenFrame(20);
     expect(frame.fuel.remaining.q).toBe("fresh");
     expect(frame.fuel.estimatedLaps.q).toBe("fresh");
     const model = buildFuelStrategyViewModelV2(frame, { state: "live" }, CONTENT);
     expect(model.fuelLiters).toBe(frame.fuel.remaining.v);
-    expect(model.lapsRemaining).toBe(frame.fuel.estimatedLaps.v);
+    expect(frame.fuel.basis).toBe("session");
+    expect(model.lapsRemaining).toBeUndefined();
+    expect(model.fuelPercent).toBe(42);
   });
 
   it("leaves everything the frame does not publish undefined instead of inventing it", () => {
     const model = buildFuelStrategyViewModelV2(goldenFrame(20), { state: "live" }, CONTENT);
     expect(model.requiredFuel).toBeUndefined();
-    expect(model.fuelPercent).toBeUndefined();
     expect(model.history).toEqual([]);
-    // A2 publishes requiredFuel and history from the frame; only fuelPercent
-    // stays a declared gap with no canonical signal behind it.
-    expect(OVERLAY_V2_FUEL_DECLARED_GAPS).toEqual(["fuelPercent"]);
+    expect(OVERLAY_V2_FUEL_DECLARED_GAPS).toEqual([]);
   });
 
   it("reads the canonical per-lap consumption without averaging anything itself", () => {
@@ -76,6 +75,7 @@ describe("fuel strategy v2 view model", () => {
       CONTENT,
     );
     expect(empty.fuelLiters).toBe(0);
+    expect(empty.fuelPercent).toBe(0);
 
     const missing = buildFuelStrategyViewModelV2(
       { ...frame, fuel: { ...frame.fuel, remaining: { q: "missing" } } },
@@ -83,6 +83,7 @@ describe("fuel strategy v2 view model", () => {
       CONTENT,
     );
     expect(missing.fuelLiters).toBeUndefined();
+    expect(missing.fuelPercent).toBeUndefined();
   });
 
   it("propagates the source lifecycle instead of rendering a stale tank as ready", () => {
@@ -92,6 +93,9 @@ describe("fuel strategy v2 view model", () => {
     expect(stopped.status).toBe("disconnected");
     expect(stopped.fuelLiters).toBeUndefined();
     expect(stopped.lapsRemaining).toBeUndefined();
+    const stale = buildFuelStrategyViewModelV2(frame, { state: "stale" }, CONTENT);
+    expect(stale.fuelLiters).toBeUndefined();
+    expect(stale.fuelPercent).toBeUndefined();
   });
 
   it("exposes a stable displayed projection for the shadow comparator", () => {

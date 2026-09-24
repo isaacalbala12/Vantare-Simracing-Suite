@@ -14,7 +14,7 @@ export function FuelStrategyCrystal({ model }: WidgetRendererProps<FuelStrategyV
         <div className="vc-fuel-stats">
           <span><b>{number(model.avgPerLap, " L")}</b><small>CONSUMO MEDIO</small></span>
           <span><b>{number(model.lapsRemaining)}</b><small>VUELTAS REST.</small></span>
-          <span><b className="vc-fuel-required">{number(model.requiredFuel, " L")}</b><small>REFUEL REQ.</small></span>
+          <span><b className="vc-fuel-required">{number(model.requiredFuel, " L")}</b><small>TOTAL REQ.</small></span>
         </div>
         <footer><span>ESTIMACIÓN META:</span><b>{model.requiredFuel === undefined ? "—" : `${number(model.requiredFuel, " L")} REQUERIDO`}</b></footer>
       </div>

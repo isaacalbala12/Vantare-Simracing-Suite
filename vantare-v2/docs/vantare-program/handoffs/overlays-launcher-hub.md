@@ -2577,6 +2577,11 @@ de 1 a 3 intentos adicionales, con traducciones es/en/pt/it. La prueba
 falló antes del arreglo y pasa después. Los tests de regresión de perfil,
 rollback, migración, política y botones,
 los dos paquetes Go completos, typecheck y build frontend pasan localmente.
+La revisión posterior al primer push encontró que guardar un perfil normal
+volvía a sincronizar el Run de otro perfil ya marcado. La prueba reprodujo
+el fallo y el guardado ahora solo registra el perfil seleccionado y desregistra
+los que realmente pierden el inicio automático. Los dos paquetes Go vuelven
+a pasar tras la corrección.
 La comprobación física de Wails/Steam/LMU/instalador sigue pendiente: Isaac
 prohibió por ahora usar computer use en el escritorio, pero permite una
 revisión del servidor en el navegador de Codex. **NO-GO** hasta tener esa

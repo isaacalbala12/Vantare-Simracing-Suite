@@ -1867,6 +1867,20 @@ func TestSaveProfileWithoutAutostartDoesNotRequireRegistry(t *testing.T) {
 	}
 }
 
+func TestSaveOtherProfileDoesNotResyncExistingAutostart(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	old := app.LaunchProfile{ID: "startup", Name: "Startup", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true}
+	if err := svc.SaveProfile(old); err != nil {
+		t.Fatal(err)
+	}
+	other := app.LaunchProfile{ID: "normal", Name: "Normal", Steps: []app.LaunchStep{{AppID: "lmu"}}}
+	if !saveProfileWithAutostart(other, svc, emitter, func(string, bool) error {
+		return fmt.Errorf("registry unavailable")
+	}) {
+		t.Fatal("saving another profile must not require registry access")
+	}
+}
+
 func TestNewAutostartProfileRollsBackWhenRegistryFails(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	profile := app.LaunchProfile{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true}

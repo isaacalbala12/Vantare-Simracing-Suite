@@ -903,7 +903,7 @@ func saveProfileWithAutostart(profile app.LaunchProfile, svc *launcher.Service, 
 	}
 	var syncErr error
 	for _, saved := range after {
-		if saved.LaunchOnWindowsStartup {
+		if saved.ID == profile.ID && saved.LaunchOnWindowsStartup {
 			syncErr = apply(saved.ID, true)
 			if syncErr != nil {
 				break

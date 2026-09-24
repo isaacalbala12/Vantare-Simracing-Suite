@@ -28,8 +28,9 @@ clases; la publicación central no inventa esas identidades. Los timestamps de
 ejemplo de Long Beach apuntan al 20 de septiembre, pero la recurrencia declarada
 para la semana 22–29 es sábado/domingo 02:00–22:00 UTC cada cuatro horas.
 PR draft [#1374](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1374)
-abierto contra nightly; las comprobaciones del nuevo HEAD y review de Isaac
-siguen pendientes. Sin merge, testers, master ni release.
+abierto contra nightly. Para el commit de producto `bf992deb`, el gate bloqueante
+`36047512257`, quality-check `36047512152`, ruta de promoción y GitGuardian
+pasaron. Review de Isaac sigue pendiente. Sin merge, testers, master ni release.
 
 ## VAN-740 / ISA-1305 — Wails beta.24 aceptado para Nightly (2026-09-22)
 

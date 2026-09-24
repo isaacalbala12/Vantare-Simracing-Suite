@@ -81,6 +81,9 @@ func (service *TelemetryAnalysisService) SaveVerifiedCopy(ctx context.Context, r
 	}
 	path, err := telemetryanalysis.PersistVerifiedHistoricalCopy(operationCtx, ownedSession.staged, request.DestinationDirectory)
 	if err != nil {
+		if errors.Is(err, telemetryanalysis.ErrPersistentCopyCleanup) {
+			return TelemetryAnalysisCopyResult{}, ErrTelemetryAnalysisCleanup
+		}
 		if ctxErr := operationCtx.Err(); ctxErr != nil {
 			return TelemetryAnalysisCopyResult{}, ctxErr
 		}

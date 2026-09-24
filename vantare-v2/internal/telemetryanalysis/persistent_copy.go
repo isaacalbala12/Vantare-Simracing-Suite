@@ -16,6 +16,7 @@ import (
 var ErrPersistentCopyRejected = errors.New("verified historical copy rejected")
 var ErrPersistentCopyPermission = errors.New("verified historical copy destination permission denied")
 var ErrPersistentCopyNoSpace = errors.New("verified historical copy destination has no space")
+var ErrPersistentCopyCleanup = errors.New("incomplete verified historical copy could not be removed")
 
 func persistentCopyIOError(err error) error {
 	// Win32 returns ERROR_HANDLE_DISK_FULL (39) or ERROR_DISK_FULL (112),
@@ -95,7 +96,7 @@ func PersistVerifiedHistoricalCopy(ctx context.Context, staged StagedHistoricalA
 		}
 		if !completed {
 			if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
-				returnErr = errors.Join(returnErr, persistentCopyIOError(err))
+				returnErr = errors.Join(returnErr, ErrPersistentCopyCleanup, persistentCopyIOError(err))
 			}
 		}
 	}()

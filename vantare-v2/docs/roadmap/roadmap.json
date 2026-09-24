@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-24T17:55:57Z",
+  "generatedAt": "2026-09-24T19:09:56Z",
   "digest": {
     "lastCommit": "5c73013ed59a4d69775a94fcc188d168310c59a5"
   },
@@ -1183,10 +1183,10 @@
         "it": "Correzione e ottimizzazione del Calendario"
       },
       "body": {
-        "es": "Plan aprobado por cortes: pruebas de recorrido, vigencia del horario, recordatorios de series, coherencia de las cinco vistas y optimización medida de apertura, interacción y consumo. Conserva la apariencia y los contratos de HUD y Studio. La validación visual Wails y el ahorro global siguen pendientes.",
-        "en": "Approved incremental plan: end-to-end checks, schedule validity, series reminders, consistency across five views and measured improvements to opening, interaction and resource use. Appearance and HUD/Studio contracts are preserved. Wails visual validation and overall savings remain pending.",
-        "pt": "Plano aprovado por etapas: testes de percurso, validade do horário, lembretes de séries, consistência das cinco vistas e otimização medida de abertura, interação e consumo. Preserva a aparência e os contratos de HUD e Studio. A validação visual Wails e a poupança global continuam pendentes.",
-        "it": "Piano approvato per fasi: prove del percorso, validità degli orari, promemoria delle serie, coerenza delle cinque viste e ottimizzazione misurata di apertura, interazione e consumo. Preserva aspetto e contratti HUD/Studio. Validazione visiva Wails e risparmio complessivo ancora da verificare."
+        "es": "Plan aprobado por cortes: pruebas de recorrido, vigencia del horario, recordatorios de series, coherencia de las cinco vistas y optimización medida de apertura, interacción y consumo. Wails con perfil de prueba mostró el horario publicado del 22 de septiembre en las cinco vistas, seguimiento y detalle de avisos; falta LMU físico, visibilidad de notificaciones nativas y medición de ahorro global. Conserva la apariencia y los contratos de HUD y Studio.",
+        "en": "Approved incremental plan: end-to-end checks, schedule validity, series reminders, consistency across five views and measured improvements to opening, interaction and resource use. Wails with a test profile displayed the published September 22 schedule in all five views, following and notice details; physical LMU, visible native notifications and overall savings measurements remain pending. Appearance and HUD/Studio contracts are preserved.",
+        "pt": "Plano aprovado por etapas: testes de percurso, validade do horário, lembretes de séries, consistência das cinco vistas e otimização medida de abertura, interação e consumo. Wails com perfil de teste mostrou o horário publicado de 22 de setembro nas cinco vistas, seguimento e detalhes dos avisos; faltam LMU físico, visibilidade das notificações nativas e medição da poupança global. Preserva a aparência e os contratos de HUD e Studio.",
+        "it": "Piano approvato per fasi: prove del percorso, validità degli orari, promemoria delle serie, coerenza delle cinque viste e ottimizzazione misurata di apertura, interazione e consumo. Wails con profilo di prova ha mostrato il calendario pubblicato del 22 settembre nelle cinque viste, il seguito delle serie e i dettagli degli avvisi; restano da verificare LMU fisico, notifiche native visibili e risparmio complessivo. Aspetto e contratti HUD/Studio sono preservati."
       },
       "label": {
         "es": "ISA-1027",

@@ -5,11 +5,57 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"testing"
 
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
+
+func TestLapDistResetObservationsMatchSortedPath(t *testing.T) {
+	sample := func(index int64, distance, seconds float64) HistoricalSample {
+		return HistoricalSample{
+			Index: index, TimestampSeconds: &seconds,
+			Values: []HistoricalValue{{Column: "Lap Dist", Present: true, Quality: QualityValid,
+				Scalar: HistoricalScalar{Kind: ScalarNumber, Number: distance}}},
+		}
+	}
+	sampling := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 10, Origin: TimeOriginSourceTimestamp}
+	ordered := []HistoricalPage{
+		{Sampling: sampling, Samples: []HistoricalSample{sample(0, 900, 10), sample(1, 950, 10.1)}},
+		{Sampling: sampling, Samples: []HistoricalSample{sample(2, 10, 10.2), sample(4, 990, 10.4), sample(5, 20, 10.5)}},
+	}
+	unordered := []HistoricalPage{
+		{Sampling: sampling, Samples: []HistoricalSample{sample(2, 10, 10.2), sample(0, 900, 10)}},
+		{Sampling: sampling, Samples: []HistoricalSample{sample(1, 950, 10.1), sample(4, 990, 10.4), sample(5, 20, 10.5)}},
+	}
+	unknownOrigin := append([]HistoricalPage(nil), ordered...)
+	unknownOrigin[1].Sampling.Origin = TimeOriginUnknown
+	mismatch := append([]HistoricalPage(nil), ordered...)
+	mismatch[1].Sampling.FrequencyHz = 5
+	for _, test := range []struct {
+		name  string
+		pages []HistoricalPage
+	}{
+		{name: "ordered across pages and gaps", pages: ordered},
+		{name: "unordered fallback", pages: unordered},
+		{name: "unknown timestamp origin", pages: unknownOrigin},
+		{name: "frequency mismatch", pages: mismatch},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			got, gotFrequency := readLapDistResetObservations(test.pages)
+			want, wantFrequency := readUnorderedLapDistResetObservations(test.pages)
+			if gotFrequency != wantFrequency || !reflect.DeepEqual(got, want) {
+				t.Fatalf("streamed resets (%v, %d) differ from sorted path (%v, %d)", got, gotFrequency, want, wantFrequency)
+			}
+		})
+	}
+	got, frequency := readLapDistResetObservations(ordered)
+	if frequency != 10 || len(got) != 2 || got[0].index != 2 || got[1].index != 5 ||
+		got[0].seconds == nil || *got[0].seconds != 10.2 || !got[0].qualityValid {
+		t.Fatalf("unexpected ordered lap resets: %v, frequency %d", got, frequency)
+	}
+}
 
 type lapValidityFixture struct {
 	FixtureVersion      string                    `json:"fixtureVersion"`

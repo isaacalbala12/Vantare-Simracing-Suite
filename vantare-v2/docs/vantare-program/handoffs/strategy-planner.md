@@ -1,5 +1,9 @@
 # Handoff vivo — Strategy Planner
 
+## Reinicios de vuelta sin copia de serie completa — ISA-1375 (2026-09-24)
+
+`Lap Dist` se recorre en orden con sólo la muestra anterior; entradas fuera de orden conservan la ruta ordenada previa. Paridad focal, suite Go completa y banco real Algarve/Monza PASS con 71 eventos, 70 reinicios, 66 vueltas completas, ritmo/Fuel y plan supuesto invariantes; hashes originales intactos. El perfil acumulado del banco bajó 36.396→35.370 MiB y desaparecieron los 1.108 MiB propios que antes se atribuían a `readLapDistResetObservations`. No es memoria pico ni soporte de resistencia. [Evidencia](../../strategy-planner/evidence/isa-1375/allocation-dependencies-2026-09-24.md). Sigue pendiente el consumidor productivo sin retener páginas, la paridad de todas las correcciones, la medición de pico y la prueba Wails; #1375 sigue abierta. Sin push, PR, CI, merge, promoción o release.
+
 ## Reloj GPS sin mapa global en lectura propia — ISA-1375 (2026-09-24)
 
 La alineación de páginas propias y ordenadas ya busca tiempos GPS en sus páginas sin construir el mapa de cada muestra; el API puro conserva la ruta general y los casos fuera de orden recurren a ella. Paridad focal y dos bancos reales A/B con el mismo S266 Algarve y otra Monza pasan, hashes intactos: `buildGPSClock` asigna acumulativamente 4.394→1.216 MiB y el test completo 39.697→36.396 MiB. No se ha medido un pico nuevo y los 86,86→70,42 s de una sola pasada por versión no prueban una mejora temporal estable. [Evidencia](../../strategy-planner/evidence/isa-1375/allocation-dependencies-2026-09-24.md). La producción todavía retiene todas las páginas y las derivaciones las vuelven a copiar; #1375 sigue abierta. Siguiente: validez y proyección desde visitas paginadas, con paridad de correcciones y memoria pico medida.

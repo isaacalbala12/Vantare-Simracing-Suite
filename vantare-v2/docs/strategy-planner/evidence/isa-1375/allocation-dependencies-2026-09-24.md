@@ -91,3 +91,24 @@ intactos. La lectura completa de muestras y las copias/series de derivación
 siguen impidiendo una garantía de memoria acotada para resistencia.
 `go test -p 1 ./... -count=1`, la paridad focal y `git diff --check`
 pasaron. No se modificó frontend ni se abrió Wails.
+
+## Quinto corte: detección de reinicios de vuelta en orden
+
+La lectura propia entrega `Lap Dist` por índice creciente. La detección de
+reinicios conserva ahora sólo la muestra anterior y los reinicios encontrados;
+si recibe páginas desordenadas o índices repetidos, utiliza la ruta anterior
+con ordenación completa. Una prueba compara ambas rutas con varias páginas,
+huecos, origen temporal desconocido y frecuencia incompatible. El banco opt-in
+con los mismos Algarve y Monza pasó: 71 eventos, 70 reinicios, 66 vueltas
+completas, ritmo seco 95,190 s (N=58), Fuel 2,135 L/vuelta (N=58) y plan
+supuesto de 38 vueltas/0 paradas. Los SHA-256 originales siguen intactos.
+
+El perfil `alloc_space` de la misma prueba pasó de 36.396 a 35.370 MiB
+acumulados. La función `readLapDistResetObservations` aparecía con 1.108 MiB
+propios antes y ya no aparece entre los nodos del nuevo perfil. Estas cifras
+**no miden el pico** ni demuestran una mejora estable de tiempo. Los perfiles
+son `C:/tmp/isa1375-ordered-clock-allocs.mem` y
+`C:/tmp/isa1375-lapdist-allocs.mem`. Suite Go completa y prueba focal PASS.
+`ReadCorrectionInput` y las vistas corregidas aún retienen todas las páginas;
+la memoria productiva no está acotada por vuelta/página, no se eleva el límite
+de muestras y no se afirma soporte de 24 h. No hubo QA Wails.

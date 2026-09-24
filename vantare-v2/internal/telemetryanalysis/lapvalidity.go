@@ -303,6 +303,42 @@ func readEvents(pages []HistoricalPage) []observedEvent {
 }
 
 func readLapDistResetObservations(pages []HistoricalPage) ([]observedLapReset, int) {
+	// Recorded pages arrive in sample order. Keep only the previous sample on
+	// that path; retain the sorted path for callers with unordered pages.
+	var resets []observedLapReset
+	var previous HistoricalSample
+	havePrevious := false
+	frequency := 0
+	for _, page := range pages {
+		if page.Sampling.Kind != SamplingContinuousImplicitFrequency || page.Sampling.FrequencyHz <= 0 {
+			continue
+		}
+		if frequency == 0 {
+			frequency = page.Sampling.FrequencyHz
+		}
+		if page.Sampling.FrequencyHz != frequency {
+			return nil, 0
+		}
+		for _, sample := range page.Samples {
+			if page.Sampling.Origin != TimeOriginSourceTimestamp {
+				sample.TimestampSeconds = nil
+			}
+			if havePrevious && sample.Index <= previous.Index {
+				return readUnorderedLapDistResetObservations(pages)
+			}
+			if havePrevious {
+				if reset, ok := lapDistResetBetween(previous, sample); ok {
+					resets = append(resets, reset)
+				}
+			}
+			previous = sample
+			havePrevious = true
+		}
+	}
+	return resets, frequency
+}
+
+func readUnorderedLapDistResetObservations(pages []HistoricalPage) ([]observedLapReset, int) {
 	frequency := 0
 	var samples []HistoricalSample
 	for _, page := range pages {
@@ -326,23 +362,30 @@ func readLapDistResetObservations(pages []HistoricalPage) ([]observedLapReset, i
 	var resets []observedLapReset
 	for index := 1; index < len(samples); index++ {
 		left, right := samples[index-1], samples[index]
-		if right.Index != left.Index+1 {
-			continue
-		}
-		before, beforeOK := firstNumber(left.Values)
-		after, afterOK := firstNumber(right.Values)
-		if beforeOK && afterOK && before-after > lapDistResetMinimumMeters {
-			validBefore, leftValid := singleValidNumber(left.Values)
-			validAfter, rightValid := singleValidNumber(right.Values)
-			reset := observedLapReset{index: right.Index, qualityValid: leftValid && rightValid && validBefore == before && validAfter == after}
-			if right.TimestampSeconds != nil {
-				seconds := *right.TimestampSeconds
-				reset.seconds = &seconds
-			}
+		if reset, ok := lapDistResetBetween(left, right); ok {
 			resets = append(resets, reset)
 		}
 	}
 	return resets, frequency
+}
+
+func lapDistResetBetween(left, right HistoricalSample) (observedLapReset, bool) {
+	if right.Index != left.Index+1 {
+		return observedLapReset{}, false
+	}
+	before, beforeOK := firstNumber(left.Values)
+	after, afterOK := firstNumber(right.Values)
+	if !beforeOK || !afterOK || !(before-after > lapDistResetMinimumMeters) {
+		return observedLapReset{}, false
+	}
+	validBefore, leftValid := singleValidNumber(left.Values)
+	validAfter, rightValid := singleValidNumber(right.Values)
+	reset := observedLapReset{index: right.Index, qualityValid: leftValid && rightValid && validBefore == before && validAfter == after}
+	if right.TimestampSeconds != nil {
+		seconds := *right.TimestampSeconds
+		reset.seconds = &seconds
+	}
+	return reset, true
 }
 
 func readLapDistResets(pages []HistoricalPage) ([]int64, int, float64) {

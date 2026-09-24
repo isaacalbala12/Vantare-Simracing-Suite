@@ -936,6 +936,19 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - cuerpo.it: Il calendario distingue caricamento, aggiornamento, errore e validità dell'orario; conferma il risultato ricevuto e conserva la vista durante l'aggiornamento.
 - etiqueta: Fix
 
+### Actualización de Calendario tras iniciar sesión
+
+- id: calendar-refresh-after-login
+- tipo: fix
+- titulo.en: Calendar refresh after sign-in
+- titulo.pt: Atualização do Calendário após login
+- titulo.it: Aggiornamento del Calendario dopo l'accesso
+- cuerpo: Tras validar un primer inicio de sesión, la app consulta el horario publicado sin exigir pulsar Actualizar. No repite la consulta por restaurar la sesión, recibir un callback provisional o renovar el token.
+- cuerpo.en: After validating a first sign-in, the app fetches the published schedule without requiring a manual refresh. Session restore, a provisional callback and token renewal do not trigger extra requests.
+- cuerpo.pt: Após validar o primeiro login, a app consulta o horário publicado sem exigir atualização manual. Restaurar a sessão, receber um callback provisório e renovar o token não repetem o pedido.
+- cuerpo.it: Dopo la convalida del primo accesso, l'app consulta il calendario pubblicato senza richiedere un aggiornamento manuale. Il ripristino della sessione, un callback provvisorio e il rinnovo del token non ripetono la richiesta.
+- etiqueta: ISA-1370
+
 ### CPU con seis widgets
 
 - id: telemetry-six-widget-cpu

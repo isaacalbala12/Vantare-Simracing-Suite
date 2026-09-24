@@ -1,5 +1,26 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## Calendario — revisión de lanzamiento e ISA-1370 (2026-09-24)
+
+Nightly `6df485fe` contiene el conjunto de correcciones C2-C9 y la revisión
+Owner desde el squash `b6b5754e` (#1062). La revisión de #1057 ejecutó Go
+completo, vet, build/lint frontend y 196 pruebas focales de Calendario con
+resultado correcto; CI de Nightly `36031391509` pasó. La suite frontend local
+completa agotó memoria y su reintento limitado no terminó: no es un PASS local.
+
+El perfil de prueba Wails disponible conserva el horario publicado del 8 al 15
+de septiembre (11 series, 0 eventos actuales). Su bandeja Discord no contiene
+candidato posterior. El binario de ISA-1061 abre las cinco vistas y señala
+caducidad; tras Actualizar muestra también «Horario actualizado», pero sigue
+sin salidas. Esto no certifica el binario ni la publicación de hoy. Quedan
+pendientes un horario vigente, avisos nativos reales, reinicio/offline, visual
+final y referencia de rendimiento A/A aceptada. Evidencia en #1057.
+
+ISA-1370 corrige en rama aislada `vantareapp/isa-1370-calendar-refresh-after-login`
+el caso de primer login: el refresh de arranque ocurre antes de haber sesión y
+debe repetirse tras validar la credencial. Base `nightly@6df485fe`; PR, CI y
+promoción aún pendientes. No se ha publicado un nuevo horario ni una release.
+
 ## VAN-740 / ISA-1305 — Wails beta.24 aceptado para Nightly (2026-09-22)
 
 [Tarea Notion VAN-740](https://app.notion.com/p/3e3e51695c6581f7a1aae9d4db50ee38), puente técnico [GitHub #1305](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1305).

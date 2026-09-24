@@ -23,17 +23,25 @@ export function AuthSessionBridge({ children }: PropsWithChildren) {
 	useEffect(() => {
 		removeLegacySupabaseSessions();
 		let active = true;
+		let hadRestoredSession = false;
+		let refreshedAfterLogin = false;
 		const offBackend = Events.On("auth:session", async (event: ProtectedSessionEvent) => {
+			if (event.data?.source === "restore") hadRestoredSession = true;
 			const accessToken = event.data?.access_token;
 			const refreshToken = event.data?.refresh_token;
 			if (!accessToken || !refreshToken) return;
 			const restored = await setSupabaseSession(accessToken, refreshToken);
 			if (!active) return;
 			if (restored.invalidCredential && event.data?.source !== "callback") {
+				hadRestoredSession = false;
 				void clearProtectedAuthSession();
 				return;
 			}
 			if (!restored.session?.access_token || !restored.session.refresh_token) return;
+			if (event.data?.source === "validated" && !hadRestoredSession && !refreshedAfterLogin) {
+				refreshedAfterLogin = true;
+				Events.Emit("calendar:schedule:refresh");
+			}
 			if (event.data?.source === "restore") {
 				Events.Emit("license:validate", {
 					sessionToken: restored.session.access_token,
@@ -43,6 +51,8 @@ export function AuthSessionBridge({ children }: PropsWithChildren) {
 		});
 		const offSupabase = onSupabaseAuthStateChange((event, session) => {
 			if (event === "SIGNED_OUT") {
+				hadRestoredSession = false;
+				refreshedAfterLogin = false;
 				void clearProtectedAuthSession();
 				return;
 			}

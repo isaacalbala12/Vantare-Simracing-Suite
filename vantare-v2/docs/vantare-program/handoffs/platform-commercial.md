@@ -635,8 +635,10 @@ import/export sin secretos; reset no borra datos sin selección.
   y los diseños de widgets permanecen separados. La referencia visual son las
   tres capturas de T3 Code aportadas el 2026-09-24. La revisión visual en
   navegador mock comprobó Ajustes y Studio y los seis pares de tokens; 484
-  archivos de tests frontend y 4 presupuestos de frames pasaron. Falta la
-  comprobación física en Wails y el PR a `nightly`; no hay promoción ni release.
+  archivos de tests frontend y 4 presupuestos de frames pasaron. El PR draft
+  #1384 apunta a `nightly` desde `vantareapp/isa-1381-temas-paleta-ui`; sus
+  checks remotos están pendientes. Falta la comprobación física en Wails;
+  no hay promoción ni release.
 
 ISA-841 se implementó en la rama aislada
 `vantareapp/isa-841-zoom-global-interfaz` y se rebasó el 2026-08-28 sobre

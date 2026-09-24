@@ -479,10 +479,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Complete calendar
 - titulo.pt: Calendário completo
 - titulo.it: Calendario completo
-- cuerpo: Calendario completo para la 1.0: publicación Owner, recordatorios, widget en el Hub, validación de horarios y seguimiento de series sin pérdida de datos.
-- cuerpo.en: Complete calendar for 1.0: Owner publishing, reminders, Hub widget, schedule validation and series tracking without data loss.
-- cuerpo.pt: Calendário completo para a 1.0: publicação Owner, lembretes, widget no Hub, validação de horários e seguimento de séries sem perda de dados.
-- cuerpo.it: Calendario completo per la 1.0: pubblicazione Owner, promemoria, widget dell'Hub, validazione orari e tracciamento serie senza perdita dati.
+- cuerpo: Calendario completo para la 1.0: publicación Owner, recordatorios, widget en el Hub, validación de horarios, seguimiento de series sin pérdida de datos y tipografía uniforme en toda la pantalla.
+- cuerpo.en: Complete calendar for 1.0: Owner publishing, reminders, Hub widget, schedule validation, series tracking without data loss and consistent typography throughout the screen.
+- cuerpo.pt: Calendário completo para a 1.0: publicação Owner, lembretes, widget no Hub, validação de horários, seguimento de séries sem perda de dados e tipografia uniforme em todo o ecrã.
+- cuerpo.it: Calendario completo per la 1.0: pubblicazione Owner, promemoria, widget dell'Hub, validazione orari, tracciamento serie senza perdita dati e tipografia uniforme in tutta la schermata.
 - etiqueta: Plan
 - etiqueta.pt: Plano
 - etiqueta.it: Piano

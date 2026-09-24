@@ -1,5 +1,25 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## VAN-762 / ISA-1376 — tipografía uniforme de Calendario (2026-09-24)
+
+Isaac señaló Cascadia Code en la lista de Próximas y pidió cambiar esa letra en
+toda la pantalla. La rama aislada `vantareapp/isa-1376-calendar-font`, basada en
+`origin/nightly@5c73013e`, asigna Inter solo al Calendario y a sus dos paneles
+portados desde una hoja local, preservando el CSS compartido para el ratchet.
+El roadmap manual y su artefacto generado reflejan la decisión.
+
+Build Wails local `bin/vantare-isa1376-calendar-font-v2.exe`, SHA-256
+`8a394589a0079a17743767c39cceb7b9a5409a4a132a8d7637b786f92c8a2625`.
+Con el perfil Owner de prueba y `-live=false`, Próximas, Día, Semana, Mes y
+Timeline mostraron Inter en todos los nodos de texto inspeccionados (162, 727,
+366, 112 y 83 respectivamente) y sin desbordamiento horizontal a 1264×761.
+La ventana queda abierta para revisión de Isaac. Build, lint, 94 pruebas de
+Calendario y digest del roadmap PASS. Suite frontend completa: 4092 PASS,
+2 omitidas y 3 timeouts ajenos a Calendario; sus 7 pruebas pasaron aisladas.
+No se declara la suite completa verde ni validación LMU física. Sin promoción
+de canal ni release. Tarea [VAN-762](https://app.notion.com/p/3e5e51695c658192ac27d7ebb8eeaec8),
+referencia [#1376](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1376).
+
 ## VAN-740 / ISA-1305 — Wails beta.24 aceptado para Nightly (2026-09-22)
 
 [Tarea Notion VAN-740](https://app.notion.com/p/3e3e51695c6581f7a1aae9d4db50ee38), puente técnico [GitHub #1305](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1305).

@@ -1,0 +1,6 @@
+/* Calendario y sus paneles portados comparten la tipografía sans del Hub. */
+.orbit-races,
+.orbit-races__topbar,
+.orbit-races__context {
+  --orbit-font-mono: var(--orbit-font-sans);
+}

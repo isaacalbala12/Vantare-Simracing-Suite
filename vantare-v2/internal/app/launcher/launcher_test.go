@@ -131,17 +131,42 @@ func TestServiceSnapshotTracksActiveChainProgress(t *testing.T) {
 }
 
 func TestServiceOnlyOwnsPIDsFromItsLaunchEvents(t *testing.T) {
-	svc := NewService(newBackendWithLMU(), &spyEmitter{}, nil)
-	if svc.OwnsStartedProcess("lmu", 42) {
+	backend := newBackendWithLMU()
+	backend.apps["obs"] = app.LauncherAppEntry{ID: "obs", LaunchMethod: "executable", ExecutablePath: `C:\Apps\OBS\obs64.exe`}
+	svc := NewService(backend, &spyEmitter{}, nil)
+	if svc.OwnsStartedProcess("obs", 42) {
 		t.Fatal("arbitrary PID must not be owned")
 	}
-	svc.chain.emit.Emit("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 0, AppID: "lmu", Status: "launching", Pid: 42})
-	if !svc.OwnsStartedProcess("lmu", 42) || svc.OwnsStartedProcess("obs", 42) {
-		t.Fatal("ownership must match both application and PID")
+	svc.chain.emit.Emit("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 0, AppID: "obs", Status: "launching", Pid: 42, ProcessPath: `C:\Apps\OBS\obs64.exe`, CreationTime: 100})
+	if svc.OwnsStartedProcess("obs", 42) {
+		t.Fatal("an unprobed launch must not authorize close")
 	}
-	svc.chain.emit.Emit("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 0, AppID: "lmu", Status: "failed", Pid: 42})
-	if svc.OwnsStartedProcess("lmu", 42) {
+	svc.chain.emit.Emit("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 0, AppID: "obs", Status: "failed", Pid: 42, ProcessPath: `C:\Apps\OBS\obs64.exe`, CreationTime: 100})
+	if svc.OwnsStartedProcess("obs", 42) {
 		t.Fatal("failed launch must not authorize process termination")
+	}
+	svc.chain.emit.Emit("launcher:chain:step", ChainProgress{ProfileID: "steam", StepIndex: 0, AppID: "lmu", Status: "done", Pid: 43, ProcessPath: `C:\Windows\System32\rundll32.exe`, CreationTime: 300})
+	if svc.OwnsStartedProcess("lmu", 43) {
+		t.Fatal("Steam URI handler PID is not the game and must never authorize close")
+	}
+	svc.chain.emit.Emit("launcher:chain:step", ChainProgress{ProfileID: "other", StepIndex: 0, AppID: "obs", Status: "done", Pid: 44, ProcessPath: `C:\Other\obs64.exe`, CreationTime: 400})
+	if svc.OwnsStartedProcess("obs", 44) {
+		t.Fatal("a different executable path must not become owned")
+	}
+	svc.chain.emit.Emit("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 0, AppID: "obs", Status: "done", Pid: 42, ProcessPath: `C:\Apps\OBS\obs64.exe`, CreationTime: 100})
+	identity, owned := svc.OwnedProcessIdentity("obs", 42)
+	if !owned || identity.CreationTime != 100 || svc.OwnsStartedProcess("lmu", 42) {
+		t.Fatalf("ownership must retain verified app, PID, path and creation time, got %+v owned=%v", identity, owned)
+	}
+	svc.activeMu.Lock()
+	delete(svc.active, "creator")
+	svc.activeMu.Unlock()
+	if !svc.OwnsStartedProcess("obs", 42) {
+		t.Fatal("snapshot cleanup must not discard process ownership")
+	}
+	svc.ForgetStartedProcess("obs", 42)
+	if svc.OwnsStartedProcess("obs", 42) {
+		t.Fatal("closed process must lose ownership")
 	}
 }
 

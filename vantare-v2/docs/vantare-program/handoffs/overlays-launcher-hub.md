@@ -2418,6 +2418,17 @@ Launcher y `cmd/vantare`. Los borradores vacíos siguen siendo guardables sin
 autostart. La semántica de varios perfiles de inicio sigue pendiente de la
 decisión de Isaac.
 
+Sexto avance de #1368: la autoridad de cierre/reinicio de un ejecutable ahora
+conserva el PID, la ruta observada y la hora de creación real del proceso
+durante toda la sesión del servicio. La limpieza visual a los 30 segundos ya
+no descarta esa autoridad; el cierre/reinicio vuelve a consultar el proceso
+vivo y rechaza un PID reciclado aunque apunte al mismo ejecutable. Solo se
+registra un paso ejecutable terminado correctamente y cuya ruta coincide con
+el catálogo; el PID de `rundll32` usado por Steam no se considera el juego.
+Cerrar o reiniciar revoca la identidad anterior. Tests Go focales pasaron en
+Windows. Falta CI del nuevo HEAD, prueba física de cierre/reinicio y resolver
+el comportamiento de procesos al cancelar o salir. **NO-GO.**
+
 ## Hub
 
 Conservar estructura. Solo consistencia visual, estados reales, responsive,

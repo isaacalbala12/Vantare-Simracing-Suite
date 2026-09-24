@@ -28,8 +28,14 @@ func processInfo(pid int) (windows.Handle, ProcessInfo, error) {
 		windows.CloseHandle(handle)
 		return 0, ProcessInfo{}, err
 	}
+	var created, exited, kernel, user windows.Filetime
+	if err := windows.GetProcessTimes(handle, &created, &exited, &kernel, &user); err != nil {
+		windows.CloseHandle(handle)
+		return 0, ProcessInfo{}, err
+	}
 	executable := windows.UTF16ToString(path[:size])
-	return handle, ProcessInfo{PID: pid, ExecutablePath: executable, ProcessName: filepath.Base(executable), Alive: exitCode == 259}, nil
+	creationTime := uint64(created.HighDateTime)<<32 | uint64(created.LowDateTime)
+	return handle, ProcessInfo{PID: pid, ExecutablePath: executable, ProcessName: filepath.Base(executable), CreationTime: creationTime, Alive: exitCode == 259}, nil
 }
 
 func (systemProcessInspector) Find(ctx context.Context, expected ProcessIdentity) (ProcessInfo, bool) {
@@ -45,8 +51,8 @@ func (systemProcessInspector) Find(ctx context.Context, expected ProcessIdentity
 }
 
 func terminateVerifiedProcess(ctx context.Context, identity ProcessIdentity) error {
-	if identity.ExecutablePath == "" {
-		return fmt.Errorf("launcher: executable path required to close process")
+	if identity.ExecutablePath == "" || identity.CreationTime == 0 {
+		return fmt.Errorf("launcher: executable path and creation time required to close process")
 	}
 	handle, info, err := processInfo(identity.PID)
 	if err != nil {

@@ -33,6 +33,15 @@ func TestIdentityMatchesRejectsReusedPIDWithDifferentPath(t *testing.T) {
 	}
 }
 
+func TestIdentityMatchesRejectsReusedPIDWithSamePath(t *testing.T) {
+	if IdentityMatches(
+		ProcessIdentity{PID: 42, ExecutablePath: `C:\Apps\OBS\obs64.exe`, CreationTime: 100},
+		ProcessIdentity{PID: 42, ExecutablePath: `C:\Apps\OBS\obs64.exe`, CreationTime: 200},
+	) {
+		t.Fatal("reused PID with the same executable but different creation time must not match")
+	}
+}
+
 type fakeInspector struct {
 	info ProcessInfo
 }
@@ -60,6 +69,15 @@ func TestCloseProcessRequiresConfirmedIdentity(t *testing.T) {
 	}
 	if err := CloseProcess(context.Background(), fakeInspector{}, ProcessIdentity{}); err == nil {
 		t.Fatal("close must reject an identity without PID")
+	}
+}
+
+func TestCloseProcessRejectsRecycledPIDWithSameExecutable(t *testing.T) {
+	path := `C:\Apps\OBS\obs64.exe`
+	inspector := fakeInspector{info: ProcessInfo{PID: 42, ExecutablePath: path, CreationTime: 200, Alive: true}}
+	err := CloseProcess(context.Background(), inspector, ProcessIdentity{PID: 42, ExecutablePath: path, CreationTime: 100})
+	if err == nil {
+		t.Fatal("a recycled PID must not be closed even when the executable path matches")
 	}
 }
 

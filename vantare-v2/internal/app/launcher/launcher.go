@@ -47,6 +47,7 @@ type Service struct {
 	revision           atomic.Uint64
 	activeMu           sync.Mutex
 	active             map[string]LauncherActiveChain
+	owned              map[int]ownedProcess
 	retryStepIndices   map[string][]int
 	chainCleanupDelay  time.Duration
 	chainCleanupTimers map[string]*time.Timer
@@ -54,6 +55,11 @@ type Service struct {
 	discovery          LauncherDiscovery
 	discoveryRunMu     sync.Mutex
 	discover           func() map[string]app.LauncherAppEntry
+}
+
+type ownedProcess struct {
+	appID    string
+	identity ProcessIdentity
 }
 
 type serviceEmitter struct {
@@ -99,6 +105,7 @@ func NewService(settings LauncherSettingsBackend, emit Emitter, execFn execLaunc
 		settings:           settings,
 		emit:               emit,
 		active:             make(map[string]LauncherActiveChain),
+		owned:              make(map[int]ownedProcess),
 		retryStepIndices:   make(map[string][]int),
 		discovery:          LauncherDiscovery{},
 		chainCleanupDelay:  defaultChainCleanupDelay,
@@ -124,8 +131,20 @@ func (s *Service) recordChainEvent(name string, data any) {
 	if !ok {
 		return
 	}
+	var started *ownedProcess
+	if name == "launcher:chain:step" && progress.Status == "done" && progress.Pid > 0 && progress.CreationTime != 0 {
+		if entry, exists := s.settings.GetLauncherApps()[progress.AppID]; exists && entry.LaunchMethod == "executable" &&
+			entry.ExecutablePath != "" && NormalizeExecutablePath(entry.ExecutablePath) == NormalizeExecutablePath(progress.ProcessPath) {
+			started = &ownedProcess{appID: progress.AppID, identity: ProcessIdentity{
+				PID: progress.Pid, ExecutablePath: progress.ProcessPath, CreationTime: progress.CreationTime,
+			}}
+		}
+	}
 	terminal := false
 	s.activeMu.Lock()
+	if started != nil {
+		s.owned[progress.Pid] = *started
+	}
 	chain := s.active[progress.ProfileID]
 	if name == "launcher:chain:step" && (chain.Status == "done" || chain.Status == "failed") {
 		if _, retry := s.retryStepIndices[progress.ProfileID]; !retry {
@@ -202,21 +221,35 @@ func isTerminalChainStatus(status string) bool {
 // coupling to the concrete *app.SettingsService type.
 func (s *Service) Settings() LauncherSettingsBackend { return s.settings }
 
-// OwnsStartedProcess permits close/restart only for a PID observed during this session's launch chain.
-func (s *Service) OwnsStartedProcess(appID string, pid int) bool {
+// OwnedProcessIdentity returns a verified executable that this service launched
+// and successfully probed during the current session. Snapshot cleanup does
+// not erase this authority; close/restart must still recheck the live process.
+func (s *Service) OwnedProcessIdentity(appID string, pid int) (ProcessIdentity, bool) {
 	if pid <= 0 {
-		return false
+		return ProcessIdentity{}, false
 	}
 	s.activeMu.Lock()
 	defer s.activeMu.Unlock()
-	for _, chain := range s.active {
-		for _, step := range chain.Steps {
-			if step.AppID == appID && step.PID == pid && (step.Status == "launching" || step.Status == "done") {
-				return true
-			}
-		}
+	owned, ok := s.owned[pid]
+	if !ok || owned.appID != appID {
+		return ProcessIdentity{}, false
 	}
-	return false
+	return owned.identity, true
+}
+
+// ForgetStartedProcess revokes process control after a successful close/restart.
+func (s *Service) ForgetStartedProcess(appID string, pid int) {
+	s.activeMu.Lock()
+	defer s.activeMu.Unlock()
+	if owned, ok := s.owned[pid]; ok && owned.appID == appID {
+		delete(s.owned, pid)
+	}
+}
+
+// OwnsStartedProcess reports only identities observed during this session.
+func (s *Service) OwnsStartedProcess(appID string, pid int) bool {
+	_, ok := s.OwnedProcessIdentity(appID, pid)
+	return ok
 }
 
 // Snapshot builds the complete launcher payload from the settings backend.

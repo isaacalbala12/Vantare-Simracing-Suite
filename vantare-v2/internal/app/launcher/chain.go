@@ -59,6 +59,8 @@ type ChainProgress struct {
 	StartedAt    int64  `json:"startedAt,omitempty"`  // epoch ms
 	FinishedAt   int64  `json:"finishedAt,omitempty"` // epoch ms
 	Pid          int    `json:"pid,omitempty"`
+	ProcessPath  string `json:"processPath,omitempty"`
+	CreationTime uint64 `json:"creationTime,omitempty"`
 	Message      string `json:"message,omitempty"`
 	DelaySeconds int    `json:"delaySeconds,omitempty"`
 }
@@ -68,6 +70,8 @@ type chainStepResult struct {
 	success  bool
 	exitCode int
 	pid      int
+	path     string
+	created  uint64
 }
 
 // livenessResult carries the outcome of the liveness probe.
@@ -244,14 +248,16 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 		}
 
 		r.emit.Emit("launcher:chain:step", ChainProgress{
-			ProfileID:  profile.ID,
-			StepIndex:  i,
-			AppID:      step.AppID,
-			Status:     stepStatus,
-			StartedAt:  startedAt.UnixMilli(),
-			FinishedAt: finishedAt.UnixMilli(),
-			Pid:        result.pid,
-			Message:    msg,
+			ProfileID:    profile.ID,
+			StepIndex:    i,
+			AppID:        step.AppID,
+			Status:       stepStatus,
+			StartedAt:    startedAt.UnixMilli(),
+			FinishedAt:   finishedAt.UnixMilli(),
+			Pid:          result.pid,
+			ProcessPath:  result.path,
+			CreationTime: result.created,
+			Message:      msg,
 		})
 		if !result.success {
 			if i == len(profile.Steps)-1 || !r.continueAfterFailure(ctx, profile, step.AppID, msg, policy.Failure) {
@@ -318,9 +324,15 @@ func (r *ChainRunner) launchAndProbe(ctx context.Context, entry app.LauncherAppE
 		if cmd.Process != nil {
 			pid = cmd.Process.Pid
 		}
+		identity := ProcessIdentity{PID: pid, ExecutablePath: entry.ExecutablePath}
+		info, observed := DefaultProcessInspector().Find(ctx, identity)
+		if !observed || !ProcessIsReady(identity, info) {
+			info = ProcessInfo{}
+		}
 		r.emit.Emit("launcher:chain:step", ChainProgress{
 			ProfileID: profile.ID, StepIndex: i, AppID: step.AppID,
 			Status: "launching", StartedAt: startedAt.UnixMilli(), Pid: pid,
+			ProcessPath: info.ExecutablePath, CreationTime: info.CreationTime,
 		})
 
 		// Liveness probe: wait up to 3s for the process to exit.
@@ -331,7 +343,7 @@ func (r *ChainRunner) launchAndProbe(ctx context.Context, entry app.LauncherAppE
 		if !res.timedOut && res.exitCode != 0 {
 			return chainStepResult{success: false, exitCode: res.exitCode, pid: pid}
 		}
-		return chainStepResult{success: true, pid: pid}
+		return chainStepResult{success: true, pid: pid, path: info.ExecutablePath, created: info.CreationTime}
 
 	default:
 		return chainStepResult{success: false}

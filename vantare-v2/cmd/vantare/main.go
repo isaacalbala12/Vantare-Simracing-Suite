@@ -1106,16 +1106,9 @@ func launcherProcessIdentity(id string, pid int, svc *launcher.Service) (launche
 	if pid <= 0 {
 		return launcher.ProcessIdentity{}, fmt.Errorf("launcher: confirmed PID is required")
 	}
-	if !svc.OwnsStartedProcess(id, pid) {
+	identity, owned := svc.OwnedProcessIdentity(id, pid)
+	if !owned {
 		return launcher.ProcessIdentity{}, fmt.Errorf("launcher: process was not started by Vantare")
-	}
-	entry, ok := svc.Settings().GetLauncherApps()[id]
-	if !ok {
-		return launcher.ProcessIdentity{}, fmt.Errorf("launcher: app %q not found", id)
-	}
-	identity := launcher.ProcessIdentity{PID: pid, ExecutablePath: entry.ExecutablePath}
-	if known, ok := launcher.KnownAppsByID[id]; ok && len(known.ProcessNames) > 0 {
-		identity.ProcessName = known.ProcessNames[0]
 	}
 	return identity, nil
 }
@@ -1129,6 +1122,7 @@ func handleCloseLauncherApp(id string, pid int, svc *launcher.Service, emitter a
 		emitter.Emit("launcher:error", map[string]any{"code": "process_close_failed", "message": err.Error(), "appId": id})
 		return
 	}
+	svc.ForgetStartedProcess(id, pid)
 	handleLauncherSnapshot(svc, emitter)
 }
 
@@ -1145,6 +1139,7 @@ func handleRestartLauncherApp(id string, pid int, svc *launcher.Service, emitter
 		emitter.Emit("launcher:error", map[string]any{"code": "process_restart_failed", "message": err.Error(), "appId": id})
 		return
 	}
+	svc.ForgetStartedProcess(id, pid)
 	handleLauncherSnapshot(svc, emitter)
 }
 

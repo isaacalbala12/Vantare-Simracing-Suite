@@ -14,12 +14,14 @@ type ProcessIdentity struct {
 	PID            int
 	ExecutablePath string
 	ProcessName    string
+	CreationTime   uint64
 }
 
 type ProcessInfo struct {
 	PID            int
 	ExecutablePath string
 	ProcessName    string
+	CreationTime   uint64
 	Alive          bool
 }
 
@@ -28,8 +30,8 @@ type ProcessInspector interface {
 }
 
 func CloseProcess(ctx context.Context, inspector ProcessInspector, identity ProcessIdentity) error {
-	if identity.PID == 0 {
-		return fmt.Errorf("launcher: process identity requires a PID")
+	if identity.PID <= 0 || identity.ExecutablePath == "" || identity.CreationTime == 0 {
+		return fmt.Errorf("launcher: process identity requires PID, executable path and creation time")
 	}
 	info, ok := inspector.Find(ctx, identity)
 	if !ok || !ProcessIsReady(identity, info) {
@@ -69,6 +71,9 @@ func IdentityMatches(expected, actual ProcessIdentity) bool {
 	if expected.PID != 0 && expected.PID != actual.PID {
 		return false
 	}
+	if expected.CreationTime != 0 && expected.CreationTime != actual.CreationTime {
+		return false
+	}
 	if expected.ExecutablePath != "" {
 		return actual.ExecutablePath != "" && NormalizeExecutablePath(expected.ExecutablePath) == NormalizeExecutablePath(actual.ExecutablePath)
 	}
@@ -80,7 +85,7 @@ func IdentityMatches(expected, actual ProcessIdentity) bool {
 
 func ProcessIsReady(expected ProcessIdentity, actual ProcessInfo) bool {
 	return actual.Alive && IdentityMatches(expected, ProcessIdentity{
-		PID: actual.PID, ExecutablePath: actual.ExecutablePath, ProcessName: actual.ProcessName,
+		PID: actual.PID, ExecutablePath: actual.ExecutablePath, ProcessName: actual.ProcessName, CreationTime: actual.CreationTime,
 	})
 }
 

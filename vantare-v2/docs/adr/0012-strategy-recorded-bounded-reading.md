@@ -14,6 +14,27 @@ Primero validar el reloj GPS con estado constante por canal y después consultar
 
 Esta es una secuencia de implementación, no permiso para cambiar resultados en bloque: (1) medir memoria/tiempo por operación; (2) aislar validación GPS y probar paridad, incluidos puentes inválidos; (3) producir validez y resúmenes por vuelta, con oráculo exhaustivo contra la ruta actual; (4) aplicar snapshots exactos y derivar proyección, probar replay/cancelación/limpieza; (5) medir fuente larga real y validar en Wails. Cada corte debe conservar la ruta anterior hasta demostrar igualdad o documentar una diferencia de cómputo versionada y aceptada.
 
+## Frontera de sustitución comprobada
+
+`TelemetryAnalysisService.withCorrectionInput` es el punto común de preparación,
+inspección, guardado y proyección de revisiones. Hoy llama a
+`ReadCorrectionInput` antes de ejecutar cualquiera de esas acciones, de modo
+que ninguna optimización posterior a la devolución de `CorrectionInput` puede
+acotar el pico de lectura. `DeriveCorrectedSession` vuelve a alinear y a
+materializar una vista corregida; `InspectCorrectionLaps` también crea esa
+vista antes de paginar sólo la respuesta. Por ello la primera sustitución
+productiva debe ocurrir **dentro de esta frontera común**, manteniendo la
+autorización, el bloqueo por sesión y la serialización de lectura ya existentes.
+
+El primer contrato incremental se limitará a inspeccionar la sesión y visitar
+páginas del parser autorizado, con cancelación y cuotas comprobadas en cada
+página; no devolverá un `[]HistoricalPage` completo. Su primer consumidor será
+la validación del reloj GPS, contrastada con `BuildTemporalAlignment` para
+puentes válidos, índices duplicados, páginas desordenadas, valores inválidos y
+cobertura truncada. Hasta demostrar esa paridad, la ruta pública actual seguirá
+siendo el oráculo. Preparación, edición y proyección no se anunciarán como
+acotadas porque una sola operación todavía materialice todas las muestras.
+
 ## Alternativas y límites
 
 - Aumentar `MaxSamples`/`MaxValues` prolonga el fallo; no acota memoria.

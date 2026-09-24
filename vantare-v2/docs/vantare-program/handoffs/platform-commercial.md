@@ -21,8 +21,9 @@ el caso de primer login: el refresh de arranque ocurre antes de haber sesión y
 debe repetirse tras validar la credencial. Base reconciliada
 `nightly@5c73013e`; PR draft
 [#1371](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1371)
-abierto. CI completo, review y promoción aún pendientes. No se ha publicado un
-nuevo horario ni una release.
+abierto. CI bloqueante, calidad y ruta de promoción pasaron para el código
+`c3caea29` (runs `36038233486` y `36038233506`); review de Isaac y promoción
+siguen pendientes. No se ha publicado un nuevo horario ni una release.
 
 ## VAN-740 / ISA-1305 — Wails beta.24 aceptado para Nightly (2026-09-22)
 

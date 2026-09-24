@@ -16,6 +16,7 @@ const (
 	reasonMissingLapValidity = "missing_lap_validity_analysis"
 	reasonMissingFuel        = "missing_fuel_consumption"
 	reasonMissingVE          = "missing_virtual_energy_consumption"
+	reasonVENotApplicable    = "virtual_energy_not_applicable"
 	reasonNoClassifiedPace   = "no_classified_complete_laps_in_climate_bucket"
 	reasonMissingCurves      = "missing_combined_stint_pace_curve"
 	reasonMissingTyres       = "missing_tyre_degradation"
@@ -97,16 +98,21 @@ func ProduceStrategyInputProjectionV2(
 			},
 			reasonMissingFuel,
 		)
-		projection.VirtualEnergyConsumption = projectResourceConsumption(
-			consumption,
-			sourceID,
-			func(bucket ClimateBucketConsumptionPace) strategyprojection.ResourceConsumptionFamily {
-				return bucket.VirtualEnergyConsumption
-			},
-			reasonMissingVE,
-		)
+		if lmuVirtualEnergyApplicable(request.Combination) {
+			projection.VirtualEnergyConsumption = projectResourceConsumption(
+				consumption,
+				sourceID,
+				func(bucket ClimateBucketConsumptionPace) strategyprojection.ResourceConsumptionFamily {
+					return bucket.VirtualEnergyConsumption
+				},
+				reasonMissingVE,
+			)
+		}
 		projection.RepresentativePaceByClimateBucket = projectRepresentativePace(consumption, sourceID)
 		projection.ClimateBuckets = projectClimateBuckets(consumption, sourceID)
+	}
+	if request.Combination.SimID == SimIDLMU && !lmuVirtualEnergyApplicable(request.Combination) {
+		projection.VirtualEnergyConsumption = missingResourceProjection(sourceID, reasonVENotApplicable)
 	}
 
 	curves, hasCurves, err := aggregateSelectedCurves(request.Sessions)
@@ -145,6 +151,19 @@ func ProduceStrategyInputProjectionV2(
 		)
 	}
 	return projection, nil
+}
+
+func lmuVirtualEnergyApplicable(combination CombinationIdentity) bool {
+	if combination.SimID != SimIDLMU {
+		return true // Other simulators define their own capabilities.
+	}
+	class := strings.ToUpper(combination.CarClass)
+	for _, prefix := range []string{"LMGT3", "GT3", "HYPERCAR", "HYPER"} {
+		if class == prefix || strings.HasPrefix(class, prefix+"_") {
+			return true
+		}
+	}
+	return false
 }
 
 func missingClassPaceProjection() *strategyprojection.ClassPaceFamily {

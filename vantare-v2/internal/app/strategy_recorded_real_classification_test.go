@@ -465,6 +465,17 @@ func assertRecordedRealClassificationProjectionEqual(t *testing.T, stage string,
 func assertRecordedRealIdentityProjectionEqual(t *testing.T, stage string, base, got strategyprojection.StrategyInputProjectionV2) {
 	t.Helper()
 	baseCopy, gotCopy := base, got
+	baseVEApplicable := recordedRealLMUVEApplicable(baseCopy.SessionClassification.CarClass)
+	gotVEApplicable := recordedRealLMUVEApplicable(gotCopy.SessionClassification.CarClass)
+	if !gotVEApplicable && (gotCopy.VirtualEnergyConsumption.Presence != strategyprojection.PresenceMissing ||
+		gotCopy.VirtualEnergyConsumption.Reason != "virtual_energy_not_applicable") {
+		t.Fatalf("real %s identity did not update VE applicability", stage)
+	}
+	if baseVEApplicable != gotVEApplicable {
+		// The source bytes stay unchanged, but class applicability changes the
+		// derived VE family. All other families must remain identical.
+		gotCopy.VirtualEnergyConsumption = baseCopy.VirtualEnergyConsumption
+	}
 	baseAggregate, gotAggregate := "aggregate:"+baseCopy.CombinationID, "aggregate:"+gotCopy.CombinationID
 	gotCopy.GeneratedAt = baseCopy.GeneratedAt
 	gotCopy.SourceRevisions = baseCopy.SourceRevisions
@@ -482,4 +493,14 @@ func assertRecordedRealIdentityProjectionEqual(t *testing.T, stage string, base,
 	if string(baseJSON) != string(gotJSON) {
 		t.Fatalf("real %s projection differs outside the intended identity change", stage)
 	}
+}
+
+func recordedRealLMUVEApplicable(class string) bool {
+	class = strings.ToUpper(class)
+	for _, prefix := range []string{"LMGT3", "GT3", "HYPERCAR", "HYPER"} {
+		if class == prefix || strings.HasPrefix(class, prefix+"_") {
+			return true
+		}
+	}
+	return false
 }

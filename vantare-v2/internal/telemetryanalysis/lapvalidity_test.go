@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"testing"
+
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
 type lapValidityFixture struct {
@@ -169,6 +171,69 @@ func TestAnalyzeLapValidityDeclaresSingleSourceQuality(t *testing.T) {
 	}
 }
 
+func TestReconcileLapBoundariesRequiresIndependentAlignedReset(t *testing.T) {
+	t.Parallel()
+	events := []observedLapEvent{
+		{seconds: 1000, lapNumber: 0, qualityValid: true}, // Initial state, not a proved crossing.
+		{seconds: 1100, lapNumber: 1, qualityValid: true},
+		{seconds: 1200, lapNumber: 2, qualityValid: true},
+	}
+	for _, test := range []struct {
+		name   string
+		resets []observedLapReset
+		want   []string
+	}{
+		{name: "aligned independent crossings", resets: []observedLapReset{{seconds: floatPointer(1100.05), qualityValid: true}, {seconds: floatPointer(1200.05), qualityValid: true}}, want: []string{"unknown", "valid", "valid"}},
+		{name: "one crossing missing", resets: []observedLapReset{{seconds: floatPointer(1100.05), qualityValid: true}}, want: []string{"unknown", "valid", "unknown"}},
+		{name: "unmatched distance clock", resets: []observedLapReset{{seconds: floatPointer(1100.11), qualityValid: true}, {seconds: floatPointer(1200.11), qualityValid: true}}, want: []string{"unknown", "unknown", "unknown"}},
+		{name: "ambiguous double reset", resets: []observedLapReset{{seconds: floatPointer(1100.04), qualityValid: true}, {seconds: floatPointer(1100.05), qualityValid: true}, {seconds: floatPointer(1200.05), qualityValid: true}}, want: []string{"unknown", "unknown", "valid"}},
+		{name: "unaligned reset", resets: []observedLapReset{{}, {}}, want: []string{"unknown", "unknown", "unknown"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			boundaries := reconcileLapBoundaries(events, test.resets, 10, true, strategyprojection.Provenance{})
+			if len(boundaries) != len(test.want) {
+				t.Fatalf("boundaries=%d, want %d", len(boundaries), len(test.want))
+			}
+			for index, boundary := range boundaries {
+				if string(boundary.Quality) != test.want[index] {
+					t.Fatalf("boundary %d quality=%s, want %s", index, boundary.Quality, test.want[index])
+				}
+			}
+		})
+	}
+}
+
+func TestReconcileLapBoundariesRejectsUntrustedCrossings(t *testing.T) {
+	t.Parallel()
+	baseEvents := []observedLapEvent{
+		{seconds: 1000, lapNumber: 0, qualityValid: true},
+		{seconds: 1100, lapNumber: 1, qualityValid: true},
+	}
+	baseResets := []observedLapReset{{seconds: floatPointer(1100.05), qualityValid: true}}
+	for _, test := range []struct {
+		name    string
+		mutate  func([]observedLapEvent, []observedLapReset)
+		aligned bool
+	}{
+		{name: "no GPS bridge", aligned: false},
+		{name: "uncertain event", aligned: true, mutate: func(events []observedLapEvent, _ []observedLapReset) { events[1].qualityValid = false }},
+		{name: "uncertain distance", aligned: true, mutate: func(_ []observedLapEvent, resets []observedLapReset) { resets[0].qualityValid = false }},
+		{name: "lap number jump", aligned: true, mutate: func(events []observedLapEvent, _ []observedLapReset) { events[1].lapNumber = 2 }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			events := append([]observedLapEvent(nil), baseEvents...)
+			resets := append([]observedLapReset(nil), baseResets...)
+			if test.mutate != nil {
+				test.mutate(events, resets)
+			}
+			boundaries := reconcileLapBoundaries(events, resets, 10, test.aligned, strategyprojection.Provenance{})
+			if boundaries[1].Quality != strategyprojection.PresenceUnknown {
+				t.Fatalf("untrusted crossing became %s", boundaries[1].Quality)
+			}
+		})
+	}
+}
+
 func TestAnalyzeLapValidityRejectsUnalignedResetOnlyLaps(t *testing.T) {
 	t.Parallel()
 	fixture := loadLapValidityFixture(t, "lap-validity-s045-v1.json")
@@ -243,7 +308,7 @@ func TestAnalyzeLapValidityUsesAlignedFuelRiseAndCoverage(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if analysis.ComputationVersion != "lap-validity.v2" {
+	if analysis.ComputationVersion != "lap-validity.v3" {
 		t.Fatalf("computation version = %q", analysis.ComputationVersion)
 	}
 	if !analysis.Diagnostics.TemporalBridge.Aligned {

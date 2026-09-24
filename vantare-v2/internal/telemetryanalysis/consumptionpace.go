@@ -11,7 +11,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
-const consumptionPaceComputationVersion = "consumption-pace.v5"
+const consumptionPaceComputationVersion = "consumption-pace.v6"
 
 const reasonNoCleanCompleteLapsForRepresentativePace = "no_clean_complete_laps_for_representative_pace"
 
@@ -496,6 +496,7 @@ func climateBucket(pathWetnessPercent float64) (strategyprojection.ClimateBucket
 }
 
 func summarizeResource(sessionID string, bucket strategyprojection.ClimateBucket, samples []metricSample) strategyprojection.ResourceConsumptionFamily {
+	samples = validatedSummarySamples(samples)
 	mean, lower, upper, variance, presence := weightedSummary(samples)
 	provenance := strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: sessionID}
 	confidence := strategyprojection.Confidence{SampleSize: len(samples), ComputationVersion: consumptionPaceComputationVersion}
@@ -510,6 +511,7 @@ func summarizeResource(sessionID string, bucket strategyprojection.ClimateBucket
 }
 
 func summarizePace(sessionID string, samples []metricSample) RepresentativePaceFamily {
+	samples = validatedSummarySamples(samples)
 	_, lower, upper, variance, presence := weightedSummary(samples)
 	provenance := strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: sessionID}
 	confidence := strategyprojection.Confidence{SampleSize: len(samples), ComputationVersion: consumptionPaceComputationVersion}
@@ -526,6 +528,22 @@ func summarizePace(sessionID string, samples []metricSample) RepresentativePaceF
 		Presence: presence, Provenance: provenance, Confidence: confidence,
 		Reason: reason, MedianLapSeconds: median,
 	}
+}
+
+// Unknown observations remain on their individual laps. Once corroborated
+// laps exist, they cannot influence a family advertised as valid to Strategy.
+// An all-uncertain family stays visible as uncertain instead of disappearing.
+func validatedSummarySamples(samples []metricSample) []metricSample {
+	valid := make([]metricSample, 0, len(samples))
+	for _, sample := range samples {
+		if sample.presence == strategyprojection.PresenceValid {
+			valid = append(valid, sample)
+		}
+	}
+	if len(valid) == 0 {
+		return samples
+	}
+	return valid
 }
 
 func weightedSummary(samples []metricSample) (mean, lower, upper, variance float64, presence strategyprojection.Presence) {

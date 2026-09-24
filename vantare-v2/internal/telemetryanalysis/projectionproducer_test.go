@@ -140,6 +140,37 @@ func TestProduceStrategyInputProjectionV2ComposesIndependentFamilies(t *testing.
 	}
 }
 
+func TestProduceStrategyInputProjectionV2VirtualEnergyCapability(t *testing.T) {
+	for _, tc := range []struct {
+		name, simID, class string
+		want               strategyprojection.Presence
+	}{
+		{"LMU LMP2", SimIDLMU, "LMP2_ELMS", strategyprojection.PresenceMissing},
+		{"LMU GT3", SimIDLMU, "LMGT3", strategyprojection.PresenceValid},
+		{"LMU Hypercar", SimIDLMU, "Hypercar", strategyprojection.PresenceValid},
+		{"LMU Hyper alias", SimIDLMU, "Hyper", strategyprojection.PresenceValid},
+		{"other simulator", "other", "LMP2", strategyprojection.PresenceValid},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			request := projectionProducerFixture()
+			request.Combination.SimID, request.Combination.CarClass = tc.simID, tc.class
+			for i := range request.Sessions {
+				request.Sessions[i].Classified.Combination = request.Combination
+			}
+			got, err := ProduceStrategyInputProjectionV2(request)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.VirtualEnergyConsumption.Presence != tc.want {
+				t.Fatalf("VE presence = %s, want %s", got.VirtualEnergyConsumption.Presence, tc.want)
+			}
+			if tc.want == strategyprojection.PresenceMissing && got.VirtualEnergyConsumption.Reason != reasonVENotApplicable {
+				t.Fatalf("VE reason = %q", got.VirtualEnergyConsumption.Reason)
+			}
+		})
+	}
+}
+
 func TestProjectionProducerKeepsMissingPitReason(t *testing.T) {
 	request := projectionProducerFixture()
 	request.Sessions[0].Pit = nil

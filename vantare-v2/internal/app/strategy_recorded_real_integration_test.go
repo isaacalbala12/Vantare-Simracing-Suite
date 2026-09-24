@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"io"
+	"math"
 	"os"
 	"path/filepath"
 	"testing"
@@ -181,6 +182,22 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 	t.Logf("opened %d channels", len(opened.Session.Channels))
+	if err := svc.withCorrectionInput(ctx, opened.SessionID, func(_ context.Context, input telemetryanalysis.CorrectionInput) error {
+		qualities := make(map[string]int)
+		for _, boundary := range input.Validity.Temporal.LapBoundaries {
+			qualities[string(boundary.Quality)]++
+		}
+		segments := make(map[string]int)
+		for _, segment := range input.Validity.Temporal.Segments {
+			segments[string(segment.Presence)]++
+		}
+		t.Logf("lap validity: bridge=%+v events=%d resets=%d complete=%d boundaries=%v segments=%v gaps=%d", input.Validity.Diagnostics.TemporalBridge,
+			input.Validity.Diagnostics.LapEventRows, input.Validity.Diagnostics.LapDistResets,
+			input.Validity.Diagnostics.UsableLapTimeRows, qualities, segments, len(input.Validity.Temporal.Gaps))
+		return nil
+	}); err != nil {
+		t.Fatalf("inspect real lap validity: %v", err)
+	}
 	prepared, err := svc.PrepareCorrections(ctx, opened.SessionID)
 	if err != nil {
 		t.Fatalf("prepare: %v", err)
@@ -212,6 +229,11 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 		t.Logf("real projection %s pace: presence=%s median=%.3f samples=%d reason=%s", bucket, pace.Presence, pace.MedianLapSeconds, pace.Confidence.SampleSize, pace.Reason)
 	}
 	t.Logf("real projection fuel: presence=%s mean=%.3f samples=%d buckets=%v reason=%s", exact.FuelConsumption.Presence, exact.FuelConsumption.MeanPerLap, exact.FuelConsumption.Confidence.SampleSize, exact.FuelConsumption.ByClimateBucket, exact.FuelConsumption.Reason)
+	t.Logf("real projection virtual energy: class=%s presence=%s mean=%.3f reason=%s", exact.SessionClassification.CarClass, exact.VirtualEnergyConsumption.Presence, exact.VirtualEnergyConsumption.MeanPerLap, exact.VirtualEnergyConsumption.Reason)
+	if exact.SessionClassification.CarClass == "LMP2_ELMS" &&
+		(exact.VirtualEnergyConsumption.Presence != "missing" || exact.VirtualEnergyConsumption.Reason != "virtual_energy_not_applicable") {
+		t.Fatal("LMP2 virtual energy must not become a strategy resource")
+	}
 	t.Logf("exact revision retained: %s; combination: %s", exact.SourceRevisions[0].RevisionID, exact.CombinationID)
 	ref := exact.SourceRevisions[0]
 	if models[primaryCandidate.DisplayName].Session.ID != ref.SessionID {
@@ -228,6 +250,29 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 	}
 	if inputs.PlanningInputs.Projection.SourceRevisions[0] != ref {
 		t.Fatal("Strategy replaced exact revision")
+	}
+	pace, pacePresent := exact.RepresentativePaceByClimateBucket["dry"]
+	if pacePresent && pace.Presence == "valid" && exact.FuelConsumption.Presence == "valid" {
+		// Controlled event assumptions exercise the real projection-to-solver path;
+		// they are not claimed to be the rules of this recorded LMU race.
+		calculated, calculateErr := strategy.CalculateOrbit(ctx, strategyapplication.CalculateOrbitCommand{
+			CommandHeader: strategyapplication.CommandHeader{ProtocolVersion: strategyapplication.ProtocolVersionV1, CommandID: "real-derived-calculate", Operation: strategyapplication.OperationCalculateOrbit, ExpectedRepositoryVersion: 1},
+			Input: strategyapplication.OrbitCalculationInput{
+				Event:           strategyapplication.OrbitCalculationEvent{DurationMinutes: 60, TankLiters: 90, PitLossSeconds: 40},
+				Drivers:         []strategyapplication.OrbitCalculationDriver{{ID: "observed-driver", Dry: strategyapplication.OrbitCalculationPace{PaceSeconds: pace.MedianLapSeconds, FuelLitersPerLap: exact.FuelConsumption.MeanPerLap}}},
+				Variants:        []strategyapplication.OrbitCalculationVariant{{ID: "real-source-plan", Mode: "dry", Order: []string{"observed-driver"}, Overrides: map[int]strategyapplication.OrbitCalculationOverride{}}},
+				ActiveVariantID: "real-source-plan", PlanningInputs: inputs.PlanningInputs,
+			},
+		})
+		if calculateErr != nil || calculated.OrbitCalculation == nil {
+			t.Fatalf("real-source CalculateOrbit: %v", calculateErr)
+		}
+		plan := calculated.OrbitCalculation.Plans["real-source-plan"]
+		if plan.TotalLaps <= 0 || math.Abs(plan.AveragePace-pace.MedianLapSeconds) > 1e-9 ||
+			math.Abs(plan.AverageFuel-exact.FuelConsumption.MeanPerLap) > 1e-9 {
+			t.Fatalf("calculation did not use exact real reference: %+v", plan)
+		}
+		t.Logf("real-reference Go calculation: laps=%d stops=%d optimality=%s", plan.TotalLaps, plan.Stops, plan.Optimality)
 	}
 	if err := svc.CloseSession(opened.SessionID); err != nil {
 		t.Fatal(err)

@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	lapValidityComputationVersion = "lap-validity.v2"
+	lapValidityComputationVersion = "lap-validity.v3"
 	lapDistResetMinimumMeters     = 500.0
 	coverageClockToleranceSeconds = 5.0
 	fuelJumpMinimumLitres         = 3.0
@@ -109,9 +109,10 @@ type LapValidityAnalysis struct {
 }
 
 type observedLapEvent struct {
-	index     int64
-	seconds   float64
-	lapNumber int
+	index        int64
+	seconds      float64
+	lapNumber    int
+	qualityValid bool
 }
 
 type observedEvent struct {
@@ -120,8 +121,9 @@ type observedEvent struct {
 }
 
 type observedLapReset struct {
-	index   int64
-	seconds *float64
+	index        int64
+	seconds      *float64
+	qualityValid bool
 }
 
 type stintCandidate struct {
@@ -152,7 +154,7 @@ func AnalyzeAlignedLapValidity(alignment TemporalAlignmentResult) (LapValidityAn
 	}
 
 	lapEvents, duplicateLapEvents := readLapEvents(grouped["lap"])
-	resets, _ := readLapDistResetObservations(grouped["lap dist"])
+	resets, resetFrequency := readLapDistResetObservations(grouped["lap dist"])
 	continuousStart, continuousEnd, hasContinuousCoverage := continuousCoverageWindow(
 		grouped["ambient temperature"],
 		grouped["track temperature"],
@@ -198,7 +200,7 @@ func AnalyzeAlignedLapValidity(alignment TemporalAlignmentResult) (LapValidityAn
 		Kind:     strategyprojection.ProvenanceDerived,
 		SourceID: session.ID,
 	}
-	result.Temporal.LapBoundaries = reconcileLapBoundaries(lapEvents, resets, provenance)
+	result.Temporal.LapBoundaries = reconcileLapBoundaries(lapEvents, resets, resetFrequency, alignment.Bridge.Aligned, provenance)
 	result.Laps, result.Diagnostics.UsableLapTimeRows = buildLapRecords(
 		lapEvents,
 		readEvents(grouped["lap time"]),
@@ -261,8 +263,10 @@ func readLapEvents(pages []HistoricalPage) ([]observedLapEvent, int) {
 			if sample.TimestampSeconds == nil || !ok || value < 0 || value > math.MaxInt32 {
 				continue
 			}
+			validValue, qualityValid := singleValidNumber(sample.Values)
 			events = append(events, observedLapEvent{
 				index: sample.Index, seconds: *sample.TimestampSeconds, lapNumber: int(value),
+				qualityValid: qualityValid && validValue == value && value == math.Trunc(value),
 			})
 		}
 	}
@@ -328,7 +332,9 @@ func readLapDistResetObservations(pages []HistoricalPage) ([]observedLapReset, i
 		before, beforeOK := firstNumber(left.Values)
 		after, afterOK := firstNumber(right.Values)
 		if beforeOK && afterOK && before-after > lapDistResetMinimumMeters {
-			reset := observedLapReset{index: right.Index}
+			validBefore, leftValid := singleValidNumber(left.Values)
+			validAfter, rightValid := singleValidNumber(right.Values)
+			reset := observedLapReset{index: right.Index, qualityValid: leftValid && rightValid && validBefore == before && validAfter == after}
 			if right.TimestampSeconds != nil {
 				seconds := *right.TimestampSeconds
 				reset.seconds = &seconds
@@ -398,15 +404,17 @@ func channelCoverageWindow(pages []HistoricalPage) (float64, float64, bool) {
 func reconcileLapBoundaries(
 	events []observedLapEvent,
 	resets []observedLapReset,
+	resetFrequency int,
+	bridgeAligned bool,
 	provenance strategyprojection.Provenance,
 ) []strategyprojection.LapBoundary {
 	boundaries := make([]strategyprojection.LapBoundary, 0, max(len(events), alignedResetCount(resets)))
-	for _, event := range events {
+	for index, event := range events {
 		boundaries = append(boundaries, strategyprojection.LapBoundary{
 			LapNumber:  event.lapNumber,
 			Timestamp:  secondsTimestamp(event.seconds),
 			Source:     strategyprojection.LapBoundarySourceLapEvent,
-			Quality:    strategyprojection.PresenceUnknown,
+			Quality:    reconciledLapEventQuality(events, resets, resetFrequency, bridgeAligned, index),
 			Provenance: provenance,
 			Confidence: strategyprojection.Confidence{
 				SampleSize: 1, ComputationVersion: lapValidityComputationVersion,
@@ -434,6 +442,43 @@ func reconcileLapBoundaries(
 		}
 	}
 	return boundaries
+}
+
+// An event anchors the boundary; an independent, clock-aligned distance reset
+// must corroborate the crossing within one distance sample and match no other
+// event. The first event is only the recorded initial state.
+func reconciledLapEventQuality(events []observedLapEvent, resets []observedLapReset, frequency int, bridgeAligned bool, index int) strategyprojection.Presence {
+	if !bridgeAligned || frequency <= 0 || index == 0 || !events[index].qualityValid ||
+		events[index].lapNumber != events[index-1].lapNumber+1 || events[index].seconds <= events[index-1].seconds {
+		return strategyprojection.PresenceUnknown
+	}
+	tolerance := 1 / float64(frequency)
+	matched := -1
+	for resetIndex, reset := range resets {
+		if reset.seconds == nil || !reset.qualityValid || math.Abs(*reset.seconds-events[index].seconds) > tolerance {
+			continue
+		}
+		if matched >= 0 {
+			return strategyprojection.PresenceUnknown
+		}
+		matched = resetIndex
+	}
+	if matched < 0 {
+		return strategyprojection.PresenceUnknown
+	}
+	for other := 1; other < len(events); other++ {
+		if other != index && math.Abs(*resets[matched].seconds-events[other].seconds) <= tolerance {
+			return strategyprojection.PresenceUnknown
+		}
+	}
+	return strategyprojection.PresenceValid
+}
+
+func singleValidNumber(values []HistoricalValue) (float64, bool) {
+	if len(values) != 1 {
+		return 0, false
+	}
+	return numericHistoricalValue(values[0])
 }
 
 func alignedResetCount(resets []observedLapReset) int {

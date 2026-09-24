@@ -1,6 +1,18 @@
 # ISA-1331 — Validación de referencias con DuckDB reales (24-sep-2026)
 
-La conexión existe, pero las sesiones probadas no producen familias con presencia `valid`. La pantalla de preparación oculta las magnitudes con presencia `unknown` y muestra guiones; no se ha validado todavía un cálculo óptimo alimentado por datos reales.
+## Estado actual
+
+El banco opt-in, con el lector y las revisiones reales, produce para la carrera COTA del Oreca 07 LMP2_ELMS ritmo seco `valid` de **115,901 s** (20 vueltas) y combustible `valid` de **2,469 L/vuelta** (21 vueltas). La energía virtual queda `missing`, motivo `virtual_energy_not_applicable`, aunque el canal histórico esté presente a cero. Con esas referencias, `CalculateOrbit` completó un evento de prueba explícito de 60 minutos, depósito de 90 L y pérdida de parada de 40 s: 32 vueltas, cero paradas, `optimality=proven` **dentro del modelo y de esas reglas supuestas**. No equivale a validar la estrategia real de la carrera ni su precisión empírica.
+
+La frontera inicial permanece `unknown`: es el estado al comenzar la grabación, no una línea de meta observada. Las otras 30 fronteras de esa carrera son `valid` porque cada evento secuencial de vuelta coincide de forma única con un reinicio de distancia y ambos relojes están alineados dentro de un periodo de muestreo. El agregador conserva las observaciones inciertas por vuelta, pero sólo usa muestras `valid` para la referencia cuando existen. Si no hay ninguna, la referencia sigue siendo incierta.
+
+Un diagnóstico de lectura, sin modificar los originales, examinó cinco archivos de preparación/carrera de COTA, Imola, Algarve y Monza: los 206 eventos posteriores al estado inicial tenían contador secuencial y reinicio único dentro de 0,1 s; la mayor diferencia por archivo estuvo entre 0,0825 y 0,0925 s. Esto justifica la concordancia temporal para este corpus, no sustituye la anotación independiente de incidentes, ritmo, clima ni los cortes de calibración por clase. El banco volvió a pasar en 54,77 s y verificó SHA-256 intactos del original COTA (`bda9a70a621fd76df80242b7a3978d728042be30f7b5e9a2d927e14f45b04695`) y el objetivo Monza (`08a1e626d7154becd493aa84addbf146cc7f0f229c8a7aa39664766813495538`). `go test ./...` pasa. Falta validación visual/nativa de esta corrección y el contraste empírico contra carreras anotadas.
+
+Se repitió el banco con la práctica COTA `2026-07-17T19_06_50Z`: 8 fronteras `valid` y la inicial `unknown`, ritmo seco `valid` de 116,589 s (N=3), combustible `valid` de 2,401 L/vuelta (N=3), VE LMP2 no aplicable; hash original `7da31387f851721bf9d32e92849c7dc22c93da43668044ecac57138f0ec2024e` intacto. El mismo evento supuesto produjo 30 vueltas, 2 paradas y `optimality=not_proven`: demuestra que el motor distingue una solución de una prueba de optimalidad. La primera pasada del banco falló en una aserción histórica que exigía igualdad de VE incluso al corregir la clase LMP2 a Hypercar; el test ahora exige que sólo esa familia cambie por aplicabilidad y que las demás permanezcan idénticas. Segunda pasada PASS 18,35 s.
+
+## Observación anterior a la corrección
+
+Antes de reconciliar las fronteras, la conexión existía pero las sesiones probadas no producían familias con presencia `valid`. Los resultados siguientes son la línea base histórica, no el estado actual.
 
 ## Recorrido comprobado
 
@@ -13,11 +25,11 @@ El frontend pide `get_revision_planning_inputs` para las revisiones exactas. Str
 | COTA práctica `2026-07-17T19_06_50Z` | `Lap` hasta 8 | Ritmo seco 116,589 s, 3 muestras, `unknown`; combustible 2,401 L/vuelta, 3 muestras, `unknown`. Banco PASS 18,85 s; SHA-256 original `7da31387f851721bf9d32e92849c7dc22c93da43668044ecac57138f0ec2024e` intacto. |
 | COTA carrera `2026-07-18T15_24_25Z` | `Lap` 0–30; 31 eventos; 72.287 muestras de combustible | Ritmo seco 115,913 s, 21 muestras, `unknown`; combustible 2,490 L/vuelta, 22 muestras, `unknown`. Banco PASS 43,13 s; SHA-256 original `bda9a70a621fd76df80242b7a3978d728042be30f7b5e9a2d927e14f45b04695` intacto. |
 
-Las magnitudes `unknown` son observaciones con incertidumbre, no entradas válidas para afirmar una estrategia óptima. En las tres proyecciones con vueltas, el motivo de ritmo es `no_clean_complete_laps_for_representative_pace`. El análisis inicia las fronteras de vuelta en `unknown` (`lapvalidity.go`, `reconcileLapBoundaries`); `consumptionpace.go` compone la presencia más débil de frontera, segmento y clima. En las fuentes probadas eso propaga `unknown` a las familias agregadas incluso con 21–22 muestras. No se debe sustituirlo por `valid` sin un criterio verificable de fronteras, incidentes y cobertura.
+Las magnitudes `unknown` eran observaciones con incertidumbre, no entradas válidas para afirmar una estrategia óptima. En las tres proyecciones con vueltas, el motivo de ritmo era `no_clean_complete_laps_for_representative_pace`. El análisis anterior iniciaba todas las fronteras de vuelta en `unknown`; `consumptionpace.go` componía la presencia más débil de frontera, segmento y clima. Eso propagaba `unknown` a las familias agregadas incluso con 21–22 muestras.
 
-## Resultado y siguiente corrección
+## Decisión que motivó la corrección
 
-La UI necesita distinguir «sin vueltas» de «observado con calidad pendiente», mostrar el motivo y ayudar a escoger sesiones con cobertura real. Analysis debe definir y probar cuándo una frontera y una vuelta son válidas, incluyendo vueltas invalidadas pero normales, incidentes, huecos y boxes. Sólo entonces se repite el banco con proyección `valid` y se verifica el cálculo nativo; las cifras `unknown` nunca se promocionan por presentación.
+La UI necesitaba distinguir «sin vueltas» de «observado con calidad pendiente». La prueba de concordancia de evento y distancia resuelve la frontera temporal de este corpus; la elegibilidad por incidente, boxes, clima y ritmo sigue siendo una decisión distinta que requiere anotación y contraste. Las cifras `unknown` nunca se promocionan por presentación.
 
 ## Corrección visible y prueba nativa posterior
 

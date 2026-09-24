@@ -203,7 +203,7 @@ func TestDeriveSessionConsumptionPaceExcludesWeatherTransitionLap(t *testing.T) 
 	}
 }
 
-func TestAggregateConsumptionPaceWeightsQualityAndScopesHistory(t *testing.T) {
+func TestAggregateConsumptionPaceUsesValidatedSamplesAndScopesHistory(t *testing.T) {
 	current := aggregateFixtureSession("current", "combo", strategyprojection.PresenceValid, 2, 10)
 	historyUnknown := aggregateFixtureSession("history-unknown", "combo", strategyprojection.PresenceUnknown, 4, 12)
 	historyOtherCombo := aggregateFixtureSession("other", "other-combo", strategyprojection.PresenceValid, 100, 20)
@@ -213,10 +213,11 @@ func TestAggregateConsumptionPaceWeightsQualityAndScopesHistory(t *testing.T) {
 		t.Fatal(err)
 	}
 	bucket := got.ByClimateBucket[strategyprojection.ClimateBucketDry]
-	// valid weighs 1 and unknown weighs 0.5: (2*1 + 4*0.5) / 1.5.
-	assertNear(t, bucket.FuelConsumption.MeanPerLap, 8.0/3.0)
-	if bucket.FuelConsumption.Confidence.SampleSize != 2 {
-		t.Fatalf("aggregate N = %d, expected two matching sessions", bucket.FuelConsumption.Confidence.SampleSize)
+	// An uncertain lap stays visible in its source but cannot alter a validated
+	// aggregate used to plan the race.
+	assertNear(t, bucket.FuelConsumption.MeanPerLap, 2)
+	if bucket.FuelConsumption.Presence != strategyprojection.PresenceValid || bucket.FuelConsumption.Confidence.SampleSize != 1 {
+		t.Fatalf("validated aggregate = %+v, expected one valid source", bucket.FuelConsumption)
 	}
 	if got.SourceSessions[0] != "current" || got.SourceSessions[1] != "history-unknown" || len(got.SourceSessions) != 2 {
 		t.Fatalf("source sessions leaked another combination: %v", got.SourceSessions)
@@ -226,6 +227,29 @@ func TestAggregateConsumptionPaceWeightsQualityAndScopesHistory(t *testing.T) {
 	}
 	assertDerivedAxes(t, bucket.PacePercentile.Presence, bucket.PacePercentile.Provenance, bucket.PacePercentile.Confidence)
 	assertNear(t, bucket.PacePercentile.Value, 100) // 10 s is faster than the 12 s history.
+}
+
+func TestSummariesKeepUncertainOnlyObservationsUncertain(t *testing.T) {
+	samples := []metricSample{{value: 3, presence: strategyprojection.PresenceUnknown}}
+	resource := summarizeResource("session", strategyprojection.ClimateBucketDry, samples)
+	pace := summarizePace("session", samples)
+	if resource.Presence != strategyprojection.PresenceUnknown || resource.Confidence.SampleSize != 1 ||
+		pace.Presence != strategyprojection.PresenceUnknown || pace.Confidence.SampleSize != 1 {
+		t.Fatalf("uncertain observations were silently dropped: fuel=%+v pace=%+v", resource, pace)
+	}
+}
+
+func TestSummariesExcludeUncertainSamplesWhenValidatedLapsExist(t *testing.T) {
+	samples := []metricSample{
+		{value: 2, presence: strategyprojection.PresenceValid},
+		{value: 4, presence: strategyprojection.PresenceUnknown},
+	}
+	resource := summarizeResource("session", strategyprojection.ClimateBucketDry, samples)
+	pace := summarizePace("session", samples)
+	if resource.Presence != strategyprojection.PresenceValid || resource.Confidence.SampleSize != 1 || resource.MeanPerLap != 2 ||
+		pace.Presence != strategyprojection.PresenceValid || pace.Confidence.SampleSize != 1 || pace.MedianLapSeconds != 2 {
+		t.Fatalf("uncertain sample entered validated summary: fuel=%+v pace=%+v", resource, pace)
+	}
 }
 
 func loadConsumptionPaceFixture(t *testing.T, name string) consumptionPaceFixture {

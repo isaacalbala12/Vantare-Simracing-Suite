@@ -44,6 +44,27 @@ describe("lossless compact standings wire", () => {
     expect(decodeOverlayUpdateV2(decodeOverlayUpdateV2(input)).frame!.standings[0]).toEqual(row);
   });
 
+  it("normalizes shared scalar quality without dropping zero or precision", () => {
+    const input = fixture();
+    Object.assign(input.frame.standings[0], {
+      q: { q: "f" }, gap: 0, bestLap: 91.23456789012, lastLap: 90,
+    });
+
+    const row = decodeOverlayUpdateV2(input).frame!.standings[0]!;
+    expect(row.quality).toEqual({ q: "fresh" });
+    expect(row.gap).toEqual({ q: "fresh" });
+    expect(row.bestLap).toEqual({ q: "fresh", v: 91.23456789012 });
+    expect(row.lastLap).toEqual({ q: "fresh", v: 90 });
+
+    const missing = fixture();
+    Object.assign(missing.frame.standings[0], { q: { q: "m" }, gap: 0, bestLap: 0, lastLap: 0 });
+    expect(decodeOverlayUpdateV2(missing).frame!.standings[0]!.bestLap).toEqual({ q: "missing" });
+
+    const inconsistent = fixture();
+    Object.assign(inconsistent.frame.standings[0], { q: { q: "m" }, gap: 1, bestLap: 0, lastLap: 0 });
+    expect(() => decodeOverlayUpdateV2(inconsistent)).toThrow("frame.standings[0]");
+  });
+
   it.each(["invented", "F", "", null, 0])("rejects unknown quality %s", (code) => {
     const input = fixture();
     input.frame.standings[0].q = { q: "f", g: code };

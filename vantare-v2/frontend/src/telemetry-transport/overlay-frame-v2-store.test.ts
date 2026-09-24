@@ -3,10 +3,12 @@ import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { OverlayUpdateV2 } from "../generated/telemetry";
 import {
+  createOverlaySectionDecoder,
   attachOverlayFrameV2Sse,
   attachOverlayFrameV2Transport,
   createOverlayFrameV2Store,
   decodeOverlayUpdateV2,
+  OVERLAY_V2_MAX_PAYLOAD_BYTES,
   parseOverlayPullJSON,
   OVERLAY_V2_PROJECTION_ROUTE,
   OVERLAY_V2_SNAPSHOT_EVENT,
@@ -17,6 +19,24 @@ import {
 afterEach(() => vi.useRealTimers());
 
 describe("OverlayFrame v2 store", () => {
+  it("enforces the UTF-8 payload byte limit without rejecting an exact-size ASCII payload", () => {
+    const atLimit = JSON.stringify({ value: "x".repeat(OVERLAY_V2_MAX_PAYLOAD_BYTES - 12) });
+    expect(atLimit.length).toBe(OVERLAY_V2_MAX_PAYLOAD_BYTES);
+    expect(() => decodeOverlayUpdateV2(atLimit)).toThrow("overlay-frame-v2:invalid-contract:update");
+
+    const unicodeAtLimit = JSON.stringify({ value: "é".repeat((OVERLAY_V2_MAX_PAYLOAD_BYTES - 12) / 2) });
+    expect(new TextEncoder().encode(unicodeAtLimit).byteLength).toBe(OVERLAY_V2_MAX_PAYLOAD_BYTES);
+    expect(() => decodeOverlayUpdateV2(unicodeAtLimit)).toThrow("overlay-frame-v2:invalid-contract:update");
+
+    const asciiOverLimit = JSON.stringify({ value: "x".repeat(OVERLAY_V2_MAX_PAYLOAD_BYTES - 11) });
+    expect(() => decodeOverlayUpdateV2(asciiOverLimit)).toThrow("overlay-frame-v2:invalid-contract:size");
+
+    const unicodeOverLimit = JSON.stringify({ value: "é".repeat(Math.floor(OVERLAY_V2_MAX_PAYLOAD_BYTES * 0.75)) });
+    expect(unicodeOverLimit.length).toBeLessThan(OVERLAY_V2_MAX_PAYLOAD_BYTES);
+    expect(new TextEncoder().encode(unicodeOverLimit).byteLength).toBeGreaterThan(OVERLAY_V2_MAX_PAYLOAD_BYTES);
+    expect(() => decodeOverlayUpdateV2(unicodeOverLimit)).toThrow("overlay-frame-v2:invalid-contract:size");
+  });
+
   it("includes upstream JSON parsing in ingestion diagnostics", () => {
     const text = JSON.stringify({events: [{name: OVERLAY_V2_SNAPSHOT_EVENT, data: golden()}]});
     let now = 0;
@@ -47,6 +67,14 @@ describe("OverlayFrame v2 store", () => {
       expect(() => Object.assign(owned.source, {state: "error"})).toThrow();
       expect(store.getSnapshot().source?.state).toBe("live");
     } finally { parse.mockRestore(); }
+  });
+
+  it("rejects section requests with non-plain prototypes", () => {
+    const decoder = createOverlaySectionDecoder();
+    const request = Object.assign(Object.create({}), { sessionId: "s", ack: 0 });
+    expect(() => decoder(JSON.stringify({ events: [] }), request)).toThrow(
+      "overlay-frame-v2:invalid-contract:sections.request",
+    );
   });
 
   it("does not trust caller objects or invalid JSON just because they use the pull envelope", () => {

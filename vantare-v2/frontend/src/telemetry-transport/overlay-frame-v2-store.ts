@@ -22,6 +22,8 @@ export const OVERLAY_V2_PROJECTION_ROUTE = "/telemetry/overlay-v2/projection";
 // 64 KiB sigue siendo el objetivo de rendimiento representativo; el
 // transporte general conserva sus 256 KiB en telemetry-transport/contracts.
 export const OVERLAY_V2_MAX_PAYLOAD_BYTES = 72 * 1024;
+const UTF8_ENCODER = new TextEncoder();
+const UTF8_CHECK_BUFFER = new Uint8Array(OVERLAY_V2_MAX_PAYLOAD_BYTES);
 
 export type OverlayFrameV2State = Readonly<{
   revision: number;
@@ -282,7 +284,8 @@ export function createOverlaySectionDecoder(): (text: string, request: unknown) 
   let sessionId = "";
   let bases = new Map<string, SectionBase>();
   return (text, request) => {
-    if (!plainObject(request) || typeof request.sessionId !== "string" || !Number.isSafeInteger(request.ack) || (request.ack as number) < 0) invalid("sections.request");
+    if (!plainObject(request) || Object.getPrototypeOf(request) !== Object.prototype ||
+        typeof request.sessionId !== "string" || !Number.isSafeInteger(request.ack) || (request.ack as number) < 0) invalid("sections.request");
     const next = new Map(request.sessionId === sessionId ? bases : undefined);
     const response = parseOverlayPullJSON(text, {bases: next, sessionId: request.sessionId, delivery: (request.ack as number) + 1});
     // Only commit after the complete envelope, all updates and limits passed.
@@ -536,6 +539,33 @@ function normalizeStandingRows(value: unknown, path: string): void {
     const row = value[index];
     const rowPath = `${path}[${index}]`;
     if (!plainObject(row)) invalid(rowPath);
+
+    // Common compact rows share one quality across scalar timings. Normalize
+    // that shape inline; strict validation below still checks every field.
+    const simpleQuality = Object.hasOwn(row, "q") ? row.q : undefined;
+    if (
+      plainObject(simpleQuality) &&
+      Object.keys(simpleQuality).length === 1 &&
+      typeof simpleQuality.q === "string" &&
+      (Object.hasOwn(COMPACT_QUALITY_CODES, simpleQuality.q) || VALID_QUALITY_STATUSES.has(simpleQuality.q)) &&
+      typeof row.gap === "number" && Number.isFinite(row.gap) &&
+      typeof row.bestLap === "number" && Number.isFinite(row.bestLap) &&
+      typeof row.lastLap === "number" && Number.isFinite(row.lastLap) &&
+      !Object.hasOwn(row, "quality") && !Object.hasOwn(row, "cg") && !Object.hasOwn(row, "cl") &&
+      !Object.hasOwn(row, "cr") && !Object.hasOwn(row, "i") && !Object.hasOwn(row, "il")
+    ) {
+      const status = Object.hasOwn(COMPACT_QUALITY_CODES, simpleQuality.q)
+        ? COMPACT_QUALITY_CODES[simpleQuality.q as keyof typeof COMPACT_QUALITY_CODES]
+        : simpleQuality.q;
+      if (status === "missing" && (row.gap !== 0 || row.bestLap !== 0 || row.lastLap !== 0)) invalid(rowPath);
+      simpleQuality.q = status;
+      delete row.q;
+      row.quality = simpleQuality;
+      row.gap = row.gap === 0 ? { q: status } : { q: status, v: row.gap };
+      row.bestLap = row.bestLap === 0 ? { q: status } : { q: status, v: row.bestLap };
+      row.lastLap = row.lastLap === 0 ? { q: status } : { q: status, v: row.lastLap };
+      continue;
+    }
 
     // Most frames already use the descriptive legacy contract. Avoid building
     // alias maps and revisiting quality for every row unless compact wire data
@@ -875,7 +905,11 @@ type JSONObject = Record<string, unknown>;
 function cloneJSONInput(input: unknown): JSONObject {
   try {
     const text = typeof input === "string" ? input : JSON.stringify(input);
-    if (new TextEncoder().encode(text).byteLength > OVERLAY_V2_MAX_PAYLOAD_BYTES) invalid("size");
+    if (
+      typeof text === "string" &&
+      (text.length > OVERLAY_V2_MAX_PAYLOAD_BYTES ||
+        UTF8_ENCODER.encodeInto(text, UTF8_CHECK_BUFFER).read !== text.length)
+    ) invalid("size");
     const value = JSON.parse(text) as unknown;
     if (!plainObject(value)) invalid("update");
     return value;
@@ -896,7 +930,9 @@ function objectHasKeys(value: unknown, required: readonly string[], optional: re
 }
 
 function plainObject(value: unknown): value is JSONObject {
-  return value !== null && typeof value === "object" && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
+  // Untrusted records are parsed from JSON before validation. The section
+  // request keeps its prototype check at its external boundary above.
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function array(value: unknown, path: string, validate: (value: unknown, path: string) => void): void {

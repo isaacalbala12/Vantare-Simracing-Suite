@@ -181,4 +181,12 @@ describe("OrbitProfileEditor", () => {
       exit: "close-started",
     });
   });
+
+  it("rechaza esperas fraccionarias que el backend no puede guardar como segundos enteros", () => {
+    setup();
+    fireEvent.change(screen.getByTestId("orbit-editor-step-delay-0"), {
+      target: { value: "1.5" },
+    });
+    expect((screen.getByTestId("orbit-profile-editor-save") as HTMLButtonElement).disabled).toBe(true);
+  });
 });

@@ -68,7 +68,9 @@ export function OrbitProfileEditor({
 
   const advanced = draft.advanced === true;
   const launchable = useMemo(() => isProfileLaunchable(draft, apps), [draft, apps]);
-  const invalidSteps = draft.steps.some((step) => !step.appId || step.delay < 0) || (draft.policy?.firstStepDelay ?? 0) < 0;
+  const validDelay = (seconds: number) => Number.isSafeInteger(seconds) && seconds >= 0;
+  const invalidSteps = draft.steps.some((step) => !step.appId || !validDelay(step.delay)) ||
+    !validDelay(draft.policy?.firstStepDelay ?? 0);
   const duplicateSteps = hasDuplicateSteps(draft);
   const hotkeyInvalid = Boolean(draft.hotkey) && !isHotkeyAllowed(draft.hotkey as string);
   const canSave =
@@ -212,6 +214,7 @@ export function OrbitProfileEditor({
               data-testid={`orbit-editor-step-delay-${index}`}
               min={0}
               numeric
+              step={1}
               onChange={(event) => {
                 const delay = Number(event.target.value) || 0;
                 if (index === 0) {

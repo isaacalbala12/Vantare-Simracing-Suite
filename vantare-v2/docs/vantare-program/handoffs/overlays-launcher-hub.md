@@ -2517,6 +2517,10 @@ gate remoto para el veredicto de conjunto. La política de reintento sigue
 pendiente de concretar; Isaac tiene una pregunta abierta sobre qué debe
 significar `retry: all`. La UI y los procesos reales siguen sin revisión
 física; antes de computer use se avisará y esperará su confirmación.
+Una regresión posterior detectó que el editor dejaba guardar esperas
+fraccionarias aunque el contrato Go usa segundos enteros; ahora solo acepta
+enteros seguros no negativos. La prueba falló antes y pasó después con
+typecheck.
 
 ## Hub
 

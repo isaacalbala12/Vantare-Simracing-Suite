@@ -165,4 +165,23 @@ describe("chain-store reducer", () => {
     store.shutdown();
     vi.useRealTimers();
   });
+
+  it("keeps a planned 60s delay running until its deadline", () => {
+    vi.useFakeTimers();
+    const store = createChainStore();
+    store.startWatchdog();
+    store.handleStep({
+      profileId: "p1",
+      stepIndex: 0,
+      appId: "lmu",
+      status: "pending",
+      delaySeconds: 60,
+    });
+    vi.advanceTimersByTime(65000);
+    expect(store.getChain("p1")?.overallStatus).toBe("running");
+    vi.advanceTimersByTime(30000);
+    expect(store.getChain("p1")?.overallStatus).toBe("error");
+    store.shutdown();
+    vi.useRealTimers();
+  });
 });

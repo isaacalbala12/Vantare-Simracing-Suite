@@ -410,7 +410,8 @@ func TestCancelDoesNotPermitOverlappingRelaunch(t *testing.T) {
 }
 
 func TestFirstStepDelayCanBeCancelledBeforeLaunch(t *testing.T) {
-	runner := NewChainRunner(sampleBackend(), &spyEmitter{}, stubChainExec)
+	emit := &spyEmitter{}
+	runner := NewChainRunner(sampleBackend(), emit, stubChainExec)
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
 	defer cancel()
 	profile := app.LaunchProfile{
@@ -419,6 +420,9 @@ func TestFirstStepDelayCanBeCancelledBeforeLaunch(t *testing.T) {
 	}
 	if runner.runChained(ctx, profile) {
 		t.Fatal("first step launched before its configured delay")
+	}
+	if pending, ok := emit.lastPayload("launcher:chain:step"); !ok || pending.Status != "pending" || pending.DelaySeconds != 1 {
+		t.Fatalf("pending step must report planned delay, got %+v", pending)
 	}
 }
 

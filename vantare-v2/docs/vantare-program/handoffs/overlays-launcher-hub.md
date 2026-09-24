@@ -2369,6 +2369,11 @@ al siguiente paso pese a `failure: stop`; el test falló antes de corregirlo.
 `go test ./internal/app/launcher ./cmd/vantare -count=1` pasó después.
 El HEAD `ea46ba05` está publicado en la PR draft #1369; sus gates remotos
 siguen en curso. Persisten las decisiones y pruebas físicas indicadas arriba.
+Una prueba adicional reprodujo que el watchdog de Orbit marcaba una cadena
+como fallida a los 30 s durante una espera configurada de 60 s. La señal
+`pending` ahora lleva el delay previsto y el watchdog espera ese plazo más
+su margen habitual. Pruebas Go focales, 11 frontend, typecheck, build y lint
+pasaron localmente; falta el CI del nuevo HEAD y validación visual real.
 
 ## Hub
 

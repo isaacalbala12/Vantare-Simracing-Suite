@@ -48,15 +48,16 @@ func NewChainRunner(backend ProfilesBackend, emit Emitter, execFn execLauncher) 
 
 // ChainProgress is the payload emitted on chain progress events.
 type ChainProgress struct {
-	ProfileID  string `json:"profileId"`
-	StepIndex  int    `json:"stepIndex"`
-	AppID      string `json:"appId"`
-	Status     string `json:"status"`               // "pending" | "launching" | "done" | "failed"
-	Success    bool   `json:"success"`              // only meaningful for chain:done
-	StartedAt  int64  `json:"startedAt,omitempty"`  // epoch ms
-	FinishedAt int64  `json:"finishedAt,omitempty"` // epoch ms
-	Pid        int    `json:"pid,omitempty"`
-	Message    string `json:"message,omitempty"`
+	ProfileID    string `json:"profileId"`
+	StepIndex    int    `json:"stepIndex"`
+	AppID        string `json:"appId"`
+	Status       string `json:"status"`               // "pending" | "launching" | "done" | "failed"
+	Success      bool   `json:"success"`              // only meaningful for chain:done
+	StartedAt    int64  `json:"startedAt,omitempty"`  // epoch ms
+	FinishedAt   int64  `json:"finishedAt,omitempty"` // epoch ms
+	Pid          int    `json:"pid,omitempty"`
+	Message      string `json:"message,omitempty"`
+	DelaySeconds int    `json:"delaySeconds,omitempty"`
 }
 
 // chainStepResult carries the outcome of a single step.
@@ -188,18 +189,17 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 			continue
 		}
 
-		// Emit pending before the delay.
-		now := time.Now()
-		r.emit.Emit("launcher:chain:step", ChainProgress{
-			ProfileID: profile.ID, StepIndex: i, AppID: step.AppID,
-			Status: "pending", StartedAt: now.UnixMilli(),
-		})
-
 		// The first step has its own explicit delay; later steps use their step delay.
 		delay := step.Delay
 		if i == 0 {
 			delay = policy.FirstStepDelay
 		}
+		// Emit pending before the delay so the UI can keep the planned wait alive.
+		now := time.Now()
+		r.emit.Emit("launcher:chain:step", ChainProgress{
+			ProfileID: profile.ID, StepIndex: i, AppID: step.AppID,
+			Status: "pending", StartedAt: now.UnixMilli(), DelaySeconds: delay,
+		})
 		if delay > 0 {
 			select {
 			case <-ctx.Done():

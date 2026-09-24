@@ -18,6 +18,7 @@ export type ChainState = {
   profileId: string;
   startedAt: number;
   lastEventAt: number; // for watchdog
+  expectedIdleMs: number;
   steps: ChainStepState[];
   currentStepIndex: number;
   overallStatus: "running" | "done" | "error";
@@ -31,6 +32,7 @@ export type ChainStepEvent = {
   finishedAt?: number;
   message?: string;
   pid?: number;
+  delaySeconds?: number;
 };
 export type LastResult = "success" | "partial" | "error";
 
@@ -110,7 +112,7 @@ export function createChainStore() {
       for (const [id, chain] of chains) {
         if (
           chain.overallStatus === "running" &&
-          now - chain.lastEventAt > STALE_MS
+          now - chain.lastEventAt > chain.expectedIdleMs
         ) {
           chains.set(id, { ...chain, overallStatus: "error" });
           lastResults.set(id, "error");
@@ -157,11 +159,15 @@ export function createChainStore() {
       const steps = existing && !isRelaunch ? [...existing.steps] : [];
       steps[ev.stepIndex] = applyStep(steps[ev.stepIndex], ev);
       const now = ev.startedAt ?? ev.finishedAt ?? Date.now();
+      const expectedIdleMs = ev.status === "pending"
+        ? STALE_MS + Math.max(0, ev.delaySeconds ?? 0) * 1000
+        : STALE_MS;
       if (isRelaunch) {
         chains.set(ev.profileId, {
           profileId: ev.profileId,
           startedAt: now,
-          lastEventAt: now,
+          lastEventAt: Date.now(),
+          expectedIdleMs,
           steps,
           currentStepIndex: ev.stepIndex,
           overallStatus: "running",
@@ -174,12 +180,14 @@ export function createChainStore() {
                 ...existing,
                 steps,
                 currentStepIndex: ev.stepIndex,
-                lastEventAt: now,
+                lastEventAt: Date.now(),
+                expectedIdleMs,
               }
             : {
                 profileId: ev.profileId,
                 startedAt: now,
-                lastEventAt: now,
+                lastEventAt: Date.now(),
+                expectedIdleMs,
                 steps,
                 currentStepIndex: ev.stepIndex,
                 overallStatus: "running",

@@ -1,7 +1,7 @@
 export type RoadmapSection = "now" | "next" | "done";
 export type RoadmapLocale = "es" | "en" | "pt" | "it";
 export const ROADMAP_LOCALES: readonly RoadmapLocale[] = ["es", "en", "pt", "it"];
-export const ROADMAP_SECTIONS: readonly RoadmapSection[] = ["now", "next", "done"];
+const ROADMAP_SECTIONS: readonly RoadmapSection[] = ["now", "next", "done"];
 
 type LocalizedText = Record<RoadmapLocale, string>;
 export type RoadmapItem = {
@@ -10,14 +10,14 @@ export type RoadmapItem = {
   title: LocalizedText;
   body: LocalizedText;
 };
-export type RoadmapDocument = { schemaVersion: 1; items: RoadmapItem[] };
+type RoadmapDocument = { schemaVersion: 1; items: RoadmapItem[] };
 export type RoadmapPublication = {
   id: string;
   document: RoadmapDocument;
   published_at?: string;
 };
 
-export function validateDocument(document: RoadmapDocument): string | null {
+function validateDocument(document: RoadmapDocument): string | null {
   if (!document || document.schemaVersion !== 1 || !Array.isArray(document.items) || document.items.length > 40) return "size";
   const ids = new Set<string>();
   for (const item of document.items) {

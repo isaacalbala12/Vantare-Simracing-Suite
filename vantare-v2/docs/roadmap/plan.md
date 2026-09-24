@@ -787,10 +787,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Calendar correctness and performance
 - titulo.pt: Correção e otimização do Calendário
 - titulo.it: Correzione e ottimizzazione del Calendario
-- cuerpo: Plan aprobado por cortes: pruebas de recorrido, vigencia del horario, recordatorios de series, coherencia de las cinco vistas y optimización medida de apertura, interacción y consumo. Conserva la apariencia y los contratos de HUD y Studio. La validación visual Wails y el ahorro global siguen pendientes.
-- cuerpo.en: Approved incremental plan: end-to-end checks, schedule validity, series reminders, consistency across five views and measured improvements to opening, interaction and resource use. Appearance and HUD/Studio contracts are preserved. Wails visual validation and overall savings remain pending.
-- cuerpo.pt: Plano aprovado por etapas: testes de percurso, validade do horário, lembretes de séries, consistência das cinco vistas e otimização medida de abertura, interação e consumo. Preserva a aparência e os contratos de HUD e Studio. A validação visual Wails e a poupança global continuam pendentes.
-- cuerpo.it: Piano approvato per fasi: prove del percorso, validità degli orari, promemoria delle serie, coerenza delle cinque viste e ottimizzazione misurata di apertura, interazione e consumo. Preserva aspetto e contratti HUD/Studio. Validazione visiva Wails e risparmio complessivo ancora da verificare.
+- cuerpo: Plan aprobado por cortes: pruebas de recorrido, vigencia del horario, recordatorios de series, coherencia de las cinco vistas y optimización medida de apertura, interacción y consumo. Wails con perfil de prueba mostró el horario publicado del 22 de septiembre en las cinco vistas, seguimiento y detalle de avisos; falta LMU físico, visibilidad de notificaciones nativas y medición de ahorro global. Conserva la apariencia y los contratos de HUD y Studio.
+- cuerpo.en: Approved incremental plan: end-to-end checks, schedule validity, series reminders, consistency across five views and measured improvements to opening, interaction and resource use. Wails with a test profile displayed the published September 22 schedule in all five views, following and notice details; physical LMU, visible native notifications and overall savings measurements remain pending. Appearance and HUD/Studio contracts are preserved.
+- cuerpo.pt: Plano aprovado por etapas: testes de percurso, validade do horário, lembretes de séries, consistência das cinco vistas e otimização medida de abertura, interação e consumo. Wails com perfil de teste mostrou o horário publicado de 22 de setembro nas cinco vistas, seguimento e detalhes dos avisos; faltam LMU físico, visibilidade das notificações nativas e medição da poupança global. Preserva a aparência e os contratos de HUD e Studio.
+- cuerpo.it: Piano approvato per fasi: prove del percorso, validità degli orari, promemoria delle serie, coerenza delle cinque viste e ottimizzazione misurata di apertura, interazione e consumo. Wails con profilo di prova ha mostrato il calendario pubblicato del 22 settembre nelle cinque viste, il seguito delle serie e i dettagli degli avvisi; restano da verificare LMU fisico, notifiche native visibili e risparmio complessivo. Aspetto e contratti HUD/Studio sono preservati.
 - etiqueta: ISA-1027
 
 ### Recordatorios nativos con permisos y preferencias
@@ -935,6 +935,19 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - cuerpo.pt: O calendário distingue carregamento, atualização, erro e validade do horário; confirma o resultado recebido e conserva a vista durante a atualização.
 - cuerpo.it: Il calendario distingue caricamento, aggiornamento, errore e validità dell'orario; conferma il risultato ricevuto e conserva la vista durante l'aggiornamento.
 - etiqueta: Fix
+
+### Franjas UTC del horario LMU
+
+- id: calendar-weekly-slots-utc
+- tipo: fix
+- titulo.en: LMU weekly UTC slots
+- titulo.pt: Horários UTC semanais do LMU
+- titulo.it: Fasce UTC settimanali LMU
+- cuerpo: La importación admite franjas semanales expresadas como día y hora, cadencias desde medianoche o desde una hora concreta, y días de prueba y normales de una misma serie sin perder salidas.
+- cuerpo.en: Import accepts weekly slots written as a day and time, cadences from midnight or a stated hour, and test and normal days within one series without losing starts.
+- cuerpo.pt: A importação aceita horários semanais por dia e hora, cadências desde a meia-noite ou outra hora indicada, e dias de teste e normais da mesma série sem perder partidas.
+- cuerpo.it: L'importazione accetta fasce settimanali per giorno e ora, cadenze da mezzanotte o da un'ora indicata, e giorni di test e normali della stessa serie senza perdere partenze.
+- etiqueta: ISA-1372
 
 ### CPU con seis widgets
 

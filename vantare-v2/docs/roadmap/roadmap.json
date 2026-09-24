@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-24T17:06:08Z",
+  "generatedAt": "2026-09-24T19:09:56Z",
   "digest": {
-    "lastCommit": "6df485fe0a522dfc97f2f81acbc5ed84e216e54b"
+    "lastCommit": "5c73013ed59a4d69775a94fcc188d168310c59a5"
   },
   "phases": [
     {
@@ -1183,10 +1183,10 @@
         "it": "Correzione e ottimizzazione del Calendario"
       },
       "body": {
-        "es": "Plan aprobado por cortes: pruebas de recorrido, vigencia del horario, recordatorios de series, coherencia de las cinco vistas y optimización medida de apertura, interacción y consumo. Conserva la apariencia y los contratos de HUD y Studio. La validación visual Wails y el ahorro global siguen pendientes.",
-        "en": "Approved incremental plan: end-to-end checks, schedule validity, series reminders, consistency across five views and measured improvements to opening, interaction and resource use. Appearance and HUD/Studio contracts are preserved. Wails visual validation and overall savings remain pending.",
-        "pt": "Plano aprovado por etapas: testes de percurso, validade do horário, lembretes de séries, consistência das cinco vistas e otimização medida de abertura, interação e consumo. Preserva a aparência e os contratos de HUD e Studio. A validação visual Wails e a poupança global continuam pendentes.",
-        "it": "Piano approvato per fasi: prove del percorso, validità degli orari, promemoria delle serie, coerenza delle cinque viste e ottimizzazione misurata di apertura, interazione e consumo. Preserva aspetto e contratti HUD/Studio. Validazione visiva Wails e risparmio complessivo ancora da verificare."
+        "es": "Plan aprobado por cortes: pruebas de recorrido, vigencia del horario, recordatorios de series, coherencia de las cinco vistas y optimización medida de apertura, interacción y consumo. Wails con perfil de prueba mostró el horario publicado del 22 de septiembre en las cinco vistas, seguimiento y detalle de avisos; falta LMU físico, visibilidad de notificaciones nativas y medición de ahorro global. Conserva la apariencia y los contratos de HUD y Studio.",
+        "en": "Approved incremental plan: end-to-end checks, schedule validity, series reminders, consistency across five views and measured improvements to opening, interaction and resource use. Wails with a test profile displayed the published September 22 schedule in all five views, following and notice details; physical LMU, visible native notifications and overall savings measurements remain pending. Appearance and HUD/Studio contracts are preserved.",
+        "pt": "Plano aprovado por etapas: testes de percurso, validade do horário, lembretes de séries, consistência das cinco vistas e otimização medida de abertura, interação e consumo. Wails com perfil de teste mostrou o horário publicado de 22 de setembro nas cinco vistas, seguimento e detalhes dos avisos; faltam LMU físico, visibilidade das notificações nativas e medição da poupança global. Preserva a aparência e os contratos de HUD e Studio.",
+        "it": "Piano approvato per fasi: prove del percorso, validità degli orari, promemoria delle serie, coerenza delle cinque viste e ottimizzazione misurata di apertura, interazione e consumo. Wails con profilo di prova ha mostrato il calendario pubblicato del 22 settembre nelle cinque viste, il seguito delle serie e i dettagli degli avvisi; restano da verificare LMU fisico, notifiche native visibili e risparmio complessivo. Aspetto e contratti HUD/Studio sono preservati."
       },
       "label": {
         "es": "ISA-1027",
@@ -1435,6 +1435,28 @@
         "en": "Fix",
         "pt": "Fix",
         "it": "Fix"
+      }
+    },
+    {
+      "id": "calendar-weekly-slots-utc",
+      "type": "fix",
+      "title": {
+        "es": "Franjas UTC del horario LMU",
+        "en": "LMU weekly UTC slots",
+        "pt": "Horários UTC semanais do LMU",
+        "it": "Fasce UTC settimanali LMU"
+      },
+      "body": {
+        "es": "La importación admite franjas semanales expresadas como día y hora, cadencias desde medianoche o desde una hora concreta, y días de prueba y normales de una misma serie sin perder salidas.",
+        "en": "Import accepts weekly slots written as a day and time, cadences from midnight or a stated hour, and test and normal days within one series without losing starts.",
+        "pt": "A importação aceita horários semanais por dia e hora, cadências desde a meia-noite ou outra hora indicada, e dias de teste e normais da mesma série sem perder partidas.",
+        "it": "L'importazione accetta fasce settimanali per giorno e ora, cadenze da mezzanotte o da un'ora indicata, e giorni di test e normali della stessa serie senza perdere partenze."
+      },
+      "label": {
+        "es": "ISA-1372",
+        "en": "ISA-1372",
+        "pt": "ISA-1372",
+        "it": "ISA-1372"
       }
     },
     {
@@ -2191,14 +2213,19 @@
       "date": "2026-09-24",
       "entries": [
         {
-          "kind": "fix",
-          "scope": "widgets",
-          "text": "Validar datos y contratos de los cinco widgets aceptados"
+          "kind": "change",
+          "scope": "",
+          "text": "Racing Flags: letra ampliada, centrada y negra por defecto"
         },
         {
           "kind": "feat",
           "scope": "overlays",
           "text": "Pedales avanzados con datos revisados y volantes LMU"
+        },
+        {
+          "kind": "fix",
+          "scope": "widgets",
+          "text": "Validar datos y contratos de los cinco widgets aceptados"
         }
       ]
     },

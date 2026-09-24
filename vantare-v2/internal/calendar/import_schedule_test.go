@@ -34,6 +34,133 @@ func importAug25Fixture(t *testing.T) OfficialSchedule {
 	return sched
 }
 
+func importSep22Fixture(t *testing.T) OfficialSchedule {
+	t.Helper()
+	data, err := os.ReadFile(filepath.Join("testdata", "daily-schedule-2026-09-22.txt"))
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	sched, err := ImportDailySchedule(string(data))
+	if err != nil {
+		t.Fatalf("import: %v", err)
+	}
+	return sched
+}
+
+func TestImportDailyScheduleSep22Slots(t *testing.T) {
+	sched := importSep22Fixture(t)
+	if got := len(sched.Series); got != 12 {
+		t.Fatalf("series=%d, want 12", got)
+	}
+	weekly := seriesByID(t, sched, "weekly-2-4h-road-atlanta")
+	if got, want := weekly.Recurrence.Days, []string{"Wed", "Tue", "Thu", "Mon"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("weekly days=%v, want %v", got, want)
+	}
+	if got, want := weekly.Recurrence.TimesUTC, []string{"00:00", "03:00", "06:00", "09:00", "12:00", "15:00", "18:00", "21:00"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("weekly times=%v, want %v", got, want)
+	}
+	leMans := seriesByID(t, sched, "weekly-community-test-12-hours-of-le-mans")
+	if got, want := leMans.Recurrence.TimesUTC, []string{"08:00"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("Le Mans times=%v, want %v", got, want)
+	}
+	if len(leMans.Notes) != 3 || !leMans.FairShare || leMans.RaceDurationMin != 720 {
+		t.Fatalf("Le Mans details: notes=%d fairShare=%v duration=%d", len(leMans.Notes), leMans.FairShare, leMans.RaceDurationMin)
+	}
+	longBeach := seriesByID(t, sched, "weekly-grand-prix-of-long-beach")
+	if got, want := longBeach.Recurrence.TimesUTC, []string{"02:00", "06:00", "10:00", "14:00", "18:00", "22:00"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("Long Beach times=%v, want %v", got, want)
+	}
+	if !reflect.DeepEqual(longBeach.Recurrence.Days, []string{"Sat", "Sun"}) {
+		t.Fatalf("Long Beach days=%v", longBeach.Recurrence.Days)
+	}
+	if got := seriesByID(t, sched, "beginner-papaya-rules").RaceDurationMin; got != 15 {
+		t.Fatalf("Papaya Rules duration=%d, want 15", got)
+	}
+	if got := seriesByID(t, sched, "advanced-wec-xperience").VELimit; got != 65 {
+		t.Fatalf("WEC-Xperience VE limit=%d, want 65", got)
+	}
+	super60 := seriesByID(t, sched, "advanced-elms-super-60")
+	if len(super60.Classes) != 3 || super60.Classes[0].Name != "LMP2" || super60.Classes[0].Qualifier != "ELMS, 70L fuel tank" || super60.Classes[1].Qualifier != "70L fuel tank" || super60.Classes[2].Qualifier != "70% VE/NRG" {
+		t.Fatalf("Super 60 classes=%+v", super60.Classes)
+	}
+	if super60.VELimit != 0 {
+		t.Fatalf("Super 60 series VE limit=%d, want 0; only LMGT3 has the restriction", super60.VELimit)
+	}
+	if got := seriesByID(t, sched, "advanced-one-stint-sprint").VehicleClass; got != "Hypercar & LMGT3 Classes" {
+		t.Fatalf("One Stint classes=%q", got)
+	}
+}
+
+func TestImportDailyScheduleSep22DiscordMarkup(t *testing.T) {
+	text := "## 🇺🇸 Daily Race Schedule from: 22nd September 2026 🇺🇸\n" +
+		"## **Advanced [Gold SR]**\n" +
+		"starts every 30min, 38 car splits, no assists allowed, no tyre warmers, tyres: 10\n" +
+		"**One Stint Sprint**: Daytona (RC), Hypercar & LMGT3 Classes, 40m races, open setup, [RUDP enabled](https://lemansultimate.com/community-update-september-2026/)\n"
+	sched, err := ImportDailySchedule(text)
+	if err != nil {
+		t.Fatal(err)
+	}
+	series := seriesByID(t, sched, "advanced-one-stint-sprint")
+	if series.Name != "One Stint Sprint" || series.VehicleClass != "Hypercar & LMGT3 Classes" || !reflect.DeepEqual(series.Notes, []string{"RUDP enabled"}) {
+		t.Fatalf("markup lost meaning: %+v", series)
+	}
+}
+
+func TestImportDailyScheduleSep22SpecialStarts(t *testing.T) {
+	sched := importSep22Fixture(t)
+	cases := []struct {
+		id    string
+		want  int
+		first time.Time
+		last  time.Time
+	}{
+		{"weekly-2-4h-road-atlanta", 32, time.Date(2026, time.September, 22, 0, 0, 0, 0, time.UTC), time.Date(2026, time.September, 28, 21, 0, 0, 0, time.UTC)},
+		{"weekly-community-test-12-hours-of-le-mans", 1, time.Date(2026, time.September, 25, 8, 0, 0, 0, time.UTC), time.Date(2026, time.September, 25, 8, 0, 0, 0, time.UTC)},
+		{"weekly-grand-prix-of-long-beach", 12, time.Date(2026, time.September, 26, 2, 0, 0, 0, time.UTC), time.Date(2026, time.September, 27, 22, 0, 0, 0, time.UTC)},
+	}
+	for _, c := range cases {
+		t.Run(c.id, func(t *testing.T) {
+			events, err := ExpandSeries(seriesByID(t, sched, c.id), sched, sched.ValidFrom, sched.ValidUntil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(events) == 0 {
+				t.Fatal("no starts in official week")
+			}
+			if len(events) != c.want || !events[0].StartTime.Equal(c.first) || !events[len(events)-1].StartTime.Equal(c.last) {
+				t.Fatalf("starts: count=%d first=%s last=%s, want %d %s %s", len(events), events[0].StartTime, events[len(events)-1].StartTime, c.want, c.first, c.last)
+			}
+		})
+	}
+}
+
+func TestImportDailyScheduleSep22RawDiscordText(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("testdata", "daily-schedule-2026-09-22-raw.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sched, err := ImportDailySchedule(string(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sched.Series) != 12 {
+		t.Fatalf("raw message produced %d series, want 12", len(sched.Series))
+	}
+	normalized := importSep22Fixture(t)
+	for i := range sched.Series {
+		rawSeries := sched.Series[i]
+		plainSeries := normalized.Series[i]
+		rawSeries.Notes = nil
+		plainSeries.Notes = nil
+		if !reflect.DeepEqual(rawSeries, plainSeries) {
+			t.Fatalf("raw message changes parsed fields for series %q: raw=%+v plain=%+v", rawSeries.ID, rawSeries, plainSeries)
+		}
+	}
+	if len(seriesByID(t, sched, "weekly-community-test-12-hours-of-le-mans").Notes) != 4 {
+		t.Fatal("raw message lost the network test advisories")
+	}
+}
+
 func seriesByID(t *testing.T, sched OfficialSchedule, id string) RaceSeries {
 	t.Helper()
 	for _, s := range sched.Series {
@@ -121,9 +248,9 @@ func TestImportDailyScheduleStructuresVehicleClasses(t *testing.T) {
 			t.Fatalf("classes[%d]=%+v, want %+v", i, s.Classes[i], w)
 		}
 	}
-	// The per-class cap is lifted onto the series so there is one answer.
-	if s.VELimit != 75 {
-		t.Fatalf("veLimit=%d, want 75", s.VELimit)
+	// A restriction on LMGT3 must not appear as a cap on LMP2 and LMP3.
+	if s.VELimit != 0 {
+		t.Fatalf("series veLimit=%d, want 0", s.VELimit)
 	}
 	// The prose is preserved verbatim alongside the structured reading.
 	if s.VehicleClass == "" {

@@ -1,5 +1,37 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1372 — horario LMU 22-29 de septiembre (2026-09-24)
+
+Isaac facilitó el texto oficial de 12 series y autorizó publicarlo. La importación
+no aceptaba el miércoles de prueba, el slot único de viernes ni la cadencia de
+sábado/domingo desde las 02:00 UTC; el texto original además añade avisos tras
+un punto y coma. ISA-1372 cubre esas formas con prueba RED previa y fixture del
+mensaje facilitado. El límite VE/NRG de LMGT3 en ELMS Super 60 se conserva en
+esa clase: ya no se presenta como límite de LMP2/LMP3. El detalle muestra las
+restricciones y avisos oficiales, incluidos los enlaces HTTPS.
+
+**Publicación central verificada:** el 2026-09-24 18:54:54 UTC, el perfil Owner
+publicó `bbb07ef4-fbe5-4992-a756-a0c3dc765886` (12 series, vigencia
+2026-09-22–29 UTC); el horario del 8 de septiembre pasó a `superseded`. Wails
+con ese perfil volvió a abrir el horario publicado, mostró salidas en Próximas,
+Día, Semana, Mes y Timeline, y confirmó actualizar, seguir y dejar de seguir.
+El ejecutable anterior del perfil, sin los cambios de esta PR, también cargó
+las 12 series, la semanal y los especiales desde la publicación central.
+El detalle de la prueba de Le Mans mostró reglas y avisos. La app se arrancó
+con `-live=false`: falta LMU físico y prueba de visibilidad de notificaciones
+nativas. El arreglo de actualización tras login permanece en PR draft
+[#1371](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1371).
+
+El seed nuevo sigue como candidato local `C:/tmp/calendar-2026-09-22-candidate.json`
+porque faltan identidades de telemetría LMU observadas para varios circuitos y
+clases; la publicación central no inventa esas identidades. Los timestamps de
+ejemplo de Long Beach apuntan al 20 de septiembre, pero la recurrencia declarada
+para la semana 22–29 es sábado/domingo 02:00–22:00 UTC cada cuatro horas.
+PR draft [#1374](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1374)
+abierto contra nightly. Para el commit de producto `bf992deb`, el gate bloqueante
+`36047512257`, quality-check `36047512152`, ruta de promoción y GitGuardian
+pasaron. Review de Isaac sigue pendiente. Sin merge, testers, master ni release.
+
 ## VAN-740 / ISA-1305 — Wails beta.24 aceptado para Nightly (2026-09-22)
 
 [Tarea Notion VAN-740](https://app.notion.com/p/3e3e51695c6581f7a1aae9d4db50ee38), puente técnico [GitHub #1305](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1305).

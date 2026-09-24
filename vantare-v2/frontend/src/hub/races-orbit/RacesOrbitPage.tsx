@@ -86,6 +86,19 @@ const MONTH_CHIPS = 2;
  */
 const BLOCK_LABEL_PX = 58;
 
+function officialNoteParts(note: string) {
+  const parts = [];
+  const links = /\[([^\]]+)\]\((https:\/\/[^)\s]+)\)/g;
+  let end = 0;
+  for (const match of note.matchAll(links)) {
+    parts.push(note.slice(end, match.index));
+    parts.push(<a href={match[2]} key={match.index} rel="noopener noreferrer" target="_blank">{match[1]}</a>);
+    end = match.index + match[0].length;
+  }
+  parts.push(note.slice(end));
+  return parts;
+}
+
 /** Cuenta atrás a un segundo; listas de la columna cada 30 s (briefing 06). */
 const TICK_MS = 1_000;
 const COLUMN_MS = 30_000;
@@ -968,7 +981,42 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
                   <dt>{t("races.detail.sessions")}</dt>
                   <dd>{selected.sessions || "—"}{selected.sessionsEstimated ? ` · ${t("races.detail.estimated")}` : ""}</dd>
                 </div>
+                <div>
+                  <dt>{t("races.detail.splits")}</dt>
+                  <dd>{selected.source.splits}</dd>
+                </div>
+                <div>
+                  <dt>{t("races.detail.tyres")}</dt>
+                  <dd>{selected.source.tyres}</dd>
+                </div>
+                <div>
+                  <dt>{t("races.detail.warmers")}</dt>
+                  <dd>{t(selected.source.tyreWarmers ? "races.detail.yes" : "races.detail.no")}</dd>
+                </div>
+                {selected.source.assists ? <div>
+                  <dt>{t("races.detail.assists")}</dt>
+                  <dd>{selected.source.assists}</dd>
+                </div> : null}
+                {selected.source.veLimit ? <div>
+                  <dt>{t("races.detail.veLimit")}</dt>
+                  <dd>{selected.source.veLimit}%</dd>
+                </div> : null}
+                {selected.source.fairShare ? <div>
+                  <dt>{t("races.detail.fairShare")}</dt>
+                  <dd>{t("races.detail.yes")}</dd>
+                </div> : null}
+                {selected.source.forbiddenBadges?.length ? <div>
+                  <dt>{t("races.detail.forbiddenBadges")}</dt>
+                  <dd>{selected.source.forbiddenBadges.join(", ")}</dd>
+                </div> : null}
               </dl>
+
+              {selected.source.notes?.length ? (
+                <section aria-label={t("races.detail.officialNotes")}>
+                  <h4 className="orbit-eyebrow">{t("races.detail.officialNotes")}</h4>
+                  {selected.source.notes.map((note, index) => <Note key={`${index}:${note}`}>{officialNoteParts(note)}</Note>)}
+                </section>
+              ) : null}
 
               <div aria-label={t("races.detail.starts")} className="orbit-races__starts">
                 {detailStarts.map((at, index) => (

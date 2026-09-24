@@ -1,0 +1,41 @@
+## 🇺🇸 Daily Race Schedule from: 22nd September 2026 🇺🇸
+
+## **Beginner [Bronze SR]**
+
+starts every 15min, 20 car splits, high assists allowed, tyre warmers enabled, tyres: 8
+**LMGT3 Fixed**: Le Mans (WEC), LMGT3 Class, fixed setup, 20m races
+**LMP3 Fixed**: Fuji (Classic), LMP3 Class, fixed setup, 20m races
+**Papaya Rules**: Portimao (WEC), McLaren 720S LMGT3, fixed setup, 15m races
+
+## **Intermediate [Silver SR]**
+
+starts every 20min, 30m races, 38 car splits, low assists allowed, no tyre warmers, tyres: 10
+**LMGT3 Sprint Cup**: Road Atlanta (RC), LMGT3 Class, open setup
+**Prototype Fixed**: Spa-Francorchamps (WEC), LMP2 (ELMS) & LMP3 Classes, fixed setup
+**ELMS Sprint Trophy**: Long Beach (GP), LMP2 (ELMS) LMP3 & LMGT3 Classes, open setup
+
+## **Advanced [Gold SR]**
+
+starts every 30min, 38 car splits, no assists allowed, no tyre warmers, tyres: 10
+**One Stint Sprint**: Daytona (RC), Hypercar & LMGT3 Classes, 40m races, open setup, [RUDP enabled](https://lemansultimate.com/community-update-september-2026/)
+**ELMS Super 60**: Road Atlanta (RC), LMP2 (ELMS) (**70L fuel tank**) LMP3 (**70L fuel tank**) & LMGT3 (**70% VE/NRG**) Classes, 60m races, open setup
+**WEC-Xperience**: Long Beach (GP), Hypercar & LMGT3 classes, **65% VE/NRG**, 60m races, open setup
+
+## **Weekly Races (Solo)**
+
+**2.4h Road Atlanta [******SR S2******]:** Road Atlanta (RC), Hypercar LMP2 (WEC) & LMGT3 Classes, 54 car splits, 144m races, open setup, no tyre warmers, tyres: 10
+[Test event](https://lemansultimate.com/community-update-september-2026/) UTC Days & Times: Wed starts every 3hrs from midnight
+Normal event UTC Days & Times: Tue Thu Mon, starts every 3hrs from midnight
+
+## **Special Events (Team)**
+
+**Community Test 12 Hours of Le Mans [******SR B2, No <:RookieDriver:1446457659770540033> or <:DangerousDriver:1446457773226463346> badges permitted******]:** Le Mans (WEC), Hypercar LMP2 (WEC) & LMGT3 classes, 62 car splits, 720m races, open setup, tyre warmers disabled, fair share applies, tyres: 30
+UTC Days & Times: Fri 0800 <t:1790323200:t>; ****Please join in with our test events in the 0800 UTC time slot, learn more [here.](https://lemansultimate.com/community-update-september-2026/)****
+
+**IMPORTANT**: If you are taking part in our network test events, add the following to your launch options: +tracerudp=3 +recordNetworkZiplocs
+If you encounter issues, send the RUDP logs (lmu/userdata/log/rudp) to a !ticket with the race event name, date, time and timezone.
+If you are running on a low/mid spec system, ensure you [check you can run the larger grids](https://guide.lemansultimate.com/hc/en-gb/articles/15769559223439-Performance-Optimization-Guide) smoothly (62 cars, the day to night to day transition, rain/wet track) in single player before registering to a race. You may need to significantly reduce your graphics settings (lowest), set FSR to ultra performance, increase your pagefile size in Windows to over 32GB. If you cannot run this event smoothly, do not register for it.
+
+**Grand Prix of Long Beach  [******SR B2, No <:RookieDriver:1446457659770540033> or <:DangerousDriver:1446457773226463346> badges permitted******]:** Long Beach (GP), Hypercar & LMGT3 classes, 38 car splits, 160m races, open setup, tyre warmers disabled, fair share applies, tyres: 12
+
+UTC Days & Times: Sat Sun @ every 4h from 0200; <t:1789869600:t> <t:1789884000:t> <t:1789898400:t> <t:1789912800:t> <t:1789927200:t> <t:1789941600:t>

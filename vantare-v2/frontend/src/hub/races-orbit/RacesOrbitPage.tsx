@@ -53,6 +53,7 @@ import {
   RACES_TOPBAR_SLOT_ID,
 } from "../components/orbit/orbit-slot-ids";
 import "../../styles/orbit-races.css";
+import "./calendar-font.css";
 
 /** Huecos que la shell reserva para Carreras (briefing 06). Los ids viven en
     `orbit-slot-ids` para que la shell no importe la página entera. */

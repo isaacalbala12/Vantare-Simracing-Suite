@@ -33,6 +33,9 @@ func SaveProfile(backend ProfilesBackend, profile app.LaunchProfile) error {
 	if profile.Name == "" {
 		return fmt.Errorf("%w: name is required", ErrInvalidConfig)
 	}
+	if profile.LaunchOnWindowsStartup && len(profile.Steps) == 0 {
+		return fmt.Errorf("%w: autostart profile requires a step", ErrInvalidConfig)
+	}
 	apps := backend.GetLauncherApps()
 	seen := make(map[string]struct{}, len(profile.Steps))
 	for i, s := range profile.Steps {

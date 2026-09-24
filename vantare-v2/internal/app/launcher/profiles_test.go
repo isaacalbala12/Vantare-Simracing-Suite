@@ -95,6 +95,14 @@ func TestSaveProfileValidatesAppIDs(t *testing.T) {
 	})
 }
 
+func TestSaveProfileRejectsAutostartWithoutSteps(t *testing.T) {
+	backend := sampleBackend()
+	err := SaveProfile(backend, app.LaunchProfile{ID: "empty", Name: "Empty", LaunchOnWindowsStartup: true})
+	if !errors.Is(err, ErrInvalidConfig) {
+		t.Fatalf("autostart profile without steps must be rejected, got %v", err)
+	}
+}
+
 func TestSaveProfileRejectsDuplicateStepsOutsideAdvancedMode(t *testing.T) {
 	backend := newProfilesBackend()
 	if err := SaveProfile(backend, app.LaunchProfile{

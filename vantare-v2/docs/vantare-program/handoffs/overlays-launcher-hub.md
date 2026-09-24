@@ -2412,6 +2412,12 @@ Go y frontend focales y typecheck pasaron; el CI de este nuevo corte queda
 pendiente. Persisten las políticas de cancelación y salida de procesos,
 proceso ya abierto, autostart de una sola instancia y pruebas físicas. **NO-GO.**
 
+El guardado ahora rechaza activar autostart en un perfil sin pasos. La
+regresión falló antes del cambio y pasó después junto con `go test` focal de
+Launcher y `cmd/vantare`. Los borradores vacíos siguen siendo guardables sin
+autostart. La semántica de varios perfiles de inicio sigue pendiente de la
+decisión de Isaac.
+
 ## Hub
 
 Conservar estructura. Solo consistencia visual, estados reales, responsive,

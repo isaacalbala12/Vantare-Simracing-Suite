@@ -119,6 +119,26 @@ const VIEWS = [
 ] as const;
 
 describe("RacesOrbitPage", () => {
+  it("muestra restricciones y avisos oficiales de un evento especial", () => {
+    const special = series({
+      id: "special-test", name: "Community Test 12 Hours of Le Mans",
+      tier: "weekly", eventKind: "special", format: "team",
+      vehicleClass: "Hypercar & LMGT3 (70% VE/NRG)",
+      classes: [{ name: "Hypercar" }, { name: "LMGT3", qualifier: "70% VE/NRG" }],
+      splits: 62, tyres: 30, tyreWarmers: false, fairShare: true,
+      forbiddenBadges: ["RookieDriver", "DangerousDriver"],
+      notes: ["Add +tracerudp=3 +recordNetworkZiplocs to launch options.", "Read [the guide](https://guide.lemansultimate.com/)."],
+    });
+    setup({ calendar: { ...CALENDAR, series: [special] } });
+    const detail = within(screen.getByTestId("orbit-races-detail"));
+    expect(detail.getByText("Coches por split")).toBeTruthy();
+    expect(detail.getByText("62")).toBeTruthy();
+    expect(detail.getByText("Reparto justo")).toBeTruthy();
+    expect(detail.getByText("RookieDriver, DangerousDriver")).toBeTruthy();
+    expect(detail.getByText("Add +tracerudp=3 +recordNetworkZiplocs to launch options.")).toBeTruthy();
+    expect(detail.getByRole("link", { name: "the guide" }).getAttribute("href")).toBe("https://guide.lemansultimate.com/");
+    expect(detail.queryByText("Límite VE/NRG")).toBeNull();
+  });
   it("el filtro no arrastra una hora elegida de otra serie", () => {
     setup(); pickFirstDayStart();
     fireEvent.click(screen.getByTestId("orbit-races-filter-advanced"));

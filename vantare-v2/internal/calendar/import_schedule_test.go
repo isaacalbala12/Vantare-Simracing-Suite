@@ -83,8 +83,8 @@ func TestImportDailyScheduleSep22Slots(t *testing.T) {
 	if len(super60.Classes) != 3 || super60.Classes[0].Name != "LMP2" || super60.Classes[0].Qualifier != "ELMS, 70L fuel tank" || super60.Classes[1].Qualifier != "70L fuel tank" || super60.Classes[2].Qualifier != "70% VE/NRG" {
 		t.Fatalf("Super 60 classes=%+v", super60.Classes)
 	}
-	if super60.VELimit != 70 {
-		t.Fatalf("Super 60 VE limit=%d, want 70", super60.VELimit)
+	if super60.VELimit != 0 {
+		t.Fatalf("Super 60 series VE limit=%d, want 0; only LMGT3 has the restriction", super60.VELimit)
 	}
 	if got := seriesByID(t, sched, "advanced-one-stint-sprint").VehicleClass; got != "Hypercar & LMGT3 Classes" {
 		t.Fatalf("One Stint classes=%q", got)
@@ -131,6 +131,33 @@ func TestImportDailyScheduleSep22SpecialStarts(t *testing.T) {
 				t.Fatalf("starts: count=%d first=%s last=%s, want %d %s %s", len(events), events[0].StartTime, events[len(events)-1].StartTime, c.want, c.first, c.last)
 			}
 		})
+	}
+}
+
+func TestImportDailyScheduleSep22RawDiscordText(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("testdata", "daily-schedule-2026-09-22-raw.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sched, err := ImportDailySchedule(string(data))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(sched.Series) != 12 {
+		t.Fatalf("raw message produced %d series, want 12", len(sched.Series))
+	}
+	normalized := importSep22Fixture(t)
+	for i := range sched.Series {
+		rawSeries := sched.Series[i]
+		plainSeries := normalized.Series[i]
+		rawSeries.Notes = nil
+		plainSeries.Notes = nil
+		if !reflect.DeepEqual(rawSeries, plainSeries) {
+			t.Fatalf("raw message changes parsed fields for series %q: raw=%+v plain=%+v", rawSeries.ID, rawSeries, plainSeries)
+		}
+	}
+	if len(seriesByID(t, sched, "weekly-community-test-12-hours-of-le-mans").Notes) != 4 {
+		t.Fatal("raw message lost the network test advisories")
 	}
 }
 
@@ -221,9 +248,9 @@ func TestImportDailyScheduleStructuresVehicleClasses(t *testing.T) {
 			t.Fatalf("classes[%d]=%+v, want %+v", i, s.Classes[i], w)
 		}
 	}
-	// The per-class cap is lifted onto the series so there is one answer.
-	if s.VELimit != 75 {
-		t.Fatalf("veLimit=%d, want 75", s.VELimit)
+	// A restriction on LMGT3 must not appear as a cap on LMP2 and LMP3.
+	if s.VELimit != 0 {
+		t.Fatalf("series veLimit=%d, want 0", s.VELimit)
 	}
 	// The prose is preserved verbatim alongside the structured reading.
 	if s.VehicleClass == "" {

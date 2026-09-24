@@ -53,6 +53,7 @@ export const TIER_INK: Record<SeriesTier, "dark" | "light"> = {
 export interface RaceSeriesEntry {
   id: string;
   name: string;
+  source: RaceSeries;
   tier: SeriesTier;
   licenseTier?: LicenseTier;
   licenseLabel: string;
@@ -106,6 +107,7 @@ export function buildSeriesEntries(calendar: Calendar | null): RaceSeriesEntry[]
     entries.push({
       id: series.id,
       name: series.name,
+      source: series,
       tier: engine.tier,
       licenseTier: LICENSE_TIER[engine.tier],
       licenseLabel: series.safetyRating || series.licenseLabel || "",

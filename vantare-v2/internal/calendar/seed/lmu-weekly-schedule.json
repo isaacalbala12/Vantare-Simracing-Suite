@@ -238,7 +238,6 @@
       "assists": "No assists allowed",
       "tyreWarmers": false,
       "tyres": 8,
-      "veLimit": 75,
       "recurrence": {
         "kind": "interval",
         "intervalMinutes": 30

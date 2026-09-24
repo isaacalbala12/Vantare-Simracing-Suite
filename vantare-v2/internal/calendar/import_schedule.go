@@ -76,6 +76,12 @@ func ImportDailySchedule(text string) (OfficialSchedule, error) {
 				rec.Days = append(previous.Days, rec.Days...)
 			}
 			sched.Series[len(sched.Series)-1].Recurrence = rec
+			if _, advisory, ok := strings.Cut(spec, ";"); ok {
+				advisory = strings.TrimSpace(advisory)
+				if advisory != "" && !strings.HasPrefix(advisory, "<t:") {
+					sched.Series[len(sched.Series)-1].Notes = append(sched.Series[len(sched.Series)-1].Notes, advisory)
+				}
+			}
 
 		case strings.HasPrefix(line, "IMPORTANT:"):
 			// The advisory trails the series it belongs to.
@@ -319,15 +325,6 @@ func parseSeriesLine(line, tier string, d tierDefaults) (RaceSeries, error) {
 
 	s.VehicleClass = strings.Join(classFields, ", ")
 	s.Classes = parseVehicleClasses(classFields)
-	for _, c := range s.Classes {
-		// "LMGT3 Classes (75% VE)" states the cap on the class rather than on
-		// its own field; lift it so the series carries one answer.
-		if s.VELimit == 0 {
-			if m := regexp.MustCompile(`(\d+)%\s*VE`).FindStringSubmatch(c.Qualifier); m != nil {
-				s.VELimit, _ = strconv.Atoi(m[1])
-			}
-		}
-	}
 
 	if raceMin <= 0 {
 		return RaceSeries{}, fmt.Errorf("import schedule: series %q has no race duration", name)
@@ -552,6 +549,10 @@ func equalSlotTimes(a, b []string) bool {
 // "Fri Sat Sun @ every 3h from midnight UTC", which is the same thing written
 // as a cadence.
 func parseWeeklySlots(spec string) (Recurrence, error) {
+	spec = strings.TrimSpace(spec)
+	// Discord appends timestamp examples and advisories after a semicolon;
+	// the recurrence before it is the authoritative slot definition.
+	spec, _, _ = strings.Cut(spec, ";")
 	spec = strings.TrimSpace(spec)
 	daysPart, timesPart, ok := strings.Cut(spec, "@")
 	if !ok {

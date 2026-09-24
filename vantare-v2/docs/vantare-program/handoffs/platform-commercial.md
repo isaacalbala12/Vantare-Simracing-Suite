@@ -2,22 +2,32 @@
 
 ## ISA-1372 — horario LMU 22-29 de septiembre (2026-09-24)
 
-Isaac facilitó el texto oficial de 12 series. La importación no aceptaba el
-miércoles de prueba, el slot único de viernes ni la cadencia de sábado/domingo
-desde las 02:00 UTC. ISA-1372 corrige esas formas en rama aislada reconciliada
-con `nightly@5c73013e`, con prueba RED previa y fixture del texto normalizado.
-PR draft [#1374](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1374)
-abierto; CI bloqueante, calidad y ruta de promoción pasaron para el código
-`315beb48` (runs `36038331683` y `36038331821`). Revisión de Isaac pendiente.
+Isaac facilitó el texto oficial de 12 series y autorizó publicarlo. La importación
+no aceptaba el miércoles de prueba, el slot único de viernes ni la cadencia de
+sábado/domingo desde las 02:00 UTC; el texto original además añade avisos tras
+un punto y coma. ISA-1372 cubre esas formas con prueba RED previa y fixture del
+mensaje facilitado. El límite VE/NRG de LMGT3 en ELMS Super 60 se conserva en
+esa clase: ya no se presenta como límite de LMP2/LMP3. El detalle muestra las
+restricciones y avisos oficiales, incluidos los enlaces HTTPS.
 
-El seed nuevo permanece como candidato local: `C:/tmp/calendar-2026-09-22-candidate.json`.
-No se incluye ni publica porque el registro de identidades de telemetría carece
-de equivalencias observadas para Road Atlanta y Long Beach, entre otros valores
-de esta semana; el test de integridad del seed falla al introducirlos. Los
-ejemplos de timestamp de Long Beach apuntan al 20 de septiembre, pero el texto
-de la semana 22-29 declara sábado y domingo cada 4 horas desde las 02:00 UTC.
-No se han inventado nombres de telemetría. Validar esas identidades con LMU real,
-revisar el seed y sus pruebas, y comprobar Wails/avisos antes de publicar.
+**Publicación central verificada:** el 2026-09-24 18:54:54 UTC, el perfil Owner
+publicó `bbb07ef4-fbe5-4992-a756-a0c3dc765886` (12 series, vigencia
+2026-09-22–29 UTC); el horario del 8 de septiembre pasó a `superseded`. Wails
+con ese perfil volvió a abrir el horario publicado, mostró salidas en Próximas,
+Día, Semana, Mes y Timeline, y confirmó actualizar, seguir y dejar de seguir.
+El detalle de la prueba de Le Mans mostró reglas y avisos. La app se arrancó
+con `-live=false`: falta LMU físico y prueba de visibilidad de notificaciones
+nativas. El arreglo de actualización tras login permanece en PR draft
+[#1371](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1371).
+
+El seed nuevo sigue como candidato local `C:/tmp/calendar-2026-09-22-candidate.json`
+porque faltan identidades de telemetría LMU observadas para varios circuitos y
+clases; la publicación central no inventa esas identidades. Los timestamps de
+ejemplo de Long Beach apuntan al 20 de septiembre, pero la recurrencia declarada
+para la semana 22–29 es sábado/domingo 02:00–22:00 UTC cada cuatro horas.
+PR draft [#1374](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1374)
+abierto contra nightly; las comprobaciones del nuevo HEAD y review de Isaac
+siguen pendientes. Sin merge, testers, master ni release.
 
 ## VAN-740 / ISA-1305 — Wails beta.24 aceptado para Nightly (2026-09-22)
 

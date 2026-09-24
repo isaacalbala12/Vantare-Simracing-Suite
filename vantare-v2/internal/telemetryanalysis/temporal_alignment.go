@@ -146,49 +146,79 @@ func buildGPSClock(bridge HistoricalChannel, pages []HistoricalPage) (map[int64]
 // The correction reader supplies contiguous samples in increasing index order.
 // Keep only references to its GPS pages; an unordered pure caller falls back
 // to the general clock so its error reasons and timestamps remain unchanged.
+type orderedGPSClockScan struct {
+	lastIndex    int64
+	lastTime     float64
+	seen         bool
+	nonMonotonic bool
+}
+
+// accept retains only the previous GPS sample. A false ordered result asks a
+// caller holding pages to use the general clock; the correction reader itself
+// guarantees ordered, contiguous page indices.
+func (scan *orderedGPSClockScan) accept(bridge HistoricalChannel, page HistoricalPage) (TemporalAlignmentStatus, bool) {
+	if page.Sampling.Kind != SamplingContinuousImplicitFrequency || page.Sampling.FrequencyHz != bridge.Sampling.FrequencyHz {
+		return TemporalAlignmentStatus{Reason: "bridge_invalid_frequency"}, true
+	}
+	if len(page.Samples) == 0 {
+		return TemporalAlignmentStatus{Aligned: true, Reason: "aligned"}, true
+	}
+	firstIndex := page.Samples[0].Index
+	for sampleIndex, sample := range page.Samples {
+		if sample.Index < 0 {
+			return TemporalAlignmentStatus{Reason: "bridge_invalid_index"}, true
+		}
+		if (scan.seen && sample.Index <= scan.lastIndex) || sample.Index < firstIndex || sample.Index-firstIndex != int64(sampleIndex) {
+			return TemporalAlignmentStatus{}, false
+		}
+		if len(sample.Values) != 1 {
+			return TemporalAlignmentStatus{Reason: "bridge_invalid_shape"}, true
+		}
+		value, ok := numericHistoricalValue(sample.Values[0])
+		if !ok || math.IsNaN(value) || math.IsInf(value, 0) {
+			return TemporalAlignmentStatus{Reason: "bridge_invalid_value"}, true
+		}
+		if scan.seen && value <= scan.lastTime {
+			scan.nonMonotonic = true
+		}
+		scan.lastIndex, scan.lastTime, scan.seen = sample.Index, value, true
+	}
+	return TemporalAlignmentStatus{Aligned: true, Reason: "aligned"}, true
+}
+
+func (scan orderedGPSClockScan) finish() TemporalAlignmentStatus {
+	if !scan.seen {
+		return TemporalAlignmentStatus{Reason: "bridge_invalid_shape"}
+	}
+	if scan.nonMonotonic {
+		return TemporalAlignmentStatus{Reason: "bridge_non_monotonic"}
+	}
+	return TemporalAlignmentStatus{Aligned: true, Reason: "aligned"}
+}
+
 func buildOrderedGPSClock(bridge HistoricalChannel, pages []HistoricalPage) (func(int64) (float64, bool), TemporalAlignmentStatus) {
 	var pageIndexes []int
-	var lastIndex int64
-	var lastTime float64
-	seen, nonMonotonic := false, false
+	var scan orderedGPSClockScan
 	for pageIndex := range pages {
 		page := &pages[pageIndex]
 		if page.ChannelID != bridge.ID {
 			continue
 		}
-		if page.Sampling.Kind != SamplingContinuousImplicitFrequency || page.Sampling.FrequencyHz != bridge.Sampling.FrequencyHz {
-			return nil, TemporalAlignmentStatus{Reason: "bridge_invalid_frequency"}
-		}
 		if len(page.Samples) > 0 {
 			pageIndexes = append(pageIndexes, pageIndex)
 		}
-		for sampleIndex, sample := range page.Samples {
-			if sample.Index < 0 {
-				return nil, TemporalAlignmentStatus{Reason: "bridge_invalid_index"}
-			}
-			firstIndex := page.Samples[0].Index
-			if (seen && sample.Index <= lastIndex) || sample.Index < firstIndex || sample.Index-firstIndex != int64(sampleIndex) {
-				values, status := buildGPSClock(bridge, pages)
-				return func(index int64) (float64, bool) { value, ok := values[index]; return value, ok }, status
-			}
-			if len(sample.Values) != 1 {
-				return nil, TemporalAlignmentStatus{Reason: "bridge_invalid_shape"}
-			}
-			value, ok := numericHistoricalValue(sample.Values[0])
-			if !ok || math.IsNaN(value) || math.IsInf(value, 0) {
-				return nil, TemporalAlignmentStatus{Reason: "bridge_invalid_value"}
-			}
-			if seen && value <= lastTime {
-				nonMonotonic = true
-			}
-			lastIndex, lastTime, seen = sample.Index, value, true
+		status, ordered := scan.accept(bridge, *page)
+		if !ordered {
+			values, generalStatus := buildGPSClock(bridge, pages)
+			return func(index int64) (float64, bool) { value, ok := values[index]; return value, ok }, generalStatus
+		}
+		if !status.Aligned {
+			return nil, status
 		}
 	}
-	if !seen {
-		return nil, TemporalAlignmentStatus{Reason: "bridge_invalid_shape"}
-	}
-	if nonMonotonic {
-		return nil, TemporalAlignmentStatus{Reason: "bridge_non_monotonic"}
+	status := scan.finish()
+	if !status.Aligned {
+		return nil, status
 	}
 	lookup := func(index int64) (float64, bool) {
 		position := sort.Search(len(pageIndexes), func(i int) bool {
@@ -205,7 +235,7 @@ func buildOrderedGPSClock(bridge HistoricalChannel, pages []HistoricalPage) (fun
 		value, _ := numericHistoricalValue(samples[offset].Values[0])
 		return value, true
 	}
-	return lookup, TemporalAlignmentStatus{Aligned: true, Reason: "aligned"}
+	return lookup, status
 }
 
 func alignContinuousPages(result *TemporalAlignmentResult, channelIndex int, pageIndexes []int, clock func(int64) (float64, bool), gpsHz int) TemporalAlignmentStatus {

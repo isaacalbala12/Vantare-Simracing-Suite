@@ -130,3 +130,24 @@ medido** ni velocidad. El perfil nuevo es
 de tamaño de sesión en esa función, pero `ReadCorrectionInput` continúa
 materializando todas las páginas y no hay todavía garantía de memoria acotada
 ni QA Wails.
+
+## Séptimo corte: estado GPS alimentable por páginas
+
+La validación del reloj GPS ordenado quedó aislada en un acumulador que conserva
+únicamente el último índice, el último instante y el estado de monotonía. La
+ruta propia que ya tiene páginas usa ese mismo acumulador y mantiene su
+fallback general para páginas fuera de orden. Una prueba compara motivos de
+rechazo con el reloj materializado al partir el GPS en varias páginas; otra
+alimenta el acumulador desde `VisitCorrectionPages` sin guardar esas páginas
+en el consumidor y compara el estado con `ReadCorrectionInput`. La prueba
+focal empezó en rojo por ausencia del acumulador y pasó tras implementarlo.
+
+`go test ./internal/telemetryanalysis -count=1` PASS. La suite `go test -p 1
+./... -count=1` pasó en el paquete modificado, pero terminó roja por dos
+timeouts en `internal/engineer/voiceinput` y
+`internal/strategy/application`; ambas pruebas pasaron al repetirse aisladas.
+La suite global no se presenta como verde. No se ejecutó el banco DuckDB
+opt-in: las tres variables de selección de fuentes/runtime no estaban
+configuradas en esta sesión. El escáner aún no sustituye a
+`withCorrectionInput`; este corte no reduce memoria pico, no cambia las cuotas
+y no acredita carreras de 24 h ni Wails.

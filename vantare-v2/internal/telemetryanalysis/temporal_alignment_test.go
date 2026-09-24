@@ -31,6 +31,48 @@ func TestBuildTemporalAlignmentUsesExactGPSClock(t *testing.T) {
 	}
 }
 
+func TestOrderedGPSClockScanMatchesMaterializedClockAcrossPages(t *testing.T) {
+	session, pages := temporalAlignmentFixture(100, 20)
+	bridge := session.Channels[0]
+	first := pages[0]
+	first.Samples = first.Samples[:5]
+	second := pages[0]
+	second.Samples = second.Samples[5:]
+	for _, test := range []struct {
+		name   string
+		mutate func(*HistoricalPage)
+	}{
+		{name: "valid"},
+		{name: "non-monotonic", mutate: func(page *HistoricalPage) { page.Samples[0].Values[0].Scalar.Number = -1 }},
+		{name: "invalid value", mutate: func(page *HistoricalPage) { page.Samples[0].Values[0].Scalar.Number = math.Inf(1) }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			last := second
+			last.Samples = append([]HistoricalSample(nil), second.Samples...)
+			last.Samples[0].Values = append([]HistoricalValue(nil), second.Samples[0].Values...)
+			if test.mutate != nil {
+				test.mutate(&last)
+			}
+			all := []HistoricalPage{first, last}
+			_, want := buildGPSClock(bridge, all)
+			var scan orderedGPSClockScan
+			for _, page := range all {
+				if status, ordered := scan.accept(bridge, page); !ordered {
+					t.Fatalf("ordered input rejected: %+v", status)
+				} else if !status.Aligned && status.Reason != "" {
+					if status != want {
+						t.Fatalf("page status = %+v, want %+v", status, want)
+					}
+					return
+				}
+			}
+			if got := scan.finish(); got != want {
+				t.Fatalf("scan status = %+v, want %+v", got, want)
+			}
+		})
+	}
+}
+
 func TestBuildTemporalAlignmentFailsClosedForInvalidBridge(t *testing.T) {
 	tests := []struct {
 		name   string

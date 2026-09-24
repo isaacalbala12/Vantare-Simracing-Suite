@@ -101,6 +101,21 @@ func TestCorrectionInputReadsBoundedRecordedSource(t *testing.T) {
 	if visitedSamples != retainedSamples {
 		t.Fatalf("visited %d samples, retained %d", visitedSamples, retainedSamples)
 	}
+	var gpsScan orderedGPSClockScan
+	if _, err := VisitCorrectionPages(context.Background(), reader, model.Artifact, limits, func(channel HistoricalChannel, page HistoricalPage) error {
+		if channel.ID != gpsChannel.ID {
+			return nil
+		}
+		if status, ordered := gpsScan.accept(channel, page); !ordered || !status.Aligned {
+			t.Fatalf("streamed GPS page rejected: ordered=%t status=%+v", ordered, status)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if streamed := gpsScan.finish(); streamed != got.Validity.Diagnostics.TemporalBridge {
+		t.Fatalf("streamed GPS status = %+v, materialized = %+v", streamed, got.Validity.Diagnostics.TemporalBridge)
+	}
 	visitorErr := errors.New("visitor stopped")
 	before := reader.calls
 	if _, err := VisitCorrectionPages(context.Background(), reader, model.Artifact, limits, func(HistoricalChannel, HistoricalPage) error { return visitorErr }); !errors.Is(err, visitorErr) || reader.calls != before+1 {

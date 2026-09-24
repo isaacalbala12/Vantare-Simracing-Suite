@@ -1,5 +1,9 @@
 # Handoff vivo — Strategy Planner
 
+## Reloj GPS alimentable por páginas — ISA-1375 (2026-09-24)
+
+El reloj ordenado reutiliza ahora un acumulador de último índice/instante y monotonía, apto para recibir páginas sucesivas sin retenerlas. Paridad con el reloj materializado y con `VisitCorrectionPages` sobre el lector controlado PASS; paquete `internal/telemetryanalysis` completo PASS. La suite Go global terminó roja por dos timeouts externos (`voiceinput` e Imola Strategy), ambos verdes en repetición aislada. No se ejecutó el banco real porque las variables opt-in de fuente primaria, destino y runtime no están presentes en esta sesión. [Evidencia y límites](../../strategy-planner/evidence/isa-1375/allocation-dependencies-2026-09-24.md). `withCorrectionInput` sigue reteniendo todas las páginas: falta consumidor incremental, memoria pico medida, paridad real y Wails. #1375 permanece abierta; sin push, PR, CI, merge, promoción ni release.
+
 ## Cobertura continua en orden — ISA-1375 (2026-09-24)
 
 La ventana de cobertura de validez evita copiar/ordenar toda la señal cuando las páginas están ordenadas; preserva la ruta anterior para desorden y comprueba que una página posterior pueda llenar un hueco. Paridad focal, suite Go completa y banco real Algarve/Monza PASS, con resultados y hashes originales invariantes. `alloc_space` total 35.370→35.378 MiB no permite atribuir ahorro medido. [Evidencia](../../strategy-planner/evidence/isa-1375/allocation-dependencies-2026-09-24.md). La ruta productiva aún retiene todas las páginas y no hay memoria pico ni Wails; #1375 sigue abierta. Próximo trabajo decisivo: consumidor incremental de validez/proyección en `withCorrectionInput`, sin elevar la cuota de muestras. Sin push, PR, CI, merge, promoción o release.

@@ -71,7 +71,20 @@ por completo los 29,128 µs/frame del parser Go actual tendría un techo teóric
 de ~0,011 puntos a 60 Hz. Por tanto, **este parser no puede aportar por sí solo
 el punto de CPU deseado** con este tamaño de captura y frecuencia.
 
-La prueba no justifica migrar el parser a Rust. Para decidir sobre Rust en
-**toda** la telemetría, queda medir la parte de mayor coste del motor y después
-la CPU de Vantare/Wails con el mismo replay. Los costes Go ya documentados son
-el punto de partida; aquí solo se midió el A/B experimental.
+**Recomendación para una posible adopción futura:** no iniciar una migración de
+Telemetry Core a Rust con esta evidencia. En la frontera probada, la ventaja
+propia de Rust sobre un algoritmo equivalente en Go es ~1,254 µs/frame y no
+alcanza ni una centésima del punto de CPU propuesto. Añadir la DLL implica una
+frontera FFI y su empaquetado para un ahorro demasiado pequeño aquí. Los
+[costes Go documentados](../../research/telemetry-architecture-2026/05-performance-and-benchmarks.md)
+sitúan además la presión principal en payload, serialización y frontend, que
+este cambio de lenguaje no aborda. Esa lectura del coste total procede de una
+medición anterior; **no es un A/B actual de toda la aplicación**.
+
+La prueba cumple el criterio de decisión para esta investigación: Rust es
+técnicamente viable y algo más rápido en la correspondencia LMU, pero **no
+merece adoptarse ahora** para esa ruta. Reabrir la opción solo si un perfil
+actual de Vantare/Wails identifica una etapa atribuible a Go cuyo coste pueda
+producir un ahorro material, y repetir entonces un A/B de esa etapa con salida
+equivalente. No se afirma que un puerto íntegro del motor a Rust tenga el mismo
+resultado; ese puerto no se ha construido ni medido.

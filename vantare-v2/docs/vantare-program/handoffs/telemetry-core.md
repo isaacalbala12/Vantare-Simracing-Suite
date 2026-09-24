@@ -22,9 +22,11 @@ separados de 200.000 frames: 7,86 / 7,52 / 6,84 s. El ahorro Rust frente al
 Go actual se proyecta a ~0,0013 puntos de CPU a 60 Hz y 16 procesadores
 lógicos. No cubre Vantare/Wails ni el motor de telemetría; no justifica aún
 una migración. Evidencia y datos crudos:
-`docs/telemetry-core/evidence/isa-1379-go-rust-parser.md`. Siguiente gate:
-medir la etapa de mayor coste del motor y CPU de la aplicación con el mismo
-replay, si se pretende decidir sobre todo Telemetry Core.
+`docs/telemetry-core/evidence/isa-1379-go-rust-parser.md`. Decisión de esta
+investigación: Rust es viable, pero no merece adoptarse en esta ruta con el
+ahorro medido. Solo reconsiderar una migración futura si un perfil actual de
+Vantare/Wails identifica una etapa Go con coste suficiente; un puerto completo
+del motor no se ha medido.
 
 > **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
 > Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,

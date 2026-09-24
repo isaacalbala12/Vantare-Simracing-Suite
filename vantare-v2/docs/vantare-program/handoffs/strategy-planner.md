@@ -2,6 +2,14 @@
 
 ## Datos manuales dentro de la mesa — ISA-1331 (2026-09-25)
 
+Revisión posterior del recorrido registrado en navegador interno (runtime mock,
+puerto 5209): Imola Race abrió Preparación; después Carrera, Datos, selección
+explícita de la sesión y consulta de cinco vueltas funcionaron. Un primer
+intento de abrir la mesa devolvió el error genérico de guardado; tras recargar,
+la misma secuencia abrió correctamente. No hay causa ni reproducción estable:
+queda como incidencia intermitente por aislar, sin afirmar que esté corregida.
+El runtime mock no acredita persistencia Wails ni lectura del DuckDB real.
+
 El navegador interno reprodujo un error de continuidad: al abrir «Datos» desde
 una carrera manual sin sesiones, la mesa pedía elegir un DuckDB; «Revisiones»
 mostraba un historial de correcciones de telemetría que no existía. La mesa

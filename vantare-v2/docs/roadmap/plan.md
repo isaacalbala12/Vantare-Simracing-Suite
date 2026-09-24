@@ -1291,6 +1291,22 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 - cuerpo.it: Il catalogo autorizzato conserva un backup validato e ripristina il file principale assente o corrotto, preservando i dati danneggiati. Distingue recupero, corruzione e scrittura incerta. Anche lo stato di importazione viene recuperato e Strategy mostra cause di indisponibilità e avvisi di recupero. L’avanzamento viene riconciliato con le sessioni autorizzate conservate, segnala perdite recuperabili ed evita importazioni duplicate. Ogni importazione ha una scadenza nel backend, segnala timeout recuperabili e scarta risultati tardivi. Resta la verifica visiva in Wails.
 - etiqueta: Fix
 
+### Copia opcional de la fuente de telemetría
+
+- id: strategy-optional-source-copy
+- tipo: plan
+- titulo.en: Optional verified telemetry source copy
+- titulo.pt: Cópia opcional verificada da fonte de telemetria
+- titulo.it: Copia opzionale verificata della fonte telemetrica
+- cuerpo: Pendiente conectar en Strategy una copia verificada del DuckDB a una carpeta elegida por el usuario y permitir recuperar la revisión exacta si falta el original. La copia temporal de lectura no es una copia conservada. El original permanece intacto.
+- cuerpo.en: Strategy still needs to let users keep a verified DuckDB copy in a chosen folder and recover the exact revision when the original is missing. The temporary reading copy is not retained. The original stays intact.
+- cuerpo.pt: Strategy ainda tem de permitir guardar uma cópia DuckDB verificada numa pasta escolhida e recuperar a revisão exata quando falta o original. A cópia temporária de leitura não é conservada. O original permanece intacto.
+- cuerpo.it: Strategy deve ancora consentire una copia DuckDB verificata in una cartella scelta e recuperare la revisione esatta se manca l'originale. La copia temporanea di lettura non viene conservata. L'originale resta intatto.
+- etiqueta: Pendiente
+- etiqueta.en: Planned
+- etiqueta.pt: Pendente
+- etiqueta.it: In programma
+
 ### Menú de estrategia y edición de telemetría registrada
 
 - id: strategy-recorded-editor

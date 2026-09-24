@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-24T14:18:43Z",
+  "generatedAt": "2026-09-24T18:00:52Z",
   "digest": {
-    "lastCommit": "f50ab4ab96c4e646d7534d50c804f41087c446db"
+    "lastCommit": "5c73013ed59a4d69775a94fcc188d168310c59a5"
   },
   "phases": [
     {
@@ -1966,6 +1966,28 @@
       }
     },
     {
+      "id": "strategy-optional-source-copy",
+      "type": "plan",
+      "title": {
+        "es": "Copia opcional de la fuente de telemetría",
+        "en": "Optional verified telemetry source copy",
+        "pt": "Cópia opcional verificada da fonte de telemetria",
+        "it": "Copia opzionale verificata della fonte telemetrica"
+      },
+      "body": {
+        "es": "Pendiente conectar en Strategy una copia verificada del DuckDB a una carpeta elegida por el usuario y permitir recuperar la revisión exacta si falta el original. La copia temporal de lectura no es una copia conservada. El original permanece intacto.",
+        "en": "Strategy still needs to let users keep a verified DuckDB copy in a chosen folder and recover the exact revision when the original is missing. The temporary reading copy is not retained. The original stays intact.",
+        "pt": "Strategy ainda tem de permitir guardar uma cópia DuckDB verificada numa pasta escolhida e recuperar a revisão exata quando falta o original. A cópia temporária de leitura não é conservada. O original permanece intacto.",
+        "it": "Strategy deve ancora consentire una copia DuckDB verificata in una cartella scelta e recuperare la revisione esatta se manca l'originale. La copia temporanea di lettura non viene conservata. L'originale resta intatto."
+      },
+      "label": {
+        "es": "Pendiente",
+        "en": "Planned",
+        "pt": "Pendente",
+        "it": "In programma"
+      }
+    },
+    {
       "id": "strategy-recorded-editor",
       "type": "feature",
       "title": {
@@ -2216,6 +2238,16 @@
           "kind": "fix",
           "scope": "widgets",
           "text": "Validar datos y contratos de los cinco widgets aceptados"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Racing Flags: letra ampliada, centrada y negra por defecto"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlays",
+          "text": "Pedales avanzados con datos revisados y volantes LMU"
         }
       ]
     },

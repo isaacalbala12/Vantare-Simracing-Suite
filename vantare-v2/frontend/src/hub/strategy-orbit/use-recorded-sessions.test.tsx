@@ -12,6 +12,21 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); vi.useRealTimers(); });
 const candidate = { id: "candidate", state: "ready", size: 1024, modifiedAt: "2026-09-09T12:00:00Z", walPresent: false };
 const session = { candidateId: "candidate", combinationId: "combo", base: { sessionId: "source" }, opened: { sessionId: "handle", session: { metadata: [] } }, revision: { sessionId: "source", revisionId: "a".repeat(64), baseDigest: "b".repeat(64), snapshotId: "c".repeat(64) } } as RecordedSession;
 
+it("does not adopt a selected replacement file for a different saved source", async () => {
+  const selected = { ...candidate, id: "selected" };
+  const close = vi.fn().mockResolvedValue(undefined);
+  const onApply = vi.fn();
+  const client = { selectFile: vi.fn().mockResolvedValue(selected), close } as unknown as AnalysisClient;
+  vi.mocked(openRecordedSession).mockResolvedValue({ ...session, candidateId: selected.id });
+  const { result } = renderHook(() => useRecordedSessions({ revisions: [{ ...session.revision, sessionId: "different" }], client, onApply, onCleanupError: vi.fn() }));
+  await act(() => result.current.selectFile("C:\\kept\\copy.duckdb"));
+  await act(() => result.current.openAndApply(selected));
+  expect(result.current.sessions).toEqual([]);
+  expect(result.current.error).toBe("recorded_source_mismatch");
+  expect(close).toHaveBeenCalledWith("handle");
+  expect(onApply).not.toHaveBeenCalled();
+});
+
 it("automatically verifies stable discovered files until they can be opened", async () => {
   vi.useFakeTimers();
   const stabilizing = { ...candidate, state: "stabilizing" };

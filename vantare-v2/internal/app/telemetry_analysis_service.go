@@ -103,10 +103,12 @@ type TelemetryAnalysisPageRequest struct {
 }
 
 type telemetryAnalysisCandidateRecord struct {
-	mu        sync.Mutex
-	root      telemetryanalysis.SourceRoot
-	candidate telemetryanalysis.Candidate
-	tracker   *telemetryanalysis.StabilityTracker
+	mu           sync.Mutex
+	root         telemetryanalysis.SourceRoot
+	candidate    telemetryanalysis.Candidate
+	tracker      *telemetryanalysis.StabilityTracker
+	selected     bool
+	selectedPath string
 }
 
 type telemetryAnalysisSession struct {
@@ -426,6 +428,17 @@ func (service *TelemetryAnalysisService) ownedResourceCountLocked() int {
 func (service *TelemetryAnalysisService) revalidateCandidate(ctx context.Context, record *telemetryAnalysisCandidateRecord) (telemetryanalysis.Candidate, error) {
 	record.mu.Lock()
 	defer record.mu.Unlock()
+	if record.selected {
+		candidate, err := telemetryanalysis.DiscoverSelected(ctx, service.metadata, record.root, record.selectedPath)
+		if err != nil || candidate.Locator != record.candidate.Locator {
+			return telemetryanalysis.Candidate{}, ErrTelemetryAnalysisCandidateUnknown
+		}
+		record.candidate = record.tracker.Assess(candidate, observationForCandidate(candidate, service.now()))
+		if record.candidate.State != telemetryanalysis.StateReady {
+			return telemetryanalysis.Candidate{}, ErrTelemetryAnalysisNotReady
+		}
+		return record.candidate, nil
+	}
 	candidates, err := telemetryanalysis.Discover(ctx, service.metadata, record.root, service.cfg.MaxCandidates)
 	if err != nil {
 		return telemetryanalysis.Candidate{}, publicTelemetryAnalysisError(err)

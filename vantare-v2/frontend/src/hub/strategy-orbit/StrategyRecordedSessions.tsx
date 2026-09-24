@@ -29,6 +29,8 @@ export function StrategyRecordedSessionsView({ controller, onInspect, onChoose, 
   const errorMessage = !error ? null
     : error === "recorded_combination_unavailable" ? t("strategy.recorded.metadataUnavailable")
     : error === "recorded_pending_corrections" ? t("strategy.data.finishPending")
+    : error === "recorded_source_mismatch" ? t("strategy.recorded.sourceMismatch")
+    : error === "recorded_revision_mismatch" ? t("strategy.recorded.revisionMismatch")
     : error.startsWith("recorded_") ? t("strategy.recorded.error")
     : error;
   const [query, setQuery] = useState("");
@@ -36,6 +38,7 @@ export function StrategyRecordedSessionsView({ controller, onInspect, onChoose, 
   const [order, setOrder] = useState("recent");
   const [page, setPage] = useState(0);
   const [choosingCopy, setChoosingCopy] = useState(false);
+  const [choosingFile, setChoosingFile] = useState(false);
   const [copyError, setCopyError] = useState("");
   async function chooseCopy(session: RecordedSession) {
     if (!controller.saveCopy || choosingCopy) return;
@@ -48,6 +51,19 @@ export function StrategyRecordedSessionsView({ controller, onInspect, onChoose, 
       setCopyError(t("strategy.recorded.copyChooseFailed"));
     } finally {
       setChoosingCopy(false);
+    }
+  }
+  async function chooseFile() {
+    if (!controller.selectFile || choosingFile) return;
+    setChoosingFile(true);
+    setCopyError("");
+    try {
+      const path = await Dialogs.OpenFile({ CanChooseFiles: true, CanChooseDirectories: false, Filters: [{ DisplayName: "LMU DuckDB", Pattern: "*.duckdb" }], Title: t("strategy.recorded.selectFileTitle") });
+      if (path) await controller.selectFile(path);
+    } catch {
+      setCopyError(t("strategy.recorded.selectFileFailed"));
+    } finally {
+      setChoosingFile(false);
     }
   }
   const fold = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase();
@@ -65,6 +81,7 @@ export function StrategyRecordedSessionsView({ controller, onInspect, onChoose, 
     <div className="orbit-strategy__sessions-head"><b>{t("strategy.recorded.title")}</b><Chip>{sessions.length}/4</Chip></div>
     <p>{t("strategy.recorded.hint")}</p>
     <Button disabled={locked} onClick={() => void controller.discover()} variant="primary">{t("strategy.recorded.discover")}</Button>
+    {controller.selectFile ? <Button disabled={locked || choosingFile} onClick={() => void chooseFile()} variant="ghost">{t("strategy.recorded.selectFile")}</Button> : null}
     {controller.locked ? <p role="status">{t("strategy.data.finishPending")}</p> : null}
     {busy ? <p role="status">{t("strategy.recorded.busy")} <Button variant="ghost" onClick={controller.cancel}>{t("strategy.recorded.cancel")}</Button></p> : null}
     {errorMessage ? <Note title={t("strategy.recorded.error")}><span role="alert">{errorMessage}</span></Note> : null}

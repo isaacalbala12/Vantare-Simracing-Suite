@@ -131,6 +131,47 @@ func Discover(ctx context.Context, source MetadataSource, root SourceRoot, maxCa
 	return candidates, nil
 }
 
+// DiscoverSelected inspects only the explicitly chosen file. It grants no
+// stability: callers must observe it twice before authorization.
+func DiscoverSelected(ctx context.Context, source MetadataSource, root SourceRoot, selectedPath string) (Candidate, error) {
+	if err := ctx.Err(); err != nil {
+		return Candidate{}, err
+	}
+	if !filepath.IsAbs(selectedPath) || filepath.Clean(selectedPath) != selectedPath || filepath.Dir(selectedPath) != root.Root {
+		return Candidate{}, ErrInvalidOptions
+	}
+	name := filepath.Base(selectedPath)
+	if !validEntryName(name) || !hasAllowedExtension(name, root.Extensions) {
+		return Candidate{}, ErrInvalidOptions
+	}
+	entries, err := source.ReadDir(ctx, root.Root)
+	if err != nil {
+		return Candidate{}, err
+	}
+	for _, entry := range entries {
+		if entry.Name != name {
+			continue
+		}
+		if entry.IsDir || entry.IsSymlink {
+			return Candidate{}, ErrInvalidOptions
+		}
+		wal, err := source.Exists(ctx, selectedPath+".wal")
+		if err != nil {
+			return Candidate{}, err
+		}
+		state := StateStabilizing
+		if wal {
+			state = StateActive
+		}
+		return Candidate{
+			DisplayName: sanitizedCandidateName(name), Kind: root.Kind, Format: sourceFormat(root, name),
+			Locator: redactLocator(root.Kind, selectedPath), Size: entry.Size, ModTime: entry.ModTime.UTC(),
+			WALPresent: wal, State: state, sourcePath: selectedPath, walPath: walPath(root.Kind, selectedPath),
+		}, nil
+	}
+	return Candidate{}, ErrSourceMissing
+}
+
 func walPath(kind SourceKind, sourcePath string) string {
 	if kind == SourceLMU {
 		return sourcePath + ".wal"

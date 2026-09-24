@@ -6,6 +6,17 @@ import type { AnalysisBase, AnalysisClassificationCorrection, AnalysisCorrection
 import snapshotV4 from "./testdata/analysis-identity-snapshot-v4.json";
 vi.mock("@wailsio/runtime", () => ({ Call: { ByName: vi.fn() } }));
 describe("native Analysis client", () => {
+  it("registers only a user-selected file and validates the returned candidate", async () => {
+    const candidate = { id: "lmu://1234567890abcdef", state: "ready", size: 12, modifiedAt: "2026-09-24T18:00:00Z", walPresent: false };
+    const call = vi.fn().mockResolvedValue(candidate);
+    const client = createAnalysisClient({ call });
+    await expect(client.selectFile(" ")).rejects.toThrow("request.path");
+    expect(call).not.toHaveBeenCalled();
+    await expect(client.selectFile("C:\\kept\\copy.duckdb")).resolves.toMatchObject(candidate);
+    expect(call).toHaveBeenCalledExactlyOnceWith("SelectFile", [{ path: "C:\\kept\\copy.duckdb", userApproved: true }], undefined);
+    call.mockResolvedValueOnce({ ...candidate, state: "active" });
+    await expect(client.selectFile("C:\\kept\\copy.duckdb")).rejects.toThrow("selectFile.notReady");
+  });
   it("validates the copy result and never dispatches an empty folder", async () => {
     const call = vi.fn().mockResolvedValue({ path: "C:\\kept\\copy.duckdb", contentSha256: "a".repeat(64), sizeBytes: 1024 });
     const client = createAnalysisClient({ call });

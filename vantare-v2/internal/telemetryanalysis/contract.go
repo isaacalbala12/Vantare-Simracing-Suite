@@ -15,6 +15,7 @@ var (
 	ErrCandidateLimit  = errors.New("telemetry analysis candidate limit exceeded")
 	ErrNotReady        = errors.New("telemetry source is not ready")
 	ErrSourceChanged   = errors.New("telemetry source changed after stability gate")
+	ErrSourceMissing   = errors.New("selected telemetry source is missing")
 	ErrInvalidOptions  = errors.New("invalid telemetry analysis import options")
 	ErrInvalidWindow   = errors.New("invalid telemetry analysis stability window")
 	ErrInvalidManifest = errors.New("invalid telemetry analysis manifest")

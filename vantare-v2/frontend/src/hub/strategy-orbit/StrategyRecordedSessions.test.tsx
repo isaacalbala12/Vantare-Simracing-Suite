@@ -11,7 +11,7 @@ vi.mock("@wailsio/runtime", () => ({ Dialogs: { OpenFile: vi.fn() }, Call: { ByN
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 function fixture() {
   const candidate = { id: "candidate", state: "ready", size: 1024, modifiedAt: "2026-09-09T12:00:00Z", walPresent: false };
-  const client = { discover: vi.fn().mockResolvedValue([candidate]), close: vi.fn().mockResolvedValue(undefined), saveVerifiedCopy: vi.fn().mockResolvedValue({ path: "C:\\kept\\copy.duckdb", contentSha256: "d".repeat(64), sizeBytes: 1024 }) };
+  const client = { discover: vi.fn().mockResolvedValue([candidate]), close: vi.fn().mockResolvedValue(undefined), saveVerifiedCopy: vi.fn().mockResolvedValue({ path: "C:\\kept\\copy.duckdb", contentSha256: "d".repeat(64), sizeBytes: 1024 }), selectFile: vi.fn().mockResolvedValue({ id: "selected", state: "ready", size: 1024, modifiedAt: "2026-09-24T18:00:00Z", walPresent: false, displayName: "copy.duckdb" }) };
   const session = { candidateId: "candidate", combinationId: "combo", base: { sessionId: "source", contentSha256: "d".repeat(64), sizeBytes: 1024 }, opened: { sessionId: "handle", session: { metadata: [] } }, revision: { sessionId: "source", revisionId: "a".repeat(64), baseDigest: "b".repeat(64), snapshotId: "c".repeat(64) } } as RecordedSession;
   vi.mocked(openRecordedSession).mockResolvedValue(session);
   const onApply = vi.fn().mockResolvedValue(undefined);
@@ -25,6 +25,19 @@ async function prepare() {
   await screen.findByRole("button", { name: "strategy.recorded.apply" });
 }
 describe("recorded sessions panel", () => {
+  it("adds only the chosen file to the session library", async () => {
+    const { client } = fixture();
+    vi.mocked(Dialogs.OpenFile).mockResolvedValueOnce("C:\\kept\\copy.duckdb");
+    fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.selectFile" }));
+    await screen.findByText("copy.duckdb");
+    expect(client.selectFile).toHaveBeenCalledWith("C:\\kept\\copy.duckdb", expect.any(AbortSignal));
+    expect(openRecordedSession).not.toHaveBeenCalled();
+  });
+  it("explains a mismatched saved source without claiming recovery", () => {
+    const controller: RecordedSessionsController = { candidates: [], sessions: [], busy: false, error: "recorded_source_mismatch", applied: false, discover: vi.fn(), open: vi.fn(), close: vi.fn(), apply: vi.fn(), cancel: vi.fn() };
+    render(<StrategyRecordedSessionsView controller={controller} t={key => key} />);
+    expect(screen.getByRole("alert").textContent).toBe("strategy.recorded.sourceMismatch");
+  });
   it("saves a verified copy only after the user chooses a folder", async () => {
     const { client } = fixture();
     await prepare();

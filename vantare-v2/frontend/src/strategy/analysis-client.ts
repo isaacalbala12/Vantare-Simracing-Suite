@@ -1,7 +1,7 @@
 import { Call } from "@wailsio/runtime";
 import { parseInputProjection } from "./strategy-application-client";
 import { AnalysisProtocolError, parseAnalysisClassificationCorrections, parseAnalysisLapPage, parseAnalysisFamilyCorrections, parseAnalysisStintBoundaryCorrections, sameAnalysisClassificationCorrections, sameAnalysisFamilyCorrections, sameAnalysisStintBoundaryCorrections, type AnalysisClassificationCorrection, type AnalysisFamilyCorrection, type AnalysisStintBoundaryCorrection, parseAnalysisBase, parseAnalysisCandidates, parseAnalysisCommandResolution, parseAnalysisCorrection, parseAnalysisOpenedSession, parseAnalysisPage, parseAnalysisPreparation, parseAnalysisSaveCommand, parseAnalysisStatus, parseCorrectionStoreResult, sameAnalysisBase, type AnalysisBase, type AnalysisCorrection, type AnalysisRevision, type AnalysisSaveCommand } from "./analysis-contract";
-const methods = ["Status", "Discover", "Open", "SaveVerifiedCopy", "ReadPage", "PrepareCorrections", "InspectCorrectionLaps", "SaveCorrections", "SaveRecoverableCorrections", "LoadPendingCorrectionCommand", "AcknowledgeCorrectionCommand", "ResolveCorrectionCommand", "LoadCorrection", "ProjectCorrection", "CloseSession"] as const;
+const methods = ["Status", "Discover", "SelectFile", "Open", "SaveVerifiedCopy", "ReadPage", "PrepareCorrections", "InspectCorrectionLaps", "SaveCorrections", "SaveRecoverableCorrections", "LoadPendingCorrectionCommand", "AcknowledgeCorrectionCommand", "ResolveCorrectionCommand", "LoadCorrection", "ProjectCorrection", "CloseSession"] as const;
 type AnalysisMethod = typeof methods[number];
 export type AnalysisTransport = {
   call(method: AnalysisMethod, args: readonly unknown[], signal?: AbortSignal): Promise<unknown>;
@@ -110,6 +110,12 @@ export function createAnalysisClient(transport: AnalysisTransport = createNative
     },
     async discover(signal?: AbortSignal) {
       return parseAnalysisCandidates(await invoke("Discover", [], signal));
+    },
+    async selectFile(path: string, signal?: AbortSignal) {
+      if (typeof path !== "string" || !path.trim()) throw new AnalysisProtocolError("request.path");
+      const selected = parseAnalysisCandidates([await invoke("SelectFile", [{ path, userApproved: true }], signal)])[0];
+      if (selected.state !== "ready" || selected.walPresent) throw new AnalysisProtocolError("selectFile.notReady");
+      return selected;
     },
     async open(candidateId: string, userApproved: boolean, signal?: AbortSignal) {
       identifier(candidateId);

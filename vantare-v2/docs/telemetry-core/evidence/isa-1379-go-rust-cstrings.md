@@ -1,5 +1,32 @@
 # VAN-764 / GitHub #1379 — comparación parcial Go/Rust del parser LMU
 
+## Lectura rápida
+
+La comparación A/B usa **el mismo frame real de LMU** y ejecuta **la misma
+validación de cadenas**. Incluye la llamada a la DLL de Rust y la creación de
+las cadenas que necesita Go.
+
+| Métrica | Go actual | Rust + DLL | Diferencia |
+| --- | ---: | ---: | ---: |
+| Tiempo por frame | 9,346 µs | 6,330 µs | −3,016 µs |
+| CPU para 300.000 frames | 3,36 s | 2,30 s | −1,06 s |
+| Memoria por frame | 2.848 B | 2.488 B | −360 B |
+
+**Veredicto de esta prueba:** Rust gana en este tramo, pero el ahorro a 60 Hz
+equivale a aproximadamente **0,0011 puntos porcentuales de CPU** en el equipo
+medido. No alcanza el objetivo orientativo de un punto y no demuestra que
+migrar toda la telemetría valga la pena. La CPU de la tabla corresponde al
+proceso de benchmark a máxima velocidad; la cifra de 60 Hz es una extrapolación.
+La memoria es por operación; la memoria residente del proceso no mostró una
+ventaja estable.
+Un cambio pequeño en Go, eliminando una conversión redundante, reduce el
+tiempo a 8,230 µs/frame y la memoria a 2.464 B/frame. Frente a ese control,
+Rust ahorra 1,900 µs/frame y usa 24 B/frame más.
+
+Para decidir la **viabilidad futura** de Rust en la telemetría completa haría
+falta medir una etapa completa con las mismas salidas. Esta prueba parcial no
+justifica todavía una migración.
+
 Fecha: 2026-09-24. Base: `origin/nightly@5c73013ed59a4d69775a94fcc188d168310c59a5`.
 Worktree: `vantareapp/isa-1379-go-rust-telemetry`. Windows/amd64, AMD Ryzen 7
 3700X (16 procesadores lógicos), Go 1.26.4 y Rust 1.95.0.

@@ -1006,6 +1006,9 @@ func launcherProcessIdentity(id string, pid int, svc *launcher.Service) (launche
 	if pid <= 0 {
 		return launcher.ProcessIdentity{}, fmt.Errorf("launcher: confirmed PID is required")
 	}
+	if !svc.OwnsStartedProcess(id, pid) {
+		return launcher.ProcessIdentity{}, fmt.Errorf("launcher: process was not started by Vantare")
+	}
 	entry, ok := svc.Settings().GetLauncherApps()[id]
 	if !ok {
 		return launcher.ProcessIdentity{}, fmt.Errorf("launcher: app %q not found", id)

@@ -19,6 +19,20 @@ type spyEmitter struct {
 	discovery []LauncherDiscoveryProgress
 }
 
+type blockingStepEmitter struct {
+	spyEmitter
+	entered chan struct{}
+	release chan struct{}
+	once    sync.Once
+}
+
+func (e *blockingStepEmitter) Emit(name string, data any) {
+	if name == "launcher:chain:step" {
+		e.once.Do(func() { close(e.entered); <-e.release })
+	}
+	e.spyEmitter.Emit(name, data)
+}
+
 func (s *spyEmitter) Emit(name string, data any) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -359,6 +373,39 @@ func TestCancelChain(t *testing.T) {
 	// A second cancel must report no active chain.
 	if runner.CancelChain("creator") {
 		t.Error("CancelChain should return false after cancellation")
+	}
+}
+
+func TestCancelDoesNotPermitOverlappingRelaunch(t *testing.T) {
+	emit := &blockingStepEmitter{entered: make(chan struct{}), release: make(chan struct{})}
+	runner := NewChainRunner(sampleBackend(), emit, stubChainExec)
+	defer func() { close(emit.release); runner.CancelAll() }()
+	profile := app.LaunchProfile{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}}}
+	runner.StartChain(context.Background(), profile)
+	select {
+	case <-emit.entered:
+	case <-time.After(time.Second):
+		t.Fatal("first chain did not begin")
+	}
+	if !runner.CancelChain(profile.ID) {
+		t.Fatal("first chain was not cancellable")
+	}
+	runner.StartChain(context.Background(), profile)
+	if emit.count("launcher:chain:error") != 1 {
+		t.Fatal("a new chain started before the cancelled chain exited")
+	}
+}
+
+func TestFirstStepDelayCanBeCancelledBeforeLaunch(t *testing.T) {
+	runner := NewChainRunner(sampleBackend(), &spyEmitter{}, stubChainExec)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	profile := app.LaunchProfile{
+		ID: "creator", Name: "Creator", Policy: &app.LaunchPolicy{FirstStepDelay: 1},
+		Steps: []app.LaunchStep{{AppID: "lmu"}},
+	}
+	if runner.runChained(ctx, profile) {
+		t.Fatal("first step launched before its configured delay")
 	}
 }
 

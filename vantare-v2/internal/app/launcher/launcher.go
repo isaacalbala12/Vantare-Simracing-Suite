@@ -172,6 +172,23 @@ func isTerminalChainStatus(status string) bool {
 // coupling to the concrete *app.SettingsService type.
 func (s *Service) Settings() LauncherSettingsBackend { return s.settings }
 
+// OwnsStartedProcess permits close/restart only for a PID observed during this session's launch chain.
+func (s *Service) OwnsStartedProcess(appID string, pid int) bool {
+	if pid <= 0 {
+		return false
+	}
+	s.activeMu.Lock()
+	defer s.activeMu.Unlock()
+	for _, chain := range s.active {
+		for _, step := range chain.Steps {
+			if step.AppID == appID && step.PID == pid && (step.Status == "launching" || step.Status == "done") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // Snapshot builds the complete launcher payload from the settings backend.
 // It is the only aggregate construction point for the frontend migration.
 func (s *Service) Snapshot() LauncherSnapshot {
@@ -378,6 +395,9 @@ func (s *Service) LaunchProfile(ctx context.Context, profileID string) error {
 	}
 	if profile == nil {
 		return fmt.Errorf("%w: %s", ErrProfileNotFound, profileID)
+	}
+	if len(profile.Steps) == 0 {
+		return fmt.Errorf("%w: profile has no steps", ErrInvalidConfig)
 	}
 	s.chain.StartChain(ctx, *profile)
 	return nil

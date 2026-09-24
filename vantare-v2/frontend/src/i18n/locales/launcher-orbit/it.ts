@@ -6,6 +6,7 @@ export const launcherOrbitIt: Record<string, string> = {
     "Rileva le applicazioni compatibili, organizza i profili ed esegue i loro passi in ordine.",
   "launcher.search": "Cerca applicazioni",
   "launcher.searchEmpty": "Nessuna applicazione corrisponde alla ricerca.",
+  "launcher.error.dismiss": "Chiudi errore",
 
   "launcher.discovery.notRun": "Rilevamento non eseguito",
   "launcher.discovery.scanning": "Rilevamento in corso…",

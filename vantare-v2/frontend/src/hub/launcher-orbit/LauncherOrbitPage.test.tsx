@@ -3,11 +3,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // `useAppIcon` habla con el backend por el puente de Wails: aquí se captura lo
 // que emite para comprobar que pide el icono real de cada ejecutable.
-const { emitted, eventsOn, eventsEmit } = vi.hoisted(() => {
+const { emitted, eventHandlers, eventsOn, eventsEmit } = vi.hoisted(() => {
   const emitted: [string, unknown][] = [];
+  const eventHandlers = new Map<string, Array<(event: unknown) => void>>();
   return {
     emitted,
-    eventsOn: vi.fn(() => () => undefined),
+    eventHandlers,
+    eventsOn: vi.fn((name: string, handler: (event: unknown) => void) => {
+      const handlers = eventHandlers.get(name) ?? [];
+      handlers.push(handler);
+      eventHandlers.set(name, handlers);
+      return () => eventHandlers.set(name, handlers.filter((item) => item !== handler));
+    }),
     eventsEmit: vi.fn((name: string, payload?: unknown) => {
       emitted.push([name, payload]);
     }),
@@ -33,6 +40,7 @@ import { resetAppIconCache } from "../launcher/use-app-icon";
 
 beforeEach(() => {
   emitted.length = 0;
+  eventHandlers.clear();
   eventsEmit.mockClear();
   resetAppIconCache();
 });
@@ -164,6 +172,16 @@ describe("Launcher Orbit", () => {
     expect(within(list).getByText("Instalada")).toBeTruthy();
   });
 
+  it("permite accionar los botones del catálogo sin anidar controles", () => {
+    const { dispatchLauncherCommand } = setup(CATALOG);
+    const list = screen.getByTestId("orbit-launcher-apps");
+    expect(list.querySelector("button button")).toBeNull();
+    fireEvent.click(screen.getByTestId("orbit-launcher-favorite-lmu"));
+    expect(dispatchLauncherCommand).toHaveBeenCalledWith("launcher:app:favorite", {
+      id: "lmu", favorite: true,
+    });
+  });
+
   it("muestra la cadena real con su orden, sus esperas y sus políticas", () => {
     setup(CATALOG);
     const chain = screen.getByRole("list", { name: "Orden de Creador de Contenido" });
@@ -237,10 +255,12 @@ describe("Launcher Orbit", () => {
     expect(screen.getByText("Todavía no hay perfiles. Crea uno para lanzar tu cadena.")).toBeTruthy();
     expect(screen.getByText("Detección no ejecutada")).toBeTruthy();
     fireEvent.click(screen.getByTestId("orbit-launcher-create"));
-    expect(dispatchLauncherCommand).toHaveBeenCalledWith(
-      "launcher:profile:save",
-      expect.objectContaining({ profile: expect.objectContaining({ steps: [] }) }),
-    );
+    expect(dispatchLauncherCommand).not.toHaveBeenCalledWith("launcher:profile:save", expect.anything());
+  });
+
+  it("no ofrece lanzar un perfil sin pasos", () => {
+    setup({ ...CATALOG, userProfiles: [{ id: "empty", name: "Empty", steps: [] }] });
+    expect((screen.getByTestId("orbit-launcher-run-empty") as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("no usa `title` nativo en ningún control de la vista", () => {
@@ -250,6 +270,12 @@ describe("Launcher Orbit", () => {
 });
 
 describe("LauncherOrbitPage · iconos reales, creación y carga", () => {
+  it("muestra los errores del backend al usuario", () => {
+    setup(CATALOG);
+    act(() => eventHandlers.get("launcher:error")?.forEach((handler) => handler({ data: { message: "No se pudo guardar" } })));
+    expect(screen.getByRole("alert").textContent).toContain("No se pudo guardar");
+  });
+
   it("pinta el icono real de la aplicación cuando el contrato trae `iconUrl`", () => {
     setup({
       ...CATALOG,
@@ -294,9 +320,11 @@ describe("LauncherOrbitPage · iconos reales, creación y carga", () => {
     const { dispatchLauncherCommand } = setup(CATALOG);
     expect(screen.queryByTestId("launcher-profile-editor")).toBeNull();
     fireEvent.click(screen.getByTestId("orbit-launcher-create"));
+    expect(dispatchLauncherCommand).not.toHaveBeenCalledWith("launcher:profile:save", expect.anything());
+    fireEvent.click(screen.getByTestId("orbit-profile-editor-save"));
     expect(dispatchLauncherCommand).toHaveBeenCalledWith(
       "launcher:profile:save",
-      expect.objectContaining({ profile: expect.objectContaining({ steps: [] }) }),
+      expect.objectContaining({ id: expect.any(String), steps: [] }),
     );
     // El perfil nuevo no está en la instantánea (el backend no ha respondido) y
     // aun así el editor está montado: antes el clic no hacía nada.

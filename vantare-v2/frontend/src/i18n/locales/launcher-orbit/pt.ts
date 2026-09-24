@@ -6,6 +6,7 @@ export const launcherOrbitPt: Record<string, string> = {
     "Deteta aplicações compatíveis, organiza perfis e executa os seus passos por ordem.",
   "launcher.search": "Procurar aplicações",
   "launcher.searchEmpty": "Nenhuma aplicação corresponde à procura.",
+  "launcher.error.dismiss": "Fechar erro",
 
   "launcher.discovery.notRun": "Deteção não executada",
   "launcher.discovery.scanning": "A detetar aplicações…",

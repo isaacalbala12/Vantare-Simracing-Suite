@@ -43,6 +43,24 @@
   line-height: 1.55;
 }
 
+.orbit-launcher__error {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: var(--orbit-space);
+  padding: 10px 14px;
+  border: 1px solid #b54343;
+  border-radius: 8px;
+  color: var(--orbit-ink);
+}
+
+.orbit-launcher__error button {
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+
 .orbit-launcher__stats {
   flex: none;
   margin-top: var(--orbit-space);

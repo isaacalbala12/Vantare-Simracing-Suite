@@ -6,7 +6,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -28,19 +27,6 @@ type ProcessInspector interface {
 	Find(context.Context, ProcessIdentity) (ProcessInfo, bool)
 }
 
-type processTerminator interface {
-	Terminate(context.Context, int) error
-}
-
-type taskkillTerminator struct{}
-
-func (taskkillTerminator) Terminate(ctx context.Context, pid int) error {
-	if runtime.GOOS != "windows" {
-		return ErrUnsupported
-	}
-	return exec.CommandContext(ctx, "taskkill", "/PID", strconv.Itoa(pid), "/T").Run()
-}
-
 func CloseProcess(ctx context.Context, inspector ProcessInspector, identity ProcessIdentity) error {
 	if identity.PID == 0 {
 		return fmt.Errorf("launcher: process identity requires a PID")
@@ -49,15 +35,15 @@ func CloseProcess(ctx context.Context, inspector ProcessInspector, identity Proc
 	if !ok || !ProcessIsReady(identity, info) {
 		return fmt.Errorf("launcher: process identity no longer matches")
 	}
-	return taskkillTerminator{}.Terminate(ctx, info.PID)
+	return terminateVerifiedProcess(ctx, identity)
 }
 
 func RestartProcess(ctx context.Context, inspector ProcessInspector, identity ProcessIdentity, executable string, args []string) error {
+	if executable == "" || identity.ExecutablePath == "" || NormalizeExecutablePath(executable) != NormalizeExecutablePath(identity.ExecutablePath) {
+		return fmt.Errorf("launcher: restart requires the confirmed executable path")
+	}
 	if err := CloseProcess(ctx, inspector, identity); err != nil {
 		return err
-	}
-	if executable == "" {
-		return fmt.Errorf("launcher: executable path is empty")
 	}
 	cmd := exec.CommandContext(ctx, executable, args...)
 	cmd.Dir = filepath.Dir(executable)
@@ -80,11 +66,11 @@ func NormalizeExecutablePath(path string) string {
 }
 
 func IdentityMatches(expected, actual ProcessIdentity) bool {
-	if expected.PID != 0 && actual.PID != 0 && expected.PID == actual.PID {
-		return true
+	if expected.PID != 0 && expected.PID != actual.PID {
+		return false
 	}
-	if expected.ExecutablePath != "" && actual.ExecutablePath != "" {
-		return NormalizeExecutablePath(expected.ExecutablePath) == NormalizeExecutablePath(actual.ExecutablePath)
+	if expected.ExecutablePath != "" {
+		return actual.ExecutablePath != "" && NormalizeExecutablePath(expected.ExecutablePath) == NormalizeExecutablePath(actual.ExecutablePath)
 	}
 	if expected.ProcessName != "" && actual.ProcessName != "" {
 		return strings.EqualFold(filepath.Base(expected.ProcessName), filepath.Base(actual.ProcessName))
@@ -98,21 +84,9 @@ func ProcessIsReady(expected ProcessIdentity, actual ProcessInfo) bool {
 	})
 }
 
-type tasklistInspector struct{}
+type systemProcessInspector struct{}
 
-func (tasklistInspector) Find(ctx context.Context, expected ProcessIdentity) (ProcessInfo, bool) {
-	if runtime.GOOS != "windows" || expected.PID == 0 {
-		return ProcessInfo{}, false
-	}
-	cmd := exec.CommandContext(ctx, "tasklist", "/FI", "PID eq "+strconv.Itoa(expected.PID), "/FO", "CSV", "/NH")
-	output, err := cmd.Output()
-	if err != nil || !strings.Contains(string(output), strconv.Itoa(expected.PID)) {
-		return ProcessInfo{}, false
-	}
-	return ProcessInfo{PID: expected.PID, ExecutablePath: expected.ExecutablePath, ProcessName: expected.ProcessName, Alive: true}, true
-}
-
-func DefaultProcessInspector() ProcessInspector { return tasklistInspector{} }
+func DefaultProcessInspector() ProcessInspector { return systemProcessInspector{} }
 
 func WaitForReady(ctx context.Context, inspector ProcessInspector, identity ProcessIdentity, grace time.Duration, poll time.Duration) error {
 	if inspector == nil {

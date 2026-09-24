@@ -2328,6 +2328,22 @@ siguiente corte debe reproducir y corregir estos fallos, pasar CI y comprobar
 en Windows real creación, ejecución, errores, recuperación, procesos, atajos,
 autostart y las aplicaciones comprometidas para el lanzamiento.
 
+Avance de la rama `vantareapp/isa-1368-launcher-release-audit`: el perfil de
+Orbit se envía con la forma que deserializa Wails; crear solo abre un borrador
+y cancelar no deja un perfil vacío. `launcher:error` se presenta en Orbit y un
+perfil sin pasos no se puede lanzar. La primera espera se aplica y es
+cancelable; la cancelación conserva la exclusión de la cadena hasta que termina.
+El cierre/reinicio requiere un PID observado en la sesión y un ejecutable
+consultado al sistema; un paso fallido no autoriza cierre y reiniciar valida
+la ruta antes de tocar el proceso. El catálogo ya no anida botones. Las
+regresiones focales, typecheck, build y lint pasan. `go test -p 1 ./...` no
+concluyó: quedó esperando en el paquete `internal/app` mientras otra prueba
+DuckDB seguía activa en la máquina; se interrumpió esta ejecución sin atribuir
+el problema al Launcher. **Sigue sin aptitud de lanzamiento:** las políticas `ask`,
+`alreadyRunning`, `cancel` y `exit` aún no gobiernan el ejecutor; el atajo y
+autostart editados no se activan al guardar; falta Wails/Steam/LMU físico y
+comprobar el artefacto instalable. No hay promoción ni release.
+
 ## Hub
 
 Conservar estructura. Solo consistencia visual, estados reales, responsive,

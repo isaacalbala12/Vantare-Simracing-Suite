@@ -24,6 +24,15 @@ func TestIdentityMatchesPrefersPathThenFallsBackToName(t *testing.T) {
 	}
 }
 
+func TestIdentityMatchesRejectsReusedPIDWithDifferentPath(t *testing.T) {
+	if IdentityMatches(
+		ProcessIdentity{PID: 42, ExecutablePath: `C:\Apps\OBS\obs64.exe`},
+		ProcessIdentity{PID: 42, ExecutablePath: `C:\Other\other.exe`},
+	) {
+		t.Fatal("same PID with a different executable must not match")
+	}
+}
+
 type fakeInspector struct {
 	info ProcessInfo
 }
@@ -52,4 +61,19 @@ func TestCloseProcessRequiresConfirmedIdentity(t *testing.T) {
 	if err := CloseProcess(context.Background(), fakeInspector{}, ProcessIdentity{}); err == nil {
 		t.Fatal("close must reject an identity without PID")
 	}
+}
+
+func TestRestartRejectsMissingExecutableBeforeInspectingOrClosing(t *testing.T) {
+	inspector := &countingInspector{}
+	err := RestartProcess(context.Background(), inspector, ProcessIdentity{PID: 42, ExecutablePath: `C:\Apps\OBS\obs.exe`}, "", nil)
+	if err == nil || inspector.calls != 0 {
+		t.Fatalf("invalid restart must fail before touching process: err=%v calls=%d", err, inspector.calls)
+	}
+}
+
+type countingInspector struct{ calls int }
+
+func (f *countingInspector) Find(context.Context, ProcessIdentity) (ProcessInfo, bool) {
+	f.calls++
+	return ProcessInfo{}, false
 }

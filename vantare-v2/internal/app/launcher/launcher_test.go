@@ -130,6 +130,21 @@ func TestServiceSnapshotTracksActiveChainProgress(t *testing.T) {
 	}
 }
 
+func TestServiceOnlyOwnsPIDsFromItsLaunchEvents(t *testing.T) {
+	svc := NewService(newBackendWithLMU(), &spyEmitter{}, nil)
+	if svc.OwnsStartedProcess("lmu", 42) {
+		t.Fatal("arbitrary PID must not be owned")
+	}
+	svc.chain.emit.Emit("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 0, AppID: "lmu", Status: "launching", Pid: 42})
+	if !svc.OwnsStartedProcess("lmu", 42) || svc.OwnsStartedProcess("obs", 42) {
+		t.Fatal("ownership must match both application and PID")
+	}
+	svc.chain.emit.Emit("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 0, AppID: "lmu", Status: "failed", Pid: 42})
+	if svc.OwnsStartedProcess("lmu", 42) {
+		t.Fatal("failed launch must not authorize process termination")
+	}
+}
+
 func TestAddManualAppPersistsAndIsVisible(t *testing.T) {
 	backend := newBackendWithLMU()
 	emitter := &spyEmitter{}
@@ -200,6 +215,15 @@ func TestProfilesCRUDRoundTrip(t *testing.T) {
 	}
 	if got := svc.ListProfiles(); len(got) != 0 {
 		t.Fatalf("expected 0 profiles after delete, got %d", len(got))
+	}
+}
+
+func TestLaunchProfileRejectsEmptyChain(t *testing.T) {
+	backend := newBackendWithLMU()
+	backend.profiles = []app.LaunchProfile{{ID: "empty", Name: "Empty"}}
+	svc := NewService(backend, &spyEmitter{}, nil)
+	if err := svc.LaunchProfile(context.Background(), "empty"); err == nil {
+		t.Fatal("empty chain must not report a successful launch")
 	}
 }
 

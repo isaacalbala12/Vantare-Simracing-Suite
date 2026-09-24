@@ -24,7 +24,12 @@ type ChainRunner struct {
 	exec    execLauncher    // injectable for tests
 	emit    Emitter
 	mu      sync.Mutex
-	active  map[string]context.CancelFunc // profileID -> cancel func
+	active  map[string]*activeChain // profileID -> running chain
+}
+
+type activeChain struct {
+	cancelled bool
+	cancel    context.CancelFunc
 }
 
 // NewChainRunner builds a ChainRunner. execFn defaults to defaultExecLauncher
@@ -37,7 +42,7 @@ func NewChainRunner(backend ProfilesBackend, emit Emitter, execFn execLauncher) 
 		backend: backend,
 		exec:    execFn,
 		emit:    emit,
-		active:  map[string]context.CancelFunc{},
+		active:  map[string]*activeChain{},
 	}
 }
 
@@ -85,7 +90,8 @@ func (r *ChainRunner) StartChain(parent context.Context, profile app.LaunchProfi
 		return
 	}
 	ctx, cancel := context.WithCancel(parent)
-	r.active[profile.ID] = cancel
+	chain := &activeChain{cancel: cancel}
+	r.active[profile.ID] = chain
 	r.mu.Unlock()
 
 	go func() {
@@ -93,6 +99,7 @@ func (r *ChainRunner) StartChain(parent context.Context, profile app.LaunchProfi
 			r.mu.Lock()
 			delete(r.active, profile.ID)
 			r.mu.Unlock()
+			cancel()
 		}()
 		r.RunChain(ctx, profile)
 	}()
@@ -103,9 +110,9 @@ func (r *ChainRunner) StartChain(parent context.Context, profile app.LaunchProfi
 func (r *ChainRunner) CancelChain(profileID string) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if cancel, ok := r.active[profileID]; ok {
-		cancel()
-		delete(r.active, profileID)
+	if chain, ok := r.active[profileID]; ok && !chain.cancelled {
+		chain.cancelled = true
+		chain.cancel()
 		return true
 	}
 	return false
@@ -115,10 +122,10 @@ func (r *ChainRunner) CancelChain(profileID string) bool {
 func (r *ChainRunner) CancelAll() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	for _, cancel := range r.active {
-		cancel()
+	for _, chain := range r.active {
+		chain.cancelled = true
+		chain.cancel()
 	}
-	r.active = map[string]context.CancelFunc{}
 }
 
 // RunChain executes the profile synchronously and emits progress events.
@@ -185,12 +192,16 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 			Status: "pending", StartedAt: now.UnixMilli(),
 		})
 
-		// Delay before the step (skip for the first step even if its delay > 0).
-		if step.Delay > 0 && i > 0 {
+		// The first step has its own explicit delay; later steps use their step delay.
+		delay := step.Delay
+		if i == 0 {
+			delay = policy.FirstStepDelay
+		}
+		if delay > 0 {
 			select {
 			case <-ctx.Done():
 				return false
-			case <-time.After(time.Duration(step.Delay) * time.Second):
+			case <-time.After(time.Duration(delay) * time.Second):
 			}
 		}
 

@@ -6,6 +6,7 @@ export const launcherOrbitEn: Record<string, string> = {
     "Detects compatible apps, organises profiles and runs their steps in order.",
   "launcher.search": "Search apps",
   "launcher.searchEmpty": "No app matches the search.",
+  "launcher.error.dismiss": "Dismiss error",
 
   "launcher.discovery.notRun": "Detection not run",
   "launcher.discovery.scanning": "Detecting apps…",

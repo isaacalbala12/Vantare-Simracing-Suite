@@ -6,6 +6,16 @@ import type { AnalysisBase, AnalysisClassificationCorrection, AnalysisCorrection
 import snapshotV4 from "./testdata/analysis-identity-snapshot-v4.json";
 vi.mock("@wailsio/runtime", () => ({ Call: { ByName: vi.fn() } }));
 describe("native Analysis client", () => {
+  it("validates the copy result and never dispatches an empty folder", async () => {
+    const call = vi.fn().mockResolvedValue({ path: "C:\\kept\\copy.duckdb", contentSha256: "a".repeat(64), sizeBytes: 1024 });
+    const client = createAnalysisClient({ call });
+    await expect(client.saveVerifiedCopy("handle", " ")).rejects.toThrow("request.destinationDirectory");
+    expect(call).not.toHaveBeenCalled();
+    await expect(client.saveVerifiedCopy("handle", "C:\\kept")).resolves.toMatchObject({ sizeBytes: 1024 });
+    expect(call).toHaveBeenCalledExactlyOnceWith("SaveVerifiedCopy", [{ sessionId: "handle", destinationDirectory: "C:\\kept", userApproved: true }], undefined);
+    call.mockResolvedValueOnce({ path: "C:\\kept\\copy.duckdb", contentSha256: "wrong", sizeBytes: 1024 });
+    await expect(client.saveVerifiedCopy("handle", "C:\\kept")).rejects.toThrow("copy.result");
+  });
   it("resolves an exact command without replay and rejects another command or source", async () => {
     const a = "a".repeat(64), b = "b".repeat(64);
     const base = { sessionId: "source", contentSha256: a, sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "lap-validity.v1", segmentationDigest: b };

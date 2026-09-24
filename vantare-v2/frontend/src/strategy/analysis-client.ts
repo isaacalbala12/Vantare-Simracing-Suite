@@ -1,7 +1,7 @@
 import { Call } from "@wailsio/runtime";
 import { parseInputProjection } from "./strategy-application-client";
 import { AnalysisProtocolError, parseAnalysisClassificationCorrections, parseAnalysisLapPage, parseAnalysisFamilyCorrections, parseAnalysisStintBoundaryCorrections, sameAnalysisClassificationCorrections, sameAnalysisFamilyCorrections, sameAnalysisStintBoundaryCorrections, type AnalysisClassificationCorrection, type AnalysisFamilyCorrection, type AnalysisStintBoundaryCorrection, parseAnalysisBase, parseAnalysisCandidates, parseAnalysisCommandResolution, parseAnalysisCorrection, parseAnalysisOpenedSession, parseAnalysisPage, parseAnalysisPreparation, parseAnalysisSaveCommand, parseAnalysisStatus, parseCorrectionStoreResult, sameAnalysisBase, type AnalysisBase, type AnalysisCorrection, type AnalysisRevision, type AnalysisSaveCommand } from "./analysis-contract";
-const methods = ["Status", "Discover", "Open", "ReadPage", "PrepareCorrections", "InspectCorrectionLaps", "SaveCorrections", "SaveRecoverableCorrections", "LoadPendingCorrectionCommand", "AcknowledgeCorrectionCommand", "ResolveCorrectionCommand", "LoadCorrection", "ProjectCorrection", "CloseSession"] as const;
+const methods = ["Status", "Discover", "Open", "SaveVerifiedCopy", "ReadPage", "PrepareCorrections", "InspectCorrectionLaps", "SaveCorrections", "SaveRecoverableCorrections", "LoadPendingCorrectionCommand", "AcknowledgeCorrectionCommand", "ResolveCorrectionCommand", "LoadCorrection", "ProjectCorrection", "CloseSession"] as const;
 type AnalysisMethod = typeof methods[number];
 export type AnalysisTransport = {
   call(method: AnalysisMethod, args: readonly unknown[], signal?: AbortSignal): Promise<unknown>;
@@ -117,6 +117,15 @@ export function createAnalysisClient(transport: AnalysisTransport = createNative
         throw new AnalysisProtocolError("request.userApproved");
       }
       return parseAnalysisOpenedSession(await invoke("Open", [{ candidateId, userApproved }], signal));
+    },
+    async saveVerifiedCopy(sessionId: string, destinationDirectory: string, signal?: AbortSignal) {
+      identifier(sessionId);
+      if (typeof destinationDirectory !== "string" || !destinationDirectory.trim()) throw new AnalysisProtocolError("request.destinationDirectory");
+      const result = await invoke("SaveVerifiedCopy", [{ sessionId, destinationDirectory, userApproved: true }], signal);
+      if (!result || typeof result !== "object" || Array.isArray(result)) throw new AnalysisProtocolError("copy.result");
+      const copy = result as Record<string, unknown>;
+      if (typeof copy.path !== "string" || !copy.path || typeof copy.contentSha256 !== "string" || !/^[a-f0-9]{64}$/.test(copy.contentSha256) || !Number.isSafeInteger(copy.sizeBytes) || (copy.sizeBytes as number) < 0) throw new AnalysisProtocolError("copy.result");
+      return { path: copy.path, contentSha256: copy.contentSha256, sizeBytes: copy.sizeBytes as number };
     },
     async page(request: AnalysisPageRequest, signal?: AbortSignal) {
       identifier(request.sessionId);

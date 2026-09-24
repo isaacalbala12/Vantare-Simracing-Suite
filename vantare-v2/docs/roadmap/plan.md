@@ -1298,10 +1298,10 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 - titulo.en: Optional verified telemetry source copy
 - titulo.pt: Cópia opcional verificada da fonte de telemetria
 - titulo.it: Copia opzionale verificata della fonte telemetrica
-- cuerpo: Pendiente conectar en Strategy una copia verificada del DuckDB a una carpeta elegida por el usuario y permitir recuperar la revisión exacta si falta el original. La copia temporal de lectura no es una copia conservada. El original permanece intacto.
-- cuerpo.en: Strategy still needs to let users keep a verified DuckDB copy in a chosen folder and recover the exact revision when the original is missing. The temporary reading copy is not retained. The original stays intact.
-- cuerpo.pt: Strategy ainda tem de permitir guardar uma cópia DuckDB verificada numa pasta escolhida e recuperar a revisão exata quando falta o original. A cópia temporária de leitura não é conservada. O original permanece intacto.
-- cuerpo.it: Strategy deve ancora consentire una copia DuckDB verificata in una cartella scelta e recuperare la revisione esatta se manca l'originale. La copia temporanea di lettura non viene conservata. L'originale resta intatto.
+- cuerpo: Strategy permite elegir una carpeta y guardar una copia DuckDB verificada de una sesión abierta sin modificar el original. Aún falta asociar esa copia de forma persistente y recuperar la revisión exacta si desaparece el original. La copia temporal de lectura no es una copia conservada.
+- cuerpo.en: Strategy lets users choose a folder and save a verified DuckDB copy of an open session without changing the original. Persistent association and recovery of the exact revision when the original disappears are still pending. The temporary reading copy is not retained.
+- cuerpo.pt: Strategy permite escolher uma pasta e guardar uma cópia DuckDB verificada de uma sessão aberta sem alterar o original. Ainda faltam a associação persistente e a recuperação da revisão exata se o original desaparecer. A cópia temporária de leitura não é conservada.
+- cuerpo.it: Strategy permette di scegliere una cartella e salvare una copia DuckDB verificata di una sessione aperta senza modificare l'originale. Restano da fare l'associazione persistente e il recupero della revisione esatta se l'originale scompare. La copia temporanea di lettura non viene conservata.
 - etiqueta: Pendiente
 - etiqueta.en: Planned
 - etiqueta.pt: Pendente

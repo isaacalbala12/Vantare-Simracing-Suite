@@ -42,6 +42,7 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
   useEffect(() => { cleanupError.current = onCleanupError; }, [onCleanupError]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [savedCopies, setSavedCopies] = useState<Readonly<Record<string, string>>>({});
   const [applied, setApplied] = useState(false);
   const corrections = useRecordedCorrections(client, async (next, signal) => {
     signal.throwIfAborted();
@@ -88,7 +89,7 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
     }
   }
   return {
-    candidates, sessions, busy: busy || corrections.busy, error, applied, corrections,
+    candidates, sessions, busy: busy || corrections.busy, error, applied, savedCopies, corrections,
     locked: corrections.unresolved,
     cancel: () => { pending.current?.abort(); corrections.cancel(); },
     discover: () => run(async signal => {
@@ -147,6 +148,12 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
       await client.close(session.opened.sessionId);
       if (alive.current) { corrections.clear(session.opened.sessionId); update(owned.current.filter(item => item !== session)); }
     }),
+    saveCopy: (session: RecordedSession, destinationDirectory: string) => run(async signal => {
+      if (!owned.current.some(item => item.opened.sessionId === session.opened.sessionId)) throw new Error("recorded_source_unavailable");
+      const copy = await client.saveVerifiedCopy(session.opened.sessionId, destinationDirectory, signal);
+      if (copy.contentSha256 !== session.base.contentSha256 || copy.sizeBytes !== session.base.sizeBytes) throw new Error("recorded_copy_mismatch");
+      if (alive.current) setSavedCopies(previous => ({ ...previous, [session.opened.sessionId]: copy.path }));
+    }),
     // Acceptance of the inspect action, not success of the read. Resolves the
     // owned source by handle and wipes editor state before loading, so a
     // failed load never shows another source's data.
@@ -170,4 +177,4 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
   };
 }
 
-export type RecordedSessionsController = Pick<ReturnType<typeof useRecordedSessions>, "candidates" | "sessions" | "busy" | "error" | "applied" | "cancel" | "discover" | "open" | "openAndApply" | "clear" | "close" | "apply"> & { readonly locked?: boolean };
+export type RecordedSessionsController = Pick<ReturnType<typeof useRecordedSessions>, "candidates" | "sessions" | "busy" | "error" | "applied" | "cancel" | "discover" | "open" | "openAndApply" | "clear" | "close" | "apply"> & Partial<Pick<ReturnType<typeof useRecordedSessions>, "savedCopies" | "saveCopy">> & { readonly locked?: boolean };

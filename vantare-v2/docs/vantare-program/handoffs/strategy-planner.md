@@ -2,7 +2,7 @@
 
 ## Copia opcional de fuente — ISA-1373 (2026-09-24)
 
-E04/A02 detectó que el importador de arranque declaraba `managed_copy` aunque borraba la copia privada al terminar. En la rama aislada #1373, la declaración pasa a `reference`; Analysis puede escribir desde una sesión abierta una copia separada en carpeta explícita, comprobar tamaño y SHA-256, mantener el original intacto y limpiar un archivo parcial ante corrupción/cancelación. Pruebas focales y Go completo pasan; el roadmap anuncia honestamente que la función de producto sigue pendiente. Faltan selector de carpeta en Strategy, registro persistente de la copia, reapertura/revisión exacta cuando falta el original y QA Wails. La copia temporal no se considera recuperación. Sin push, PR, CI, merge, promoción ni release.
+E04/A02 detectó que el importador de arranque declaraba `managed_copy` aunque borraba la copia privada al terminar. En la rama aislada #1373, la declaración pasa a `reference`; Analysis puede escribir desde una sesión abierta una copia separada en carpeta explícita, comprobar tamaño y SHA-256, mantener el original intacto y limpiar un archivo parcial ante corrupción/cancelación. Strategy ya ofrece el selector de carpeta en la biblioteca de sesiones abiertas y confirma la copia verificada; cancelar el selector no escribe nada. Pruebas focales, Go completo, 4.302 tests frontend (2 omitidos), typecheck, lint y build pasan. Faltan registro persistente de la copia, reapertura/revisión exacta cuando falta el original y QA Wails. La copia temporal no se considera recuperación. Sin push, PR, CI, merge, promoción ni release.
 
 ## Ensayos de dominancia Hypercar — ISA-1367 (2026-09-24)
 

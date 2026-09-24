@@ -3,6 +3,7 @@ import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { OverlayUpdateV2 } from "../generated/telemetry";
 import {
+  createOverlaySectionDecoder,
   attachOverlayFrameV2Sse,
   attachOverlayFrameV2Transport,
   createOverlayFrameV2Store,
@@ -66,6 +67,14 @@ describe("OverlayFrame v2 store", () => {
       expect(() => Object.assign(owned.source, {state: "error"})).toThrow();
       expect(store.getSnapshot().source?.state).toBe("live");
     } finally { parse.mockRestore(); }
+  });
+
+  it("rejects section requests with non-plain prototypes", () => {
+    const decoder = createOverlaySectionDecoder();
+    const request = Object.assign(Object.create({}), { sessionId: "s", ack: 0 });
+    expect(() => decoder(JSON.stringify({ events: [] }), request)).toThrow(
+      "overlay-frame-v2:invalid-contract:sections.request",
+    );
   });
 
   it("does not trust caller objects or invalid JSON just because they use the pull envelope", () => {

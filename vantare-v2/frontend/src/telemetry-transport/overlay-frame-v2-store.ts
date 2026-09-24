@@ -284,7 +284,8 @@ export function createOverlaySectionDecoder(): (text: string, request: unknown) 
   let sessionId = "";
   let bases = new Map<string, SectionBase>();
   return (text, request) => {
-    if (!plainObject(request) || typeof request.sessionId !== "string" || !Number.isSafeInteger(request.ack) || (request.ack as number) < 0) invalid("sections.request");
+    if (!plainObject(request) || Object.getPrototypeOf(request) !== Object.prototype ||
+        typeof request.sessionId !== "string" || !Number.isSafeInteger(request.ack) || (request.ack as number) < 0) invalid("sections.request");
     const next = new Map(request.sessionId === sessionId ? bases : undefined);
     const response = parseOverlayPullJSON(text, {bases: next, sessionId: request.sessionId, delivery: (request.ack as number) + 1});
     // Only commit after the complete envelope, all updates and limits passed.
@@ -929,7 +930,9 @@ function objectHasKeys(value: unknown, required: readonly string[], optional: re
 }
 
 function plainObject(value: unknown): value is JSONObject {
-  return value !== null && typeof value === "object" && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
+  // Untrusted records are parsed from JSON before validation. The section
+  // request keeps its prototype check at its external boundary above.
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 function array(value: unknown, path: string, validate: (value: unknown, path: string) => void): void {

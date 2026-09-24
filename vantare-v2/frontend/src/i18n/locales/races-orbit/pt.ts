@@ -19,8 +19,6 @@ export const racesOrbitPt: Record<string, string> = {
   "races.views.week": "Semana",
   "races.views.month": "Mês",
   "races.views.timeline": "Timeline",
-  "races.timeline.rangeLabel": "Intervalo do eixo",
-  "races.timeline.hours": "{{n}} h",
   "races.timeline.zoomIn": "Aproximar",
   "races.timeline.zoomOut": "Afastar",
   "races.timeline.fit": "Ajustar",

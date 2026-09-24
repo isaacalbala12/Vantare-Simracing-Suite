@@ -107,3 +107,21 @@
   .orbit-races__month { grid-template-rows: 28px repeat(6, minmax(72px, 1fr)); }
   .orbit-races__day-line { grid-template-columns: 54px minmax(0, 1fr); }
 }
+
+/* El zoom de la app reduce el ancho CSS disponible. Al llegar al suelo de la
+   shell, el Calendario compacta sus columnas en lugar de desplazar la página. */
+:root:has(.orbit-races)[data-orbit-zoom-floored="true"] .orbit-shell {
+  min-width: 0;
+  --orbit-shell-column: 205px;
+  --orbit-rail-w: 56px;
+}
+:root:has(.orbit-races)[data-orbit-zoom-floored="true"] .orbit-rail { padding-inline: 2px; }
+:root:has(.orbit-races)[data-orbit-zoom-floored="true"] .orbit-column__version,
+:root:has(.orbit-races)[data-orbit-zoom-floored="true"] .orbit-topbar__eyebrow { display: none; }
+:root:has(.orbit-races)[data-orbit-zoom-floored="true"] .orbit-topbar { gap: 6px; padding-inline: 12px; }
+:root:has(.orbit-races)[data-orbit-zoom-floored="true"] .orbit-topbar [data-tip]::after {
+  left: auto;
+  right: 0;
+  top: calc(100% + 8px);
+  transform: none;
+}

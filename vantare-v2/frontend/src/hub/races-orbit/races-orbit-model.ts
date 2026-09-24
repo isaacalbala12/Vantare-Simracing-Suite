@@ -327,35 +327,28 @@ export function monthDays(
   const gridStart = new Date(first);
   gridStart.setDate(1 - startDow);
   const daily = entries.filter((entry) => entry.engine.every !== undefined);
-  const weekly = entries.filter((entry) => entry.eventKind === "weekly");
-  const specialSeries = entries.filter((entry) => entry.eventKind === "special");
   const specialEvents = explicitCalendarEvents(events, publishedSeries);
 
   return Array.from({ length: 42 }, (_, index) => {
     const day = dayAnchor(gridStart, index);
     const other = day.getMonth() !== first.getMonth() || day.getFullYear() !== first.getFullYear();
     const end = dayAnchor(day, 1);
+    const listed = other ? [] : entries
+      .filter((entry) => entry.eventKind !== "daily" && nextStarts(entry.engine, day, 1).some((at) => at < end))
+      .map((entry) => ({
+        id: entry.id,
+        name: entry.name,
+        kind: entry.eventKind,
+        // A local day can intersect multiple UTC dates. Count actual starts.
+        slots: startsInWindow(entry.engine, day, end).length,
+      }));
     return {
       day,
       other,
       today: day.getTime() === today,
       daily: other ? 0 : daily.filter((entry) => nextStarts(entry.engine, day, 1).some((at) => at < end)).length,
-      weekly: other
-        ? []
-        : weekly
-            .filter((entry) => nextStarts(entry.engine, day, 1).some((at) => at < end))
-            .map((entry) => ({
-              id: entry.id,
-              name: entry.name,
-              // A local day can intersect multiple UTC dates. Count its actual
-              // occurrences after the engine has applied publication validity.
-              slots: startsInWindow(entry.engine, day, end).length,
-            })),
-      specialSeries: other
-        ? []
-        : specialSeries
-            .filter((entry) => nextStarts(entry.engine, day, 1).some((at) => at < end))
-            .map((entry) => ({ id: entry.id, name: entry.name, slots: startsInWindow(entry.engine, day, end).length })),
+      weekly: listed.filter((entry) => entry.kind === "weekly").map(({ id, name, slots }) => ({ id, name, slots })),
+      specialSeries: listed.filter((entry) => entry.kind === "special").map(({ id, name, slots }) => ({ id, name, slots })),
       specials: other
         ? []
         : specialEvents
@@ -416,7 +409,7 @@ export function timelineRows(
 // ── Timeline · rango y zoom ──────────────────────────────────────────────
 
 /** Rangos del eje del timeline, en horas (`Seg` de la cabecera). */
-export const TIMELINE_RANGES = [6, 12, 24] as const;
+const TIMELINE_RANGES = [6, 12, 24] as const;
 export type TimelineRange = (typeof TIMELINE_RANGES)[number];
 
 /** El zoom se guarda como factor sobre el mínimo (1× = 24 h a la vista). */

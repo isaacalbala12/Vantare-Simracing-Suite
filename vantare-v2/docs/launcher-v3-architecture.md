@@ -34,7 +34,7 @@ Los perfiles se separan en `vantareProfiles` y `userProfiles`. El modo básico e
 
 Las políticas persistidas son `ask`, `reuse`/`restart`, `stop`/`continue`, `leave`/`close-started` y `ask`/`failed`/`all`, con `maxRetries` limitado a 3 y editable en el modo avanzado. `failed` reintenta cada paso fallido; `all` vuelve a ejecutar la cadena completa desde el primer paso tras un fallo. En el aviso de resultado, «Repetir pasos fallidos» reanuda los fallidos y no ejecutados, mientras «Repetir todos los pasos» inicia de nuevo el perfil completo. Los argumentos se tokenizan sin shell y se rechazan NUL o comillas sin cerrar.
 
-Solo un perfil puede estar marcado para iniciar con Windows. Al seleccionar otro, el Launcher desactiva el anterior y sincroniza ambos valores Run; si falla el registro, restaura la configuración previa. Los ajustes antiguos con varios perfiles marcados se reducen al primero al arrancar.
+Solo un perfil puede estar marcado para iniciar con Windows. Al seleccionar otro, el Launcher desactiva el anterior y sincroniza ambos valores Run; si falla el registro, restaura la configuración previa. Los ajustes antiguos con varios perfiles marcados se reducen al primero al arrancar, y los flags antiguos que ya estén en cola no lanzan los perfiles desactivados.
 
 La identidad de proceso usa PID, ruta normalizada y hora de creación observados. Close/restart exige los tres datos; nunca mata por nombre o PID únicamente. Un proceso ya abierto fuera de Vantare puede reutilizarse, pero no adquiere autoridad de cierre. El enlace de Steam solo inicia la solicitud: la cadena espera a observar el ejecutable del juego antes de marcar el paso como completado.
 

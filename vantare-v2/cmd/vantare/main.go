@@ -1419,6 +1419,17 @@ func handleLaunchFlag(args []string, unregister func(string) error, svc *launche
 	}
 }
 
+// replayAutostartFlag ignores stale Run flags queued before legacy settings
+// were reduced to a single enabled profile.
+func replayAutostartFlag(id string, svc *launcher.Service, launch func(string)) {
+	for _, profile := range svc.ListProfiles() {
+		if profile.ID == id && profile.LaunchOnWindowsStartup {
+			launch(id)
+			return
+		}
+	}
+}
+
 func main() {
 	if nonce, child := voiceinput.ChildNonceFromArgs(os.Args[1:]); child {
 		if err := voiceinput.RunUnavailableChild(nonce, os.Stdout); err != nil {
@@ -3876,7 +3887,9 @@ func main() {
 	})
 
 	launcherStartup.Ready(func(id string) {
-		handleLaunchFlag([]string{"--launch=" + id}, launcher.UnregisterAutostart, launcherSvc, emitter)
+		replayAutostartFlag(id, launcherSvc, func(selected string) {
+			handleLaunchFlag([]string{"--launch=" + selected}, launcher.UnregisterAutostart, launcherSvc, emitter)
+		})
 	})
 	if err := wailsApp.Run(); err != nil {
 		// log.Fatal exits without running defers, so the capture is flushed

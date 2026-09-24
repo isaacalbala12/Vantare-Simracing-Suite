@@ -1946,6 +1946,28 @@ func TestStartupReconcilesLegacyMultipleAutostartProfiles(t *testing.T) {
 	}
 }
 
+func TestQueuedLegacyAutostartFlagsLaunchOnlySelectedProfile(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	profiles := []app.LaunchProfile{
+		{ID: "first", Name: "first", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true},
+		{ID: "second", Name: "second", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true},
+	}
+	if err := svc.RestoreProfiles(profiles); err != nil {
+		t.Fatal(err)
+	}
+	var queue launcherStartupQueue
+	queue.Offer([]string{"--launch=second"})
+	queue.Offer([]string{"--launch=first"})
+	reconcileLauncherAutostart(svc, emitter, func(string, bool) error { return nil })
+	var launched []string
+	queue.Ready(func(id string) {
+		replayAutostartFlag(id, svc, func(selected string) { launched = append(launched, selected) })
+	})
+	if len(launched) != 1 || launched[0] != "first" {
+		t.Fatalf("legacy Run flags launched more than the selected profile: %v", launched)
+	}
+}
+
 func TestDeleteProfileRemovesAutostartBeforeDeleting(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	if err := svc.SaveProfile(app.LaunchProfile{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true}); err != nil {

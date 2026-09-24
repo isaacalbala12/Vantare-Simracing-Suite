@@ -195,7 +195,7 @@ jobs:
 
       - name: Frontend tests
         working-directory: ${{ env.VANTARE_DIR }}/frontend
-        run: pnpm exec vitest run
+        run: pnpm test
 
       - name: Changed frontend lint
         working-directory: ${{ env.VANTARE_DIR }}/frontend

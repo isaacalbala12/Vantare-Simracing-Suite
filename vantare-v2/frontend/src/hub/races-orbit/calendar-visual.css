@@ -78,7 +78,22 @@
 }
 
 .orbit-races__timeline .orbit-tl__block { border-radius: 8px; }
-.orbit-races__timeline .orbit-tl__head { min-width: 0; }
+.orbit-races__timeline .orbit-tl__head {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  min-width: 0;
+  padding-left: 14px;
+  background: var(--orbit-surface-1);
+}
+.orbit-races__timeline .orbit-tl__corner {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--orbit-surface-1);
+}
+.orbit-races__timeline .orbit-tl { padding-bottom: 8px; }
+.orbit-races__tl-zoom { min-width: 2.5rem; color: var(--orbit-ink-2); font-size: 11px; text-align: center; }
 
 @container races (max-width: 900px) {
   .orbit-races__grid[data-detail="open"] { position: relative; grid-template-columns: minmax(0, 1fr); }

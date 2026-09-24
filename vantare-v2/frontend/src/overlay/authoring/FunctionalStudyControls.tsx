@@ -1,7 +1,9 @@
+import { LMU_STEERING_WHEELS, normalizeSteeringWheel, STEERING_WHEEL_CATEGORIES } from "../design-systems/vantare-functional/steering-wheels/catalog";
 import { useState } from "react";
 import { useI18n } from "../../i18n/I18nProvider";
 import type { Locale } from "../../i18n/i18n";
-import { ALL_WIDGET_TYPES, type WidgetLayoutV3, type WidgetType } from "../core/profile-document";
+import type { WidgetLayoutV3, WidgetType } from "../core/profile-document";
+import { widgetTypeRegistry } from "../core/widget-registry";
 import { designSystemRegistry } from "../core/design-system-registry";
 import { listOfficialDesigns } from "../design-systems/official-designs";
 import { listAnimationScenes } from "./fixtures/animation-scenes";
@@ -30,8 +32,8 @@ const WIDGET_LABELS: Partial<Record<WidgetType, string>> = {
   pedals: "Pedals",
   "broadcast-tower": "Horizontal Standings",
   "fuel-strategy": "Fuel Strategy",
-  "pedals-telemetry": "Pedals Telemetry",
-  "pedals-telemetry-compact": "Pedales avanzados",
+  "pedals-telemetry": "Pedales avanzados",
+  "pedals-telemetry-compact": "Pedales antiguos",
   "racing-flags": "Racing Flags",
   "fastest-lap": "Vuelta rápida",
 };
@@ -131,6 +133,7 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
       // El formato de nombre solo existe donde hay columna Piloto.
       ...(widget === "standings" || widget === "relative" ? {} : { nameFormat: undefined }),
       ...(widget === "racing-flags" ? {} : { textColor: undefined }),
+      ...(widget === "pedals-telemetry" ? {} : { steeringWheel: undefined }),
       ...(widget === "pedals" || widget === "racing-flags" ? {} : { flag: undefined }),
       // Las dimensiones de preview pertenecen al widget anterior; al cambiar
       // de widget se vuelve a la resolución real del nuevo profile/layout.
@@ -155,6 +158,7 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
       around: keepsDefaultWindow ? query.around ?? STANDINGS_WINDOW_DEFAULT_AROUND : undefined,
       variant: "default",
       textColor: undefined,
+      steeringWheel: undefined,
     });
   };
   const chooseDesign = (value: string) => update({ ...query, designId: value || undefined });
@@ -241,8 +245,10 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
 
     <fieldset><legend>Widget</legend>
       <Select label="Widget" value={query.widget} onChange={(value) => chooseWidget(value as WidgetType)}>
-        {ALL_WIDGET_TYPES.map((widget) => <option key={widget} value={widget}>{widgetLabel(widget)}</option>)}
+        {widgetTypeRegistry.get(query.widget).retired && <option value={query.widget} disabled>{widgetLabel(query.widget)}</option>}
+        {widgetTypeRegistry.list().filter((definition) => !definition.retired).map(({ type }) => <option key={type} value={type}>{widgetLabel(type)}</option>)}
       </Select>
+      {widgetTypeRegistry.get(query.widget).retired && <p className="functional-study-note">Vista de compatibilidad de un widget retirado. Para nuevos diseños, elige Pedales avanzados.</p>}
       <Select label="Sistema de diseño" value={query.system} onChange={chooseSystem}>
         {systems.map((system) => <option key={system} value={system}>{systemLabel(system)}</option>)}
       </Select>
@@ -367,6 +373,12 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
     </fieldset>
 
     <fieldset><legend>Presentación</legend>
+      {isFunctional && query.widget === "pedals-telemetry" && <Select label="Volante" value={query.steeringWheel ?? "generic"} onChange={(value) => update({ ...query, steeringWheel: normalizeSteeringWheel(value) })}>
+        <option value="generic">Genérico</option>
+        {STEERING_WHEEL_CATEGORIES.map((category) => <optgroup key={category} label={category}>
+          {LMU_STEERING_WHEELS.filter((wheel) => wheel.category === category).map((wheel) => <option key={wheel.id} value={wheel.id}>{wheel.name}</option>)}
+        </optgroup>)}
+      </Select>}
       {isFunctional && isRacingFlags && <label className="functional-study-select"><span>Color de la letra</span><input aria-label="Color de la letra" type="color" value={defaultRacingFlagsTextColor} onChange={(event) => update({ ...query, textColor: event.target.value })} /></label>}
       <p className="functional-study-note">Fondo</p>
       <Segments options={BACKGROUND_OPTIONS} value={query.background} onChange={(value) => update({ ...query, background: value as OverlayWorkshopQuery["background"] })} />

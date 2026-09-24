@@ -27,6 +27,8 @@ import { parseRelativeContent } from "../widget-types/relative/relative-content"
 import { countFunctionalStandingsClassBands } from "../widget-types/standings/functional-standings-multiclass";
 import { resolveFunctionalStandingsSize } from "../widget-types/standings/functional-standings-layout";
 import { prepareWidgetVisualSettings } from "../core/widget-visual-settings";
+import { widgetTypeRegistry } from "../core/widget-registry";
+import { useI18n } from "../../i18n/I18nProvider";
 
 export const OVERLAY_WORKSHOP_PROFILE_ID = "workshop-fixture";
 
@@ -46,6 +48,7 @@ function createRouteScenarioWidget(query: OverlayWorkshopQuery): WidgetInstanceV
     nameFormat: query.nameFormat,
     rows: query.rows,
     textColor: query.textColor,
+    steeringWheel: query.steeringWheel,
   });
   // Laboratorio tower de Redline (ISA-1071, dev): las elecciones viajan por el
   // contrato visual como appearanceOverrides, igual que en producción, y solo
@@ -170,6 +173,7 @@ function WorkshopSurface({ widget: sourceWidget, runtime, profileId, surface, qu
 }
 
 function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initialQuery: OverlayWorkshopQuery; initialError?: string; profileId: string }): React.ReactElement {
+  const { t } = useI18n();
   const [parsed, setQuery] = useState<OverlayWorkshopQuery>(initialQuery);
   const [rejected, setRejected] = useState(initialError);
   const update = (next: OverlayWorkshopQuery, mode: "push" | "replace" = "push") => {
@@ -422,7 +426,7 @@ function OverlayWorkshopPage({ initialQuery, initialError, profileId }: { initia
     // pueda mezclar; todas las selecciones viven en el panel lateral.
     <main className="overlay-workshop functional-study" data-overlay-workshop-page data-study-style={parsed.studyStyle}>
       <EfficiencyStudyControls query={parsed} widgetLayout={visualWidget?.layout} update={update} onRunScene={runScene} onShowDesign={showDesign} onReset={reset} />
-      <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage data-stage-label={`${parsed.widget.toUpperCase().replace(/-/g, " ")} / ESTUDIO 01`}>
+      <section className={`overlay-workshop-stage overlay-workshop-stage--${parsed.background}`} data-overlay-workshop-stage data-stage-label={`${t(widgetTypeRegistry.get(parsed.widget).labelKey).toUpperCase()} / ESTUDIO 01`}>
         {rejected && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-rejected>URL rechazada ({rejected}) — se cargaron los valores por defecto.</p>}
         {fixtureError && <p className="overlay-workshop-alert" role="alert" data-overlay-workshop-fixture-error>Selección inválida: {fixtureError}</p>}
         {!fixtureError && visualWidget && runtime && (

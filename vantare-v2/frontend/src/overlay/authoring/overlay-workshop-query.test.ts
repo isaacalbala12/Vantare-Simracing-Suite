@@ -7,6 +7,17 @@ import {
 import { buildWorkshopWidget } from "./fixtures/authoring-v2-workshop-frame";
 
 describe("Overlay Workshop query", () => {
+  it("validates and round-trips the productive steering-wheel appearance", () => {
+    const parsed = parseOverlayWorkshopQuery("?widget=pedals-telemetry&system=vantare-functional&steeringWheel=genesis-gmr-001");
+    if ("error" in parsed) throw new Error(parsed.error);
+    expect(parsed.steeringWheel).toBe("genesis-gmr-001");
+    expect(parseOverlayWorkshopQuery(serializeOverlayWorkshopQuery(parsed))).toEqual(parsed);
+    expect(buildWorkshopWidget(parsed).visual.appearanceOverrides.steeringWheel).toBe("genesis-gmr-001");
+    expect(parseOverlayWorkshopQuery("?widget=pedals-telemetry&system=vantare-functional&steeringWheel=future-car")).toEqual({ error: "invalid steeringWheel parameter: future-car" });
+    expect(parseOverlayWorkshopQuery("?widget=delta&system=vantare-functional&steeringWheel=oreca-07")).not.toHaveProperty("steeringWheel");
+    expect(parseOverlayWorkshopQuery("?widget=pedals-telemetry&system=vantare-crystal&steeringWheel=oreca-07")).not.toHaveProperty("steeringWheel");
+  });
+
   it("parses an explicit reproducible product selection", () => {
     expect(parseOverlayWorkshopQuery(
       "?widget=delta&system=vantare-crystal&design=delta-crystal-simple&state=stale&surface=obs&variant=default",

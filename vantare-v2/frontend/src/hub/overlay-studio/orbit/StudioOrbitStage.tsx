@@ -324,7 +324,7 @@ export function StudioOrbitStage(props: StudioOrbitStageProps): React.ReactEleme
             }}
           >
             <span data-testid="orbit-studio-selection-tag-copy">
-              {widgetLabel(selected)} · {Math.round(selectedLayout.w)} ×{' '}
+              {widgetLabel(selected, t)} · {Math.round(selectedLayout.w)} ×{' '}
               {Math.round(selectedLayout.h)}
               {selected.behavior.enabled ? '' : ` · ${t('studio.stage.hiddenSuffix')}`}
             </span>

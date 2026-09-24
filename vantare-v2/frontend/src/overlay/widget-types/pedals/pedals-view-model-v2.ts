@@ -3,6 +3,7 @@ import type {
   OverlayQValue,
   OverlaySourceStatusV2,
 } from "../../../generated/telemetry";
+import { pedalValue } from "../pedals-telemetry/pedals-telemetry-view-model-v2";
 import type { PedalsContent } from "./pedals-definition";
 import type {
   PedalsFlag,
@@ -10,19 +11,8 @@ import type {
   PedalsViewModel,
 } from "./pedals-view-model";
 
-function clampPedal(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  return Math.max(0, Math.min(1, value));
-}
-
 function formatPedalPercent(value: number | undefined): string {
   return value === undefined ? "—" : `${Math.round(value * 100)}%`;
-}
-
-function displayedNumber(value: OverlayQValue<number>): number | undefined {
-  if (value.q === "missing" || value.q === "invalid") return undefined;
-  const number = value.v ?? 0;
-  return Number.isFinite(number) ? clampPedal(number) : undefined;
 }
 
 function unavailable(status: PedalsViewModel["status"], statusMessage?: string): PedalsViewModel {
@@ -96,9 +86,9 @@ export function buildPedalsViewModelV2(
   const hasStalePedal = [frame.player.throttle, frame.player.brake, frame.player.clutch].some(
     (value) => value.q === "stale",
   );
-  const throttle = displayedNumber(frame.player.throttle);
-  const brake = displayedNumber(frame.player.brake);
-  const clutch = displayedNumber(frame.player.clutch);
+  const throttle = pedalValue(frame.player.throttle);
+  const brake = pedalValue(frame.player.brake);
+  const clutch = pedalValue(frame.player.clutch);
   const hasMissingPedal = [throttle, brake, clutch].some((value) => value === undefined);
   const status: PedalsViewModel["status"] =
     source.state === "stale" || hasStalePedal ? "stale" : hasMissingPedal ? "missing" : "ready";

@@ -62,6 +62,7 @@ function resolveCompatibleSystems(
 export function deriveStudioCatalog(deps: StudioCatalogDeps = defaultDeps()): StudioCatalogEntry[] {
   return deps
     .listWidgetDefinitions()
+    .filter((definition) => !definition.retired)
     .map((definition) => ({
       type: definition.type,
       labelKey: definition.labelKey,
@@ -109,6 +110,9 @@ export function buildAddWidgetCommand(input: {
   definition: WidgetTypeDefinition<Record<string, unknown>>;
   layoutViewport: LayoutViewport;
 }): StudioCommand {
+  if (input.definition.retired) {
+    throw new Error(`widget type is retired: ${input.type}`);
+  }
   const existingIds = new Set(input.widgets.map((widget) => widget.id));
   const widgetId = createNextWidgetId(input.type, existingIds);
   const widget = input.definition.createDefault(widgetId);

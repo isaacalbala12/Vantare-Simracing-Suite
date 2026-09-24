@@ -26,6 +26,7 @@ import {
 import { DRIVER_NAME_FORMATS, type DriverNameFormat } from "../widget-types/shared/driver-name";
 import { PEDALS_KNOWN_FLAGS, type PedalsKnownFlag } from "../widget-types/pedals/pedals-view-model";
 import { isRacingFlagsTextColor } from "../design-systems/vantare-functional/racing-flags-settings";
+import { isSteeringWheelId, type SteeringWheelId } from "../design-systems/vantare-functional/steering-wheels/catalog";
 
 export type OverlayWorkshopQuery = {
   widget: WidgetType;
@@ -57,6 +58,8 @@ export type OverlayWorkshopQuery = {
   flag?: PedalsKnownFlag;
   /** Eficiencia Racing Flags text color override for the Workshop. */
   textColor?: string;
+  /** Productive wheel appearance for Efficiency Pedals Telemetry. */
+  steeringWheel?: SteeringWheelId;
   session: AuthoringV2Scenario["session"];
   location: AuthoringV2Scenario["location"];
   background: "transparent" | "grid" | "solid" | "context";
@@ -117,6 +120,7 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   const variant = (params.get("variant") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.variant) as WorkshopV2Variant;
   const flagRaw = params.get("flag");
   const textColorRaw = params.get("textColor");
+  const steeringWheelRaw = params.get("steeringWheel");
   const designId = params.get("design") ?? undefined;
   const session = (params.get("session") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.session) as AuthoringV2Scenario["session"];
   const location = (params.get("location") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.location) as AuthoringV2Scenario["location"];
@@ -146,6 +150,9 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
   }
   if (textColorRaw !== null && !isRacingFlagsTextColor(textColorRaw)) {
     return { error: `invalid textColor parameter: ${textColorRaw}` };
+  }
+  if (steeringWheelRaw !== null && !isSteeringWheelId(steeringWheelRaw)) {
+    return { error: `invalid steeringWheel parameter: ${steeringWheelRaw}` };
   }
   if (variant === "standings-functional-study" && (widget !== "standings" || system !== EFFICIENCY_SYSTEM_ID)) return { error: "standings-functional-study requires Functional Standings" };
   if (!SESSIONS.has(session)) return { error: `invalid session parameter: ${session}` };
@@ -351,6 +358,7 @@ export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery 
     ...(playerPosition !== undefined ? { playerPosition } : {}),
     ...(flag !== undefined ? { flag } : {}),
     ...(textColor !== undefined ? { textColor } : {}),
+    ...(widget === "pedals-telemetry" && system === EFFICIENCY_SYSTEM_ID && isSteeringWheelId(steeringWheelRaw) ? { steeringWheel: steeringWheelRaw } : {}),
     ...(redlineThemeRaw ? { redlineTheme: redlineThemeRaw as OverlayWorkshopQuery["redlineTheme"] } : {}),
     ...(redlineData ? { redlineData } : {}),
     ...(redlineSelectionRaw ? { redlineSelection: redlineSelectionRaw as OverlayWorkshopQuery["redlineSelection"] } : {}),
@@ -393,6 +401,7 @@ export function serializeOverlayWorkshopQuery(query: OverlayWorkshopQuery): stri
   if (query.playerPosition !== undefined) params.set("playerPosition", String(query.playerPosition));
   if (query.flag) params.set("flag", query.flag);
   if (query.textColor) params.set("textColor", query.textColor);
+  if (query.steeringWheel) params.set("steeringWheel", query.steeringWheel);
   if (query.redlineTheme) params.set("redlineTheme", query.redlineTheme);
   if (query.redlineData) params.set("redlineData", query.redlineData);
   if (query.redlineSelection) params.set("redlineSelection", query.redlineSelection);

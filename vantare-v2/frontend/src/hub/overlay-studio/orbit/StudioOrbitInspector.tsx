@@ -245,7 +245,7 @@ export function StudioOrbitInspector(): React.ReactElement {
       <header className="orbit-studio-inspector__head">
         <div className="orbit-studio-inspector__id">
           <span className="orbit-eyebrow">{t('studio.inspector.kind')}</span>
-          <h2 data-testid="orbit-studio-inspector-name">{widgetLabel(widget)}</h2>
+          <h2 data-testid="orbit-studio-inspector-name">{widgetLabel(widget, t)}</h2>
           <p data-testid="orbit-studio-inspector-meta">{inspectorMeta(widget, t)}</p>
         </div>
         <div className="orbit-studio-inspector__actions">

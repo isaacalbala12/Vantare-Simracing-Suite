@@ -2455,10 +2455,24 @@ instalado sin que el perfil sea lanzable si falta esa ruta. Orbit mantiene el
 estado de lanzamiento durante la espera. Pruebas rojas antes del cambio para
 discovery/disponibilidad, Go focal y vet PASS; 16 pruebas frontend dirigidas,
 typecheck, build y lint PASS. `go test -race` no se completó por la opción de clang
-`-Qunused-arguments` que el `gcc.exe` local no admite. CI del corte actual
-pendiente. Siguen pendientes autostart de una instancia, políticas
+`-Qunused-arguments` que el `gcc.exe` local no admite. El corte publicado
+`f43225ea` pasó gates bloqueantes (incluido build Wails Windows), promoción
+de ruta, ratchet de calidad y GitGuardian. Siguen pendientes autostart de una
+instancia, políticas
 de cancelación/salida/reintentos y revisión física Wails/Steam/LMU/instalador.
 **NO-GO**, sin merge, promoción ni release.
+
+Octavo avance de #1368 (candidato local): al cancelar un perfil, el runner
+espera a registrar su último paso antes de aplicar la política. `leave`
+conserva las aplicaciones; `close-started` actúa solo sobre procesos asociados
+a ese perfil e identidades observadas; `ask` ofrece ambas opciones en Orbit,
+caduca dejando abiertas las apps y puede recordar la respuesta. Las pruebas
+de cancelación y del diálogo pasan. Un reinicio explícito conserva la
+asociación al perfil si la nueva identidad está verificada; revoca siempre el
+PID anterior. Una respuesta tardía solo puede cerrar procesos nacidos antes
+de la cancelación, aunque el perfil se relance mientras espera. Aún falta
+validar el cierre con procesos reales y completar la
+política independiente `exit`.
 
 Revisión de ciclo de vida: el reinicio ya no ata la aplicación externa al
 contexto de Vantare; cerrar el Hub no la termina implícitamente cuando debe

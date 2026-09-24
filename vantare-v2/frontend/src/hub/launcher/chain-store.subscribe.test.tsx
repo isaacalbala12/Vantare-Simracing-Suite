@@ -77,6 +77,22 @@ describe("ChainRunnerProvider + selective subscription", () => {
     });
   });
 
+  it("asks whether to close processes started by a stopped profile", () => {
+    render(<ChainRunnerProvider><div>Hub</div></ChainRunnerProvider>);
+    act(() => {
+      wailsHandlers.get("launcher:decision:required")?.forEach((handler) => handler({ data: {
+        decisionId: "9", profileId: "creator", appId: "", kind: "cancel",
+        message: "¿Cerrar las aplicaciones iniciadas por este perfil?",
+        actions: ["leave", "close-started"], expiresAt: Date.now() + 120000,
+      } }));
+    });
+    expect(screen.getByRole("alertdialog").textContent).toContain("Perfil detenido");
+    fireEvent.click(screen.getByRole("button", { name: "Cerrar lanzadas" }));
+    expect(Events.Emit).toHaveBeenCalledWith("launcher:decision:resolve", {
+      decisionId: "9", action: "close-started", remember: false,
+    });
+  });
+
   it("useChainState only re-renders when the subscribed profileId changes", () => {
     const p1Renders: number[] = [];
     const p2Renders: number[] = [];

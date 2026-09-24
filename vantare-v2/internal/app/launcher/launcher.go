@@ -60,8 +60,9 @@ type Service struct {
 }
 
 type ownedProcess struct {
-	appID    string
-	identity ProcessIdentity
+	appID     string
+	profileID string
+	identity  ProcessIdentity
 }
 
 type serviceEmitter struct {
@@ -151,7 +152,7 @@ func (s *Service) recordChainEvent(name string, data any) {
 	if name == "launcher:chain:step" && progress.Status == "done" && progress.Pid > 0 && progress.CreationTime != 0 {
 		if entry, exists := s.settings.GetLauncherApps()[progress.AppID]; exists && entry.LaunchMethod == "executable" &&
 			entry.ExecutablePath != "" && NormalizeExecutablePath(entry.ExecutablePath) == NormalizeExecutablePath(progress.ProcessPath) {
-			started = &ownedProcess{appID: progress.AppID, identity: ProcessIdentity{
+			started = &ownedProcess{appID: progress.AppID, profileID: progress.ProfileID, identity: ProcessIdentity{
 				PID: progress.Pid, ExecutablePath: progress.ProcessPath, CreationTime: progress.CreationTime,
 			}}
 		}
@@ -266,6 +267,27 @@ func (s *Service) RememberStartedProcess(appID string, identity ProcessIdentity)
 	s.activeMu.Lock()
 	s.owned[identity.PID] = ownedProcess{appID: appID, identity: identity}
 	s.activeMu.Unlock()
+	return true
+}
+
+// TransferStartedProcess keeps a profile's ownership when its app is
+// explicitly restarted. The old PID loses authority even if observation of
+// the replacement fails.
+func (s *Service) TransferStartedProcess(appID string, oldPID int, replacement ProcessIdentity) bool {
+	entry, ok := s.settings.GetLauncherApps()[appID]
+	valid := ok && entry.LaunchMethod == "executable" && replacement.PID > 0 && replacement.CreationTime != 0 &&
+		replacement.ExecutablePath != "" && NormalizeExecutablePath(entry.ExecutablePath) == NormalizeExecutablePath(replacement.ExecutablePath)
+	s.activeMu.Lock()
+	defer s.activeMu.Unlock()
+	previous, owned := s.owned[oldPID]
+	if !owned || previous.appID != appID {
+		return false
+	}
+	delete(s.owned, oldPID)
+	if !valid {
+		return false
+	}
+	s.owned[replacement.PID] = ownedProcess{appID: appID, profileID: previous.profileID, identity: replacement}
 	return true
 }
 
@@ -571,7 +593,7 @@ func (s *Service) RetryFailedProfile(ctx context.Context, profileID string) erro
 func (s *Service) ResolveDecision(id, action string, remember bool) (DecisionRequest, bool, error) {
 	remembered := false
 	request, err := s.chain.resolveDecisionWith(id, action, func(request DecisionRequest) error {
-		if !remember || (request.Kind != "failure" && request.Kind != "alreadyRunning") || action == "cancel" {
+		if !remember || (request.Kind != "failure" && request.Kind != "alreadyRunning" && request.Kind != "cancel") || action == "cancel" {
 			return nil
 		}
 		for _, profile := range s.settings.GetLauncherProfiles() {
@@ -584,6 +606,12 @@ func (s *Service) ResolveDecision(id, action string, remember bool) (DecisionReq
 					profile.Policy.Failure = app.FailureContinue
 				} else {
 					profile.Policy.Failure = app.FailureStop
+				}
+			} else if request.Kind == "cancel" {
+				if action == "close-started" {
+					profile.Policy.Cancel = app.CancelCloseStarted
+				} else {
+					profile.Policy.Cancel = app.CancelLeave
 				}
 			} else if action == "reuse" {
 				profile.Policy.AlreadyRunning = app.AlreadyRunningReuse
@@ -627,8 +655,19 @@ func retryProfile(profile app.LaunchProfile, completed LauncherActiveChain) (app
 
 // CancelChain cancels the active launch chain for a profile, if any.
 func (s *Service) CancelChain(profileID string) bool {
-	cancelled := s.chain.CancelChain(profileID)
+	done, cancelled := s.chain.CancelChainAndWait(profileID)
 	if cancelled {
+		// Windows process creation times are FILETIME ticks (100 ns since 1601).
+		// This boundary prevents an answer to an old cancel prompt from closing
+		// a new run of the same profile.
+		cutoff := uint64(time.Now().UnixNano()/100) + 116444736000000000
+		policy := app.DefaultLaunchPolicy()
+		for _, profile := range s.settings.GetLauncherProfiles() {
+			if profile.ID == profileID {
+				policy = app.NormalizeLaunchPolicy(profile.Policy)
+				break
+			}
+		}
 		s.activeMu.Lock()
 		if chain, ok := s.active[profileID]; ok {
 			chain.Status = "stopped"
@@ -637,8 +676,49 @@ func (s *Service) CancelChain(profileID string) bool {
 		s.activeMu.Unlock()
 		s.scheduleChainCleanup(profileID)
 		s.emit.Emit("launcher:snapshot", s.Snapshot())
+		go func() {
+			<-done
+			s.applyCancelPolicy(profileID, policy.Cancel, cutoff)
+		}()
 	}
 	return cancelled
+}
+
+func (s *Service) ownedForProfile(profileID string) []ownedProcess {
+	s.activeMu.Lock()
+	defer s.activeMu.Unlock()
+	processes := make([]ownedProcess, 0)
+	for _, owned := range s.owned {
+		if owned.profileID == profileID {
+			processes = append(processes, owned)
+		}
+	}
+	return processes
+}
+
+func (s *Service) applyCancelPolicy(profileID string, policy app.CancelPolicy, cutoff uint64) {
+	processes := make([]ownedProcess, 0)
+	for _, owned := range s.ownedForProfile(profileID) {
+		if owned.identity.CreationTime < cutoff {
+			processes = append(processes, owned)
+		}
+	}
+	if s.chain.closeOwned == nil || len(processes) == 0 || policy == app.CancelLeave {
+		return
+	}
+	if policy == app.CancelAsk {
+		action := s.chain.requestDecision(context.Background(), profileID, "", "cancel", "¿Cerrar las aplicaciones iniciadas por este perfil?", []string{"leave", "close-started"})
+		if action != "close-started" {
+			return
+		}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	for _, owned := range processes {
+		if err := s.chain.closeOwned(ctx, owned.appID, owned.identity); err != nil {
+			s.emit.Emit("launcher:error", map[string]any{"message": fmt.Sprintf("No se pudo cerrar %s: %v", owned.appID, err)})
+		}
+	}
 }
 
 // CancelAll cancels every active launch chain. Used by the Wails shutdown hook

@@ -37,6 +37,7 @@ type ChainRunner struct {
 type activeChain struct {
 	cancelled bool
 	cancel    context.CancelFunc
+	done      chan struct{}
 }
 
 // NewChainRunner builds a ChainRunner. execFn defaults to defaultExecLauncher
@@ -101,7 +102,7 @@ func (r *ChainRunner) StartChain(parent context.Context, profile app.LaunchProfi
 		return ErrProfileInProgress
 	}
 	ctx, cancel := context.WithCancel(parent)
-	chain := &activeChain{cancel: cancel}
+	chain := &activeChain{cancel: cancel, done: make(chan struct{})}
 	r.active[profile.ID] = chain
 	r.mu.Unlock()
 
@@ -111,6 +112,7 @@ func (r *ChainRunner) StartChain(parent context.Context, profile app.LaunchProfi
 			delete(r.active, profile.ID)
 			r.mu.Unlock()
 			cancel()
+			close(chain.done)
 		}()
 		r.RunChain(ctx, profile)
 	}()
@@ -120,14 +122,21 @@ func (r *ChainRunner) StartChain(parent context.Context, profile app.LaunchProfi
 // CancelChain cancels the active chain for a profile. Returns true if a chain
 // was cancelled.
 func (r *ChainRunner) CancelChain(profileID string) bool {
+	_, cancelled := r.CancelChainAndWait(profileID)
+	return cancelled
+}
+
+// CancelChainAndWait returns a signal that closes after all step events have
+// been recorded, so cleanup can safely inspect the processes this run started.
+func (r *ChainRunner) CancelChainAndWait(profileID string) (<-chan struct{}, bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	if chain, ok := r.active[profileID]; ok && !chain.cancelled {
 		chain.cancelled = true
 		chain.cancel()
-		return true
+		return chain.done, true
 	}
-	return false
+	return nil, false
 }
 
 // CancelAll cancels every active chain. Used by the Wails shutdown hook.

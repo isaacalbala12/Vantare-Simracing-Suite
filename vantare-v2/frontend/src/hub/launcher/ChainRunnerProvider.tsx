@@ -9,7 +9,7 @@ type LauncherDecision = {
   decisionId: string;
   profileId: string;
   appId: string;
-  kind: "failure" | "alreadyRunning";
+  kind: "failure" | "alreadyRunning" | "cancel";
   message: string;
   actions: string[];
   expiresAt: number;
@@ -21,6 +21,8 @@ const decisionLabels: Record<string, string> = {
   reuse: "Reutilizar",
   restart: "Reiniciar",
   cancel: "Cancelar perfil",
+  leave: "Dejar abiertas",
+  "close-started": "Cerrar lanzadas",
 };
 
 export function ChainRunnerProvider({ children }: { children: ReactNode }) {
@@ -77,7 +79,7 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
     });
     const offDecision = Events.On("launcher:decision:required", (event: unknown) => {
       const request = (event as { data: LauncherDecision }).data;
-      if (!request?.decisionId || (request.kind !== "failure" && request.kind !== "alreadyRunning")) return;
+      if (!request?.decisionId || (request.kind !== "failure" && request.kind !== "alreadyRunning" && request.kind !== "cancel")) return;
       store.handleDecisionRequired(request.profileId, request.expiresAt);
       setDecisions((current) => current.some((item) => item.decisionId === request.decisionId)
         ? current : [...current, request]);
@@ -131,11 +133,11 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-md rounded-orbit border border-orbit-ember/40 bg-orbit-surface-1 p-5 shadow-2xl" role="alertdialog" aria-modal="true" aria-labelledby="launcher-decision-title">
             <h2 id="launcher-decision-title" className="text-base text-orbit-ink">
-              {activeDecision.kind === "alreadyRunning" ? `${activeDecision.appId} ya está abierta` : `No se pudo iniciar ${activeDecision.appId}`}
+              {activeDecision.kind === "alreadyRunning" ? `${activeDecision.appId} ya está abierta` : activeDecision.kind === "cancel" ? "Perfil detenido" : `No se pudo iniciar ${activeDecision.appId}`}
             </h2>
             <p className="mt-2 text-sm text-orbit-ink-3">
               Perfil {activeDecision.profileId}. {activeDecision.message || "El paso falló."}
-              {activeDecision.kind === "failure" ? " ¿Continuar con las demás aplicaciones?" : " ¿Qué quieres hacer?"}
+              {activeDecision.kind === "failure" ? " ¿Continuar con las demás aplicaciones?" : activeDecision.kind === "alreadyRunning" ? " ¿Qué quieres hacer?" : ""}
             </p>
             <label className="mt-4 flex items-center gap-2 text-sm text-orbit-ink-3">
               <input type="checkbox" checked={rememberDecision} onChange={(event) => setRememberDecision(event.target.checked)} />

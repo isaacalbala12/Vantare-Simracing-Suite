@@ -21,6 +21,7 @@ import {
 import { hotkeyKeys } from "./launcher-orbit-model";
 import { registerHubSuspendBlocker } from "../hub-suspend-guard";
 import "../../styles/orbit-launcher.css";
+import "../../styles/orbit-launcher-policy.css";
 
 export type OrbitProfileEditorProps = {
   profile: LaunchProfile;

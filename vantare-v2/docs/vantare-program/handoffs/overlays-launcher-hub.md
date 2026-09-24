@@ -2551,6 +2551,17 @@ La segunda invocación vuelve a mostrar el Hub existente; si llega mientras
 se crea la ventana, la petición queda pendiente y se aplica una sola vez.
 La regresión falló antes y pasó después con Go focal y vet.
 
+El ratchet del HEAD `7cdbc9f4` encontró 10 duplicaciones CSS nuevas porque
+las reglas añadidas al editor modificaban `orbit-launcher.css`, cuyo encabezado
+histórico repite estilos de otras vistas. Las reglas nuevas viven ahora en
+`orbit-launcher-policy.css` y el archivo histórico recupera exactamente el
+contenido de la base. El mismo clasificador local de calidad devuelve
+`NEW=0` y 42 reagrupaciones verificadas por igualdad de blobs; las 10 del
+Launcher ya no son bloqueantes. Pasan 12 pruebas del editor, typecheck, build
+y lint. Falta que el ratchet remoto confirme el nuevo HEAD. El gate bloqueante
+remoto del HEAD anterior aún estaba en curso en esta revisión. **NO-GO** hasta
+CI, decisiones de producto pendientes y validación física autorizada por Isaac.
+
 ## Hub
 
 Conservar estructura. Solo consistencia visual, estados reales, responsive,

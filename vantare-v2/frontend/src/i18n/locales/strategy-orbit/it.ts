@@ -1076,6 +1076,8 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.entry.referenceManual": "Regolazione manuale",
   "strategy.entry.referenceAdjusted": "Riferimento regolato",
   "strategy.entry.referenceMissing": "Nessun dato valido per questa selezione",
+  "strategy.entry.referenceUncertain": "Dato incerto · non usato nel calcolo",
+  "strategy.entry.referenceNoCompleteLaps": "Questa sessione non contiene giri completi",
   "strategy.entry.referenceInvalid": "Riferimento non valido",
   "strategy.entry.referenceBucketMissing": "Nessun dato per queste condizioni di anteprima",
   "strategy.entry.referenceRulePending": "Regola VE da definire",

@@ -1075,6 +1075,8 @@ export const strategyOrbitPt: Record<string, string> = {
   "strategy.entry.referenceManual": "Ajuste manual",
   "strategy.entry.referenceAdjusted": "Referência ajustada",
   "strategy.entry.referenceMissing": "Sem dados válidos para esta seleção",
+  "strategy.entry.referenceUncertain": "Dado incerto · não usado no cálculo",
+  "strategy.entry.referenceNoCompleteLaps": "Esta sessão não contém voltas completas",
   "strategy.entry.referenceInvalid": "Referência inválida",
   "strategy.entry.referenceBucketMissing": "Sem dados para este clima de pré-visualização",
   "strategy.entry.referenceRulePending": "Regra de VE pendente",

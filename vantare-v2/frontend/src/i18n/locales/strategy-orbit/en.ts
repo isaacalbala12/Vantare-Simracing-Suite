@@ -1085,6 +1085,8 @@ export const strategyOrbitEn: Record<string, string> = {
   "strategy.entry.referenceManual": "Manual adjustment",
   "strategy.entry.referenceAdjusted": "Adjusted reference",
   "strategy.entry.referenceMissing": "No valid data for this selection",
+  "strategy.entry.referenceUncertain": "Uncertain data · not used for calculation",
+  "strategy.entry.referenceNoCompleteLaps": "This session has no complete laps",
   "strategy.entry.referenceInvalid": "Invalid reference",
   "strategy.entry.referenceBucketMissing": "No data for these preview conditions",
   "strategy.entry.referenceRulePending": "VE rule pending",

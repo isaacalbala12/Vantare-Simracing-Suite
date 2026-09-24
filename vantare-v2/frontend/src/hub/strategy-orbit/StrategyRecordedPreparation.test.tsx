@@ -87,6 +87,33 @@ it("shows canonical observed values and a separate preview bucket without changi
   expect(input.onChange).not.toHaveBeenCalled();
 });
 
+it("shows observed uncertain laps without presenting them as valid calculation inputs", () => {
+  const input = props();
+  const draft = { ...input.draft, mode: "automatic" as const, combination, sessions: [{ sessionId: "race", revisionId: "revision", baseDigest: "a".repeat(64), snapshotId: "b".repeat(64) }] };
+  const unknown = { presence: "unknown", provenance: { kind: "derived", sourceId: "race" }, confidence: { sampleSize: 21, computationVersion: "real" } };
+  const planning = { overrides: {}, projection: {
+    representativePaceByClimateBucket: { dry: { ...unknown, medianLapSeconds: 115.913, reason: "no_clean_complete_laps_for_representative_pace" } },
+    fuelConsumption: { ...unknown, confidence: { ...unknown.confidence, sampleSize: 22 }, meanPerLap: 2.49, byClimateBucket: { dry: 2.49 } },
+  } } as unknown as StrategyPlanningInputsV2;
+  render(<StrategyRecordedPreparation {...input} draft={draft} references={{ status: "ready", planning }} />);
+  const cards = screen.getByRole("region", { name: "strategy.entry.referenceTitle" });
+  expect(within(cards).getByText("1:55.913").closest("article")?.getAttribute("data-quality")).toBe("uncertain");
+  expect(within(cards).getByText("2.49").closest("article")?.getAttribute("data-quality")).toBe("uncertain");
+  expect(within(cards).getAllByText("strategy.entry.referenceUncertain")).toHaveLength(2);
+});
+
+it("explains an opened session with no complete laps", () => {
+  const input = props();
+  const draft = { ...input.draft, mode: "automatic" as const, combination, sessions: [{ sessionId: "pit", revisionId: "revision", baseDigest: "a".repeat(64), snapshotId: "b".repeat(64) }] };
+  const planning = { overrides: {}, projection: {
+    representativePaceByClimateBucket: { dry: { presence: "missing", medianLapSeconds: 0, reason: "no_completed_laps_for_representative_pace" } },
+    fuelConsumption: { presence: "missing", meanPerLap: 0 },
+  } } as unknown as StrategyPlanningInputsV2;
+  render(<StrategyRecordedPreparation {...input} draft={draft} references={{ status: "ready", planning }} />);
+  const cards = screen.getByRole("region", { name: "strategy.entry.referenceTitle" });
+  expect(within(cards).getByText("strategy.entry.referenceNoCompleteLaps")).toBeTruthy();
+});
+
 it("shows a source-opening cause and action for a saved draft without a live handle", () => {
   const input = props();
   render(<StrategyRecordedPreparation {...input} draft={{ ...input.draft, mode: "automatic" }} references={{ status: "open_sources" }} />);

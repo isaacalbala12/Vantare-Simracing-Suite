@@ -877,38 +877,83 @@ func validateLauncherProfileHotkey(profile app.LaunchProfile, profiles []app.Lau
 }
 
 func saveProfileWithAutostart(profile app.LaunchProfile, svc *launcher.Service, emitter app.EventEmitter, syncAutostart func(string, bool) error) bool {
-	var previous *app.LaunchProfile
-	for _, existing := range svc.ListProfiles() {
-		if existing.ID == profile.ID {
-			copy := existing
-			previous = &copy
-			break
-		}
-	}
+	before := svc.ListProfiles()
 	if err := svc.SaveProfile(profile); err != nil {
 		log.Printf("launcher:saveProfile error: %v", err)
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return false
 	}
-	needsAutostartSync := profile.LaunchOnWindowsStartup || (previous != nil && previous.LaunchOnWindowsStartup)
-	if needsAutostartSync {
-		if err := syncAutostart(profile.ID, profile.LaunchOnWindowsStartup); err != nil {
-			var rollback error
-			if previous == nil {
-				rollback = svc.DeleteProfile(profile.ID)
-			} else {
-				rollback = svc.SaveProfile(*previous)
+	after := svc.ListProfiles()
+	oldStartup := make(map[string]bool, len(before))
+	newStartup := make(map[string]bool, len(after))
+	for _, existing := range before {
+		oldStartup[existing.ID] = existing.LaunchOnWindowsStartup
+	}
+	for _, saved := range after {
+		newStartup[saved.ID] = saved.LaunchOnWindowsStartup
+	}
+	type runChange struct {
+		id       string
+		previous bool
+	}
+	var changed []runChange
+	apply := func(id string, enabled bool) error {
+		changed = append(changed, runChange{id, oldStartup[id]})
+		return syncAutostart(id, enabled)
+	}
+	var syncErr error
+	for _, saved := range after {
+		if saved.LaunchOnWindowsStartup {
+			syncErr = apply(saved.ID, true)
+			if syncErr != nil {
+				break
 			}
-			if rollback != nil {
-				log.Printf("launcher:saveProfile rollback error: %v", rollback)
-			}
-			log.Printf("launcher:saveProfile autostart error: %v", err)
-			emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
-			return false
 		}
+	}
+	if syncErr == nil {
+		for _, existing := range before {
+			if existing.LaunchOnWindowsStartup && !newStartup[existing.ID] {
+				syncErr = apply(existing.ID, false)
+				if syncErr != nil {
+					break
+				}
+			}
+		}
+	}
+	if syncErr != nil {
+		if err := svc.RestoreProfiles(before); err != nil {
+			log.Printf("launcher:saveProfile settings rollback error: %v", err)
+		}
+		for i := len(changed) - 1; i >= 0; i-- {
+			if err := syncAutostart(changed[i].id, changed[i].previous); err != nil {
+				log.Printf("launcher:saveProfile Run rollback error: %v", err)
+			}
+		}
+		log.Printf("launcher:saveProfile autostart error: %v", syncErr)
+		emitter.Emit("launcher:error", map[string]any{"message": syncErr.Error()})
+		return false
 	}
 	handleLauncherSnapshot(svc, emitter)
 	return true
+}
+
+// reconcileLauncherAutostart reduces legacy multi-profile settings to the
+// first enabled profile before synchronizing the Windows Run entries.
+func reconcileLauncherAutostart(svc *launcher.Service, emitter app.EventEmitter, syncAutostart func(string, bool) error) {
+	profiles := svc.ListProfiles()
+	for _, profile := range profiles {
+		if profile.LaunchOnWindowsStartup {
+			if !saveProfileWithAutostart(profile, svc, emitter, syncAutostart) {
+				return
+			}
+			break
+		}
+	}
+	for _, profile := range svc.ListProfiles() {
+		if err := syncAutostart(profile.ID, profile.LaunchOnWindowsStartup); err != nil {
+			log.Printf("launcher: startup autostart reconciliation for %q failed: %v", profile.ID, err)
+		}
+	}
 }
 
 // handleDeleteProfile removes a profile by ID and re-emits the remaining list.
@@ -1274,6 +1319,14 @@ func handleProfileRetryFailed(profileID string, svc *launcher.Service, emitter a
 		log.Printf("launcher:profile:retry:failed error: %v", err)
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
+	}
+}
+
+// handleProfileRetryAll starts the saved profile again from its first step.
+func handleProfileRetryAll(profileID string, svc *launcher.Service, emitter app.EventEmitter, parentCtx context.Context) {
+	if err := svc.LaunchProfile(parentCtx, profileID); err != nil {
+		log.Printf("launcher:profile:retry:all error: %v", err)
+		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 	}
 }
 
@@ -2576,11 +2629,7 @@ func main() {
 		exec.Command,
 	)
 	launcherSvc.EnableRunningProcessDetection()
-	for _, profile := range launcherSvc.ListProfiles() {
-		if err := syncLauncherAutostart(profile.ID, profile.LaunchOnWindowsStartup); err != nil {
-			log.Printf("launcher: startup autostart reconciliation for %q failed: %v", profile.ID, err)
-		}
-	}
+	reconcileLauncherAutostart(launcherSvc, emitter, syncLauncherAutostart)
 
 	// Diagnostics service
 	diagSvc := app.NewDiagnosticsService(version, cfgDir, profileSvc, settingsSvc, telemetrySourceStatus)
@@ -3574,6 +3623,17 @@ func main() {
 			}
 		}
 		handleProfileRetryFailed(payload.ID, launcherSvc, emitter, ctx)
+	})
+	wailsApp.Event.On("launcher:profile:retry:all", func(event *application.CustomEvent) {
+		var payload struct {
+			ID string `json:"id"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handleProfileRetryAll(payload.ID, launcherSvc, emitter, ctx)
 	})
 
 	wailsApp.Event.On("launcher:profile:stats:save", func(event *application.CustomEvent) {

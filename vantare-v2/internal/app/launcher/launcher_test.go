@@ -361,6 +361,32 @@ func TestRetryFailedProfileStartsOnlyPendingSteps(t *testing.T) {
 	svc.CancelAll()
 }
 
+func TestFullRelaunchAfterFailureStartsAtFirstStep(t *testing.T) {
+	backend := newBackendWithLMU()
+	backend.apps["obs"] = app.LauncherAppEntry{ID: "obs", DisplayName: "OBS", LaunchMethod: "executable", ExecutablePath: `C:\Windows\System32\cmd.exe`}
+	backend.profiles = []app.LaunchProfile{{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}, {AppID: "obs"}}}}
+	emit := &blockingStepEmitter{entered: make(chan struct{}), release: make(chan struct{})}
+	svc := NewService(backend, emit, stubChainExec)
+	svc.recordChainEvent("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 0, AppID: "lmu", Status: "done"})
+	svc.recordChainEvent("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 1, AppID: "obs", Status: "failed"})
+	svc.recordChainEvent("launcher:chain:done", ChainProgress{ProfileID: "creator", Success: false})
+	if err := svc.LaunchProfile(context.Background(), "creator"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-emit.entered:
+	case <-time.After(time.Second):
+		close(emit.release)
+		t.Fatal("full relaunch did not start")
+	}
+	chains := svc.Snapshot().ActiveChains
+	if len(chains) != 1 || len(chains[0].Steps) != 1 || chains[0].Steps[0].AppID != "lmu" || chains[0].Steps[0].Status != "pending" {
+		t.Fatalf("full relaunch did not restart at first step: %+v", chains)
+	}
+	close(emit.release)
+	svc.CancelAll()
+}
+
 func TestDuplicateLaunchDoesNotFailRunningSnapshot(t *testing.T) {
 	backend := newBackendWithLMU()
 	backend.profiles = []app.LaunchProfile{{

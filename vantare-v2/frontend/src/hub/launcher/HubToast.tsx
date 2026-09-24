@@ -8,8 +8,8 @@ type HubToastProps = {
   variant: HubToastVariant;
   message: string;
   profileId: string;
-  /** Callback when retry is clicked. If omitted, emits launcher:profile:retry:failed. */
-  onRetry?: (profileId: string) => void;
+  /** Called for either retry action. Defaults to the matching Wails event. */
+  onRetry?: (profileId: string, scope: "failed" | "all") => void;
   /** Callback when the close button is clicked. */
   onClose?: () => void;
 };
@@ -41,7 +41,7 @@ const variantStyles: Record<
 /**
  * HubToast — fallback toast component for chain results.
  * Slides in from the top-right corner with Motion.
- * Shows a retry button for partial/error variants.
+ * Shows separate full-chain and failed-step retry actions for failures.
  */
 export function HubToast({
   variant,
@@ -59,11 +59,11 @@ export function HubToast({
     return () => clearTimeout(timer);
   }, [onClose]);
 
-  const handleRetry = () => {
+  const handleRetry = (scope: "failed" | "all") => {
     if (onRetry) {
-      onRetry(profileId);
+      onRetry(profileId, scope);
     } else {
-      Events.Emit("launcher:profile:retry:failed", { id: profileId });
+      Events.Emit(`launcher:profile:retry:${scope}`, { id: profileId });
     }
   };
 
@@ -89,13 +89,20 @@ export function HubToast({
           </p>
 
           {(variant === "partial" || variant === "error") && (
-            <div className="flex gap-2 mt-2">
+            <div className="flex flex-wrap gap-2 mt-2">
               <button
-                onClick={handleRetry}
-                data-testid="hub-toast-retry"
+                onClick={() => handleRetry("failed")}
+                data-testid="hub-toast-retry-failed"
                 className="px-3 py-1 rounded-lg border border-orbit-ember/40 text-[10px] uppercase tracking-[.18em] text-orbit-ember hover:bg-orbit-ember/10 transition-colors"
               >
-                Reintentar pasos pendientes
+                Repetir pasos fallidos
+              </button>
+              <button
+                onClick={() => handleRetry("all")}
+                data-testid="hub-toast-retry-all"
+                className="px-3 py-1 rounded-lg border border-orbit-ember/40 text-[10px] uppercase tracking-[.18em] text-orbit-ember hover:bg-orbit-ember/10 transition-colors"
+              >
+                Repetir todos los pasos
               </button>
             </div>
           )}

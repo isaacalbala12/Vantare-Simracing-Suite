@@ -1878,6 +1878,60 @@ func TestNewAutostartProfileRollsBackWhenRegistryFails(t *testing.T) {
 	}
 }
 
+func TestSelectingNewAutostartProfileRemovesOldRunEntry(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	run := map[string]bool{}
+	syncRun := func(id string, enabled bool) error { run[id] = enabled; return nil }
+	for _, id := range []string{"first", "second"} {
+		if !saveProfileWithAutostart(app.LaunchProfile{ID: id, Name: id, Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true}, svc, emitter, syncRun) {
+			t.Fatalf("saving %s failed", id)
+		}
+	}
+	if run["first"] || !run["second"] {
+		t.Fatalf("Windows Run entries must contain only the selected profile: %+v", run)
+	}
+}
+
+func TestSelectingNewAutostartProfileRollsBackWhenOldRunEntryCannotBeRemoved(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	run := map[string]bool{}
+	old := app.LaunchProfile{ID: "first", Name: "first", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true}
+	if !saveProfileWithAutostart(old, svc, emitter, func(id string, enabled bool) error { run[id] = enabled; return nil }) {
+		t.Fatal("initial profile failed")
+	}
+	newProfile := app.LaunchProfile{ID: "second", Name: "second", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true}
+	if saveProfileWithAutostart(newProfile, svc, emitter, func(id string, enabled bool) error {
+		if id == "first" && !enabled {
+			return fmt.Errorf("cannot remove old Run entry")
+		}
+		run[id] = enabled
+		return nil
+	}) {
+		t.Fatal("save succeeded despite old Run entry failure")
+	}
+	profiles := svc.ListProfiles()
+	if len(profiles) != 1 || profiles[0].ID != "first" || !profiles[0].LaunchOnWindowsStartup || !run["first"] || run["second"] {
+		t.Fatalf("settings and Run entries were not restored: profiles=%+v run=%+v", profiles, run)
+	}
+}
+
+func TestStartupReconcilesLegacyMultipleAutostartProfiles(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	profiles := []app.LaunchProfile{
+		{ID: "first", Name: "first", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true},
+		{ID: "second", Name: "second", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true},
+	}
+	if err := svc.RestoreProfiles(profiles); err != nil {
+		t.Fatal(err)
+	}
+	run := map[string]bool{"first": true, "second": true}
+	reconcileLauncherAutostart(svc, emitter, func(id string, enabled bool) error { run[id] = enabled; return nil })
+	got := svc.ListProfiles()
+	if len(got) != 2 || !got[0].LaunchOnWindowsStartup || got[1].LaunchOnWindowsStartup || !run["first"] || run["second"] {
+		t.Fatalf("legacy autostart was not reduced to one profile: profiles=%+v run=%+v", got, run)
+	}
+}
+
 func TestDeleteProfileRemovesAutostartBeforeDeleting(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	if err := svc.SaveProfile(app.LaunchProfile{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true}); err != nil {

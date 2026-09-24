@@ -103,8 +103,8 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
     };
   }, [store]);
 
-  const handleRetry = useCallback((profileId: string) => {
-    Events.Emit("launcher:profile:retry:failed", { id: profileId });
+  const handleRetry = useCallback((profileId: string, scope: "failed" | "all") => {
+    Events.Emit(`launcher:profile:retry:${scope}`, { id: profileId });
     setToastInfo(null);
   }, []);
 

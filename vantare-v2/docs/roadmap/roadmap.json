@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-24T17:06:08Z",
+  "generatedAt": "2026-09-24T22:09:58Z",
   "digest": {
-    "lastCommit": "6df485fe0a522dfc97f2f81acbc5ed84e216e54b"
+    "lastCommit": "5c73013ed59a4d69775a94fcc188d168310c59a5"
   },
   "phases": [
     {
@@ -108,10 +108,10 @@
           "it": "Licenze con credenziale offline e avvio dalla cache"
         },
         {
-          "es": "Launcher con detección de apps y cadenas de lanzamiento",
-          "en": "Launcher with app detection and launch chains",
-          "pt": "Launcher com deteção de apps e cadeias de lançamento",
-          "it": "Launcher con rilevamento app e catene di avvio"
+          "es": "Launcher con detección de apps, cadenas de lanzamiento y reintentos de perfil",
+          "en": "Launcher with app detection, launch chains and profile retries",
+          "pt": "Launcher com deteção de apps, cadeias de lançamento e novas tentativas de perfil",
+          "it": "Launcher con rilevamento app, catene di avvio e nuovi tentativi del profilo"
         },
         {
           "es": "Banco reproducible de huella por hardware para Vantare y el overlay",
@@ -2199,6 +2199,11 @@
           "kind": "feat",
           "scope": "overlays",
           "text": "Pedales avanzados con datos revisados y volantes LMU"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Racing Flags: letra ampliada, centrada y negra por defecto"
         }
       ]
     },

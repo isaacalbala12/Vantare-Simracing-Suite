@@ -521,6 +521,23 @@ func TestCancelledRunReportsStopped(t *testing.T) {
 	}
 }
 
+func TestRetryAllRepeatsEntireChainFromFirstStep(t *testing.T) {
+	emit := &spyEmitter{}
+	runner := NewChainRunner(sampleBackend(), emit, stubChainExec)
+	profile := app.LaunchProfile{
+		ID: "creator", Name: "Creator",
+		Policy: &app.LaunchPolicy{Retry: app.RetryAll, MaxRetries: 1, Failure: app.FailureContinue},
+		Steps:  []app.LaunchStep{{AppID: "missing-first"}, {AppID: "missing-second"}},
+	}
+	runner.RunChain(context.Background(), profile)
+	if got := emit.count("launcher:chain:step"); got != 4 {
+		t.Fatalf("retry all must run both steps twice, got %d step events", got)
+	}
+	if got := emit.count("launcher:chain:done"); got != 1 {
+		t.Fatalf("the complete retry must produce one final result, got %d", got)
+	}
+}
+
 func TestCancelDoesNotPermitOverlappingRelaunch(t *testing.T) {
 	emit := &blockingStepEmitter{entered: make(chan struct{}), release: make(chan struct{})}
 	runner := NewChainRunner(sampleBackend(), emit, stubChainExec)

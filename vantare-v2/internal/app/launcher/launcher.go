@@ -500,6 +500,11 @@ func (s *Service) SaveProfile(profile app.LaunchProfile) error {
 	return SaveProfile(s.settings, profile)
 }
 
+// RestoreProfiles restores the exact snapshot if Windows autostart sync fails.
+func (s *Service) RestoreProfiles(profiles []app.LaunchProfile) error {
+	return s.settings.SetLauncherProfiles(profiles)
+}
+
 // DeleteProfile delegates to profiles.go.
 func (s *Service) DeleteProfile(id string) error {
 	return DeleteProfile(s.settings, id)

@@ -2564,6 +2564,24 @@ GitGuardian. **NO-GO** hasta resolver las decisiones de producto y verificar
 en Windows real el Hub, procesos, Steam/LMU y el instalador. Isaac pidió aviso
 y confirmación antes de la revisión mediante computer use; sigue pendiente.
 
+Decimotercer avance de #1368 (candidato local, 2026-09-25): Isaac decidió
+que solo un perfil puede iniciar con Windows y que `retry: all` repite todos
+los pasos desde el primero. El guardado desmarca los demás perfiles, sincroniza
+los valores Run y restaura la configuración anterior si falla el registro;
+al arrancar, los ajustes antiguos con varios perfiles marcados se reducen al
+primero. `retry: all` repite la cadena completa, mientras el aviso ofrece
+«Repetir todos los pasos» y «Repetir pasos fallidos» como acciones distintas.
+La revisión en navegador Codex detectó que Orbit no ofrecía la política de
+reintento en el editor avanzado; ya permite elegir `ask`/`failed`/`all` y
+de 1 a 3 intentos adicionales, con traducciones es/en/pt/it. La prueba
+falló antes del arreglo y pasa después. Los tests de regresión de perfil,
+rollback, migración, política y botones,
+los dos paquetes Go completos, typecheck y build frontend pasan localmente.
+La comprobación física de Wails/Steam/LMU/instalador sigue pendiente: Isaac
+prohibió por ahora usar computer use en el escritorio, pero permite una
+revisión del servidor en el navegador de Codex. **NO-GO** hasta tener esa
+evidencia y los gates remotos del HEAD nuevo. Sin merge, promoción ni release.
+
 ## Hub
 
 Conservar estructura. Solo consistencia visual, estados reales, responsive,

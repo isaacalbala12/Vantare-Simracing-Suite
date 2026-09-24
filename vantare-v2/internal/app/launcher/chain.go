@@ -186,7 +186,14 @@ func (r *ChainRunner) CancelAllAndWait(ctx context.Context) error {
 // RecordProfileSuccess only on full success) and emits chain:done.
 func (r *ChainRunner) RunChain(ctx context.Context, profile app.LaunchProfile) {
 	chainStart := time.Now()
-	success := r.runChained(ctx, profile)
+	policy := app.NormalizeLaunchPolicy(profile.Policy)
+	success := false
+	for attempt := 0; ; attempt++ {
+		success = r.runChained(ctx, profile)
+		if success || ctx.Err() != nil || policy.Retry != app.RetryAll || attempt >= FullRetryAttempts(policy.MaxRetries) {
+			break
+		}
+	}
 	if ctx.Err() != nil {
 		success = false
 	}

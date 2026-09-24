@@ -71,7 +71,9 @@ export function OrbitProfileEditor({
   const launchable = useMemo(() => isProfileLaunchable(draft, apps), [draft, apps]);
   const validDelay = (seconds: number) => Number.isSafeInteger(seconds) && seconds >= 0;
   const invalidSteps = draft.steps.some((step) => !step.appId || !validDelay(step.delay)) ||
-    !validDelay(draft.policy?.firstStepDelay ?? 0);
+    !validDelay(draft.policy?.firstStepDelay ?? 0) ||
+    !Number.isSafeInteger(draft.policy?.maxRetries ?? 0) ||
+    (draft.policy?.maxRetries ?? 0) < 0 || (draft.policy?.maxRetries ?? 0) > 3;
   const duplicateSteps = hasDuplicateSteps(draft);
   const hotkeyInvalid = Boolean(draft.hotkey) && !isHotkeyAllowed(draft.hotkey as string);
   const canSave =
@@ -356,6 +358,39 @@ export function OrbitProfileEditor({
               ]}
               value={policy.exit}
             />
+            <Select
+              label={t("launcher.editor.retryPolicy")}
+              onChange={(value) => setDraft((current) => ({
+                ...current,
+                policy: {
+                  ...defaultPolicy,
+                  ...current.policy,
+                  retry: value as LaunchPolicy["retry"],
+                  maxRetries: value === "ask" ? 0 : Math.max(1, current.policy?.maxRetries ?? 0),
+                },
+              }))}
+              options={[
+                { value: "ask", label: t("launcher.editor.ask") },
+                { value: "failed", label: t("launcher.editor.retryFailed") },
+                { value: "all", label: t("launcher.editor.retryAll") },
+              ]}
+              value={policy.retry}
+            />
+            {policy.retry !== "ask" ? (
+              <Field htmlFor="orbit-profile-max-retries" label={t("launcher.editor.maxRetries")}>
+                <Input
+                  aria-label={t("launcher.editor.maxRetries")}
+                  id="orbit-profile-max-retries"
+                  max={3}
+                  min={1}
+                  numeric
+                  onChange={(event) => setPolicy("maxRetries", Number(event.target.value))}
+                  step={1}
+                  type="number"
+                  value={policy.maxRetries}
+                />
+              </Field>
+            ) : null}
           </div>
         </section>
       ) : null}

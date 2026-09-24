@@ -97,10 +97,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - item.en: Licensing with offline credentials and cache-first startup
 - item.pt: Licenças com credencial offline e arranque a partir da cache
 - item.it: Licenze con credenziale offline e avvio dalla cache
-- item: Launcher con detección de apps y cadenas de lanzamiento
-- item.en: Launcher with app detection and launch chains
-- item.pt: Launcher com deteção de apps e cadeias de lançamento
-- item.it: Launcher con rilevamento app e catene di avvio
+- item: Launcher con detección de apps, cadenas de lanzamiento y reintentos de perfil
+- item.en: Launcher with app detection, launch chains and profile retries
+- item.pt: Launcher com deteção de apps, cadeias de lançamento e novas tentativas de perfil
+- item.it: Launcher con rilevamento app, catene di avvio e nuovi tentativi del profilo
 - item: Banco reproducible de huella por hardware para Vantare y el overlay
 - item.en: Reproducible hardware footprint bench for Vantare and the overlay
 - item.pt: Banco reproduzível de impacto por hardware para Vantare e o overlay

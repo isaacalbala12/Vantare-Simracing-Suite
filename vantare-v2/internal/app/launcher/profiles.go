@@ -54,7 +54,12 @@ func SaveProfile(backend ProfilesBackend, profile app.LaunchProfile) error {
 		seen[s.AppID] = struct{}{}
 	}
 	profile.Policy = app.NormalizeLaunchPolicy(profile.Policy)
-	profiles := backend.GetLauncherProfiles()
+	profiles := append([]app.LaunchProfile(nil), backend.GetLauncherProfiles()...)
+	if profile.LaunchOnWindowsStartup {
+		for i := range profiles {
+			profiles[i].LaunchOnWindowsStartup = false
+		}
+	}
 	idx := -1
 	for i, p := range profiles {
 		if p.ID == profile.ID {

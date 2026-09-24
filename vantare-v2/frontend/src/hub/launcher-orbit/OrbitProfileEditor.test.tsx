@@ -182,6 +182,18 @@ describe("OrbitProfileEditor", () => {
     });
   });
 
+  it("guarda el reintento de toda la cadena y su límite desde el modo avanzado", () => {
+    const { onSave } = setup();
+    fireEvent.click(screen.getByTestId("orbit-profile-editor-advanced-toggle"));
+    fireEvent.click(screen.getByRole("combobox", { name: "Reintentos automáticos" }));
+    fireEvent.click(screen.getByRole("option", { name: "Todos los pasos" }));
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Reintentos adicionales" }), {
+      target: { value: "2" },
+    });
+    fireEvent.click(screen.getByTestId("orbit-profile-editor-save"));
+    expect(onSave.mock.calls[0][0].policy).toMatchObject({ retry: "all", maxRetries: 2 });
+  });
+
   it("rechaza esperas fraccionarias que el backend no puede guardar como segundos enteros", () => {
     setup();
     fireEvent.change(screen.getByTestId("orbit-editor-step-delay-0"), {

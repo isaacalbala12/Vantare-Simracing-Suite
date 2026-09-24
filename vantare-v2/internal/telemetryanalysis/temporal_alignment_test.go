@@ -127,6 +127,23 @@ func TestOwnedTemporalAlignmentMatchesPublicResult(t *testing.T) {
 	}
 }
 
+func TestGPSClockAcceptsUnorderedPagesAndRejectsRepeatedIndex(t *testing.T) {
+	session, pages := temporalAlignmentFixture(100, 20)
+	first := pages[0]
+	first.Samples = first.Samples[:5]
+	second := pages[0]
+	second.Samples = second.Samples[5:]
+	clock, status := buildGPSClock(session.Channels[0], []HistoricalPage{second, first})
+	if !status.Aligned || len(clock) != 11 || math.Abs(clock[5]-1000.051) > 1e-9 {
+		t.Fatalf("unordered pages changed GPS clock: status=%+v, clock=%v", status, clock)
+	}
+	second.Samples = append(second.Samples, first.Samples[0])
+	_, status = buildGPSClock(session.Channels[0], []HistoricalPage{second, first})
+	if status.Aligned || status.Reason != "bridge_duplicate_index" {
+		t.Fatalf("repeated index status = %+v", status)
+	}
+}
+
 func temporalAlignmentFixture(gpsHz, fuelHz int) (HistoricalSession, []HistoricalPage) {
 	end := 10.0
 	session := HistoricalSession{

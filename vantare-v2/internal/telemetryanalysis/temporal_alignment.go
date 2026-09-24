@@ -96,12 +96,8 @@ func buildTemporalAlignmentWithPages(session HistoricalSession, pages []Historic
 }
 
 func buildGPSClock(bridge HistoricalChannel, pages []HistoricalPage) (map[int64]float64, TemporalAlignmentStatus) {
-	type clockSample struct {
-		index int64
-		time  float64
-	}
-	var samples []clockSample
-	seen := make(map[int64]struct{})
+	clock := make(map[int64]float64)
+	var indexes []int64
 	for _, page := range pages {
 		if page.ChannelID != bridge.ID {
 			continue
@@ -113,10 +109,9 @@ func buildGPSClock(bridge HistoricalChannel, pages []HistoricalPage) (map[int64]
 			if sample.Index < 0 {
 				return nil, TemporalAlignmentStatus{Reason: "bridge_invalid_index"}
 			}
-			if _, exists := seen[sample.Index]; exists {
+			if _, exists := clock[sample.Index]; exists {
 				return nil, TemporalAlignmentStatus{Reason: "bridge_duplicate_index"}
 			}
-			seen[sample.Index] = struct{}{}
 			if len(sample.Values) != 1 {
 				return nil, TemporalAlignmentStatus{Reason: "bridge_invalid_shape"}
 			}
@@ -124,19 +119,18 @@ func buildGPSClock(bridge HistoricalChannel, pages []HistoricalPage) (map[int64]
 			if !ok || math.IsNaN(value) || math.IsInf(value, 0) {
 				return nil, TemporalAlignmentStatus{Reason: "bridge_invalid_value"}
 			}
-			samples = append(samples, clockSample{index: sample.Index, time: value})
+			clock[sample.Index] = value
+			indexes = append(indexes, sample.Index)
 		}
 	}
-	if len(samples) == 0 {
+	if len(indexes) == 0 {
 		return nil, TemporalAlignmentStatus{Reason: "bridge_invalid_shape"}
 	}
-	sort.Slice(samples, func(i, j int) bool { return samples[i].index < samples[j].index })
-	clock := make(map[int64]float64, len(samples))
-	for index, sample := range samples {
-		if index > 0 && sample.time <= samples[index-1].time {
+	sort.Slice(indexes, func(i, j int) bool { return indexes[i] < indexes[j] })
+	for index := 1; index < len(indexes); index++ {
+		if clock[indexes[index]] <= clock[indexes[index-1]] {
 			return nil, TemporalAlignmentStatus{Reason: "bridge_non_monotonic"}
 		}
-		clock[sample.index] = sample.time
 	}
 	return clock, TemporalAlignmentStatus{Aligned: true, Reason: "aligned"}
 }

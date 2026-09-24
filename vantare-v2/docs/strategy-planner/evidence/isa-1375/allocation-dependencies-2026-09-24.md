@@ -15,6 +15,12 @@ Banco: `TestRecordedStrategyRealDuckDB` con S266 Algarve y S026 Monza, parser LM
 
 `ReadCorrectionInput` asignó acumulativamente 27.070 MiB incluyendo sus llamadas; esta cifra **no** se suma a las asignaciones propias anteriores. `SolveV2Context` acumuló 281 MiB en este evento hipotético y es un problema separado del bloqueo exacto Hypercar #1367.
 
+## Segundo corte: reloj GPS sin estructuras duplicadas
+
+`buildGPSClock` conserva un mapa índice→instante y ordena únicamente los índices. Antes mantenía además un conjunto de índices y una segunda lista con índice e instante. El test protege páginas fuera de orden e índices repetidos; el banco real de S266+S026 volvió a pasar con idénticos ritmo seco 95,190 s (N=58), Fuel 2,135 L/vuelta (N=58), VE no aplicable para LMP2 y 38 vueltas/0 paradas con optimalidad probada **sólo para el evento supuesto**. Los SHA-256 originales no cambiaron.
+
+Un perfil `alloc_space` de la misma prueba completa pasó de 42.030 a 39.578 MiB acumulados, y la asignación propia de `buildGPSClock` de 7.014 a 4.430 MiB. Las pruebas duraron 85,17 y 82,23 s respectivamente. Son dos ejecuciones, sin control de variabilidad ni medición de pico por etapa; **no** se infiere un porcentaje estable de memoria de proceso ni se eleva el límite de muestras. Los perfiles locales quedaron en `C:\tmp\isa1375-allocs.mem` y `C:\tmp\isa1375-clock-allocs.mem`.
+
 ## Estado que exige el cálculo
 
 - El reloj GPS actual valida forma, índices únicos y tiempo estrictamente creciente. La fuente LMU entrega páginas por canal e índice. Una pasada ordenada puede validar con el último índice/tiempo; otra lectura por ventanas puede aportar el instante requerido para cada canal continuo. No basta con descartar muestras GPS sin demostrar la cobertura exacta y los mismos motivos de fallo.

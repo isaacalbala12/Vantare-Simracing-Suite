@@ -1,5 +1,10 @@
+import { steeringWheelNames } from "./steering-wheel-names";
+
 /** `studio.*` catalogue for Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
 export const studioOrbitEn: Record<string, string> = {
+  ...steeringWheelNames,
+  "overlay.inspector.efficiency.steeringWheel": "Steering wheel",
+  "overlay.inspector.efficiency.steeringWheel.generic": "Generic",
   "studio.inspector.content.towerPreview": "Tower Preview: fixed composition, without animations or column editing yet. Your columns are preserved for other designs. Brand and car number only appear when provided by the source. Adjust size on the canvas and row count here.",
   "studio.column.eyebrow": "Widgets",
   "studio.column.search": "Search widget…",

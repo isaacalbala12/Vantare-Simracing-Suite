@@ -7,6 +7,15 @@
 
 
 
+## ISA-1355 — volantes LMU intercambiables (2026-09-24)
+
+[Asana · Pedals telemetry](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756738610082), puente [#1355](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1355). Worker GPT-6 Astra Max, rama `vantareapp/isa-1355-lmu-steering-wheels`, worktree `vantare-lmu-steering-wheels`, base `nightly f50ab4ab`. [Diseño](../../plans/2026-09-24-lmu-steering-wheels.md) y [catálogo/evidencia](../../analysis/lmu-steering-wheels.md).
+
+El renderer productivo `PedalsAdvancedEfficiency` de `pedals-telemetry` incorpora 31 opciones LMU y conserva el genérico inicial. Apariencia persistente V4, selector de Studio y parámetro/control de Workshop, nombres comerciales comunes y etiquetas en cuatro idiomas. SVG propios simplificados: no se certifican réplicas exactas ni cada variante histórica. No se alteran datos, giro físico, nombres de widgets ni registro del compact; la auditoría y migración están en ramas de otros agentes.
+
+172 pruebas focales finales con idiomas; suite completa Node 22.23.2: 482 archivos / 4080 PASS / 2 omitidas. Typecheck, lint, build y ratchet PASS (NEW=0, MOVED=0, policy_changed=false). Node 26 alpha produjo errores de entorno en la primera suite; se repitió con el runtime estable sin debilitar pruebas. Revisión de Safari confirma selección Ferrari/BMW, tamaño y catálogo de 32 dibujos a 72 px. Preview aislado 5188; evidencia local temporal en `/tmp/vantare-wheel-review/`. Pendientes aceptación visual de Isaac, revisión independiente y validación física LMU/Windows/OBS; señal steering todavía ausente en la base. Preparado como candidato, sin merge a ningún canal.
+
+
 ## ISA-1347 — contratos y correcciones de datos de widgets aceptados (2026-09-23)
 
 Seguimiento por instrucción explícita de Isaac en [Asana · Desarrollo](https://app.asana.com/0/1218742976551956/list). Correcciones Delta `1218777895248782`, Pedals `1218777754821855`, Standings `1218777832104952`, Relative `1218778048433037` y Horizontal `1218777895238689`, todas En curso y releídas tras actualizar. Se preserva la aceptación visual previa. [Puente #1347](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1347), base inicial `nightly 8b25d076`, rebasada linealmente sobre `origin/nightly@b725c402`, rama `vantareapp/isa-1347-widgets-data-contract`.

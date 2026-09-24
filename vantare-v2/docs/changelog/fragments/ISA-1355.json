@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1355",
+  "type": "feature",
+  "summary": "Pedals Telemetry permite seleccionar y guardar un volante de las familias Hypercar, LMGT3, LMP2 y LMP3 de Le Mans Ultimate.",
+  "technicalNotes": [
+    "31 opciones LMU con dibujos SVG propios simplificados y el genérico original como predeterminado.",
+    "Ajuste de apariencia compartido por Studio, Desktop, OBS y Workshop; sin modificar señales ni calibración física.",
+    "Catálogo contrastado con fuentes oficiales hasta el 24 de septiembre de 2026; evoluciones agrupadas por familia y BMW anterior/posterior a Le Mans 2024 separado."
+  ],
+  "testing": [
+    "172 pruebas focales finales, incluidos idiomas, persistencia V4 y paridad de superficies.",
+    "Frontend completo con Node 22: 482 archivos, 4080 pruebas aprobadas y 2 omitidas.",
+    "Typecheck, lint, build y ratchet aprobados; revisión visual en Safari."
+  ],
+  "knownLimitations": [
+    "Dibujos simplificados pendientes de aceptación visual, sin certificar cada control ni variante histórica.",
+    "La señal de dirección LMU y la validación física Windows/OBS siguen pendientes en la auditoría independiente."
+  ]
+}

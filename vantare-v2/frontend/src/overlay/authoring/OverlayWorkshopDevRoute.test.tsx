@@ -9,6 +9,20 @@ afterEach(() => {
 });
 
 describe("OverlayWorkshopDevRoute", () => {
+  it("previews a wheel through the productive settings and preserves it in the URL", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=pedals-telemetry&system=vantare-functional&steeringWheel=oreca-07" />);
+    await waitFor(() => expect(document.querySelector('[data-steering-wheel="oreca-07"]')).toBeTruthy());
+    expect((screen.getByLabelText("Volante") as HTMLSelectElement).value).toBe("oreca-07");
+    const content = document.querySelector(".vf-pedals-adv-gear")!.textContent;
+    fireEvent.change(screen.getByLabelText("Volante"), { target: { value: "ligier-js-p325" } });
+    await waitFor(() => expect(document.querySelector('[data-steering-wheel="ligier-js-p325"]')).toBeTruthy());
+    expect(window.location.search).toContain("steeringWheel=ligier-js-p325");
+    expect(document.querySelector(".vf-pedals-adv-gear")!.textContent).toBe(content);
+    fireEvent.change(screen.getByLabelText("Widget"), { target: { value: "delta" } });
+    await waitFor(() => expect(screen.queryByLabelText("Volante")).toBeNull());
+    expect(window.location.search).not.toContain("steeringWheel");
+  });
+
   it.each(["studio", "desktop"])("can replay a fastest-lap event in %s after seeking back", async surface => {
     render(<OverlayWorkshopDevRoute search={`?widget=fastest-lap&surface=${surface}&scene=fastest-lap-alert`} />);
     await waitFor(() => expect(document.querySelector('[data-widget-renderer="fastest-lap"]')).toBeTruthy());

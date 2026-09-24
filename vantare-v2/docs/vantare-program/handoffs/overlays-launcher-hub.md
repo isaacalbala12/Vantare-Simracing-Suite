@@ -19,6 +19,8 @@ Auditoría para PR solicitada por Isaac: LMU lee `mDentSeverity[8]` del coche ju
 
 Checks en la base reconciliada: `go test` de los paquetes LMU y Overlay V2, typecheck, lint frontend, build frontend y cuatro pruebas del presupuesto de frames pasaron. La suite completa de frontend aprobó 4098 pruebas y omitió 2, pero terminó roja porque `work/horizontal-standings-flags.visual.test.tsx` agotó 20 s al cerrar Chromium en `afterAll`; esa prueba ajena pasó aislada (5/5). No se presenta el conjunto como verde. La build final es única tras las iteraciones. Pendientes CI del PR y validación física LMU/Windows/OBS; sin merge, promoción ni release.
 
+[PR draft #1386](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1386) abierta hacia `nightly` con el diff exclusivo de #1385 y el fallo de la suite global declarado en la descripción. Rama remota publicada para revisión; CI y aceptación de la telemetría física siguen pendientes. No se ha autorizado ni realizado merge o promoción.
+
 ## ISA-1355 — integración de datos, volantes y catálogo (2026-09-24)
 
 La [PR draft #1356](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1356) reúne las tres entregas coordinadas en [Asana · Pedals telemetry](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756738610082). Sobre `bf2b12e9` (volantes) y `82883459` (renombre/compatibilidad), el tercer commit incorpora con `cherry-pick -x` el parche de datos `fb8590878d46988def86b55c2c0aa4add32c497b`, revisado contra sus cinco pruebas y consumidores. Rama `vantareapp/isa-1355-lmu-steering-wheels`, misma base `nightly f50ab4ab`; no hay conflicto semántico ni conversión de perfiles.

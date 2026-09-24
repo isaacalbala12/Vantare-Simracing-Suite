@@ -11,7 +11,7 @@ vi.mock("@wailsio/runtime", () => ({ Dialogs: { OpenFile: vi.fn() }, Call: { ByN
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 function fixture() {
   const candidate = { id: "candidate", state: "ready", size: 1024, modifiedAt: "2026-09-09T12:00:00Z", walPresent: false };
-  const client = { discover: vi.fn().mockResolvedValue([candidate]), close: vi.fn().mockResolvedValue(undefined), saveVerifiedCopy: vi.fn().mockResolvedValue({ path: "C:\\kept\\copy.duckdb", contentSha256: "d".repeat(64), sizeBytes: 1024 }), selectFile: vi.fn().mockResolvedValue({ id: "selected", state: "ready", size: 1024, modifiedAt: "2026-09-24T18:00:00Z", walPresent: false, displayName: "copy.duckdb" }) };
+  const client = { discover: vi.fn().mockResolvedValue([candidate]), close: vi.fn().mockResolvedValue(undefined), saveVerifiedCopy: vi.fn().mockResolvedValue({ code: "saved", copy: { path: "C:\\kept\\copy.duckdb", contentSha256: "d".repeat(64), sizeBytes: 1024 } }), selectFile: vi.fn().mockResolvedValue({ id: "selected", state: "ready", size: 1024, modifiedAt: "2026-09-24T18:00:00Z", walPresent: false, displayName: "copy.duckdb" }) };
   const session = { candidateId: "candidate", combinationId: "combo", base: { sessionId: "source", contentSha256: "d".repeat(64), sizeBytes: 1024 }, opened: { sessionId: "handle", session: { metadata: [] } }, revision: { sessionId: "source", revisionId: "a".repeat(64), baseDigest: "b".repeat(64), snapshotId: "c".repeat(64) } } as RecordedSession;
   vi.mocked(openRecordedSession).mockResolvedValue(session);
   const onApply = vi.fn().mockResolvedValue(undefined);
@@ -57,6 +57,15 @@ describe("recorded sessions panel", () => {
     fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.copySave" }));
     await screen.findByText(/strategy.recorded.copySaved/);
     expect(client.saveVerifiedCopy).toHaveBeenCalledWith("handle", "C:\\kept", expect.any(AbortSignal));
+  });
+  it("explains a full destination without claiming the copy was saved", async () => {
+    const { client } = fixture();
+    await prepare();
+    client.saveVerifiedCopy.mockResolvedValueOnce({ code: "no_space" });
+    vi.mocked(Dialogs.OpenFile).mockResolvedValueOnce("C:\\full");
+    fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.copySave" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("strategy.recorded.copyNoSpace");
+    expect(screen.queryByText(/strategy.recorded.copySaved/)).toBeNull();
   });
   it("pages and searches hundreds of files without opening or losing prepared sessions", () => {
     const candidates = Array.from({ length: 416 }, (_, index) => ({ id: `candidate-${index}`, displayName: index === 415 ? "São_Paulo.duckdb" : `Imola_${index}.duckdb`, state: index === 0 ? "active" : "ready", size: 1024, modifiedAt: new Date(Date.UTC(2026, 0, 1, 0, index)).toISOString(), walPresent: index === 0 }));

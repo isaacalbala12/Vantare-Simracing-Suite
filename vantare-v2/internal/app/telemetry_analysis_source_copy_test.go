@@ -35,18 +35,19 @@ func TestTelemetryAnalysisVerifiedCopyKeepsOriginalAndSurvivesClose(t *testing.T
 	if _, err := svc.SaveVerifiedCopy(context.Background(), TelemetryAnalysisCopyRequest{SessionID: opened.SessionID, DestinationDirectory: destination}); !errors.Is(err, ErrTelemetryAnalysisApprovalRequired) {
 		t.Fatalf("unapproved copy error = %v", err)
 	}
-	copyResult, err := svc.SaveVerifiedCopy(context.Background(), request)
-	if err != nil {
-		t.Fatal(err)
+	status, err := svc.SaveVerifiedCopyStatus(context.Background(), request)
+	if err != nil || status.Code != "saved" || status.Copy == nil {
+		t.Fatalf("successful copy status = %+v, %v", status, err)
 	}
+	copyResult := *status.Copy
 	if filepath.Dir(copyResult.Path) != destination || filepath.Ext(copyResult.Path) != ".duckdb" || copyResult.SizeBytes != int64(len(before)) {
 		t.Fatalf("unexpected verified copy metadata: %+v", copyResult)
 	}
 	registryRoot := svc.cfg.CorrectionRoot
 	svc.cfg.CorrectionRoot = ""
 	failedDestination := t.TempDir()
-	if _, err := svc.SaveVerifiedCopy(context.Background(), TelemetryAnalysisCopyRequest{SessionID: opened.SessionID, DestinationDirectory: failedDestination, UserApproved: true}); !errors.Is(err, ErrTelemetryAnalysisCopyRegistryFailure) {
-		t.Fatalf("unregistered copy error = %v", err)
+	if failed, err := svc.SaveVerifiedCopyStatus(context.Background(), TelemetryAnalysisCopyRequest{SessionID: opened.SessionID, DestinationDirectory: failedDestination, UserApproved: true}); err != nil || failed.Code != "registry_failure" || failed.Copy != nil {
+		t.Fatalf("unregistered copy status = %+v, %v", failed, err)
 	}
 	svc.cfg.CorrectionRoot = registryRoot
 	if entries, err := os.ReadDir(failedDestination); err != nil || len(entries) != 0 {

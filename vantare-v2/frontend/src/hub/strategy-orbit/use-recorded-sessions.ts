@@ -175,7 +175,9 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
     }),
     saveCopy: (session: RecordedSession, destinationDirectory: string) => run(async signal => {
       if (!owned.current.some(item => item.opened.sessionId === session.opened.sessionId)) throw new Error("recorded_source_unavailable");
-      const copy = await client.saveVerifiedCopy(session.opened.sessionId, destinationDirectory, signal);
+      const result = await client.saveVerifiedCopy(session.opened.sessionId, destinationDirectory, signal);
+      if (result.code !== "saved") throw new Error(`recorded_copy_${result.code}`);
+      const copy = result.copy;
       if (copy.contentSha256 !== session.base.contentSha256 || copy.sizeBytes !== session.base.sizeBytes) throw new Error("recorded_copy_mismatch");
       if (alive.current) setSavedCopies(previous => ({ ...previous, [session.opened.sessionId]: copy.path }));
     }),

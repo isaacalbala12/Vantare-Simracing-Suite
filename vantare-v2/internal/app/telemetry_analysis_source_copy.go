@@ -24,6 +24,33 @@ type TelemetryAnalysisCopyResult struct {
 	SizeBytes     int64  `json:"sizeBytes"`
 }
 
+type TelemetryAnalysisCopyStatus struct {
+	Code string                       `json:"code"`
+	Copy *TelemetryAnalysisCopyResult `json:"copy,omitempty"`
+}
+
+// SaveVerifiedCopyStatus provides stable outcomes for the desktop UI while
+// preserving the typed errors of SaveVerifiedCopy for other callers.
+func (service *TelemetryAnalysisService) SaveVerifiedCopyStatus(ctx context.Context, request TelemetryAnalysisCopyRequest) (TelemetryAnalysisCopyStatus, error) {
+	copy, err := service.SaveVerifiedCopy(ctx, request)
+	switch {
+	case err == nil:
+		return TelemetryAnalysisCopyStatus{Code: "saved", Copy: &copy}, nil
+	case errors.Is(err, ErrTelemetryAnalysisCopyPermission):
+		return TelemetryAnalysisCopyStatus{Code: "permission"}, nil
+	case errors.Is(err, ErrTelemetryAnalysisCopyNoSpace):
+		return TelemetryAnalysisCopyStatus{Code: "no_space"}, nil
+	case errors.Is(err, ErrTelemetryAnalysisCopyRegistryFailure):
+		return TelemetryAnalysisCopyStatus{Code: "registry_failure"}, nil
+	case errors.Is(err, ErrTelemetryAnalysisCleanup):
+		return TelemetryAnalysisCopyStatus{Code: "cleanup_failure"}, nil
+	case errors.Is(err, ErrTelemetryAnalysisCopyFailed):
+		return TelemetryAnalysisCopyStatus{Code: "failed"}, nil
+	default:
+		return TelemetryAnalysisCopyStatus{}, err
+	}
+}
+
 // SaveVerifiedCopy keeps a second file chosen by the user, independent of the
 // private staged copy released when this session closes.
 func (service *TelemetryAnalysisService) SaveVerifiedCopy(ctx context.Context, request TelemetryAnalysisCopyRequest) (TelemetryAnalysisCopyResult, error) {

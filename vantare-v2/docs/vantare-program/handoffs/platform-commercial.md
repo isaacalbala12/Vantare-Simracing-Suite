@@ -22,6 +22,11 @@ Commit `0aa0d3f1` publicado en la rama y [PR borrador #1380](https://github.com/
 contra `nightly`. CI remoto pendiente. Siguiente acción: revisar sus checks,
 validar el backend en un entorno de prueba y obtener la aprobación de Isaac
 antes de integrar en Nightly.
+Primer CI: `Validate Vantare blocking gates` y política de promoción PASS;
+`quality-check` falló por Knip NEW=1 (tipo exportado sin consumidor) y
+jscpd NEW=2 (CSS del roadmap duplicado). Corregidos en la rama; Knip local
+NEW=0 y el informe jscpd ya no contiene emplazamientos de roadmap. Falta
+el CI del nuevo commit.
 
 ## VAN-740 / ISA-1305 — Wails beta.24 aceptado para Nightly (2026-09-22)
 

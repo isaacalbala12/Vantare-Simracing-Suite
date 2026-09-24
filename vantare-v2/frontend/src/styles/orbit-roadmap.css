@@ -1,16 +1,13 @@
 /* Roadmap público y editor visual. */
 
 .orbit-rm {
-  display: flex;
-  flex-direction: column;
   width: min(var(--orbit-content-max), calc(100% - var(--orbit-content-gutter)));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   height: 100%;
-  margin: 0 auto;
-  padding: 24px 0 20px;
-  font-family: var(--orbit-font-sans);
+  margin-inline: auto;
+  padding-block: 24px 20px;
 }
-
-/* ------------------------------------------------------------- CABECERA */
 
 .orbit-rm__head {
   display: flex;
@@ -26,26 +23,19 @@
 }
 
 .orbit-rm__head-copy h2 {
-  margin: 6px 0 0;
+  margin-block: 6px 0;
   color: var(--orbit-ink);
+  letter-spacing: -0.035em;
   font-size: var(--orbit-fs-page);
   font-weight: 690;
-  letter-spacing: -0.035em;
 }
 
 .orbit-rm__head-copy p {
-  max-width: 84ch;
-  margin: 7px 0 0;
+  max-width: 72ch;
+  margin-top: 7px;
   color: var(--orbit-ink-2);
-  font-size: var(--orbit-fs-body);
   line-height: 1.55;
-}
-
-.orbit-rm__actions {
-  display: flex;
-  flex: none;
-  gap: 10px;
-  align-items: center;
+  font-size: var(--orbit-fs-body);
 }
 
 /* ------------------------------------------------------ COLUMNA DE LECTURA */
@@ -53,7 +43,6 @@
 /* Una sola superficie a lo ancho; dentro, la columna de lectura centrada. El
    scroll vive aquí, no en la página (`03 · shell`). */
 .orbit-rm__reader {
-  flex: 1;
   min-height: 0;
   margin-top: var(--orbit-space);
 }

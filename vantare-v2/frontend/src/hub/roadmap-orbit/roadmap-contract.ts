@@ -3,7 +3,7 @@ export type RoadmapLocale = "es" | "en" | "pt" | "it";
 export const ROADMAP_LOCALES: readonly RoadmapLocale[] = ["es", "en", "pt", "it"];
 export const ROADMAP_SECTIONS: readonly RoadmapSection[] = ["now", "next", "done"];
 
-export type LocalizedText = Record<RoadmapLocale, string>;
+type LocalizedText = Record<RoadmapLocale, string>;
 export type RoadmapItem = {
   id: string;
   section: RoadmapSection;

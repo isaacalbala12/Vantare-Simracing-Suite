@@ -28,6 +28,10 @@ const decisionTimeout = 2 * time.Minute
 
 func (r *ChainRunner) requestDecision(ctx context.Context, profileID, appID, kind, message string, actions []string) string {
 	r.mu.Lock()
+	if r.stopping {
+		r.mu.Unlock()
+		return ""
+	}
 	r.nextDecision++
 	id := fmt.Sprintf("%d", r.nextDecision)
 	request := DecisionRequest{
@@ -50,6 +54,8 @@ func (r *ChainRunner) requestDecision(ctx context.Context, profileID, appID, kin
 	case action := <-decision.action:
 		return action
 	case <-ctx.Done():
+		return r.expireDecision(id, decision.action)
+	case <-r.shutdown:
 		return r.expireDecision(id, decision.action)
 	case <-timer.C:
 		return r.expireDecision(id, decision.action)

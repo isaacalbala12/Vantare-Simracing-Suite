@@ -48,6 +48,7 @@ type Service struct {
 	activeMu              sync.Mutex
 	active                map[string]LauncherActiveChain
 	owned                 map[int]ownedProcess
+	inspectOwned          func(context.Context, ProcessIdentity) bool
 	retryStepIndices      map[string][]int
 	chainCleanupDelay     time.Duration
 	chainCleanupTimers    map[string]*time.Timer
@@ -123,6 +124,10 @@ func NewService(settings LauncherSettingsBackend, emit Emitter, execFn execLaunc
 // execution. It is called before the production service starts any chain.
 func (s *Service) EnableRunningProcessDetection() {
 	s.chain.findRunning = FindRunningByExecutable
+	s.inspectOwned = func(ctx context.Context, identity ProcessIdentity) bool {
+		info, ok := DefaultProcessInspector().Find(ctx, identity)
+		return ok && ProcessIsReady(identity, info)
+	}
 	s.chain.ownedProcess = s.OwnedProcessIdentity
 	s.chain.closeOwned = func(ctx context.Context, appID string, identity ProcessIdentity) error {
 		if err := CloseProcess(ctx, DefaultProcessInspector(), identity); err != nil {
@@ -696,10 +701,24 @@ func (s *Service) ownedForProfile(profileID string) []ownedProcess {
 	return processes
 }
 
+func (s *Service) ownedStillRunning(ctx context.Context, process ownedProcess) bool {
+	if s.inspectOwned == nil || s.inspectOwned(ctx, process.identity) {
+		return true
+	}
+	s.ForgetStartedProcess(process.appID, process.identity.PID)
+	return false
+}
+
 func (s *Service) applyCancelPolicy(profileID string, policy app.CancelPolicy, cutoff uint64) {
+	select {
+	case <-s.chain.shutdown:
+		return // Exit policy now owns the decision for these processes.
+	default:
+	}
 	processes := make([]ownedProcess, 0)
+	ctx := context.Background()
 	for _, owned := range s.ownedForProfile(profileID) {
-		if owned.identity.CreationTime < cutoff {
+		if owned.identity.CreationTime < cutoff && s.ownedStillRunning(ctx, owned) {
 			processes = append(processes, owned)
 		}
 	}
@@ -711,6 +730,11 @@ func (s *Service) applyCancelPolicy(profileID string, policy app.CancelPolicy, c
 		if action != "close-started" {
 			return
 		}
+	}
+	select {
+	case <-s.chain.shutdown:
+		return
+	default:
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
@@ -725,4 +749,55 @@ func (s *Service) applyCancelPolicy(profileID string, policy app.CancelPolicy, c
 // to ensure no orphaned processes are left behind when the Hub closes.
 func (s *Service) CancelAll() {
 	s.chain.CancelAll()
+}
+
+// CloseOnExit applies each profile's exit policy after active launch chains
+// have stopped. A missing prompt defaults to leaving processes open.
+func (s *Service) CloseOnExit(ctx context.Context, ask func(int) bool) error {
+	if err := s.chain.CancelAllAndWait(ctx); err != nil {
+		return fmt.Errorf("launcher: wait for chains before exit: %w", err)
+	}
+	if s.chain.closeOwned == nil {
+		return nil
+	}
+	policies := make(map[string]app.ExitPolicy)
+	for _, profile := range s.settings.GetLauncherProfiles() {
+		policies[profile.ID] = app.NormalizeLaunchPolicy(profile.Policy).Exit
+	}
+	s.activeMu.Lock()
+	owned := make([]ownedProcess, 0, len(s.owned))
+	for _, process := range s.owned {
+		owned = append(owned, process)
+	}
+	s.activeMu.Unlock()
+	sort.Slice(owned, func(i, j int) bool { return owned[i].identity.PID < owned[j].identity.PID })
+	toClose := make([]ownedProcess, 0)
+	toAsk := make([]ownedProcess, 0)
+	for _, process := range owned {
+		if !s.ownedStillRunning(ctx, process) {
+			continue
+		}
+		switch policies[process.profileID] {
+		case app.ExitCloseStarted:
+			toClose = append(toClose, process)
+		case app.ExitLeave:
+			// The user's explicit leave policy wins.
+		default:
+			toAsk = append(toAsk, process)
+		}
+	}
+	if len(toAsk) > 0 && ask != nil && ask(len(toAsk)) {
+		toClose = append(toClose, toAsk...)
+	}
+	// The user may spend more than the shutdown budget answering the native
+	// prompt. Give the verified process closes their own bounded time afterward.
+	closeCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	var failures []error
+	for _, process := range toClose {
+		if err := s.chain.closeOwned(closeCtx, process.appID, process.identity); err != nil {
+			failures = append(failures, fmt.Errorf("%s PID %d: %w", process.appID, process.identity.PID, err))
+		}
+	}
+	return errors.Join(failures...)
 }

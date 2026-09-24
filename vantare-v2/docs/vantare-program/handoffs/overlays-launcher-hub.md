@@ -2489,6 +2489,22 @@ alcanzar descendientes no iniciados directamente por Vantare, y actúa solo
 sobre el PID verificado. Los tests Go focales y vet pasan; falta comprobar
 este comportamiento con procesos reales durante la sesión visual acordada.
 
+Noveno avance de #1368 (candidato local): al cerrar Vantare se detienen y
+esperan las cadenas activas antes de decidir sobre los procesos que abrió
+esta sesión. Cada perfil aplica `exit: leave`, `close-started` o `ask`; la
+pregunta nativa de Windows propone cerrar solo identidades verificadas y deja
+las aplicaciones abiertas por defecto. Los procesos ya terminados no provocan
+un aviso. El cierre del Launcher se ejecuta al inicio del apagado, antes de
+consumir el presupuesto compartido de los demás servicios. El apagado anula
+las preguntas pendientes de cancelación y evita que una respuesta antigua
+aplique esa política después de asumir el control la política de salida.
+Las regresiones de salida, diálogo pendiente y exclusión de nuevas cadenas,
+`go test ./internal/app/launcher ./cmd/vantare -count=1 -timeout 90s` y
+`go vet` focal pasan. Falta publicar y verificar este HEAD en CI, además de
+probar el aviso y el cierre con Wails y procesos reales. El HEAD anterior
+`a27f2419` tiene ratchet, ruta y GitGuardian verdes; el gate bloqueante
+remoto continúa pendiente. **NO-GO**, sin merge, promoción ni release.
+
 ## Hub
 
 Conservar estructura. Solo consistencia visual, estados reales, responsive,

@@ -29,6 +29,8 @@ type ChainRunner struct {
 	steamReadyTimeout   time.Duration
 	processPollInterval time.Duration
 	mu                  sync.Mutex
+	stopping            bool
+	shutdown            chan struct{}
 	active              map[string]*activeChain // profileID -> running chain
 	nextDecision        uint64
 	pendingDecisions    map[string]pendingDecision
@@ -51,6 +53,7 @@ func NewChainRunner(backend ProfilesBackend, emit Emitter, execFn execLauncher) 
 		exec:                execFn,
 		emit:                emit,
 		active:              map[string]*activeChain{},
+		shutdown:            make(chan struct{}),
 		pendingDecisions:    map[string]pendingDecision{},
 		steamReadyTimeout:   2 * time.Minute,
 		processPollInterval: 500 * time.Millisecond,
@@ -97,6 +100,10 @@ type livenessResult struct {
 // RecordProfileSuccess only when the chain succeeds.
 func (r *ChainRunner) StartChain(parent context.Context, profile app.LaunchProfile) error {
 	r.mu.Lock()
+	if r.stopping {
+		r.mu.Unlock()
+		return ErrLauncherStopping
+	}
 	if _, exists := r.active[profile.ID]; exists {
 		r.mu.Unlock()
 		return ErrProfileInProgress
@@ -147,6 +154,31 @@ func (r *ChainRunner) CancelAll() {
 		chain.cancelled = true
 		chain.cancel()
 	}
+}
+
+// CancelAllAndWait ensures every runner has finished recording its last step
+// before exit policy inspects the processes launched in this session.
+func (r *ChainRunner) CancelAllAndWait(ctx context.Context) error {
+	r.mu.Lock()
+	if !r.stopping {
+		r.stopping = true
+		close(r.shutdown)
+	}
+	done := make([]<-chan struct{}, 0, len(r.active))
+	for _, chain := range r.active {
+		chain.cancelled = true
+		chain.cancel()
+		done = append(done, chain.done)
+	}
+	r.mu.Unlock()
+	for _, finished := range done {
+		select {
+		case <-finished:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	return nil
 }
 
 // RunChain executes the profile synchronously and emits progress events.

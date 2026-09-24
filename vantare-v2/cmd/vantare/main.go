@@ -1501,6 +1501,12 @@ func main() {
 			shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), 8*time.Second)
 			defer cancelShutdown()
 			results := runShutdown(shutdownCtx, []shutdownStep{
+				{name: "launcher", stop: func(ctx context.Context) error {
+					if launcherSvc != nil {
+						return launcherSvc.CloseOnExit(ctx, askLauncherExitClose)
+					}
+					return nil
+				}},
 				{name: "overlay", stop: func(context.Context) error {
 					if overlayController != nil {
 						overlayController.Stop()
@@ -1564,12 +1570,6 @@ func main() {
 				{name: "engineer-voice-input", stop: func(ctx context.Context) error {
 					if engineerVoiceRuntime != nil {
 						return engineerVoiceRuntime.Stop(ctx)
-					}
-					return nil
-				}},
-				{name: "launcher", stop: func(context.Context) error {
-					if launcherSvc != nil {
-						launcherSvc.CancelAll()
 					}
 					return nil
 				}},

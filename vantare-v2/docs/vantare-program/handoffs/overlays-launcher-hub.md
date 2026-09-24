@@ -2374,6 +2374,9 @@ como fallida a los 30 s durante una espera configurada de 60 s. La señal
 `pending` ahora lleva el delay previsto y el watchdog espera ese plazo más
 su margen habitual. Pruebas Go focales, 11 frontend, typecheck, build y lint
 pasaron localmente; falta el CI del nuevo HEAD y validación visual real.
+El toast que relanza la cadena completa ya lo dice explícitamente; el evento
+legacy aún se llama `retry:failed` y el reintento solo de pasos fallidos sigue
+pendiente de implementación.
 
 ## Hub
 

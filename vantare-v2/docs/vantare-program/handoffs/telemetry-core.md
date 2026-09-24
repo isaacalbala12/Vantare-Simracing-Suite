@@ -1,5 +1,18 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-764 / GitHub #1379 — comparación Go/Rust futura (en curso, 2026-09-24)
+
+Tarea Notion: https://app.notion.com/p/3e5e51695c6581d6afe3cfca166d28be.
+En worktree aislado sobre `origin/nightly@5c73013e`, el primer corte compara
+la validación de cadenas LMU con Go productivo, Go de una sola conversión y
+Rust invocado por DLL una vez por frame. Paridad en cuatro capturas sanitizadas;
+medianas @44 coches: 9.346 / 8.230 / 6.330 ns por frame, respectivamente.
+Esta medición no cubre la CPU de la aplicación completa ni demuestra una ventaja
+de Rust para todo Telemetry Core. Evidencia y salida cruda en
+`docs/telemetry-core/evidence/isa-1379-go-rust-cstrings.md` y `.txt`. Rust no está
+integrado en producción. Siguiente gate: tramo completo, paridad y CPU de
+proceso A/B con el mismo replay.
+
 > **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
 > Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,
 > bloquear, entregar y verificar merge. [Contrato](../notion-transition.md).

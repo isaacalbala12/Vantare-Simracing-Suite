@@ -2585,6 +2585,8 @@ a pasar tras la corrección.
 La cola de flags recibidos por la instancia única también comprueba el perfil
 seleccionado tras migrar los ajustes: un segundo valor Run antiguo no abre
 otra cadena. Se añadió la regresión de dos flags encolados en orden inverso.
+Los IDs de perfiles ya borrados siguen llegando al manejador previo para
+retirar su valor Run obsoleto; una regresión protege esa limpieza.
 La comprobación física de Wails/Steam/LMU/instalador sigue pendiente: Isaac
 prohibió por ahora usar computer use en el escritorio, pero permite una
 revisión del servidor en el navegador de Codex. **NO-GO** hasta tener esa

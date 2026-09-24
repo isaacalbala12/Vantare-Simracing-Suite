@@ -1423,11 +1423,15 @@ func handleLaunchFlag(args []string, unregister func(string) error, svc *launche
 // were reduced to a single enabled profile.
 func replayAutostartFlag(id string, svc *launcher.Service, launch func(string)) {
 	for _, profile := range svc.ListProfiles() {
-		if profile.ID == id && profile.LaunchOnWindowsStartup {
-			launch(id)
+		if profile.ID == id {
+			if profile.LaunchOnWindowsStartup {
+				launch(id)
+			}
 			return
 		}
 	}
+	// The existing flag handler removes Run values for deleted profiles.
+	launch(id)
 }
 
 func main() {

@@ -1968,6 +1968,15 @@ func TestQueuedLegacyAutostartFlagsLaunchOnlySelectedProfile(t *testing.T) {
 	}
 }
 
+func TestQueuedDeletedAutostartProfileStillReachesCleanup(t *testing.T) {
+	svc, _ := newTestLauncherService(t)
+	called := ""
+	replayAutostartFlag("deleted", svc, func(id string) { called = id })
+	if called != "deleted" {
+		t.Fatal("obsolete Run entry did not reach the cleanup handler")
+	}
+}
+
 func TestDeleteProfileRemovesAutostartBeforeDeleting(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	if err := svc.SaveProfile(app.LaunchProfile{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true}); err != nil {

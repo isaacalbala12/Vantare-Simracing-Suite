@@ -539,6 +539,33 @@ function normalizeStandingRows(value: unknown, path: string): void {
     const rowPath = `${path}[${index}]`;
     if (!plainObject(row)) invalid(rowPath);
 
+    // Common compact rows share one quality across scalar timings. Normalize
+    // that shape inline; strict validation below still checks every field.
+    const simpleQuality = Object.hasOwn(row, "q") ? row.q : undefined;
+    if (
+      plainObject(simpleQuality) &&
+      Object.keys(simpleQuality).length === 1 &&
+      typeof simpleQuality.q === "string" &&
+      (Object.hasOwn(COMPACT_QUALITY_CODES, simpleQuality.q) || VALID_QUALITY_STATUSES.has(simpleQuality.q)) &&
+      typeof row.gap === "number" && Number.isFinite(row.gap) &&
+      typeof row.bestLap === "number" && Number.isFinite(row.bestLap) &&
+      typeof row.lastLap === "number" && Number.isFinite(row.lastLap) &&
+      !Object.hasOwn(row, "quality") && !Object.hasOwn(row, "cg") && !Object.hasOwn(row, "cl") &&
+      !Object.hasOwn(row, "cr") && !Object.hasOwn(row, "i") && !Object.hasOwn(row, "il")
+    ) {
+      const status = Object.hasOwn(COMPACT_QUALITY_CODES, simpleQuality.q)
+        ? COMPACT_QUALITY_CODES[simpleQuality.q as keyof typeof COMPACT_QUALITY_CODES]
+        : simpleQuality.q;
+      if (status === "missing" && (row.gap !== 0 || row.bestLap !== 0 || row.lastLap !== 0)) invalid(rowPath);
+      simpleQuality.q = status;
+      delete row.q;
+      row.quality = simpleQuality;
+      row.gap = row.gap === 0 ? { q: status } : { q: status, v: row.gap };
+      row.bestLap = row.bestLap === 0 ? { q: status } : { q: status, v: row.bestLap };
+      row.lastLap = row.lastLap === 0 ? { q: status } : { q: status, v: row.lastLap };
+      continue;
+    }
+
     // Most frames already use the descriptive legacy contract. Avoid building
     // alias maps and revisiting quality for every row unless compact wire data
     // is actually present.

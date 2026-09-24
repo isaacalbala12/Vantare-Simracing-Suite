@@ -13,6 +13,7 @@ type correctionInputReader struct {
 	err       error
 	malformed bool
 	calls     int
+	reads     map[string]int
 }
 
 func (r *correctionInputReader) Inspect(context.Context) (HistoricalSession, error) {
@@ -20,6 +21,9 @@ func (r *correctionInputReader) Inspect(context.Context) (HistoricalSession, err
 }
 func (r *correctionInputReader) ReadPage(_ context.Context, id string, start int64, limit int) (HistoricalPage, error) {
 	r.calls++
+	if r.reads != nil {
+		r.reads[id]++
+	}
 	if r.err != nil {
 		return HistoricalPage{}, r.err
 	}

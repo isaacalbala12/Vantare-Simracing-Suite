@@ -103,6 +103,12 @@ func ReadCorrectionInput(ctx context.Context, reader CorrectionInputReader, arti
 // passing it to visit. The visitor may process a page and release it; a later
 // error invalidates the entire visit, so callers must not publish partial work.
 func VisitCorrectionPages(ctx context.Context, reader CorrectionInputReader, artifact AuthorizedHistoricalArtifact, limits CorrectionReadLimits, visit func(HistoricalChannel, HistoricalPage) error) (HistoricalSession, error) {
+	return visitCorrectionPages(ctx, reader, artifact, limits, "", visit)
+}
+
+// A later pass may select only the channels it needs after the first full
+// visit has validated the source. Every selected page retains the same checks.
+func visitCorrectionPages(ctx context.Context, reader CorrectionInputReader, artifact AuthorizedHistoricalArtifact, limits CorrectionReadLimits, only string, visit func(HistoricalChannel, HistoricalPage) error) (HistoricalSession, error) {
 	var empty HistoricalSession
 	if err := ctx.Err(); err != nil {
 		return empty, err
@@ -127,7 +133,8 @@ func VisitCorrectionPages(ctx context.Context, reader CorrectionInputReader, art
 	}
 	samplesLeft, valuesLeft, textLeft := limits.MaxSamples, limits.MaxValues, limits.MaxTextBytes
 	for _, channel := range session.Channels {
-		if !wanted[strings.ToLower(strings.TrimSpace(channel.SourceName))] {
+		name := strings.ToLower(strings.TrimSpace(channel.SourceName))
+		if !wanted[name] || (only != "" && only != name) {
 			continue
 		}
 		for start := int64(0); ; {

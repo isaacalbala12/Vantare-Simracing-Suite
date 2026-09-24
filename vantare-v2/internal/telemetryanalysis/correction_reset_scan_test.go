@@ -67,6 +67,36 @@ func TestScannedCorrectionResetsRespectCancellationAndBudget(t *testing.T) {
 	}
 }
 
+func TestScannedCorrectionResetsDoNotRereadUnrelatedChannels(t *testing.T) {
+	model := correctionSourceExample(t)
+	gpsSampling := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 10, Origin: TimeOriginUnknown}
+	lapSampling := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 5, Origin: TimeOriginUnknown}
+	gps := HistoricalChannel{ID: "gps", SourceName: "GPS Time", Sampling: gpsSampling, Columns: []HistoricalColumn{{Name: "GPS Time", Type: ScalarNumber}}}
+	lap := HistoricalChannel{ID: "distance", SourceName: "Lap Dist", Sampling: lapSampling, Columns: []HistoricalColumn{{Name: "Lap Dist", Type: ScalarNumber}}}
+	fuel := HistoricalChannel{ID: "fuel", SourceName: "Fuel Level", Sampling: lapSampling, Columns: []HistoricalColumn{{Name: "Fuel Level", Type: ScalarNumber}}}
+	model.Session.Channels = []HistoricalChannel{gps, fuel, lap}
+	pages := []HistoricalPage{{ChannelID: gps.ID, Sampling: gpsSampling}, {ChannelID: fuel.ID, Sampling: lapSampling}, {ChannelID: lap.ID, Sampling: lapSampling}}
+	for index := 0; index < 12; index++ {
+		pages[0].Samples = append(pages[0].Samples, HistoricalSample{Index: int64(index), Values: []HistoricalValue{numberValue("GPS Time", 100+float64(index)/10)}})
+	}
+	for index, value := range []float64{900, 950, 10, 980, 990, 20} {
+		pages[1].Samples = append(pages[1].Samples, HistoricalSample{Index: int64(index), Values: []HistoricalValue{numberValue("Fuel Level", 90-float64(index))}})
+		pages[2].Samples = append(pages[2].Samples, HistoricalSample{Index: int64(index), Values: []HistoricalValue{numberValue("Lap Dist", value)}})
+	}
+	limits := CorrectionReadLimits{PageRows: 3, MaxSamples: 100, MaxValues: 100, MaxTextBytes: 4096}
+	baseline := &correctionInputReader{session: model.Session, pages: pages, reads: make(map[string]int)}
+	if _, err := VisitCorrectionPages(context.Background(), baseline, model.Artifact, limits, func(HistoricalChannel, HistoricalPage) error { return nil }); err != nil {
+		t.Fatal(err)
+	}
+	reader := &correctionInputReader{session: model.Session, pages: pages, reads: make(map[string]int)}
+	if _, _, _, _, err := scanCorrectionLapDistResets(context.Background(), reader, model.Artifact, limits); err != nil {
+		t.Fatal(err)
+	}
+	if reader.reads[fuel.ID] != baseline.reads[fuel.ID] || reader.reads[lap.ID] <= baseline.reads[lap.ID] {
+		t.Fatalf("second pass should reread only Lap Dist: reads=%v, first pass=%v", reader.reads, baseline.reads)
+	}
+}
+
 func TestScannedCorrectionBridgeReasonsMatchMaterialized(t *testing.T) {
 	base := correctionSourceExample(t)
 	sampling := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 10, Origin: TimeOriginUnknown}

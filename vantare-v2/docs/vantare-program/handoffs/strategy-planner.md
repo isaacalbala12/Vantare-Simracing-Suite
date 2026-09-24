@@ -1,5 +1,19 @@
 # Handoff vivo — Strategy Planner
 
+## Segunda visita limitada a Lap Dist — ISA-1375 (2026-09-25)
+
+El lector paginado permite seleccionar un único canal en una visita privada.
+Tras validar todos los canales y el puente GPS en la primera visita, el banco
+incremental de reinicios relee sólo `Lap Dist` para comprobar cobertura y
+asignar tiempos mediante ventanas GPS. Una regresión reprodujo la lectura
+duplicada de `Fuel Level` (6 consultas frente a 3 de la primera visita) y
+ahora exige que no se repita; la suite Go completa y `go vet` del paquete pasan.
+Esta ruta todavía no alimenta `withCorrectionInput`: no se atribuye ahorro de
+memoria productiva, velocidad real ni soporte de resistencia. El siguiente
+corte debe convertir validez y proyección en consumidores de páginas, comparar
+contra el oráculo materializado y medir el pico con DuckDB real. #1375 sigue
+abierta, sin push, PR, CI, merge, promoción ni release.
+
 ## Disponibilidad del banco largo — ISA-1375 (2026-09-25)
 
 Se consultó sólo el catálogo DuckDB en modo lectura de los originales LMU:

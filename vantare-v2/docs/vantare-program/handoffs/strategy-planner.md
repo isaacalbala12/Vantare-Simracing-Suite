@@ -1,5 +1,9 @@
 # Handoff vivo — Strategy Planner
 
+## Cobertura continua en orden — ISA-1375 (2026-09-24)
+
+La ventana de cobertura de validez evita copiar/ordenar toda la señal cuando las páginas están ordenadas; preserva la ruta anterior para desorden y comprueba que una página posterior pueda llenar un hueco. Paridad focal, suite Go completa y banco real Algarve/Monza PASS, con resultados y hashes originales invariantes. `alloc_space` total 35.370→35.378 MiB no permite atribuir ahorro medido. [Evidencia](../../strategy-planner/evidence/isa-1375/allocation-dependencies-2026-09-24.md). La ruta productiva aún retiene todas las páginas y no hay memoria pico ni Wails; #1375 sigue abierta. Próximo trabajo decisivo: consumidor incremental de validez/proyección en `withCorrectionInput`, sin elevar la cuota de muestras. Sin push, PR, CI, merge, promoción o release.
+
 ## Reinicios de vuelta sin copia de serie completa — ISA-1375 (2026-09-24)
 
 `Lap Dist` se recorre en orden con sólo la muestra anterior; entradas fuera de orden conservan la ruta ordenada previa. Paridad focal, suite Go completa y banco real Algarve/Monza PASS con 71 eventos, 70 reinicios, 66 vueltas completas, ritmo/Fuel y plan supuesto invariantes; hashes originales intactos. El perfil acumulado del banco bajó 36.396→35.370 MiB y desaparecieron los 1.108 MiB propios que antes se atribuían a `readLapDistResetObservations`. No es memoria pico ni soporte de resistencia. [Evidencia](../../strategy-planner/evidence/isa-1375/allocation-dependencies-2026-09-24.md). Sigue pendiente el consumidor productivo sin retener páginas, la paridad de todas las correcciones, la medición de pico y la prueba Wails; #1375 sigue abierta. Sin push, PR, CI, merge, promoción o release.

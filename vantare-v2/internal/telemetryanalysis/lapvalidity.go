@@ -415,6 +415,49 @@ func continuousCoverageWindow(channels ...[]HistoricalPage) (float64, float64, b
 }
 
 func channelCoverageWindow(pages []HistoricalPage) (float64, float64, bool) {
+	frequency := 0
+	var lastIndex int64
+	haveIndex := false
+	for _, page := range pages {
+		if page.Sampling.Kind != SamplingContinuousImplicitFrequency ||
+			page.Sampling.Origin != TimeOriginSourceTimestamp || page.Sampling.FrequencyHz <= 0 {
+			return 0, 0, false
+		}
+		if frequency == 0 {
+			frequency = page.Sampling.FrequencyHz
+		}
+		if page.Sampling.FrequencyHz != frequency {
+			return 0, 0, false
+		}
+		for _, sample := range page.Samples {
+			if haveIndex && sample.Index <= lastIndex {
+				return unorderedChannelCoverageWindow(pages)
+			}
+			lastIndex, haveIndex = sample.Index, true
+		}
+	}
+	var first, last HistoricalSample
+	count := 0
+	for _, page := range pages {
+		for _, sample := range page.Samples {
+			if sample.TimestampSeconds == nil ||
+				(count > 0 && (sample.Index != last.Index+1 || *sample.TimestampSeconds <= *last.TimestampSeconds)) {
+				return 0, 0, false
+			}
+			if count == 0 {
+				first = sample
+			}
+			last = sample
+			count++
+		}
+	}
+	if count < 2 {
+		return 0, 0, false
+	}
+	return *first.TimestampSeconds, *last.TimestampSeconds, true
+}
+
+func unorderedChannelCoverageWindow(pages []HistoricalPage) (float64, float64, bool) {
 	var samples []HistoricalSample
 	frequency := 0
 	for _, page := range pages {

@@ -57,6 +57,46 @@ func TestLapDistResetObservationsMatchSortedPath(t *testing.T) {
 	}
 }
 
+func TestChannelCoverageWindowKeepsUnorderedSemantics(t *testing.T) {
+	sampling := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 10, Origin: TimeOriginSourceTimestamp}
+	point := func(index int64, seconds float64) HistoricalSample {
+		return HistoricalSample{Index: index, TimestampSeconds: &seconds}
+	}
+	ordered := []HistoricalPage{
+		{Sampling: sampling, Samples: []HistoricalSample{point(0, 10), point(1, 10.1)}},
+		{Sampling: sampling, Samples: []HistoricalSample{point(2, 10.2)}},
+	}
+	// The first page seems to have a gap, but the second fills it. A one-pass
+	// rejection would change the existing sorted interpretation.
+	unordered := []HistoricalPage{
+		{Sampling: sampling, Samples: []HistoricalSample{point(0, 10), point(2, 10.2)}},
+		{Sampling: sampling, Samples: []HistoricalSample{point(1, 10.1)}},
+	}
+	gap := []HistoricalPage{{Sampling: sampling, Samples: []HistoricalSample{point(0, 10), point(2, 10.2)}}}
+	badTime := []HistoricalPage{{Sampling: sampling, Samples: []HistoricalSample{point(0, 10), point(1, 9)}}}
+	for _, test := range []struct {
+		name  string
+		pages []HistoricalPage
+	}{
+		{name: "ordered pages", pages: ordered},
+		{name: "unordered pages that fill a gap", pages: unordered},
+		{name: "missing index", pages: gap},
+		{name: "nonmonotonic clock", pages: badTime},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			start, end, ok := channelCoverageWindow(test.pages)
+			wantStart, wantEnd, wantOK := unorderedChannelCoverageWindow(test.pages)
+			if start != wantStart || end != wantEnd || ok != wantOK {
+				t.Fatalf("coverage (%v, %v, %v), sorted path (%v, %v, %v)", start, end, ok, wantStart, wantEnd, wantOK)
+			}
+		})
+	}
+	start, end, ok := channelCoverageWindow(unordered)
+	if !ok || start != 10 || end != 10.2 {
+		t.Fatalf("filled unordered coverage = (%v, %v, %v)", start, end, ok)
+	}
+}
+
 type lapValidityFixture struct {
 	FixtureVersion      string                    `json:"fixtureVersion"`
 	FixtureID           string                    `json:"fixtureId"`

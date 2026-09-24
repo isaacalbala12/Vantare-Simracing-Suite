@@ -112,3 +112,21 @@ son `C:/tmp/isa1375-ordered-clock-allocs.mem` y
 `ReadCorrectionInput` y las vistas corregidas aún retienen todas las páginas;
 la memoria productiva no está acotada por vuelta/página, no se eleva el límite
 de muestras y no se afirma soporte de 24 h. No hubo QA Wails.
+
+## Sexto corte: cobertura continua sin ordenar una copia completa
+
+`channelCoverageWindow` conserva sólo los extremos y la muestra anterior cuando
+las páginas vienen en orden. Comprueba primero todo el orden de índices: una
+página posterior puede llenar un hueco aparente, por lo que un rechazo temprano
+cambiaría el resultado anterior. Si hay desorden, usa la ruta ordenada previa.
+La prueba de paridad incluye ese caso, hueco real y reloj no monótono.
+
+Suite Go completa y banco real con los mismos Algarve/Monza PASS; 71 eventos,
+70 reinicios, 66 vueltas completas, ritmo/Fuel y plan supuesto invariantes,
+hashes originales intactos. El perfil `alloc_space` total fue 35.370 MiB antes
+y 35.378 MiB después, indistinguible a esta escala: **no se atribuye ahorro
+medido** ni velocidad. El perfil nuevo es
+`C:/tmp/isa1375-coverage-allocs.mem`. Este cambio elimina una copia potencial
+de tamaño de sesión en esa función, pero `ReadCorrectionInput` continúa
+materializando todas las páginas y no hay todavía garantía de memoria acotada
+ni QA Wails.

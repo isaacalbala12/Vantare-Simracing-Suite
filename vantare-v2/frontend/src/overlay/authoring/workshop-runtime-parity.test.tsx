@@ -78,6 +78,7 @@ async function runtimeMarkup(parsed: {
   redlineSelection?: string;
   redlineHeader?: string;
   redlineOpacity?: number;
+  steeringWheel?: string;
 }): Promise<string> {
   const widget = createScenarioWidget({
     widget: parsed.widget,
@@ -90,6 +91,9 @@ async function runtimeMarkup(parsed: {
       redlineTheme: parsed.redlineTheme, redlineSelection: parsed.redlineSelection,
       redlineHeader: parsed.redlineHeader, redlineSurfaceOpacity: parsed.redlineOpacity,
     };
+  }
+  if (parsed.steeringWheel) {
+    widget.visual.appearanceOverrides = { ...widget.visual.appearanceOverrides, steeringWheel: parsed.steeringWheel };
   }
   const frame = buildWorkshopFrameV2({
     session: parsed.session,
@@ -378,6 +382,17 @@ describe("createScenarioWidget", () => {
 });
 
 describe("the Workshop renders what the runtime renders", () => {
+  it.each(["studio", "desktop", "obs", "harness"])("keeps selected wheels identical to runtime on %s", async (surface) => {
+    for (const wheel of ["ferrari-499p", "bmw-m4-gt3", "oreca-07", "ligier-js-p325"]) {
+      const search = `?widget=pedals-telemetry&system=vantare-functional&surface=${surface}&steeringWheel=${wheel}`;
+      const parsed = parseOverlayWorkshopQuery(search);
+      if ("error" in parsed) throw new Error(parsed.error);
+      const markup = await workshopMarkup(search, "pedals-telemetry");
+      expect(markup).toContain(`data-steering-wheel="${wheel}"`);
+      expect(markup).toBe(await runtimeMarkup(parsed));
+    }
+  });
+
   it("consume la autoridad settled de Relative Redline sin estado frontend por perfil", async () => {
     const input = scenario({ widget: "relative", system: "vantare-endurance" });
     const parsed = parseOverlayWorkshopQuery(

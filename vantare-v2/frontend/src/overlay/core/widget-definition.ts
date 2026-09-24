@@ -107,6 +107,8 @@ export type WidgetTypeDefinition<
 > = {
   type: WidgetType;
   labelKey: string;
+  /** Kept for saved profiles, but no longer offered in creation catalogues. */
+  retired?: true;
   capabilities: WidgetCapabilities;
   inspector: WidgetInspectorCapability;
   createDefault(id: string): WidgetInstanceV3;

@@ -61,7 +61,7 @@ export function AddWidgetDialog(props: AddWidgetDialogProps): React.ReactElement
                 data-testid={`studio-catalog-entry-${entry.type}`}
               >
                 <div className="osv3-catalog-dialog__entry-main">
-                  <span className="osv3-catalog-dialog__entry-type">{entry.type}</span>
+                  <span className="osv3-catalog-dialog__entry-type">{t(entry.labelKey)}</span>
                   <span className="osv3-catalog-dialog__entry-meta">
                     {t("studio.v3.catalog.entryMeta")
                       .replace("{width}", String(entry.defaultSize.width))

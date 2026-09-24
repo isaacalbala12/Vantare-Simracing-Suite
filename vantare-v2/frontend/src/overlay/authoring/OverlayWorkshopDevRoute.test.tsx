@@ -9,6 +9,36 @@ afterEach(() => {
 });
 
 describe("OverlayWorkshopDevRoute", () => {
+  it("previews a wheel through the productive settings and preserves it in the URL", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=pedals-telemetry&system=vantare-functional&steeringWheel=oreca-07" />);
+    await waitFor(() => expect(document.querySelector('[data-steering-wheel="oreca-07"]')).toBeTruthy());
+    expect((screen.getByLabelText("Volante") as HTMLSelectElement).value).toBe("oreca-07");
+    const widgets = screen.getByLabelText("Widget") as HTMLSelectElement;
+    expect(widgets.selectedOptions[0]?.textContent).toBe("Pedales avanzados");
+    expect(document.querySelector("[data-overlay-workshop-stage]")?.getAttribute("data-stage-label")).toBe("PEDALES AVANZADOS / ESTUDIO 01");
+    expect([...widgets.options].some((option) => option.value === "pedals-telemetry-compact")).toBe(false);
+    const content = document.querySelector(".vf-pedals-adv-gear")!.textContent;
+    fireEvent.change(screen.getByLabelText("Volante"), { target: { value: "ligier-js-p325" } });
+    await waitFor(() => expect(document.querySelector('[data-steering-wheel="ligier-js-p325"]')).toBeTruthy());
+    expect(window.location.search).toContain("steeringWheel=ligier-js-p325");
+    expect(document.querySelector(".vf-pedals-adv-gear")!.textContent).toBe(content);
+    fireEvent.change(screen.getByLabelText("Widget"), { target: { value: "delta" } });
+    await waitFor(() => expect(screen.queryByLabelText("Volante")).toBeNull());
+    expect(window.location.search).not.toContain("steeringWheel");
+  });
+
+  it("keeps old compact Workshop links as compatibility views, outside the selectable catalogue", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=pedals-telemetry-compact&system=vantare-iracing" />);
+    await waitFor(() => expect(document.querySelector('[data-widget-renderer="pedals-telemetry-compact"]')).toBeTruthy());
+    const widgets = screen.getByLabelText("Widget") as HTMLSelectElement;
+    expect(widgets.selectedOptions[0]?.textContent).toBe("Pedales antiguos");
+    expect(widgets.selectedOptions[0]?.disabled).toBe(true);
+    expect(screen.getByText(/Vista de compatibilidad de un widget retirado/)).toBeTruthy();
+    fireEvent.change(widgets, { target: { value: "pedals-telemetry" } });
+    await waitFor(() => expect(document.querySelector('[data-widget-renderer="pedals-telemetry"]')).toBeTruthy());
+    expect([...widgets.options].some((option) => option.value === "pedals-telemetry-compact")).toBe(false);
+  });
+
   it.each(["studio", "desktop"])("can replay a fastest-lap event in %s after seeking back", async surface => {
     render(<OverlayWorkshopDevRoute search={`?widget=fastest-lap&surface=${surface}&scene=fastest-lap-alert`} />);
     await waitFor(() => expect(document.querySelector('[data-widget-renderer="fastest-lap"]')).toBeTruthy());

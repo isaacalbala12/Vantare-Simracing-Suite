@@ -17,19 +17,24 @@ export function buildPedalsTelemetryViewModelV2(
   content: PedalsTelemetryContent,
 ): PedalsTelemetryViewModel {
   const { unavailable, speedKph, rpm, gear } = readPedalsTelemetryInstruments(frame, source);
+  const throttle = unavailable ? undefined : pedalValue(frame.player.throttle);
+  const brake = unavailable ? undefined : pedalValue(frame.player.brake);
+  const clutch = unavailable ? undefined : pedalValue(frame.player.clutch);
   const steering = unavailable ? 0 : Math.max(-1, Math.min(1, displayedNumber(frame.player.steering) ?? 0));
   const status = unavailable
     ? source.state === "error" ? "error" : "disconnected"
-    : source.state === "stale" || hasStalePlayerValue(frame)
+    : source.state === "stale" || hasStalePlayerValue(frame, content.showClutch)
       ? "stale"
-      : "ready";
+      : [throttle, brake, speedKph, rpm, gear, ...(content.showClutch ? [clutch] : [])].some((value) => value === undefined)
+        ? "missing"
+        : "ready";
   return {
     type: "pedals-telemetry",
     status,
     statusMessage: source.reason || undefined,
-    throttle: unavailable ? 0 : displayedNumber(frame.player.throttle) ?? 0,
-    brake: unavailable ? 0 : displayedNumber(frame.player.brake) ?? 0,
-    clutch: unavailable ? 0 : displayedNumber(frame.player.clutch) ?? 0,
+    throttle: throttle ?? 0,
+    brake: brake ?? 0,
+    clutch: clutch ?? 0,
     speedKph,
     rpm,
     gear,
@@ -59,7 +64,13 @@ export function pedalsTelemetryDisplayedValues(model: PedalsTelemetryViewModel):
 function displayedNumber(value: OverlayQValue<number>): number | undefined {
   if (value.q === "missing" || value.q === "invalid") return undefined;
   // Go omitempty elides legitimate zeroes. Quality is the presence bit.
-  return value.v ?? 0;
+  const number = value.v ?? 0;
+  return Number.isFinite(number) ? number : undefined;
+}
+
+export function pedalValue(value: OverlayQValue<number>): number | undefined {
+  const number = displayedNumber(value);
+  return number === undefined ? undefined : Math.max(0, Math.min(1, number));
 }
 
 /**
@@ -75,21 +86,20 @@ export function speedInKph(value: OverlayQValue<number>, unit: OverlayFrameV2["u
   return speed;
 }
 
-function hasStalePlayerValue(frame: OverlayFrameV2): boolean {
+function hasStalePlayerValue(frame: OverlayFrameV2, showClutch: boolean): boolean {
   return [
     frame.player.speed,
     frame.player.rpm,
     frame.player.gear,
-    frame.player.steering,
     frame.player.throttle,
     frame.player.brake,
-    frame.player.clutch,
+    ...(showClutch ? [frame.player.clutch] : []),
   ].some((value) => value.q === "stale");
 }
 
 /** Shared instruments; each presentation retains its own input clamps and stale policy. */
 export function readPedalsTelemetryInstruments(frame: OverlayFrameV2, source: OverlaySourceStatusV2) {
-  const unavailable = source.state === "error" || source.state === "stopped";
+  const unavailable = !["live", "degraded", "stale"].includes(source.state);
   const speedKph = unavailable ? undefined : speedInKph(frame.player.speed, frame.units.speed);
   const rpm = unavailable ? undefined : displayedNumber(frame.player.rpm);
   const gear = unavailable ? undefined : displayedNumber(frame.player.gear);

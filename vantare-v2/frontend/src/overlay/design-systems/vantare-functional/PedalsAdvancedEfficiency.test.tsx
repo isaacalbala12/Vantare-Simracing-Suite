@@ -25,6 +25,21 @@ const model: PedalsTelemetryViewModel = {
 };
 
 describe("PedalsAdvancedEfficiency", () => {
+  it("changes only the drawing when selecting another car", () => {
+    const { container, rerender } = render(<PedalsAdvancedEfficiency model={model} settings={{}} renderMode="harness" />);
+    const gear = container.querySelector(".vf-pedals-adv-gear")!.outerHTML;
+    const bars = container.querySelector(".vf-pedals-adv-bars")!.outerHTML;
+    const generic = container.querySelector(".vf-pedals-adv-wheel-rotor")!.innerHTML;
+    rerender(<PedalsAdvancedEfficiency model={model} settings={{ steeringWheel: "bmw-m4-gt3" }} renderMode="obs" />);
+    expect(container.querySelector('[data-steering-wheel="bmw-m4-gt3"]')).toBeTruthy();
+    expect(container.querySelector(".vf-pedals-adv-wheel-rotor")!.innerHTML).not.toBe(generic);
+    expect(container.querySelector<SVGGElement>(".vf-pedals-adv-wheel-rotor")!.style.transform).toBe("rotate(180deg)");
+    expect(container.querySelector(".vf-pedals-adv-gear")!.outerHTML).toBe(gear);
+    expect(container.querySelector(".vf-pedals-adv-bars")!.outerHTML).toBe(bars);
+    rerender(<PedalsAdvancedEfficiency model={model} settings={{ steeringWheel: "unknown" }} renderMode="desktop" />);
+    expect(container.querySelector(".vf-pedals-adv-wheel-rotor")!.innerHTML).toBe(generic);
+  });
+
   it("copies the complete compact composition under the Efficiency identity", () => {
     const { container } = render(<PedalsAdvancedEfficiency model={model} settings={{}} renderMode="harness" />);
     const root = container.querySelector('[data-widget-system="vantare-functional"]') as HTMLElement;

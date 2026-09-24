@@ -1,3 +1,4 @@
+import { normalizeSteeringWheel, type SteeringWheelId } from "../../design-systems/vantare-functional/steering-wheels/catalog";
 import { rankDemoStandings, withFunctionalStandingsDemo } from "./functional-standings-demo";
 import crystalReferenceManifest from "../../../../testdata/crystal-reference/manifest.json";
 import type {
@@ -175,6 +176,7 @@ export function buildWorkshopWidget(input: {
   nameFormat?: "full" | "initial" | "surname";
   rows?: number;
   textColor?: string;
+  steeringWheel?: SteeringWheelId;
 }): WidgetInstanceV3 {
   let widget = createScenarioWidget({
     widget: input.widget,
@@ -244,6 +246,19 @@ export function buildWorkshopWidget(input: {
         appearanceOverrides: {
           ...(widget.visual.appearanceOverrides ?? {}),
           textColor: normalizeRacingFlagsTextColor(input.textColor),
+        },
+      },
+    };
+  }
+
+  if (input.widget === "pedals-telemetry" && input.system === EFFICIENCY_SYSTEM_ID && input.steeringWheel !== undefined) {
+    widget = {
+      ...widget,
+      visual: {
+        ...widget.visual,
+        appearanceOverrides: {
+          ...(widget.visual.appearanceOverrides ?? {}),
+          steeringWheel: normalizeSteeringWheel(input.steeringWheel),
         },
       },
     };

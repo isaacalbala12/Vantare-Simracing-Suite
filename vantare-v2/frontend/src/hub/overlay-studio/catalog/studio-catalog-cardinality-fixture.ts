@@ -6,7 +6,7 @@ import { ALL_WIDGET_TYPES } from "../../../overlay/core/profile-document";
  * ViewModels and both visual renderers.
  */
 export const FINAL_WIDGET_CATALOG_CARDINALITY = {
-  widgetTypes: ALL_WIDGET_TYPES,
+  widgetTypes: ALL_WIDGET_TYPES.filter((type) => type !== "pedals-telemetry-compact"),
   designExceptions: {
     delta: ["delta-simple", "delta-bar"],
     "input-telemetry": ["input-crystal-blade", "input-crystal-capsule", "input-crystal-dense"],

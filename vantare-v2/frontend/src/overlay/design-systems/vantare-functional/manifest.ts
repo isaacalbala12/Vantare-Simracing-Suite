@@ -25,6 +25,8 @@ import { TrackMapFunctional } from "./TrackMapFunctional";
 import { TrackWeatherFunctional } from "./TrackWeatherFunctional";
 import { FUNCTIONAL_DEFAULT_SETTINGS, FUNCTIONAL_INFO_METRICS, parseFunctionalSettings } from "./session-info-settings";
 
+import { DEFAULT_STEERING_WHEEL, parseSteeringWheelSettings, STEERING_WHEEL_OPTIONS } from "./steering-wheels/catalog";
+
 const infoOptions = FUNCTIONAL_INFO_METRICS.map((value) => ({ value, labelKey: `overlay.inspector.efficiency.info.${value}` }));
 
 export const vantareFunctionalManifest: DesignSystemDefinition = {
@@ -101,12 +103,13 @@ export const vantareFunctionalManifest: DesignSystemDefinition = {
     {
       widgetType: "pedals-telemetry",
       configVersion: 1,
-      defaultSettings: {},
+      defaultSettings: { steeringWheel: DEFAULT_STEERING_WHEEL },
       configMigrations: { 0: (settings) => ({ ...settings }) },
-      parseSettings(input: unknown) {
-        return input && typeof input === "object" && !Array.isArray(input) ? { ...(input as Record<string, unknown>) } : {};
-      },
-      inspector: { appearance: [] },
+      parseSettings: parseSteeringWheelSettings,
+      inspector: { appearance: [{
+        kind: "select", id: "steering-wheel", labelKey: "overlay.inspector.efficiency.steeringWheel",
+        path: "steeringWheel", options: STEERING_WHEEL_OPTIONS, defaultValue: DEFAULT_STEERING_WHEEL,
+      }] },
       Renderer: PedalsAdvancedEfficiency as ComponentType<WidgetRendererProps>,
     },
     {

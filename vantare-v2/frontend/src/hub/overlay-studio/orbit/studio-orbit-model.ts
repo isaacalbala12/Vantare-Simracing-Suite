@@ -7,6 +7,7 @@
  * la capa Orbit es presentacion y nada mas.
  */
 import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
+import { widgetTypeRegistry } from "../../../overlay/core/widget-registry";
 import { getOfficialDesign } from "../../../overlay/design-systems/official-designs";
 import type { StudioPreviewState } from "../state/studio-store";
 import { ORBIT_KEYS, orbitStore } from "../../orbit/orbit-store";
@@ -20,8 +21,14 @@ export function fill(template: string, values: Record<string, string | number>):
   );
 }
 
-export function widgetLabel(widget: WidgetInstanceV3): string {
-  return widget.name?.trim() || widget.id;
+export function widgetLabel(widget: WidgetInstanceV3, t: Translate): string {
+  const name = widget.name?.trim();
+  if (name) return name;
+  // Rename the pedal types without rewriting saved IDs or custom names.
+  if (widget.type === "pedals-telemetry" || widget.type === "pedals-telemetry-compact") {
+    return t(widgetTypeRegistry.get(widget.type).labelKey);
+  }
+  return widget.id;
 }
 
 /** Nombre del sistema visual; si el catalogo no lo conoce se usa su id crudo. */

@@ -16,6 +16,7 @@ const yellowModel: RacingFlagsViewModel = {
   hidden: false,
 };
 const whiteModel: RacingFlagsViewModel = { ...yellowModel, globalFlag: "white", message: "WHITE" };
+const blackModel: RacingFlagsViewModel = { ...yellowModel, globalFlag: "black", message: "BLACK" };
 
 describe("Functional Racing Flags", () => {
   it("renders the vivid yellow state with configurable text color", () => {
@@ -55,13 +56,25 @@ describe("Functional Racing Flags", () => {
     expect(root?.dataset.motion).toBe(motion);
   });
 
-  it("uses black text for a white flag by default without removing the color override", () => {
+  it("uses black text by default and white text only when the flag itself is black", () => {
+    const defaultYellow = render(
+      <RacingFlagsFunctional model={yellowModel} settings={{}} renderMode="harness" />,
+    );
+    expect(defaultYellow.container.querySelector<HTMLElement>('[data-widget-renderer="racing-flags"]')?.dataset.textColor).toBe("#000000");
+    defaultYellow.unmount();
+
+    const defaultBlack = render(
+      <RacingFlagsFunctional model={blackModel} settings={{ textColor: "#000000" }} renderMode="harness" />,
+    );
+    expect(defaultBlack.container.querySelector<HTMLElement>('[data-widget-renderer="racing-flags"]')?.dataset.textColor).toBe("#ffffff");
+    defaultBlack.unmount();
+
     const defaultWhite = render(
       <RacingFlagsFunctional model={whiteModel} settings={{}} renderMode="harness" />,
     );
     const defaultRoot = defaultWhite.container.querySelector<HTMLElement>('[data-widget-renderer="racing-flags"]');
-    expect(defaultRoot?.dataset.textColor).toBe("#141517");
-    expect(defaultRoot?.style.getPropertyValue("--vf-racing-flags-text-color")).toBe("#141517");
+    expect(defaultRoot?.dataset.textColor).toBe("#000000");
+    expect(defaultRoot?.style.getPropertyValue("--vf-racing-flags-text-color")).toBe("#000000");
 
     defaultWhite.unmount();
     const customWhite = render(

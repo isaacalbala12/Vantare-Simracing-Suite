@@ -13,7 +13,7 @@ import { FUNCTIONAL_STUDY_DEFAULT_MODULES, FUNCTIONAL_STUDY_MODULES, FUNCTIONAL_
 import { RELATIVE_RANGE_AHEAD, RELATIVE_RANGE_BEHIND, RELATIVE_RANGE_LIMIT } from "../widget-types/relative/relative-content";
 import { STANDINGS_ROW_COUNT_OPTIONS } from "../widget-types/standings/standings-content";
 import { STANDINGS_WINDOW_AROUND_OPTIONS, STANDINGS_WINDOW_DEFAULT_AROUND } from "../widget-types/standings/standings-window";
-import { RACING_FLAGS_DEFAULT_TEXT_COLOR, RACING_FLAGS_WHITE_FLAG_TEXT_COLOR } from "../design-systems/vantare-functional/racing-flags-settings";
+import { resolveRacingFlagsTextColor } from "../design-systems/vantare-functional/racing-flags-settings";
 import { PEDALS_KNOWN_FLAGS, type PedalsKnownFlag } from "../widget-types/pedals/pedals-view-model";
 
 const SYSTEM_LABELS: Record<string, string> = {
@@ -186,11 +186,8 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
   const chooseFlag = (value: string) => update({
     ...query,
     flag: value as PedalsKnownFlag,
-    ...(value === "white" && query.textColor === RACING_FLAGS_DEFAULT_TEXT_COLOR ? { textColor: undefined } : {}),
   });
-  const defaultRacingFlagsTextColor = query.flag === "white"
-    ? RACING_FLAGS_WHITE_FLAG_TEXT_COLOR
-    : RACING_FLAGS_DEFAULT_TEXT_COLOR;
+  const defaultRacingFlagsTextColor = resolveRacingFlagsTextColor(query.flag, query.textColor);
   const selectedStudyStyle = query.studyStyle ?? "default";
   const isDefaultStandingsStudy = isFunctional && isStandings && selectedStudyStyle === "default";
 
@@ -382,7 +379,7 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
           {LMU_STEERING_WHEELS.filter((wheel) => wheel.category === category).map((wheel) => <option key={wheel.id} value={wheel.id}>{wheel.name}</option>)}
         </optgroup>)}
       </Select>}
-      {isFunctional && isRacingFlags && <label className="functional-study-select"><span>Color de la letra</span><input aria-label="Color de la letra" type="color" value={query.textColor ?? defaultRacingFlagsTextColor} onChange={(event) => update({ ...query, textColor: event.target.value })} /></label>}
+      {isFunctional && isRacingFlags && <label className="functional-study-select"><span>Color de la letra</span><input aria-label="Color de la letra" type="color" value={defaultRacingFlagsTextColor} onChange={(event) => update({ ...query, textColor: event.target.value })} /></label>}
       <p className="functional-study-note">Fondo</p>
       <Segments options={BACKGROUND_OPTIONS} value={query.background} onChange={(value) => update({ ...query, background: value as OverlayWorkshopQuery["background"] })} />
       <Select label="Superficie" value={query.surface} onChange={(value) => update({ ...query, surface: value as OverlayWorkshopQuery["surface"] })}>

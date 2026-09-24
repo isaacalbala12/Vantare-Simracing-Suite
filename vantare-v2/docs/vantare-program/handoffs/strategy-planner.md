@@ -1,5 +1,11 @@
 # Handoff vivo — Strategy Planner
 
+## Procedencia visible del cálculo manual — ISA-1331 (2026-09-24)
+
+El recorrido completo en el navegador interno llegó desde Manual a la mesa con combinación LMGT3/Imola, ritmo 97,5 s, Fuel 2,8 L/vuelta, VE 3,5 %/vuelta, evento de 60 min, reglas y un piloto. La condición seca habilitó el cálculo sin sesiones. Antes de hacerlo, Plan mostraba «0 sesiones seleccionadas» y Pilotos pedía validar el ritmo con sesiones, pese a que el motor admite referencias manuales. Ahora ambos paneles describen las estimaciones manuales y advierten que no están contrastadas con telemetría. Regresiones focales 9/9, i18n, lint, typecheck y build PASS. La primera suite completa dio cinco tiempos de espera de layout mientras ESLint corría a la vez; esos cinco pasaron aislados. La repetición completa con cuatro workers terminó verde: 493 archivos, 4.303 tests PASS, dos omitidos.
+
+El servidor en `127.0.0.1:5208` usa `VITE_RUNTIME_MOCK=mock`. Su respuesta de cálculo es un plan fijo de 69 vueltas incluso cuando el evento introducido dura 60 minutos: demuestra navegación y estados de UI, **no** el resultado real de SolverV2. La prueba de contrato `use-recorded-calculation.test.tsx` confirma por separado que Manual envía ritmo/Fuel como overrides con procedencia manual y no solicita una proyección de sesiones. T22 Wails/DuckDB, precisión empírica, integración y aceptación visual de Isaac siguen abiertos. Rama aislada sin push, PR, CI, merge, promoción ni release.
+
 ## Entrada a la mesa v5 desde preparación — ISA-1331 (2026-09-24)
 
 El recorrido en navegador interno reprodujo que «Abrir mesa de carrera» seleccionaba Plan aun con evento, reglas y pilotos pendientes. El botón abre ahora Carrera, que presenta las tres ediciones y el estado del plan; Plan sigue disponible por pestaña. Regresión RED→PASS, 492 archivos/4301 tests frontend PASS (2 omitidos), tipos, lint, i18n y build PASS. El recorrido visual se hizo con el harness mock, no con DuckDB/Wails real; no valida persistencia nativa ni acepta T22. Rama aislada sin push, PR, CI, merge, promoción ni release.

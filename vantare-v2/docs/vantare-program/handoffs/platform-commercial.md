@@ -638,7 +638,15 @@ import/export sin secretos; reset no borra datos sin selección.
   archivos de tests frontend y 4 presupuestos de frames pasaron. El PR draft
   #1384 apunta a `nightly` desde `vantareapp/isa-1381-temas-paleta-ui`. Los
   checks de calidad, ruta y gates, incluido el build Wails de CI, pasaron para
-  `6ee4c6eb`. Falta la comprobación física en Wails; no hay promoción ni release.
+  `dea1d926`. El 2026-09-25 se compiló la app Wails de producción desde ese
+  commit con el `.env.local` autorizado del checkout principal, sin copiarlo ni
+  mostrar sus valores; se retiró el archivo Go temporal de configuración tras
+  la build. En la ventana Wails real (1280×800) se comprobaron Ajustes en
+  Océano/Claro e Iris/Oscuro, y Overlay Studio con ambas combinaciones: el
+  chrome cambia y el diseño de los widgets se conserva. La vista del canvas
+  usó el modo Mock; esto no valida telemetría LMU, login ni licencia. Se detectó
+  un solapamiento de la cabecera de Studio con el selector de perfil, registrado
+  por separado como #1387. No hay promoción ni release.
 
 ISA-841 se implementó en la rama aislada
 `vantareapp/isa-841-zoom-global-interfaz` y se rebasó el 2026-08-28 sobre

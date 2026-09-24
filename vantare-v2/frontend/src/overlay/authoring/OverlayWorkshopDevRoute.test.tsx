@@ -35,6 +35,8 @@ describe("OverlayWorkshopDevRoute", () => {
   it("edits the real fastest-lap size without stretching the preview and preserves it in the URL", async () => {
     render(<OverlayWorkshopDevRoute search="?widget=fastest-lap&scene=fastest-lap-alert&surface=studio" />);
     await waitFor(() => expect(screen.getByRole("status")).toBeTruthy());
+    expect(screen.getByTestId("overlay-workshop-viewport").style.width).toBe("528px");
+    expect((screen.getByLabelText("Ancho") as HTMLInputElement).value).toBe("528");
     fireEvent.change(screen.getByLabelText("Ancho"), { target: { value: "360" } });
     fireEvent.change(screen.getByLabelText("Alto"), { target: { value: "80" } });
     const viewport = screen.getByTestId("overlay-workshop-viewport");

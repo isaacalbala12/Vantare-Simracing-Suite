@@ -190,7 +190,7 @@ export function FunctionalStudyControls({ query, widgetLayout, update, onRunScen
   const selectedStudyStyle = query.studyStyle ?? "default";
   const isDefaultStandingsStudy = isFunctional && isStandings && selectedStudyStyle === "default";
 
-  const resolvedWidth = isFastestLap ? Math.max(280, query.width ?? widgetLayout?.w ?? 480) : query.width ?? widgetLayout?.w;
+  const resolvedWidth = isFastestLap ? Math.max(280, query.width ?? widgetLayout?.w ?? 528) : query.width ?? widgetLayout?.w;
   const resolvedHeight = isFastestLap ? Math.max(72, query.height ?? widgetLayout?.h ?? 104) : query.height ?? widgetLayout?.h;
 
   // Borradores de texto para ancho/alto: la query solo se reescribe cuando las

@@ -29,6 +29,11 @@ function model(sequence = 1, best = 90) {
 afterEach(() => { vi.clearAllTimers(); vi.useRealTimers(); });
 
 describe("fastest lap input", () => {
+  it("starts with a wider horizontal box while preserving the compact minimum", () => {
+    expect(fastestLapDefinition.capabilities.defaultSize).toEqual({ width: 528, height: 104 });
+    expect(fastestLapDefinition.capabilities.minimumSize).toEqual({ width: 280, height: 72 });
+    expect(fastestLapDefinition.createDefault("notice").layout).toMatchObject({ w: 528, h: 104, aspectLocked: true });
+  });
   it("enables personal and player-class records, never the overall field", () => {
     expect(content).toMatchObject({ showPersonal: true, showClass: true });
     expect(model().candidate?.id).toBe("player");

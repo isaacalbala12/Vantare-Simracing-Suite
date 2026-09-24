@@ -15,20 +15,48 @@ afterEach(() => {
 
 describe("apariencia de la interfaz", () => {
   it("usa Vantare y sistema para una instalación nueva o preferencias inválidas", () => {
-    expect(getStoredUiAppearance()).toEqual({ palette: "vantare", scheme: "system" });
+    expect(getStoredUiAppearance()).toEqual({ palette: "vantare", scheme: "system", contrast: 100, glassOpacity: 80, interfaceFont: "inter", monoFont: "cascadia" });
     window.localStorage.setItem("vantare.ui.palette", "otro");
     window.localStorage.setItem("vantare.ui.scheme", "otro");
-    expect(getStoredUiAppearance()).toEqual({ palette: "vantare", scheme: "system" });
+    window.localStorage.setItem("vantare.ui.contrast", "1000");
+    window.localStorage.setItem("vantare.ui.glassOpacity", "NaN");
+    window.localStorage.setItem("vantare.ui.interfaceFont", "otro");
+    window.localStorage.setItem("vantare.ui.monoFont", "otro");
+    expect(getStoredUiAppearance()).toEqual({ palette: "vantare", scheme: "system", contrast: 100, glassOpacity: 80, interfaceFont: "inter", monoFont: "cascadia" });
   });
 
   it("aplica y recuerda paleta y esquema de forma independiente", () => {
-    applyUiAppearance({ palette: "ocean", scheme: "light" }, document.documentElement, false);
-    persistUiAppearance({ palette: "ocean", scheme: "light" });
+    const appearance = { ...getStoredUiAppearance(), palette: "ocean" as const, scheme: "light" as const };
+    applyUiAppearance(appearance, document.documentElement, false);
+    persistUiAppearance(appearance);
     expect(document.documentElement.dataset.uiPalette).toBe("ocean");
     expect(document.documentElement.dataset.uiScheme).toBe("light");
     expect(document.documentElement.dataset.uiResolvedScheme).toBe("light");
-    expect(getStoredUiAppearance()).toEqual({ palette: "ocean", scheme: "light" });
+    expect(getStoredUiAppearance()).toEqual(appearance);
     expect(window.localStorage.getItem("vantare.theme")).toBeNull();
+  });
+
+  it("aplica y persiste contraste, cristal y tipografías sin tocar los widgets", () => {
+    const sheet = document.createElement("style");
+    sheet.textContent = '.appearance-test { --orbit-ink: #ffffff; --orbit-canvas: #000000; --orbit-ink-2: #808080; --orbit-line: rgba(255,255,255,.2); --orbit-panel-bg: rgba(10,20,30,.8); }';
+    document.head.append(sheet);
+    const root = document.createElement("div");
+    root.className = "appearance-test";
+    document.body.append(root);
+    const appearance = { ...getStoredUiAppearance(), contrast: 120, glassOpacity: 100, interfaceFont: "segoe" as const, monoFont: "consolas" as const };
+    window.localStorage.setItem("vantare.theme", "vantare-lite");
+    applyUiAppearance(appearance, root, true);
+    persistUiAppearance(appearance);
+
+    expect(root.style.getPropertyValue("--orbit-ink-2")).toBe("rgba(153, 153, 153, 1)");
+    expect(root.style.getPropertyValue("--orbit-line")).toBe("rgba(255, 255, 255, 0.24)");
+    expect(root.style.getPropertyValue("--orbit-panel-bg")).toBe("rgba(10, 20, 30, 1)");
+    expect(root.style.getPropertyValue("--orbit-font-sans")).toContain("Segoe UI Variable");
+    expect(root.style.getPropertyValue("--orbit-font-mono")).toContain("Consolas");
+    expect(getStoredUiAppearance()).toEqual(appearance);
+    expect(window.localStorage.getItem("vantare.theme")).toBe("vantare-lite");
+    root.remove();
+    sheet.remove();
   });
 
   it("resuelve Sistema según Windows y lo actualiza cuando cambia", () => {

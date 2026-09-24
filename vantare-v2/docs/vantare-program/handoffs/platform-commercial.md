@@ -648,6 +648,22 @@ import/export sin secretos; reset no borra datos sin selección.
   un solapamiento de la cabecera de Studio con el selector de perfil, registrado
   por separado como #1387. No hay promoción ni release.
 
+- El 2026-09-25 Isaac amplió #1381 con dos variantes visibles por paleta,
+  contraste, opacidad y tipografías, según nuevas capturas de T3 Code. La rama
+  añade la sección propia Ajustes → Apariencia y conserva Zoom, idioma y
+  densidad en Aplicación. El contraste ajusta texto secundario y bordes de
+  Command Orbit; la opacidad ajusta paneles y cabecera; fuentes de interfaz y
+  cifras tienen vista previa. Las preferencias nuevas son locales y no tocan
+  `vantare.theme` ni los renderizadores de widgets. Suite frontend: 484 archivos,
+  4.101 tests correctos, 2 omitidos y 4 presupuestos de frames correctos;
+  typecheck, build y lint correctos. En Wails de producción a 1280×800 se
+  revisaron Apariencia, Iris/Oscuro y los deslizadores a 120 %/100 %. El modo
+  Iris/Oscuro persistió tras cerrar y reabrir el mismo ejecutable Wails. La
+  compilación usó `.env.local` autorizado sin exponer valores. El gate CI de
+  `0f939835` falló en `TestPlayerScriptMediaEvents/ended` por timeout de Go,
+  fuera de los archivos modificados aquí; debe repetirse en el nuevo commit.
+  El PR #1384 continúa draft y sin promoción.
+
 ISA-841 se implementó en la rama aislada
 `vantareapp/isa-841-zoom-global-interfaz` y se rebasó el 2026-08-28 sobre
 `nightly@d9909aef4b9f2de2b3e61ed79a3a0fd98a91b73c`; PR #847 es su única ruta de

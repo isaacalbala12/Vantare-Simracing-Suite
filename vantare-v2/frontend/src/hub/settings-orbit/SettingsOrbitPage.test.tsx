@@ -74,7 +74,7 @@ describe("modelo de Ajustes", () => {
     const t = (key: string) => dict[key] ?? key;
 
     expect(searchSettings("PALETA", t)).toEqual([
-      { section: "application", key: "settings.app.palette" },
+      { section: "appearance", key: "settings.app.palette" },
     ]);
     // «TELEMETR» con mayúsculas encuentra «Telemetry Core».
     expect(searchSettings("TELEMETR", t)).toEqual([
@@ -119,10 +119,11 @@ describe("SettingsOrbitPage", () => {
     expect(screen.getByRole("status").textContent).toContain("Windows aceptó el envío");
   });
 
-  it("la columna lista exactamente las siete secciones visibles y nada más", () => {
+  it("la columna lista las ocho secciones visibles, incluida Apariencia", () => {
     mount("account");
     const rows = within(screen.getByTestId("orbit-settings-context")).getAllByRole("button");
-    expect(rows).toHaveLength(7);
+    expect(rows).toHaveLength(8);
+    expect(rows.some((row) => row.textContent?.includes("Apariencia"))).toBe(true);
     expect(rows.map((row) => row.textContent?.split("Sesión")[0])).toBeTruthy();
     expect(rows[0].getAttribute("aria-selected")).toBe("true");
   });
@@ -162,7 +163,7 @@ describe("SettingsOrbitPage", () => {
 
     // Elegir un resultado navega y devuelve la columna a las secciones.
     fireEvent.click(rows[0]);
-    expect(screen.getByTestId("orbit-settings-panel-application")).toBeTruthy();
+    expect(screen.getByTestId("orbit-settings-panel-appearance")).toBeTruthy();
     expect(screen.queryByTestId("orbit-settings-search-results")).toBeNull();
   });
 
@@ -189,7 +190,7 @@ describe("SettingsOrbitPage", () => {
 
   it("cambia la paleta y el modo al instante sin tocar el tema antiguo de los widgets", () => {
     window.localStorage.setItem("vantare.theme", "vantare-lite");
-    mount("application");
+    mount("appearance");
     fireEvent.click(screen.getByTestId("orbit-settings-theme-ocean"));
     fireEvent.click(screen.getByTestId("orbit-settings-scheme-light"));
 
@@ -200,6 +201,25 @@ describe("SettingsOrbitPage", () => {
     expect(window.localStorage.getItem("vantare.theme")).toBe("vantare-lite");
     expect(screen.getByTestId("orbit-settings-theme-ocean").getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByTestId("orbit-settings-scheme-light").getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("permite elegir una variante directa, contraste, cristal y fuentes con vista previa", () => {
+    mount("appearance");
+    fireEvent.click(screen.getByTestId("orbit-settings-theme-iris-dark"));
+    fireEvent.change(screen.getByLabelText("Contraste"), { target: { value: "115" } });
+    fireEvent.change(screen.getByLabelText("Opacidad del cristal"), { target: { value: "95" } });
+    fireEvent.click(within(screen.getByTestId("orbit-settings-interface-font")).getByRole("combobox"));
+    fireEvent.click(screen.getByRole("option", { name: "Segoe UI" }));
+    fireEvent.click(within(screen.getByTestId("orbit-settings-mono-font")).getByRole("combobox"));
+    fireEvent.click(screen.getByRole("option", { name: "Consolas" }));
+
+    expect(document.documentElement.dataset.uiPalette).toBe("iris");
+    expect(document.documentElement.dataset.uiResolvedScheme).toBe("dark");
+    expect(window.localStorage.getItem("vantare.ui.contrast")).toBe("115");
+    expect(window.localStorage.getItem("vantare.ui.glassOpacity")).toBe("95");
+    expect(window.localStorage.getItem("vantare.ui.interfaceFont")).toBe("segoe");
+    expect(window.localStorage.getItem("vantare.ui.monoFont")).toBe("consolas");
+    expect(screen.getByTestId("orbit-settings-font-preview").textContent).toContain("01:23.456");
   });
 
   it("el control de zoom cambia, persiste y restablece un único porcentaje", () => {
@@ -218,7 +238,7 @@ describe("SettingsOrbitPage", () => {
   });
 
   it("reducir animaciones marca el body y se guarda", () => {
-    mount("application");
+    mount("appearance");
     const row = screen.getByTestId("orbit-settings-reduce-motion");
     fireEvent.click(within(row).getByRole("button"));
 

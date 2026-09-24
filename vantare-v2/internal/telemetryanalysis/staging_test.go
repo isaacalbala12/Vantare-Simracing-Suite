@@ -7,10 +7,39 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
+
+func TestPersistentCopyIOErrorClassifiesDestinationFailure(t *testing.T) {
+	tests := []struct {
+		name  string
+		cause error
+		want  error
+	}{
+		{name: "permission", cause: &os.PathError{Op: "open", Path: "destination", Err: os.ErrPermission}, want: ErrPersistentCopyPermission},
+		{name: "no space", cause: &os.PathError{Op: "write", Path: "destination", Err: syscall.ENOSPC}, want: ErrPersistentCopyNoSpace},
+		{name: "other", cause: errors.New("unknown write failure"), want: ErrPersistentCopyRejected},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := persistentCopyIOError(test.cause)
+			if !errors.Is(got, test.want) || !errors.Is(got, ErrPersistentCopyRejected) {
+				t.Fatalf("copy error = %v, want %v and rejection", got, test.want)
+			}
+		})
+	}
+	if runtime.GOOS == "windows" {
+		for _, code := range []syscall.Errno{39, 112} {
+			if got := persistentCopyIOError(&os.PathError{Op: "write", Path: "destination", Err: code}); !errors.Is(got, ErrPersistentCopyNoSpace) {
+				t.Fatalf("Windows disk-full code %d = %v", code, got)
+			}
+		}
+	}
+}
 
 func TestStageAuthorizedHistoricalArtifactCopiesExactBytesAndCleansUp(t *testing.T) {
 	originalDirectory := t.TempDir()

@@ -9,6 +9,8 @@ import (
 )
 
 var ErrTelemetryAnalysisCopyFailed = errors.New("the verified telemetry copy could not be saved")
+var ErrTelemetryAnalysisCopyPermission = errors.New("the telemetry copy destination is not writable")
+var ErrTelemetryAnalysisCopyNoSpace = errors.New("the telemetry copy destination has no space")
 
 type TelemetryAnalysisCopyRequest struct {
 	SessionID            string `json:"sessionId"`
@@ -54,6 +56,12 @@ func (service *TelemetryAnalysisService) SaveVerifiedCopy(ctx context.Context, r
 	if err != nil {
 		if ctxErr := operationCtx.Err(); ctxErr != nil {
 			return TelemetryAnalysisCopyResult{}, ctxErr
+		}
+		if errors.Is(err, telemetryanalysis.ErrPersistentCopyPermission) {
+			return TelemetryAnalysisCopyResult{}, ErrTelemetryAnalysisCopyPermission
+		}
+		if errors.Is(err, telemetryanalysis.ErrPersistentCopyNoSpace) {
+			return TelemetryAnalysisCopyResult{}, ErrTelemetryAnalysisCopyNoSpace
 		}
 		return TelemetryAnalysisCopyResult{}, ErrTelemetryAnalysisCopyFailed
 	}

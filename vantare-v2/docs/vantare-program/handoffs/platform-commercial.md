@@ -18,7 +18,8 @@ final y referencia de rendimiento A/A aceptada. Evidencia en #1057.
 
 ISA-1370 corrige en rama aislada `vantareapp/isa-1370-calendar-refresh-after-login`
 el caso de primer login: el refresh de arranque ocurre antes de haber sesión y
-debe repetirse tras validar la credencial. Base `nightly@6df485fe`; PR draft
+debe repetirse tras validar la credencial. Base reconciliada
+`nightly@5c73013e`; PR draft
 [#1371](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1371)
 abierto. CI completo, review y promoción aún pendientes. No se ha publicado un
 nuevo horario ni una release.

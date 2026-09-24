@@ -15,6 +15,8 @@ publicó `bbb07ef4-fbe5-4992-a756-a0c3dc765886` (12 series, vigencia
 2026-09-22–29 UTC); el horario del 8 de septiembre pasó a `superseded`. Wails
 con ese perfil volvió a abrir el horario publicado, mostró salidas en Próximas,
 Día, Semana, Mes y Timeline, y confirmó actualizar, seguir y dejar de seguir.
+El ejecutable anterior del perfil, sin los cambios de esta PR, también cargó
+las 12 series, la semanal y los especiales desde la publicación central.
 El detalle de la prueba de Le Mans mostró reglas y avisos. La app se arrancó
 con `-live=false`: falta LMU físico y prueba de visibilidad de notificaciones
 nativas. El arreglo de actualización tras login permanece en PR draft

@@ -2361,6 +2361,15 @@ Run key sigue sin invocarse en el arranque y varias entradas de perfil pueden
 abrir varias instancias; hay decisión de producto solicitada. Atajos y Run key
 no tienen aún prueba física tras reinicio. **No apto para lanzamiento.**
 
+Seguimiento del 24-09-2026 en #1368: el ratchet remoto de `765ce2af` pasó.
+Se añadieron pruebas de rollback cuando el Run key falla al crear o borrar un
+perfil, y se alineó la lista de atajos reservados de Go con la interfaz.
+También se reprodujo un fallo de la cadena: una app ausente permitía seguir
+al siguiente paso pese a `failure: stop`; el test falló antes de corregirlo.
+`go test ./internal/app/launcher ./cmd/vantare -count=1` pasó después.
+El HEAD `ea46ba05` está publicado en la PR draft #1369; sus gates remotos
+siguen en curso. Persisten las decisiones y pruebas físicas indicadas arriba.
+
 ## Hub
 
 Conservar estructura. Solo consistencia visual, estados reales, responsive,

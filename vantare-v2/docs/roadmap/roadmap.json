@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-24T17:06:08Z",
+  "generatedAt": "2026-09-24T17:56:22Z",
   "digest": {
-    "lastCommit": "6df485fe0a522dfc97f2f81acbc5ed84e216e54b"
+    "lastCommit": "5c73013ed59a4d69775a94fcc188d168310c59a5"
   },
   "phases": [
     {
@@ -1438,6 +1438,28 @@
       }
     },
     {
+      "id": "calendar-refresh-after-login",
+      "type": "fix",
+      "title": {
+        "es": "Actualización de Calendario tras iniciar sesión",
+        "en": "Calendar refresh after sign-in",
+        "pt": "Atualização do Calendário após login",
+        "it": "Aggiornamento del Calendario dopo l'accesso"
+      },
+      "body": {
+        "es": "Tras validar un primer inicio de sesión, la app consulta el horario publicado sin exigir pulsar Actualizar. No repite la consulta por restaurar la sesión, recibir un callback provisional o renovar el token.",
+        "en": "After validating a first sign-in, the app fetches the published schedule without requiring a manual refresh. Session restore, a provisional callback and token renewal do not trigger extra requests.",
+        "pt": "Após validar o primeiro login, a app consulta o horário publicado sem exigir atualização manual. Restaurar a sessão, receber um callback provisório e renovar o token não repetem o pedido.",
+        "it": "Dopo la convalida del primo accesso, l'app consulta il calendario pubblicato senza richiedere un aggiornamento manuale. Il ripristino della sessione, un callback provvisorio e il rinnovo del token non ripetono la richiesta."
+      },
+      "label": {
+        "es": "ISA-1370",
+        "en": "ISA-1370",
+        "pt": "ISA-1370",
+        "it": "ISA-1370"
+      }
+    },
+    {
       "id": "telemetry-six-widget-cpu",
       "type": "fix",
       "title": {
@@ -2191,14 +2213,19 @@
       "date": "2026-09-24",
       "entries": [
         {
-          "kind": "fix",
-          "scope": "widgets",
-          "text": "Validar datos y contratos de los cinco widgets aceptados"
+          "kind": "change",
+          "scope": "",
+          "text": "Racing Flags: letra ampliada, centrada y negra por defecto"
         },
         {
           "kind": "feat",
           "scope": "overlays",
           "text": "Pedales avanzados con datos revisados y volantes LMU"
+        },
+        {
+          "kind": "fix",
+          "scope": "widgets",
+          "text": "Validar datos y contratos de los cinco widgets aceptados"
         }
       ]
     },

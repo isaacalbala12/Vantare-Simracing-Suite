@@ -1,5 +1,16 @@
 # Handoff vivo — Strategy Planner
 
+## Revalidación Hypercar — ISA-1367 (2026-09-25)
+
+El banco real del HEAD `d293b595` volvió a pasar con Monza S026 e Imola S125:
+61 eventos/60 reinicios, ritmo seco `valid` 97,559 s (N=53), Fuel `valid`
+2,876 L (N=53), VE `valid` 3,328 puntos/vuelta y, para un evento supuesto de
+60 min, 37 vueltas/una parada con `optimality=proven`. Revisión exacta,
+reapertura y correcciones de clasificación, identidad y familias pasaron;
+hashes originales intactos. Solver completo y `go vet` PASS. [Evidencia](../../strategy-planner/evidence/isa-1367/one-pit-certificate-2026-09-24.md).
+No se ejecutó Wails/CI ni la suite Go global en esta revalidación. La rama
+continúa aislada y depende del stack local v5; sin push, PR, merge ni release.
+
 ## Hypercar Fuel + VE — certificado de una parada (#1367, 2026-09-24)
 
 La carrera S026 Monza real ya no agota la dominancia para el evento supuesto de 60 min, 90 L y 40 s de parada: un certificado acotado enumera cero/una parada y demuestra que dos o más no pueden mejorarla mediante una cota optimista de todas las particiones. Sale 37 vueltas, una parada y `optimality=proven` dentro del modelo; no es precisión empírica de una carrera real. La regresión RED, 24 casos frente a oráculo exhaustivo y un caso donde sí gana otra parada pasan. S026 y S125 pasan en el banco nativo con hashes originales intactos. `pnpm --dir frontend build` y la suite Go completa pasan tras generar `frontend/dist`, ausente inicialmente. [Argumento, evidencia y límites](../../strategy-planner/evidence/isa-1367/one-pit-certificate-2026-09-24.md). El certificado cae a la búsqueda existente fuera de su dominio. Siguen pendientes la lectura/memoria acotada de #1375, la calibración independiente #1030 y QA Wails/T22. Rama aislada sin push, PR, CI, merge, promoción ni release.

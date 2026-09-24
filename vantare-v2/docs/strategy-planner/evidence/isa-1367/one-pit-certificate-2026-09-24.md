@@ -49,3 +49,17 @@ La prueba matemática sólo cubre la clase de entrada descrita. No demuestra
 precisión empírica de ritmo, consumo, incidentes o reglas de una carrera real.
 Tampoco acredita la interfaz Wails ni sesiones de 24 horas: lectura por
 streaming y memoria acotada siguen en #1375, y la calibración en #1030.
+
+## Revalidación local del 25-sep-2026
+
+En el HEAD `d293b595` se repitió el banco opt-in con S026 Monza como fuente y
+S125 Imola como objetivo, ambos sin WAL, con el parser y runtime autorizados.
+`TestRecordedStrategyRealDuckDB` pasó en 154,36 s: Monza entregó 61 eventos,
+60 reinicios, ritmo seco `valid` 97,559 s/vuelta (N=53), Fuel `valid` 2,876
+L/vuelta (N=53) y VE `valid` 3,328 puntos/vuelta. Para el evento **supuesto**
+resultaron 37 vueltas, una parada y `optimality=proven`. Pasaron la proyección
+de revisión exacta, cálculo Go, cierre/reapertura y correcciones de clima,
+identidad y familias. Los hashes originales permanecieron idénticos a los
+citados arriba. `go test -p 1 ./internal/strategy/solver -count=1` y
+`go vet ./internal/strategy/solver` pasaron. Esta revalidación no incluyó la
+suite Go global, CI, Wails ni prueba de precisión empírica.

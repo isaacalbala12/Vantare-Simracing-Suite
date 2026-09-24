@@ -12,8 +12,19 @@ Procesos de benchmark separados a 300.000 frames: mediana de tiempo de CPU
 aplicación completa ni demuestra una ventaja
 de Rust para todo Telemetry Core. Evidencia y salida cruda en
 `docs/telemetry-core/evidence/isa-1379-go-rust-cstrings.md` y `.txt`. Rust no está
-integrado en producción. Siguiente gate: tramo completo, paridad y CPU de
-proceso A/B con el mismo replay.
+integrado en producción.
+
+Segundo corte: salida completa del parser LMU idéntica en cuatro capturas
+sanitizadas y seis corrupciones de control. El mapeo de IDs en Rust+DLL,
+comparado con Go actual y Go con el mismo algoritmo de tablas fijas, dio
+medianas @44 coches de 29,128 / 26,836 / 25,582 µs por frame. CPU de procesos
+separados de 200.000 frames: 7,86 / 7,52 / 6,84 s. El ahorro Rust frente al
+Go actual se proyecta a ~0,0013 puntos de CPU a 60 Hz y 16 procesadores
+lógicos. No cubre Vantare/Wails ni el motor de telemetría; no justifica aún
+una migración. Evidencia y datos crudos:
+`docs/telemetry-core/evidence/isa-1379-go-rust-parser.md`. Siguiente gate:
+medir la etapa de mayor coste del motor y CPU de la aplicación con el mismo
+replay, si se pretende decidir sobre todo Telemetry Core.
 
 > **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
 > Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,

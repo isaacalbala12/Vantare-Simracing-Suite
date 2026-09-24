@@ -1,0 +1,241 @@
+# LMU full parser with native Go, fixed-array Go and Rust grid map; real sanitized 44-car fixture
+# round=1 variant=Go
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserGo-16    	   18798	     32576 ns/op	   32096 B/op	     151 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.655s
+# round=1 variant=GoFixed
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserGoFixed-16    	   21735	     26848 ns/op	   30398 B/op	     146 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.629s
+# round=1 variant=RustGrid
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserRustGrid-16    	   23694	     25596 ns/op	   30422 B/op	     147 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.649s
+# round=1 variant=RustGrid
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserRustGrid-16    	   23385	     25511 ns/op	   30422 B/op	     147 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.640s
+# round=1 variant=GoFixed
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserGoFixed-16    	   21788	     28182 ns/op	   30397 B/op	     146 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.657s
+# round=1 variant=Go
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserGo-16    	   17940	     33674 ns/op	   32096 B/op	     151 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.655s
+# round=2 variant=Go
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserGo-16    	   19880	     29754 ns/op	   32096 B/op	     151 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.636s
+# round=2 variant=GoFixed
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserGoFixed-16    	   20702	     29192 ns/op	   30398 B/op	     146 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.649s
+# round=2 variant=RustGrid
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserRustGrid-16    	   23485	     25303 ns/op	   30422 B/op	     147 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.636s
+# round=2 variant=RustGrid
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserRustGrid-16    	   21860	     26390 ns/op	   30422 B/op	     147 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.625s
+# round=2 variant=GoFixed
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserGoFixed-16    	   19839	     31364 ns/op	   30398 B/op	     146 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.668s
+# round=2 variant=Go
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserGo-16    	   20997	     28329 ns/op	   32095 B/op	     151 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.637s
+# round=3 variant=Go
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserGo-16    	   21190	     28351 ns/op	   32096 B/op	     151 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.641s
+# round=3 variant=GoFixed
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserGoFixed-16    	   22164	     26723 ns/op	   30398 B/op	     146 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.637s
+# round=3 variant=RustGrid
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserRustGrid-16    	   23464	     25604 ns/op	   30422 B/op	     147 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.643s
+# round=3 variant=RustGrid
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserRustGrid-16    	   23198	     25567 ns/op	   30422 B/op	     147 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.634s
+# round=3 variant=GoFixed
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserGoFixed-16    	   22400	     26566 ns/op	   30399 B/op	     146 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.638s
+# round=3 variant=Go
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserGo-16    	   20935	     28501 ns/op	   32095 B/op	     151 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.639s
+# round=4 variant=Go
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserGo-16    	   21220	     28323 ns/op	   32096 B/op	     151 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.642s
+# round=4 variant=GoFixed
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserGoFixed-16    	   19254	     29379 ns/op	   30399 B/op	     146 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.615s
+# round=4 variant=RustGrid
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserRustGrid-16    	   23644	     25308 ns/op	   30422 B/op	     147 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.641s
+# round=4 variant=RustGrid
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserRustGrid-16    	   22972	     25810 ns/op	   30422 B/op	     147 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.640s
+# round=4 variant=GoFixed
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserGoFixed-16    	   22069	     26824 ns/op	   30399 B/op	     146 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.634s
+# round=4 variant=Go
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserGo-16    	   21354	     27884 ns/op	   32096 B/op	     151 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.637s
+# round=5 variant=Go
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserGo-16    	   21081	     29779 ns/op	   32095 B/op	     151 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.674s
+# round=5 variant=GoFixed
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserGoFixed-16    	   22593	     26742 ns/op	   30398 B/op	     146 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.650s
+# round=5 variant=RustGrid
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserRustGrid-16    	   23233	     25849 ns/op	   30422 B/op	     147 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.643s
+# round=5 variant=RustGrid
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserRustGrid-16    	   23665	     25392 ns/op	   30423 B/op	     147 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.645s
+# round=5 variant=GoFixed
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserGoFixed-16    	   22741	     26369 ns/op	   30399 B/op	     146 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.642s
+# round=5 variant=Go
+goos: windows
+goarch: amd64
+pkg: github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu
+cpu: AMD Ryzen 7 3700X 8-Core Processor             
+BenchmarkLMUParserGo-16    	   19605	     30990 ns/op	   32096 B/op	     151 allocs/op
+PASS
+ok  	github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu	0.654s

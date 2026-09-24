@@ -6,6 +6,8 @@ const MAX_VEHICLES: usize = 104;
 const SCORING_BASE: usize = 2_192;
 const SCORING_STRIDE: usize = 584;
 const RESULT_CAP: usize = 1 + 3 * MAX_VEHICLES;
+const TELEMETRY_BASE: usize = 128_468;
+const TELEMETRY_STRIDE: usize = 1_888;
 
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
@@ -18,6 +20,87 @@ pub struct CStringResult {
 pub struct CStringFrame {
     pub count: u32,
     pub results: [CStringResult; RESULT_CAP],
+}
+
+/// Scoring-row order is preserved. Each entry identifies the matching
+/// telemetry row, so Go can construct its canonical Observation unchanged.
+#[repr(C)]
+pub struct GridMap {
+    pub count: u32,
+    pub player_index: i32,
+    pub telemetry_indices: [u8; MAX_VEHICLES],
+}
+
+impl Default for GridMap {
+    fn default() -> Self {
+        Self {
+            count: 0,
+            player_index: -1,
+            telemetry_indices: [0; MAX_VEHICLES],
+        }
+    }
+}
+
+fn read_i32(data: &[u8], offset: usize) -> i32 {
+    i32::from_le_bytes(data[offset..offset + 4].try_into().unwrap())
+}
+
+/// Returns 0 for a bijective grid, 1 for a short buffer, 2 for bad pointers
+/// or count, and 3 when the active scoring/telemetry grid is incompatible.
+/// # Safety
+/// `input` must point to `len` readable bytes and `out` to a writable GridMap.
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn vantare_lmu_grid_map(
+    input: *const u8,
+    len: usize,
+    out: *mut GridMap,
+) -> u32 {
+    if input.is_null() || out.is_null() {
+        return 2;
+    }
+    if len < OBJECT_SIZE {
+        return 1;
+    }
+    // SAFETY: pointers and length are checked above; the caller owns the buffers.
+    let data = unsafe { std::slice::from_raw_parts(input, len) };
+    let count = read_i32(data, 1_736);
+    if !(0..=MAX_VEHICLES as i32).contains(&count) {
+        return 2;
+    }
+    let count = count as usize;
+    let mut telemetry_ids = [0_i32; MAX_VEHICLES];
+    for index in 0..count {
+        let id = read_i32(data, TELEMETRY_BASE + index * TELEMETRY_STRIDE);
+        if id < 0 || telemetry_ids[..index].contains(&id) {
+            return 3;
+        }
+        telemetry_ids[index] = id;
+    }
+    let mut scoring_ids = [0_i32; MAX_VEHICLES];
+    let mut result = GridMap::default();
+    result.count = count as u32;
+    for index in 0..count {
+        let base = SCORING_BASE + index * SCORING_STRIDE;
+        let id = read_i32(data, base);
+        if id < 0 || scoring_ids[..index].contains(&id) {
+            return 3;
+        }
+        scoring_ids[index] = id;
+        let Some(telemetry_index) = telemetry_ids[..count].iter().position(|item| *item == id)
+        else {
+            return 3;
+        };
+        result.telemetry_indices[index] = telemetry_index as u8;
+        if data[base + 196] == 1 {
+            if result.player_index >= 0 {
+                return 3;
+            }
+            result.player_index = index as i32;
+        }
+    }
+    // SAFETY: the caller guarantees a writable GridMap.
+    unsafe { out.write(result) };
+    0
 }
 
 impl Default for CStringFrame {

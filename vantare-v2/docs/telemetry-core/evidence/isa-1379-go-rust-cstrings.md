@@ -1,5 +1,10 @@
 # VAN-764 / GitHub #1379 — comparación parcial Go/Rust del parser LMU
 
+La comparación posterior del **parser completo como salida y coste**, con
+control Go de algoritmo equivalente, está en
+[`isa-1379-go-rust-parser.md`](isa-1379-go-rust-parser.md). Este documento
+conserva la primera medición aislada de cadenas.
+
 ## Lectura rápida
 
 La comparación A/B usa **el mismo frame real de LMU** y ejecuta **la misma

@@ -27,6 +27,16 @@ var cStringProbeSink [1 + 3*104]string
 
 func rustProbe(t testing.TB) *syscall.Proc {
 	t.Helper()
+	dll := rustProbeDLL(t)
+	proc, err := dll.FindProc("vantare_lmu_cstrings")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return proc
+}
+
+func rustProbeDLL(t testing.TB) *syscall.DLL {
+	t.Helper()
 	path := os.Getenv("VANTARE_RUST_PROBE_DLL")
 	if path == "" {
 		t.Skip("set VANTARE_RUST_PROBE_DLL to the ISA-1379 experimental DLL")
@@ -35,11 +45,7 @@ func rustProbe(t testing.TB) *syscall.Proc {
 	if err != nil {
 		t.Fatal(err)
 	}
-	proc, err := dll.FindProc("vantare_lmu_cstrings")
-	if err != nil {
-		t.Fatal(err)
-	}
-	return proc
+	return dll
 }
 
 func runRustCStringProbe(proc *syscall.Proc, data []byte, frame *rustCStringFrame) uint32 {

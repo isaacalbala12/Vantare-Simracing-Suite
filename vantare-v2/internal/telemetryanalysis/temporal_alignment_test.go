@@ -2,6 +2,7 @@ package telemetryanalysis
 
 import (
 	"math"
+	"reflect"
 	"testing"
 )
 
@@ -111,6 +112,18 @@ func TestBuildTemporalAlignmentDeepClonesInputs(t *testing.T) {
 	}
 	if pages[1].Samples[0].Values[0].Scalar.Number != originalValue || pages[1].Samples[0].TimestampSeconds != nil {
 		t.Fatal("result pages alias input pages")
+	}
+}
+
+func TestOwnedTemporalAlignmentMatchesPublicResult(t *testing.T) {
+	session, pages := temporalAlignmentFixture(100, 20)
+	want := BuildTemporalAlignment(session, pages)
+	got := buildTemporalAlignmentOwned(session, pages)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatal("owned alignment changed the temporal result")
+	}
+	if pages[1].Samples[0].TimestampSeconds == nil {
+		t.Fatal("owned alignment did not use the supplied pages")
 	}
 }
 

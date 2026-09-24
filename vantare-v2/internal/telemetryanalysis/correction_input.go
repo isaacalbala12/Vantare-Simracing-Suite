@@ -9,7 +9,8 @@ import (
 var ErrCorrectionReadLimit = errors.New("correction source exceeds the read budget")
 
 // CorrectionInputReader is implemented by the authorized format parser. The
-// owner must keep its artifact alive and revalidate it on every read.
+// owner must keep its artifact alive and revalidate it on every read. Each
+// returned page must own its sample slice; the correction reader aligns it.
 type CorrectionInputReader interface {
 	Inspect(context.Context) (HistoricalSession, error)
 	ReadPage(context.Context, string, int64, int) (HistoricalPage, error)
@@ -100,7 +101,7 @@ func ReadCorrectionInput(ctx context.Context, reader CorrectionInputReader, arti
 	if err := ctx.Err(); err != nil {
 		return empty, err
 	}
-	alignment := BuildTemporalAlignment(session, pages)
+	alignment := buildTemporalAlignmentOwned(session, pages)
 	validity, err := AnalyzeAlignedLapValidity(alignment)
 	if err != nil {
 		return empty, err

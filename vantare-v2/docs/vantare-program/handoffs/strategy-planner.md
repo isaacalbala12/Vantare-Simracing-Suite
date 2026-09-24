@@ -1,5 +1,9 @@
 # Handoff vivo — Strategy Planner
 
+## Primer corte de memoria registrada — ISA-1375 (2026-09-24)
+
+`ReadCorrectionInput` alinea ahora las páginas nuevas que posee, sin la copia profunda previa; `BuildTemporalAlignment` público conserva su aislamiento. La regresión compara ambos resultados y el banco real S266 Algarve pasó tres veces por versión con idénticos ritmo, Fuel, aplicabilidad de VE y plan supuesto; hashes originales intactos. Los picos de working set variaron mucho (antes 855,1/790,2/772,4 MiB; después 820,2/772,1/765,7 MiB), así que no se reclama un porcentaje de ahorro ni soporte de 24 h. La preparación sigue reteniendo páginas completas y la derivación de revisiones las vuelve a copiar. [Evidencia y límites](../../strategy-planner/evidence/isa-1375/owned-alignment-2026-09-24.md). Focal Go y build frontend PASS; suite Go global PASS. Pendientes arquitectura incremental/paridad/memoria acotada, Wails y aceptación T22. Sin push, PR, CI, merge, promoción ni release.
+
 ## Sesiones largas y Hypercar — ISA-1210 / ISA-1367 (2026-09-24)
 
 El contrato de correcciones vuelve a reflejar el límite productivo medido de 1,25 M muestras/1,5 M valores y advierte que las páginas siguen acumulándose en memoria. Esta conciliación documental no amplía el soporte a carreras de 24 h ni altera el lector.

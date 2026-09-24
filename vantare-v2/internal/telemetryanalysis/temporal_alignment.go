@@ -19,9 +19,19 @@ type TemporalAlignmentResult struct {
 }
 
 func BuildTemporalAlignment(session HistoricalSession, pages []HistoricalPage) TemporalAlignmentResult {
+	return buildTemporalAlignmentWithPages(session, cloneHistoricalPages(pages))
+}
+
+// ReadCorrectionInput owns the pages returned by its reader and can align them
+// without a second full-size copy. Public callers keep the cloning contract.
+func buildTemporalAlignmentOwned(session HistoricalSession, pages []HistoricalPage) TemporalAlignmentResult {
+	return buildTemporalAlignmentWithPages(session, pages)
+}
+
+func buildTemporalAlignmentWithPages(session HistoricalSession, pages []HistoricalPage) TemporalAlignmentResult {
 	result := TemporalAlignmentResult{
 		Session:  cloneHistoricalSession(session),
-		Pages:    cloneHistoricalPages(pages),
+		Pages:    pages,
 		Bridge:   TemporalAlignmentStatus{Reason: "bridge_absent"},
 		Channels: make(map[string]TemporalAlignmentStatus),
 	}

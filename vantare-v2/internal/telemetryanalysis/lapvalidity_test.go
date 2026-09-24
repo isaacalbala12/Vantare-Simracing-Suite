@@ -464,6 +464,35 @@ func TestAnalyzeLapValidityUsesAlignedGradualFuelRiseWithoutPitEvents(t *testing
 	}
 }
 
+func TestOrderedFuelRiseScanKeepsOnlyRiseSummariesAcrossPages(t *testing.T) {
+	sampling := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 1, Origin: TimeOriginSourceTimestamp}
+	values := []float64{90, 92, 94, 94, 93, 94, 97, 98}
+	pages := []HistoricalPage{{Sampling: sampling}, {Sampling: sampling}}
+	for index, value := range values {
+		page := index / 4
+		pages[page].Samples = append(pages[page].Samples, HistoricalSample{
+			Index: int64(index), TimestampSeconds: floatPointer(100 + float64(index)),
+			Values: []HistoricalValue{numberValue("Fuel Level", value)},
+		})
+	}
+	var scan orderedFuelRiseScan
+	for _, page := range pages {
+		if !scan.accept(page) {
+			t.Fatal("ordered pages rejected")
+		}
+	}
+	want := []fuelRise{{seconds: 101, delta: 4}, {seconds: 105, delta: 5}}
+	if got := scan.finish(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("streamed rises = %+v, want %+v", got, want)
+	}
+	if got := observedFuelRises(pages); !reflect.DeepEqual(got, want) {
+		t.Fatalf("materialized rises = %+v, want %+v", got, want)
+	}
+	if got := observedFuelRises([]HistoricalPage{pages[1], pages[0]}); !reflect.DeepEqual(got, want) {
+		t.Fatalf("unordered fallback = %+v, want %+v", got, want)
+	}
+}
+
 func TestAnalyzeLapValidityIgnoresInitialFuelRiseAndPitState(t *testing.T) {
 	session, pages := reducedT19aTemporalRegression(t)
 	fuel := &pages[2]

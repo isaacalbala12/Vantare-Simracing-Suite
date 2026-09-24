@@ -921,6 +921,79 @@ type fuelRise struct {
 }
 
 func observedFuelRises(pages []HistoricalPage) []fuelRise {
+	// The authorized reader supplies fuel pages in increasing sample order.
+	// Keep only the previous value and completed rises on that path; pure
+	// callers with unordered pages retain the original sorted behavior.
+	var scan orderedFuelRiseScan
+	for _, page := range pages {
+		if !scan.accept(page) {
+			return unorderedFuelRises(pages)
+		}
+	}
+	return scan.finish()
+}
+
+type orderedFuelRiseScan struct {
+	rises         []fuelRise
+	current       fuelRise
+	previousIndex int64
+	previousValue float64
+	previousValid bool
+	lastIndex     int64
+	seen          bool
+}
+
+func (scan *orderedFuelRiseScan) accept(page HistoricalPage) bool {
+	if page.Sampling.Origin != TimeOriginSourceTimestamp {
+		return true
+	}
+	for _, sample := range page.Samples {
+		if scan.seen && sample.Index <= scan.lastIndex {
+			return false
+		}
+		scan.lastIndex, scan.seen = sample.Index, true
+		scan.consume(sample)
+	}
+	return true
+}
+
+func (scan *orderedFuelRiseScan) flush() {
+	if scan.current.delta > fuelJumpMinimumLitres {
+		scan.rises = append(scan.rises, scan.current)
+	}
+	scan.current = fuelRise{}
+}
+
+func (scan *orderedFuelRiseScan) consume(sample HistoricalSample) {
+	value, ok := firstNumber(sample.Values)
+	if !ok || sample.TimestampSeconds == nil {
+		scan.flush()
+		scan.previousValid = false
+		return
+	}
+	if !scan.previousValid || sample.Index != scan.previousIndex+1 {
+		scan.flush()
+		scan.previousIndex, scan.previousValue, scan.previousValid = sample.Index, value, true
+		return
+	}
+	delta := value - scan.previousValue
+	if delta > 0 {
+		if scan.current.delta == 0 {
+			scan.current.seconds = *sample.TimestampSeconds
+		}
+		scan.current.delta += delta
+	} else if delta < 0 {
+		scan.flush()
+	}
+	scan.previousIndex, scan.previousValue = sample.Index, value
+}
+
+func (scan *orderedFuelRiseScan) finish() []fuelRise {
+	scan.flush()
+	return scan.rises
+}
+
+func unorderedFuelRises(pages []HistoricalPage) []fuelRise {
 	var samples []HistoricalSample
 	for _, page := range pages {
 		if page.Sampling.Origin != TimeOriginSourceTimestamp {
@@ -929,42 +1002,11 @@ func observedFuelRises(pages []HistoricalPage) []fuelRise {
 		samples = append(samples, page.Samples...)
 	}
 	sort.Slice(samples, func(i, j int) bool { return samples[i].Index < samples[j].Index })
-	var rises []fuelRise
-	var previous HistoricalSample
-	previousValue := 0.0
-	previousValid := false
-	current := fuelRise{}
-	flush := func() {
-		if current.delta > fuelJumpMinimumLitres {
-			rises = append(rises, current)
-		}
-		current = fuelRise{}
-	}
+	var scan orderedFuelRiseScan
 	for _, sample := range samples {
-		value, ok := firstNumber(sample.Values)
-		if !ok || sample.TimestampSeconds == nil {
-			flush()
-			previousValid = false
-			continue
-		}
-		if !previousValid || sample.Index != previous.Index+1 {
-			flush()
-			previous, previousValue, previousValid = sample, value, true
-			continue
-		}
-		delta := value - previousValue
-		if delta > 0 {
-			if current.delta == 0 {
-				current.seconds = *sample.TimestampSeconds
-			}
-			current.delta += delta
-		} else if delta < 0 {
-			flush()
-		}
-		previous, previousValue = sample, value
+		scan.consume(sample)
 	}
-	flush()
-	return rises
+	return scan.finish()
 }
 
 func pitIntervalAt(events []observedEvent, seconds float64) (float64, bool, bool) {

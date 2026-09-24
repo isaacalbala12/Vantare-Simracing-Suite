@@ -1,5 +1,20 @@
 # Handoff vivo — Strategy Planner
 
+## Ascensos de Fuel sin copia de la señal — ISA-1375 (2026-09-25)
+
+La validez productiva detecta ahora subidas de combustible en páginas ordenadas
+con sólo el valor anterior y los ascensos completos; la API pura conserva la
+ordenación anterior si recibe páginas fuera de orden. Una prueba RED→PASS
+contrasta ascensos que cruzan páginas, mesetas, descenso y fallback. La suite
+Go completa y `go vet` de Analysis pasan. El banco real S266 Algarve→S026
+Monza pasó en 69,20 s: 71 eventos, 70 reinicios, 66 vueltas completas, ritmo
+seco 95,190 s (N=58), Fuel 2,135 L/vuelta (N=58), 38 vueltas/0 paradas y
+optimalidad probada **sólo para el evento supuesto**; correcciones, reapertura
+y ambos hashes originales invariantes. No se midió un pico nuevo: esta mejora
+elimina una copia interna, pero `withCorrectionInput` todavía retiene todas las
+páginas. No se acredita soporte de resistencia ni QA Wails; #1375 sigue
+abierta. Rama local sin push, PR, CI, merge, promoción ni release.
+
 ## Segunda visita limitada a Lap Dist — ISA-1375 (2026-09-25)
 
 El lector paginado permite seleccionar un único canal en una visita privada.

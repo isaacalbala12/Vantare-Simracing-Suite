@@ -141,11 +141,26 @@ describe("OverlayWorkshopDevRoute", () => {
     render(<OverlayWorkshopDevRoute search="?widget=racing-flags&system=vantare-functional&state=ready&surface=harness&variant=default&flag=white&width=360&height=96" />);
     await waitFor(() => expect(document.querySelector('[data-widget-renderer="racing-flags"]')).toBeTruthy());
 
-    expect(document.querySelector('[data-widget-renderer="racing-flags"]')?.getAttribute("data-text-color")).toBe("#141517");
-    expect((screen.getByLabelText("Color de la letra") as HTMLInputElement).value).toBe("#141517");
+    expect(document.querySelector('[data-widget-renderer="racing-flags"]')?.getAttribute("data-text-color")).toBe("#000000");
+    expect((screen.getByLabelText("Color de la letra") as HTMLInputElement).value).toBe("#000000");
 
     fireEvent.change(screen.getByLabelText("Color de la letra"), { target: { value: "#ffffff" } });
     await waitFor(() => expect(document.querySelector('[data-widget-renderer="racing-flags"]')?.getAttribute("data-text-color")).toBe("#ffffff"));
+  });
+
+  it("keeps the black flag legible and restores the default text on another explicit flag", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=racing-flags&system=vantare-functional&state=ready&surface=harness&variant=default&flag=black&width=360&height=96" />);
+    await waitFor(() => expect(document.querySelector('[data-widget-renderer="racing-flags"]')).toBeTruthy());
+
+    const root = document.querySelector<HTMLElement>('[data-widget-renderer="racing-flags"]');
+    expect(root?.dataset.flag).toBe("black");
+    expect(root?.dataset.textColor).toBe("#ffffff");
+    expect((screen.getByLabelText("Color de la letra") as HTMLInputElement).value).toBe("#ffffff");
+
+    fireEvent.change(screen.getByLabelText("Bandera"), { target: { value: "yellow" } });
+    await waitFor(() => expect(root?.dataset.flag).toBe("yellow"));
+    expect(root?.dataset.textColor).toBe("#000000");
+    expect((screen.getByLabelText("Color de la letra") as HTMLInputElement).value).toBe("#000000");
   });
 
   it("rejects invalid declared dimensions in the URL and falls back to defaults with a visible notice", async () => {

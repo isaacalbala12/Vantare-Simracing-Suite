@@ -113,8 +113,11 @@ func TestOrbitAppliesMultiDriverProfilesAndSequenceBeforeOptimization(t *testing
 	if plan.Stints[0].DriverID != "fast" || plan.Stints[0].Laps != 2 || plan.Stints[0].Pace != 60 || plan.Stints[0].Fuel != 4 {
 		t.Fatalf("fast stint = %+v", plan.Stints[0])
 	}
-	if plan.Stints[1].DriverID != "slow" || plan.Stints[1].Laps != 2 || plan.Stints[1].Pace != 70 || math.Abs(plan.Stints[1].Fuel-2.8) > 1e-9 {
+	if plan.Stints[1].DriverID != "slow" || plan.Stints[1].Laps != 2 || plan.Stints[1].Pace != 70 || math.Abs(plan.Stints[1].Fuel-3) > 1e-9 {
 		t.Fatalf("slow stint = %+v", plan.Stints[1])
+	}
+	if plan.Optimality != "proven" {
+		t.Fatalf("unaltered multi-driver decision lost proof: %+v", plan)
 	}
 }
 

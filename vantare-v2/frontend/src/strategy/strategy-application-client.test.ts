@@ -574,7 +574,7 @@ describe("createStrategyApplicationClient", () => {
     });
     if (!valid) { await expect(pending).rejects.toThrow("Invalid Strategy orbitCalculation.weather.comparison"); return; }
     await expect(pending).resolves.toMatchObject({ orbitCalculation: { weather: { comparisonBasis: "fixed_distance", comparisonLaps: 10, robust: { maxRegretSeconds: 3, weightedExpectedLossSeconds: 1.5 }, plans: [{ timeline: [{ bucket: "dry" }, { bucket: "wet" }] }] } } });
-    await expect(pending).resolves.toMatchObject({ orbitCalculation: { plans: { s1: { optimality: "not_proven" } } } });
+    await expect(pending).resolves.toMatchObject({ orbitCalculation: { plans: { s1: { optimality: "proven" } } } });
   });
 
   it("parses the typed Orbit migration preview including quarantine and journal", async () => {

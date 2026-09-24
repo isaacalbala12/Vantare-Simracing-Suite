@@ -94,10 +94,13 @@ type decisionResourcePlan struct {
 }
 
 // DecisionResourceRequirements uses the same resource precision, weather,
-// driver and saving models as replay. It does not certify feasibility.
+// driver and saving models as replay. Initial is the minimum load (or the
+// configured load) for this exact decision and its services. It does not
+// certify feasibility.
 type DecisionResourceRequirements struct {
-	Stints []StintResourceRequirement
-	Finish StintResourceRequirement
+	Initial StintResourceRequirement
+	Stints  []StintResourceRequirement
+	Finish  StintResourceRequirement
 }
 
 type StintResourceRequirement struct {
@@ -131,7 +134,10 @@ func ResourceRequirementsV2(input SolverInputV2, decision DecisionVector) (Decis
 		return DecisionResourceRequirements{}, err
 	}
 	var requirements DecisionResourceRequirements
-	_, err = minimumResourcePlanForDecision(input, decision, fuel, ve, weather, drivers, saving, &requirements)
+	plan, err := minimumResourcePlanForDecision(input, decision, fuel, ve, weather, drivers, saving, &requirements)
+	if err == nil {
+		requirements.Initial = StintResourceRequirement{FuelLiters: serviceValue(plan.fuelStart), VEPercent: serviceValue(plan.veStart)}
+	}
 	return requirements, err
 }
 

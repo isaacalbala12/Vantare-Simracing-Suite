@@ -74,12 +74,32 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 			decision.Stints[index].Driver = ""
 		}
 	}
+	useSolvedDecision := len(variant.Overrides) == 0 && len(variant.PitOverrides) == 0 &&
+		len(decision.PitStops) == len(solved.Best.PitStops) && reflect.DeepEqual(decision.Stints, solved.Best.Stints)
+	if useSolvedDecision {
+		decision.PitStops = append([]solver.PitStopDecision(nil), solved.Best.PitStops...)
+	}
 	required, err := solver.ResourceRequirementsV2(input, decision)
 	if err != nil {
 		return err
 	}
 	for index := range plan.Stints {
 		stint := &plan.Stints[index]
+		if useSolvedDecision {
+			if index == 0 {
+				stint.Fuel, veLoads[index] = required.Initial.FuelLiters, required.Initial.VEPercent
+			} else {
+				previous := plan.Stints[index-1]
+				stop := decision.PitStops[index-1]
+				stint.Fuel = previous.Fuel - required.Stints[index-1].FuelLiters + stop.FuelLiters
+				veLoads[index] = veLoads[index-1] - required.Stints[index-1].VEPercent + stop.VEPercent
+			}
+			if input.VECapacityPercent.Value > 0 {
+				value := veLoads[index]
+				stint.VirtualEnergy = &value
+			}
+			continue
+		}
 		stint.Fuel = required.Stints[index].FuelLiters
 		veLoads[index] = required.Stints[index].VEPercent
 		if index == len(plan.Stints)-1 {
@@ -144,7 +164,9 @@ func evaluateFinalOrbitPlan(plan *OrbitCalculationPlan, input solver.SolverInput
 	plan.ModelVersion = string(solved.ContractVersion)
 	plan.Objective = "minimum_total_seconds"
 	plan.Optimality = "not_proven"
-	if len(variant.Overrides) == 0 && len(variant.PitOverrides) == 0 && !solved.ComputeStats.Degradation.Applied && reflect.DeepEqual(replayed.Decision, solved.Best) {
+	if len(variant.Overrides) == 0 && len(variant.PitOverrides) == 0 && !solved.ComputeStats.Degradation.Applied &&
+		reflect.DeepEqual(replayed.Decision, solved.Best) &&
+		math.Abs(replayed.Evaluation.TotalSeconds-solved.Expected.TotalSeconds) <= 1e-9*math.Max(1, solved.Expected.TotalSeconds) {
 		plan.Optimality = "proven"
 	}
 	plan.PitSeconds = replayed.Evaluation.PitSeconds

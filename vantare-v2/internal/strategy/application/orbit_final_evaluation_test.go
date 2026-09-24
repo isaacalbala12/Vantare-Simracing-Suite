@@ -85,6 +85,23 @@ func TestOrbitFinalEvaluationProvesUnchangedSolvedDecision(t *testing.T) {
 	}
 }
 
+func TestOrbitFinalEvaluationPreservesUneditedSolverRefuelling(t *testing.T) {
+	input := finalEvaluationInput()
+	input.Event = OrbitCalculationEvent{RaceKind: "laps", TargetLaps: new(int64), TankLiters: 5, PitLossSeconds: 30}
+	*input.Event.TargetLaps = 10
+	result, err := calculateOrbit(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan := result.Plans["s1"]
+	if plan.Stops == 0 {
+		t.Fatal("test requires an optimized pit stop")
+	}
+	if plan.Optimality != "proven" {
+		t.Fatalf("unedited solver decision lost optimality: %+v", plan)
+	}
+}
+
 func TestOrbitFinalEvaluationPublishesVirtualEnergyOnlyWhenApplicable(t *testing.T) {
 	without, err := calculateOrbit(finalEvaluationInput())
 	if err != nil {

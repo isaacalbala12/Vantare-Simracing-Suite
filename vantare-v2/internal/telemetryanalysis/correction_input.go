@@ -3,6 +3,7 @@ package telemetryanalysis
 import (
 	"context"
 	"errors"
+	"math"
 	"strings"
 )
 
@@ -23,6 +24,54 @@ type CorrectionInput struct {
 	Session  HistoricalSession
 	Pages    []HistoricalPage
 	Validity LapValidityAnalysis
+}
+
+// The authorized parser supports indexed pages. After a full ordered bridge
+// validation, callers can reread only the GPS windows needed by one continuous
+// channel rather than retain the whole clock. The owning service holds the
+// session lock and source lifetime while this cursor is used.
+type orderedGPSPageLookup struct {
+	reader   CorrectionInputReader
+	channel  HistoricalChannel
+	pageRows int
+	page     HistoricalPage
+}
+
+func (lookup *orderedGPSPageLookup) timeAt(ctx context.Context, index int64) (float64, bool, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, false, err
+	}
+	if lookup.reader == nil || lookup.pageRows <= 0 || lookup.pageRows > MaxLMUDuckDBPageRows || lookup.channel.ID == "" {
+		return 0, false, ErrInvalidCorrectionSource
+	}
+	if index < 0 {
+		return 0, false, nil
+	}
+	if lookup.page.ChannelID != lookup.channel.ID || index < lookup.page.Start || index-lookup.page.Start >= int64(len(lookup.page.Samples)) {
+		page, err := lookup.reader.ReadPage(ctx, lookup.channel.ID, index, lookup.pageRows)
+		if err != nil {
+			return 0, false, err
+		}
+		if page.ChannelID != lookup.channel.ID || page.Start != index || len(page.Samples) > lookup.pageRows ||
+			page.Sampling.Kind != SamplingContinuousImplicitFrequency || page.Sampling.FrequencyHz != lookup.channel.Sampling.FrequencyHz {
+			return 0, false, ErrInvalidHistoricalPage
+		}
+		for offset, sample := range page.Samples {
+			if sample.Index != index+int64(offset) || len(sample.Values) != 1 {
+				return 0, false, ErrInvalidHistoricalPage
+			}
+			value, valid := numericHistoricalValue(sample.Values[0])
+			if !valid || math.IsNaN(value) || math.IsInf(value, 0) {
+				return 0, false, ErrInvalidHistoricalPage
+			}
+		}
+		lookup.page = page
+	}
+	if len(lookup.page.Samples) == 0 {
+		return 0, false, nil
+	}
+	value, _ := numericHistoricalValue(lookup.page.Samples[index-lookup.page.Start].Values[0])
+	return value, true, nil
 }
 
 func ReadCorrectionInput(ctx context.Context, reader CorrectionInputReader, artifact AuthorizedHistoricalArtifact, limits CorrectionReadLimits) (CorrectionInput, error) {

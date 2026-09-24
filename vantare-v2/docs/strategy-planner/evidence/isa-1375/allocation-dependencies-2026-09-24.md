@@ -180,3 +180,20 @@ Este banco no comparó memoria pico ni estableció velocidad A/B. El servicio
 sigue reuniendo todas las páginas y este corte no reduce su memoria pico de
 forma demostrada. Próximo experimento: resolver el reloj GPS por ventanas sin
 retener la señal completa y comparar validez/correcciones con una fuente real.
+
+## Noveno corte: consulta GPS por ventana indexada
+
+`orderedGPSPageLookup` consulta la página del mismo `CorrectionInputReader`
+que contiene un índice GPS necesario, conserva como máximo esa página y
+rechaza páginas con ID, origen de fila, frecuencia, índice o valor inválido.
+Antes de devolver un valor comprueba cancelación. Una prueba cubre caché,
+saltos de ventana, índice ausente, página malformada y compara los instantes
+de un canal a 5 Hz con `BuildTemporalAlignment` sobre GPS a 10 Hz. La prueba
+empezó en rojo por falta del lector y pasa al añadirlo.
+
+Este lector se usará **después** de validar globalmente el puente GPS y bajo
+el lock/custodia del servicio. Hoy no sustituye `ReadCorrectionInput` ni
+reduce el pico real: aún falta una ruta de dos fases que valide la cobertura
+completa de cada canal antes de emitir páginas alineadas, y consumidores de
+validez/correcciones/proyección sin retención. El banco real del corte anterior
+no ejecuta esta función nueva. No se usan fuentes reservadas de #1030.

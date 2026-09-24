@@ -196,3 +196,54 @@ func TestCorrectionPageVisitorFeedsUnalignedLapDistResetsWithoutRetainingPages(t
 		t.Fatalf("visited resets (%v, %d) differ from materialized (%v, %d), reads=%d", got, frequency, want, wantFrequency, reader.calls)
 	}
 }
+
+func TestOrderedGPSPageLookupReadsOnlyRequestedWindows(t *testing.T) {
+	sampling := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 10, Origin: TimeOriginUnknown}
+	channel := HistoricalChannel{ID: "gps", SourceName: "GPS Time", Sampling: sampling, Columns: []HistoricalColumn{{Name: "GPS Time", Type: ScalarNumber}}}
+	page := HistoricalPage{ChannelID: channel.ID, Sampling: sampling}
+	for index := 0; index < 12; index++ {
+		page.Samples = append(page.Samples, HistoricalSample{Index: int64(index), Values: []HistoricalValue{numberValue("GPS Time", 100+float64(index)/10)}})
+	}
+	reader := &correctionInputReader{pages: []HistoricalPage{page}}
+	lookup := orderedGPSPageLookup{reader: reader, channel: channel, pageRows: 3}
+	for _, test := range []struct {
+		index int64
+		want  float64
+		found bool
+	}{{0, 100, true}, {2, 100.2, true}, {5, 100.5, true}, {11, 101.1, true}, {12, 0, false}} {
+		got, found, err := lookup.timeAt(context.Background(), test.index)
+		if err != nil || got != test.want || found != test.found {
+			t.Fatalf("GPS[%d] = (%v, %t, %v), want (%v, %t)", test.index, got, found, err, test.want, test.found)
+		}
+	}
+	if reader.calls != 4 {
+		t.Fatalf("expected one bounded read per uncached window, got %d", reader.calls)
+	}
+	reader.malformed = true
+	if _, _, err := lookup.timeAt(context.Background(), 1); !errors.Is(err, ErrInvalidHistoricalPage) {
+		t.Fatalf("malformed GPS page accepted: %v", err)
+	}
+	canceled, stop := context.WithCancel(context.Background())
+	stop()
+	if _, _, err := lookup.timeAt(canceled, 1); !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled GPS lookup read: %v", err)
+	}
+	reader.malformed = false
+	lapSampling := HistoricalSampling{Kind: SamplingContinuousImplicitFrequency, FrequencyHz: 5, Origin: TimeOriginUnknown}
+	lapChannel := HistoricalChannel{ID: "distance", SourceName: "Lap Dist", Sampling: lapSampling, Columns: []HistoricalColumn{{Name: "Lap Dist", Type: ScalarNumber}}}
+	lapPage := HistoricalPage{ChannelID: lapChannel.ID, Sampling: lapSampling}
+	for index := 0; index < 6; index++ {
+		lapPage.Samples = append(lapPage.Samples, HistoricalSample{Index: int64(index), Values: []HistoricalValue{numberValue("Lap Dist", float64(index))}})
+	}
+	materialized := BuildTemporalAlignment(HistoricalSession{Channels: []HistoricalChannel{channel, lapChannel}}, []HistoricalPage{page, lapPage})
+	if !materialized.Bridge.Aligned || !materialized.Channels[lapChannel.ID].Aligned {
+		t.Fatalf("materialized bridge rejected: %+v", materialized)
+	}
+	windowed := orderedGPSPageLookup{reader: reader, channel: channel, pageRows: 3}
+	for _, sample := range materialized.Pages[1].Samples {
+		got, found, err := windowed.timeAt(context.Background(), sample.Index*2)
+		if err != nil || !found || sample.TimestampSeconds == nil || got != *sample.TimestampSeconds {
+			t.Fatalf("GPS window for sample %d = (%v, %t, %v), aligned=%v", sample.Index, got, found, err, sample.TimestampSeconds)
+		}
+	}
+}

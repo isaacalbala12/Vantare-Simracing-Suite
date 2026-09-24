@@ -1,5 +1,18 @@
 # Handoff vivo — Strategy Planner
 
+## Consulta GPS por ventanas — ISA-1375 (2026-09-25)
+
+Un lector privado reutiliza `CorrectionInputReader.ReadPage` para obtener sólo
+la ventana GPS que contiene el índice requerido. Valida forma, frecuencia,
+índices, valores finitos y cancelación antes de devolver un instante; una
+prueba lo compara con `BuildTemporalAlignment` para canales de frecuencia
+distinta y cubre ausencia y página malformada. Todavía no está conectado al
+consumidor productivo: sólo demuestra que el cruce por índice se puede hacer
+con una página en memoria, no que Strategy ya tenga memoria acotada. La
+prueba real Algarve/Monza anterior no ejercita este lector nuevo; debe
+repetirse al integrarlo. `withCorrectionInput` sigue reuniendo todas las
+páginas. Sin nuevos presupuestos, dependencias ni cambios de originales.
+
 ## Reinicios de vuelta alimentables por páginas — ISA-1375 (2026-09-25)
 
 La detección ordenada de reinicios `Lap Dist` comparte ahora un acumulador

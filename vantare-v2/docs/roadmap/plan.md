@@ -936,6 +936,19 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - cuerpo.it: Il calendario distingue caricamento, aggiornamento, errore e validità dell'orario; conferma il risultato ricevuto e conserva la vista durante l'aggiornamento.
 - etiqueta: Fix
 
+### Franjas UTC del horario LMU
+
+- id: calendar-weekly-slots-utc
+- tipo: fix
+- titulo.en: LMU weekly UTC slots
+- titulo.pt: Horários UTC semanais do LMU
+- titulo.it: Fasce UTC settimanali LMU
+- cuerpo: La importación admite franjas semanales expresadas como día y hora, cadencias desde medianoche o desde una hora concreta, y días de prueba y normales de una misma serie sin perder salidas.
+- cuerpo.en: Import accepts weekly slots written as a day and time, cadences from midnight or a stated hour, and test and normal days within one series without losing starts.
+- cuerpo.pt: A importação aceita horários semanais por dia e hora, cadências desde a meia-noite ou outra hora indicada, e dias de teste e normais da mesma série sem perder partidas.
+- cuerpo.it: L'importazione accetta fasce settimanali per giorno e ora, cadenze da mezzanotte o da un'ora indicata, e giorni di test e normali della stessa serie senza perdere partenze.
+- etiqueta: ISA-1372
+
 ### CPU con seis widgets
 
 - id: telemetry-six-widget-cpu

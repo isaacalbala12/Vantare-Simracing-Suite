@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-24T17:06:08Z",
+  "generatedAt": "2026-09-24T17:55:57Z",
   "digest": {
-    "lastCommit": "6df485fe0a522dfc97f2f81acbc5ed84e216e54b"
+    "lastCommit": "5c73013ed59a4d69775a94fcc188d168310c59a5"
   },
   "phases": [
     {
@@ -1438,6 +1438,28 @@
       }
     },
     {
+      "id": "calendar-weekly-slots-utc",
+      "type": "fix",
+      "title": {
+        "es": "Franjas UTC del horario LMU",
+        "en": "LMU weekly UTC slots",
+        "pt": "Horários UTC semanais do LMU",
+        "it": "Fasce UTC settimanali LMU"
+      },
+      "body": {
+        "es": "La importación admite franjas semanales expresadas como día y hora, cadencias desde medianoche o desde una hora concreta, y días de prueba y normales de una misma serie sin perder salidas.",
+        "en": "Import accepts weekly slots written as a day and time, cadences from midnight or a stated hour, and test and normal days within one series without losing starts.",
+        "pt": "A importação aceita horários semanais por dia e hora, cadências desde a meia-noite ou outra hora indicada, e dias de teste e normais da mesma série sem perder partidas.",
+        "it": "L'importazione accetta fasce settimanali per giorno e ora, cadenze da mezzanotte o da un'ora indicata, e giorni di test e normali della stessa serie senza perdere partenze."
+      },
+      "label": {
+        "es": "ISA-1372",
+        "en": "ISA-1372",
+        "pt": "ISA-1372",
+        "it": "ISA-1372"
+      }
+    },
+    {
       "id": "telemetry-six-widget-cpu",
       "type": "fix",
       "title": {
@@ -2191,14 +2213,19 @@
       "date": "2026-09-24",
       "entries": [
         {
-          "kind": "fix",
-          "scope": "widgets",
-          "text": "Validar datos y contratos de los cinco widgets aceptados"
+          "kind": "change",
+          "scope": "",
+          "text": "Racing Flags: letra ampliada, centrada y negra por defecto"
         },
         {
           "kind": "feat",
           "scope": "overlays",
           "text": "Pedales avanzados con datos revisados y volantes LMU"
+        },
+        {
+          "kind": "fix",
+          "scope": "widgets",
+          "text": "Validar datos y contratos de los cinco widgets aceptados"
         }
       ]
     },

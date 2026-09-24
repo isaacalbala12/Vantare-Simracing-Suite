@@ -59,13 +59,21 @@ func ImportDailySchedule(text string) (OfficialSchedule, error) {
 			}
 			applyTierDefaults(&defaults, line)
 
-		case strings.HasPrefix(line, "UTC Days & Times:"):
+		case strings.Contains(line, "UTC Days & Times:"):
 			if len(sched.Series) == 0 {
 				return OfficialSchedule{}, fmt.Errorf("import schedule: schedule line before any series: %q", line)
 			}
-			rec, err := parseWeeklySlots(strings.TrimPrefix(line, "UTC Days & Times:"))
+			_, spec, _ := strings.Cut(line, "UTC Days & Times:")
+			rec, err := parseWeeklySlots(spec)
 			if err != nil {
 				return OfficialSchedule{}, err
+			}
+			previous := sched.Series[len(sched.Series)-1].Recurrence
+			if previous.Kind == "weekly-slots" {
+				if !equalSlotTimes(previous.TimesUTC, rec.TimesUTC) {
+					return OfficialSchedule{}, fmt.Errorf("import schedule: multiple time patterns for series %q", sched.Series[len(sched.Series)-1].Name)
+				}
+				rec.Days = append(previous.Days, rec.Days...)
 			}
 			sched.Series[len(sched.Series)-1].Recurrence = rec
 
@@ -74,6 +82,11 @@ func ImportDailySchedule(text string) (OfficialSchedule, error) {
 			if lastSeriesIndex >= 0 {
 				last := &sched.Series[lastSeriesIndex]
 				last.Notes = append(last.Notes, strings.TrimSpace(strings.TrimPrefix(line, "IMPORTANT:")))
+			}
+
+		case strings.HasPrefix(line, "If you "):
+			if lastSeriesIndex >= 0 {
+				sched.Series[lastSeriesIndex].Notes = append(sched.Series[lastSeriesIndex].Notes, line)
 			}
 
 		case strings.HasPrefix(line, "Race start:"):
@@ -128,7 +141,10 @@ type tierDefaults struct {
 func splitScheduleLines(text string) []string {
 	var out []string
 	for _, raw := range strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n") {
-		if line := strings.TrimSpace(raw); line != "" {
+		line := strings.TrimSpace(raw)
+		line = strings.TrimSpace(strings.TrimLeft(line, "#"))
+		line = strings.ReplaceAll(line, "**", "")
+		if line != "" {
 			out = append(out, line)
 		}
 	}
@@ -192,7 +208,7 @@ var (
 	tyresRE     = regexp.MustCompile(`tyres:\s*(\d+)`)
 	assistsRE   = regexp.MustCompile(`(?i)((?:no|low|high|medium)\s+assists\s+allowed)`)
 	timeScaleRE = regexp.MustCompile(`(\d+)x time scale`)
-	veLimitRE   = regexp.MustCompile(`(\d+)%\s*VE\s*Limit`)
+	veLimitRE   = regexp.MustCompile(`(?i)^(\d+)%\s*VE(?:\s*Limit|/NRG)$`)
 	setupRE     = regexp.MustCompile(`(?i)\b(fixed|open) setup\b`)
 	srRE        = regexp.MustCompile(`\[([^\]]+)\]`)
 	badgeRE     = regexp.MustCompile(`:([^:]+):`)
@@ -294,6 +310,8 @@ func parseSeriesLine(line, tier string, d tierDefaults) (RaceSeries, error) {
 			}
 		case strings.Contains(strings.ToLower(f), "fair share"):
 			s.FairShare = true
+		case strings.Contains(f, "RUDP enabled"):
+			s.Notes = append(s.Notes, "RUDP enabled")
 		default:
 			classFields = append(classFields, f)
 		}
@@ -409,8 +427,12 @@ var classNameRE = regexp.MustCompile(`^([A-Za-z0-9][A-Za-z0-9 .\-]*?)\s*(?:\(([^
 func parseVehicleClasses(fields []string) []VehicleClass {
 	var out []VehicleClass
 	for _, field := range fields {
+		field = adjacentClassQualifiersRE.ReplaceAllString(field, "$1 ($2, $3)")
 		for _, chunk := range splitClassChunks(field) {
 			chunk = strings.TrimSpace(chunk)
+			if strings.EqualFold(chunk, "class") || strings.EqualFold(chunk, "classes") {
+				continue
+			}
 			chunk = regexp.MustCompile(`(?i)\s+class(es)?$`).ReplaceAllString(chunk, "")
 			if chunk == "" {
 				continue
@@ -442,6 +464,8 @@ func parseVehicleClasses(fields []string) []VehicleClass {
 	}
 	return out
 }
+
+var adjacentClassQualifiersRE = regexp.MustCompile(`(?i)\b(LMP2|LMP3|LMGT3|Hypercar) \(([^)]*)\) \(([^)]*)\)`)
 
 // splitClassChunks breaks a class list into one chunk per class. It splits on
 // "&" and on the boundary between a closing bracket and the next name, which
@@ -509,8 +533,20 @@ func isASCIILetter(r rune) bool {
 
 var (
 	weekdayTokenRE = regexp.MustCompile(`^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)$`)
-	everyNHoursRE  = regexp.MustCompile(`(?i)every\s+(\d+)\s*(?:h|hrs?|hours?)\s+from\s+midnight`)
+	everyNHoursRE  = regexp.MustCompile(`(?i)every\s+(\d+)\s*(?:h|hrs?|hours?)\s+from\s+(midnight|\d{4})`)
 )
+
+func equalSlotTimes(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
 
 // parseWeeklySlots reads "Tue Wed Thu Mon @ 02:00 06:00" and the shorthand
 // "Fri Sat Sun @ every 3h from midnight UTC", which is the same thing written
@@ -524,7 +560,17 @@ func parseWeeklySlots(spec string) (Recurrence, error) {
 		daysPart, timesPart, ok = strings.Cut(spec, ",")
 	}
 	if !ok {
-		return Recurrence{}, fmt.Errorf("import schedule: schedule line has no time separator: %q", spec)
+		// Some special events state a single slot as "Fri 0800".
+		fields := strings.Fields(spec)
+		dayCount := 0
+		for dayCount < len(fields) && weekdayTokenRE.MatchString(fields[dayCount]) {
+			dayCount++
+		}
+		if dayCount == 0 || dayCount == len(fields) {
+			return Recurrence{}, fmt.Errorf("import schedule: schedule line has no time separator: %q", spec)
+		}
+		daysPart = strings.Join(fields[:dayCount], " ")
+		timesPart = strings.Join(fields[dayCount:], " ")
 	}
 
 	rec := Recurrence{Kind: "weekly-slots"}
@@ -543,14 +589,22 @@ func parseWeeklySlots(spec string) (Recurrence, error) {
 		if step <= 0 || step > 24 {
 			return Recurrence{}, fmt.Errorf("import schedule: invalid hour step %q", m[1])
 		}
-		for h := 0; h < 24; h += step {
+		startHour := 0
+		if !strings.EqualFold(m[2], "midnight") {
+			start, err := normalizeUTCSlot(m[2])
+			if err != nil || !strings.HasSuffix(start, ":00") {
+				return Recurrence{}, fmt.Errorf("import schedule: invalid cadence start %q", m[2])
+			}
+			startHour, _ = strconv.Atoi(start[:2])
+		}
+		for h := startHour; h < 24; h += step {
 			rec.TimesUTC = append(rec.TimesUTC, fmt.Sprintf("%02d:00", h))
 		}
 		return rec, nil
 	}
 
 	for _, tok := range strings.Fields(timesPart) {
-		if strings.EqualFold(tok, "UTC") {
+		if strings.EqualFold(tok, "UTC") || strings.HasPrefix(tok, "<t:") {
 			continue
 		}
 		normalized, err := normalizeUTCSlot(tok)

@@ -1,5 +1,21 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1372 — horario LMU 22-29 de septiembre (2026-09-24)
+
+Isaac facilitó el texto oficial de 12 series. La importación no aceptaba el
+miércoles de prueba, el slot único de viernes ni la cadencia de sábado/domingo
+desde las 02:00 UTC. ISA-1372 corrige esas formas en rama aislada desde
+`nightly@6df485fe`, con prueba RED previa y fixture del texto normalizado.
+
+El seed nuevo permanece como candidato local: `C:/tmp/calendar-2026-09-22-candidate.json`.
+No se incluye ni publica porque el registro de identidades de telemetría carece
+de equivalencias observadas para Road Atlanta y Long Beach, entre otros valores
+de esta semana; el test de integridad del seed falla al introducirlos. Los
+ejemplos de timestamp de Long Beach apuntan al 20 de septiembre, pero el texto
+de la semana 22-29 declara sábado y domingo cada 4 horas desde las 02:00 UTC.
+No se han inventado nombres de telemetría. Validar esas identidades con LMU real,
+revisar el seed y sus pruebas, y comprobar Wails/avisos antes de publicar.
+
 ## VAN-740 / ISA-1305 — Wails beta.24 aceptado para Nightly (2026-09-22)
 
 [Tarea Notion VAN-740](https://app.notion.com/p/3e3e51695c6581f7a1aae9d4db50ee38), puente técnico [GitHub #1305](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1305).

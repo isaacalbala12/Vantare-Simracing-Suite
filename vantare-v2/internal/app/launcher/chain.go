@@ -182,7 +182,10 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 				Message:    fmt.Sprintf("app %q not found", step.AppID),
 			})
 			allSucceeded = false
-			continue // continue to next step, don't stop
+			if !ContinueAfterFailure(policy.Failure, false) {
+				return false
+			}
+			continue
 		}
 
 		// Emit pending before the delay.

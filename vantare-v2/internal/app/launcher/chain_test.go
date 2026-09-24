@@ -163,6 +163,19 @@ func TestChainFailurePolicyControlsContinuation(t *testing.T) {
 	}
 }
 
+func TestMissingAppHonorsFailureStop(t *testing.T) {
+	emit := &spyEmitter{}
+	runner := NewChainRunner(sampleBackend(), emit, stubChainExec)
+	profile := app.LaunchProfile{
+		ID: "missing", Policy: &app.LaunchPolicy{Failure: app.FailureStop},
+		Steps: []app.LaunchStep{{AppID: "unknown"}, {AppID: "lmu"}},
+	}
+	runner.RunChain(context.Background(), profile)
+	if got := emit.count("launcher:chain:step"); got != 1 {
+		t.Fatalf("stop policy must stop after missing app; got %d step events", got)
+	}
+}
+
 // sampleBackend returns a fakeProfilesBackend pre-loaded with sample apps and
 // an empty profile list.
 func sampleBackend() *fakeProfilesBackend {

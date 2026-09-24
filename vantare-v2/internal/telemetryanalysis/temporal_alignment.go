@@ -19,16 +19,16 @@ type TemporalAlignmentResult struct {
 }
 
 func BuildTemporalAlignment(session HistoricalSession, pages []HistoricalPage) TemporalAlignmentResult {
-	return buildTemporalAlignmentWithPages(session, cloneHistoricalPages(pages))
+	return buildTemporalAlignmentWithPages(session, cloneHistoricalPages(pages), false)
 }
 
 // ReadCorrectionInput owns the pages returned by its reader and can align them
 // without a second full-size copy. Public callers keep the cloning contract.
 func buildTemporalAlignmentOwned(session HistoricalSession, pages []HistoricalPage) TemporalAlignmentResult {
-	return buildTemporalAlignmentWithPages(session, pages)
+	return buildTemporalAlignmentWithPages(session, pages, true)
 }
 
-func buildTemporalAlignmentWithPages(session HistoricalSession, pages []HistoricalPage) TemporalAlignmentResult {
+func buildTemporalAlignmentWithPages(session HistoricalSession, pages []HistoricalPage, ordered bool) TemporalAlignmentResult {
 	result := TemporalAlignmentResult{
 		Session:  cloneHistoricalSession(session),
 		Pages:    pages,
@@ -64,7 +64,15 @@ func buildTemporalAlignmentWithPages(session HistoricalSession, pages []Historic
 		return result
 	}
 
-	clock, status := buildGPSClock(bridge, result.Pages)
+	var clock func(int64) (float64, bool)
+	var status TemporalAlignmentStatus
+	if ordered {
+		clock, status = buildOrderedGPSClock(bridge, result.Pages)
+	} else {
+		var values map[int64]float64
+		values, status = buildGPSClock(bridge, result.Pages)
+		clock = func(index int64) (float64, bool) { value, ok := values[index]; return value, ok }
+	}
 	if !status.Aligned {
 		result.Bridge = status
 		return result
@@ -135,7 +143,72 @@ func buildGPSClock(bridge HistoricalChannel, pages []HistoricalPage) (map[int64]
 	return clock, TemporalAlignmentStatus{Aligned: true, Reason: "aligned"}
 }
 
-func alignContinuousPages(result *TemporalAlignmentResult, channelIndex int, pageIndexes []int, clock map[int64]float64, gpsHz int) TemporalAlignmentStatus {
+// The correction reader supplies contiguous samples in increasing index order.
+// Keep only references to its GPS pages; an unordered pure caller falls back
+// to the general clock so its error reasons and timestamps remain unchanged.
+func buildOrderedGPSClock(bridge HistoricalChannel, pages []HistoricalPage) (func(int64) (float64, bool), TemporalAlignmentStatus) {
+	var pageIndexes []int
+	var lastIndex int64
+	var lastTime float64
+	seen, nonMonotonic := false, false
+	for pageIndex := range pages {
+		page := &pages[pageIndex]
+		if page.ChannelID != bridge.ID {
+			continue
+		}
+		if page.Sampling.Kind != SamplingContinuousImplicitFrequency || page.Sampling.FrequencyHz != bridge.Sampling.FrequencyHz {
+			return nil, TemporalAlignmentStatus{Reason: "bridge_invalid_frequency"}
+		}
+		if len(page.Samples) > 0 {
+			pageIndexes = append(pageIndexes, pageIndex)
+		}
+		for sampleIndex, sample := range page.Samples {
+			if sample.Index < 0 {
+				return nil, TemporalAlignmentStatus{Reason: "bridge_invalid_index"}
+			}
+			firstIndex := page.Samples[0].Index
+			if (seen && sample.Index <= lastIndex) || sample.Index < firstIndex || sample.Index-firstIndex != int64(sampleIndex) {
+				values, status := buildGPSClock(bridge, pages)
+				return func(index int64) (float64, bool) { value, ok := values[index]; return value, ok }, status
+			}
+			if len(sample.Values) != 1 {
+				return nil, TemporalAlignmentStatus{Reason: "bridge_invalid_shape"}
+			}
+			value, ok := numericHistoricalValue(sample.Values[0])
+			if !ok || math.IsNaN(value) || math.IsInf(value, 0) {
+				return nil, TemporalAlignmentStatus{Reason: "bridge_invalid_value"}
+			}
+			if seen && value <= lastTime {
+				nonMonotonic = true
+			}
+			lastIndex, lastTime, seen = sample.Index, value, true
+		}
+	}
+	if !seen {
+		return nil, TemporalAlignmentStatus{Reason: "bridge_invalid_shape"}
+	}
+	if nonMonotonic {
+		return nil, TemporalAlignmentStatus{Reason: "bridge_non_monotonic"}
+	}
+	lookup := func(index int64) (float64, bool) {
+		position := sort.Search(len(pageIndexes), func(i int) bool {
+			return pages[pageIndexes[i]].Samples[0].Index > index
+		}) - 1
+		if position < 0 {
+			return 0, false
+		}
+		samples := pages[pageIndexes[position]].Samples
+		offset := index - samples[0].Index
+		if offset < 0 || offset >= int64(len(samples)) {
+			return 0, false
+		}
+		value, _ := numericHistoricalValue(samples[offset].Values[0])
+		return value, true
+	}
+	return lookup, TemporalAlignmentStatus{Aligned: true, Reason: "aligned"}
+}
+
+func alignContinuousPages(result *TemporalAlignmentResult, channelIndex int, pageIndexes []int, clock func(int64) (float64, bool), gpsHz int) TemporalAlignmentStatus {
 	channel := &result.Session.Channels[channelIndex]
 	channelHz := channel.Sampling.FrequencyHz
 	if channelHz <= 0 {
@@ -155,7 +228,7 @@ func alignContinuousPages(result *TemporalAlignmentResult, channelIndex int, pag
 			if sample.Index < 0 || sample.Index > maxInt64/ratio {
 				return TemporalAlignmentStatus{Reason: "invalid_sample_index"}
 			}
-			_, exists := clock[sample.Index*ratio]
+			_, exists := clock(sample.Index * ratio)
 			if !exists {
 				return TemporalAlignmentStatus{Reason: "truncated_coverage"}
 			}
@@ -167,7 +240,7 @@ func alignContinuousPages(result *TemporalAlignmentResult, channelIndex int, pag
 		page := &result.Pages[pageIndex]
 		page.Sampling.Origin = TimeOriginSourceTimestamp
 		for sampleIndex := range page.Samples {
-			timestamp := clock[page.Samples[sampleIndex].Index*ratio]
+			timestamp, _ := clock(page.Samples[sampleIndex].Index * ratio)
 			page.Samples[sampleIndex].TimestampSeconds = &timestamp
 		}
 	}

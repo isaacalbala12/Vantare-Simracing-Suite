@@ -1,6 +1,6 @@
 # ADR 0012 — lectura acotada para correcciones registradas
 
-Estado: **propuesta técnica, no implementada ni aceptada como soporte de resistencia**. ISA-1375, 2026-09-24. Complementa ADR 0010/0011 y el [contrato de correcciones](../strategy-planner/sdd/stint-boundary-corrections-t13.md).
+Estado: **implementación parcial; no aceptada como soporte de resistencia**. ISA-1375, 2026-09-24. Complementa ADR 0010/0011 y el [contrato de correcciones](../strategy-planner/sdd/stint-boundary-corrections-t13.md).
 
 ## Contexto
 
@@ -29,11 +29,17 @@ autorización, el bloqueo por sesión y la serialización de lectura ya existent
 El primer contrato incremental, `VisitCorrectionPages`, inspecciona la sesión
 y visita páginas del parser autorizado, con cancelación y cuotas comprobadas
 en cada página; no devuelve un `[]HistoricalPage` completo. Su siguiente
-consumidor será la validación del reloj GPS, contrastada con `BuildTemporalAlignment` para
+consumidor incremental será la validación del reloj GPS, contrastada con `BuildTemporalAlignment` para
 puentes válidos, índices duplicados, páginas desordenadas, valores inválidos y
-cobertura truncada. Hasta demostrar esa paridad, la ruta pública actual seguirá
+cobertura truncada. Hasta demostrar esa paridad en streaming, la ruta pública actual seguirá
 siendo el oráculo. Preparación, edición y proyección no se anunciarán como
 acotadas porque una sola operación todavía materialice todas las muestras.
+
+La alineación de páginas **ya materializadas** usa un índice de páginas GPS
+ordenadas en la ruta propia y conserva el mapa general cuando recibe páginas
+fuera de orden. Esto reduce asignaciones medidas, pero el índice de páginas y
+las propias muestras aún crecen con la grabación. No sustituye la validación
+incremental ni cambia el objetivo de memoria de este ADR.
 
 ## Alternativas y límites
 

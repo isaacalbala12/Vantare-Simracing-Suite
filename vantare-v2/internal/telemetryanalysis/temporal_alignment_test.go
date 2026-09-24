@@ -127,6 +127,61 @@ func TestOwnedTemporalAlignmentMatchesPublicResult(t *testing.T) {
 	}
 }
 
+func TestOwnedTemporalAlignmentMatchesPublicClockVariants(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*[]HistoricalPage)
+	}{
+		{"ordered pages", func(pages *[]HistoricalPage) {
+			first := (*pages)[0]
+			first.Samples = first.Samples[:5]
+			second := (*pages)[0]
+			second.Samples = second.Samples[5:]
+			*pages = []HistoricalPage{first, second, (*pages)[1]}
+		}},
+		{"unordered pages", func(pages *[]HistoricalPage) {
+			first := (*pages)[0]
+			first.Samples = first.Samples[:5]
+			second := (*pages)[0]
+			second.Samples = second.Samples[5:]
+			*pages = []HistoricalPage{second, first, (*pages)[1]}
+		}},
+		{"gap between pages", func(pages *[]HistoricalPage) {
+			first := (*pages)[0]
+			first.Samples = first.Samples[:5]
+			second := (*pages)[0]
+			second.Samples = second.Samples[6:]
+			*pages = []HistoricalPage{first, second, (*pages)[1]}
+		}},
+		{"duplicate index", func(pages *[]HistoricalPage) {
+			(*pages)[0].Samples = append((*pages)[0].Samples, (*pages)[0].Samples[0])
+		}},
+		{"non monotonic time", func(pages *[]HistoricalPage) {
+			(*pages)[0].Samples[3].Values[0].Scalar.Number = 999
+		}},
+		{"invalid value", func(pages *[]HistoricalPage) {
+			(*pages)[0].Samples[3].Values[0].Scalar.Number = math.Inf(1)
+		}},
+		{"invalid page frequency", func(pages *[]HistoricalPage) {
+			(*pages)[0].Sampling.FrequencyHz = 99
+		}},
+		{"truncated coverage", func(pages *[]HistoricalPage) {
+			(*pages)[0].Samples = (*pages)[0].Samples[:5]
+		}},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			session, pages := temporalAlignmentFixture(100, 20)
+			test.mutate(&pages)
+			want := BuildTemporalAlignment(session, pages)
+			got := buildTemporalAlignmentOwned(session, pages)
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("owned clock differs from general clock: bridge=%+v/%+v channels=%+v/%+v", got.Bridge, want.Bridge, got.Channels, want.Channels)
+			}
+		})
+	}
+}
+
 func TestGPSClockAcceptsUnorderedPagesAndRejectsRepeatedIndex(t *testing.T) {
 	session, pages := temporalAlignmentFixture(100, 20)
 	first := pages[0]

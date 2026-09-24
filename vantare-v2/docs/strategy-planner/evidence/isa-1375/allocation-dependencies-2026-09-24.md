@@ -58,3 +58,36 @@ y `00874567d608eb2c40f8213ce4abb3a91b5756e31826c615bccd246b172ecef3`.
 La duración incluye la distinta fuente objetivo y no se interpreta como
 regresión de velocidad. La suite Go completa y la prueba focal del visitante
 también pasaron; no se hizo QA Wails ni una medición de pico posterior.
+
+## Cuarto corte: reloj GPS de la lectura propia
+
+`ReadCorrectionInput` recibe páginas con índices contiguos y crecientes.
+Su alineación usa ahora referencias a las páginas GPS y búsqueda por índice,
+sin construir el mapa y la lista de **cada muestra GPS**. El API puro
+`BuildTemporalAlignment` mantiene el algoritmo general para páginas fuera de
+orden; la ruta propia también recurre a él si encuentra una entrada que no
+cumple su supuesto de orden. Las pruebas de paridad cubren páginas ordenadas y
+desordenadas, índice duplicado, hueco de cobertura, tiempo no monótono, valor
+inválido y frecuencia incorrecta. Se conservan los motivos de rechazo.
+
+Comparación A/B con los mismos dos DuckDB y el mismo test opt-in, antes
+`ddf831e8` y después de este cambio, ambos con perfil `alloc_space`:
+
+| Medida acumulada de una ejecución completa | Antes | Después |
+| --- | ---: | ---: |
+| Asignación propia de `buildGPSClock` | 4.394 MiB | 1.216 MiB |
+| Asignaciones totales del proceso de test | 39.697 MiB | 36.396 MiB |
+| Tiempo de la prueba | 86,86 s | 70,42 s |
+
+Los perfiles están en `C:/tmp/isa1375-before-clock-allocs.mem` y
+`C:/tmp/isa1375-ordered-clock-allocs.mem`. Son **asignaciones acumuladas**, no
+memoria simultánea ni pico. Dos ejecuciones no demuestran una mejora estable
+de tiempo. La asignación restante de `buildGPSClock` procede de rutas puras
+que todavía vuelven a alinear las vistas corregidas. En ambos recorridos
+Algarve mantuvo ritmo seco 95,190 s (N=58), Fuel 2,135 L/vuelta (N=58) y el
+plan supuesto de 38 vueltas/0 paradas; preparación, revisiones, identidad,
+familias y reapertura pasaron. Los hashes originales citados arriba siguen
+intactos. La lectura completa de muestras y las copias/series de derivación
+siguen impidiendo una garantía de memoria acotada para resistencia.
+`go test -p 1 ./... -count=1`, la paridad focal y `git diff --check`
+pasaron. No se modificó frontend ni se abrió Wails.

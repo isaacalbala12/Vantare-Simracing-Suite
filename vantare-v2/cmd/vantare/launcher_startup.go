@@ -12,7 +12,32 @@ type launcherStartupQueue struct {
 	mu      sync.Mutex
 	pending []string
 	launch  func(string)
+	open    func()
+	openDue bool
 	ready   bool
+}
+
+func (q *launcherStartupQueue) Open() {
+	q.mu.Lock()
+	open := q.open
+	if open == nil {
+		q.openDue = true
+	}
+	q.mu.Unlock()
+	if open != nil {
+		open()
+	}
+}
+
+func (q *launcherStartupQueue) ReadyOpen(open func()) {
+	q.mu.Lock()
+	q.open = open
+	wasDue := q.openDue
+	q.openDue = false
+	q.mu.Unlock()
+	if wasDue {
+		open()
+	}
 }
 
 func (q *launcherStartupQueue) Offer(args []string) {

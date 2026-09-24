@@ -1450,7 +1450,11 @@ func main() {
 		SingleInstance: &application.SingleInstanceOptions{
 			UniqueID: "com.vantare.simracing-suite",
 			OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
-				launcherStartup.Offer(data.Args)
+				if _, ok := launcher.ParseLaunchFlag(data.Args); ok {
+					launcherStartup.Offer(data.Args)
+				} else {
+					launcherStartup.Open()
+				}
 			},
 		},
 		Assets: application.AssetOptions{
@@ -1813,6 +1817,7 @@ func main() {
 		_, duration := hubLifecycle.Open()
 		log.Printf("hub lifecycle: reopened in %s", duration)
 	}
+	launcherStartup.ReadyOpen(openHub)
 	wailsApp.Event.On("hub:open", func(*application.CustomEvent) { openHub() })
 	trayMenu := application.NewMenu()
 	trayMenu.Add("Abrir Vantare").OnClick(func(*application.Context) { openHub() })

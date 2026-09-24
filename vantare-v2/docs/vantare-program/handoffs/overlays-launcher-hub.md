@@ -2545,6 +2545,12 @@ perfil obsoleto y las de ruta ausente/carpeta fallaron antes y pasan después;
 Go focal y vet pasan. El chequeo es de existencia/ruta, no certifica que el
 archivo sea un binario válido ni sustituye la prueba física del programa.
 
+Al revisar la instancia única se detectó que una segunda apertura manual,
+sin flag de perfil, se perdía si la primera instancia estaba minimizada.
+La segunda invocación vuelve a mostrar el Hub existente; si llega mientras
+se crea la ventana, la petición queda pendiente y se aplica una sola vez.
+La regresión falló antes y pasó después con Go focal y vet.
+
 ## Hub
 
 Conservar estructura. Solo consistencia visual, estados reales, responsive,

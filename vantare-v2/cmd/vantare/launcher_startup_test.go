@@ -20,3 +20,18 @@ func TestLauncherStartupQueuesEveryProfileForOneInstance(t *testing.T) {
 		t.Fatalf("startup profiles = %v, want %v", launched, want)
 	}
 }
+
+func TestSecondInstanceWithoutProfileReopensHub(t *testing.T) {
+	var queue launcherStartupQueue
+	opened := 0
+	queue.Open()
+	queue.Open()
+	queue.ReadyOpen(func() { opened++ })
+	if opened != 1 {
+		t.Fatalf("queued manual launches opened Hub %d times, want 1", opened)
+	}
+	queue.Open()
+	if opened != 2 {
+		t.Fatalf("manual launch did not reopen existing Hub: %d", opened)
+	}
+}

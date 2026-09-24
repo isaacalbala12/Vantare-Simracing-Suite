@@ -996,6 +996,10 @@ promoción ni producción.
 Billing conserva BIL-08/BIL-10 en `nightly`, ISA-118 permanece como deuda
 global heredada y la venta pública continúa NO-GO.
 
+## VAN-765 / GitHub #1382 · Calendario visual (24/09/2026)
+
+Isaac señaló ocho problemas de presentación en la build Wails del Calendario. La tarea [VAN-765](https://app.notion.com/p/3e5e51695c6581e8b01dd36ff839ae7f) gobierna el alcance; #1382 es el puente de CI. Rama aislada `vantareapp/isa-1382-calendar-visual` desde `origin/nightly@5c73013e`; el checkout principal y la PR de tipografía #1378 permanecen separados. Decisión: detalle contextual cerrable, Día en franjas de 15 minutos preservando horas publicadas, Mes navegable por celda, colores según `eventKind`, Timeline de una hora y geometría adaptable. Tres pruebas nuevas reprodujeron los defectos antes del cambio. Después: 98 pruebas focales PASS, 2 omitidas; `typecheck`, `lint`, build frontend y build Wails producción/debug PASS. La build Wails real de prueba (1264 × 761, horario publicado del perfil existente, sin LMU conectado) mostró cinco vistas sin desbordamiento horizontal; Mes→Día, detalle abrir/cerrar y zoom 711→889 px/h se verificaron mediante CDP del propio WebView2. La suite frontend completa quedó interrumpida tras timeouts de pruebas ajenas de Overlay Studio bajo carga concurrente; debe repetirla CI. Pendientes: revisión visual de Isaac y CI remota. Sin merge, promoción ni release.
+
 Estado Nightly previo integrado en esta reconciliación:
 
 2026-08-03, ISA-246 queda en `nightly@55fba3d` e ISA-247 implementa localmente

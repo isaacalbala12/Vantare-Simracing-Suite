@@ -27,7 +27,8 @@ export const racesOrbitEn: Record<string, string> = {
 
   "races.calendar.label": "Calendar",
   "races.nextTitle": "Upcoming starts",
-  "races.timelineTitle": "Next 24 hours · one row per series",
+  "races.timelineTitle": "Next hour · one row per series",
+  "races.timeline.empty": "No starts in the next hour.",
   "races.today": "today",
   "races.nav.previous": "Previous",
   "races.nav.today": "Today",
@@ -47,6 +48,7 @@ export const racesOrbitEn: Record<string, string> = {
   "races.month.weekly": "{{name}} · {{n}}×",
 
   "races.detail.title": "Detail",
+  "races.detail.close": "Close detail",
   "races.detail.setup": "Setup",
   "races.detail.race": "Race",
   "races.detail.cadence": "Cadence",

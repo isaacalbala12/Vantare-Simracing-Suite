@@ -27,7 +27,8 @@ export const racesOrbitIt: Record<string, string> = {
 
   "races.calendar.label": "Calendario",
   "races.nextTitle": "Prossime partenze",
-  "races.timelineTitle": "Prossime 24 ore · una riga per serie",
+  "races.timelineTitle": "Prossima ora · una riga per serie",
+  "races.timeline.empty": "Nessuna partenza nella prossima ora.",
   "races.today": "oggi",
   "races.nav.previous": "Precedente",
   "races.nav.today": "Oggi",
@@ -47,6 +48,7 @@ export const racesOrbitIt: Record<string, string> = {
   "races.month.weekly": "{{name}} · {{n}}×",
 
   "races.detail.title": "Dettaglio",
+  "races.detail.close": "Chiudi dettagli",
   "races.detail.setup": "Configurazione",
   "races.detail.race": "Gara",
   "races.detail.cadence": "Cadenza",

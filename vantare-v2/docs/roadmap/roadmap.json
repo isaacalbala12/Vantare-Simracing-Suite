@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-24T17:06:08Z",
+  "generatedAt": "2026-09-24T21:51:13Z",
   "digest": {
-    "lastCommit": "6df485fe0a522dfc97f2f81acbc5ed84e216e54b"
+    "lastCommit": "5c73013ed59a4d69775a94fcc188d168310c59a5"
   },
   "phases": [
     {
@@ -699,10 +699,10 @@
         "it": "Calendario completo"
       },
       "body": {
-        "es": "Calendario completo para la 1.0: publicación Owner, recordatorios, widget en el Hub, validación de horarios y seguimiento de series sin pérdida de datos.",
-        "en": "Complete calendar for 1.0: Owner publishing, reminders, Hub widget, schedule validation and series tracking without data loss.",
-        "pt": "Calendário completo para a 1.0: publicação Owner, lembretes, widget no Hub, validação de horários e seguimento de séries sem perda de dados.",
-        "it": "Calendario completo per la 1.0: pubblicazione Owner, promemoria, widget dell'Hub, validazione orari e tracciamento serie senza perdita dati."
+        "es": "Calendario para la 1.0: publicación Owner, recordatorios, widget en el Hub y horarios fiables; sus cinco vistas priorizan la lectura, el detalle contextual y la próxima hora de carreras.",
+        "en": "Calendar for 1.0: Owner publishing, reminders, Hub widget and reliable schedules; its five views prioritize readability, contextual detail and the next hour of races.",
+        "pt": "Calendário para a 1.0: publicação Owner, lembretes, widget no Hub e horários fiáveis; as cinco vistas priorizam a leitura, o detalhe contextual e a próxima hora de corridas.",
+        "it": "Calendario per la 1.0: pubblicazione Owner, promemoria, widget nell'Hub e orari affidabili; le cinque viste privilegiano leggibilità, dettagli contestuali e la prossima ora di gare."
       },
       "label": {
         "es": "Plan",
@@ -2199,6 +2199,11 @@
           "kind": "feat",
           "scope": "overlays",
           "text": "Pedales avanzados con datos revisados y volantes LMU"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "Racing Flags: letra ampliada, centrada y negra por defecto"
         }
       ]
     },

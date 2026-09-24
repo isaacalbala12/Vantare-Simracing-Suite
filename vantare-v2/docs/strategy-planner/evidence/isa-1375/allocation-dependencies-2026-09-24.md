@@ -197,3 +197,28 @@ reduce el pico real: aún falta una ruta de dos fases que valide la cobertura
 completa de cada canal antes de emitir páginas alineadas, y consumidores de
 validez/correcciones/proyección sin retención. El banco real del corte anterior
 no ejecuta esta función nueva. No se usan fuentes reservadas de #1030.
+
+## Décimo corte: reinicios `Lap Dist` alineados sin señal retenida
+
+`scanCorrectionLapDistResets` une el escáner GPS, el de reinicios de distancia y
+la consulta GPS por ventanas. La primera visita valida el origen completo y
+acumula sólo los reinicios; después de comprobar que el puente es válido, una
+segunda visita exige cobertura GPS para **todas** las muestras `Lap Dist` antes
+de poner tiempo a los reinicios. Si falta cobertura, mantiene los reinicios
+sin tiempo, igual que la alineación materializada. La prueba compara valores,
+frecuencia y estado para reloj válido, truncado y no monótono; también comprueba
+puente ausente, duplicado, forma/frecuencia inválidas, cancelación y cuota.
+
+Todavía no alimenta `AnalyzeAlignedLapValidity` ni `withCorrectionInput`, por
+lo que no reduce la memoria pico de Strategy. La segunda visita recorre de
+nuevo los canales requeridos; su coste necesita banco real antes de elegir la
+ruta productiva. Las fuentes S266/S026 y Wails aún no han ejercitado este
+consumidor. El objetivo sigue siendo memoria dependiente de vueltas,
+correcciones y páginas, sin elevar cuotas ni afirmar soporte de 24 horas.
+
+La prueba focal `TestScannedCorrection*`, `go vet ./internal/telemetryanalysis`
+y `git diff --check` pasaron. `go test -p 1 ./... -count=1` pasó en el paquete
+modificado, pero terminó rojo por `TestDiscoverAppsMergesWithoutLegacyEvents`
+de `internal/app/launcher`: una secuencia de progreso pasó de 93 a 90. La
+misma prueba pasó después tres veces aislada. No se atribuye ese fallo a este
+cambio ni se presenta la suite completa como verde.

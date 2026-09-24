@@ -1,5 +1,18 @@
 # Handoff vivo — Strategy Planner
 
+## Reinicios de vuelta con reloj GPS por ventanas — ISA-1375 (2026-09-25)
+
+Una lectura privada usa el visitante paginado para validar la fuente y el
+puente GPS completo, acumula sólo los reinicios `Lap Dist` y relee ventanas GPS
+para comprobar la cobertura de **cada** muestra de distancia antes de asignar
+instantes a los reinicios. Los tests comparan reinicios, frecuencia y motivos
+de alineación con la ruta materializada para reloj válido, cobertura truncada,
+reloj no monótono y formas de puente inválidas; también cubren cancelación y
+cuotas. Es un paso hacia el consumidor de validez, no está conectado todavía
+a `withCorrectionInput`. La segunda visita vuelve a recorrer todos los canales:
+hay que medir su tiempo con DuckDB reales y reducirla si afecta la experiencia.
+No hay aún prueba de pico de memoria acotado ni evidencia Wails.
+
 ## Consulta GPS por ventanas — ISA-1375 (2026-09-25)
 
 Un lector privado reutiliza `CorrectionInputReader.ReadPage` para obtener sólo

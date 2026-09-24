@@ -29,7 +29,7 @@ it("reflects a calculated result instead of a permanent uncalculated placeholder
 it("shows the calendar event separately from the race title and never labels another simulator as LMU", () => {
   const draft = { ...props.draft, name: "Mi estrategia", calendar: { series: { name: "Copa Vantare" } } as RecordedCalendarSnapshot,
     combination: { combinationId: "other", simId: "acc", trackName: "Misano", trackLayout: "Misano", carName: "GT3", carClass: "GT3" } };
-  render(<><StrategyRecordedOverview {...props} draft={draft} /><StrategyRecordedRaceContext draft={draft} sessions={[]} sessionLabels={{}} busy={false} onSources={vi.fn()} t={props.t} /></>);
+  render(<><StrategyRecordedOverview {...props} draft={draft} /><StrategyRecordedRaceContext draft={draft} manualOnly={false} sessions={[]} sessionLabels={{}} busy={false} onSources={vi.fn()} onManualReferences={vi.fn()} t={props.t} /></>);
   expect(screen.getByText("Copa Vantare")).toBeTruthy();
   expect(screen.getAllByText("Mi estrategia")).toHaveLength(2);
   expect(screen.getByText("ACC")).toBeTruthy();
@@ -38,7 +38,7 @@ it("shows the calendar event separately from the race title and never labels ano
 });
 it("routes editing to preparation and review from the shared context", () => {
   render(<StrategyRecordedOverview {...props} />);
-  render(<StrategyRecordedRaceContext draft={props.draft} sessions={[]} sessionLabels={{}} busy={false} onSources={vi.fn()} t={props.t} />);
+  render(<StrategyRecordedRaceContext draft={props.draft} manualOnly={false} sessions={[]} sessionLabels={{}} busy={false} onSources={vi.fn()} onManualReferences={vi.fn()} t={props.t} />);
   fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.edit strategy.journey.step.rules" }));
   expect(props.onEdit).toHaveBeenCalledWith("rules");
   expect(screen.getByRole("button", { name: "strategy.workspace.review" })).toBeTruthy();

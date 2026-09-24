@@ -1,5 +1,26 @@
 # Handoff vivo — Strategy Planner
 
+## Datos manuales dentro de la mesa — ISA-1331 (2026-09-25)
+
+El navegador interno reprodujo un error de continuidad: al abrir «Datos» desde
+una carrera manual sin sesiones, la mesa pedía elegir un DuckDB; «Revisiones»
+mostraba un historial de correcciones de telemetría que no existía. La mesa
+ahora edita y guarda las mismas referencias manuales que Preparación, el
+lateral indica su procedencia y «Revisiones» desaparece de la ruta manual sin
+inspección.
+El texto de pilotos de la vista Carrera tampoco exige sesiones en modo manual.
+Una inspección registrada fallida conserva su error y la vía a la biblioteca;
+no se confunde con las referencias manuales. Regresión RED→PASS y suite
+frontend completa: 493 archivos, 4.304 tests PASS, dos omitidos. Tras añadir
+el guardado visible dentro de Datos, 32 pruebas focales, typecheck, lint y
+build pasan. La revisión visual del estado manual a 1280×720 mostró la nueva
+composición. En el navegador mock, editar ritmo 97,5 s y Fuel 2,8 L/vuelta
+activó «Guardar revisión» y el guardado devolvió «Borrador guardado». El navegador
+usa `VITE_RUNTIME_MOCK=mock`: la navegación y edición vistas no prueban
+DuckDB, SolverV2 ni persistencia Wails. T22, calibración #1030, memoria
+acotada #1375, aceptación visual e integración siguen pendientes. Rama local
+sin push, PR, CI, merge, promoción ni release.
+
 ## Procedencia visible del cálculo manual — ISA-1331 (2026-09-24)
 
 El recorrido completo en el navegador interno llegó desde Manual a la mesa con combinación LMGT3/Imola, ritmo 97,5 s, Fuel 2,8 L/vuelta, VE 3,5 %/vuelta, evento de 60 min, reglas y un piloto. La condición seca habilitó el cálculo sin sesiones. Antes de hacerlo, Plan mostraba «0 sesiones seleccionadas» y Pilotos pedía validar el ritmo con sesiones, pese a que el motor admite referencias manuales. Ahora ambos paneles describen las estimaciones manuales y advierten que no están contrastadas con telemetría. Regresiones focales 9/9, i18n, lint, typecheck y build PASS. La primera suite completa dio cinco tiempos de espera de layout mientras ESLint corría a la vez; esos cinco pasaron aislados. La repetición completa con cuatro workers terminó verde: 493 archivos, 4.303 tests PASS, dos omitidos.

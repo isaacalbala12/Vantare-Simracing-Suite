@@ -8,10 +8,11 @@ import { currentRecordedPlan } from "./strategy-recorded-result";
 import "./strategy-recorded-overview.css";
 
 /** The same verified context remains visible while switching editor tabs. */
-export function StrategyRecordedRaceContext({ draft, sessions, sessionLabels, busy, onSources, t }: {
+export function StrategyRecordedRaceContext({ draft, manualOnly, sessions, sessionLabels, busy, onSources, onManualReferences, t }: {
   readonly draft: RecordedWizardDraft; readonly sessions: readonly RecordedSession[];
+  readonly manualOnly: boolean;
   readonly sessionLabels: Readonly<Record<string, string>>; readonly busy: boolean;
-  readonly onSources: () => void; readonly t: (key: string) => string;
+  readonly onSources: () => void; readonly onManualReferences: () => void; readonly t: (key: string) => string;
 }) {
   const pending = t("strategy.workspace.pending");
   const selected = draft.sessions[0];
@@ -23,7 +24,7 @@ export function StrategyRecordedRaceContext({ draft, sessions, sessionLabels, bu
     <header><h3>{t("strategy.entry.circuitAndSource")}</h3><Icon name="i-carreras" size={16} /></header>
     <div className="strategy-recorded-overview__context-body"><span>{t("strategy.journey.track")}</span><strong>{draft.combination?.trackName || pending}</strong><small>{trackDetail}</small><StrategyRecordedCircuit combination={draft.combination} t={t} /></div>
     <div className="strategy-recorded-overview__context-body"><span>{t("strategy.journey.car")}</span><strong>{draft.combination?.carName || pending}</strong><small>{draft.combination?.carClass || pending}</small></div>
-    <div className="strategy-recorded-overview__context-body"><span>{t("strategy.workspace.sources")}</span><strong>{sourceName || (draft.sessions.length ? t("strategy.entry.referenceOpenSources") : t("strategy.workspace.noSources"))}</strong><small>{draft.sessions.length > 1 ? formatMessage(t("strategy.workspace.selectedSources"), { count: draft.sessions.length }) : null}</small><button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy} onClick={onSources}>{t("strategy.workspace.review")}</button></div>
+    <div className="strategy-recorded-overview__context-body"><span>{t(manualOnly ? "strategy.workspace.manualReferences" : "strategy.workspace.sources")}</span><strong>{manualOnly ? t("strategy.workspace.manualEstimate") : sourceName || (draft.sessions.length ? t("strategy.entry.referenceOpenSources") : t("strategy.workspace.noSources"))}</strong><small>{!manualOnly && draft.sessions.length > 1 ? formatMessage(t("strategy.workspace.selectedSources"), { count: draft.sessions.length }) : null}</small><button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy} onClick={manualOnly ? onManualReferences : onSources}>{t("strategy.workspace.review")}</button></div>
   </aside>;
 }
 
@@ -41,7 +42,7 @@ export function StrategyRecordedOverview({ draft, calculation, dirty, busy, erro
   const rows: { step: RecordedWizardStep; icon: IconName; title: string; value: string; detail: string }[] = [
     { step: "combination", icon: "i-carreras", title: t("strategy.workspace.event"), value: draft.calendar?.series.name || draft.name || pending, detail: draft.calendar ? draft.name && draft.name !== draft.calendar.series.name ? draft.name : t("strategy.journey.calendar") : t("strategy.workspace.custom") },
     { step: "rules", icon: "i-ajustes", title: t("strategy.journey.step.rules"), value: race, detail: draft.tankLiters === undefined ? pending : formatMessage(t("strategy.workspace.capacity"), { value: draft.tankLiters }) },
-    { step: "drivers", icon: "i-cuenta", title: t("strategy.journey.step.drivers"), value: draft.drivers.map(driver => driver.name).filter(Boolean).join(" · ") || pending, detail: draft.drivers.length ? "" : t("strategy.journey.driver.pacePending") },
+    { step: "drivers", icon: "i-cuenta", title: t("strategy.journey.step.drivers"), value: draft.drivers.map(driver => driver.name).filter(Boolean).join(" · ") || pending, detail: draft.drivers.length ? "" : t(draft.mode === "manual" ? "strategy.journey.driver.manualPace" : "strategy.journey.driver.pacePending") },
   ];
   const planStatus = calculation.status === "success" ? currentRecordedPlan(calculation) ? "strategy.calculation.ready" : "strategy.calculation.missing"
     : calculation.status === "partial" ? "strategy.calculation.partial"

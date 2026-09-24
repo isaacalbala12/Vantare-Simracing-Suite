@@ -11,6 +11,7 @@ import { useRecordedWorkflow } from "./use-recorded-workflow";
 import type { RecordedSession } from "./strategy-recorded-session";
 import { StrategyRecordedStart, type StrategyEntrySaved } from "./StrategyRecordedStart";
 import { StrategyRecordedPreparation } from "./StrategyRecordedPreparation";
+import { StrategyManualReferences } from "./StrategyManualReferences";
 import { StrategyRecordedOverview, StrategyRecordedRaceContext } from "./StrategyRecordedOverview";
 import { StrategyRecordedSessionsView } from "./StrategyRecordedSessions";
 import { StrategyRecordedData, type RecordedDataView } from "./StrategyRecordedData";
@@ -46,6 +47,7 @@ export function StrategyRecordedWorkflow({ eventId, repositoryVersion, repositor
   // forms stay local to Data and still reset with its revision key.
   const [dataView, setDataView] = useState<RecordedDataView>("laps");
   const [dataVisited, setDataVisited] = useState(false);
+  const [inspectionRequested, setInspectionRequested] = useState(false);
   const [historyVisited, setHistoryVisited] = useState(false);
   const calculationBusy = calculation.state.status === "preparing" || calculation.state.status === "calculating" || calculation.state.status === "cancelling";
   const acceptanceBusy = acceptance.state.status === "loading" || acceptance.state.status === "accepting" || acceptance.state.status === "recovery";
@@ -85,16 +87,19 @@ export function StrategyRecordedWorkflow({ eventId, repositoryVersion, repositor
     if (label) sourceLabels[session.opened.sessionId] = label;
   }
   const revisionKey = `${flow.sessions.corrections.editor?.session.opened.sessionId ?? "none"}:${flow.sessions.corrections.editor?.current.revision.revisionId ?? "none"}`;
+  const manualOnly = flow.draft.mode === "manual" && flow.draft.sessions.length === 0 && !inspectionRequested;
+  const editorTabs = manualOnly ? (["race", "data", "plan"] as const) : (["race", "data", "plan", "revisions"] as const);
   // Inspection navigates only on acceptance, never on load success: a failed
   // read keeps an empty editor with its cause instead of previous data.
   const inspectSession = (session: RecordedSession) => {
     if (formPending || strategyBusy) return;
-    if (flow.inspect(session)) { setLibraryOpen(false); setMenuOpen(false); setDataVisited(true); setTab("data"); }
+    if (flow.inspect(session)) { setInspectionRequested(true); setLibraryOpen(false); setMenuOpen(false); setDataVisited(true); setTab("data"); }
   };
   // Back to preparation never recreates the draft nor saves: forms and the
   // uncertain command keep blocking any exit from the editor.
   const backToPreparation = () => {
     if (flow.busy || formPending || strategyBusy || flow.sessions.corrections.unresolved) return;
+    setInspectionRequested(false);
     setPreparationTarget("summary");
     flow.prepare();
   };
@@ -107,7 +112,7 @@ export function StrategyRecordedWorkflow({ eventId, repositoryVersion, repositor
       {sourceView}
     </div> : menuOpen ? <StrategyRecordedStart candidates={flow.sessions.candidates} busy={flow.busy} error={flow.sessions.error ? t("strategy.recorded.error") : undefined}
       saved={saved ? { ...saved, onOpenDraft: draftId => exit(() => onOpenSavedDraft?.(draftId)), onOpenPlan: plan => exit(() => onOpenSavedPlan?.(plan)) } : undefined}
-      onChoose={candidate => void chooseCandidate(candidate)} onLibrary={discover} onManual={() => { void flow.startManual().then(started => { if (started) { setHasStarted(true); setMenuOpen(false); } }); }} onResume={hasStarted ? () => setMenuOpen(false) : undefined} onSaved={onRequestSaved ? () => exit(() => { onRequestSaved(); onExit(); }) : undefined} onCancel={flow.sessions.cancel} t={t} />
+      onChoose={candidate => void chooseCandidate(candidate)} onLibrary={discover} onManual={() => { void flow.startManual().then(started => { if (started) { setInspectionRequested(false); setHasStarted(true); setMenuOpen(false); } }); }} onResume={hasStarted ? () => setMenuOpen(false) : undefined} onSaved={onRequestSaved ? () => exit(() => { onRequestSaved(); onExit(); }) : undefined} onCancel={flow.sessions.cancel} t={t} />
       : flow.view === "preparation" ? <StrategyRecordedPreparation draft={flow.draft} onChange={flow.change} initialPanel={preparationTarget} catalog={flow.choices} catalogState={flow.choices.length > 0 ? "available" : catalogState} calendar={calendar} sessions={flow.sessions.sessions} sessionLabels={sessionLabels}
       canOpenDraft={!flow.busy && (flow.stored !== undefined || repositoryVersion !== undefined)}
       openDraftHint={t(flow.sessions.busy ? "strategy.recorded.busy" : repositoryLoading ? "strategy.workspace.repositoryLoading" : "strategy.workspace.repositoryUnavailable")}
@@ -115,17 +120,19 @@ export function StrategyRecordedWorkflow({ eventId, repositoryVersion, repositor
       onDiscover={discover} onOpenDraft={() => { void flow.openEditor().then(opened => { if (opened) setTab("race"); }); }} onExit={() => { setPreparationTarget("summary"); setMenuOpen(true); }} onSave={() => void flow.save()} busy={flow.busy || formPending || strategyBusy} dirty={flow.dirty} references={references.state} onRetryReferences={references.retry} error={error} t={t} />
       : <>
         <div className="strategy-recorded-editor-bar"><Button aria-label={t("strategy.workspace.preparation")} variant="ghost" disabled={backBlocked} onClick={backToPreparation}>← {t("strategy.workspace.preparation")}</Button>
-        <nav className="strategy-recorded-tabs" role="tablist" aria-label={t("strategy.data.editorTabs")}>{(["race", "data", "plan", "revisions"] as const).map((item, index, tabs) => <button key={item} id={`recorded-tab-${item}`} type="button" role="tab" aria-selected={tab === item} aria-controls={`recorded-panel-${item}`} tabIndex={tab === item ? 0 : -1} onClick={() => { setTab(item); if (item === "data") setDataVisited(true); if (item === "plan") setPlanVisited(true); if (item === "revisions") setHistoryVisited(true); }} onKeyDown={event => {
+        <nav className="strategy-recorded-tabs" role="tablist" aria-label={t("strategy.data.editorTabs")}>{editorTabs.map((item, index, tabs) => <button key={item} id={`recorded-tab-${item}`} type="button" role="tab" aria-selected={tab === item} aria-controls={`recorded-panel-${item}`} tabIndex={tab === item ? 0 : -1} onClick={() => { setTab(item); if (item === "data") setDataVisited(true); if (item === "plan") setPlanVisited(true); if (item === "revisions") setHistoryVisited(true); }} onKeyDown={event => {
           const next = event.key === "ArrowRight" ? (index + 1) % tabs.length : event.key === "ArrowLeft" ? (index + tabs.length - 1) % tabs.length : event.key === "Home" ? 0 : event.key === "End" ? tabs.length - 1 : undefined;
           if (next === undefined) return;
           event.preventDefault(); setTab(tabs[next]); if (tabs[next] === "data") setDataVisited(true); if (tabs[next] === "plan") setPlanVisited(true); if (tabs[next] === "revisions") setHistoryVisited(true);
           event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>("button")[next]?.focus();
         }}>{t(`strategy.data.tab.${item}`)}</button>)}</nav></div>
-        <div className="strategy-recorded-editor-workspace"><StrategyRecordedRaceContext draft={flow.draft} sessions={flow.sessions.sessions} sessionLabels={sessionLabels} busy={flow.busy || formPending || strategyBusy} onSources={() => setLibraryOpen(true)} t={t} /><div className="strategy-recorded-editor-panels">
+        <div className="strategy-recorded-editor-workspace"><StrategyRecordedRaceContext draft={flow.draft} manualOnly={manualOnly} sessions={flow.sessions.sessions} sessionLabels={sessionLabels} busy={flow.busy || formPending || strategyBusy} onSources={() => setLibraryOpen(true)} onManualReferences={() => { setDataVisited(true); setTab("data"); }} t={t} /><div className="strategy-recorded-editor-panels">
         <div className="strategy-recorded-editor-panel" id="recorded-panel-race" role="tabpanel" aria-labelledby="recorded-tab-race" hidden={tab !== "race"}><StrategyRecordedOverview draft={flow.draft} calculation={calculation.state} dirty={flow.dirty} busy={flow.busy || formPending || strategyBusy} error={error} onEdit={edit} onPlan={() => { setPlanVisited(true); setTab("plan"); }} onSave={() => void flow.save()} t={t} /></div>
-        {dataVisited ? <div className="strategy-recorded-editor-panel" id="recorded-panel-data" role="tabpanel" aria-labelledby="recorded-tab-data" hidden={tab !== "data"}><StrategyRecordedData key={revisionKey} controller={flow.sessions.corrections} sessionLabels={sessionLabels} sessions={flow.sessions.sessions} selectedRevisions={flow.draft.sessions} catalog={catalog} busy={flow.busy || historyPending || strategyBusy} onSources={() => setLibraryOpen(true)} onPendingChange={setDataPending} view={dataView} onViewChange={setDataView} t={t} /></div> : null}
+        {dataVisited ? <div className="strategy-recorded-editor-panel" id="recorded-panel-data" role="tabpanel" aria-labelledby="recorded-tab-data" hidden={tab !== "data"}>{manualOnly
+          ? <div className="strategy-recorded-data strategy-recorded-data--manual"><header className="strategy-recorded-data__heading"><h2>{t("strategy.workspace.manualReferences")}</h2><p>{t("strategy.workspace.manualEstimate")}</p></header><StrategyManualReferences draft={flow.draft} onChange={flow.change} busy={flow.busy || strategyBusy} t={t} />{error ? <p role="alert" className="strategy-recorded-data__error">{error}</p> : null}<footer className="strategy-recorded-data__footer"><span role="status">{t(flow.dirty ? "strategy.workspace.unsaved" : "strategy.workspace.saved")}</span><Button disabled={flow.busy || strategyBusy || !flow.dirty} onClick={() => void flow.save()}>{t("strategy.workspace.save")}</Button></footer></div>
+          : <StrategyRecordedData key={revisionKey} controller={flow.sessions.corrections} sessionLabels={sessionLabels} sessions={flow.sessions.sessions} selectedRevisions={flow.draft.sessions} catalog={catalog} busy={flow.busy || historyPending || strategyBusy} onSources={() => setLibraryOpen(true)} onPendingChange={setDataPending} view={dataView} onViewChange={setDataView} t={t} />}</div> : null}
         <div className="strategy-recorded-editor-panel" id="recorded-panel-plan" role="tabpanel" aria-labelledby="recorded-tab-plan" hidden={tab !== "plan"}><StrategyRecordedPlan draft={flow.draft} state={calculation.state} acceptance={acceptance} sourceLabels={sourceLabels} locked={flow.busy || formPending || repositoryVersion === undefined} onChange={flow.change} onCalculate={() => void calculation.calculate()} onRecalculateStints={constraints => void calculation.recalculateStints(constraints)} onRecalculatePits={constraints => void calculation.recalculatePits(constraints)} onCancel={calculation.cancel} t={t} /></div>
-        {historyVisited ? <div className="strategy-recorded-editor-panel" id="recorded-panel-revisions" role="tabpanel" aria-labelledby="recorded-tab-revisions" hidden={tab !== "revisions"}><StrategyRecordedRevisions key={revisionKey} controller={flow.sessions.corrections} sessions={flow.sessions.sessions} selectedRevisions={flow.draft.sessions} sessionLabels={sessionLabels} busy={flow.busy || dataPending || strategyBusy} configurationSaved={Boolean(flow.stored)} configurationDirty={flow.dirty} onSources={() => setLibraryOpen(true)} onPendingChange={setHistoryPending} t={t} /></div> : null}
+        {historyVisited && !manualOnly ? <div className="strategy-recorded-editor-panel" id="recorded-panel-revisions" role="tabpanel" aria-labelledby="recorded-tab-revisions" hidden={tab !== "revisions"}><StrategyRecordedRevisions key={revisionKey} controller={flow.sessions.corrections} sessions={flow.sessions.sessions} selectedRevisions={flow.draft.sessions} sessionLabels={sessionLabels} busy={flow.busy || dataPending || strategyBusy} configurationSaved={Boolean(flow.stored)} configurationDirty={flow.dirty} onSources={() => setLibraryOpen(true)} onPendingChange={setHistoryPending} t={t} /></div> : null}
         </div></div>
       </>}
     <ConfirmDialog open={exitOpen} title={t("strategy.workspace.leaveTitle")} body={t("strategy.workspace.leaveBody")} confirmLabel={t("strategy.workspace.leave")} cancelLabel={t("strategy.recorded.cancel")} onCancel={() => { setExitOpen(false); setExitAction(() => onExit); }} onConfirm={() => { setExitOpen(false); exitAction(); }} />

@@ -2558,9 +2558,11 @@ histórico repite estilos de otras vistas. Las reglas nuevas viven ahora en
 contenido de la base. El mismo clasificador local de calidad devuelve
 `NEW=0` y 42 reagrupaciones verificadas por igualdad de blobs; las 10 del
 Launcher ya no son bloqueantes. Pasan 12 pruebas del editor, typecheck, build
-y lint. Falta que el ratchet remoto confirme el nuevo HEAD. El gate bloqueante
-remoto del HEAD anterior aún estaba en curso en esta revisión. **NO-GO** hasta
-CI, decisiones de producto pendientes y validación física autorizada por Isaac.
+y lint. El HEAD publicado `0428a24b` pasó el ratchet remoto (NEW=0), el gate
+bloqueante completo (incluido build Wails Windows), la ruta de promoción y
+GitGuardian. **NO-GO** hasta resolver las decisiones de producto y verificar
+en Windows real el Hub, procesos, Steam/LMU y el instalador. Isaac pidió aviso
+y confirmación antes de la revisión mediante computer use; sigue pendiente.
 
 ## Hub
 

@@ -174,3 +174,37 @@
   --orbit-selection-bg: linear-gradient(90deg, rgba(114,73,174,.13), rgba(114,73,174,.025));
   --orbit-glow-active: 0 0 0 3px rgba(114,73,174,.2);
 }
+
+:root[data-ui-palette] .orbit-set-theme[aria-pressed="true"] {
+  border-color: var(--orbit-carmine);
+  box-shadow: 0 0 0 2px var(--orbit-line-strong);
+}
+
+.orbit-set-schemes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.orbit-set-scheme {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--orbit-line);
+  border-radius: 9px;
+  background: var(--orbit-surface-1);
+  color: var(--orbit-ink-2);
+  font: inherit;
+  cursor: pointer;
+}
+
+.orbit-set-scheme[aria-pressed="true"] {
+  border-color: var(--orbit-carmine);
+  background: var(--orbit-selection-bg);
+  color: var(--orbit-ink);
+}
+
+.orbit-set-scheme:focus-visible,
+.orbit-set-theme:focus-visible {
+  outline: 2px solid var(--orbit-coral);
+  outline-offset: 2px;
+}

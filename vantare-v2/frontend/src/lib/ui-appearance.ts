@@ -9,7 +9,7 @@ export type UiAppearance = {
 const PALETTE_KEY = "vantare.ui.palette";
 const SCHEME_KEY = "vantare.ui.scheme";
 
-export const DEFAULT_UI_APPEARANCE: UiAppearance = {
+const DEFAULT_UI_APPEARANCE: UiAppearance = {
   palette: "vantare",
   scheme: "system",
 };

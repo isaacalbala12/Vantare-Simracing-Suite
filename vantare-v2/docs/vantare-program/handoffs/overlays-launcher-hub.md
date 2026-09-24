@@ -2389,6 +2389,19 @@ también 11 pruebas frontend, build y lint. El nuevo HEAD aún debe pasar CI.
 Siguen pendientes la aplicación completa de políticas, el autostart de una
 instancia y la comprobación física de Wails/Steam/LMU/instalador. **NO-GO.**
 
+Cuarto avance de #1368: el HEAD `d277fbc4` pasó los gates bloqueantes, pero
+el ratchet remoto falló por `staticcheck NEW=1` en Linux; el workflow no subió
+`.last-run.json` porque `upload-artifact` excluye archivos ocultos y el log
+solo muestra el conteo. No se considera gate verde. En la rama local, la
+política `failure: ask` ya pausa la cadena, emite una solicitud con acciones
+cerradas y plazo de 2 minutos, y `launcher:decision:resolve` reanuda solo
+con una acción ofrecida. La decisión recordada se guarda antes de reanudar;
+cancelación o plazo vencido detienen la cadena y retiran el diálogo. Orbit
+presenta la pregunta y el watchdog respeta el plazo. Un fallo en el último
+paso termina sin preguntar si se continúa. Las pruebas Go focales repetidas,
+13 frontend, typecheck, build y lint pasaron localmente. Falta publicar este
+corte, resolver el hallazgo nuevo del ratchet y verificarlo en Wails real.
+
 ## Hub
 
 Conservar estructura. Solo consistencia visual, estados reales, responsive,

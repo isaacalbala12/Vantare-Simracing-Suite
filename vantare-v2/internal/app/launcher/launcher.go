@@ -491,6 +491,33 @@ func (s *Service) RetryFailedProfile(ctx context.Context, profileID string) erro
 	return nil
 }
 
+func (s *Service) ResolveDecision(id, action string, remember bool) (DecisionRequest, bool, error) {
+	remembered := false
+	request, err := s.chain.resolveDecisionWith(id, action, func(request DecisionRequest) error {
+		if !remember || request.Kind != "failure" {
+			return nil
+		}
+		for _, profile := range s.settings.GetLauncherProfiles() {
+			if profile.ID != request.ProfileID {
+				continue
+			}
+			profile.Policy = app.NormalizeLaunchPolicy(profile.Policy)
+			if action == "continue" {
+				profile.Policy.Failure = app.FailureContinue
+			} else {
+				profile.Policy.Failure = app.FailureStop
+			}
+			if err := s.SaveProfile(profile); err != nil {
+				return err
+			}
+			remembered = true
+			return nil
+		}
+		return fmt.Errorf("%w: %s", ErrProfileNotFound, request.ProfileID)
+	})
+	return request, remembered, err
+}
+
 func retryProfile(profile app.LaunchProfile, completed LauncherActiveChain) (app.LaunchProfile, []int, error) {
 	if completed.ProfileID != profile.ID || completed.Status != "failed" {
 		return app.LaunchProfile{}, nil, fmt.Errorf("%w: retry requires a failed chain", ErrInvalidConfig)

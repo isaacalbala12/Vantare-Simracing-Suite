@@ -1069,15 +1069,26 @@ func emitLauncherCommandError(emitter app.EventEmitter, err error) {
 	emitter.Emit("launcher:error", payload)
 }
 
-func handleResolveLauncherDecision(decisionID, action string, remember bool, emitter app.EventEmitter) {
+func handleResolveLauncherDecision(decisionID, action string, remember bool, svc *launcher.Service, emitter app.EventEmitter) {
 	if decisionID == "" || action == "" {
 		emitter.Emit("launcher:error", map[string]any{"code": "invalid_decision", "message": "decision id and action are required"})
 		return
 	}
+	request, remembered, err := svc.ResolveDecision(decisionID, action, remember)
+	if request.DecisionID == "" {
+		emitter.Emit("launcher:error", map[string]any{"code": "invalid_decision", "message": err.Error()})
+		return
+	}
+	if err != nil {
+		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+	}
+	if remembered {
+		handleLauncherSnapshot(svc, emitter)
+	}
 	emitter.Emit("launcher:decision:resolved", map[string]any{
 		"decisionId": decisionID,
 		"action":     action,
-		"remember":   remember,
+		"remember":   remembered,
 	})
 }
 
@@ -3373,7 +3384,7 @@ func main() {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		handleResolveLauncherDecision(payload.DecisionID, payload.Action, payload.Remember, emitter)
+		handleResolveLauncherDecision(payload.DecisionID, payload.Action, payload.Remember, launcherSvc, emitter)
 	})
 
 	wailsApp.Event.On("launcher:onboarding:complete", func(event *application.CustomEvent) {

@@ -197,6 +197,19 @@ export function createChainStore() {
       notifySubscribers(ev.profileId);
     },
 
+    handleDecisionRequired(profileId: string, expiresAt: number) {
+      const chain = chains.get(profileId);
+      if (!chain || chain.overallStatus !== "running") return;
+      chains.set(profileId, {
+        ...chain,
+        lastEventAt: Date.now(),
+        expectedIdleMs: Number.isFinite(expiresAt)
+          ? Math.max(STALE_MS, expiresAt - Date.now() + STALE_MS)
+          : STALE_MS,
+      });
+      notifySubscribers(profileId);
+    },
+
     handleDone(profileId: string, success: boolean) {
       const existing = chains.get(profileId);
       if (!existing) return;

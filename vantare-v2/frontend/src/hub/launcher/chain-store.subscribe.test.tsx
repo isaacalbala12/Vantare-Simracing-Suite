@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { render, act } from "@testing-library/react";
+import { render, act, fireEvent, screen } from "@testing-library/react";
+import { Events } from "@wailsio/runtime";
 
 type EventHandler = (event: { data?: unknown }) => void;
 const wailsHandlers = new Map<string, Set<EventHandler>>();
@@ -41,6 +42,23 @@ describe("ChainRunnerProvider + selective subscription", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it("asks before continuing a failed chain and sends the selected decision", () => {
+    render(<ChainRunnerProvider><div>Hub</div></ChainRunnerProvider>);
+    act(() => {
+      wailsHandlers.get("launcher:decision:required")?.forEach((handler) => handler({ data: {
+        decisionId: "7", profileId: "creator", appId: "obs", kind: "failure",
+        message: "OBS falló", actions: ["continue", "stop"], expiresAt: Date.now() + 120000,
+      } }));
+    });
+    expect(screen.getByRole("alertdialog").textContent).toContain("OBS falló");
+    fireEvent.click(screen.getByLabelText("Recordar esta decisión para el perfil"));
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+    expect(Events.Emit).toHaveBeenCalledWith("launcher:decision:resolve", {
+      decisionId: "7", action: "continue", remember: true,
+    });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
   });
 
   it("useChainState only re-renders when the subscribed profileId changes", () => {

@@ -27,6 +27,18 @@ type blockingStepEmitter struct {
 	once    sync.Once
 }
 
+type decisionEmitter struct {
+	spyEmitter
+	requests chan DecisionRequest
+}
+
+func (e *decisionEmitter) Emit(name string, data any) {
+	if name == "launcher:decision:required" {
+		e.requests <- data.(DecisionRequest)
+	}
+	e.spyEmitter.Emit(name, data)
+}
+
 func (e *blockingStepEmitter) Emit(name string, data any) {
 	if name == "launcher:chain:step" {
 		e.once.Do(func() { close(e.entered); <-e.release })
@@ -177,6 +189,86 @@ func TestMissingAppHonorsFailureStop(t *testing.T) {
 	}
 }
 
+func TestFailureAskWaitsForUserDecision(t *testing.T) {
+	emit := &decisionEmitter{requests: make(chan DecisionRequest, 1)}
+	runner := NewChainRunner(sampleBackend(), emit, stubChainExec)
+	profile := app.LaunchProfile{
+		ID: "ask", Policy: &app.LaunchPolicy{Failure: app.FailureAsk},
+		Steps: []app.LaunchStep{{AppID: "unknown"}, {AppID: "lmu"}},
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	done := make(chan struct{})
+	go func() { runner.RunChain(ctx, profile); close(done) }()
+	var request DecisionRequest
+	select {
+	case request = <-emit.requests:
+	case <-ctx.Done():
+		t.Fatal("missing app did not ask for a decision")
+	}
+	if emit.count("launcher:chain:step") != 1 {
+		t.Fatal("next app started before the decision")
+	}
+	if request.Kind != "failure" || request.ProfileID != "ask" || request.AppID != "unknown" {
+		t.Fatalf("wrong decision request: %+v", request)
+	}
+	if request.ExpiresAt <= time.Now().UnixMilli() {
+		t.Fatalf("decision deadline missing or expired: %+v", request)
+	}
+	if _, err := runner.ResolveDecision(request.DecisionID, "restart"); !errors.Is(err, ErrInvalidDecision) {
+		t.Fatalf("unoffered action must be rejected, got %v", err)
+	}
+	if _, err := runner.ResolveDecision(request.DecisionID, "continue"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-done:
+	case <-ctx.Done():
+		t.Fatal("chain did not resume after continue")
+	}
+	if emit.count("launcher:chain:step") < 2 {
+		t.Fatal("continue decision did not visit next app")
+	}
+}
+
+func TestFailureAskCancellationExpiresDecision(t *testing.T) {
+	emit := &decisionEmitter{requests: make(chan DecisionRequest, 1)}
+	runner := NewChainRunner(sampleBackend(), emit, stubChainExec)
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		runner.RunChain(ctx, app.LaunchProfile{ID: "ask", Steps: []app.LaunchStep{{AppID: "unknown"}, {AppID: "lmu"}}})
+		close(done)
+	}()
+	var request DecisionRequest
+	select {
+	case request = <-emit.requests:
+	case <-time.After(time.Second):
+		cancel()
+		t.Fatal("chain did not request a decision")
+	}
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("chain did not exit after cancellation")
+	}
+	if _, err := runner.ResolveDecision(request.DecisionID, "continue"); !errors.Is(err, ErrDecisionNotFound) {
+		t.Fatalf("expired decision accepted an answer: %v", err)
+	}
+}
+
+func TestFailureAskDoesNotPromptAfterFinalStep(t *testing.T) {
+	emit := &decisionEmitter{requests: make(chan DecisionRequest, 1)}
+	runner := NewChainRunner(sampleBackend(), emit, stubChainExec)
+	runner.RunChain(context.Background(), app.LaunchProfile{ID: "ask", Steps: []app.LaunchStep{{AppID: "unknown"}}})
+	select {
+	case request := <-emit.requests:
+		t.Fatalf("final failure asked to continue nonexistent steps: %+v", request)
+	default:
+	}
+}
+
 // sampleBackend returns a fakeProfilesBackend pre-loaded with sample apps and
 // an empty profile list.
 func sampleBackend() *fakeProfilesBackend {
@@ -232,7 +324,7 @@ func TestRunChainDoneEventHasSuccessFalseOnFailure(t *testing.T) {
 	runner := NewChainRunner(backend, emit, stubChainExec)
 
 	profile := app.LaunchProfile{
-		ID: "p", Name: "P",
+		ID: "p", Name: "P", Policy: &app.LaunchPolicy{Failure: app.FailureStop},
 		Steps: []app.LaunchStep{{AppID: "obs", Delay: 0}},
 	}
 	runner.RunChain(context.Background(), profile)
@@ -324,7 +416,7 @@ func TestRunChainErrorOnMissingApp(t *testing.T) {
 	runner := NewChainRunner(backend, emit, stubChainExec)
 
 	profile := app.LaunchProfile{
-		ID: "p", Name: "P",
+		ID: "p", Name: "P", Policy: &app.LaunchPolicy{Failure: app.FailureStop},
 		Steps: []app.LaunchStep{{AppID: "ghost", Delay: 0}},
 	}
 	runner.RunChain(context.Background(), profile)
@@ -349,7 +441,7 @@ func TestRunChainErrorOnMissingExecutable(t *testing.T) {
 	runner := NewChainRunner(backend, emit, stubChainExec)
 
 	profile := app.LaunchProfile{
-		ID: "p", Name: "P",
+		ID: "p", Name: "P", Policy: &app.LaunchPolicy{Failure: app.FailureStop},
 		Steps: []app.LaunchStep{{AppID: "obs", Delay: 0}},
 	}
 
@@ -592,7 +684,7 @@ func TestChainRunnerRejectsDoubleLaunch(t *testing.T) {
 func TestChainRunnerFailureDoesNotUpdateAvgButUpdatesCount(t *testing.T) {
 	backend := sampleBackend()
 	backend.profiles = []app.LaunchProfile{
-		{ID: "pro", Name: "Pro", Steps: []app.LaunchStep{{AppID: "obs", Delay: 0}}},
+		{ID: "pro", Name: "Pro", Policy: &app.LaunchPolicy{Failure: app.FailureStop}, Steps: []app.LaunchStep{{AppID: "obs", Delay: 0}}},
 	}
 	emit := &spyEmitter{}
 	runner := NewChainRunner(backend, emit, stubFailingExec)
@@ -629,7 +721,7 @@ func TestChainRunnerLivenessProbeCatchesCrash(t *testing.T) {
 	runner := NewChainRunner(backend, emit, stubFailingExec)
 
 	profile := app.LaunchProfile{
-		ID: "p", Name: "P",
+		ID: "p", Name: "P", Policy: &app.LaunchPolicy{Failure: app.FailureStop},
 		Steps: []app.LaunchStep{{AppID: "crash", Delay: 0}},
 	}
 	runner.RunChain(context.Background(), profile)

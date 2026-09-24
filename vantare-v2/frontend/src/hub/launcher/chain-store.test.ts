@@ -184,4 +184,18 @@ describe("chain-store reducer", () => {
     store.shutdown();
     vi.useRealTimers();
   });
+
+  it("keeps a chain active while a user decision is pending", () => {
+    vi.useFakeTimers();
+    const store = createChainStore();
+    store.startWatchdog();
+    store.handleStep({ profileId: "p1", stepIndex: 0, appId: "obs", status: "failed" });
+    store.handleDecisionRequired("p1", Date.now() + 120000);
+    vi.advanceTimersByTime(60000);
+    expect(store.getChain("p1")?.overallStatus).toBe("running");
+    vi.advanceTimersByTime(95000);
+    expect(store.getChain("p1")?.overallStatus).toBe("error");
+    store.shutdown();
+    vi.useRealTimers();
+  });
 });

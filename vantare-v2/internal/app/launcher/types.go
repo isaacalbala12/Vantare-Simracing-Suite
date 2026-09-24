@@ -15,6 +15,8 @@ var (
 	ErrProfileNotFound   = errors.New("launcher: profile not found")
 	ErrProfileDuplicate  = errors.New("launcher: profile id already exists")
 	ErrProfileInProgress = errors.New("launcher: profile already in progress")
+	ErrDecisionNotFound  = errors.New("launcher: decision not found")
+	ErrInvalidDecision   = errors.New("launcher: invalid decision")
 	ErrInvalidStep       = errors.New("launcher: invalid step")
 )
 

@@ -5,6 +5,16 @@ import { useNotificationPreferences } from "../settings/notification-preferences
 import { createChainStore, type ChainStepEvent } from "./chain-store-core";
 import { ChainRunnerContext } from "./chain-context";
 
+type LauncherDecision = {
+  decisionId: string;
+  profileId: string;
+  appId: string;
+  kind: "failure";
+  message: string;
+  actions: string[];
+  expiresAt: number;
+};
+
 export function ChainRunnerProvider({ children }: { children: ReactNode }) {
   const [store] = useState(createChainStore);
   const notifications = useNotificationPreferences();
@@ -18,6 +28,8 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
     message: string;
     profileId: string;
   } | null>(null);
+  const [decisions, setDecisions] = useState<LauncherDecision[]>([]);
+  const [rememberDecision, setRememberDecision] = useState(false);
 
   useEffect(() => {
     store.startWatchdog();
@@ -54,11 +66,25 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
       const data = (event as { data: { profileId: string } }).data;
       store.handleError(data.profileId);
     });
+    const offDecision = Events.On("launcher:decision:required", (event: unknown) => {
+      const request = (event as { data: LauncherDecision }).data;
+      if (!request?.decisionId || request.kind !== "failure") return;
+      store.handleDecisionRequired(request.profileId, request.expiresAt);
+      setDecisions((current) => current.some((item) => item.decisionId === request.decisionId)
+        ? current : [...current, request]);
+    });
+    const offExpired = Events.On("launcher:decision:expired", (event: unknown) => {
+      const id = (event as { data: { decisionId: string } }).data?.decisionId;
+      setDecisions((current) => current.filter((item) => item.decisionId !== id));
+      setRememberDecision(false);
+    });
 
     return () => {
       offStep();
       offDone();
       offError();
+      offDecision();
+      offExpired();
       store.shutdown();
     };
   }, [store]);
@@ -67,6 +93,18 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
     Events.Emit("launcher:profile:retry:failed", { id: profileId });
     setToastInfo(null);
   }, []);
+
+  const activeDecision = decisions[0];
+  const resolveDecision = (action: "continue" | "stop") => {
+    if (!activeDecision) return;
+    Events.Emit("launcher:decision:resolve", {
+      decisionId: activeDecision.decisionId,
+      action,
+      remember: rememberDecision,
+    });
+    setDecisions((current) => current.slice(1));
+    setRememberDecision(false);
+  };
 
   return (
     <>
@@ -79,6 +117,22 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
           onRetry={handleRetry}
           onClose={() => setToastInfo(null)}
         />
+      ) : null}
+      {activeDecision ? (
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-md rounded-orbit border border-orbit-ember/40 bg-orbit-surface-1 p-5 shadow-2xl" role="alertdialog" aria-modal="true" aria-labelledby="launcher-decision-title">
+            <h2 id="launcher-decision-title" className="text-base text-orbit-ink">No se pudo iniciar {activeDecision.appId}</h2>
+            <p className="mt-2 text-sm text-orbit-ink-3">Perfil {activeDecision.profileId}. {activeDecision.message || "El paso falló."} ¿Continuar con las demás aplicaciones?</p>
+            <label className="mt-4 flex items-center gap-2 text-sm text-orbit-ink-3">
+              <input type="checkbox" checked={rememberDecision} onChange={(event) => setRememberDecision(event.target.checked)} />
+              Recordar esta decisión para el perfil
+            </label>
+            <div className="mt-5 flex justify-end gap-2">
+              <button type="button" className="rounded-lg px-3 py-2 text-sm text-orbit-ink-3" onClick={() => resolveDecision("stop")}>Detener perfil</button>
+              <button type="button" className="rounded-lg bg-orbit-ember px-3 py-2 text-sm text-white" onClick={() => resolveDecision("continue")}>Continuar</button>
+            </div>
+          </div>
+        </div>
       ) : null}
     </>
   );

@@ -1665,6 +1665,47 @@ func TestHandleProfileRetryFailed(t *testing.T) {
 	}
 }
 
+func TestResolveLauncherFailureDecisionRemembersPolicy(t *testing.T) {
+	backend := &fakeLauncherBackend{
+		apps: map[string]app.LauncherAppEntry{
+			"obs": {ID: "obs", DisplayName: "OBS", LaunchMethod: "executable", ExecutablePath: `C:\nope\missing.exe`},
+			"lmu": {ID: "lmu", DisplayName: "LMU", LaunchMethod: "steam-uri", SteamAppID: 2399420},
+		},
+		profiles: []app.LaunchProfile{{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "obs"}, {AppID: "lmu"}}}},
+	}
+	emitter := &spyMainEmitter{}
+	svc := launcher.NewService(backend, emitter, nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if err := svc.LaunchProfile(ctx, "creator"); err != nil {
+		t.Fatal(err)
+	}
+	_, data := waitForEmitterCondition(t, emitter, time.Second, func(events []string, _ []any) bool {
+		for _, name := range events {
+			if name == "launcher:decision:required" {
+				return true
+			}
+		}
+		return false
+	})
+	var request launcher.DecisionRequest
+	for _, value := range data {
+		if candidate, ok := value.(launcher.DecisionRequest); ok {
+			request = candidate
+			break
+		}
+	}
+	if request.DecisionID == "" {
+		t.Fatal("missing decision request")
+	}
+	handleResolveLauncherDecision(request.DecisionID, "stop", true, svc, emitter)
+	profiles := svc.ListProfiles()
+	if len(profiles) != 1 || profiles[0].Policy == nil || profiles[0].Policy.Failure != app.FailureStop {
+		t.Fatalf("remembered decision was not saved: profiles=%+v events=%v data=%+v", profiles, emitter.Events(), emitter.Data())
+	}
+	svc.CancelAll()
+}
+
 func TestHandleProfileStatsSave(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "app-settings.json")

@@ -20,11 +20,13 @@ import (
 // executable, and records telemetry (RecordProfileAttempt always,
 // RecordProfileSuccess only on full success).
 type ChainRunner struct {
-	backend ProfilesBackend // reads apps + profiles; used for telemetry writes
-	exec    execLauncher    // injectable for tests
-	emit    Emitter
-	mu      sync.Mutex
-	active  map[string]*activeChain // profileID -> running chain
+	backend          ProfilesBackend // reads apps + profiles; used for telemetry writes
+	exec             execLauncher    // injectable for tests
+	emit             Emitter
+	mu               sync.Mutex
+	active           map[string]*activeChain // profileID -> running chain
+	nextDecision     uint64
+	pendingDecisions map[string]pendingDecision
 }
 
 type activeChain struct {
@@ -39,10 +41,11 @@ func NewChainRunner(backend ProfilesBackend, emit Emitter, execFn execLauncher) 
 		execFn = defaultExecLauncher
 	}
 	return &ChainRunner{
-		backend: backend,
-		exec:    execFn,
-		emit:    emit,
-		active:  map[string]*activeChain{},
+		backend:          backend,
+		exec:             execFn,
+		emit:             emit,
+		active:           map[string]*activeChain{},
+		pendingDecisions: map[string]pendingDecision{},
 	}
 }
 
@@ -179,7 +182,10 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 				Message:    fmt.Sprintf("app %q not found", step.AppID),
 			})
 			allSucceeded = false
-			if !ContinueAfterFailure(policy.Failure, false) {
+			if i == len(profile.Steps)-1 {
+				return false
+			}
+			if !r.continueAfterFailure(ctx, profile, step.AppID, "app not found", policy.Failure) {
 				return false
 			}
 			continue
@@ -240,8 +246,10 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 			Pid:        result.pid,
 			Message:    msg,
 		})
-		if !result.success && !ContinueAfterFailure(policy.Failure, false) {
-			return false
+		if !result.success {
+			if i == len(profile.Steps)-1 || !r.continueAfterFailure(ctx, profile, step.AppID, msg, policy.Failure) {
+				return false
+			}
 		}
 	}
 

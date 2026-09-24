@@ -244,8 +244,13 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 
 	var simpleDecisions []DecisionVector
 	simple := false
+	onePitCertified := false
 	if input.RaceDurationSeconds == nil && input.InitialFuelLiters == nil && input.InitialVEPercent == nil {
 		simpleDecisions, simple = simpleResourceDecisions(input, fuel, ve, paceCost, compoundPace, fuelWeight, saving, drivers, weatherCost)
+		if !simple {
+			simpleDecisions, onePitCertified = certifiedOnePitDecisions(input, fuel, ve, paceCost, compoundPace, fuelWeight, saving, drivers, weatherCost, tyreModel, envelope, riskActive)
+			simple = onePitCertified
+		}
 	}
 	if simple {
 		for _, decision := range simpleDecisions {
@@ -564,7 +569,11 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 		reason := SolverReason{Code: "ranked_feasible", Message: fmt.Sprintf("candidato factible en posicion %d", index+1)}
 		if index == 0 {
 			if simpleSolved {
-				reason = SolverReason{Code: "optimal_after_scalar_resource_bound", Message: "optimo exacto por la cota escalar de Fuel, VE y vida de neumatico"}
+				if onePitCertified {
+					reason = SolverReason{Code: "optimal_after_one_pit_lower_bound", Message: "optimo exacto: una parada supera la cota optimista de cualquier plan con mas paradas"}
+				} else {
+					reason = SolverReason{Code: "optimal_after_scalar_resource_bound", Message: "optimo exacto por la cota escalar de Fuel, VE y vida de neumatico"}
+				}
 			} else {
 				reason = SolverReason{Code: "optimal_after_dominance_pruning", Message: "optimo exacto tras podar solo estados dominados"}
 			}

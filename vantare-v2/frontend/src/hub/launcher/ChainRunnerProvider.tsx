@@ -89,6 +89,9 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
       setDecisions((current) => current.filter((item) => item.decisionId !== id));
       setRememberDecision(false);
     });
+    // Windows autostart can begin a chain before the Hub mounts. Subscribe
+    // first, then ask Go to replay any question that is still unanswered.
+    Events.Emit("launcher:decision:pending:get");
 
     return () => {
       offStep();

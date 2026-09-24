@@ -3,6 +3,7 @@ package launcher
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/app"
@@ -25,6 +26,25 @@ type pendingDecision struct {
 }
 
 const decisionTimeout = 2 * time.Minute
+
+// PendingDecisions lets a UI that attaches after startup recover questions
+// emitted before it subscribed. It returns a copy in request order.
+func (r *ChainRunner) PendingDecisions() []DecisionRequest {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	requests := make([]DecisionRequest, 0, len(r.pendingDecisions))
+	for _, pending := range r.pendingDecisions {
+		requests = append(requests, pending.request)
+	}
+	sort.Slice(requests, func(i, j int) bool {
+		left, right := requests[i].DecisionID, requests[j].DecisionID
+		if len(left) != len(right) {
+			return len(left) < len(right)
+		}
+		return left < right
+	})
+	return requests
+}
 
 func (r *ChainRunner) requestDecision(ctx context.Context, profileID, appID, kind, message string, actions []string) string {
 	r.mu.Lock()

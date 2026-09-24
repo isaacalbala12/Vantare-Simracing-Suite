@@ -2522,6 +2522,20 @@ fraccionarias aunque el contrato Go usa segundos enteros; ahora solo acepta
 enteros seguros no negativos. La prueba falló antes y pasó después con
 typecheck.
 
+Undécimo avance de #1368 (candidato local): el flag `--launch=<id>` se entrega
+ahora al Launcher al arrancar y Wails mantiene una sola instancia de Vantare.
+Las peticiones de otros valores Run recibidas mientras se cargan los ajustes
+se encolan y se procesan cuando el servicio está listo, conservando el orden;
+se descartan flags inválidos. Se sigue el contrato existente de múltiples
+perfiles marcados para inicio con Windows dentro de una instancia, sujeto a
+la respuesta de Isaac sobre esa preferencia. Si una cadena hace una pregunta
+antes de montar Orbit, el proveedor se suscribe y pide al backend las
+decisiones todavía pendientes; las resueltas no se reenvían. Las regresiones
+de cola y recuperación fallaron antes y pasan después. 126 pruebas focales
+Launcher frontend, Go focal, typecheck, build, lint y vet pasan. Faltan CI
+del HEAD publicado, arranque real de Windows y prueba de preguntas al entrar
+en el Hub. No se afirma aptitud de lanzamiento todavía.
+
 ## Hub
 
 Conservar estructura. Solo consistencia visual, estados reales, responsive,

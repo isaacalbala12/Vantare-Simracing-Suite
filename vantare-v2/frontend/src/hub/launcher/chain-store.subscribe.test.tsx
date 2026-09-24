@@ -46,6 +46,7 @@ describe("ChainRunnerProvider + selective subscription", () => {
 
   it("asks before continuing a failed chain and sends the selected decision", () => {
     render(<ChainRunnerProvider><div>Hub</div></ChainRunnerProvider>);
+    expect(Events.Emit).toHaveBeenCalledWith("launcher:decision:pending:get");
     act(() => {
       wailsHandlers.get("launcher:decision:required")?.forEach((handler) => handler({ data: {
         decisionId: "7", profileId: "creator", appId: "obs", kind: "failure",

@@ -751,6 +751,10 @@ func (s *Service) CancelAll() {
 	s.chain.CancelAll()
 }
 
+func (s *Service) PendingDecisions() []DecisionRequest {
+	return s.chain.PendingDecisions()
+}
+
 // CloseOnExit applies each profile's exit policy after active launch chains
 // have stopped. A missing prompt defaults to leaving processes open.
 func (s *Service) CloseOnExit(ctx context.Context, ask func(int) bool) error {

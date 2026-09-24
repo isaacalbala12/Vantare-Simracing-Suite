@@ -236,11 +236,17 @@ func TestFailureAskWaitsForUserDecision(t *testing.T) {
 	if request.ExpiresAt <= time.Now().UnixMilli() {
 		t.Fatalf("decision deadline missing or expired: %+v", request)
 	}
+	if pending := runner.PendingDecisions(); len(pending) != 1 || pending[0].DecisionID != request.DecisionID {
+		t.Fatalf("late UI cannot recover the pending decision: %+v", pending)
+	}
 	if _, err := runner.ResolveDecision(request.DecisionID, "restart"); !errors.Is(err, ErrInvalidDecision) {
 		t.Fatalf("unoffered action must be rejected, got %v", err)
 	}
 	if _, err := runner.ResolveDecision(request.DecisionID, "continue"); err != nil {
 		t.Fatal(err)
+	}
+	if pending := runner.PendingDecisions(); len(pending) != 0 {
+		t.Fatalf("resolved decision remains pending: %+v", pending)
 	}
 	select {
 	case <-done:

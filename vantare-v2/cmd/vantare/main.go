@@ -1433,9 +1433,17 @@ func main() {
 	// es un noop.
 	stopCPUProfile := startCPUProfile()
 	defer stopCPUProfile()
+	var launcherStartup launcherStartupQueue
+	launcherStartup.Offer(os.Args[1:])
 
 	appOptions := application.Options{
 		Name: "Vantare Simracing Suite",
+		SingleInstance: &application.SingleInstanceOptions{
+			UniqueID: "com.vantare.simracing-suite",
+			OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
+				launcherStartup.Offer(data.Args)
+			},
+		},
 		Assets: application.AssetOptions{
 			Handler: application.BundledAssetFileServer(distFS),
 		},
@@ -3271,6 +3279,12 @@ func main() {
 		_ = event
 		handleLauncherSnapshot(launcherSvc, emitter)
 	})
+	wailsApp.Event.On("launcher:decision:pending:get", func(event *application.CustomEvent) {
+		_ = event
+		for _, request := range launcherSvc.PendingDecisions() {
+			emitter.Emit("launcher:decision:required", request)
+		}
+	})
 
 	wailsApp.Event.On("launcher:app:add", func(event *application.CustomEvent) {
 		var entry app.LauncherAppEntry
@@ -3787,6 +3801,9 @@ func main() {
 		}
 	})
 
+	launcherStartup.Ready(func(id string) {
+		handleLaunchFlag([]string{"--launch=" + id}, nil, launcherSvc, emitter)
+	})
 	if err := wailsApp.Run(); err != nil {
 		// log.Fatal exits without running defers, so the capture is flushed
 		// here explicitly. Stopping twice is safe.

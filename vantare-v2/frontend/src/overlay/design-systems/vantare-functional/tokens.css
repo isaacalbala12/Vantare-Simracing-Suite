@@ -341,12 +341,12 @@
 .vf-fuel-history-row span { font-weight: 600; font-size: 8px; letter-spacing: .1em; color: var(--vf-muted); text-transform: uppercase; }
 .vf-fuel-history-row b { color: var(--vf-ink); }
 
-/* Car damage numbers: grid compacto de porcentajes. */
-.vf-car-damage-numbers { display: flex; flex-direction: column; justify-content: center; min-height: 100%; padding: 10px 12px; }
-.vf-car-damage-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.vf-car-damage-slot { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.vf-car-damage-label { font: 600 7px/1 Inter, Arial, sans-serif; letter-spacing: .12em; color: var(--vf-muted); text-transform: uppercase; }
-.vf-car-damage-value { font: 700 16px/1 Inter, Arial, sans-serif; font-variant-numeric: tabular-nums; color: var(--vf-ink); }
+/* Car damage numbers: cuatro filas compactas con el panel de Eficiencia. */
+.vf-car-damage-numbers { display: flex; flex-direction: column; min-height: 100%; padding: 8px; }
+.vf-car-damage-grid { display: flex; flex: 1; flex-direction: column; gap: 4px; min-height: 0; }
+.vf-car-damage-slot { display: flex; flex: 1; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding: 5px 8px; border-radius: 4px; background: rgb(0 0 0 / 24%); }
+.vf-car-damage-label { font: 750 12px/1 Inter, Arial, sans-serif; color: var(--vf-muted); }
+.vf-car-damage-value { font: 750 13px/1 Inter, Arial, sans-serif; font-variant-numeric: tabular-nums; color: #7fb686; }
 
 /* Input telemetry: marcha/velocidad/rpm, barras de pedales y traza. */
 .vf-input-telemetry { display: flex; flex-direction: column; justify-content: flex-start; min-height: 100%; padding: 10px 12px; }

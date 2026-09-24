@@ -7,6 +7,12 @@
 
 
 
+## ISA-1385 — Car Damage Numbers Eficiencia (2026-09-25)
+
+[Issue #1385](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1385). Isaac pidió adaptar la composición de cuatro filas del widget Crystal al fondo y la tipografía de Eficiencia. Rama/worktree aislados `vantareapp/isa-1385-car-damage-numbers-eficiencia` en `C:\tmp\vantare-isa1385-car-damage-numbers`, base `df6b4125` del trabajo visual de #1358; una PR independiente dependerá de integrar esa base o de reconciliarla con `nightly`.
+
+El renderer Eficiencia presenta Aero, Body, Susp y una sola fila Tyre, con el agregado de neumáticos ya usado por Crystal, preservando los valores canónicos y `showTyres`. El panel utiliza el fondo de Eficiencia y las filas usan Inter; Crystal y los ViewModels no se modifican. Workshop revisado en `127.0.0.1:5173` a 140 × 148 con tres valores al 100 % y neumático ausente representado como «—». Tres tests focales (Eficiencia + Crystal), typecheck y ESLint pasan. Por la preferencia de Isaac no se hace build por cada iteración. Pendientes: aceptación visual, build final y prueba física LMU/Windows/OBS. Sin push, PR, merge, promoción ni release.
+
 ## ISA-1355 — integración de datos, volantes y catálogo (2026-09-24)
 
 La [PR draft #1356](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1356) reúne las tres entregas coordinadas en [Asana · Pedals telemetry](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756738610082). Sobre `bf2b12e9` (volantes) y `82883459` (renombre/compatibilidad), el tercer commit incorpora con `cherry-pick -x` el parche de datos `fb8590878d46988def86b55c2c0aa4add32c497b`, revisado contra sus cinco pruebas y consumidores. Rama `vantareapp/isa-1355-lmu-steering-wheels`, misma base `nightly f50ab4ab`; no hay conflicto semántico ni conversión de perfiles.

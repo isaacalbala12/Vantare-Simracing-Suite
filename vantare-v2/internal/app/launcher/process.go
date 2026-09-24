@@ -47,16 +47,24 @@ func RestartProcess(ctx context.Context, inspector ProcessInspector, identity Pr
 	if err := CloseProcess(ctx, inspector, identity); err != nil {
 		return ProcessIdentity{}, err
 	}
-	cmd := exec.CommandContext(ctx, executable, args...)
+	if err := ctx.Err(); err != nil {
+		return ProcessIdentity{}, err
+	}
+	// A restarted app has the same independent lifetime as a normal launch.
+	// Closing Vantare must not kill it when the exit policy leaves apps running.
+	cmd := exec.Command(executable, args...)
 	cmd.Dir = filepath.Dir(executable)
 	if err := cmd.Start(); err != nil {
 		return ProcessIdentity{}, fmt.Errorf("launcher: restart process: %w", err)
 	}
-	go func() { _ = cmd.Wait() }()
 	if cmd.Process == nil {
 		return ProcessIdentity{}, nil
 	}
-	newIdentity := ProcessIdentity{PID: cmd.Process.Pid, ExecutablePath: executable}
+	pid := cmd.Process.Pid
+	if err := cmd.Process.Release(); err != nil {
+		return ProcessIdentity{}, fmt.Errorf("launcher: release restarted process handle: %w", err)
+	}
+	newIdentity := ProcessIdentity{PID: pid, ExecutablePath: executable}
 	info, ok := inspector.Find(ctx, newIdentity)
 	if !ok || !ProcessIsReady(newIdentity, info) || info.CreationTime == 0 {
 		return ProcessIdentity{}, nil

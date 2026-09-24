@@ -2438,6 +2438,13 @@ regresión del descubrimiento de iconos: workers concurrentes podían emitir
 el test falló antes del arreglo y pasó 10 repeticiones después. Go y vet
 focales pasan. Falta CI remoto del HEAD final y comprobación física.
 
+Revisión de ciclo de vida: el reinicio ya no ata la aplicación externa al
+contexto de Vantare; cerrar el Hub no la termina implícitamente cuando debe
+quedar abierta. El cierre explícito deja de usar `taskkill /T`, que podía
+alcanzar descendientes no iniciados directamente por Vantare, y actúa solo
+sobre el PID verificado. Los tests Go focales y vet pasan; falta comprobar
+este comportamiento con procesos reales durante la sesión visual acordada.
+
 ## Hub
 
 Conservar estructura. Solo consistencia visual, estados reales, responsive,

@@ -63,7 +63,8 @@ func terminateVerifiedProcess(ctx context.Context, identity ProcessIdentity) err
 		return fmt.Errorf("launcher: process identity no longer matches")
 	}
 	// The open handle keeps this PID bound to the inspected process until taskkill returns.
-	if err := exec.CommandContext(ctx, "taskkill", "/PID", strconv.Itoa(identity.PID), "/T").Run(); err != nil {
+	// Do not use /T: child processes were not individually launched by Vantare.
+	if err := exec.CommandContext(ctx, "taskkill", "/PID", strconv.Itoa(identity.PID)).Run(); err != nil {
 		return fmt.Errorf("launcher: close process: %w", err)
 	}
 	return nil

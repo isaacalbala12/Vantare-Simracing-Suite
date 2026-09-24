@@ -84,7 +84,7 @@ export function RoadmapOrbitPage() {
                 ))}
               </div>
               {view === "timeline" ? (
-                <ol className="orbit-rm__timeline" data-testid="roadmap-timeline">
+                <ol className="orbit-rm__timeline" data-testid="roadmap-timeline" aria-label={t("roadmap.views.timeline")} tabIndex={0}>
                   {stages.flatMap((stage) => grouped[stage].map((item) => (
                     <li className={`orbit-rm__timeline-item orbit-rm__timeline-item--${stage}`} key={item.id}>
                       <span className="orbit-rm__timeline-node" aria-hidden="true" />

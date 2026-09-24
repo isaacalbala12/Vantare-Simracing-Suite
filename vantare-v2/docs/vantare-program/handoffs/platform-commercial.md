@@ -14,6 +14,12 @@ La implementación local retira `plan.md`, JSON, digest, formulario y gate del
 roadmap anterior; la revisión actual reemplaza el editor por línea temporal,
 tablero y gráfico de distribución. Supabase conserva las publicaciones y expone
 solo lectura a la app; Codex publica a través de la conexión SQL privilegiada.
+Isaac precisó después que la línea temporal debe avanzar horizontalmente. La
+vista ahora conecta los hitos de izquierda a derecha y permite recorrerlos
+dentro del panel en escritorio y pantallas estrechas; las otras vistas no cambian.
+La revisión horizontal pasó 4.049 pruebas frontend (2 omitidas), 4 pruebas de
+presupuesto, typecheck, build y lint. Dos capturas locales comprobaron la
+posición horizontal de los hitos y que la página no desborda a 1440 y 390 px.
 Checks de la revisión gráfica: frontend completo 481 archivos, 4.049 pruebas
 PASS y 2 omitidas; presupuesto de frames 4/4 PASS; auditoría i18n con 0
 ausentes y 0 huérfanas; typecheck, build y lint PASS; Go `./...` PASS. Tres

@@ -222,3 +222,16 @@ modificado, pero terminó rojo por `TestDiscoverAppsMergesWithoutLegacyEvents`
 de `internal/app/launcher`: una secuencia de progreso pasó de 93 a 90. La
 misma prueba pasó después tres veces aislada. No se atribuye ese fallo a este
 cambio ni se presenta la suite completa como verde.
+
+## Disponibilidad de originales para el banco de resistencia
+
+La consulta de metadatos de los originales LMU encontró 417 archivos DuckDB;
+48 tenían WAL y no se abrieron. Los 369 restantes se abrieron en modo
+`read_only=True` únicamente para consultar `duckdb_tables()`; todos devolvieron
+catálogo. El máximo de filas estimadas en la tabla `Lap` entre ellos fue S266
+Algarve (71), seguido de S026 Monza (61). El mayor archivo por tamaño, Sarthe
+de 1.167.912.960 bytes, tenía WAL y quedó excluido. Un Imola sin WAL de 264,1
+MiB registra 3.092.102 filas estimadas de `GPS Time`, 309.211 de `Lap Dist` y
+una sola de `Lap`: puede tensionar lectura, pero no prueba una carrera de
+resistencia completa. Estos números son metadatos estimados, no análisis de
+validez ni un nuevo banco ejecutado. No hubo escritura sobre los originales.

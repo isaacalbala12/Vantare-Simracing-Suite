@@ -1,5 +1,17 @@
 # Handoff vivo — Strategy Planner
 
+## Disponibilidad del banco largo — ISA-1375 (2026-09-25)
+
+Se consultó sólo el catálogo DuckDB en modo lectura de los originales LMU:
+417 archivos, 369 sin WAL y todos ellos consultables. Entre los 369, S266
+Algarve sigue teniendo el máximo de filas `Lap` (71); Monza S026 tiene 61.
+El mayor archivo (1,1 GiB, Sarthe) tiene WAL y no es fuente estable para el
+banco. Un Imola sin WAL de 264 MiB contiene 3.092.102 filas `GPS Time` pero
+sólo una fila `Lap`: sirve para tensionar lectura/índice, no para certificar
+una carrera completa. No se alteraron los originales. La validación de una
+resistencia más larga con vueltas reales necesitará otra grabación elegible;
+el desarrollo y la paridad con S266 pueden seguir mientras tanto.
+
 ## Reinicios de vuelta con reloj GPS por ventanas — ISA-1375 (2026-09-25)
 
 Una lectura privada usa el visitante paginado para validar la fuente y el

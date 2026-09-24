@@ -26,7 +26,6 @@ export function AuthSessionBridge({ children }: PropsWithChildren) {
 		let hadRestoredSession = false;
 		let refreshedAfterLogin = false;
 		const offBackend = Events.On("auth:session", async (event: ProtectedSessionEvent) => {
-			if (event.data?.source === "restore") hadRestoredSession = true;
 			const accessToken = event.data?.access_token;
 			const refreshToken = event.data?.refresh_token;
 			if (!accessToken || !refreshToken) return;
@@ -38,6 +37,7 @@ export function AuthSessionBridge({ children }: PropsWithChildren) {
 				return;
 			}
 			if (!restored.session?.access_token || !restored.session.refresh_token) return;
+			if (event.data?.source === "restore") hadRestoredSession = true;
 			if (event.data?.source === "validated" && !hadRestoredSession && !refreshedAfterLogin) {
 				refreshedAfterLogin = true;
 				Events.Emit("calendar:schedule:refresh");

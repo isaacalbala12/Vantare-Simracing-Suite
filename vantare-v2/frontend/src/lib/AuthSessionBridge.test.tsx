@@ -92,11 +92,15 @@ describe("AuthSessionBridge", () => {
 	});
 
 	it("keeps the protected credential on a transient offline restore failure", async () => {
-		restoreSession.mockResolvedValueOnce({ session: null, error: "network unavailable", invalidCredential: false });
+		restoreSession
+			.mockResolvedValueOnce({ session: null, error: "network unavailable", invalidCredential: false })
+			.mockResolvedValueOnce({ session: { access_token: "new-at", refresh_token: "new-rt" } });
 		render(<AuthSessionBridge><div>app</div></AuthSessionBridge>);
 		backendSession?.({ data: { access_token: "old-at", refresh_token: "old-rt", source: "restore" } });
 		await waitFor(() => expect(restoreSession).toHaveBeenCalled());
 		expect(clearProtectedSession).not.toHaveBeenCalled();
+		backendSession?.({ data: { access_token: "new-at", refresh_token: "new-rt", source: "validated" } });
+		await waitFor(() => expect(eventsEmit).toHaveBeenCalledWith("calendar:schedule:refresh"));
 	});
 
 	it("hydrates an OAuth callback in memory without persisting or revalidating it twice", async () => {

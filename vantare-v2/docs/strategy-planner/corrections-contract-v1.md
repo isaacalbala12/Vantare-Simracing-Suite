@@ -288,9 +288,11 @@ ReadCorrectionInput tiene una frontera de parser independiente del formato.
 Lee la unión de canales requeridos por las familias; no inventa relojes ni
 canales ausentes. Rechaza páginas desordenadas y supera límites con error, sin
 devolver una derivación truncada. El backend serializa estas preparaciones y
-fija presupuestos de 1.000.000 muestras, 1.000.000 valores y 16 MiB de texto
-contabilizado (nombres de columnas y escalares). Son límites de recursos;
-no son umbrales físicos ni mediciones de consumo real de RAM.
+fija presupuestos de 1.250.000 muestras, 1.500.000 valores y 16 MiB de texto
+contabilizado (nombres de columnas y escalares). Son límites de recursos
+medidos para S266 Algarve, no umbrales físicos ni una garantía de memoria para
+cualquier carrera de resistencia. La preparación completa sigue acumulando
+páginas en memoria; superar un límite se rechaza sin derivación truncada.
 
 Un error de lector retira la sesión y conserva su limpieza pendiente si falla;
 la cuota o falta de datos de vuelta conserva el lector para inspección.

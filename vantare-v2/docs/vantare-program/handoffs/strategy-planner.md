@@ -2,6 +2,8 @@
 
 ## Sesiones largas y Hypercar — ISA-1210 / ISA-1367 (2026-09-24)
 
+El contrato de correcciones vuelve a reflejar el límite productivo medido de 1,25 M muestras/1,5 M valores y advierte que las páginas siguen acumulándose en memoria. Esta conciliación documental no amplía el soporte a carreras de 24 h ni altera el lector.
+
 El banco real actual reprodujo el límite de preparación de #1210 en S266 Algarve y S026 Monza. Se midieron 1.138.082 y 1.002.172 muestras requeridas frente al techo de 1.000.000; S125 Imola consume 626.191 y ~453 MiB de working set. Un presupuesto todavía acotado de 1,25 M muestras/1,5 M valores permite S266 (38 vueltas, 0 paradas, `optimality=proven` en un evento supuesto) con ~837 MiB observados; los hashes originales siguen intactos. No equivale a soporte de carreras de 24 h: la lectura por streaming y su memoria siguen pendientes. S026 ya entrega ritmo/Fuel/VE `valid`, pero el solver agota 100 M iteraciones y no demuestra óptimo; [#1367](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1367) registra la reproducción. [Evidencia y límites](../../strategy-planner/evidence/isa-1210/long-session-budget-2026-09-24.md). Wails, distribución y precisión empírica pendientes; sin push, PR, CI, merge, promoción ni release.
 
 ## Decisión optimizada sin edición — ISA-1331 (2026-09-24)

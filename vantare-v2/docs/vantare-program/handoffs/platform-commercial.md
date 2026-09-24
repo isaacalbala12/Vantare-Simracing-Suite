@@ -661,8 +661,10 @@ import/export sin secretos; reset no borra datos sin selección.
   Iris/Oscuro persistió tras cerrar y reabrir el mismo ejecutable Wails. La
   compilación usó `.env.local` autorizado sin exponer valores. El gate CI de
   `0f939835` falló en `TestPlayerScriptMediaEvents/ended` por timeout de Go,
-  fuera de los archivos modificados aquí; debe repetirse en el nuevo commit.
-  El PR #1384 continúa draft y sin promoción.
+  fuera de los archivos modificados aquí. Para `1942ee1b`, los checks remotos
+  de calidad, ruta, gates, pruebas frontend y build Wails pasaron; la prueba
+  Go anterior también pasó en esa ejecución. El PR #1384 continúa draft y sin
+  promoción.
 
 ISA-841 se implementó en la rama aislada
 `vantareapp/isa-841-zoom-global-interfaz` y se rebasó el 2026-08-28 sobre

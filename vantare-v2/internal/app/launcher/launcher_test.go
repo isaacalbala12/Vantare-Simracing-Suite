@@ -423,6 +423,23 @@ func TestCancelChainReturnsFalseWhenIdle(t *testing.T) {
 	}
 }
 
+func TestCancelledChainKeepsStoppedStatusWhenRunnerFinishes(t *testing.T) {
+	svc := NewService(newBackendWithLMU(), &spyEmitter{}, nil)
+	svc.recordChainEvent("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 0, AppID: "lmu", Status: "pending"})
+	svc.activeMu.Lock()
+	chain := svc.active["creator"]
+	chain.Status = "stopped"
+	svc.active["creator"] = chain
+	svc.activeMu.Unlock()
+	svc.recordChainEvent("launcher:chain:done", ChainProgress{ProfileID: "creator", Status: "done", Success: false})
+	svc.activeMu.Lock()
+	got := svc.active["creator"].Status
+	svc.activeMu.Unlock()
+	if got != "stopped" {
+		t.Fatalf("cancelled chain must remain stopped after runner completion, got %q", got)
+	}
+}
+
 func TestTerminalChainIsCleanedUpAfterDelay(t *testing.T) {
 	backend := newBackendWithLMU()
 	svc := NewService(backend, &spyEmitter{}, nil)

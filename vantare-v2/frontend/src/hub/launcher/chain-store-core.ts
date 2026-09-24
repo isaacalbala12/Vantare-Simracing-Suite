@@ -21,7 +21,7 @@ export type ChainState = {
   expectedIdleMs: number;
   steps: ChainStepState[];
   currentStepIndex: number;
-  overallStatus: "running" | "done" | "error";
+  overallStatus: "running" | "done" | "error" | "stopped";
 };
 export type ChainStepEvent = {
   profileId: string;
@@ -154,7 +154,8 @@ export function createChainStore() {
       const isRelaunch =
         existing &&
         (existing.overallStatus === "done" ||
-          existing.overallStatus === "error") &&
+          existing.overallStatus === "error" ||
+          existing.overallStatus === "stopped") &&
         (ev.status === "launching" || ev.status === "pending");
       const steps = existing && !isRelaunch ? [...existing.steps] : [];
       steps[ev.stepIndex] = applyStep(steps[ev.stepIndex], ev);
@@ -210,9 +211,16 @@ export function createChainStore() {
       notifySubscribers(profileId);
     },
 
-    handleDone(profileId: string, success: boolean) {
+    handleDone(profileId: string, success: boolean, status?: string) {
       const existing = chains.get(profileId);
       if (!existing) return;
+      if (status === "stopped") {
+        chains.set(profileId, { ...existing, overallStatus: "stopped" });
+        lastResults.delete(profileId);
+        notifySubscribers(profileId);
+        scheduleCleanup(profileId);
+        return;
+      }
       chains.set(profileId, {
         ...existing,
         overallStatus: success ? "done" : "error",

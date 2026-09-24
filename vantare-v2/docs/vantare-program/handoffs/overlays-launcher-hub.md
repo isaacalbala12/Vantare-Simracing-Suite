@@ -2402,6 +2402,16 @@ paso termina sin preguntar si se continúa. Las pruebas Go focales repetidas,
 13 frontend, typecheck, build y lint pasaron localmente. Falta publicar este
 corte, resolver el hallazgo nuevo del ratchet y verificarlo en Wails real.
 
+Quinto avance de #1368: `8a4e5978` pasó el gate bloqueante completo (Go,
+frontend, lint y build Wails Windows), promoción de ruta, GitGuardian y ratchet
+de calidad (NEW=0, policy_changed=false). Una regresión posterior reprodujo
+que cancelar un perfil acababa sobrescribiendo `stopped` por `failed`, y Orbit
+ofrecía reintentar una cancelación voluntaria. El runner ahora emite el estado
+`stopped`; servicio y UI lo conservan y no muestran el toast de fallo. Tests
+Go y frontend focales y typecheck pasaron; el CI de este nuevo corte queda
+pendiente. Persisten las políticas de cancelación y salida de procesos,
+proceso ya abierto, autostart de una sola instancia y pruebas físicas. **NO-GO.**
+
 ## Hub
 
 Conservar estructura. Solo consistencia visual, estados reales, responsive,

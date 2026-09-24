@@ -138,7 +138,9 @@ func (s *Service) recordChainEvent(name string, data any) {
 	switch name {
 	case "launcher:chain:done":
 		terminal = true
-		if progress.Success {
+		if progress.Status == "stopped" || chain.Status == "stopped" {
+			chain.Status = "stopped"
+		} else if progress.Success {
 			chain.Status = "done"
 		} else {
 			chain.Status = "failed"

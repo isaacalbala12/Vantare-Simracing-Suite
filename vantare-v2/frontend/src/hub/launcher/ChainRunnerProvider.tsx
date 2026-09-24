@@ -38,8 +38,9 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
       store.handleStep((event as { data: ChainStepEvent }).data);
     });
     const offDone = Events.On("launcher:chain:done", (event: unknown) => {
-      const data = (event as { data: { profileId: string; success: boolean } }).data;
-      store.handleDone(data.profileId, data.success);
+      const data = (event as { data: { profileId: string; success: boolean; status?: string } }).data;
+      store.handleDone(data.profileId, data.success, data.status);
+      if (data.status === "stopped") return;
 
       const chain = store.getChain(data.profileId);
       const result = store.getLastResult(data.profileId);

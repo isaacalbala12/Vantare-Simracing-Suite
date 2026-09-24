@@ -134,6 +134,9 @@ func (r *ChainRunner) CancelAll() {
 func (r *ChainRunner) RunChain(ctx context.Context, profile app.LaunchProfile) {
 	chainStart := time.Now()
 	success := r.runChained(ctx, profile)
+	if ctx.Err() != nil {
+		success = false
+	}
 	durationMs := time.Since(chainStart).Milliseconds()
 
 	if err := RecordProfileAttempt(r.backend, profile.ID); err != nil {
@@ -145,9 +148,13 @@ func (r *ChainRunner) RunChain(ctx context.Context, profile app.LaunchProfile) {
 		}
 	}
 
+	status := "done"
+	if ctx.Err() != nil {
+		status = "stopped"
+	}
 	r.emit.Emit("launcher:chain:done", ChainProgress{
 		ProfileID: profile.ID,
-		Status:    "done",
+		Status:    status,
 		Success:   success,
 	})
 }

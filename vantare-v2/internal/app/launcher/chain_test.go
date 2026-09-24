@@ -482,6 +482,18 @@ func TestCancelChain(t *testing.T) {
 	}
 }
 
+func TestCancelledRunReportsStopped(t *testing.T) {
+	emit := &spyEmitter{}
+	runner := NewChainRunner(sampleBackend(), emit, stubChainExec)
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	runner.RunChain(ctx, app.LaunchProfile{ID: "creator", Steps: []app.LaunchStep{{AppID: "lmu"}}})
+	got, ok := emit.lastPayload("launcher:chain:done")
+	if !ok || got.Status != "stopped" || got.Success {
+		t.Fatalf("cancelled chain must report stopped, got %+v", got)
+	}
+}
+
 func TestCancelDoesNotPermitOverlappingRelaunch(t *testing.T) {
 	emit := &blockingStepEmitter{entered: make(chan struct{}), release: make(chan struct{})}
 	runner := NewChainRunner(sampleBackend(), emit, stubChainExec)

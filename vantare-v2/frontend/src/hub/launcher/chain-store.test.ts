@@ -72,6 +72,16 @@ describe("chain-store reducer", () => {
     expect(store.getLastResult("p2")).toBe("error");
   });
 
+  it("keeps a cancelled chain stopped and does not offer failure retry", () => {
+    const store = createChainStore();
+    store.handleStep({ profileId: "p", stepIndex: 0, appId: "lmu", status: "pending" });
+    store.handleDone("p", false, "stopped");
+    expect(store.getChain("p")?.overallStatus).toBe("stopped");
+    expect(store.getLastResult("p")).toBeUndefined();
+    store.handleStep({ profileId: "p", stepIndex: 0, appId: "lmu", status: "pending" });
+    expect(store.getChain("p")?.overallStatus).toBe("running");
+  });
+
   it("clears chain after 3s of done", () => {
     vi.useFakeTimers();
     const store = createChainStore();

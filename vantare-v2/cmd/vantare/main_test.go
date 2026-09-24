@@ -1968,6 +1968,24 @@ func TestQueuedLegacyAutostartFlagsLaunchOnlySelectedProfile(t *testing.T) {
 	}
 }
 
+func TestQueuedAutostartStillLaunchesOneProfileWhenMigrationFails(t *testing.T) {
+	svc, _ := newTestLauncherService(t)
+	profiles := []app.LaunchProfile{
+		{ID: "first", Name: "first", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true},
+		{ID: "second", Name: "second", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true},
+	}
+	if err := svc.RestoreProfiles(profiles); err != nil {
+		t.Fatal(err)
+	}
+	var launched []string
+	for _, id := range []string{"second", "first"} {
+		replayAutostartFlag(id, svc, func(selected string) { launched = append(launched, selected) })
+	}
+	if len(launched) != 1 || launched[0] != "first" {
+		t.Fatalf("legacy settings launched multiple profiles after failed migration: %v", launched)
+	}
+}
+
 func TestQueuedDeletedAutostartProfileStillReachesCleanup(t *testing.T) {
 	svc, _ := newTestLauncherService(t)
 	called := ""

@@ -1422,16 +1422,20 @@ func handleLaunchFlag(args []string, unregister func(string) error, svc *launche
 // replayAutostartFlag ignores stale Run flags queued before legacy settings
 // were reduced to a single enabled profile.
 func replayAutostartFlag(id string, svc *launcher.Service, launch func(string)) {
+	selected := ""
+	known := false
 	for _, profile := range svc.ListProfiles() {
 		if profile.ID == id {
-			if profile.LaunchOnWindowsStartup {
-				launch(id)
-			}
-			return
+			known = true
+		}
+		if selected == "" && profile.LaunchOnWindowsStartup {
+			selected = profile.ID
 		}
 	}
 	// The existing flag handler removes Run values for deleted profiles.
-	launch(id)
+	if !known || id == selected {
+		launch(id)
+	}
 }
 
 func main() {

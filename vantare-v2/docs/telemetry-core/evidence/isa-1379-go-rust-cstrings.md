@@ -36,6 +36,24 @@ Go. Si este único ahorro se mantuviera a 60 Hz, equivaldría aritméticamente a
 ~0,0011 puntos porcentuales de CPU normalizada sobre 16 procesadores lógicos.
 **Es una extrapolación, no CPU de proceso medida.**
 
+Como contraste adicional se ejecutaron procesos de benchmark separados con
+300.000 frames cada uno. El host leyó `TotalProcessorTime` de Windows al salir
+el proceso y muestreó su working set cada 100 ms. Go/Rust se intercalaron en
+tres rondas Go → Rust → Rust → Go. El control Go se ejecutó después en seis
+procesos separados, por lo que su CPU no es un pareo térmico estricto.
+
+| Proceso de benchmark | n | Mediana CPU para 300.000 frames | Pico de memoria |
+| --- | ---: | ---: | --- |
+| Go productivo | 6 | 3,36 s | variable, ~16–19 MB |
+| Go, una conversión | 6 | 2,70 s | variable, ~16–17 MB |
+| Rust + DLL | 6 | 2,30 s | variable, ~16–18 MB |
+
+Salidas crudas: `isa-1379-go-rust-process.csv` y
+`isa-1379-go-control-process.csv`. Esto mide CPU del **proceso de benchmark
+saturado**, no CPU de Vantare/Wails a 60 Hz. Los picos de memoria son demasiado
+variables y breves para atribuirles una ventaja de memoria. El ahorro medido
+permanece del orden de microsegundos por frame.
+
 ## Estado de la investigación
 
 La paridad y el tiempo de este subtramo son evidencia válida para el subtramo.

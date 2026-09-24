@@ -1,0 +1,7 @@
+"Round","Variant","CPUSeconds","PeakWorkingSetBytes","Benchmark"
+"1","GoSingleConversion","2,625","16601088","BenchmarkLMUCStringsGoSingleConversion-16    	  300000	      8480 ns/op	    2464 B/op	     133 allocs/op"
+"2","GoSingleConversion","2,71875","17104896","BenchmarkLMUCStringsGoSingleConversion-16    	  300000	      8416 ns/op	    2464 B/op	     133 allocs/op"
+"3","GoSingleConversion","2,78125","16588800","BenchmarkLMUCStringsGoSingleConversion-16    	  300000	      8704 ns/op	    2464 B/op	     133 allocs/op"
+"4","GoSingleConversion","2,671875","17014784","BenchmarkLMUCStringsGoSingleConversion-16    	  300000	      8585 ns/op	    2464 B/op	     133 allocs/op"
+"5","GoSingleConversion","2,65625","17166336","BenchmarkLMUCStringsGoSingleConversion-16    	  300000	      8433 ns/op	    2464 B/op	     133 allocs/op"
+"6","GoSingleConversion","2,8125","16703488","BenchmarkLMUCStringsGoSingleConversion-16    	  300000	      8524 ns/op	    2464 B/op	     133 allocs/op"

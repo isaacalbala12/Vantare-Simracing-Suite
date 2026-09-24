@@ -7,7 +7,9 @@ En worktree aislado sobre `origin/nightly@5c73013e`, el primer corte compara
 la validación de cadenas LMU con Go productivo, Go de una sola conversión y
 Rust invocado por DLL una vez por frame. Paridad en cuatro capturas sanitizadas;
 medianas @44 coches: 9.346 / 8.230 / 6.330 ns por frame, respectivamente.
-Esta medición no cubre la CPU de la aplicación completa ni demuestra una ventaja
+Procesos de benchmark separados a 300.000 frames: mediana de tiempo de CPU
+3,36 / 2,70 / 2,30 s, respectivamente. Esta medición no cubre la CPU de la
+aplicación completa ni demuestra una ventaja
 de Rust para todo Telemetry Core. Evidencia y salida cruda en
 `docs/telemetry-core/evidence/isa-1379-go-rust-cstrings.md` y `.txt`. Rust no está
 integrado en producción. Siguiente gate: tramo completo, paridad y CPU de

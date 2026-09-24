@@ -51,8 +51,10 @@ func (service *TelemetryAnalysisService) withCorrectionInput(ctx context.Context
 		ownedSession.mu.Unlock()
 		return ErrTelemetryAnalysisSessionUnknown
 	}
+	// Covers the measured 71-lap LMU recording while retaining a hard bound.
+	// Multi-value channels require a separate value budget from sample count.
 	input, readErr := telemetryanalysis.ReadCorrectionInput(operationCtx, ownedSession.parser, ownedSession.artifact, telemetryanalysis.CorrectionReadLimits{
-		PageRows: service.cfg.MaxPageRows, MaxSamples: 1_000_000, MaxValues: 1_000_000, MaxTextBytes: 16 << 20,
+		PageRows: service.cfg.MaxPageRows, MaxSamples: 1_250_000, MaxValues: 1_500_000, MaxTextBytes: 16 << 20,
 	})
 	// A resource limit or missing lap data does not invalidate the open reader.
 	retire := readErr != nil && !errors.Is(readErr, telemetryanalysis.ErrCorrectionReadLimit) && !errors.Is(readErr, telemetryanalysis.ErrInvalidLapValidityInput)

@@ -61,6 +61,22 @@ describe("ChainRunnerProvider + selective subscription", () => {
     expect(screen.queryByRole("alertdialog")).toBeNull();
   });
 
+  it("offers reuse and cancel for an external application already running", () => {
+    render(<ChainRunnerProvider><div>Hub</div></ChainRunnerProvider>);
+    act(() => {
+      wailsHandlers.get("launcher:decision:required")?.forEach((handler) => handler({ data: {
+        decisionId: "8", profileId: "creator", appId: "obs", kind: "alreadyRunning",
+        message: "la aplicación ya está abierta", actions: ["reuse", "cancel"], expiresAt: Date.now() + 120000,
+      } }));
+    });
+    expect(screen.getByRole("alertdialog").textContent).toContain("ya está abierta");
+    expect(screen.queryByRole("button", { name: "Reiniciar" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Reutilizar" }));
+    expect(Events.Emit).toHaveBeenCalledWith("launcher:decision:resolve", {
+      decisionId: "8", action: "reuse", remember: false,
+    });
+  });
+
   it("useChainState only re-renders when the subscribed profileId changes", () => {
     const p1Renders: number[] = [];
     const p2Renders: number[] = [];

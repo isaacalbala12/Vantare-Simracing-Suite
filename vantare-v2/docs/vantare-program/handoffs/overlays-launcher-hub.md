@@ -2438,6 +2438,28 @@ regresión del descubrimiento de iconos: workers concurrentes podían emitir
 el test falló antes del arreglo y pasó 10 repeticiones después. Go y vet
 focales pasan. Falta CI remoto del HEAD final y comprobación física.
 
+Séptimo avance de #1368 (candidato local, aún sin publicar): la cadena consulta
+los procesos Windows por ruta completa y hora de creación antes de aplicar
+`alreadyRunning`. Reutilizar no concede autoridad de cierre; reiniciar solo
+se ofrece si todas las instancias coinciden con identidades iniciadas y
+registradas por Vantare. La decisión `ask` pausa la cadena y permite recordar
+reutilizar o reiniciar. Los tests de proceso real y de decisiones pasan en
+Windows, pero todavía falta la prueba física de una aplicación externa.
+
+El paso `steam-uri` deja de dar éxito por abrir `rundll32`: exige conocer el
+ejecutable del juego, espera hasta 2 minutos para observar su proceso y
+devuelve fallo si no aparece. El PID del manejador URI no se presenta como
+PID del juego ni se registra como proceso propio. Discovery intenta resolver
+el ejecutable también desde la ubicación del registro; Steam puede figurar
+instalado sin que el perfil sea lanzable si falta esa ruta. Orbit mantiene el
+estado de lanzamiento durante la espera. Pruebas rojas antes del cambio para
+discovery/disponibilidad, Go focal y vet PASS; 16 pruebas frontend dirigidas,
+typecheck, build y lint PASS. `go test -race` no se completó por la opción de clang
+`-Qunused-arguments` que el `gcc.exe` local no admite. CI del corte actual
+pendiente. Siguen pendientes autostart de una instancia, políticas
+de cancelación/salida/reintentos y revisión física Wails/Steam/LMU/instalador.
+**NO-GO**, sin merge, promoción ni release.
+
 Revisión de ciclo de vida: el reinicio ya no ata la aplicación externa al
 contexto de Vantare; cerrar el Hub no la termina implícitamente cuando debe
 quedar abierta. El cierre explícito deja de usar `taskkill /T`, que podía

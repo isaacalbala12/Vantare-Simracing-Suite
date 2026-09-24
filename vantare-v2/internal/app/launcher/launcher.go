@@ -118,6 +118,20 @@ func NewService(settings LauncherSettingsBackend, emit Emitter, execFn execLaunc
 	return s
 }
 
+// EnableRunningProcessDetection connects Windows process discovery to profile
+// execution. It is called before the production service starts any chain.
+func (s *Service) EnableRunningProcessDetection() {
+	s.chain.findRunning = FindRunningByExecutable
+	s.chain.ownedProcess = s.OwnedProcessIdentity
+	s.chain.closeOwned = func(ctx context.Context, appID string, identity ProcessIdentity) error {
+		if err := CloseProcess(ctx, DefaultProcessInspector(), identity); err != nil {
+			return err
+		}
+		s.ForgetStartedProcess(appID, identity.PID)
+		return nil
+	}
+}
+
 // SetDiscoverFunc overrides the discovery source used by DiscoverApps. A nil
 // value restores the default (Discover). It exists only to let handlers stay
 // deterministic in tests without touching the Windows registry or disk.
@@ -557,7 +571,7 @@ func (s *Service) RetryFailedProfile(ctx context.Context, profileID string) erro
 func (s *Service) ResolveDecision(id, action string, remember bool) (DecisionRequest, bool, error) {
 	remembered := false
 	request, err := s.chain.resolveDecisionWith(id, action, func(request DecisionRequest) error {
-		if !remember || request.Kind != "failure" {
+		if !remember || (request.Kind != "failure" && request.Kind != "alreadyRunning") || action == "cancel" {
 			return nil
 		}
 		for _, profile := range s.settings.GetLauncherProfiles() {
@@ -565,10 +579,16 @@ func (s *Service) ResolveDecision(id, action string, remember bool) (DecisionReq
 				continue
 			}
 			profile.Policy = app.NormalizeLaunchPolicy(profile.Policy)
-			if action == "continue" {
-				profile.Policy.Failure = app.FailureContinue
+			if request.Kind == "failure" {
+				if action == "continue" {
+					profile.Policy.Failure = app.FailureContinue
+				} else {
+					profile.Policy.Failure = app.FailureStop
+				}
+			} else if action == "reuse" {
+				profile.Policy.AlreadyRunning = app.AlreadyRunningReuse
 			} else {
-				profile.Policy.Failure = app.FailureStop
+				profile.Policy.AlreadyRunning = app.AlreadyRunningRestart
 			}
 			if err := s.SaveProfile(profile); err != nil {
 				return err

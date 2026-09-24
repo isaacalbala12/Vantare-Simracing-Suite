@@ -195,6 +195,25 @@ describe("chain-store reducer", () => {
     vi.useRealTimers();
   });
 
+  it("keeps Steam launch pending while the game process is being verified", () => {
+    vi.useFakeTimers();
+    const store = createChainStore();
+    store.startWatchdog();
+    store.handleStep({
+      profileId: "p1",
+      stepIndex: 0,
+      appId: "lmu",
+      status: "launching",
+      delaySeconds: 120,
+    });
+    vi.advanceTimersByTime(125000);
+    expect(store.getChain("p1")?.overallStatus).toBe("running");
+    vi.advanceTimersByTime(30000);
+    expect(store.getChain("p1")?.overallStatus).toBe("error");
+    store.shutdown();
+    vi.useRealTimers();
+  });
+
   it("keeps a chain active while a user decision is pending", () => {
     vi.useFakeTimers();
     const store = createChainStore();

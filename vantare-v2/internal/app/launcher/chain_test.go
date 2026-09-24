@@ -109,7 +109,7 @@ func stubSlowExec(name string, args ...string) *exec.Cmd {
 
 func sampleApps() map[string]app.LauncherAppEntry {
 	return map[string]app.LauncherAppEntry{
-		"lmu": {ID: "lmu", DisplayName: "Le Mans Ultimate", LaunchMethod: "steam-uri", SteamAppID: 2399420},
+		"lmu": {ID: "lmu", DisplayName: "Le Mans Ultimate", LaunchMethod: "executable", ExecutablePath: `C:\Windows\System32\cmd.exe`},
 		// ExecutablePath points at a binary that exists on Windows so fileExists
 		// passes; the actual spawn is replaced by stubChainExec (cmd /c exit 0).
 		"obs": {ID: "obs", DisplayName: "OBS Studio", LaunchMethod: "executable", ExecutablePath: `C:\Windows\System32\cmd.exe`},
@@ -173,6 +173,27 @@ func TestChainFailurePolicyControlsContinuation(t *testing.T) {
 	runner.RunChain(context.Background(), profile)
 	if emit.count("launcher:chain:step") < 4 {
 		t.Fatalf("continue policy should visit both steps, got %d events", emit.count("launcher:chain:step"))
+	}
+}
+
+func TestAlreadyRunningReuseDoesNotLaunchOrClaimOwnership(t *testing.T) {
+	emit := &spyEmitter{}
+	launches := 0
+	runner := NewChainRunner(sampleBackend(), emit, func(string, ...string) *exec.Cmd {
+		launches++
+		return stubChainExec("")
+	})
+	runner.findRunning = func(context.Context, string) ([]ProcessInfo, error) {
+		return []ProcessInfo{{PID: 42, ExecutablePath: `C:\Windows\System32\cmd.exe`, CreationTime: 100, Alive: true}}, nil
+	}
+	profile := app.LaunchProfile{ID: "creator", Policy: &app.LaunchPolicy{AlreadyRunning: app.AlreadyRunningReuse}, Steps: []app.LaunchStep{{AppID: "obs"}}}
+	runner.RunChain(context.Background(), profile)
+	if launches != 0 {
+		t.Fatalf("reuse must not spawn another executable, got %d launches", launches)
+	}
+	step, ok := emit.lastPayload("launcher:chain:step")
+	if !ok || step.Status != "done" || step.Pid != 42 || step.ProcessPath != "" || step.CreationTime != 0 {
+		t.Fatalf("reuse must report existing PID without claiming ownership, got %+v", step)
 	}
 }
 
@@ -624,7 +645,7 @@ func TestChainRunnerCancellationStopsAtStepBoundary(t *testing.T) {
 	profile := app.LaunchProfile{
 		ID: "creator", Name: "Creador de Contenido",
 		Steps: []app.LaunchStep{
-			{AppID: "lmu", Delay: 0},  // immediate (steam-uri → instant done)
+			{AppID: "lmu", Delay: 0},  // immediate controlled executable
 			{AppID: "obs", Delay: 10}, // long delay → we cancel before it launches
 		},
 	}

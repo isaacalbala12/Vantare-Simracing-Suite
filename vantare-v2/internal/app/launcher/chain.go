@@ -20,13 +20,18 @@ import (
 // executable, and records telemetry (RecordProfileAttempt always,
 // RecordProfileSuccess only on full success).
 type ChainRunner struct {
-	backend          ProfilesBackend // reads apps + profiles; used for telemetry writes
-	exec             execLauncher    // injectable for tests
-	emit             Emitter
-	mu               sync.Mutex
-	active           map[string]*activeChain // profileID -> running chain
-	nextDecision     uint64
-	pendingDecisions map[string]pendingDecision
+	backend             ProfilesBackend // reads apps + profiles; used for telemetry writes
+	exec                execLauncher    // injectable for tests
+	emit                Emitter
+	findRunning         func(context.Context, string) ([]ProcessInfo, error)
+	ownedProcess        func(string, int) (ProcessIdentity, bool)
+	closeOwned          func(context.Context, string, ProcessIdentity) error
+	steamReadyTimeout   time.Duration
+	processPollInterval time.Duration
+	mu                  sync.Mutex
+	active              map[string]*activeChain // profileID -> running chain
+	nextDecision        uint64
+	pendingDecisions    map[string]pendingDecision
 }
 
 type activeChain struct {
@@ -41,11 +46,13 @@ func NewChainRunner(backend ProfilesBackend, emit Emitter, execFn execLauncher) 
 		execFn = defaultExecLauncher
 	}
 	return &ChainRunner{
-		backend:          backend,
-		exec:             execFn,
-		emit:             emit,
-		active:           map[string]*activeChain{},
-		pendingDecisions: map[string]pendingDecision{},
+		backend:             backend,
+		exec:                execFn,
+		emit:                emit,
+		active:              map[string]*activeChain{},
+		pendingDecisions:    map[string]pendingDecision{},
+		steamReadyTimeout:   2 * time.Minute,
+		processPollInterval: 500 * time.Millisecond,
 	}
 }
 
@@ -72,6 +79,7 @@ type chainStepResult struct {
 	pid      int
 	path     string
 	created  uint64
+	message  string
 }
 
 // livenessResult carries the outcome of the liveness probe.
@@ -227,18 +235,23 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 
 		// Launch the app.
 		startedAt := time.Now()
-		result := chainStepResult{}
-		attempts := RetryAttempts(policy.Retry, policy.MaxRetries)
-		for attempt := 0; ; attempt++ {
-			result = r.launchAndProbe(ctx, entry, i, step, profile, startedAt)
-			if result.success || attempt >= attempts || ctx.Err() != nil {
-				break
+		result, handled, abort := r.resolveRunningStep(ctx, profile, entry)
+		if abort {
+			return false
+		}
+		if !handled {
+			attempts := RetryAttempts(policy.Retry, policy.MaxRetries)
+			for attempt := 0; ; attempt++ {
+				result = r.launchAndProbe(ctx, entry, i, step, profile, startedAt)
+				if result.success || attempt >= attempts || ctx.Err() != nil {
+					break
+				}
 			}
 		}
 
 		finishedAt := time.Now()
 		stepStatus := "done"
-		msg := ""
+		msg := result.message
 		if !result.success {
 			stepStatus = "failed"
 			if result.exitCode != 0 {
@@ -269,9 +282,9 @@ func (r *ChainRunner) runChained(ctx context.Context, profile app.LaunchProfile)
 	return allSucceeded
 }
 
-// launchAndProbe starts the app and emits the "launching" event. For
-// steam-uri it returns success immediately without probing. For executable
-// it runs a liveness probe that waits up to 3s for the process to exit.
+// launchAndProbe starts the app and emits the "launching" event. Steam URI
+// launches wait for the observed game process; executable launches use a
+// short liveness probe after process creation.
 func (r *ChainRunner) launchAndProbe(ctx context.Context, entry app.LauncherAppEntry, i int, step app.LaunchStep, profile app.LaunchProfile, startedAt time.Time) chainStepResult {
 	if runtime.GOOS != "windows" {
 		return chainStepResult{success: false}
@@ -279,6 +292,9 @@ func (r *ChainRunner) launchAndProbe(ctx context.Context, entry app.LauncherAppE
 
 	switch entry.LaunchMethod {
 	case "steam-uri":
+		if entry.ExecutablePath == "" || !fileExists(entry.ExecutablePath) || r.findRunning == nil {
+			return chainStepResult{message: "no se encontró el ejecutable del juego para verificar Steam"}
+		}
 		uri := fmt.Sprintf("steam://run/%d", entry.SteamAppID)
 		cmd := r.exec("rundll32.exe", "url.dll,FileProtocolHandler", uri)
 		if cmd == nil {
@@ -287,16 +303,21 @@ func (r *ChainRunner) launchAndProbe(ctx context.Context, entry app.LauncherAppE
 		if err := cmd.Start(); err != nil {
 			return chainStepResult{success: false}
 		}
-		pid := 0
 		if cmd.Process != nil {
-			pid = cmd.Process.Pid
+			if err := cmd.Process.Release(); err != nil {
+				return chainStepResult{message: fmt.Sprintf("no se pudo liberar el enlace de Steam: %v", err)}
+			}
 		}
 		r.emit.Emit("launcher:chain:step", ChainProgress{
 			ProfileID: profile.ID, StepIndex: i, AppID: step.AppID,
-			Status: "launching", StartedAt: startedAt.UnixMilli(), Pid: pid,
+			Status: "launching", StartedAt: startedAt.UnixMilli(),
+			DelaySeconds: int(r.steamReadyTimeout.Seconds()),
 		})
-		go func(c *exec.Cmd) { _ = c.Wait() }(cmd) // detach
-		return chainStepResult{success: true, pid: pid}
+		info, err := r.waitForSteamReady(ctx, entry.ExecutablePath)
+		if err != nil {
+			return chainStepResult{message: err.Error()}
+		}
+		return chainStepResult{success: true, pid: info.PID}
 
 	case "executable":
 		if !fileExists(entry.ExecutablePath) {

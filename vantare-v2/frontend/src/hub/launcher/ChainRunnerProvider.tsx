@@ -9,10 +9,18 @@ type LauncherDecision = {
   decisionId: string;
   profileId: string;
   appId: string;
-  kind: "failure";
+  kind: "failure" | "alreadyRunning";
   message: string;
   actions: string[];
   expiresAt: number;
+};
+
+const decisionLabels: Record<string, string> = {
+  continue: "Continuar",
+  stop: "Detener perfil",
+  reuse: "Reutilizar",
+  restart: "Reiniciar",
+  cancel: "Cancelar perfil",
 };
 
 export function ChainRunnerProvider({ children }: { children: ReactNode }) {
@@ -69,7 +77,7 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
     });
     const offDecision = Events.On("launcher:decision:required", (event: unknown) => {
       const request = (event as { data: LauncherDecision }).data;
-      if (!request?.decisionId || request.kind !== "failure") return;
+      if (!request?.decisionId || (request.kind !== "failure" && request.kind !== "alreadyRunning")) return;
       store.handleDecisionRequired(request.profileId, request.expiresAt);
       setDecisions((current) => current.some((item) => item.decisionId === request.decisionId)
         ? current : [...current, request]);
@@ -96,12 +104,12 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const activeDecision = decisions[0];
-  const resolveDecision = (action: "continue" | "stop") => {
+  const resolveDecision = (action: string) => {
     if (!activeDecision) return;
     Events.Emit("launcher:decision:resolve", {
       decisionId: activeDecision.decisionId,
       action,
-      remember: rememberDecision,
+      remember: rememberDecision && action !== "cancel",
     });
     setDecisions((current) => current.slice(1));
     setRememberDecision(false);
@@ -122,15 +130,28 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
       {activeDecision ? (
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-md rounded-orbit border border-orbit-ember/40 bg-orbit-surface-1 p-5 shadow-2xl" role="alertdialog" aria-modal="true" aria-labelledby="launcher-decision-title">
-            <h2 id="launcher-decision-title" className="text-base text-orbit-ink">No se pudo iniciar {activeDecision.appId}</h2>
-            <p className="mt-2 text-sm text-orbit-ink-3">Perfil {activeDecision.profileId}. {activeDecision.message || "El paso falló."} ¿Continuar con las demás aplicaciones?</p>
+            <h2 id="launcher-decision-title" className="text-base text-orbit-ink">
+              {activeDecision.kind === "alreadyRunning" ? `${activeDecision.appId} ya está abierta` : `No se pudo iniciar ${activeDecision.appId}`}
+            </h2>
+            <p className="mt-2 text-sm text-orbit-ink-3">
+              Perfil {activeDecision.profileId}. {activeDecision.message || "El paso falló."}
+              {activeDecision.kind === "failure" ? " ¿Continuar con las demás aplicaciones?" : " ¿Qué quieres hacer?"}
+            </p>
             <label className="mt-4 flex items-center gap-2 text-sm text-orbit-ink-3">
               <input type="checkbox" checked={rememberDecision} onChange={(event) => setRememberDecision(event.target.checked)} />
               Recordar esta decisión para el perfil
             </label>
             <div className="mt-5 flex justify-end gap-2">
-              <button type="button" className="rounded-lg px-3 py-2 text-sm text-orbit-ink-3" onClick={() => resolveDecision("stop")}>Detener perfil</button>
-              <button type="button" className="rounded-lg bg-orbit-ember px-3 py-2 text-sm text-white" onClick={() => resolveDecision("continue")}>Continuar</button>
+              {activeDecision.actions.map((action) => (
+                <button
+                  key={action}
+                  type="button"
+                  className={action === "continue" || action === "reuse" ? "rounded-lg bg-orbit-ember px-3 py-2 text-sm text-white" : "rounded-lg px-3 py-2 text-sm text-orbit-ink-3"}
+                  onClick={() => resolveDecision(action)}
+                >
+                  {decisionLabels[action] ?? action}
+                </button>
+              ))}
             </div>
           </div>
         </div>

@@ -25,6 +25,6 @@ func DeriveAvailability(e DetectionEvidence) Availability {
 		Catalogued: e.Catalogued,
 		Found:      e.Found,
 		Installed:  installed,
-		Launchable: installed,
+		Launchable: e.ExecutableExists,
 	}
 }

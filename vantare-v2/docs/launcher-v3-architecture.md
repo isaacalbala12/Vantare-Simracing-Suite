@@ -20,7 +20,7 @@ Cada app mantiene cuatro hechos independientes:
 - `catalogued`: existe en el catálogo oficial.
 - `found`: se encontró evidencia en registro, ruta conocida, Steam o override.
 - `installed`: existe un ejecutable válido o instalación Steam válida.
-- `launchable`: la app tiene un método v3 válido y puede lanzarse.
+- `launchable`: se ha encontrado su ejecutable y el launcher puede comprobar el arranque. Una instalación Steam sin ruta verificable conserva `installed`, pero no `launchable`.
 
 `detected` se conserva únicamente para compatibilidad de settings antiguos.
 
@@ -34,7 +34,7 @@ Los perfiles se separan en `vantareProfiles` y `userProfiles`. El modo básico e
 
 Las políticas persistidas son `ask`, `reuse`/`restart`, `stop`/`continue`, `leave`/`close-started` y `ask`/`failed`/`all`, con `maxRetries` limitado a 3. Los argumentos se tokenizan sin shell y se rechazan NUL o comillas sin cerrar.
 
-La identidad de proceso usa PID y ruta normalizada cuando están disponibles, con nombre de proceso como fallback. Close/restart exige identidad confirmada; nunca mata por nombre únicamente.
+La identidad de proceso usa PID, ruta normalizada y hora de creación observados. Close/restart exige los tres datos; nunca mata por nombre o PID únicamente. Un proceso ya abierto fuera de Vantare puede reutilizarse, pero no adquiere autoridad de cierre. El enlace de Steam solo inicia la solicitud: la cadena espera a observar el ejecutable del juego antes de marcar el paso como completado.
 
 ## Eventos vigentes
 

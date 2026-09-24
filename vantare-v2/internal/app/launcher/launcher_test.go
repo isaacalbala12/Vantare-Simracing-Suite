@@ -265,6 +265,40 @@ func TestProfilesCRUDRoundTrip(t *testing.T) {
 	}
 }
 
+func TestAlreadyRunningDecisionCanBeRemembered(t *testing.T) {
+	backend := newBackendWithLMU()
+	backend.profiles = []app.LaunchProfile{{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}}}}
+	emit := &decisionEmitter{requests: make(chan DecisionRequest, 1)}
+	svc := NewService(backend, emit, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	done := make(chan string, 1)
+	go func() {
+		done <- svc.chain.requestDecision(ctx, "creator", "lmu", "alreadyRunning", "already open", []string{"reuse", "cancel"})
+	}()
+	var request DecisionRequest
+	select {
+	case request = <-emit.requests:
+	case <-ctx.Done():
+		t.Fatal("running decision was not requested")
+	}
+	_, remembered, err := svc.ResolveDecision(request.DecisionID, "reuse", true)
+	if err != nil || !remembered {
+		t.Fatalf("remembered decision failed: remembered=%v err=%v", remembered, err)
+	}
+	select {
+	case got := <-done:
+		if got != "reuse" {
+			t.Fatalf("chain received %q", got)
+		}
+	case <-ctx.Done():
+		t.Fatal("running decision did not resume")
+	}
+	if got := app.NormalizeLaunchPolicy(svc.ListProfiles()[0].Policy).AlreadyRunning; got != app.AlreadyRunningReuse {
+		t.Fatalf("remembered running policy = %q", got)
+	}
+}
+
 func TestLaunchProfileRejectsEmptyChain(t *testing.T) {
 	backend := newBackendWithLMU()
 	backend.profiles = []app.LaunchProfile{{ID: "empty", Name: "Empty"}}

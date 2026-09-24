@@ -160,7 +160,7 @@ export function createChainStore() {
       const steps = existing && !isRelaunch ? [...existing.steps] : [];
       steps[ev.stepIndex] = applyStep(steps[ev.stepIndex], ev);
       const now = ev.startedAt ?? ev.finishedAt ?? Date.now();
-      const expectedIdleMs = ev.status === "pending"
+      const expectedIdleMs = ev.status === "pending" || ev.status === "launching"
         ? STALE_MS + Math.max(0, ev.delaySeconds ?? 0) * 1000
         : STALE_MS;
       if (isRelaunch) {

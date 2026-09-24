@@ -2554,6 +2554,7 @@ func main() {
 		centerEmitter{downstream: emitter, center: notifyCenter, settings: settingsSvc},
 		exec.Command,
 	)
+	launcherSvc.EnableRunningProcessDetection()
 	for _, profile := range launcherSvc.ListProfiles() {
 		if err := syncLauncherAutostart(profile.ID, profile.LaunchOnWindowsStartup); err != nil {
 			log.Printf("launcher: startup autostart reconciliation for %q failed: %v", profile.ID, err)

@@ -54,6 +54,22 @@ func TestMatchKnownAppsResolvesExecutable(t *testing.T) {
 	}
 }
 
+func TestMatchKnownSteamAppResolvesGameExecutable(t *testing.T) {
+	dir := t.TempDir()
+	gameDir := filepath.Join(dir, "Bin64")
+	if err := os.MkdirAll(gameDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	exe := filepath.Join(gameDir, "Le Mans Ultimate.exe")
+	if err := os.WriteFile(exe, []byte("MZ"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got := matchKnownApps([]discoveredCandidate{{DisplayName: "Le Mans Ultimate", InstallLocation: dir}})
+	if got["lmu"].ExecutablePath != exe {
+		t.Fatalf("Steam game must have a verifiable executable: %+v", got["lmu"])
+	}
+}
+
 func TestMatchKnownAppsRegistryWithoutExecutableIsFoundButNotInstalled(t *testing.T) {
 	got := matchKnownApps([]discoveredCandidate{{DisplayName: "SimHub"}})
 

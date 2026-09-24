@@ -1012,8 +1012,8 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
               </dl>
 
               {selected.source.notes?.length ? (
-                <section aria-label={t("races.detail.officialNotes")} className="orbit-races__advisories">
-                  <h4>{t("races.detail.officialNotes")}</h4>
+                <section aria-label={t("races.detail.officialNotes")}>
+                  <h4 className="orbit-eyebrow">{t("races.detail.officialNotes")}</h4>
                   {selected.source.notes.map((note, index) => <Note key={`${index}:${note}`}>{officialNoteParts(note)}</Note>)}
                 </section>
               ) : null}

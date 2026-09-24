@@ -736,17 +736,6 @@
   color: var(--orbit-ink-2);
 }
 
-.orbit-races__advisories {
-  display: grid;
-  gap: 8px;
-}
-
-.orbit-races__advisories h4 {
-  margin: 0;
-  font-size: var(--orbit-fs-secondary);
-  color: var(--orbit-ink-2);
-}
-
 .orbit-races__starts {
   display: flex;
   flex-wrap: wrap;

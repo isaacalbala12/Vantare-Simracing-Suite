@@ -2305,7 +2305,28 @@ abortar ante fallo; cerrar solo procesos iniciados por Vantare; perfil LMU
 externo opt-in; autostart una vez; módulos con estado; estadísticas locales;
 catálogo firmado/cacheado.
 
-Debe auditarse qué commits están realmente integrados antes de nuevo trabajo.
+### Auditoría de lanzamiento · 2026-09-24
+
+[Issue #1368](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1368)
+revisa el `origin/nightly` verificado en `6df485fe`. Estado: **no apto para
+lanzamiento** hasta cerrar sus gates. La pantalla Orbit manda el perfil dentro
+de `{profile: ...}`, pero Wails lo deserializa como perfil directo; crear y
+guardar fallan y `launcher:error` no se muestra. El ejecutor no aplica las
+políticas de proceso ya abierto, cancelación, salida ni primera espera. El
+comando de decisión solo responde con un evento y no gobierna la cadena. El
+cierre/reinicio comprueba el PID sin confirmar ruta o nombre reales. Atajo e
+inicio con Windows se editan, pero el guardado Orbit no activa sus handlers;
+el gestor de atajos tampoco conecta una pulsación con el lanzamiento. La
+cancelación borra la exclusión mutua antes de terminar la cadena.
+
+Evidencia: `go test ./internal/app/launcher/...` y `go test ./cmd/vantare/...`
+pasaron; 108 pruebas frontend enfocadas y `pnpm build` pasaron. `pnpm test`
+global y `go test -race` amplio no son gates válidos en esta máquina por
+agotamiento de memoria/paginación; race también encontró un compilador C
+incompatible. No hubo prueba física Wails/Steam/LMU ni del instalador. El
+siguiente corte debe reproducir y corregir estos fallos, pasar CI y comprobar
+en Windows real creación, ejecución, errores, recuperación, procesos, atajos,
+autostart y las aplicaciones comprometidas para el lanzamiento.
 
 ## Hub
 
@@ -2318,7 +2339,7 @@ y recientes.
 - Overlay: revisar/rebasar PR #195, corregir ISA-311, congelar alcance el 14 de
   agosto y preparar RC0 Nightly para el 19 según el plan ISA-315. La promoción
   a Testers requiere issue y aprobación propias; no abrir otro reader LMU.
-- Launcher: crear LAU-AUDIT antes de nuevas features.
+- Launcher: resolver los gates de #1368 antes de nuevas features o promoción.
 - Hub: crear HUB-POLISH después de characterization visual.
 - Checks: harness real, Playwright, transparencias, responsive, capturas,
   frontend test/build; no regenerar baselines para esconder fallos.

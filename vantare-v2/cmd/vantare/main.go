@@ -1132,14 +1132,18 @@ func handleRestartLauncherApp(id string, pid int, svc *launcher.Service, emitter
 	if err == nil && !ok {
 		err = fmt.Errorf("launcher: app %q not found", id)
 	}
+	var restarted launcher.ProcessIdentity
 	if err == nil {
-		err = launcher.RestartProcess(ctx, launcher.DefaultProcessInspector(), identity, entry.ExecutablePath, nil)
+		restarted, err = launcher.RestartProcess(ctx, launcher.DefaultProcessInspector(), identity, entry.ExecutablePath, nil)
 	}
 	if err != nil {
 		emitter.Emit("launcher:error", map[string]any{"code": "process_restart_failed", "message": err.Error(), "appId": id})
 		return
 	}
 	svc.ForgetStartedProcess(id, pid)
+	if restarted.PID > 0 && !svc.RememberStartedProcess(id, restarted) {
+		log.Printf("launcher: restarted process identity could not be retained for %q", id)
+	}
 	handleLauncherSnapshot(svc, emitter)
 }
 

@@ -70,6 +70,10 @@ func TestCloseProcessRequiresConfirmedIdentity(t *testing.T) {
 	if err := CloseProcess(context.Background(), fakeInspector{}, ProcessIdentity{}); err == nil {
 		t.Fatal("close must reject an identity without PID")
 	}
+	inspector := &countingInspector{}
+	if err := CloseProcess(context.Background(), inspector, ProcessIdentity{PID: 42, ExecutablePath: `C:\Apps\OBS\obs.exe`}); err == nil || inspector.calls != 0 {
+		t.Fatalf("close without creation time must fail before inspecting: err=%v calls=%d", err, inspector.calls)
+	}
 }
 
 func TestCloseProcessRejectsRecycledPIDWithSameExecutable(t *testing.T) {
@@ -83,7 +87,7 @@ func TestCloseProcessRejectsRecycledPIDWithSameExecutable(t *testing.T) {
 
 func TestRestartRejectsMissingExecutableBeforeInspectingOrClosing(t *testing.T) {
 	inspector := &countingInspector{}
-	err := RestartProcess(context.Background(), inspector, ProcessIdentity{PID: 42, ExecutablePath: `C:\Apps\OBS\obs.exe`}, "", nil)
+	_, err := RestartProcess(context.Background(), inspector, ProcessIdentity{PID: 42, ExecutablePath: `C:\Apps\OBS\obs.exe`}, "", nil)
 	if err == nil || inspector.calls != 0 {
 		t.Fatalf("invalid restart must fail before touching process: err=%v calls=%d", err, inspector.calls)
 	}

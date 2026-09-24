@@ -117,6 +117,19 @@ func TestDiscoverAppsMergesWithoutLegacyEvents(t *testing.T) {
 	}
 }
 
+func TestDiscoveryProgressDoesNotRegressWhenWorkersFinishOutOfOrder(t *testing.T) {
+	emitter := &spyEmitter{}
+	svc := NewService(newBackendWithLMU(), emitter, nil)
+	svc.BeginDiscovery()
+	svc.emitDiscoveryProgress(81, DiscoveryResolvingIcons, true, nil)
+	svc.emitDiscoveryProgress(78, DiscoveryResolvingIcons, true, nil)
+	emitter.mu.Lock()
+	defer emitter.mu.Unlock()
+	if got := emitter.discovery[1].Progress; got != 81 {
+		t.Fatalf("later worker regressed progress to %d", got)
+	}
+}
+
 func TestServiceSnapshotTracksActiveChainProgress(t *testing.T) {
 	backend := newBackendWithLMU()
 	svc := NewService(backend, &spyEmitter{}, nil)
@@ -167,6 +180,15 @@ func TestServiceOnlyOwnsPIDsFromItsLaunchEvents(t *testing.T) {
 	svc.ForgetStartedProcess("obs", 42)
 	if svc.OwnsStartedProcess("obs", 42) {
 		t.Fatal("closed process must lose ownership")
+	}
+	if svc.RememberStartedProcess("obs", ProcessIdentity{PID: 55, ExecutablePath: `C:\Other\obs64.exe`, CreationTime: 500}) {
+		t.Fatal("restart with an unrelated executable must not become owned")
+	}
+	if svc.RememberStartedProcess("obs", ProcessIdentity{PID: 55, ExecutablePath: `C:\Apps\OBS\obs64.exe`}) {
+		t.Fatal("restart without a creation time must not become owned")
+	}
+	if !svc.RememberStartedProcess("obs", ProcessIdentity{PID: 55, ExecutablePath: `C:\Apps\OBS\obs64.exe`, CreationTime: 500}) || !svc.OwnsStartedProcess("obs", 55) {
+		t.Fatal("a confirmed restarted process must remain controllable")
 	}
 }
 

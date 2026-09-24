@@ -2429,6 +2429,15 @@ Cerrar o reiniciar revoca la identidad anterior. Tests Go focales pasaron en
 Windows. Falta CI del nuevo HEAD, prueba física de cierre/reinicio y resolver
 el comportamiento de procesos al cancelar o salir. **NO-GO.**
 
+Un reinicio explícito ahora observa la identidad de la instancia nueva y la
+registra para permitir un cierre posterior, solo si ruta y hora de creación
+coinciden con el catálogo. Si no puede observarla, la instancia nueva no
+adquiere autoridad de cierre. Durante las pruebas se reprodujo además una
+regresión del descubrimiento de iconos: workers concurrentes podían emitir
+81 % y después 78 %. El servicio serializa y mantiene monótono el progreso;
+el test falló antes del arreglo y pasó 10 repeticiones después. Go y vet
+focales pasan. Falta CI remoto del HEAD final y comprobación física.
+
 ## Hub
 
 Conservar estructura. Solo consistencia visual, estados reales, responsive,

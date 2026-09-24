@@ -40,19 +40,28 @@ func CloseProcess(ctx context.Context, inspector ProcessInspector, identity Proc
 	return terminateVerifiedProcess(ctx, identity)
 }
 
-func RestartProcess(ctx context.Context, inspector ProcessInspector, identity ProcessIdentity, executable string, args []string) error {
+func RestartProcess(ctx context.Context, inspector ProcessInspector, identity ProcessIdentity, executable string, args []string) (ProcessIdentity, error) {
 	if executable == "" || identity.ExecutablePath == "" || NormalizeExecutablePath(executable) != NormalizeExecutablePath(identity.ExecutablePath) {
-		return fmt.Errorf("launcher: restart requires the confirmed executable path")
+		return ProcessIdentity{}, fmt.Errorf("launcher: restart requires the confirmed executable path")
 	}
 	if err := CloseProcess(ctx, inspector, identity); err != nil {
-		return err
+		return ProcessIdentity{}, err
 	}
 	cmd := exec.CommandContext(ctx, executable, args...)
 	cmd.Dir = filepath.Dir(executable)
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("launcher: restart process: %w", err)
+		return ProcessIdentity{}, fmt.Errorf("launcher: restart process: %w", err)
 	}
-	return nil
+	go func() { _ = cmd.Wait() }()
+	if cmd.Process == nil {
+		return ProcessIdentity{}, nil
+	}
+	newIdentity := ProcessIdentity{PID: cmd.Process.Pid, ExecutablePath: executable}
+	info, ok := inspector.Find(ctx, newIdentity)
+	if !ok || !ProcessIsReady(newIdentity, info) || info.CreationTime == 0 {
+		return ProcessIdentity{}, nil
+	}
+	return ProcessIdentity{PID: info.PID, ExecutablePath: info.ExecutablePath, CreationTime: info.CreationTime}, nil
 }
 
 func NormalizeExecutablePath(path string) string {

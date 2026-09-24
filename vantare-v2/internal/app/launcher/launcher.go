@@ -40,21 +40,23 @@ const defaultChainCleanupDelay = 30 * time.Second
 // shared mutable state is wrapped by ChainRunner (its own mutex) and every
 // LauncherSettingsBackend is the slice of SettingsService the launcher needs.
 type Service struct {
-	settings           LauncherSettingsBackend
-	emit               Emitter
-	chain              *ChainRunner
-	launchMu           sync.Mutex
-	revision           atomic.Uint64
-	activeMu           sync.Mutex
-	active             map[string]LauncherActiveChain
-	owned              map[int]ownedProcess
-	retryStepIndices   map[string][]int
-	chainCleanupDelay  time.Duration
-	chainCleanupTimers map[string]*time.Timer
-	discoveryMu        sync.RWMutex
-	discovery          LauncherDiscovery
-	discoveryRunMu     sync.Mutex
-	discover           func() map[string]app.LauncherAppEntry
+	settings              LauncherSettingsBackend
+	emit                  Emitter
+	chain                 *ChainRunner
+	launchMu              sync.Mutex
+	revision              atomic.Uint64
+	activeMu              sync.Mutex
+	active                map[string]LauncherActiveChain
+	owned                 map[int]ownedProcess
+	retryStepIndices      map[string][]int
+	chainCleanupDelay     time.Duration
+	chainCleanupTimers    map[string]*time.Timer
+	discoveryMu           sync.RWMutex
+	discovery             LauncherDiscovery
+	discoveryProgressMu   sync.Mutex
+	lastDiscoveryProgress int
+	discoveryRunMu        sync.Mutex
+	discover              func() map[string]app.LauncherAppEntry
 }
 
 type ownedProcess struct {
@@ -237,6 +239,22 @@ func (s *Service) OwnedProcessIdentity(appID string, pid int) (ProcessIdentity, 
 	return owned.identity, true
 }
 
+// RememberStartedProcess records a confirmed process created by an explicit
+// restart. A changed app path or incomplete identity cannot grant close rights.
+func (s *Service) RememberStartedProcess(appID string, identity ProcessIdentity) bool {
+	if identity.PID <= 0 || identity.CreationTime == 0 || identity.ExecutablePath == "" {
+		return false
+	}
+	entry, ok := s.settings.GetLauncherApps()[appID]
+	if !ok || entry.LaunchMethod != "executable" || NormalizeExecutablePath(entry.ExecutablePath) != NormalizeExecutablePath(identity.ExecutablePath) {
+		return false
+	}
+	s.activeMu.Lock()
+	s.owned[identity.PID] = ownedProcess{appID: appID, identity: identity}
+	s.activeMu.Unlock()
+	return true
+}
+
 // ForgetStartedProcess revokes process control after a successful close/restart.
 func (s *Service) ForgetStartedProcess(appID string, pid int) {
 	s.activeMu.Lock()
@@ -301,6 +319,9 @@ func (s *Service) Snapshot() LauncherSnapshot {
 // BeginDiscovery marks the start of a discovery pass so the UI can keep the
 // first-run assistant closed until the resulting snapshot is complete.
 func (s *Service) BeginDiscovery() {
+	s.discoveryProgressMu.Lock()
+	s.lastDiscoveryProgress = 0
+	s.discoveryProgressMu.Unlock()
 	s.discoveryMu.Lock()
 	s.discovery = LauncherDiscovery{Scanning: true}
 	s.discoveryMu.Unlock()
@@ -309,11 +330,18 @@ func (s *Service) BeginDiscovery() {
 var ErrDiscoveryInProgress = errors.New("launcher discovery already in progress")
 
 func (s *Service) emitDiscoveryProgress(progress int, phase LauncherDiscoveryPhase, scanning bool, err error) {
+	s.discoveryProgressMu.Lock()
+	defer s.discoveryProgressMu.Unlock()
 	if progress < 0 {
 		progress = 0
 	}
 	if progress > 100 {
 		progress = 100
+	}
+	if progress < s.lastDiscoveryProgress {
+		progress = s.lastDiscoveryProgress
+	} else {
+		s.lastDiscoveryProgress = progress
 	}
 	var message *string
 	if err != nil {

@@ -83,6 +83,37 @@ func TestCorrectionInputReadsBoundedRecordedSource(t *testing.T) {
 	if got.Session.Channels[len(got.Session.Channels)-1].Sampling.Origin != TimeOriginSourceTimestamp || reader.session.Channels[len(reader.session.Channels)-1].Sampling.Origin != TimeOriginUnknown {
 		t.Fatal("correction input did not return an isolated aligned view")
 	}
+	visitedSamples := 0
+	visitedSession, err := VisitCorrectionPages(context.Background(), reader, model.Artifact, limits, func(channel HistoricalChannel, page HistoricalPage) error {
+		if channel.ID != page.ChannelID {
+			t.Fatal("visitor received a page from another channel")
+		}
+		visitedSamples += len(page.Samples)
+		return nil
+	})
+	if err != nil || !reflect.DeepEqual(visitedSession, reader.session) {
+		t.Fatal("visitor changed the inspected session", err)
+	}
+	retainedSamples := 0
+	for _, page := range got.Pages {
+		retainedSamples += len(page.Samples)
+	}
+	if visitedSamples != retainedSamples {
+		t.Fatalf("visited %d samples, retained %d", visitedSamples, retainedSamples)
+	}
+	visitorErr := errors.New("visitor stopped")
+	before := reader.calls
+	if _, err := VisitCorrectionPages(context.Background(), reader, model.Artifact, limits, func(HistoricalChannel, HistoricalPage) error { return visitorErr }); !errors.Is(err, visitorErr) || reader.calls != before+1 {
+		t.Fatal("visitor error did not stop reading immediately", err)
+	}
+	visitCtx, stopVisit := context.WithCancel(context.Background())
+	before = reader.calls
+	if _, err := VisitCorrectionPages(visitCtx, reader, model.Artifact, limits, func(HistoricalChannel, HistoricalPage) error {
+		stopVisit()
+		return nil
+	}); !errors.Is(err, context.Canceled) || reader.calls != before+1 {
+		t.Fatal("visitor cancellation did not stop after the current page", err)
+	}
 	for _, name := range []string{"samples", "values", "text"} {
 		t.Run(name, func(t *testing.T) {
 			small := limits
@@ -102,7 +133,7 @@ func TestCorrectionInputReadsBoundedRecordedSource(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	before := reader.calls
+	before = reader.calls
 	if _, err := ReadCorrectionInput(ctx, reader, model.Artifact, limits); !errors.Is(err, context.Canceled) || reader.calls != before {
 		t.Fatal("read despite cancellation", err)
 	}

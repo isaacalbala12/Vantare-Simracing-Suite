@@ -26,10 +26,10 @@ vista antes de paginar sólo la respuesta. Por ello la primera sustitución
 productiva debe ocurrir **dentro de esta frontera común**, manteniendo la
 autorización, el bloqueo por sesión y la serialización de lectura ya existentes.
 
-El primer contrato incremental se limitará a inspeccionar la sesión y visitar
-páginas del parser autorizado, con cancelación y cuotas comprobadas en cada
-página; no devolverá un `[]HistoricalPage` completo. Su primer consumidor será
-la validación del reloj GPS, contrastada con `BuildTemporalAlignment` para
+El primer contrato incremental, `VisitCorrectionPages`, inspecciona la sesión
+y visita páginas del parser autorizado, con cancelación y cuotas comprobadas
+en cada página; no devuelve un `[]HistoricalPage` completo. Su siguiente
+consumidor será la validación del reloj GPS, contrastada con `BuildTemporalAlignment` para
 puentes válidos, índices duplicados, páginas desordenadas, valores inválidos y
 cobertura truncada. Hasta demostrar esa paridad, la ruta pública actual seguirá
 siendo el oráculo. Preparación, edición y proyección no se anunciarán como

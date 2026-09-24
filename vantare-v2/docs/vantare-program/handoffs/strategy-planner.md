@@ -2,7 +2,7 @@
 
 ## Frontera de memoria para resistencia — ISA-1375 (2026-09-24)
 
-La revisión del flujo confirma que `withCorrectionInput` materializa todas las páginas antes de preparación, inspección, guardado o proyección; las dos últimas vuelven a copiar/alinear vistas. Reducir copias es útil, pero no puede cumplir por sí solo memoria `O(vueltas + correcciones + página)`. [ADR 0012](../../adr/0012-strategy-recorded-bounded-reading.md) fija la frontera común de sustitución y el primer corte comprobable: visita paginada autorizada con validación del reloj GPS frente al oráculo actual. Aún no hay API incremental productiva ni soporte demostrado de 24 h. #1375 sigue abierta; ningún presupuesto se ha elevado.
+La revisión del flujo confirma que `withCorrectionInput` materializa todas las páginas antes de preparación, inspección, guardado o proyección; las dos últimas vuelven a copiar/alinear vistas. Reducir copias es útil, pero no puede cumplir por sí solo memoria `O(vueltas + correcciones + página)`. [ADR 0012](../../adr/0012-strategy-recorded-bounded-reading.md) fija la frontera común de sustitución. `VisitCorrectionPages` ya permite visitar páginas del mismo parser autorizado, con cuotas, validación y cancelación compartidas; `ReadCorrectionInput` la utiliza, pero todavía retiene el conjunto completo. La prueba focal compara cobertura y salida anticipada; falta paridad GPS incremental, consumidor productivo sin retención y banco real repetido. [Evidencia](../../strategy-planner/evidence/isa-1375/allocation-dependencies-2026-09-24.md). No hay soporte demostrado de 24 h; #1375 sigue abierta y ningún presupuesto se ha elevado.
 
 ## Primer corte de memoria registrada — ISA-1375 (2026-09-24)
 

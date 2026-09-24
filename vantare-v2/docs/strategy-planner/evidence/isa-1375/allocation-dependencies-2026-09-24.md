@@ -30,3 +30,19 @@ Un perfil `alloc_space` de la misma prueba completa pasó de 42.030 a 39.578 MiB
 - La salida legítima conserva vueltas, stints, diagnósticos y procedencia. Por tanto el presupuesto buscado es memoria `O(vueltas + correcciones + tamaño de página)`, no una constante absoluta. Ninguna afirmación de soporte de 24 h se deriva de este perfil.
 
 Siguiente prueba: medir por separado preparación, inspección y proyección con la misma fuente y un banco más largo autorizado; comparar cada modelo completo contra la ruta actual antes de sustituirla. Mantener un rechazo explícito cuando un límite de salida o memoria documentado se alcance.
+
+## Tercer corte: visita paginada común
+
+El lector de correcciones expone `VisitCorrectionPages` sobre el mismo parser
+autorizado, con inspección de identidad, cuotas de muestras/valores/texto,
+validación de página y cancelación antes de pasar cada página a un consumidor.
+`ReadCorrectionInput` usa ahora esa visita y sigue reuniendo todas las páginas,
+por lo que **el comportamiento productivo y su pico de memoria no son aún
+acotados**. La prueba con lector controlado compara el número de muestras
+visitadas con la ruta actual y comprueba parada inmediata por error o
+cancelación, además de los rechazos de cuotas ya existentes.
+
+Este corte prepara la sustitución sin duplicar la lógica de lectura. Todavía
+faltan la paridad del reloj GPS incremental, un consumidor productivo sin
+retención, el banco real repetido y una medición nueva de pico. No se eleva
+ningún presupuesto ni se afirma soporte de resistencia.

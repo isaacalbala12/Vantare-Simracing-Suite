@@ -27,10 +27,38 @@ type CorrectionInput struct {
 
 func ReadCorrectionInput(ctx context.Context, reader CorrectionInputReader, artifact AuthorizedHistoricalArtifact, limits CorrectionReadLimits) (CorrectionInput, error) {
 	var empty CorrectionInput
+	pages := []HistoricalPage{}
+	session, err := VisitCorrectionPages(ctx, reader, artifact, limits, func(_ HistoricalChannel, page HistoricalPage) error {
+		pages = append(pages, page)
+		return nil
+	})
+	if err != nil {
+		return empty, err
+	}
+	alignment := buildTemporalAlignmentOwned(session, pages)
+	validity, err := AnalyzeAlignedLapValidity(alignment)
+	if err != nil {
+		return empty, err
+	}
+	base, err := CorrectionSourceFromModel(AuthorizedSessionModel{Artifact: artifact, Session: alignment.Session, Validity: &validity})
+	if err != nil {
+		return empty, err
+	}
 	if err := ctx.Err(); err != nil {
 		return empty, err
 	}
-	if reader == nil || !validAuthorizedHistoricalArtifact(artifact) {
+	return CorrectionInput{Base: base, Session: alignment.Session, Pages: alignment.Pages, Validity: validity}, nil
+}
+
+// VisitCorrectionPages validates the authorized source and every page before
+// passing it to visit. The visitor may process a page and release it; a later
+// error invalidates the entire visit, so callers must not publish partial work.
+func VisitCorrectionPages(ctx context.Context, reader CorrectionInputReader, artifact AuthorizedHistoricalArtifact, limits CorrectionReadLimits, visit func(HistoricalChannel, HistoricalPage) error) (HistoricalSession, error) {
+	var empty HistoricalSession
+	if err := ctx.Err(); err != nil {
+		return empty, err
+	}
+	if reader == nil || visit == nil || !validAuthorizedHistoricalArtifact(artifact) {
 		return empty, ErrInvalidCorrectionSource
 	}
 	if limits.PageRows <= 0 || limits.PageRows > MaxLMUDuckDBPageRows || limits.MaxSamples <= 0 || limits.MaxValues <= 0 || limits.MaxTextBytes <= 0 {
@@ -48,7 +76,6 @@ func ReadCorrectionInput(ctx context.Context, reader CorrectionInputReader, arti
 	for _, name := range RequiredHistoricalPageChannels() {
 		wanted[name] = true
 	}
-	pages := []HistoricalPage{}
 	samplesLeft, valuesLeft, textLeft := limits.MaxSamples, limits.MaxValues, limits.MaxTextBytes
 	for _, channel := range session.Channels {
 		if !wanted[strings.ToLower(strings.TrimSpace(channel.SourceName))] {
@@ -91,7 +118,9 @@ func ReadCorrectionInput(ctx context.Context, reader CorrectionInputReader, arti
 					textLeft -= len(v.Scalar.Text)
 				}
 			}
-			pages = append(pages, page)
+			if err := visit(channel, page); err != nil {
+				return empty, err
+			}
 			start += int64(len(page.Samples))
 			if len(page.Samples) < limits.PageRows {
 				break
@@ -101,17 +130,5 @@ func ReadCorrectionInput(ctx context.Context, reader CorrectionInputReader, arti
 	if err := ctx.Err(); err != nil {
 		return empty, err
 	}
-	alignment := buildTemporalAlignmentOwned(session, pages)
-	validity, err := AnalyzeAlignedLapValidity(alignment)
-	if err != nil {
-		return empty, err
-	}
-	base, err := CorrectionSourceFromModel(AuthorizedSessionModel{Artifact: artifact, Session: alignment.Session, Validity: &validity})
-	if err != nil {
-		return empty, err
-	}
-	if err := ctx.Err(); err != nil {
-		return empty, err
-	}
-	return CorrectionInput{Base: base, Session: alignment.Session, Pages: alignment.Pages, Validity: validity}, nil
+	return session, nil
 }

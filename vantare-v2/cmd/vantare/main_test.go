@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -1727,38 +1728,125 @@ func TestHandleProfileStatsSaveEmitsErrorOnUnknown(t *testing.T) {
 	}
 }
 
-func TestHandleProfileHotkeySet(t *testing.T) {
-	hkMgr := launcher.NewHotkeyManager()
-	defer hkMgr.Unregister("test-profile")
+type capturedLauncherHotkey struct {
+	name   string
+	combo  string
+	action func()
+}
 
-	emitter := &spyMainEmitter{}
+type launcherHotkeyCapture struct{ entries []capturedLauncherHotkey }
 
-	// Empty combo = unregister; must succeed even if not registered.
-	handleProfileHotkeySet("test-profile", "", hkMgr, emitter, nil)
-	if len(emitter.events) != 1 || emitter.events[0] != "launcher:profile:hotkey:set" {
-		t.Fatalf("expected launcher:profile:hotkey:set on unregister, got %v", emitter.events)
+func (c *launcherHotkeyCapture) Register(name, combo string, action func()) error {
+	c.entries = append(c.entries, capturedLauncherHotkey{name: name, combo: combo, action: action})
+	return nil
+}
+
+func TestRegisterLauncherProfileHotkeysLaunchesOnlyValidDistinctProfiles(t *testing.T) {
+	settings := app.DefaultAppSettings()
+	settings.Hotkeys["toggleOverlay"] = "ctrl+alt+o"
+	settings.LauncherProfiles = []app.LaunchProfile{
+		{ID: "creator", Hotkey: "ctrl+alt+l", Steps: []app.LaunchStep{{AppID: "lmu"}}},
+		{ID: "empty", Hotkey: "ctrl+alt+e"},
+		{ID: "conflict", Hotkey: "ctrl+alt+o", Steps: []app.LaunchStep{{AppID: "lmu"}}},
+		{ID: "duplicate", Hotkey: "CTRL+ALT+L", Steps: []app.LaunchStep{{AppID: "lmu"}}},
 	}
-	payload := emitter.data[0].(map[string]any)
-	if payload["combo"] != "" {
-		t.Fatalf("expected empty combo in payload, got %q", payload["combo"])
+	capture := &launcherHotkeyCapture{}
+	launched := ""
+	registerLauncherProfileHotkeys(capture, settings, func(id string) { launched = id })
+	if len(capture.entries) != 1 || capture.entries[0].name != "launcher:creator" || capture.entries[0].combo != "ctrl+alt+l" {
+		t.Fatalf("unexpected registrations: %+v", capture.entries)
+	}
+	capture.entries[0].action()
+	if launched != "creator" {
+		t.Fatalf("hotkey launched %q, want creator", launched)
+	}
+}
+
+func TestHandleProfileHotkeySet(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	if err := svc.SaveProfile(app.LaunchProfile{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}}}); err != nil {
+		t.Fatal(err)
+	}
+	if !handleProfileHotkeySet("creator", "ctrl+alt+l", svc, nil, emitter) {
+		t.Fatal("setting an existing profile hotkey failed")
+	}
+	if got := svc.ListProfiles()[0].Hotkey; got != "ctrl+alt+l" {
+		t.Fatalf("hotkey was not persisted: %q", got)
+	}
+	if !handleProfileHotkeySet("creator", "", svc, nil, emitter) || svc.ListProfiles()[0].Hotkey != "" {
+		t.Fatal("clearing a hotkey was not persisted")
+	}
+	if handleProfileHotkeySet("missing", "ctrl+alt+x", svc, nil, emitter) {
+		t.Fatal("unknown profile must not receive a hotkey")
+	}
+}
+
+func TestValidateLauncherProfileHotkeyRejectsConflicts(t *testing.T) {
+	profile := app.LaunchProfile{ID: "creator", Hotkey: "ctrl+alt+l"}
+	if err := validateLauncherProfileHotkey(profile, nil, nil); err != nil {
+		t.Fatalf("valid profile hotkey rejected: %v", err)
+	}
+	if err := validateLauncherProfileHotkey(profile, nil, map[string]string{"toggleOverlay": "CTRL+ALT+L"}); err == nil {
+		t.Fatal("global shortcut conflict was accepted")
+	}
+	if err := validateLauncherProfileHotkey(profile, []app.LaunchProfile{{ID: "other", Hotkey: "ctrl+alt+l"}}, nil); err == nil {
+		t.Fatal("profile shortcut conflict was accepted")
+	}
+	profile.Hotkey = "alt+f4"
+	if err := validateLauncherProfileHotkey(profile, nil, nil); err == nil {
+		t.Fatal("reserved Windows shortcut was accepted")
 	}
 }
 
 func TestHandleAutostartToggle(t *testing.T) {
-	emitter := &spyMainEmitter{}
-	// On non-Windows, RegisterAutostart will fail (registry API not available).
-	// The handler must emit launcher:error in that case; on Windows it may
-	// succeed depending on the test environment. We test both paths.
-	handleAutostartToggle("test-profile", true, emitter)
-
-	if len(emitter.events) == 0 {
-		t.Fatal("expected at least one event from autostart toggle")
+	svc, emitter := newTestLauncherService(t)
+	handleAutostartToggle("missing", true, svc, emitter)
+	if len(emitter.events) != 1 || emitter.events[0] != "launcher:error" {
+		t.Fatalf("unknown profile must not create a Run entry, got %v", emitter.events)
 	}
-	// If it succeeded, we got launcher:autostart:toggled; if it failed,
-	// we got launcher:error. Either is valid behavior for the handler.
-	got := emitter.events[0]
-	if got != "launcher:autostart:toggled" && got != "launcher:error" {
-		t.Fatalf("expected launcher:autostart:toggled or launcher:error, got %q", got)
+}
+
+func TestSaveProfileAutostartFailureRollsBackPersistedFlag(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	profile := app.LaunchProfile{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}}}
+	if !saveProfileWithAutostart(profile, svc, emitter, func(_ string, enabled bool) error {
+		if enabled {
+			return fmt.Errorf("registry unavailable")
+		}
+		return nil
+	}) {
+		t.Fatal("initial profile save failed")
+	}
+	profile.LaunchOnWindowsStartup = true
+	if saveProfileWithAutostart(profile, svc, emitter, func(_ string, _ bool) error { return fmt.Errorf("registry unavailable") }) {
+		t.Fatal("save must fail when startup registration fails")
+	}
+	if svc.ListProfiles()[0].LaunchOnWindowsStartup {
+		t.Fatal("persisted profile claims autostart despite registry failure")
+	}
+}
+
+func TestSaveProfileWithoutAutostartDoesNotRequireRegistry(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	profile := app.LaunchProfile{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}}}
+	if !saveProfileWithAutostart(profile, svc, emitter, func(string, bool) error {
+		return fmt.Errorf("registry unavailable")
+	}) {
+		t.Fatal("a normal profile must save without registry access")
+	}
+}
+
+func TestDeleteProfileRemovesAutostartBeforeDeleting(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	if err := svc.SaveProfile(app.LaunchProfile{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true}); err != nil {
+		t.Fatal(err)
+	}
+	called := false
+	if !deleteProfileWithAutostart("creator", svc, emitter, func(id string, enabled bool) error {
+		called = id == "creator" && !enabled && len(svc.ListProfiles()) == 1
+		return nil
+	}) || !called || len(svc.ListProfiles()) != 0 {
+		t.Fatal("profile deletion did not unregister startup first")
 	}
 }
 

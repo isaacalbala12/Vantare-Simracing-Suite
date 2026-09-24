@@ -82,7 +82,8 @@ describe("OrbitProfileEditor", () => {
     expect(onSave.mock.calls[0][0]).toMatchObject({
       id: "creator",
       name: "Retransmisión",
-      steps: [{ appId: "lmu", delay: 4 }],
+      steps: [{ appId: "lmu", delay: 0 }],
+      policy: { firstStepDelay: 4 },
     });
   });
 
@@ -141,6 +142,16 @@ describe("OrbitProfileEditor", () => {
     fireEvent.keyDown(window, { key: "l", ctrlKey: true, altKey: true });
     fireEvent.click(screen.getByTestId("orbit-profile-editor-save"));
     expect(onSave.mock.calls[0][0].hotkey).toBe("ctrl+alt+l");
+  });
+
+  it("no guarda un atajo reservado ni un nombre vacío", () => {
+    setup();
+    fireEvent.click(screen.getByTestId("orbit-keycap-row"));
+    fireEvent.keyDown(window, { key: "F4", altKey: true });
+    expect((screen.getByTestId("orbit-profile-editor-save") as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByTestId("orbit-profile-editor-hotkey-clear"));
+    fireEvent.change(screen.getByTestId("orbit-profile-editor-name"), { target: { value: "  " } });
+    expect((screen.getByTestId("orbit-profile-editor-save") as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("no deja iniciar con Windows un perfil sin pasos", () => {

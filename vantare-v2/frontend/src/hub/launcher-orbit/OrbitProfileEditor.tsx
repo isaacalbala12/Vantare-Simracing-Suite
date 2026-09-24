@@ -61,10 +61,12 @@ export function OrbitProfileEditor({
 
   const advanced = draft.advanced === true;
   const launchable = useMemo(() => isProfileLaunchable(draft, apps), [draft, apps]);
-  const invalidSteps = draft.steps.some((step) => !step.appId || step.delay < 0);
+  const invalidSteps = draft.steps.some((step) => !step.appId || step.delay < 0) || (draft.policy?.firstStepDelay ?? 0) < 0;
   const duplicateSteps = hasDuplicateSteps(draft);
   const hotkeyInvalid = Boolean(draft.hotkey) && !isHotkeyAllowed(draft.hotkey as string);
   const canSave =
+    draft.name.trim().length > 0 &&
+    !hotkeyInvalid &&
     !invalidSteps &&
     (draft.steps.length === 0 || (launchable && (advanced || !duplicateSteps)));
 
@@ -80,7 +82,7 @@ export function OrbitProfileEditor({
         return;
       }
       if (!combo) return;
-      setDraft((current) => ({ ...current, hotkey: combo }));
+      setDraft((current) => ({ ...current, hotkey: combo.split("+").map((part) => part === "meta" ? "win" : part).join("+") }));
       setRecording(false);
     };
     window.addEventListener("keydown", onKeyDown, true);
@@ -196,12 +198,29 @@ export function OrbitProfileEditor({
               min={0}
               numeric
               onChange={(event) => {
+                const delay = Number(event.target.value) || 0;
+                if (index === 0) {
+                  setDraft((current) => ({
+                    ...current,
+                    policy: {
+                      alreadyRunning: "ask",
+                      failure: "ask",
+                      cancel: "ask",
+                      exit: "ask",
+                      retry: "ask",
+                      maxRetries: 0,
+                      ...current.policy,
+                      firstStepDelay: delay,
+                    },
+                  }));
+                  return;
+                }
                 const next = [...draft.steps];
-                next[index] = { ...step, delay: Number(event.target.value) || 0 };
+                next[index] = { ...step, delay };
                 setSteps(next);
               }}
               type="number"
-              value={step.delay}
+              value={index === 0 ? (draft.policy?.firstStepDelay ?? 0) : step.delay}
             />
             {advanced ? (
               <Input

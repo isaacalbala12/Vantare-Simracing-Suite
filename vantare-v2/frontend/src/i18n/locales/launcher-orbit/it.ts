@@ -56,6 +56,7 @@ export const launcherOrbitIt: Record<string, string> = {
   "launcher.profile.policy.reuse": "Già aperta · riutilizza",
   "launcher.profile.policy.restart": "Già aperta · riavvia",
   "launcher.profile.policy.retry": "Errore · riprova ×{{n}}",
+  "launcher.profile.policy.continue": "Errore · continua",
   "launcher.profile.policy.stop": "Errore · interrompi",
   "launcher.profile.policy.leave": "All'uscita · lascia aperte",
   "launcher.profile.policy.closeStarted": "All'uscita · chiudi le avviate",

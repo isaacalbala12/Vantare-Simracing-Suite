@@ -2344,6 +2344,23 @@ el problema al Launcher. **Sigue sin aptitud de lanzamiento:** las políticas `a
 autostart editados no se activan al guardar; falta Wails/Steam/LMU físico y
 comprobar el artefacto instalable. No hay promoción ni release.
 
+Segundo avance de #1368: los atajos de perfil se cargan al arrancar y se
+reconstruyen tras guardar/borrar usando el gestor global que sí despacha la
+pulsación. El guardado rechaza combinaciones reservadas o en conflicto con
+Hub/u otros perfiles; el editor también bloquea nombres vacíos y atajos no
+admitidos. El flag de inicio de Windows se sincroniza al guardar, con rollback
+del perfil si falla la escritura del Run key, y se retira antes de borrar el
+perfil; un perfil normal sin autostart no requiere acceso al registro. El
+primer delay ahora se edita en `policy.firstStepDelay` y se muestra igual que
+lo ejecuta Go. 13 archivos/117 pruebas Launcher, build, typecheck y lint
+locales pasan. El CI del primer commit pasó el gate bloqueante, pero el
+ratchet detectó 10 fragmentos CSS reagrupados; el estilo del aviso se movió a
+una hoja nueva para que el archivo histórico permanezca idéntico a la base.
+La repetición de CI de este último cambio está pendiente. El `--launch` del
+Run key sigue sin invocarse en el arranque y varias entradas de perfil pueden
+abrir varias instancias; hay decisión de producto solicitada. Atajos y Run key
+no tienen aún prueba física tras reinicio. **No apto para lanzamiento.**
+
 ## Hub
 
 Conservar estructura. Solo consistencia visual, estados reales, responsive,

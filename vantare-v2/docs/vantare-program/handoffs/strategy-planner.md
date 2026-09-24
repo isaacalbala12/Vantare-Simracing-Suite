@@ -1,5 +1,9 @@
 # Handoff vivo — Strategy Planner
 
+## Ensayos de dominancia Hypercar — ISA-1367 (2026-09-24)
+
+Dos cambios mínimos se probaron y retiraron en el worktree aislado de #1367. Filtrar por Fuel/VE antes de comparar conserva la suite solver, pero el banco real S026 Monza pasa a `calculation_timeout`; recorrer una vez la frontera también conserva la suite, pero continúa en `calculation_overflow`. La fuente conserva sus hashes y proyecta ritmo, Fuel y VE válidos. La [issue #1367](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1367) registra los resultados. El siguiente corte requiere reducir la generación de estados con un oráculo exhaustivo acotado; no hay optimización lista para integrar ni se declara probado un plan incompleto.
+
 ## Sesiones largas y Hypercar — ISA-1210 / ISA-1367 (2026-09-24)
 
 El banco real actual reprodujo el límite de preparación de #1210 en S266 Algarve y S026 Monza. Se midieron 1.138.082 y 1.002.172 muestras requeridas frente al techo de 1.000.000; S125 Imola consume 626.191 y ~453 MiB de working set. Un presupuesto todavía acotado de 1,25 M muestras/1,5 M valores permite S266 (38 vueltas, 0 paradas, `optimality=proven` en un evento supuesto) con ~837 MiB observados; los hashes originales siguen intactos. No equivale a soporte de carreras de 24 h: la lectura por streaming y su memoria siguen pendientes. S026 ya entrega ritmo/Fuel/VE `valid`, pero el solver agota 100 M iteraciones y no demuestra óptimo; [#1367](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1367) registra la reproducción. [Evidencia y límites](../../strategy-planner/evidence/isa-1210/long-session-budget-2026-09-24.md). Wails, distribución y precisión empírica pendientes; sin push, PR, CI, merge, promoción ni release.

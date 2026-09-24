@@ -217,17 +217,17 @@
 }
 
 .orbit-btn--ghost:hover:not([disabled]) {
-  border-color: rgba(240, 71, 85, 0.17);
-  background: rgba(213, 47, 73, 0.055);
+  border-color: rgba(var(--orbit-accent-rgb), 0.17);
+  background: rgba(var(--orbit-accent-rgb), 0.055);
   color: var(--orbit-ink-2);
 }
 
 .orbit-btn--danger {
-  color: var(--orbit-red);
+  color: var(--orbit-danger);
 }
 
 .orbit-btn--danger:hover:not([disabled]) {
-  background: rgba(240, 71, 85, 0.08);
+  background: rgba(var(--orbit-danger-rgb), 0.08);
 }
 
 .orbit-btn:active:not([disabled]) {
@@ -252,7 +252,7 @@
 
 .orbit-btn__dot {
   background: var(--orbit-red);
-  box-shadow: 0 0 12px rgba(240, 71, 85, 0.7);
+  box-shadow: 0 0 12px rgba(var(--orbit-accent-rgb), 0.7);
 }
 
 .orbit-btn__loading {
@@ -324,14 +324,14 @@
 }
 
 .orbit-icon-btn.is-on {
-  background: rgba(213, 47, 73, 0.14);
+  background: rgba(var(--orbit-accent-rgb), 0.14);
   color: var(--orbit-ink);
-  box-shadow: inset 0 0 0 1px rgba(240, 71, 85, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(var(--orbit-accent-rgb), 0.22);
 }
 
 .orbit-icon-btn--danger:hover:not([disabled]) {
-  background: rgba(240, 71, 85, 0.12);
-  color: var(--orbit-red);
+  background: rgba(var(--orbit-danger-rgb), 0.12);
+  color: var(--orbit-danger);
 }
 
 .orbit-icon-btn[disabled] {
@@ -345,9 +345,9 @@
   display: inline-flex;
   gap: 2.5px;
   padding: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--orbit-line);
   border-radius: var(--orbit-radius-control);
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--orbit-surface-1);
 }
 
 .orbit-seg--wide {
@@ -379,9 +379,9 @@
 }
 
 .orbit-seg__option[aria-pressed="true"] {
-  background: rgba(213, 47, 73, 0.16);
+  background: rgba(var(--orbit-accent-rgb), 0.16);
   color: var(--orbit-ink);
-  box-shadow: inset 0 0 0 1px rgba(240, 71, 85, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(var(--orbit-accent-rgb), 0.22);
 }
 
 .orbit-seg__option[disabled] {
@@ -418,15 +418,13 @@
 }
 
 .orbit-toggle[aria-pressed="true"] {
-  /* `#a02339` es el segundo alto del degradado del knob encendido: el
-     prototipo lo fija literalmente y no existe como token. */
-  border-color: rgba(240, 71, 85, 0.4);
-  background: linear-gradient(135deg, var(--orbit-carmine), #a02339);
-  box-shadow: 0 0 13px rgba(213, 47, 73, 0.15);
+  border-color: var(--orbit-carmine);
+  background: var(--orbit-brand-gradient);
+  box-shadow: 0 0 13px rgba(var(--orbit-accent-rgb), 0.2);
 }
 
 .orbit-toggle[aria-pressed="true"]::after {
-  background: var(--orbit-ink);
+  background: var(--orbit-primary-ink);
   transform: translateX(20px);
 }
 
@@ -880,7 +878,7 @@ button.orbit-pill {
 }
 
 .orbit-chip--danger {
-  color: var(--orbit-red);
+  color: var(--orbit-danger);
 }
 
 .orbit-chip--reference {
@@ -919,7 +917,7 @@ button.orbit-pill {
 }
 
 .orbit-state-chip--warn {
-  background: rgba(240, 71, 85, 0.08);
+  background: rgba(var(--orbit-accent-rgb), 0.08);
   color: var(--orbit-red);
 }
 
@@ -977,7 +975,7 @@ button.orbit-pill {
 }
 
 .orbit-tyre-chip--soft {
-  background: rgba(240, 71, 85, 0.14);
+  background: rgba(var(--orbit-accent-rgb), 0.14);
   color: var(--orbit-tyre-soft);
 }
 
@@ -1060,7 +1058,7 @@ button.orbit-pill {
   padding: 13px 17px;
   border: 1px solid rgba(255, 155, 87, 0.13);
   border-radius: 14px;
-  background: linear-gradient(110deg, rgba(255, 155, 87, 0.06), rgba(213, 47, 73, 0.02));
+  background: linear-gradient(110deg, rgba(255, 155, 87, 0.06), rgba(var(--orbit-accent-rgb), 0.02));
   color: var(--orbit-ink-3);
   font-size: var(--orbit-fs-secondary);
   line-height: 1.5;
@@ -1088,8 +1086,8 @@ button.orbit-pill {
 }
 
 .orbit-alert--danger {
-  border-color: rgba(240, 71, 85, 0.22);
-  background: rgba(213, 47, 73, 0.08);
+  border-color: rgba(var(--orbit-accent-rgb), 0.22);
+  background: rgba(var(--orbit-accent-rgb), 0.08);
   color: var(--orbit-coral);
 }
 
@@ -1505,7 +1503,7 @@ button.orbit-pill {
 }
 
 .orbit-menu__item:hover {
-  background: rgba(213, 47, 73, 0.12);
+  background: rgba(var(--orbit-accent-rgb), 0.12);
 }
 
 .orbit-menu__item b {
@@ -2249,7 +2247,7 @@ button.orbit-pill {
 }
 
 .orbit-trace__delta-pos {
-  fill: rgba(240, 71, 85, 0.25);
+  fill: rgba(var(--orbit-accent-rgb), 0.25);
 }
 
 .orbit-trace__delta-neg {
@@ -2374,9 +2372,9 @@ button.orbit-pill {
 .orbit-corner-slot[data-picked="true"],
 .orbit-corner-slot:focus-visible {
   border-color: var(--orbit-coral);
-  background: rgba(213, 47, 73, 0.12);
+  background: rgba(var(--orbit-accent-rgb), 0.12);
   outline: none;
-  box-shadow: 0 0 0 3px rgba(240, 71, 85, 0.18);
+  box-shadow: 0 0 0 3px rgba(var(--orbit-accent-rgb), 0.18);
 }
 
 .orbit-corner-slot[data-pulse="true"] {
@@ -2447,7 +2445,7 @@ button.orbit-pill {
 }
 
 .orbit-corner-slot__x:hover {
-  background: rgba(240, 71, 85, 0.25);
+  background: rgba(var(--orbit-accent-rgb), 0.25);
   color: var(--orbit-ink);
 }
 
@@ -2496,12 +2494,12 @@ button.orbit-pill {
 
 .orbit-tyre-item[aria-pressed="true"] {
   border-color: var(--orbit-coral);
-  background: rgba(213, 47, 73, 0.1);
-  box-shadow: 0 0 0 3px rgba(240, 71, 85, 0.18);
+  background: rgba(var(--orbit-accent-rgb), 0.1);
+  box-shadow: 0 0 0 3px rgba(var(--orbit-accent-rgb), 0.18);
 }
 
 .orbit-tyre-item[data-used="true"] {
-  border-left: 3px solid rgba(240, 71, 85, 0.5);
+  border-left: 3px solid rgba(var(--orbit-accent-rgb), 0.5);
 }
 
 .orbit-tyre-item__copy b {
@@ -2697,7 +2695,7 @@ button.orbit-pill {
   margin: -8px 0 0 -8px;
   border-radius: 50%;
   background: var(--orbit-primary-bg);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 0 3px rgba(240, 71, 85, 0.25);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 0 3px rgba(var(--orbit-accent-rgb), 0.25);
 }
 
 @media (prefers-reduced-motion: reduce) {

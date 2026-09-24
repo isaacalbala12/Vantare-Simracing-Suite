@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1381",
+  "type": "feature",
+  "summary": "Ajustes permite elegir una paleta Vantare, Océano o Iris y un modo claro, oscuro o del sistema para la interfaz completa, incluido Overlay Studio, sin modificar el diseño de los widgets.",
+  "technicalNotes": [
+    "La paleta y el modo se guardan por separado en este equipo y se aplican al abrir la app; el modo del sistema sigue los cambios de Windows.",
+    "Los colores de estado peligroso mantienen su significado independiente de la paleta elegida."
+  ],
+  "testing": [
+    "Abrir Ajustes > Aplicación y probar cada paleta en claro y oscuro; la interfaz y Overlay Studio deben cambiar al instante.",
+    "Elegir Sistema y cambiar el modo de Windows; la interfaz debe seguirlo sin reiniciar.",
+    "Abrir un perfil de Overlay Studio y comprobar que el diseño del widget conserva sus colores."
+  ],
+  "knownLimitations": [
+    "La revisión visual realizada en navegador usa un runtime simulado; falta verificar esta entrega en la ventana física de Wails."
+  ]
+}

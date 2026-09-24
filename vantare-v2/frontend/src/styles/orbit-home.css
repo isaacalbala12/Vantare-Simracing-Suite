@@ -82,7 +82,7 @@
   border-radius: 13px;
   background: var(--orbit-brand-gradient);
   color: #fff;
-  box-shadow: 0 10px 26px rgba(213, 47, 73, 0.29), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow: 0 10px 26px rgba(var(--orbit-accent-rgb), 0.29), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .orbit-home__command-copy {
@@ -129,8 +129,8 @@
 }
 
 .orbit-home__chip:hover {
-  border-color: rgba(240, 71, 85, 0.17);
-  background: rgba(213, 47, 73, 0.055);
+  border-color: rgba(var(--orbit-accent-rgb), 0.17);
+  background: rgba(var(--orbit-accent-rgb), 0.055);
   color: var(--orbit-ink);
 }
 

@@ -629,6 +629,15 @@ Telemetría, Engineer/audio/voz, Strategy, Calendario, Hotkeys, Privacidad,
 Actualizaciones, Diagnóstico y Acerca de. Scope global/perfil explícito;
 import/export sin secretos; reset no borra datos sin selección.
 
+- ISA-1381 implementa en rama aislada paletas Vantare, Océano e Iris para toda
+  la interfaz, incluido el chrome de Overlay Studio, con modo claro, oscuro y
+  sistema independiente. Se guardan en claves locales nuevas; `vantare.theme`
+  y los diseños de widgets permanecen separados. La referencia visual son las
+  tres capturas de T3 Code aportadas el 2026-09-24. La revisión visual en
+  navegador mock comprobó Ajustes y Studio y los seis pares de tokens; 484
+  archivos de tests frontend y 4 presupuestos de frames pasaron. Falta la
+  comprobación física en Wails y el PR a `nightly`; no hay promoción ni release.
+
 ISA-841 se implementó en la rama aislada
 `vantareapp/isa-841-zoom-global-interfaz` y se rebasó el 2026-08-28 sobre
 `nightly@d9909aef4b9f2de2b3e61ed79a3a0fd98a91b73c`; PR #847 es su única ruta de

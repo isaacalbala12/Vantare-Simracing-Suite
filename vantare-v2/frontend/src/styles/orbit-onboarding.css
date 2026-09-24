@@ -57,9 +57,9 @@
 }
 
 .orbit-welcome__role[aria-pressed="true"] {
-  background: rgba(213, 47, 73, 0.16);
+  background: rgba(var(--orbit-accent-rgb), 0.16);
   color: var(--orbit-ink);
-  box-shadow: inset 0 0 0 1px rgba(240, 71, 85, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(var(--orbit-accent-rgb), 0.22);
 }
 
 .orbit-welcome__role:focus-visible {
@@ -82,8 +82,8 @@
 }
 
 .orbit-welcome__note--accent {
-  border-color: rgba(240, 71, 85, 0.22);
-  background: rgba(213, 47, 73, 0.08);
+  border-color: rgba(var(--orbit-accent-rgb), 0.22);
+  background: rgba(var(--orbit-accent-rgb), 0.08);
 }
 
 .orbit-welcome__note-title {

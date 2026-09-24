@@ -33,6 +33,9 @@ afterEach(() => {
   document.querySelectorAll(`#${SETTINGS_CONTEXT_SLOT_ID}`).forEach((node) => node.remove());
   delete document.body.dataset.density;
   delete document.body.dataset.reduceMotion;
+  delete document.documentElement.dataset.uiPalette;
+  delete document.documentElement.dataset.uiScheme;
+  delete document.documentElement.dataset.uiResolvedScheme;
   window.localStorage.clear();
   vi.restoreAllMocks();
 });
@@ -66,12 +69,12 @@ describe("modelo de Ajustes", () => {
   it("la búsqueda ignora mayúsculas y diacríticos y no inventa resultados", () => {
     const dict: Record<string, string> = {
       "settings.diag.core": "Telemetry Core",
-      "settings.app.theme": "Tema",
+      "settings.app.palette": "Paleta de colores",
     };
     const t = (key: string) => dict[key] ?? key;
 
-    expect(searchSettings("TEMA", t)).toEqual([
-      { section: "application", key: "settings.app.theme" },
+    expect(searchSettings("PALETA", t)).toEqual([
+      { section: "application", key: "settings.app.palette" },
     ]);
     // «TELEMETR» con mayúsculas encuentra «Telemetry Core».
     expect(searchSettings("TELEMETR", t)).toEqual([
@@ -150,7 +153,7 @@ describe("SettingsOrbitPage", () => {
   it("buscar un ajuste ofrece resultados que navegan a su sección", () => {
     mount("account");
     fireEvent.change(screen.getByTestId("orbit-settings-search"), {
-      target: { value: "tema" },
+      target: { value: "paleta" },
     });
 
     const results = screen.getByTestId("orbit-settings-search-results");
@@ -182,6 +185,21 @@ describe("SettingsOrbitPage", () => {
 
     expect(document.body.dataset.density).toBe("compact");
     expect(window.localStorage.getItem("vantare.v03orbit.density")).toBe("compact");
+  });
+
+  it("cambia la paleta y el modo al instante sin tocar el tema antiguo de los widgets", () => {
+    window.localStorage.setItem("vantare.theme", "vantare-lite");
+    mount("application");
+    fireEvent.click(screen.getByTestId("orbit-settings-theme-ocean"));
+    fireEvent.click(screen.getByTestId("orbit-settings-scheme-light"));
+
+    expect(document.documentElement.dataset.uiPalette).toBe("ocean");
+    expect(document.documentElement.dataset.uiResolvedScheme).toBe("light");
+    expect(window.localStorage.getItem("vantare.ui.palette")).toBe("ocean");
+    expect(window.localStorage.getItem("vantare.ui.scheme")).toBe("light");
+    expect(window.localStorage.getItem("vantare.theme")).toBe("vantare-lite");
+    expect(screen.getByTestId("orbit-settings-theme-ocean").getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("orbit-settings-scheme-light").getAttribute("aria-pressed")).toBe("true");
   });
 
   it("el control de zoom cambia, persiste y restablece un único porcentaje", () => {

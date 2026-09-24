@@ -196,7 +196,7 @@
 
 /* Fila elegida: barra carmin a la izquierda, sin mover el resto de la rejilla. */
 .orbit-races__nrow[aria-selected="true"] {
-  background: rgba(213, 47, 73, 0.09);
+  background: rgba(var(--orbit-accent-rgb), 0.09);
 }
 
 .orbit-races__nrow[aria-selected="true"]::before {
@@ -303,7 +303,7 @@
 
 .orbit-races__day-hour[data-now="true"],
 .orbit-races__day-cell[data-now="true"] {
-  background: linear-gradient(90deg, rgba(213, 47, 73, 0.06), transparent);
+  background: linear-gradient(90deg, rgba(var(--orbit-accent-rgb), 0.06), transparent);
 }
 
 .orbit-races__day-hour[data-now="true"] {
@@ -334,8 +334,8 @@
 }
 
 .orbit-races__chip:hover {
-  border-color: rgba(240, 71, 85, 0.3);
-  background: rgba(213, 47, 73, 0.08);
+  border-color: rgba(var(--orbit-accent-rgb), 0.3);
+  background: rgba(var(--orbit-accent-rgb), 0.08);
 }
 
 .orbit-races__chip[data-past="true"] {
@@ -459,7 +459,7 @@
 }
 
 .orbit-races__week-cell[data-today="true"] {
-  background: rgba(213, 47, 73, 0.06);
+  background: rgba(var(--orbit-accent-rgb), 0.06);
 }
 
 .orbit-races__week-cell[data-past="true"],
@@ -486,8 +486,8 @@
 }
 
 .orbit-races__slot:hover {
-  border-color: rgba(240, 71, 85, 0.3);
-  background: rgba(213, 47, 73, 0.12);
+  border-color: rgba(var(--orbit-accent-rgb), 0.3);
+  background: rgba(var(--orbit-accent-rgb), 0.12);
   color: var(--orbit-ink);
 }
 
@@ -594,7 +594,7 @@
   padding: 1px 6px;
   border-radius: 6px;
   background: var(--orbit-carmine);
-  box-shadow: 0 0 12px rgba(213, 47, 73, 0.5);
+  box-shadow: 0 0 12px rgba(var(--orbit-accent-rgb), 0.5);
   color: #fff;
 }
 
@@ -749,7 +749,7 @@
 }
 
 .orbit-races__start--first kbd {
-  border-color: rgba(240, 71, 85, 0.3);
+  border-color: rgba(var(--orbit-accent-rgb), 0.3);
   color: var(--orbit-coral);
 }
 
@@ -804,7 +804,7 @@
 }
 
 .orbit-races__filter[aria-pressed="true"] {
-  background: rgba(213, 47, 73, 0.105);
+  background: rgba(var(--orbit-accent-rgb), 0.105);
   color: #fff;
 }
 

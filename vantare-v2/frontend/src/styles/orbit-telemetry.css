@@ -63,7 +63,7 @@
 }
 
 .orbit-tel__sectors b[data-tone="gain"] { color: var(--orbit-green); }
-.orbit-tel__sectors b[data-tone="loss"] { color: var(--orbit-red); }
+.orbit-tel__sectors b[data-tone="loss"] { color: var(--orbit-danger); }
 .orbit-tel__sectors b[data-tone="flat"] { color: var(--orbit-ink-3); }
 
 /* --------------------------------------------------------------- REJILLA */
@@ -131,7 +131,7 @@
 }
 
 .orbit-tel__legend [data-tone="gain"] i { background: var(--orbit-green); }
-.orbit-tel__legend [data-tone="loss"] i { background: var(--orbit-red); }
+.orbit-tel__legend [data-tone="loss"] i { background: var(--orbit-danger); }
 .orbit-tel__legend [data-tone="flat"] i { background: var(--orbit-ink-3); }
 .orbit-tel__legend [data-tone="mine"] i { background: var(--orbit-coral); }
 .orbit-tel__legend [data-tone="ref"] i { background: var(--orbit-cyan-soft); }
@@ -190,7 +190,7 @@
   font-weight: 700;
 }
 
-.orbit-tel-insight[data-tone="loss"] .orbit-tel-insight__ic { color: var(--orbit-red); }
+.orbit-tel-insight[data-tone="loss"] .orbit-tel-insight__ic { color: var(--orbit-danger); }
 .orbit-tel-insight[data-tone="gain"] .orbit-tel-insight__ic { color: var(--orbit-green); }
 
 .orbit-tel-insight__copy {
@@ -223,7 +223,7 @@
   white-space: nowrap;
 }
 
-.orbit-tel-insight[data-tone="loss"] .orbit-tel-insight__dv { color: var(--orbit-red); }
+.orbit-tel-insight[data-tone="loss"] .orbit-tel-insight__dv { color: var(--orbit-danger); }
 .orbit-tel-insight[data-tone="gain"] .orbit-tel-insight__dv { color: var(--orbit-green); }
 
 .orbit-tel-insight__dv small {

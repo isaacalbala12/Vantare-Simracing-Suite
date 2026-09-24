@@ -1469,7 +1469,7 @@
 
 .orbit-analysis__plan-row .orbit-stat--hot .orbit-stat__v::after {
   background: var(--orbit-red);
-  box-shadow: 0 0 10px rgba(240, 71, 85, 0.45);
+  box-shadow: 0 0 10px rgba(var(--orbit-accent-rgb), 0.45);
   width: 100%;
 }
 
@@ -1537,7 +1537,7 @@
 
 .orbit-analysis__class[data-own="true"] i {
   background: var(--orbit-carmine);
-  box-shadow: 0 0 9px rgba(213, 47, 73, 0.55);
+  box-shadow: 0 0 9px rgba(var(--orbit-accent-rgb), 0.55);
 }
 
 .orbit-tl__block[data-variant="outline"] {
@@ -1683,8 +1683,8 @@
 /* El número de parada ancla la tarjeta, como en la referencia. */
 .orbit-analysis__stop > header > span {
   align-items: center;
-  background: linear-gradient(150deg, rgba(213, 47, 73, 0.22), rgba(213, 47, 73, 0.06));
-  border: 1px solid rgba(213, 47, 73, 0.34);
+  background: linear-gradient(150deg, rgba(var(--orbit-accent-rgb), 0.22), rgba(var(--orbit-accent-rgb), 0.06));
+  border: 1px solid rgba(var(--orbit-accent-rgb), 0.34);
   border-radius: var(--orbit-radius-chip);
   color: var(--orbit-coral);
   display: flex;

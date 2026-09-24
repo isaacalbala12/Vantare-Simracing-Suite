@@ -97,17 +97,17 @@
    El fondo no se interpola: así el estado seleccionado tampoco espera los
    130 ms del token global para resultar legible. */
 .orbit-rail__button:active:not([disabled]) {
-  background: rgba(213, 47, 73, 0.16);
-  color: #fff;
-  box-shadow: inset 0 0 0 1px rgba(240, 71, 85, 0.28);
+  background: rgba(var(--orbit-accent-rgb), 0.16);
+  color: var(--orbit-ink);
+  box-shadow: inset 0 0 0 1px rgba(var(--orbit-accent-rgb), 0.28);
   transform: scale(0.94);
   transition-duration: 0s;
 }
 
 .orbit-rail__button[aria-current="page"] {
-  color: #fff;
-  background: linear-gradient(135deg, rgba(213, 47, 73, 0.24), rgba(255, 106, 95, 0.07));
-  box-shadow: inset 0 0 0 1px rgba(240, 71, 85, 0.22);
+  color: var(--orbit-ink);
+  background: linear-gradient(135deg, rgba(var(--orbit-accent-rgb), 0.24), rgba(var(--orbit-accent-rgb), 0.07));
+  box-shadow: inset 0 0 0 1px rgba(var(--orbit-accent-rgb), 0.22);
 }
 
 /* barra izquierda 3×19 del estado activo */
@@ -365,7 +365,7 @@
 
 .orbit-row:hover .orbit-row__copy b,
 .orbit-row--sel .orbit-row__copy b {
-  color: #fff;
+  color: var(--orbit-ink);
 }
 
 .orbit-when {
@@ -436,7 +436,7 @@
 .orbit-row:hover .orbit-play,
 .orbit-play:hover {
   color: #fff;
-  background: rgba(213, 47, 73, 0.2);
+  background: rgba(var(--orbit-accent-rgb), 0.2);
 }
 
 .orbit-state-chip {
@@ -471,7 +471,7 @@
   transition: var(--orbit-fast) var(--orbit-ease);
 }
 
-button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
+button.orbit-pill:hover { color: #fff; border-color: rgba(var(--orbit-accent-rgb), 0.25); }
 
 .orbit-pill[data-s="disconnected"] { color: var(--orbit-ink-4); }
 
@@ -515,7 +515,7 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
 }
 
 .orbit-btn--sm { height: var(--orbit-control-h-sm); }
-.orbit-btn:hover:not([disabled]) { color: #fff; background: rgba(255, 255, 255, 0.05); }
+.orbit-btn:hover:not([disabled]) { color: var(--orbit-ink); background: var(--orbit-surface-2); }
 .orbit-btn[disabled] { cursor: default; opacity: 0.55; }
 
 .orbit-btn--primary {
@@ -524,9 +524,9 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
   color: var(--orbit-primary-ink);
   box-shadow: var(--orbit-shadow-primary);
 }
-.orbit-btn--primary:hover:not([disabled]) { color: var(--orbit-primary-ink); background: #fff; }
+.orbit-btn--primary:hover:not([disabled]) { color: #fff; background: var(--orbit-carmine); }
 
-.orbit-btn--danger { color: var(--orbit-red); border-color: rgba(240, 71, 85, 0.3); }
+.orbit-btn--danger { color: var(--orbit-danger); border-color: rgba(var(--orbit-danger-rgb), 0.3); }
 
 .orbit-btn__dot {
   width: 6px;
@@ -1035,7 +1035,7 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
 .orbit-palette__item:hover,
 .orbit-palette__item[data-selected="true"] {
   color: #fff;
-  background: linear-gradient(90deg, rgba(213, 47, 73, 0.14), rgba(213, 47, 73, 0.025));
+  background: linear-gradient(90deg, rgba(var(--orbit-accent-rgb), 0.14), rgba(var(--orbit-accent-rgb), 0.025));
 }
 
 .orbit-palette__item--locked { color: var(--orbit-ink-4); }
@@ -1047,7 +1047,7 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: rgba(213, 47, 73, 0.09);
+  background: rgba(var(--orbit-accent-rgb), 0.09);
   color: var(--orbit-coral);
 }
 

@@ -343,7 +343,7 @@
 }
 
 .orbit-rm__stones li[data-state="active"]::before {
-  box-shadow: 0 0 10px rgba(240, 71, 85, 0.7);
+  box-shadow: 0 0 10px rgba(var(--orbit-accent-rgb), 0.7);
 }
 
 .orbit-rm__stones li[data-state="planned"] {

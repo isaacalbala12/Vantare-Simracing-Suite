@@ -117,7 +117,7 @@
 
 .orbit-launcher__profile--featured::before {
   background: linear-gradient(var(--orbit-coral), var(--orbit-carmine));
-  box-shadow: 0 0 18px rgba(240, 71, 85, 0.5);
+  box-shadow: 0 0 18px rgba(var(--orbit-accent-rgb), 0.5);
 }
 
 .orbit-launcher__profile-top {
@@ -188,15 +188,15 @@
 }
 
 .orbit-launcher__create:hover {
-  border-color: rgba(240, 71, 85, 0.42);
-  background: rgba(213, 47, 73, 0.045);
-  box-shadow: 0 0 0 1px rgba(240, 71, 85, 0.08) inset;
+  border-color: rgba(var(--orbit-accent-rgb), 0.42);
+  background: rgba(var(--orbit-accent-rgb), 0.045);
+  box-shadow: 0 0 0 1px rgba(var(--orbit-accent-rgb), 0.08) inset;
 }
 
 .orbit-launcher__create:focus-visible {
   outline: 2px solid var(--orbit-coral);
   outline-offset: 2px;
-  border-color: rgba(240, 71, 85, 0.42);
+  border-color: rgba(var(--orbit-accent-rgb), 0.42);
 }
 
 .orbit-launcher__create-ico {
@@ -217,7 +217,7 @@
 
 .orbit-launcher__create:hover .orbit-launcher__create-ico,
 .orbit-launcher__create:focus-visible .orbit-launcher__create-ico {
-  border-color: rgba(240, 71, 85, 0.45);
+  border-color: rgba(var(--orbit-accent-rgb), 0.45);
   color: var(--orbit-coral);
 }
 
@@ -438,13 +438,13 @@
 
 .orbit-profile-editor__add:hover,
 .orbit-profile-editor__add:focus-visible {
-  border-color: rgba(240, 71, 85, 0.42);
+  border-color: rgba(var(--orbit-accent-rgb), 0.42);
   color: var(--orbit-ink);
 }
 
 .orbit-profile-editor__error {
   margin: 10px 0 0;
-  color: var(--orbit-red);
+  color: var(--orbit-danger);
   font-size: 12px;
 }
 
@@ -505,7 +505,7 @@
 
 .orbit-launcher__remove:hover:not(:disabled),
 .orbit-launcher__remove:focus-visible {
-  color: var(--orbit-red);
+  color: var(--orbit-danger);
 }
 
 /* Un control sin backend no se esconde: se apaga y explica su motivo por
@@ -535,7 +535,7 @@
 
 .orbit-launcher__add-app:hover,
 .orbit-launcher__add-app:focus-visible {
-  border-color: rgba(240, 71, 85, 0.42);
+  border-color: rgba(var(--orbit-accent-rgb), 0.42);
   color: var(--orbit-ink);
 }
 

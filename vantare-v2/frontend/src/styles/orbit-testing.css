@@ -101,7 +101,7 @@
 
 .orbit-tc__error {
   margin-top: 6px;
-  color: var(--orbit-red);
+  color: var(--orbit-danger);
   font-size: var(--orbit-fs-secondary);
 }
 

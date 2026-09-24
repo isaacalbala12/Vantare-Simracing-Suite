@@ -140,7 +140,8 @@ export const SETTINGS_SEARCH_INDEX: SettingsSearchEntry[] = [
   { section: "application", key: "settings.app.language" },
   { section: "application", key: "settings.app.density" },
   { section: "application", key: "settings.app.zoom" },
-  { section: "application", key: "settings.app.theme" },
+  { section: "application", key: "settings.app.palette" },
+  { section: "application", key: "settings.app.scheme" },
   { section: "application", key: "settings.app.reduceMotion" },
 
   // Aplicación · sistema

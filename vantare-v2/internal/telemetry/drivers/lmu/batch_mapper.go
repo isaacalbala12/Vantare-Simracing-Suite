@@ -393,6 +393,7 @@ func mapVehicle(source VehicleObservation, id identity.VehicleID, sessionID iden
 		LocalVelocity:    source.LocalVelocity,
 		Orientation:      source.Orientation,
 		Damage:           source.Damage,
+		TyreWear:         source.TyreWear,
 	}
 }
 

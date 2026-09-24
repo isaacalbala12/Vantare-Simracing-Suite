@@ -26,12 +26,15 @@ describe("CarDamageNumbersFunctional", () => {
     const wire = JSON.parse(readFileSync(path.resolve(process.cwd(), "../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json"), "utf8"));
     const frame = decodeOverlayUpdateV2(wire).frame;
     expect(frame).toBeDefined();
-    const damage = buildCarDamageNumbersViewModelV2(frame!, { state: "live" }, carDamageNumbersDefinition.parseContent({}));
+    const damage = buildCarDamageNumbersViewModelV2({
+      ...frame!,
+      damage: { ...frame!.damage, tyreWear: { q: "fresh", v: [0.98, 0.91, 0.87, 0.93] } },
+    }, { state: "live" }, carDamageNumbersDefinition.parseContent({}));
     const { container } = render(<CarDamageNumbersFunctional model={damage} settings={{}} renderMode="harness" />);
     for (const field of ["aero", "body", "suspension"]) {
       expect(container.querySelector(`[data-damage="${field}"] .vf-car-damage-value`)?.textContent).toBe("100%");
     }
-    expect(container.querySelector('[data-damage="tyre"] .vf-car-damage-value')?.textContent).toBe("—");
+    expect(container.querySelector('[data-damage="tyre"] .vf-car-damage-value')?.textContent).toBe("13%");
   });
 
   it("shows four rows and one aggregated tyre value", () => {

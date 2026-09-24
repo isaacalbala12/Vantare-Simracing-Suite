@@ -16,8 +16,8 @@ import type { CarDamageNumbersViewModel } from "./car-damage-numbers-view-model"
  *   - aero = max(dents[0], dents[1]) / 2
  *   - suspension = max(dents[2], dents[3]) / 2
  *   - body = max(all dents) / 2
- *   - tyres stays undefined: the LMU shared memory exposes wheel detachment as
- *     a count, not per-tyre fractions, so no comparable signal exists.
+ *   - tyres = 1 - LMU mWear per wheel, so the existing maximum aggregator
+ *     displays the most worn tyre. mWear is remaining tread, not detachment.
  *
  * Overheating / detached / wheelDetachedCount are observed but not rendered by
  * this widget; they travel in the frame for future use and are declared gaps
@@ -32,7 +32,8 @@ export function buildCarDamageNumbersViewModelV2(
   content: CarDamageNumbersContent,
 ): CarDamageNumbersViewModel {
   const sourceStatus = resolveStatus(source.state);
-  const status = sourceStatus === "ready" && frame.damage.dents.q === "stale" ? "stale" : sourceStatus;
+  const status = sourceStatus === "ready" &&
+    (frame.damage.dents.q === "stale" || frame.damage.tyreWear?.q === "stale") ? "stale" : sourceStatus;
   const unavailable = status === "missing" || status === "disconnected" || status === "error";
   const dents = frame.damage.dents.v;
   if (unavailable || (frame.damage.dents.q !== "fresh" && frame.damage.dents.q !== "stale")
@@ -48,13 +49,18 @@ export function buildCarDamageNumbersViewModelV2(
   const aero = Math.max(fractions[0]!, fractions[1]!);
   const suspension = Math.max(fractions[2]!, fractions[3]!);
   const body = Math.max(...fractions);
+  const wear = frame.damage.tyreWear;
+  const tyres = wear && (wear.q === "fresh" || wear.q === "stale") && wear.v?.length === 4 &&
+    wear.v.every((value) => Number.isFinite(value) && value >= 0 && value <= 1)
+    ? wear.v.map((value) => 1 - value)
+    : undefined;
   return {
     type: "car-damage-numbers",
     status,
     body,
     aero,
     suspension,
-    tyres: undefined,
+    tyres,
     showTyres: content.showTyres,
     format: content.format,
   };
@@ -74,7 +80,6 @@ export function carDamageNumbersDisplayedValues(
 
 /** Fields with no canonical signal behind them; declared, never compared. */
 export const OVERLAY_V2_DAMAGE_DECLARED_GAPS: readonly string[] = Object.freeze([
-  "tyres",
   "overheating",
   "detached",
   "wheelDetachedCount",
@@ -83,13 +88,14 @@ export const OVERLAY_V2_DAMAGE_DECLARED_GAPS: readonly string[] = Object.freeze(
 /**
  * Fields both contracts populate with a different, deliberate criterion. They
  * are accounted and never compared as values, because a difference here is not
- * a defect: it is the canonical authority (dents/2) replacing the legacy Wails
- * estimate from a different source.
+ * a defect: the canonical LMU dents and tyre wear replace the legacy Wails
+ * estimates from a different source.
  */
 export const OVERLAY_V2_DAMAGE_INTENTIONAL_DIFFERENCES: readonly string[] = Object.freeze([
   "body",
   "aero",
   "suspension",
+  "tyres",
 ]);
 
 function resolveStatus(state: string): CarDamageNumbersViewModel["status"] {

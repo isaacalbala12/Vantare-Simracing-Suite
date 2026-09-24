@@ -646,11 +646,23 @@ function validStanding(value: unknown): boolean {
 }
 
 function damage(value: unknown, path: string): void {
-  objectWithKeys(value, path, ["dents", "overheating", "detached", "wheelDetachedCount"]);
+  objectWithKeys(value, path, ["dents", "overheating", "detached", "wheelDetachedCount"], ["tyreWear"]);
   dentsValue(value.dents, `${path}.dents`);
   qvalue(value.overheating, `${path}.overheating`, "boolean");
   qvalue(value.detached, `${path}.detached`, "boolean");
   qvalue(value.wheelDetachedCount, `${path}.wheelDetachedCount`, "number");
+  if (value.tyreWear !== undefined) tyreWearValue(value.tyreWear, `${path}.tyreWear`);
+  Object.freeze(value);
+}
+
+function tyreWearValue(value: unknown, path: string): void {
+  if (!objectHasKeys(value, ["q"], ["v"])) invalid(path);
+  if (!["fresh", "stale", "missing", "invalid"].includes(value.q as string)) invalid(`${path}.q`);
+  if (value.q === "fresh" || value.q === "stale") {
+    if (!Array.isArray(value.v) || value.v.length !== 4 ||
+        !value.v.every((item) => typeof item === "number" && Number.isFinite(item) && item >= 0 && item <= 1)) invalid(`${path}.v`);
+    Object.freeze(value.v);
+  } else if (value.v !== undefined) invalid(`${path}.v`);
   Object.freeze(value);
 }
 

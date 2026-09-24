@@ -372,10 +372,11 @@ type SpotterViewV2 struct {
 }
 
 type DamageViewV2 struct {
-	Dents              QValue[[]uint16] `json:"dents"`
-	Overheating        QValue[bool]     `json:"overheating"`
-	Detached           QValue[bool]     `json:"detached"`
-	WheelDetachedCount QValue[uint8]    `json:"wheelDetachedCount"`
+	Dents              QValue[[]uint16]   `json:"dents"`
+	Overheating        QValue[bool]       `json:"overheating"`
+	Detached           QValue[bool]       `json:"detached"`
+	WheelDetachedCount QValue[uint8]      `json:"wheelDetachedCount"`
+	TyreWear           *QValue[[]float64] `json:"tyreWear,omitempty"`
 }
 
 type CapabilityModesV2 struct {

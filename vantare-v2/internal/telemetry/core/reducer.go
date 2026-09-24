@@ -74,6 +74,7 @@ type VehicleState struct {
 	LocalVelocity    schema.Field[spatial.LocalVelocity]
 	Orientation      schema.Field[spatial.Orientation]
 	Damage           schema.Field[damage.State]
+	TyreWear         schema.Field[[4]float64]
 }
 
 // ObservedState is the complete state replaced by one atomic batch. The

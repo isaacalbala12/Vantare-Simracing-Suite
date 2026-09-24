@@ -24,13 +24,30 @@ describe("car damage v2 view model", () => {
     expect(model.suspension).toBe(1);
   });
 
-  it("leaves tyres undefined instead of inventing it", () => {
-    const model = buildCarDamageNumbersViewModelV2(goldenFrame(20), { state: "live" }, CONTENT);
-    expect(model.tyres).toBeUndefined();
-    expect(OVERLAY_V2_DAMAGE_DECLARED_GAPS).toEqual(expect.arrayContaining(["tyres"]));
-    expect(OVERLAY_V2_DAMAGE_INTENTIONAL_DIFFERENCES).toEqual(
-      expect.arrayContaining(["body", "aero", "suspension"]),
+  it("leaves tyres undefined when the source has no observed tyre wear", () => {
+    const frame = goldenFrame(20);
+    const model = buildCarDamageNumbersViewModelV2(
+      { ...frame, damage: { ...frame.damage, tyreWear: undefined } },
+      { state: "live" }, CONTENT,
     );
+    expect(model.tyres).toBeUndefined();
+    expect(OVERLAY_V2_DAMAGE_DECLARED_GAPS).not.toContain("tyres");
+    expect(OVERLAY_V2_DAMAGE_INTENTIONAL_DIFFERENCES).toEqual(
+      expect.arrayContaining(["body", "aero", "suspension", "tyres"]),
+    );
+  });
+
+  it("maps four observed LMU tyre fractions to wear and keeps source quality", () => {
+    const frame = goldenFrame(20);
+    const withWear = {
+      ...frame,
+      damage: { ...frame.damage, tyreWear: { q: "fresh", v: [0.98, 0.91, 0.87, 0.93] } },
+    } as OverlayFrameV2;
+    const model = buildCarDamageNumbersViewModelV2(withWear, { state: "live" }, CONTENT);
+    expect(model.tyres?.map((wear) => Math.round(wear * 100))).toEqual([2, 9, 13, 7]);
+    expect(model.status).toBe("ready");
+    expect(buildCarDamageNumbersViewModelV2({ ...withWear, damage: { ...withWear.damage, tyreWear: { q: "stale", v: [0.98, 0.91, 0.87, 0.93] } } }, { state: "live" }, CONTENT).status).toBe("stale");
+    expect(buildCarDamageNumbersViewModelV2({ ...withWear, damage: { ...withWear.damage, tyreWear: { q: "invalid" } } }, { state: "live" }, CONTENT).tyres).toBeUndefined();
   });
 
   it("keeps observed zero damage distinct from missing damage", () => {

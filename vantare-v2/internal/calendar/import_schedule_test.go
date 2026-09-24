@@ -106,6 +106,34 @@ func TestImportDailyScheduleSep22DiscordMarkup(t *testing.T) {
 	}
 }
 
+func TestImportDailyScheduleSep22SpecialStarts(t *testing.T) {
+	sched := importSep22Fixture(t)
+	cases := []struct {
+		id    string
+		want  int
+		first time.Time
+		last  time.Time
+	}{
+		{"weekly-2-4h-road-atlanta", 32, time.Date(2026, time.September, 22, 0, 0, 0, 0, time.UTC), time.Date(2026, time.September, 28, 21, 0, 0, 0, time.UTC)},
+		{"weekly-community-test-12-hours-of-le-mans", 1, time.Date(2026, time.September, 25, 8, 0, 0, 0, time.UTC), time.Date(2026, time.September, 25, 8, 0, 0, 0, time.UTC)},
+		{"weekly-grand-prix-of-long-beach", 12, time.Date(2026, time.September, 26, 2, 0, 0, 0, time.UTC), time.Date(2026, time.September, 27, 22, 0, 0, 0, time.UTC)},
+	}
+	for _, c := range cases {
+		t.Run(c.id, func(t *testing.T) {
+			events, err := ExpandSeries(seriesByID(t, sched, c.id), sched, sched.ValidFrom, sched.ValidUntil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(events) == 0 {
+				t.Fatal("no starts in official week")
+			}
+			if len(events) != c.want || !events[0].StartTime.Equal(c.first) || !events[len(events)-1].StartTime.Equal(c.last) {
+				t.Fatalf("starts: count=%d first=%s last=%s, want %d %s %s", len(events), events[0].StartTime, events[len(events)-1].StartTime, c.want, c.first, c.last)
+			}
+		})
+	}
+}
+
 func seriesByID(t *testing.T, sched OfficialSchedule, id string) RaceSeries {
 	t.Helper()
 	for _, s := range sched.Series {

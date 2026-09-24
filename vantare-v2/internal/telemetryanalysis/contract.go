@@ -83,6 +83,9 @@ type Candidate struct {
 	stabilityGate bool
 }
 
+// LocalPath is for native ownership checks only; never publish it in UI contracts.
+func (candidate Candidate) LocalPath() string { return candidate.sourcePath }
+
 type ContentMetadata struct {
 	Size      int64
 	ModTime   time.Time

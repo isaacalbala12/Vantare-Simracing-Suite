@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"os"
 
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
 )
@@ -55,6 +56,12 @@ func (service *TelemetryAnalysisService) SaveVerifiedCopy(ctx context.Context, r
 			return TelemetryAnalysisCopyResult{}, ctxErr
 		}
 		return TelemetryAnalysisCopyResult{}, ErrTelemetryAnalysisCopyFailed
+	}
+	if err := service.recordVerifiedCopy(ownedSession, path); err != nil {
+		if cleanupErr := os.Remove(path); cleanupErr != nil {
+			return TelemetryAnalysisCopyResult{}, ErrTelemetryAnalysisCleanup
+		}
+		return TelemetryAnalysisCopyResult{}, err
 	}
 	evidence := ownedSession.staged.Evidence()
 	return TelemetryAnalysisCopyResult{Path: path, ContentSHA256: evidence.ContentSHA256, SizeBytes: evidence.Metadata.Size}, nil

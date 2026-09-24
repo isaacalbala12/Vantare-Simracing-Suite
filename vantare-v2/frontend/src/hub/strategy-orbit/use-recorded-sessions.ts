@@ -99,7 +99,7 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
     throw new Error("recorded_source_mismatch");
   }
   return {
-    candidates, sessions, busy: busy || corrections.busy, error, applied, savedCopies, corrections,
+    candidates, sessions, busy: busy || corrections.busy, error, applied, savedCopies, recoverableSources: [...new Set(revisions.map(ref => ref.sessionId))].filter(id => !owned.current.some(item => item.revision.sessionId === id)), corrections,
     locked: corrections.unresolved,
     cancel: () => { pending.current?.abort(); corrections.cancel(); },
     discover: () => run(async signal => {
@@ -115,6 +115,14 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
     }),
     selectFile: (path: string) => run(async signal => {
       const selected = await client.selectFile(path, signal);
+      selectedFileIDs.current.add(selected.id);
+      if (alive.current) setCandidates(previous => [selected, ...(previous ?? []).filter(item => item.id !== selected.id)]);
+    }),
+    recoverCopy: (sourceId: string) => run(async signal => {
+      if (!revisions.some(ref => ref.sessionId === sourceId)) throw new Error("recorded_source_unavailable");
+      const recovery = await client.recoverCopy(sourceId, signal);
+      if (recovery.code !== "ready") throw new Error(recovery.code === "registry_failure" ? "recorded_copy_registry_failure" : `recorded_${recovery.code}`);
+      const selected = recovery.candidate;
       selectedFileIDs.current.add(selected.id);
       if (alive.current) setCandidates(previous => [selected, ...(previous ?? []).filter(item => item.id !== selected.id)]);
     }),
@@ -194,4 +202,4 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
   };
 }
 
-export type RecordedSessionsController = Pick<ReturnType<typeof useRecordedSessions>, "candidates" | "sessions" | "busy" | "error" | "applied" | "cancel" | "discover" | "open" | "openAndApply" | "clear" | "close" | "apply"> & Partial<Pick<ReturnType<typeof useRecordedSessions>, "savedCopies" | "saveCopy" | "selectFile">> & { readonly locked?: boolean };
+export type RecordedSessionsController = Pick<ReturnType<typeof useRecordedSessions>, "candidates" | "sessions" | "busy" | "error" | "applied" | "cancel" | "discover" | "open" | "openAndApply" | "clear" | "close" | "apply"> & Partial<Pick<ReturnType<typeof useRecordedSessions>, "savedCopies" | "saveCopy" | "selectFile" | "recoverCopy" | "recoverableSources">> & { readonly locked?: boolean };

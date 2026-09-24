@@ -25,6 +25,14 @@ async function prepare() {
   await screen.findByRole("button", { name: "strategy.recorded.apply" });
 }
 describe("recorded sessions panel", () => {
+  it("offers recovery for a saved source without declaring it recovered", () => {
+    const recoverCopy = vi.fn();
+    const controller: RecordedSessionsController = { candidates: [], sessions: [], busy: false, error: "", applied: false, recoverableSources: ["a".repeat(64)], recoverCopy, discover: vi.fn(), open: vi.fn(), close: vi.fn(), apply: vi.fn(), cancel: vi.fn() };
+    render(<StrategyRecordedSessionsView controller={controller} t={key => key} />);
+    fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.recoverCopy 1" }));
+    expect(recoverCopy).toHaveBeenCalledWith("a".repeat(64));
+    expect(screen.queryByText("strategy.recorded.copySaved")).toBeNull();
+  });
   it("adds only the chosen file to the session library", async () => {
     const { client } = fixture();
     vi.mocked(Dialogs.OpenFile).mockResolvedValueOnce("C:\\kept\\copy.duckdb");

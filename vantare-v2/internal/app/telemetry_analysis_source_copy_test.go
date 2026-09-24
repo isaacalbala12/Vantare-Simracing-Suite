@@ -15,6 +15,7 @@ import (
 
 func TestTelemetryAnalysisVerifiedCopyKeepsOriginalAndSurvivesClose(t *testing.T) {
 	svc, originalPath, now := telemetryAnalysisTestService(t, true)
+	svc.cfg.CorrectionRoot = t.TempDir()
 	defer svc.ServiceShutdown()
 	candidate := telemetryAnalysisReadyCandidate(t, svc, now)
 	svc.runtimeReady = true
@@ -40,6 +41,16 @@ func TestTelemetryAnalysisVerifiedCopyKeepsOriginalAndSurvivesClose(t *testing.T
 	}
 	if filepath.Dir(copyResult.Path) != destination || filepath.Ext(copyResult.Path) != ".duckdb" || copyResult.SizeBytes != int64(len(before)) {
 		t.Fatalf("unexpected verified copy metadata: %+v", copyResult)
+	}
+	registryRoot := svc.cfg.CorrectionRoot
+	svc.cfg.CorrectionRoot = ""
+	failedDestination := t.TempDir()
+	if _, err := svc.SaveVerifiedCopy(context.Background(), TelemetryAnalysisCopyRequest{SessionID: opened.SessionID, DestinationDirectory: failedDestination, UserApproved: true}); !errors.Is(err, ErrTelemetryAnalysisCopyRegistryFailure) {
+		t.Fatalf("unregistered copy error = %v", err)
+	}
+	svc.cfg.CorrectionRoot = registryRoot
+	if entries, err := os.ReadDir(failedDestination); err != nil || len(entries) != 0 {
+		t.Fatalf("failed copy left an unregistered file: %v, %v", entries, err)
 	}
 	if err := svc.CloseSession(opened.SessionID); err != nil {
 		t.Fatal(err)

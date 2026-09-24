@@ -31,6 +31,12 @@ export function StrategyRecordedSessionsView({ controller, onInspect, onChoose, 
     : error === "recorded_pending_corrections" ? t("strategy.data.finishPending")
     : error === "recorded_source_mismatch" ? t("strategy.recorded.sourceMismatch")
     : error === "recorded_revision_mismatch" ? t("strategy.recorded.revisionMismatch")
+    : error === "recorded_original_present" ? t("strategy.recorded.originalPresent")
+    : error === "recorded_copy_changed" ? t("strategy.recorded.copyChanged")
+    : error === "recorded_copy_unavailable" ? t("strategy.recorded.copyUnavailable")
+    : error === "recorded_copy_registry_failure" ? t("strategy.recorded.copyRegistryFailure")
+    : error === "recorded_not_ready" ? t("strategy.recorded.copyNotReady")
+    : error === "recorded_too_large" ? t("strategy.recorded.copyTooLarge")
     : error.startsWith("recorded_") ? t("strategy.recorded.error")
     : error;
   const [query, setQuery] = useState("");
@@ -82,6 +88,7 @@ export function StrategyRecordedSessionsView({ controller, onInspect, onChoose, 
     <p>{t("strategy.recorded.hint")}</p>
     <Button disabled={locked} onClick={() => void controller.discover()} variant="primary">{t("strategy.recorded.discover")}</Button>
     {controller.selectFile ? <Button disabled={locked || choosingFile} onClick={() => void chooseFile()} variant="ghost">{t("strategy.recorded.selectFile")}</Button> : null}
+    {controller.recoverableSources?.map((sourceId, index) => <Button key={sourceId} disabled={locked || choosingFile} onClick={() => void controller.recoverCopy?.(sourceId)} variant="ghost">{t("strategy.recorded.recoverCopy")} {index + 1}</Button>)}
     {controller.locked ? <p role="status">{t("strategy.data.finishPending")}</p> : null}
     {busy ? <p role="status">{t("strategy.recorded.busy")} <Button variant="ghost" onClick={controller.cancel}>{t("strategy.recorded.cancel")}</Button></p> : null}
     {errorMessage ? <Note title={t("strategy.recorded.error")}><span role="alert">{errorMessage}</span></Note> : null}

@@ -6,6 +6,17 @@ import type { AnalysisBase, AnalysisClassificationCorrection, AnalysisCorrection
 import snapshotV4 from "./testdata/analysis-identity-snapshot-v4.json";
 vi.mock("@wailsio/runtime", () => ({ Call: { ByName: vi.fn() } }));
 describe("native Analysis client", () => {
+  it("requests recovery only for an exact saved source identifier", async () => {
+    const candidate = { id: "lmu://1234567890abcdef", state: "ready", size: 12, modifiedAt: "2026-09-24T18:00:00Z", walPresent: false };
+    const call = vi.fn().mockResolvedValue({ code: "ready", candidate });
+    const client = createAnalysisClient({ call });
+    await expect(client.recoverCopy("unknown")).rejects.toThrow("request.sourceId");
+    expect(call).not.toHaveBeenCalled();
+    await expect(client.recoverCopy("a".repeat(64))).resolves.toMatchObject({ code: "ready", candidate });
+    expect(call).toHaveBeenCalledExactlyOnceWith("RecoverCopy", [{ sourceId: "a".repeat(64), userApproved: true }], undefined);
+    call.mockResolvedValueOnce({ code: "copy_changed" });
+    await expect(client.recoverCopy("a".repeat(64))).resolves.toEqual({ code: "copy_changed" });
+  });
   it("registers only a user-selected file and validates the returned candidate", async () => {
     const candidate = { id: "lmu://1234567890abcdef", state: "ready", size: 12, modifiedAt: "2026-09-24T18:00:00Z", walPresent: false };
     const call = vi.fn().mockResolvedValue(candidate);

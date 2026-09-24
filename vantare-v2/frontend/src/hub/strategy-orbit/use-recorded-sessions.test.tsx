@@ -27,6 +27,20 @@ it("does not adopt a selected replacement file for a different saved source", as
   expect(onApply).not.toHaveBeenCalled();
 });
 
+it("offers a registered copy for an exact saved source before opening it", async () => {
+  const selected = { ...candidate, id: "saved-copy" };
+  const client = { recoverCopy: vi.fn().mockResolvedValue({ code: "ready", candidate: selected }), close: vi.fn().mockResolvedValue(undefined) } as unknown as AnalysisClient;
+  vi.mocked(openRecordedSession).mockResolvedValue({ ...session, candidateId: selected.id });
+  const { result } = renderHook(() => useRecordedSessions({ revisions: [session.revision], client, onApply: vi.fn(), onCleanupError: vi.fn() }));
+  expect(result.current.recoverableSources).toEqual([session.revision.sessionId]);
+  await act(() => result.current.recoverCopy(session.revision.sessionId));
+  expect(result.current.candidates).toEqual([selected]);
+  expect(openRecordedSession).not.toHaveBeenCalled();
+  await act(() => result.current.open(selected));
+  expect(result.current.sessions).toEqual([{ ...session, candidateId: selected.id }]);
+  expect(result.current.recoverableSources).toEqual([]);
+});
+
 it("automatically verifies stable discovered files until they can be opened", async () => {
   vi.useFakeTimers();
   const stabilizing = { ...candidate, state: "stabilizing" };

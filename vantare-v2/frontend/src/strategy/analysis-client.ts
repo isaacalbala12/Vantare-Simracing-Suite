@@ -1,7 +1,7 @@
 import { Call } from "@wailsio/runtime";
 import { parseInputProjection } from "./strategy-application-client";
 import { AnalysisProtocolError, parseAnalysisClassificationCorrections, parseAnalysisLapPage, parseAnalysisFamilyCorrections, parseAnalysisStintBoundaryCorrections, sameAnalysisClassificationCorrections, sameAnalysisFamilyCorrections, sameAnalysisStintBoundaryCorrections, type AnalysisClassificationCorrection, type AnalysisFamilyCorrection, type AnalysisStintBoundaryCorrection, parseAnalysisBase, parseAnalysisCandidates, parseAnalysisCommandResolution, parseAnalysisCorrection, parseAnalysisOpenedSession, parseAnalysisPage, parseAnalysisPreparation, parseAnalysisSaveCommand, parseAnalysisStatus, parseCorrectionStoreResult, sameAnalysisBase, type AnalysisBase, type AnalysisCorrection, type AnalysisRevision, type AnalysisSaveCommand } from "./analysis-contract";
-const methods = ["Status", "Discover", "SelectFile", "Open", "SaveVerifiedCopy", "ReadPage", "PrepareCorrections", "InspectCorrectionLaps", "SaveCorrections", "SaveRecoverableCorrections", "LoadPendingCorrectionCommand", "AcknowledgeCorrectionCommand", "ResolveCorrectionCommand", "LoadCorrection", "ProjectCorrection", "CloseSession"] as const;
+const methods = ["Status", "Discover", "SelectFile", "RecoverCopy", "Open", "SaveVerifiedCopy", "ReadPage", "PrepareCorrections", "InspectCorrectionLaps", "SaveCorrections", "SaveRecoverableCorrections", "LoadPendingCorrectionCommand", "AcknowledgeCorrectionCommand", "ResolveCorrectionCommand", "LoadCorrection", "ProjectCorrection", "CloseSession"] as const;
 type AnalysisMethod = typeof methods[number];
 export type AnalysisTransport = {
   call(method: AnalysisMethod, args: readonly unknown[], signal?: AbortSignal): Promise<unknown>;
@@ -116,6 +116,19 @@ export function createAnalysisClient(transport: AnalysisTransport = createNative
       const selected = parseAnalysisCandidates([await invoke("SelectFile", [{ path, userApproved: true }], signal)])[0];
       if (selected.state !== "ready" || selected.walPresent) throw new AnalysisProtocolError("selectFile.notReady");
       return selected;
+    },
+    async recoverCopy(sourceId: string, signal?: AbortSignal) {
+      if (!/^[a-f0-9]{64}$/.test(sourceId)) throw new AnalysisProtocolError("request.sourceId");
+      const result = await invoke("RecoverCopy", [{ sourceId, userApproved: true }], signal);
+      if (!result || typeof result !== "object" || Array.isArray(result)) throw new AnalysisProtocolError("recoverCopy.result");
+      const raw = result as Record<string, unknown>;
+      if (raw.code === "ready") {
+        const selected = parseAnalysisCandidates([raw.candidate])[0];
+        if (selected.state !== "ready" || selected.walPresent) throw new AnalysisProtocolError("recoverCopy.notReady");
+        return { code: "ready" as const, candidate: selected };
+      }
+      if (raw.candidate !== undefined || !["original_present", "copy_changed", "copy_unavailable", "registry_failure", "not_ready", "too_large"].includes(raw.code as string)) throw new AnalysisProtocolError("recoverCopy.result");
+      return { code: raw.code as "original_present" | "copy_changed" | "copy_unavailable" | "registry_failure" | "not_ready" | "too_large" };
     },
     async open(candidateId: string, userApproved: boolean, signal?: AbortSignal) {
       identifier(candidateId);

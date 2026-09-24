@@ -19,14 +19,14 @@ export const fastestLapDefinition: WidgetTypeDefinition<FastestLapContent, Faste
     inspectorSections: ["design", "appearance", "content", "behavior", "layout", "actions"],
     supportsAspectUnlock: true,
     minimumSize: { width: 280, height: 72 },
-    defaultSize: { width: 480, height: 104 },
+    defaultSize: { width: 528, height: 104 },
     requiredFeature: getWidgetRequiredFeature("fastest-lap"),
   },
   inspector,
   createDefault(id: string): WidgetInstanceV3 {
     return {
       id, type: "fastest-lap",
-      layout: { x: 720, y: 48, w: 480, h: 104, zIndex: 0, aspectLocked: true },
+      layout: { x: 720, y: 48, w: 528, h: 104, zIndex: 0, aspectLocked: true },
       behavior: { enabled: true, updateHz: 10 },
       content: parseFastestLapContent(null),
       visual: { systemId: "vantare-functional", systemVersion: 1, configVersion: 1, baseSettings: {}, appearanceOverrides: {} },

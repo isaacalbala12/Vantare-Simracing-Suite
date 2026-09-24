@@ -44,5 +44,17 @@ cancelación, además de los rechazos de cuotas ya existentes.
 
 Este corte prepara la sustitución sin duplicar la lógica de lectura. Todavía
 faltan la paridad del reloj GPS incremental, un consumidor productivo sin
-retención, el banco real repetido y una medición nueva de pico. No se eleva
+retención y una medición nueva de pico. No se eleva
 ningún presupuesto ni se afirma soporte de resistencia.
+
+El banco real opt-in pasó de nuevo con S266 Algarve y una **segunda Monza
+distinta de S026** (archivo de 2026-05-02). Algarve conserva ritmo seco
+95,190 s (N=58), Fuel 2,135 L/vuelta (N=58), VE LMP2 no aplicable y 38
+vueltas/0 paradas con óptimo probado sólo para el evento supuesto. Preparación,
+proyección, revisión exacta, clasificación, identidad, correcciones por familia,
+restauración y reapertura pasaron en 270,29 s. Los SHA-256 originales siguen
+`6b912640e5b68da087fbe86ce70401101edbdc89cb89cb93df30c9ef396d9362`
+y `00874567d608eb2c40f8213ce4abb3a91b5756e31826c615bccd246b172ecef3`.
+La duración incluye la distinta fuente objetivo y no se interpreta como
+regresión de velocidad. La suite Go completa y la prueba focal del visitante
+también pasaron; no se hizo QA Wails ni una medición de pico posterior.

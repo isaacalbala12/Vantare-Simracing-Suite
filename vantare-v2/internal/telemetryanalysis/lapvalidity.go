@@ -437,46 +437,63 @@ func continuousCoverageWindow(channels ...[]HistoricalPage) (float64, float64, b
 }
 
 func channelCoverageWindow(pages []HistoricalPage) (float64, float64, bool) {
-	frequency := 0
-	var lastIndex int64
-	haveIndex := false
+	var scan orderedCoverageScan
 	for _, page := range pages {
-		if page.Sampling.Kind != SamplingContinuousImplicitFrequency ||
-			page.Sampling.Origin != TimeOriginSourceTimestamp || page.Sampling.FrequencyHz <= 0 {
-			return 0, 0, false
-		}
-		if frequency == 0 {
-			frequency = page.Sampling.FrequencyHz
-		}
-		if page.Sampling.FrequencyHz != frequency {
-			return 0, 0, false
-		}
-		for _, sample := range page.Samples {
-			if haveIndex && sample.Index <= lastIndex {
-				return unorderedChannelCoverageWindow(pages)
-			}
-			lastIndex, haveIndex = sample.Index, true
+		if !scan.accept(page) {
+			return unorderedChannelCoverageWindow(pages)
 		}
 	}
-	var first, last HistoricalSample
-	count := 0
-	for _, page := range pages {
-		for _, sample := range page.Samples {
-			if sample.TimestampSeconds == nil ||
-				(count > 0 && (sample.Index != last.Index+1 || *sample.TimestampSeconds <= *last.TimestampSeconds)) {
-				return 0, 0, false
-			}
-			if count == 0 {
-				first = sample
-			}
-			last = sample
-			count++
-		}
+	return scan.finish()
+}
+
+// orderedCoverageScan keeps only the endpoints and previous aligned sample.
+// A page visitor can feed it without retaining the continuous signal.
+type orderedCoverageScan struct {
+	frequency int
+	first     float64
+	last      float64
+	lastIndex int64
+	count     int
+	invalid   bool
+}
+
+// false means the input is out of index order; in-memory callers retain the
+// sorted fallback. Authorized correction pages arrive in index order.
+func (scan *orderedCoverageScan) accept(page HistoricalPage) bool {
+	if page.Sampling.Kind != SamplingContinuousImplicitFrequency ||
+		page.Sampling.Origin != TimeOriginSourceTimestamp || page.Sampling.FrequencyHz <= 0 ||
+		(scan.frequency != 0 && page.Sampling.FrequencyHz != scan.frequency) {
+		scan.invalid = true
+		return true
 	}
-	if count < 2 {
+	if scan.frequency == 0 {
+		scan.frequency = page.Sampling.FrequencyHz
+	}
+	for _, sample := range page.Samples {
+		if scan.count > 0 && sample.Index <= scan.lastIndex {
+			return false
+		}
+		if sample.TimestampSeconds == nil ||
+			(scan.count > 0 && (sample.Index != scan.lastIndex+1 || *sample.TimestampSeconds <= scan.last)) {
+			scan.invalid = true
+		}
+		if scan.count == 0 && sample.TimestampSeconds != nil {
+			scan.first = *sample.TimestampSeconds
+		}
+		if sample.TimestampSeconds != nil {
+			scan.last = *sample.TimestampSeconds
+		}
+		scan.lastIndex = sample.Index
+		scan.count++
+	}
+	return true
+}
+
+func (scan orderedCoverageScan) finish() (float64, float64, bool) {
+	if scan.invalid || scan.count < 2 {
 		return 0, 0, false
 	}
-	return *first.TimestampSeconds, *last.TimestampSeconds, true
+	return scan.first, scan.last, true
 }
 
 func unorderedChannelCoverageWindow(pages []HistoricalPage) (float64, float64, bool) {

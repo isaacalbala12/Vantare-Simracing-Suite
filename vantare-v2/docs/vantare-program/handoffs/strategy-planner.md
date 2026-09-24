@@ -1,5 +1,19 @@
 # Handoff vivo — Strategy Planner
 
+## Ventana de cobertura alimentable por páginas — ISA-1375 (2026-09-25)
+
+La cobertura continua de validez puede acumular sólo extremos, frecuencia y
+último índice/tiempo cuando las páginas llegan ordenadas. La API pura conserva
+la ordenación anterior para páginas fuera de orden, incluso si una posterior
+rellena un hueco. La regresión compara ambos recorridos en continuidad,
+huecos, reloj inválido y ausencia de tiempo; `go test ./...` y el banco real
+Algarve→Monza pasan (71 eventos, 70 reinicios, 66 vueltas completas y hashes
+originales invariantes). Este acumulador todavía recibe páginas retenidas por
+`ReadCorrectionInput`: **no** demuestra memoria acotada ni soporte de
+resistencia. La sustitución de `withCorrectionInput`, la medición de pico y
+Wails siguen pendientes; #1375 continúa abierta. Rama local sin push, PR, CI,
+merge, promoción ni release.
+
 ## Ascensos de Fuel sin copia de la señal — ISA-1375 (2026-09-25)
 
 La validez productiva detecta ahora subidas de combustible en páginas ordenadas

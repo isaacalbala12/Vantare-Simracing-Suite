@@ -12,7 +12,7 @@ import {
 } from "../../ui/orbit";
 import { formatMessage } from "../orbit/format-message";
 import { parseKeyEvent } from "../settings/hotkey-capture";
-import type { LaunchProfile, LauncherAppEntry } from "../launcher/launcher-state";
+import type { LaunchPolicy, LaunchProfile, LauncherAppEntry } from "../launcher/launcher-state";
 import {
   hasDuplicateSteps,
   isHotkeyAllowed,
@@ -30,14 +30,21 @@ export type OrbitProfileEditorProps = {
   apps: LauncherAppEntry[];
 };
 
+const defaultPolicy: LaunchPolicy = {
+  alreadyRunning: "ask",
+  failure: "ask",
+  cancel: "ask",
+  exit: "ask",
+  retry: "ask",
+  maxRetries: 0,
+};
+
 /**
  * Editor de perfil de lanzamiento en Orbit.
  *
- * Es el mismo formulario y **la misma lógica** que el `ProfileEditor` legado
- * (borrador local, reglas de validación de `launcher-state`, un único
- * `onSave(draft)`): lo que cambia es el envoltorio, que pasa de Tailwind suelto
- * al `Drawer` del kit y a `Field`/`Input`/`Select`/`Textarea`/`Toggle`. No se
- * toca el contrato ni se añade ninguna regla nueva.
+ * Conserva el borrador local, las reglas de validación de `launcher-state` y
+ * un único `onSave(draft)`. Los controles del kit editan el contrato real de
+ * políticas sin mantener otro estado para cada elección.
  */
 export function OrbitProfileEditor({
   profile,
@@ -99,6 +106,14 @@ export function OrbitProfileEditor({
 
   const setSteps = (steps: LaunchProfile["steps"]) =>
     setDraft((current) => ({ ...current, steps }));
+
+  const setPolicy = <K extends keyof LaunchPolicy>(key: K, value: LaunchPolicy[K]) =>
+    setDraft((current) => ({
+      ...current,
+      policy: { ...defaultPolicy, ...current.policy, [key]: value },
+    }));
+
+  const policy = draft.policy ?? defaultPolicy;
 
   const move = (index: number, delta: number) => {
     const target = index + delta;
@@ -200,19 +215,7 @@ export function OrbitProfileEditor({
               onChange={(event) => {
                 const delay = Number(event.target.value) || 0;
                 if (index === 0) {
-                  setDraft((current) => ({
-                    ...current,
-                    policy: {
-                      alreadyRunning: "ask",
-                      failure: "ask",
-                      cancel: "ask",
-                      exit: "ask",
-                      retry: "ask",
-                      maxRetries: 0,
-                      ...current.policy,
-                      firstStepDelay: delay,
-                    },
-                  }));
+                  setPolicy("firstStepDelay", delay);
                   return;
                 }
                 const next = [...draft.steps];
@@ -304,6 +307,54 @@ export function OrbitProfileEditor({
           </p>
         ) : null}
       </section>
+
+      {advanced ? (
+        <section className="orbit-profile-editor__policies" aria-label={t("launcher.editor.policies")}>
+          <span className="orbit-eyebrow">{t("launcher.editor.policies")}</span>
+          <div className="orbit-profile-editor__policy-grid">
+            <Select
+              label={t("launcher.editor.alreadyRunning")}
+              onChange={(value) => setPolicy("alreadyRunning", value)}
+              options={[
+                { value: "ask", label: t("launcher.editor.ask") },
+                { value: "reuse", label: t("launcher.editor.reuse") },
+                { value: "restart", label: t("launcher.editor.restart") },
+              ]}
+              value={policy.alreadyRunning}
+            />
+            <Select
+              label={t("launcher.editor.failure")}
+              onChange={(value) => setPolicy("failure", value)}
+              options={[
+                { value: "ask", label: t("launcher.editor.ask") },
+                { value: "stop", label: t("launcher.editor.stop") },
+                { value: "continue", label: t("launcher.editor.continue") },
+              ]}
+              value={policy.failure}
+            />
+            <Select
+              label={t("launcher.editor.cancelPolicy")}
+              onChange={(value) => setPolicy("cancel", value)}
+              options={[
+                { value: "ask", label: t("launcher.editor.ask") },
+                { value: "leave", label: t("launcher.editor.leave") },
+                { value: "close-started", label: t("launcher.editor.closeStarted") },
+              ]}
+              value={policy.cancel}
+            />
+            <Select
+              label={t("launcher.editor.exitPolicy")}
+              onChange={(value) => setPolicy("exit", value)}
+              options={[
+                { value: "ask", label: t("launcher.editor.ask") },
+                { value: "leave", label: t("launcher.editor.leave") },
+                { value: "close-started", label: t("launcher.editor.closeStarted") },
+              ]}
+              value={policy.exit}
+            />
+          </div>
+        </section>
+      ) : null}
 
       <KeycapRow
         className="orbit-profile-editor__hotkey"

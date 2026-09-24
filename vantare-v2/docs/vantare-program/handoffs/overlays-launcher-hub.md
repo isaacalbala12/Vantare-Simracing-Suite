@@ -2505,6 +2505,19 @@ probar el aviso y el cierre con Wails y procesos reales. El HEAD anterior
 `a27f2419` tiene ratchet, ruta y GitGuardian verdes; el gate bloqueante
 remoto continúa pendiente. **NO-GO**, sin merge, promoción ni release.
 
+Décimo avance de #1368 (candidato local): Orbit deja editar en modo avanzado
+las políticas ya operativas de aplicación abierta, fallo de paso,
+cancelación y salida. El formulario conserva las demás opciones al cambiar
+una política y ofrece etiquetas en es/en/pt/it. La regresión de controles
+ausentes falló primero y pasó después. Las 125 pruebas focales del Launcher,
+typecheck, build y lint frontend pasan. La suite frontend global se interrumpió
+tras timeouts de layout ajenos al Launcher al correr en paralelo con build y
+lint; las dos suites que fallaron pasaron aisladas (5 pruebas). Se espera el
+gate remoto para el veredicto de conjunto. La política de reintento sigue
+pendiente de concretar; Isaac tiene una pregunta abierta sobre qué debe
+significar `retry: all`. La UI y los procesos reales siguen sin revisión
+física; antes de computer use se avisará y esperará su confirmación.
+
 ## Hub
 
 Conservar estructura. Solo consistencia visual, estados reales, responsive,

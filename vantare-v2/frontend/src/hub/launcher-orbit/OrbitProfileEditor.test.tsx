@@ -161,4 +161,24 @@ describe("OrbitProfileEditor", () => {
     }) as HTMLButtonElement;
     expect(toggle.disabled).toBe(true);
   });
+
+  it("permite configurar las políticas de ejecución y salida desde el modo avanzado", () => {
+    const { onSave } = setup();
+    fireEvent.click(screen.getByTestId("orbit-profile-editor-advanced-toggle"));
+    fireEvent.click(screen.getByRole("combobox", { name: "Al salir" }));
+    fireEvent.click(screen.getByRole("option", { name: "Cerrar las iniciadas por Vantare" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Al cancelar" }));
+    fireEvent.click(screen.getByRole("option", { name: "Dejar abiertas" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Si ya está abierta" }));
+    fireEvent.click(screen.getByRole("option", { name: "Reutilizar" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Si falla un paso" }));
+    fireEvent.click(screen.getByRole("option", { name: "Detener la cadena" }));
+    fireEvent.click(screen.getByTestId("orbit-profile-editor-save"));
+    expect(onSave.mock.calls[0][0].policy).toMatchObject({
+      alreadyRunning: "reuse",
+      failure: "stop",
+      cancel: "leave",
+      exit: "close-started",
+    });
+  });
 });

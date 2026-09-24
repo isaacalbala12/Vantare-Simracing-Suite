@@ -1,5 +1,9 @@
 # Handoff vivo — Strategy Planner
 
+## Validación de datos reales — ISA-1331 (2026-09-24)
+
+La app localdev abrió COTA, pero la grabación seleccionada `2026-09-09T18_43_03Z` contiene cero vueltas y está en boxes: los guiones de ritmo y consumo son correctos para esa fuente. El banco nativo opt-in recorrió Analysis → proyección de revisión exacta → Strategy con otras tres fuentes COTA reales de 2, 8 y 30 vueltas. Sus magnitudes sí llegan (hasta 21 vueltas de ritmo y 22 de combustible), pero todas salen con presencia `unknown`; la vista sólo presenta `valid` y por eso queda vacía. `reconcileLapBoundaries` publica fronteras `unknown` y la derivación conserva esa incertidumbre. No declarar la conexión rota ni el cálculo óptimo validado. [Evidencia y hashes](../../strategy-planner/evidence/isa-1331/real-data-validation-2026-09-24.md). Siguiente: criterio comprobable de calidad de vueltas/fronteras y estados de UI «sin vueltas»/«observado pendiente», seguido de banco real con presencia `valid` y cálculo nativo. Originales intactos; app abierta para Isaac; sin integración ni publicación.
+
 > **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
 > Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,
 > bloquear, entregar y verificar merge. [Contrato](../notion-transition.md).

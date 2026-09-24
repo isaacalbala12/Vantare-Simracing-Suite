@@ -208,6 +208,10 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 	if len(exact.SourceRevisions) != 1 || exact.SourceRevisions[0] != projection.SourceRevisions[0] {
 		t.Fatal("exact revision replaced by new head")
 	}
+	for bucket, pace := range exact.RepresentativePaceByClimateBucket {
+		t.Logf("real projection %s pace: presence=%s median=%.3f samples=%d reason=%s", bucket, pace.Presence, pace.MedianLapSeconds, pace.Confidence.SampleSize, pace.Reason)
+	}
+	t.Logf("real projection fuel: presence=%s mean=%.3f samples=%d buckets=%v reason=%s", exact.FuelConsumption.Presence, exact.FuelConsumption.MeanPerLap, exact.FuelConsumption.Confidence.SampleSize, exact.FuelConsumption.ByClimateBucket, exact.FuelConsumption.Reason)
 	t.Logf("exact revision retained: %s; combination: %s", exact.SourceRevisions[0].RevisionID, exact.CombinationID)
 	ref := exact.SourceRevisions[0]
 	if models[primaryCandidate.DisplayName].Session.ID != ref.SessionID {

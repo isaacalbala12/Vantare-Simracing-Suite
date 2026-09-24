@@ -1,5 +1,23 @@
 # Handoff vivo — Strategy Planner
 
+## Segundo recorrido visual registrado — ISA-1331 (2026-09-25)
+
+En el navegador interno, con el servidor mock existente en 127.0.0.1:5209,
+Imola Race abrió Preparación y la mesa en el primer intento. Se consultaron
+las cinco vueltas de Datos, se editó un piloto, se configuró un evento de 240
+minutos con Fuel, energía virtual y paradas, y la condición seca habilitó el
+cálculo. La validación impidió abrir la mesa con un piloto sin nombre. El error
+genérico de guardado registrado antes no se reprodujo en este recorrido; su
+causa sigue sin aislarse.
+
+El mock devuelve un plan fijo de 69 vueltas y 2:02:38 para ese evento de 240
+minutos, incluso con la etiqueta «Estrategia óptima demostrada». Es una
+incoherencia del **harness ilustrativo**, no evidencia del SolverV2 ni de una
+estrategia válida para cuatro horas. La app productiva no usa esa respuesta.
+La validación con DuckDB real, Wails y aceptación T22 siguen pendientes; no
+se hicieron cambios de código en #1331 en esta pasada. Rama local sin push,
+PR, CI, merge, promoción ni release.
+
 ## Datos manuales dentro de la mesa — ISA-1331 (2026-09-25)
 
 Revisión posterior del recorrido registrado en navegador interno (runtime mock,

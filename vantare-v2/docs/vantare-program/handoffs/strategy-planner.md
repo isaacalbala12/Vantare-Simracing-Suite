@@ -1,5 +1,14 @@
 # Handoff vivo — Strategy Planner
 
+## Revalidación de copia y recuperación — ISA-1373 (2026-09-25)
+
+El banco opt-in con el DuckDB COTA real volvió a pasar en HEAD `3a291597`
+(2,98 s): original sin WAL y SHA-256 intacto, copia verificada, desaparición
+del duplicado de trabajo, recuperación desde la copia y misma revisión
+corregida tras reabrir. [Evidencia](../../strategy-planner/evidence/isa-1373/real-copy-recovery-2026-09-24.md).
+No acredita aún selector de carpeta ni recorrido Wails E04; tampoco se corrió
+la suite Go global o CI en esta repetición. Rama aislada, sin push/PR/merge.
+
 ## Copia opcional de fuente — ISA-1373 (2026-09-24)
 
 E04/A02 detectó que el importador de arranque declaraba `managed_copy` aunque borraba la copia privada al terminar. En la rama aislada #1373, la declaración pasa a `reference`; Analysis guarda desde una sesión abierta una copia separada en carpeta elegida, verifica tamaño/SHA-256 y conserva el original. Strategy ofrece el selector de carpeta y puede elegir expresamente otro DuckDB fuera de las raíces configuradas, con estabilidad/WAL y lector existentes. El tercer corte registra bajo Analysis la ruta original y de copia en un registro local privado de entradas inmutables; sólo devuelve una copia registrada al faltar el original y tras verificar tamaño y SHA-256. El Open comprueba además el ID de fuente esperado. Hay estados tipados para original presente, copia cambiada/ausente, WAL activo y registro dañado. Un cuarto corte clasifica permisos y falta de espacio al guardar la copia, incluidos los códigos de disco lleno de Windows, y mantiene el borrado de la copia incompleta. Un quinto corte expone esos estados mediante `SaveVerifiedCopyStatus` y mensajes localizados en las cuatro lenguas de Strategy; también distingue error de registro y de limpieza sin anunciar una copia guardada. Un sexto corte da prioridad al fallo de retirada del archivo incompleto cuando coincide con un error de escritura. La prueba unitaria retira el original, reinicia el servicio y recupera la misma sesión/base/revisión inicial; altera después la copia sin cambiar tamaño y la rechaza. El fallo al registrar elimina la copia recién creada. El banco opt-in con DuckDB LMU real retira sólo un duplicado temporal, reinicia Analysis y recupera y proyecta una revisión con una exclusión de ritmo efectiva; el hash del original permanece intacto. Faltan QA Wails del recorrido y fallos físicos de permisos/espacio; no se declara E04/A02 cerrado. En el quinto corte, Go completo, 39 tests frontend focales, 4.310 tests frontend (2 omitidos), typecheck, lint, auditoría i18n y build pasaron. Sin push, PR, CI, merge, promoción ni release.

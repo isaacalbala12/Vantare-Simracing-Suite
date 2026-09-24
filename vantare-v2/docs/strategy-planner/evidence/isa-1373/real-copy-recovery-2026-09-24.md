@@ -7,3 +7,12 @@ Recorrido PASS: selección explícita y estabilidad del duplicado → apertura c
 Comando: `go test -p 1 ./internal/app -run '^TestTelemetryAnalysisRealVerifiedCopyRecoversSavedRevision$' -count=1 -v` con `ISA1373_REAL_SOURCE` y `ISA1088_RUNTIME_APP` asignados explícitamente a la fuente y al directorio del lector. Resultado final `PASS` (2,95 s). El test se omite sin ambas variables; no depende de LMU en ejecución.
 
 Alcance: integración Go con DuckDB real y autorización controlada de desarrollo. No acredita WebView2/Wails, selector nativo de carpeta, persistencia de un borrador de Strategy tras reinicio ni errores físicos de permisos/espacio. No se arrancó ni cerró LMU.
+
+## Revalidación local del 25-sep-2026
+
+En el HEAD `3a291597` se comprobó que la fuente COTA seguía sin WAL y con el
+SHA-256 citado arriba. El mismo banco opt-in pasó en 2,98 s y repitió copia
+verificada, ausencia del duplicado inicial, recuperación, identidad y revisión
+corregida exacta. No se ejecutaron en esta repetición la suite Go global, CI ni
+la interfaz Wails; el selector físico de carpeta y E04 completo siguen
+pendientes.

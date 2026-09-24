@@ -95,9 +95,11 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
   widget ni de sus capturas de paridad.
 - Si tocas drag/resize del canvas V3, lee primero `docs/overlays-studio/canvas-drag-imperative-preview.md` (preview DOM imperativa; no reintroducir posición transitoria vía React state).
 - El alcance, las dependencias y el estado operativo viven en la tarea Notion.
-  El roadmap publico se edita visualmente en la app: solo Owner guarda un
-  borrador privado y lo publica de forma explicita para todos los usuarios.
-  No hay archivo de contenido ni requisito de modificar el roadmap en cada PR.
+  El roadmap público muestra varias vistas gráficas de una única publicación.
+  Isaac indica los cambios a Codex por chat; Codex actualiza la publicación
+  compartida en Supabase tras comprobar la versión vigente. La app solo lee.
+  No hay editor en la app, archivo de contenido ni requisito de modificar el
+  roadmap en cada PR.
 - Cada tarea vive bajo su **Proyecto** y, si está comprometida para una versión,
   su **Hito** en Notion. Conservar labels/milestones GitHub solo cuando los
   consumidores técnicos actuales los necesitan. El hito agrupa las entregas de una
@@ -161,8 +163,9 @@ Requieren autorizacion explicita de Isaac:
 7. Resume evidencia y verificacion manual.
 8. Revisa el diff completo y la evidencia; no confies solo en el resumen de un worker.
 9. Actualiza y relee la tarea y continuidad del proyecto en Notion después de
-   cada worker o cambio material; enlaza el handoff técnico versionado. Si cambia el alcance, el plan futuro o el estado público, actualiza
-   el roadmap publico desde la app cuando Isaac decida anunciar el cambio.
+   cada worker o cambio material; enlaza el handoff técnico versionado. Si Isaac
+   pide cambiar el roadmap público, actualiza la publicación compartida según
+   `docs/roadmap-maintenance.md`.
 
 ## Stop conditions
 

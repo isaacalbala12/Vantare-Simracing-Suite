@@ -1,134 +1,64 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Events } from "@wailsio/runtime";
 import { useI18n } from "../../i18n/I18nProvider";
-import { useAccess } from "../../lib/access";
-import { Button, Surface } from "../../ui/orbit";
+import { Surface } from "../../ui/orbit";
 import {
-  emptyDocument, newItem, parsePublication, ROADMAP_LOCALES, ROADMAP_SECTIONS,
-  validateDocument, type RoadmapDocument, type RoadmapItem, type RoadmapLocale,
+  parsePublication, ROADMAP_LOCALES, type RoadmapItem, type RoadmapLocale,
   type RoadmapPublication, type RoadmapSection,
 } from "./roadmap-contract";
 import "../../styles/orbit-roadmap.css";
 
-type Response = { requestId?: string; publication?: unknown; draftId?: string; message?: string };
-function responseOf(event: unknown): Response {
+type View = "timeline" | "board" | "distribution";
+const stages: readonly RoadmapSection[] = ["done", "now", "next"];
+const displayStages: readonly RoadmapSection[] = ["now", "next", "done"];
+
+function responseOf(event: unknown): { requestId?: string; publication?: unknown; message?: string } {
   const data = event && typeof event === "object" ? (event as { data?: unknown }).data : null;
-  return data && typeof data === "object" ? data as Response : {};
+  return data && typeof data === "object" ? data as { requestId?: string; publication?: unknown; message?: string } : {};
 }
 
 export function RoadmapOrbitPage() {
   const { t, locale } = useI18n();
-  const access = useAccess();
-  const owner = access.roles.includes("owner") && !access.isBlocked;
   const language: RoadmapLocale = ROADMAP_LOCALES.includes(locale as RoadmapLocale) ? locale as RoadmapLocale : "es";
-  const [published, setPublished] = useState<RoadmapPublication | null>(null);
-  const [draft, setDraft] = useState<RoadmapDocument>(emptyDocument);
-  const [draftId, setDraftId] = useState<string | null>(null);
-  const [editing, setEditing] = useState(false);
-  const [dirty, setDirty] = useState(false);
+  const [publication, setPublication] = useState<RoadmapPublication | null>(null);
+  const [view, setView] = useState<View>("timeline");
   const [loaded, setLoaded] = useState(false);
-  const [draftLoaded, setDraftLoaded] = useState(false);
-  const [busy, setBusy] = useState<"save" | "publish" | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const requests = useRef({ current: "", draft: "", mutation: "" });
   const translate = useRef(t);
   useEffect(() => { translate.current = t; }, [t]);
 
-  const send = useCallback((name: string, payload: object) => {
-    const failed = () => {
-      if (name === "roadmap:current:get") setLoaded(true);
-      if (name === "roadmap:draft:get") setDraftLoaded(true);
-      setError(translate.current("roadmap.editor.connectionError")); setBusy(null);
-    };
+  useEffect(() => {
+    const requestId = crypto.randomUUID();
+    const offCurrent = Events.On("roadmap:current", (event: unknown) => {
+      const value = responseOf(event);
+      if (value.requestId !== requestId) return;
+      const result = parsePublication(value.publication);
+      if (value.publication && !result) setError(translate.current("roadmap.invalidRemote"));
+      else setPublication(result);
+      setLoaded(true);
+    });
+    const offError = Events.On("roadmap:error", (event: unknown) => {
+      const value = responseOf(event);
+      if (value.requestId !== requestId) return;
+      setError(value.message ?? translate.current("roadmap.connectionError"));
+      setLoaded(true);
+    });
     try {
-      Promise.resolve(Events.Emit(name, payload)).catch(failed);
+      Promise.resolve(Events.Emit("roadmap:current:get", { requestId })).catch(() => {
+        setError(translate.current("roadmap.connectionError")); setLoaded(true);
+      });
     } catch {
-      failed();
+      setError(translate.current("roadmap.connectionError")); setLoaded(true);
     }
+    return () => { offCurrent(); offError(); };
   }, []);
 
-  useEffect(() => {
-    const currentID = crypto.randomUUID();
-    const draftRequestID = crypto.randomUUID();
-    requests.current.current = currentID;
-    requests.current.draft = draftRequestID;
-    const off = [
-      Events.On("roadmap:current", (event: unknown) => {
-        const value = responseOf(event);
-        if (value.requestId !== currentID) return;
-        const result = parsePublication(value.publication);
-        if (value.publication && !result) { setError(translate.current("roadmap.editor.invalidRemote")); setLoaded(true); return; }
-        setPublished(result);
-        setLoaded(true);
-      }),
-      Events.On("roadmap:draft", (event: unknown) => {
-        const value = responseOf(event);
-        if (value.requestId !== draftRequestID) return;
-        const result = parsePublication(value.publication);
-        if (value.publication && !result) { setError(translate.current("roadmap.editor.invalidRemote")); setDraftLoaded(true); return; }
-        if (result) { setDraft(result.document); setDraftId(result.id); }
-        setDraftLoaded(true);
-      }),
-      Events.On("roadmap:saved", (event: unknown) => {
-        const value = responseOf(event);
-        if (value.requestId !== requests.current.mutation || !value.draftId) return;
-        setDraftId(value.draftId); setDirty(false); setBusy(null); setMessage(translate.current("roadmap.editor.saved"));
-      }),
-      Events.On("roadmap:published", (event: unknown) => {
-        const value = responseOf(event);
-        if (value.requestId !== requests.current.mutation) return;
-        const result = parsePublication(value.publication);
-        if (!result) setError(translate.current("roadmap.editor.invalidRemote"));
-        else { setPublished(result); setDraftId(null); setEditing(false); setMessage(translate.current("roadmap.editor.published")); }
-        setBusy(null);
-      }),
-      Events.On("roadmap:error", (event: unknown) => {
-        const value = responseOf(event);
-        if (![currentID, draftRequestID, requests.current.mutation].includes(value.requestId ?? "")) return;
-        if (value.requestId === currentID) setLoaded(true);
-        if (value.requestId === draftRequestID) setDraftLoaded(true);
-        setError(value.message ?? translate.current("roadmap.editor.connectionError")); setBusy(null);
-      }),
-    ];
-    send("roadmap:current:get", { requestId: currentID });
-    if (owner) send("roadmap:draft:get", { requestId: draftRequestID });
-    return () => off.forEach((unsubscribe) => unsubscribe());
-  }, [owner, send]);
-
-  const updateItem = (id: string, change: (item: RoadmapItem) => RoadmapItem) => {
-    setDraft((current) => ({ ...current, items: current.items.map((item) => item.id === id ? change(item) : item) }));
-    setDirty(true); setMessage(null);
-  };
-  const move = (index: number, offset: number) => {
-    const target = index + offset;
-    if (target < 0 || target >= draft.items.length) return;
-    setDraft((current) => {
-      const items = [...current.items];
-      [items[index], items[target]] = [items[target], items[index]];
-      return { ...current, items };
-    });
-    setDirty(true);
-  };
-  const save = () => {
-    const invalid = validateDocument(draft);
-    if (invalid) { setError(t(`roadmap.editor.invalid.${invalid}`)); return; }
-    const requestId = crypto.randomUUID();
-    requests.current.mutation = requestId;
-    setBusy("save"); setError(null);
-    send("roadmap:draft:save", { requestId, document: draft });
-  };
-  const publish = () => {
-    if (!draftId || dirty) return;
-    const requestId = crypto.randomUUID();
-    requests.current.mutation = requestId;
-    setBusy("publish"); setError(null);
-    send("roadmap:publish", { requestId, draftId });
-  };
-  const beginEditing = () => {
-    if (!dirty && !draftId) setDraft(structuredClone(published?.document ?? emptyDocument()));
-    setError(null); setMessage(null); setEditing(true);
-  };
+  const items = publication?.document.items ?? [];
+  const grouped: Record<RoadmapSection, RoadmapItem[]> = { done: [], now: [], next: [] };
+  items.forEach((item) => grouped[item.section].push(item));
+  const titleOf = (item: RoadmapItem) => item.title[language]?.trim() || item.title.es;
+  const bodyOf = (item: RoadmapItem) => item.body[language]?.trim() || item.body.es;
+  const maxCount = Math.max(1, ...stages.map((stage) => grouped[stage].length));
 
   return (
     <div className="orbit-rm" data-testid="orbit-roadmap">
@@ -138,69 +68,64 @@ export function RoadmapOrbitPage() {
           <h2>{t("roadmap.title")}</h2>
           <p>{t("roadmap.lead")}</p>
         </div>
-        {owner && loaded && draftLoaded ? (
-          <Button size="sm" onClick={() => editing ? setEditing(false) : beginEditing()}>
-            {editing ? t("roadmap.editor.close") : t("roadmap.editor.open")}
-          </Button>
-        ) : null}
       </header>
       <Surface aria-label={t("roadmap.title")} className="orbit-rm__reader" fill>
         <div className="orbit-rm__column">
           {!loaded ? <p className="orbit-rm__empty">{t("roadmap.source.loading")}</p> : null}
-          {loaded && !editing && !published ? <p className="orbit-rm__empty">{t("roadmap.editor.unpublished")}</p> : null}
-          {editing ? (
-            <div className="orbit-rm__editor" data-testid="roadmap-editor">
-              <p>{t("roadmap.editor.help")}</p>
-              <div className="orbit-rm__editor-actions">
-                <Button size="sm" disabled={busy !== null || draft.items.length >= 40} onClick={() => { setDraft((current) => ({ ...current, items: [...current.items, newItem()] })); setDirty(true); }}>{t("roadmap.editor.add")}</Button>
-                <Button size="sm" disabled={busy !== null || (!dirty && Boolean(draftId))} onClick={save}>{busy === "save" ? t("roadmap.editor.saving") : t("roadmap.editor.save")}</Button>
-                <Button size="sm" disabled={busy !== null || !draftId || dirty} onClick={publish}>{busy === "publish" ? t("roadmap.editor.publishing") : t("roadmap.editor.publish")}</Button>
+          {loaded && error ? <p className="orbit-rm__empty" role="alert">{error}</p> : null}
+          {loaded && !error && items.length === 0 ? <p className="orbit-rm__empty">{t("roadmap.unpublished")}</p> : null}
+          {loaded && !error && items.length > 0 ? (
+            <>
+              <div className="orbit-rm__view-switch" role="group" aria-label={t("roadmap.views.label")}>
+                {(["timeline", "board", "distribution"] as const).map((option) => (
+                  <button className="orbit-rm__view-button" aria-pressed={view === option} key={option} onClick={() => setView(option)} type="button">
+                    {t(`roadmap.views.${option}`)}
+                  </button>
+                ))}
               </div>
-              {draft.items.map((item, index) => (
-                <fieldset className="orbit-rm__edit-card" disabled={busy !== null} key={item.id}>
-                  <legend>{t("roadmap.editor.item")} {index + 1}</legend>
-                  <label>{t("roadmap.editor.section")}
-                    <select value={item.section} onChange={(event) => updateItem(item.id, (current) => ({ ...current, section: event.target.value as RoadmapSection }))}>
-                      {ROADMAP_SECTIONS.map((section) => <option key={section} value={section}>{t(`roadmap.${section}.title`)}</option>)}
-                    </select>
-                  </label>
-                  <div className="orbit-rm__edit-language">
-                    <b>ES</b>
-                    <label>{t("roadmap.editor.itemTitle")}<input maxLength={120} value={item.title.es} onChange={(event) => updateItem(item.id, (current) => ({ ...current, title: { ...current.title, es: event.target.value } }))} /></label>
-                    <label>{t("roadmap.editor.itemBody")}<textarea maxLength={600} value={item.body.es} onChange={(event) => updateItem(item.id, (current) => ({ ...current, body: { ...current.body, es: event.target.value } }))} /></label>
-                  </div>
-                  <details>
-                    <summary>{t("roadmap.editor.translations")}</summary>
-                    {ROADMAP_LOCALES.filter((lang) => lang !== "es").map((lang) => (
-                      <div className="orbit-rm__edit-language" key={lang}>
-                        <b>{lang.toUpperCase()}</b>
-                        <label>{t("roadmap.editor.itemTitle")}<input maxLength={120} value={item.title[lang]} onChange={(event) => updateItem(item.id, (current) => ({ ...current, title: { ...current.title, [lang]: event.target.value } }))} /></label>
-                        <label>{t("roadmap.editor.itemBody")}<textarea maxLength={600} value={item.body[lang]} onChange={(event) => updateItem(item.id, (current) => ({ ...current, body: { ...current.body, [lang]: event.target.value } }))} /></label>
+              {view === "timeline" ? (
+                <ol className="orbit-rm__timeline" data-testid="roadmap-timeline">
+                  {stages.flatMap((stage) => grouped[stage].map((item) => (
+                    <li className={`orbit-rm__timeline-item orbit-rm__timeline-item--${stage}`} key={item.id}>
+                      <span className="orbit-rm__timeline-node" aria-hidden="true" />
+                      <div className="orbit-rm__milestone">
+                        <span className="orbit-rm__stage">{t(`roadmap.${stage}.title`)}</span>
+                        <strong>{titleOf(item)}</strong>
+                        {bodyOf(item) ? <p>{bodyOf(item)}</p> : null}
                       </div>
-                    ))}
-                  </details>
-                  <div className="orbit-rm__edit-controls">
-                    <Button size="sm" disabled={index === 0} onClick={() => move(index, -1)}>{t("roadmap.editor.up")}</Button>
-                    <Button size="sm" disabled={index === draft.items.length - 1} onClick={() => move(index, 1)}>{t("roadmap.editor.down")}</Button>
-                    <Button size="sm" onClick={() => { setDraft((current) => ({ ...current, items: current.items.filter((entry) => entry.id !== item.id) })); setDirty(true); }}>{t("roadmap.editor.delete")}</Button>
-                  </div>
-                </fieldset>
-              ))}
-            </div>
-          ) : loaded && published ? ROADMAP_SECTIONS.map((section) => {
-            const items = published.document.items.filter((item) => item.section === section);
-            if (items.length === 0) return null;
-            return (
-              <section className="orbit-rm__section" data-testid={`orbit-roadmap-${section}`} key={section}>
-                <h3 className="orbit-rm__rule"><span>{t(`roadmap.${section}.title`)}</span></h3>
-                <ul className="orbit-rm__simple-list">
-                  {items.map((item) => <li key={item.id}><strong>{item.title[language]?.trim() || item.title.es}</strong>{(item.body[language]?.trim() || item.body.es) ? <p>{item.body[language]?.trim() || item.body.es}</p> : null}</li>)}
-                </ul>
-              </section>
-            );
-          }) : null}
-          {message ? <p role="status">{message}</p> : null}
-          {error ? <p role="alert">{error}</p> : null}
+                    </li>
+                  )))}
+                </ol>
+              ) : null}
+              {view === "board" ? (
+                <div className="orbit-rm__board" data-testid="roadmap-board">
+                  {displayStages.map((stage) => (
+                    <section className={`orbit-rm__board-column orbit-rm__board-column--${stage}`} data-testid={`roadmap-board-${stage}`} key={stage}>
+                      <h3>{t(`roadmap.${stage}.title`)} <span>{grouped[stage].length}</span></h3>
+                      {grouped[stage].map((item) => (
+                        <div className="orbit-rm__milestone" key={item.id}>
+                          <strong>{titleOf(item)}</strong>
+                          {bodyOf(item) ? <p>{bodyOf(item)}</p> : null}
+                        </div>
+                      ))}
+                    </section>
+                  ))}
+                </div>
+              ) : null}
+              {view === "distribution" ? (
+                <div className="orbit-rm__distribution" data-testid="roadmap-distribution">
+                  {displayStages.map((stage) => (
+                    <div className="orbit-rm__bar-row" data-testid={`roadmap-distribution-${stage}`} key={stage}>
+                      <span>{t(`roadmap.${stage}.title`)}</span>
+                      <div className="orbit-rm__bar-track"><div className={`orbit-rm__bar orbit-rm__bar--${stage}`} style={{ width: `${(grouped[stage].length / maxCount) * 100}%` }} /></div>
+                      <strong>{grouped[stage].length}</strong>
+                    </div>
+                  ))}
+                  <p className="orbit-rm__chart-note">{t("roadmap.views.countNote")}</p>
+                </div>
+              ) : null}
+            </>
+          ) : null}
         </div>
       </Surface>
     </div>

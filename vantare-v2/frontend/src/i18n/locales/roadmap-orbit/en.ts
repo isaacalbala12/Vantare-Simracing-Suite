@@ -1,82 +1,18 @@
-/** `roadmap.*` catalogue for Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`).
-    "What's next" view (D-R3-F-1): a single narrative column NOW / NEXT / DONE.
-    Public content is edited and published in the app. */
+/** Public roadmap view labels. */
 export const roadmapOrbitEn: Record<string, string> = {
   "roadmap.eyebrow": "Product direction",
   "roadmap.title": "Roadmap",
-  "roadmap.lead":
-    "Now, next and done. The team edits and publishes this space from the app.",
-
-  "roadmap.source.loading": "Loading the source…",
-  "roadmap.source.ok": "Source available · {{version}}",
-  "roadmap.source.fallback": "Bundled copy · {{version}}",
-
-  "roadmap.channel.stable": "Stable",
-  "roadmap.channel.testers": "Testers",
-  "roadmap.channel.nightly": "Nightly",
-
-  "roadmap.state.done": "Completed",
-  "roadmap.state.active": "In progress",
-  "roadmap.state.planned": "To plan",
-  "roadmap.state.future": "Future",
-
+  "roadmap.lead": "Explore milestones on a timeline, by status or as a distribution chart.",
+  "roadmap.source.loading": "Loading roadmap…",
+  "roadmap.unpublished": "No roadmap has been published yet.",
+  "roadmap.invalidRemote": "The received roadmap is invalid.",
+  "roadmap.connectionError": "Could not connect to the roadmap.",
   "roadmap.now.title": "Now",
-  "roadmap.now.position": "Phase {{n}} of {{total}}",
-  "roadmap.now.none": "The source declares no phase in progress.",
-  "roadmap.now.anchored": "Milestones in this phase",
-
   "roadmap.next.title": "Next",
-  "roadmap.next.none": "The source declares no phase left to plan.",
-  "roadmap.next.plans": "Declared plans",
-
   "roadmap.done.title": "Done",
-  "roadmap.done.accordion": "Completed phases and shipped milestones",
-  "roadmap.done.summary": "{{phases}} phases · {{releases}} shipped",
-  "roadmap.done.none": "The source declares no completed phase.",
-  "roadmap.done.released": "Shipped",
-
-  "roadmap.delivered.title": "Delivered recently",
-  "roadmap.delivered.note":
-    "{{n}} changes read from the commits already merged into nightly, not from the plan.",
-  "roadmap.delivered.kind.feat": "Feature",
-  "roadmap.delivered.kind.fix": "Fix",
-  "roadmap.delivered.kind.perf": "Performance",
-  "roadmap.delivered.kind.docs": "Docs",
-  "roadmap.delivered.kind.change": "Change",
-
-  "roadmap.derived": "derived",
-  "roadmap.derivedNote":
-    "The source does not say which phase a milestone belongs to: the grouping comes from its type.",
-
-  "roadmap.context.title": "Roadmap",
-  "roadmap.context.nowSub": "the phase in progress",
-  "roadmap.context.nextSub": "to plan and future",
-  "roadmap.context.doneSub": "completed and shipped",
-  "roadmap.context.hint": "Click a section to jump to it.",
-  "roadmap.editor.open": "Edit",
-  "roadmap.editor.close": "Close editor",
-  "roadmap.editor.unpublished": "No roadmap has been published yet.",
-  "roadmap.editor.help": "Write in Spanish; translations are optional. Save a draft before publishing.",
-  "roadmap.editor.translations": "Optional translations",
-  "roadmap.editor.add": "Add item",
-  "roadmap.editor.save": "Save draft",
-  "roadmap.editor.saving": "Saving…",
-  "roadmap.editor.publish": "Publish for everyone",
-  "roadmap.editor.publishing": "Publishing…",
-  "roadmap.editor.saved": "Draft saved.",
-  "roadmap.editor.published": "Roadmap published.",
-  "roadmap.editor.item": "Item",
-  "roadmap.editor.section": "Section",
-  "roadmap.editor.itemTitle": "Title",
-  "roadmap.editor.itemBody": "Description",
-  "roadmap.editor.up": "Move up",
-  "roadmap.editor.down": "Move down",
-  "roadmap.editor.delete": "Delete",
-  "roadmap.editor.connectionError": "Could not connect to the roadmap.",
-  "roadmap.editor.invalidRemote": "The received roadmap is invalid.",
-  "roadmap.editor.invalid.size": "There are too many items or the content is too long.",
-  "roadmap.editor.invalid.id": "An item ID is invalid or duplicated.",
-  "roadmap.editor.invalid.section": "A section is invalid.",
-  "roadmap.editor.invalid.title": "Complete titles in all four languages.",
-  "roadmap.editor.invalid.body": "A description is too long.",
+  "roadmap.views.label": "Roadmap view",
+  "roadmap.views.timeline": "Timeline",
+  "roadmap.views.board": "By status",
+  "roadmap.views.distribution": "Distribution",
+  "roadmap.views.countNote": "Number of published milestones in each status.",
 };

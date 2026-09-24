@@ -17,15 +17,6 @@ export type RoadmapPublication = {
   published_at?: string;
 };
 
-export function emptyDocument(): RoadmapDocument {
-  return { schemaVersion: 1, items: [] };
-}
-
-export function newItem(): RoadmapItem {
-  const blank = (): LocalizedText => ({ es: "", en: "", pt: "", it: "" });
-  return { id: crypto.randomUUID(), section: "next", title: blank(), body: blank() };
-}
-
 export function validateDocument(document: RoadmapDocument): string | null {
   if (!document || document.schemaVersion !== 1 || !Array.isArray(document.items) || document.items.length > 40) return "size";
   const ids = new Set<string>();

@@ -14,8 +14,6 @@ import (
 	"unicode/utf8"
 )
 
-var ErrNotOwner = errors.New("owner role required")
-
 var itemID = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
 type Localized struct {
@@ -96,15 +94,7 @@ func NewService(baseURL, anonKey string) *Service {
 
 func (s *Service) Current(ctx context.Context) (*Publication, error) {
 	var rows []Publication
-	if err := s.rpc(ctx, "", "visual_roadmap_current", map[string]any{}, &rows); err != nil {
-		return nil, err
-	}
-	return firstValid(rows)
-}
-
-func (s *Service) MyDraft(ctx context.Context, token string) (*Publication, error) {
-	var rows []Publication
-	if err := s.rpc(ctx, token, "visual_roadmap_my_draft", map[string]any{}, &rows); err != nil {
+	if err := s.rpc(ctx, "visual_roadmap_current", map[string]any{}, &rows); err != nil {
 		return nil, err
 	}
 	return firstValid(rows)
@@ -120,24 +110,7 @@ func firstValid(rows []Publication) (*Publication, error) {
 	return &rows[0], nil
 }
 
-func (s *Service) SaveDraft(ctx context.Context, token string, document Document) (string, error) {
-	if err := document.Validate(); err != nil {
-		return "", err
-	}
-	var id string
-	err := s.rpc(ctx, token, "visual_roadmap_draft_save", map[string]any{"p_document": document}, &id)
-	return id, err
-}
-
-func (s *Service) Publish(ctx context.Context, token, draftID string) error {
-	if !itemID.MatchString(draftID) {
-		return errors.New("invalid draft ID")
-	}
-	var id string
-	return s.rpc(ctx, token, "visual_roadmap_publish", map[string]any{"p_draft_id": draftID}, &id)
-}
-
-func (s *Service) rpc(ctx context.Context, token, name string, payload any, out any) error {
+func (s *Service) rpc(ctx context.Context, name string, payload any, out any) error {
 	if s.baseURL == "" || s.anonKey == "" {
 		return errors.New("roadmap service is not configured")
 	}
@@ -151,11 +124,7 @@ func (s *Service) rpc(ctx context.Context, token, name string, payload any, out 
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("apikey", s.anonKey)
-	bearer := token
-	if bearer == "" {
-		bearer = s.anonKey
-	}
-	req.Header.Set("Authorization", "Bearer "+bearer)
+	req.Header.Set("Authorization", "Bearer "+s.anonKey)
 	resp, err := s.client.Do(req)
 	if err != nil {
 		return fmt.Errorf("call %s: %w", name, err)
@@ -166,9 +135,6 @@ func (s *Service) rpc(ctx context.Context, token, name string, payload any, out 
 		return fmt.Errorf("read %s: %w", name, err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		if strings.Contains(strings.ToLower(string(data)), "owner role required") {
-			return ErrNotOwner
-		}
 		return fmt.Errorf("%s failed: status %d", name, resp.StatusCode)
 	}
 	if err := json.Unmarshal(data, out); err != nil {

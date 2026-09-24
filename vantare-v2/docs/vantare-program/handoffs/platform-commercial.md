@@ -1,32 +1,34 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
-## VAN-763 / ISA-1377 — roadmap visual (2026-09-24)
+## VAN-763 / ISA-1377 — roadmap gráfico (2026-09-25)
 
 [Tarea Notion VAN-763](https://app.notion.com/p/3e5e51695c6581debbcbfef649a86d59),
 [referencia GitHub #1377](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1377).
-Isaac decidió sustituir por completo el roadmap basado en archivos por una
-edición visual en la app, con borrador privado Owner y publicación para todos
-los usuarios. Rama aislada `vantareapp/isa-1377-roadmap-sencillo`, base
+Isaac corrigió el diseño el 2026-09-25: quiere línea temporal y varias vistas
+gráficas, y Codex actualizará el contenido cuando él lo indique por chat. No
+quiere un editor de formularios en la app. La publicación compartida debe verse
+para todos los usuarios. Rama aislada `vantareapp/isa-1377-roadmap-sencillo`, base
 `origin/nightly@5c73013ed59a4d69775a94fcc188d168310c59a5`.
 
 La implementación local retira `plan.md`, JSON, digest, formulario y gate del
-roadmap anterior; añade persistencia Supabase con funciones públicas de lectura
-y funciones Owner para borrador/publicación, servicio Go y editor en Hub.
-Checks locales: frontend completo 481 archivos, 4.048 pruebas PASS y 2 omitidas;
-Go `./...` PASS; Python Discord 57/57 y canales 45/45 PASS; typecheck, build y
-lint PASS. La migración y el flujo Owner/lector necesitan validación real antes
-de activar la entrega. No hay merge, promoción ni release. El contenido inicial quedará
-vacío hasta la primera publicación visual de Isaac; no se importa el plan
-histórico ni se publica automáticamente.
-Commit `0aa0d3f1` publicado en la rama y [PR borrador #1380](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1380)
-contra `nightly`. CI remoto pendiente. Siguiente acción: revisar sus checks,
-validar el backend en un entorno de prueba y obtener la aprobación de Isaac
-antes de integrar en Nightly.
-Primer CI: `Validate Vantare blocking gates` y política de promoción PASS;
-`quality-check` falló por Knip NEW=1 (tipo exportado sin consumidor) y
-jscpd NEW=2 (CSS del roadmap duplicado). Corregidos en la rama; Knip local
-NEW=0 y el informe jscpd ya no contiene emplazamientos de roadmap. Falta
-el CI del nuevo commit.
+roadmap anterior; la revisión actual reemplaza el editor por línea temporal,
+tablero y gráfico de distribución. Supabase conserva las publicaciones y expone
+solo lectura a la app; Codex publica a través de la conexión SQL privilegiada.
+Checks de la revisión gráfica: frontend completo 481 archivos, 4.049 pruebas
+PASS y 2 omitidas; presupuesto de frames 4/4 PASS; auditoría i18n con 0
+ausentes y 0 huérfanas; typecheck, build y lint PASS; Go `./...` PASS. Tres
+capturas locales muestran las vistas con hitos del snapshot histórico anterior,
+solo como vista previa, sin publicar. Falta validar la migración SQL y la lectura
+compartida con Supabase real. El contenido inicial quedará vacío hasta la primera
+publicación solicitada por Isaac; no se importa el plan histórico automáticamente.
+
+[PR borrador #1380](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1380)
+contra `nightly`. El último CI del candidato anterior pasó los gates principales;
+`quality-check` quedó `REVIEW_REQUIRED` por cambios intencionados en workflows
+y `package.json`, con NEW=0/MOVED=0. La revisión gráfica requiere un nuevo CI y
+la revisión humana de esas rutas. Siguiente acción: subir la revisión, comprobar
+sus gates, validar Supabase en un entorno de prueba y obtener la autorización
+de Isaac antes de integrar en Nightly. Sin merge, promoción ni release.
 
 ## VAN-740 / ISA-1305 — Wails beta.24 aceptado para Nightly (2026-09-22)
 

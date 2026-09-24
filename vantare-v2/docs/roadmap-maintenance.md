@@ -1,19 +1,38 @@
 # Mantenimiento del roadmap público
 
-El roadmap público se edita en el Hub de Vantare. No hay un archivo de contenido que mantener ni un generador que ejecutar.
+Isaac comunica los cambios a Codex por chat. Codex actualiza una única
+publicación compartida en Supabase; la app solo la muestra como línea temporal,
+tablero por estado y gráfico de distribución. No hay editor en la app, archivo
+de contenido ni generador.
 
-## Edición
+## Actualización solicitada por Isaac
 
-1. Inicia sesión con la cuenta Owner y abre **Roadmap**.
-2. Pulsa **Editar**, añade las tarjetas y elige **Ahora**, **Después** o **Hecho**.
-3. Escribe título y descripción en español. Las traducciones a inglés, portugués e italiano son opcionales; si faltan, la app muestra el texto español. Puedes cambiar el orden, la sección o eliminar tarjetas.
-4. Pulsa **Guardar borrador**. Los demás usuarios siguen viendo la última versión publicada.
-5. Revisa el contenido y pulsa **Publicar**. La publicación queda disponible para todos los usuarios, en cualquier equipo, al volver a cargar la sección.
+1. Leer la publicación vigente con `visual_roadmap_current` y comprobar el
+   proyecto Supabase de destino. Si no hay publicación, comenzar con
+   `{"schemaVersion":1,"items":[]}`.
+2. Preparar los cambios solicitados conservando los identificadores de hitos
+   existentes. Cada hito tiene `id` UUID, `section` (`done`, `now` o `next`),
+   `title` y `body` en `es`, `en`, `pt`, `it`. El título español es obligatorio;
+   las demás traducciones pueden quedar vacías y la app mostrará español.
+   El orden de los hitos dentro de cada estado es el orden de `items`.
+3. Si el contenido o el destino es ambiguo, aclararlo con Isaac. No derivar
+   automáticamente estados o fechas de GitHub/Notion ni inventar porcentajes.
+4. Comprobar `visual_roadmap_valid(document)` y publicar mediante la conexión
+   SQL privilegiada con `visual_roadmap_publish(document)`. La función conserva
+   la versión anterior como `superseded` y publica la nueva de forma atómica.
+   Los clientes `anon` y `authenticated` no tienen permiso para publicar.
+5. Releer `visual_roadmap_current` y comprobar ID, texto, orden y estado.
+   Verificar en una sesión lectora que aparece al recargar Roadmap. Registrar
+   el cambio en la tarea Notion aplicable.
 
-El seguimiento interno, las dependencias y las decisiones siguen en Notion. Publicar el roadmap es una decisión editorial de Isaac y no cambia por sí solo el estado de una tarea, PR, canal o release.
+El seguimiento interno, las dependencias y los canales siguen en Notion y
+GitHub. Publicar un hito no cambia el estado de una tarea, PR, canal o release.
 
-## Contrato técnico
+## Primera activación
 
-La migración `supabase/migrations/20260924000000_visual_roadmap.sql` crea el almacenamiento compartido. La lectura pública usa `visual_roadmap_current`; el borrador, guardado y publicación exigen la sesión Owner y se validan en la base de datos. El cliente Wails conecta estas operaciones con la pantalla. No se debe publicar un borrador por un proceso automático.
-
-Antes de habilitar el flujo en un entorno, aplicar la migración y verificar manualmente con dos sesiones: Owner guarda sin publicar y un lector sigue viendo la versión anterior; Owner publica y el lector ve la nueva versión tras recargar. Si todavía no existe una publicación, se muestra un estado vacío honesto.
+La migración `supabase/migrations/20260924000000_visual_roadmap.sql` crea el
+almacenamiento y las funciones de lectura y publicación. Probar primero en un
+entorno de prueba con una sesión lectora; después de integrar la PR y validar
+su despliegue, aplicar la migración al entorno elegido. La migración no importa
+ni publica el plan histórico. Hasta la primera publicación, la pantalla muestra
+un estado vacío.

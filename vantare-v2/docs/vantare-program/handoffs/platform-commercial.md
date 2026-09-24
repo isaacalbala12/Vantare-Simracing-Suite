@@ -18,6 +18,10 @@ lint PASS. La migración y el flujo Owner/lector necesitan validación real ante
 de activar la entrega. No hay merge, promoción ni release. El contenido inicial quedará
 vacío hasta la primera publicación visual de Isaac; no se importa el plan
 histórico ni se publica automáticamente.
+Commit `0aa0d3f1` publicado en la rama y [PR borrador #1380](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1380)
+contra `nightly`. CI remoto pendiente. Siguiente acción: revisar sus checks,
+validar el backend en un entorno de prueba y obtener la aprobación de Isaac
+antes de integrar en Nightly.
 
 ## VAN-740 / ISA-1305 — Wails beta.24 aceptado para Nightly (2026-09-22)
 

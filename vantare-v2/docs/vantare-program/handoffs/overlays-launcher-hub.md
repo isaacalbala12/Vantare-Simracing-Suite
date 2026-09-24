@@ -2474,6 +2474,14 @@ de la cancelación, aunque el perfil se relance mientras espera. Aún falta
 validar el cierre con procesos reales y completar la
 política independiente `exit`.
 
+Revisión del instalador: `project.nsi` enviaba cierre normal a Vantare y,
+tras cinco segundos, ejecutaba `taskkill /F` por nombre. Eso podía saltarse
+una decisión de salida y matar una instancia todavía abierta. El candidato
+solicita el cierre normal y aborta la instalación si el ejecutable sigue en
+uso tras el plazo de espera existente de diez segundos; no fuerza el cierre.
+Queda pendiente construir y probar el instalador real con Vantare abierto,
+incluida una respuesta lenta al aviso de salida.
+
 Revisión de ciclo de vida: el reinicio ya no ata la aplicación externa al
 contexto de Vantare; cerrar el Hub no la termina implícitamente cuando debe
 quedar abierta. El cierre explícito deja de usar `taskkill /T`, que podía

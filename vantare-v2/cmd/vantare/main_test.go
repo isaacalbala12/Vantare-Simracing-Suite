@@ -1836,6 +1836,17 @@ func TestSaveProfileWithoutAutostartDoesNotRequireRegistry(t *testing.T) {
 	}
 }
 
+func TestNewAutostartProfileRollsBackWhenRegistryFails(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	profile := app.LaunchProfile{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true}
+	if saveProfileWithAutostart(profile, svc, emitter, func(string, bool) error { return fmt.Errorf("registry unavailable") }) {
+		t.Fatal("new autostart profile saved despite registry failure")
+	}
+	if len(svc.ListProfiles()) != 0 {
+		t.Fatal("failed new profile was not rolled back")
+	}
+}
+
 func TestDeleteProfileRemovesAutostartBeforeDeleting(t *testing.T) {
 	svc, emitter := newTestLauncherService(t)
 	if err := svc.SaveProfile(app.LaunchProfile{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true}); err != nil {
@@ -1847,6 +1858,19 @@ func TestDeleteProfileRemovesAutostartBeforeDeleting(t *testing.T) {
 		return nil
 	}) || !called || len(svc.ListProfiles()) != 0 {
 		t.Fatal("profile deletion did not unregister startup first")
+	}
+}
+
+func TestDeleteProfileKeepsAutostartProfileWhenRegistryFails(t *testing.T) {
+	svc, emitter := newTestLauncherService(t)
+	if err := svc.SaveProfile(app.LaunchProfile{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}}, LaunchOnWindowsStartup: true}); err != nil {
+		t.Fatal(err)
+	}
+	if deleteProfileWithAutostart("creator", svc, emitter, func(string, bool) error { return fmt.Errorf("registry unavailable") }) {
+		t.Fatal("delete reported success despite retained Run key")
+	}
+	if len(svc.ListProfiles()) != 1 {
+		t.Fatal("profile was deleted although Run key could not be removed")
 	}
 }
 

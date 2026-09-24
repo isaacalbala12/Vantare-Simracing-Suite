@@ -13,7 +13,8 @@ import type { FuelStrategyViewModel } from "./fuel-strategy-view-model";
  * `session.remainingSeconds` by `player.lastLapSeconds` inside
  * fuel-strategy-view-model.ts (:27-32); both inputs are canonical, so the Go
  * builder now publishes the result as `fuel.estimatedLaps` with the worst
- * quality of the two inputs, and this module only reads it.
+ * quality of the two inputs. This fuel widget only presents that field when
+ * its basis is "fuel"; a session-lap fallback is not a tank-range estimate.
  *
  * `avgPerLap` is `fuel.perLap`, read and never recomputed. ISA-678 put the
  * per-lap consumption derivation in derive/, so the value now has a single
@@ -27,46 +28,55 @@ import type { FuelStrategyViewModel } from "./fuel-strategy-view-model";
  *
  * `requiredFuel` is `fuel.requiredFuel`, read verbatim: Go already computed
  * perLap x sessionLaps with the worst quality of both, never from
- * `estimatedLaps`. `history` decodes `fuel.history` (lap numbers plus
- * consumption figures, index-aligned) into `{lap, consumedLiters}` rows in
+ * `estimatedLaps`. It is total projected consumption, not the volume to add
+ * at the next stop. `history` decodes `fuel.history` (lap numbers plus
+ * consumption figures, index-aligned) into `{lap, consumedLiters}` rows from
  * the frame fuel unit (`frame.units.fuel`), clipped to the widget
- * `historyRows` window for presentation only. No unit conversion and no clock
- * read happen here. Limit documented, not worked around: this widget only
- * admits `units: "liters"`, so the rows are litres while the frame stays on
- * the default liters preference; a gallons frame would need a consumer-side
- * unit decision that this decoder does not invent.
+ * `historyRows` window for presentation only. The frame may use US gallons;
+ * this widget admits litres only, so amounts are converted once at this
+ * presentation boundary. No clock read or fuel projection happens here.
  *
  * `fuel.sessionLaps` stays on the wire for future consumers: this widget
  * keeps the v1 shape (`lapsRemaining` only), so it is not decoded here.
  *
- * `fuelPercent` is left undefined to match Overlay v1, which never populated
- * it, even though the frame does carry the tank capacity.
+ * The fill percentage uses the observed remaining/capacity pair. A missing,
+ * invalid or stale operand leaves it absent rather than drawing a false level.
  */
+const LITERS_PER_US_GALLON = 3.785411784;
+
 export function buildFuelStrategyViewModelV2(
   frame: OverlayFrameV2,
   source: OverlaySourceStatusV2,
   content: FuelStrategyContent,
 ): FuelStrategyViewModel {
   const status = resolveStatus(source.state);
-  const unavailable = status === "missing" || status === "disconnected" || status === "error";
+  const unavailable = status !== "ready";
   // The selector is wired before the live VE field is admitted to Overlay v2.
   // Never reinterpret fuel as virtual energy: show an explicit unavailable
   // state until LMU REST/SHM publishes a certified VE signal.
   const sourceUnavailable = content.source === "virtual-energy";
+  const remaining = displayedNumber(frame.fuel.remaining);
+  const capacity = displayedNumber(frame.fuel.capacity);
+  const toLiters = (value: number | undefined) => value === undefined
+    ? undefined
+    : frame.units.fuel === "gallons-us" ? value * LITERS_PER_US_GALLON : value;
   return {
     type: "fuel-strategy",
     status,
     statusMessage: source.reason || undefined,
     source: content.source,
     sourceUnavailable,
-    fuelLiters: unavailable || sourceUnavailable ? undefined : displayedNumber(frame.fuel.remaining),
-    avgPerLap: unavailable || sourceUnavailable ? undefined : displayedNumber(frame.fuel.perLap),
+    fuelLiters: unavailable || sourceUnavailable ? undefined : toLiters(remaining),
+    fuelPercent: unavailable || sourceUnavailable || remaining === undefined || capacity === undefined || capacity <= 0
+      ? undefined
+      : Math.min(100, Math.max(0, remaining / capacity * 100)),
+    avgPerLap: unavailable || sourceUnavailable ? undefined : toLiters(displayedNumber(frame.fuel.perLap)),
     lapsRemaining: unavailable || sourceUnavailable || !content.showProjection
       ? undefined
-      : displayedNumber(frame.fuel.estimatedLaps),
+      : frame.fuel.basis === "fuel" ? displayedNumber(frame.fuel.estimatedLaps) : undefined,
     requiredFuel: unavailable || sourceUnavailable || !content.showProjection
       ? undefined
-      : displayedNumber(frame.fuel.requiredFuel),
+      : toLiters(displayedNumber(frame.fuel.requiredFuel)),
     history: unavailable || sourceUnavailable ? [] : decodeFuelHistory(frame, content.historyRows),
     units: content.units,
     showProjection: content.showProjection,
@@ -86,9 +96,7 @@ export function fuelStrategyDisplayedValues(
 }
 
 /** Fields with no canonical signal behind them; declared, never compared. */
-export const OVERLAY_V2_FUEL_DECLARED_GAPS: readonly string[] = Object.freeze([
-  "fuelPercent",
-]);
+export const OVERLAY_V2_FUEL_DECLARED_GAPS: readonly string[] = Object.freeze([]);
 
 /**
  * Fields both contracts populate with a different, deliberate criterion. They
@@ -119,23 +127,23 @@ function resolveStatus(state: string): FuelStrategyViewModel["status"] {
 }
 
 function displayedNumber(value: OverlayQValue<number>): number | undefined {
-  if (value.q === "missing" || value.q === "invalid") return undefined;
+  if (value.q !== "fresh") return undefined;
   // Go omitempty elides legitimate zeroes. Quality is the presence bit.
   return value.v ?? 0;
 }
 
 /**
  * Decodes the canonical fuel history into `{lap, consumedLiters}` rows in the
- * frame unit (litres for this widget), oldest first, clipped to the newest
- * `historyRows` for presentation only. A non-fresh quality, a length mismatch
- * or a non-finite figure decodes to no rows instead of inventing any.
+ * frame unit (converted to litres for this widget), oldest first, clipped to
+ * the newest `historyRows` for presentation only. A non-fresh quality, length
+ * mismatch or non-finite figure decodes to no rows instead of inventing any.
  */
 function decodeFuelHistory(
   frame: OverlayFrameV2,
   historyRows: number,
 ): FuelStrategyViewModel["history"] {
   const history = frame.fuel.history;
-  if (history.q === "missing" || history.q === "invalid") return [];
+  if (history.q !== "fresh") return [];
   const laps = history.lap ?? [];
   const consumed = history.consumed ?? [];
   if (laps.length !== consumed.length) return [];
@@ -144,7 +152,7 @@ function decodeFuelHistory(
     const lap = laps[index];
     const litres = consumed[index];
     if (!Number.isFinite(lap) || !Number.isFinite(litres)) return [];
-    rows.push({ lap, consumedLiters: litres });
+    rows.push({ lap, consumedLiters: frame.units.fuel === "gallons-us" ? litres * LITERS_PER_US_GALLON : litres });
   }
   return rows.slice(-Math.max(1, historyRows));
 }

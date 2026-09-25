@@ -17,6 +17,9 @@ El navegador simulado ya recorrió entrada, selección/aplicación de sesión,
 cálculo y edición de paradas; no prueba Wails ni DuckDB real. El script antiguo
 de capturas queda FAIL por un selector del flujo anterior; la geometría Imola
 GP aparece sin mapa en el harness y requiere contraste de identidad en E02.
+Tras el arreglo del mock, una repetición global de frontend registró 4.314
+PASS, 2 omitidos y 3 timeouts de Overlays; esas tres pruebas dieron 10/10 PASS
+al repetirlas aisladas. No declarar verde esa repetición global.
 No se ejecutó: E01–E08 requieren ventana nativa, licencia de desarrollo y
 evidencia de interacción. Continúan abiertos la fuente larga independiente
 para la cuota #1375 y el holdout anotado para calibración #1030. Sin push, PR,

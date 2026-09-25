@@ -112,6 +112,13 @@ bytes, SHA-256
 `433108f4731837374f802a218d9da75f83e61fcea3c7269eada039b45d59984e`.
 El hash anterior quedó sustituido por este cambio de frontend.
 
+La repetición de la suite frontend completa tras este arreglo terminó con
+4.314 PASS, 2 omitidos y 3 timeouts de 20 s en pruebas de geometría de
+Overlays ajenas a Strategy. Esas tres pruebas, repetidas juntas y aisladas de
+la suite completa, dieron 10/10 PASS en 5,88 s. La corrida completa **no** se
+marca verde; el resultado apunta a contención durante esa ejecución, sin
+demostrar una causa definitiva ni modificar tiempos límite de los tests.
+
 El script heredado `recorded-strategy-visual.mjs` aún falla tras la primera
 captura: busca `.strategy-recorded-frame__footer button`, que ya no existe en
 la entrada v5. Su ejecución no se declara PASS; hay que adaptar el recorrido

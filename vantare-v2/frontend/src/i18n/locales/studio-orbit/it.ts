@@ -21,6 +21,8 @@ export const studioOrbitIt: Record<string, string> = {
   "studio.toolbar.background.grid": "Griglia",
   "studio.toolbar.background.gradient": "Gradiente",
   "studio.toolbar.background.black": "Nero",
+  "studio.toolbar.background.themeGroup": "Tema",
+  "studio.toolbar.background.otherGroup": "Altri sfondi",
   "studio.toolbar.wallpaper": "Sfondo personale",
   "studio.toolbar.wallpaper.title": "Sfondi personali",
   "studio.toolbar.wallpaper.add": "Aggiungi immagine…",

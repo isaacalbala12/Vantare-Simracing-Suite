@@ -50,6 +50,28 @@
   font-size: 11px;
 }
 
+.orbit-studio-toolbar__background {
+  flex: 0 1 158px;
+  min-width: 108px;
+}
+
+.orbit-studio-toolbar__background select {
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--orbit-line-strong);
+  border-radius: 10px;
+  color: var(--orbit-ink);
+  background: var(--orbit-surface-2);
+  font: 12px var(--orbit-font-sans);
+  cursor: pointer;
+}
+
+.orbit-studio-toolbar__background select:focus-visible {
+  outline: 2px solid var(--orbit-coral);
+  outline-offset: 2px;
+}
+
 .orbit-studio-toolbar__spacer {
   flex: 1;
 }
@@ -187,6 +209,12 @@
 
 .orbit-studio-stage.osv3-bg-black {
   background: #060708;
+}
+
+.orbit-studio-stage:is(.osv3-bg-theme, [class*="osv3-bg-theme-"]) {
+  background:
+    radial-gradient(85% 75% at 14% 13%, rgba(var(--stage-accent), 0.23), transparent 70%),
+    linear-gradient(140deg, var(--stage-top), var(--stage-base));
 }
 
 .orbit-studio-stage__label {

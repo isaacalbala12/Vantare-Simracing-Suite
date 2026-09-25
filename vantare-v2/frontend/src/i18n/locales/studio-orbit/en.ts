@@ -21,6 +21,8 @@ export const studioOrbitEn: Record<string, string> = {
   "studio.toolbar.background.grid": "Grid",
   "studio.toolbar.background.gradient": "Gradient",
   "studio.toolbar.background.black": "Black",
+  "studio.toolbar.background.themeGroup": "Theme",
+  "studio.toolbar.background.otherGroup": "Other backgrounds",
   "studio.toolbar.wallpaper": "Own background",
   "studio.toolbar.wallpaper.title": "Your backgrounds",
   "studio.toolbar.wallpaper.add": "Add image…",

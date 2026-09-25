@@ -159,15 +159,6 @@ export function writeRightDockClosed(closed: boolean): void {
  */
 export const STUDIO_AUTO_FOLD_INSPECTOR_WIDTH = 1400;
 
-/** Fondos del prototipo mapeados a los ids reales de `canvas-backgrounds`. */
-export const ORBIT_BACKGROUND_OPTIONS = [
-  { value: "grid", labelKey: "studio.toolbar.background.grid" },
-  { value: "gradient", labelKey: "studio.toolbar.background.gradient" },
-  { value: "solid-black", labelKey: "studio.toolbar.background.black" },
-] as const;
-
-export type OrbitBackgroundId = (typeof ORBIT_BACKGROUND_OPTIONS)[number]["value"];
-
 /** Pasos de zoom del prototipo; "fit" es el primero (`Ajustar`). */
 const ZOOM_STEPS: readonly StudioPreviewState["zoom"][] = ["fit", 50, 75, 100, 125, 150];
 

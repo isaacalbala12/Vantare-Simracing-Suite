@@ -21,6 +21,8 @@ export const studioOrbitPt: Record<string, string> = {
   "studio.toolbar.background.grid": "Grelha",
   "studio.toolbar.background.gradient": "Gradiente",
   "studio.toolbar.background.black": "Preto",
+  "studio.toolbar.background.themeGroup": "Tema",
+  "studio.toolbar.background.otherGroup": "Outros fundos",
   "studio.toolbar.wallpaper": "Fundo próprio",
   "studio.toolbar.wallpaper.title": "Fundos próprios",
   "studio.toolbar.wallpaper.add": "Adicionar imagem…",

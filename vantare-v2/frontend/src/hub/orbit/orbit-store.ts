@@ -13,6 +13,7 @@ export const ORBIT_KEYS = {
   density: 'vantare.v03orbit.density',
   telemetryDemo: 'vantare.v03orbit.telemetryDemo',
   settingsSection: 'vantare.v03orbit.settings',
+  studioBackground: 'vantare.v03orbit.studioBackground',
   reduceMotion: 'vantare.v03orbit.reduceMotion',
   /** Preferencia manual del cliente; se compone con el escalado responsive. */
   appZoom: 'vantare.v03orbit.appZoom',

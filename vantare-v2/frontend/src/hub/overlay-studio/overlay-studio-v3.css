@@ -412,6 +412,35 @@
   background: #000;
 }
 
+/* Fondos del escenario. El widget conserva su propio sistema visual. */
+.osv3-bg-theme {
+  --stage-accent: var(--orbit-accent-rgb);
+  --stage-top: var(--orbit-surface-2);
+  --stage-base: var(--orbit-canvas);
+}
+
+.osv3-bg-theme-vantare-light { --stage-accent: 178, 53, 70; --stage-top: #fff4f2; --stage-base: #f9f1ef; }
+.osv3-bg-theme-vantare-dark  { --stage-accent: 240, 71, 85; --stage-top: #292026; --stage-base: #100d11; }
+.osv3-bg-theme-rose-light    { --stage-accent: 168, 49, 108; --stage-top: #fff0f6; --stage-base: #fff7fa; }
+.osv3-bg-theme-rose-dark     { --stage-accent: 225, 99, 163; --stage-top: #352032; --stage-base: #1b1119; }
+.osv3-bg-theme-grove-light   { --stage-accent: 38, 113, 77; --stage-top: #eaf5e9; --stage-base: #f5faf5; }
+.osv3-bg-theme-grove-dark    { --stage-accent: 100, 189, 136; --stage-top: #203c30; --stage-base: #101a15; }
+.osv3-bg-theme-ocean-light   { --stage-accent: 41, 122, 168; --stage-top: #e9f4fa; --stage-base: #f3f9fc; }
+.osv3-bg-theme-ocean-dark    { --stage-accent: 107, 187, 225; --stage-top: #1c3446; --stage-base: #101820; }
+.osv3-bg-theme-ember-light   { --stage-accent: 166, 91, 48; --stage-top: #fcf0e5; --stage-base: #fdf8f3; }
+.osv3-bg-theme-ember-dark    { --stage-accent: 222, 152, 94; --stage-top: #3b291f; --stage-base: #1d1511; }
+.osv3-bg-theme-iris-light    { --stage-accent: 121, 84, 168; --stage-top: #f3edfc; --stage-base: #f8f5fc; }
+.osv3-bg-theme-iris-dark     { --stage-accent: 185, 146, 232; --stage-top: #31253d; --stage-base: #17131f; }
+.osv3-bg-theme-mono-light    { --stage-accent: 85, 85, 85; --stage-top: #ebebeb; --stage-base: #f5f5f5; }
+.osv3-bg-theme-mono-dark     { --stage-accent: 189, 189, 189; --stage-top: #292929; --stage-base: #111111; }
+
+.osv3-bg-theme,
+[class*="osv3-bg-theme-"] {
+  background:
+    radial-gradient(85% 75% at 14% 13%, rgba(var(--stage-accent), 0.23), transparent 70%),
+    linear-gradient(140deg, var(--stage-top), var(--stage-base));
+}
+
 .osv3-safe-area-overlay {
   position: absolute;
   border: 1px dashed rgba(56, 189, 248, 0.65);

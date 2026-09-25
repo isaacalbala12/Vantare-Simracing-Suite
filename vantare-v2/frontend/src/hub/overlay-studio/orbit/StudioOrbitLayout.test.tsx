@@ -141,6 +141,43 @@ beforeEach(() => {
 });
 
 describe("StudioOrbitLayout", () => {
+  it("sigue el tema por defecto y permite fijar una variante de otra paleta", async () => {
+    renderStudio();
+    const select = await screen.findByTestId("orbit-studio-background-select") as HTMLSelectElement;
+    const stage = screen.getByTestId("orbit-studio-stage");
+    expect(select.value).toBe("theme");
+    expect(stage.className).toContain("osv3-bg-theme");
+    expect(select.querySelectorAll("optgroup")).toHaveLength(8);
+    expect(select.querySelector('optgroup[label="Tema Grises"] option[value="theme-mono-dark"]')).toBeTruthy();
+
+    fireEvent.change(select, { target: { value: "theme-mono-dark" } });
+    expect(stage.className).toContain("osv3-bg-theme-mono-dark");
+    fireEvent.change(select, { target: { value: "theme" } });
+    expect(stage.className).toContain("osv3-bg-theme");
+  });
+
+  it("recuerda el fondo manual al reabrir Studio y descarta uno propio borrado", async () => {
+    const first = renderStudio();
+    const select = await screen.findByTestId("orbit-studio-background-select") as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: "theme-grove-light" } });
+    expect(window.localStorage.getItem(ORBIT_KEYS.studioBackground)).toBe("theme-grove-light");
+    first.unmount();
+    window.document.getElementById(STUDIO_CONTEXT_SLOT_ID)?.remove();
+    window.document.getElementById(STUDIO_TOPBAR_SLOT_ID)?.remove();
+
+    renderStudio();
+    expect((await screen.findByTestId("orbit-studio-background-select") as HTMLSelectElement).value)
+      .toBe("theme-grove-light");
+    cleanup();
+    window.document.getElementById(STUDIO_CONTEXT_SLOT_ID)?.remove();
+    window.document.getElementById(STUDIO_TOPBAR_SLOT_ID)?.remove();
+
+    window.localStorage.setItem(ORBIT_KEYS.studioBackground, "wallpaper:missing");
+    renderStudio();
+    expect((await screen.findByTestId("orbit-studio-background-select") as HTMLSelectElement).value)
+      .toBe("theme");
+  });
+
   it("sincroniza la selección entre lista, lienzo e inspector", async () => {
     renderStudio();
     const row = await screen.findByTestId("orbit-studio-widget-item-delta-main");

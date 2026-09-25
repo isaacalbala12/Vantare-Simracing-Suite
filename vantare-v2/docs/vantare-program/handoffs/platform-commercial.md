@@ -687,6 +687,31 @@ import/export sin secretos; reset no borra datos sin selección.
   `nightly@f0ccfbf2` al avanzar la base; `plan.md` conservó los hitos de
   ambas ramas y `roadmap.json` se regeneró desde esa base.
 
+- [VAN-769](https://app.notion.com/p/3e6e51695c6581abbcdff05e070a4a69)
+  gobierna el alcance y seguimiento vivo de #1381. El 2026-09-25 Isaac
+  amplió #1381 a los fondos del escenario de Overlay
+  Studio y pidió corregir la tarjeta Próxima serie de Inicio. El fondo
+  predeterminado `Tema actual` toma los tokens de la paleta y del modo
+  claro/oscuro; el selector de la toolbar agrupa las catorce variantes fijas
+  por paleta y conserva Rejilla, Degradado, Negro y los fondos propios. La
+  elección manual se guarda en este equipo y persiste al volver a abrir
+  Studio; si una imagen propia guardada ya no existe, vuelve a Tema actual.
+  Solo cambia el escenario, no el renderizado de los widgets. El subagente
+  corrigió la tarjeta Próxima serie mediante tokens de interfaz; el
+  orquestador revisó el diff y la comprobó en Wails con Grises/Claro y
+  Grises/Oscuro. También comprobó en Wails el lienzo de Grises/Claro y
+  Grises/Oscuro con widgets rojos intactos, los siete grupos del selector,
+  la selección fija Rosa/Oscuro y la persistencia de Vantare/Claro al salir
+  y volver a Studio. La compilación Wails usó el `.env.local` autorizado sin
+  exponer valores. Typecheck, build, lint, auditoría i18n, 52 pruebas focales
+  del Studio y cuatro presupuestos de frames pasaron. En la suite local
+  completa pasaron 4.116 pruebas y dos quedaron omitidas; tres pruebas de
+  geometría ajenas agotaron 20 s bajo carga paralela y la prueba de Canvas
+  todavía tenía la expectativa del fondo anterior. Tras corregir esa
+  expectativa, las cuatro suites afectadas pasaron aisladas con un solo
+  worker (25 pruebas). La rama sigue aislada y el PR #1384 sigue draft; no
+  hubo merge, promoción ni release.
+
 ISA-841 se implementó en la rama aislada
 `vantareapp/isa-841-zoom-global-interfaz` y se rebasó el 2026-08-28 sobre
 `nightly@d9909aef4b9f2de2b3e61ed79a3a0fd98a91b73c`; PR #847 es su única ruta de

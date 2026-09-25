@@ -31,6 +31,15 @@ function fixture() {
   return { session, current, page, methods, controller };
 }
 describe("recorded data screen", () => {
+  it("keeps a long projection visible and cancellable at the top of the data view", () => {
+    const f = fixture();
+    render(<HostedData controller={{ ...f.controller, busy: true, projecting: true }} sessions={[f.session]} busy={false} onSources={vi.fn()} onPendingChange={vi.fn()} t={t} />);
+    const notice = screen.getByText("strategy.data.projecting").closest('[role="status"]');
+    expect(notice).not.toBeNull();
+    expect(screen.queryByText("strategy.data.working")).toBeNull();
+    fireEvent.click(within(notice as HTMLElement).getByRole("button", { name: "strategy.recorded.cancel" }));
+    expect(f.methods.cancel).toHaveBeenCalledOnce();
+  });
   it("stages a stint move with an allowed lap end and keeps saving separate", () => {
     const f = fixture(), pending = vi.fn();
     const boundary = { stintNumber: 2, timestamp: "1970-01-01T00:03:00Z", cause: "pit" as const, presence: "valid" as const, provenance: { kind: "observed", sourceId: "source" }, confidence: { sampleSize: 1, computationVersion: "lap-validity.v1" } };

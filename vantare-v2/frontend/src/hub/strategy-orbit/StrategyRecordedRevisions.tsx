@@ -48,6 +48,7 @@ export function StrategyRecordedRevisions({ controller, sessions, sessionLabels,
   const failureKey = controller.error === "recorded_revision_conflict" ? "conflict" : controller.error === "recorded_save_not_committed" ? "notCommitted" : controller.error === "recorded_operation_cancelled" ? "cancelled" : "error";
   return <section className="strategy-recorded-data strategy-recorded-revisions" aria-labelledby="recorded-revisions-title">
     <header className="strategy-recorded-data__heading"><h2 id="recorded-revisions-title">{t("strategy.data.tab.revisions")}</h2><p>{t("strategy.history.description")}</p></header>
+    {controller.projecting ? <div className="strategy-recorded-data__projection" role="status"><span>{t("strategy.data.projecting")}</span><Button variant="ghost" onClick={controller.cancel}>{t("strategy.recorded.cancel")}</Button></div> : null}
     <div className="strategy-recorded-revisions__grid">
       <section className="strategy-recorded-data__observations">
         <div className="strategy-recorded-data__source"><label>{t("strategy.history.source")}<select value={editor?.session.opened.sessionId ?? ""} disabled={navigatingBlocked} onChange={event => { const session = sessions.find(item => item.opened.sessionId === event.target.value); if (session) void controller.load(session); }}>
@@ -128,6 +129,6 @@ export function StrategyRecordedRevisions({ controller, sessions, sessionLabels,
       </aside>
     </div>
     {controller.error ? <p role="alert" className="strategy-recorded-data__error">{t(`strategy.data.${failureKey}`)}</p> : null}
-    <footer className="strategy-recorded-data__footer"><span><Icon name="i-lock" size={19} />{t("strategy.recorded.originals")}</span>{controller.busy ? <span role="status">{t("strategy.data.working")} <Button onClick={controller.cancel}>{t("strategy.recorded.cancel")}</Button></span> : null}</footer>
+    <footer className="strategy-recorded-data__footer"><span><Icon name="i-lock" size={19} />{t("strategy.recorded.originals")}</span>{controller.busy && !controller.projecting ? <span role="status">{t("strategy.data.working")} <Button onClick={controller.cancel}>{t("strategy.recorded.cancel")}</Button></span> : null}</footer>
   </section>;
 }

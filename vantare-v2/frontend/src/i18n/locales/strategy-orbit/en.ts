@@ -703,6 +703,7 @@ export const strategyOrbitEn: Record<string, string> = {
   "strategy.data.cancelled": "Operation cancelled. If a save was in progress, check its outcome.",
   "strategy.data.error": "The operation could not be completed. Check the value, reason and source availability.",
   "strategy.data.working": "Processing the session…",
+  "strategy.data.projecting": "Recalculating the revision from telemetry. This may take a while; this operation does not modify the original file.",
   "strategy.data.revisionsPending": "No accepted plan",
   "strategy.data.revisionsPendingHint": "The saved configuration remains available in Race.",
   "strategy.data.finishPending": "Finish or discard pending corrections before changing sources.",

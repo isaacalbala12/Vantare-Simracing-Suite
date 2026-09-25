@@ -8,7 +8,7 @@ import (
 // DerivePagedCorrectedSession computes the same revision model from an
 // authorized paged reader. Its caller retains source ownership and must load
 // the exact durable snapshot before calling. Product commands remain on the
-// materialized path until complete fixture and recorded-source parity passes.
+// paged path after fixture and recorded-source parity checks.
 func DerivePagedCorrectedSession(ctx context.Context, reader CorrectionInputReader, artifact AuthorizedHistoricalArtifact, limits CorrectionReadLimits, original CorrectionSummary, classified ClassifiedSession, snapshot PreparedSampleCorrectionSnapshot) (CorrectedSessionDerivations, error) {
 	var empty CorrectedSessionDerivations
 	if original.Session.ID != original.Base.SessionID || classified.SessionID != original.Base.SessionID {

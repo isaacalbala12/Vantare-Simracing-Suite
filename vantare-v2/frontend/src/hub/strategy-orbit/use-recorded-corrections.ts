@@ -24,6 +24,7 @@ type Editor = Readonly<{
 export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session: RecordedSession, signal: AbortSignal) => Promise<void>, isBlocked: () => boolean = () => false) {
   const [editor, setEditor] = useState<Editor | null>(null);
   const [busy, setBusy] = useState(false);
+  const [projecting, setProjecting] = useState(false);
   const [error, setError] = useState("");
   const pending = useRef<AbortController | null>(null);
   const alive = useRef(true);
@@ -51,9 +52,14 @@ export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session
     catch (failure) { setError(failure instanceof Error ? failure.message : "recorded_operation_failed"); return false; }
   }
   async function project(session: RecordedSession, saved: AnalysisStoreResult, signal: AbortSignal) {
-    const projected = await projectRecordedCorrection(client, session, saved, signal);
-    signal.throwIfAborted();
-    if (alive.current) setEditor(current => current ? { ...current, projected } : current);
+    setProjecting(true);
+    try {
+      const projected = await projectRecordedCorrection(client, session, saved, signal);
+      signal.throwIfAborted();
+      if (alive.current) setEditor(current => current ? { ...current, projected } : current);
+    } finally {
+      if (alive.current) setProjecting(false);
+    }
   }
   async function persist(current: Editor, request: AnalysisSaveRequest, signal: AbortSignal) {
     // Freeze edits before dispatch. Failure/cancellation retains this exact command.
@@ -92,7 +98,7 @@ export function useRecordedCorrections(client: AnalysisClient, onAdopt: (session
     });
   }
   return {
-    editor, busy, error,
+    editor, busy, projecting, error,
     isBusy: () => pending.current !== null,
     unresolved: Boolean(editor?.dirty || editor?.request),
     load,

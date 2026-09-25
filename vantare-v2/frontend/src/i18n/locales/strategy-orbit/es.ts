@@ -721,6 +721,7 @@ export const strategyOrbitEs: Record<string, string> = {
   "strategy.data.cancelled": "Operación cancelada. Si se estaba guardando, comprueba el resultado.",
   "strategy.data.error": "No se pudo completar la operación. Revisa el valor, el motivo y la disponibilidad de la fuente.",
   "strategy.data.working": "Procesando la sesión…",
+  "strategy.data.projecting": "Recalculando la revisión desde la telemetría. Puede tardar; esta operación no modifica el archivo original.",
   "strategy.data.revisionsPending": "Sin plan aceptado",
   "strategy.data.revisionsPendingHint": "La configuración guardada sigue disponible en Carrera.",
   "strategy.data.finishPending": "Termina o descarta las correcciones pendientes antes de cambiar las fuentes.",

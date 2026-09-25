@@ -333,3 +333,15 @@ bytes (`SHA-256 406ef6ff1de3480d3b50dcc67627d60111a92c2e1c97ffb3d260b2d3d47fdc3f
 La CLI instalada informó `v3.0.0-alpha.98`; el build no verifica interacción
 WebView2 ni login/licencia y no cierra T22. `go mod tidy` reordenó una
 dependencia indirecta durante el build; se restauró ese cambio no relacionado.
+
+## Espera del cliente durante proyección
+
+Datos y Revisiones muestran un aviso en la parte superior mientras la revisión
+se deriva de la fuente. No se muestra un porcentaje que el backend no publica;
+la acción de cancelar permanece accesible. El estado aparece tanto al preparar
+explícitamente como después de confirmar un guardado, antes de adoptar nada.
+Una regresión con proyección diferida comprueba que cancelar conserva el
+guardado confirmado y no publica un resultado tardío. Otras dos pruebas
+comprueban el aviso y la cancelación en ambas vistas. Pasaron 96 tests focales,
+typecheck, lint, 4.303 tests frontend (2 omitidos) y build. Este test de UI
+no acredita la apariencia ni el tiempo de espera en Wails; sigue en T22.

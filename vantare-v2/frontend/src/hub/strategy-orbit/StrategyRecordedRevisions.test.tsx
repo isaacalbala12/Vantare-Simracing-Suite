@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { parseAnalysisOpenedSession, parseCorrectionStoreResult, type AnalysisClassificationCorrection, type AnalysisMetadata, type AnalysisStoreResult } from "../../strategy/analysis-contract";
 import type { RecordedSession } from "./strategy-recorded-session";
@@ -20,6 +20,15 @@ function fixture() {
   return { session, current, methods, controller, props };
 }
 describe("source revision history", () => {
+  it("shows the projection phase once in history with a cancel action", () => {
+    const f = fixture();
+    render(<StrategyRecordedRevisions {...f.props} controller={{ ...f.controller, busy: true, projecting: true }} />);
+    const notice = screen.getByText("strategy.data.projecting").closest('[role="status"]');
+    expect(notice).not.toBeNull();
+    expect(screen.queryByText("strategy.data.working")).toBeNull();
+    fireEvent.click(within(notice as HTMLElement).getByRole("button", { name: "strategy.recorded.cancel" }));
+    expect(f.methods.cancel).toHaveBeenCalledOnce();
+  });
   it("does not load on mount and shows original, corrected and reason without adopting", () => {
     const f = fixture();
     render(<StrategyRecordedRevisions {...f.props} />);

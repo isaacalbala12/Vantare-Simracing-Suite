@@ -1,5 +1,16 @@
 # Handoff vivo — Strategy Planner
 
+## Espera visible durante la proyección — ISA-1375 (2026-09-25)
+
+Datos y Revisiones muestran ahora junto a la cabecera que una proyección está
+releyendo telemetría y puede tardar, con cancelación visible. La fase distingue
+el recálculo de la operación genérica; cancelar después de un guardado confirmado
+conserva esa revisión y no adopta un resultado parcial. 96 tests focales,
+typecheck, lint, 4.303 tests frontend (2 omitidos) y build frontend PASS.
+No hay captura Wails de este estado: T22 sigue pendiente. También falta una
+fuente LMU real de resistencia con muchas vueltas para medir y fijar su cuota.
+Sin push, PR, CI, merge, promoción ni release.
+
 ## Proyección paginada activa y pico medido — ISA-1375 (2026-09-25)
 
 Las proyecciones individual y conjunta ya comparten `DerivePagedCorrectedSession`

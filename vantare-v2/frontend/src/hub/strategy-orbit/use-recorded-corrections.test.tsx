@@ -164,6 +164,23 @@ describe("recorded corrections owner", () => {
     expect(f.client.project).toHaveBeenCalledTimes(2);
     expect(f.result.current.editor?.projected?.revision.revisionId).toBe(b);
   });
+  it("shows a distinct cancellable projection phase without losing the confirmed save", async () => {
+    const f = fixture();
+    await f.edit();
+    let finish!: (value: { combinationId: string; sourceRevisions: RecordedSession["revision"][] }) => void;
+    f.client.project.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    let pending!: Promise<void>;
+    act(() => { pending = f.result.current.save("Checked"); });
+    await vi.waitFor(() => expect(f.result.current.projecting).toBe(true));
+    expect(f.result.current.busy).toBe(true);
+    expect(f.result.current.editor?.saved?.revision.revisionId).toBe(b);
+    act(() => f.result.current.cancel());
+    await act(async () => { finish({ combinationId: "combo", sourceRevisions: [{ ...f.session.revision, revisionId: b, snapshotId: b }] }); await pending; });
+    expect(f.result.current.projecting).toBe(false);
+    expect(f.result.current.busy).toBe(false);
+    expect(f.result.current.editor?.saved?.revision.revisionId).toBe(b);
+    expect(f.result.current.editor?.projected).toBeUndefined();
+  });
   it("requires explicit head review before editing a historical revision and restores as a new command", async () => {
     const f = fixture();
     f.client.load.mockResolvedValue({ ...f.current, headId: b });

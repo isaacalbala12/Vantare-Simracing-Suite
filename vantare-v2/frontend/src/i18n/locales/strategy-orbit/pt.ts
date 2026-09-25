@@ -693,6 +693,7 @@ export const strategyOrbitPt: Record<string, string> = {
   "strategy.data.cancelled": "Operação cancelada. Se estava a guardar, verifica o resultado.",
   "strategy.data.error": "Não foi possível concluir a operação. Verifica o valor, o motivo e a disponibilidade da fonte.",
   "strategy.data.working": "A processar a sessão…",
+  "strategy.data.projecting": "A recalcular a revisão a partir da telemetria. Pode demorar; esta operação não altera o ficheiro original.",
   "strategy.data.revisionsPending": "Sem plano aceite",
   "strategy.data.revisionsPendingHint": "A configuração guardada continua disponível em Corrida.",
   "strategy.data.finishPending": "Conclui ou descarta as correções pendentes antes de mudar as fontes.",

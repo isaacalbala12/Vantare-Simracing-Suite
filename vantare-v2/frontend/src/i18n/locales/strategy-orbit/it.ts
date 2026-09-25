@@ -694,6 +694,7 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.data.cancelled": "Operazione annullata. Se era in corso un salvataggio, verificane l’esito.",
   "strategy.data.error": "Impossibile completare l’operazione. Controlla valore, motivo e disponibilità della fonte.",
   "strategy.data.working": "Elaborazione della sessione…",
+  "strategy.data.projecting": "Ricalcolo della revisione dalla telemetria. Potrebbe richiedere tempo; questa operazione non modifica il file originale.",
   "strategy.data.revisionsPending": "Nessun piano accettato",
   "strategy.data.revisionsPendingHint": "La configurazione salvata rimane disponibile in Gara.",
   "strategy.data.finishPending": "Completa o scarta le correzioni in sospeso prima di cambiare le fonti.",

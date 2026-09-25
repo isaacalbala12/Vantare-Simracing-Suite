@@ -103,15 +103,19 @@ type TelemetryAnalysisPageRequest struct {
 }
 
 type telemetryAnalysisCandidateRecord struct {
-	mu        sync.Mutex
-	root      telemetryanalysis.SourceRoot
-	candidate telemetryanalysis.Candidate
-	tracker   *telemetryanalysis.StabilityTracker
+	mu                sync.Mutex
+	root              telemetryanalysis.SourceRoot
+	candidate         telemetryanalysis.Candidate
+	tracker           *telemetryanalysis.StabilityTracker
+	selected          bool
+	selectedPath      string
+	expectedSessionID string
 }
 
 type telemetryAnalysisSession struct {
 	mu                sync.Mutex
 	artifact          telemetryanalysis.AuthorizedHistoricalArtifact
+	sourcePath        string
 	parser            *telemetryanalysis.LMUDuckDBParser
 	reader            telemetryAnalysisReader
 	staged            telemetryanalysis.StagedHistoricalArtifact
@@ -135,6 +139,7 @@ type TelemetryAnalysisService struct {
 	now         func() time.Time
 
 	discoveryMu      sync.Mutex
+	copyRegistryMu   sync.Mutex
 	correctionReadMu sync.Mutex
 	closeMu          sync.Mutex
 	mu               sync.Mutex
@@ -349,6 +354,9 @@ func (service *TelemetryAnalysisService) Open(ctx context.Context, request Telem
 	if revalidateErr != nil {
 		return TelemetryAnalysisOpenedSession{}, revalidateErr
 	}
+	record.mu.Lock()
+	expectedSessionID := record.expectedSessionID
+	record.mu.Unlock()
 	if !service.runtimeReady || service.readerFactory == nil {
 		return TelemetryAnalysisOpenedSession{}, ErrTelemetryAnalysisRuntimeUnavailable
 	}
@@ -365,7 +373,7 @@ func (service *TelemetryAnalysisService) Open(ctx context.Context, request Telem
 	if stageErr != nil {
 		return TelemetryAnalysisOpenedSession{}, publicTelemetryAnalysisError(stageErr)
 	}
-	ownedSession := &telemetryAnalysisSession{staged: staged, artifact: artifact}
+	ownedSession := &telemetryAnalysisSession{staged: staged, artifact: artifact, sourcePath: candidate.LocalPath()}
 	cleanupOwnedSession := true
 	defer func() {
 		if cleanupOwnedSession {
@@ -394,6 +402,9 @@ func (service *TelemetryAnalysisService) Open(ctx context.Context, request Telem
 	session, inspectErr := parser.Inspect(operationCtx)
 	if inspectErr != nil {
 		return TelemetryAnalysisOpenedSession{}, publicTelemetryAnalysisError(inspectErr)
+	}
+	if expectedSessionID != "" && session.ID != expectedSessionID {
+		return TelemetryAnalysisOpenedSession{}, ErrTelemetryAnalysisCopyChanged
 	}
 	if err := operationCtx.Err(); err != nil {
 		return TelemetryAnalysisOpenedSession{}, err
@@ -428,6 +439,17 @@ func (service *TelemetryAnalysisService) ownedResourceCountLocked() int {
 func (service *TelemetryAnalysisService) revalidateCandidate(ctx context.Context, record *telemetryAnalysisCandidateRecord) (telemetryanalysis.Candidate, error) {
 	record.mu.Lock()
 	defer record.mu.Unlock()
+	if record.selected {
+		candidate, err := telemetryanalysis.DiscoverSelected(ctx, service.metadata, record.root, record.selectedPath)
+		if err != nil || candidate.Locator != record.candidate.Locator {
+			return telemetryanalysis.Candidate{}, ErrTelemetryAnalysisCandidateUnknown
+		}
+		record.candidate = record.tracker.Assess(candidate, observationForCandidate(candidate, service.now()))
+		if record.candidate.State != telemetryanalysis.StateReady {
+			return telemetryanalysis.Candidate{}, ErrTelemetryAnalysisNotReady
+		}
+		return record.candidate, nil
+	}
 	candidates, err := telemetryanalysis.Discover(ctx, service.metadata, record.root, service.cfg.MaxCandidates)
 	if err != nil {
 		return telemetryanalysis.Candidate{}, publicTelemetryAnalysisError(err)

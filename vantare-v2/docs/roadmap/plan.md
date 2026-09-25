@@ -1291,6 +1291,22 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 - cuerpo.it: Il catalogo autorizzato conserva un backup validato e ripristina il file principale assente o corrotto, preservando i dati danneggiati. Distingue recupero, corruzione e scrittura incerta. Anche lo stato di importazione viene recuperato e Strategy mostra cause di indisponibilità e avvisi di recupero. L’avanzamento viene riconciliato con le sessioni autorizzate conservate, segnala perdite recuperabili ed evita importazioni duplicate. Ogni importazione ha una scadenza nel backend, segnala timeout recuperabili e scarta risultati tardivi. Resta la verifica visiva in Wails.
 - etiqueta: Fix
 
+### Copia opcional de la fuente de telemetría
+
+- id: strategy-optional-source-copy
+- tipo: plan
+- titulo.en: Optional verified telemetry source copy
+- titulo.pt: Cópia opcional verificada da fonte de telemetria
+- titulo.it: Copia opzionale verificata della fonte telemetrica
+- cuerpo: Strategy permite guardar una copia DuckDB verificada en una carpeta elegida sin modificar el original. Analysis registra su ubicación de forma privada y, tras reiniciar, la ofrece para recuperar una fuente guardada sólo si falta el original y la copia conserva tamaño, SHA-256 e identidad. También se puede elegir un archivo fuera de las carpetas descubiertas; los borradores exigen la revisión exacta. Un banco Go con DuckDB LMU real recupera y proyecta una revisión corregida tras reiniciar. Pendientes QA Wails de ese recorrido y prueba física de permisos/espacio. La copia temporal de lectura no es una copia conservada.
+- cuerpo.en: Strategy saves a verified DuckDB copy in a chosen folder without changing the original. Analysis privately retains its location and, after restart, offers it for recovery only when the original is missing and the copy retains its size, SHA-256 and identity. Users can also select a file outside discovered folders; saved drafts require the exact revision. A Go bank with a real LMU DuckDB recovers and projects a corrected revision after restart. Wails QA for that flow and physical permission and disk-space checks remain pending. The temporary reading copy is not retained.
+- cuerpo.pt: Strategy guarda uma cópia DuckDB verificada numa pasta escolhida sem alterar o original. Analysis regista a localização de forma privada e, após reinício, oferece recuperação apenas se faltar o original e a cópia conservar tamanho, SHA-256 e identidade. Também se pode escolher um ficheiro fora das pastas descobertas; os rascunhos exigem a revisão exata. Um teste Go com DuckDB LMU real recupera e projeta uma revisão corrigida após reinício. Faltam QA Wails deste percurso e testes físicos de permissões/espaço. A cópia temporária de leitura não é conservada.
+- cuerpo.it: Strategy salva una copia DuckDB verificata in una cartella scelta senza modificare l'originale. Analysis ne registra privatamente la posizione e, dopo il riavvio, offre il recupero solo se manca l'originale e la copia conserva dimensione, SHA-256 e identità. Si può anche scegliere un file fuori dalle cartelle scoperte; i documenti salvati richiedono la revisione esatta. Un test Go con DuckDB LMU reale recupera e proietta una revisione corretta dopo il riavvio. Restano QA Wails di questo percorso e prove fisiche di permessi/spazio. La copia temporanea di lettura non viene conservata.
+- etiqueta: Pendiente
+- etiqueta.en: Planned
+- etiqueta.pt: Pendente
+- etiqueta.it: In programma
+
 ### Menú de estrategia y edición de telemetría registrada
 
 - id: strategy-recorded-editor

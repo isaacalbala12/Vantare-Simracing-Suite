@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-24T19:52:26Z",
+  "generatedAt": "2026-09-25T19:07:10Z",
   "digest": {
-    "lastCommit": "5c73013ed59a4d69775a94fcc188d168310c59a5"
+    "lastCommit": "d09829c41ea2dabfdcb47182eb6d922e69232e54"
   },
   "phases": [
     {
@@ -1966,6 +1966,28 @@
       }
     },
     {
+      "id": "strategy-optional-source-copy",
+      "type": "plan",
+      "title": {
+        "es": "Copia opcional de la fuente de telemetría",
+        "en": "Optional verified telemetry source copy",
+        "pt": "Cópia opcional verificada da fonte de telemetria",
+        "it": "Copia opzionale verificata della fonte telemetrica"
+      },
+      "body": {
+        "es": "Strategy permite guardar una copia DuckDB verificada en una carpeta elegida sin modificar el original. Analysis registra su ubicación de forma privada y, tras reiniciar, la ofrece para recuperar una fuente guardada sólo si falta el original y la copia conserva tamaño, SHA-256 e identidad. También se puede elegir un archivo fuera de las carpetas descubiertas; los borradores exigen la revisión exacta. Un banco Go con DuckDB LMU real recupera y proyecta una revisión corregida tras reiniciar. Pendientes QA Wails de ese recorrido y prueba física de permisos/espacio. La copia temporal de lectura no es una copia conservada.",
+        "en": "Strategy saves a verified DuckDB copy in a chosen folder without changing the original. Analysis privately retains its location and, after restart, offers it for recovery only when the original is missing and the copy retains its size, SHA-256 and identity. Users can also select a file outside discovered folders; saved drafts require the exact revision. A Go bank with a real LMU DuckDB recovers and projects a corrected revision after restart. Wails QA for that flow and physical permission and disk-space checks remain pending. The temporary reading copy is not retained.",
+        "pt": "Strategy guarda uma cópia DuckDB verificada numa pasta escolhida sem alterar o original. Analysis regista a localização de forma privada e, após reinício, oferece recuperação apenas se faltar o original e a cópia conservar tamanho, SHA-256 e identidade. Também se pode escolher um ficheiro fora das pastas descobertas; os rascunhos exigem a revisão exata. Um teste Go com DuckDB LMU real recupera e projeta uma revisão corrigida após reinício. Faltam QA Wails deste percurso e testes físicos de permissões/espaço. A cópia temporária de leitura não é conservada.",
+        "it": "Strategy salva una copia DuckDB verificata in una cartella scelta senza modificare l'originale. Analysis ne registra privatamente la posizione e, dopo il riavvio, offre il recupero solo se manca l'originale e la copia conserva dimensione, SHA-256 e identità. Si può anche scegliere un file fuori dalle cartelle scoperte; i documenti salvati richiedono la revisione esatta. Un test Go con DuckDB LMU reale recupera e proietta una revisione corretta dopo il riavvio. Restano QA Wails di questo percorso e prove fisiche di permessi/spazio. La copia temporanea di lettura non viene conservata."
+      },
+      "label": {
+        "es": "Pendiente",
+        "en": "Planned",
+        "pt": "Pendente",
+        "it": "In programma"
+      }
+    },
+    {
       "id": "strategy-recorded-editor",
       "type": "feature",
       "title": {
@@ -2210,13 +2232,33 @@
   ],
   "delivered": [
     {
-      "date": "2026-09-24",
+      "date": "2026-09-25",
       "entries": [
         {
-          "kind": "fix",
-          "scope": "widgets",
-          "text": "Validar datos y contratos de los cinco widgets aceptados"
+          "kind": "docs",
+          "scope": "hub",
+          "text": "Registrar merge de la cabecera Orbit"
         },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-1390 · Cabecera Orbit: versión sin punto verde"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-1382 · Calendario visual y zoom del Timeline"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-1385 · Car Damage Numbers Eficiencia y telemetría LMU"
+        }
+      ]
+    },
+    {
+      "date": "2026-09-24",
+      "entries": [
         {
           "kind": "change",
           "scope": "",
@@ -2226,6 +2268,11 @@
           "kind": "feat",
           "scope": "overlays",
           "text": "Pedales avanzados con datos revisados y volantes LMU"
+        },
+        {
+          "kind": "fix",
+          "scope": "widgets",
+          "text": "Validar datos y contratos de los cinco widgets aceptados"
         }
       ]
     },
@@ -2263,16 +2310,6 @@
       "date": "2026-09-22",
       "entries": [
         {
-          "kind": "fix",
-          "scope": "platform",
-          "text": "Actualizar Wails a beta.24"
-        },
-        {
-          "kind": "feat",
-          "scope": "widgets",
-          "text": "Recuperar cambios locales de revisión"
-        },
-        {
           "kind": "change",
           "scope": "",
           "text": "Widgets: compartir idioma con la app sin trabajo por fotograma"
@@ -2281,6 +2318,16 @@
           "kind": "fix",
           "scope": "engineer",
           "text": "Reparar Fuel, Timings, Spotter y audio sobre Wails beta.24"
+        },
+        {
+          "kind": "fix",
+          "scope": "platform",
+          "text": "Actualizar Wails a beta.24"
+        },
+        {
+          "kind": "feat",
+          "scope": "widgets",
+          "text": "Recuperar cambios locales de revisión"
         }
       ]
     },
@@ -2344,13 +2391,8 @@
       "entries": [
         {
           "kind": "docs",
-          "scope": "handoff",
-          "text": "ISA-1128 promocionado a nightly"
-        },
-        {
-          "kind": "fix",
-          "scope": "motion",
-          "text": "Reaterrizaje de las rondas de revisión adversarial"
+          "scope": "",
+          "text": "Depurar entradas y contratos vigentes de la suite"
         },
         {
           "kind": "docs",
@@ -2359,44 +2401,19 @@
         },
         {
           "kind": "docs",
-          "scope": "",
-          "text": "Depurar entradas y contratos vigentes de la suite"
+          "scope": "handoff",
+          "text": "ISA-1128 promocionado a nightly"
+        },
+        {
+          "kind": "fix",
+          "scope": "motion",
+          "text": "Reaterrizaje de las rondas de revisión adversarial"
         }
       ]
     },
     {
       "date": "2026-09-13",
       "entries": [
-        {
-          "kind": "fix",
-          "scope": "estrategia",
-          "text": "Presupuesto de trabajo por tamaño en Orbit en vez de deadline de pared"
-        },
-        {
-          "kind": "feat",
-          "scope": "widgets",
-          "text": "Sistema de diseno Eficiencia + motor de animacion"
-        },
-        {
-          "kind": "fix",
-          "scope": "estrategia",
-          "text": "Presupuesto de memoria en importación de sesiones LMU"
-        },
-        {
-          "kind": "fix",
-          "scope": "telemetria",
-          "text": "Dedup de vueltas, fronteras de fuel alineadas y deteccion de huecos rowid"
-        },
-        {
-          "kind": "fix",
-          "scope": "config",
-          "text": "Readmite vantare-iracing en el contrato de perfiles V3"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-1183 · Integrar widgets Eficiencia y corrección Foco"
-        },
         {
           "kind": "fix",
           "scope": "telemetria",
@@ -2421,6 +2438,36 @@
           "kind": "change",
           "scope": "",
           "text": "Efficiency, política común y runtime optimizado"
+        },
+        {
+          "kind": "fix",
+          "scope": "estrategia",
+          "text": "Presupuesto de memoria en importación de sesiones LMU"
+        },
+        {
+          "kind": "fix",
+          "scope": "telemetria",
+          "text": "Dedup de vueltas, fronteras de fuel alineadas y deteccion de huecos rowid"
+        },
+        {
+          "kind": "fix",
+          "scope": "config",
+          "text": "Readmite vantare-iracing en el contrato de perfiles V3"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-1183 · Integrar widgets Eficiencia y corrección Foco"
+        },
+        {
+          "kind": "feat",
+          "scope": "widgets",
+          "text": "Sistema de diseno Eficiencia + motor de animacion"
+        },
+        {
+          "kind": "fix",
+          "scope": "estrategia",
+          "text": "Presupuesto de trabajo por tamaño en Orbit en vez de deadline de pared"
         }
       ]
     },
@@ -2458,16 +2505,6 @@
       "date": "2026-09-11",
       "entries": [
         {
-          "kind": "feat",
-          "scope": "overlay",
-          "text": "Editor in-place C5 — toolbar pill, pestañas y panel ocultable"
-        },
-        {
-          "kind": "feat",
-          "scope": "overlay",
-          "text": "Editor in-place — teclado, acciones de widget y salida visible"
-        },
-        {
           "kind": "perf",
           "scope": "hub",
           "text": "Canal granular de perfiles en launcher-store"
@@ -2491,6 +2528,16 @@
           "kind": "fix",
           "scope": "studio",
           "text": "Restaurar enlace OBS al pie del dock de ajustes"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlay",
+          "text": "Editor in-place C5 — toolbar pill, pestañas y panel ocultable"
+        },
+        {
+          "kind": "feat",
+          "scope": "overlay",
+          "text": "Editor in-place — teclado, acciones de widget y salida visible"
         }
       ]
     },
@@ -2498,9 +2545,9 @@
       "date": "2026-09-10",
       "entries": [
         {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-1101 · Integrar Redline Tower y dorsales canónicos"
+          "kind": "docs",
+          "scope": "ci",
+          "text": "Registrar integración Nightly de ISA-728"
         },
         {
           "kind": "fix",
@@ -2508,9 +2555,9 @@
           "text": "Corregir validación del workflow inerte"
         },
         {
-          "kind": "docs",
-          "scope": "ci",
-          "text": "Registrar integración Nightly de ISA-728"
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-1101 · Integrar Redline Tower y dorsales canónicos"
         }
       ]
     },
@@ -2741,31 +2788,6 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-861 · Promover reader LMU y runtime Windows a nightly"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-26",
-      "entries": [
-        {
-          "kind": "docs",
-          "scope": "release",
-          "text": "Manifiesto v0.1.0.7-testers.2 y expectativa de release-news"
-        },
-        {
-          "kind": "fix",
-          "scope": "studio",
-          "text": "Conservar editor y agilizar el rail"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-843 · Centrar columnas de Próximas"
-        },
-        {
-          "kind": "feat",
-          "scope": "studio",
-          "text": "Autosave y Ctrl+Z productivo"
         }
       ]
     }

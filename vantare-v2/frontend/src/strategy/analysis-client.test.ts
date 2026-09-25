@@ -6,6 +6,40 @@ import type { AnalysisBase, AnalysisClassificationCorrection, AnalysisCorrection
 import snapshotV4 from "./testdata/analysis-identity-snapshot-v4.json";
 vi.mock("@wailsio/runtime", () => ({ Call: { ByName: vi.fn() } }));
 describe("native Analysis client", () => {
+  it("requests recovery only for an exact saved source identifier", async () => {
+    const candidate = { id: "lmu://1234567890abcdef", state: "ready", size: 12, modifiedAt: "2026-09-24T18:00:00Z", walPresent: false };
+    const call = vi.fn().mockResolvedValue({ code: "ready", candidate });
+    const client = createAnalysisClient({ call });
+    await expect(client.recoverCopy("unknown")).rejects.toThrow("request.sourceId");
+    expect(call).not.toHaveBeenCalled();
+    await expect(client.recoverCopy("a".repeat(64))).resolves.toMatchObject({ code: "ready", candidate });
+    expect(call).toHaveBeenCalledExactlyOnceWith("RecoverCopy", [{ sourceId: "a".repeat(64), userApproved: true }], undefined);
+    call.mockResolvedValueOnce({ code: "copy_changed" });
+    await expect(client.recoverCopy("a".repeat(64))).resolves.toEqual({ code: "copy_changed" });
+  });
+  it("registers only a user-selected file and validates the returned candidate", async () => {
+    const candidate = { id: "lmu://1234567890abcdef", state: "ready", size: 12, modifiedAt: "2026-09-24T18:00:00Z", walPresent: false };
+    const call = vi.fn().mockResolvedValue(candidate);
+    const client = createAnalysisClient({ call });
+    await expect(client.selectFile(" ")).rejects.toThrow("request.path");
+    expect(call).not.toHaveBeenCalled();
+    await expect(client.selectFile("C:\\kept\\copy.duckdb")).resolves.toMatchObject(candidate);
+    expect(call).toHaveBeenCalledExactlyOnceWith("SelectFile", [{ path: "C:\\kept\\copy.duckdb", userApproved: true }], undefined);
+    call.mockResolvedValueOnce({ ...candidate, state: "active" });
+    await expect(client.selectFile("C:\\kept\\copy.duckdb")).rejects.toThrow("selectFile.notReady");
+  });
+  it("validates the copy result and never dispatches an empty folder", async () => {
+    const call = vi.fn().mockResolvedValue({ code: "saved", copy: { path: "C:\\kept\\copy.duckdb", contentSha256: "a".repeat(64), sizeBytes: 1024 } });
+    const client = createAnalysisClient({ call });
+    await expect(client.saveVerifiedCopy("handle", " ")).rejects.toThrow("request.destinationDirectory");
+    expect(call).not.toHaveBeenCalled();
+    await expect(client.saveVerifiedCopy("handle", "C:\\kept")).resolves.toMatchObject({ code: "saved", copy: { sizeBytes: 1024 } });
+    expect(call).toHaveBeenCalledExactlyOnceWith("SaveVerifiedCopyStatus", [{ sessionId: "handle", destinationDirectory: "C:\\kept", userApproved: true }], undefined);
+    call.mockResolvedValueOnce({ code: "no_space" });
+    await expect(client.saveVerifiedCopy("handle", "C:\\kept")).resolves.toEqual({ code: "no_space" });
+    call.mockResolvedValueOnce({ code: "saved", copy: { path: "C:\\kept\\copy.duckdb", contentSha256: "wrong", sizeBytes: 1024 } });
+    await expect(client.saveVerifiedCopy("handle", "C:\\kept")).rejects.toThrow("copy.result");
+  });
   it("resolves an exact command without replay and rejects another command or source", async () => {
     const a = "a".repeat(64), b = "b".repeat(64);
     const base = { sessionId: "source", contentSha256: a, sizeBytes: 10, parserId: "lmu-duckdb", parserVersion: "1", schemaFingerprint: "schema", analysisVersion: "lap-validity.v1", segmentationDigest: b };

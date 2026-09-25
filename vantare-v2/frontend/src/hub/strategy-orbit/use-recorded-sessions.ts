@@ -36,12 +36,14 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
   const [candidates, setCandidates] = useState<readonly AnalysisCandidate[] | null>(null);
   const [sessions, setSessions] = useState<readonly RecordedSession[]>([]);
   const owned = useRef<readonly RecordedSession[]>([]);
+  const selectedFileIDs = useRef(new Set<string>());
   const pending = useRef<AbortController | null>(null);
   const alive = useRef(true);
   const cleanupError = useRef(onCleanupError);
   useEffect(() => { cleanupError.current = onCleanupError; }, [onCleanupError]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [savedCopies, setSavedCopies] = useState<Readonly<Record<string, string>>>({});
   const [applied, setApplied] = useState(false);
   const corrections = useRecordedCorrections(client, async (next, signal) => {
     signal.throwIfAborted();
@@ -87,14 +89,23 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
       if (alive.current) setBusy(false);
     }
   }
+  async function verifySelectedSource(candidate: AnalysisCandidate, session: RecordedSession) {
+    if (!selectedFileIDs.current.has(candidate.id) || revisions.length === 0 || revisions.some(ref => ref.sessionId === session.revision.sessionId)) return;
+    try {
+      await client.close(session.opened.sessionId);
+    } catch (cleanupFailure) {
+      throw new AggregateError([new Error("recorded_source_mismatch"), cleanupFailure], "recorded_cleanup_failed", { cause: cleanupFailure });
+    }
+    throw new Error("recorded_source_mismatch");
+  }
   return {
-    candidates, sessions, busy: busy || corrections.busy, error, applied, corrections,
+    candidates, sessions, busy: busy || corrections.busy, error, applied, savedCopies, recoverableSources: [...new Set(revisions.map(ref => ref.sessionId))].filter(id => !owned.current.some(item => item.revision.sessionId === id)), corrections,
     locked: corrections.unresolved,
     cancel: () => { pending.current?.abort(); corrections.cancel(); },
     discover: () => run(async signal => {
       let found = await client.discover(signal);
       signal.throwIfAborted();
-      if (alive.current) setCandidates(found);
+      if (alive.current) { selectedFileIDs.current.clear(); setCandidates(found); }
       if (found.some(candidate => candidate.state === "stabilizing" && !candidate.walPresent)) {
         await waitForStability(signal);
         found = await client.discover(signal);
@@ -102,9 +113,23 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
         if (alive.current) setCandidates(found);
       }
     }),
+    selectFile: (path: string) => run(async signal => {
+      const selected = await client.selectFile(path, signal);
+      selectedFileIDs.current.add(selected.id);
+      if (alive.current) setCandidates(previous => [selected, ...(previous ?? []).filter(item => item.id !== selected.id)]);
+    }),
+    recoverCopy: (sourceId: string) => run(async signal => {
+      if (!revisions.some(ref => ref.sessionId === sourceId)) throw new Error("recorded_source_unavailable");
+      const recovery = await client.recoverCopy(sourceId, signal);
+      if (recovery.code !== "ready") throw new Error(recovery.code === "registry_failure" ? "recorded_copy_registry_failure" : `recorded_${recovery.code}`);
+      const selected = recovery.candidate;
+      selectedFileIDs.current.add(selected.id);
+      if (alive.current) setCandidates(previous => [selected, ...(previous ?? []).filter(item => item.id !== selected.id)]);
+    }),
     open: (candidate: AnalysisCandidate) => run(async signal => {
       if (owned.current.length >= 4 || candidate.state !== "ready" || candidate.walPresent || owned.current.some(item => item.candidateId === candidate.id)) return;
       const session = await openRecordedSession(client, candidate.id, combinationId, revisions, signal);
+      await verifySelectedSource(candidate, session);
       if (signal.aborted || !alive.current || owned.current.some(item => item.revision.sessionId === session.revision.sessionId)) {
         await client.close(session.opened.sessionId);
         return;
@@ -119,6 +144,7 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
       if (!session) {
         if (owned.current.length >= 4) throw new Error("recorded_source_limit");
         const openedSession = await openRecordedSession(client, candidate.id, undefined, revisions, signal);
+        await verifySelectedSource(candidate, openedSession);
         if (signal.aborted || !alive.current) { await client.close(openedSession.opened.sessionId); signal.throwIfAborted(); throw new Error("recorded_source_unavailable"); }
         if (owned.current.some(item => item.revision.sessionId === openedSession.revision.sessionId)) { await client.close(openedSession.opened.sessionId); throw new Error("recorded_source_unavailable"); }
         session = openedSession;
@@ -147,6 +173,14 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
       await client.close(session.opened.sessionId);
       if (alive.current) { corrections.clear(session.opened.sessionId); update(owned.current.filter(item => item !== session)); }
     }),
+    saveCopy: (session: RecordedSession, destinationDirectory: string) => run(async signal => {
+      if (!owned.current.some(item => item.opened.sessionId === session.opened.sessionId)) throw new Error("recorded_source_unavailable");
+      const result = await client.saveVerifiedCopy(session.opened.sessionId, destinationDirectory, signal);
+      if (result.code !== "saved") throw new Error(`recorded_copy_${result.code}`);
+      const copy = result.copy;
+      if (copy.contentSha256 !== session.base.contentSha256 || copy.sizeBytes !== session.base.sizeBytes) throw new Error("recorded_copy_mismatch");
+      if (alive.current) setSavedCopies(previous => ({ ...previous, [session.opened.sessionId]: copy.path }));
+    }),
     // Acceptance of the inspect action, not success of the read. Resolves the
     // owned source by handle and wipes editor state before loading, so a
     // failed load never shows another source's data.
@@ -170,4 +204,4 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
   };
 }
 
-export type RecordedSessionsController = Pick<ReturnType<typeof useRecordedSessions>, "candidates" | "sessions" | "busy" | "error" | "applied" | "cancel" | "discover" | "open" | "openAndApply" | "clear" | "close" | "apply"> & { readonly locked?: boolean };
+export type RecordedSessionsController = Pick<ReturnType<typeof useRecordedSessions>, "candidates" | "sessions" | "busy" | "error" | "applied" | "cancel" | "discover" | "open" | "openAndApply" | "clear" | "close" | "apply"> & Partial<Pick<ReturnType<typeof useRecordedSessions>, "savedCopies" | "saveCopy" | "selectFile" | "recoverCopy" | "recoverableSources">> & { readonly locked?: boolean };

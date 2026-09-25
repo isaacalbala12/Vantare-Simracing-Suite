@@ -1,16 +1,18 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { Dialogs } from "@wailsio/runtime";
 import type { AnalysisClient } from "../../strategy/analysis-client";
 import { parseAnalysisBase, parseAnalysisCandidates, parseAnalysisOpenedSession } from "../../strategy/analysis-contract";
 import { StrategyRecordedSessions, StrategyRecordedSessionsView } from "./StrategyRecordedSessions";
 import type { RecordedSessionsController } from "./use-recorded-sessions";
 import { openRecordedSession, type RecordedSession } from "./strategy-recorded-session";
 vi.mock("./strategy-recorded-session", () => ({ openRecordedSession: vi.fn() }));
+vi.mock("@wailsio/runtime", () => ({ Dialogs: { OpenFile: vi.fn() }, Call: { ByName: vi.fn() } }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 function fixture() {
   const candidate = { id: "candidate", state: "ready", size: 1024, modifiedAt: "2026-09-09T12:00:00Z", walPresent: false };
-  const client = { discover: vi.fn().mockResolvedValue([candidate]), close: vi.fn().mockResolvedValue(undefined) };
-  const session = { candidateId: "candidate", combinationId: "combo", base: { sessionId: "source" }, opened: { sessionId: "handle", session: { metadata: [] } }, revision: { sessionId: "source", revisionId: "a".repeat(64), baseDigest: "b".repeat(64), snapshotId: "c".repeat(64) } } as RecordedSession;
+  const client = { discover: vi.fn().mockResolvedValue([candidate]), close: vi.fn().mockResolvedValue(undefined), saveVerifiedCopy: vi.fn().mockResolvedValue({ code: "saved", copy: { path: "C:\\kept\\copy.duckdb", contentSha256: "d".repeat(64), sizeBytes: 1024 } }), selectFile: vi.fn().mockResolvedValue({ id: "selected", state: "ready", size: 1024, modifiedAt: "2026-09-24T18:00:00Z", walPresent: false, displayName: "copy.duckdb" }) };
+  const session = { candidateId: "candidate", combinationId: "combo", base: { sessionId: "source", contentSha256: "d".repeat(64), sizeBytes: 1024 }, opened: { sessionId: "handle", session: { metadata: [] } }, revision: { sessionId: "source", revisionId: "a".repeat(64), baseDigest: "b".repeat(64), snapshotId: "c".repeat(64) } } as RecordedSession;
   vi.mocked(openRecordedSession).mockResolvedValue(session);
   const onApply = vi.fn().mockResolvedValue(undefined);
   const onCleanupError = vi.fn();
@@ -23,6 +25,48 @@ async function prepare() {
   await screen.findByRole("button", { name: "strategy.recorded.apply" });
 }
 describe("recorded sessions panel", () => {
+  it("offers recovery for a saved source without declaring it recovered", () => {
+    const recoverCopy = vi.fn();
+    const controller: RecordedSessionsController = { candidates: [], sessions: [], busy: false, error: "", applied: false, recoverableSources: ["a".repeat(64)], recoverCopy, discover: vi.fn(), open: vi.fn(), close: vi.fn(), apply: vi.fn(), cancel: vi.fn() };
+    render(<StrategyRecordedSessionsView controller={controller} t={key => key} />);
+    fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.recoverCopy 1" }));
+    expect(recoverCopy).toHaveBeenCalledWith("a".repeat(64));
+    expect(screen.queryByText("strategy.recorded.copySaved")).toBeNull();
+  });
+  it("adds only the chosen file to the session library", async () => {
+    const { client } = fixture();
+    vi.mocked(Dialogs.OpenFile).mockResolvedValueOnce("C:\\kept\\copy.duckdb");
+    fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.selectFile" }));
+    await screen.findByText("copy.duckdb");
+    expect(client.selectFile).toHaveBeenCalledWith("C:\\kept\\copy.duckdb", expect.any(AbortSignal));
+    expect(openRecordedSession).not.toHaveBeenCalled();
+  });
+  it("explains a mismatched saved source without claiming recovery", () => {
+    const controller: RecordedSessionsController = { candidates: [], sessions: [], busy: false, error: "recorded_source_mismatch", applied: false, discover: vi.fn(), open: vi.fn(), close: vi.fn(), apply: vi.fn(), cancel: vi.fn() };
+    render(<StrategyRecordedSessionsView controller={controller} t={key => key} />);
+    expect(screen.getByRole("alert").textContent).toBe("strategy.recorded.sourceMismatch");
+  });
+  it("saves a verified copy only after the user chooses a folder", async () => {
+    const { client } = fixture();
+    await prepare();
+    vi.mocked(Dialogs.OpenFile).mockResolvedValueOnce("");
+    fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.copySave" }));
+    await waitFor(() => expect(Dialogs.OpenFile).toHaveBeenCalled());
+    expect(client.saveVerifiedCopy).not.toHaveBeenCalled();
+    vi.mocked(Dialogs.OpenFile).mockResolvedValueOnce("C:\\kept");
+    fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.copySave" }));
+    await screen.findByText(/strategy.recorded.copySaved/);
+    expect(client.saveVerifiedCopy).toHaveBeenCalledWith("handle", "C:\\kept", expect.any(AbortSignal));
+  });
+  it("explains a full destination without claiming the copy was saved", async () => {
+    const { client } = fixture();
+    await prepare();
+    client.saveVerifiedCopy.mockResolvedValueOnce({ code: "no_space" });
+    vi.mocked(Dialogs.OpenFile).mockResolvedValueOnce("C:\\full");
+    fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.copySave" }));
+    expect((await screen.findByRole("alert")).textContent).toBe("strategy.recorded.copyNoSpace");
+    expect(screen.queryByText(/strategy.recorded.copySaved/)).toBeNull();
+  });
   it("pages and searches hundreds of files without opening or losing prepared sessions", () => {
     const candidates = Array.from({ length: 416 }, (_, index) => ({ id: `candidate-${index}`, displayName: index === 415 ? "São_Paulo.duckdb" : `Imola_${index}.duckdb`, state: index === 0 ? "active" : "ready", size: 1024, modifiedAt: new Date(Date.UTC(2026, 0, 1, 0, index)).toISOString(), walPresent: index === 0 }));
     const session = { candidateId: "already-open", opened: { sessionId: "handle", session: { metadata: [] } }, base: { sessionId: "source" }, revision: { revisionId: "revision" } } as unknown as RecordedSession;

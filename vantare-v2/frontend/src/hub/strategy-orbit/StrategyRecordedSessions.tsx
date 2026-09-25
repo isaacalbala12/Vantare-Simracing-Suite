@@ -1,4 +1,5 @@
 import { Fragment, useState } from "react";
+import { Dialogs } from "@wailsio/runtime";
 import { Button, Chip, Note } from "../../ui/orbit";
 import type { RecordedSession } from "./strategy-recorded-session";
 import { useRecordedSessions, type RecordedSessionsController, type RecordedSessionsOptions } from "./use-recorded-sessions";
@@ -28,12 +29,53 @@ export function StrategyRecordedSessionsView({ controller, onInspect, onChoose, 
   const errorMessage = !error ? null
     : error === "recorded_combination_unavailable" ? t("strategy.recorded.metadataUnavailable")
     : error === "recorded_pending_corrections" ? t("strategy.data.finishPending")
+    : error === "recorded_source_mismatch" ? t("strategy.recorded.sourceMismatch")
+    : error === "recorded_revision_mismatch" ? t("strategy.recorded.revisionMismatch")
+    : error === "recorded_original_present" ? t("strategy.recorded.originalPresent")
+    : error === "recorded_copy_changed" ? t("strategy.recorded.copyChanged")
+    : error === "recorded_copy_unavailable" ? t("strategy.recorded.copyUnavailable")
+    : error === "recorded_copy_registry_failure" ? t("strategy.recorded.copyRegistryFailure")
+    : error === "recorded_copy_permission" ? t("strategy.recorded.copyPermission")
+    : error === "recorded_copy_no_space" ? t("strategy.recorded.copyNoSpace")
+    : error === "recorded_copy_cleanup_failure" ? t("strategy.recorded.copyCleanupFailure")
+    : error === "recorded_copy_failed" ? t("strategy.recorded.copyFailed")
+    : error === "recorded_not_ready" ? t("strategy.recorded.copyNotReady")
+    : error === "recorded_too_large" ? t("strategy.recorded.copyTooLarge")
     : error.startsWith("recorded_") ? t("strategy.recorded.error")
     : error;
   const [query, setQuery] = useState("");
   const [availability, setAvailability] = useState("all");
   const [order, setOrder] = useState("recent");
   const [page, setPage] = useState(0);
+  const [choosingCopy, setChoosingCopy] = useState(false);
+  const [choosingFile, setChoosingFile] = useState(false);
+  const [copyError, setCopyError] = useState("");
+  async function chooseCopy(session: RecordedSession) {
+    if (!controller.saveCopy || choosingCopy) return;
+    setChoosingCopy(true);
+    setCopyError("");
+    try {
+      const directory = await Dialogs.OpenFile({ CanChooseDirectories: true, CanChooseFiles: false, CanCreateDirectories: true, Title: t("strategy.recorded.copyChooseFolder") });
+      if (directory) await controller.saveCopy(session, directory);
+    } catch {
+      setCopyError(t("strategy.recorded.copyChooseFailed"));
+    } finally {
+      setChoosingCopy(false);
+    }
+  }
+  async function chooseFile() {
+    if (!controller.selectFile || choosingFile) return;
+    setChoosingFile(true);
+    setCopyError("");
+    try {
+      const path = await Dialogs.OpenFile({ CanChooseFiles: true, CanChooseDirectories: false, Filters: [{ DisplayName: "LMU DuckDB", Pattern: "*.duckdb" }], Title: t("strategy.recorded.selectFileTitle") });
+      if (path) await controller.selectFile(path);
+    } catch {
+      setCopyError(t("strategy.recorded.selectFileFailed"));
+    } finally {
+      setChoosingFile(false);
+    }
+  }
   const fold = (value: string) => value.normalize("NFD").replace(/\p{M}/gu, "").toLocaleLowerCase();
   const needle = fold(query.trim());
   const filtered = (candidates ?? []).filter(candidate => {
@@ -49,9 +91,12 @@ export function StrategyRecordedSessionsView({ controller, onInspect, onChoose, 
     <div className="orbit-strategy__sessions-head"><b>{t("strategy.recorded.title")}</b><Chip>{sessions.length}/4</Chip></div>
     <p>{t("strategy.recorded.hint")}</p>
     <Button disabled={locked} onClick={() => void controller.discover()} variant="primary">{t("strategy.recorded.discover")}</Button>
+    {controller.selectFile ? <Button disabled={locked || choosingFile} onClick={() => void chooseFile()} variant="ghost">{t("strategy.recorded.selectFile")}</Button> : null}
+    {controller.recoverableSources?.map((sourceId, index) => <Button key={sourceId} disabled={locked || choosingFile} onClick={() => void controller.recoverCopy?.(sourceId)} variant="ghost">{t("strategy.recorded.recoverCopy")} {index + 1}</Button>)}
     {controller.locked ? <p role="status">{t("strategy.data.finishPending")}</p> : null}
     {busy ? <p role="status">{t("strategy.recorded.busy")} <Button variant="ghost" onClick={controller.cancel}>{t("strategy.recorded.cancel")}</Button></p> : null}
     {errorMessage ? <Note title={t("strategy.recorded.error")}><span role="alert">{errorMessage}</span></Note> : null}
+    {copyError ? <Note title={t("strategy.recorded.error")}><span role="alert">{copyError}</span></Note> : null}
     {candidates?.length === 0 ? <p role="status">{t("strategy.recorded.empty")}</p> : null}
     {candidates && candidates.length > 0 ? <div className="strategy-recorded-library">
       <div className="strategy-recorded-library__filters">
@@ -83,7 +128,8 @@ export function StrategyRecordedSessionsView({ controller, onInspect, onChoose, 
       {sessions.map(session => {
         const partial = !projectable(session);
         return <div className="orbit-strategy__session-row" key={session.opened.sessionId}>
-          <span><b>{nameFor(session)}</b><small>{t("strategy.recorded.revision")} {session.revision.revisionId.slice(0, 12)}</small>{partial ? <small>{t("strategy.recorded.inspectionOnly")}</small> : null}{partial ? <small>{t("strategy.recorded.metadataUnavailable")}</small> : null}</span>
+          <span><b>{nameFor(session)}</b><small>{t("strategy.recorded.revision")} {session.revision.revisionId.slice(0, 12)}</small>{partial ? <small>{t("strategy.recorded.inspectionOnly")}</small> : null}{partial ? <small>{t("strategy.recorded.metadataUnavailable")}</small> : null}{controller.savedCopies?.[session.opened.sessionId] ? <small role="status">{t("strategy.recorded.copySaved")} · {controller.savedCopies[session.opened.sessionId]}</small> : null}</span>
+          {controller.saveCopy ? <Button size="sm" variant="ghost" disabled={locked || choosingCopy} onClick={() => void chooseCopy(session)}>{t("strategy.recorded.copySave")}</Button> : null}
           {onInspect ? <Button size="sm" variant="ghost" disabled={locked} onClick={() => onInspect(session)}>{t("strategy.recorded.inspect")}</Button> : null}
           <Button size="sm" variant="ghost" disabled={locked} onClick={() => void controller.close(session)}>{t("strategy.recorded.close")}</Button>
         </div>;

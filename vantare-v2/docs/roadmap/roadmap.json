@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-25T16:54:03Z",
+  "generatedAt": "2026-09-25T17:07:33Z",
   "digest": {
-    "lastCommit": "446001dd26300e975b21480043052468320211b2"
+    "lastCommit": "f0ccfbf203eb1463766e3ca5e7208ccb2bf38453"
   },
   "phases": [
     {
@@ -699,10 +699,10 @@
         "it": "Calendario completo"
       },
       "body": {
-        "es": "Calendario completo para la 1.0: publicación Owner, recordatorios, widget en el Hub, validación de horarios y seguimiento de series sin pérdida de datos.",
-        "en": "Complete calendar for 1.0: Owner publishing, reminders, Hub widget, schedule validation and series tracking without data loss.",
-        "pt": "Calendário completo para a 1.0: publicação Owner, lembretes, widget no Hub, validação de horários e seguimento de séries sem perda de dados.",
-        "it": "Calendario completo per la 1.0: pubblicazione Owner, promemoria, widget dell'Hub, validazione orari e tracciamento serie senza perdita dati."
+        "es": "Calendario para la 1.0: publicación Owner, recordatorios, widget en el Hub y horarios fiables; sus cinco vistas priorizan la lectura, el detalle contextual y la próxima hora de carreras.",
+        "en": "Calendar for 1.0: Owner publishing, reminders, Hub widget and reliable schedules; its five views prioritize readability, contextual detail and the next hour of races.",
+        "pt": "Calendário para a 1.0: publicação Owner, lembretes, widget no Hub e horários fiáveis; as cinco vistas priorizam a leitura, o detalhe contextual e a próxima hora de corridas.",
+        "it": "Calendario per la 1.0: pubblicazione Owner, promemoria, widget nell'Hub e orari affidabili; le cinque viste privilegiano leggibilità, dettagli contestuali e la prossima ora di gare."
       },
       "label": {
         "es": "Plan",
@@ -2212,6 +2212,11 @@
     {
       "date": "2026-09-25",
       "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-1382 · Calendario visual y zoom del Timeline"
+        },
         {
           "kind": "change",
           "scope": "",

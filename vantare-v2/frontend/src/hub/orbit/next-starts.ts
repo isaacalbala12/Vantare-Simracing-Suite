@@ -102,7 +102,7 @@ export function formatStartTime(at: Date): string {
 }
 
 /** Only ambiguous local hours need an offset to distinguish their instants. */
-export function repeatedHourOffset(at: Date): string {
+function repeatedHourOffset(at: Date): string {
   const repeated = [-1, 1].some((direction) => {
     const adjacent = new Date(at.getTime() + direction * 86_400_000);
     const shift = adjacent.getTimezoneOffset() - at.getTimezoneOffset();

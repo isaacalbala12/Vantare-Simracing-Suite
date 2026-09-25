@@ -22,6 +22,18 @@ type TelemetryAnalysisCorrectionPreparation struct {
 // withCorrectionInput keeps authorization, lifecycle and the open-session lock
 // across the complete command. Reads are serialized to bound working memory.
 func (service *TelemetryAnalysisService) withCorrectionInput(ctx context.Context, sessionID string, action func(context.Context, telemetryanalysis.CorrectionInput) error) error {
+	return withCorrectionRead(service, ctx, sessionID, telemetryanalysis.ReadCorrectionInput, action)
+}
+
+func (service *TelemetryAnalysisService) withCorrectionSummary(ctx context.Context, sessionID string, action func(context.Context, telemetryanalysis.CorrectionSummary) error) error {
+	return withCorrectionRead(service, ctx, sessionID, telemetryanalysis.ReadCorrectionSummary, action)
+}
+
+// Both readers share the same authorization, source lifetime and error policy.
+func withCorrectionRead[T any](service *TelemetryAnalysisService, ctx context.Context, sessionID string,
+	read func(context.Context, telemetryanalysis.CorrectionInputReader, telemetryanalysis.AuthorizedHistoricalArtifact, telemetryanalysis.CorrectionReadLimits) (T, error),
+	action func(context.Context, T) error,
+) error {
 	operationCtx, finish, err := service.begin(ctx)
 	if err != nil {
 		return err
@@ -53,11 +65,13 @@ func (service *TelemetryAnalysisService) withCorrectionInput(ctx context.Context
 	}
 	// Covers the measured 71-lap LMU recording while retaining a hard bound.
 	// Multi-value channels require a separate value budget from sample count.
-	input, readErr := telemetryanalysis.ReadCorrectionInput(operationCtx, ownedSession.parser, ownedSession.artifact, telemetryanalysis.CorrectionReadLimits{
+	input, readErr := read(operationCtx, ownedSession.parser, ownedSession.artifact, telemetryanalysis.CorrectionReadLimits{
 		PageRows: service.cfg.MaxPageRows, MaxSamples: 1_250_000, MaxValues: 1_500_000, MaxTextBytes: 16 << 20,
 	})
 	// A resource limit or missing lap data does not invalidate the open reader.
-	retire := readErr != nil && !errors.Is(readErr, telemetryanalysis.ErrCorrectionReadLimit) && !errors.Is(readErr, telemetryanalysis.ErrInvalidLapValidityInput)
+	retire := readErr != nil && !errors.Is(readErr, telemetryanalysis.ErrCorrectionReadLimit) &&
+		!errors.Is(readErr, telemetryanalysis.ErrInvalidLapValidityInput) &&
+		!errors.Is(readErr, context.Canceled) && !errors.Is(readErr, context.DeadlineExceeded)
 	if retire {
 		ownedSession.retired = true
 	}
@@ -91,7 +105,7 @@ func (service *TelemetryAnalysisService) withCorrectionInput(ctx context.Context
 // source identity. It does not save an edit or change the observed catalog.
 func (service *TelemetryAnalysisService) PrepareCorrections(ctx context.Context, sessionID string) (TelemetryAnalysisCorrectionPreparation, error) {
 	var result TelemetryAnalysisCorrectionPreparation
-	err := service.withCorrectionInput(ctx, sessionID, func(_ context.Context, input telemetryanalysis.CorrectionInput) error {
+	err := service.withCorrectionSummary(ctx, sessionID, func(_ context.Context, input telemetryanalysis.CorrectionSummary) error {
 		baseDigest, err := input.Base.Digest()
 		if err != nil {
 			return publicTelemetryAnalysisError(err)
@@ -106,20 +120,7 @@ func (service *TelemetryAnalysisService) PrepareCorrections(ctx context.Context,
 			StintBoundaries:    append([]strategyprojection.StintBoundary{}, input.Validity.Temporal.StintBoundaries...),
 			StintAnchors:       telemetryanalysis.EligibleStintBoundaryAnchors(input.Validity),
 		}
-		// Inspection can expose channels outside the bounded correction read.
-		// Advertise only channels backed by prepared samples and known units.
-		preparedChannels := make(map[string]bool)
-		for _, page := range input.Pages {
-			if len(page.Samples) > 0 {
-				preparedChannels[page.ChannelID] = true
-			}
-		}
-		for _, channel := range input.Session.Channels {
-			if preparedChannels[channel.ID] && channel.Unit.Quality == telemetryanalysis.QualityValid {
-				result.EditableChannelIDs = append(result.EditableChannelIDs, channel.ID)
-				delete(preparedChannels, channel.ID)
-			}
-		}
+		result.EditableChannelIDs = input.EditableChannelIDs
 		// Reuse the session already read under the Analysis authorization/lock.
 		// Missing identity does not prevent reviewing that source's observations.
 		classified, classificationErr := telemetryanalysis.ClassifyHistoricalSession(input.Session)

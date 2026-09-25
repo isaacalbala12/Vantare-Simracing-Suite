@@ -1,5 +1,23 @@
 # Handoff vivo — Strategy Planner
 
+## Preparación productiva con resumen paginado — ISA-1375 (2026-09-25)
+
+`PrepareCorrections` ya usa `ReadCorrectionSummary` bajo el mismo bloqueo,
+autorización y lector LMU. No devuelve todas las páginas; conserva eventos
+acotados, relee señales continuas con ventanas GPS y produce idénticos base,
+sesión alineada y validez que el lector anterior en la fuente real disponible.
+La lista de canales editables también coincide. Una lectura cancelada permite
+reintentar con el mismo handle; una fuente incompatible sigue retirándose.
+Suite Go, vet focal y banco real Algarve→Monza PASS; 71 eventos, 70 reinicios, 66 vueltas completas,
+correcciones/reapertura intactas y ambos hashes originales invariantes.
+[Banco A/B de tres ejecuciones](../../strategy-planner/evidence/isa-1375/paged-preparation-2026-09-25.md):
+picos anteriores 531,5–596,0 MiB y nuevos 433,5–657,4 MiB; tiempos 8–9 s
+frente a ~15–16 s. **No hay ahorro de pico demostrado** en
+esta grabación y las relecturas cuestan tiempo. No se elevó la cuota. Inspección,
+guardado y proyección aún retienen páginas; faltan fuente larga, memoria por
+etapa, paridad de correcciones paginadas y Wails. #1375 continúa abierta,
+sin push, PR, CI, merge, promoción ni release.
+
 ## Ventana de cobertura alimentable por páginas — ISA-1375 (2026-09-25)
 
 La cobertura continua de validez puede acumular sólo extremos, frecuencia y

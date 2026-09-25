@@ -55,7 +55,7 @@ func scanCorrectionLapDistResets(ctx context.Context, reader CorrectionInputRead
 	lookup := orderedGPSPageLookup{reader: reader, channel: bridge, pageRows: limits.PageRows}
 	channelStatus := TemporalAlignmentStatus{Aligned: true, Reason: "aligned"}
 	var ratio int64
-	_, err = visitCorrectionPages(ctx, reader, artifact, limits, "lap dist", func(channel HistoricalChannel, page HistoricalPage) error {
+	_, err = visitCorrectionPages(ctx, reader, artifact, limits, "lap dist", "", func(channel HistoricalChannel, page HistoricalPage) error {
 		if !strings.EqualFold(strings.TrimSpace(channel.SourceName), "lap dist") || !channelStatus.Aligned {
 			return nil
 		}

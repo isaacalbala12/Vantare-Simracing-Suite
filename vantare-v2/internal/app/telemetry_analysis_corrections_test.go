@@ -143,6 +143,20 @@ func TestTelemetryAnalysisPreparesOnlyAuthorizedOpenCorrectionSource(t *testing.
 	if _, err := svc.PrepareCorrections(ctx, opened.SessionID); !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}
+	err = withCorrectionRead(svc, context.Background(), opened.SessionID,
+		func(context.Context, telemetryanalysis.CorrectionInputReader, telemetryanalysis.AuthorizedHistoricalArtifact, telemetryanalysis.CorrectionReadLimits) (struct{}, error) {
+			return struct{}{}, context.Canceled
+		},
+		func(context.Context, struct{}) error {
+			t.Fatal("action ran after canceled read")
+			return nil
+		})
+	if !errors.Is(err, context.Canceled) || reader.isClosed() {
+		t.Fatal("canceled page read retired the source", err)
+	}
+	if _, err := svc.PrepareCorrections(context.Background(), opened.SessionID); err != nil {
+		t.Fatal("canceled read could not be retried", err)
+	}
 	reader.readErr = telemetryanalysis.ErrHistoricalSource
 	if _, err := svc.PrepareCorrections(context.Background(), opened.SessionID); !errors.Is(err, ErrTelemetryAnalysisIncompatible) {
 		t.Fatal(err)

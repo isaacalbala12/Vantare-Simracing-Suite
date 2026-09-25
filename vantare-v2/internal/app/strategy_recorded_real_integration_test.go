@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -182,7 +183,40 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 		t.Fatalf("open: %v", err)
 	}
 	t.Logf("opened %d channels", len(opened.Session.Channels))
+	if os.Getenv("ISA1375_PREPARE_ONLY") == "1" {
+		prepared, prepareErr := svc.PrepareCorrections(ctx, opened.SessionID)
+		if prepareErr != nil {
+			t.Fatalf("paged prepare: %v", prepareErr)
+		}
+		t.Logf("paged prepare: stint anchors=%d channels=%d base=%s", len(prepared.StintAnchors), len(prepared.EditableChannelIDs), prepared.Base.SessionID)
+		return
+	}
+	var materializedBase telemetryanalysis.SourceAnalysisRef
+	var materializedEditable []string
 	if err := svc.withCorrectionInput(ctx, opened.SessionID, func(_ context.Context, input telemetryanalysis.CorrectionInput) error {
+		materializedBase = input.Base
+		for _, channel := range input.Session.Channels {
+			if channel.Unit.Quality != telemetryanalysis.QualityValid {
+				continue
+			}
+			for _, page := range input.Pages {
+				if page.ChannelID == channel.ID && len(page.Samples) > 0 {
+					materializedEditable = append(materializedEditable, channel.ID)
+					break
+				}
+			}
+		}
+		owned := svc.sessions[opened.SessionID]
+		summary, summaryErr := telemetryanalysis.ReadCorrectionSummary(ctx, owned.parser, owned.artifact, telemetryanalysis.CorrectionReadLimits{
+			PageRows: svc.cfg.MaxPageRows, MaxSamples: 1_250_000, MaxValues: 1_500_000, MaxTextBytes: 16 << 20,
+		})
+		if summaryErr != nil {
+			return summaryErr
+		}
+		if summary.Base != input.Base || !reflect.DeepEqual(summary.Session, input.Session) || !reflect.DeepEqual(summary.Validity, input.Validity) {
+			return errors.New("paged correction summary differs from materialized real input")
+		}
+		t.Log("paged correction summary matches materialized real source")
 		qualities := make(map[string]int)
 		for _, boundary := range input.Validity.Temporal.LapBoundaries {
 			qualities[string(boundary.Quality)]++
@@ -201,6 +235,9 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 	prepared, err := svc.PrepareCorrections(ctx, opened.SessionID)
 	if err != nil {
 		t.Fatalf("prepare: %v", err)
+	}
+	if prepared.Base != materializedBase || !reflect.DeepEqual(prepared.EditableChannelIDs, materializedEditable) {
+		t.Fatal("product preparation differs from materialized source")
 	}
 	request := TelemetryAnalysisCorrectionRevisionRequest{SessionID: opened.SessionID, Base: prepared.Base, RevisionID: prepared.BaseRevisionID}
 	projection, err := svc.ProjectCorrection(ctx, request)

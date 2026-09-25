@@ -145,14 +145,10 @@ func AnalyzeLapValidity(session HistoricalSession, pages []HistoricalPage) (LapV
 // validity and downstream derivations.
 func AnalyzeAlignedLapValidity(alignment TemporalAlignmentResult) (LapValidityAnalysis, error) {
 	session, pages := alignment.Session, alignment.Pages
-	if strings.TrimSpace(session.ID) == "" {
-		return LapValidityAnalysis{}, fmt.Errorf("%w: session id", ErrInvalidLapValidityInput)
-	}
 	grouped, err := groupPagesBySource(session, pages)
 	if err != nil {
 		return LapValidityAnalysis{}, err
 	}
-
 	lapEvents, duplicateLapEvents := readLapEvents(grouped["lap"])
 	resets, resetFrequency := readLapDistResetObservations(grouped["lap dist"])
 	continuousStart, continuousEnd, hasContinuousCoverage := continuousCoverageWindow(
@@ -162,6 +158,48 @@ func AnalyzeAlignedLapValidity(alignment TemporalAlignmentResult) (LapValidityAn
 		grouped["wind speed"],
 		grouped["lap dist"],
 	)
+	return analyzeLapValidityObservations(alignment, lapValidityObservations{
+		lapEvents: lapEvents, duplicateLapEvents: duplicateLapEvents,
+		resets: resets, resetFrequency: resetFrequency,
+		continuousStart: continuousStart, continuousEnd: continuousEnd,
+		hasContinuousCoverage: hasContinuousCoverage,
+		lapTimes:              readEvents(grouped["lap time"]),
+		pitEvents:             readEvents(grouped["in pits"]),
+		impactEvents:          readEvents(grouped["lastimpactmagnitude"]),
+		tyreEvents:            readEvents(grouped["tyrescompound"]),
+		fuelRises:             observedFuelRises(grouped["fuel level"]),
+		labelTraffic: func(laps []AnalyzedLap) error {
+			labelTrafficLaps(laps, grouped["time behind next"])
+			return nil
+		},
+	})
+}
+
+// Observations are bounded by lap/event counts and the current page when a
+// correction reader supplies them. The pure API above remains the oracle.
+type lapValidityObservations struct {
+	lapEvents             []observedLapEvent
+	duplicateLapEvents    int
+	resets                []observedLapReset
+	resetFrequency        int
+	continuousStart       float64
+	continuousEnd         float64
+	hasContinuousCoverage bool
+	lapTimes              []observedEvent
+	pitEvents             []observedEvent
+	impactEvents          []observedEvent
+	tyreEvents            []observedEvent
+	fuelRises             []fuelRise
+	labelTraffic          func([]AnalyzedLap) error
+}
+
+func analyzeLapValidityObservations(alignment TemporalAlignmentResult, observations lapValidityObservations) (LapValidityAnalysis, error) {
+	session := alignment.Session
+	if strings.TrimSpace(session.ID) == "" {
+		return LapValidityAnalysis{}, fmt.Errorf("%w: session id", ErrInvalidLapValidityInput)
+	}
+	lapEvents, duplicateLapEvents := observations.lapEvents, observations.duplicateLapEvents
+	resets, resetFrequency := observations.resets, observations.resetFrequency
 	if len(lapEvents) == 0 && alignedResetCount(resets) == 0 {
 		return LapValidityAnalysis{}, fmt.Errorf("%w: no lap event or lap distance reset", ErrInvalidLapValidityInput)
 	}
@@ -201,20 +239,18 @@ func AnalyzeAlignedLapValidity(alignment TemporalAlignmentResult) (LapValidityAn
 		SourceID: session.ID,
 	}
 	result.Temporal.LapBoundaries = reconcileLapBoundaries(lapEvents, resets, resetFrequency, alignment.Bridge.Aligned, provenance)
-	result.Laps, result.Diagnostics.UsableLapTimeRows = buildLapRecords(
-		lapEvents,
-		readEvents(grouped["lap time"]),
-	)
+	result.Laps, result.Diagnostics.UsableLapTimeRows = buildLapRecords(lapEvents, observations.lapTimes)
 	if len(lapEvents) == 0 {
 		result.Laps = buildResetOnlyLapRecords(resets)
 	}
 
-	labelPitLaps(result.Laps, readEvents(grouped["in pits"]))
-	labelIncidentLaps(result.Laps, readEvents(grouped["lastimpactmagnitude"]))
-	labelTrafficLaps(
-		result.Laps,
-		grouped["time behind next"],
-	)
+	labelPitLaps(result.Laps, observations.pitEvents)
+	labelIncidentLaps(result.Laps, observations.impactEvents)
+	if observations.labelTraffic != nil {
+		if err := observations.labelTraffic(result.Laps); err != nil {
+			return LapValidityAnalysis{}, err
+		}
+	}
 	labelPaceOutliers(result.Laps)
 	for index := range result.Laps {
 		if !result.Laps[index].Complete {
@@ -227,11 +263,11 @@ func AnalyzeAlignedLapValidity(alignment TemporalAlignmentResult) (LapValidityAn
 		session.ID,
 		result.Laps,
 		lapEvents,
-		readEvents(grouped["in pits"]),
-		readEvents(grouped["tyrescompound"]),
-		grouped["fuel level"],
+		observations.pitEvents,
+		observations.tyreEvents,
+		observations.fuelRises,
 	)
-	addCoverage(session.ID, &result.Temporal, continuousStart, continuousEnd, hasContinuousCoverage, lapEvents)
+	addCoverage(session.ID, &result.Temporal, observations.continuousStart, observations.continuousEnd, observations.hasContinuousCoverage, lapEvents)
 	return result, nil
 }
 
@@ -758,7 +794,7 @@ func inferStintBoundaries(
 	lapEvents []observedLapEvent,
 	pitEvents []observedEvent,
 	tyreEvents []observedEvent,
-	fuelPages []HistoricalPage,
+	fuelRises []fuelRise,
 ) []strategyprojection.StintBoundary {
 	candidates := make(map[int]stintCandidate)
 	for _, entry := range booleanEntries(pitEvents) {
@@ -778,7 +814,7 @@ func inferStintBoundaries(
 			presence: strategyprojection.PresenceValid, sampleSize: 2,
 		})
 	}
-	for _, rise := range observedFuelRises(fuelPages) {
+	for _, rise := range fuelRises {
 		boundarySeconds := rise.seconds
 		if entry, inside, observedEntry := pitIntervalAt(pitEvents, rise.seconds); inside && !observedEntry {
 			continue

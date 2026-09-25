@@ -46,6 +46,13 @@ func TestScannedCorrectionResetsMatchMaterializedAlignment(t *testing.T) {
 			if len(got) != 2 || (test.name == "aligned" && got[0].seconds == nil) || (test.name != "aligned" && got[0].seconds != nil) {
 				t.Fatalf("wrong reset timestamp state: %+v", got)
 			}
+			materialized, materializedErr := ReadCorrectionInput(context.Background(), reader, model.Artifact, limits)
+			summary, summaryErr := ReadCorrectionSummary(context.Background(), reader, model.Artifact, limits)
+			if (summaryErr == nil) != (materializedErr == nil) ||
+				errors.Is(summaryErr, ErrInvalidLapValidityInput) != errors.Is(materializedErr, ErrInvalidLapValidityInput) || (materializedErr == nil &&
+				(summary.Base != materialized.Base || !reflect.DeepEqual(summary.Session, materialized.Session) || !reflect.DeepEqual(summary.Validity, materialized.Validity))) {
+				t.Fatalf("summary differs from materialized input: summary=%v, materialized=%v", summaryErr, materializedErr)
+			}
 		})
 	}
 }

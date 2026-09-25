@@ -2,6 +2,13 @@
 
 Estado: **implementación parcial; no aceptada como soporte de resistencia**. ISA-1375, 2026-09-24. Complementa ADR 0010/0011 y el [contrato de correcciones](../strategy-planner/sdd/stint-boundary-corrections-t13.md).
 
+La preparación productiva ya usa un resumen por visitas paginadas, con paridad
+completa en el banco real disponible. [Tres mediciones por versión](../strategy-planner/evidence/isa-1375/paged-preparation-2026-09-25.md)
+no muestran un pico menor y sí más tiempo por relectura. La cuota de muestras
+no se elevó. Inspección, guardado y proyección aún materializan toda la fuente;
+esta decisión sigue abierta hasta medir una fuente más larga y cerrar esas
+operaciones sin cambiar identidad ni correcciones.
+
 ## Contexto
 
 La preparación actual guarda todas las páginas necesarias, construye un mapa GPS global y materializa de nuevo páginas/series para inspeccionar y proyectar cada revisión. La sesión real S266 Algarve cabe bajo el límite medido de #1210, pero esa cuota y un pico de aproximadamente 765–855 MiB no demuestran soporte para carreras mucho más largas. [Perfil y mapa de dependencias](../strategy-planner/evidence/isa-1375/allocation-dependencies-2026-09-24.md).

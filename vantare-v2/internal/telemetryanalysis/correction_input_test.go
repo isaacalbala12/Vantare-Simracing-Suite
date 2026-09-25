@@ -77,6 +77,13 @@ func TestCorrectionInputReadsBoundedRecordedSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	summary, err := ReadCorrectionSummary(context.Background(), reader, model.Artifact, limits)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.Base != got.Base || !reflect.DeepEqual(summary.Session, got.Session) || !reflect.DeepEqual(summary.Validity, got.Validity) {
+		t.Fatal("paged correction summary differs from materialized input")
+	}
 	want, err := CorrectionSourceFromModel(model)
 	if err != nil {
 		t.Fatal(err)
@@ -148,6 +155,9 @@ func TestCorrectionInputReadsBoundedRecordedSource(t *testing.T) {
 			if !errors.Is(err, ErrCorrectionReadLimit) || !reflect.DeepEqual(result, CorrectionInput{}) {
 				t.Fatal("accepted truncated input", err)
 			}
+			if _, err := ReadCorrectionSummary(context.Background(), reader, model.Artifact, small); !errors.Is(err, ErrCorrectionReadLimit) {
+				t.Fatal("paged summary accepted truncated input", err)
+			}
 		})
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -155,6 +165,9 @@ func TestCorrectionInputReadsBoundedRecordedSource(t *testing.T) {
 	before = reader.calls
 	if _, err := ReadCorrectionInput(ctx, reader, model.Artifact, limits); !errors.Is(err, context.Canceled) || reader.calls != before {
 		t.Fatal("read despite cancellation", err)
+	}
+	if _, err := ReadCorrectionSummary(ctx, reader, model.Artifact, limits); !errors.Is(err, context.Canceled) || reader.calls != before {
+		t.Fatal("paged summary read despite cancellation", err)
 	}
 	reader.err = ErrHistoricalSource
 	if _, err := ReadCorrectionInput(context.Background(), reader, model.Artifact, limits); !errors.Is(err, ErrHistoricalSource) {

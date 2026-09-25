@@ -290,8 +290,30 @@ GPS original como reloj de alineación y aplica las demás correcciones después
 base, Fuel y GPS igualan el modelo completo en el fixture. El banco real
 anterior usaba una corrección de Lap Time, por lo que no acredita este caso GPS.
 
-La ruta paginada aún **no alimenta los comandos productivos**. Tampoco se ha
-medido su pico de memoria: el banco compara rutas en el mismo proceso y su
-tiempo no demuestra una mejora de rendimiento. Faltan la activación conjunta
-de las dos entradas, medición aislada de memoria, fuente larga multivuelta y
-validación Wails T22.
+## Proyección productiva y memoria aislada
+
+`ProjectCorrection` y `ProjectStrategyRevisionInputs` usan ahora el mismo
+derivador paginado. Cada llamada comprueba autorización, sesión abierta y
+revisión duradera exacta; la segunda lectura vuelve a verificar la misma base
+antes de derivar bajo el bloqueo de la sesión. Los tests de App y Analysis
+pasaron y una regresión cancela la visita a mitad de páginas sin publicar un
+modelo parcial. El banco LMU completo, ya por las dos entradas productivas,
+terminó PASS en **234,05 s** con cálculo, historial, cierre/reapertura y
+hashes originales intactos.
+
+En procesos de test independientes, con la **misma grabación Algarve de 71
+eventos** y preparación previa, una muestra de `WorkingSet64` cada 100 ms
+dio picos de **94,3 MiB** y **50,0 MiB** para la ruta paginada (dos ejecuciones),
+frente a **812,2 MiB** para la materializada (una ejecución). El presupuesto
+provisional de **128 MiB** cubre esta grabación y este proceso de prueba; no es
+una garantía para cualquier sesión ni para Wails. La parte de proyección tardó
+6,99–7,66 s paginada frente a 2,25 s materializada. Son ejecuciones
+secuenciales con cachés del sistema distintas, así que los tiempos no fijan
+una comparación estable de velocidad. La ruta paginada asignó más bytes
+acumulados (`TotalAlloc` ~5,8 GiB frente a ~4,4 GiB) por releer páginas, aunque
+retuvo mucho menos al mismo tiempo.
+
+Falta demostrar crecimiento acotado con una fuente larga de **muchas vueltas**,
+ajustar el límite de muestras sólo con esa evidencia, validar en Wails T22 y
+revisar la experiencia de espera en la UI. La ejecución funcional no cierra
+ISA-1375 ni acredita resistencia completa.

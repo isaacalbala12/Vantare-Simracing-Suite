@@ -2,9 +2,25 @@ package telemetryanalysis
 
 import (
 	"context"
+	"errors"
 	"reflect"
 	"testing"
 )
+
+type cancellingProjectionReader struct {
+	CorrectionInputReader
+	cancel context.CancelFunc
+	reads  int
+}
+
+func (reader *cancellingProjectionReader) ReadPage(ctx context.Context, channelID string, start int64, limit int) (HistoricalPage, error) {
+	page, err := reader.CorrectionInputReader.ReadPage(ctx, channelID, start, limit)
+	reader.reads++
+	if reader.reads == 3 {
+		reader.cancel()
+	}
+	return page, err
+}
 
 func TestReadCorrectedLapValidityMatchesMaterializedView(t *testing.T) {
 	for _, correctedChannel := range []string{"lap-time", "gps"} {
@@ -196,5 +212,11 @@ func TestPagedCorrectedDerivationMatchesMaterializedFixture(t *testing.T) {
 			t.Logf("diff: validity=%v consumption=%v curves=%v pit=%v observed=%v", !reflect.DeepEqual(got.Validity, want.Validity), !reflect.DeepEqual(got.Consumption, want.Consumption), !reflect.DeepEqual(got.Curves, want.Curves), !reflect.DeepEqual(got.Pit, want.Pit), !reflect.DeepEqual(got.Observed, want.Observed))
 			t.Fatalf("paged corrected derivation differs for %s: %v", snapshot.SnapshotID, err)
 		}
+	}
+	cancelled, cancel := context.WithCancel(context.Background())
+	partialReader := &cancellingProjectionReader{CorrectionInputReader: reader, cancel: cancel}
+	partial, err := DerivePagedCorrectedSession(cancelled, partialReader, model.Artifact, limits, summary, classified, baseSnapshot)
+	if !errors.Is(err, context.Canceled) || !reflect.DeepEqual(partial, CorrectedSessionDerivations{}) {
+		t.Fatalf("cancelled paged projection returned partial model: %v", err)
 	}
 }

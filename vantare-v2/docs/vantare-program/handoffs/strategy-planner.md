@@ -1,5 +1,18 @@
 # Handoff vivo — Strategy Planner
 
+## Proyección paginada activa y pico medido — ISA-1375 (2026-09-25)
+
+Las proyecciones individual y conjunta ya comparten `DerivePagedCorrectedSession`
+tras autorización, revisión exacta y revalidación de la misma base. Tests de
+App/Analysis y banco LMU completo PASS (234,05 s), con cálculo, restauración y
+hashes intactos. La comparación aislada de Algarve midió 94,3/50,0 MiB de
+pico paginado en dos ejecuciones frente a 812,2 MiB materializado; presupuesto
+provisional 128 MiB **sólo para esta grabación/proceso**. Proyección ~7 s frente
+a 2,25 s en ejecuciones secuenciales, sin conclusión estable de velocidad.
+Faltan fuente larga multivuelta, cuota respaldada por ese caso, Wails T22 y
+UX de espera. [Evidencia](../../strategy-planner/evidence/isa-1375/paged-preparation-2026-09-25.md).
+#1375 sigue abierta; sin push, PR, CI, merge, promoción ni release.
+
 ## Recolectores paginados de boxes y fronteras — ISA-1375 (2026-09-25)
 
 El visitante autorizado alimenta dos recolectores: boxes acumula ascensos de
@@ -9,8 +22,9 @@ y el derivador existente. El modelo completo igualó al materializado en un
 fixture de carrera para base y corrección de Fuel; el banco LMU Algarve→Monza
 igualó una revisión corregida real de Lap Time y terminó PASS en 153,08 s,
 con hashes intactos. La corrección se aplica después de alinear con el GPS
-original. **Aún no es ruta productiva**. Quedan conectar juntas las dos
-entradas, medir pico aislado, fuente larga multivuelta y T22.
+original. En ese corte aún no era ruta productiva; las dos entradas y el pico
+medido se cerraron en el apartado superior. Siguen faltando fuente larga
+multivuelta y T22.
 Una regresión adicional corrigió GPS justo en el límite de vuelta, expuso
 una realineación indebida y quedó resuelta: el GPS original sigue siendo el
 reloj. La paridad GPS está probada en fixture, no en DuckDB real.

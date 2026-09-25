@@ -244,48 +244,87 @@ func (service *TelemetryAnalysisService) ProjectCorrection(ctx context.Context, 
 	if request.RevisionID == "" {
 		return result, ErrTelemetryAnalysisCorrectionMissing
 	}
-	err := service.withCorrectionInput(ctx, request.SessionID, func(operationCtx context.Context, input telemetryanalysis.CorrectionInput) error {
-		if request.Base != input.Base {
+	derived, err := service.deriveCorrectionSession(ctx, request.SessionID, request.RevisionID, func(base telemetryanalysis.SourceAnalysisRef) error {
+		if request.Base != base {
 			return ErrTelemetryAnalysisCorrectionSourceChanged
 		}
-		derived, err := service.deriveCorrectionSession(operationCtx, input, request.RevisionID)
-		if err != nil {
-			return err
-		}
-		result, err = telemetryanalysis.ProduceStrategyInputProjectionV2(telemetryanalysis.ProjectionProductionRequest{GeneratedAt: service.now().UTC().Truncate(time.Millisecond), Combination: derived.Classified.Combination, Sessions: []telemetryanalysis.ProjectionSessionDerivations{derived}})
-		if err != nil {
-			return ErrTelemetryAnalysisIncompatible
-		}
-		return operationCtx.Err()
+		return nil
 	})
 	if err != nil {
 		return strategyprojection.StrategyInputProjectionV2{}, err
 	}
+	result, err = telemetryanalysis.ProduceStrategyInputProjectionV2(telemetryanalysis.ProjectionProductionRequest{GeneratedAt: service.now().UTC().Truncate(time.Millisecond), Combination: derived.Classified.Combination, Sessions: []telemetryanalysis.ProjectionSessionDerivations{derived}})
+	if err != nil {
+		return strategyprojection.StrategyInputProjectionV2{}, ErrTelemetryAnalysisIncompatible
+	}
+	if err := ctx.Err(); err != nil {
+		return strategyprojection.StrategyInputProjectionV2{}, err
+	}
+	if !service.authorizer.AllowsTelemetryAnalysis() {
+		return strategyprojection.StrategyInputProjectionV2{}, ErrTelemetryAnalysisUnauthorized
+	}
 	return result, nil
 }
 
-// Caller keeps the authorized source lock across this derivation. Both single
-// and multi-session projections use the same classification and scalar path.
-// The initial classification gates unknown simulators and incomplete metadata;
-// the effective classification of the derived revision comes from Analysis and is
-// never reconstructed here.
-func (service *TelemetryAnalysisService) deriveCorrectionSession(ctx context.Context, input telemetryanalysis.CorrectionInput, revisionID string) (telemetryanalysis.ProjectionSessionDerivations, error) {
+// Both projection commands use one bounded derivation. The first authorized
+// read resolves classification and the exact durable snapshot; the second
+// revalidates the same base and holds the source lock through every page visit.
+func (service *TelemetryAnalysisService) deriveCorrectionSession(ctx context.Context, sessionID, revisionID string, expected func(telemetryanalysis.SourceAnalysisRef) error) (telemetryanalysis.ProjectionSessionDerivations, error) {
 	var empty telemetryanalysis.ProjectionSessionDerivations
 	if service.corrections == nil {
 		return empty, ErrTelemetryAnalysisCorrectionStorage
 	}
-	classified, err := telemetryanalysis.ClassifyHistoricalSession(input.Session)
+	var summary telemetryanalysis.CorrectionSummary
+	var classified telemetryanalysis.ClassifiedSession
+	var snapshot telemetryanalysis.PreparedSampleCorrectionSnapshot
+	err := service.withCorrectionSummary(ctx, sessionID, func(readCtx context.Context, input telemetryanalysis.CorrectionSummary) error {
+		if expected != nil {
+			if err := expected(input.Base); err != nil {
+				return err
+			}
+		}
+		var err error
+		classified, err = telemetryanalysis.ClassifyHistoricalSession(input.Session)
+		if err != nil {
+			return ErrTelemetryAnalysisIncompatible
+		}
+		stored, err := service.corrections.Load(readCtx, input.Base, revisionID)
+		if err != nil {
+			return publicCorrectionError(err)
+		}
+		summary, snapshot = input, stored.Revision.Snapshot
+		return nil
+	})
 	if err != nil {
-		return empty, ErrTelemetryAnalysisIncompatible
+		return empty, err
 	}
-	derived, err := service.corrections.DeriveProjectionSession(ctx, input.Base, input.Session, input.Pages, classified, revisionID)
+	var result telemetryanalysis.ProjectionSessionDerivations
+	err = withCorrectionRead(service, ctx, sessionID,
+		func(readCtx context.Context, owned *telemetryAnalysisSession, limits telemetryanalysis.CorrectionReadLimits) (telemetryanalysis.ProjectionSessionDerivations, error) {
+			current, err := readCorrectionSummary(readCtx, owned, limits)
+			if err != nil {
+				return empty, err
+			}
+			if current.Base != summary.Base {
+				return empty, telemetryanalysis.ErrCorrectionSourceChanged
+			}
+			derived, err := telemetryanalysis.DerivePagedCorrectedSession(readCtx, owned.parser, owned.artifact, limits, current, classified, snapshot)
+			if err != nil {
+				return empty, err
+			}
+			return telemetryanalysis.ProjectionSessionFromDerived(current.Base, revisionID, derived)
+		},
+		func(_ context.Context, derived telemetryanalysis.ProjectionSessionDerivations) error {
+			result = derived
+			return nil
+		})
 	if err != nil {
-		return empty, publicCorrectionError(err)
+		return empty, err
 	}
 	if err := ctx.Err(); err != nil {
 		return empty, err
 	}
-	return derived, nil
+	return result, nil
 }
 
 // Resolve exact requested originals without retaining unrelated sample pages.

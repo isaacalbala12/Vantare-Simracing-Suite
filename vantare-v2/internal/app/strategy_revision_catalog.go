@@ -74,28 +74,24 @@ func (catalog *StrategyRevisionCatalog) ProjectStrategyRevisionInputs(ctx contex
 	selected := make([]telemetryanalysis.ProjectionSessionDerivations, 0, len(refs))
 	var combination telemetryanalysis.CombinationIdentity
 	for _, ref := range refs {
-		err := service.withCorrectionInput(operationCtx, handles[ref.SessionID], func(readCtx context.Context, input telemetryanalysis.CorrectionInput) error {
-			digest, err := input.Base.Digest()
-			if err != nil || input.Base.SessionID != ref.SessionID || digest != ref.BaseDigest {
+		derived, err := service.deriveCorrectionSession(operationCtx, handles[ref.SessionID], ref.RevisionID, func(base telemetryanalysis.SourceAnalysisRef) error {
+			digest, err := base.Digest()
+			if err != nil || base.SessionID != ref.SessionID || digest != ref.BaseDigest {
 				return ErrTelemetryAnalysisCorrectionSourceChanged
 			}
-			derived, err := service.deriveCorrectionSession(readCtx, input, ref.RevisionID)
-			if err != nil {
-				return err
-			}
-			if derived.Revision == nil || *derived.Revision != ref {
-				return ErrTelemetryAnalysisCorrectionSourceChanged
-			}
-			if derived.Classified.Combination.ID != combinationID {
-				return ErrTelemetryAnalysisIncompatible
-			}
-			combination = derived.Classified.Combination
-			selected = append(selected, derived)
 			return nil
 		})
 		if err != nil {
 			return empty, err
 		}
+		if derived.Revision == nil || *derived.Revision != ref {
+			return empty, ErrTelemetryAnalysisCorrectionSourceChanged
+		}
+		if derived.Classified.Combination.ID != combinationID {
+			return empty, ErrTelemetryAnalysisIncompatible
+		}
+		combination = derived.Classified.Combination
+		selected = append(selected, derived)
 	}
 	result, err := telemetryanalysis.ProduceStrategyInputProjectionV2(telemetryanalysis.ProjectionProductionRequest{GeneratedAt: generatedAt, Combination: combination, Sessions: selected})
 	if err != nil {

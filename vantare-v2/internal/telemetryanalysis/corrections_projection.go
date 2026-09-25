@@ -29,13 +29,16 @@ func (s *CorrectionStore) DeriveProjectionSession(ctx context.Context, base Sour
 	if err := ctx.Err(); err != nil {
 		return empty, err
 	}
-	return projectionSessionFromDerived(base, stored.Revision.RevisionID, derived)
+	return ProjectionSessionFromDerived(base, stored.Revision.RevisionID, derived)
 }
 
 // Bind a validated derivation to the exact durable revision that produced it.
 // Both materialized and bounded readers use the same projection contract.
-func projectionSessionFromDerived(base SourceAnalysisRef, revisionID string, derived CorrectedSessionDerivations) (ProjectionSessionDerivations, error) {
+func ProjectionSessionFromDerived(base SourceAnalysisRef, revisionID string, derived CorrectedSessionDerivations) (ProjectionSessionDerivations, error) {
 	var empty ProjectionSessionDerivations
+	if revisionID == "" || derived.Base != base || derived.SnapshotID == "" {
+		return empty, ErrCorrectionSourceChanged
+	}
 	digest, err := base.Digest()
 	if err != nil {
 		return empty, err

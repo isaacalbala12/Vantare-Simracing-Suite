@@ -20,6 +20,7 @@ import (
 	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
 	"github.com/vantare/overlays/v2/internal/strategy/repository"
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
 
 type recordedRealRepository struct{ snapshot repository.Snapshot[any] }
@@ -154,6 +155,44 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 			t.Fatalf("volume scan: %v", scanErr)
 		}
 		t.Logf("volume scan prepared %d laps, %d channels", len(summary.Validity.Laps), len(summary.EditableChannelIDs))
+		return
+	}
+	if mode := os.Getenv("ISA1375_PROJECTION_PROFILE"); mode == "paged" || mode == "materialized" {
+		opened, openErr := svc.Open(ctx, TelemetryAnalysisOpenRequest{CandidateID: primaryCandidate.ID, UserApproved: true})
+		if openErr != nil {
+			t.Fatal(openErr)
+		}
+		prepared, prepareErr := svc.PrepareCorrections(ctx, opened.SessionID)
+		if prepareErr != nil {
+			t.Fatal(prepareErr)
+		}
+		var projection strategyprojection.StrategyInputProjectionV2
+		started := time.Now()
+		if mode == "paged" {
+			projection, err = svc.ProjectCorrection(ctx, TelemetryAnalysisCorrectionRevisionRequest{SessionID: opened.SessionID, Base: prepared.Base, RevisionID: prepared.BaseRevisionID})
+		} else {
+			err = svc.withCorrectionInput(ctx, opened.SessionID, func(readCtx context.Context, input telemetryanalysis.CorrectionInput) error {
+				classified, classErr := telemetryanalysis.ClassifyHistoricalSession(input.Session)
+				if classErr != nil {
+					return classErr
+				}
+				derived, deriveErr := svc.corrections.DeriveProjectionSession(readCtx, input.Base, input.Session, input.Pages, classified, prepared.BaseRevisionID)
+				if deriveErr != nil {
+					return deriveErr
+				}
+				projection, deriveErr = telemetryanalysis.ProduceStrategyInputProjectionV2(telemetryanalysis.ProjectionProductionRequest{GeneratedAt: time.Now().UTC().Truncate(time.Millisecond), Combination: derived.Classified.Combination, Sessions: []telemetryanalysis.ProjectionSessionDerivations{derived}})
+				return deriveErr
+			})
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := projection.Validate(); err != nil {
+			t.Fatal(err)
+		}
+		var memory runtime.MemStats
+		runtime.ReadMemStats(&memory)
+		t.Logf("projection profile mode=%s elapsed=%s heapSysMiB=%.1f totalAllocMiB=%.1f dryPace=%.3f fuel=%.3f", mode, time.Since(started), float64(memory.HeapSys)/1048576, float64(memory.TotalAlloc)/1048576, projection.RepresentativePaceByClimateBucket["dry"].MedianLapSeconds, projection.FuelConsumption.MeanPerLap)
 		return
 	}
 	importer, err := coldstart.NewLMUImporter(runtimeApp, filepath.Join(root, "catalog-staging"))

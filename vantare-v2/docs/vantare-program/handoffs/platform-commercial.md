@@ -680,7 +680,10 @@ import/export sin secretos; reset no borra datos sin selección.
   dos quedaron omitidas y una prueba visual de Chromium agotó su límite de
   20 s mientras corrían build y lint; la misma prueba pasó aislada en 8,9 s.
   La app se compiló usando el `.env.local` autorizado sin exponer sus valores.
-  El PR #1384 sigue draft, sin merge, promoción ni release.
+  En `3bcd253d` pasaron los checks remotos de ruta, quality ratchet y gates
+  bloqueantes, incluidos Go, frontend y build Wails de Windows (runs
+  `36162293379` y `36162293431`). El PR #1384 sigue draft, sin merge,
+  promoción ni release.
 
 ISA-841 se implementó en la rama aislada
 `vantareapp/isa-841-zoom-global-interfaz` y se rebasó el 2026-08-28 sobre

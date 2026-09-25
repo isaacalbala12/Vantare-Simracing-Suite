@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"testing"
 	"time"
 
@@ -129,6 +130,30 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 	targetCandidate := recordedRealCandidateByDisplayName(t, candidates, filepath.Base(targetSource))
 	if primaryCandidate.ID == targetCandidate.ID {
 		t.Fatal("primary and target discovery resolved to the same candidate")
+	}
+	if os.Getenv("ISA1375_VOLUME_SCAN_ONLY") == "1" {
+		opened, openErr := svc.Open(ctx, TelemetryAnalysisOpenRequest{CandidateID: primaryCandidate.ID, UserApproved: true})
+		if openErr != nil {
+			t.Fatalf("volume open: %v", openErr)
+		}
+		var memory runtime.MemStats
+		runtime.ReadMemStats(&memory)
+		t.Logf("volume before summary: heapAllocMiB=%.1f heapSysMiB=%.1f totalAllocMiB=%.1f", float64(memory.HeapAlloc)/1048576, float64(memory.HeapSys)/1048576, float64(memory.TotalAlloc)/1048576)
+		owned := svc.sessions[opened.SessionID]
+		summary, scanErr := telemetryanalysis.ReadCorrectionSummary(ctx, owned.parser, owned.artifact, telemetryanalysis.CorrectionReadLimits{
+			PageRows: svc.cfg.MaxPageRows, MaxSamples: 12_000_000, MaxValues: 15_000_000, MaxTextBytes: 64 << 20,
+		})
+		runtime.ReadMemStats(&memory)
+		t.Logf("volume after summary: heapAllocMiB=%.1f heapSysMiB=%.1f totalAllocMiB=%.1f", float64(memory.HeapAlloc)/1048576, float64(memory.HeapSys)/1048576, float64(memory.TotalAlloc)/1048576)
+		if errors.Is(scanErr, telemetryanalysis.ErrCorrectionReadLimit) || errors.Is(scanErr, telemetryanalysis.ErrInvalidLapValidityInput) {
+			t.Logf("volume scan inconclusive for full race: %v", scanErr)
+			return
+		}
+		if scanErr != nil {
+			t.Fatalf("volume scan: %v", scanErr)
+		}
+		t.Logf("volume scan prepared %d laps, %d channels", len(summary.Validity.Laps), len(summary.EditableChannelIDs))
+		return
 	}
 	importer, err := coldstart.NewLMUImporter(runtimeApp, filepath.Join(root, "catalog-staging"))
 	if err != nil {

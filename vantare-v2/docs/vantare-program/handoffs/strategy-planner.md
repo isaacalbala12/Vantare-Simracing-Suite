@@ -1,5 +1,17 @@
 # Handoff vivo — Strategy Planner
 
+## Banco de volumen sin importación previa — ISA-1375 (2026-09-25)
+
+El DuckDB limpio de Imola (264,10 MiB; SHA-256 intacto) se recorrió tres veces
+con `ReadCorrectionSummary` y un presupuesto elevado **sólo en el banco**.
+Al aislar la apertura/lectura del importador de catálogo, el pico de proceso
+fue 50,8/50,8/51,1 MiB y el tiempo 54,09/53,49/53,31 s. La medición anterior
+de ~2,2 GiB estaba contaminada: `HeapSys` ya era ~2,5 GiB antes del resumen.
+Esta fuente aporta únicamente una vuelta, así que demuestra comportamiento de
+volumen continuo, **no** carrera de resistencia. Las cuotas productivas siguen
+en 1,25 M muestras/1,5 M valores y aún faltan inspección/proyección paginadas,
+fuente larga multivuelta, Wails y precisión empírica. [Evidencia y límites](../../strategy-planner/evidence/isa-1375/paged-preparation-2026-09-25.md).
+
 ## Preparación productiva con resumen paginado — ISA-1375 (2026-09-25)
 
 `PrepareCorrections` ya usa `ReadCorrectionSummary` bajo el mismo bloqueo,

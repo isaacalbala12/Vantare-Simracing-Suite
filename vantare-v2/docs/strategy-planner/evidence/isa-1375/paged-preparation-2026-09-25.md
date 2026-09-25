@@ -42,6 +42,38 @@ aumentó frente a la versión anterior. La medición incluye discovery,
 importación de catálogo y apertura, de modo que tampoco aísla el pico de la
 preparación. La propiedad estructural lograda es no retener señales continuas
 en la respuesta de preparación; falta medir una fuente significativamente más
-larga, separar el coste de importación y reducir visitas antes de fijar una
-cuota nueva. Quedan pendientes inspección y proyección paginadas, correcciones
+larga **con muchas vueltas**, y reducir visitas antes de fijar una cuota nueva.
+La sección siguiente separa el coste de importación en una fuente de alto
+volumen continuo. Quedan pendientes inspección y proyección paginadas, correcciones
 exactas, limpieza/cancelación en runtime y Wails T22.
+
+## Volumen real aislado de la importación
+
+Se repitió la lectura con el original limpio
+`Autodromo Enzo e Dino Ferrari_P_2026-08-13T13_50_06Z.duckdb` (264,10 MiB,
+sin WAL; SHA-256 `88956bb77774fbe93a1898b3c34f13ecaa076ff37d5e2ec2003212be39440de0`).
+Esta fuente contiene mucho más volumen continuo, pero sólo **una vuelta**:
+sirve para estresar el lector, no para certificar una estrategia de resistencia.
+La rama opcional del test abre el parser autorizado y llama directamente a
+`ReadCorrectionSummary` antes de importar el catálogo. Sólo en el banco se
+permitieron 12 M muestras, 15 M valores y 64 MiB de texto para observar el
+recorrido completo; **la cuota productiva no cambió**. La fuente Monza usada
+por el banco conservó también su hash original.
+
+Una medición preliminar con importación previa dio 2.191 MiB de pico, pero
+`HeapSys` ya marcaba 2.492 MiB **antes** de empezar el resumen: esa cifra no
+pertenece a `ReadCorrectionSummary`. Se retiró la importación del recorrido de
+volumen y se midió el proceso nuevo con `PeakWorkingSet64` cada 50 ms:
+
+| Ejecución | Pico de working set | Tiempo | Resultado |
+| --- | ---: | ---: | --- |
+| 1 | 50,8 MiB | 54,09 s | 1 vuelta; hashes intactos |
+| 2 | 50,8 MiB | 53,49 s | 1 vuelta; hashes intactos |
+| 3 | 51,1 MiB | 53,31 s | 1 vuelta; hashes intactos |
+
+Antes del resumen `HeapSys` estaba entre 7,6 y 11,6 MiB; al terminar,
+entre 18,2 y 18,4 MiB. El test asignó ~14,66 GiB **acumulados** a lo largo
+de las visitas, dato que explica el coste temporal pero no es memoria
+simultánea. Los tres picos son evidencia de este lector, esta fuente y este
+entorno: no prueban rendimiento con muchas vueltas/eventos, aplicación Wails
+ni las operaciones productivas que todavía materializan correcciones.

@@ -140,6 +140,9 @@ describe("official-designs", () => {
       if (definition.type === "track-map") {
         return [`${definition.type}:vantare-endurance`, `${definition.type}:vantare-functional`];
       }
+      if (definition.type === "radar") {
+        return ["radar:vantare-functional"];
+      }
       const pairs = [`${definition.type}:vantare-crystal`, `${definition.type}:vantare-original`];
       if (functionalTypes.has(definition.type)) pairs.push(`${definition.type}:vantare-functional`);
       if (iracingTypes.has(definition.type)) pairs.push(`${definition.type}:vantare-iracing`);

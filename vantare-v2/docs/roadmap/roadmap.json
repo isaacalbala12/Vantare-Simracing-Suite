@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-25T16:43:34Z",
+  "generatedAt": "2026-09-25T17:08:52Z",
   "digest": {
-    "lastCommit": "446001dd26300e975b21480043052468320211b2"
+    "lastCommit": "f0ccfbf203eb1463766e3ca5e7208ccb2bf38453"
   },
   "phases": [
     {
@@ -2098,6 +2098,28 @@
       }
     },
     {
+      "id": "radar-proximity",
+      "type": "feature",
+      "title": {
+        "es": "Radar de proximidad",
+        "en": "Proximity radar",
+        "pt": "Radar de proximidade",
+        "it": "Radar di prossimità"
+      },
+      "body": {
+        "es": "El radar Eficiencia dibuja hasta 16 coches a 30 metros alrededor del jugador con posiciones espaciales frescas de LMU, orientadas según su coche. Destaca los coches en paralelo mediante el criterio geométrico del Spotter, se oculta cuando faltan datos fiables y usa un widget transparente compartido entre Studio, Desktop, OBS y Workshop. La demostración de Workshop usa posiciones de ejemplo. La comprobación física en una sesión LMU activa queda pendiente.",
+        "en": "The Efficiency radar draws up to 16 cars within 30 metres of the player from fresh LMU spatial positions, aligned to the player's car. It highlights overlapping cars using Spotter geometry, hides when reliable data is unavailable, and shares one transparent widget across Studio, Desktop, OBS and Workshop. The Workshop preview uses example positions. Physical validation in a live LMU session remains pending.",
+        "pt": "O radar Eficiência mostra até 16 carros a 30 metros do jogador com posições espaciais recentes do LMU, alinhadas com o carro do jogador. Destaca carros lado a lado com a geometria do Spotter, oculta-se quando faltam dados fiáveis e partilha um widget transparente entre Studio, Desktop, OBS e Workshop. A pré-visualização do Workshop usa posições de exemplo. A validação física numa sessão LMU ativa permanece pendente.",
+        "it": "Il radar Efficienza mostra fino a 16 auto entro 30 metri dal giocatore usando posizioni spaziali recenti di LMU, allineate alla sua auto. Evidenzia le auto affiancate con la geometria dello Spotter, si nasconde quando mancano dati affidabili e condivide un widget trasparente tra Studio, Desktop, OBS e Workshop. L'anteprima Workshop usa posizioni di esempio. La verifica fisica in una sessione LMU attiva resta in sospeso."
+      },
+      "label": {
+        "es": "ISA-1388",
+        "en": "ISA-1388",
+        "pt": "ISA-1388",
+        "it": "ISA-1388"
+      }
+    },
+    {
       "id": "widget-access-branding",
       "type": "feature",
       "title": {
@@ -2193,6 +2215,11 @@
         {
           "kind": "change",
           "scope": "",
+          "text": "ISA-1382 · Calendario visual y zoom del Timeline"
+        },
+        {
+          "kind": "change",
+          "scope": "",
           "text": "ISA-1385 · Car Damage Numbers Eficiencia y telemetría LMU"
         }
       ]
@@ -2201,9 +2228,9 @@
       "date": "2026-09-24",
       "entries": [
         {
-          "kind": "fix",
-          "scope": "widgets",
-          "text": "Validar datos y contratos de los cinco widgets aceptados"
+          "kind": "change",
+          "scope": "",
+          "text": "Racing Flags: letra ampliada, centrada y negra por defecto"
         },
         {
           "kind": "feat",
@@ -2211,9 +2238,9 @@
           "text": "Pedales avanzados con datos revisados y volantes LMU"
         },
         {
-          "kind": "change",
-          "scope": "",
-          "text": "Racing Flags: letra ampliada, centrada y negra por defecto"
+          "kind": "fix",
+          "scope": "widgets",
+          "text": "Validar datos y contratos de los cinco widgets aceptados"
         }
       ]
     },

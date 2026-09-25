@@ -107,6 +107,27 @@ func hashStandingsVehicle(sum uint64, vehicle *core.VehicleState) uint64 {
 	return sum
 }
 
+// Radar shares Spotter's regulated section but needs every position change,
+// including movement that leaves Spotter's left/right verdict unchanged.
+func hashRadarVehicle(sum uint64, vehicle *core.VehicleState) uint64 {
+	sum = hashString(sum, string(vehicle.Identity.Vehicle))
+	sum = hashFieldBool(sum, vehicle.Player)
+	sum = hashFieldBool(sum, vehicle.InPit)
+	sum = hashFieldFloat(sum, vehicle.LapDistance)
+	sum = hashQuality(sum, vehicle.WorldPosition)
+	if position, present := vehicle.WorldPosition.Value(); present {
+		sum = hashUint64(sum, math.Float64bits(position.X))
+		sum = hashUint64(sum, math.Float64bits(position.Y))
+		sum = hashUint64(sum, math.Float64bits(position.Z))
+	}
+	sum = hashQuality(sum, vehicle.Orientation)
+	if orientation, present := vehicle.Orientation.Value(); present {
+		sum = hashUint64(sum, math.Float64bits(orientation.Row2.X))
+		sum = hashUint64(sum, math.Float64bits(orientation.Row2.Z))
+	}
+	return sum
+}
+
 // hashRelativeMark fingerprints exactly the fields BuildRelative projects, scoped
 // to both published windows around the player. A signal the builder ignores (RPM,
 // world position, fuel) never marks the section dirty; changing the player or

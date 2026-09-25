@@ -213,6 +213,7 @@ export interface OverlayFrameV2 {
   readonly fuel: OverlayFuelViewV2;
   readonly generatedAt: string;
   readonly player: OverlayPlayerInstrumentsV2;
+  readonly radar: Overlayv2RadarViewV2;
   readonly relative: readonly OverlayRelativeRowV2[];
   readonly relativeSameClass: readonly OverlayRelativeRowV2[];
   readonly relativeSettled: readonly OverlayRelativeRowV2[];
@@ -443,6 +444,11 @@ export interface Overlayv2GroundPositionV2 {
   readonly z: number;
 }
 
+export interface Overlayv2RadarViewV2 {
+  readonly cars: readonly Overlayv2RadarCarV2[];
+  readonly mode: OverlayModeV2;
+}
+
 export interface Overlayv2StandingQualityV2 {
   readonly bestLap?: OverlayQualityV2 | undefined;
   readonly classGap?: OverlayQualityV2 | undefined;
@@ -485,6 +491,13 @@ export interface SpatialPosition {
   readonly X: number;
   readonly Y: number;
   readonly Z: number;
+}
+
+export interface Overlayv2RadarCarV2 {
+  readonly id: string;
+  readonly overlap: boolean;
+  readonly x: number;
+  readonly z: number;
 }
 
 export interface SpatialVector3 {

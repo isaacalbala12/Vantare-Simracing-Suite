@@ -5,6 +5,14 @@
 > Este handoff conserva evidencia técnica fechada; sus estados antiguos no
 > sustituyen el estado vivo ni autorizan nuevas tareas.
 
+## ISA-1388 — radar de proximidad (2026-09-25)
+
+Isaac solicita un radar para pilotos cercanos inspirado por TinyPedal, RaceLab y LMU. El seguimiento vivo está en [Asana · Radar](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218838171528031); la [issue #1388](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1388) define el alcance técnico. Rama aislada `vantareapp/isa-1388-radar-proximidad`, nacida de Nightly `5c73013e` y pendiente de reconciliación con el merge posterior de #1386.
+
+Primera entrega candidata: proyección Go de posiciones LMU frescas en el marco del jugador, radio de 30 m, hasta 16 rivales y clasificación de coches en paralelo con la geometría compartida del Spotter. La cadencia marca el radar sucio cuando cambia la posición aunque la alerta lateral no cambie. `FrameV2.radar` atraviesa transporte tipado y alimenta un único widget Eficiencia transparente para Studio, Desktop, OBS y Workshop. El ejemplo visual de Workshop contiene tres coches declaradamente ficticios y no suplanta la telemetría real.
+
+Comprobación actual: pruebas Go de proyección y transporte PASS; TypeScript y build PASS; pruebas focales frontend 94 PASS. La primera suite frontend completa expuso seis listas cardinales antiguas ya actualizadas y un timeout de Playwright bajo carga; las siete pruebas focales, incluido el caso de geometría, pasan aisladas. La segunda suite completa está en curso. Vista del Workshop 5174 revisada en navegador. Pendientes: suite completa, lint, Go completo tras build, CI remoto, revisión visual de Isaac y prueba física LMU/Windows/OBS. Sin integración de este radar ni promoción adicional.
+
 
 
 ## ISA-1385 — Car Damage Numbers Eficiencia (2026-09-25)

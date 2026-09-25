@@ -12,6 +12,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/identity"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/pit"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/spatial"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/vehicle"
 )
@@ -63,6 +64,18 @@ func TestTyreWearChangeInvalidatesDamageSection(t *testing.T) {
 	after.Observed.Vehicles[0].TyreWear = builderPresent([4]float64{0.99, 0.98, 0.97, 0.96})
 	if !dirtyDiff(before, after).Has(SectionDamage) {
 		t.Fatal("tyre wear change did not invalidate the damage frame section")
+	}
+}
+
+func TestRadarMovementInvalidatesSpotterSection(t *testing.T) {
+	before := dirtyFinalState(2)
+	before.Observed.Vehicles[0].WorldPosition = builderPresent(spatial.Position{X: 1, Z: 1})
+	before.Observed.Vehicles[1].WorldPosition = builderPresent(spatial.Position{X: 5, Z: 1})
+	after := dirtyFinalState(2)
+	after.Observed.Vehicles[0].WorldPosition = builderPresent(spatial.Position{X: 1, Z: 1})
+	after.Observed.Vehicles[1].WorldPosition = builderPresent(spatial.Position{X: 5, Z: 2})
+	if !dirtyDiff(before, after).Has(SectionSpotter) {
+		t.Fatal("nearby movement did not rebuild radar")
 	}
 }
 

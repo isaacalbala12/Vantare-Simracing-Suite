@@ -126,6 +126,18 @@ const OFFICIAL_DESIGN_DEFINITIONS: WidgetDesignV1[] = [
     isDefault: true,
   },
   {
+    id: "radar-functional-signature",
+    name: "Signature",
+    widgetType: "radar",
+    systemId: "vantare-functional",
+    systemVersion: 1,
+    configVersion: 1,
+    visual: {},
+    includesContent: false,
+    origin: "vantare",
+    isDefault: true,
+  },
+  {
     id: "pedals-telemetry-functional-signature",
     name: "Signature",
     widgetType: "pedals-telemetry",

@@ -16,6 +16,7 @@ import { buildPedalsTelemetryCompactViewModelV2 } from "../widget-types/pedals-t
 import { buildMulticlassRelativeViewModelV2 } from "../widget-types/multiclass-relative/multiclass-relative-view-model-v2";
 import { buildHeadToHeadViewModelV2 } from "../widget-types/head-to-head/head-to-head-view-model-v2";
 import { buildTrackMapViewModelV2 } from "../widget-types/track-map/track-map-view-model-v2";
+import { buildRadarViewModelV2 } from "../widget-types/radar/radar-view-model-v2";
 import { buildTrackWeatherViewModelV2 } from "../widget-types/track-weather/track-weather-view-model-v2";
 import { buildBroadcastTowerViewModelV2 } from "../widget-types/broadcast-tower/broadcast-tower-view-model-v2";
 import { buildCarDamageNumbersViewModelV2 } from "../widget-types/car-damage-numbers/car-damage-numbers-view-model-v2";
@@ -110,6 +111,7 @@ export const overlayV2ViewModelRegistry: ReadonlyMap<WidgetType, OverlayV2ViewMo
   ["multiclass-relative", { buildViewModelV2: (frame, source, content) => buildMulticlassRelativeViewModelV2(frame, source, content as never) }],
   ["head-to-head", { buildViewModelV2: (frame, source, content) => buildHeadToHeadViewModelV2(frame, source, content as never) }],
   ["track-map", { buildViewModelV2: (frame, source, content) => buildTrackMapViewModelV2(frame, source, content as never) }],
+  ["radar", { buildViewModelV2: (frame, source) => buildRadarViewModelV2(frame, source) }],
   ["broadcast-tower", { buildViewModelV2: (frame, source, content) => buildBroadcastTowerViewModelV2(frame, source, content as never) }],
   ["track-weather", { buildViewModelV2: (frame, source, content) => buildTrackWeatherViewModelV2(frame, source, content as never) }],
   ["car-damage-numbers", { buildViewModelV2: (frame, source, content) => buildCarDamageNumbersViewModelV2(frame, source, content as never) }],

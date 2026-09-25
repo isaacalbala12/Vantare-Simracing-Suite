@@ -413,10 +413,10 @@ describe("OverlayWorkshopDevRoute", () => {
   });
 
   it("renders each default widget marker", async () => {
-    expect(ALL_WIDGET_TYPES).toHaveLength(21);
+    expect(ALL_WIDGET_TYPES).toHaveLength(22);
     for (const widget of ALL_WIDGET_TYPES) {
       cleanup();
-      const system = widget === "fastest-lap" ? "vantare-functional" : widget === "engineer-radio" ? "vantare-crystal" : widget === "track-map" ? "vantare-endurance" : "vantare-original";
+      const system = widget === "fastest-lap" || widget === "radar" ? "vantare-functional" : widget === "engineer-radio" ? "vantare-crystal" : widget === "track-map" ? "vantare-endurance" : "vantare-original";
       render(<OverlayWorkshopDevRoute search={`?widget=${widget}&system=${system}&state=ready&surface=obs`} />);
       await waitFor(() =>
         expect(document.querySelector(`[data-widget-renderer="${widget}"]`)).toBeTruthy(),

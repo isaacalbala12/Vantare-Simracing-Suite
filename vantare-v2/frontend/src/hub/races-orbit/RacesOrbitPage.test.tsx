@@ -487,7 +487,11 @@ describe("RacesOrbitPage", () => {
     const base = axis();
     expect(screen.queryByTestId("orbit-timeline-now")).toBeNull();
     fireEvent.click(screen.getByTestId("orbit-races-zoom-in"));
-    expect(axis()).toBeGreaterThan(base);
+    expect(axis()).toBeCloseTo(base * 1.05);
+    fireEvent.keyDown(window, { key: "+", code: "Equal", ctrlKey: true });
+    expect(axis()).toBeCloseTo(base * 1.1);
+    fireEvent.keyDown(window, { key: "-", code: "Minus", ctrlKey: true });
+    expect(axis()).toBeCloseTo(base * 1.05);
     fireEvent.click(screen.getByTestId("orbit-races-zoom-fit"));
     expect(axis()).toBe(base);
     fireEvent.click(screen.getByTestId("orbit-races-zoom-out"));
@@ -496,7 +500,7 @@ describe("RacesOrbitPage", () => {
     // Una hora cabe completa al alejar; el máximo amplía a cuatro veces.
     for (let i = 0; i < 12; i += 1) fireEvent.click(screen.getByTestId("orbit-races-zoom-out"));
     expect(axis()).toBe(base);
-    for (let i = 0; i < 20; i += 1) fireEvent.click(screen.getByTestId("orbit-races-zoom-in"));
+    for (let i = 0; i < 60; i += 1) fireEvent.click(screen.getByTestId("orbit-races-zoom-in"));
     expect(Math.abs(axis() - base * 4)).toBeLessThanOrEqual(2);
     const scroller = screen.getByTestId("orbit-timeline");
     fireEvent.click(screen.getByTestId("orbit-races-pan-right"));

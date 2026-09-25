@@ -18,6 +18,7 @@ import {
   type TimelineBlock,
 } from "../../ui/orbit";
 import { formatMessage } from "../orbit/format-message";
+import { appZoomShortcut } from "../orbit/app-zoom";
 import { formatCountdown, formatStartTime, nextStarts } from "../orbit/next-starts";
 import { useOrbitSlot } from "../orbit/use-orbit-slot";
 import {
@@ -62,6 +63,7 @@ const DETAIL_STARTS = 4;
 
 /** Solo salidas desde ahora hasta dentro de una hora. */
 const TIMELINE_SPAN_MIN = 60;
+const TIMELINE_ZOOM_STEP = 0.05;
 
 /** Ancho de eje asumido hasta que el kit mide el suyo (SSR y jsdom). */
 const AXIS_FALLBACK = 1100;
@@ -311,13 +313,33 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
     [],
   );
 
+  const stepTimelineZoom = useCallback((direction: -1 | 1) => {
+    setZoom((current) => clampZoom(Math.round((current + direction * TIMELINE_ZOOM_STEP) * 100) / 100));
+  }, []);
+
+  useEffect(() => {
+    if (view !== "timeline") return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const shortcut = appZoomShortcut(event);
+      if (shortcut !== "increase" && shortcut !== "decrease") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      stepTimelineZoom(shortcut === "increase" ? 1 : -1);
+    };
+    window.addEventListener("keydown", onKeyDown, { capture: true });
+    return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
+  }, [stepTimelineZoom, view]);
+
   const onAxisWidth = useCallback((px: number) => {
     if (px > 0) setAxisWidth(px);
   }, []);
 
   const onTimelineZoom = useCallback(
-    (nextPx: number) => applyZoom(nextPx / minPxPerHour),
-    [applyZoom, minPxPerHour],
+    (nextPx: number) => setZoom((current) => {
+      const direction = nextPx > current * minPxPerHour ? 1 : -1;
+      return clampZoom(Math.round((current + direction * TIMELINE_ZOOM_STEP) * 100) / 100);
+    }),
+    [minPxPerHour],
   );
 
   const panTimeline = useCallback((direction: -1 | 1) => {
@@ -403,7 +425,7 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
         className="orbit-icon-btn orbit-icon-btn--28"
         data-testid="orbit-races-zoom-out"
         data-tip={t("races.timeline.zoomOut")}
-        onClick={() => applyZoom(zoom / 1.25)}
+        onClick={() => stepTimelineZoom(-1)}
         type="button"
       >
         −
@@ -413,7 +435,7 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
         className="orbit-icon-btn orbit-icon-btn--28"
         data-testid="orbit-races-zoom-in"
         data-tip={t("races.timeline.zoomIn")}
-        onClick={() => applyZoom(zoom * 1.25)}
+        onClick={() => stepTimelineZoom(1)}
         type="button"
       >
         +

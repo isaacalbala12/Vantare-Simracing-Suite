@@ -1,0 +1,530 @@
+[
+  {
+    "locale": "es",
+    "width": 320,
+    "start": {
+      "innerWidth": 320,
+      "scrollWidth": 320,
+      "overflow": []
+    },
+    "plan": {
+      "innerWidth": 320,
+      "scrollWidth": 320,
+      "overflow": []
+    },
+    "journeys": {
+      "sources": {
+        "innerWidth": 320,
+        "scrollWidth": 320,
+        "overflow": []
+      },
+      "laps": {
+        "innerWidth": 320,
+        "scrollWidth": 320,
+        "overflow": []
+      },
+      "calculated": {
+        "innerWidth": 320,
+        "scrollWidth": 320,
+        "overflow": []
+      },
+      "stint": {
+        "innerWidth": 320,
+        "scrollWidth": 320,
+        "overflow": []
+      },
+      "pit": {
+        "innerWidth": 320,
+        "scrollWidth": 320,
+        "overflow": []
+      }
+    },
+    "focused": {
+      "tag": "BUTTON",
+      "visible": true
+    },
+    "errors": []
+  },
+  {
+    "locale": "es",
+    "width": 768,
+    "start": {
+      "innerWidth": 768,
+      "scrollWidth": 768,
+      "overflow": []
+    },
+    "plan": {
+      "innerWidth": 768,
+      "scrollWidth": 768,
+      "overflow": []
+    },
+    "journeys": {
+      "sources": {
+        "innerWidth": 768,
+        "scrollWidth": 768,
+        "overflow": []
+      },
+      "laps": {
+        "innerWidth": 768,
+        "scrollWidth": 768,
+        "overflow": []
+      },
+      "calculated": {
+        "innerWidth": 768,
+        "scrollWidth": 768,
+        "overflow": []
+      },
+      "stint": {
+        "innerWidth": 768,
+        "scrollWidth": 768,
+        "overflow": []
+      },
+      "pit": {
+        "innerWidth": 768,
+        "scrollWidth": 768,
+        "overflow": []
+      }
+    },
+    "focused": {
+      "tag": "BUTTON",
+      "visible": true
+    },
+    "errors": []
+  },
+  {
+    "locale": "es",
+    "width": 1024,
+    "start": {
+      "innerWidth": 1024,
+      "scrollWidth": 1024,
+      "overflow": []
+    },
+    "plan": {
+      "innerWidth": 1024,
+      "scrollWidth": 1024,
+      "overflow": []
+    },
+    "journeys": {},
+    "focused": {
+      "tag": "BUTTON",
+      "visible": true
+    },
+    "errors": []
+  },
+  {
+    "locale": "es",
+    "width": 1672,
+    "start": {
+      "innerWidth": 1672,
+      "scrollWidth": 1672,
+      "overflow": []
+    },
+    "plan": {
+      "innerWidth": 1672,
+      "scrollWidth": 1672,
+      "overflow": []
+    },
+    "journeys": {},
+    "focused": {
+      "tag": "BUTTON",
+      "visible": true
+    },
+    "errors": []
+  },
+  {
+    "locale": "en",
+    "width": 320,
+    "start": {
+      "innerWidth": 320,
+      "scrollWidth": 320,
+      "overflow": []
+    },
+    "plan": {
+      "innerWidth": 320,
+      "scrollWidth": 320,
+      "overflow": []
+    },
+    "journeys": {
+      "sources": {
+        "innerWidth": 320,
+        "scrollWidth": 320,
+        "overflow": []
+      },
+      "laps": {
+        "innerWidth": 320,
+        "scrollWidth": 320,
+        "overflow": []
+      },
+      "calculated": {
+        "innerWidth": 320,
+        "scrollWidth": 320,
+        "overflow": []
+      },
+      "stint": {
+        "innerWidth": 320,
+        "scrollWidth": 320,
+        "overflow": []
+      },
+      "pit": {
+        "innerWidth": 320,
+        "scrollWidth": 320,
+        "overflow": []
+      }
+    },
+    "focused": {
+      "tag": "BUTTON",
+      "visible": true
+    },
+    "errors": []
+  },
+  {
+    "locale": "en",
+    "width": 768,
+    "start": {
+      "innerWidth": 768,
+      "scrollWidth": 768,
+      "overflow": []
+    },
+    "plan": {
+      "innerWidth": 768,
+      "scrollWidth": 768,
+      "overflow": []
+    },
+    "journeys": {
+      "sources": {
+        "innerWidth": 768,
+        "scrollWidth": 768,
+        "overflow": []
+      },
+      "laps": {
+        "innerWidth": 768,
+        "scrollWidth": 768,
+        "overflow": []
+      },
+      "calculated": {
+        "innerWidth": 768,
+        "scrollWidth": 768,
+        "overflow": []
+      },
+      "stint": {
+        "innerWidth": 768,
+        "scrollWidth": 768,
+        "overflow": []
+      },
+      "pit": {
+        "innerWidth": 768,
+        "scrollWidth": 768,
+        "overflow": []
+      }
+    },
+    "focused": {
+      "tag": "BUTTON",
+      "visible": true
+    },
+    "errors": []
+  },
+  {
+    "locale": "en",
+    "width": 1024,
+    "start": {
+      "innerWidth": 1024,
+      "scrollWidth": 1024,
+      "overflow": []
+    },
+    "plan": {
+      "innerWidth": 1024,
+      "scrollWidth": 1024,
+      "overflow": []
+    },
+    "journeys": {},
+    "focused": {
+      "tag": "BUTTON",
+      "visible": true
+    },
+    "errors": []
+  },
+  {
+    "locale": "en",
+    "width": 1672,
+    "start": {
+      "innerWidth": 1672,
+      "scrollWidth": 1672,
+      "overflow": []
+    },
+    "plan": {
+      "innerWidth": 1672,
+      "scrollWidth": 1672,
+      "overflow": []
+    },
+    "journeys": {},
+    "focused": {
+      "tag": "BUTTON",
+      "visible": true
+    },
+    "errors": []
+  },
+  {
+    "locale": "pt",
+    "width": 320,
+    "start": {
+      "innerWidth": 320,
+      "scrollWidth": 320,
+      "overflow": []
+    },
+    "plan": {
+      "innerWidth": 320,
+      "scrollWidth": 320,
+      "overflow": []
+    },
+    "journeys": {
+      "sources": {
+        "innerWidth": 320,
+        "scrollWidth": 320,
+        "overflow": []
+      },
+      "laps": {
+        "innerWidth": 320,
+        "scrollWidth": 320,
+        "overflow": []
+      },
+      "calculated": {
+        "innerWidth": 320,
+        "scrollWidth": 320,
+        "overflow": []
+      },
+      "stint": {
+        "innerWidth": 320,
+        "scrollWidth": 320,
+        "overflow": []
+      },
+      "pit": {
+        "innerWidth": 320,
+        "scrollWidth": 320,
+        "overflow": []
+      }
+    },
+    "focused": {
+      "tag": "BUTTON",
+      "visible": true
+    },
+    "errors": []
+  },
+  {
+    "locale": "pt",
+    "width": 768,
+    "start": {
+      "innerWidth": 768,
+      "scrollWidth": 768,
+      "overflow": []
+    },
+    "plan": {
+      "innerWidth": 768,
+      "scrollWidth": 768,
+      "overflow": []
+    },
+    "journeys": {
+      "sources": {
+        "innerWidth": 768,
+        "scrollWidth": 768,
+        "overflow": []
+      },
+      "laps": {
+        "innerWidth": 768,
+        "scrollWidth": 768,
+        "overflow": []
+      },
+      "calculated": {
+        "innerWidth": 768,
+        "scrollWidth": 768,
+        "overflow": []
+      },
+      "stint": {
+        "innerWidth": 768,
+        "scrollWidth": 768,
+        "overflow": []
+      },
+      "pit": {
+        "innerWidth": 768,
+        "scrollWidth": 768,
+        "overflow": []
+      }
+    },
+    "focused": {
+      "tag": "BUTTON",
+      "visible": true
+    },
+    "errors": []
+  },
+  {
+    "locale": "pt",
+    "width": 1024,
+    "start": {
+      "innerWidth": 1024,
+      "scrollWidth": 1024,
+      "overflow": []
+    },
+    "plan": {
+      "innerWidth": 1024,
+      "scrollWidth": 1024,
+      "overflow": []
+    },
+    "journeys": {},
+    "focused": {
+      "tag": "BUTTON",
+      "visible": true
+    },
+    "errors": []
+  },
+  {
+    "locale": "pt",
+    "width": 1672,
+    "start": {
+      "innerWidth": 1672,
+      "scrollWidth": 1672,
+      "overflow": []
+    },
+    "plan": {
+      "innerWidth": 1672,
+      "scrollWidth": 1672,
+      "overflow": []
+    },
+    "journeys": {},
+    "focused": {
+      "tag": "BUTTON",
+      "visible": true
+    },
+    "errors": []
+  },
+  {
+    "locale": "it",
+    "width": 320,
+    "start": {
+      "innerWidth": 320,
+      "scrollWidth": 320,
+      "overflow": []
+    },
+    "plan": {
+      "innerWidth": 320,
+      "scrollWidth": 320,
+      "overflow": []
+    },
+    "journeys": {
+      "sources": {
+        "innerWidth": 320,
+        "scrollWidth": 320,
+        "overflow": []
+      },
+      "laps": {
+        "innerWidth": 320,
+        "scrollWidth": 320,
+        "overflow": []
+      },
+      "calculated": {
+        "innerWidth": 320,
+        "scrollWidth": 320,
+        "overflow": []
+      },
+      "stint": {
+        "innerWidth": 320,
+        "scrollWidth": 320,
+        "overflow": []
+      },
+      "pit": {
+        "innerWidth": 320,
+        "scrollWidth": 320,
+        "overflow": []
+      }
+    },
+    "focused": {
+      "tag": "BUTTON",
+      "visible": true
+    },
+    "errors": []
+  },
+  {
+    "locale": "it",
+    "width": 768,
+    "start": {
+      "innerWidth": 768,
+      "scrollWidth": 768,
+      "overflow": []
+    },
+    "plan": {
+      "innerWidth": 768,
+      "scrollWidth": 768,
+      "overflow": []
+    },
+    "journeys": {
+      "sources": {
+        "innerWidth": 768,
+        "scrollWidth": 768,
+        "overflow": []
+      },
+      "laps": {
+        "innerWidth": 768,
+        "scrollWidth": 768,
+        "overflow": []
+      },
+      "calculated": {
+        "innerWidth": 768,
+        "scrollWidth": 768,
+        "overflow": []
+      },
+      "stint": {
+        "innerWidth": 768,
+        "scrollWidth": 768,
+        "overflow": []
+      },
+      "pit": {
+        "innerWidth": 768,
+        "scrollWidth": 768,
+        "overflow": []
+      }
+    },
+    "focused": {
+      "tag": "BUTTON",
+      "visible": true
+    },
+    "errors": []
+  },
+  {
+    "locale": "it",
+    "width": 1024,
+    "start": {
+      "innerWidth": 1024,
+      "scrollWidth": 1024,
+      "overflow": []
+    },
+    "plan": {
+      "innerWidth": 1024,
+      "scrollWidth": 1024,
+      "overflow": []
+    },
+    "journeys": {},
+    "focused": {
+      "tag": "BUTTON",
+      "visible": true
+    },
+    "errors": []
+  },
+  {
+    "locale": "it",
+    "width": 1672,
+    "start": {
+      "innerWidth": 1672,
+      "scrollWidth": 1672,
+      "overflow": []
+    },
+    "plan": {
+      "innerWidth": 1672,
+      "scrollWidth": 1672,
+      "overflow": []
+    },
+    "journeys": {},
+    "focused": {
+      "tag": "BUTTON",
+      "visible": true
+    },
+    "errors": []
+  }
+]

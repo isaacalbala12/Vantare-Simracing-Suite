@@ -29,6 +29,19 @@ it("creates a native configuration draft with missing inputs and no accepted/cal
   expect(stored.document.payload).not.toHaveProperty("calculatedPlan");
   expect(stored.document.payload.draft).toEqual(draft);
 });
+it("uses the canonical timestamp at exact seconds when creating and saving", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-09-15T12:05:00.000Z"));
+  try {
+    const { client, execute } = fixture();
+    const stored = await createRecordedDraft(client, "event", draft, 7);
+    expect(execute.mock.calls[0][0].draft?.updatedAt).toBe("2026-09-15T12:05:00Z");
+    await expect(saveRecordedDraft(client, stored, draft)).rejects.toThrow("was not captured as a revision");
+    expect(execute.mock.calls[1][0].draft?.updatedAt).toBe("2026-09-15T12:05:00Z");
+  } finally {
+    vi.useRealTimers();
+  }
+});
 it("preserves the original draft and propagates concurrent-edit failure without retrying", async () => {
   const { client, execute } = fixture();
   const stored = await createRecordedDraft(client, "event", draft, 7, time);

@@ -306,17 +306,45 @@ async function verifyTwoSessions(browser) {
   }
 }
 
+async function verifyPracticeAsNewRace(browser) {
+  const run = await pageFor(browser, 1280, 800);
+  try {
+    await run.page.getByRole('button', { name: 'Abrir telemetría' }).click();
+    const sessions = run.page.getByRole('list', { name: 'Archivos de telemetría' });
+    await sessions.getByRole('button', { name: 'Usar sesión' }).last().click();
+    await run.page.getByRole('button', { name: 'Abrir mesa de carrera ↗' }).click();
+    try {
+      await run.page.locator('#recorded-tab-race').waitFor({ timeout: 5000 });
+    } catch (error) {
+      const alerts = await run.page.getByRole('alert').allTextContents();
+      const text = (await run.page.locator('body').innerText()).slice(-2000);
+      throw new Error(`Practice editor did not open: ${JSON.stringify({ alerts, text, errors: run.errors })}`, { cause: error });
+    }
+    await run.page.getByText('Borrador guardado').waitFor();
+    if (await run.page.getByRole('alert').count()) throw new Error('Practice as new race showed an error');
+    if (run.errors.length) throw new Error(`Practice as new race page errors: ${run.errors.join(', ')}`);
+  } finally {
+    await run.page.close();
+  }
+}
+
 let browser;
 try {
   await waitForServer();
   browser = await chromium.launch({ headless: true });
-  await captureMain(browser);
-  await captureInlineSessions(browser);
-  await verifyTwoSessions(browser);
-  await captureMatrix(browser);
-  const count = fs.readdirSync(output).filter((name) => name.endsWith('.png')).length;
-  fs.writeFileSync(path.join(output, 'README.md'), `# T18 · ${pass}\n\n${count} capturas del frontend productivo en la shell Orbit, incluidos los estados principales, la lista de sesiones a 1208 px y variantes responsive ES/EN/PT/IT. El banco es determinista; no es prueba Wails, LMU ni DuckDB real.\n`);
-  console.log(`recorded Strategy visual evidence: ${output}`);
+  if (process.env.RECORDED_VISUAL_VERIFY_ONLY === '1') {
+    await verifyPracticeAsNewRace(browser);
+    console.log('recorded Strategy Practice flow: PASS');
+  } else {
+    await captureMain(browser);
+    await captureInlineSessions(browser);
+    await verifyTwoSessions(browser);
+    await verifyPracticeAsNewRace(browser);
+    await captureMatrix(browser);
+    const count = fs.readdirSync(output).filter((name) => name.endsWith('.png')).length;
+    fs.writeFileSync(path.join(output, 'README.md'), `# T18 · ${pass}\n\n${count} capturas del frontend productivo en la shell Orbit, incluidos los estados principales, la lista de sesiones a 1208 px y variantes responsive ES/EN/PT/IT. El banco es determinista; no es prueba Wails, LMU ni DuckDB real.\n`);
+    console.log(`recorded Strategy visual evidence: ${output}`);
+  }
 } finally {
   if (browser) await browser.close();
   stopServer();

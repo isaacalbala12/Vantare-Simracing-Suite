@@ -1,12 +1,12 @@
 import { STRATEGY_APPLICATION_PROTOCOL_V1, type StrategyApplicationClient, type StrategyApplicationResultV1 } from "../../strategy/strategy-application-client";
-import type { PlanDraftV1 } from "../../strategy/strategy-contract-v1";
+import { canonicalStrategyTimestamp, type PlanDraftV1 } from "../../strategy/strategy-contract-v1";
 import { RECORDED_DRAFT_VERSION, parseRecordedDraftPayload, type RecordedDraftPayload } from "./strategy-recorded-payload";
 import type { RecordedWizardDraft } from "./strategy-recorded-wizard";
 import { recordedWizardErrors } from "./strategy-recorded-validation";
 
 type Client = StrategyApplicationClient<RecordedDraftPayload>;
 type Clock = { id(): string; now(): string };
-const clock: Clock = { id: () => globalThis.crypto.randomUUID(), now: () => new Date().toISOString() };
+const clock: Clock = { id: () => globalThis.crypto.randomUUID(), now: () => canonicalStrategyTimestamp() };
 export type StoredRecordedDraft = { readonly repositoryVersion: number; readonly document: PlanDraftV1<RecordedDraftPayload> };
 
 function checkedResult(result: StrategyApplicationResultV1<RecordedDraftPayload>, draftId: string, eventId?: string): StoredRecordedDraft {

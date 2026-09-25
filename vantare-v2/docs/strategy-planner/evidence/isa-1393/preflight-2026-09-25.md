@@ -219,7 +219,13 @@ PASS con 99 capturas y 16 combinaciones ES/EN/PT/IT de 320 a 1672 px, sin
 desbordamientos ni errores de página. Evidencia:
 [`pass-v5-14-qa`](../isa-1277-visual/pass-v5-14-qa/README.md). Typecheck,
 lint y build frontend PASS; 3 archivos/39 tests de sesiones y página PASS.
-La apertura directa de Practice como carrera nueva aún muestra un error de
-guardado en este harness; falta aislar si el contrato del repositorio simulado
-es insuficiente antes de atribuirlo al producto. No se probó Wails, LMU ni
-persistencia nativa; E01–E08 siguen pendientes.
+La apertura directa de Practice como carrera nueva reprodujo un fallo real de
+guardado con el reloj fijado en un segundo exacto: `updatedAt` terminaba en
+`.000Z`, mientras que el contrato Strategy exige `Z` sin ceros sobrantes.
+`createRecordedDraft` y `saveRecordedDraft` usan ahora el formateador canónico
+existente. La prueba RED/GREEN cubre ambos comandos en ese instante; el
+recorrido desde «Abrir telemetría» hasta la mesa de carrera pasa en una página
+nueva. La matriz completa vuelve a pasar con 99 capturas:
+[`pass-v5-15-practice`](../isa-1277-visual/pass-v5-15-practice/README.md).
+Esto sigue siendo navegador con mock; no se probó Wails, LMU ni persistencia
+nativa y E01–E08 siguen pendientes.

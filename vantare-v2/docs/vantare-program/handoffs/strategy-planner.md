@@ -9,7 +9,10 @@ ordenó la lista sin alterar backend ni contrato. El test focal pasó (2/2);
 Strategy pasó 667/667, y typecheck, lint, build frontend y Wails DEV pasaron.
 El navegador confirmó «Propuesta aceptada como revisión inmutable». El solver
 y los datos de esa pantalla son simulados, por lo que E01 nativo sigue
-pendiente. Dos intentos de suite frontend global no dieron un resultado válido
+pendiente. El mapa ausente en ese harness responde a `Imola`/`GP`, que no
+coincide con el nombre completo del catálogo ni del fixture LMU; E02 debe
+comprobar el contorno con la identidad nativa. Dos intentos de suite frontend
+global no dieron un resultado válido
 por un `AbortError` de `happy-dom`; no se declara verde. El binario actual sin
 ejecutar mide 44.075.520 bytes, SHA-256
 `f1cb254326b7f639db8ded90f6c3464b7f1025a215d19a19e24041982a2a7c9a`.

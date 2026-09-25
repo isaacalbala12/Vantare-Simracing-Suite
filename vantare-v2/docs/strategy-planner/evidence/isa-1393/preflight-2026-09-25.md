@@ -127,6 +127,15 @@ editor simulado de Imola GP aparece «Mapa no disponible para esta variante»;
 queda por contrastar la geometría real y su identidad en E02. Ninguna captura
 ni cálculo de este apartado procede de Wails o de un DuckDB real.
 
+Contraste estático posterior: el harness nombra el trazado `Imola` / `GP`,
+mientras que el catálogo geométrico sólo certifica
+`Autodromo Enzo e Dino Ferrari` y el fixture saneado de la importación LMU
+utiliza ese nombre completo en `trackName` y `trackLayout`. El selector exige
+coincidencia exacta de ambas identidades; por eso oculta correctamente el
+mapa del harness. La ausencia de mapa **no demuestra** que falte la geometría
+para la sesión LMU real. Falta verificar en E02 la identidad que entregue la
+sesión nativa y el contorno mostrado, sin añadir aliases por intuición.
+
 ## Regresión manual detectada en el navegador simulado
 
 El recorrido manual completo descubrió un bloqueo al pulsar «Aceptar

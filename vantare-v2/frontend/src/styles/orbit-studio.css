@@ -211,12 +211,6 @@
   background: #060708;
 }
 
-.orbit-studio-stage:is(.osv3-bg-theme, [class*="osv3-bg-theme-"]) {
-  background:
-    radial-gradient(85% 75% at 14% 13%, rgba(var(--stage-accent), 0.23), transparent 70%),
-    linear-gradient(140deg, var(--stage-top), var(--stage-base));
-}
-
 .orbit-studio-stage__label {
   position: absolute;
   top: 13px;

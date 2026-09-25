@@ -265,3 +265,33 @@
 :root[data-ui-palette="mono"] .orbit-set-theme-card:not(:has(.orbit-set-theme[data-testid="orbit-settings-theme-mono"])) .orbit-set-theme {
   filter: grayscale(1);
 }
+
+/* Inicio comparte estos colores con el resto de la interfaz. */
+.orbit-home .orbit-next-race {
+  border-color: var(--orbit-line-strong);
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--orbit-carmine) 28%, var(--orbit-surface-1)),
+    color-mix(in srgb, var(--orbit-carmine) 12%, var(--orbit-surface-0))
+  );
+  box-shadow: var(--orbit-shadow-featured), var(--orbit-inset-glass);
+  color: var(--orbit-ink);
+}
+
+.orbit-home .orbit-next-race__eyebrow,
+.orbit-home .orbit-next-race__time {
+  color: var(--orbit-coral);
+}
+
+.orbit-home .orbit-next-race__meta {
+  color: var(--orbit-ink-2);
+}
+
+.orbit-home .orbit-next-race__open {
+  background: var(--orbit-surface-2);
+  color: var(--orbit-ink);
+}
+
+.orbit-home .orbit-next-race__open:hover {
+  background: var(--orbit-surface-3);
+}

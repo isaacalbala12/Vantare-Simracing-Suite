@@ -434,8 +434,7 @@
 .osv3-bg-theme-mono-light    { --stage-accent: 85, 85, 85; --stage-top: #ebebeb; --stage-base: #f5f5f5; }
 .osv3-bg-theme-mono-dark     { --stage-accent: 189, 189, 189; --stage-top: #292929; --stage-base: #111111; }
 
-.osv3-bg-theme,
-[class*="osv3-bg-theme-"] {
+:is(.orbit-studio-stage, .osv3-canvas-scene):is(.osv3-bg-theme, [class*="osv3-bg-theme-"]) {
   background:
     radial-gradient(85% 75% at 14% 13%, rgba(var(--stage-accent), 0.23), transparent 70%),
     linear-gradient(140deg, var(--stage-top), var(--stage-base));

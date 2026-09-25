@@ -18,9 +18,6 @@ export const studioOrbitEn: Record<string, string> = {
   "studio.column.listAria": "Widgets in the profile",
 
   "studio.toolbar.background": "Canvas background",
-  "studio.toolbar.background.grid": "Grid",
-  "studio.toolbar.background.gradient": "Gradient",
-  "studio.toolbar.background.black": "Black",
   "studio.toolbar.background.themeGroup": "Theme",
   "studio.toolbar.background.otherGroup": "Other backgrounds",
   "studio.toolbar.wallpaper": "Own background",

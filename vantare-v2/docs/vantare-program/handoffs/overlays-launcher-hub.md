@@ -21,7 +21,13 @@ conservaron sus colores. Typecheck, build, lint, i18n, pruebas focales y
 presupuesto de frames pasaron. La suite completa tuvo 4.116 correctas,
 dos omitidas y cuatro fallos locales (tres timeouts de geometría bajo carga
 y una expectativa antigua corregida); las cuatro suites pasaron aisladas.
-CI del último candidato pendiente. Sin merge, promoción ni release.
+En `503483ca` el quality ratchet detectó 13 hallazgos jscpd al editar una
+hoja con clones históricos; se movió la corrección de la tarjeta a la hoja
+de paletas y se unificó la regla del escenario. La comprobación local del
+ratchet arroja cero hallazgos nuevos. El gate frontend de Windows señaló
+tres traducciones huérfanas del antiguo selector y se retiraron; la auditoría
+i18n y 26 pruebas focales pasan tras el ajuste. CI del nuevo candidato
+pendiente. Sin merge, promoción ni release.
 
 
 

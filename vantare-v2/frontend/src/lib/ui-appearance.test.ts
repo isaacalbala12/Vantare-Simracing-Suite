@@ -36,6 +36,17 @@ describe("apariencia de la interfaz", () => {
     expect(window.localStorage.getItem("vantare.theme")).toBeNull();
   });
 
+  it.each(["rose", "grove", "ember", "mono"] as const)("recupera la paleta %s con ambas variantes", (palette) => {
+    for (const scheme of ["light", "dark"] as const) {
+      const appearance = { ...getStoredUiAppearance(), palette, scheme };
+      persistUiAppearance(appearance);
+      expect(getStoredUiAppearance()).toEqual(appearance);
+      applyUiAppearance(appearance, document.documentElement);
+      expect(document.documentElement.dataset.uiPalette).toBe(palette);
+      expect(document.documentElement.dataset.uiResolvedScheme).toBe(scheme);
+    }
+  });
+
   it("aplica y persiste contraste, cristal y tipografías sin tocar los widgets", () => {
     const sheet = document.createElement("style");
     sheet.textContent = '.appearance-test { --orbit-ink: #ffffff; --orbit-canvas: #000000; --orbit-ink-2: #808080; --orbit-line: rgba(255,255,255,.2); --orbit-panel-bg: rgba(10,20,30,.8); }';

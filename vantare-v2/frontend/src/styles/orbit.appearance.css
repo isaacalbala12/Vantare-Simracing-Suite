@@ -232,7 +232,16 @@
 
 .orbit-set-appearance .orbit-set-theme i { border-radius: 50%; }
 
-.orbit-set-appearance .orbit-set-themes { flex-wrap: wrap; }
+.orbit-set-appearance .orbit-set-row--palettes {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.orbit-set-appearance .orbit-set-themes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  width: 100%;
+}
 
 .orbit-set-theme-card:has(.orbit-set-theme[aria-pressed="true"]) {
   border-color: var(--orbit-carmine);

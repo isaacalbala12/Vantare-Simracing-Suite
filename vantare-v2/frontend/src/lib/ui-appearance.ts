@@ -1,4 +1,4 @@
-export type UiPalette = "vantare" | "ocean" | "iris";
+export type UiPalette = "vantare" | "rose" | "grove" | "ocean" | "ember" | "iris" | "mono";
 export type UiScheme = "system" | "light" | "dark";
 export type UiInterfaceFont = "inter" | "segoe" | "arial";
 export type UiMonoFont = "cascadia" | "consolas" | "courier";
@@ -107,7 +107,9 @@ export function getStoredUiAppearance(
     const interfaceFont = storage.getItem(INTERFACE_FONT_KEY);
     const monoFont = storage.getItem(MONO_FONT_KEY);
     return {
-      palette: palette === "ocean" || palette === "iris" ? palette : "vantare",
+      palette: palette === "rose" || palette === "grove" || palette === "ocean"
+        || palette === "ember" || palette === "iris" || palette === "mono"
+        ? palette : "vantare",
       scheme: scheme === "light" || scheme === "dark" ? scheme : "system",
       contrast: storedPercent(storage.getItem(CONTRAST_KEY), 100, 80, 120),
       glassOpacity: storedPercent(storage.getItem(GLASS_KEY), 80, 50, 100),

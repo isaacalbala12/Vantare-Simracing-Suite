@@ -200,6 +200,12 @@
   border-color: rgba(var(--orbit-accent-rgb), 0.2);
   background: linear-gradient(135deg, rgba(var(--orbit-accent-rgb), 0.14), rgba(255, 155, 87, 0.04));
 }
+:root[data-ui-palette="mono"] .orbit-note {
+  background: linear-gradient(110deg, rgba(var(--orbit-accent-rgb), 0.06), rgba(var(--orbit-accent-rgb), 0.02));
+}
+:root[data-ui-palette="mono"] .orbit-set-plan {
+  background: linear-gradient(135deg, rgba(var(--orbit-accent-rgb), 0.14), rgba(var(--orbit-accent-rgb), 0.04));
+}
 :root[data-ui-palette] .orbit-set-theme {
   border-color: var(--orbit-line);
 }

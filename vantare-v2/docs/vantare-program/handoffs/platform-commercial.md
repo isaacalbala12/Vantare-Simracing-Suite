@@ -666,6 +666,22 @@ import/export sin secretos; reset no borra datos sin selección.
   Go anterior también pasó en esa ejecución. El PR #1384 continúa draft y sin
   promoción.
 
+- El 2026-09-25 Isaac pidió completar las paletas con Rosa, Bosque y Ámbar y
+  añadir Grises en variante clara y oscura. #1381 y el hito público se
+  ampliaron a siete paletas y catorce variantes; el selector se reparte en
+  filas para conservar su legibilidad a 1280×800. Grises usa tokens neutros
+  también para acentos y estados de la interfaz. Las vistas previas de otros
+  temas siguen mostrando sus colores para permitir elegirlos. En la app Wails
+  de producción se revisaron Grises/Claro, Grises/Oscuro, Rosa/Claro,
+  Bosque/Oscuro y Ámbar/Oscuro. En Overlay Studio con Grises/Oscuro, el chrome
+  es neutro y las vistas previas de widgets conservan sus colores originales.
+  Los tests focales (45), typecheck, build, lint, auditoría i18n y los cuatro
+  presupuestos de frames pasaron. En la suite completa pasaron 4.105 pruebas,
+  dos quedaron omitidas y una prueba visual de Chromium agotó su límite de
+  20 s mientras corrían build y lint; la misma prueba pasó aislada en 8,9 s.
+  La app se compiló usando el `.env.local` autorizado sin exponer sus valores.
+  El PR #1384 sigue draft, sin merge, promoción ni release.
+
 ISA-841 se implementó en la rama aislada
 `vantareapp/isa-841-zoom-global-interfaz` y se rebasó el 2026-08-28 sobre
 `nightly@d9909aef4b9f2de2b3e61ed79a3a0fd98a91b73c`; PR #847 es su única ruta de

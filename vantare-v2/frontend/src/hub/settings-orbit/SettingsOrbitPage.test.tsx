@@ -222,6 +222,17 @@ describe("SettingsOrbitPage", () => {
     expect(screen.getByTestId("orbit-settings-font-preview").textContent).toContain("01:23.456");
   });
 
+  it("ofrece dos variantes de grises y aplica la elección al instante", () => {
+    mount("appearance");
+    fireEvent.click(screen.getByTestId("orbit-settings-theme-mono-light"));
+    expect(document.documentElement.dataset.uiPalette).toBe("mono");
+    expect(document.documentElement.dataset.uiResolvedScheme).toBe("light");
+    fireEvent.click(screen.getByTestId("orbit-settings-theme-mono-dark"));
+    expect(document.documentElement.dataset.uiResolvedScheme).toBe("dark");
+    expect(window.localStorage.getItem("vantare.ui.palette")).toBe("mono");
+    expect(window.localStorage.getItem("vantare.ui.scheme")).toBe("dark");
+  });
+
   it("el control de zoom cambia, persiste y restablece un único porcentaje", () => {
     mount("application");
     const value = screen.getByTestId("orbit-settings-zoom-value");

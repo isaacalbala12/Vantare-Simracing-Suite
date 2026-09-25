@@ -109,8 +109,12 @@ export { SETTINGS_CONTEXT_SLOT_ID };
 
 const PALETTE_SWATCHES: { id: UiPalette; light: string; dark: string }[] = [
   { id: "vantare", light: "#f6e8e8", dark: "#a91d3e" },
+  { id: "rose", light: "#f8dbe9", dark: "#a8316c" },
+  { id: "grove", light: "#dbf0e1", dark: "#26714d" },
   { id: "ocean", light: "#d9eff5", dark: "#246a91" },
+  { id: "ember", light: "#f7e4d4", dark: "#a65b30" },
   { id: "iris", light: "#e8def8", dark: "#6646a8" },
+  { id: "mono", light: "#e9e9e9", dark: "#303030" },
 ];
 const UI_SCHEMES: UiScheme[] = ["system", "light", "dark"];
 const INTERFACE_FONTS: UiInterfaceFont[] = ["inter", "segoe", "arial"];
@@ -503,14 +507,16 @@ function SettingRow({
   hint,
   control,
   testid,
+  className,
 }: {
   title: string;
   hint: ReactNode;
   control: ReactNode;
   testid?: string;
+  className?: string;
 }) {
   return (
-    <div className="orbit-set-row" data-testid={testid}>
+    <div className={`orbit-set-row${className ? ` ${className}` : ""}`} data-testid={testid}>
       <span className="orbit-set-row__copy">
         <b>{title}</b>
         <span>{hint}</span>
@@ -540,6 +546,7 @@ function AppearanceSection() {
       <Surface aria-label={t("settings.nav.appearance")} fill title={t("settings.nav.appearance")}>
         <div className="orbit-set-group">
           <SettingRow
+            className="orbit-set-row--palettes"
             control={
               <div className="orbit-set-themes" data-testid="orbit-settings-themes">
                 {PALETTE_SWATCHES.map((swatch) => (

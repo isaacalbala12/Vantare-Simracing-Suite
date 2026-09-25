@@ -46,9 +46,11 @@ Evidencia de los gaps: [matriz T02](../evidence/isa-1092/README.md),
 `StrategyRecordedWorkflow.tsx` bajo `frontend/src/hub/strategy-orbit/`.
 No repetir T12 ni declarar terminadas las entradas sólo por su posición en el DAG.
 
-**Siguiente corte elegible:** completar ISA-1314 según el orden anterior. T18 se contrasta ahora con v5; T17 y los contratos de stint/parada se conservan. La disponibilidad horaria legacy necesita otra referencia temporal y permanece pendiente.
-En paralelo lógico, preparar inventario T02 restante y preflight documental T22a;
-la ejecución física sigue siendo de un único escritor por worktree.
+**Siguiente corte elegible:** T18 necesita superar >9/10 por pantalla en v5 y
+aceptación humana; T22 necesita E01–E08 nativos con Wails/LMU real. T17 y los
+contratos de stint/parada se conservan. La disponibilidad horaria legacy
+necesita otra referencia temporal y permanece pendiente. La ejecución física
+sigue siendo de un único escritor por worktree.
 
 ## 1. Regla de avance
 

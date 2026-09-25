@@ -1,5 +1,15 @@
 # Handoff vivo — Strategy Planner
 
+## Composición visual incorporada al candidato T22 — ISA-1393 (2026-09-25)
+
+El commit `467d5db9` incorpora localmente el corte visual #1277 sobre el
+candidato T22, sin tocar el backend. La rama #1393 queda limpia y reúne el
+frontend corregido, 97 capturas y la revisión adversarial v5 de 8,1/10.
+El umbral T18 >9/10 y E01–E08 con Wails/LMU real siguen pendientes. El pase
+completo de 4.317 tests frontend pertenece al estado anterior `30d0c46d`;
+después del cambio visual pasaron 50 tests focales, lint y build. Sin push,
+PR, CI, promoción ni release.
+
 ## T18 v5 · matriz visual provisional — ISA-1277 (2026-09-25)
 
 En la rama aislada `vantareapp/isa-1277-strategy-v5-visual-parity`, desde el

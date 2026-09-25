@@ -602,6 +602,15 @@ recorrido nativo con hashes, logs y cuenta de distribución. La build exacta
 `9faef4111ee4b3f9e971bcba3598ef55bf92bdd9adc57cc0c96f479c1b46bf6f`);
 el canal compilado por defecto fue `master`, no una prueba de licencia.
 Sin push, PR, CI, merge, promoción ni release.
+## Fuente larga aún no localizada — ISA-1375 (2026-09-25)
+
+El inventario limitado a prácticas LMU sin WAL consultó 298 DuckDB en modo
+de sólo lectura: como máximo 27 eventos `Lap`; el archivo mayor de Sarthe
+(1.113,8 MiB) tenía un solo evento de valor 0. No se abrió ninguna Race
+reservada de #1030 ni se ejecutó proyección o benchmark nuevo. El tamaño del
+archivo no acredita resistencia; sigue faltando una grabación independiente
+con muchas vueltas y el gate nativo T22. [Detalle](../../strategy-planner/evidence/isa-1375/paged-preparation-2026-09-25.md).
+
 
 ## Espera visible durante la proyección — ISA-1375 (2026-09-25)
 

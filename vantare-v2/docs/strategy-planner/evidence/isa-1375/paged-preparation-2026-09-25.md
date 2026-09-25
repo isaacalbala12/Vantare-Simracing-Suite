@@ -401,3 +401,24 @@ guardado confirmado y no publica un resultado tardío. Otras dos pruebas
 comprueban el aviso y la cancelación en ambas vistas. Pasaron 96 tests focales,
 typecheck, lint, 4.303 tests frontend (2 omitidos) y build. Este test de UI
 no acredita la apariencia ni el tiempo de espera en Wails; sigue en T22.
+
+## Búsqueda acotada de una fuente larga (2026-09-25)
+
+El directorio LMU contiene ahora 417 archivos `.duckdb`. Para buscar una
+fuente independiente sin tocar el holdout de #1030 se inspeccionaron **sólo
+prácticas**: 298 archivos `_P_` sin WAL, abiertos con DuckDB CLI en modo
+`-readonly`. La consulta se limitó a `count(*)` y `max(value)` de `Lap`;
+no leyó datos de pilotos, series continuas ni las cuatro Race reservadas.
+El máximo fue 27 eventos de vuelta en Monza (83,4 MiB); el siguiente, 26
+eventos en Interlagos (49,0 MiB). Un `max(value)` mayor no acredita vueltas
+registradas continuas. Ninguno demuestra la grabación larga multivuelta que
+falta para fijar una cuota de resistencia.
+
+El archivo de práctica más grande (Sarthe, 1.113,8 MiB) se consultó una vez
+en modo de sólo lectura antes de filtrar WAL: tenía un único evento `Lap` de
+valor 0. Su tamaño no representa una carrera larga. No se ejecutó la
+proyección, no se midió memoria ni se certificaron hashes antes/después en
+este inventario; la evidencia previa de paridad y custodia permanece separada.
+Los tres archivos posteriores al inventario de #1030 son prácticas (35,4,
+2,9 y 0 MiB), no una nueva Race completa. #1375 permanece abierta hasta
+disponer de una fuente apta, medirla y ejecutar T22 nativo.

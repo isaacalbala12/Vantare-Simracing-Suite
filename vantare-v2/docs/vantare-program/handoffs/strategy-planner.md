@@ -9,6 +9,11 @@ La tarea usa `main.buildChannel=master`; el binario no se abrió ni acredita
 licencia/canal de distribución. `go mod tidy -diff` y `go test ./...` pasan;
 `go.mod` registra como directa la dependencia websocket ya importada por la
 app. [Preflight actualizado](../../strategy-planner/evidence/isa-1393/preflight-2026-09-25.md).
+La receta aprobada generó además `bin/vantare-localdev.exe` (46.366.208 bytes,
+SHA-256 `9f698206b9ace9bb2be0abbd5e8693980acf0b138f867a9ea6d112ba7b93e3bf`)
+con perfil temporal sin login; las combinaciones de tags localdev y
+production+localdev pasaron. El ejecutable no se lanzó y aún no tiene el
+runtime verificado del lector en este `bin/`.
 E01–E08 siguen pendientes; sin push, PR, CI, promoción ni release.
 
 ## Inventario local de resistencia — ISA-1375 (2026-09-25)

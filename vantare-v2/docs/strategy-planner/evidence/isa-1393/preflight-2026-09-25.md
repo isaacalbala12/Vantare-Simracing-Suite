@@ -13,6 +13,16 @@ de indirecta a directa porque `cmd/vantare/overlay_socket.go` la importa;
 `go mod tidy -diff` quedó vacío y `go test ./...` pasó. Esta verificación
 compila el candidato, pero no ejecuta E01–E08 ni prueba DuckDB en Wails.
 
+La [receta local aprobada](../../../local-development.md) resolvió el
+perfil de acceso: `scripts/build-local-development.ps1` generó aparte
+`bin/vantare-localdev.exe` de 46.366.208 bytes, SHA-256
+`9f698206b9ace9bb2be0abbd5e8693980acf0b138f867a9ea6d112ba7b93e3bf`.
+Los tests de `cmd/vantare` con `vantare_localdev` y con
+`production,vantare_localdev` pasaron: el perfil local es explícito y
+`production` lo desactiva. Este ejecutable **tampoco se lanzó**. Aún falta
+preparar el runtime verificado del lector junto a `bin/` antes de E02; no se
+copiaron credenciales ni se tocaron sesiones comerciales.
+
 Después del preflight inicial sí se hizo un inventario **sólo de conteos
 `Lap`** en 369 DuckDB LMU estables con la CLI `-readonly`, descrito en
 [la evidencia #1375](../isa-1375/paged-preparation-2026-09-25.md). No fue

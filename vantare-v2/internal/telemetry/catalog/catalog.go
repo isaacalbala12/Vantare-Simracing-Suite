@@ -108,6 +108,7 @@ var definitions = []Definition{
 	{ID: SignalDamageWheelDetachedCount, Key: "damage.wheel_detached_count", Domain: schema.DomainVehicle, Unit: schema.UnitCount, Range: schema.ClosedRange(0, 4), Action: LedgerAppended, Notes: "Count of detached wheels (0..4) from LMU wheel mDetached."},
 	{ID: SignalStandingsLapProgressTime, Key: "standings.lap_progress_time", Domain: schema.DomainStandings, Unit: schema.UnitSeconds, Range: schema.UnknownRange(), Action: LedgerAppended, Notes: "Simulator-observed temporal coordinate of a vehicle within the current circuit lap; signed finite source values preserve explicit quality."},
 	{ID: SignalStandingsCarNumber, Key: "standings.car_number", Domain: schema.DomainStandings, Unit: schema.UnitText, Range: schema.UnsupportedRange(), Action: LedgerAppended, Notes: "Source-supplied car number as a string (\"007\" preserved); REST-joined per-row display identity, never inferred from driver or vehicle names."},
+	{ID: SignalTyreWear, Key: "tyres.wear", Domain: schema.DomainWheels, Unit: schema.UnitRatio, Range: schema.ClosedRange(0, 1), Action: LedgerAppended, Notes: "Four observed LMU mWear fractions ordered FL/FR/RL/RR, scoped to the player; 1 means unworn and 0 fully worn. Not wheel detachment."},
 }
 
 // Tombstones is intentionally empty until the first canonical ID is retired.

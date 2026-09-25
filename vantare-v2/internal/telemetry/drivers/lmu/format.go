@@ -155,6 +155,7 @@ type VehicleObservation struct {
 	LocalVelocity    schema.Field[spatial.LocalVelocity]
 	Orientation      schema.Field[spatial.Orientation]
 	Damage           schema.Field[damage.State]
+	TyreWear         schema.Field[[4]float64]
 }
 
 func Parse(buf []byte, received time.Time) (Observation, error) {
@@ -465,6 +466,27 @@ func parsePlayerTelemetry(buf []byte, base int, row *VehicleObservation) {
 		row.DeltaBest = schema.MissingField[session.DeltaSeconds]()
 	}
 	row.Damage = readDamageField(buf, base)
+	row.TyreWear = readTyreWearField(buf, base)
+}
+
+// LMU mWear is the remaining fraction of each tyre, ordered FL/FR/RL/RR.
+// Reject the whole set when any wheel has no plausible measurement.
+func readTyreWearField(buf []byte, base int) schema.Field[[4]float64] {
+	fields := [4]layoutField{
+		lmu13Layout.Telemetry.TyreWearFL,
+		lmu13Layout.Telemetry.TyreWearFR,
+		lmu13Layout.Telemetry.TyreWearRL,
+		lmu13Layout.Telemetry.TyreWearRR,
+	}
+	var wear [4]float64
+	for index, field := range fields {
+		value := readFloat64(buf, base+field.Offset)
+		if !finite(value) || value < 0 || value > 1 {
+			return invalid[[4]float64]()
+		}
+		wear[index] = value
+	}
+	return observed(wear)
 }
 
 func readPositionField(buf []byte, offset int) schema.Field[spatial.Position] {

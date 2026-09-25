@@ -9,6 +9,20 @@ Este documento cierra qué señales pueden entrar en los microcortes D1–D7 de
 ISA-129. No habilita compatibilidad nueva, no conecta el runtime modular a
 producción y no convierte campos legacy en autoridad canónica.
 
+Nota posterior ISA-1385 (2026-09-25): el SDK instalado de LMU declara
+`TelemWheelV01.mWear` como fracción 0..1 para las cuatro ruedas. Con el
+empaquetado de 4 bytes del SDK, `offsetof` confirmó `TelemInfoV01.mWheel=848`, stride de rueda
+260 y `mWear=152`: offsets de fila LMU_Data `+1000/+1260/+1520/+1780`, orden
+FL/FR/RL/RR. El lector valida las cuatro fracciones y las transporta con
+frescura independiente hasta `frame.damage.tyreWear`; Car Damage Numbers
+presenta `1-mWear` de la rueda más gastada. Los fixtures sanitizados previos
+no conservan esta señal; sus bytes cero no constituyen una medición de desgaste.
+La prueba de parser escribe valores acotados sobre una fila de captura real
+pinneada, y la prueba física con LMU activo sigue pendiente. Esta admisión
+posterior sustituye únicamente la antigua afirmación de que LMU no exponía
+desgaste por rueda; no certifica los placeholders de Engineer ni promueve
+Tyre Wear a Strategy v1.
+
 ## Contexto exacto
 
 - Base: ISA-105 / TC-07A,

@@ -381,6 +381,7 @@ func ageVehicleGrid(elapsed time.Duration, updated monotonicStamp, sourceTime sc
 		row.LocalVelocity = ageGridField(elapsed, updated, forceStale, row.LocalVelocity)
 		row.Orientation = ageGridField(elapsed, updated, forceStale, row.Orientation)
 		row.Damage = ageGridField(elapsed, updated, forceStale, row.Damage)
+		row.TyreWear = ageGridField(elapsed, updated, forceStale, row.TyreWear)
 		result[index] = row
 	}
 	return result

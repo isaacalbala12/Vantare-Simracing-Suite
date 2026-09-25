@@ -835,6 +835,41 @@ func parseSupported(buf []byte, received time.Time) (Observation, error) {
 	return parseWithBuild(buf, received, BuildEvidence{FileVersion: supportedLMUVersion})
 }
 
+func TestParsePlayerTyreWearFromLMUWheelFields(t *testing.T) {
+	buf := knownBuffer(t)
+	base, ok := lmu13Layout.TelemetryRows.rowBase(43)
+	if !ok {
+		t.Fatal("player telemetry row unavailable")
+	}
+	want := [4]float64{0.98, 0.91, 0.87, 0.93}
+	for index, offset := range []int{1000, 1260, 1520, 1780} {
+		binary.LittleEndian.PutUint64(buf[base+offset:], math.Float64bits(want[index]))
+	}
+	got, err := parseSupported(buf, time.Unix(0, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+	value, present := got.Vehicles[43].TyreWear.Value()
+	if !present || value != want {
+		t.Fatalf("player tyre wear = %v, present %v; want %v", value, present, want)
+	}
+	for _, other := range got.Vehicles[:43] {
+		if other.TyreWear.Freshness() != schema.FreshnessMissing {
+			t.Fatal("tyre wear published for another vehicle")
+		}
+	}
+	for _, invalidWear := range []float64{-0.1, 1.1, math.NaN()} {
+		binary.LittleEndian.PutUint64(buf[base+lmu13Layout.Telemetry.TyreWearRL.Offset:], math.Float64bits(invalidWear))
+		if field := readTyreWearField(buf, base); field.Freshness() != schema.FreshnessInvalid {
+			t.Fatalf("out-of-range tyre wear %v was not rejected", invalidWear)
+		}
+	}
+	binary.LittleEndian.PutUint64(buf[base+lmu13Layout.Telemetry.TyreWearRL.Offset:], math.Float64bits(0))
+	if field := readTyreWearField(buf, base); field.Freshness() != schema.FreshnessFresh {
+		t.Fatal("observed zero tyre fraction was lost")
+	}
+}
+
 func plausibleUnknownBuffer() []byte {
 	buf := make([]byte, ObjectOutSize)
 	binary.LittleEndian.PutUint32(buf[1736:], 1)

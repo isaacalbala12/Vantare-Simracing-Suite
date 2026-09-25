@@ -12,8 +12,10 @@ app. [Preflight actualizado](../../strategy-planner/evidence/isa-1393/preflight-
 La receta aprobada generó además `bin/vantare-localdev.exe` (46.366.208 bytes,
 SHA-256 `9f698206b9ace9bb2be0abbd5e8693980acf0b138f867a9ea6d112ba7b93e3bf`)
 con perfil temporal sin login; las combinaciones de tags localdev y
-production+localdev pasaron. El ejecutable no se lanzó y aún no tiene el
-runtime verificado del lector en este `bin/`.
+production+localdev pasaron. El preparador canónico instaló el runtime
+publicado del lector en este `bin/`; manifiesto de cinco miembros y smoke
+PASS, SHA-256 `700201f90266ae6b829372d9989408c6b0efd86725a50980d46fc05adfc24869`.
+El ejecutable no se lanzó.
 E01–E08 siguen pendientes; sin push, PR, CI, promoción ni release.
 
 ## Inventario local de resistencia — ISA-1375 (2026-09-25)

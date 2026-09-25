@@ -19,9 +19,13 @@ perfil de acceso: `scripts/build-local-development.ps1` generó aparte
 `9f698206b9ace9bb2be0abbd5e8693980acf0b138f867a9ea6d112ba7b93e3bf`.
 Los tests de `cmd/vantare` con `vantare_localdev` y con
 `production,vantare_localdev` pasaron: el perfil local es explícito y
-`production` lo desactiva. Este ejecutable **tampoco se lanzó**. Aún falta
-preparar el runtime verificado del lector junto a `bin/` antes de E02; no se
-copiaron credenciales ni se tocaron sesiones comerciales.
+`production` lo desactiva. Este ejecutable **tampoco se lanzó**. El preparador
+canónico con `-UsePublishedRuntime` instaló el lector aprobado en
+`bin/runtime/telemetry/duckdb-v1`: verificación de cinco miembros y smoke
+PASS; DuckDB v1.5.5, manifiesto SHA-256
+`700201f90266ae6b829372d9989408c6b0efd86725a50980d46fc05adfc24869`.
+Esto deja la carpeta lista para intentar E02, pero todavía no prueba una
+apertura nativa. No se copiaron credenciales ni se tocaron sesiones comerciales.
 
 Después del preflight inicial sí se hizo un inventario **sólo de conteos
 `Lap`** en 369 DuckDB LMU estables con la CLI `-readonly`, descrito en

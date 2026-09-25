@@ -58,7 +58,9 @@ describe("Orbit Select · desplegable propio", () => {
   it("eleva la lista al abrirla desde un cajón", () => {
     render(<div className="orbit-drawer-layer"><Host /></div>);
     fireEvent.click(trigger());
-    expect(screen.getByRole("listbox", { name: "Sistema" }).className).toContain("orbit-select__list--drawer");
+    expect((screen.getByRole("listbox", { name: "Sistema" }) as HTMLElement).style.zIndex).toBe(
+      "calc(var(--orbit-z-drawer) + 1)",
+    );
   });
 
   it("selecciona con clic y cierra", () => {

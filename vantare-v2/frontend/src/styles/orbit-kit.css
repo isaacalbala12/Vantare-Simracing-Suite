@@ -589,10 +589,6 @@ button.orbit-select[data-open="true"] {
   overscroll-behavior: contain;
 }
 
-.orbit-select__list--drawer {
-  z-index: calc(var(--orbit-z-drawer) + 1);
-}
-
 .orbit-select__group {
   padding: 8px 10px 4px;
   color: var(--orbit-ink-4);

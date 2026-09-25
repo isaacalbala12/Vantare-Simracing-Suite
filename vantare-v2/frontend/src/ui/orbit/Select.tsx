@@ -304,7 +304,7 @@ export function Select<T extends string>({
     open && place ? (
       <div
         aria-label={label}
-        className={cx("orbit-select__list", inDrawer && "orbit-select__list--drawer")}
+        className="orbit-select__list"
         data-testid={`orbit-select-list-${id ?? reactId}`}
         data-up={place.up ? "true" : undefined}
         id={listId}
@@ -315,6 +315,7 @@ export function Select<T extends string>({
           top: place.top,
           minWidth: place.width,
           maxHeight: place.maxHeight,
+          zIndex: inDrawer ? "calc(var(--orbit-z-drawer) + 1)" : undefined,
         }}
       >
         {options.map((option, index) => {

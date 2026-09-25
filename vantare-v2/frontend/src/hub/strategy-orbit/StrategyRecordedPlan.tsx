@@ -159,6 +159,12 @@ export function StrategyRecordedPlan({ draft, state, acceptance, sourceLabels = 
         <div><dt>{t(manual ? "strategy.workspace.manualReferences" : "strategy.workspace.sources")}</dt><dd>{manual ? t("strategy.workspace.manualEstimate") : formatMessage(t(draft.sessions.length === 1 ? "strategy.workspace.selectedSource" : "strategy.workspace.selectedSources"), { count: draft.sessions.length })}</dd></div>
         <div><dt>{t("strategy.journey.drivers.title")}</dt><dd>{formatMessage(t(draft.drivers.length === 1 ? "strategy.workspace.driverCountOne" : "strategy.workspace.driverCount"), { count: draft.drivers.length })}<small>{draft.drivers.map(driver => driver.name).filter(Boolean).join(" · ") || "—"}</small></dd></div>
       </dl>
+      <div className="strategy-recorded-plan__course" aria-label={t("strategy.workspace.raceDistance")}>
+        <div className="strategy-recorded-plan__course-head"><span>{t("strategy.workspace.raceDistance")}</span><strong>{raceValue}</strong></div>
+        <div className="strategy-recorded-plan__course-line" aria-hidden="true"><i /><i /></div>
+        <div className="strategy-recorded-plan__course-ends"><span>{t("strategy.workspace.start")}</span><span>{t("strategy.workspace.finish")}</span></div>
+        <p>{t("strategy.workspace.coursePending")}</p>
+      </div>
       <CalculationStages state="idle" manual={manual} t={t} />
     </section> : null}
     {running ? <div className="strategy-recorded-plan__state"><section className="strategy-recorded-plan__progress" role="status"><span aria-hidden="true" /><div><strong>{t(title)}</strong><p>{t(state.status === "preparing" ? "strategy.calculation.preparingHint" : "strategy.calculation.loadingHint")}</p></div><dl><div><dt>{t("strategy.workspace.event")}</dt><dd>{raceValue}</dd></div><div><dt>{t(manual ? "strategy.workspace.manualReferences" : "strategy.workspace.sources")}</dt><dd>{manual ? t("strategy.workspace.manualEstimate") : draft.sessions.length}</dd></div><div><dt>{t("strategy.journey.drivers.title")}</dt><dd>{draft.drivers.length}</dd></div></dl></section><CalculationStages state="running" manual={manual} t={t} /></div> : null}

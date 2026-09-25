@@ -1,5 +1,23 @@
 # ISA-1277 · revisión visual adversarial
 
+## Iteración v5 · Plan sin calcular (2026-09-25)
+
+`pass-v5-16-plan` conserva 99 capturas. El Plan pendiente ya ocupa la mesa con
+la distancia conocida de la carrera, una línea neutra entre salida y meta y
+un aviso explícito de que todavía no existe una propuesta calculada. No dibuja
+stints, paradas ni progreso inventados. Se revisaron las capturas de escritorio
+ES, 1024 px PT y 320 px IT; la matriz de 16 combinaciones no registra errores
+de página ni desbordamientos y mantiene el foco visible. La auditoría de
+traducciones, el test de Plan, typecheck, lint y build pasan. La primera
+recaptura se interrumpió mientras corrían checks de compilación en paralelo;
+la repetición aislada terminó PASS.
+La suite completa secuencial terminó PASS: 493 archivos, 4317 tests superados
+y 2 omitidos.
+
+Esta iteración elimina el gran vacío exterior del Plan pendiente, pero no tiene
+una nueva puntuación adversarial independiente. La nota mínima vigente sigue
+siendo 8,0/10 y **T18 permanece sin aceptar**.
+
 ## Corte v5 · 2026-09-25 · aceptación pendiente
 
 `pass-v5-13` recoge 99 capturas del frontend productivo en el harness,

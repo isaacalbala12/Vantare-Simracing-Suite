@@ -1,5 +1,15 @@
 # Handoff vivo — Strategy Planner
 
+## T18 v5 · Plan pendiente incorporado al candidato T22 (2026-09-26)
+
+El pase `pass-v5-16-plan` añade al Plan sin calcular la distancia real del
+borrador y una línea neutra entre salida y meta, sin inventar stints, paradas
+ni progreso. Son 99 capturas y 16 variantes ES/EN/PT/IT sin overflow ni
+errores, con foco visible. Test de Plan, auditoría i18n, typecheck, lint,
+build y suite frontend secuencial (493 archivos, 4317 tests PASS, 2 omitidos)
+pasaron en la rama visual #1277. Sigue pendiente una valoración adversarial
+independiente >9/10 y E01–E08 de T22 con Wails/DuckDB real.
+
 ## Aceptación con reloj canónico — ISA-1393 (2026-09-25)
 
 El reloj por defecto de `saveOrbitRevision` y activación también podía emitir

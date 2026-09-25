@@ -1,5 +1,17 @@
 # Handoff vivo — Strategy Planner
 
+## Guardado paginado de correcciones — ISA-1375 (2026-09-25)
+
+El guardado usa el resumen del original revalidado, lee sólo las filas
+solicitadas y deriva validez efectiva por páginas para correcciones mixtas.
+Una regresión compara snapshots escalares y mixtos con el oráculo materializado;
+el banco real Algarve→Monza pasó en 269,64 s con cálculo, historial y hashes
+originales intactos. [Evidencia y límites](../../strategy-planner/evidence/isa-1375/paged-preparation-2026-09-25.md).
+La variación de tiempo entre bancos individuales no acredita una mejora de
+rendimiento. Proyección sigue materializando; faltan fuente larga multivuelta,
+presupuesto medido de memoria y Wails T22. #1375 permanece abierta, rama local
+sin push, PR, CI, merge, promoción ni release.
+
 ## Inspección paginada de vueltas — ISA-1375 (2026-09-25)
 
 `InspectCorrectionLaps` ya no recibe todas las páginas de `CorrectionInput`:

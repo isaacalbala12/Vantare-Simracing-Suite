@@ -5,9 +5,10 @@ Estado: **implementación parcial; no aceptada como soporte de resistencia**. IS
 La preparación productiva ya usa un resumen por visitas paginadas, con paridad
 completa en el banco real disponible. [Tres mediciones por versión](../strategy-planner/evidence/isa-1375/paged-preparation-2026-09-25.md)
 no muestran un pico menor y sí más tiempo por relectura. La cuota de muestras
-no se elevó. Guardado y proyección aún materializan toda la fuente;
-esta decisión sigue abierta hasta medir una fuente más larga y cerrar esas
-operaciones sin cambiar identidad ni correcciones.
+no se elevó. Preparación, inspección de vueltas y guardado ya usan el resumen
+paginado; la proyección aún materializa toda la fuente. Esta decisión sigue
+abierta hasta medir una fuente más larga y cerrar la proyección sin cambiar
+identidad ni correcciones.
 
 Las consultas de historial de correcciones sólo necesitan la identidad base.
 Dentro de una sesión abierta pueden reutilizar esa identidad tras una lectura
@@ -17,8 +18,9 @@ cada evidencia, por lo que `Inspect` comprueba los bytes y el catálogo antes
 de entregar la identidad guardada. El caché es exclusivamente de la sesión
 abierta, se pierde al cerrarla y nunca evita autorización, cancelación ni
 rechazo de una fuente cambiada. En ausencia de identidad guardada se produce
-una vez con el resumen paginado. Guardar correcciones y proyectar siguen
-leyendo las observaciones que necesitan.
+una vez con el resumen paginado. Guardar lee únicamente las filas originales
+nombradas por la petición y, si mezcla escalares con familia o stint, deriva
+la validez efectiva en otra visita paginada. Proyectar sigue materializando.
 
 Para llevar la misma identidad exacta al resto del editor, el siguiente corte
 obtendrá únicamente las filas nombradas por un snapshot (máximo 256
@@ -43,7 +45,12 @@ desprende sus listas editables para no exponer el caché mutable.
 
 ## Contexto
 
-La preparación actual guarda todas las páginas necesarias, construye un mapa GPS global y materializa de nuevo páginas/series para inspeccionar y proyectar cada revisión. La sesión real S266 Algarve cabe bajo el límite medido de #1210, pero esa cuota y un pico de aproximadamente 765–855 MiB no demuestran soporte para carreras mucho más largas. [Perfil y mapa de dependencias](../strategy-planner/evidence/isa-1375/allocation-dependencies-2026-09-24.md).
+Al abrir este ADR, la preparación guardaba todas las páginas necesarias,
+construía un mapa GPS global y materializaba de nuevo páginas/series para
+inspeccionar y proyectar cada revisión. La sesión real S266 Algarve cabía bajo
+el límite medido de #1210, pero esa cuota y un pico de aproximadamente
+765–855 MiB no demostraban soporte para carreras mucho más largas.
+[Perfil y mapa de dependencias](../strategy-planner/evidence/isa-1375/allocation-dependencies-2026-09-24.md).
 
 ## Decisión propuesta
 

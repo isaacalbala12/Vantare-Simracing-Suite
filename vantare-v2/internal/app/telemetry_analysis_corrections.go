@@ -148,6 +148,15 @@ func (service *TelemetryAnalysisService) correctionReadLimits() telemetryanalysi
 	return telemetryanalysis.CorrectionReadLimits{PageRows: service.cfg.MaxPageRows, MaxSamples: 1_250_000, MaxValues: 1_500_000, MaxTextBytes: 16 << 20}
 }
 
+// Source/read failures follow the session retirement policy. Invalid stored
+// decisions remain business errors and must not retire an otherwise valid file.
+func correctionSourceReadFailure(err error) bool {
+	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) ||
+		errors.Is(err, telemetryanalysis.ErrCorrectionReadLimit) || errors.Is(err, telemetryanalysis.ErrInvalidLapValidityInput) ||
+		errors.Is(err, telemetryanalysis.ErrInvalidCorrectionSource) || errors.Is(err, telemetryanalysis.ErrInvalidHistoricalPage) ||
+		errors.Is(err, telemetryanalysis.ErrHistoricalSource) || errors.Is(err, telemetryanalysis.ErrHistoricalArtifactChanged)
+}
+
 // PrepareCorrections exposes a stable base, never the temporary open handle as
 // source identity. It does not save an edit or change the observed catalog.
 func (service *TelemetryAnalysisService) PrepareCorrections(ctx context.Context, sessionID string) (TelemetryAnalysisCorrectionPreparation, error) {

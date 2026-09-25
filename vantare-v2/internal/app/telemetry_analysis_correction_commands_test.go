@@ -71,6 +71,31 @@ func TestCorrectionCommandsReauthorizeReplayAndPinProjection(t *testing.T) {
 	replacement := value.Scalar
 	replacement.Integer = 3
 	request := TelemetryAnalysisCorrectionSaveRequest{SessionID: opened.SessionID, Base: prepared.Base, Command: telemetryanalysis.CorrectionSaveCommand{ExpectedRevision: prepared.BaseRevisionID, CommandID: "save-1", Reason: "test", LocalAuthorID: "local"}, Corrections: []telemetryanalysis.SampleValueCorrection{{Base: prepared.Base, Target: telemetryanalysis.SampleCorrectionTarget{ChannelID: channel.ID, Column: value.Column, SampleIndex: 1}, Unit: channel.Unit, Expected: value, Replacement: replacement, Reason: "test"}}}
+	if err := svc.withCorrectionInput(ctx, opened.SessionID, func(_ context.Context, input telemetryanalysis.CorrectionInput) error {
+		materialized, err := correctionInputsForRequests(input, request.Corrections)
+		if err != nil {
+			return err
+		}
+		owned := svc.sessions[opened.SessionID]
+		paged, err := correctionInputsForRequestsPaged(ctx, owned.parser, input.Session, request.Corrections)
+		if err != nil {
+			return err
+		}
+		want, err := telemetryanalysis.PrepareSampleCorrectionSnapshot(input.Base, materialized)
+		if err != nil {
+			return err
+		}
+		got, err := telemetryanalysis.PrepareSampleCorrectionSnapshot(input.Base, paged)
+		if err != nil {
+			return err
+		}
+		if !reflect.DeepEqual(got, want) {
+			return errors.New("targeted save changed the scalar snapshot")
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
 	saved, err := svc.SaveCorrections(ctx, request)
 	if err != nil {
 		t.Fatal(err)

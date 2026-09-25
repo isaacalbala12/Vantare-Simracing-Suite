@@ -3,8 +3,10 @@ package app
 import (
 	"context"
 	"errors"
-	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
+	"reflect"
 	"testing"
+
+	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
 )
 
 func TestCorrectionLapInspectionReauthorizesAndPinsExactRevision(t *testing.T) {
@@ -42,8 +44,62 @@ func TestCorrectionLapInspectionReauthorizesAndPinsExactRevision(t *testing.T) {
 	if family.Family == "" {
 		t.Fatal("fixture lacks editable lap")
 	}
-	saved, err := svc.SaveCorrections(ctx, TelemetryAnalysisCorrectionSaveRequest{SessionID: handle, Base: prepared.Base, FamilyUses: []telemetryanalysis.LapFamilyUseCorrection{family}, Command: telemetryanalysis.CorrectionSaveCommand{ExpectedRevision: original.HeadID, CommandID: "inspection-family", Reason: "test", LocalAuthorID: "test"}})
+	var scalar telemetryanalysis.SampleValueCorrection
+	for _, channel := range opened[0].Session.Channels {
+		if channel.SourceName != "Lap Time" {
+			continue
+		}
+		page, readErr := svc.ReadPage(ctx, TelemetryAnalysisPageRequest{SessionID: handle, ChannelID: channel.ID, Start: 1, Limit: 1})
+		if readErr != nil {
+			t.Fatal(readErr)
+		}
+		value := page.Samples[0].Values[0]
+		replacement := value.Scalar
+		replacement.Number++
+		scalar = telemetryanalysis.SampleValueCorrection{Base: prepared.Base, Target: telemetryanalysis.SampleCorrectionTarget{
+			ChannelID: channel.ID, Column: value.Column, SampleIndex: page.Samples[0].Index,
+		}, Unit: channel.Unit, Expected: value, Replacement: replacement, Reason: "controlled pace correction"}
+		break
+	}
+	if scalar.Target.ChannelID == "" {
+		t.Fatal("fixture lacks Lap Time correction target")
+	}
+	saveRequest := TelemetryAnalysisCorrectionSaveRequest{
+		SessionID: handle, Base: prepared.Base, Corrections: []telemetryanalysis.SampleValueCorrection{scalar},
+		FamilyUses: []telemetryanalysis.LapFamilyUseCorrection{family}, Classifications: []telemetryanalysis.ClassificationCorrection{},
+		StintBoundaries: []telemetryanalysis.StintBoundaryCorrection{},
+		Command:         telemetryanalysis.CorrectionSaveCommand{ExpectedRevision: original.HeadID, CommandID: "inspection-family", Reason: "test", LocalAuthorID: "test"},
+	}
+	var materializedSnapshot telemetryanalysis.PreparedSampleCorrectionSnapshot
+	if err := svc.withCorrectionInput(ctx, handle, func(_ context.Context, input telemetryanalysis.CorrectionInput) error {
+		inputs, resolveErr := correctionInputsForRequests(input, saveRequest.Corrections)
+		if resolveErr != nil {
+			return resolveErr
+		}
+		observations, prepareErr := observationInputForRequests(input, inputs, saveRequest.FamilyUses, saveRequest.StintBoundaries)
+		if prepareErr != nil {
+			return prepareErr
+		}
+		observations.Session = input.Session
+		observations.Classifications = saveRequest.Classifications
+		oracle := telemetryanalysis.NewCorrectionStore(t.TempDir())
+		want, saveErr := oracle.SaveObservations(ctx, input.Base, observations, saveRequest.Command)
+		if saveErr != nil {
+			return saveErr
+		}
+		materializedSnapshot = want.Revision.Snapshot
+		return nil
+	}); err != nil {
+		t.Fatal("materialized mixed save oracle", err)
+	}
+	saved, err := svc.SaveRecoverableCorrections(ctx, saveRequest)
 	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(saved.Revision.Snapshot, materializedSnapshot) {
+		t.Fatal("paged mixed save changed the exact snapshot")
+	}
+	if err := svc.AcknowledgeCorrectionCommand(ctx, TelemetryAnalysisCorrectionPendingRequest{SessionID: handle, Base: prepared.Base, CommandID: saveRequest.Command.CommandID}); err != nil {
 		t.Fatal(err)
 	}
 	old, err := svc.InspectCorrectionLaps(ctx, request)

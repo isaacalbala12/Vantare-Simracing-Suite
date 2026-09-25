@@ -37,7 +37,6 @@ type TelemetryAnalysisCorrectionRevisionRequest struct {
 	Base       telemetryanalysis.SourceAnalysisRef `json:"base"`
 	RevisionID string                              `json:"revisionId"`
 }
-
 type TelemetryAnalysisCorrectionPendingRequest struct {
 	SessionID string                              `json:"sessionId"`
 	Base      telemetryanalysis.SourceAnalysisRef `json:"base"`
@@ -66,45 +65,87 @@ func (service *TelemetryAnalysisService) saveCorrections(ctx context.Context, re
 	if (request.Classifications != nil || request.StintBoundaries != nil) && request.FamilyUses == nil {
 		return result, ErrTelemetryAnalysisInvalidRequest
 	}
-	err := service.withCorrectionInput(ctx, request.SessionID, func(operationCtx context.Context, input telemetryanalysis.CorrectionInput) error {
-		if request.Base != input.Base {
-			return ErrTelemetryAnalysisCorrectionSourceChanged
-		}
-		if service.corrections == nil {
-			return ErrTelemetryAnalysisCorrectionStorage
-		}
-		inputs, err := correctionInputsForRequests(input, request.Corrections)
-		if err != nil {
-			return publicCorrectionError(err)
-		}
-		if request.FamilyUses == nil {
-			result, err = service.corrections.Save(operationCtx, input.Base, inputs, request.Command)
-		} else {
-			observations, prepareErr := observationInputForRequests(input, inputs, request.FamilyUses, request.StintBoundaries)
-			if prepareErr != nil {
-				return publicCorrectionError(prepareErr)
+	type preparedSave struct {
+		summary   telemetryanalysis.CorrectionSummary
+		inputs    []telemetryanalysis.SampleCorrectionInput
+		effective telemetryanalysis.LapValidityAnalysis
+		business  error
+	}
+	err := withCorrectionRead(service, ctx, request.SessionID,
+		func(operationCtx context.Context, owned *telemetryAnalysisSession, limits telemetryanalysis.CorrectionReadLimits) (preparedSave, error) {
+			var state preparedSave
+			summary, err := readCorrectionSummary(operationCtx, owned, limits)
+			if err != nil {
+				return state, err
 			}
-			observations.Session = input.Session
-			observations.Classifications = request.Classifications
-			observations.ResolveCanonicalCombination = service.cfg.SessionCatalog.ResolveCanonicalCombination
-			if recoverable {
-				_, err = service.corrections.StagePendingCommand(operationCtx, input.Base, telemetryanalysis.PendingCorrectionCommand{
-					Corrections: request.Corrections, FamilyUses: request.FamilyUses, Classifications: request.Classifications,
-					StintBoundaries: request.StintBoundaries, Command: request.Command,
-				})
+			state.summary = summary
+			if request.Base != summary.Base {
+				state.business = ErrTelemetryAnalysisCorrectionSourceChanged
+				return state, nil
+			}
+			if service.corrections == nil {
+				state.business = ErrTelemetryAnalysisCorrectionStorage
+				return state, nil
+			}
+			state.inputs, err = correctionInputsForRequestsPaged(operationCtx, owned.parser, summary.Session, request.Corrections)
+			if err != nil {
+				if correctionSourceReadFailure(err) {
+					return state, err
+				}
+				state.business = publicCorrectionError(err)
+				return state, nil
+			}
+			state.effective = summary.Validity
+			if len(state.inputs) > 0 && (len(request.FamilyUses) > 0 || len(request.StintBoundaries) > 0) {
+				scalar, prepareErr := telemetryanalysis.PrepareSampleCorrectionSnapshot(summary.Base, state.inputs)
+				if prepareErr != nil {
+					state.business = publicCorrectionError(prepareErr)
+					return state, nil
+				}
+				state.effective, err = telemetryanalysis.ReadCorrectedLapValidity(operationCtx, owned.parser, owned.artifact, limits, summary, scalar)
 				if err != nil {
-					return publicCorrectionError(err)
+					if correctionSourceReadFailure(err) {
+						return state, err
+					}
+					state.business = publicCorrectionError(err)
+					return state, nil
 				}
 			}
-			result, err = service.corrections.SaveObservations(operationCtx, input.Base, observations, request.Command)
-		}
-		if recoverable && err != nil && !correctionOutcomeUncertain(err) {
-			if acknowledgeErr := service.corrections.AcknowledgePendingCommand(operationCtx, input.Base, request.Command.CommandID); acknowledgeErr != nil {
-				return publicCorrectionError(acknowledgeErr)
+			return state, nil
+		},
+		func(operationCtx context.Context, state preparedSave) error {
+			if state.business != nil {
+				return state.business
 			}
-		}
-		return publicCorrectionError(err)
-	})
+			var err error
+			base := state.summary.Base
+			if request.FamilyUses == nil {
+				result, err = service.corrections.Save(operationCtx, base, state.inputs, request.Command)
+			} else {
+				observations := telemetryanalysis.ObservationCorrectionInput{
+					Samples: state.inputs, Original: state.summary.Validity, Effective: state.effective,
+					FamilyUses: request.FamilyUses, StintBoundaries: request.StintBoundaries,
+					Session: state.summary.Session, Classifications: request.Classifications,
+					ResolveCanonicalCombination: service.cfg.SessionCatalog.ResolveCanonicalCombination,
+				}
+				if recoverable {
+					_, err = service.corrections.StagePendingCommand(operationCtx, base, telemetryanalysis.PendingCorrectionCommand{
+						Corrections: request.Corrections, FamilyUses: request.FamilyUses, Classifications: request.Classifications,
+						StintBoundaries: request.StintBoundaries, Command: request.Command,
+					})
+					if err != nil {
+						return publicCorrectionError(err)
+					}
+				}
+				result, err = service.corrections.SaveObservations(operationCtx, base, observations, request.Command)
+			}
+			if recoverable && err != nil && !correctionOutcomeUncertain(err) {
+				if acknowledgeErr := service.corrections.AcknowledgePendingCommand(operationCtx, base, request.Command.CommandID); acknowledgeErr != nil {
+					return publicCorrectionError(acknowledgeErr)
+				}
+			}
+			return publicCorrectionError(err)
+		})
 	if err != nil {
 		return telemetryanalysis.CorrectionStoreResult{}, err
 	}
@@ -247,46 +288,35 @@ func (service *TelemetryAnalysisService) deriveCorrectionSession(ctx context.Con
 	return derived, nil
 }
 
-// Resolve only requested targets while scanning the bounded original once.
-// The client supplies preconditions, never the authoritative original sample.
-func correctionInputsForRequests(input telemetryanalysis.CorrectionInput, requests []telemetryanalysis.SampleValueCorrection) ([]telemetryanalysis.SampleCorrectionInput, error) {
+// Resolve exact requested originals without retaining unrelated sample pages.
+// The service has already verified the complete source through its summary.
+func correctionInputsForRequestsPaged(ctx context.Context, reader telemetryanalysis.CorrectionInputReader, session telemetryanalysis.HistoricalSession, requests []telemetryanalysis.SampleValueCorrection) ([]telemetryanalysis.SampleCorrectionInput, error) {
+	prepared := make([]telemetryanalysis.PreparedSampleCorrection, len(requests))
+	for i, request := range requests {
+		prepared[i].Request = request
+	}
+	pages, err := telemetryanalysis.ReadCorrectionTargetPages(ctx, reader, session, prepared)
+	if err != nil {
+		return nil, err
+	}
 	type key struct {
 		channel string
 		index   int64
 	}
-	wanted := make(map[key]bool, len(requests))
-	for _, request := range requests {
-		wanted[key{request.Target.ChannelID, request.Target.SampleIndex}] = true
+	samples := make(map[key]telemetryanalysis.HistoricalSample, len(pages))
+	for _, page := range pages {
+		samples[key{page.ChannelID, page.Samples[0].Index}] = page.Samples[0]
 	}
-	samples := make(map[key]telemetryanalysis.HistoricalSample, len(wanted))
-	for _, page := range input.Pages {
-		for _, sample := range page.Samples {
-			k := key{page.ChannelID, sample.Index}
-			if wanted[k] {
-				if _, duplicate := samples[k]; duplicate {
-					return nil, telemetryanalysis.ErrCorrectionTarget
-				}
-				samples[k] = sample
-			}
-		}
-	}
-	channels := make(map[string]telemetryanalysis.HistoricalChannel, len(input.Session.Channels))
-	for _, channel := range input.Session.Channels {
+	channels := make(map[string]telemetryanalysis.HistoricalChannel, len(session.Channels))
+	for _, channel := range session.Channels {
 		channels[channel.ID] = channel
 	}
-	result := make([]telemetryanalysis.SampleCorrectionInput, len(requests))
+	inputs := make([]telemetryanalysis.SampleCorrectionInput, len(requests))
 	for i, request := range requests {
-		sample, ok := samples[key{request.Target.ChannelID, request.Target.SampleIndex}]
-		if !ok {
-			return nil, telemetryanalysis.ErrCorrectionTarget
-		}
-		channel, ok := channels[request.Target.ChannelID]
-		if !ok {
-			return nil, telemetryanalysis.ErrCorrectionTarget
-		}
-		result[i] = telemetryanalysis.SampleCorrectionInput{Channel: channel, Sample: sample, Request: request}
+		target := request.Target
+		inputs[i] = telemetryanalysis.SampleCorrectionInput{Channel: channels[target.ChannelID], Sample: samples[key{target.ChannelID, target.SampleIndex}], Request: request}
 	}
-	return result, nil
+	return inputs, ctx.Err()
 }
 
 func publicCorrectionError(err error) error {
@@ -318,26 +348,4 @@ func publicCorrectionError(err error) error {
 	default:
 		return ErrTelemetryAnalysisCorrectionStorage
 	}
-}
-
-// Keep the source model and reanalyzed scalar view inside the authorized command.
-// Store validation resolves the entire family set against both before writing.
-func observationInputForRequests(input telemetryanalysis.CorrectionInput, samples []telemetryanalysis.SampleCorrectionInput, families []telemetryanalysis.LapFamilyUseCorrection, stints []telemetryanalysis.StintBoundaryCorrection) (telemetryanalysis.ObservationCorrectionInput, error) {
-	result := telemetryanalysis.ObservationCorrectionInput{Samples: samples, Original: input.Validity, Effective: input.Validity, FamilyUses: families, StintBoundaries: stints}
-	if len(samples) == 0 || (len(families) == 0 && len(stints) == 0) {
-		return result, nil
-	}
-	snapshot, err := telemetryanalysis.PrepareSampleCorrectionSnapshot(input.Base, samples)
-	if err != nil {
-		return telemetryanalysis.ObservationCorrectionInput{}, err
-	}
-	view, err := telemetryanalysis.ApplySampleCorrectionSnapshot(input.Base, input.Session.Channels, input.Pages, snapshot)
-	if err != nil {
-		return telemetryanalysis.ObservationCorrectionInput{}, err
-	}
-	result.Effective, err = telemetryanalysis.AnalyzeLapValidity(input.Session, view.Pages)
-	if err != nil {
-		return telemetryanalysis.ObservationCorrectionInput{}, telemetryanalysis.ErrCorrectionValue
-	}
-	return result, nil
 }

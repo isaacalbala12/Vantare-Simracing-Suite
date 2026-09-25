@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"errors"
 
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
 )
@@ -56,7 +55,7 @@ func (service *TelemetryAnalysisService) InspectCorrectionLaps(ctx context.Conte
 			}
 			state.revision, state.head, state.snapshot = stored.Revision.RevisionID, stored.HeadID, stored.Revision.Snapshot.SnapshotID
 			state.effective, err = telemetryanalysis.ReadCorrectedLapValidity(operationCtx, owned.parser, owned.artifact, limits, original, stored.Revision.Snapshot)
-			if err != nil && !correctionInspectionReadFailure(err) {
+			if err != nil && !correctionSourceReadFailure(err) {
 				state.business = publicCorrectionError(err)
 				return state, nil
 			}
@@ -80,11 +79,4 @@ func (service *TelemetryAnalysisService) InspectCorrectionLaps(ctx context.Conte
 		return TelemetryAnalysisCorrectionLapPage{}, err
 	}
 	return result, nil
-}
-
-func correctionInspectionReadFailure(err error) bool {
-	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) ||
-		errors.Is(err, telemetryanalysis.ErrCorrectionReadLimit) || errors.Is(err, telemetryanalysis.ErrInvalidLapValidityInput) ||
-		errors.Is(err, telemetryanalysis.ErrInvalidCorrectionSource) || errors.Is(err, telemetryanalysis.ErrInvalidHistoricalPage) ||
-		errors.Is(err, telemetryanalysis.ErrHistoricalSource) || errors.Is(err, telemetryanalysis.ErrHistoricalArtifactChanged)
 }

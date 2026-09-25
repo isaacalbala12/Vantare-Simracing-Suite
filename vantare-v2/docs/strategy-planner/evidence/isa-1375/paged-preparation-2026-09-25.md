@@ -6,8 +6,10 @@ autorizado y todas las páginas, conserva eventos con un techo explícito de
 GPS. La validez y la referencia de análisis se construyen sin devolver las
 páginas de todas las señales. No cambia el presupuesto de 1,25 M muestras,
 1,5 M valores y 16 MiB de texto; una fuente que lo supera sigue rechazándose.
-Inspección, guardado y proyección todavía usan `ReadCorrectionInput` y retienen
-las páginas completas. Por tanto **no** se anuncia soporte de resistencia.
+En el primer corte inspección, guardado y proyección aún usaban
+`ReadCorrectionInput`; los cortes posteriores de este expediente migraron
+inspección y guardado. La proyección todavía retiene las páginas completas.
+Por tanto **no** se anuncia soporte de resistencia.
 
 La prueba focal compara referencia, sesión alineada y validez completas contra
 el lector anterior, y compara rechazo por límite/cancelación, puente inválido y
@@ -149,5 +151,26 @@ real con el caché incluido: PASS, **99,46 s**; corrección de Lap Time idéntic
 proyección/cálculo y revisiones exactas intactos, ambos hashes originales
 invariantes. La diferencia entre ejecuciones individuales de 215,01 y 99,46 s
 no es una medición A/B controlada de rendimiento; sólo acredita función.
-Guardar y proyectar todavía materializan páginas; la inspección paginada no
-certifica resistencia, todos los tipos de corrección ni Wails T22.
+El guardado se migró después de este banco; la inspección paginada por sí sola
+no certifica resistencia, todos los tipos de corrección ni Wails T22.
+
+## Guardado de correcciones desde filas exactas
+
+`SaveCorrections` y `SaveRecoverableCorrections` reutilizan el resumen del
+original revalidado con `Inspect`, leen sólo las filas que nombra la petición
+y conservan las comprobaciones existentes del almacén. Si una petición mezcla
+valores escalares con familias o límites de stint, calculan la validez efectiva
+mediante páginas corregidas antes de guardar. El oráculo materializado queda
+sólo en tests: una petición mixta recuperable compara el snapshot exacto y el
+guardado escalar compara los valores preparados. La política de cancelación,
+fuente cambiada y comando pendiente sigue bajo el bloqueo de sesión.
+
+`go test ./...`, `go vet ./internal/app ./internal/telemetryanalysis/...` y
+`git diff --check` pasaron tras mover el oráculo materializado a código sólo de
+prueba. El banco completo Algarve→Monza con esta ruta pasó en **269,64 s**: preparación,
+paridad de validez, corrección temporal de Lap Time, proyección, cálculo,
+historial, restauración y reapertura. Conservó 71 eventos, 70 reinicios,
+66 vueltas completas y los hashes de ambos originales indicados arriba.
+Es evidencia funcional de una ejecución, no prueba de ahorro de memoria ni
+comparación de velocidad. La proyección aún materializa, la cuota productiva
+no se ha elevado y faltan una fuente larga multivuelta y Wails T22.

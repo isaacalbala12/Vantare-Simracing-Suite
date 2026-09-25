@@ -4,14 +4,15 @@ import {
   type StrategyPendingRevisionSaveV1,
   type StrategyOrbitCalculationInputV1,
 } from "../../strategy/strategy-application-client";
-import type {
-  ActivePlanV1,
-  ConfidenceV1,
-  PlanDraftV1,
-  PlanMode,
-  ProvenanceV1,
-  RevisionRefV1,
-  StrategyCapability,
+import {
+  canonicalStrategyTimestamp,
+  type ActivePlanV1,
+  type ConfidenceV1,
+  type PlanDraftV1,
+  type PlanMode,
+  type ProvenanceV1,
+  type RevisionRefV1,
+  type StrategyCapability,
 } from "../../strategy/strategy-contract-v1";
 
 export const STRATEGY_ORBIT_REVISION_CONTRACT_V1 =
@@ -110,7 +111,7 @@ const legacyOrbitMetadata: OrbitRevisionMetadata = {
 
 const defaultClock: OrbitLifecycleClock = {
   id: () => globalThis.crypto.randomUUID(),
-  now: () => new Date().toISOString(),
+  now: () => canonicalStrategyTimestamp(),
 };
 
 export async function loadOrbitLifecycle(

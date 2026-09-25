@@ -229,3 +229,11 @@ nueva. La matriz completa vuelve a pasar con 99 capturas:
 [`pass-v5-15-practice`](../isa-1277-visual/pass-v5-15-practice/README.md).
 Esto sigue siendo navegador con mock; no se probó Wails, LMU ni persistencia
 nativa y E01–E08 siguen pendientes.
+
+La misma clase de fallo existía al aceptar un plan: `saveOrbitRevision` y la
+activación compartían un reloj que emitía `.000Z` en un segundo exacto. Una
+prueba RED/GREEN de activación confirma ahora la marca canónica. El banco de
+navegador, con ese reloj fijado, recorre además «calcular estrategia → aceptar
+propuesta» y observa la revisión inmutable aceptada sin alerta. Son 10 tests
+focales de persistencia/lifecycle en dos archivos; esta prueba con mock no
+sustituye la aceptación nativa E03.

@@ -269,4 +269,19 @@ describe("Strategy Orbit lifecycle canónico", () => {
     }));
     expect(activated.activePlan?.revision).toEqual(revision);
   });
+
+  it("usa una marca canónica al activar en un segundo exacto", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-15T12:05:00.000Z"));
+    try {
+      const execute = vi.fn(async (command: StrategyApplicationCommandV1<StrategyOrbitRevisionPayloadV1>) => {
+        if (command.operation !== "activate") throw new Error(`unexpected ${command.operation}`);
+        return result(command, { activePlan: { contractVersion: "strategy.v1", activationId: command.activationId, revision: command.revision, activatedAt: command.activatedAt } });
+      });
+      await activateOrbitRevision(clientWith(execute), { repositoryVersion: 12, savedRevision: revision });
+      expect(execute.mock.calls[0][0].activatedAt).toBe("2026-09-15T12:05:00Z");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

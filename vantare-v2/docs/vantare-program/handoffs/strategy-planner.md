@@ -1,5 +1,14 @@
 # Handoff vivo — Strategy Planner
 
+## Aceptación con reloj canónico — ISA-1393 (2026-09-25)
+
+El reloj por defecto de `saveOrbitRevision` y activación también podía emitir
+`.000Z` y rechazar la revisión en un segundo exacto. Se usa el formateador
+canónico de Strategy tras una prueba RED/GREEN de activación. El banco de
+navegador con reloj fijado pasa «calcular → aceptar propuesta» y muestra la
+revisión inmutable aceptada. Diez tests focales en persistencia/lifecycle
+pasan. No acredita Wails ni el repositorio nativo; E03/E01–E08 siguen abiertos.
+
 ## QA de Practice y dos sesiones en navegador — ISA-1393 (2026-09-25)
 
 La apertura de Practice como carrera nueva fallaba al guardar en un segundo

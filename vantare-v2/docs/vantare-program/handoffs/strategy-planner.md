@@ -8,8 +8,11 @@ registra CLI Wails alpha.98, runtime WebView2 153.0.4234.48, SHA del último
 binario disponible y matriz E01–E08 íntegramente pendiente. El fallo
 `8007139F` es histórico; builds posteriores sí abrieron, así que no se le
 atribuye causa ni estado actual. No se lanzó GUI para dejar libre el PC. Falta
-build exacta de esta rama y recorrido nativo con hashes, logs y cuenta de
-distribución. Sin push, PR, CI, merge, promoción ni release.
+recorrido nativo con hashes, logs y cuenta de distribución. La build exacta
+`1fcb96f4` pasó frontend y Wails DEV sin abrir ventana (SHA-256
+`9faef4111ee4b3f9e971bcba3598ef55bf92bdd9adc57cc0c96f479c1b46bf6f`);
+el canal compilado por defecto fue `master`, no una prueba de licencia.
+Sin push, PR, CI, merge, promoción ni release.
 
 ## Espera visible durante la proyección — ISA-1375 (2026-09-25)
 

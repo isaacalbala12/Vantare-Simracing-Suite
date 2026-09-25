@@ -16,6 +16,14 @@ Isaac; las comprobaciones siguientes fueron de sólo lectura.
   43.971.072 bytes, SHA-256
   `406ef6ff1de3480d3b50dcc67627d60111a92c2e1c97ffb3d260b2d3d47fdc3f`,
   sin firma Authenticode. Que exista y compile no prueba su arranque.
+- La rama #1393 se compiló después con `pnpm install --frozen-lockfile`,
+  `pnpm --dir frontend build` y `CGO_ENABLED=0 wails3 build DEV=true`, todos
+  PASS. El nuevo `bin/vantare.exe` mide 43.972.608 bytes y tiene SHA-256
+  `9faef4111ee4b3f9e971bcba3598ef55bf92bdd9adc57cc0c96f479c1b46bf6f`.
+  El build invocó `-X main.buildChannel=master` por el valor por defecto del
+  Taskfile; este binario local no acredita el canal ni la licencia de
+  distribución. No se ejecutó. `go mod tidy` reordenó una dependencia en
+  `go.mod`; se retiró sólo ese cambio generado, dejando el worktree limpio.
 - El antecedente T11i reprodujo `CreateCoreWebView2Controller` / `8007139F
   ERROR_INVALID_STATE` tres veces en otro worktree. Posteriormente #1314 y
   #1322 sí abrieron ventanas nativas con otras builds. Por ello la causa del
@@ -34,7 +42,7 @@ Isaac; las comprobaciones siguientes fueron de sólo lectura.
 | E07 Recursos | Vueltas/tiempo, Fuel/VE, neumáticos, ventanas y servicios | Pendiente |
 | E08 Volumen | Biblioteca real, cuatro sesiones, quinta rechazada, coste/memoria | Pendiente |
 
-La primera ejecución nativa de esta rama debe registrar binario/SHA,
+La primera ejecución nativa de esta rama debe registrar este binario/SHA,
 configuración saneada, runtime, PID propio, log y resultado de apertura antes
 de recorrer E01–E08. Si reaparece `8007139F`, comparar con una build que sí
 abre sin cerrar procesos ajenos; no cambiar varios factores a la vez ni

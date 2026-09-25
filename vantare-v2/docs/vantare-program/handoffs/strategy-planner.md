@@ -1,10 +1,23 @@
 # Handoff vivo — Strategy Planner
 
+## Inventario local de resistencia — ISA-1375 (2026-09-25)
+
+Se examinaron 369 DuckDB LMU estables en modo sólo lectura (298 P, 26 Q,
+45 R); otros 48 tenían WAL y se excluyeron. El máximo fue Algarve R con 71
+marcadores, ya usado en el banco de 66 vueltas completas. El archivo mayor
+por tamaño, Sarthe P de 1.113,8 MiB, sólo tiene un marcador de vuelta 0.
+No hay en este inventario una carrera independiente significativamente más
+larga con la que certificar la cuota de resistencia. [Evidencia y límite](../../strategy-planner/evidence/isa-1375/paged-preparation-2026-09-25.md).
+El barrido incluyó sólo conteos `Lap` de Race potencialmente reservadas para
+#1030, sin señales ni etiquetas; no se usa para calibración ni como holdout
+independiente. #1375 sigue abierta; falta fuente larga, presupuesto de memoria
+y Wails T22.
+
 ## Composición visual incorporada al candidato T22 — ISA-1393 (2026-09-25)
 
-El commit `467d5db9` incorpora localmente el corte visual #1277 sobre el
-candidato T22, sin tocar el backend. La rama #1393 queda limpia y reúne el
-frontend corregido, 97 capturas y la revisión adversarial v5 de 8,1/10.
+El commit `508b6f0b` incorpora localmente el corte visual #1277 sobre el
+candidato T22, sin tocar el backend. La rama #1393 reúne el frontend
+corregido, 99 capturas y la revisión adversarial v5 con nota mínima 8,0/10.
 El umbral T18 >9/10 y E01–E08 con Wails/LMU real siguen pendientes. El pase
 completo de 4.317 tests frontend pertenece al estado anterior `30d0c46d`;
 después del cambio visual pasaron 50 tests focales, lint y build. Sin push,

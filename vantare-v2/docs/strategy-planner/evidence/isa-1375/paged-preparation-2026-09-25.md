@@ -1,5 +1,33 @@
 # ISA-1375 — preparación paginada, primer corte productivo
 
+## Inventario adicional de fuentes locales (2026-09-25)
+
+Se enumeraron los `.duckdb` de `Le Mans Ultimate/UserData/Telemetry` sin
+abrir LMU ni la app. Había 417 archivos: 48 tenían `.wal` y se excluyeron por
+inestables; los otros 369 se consultaron con la CLI DuckDB en modo
+`-readonly`. La consulta sólo contó filas y valores distintos de la tabla
+`Lap`, sin importar señales ni modificar originales. Desglose estable: 298
+prácticas, 26 clasificaciones y 45 carreras.
+
+El máximo de **marcadores** de vuelta fue Algarve R (71), seguido de Monza R
+(61), Imola R (39) y COTA R (31). Son marcadores, no vueltas completas; el
+banco existente ya había acreditado 66 completas en Algarve. El mayor archivo
+por tamaño, Sarthe P de 1.113,8 MiB, contiene un único marcador de vuelta 0:
+su tamaño no lo convierte en una prueba de resistencia. Ninguna de las 369
+fuentes estables ofrece una carrera independiente significativamente más larga
+que Algarve según este criterio preliminar. Las 48 fuentes con WAL no se
+consideran aptas ni se abren para forzar una prueba. Este inventario no cierra
+la cuota, el presupuesto de memoria ni Wails T22; hace falta una fuente
+multivuelta larga adicional y una medición con el pipeline productivo.
+
+El barrido general también contó `Lap` en archivos Race, incluidos
+potencialmente candidatos de la reserva congelada de #1030. No se leyeron
+señales, etiquetas ni resultados de carrera y estos conteos no se emplearon
+para ajustar filtros, umbrales o el solver. Aun así, **no se afirma que esa
+reserva permaneciera sin abrir en esta pasada**. La selección y los hashes del
+holdout siguen fijados en #1030; no usar este inventario como evaluación
+independiente de precisión o de incidencias.
+
 `PrepareCorrections` usa ahora `ReadCorrectionSummary`: valida el artefacto
 autorizado y todas las páginas, conserva eventos con un techo explícito de
 100.000 filas, valida GPS en orden y relee señales continuas mediante ventanas

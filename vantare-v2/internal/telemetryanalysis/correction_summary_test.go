@@ -57,6 +57,32 @@ func TestCorrectionSummaryAlignsContinuousLapEvents(t *testing.T) {
 		summary.Base != materialized.Base || !reflect.DeepEqual(summary.Session, materialized.Session) || !reflect.DeepEqual(summary.Validity, materialized.Validity) {
 		t.Fatal("continuous event alignment differs from materialized input")
 	}
+	wantPages := make(map[string][]HistoricalSample)
+	for _, page := range materialized.Pages {
+		if page.ChannelID == "lap" || page.ChannelID == "lap-time" {
+			wantPages[page.ChannelID] = append(wantPages[page.ChannelID], page.Samples...)
+		}
+	}
+	gotPages := make(map[string][]HistoricalSample)
+	if err := visitAlignedCorrectionPages(context.Background(), reader, model.Artifact, limits, summary,
+		func(channel HistoricalChannel) bool { return channel.ID == "lap" || channel.ID == "lap-time" },
+		func(channel HistoricalChannel, page HistoricalPage) error {
+			if page.Sampling != channel.Sampling {
+				t.Fatal("aligned visitor lost channel sampling")
+			}
+			gotPages[channel.ID] = append(gotPages[channel.ID], page.Samples...)
+			return nil
+		}); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(gotPages, wantPages) {
+		t.Fatal("aligned page visit differs from materialized reader")
+	}
+	if err := visitAlignedCorrectionPages(context.Background(), &driftingCorrectionReader{correctionInputReader: reader, inspects: 1},
+		model.Artifact, limits, summary, func(HistoricalChannel) bool { return true },
+		func(HistoricalChannel, HistoricalPage) error { return nil }); !errors.Is(err, ErrInvalidCorrectionSource) {
+		t.Fatalf("aligned visitor accepted changed session: %v", err)
+	}
 	if _, err := ReadCorrectionSummary(context.Background(), &driftingCorrectionReader{correctionInputReader: reader}, model.Artifact, limits); !errors.Is(err, ErrInvalidCorrectionSource) {
 		t.Fatalf("accepted changed session between page visits: %v", err)
 	}

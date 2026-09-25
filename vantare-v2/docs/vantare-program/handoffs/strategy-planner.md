@@ -1,5 +1,18 @@
 # Handoff vivo — Strategy Planner
 
+## Derivador compartido y lector alineado — ISA-1375 (2026-09-25)
+
+El cálculo de la proyección se separó de la validación/materialización de la
+fuente, preservando la ruta productiva. Un ensayo sólo de test compara el
+modelo completo con filas de frontera en S045 y en un fixture de carrera:
+consumo/curvas coinciden; boxes exige visitar el interior de la parada.
+`visitAlignedCorrectionPages` reproduce páginas Lap/Lap Time alineadas del
+lector autorizado y rechaza una sesión cambiada, pero aún no alimenta la
+proyección. Siguiente: recolectar límites desde esa visita, usar
+`pitRiseScan` para boxes sin conservar sus muestras y comparar la revisión
+completa con DuckDB real. [Evidencia](../../strategy-planner/evidence/isa-1375/paged-preparation-2026-09-25.md).
+#1375 sigue abierta; no hay soporte de resistencia, push, PR, CI ni promoción.
+
 ## Ascensos de boxes sin copia de ventana — ISA-1375 (2026-09-25)
 
 `observeRise` alimenta ahora `pitRiseScan` muestra a muestra: conserva sólo el

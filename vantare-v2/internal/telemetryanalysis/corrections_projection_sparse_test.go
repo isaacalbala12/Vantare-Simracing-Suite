@@ -1,0 +1,135 @@
+package telemetryanalysis
+
+import (
+	"math"
+	"reflect"
+	"sort"
+	"strings"
+	"testing"
+)
+
+func TestCorrectedObservationsMatchBoundaryRowsOnRecordedFixture(t *testing.T) {
+	fixture := loadLapValidityFixture(t, "lap-validity-s045-v1.json")
+	session, pages := fixtureHistoricalInput(t, fixture)
+	assertCorrectedObservationsMatchBoundaryRows(t, session, pages, "")
+}
+
+func TestCorrectedObservationsMatchBoundaryRowsOnPitFixture(t *testing.T) {
+	session, pages := reducedT19aTemporalRegression(t)
+	assertCorrectedObservationsMatchBoundaryRows(t, session, pages, SessionTypeRace)
+}
+
+func assertCorrectedObservationsMatchBoundaryRows(t *testing.T, session HistoricalSession, pages []HistoricalPage, sessionType SessionType) {
+	t.Helper()
+	base, _, _, _ := correctionExample()
+	base.SessionID = session.ID
+	session.Provenance.Parser = ParserRef{ID: base.ParserID, Version: base.ParserVersion}
+	session.Provenance.SchemaFingerprint = base.SchemaFingerprint
+	classified := ClassifiedSession{SessionID: session.ID, Type: sessionType, Combination: CombinationIdentity{ID: "fixture-combination"}}
+	snapshot, err := PrepareSampleCorrectionSnapshot(base, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := DeriveCorrectedSession(base, session, pages, classified, snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	alignment := BuildTemporalAlignment(session, pages)
+	validity, err := AnalyzeAlignedLapValidity(alignment)
+	if err != nil {
+		t.Fatal(err)
+	}
+	view, err := ApplyMixedCorrectionSnapshot(base, alignment.Pages, validity, alignment.Session, snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sparse := sparseProjectionFixturePages(t, alignment.Session, view.Pages, validity)
+	got, err := deriveCorrectedObservations(base, alignment.Session, sparse, classified, validity, view, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("boundary rows changed corrected derivation: consumption=%v curves=%v pit=%v observed=%v",
+			!reflect.DeepEqual(got.Consumption, want.Consumption), !reflect.DeepEqual(got.Curves, want.Curves),
+			!reflect.DeepEqual(got.Pit, want.Pit), !reflect.DeepEqual(got.Observed, want.Observed))
+	}
+}
+
+// This test-only selection starts from materialized pages. It proves which
+// boundary observations the existing derivations consume; it is not a bounded
+// source reader and must not be used as runtime evidence.
+func sparseProjectionFixturePages(t *testing.T, session HistoricalSession, pages []HistoricalPage, validity LapValidityAnalysis) []HistoricalPage {
+	t.Helper()
+	queries := make([]float64, 0, len(validity.Laps)*4)
+	for _, lap := range validity.Laps {
+		queries = append(queries, timestampSeconds(lap.End))
+		if lap.Start != nil {
+			start := timestampSeconds(*lap.Start)
+			queries = append(queries, start, start+0.001, start+vectorBoundaryToleranceSeconds)
+		}
+	}
+	sort.Float64s(queries)
+	unique := queries[:0]
+	for _, query := range queries {
+		if len(unique) == 0 || query != unique[len(unique)-1] {
+			unique = append(unique, query)
+		}
+	}
+	channels := make(map[string]HistoricalChannel, len(session.Channels))
+	grouped, err := groupPagesBySource(session, pages)
+	if err != nil {
+		t.Fatal(err)
+	}
+	pitIntervals := observedPitIntervals(readEvents(grouped["in pits"]))
+	scans := make(map[string]*orderedProjectionBoundaryScan)
+	for _, channel := range session.Channels {
+		channels[channel.ID] = channel
+		switch strings.ToLower(strings.TrimSpace(channel.SourceName)) {
+		case "fuel level", "virtual energy", "minimum path wetness", "fuelmixturemap", "tyres wear":
+			scan, err := newOrderedProjectionBoundaryScan(unique)
+			if err != nil {
+				t.Fatal(err)
+			}
+			scans[channel.ID] = scan
+		}
+	}
+	result := make([]HistoricalPage, 0, len(pages))
+	for _, page := range pages {
+		channel := channels[page.ChannelID]
+		if page.Sampling.Kind != SamplingContinuousImplicitFrequency {
+			result = append(result, page)
+			continue
+		}
+		scan := scans[page.ChannelID]
+		if scan == nil {
+			continue
+		}
+		vector := strings.EqualFold(channel.SourceName, "Tyres Wear")
+		for _, sample := range page.Samples {
+			usable := false
+			if vector {
+				_, _, usable = numericVector(sample.Values)
+			} else {
+				_, _, usable = numericValue(sample.Values)
+			}
+			if !scan.accept(sample, usable) {
+				t.Fatal("fixture projection rows are not time ordered")
+			}
+			if usable && sample.TimestampSeconds != nil && !math.IsNaN(*sample.TimestampSeconds) && !math.IsInf(*sample.TimestampSeconds, 0) &&
+				(strings.EqualFold(channel.SourceName, "Fuel Level") || strings.EqualFold(channel.SourceName, "Virtual Energy")) {
+				for _, interval := range pitIntervals {
+					if !interval.open && *sample.TimestampSeconds >= interval.start && *sample.TimestampSeconds <= interval.end {
+						scan.selectSample(sample)
+						break
+					}
+				}
+			}
+		}
+	}
+	for _, channel := range session.Channels {
+		if scan := scans[channel.ID]; scan != nil {
+			result = append(result, HistoricalPage{ChannelID: channel.ID, Sampling: channel.Sampling, Samples: scan.finish()})
+		}
+	}
+	return result
+}

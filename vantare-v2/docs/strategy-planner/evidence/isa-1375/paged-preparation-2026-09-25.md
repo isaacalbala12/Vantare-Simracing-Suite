@@ -225,3 +225,24 @@ probado, revisiones/restauración y hashes de ambos originales intactos.
 Es una ejecución funcional; no mide el pico de memoria ni demuestra una
 mejora temporal frente a los bancos anteriores. La proyección productiva
 todavía carga la serie completa antes de llamar al acumulador.
+
+## Derivación con filas reducidas y visita alineada
+
+Se separó el cálculo de consumo, curvas, boxes y estrategia observada del
+paso que aplica el snapshot y analiza validez. La ruta materializada conserva
+el mismo derivador y la misma referencia de revisión. En un ensayo **sólo de
+test**, filas de frontera seleccionadas desde páginas ya materializadas
+producen un `CorrectedSessionDerivations` idéntico en la grabación saneada
+S045. El fixture de carrera con boxes empezó rojo: consumo y curvas eran
+idénticos, pero boxes y estrategia observada diferían. Al incluir las
+muestras interiores de cada parada, también coincidió el modelo completo.
+Ese ensayo explica la dependencia y **no es una lectura acotada de boxes**:
+retiene esas filas para que el derivador actual pueda consumirlas.
+
+`visitAlignedCorrectionPages` ya puede volver a visitar el lector autorizado
+sin guardar todas las páginas, aplicar los tiempos del mismo GPS por ventanas
+y entregar páginas seleccionadas al consumidor. En un fixture de canales
+continuos Lap/Lap Time igualó las muestras de `ReadCorrectionInput`; un
+`Inspect` con sesión cambiada fue rechazado. Todavía falta usarlo para
+recolectar los límites reales y resumir Fuel/VE en boxes antes de producir
+una proyección paginada; esta prueba no acredita paridad en DuckDB real.

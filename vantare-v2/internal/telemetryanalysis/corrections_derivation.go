@@ -67,26 +67,34 @@ func DeriveCorrectedSession(base SourceAnalysisRef, session HistoricalSession, p
 			return empty, fmt.Errorf("corrected stint boundaries: %w", err)
 		}
 	}
-	classified, effective, err := effectiveClassification(session, validity, view, classified, len(snapshot.Classifications) > 0)
+	return deriveCorrectedObservations(base, session, view.Pages, classified, validity, view, len(snapshot.Classifications) > 0)
+}
+
+// Reuse the same projection calculations after either the materialized reader
+// or a future bounded reader has validated the exact correction and validity.
+// The caller must supply effective pages from that same validated snapshot.
+func deriveCorrectedObservations(base SourceAnalysisRef, session HistoricalSession, pages []HistoricalPage, classified ClassifiedSession, validity LapValidityAnalysis, view EffectiveCorrectionView, classificationsActive bool) (CorrectedSessionDerivations, error) {
+	var empty CorrectedSessionDerivations
+	classified, effective, err := effectiveClassification(session, validity, view, classified, classificationsActive)
 	if err != nil {
 		return empty, err
 	}
-	consumption, err := DeriveSessionConsumptionPace(effective, view.Pages, classified, validity)
+	consumption, err := DeriveSessionConsumptionPace(effective, pages, classified, validity)
 	if err != nil {
 		return empty, fmt.Errorf("corrected consumption/pace: %w", err)
 	}
-	curves, err := DeriveSessionCurves(effective, view.Pages, classified, validity, consumption)
+	curves, err := DeriveSessionCurves(effective, pages, classified, validity, consumption)
 	if err != nil {
 		return empty, fmt.Errorf("corrected curves: %w", err)
 	}
-	pit, err := DeriveSessionPitObservation(effective, view.Pages, classified)
+	pit, err := DeriveSessionPitObservation(effective, pages, classified)
 	if err != nil {
 		return empty, fmt.Errorf("corrected pit observation: %w", err)
 	}
 	var observed *strategyprojection.ObservedStrategyV1
 	if classified.Type == SessionTypeRace {
 		if generatedAt, ok := correctedDerivationGeneratedAt(validity); ok {
-			value, err := DeriveObservedStrategy(effective, view.Pages, classified, validity, pit, generatedAt)
+			value, err := DeriveObservedStrategy(effective, pages, classified, validity, pit, generatedAt)
 			if err != nil {
 				return empty, fmt.Errorf("corrected observed strategy: %w", err)
 			}

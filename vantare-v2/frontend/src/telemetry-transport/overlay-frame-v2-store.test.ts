@@ -17,6 +17,15 @@ import {
 afterEach(() => vi.useRealTimers());
 
 describe("OverlayFrame v2 store", () => {
+  it("accepts four bounded LMU tyre-wear fractions and rejects malformed values", () => {
+    const update = golden();
+    const frame = update.frame!;
+    const withWear = { ...update, frame: { ...frame, damage: { ...frame.damage, tyreWear: { q: "fresh", v: [1, 0.91, 0.87, 0] } } } };
+    expect(decodeOverlayUpdateV2(withWear).frame?.damage.tyreWear?.v).toEqual([1, 0.91, 0.87, 0]);
+    const malformed = { ...withWear, frame: { ...withWear.frame, damage: { ...withWear.frame.damage, tyreWear: { q: "fresh", v: [1, 0.91, 1.2, 0] } } } };
+    expect(() => decodeOverlayUpdateV2(malformed)).toThrow("frame.damage.tyreWear.v");
+  });
+
   it("includes upstream JSON parsing in ingestion diagnostics", () => {
     const text = JSON.stringify({events: [{name: OVERLAY_V2_SNAPSHOT_EVENT, data: golden()}]});
     let now = 0;

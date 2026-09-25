@@ -38,9 +38,11 @@ export function StrategyRecordedStart({ candidates, busy, error, saved, onChoose
         <div className="strategy-entry__sessions">
           {recent.map(candidate => {
             const ready = candidate.state === "ready" && !candidate.walPresent;
+            const name = candidate.displayName || t("strategy.recorded.unnamed");
+            const extension = name.toLowerCase().endsWith(".duckdb") ? name.slice(-7) : "";
             return <button key={candidate.id} type="button" className="strategy-entry__session" disabled={busy || !ready} onClick={() => onChoose(candidate)} aria-label={`${t("strategy.entry.useSession")} ${candidate.displayName || t("strategy.recorded.unnamed")}`}>
               <span className="strategy-entry__poster" aria-hidden="true"><small>.DUCKDB</small><b>LMU</b></span>
-              <span className="strategy-entry__session-copy"><span><small>{t("strategy.entry.recordedSession")}</small><strong>{candidate.displayName || t("strategy.recorded.unnamed")}</strong><small>{ready ? t("strategy.recorded.ready") : t("strategy.recorded.waiting")}</small></span><span className="strategy-entry__open" aria-hidden="true">↗</span></span>
+              <span className="strategy-entry__session-copy"><span><small>{t("strategy.entry.recordedSession")}</small><strong>{name.slice(0, name.length - extension.length)}<span>{extension}</span></strong><small>{ready ? t("strategy.recorded.ready") : t("strategy.recorded.waiting")}</small></span><span className="strategy-entry__open" aria-hidden="true">↗</span></span>
               <span className="strategy-entry__session-foot"><span><Icon name="i-telemetria" size={12} />{new Date(candidate.modifiedAt).toLocaleString()}</span><span>{(candidate.size / 1048576).toFixed(1)} MB</span></span>
             </button>;
           })}

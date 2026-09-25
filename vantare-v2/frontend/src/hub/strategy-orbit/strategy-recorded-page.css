@@ -76,6 +76,10 @@
   .strategy-recorded-source-screen .strategy-recorded-library__hint { display: none; }
   .strategy-recorded-source-screen .strategy-recorded-library__list .orbit-strategy__session-row { grid-template-columns: 1fr; }
   .strategy-recorded-source-screen .strategy-recorded-library__list .orbit-strategy__session-row .orbit-btn { width: 100%; justify-content: center; }
+  .strategy-recorded-source-screen .orbit-strategy__sessions { grid-template-columns: minmax(0,1fr); }
+  .strategy-recorded-source-screen .orbit-strategy__sessions-head { grid-column: 1; grid-row: 1; }
+  .strategy-recorded-source-screen .orbit-strategy__sessions > .orbit-btn--primary { grid-column: 1; grid-row: 2; }
+  .strategy-recorded-source-screen .orbit-strategy__sessions > .orbit-btn { grid-column: 1; width: 100%; justify-content: center; }
 }
 @media (min-width: 601px) and (max-width: 900px) {
   .strategy-recorded-source-screen .strategy-recorded-library__list .orbit-strategy__session-row > span { grid-column: 1 / -1; }

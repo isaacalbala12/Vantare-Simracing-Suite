@@ -1,6 +1,26 @@
 # ISA-1277 · revisión visual adversarial
 
-## Resultado final
+## Corte v5 · 2026-09-25 · aceptación pendiente
+
+`pass-v5-11` recoge 97 capturas del frontend productivo en el harness,
+incluida la matriz ES/EN/PT/IT a 320, 768, 1024 y 1672 px. En las 16
+combinaciones no se detectó desbordamiento horizontal ni error de página y el
+foco se comprobó visible. La revisión adversarial independiente con GPT-6 Sol
+medium no encontró P1/P2 visuales, pero puntuó el conjunto **8,1/10**:
+entrada 8,4; preparación 8,2; fuentes 8,4; datos 8,2; plan 8,2;
+stint/parada 7,9; responsive 7,7. **No supera el umbral >9/10 de T18.**
+
+Se corrigieron el solape de controles de fuentes a 320 px, la lectura de
+vueltas y plan a 768 px y la partición de `.duckdb` a 1024 px. Persisten
+detalles P3: texto auxiliar pequeño, saltos poco elegantes de nombres largos y
+editores móviles extensos. El encuadre a media página de esos editores procede
+del desplazamiento del banco; se debe comprobar el recorrido completo en la
+app. El nombre anónimo repetido de la captura de parada es un fixture y no
+acredita un fallo con una fuente real. Esta evidencia no valida Wails, LMU,
+DuckDB, persistencia nativa ni la precisión del cálculo. La referencia A4 que
+sigue abajo es histórica y su 9,2/10 **no se hereda** para v5.
+
+## Resultado histórico A4
 
 - Pasada base aceptada: `pass-23`.
 - Corrección nativa de fuentes aceptada: `pass-27-runtime-source-screen`.

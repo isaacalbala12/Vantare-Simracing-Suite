@@ -2,6 +2,15 @@
 
 [Especificación](README.md) · [Aceptación](acceptance.md) · ISA-1091.
 
+## T18 v5 · corte visual provisional, 2026-09-25
+
+La [matriz v5](../evidence/isa-1277-visual/pass-v5-11/README.md) cubre 97
+capturas y 16 combinaciones de idioma/anchura sin desbordamiento ni errores.
+La [revisión adversarial](../evidence/isa-1277-visual/reviews.md) no encontró
+P1/P2, pero su nota de 8,1/10 no satisface el umbral >9 de T18. Continuar
+pulido visual y aceptación humana; el gate nativo E01–E08 de T22 permanece
+separado y pendiente.
+
 ## Corte vigente — ISA-1331, 2026-09-23
 
 Isaac identifica el porte incompleto: falta lista derecha de estrategias guardadas, circuito correlacionado, referencias de telemetría y continuidad visual de todas las pantallas posteriores. Ejecutar [el plan de finalización v5](strategy-v5-completion-1331.md) sobre `4f3d029f` en `C:/tmp/vantare-isa1331`. Reutilizar repositorio, Analysis y SolverV2; raíz mantiene dirección y revisión, GPT-6 Sol medium implementa cortes secuenciales. No se hereda aceptación de una nota parcial. Handoff e issue #1331 mantienen el estado real.

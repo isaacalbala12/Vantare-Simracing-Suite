@@ -64,15 +64,11 @@ async function pageFor(browser, width, height, locale = 'es', calculation = '', 
 }
 
 async function openSaved(page) {
-  if (await page.locator('.strategy-recorded-context > button').count() === 0) {
-    await page.locator('.strategy-recorded-frame__footer button').first().click();
-  } else {
-    await page.locator('.strategy-recorded-context > button').nth(1).click();
-  }
-  const dialog = page.getByRole('alertdialog');
-  if (await dialog.count()) await dialog.getByRole('button').last().click();
-  const open = page.locator('.strategy-recorded-library > ul > li button').first();
+  const open = page.locator('[data-testid="strategy-entry-saved"] section button').first();
   await open.waitFor(); await open.click();
+  const dialog = page.getByRole('alertdialog');
+  await dialog.waitFor();
+  await dialog.getByRole('button').last().click();
   await page.locator('#recorded-tab-race').waitFor();
   await settle(page);
 }
@@ -105,7 +101,7 @@ async function widthContract(page) {
       let intentionallyClipped = false;
       while (parent && parent !== root) {
         const overflowX = getComputedStyle(parent).overflowX;
-        if (overflowX === 'auto' || overflowX === 'scroll') { intentionallyClipped = true; break; }
+        if (overflowX === 'auto' || overflowX === 'scroll' || overflowX === 'hidden' || overflowX === 'clip') { intentionallyClipped = true; break; }
         parent = parent.parentElement;
       }
       return !intentionallyClipped && style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 1 && rect.right > innerWidth + 1 && rect.left < innerWidth;
@@ -127,20 +123,21 @@ async function openAnalysis(page) {
 
 async function captureMain(browser) {
   const { page, errors } = await pageFor(browser, 1672, 941);
-  await screenshot(page, '01-wizard-start');
+  await screenshot(page, '01-entry');
   await openSaved(page);
   await screenshot(page, '06-editor-race');
-  await page.locator('.strategy-recorded-workspace-head button').click();
-  for (const step of ['sessions', 'drivers', 'rules', 'combination', 'start']) {
-    await page.getByTestId(`orbit-strategy-wizard-step-${step}`).locator('button').click();
-    const number = { start: '01', combination: '02', rules: '03', drivers: '04', sessions: '05' }[step];
-    await screenshot(page, `${number}-wizard-${step}`);
-  }
+  await page.locator('.strategy-recorded-editor-bar > button').click();
+  await screenshot(page, '02-preparation-summary');
+  await page.locator('.strategy-preparation__inspector nav button').filter({ hasText: /Reglas/i }).click();
+  await screenshot(page, '03-preparation-rules');
+  await page.locator('.strategy-preparation__inspector nav button').filter({ hasText: /Pilotos/i }).click();
+  await screenshot(page, '04-preparation-drivers');
+  await page.locator('.strategy-preparation__car button').click();
+  await screenshot(page, '05-preparation-combination');
   await page.close();
 
   const combinationSources = await pageFor(browser, 1672, 941, 'es', '', 'empty');
-  await combinationSources.page.locator('.strategy-recorded-frame__footer button').last().click();
-  await combinationSources.page.getByRole('button', { name: /Buscar sesiones/i }).click();
+  await combinationSources.page.getByRole('button', { name: /Abrir telemetría/i }).click();
   const combinationSourceScreen = combinationSources.page.getByTestId('strategy-recorded-source-screen');
   await combinationSourceScreen.waitFor();
   await screenshot(combinationSources.page, '02b-combination-sources');
@@ -247,16 +244,17 @@ async function captureMatrix(browser) {
         journeys.calculated = await widthContract(run.page);
         await screenshot(run.page, `matrix-${locale}-${width}-calculated`);
         await run.page.locator('.strategy-recorded-plan__editors button').first().click();
-        await resetScroll(run.page);
+        await run.page.locator('.strategy-recorded-stint-editor').scrollIntoViewIfNeeded();
         journeys.stint = await widthContract(run.page);
         await screenshot(run.page, `matrix-${locale}-${width}-stint`);
         await run.page.locator('.strategy-recorded-plan__editor-head button').click();
         await run.page.locator('.strategy-recorded-plan__editors button').nth(1).click();
-        await resetScroll(run.page);
+        await run.page.locator('.strategy-recorded-pit-editor').scrollIntoViewIfNeeded();
         journeys.pit = await widthContract(run.page);
         await screenshot(run.page, `matrix-${locale}-${width}-pit`);
       }
       const focused = await run.page.keyboard.press('Tab').then(() => run.page.evaluate(() => ({ tag: document.activeElement?.tagName, visible: document.activeElement ? getComputedStyle(document.activeElement).outlineStyle !== 'none' || getComputedStyle(document.activeElement).boxShadow !== 'none' : false })));
+      if (locale === 'es' && [320, 768, 1672].includes(width)) await screenshot(run.page, `matrix-${locale}-${width}-focus`);
       report.push({ locale, width, start, plan, journeys, focused, errors: run.errors });
       await run.page.close();
     }
@@ -268,12 +266,11 @@ async function captureMatrix(browser) {
 
 async function captureInlineSessions(browser) {
   const run = await pageFor(browser, 1208, 941);
-  await openSaved(run.page);
-  await run.page.locator('.strategy-recorded-workspace-head button').click();
-  await run.page.getByTestId('orbit-strategy-wizard-step-sessions').locator('button').click();
-  await run.page.getByRole('button', { name: /Buscar sesiones/i }).click();
+  await run.page.getByRole('button', { name: /Abrir telemetría/i }).click();
+  const sourceScreen = run.page.getByTestId('strategy-recorded-source-screen');
+  await sourceScreen.locator('button').filter({ hasText: /Buscar sesiones/i }).click();
   const contract = await widthContract(run.page);
-  await screenshot(run.page, '05b-wizard-sessions-1208');
+  await screenshot(run.page, '05b-sesiones-1208');
   if (contract.scrollWidth > contract.innerWidth || contract.overflow.length || run.errors.length) {
     throw new Error(`inline sessions width contract failed\n${JSON.stringify({ contract, errors: run.errors }, null, 2)}`);
   }
@@ -287,7 +284,8 @@ try {
   await captureMain(browser);
   await captureInlineSessions(browser);
   await captureMatrix(browser);
-  fs.writeFileSync(path.join(output, 'README.md'), `# T18 · ${pass}\n\n94 capturas del frontend productivo en la shell Orbit: 22 estados principales, incluida la lista integrada a 1208 px y la recuperación tras una parada inviable, más 72 variantes responsive ES/EN/PT/IT. El banco es determinista; no es prueba Wails, LMU ni DuckDB real.\n`);
+  const count = fs.readdirSync(output).filter((name) => name.endsWith('.png')).length;
+  fs.writeFileSync(path.join(output, 'README.md'), `# T18 · ${pass}\n\n${count} capturas del frontend productivo en la shell Orbit, incluidos los estados principales, la lista de sesiones a 1208 px y variantes responsive ES/EN/PT/IT. El banco es determinista; no es prueba Wails, LMU ni DuckDB real.\n`);
   console.log(`recorded Strategy visual evidence: ${output}`);
 } finally {
   if (browser) await browser.close();

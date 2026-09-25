@@ -1,5 +1,20 @@
 # Handoff vivo — Strategy Planner
 
+## T18 v5 · matriz visual provisional — ISA-1277 (2026-09-25)
+
+En la rama aislada `vantareapp/isa-1277-strategy-v5-visual-parity`, desde el
+candidato #1393, se actualizó el banco de capturas al menú y mesa v5. El
+[`pass-v5-11`](../../strategy-planner/evidence/isa-1277-visual/pass-v5-11/README.md)
+contiene 97 PNG; 16 combinaciones ES/EN/PT/IT por 320/768/1024/1672 px sin
+desbordamiento horizontal ni errores, con foco visible. Se corrigieron fuentes
+320, vueltas/plan 768 y nombres `.duckdb` 1024. Cuatro pruebas focales de
+frontend (50 tests), lint, typecheck/build y `git diff --check` pasan. La
+[revisión adversarial](../../strategy-planner/evidence/isa-1277-visual/reviews.md)
+no encuentra P1/P2, pero puntúa 8,1/10: **T18 aún no está aceptado**. La
+puntuación A4 histórica no se aplica a v5. No se lanzó la GUI ni se demuestra
+Wails/LMU/DuckDB real; E01–E08 de T22 siguen pendientes. Sin push, PR, CI,
+promoción ni release.
+
 ## Aceptación manual desbloqueada en el harness — ISA-1393 (2026-09-25)
 
 El recorrido manual del navegador simulado detectó un rechazo real del

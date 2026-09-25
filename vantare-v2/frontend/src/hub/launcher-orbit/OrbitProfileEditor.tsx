@@ -318,64 +318,79 @@ export function OrbitProfileEditor({
         <section className="orbit-profile-editor__policies" aria-label={t("launcher.editor.policies")}>
           <span className="orbit-eyebrow">{t("launcher.editor.policies")}</span>
           <div className="orbit-profile-editor__policy-grid">
-            <Select
-              label={t("launcher.editor.alreadyRunning")}
-              onChange={(value) => setPolicy("alreadyRunning", value)}
-              options={[
-                { value: "ask", label: t("launcher.editor.ask") },
-                { value: "reuse", label: t("launcher.editor.reuse") },
-                { value: "restart", label: t("launcher.editor.restart") },
-              ]}
-              value={policy.alreadyRunning}
-            />
-            <Select
-              label={t("launcher.editor.failure")}
-              onChange={(value) => setPolicy("failure", value)}
-              options={[
-                { value: "ask", label: t("launcher.editor.ask") },
-                { value: "stop", label: t("launcher.editor.stop") },
-                { value: "continue", label: t("launcher.editor.continue") },
-              ]}
-              value={policy.failure}
-            />
-            <Select
-              label={t("launcher.editor.cancelPolicy")}
-              onChange={(value) => setPolicy("cancel", value)}
-              options={[
-                { value: "ask", label: t("launcher.editor.ask") },
-                { value: "leave", label: t("launcher.editor.leave") },
-                { value: "close-started", label: t("launcher.editor.closeStarted") },
-              ]}
-              value={policy.cancel}
-            />
-            <Select
-              label={t("launcher.editor.exitPolicy")}
-              onChange={(value) => setPolicy("exit", value)}
-              options={[
-                { value: "ask", label: t("launcher.editor.ask") },
-                { value: "leave", label: t("launcher.editor.leave") },
-                { value: "close-started", label: t("launcher.editor.closeStarted") },
-              ]}
-              value={policy.exit}
-            />
-            <Select
-              label={t("launcher.editor.retryPolicy")}
-              onChange={(value) => setDraft((current) => ({
-                ...current,
-                policy: {
-                  ...defaultPolicy,
-                  ...current.policy,
-                  retry: value as LaunchPolicy["retry"],
-                  maxRetries: value === "ask" ? 0 : Math.max(1, current.policy?.maxRetries ?? 0),
-                },
-              }))}
-              options={[
-                { value: "ask", label: t("launcher.editor.ask") },
-                { value: "failed", label: t("launcher.editor.retryFailed") },
-                { value: "all", label: t("launcher.editor.retryAll") },
-              ]}
-              value={policy.retry}
-            />
+            <Field htmlFor="orbit-profile-already-running" label={t("launcher.editor.alreadyRunning")}>
+              <Select
+                id="orbit-profile-already-running"
+                label={t("launcher.editor.alreadyRunning")}
+                onChange={(value) => setPolicy("alreadyRunning", value)}
+                options={[
+                  { value: "ask", label: t("launcher.editor.ask") },
+                  { value: "reuse", label: t("launcher.editor.reuse") },
+                  { value: "restart", label: t("launcher.editor.restart") },
+                ]}
+                value={policy.alreadyRunning}
+              />
+            </Field>
+            <Field htmlFor="orbit-profile-failure" label={t("launcher.editor.failure")}>
+              <Select
+                id="orbit-profile-failure"
+                label={t("launcher.editor.failure")}
+                onChange={(value) => setPolicy("failure", value)}
+                options={[
+                  { value: "ask", label: t("launcher.editor.ask") },
+                  { value: "stop", label: t("launcher.editor.stop") },
+                  { value: "continue", label: t("launcher.editor.continue") },
+                ]}
+                value={policy.failure}
+              />
+            </Field>
+            <Field htmlFor="orbit-profile-cancel" label={t("launcher.editor.cancelPolicy")}>
+              <Select
+                id="orbit-profile-cancel"
+                label={t("launcher.editor.cancelPolicy")}
+                onChange={(value) => setPolicy("cancel", value)}
+                options={[
+                  { value: "ask", label: t("launcher.editor.ask") },
+                  { value: "leave", label: t("launcher.editor.leave") },
+                  { value: "close-started", label: t("launcher.editor.closeStarted") },
+                ]}
+                value={policy.cancel}
+              />
+            </Field>
+            <Field htmlFor="orbit-profile-exit" label={t("launcher.editor.exitPolicy")}>
+              <Select
+                id="orbit-profile-exit"
+                label={t("launcher.editor.exitPolicy")}
+                onChange={(value) => setPolicy("exit", value)}
+                options={[
+                  { value: "ask", label: t("launcher.editor.ask") },
+                  { value: "leave", label: t("launcher.editor.leave") },
+                  { value: "close-started", label: t("launcher.editor.closeStarted") },
+                ]}
+                value={policy.exit}
+              />
+            </Field>
+            <Field htmlFor="orbit-profile-retry" label={t("launcher.editor.retryPolicy")}>
+              <Select
+                id="orbit-profile-retry"
+                label={t("launcher.editor.retryPolicy")}
+                onChange={(value) => setDraft((current) => ({
+                  ...current,
+                  policy: {
+                    ...defaultPolicy,
+                    ...current.policy,
+                    retry: value as LaunchPolicy["retry"],
+                    maxRetries: value === "ask" ? 0 : Math.max(1, current.policy?.maxRetries ?? 0),
+                  },
+                }))}
+                options={[
+                  { value: "ask", label: t("launcher.editor.ask") },
+                  { value: "failed", label: t("launcher.editor.retryFailed") },
+                  { value: "all", label: t("launcher.editor.retryAll") },
+                ]}
+                value={policy.retry}
+              />
+            </Field>
             {policy.retry !== "ask" ? (
               <Field htmlFor="orbit-profile-max-retries" label={t("launcher.editor.maxRetries")}>
                 <Input

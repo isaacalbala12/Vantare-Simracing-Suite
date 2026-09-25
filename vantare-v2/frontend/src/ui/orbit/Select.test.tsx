@@ -55,6 +55,12 @@ describe("Orbit Select · desplegable propio", () => {
     expect(options[2].getAttribute("aria-disabled")).toBe("true");
   });
 
+  it("eleva la lista al abrirla desde un cajón", () => {
+    render(<div className="orbit-drawer-layer"><Host /></div>);
+    fireEvent.click(trigger());
+    expect(screen.getByRole("listbox", { name: "Sistema" }).className).toContain("orbit-select__list--drawer");
+  });
+
   it("selecciona con clic y cierra", () => {
     const onChange = vi.fn();
     render(<Host onChange={onChange} />);

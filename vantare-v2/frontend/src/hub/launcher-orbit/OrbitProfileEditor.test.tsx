@@ -165,6 +165,15 @@ describe("OrbitProfileEditor", () => {
   it("permite configurar las políticas de ejecución y salida desde el modo avanzado", () => {
     const { onSave } = setup();
     fireEvent.click(screen.getByTestId("orbit-profile-editor-advanced-toggle"));
+    for (const label of [
+      "Si ya está abierta",
+      "Si falla un paso",
+      "Al cancelar",
+      "Al salir",
+      "Reintentos automáticos",
+    ]) {
+      expect(screen.getByText(label, { selector: "label" }).textContent).toBe(label);
+    }
     fireEvent.click(screen.getByRole("combobox", { name: "Al salir" }));
     fireEvent.click(screen.getByRole("option", { name: "Cerrar las iniciadas por Vantare" }));
     fireEvent.click(screen.getByRole("combobox", { name: "Al cancelar" }));

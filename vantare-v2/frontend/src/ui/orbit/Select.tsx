@@ -97,6 +97,7 @@ export function Select<T extends string>({
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const [place, setPlace] = useState<Placement | null>(null);
+  const [inDrawer, setInDrawer] = useState(false);
 
   const selectedIndex = useMemo(
     () => options.findIndex((option) => option.value === value),
@@ -117,6 +118,7 @@ export function Select<T extends string>({
   const measure = useCallback(() => {
     const node = triggerRef.current;
     if (!node) return;
+    setInDrawer(Boolean(node.closest(".orbit-drawer-layer")));
     // La lista se portala a `document.body` y se posiciona con `fixed`: cuando
     // la shell está escalada (D-R4-3) el rect medido viene en px reales y el
     // `top/left` se interpreta en px de maquetación. Sin convertir, la lista
@@ -302,7 +304,7 @@ export function Select<T extends string>({
     open && place ? (
       <div
         aria-label={label}
-        className="orbit-select__list"
+        className={cx("orbit-select__list", inDrawer && "orbit-select__list--drawer")}
         data-testid={`orbit-select-list-${id ?? reactId}`}
         data-up={place.up ? "true" : undefined}
         id={listId}

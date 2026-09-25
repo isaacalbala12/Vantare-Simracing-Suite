@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Events } from "@wailsio/runtime";
 import { HubToast, type HubToastVariant } from "./HubToast";
 import { useNotificationPreferences } from "../settings/notification-preferences";
 import { createChainStore, type ChainStepEvent } from "./chain-store-core";
 import { ChainRunnerContext } from "./chain-context";
+import { LauncherStoreContext } from "./launcher-context";
+
+const subscribeWithoutLauncher = () => () => undefined;
+const emptyLauncherSnapshot = () => null;
 
 type LauncherDecision = {
   decisionId: string;
@@ -27,6 +31,16 @@ const decisionLabels: Record<string, string> = {
 
 export function ChainRunnerProvider({ children }: { children: ReactNode }) {
   const [store] = useState(createChainStore);
+  const launcherStore = useContext(LauncherStoreContext);
+  const launcherSnapshot = useSyncExternalStore(
+    launcherStore?.subscribe ?? subscribeWithoutLauncher,
+    launcherStore?.getSnapshot ?? emptyLauncherSnapshot,
+    emptyLauncherSnapshot,
+  );
+  const profileName = (id: string) =>
+    [...(launcherSnapshot?.userProfiles ?? []), ...(launcherSnapshot?.vantareProfiles ?? [])]
+      .find((profile) => profile.id === id)?.name ?? id;
+  const appName = (id: string) => launcherSnapshot?.apps.find((app) => app.id === id)?.displayName ?? id;
   const notifications = useNotificationPreferences();
   const notificationsRef = useRef(notifications);
   useEffect(() => {
@@ -35,8 +49,10 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
 
   const [toastInfo, setToastInfo] = useState<{
     variant: HubToastVariant;
-    message: string;
     profileId: string;
+    doneSteps: number;
+    total: number;
+    failedAppIds: string[];
   } | null>(null);
   const [decisions, setDecisions] = useState<LauncherDecision[]>([]);
   const [rememberDecision, setRememberDecision] = useState(false);
@@ -58,19 +74,12 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
 
       const total = chain.steps.length;
       const doneSteps = chain.steps.filter((step) => step.status === "done").length;
-      const failedNames = chain.steps
+      const failedAppIds = chain.steps
         .filter((step) => step.status === "failed")
-        .map((step) => step.appId)
-        .join(", ");
-      const message =
-        result === "success"
-          ? `Perfil ${data.profileId} · ${doneSteps}/${total} apps lanzadas`
-          : result === "partial"
-            ? `Perfil ${data.profileId} · ${doneSteps}/${total} apps listas, falló ${failedNames}`
-            : `Perfil ${data.profileId} · no se pudo iniciar`;
+        .map((step) => step.appId);
 
       if (!notificationsRef.current.launcherMuted) {
-        setToastInfo({ variant: result, message, profileId: data.profileId });
+        setToastInfo({ variant: result, profileId: data.profileId, doneSteps, total, failedAppIds });
       }
     });
     const offError = Events.On("launcher:chain:error", (event: unknown) => {
@@ -109,6 +118,13 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const activeDecision = decisions[0];
+  const toastMessage = toastInfo?.variant === "success"
+    ? `Perfil ${profileName(toastInfo.profileId)} · ${toastInfo.doneSteps}/${toastInfo.total} apps lanzadas`
+    : toastInfo?.variant === "partial"
+      ? `Perfil ${profileName(toastInfo.profileId)} · ${toastInfo.doneSteps}/${toastInfo.total} apps listas, falló ${toastInfo.failedAppIds.map(appName).join(", ")}`
+      : toastInfo
+        ? `Perfil ${profileName(toastInfo.profileId)} · no se pudo iniciar`
+        : "";
   const resolveDecision = (action: string) => {
     if (!activeDecision) return;
     Events.Emit("launcher:decision:resolve", {
@@ -126,7 +142,7 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
       {toastInfo ? (
         <HubToast
           variant={toastInfo.variant}
-          message={toastInfo.message}
+          message={toastMessage}
           profileId={toastInfo.profileId}
           onRetry={handleRetry}
           onClose={() => setToastInfo(null)}
@@ -136,10 +152,10 @@ export function ChainRunnerProvider({ children }: { children: ReactNode }) {
         <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-md rounded-orbit border border-orbit-ember/40 bg-orbit-surface-1 p-5 shadow-2xl" role="alertdialog" aria-modal="true" aria-labelledby="launcher-decision-title">
             <h2 id="launcher-decision-title" className="text-base text-orbit-ink">
-              {activeDecision.kind === "alreadyRunning" ? `${activeDecision.appId} ya está abierta` : activeDecision.kind === "cancel" ? "Perfil detenido" : `No se pudo iniciar ${activeDecision.appId}`}
+              {activeDecision.kind === "alreadyRunning" ? `${appName(activeDecision.appId)} ya está abierta` : activeDecision.kind === "cancel" ? "Perfil detenido" : `No se pudo iniciar ${appName(activeDecision.appId)}`}
             </h2>
             <p className="mt-2 text-sm text-orbit-ink-3">
-              Perfil {activeDecision.profileId}. {activeDecision.message || "El paso falló."}
+              Perfil {profileName(activeDecision.profileId)}. {activeDecision.message || "El paso falló."}
               {activeDecision.kind === "failure" ? " ¿Continuar con las demás aplicaciones?" : activeDecision.kind === "alreadyRunning" ? " ¿Qué quieres hacer?" : ""}
             </p>
             <label className="mt-4 flex items-center gap-2 text-sm text-orbit-ink-3">

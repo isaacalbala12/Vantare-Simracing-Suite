@@ -161,3 +161,9 @@ workers; ninguno se declara verde. El binario integrado actualizado no se
 ejecutó: 44.075.520 bytes, SHA-256
 `f1cb254326b7f639db8ded90f6c3464b7f1025a215d19a19e24041982a2a7c9a`.
 La build volvió a reordenar `go.mod`; sólo se retiró ese cambio generado.
+
+Una última repetición de la suite frontend completa, en ejecución secuencial
+(`vitest run --no-file-parallelism`), terminó con **493 archivos PASS, 4.317
+tests PASS y 2 omitidos** en 541,60 s. Esto cierra el gate de frontend del HEAD
+`b8d4e5d2` sin atribuir una causa definitiva a los timeouts de las corridas
+paralelas. La ejecución usa mocks y no sustituye E01–E08 en Wails/LMU real.

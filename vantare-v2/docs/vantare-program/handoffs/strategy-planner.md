@@ -11,9 +11,10 @@ El navegador confirmó «Propuesta aceptada como revisión inmutable». El solve
 y los datos de esa pantalla son simulados, por lo que E01 nativo sigue
 pendiente. El mapa ausente en ese harness responde a `Imola`/`GP`, que no
 coincide con el nombre completo del catálogo ni del fixture LMU; E02 debe
-comprobar el contorno con la identidad nativa. Dos intentos de suite frontend
-global no dieron un resultado válido
-por un `AbortError` de `happy-dom`; no se declara verde. El binario actual sin
+comprobar el contorno con la identidad nativa. Dos intentos paralelos de suite
+frontend global no dieron un resultado válido por un `AbortError` de
+`happy-dom`; la repetición completa secuencial sí pasó: 493 archivos, 4.317
+tests PASS y 2 omitidos en 541,60 s. El binario actual sin
 ejecutar mide 44.075.520 bytes, SHA-256
 `f1cb254326b7f639db8ded90f6c3464b7f1025a215d19a19e24041982a2a7c9a`.
 [Evidencia](../../strategy-planner/evidence/isa-1393/preflight-2026-09-25.md).

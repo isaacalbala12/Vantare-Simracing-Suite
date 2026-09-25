@@ -31,6 +31,12 @@ pendiente. Sin merge, promoción ni release.
 
 
 
+## ISA-1390 — versión en la cabecera de Orbit (2026-09-25)
+
+[Notion VAN-768](https://app.notion.com/p/3e6e51695c6581f78d55e9801c25c6ab) y [puente técnico #1390](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1390). Rama aislada `vantareapp/isa-1390-orbit-version-header`, base `origin/nightly@f0ccfbf2`. El indicador verde decorativo se elimina de la cabecera contextual; la versión se muestra cuando llega del runtime. La ruta existente es `app:version` desde Go a HubApp y ContextColumn. `VERSION` y `main.version` coinciden en `0.1.0.7`; el empaquetado de Windows inyecta la etiqueta de la build, incluido su canal. No se introduce una versión fija en frontend.
+
+Prueba de regresión: la cabecera carece del indicador y acepta una versión nueva en el mismo montaje. Reproducción roja antes del cambio; después, 36/36 pruebas focales, typecheck, lint y build pasan. El primer intento de suite completa agotó el tiempo en dos tests visuales ajenos durante carga concurrente; ambos pasaron aislados (5/5). La repetición con dos workers pasó: 484 archivos, 4106 pruebas, 2 omitidas; la prueba aparte de presupuesto de frames pasó 4/4. El hito `orbit-v1-12` y su digest derivado reflejan el ajuste sin dar por completado todo el hito. [PR draft #1391](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1391) para revisión. Sin prueba visual Wails de esta build, merge ni promoción.
+
 ## ISA-1385 — Car Damage Numbers Eficiencia (2026-09-25)
 
 [Issue #1385](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1385). Isaac pidió adaptar la composición de cuatro filas del widget Crystal al fondo y la tipografía de Eficiencia. Rama/worktree aislados `vantareapp/isa-1385-car-damage-numbers-eficiencia` en `C:\tmp\vantare-isa1385-car-damage-numbers`. El trabajo local nació de `df6b4125` del mapa #1358, y antes del PR se reconcilió sobre `origin/nightly` `5c73013e`: el diff final contiene solo #1385.

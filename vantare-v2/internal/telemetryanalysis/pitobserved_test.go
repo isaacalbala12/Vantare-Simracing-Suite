@@ -202,7 +202,11 @@ func TestPagedPitObservationMatchesMaterializedWithCorrectedValue(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := readPagedPitObservation(context.Background(), reader, model.Artifact, limits, summary, classified, values)
+	rows, err := readPagedProjectionRows(context.Background(), reader, model.Artifact, limits, summary, LapValidityAnalysis{}, values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := readPagedPitObservationFromEvents(context.Background(), reader, model.Artifact, limits, summary, classified, rows.pitEvents, values)
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("paged corrected pit differs: %v", err)
 	}

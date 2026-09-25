@@ -39,13 +39,13 @@ func DerivePagedCorrectedSession(ctx context.Context, reader CorrectionInputRead
 	if err != nil {
 		return empty, err
 	}
-	pages, err := readPagedProjectionRows(ctx, reader, artifact, limits, original, validity, values)
+	rows, err := readPagedProjectionRows(ctx, reader, artifact, limits, original, validity, values)
 	if err != nil {
 		return empty, err
 	}
-	pit, err := readPagedPitObservation(ctx, reader, artifact, limits, original, effectiveClassified, values)
+	pit, err := readPagedPitObservationFromEvents(ctx, reader, artifact, limits, original, effectiveClassified, rows.pitEvents, values)
 	if err != nil {
 		return empty, err
 	}
-	return deriveCorrectedObservationsWithPit(original.Base, original.Session, pages, classified, validity, view, len(snapshot.Classifications) > 0, &pit)
+	return deriveCorrectedObservationsWithPit(original.Base, original.Session, rows.pages, classified, validity, view, len(snapshot.Classifications) > 0, &pit)
 }

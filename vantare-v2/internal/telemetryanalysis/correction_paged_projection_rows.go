@@ -6,27 +6,33 @@ import (
 	"strings"
 )
 
+type pagedProjectionRows struct {
+	pages     []HistoricalPage
+	pitEvents []HistoricalPage
+}
+
 // readPagedProjectionRows retains the event rows and only the continuous rows
 // bracketing the instants queried by the existing derivators. The correction
 // map has already been validated against the exact stored snapshot. Original
 // GPS alignment always precedes application of its corrected values.
-func readPagedProjectionRows(ctx context.Context, reader CorrectionInputReader, artifact AuthorizedHistoricalArtifact, limits CorrectionReadLimits, summary CorrectionSummary, validity LapValidityAnalysis, correctedValues map[correctionRowKey]map[string]HistoricalValue) ([]HistoricalPage, error) {
+func readPagedProjectionRows(ctx context.Context, reader CorrectionInputReader, artifact AuthorizedHistoricalArtifact, limits CorrectionReadLimits, summary CorrectionSummary, validity LapValidityAnalysis, correctedValues map[correctionRowKey]map[string]HistoricalValue) (pagedProjectionRows, error) {
+	var empty pagedProjectionRows
 	queries := projectionBoundaryQueries(validity)
 	scans := make(map[string]*orderedProjectionBoundaryScan)
 	for _, channel := range summary.Session.Channels {
 		if projectionContinuousChannel(channel.SourceName) {
 			scan, err := newOrderedProjectionBoundaryScan(queries)
 			if err != nil {
-				return nil, err
+				return empty, err
 			}
 			scans[channel.ID] = scan
 		}
 	}
-	result := make([]HistoricalPage, 0, len(summary.Session.Channels))
+	result := pagedProjectionRows{pages: make([]HistoricalPage, 0, len(summary.Session.Channels))}
 	eventRows := 0
 	err := visitAlignedCorrectionPages(ctx, reader, artifact, limits, summary,
 		func(channel HistoricalChannel) bool {
-			return projectionContinuousChannel(channel.SourceName) || projectionEventChannel(channel.SourceName)
+			return projectionContinuousChannel(channel.SourceName) || projectionEventChannel(channel.SourceName) || strings.EqualFold(strings.TrimSpace(channel.SourceName), "In Pits")
 		},
 		func(channel HistoricalChannel, page HistoricalPage) error {
 			applyPagedCorrectionValues(&page, correctedValues)
@@ -35,7 +41,11 @@ func readPagedProjectionRows(ctx context.Context, reader CorrectionInputReader, 
 				if eventRows > maxCorrectionSummaryEventRows {
 					return ErrCorrectionReadLimit
 				}
-				result = append(result, page)
+				if strings.EqualFold(strings.TrimSpace(channel.SourceName), "In Pits") {
+					result.pitEvents = append(result.pitEvents, page)
+				} else {
+					result.pages = append(result.pages, page)
+				}
 				return nil
 			}
 			scan := scans[channel.ID]
@@ -54,11 +64,11 @@ func readPagedProjectionRows(ctx context.Context, reader CorrectionInputReader, 
 			return nil
 		})
 	if err != nil {
-		return nil, err
+		return empty, err
 	}
 	for _, channel := range summary.Session.Channels {
 		if scan := scans[channel.ID]; scan != nil {
-			result = append(result, HistoricalPage{ChannelID: channel.ID, Sampling: channel.Sampling, Samples: scan.finish()})
+			result.pages = append(result.pages, HistoricalPage{ChannelID: channel.ID, Sampling: channel.Sampling, Samples: scan.finish()})
 		}
 	}
 	return result, ctx.Err()

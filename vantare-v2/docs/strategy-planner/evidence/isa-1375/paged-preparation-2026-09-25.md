@@ -313,7 +313,23 @@ una comparación estable de velocidad. La ruta paginada asignó más bytes
 acumulados (`TotalAlloc` ~5,8 GiB frente a ~4,4 GiB) por releer páginas, aunque
 retuvo mucho menos al mismo tiempo.
 
+Después se unió la lectura de eventos de boxes a la visita que ya selecciona
+fronteras. Si no hay parada, se evita una visita completa adicional; si la
+hay, sólo se releen Fuel/VE para acumular el ascenso. Las pruebas de Analysis
+y App conservaron paridad. Una ejecución aislada posterior del mismo Algarve
+dio **93,3 MiB** de pico, **6,21 s** de proyección y `TotalAlloc` ~5,36 GiB;
+el resultado continuó en 95,190 s y 2,135 L/vuelta, con hashes intactos.
+Las fluctuaciones entre ejecuciones siguen impidiendo atribuir una mejora
+temporal exacta a esta simplificación.
+
 Falta demostrar crecimiento acotado con una fuente larga de **muchas vueltas**,
 ajustar el límite de muestras sólo con esa evidencia, validar en Wails T22 y
 revisar la experiencia de espera en la UI. La ejecución funcional no cierra
 ISA-1375 ni acredita resistencia completa.
+
+El empaquetado local pasó sin abrir la ventana: `pnpm --dir frontend build` y
+`CGO_ENABLED=0 wails3 build DEV=true` generaron un ejecutable de 43.971.072
+bytes (`SHA-256 406ef6ff1de3480d3b50dcc67627d60111a92c2e1c97ffb3d260b2d3d47fdc3f`).
+La CLI instalada informó `v3.0.0-alpha.98`; el build no verifica interacción
+WebView2 ni login/licencia y no cierra T22. `go mod tidy` reordenó una
+dependencia indirecta durante el build; se restauró ese cambio no relacionado.

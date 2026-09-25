@@ -11,6 +11,12 @@ provisional 128 MiB **sólo para esta grabación/proceso**. Proyección ~7 s fre
 a 2,25 s en ejecuciones secuenciales, sin conclusión estable de velocidad.
 Faltan fuente larga multivuelta, cuota respaldada por ese caso, Wails T22 y
 UX de espera. [Evidencia](../../strategy-planner/evidence/isa-1375/paged-preparation-2026-09-25.md).
+La visita de fronteras recoge también los eventos de boxes y evita otra
+relectura completa cuando no hay parada. Perfil aislado posterior: 93,3 MiB,
+6,21 s de proyección y resultado idéntico en Algarve; la variación entre
+ejecuciones no permite atribuir una ganancia estable de tiempo.
+Build frontend y build Wails DEV con CGO desactivado PASS; ejecutable presente
+y hash documentado, sin abrir la app. Eso no cierra el recorrido WebView2 T22.
 #1375 sigue abierta; sin push, PR, CI, merge, promoción ni release.
 
 ## Recolectores paginados de boxes y fronteras — ISA-1375 (2026-09-25)

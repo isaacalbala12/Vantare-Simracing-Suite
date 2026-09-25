@@ -43,7 +43,7 @@ func TestPagedProjectionBoundaryRowsMatchMaterializedSelection(t *testing.T) {
 	}
 	for _, id := range []string{"fuel", "ve", "finish"} {
 		var selected, expected []HistoricalSample
-		for _, page := range got {
+		for _, page := range got.pages {
 			if page.ChannelID == id {
 				selected = append(selected, page.Samples...)
 			}

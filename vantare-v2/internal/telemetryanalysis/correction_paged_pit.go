@@ -6,29 +6,10 @@ import (
 	"strings"
 )
 
-// readPagedPitObservation retains pit events and one rise accumulator per
-// interval. Values are corrected only after the original GPS has aligned the
-// page, matching DeriveCorrectedSession's alignment-before-correction order.
-// The caller must validate correctedValues against the exact stored snapshot.
-func readPagedPitObservation(ctx context.Context, reader CorrectionInputReader, artifact AuthorizedHistoricalArtifact, limits CorrectionReadLimits, summary CorrectionSummary, classified ClassifiedSession, correctedValues map[correctionRowKey]map[string]HistoricalValue) (SessionPitObservation, error) {
-	var events []HistoricalPage
-	eventRows := 0
-	err := visitAlignedCorrectionPages(ctx, reader, artifact, limits, summary,
-		func(channel HistoricalChannel) bool {
-			return strings.EqualFold(strings.TrimSpace(channel.SourceName), "In Pits")
-		},
-		func(_ HistoricalChannel, page HistoricalPage) error {
-			eventRows += len(page.Samples)
-			if eventRows > maxCorrectionSummaryEventRows {
-				return ErrCorrectionReadLimit
-			}
-			applyPagedCorrectionValues(&page, correctedValues)
-			events = append(events, page)
-			return nil
-		})
-	if err != nil {
-		return SessionPitObservation{}, err
-	}
+// readPagedPitObservationFromEvents keeps one rise accumulator per interval.
+// Its events come from the same validated, GPS-aligned projection visit; the
+// caller must validate correctedValues against the exact stored snapshot.
+func readPagedPitObservationFromEvents(ctx context.Context, reader CorrectionInputReader, artifact AuthorizedHistoricalArtifact, limits CorrectionReadLimits, summary CorrectionSummary, classified ClassifiedSession, events []HistoricalPage, correctedValues map[correctionRowKey]map[string]HistoricalValue) (SessionPitObservation, error) {
 	intervals := observedPitIntervals(readEvents(events))
 	if len(intervals) == 0 {
 		return derivePitObservationWithRises(summary.Session, classified, nil, nil, nil)
@@ -37,7 +18,7 @@ func readPagedPitObservation(ctx context.Context, reader CorrectionInputReader, 
 	veScans := make([]pitRiseScan, len(intervals))
 	lastSeconds := make(map[string]float64)
 	seenSeconds := make(map[string]bool)
-	err = visitAlignedCorrectionPages(ctx, reader, artifact, limits, summary,
+	err := visitAlignedCorrectionPages(ctx, reader, artifact, limits, summary,
 		func(channel HistoricalChannel) bool {
 			name := strings.ToLower(strings.TrimSpace(channel.SourceName))
 			return name == "fuel level" || name == "virtual energy"

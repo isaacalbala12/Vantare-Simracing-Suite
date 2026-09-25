@@ -1,5 +1,26 @@
 # T22 / ISA-1393 — preflight sin ventana nativa
 
+## Actualización del candidato integrado (2026-09-25)
+
+Tras incorporar el corte visual v5-13 y el inventario documental #1375, el
+frontend de la rama integrada compila y `CGO_ENABLED=0 wails3 build DEV=true`
+genera `bin/vantare.exe` de 44.077.056 bytes, SHA-256
+`b992ce2fa02fd72b7aedef39d9d7b758f8b33e1a1d105b7ef9a61089bf4667e`.
+La tarea de build invoca `-X main.buildChannel=master` por defecto: este
+binario local no acredita una licencia de desarrollo ni un canal de entrega.
+No se abrió la ventana. `go mod tidy` promovió `github.com/coder/websocket`
+de indirecta a directa porque `cmd/vantare/overlay_socket.go` la importa;
+`go mod tidy -diff` quedó vacío y `go test ./...` pasó. Esta verificación
+compila el candidato, pero no ejecuta E01–E08 ni prueba DuckDB en Wails.
+
+Después del preflight inicial sí se hizo un inventario **sólo de conteos
+`Lap`** en 369 DuckDB LMU estables con la CLI `-readonly`, descrito en
+[la evidencia #1375](../isa-1375/paged-preparation-2026-09-25.md). No fue
+una prueba E2E ni calibración; incluyó metadatos de carreras potencialmente
+reservadas para #1030, sin señales ni etiquetas. Por tanto, las afirmaciones
+del preflight inicial de que no se leyó un DuckDB describen sólo aquel corte,
+no el estado de este expediente.
+
 > Este preflight precede a la integración local descrita al final. Su primer
 > binario quedó sustituido; ninguna de las dos builds se ejecutó en una ventana.
 

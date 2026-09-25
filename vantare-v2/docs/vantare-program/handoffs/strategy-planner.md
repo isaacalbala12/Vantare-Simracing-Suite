@@ -1,5 +1,16 @@
 # Handoff vivo — Strategy Planner
 
+## Build integrada sin ventana — ISA-1393 (2026-09-25)
+
+El candidato local compiló frontend y Wails DEV tras #1277/#1375:
+`bin/vantare.exe`, 44.077.056 bytes, SHA-256
+`b992ce2fa02fd72b7aedef39d9d7b758f8b33e1a1d105b7ef9a61089bf4667e`.
+La tarea usa `main.buildChannel=master`; el binario no se abrió ni acredita
+licencia/canal de distribución. `go mod tidy -diff` y `go test ./...` pasan;
+`go.mod` registra como directa la dependencia websocket ya importada por la
+app. [Preflight actualizado](../../strategy-planner/evidence/isa-1393/preflight-2026-09-25.md).
+E01–E08 siguen pendientes; sin push, PR, CI, promoción ni release.
+
 ## Inventario local de resistencia — ISA-1375 (2026-09-25)
 
 Se examinaron 369 DuckDB LMU estables en modo sólo lectura (298 P, 26 Q,

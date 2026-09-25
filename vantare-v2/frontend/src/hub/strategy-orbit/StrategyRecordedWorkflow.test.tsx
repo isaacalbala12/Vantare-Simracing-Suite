@@ -7,13 +7,14 @@ import type { StrategyApplicationClient, StrategyApplicationCommandV1 } from "..
 import type { RecordedDraftPayload } from "./strategy-recorded-payload";
 import { openRecordedSession, type RecordedSession } from "./strategy-recorded-session";
 import { StrategyRecordedWorkflow } from "./StrategyRecordedWorkflow";
+import type { RecordedCombination } from "./strategy-recorded-wizard";
 import { getHubSuspendBlockerReasons } from "../hub-suspend-guard";
 
 vi.mock("./strategy-recorded-session", () => ({ openRecordedSession: vi.fn() }));
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 const candidate = { id: "candidate", displayName: "actual-session.duckdb", state: "ready", size: 1024, modifiedAt: "2026-09-09T12:00:00Z", walPresent: false };
 const session = { candidateId: "candidate", combinationId: "combo", combination: { id: "combo", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Car", carClass: "LMP2" }, opened: { sessionId: "handle", session: { metadata: [] } }, base: { sessionId: "source" }, revision: { sessionId: "source", baseDigest: "a".repeat(64), revisionId: "b".repeat(64), snapshotId: "c".repeat(64) } } as RecordedSession;
-function setup(version: number | undefined = 7, strict = false) {
+function setup(version: number | undefined = 7, strict = false, catalog: RecordedCombination[] = []) {
   const execute = vi.fn(async (command: StrategyApplicationCommandV1<RecordedDraftPayload>) => ({ protocolVersion: "strategy.application.v1" as const, commandId: command.commandId, repositoryVersion: 8, recoveredFromBackup: false, closed: false, ...("draft" in command ? { draft: structuredClone(command.draft) } : {}) }));
   const application: StrategyApplicationClient<RecordedDraftPayload> = { execute, cancel: vi.fn(), dispose: vi.fn() };
   const close = vi.fn().mockResolvedValue(undefined);
@@ -22,7 +23,7 @@ function setup(version: number | undefined = 7, strict = false) {
   const onExit = vi.fn();
   const drafts: { sessions: number; mode: string }[] = [];
   vi.mocked(openRecordedSession).mockResolvedValue(session);
-  const workflow = <StrategyRecordedWorkflow eventId="event" repositoryVersion={version} catalog={[]} catalogState="available" calendar={null} application={application} analysis={analysis} onExit={onExit} onCleanupError={vi.fn()} navigation={({ requestExit, draft }) => { drafts.push({ sessions: draft.sessions.length, mode: draft.mode }); return <button type="button" onClick={() => requestExit()}>Leave Strategy</button>; }} t={key => key} />;
+  const workflow = <StrategyRecordedWorkflow eventId="event" repositoryVersion={version} catalog={catalog} catalogState="available" calendar={null} application={application} analysis={analysis} onExit={onExit} onCleanupError={vi.fn()} navigation={({ requestExit, draft }) => { drafts.push({ sessions: draft.sessions.length, mode: draft.mode }); return <button type="button" onClick={() => requestExit()}>Leave Strategy</button>; }} t={key => key} />;
   return { ...render(strict ? <StrictMode>{workflow}</StrictMode> : workflow), execute, close, discover, onExit, drafts };
 }
 it("discovers recent candidates after StrictMode replays the mount effect", async () => {
@@ -40,6 +41,30 @@ it("returns from the origin menu to the existing manual preparation", async () =
   fireEvent.click(screen.getByRole("button", { name: "strategy.entry.changeSource" }));
   fireEvent.click(screen.getByRole("button", { name: /strategy.entry.resume/ }));
   expect((screen.getByRole("spinbutton", { name: "strategy.entry.input.paceSeconds" }) as HTMLInputElement).value).toBe("91");
+});
+it("edits manual references in the race desk without requesting telemetry", async () => {
+  const combination = { combinationId: "lmu:imola", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Car", carClass: "LMP2" };
+  setup(7, false, [combination]);
+  const manual = await screen.findByRole<HTMLButtonElement>("button", { name: /strategy.entry.startManual/ });
+  await waitFor(() => expect(manual.disabled).toBe(false));
+  fireEvent.click(manual);
+  const context = await screen.findByRole("complementary", { name: "strategy.entry.circuitAndSource" });
+  fireEvent.click(within(context).getByRole("button", { name: /strategy.entry.changeCombination/ }));
+  fireEvent.change(screen.getByRole("combobox", { name: "strategy.journey.car" }), { target: { value: JSON.stringify([combination.carClass, combination.carName]) } });
+  fireEvent.change(screen.getByRole("combobox", { name: "strategy.journey.track" }), { target: { value: combination.combinationId } });
+  fireEvent.change(await screen.findByRole("spinbutton", { name: "strategy.entry.input.paceSeconds" }), { target: { value: "91" } });
+  fireEvent.click(screen.getByRole("button", { name: /strategy.entry.openRace/ }));
+  await screen.findByRole("tab", { name: "strategy.data.tab.data" });
+  expect(screen.getByText("strategy.journey.driver.manualPace")).toBeTruthy();
+  expect(screen.queryByRole("tab", { name: "strategy.data.tab.revisions" })).toBeNull();
+  fireEvent.click(within(screen.getByRole("complementary", { name: "strategy.entry.circuitAndSource" })).getByRole("button", { name: "strategy.workspace.review" }));
+  expect(screen.getByRole("tab", { name: "strategy.data.tab.data" }).getAttribute("aria-selected")).toBe("true");
+  expect(screen.getByRole("heading", { name: "strategy.entry.ownReferences" })).toBeTruthy();
+  expect(screen.queryByText("strategy.data.chooseSource")).toBeNull();
+  fireEvent.change(screen.getByRole("spinbutton", { name: "strategy.entry.input.paceSeconds" }), { target: { value: "92" } });
+  expect(screen.getByRole("button", { name: "strategy.workspace.save" }).hasAttribute("disabled")).toBe(false);
+  fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.preparation" }));
+  expect((screen.getByRole("spinbutton", { name: "strategy.entry.input.paceSeconds" }) as HTMLInputElement).value).toBe("92");
 });
 it("adds a second verified session from the desk library without replacing the first", async () => {
   const second = { ...candidate, id: "candidate-b", displayName: "second.duckdb", modifiedAt: "2026-09-08T12:00:00Z" };
@@ -76,6 +101,15 @@ it("opens and adopts a chosen recent session in one action, without persisting e
   unmount();
   expect(getHubSuspendBlockerReasons()).not.toContain("strategy.workspace.unsaved");
   await waitFor(() => expect(close).toHaveBeenCalledExactlyOnceWith("handle"));
+});
+it("opens the race desk at the editable race when preparation is incomplete", async () => {
+  setup();
+  fireEvent.click(await screen.findByRole("button", { name: /strategy.entry.useSession/ }));
+  await screen.findByRole("heading", { name: "strategy.entry.yourRace" });
+  fireEvent.click(screen.getByRole("button", { name: /strategy.entry.openRace/ }));
+  await waitFor(() => expect(screen.getByRole("tab", { name: "strategy.data.tab.race" }).getAttribute("aria-selected")).toBe("true"));
+  expect(screen.getByRole("button", { name: "strategy.workspace.edit strategy.journey.step.rules" })).toBeTruthy();
+  expect(screen.getByRole("tab", { name: "strategy.data.tab.plan" }).getAttribute("aria-selected")).toBe("false");
 });
 it("asks before discarding an unsaved manual preparation", async () => {
   const { onExit } = setup();

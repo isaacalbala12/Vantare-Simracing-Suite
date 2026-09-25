@@ -21,6 +21,13 @@ it("shows an unassigned team without inventing a driver or pace", () => {
   expect(onAdd).toHaveBeenCalledOnce();
 });
 
+it("labels the baseline pace as a manual estimate when there are no sessions", () => {
+  render(<Editor changed={vi.fn()} />);
+  expect(screen.getAllByText("strategy.journey.driver.manualPace")).toHaveLength(2);
+  expect(screen.getByRole("option", { name: "strategy.journey.driver.manualBase" })).toBeTruthy();
+  expect(screen.queryByText("strategy.journey.driver.pacePending")).toBeNull();
+});
+
 it("uses equal pace only after explicitly selecting an estimate, then accepts a signed delta", () => {
   const changed = vi.fn();
   render(<Editor changed={changed} />);
@@ -65,7 +72,7 @@ it("removes dependent estimates when their reference driver is removed", () => {
   fireEvent.click(screen.getByRole("button", { name: "strategy.journey.driver.remove Alex" }));
   expect(changed.mock.lastCall?.[0].drivers).toEqual([{ id: "relay", name: "Sam", referenceDriverId: undefined, paceDeltaSeconds: undefined }]);
   expect(screen.queryByText("strategy.journey.driver.estimated")).toBeNull();
-  expect(screen.getByText("strategy.journey.driver.pacePending")).toBeTruthy();
+  expect(screen.getByText("strategy.journey.driver.manualPace")).toBeTruthy();
 });
 
 it("stores driving limits in contract units, preserves absence and removes orphan limits", () => {

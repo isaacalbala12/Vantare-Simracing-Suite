@@ -337,6 +337,73 @@ El contrato de correcciones vuelve a reflejar el límite productivo medido de 1,
 
 El banco real actual reprodujo el límite de preparación de #1210 en S266 Algarve y S026 Monza. Se midieron 1.138.082 y 1.002.172 muestras requeridas frente al techo de 1.000.000; S125 Imola consume 626.191 y ~453 MiB de working set. Un presupuesto todavía acotado de 1,25 M muestras/1,5 M valores permite S266 (38 vueltas, 0 paradas, `optimality=proven` en un evento supuesto) con ~837 MiB observados; los hashes originales siguen intactos. No equivale a soporte de carreras de 24 h: la lectura por streaming y su memoria siguen pendientes. S026 ya entrega ritmo/Fuel/VE `valid`, pero el solver agota 100 M iteraciones y no demuestra óptimo; [#1367](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1367) registra la reproducción. [Evidencia y límites](../../strategy-planner/evidence/isa-1210/long-session-budget-2026-09-24.md). Wails, distribución y precisión empírica pendientes; sin push, PR, CI, merge, promoción ni release.
 
+## Segundo recorrido visual registrado — ISA-1331 (2026-09-25)
+
+En el navegador interno, con el servidor mock existente en 127.0.0.1:5209,
+Imola Race abrió Preparación y la mesa en el primer intento. Se consultaron
+las cinco vueltas de Datos, se editó un piloto, se configuró un evento de 240
+minutos con Fuel, energía virtual y paradas, y la condición seca habilitó el
+cálculo. La validación impidió abrir la mesa con un piloto sin nombre. El error
+genérico de guardado registrado antes no se reprodujo en este recorrido; su
+causa sigue sin aislarse.
+
+El mock devuelve un plan fijo de 69 vueltas y 2:02:38 para ese evento de 240
+minutos, incluso con la etiqueta «Estrategia óptima demostrada». Es una
+incoherencia del **harness ilustrativo**, no evidencia del SolverV2 ni de una
+estrategia válida para cuatro horas. La app productiva no usa esa respuesta.
+La validación con DuckDB real, Wails y aceptación T22 siguen pendientes; no
+se hicieron cambios de código en #1331 en esta pasada. Rama local sin push,
+PR, CI, merge, promoción ni release.
+
+## Datos manuales dentro de la mesa — ISA-1331 (2026-09-25)
+
+Revisión posterior del recorrido registrado en navegador interno (runtime mock,
+puerto 5209): Imola Race abrió Preparación; después Carrera, Datos, selección
+explícita de la sesión y consulta de cinco vueltas funcionaron. Un primer
+intento de abrir la mesa devolvió el error genérico de guardado; tras recargar,
+la misma secuencia abrió correctamente. No hay causa ni reproducción estable:
+queda como incidencia intermitente por aislar, sin afirmar que esté corregida.
+El runtime mock no acredita persistencia Wails ni lectura del DuckDB real.
+
+El navegador interno reprodujo un error de continuidad: al abrir «Datos» desde
+una carrera manual sin sesiones, la mesa pedía elegir un DuckDB; «Revisiones»
+mostraba un historial de correcciones de telemetría que no existía. La mesa
+ahora edita y guarda las mismas referencias manuales que Preparación, el
+lateral indica su procedencia y «Revisiones» desaparece de la ruta manual sin
+inspección.
+El texto de pilotos de la vista Carrera tampoco exige sesiones en modo manual.
+Una inspección registrada fallida conserva su error y la vía a la biblioteca;
+no se confunde con las referencias manuales. Regresión RED→PASS y suite
+frontend completa: 493 archivos, 4.304 tests PASS, dos omitidos. Tras añadir
+el guardado visible dentro de Datos, 32 pruebas focales, typecheck, lint y
+build pasan. La revisión visual del estado manual a 1280×720 mostró la nueva
+composición. En el navegador mock, editar ritmo 97,5 s y Fuel 2,8 L/vuelta
+activó «Guardar revisión» y el guardado devolvió «Borrador guardado». El navegador
+usa `VITE_RUNTIME_MOCK=mock`: la navegación y edición vistas no prueban
+DuckDB, SolverV2 ni persistencia Wails. T22, calibración #1030, memoria
+acotada #1375, aceptación visual e integración siguen pendientes. Rama local
+sin push, PR, CI, merge, promoción ni release.
+
+## Procedencia visible del cálculo manual — ISA-1331 (2026-09-24)
+
+El recorrido completo en el navegador interno llegó desde Manual a la mesa con combinación LMGT3/Imola, ritmo 97,5 s, Fuel 2,8 L/vuelta, VE 3,5 %/vuelta, evento de 60 min, reglas y un piloto. La condición seca habilitó el cálculo sin sesiones. Antes de hacerlo, Plan mostraba «0 sesiones seleccionadas» y Pilotos pedía validar el ritmo con sesiones, pese a que el motor admite referencias manuales. Ahora ambos paneles describen las estimaciones manuales y advierten que no están contrastadas con telemetría. Regresiones focales 9/9, i18n, lint, typecheck y build PASS. La primera suite completa dio cinco tiempos de espera de layout mientras ESLint corría a la vez; esos cinco pasaron aislados. La repetición completa con cuatro workers terminó verde: 493 archivos, 4.303 tests PASS, dos omitidos.
+
+El servidor en `127.0.0.1:5208` usa `VITE_RUNTIME_MOCK=mock`. Su respuesta de cálculo es un plan fijo de 69 vueltas incluso cuando el evento introducido dura 60 minutos: demuestra navegación y estados de UI, **no** el resultado real de SolverV2. La prueba de contrato `use-recorded-calculation.test.tsx` confirma por separado que Manual envía ritmo/Fuel como overrides con procedencia manual y no solicita una proyección de sesiones. T22 Wails/DuckDB, precisión empírica, integración y aceptación visual de Isaac siguen abiertos. Rama aislada sin push, PR, CI, merge, promoción ni release.
+
+## Entrada a la mesa v5 desde preparación — ISA-1331 (2026-09-24)
+
+El recorrido en navegador interno reprodujo que «Abrir mesa de carrera» seleccionaba Plan aun con evento, reglas y pilotos pendientes. El botón abre ahora Carrera, que presenta las tres ediciones y el estado del plan; Plan sigue disponible por pestaña. Regresión RED→PASS, 492 archivos/4301 tests frontend PASS (2 omitidos), tipos, lint, i18n y build PASS. El recorrido visual se hizo con el harness mock, no con DuckDB/Wails real; no valida persistencia nativa ni acepta T22. Rama aislada sin push, PR, CI, merge, promoción ni release.
+
+## Ensayos de dominancia Hypercar — ISA-1367 (2026-09-24)
+
+Dos cambios mínimos se probaron y retiraron en el worktree aislado de #1367. Filtrar por Fuel/VE antes de comparar conserva la suite solver, pero el banco real S026 Monza pasa a `calculation_timeout`; recorrer una vez la frontera también conserva la suite, pero continúa en `calculation_overflow`. La fuente conserva sus hashes y proyecta ritmo, Fuel y VE válidos. La [issue #1367](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1367) registra los resultados. El siguiente corte requiere reducir la generación de estados con un oráculo exhaustivo acotado; no hay optimización lista para integrar ni se declara probado un plan incompleto.
+
+## Sesiones largas y Hypercar — ISA-1210 / ISA-1367 (2026-09-24)
+
+El banco real actual reprodujo el límite de preparación de #1210 en S266 Algarve y S026 Monza. Se midieron 1.138.082 y 1.002.172 muestras requeridas frente al techo de 1.000.000; S125 Imola consume 626.191 y ~453 MiB de working set. Un presupuesto todavía acotado de 1,25 M muestras/1,5 M valores permite S266 (38 vueltas, 0 paradas, `optimality=proven` en un evento supuesto) con ~837 MiB observados; los hashes originales siguen intactos. No equivale a soporte de carreras de 24 h: la lectura por streaming y su memoria siguen pendientes. S026 ya entrega ritmo/Fuel/VE `valid`, pero el solver agota 100 M iteraciones y no demuestra óptimo; [#1367](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1367) registra la reproducción. [Evidencia y límites](../../strategy-planner/evidence/isa-1210/long-session-budget-2026-09-24.md). Wails, distribución y precisión empírica pendientes; sin push, PR, CI, merge, promoción ni release.
+
+Build localdev posterior a #1210: `bin/vantare-localdev.exe`, 46.015.488 bytes, SHA-256 `69E01DEB9CE93C93CF99314BABB256E98463364A2EB5C4B41F55E32925E5BB46`; compilación PASS sin abrir la app. En #1367, duplicar iteraciones no completó la búsqueda y dos podas conservadoras llegaron al deadline; la curva combinada de stint impide aplicar el atajo escalar. Esos experimentos se retiraron y la rama experimental quedó limpia. Ninguno de los bancos equivale a QA Wails con esta build.
+
 ## Decisión optimizada sin edición — ISA-1331 (2026-09-24)
 
 Se corrigió la reconstrucción de combustible del plan: en ausencia de ajustes, Strategy conserva los servicios y la carga inicial calculados por el modelo de recursos de SolverV2 en vez de sustituirlos por mínimos por stint. Una prueba RED demostró la pérdida previa de optimalidad; los ajustes manuales continúan sin reclamarla por herencia. El golden compartido Go/frontend refleja ahora la decisión evaluada. Banco real COTA práctica: 30 vueltas, 2 paradas, `optimality=proven` para el evento supuesto; COTA carrera: 32 vueltas, 0 paradas, `optimality=proven`. Hashes de originales intactos. Esto prueba identidad entre decisión optimizada y replay, no precisión empírica del plan. Go completo fresco, frontend 4.300/2 omitidos, tipos, lint, build y diff-check PASS. [Evidencia](../../strategy-planner/evidence/isa-1331/real-data-validation-2026-09-24.md). Falta QA Wails con el nuevo backend y el protocolo empírico independiente; no hay push, PR, CI, merge, promoción ni release.

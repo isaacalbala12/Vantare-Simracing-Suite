@@ -40,6 +40,11 @@
 .strategy-recorded-data__footer { display: flex; justify-content: space-between; gap: 18px; margin-top: auto; padding: 12px 0; color: var(--orbit-ink-3); font-size: 11px; }
 .strategy-recorded-data__footer > span { display: flex; gap: 12px; align-items: center; }
 .strategy-recorded-data__error { border-left: 2px solid var(--orbit-red); padding: 12px 16px; color: var(--orbit-ink); background: var(--orbit-surface-0); }
+.strategy-recorded-data--manual > .strategy-preparation__manual-inputs { display: flex; flex-direction: column; margin: 0 18px 18px; border: 1px solid var(--orbit-line); border-radius: var(--orbit-radius-control); background: var(--orbit-surface-0); overflow: hidden; }
+.strategy-recorded-data--manual > .strategy-preparation__manual-inputs > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 18px; min-height: 54px; border-bottom: 1px solid var(--orbit-line); }
+.strategy-recorded-data--manual > .strategy-preparation__manual-inputs > header h3 { margin: 0; }
+.strategy-recorded-data--manual > .strategy-preparation__manual-inputs > header span { color: var(--orbit-ink-3); font-size: 11px; }
+.strategy-recorded-data--manual > .strategy-recorded-data__footer { margin: 0 18px; border-top: 1px solid var(--orbit-line); }
 @media (max-width: 1100px) { .strategy-recorded-data__grid { grid-template-columns: minmax(0,1fr); } }
 @media (max-width: 880px) {
   .strategy-recorded-laps__views > span { display: none; }

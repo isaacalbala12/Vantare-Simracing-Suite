@@ -31,10 +31,10 @@ function number(value: number, digits = 1): string {
   return new Intl.NumberFormat(undefined, { maximumFractionDigits: digits }).format(value);
 }
 
-function CalculationStages({ state, t }: { readonly state: "idle" | "running" | "blocked"; readonly t: (key: string) => string }) {
+function CalculationStages({ state, manual, t }: { readonly state: "idle" | "running" | "blocked"; readonly manual: boolean; readonly t: (key: string) => string }) {
   const current = state === "idle" ? 0 : state === "running" ? 1 : -1;
   return <ol className="strategy-recorded-plan__stages">
-    {[t("strategy.workspace.sources"), t("strategy.workspace.validationPending"), t("strategy.workspace.plan")].map((label, index) => <li key={label} data-state={state === "blocked" && index > 0 ? "blocked" : index < current ? "done" : index === current ? "current" : "next"}><span>{index < current ? "✓" : index + 1}</span><strong>{label}</strong></li>)}
+    {[t(manual ? "strategy.workspace.manualReferences" : "strategy.workspace.sources"), t("strategy.workspace.validationPending"), t("strategy.workspace.plan")].map((label, index) => <li key={label} data-state={state === "blocked" && index > 0 ? "blocked" : index < current ? "done" : index === current ? "current" : "next"}><span>{index < current ? "✓" : index + 1}</span><strong>{label}</strong></li>)}
   </ol>;
 }
 
@@ -95,6 +95,7 @@ export function StrategyRecordedPlan({ draft, state, acceptance, sourceLabels = 
   const [pitDirty, setPitDirty] = useState(false);
   const [editor, setEditor] = useState<"plan" | "stints" | "pits">("plan");
   const running = state.status === "preparing" || state.status === "calculating" || state.status === "cancelling";
+  const manual = draft.mode === "manual" && draft.sessions.length === 0;
   const plan = currentRecordedPlan(state);
   const stintComparison = state.status === "success" && state.input.activeVariantId === RECORDED_STINT_EDIT_VARIANT_ID
     ? state.result.comparisons["recorded-main"] : undefined;
@@ -155,12 +156,12 @@ export function StrategyRecordedPlan({ draft, state, acceptance, sourceLabels = 
       <dl>
         <div><dt>{t("strategy.workspace.event")}</dt><dd>{raceValue}</dd></div>
         <div><dt>{t("strategy.journey.rules.resources")}</dt><dd>{draft.tankLiters === undefined ? "—" : <>{capacityParts[0]}<span>{draft.tankLiters}{capacityParts.slice(1).join("{{value}}")}</span></>}</dd></div>
-        <div><dt>{t("strategy.workspace.sources")}</dt><dd>{formatMessage(t(draft.sessions.length === 1 ? "strategy.workspace.selectedSource" : "strategy.workspace.selectedSources"), { count: draft.sessions.length })}</dd></div>
+        <div><dt>{t(manual ? "strategy.workspace.manualReferences" : "strategy.workspace.sources")}</dt><dd>{manual ? t("strategy.workspace.manualEstimate") : formatMessage(t(draft.sessions.length === 1 ? "strategy.workspace.selectedSource" : "strategy.workspace.selectedSources"), { count: draft.sessions.length })}</dd></div>
         <div><dt>{t("strategy.journey.drivers.title")}</dt><dd>{formatMessage(t(draft.drivers.length === 1 ? "strategy.workspace.driverCountOne" : "strategy.workspace.driverCount"), { count: draft.drivers.length })}<small>{draft.drivers.map(driver => driver.name).filter(Boolean).join(" · ") || "—"}</small></dd></div>
       </dl>
-      <CalculationStages state="idle" t={t} />
+      <CalculationStages state="idle" manual={manual} t={t} />
     </section> : null}
-    {running ? <div className="strategy-recorded-plan__state"><section className="strategy-recorded-plan__progress" role="status"><span aria-hidden="true" /><div><strong>{t(title)}</strong><p>{t(state.status === "preparing" ? "strategy.calculation.preparingHint" : "strategy.calculation.loadingHint")}</p></div><dl><div><dt>{t("strategy.workspace.event")}</dt><dd>{raceValue}</dd></div><div><dt>{t("strategy.workspace.sources")}</dt><dd>{draft.sessions.length}</dd></div><div><dt>{t("strategy.journey.drivers.title")}</dt><dd>{draft.drivers.length}</dd></div></dl></section><CalculationStages state="running" t={t} /></div> : null}
+    {running ? <div className="strategy-recorded-plan__state"><section className="strategy-recorded-plan__progress" role="status"><span aria-hidden="true" /><div><strong>{t(title)}</strong><p>{t(state.status === "preparing" ? "strategy.calculation.preparingHint" : "strategy.calculation.loadingHint")}</p></div><dl><div><dt>{t("strategy.workspace.event")}</dt><dd>{raceValue}</dd></div><div><dt>{t(manual ? "strategy.workspace.manualReferences" : "strategy.workspace.sources")}</dt><dd>{manual ? t("strategy.workspace.manualEstimate") : draft.sessions.length}</dd></div><div><dt>{t("strategy.journey.drivers.title")}</dt><dd>{draft.drivers.length}</dd></div></dl></section><CalculationStages state="running" manual={manual} t={t} /></div> : null}
     {state.status === "partial" ? <div className="strategy-recorded-plan__state"><div className="strategy-recorded-plan__partial" role="status">
       <h3>{t("strategy.calculation.partialHint")}</h3>
       <dl>
@@ -169,11 +170,11 @@ export function StrategyRecordedPlan({ draft, state, acceptance, sourceLabels = 
         {state.coverage.virtualEnergyPercentPerLap === undefined ? null : <div><dt>{t("strategy.plan.virtualEnergyPerLap")}</dt><dd>{number(state.coverage.virtualEnergyPercentPerLap, 2)}%</dd></div>}
       </dl>
       <p>{state.coverage.blockers.map(blocker => t(`strategy.calculation.blocker.${blocker}`)).join(" · ")}</p>
-    </div><CalculationStages state="blocked" t={t} /></div> : null}
+    </div><CalculationStages state="blocked" manual={manual} t={t} /></div> : null}
     {planWorkspace}
     {!plan ? backToPlan : null}
     {state.status === "cancelled" ? <div className="strategy-recorded-plan__message" role="status"><strong>{t(title)}</strong><p>{t("strategy.calculation.cancelledHint")}</p></div> : null}
-    {state.status === "error" ? <div className="strategy-recorded-plan__state"><div className="strategy-recorded-plan__message strategy-recorded-plan__message--error" role="alert" data-code={state.code} data-field={state.field}><strong>{t("strategy.workspace.validationHint")}</strong><p>{t(state.code && errorKey[state.code] ? errorKey[state.code] : "strategy.calculation.errorHint")}</p></div><CalculationStages state="blocked" t={t} /></div> : null}
+    {state.status === "error" ? <div className="strategy-recorded-plan__state"><div className="strategy-recorded-plan__message strategy-recorded-plan__message--error" role="alert" data-code={state.code} data-field={state.field}><strong>{t(manual ? "strategy.workspace.manualValidationHint" : "strategy.workspace.validationHint")}</strong><p>{t(state.code && errorKey[state.code] ? errorKey[state.code] : "strategy.calculation.errorHint")}</p></div><CalculationStages state="blocked" manual={manual} t={t} /></div> : null}
     {acceptance.state.status === "accepted" && !stintDirty && !pitDirty ? <p role="status">{t("strategy.plan.accepted")}</p> : null}
     {acceptance.state.status === "error" ? <p role="alert">{t("strategy.plan.acceptanceUnavailable")}</p> : null}
     {acceptance.state.status === "recovery" ? <div role="alert" className="strategy-recorded-plan__recovery"><p>{t("strategy.plan.acceptancePending")}</p><Button variant="ghost" onClick={() => void acceptance.resolve()}>{t("strategy.plan.checkAcceptance")}</Button><Button variant="ghost" onClick={() => void acceptance.retry()}>{t("strategy.plan.retryAcceptance")}</Button><Button variant="ghost" onClick={() => void acceptance.dismiss()}>{t("strategy.plan.dismissAcceptance")}</Button></div> : null}

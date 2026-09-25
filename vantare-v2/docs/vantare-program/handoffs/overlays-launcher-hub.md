@@ -5,6 +5,24 @@
 > Este handoff conserva evidencia técnica fechada; sus estados antiguos no
 > sustituyen el estado vivo ni autorizan nuevas tareas.
 
+## VAN-769 / GitHub #1381 — Temas de interfaz y fondos de Studio (2026-09-25)
+
+[VAN-769](https://app.notion.com/p/3e6e51695c6581abbcdff05e070a4a69)
+es la tarea viva del proyecto Hub / Orbit UI; [PR draft #1384](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1384)
+lleva la rama aislada `vantareapp/isa-1381-temas-paleta-ui` a revisión.
+Siete paletas con variantes claras/oscuras, modo Sistema, contraste, opacidad
+y fuentes se aplican al Hub y Studio sin modificar el diseño de los widgets.
+Studio ofrece `Tema actual`, catorce fondos fijos agrupados por paleta,
+Rejilla, Degradado, Negro y biblioteca propia; recuerda la selección manual.
+La tarjeta Próxima serie sigue los tokens de la paleta. En Wails real se
+comprobaron tarjeta Grises clara/oscura, escenario Grises claro/oscuro,
+selección fija Rosa/Oscuro y persistencia al volver a Studio; los widgets
+conservaron sus colores. Typecheck, build, lint, i18n, pruebas focales y
+presupuesto de frames pasaron. La suite completa tuvo 4.116 correctas,
+dos omitidas y cuatro fallos locales (tres timeouts de geometría bajo carga
+y una expectativa antigua corregida); las cuatro suites pasaron aisladas.
+CI del último candidato pendiente. Sin merge, promoción ni release.
+
 
 
 ## ISA-1385 — Car Damage Numbers Eficiencia (2026-09-25)

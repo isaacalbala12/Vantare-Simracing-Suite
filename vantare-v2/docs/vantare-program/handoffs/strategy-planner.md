@@ -12,6 +12,12 @@ fronteras/ventanas alimentado por páginas y su paridad de proyección completa,
 primero en fixtures y después en Algarve real. Nada de esto acredita aún
 resistencia; #1375 sigue abierta y sin integración.
 
+`orderedProjectionBoundaryScan` ya conserva como máximo las filas anterior y
+posterior por instante en una señal ordenada, con paridad escalar/vectorial
+frente a la serie completa. Todavía no está conectado al parser ni al
+derivador; la siguiente pieza es la lectura alineada y el resumen de ascensos
+de Fuel/VE dentro de boxes, sin retener cada muestra del intervalo.
+
 ## Guardado paginado de correcciones — ISA-1375 (2026-09-25)
 
 El guardado usa el resumen del original revalidado, lee sólo las filas

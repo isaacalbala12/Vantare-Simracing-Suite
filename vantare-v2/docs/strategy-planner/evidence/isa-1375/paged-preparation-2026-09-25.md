@@ -189,3 +189,22 @@ el futuro recolector; **no** valida todavía una proyección paginada.
 La prueba focal, `go test ./...`, vet del paquete y `git diff --check`
 pasaron. No se repitió el banco DuckDB real porque la ruta productiva de
 proyección no cambió en este corte.
+
+## Primer recolector de fronteras, aún sin conexión productiva
+
+`orderedProjectionBoundaryScan` consume muestras ya alineadas y válidas de
+un canal en orden temporal. Para cada instante conserva sólo la fila anterior
+y la posterior, incluidas la primera y la última entre marcas duplicadas;
+entrega las filas seleccionadas en orden original. Rechaza un orden temporal
+decreciente para que un lector futuro no publique resultados distintos en
+silencio. Las pruebas comparan `valueAt`, `continuousValueAt`, la búsqueda
+de Fuel más cercano y `vectorValueAt` con series completas, incluyendo
+duplicados, valor inválido, empate de distancia, tolerancia y ausencia.
+El espacio retenido es proporcional al número de instantes consultados, no
+al de muestras visitadas. Esta pieza **todavía no lee páginas ni proyecta una
+revisión**: faltan alineación, ventanas de boxes, correcciones escalares y
+paridad del derivador completo antes de conectarla al servicio.
+La suite `go test ./...` pasó antes de la última reducción de filas retenidas;
+después pasaron el paquete completo `internal/telemetryanalysis`, su vet y
+`git diff --check`. No se repitió el banco real: la proyección productiva no
+cambió en este corte.

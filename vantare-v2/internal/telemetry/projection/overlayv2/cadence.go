@@ -655,6 +655,7 @@ type dirtySignals struct {
 	deltaFreshness  schema.Freshness
 	spatialMark     schema.Freshness
 	playerDamage    schema.Field[damage.State]
+	playerTyreWear  schema.Field[[4]float64]
 }
 
 func observeDirtySignals(header envelope.Header, final derive.FinalState, source SourceContextV2) dirtySignals {
@@ -692,6 +693,7 @@ func observeDirtySignals(header envelope.Header, final derive.FinalState, source
 		if player, present := current.Player.Value(); present && player {
 			signals.playerFuel = current.Fuel
 			signals.playerDamage = current.Damage
+			signals.playerTyreWear = current.TyreWear
 			signals.playerLastLap = current.LastLapTime
 		}
 	}
@@ -741,7 +743,7 @@ func (signals dirtySignals) diff(previous dirtySignals) DirtySet {
 		signals.remaining != previous.remaining || signals.playerLastLap != previous.playerLastLap {
 		dirty = dirty.Mark(SectionFuel)
 	}
-	if signals.playerDamage != previous.playerDamage {
+	if signals.playerDamage != previous.playerDamage || signals.playerTyreWear != previous.playerTyreWear {
 		dirty = dirty.Mark(SectionDamage)
 	}
 	if signals.sourceState != previous.sourceState || signals.degraded != previous.degraded ||

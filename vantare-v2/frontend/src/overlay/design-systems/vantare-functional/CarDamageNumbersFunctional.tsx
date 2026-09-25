@@ -12,12 +12,13 @@ export function CarDamageNumbersFunctional({ model, effects }: WidgetRendererPro
     if (value === undefined) return "—";
     return `${(value * 100).toFixed(0)}%`;
   };
+  const tyreDamage = model.tyres?.length ? Math.max(...model.tyres) : undefined;
 
   const items = [
     { id: "aero", label: labels.aero, value: model.aero },
     { id: "body", label: labels.body, value: model.body },
     { id: "suspension", label: labels.suspension, value: model.suspension },
-    ...(model.showTyres && model.tyres ? model.tyres.map((t, i) => ({ id: `tyre-${i}`, label: `${labels.tyre} ${i + 1}`, value: t })) : []),
+    ...(model.showTyres ? [{ id: "tyre", label: labels.tyre, value: tyreDamage }] : []),
   ] as const;
 
   return (

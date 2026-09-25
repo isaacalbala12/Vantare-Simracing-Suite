@@ -683,7 +683,9 @@ import/export sin secretos; reset no borra datos sin selección.
   En `3bcd253d` pasaron los checks remotos de ruta, quality ratchet y gates
   bloqueantes, incluidos Go, frontend y build Wails de Windows (runs
   `36162293379` y `36162293431`). El PR #1384 sigue draft, sin merge,
-  promoción ni release.
+  promoción ni release. La rama de issue se reconcilió después con
+  `nightly@446001dd` al avanzar la base; `plan.md` conservó ambos cambios y
+  `roadmap.json` se regeneró desde esa base.
 
 ISA-841 se implementó en la rama aislada
 `vantareapp/isa-841-zoom-global-interfaz` y se rebasó el 2026-08-28 sobre

@@ -182,6 +182,7 @@ function syntheticFullUpdate(vehicles: number) {
       delta: { seconds: fresh(-0.245), reference: "best", requested: "best", available: ["best", "last"], trend: "gaining", authority: "derived", history: { q: "missing" } },
       fuel: { remaining: fresh(42), capacity: fresh(100), perLap: fresh(2.4), estimatedLaps: fresh(17.5), sessionLaps: fresh(79), requiredFuel: fresh(189.6), history: { q: "missing" } },
       spotter: { mode: "official", left: fresh(false), right: fresh(true) },
+      radar: { mode: "none", cars: [] },
       capabilities: {
         supported: ["session", "controls", "standings", "gaps", "fuel", "delta", "spotter"],
         available: { session: "fresh", controls: "fresh", standings: "fresh", gaps: "fresh", fuel: "fresh", delta: "fresh", spotter: "fresh" },

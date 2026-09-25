@@ -12,29 +12,33 @@ actual `origin/nightly@f0ccfbf203eb1463766e3ca5e7208ccb2bf38453`.
 
 ### Contenido inicial preparado desde Asana
 
-Isaac pidió poblar el roadmap con las tareas vigentes. La primera publicación
-está preparada en [VAN-763](https://app.notion.com/p/3e5e51695c6581debbcbfef649a86d59)
-con identificadores estables y textos en los cuatro idiomas, en este orden:
+Isaac fijó las fechas de los objetivos de Vantare 0.1 y aclaró el 2026-09-26
+que las tareas no son círculos separados: el gran hito es la versión. La
+primera publicación está preparada en
+[VAN-763](https://app.notion.com/p/3e5e51695c6581debbcbfef649a86d59)
+con dos hitos, identificadores estables y textos en los cuatro idiomas:
 
-1. **5 de octubre de 2026 · Vantare 0.1:** lanzamiento previsto con el catálogo
-   de widgets V16 y la primera alfa del Ingeniero, condicionado a cerrar las
-   revisiones de producto y acceso.
-2. **12 de octubre · acceso tras la primera semana:** compras opcionales y
-   prueba individual de siete días, pendientes de la revisión de Billing.
-3. **5 de noviembre · Ingeniero 0.2 beta:** objetivo tras el primer mes;
-   alcance sujeto a la experiencia del lanzamiento.
-4. **Más adelante · temas de UI:** proyecto Vantare 0.2, aún sin fecha.
+1. **Vantare 0.1 · 5 de octubre de 2026.** Objetivos del 1 de octubre:
+   revisar Billing y acceso, y pulir Ajustes y Cuenta. Objetivos del 5:
+   confirmar Widgets V16, afinar Calendario, revisar Launcher, presentar el
+   Roadmap y abrir la alfa del Ingeniero. Las compras opcionales desde el 12
+   de octubre quedan dentro del objetivo Billing.
+2. **Vantare 0.2 · siguiente versión, sin fecha de lanzamiento fijada.** Solo
+   tres objetivos: Ingeniero beta 0.2 tras el primer mes (objetivo 5 de
+   noviembre), Strategy Planner alpha y widgets semanales. No anunciar temas
+   de UI en este hito.
 
-Las fuentes son los proyectos Asana «Vantare · 0.1 Lanzamiento» y «Vantare ·
-0.2», en particular las tareas Widgets V16, Ingeniero Alpha y Billing. V16
-tiene 16 subtareas, cuatro marcadas como completadas y dos tituladas «Daños»;
-por ello la publicación dice «catálogo V16» sin afirmar 16 widgets distintos
-ni completados. El 12 de octubre se incluye como objetivo condicionado, a la
-espera de la preferencia de Isaac. El contenido aún no está publicado: la base
-Supabase de producción no tiene la tabla ni las funciones `visual_roadmap_*`,
-y la migración de esta PR no se ha aplicado. La ruta documentada exige probar
-la migración en un entorno de prueba y obtener autorización para integrar la
-PR en Nightly antes de activar el nuevo almacenamiento.
+Las fechas del 1 y el 5 de octubre se verificaron de nuevo en el proyecto
+Asana «Vantare · 0.1 Lanzamiento». El proyecto Asana «Vantare · 0.2» aún no
+registra los tres objetivos de producto ni una fecha de salida; su alcance
+público procede de la instrucción directa de Isaac. Widgets V16 tiene 16
+subtareas, cuatro marcadas como completadas y dos tituladas «Daños»; por ello
+la publicación dice «catálogo V16» sin afirmar 16 widgets distintos o
+entregados. El contenido aún no está publicado: la base Supabase de producción
+no tiene la tabla ni las funciones `visual_roadmap_*`, y la migración de esta
+PR no se ha aplicado. La ruta documentada exige probarla en un entorno de
+prueba y obtener autorización para integrar la PR en Nightly antes de activar
+el nuevo almacenamiento.
 
 La implementación local retira `plan.md`, JSON, digest, formulario y gate del
 roadmap anterior; la revisión actual reemplaza el editor por línea temporal,

@@ -174,3 +174,18 @@ historial, restauración y reapertura. Conservó 71 eventos, 70 reinicios,
 Es evidencia funcional de una ejecución, no prueba de ahorro de memoria ni
 comparación de velocidad. La proyección aún materializa, la cuota productiva
 no se ha elevado y faltan una fuente larga multivuelta y Wails T22.
+
+## Dependencias exactas de la proyección pendiente
+
+La revisión de `ProjectCorrection`, la proyección conjunta y
+`DeriveCorrectedSession` confirma que ambas entradas comparten un derivador
+que vuelve a retener series completas. El inventario de señales, consultas,
+ventanas de boxes y desempates consta en [ADR 0012](../../adr/0012-strategy-recorded-bounded-reading.md).
+Se añadió una regresión de contrato para la marca temporal duplicada: las
+búsquedas de estado/recurso eligen el último valor exacto, mientras la
+búsqueda de Fuel más cercano elige el primero exacto y prefiere el anterior
+en un empate de distancia. Esta prueba protege la semántica que debe igualar
+el futuro recolector; **no** valida todavía una proyección paginada.
+La prueba focal, `go test ./...`, vet del paquete y `git diff --check`
+pasaron. No se repitió el banco DuckDB real porque la ruta productiva de
+proyección no cambió en este corte.

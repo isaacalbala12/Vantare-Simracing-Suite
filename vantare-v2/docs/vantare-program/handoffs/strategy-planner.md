@@ -1,5 +1,17 @@
 # Handoff vivo — Strategy Planner
 
+## Frontera de proyección auditada — ISA-1375 (2026-09-25)
+
+La proyección individual y la conjunta comparten `deriveCorrectionSession` y
+siguen reteniendo páginas completas. El [ADR 0012](../../adr/0012-strategy-recorded-bounded-reading.md)
+identifica las consultas exactas a Fuel, VE, clima, mezcla, compuesto y
+desgaste, más todas las muestras dentro de boxes; fija también los distintos
+desempates ante marcas temporales duplicadas. Una regresión protege esos
+desempates antes de reducir series. El siguiente corte es un recolector de
+fronteras/ventanas alimentado por páginas y su paridad de proyección completa,
+primero en fixtures y después en Algarve real. Nada de esto acredita aún
+resistencia; #1375 sigue abierta y sin integración.
+
 ## Guardado paginado de correcciones — ISA-1375 (2026-09-25)
 
 El guardado usa el resumen del original revalidado, lee sólo las filas

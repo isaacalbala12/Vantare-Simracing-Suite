@@ -43,6 +43,47 @@ catálogo. Así, pasar de una página de vueltas a otra no recorre todas las
 señales de nuevo cuando no hay correcciones escalares. La respuesta pública
 desprende sus listas editables para no exponer el caché mutable.
 
+## Frontera pendiente de proyección
+
+La proyección es la última operación de este editor que entra en
+`withCorrectionInput`. Tanto `ProjectCorrection` como la proyección conjunta
+del catálogo llaman a `deriveCorrectionSession`; sustituir sólo una entrada
+dejaría dos políticas de lectura para el mismo snapshot. El siguiente corte
+debe conservar un único derivador compartido y comparar su
+`ProjectionSessionDerivations` completo con el materializado antes de cambiar
+ninguno de los dos llamadores.
+
+La validez efectiva paginada ya resuelve vueltas, familias y límites de stint,
+pero la derivación posterior aún consulta series originales/corregidas. El
+inventario concreto de observaciones que debe retener un consumidor por
+páginas es:
+
+| Señal | Consultas exactas de la derivación actual |
+| --- | --- |
+| Fuel Level y Virtual Energy | Último valor dentro de tolerancia en inicio/fin de vuelta; Fuel también busca el más cercano al inicio + 0,001 s. En cada intervalo cerrado de boxes se necesitan **todas** las muestras válidas para detectar y medir cada ascenso, no sólo sus extremos. |
+| Minimum Path Wetness | Último valor válido en inicio y fin de vuelta; un cambio de cubeta invalida la referencia de esa vuelta. |
+| FuelMixtureMap y TyresCompound | Último estado válido en inicio de vuelta + tolerancia; el compuesto también se consulta al inicio de cada stint observado. |
+| Tyres Wear | Último vector dentro de tolerancia en ambos límites de vuelta y en cada fin de vuelta observado. |
+| In Pits, Finish Status y demás eventos | Conservan el orden/empates actual, los intervalos de boxes y el resultado; siguen sujetos al límite explícito de eventos, no a truncamiento silencioso. |
+
+Las consultas sobre series ordenadas tienen desempates distintos: `valueAt`
+y `vectorValueAt` eligen el **último** valor de la marca temporal; la búsqueda
+de Fuel más cercano considera el anterior y el **primero** posterior y, ante
+igual distancia, prefiere el anterior. Una reducción a un valor por instante
+cambiaría resultados. La selección paginada deberá probar calidad/presencia,
+marcas duplicadas, tolerancias, huecos, correcciones escalares y ausencia de
+señal contra la ruta actual. Si una fuente no permite conservar ese orden con
+memoria proporcional a vueltas, correcciones, eventos acotados y página, la
+ruta nueva debe rechazarla explícitamente; no se aceptará una proyección
+aproximada ni se elevará la cuota para aparentar resistencia.
+
+Orden de ejecución: primero un recolector de muestras de frontera y ventanas
+de boxes alimentado por páginas ya alineadas; después paridad de las cuatro
+derivaciones y el modelo de proyección completo en fixtures y Algarve real;
+por último sustituir el derivador compartido en las dos entradas, medir pico
+por operación y buscar una fuente larga con muchas vueltas. Hasta pasar esas
+pruebas, la proyección productiva permanece materializada.
+
 ## Contexto
 
 Al abrir este ADR, la preparación guardaba todas las páginas necesarias,

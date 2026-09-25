@@ -74,6 +74,12 @@ func DeriveCorrectedSession(base SourceAnalysisRef, session HistoricalSession, p
 // or a future bounded reader has validated the exact correction and validity.
 // The caller must supply effective pages from that same validated snapshot.
 func deriveCorrectedObservations(base SourceAnalysisRef, session HistoricalSession, pages []HistoricalPage, classified ClassifiedSession, validity LapValidityAnalysis, view EffectiveCorrectionView, classificationsActive bool) (CorrectedSessionDerivations, error) {
+	return deriveCorrectedObservationsWithPit(base, session, pages, classified, validity, view, classificationsActive, nil)
+}
+
+// A bounded reader may supply the identical pit observation from page-fed
+// rise scans instead of retaining every resource sample inside pit intervals.
+func deriveCorrectedObservationsWithPit(base SourceAnalysisRef, session HistoricalSession, pages []HistoricalPage, classified ClassifiedSession, validity LapValidityAnalysis, view EffectiveCorrectionView, classificationsActive bool, pitOverride *SessionPitObservation) (CorrectedSessionDerivations, error) {
 	var empty CorrectedSessionDerivations
 	classified, effective, err := effectiveClassification(session, validity, view, classified, classificationsActive)
 	if err != nil {
@@ -87,9 +93,17 @@ func deriveCorrectedObservations(base SourceAnalysisRef, session HistoricalSessi
 	if err != nil {
 		return empty, fmt.Errorf("corrected curves: %w", err)
 	}
-	pit, err := DeriveSessionPitObservation(effective, pages, classified)
-	if err != nil {
-		return empty, fmt.Errorf("corrected pit observation: %w", err)
+	var pit SessionPitObservation
+	if pitOverride == nil {
+		pit, err = DeriveSessionPitObservation(effective, pages, classified)
+		if err != nil {
+			return empty, fmt.Errorf("corrected pit observation: %w", err)
+		}
+	} else {
+		pit = *pitOverride
+		if pit.SessionID != effective.ID || pit.CombinationID != classified.Combination.ID {
+			return empty, fmt.Errorf("corrected pit observation: %w", ErrInvalidPitObservationInput)
+		}
 	}
 	var observed *strategyprojection.ObservedStrategyV1
 	if classified.Type == SessionTypeRace {

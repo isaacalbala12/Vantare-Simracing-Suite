@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"math"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -136,6 +137,44 @@ func TestPitRiseScanCarriesOnlyIntervalStateAcrossPages(t *testing.T) {
 	noDuration.accept(timedMetricSample{seconds: 2, value: 52, presence: strategyprojection.PresenceValid})
 	if _, ok := noDuration.finish(); ok {
 		t.Fatal("zero-duration rise became a rate")
+	}
+}
+
+func TestPitObservationFromPagedRisesMatchesMaterialized(t *testing.T) {
+	fuel := []float64{50, 50, 50, 50, 50, 50, 52, 52, 54, 54, 54, 54, 54, 54}
+	ve := []float64{30, 30, 30, 30, 30, 30, 31, 31, 32, 32, 32, 32, 32, 32}
+	session, classified, pages := pitFixtureSession(TimeOriginSourceTimestamp, fuel, ve)
+	want, err := DeriveSessionPitObservation(session, pages, classified)
+	if err != nil {
+		t.Fatal(err)
+	}
+	intervals := observedPitIntervals(readEvents([]HistoricalPage{pages[0]}))
+	fuelScans := make([]pitRiseScan, len(intervals))
+	veScans := make([]pitRiseScan, len(intervals))
+	for _, page := range pages[1:] {
+		for _, sample := range page.Samples {
+			value, presence, ok := numericValue(sample.Values)
+			if !ok || sample.TimestampSeconds == nil {
+				continue
+			}
+			for index, interval := range intervals {
+				if interval.open || *sample.TimestampSeconds < interval.start || *sample.TimestampSeconds > interval.end {
+					continue
+				}
+				metric := timedMetricSample{seconds: *sample.TimestampSeconds, value: value, presence: presence}
+				if page.ChannelID == "fuel" {
+					fuelScans[index].accept(metric)
+				} else {
+					veScans[index].accept(metric)
+				}
+			}
+		}
+	}
+	got, err := derivePitObservationWithRises(session, classified, intervals,
+		func(index int, _ pitInterval) (riseObservation, bool) { return fuelScans[index].finish() },
+		func(index int, _ pitInterval) (riseObservation, bool) { return veScans[index].finish() })
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("page-fed pit observation differs: %v", err)
 	}
 }
 

@@ -246,3 +246,17 @@ continuos Lap/Lap Time igualó las muestras de `ReadCorrectionInput`; un
 `Inspect` con sesión cambiada fue rechazado. Todavía falta usarlo para
 recolectar los límites reales y resumir Fuel/VE en boxes antes de producir
 una proyección paginada; esta prueba no acredita paridad en DuckDB real.
+
+## Boxes desacoplado de las filas de proyección
+
+`DeriveSessionPitObservation` construye ahora el mismo modelo público desde
+dos funciones que entregan el ascenso observado por intervalo. La ruta
+materializada usa sus series actuales; un test alimenta `pitRiseScan` desde
+filas sucesivas y obtiene un `SessionPitObservation` completo idéntico.
+El derivador común acepta ese resultado como entrada validada. En el fixture
+de carrera, las filas de frontera **sin** las muestras interiores de boxes,
+más el resultado de parada separado, producen un
+`CorrectedSessionDerivations` completo idéntico al materializado. El test
+todavía obtiene esa parada desde páginas materializadas; la paridad del
+acumulador se comprueba por separado. Falta unir ambas piezas al visitante
+autorizado y probar el snapshot real antes del cambio productivo.

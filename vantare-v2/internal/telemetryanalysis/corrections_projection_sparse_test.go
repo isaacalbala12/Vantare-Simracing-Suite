@@ -19,6 +19,41 @@ func TestCorrectedObservationsMatchBoundaryRowsOnPitFixture(t *testing.T) {
 	assertCorrectedObservationsMatchBoundaryRows(t, session, pages, SessionTypeRace)
 }
 
+func TestCorrectedObservationsAcceptPitOverrideWithoutPitSamples(t *testing.T) {
+	session, pages := reducedT19aTemporalRegression(t)
+	base, _, _, _ := correctionExample()
+	base.SessionID = session.ID
+	session.Provenance.Parser = ParserRef{ID: base.ParserID, Version: base.ParserVersion}
+	session.Provenance.SchemaFingerprint = base.SchemaFingerprint
+	classified := ClassifiedSession{SessionID: session.ID, Type: SessionTypeRace, Combination: CombinationIdentity{ID: "fixture-combination"}}
+	snapshot, err := PrepareSampleCorrectionSnapshot(base, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := DeriveCorrectedSession(base, session, pages, classified, snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	alignment := BuildTemporalAlignment(session, pages)
+	validity, err := AnalyzeAlignedLapValidity(alignment)
+	if err != nil {
+		t.Fatal(err)
+	}
+	view, err := ApplyMixedCorrectionSnapshot(base, alignment.Pages, validity, alignment.Session, snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sparse := sparseProjectionFixturePages(t, alignment.Session, view.Pages, validity, false)
+	pit, err := DeriveSessionPitObservation(alignment.Session, view.Pages, classified)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := deriveCorrectedObservationsWithPit(base, alignment.Session, sparse, classified, validity, view, false, &pit)
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("pit override and boundary rows changed corrected derivation: %v", err)
+	}
+}
+
 func assertCorrectedObservationsMatchBoundaryRows(t *testing.T, session HistoricalSession, pages []HistoricalPage, sessionType SessionType) {
 	t.Helper()
 	base, _, _, _ := correctionExample()
@@ -43,7 +78,7 @@ func assertCorrectedObservationsMatchBoundaryRows(t *testing.T, session Historic
 	if err != nil {
 		t.Fatal(err)
 	}
-	sparse := sparseProjectionFixturePages(t, alignment.Session, view.Pages, validity)
+	sparse := sparseProjectionFixturePages(t, alignment.Session, view.Pages, validity, true)
 	got, err := deriveCorrectedObservations(base, alignment.Session, sparse, classified, validity, view, false)
 	if err != nil {
 		t.Fatal(err)
@@ -58,7 +93,7 @@ func assertCorrectedObservationsMatchBoundaryRows(t *testing.T, session Historic
 // This test-only selection starts from materialized pages. It proves which
 // boundary observations the existing derivations consume; it is not a bounded
 // source reader and must not be used as runtime evidence.
-func sparseProjectionFixturePages(t *testing.T, session HistoricalSession, pages []HistoricalPage, validity LapValidityAnalysis) []HistoricalPage {
+func sparseProjectionFixturePages(t *testing.T, session HistoricalSession, pages []HistoricalPage, validity LapValidityAnalysis, includePitRows bool) []HistoricalPage {
 	t.Helper()
 	queries := make([]float64, 0, len(validity.Laps)*4)
 	for _, lap := range validity.Laps {
@@ -115,7 +150,7 @@ func sparseProjectionFixturePages(t *testing.T, session HistoricalSession, pages
 			if !scan.accept(sample, usable) {
 				t.Fatal("fixture projection rows are not time ordered")
 			}
-			if usable && sample.TimestampSeconds != nil && !math.IsNaN(*sample.TimestampSeconds) && !math.IsInf(*sample.TimestampSeconds, 0) &&
+			if includePitRows && usable && sample.TimestampSeconds != nil && !math.IsNaN(*sample.TimestampSeconds) && !math.IsInf(*sample.TimestampSeconds, 0) &&
 				(strings.EqualFold(channel.SourceName, "Fuel Level") || strings.EqualFold(channel.SourceName, "Virtual Energy")) {
 				for _, interval := range pitIntervals {
 					if !interval.open && *sample.TimestampSeconds >= interval.start && *sample.TimestampSeconds <= interval.end {

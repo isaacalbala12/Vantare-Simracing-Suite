@@ -90,6 +90,24 @@ func DeriveSessionPitObservation(
 	}
 
 	intervals := observedPitIntervals(readEvents(grouped["in pits"]))
+	if len(intervals) == 0 {
+		return derivePitObservationWithRises(session, classified, nil, nil, nil)
+	}
+	fuel := continuousSeries(grouped["fuel level"])
+	ve := continuousSeries(grouped["virtual energy"])
+	return derivePitObservationWithRises(session, classified, intervals,
+		func(_ int, observed pitInterval) (riseObservation, bool) {
+			return observeRise(fuel, observed.start, observed.end)
+		},
+		func(_ int, observed pitInterval) (riseObservation, bool) {
+			return observeRise(ve, observed.start, observed.end)
+		})
+}
+
+type pitRiseLookup func(int, pitInterval) (riseObservation, bool)
+
+// Both page-fed and materialized derivations build the same public pit model.
+func derivePitObservationWithRises(session HistoricalSession, classified ClassifiedSession, intervals []pitInterval, fuelRise, veRise pitRiseLookup) (SessionPitObservation, error) {
 	result := SessionPitObservation{
 		SessionID: session.ID, CombinationID: classified.Combination.ID,
 		Family:    missingPitFamily(session.ID, "missing_closed_pit_lane_interval"),
@@ -115,8 +133,9 @@ func DeriveSessionPitObservation(
 	result.Family.ObservedIntervals = make([]strategyprojection.ObservedPitLaneInterval, 0, len(intervals))
 	fuelAligned := channelUsesSourceTimestamp(session, "fuel level")
 	veAligned := channelUsesSourceTimestamp(session, "virtual energy")
-	fuel := continuousSeries(grouped["fuel level"])
-	ve := continuousSeries(grouped["virtual energy"])
+	if (fuelAligned && fuelRise == nil) || (veAligned && veRise == nil) {
+		return SessionPitObservation{}, ErrInvalidPitObservationInput
+	}
 	for index, observed := range intervals {
 		start := secondsTimestamp(observed.start)
 		interval := strategyprojection.ObservedPitLaneInterval{
@@ -132,7 +151,7 @@ func DeriveSessionPitObservation(
 		interval.EndTimestamp = &end
 		interval.DurationSeconds = observed.end - observed.start
 		if fuelAligned {
-			if rise, ok := observeRise(fuel, observed.start, observed.end); ok {
+			if rise, ok := fuelRise(index, observed); ok {
 				interval.FuelAddedLiters = floatPointer(rise.delta)
 				interval.FuelRateLPerS = floatPointer(rise.rate)
 				interval.HasFuelRise = true
@@ -140,7 +159,7 @@ func DeriveSessionPitObservation(
 			}
 		}
 		if veAligned {
-			if rise, ok := observeRise(ve, observed.start, observed.end); ok {
+			if rise, ok := veRise(index, observed); ok {
 				interval.VEAddedPercent = floatPointer(rise.delta)
 				interval.VERatePPerS = floatPointer(rise.rate)
 				interval.HasVERise = true

@@ -1,5 +1,16 @@
 # Handoff vivo — Strategy Planner
 
+## Boxes desacoplado de páginas retenidas — ISA-1375 (2026-09-25)
+
+La construcción de la parada acepta ascensos compactos por intervalo.
+Un test compara el resultado completo de `pitRiseScan` alimentado por filas
+sucesivas con la ruta materializada; otro confirma que la derivación de
+carrera conserva el mismo modelo usando sólo filas de frontera más una
+parada separada. Falta conectar esas dos piezas al visitante autorizado,
+comparar una revisión real y medir el pico antes de activar proyección
+paginada. [Evidencia](../../strategy-planner/evidence/isa-1375/paged-preparation-2026-09-25.md).
+#1375 continúa abierta, sin push, PR, CI, merge, promoción ni release.
+
 ## Derivador compartido y lector alineado — ISA-1375 (2026-09-25)
 
 El cálculo de la proyección se separó de la validación/materialización de la

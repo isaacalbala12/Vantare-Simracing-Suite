@@ -952,6 +952,14 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
     baseFrame = { ...baseFrame, standings: padStandings(baseFrame.standings, scenario.standingRows) };
   }
   let frame = withWorkshopDemo(baseFrame, quality);
+  if (scenario.widget === "radar" && quality === "fresh") {
+    // Workshop demonstration only: production positions come from the Go projection.
+    frame = { ...frame, radar: { mode: "xyz", cars: [
+      { id: "car-left", x: 4, z: 0, overlap: true },
+      { id: "car-right", x: -8, z: 12, overlap: false },
+      { id: "car-ahead", x: 2, z: -20, overlap: false },
+    ] } };
+  }
   if (scenario.widget === "relative" && scenario.session === "race") {
     frame = withWorkshopRaceLapDeltas(frame, quality);
   }

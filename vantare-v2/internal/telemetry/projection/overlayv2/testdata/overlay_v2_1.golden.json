@@ -277,6 +277,10 @@
         "q": "missing"
       }
     },
+    "radar": {
+      "mode": "none",
+      "cars": []
+    },
     "damage": {
       "dents": {
         "v": [

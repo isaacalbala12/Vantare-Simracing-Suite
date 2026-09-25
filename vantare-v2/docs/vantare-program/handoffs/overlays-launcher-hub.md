@@ -5,6 +5,14 @@
 > Este handoff conserva evidencia técnica fechada; sus estados antiguos no
 > sustituyen el estado vivo ni autorizan nuevas tareas.
 
+## ISA-1388 — radar de proximidad (2026-09-25)
+
+Isaac solicita un radar para pilotos cercanos inspirado por TinyPedal, RaceLab y LMU. El seguimiento vivo está en [Asana · Radar](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218838171528031); la [issue #1388](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1388) define el alcance técnico. La [PR draft #1389](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1389) nace de la rama aislada `vantareapp/isa-1388-radar-proximidad`, reconciliada sobre Nightly `f0ccfbf2`, que incluye #1386.
+
+Primera entrega candidata: proyección Go de posiciones LMU frescas en el marco del jugador, radio de 30 m, hasta 16 rivales y clasificación de coches en paralelo con la geometría compartida del Spotter. La cadencia marca el radar sucio cuando cambia la posición aunque la alerta lateral no cambie. `FrameV2.radar` atraviesa transporte tipado y alimenta un único widget Eficiencia transparente para Studio, Desktop, OBS y Workshop. El ejemplo visual de Workshop contiene tres coches declaradamente ficticios y no suplanta la telemetría real.
+
+Comprobación actual: pruebas Go de proyección, transporte y replay PASS; TypeScript, lint y build PASS; 151 pruebas focales frontend y 4 pruebas del presupuesto de frame PASS tras la reconciliación. La pasada final de la suite frontend completa con cuatro workers pasó 486 archivos, 4109 pruebas y 2 omitidas. Las pasadas anteriores expusieron seis listas cardinales ya actualizadas y timeouts aislados de interfaz que pasaron por separado. La suite Go completa encontró una prueba temporal de Engineer Fuel que pasó aislada; el alcance radar está verde. CI de la PR #1389 sobre `fcd62003`: promotion, gate bloqueante, ratchet y GitGuardian PASS. Vista del Workshop 5174 revisada en navegador. Pendientes: revisión visual de Isaac y prueba física LMU/Windows/OBS. Sin integración de este radar ni promoción adicional.
+
 
 
 ## ISA-1385 — Car Damage Numbers Eficiencia (2026-09-25)

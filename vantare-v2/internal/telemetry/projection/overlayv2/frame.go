@@ -148,6 +148,7 @@ type FrameV2 struct {
 	Delta             DeltaViewV2     `json:"delta"`
 	Fuel              FuelViewV2      `json:"fuel"`
 	Spotter           SpotterViewV2   `json:"spotter"`
+	Radar             RadarViewV2     `json:"radar"`
 	Damage            DamageViewV2    `json:"damage"`
 	Weather           WeatherV2       `json:"weather"`
 	Capabilities      CapabilitiesV2  `json:"capabilities"`
@@ -369,6 +370,20 @@ type SpotterViewV2 struct {
 	Mode  Mode         `json:"mode"`
 	Left  QValue[bool] `json:"left"`
 	Right QValue[bool] `json:"right"`
+}
+
+// RadarViewV2 contains only fresh, nearby LMU spatial observations rotated
+// into the player's frame. Positive X is left; positive Z is ahead, in metres.
+type RadarViewV2 struct {
+	Mode Mode         `json:"mode"`
+	Cars []RadarCarV2 `json:"cars"`
+}
+
+type RadarCarV2 struct {
+	ID      string  `json:"id"`
+	X       float64 `json:"x"`
+	Z       float64 `json:"z"`
+	Overlap bool    `json:"overlap"`
 }
 
 type DamageViewV2 struct {

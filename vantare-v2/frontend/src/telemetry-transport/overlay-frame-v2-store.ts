@@ -385,7 +385,7 @@ function sourceStatus(value: unknown, path: string): void {
 function frame(value: unknown, path: string, validatedBase?: OverlayFrameV2): void {
   objectWithKeys(value, path, [
     "contract", "algorithm", "epoch", "sequence", "sectionMask", "sessionId", "generatedAt", "units",
-    "session", "player", "controls", "standings", "relative", "relativeSettled", "relativeSameClass", "delta", "fuel", "spotter", "capabilities", "damage", "weather",
+    "session", "player", "controls", "standings", "relative", "relativeSettled", "relativeSameClass", "delta", "fuel", "spotter", "radar", "capabilities", "damage", "weather",
   ]);
   if (value.contract !== 2) invalid(`${path}.contract`);
   positiveInteger(value.algorithm, `${path}.algorithm`);
@@ -413,6 +413,7 @@ function frame(value: unknown, path: string, validatedBase?: OverlayFrameV2): vo
   delta(value.delta, `${path}.delta`);
   fuel(value.fuel, `${path}.fuel`);
   spotter(value.spotter, `${path}.spotter`);
+  radar(value.radar, `${path}.radar`);
   capabilities(value.capabilities, `${path}.capabilities`);
   damage(value.damage, `${path}.damage`);
   weather(value.weather, `${path}.weather`);
@@ -811,6 +812,25 @@ function spotter(value: unknown, path: string): void {
   enumValue<OverlayModeV2>(value.mode, `${path}.mode`, ["none", "official", "reconstructed", "estimated", "xyz"]);
   qvalue(value.left, `${path}.left`, "boolean");
   qvalue(value.right, `${path}.right`, "boolean");
+  Object.freeze(value);
+}
+
+function radar(value: unknown, path: string): void {
+  objectWithKeys(value, path, ["mode", "cars"]);
+  enumValue<OverlayModeV2>(value.mode, `${path}.mode`, ["none", "xyz"]);
+  if (!Array.isArray(value.cars) || value.cars.length > 16 || (value.mode === "none" && value.cars.length > 0)) {
+    invalid(`${path}.cars`);
+  }
+  for (const [index, car] of value.cars.entries()) {
+    const carPath = `${path}.cars[${index}]`;
+    objectWithKeys(car, carPath, ["id", "x", "z", "overlap"]);
+    nonEmptyString(car.id, `${carPath}.id`);
+    if (typeof car.x !== "number" || !Number.isFinite(car.x) || Math.abs(car.x) > 30) invalid(`${carPath}.x`);
+    if (typeof car.z !== "number" || !Number.isFinite(car.z) || Math.abs(car.z) > 30) invalid(`${carPath}.z`);
+    if (typeof car.overlap !== "boolean") invalid(`${carPath}.overlap`);
+    Object.freeze(car);
+  }
+  Object.freeze(value.cars);
   Object.freeze(value);
 }
 

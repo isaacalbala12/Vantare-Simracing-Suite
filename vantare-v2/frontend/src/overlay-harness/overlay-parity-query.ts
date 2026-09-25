@@ -46,6 +46,7 @@ const DEFAULT_SYSTEM_BY_WIDGET: Partial<Record<HarnessWidget, HarnessSystem>> = 
   "fastest-lap": "vantare-functional",
   "engineer-radio": "vantare-crystal",
   "track-map": "vantare-endurance",
+  "radar": "vantare-functional",
 };
 
 const SYSTEMS = new Set<HarnessSystem>([

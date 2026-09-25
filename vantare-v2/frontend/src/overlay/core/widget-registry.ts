@@ -21,6 +21,7 @@ import { carDamageVisualDefinition } from "../widget-types/car-damage-visual/car
 import { carDamageNumbersDefinition } from "../widget-types/car-damage-numbers/car-damage-numbers-definition";
 import { engineerRadioDefinition } from "../widget-types/engineer-radio/engineer-radio-definition";
 import { trackMapDefinition } from "../widget-types/track-map/track-map-definition";
+import { radarDefinition } from "../widget-types/radar/radar-definition";
 
 export class WidgetTypeRegistry {
   private readonly definitions = new Map<WidgetType, WidgetTypeDefinition<Record<string, unknown>>>();
@@ -89,3 +90,4 @@ widgetTypeRegistry.register(carDamageVisualDefinition);
 widgetTypeRegistry.register(carDamageNumbersDefinition);
 widgetTypeRegistry.register(engineerRadioDefinition);
 widgetTypeRegistry.register(trackMapDefinition);
+widgetTypeRegistry.register(radarDefinition);

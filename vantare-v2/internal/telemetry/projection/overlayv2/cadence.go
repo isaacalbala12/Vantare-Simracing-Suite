@@ -576,6 +576,7 @@ func (projector *CachedProjector) Project(
 	}
 	if plan.Rebuild(SectionSpotter) {
 		frame.Spotter = projector.builders.Spotter(final, preferences, source)
+		frame.Radar = BuildRadar(final)
 	}
 	if plan.Rebuild(SectionSession) {
 		frame.Session = projector.builders.Session(final, preferences, source)
@@ -621,6 +622,7 @@ type dirtySignals struct {
 	performanceRevision uint64
 	sessionFlag         QValue[string]
 	spotterView         SpotterViewV2
+	radarMark           uint64
 
 	track       schema.Field[string]
 	sessionType schema.Field[session.Type]
@@ -683,10 +685,12 @@ func observeDirtySignals(header envelope.Header, final derive.FinalState, source
 		fuelPerLap:          final.Derived.Fuel.PerLap,
 		spatialMark:         schema.FreshnessMissing,
 		standingsMark:       hashFieldFloat(fnvOffset64, final.Observed.TrackLength),
+		radarMark:           fnvOffset64,
 	}
 	for index := range final.Observed.Vehicles {
 		current := &final.Observed.Vehicles[index]
 		signals.standingsMark = hashStandingsVehicle(signals.standingsMark, current)
+		signals.radarMark = hashRadarVehicle(signals.radarMark, current)
 		if current.WorldPosition.Freshness() == schema.FreshnessFresh {
 			signals.spatialMark = schema.FreshnessFresh
 		}
@@ -735,7 +739,7 @@ func (signals dirtySignals) diff(previous dirtySignals) DirtySet {
 	}
 	if signals.spotterView != previous.spotterView {
 		dirty = dirty.Mark(SectionSpotter).markSafety(SectionSpotter)
-	} else if signals.spatialMark != previous.spatialMark {
+	} else if signals.spatialMark != previous.spatialMark || signals.radarMark != previous.radarMark {
 		dirty = dirty.Mark(SectionSpotter)
 	}
 	if signals.playerFuel != previous.playerFuel || signals.fuelPerLap != previous.fuelPerLap ||

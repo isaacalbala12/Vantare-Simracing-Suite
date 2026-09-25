@@ -191,7 +191,7 @@ async function captureMain(browser) {
   await planRun.page.getByLabel(/Fuel añadido 1/i).fill('200');
   await planRun.page.getByRole('button', { name: /Recalcular parada/i }).click();
   await planRun.page.locator('#recorded-panel-plan [role="alert"]').waitFor();
-  const recovery = planRun.page.locator('.strategy-recorded-plan__editor-head button');
+  const recovery = planRun.page.locator('.strategy-recorded-plan__editor-head button').first();
   await recovery.waitFor();
   await screenshot(planRun.page, '15b-pit-error-recovery');
   await recovery.click();

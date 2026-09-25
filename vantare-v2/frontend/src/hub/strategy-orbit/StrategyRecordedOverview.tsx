@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Icon, type IconName } from "../../ui/orbit/Icon";
 import { formatMessage } from "../orbit/format-message";
 import { StrategyRecordedCircuit } from "./StrategyRecordedCircuit";
@@ -14,14 +15,15 @@ export function StrategyRecordedRaceContext({ draft, manualOnly, sessions, sessi
   readonly sessionLabels: Readonly<Record<string, string>>; readonly busy: boolean;
   readonly onSources: () => void; readonly onManualReferences: () => void; readonly t: (key: string) => string;
 }) {
+  const [contextOpen, setContextOpen] = useState(false);
   const pending = t("strategy.workspace.pending");
   const selected = draft.sessions[0];
   const opened = selected && sessions.find(item => item.revision.sessionId === selected.sessionId && item.revision.baseDigest === selected.baseDigest);
   const sourceName = opened ? sessionLabels[opened.candidateId] : undefined;
   const trackDetail = draft.combination?.trackLayout && draft.combination.trackLayout !== draft.combination.trackName
     ? draft.combination.trackLayout : draft.combination?.simId.toUpperCase() || pending;
-  return <aside className="strategy-recorded-editor-context" aria-label={t("strategy.entry.circuitAndSource")}>
-    <header><h3>{t("strategy.entry.circuitAndSource")}</h3><Icon name="i-carreras" size={16} /></header>
+  return <aside className={`strategy-recorded-editor-context${contextOpen ? " strategy-recorded-editor-context--open" : ""}`} aria-label={t("strategy.entry.circuitAndSource")}>
+    <header><h3>{t("strategy.entry.circuitAndSource")}</h3><span className="strategy-recorded-editor-context__summary">{draft.combination?.trackName || pending} · {draft.combination?.carName || pending}</span><button type="button" className="strategy-recorded-editor-context__toggle" aria-expanded={contextOpen} onClick={() => setContextOpen(!contextOpen)}>{t(contextOpen ? "strategy.workspace.hideContext" : "strategy.workspace.showContext")}</button><Icon name="i-carreras" size={16} /></header>
     <div className="strategy-recorded-overview__context-body"><span>{t("strategy.journey.track")}</span><strong>{draft.combination?.trackName || pending}</strong><small>{trackDetail}</small><StrategyRecordedCircuit combination={draft.combination} t={t} /></div>
     <div className="strategy-recorded-overview__context-body"><span>{t("strategy.journey.car")}</span><strong>{draft.combination?.carName || pending}</strong><small>{draft.combination?.carClass || pending}</small></div>
     <div className="strategy-recorded-overview__context-body"><span>{t(manualOnly ? "strategy.workspace.manualReferences" : "strategy.workspace.sources")}</span><strong>{manualOnly ? t("strategy.workspace.manualEstimate") : sourceName || (draft.sessions.length ? t("strategy.entry.referenceOpenSources") : t("strategy.workspace.noSources"))}</strong><small>{!manualOnly && draft.sessions.length > 1 ? formatMessage(t("strategy.workspace.selectedSources"), { count: draft.sessions.length }) : null}</small><button type="button" className="orbit-btn orbit-btn--ghost" disabled={busy} onClick={manualOnly ? onManualReferences : onSources}>{t("strategy.workspace.review")}</button></div>

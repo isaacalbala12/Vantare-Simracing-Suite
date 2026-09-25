@@ -1,5 +1,28 @@
 # ISA-1277 · revisión visual adversarial
 
+## Iteración v5 responsive y recuperación (2026-09-26)
+
+La revisión independiente de `pass-v5-16-plan` puntuó como mínimo 7,4/10:
+contexto cortado a 320 px, Manual poco accesible y editores a 768 px con
+espacio mal aprovechado. Tras corregir entrada móvil, contexto apilado a
+768 px y contexto plegable a 320 px, la revisión de `pass-v5-18-responsive`
+subió a 8,1/10 y la de `pass-v5-19-context` a **8,4/10**. La última
+señaló que el error de edición de parada sólo ofrecía volver a Plan.
+
+`pass-v5-20-recovery` contiene 99 capturas del React productivo en harness.
+El error de parada ofrece también recalcular la **estrategia base**; la
+acción existente descarta el editor de parada y no reintenta sus restricciones.
+Se conserva la distancia conocida en los estados parcial y error, sin dibujar
+stints ni paradas inexistentes. En las 16 combinaciones ES/EN/PT/IT y
+320/768/1024/1672 px, `responsive.json` registra cero errores, cero
+desbordamientos y foco visible. Tests focales 11/11, auditoría i18n,
+typecheck, lint, build y `git diff --check` PASS. La captura final no tiene
+nueva nota independiente: **8,4/10 es la última nota verificada y T18 sigue
+abierto**. Persisten densidad y texto auxiliar pequeño en editores de 320 px.
+
+El harness usa respuestas simuladas. No demuestra cálculo con los valores
+introducidos, DuckDB real, Wails ni aceptación nativa T22.
+
 ## Iteración v5 · Plan sin calcular (2026-09-25)
 
 `pass-v5-16-plan` conserva 99 capturas. El Plan pendiente ya ocupa la mesa con

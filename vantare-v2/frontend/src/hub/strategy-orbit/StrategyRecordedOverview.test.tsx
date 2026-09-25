@@ -45,6 +45,14 @@ it("routes editing to preparation and review from the shared context", () => {
   fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.save" }));
   expect(props.onSave).toHaveBeenCalledOnce();
 });
+it("lets narrow screens expand the complete race context", () => {
+  render(<StrategyRecordedRaceContext draft={props.draft} manualOnly={false} sessions={[]} sessionLabels={{}} busy={false} onSources={vi.fn()} onManualReferences={vi.fn()} t={props.t} />);
+  const toggle = screen.getByRole("button", { name: "strategy.workspace.showContext" });
+  expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  fireEvent.click(toggle);
+  expect(screen.getByRole("button", { name: "strategy.workspace.hideContext" }).getAttribute("aria-expanded")).toBe("true");
+  expect(screen.getByRole("button", { name: "strategy.workspace.review" })).toBeTruthy();
+});
 it("does not offer save while clean or busy, and reports a write failure", () => {
   const { rerender } = render(<StrategyRecordedOverview {...props} dirty={false} />);
   expect((screen.getByRole("button", { name: "strategy.workspace.save" }) as HTMLButtonElement).disabled).toBe(true);

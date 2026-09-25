@@ -12,10 +12,10 @@ it("shows real filenames without inferred identity and keeps manual independent"
   expect(screen.queryByText("Lusail", { exact: true })).toBeNull();
   fireEvent.click(screen.getByRole("button", { name: /strategy.entry.useSession/ }));
   expect(onChoose).toHaveBeenCalledExactlyOnceWith(candidate);
-  fireEvent.click(screen.getByRole("button", { name: /strategy.entry.startManual/ }));
-  expect(onManual).toHaveBeenCalledOnce();
-  fireEvent.click(screen.getByRole("button", { name: "strategy.entry.openTelemetry" }));
-  expect(onLibrary).toHaveBeenCalledOnce();
+  for (const button of screen.getAllByRole("button", { name: /strategy.entry.startManual/ })) fireEvent.click(button);
+  expect(onManual).toHaveBeenCalledTimes(2);
+  for (const button of screen.getAllByRole("button", { name: "strategy.entry.openTelemetry" })) fireEvent.click(button);
+  expect(onLibrary).toHaveBeenCalledTimes(2);
 });
 
 it("labels the source menu as a change when returning to an existing race", () => {

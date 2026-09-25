@@ -43,7 +43,7 @@
 .strategy-recorded-plan__editors span{color:var(--orbit-ink-3);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
 .strategy-recorded-plan__editors strong{font-size:12px}
 .strategy-recorded-plan__editors small{color:var(--orbit-ink-3);font-size:11px;line-height:1.4}
-.strategy-recorded-plan__editor-head{display:flex}
+.strategy-recorded-plan__editor-head{display:flex;flex-wrap:wrap;gap:8px}
 .strategy-recorded-plan__editor-head .orbit-btn{min-height:31px;font-size:11px}
 .strategy-recorded-plan__cost{display:grid;grid-template-columns:1fr auto;gap:5px;padding:11px;border:1px solid var(--orbit-line);border-radius:var(--orbit-radius-control);background:var(--orbit-surface-1)}
 .strategy-recorded-plan__cost strong,.strategy-recorded-plan__cost small{font-size:11px}
@@ -72,6 +72,9 @@
 .strategy-recorded-plan__stages [data-state='blocked']{opacity:.6}
 .strategy-recorded-plan__stages strong{font-size:11px;font-weight:500}
 .strategy-recorded-plan__state{overflow:hidden}
+.strategy-recorded-plan[data-status='error'] .strategy-recorded-plan__state,.strategy-recorded-plan[data-status='partial'] .strategy-recorded-plan__state{display:flex;flex-direction:column}
+.strategy-recorded-plan__state>.strategy-recorded-plan__course{margin:16px}
+.strategy-recorded-plan[data-status='error'] .strategy-recorded-plan__actions,.strategy-recorded-plan[data-status='partial'] .strategy-recorded-plan__actions{margin-top:0}
 .strategy-recorded-plan__state>:not(:last-child){border-bottom:1px solid var(--orbit-line)}
 .strategy-recorded-plan__state .strategy-recorded-plan__stages{border:0;border-radius:0}
 .strategy-recorded-plan__progress{display:flex;align-items:center;gap:14px;padding:15px;border:0;border-radius:0}

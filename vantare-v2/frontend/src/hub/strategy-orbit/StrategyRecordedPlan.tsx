@@ -124,7 +124,13 @@ export function StrategyRecordedPlan({ draft, state, acceptance, sourceLabels = 
     <button type="button" aria-current={editor === "stints" ? "step" : undefined} disabled={stintDirty || pitDirty || locked || accepting} onClick={() => setEditor("stints")}><span>{t("strategy.stint.eyebrow")}</span><strong>{t("strategy.stint.title")}</strong><small>{t("strategy.stint.hint")}</small></button>
     {plan.stopDetails.length ? <button type="button" aria-current={editor === "pits" ? "step" : undefined} disabled={stintDirty || pitDirty || locked || accepting} onClick={() => setEditor("pits")}><span>{t("strategy.pitEdit.eyebrow")}</span><strong>{t("strategy.pitEdit.title")}</strong><small>{t("strategy.pitEdit.hint")}</small></button> : null}
   </nav> : null;
-  const backToPlan = editor !== "plan" ? <div className="strategy-recorded-plan__editor-head"><Button variant="ghost" disabled={!!plan && (stintDirty || pitDirty || locked || accepting)} onClick={() => { setEditor("plan"); setStintDirty(false); setPitDirty(false); }}>← {t("strategy.data.tab.plan")}</Button></div> : null;
+  const backToPlan = editor !== "plan" ? <div className="strategy-recorded-plan__editor-head"><Button variant="ghost" disabled={!!plan && (stintDirty || pitDirty || locked || accepting)} onClick={() => { setEditor("plan"); setStintDirty(false); setPitDirty(false); }}>← {t("strategy.data.tab.plan")}</Button>{state.status === "error" ? <Button variant="primary" disabled={locked || accepting || !draft.calculationMode} onClick={calculate}>{t("strategy.workspace.recalculateBase")}</Button> : null}</div> : null;
+  const pendingCourse = <div className="strategy-recorded-plan__course" aria-label={t("strategy.workspace.raceDistance")}>
+    <div className="strategy-recorded-plan__course-head"><span>{t("strategy.workspace.raceDistance")}</span><strong>{raceValue}</strong></div>
+    <div className="strategy-recorded-plan__course-line" aria-hidden="true"><i /><i /></div>
+    <div className="strategy-recorded-plan__course-ends"><span>{t("strategy.workspace.start")}</span><span>{t("strategy.workspace.finish")}</span></div>
+    <p>{t("strategy.workspace.coursePending")}</p>
+  </div>;
   const planWorkspace = plan && state.status === "success" ? <div className="strategy-recorded-plan__workspace">
     <div className="strategy-recorded-plan__work"><PlanResult plan={plan} draft={draft} t={t} />
       <section className="strategy-recorded-plan__sources"><h3>{t("strategy.plan.sources")}</h3><ul>{state.input.planningInputs?.projection?.sourceRevisions?.map(ref => <li key={ref.sessionId}><strong>{sourceLabels[ref.sessionId] || t("strategy.recorded.unnamed")}</strong><code>{ref.revisionId.slice(0, 12)}</code></li>)}</ul></section>
@@ -159,12 +165,7 @@ export function StrategyRecordedPlan({ draft, state, acceptance, sourceLabels = 
         <div><dt>{t(manual ? "strategy.workspace.manualReferences" : "strategy.workspace.sources")}</dt><dd>{manual ? t("strategy.workspace.manualEstimate") : formatMessage(t(draft.sessions.length === 1 ? "strategy.workspace.selectedSource" : "strategy.workspace.selectedSources"), { count: draft.sessions.length })}</dd></div>
         <div><dt>{t("strategy.journey.drivers.title")}</dt><dd>{formatMessage(t(draft.drivers.length === 1 ? "strategy.workspace.driverCountOne" : "strategy.workspace.driverCount"), { count: draft.drivers.length })}<small>{draft.drivers.map(driver => driver.name).filter(Boolean).join(" · ") || "—"}</small></dd></div>
       </dl>
-      <div className="strategy-recorded-plan__course" aria-label={t("strategy.workspace.raceDistance")}>
-        <div className="strategy-recorded-plan__course-head"><span>{t("strategy.workspace.raceDistance")}</span><strong>{raceValue}</strong></div>
-        <div className="strategy-recorded-plan__course-line" aria-hidden="true"><i /><i /></div>
-        <div className="strategy-recorded-plan__course-ends"><span>{t("strategy.workspace.start")}</span><span>{t("strategy.workspace.finish")}</span></div>
-        <p>{t("strategy.workspace.coursePending")}</p>
-      </div>
+      {pendingCourse}
       <CalculationStages state="idle" manual={manual} t={t} />
     </section> : null}
     {running ? <div className="strategy-recorded-plan__state"><section className="strategy-recorded-plan__progress" role="status"><span aria-hidden="true" /><div><strong>{t(title)}</strong><p>{t(state.status === "preparing" ? "strategy.calculation.preparingHint" : "strategy.calculation.loadingHint")}</p></div><dl><div><dt>{t("strategy.workspace.event")}</dt><dd>{raceValue}</dd></div><div><dt>{t(manual ? "strategy.workspace.manualReferences" : "strategy.workspace.sources")}</dt><dd>{manual ? t("strategy.workspace.manualEstimate") : draft.sessions.length}</dd></div><div><dt>{t("strategy.journey.drivers.title")}</dt><dd>{draft.drivers.length}</dd></div></dl></section><CalculationStages state="running" manual={manual} t={t} /></div> : null}
@@ -176,11 +177,11 @@ export function StrategyRecordedPlan({ draft, state, acceptance, sourceLabels = 
         {state.coverage.virtualEnergyPercentPerLap === undefined ? null : <div><dt>{t("strategy.plan.virtualEnergyPerLap")}</dt><dd>{number(state.coverage.virtualEnergyPercentPerLap, 2)}%</dd></div>}
       </dl>
       <p>{state.coverage.blockers.map(blocker => t(`strategy.calculation.blocker.${blocker}`)).join(" · ")}</p>
-    </div><CalculationStages state="blocked" manual={manual} t={t} /></div> : null}
+    </div><CalculationStages state="blocked" manual={manual} t={t} />{pendingCourse}</div> : null}
     {planWorkspace}
     {!plan ? backToPlan : null}
     {state.status === "cancelled" ? <div className="strategy-recorded-plan__message" role="status"><strong>{t(title)}</strong><p>{t("strategy.calculation.cancelledHint")}</p></div> : null}
-    {state.status === "error" ? <div className="strategy-recorded-plan__state"><div className="strategy-recorded-plan__message strategy-recorded-plan__message--error" role="alert" data-code={state.code} data-field={state.field}><strong>{t(manual ? "strategy.workspace.manualValidationHint" : "strategy.workspace.validationHint")}</strong><p>{t(state.code && errorKey[state.code] ? errorKey[state.code] : "strategy.calculation.errorHint")}</p></div><CalculationStages state="blocked" manual={manual} t={t} /></div> : null}
+    {state.status === "error" ? <div className="strategy-recorded-plan__state"><div className="strategy-recorded-plan__message strategy-recorded-plan__message--error" role="alert" data-code={state.code} data-field={state.field}><strong>{t(manual ? "strategy.workspace.manualValidationHint" : "strategy.workspace.validationHint")}</strong><p>{t(state.code && errorKey[state.code] ? errorKey[state.code] : "strategy.calculation.errorHint")}</p></div><CalculationStages state="blocked" manual={manual} t={t} />{pendingCourse}</div> : null}
     {acceptance.state.status === "accepted" && !stintDirty && !pitDirty ? <p role="status">{t("strategy.plan.accepted")}</p> : null}
     {acceptance.state.status === "error" ? <p role="alert">{t("strategy.plan.acceptanceUnavailable")}</p> : null}
     {acceptance.state.status === "recovery" ? <div role="alert" className="strategy-recorded-plan__recovery"><p>{t("strategy.plan.acceptancePending")}</p><Button variant="ghost" onClick={() => void acceptance.resolve()}>{t("strategy.plan.checkAcceptance")}</Button><Button variant="ghost" onClick={() => void acceptance.retry()}>{t("strategy.plan.retryAcceptance")}</Button><Button variant="ghost" onClick={() => void acceptance.dismiss()}>{t("strategy.plan.dismissAcceptance")}</Button></div> : null}

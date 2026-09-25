@@ -1,5 +1,20 @@
 # Handoff vivo — Strategy Planner
 
+## T18 v5 · responsive y recuperación (2026-09-26)
+
+La rama aislada #1277 avanza desde `157379f9`: acceso Manual visible a 320 px,
+contexto superior aprovechando 768 px y plegable a 320 px, y curso neutro
+visible también en cobertura parcial/error. El error al editar parada da
+acceso directo al cálculo de **estrategia base**, sin presentarlo como reintento
+de las restricciones fallidas. `pass-v5-20-recovery` registra 99 capturas y
+16 casos responsive sin overflow, errores de página ni pérdida de foco.
+Tests focales 11/11, i18n, typecheck, lint y build PASS. La revisión visual
+independiente subió 7,4→8,1→8,4/10 hasta `pass-v5-19-context`; la captura
+final aún no tiene nueva nota. T18 sigue sin alcanzar >9 y no se pide
+aceptación visual. El harness tiene solver simulado; T22 Wails/DuckDB y
+calibración empírica siguen sin acreditar. Sin app nativa, push, PR, CI,
+integración, promoción ni release.
+
 ## T18 v5 · Plan pendiente incorporado al candidato T22 (2026-09-26)
 
 El pase `pass-v5-16-plan` añade al Plan sin calcular la distancia real del

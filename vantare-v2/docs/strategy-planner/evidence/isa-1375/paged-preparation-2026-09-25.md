@@ -90,3 +90,28 @@ consultas de historial frecuentes. El cambio de esas cuatro llamadas se
 retiró antes de commit; el worktree volvió a `03e5e5e6` limpio. Hace falta
 separar revalidación ligera de la fuente y reutilización segura de identidad,
 o una derivación paginada compartida por comando, antes de cambiar esas rutas.
+
+## Consultas de historial con identidad de sesión abierta
+
+Las cuatro consultas citadas arriba usan ahora sólo la identidad base ya
+obtenida por preparación o una lectura anterior. Antes de cada consulta,
+`LMUDuckDBParser.Inspect` vuelve a validar el SHA-256 de la copia privada a
+través del proceso lector y el catálogo. Si aún no hay base en esa sesión,
+`ReadCorrectionSummary` la produce una vez. El caché no guarda muestras ni
+sale de la sesión abierta. Guardar, inspeccionar observaciones y proyectar
+siguen en el lector materializado.
+
+Un test focal comprueba que la segunda consulta no toca páginas de muestras,
+que la cancelación no retira la fuente y que una evidencia modificada sí la
+invalida. `go test ./...`, `go vet ./internal/app ./internal/telemetryanalysis/...`
+y `git diff --check` pasaron. El banco real corto confirmó preparación de
+98 canales y 70 anclas, con originales Algarve y Monza intactos: PASS,
+45,66 s incluyendo apertura e importación. El banco real completo confirmó
+paridad paginada/materializada, 71 eventos, 70 reinicios, proyección, cálculo,
+revisiones exactas, restauración, reapertura y hashes originales intactos:
+PASS, **132,81 s**. Una ejecución previa del mismo corte tardó 429,46 s con
+salida capturada por PowerShell y no verificó explícitamente el código del
+test; se considera sólo un dato de latencia anómala, no un PASS. Las medidas
+individuales no prueban una mejora de tiempo frente al banco anterior de
+87,21 s; sí evitan estructuralmente releer muestras para cada consulta de
+historial. No se eleva la cuota ni se acredita resistencia o Wails.

@@ -1,5 +1,23 @@
 # Handoff vivo — Strategy Planner
 
+## Identidad reutilizada para historial — ISA-1375 (2026-09-25)
+
+Las cuatro consultas de historial de correcciones ya no leen todas las
+muestras tras una preparación o lectura previa: reutilizan sólo la identidad
+base dentro de la sesión abierta y ejecutan `Inspect` para verificar de nuevo
+SHA-256 y catálogo antes de cada operación. En una sesión aún sin base se
+calcula una vez con el resumen paginado. El test focal cubre reutilización,
+cancelación y evidencia cambiada; `go test ./...`, vet y diff check pasaron.
+Banco real Algarve→Monza PASS en 132,81 s: paridad de preparación, proyección,
+cálculo, revisiones exactas, reapertura y hashes originales intactos. Este
+tiempo **no acredita una mejora** frente al banco anterior de 87,21 s; una
+primera ejecución anómala tardó 429,46 s y no verificó el resultado del test.
+La mejora demostrada es evitar lecturas de muestras por cada consulta de
+historial. [Evidencia](../../strategy-planner/evidence/isa-1375/paged-preparation-2026-09-25.md).
+Inspección de filas, guardado y proyección siguen materializando; faltan
+paridad paginada de esas operaciones, fuente larga multivuelta y Wails.
+#1375 sigue abierta; rama local sin push, PR, CI, merge ni promoción.
+
 ## Relecturas de historial descartadas — ISA-1375 (2026-09-25)
 
 Un ensayo de usar el resumen paginado para cuatro consultas de historial

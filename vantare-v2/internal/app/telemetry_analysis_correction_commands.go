@@ -117,15 +117,15 @@ func correctionOutcomeUncertain(err error) bool {
 
 func (service *TelemetryAnalysisService) LoadPendingCorrectionCommand(ctx context.Context, request TelemetryAnalysisCorrectionPendingRequest) (*telemetryanalysis.PendingCorrectionCommand, error) {
 	var result *telemetryanalysis.PendingCorrectionCommand
-	err := service.withCorrectionInput(ctx, request.SessionID, func(operationCtx context.Context, input telemetryanalysis.CorrectionInput) error {
-		if request.Base != input.Base {
+	err := service.withCorrectionBase(ctx, request.SessionID, func(operationCtx context.Context, base telemetryanalysis.SourceAnalysisRef) error {
+		if request.Base != base {
 			return ErrTelemetryAnalysisCorrectionSourceChanged
 		}
 		if service.corrections == nil {
 			return ErrTelemetryAnalysisCorrectionStorage
 		}
 		var err error
-		result, err = service.corrections.LoadPendingCommand(operationCtx, input.Base)
+		result, err = service.corrections.LoadPendingCommand(operationCtx, base)
 		return publicCorrectionError(err)
 	})
 	if err != nil {
@@ -135,28 +135,28 @@ func (service *TelemetryAnalysisService) LoadPendingCorrectionCommand(ctx contex
 }
 
 func (service *TelemetryAnalysisService) AcknowledgeCorrectionCommand(ctx context.Context, request TelemetryAnalysisCorrectionPendingRequest) error {
-	return service.withCorrectionInput(ctx, request.SessionID, func(operationCtx context.Context, input telemetryanalysis.CorrectionInput) error {
-		if request.Base != input.Base {
+	return service.withCorrectionBase(ctx, request.SessionID, func(operationCtx context.Context, base telemetryanalysis.SourceAnalysisRef) error {
+		if request.Base != base {
 			return ErrTelemetryAnalysisCorrectionSourceChanged
 		}
 		if service.corrections == nil {
 			return ErrTelemetryAnalysisCorrectionStorage
 		}
-		return publicCorrectionError(service.corrections.AcknowledgePendingCommand(operationCtx, input.Base, request.CommandID))
+		return publicCorrectionError(service.corrections.AcknowledgePendingCommand(operationCtx, base, request.CommandID))
 	})
 }
 
 func (service *TelemetryAnalysisService) LoadCorrection(ctx context.Context, request TelemetryAnalysisCorrectionRevisionRequest) (telemetryanalysis.CorrectionStoreResult, error) {
 	var result telemetryanalysis.CorrectionStoreResult
-	err := service.withCorrectionInput(ctx, request.SessionID, func(operationCtx context.Context, input telemetryanalysis.CorrectionInput) error {
-		if request.Base != input.Base {
+	err := service.withCorrectionBase(ctx, request.SessionID, func(operationCtx context.Context, base telemetryanalysis.SourceAnalysisRef) error {
+		if request.Base != base {
 			return ErrTelemetryAnalysisCorrectionSourceChanged
 		}
 		if service.corrections == nil {
 			return ErrTelemetryAnalysisCorrectionStorage
 		}
 		var err error
-		result, err = service.corrections.Load(operationCtx, input.Base, request.RevisionID)
+		result, err = service.corrections.Load(operationCtx, base, request.RevisionID)
 		return publicCorrectionError(err)
 	})
 	if err != nil {
@@ -175,8 +175,8 @@ func (service *TelemetryAnalysisService) ResolveCorrectionCommand(ctx context.Co
 	if (request.Classifications != nil || request.StintBoundaries != nil) && request.FamilyUses == nil {
 		return result, ErrTelemetryAnalysisInvalidRequest
 	}
-	err := service.withCorrectionInput(ctx, request.SessionID, func(operationCtx context.Context, input telemetryanalysis.CorrectionInput) error {
-		if request.Base != input.Base {
+	err := service.withCorrectionBase(ctx, request.SessionID, func(operationCtx context.Context, base telemetryanalysis.SourceAnalysisRef) error {
+		if request.Base != base {
 			return ErrTelemetryAnalysisCorrectionSourceChanged
 		}
 		if service.corrections == nil {
@@ -184,11 +184,11 @@ func (service *TelemetryAnalysisService) ResolveCorrectionCommand(ctx context.Co
 		}
 		var err error
 		if request.FamilyUses == nil {
-			result, err = service.corrections.ResolveCommand(operationCtx, input.Base, request.Corrections, request.Command)
+			result, err = service.corrections.ResolveCommand(operationCtx, base, request.Corrections, request.Command)
 		} else if request.StintBoundaries != nil {
-			result, err = service.corrections.ResolveStintMixedCommand(operationCtx, input.Base, request.Corrections, request.FamilyUses, request.Classifications, request.StintBoundaries, request.Command)
+			result, err = service.corrections.ResolveStintMixedCommand(operationCtx, base, request.Corrections, request.FamilyUses, request.Classifications, request.StintBoundaries, request.Command)
 		} else {
-			result, err = service.corrections.ResolveMixedCommand(operationCtx, input.Base, request.Corrections, request.FamilyUses, request.Classifications, request.Command)
+			result, err = service.corrections.ResolveMixedCommand(operationCtx, base, request.Corrections, request.FamilyUses, request.Classifications, request.Command)
 		}
 		return publicCorrectionError(err)
 	})

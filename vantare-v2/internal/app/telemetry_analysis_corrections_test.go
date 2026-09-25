@@ -66,6 +66,53 @@ func TestObservationInputCarriesExplicitStintBoundarySet(t *testing.T) {
 	}
 }
 
+func TestCorrectionBaseCacheRevalidatesAndSkipsSamplePages(t *testing.T) {
+	svc, _, now := telemetryAnalysisTestService(t, true)
+	t.Cleanup(func() {
+		if err := svc.ServiceShutdown(); err != nil {
+			t.Error(err)
+		}
+	})
+	candidate := telemetryAnalysisReadyCandidate(t, svc, now)
+	var reader *telemetryAnalysisReaderStub
+	svc.runtimeReady = true
+	svc.readerFactory = func(artifact telemetryanalysis.AuthorizedHistoricalArtifact, _ telemetryanalysis.StagedHistoricalArtifact) (telemetryAnalysisReader, error) {
+		a, b := 10000.0, 10090.0
+		reader = &telemetryAnalysisReaderStub{evidence: artifact.Evidence(), catalog: telemetryanalysis.LMUDuckDBCatalog{Events: []telemetryanalysis.LMUDuckDBChannel{{Name: "Lap", Columns: []telemetryanalysis.LMUDuckDBColumn{{Name: "ts", Type: "DOUBLE"}, {Name: "value", Type: "USMALLINT"}}}}}, rows: []telemetryanalysis.LMUDuckDBRow{{TimestampSeconds: &a, Values: []telemetryanalysis.LMUDuckDBValue{{Kind: telemetryanalysis.ScalarInteger, Integer: 1}}}, {TimestampSeconds: &b, Values: []telemetryanalysis.LMUDuckDBValue{{Kind: telemetryanalysis.ScalarInteger, Integer: 2}}}}}
+		return reader, nil
+	}
+	opened, err := svc.Open(context.Background(), TelemetryAnalysisOpenRequest{CandidateID: candidate.ID, UserApproved: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var base telemetryanalysis.SourceAnalysisRef
+	readBase := func() error {
+		return svc.withCorrectionBase(context.Background(), opened.SessionID, func(_ context.Context, current telemetryanalysis.SourceAnalysisRef) error {
+			base = current
+			return nil
+		})
+	}
+	if err := readBase(); err != nil || base.SessionID != opened.Session.ID {
+		t.Fatal("cold read failed", err)
+	}
+	reader.readErr = errors.New("sample pages must not be read again")
+	if err := readBase(); err != nil {
+		t.Fatal("cached base reread sample pages", err)
+	}
+	canceled, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := svc.withCorrectionBase(canceled, opened.SessionID, func(context.Context, telemetryanalysis.SourceAnalysisRef) error {
+		t.Fatal("canceled lookup reached the action")
+		return nil
+	}); !errors.Is(err, context.Canceled) || reader.isClosed() {
+		t.Fatal("canceled lookup retired the source", err)
+	}
+	reader.evidence.ContentSHA256 = "changed"
+	if err := readBase(); !errors.Is(err, ErrTelemetryAnalysisIncompatible) || !reader.isClosed() {
+		t.Fatal("changed source reused cached base", err)
+	}
+}
+
 func TestTelemetryAnalysisPreparesOnlyAuthorizedOpenCorrectionSource(t *testing.T) {
 	svc, path, now := telemetryAnalysisTestService(t, true)
 	t.Cleanup(func() {
@@ -144,7 +191,7 @@ func TestTelemetryAnalysisPreparesOnlyAuthorizedOpenCorrectionSource(t *testing.
 		t.Fatal(err)
 	}
 	err = withCorrectionRead(svc, context.Background(), opened.SessionID,
-		func(context.Context, telemetryanalysis.CorrectionInputReader, telemetryanalysis.AuthorizedHistoricalArtifact, telemetryanalysis.CorrectionReadLimits) (struct{}, error) {
+		func(context.Context, *telemetryAnalysisSession, telemetryanalysis.CorrectionReadLimits) (struct{}, error) {
 			return struct{}{}, context.Canceled
 		},
 		func(context.Context, struct{}) error {

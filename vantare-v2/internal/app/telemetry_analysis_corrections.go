@@ -22,16 +22,47 @@ type TelemetryAnalysisCorrectionPreparation struct {
 // withCorrectionInput keeps authorization, lifecycle and the open-session lock
 // across the complete command. Reads are serialized to bound working memory.
 func (service *TelemetryAnalysisService) withCorrectionInput(ctx context.Context, sessionID string, action func(context.Context, telemetryanalysis.CorrectionInput) error) error {
-	return withCorrectionRead(service, ctx, sessionID, telemetryanalysis.ReadCorrectionInput, action)
+	return withCorrectionRead(service, ctx, sessionID, func(ctx context.Context, owned *telemetryAnalysisSession, limits telemetryanalysis.CorrectionReadLimits) (telemetryanalysis.CorrectionInput, error) {
+		input, err := telemetryanalysis.ReadCorrectionInput(ctx, owned.parser, owned.artifact, limits)
+		if err == nil {
+			owned.correctionBase = &input.Base
+		}
+		return input, err
+	}, action)
 }
 
 func (service *TelemetryAnalysisService) withCorrectionSummary(ctx context.Context, sessionID string, action func(context.Context, telemetryanalysis.CorrectionSummary) error) error {
-	return withCorrectionRead(service, ctx, sessionID, telemetryanalysis.ReadCorrectionSummary, action)
+	return withCorrectionRead(service, ctx, sessionID, func(ctx context.Context, owned *telemetryAnalysisSession, limits telemetryanalysis.CorrectionReadLimits) (telemetryanalysis.CorrectionSummary, error) {
+		summary, err := telemetryanalysis.ReadCorrectionSummary(ctx, owned.parser, owned.artifact, limits)
+		if err == nil {
+			owned.correctionBase = &summary.Base
+		}
+		return summary, err
+	}, action)
+}
+
+// History commands only need the exact source identity. Inspect recomputes
+// artifact evidence and checks the catalog before reusing an open-session base.
+func (service *TelemetryAnalysisService) withCorrectionBase(ctx context.Context, sessionID string, action func(context.Context, telemetryanalysis.SourceAnalysisRef) error) error {
+	return withCorrectionRead(service, ctx, sessionID, func(ctx context.Context, owned *telemetryAnalysisSession, limits telemetryanalysis.CorrectionReadLimits) (telemetryanalysis.SourceAnalysisRef, error) {
+		if owned.correctionBase != nil {
+			if _, err := owned.parser.Inspect(ctx); err != nil {
+				return telemetryanalysis.SourceAnalysisRef{}, err
+			}
+			return *owned.correctionBase, nil
+		}
+		summary, err := telemetryanalysis.ReadCorrectionSummary(ctx, owned.parser, owned.artifact, limits)
+		if err != nil {
+			return telemetryanalysis.SourceAnalysisRef{}, err
+		}
+		owned.correctionBase = &summary.Base
+		return summary.Base, nil
+	}, action)
 }
 
 // Both readers share the same authorization, source lifetime and error policy.
 func withCorrectionRead[T any](service *TelemetryAnalysisService, ctx context.Context, sessionID string,
-	read func(context.Context, telemetryanalysis.CorrectionInputReader, telemetryanalysis.AuthorizedHistoricalArtifact, telemetryanalysis.CorrectionReadLimits) (T, error),
+	read func(context.Context, *telemetryAnalysisSession, telemetryanalysis.CorrectionReadLimits) (T, error),
 	action func(context.Context, T) error,
 ) error {
 	operationCtx, finish, err := service.begin(ctx)
@@ -65,7 +96,7 @@ func withCorrectionRead[T any](service *TelemetryAnalysisService, ctx context.Co
 	}
 	// Covers the measured 71-lap LMU recording while retaining a hard bound.
 	// Multi-value channels require a separate value budget from sample count.
-	input, readErr := read(operationCtx, ownedSession.parser, ownedSession.artifact, telemetryanalysis.CorrectionReadLimits{
+	input, readErr := read(operationCtx, ownedSession, telemetryanalysis.CorrectionReadLimits{
 		PageRows: service.cfg.MaxPageRows, MaxSamples: 1_250_000, MaxValues: 1_500_000, MaxTextBytes: 16 << 20,
 	})
 	// A resource limit or missing lap data does not invalidate the open reader.

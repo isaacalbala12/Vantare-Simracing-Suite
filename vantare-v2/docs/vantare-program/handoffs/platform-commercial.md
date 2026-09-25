@@ -7,8 +7,9 @@
 Isaac corrigió el diseño el 2026-09-25: quiere línea temporal y varias vistas
 gráficas, y Codex actualizará el contenido cuando él lo indique por chat. No
 quiere un editor de formularios en la app. La publicación compartida debe verse
-para todos los usuarios. Rama aislada `vantareapp/isa-1377-roadmap-sencillo`, base
-actual `origin/nightly@f0ccfbf203eb1463766e3ca5e7208ccb2bf38453`.
+para todos los usuarios. Rama aislada `vantareapp/isa-1377-roadmap-sencillo`,
+sincronizada con `origin/nightly`; la base exacta se registra en la tarea y
+en el PR porque el canal sigue avanzando.
 
 ### Contenido inicial preparado desde Asana
 

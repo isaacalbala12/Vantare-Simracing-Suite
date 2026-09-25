@@ -4,10 +4,10 @@
 
 ## T18 v5 · corte visual provisional, 2026-09-25
 
-La [matriz v5](../evidence/isa-1277-visual/pass-v5-11/README.md) cubre 97
+La [matriz v5](../evidence/isa-1277-visual/pass-v5-13/README.md) cubre 99
 capturas y 16 combinaciones de idioma/anchura sin desbordamiento ni errores.
 La [revisión adversarial](../evidence/isa-1277-visual/reviews.md) no encontró
-P1/P2, pero su nota de 8,1/10 no satisface el umbral >9 de T18. Continuar
+P1/P2, pero su nota mínima de 8,0/10 no satisface el umbral >9 de T18. Continuar
 pulido visual y aceptación humana; el gate nativo E01–E08 de T22 permanece
 separado y pendiente.
 

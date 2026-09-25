@@ -244,11 +244,19 @@ async function captureMatrix(browser) {
         journeys.calculated = await widthContract(run.page);
         await screenshot(run.page, `matrix-${locale}-${width}-calculated`);
         await run.page.locator('.strategy-recorded-plan__editors button').first().click();
+        if (locale === 'es' && width === 320) {
+          await run.page.locator('.strategy-recorded-plan__inspector > header').scrollIntoViewIfNeeded();
+          await screenshot(run.page, 'matrix-es-320-stint-context');
+        }
         await run.page.locator('.strategy-recorded-stint-editor').scrollIntoViewIfNeeded();
         journeys.stint = await widthContract(run.page);
         await screenshot(run.page, `matrix-${locale}-${width}-stint`);
         await run.page.locator('.strategy-recorded-plan__editor-head button').click();
         await run.page.locator('.strategy-recorded-plan__editors button').nth(1).click();
+        if (locale === 'es' && width === 320) {
+          await run.page.locator('.strategy-recorded-plan__inspector > header').scrollIntoViewIfNeeded();
+          await screenshot(run.page, 'matrix-es-320-pit-context');
+        }
         await run.page.locator('.strategy-recorded-pit-editor').scrollIntoViewIfNeeded();
         journeys.pit = await widthContract(run.page);
         await screenshot(run.page, `matrix-${locale}-${width}-pit`);

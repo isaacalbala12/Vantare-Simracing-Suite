@@ -208,3 +208,20 @@ La suite `go test ./...` pasó antes de la última reducción de filas retenidas
 después pasaron el paquete completo `internal/telemetryanalysis`, su vet y
 `git diff --check`. No se repitió el banco real: la proyección productiva no
 cambió en este corte.
+
+## Ascensos de boxes con estado constante
+
+`observeRise` deja de copiar las muestras de cada intervalo de boxes. El
+nuevo `pitRiseScan` conserva la muestra anterior, el incremento acumulado,
+la presencia y los instantes del primer/último ascenso; se puede alimentar
+en páginas consecutivas sin cambiar la tasa calculada. Una regresión cubre
+dos ascensos separados por un incremento bajo el umbral, presencia degradada
+y una subida con duración cero. La suite `go test ./...` y vet focal pasaron.
+
+El banco real Algarve→Monza pasó en **131,40 s**, conservando 71 eventos,
+70 reinicios, 66 vueltas completas, ritmo seco 95,190 s (N=58), Fuel
+2,135 L/vuelta (N=58), plan supuesto de 38 vueltas/0 paradas con óptimo
+probado, revisiones/restauración y hashes de ambos originales intactos.
+Es una ejecución funcional; no mide el pico de memoria ni demuestra una
+mejora temporal frente a los bancos anteriores. La proyección productiva
+todavía carga la serie completa antes de llamar al acumulador.

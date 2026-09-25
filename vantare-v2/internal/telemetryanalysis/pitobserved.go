@@ -267,39 +267,57 @@ func observedPitIntervals(events []observedEvent) []pitInterval {
 }
 
 func observeRise(samples []timedMetricSample, start, end float64) (riseObservation, bool) {
-	window := make([]timedMetricSample, 0)
+	var scan pitRiseScan
 	for _, sample := range samples {
 		if sample.seconds >= start && sample.seconds <= end {
-			window = append(window, sample)
+			scan.accept(sample)
 		}
 	}
-	if len(window) < 2 {
+	return scan.finish()
+}
+
+// The pit interval can be consumed page by page without retaining its signal.
+// Only consecutive usable samples contribute to each observed rise.
+type pitRiseScan struct {
+	previous     timedMetricSample
+	firstSeconds float64
+	lastSeconds  float64
+	delta        float64
+	presence     strategyprojection.Presence
+	count        int
+	hasRise      bool
+}
+
+func (scan *pitRiseScan) accept(sample timedMetricSample) {
+	if scan.count == 0 {
+		scan.previous = sample
+		scan.presence = strategyprojection.PresenceValid
+		scan.count = 1
+		return
+	}
+	increment := sample.value - scan.previous.value
+	if increment > pitRiseMinimum {
+		if !scan.hasRise {
+			scan.firstSeconds = scan.previous.seconds
+			scan.hasRise = true
+		}
+		scan.lastSeconds = sample.seconds
+		scan.delta += increment
+		scan.presence = weakestPresence(scan.presence, scan.previous.presence, sample.presence)
+	}
+	scan.previous = sample
+	scan.count++
+}
+
+func (scan *pitRiseScan) finish() (riseObservation, bool) {
+	if scan.count < 2 || !scan.hasRise || !isFinitePositive(scan.delta) {
 		return riseObservation{}, false
 	}
-	delta := 0.0
-	firstRise := -1
-	lastRise := -1
-	presence := strategyprojection.PresenceValid
-	for index := 1; index < len(window); index++ {
-		increment := window[index].value - window[index-1].value
-		if increment <= pitRiseMinimum {
-			continue
-		}
-		if firstRise < 0 {
-			firstRise = index
-		}
-		lastRise = index
-		delta += increment
-		presence = weakestPresence(presence, window[index-1].presence, window[index].presence)
-	}
-	if firstRise < 0 || !isFinitePositive(delta) {
-		return riseObservation{}, false
-	}
-	duration := window[lastRise].seconds - window[firstRise-1].seconds
+	duration := scan.lastSeconds - scan.firstSeconds
 	if !isFinitePositive(duration) {
 		return riseObservation{}, false
 	}
-	return riseObservation{delta: delta, rate: delta / duration, presence: presence}, true
+	return riseObservation{delta: scan.delta, rate: scan.delta / duration, presence: scan.presence}, true
 }
 
 func summarizeObservedRate(sourceID string, values []float64) strategyprojection.ObservedRateFamily {

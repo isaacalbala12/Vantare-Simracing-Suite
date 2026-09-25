@@ -1,5 +1,16 @@
 # Handoff vivo — Strategy Planner
 
+## Ascensos de boxes sin copia de ventana — ISA-1375 (2026-09-25)
+
+`observeRise` alimenta ahora `pitRiseScan` muestra a muestra: conserva sólo el
+valor anterior, la suma y los instantes del primer/último ascenso. La prueba
+focal cubre páginas partidas, umbral, presencia y duración cero. Suite Go,
+vet y banco real Algarve→Monza PASS en 131,40 s; ritmo/Fuel, cálculo,
+restauración e hashes de ambos originales intactos. El banco no mide memoria
+ni acredita velocidad estable. `DeriveSessionPitObservation` sigue creando
+series completas; el acumulador aún debe recibir páginas autorizadas para
+cerrar la proyección. #1375 continúa abierta, sin integración.
+
 ## Frontera de proyección auditada — ISA-1375 (2026-09-25)
 
 La proyección individual y la conjunta comparten `deriveCorrectionSession` y

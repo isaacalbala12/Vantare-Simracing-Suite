@@ -112,6 +112,33 @@ func TestObserveRiseUsesObservedPairDuration(t *testing.T) {
 	}
 }
 
+func TestPitRiseScanCarriesOnlyIntervalStateAcrossPages(t *testing.T) {
+	pages := [][]timedMetricSample{
+		{{seconds: 2, value: 50, presence: strategyprojection.PresenceValid},
+			{seconds: 2.1, value: 50, presence: strategyprojection.PresenceValid}},
+		{{seconds: 3, value: 52, presence: strategyprojection.PresenceValid},
+			{seconds: 3.5, value: 52.005, presence: strategyprojection.PresenceValid}},
+		{{seconds: 4, value: 54.005, presence: strategyprojection.PresenceUnknown}},
+	}
+	var scan pitRiseScan
+	for _, page := range pages {
+		for _, sample := range page {
+			scan.accept(sample)
+		}
+	}
+	rise, ok := scan.finish()
+	if !ok || math.Abs(rise.delta-4) > 1e-9 || math.Abs(rise.rate-4/1.9) > 1e-9 ||
+		rise.presence != strategyprojection.PresenceUnknown {
+		t.Fatalf("pit rise across pages = %+v ok=%v", rise, ok)
+	}
+	var noDuration pitRiseScan
+	noDuration.accept(timedMetricSample{seconds: 2, value: 50, presence: strategyprojection.PresenceValid})
+	noDuration.accept(timedMetricSample{seconds: 2, value: 52, presence: strategyprojection.PresenceValid})
+	if _, ok := noDuration.finish(); ok {
+		t.Fatal("zero-duration rise became a rate")
+	}
+}
+
 func TestAggregatePitObservationsFiltersCombinationAndKeepsRateAxes(t *testing.T) {
 	current := pitObservationFixture("race-a", "combo-a", 2.0, 2.5)
 	history := []SessionPitObservation{

@@ -55,12 +55,12 @@ ninguno de los dos llamadores.
 
 La validez efectiva paginada ya resuelve vueltas, familias y límites de stint,
 pero la derivación posterior aún consulta series originales/corregidas. El
-inventario concreto de observaciones que debe retener un consumidor por
+inventario concreto de observaciones que debe resolver un consumidor por
 páginas es:
 
 | Señal | Consultas exactas de la derivación actual |
 | --- | --- |
-| Fuel Level y Virtual Energy | Último valor dentro de tolerancia en inicio/fin de vuelta; Fuel también busca el más cercano al inicio + 0,001 s. En cada intervalo cerrado de boxes se necesitan **todas** las muestras válidas para detectar y medir cada ascenso, no sólo sus extremos. |
+| Fuel Level y Virtual Energy | Último valor dentro de tolerancia en inicio/fin de vuelta; Fuel también busca el más cercano al inicio + 0,001 s. En cada intervalo cerrado de boxes deben **visitarse todas** las muestras válidas para detectar y medir cada ascenso, no sólo sus extremos; `pitRiseScan` conserva únicamente anterior, suma, primer/último instante y presencia. |
 | Minimum Path Wetness | Último valor válido en inicio y fin de vuelta; un cambio de cubeta invalida la referencia de esa vuelta. |
 | FuelMixtureMap y TyresCompound | Último estado válido en inicio de vuelta + tolerancia; el compuesto también se consulta al inicio de cada stint observado. |
 | Tyres Wear | Último vector dentro de tolerancia en ambos límites de vuelta y en cada fin de vuelta observado. |

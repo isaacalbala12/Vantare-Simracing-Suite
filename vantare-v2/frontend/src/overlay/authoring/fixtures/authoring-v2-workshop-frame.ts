@@ -822,6 +822,9 @@ function applyScene(
   const scene = scenario.sceneId ? getAnimationScene(scenario.sceneId, scenario.system, scenario.session) : undefined;
   if (!scene || scene.widget !== scenario.widget) return frame;
   const state = scenario.sceneState ?? sceneFrameAt(scene, scenario.sceneFrame ?? 0);
+  if (scene.widget === "radar" && state.radarCars) {
+    return { ...frame, radar: { mode: "xyz", cars: state.radarCars } };
+  }
   let standings = frame.standings;
   let relative = frame.relative;
   let settled = frame.relativeSettled;

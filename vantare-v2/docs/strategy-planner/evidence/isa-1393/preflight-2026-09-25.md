@@ -126,3 +126,29 @@ automatizado a la navegación actual antes de usarlo como gate visual. En el
 editor simulado de Imola GP aparece «Mapa no disponible para esta variante»;
 queda por contrastar la geometría real y su identidad en E02. Ninguna captura
 ni cálculo de este apartado procede de Wails o de un DuckDB real.
+
+## Regresión manual detectada en el navegador simulado
+
+El recorrido manual completo descubrió un bloqueo al pulsar «Aceptar
+propuesta»: `parsePlanDraftV1` rechazaba `capabilities` porque el borrador
+manual enviaba `manual_inputs` antes de `fuel_strategy`. Se reprodujo primero
+en el test de aceptación aplicando el parser del contrato al comando `create`:
+falló con `invalid_document (capabilities): must be sorted and unique`. Se
+ordenaron las tres capacidades, sin cambiar el contrato ni el backend, y el
+test focal pasó (2/2).
+
+Con el mismo harness, la secuencia manual LMU → Ford Mustang GT3 → Imola GP →
+referencias manuales → carrera de 60 min → piloto → mesa → condición seca →
+cálculo → aceptación mostró «Propuesta aceptada como revisión inmutable».
+El plan de 69 vueltas y 2:02:38 procede del solver simulado del harness; **no**
+valida la duración ni la optimalidad del motor real. El guardado nativo E01
+sigue pendiente.
+
+Los 58 archivos de tests de Strategy pasaron (667 tests); typecheck, lint,
+build frontend y build Wails DEV pasaron. Dos intentos de suite frontend
+global no terminaron de forma válida: el primero salió con error y el segundo
+se interrumpió después de un `AbortError` de `happy-dom`, también con cuatro
+workers; ninguno se declara verde. El binario integrado actualizado no se
+ejecutó: 44.075.520 bytes, SHA-256
+`f1cb254326b7f639db8ded90f6c3464b7f1025a215d19a19e24041982a2a7c9a`.
+La build volvió a reordenar `go.mod`; sólo se retiró ese cambio generado.

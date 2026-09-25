@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { StrategyApplicationClient, StrategyApplicationCommandV1, StrategyApplicationResultV1, StrategyOrbitCalculationInputV1, StrategyOrbitCalculatedPlanV1 } from "../../strategy/strategy-application-client";
 import type { RecordedDraftPayload } from "./strategy-recorded-payload";
+import { parsePlanDraftV1 } from "../../strategy/strategy-contract-v1";
 import { createRecordedWizardDraft } from "./strategy-recorded-wizard";
 import { useRecordedAcceptance } from "./use-recorded-acceptance";
 
@@ -21,7 +22,7 @@ describe("useRecordedAcceptance", () => {
       const base = { protocolVersion: "strategy.application.v1" as const, commandId: command.commandId, repositoryVersion: version, recoveredFromBackup: false, closed: false };
       if (command.operation === "get_pending_revision_save") return base;
       if (command.operation === "list") return { ...base, plans: [] };
-      if (command.operation === "create") { version += 1; return { ...base, repositoryVersion: version, draft: command.draft }; }
+      if (command.operation === "create") { parsePlanDraftV1(command.draft); version += 1; return { ...base, repositoryVersion: version, draft: command.draft }; }
       if (command.operation === "save_revision") { version += 1; return { ...base, repositoryVersion: version, revision: { planId: command.draft.planId, variantId: command.draft.variantId, revisionId: command.revisionId, contentHash: "a".repeat(64) }, pendingRevision: { command, commandDigest: "b".repeat(64) } }; }
       return base;
     });
@@ -33,7 +34,7 @@ describe("useRecordedAcceptance", () => {
     await act(() => result.current.accept());
     expect(result.current.state.status).toBe("accepted");
     expect(seen.find(command => command.operation === "save_revision")).toMatchObject({ draft: {
-      mode: "manual", capabilities: ["manual_inputs", "fuel_strategy", "virtual_energy_strategy"], provenance: { kind: "manual", sourceId: "strategy-manual" },
+      mode: "manual", capabilities: ["fuel_strategy", "manual_inputs", "virtual_energy_strategy"], provenance: { kind: "manual", sourceId: "strategy-manual" },
     } });
   });
 

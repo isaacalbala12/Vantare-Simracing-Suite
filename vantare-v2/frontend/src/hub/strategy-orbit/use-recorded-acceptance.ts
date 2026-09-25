@@ -66,7 +66,7 @@ export function useRecordedAcceptance(
       const manual = draft.mode === "manual" && draft.sessions.length === 0;
       const saved = await saveOrbitRevision(client, payload, draft.name.trim() || draft.combination?.trackName || "Strategy", undefined, manual ? {
         mode: "manual",
-        capabilities: ["manual_inputs", "fuel_strategy", "virtual_energy_strategy"],
+        capabilities: ["fuel_strategy", "manual_inputs", "virtual_energy_strategy"],
         provenance: { kind: "manual", sourceId: "strategy-manual" },
         confidence: { level: "unknown" },
       } : {

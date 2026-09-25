@@ -1,5 +1,21 @@
 # Handoff vivo — Strategy Planner
 
+## Aceptación manual desbloqueada en el harness — ISA-1393 (2026-09-25)
+
+El recorrido manual del navegador simulado detectó un rechazo real del
+contrato al aceptar la propuesta: las capacidades del borrador no estaban
+ordenadas. Un test reprodujo `invalid_document (capabilities)` y el arreglo
+ordenó la lista sin alterar backend ni contrato. El test focal pasó (2/2);
+Strategy pasó 667/667, y typecheck, lint, build frontend y Wails DEV pasaron.
+El navegador confirmó «Propuesta aceptada como revisión inmutable». El solver
+y los datos de esa pantalla son simulados, por lo que E01 nativo sigue
+pendiente. Dos intentos de suite frontend global no dieron un resultado válido
+por un `AbortError` de `happy-dom`; no se declara verde. El binario actual sin
+ejecutar mide 44.075.520 bytes, SHA-256
+`f1cb254326b7f639db8ded90f6c3464b7f1025a215d19a19e24041982a2a7c9a`.
+[Evidencia](../../strategy-planner/evidence/isa-1393/preflight-2026-09-25.md).
+Sin push, PR, CI, promoción ni release.
+
 ## Candidato T22 integrado, sin GUI — ISA-1393 (2026-09-25)
 
 La rama aislada #1393 contiene ahora la composición local de #1331, #1367,

@@ -1,5 +1,16 @@
 # Handoff vivo — Strategy Planner
 
+## Preflight nativo T22 — ISA-1393 (2026-09-25)
+
+Se abrió [#1393](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1393)
+y su rama/worktree aislados desde #1375 `45ab9a71`. El [preflight](../../strategy-planner/evidence/isa-1393/preflight-2026-09-25.md)
+registra CLI Wails alpha.98, runtime WebView2 153.0.4234.48, SHA del último
+binario disponible y matriz E01–E08 íntegramente pendiente. El fallo
+`8007139F` es histórico; builds posteriores sí abrieron, así que no se le
+atribuye causa ni estado actual. No se lanzó GUI para dejar libre el PC. Falta
+build exacta de esta rama y recorrido nativo con hashes, logs y cuenta de
+distribución. Sin push, PR, CI, merge, promoción ni release.
+
 ## Espera visible durante la proyección — ISA-1375 (2026-09-25)
 
 Datos y Revisiones muestran ahora junto a la cabecera que una proyección está

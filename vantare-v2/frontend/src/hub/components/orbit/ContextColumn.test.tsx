@@ -75,8 +75,22 @@ describe("ContextColumn", () => {
   });
 
   it("muestra el título de la sección y la versión", () => {
-    renderColumn("inicio");
+    const { container, rerender } = renderColumn("inicio");
     expect(screen.getByTestId("orbit-column-title").textContent).toContain("Vantare Suite");
     expect(screen.getByText("v0.3.9")).toBeTruthy();
+    expect(container.querySelector(".orbit-column__version i")).toBeNull();
+
+    rerender(
+      <ContextColumn
+        activeView="inicio"
+        blocks={blocks}
+        labels={labels}
+        onCollapse={vi.fn()}
+        title="Vantare Suite"
+        version="v0.3.10-nightly.2"
+      />,
+    );
+    expect(screen.getByText("v0.3.10-nightly.2")).toBeTruthy();
+    expect(screen.queryByText("v0.3.9")).toBeNull();
   });
 });

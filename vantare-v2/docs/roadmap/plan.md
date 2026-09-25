@@ -419,10 +419,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Hub Orbit v1.12
 - titulo.pt: Hub Orbit v1.12
 - titulo.it: Hub Orbit v1.12
-- cuerpo: Nuevo lenguaje visual global del shell: tipografía única, rojo racing, vidrio fino, Inicio con héroe de la próxima carrera, strip seleccionable y columna contextual, consolidado sin regresiones visuales.
-- cuerpo.en: New global shell visual language: unique typography, racing red, fine glass, Home with the next race hero, selectable strip and contextual column, consolidated without visual regressions.
-- cuerpo.pt: Nova linguagem visual global do shell: tipografia única, vermelho racing, vidro fino, Início com herói da próxima corrida, strip selecionável e coluna contextual, consolidado sem regressões visuais.
-- cuerpo.it: Nuovo linguaggio visivo globale della shell: tipografia unica, rosso racing, vetro fine, Home con l'eroe della prossima gara, strip selezionabile e colonna contestuale, consolidato senza regressioni visive.
+- cuerpo: Nuevo lenguaje visual global del shell: tipografía única, rojo racing, vidrio fino, Inicio con héroe de la próxima carrera, strip seleccionable y columna contextual, consolidado sin regresiones visuales. La cabecera contextual ya muestra la versión real de la app sin un indicador verde decorativo.
+- cuerpo.en: New global shell visual language: unique typography, racing red, fine glass, Home with the next race hero, selectable strip and contextual column, consolidated without visual regressions. The contextual header now shows the actual app version without a decorative green indicator.
+- cuerpo.pt: Nova linguagem visual global do shell: tipografia única, vermelho racing, vidro fino, Início com herói da próxima corrida, strip selecionável e coluna contextual, consolidado sem regressões visuais. O cabeçalho contextual já mostra a versão real da app sem um indicador verde decorativo.
+- cuerpo.it: Nuovo linguaggio visivo globale della shell: tipografia unica, rosso racing, vetro fine, Home con l'eroe della prossima gara, strip selezionabile e colonna contestuale, consolidato senza regressioni visive. L'intestazione contestuale mostra già la versione reale dell'app senza un indicatore verde decorativo.
 - etiqueta: Plan
 - etiqueta.pt: Plano
 - etiqueta.it: Piano

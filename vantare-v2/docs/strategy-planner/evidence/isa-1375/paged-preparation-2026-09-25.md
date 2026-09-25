@@ -77,3 +77,16 @@ de las visitas, dato que explica el coste temporal pero no es memoria
 simultánea. Los tres picos son evidencia de este lector, esta fuente y este
 entorno: no prueban rendimiento con muchas vueltas/eventos, aplicación Wails
 ni las operaciones productivas que todavía materializan correcciones.
+
+## Límite de las relecturas repetidas
+
+Se probó pasar `LoadCorrection`, `LoadPendingCorrectionCommand`,
+`AcknowledgeCorrectionCommand` y `ResolveCorrectionCommand` al resumen paginado.
+El banco real completo conservó revisiones, proyección, restauración y hashes,
+pero tardó **288,18 s** frente a **87,21 s** de la ejecución anterior con
+esas operaciones en la ruta materializada. Son ejecuciones individuales, no
+una comparación estadística de rendimiento, pero el coste es inaceptable para
+consultas de historial frecuentes. El cambio de esas cuatro llamadas se
+retiró antes de commit; el worktree volvió a `03e5e5e6` limpio. Hace falta
+separar revalidación ligera de la fuente y reutilización segura de identidad,
+o una derivación paginada compartida por comando, antes de cambiar esas rutas.

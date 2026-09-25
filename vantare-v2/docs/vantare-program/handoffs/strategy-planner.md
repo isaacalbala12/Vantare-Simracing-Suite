@@ -1,5 +1,15 @@
 # Handoff vivo — Strategy Planner
 
+## Relecturas de historial descartadas — ISA-1375 (2026-09-25)
+
+Un ensayo de usar el resumen paginado para cuatro consultas de historial
+conservó resultados reales, pero el recorrido Algarve→Monza tardó 288,18 s
+frente a 87,21 s de la ejecución anterior. La modificación se retiró antes
+de commit: esas consultas siguen en `withCorrectionInput`. [Evidencia](../../strategy-planner/evidence/isa-1375/paged-preparation-2026-09-25.md).
+El siguiente diseño debe evitar releer toda la telemetría para cada consulta
+de historial y mantener revalidación exacta de la fuente; no cambiar estas
+rutas sólo porque el resumen exista.
+
 ## Banco de volumen sin importación previa — ISA-1375 (2026-09-25)
 
 El DuckDB limpio de Imola (264,10 MiB; SHA-256 intacto) se recorrió tres veces

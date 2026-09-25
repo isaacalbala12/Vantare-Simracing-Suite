@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-25T18:03:07Z",
+  "generatedAt": "2026-09-25T18:34:06Z",
   "digest": {
-    "lastCommit": "98c245bfb1a11ce240605dc78e26e9758477fa25"
+    "lastCommit": "d09829c41ea2dabfdcb47182eb6d922e69232e54"
   },
   "phases": [
     {
@@ -2204,6 +2204,11 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-1390 · Cabecera Orbit: versión sin punto verde"
+        },
+        {
+          "kind": "docs",
+          "scope": "hub",
+          "text": "Registrar merge de la cabecera Orbit"
         }
       ]
     },

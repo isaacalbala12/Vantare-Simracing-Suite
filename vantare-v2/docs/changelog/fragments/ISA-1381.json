@@ -2,17 +2,19 @@
   "schemaVersion": 1,
   "issue": "ISA-1381",
   "type": "feature",
-  "summary": "Ajustes permite elegir una paleta Vantare, Océano o Iris y un modo claro, oscuro o del sistema para la interfaz completa, incluido Overlay Studio, sin modificar el diseño de los widgets.",
+  "summary": "Ajustes ofrece siete paletas, cada una en claro y oscuro o según Windows, para toda la interfaz y Overlay Studio sin cambiar el diseño de los widgets.",
   "technicalNotes": [
-    "La paleta y el modo se guardan por separado en este equipo y se aplican al abrir la app; el modo del sistema sigue los cambios de Windows.",
-    "Los colores de estado peligroso mantienen su significado independiente de la paleta elegida."
+    "Vantare, Rosa, Bosque, Océano, Ámbar, Iris y Grises tienen variantes claras y oscuras; Grises mantiene neutros los colores de la interfaz.",
+    "La paleta, el modo, el contraste, la opacidad y las fuentes se guardan en este equipo; el modo Sistema sigue los cambios de Windows.",
+    "El lienzo de Studio sigue el tema por defecto y permite elegir una variante fija de cada paleta, los fondos clásicos o una imagen propia."
   ],
   "testing": [
-    "Abrir Ajustes > Aplicación y probar cada paleta en claro y oscuro; la interfaz y Overlay Studio deben cambiar al instante.",
+    "Abrir Ajustes > Apariencia y probar las siete paletas en claro y oscuro; la interfaz, la tarjeta Próxima serie y Overlay Studio deben cambiar al instante.",
     "Elegir Sistema y cambiar el modo de Windows; la interfaz debe seguirlo sin reiniciar.",
+    "En Studio, probar Tema actual y una variante fija del selector de fondos; volver a Studio y comprobar que recuerda la selección.",
     "Abrir un perfil de Overlay Studio y comprobar que el diseño del widget conserva sus colores."
   ],
   "knownLimitations": [
-    "La revisión visual realizada en navegador usa un runtime simulado; falta verificar esta entrega en la ventana física de Wails."
+    "Esta entrega no incluye creación o importación de paletas propias."
   ]
 }

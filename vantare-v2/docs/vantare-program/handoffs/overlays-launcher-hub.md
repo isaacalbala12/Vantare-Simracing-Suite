@@ -1,5 +1,9 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## 2026-09-26 · VAN-769 / GitHub #1381 · Integración inicial autorizada
+
+Isaac revisó la entrega de temas y fondos de Studio en Wails y autorizó expresamente integrar únicamente la [PR #1384](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1384) en `nightly`. La rama se reconcilió con `origin/nightly@d09829c4` sin conflictos de código y se regeneró `roadmap.json` desde esa base. La aceptación incluye la tarjeta Próxima serie con la paleta activa; los widgets mantienen sus diseños. El CI del candidato `b3ba6cf8` pasó los controles de ruta, calidad y gates bloqueantes, incluida la build Wails de Windows. Este registro no afirma integración antes de comprobar el SHA remoto y los gates del merge. La comprobación física en LMU/OBS sigue siendo trabajo de Nightly. La autorización no comprende `testers`, `master` ni una release.
+
 > **Seguimiento de widgets en [Asana](https://app.asana.com/0/1218742976551956/list), por instrucción de Isaac.**
 > GitHub Issues conserva el puente técnico y su estado de entrega.
 > Este handoff conserva evidencia técnica fechada; sus estados antiguos no

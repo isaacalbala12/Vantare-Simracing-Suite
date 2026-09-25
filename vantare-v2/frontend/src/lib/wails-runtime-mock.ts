@@ -1401,6 +1401,12 @@ export const Events = {
   },
 };
 
+// Browser-only visual harnesses cannot open a native file picker. Returning an
+// empty path models dismissal and keeps the production picker path untouched.
+export const Dialogs = {
+  OpenFile: async () => "",
+};
+
 export const Browser = {
   OpenURL: () => {
     // no-op in harness

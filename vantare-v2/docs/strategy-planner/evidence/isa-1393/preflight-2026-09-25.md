@@ -97,3 +97,25 @@ faltando una grabación larga independiente con muchas vueltas para la cuota de
 Los 367 archivos del corpus #1030 están asignados al split existente; no se
 deben reutilizar como evaluación independiente. No se abrió LMU, no se alteraron
 originales y no hubo push, PR, CI, promoción ni release.
+
+## Recorrido separado en navegador simulado
+
+La primera carga del harness visual falló antes de pintar Strategy: el módulo
+simulado de Wails no exportaba `Dialogs`, que ahora importa la selección nativa
+de archivos. Se añadió al **mock** una respuesta de cancelación sin ruta; no
+se modificó el diálogo productivo. Tras el arreglo, el navegador mostró la
+[entrada de tres columnas](browser-entry-mock.png) y permitió: abrir un borrador,
+buscar y abrir una sesión simulada, aplicarla, calcular un plan simulado y abrir
+la edición de paradas. Los 17 tests focales, typecheck, lint y build frontend
+pasaron. La build Wails DEV actualizada pasó sin abrir ventana: 44.075.520
+bytes, SHA-256
+`433108f4731837374f802a218d9da75f83e61fcea3c7269eada039b45d59984e`.
+El hash anterior quedó sustituido por este cambio de frontend.
+
+El script heredado `recorded-strategy-visual.mjs` aún falla tras la primera
+captura: busca `.strategy-recorded-frame__footer button`, que ya no existe en
+la entrada v5. Su ejecución no se declara PASS; hay que adaptar el recorrido
+automatizado a la navegación actual antes de usarlo como gate visual. En el
+editor simulado de Imola GP aparece «Mapa no disponible para esta variante»;
+queda por contrastar la geometría real y su identidad en E02. Ninguna captura
+ni cálculo de este apartado procede de Wails o de un DuckDB real.

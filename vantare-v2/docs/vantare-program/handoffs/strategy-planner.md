@@ -10,8 +10,13 @@ typecheck, lint, i18n y build PASS; 44 tests del contrato de roadmap PASS.
 Dos bancos LMU reales (Algarve→Monza y Monza Hypercar→Imola) terminaron PASS con
 paridad paginada, revisiones, restauración y SHA de originales intactos; también
 pasó la recuperación de una copia verificada COTA tras retirar sólo una copia
-temporal. La build Wails DEV integrada mide 44.075.520 bytes, SHA-256
-`47db264ec9f6109edb8a977b05f0f2216c3863874f2a825b6ca8f179c7d6536b`.
+temporal. La build Wails DEV integrada mide 44.075.520 bytes. Después de
+reparar el mock del diálogo nativo, su SHA-256 actual es
+`433108f4731837374f802a218d9da75f83e61fcea3c7269eada039b45d59984e`.
+El navegador simulado ya recorrió entrada, selección/aplicación de sesión,
+cálculo y edición de paradas; no prueba Wails ni DuckDB real. El script antiguo
+de capturas queda FAIL por un selector del flujo anterior; la geometría Imola
+GP aparece sin mapa en el harness y requiere contraste de identidad en E02.
 No se ejecutó: E01–E08 requieren ventana nativa, licencia de desarrollo y
 evidencia de interacción. Continúan abiertos la fuente larga independiente
 para la cuota #1375 y el holdout anotado para calibración #1030. Sin push, PR,

@@ -260,3 +260,38 @@ más el resultado de parada separado, producen un
 todavía obtiene esa parada desde páginas materializadas; la paridad del
 acumulador se comprueba por separado. Falta unir ambas piezas al visitante
 autorizado y probar el snapshot real antes del cambio productivo.
+
+## Recolectores paginados conectados al visitante
+
+`readPagedPitObservation` visita primero los eventos de boxes y después Fuel/VE;
+retiene sólo los eventos acotados y un acumulador por parada. Un test con
+páginas partidas y un valor de Fuel corregido iguala el resultado materializado
+y verifica que el original no cambió. `readPagedProjectionRows` usa el mismo
+visitante alineado para conservar sólo las muestras anterior/posterior a los
+instantes consultados por las derivaciones, más los eventos necesarios. Otro
+test compara las filas seleccionadas de Fuel/VE y Finish Status con la
+selección materializada, incluyendo un valor corregido. Si una señal válida
+retrocede en el tiempo, los recolectores fallan explícitamente.
+
+La corrección se aplica **después** de alinear con el GPS original, como en
+`DeriveCorrectedSession`. `DerivePagedCorrectedSession` une validez paginada,
+fronteras, boxes y las mismas derivaciones de siempre. En un fixture de carrera
+de dos vueltas igualó el modelo completo tanto para la revisión base como para
+una corrección de Fuel. El banco real Algarve→Monza igualó el modelo completo
+para una corrección de Lap Time en Algarve y terminó PASS en **153,08 s**:
+71 eventos, 70 reinicios, 66 vueltas completas, ritmo seco 95,190 s (N=58),
+Fuel 2,135 L/vuelta (N=58), cálculo supuesto 38 vueltas/0 paradas con óptimo
+probado, restauración y hashes de ambos originales intactos.
+
+Una tercera variante del fixture corrigió el GPS justo en un límite de vuelta
+y detectó una diferencia de validez. La relectura paginada corregía el GPS
+antes de alinear, en contradicción con la ruta materializada. Ahora deja el
+GPS original como reloj de alineación y aplica las demás correcciones después;
+base, Fuel y GPS igualan el modelo completo en el fixture. El banco real
+anterior usaba una corrección de Lap Time, por lo que no acredita este caso GPS.
+
+La ruta paginada aún **no alimenta los comandos productivos**. Tampoco se ha
+medido su pico de memoria: el banco compara rutas en el mismo proceso y su
+tiempo no demuestra una mejora de rendimiento. Faltan la activación conjunta
+de las dos entradas, medición aislada de memoria, fuente larga multivuelta y
+validación Wails T22.

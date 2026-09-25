@@ -1,12 +1,63 @@
 package telemetryanalysis
 
 import (
+	"context"
 	"math"
 	"reflect"
 	"sort"
 	"strings"
 	"testing"
 )
+
+func TestPagedProjectionBoundaryRowsMatchMaterializedSelection(t *testing.T) {
+	model := correctionSourceExample(t)
+	session, _, pages := pitFixtureSession(TimeOriginSourceTimestamp,
+		[]float64{50, 50, 50, 50, 50, 50, 52, 52, 54, 54, 54, 54, 54, 54},
+		[]float64{30, 30, 30, 30, 30, 30, 31, 31, 32, 32, 32, 32, 32, 32})
+	session.ID = model.Session.ID
+	session.SchemaVersion = HistoricalSchemaVersion
+	session.Provenance = model.Session.Provenance
+	finish := pitEventChannel("finish", "Finish Status")
+	session.Channels = append(session.Channels, finish)
+	pages = append(pages, pitEventPage("finish", []pitEventValue{{seconds: 6, value: true}}))
+	corrected := cloneHistoricalPages(pages)
+	corrected[1].Samples = append([]HistoricalSample(nil), corrected[1].Samples...)
+	corrected[1].Samples[8].Values = append([]HistoricalValue(nil), corrected[1].Samples[8].Values...)
+	corrected[1].Samples[8].Values[0].Scalar.Number = 55
+	values := map[correctionRowKey]map[string]HistoricalValue{
+		{channel: "fuel", index: 8}: {"": corrected[1].Samples[8].Values[0]},
+	}
+	start1, start2, start3 := secondsTimestamp(0), secondsTimestamp(2), secondsTimestamp(4)
+	validity := LapValidityAnalysis{Laps: []AnalyzedLap{
+		{Number: 1, Start: &start1, End: secondsTimestamp(2)},
+		{Number: 2, Start: &start2, End: secondsTimestamp(4)},
+		{Number: 3, Start: &start3, End: secondsTimestamp(6)},
+	}}
+	want := sparseProjectionFixturePages(t, session, corrected, validity, false)
+	reader := &correctionInputReader{session: session, pages: pages}
+	got, err := readPagedProjectionRows(context.Background(), reader, model.Artifact,
+		CorrectionReadLimits{PageRows: 3, MaxSamples: 100, MaxValues: 100, MaxTextBytes: 4096},
+		CorrectionSummary{Session: session}, validity, values)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"fuel", "ve", "finish"} {
+		var selected, expected []HistoricalSample
+		for _, page := range got {
+			if page.ChannelID == id {
+				selected = append(selected, page.Samples...)
+			}
+		}
+		for _, page := range want {
+			if page.ChannelID == id {
+				expected = append(expected, page.Samples...)
+			}
+		}
+		if !reflect.DeepEqual(selected, expected) {
+			t.Fatalf("selected %s rows differ from materialized boundary selection", id)
+		}
+	}
+}
 
 func TestCorrectedObservationsMatchBoundaryRowsOnRecordedFixture(t *testing.T) {
 	fixture := loadLapValidityFixture(t, "lap-validity-s045-v1.json")

@@ -1,5 +1,22 @@
 # Handoff vivo — Strategy Planner
 
+## Recolectores paginados de boxes y fronteras — ISA-1375 (2026-09-25)
+
+El visitante autorizado alimenta dos recolectores: boxes acumula ascensos de
+Fuel/VE sin retener el interior y la proyección conserva fronteras y eventos
+acotados. `DerivePagedCorrectedSession` une esas piezas con la validez paginada
+y el derivador existente. El modelo completo igualó al materializado en un
+fixture de carrera para base y corrección de Fuel; el banco LMU Algarve→Monza
+igualó una revisión corregida real de Lap Time y terminó PASS en 153,08 s,
+con hashes intactos. La corrección se aplica después de alinear con el GPS
+original. **Aún no es ruta productiva**. Quedan conectar juntas las dos
+entradas, medir pico aislado, fuente larga multivuelta y T22.
+Una regresión adicional corrigió GPS justo en el límite de vuelta, expuso
+una realineación indebida y quedó resuelta: el GPS original sigue siendo el
+reloj. La paridad GPS está probada en fixture, no en DuckDB real.
+[Evidencia](../../strategy-planner/evidence/isa-1375/paged-preparation-2026-09-25.md).
+#1375 abierta, sin push, PR, CI, merge, promoción ni release.
+
 ## Boxes desacoplado de páginas retenidas — ISA-1375 (2026-09-25)
 
 La construcción de la parada acepta ascensos compactos por intervalo.

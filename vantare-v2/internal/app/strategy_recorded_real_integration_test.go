@@ -296,6 +296,22 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 			return errors.New("paged corrected Lap Time validity differs from materialized real input")
 		}
 		t.Logf("paged corrected Lap Time validity matches materialized real input: channel=%s sample=%d", correctionInput.Channel.ID, correctionInput.Sample.Index)
+		classified, classErr := telemetryanalysis.ClassifyHistoricalSession(input.Session)
+		if classErr != nil {
+			return classErr
+		}
+		materializedDerivation, deriveErr := telemetryanalysis.DeriveCorrectedSession(input.Base, input.Session, input.Pages, classified, snapshot)
+		if deriveErr != nil {
+			return deriveErr
+		}
+		pagedDerivation, deriveErr := telemetryanalysis.DerivePagedCorrectedSession(ctx, owned.parser, owned.artifact, svc.correctionReadLimits(), summary, classified, snapshot)
+		if deriveErr != nil {
+			return deriveErr
+		}
+		if !reflect.DeepEqual(pagedDerivation, materializedDerivation) {
+			return errors.New("paged corrected derivation differs from materialized real input")
+		}
+		t.Log("paged corrected complete derivation matches materialized real input")
 		qualities := make(map[string]int)
 		for _, boundary := range input.Validity.Temporal.LapBoundaries {
 			qualities[string(boundary.Quality)]++

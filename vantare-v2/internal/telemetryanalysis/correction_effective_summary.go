@@ -1,6 +1,9 @@
 package telemetryanalysis
 
-import "context"
+import (
+	"context"
+	"strings"
+)
 
 type correctionRowKey struct {
 	channel string
@@ -58,19 +61,33 @@ func ReadCorrectedLapValidity(ctx context.Context, reader CorrectionInputReader,
 	effective := original.Validity
 	if len(view.Corrections) > 0 {
 		values := make(map[correctionRowKey]map[string]HistoricalValue, len(view.Corrections))
+		gpsChannels := make(map[string]bool)
+		for _, channel := range original.Session.Channels {
+			if strings.EqualFold(strings.TrimSpace(channel.SourceName), "GPS Time") {
+				gpsChannels[channel.ID] = true
+			}
+		}
 		for _, correction := range view.Corrections {
 			target := correction.Request.Target
+			// The materialized path aligns against original GPS before applying
+			// scalar corrections. Corrected GPS values must not realign other
+			// channels during the bounded validity pass.
+			if gpsChannels[target.ChannelID] {
+				continue
+			}
 			key := correctionRowKey{target.ChannelID, target.SampleIndex}
 			if values[key] == nil {
 				values[key] = make(map[string]HistoricalValue)
 			}
 			values[key][target.Column] = correction.Corrected
 		}
-		corrected, readErr := ReadCorrectionSummary(ctx, correctedPageReader{CorrectionInputReader: reader, values: values}, artifact, limits)
-		if readErr != nil {
-			return empty, readErr
+		if len(values) > 0 {
+			corrected, readErr := ReadCorrectionSummary(ctx, correctedPageReader{CorrectionInputReader: reader, values: values}, artifact, limits)
+			if readErr != nil {
+				return empty, readErr
+			}
+			effective = corrected.Validity
 		}
-		effective = corrected.Validity
 	}
 	if len(view.FamilyUses) > 0 {
 		effective.Laps, err = ApplyLapFamilyCorrections(original.Base, original.Validity, effective, view.FamilyUses)

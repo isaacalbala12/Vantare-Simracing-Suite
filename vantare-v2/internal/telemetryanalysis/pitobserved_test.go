@@ -1,6 +1,7 @@
 package telemetryanalysis
 
 import (
+	"context"
 	"encoding/json"
 	"math"
 	"os"
@@ -175,6 +176,38 @@ func TestPitObservationFromPagedRisesMatchesMaterialized(t *testing.T) {
 		func(index int, _ pitInterval) (riseObservation, bool) { return veScans[index].finish() })
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("page-fed pit observation differs: %v", err)
+	}
+}
+
+func TestPagedPitObservationMatchesMaterializedWithCorrectedValue(t *testing.T) {
+	model := correctionSourceExample(t)
+	fuel := []float64{50, 50, 50, 50, 50, 50, 52, 52, 54, 54, 54, 54, 54, 54}
+	ve := []float64{30, 30, 30, 30, 30, 30, 31, 31, 32, 32, 32, 32, 32, 32}
+	session, classified, pages := pitFixtureSession(TimeOriginSourceTimestamp, fuel, ve)
+	session.ID = model.Session.ID
+	session.SchemaVersion = HistoricalSchemaVersion
+	session.Provenance = model.Session.Provenance
+	classified.SessionID = session.ID
+	reader := &correctionInputReader{session: session, pages: pages}
+	limits := CorrectionReadLimits{PageRows: 3, MaxSamples: 100, MaxValues: 100, MaxTextBytes: 4096}
+	summary := CorrectionSummary{Session: session}
+	corrected := cloneHistoricalPages(pages)
+	corrected[1].Samples = append([]HistoricalSample(nil), corrected[1].Samples...)
+	corrected[1].Samples[8].Values = append([]HistoricalValue(nil), corrected[1].Samples[8].Values...)
+	corrected[1].Samples[8].Values[0].Scalar.Number = 55
+	values := map[correctionRowKey]map[string]HistoricalValue{
+		{channel: "fuel", index: 8}: {"": corrected[1].Samples[8].Values[0]},
+	}
+	want, err := DeriveSessionPitObservation(session, corrected, classified)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := readPagedPitObservation(context.Background(), reader, model.Artifact, limits, summary, classified, values)
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("paged corrected pit differs: %v", err)
+	}
+	if pages[1].Samples[8].Values[0].Scalar.Number != 54 {
+		t.Fatal("paged correction mutated source")
 	}
 }
 

@@ -285,12 +285,34 @@ async function captureInlineSessions(browser) {
   await run.page.close();
 }
 
+async function verifyTwoSessions(browser) {
+  const run = await pageFor(browser, 1280, 800);
+  try {
+    await openSaved(run.page);
+    await run.page.locator('#recorded-tab-data').click();
+    await run.page.locator('#recorded-panel-data button').filter({ hasText: /fuentes/i }).click();
+    const sources = run.page.getByTestId('strategy-recorded-source-screen');
+    await sources.getByRole('button', { name: /Buscar sesiones/i }).click();
+    await sources.locator('.orbit-strategy__session-row button:enabled').filter({ hasText: /Abrir/i }).first().click();
+    await sources.locator('.orbit-strategy__session-row button:enabled').filter({ hasText: /Abrir/i }).first().click();
+    await sources.getByText('2/4').waitFor();
+    await sources.getByRole('button', { name: /Inspeccionar/i }).last().click();
+    await run.page.locator('#recorded-panel-data button').filter({ hasText: /Consultar vueltas/i }).click();
+    await run.page.getByRole('button', { name: /Vuelta 25/i }).waitFor();
+    if (await run.page.getByRole('alert').count()) throw new Error('second session laps failed');
+    if (run.errors.length) throw new Error(`second session page errors: ${run.errors.join(', ')}`);
+  } finally {
+    await run.page.close();
+  }
+}
+
 let browser;
 try {
   await waitForServer();
   browser = await chromium.launch({ headless: true });
   await captureMain(browser);
   await captureInlineSessions(browser);
+  await verifyTwoSessions(browser);
   await captureMatrix(browser);
   const count = fs.readdirSync(output).filter((name) => name.endsWith('.png')).length;
   fs.writeFileSync(path.join(output, 'README.md'), `# T18 · ${pass}\n\n${count} capturas del frontend productivo en la shell Orbit, incluidos los estados principales, la lista de sesiones a 1208 px y variantes responsive ES/EN/PT/IT. El banco es determinista; no es prueba Wails, LMU ni DuckDB real.\n`);

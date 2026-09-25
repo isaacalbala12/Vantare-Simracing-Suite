@@ -1,5 +1,18 @@
 # Handoff vivo — Strategy Planner
 
+## QA de dos sesiones en navegador — ISA-1393 (2026-09-25)
+
+El harness devolvía la misma identidad para Race y Practice: al abrir la segunda
+sesión, el propietario la descartaba y el contador permanecía en 1/4. Se
+separaron handle/base/revisión y la página de vueltas por sesión. El recorrido
+automatizado abre ambas, inspecciona Practice y consulta sus vueltas; PASS con
+99 capturas, matriz responsive sin overflow ni errores, 39 tests focales,
+typecheck, lint y build. [Evidencia](../../strategy-planner/evidence/isa-1393/preflight-2026-09-25.md).
+Es una corrección del banco simulado, no prueba del lector LMU. La apertura
+directa de Practice como carrera nueva aún da error de guardado en el harness;
+queda por aislar. E01–E08 nativos y T18 >9/10 siguen pendientes. Sin GUI nativa,
+push, PR, CI, integración ni release.
+
 ## Build integrada sin ventana — ISA-1393 (2026-09-25)
 
 El candidato local compiló frontend y Wails DEV tras #1277/#1375:

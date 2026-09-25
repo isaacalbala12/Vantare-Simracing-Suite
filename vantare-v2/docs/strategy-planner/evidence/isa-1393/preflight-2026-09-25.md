@@ -202,3 +202,24 @@ Una última repetición de la suite frontend completa, en ejecución secuencial
 tests PASS y 2 omitidos** en 541,60 s. Esto cierra el gate de frontend del HEAD
 `b8d4e5d2` sin atribuir una causa definitiva a los timeouts de las corridas
 paralelas. La ejecución usa mocks y no sustituye E01–E08 en Wails/LMU real.
+
+## QA de dos sesiones en navegador interno — 2026-09-25
+
+Con el servidor local del harness, abrir Race y después Practice desde la
+biblioteca dejaba el contador en 1/4: el mock respondía con el mismo `sessionId`
+para ambos candidatos y el propietario de sesiones descartaba correctamente el
+duplicado. Después de dar a Practice su propio handle, base y revisión, el
+contador llega a 2/4, se puede seleccionar Practice en Datos y consultar sus
+cinco vueltas. La primera prueba tras el cambio mostró un segundo defecto del
+mock: `laps` seguía devolviendo la base de Race y el editor rechazaba la página.
+La respuesta ahora usa la base y el snapshot de la sesión solicitada.
+
+El recorrido `recorded-strategy-visual.mjs` incluye esta regresión y termina
+PASS con 99 capturas y 16 combinaciones ES/EN/PT/IT de 320 a 1672 px, sin
+desbordamientos ni errores de página. Evidencia:
+[`pass-v5-14-qa`](../isa-1277-visual/pass-v5-14-qa/README.md). Typecheck,
+lint y build frontend PASS; 3 archivos/39 tests de sesiones y página PASS.
+La apertura directa de Practice como carrera nueva aún muestra un error de
+guardado en este harness; falta aislar si el contrato del repositorio simulado
+es insuficiente antes de atribuirlo al producto. No se probó Wails, LMU ni
+persistencia nativa; E01–E08 siguen pendientes.

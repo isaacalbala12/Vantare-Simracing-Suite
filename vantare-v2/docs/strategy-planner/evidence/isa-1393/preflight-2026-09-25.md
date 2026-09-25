@@ -1,5 +1,8 @@
 # T22 / ISA-1393 — preflight sin ventana nativa
 
+> Este preflight precede a la integración local descrita al final. Su primer
+> binario quedó sustituido; ninguna de las dos builds se ejecutó en una ventana.
+
 Base de trabajo: `vantareapp/isa-1393-strategy-native-validation`, creada desde
 `45ab9a71` (#1375). Este documento no es evidencia E2E: no se lanzó Wails, no
 se abrió LMU ni se leyó un DuckDB. El uso vigente del PC reserva la GUI para
@@ -42,10 +45,55 @@ Isaac; las comprobaciones siguientes fueron de sólo lectura.
 | E07 Recursos | Vueltas/tiempo, Fuel/VE, neumáticos, ventanas y servicios | Pendiente |
 | E08 Volumen | Biblioteca real, cuatro sesiones, quinta rechazada, coste/memoria | Pendiente |
 
-La primera ejecución nativa de esta rama debe registrar este binario/SHA,
+La primera ejecución nativa de esta rama debe registrar el binario integrado
+indicado al final y su SHA,
 configuración saneada, runtime, PID propio, log y resultado de apertura antes
 de recorrer E01–E08. Si reaparece `8007139F`, comparar con una build que sí
 abre sin cerrar procesos ajenos; no cambiar varios factores a la vez ni
 atribuir el fallo a WebView2 o Strategy por intuición. Mantener hashes de
 originales antes/después, y separar cada FAIL de un escenario todavía no
 ejecutado. Las medidas de tiempo/memoria comparativas exigen tres ejecuciones.
+
+## Integración local posterior, aún sin ventana (2026-09-25)
+
+En la rama aislada #1393 se integraron localmente #1331 (flujo visual), #1367
+(cota certificada Hypercar), #1373 (copia verificada y recuperación) y #1375
+(proyección paginada y espera visible). HEAD de código: `0786b3f4`. Es una
+composición para T22: no equivale a integrar esas ramas en `nightly`.
+
+- `go test ./...`: PASS. Frontend: 493 archivos, 4.317 tests PASS y 2 omitidos;
+  typecheck, lint, auditoría i18n y build PASS.
+- Contrato del roadmap: 23 tests de digest y 21 de validación PASS; el JSON
+  derivado se regeneró desde el plan fusionado.
+- Banco LMU Algarve → Monza: PASS en 205,08 s. Ritmo 95,190 s (58 vueltas),
+  combustible 2,135 L/vuelta (58 vueltas), VE no aplicable a LMP2; cálculo de
+  referencia de 38 vueltas, 0 paradas y optimalidad probada **para el evento
+  supuesto del test**. Resumen/validez/derivación paginados coinciden con la
+  ruta materializada, y revisión, restauración y reapertura pasan. SHA-256
+  originales intactos: `6b912640e5b68da087fbe86ce70401101edbdc89cb89cb93df30c9ef396d9362`
+  y `08a1e626d7154becd493aa84addbf146cc7f0f229c8a7aa39664766813495538`.
+- Banco LMU Monza S026 → Imola: PASS en 186,05 s. Ritmo 97,559 s, combustible
+  2,876 L y VE 3,328 puntos por vuelta (53 vueltas); referencia de 37 vueltas,
+  1 parada y optimalidad probada **para el evento supuesto del test**. Pasan
+  paridad paginada, revisiones, clasificación, identidad, familias, restauración
+  y reapertura. SHA-256 originales intactos:
+  `08a1e626d7154becd493aa84addbf146cc7f0f229c8a7aa39664766813495538`
+  y `35438326ecddd6ab660ed3aad70b076a73e3290236c0292f30657594c38c1eb0`.
+- Banco de copia verificada COTA: PASS en 4,65 s. Copia temporal, desaparición
+  del original temporal, recuperación y proyección de una revisión guardada
+  tras reiniciar el servicio; original real intacto, SHA-256
+  `7da31387f851721bf9d32e92849c7dc22c93da43668044ecac57138f0ec2024e`.
+- Build Wails DEV integrada PASS sin ejecutar la app: `bin/vantare.exe`,
+  44.075.520 bytes, SHA-256
+  `47db264ec9f6109edb8a977b05f0f2216c3863874f2a825b6ca8f179c7d6536b`.
+  La tarea usó el canal compilado por defecto `master`, que no acredita una
+  licencia ni distribución. `go mod tidy` sólo reordenó `go.mod`; se retiró
+  ese cambio generado. El hash anterior de este documento está superado.
+
+E01–E08 siguen **pendientes de recorrido Wails real**. Los bancos de Go no
+demuestran interacción, diseño, licencia ni recuperación en WebView2. Sigue
+faltando una grabación larga independiente con muchas vueltas para la cuota de
+#1375, y un holdout de carreras anotadas para la calibración empírica #1030.
+Los 367 archivos del corpus #1030 están asignados al split existente; no se
+deben reutilizar como evaluación independiente. No se abrió LMU, no se alteraron
+originales y no hubo push, PR, CI, promoción ni release.

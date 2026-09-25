@@ -1,5 +1,22 @@
 # Handoff vivo — Strategy Planner
 
+## Candidato T22 integrado, sin GUI — ISA-1393 (2026-09-25)
+
+La rama aislada #1393 contiene ahora la composición local de #1331, #1367,
+#1373 y #1375 sobre el código `0786b3f4`; no se integró ningún canal. El
+[registro de integración](../../strategy-planner/evidence/isa-1393/preflight-2026-09-25.md)
+recoge los checks: Go completo PASS; 4.317 tests frontend PASS y 2 omitidos;
+typecheck, lint, i18n y build PASS; 44 tests del contrato de roadmap PASS.
+Dos bancos LMU reales (Algarve→Monza y Monza Hypercar→Imola) terminaron PASS con
+paridad paginada, revisiones, restauración y SHA de originales intactos; también
+pasó la recuperación de una copia verificada COTA tras retirar sólo una copia
+temporal. La build Wails DEV integrada mide 44.075.520 bytes, SHA-256
+`47db264ec9f6109edb8a977b05f0f2216c3863874f2a825b6ca8f179c7d6536b`.
+No se ejecutó: E01–E08 requieren ventana nativa, licencia de desarrollo y
+evidencia de interacción. Continúan abiertos la fuente larga independiente
+para la cuota #1375 y el holdout anotado para calibración #1030. Sin push, PR,
+CI, promoción ni release.
+
 ## Preflight nativo T22 — ISA-1393 (2026-09-25)
 
 Se abrió [#1393](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1393)

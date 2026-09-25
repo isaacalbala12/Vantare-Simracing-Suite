@@ -132,6 +132,10 @@ type telemetryLayout struct {
 	WheelDetachedFR    layoutField
 	WheelDetachedRL    layoutField
 	WheelDetachedRR    layoutField
+	TyreWearFL         layoutField
+	TyreWearFR         layoutField
+	TyreWearRL         layoutField
+	TyreWearRR         layoutField
 }
 
 type layoutContract struct {
@@ -222,6 +226,12 @@ var lmu13Layout = layoutContract{
 		WheelDetachedFR:    telemetryField("telemetry.wheel_detached_fr", 1286, sourceUint8, 1),
 		WheelDetachedRL:    telemetryField("telemetry.wheel_detached_rl", 1546, sourceUint8, 1),
 		WheelDetachedRR:    telemetryField("telemetry.wheel_detached_rr", 1806, sourceUint8, 1),
+		// LMU SDK TelemInfoV01.mWheel[4] at +848, 260-byte stride;
+		// TelemWheelV01.mWear at +152 (Pack=4, fraction remaining).
+		TyreWearFL: telemetryField("telemetry.tyre_wear_fl", 1000, sourceFloat64, 1),
+		TyreWearFR: telemetryField("telemetry.tyre_wear_fr", 1260, sourceFloat64, 1),
+		TyreWearRL: telemetryField("telemetry.tyre_wear_rl", 1520, sourceFloat64, 1),
+		TyreWearRR: telemetryField("telemetry.tyre_wear_rr", 1780, sourceFloat64, 1),
 	},
 }
 
@@ -278,5 +288,9 @@ func (layout layoutContract) admittedFields() []layoutField {
 		layout.Telemetry.WheelDetachedFR,
 		layout.Telemetry.WheelDetachedRL,
 		layout.Telemetry.WheelDetachedRR,
+		layout.Telemetry.TyreWearFL,
+		layout.Telemetry.TyreWearFR,
+		layout.Telemetry.TyreWearRL,
+		layout.Telemetry.TyreWearRR,
 	}
 }

@@ -57,6 +57,15 @@ func dirtyDiff(before, after derive.FinalState) DirtySet {
 	return observeDirtySignals(dirtyHeader(), after, source).diff(previous)
 }
 
+func TestTyreWearChangeInvalidatesDamageSection(t *testing.T) {
+	before := dirtyFinalState(1)
+	after := dirtyFinalState(1)
+	after.Observed.Vehicles[0].TyreWear = builderPresent([4]float64{0.99, 0.98, 0.97, 0.96})
+	if !dirtyDiff(before, after).Has(SectionDamage) {
+		t.Fatal("tyre wear change did not invalidate the damage frame section")
+	}
+}
+
 func TestStandingsDirtySignalIgnoresUnprojectedChanges(t *testing.T) {
 	t.Parallel()
 

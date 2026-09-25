@@ -110,18 +110,6 @@
   box-shadow: inset 0 0 0 1px rgba(240, 71, 85, 0.22);
 }
 
-/* barra izquierda 3×19 del estado activo */
-.orbit-rail__button[aria-current="page"]::before {
-  content: "";
-  position: absolute;
-  left: -10px;
-  width: 3px;
-  height: 19px;
-  border-radius: 0 5px 5px 0;
-  background: var(--orbit-red);
-  box-shadow: var(--orbit-glow-active);
-}
-
 .orbit-rail__button--locked {
   color: var(--orbit-ink-muted);
 }

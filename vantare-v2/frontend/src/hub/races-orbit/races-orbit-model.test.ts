@@ -270,12 +270,12 @@ describe("vistas", () => {
     const start = timelineStart(NOW);
     expect(start.getMinutes()).toBe(0);
     const rows = timelineRows(entries, start);
-    // min(raceMin 20, every 15 − 3) = 12.
-    expect(rows[0].blockMin).toBe(12);
-    expect(rows[0].starts).toHaveLength(96);
+    // Cada marca de salida es breve y no aparenta cubrir la carrera entera.
+    expect(rows[0].blockMin).toBe(4);
+    expect(rows[0].starts).toHaveLength(4);
     expect(rows[0].starts.every((at) => at >= start)).toBe(true);
     expect(
-      rows[0].starts.every((at) => at.getTime() < start.getTime() + 24 * 3_600_000),
+      rows[0].starts.every((at) => at.getTime() < start.getTime() + 3_600_000),
     ).toBe(true);
   });
 });
@@ -315,7 +315,7 @@ describe("Timeline · rango y zoom", () => {
     const start = timelineStart(NOW);
     expect(timelineRows(entries, start, 6)[0].starts).toHaveLength(24);
     expect(timelineRows(entries, start, 12)[0].starts).toHaveLength(48);
-    expect(timelineRows(entries, start)[0].starts).toHaveLength(96);
+    expect(timelineRows(entries, start)[0].starts).toHaveLength(4);
   });
 
   it("el zoom vive entre 1× y 4×", () => {

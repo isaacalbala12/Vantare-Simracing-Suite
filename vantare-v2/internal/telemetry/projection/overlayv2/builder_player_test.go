@@ -202,6 +202,7 @@ func builderBatch(count int, sequence uint64) core.Batch {
 	vehicles[0].Clutch = builderPresent(schema.Ratio(0))
 	vehicles[0].Fuel = builderPresent(energy.Fuel{Amount: 42, Capacity: 100})
 	vehicles[0].Damage = builderPresent(damage.State{Dents: [8]damage.Severity{1, 2, 3, 4, 5, 6, 7, 8}, Overheating: false, Detached: false, WheelDetachedCount: 0})
+	vehicles[0].TyreWear = builderPresent([4]float64{0.98, 0.91, 0.87, 0.93})
 	received := time.Date(2026, 8, 19, 12, 0, 0, 0, time.UTC).Add(time.Duration(sequence) * time.Second)
 	sourceTime := builderPresent(time.Duration(sequence) * time.Second)
 	return core.Batch{

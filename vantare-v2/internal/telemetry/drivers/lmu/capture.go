@@ -1256,6 +1256,10 @@ func (sanitizer *FrameSanitizer) Sanitize(input []byte) ([]byte, error) {
 			lmu13Layout.Telemetry.WheelDetachedFR,
 			lmu13Layout.Telemetry.WheelDetachedRL,
 			lmu13Layout.Telemetry.WheelDetachedRR,
+			lmu13Layout.Telemetry.TyreWearFL,
+			lmu13Layout.Telemetry.TyreWearFR,
+			lmu13Layout.Telemetry.TyreWearRL,
+			lmu13Layout.Telemetry.TyreWearRR,
 		} {
 			copyLayoutField(output, input, field, base)
 		}

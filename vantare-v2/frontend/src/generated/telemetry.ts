@@ -422,6 +422,7 @@ export interface Overlayv2DamageViewV2 {
   readonly dents: OverlayQValue<readonly number[]>;
   readonly detached: OverlayQValue<boolean>;
   readonly overheating: OverlayQValue<boolean>;
+  readonly tyreWear?: OverlayQValue<readonly number[]> | null | undefined;
   readonly wheelDetachedCount: OverlayQValue<number>;
 }
 

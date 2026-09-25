@@ -94,6 +94,10 @@ func TestLMU13LayoutMatchesAuditedOffsetsAndSourceTypes(t *testing.T) {
 		{lmu13Layout.Telemetry.WheelDetachedFR, scopeTelemetryRow, 1286, sourceUint8, 1},
 		{lmu13Layout.Telemetry.WheelDetachedRL, scopeTelemetryRow, 1546, sourceUint8, 1},
 		{lmu13Layout.Telemetry.WheelDetachedRR, scopeTelemetryRow, 1806, sourceUint8, 1},
+		{lmu13Layout.Telemetry.TyreWearFL, scopeTelemetryRow, 1000, sourceFloat64, 1},
+		{lmu13Layout.Telemetry.TyreWearFR, scopeTelemetryRow, 1260, sourceFloat64, 1},
+		{lmu13Layout.Telemetry.TyreWearRL, scopeTelemetryRow, 1520, sourceFloat64, 1},
+		{lmu13Layout.Telemetry.TyreWearRR, scopeTelemetryRow, 1780, sourceFloat64, 1},
 	}
 
 	if lmu13Layout.Version != "1.3.0.0" || lmu13Layout.ObjectSize != 324820 {

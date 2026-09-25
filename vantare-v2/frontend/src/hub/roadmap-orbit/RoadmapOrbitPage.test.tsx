@@ -60,6 +60,14 @@ describe("public roadmap graphs", () => {
     expect(timeline.textContent).toContain("Integración");
     expect(timeline.textContent).toContain("Nueva vista");
     expect(timeline.textContent?.indexOf("Base lista")).toBeLessThan(timeline.textContent!.indexOf("Integración"));
+    const detail = screen.getByTestId("roadmap-timeline-detail");
+    expect(detail.textContent).toContain("Integración");
+    fireEvent.click(screen.getByRole("button", { name: /Base lista/ }));
+    expect(detail.textContent).toContain("Disponible");
+    expect(screen.getByRole("button", { name: /Base lista/ }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: /Nueva vista/ }));
+    expect(detail.textContent).toContain("Nueva vista");
+    expect(detail.textContent).not.toContain("Disponible");
     expect(screen.queryByText("Editar")).toBeNull();
     expect(bus.emits.map((entry) => entry.name)).toEqual(["roadmap:current:get"]);
   });

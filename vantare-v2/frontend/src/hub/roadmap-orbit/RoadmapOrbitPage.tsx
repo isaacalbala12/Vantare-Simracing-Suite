@@ -22,9 +22,11 @@ export function RoadmapOrbitPage() {
   const language: RoadmapLocale = ROADMAP_LOCALES.includes(locale as RoadmapLocale) ? locale as RoadmapLocale : "es";
   const [publication, setPublication] = useState<RoadmapPublication | null>(null);
   const [view, setView] = useState<View>("timeline");
+  const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const translate = useRef(t);
+  const timeline = useRef<HTMLOListElement>(null);
   useEffect(() => { translate.current = t; }, [t]);
 
   useEffect(() => {
@@ -59,6 +61,16 @@ export function RoadmapOrbitPage() {
   const titleOf = (item: RoadmapItem) => item.title[language]?.trim() || item.title.es;
   const bodyOf = (item: RoadmapItem) => item.body[language]?.trim() || item.body.es;
   const maxCount = Math.max(1, ...stages.map((stage) => grouped[stage].length));
+  const timelineItems = stages.flatMap((stage) => grouped[stage]);
+  const selectedMilestone = timelineItems.find((item) => item.id === selectedMilestoneId) ?? grouped.now[0] ?? timelineItems[0];
+  const selectedIndex = timelineItems.findIndex((item) => item.id === selectedMilestone?.id);
+  const activeMilestoneId = selectedMilestone?.id;
+
+  useEffect(() => {
+    if (view !== "timeline" || !timeline.current || !activeMilestoneId) return;
+    const active = timeline.current.querySelector<HTMLElement>('[data-selected="true"]');
+    if (active) timeline.current.scrollLeft = active.offsetLeft - (timeline.current.clientWidth - active.clientWidth) / 2;
+  }, [view, activeMilestoneId]);
 
   return (
     <div className="orbit-rm" data-testid="orbit-roadmap">
@@ -84,18 +96,24 @@ export function RoadmapOrbitPage() {
                 ))}
               </div>
               {view === "timeline" ? (
-                <ol className="orbit-rm__timeline" data-testid="roadmap-timeline" aria-label={t("roadmap.views.timeline")} tabIndex={0}>
-                  {stages.flatMap((stage) => grouped[stage].map((item) => (
-                    <li className={`orbit-rm__timeline-item orbit-rm__timeline-item--${stage}`} key={item.id}>
-                      <span className="orbit-rm__timeline-node" aria-hidden="true" />
-                      <div className="orbit-rm__milestone">
-                        <span className="orbit-rm__stage">{t(`roadmap.${stage}.title`)}</span>
-                        <strong>{titleOf(item)}</strong>
-                        {bodyOf(item) ? <p>{bodyOf(item)}</p> : null}
-                      </div>
-                    </li>
-                  )))}
-                </ol>
+                <div className="orbit-rm__timeline-view">
+                  <ol className="orbit-rm__timeline" ref={timeline} data-testid="roadmap-timeline" aria-label={t("roadmap.views.timeline")} tabIndex={0}>
+                    {timelineItems.map((item, index) => (
+                      <li className={`orbit-rm__timeline-item orbit-rm__timeline-item--${item.section}`} data-selected={item.id === selectedMilestone?.id} key={item.id}>
+                        <button className="orbit-rm__timeline-choice" type="button" aria-pressed={item.id === selectedMilestone?.id} onClick={() => setSelectedMilestoneId(item.id)}>
+                          <span className="orbit-rm__stage">{t(`roadmap.${item.section}.title`)}</span>
+                          <strong className="orbit-rm__timeline-title">{titleOf(item)}</strong>
+                          <span className="orbit-rm__timeline-node" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ol>
+                  <section className={`orbit-rm__timeline-detail orbit-rm__timeline-detail--${selectedMilestone.section}`} data-testid="roadmap-timeline-detail" aria-live="polite">
+                    <span className="orbit-rm__stage">{t(`roadmap.${selectedMilestone.section}.title`)} · {String(selectedIndex + 1).padStart(2, "0")} / {String(timelineItems.length).padStart(2, "0")}</span>
+                    <h3>{titleOf(selectedMilestone)}</h3>
+                    {bodyOf(selectedMilestone) ? <p>{bodyOf(selectedMilestone)}</p> : null}
+                  </section>
+                </div>
               ) : null}
               {view === "board" ? (
                 <div className="orbit-rm__board" data-testid="roadmap-board">

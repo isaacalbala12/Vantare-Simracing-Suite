@@ -17,6 +17,17 @@ solo lectura a la app; Codex publica a través de la conexión SQL privilegiada.
 Isaac precisó después que la línea temporal debe avanzar horizontalmente. La
 vista ahora conecta los hitos de izquierda a derecha y permite recorrerlos
 dentro del panel en escritorio y pantallas estrechas; las otras vistas no cambian.
+Después aprobó combinar el recorrido numerado de la tercera exploración visual
+con la limpieza de la segunda. La revisión en curso usa los hitos de la única
+publicación para numerar el recorrido y mostrar un solo detalle seleccionable;
+no añade datos de fases, fechas ni editor. Una captura del harness Orbit real a
+1920 y otra a 1280 px muestran la shell y el cambio de hito con datos de muestra.
+En este candidato, las 3 pruebas focales del roadmap, typecheck, build, lint y
+las 4 pruebas de presupuesto PASS. La suite unitaria amplia registró 4.047 PASS,
+2 omitidas y 2 timeouts en pruebas visuales ajenas al roadmap; sus ficheros
+focales pasan por separado (FunctionalClipping 4/4, HeadToHead 1/1). Hace falta
+el gate remoto del HEAD final para cerrar la validación conjunta. Las capturas
+usan el mock de Wails y no prueban Supabase ni un runtime físico.
 La revisión horizontal pasó 4.049 pruebas frontend (2 omitidas), 4 pruebas de
 presupuesto, typecheck, build y lint. Dos capturas locales comprobaron la
 posición horizontal de los hitos y que la página no desborda a 1440 y 390 px.

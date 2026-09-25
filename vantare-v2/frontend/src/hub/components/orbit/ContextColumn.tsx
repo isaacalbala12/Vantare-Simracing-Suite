@@ -50,10 +50,7 @@ export function ContextColumn({
         <strong className="orbit-column__title" data-testid="orbit-column-title">
           {title}
         </strong>
-        <span className="orbit-column__version">
-          <i aria-hidden="true" />
-          {version}
-        </span>
+        {version ? <span className="orbit-column__version">{version}</span> : null}
         <button
           aria-label={labels.collapse}
           className="orbit-column__collapse"

@@ -204,7 +204,7 @@ func TestTelemetryAnalysisPreparesOnlyAuthorizedOpenCorrectionSource(t *testing.
 	if _, err := svc.PrepareCorrections(context.Background(), opened.SessionID); err != nil {
 		t.Fatal("canceled read could not be retried", err)
 	}
-	reader.readErr = telemetryanalysis.ErrHistoricalSource
+	reader.evidence.ContentSHA256 = "changed"
 	if _, err := svc.PrepareCorrections(context.Background(), opened.SessionID); !errors.Is(err, ErrTelemetryAnalysisIncompatible) {
 		t.Fatal(err)
 	}

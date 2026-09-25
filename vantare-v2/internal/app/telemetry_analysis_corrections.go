@@ -33,12 +33,26 @@ func (service *TelemetryAnalysisService) withCorrectionInput(ctx context.Context
 
 func (service *TelemetryAnalysisService) withCorrectionSummary(ctx context.Context, sessionID string, action func(context.Context, telemetryanalysis.CorrectionSummary) error) error {
 	return withCorrectionRead(service, ctx, sessionID, func(ctx context.Context, owned *telemetryAnalysisSession, limits telemetryanalysis.CorrectionReadLimits) (telemetryanalysis.CorrectionSummary, error) {
-		summary, err := telemetryanalysis.ReadCorrectionSummary(ctx, owned.parser, owned.artifact, limits)
-		if err == nil {
-			owned.correctionBase = &summary.Base
-		}
-		return summary, err
+		return readCorrectionSummary(ctx, owned, limits)
 	}, action)
+}
+
+// The summary contains laps and bounded events, never continuous sample pages.
+// A cache hit still verifies the exact staged bytes and catalog via Inspect.
+// The caller holds the open-session lock across both validation and use.
+func readCorrectionSummary(ctx context.Context, owned *telemetryAnalysisSession, limits telemetryanalysis.CorrectionReadLimits) (telemetryanalysis.CorrectionSummary, error) {
+	if owned.correctionSummary != nil {
+		if _, err := owned.parser.Inspect(ctx); err != nil {
+			return telemetryanalysis.CorrectionSummary{}, err
+		}
+		return *owned.correctionSummary, nil
+	}
+	summary, err := telemetryanalysis.ReadCorrectionSummary(ctx, owned.parser, owned.artifact, limits)
+	if err == nil {
+		owned.correctionSummary = &summary
+		owned.correctionBase = &summary.Base
+	}
+	return summary, err
 }
 
 // History commands only need the exact source identity. Inspect recomputes
@@ -96,9 +110,7 @@ func withCorrectionRead[T any](service *TelemetryAnalysisService, ctx context.Co
 	}
 	// Covers the measured 71-lap LMU recording while retaining a hard bound.
 	// Multi-value channels require a separate value budget from sample count.
-	input, readErr := read(operationCtx, ownedSession, telemetryanalysis.CorrectionReadLimits{
-		PageRows: service.cfg.MaxPageRows, MaxSamples: 1_250_000, MaxValues: 1_500_000, MaxTextBytes: 16 << 20,
-	})
+	input, readErr := read(operationCtx, ownedSession, service.correctionReadLimits())
 	// A resource limit or missing lap data does not invalidate the open reader.
 	retire := readErr != nil && !errors.Is(readErr, telemetryanalysis.ErrCorrectionReadLimit) &&
 		!errors.Is(readErr, telemetryanalysis.ErrInvalidLapValidityInput) &&
@@ -132,6 +144,10 @@ func withCorrectionRead[T any](service *TelemetryAnalysisService, ctx context.Co
 	return action(operationCtx, input)
 }
 
+func (service *TelemetryAnalysisService) correctionReadLimits() telemetryanalysis.CorrectionReadLimits {
+	return telemetryanalysis.CorrectionReadLimits{PageRows: service.cfg.MaxPageRows, MaxSamples: 1_250_000, MaxValues: 1_500_000, MaxTextBytes: 16 << 20}
+}
+
 // PrepareCorrections exposes a stable base, never the temporary open handle as
 // source identity. It does not save an edit or change the observed catalog.
 func (service *TelemetryAnalysisService) PrepareCorrections(ctx context.Context, sessionID string) (TelemetryAnalysisCorrectionPreparation, error) {
@@ -151,7 +167,7 @@ func (service *TelemetryAnalysisService) PrepareCorrections(ctx context.Context,
 			StintBoundaries:    append([]strategyprojection.StintBoundary{}, input.Validity.Temporal.StintBoundaries...),
 			StintAnchors:       telemetryanalysis.EligibleStintBoundaryAnchors(input.Validity),
 		}
-		result.EditableChannelIDs = input.EditableChannelIDs
+		result.EditableChannelIDs = append([]string{}, input.EditableChannelIDs...)
 		// Reuse the session already read under the Analysis authorization/lock.
 		// Missing identity does not prevent reviewing that source's observations.
 		classified, classificationErr := telemetryanalysis.ClassifyHistoricalSession(input.Session)

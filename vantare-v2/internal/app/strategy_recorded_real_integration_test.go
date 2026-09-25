@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -242,6 +243,59 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 			return errors.New("paged correction summary differs from materialized real input")
 		}
 		t.Log("paged correction summary matches materialized real source")
+		var correctionInput *telemetryanalysis.SampleCorrectionInput
+		for _, channel := range input.Session.Channels {
+			if correctionInput != nil {
+				break
+			}
+			if !strings.EqualFold(channel.SourceName, "Lap Time") || channel.Unit.Quality != telemetryanalysis.QualityValid {
+				continue
+			}
+			for _, page := range input.Pages {
+				if page.ChannelID != channel.ID {
+					continue
+				}
+				for _, sample := range page.Samples {
+					if len(sample.Values) == 0 || !sample.Values[0].Present || sample.Values[0].Quality != telemetryanalysis.QualityValid || sample.Values[0].Scalar.Kind != telemetryanalysis.ScalarNumber || sample.Values[0].Scalar.Number <= 0 {
+						continue
+					}
+					value := sample.Values[0]
+					replacement := value.Scalar
+					replacement.Number += 0.001
+					correctionInput = &telemetryanalysis.SampleCorrectionInput{Channel: channel, Sample: sample, Request: telemetryanalysis.SampleValueCorrection{
+						Base: input.Base, Target: telemetryanalysis.SampleCorrectionTarget{ChannelID: channel.ID, Column: value.Column, SampleIndex: sample.Index},
+						Unit: channel.Unit, Expected: value, Replacement: replacement, Reason: "real paged validity parity",
+					}}
+					break
+				}
+				if correctionInput != nil {
+					break
+				}
+			}
+		}
+		if correctionInput == nil {
+			return errors.New("real source lacks an editable Lap Time value for corrected validity parity")
+		}
+		snapshot, snapshotErr := telemetryanalysis.PrepareSampleCorrectionSnapshot(input.Base, []telemetryanalysis.SampleCorrectionInput{*correctionInput})
+		if snapshotErr != nil {
+			return snapshotErr
+		}
+		view, viewErr := telemetryanalysis.ApplyMixedCorrectionSnapshot(input.Base, input.Pages, input.Validity, input.Session, snapshot)
+		if viewErr != nil {
+			return viewErr
+		}
+		materializedEffective, validityErr := telemetryanalysis.AnalyzeLapValidity(input.Session, view.Pages)
+		if validityErr != nil {
+			return validityErr
+		}
+		pagedEffective, pagedErr := telemetryanalysis.ReadCorrectedLapValidity(ctx, owned.parser, owned.artifact, svc.correctionReadLimits(), summary, snapshot)
+		if pagedErr != nil {
+			return pagedErr
+		}
+		if !reflect.DeepEqual(pagedEffective, materializedEffective) {
+			return errors.New("paged corrected Lap Time validity differs from materialized real input")
+		}
+		t.Logf("paged corrected Lap Time validity matches materialized real input: channel=%s sample=%d", correctionInput.Channel.ID, correctionInput.Sample.Index)
 		qualities := make(map[string]int)
 		for _, boundary := range input.Validity.Temporal.LapBoundaries {
 			qualities[string(boundary.Quality)]++

@@ -43,10 +43,6 @@ func InspectCorrectionLaps(input CorrectionInput, snapshot PreparedSampleCorrect
 	if input.Session.ID != input.Base.SessionID {
 		return empty, ErrCorrectionSourceChanged
 	}
-	baseID, err := validateLapFamilyBase(input.Base, input.Validity)
-	if err != nil {
-		return empty, err
-	}
 	view, err := ApplyMixedCorrectionSnapshot(input.Base, input.Pages, input.Validity, input.Session, snapshot)
 	if err != nil {
 		return empty, err
@@ -64,15 +60,29 @@ func InspectCorrectionLaps(input CorrectionInput, snapshot PreparedSampleCorrect
 			return empty, err
 		}
 	}
-	result := CorrectionLapPage{Base: input.Base, SnapshotID: view.SnapshotID, Start: start, Total: len(input.Validity.Laps), Laps: []CorrectionLapInspection{}}
+	return BuildCorrectionLapPage(input.Base, input.Validity, effective, view.SnapshotID, start, limit)
+}
+
+// BuildCorrectionLapPage assembles the same detached public view after a
+// caller has validated a snapshot and derived its effective lap validity.
+func BuildCorrectionLapPage(base SourceAnalysisRef, originalValidity, effective LapValidityAnalysis, snapshotID string, start, limit int) (CorrectionLapPage, error) {
+	var empty CorrectionLapPage
+	if start < 0 || limit < 1 || limit > MaxCorrectionLapPage {
+		return empty, ErrInvalidCorrection
+	}
+	baseID, err := validateLapFamilyBase(base, originalValidity)
+	if err != nil {
+		return empty, err
+	}
+	result := CorrectionLapPage{Base: base, SnapshotID: snapshotID, Start: start, Total: len(originalValidity.Laps), Laps: []CorrectionLapInspection{}}
 	if start >= result.Total {
 		return result, nil
 	}
 	// One index for effective targets, and only page-sized detached public rows.
 	byTarget := make(map[LapCorrectionTarget]int, len(effective.Laps))
 	counts := make(map[LapCorrectionTarget]int, len(effective.Laps))
-	originalCounts := make(map[LapCorrectionTarget]int, len(input.Validity.Laps))
-	for _, lap := range input.Validity.Laps {
+	originalCounts := make(map[LapCorrectionTarget]int, len(originalValidity.Laps))
+	for _, lap := range originalValidity.Laps {
 		if lap.Start != nil {
 			if key, ok := derivedLapTarget(lap.Number, *lap.Start, lap.End); ok {
 				originalCounts[key]++
@@ -88,7 +98,7 @@ func InspectCorrectionLaps(input CorrectionInput, snapshot PreparedSampleCorrect
 			counts[key]++
 		}
 	}
-	originals := cloneFamilyCorrectionLaps(input.Validity.Laps[start:min(result.Total, start+limit)])
+	originals := cloneFamilyCorrectionLaps(originalValidity.Laps[start:min(result.Total, start+limit)])
 	for _, original := range originals {
 		row := CorrectionLapInspection{Original: original, Capabilities: []LapFamilyCapability{}}
 		if original.Start != nil {
@@ -99,7 +109,7 @@ func InspectCorrectionLaps(input CorrectionInput, snapshot PreparedSampleCorrect
 					row.Effective = &copy[0]
 				}
 			}
-			row.StintBoundary = precedingRecordedStintBoundary(*original.Start, input.Validity.Temporal.StintBoundaries)
+			row.StintBoundary = precedingRecordedStintBoundary(*original.Start, originalValidity.Temporal.StintBoundaries)
 		}
 		for _, family := range CorrectableLapFamilies() {
 			capability := LapFamilyCapability{Family: family, Reason: "target_unresolved", AutomaticIncluded: inspectionFamilyRuleIncluded(original, family)}
@@ -114,8 +124,8 @@ func InspectCorrectionLaps(input CorrectionInput, snapshot PreparedSampleCorrect
 						expected = use
 					}
 				}
-				request := LapFamilyUseCorrection{Base: input.Base, Target: *row.Target, Family: family, Expected: expected, Reason: "capability inspection"}
-				if _, err := prepareLapFamilyUseCorrection(baseID, input.Base, input.Validity, request); err == nil {
+				request := LapFamilyUseCorrection{Base: base, Target: *row.Target, Family: family, Expected: expected, Reason: "capability inspection"}
+				if _, err := prepareLapFamilyUseCorrection(baseID, base, originalValidity, request); err == nil {
 					var effectiveUse LapFamilyUse
 					matches := 0
 					for _, use := range row.Effective.FamilyUse {
@@ -127,7 +137,7 @@ func InspectCorrectionLaps(input CorrectionInput, snapshot PreparedSampleCorrect
 					if matches == 1 {
 						capability.CanExclude = true
 						capability.Reason = "inclusion_requires_complete_coverage"
-						if validateLapFamilyInclusion(input.Validity, original, expected) == nil && validateLapFamilyInclusion(effective, *row.Effective, effectiveUse) == nil {
+						if validateLapFamilyInclusion(originalValidity, original, expected) == nil && validateLapFamilyInclusion(effective, *row.Effective, effectiveUse) == nil {
 							capability.CanInclude = true
 							capability.Reason = ""
 						}

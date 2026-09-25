@@ -15,11 +15,14 @@ func TestCorrectionLapInspectionReauthorizesAndPinsExactRevision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	reader := svc.sessions[handle].reader.(*correctionCommandReader).telemetryAnalysisReaderStub
+	reader.readErr = errors.New("cached inspection must not reread samples")
 	request := TelemetryAnalysisCorrectionLapRequest{SessionID: handle, Base: prepared.Base, RevisionID: refs[0].RevisionID, Start: 0, Limit: 50}
 	original, err := svc.InspectCorrectionLaps(ctx, request)
 	if err != nil {
 		t.Fatal(err)
 	}
+	reader.readErr = nil
 	var family telemetryanalysis.LapFamilyUseCorrection
 	for _, row := range original.Page.Laps {
 		if row.Target == nil {
@@ -87,5 +90,10 @@ func TestCorrectionLapInspectionReauthorizesAndPinsExactRevision(t *testing.T) {
 	svc.authorizer = &telemetryAnalysisAuthorizerStub{allowed: false}
 	if _, err := svc.InspectCorrectionLaps(ctx, request); !errors.Is(err, ErrTelemetryAnalysisUnauthorized) {
 		t.Fatal("unauthorized inspection", err)
+	}
+	svc.authorizer = &telemetryAnalysisAuthorizerStub{allowed: true}
+	reader.evidence.ContentSHA256 = "changed"
+	if _, err := svc.InspectCorrectionLaps(ctx, request); !errors.Is(err, ErrTelemetryAnalysisIncompatible) || !reader.isClosed() {
+		t.Fatal("changed source retained an inspectable correction", err)
 	}
 }

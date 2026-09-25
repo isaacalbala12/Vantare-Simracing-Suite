@@ -5,7 +5,7 @@ Estado: **implementación parcial; no aceptada como soporte de resistencia**. IS
 La preparación productiva ya usa un resumen por visitas paginadas, con paridad
 completa en el banco real disponible. [Tres mediciones por versión](../strategy-planner/evidence/isa-1375/paged-preparation-2026-09-25.md)
 no muestran un pico menor y sí más tiempo por relectura. La cuota de muestras
-no se elevó. Inspección, guardado y proyección aún materializan toda la fuente;
+no se elevó. Guardado y proyección aún materializan toda la fuente;
 esta decisión sigue abierta hasta medir una fuente más larga y cerrar esas
 operaciones sin cambiar identidad ni correcciones.
 
@@ -17,8 +17,29 @@ cada evidencia, por lo que `Inspect` comprueba los bytes y el catálogo antes
 de entregar la identidad guardada. El caché es exclusivamente de la sesión
 abierta, se pierde al cerrarla y nunca evita autorización, cancelación ni
 rechazo de una fuente cambiada. En ausencia de identidad guardada se produce
-una vez con el resumen paginado. Guardar correcciones, inspeccionar filas y
-proyectar siguen leyendo las observaciones que necesitan.
+una vez con el resumen paginado. Guardar correcciones y proyectar siguen
+leyendo las observaciones que necesitan.
+
+Para llevar la misma identidad exacta al resto del editor, el siguiente corte
+obtendrá únicamente las filas nombradas por un snapshot (máximo 256
+operaciones) desde el parser autorizado. Esas filas alimentarán el validador
+existente `ApplyMixedCorrectionSnapshot` junto al resumen original, sin
+aceptar objetivos ajenos a los canales que lee el análisis. Sólo después de
+probar paridad de snapshots y validez efectiva se aplicarán sus valores a las
+páginas durante una nueva visita. Una corrección del reloj o de un evento
+debe conservar exactamente la semántica materializada; si no, la ruta nueva
+rechazará el caso en vez de emitir un resultado diferente. La inspección de
+vueltas ya usa este recorrido: lee el resumen original, las filas nombradas
+por el snapshot y, si hay valores corregidos, otra visita paginada para la
+validez efectiva. El constructor puro de la página pública se comparte con
+el oráculo materializado. Paridad de correcciones de reloj y Lap Time en
+fixtures y Lap Time en Algarve real; no se extrapola a todas las familias ni
+a carreras de resistencia sin más bancos.
+El resumen original se conserva sólo mientras la sesión permanece abierta;
+cada reutilización vuelve a ejecutar `Inspect` con verificación de bytes y
+catálogo. Así, pasar de una página de vueltas a otra no recorre todas las
+señales de nuevo cuando no hay correcciones escalares. La respuesta pública
+desprende sus listas editables para no exponer el caché mutable.
 
 ## Contexto
 

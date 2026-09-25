@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"errors"
+
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
 )
 
@@ -23,29 +25,66 @@ func (service *TelemetryAnalysisService) InspectCorrectionLaps(ctx context.Conte
 	if request.RevisionID == "" || request.Start < 0 || request.Limit < 1 || request.Limit > telemetryanalysis.MaxCorrectionLapPage {
 		return result, ErrTelemetryAnalysisInvalidRequest
 	}
-	err := service.withCorrectionInput(ctx, request.SessionID, func(operationCtx context.Context, input telemetryanalysis.CorrectionInput) error {
-		if input.Base != request.Base {
-			return ErrTelemetryAnalysisCorrectionSourceChanged
-		}
-		if service.corrections == nil {
-			return ErrTelemetryAnalysisCorrectionStorage
-		}
-		stored, err := service.corrections.Load(operationCtx, input.Base, request.RevisionID)
-		if err != nil {
-			return publicCorrectionError(err)
-		}
-		page, err := telemetryanalysis.InspectCorrectionLaps(input, stored.Revision.Snapshot, request.Start, request.Limit)
-		if err != nil {
-			return publicCorrectionError(err)
-		}
-		if err := operationCtx.Err(); err != nil {
-			return err
-		}
-		result = TelemetryAnalysisCorrectionLapPage{RevisionID: stored.Revision.RevisionID, HeadID: stored.HeadID, Page: page}
-		return nil
-	})
+	type prepared struct {
+		original  telemetryanalysis.CorrectionSummary
+		effective telemetryanalysis.LapValidityAnalysis
+		revision  string
+		snapshot  string
+		head      string
+		business  error
+	}
+	err := withCorrectionRead(service, ctx, request.SessionID,
+		func(operationCtx context.Context, owned *telemetryAnalysisSession, limits telemetryanalysis.CorrectionReadLimits) (prepared, error) {
+			var state prepared
+			original, err := readCorrectionSummary(operationCtx, owned, limits)
+			if err != nil {
+				return state, err
+			}
+			state.original = original
+			if request.Base != original.Base {
+				state.business = ErrTelemetryAnalysisCorrectionSourceChanged
+				return state, nil
+			}
+			if service.corrections == nil {
+				state.business = ErrTelemetryAnalysisCorrectionStorage
+				return state, nil
+			}
+			stored, err := service.corrections.Load(operationCtx, original.Base, request.RevisionID)
+			if err != nil {
+				state.business = publicCorrectionError(err)
+				return state, nil
+			}
+			state.revision, state.head, state.snapshot = stored.Revision.RevisionID, stored.HeadID, stored.Revision.Snapshot.SnapshotID
+			state.effective, err = telemetryanalysis.ReadCorrectedLapValidity(operationCtx, owned.parser, owned.artifact, limits, original, stored.Revision.Snapshot)
+			if err != nil && !correctionInspectionReadFailure(err) {
+				state.business = publicCorrectionError(err)
+				return state, nil
+			}
+			return state, err
+		},
+		func(operationCtx context.Context, state prepared) error {
+			if state.business != nil {
+				return state.business
+			}
+			page, err := telemetryanalysis.BuildCorrectionLapPage(state.original.Base, state.original.Validity, state.effective, state.snapshot, request.Start, request.Limit)
+			if err != nil {
+				return publicCorrectionError(err)
+			}
+			if err := operationCtx.Err(); err != nil {
+				return err
+			}
+			result = TelemetryAnalysisCorrectionLapPage{RevisionID: state.revision, HeadID: state.head, Page: page}
+			return nil
+		})
 	if err != nil {
 		return TelemetryAnalysisCorrectionLapPage{}, err
 	}
 	return result, nil
+}
+
+func correctionInspectionReadFailure(err error) bool {
+	return errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) ||
+		errors.Is(err, telemetryanalysis.ErrCorrectionReadLimit) || errors.Is(err, telemetryanalysis.ErrInvalidLapValidityInput) ||
+		errors.Is(err, telemetryanalysis.ErrInvalidCorrectionSource) || errors.Is(err, telemetryanalysis.ErrInvalidHistoricalPage) ||
+		errors.Is(err, telemetryanalysis.ErrHistoricalSource) || errors.Is(err, telemetryanalysis.ErrHistoricalArtifactChanged)
 }

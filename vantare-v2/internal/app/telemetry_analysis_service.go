@@ -110,16 +110,17 @@ type telemetryAnalysisCandidateRecord struct {
 }
 
 type telemetryAnalysisSession struct {
-	mu             sync.Mutex
-	artifact       telemetryanalysis.AuthorizedHistoricalArtifact
-	parser         *telemetryanalysis.LMUDuckDBParser
-	reader         telemetryAnalysisReader
-	staged         telemetryanalysis.StagedHistoricalArtifact
-	correctionBase *telemetryanalysis.SourceAnalysisRef
-	retired        bool
-	readerClosed   bool
-	stagingClean   bool
-	closed         bool
+	mu                sync.Mutex
+	artifact          telemetryanalysis.AuthorizedHistoricalArtifact
+	parser            *telemetryanalysis.LMUDuckDBParser
+	reader            telemetryAnalysisReader
+	staged            telemetryanalysis.StagedHistoricalArtifact
+	correctionBase    *telemetryanalysis.SourceAnalysisRef
+	correctionSummary *telemetryanalysis.CorrectionSummary
+	retired           bool
+	readerClosed      bool
+	stagingClean      bool
+	closed            bool
 }
 
 // TelemetryAnalysisService is the non-visual application boundary for the

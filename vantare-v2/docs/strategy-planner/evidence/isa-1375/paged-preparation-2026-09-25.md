@@ -115,3 +115,39 @@ test; se considera sólo un dato de latencia anómala, no un PASS. Las medidas
 individuales no prueban una mejora de tiempo frente al banco anterior de
 87,21 s; sí evitan estructuralmente releer muestras para cada consulta de
 historial. No se eleva la cuota ni se acredita resistencia o Wails.
+
+## Inspección de vueltas sin retener todas las muestras
+
+`InspectCorrectionLaps` lee ahora un `CorrectionSummary` del original, carga
+la revisión exacta y solicita sólo las filas que nombra su snapshot (máximo
+256 decisiones). El validador mixto existente comprueba sobre ellas las
+precondiciones de escalares, familias, clasificación e hitos de stint. Cuando
+hay un valor corregido, una segunda visita paginada aplica ese valor a una
+copia de su página y deriva la validez efectiva. La construcción de la página
+pública es común a esta ruta y al oráculo materializado. El servicio mantiene
+el mismo permiso, lock, cancelación y retiro ante fuente incompatible; el
+original y el snapshot persistido no se modifican.
+
+Los tests comparan validez y página pública contra la ruta materializada con
+correcciones de `Lap Time` y `GPS Time`, comparan la inspección de una revisión
+escalar guardada y comprueban objetivo ausente, página malformada, canal ajeno,
+cancelación, autorización y fuente cambiada. El banco real Algarve→Monza
+añadió una corrección temporal de `Lap Time` sobre una fila autorizada, sin
+guardarla, y obtuvo validez paginada **idéntica** a la materializada. Después
+pasaron proyección, cálculo, historial, restauración y reapertura. PASS,
+215,01 s; 71 eventos, 70 reinicios y 66 vueltas completas. SHA-256 de ambos
+originales invariantes (Algarve `6b912640e5b68da087fbe86ce70401101edbdc89cb89cb93df30c9ef396d9362`;
+Monza `08a1e626d7154becd493aa84addbf146cc7f0f229c8a7aa39664766813495538`).
+Es un único banco funcional, no una comparación A/B de tiempo ni memoria.
+Tras esa ejecución se añadió reutilización del resumen dentro del handle
+abierto: `Inspect` recalcula la evidencia del archivo y verifica el catálogo
+antes de cada reutilización. Un test impide leer páginas de muestras al
+inspeccionar de nuevo una revisión sin cambios escalares y otro cambia la
+evidencia para comprobar que la sesión se retira. Esta mejora de navegación
+no queda acreditada por el tiempo del banco anterior. Se repitió el banco
+real con el caché incluido: PASS, **99,46 s**; corrección de Lap Time idéntica,
+proyección/cálculo y revisiones exactas intactos, ambos hashes originales
+invariantes. La diferencia entre ejecuciones individuales de 215,01 y 99,46 s
+no es una medición A/B controlada de rendimiento; sólo acredita función.
+Guardar y proyectar todavía materializan páginas; la inspección paginada no
+certifica resistencia, todos los tipos de corrección ni Wails T22.

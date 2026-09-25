@@ -75,6 +75,20 @@ func TestCorrectionCommandsReauthorizeReplayAndPinProjection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	var materializedPage telemetryanalysis.CorrectionLapPage
+	if err := svc.withCorrectionInput(ctx, opened.SessionID, func(_ context.Context, input telemetryanalysis.CorrectionInput) error {
+		var inspectErr error
+		materializedPage, inspectErr = telemetryanalysis.InspectCorrectionLaps(input, saved.Revision.Snapshot, 0, telemetryanalysis.MaxCorrectionLapPage)
+		return inspectErr
+	}); err != nil {
+		t.Fatal("materialized inspection oracle", err)
+	}
+	inspected, err := svc.InspectCorrectionLaps(ctx, TelemetryAnalysisCorrectionLapRequest{
+		SessionID: opened.SessionID, Base: prepared.Base, RevisionID: saved.Revision.RevisionID, Start: 0, Limit: telemetryanalysis.MaxCorrectionLapPage,
+	})
+	if err != nil || !reflect.DeepEqual(inspected.Page, materializedPage) {
+		t.Fatal("paged inspection differs from materialized correction", err)
+	}
 	replay, err := svc.SaveCorrections(ctx, request)
 	if err != nil || replay.Revision.RevisionID != saved.Revision.RevisionID {
 		t.Fatal("non-idempotent replay", err)

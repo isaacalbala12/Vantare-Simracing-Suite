@@ -1,5 +1,25 @@
 # Handoff vivo — Strategy Planner
 
+## Inspección paginada de vueltas — ISA-1375 (2026-09-25)
+
+`InspectCorrectionLaps` ya no recibe todas las páginas de `CorrectionInput`:
+reúne el resumen original, lee sólo las filas nombradas por la revisión
+exacta, valida el snapshot mixto existente y deriva validez efectiva mediante
+páginas corregidas sin alterar la fuente. La página pública usa el mismo
+constructor que la ruta materializada. Paridad de validez y página en fixtures
+de Lap Time/GPS Time, revisión escalar guardada y banco real Algarve→Monza
+PASS: corrección temporal de Lap Time idéntica, cálculo e historial intactos,
+hashes originales invariables (215,01 s). [Evidencia](../../strategy-planner/evidence/isa-1375/paged-preparation-2026-09-25.md).
+El resumen original queda en el handle abierto y se reutiliza sólo tras
+`Inspect` fresco; el test confirma navegación sin reread de muestras y retiro
+al cambiar la evidencia. El banco real repetido con ese ajuste pasó en
+99,46 s con idéntica paridad y hashes. La variación frente a 215,01 s no es
+una prueba A/B de velocidad.
+Guardar y proyectar siguen materializando; faltan comparaciones exhaustivas
+de snapshots mixtos, fuente larga multivuelta, presupuesto de memoria de
+producto y Wails T22. #1375 continúa abierta, rama local sin push, PR, CI,
+merge ni promoción.
+
 ## Identidad reutilizada para historial — ISA-1375 (2026-09-25)
 
 Las cuatro consultas de historial de correcciones ya no leen todas las
@@ -14,8 +34,8 @@ tiempo **no acredita una mejora** frente al banco anterior de 87,21 s; una
 primera ejecución anómala tardó 429,46 s y no verificó el resultado del test.
 La mejora demostrada es evitar lecturas de muestras por cada consulta de
 historial. [Evidencia](../../strategy-planner/evidence/isa-1375/paged-preparation-2026-09-25.md).
-Inspección de filas, guardado y proyección siguen materializando; faltan
-paridad paginada de esas operaciones, fuente larga multivuelta y Wails.
+Guardar y proyectar siguen materializando; faltan paridad paginada de esas
+operaciones, fuente larga multivuelta y Wails.
 #1375 sigue abierta; rama local sin push, PR, CI, merge ni promoción.
 
 ## Relecturas de historial descartadas — ISA-1375 (2026-09-25)

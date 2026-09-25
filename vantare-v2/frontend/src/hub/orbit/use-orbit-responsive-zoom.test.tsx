@@ -106,6 +106,15 @@ describe("useOrbitResponsiveZoom", () => {
     expect(localStorage.getItem(ORBIT_KEYS.appZoom)).toBe("1");
   });
 
+  it("respeta la rueda ya consumida por el Timeline", () => {
+    render(<Probe />);
+    const event = wheelEvent(-100);
+    event.preventDefault();
+    window.dispatchEvent(event);
+    expect(zoomVar()).toBe("1");
+    expect(localStorage.getItem(ORBIT_KEYS.appZoom)).toBeNull();
+  });
+
   it("acumula deltas pequeños de trackpad antes de cambiar un paso", () => {
     render(<Probe />);
 

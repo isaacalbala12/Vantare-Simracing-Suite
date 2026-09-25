@@ -27,33 +27,12 @@ const LICENSE_TIER: Partial<Record<SeriesTier, LicenseTier>> = {
   advanced: "gold",
 };
 
-/** Color del bloque del timeline por categoría (`04 · TIER_COLOR`). */
-export const TIER_COLOR: Record<SeriesTier, string> = {
-  beginner: "var(--orbit-tier-bronze)",
-  intermediate: "var(--orbit-tier-silver)",
-  advanced: "var(--orbit-tier-gold)",
-  weekly: "var(--orbit-cyan)",
-};
-
-/**
- * Tinta del rótulo sobre cada `TIER_COLOR`. Los cuatro colores de categoría
- * son claros (bronce #d29a6c, plata #c9c9cf, oro #ff9b57, cian #5ccbd5), así
- * que el texto va oscuro: contraste ≥ 7:1 contra `--orbit-primary-ink`,
- * muy por encima del 4.5:1 de AA. Si algún día un tier pasa a carmín, aquí
- * se cambia a `light` y el kit pinta `--orbit-ink`.
- */
-export const TIER_INK: Record<SeriesTier, "dark" | "light"> = {
-  beginner: "dark",
-  intermediate: "dark",
-  advanced: "dark",
-  weekly: "dark",
-};
-
 /** Una serie del calendario ya resuelta para la pantalla. */
 export interface RaceSeriesEntry {
   id: string;
   name: string;
   tier: SeriesTier;
+  eventKind: "daily" | "weekly" | "special";
   licenseTier?: LicenseTier;
   licenseLabel: string;
   track: string;
@@ -107,6 +86,7 @@ export function buildSeriesEntries(calendar: Calendar | null): RaceSeriesEntry[]
       id: series.id,
       name: series.name,
       tier: engine.tier,
+      eventKind: series.eventKind === "special" ? "special" : engine.every ? "daily" : "weekly",
       licenseTier: LICENSE_TIER[engine.tier],
       licenseLabel: series.safetyRating || series.licenseLabel || "",
       track: series.track ?? "",
@@ -329,6 +309,7 @@ export interface MonthDay {
   daily: number;
   /** Series semanales que tienen slots ese día. */
   weekly: { id: string; name: string; slots: number }[];
+  specialSeries: { id: string; name: string; slots: number }[];
   /** Explicit dated events, excluding generated series occurrences. */
   specials: { id: string; title: string }[];
 }
@@ -346,29 +327,28 @@ export function monthDays(
   const gridStart = new Date(first);
   gridStart.setDate(1 - startDow);
   const daily = entries.filter((entry) => entry.engine.every !== undefined);
-  const weekly = entries.filter((entry) => entry.engine.every === undefined);
   const specialEvents = explicitCalendarEvents(events, publishedSeries);
 
   return Array.from({ length: 42 }, (_, index) => {
     const day = dayAnchor(gridStart, index);
     const other = day.getMonth() !== first.getMonth() || day.getFullYear() !== first.getFullYear();
     const end = dayAnchor(day, 1);
+    const listed = other ? [] : entries
+      .filter((entry) => entry.eventKind !== "daily" && nextStarts(entry.engine, day, 1).some((at) => at < end))
+      .map((entry) => ({
+        id: entry.id,
+        name: entry.name,
+        kind: entry.eventKind,
+        // A local day can intersect multiple UTC dates. Count actual starts.
+        slots: startsInWindow(entry.engine, day, end).length,
+      }));
     return {
       day,
       other,
       today: day.getTime() === today,
       daily: other ? 0 : daily.filter((entry) => nextStarts(entry.engine, day, 1).some((at) => at < end)).length,
-      weekly: other
-        ? []
-        : weekly
-            .filter((entry) => nextStarts(entry.engine, day, 1).some((at) => at < end))
-            .map((entry) => ({
-              id: entry.id,
-              name: entry.name,
-              // A local day can intersect multiple UTC dates. Count its actual
-              // occurrences after the engine has applied publication validity.
-              slots: startsInWindow(entry.engine, day, end).length,
-            })),
+      weekly: listed.filter((entry) => entry.kind === "weekly").map(({ id, name, slots }) => ({ id, name, slots })),
+      specialSeries: listed.filter((entry) => entry.kind === "special").map(({ id, name, slots }) => ({ id, name, slots })),
       specials: other
         ? []
         : specialEvents
@@ -408,22 +388,20 @@ export interface TimelineRow {
 }
 
 /**
- * Vista 5 · Timeline: una fila por serie sobre las próximas `spanH` horas.
- * Por defecto 24 h, que es el rango con el que nació la vista.
+ * Vista 5 · Timeline: una fila por serie con salida en la próxima hora.
  */
 export function timelineRows(
   entries: RaceSeriesEntry[],
   start: Date,
-  spanH = 24,
+  spanH = 1,
 ): TimelineRow[] {
   const end = new Date(start.getTime() + spanH * 3_600_000);
   return entries.map((entry) => {
-    const every = entry.engine.every;
-    const raceMin = entry.raceMin > 0 ? entry.raceMin : (every ?? 60);
     return {
       entry,
       starts: startsInWindow(entry.engine, start, end),
-      blockMin: Math.max(1, Math.min(raceMin, (every ?? raceMin) - 3)),
+      // El bloque marca la salida; no representa la duración de carrera.
+      blockMin: 4,
     };
   });
 }
@@ -431,7 +409,7 @@ export function timelineRows(
 // ── Timeline · rango y zoom ──────────────────────────────────────────────
 
 /** Rangos del eje del timeline, en horas (`Seg` de la cabecera). */
-export const TIMELINE_RANGES = [6, 12, 24] as const;
+const TIMELINE_RANGES = [6, 12, 24] as const;
 export type TimelineRange = (typeof TIMELINE_RANGES)[number];
 
 /** El zoom se guarda como factor sobre el mínimo (1× = 24 h a la vista). */

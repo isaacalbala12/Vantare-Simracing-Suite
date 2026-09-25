@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-25T16:28:44Z",
+  "generatedAt": "2026-09-25T16:43:34Z",
   "digest": {
-    "lastCommit": "5c73013ed59a4d69775a94fcc188d168310c59a5"
+    "lastCommit": "446001dd26300e975b21480043052468320211b2"
   },
   "phases": [
     {
@@ -699,10 +699,10 @@
         "it": "Calendario completo"
       },
       "body": {
-        "es": "Calendario completo para la 1.0: publicación Owner, recordatorios, widget en el Hub, validación de horarios y seguimiento de series sin pérdida de datos.",
-        "en": "Complete calendar for 1.0: Owner publishing, reminders, Hub widget, schedule validation and series tracking without data loss.",
-        "pt": "Calendário completo para a 1.0: publicação Owner, lembretes, widget no Hub, validação de horários e seguimento de séries sem perda de dados.",
-        "it": "Calendario completo per la 1.0: pubblicazione Owner, promemoria, widget dell'Hub, validazione orari e tracciamento serie senza perdita dati."
+        "es": "Calendario para la 1.0: publicación Owner, recordatorios, widget en el Hub y horarios fiables; sus cinco vistas priorizan la lectura, el detalle contextual y la próxima hora de carreras.",
+        "en": "Calendar for 1.0: Owner publishing, reminders, Hub widget and reliable schedules; its five views prioritize readability, contextual detail and the next hour of races.",
+        "pt": "Calendário para a 1.0: publicação Owner, lembretes, widget no Hub e horários fiáveis; as cinco vistas priorizam a leitura, o detalhe contextual e a próxima hora de corridas.",
+        "it": "Calendario per la 1.0: pubblicazione Owner, promemoria, widget nell'Hub e orari affidabili; le cinque viste privilegiano leggibilità, dettagli contestuali e la prossima ora di gare."
       },
       "label": {
         "es": "Plan",
@@ -2188,6 +2188,16 @@
   ],
   "delivered": [
     {
+      "date": "2026-09-25",
+      "entries": [
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-1385 · Car Damage Numbers Eficiencia y telemetría LMU"
+        }
+      ]
+    },
+    {
       "date": "2026-09-24",
       "entries": [
         {
@@ -2719,31 +2729,6 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-861 · Promover reader LMU y runtime Windows a nightly"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-26",
-      "entries": [
-        {
-          "kind": "docs",
-          "scope": "release",
-          "text": "Manifiesto v0.1.0.7-testers.2 y expectativa de release-news"
-        },
-        {
-          "kind": "fix",
-          "scope": "studio",
-          "text": "Conservar editor y agilizar el rail"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-843 · Centrar columnas de Próximas"
-        },
-        {
-          "kind": "feat",
-          "scope": "studio",
-          "text": "Autosave y Ctrl+Z productivo"
         }
       ]
     }

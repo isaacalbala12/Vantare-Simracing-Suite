@@ -8,7 +8,33 @@ Isaac corrigió el diseño el 2026-09-25: quiere línea temporal y varias vistas
 gráficas, y Codex actualizará el contenido cuando él lo indique por chat. No
 quiere un editor de formularios en la app. La publicación compartida debe verse
 para todos los usuarios. Rama aislada `vantareapp/isa-1377-roadmap-sencillo`, base
-`origin/nightly@5c73013ed59a4d69775a94fcc188d168310c59a5`.
+actual `origin/nightly@f0ccfbf203eb1463766e3ca5e7208ccb2bf38453`.
+
+### Contenido inicial preparado desde Asana
+
+Isaac pidió poblar el roadmap con las tareas vigentes. La primera publicación
+está preparada en [VAN-763](https://app.notion.com/p/3e5e51695c6581debbcbfef649a86d59)
+con identificadores estables y textos en los cuatro idiomas, en este orden:
+
+1. **5 de octubre de 2026 · Vantare 0.1:** lanzamiento previsto con el catálogo
+   de widgets V16 y la primera alfa del Ingeniero, condicionado a cerrar las
+   revisiones de producto y acceso.
+2. **12 de octubre · acceso tras la primera semana:** compras opcionales y
+   prueba individual de siete días, pendientes de la revisión de Billing.
+3. **5 de noviembre · Ingeniero 0.2 beta:** objetivo tras el primer mes;
+   alcance sujeto a la experiencia del lanzamiento.
+4. **Más adelante · temas de UI:** proyecto Vantare 0.2, aún sin fecha.
+
+Las fuentes son los proyectos Asana «Vantare · 0.1 Lanzamiento» y «Vantare ·
+0.2», en particular las tareas Widgets V16, Ingeniero Alpha y Billing. V16
+tiene 16 subtareas, cuatro marcadas como completadas y dos tituladas «Daños»;
+por ello la publicación dice «catálogo V16» sin afirmar 16 widgets distintos
+ni completados. El 12 de octubre se incluye como objetivo condicionado, a la
+espera de la preferencia de Isaac. El contenido aún no está publicado: la base
+Supabase de producción no tiene la tabla ni las funciones `visual_roadmap_*`,
+y la migración de esta PR no se ha aplicado. La ruta documentada exige probar
+la migración en un entorno de prueba y obtener autorización para integrar la
+PR en Nightly antes de activar el nuevo almacenamiento.
 
 La implementación local retira `plan.md`, JSON, digest, formulario y gate del
 roadmap anterior; la revisión actual reemplaza el editor por línea temporal,
@@ -25,8 +51,8 @@ no añade datos de fases, fechas ni editor. Una captura del harness Orbit real a
 En este candidato, las 3 pruebas focales del roadmap, typecheck, build, lint y
 las 4 pruebas de presupuesto PASS. La suite unitaria amplia registró 4.047 PASS,
 2 omitidas y 2 timeouts en pruebas visuales ajenas al roadmap; sus ficheros
-focales pasan por separado (FunctionalClipping 4/4, HeadToHead 1/1). Hace falta
-el gate remoto del HEAD final para cerrar la validación conjunta. Las capturas
+focales pasan por separado (FunctionalClipping 4/4, HeadToHead 1/1). El gate
+remoto de `d23cad51` pasó (11m34s). Las capturas
 usan el mock de Wails y no prueban Supabase ni un runtime físico.
 La revisión horizontal pasó 4.049 pruebas frontend (2 omitidas), 4 pruebas de
 presupuesto, typecheck, build y lint. Dos capturas locales comprobaron la
@@ -37,15 +63,15 @@ ausentes y 0 huérfanas; typecheck, build y lint PASS; Go `./...` PASS. Tres
 capturas locales muestran las vistas con hitos del snapshot histórico anterior,
 solo como vista previa, sin publicar. Falta validar la migración SQL y la lectura
 compartida con Supabase real. El contenido inicial quedará vacío hasta la primera
-publicación solicitada por Isaac; no se importa el plan histórico automáticamente.
+publicación técnicamente validada; no se importa el plan histórico automáticamente.
 
 [PR borrador #1380](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1380)
-contra `nightly`. El último CI del candidato anterior pasó los gates principales;
-`quality-check` quedó `REVIEW_REQUIRED` por cambios intencionados en workflows
-y `package.json`, con NEW=0/MOVED=0. La revisión gráfica requiere un nuevo CI y
-la revisión humana de esas rutas. Siguiente acción: subir la revisión, comprobar
-sus gates, validar Supabase en un entorno de prueba y obtener la autorización
-de Isaac antes de integrar en Nightly. Sin merge, promoción ni release.
+contra `nightly`, HEAD previo `d23cad51`. El CI de ese HEAD pasó gates
+bloqueantes, promoción y GitGuardian; `quality-check` quedó
+`REVIEW_REQUIRED` por cambios intencionados en workflows y `package.json`,
+con NEW=0/MOVED=0. Siguiente acción: revisar el contenido y las rutas de
+política, validar Supabase en un entorno de prueba y obtener la autorización
+de Isaac antes de integrar en Nightly. Sin merge, migración, publicación ni release.
 
 ## VAN-740 / ISA-1305 — Wails beta.24 aceptado para Nightly (2026-09-22)
 

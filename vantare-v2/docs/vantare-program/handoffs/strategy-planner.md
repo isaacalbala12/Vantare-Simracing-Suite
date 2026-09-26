@@ -1,5 +1,20 @@
 # Handoff vivo — Strategy Planner
 
+## T22 · runtime verificado y bancos LMU sobre el merge (2026-09-26)
+
+En el candidato `057d9e77`, el preparador canónico instaló el runtime DuckDB
+v1.5.5 en `bin` ignorado: manifiesto
+`700201f90266ae6b829372d9989408c6b0efd86725a50980d46fc05adfc24869`,
+cinco miembros y smoke PASS. El banco Go real GT3 S201→S026 pasó en 30,34 s
+con 29 vueltas/dos paradas; Hypercar S026→S266 pasó en 157,76 s con 37
+vueltas/una parada. Ambos acreditan `optimality=proven` sólo bajo reglas
+supuestas, revisiones exactas y hashes originales intactos. Los 50 archivos
+Race actuales del directorio LMU tienen como fecha de escritura más reciente
+el 2026-08-25: no hay nueva carrera completa independiente para T21.
+[Evidencia](../../strategy-planner/evidence/isa-1393/candidate-2026-09-26.md).
+E01–E08 Wails, licencia de distribución y precisión empírica siguen pendientes;
+no se abrió la app ni LMU.
+
 ## T22 · build localdev reconciliada (2026-09-26)
 
 Desde HEAD `7dbe34e3`, `scripts/build-local-development.ps1` compiló el

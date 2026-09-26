@@ -1,5 +1,35 @@
 # T22 · candidato local con disponibilidad temporal
 
+## Reconciliación con Nightly: runtime y bancos reales (2026-09-26)
+
+Sobre el código `057d9e77` de `vantareapp/isa-1393-nightly-reconcile`, el
+preparador canónico `prepare-runtime.ps1 -UsePublishedRuntime` instaló en el
+`bin` ignorado el lector aprobado. La verificación antes y después del traslado
+comprobó sus cinco miembros y el manifiesto SHA-256
+`700201f90266ae6b829372d9989408c6b0efd86725a50980d46fc05adfc24869`;
+el smoke informó DuckDB v1.5.5 en Windows amd64. No se ejecutó Wails ni LMU.
+
+Con ese runtime, `go test -p 1 ./internal/app -run
+'^TestRecordedStrategyRealDuckDB$' -count=1 -v` pasó dos veces con fuentes de
+**preparación** de #1030, seleccionadas explícitamente, sin WAL y con SHA
+comprobado antes y después. S201 Sebring GT3
+(`8daf968e50e43bb351f0e5e1dfb27d6e991d21bf57610df28995dbcda7733dd9`)
+→ S026 Monza (`08a1e626d7154becd493aa84addbf146cc7f0f229c8a7aa39664766813495538`):
+98 canales, ocho vueltas utilizables, Fuel 3,120 L/vuelta y VE 4,281 puntos/vuelta;
+29 vueltas, dos paradas y `optimality=proven` **dentro del evento supuesto**.
+Paridad paginada/materializada, historial exacto, clasificación, familias,
+restauración y reapertura PASS en 30,34 s.
+
+S026 Monza Hypercar → S266 Algarve
+(`6b912640e5b68da087fbe86ce70401101edbdc89cb89cb93df30c9ef396d9362`):
+98 canales, 53 vueltas utilizables, Fuel 2,876 L/vuelta y VE 3,328 puntos/vuelta;
+37 vueltas, una parada y `optimality=proven` **dentro del evento supuesto**.
+Las mismas comprobaciones de revisión e identidad pasaron en 157,76 s y los
+originales conservaron sus hashes. Estos bancos verifican el camino Go sobre
+el candidato reconciliado; no son evaluación independiente del error real,
+recorrido Wails ni acreditación E01–E08. El directorio LMU seguía sin nuevas
+Race posteriores a agosto; T21 aún carece de holdout suficiente.
+
 Rama `vantareapp/isa-1393-strategy-native-validation`, base anterior
 `0bdac8d7`; se incorporaron en orden los commits de #1395 (`0665876b`) y
 #1396 (`144880e7`). El candidato contiene el mismo contrato temporal en Go y

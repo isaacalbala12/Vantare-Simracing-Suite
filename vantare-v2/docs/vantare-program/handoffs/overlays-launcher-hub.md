@@ -25,6 +25,8 @@ Comprobación actual: pruebas Go de proyección, transporte y replay PASS; TypeS
 
 Isaac acepta la animación completa y autoriza integrar #1389 solo en `nightly` el 27/09. La rama incorpora `origin/nightly@050fe951`, que retiró el plan y digest de roadmap del repositorio por la publicación compartida; se conserva esa retirada y el seguimiento del radar en Asana. Pendientes los gates del HEAD reconciliado y la comprobación física LMU/Windows/OBS; no se afirma todavía el merge.
 
+Sobre el árbol reconciliado: `go test ./...`, `pnpm --dir frontend test` (485 archivos, 4109 pruebas y 2 omitidas; presupuesto 4/4), `typecheck`, `lint` y una build final PASS. El test frontend regeneró cinco capturas de Horizontal Standings ajenas al radar; se restauraron sin incorporarlas al cambio. Pendientes CI del nuevo HEAD y prueba física LMU/Windows/OBS.
+
 ## VAN-769 / GitHub #1381 — Temas de interfaz y fondos de Studio (2026-09-25)
 
 [VAN-769](https://app.notion.com/p/3e6e51695c6581abbcdff05e070a4a69)

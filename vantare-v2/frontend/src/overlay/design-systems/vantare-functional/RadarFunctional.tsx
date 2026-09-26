@@ -14,7 +14,7 @@ export function RadarFunctional({ model, effects }: WidgetRendererProps<RadarVie
           {model.rightOverlap && <path className="vf-radar-side vf-radar-side-active" d="M128 94V126" />}
           <rect className="vf-radar-player" x="102" y="94" width="16" height="32" rx="5" />
           {model.cars.map((car) => (
-            <rect key={car.id} className="vf-radar-car" data-overlap={car.overlap} data-near={car.near} data-lapped={car.lapped} x={CENTER - car.x * SCALE - 8} y={CENTER + car.z * SCALE - 16} width="16" height="32" rx="5">
+            <rect key={car.id} className="vf-radar-car" data-overlap={car.overlap} data-near={car.near} data-lapped={car.lapped} x="-8" y="-16" width="16" height="32" rx="5" style={{ transform: `translate(${CENTER - car.x * SCALE}px, ${CENTER + car.z * SCALE}px)` }}>
               <title>{car.id}</title>
             </rect>
           ))}

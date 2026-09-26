@@ -9,8 +9,7 @@ describe("Efficiency radar", () => {
       cars: [{ id: "left", x: 5, z: -4, overlap: true, near: true, lapped: false }], leftOverlap: true, rightOverlap: false,
     }} settings={{}} renderMode="harness" />);
     const car = container.querySelector(".vf-radar-car");
-    expect(car?.getAttribute("x")).toBe("87");
-    expect(car?.getAttribute("y")).toBe("82");
+    expect(car?.getAttribute("style")).toContain("translate(95px, 98px)");
     expect(car?.getAttribute("data-overlap")).toBe("true");
     expect(car?.getAttribute("data-near")).toBe("true");
     expect(car?.getAttribute("data-lapped")).toBe("false");

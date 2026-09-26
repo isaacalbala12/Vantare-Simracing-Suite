@@ -98,7 +98,10 @@ export function interpolateSceneAt(scene: AnimationScene, elapsedMs: number, loo
   const nextIndex = (index + 1) % count;
   const from = scene.frames[index];
   const to = scene.frames[nextIndex];
-  const t = ease(Math.min(1, (clamped - index * scene.frameMs) / scene.frameMs));
+  const progress = Math.min(1, (clamped - index * scene.frameMs) / scene.frameMs);
+  // Radar cars keep moving through keyframes; easing each sample made them
+  // visibly brake and accelerate at every point of the demonstration.
+  const t = scene.widget === "radar" ? progress : ease(progress);
 
   const names = new Set([...Object.keys(from.cars ?? {}), ...Object.keys(to.cars ?? {})]);
   const cars: Record<string, SceneOverride> = {};

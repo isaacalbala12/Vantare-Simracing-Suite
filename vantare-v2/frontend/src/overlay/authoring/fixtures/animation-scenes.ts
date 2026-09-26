@@ -824,35 +824,52 @@ export const ANIMATION_SCENES: readonly AnimationScene[] = [
     id: "radar-nearby-traffic",
     widget: "radar",
     systems: ["vantare-functional"],
-    label: "Tráfico cercano · cruce lateral",
-    watchFor: "Dos rivales se acercan, pasan a color de proximidad y quedan en paralelo. El coche azul oscuro está doblado. Las posiciones y vueltas son una demostración; el radar real recibe telemetría LMU a 10 Hz.",
-    frameMs: 1800,
+    label: "Tráfico cercano · ciclo completo",
+    watchFor: "Los coches entran y salen del radio de 30 m: azul normal, ámbar a 10 m, naranja al solaparse por cada lado. El doblado pasa de azul oscuro a borde ámbar, luego a naranja al solaparse y vuelve a azul oscuro. Posiciones y vueltas de ejemplo; el radar real recibe LMU a 10 Hz.",
+    frameMs: 1000,
     frames: [
-      { caption: "Rival izquierdo delante y rival derecho detrás", radarCars: [
-        { id: "izquierda", x: 6, z: -24, overlap: false, lapped: false },
-        { id: "derecha", x: -6, z: 24, overlap: false, lapped: false },
-        { id: "frente", x: -1, z: -28, overlap: false, lapped: true },
+      { caption: "Pista despejada", radarCars: [] },
+      { caption: "Tres coches entran en el radar", radarCars: [
+        { id: "izquierda", x: 7, z: -28, overlap: false, lapped: false },
+        { id: "derecha", x: -7, z: 28, overlap: false, lapped: false },
+        { id: "doblado", x: -1, z: -29, overlap: false, lapped: true },
       ] },
-      { caption: "Ambos se acercan al jugador", radarCars: [
-        { id: "izquierda", x: 6, z: -9, overlap: false, lapped: false },
-        { id: "derecha", x: -6, z: 10, overlap: false, lapped: false },
-        { id: "frente", x: -1, z: -22, overlap: false, lapped: true },
+      { caption: "Se acercan por delante y detrás", radarCars: [
+        { id: "izquierda", x: 7, z: -18, overlap: false, lapped: false },
+        { id: "derecha", x: -7, z: 18, overlap: false, lapped: false },
+        { id: "doblado", x: -1, z: -19, overlap: false, lapped: true },
       ] },
-      { caption: "Dos coches en paralelo", radarCars: [
-        { id: "izquierda", x: 6, z: -2, overlap: true, lapped: false },
-        { id: "derecha", x: -6, z: 2, overlap: true, lapped: false },
-        { id: "frente", x: 1, z: -16, overlap: false, lapped: true },
+      { caption: "Proximidad en ambos lados", radarCars: [
+        { id: "izquierda", x: 6, z: -8, overlap: false, lapped: false },
+        { id: "derecha", x: -6, z: 8, overlap: false, lapped: false },
+        { id: "doblado", x: -1, z: -22, overlap: false, lapped: true },
       ] },
-      { caption: "Se despeja el espacio lateral", radarCars: [
-        { id: "izquierda", x: 6, z: 8, overlap: false, lapped: false },
+      { caption: "Solapamiento a la izquierda", radarCars: [
+        { id: "izquierda", x: 5, z: -3, overlap: true, lapped: false },
+        { id: "derecha", x: -6, z: 7, overlap: false, lapped: false },
+        { id: "doblado", x: -1, z: -18, overlap: false, lapped: true },
+      ] },
+      { caption: "Solapamiento a ambos lados", radarCars: [
+        { id: "izquierda", x: 5, z: 1, overlap: true, lapped: false },
+        { id: "derecha", x: -5, z: 1, overlap: true, lapped: false },
+        { id: "doblado", x: -1, z: -14, overlap: false, lapped: true },
+      ] },
+      { caption: "Solapamiento a la derecha y doblado cercano", radarCars: [
+        { id: "izquierda", x: 6, z: 10, overlap: false, lapped: false },
+        { id: "derecha", x: -5, z: -2, overlap: true, lapped: false },
+        { id: "doblado", x: 7, z: -7, overlap: false, lapped: true },
+      ] },
+      { caption: "El doblado se solapa antes de alejarse", radarCars: [
+        { id: "izquierda", x: 7, z: 18, overlap: false, lapped: false },
         { id: "derecha", x: -6, z: -9, overlap: false, lapped: false },
-        { id: "frente", x: 1, z: -10, overlap: false, lapped: true },
+        { id: "doblado", x: 7, z: -2, overlap: true, lapped: true },
       ] },
-      { caption: "Los rivales se alejan", radarCars: [
-        { id: "izquierda", x: 6, z: 22, overlap: false, lapped: false },
-        { id: "derecha", x: -6, z: -23, overlap: false, lapped: false },
-        { id: "frente", x: 1, z: -12, overlap: false, lapped: true },
+      { caption: "Los coches se alejan", radarCars: [
+        { id: "izquierda", x: 7, z: 28, overlap: false, lapped: false },
+        { id: "derecha", x: -7, z: -28, overlap: false, lapped: false },
+        { id: "doblado", x: 7, z: 20, overlap: false, lapped: true },
       ] },
+      { caption: "El radar vuelve a quedar libre", radarCars: [] },
     ],
   },
   {

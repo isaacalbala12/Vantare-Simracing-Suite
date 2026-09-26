@@ -1,5 +1,18 @@
 # Handoff vivo — Strategy Planner
 
+## T22 / E05 · selección recuperada tras cancelar (2026-09-26)
+
+Dos tests reprodujeron que `selectFile` y `recoverCopy` ofrecían una fuente
+aunque su respuesta llegara después de `cancel()`. El controlador ahora
+comprueba la señal antes de publicar candidatos y al cerrar la operación;
+`saveCopy` tampoco anuncia una copia cancelada. Focal 19/19; frontend 493
+archivos / 4331 PASS (2 omitidos), typecheck, lint y build PASS.
+[Evidencia](../../strategy-planner/evidence/isa-1393/candidate-2026-09-26.md).
+Build localdev 46.397.440 bytes, SHA-256
+`BB5393301E5BE599E144FF3C346292F4AF3C2AF29B2D677F482EB04A7DF291EF`,
+tag `vantare_localdev` confirmado. E05 Wails y E01–E08 restantes siguen
+abiertos; sin app nativa, push, PR, CI, integración, promoción ni release.
+
 ## T22 / E05 · respuesta posterior a cancelar (2026-09-26)
 
 Dos regresiones reprodujeron que una respuesta normal tardía tras pulsar

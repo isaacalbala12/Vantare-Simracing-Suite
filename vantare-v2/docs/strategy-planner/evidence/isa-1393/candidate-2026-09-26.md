@@ -26,7 +26,7 @@ en la mesa recorded. No hay cambio de canal.
 
 El ejecutable localdev corregido, regenerado tras las correcciones frontend,
 tiene **46.396.928 bytes**, SHA-256
-`A90F29A551AF0CE73D7720C7F091076A21FC13B00B2F3E62675878A06614AACB`.
+`BB5393301E5BE599E144FF3C346292F4AF3C2AF29B2D677F482EB04A7DF291EF`.
 No se abrió. El preflight de build por sí solo no certifica E01–E08, memoria
 de resistencia ni precisión empírica; el banco Go posterior se detalla abajo.
 
@@ -139,3 +139,21 @@ tag `vantare_localdev` verificado. Esta prueba usa respuestas controladas,
 no acredita que la cancelación real libere el reader ni la ventana Wails.
 E05 y E01–E08 siguen pendientes de recorrido nativo. No se abrió la app,
 ni hubo push, PR, CI, merge, promoción o release.
+
+## E05 · respuesta posterior a cancelar una fuente
+
+Una selección manual de archivo y la recuperación de una copia podían
+completar su llamada después de `cancel()`. Aunque la señal estaba abortada,
+el controlador añadía la fuente a candidatos y devolvía éxito. Dos tests
+con respuestas diferidas fallaron antes del arreglo (`true` tras cancelar).
+Ahora el controlador comprueba la señal antes de publicar una fuente o copia,
+y al finalizar cualquier operación; la copia verificada no se muestra como
+confirmada si su respuesta llega tras cancelar. Las pruebas terminan con
+resultado cancelado y sin candidato nuevo.
+
+Test focal 19/19 PASS; frontend completo 493 archivos, 4331 PASS y 2 omitidos;
+typecheck, lint y build PASS. Build localdev oficial PASS: 46.397.440 bytes,
+SHA-256 `BB5393301E5BE599E144FF3C346292F4AF3C2AF29B2D677F482EB04A7DF291EF`,
+tag `vantare_localdev` confirmado. Son respuestas de test controladas; la
+cancelación y liberación del lector DuckDB real siguen pendientes de E05 Wails.
+No se abrió la app ni hubo push, PR, CI, merge, promoción o release.

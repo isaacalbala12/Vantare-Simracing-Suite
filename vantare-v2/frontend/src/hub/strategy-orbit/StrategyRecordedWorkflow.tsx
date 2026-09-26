@@ -105,7 +105,7 @@ export function StrategyRecordedWorkflow({ eventId, repositoryVersion, repositor
     flow.prepare();
   };
   const backBlocked = flow.busy || formPending || strategyBusy || flow.sessions.corrections.unresolved;
-  const sourceView = <StrategyRecordedSessionsView controller={{ ...flow.sessions, busy: flow.busy, locked: flow.sessions.locked || formPending || strategyBusy }} onInspect={inspectSession} onChoose={menuOpen ? candidate => void chooseCandidate(candidate) : undefined} t={t} />;
+  const sourceView = <StrategyRecordedSessionsView controller={{ ...flow.sessions, busy: flow.busy, locked: flow.sessions.locked || formPending || strategyBusy }} onInspect={inspectSession} onChoose={menuOpen ? candidate => void chooseCandidate(candidate) : undefined} selectedRevisions={menuOpen ? undefined : flow.draft.sessions} onReturn={menuOpen ? undefined : () => setLibraryOpen(false)} t={t} />;
   return <div className="strategy-recorded-workflow" data-view={flow.view} data-menu={menuOpen && !libraryOpen} data-tab={tab}>
     {navigation?.({ requestExit: exit, draft: flow.draft, view: flow.view, busy: flow.busy || strategyBusy })}
     {libraryOpen ? <div className="strategy-recorded-source-screen" data-testid="strategy-recorded-source-screen">

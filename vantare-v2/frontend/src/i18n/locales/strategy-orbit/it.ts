@@ -746,6 +746,8 @@ export const strategyOrbitIt: Record<string, string> = {
   "strategy.recorded.empty": "Nessun file disponibile. Cerca di nuovo al termine della registrazione.",
   "strategy.recorded.hint": "Gli originali vengono conservati. Apri fino a quattro sessioni per rivederle e scegli dopo quali usare.",
   "strategy.recorded.replace": "La selezione sostituirà le sessioni utilizzate da questo evento.",
+  "strategy.recorded.savedRevisionReady": "La revisione salvata è aperta. Puoi continuare senza modificare la selezione.",
+  "strategy.recorded.continueSaved": "Continua con questa revisione",
   "strategy.recorded.revision": "Revisione aperta",
   "strategy.recorded.metadataUnavailable": "Alcuni dati di identificazione o classificazione non sono verificabili. Puoi rivedere la sessione e salvare le correzioni; non può ancora essere usata per calcolare la gara.",
   "strategy.recorded.notSelected": "Questa sessione non è usata nella gara. Puoi rivederne i dati e salvare le correzioni.",

@@ -745,6 +745,8 @@ export const strategyOrbitPt: Record<string, string> = {
   "strategy.recorded.empty": "Não há ficheiros disponíveis. Procura novamente quando a gravação terminar.",
   "strategy.recorded.hint": "Os originais são preservados. Abre até quatro sessões para as rever e escolhe depois quais utilizar.",
   "strategy.recorded.replace": "Esta seleção substituirá as sessões utilizadas por este evento.",
+  "strategy.recorded.savedRevisionReady": "A revisão guardada já está aberta. Pode continuar sem alterar a seleção.",
+  "strategy.recorded.continueSaved": "Continuar com esta revisão",
   "strategy.recorded.revision": "Revisão aberta",
   "strategy.recorded.metadataUnavailable": "Há dados de identificação ou classificação que não podem ser verificados. Podes rever a sessão e guardar correções; ainda não pode ser utilizada para calcular a corrida.",
   "strategy.recorded.notSelected": "Esta sessão não é utilizada na corrida. Podes rever os seus dados e guardar correções.",

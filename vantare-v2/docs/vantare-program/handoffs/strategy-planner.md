@@ -1,5 +1,28 @@
 # Handoff vivo — Strategy Planner
 
+## T22 · recuperar la revisión sin sustituirla (2026-09-26)
+
+El recorrido de navegador con el arnés visual destapó que su borrador inicial
+mezclaba `mode: manual` con una revisión DuckDB guardada, combinación que no
+crea el flujo productivo. Corregido a `assisted`/`automatic`, el recorrido
+real de UI mostró primero «Calcular» bloqueado por fuente cerrada y después
+habilitado al abrir la revisión exacta. La biblioteca todavía ofrecía
+«Usar estas sesiones» con un aviso de sustitución incluso cuando la única
+sesión abierta ya era idéntica a la guardada. Ahora muestra «Continuar con
+esta revisión», vuelve sin escribir ni alterar el borrador y reserva la
+acción de sustituir para una selección distinta. La comparación usa los
+cuatro campos de identidad; otra revisión del mismo archivo no se declara
+recuperada. El test de la biblioteca falló antes del cambio; dos pruebas de
+Datos aún esperaban la acción antigua y se adaptaron al recorrido nuevo sin
+retirar sus comprobaciones de edición. Pasaron 71 tests focales y luego el
+frontend completo: 532 archivos/4887 tests PASS (2 omitidos), presupuesto de
+frames 4 PASS, typecheck, lint y build PASS.
+
+El plan que mostró el arnés continúa siendo ilustrativo: su etiqueta de
+optimalidad y sus cifras no prueban el solver de producción. E01–E08 Wails,
+licencia de distribución y T19–T21 permanecen pendientes. No se abrió la app
+nativa ni LMU.
+
 ## T22 · reapertura de borrador sin fuente (2026-09-26)
 
 El backend de Strategy exige que Analysis mantenga abierta cada fuente de la

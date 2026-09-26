@@ -773,6 +773,8 @@ export const strategyOrbitEs: Record<string, string> = {
   "strategy.recorded.empty": "No hay archivos disponibles. Vuelve a buscar cuando termine la grabación.",
   "strategy.recorded.hint": "Los originales se conservan. Abre hasta cuatro sesiones para revisarlas y elige después cuáles utilizar.",
   "strategy.recorded.replace": "La selección sustituirá las sesiones utilizadas por este evento.",
+  "strategy.recorded.savedRevisionReady": "La revisión guardada ya está abierta. Puedes continuar sin cambiar la selección.",
+  "strategy.recorded.continueSaved": "Continuar con esta revisión",
   "strategy.recorded.revision": "Revisión abierta",
   "strategy.recorded.metadataUnavailable": "Hay datos de identificación o clasificación que no se pueden verificar. Puedes revisar la sesión y guardar correcciones; aún no puede utilizarse para calcular la carrera.",
   "strategy.recorded.notSelected": "Esta sesión no se utiliza en la carrera. Puedes revisar sus datos y guardar correcciones.",

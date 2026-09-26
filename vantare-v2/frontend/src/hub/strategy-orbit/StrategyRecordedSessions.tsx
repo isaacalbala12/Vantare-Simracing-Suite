@@ -1,6 +1,7 @@
 import { Fragment, useState } from "react";
 import { Dialogs } from "@wailsio/runtime";
 import { Button, Chip, Note } from "../../ui/orbit";
+import type { StrategyAnalysisRevisionRef } from "../../strategy/strategy-application-client";
 import type { RecordedSession } from "./strategy-recorded-session";
 import { useRecordedSessions, type RecordedSessionsController, type RecordedSessionsOptions } from "./use-recorded-sessions";
 import "./strategy-recorded-library.css";
@@ -14,10 +15,14 @@ export function StrategyRecordedSessions(props: Props) {
   return <StrategyRecordedSessionsView controller={controller} t={props.t} />;
 }
 
-export function StrategyRecordedSessionsView({ controller, onInspect, onChoose, t }: { readonly controller: RecordedSessionsController; readonly onInspect?: (session: RecordedSession) => void; readonly onChoose?: (candidate: NonNullable<RecordedSessionsController["candidates"]>[number]) => void; readonly t: (key: string) => string }) {
+export function StrategyRecordedSessionsView({ controller, onInspect, onChoose, selectedRevisions, onReturn, t }: { readonly controller: RecordedSessionsController; readonly onInspect?: (session: RecordedSession) => void; readonly onChoose?: (candidate: NonNullable<RecordedSessionsController["candidates"]>[number]) => void; readonly selectedRevisions?: readonly StrategyAnalysisRevisionRef[]; readonly onReturn?: () => void; readonly t: (key: string) => string }) {
   const { candidates, sessions, busy, error, applied } = controller;
   const locked = busy || controller.locked;
   const projectable = (session: RecordedSession) => Boolean(session.combinationId && !session.projectionUnavailableReason);
+  const savedRevisionReady = selectedRevisions !== undefined && selectedRevisions.length > 0 && selectedRevisions.every(ref => sessions.some(session =>
+    projectable(session) && session.revision.sessionId === ref.sessionId && session.revision.baseDigest === ref.baseDigest
+    && session.revision.revisionId === ref.revisionId && session.revision.snapshotId === ref.snapshotId));
+  const unchangedSelection = savedRevisionReady && selectedRevisions?.length === sessions.length;
   const nameFor = (session: RecordedSession) => {
     // A partial source has no verified combination: name it from the candidate
     // first, never from metadata that cannot be verified nor from a base id.
@@ -135,8 +140,8 @@ export function StrategyRecordedSessionsView({ controller, onInspect, onChoose, 
           <Button size="sm" variant="ghost" disabled={locked} onClick={() => void controller.close(session)}>{t("strategy.recorded.close")}</Button>
         </div>;
       })}
-      <p>{t("strategy.recorded.replace")}</p>
-      <Button disabled={locked || sessions.some(session => !projectable(session))} onClick={() => void controller.apply()}>{t("strategy.recorded.apply")}</Button>
+      {savedRevisionReady && onReturn ? <div role="status"><p>{t("strategy.recorded.savedRevisionReady")}</p><Button disabled={locked} onClick={onReturn}>{t("strategy.recorded.continueSaved")}</Button></div> : null}
+      {!unchangedSelection ? <><p>{t("strategy.recorded.replace")}</p><Button disabled={locked || sessions.some(session => !projectable(session))} onClick={() => void controller.apply()}>{t("strategy.recorded.apply")}</Button></> : null}
     </> : null}
     {applied ? <p role="status">{t("strategy.recorded.applied")}</p> : null}
   </section>;

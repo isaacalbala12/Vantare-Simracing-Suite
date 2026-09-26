@@ -114,7 +114,7 @@ describe("recorded data screen", () => {
     const candidate = { id: "candidate", displayName: "Imola_R.duckdb", state: "ready", size: 10, modifiedAt: "2026-09-10T00:00:00Z", walPresent: false };
     vi.mocked(openRecordedSession).mockResolvedValue(f.session);
     const analysis = { discover: vi.fn().mockResolvedValue([candidate]), load: vi.fn().mockResolvedValue(f.current), pending: vi.fn().mockResolvedValue(undefined), page: vi.fn().mockResolvedValue(f.page), close: vi.fn().mockResolvedValue(undefined) } as unknown as AnalysisClient;
-    const draft = { ...createRecordedWizardDraft(), step: "sessions" as const, combination: { combinationId: "combo", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Car", carClass: "LMP2" }, sessions: [f.session.revision] };
+    const draft = { ...createRecordedWizardDraft(), step: "sessions" as const, mode: "automatic" as const, combination: { combinationId: "combo", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Car", carClass: "LMP2" }, sessions: [f.session.revision] };
     const initial = { repositoryVersion: 1, document: { payload: { contractVersion: "strategy.recorded.draft.v1", eventId: "event", draft } } } as StoredRecordedDraft;
     const application = { execute: vi.fn(), dispose: vi.fn(), cancel: vi.fn() } as StrategyApplicationClient<RecordedDraftPayload>;
     const onExit = vi.fn();
@@ -125,8 +125,7 @@ describe("recorded data screen", () => {
     const drawer = screen.getByTestId("strategy-recorded-source-screen");
     fireEvent.click(within(drawer).getByRole("button", { name: "strategy.recorded.discover" }));
     fireEvent.click(await within(drawer).findByRole("button", { name: "strategy.recorded.open" }));
-    await within(drawer).findByRole("button", { name: "strategy.recorded.apply" });
-    fireEvent.click(within(drawer).getByRole("button", { name: /strategy.journey.back/ }));
+    fireEvent.click(await within(drawer).findByRole("button", { name: "strategy.recorded.continueSaved" }));
     fireEvent.change(screen.getByLabelText("strategy.data.source"), { target: { value: "handle" } });
     await screen.findByRole("button", { name: "strategy.laps.load" });
     fireEvent.click(screen.getByRole("button", { name: "strategy.laps.advanced" }));
@@ -625,7 +624,7 @@ describe("recorded identity selector", () => {
     const candidate = { id: "candidate", displayName: "Imola_R.duckdb", state: "ready", size: 10, modifiedAt: "2026-09-10T00:00:00Z", walPresent: false };
     vi.mocked(openRecordedSession).mockResolvedValue(f.session);
     const analysis = { discover: vi.fn().mockResolvedValue([candidate]), load: vi.fn().mockResolvedValue(f.current), pending: vi.fn().mockResolvedValue(undefined), page: vi.fn().mockResolvedValue(f.page), close: vi.fn().mockResolvedValue(undefined) } as unknown as AnalysisClient;
-    const draft = { ...createRecordedWizardDraft(), step: "sessions" as const, combination: { combinationId: identityCombination.id, simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Oreca 07", carClass: "LMP2" }, sessions: [f.session.revision] };
+    const draft = { ...createRecordedWizardDraft(), step: "sessions" as const, mode: "automatic" as const, combination: { combinationId: identityCombination.id, simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Oreca 07", carClass: "LMP2" }, sessions: [f.session.revision] };
     const initial = { repositoryVersion: 1, document: { payload: { contractVersion: "strategy.recorded.draft.v1", eventId: "event", draft } } } as StoredRecordedDraft;
     const application = { execute: vi.fn(), dispose: vi.fn(), cancel: vi.fn() } as StrategyApplicationClient<RecordedDraftPayload>;
     render(<StrategyRecordedWorkflow eventId="event" initial={initial} catalog={[catalogCombination]} catalogState="available" calendar={null} application={application} analysis={analysis} onExit={vi.fn()} onCleanupError={vi.fn()} t={t} />);
@@ -634,9 +633,7 @@ describe("recorded identity selector", () => {
     const drawer = screen.getByTestId("strategy-recorded-source-screen");
     fireEvent.click(within(drawer).getByRole("button", { name: "strategy.recorded.discover" }));
     fireEvent.click(await within(drawer).findByRole("button", { name: "strategy.recorded.open" }));
-    fireEvent.click(await within(drawer).findByRole("button", { name: "strategy.recorded.apply" }));
-    await within(drawer).findByText("strategy.recorded.applied");
-    fireEvent.click(within(drawer).getByRole("button", { name: /strategy.journey.back/ }));
+    fireEvent.click(await within(drawer).findByRole("button", { name: "strategy.recorded.continueSaved" }));
     fireEvent.change(screen.getByLabelText("strategy.data.source"), { target: { value: "handle" } });
     await screen.findByRole("button", { name: "strategy.laps.load" });
     fireEvent.click(await screen.findByRole("button", { name: "strategy.classification.tab" }));

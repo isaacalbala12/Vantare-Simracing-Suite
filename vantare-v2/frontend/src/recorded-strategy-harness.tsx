@@ -37,10 +37,10 @@ function seedRecordedDraft() {
   const eventId = 'visual-imola-4h';
   const document = {
     contractVersion: 'strategy.v1', draftId: `recorded-draft:${eventId}`, planId: `recorded-plan:${eventId}`, variantId: 'recorded-main',
-    name: '4 Horas de Imola · LMGT3', mode: 'manual', updatedAt: now,
+    name: '4 Horas de Imola · LMGT3', mode: 'assisted', updatedAt: now,
     capabilities: ['manual_inputs', 'telemetry_import'], provenance: { kind: 'manual', sourceId: 'strategy-recorded-visual-harness' }, confidence: { level: 'unknown' },
     payload: { contractVersion: 'strategy.recorded.draft.v1', eventId, draft: {
-      step: 'sessions', mode: 'manual', calculationMode: 'dry', combination: { combinationId: COMBINATION.id, simId: COMBINATION.simId, trackName: COMBINATION.trackName, trackLayout: COMBINATION.trackLayout, carName: COMBINATION.carName, carClass: COMBINATION.carClass },
+      step: 'sessions', mode: 'automatic', calculationMode: 'dry', combination: { combinationId: COMBINATION.id, simId: COMBINATION.simId, trackName: COMBINATION.trackName, trackLayout: COMBINATION.trackLayout, carName: COMBINATION.carName, carClass: COMBINATION.carClass },
       name: '4 Horas de Imola · LMGT3', race: { format: 'laps', laps: 69 }, tankLiters: 110, initialFuelLiters: 106, fuelReserveLiters: 3,
       pitLossSeconds: 47.4, formationSeconds: 42,
       pitServices: { transitSeconds: 22.4, refuelRateLPerS: 2.5, veRatePPerS: 4.5, tyreSeconds: 14, serviceMode: 'parallel' },

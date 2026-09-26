@@ -25,6 +25,27 @@ async function prepare() {
   await screen.findByRole("button", { name: "strategy.recorded.apply" });
 }
 describe("recorded sessions panel", () => {
+  it("returns to a reopened draft without replacing its exact saved revision", () => {
+    const { session, onApply, view } = fixture();
+    view.unmount();
+    const onReturn = vi.fn();
+    const controller: RecordedSessionsController = { candidates: [], sessions: [session], busy: false, error: "", applied: false, discover: vi.fn(), open: vi.fn(), close: vi.fn(), apply: onApply, cancel: vi.fn() };
+    render(<StrategyRecordedSessionsView controller={controller} selectedRevisions={[session.revision]} onReturn={onReturn} t={key => key} />);
+    expect(screen.getByText("strategy.recorded.savedRevisionReady")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "strategy.recorded.apply" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.continueSaved" }));
+    expect(onReturn).toHaveBeenCalledOnce();
+    expect(onApply).not.toHaveBeenCalled();
+  });
+  it("does not call a different revision of the same source the saved selection", () => {
+    const { session, view } = fixture();
+    view.unmount();
+    const controller: RecordedSessionsController = { candidates: [], sessions: [session], busy: false, error: "", applied: false, discover: vi.fn(), open: vi.fn(), close: vi.fn(), apply: vi.fn(), cancel: vi.fn() };
+    render(<StrategyRecordedSessionsView controller={controller} selectedRevisions={[{ ...session.revision, revisionId: "d".repeat(64) }]} onReturn={vi.fn()} t={key => key} />);
+    expect(screen.queryByText("strategy.recorded.savedRevisionReady")).toBeNull();
+    expect(screen.queryByRole("button", { name: "strategy.recorded.continueSaved" })).toBeNull();
+    expect(screen.getByRole("button", { name: "strategy.recorded.apply" })).toBeTruthy();
+  });
   it("offers recovery for a saved source without declaring it recovered", () => {
     const recoverCopy = vi.fn();
     const controller: RecordedSessionsController = { candidates: [], sessions: [], busy: false, error: "", applied: false, recoverableSources: ["a".repeat(64)], recoverCopy, discover: vi.fn(), open: vi.fn(), close: vi.fn(), apply: vi.fn(), cancel: vi.fn() };

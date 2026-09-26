@@ -755,6 +755,8 @@ export const strategyOrbitEn: Record<string, string> = {
   "strategy.recorded.empty": "No files are available. Search again when recording has finished.",
   "strategy.recorded.hint": "Original files are preserved. Open up to four sessions to review them, then choose which to use.",
   "strategy.recorded.replace": "This selection will replace the sessions used by this event.",
+  "strategy.recorded.savedRevisionReady": "The saved revision is open. You can continue without changing the selection.",
+  "strategy.recorded.continueSaved": "Continue with this revision",
   "strategy.recorded.revision": "Open revision",
   "strategy.recorded.metadataUnavailable": "Some identification or classification data cannot be verified. You can review the session and save corrections; it cannot be used to calculate the race yet.",
   "strategy.recorded.notSelected": "This session is not used in the race. You can review its data and save corrections.",

@@ -125,7 +125,7 @@ it("adds a second verified session from the desk library without replacing the f
   const opened = await within(screen.getByTestId("strategy-recorded-source-screen")).findAllByRole("button", { name: "strategy.recorded.open" });
   expect((opened[0] as HTMLButtonElement).disabled).toBe(true);
   fireEvent.click(opened[1]);
-  const apply = screen.getByRole<HTMLButtonElement>("button", { name: "strategy.recorded.apply" });
+  const apply = await screen.findByRole<HTMLButtonElement>("button", { name: "strategy.recorded.apply" });
   await waitFor(() => expect(apply.disabled).toBe(false));
   fireEvent.click(apply);
   await waitFor(() => expect(drafts.at(-1)).toMatchObject({ sessions: 2, mode: "automatic" }));

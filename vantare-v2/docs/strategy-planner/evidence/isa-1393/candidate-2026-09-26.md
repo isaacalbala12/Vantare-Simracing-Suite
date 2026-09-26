@@ -8,6 +8,9 @@ preparador canónico `prepare-runtime.ps1 -UsePublishedRuntime` instaló en el
 comprobó sus cinco miembros y el manifiesto SHA-256
 `700201f90266ae6b829372d9989408c6b0efd86725a50980d46fc05adfc24869`;
 el smoke informó DuckDB v1.5.5 en Windows amd64. No se ejecutó Wails ni LMU.
+`go test -tags vantare_localdev ./cmd/vantare -count=1` y
+`go test -tags production,vantare_localdev ./cmd/vantare -count=1` pasaron en
+esta composición: el segundo modo mantiene desactivado el acceso local.
 
 Con ese runtime, `go test -p 1 ./internal/app -run
 '^TestRecordedStrategyRealDuckDB$' -count=1 -v` pasó dos veces con fuentes de

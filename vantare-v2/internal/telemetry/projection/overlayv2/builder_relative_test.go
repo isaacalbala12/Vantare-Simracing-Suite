@@ -29,13 +29,19 @@ func TestBuildRelativeWrapsThePhysicalWindowAroundThePlayer(t *testing.T) {
 		if row.Side != RelativeSideAhead || row.GapSeconds.Q != QualityFresh || row.GapSeconds.V <= 0 {
 			t.Fatalf("row %d before player must be a physical car ahead: %#v", index, row)
 		}
-		if row.Position <= 0 || row.LastLapSeconds.Q != QualityFresh || row.GroundPosition.Q != QualityFresh {
+		if row.Position != int32(index+2) {
+			t.Fatalf("row %d before player must be closest-first at P%d: %#v", index, index+2, row)
+		}
+		if row.Position <= 0 || row.LastLapSeconds.Q != QualityFresh {
 			t.Fatalf("row %d must carry same-snapshot visible and spatial fields: %#v", index, row)
 		}
 	}
 	for index, row := range rows[MaxRelativeAhead+1:] {
 		if row.Side != RelativeSideBehind || row.GapSeconds.Q != QualityFresh || row.GapSeconds.V >= 0 {
 			t.Fatalf("row %d after player must be a physical car behind: %#v", index, row)
+		}
+		if row.Position != int32(44-index) {
+			t.Fatalf("row %d after player must be closest-first at P%d: %#v", index, 44-index, row)
 		}
 		if row.Authority != AuthorityDerived {
 			t.Fatalf("the canonical relative gap is reconstructed: %#v", row)
@@ -161,8 +167,8 @@ func TestBuildRelativeUsesLapDistanceInsteadOfGapForPhysicalOrder(t *testing.T) 
 		id   string
 		side string
 	}{
-		{id: "vehicle-004", side: RelativeSideAhead},
 		{id: "vehicle-003", side: RelativeSideAhead},
+		{id: "vehicle-004", side: RelativeSideAhead},
 		{id: "vehicle-002", side: RelativeSidePlayer},
 		{id: "vehicle-001", side: RelativeSideBehind},
 		{id: "vehicle-000", side: RelativeSideBehind},
@@ -202,6 +208,7 @@ func TestBuildRelativeCanonicalWrapSignBothDirections(t *testing.T) {
 			if !ok {
 				t.Fatal("missing final state")
 			}
+			final.Observed.TrackLength = builderPresent(standings.LapDistance(1000))
 			final.Observed.Vehicles[0].LapProgressTime = builderField(t, standings.LapProgressTime(testCase.playerProgress), schema.FreshnessFresh)
 			final.Observed.Vehicles[0].EstimatedLapTime = builderField(t, standings.LapTime(100), schema.FreshnessFresh)
 			final.Observed.Vehicles[0].LapDistance = builderField(t, standings.LapDistance(testCase.playerDistance), schema.FreshnessFresh)
@@ -234,6 +241,7 @@ func TestBuildRelativeTieBreaksByVehicleIDAndNeverDuplicates(t *testing.T) {
 	if !ok {
 		t.Fatal("missing final state")
 	}
+	final.Observed.TrackLength = builderPresent(standings.LapDistance(1000))
 	final.Observed.Vehicles[1].LapDistance = builderField(t, standings.LapDistance(100), schema.FreshnessFresh)
 	final.Observed.Vehicles[2].LapDistance = builderField(t, standings.LapDistance(100), schema.FreshnessFresh)
 	rows := BuildRelative(final)
@@ -250,8 +258,8 @@ func TestBuildRelativeTieBreaksByVehicleIDAndNeverDuplicates(t *testing.T) {
 			player = index
 		}
 	}
-	if player < 2 || rows[player-2].VehicleID != "vehicle-002" || rows[player-1].VehicleID != "vehicle-001" {
-		t.Fatalf("tie order must be ID deterministic, far to near ahead: %#v", rows)
+	if player < 2 || rows[0].VehicleID != "vehicle-001" || rows[1].VehicleID != "vehicle-002" {
+		t.Fatalf("tie order must be ID deterministic, near to far ahead: %#v", rows)
 	}
 }
 

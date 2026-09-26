@@ -1,5 +1,6 @@
 import type { WidgetViewModelBase } from "../../core/widget-definition";
 import type { WidgetColumnV3 } from "../shared/widget-column";
+import type { StandingsClassScope, StandingsClassificationMode } from "./standings-content";
 
 export type StandingsRowViewModel = {
   id: string;
@@ -22,6 +23,10 @@ export type StandingsRowViewModel = {
   currentLapText: string;
   lastLapText: string;
   bestLapText: string;
+  /** Fresh numeric authority for lap events; absent values never trigger motion. */
+  bestLapSeconds?: number;
+  /** Fresh race gap to the common leader; absent for pits, lapped or invalid rows. */
+  battleGapSeconds?: number;
   pitText: string;
   tireCompound: string;
   isPlayer: boolean;
@@ -34,14 +39,22 @@ export type StandingsInfoValue = { text: string; stale?: boolean };
 
 export type StandingsViewModel = WidgetViewModelBase & {
   type: "standings";
+  /** Content scope used by the shared renderer; absent on legacy V1 models. */
+  classScope?: StandingsClassScope;
+  /** Classification used by the shared renderer; independent from visual style. */
+  classificationMode?: StandingsClassificationMode;
   activeClass: string;
   sessionLabel: string;
   remainingText: string;
   lapText?: string;
+  /** Player data before presentation clipping. */
+  playerRow?: StandingsRowViewModel;
   trackName?: string;
   totalRows?: number;
+  /** Fastest fresh lap over the full configured field, before row/window limits. */
+  sessionBest?: { rowId: string; seconds: number };
   /** Datos ambientales opcionales para la banda inferior; solo existen cuando
-   *  la fuente V2 los entrega (hoy LMU no los soporta — declared gap). */
+   *  la fuente V2 los entrega con calidad actual. */
   ambientTempText?: string;
   trackTempText?: string;
   windText?: string;
@@ -66,6 +79,38 @@ export function withStandingsMotionIdentity(
   return model;
 }
 
+/**
+ * Keeps the scope available to the renderer without changing the enumerable
+ * V1 projection consumed by existing shadow/comparator tests.
+ */
+export function withStandingsClassScope(
+  model: StandingsViewModel,
+  classScope: StandingsClassScope,
+): StandingsViewModel {
+  Object.defineProperty(model, "classScope", {
+    value: classScope,
+    configurable: true,
+    enumerable: false,
+  });
+  return model;
+}
+
+/**
+ * Keeps the classification available to renderers without changing the
+ * enumerable legacy projection consumed by shadow/comparator tests.
+ */
+export function withStandingsClassificationMode(
+  model: StandingsViewModel,
+  classificationMode: StandingsClassificationMode,
+): StandingsViewModel {
+  Object.defineProperty(model, "classificationMode", {
+    value: classificationMode,
+    configurable: true,
+    enumerable: false,
+  });
+  return model;
+}
+
 export function resolveStandingsCellValue(
   row: StandingsRowViewModel,
   metricId: string,
@@ -76,7 +121,7 @@ export function resolveStandingsCellValue(
     case "driverNumber":
       return row.driverNumber;
     case "driverName":
-      return row.driverName;
+      return row.configuredDriverName ?? row.driverName;
     case "vehicleClass":
       return row.vehicleClass;
     case "gap":

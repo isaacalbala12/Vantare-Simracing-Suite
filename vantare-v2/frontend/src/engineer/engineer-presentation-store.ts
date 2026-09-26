@@ -3,6 +3,7 @@ export const ENGINEER_STREAM_EVENT = "engineer:stream";
 export type EngineerLocale = "es" | "en" | "it" | "pt-BR";
 export type EngineerRole = "spotter" | "engineer";
 export type EngineerSeverity = "info" | "warning" | "critical";
+type EngineerPresentationSource = "telemetry-core" | "voice-input" | "performance-sensor";
 
 export type EngineerPresentation = {
   version: 1;
@@ -11,14 +12,14 @@ export type EngineerPresentation = {
   severity: EngineerSeverity;
   textKey: string;
   text: string;
-  voiceText: string;
+  voiceText?: string;
   locale: EngineerLocale;
   role: EngineerRole;
   channel: EngineerRole;
   priority: number;
   createdAt: number;
   expiresAt: number;
-  source: "telemetry-core";
+  source: EngineerPresentationSource;
 };
 
 type TimerHandle = ReturnType<typeof setTimeout>;
@@ -75,6 +76,12 @@ function readFiniteNumber(value: unknown, field: string): number {
   return value;
 }
 
+const PRESENTATION_SOURCES: readonly EngineerPresentationSource[] = [
+  "telemetry-core",
+  "voice-input",
+  "performance-sensor",
+];
+
 export function parseEngineerPresentation(input: unknown): EngineerPresentation {
   if (!isRecord(input) || input.version !== 1) {
     throw new Error("unsupported engineer presentation version");
@@ -96,14 +103,16 @@ export function parseEngineerPresentation(input: unknown): EngineerPresentation 
     severity: readBoundedString(input.severity, "severity", ["info", "warning", "critical"]) as EngineerSeverity,
     textKey: readBoundedString(input.textKey, "textKey"),
     text: readBoundedString(input.text, "text"),
-    voiceText: readBoundedString(input.voiceText, "voiceText"),
+    voiceText: input.voiceText === undefined
+      ? undefined
+      : readBoundedString(input.voiceText, "voiceText"),
     locale: readBoundedString(input.locale, "locale", ["es", "en", "it", "pt-BR"]) as EngineerLocale,
     role,
     channel,
     priority: readFiniteNumber(input.priority, "priority"),
     createdAt,
     expiresAt,
-    source: readBoundedString(input.source, "source", ["telemetry-core"]) as "telemetry-core",
+    source: readBoundedString(input.source, "source", PRESENTATION_SOURCES) as EngineerPresentationSource,
   };
 }
 

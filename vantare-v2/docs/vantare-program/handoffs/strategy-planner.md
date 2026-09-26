@@ -1,5 +1,23 @@
 # Handoff vivo — Strategy Planner
 
+## #1393/#1397 · reconciliación local con Nightly (2026-09-26)
+
+La rama aislada `vantareapp/isa-1393-nightly-reconcile` parte del candidato
+`206793d8` y fusiona `origin/nightly` en un worktree distinto, sin tocar las
+ramas originales de #1393 y #1397. Los tres conflictos se resolvieron
+conservando ambos ADR, regenerando el roadmap desde `plan.md` y alineando
+`go.mod` con Wails beta.24; `go mod tidy -diff` no propone cambios.
+El cambio de runtime dejó bloqueado un test del arnés visual que importaba
+dinámicamente el mock completo desde `vi.mock`. El test ahora invoca el mock
+directamente a través del transporte del cliente; la prueba independiente
+`analysis-client.test.ts` conserva la comprobación de la llamada nativa.
+Tras el cambio: `pnpm --dir frontend test` pasa con 530 archivos, 4879 tests
+aprobados y dos omitidos, más 4 tests del presupuesto OverlayFrame; typecheck
+y lint pasan. `pnpm --dir frontend build`, `go test ./...`, vet focal y los
+tests del digest también pasaron en este merge antes del ajuste del test.
+La fusión sigue siendo un **candidato aislado**: no acredita E01–E08 en Wails,
+precisión T19–T21, aceptación visual humana ni integración/promoción de canal.
+
 ## T22 · build localdev del candidato con GT3 (2026-09-26)
 
 Sobre HEAD `d457cf04`, `scripts/build-local-development.ps1` pasó con 1156

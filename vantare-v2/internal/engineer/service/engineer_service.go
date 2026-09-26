@@ -79,6 +79,7 @@ type EngineerService struct {
 	connected                 bool
 	source                    string
 	spotterEnabled            bool
+	spotterAvailability       SpotterAvailability
 	legacySpotter             bool
 	legacyFamilies            bool
 	sensitivity               string
@@ -119,10 +120,12 @@ type EngineerService struct {
 	// Audio playback opcional. El puerto productivo resuelve una ruta ya
 	// disponible y la reproduce con contexto cancelable. La síntesis TTS no
 	// pertenece a este corte y nunca debe bloquear este resolver.
-	audioPlayer   AudioPlayer
-	audioResolver AudioResolver
-	audioConfig   *audio.AudioConfig
-	audioRouter   *audio.AudioRouter
+	deliveryJournal deliveryJournal
+	audioTestCancel context.CancelFunc
+	audioPlayer     AudioPlayer
+	audioResolver   AudioResolver
+	audioConfig     *audio.AudioConfig
+	audioRouter     *audio.AudioRouter
 
 	deliveryPort    delivery.Port
 	deliveryMetrics *delivery.Metrics
@@ -262,6 +265,7 @@ func NewEngineerService(emitter EventEmitter) *EngineerService {
 		connected:                 false,
 		source:                    "telemetry-core",
 		spotterEnabled:            true,
+		spotterAvailability:       SpotterAvailability{State: SpotterAvailabilityWaiting, Reason: "source"},
 		sensitivity:               "normal",
 		outputModes:               defaultOutputModes(),
 		subtitlesEnabled:          true,
@@ -621,6 +625,9 @@ func (s *EngineerService) Locale() presentation.Locale {
 // Stop cancels the running loops and waits for them to terminate.
 func (s *EngineerService) Stop() {
 	s.mu.Lock()
+	if s.audioTestCancel != nil {
+		s.audioTestCancel()
+	}
 	if s.scheduler != nil {
 		s.scheduler.Cancel(messagepolicy.ReasonLifecycleBoundary)
 	}
@@ -633,6 +640,7 @@ func (s *EngineerService) Stop() {
 	}
 	s.running = false
 	s.connected = false
+	s.resetSpotterAvailabilityLocked()
 	s.advancePresentationLifecycleLocked()
 	s.emitStatusLocked()
 
@@ -700,6 +708,7 @@ func (s *EngineerService) getStatusLocked() EngineerStatus {
 		Source:                s.source,
 		PresentationLifecycle: s.presentationLifecycle,
 		SpotterEnabled:        s.spotterEnabled,
+		SpotterAvailability:   s.spotterAvailability,
 		Sensitivity:           s.sensitivity,
 		OutputModes:           s.outputModesSnapshotLocked(),
 		SubtitlesEnabled:      s.subtitlesEnabled && s.visualPresentationEnabled,
@@ -754,6 +763,15 @@ func (s *EngineerService) SetSubtitlesEnabled(enabled bool) {
 	s.emitStatusLocked()
 }
 
+// SubtitlesPreference returns the configured subtitle toggle, before the
+// performance visual gate is applied. Status().SubtitlesEnabled is the
+// effective value and must not be persisted as the user's preference.
+func (s *EngineerService) SubtitlesPreference() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.subtitlesEnabled
+}
+
 // advancePresentationLifecycleLocked invalidates visual output without
 // inventing a frontend TTL. Every status transport carries the generation so
 // Desktop and OBS clear the same canonical presentation at source/session
@@ -763,8 +781,20 @@ func (s *EngineerService) advancePresentationLifecycleLocked() {
 	s.activePresentation = nil
 	// A buffered notification belongs to the generation being invalidated.
 	// Drain it before publishing the new status; otherwise an SSE select could
-	// observe the clear first and then resurrect the stale message.
+	// observe the clear first and then resurrect the stale message. The same
+	// holds for the ordered stream: a full streamSubs buffer would drop the
+	// post-generation status and keep replaying stale presentations.
 	for _, subscriber := range s.subs {
+		for {
+			select {
+			case <-subscriber:
+				continue
+			default:
+			}
+			break
+		}
+	}
+	for _, subscriber := range s.streamSubs {
 		for {
 			select {
 			case <-subscriber:
@@ -852,7 +882,11 @@ func (s *EngineerService) SetEnabled(enabled bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if enabled && s.audioTestCancel != nil {
+		s.audioTestCancel()
+	}
 	s.enabled = enabled
+	s.resetSpotterAvailabilityLocked()
 	s.syncLegacyRuntimeLocked()
 	if !enabled {
 		s.connected = false
@@ -874,6 +908,7 @@ func (s *EngineerService) SetSpotterEnabled(enabled bool) error {
 	defer s.mu.Unlock()
 
 	s.spotterEnabled = enabled
+	s.resetSpotterAvailabilityLocked()
 	s.syncLegacyRuntimeLocked()
 	if !enabled {
 		if s.activeDelivery != nil && s.activeDelivery.isSpotter() {
@@ -1048,6 +1083,7 @@ func (s *EngineerService) ConsumeSourceStatus(status engineerprojection.SourceSt
 		return nil
 	}
 	if !status.State.Available() || reconnectBoundary {
+		s.resetSpotterAvailabilityLocked()
 		s.markReconnectBoundaryLocked()
 		s.connected = false
 		s.advancePresentationLifecycleLocked()
@@ -1132,6 +1168,7 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 	if s.spotterEnabled && !s.legacySpotter && s.spotterProducer != nil && s.radioBus != nil {
 		message, emit, err := s.spotterProducer.Evaluate(snapshot)
 		if err == nil {
+			s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityReady}
 			processed = true
 			if emit {
 				result, submitErr := s.radioBus.Submit(message)
@@ -1149,6 +1186,7 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 				}
 			}
 		} else if errors.Is(err, radiospotter.ErrObservationNotReady) {
+			s.setSpotterUnavailableLocked(err)
 			// Capability/identity loss invalidates both policy context and any
 			// already selected radio item. Keeping the bus would let old evidence
 			// reach started after the producer has failed closed.
@@ -1163,9 +1201,12 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 	if s.legacySpotter && s.spotterEnabled {
 		frame, err := s.input.FrameFor(projectioninput.FamilySpotter, snapshot)
 		if err == nil {
+			s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityReady}
 			s.runtime.ProcessSpotterFrame(frame.TimestampUnixMS, frame)
 			processed = true
-		} else if !errors.Is(err, projectioninput.ErrObservationNotReady) {
+		} else if errors.Is(err, projectioninput.ErrObservationNotReady) {
+			s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityUnavailable, Reason: "spatial"}
+		} else {
 			s.connected = false
 			s.lastError = err.Error()
 			s.emitStatusLocked()
@@ -1252,6 +1293,32 @@ func (s *EngineerService) ConsumeObservation(snapshot engineerprojection.Observa
 	return nil
 }
 
+// resetSpotterAvailabilityLocked invalidates availability evidence at a
+// lifecycle boundary: a disabled Engineer or Spotter keeps the disabled state,
+// otherwise the service waits for fresh spatial evidence from the source.
+func (s *EngineerService) resetSpotterAvailabilityLocked() {
+	if !s.enabled || !s.spotterEnabled {
+		s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityDisabled}
+		return
+	}
+	s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityWaiting, Reason: "source"}
+}
+
+func (s *EngineerService) setSpotterUnavailableLocked(err error) {
+	var notReady *radiospotter.ObservationNotReadyError
+	if !errors.As(err, &notReady) {
+		s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityUnavailable, Reason: "spatial"}
+		return
+	}
+	reason := string(notReady.Reason)
+	switch notReady.Reason {
+	case radiospotter.UnavailableContext, radiospotter.UnavailablePitLane, radiospotter.UnavailableLowSpeed:
+		s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityWaiting, Reason: reason}
+	default:
+		s.spotterAvailability = SpotterAvailability{State: SpotterAvailabilityUnavailable, Reason: reason}
+	}
+}
+
 // ConsumeFact applies ordered lifecycle facts without turning facts into
 // telemetry values. Connection recovery remains pending until a fresh snapshot
 // arrives.
@@ -1282,6 +1349,7 @@ func (s *EngineerService) ConsumeFact(fact engineerprojection.FactEnvelopeV1) er
 
 	switch fact.Fact.Kind {
 	case engineerprojection.FactSessionStarted, engineerprojection.FactDriverChanged:
+		s.resetSpotterAvailabilityLocked()
 		s.advancePresentationLifecycleLocked()
 		s.runtime.Reset()
 		s.queue.Clear()
@@ -1291,6 +1359,7 @@ func (s *EngineerService) ConsumeFact(fact engineerprojection.FactEnvelopeV1) er
 		}
 		s.cancelDeliveryLocked(delivery.ErrLifecycleBoundary)
 	case engineerprojection.FactSessionEnded, engineerprojection.FactConnectionLost:
+		s.resetSpotterAvailabilityLocked()
 		s.markReconnectBoundaryLocked()
 		s.connected = false
 		s.advancePresentationLifecycleLocked()
@@ -1303,6 +1372,7 @@ func (s *EngineerService) ConsumeFact(fact engineerprojection.FactEnvelopeV1) er
 		s.cancelDeliveryLocked(delivery.ErrLifecycleBoundary)
 	case engineerprojection.FactConnectionRecovered:
 		// A recovery fact is not proof that a usable observation exists.
+		s.resetSpotterAvailabilityLocked()
 		s.connected = false
 	}
 	s.emitStatusLocked()
@@ -1384,6 +1454,10 @@ type EngineerPolicyMetrics struct {
 func (s *EngineerService) Health() EngineerHealth {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	return s.healthLocked()
+}
+
+func (s *EngineerService) healthLocked() EngineerHealth {
 	var policyMetrics EngineerPolicyMetrics
 	if s.scheduler != nil {
 		state := s.scheduler.State()

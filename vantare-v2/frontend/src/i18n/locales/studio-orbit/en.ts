@@ -1,5 +1,10 @@
+import { steeringWheelNames } from "./steering-wheel-names";
+
 /** `studio.*` catalogue for Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
 export const studioOrbitEn: Record<string, string> = {
+  ...steeringWheelNames,
+  "overlay.inspector.efficiency.steeringWheel": "Steering wheel",
+  "overlay.inspector.efficiency.steeringWheel.generic": "Generic",
   "studio.inspector.content.towerPreview": "Tower Preview: fixed composition, without animations or column editing yet. Your columns are preserved for other designs. Brand and car number only appear when provided by the source. Adjust size on the canvas and row count here.",
   "studio.column.eyebrow": "Widgets",
   "studio.column.search": "Search widget…",
@@ -13,9 +18,8 @@ export const studioOrbitEn: Record<string, string> = {
   "studio.column.listAria": "Widgets in the profile",
 
   "studio.toolbar.background": "Canvas background",
-  "studio.toolbar.background.grid": "Grid",
-  "studio.toolbar.background.gradient": "Gradient",
-  "studio.toolbar.background.black": "Black",
+  "studio.toolbar.background.themeGroup": "Theme",
+  "studio.toolbar.background.otherGroup": "Other backgrounds",
   "studio.toolbar.wallpaper": "Own background",
   "studio.toolbar.wallpaper.title": "Your backgrounds",
   "studio.toolbar.wallpaper.add": "Add image…",
@@ -97,9 +101,15 @@ export const studioOrbitEn: Record<string, string> = {
   "studio.inspector.design.system": "System",
   "studio.inspector.design.variant": "Design",
   "studio.inspector.design.none": "No design applied",
+  "studio.inspector.content.playerWindow": "Podium and player window",
+  "studio.inspector.content.windowAround": "Drivers around player",
   "studio.inspector.content.rows": "Rows",
   "studio.inspector.content.width": "Width",
   "studio.inspector.content.align": "Alignment",
+  "studio.inspector.content.nameFormat": "Name",
+  "studio.inspector.content.nameFormat.full": "Full",
+  "studio.inspector.content.nameFormat.initial": "F. Surname",
+  "studio.inspector.content.nameFormat.surname": "Surname",
   "studio.inspector.content.align.left": "Left",
   "studio.inspector.content.align.right": "Right",
   "studio.inspector.content.width.sm": "Narrow",
@@ -147,8 +157,6 @@ export const studioOrbitEn: Record<string, string> = {
   "overlay.inspector.standings.showSessionHeader": "Show session header",
   "overlay.inspector.standings.showBrand": "Show Vantare brand",
   "overlay.inspector.brand.required": "Mandatory brand: always visible on this plan",
-  "overlay.inspector.efficiency.headerFirst": "Header information 1",
-  "overlay.inspector.efficiency.headerSecond": "Header information 2",
   "overlay.inspector.efficiency.showSessionFooter": "Show session footer",
   "overlay.inspector.efficiency.footerFirst": "Footer information 1",
   "overlay.inspector.efficiency.footerSecond": "Footer information 2",

@@ -230,6 +230,31 @@ describe("parseProfileDocumentV3", () => {
     expect(memory?.baseSettings.accentColor).toBe("#8cf");
   });
 
+  it("normalizes Efficiency aliases in the default system, widget and memory keys", () => {
+    const widget = validWidget("delta-efficiency", "delta");
+    widget.visual = {
+      ...widget.visual,
+      systemId: "vantare-efficiency" as never,
+      systemMemories: {
+        efficiency: {
+          systemVersion: 1,
+          configVersion: 1,
+          baseSettings: { accentColor: "#8cf" },
+          appearanceOverrides: {},
+        },
+      } as never,
+    };
+    const document = parseProfileDocumentV3({
+      ...minimalDocument(),
+      defaultVisualSystemId: "efficiency",
+      layouts: { general: { type: "general", widgets: [widget] } },
+    });
+
+    expect(document.defaultVisualSystemId).toBe("vantare-functional");
+    expect(document.layouts.general.widgets[0]?.visual.systemId).toBe("vantare-functional");
+    expect(document.layouts.general.widgets[0]?.visual.systemMemories).toHaveProperty("vantare-functional");
+  });
+
   it.each([
     ["unknown system", { "unknown-system": {} }, "layouts.general.widgets[0].visual.systemMemories.unknown-system"],
     [
@@ -535,5 +560,21 @@ describe("cloneProfileDocumentV3", () => {
     const cloned = cloneProfileDocumentV3(original);
     cloned.name = "mutated";
     expect(original.name).toBe("Minimal V3");
+  });
+});
+
+describe("inherited design-system keys", () => {
+  it.each(["constructor", "__proto__", " CONSTRUCTOR "])("rejects %s at every profile input boundary", (systemId) => {
+    for (const version of [3, 4] as const) {
+      const parse = version === 3 ? parseProfileDocumentV3 : parseProfileDocumentV4;
+      const document = version === 3 ? minimalDocument() : migrateProfileDocumentToV4(minimalDocument()).document;
+      expect(() => parse({ ...document, defaultVisualSystemId: systemId })).toThrow(ProfileDocumentValidationError);
+      const widget = validWidget("delta-key-probe", "delta");
+      const behavior = version === 3 ? widget.behavior : { enabled: true };
+      const withVisual = (visual: unknown) => ({ ...document, layouts: { general: { type: "general", widgets: [{ ...widget, behavior, visual }] } } });
+      expect(() => parse(withVisual({ ...widget.visual, systemId }))).toThrow(ProfileDocumentValidationError);
+      const selection = { systemVersion: 1, configVersion: 1, baseSettings: {}, appearanceOverrides: {} };
+      expect(() => parse(withVisual({ ...widget.visual, systemMemories: { [systemId]: selection } }))).toThrow(ProfileDocumentValidationError);
+    }
   });
 });

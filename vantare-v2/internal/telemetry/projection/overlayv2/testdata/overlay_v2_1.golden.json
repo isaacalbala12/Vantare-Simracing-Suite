@@ -38,6 +38,9 @@
       }
     },
     "player": {
+      "lapNumber": {
+        "q": "missing"
+      },
       "id": "vehicle-000",
       "speed": {
         "v": 50,
@@ -119,39 +122,39 @@
     },
     "standings": [
       {
+        "cr": 1,
         "id": "vehicle-000",
         "position": 1,
         "classPosition": 1,
         "classId": "hypercar",
         "driver": "Driver 000",
-        "gap": {
-          "q": "fresh"
-        },
         "pit": "pit",
         "laps": 127,
-        "bestLap": {
-          "q": "missing"
-        },
-        "lastLap": {
-          "v": 91.234,
-          "q": "fresh"
-        },
-        "lapDistance": {
-          "q": "fresh"
-        },
         "groundPosition": {
           "q": "fresh"
-        }
+        },
+        "q": {
+          "q": "f",
+          "b": "m",
+          "interval": "m",
+          "intervalLaps": "m"
+        },
+        "gap": 0,
+        "bestLap": 0,
+        "lastLap": 91.234
       }
     ],
     "relative": [
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-000",
         "position": 1,
         "gap": {
           "q": "fresh"
         },
-        "groundPosition": {
+        "lapDelta": {
           "q": "fresh"
         },
         "lastLap": {
@@ -159,19 +162,21 @@
           "q": "fresh"
         },
         "side": "player",
-        "authority": "derived",
         "name": "Driver 000",
         "classId": "hypercar"
       }
     ],
     "relativeSettled": [
       {
+        "bestLap": {
+          "q": "missing"
+        },
         "id": "vehicle-000",
         "position": 1,
         "gap": {
           "q": "fresh"
         },
-        "groundPosition": {
+        "lapDelta": {
           "q": "fresh"
         },
         "lastLap": {
@@ -179,12 +184,53 @@
           "q": "fresh"
         },
         "side": "player",
-        "authority": "derived",
+        "name": "Driver 000",
+        "classId": "hypercar"
+      }
+    ],
+    "relativeSameClass": [
+      {
+        "bestLap": {
+          "q": "missing"
+        },
+        "id": "vehicle-000",
+        "position": 1,
+        "gap": {
+          "q": "fresh"
+        },
+        "lapDelta": {
+          "q": "fresh"
+        },
+        "lastLap": {
+          "v": 91.234,
+          "q": "fresh"
+        },
+        "side": "player",
         "name": "Driver 000",
         "classId": "hypercar"
       }
     ],
     "delta": {
+      "references": [
+        {
+          "requested": "personal-best",
+          "seconds": {
+            "q": "missing"
+          }
+        },
+        {
+          "requested": "session-best",
+          "seconds": {
+            "q": "missing"
+          }
+        },
+        {
+          "requested": "previous-lap",
+          "seconds": {
+            "q": "missing"
+          }
+        }
+      ],
       "seconds": {
         "q": "missing"
       },
@@ -252,6 +298,15 @@
         "q": "fresh"
       },
       "wheelDetachedCount": {
+        "q": "fresh"
+      },
+      "tyreWear": {
+        "v": [
+          0.98,
+          0.91,
+          0.87,
+          0.93
+        ],
         "q": "fresh"
       }
     },

@@ -143,12 +143,14 @@ type FrameV2 struct {
 	// reference projector publishes Relative here; only CachedProjector owns
 	// the historical authority needed to settle it.
 	RelativeSettled []RelativeRowV2 `json:"relativeSettled"`
-	Delta           DeltaViewV2     `json:"delta"`
-	Fuel            FuelViewV2      `json:"fuel"`
-	Spotter         SpotterViewV2   `json:"spotter"`
-	Damage          DamageViewV2    `json:"damage"`
-	Weather         WeatherV2       `json:"weather"`
-	Capabilities    CapabilitiesV2  `json:"capabilities"`
+	// RelativeSameClass is the independently selected, bounded immediate class window.
+	RelativeSameClass []RelativeRowV2 `json:"relativeSameClass"`
+	Delta             DeltaViewV2     `json:"delta"`
+	Fuel              FuelViewV2      `json:"fuel"`
+	Spotter           SpotterViewV2   `json:"spotter"`
+	Damage            DamageViewV2    `json:"damage"`
+	Weather           WeatherV2       `json:"weather"`
+	Capabilities      CapabilitiesV2  `json:"capabilities"`
 }
 
 type SessionV2 struct {
@@ -160,6 +162,8 @@ type SessionV2 struct {
 }
 
 type PlayerInstrumentsV2 struct {
+	// Canonical current lap of the player; distinct from completed standings laps.
+	LapNumber QValue[int32]   `json:"lapNumber,omitempty"`
 	VehicleID string          `json:"id,omitempty"`
 	Speed     QValue[float64] `json:"speed"`
 	RPM       QValue[float64] `json:"rpm"`
@@ -215,43 +219,84 @@ type WeatherV2 struct {
 	PressureHpa QValue[float64] `json:"pressureHpa"`
 }
 
+type StandingQualityV2 struct {
+	// Timing overrides exist only in the compact wire form; QValue owns them in process.
+	Gap           Quality `json:"gap,omitempty"`
+	BestLap       Quality `json:"bestLap,omitempty"`
+	LastLap       Quality `json:"lastLap,omitempty"`
+	Q             Quality `json:"q"`
+	Position      Quality `json:"position,omitempty"`
+	ClassPosition Quality `json:"classPosition,omitempty"`
+	Pit           Quality `json:"pit,omitempty"`
+	Laps          Quality `json:"laps,omitempty"`
+	GapLaps       Quality `json:"gapLaps,omitempty"`
+	ClassGap      Quality `json:"classGap,omitempty"`
+	ClassGapLaps  Quality `json:"classGapLaps,omitempty"`
+	Interval      Quality `json:"interval,omitempty"`
+	IntervalLaps  Quality `json:"intervalLaps,omitempty"`
+}
+
 type StandingRowV2 struct {
-	VehicleID      string                   `json:"id"`
-	Position       int32                    `json:"position"`
-	ClassPosition  int32                    `json:"classPosition"`
-	ClassID        string                   `json:"classId,omitempty"`
-	DriverName     string                   `json:"driver,omitempty"`
-	CarNumber      string                   `json:"number,omitempty"`
-	GapSeconds     QValue[float64]          `json:"gap"`
-	GapLaps        int32                    `json:"gapLaps,omitempty"`
-	PitState       string                   `json:"pit,omitempty"`
-	CompletedLaps  int32                    `json:"laps,omitempty"`
-	BestLapSeconds QValue[float64]          `json:"bestLap"`
-	LastLapSeconds QValue[float64]          `json:"lastLap"`
-	LapDistance    QValue[float64]          `json:"lapDistance"`
-	GroundPosition QValue[GroundPositionV2] `json:"groundPosition"`
+	// Quality explicitly declares a base for legacy scalar fields; per-field
+	// overrides preserve mixed freshness without repeating every fresh string.
+	Quality StandingQualityV2 `json:"q,omitempty"`
+	// ClassRef is the authoritative absolute position of the class leader in
+	// this frame, never an array index. Missing reference means unknown.
+	ClassGap                  float64                  `json:"cg,omitempty"`
+	ClassGapLaps              int32                    `json:"cl,omitempty"`
+	ClassGapReferencePosition int32                    `json:"cr,omitempty"`
+	Interval                  float64                  `json:"i,omitempty"`
+	IntervalLaps              int32                    `json:"il,omitempty"`
+	VehicleID                 string                   `json:"id"`
+	Position                  int32                    `json:"position"`
+	ClassPosition             int32                    `json:"classPosition"`
+	ClassID                   string                   `json:"classId,omitempty"`
+	DriverName                string                   `json:"driver,omitempty"`
+	CarNumber                 string                   `json:"number,omitempty"`
+	GapSeconds                QValue[float64]          `json:"gap"`
+	GapLaps                   int32                    `json:"gapLaps,omitempty"`
+	PitState                  string                   `json:"pit,omitempty"`
+	CompletedLaps             int32                    `json:"laps"`
+	BestLapSeconds            QValue[float64]          `json:"bestLap"`
+	LastLapSeconds            QValue[float64]          `json:"lastLap"`
+	LapDistance               *QValue[float64]         `json:"lapDistance,omitempty"`
+	GroundPosition            QValue[GroundPositionV2] `json:"groundPosition"`
 }
 
 type RelativeRowV2 struct {
-	VehicleID      string                   `json:"id"`
-	Position       int32                    `json:"position"`
-	GapSeconds     QValue[float64]          `json:"gap"`
-	GroundPosition QValue[GroundPositionV2] `json:"groundPosition"`
-	LastLapSeconds QValue[float64]          `json:"lastLap"`
-	Side           string                   `json:"side"`
-	Authority      Authority                `json:"authority"`
-	DisplayName    string                   `json:"name,omitempty"`
-	ClassID        string                   `json:"classId,omitempty"`
+	CarNumber      string          `json:"number,omitempty"`
+	BestLapSeconds QValue[float64] `json:"bestLap"`
+	VehicleID      string          `json:"id"`
+	Position       int32           `json:"position"`
+	GapSeconds     QValue[float64] `json:"gap"`
+	// LapDelta is the classification lap difference: positive means the rival has
+	// more laps than the player, independent of physical side or temporal gap.
+	LapDelta       QValue[int32]   `json:"lapDelta"`
+	LastLapSeconds QValue[float64] `json:"lastLap"`
+	Side           string          `json:"side"`
+	Authority      Authority       `json:"authority,omitempty"`
+	DisplayName    string          `json:"name,omitempty"`
+	ClassID        string          `json:"classId,omitempty"`
+}
+
+// DeltaReferenceViewV2 resolves one widget reference request in Go.
+// Exactly three resolutions share the frame, without copying the history.
+type DeltaReferenceViewV2 struct {
+	Requested string          `json:"requested"`
+	Reference string          `json:"reference,omitempty"`
+	Seconds   QValue[float64] `json:"seconds"`
+	Authority Authority       `json:"authority,omitempty"`
 }
 
 type DeltaViewV2 struct {
-	Seconds   QValue[float64] `json:"seconds"`
-	Reference string          `json:"reference,omitempty"`
-	Requested string          `json:"requested,omitempty"`
-	Available []string        `json:"available"`
-	Trend     string          `json:"trend,omitempty"`
-	Authority Authority       `json:"authority,omitempty"`
-	History   DeltaHistoryV2  `json:"history"`
+	References []DeltaReferenceViewV2 `json:"references,omitempty"`
+	Seconds    QValue[float64]        `json:"seconds"`
+	Reference  string                 `json:"reference,omitempty"`
+	Requested  string                 `json:"requested,omitempty"`
+	Available  []string               `json:"available"`
+	Trend      string                 `json:"trend,omitempty"`
+	Authority  Authority              `json:"authority,omitempty"`
+	History    DeltaHistoryV2         `json:"history"`
 }
 
 // DeltaHistoryV2 carries the player's recent delta series. It is the player
@@ -327,10 +372,11 @@ type SpotterViewV2 struct {
 }
 
 type DamageViewV2 struct {
-	Dents              QValue[[]uint16] `json:"dents"`
-	Overheating        QValue[bool]     `json:"overheating"`
-	Detached           QValue[bool]     `json:"detached"`
-	WheelDetachedCount QValue[uint8]    `json:"wheelDetachedCount"`
+	Dents              QValue[[]uint16]   `json:"dents"`
+	Overheating        QValue[bool]       `json:"overheating"`
+	Detached           QValue[bool]       `json:"detached"`
+	WheelDetachedCount QValue[uint8]      `json:"wheelDetachedCount"`
+	TyreWear           *QValue[[]float64] `json:"tyreWear,omitempty"`
 }
 
 type CapabilityModesV2 struct {

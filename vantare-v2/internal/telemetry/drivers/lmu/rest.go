@@ -99,8 +99,9 @@ type RESTObservation struct {
 	// freshness and expiry independently: an absent or null reading is
 	// missing, a non-numeric or out-of-range one is invalid, and neither
 	// poisons the sibling fields.
-	AmbientTemp TimedField[weather.Temperature]
-	TrackTemp   TimedField[weather.Temperature]
+	AmbientTemp     TimedField[weather.Temperature]
+	TrackTemp       TimedField[weather.Temperature]
+	WetnessFraction TimedField[weather.Fraction]
 	// SessionFlag carries the conservative global flag assertion (ISA-1106):
 	// FlagYellow only on positive yellowFlagState evidence, missing
 	// otherwise. A sector-scoped flag never promotes to this global signal.
@@ -206,22 +207,23 @@ func waitContext(ctx context.Context, delay time.Duration) error {
 }
 
 type restCache struct {
-	standings      RESTEndpointSnapshot
-	sessionInfo    RESTEndpointSnapshot
-	trackName      TimedField[string]
-	sourceTime     TimedField[time.Duration]
-	sessionType    TimedField[session.Type]
-	vehicleCount   TimedField[schema.Count]
-	playerPresent  TimedField[bool]
-	playerPosition TimedField[standings.Position]
-	completedLaps  TimedField[standings.CompletedLaps]
-	pitStopCount   TimedField[pit.StopCount]
-	ambientTemp    TimedField[weather.Temperature]
-	trackTemp      TimedField[weather.Temperature]
-	sessionFlag    TimedField[session.Flag]
-	carNumbers     []restCarNumber
-	carNumbersUTC  time.Time
-	carNumbersMono monotonicStamp
+	standings       RESTEndpointSnapshot
+	sessionInfo     RESTEndpointSnapshot
+	trackName       TimedField[string]
+	sourceTime      TimedField[time.Duration]
+	sessionType     TimedField[session.Type]
+	vehicleCount    TimedField[schema.Count]
+	playerPresent   TimedField[bool]
+	playerPosition  TimedField[standings.Position]
+	completedLaps   TimedField[standings.CompletedLaps]
+	pitStopCount    TimedField[pit.StopCount]
+	ambientTemp     TimedField[weather.Temperature]
+	trackTemp       TimedField[weather.Temperature]
+	wetnessFraction TimedField[weather.Fraction]
+	sessionFlag     TimedField[session.Flag]
+	carNumbers      []restCarNumber
+	carNumbersUTC   time.Time
+	carNumbersMono  monotonicStamp
 }
 
 type restStanding struct {
@@ -244,9 +246,10 @@ type restSessionInfo struct {
 	// Session signals admitted by ISA-1106. RawMessage keeps decoding
 	// tolerant per field: absent/null is missing, a present but unusable
 	// value is invalid, and one bad field never fails its siblings.
-	AmbientTemp     json.RawMessage `json:"ambientTemp"`
-	TrackTemp       json.RawMessage `json:"trackTemp"`
-	YellowFlagState json.RawMessage `json:"yellowFlagState"`
+	AmbientTemp        json.RawMessage `json:"ambientTemp"`
+	TrackTemp          json.RawMessage `json:"trackTemp"`
+	AveragePathWetness json.RawMessage `json:"averagePathWetness"`
+	YellowFlagState    json.RawMessage `json:"yellowFlagState"`
 	// SectorFlag is accepted and ignored for the global flag assertion: a
 	// sector-scoped flag must never promote to the session-global signal.
 	// GamePhase is accepted in any shape and ignored: it is not consulted
@@ -542,13 +545,14 @@ func (cache *restCache) applyStandings(next restCache) {
 }
 
 type sessionFields struct {
-	trackName    TimedField[string]
-	sourceTime   TimedField[time.Duration]
-	sessionType  TimedField[session.Type]
-	vehicleCount TimedField[schema.Count]
-	ambientTemp  TimedField[weather.Temperature]
-	trackTemp    TimedField[weather.Temperature]
-	sessionFlag  TimedField[session.Flag]
+	trackName       TimedField[string]
+	sourceTime      TimedField[time.Duration]
+	sessionType     TimedField[session.Type]
+	vehicleCount    TimedField[schema.Count]
+	ambientTemp     TimedField[weather.Temperature]
+	trackTemp       TimedField[weather.Temperature]
+	wetnessFraction TimedField[weather.Fraction]
+	sessionFlag     TimedField[session.Flag]
 }
 
 // Plausible Celsius sanity bounds for the sessionInfo temperature readings.
@@ -567,12 +571,13 @@ func validateSessionFields(info restSessionInfo, now time.Time, elapsed monotoni
 		return sessionFields{}, errors.New("invalid LMU REST current event time")
 	}
 	fields := sessionFields{
-		sourceTime:   timedObservedAt(sourceTime, now, elapsed),
-		sessionType:  TimedField[session.Type]{Field: parseRESTSessionType(info.Session), UpdatedUTC: now, updatedMono: elapsed},
-		vehicleCount: timedValidatedAt[schema.Count](info.NumberOfVehicles, 0, maxVehicles, now, elapsed),
-		ambientTemp:  parseRESTTemperature(info.AmbientTemp, minAmbientTempC, maxAmbientTempC, now, elapsed),
-		trackTemp:    parseRESTTemperature(info.TrackTemp, minTrackTempC, maxTrackTempC, now, elapsed),
-		sessionFlag:  parseRESTSessionFlag(info.YellowFlagState, now, elapsed),
+		sourceTime:      timedObservedAt(sourceTime, now, elapsed),
+		sessionType:     TimedField[session.Type]{Field: parseRESTSessionType(info.Session), UpdatedUTC: now, updatedMono: elapsed},
+		vehicleCount:    timedValidatedAt[schema.Count](info.NumberOfVehicles, 0, maxVehicles, now, elapsed),
+		ambientTemp:     parseRESTTemperature(info.AmbientTemp, minAmbientTempC, maxAmbientTempC, now, elapsed),
+		trackTemp:       parseRESTTemperature(info.TrackTemp, minTrackTempC, maxTrackTempC, now, elapsed),
+		wetnessFraction: parseRESTWeatherNumber[weather.Fraction](info.AveragePathWetness, 0, 1, now, elapsed),
+		sessionFlag:     parseRESTSessionFlag(info.YellowFlagState, now, elapsed),
 	}
 	if info.TrackName == nil {
 		fields.trackName = timedMissingAt[string](now, elapsed)
@@ -609,6 +614,7 @@ func (cache *restCache) applySession(fields sessionFields) {
 	cache.vehicleCount = fields.vehicleCount
 	cache.ambientTemp = fields.ambientTemp
 	cache.trackTemp = fields.trackTemp
+	cache.wetnessFraction = fields.wetnessFraction
 	cache.sessionFlag = fields.sessionFlag
 }
 
@@ -731,6 +737,7 @@ func markRESTStale(cache *restCache, elapsed time.Duration, ttl time.Duration) {
 	cache.vehicleCount = staleTimedField(cache.vehicleCount, elapsed, ttl)
 	cache.ambientTemp = staleTimedField(cache.ambientTemp, elapsed, ttl)
 	cache.trackTemp = staleTimedField(cache.trackTemp, elapsed, ttl)
+	cache.wetnessFraction = staleTimedField(cache.wetnessFraction, elapsed, ttl)
 	cache.sessionFlag = staleTimedField(cache.sessionFlag, elapsed, ttl)
 	cache.playerPresent = staleTimedField(cache.playerPresent, elapsed, ttl)
 	cache.playerPosition = staleTimedField(cache.playerPosition, elapsed, ttl)
@@ -772,6 +779,7 @@ func (cache restCache) snapshot() RESTObservation {
 		PlayerPresent: cache.playerPresent, PlayerPosition: cache.playerPosition,
 		CompletedLaps: cache.completedLaps, PitStopCount: cache.pitStopCount,
 		AmbientTemp: cache.ambientTemp, TrackTemp: cache.trackTemp, SessionFlag: cache.sessionFlag,
+		WetnessFraction:      cache.wetnessFraction,
 		CarNumbers:           cache.carNumbers,
 		CarNumbersUpdatedUTC: cache.carNumbersUTC, carNumbersUpdatedMono: cache.carNumbersMono,
 	}

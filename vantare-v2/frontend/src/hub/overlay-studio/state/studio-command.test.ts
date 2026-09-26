@@ -1,4 +1,6 @@
 import { standingsDefinition } from "../../../overlay/widget-types/standings/standings-definition";
+import { relativeDefinition } from "../../../overlay/widget-types/relative/relative-definition";
+import { multiclassRelativeDefinition } from "../../../overlay/widget-types/multiclass-relative/multiclass-relative-definition";
 import { describe, expect, it } from "vitest";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
 import type { ProfileDocumentV3, WidgetInstanceV3 } from "../../../overlay/core/profile-document";
@@ -658,4 +660,50 @@ describe("applyStudioCommand", () => {
    expect(before.layouts.general!.widgets[0]!.layout.h).toBe(600);
    const changedColumn = applyStudioCommand(reduced, { type: 'widget/content', session: 'general', widgetIds: ['table'], content: { ...result.content, classScope: 'all-classes' } });
    expect(changedColumn.layouts.general!.widgets[0]!.layout).toEqual(result.layout);
+ });
+
+ it("refits the Functional relative frame when the window changes and keeps row height fixed", () => {
+   const relative = relativeDefinition.createDefault('rel');
+   relative.visual.systemId = 'vantare-functional';
+   relative.layout = { ...relative.layout, w: 430, h: 600 };
+   const before = buildDocument([relative]);
+   const wider = applyStudioCommand(before, { type: 'widget/content', session: 'general', widgetIds: ['rel'], content: { ...relative.content, rangeAhead: 8, rangeBehind: 8 } });
+   const grown = wider.layouts.general!.widgets[0]!;
+   // 3+1+3 → 8+1+8 filas a 28px fijos: +280px de marco, ancho intacto.
+   expect(grown.layout.h).toBe(30 + 17 * 28 + 30);
+   expect(grown.layout.w).toBe(430);
+   const narrower = applyStudioCommand(wider, { type: 'widget/content', session: 'general', widgetIds: ['rel'], content: { ...grown.content, rangeAhead: 1, rangeBehind: 1 } });
+   expect(narrower.layouts.general!.widgets[0]!.layout.h).toBe(30 + 3 * 28 + 30);
+   const sameWindow = applyStudioCommand(narrower, { type: 'widget/content', session: 'general', widgetIds: ['rel'], content: { ...narrower.layouts.general!.widgets[0]!.content, classScope: 'sameClass' } });
+   expect(sameWindow.layouts.general!.widgets[0]!.layout).toEqual(narrower.layouts.general!.widgets[0]!.layout);
+ });
+
+ it("refits the Functional standings frame when the driver name format narrows", () => {
+   const table = standingsDefinition.createDefault('table');
+   table.visual.systemId = 'vantare-functional';
+   const before = buildDocument([table]);
+   const columns = (table.content as { columns: Array<Record<string, unknown>> }).columns.map((column) =>
+     column.metricId === 'driverName' ? { ...column, format: { ...(column.format as object), mode: 'surname' } } : column);
+   const resized = applyStudioCommand(before, { type: 'widget/content', session: 'general', widgetIds: ['table'], content: { ...table.content, columns } });
+   const result = resized.layouts.general!.widgets[0]!;
+   // El nombre se compacta sin crear una segunda banda de cabecera: el
+   // presupuesto V1 queda en 376 × 664 px.
+   expect(result.layout.w).toBe(376);
+   expect(result.layout.h).toBe(664);
+   const restored = applyStudioCommand(resized, { type: 'widget/content', session: 'general', widgetIds: ['table'], content: table.content });
+   expect(restored.layouts.general!.widgets[0]!.layout.w).toBe(440);
+   expect(restored.layouts.general!.widgets[0]!.layout.h).toBe(664);
+ });
+
+ it("refits the Functional multiclass-relative frame when rowCount changes", () => {
+   const widget = multiclassRelativeDefinition.createDefault('mc');
+   widget.visual.systemId = 'vantare-functional';
+   const before = buildDocument([widget]);
+   const grown = applyStudioCommand(before, { type: 'widget/content', session: 'general', widgetIds: ['mc'], content: { ...widget.content, rowCount: 7 } });
+   // 5 → 7 filas a ~27px fijos: el marco crece, la fila no.
+   expect(grown.layouts.general!.widgets[0]!.layout.h).toBe(20 + 7 * 27);
+   const shrunk = applyStudioCommand(grown, { type: 'widget/content', session: 'general', widgetIds: ['mc'], content: { ...grown.layouts.general!.widgets[0]!.content, rowCount: 3 } });
+   expect(shrunk.layouts.general!.widgets[0]!.layout.h).toBe(20 + 3 * 27);
+   const sameRows = applyStudioCommand(shrunk, { type: 'widget/content', session: 'general', widgetIds: ['mc'], content: { ...shrunk.layouts.general!.widgets[0]!.content, classMode: 'same' } });
+   expect(sameRows.layouts.general!.widgets[0]!.layout).toEqual(shrunk.layouts.general!.widgets[0]!.layout);
  });

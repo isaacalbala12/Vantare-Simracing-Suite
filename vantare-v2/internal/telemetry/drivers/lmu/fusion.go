@@ -221,6 +221,7 @@ func (state *Fusion) Merge(receivedUTC time.Time, elapsed time.Duration, inputs 
 	shm := sharedEntry.Value
 	rest := restEntry.Value.REST
 	shmStamp := sharedStamp
+	result.TrackLength = fieldAt(elapsed, shmStamp, defaultFreshnessLimit, shm.TrackLength)
 	result.SourceTime = chooseSourceTime(elapsed, ruleFor(catalog.SignalSessionSourceTime), shm.SourceTime, shmStamp, rest.SourceTime.Field, timedStamp(rest.SourceTime, restStamp), &result)
 	result.TrackName = chooseField(elapsed, ruleFor(catalog.SignalSessionTrackName), shm.TrackName, shmStamp, rest.TrackName.Field, timedStamp(rest.TrackName, restStamp), &result)
 	result.SessionType = chooseField(elapsed, ruleFor(catalog.SignalSessionType), shm.SessionType, shmStamp, rest.SessionType.Field, timedStamp(rest.SessionType, restStamp), &result)
@@ -234,6 +235,8 @@ func (state *Fusion) Merge(receivedUTC time.Time, elapsed time.Duration, inputs 
 	// widening the TTL.
 	result.AmbientTemp = scopedSessionField(rest.AmbientTemp, restStamp, elapsed, state.sessionFloor)
 	result.TrackTemp = scopedSessionField(rest.TrackTemp, restStamp, elapsed, state.sessionFloor)
+	result.RainFraction = ageGridField(elapsed, shmStamp, shm.SourceTime.Freshness() == schema.FreshnessStale, shm.RainFraction)
+	result.WetnessFraction = scopedSessionField(rest.WetnessFraction, restStamp, elapsed, state.sessionFloor)
 	result.SessionFlag = scopedSessionField(rest.SessionFlag, restStamp, elapsed, state.sessionFloor)
 	result.Vehicles = ageVehicleGrid(elapsed, shmStamp, shm.SourceTime, shm.Vehicles)
 	overlayCarNumbers(result.Vehicles, rest, elapsed, state.sessionFloor)
@@ -378,6 +381,7 @@ func ageVehicleGrid(elapsed time.Duration, updated monotonicStamp, sourceTime sc
 		row.LocalVelocity = ageGridField(elapsed, updated, forceStale, row.LocalVelocity)
 		row.Orientation = ageGridField(elapsed, updated, forceStale, row.Orientation)
 		row.Damage = ageGridField(elapsed, updated, forceStale, row.Damage)
+		row.TyreWear = ageGridField(elapsed, updated, forceStale, row.TyreWear)
 		result[index] = row
 	}
 	return result

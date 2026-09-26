@@ -1,4 +1,21 @@
 import { parseStandingsContent } from "../../../overlay/widget-types/standings/standings-content";
+import { resolveStandingsMinimumSize } from "../../../overlay/widget-types/standings/standings-frame-layout";
+import {
+  getEnabledRelativeColumns,
+  parseRelativeContent,
+} from "../../../overlay/widget-types/relative/relative-content";
+import {
+  computeRelativeConfiguredRowCount,
+  computeRelativeIntrinsicHeight,
+  computeRelativeIntrinsicWidth,
+} from "../../../overlay/widget-types/relative/relative-renderer-helpers";
+import {
+  EFFICIENCY_RELATIVE_BASE_WIDTH,
+  resolveEfficiencyRelativeBaseHeight,
+} from "../../../overlay/design-systems/vantare-efficiency/relative-layout";
+import { multiclassRelativeDefinition } from "../../../overlay/widget-types/multiclass-relative/multiclass-relative-definition";
+import { resolveEfficiencyMulticlassHeight } from "../../../overlay/design-systems/vantare-efficiency/multiclass-layout";
+import { isEfficiencySystem } from "../../../overlay/core/design-system-names";
 import {
   parseProfileDocumentV3,
   ProfileDocumentValidationError,
@@ -102,7 +119,7 @@ function withSessionLayout(
   session: SessionLayoutType,
   updater: (widgets: WidgetInstanceV3[]) => WidgetInstanceV3[],
 ): ProfileDocumentV3 {
-  const next = materializeSessionLayout(structuredClone(document), session);
+  const next = materializeSessionLayout(document, session);
   const layout = next.layouts[session] ?? resolveSessionLayout(next, session);
   layout.widgets = updater(layout.widgets);
   next.layouts[session] = layout;
@@ -304,6 +321,57 @@ function applyWidgetContent(document: ProfileDocumentV3, command: Extract<Studio
     const content = structuredClone(command.content);
     return widgets.map((widget) => {
       if (!targets.has(widget.id)) return widget;
+      if (widget.type === "relative") {
+        // The relative window drives the frame: when the configured row
+        // count changes the box grows or shrinks — the row never changes height.
+        // In Eficiencia the row is 28px tall at scale 1, so height derives
+        // from content at the box's own scale (w/430).
+        const previous = parseRelativeContent(widget.content);
+        const next = parseRelativeContent(content);
+        const efficiency = isEfficiencySystem(widget.visual.systemId);
+        const settings = { ...widget.visual.baseSettings, ...widget.visual.appearanceOverrides };
+        const rowsOf = (value: ReturnType<typeof parseRelativeContent>) => computeRelativeConfiguredRowCount(value);
+        if (efficiency) {
+          const scale = widget.layout.w > 0 ? widget.layout.w / EFFICIENCY_RELATIVE_BASE_WIDTH : 1;
+          const h = Math.ceil(resolveEfficiencyRelativeBaseHeight(rowsOf(next), settings) * scale);
+          if (rowsOf(next) === rowsOf(previous)) return { ...widget, content };
+          return { ...widget, content, layout: { ...widget.layout, h } };
+        }
+        const intrinsicSize = (value: ReturnType<typeof parseRelativeContent>) => ({
+          w: computeRelativeIntrinsicWidth(getEnabledRelativeColumns(value)),
+          h: computeRelativeIntrinsicHeight(value.rowHeightMode, rowsOf(value)),
+        });
+        const size = intrinsicSize(next);
+        const before = intrinsicSize(previous);
+        if (size.w === before.w && size.h === before.h) return { ...widget, content };
+        return { ...widget, content, layout: { ...widget.layout, w: size.w, h: size.h } };
+      }
+      if (widget.type === "multiclass-relative" && isEfficiencySystem(widget.visual.systemId)) {
+        // Misma regla que el relative: las filas son fijas y el marco crece
+        // o se encoge con rowCount.
+        const before = multiclassRelativeDefinition.parseContent(widget.content).rowCount;
+        const next = multiclassRelativeDefinition.parseContent(content).rowCount;
+        if (next === before) return { ...widget, content };
+        return { ...widget, content, layout: { ...widget.layout, h: resolveEfficiencyMulticlassHeight(next) } };
+      }
+      if (widget.type === "standings" && isEfficiencySystem(widget.visual.systemId)) {
+        // En Eficiencia el marco sigue al contenido: si el tamaño intrínseco
+        // cambia (rowCount, formato de nombre, columnas), la caja se re-encaja.
+        const before = resolveStandingsMinimumSize(widget);
+        const nextWidget = { ...widget, content };
+        const after = resolveStandingsMinimumSize(nextWidget);
+        if (before?.width === after?.width && before?.height === after?.height) {
+          return nextWidget;
+        }
+        return {
+          ...nextWidget,
+          layout: {
+            ...widget.layout,
+            w: after?.width ?? widget.layout.w,
+            h: after?.height ?? widget.layout.h,
+          },
+        };
+      }
       if (widget.type !== "standings" || widget.visual.systemId !== "vantare-crystal") return { ...widget, content };
       const previousRows = parseStandingsContent(widget.content).rowCount;
       const rows = parseStandingsContent(content).rowCount;
@@ -448,7 +516,7 @@ function applyWidgetApplyDesign(
 }
 
 function applySessionCopy(document: ProfileDocumentV3, command: Extract<StudioCommand, { type: "session/copy" }>) {
-  return copySessionLayout(structuredClone(document), command.source, command.target);
+  return copySessionLayout(document, command.source, command.target);
 }
 
 function applyDocumentLayoutViewport(

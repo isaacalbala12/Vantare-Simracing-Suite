@@ -298,13 +298,13 @@ func TestStrategySignalAuditV1HasExactReviewedProductionSurfaces(t *testing.T) {
 		fields []string
 	}{
 		{name: "lmu.Observation", typeOf: reflect.TypeOf(Observation{}), fields: []string{
-			"Source", "ReceivedUTC", "Compatibility", "Fingerprint", "ClockChange", "SourceTime", "EndTime", "MaximumLaps", "TrackName", "SessionType", "VehicleCount", "PlayerPresent", "VehicleName", "LapNumber", "Gear", "EngineRPM", "SpeedMPS", "Throttle", "Brake", "Clutch", "PlayerPosition", "CompletedLaps", "PitStopCount", "InPit", "Fuel", "Damage", "AmbientTemp", "TrackTemp", "SessionFlag", "Vehicles", "REST", "MatrixVersion", "Decisions", "Conflicts",
+			"Source", "ReceivedUTC", "Compatibility", "Fingerprint", "ClockChange", "SourceTime", "EndTime", "MaximumLaps", "TrackName", "TrackLength", "SessionType", "VehicleCount", "PlayerPresent", "VehicleName", "LapNumber", "Gear", "EngineRPM", "SpeedMPS", "Throttle", "Brake", "Clutch", "PlayerPosition", "CompletedLaps", "PitStopCount", "InPit", "Fuel", "Damage", "AmbientTemp", "TrackTemp", "RainFraction", "WetnessFraction", "SessionFlag", "Vehicles", "REST", "MatrixVersion", "Decisions", "Conflicts",
 		}},
 		{name: "core.VehicleState", typeOf: reflect.TypeOf(telemetrycore.VehicleState{}), fields: []string{
-			"Identity", "DriverName", "Name", "VehicleClass", "CarNumber", "Player", "Sector", "LapDistance", "LapProgressTime", "BestLapTime", "LastLapTime", "EstimatedLapTime", "LapNumber", "Gear", "EngineRPM", "SpeedMPS", "Throttle", "Brake", "Clutch", "Position", "CompletedLaps", "InPit", "PitStopCount", "PenaltyCount", "TimeBehindLeader", "LapsBehindLeader", "TimeBehindNext", "LapsBehindNext", "Fuel", "DeltaBest", "WorldPosition", "LocalVelocity", "Orientation", "Damage",
+			"Identity", "DriverName", "Name", "VehicleClass", "CarNumber", "Player", "Sector", "LapDistance", "LapProgressTime", "BestLapTime", "LastLapTime", "EstimatedLapTime", "LapNumber", "Gear", "EngineRPM", "SpeedMPS", "Throttle", "Brake", "Clutch", "Position", "CompletedLaps", "InPit", "PitStopCount", "PenaltyCount", "TimeBehindLeader", "LapsBehindLeader", "TimeBehindNext", "LapsBehindNext", "Fuel", "DeltaBest", "WorldPosition", "LocalVelocity", "Orientation", "Damage", "TyreWear",
 		}},
 		{name: "core.ObservedState", typeOf: reflect.TypeOf(telemetrycore.ObservedState{}), fields: []string{
-			"SourceTime", "EndTime", "MaximumLaps", "TrackName", "SessionType", "VehicleCount", "PlayerPresent", "AmbientTemp", "TrackTemp", "SessionFlag", "Vehicles",
+			"SourceTime", "EndTime", "MaximumLaps", "TrackName", "SessionType", "VehicleCount", "PlayerPresent", "AmbientTemp", "TrackTemp", "RainFraction", "WetnessFraction", "SessionFlag", "Vehicles", "TrackLength",
 		}},
 		{name: "strategy.SnapshotV1", typeOf: reflect.TypeOf(strategyprojection.SnapshotV1{}), fields: []string{"Metadata", "PayloadV1"}},
 		{name: "strategy.PayloadV1", typeOf: reflect.TypeOf(strategyprojection.PayloadV1{}), fields: []string{"Capabilities", "TrackName", "SessionType", "SourceTime", "EndTime", "Remaining", "MaximumLaps", "Player"}},
@@ -327,7 +327,6 @@ func TestStrategySignalAuditV1HasExactReviewedProductionSurfaces(t *testing.T) {
 		"energy.virtual_energy":     {},
 		"tyres.identity":            {},
 		"tyres.compound":            {},
-		"tyres.wear":                {},
 		"tyres.corner":              {},
 		"weather.track_temperature": {},
 		"weather.rain_intensity":    {},
@@ -427,7 +426,7 @@ func strategyLiveSignalLedgerV1() []strategySignalEntryV1 {
 		unsupported("energy.virtual_energy", "FuelMult is a session fuel multiplier, not Virtual Energy"),
 		unsupported("tyres.identity", "legacy Engineer tyre fields do not identify physical tyres"),
 		unsupported("tyres.compound", "no canonical LMU compound source is admitted"),
-		unsupported("tyres.wear", "legacy Engineer wheel placeholders have unverified offsets and scale"),
+		unsupported("tyres.wear", "LMU mWear is now admitted for Overlay V2; Strategy v1 does not consume tyre wear"),
 		unsupported("tyres.corner", "wheels.Corner locates brake-temperature measurements; it is not tyre identity"),
 		unsupported("weather.ambient_temperature", "catalog signal remains LedgerExistingUnproduced"),
 		unsupported("weather.track_temperature", "historical sidecar bytes have no admitted source and unit contract"),

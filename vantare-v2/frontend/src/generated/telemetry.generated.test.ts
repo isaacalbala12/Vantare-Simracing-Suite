@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../telemetry-transport/overlay-frame-v2-store";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -69,9 +70,9 @@ describe("generated telemetry contract", () => {
   it.each(OVERLAY_V2_GOLDENS)(
     "types the compact Go golden %s without a handwritten mirror",
     (relativePath) => {
-      const update = JSON.parse(
-        readFileSync(path.resolve(process.cwd(), relativePath), "utf8"),
-      ) as OverlayUpdateV2;
+      const update = structuredClone(decodeOverlayUpdateV2(
+        JSON.parse(readFileSync(path.resolve(process.cwd(), relativePath), "utf8")),
+      )) as OverlayUpdateV2;
       expect(update.frame?.contract).toBe(2);
       // F8 poblo standings; el golden ya no lo trae vacio. Lo que este test
       // sigue comprobando es que los tipos generados cubren la fila completa.

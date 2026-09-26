@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../../telemetry-transport/overlay-frame-v2-store";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -55,6 +56,18 @@ describe("fuel strategy v2 view model", () => {
     expect(off.fuelLiters).toBe(frame.fuel.remaining.v);
   });
 
+  it("does not reinterpret Fuel as Virtual Energy before the live VE signal exists", () => {
+    const model = buildFuelStrategyViewModelV2(
+      goldenFrame(20),
+      { state: "live" },
+      fuelStrategyDefinition.parseContent({ source: "virtual-energy" }),
+    );
+    expect(model.source).toBe("virtual-energy");
+    expect(model.sourceUnavailable).toBe(true);
+    expect(model.fuelLiters).toBeUndefined();
+    expect(model.history).toEqual([]);
+  });
+
   it("preserves an empty tank as a zero and a missing tank as undefined", () => {
     const frame = goldenFrame(20);
     const empty = buildFuelStrategyViewModelV2(
@@ -93,10 +106,10 @@ describe("fuel strategy v2 view model", () => {
 });
 
 function goldenFrame(vehicles: number): OverlayFrameV2 {
-  const update = JSON.parse(readFileSync(path.resolve(
+  const update = structuredClone(decodeOverlayUpdateV2(JSON.parse(readFileSync(path.resolve(
     process.cwd(),
     `../internal/telemetry/projection/overlayv2/testdata/overlay_v2_${vehicles}.golden.json`,
-  ), "utf8")) as OverlayUpdateV2;
+  ), "utf8")))) as OverlayUpdateV2;
   if (!update.frame) throw new Error("golden frame missing");
   return update.frame;
 }

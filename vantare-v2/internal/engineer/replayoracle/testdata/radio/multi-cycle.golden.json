@@ -1,0 +1,533 @@
+{
+  "labVersion": 1,
+  "scenarioId": "multi-cycle",
+  "outcomes": [
+    {
+      "sequence": 1,
+      "step": 0,
+      "atMs": 1000,
+      "event": "submitted",
+      "family": "spotter",
+      "intent": "spotter.car_left",
+      "messageId": "spotter-1-spotter.car_left"
+    },
+    {
+      "sequence": 2,
+      "step": 0,
+      "atMs": 1000,
+      "event": "ack_queued",
+      "family": "spotter",
+      "intent": "spotter.car_left",
+      "messageId": "spotter-1-spotter.car_left"
+    },
+    {
+      "sequence": 3,
+      "step": 0,
+      "atMs": 1000,
+      "event": "ack_started",
+      "family": "spotter",
+      "intent": "spotter.car_left",
+      "messageId": "spotter-1-spotter.car_left"
+    },
+    {
+      "sequence": 4,
+      "step": 0,
+      "atMs": 1000,
+      "event": "ack_completed",
+      "family": "spotter",
+      "intent": "spotter.car_left",
+      "messageId": "spotter-1-spotter.car_left"
+    },
+    {
+      "sequence": 5,
+      "step": 1,
+      "atMs": 1351,
+      "event": "submitted",
+      "family": "timings",
+      "intent": "timings.gap_report",
+      "messageId": "families-1-timings.gap_report"
+    },
+    {
+      "sequence": 6,
+      "step": 1,
+      "atMs": 1351,
+      "event": "ack_queued",
+      "family": "timings",
+      "intent": "timings.gap_report",
+      "messageId": "families-1-timings.gap_report"
+    },
+    {
+      "sequence": 7,
+      "step": 1,
+      "atMs": 1351,
+      "event": "ack_started",
+      "family": "timings",
+      "intent": "timings.gap_report",
+      "messageId": "families-1-timings.gap_report"
+    },
+    {
+      "sequence": 8,
+      "step": 1,
+      "atMs": 1351,
+      "event": "ack_completed",
+      "family": "timings",
+      "intent": "timings.gap_report",
+      "messageId": "families-1-timings.gap_report"
+    },
+    {
+      "sequence": 9,
+      "step": 2,
+      "atMs": 4351,
+      "event": "submitted",
+      "family": "spotter",
+      "intent": "spotter.still_there",
+      "messageId": "spotter-2-spotter.still_there"
+    },
+    {
+      "sequence": 10,
+      "step": 2,
+      "atMs": 4351,
+      "event": "rejected",
+      "family": "timings",
+      "intent": "timings.gap_report",
+      "reason": "queue_pressure_or_cooldown",
+      "messageId": "families-2-timings.gap_report"
+    },
+    {
+      "sequence": 11,
+      "step": 2,
+      "atMs": 4351,
+      "event": "ack_queued",
+      "family": "spotter",
+      "intent": "spotter.still_there",
+      "messageId": "spotter-2-spotter.still_there"
+    },
+    {
+      "sequence": 12,
+      "step": 2,
+      "atMs": 4351,
+      "event": "ack_started",
+      "family": "spotter",
+      "intent": "spotter.still_there",
+      "messageId": "spotter-2-spotter.still_there"
+    },
+    {
+      "sequence": 13,
+      "step": 2,
+      "atMs": 4351,
+      "event": "ack_completed",
+      "family": "spotter",
+      "intent": "spotter.still_there",
+      "messageId": "spotter-2-spotter.still_there"
+    },
+    {
+      "sequence": 14,
+      "step": 3,
+      "atMs": 4751,
+      "event": "rejected",
+      "family": "timings",
+      "intent": "timings.gap_report",
+      "reason": "queue_pressure_or_cooldown",
+      "messageId": "families-3-timings.gap_report"
+    },
+    {
+      "sequence": 15,
+      "step": 4,
+      "atMs": 4902,
+      "event": "submitted",
+      "family": "spotter",
+      "intent": "spotter.all_clear",
+      "messageId": "spotter-3-spotter.all_clear"
+    },
+    {
+      "sequence": 16,
+      "step": 4,
+      "atMs": 4902,
+      "event": "rejected",
+      "family": "timings",
+      "intent": "timings.gap_report",
+      "reason": "queue_pressure_or_cooldown",
+      "messageId": "families-4-timings.gap_report"
+    },
+    {
+      "sequence": 17,
+      "step": 4,
+      "atMs": 4902,
+      "event": "ack_queued",
+      "family": "spotter",
+      "intent": "spotter.all_clear",
+      "messageId": "spotter-3-spotter.all_clear"
+    },
+    {
+      "sequence": 18,
+      "step": 4,
+      "atMs": 4902,
+      "event": "ack_started",
+      "family": "spotter",
+      "intent": "spotter.all_clear",
+      "messageId": "spotter-3-spotter.all_clear"
+    },
+    {
+      "sequence": 19,
+      "step": 4,
+      "atMs": 4902,
+      "event": "ack_completed",
+      "family": "spotter",
+      "intent": "spotter.all_clear",
+      "messageId": "spotter-3-spotter.all_clear"
+    },
+    {
+      "sequence": 20,
+      "step": 5,
+      "atMs": 4903,
+      "event": "submitted",
+      "family": "spotter",
+      "intent": "spotter.car_right",
+      "messageId": "spotter-4-spotter.car_right"
+    },
+    {
+      "sequence": 21,
+      "step": 5,
+      "atMs": 4903,
+      "event": "rejected",
+      "family": "timings",
+      "intent": "timings.gap_report",
+      "reason": "queue_pressure_or_cooldown",
+      "messageId": "families-5-timings.gap_report"
+    },
+    {
+      "sequence": 22,
+      "step": 5,
+      "atMs": 4903,
+      "event": "ack_queued",
+      "family": "spotter",
+      "intent": "spotter.car_right",
+      "messageId": "spotter-4-spotter.car_right"
+    },
+    {
+      "sequence": 23,
+      "step": 5,
+      "atMs": 4903,
+      "event": "ack_started",
+      "family": "spotter",
+      "intent": "spotter.car_right",
+      "messageId": "spotter-4-spotter.car_right"
+    },
+    {
+      "sequence": 24,
+      "step": 5,
+      "atMs": 4903,
+      "event": "ack_completed",
+      "family": "spotter",
+      "intent": "spotter.car_right",
+      "messageId": "spotter-4-spotter.car_right"
+    },
+    {
+      "sequence": 25,
+      "step": 6,
+      "atMs": 5303,
+      "event": "rejected",
+      "family": "timings",
+      "intent": "timings.gap_report",
+      "reason": "queue_pressure_or_cooldown",
+      "messageId": "families-6-timings.gap_report"
+    },
+    {
+      "sequence": 26,
+      "step": 7,
+      "atMs": 5454,
+      "event": "submitted",
+      "family": "spotter",
+      "intent": "spotter.clear_right",
+      "messageId": "spotter-5-spotter.clear_right"
+    },
+    {
+      "sequence": 27,
+      "step": 7,
+      "atMs": 5454,
+      "event": "rejected",
+      "family": "timings",
+      "intent": "timings.gap_report",
+      "reason": "queue_pressure_or_cooldown",
+      "messageId": "families-7-timings.gap_report"
+    },
+    {
+      "sequence": 28,
+      "step": 7,
+      "atMs": 5454,
+      "event": "ack_queued",
+      "family": "spotter",
+      "intent": "spotter.clear_right",
+      "messageId": "spotter-5-spotter.clear_right"
+    },
+    {
+      "sequence": 29,
+      "step": 7,
+      "atMs": 5454,
+      "event": "ack_started",
+      "family": "spotter",
+      "intent": "spotter.clear_right",
+      "messageId": "spotter-5-spotter.clear_right"
+    },
+    {
+      "sequence": 30,
+      "step": 7,
+      "atMs": 5454,
+      "event": "ack_completed",
+      "family": "spotter",
+      "intent": "spotter.clear_right",
+      "messageId": "spotter-5-spotter.clear_right"
+    },
+    {
+      "sequence": 31,
+      "step": 8,
+      "atMs": 5455,
+      "event": "submitted",
+      "family": "fuel",
+      "intent": "fuel.low_half_tank",
+      "messageId": "families-8-fuel.low_half_tank"
+    },
+    {
+      "sequence": 32,
+      "step": 8,
+      "atMs": 5455,
+      "event": "submitted",
+      "family": "laps",
+      "intent": "laps.lap_completed",
+      "messageId": "families-9-laps.lap_completed"
+    },
+    {
+      "sequence": 33,
+      "step": 8,
+      "atMs": 5455,
+      "event": "rejected",
+      "family": "timings",
+      "intent": "timings.gap_report",
+      "reason": "queue_pressure_or_cooldown",
+      "messageId": "families-10-timings.gap_report"
+    },
+    {
+      "sequence": 34,
+      "step": 8,
+      "atMs": 5455,
+      "event": "ack_queued",
+      "family": "fuel",
+      "intent": "fuel.low_half_tank",
+      "messageId": "families-8-fuel.low_half_tank"
+    },
+    {
+      "sequence": 35,
+      "step": 8,
+      "atMs": 5455,
+      "event": "ack_started",
+      "family": "fuel",
+      "intent": "fuel.low_half_tank",
+      "messageId": "families-8-fuel.low_half_tank"
+    },
+    {
+      "sequence": 36,
+      "step": 8,
+      "atMs": 5455,
+      "event": "ack_completed",
+      "family": "fuel",
+      "intent": "fuel.low_half_tank",
+      "messageId": "families-8-fuel.low_half_tank"
+    },
+    {
+      "sequence": 37,
+      "step": 8,
+      "atMs": 5455,
+      "event": "ack_queued",
+      "family": "laps",
+      "intent": "laps.lap_completed",
+      "messageId": "families-9-laps.lap_completed"
+    },
+    {
+      "sequence": 38,
+      "step": 8,
+      "atMs": 5455,
+      "event": "ack_started",
+      "family": "laps",
+      "intent": "laps.lap_completed",
+      "messageId": "families-9-laps.lap_completed"
+    },
+    {
+      "sequence": 39,
+      "step": 8,
+      "atMs": 5455,
+      "event": "ack_completed",
+      "family": "laps",
+      "intent": "laps.lap_completed",
+      "messageId": "families-9-laps.lap_completed"
+    },
+    {
+      "sequence": 40,
+      "step": 9,
+      "atMs": 5456,
+      "event": "submitted",
+      "family": "fuel",
+      "intent": "fuel.low_2l",
+      "messageId": "families-11-fuel.low_2l"
+    },
+    {
+      "sequence": 41,
+      "step": 9,
+      "atMs": 5456,
+      "event": "submitted",
+      "family": "fuel",
+      "intent": "fuel.laps_remaining_1",
+      "messageId": "families-12-fuel.laps_remaining_1"
+    },
+    {
+      "sequence": 42,
+      "step": 9,
+      "atMs": 5456,
+      "event": "rejected",
+      "family": "timings",
+      "intent": "timings.gap_report",
+      "reason": "queue_pressure_or_cooldown",
+      "messageId": "families-13-timings.gap_report"
+    },
+    {
+      "sequence": 43,
+      "step": 9,
+      "atMs": 5456,
+      "event": "ack_queued",
+      "family": "fuel",
+      "intent": "fuel.low_2l",
+      "messageId": "families-11-fuel.low_2l"
+    },
+    {
+      "sequence": 44,
+      "step": 9,
+      "atMs": 5456,
+      "event": "ack_started",
+      "family": "fuel",
+      "intent": "fuel.low_2l",
+      "messageId": "families-11-fuel.low_2l"
+    },
+    {
+      "sequence": 45,
+      "step": 9,
+      "atMs": 5456,
+      "event": "ack_completed",
+      "family": "fuel",
+      "intent": "fuel.low_2l",
+      "messageId": "families-11-fuel.low_2l"
+    },
+    {
+      "sequence": 46,
+      "step": 9,
+      "atMs": 5456,
+      "event": "ack_queued",
+      "family": "fuel",
+      "intent": "fuel.laps_remaining_1",
+      "messageId": "families-12-fuel.laps_remaining_1"
+    },
+    {
+      "sequence": 47,
+      "step": 9,
+      "atMs": 5456,
+      "event": "ack_started",
+      "family": "fuel",
+      "intent": "fuel.laps_remaining_1",
+      "messageId": "families-12-fuel.laps_remaining_1"
+    },
+    {
+      "sequence": 48,
+      "step": 9,
+      "atMs": 5456,
+      "event": "ack_completed",
+      "family": "fuel",
+      "intent": "fuel.laps_remaining_1",
+      "messageId": "families-12-fuel.laps_remaining_1"
+    },
+    {
+      "sequence": 49,
+      "step": 10,
+      "atMs": 5457,
+      "event": "submitted",
+      "family": "fuel",
+      "intent": "fuel.low_1l",
+      "messageId": "families-14-fuel.low_1l"
+    },
+    {
+      "sequence": 50,
+      "step": 10,
+      "atMs": 5457,
+      "event": "submitted",
+      "family": "fuel",
+      "intent": "fuel.laps_remaining_2",
+      "messageId": "families-15-fuel.laps_remaining_2"
+    },
+    {
+      "sequence": 51,
+      "step": 10,
+      "atMs": 5457,
+      "event": "rejected",
+      "family": "timings",
+      "intent": "timings.gap_report",
+      "reason": "queue_pressure_or_cooldown",
+      "messageId": "families-16-timings.gap_report"
+    },
+    {
+      "sequence": 52,
+      "step": 10,
+      "atMs": 5457,
+      "event": "ack_queued",
+      "family": "fuel",
+      "intent": "fuel.low_1l",
+      "messageId": "families-14-fuel.low_1l"
+    },
+    {
+      "sequence": 53,
+      "step": 10,
+      "atMs": 5457,
+      "event": "ack_started",
+      "family": "fuel",
+      "intent": "fuel.low_1l",
+      "messageId": "families-14-fuel.low_1l"
+    },
+    {
+      "sequence": 54,
+      "step": 10,
+      "atMs": 5457,
+      "event": "ack_completed",
+      "family": "fuel",
+      "intent": "fuel.low_1l",
+      "messageId": "families-14-fuel.low_1l"
+    },
+    {
+      "sequence": 55,
+      "step": 10,
+      "atMs": 5457,
+      "event": "ack_queued",
+      "family": "fuel",
+      "intent": "fuel.laps_remaining_2",
+      "messageId": "families-15-fuel.laps_remaining_2"
+    },
+    {
+      "sequence": 56,
+      "step": 10,
+      "atMs": 5457,
+      "event": "ack_started",
+      "family": "fuel",
+      "intent": "fuel.laps_remaining_2",
+      "messageId": "families-15-fuel.laps_remaining_2"
+    },
+    {
+      "sequence": 57,
+      "step": 10,
+      "atMs": 5457,
+      "event": "ack_completed",
+      "family": "fuel",
+      "intent": "fuel.laps_remaining_2",
+      "messageId": "families-15-fuel.laps_remaining_2"
+    }
+  ],
+  "metrics": {
+    "samples": 12,
+    "p95MS": 0,
+    "maximumMS": 0
+  }
+}

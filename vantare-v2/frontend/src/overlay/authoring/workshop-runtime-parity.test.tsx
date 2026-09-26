@@ -15,6 +15,7 @@ import {
 import { parseOverlayWorkshopQuery } from "./overlay-workshop-query";
 import * as relativeV2 from "../widget-types/relative/relative-view-model-v2";
 import { relativeDefinition } from "../widget-types/relative/relative-definition";
+import { getEnabledRelativeColumns, parseRelativeContent } from "../widget-types/relative/relative-content";
 import { decodeControlsHistory } from "../widget-types/input-telemetry/input-telemetry-view-model-v2";
 
 afterEach(() => {
@@ -77,6 +78,7 @@ async function runtimeMarkup(parsed: {
   redlineSelection?: string;
   redlineHeader?: string;
   redlineOpacity?: number;
+  steeringWheel?: string;
 }): Promise<string> {
   const widget = createScenarioWidget({
     widget: parsed.widget,
@@ -89,6 +91,9 @@ async function runtimeMarkup(parsed: {
       redlineTheme: parsed.redlineTheme, redlineSelection: parsed.redlineSelection,
       redlineHeader: parsed.redlineHeader, redlineSurfaceOpacity: parsed.redlineOpacity,
     };
+  }
+  if (parsed.steeringWheel) {
+    widget.visual.appearanceOverrides = { ...widget.visual.appearanceOverrides, steeringWheel: parsed.steeringWheel };
   }
   const frame = buildWorkshopFrameV2({
     session: parsed.session,
@@ -131,6 +136,18 @@ describe("buildWorkshopFrameV2", () => {
     expect(frame.relative.every((row) => !/^Driver 0\d\d$/.test(row.name ?? ""))).toBe(true);
   });
 
+  it("keeps Racing Flags green by default and exposes an explicit yellow probe", () => {
+    const defaultFlags = buildWorkshopFrameV2(
+      scenario({ widget: "racing-flags", system: "vantare-functional" }),
+    ).overlayV2Frame!;
+    const yellowFlags = buildWorkshopFrameV2(
+      scenario({ widget: "racing-flags", system: "vantare-functional", flag: "yellow" }),
+    ).overlayV2Frame!;
+
+    expect(defaultFlags.session.flag).toEqual({ q: "fresh", v: "green" });
+    expect(yellowFlags.session.flag).toEqual({ q: "fresh", v: "yellow" });
+  });
+
   it("derives 60 stable rows for standings-stress60", () => {
     const canonical = buildWorkshopFrameV2(scenario()).overlayV2Frame!;
     const first = buildWorkshopFrameV2(scenario({ variant: "standings-stress60" })).overlayV2Frame!;
@@ -156,29 +173,58 @@ describe("buildWorkshopFrameV2", () => {
     expect(STANDINGS_REPLAY_FRAME_COUNT).toBe(10);
   });
 
-  it("keeps observable rows and classes for relative-multiclass", () => {
-    const frame = buildWorkshopFrameV2(scenario({ widget: "relative", variant: "relative-multiclass" }))
+  it("keeps observable rows and classes for Functional Relative default", () => {
+    const frame = buildWorkshopFrameV2(scenario({ widget: "relative", system: "vantare-functional", variant: "default" }))
       .overlayV2Frame!;
-    // Ventana canónica explícita: 4 ahead más cercanos (pos 5,4,3,2),
+    // Ventana por defecto de producto: 3 ahead más cercanos (pos 2,3,4),
     // player (pos 1), 3 behind más cercanos (pos 20,19,18).
-    const canonical = buildWorkshopFrameV2(scenario({ widget: "relative" })).overlayV2Frame!;
+    const canonical = buildWorkshopFrameV2(scenario({ widget: "relative", system: "vantare-functional", variant: "default" })).overlayV2Frame!;
     const at = (position: number): string =>
       canonical.relative.find((row) => row.position === position)!.id;
-    const expected = [5, 4, 3, 2, 1, 20, 19, 18].map(at);
+    const expected = [2, 3, 4, 1, 20, 19, 18].map(at);
     expect(frame.relative.map((row) => row.id)).toEqual(expected);
+    expect(frame.relative.map((row) => row.position)).toEqual([2, 3, 4, 1, 20, 19, 18]);
     expect(frame.relativeSettled.map((row) => row.id)).toEqual(expected);
     for (const section of [frame.relative, frame.relativeSettled] as const) {
-      expect(section).toHaveLength(8);
-      expect(section.map((row) => row.gap.v)).toEqual([5.5, 4.2, 1.8, 0.4, 0, -0.3, -2.6, -5.1]);
-      expect(new Set(section.map((row) => row.id)).size).toBe(8);
+      expect(section).toHaveLength(7);
+      expect(section.map((row) => row.gap.v)).toEqual([0.4, 1.8, 4.2, 0, -0.3, -2.6, -5.1]);
+      expect(new Set(section.map((row) => row.id)).size).toBe(7);
       const players = section.filter((row) => row.side === "player");
       expect(players).toHaveLength(1);
       expect(players[0]!.id).toBe(frame.player.id);
       expect(players[0]!.gap).toMatchObject({ v: 0 });
-      expect(section.filter((row) => row.side === "ahead")).toHaveLength(4);
+      expect(section.filter((row) => row.side === "ahead")).toHaveLength(3);
       expect(section.filter((row) => row.side === "behind")).toHaveLength(3);
       expect(new Set(section.map((row) => row.classId)).size).toBeGreaterThan(1);
     }
+  });
+
+  it("honours a configured Functional Relative default window up to 8 per side", () => {
+    const canonical = buildWorkshopFrameV2(scenario({ widget: "relative", system: "vantare-endurance", variant: "default" })).overlayV2Frame!;
+    const at = (position: number): string =>
+      canonical.relative.find((row) => row.position === position)!.id;
+    const frame = buildWorkshopFrameV2(
+      scenario({ widget: "relative", system: "vantare-functional", variant: "default", rangeAhead: 5, rangeBehind: 2 }),
+    ).overlayV2Frame!;
+    const expected = [2, 3, 4, 5, 6, 1, 20, 19].map(at);
+    expect(frame.relative.map((row) => row.id)).toEqual(expected);
+    expect(frame.relative.map((row) => row.position)).toEqual([2, 3, 4, 5, 6, 1, 20, 19]);
+    expect(frame.relativeSettled.map((row) => row.id)).toEqual(expected);
+    // Gaps deterministas más allá de la semilla histórica (cuarto ahead).
+    expect(frame.relative[0]!.gap.v).toBe(0.4);
+    expect(frame.relative.filter((row) => row.side === "ahead")).toHaveLength(5);
+    expect(frame.relative.filter((row) => row.side === "behind")).toHaveLength(2);
+  });
+
+  it("uses the multiclass projection for Functional Relative default", () => {
+    const functionalDefault = scenario({ widget: "relative", system: "vantare-functional", variant: "default" });
+    const defaultFrame = buildWorkshopFrameV2(functionalDefault).overlayV2Frame!;
+    const defaultWidget = createScenarioWidget(functionalDefault);
+
+    expect(getEnabledRelativeColumns(parseRelativeContent(defaultWidget.content)).map((column) => column.metricId))
+      .toEqual(["position", "class", "driverName", "gap"]);
+    expect(defaultFrame.relative).toHaveLength(7);
+    expect(defaultFrame.relativeSettled).toHaveLength(7);
   });
 
   it("crosses the same id through side and gap in relative-cross", () => {
@@ -275,6 +321,19 @@ describe("buildWorkshopFrameV2", () => {
     }
   });
 
+  it("keeps Pedals on the canonical flag absence unless a SessionV2 probe is explicit", () => {
+    const base = buildWorkshopFrameV2(scenario({ widget: "pedals" })).overlayV2Frame!;
+    const yellow = buildWorkshopFrameV2(scenario({ widget: "pedals", flag: "yellow" })).overlayV2Frame!;
+    const green = buildWorkshopFrameV2(scenario({ widget: "pedals", flag: "green" })).overlayV2Frame!;
+
+    expect(base.session.flag).toMatchObject({ q: "missing" });
+    expect(base.session.flag.v).toBeUndefined();
+    expect(yellow.session.flag).toEqual({ q: "fresh", v: "yellow" });
+    expect(green.session.flag).toEqual({ q: "fresh", v: "green" });
+    expect(yellow.player.throttle).toEqual(base.player.throttle);
+    expect(green.player.throttle).toEqual(base.player.throttle);
+  });
+
   it("applies scene frames observably without snapshot", () => {
     const rest = JSON.stringify(
       buildWorkshopFrameV2(scenario({ sceneId: "standings-battle", sceneFrame: 0 })),
@@ -323,6 +382,17 @@ describe("createScenarioWidget", () => {
 });
 
 describe("the Workshop renders what the runtime renders", () => {
+  it.each(["studio", "desktop", "obs", "harness"])("keeps selected wheels identical to runtime on %s", async (surface) => {
+    for (const wheel of ["ferrari-499p", "bmw-m4-gt3", "oreca-07", "ligier-js-p325"]) {
+      const search = `?widget=pedals-telemetry&system=vantare-functional&surface=${surface}&steeringWheel=${wheel}`;
+      const parsed = parseOverlayWorkshopQuery(search);
+      if ("error" in parsed) throw new Error(parsed.error);
+      const markup = await workshopMarkup(search, "pedals-telemetry");
+      expect(markup).toContain(`data-steering-wheel="${wheel}"`);
+      expect(markup).toBe(await runtimeMarkup(parsed));
+    }
+  });
+
   it("consume la autoridad settled de Relative Redline sin estado frontend por perfil", async () => {
     const input = scenario({ widget: "relative", system: "vantare-endurance" });
     const parsed = parseOverlayWorkshopQuery(

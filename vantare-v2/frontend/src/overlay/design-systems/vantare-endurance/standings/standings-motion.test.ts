@@ -57,18 +57,18 @@ function model(
 
 const gridA = () =>
   model([
-    row({ id: "a", position: 1, gapText: "—", isPlayer: false }),
-    row({ id: "b", position: 2, gapText: "+2.0s" }),
-    row({ id: "c", position: 3, gapText: "+4.0s", isPlayer: true }),
+    row({ id: "a", position: 1, gapText: "—", battleGapSeconds: 0, isPlayer: false }),
+    row({ id: "b", position: 2, gapText: "+2.0s", battleGapSeconds: 2.0 }),
+    row({ id: "c", position: 3, gapText: "+4.0s", battleGapSeconds: 4.0, isPlayer: true }),
   ]);
 
 describe("standings-motion", () => {
   it("derives a confirmed overtake with gainer and loser", () => {
     const prev = gridA();
     const next = model([
-      row({ id: "a", position: 1, gapText: "—" }),
-      row({ id: "c", position: 2, gapText: "+3.9s", isPlayer: true }),
-      row({ id: "b", position: 3, gapText: "+4.1s" }),
+      row({ id: "a", position: 1, gapText: "—", battleGapSeconds: 0 }),
+      row({ id: "c", position: 2, gapText: "+3.9s", battleGapSeconds: 3.9, isPlayer: true }),
+      row({ id: "b", position: 3, gapText: "+4.1s", battleGapSeconds: 4.1 }),
     ]);
     const events = deriveStandingsEvents(prev, next);
     expect(events).toContainEqual({
@@ -82,8 +82,8 @@ describe("standings-motion", () => {
   it("does not fire overtakes when a car simply disappears from the field", () => {
     const prev = gridA();
     const next = model([
-      row({ id: "a", position: 1, gapText: "—" }),
-      row({ id: "c", position: 2, gapText: "+3.9s", isPlayer: true }),
+      row({ id: "a", position: 1, gapText: "—", battleGapSeconds: 0 }),
+      row({ id: "c", position: 2, gapText: "+3.9s", battleGapSeconds: 3.9, isPlayer: true }),
     ]);
     const events = deriveStandingsEvents(prev, next).filter((event) => event.kind === "overtake");
     expect(events).toHaveLength(0);
@@ -125,9 +125,9 @@ describe("standings-motion", () => {
 
   it("derives battle pairs only under the threshold and never with pitted cars", () => {
     const battle = model([
-      row({ id: "a", position: 1, gapText: "—" }),
-      row({ id: "b", position: 2, gapText: "+0.5s", isPlayer: true }),
-      row({ id: "c", position: 3, gapText: "+4.0s" }),
+      row({ id: "a", position: 1, gapText: "—", battleGapSeconds: 0 }),
+      row({ id: "b", position: 2, gapText: "+0.5s", battleGapSeconds: 0.5, isPlayer: true }),
+      row({ id: "c", position: 3, gapText: "+4.0s", battleGapSeconds: 4.0 }),
     ]);
     const pairs = deriveBattlePairs(battle);
     expect(pairs).toEqual([
@@ -135,8 +135,8 @@ describe("standings-motion", () => {
     ]);
 
     const pitted = model([
-      row({ id: "a", position: 1, gapText: "—", pitText: "PIT" }),
-      row({ id: "b", position: 2, gapText: "+0.5s", isPlayer: true }),
+      row({ id: "a", position: 1, gapText: "—", battleGapSeconds: 0, pitText: "PIT" }),
+      row({ id: "b", position: 2, gapText: "+0.5s", battleGapSeconds: 0.5, isPlayer: true }),
     ]);
     expect(deriveBattlePairs(pitted)).toHaveLength(0);
   });
@@ -157,10 +157,10 @@ describe("standings-motion", () => {
 
   it("does not derive a battle when the player row is absent", () => {
     const withoutPlayer = model([
-      row({ id: "a", position: 1, gapText: "—" }),
-      row({ id: "b", position: 2, gapText: "+0.2s" }),
-      row({ id: "c", position: 3, gapText: "+4.0s" }),
-      row({ id: "d", position: 4, gapText: "+4.4s" }),
+      row({ id: "a", position: 1, gapText: "—", battleGapSeconds: 0 }),
+      row({ id: "b", position: 2, gapText: "+0.2s", battleGapSeconds: 0.2 }),
+      row({ id: "c", position: 3, gapText: "+4.0s", battleGapSeconds: 4.0 }),
+      row({ id: "d", position: 4, gapText: "+4.4s", battleGapSeconds: 4.4 }),
     ]);
 
     expect(deriveBattlePairs(withoutPlayer)).toHaveLength(0);
@@ -168,11 +168,11 @@ describe("standings-motion", () => {
 
   it("returns only the closest battle to the player and breaks ties by interval", () => {
     const multipleBattles = model([
-      row({ id: "far-ahead", position: 1, gapText: "—" }),
-      row({ id: "far-behind", position: 2, gapText: "+0.2s" }),
-      row({ id: "near-ahead", position: 3, gapText: "+4.0s" }),
-      row({ id: "player", position: 4, gapText: "+4.6s", isPlayer: true }),
-      row({ id: "near-behind", position: 5, gapText: "+4.9s" }),
+      row({ id: "far-ahead", position: 1, gapText: "—", battleGapSeconds: 0 }),
+      row({ id: "far-behind", position: 2, gapText: "+0.2s", battleGapSeconds: 0.2 }),
+      row({ id: "near-ahead", position: 3, gapText: "+4.0s", battleGapSeconds: 4.0 }),
+      row({ id: "player", position: 4, gapText: "+4.6s", battleGapSeconds: 4.6, isPlayer: true }),
+      row({ id: "near-behind", position: 5, gapText: "+4.9s", battleGapSeconds: 4.9 }),
     ]);
 
     expect(deriveBattlePairs(multipleBattles)).toEqual([
@@ -188,9 +188,9 @@ describe("standings-motion", () => {
   it("derives roster entries and retirements with the ghost's in-class index", () => {
     const prev = gridA();
     const next = model([
-      row({ id: "a", position: 1, gapText: "—" }),
-      row({ id: "c", position: 2, gapText: "+3.9s", isPlayer: true }),
-      row({ id: "d", position: 3, gapText: "+9.0s" }),
+      row({ id: "a", position: 1, gapText: "—", battleGapSeconds: 0 }),
+      row({ id: "c", position: 2, gapText: "+3.9s", battleGapSeconds: 3.9, isPlayer: true }),
+      row({ id: "d", position: 3, gapText: "+9.0s", battleGapSeconds: 9.0 }),
     ]);
     const change = deriveRosterChange(prev, next);
     expect(change.entered).toEqual(["d"]);
@@ -212,8 +212,8 @@ describe("standings-motion", () => {
         { id: "c", position: 1, gridPosition: 3, gapText: "—", isPlayer: true },
         identity,
       ),
-      gridRow({ id: "a", position: 2, gridPosition: 1, gapText: "+1.0s" }, identity),
-      gridRow({ id: "b", position: 3, gridPosition: 2, gapText: "+2.0s" }, identity),
+      gridRow({ id: "a", position: 2, gridPosition: 1, gapText: "+1.0s", battleGapSeconds: 1.0 }, identity),
+      gridRow({ id: "b", position: 3, gridPosition: 2, gapText: "+2.0s", battleGapSeconds: 2.0 }, identity),
     ]), identity, 1);
     const deltas = derivePositionDeltas(next);
     expect(deltas.get("c")).toBe(2);
@@ -256,4 +256,44 @@ describe("standings-motion", () => {
       expect(derivePositionDeltas(next)).toEqual(new Map());
     },
   );
+});
+
+
+describe("Redline battle numeric authority", () => {
+  it.each(["+1 vuelta", "+1 vueltas", "+1 lap", "+1 L", "+1 V", "+0,3 s", "+0.3s"])(
+    "never derives timing from %s without numeric authority", gapText => {
+      const value = model([
+        row({id:"leader",position:1,gapText:"LEADER",battleGapSeconds:0}),
+        row({id:"ahead",position:16,gapText,isPlayer:true}),
+        row({id:"behind",position:19,gapText}),
+      ]);
+      expect(deriveBattlePairs(value)).toEqual([]);
+    },
+  );
+
+  it("uses both absolute numeric gaps in a cropped class block regardless of labels", () => {
+    const value = model([
+      row({id:"ahead",position:16,gapText:"LÍDER",battleGapSeconds:80,isPlayer:true}),
+      row({id:"behind",position:19,gapText:"+0,5 s",battleGapSeconds:80.5}),
+    ]);
+    expect(deriveBattlePairs(value)).toEqual([
+      {aheadId:"ahead",behindId:"behind",vehicleClass:"GT3",intervalSeconds:0.5},
+    ]);
+  });
+
+  it.each([undefined, NaN, Infinity, -1])("rejects unavailable/nonphysical ahead authority %s", battleGapSeconds => {
+    const value = model([
+      row({id:"ahead",position:1,gapText:"LEADER",battleGapSeconds,isPlayer:true}),
+      row({id:"behind",position:2,gapText:"+0.3s",battleGapSeconds:0.3}),
+    ]);
+    expect(deriveBattlePairs(value)).toEqual([]);
+  });
+
+  it.each([undefined, NaN, Infinity, -1])("rejects unavailable/nonphysical behind authority %s", battleGapSeconds => {
+    const value = model([
+      row({id:"ahead",position:1,gapText:"LEADER",battleGapSeconds:0,isPlayer:true}),
+      row({id:"behind",position:2,gapText:"+0.3s",battleGapSeconds}),
+    ]);
+    expect(deriveBattlePairs(value)).toEqual([]);
+  });
 });

@@ -2,6 +2,7 @@ package families
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ func (clock *testClock) NowMS() int64 { return clock.now }
 
 func baseEvidence(now int64) Evidence {
 	return Evidence{NowMS: now, Ready: true, Subject: "player", FuelKnown: true, FuelLitres: 100,
+		SessionTypeKnown: true, SessionType: "race", EndTimeKnown: true,
 		FuelCapacityKnown: true, FuelCapacity: 100, LapKnown: true, Lap: 1,
 		PenaltyKnown: true, GapLeaderKnown: true, GapLeader: 5, GapNextKnown: true, GapNext: 2,
 		PitKnown: true}
@@ -68,7 +70,7 @@ func TestFuelParityThresholdsCooldownRefuelAndRange(t *testing.T) {
 	e = baseEvidence(155_000)
 	e.Lap, e.FuelLitres = 4, 19
 	got = intents(family.Evaluate(e, state))
-	if !got[IntentFuelLapsTwo] || !seen[IntentFuelPitNow] {
+	if !got[IntentFuelLapsTwo] || seen[IntentFuelPitNow] {
 		t.Fatalf("legacy consumption/range case = current %v seen %v", got, seen)
 	}
 }
@@ -99,6 +101,28 @@ func TestFuelParityUnknownCapacityNeverCalculatesRange(t *testing.T) {
 				if got[intent] {
 					t.Fatalf("old monitor capacity guard emitted %s: %v", intent, got)
 				}
+			}
+		})
+	}
+}
+
+// CrewChief 4c3865e0 Fuel.cs arms the stop on a new lap with one estimated
+// lap of fuel and more than one race lap left, then waits for a track/sector
+// condition. A fuel range by itself cannot authorize an order to stop.
+func TestFuelRangeAloneNeverOrdersPitStop(t *testing.T) {
+	for _, fuel := range []float64{39, 30, 19, 10, 5} {
+		t.Run(fmt.Sprintf("fuel_%.0f", fuel), func(t *testing.T) {
+			state := &fuelState{}
+			e := baseEvidence(1000)
+			e.Lap, e.FuelLitres = 9, fuel+10
+			fuelFamily{}.Evaluate(e, state)
+			e.NowMS, e.Lap, e.FuelLitres = 2000, 10, fuel
+			got := intents(fuelFamily{}.Evaluate(e, state))
+			if got[IntentFuelPitNow] {
+				t.Fatalf("range without race-end/sector evidence ordered a pit stop: %v", got)
+			}
+			if !got[IntentFuelLapsFour] && !got[IntentFuelLapsThree] && !got[IntentFuelLapsTwo] && !got[IntentFuelLapsOne] {
+				t.Fatalf("useful fuel-range warning was lost: %v", got)
 			}
 		})
 	}

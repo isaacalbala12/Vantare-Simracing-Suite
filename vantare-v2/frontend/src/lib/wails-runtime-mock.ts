@@ -3,6 +3,8 @@
  * Auto-responds to common events with realistic data so the app
  * renders without a real Wails backend.
  */
+import type { EngineerDiagnostics } from "../hub/engineer-orbit/engineer-orbit-types";
+import type { EngineerOutputMode, EngineerStatus } from "../engineer/engineer-types";
 import { mockCalendar } from "../hub/calendar-visual-mock-data";
 import {
   createHubProfile,
@@ -772,7 +774,8 @@ const harnessEngineerMessages = [
 
 const harnessEngineerBase = Date.parse("2026-07-07T18:44:12Z");
 
-const harnessEngineerStatus = {
+const harnessEngineerStatus: EngineerStatus = {
+  spotterAvailability: { state: "ready" as const },
   enabled: true,
   connected: true,
   source: "telemetry-core",
@@ -788,7 +791,7 @@ const harnessEngineerStatus = {
     laps: "visual",
     timings: "audio",
     pitstops: "both",
-  } as Record<string, string>,
+  } as Record<string, EngineerOutputMode>,
   recentMessages: harnessEngineerMessages.map(([text, role, textKey, severity, ago], index) => ({
     version: 1,
     id: `harness-radio-${index}`,
@@ -807,6 +810,20 @@ const harnessEngineerStatus = {
   })),
 };
 
+// Synthetic records are captured once: changing configuration must not rewrite history.
+const harnessDeliveries = harnessEngineerStatus.recentMessages.map((m,index) => ({
+ id:m.id,lifecycle:index===0?2:3,intent:m.textKey,family:m.category,text:m.text,
+ mode:harnessEngineerStatus.outputModes[m.category] ?? "both",selectedAt:m.createdAt,updatedAt:m.createdAt+25,
+ state:"completed",reason:"",visual:index%3!==0,audio:index%3===0?"completed":"cache_miss",
+}));
+function harnessEngineerDiagnostics(): EngineerDiagnostics {
+ return {version:1,capturedAt:Date.now(),running:true,status:structuredClone(harnessEngineerStatus),
+ subtitlesPreference:harnessEngineerStatus.subtitlesEnabled,visualPresentationEnabled:true,
+ playerAvailable:true,cacheOnly:true,locale:"es",spotterVoice:"ef_dora",engineerVoice:"ef_dora",audioTestActive:false,historyLimit:200,radioHistoryAvailable:true,
+ health:{ok:true,dropCount:0,activeFamilies:5,policy:{pending:0,accepted:0,emitted:0,suppressed:0,expired:0,cancelled:0,unavailable:0},radioDelivery:{samples:20,p95MS:8,maximumMS:12}},
+ deliveries:structuredClone(harnessDeliveries)};
+}
+
 function applyHarnessEngineerSetting(name: string, data: unknown) {
   const value = Array.isArray(data) ? data[0] : data;
   if (name === "engineer:enabled:set") harnessEngineerStatus.enabled = Boolean(value);
@@ -817,7 +834,7 @@ function applyHarnessEngineerSetting(name: string, data: unknown) {
   }
   if (name === "engineer:output:set" && value && typeof value === "object") {
     const { category, mode } = value as { category?: string; mode?: string };
-    if (category && mode) harnessEngineerStatus.outputModes[category] = mode;
+    if (category && mode) harnessEngineerStatus.outputModes[category] = mode as EngineerOutputMode;
   }
 }
 
@@ -996,6 +1013,20 @@ export const Events = {
       return;
     }
 
+    if (name === "engineer:diagnostics:get") {
+      setTimeout(() => broadcast("engineer:diagnostics", harnessEngineerDiagnostics()), 0); return;
+    }
+    if (name === "engineer:command") {
+      const request = readHarnessPayload(data) as {requestId:string;action:string;enabled?:boolean;value?:string;category?:string};
+      const value = request.action === "output" ? {category:request.category,mode:request.value} : request.enabled ?? request.value;
+      applyHarnessEngineerSetting(`engineer:${request.action}:set`,value);
+      setTimeout(() => broadcast("engineer:command:result",{requestId:request.requestId,outcome:"saved",diagnostics:harnessEngineerDiagnostics()}),0); return;
+    }
+    if (name === "engineer:audio-test") {
+      const request = readHarnessPayload(data) as {requestId:string;kind:string};
+      // UI harness only: never claim this exercised an OS audio player.
+      setTimeout(() => broadcast("engineer:audio-test:result",{requestId:request.requestId,result:{kind:request.kind,outcome:request.kind==="cached"?"cache_miss":"completed",finishedAt:Date.now()}}),0); return;
+    }
     if (name === "engineer:status:get") {
       setTimeout(() => broadcast("engineer:status", harnessEngineerStatus), 30);
       return;

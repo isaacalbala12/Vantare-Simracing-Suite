@@ -1,5 +1,10 @@
+import { steeringWheelNames } from "./steering-wheel-names";
+
 /** Catalogo `studio.*` di Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
 export const studioOrbitIt: Record<string, string> = {
+  ...steeringWheelNames,
+  "overlay.inspector.efficiency.steeringWheel": "Volante",
+  "overlay.inspector.efficiency.steeringWheel.generic": "Generico",
   "studio.inspector.content.towerPreview": "Tower Preview: composizione fissa, ancora senza animazioni né modifica delle colonne. Le colonne vengono conservate per gli altri design. Marca e numero appaiono solo se forniti dalla fonte. Regola le dimensioni sulla tela e il numero di righe qui.",
   "studio.column.eyebrow": "Widget",
   "studio.column.search": "Cerca widget…",
@@ -13,9 +18,8 @@ export const studioOrbitIt: Record<string, string> = {
   "studio.column.listAria": "Widget del profilo",
 
   "studio.toolbar.background": "Sfondo della tela",
-  "studio.toolbar.background.grid": "Griglia",
-  "studio.toolbar.background.gradient": "Gradiente",
-  "studio.toolbar.background.black": "Nero",
+  "studio.toolbar.background.themeGroup": "Tema",
+  "studio.toolbar.background.otherGroup": "Altri sfondi",
   "studio.toolbar.wallpaper": "Sfondo personale",
   "studio.toolbar.wallpaper.title": "Sfondi personali",
   "studio.toolbar.wallpaper.add": "Aggiungi immagine…",
@@ -98,9 +102,15 @@ export const studioOrbitIt: Record<string, string> = {
   "studio.inspector.design.system": "Sistema",
   "studio.inspector.design.variant": "Design",
   "studio.inspector.design.none": "Nessun design applicato",
+  "studio.inspector.content.playerWindow": "Podio e finestra del giocatore",
+  "studio.inspector.content.windowAround": "Piloti intorno",
   "studio.inspector.content.rows": "Righe",
   "studio.inspector.content.width": "Larghezza",
   "studio.inspector.content.align": "Allineamento",
+  "studio.inspector.content.nameFormat": "Nome",
+  "studio.inspector.content.nameFormat.full": "Completo",
+  "studio.inspector.content.nameFormat.initial": "N. Cognome",
+  "studio.inspector.content.nameFormat.surname": "Cognome",
   "studio.inspector.content.align.left": "Sinistra",
   "studio.inspector.content.align.right": "Destra",
   "studio.inspector.content.width.sm": "Stretta",
@@ -148,8 +158,6 @@ export const studioOrbitIt: Record<string, string> = {
   "overlay.inspector.standings.showSessionHeader": "Mostra intestazione di sessione",
   "overlay.inspector.standings.showBrand": "Mostra marchio Vantare",
   "overlay.inspector.brand.required": "Marchio obbligatorio: sempre visibile in questo piano",
-  "overlay.inspector.efficiency.headerFirst": "Dato 1 dell'intestazione",
-  "overlay.inspector.efficiency.headerSecond": "Dato 2 dell'intestazione",
   "overlay.inspector.efficiency.showSessionFooter": "Mostra piè di sessione",
   "overlay.inspector.efficiency.footerFirst": "Dato 1 del piè",
   "overlay.inspector.efficiency.footerSecond": "Dato 2 del piè",

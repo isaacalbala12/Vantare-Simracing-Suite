@@ -193,6 +193,7 @@ type Server struct {
 	srv          *http.Server
 	engineerSvc  *engineerservice.EngineerService
 	widgetPolicy WidgetPolicySource
+	uiLocale     UILocaleSource
 	distFS       fs.FS
 	cfgDir       string
 	emitter      EventEmitter
@@ -216,6 +217,7 @@ type ServerConfig struct {
 	// *license.Service satisfies the interface; the compile-time assertion
 	// lives with the handler.
 	WidgetPolicy WidgetPolicySource
+	UILocale     UILocaleSource
 }
 
 // compile-time wiring check: the native authority is the only source.
@@ -227,6 +229,7 @@ func New(cfg ServerConfig) *Server {
 		mux:          mux,
 		engineerSvc:  cfg.EngineerSvc,
 		widgetPolicy: cfg.WidgetPolicy,
+		uiLocale:     cfg.UILocale,
 		distFS:       cfg.DistFS,
 		cfgDir:       cfg.CfgDir,
 		emitter:      cfg.Emitter,
@@ -260,6 +263,9 @@ func New(cfg ServerConfig) *Server {
 	}
 	if cfg.WidgetPolicy != nil {
 		mux.Handle("GET "+WidgetPolicyStreamRoute, widgetPolicyStreamHandler(cfg.WidgetPolicy))
+	}
+	if cfg.UILocale != nil {
+		mux.Handle("GET "+UILocaleStreamRoute, uiLocaleStreamHandler(cfg.UILocale))
 	}
 	if cfg.DistFS != nil {
 		mux.Handle("GET /assets/", securityHeaders(http.FileServerFS(cfg.DistFS)))

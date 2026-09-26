@@ -1,7 +1,11 @@
 import type { WidgetRendererProps } from "../../core/design-system-definition";
 import type { EngineerRadioViewModel } from "../../widget-types/engineer-radio/engineer-radio-definition";
+import { useI18n } from "../../../i18n/I18nProvider";
+import { functionalLabels } from "./labels";
 
 export function EngineerRadioFunctional({ model }: WidgetRendererProps<EngineerRadioViewModel>) {
+  const { locale } = useI18n();
+  const labels = functionalLabels[locale];
   if (!model.visible || !model.text || !model.speaker || !model.severity) return null;
   const urgent = model.severity === "critical";
   return (
@@ -26,7 +30,7 @@ export function EngineerRadioFunctional({ model }: WidgetRendererProps<EngineerR
         {model.category ? <span className="vf-engineer-radio-category">{model.category}</span> : null}
       </header>
       <p className="vf-engineer-radio-message">{model.text}</p>
-      {model.preview ? <span className="vf-engineer-radio-preview">PREVIEW</span> : null}
+      {model.preview ? <span className="vf-engineer-radio-preview">{labels.preview}</span> : null}
     </section>
   );
 }

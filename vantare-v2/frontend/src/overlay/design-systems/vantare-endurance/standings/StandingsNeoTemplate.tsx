@@ -79,7 +79,7 @@ export function StandingsNeoTemplate({
                 <span className="ven-neo-pos">{index + 1}</span>
                 <span className="ven-neo-id">
                   <span className="ven-neo-code">{driverCode(row.driverName)}</span>
-                  <span className="ven-neo-name">{row.driverName}</span>
+                  <span className="ven-neo-name">{row.configuredDriverName ?? row.driverName}</span>
                 </span>
                 <span className="ven-neo-best" data-session-best={isSessionBest ? "true" : undefined}>
                   {row.bestLapText}

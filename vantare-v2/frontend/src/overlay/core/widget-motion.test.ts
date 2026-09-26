@@ -128,4 +128,18 @@ describe("flipRows", () => {
       expect.anything(),
     );
   });
+
+  it("normalizes measured distance when the widget is scaled", () => {
+    const { root } = makeRoot();
+    Object.defineProperty(root, "getBoundingClientRect", { configurable: true, value: () => ({ top: 0, height: 180 }) });
+    const persist = new Map<string, unknown>();
+    const row = addRow(root, "a", 60);
+    flipRows(root, persist, opts);
+    Object.defineProperty(row, "getBoundingClientRect", { configurable: true, value: () => ({ top: 120 }) });
+    flipRows(root, persist, opts);
+    expect(row.animate).toHaveBeenCalledWith(
+      [{ transform: "translateY(-30px)" }, { transform: "translateY(0)" }],
+      expect.anything(),
+    );
+  });
 });

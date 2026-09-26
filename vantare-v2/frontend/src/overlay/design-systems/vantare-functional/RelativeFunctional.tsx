@@ -1,16 +1,16 @@
 import type { CSSProperties } from "react";
-import { useRef } from "react";
+import { memo, useMemo, useRef } from "react";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { WidgetRendererProps } from "../../core/design-system-definition";
-import { flipRows, useWidgetMotion } from "../../core/widget-motion";
-import { deriveSideCrosses } from "./functional-motion";
 import { resolveColumnWidthPixels } from "../../widget-types/shared/widget-column";
 import { RELATIVE_COLUMN_TEMPLATES } from "../../widget-types/relative/relative-content";
 import { resolveRelativeClassColor } from "../../widget-types/relative/relative-renderer-helpers";
 import { resolveRelativeCellValue, type RelativeViewModel } from "../../widget-types/relative/relative-view-model";
-import { functionalLabels } from "./labels";
+import { functionalLabels, sessionDisplayLabel } from "./labels";
 import { FOOTER_SLOT_GAP_PX, FOOTER_SLOT_PAD_PX, FOOTER_SLOT_ROW_PX, footerSlotItemWidth, resolveFunctionalFooterSlots } from "./footer-slots";
 import { resolveWidgetVisualGeometryForType } from "../../core/widget-visual-geometry";
+import { relativeStructureKey, relativeVisibleSlots } from "./relative-presentation";
+import { useRelativeMotion } from "./use-relative-motion";
 
 const CENTERED = new Set(["position", "class", "carNumber", "gap"]);
 const LAP_METRICS = new Set(["bestLap", "lastLap"]);
@@ -20,33 +20,27 @@ const LAP_METRICS = new Set(["bestLap", "lastLap"]);
 // eso el presupuesto admitía ~40% más filas de las que caben.
 const RELATIVE_ROW_PX = 28;
 
+const RelativeLapDeltaBadge = memo(function RelativeLapDeltaBadge({ lapDelta }: { lapDelta?: number | null }) {
+  const { locale } = useI18n();
+  if (lapDelta == null || !Number.isInteger(lapDelta) || lapDelta === 0) return null;
+  const count = Math.abs(lapDelta);
+  const labels = functionalLabels[locale];
+  const description = lapDelta > 0
+    ? count === 1 ? labels.lapMoreOne : labels.lapsMore.replace("{count}", String(count))
+    : count === 1 ? labels.lapLessOne : labels.lapsLess.replace("{count}", String(count));
+  const value = `${lapDelta > 0 ? "+" : "−"}${count} ${labels.lapUnit}`;
+  return <span className="vf-relative-lap-delta" role="img" title={description} aria-label={description}>{value}</span>;
+});
+
 export function RelativeFunctional({ model, settings, layout, motion = "full", effects }: WidgetRendererProps<RelativeViewModel>) {
   const { locale } = useI18n();
   const rootRef = useRef<HTMLElement | null>(null);
-  // Eficiencia: las filas se deslizan al cruzarse; los cruces parpadean una
-  // vez en "full".
-  useWidgetMotion(model, motion !== "minimal", rootRef, ({ prev, next, root, schedule, persist }) => {
-    // FLIP medido por id (ver standings): correcto también cuando la ventana
-    // rota miembros — un stride por índice mentía al entrar/salir filas.
-    flipRows(root, persist, {
-      rows: "[data-relative-row]",
-      id: (row) => row.dataset.relativeRow,
-      duration: (from) => Math.min(400, 240 + (Math.abs(from) / RELATIVE_ROW_PX) * 45),
-    });
-    if (motion === "full") {
-      const { gained, lost } = deriveSideCrosses(prev.rows, next.rows);
-      for (const [id, direction] of [...gained.map((id) => [id, "rise"] as const), ...lost.map((id) => [id, "fall"] as const)]) {
-        const row = root.querySelector<HTMLElement>(`[data-relative-row="${CSS.escape(id)}"]`);
-        if (!row) continue;
-        row.dataset.cross = direction;
-        schedule(600, () => { delete row.dataset.cross; }, `cross-${id}`);
-      }
-    }
-  }, (root) => {
-    root.querySelectorAll<HTMLElement>("[data-cross]").forEach((el) => { delete el.dataset.cross; });
-  });
   const labels = functionalLabels[locale];
+  const sessionLabel = useMemo(() => sessionDisplayLabel(locale, model.sessionLabel), [locale, model.sessionLabel]);
   const columns = model.columns;
+  const playerQuality = model.rows.find((row) => row.isPlayer)?.fieldQuality;
+  const hasPositionColumn = columns.some((column) => column.metricId === "position");
+  const hasClassColumn = columns.some((column) => column.metricId === "class");
   const unavailable = model.status === "disconnected" || model.status === "missing" || model.status === "error";
   const statusText = model.status !== "ready" ? labels[model.status] : model.rows.length === 0 ? labels.missing : undefined;
   const hasMeta = Boolean(model.trackText || model.playerBadgeText);
@@ -78,7 +72,14 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
     : layout.h - (hasMeta ? ambientReserve : 0) - slotsReserve - (slots.length === 0 && hasFooter ? ambientReserve : 0);
   const rowMin = RELATIVE_ROW_PX * scale;
   const rowsFit = Number.isFinite(tableSpace) ? Math.max(0, Math.floor(tableSpace / rowMin)) : Number.POSITIVE_INFINITY;
-  const visibleRows = Number.isFinite(tableSpace) ? model.rows.slice(0, rowsFit) : model.rows;
+  const visibleSlots = relativeVisibleSlots(model, rowsFit);
+  const visibleRows = visibleSlots.filter((row) => row !== null);
+  const boundaryKey = [
+    model.presentationKey, model.sessionLabel, motion, layout?.w, layout?.h, scale, model.rowHeightMode,
+    hasMeta, hasFooter, slotsHeight, rowsFit, model.rangeAhead, model.rangeBehind,
+    columns.map((column) => `${column.id}:${column.metricId}:${resolveColumnWidthPixels(column, RELATIVE_COLUMN_TEMPLATES.find((template) => template.metricId === column.metricId)?.defaultWidth ?? 60)}`).join(","),
+  ].join("|");
+  useRelativeMotion(model, motion, rootRef, boundaryKey, relativeStructureKey(visibleSlots));
 
   return (
     // Estructura de la referencia: barra de meta arriba (pista + posición del
@@ -97,15 +98,21 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
         <div className="vf-table-wrap">
         <table className="vf-table" aria-label={labels.relative}>
           <colgroup>{columns.map((column) => <col key={column.id} style={{ width: resolveColumnWidthPixels(column, RELATIVE_COLUMN_TEMPLATES.find((template) => template.metricId === column.metricId)?.defaultWidth ?? 60) }} />)}</colgroup>
-          <tbody>{visibleRows.map((row) => (
+          <tbody>{visibleSlots.map((row, index) => row === null
+            ? <tr key={`slot-${index}`} className="vf-relative-empty-slot" aria-hidden="true"><td colSpan={columns.length} /></tr>
+            : (
             <tr key={row.id} data-relative-row={row.id} data-player={row.isPlayer || undefined} data-side={row.side}>
               {columns.map((column) => {
                 const value = column.metricId === "gap" && row.isPlayer ? "—" : resolveRelativeCellValue(row, column.metricId);
                 const align = column.style?.align ?? (CENTERED.has(column.metricId) ? "center" : column.metricId === "driverName" ? "left" : "right");
-                return <td key={column.id} data-metric={column.metricId} aria-label={`${labelFor(column.metricId)}: ${value}`} style={{ textAlign: align }}>
-                  {column.metricId === "class" ? <span className="vf-class-tick" style={{ background: resolveRelativeClassColor(row.vehicleClass, settings) } as CSSProperties} /> :
-                    column.metricId === "driverName" ? <span className="vf-driver"><span className="vf-driver-name" title={value}>{value}</span></span> :
-                      <span title={value} className={`vf-cell-value${LAP_METRICS.has(column.metricId) ? " vf-lap-value" : ""}`}>{value}</span>}
+                return <td key={column.id} data-quality={row.fieldQuality?.[column.metricId]} data-metric={column.metricId} aria-label={`${labelFor(column.metricId)}: ${value}${row.fieldQuality?.[column.metricId] === "stale" ? ` · ${labels.stale}` : ""}`} style={{ textAlign: align, opacity: row.fieldQuality?.[column.metricId] === "stale" ? 0.6 : undefined }}>
+                  {column.metricId === "class" ? hasPositionColumn ? null : <span className="vf-class-tick" style={{ background: resolveRelativeClassColor(row.vehicleClass, settings) } as CSSProperties} /> :
+                    column.metricId === "position" ? <span className={`vf-position-identity${hasClassColumn ? " vf-position-identity--with-class" : ""}`}>
+                      <span title={value} className="vf-cell-value">{value}</span>
+                      {hasClassColumn && <span className="vf-class-tick" aria-hidden="true" style={{ background: resolveRelativeClassColor(row.vehicleClass, settings) } as CSSProperties} />}
+                    </span> :
+                      column.metricId === "driverName" ? <span className="vf-driver"><span className="vf-driver-name" title={value}>{value}</span>{model.status === "ready" && model.sessionLabel === "RACE" && !row.isPlayer ? <RelativeLapDeltaBadge lapDelta={row.lapDelta} /> : null}</span> :
+                        <span title={value} className={`vf-cell-value${LAP_METRICS.has(column.metricId) ? " vf-lap-value" : ""}`}>{value}</span>}
                 </td>;
               })}
             </tr>
@@ -115,12 +122,12 @@ export function RelativeFunctional({ model, settings, layout, motion = "full", e
       )}
       {slots.length > 0 && !unavailable && (
         <div className="vf-slots" data-footer-slots data-fit={slots.length <= 5 ? "one-line" : undefined} style={{ "--vf-slot-scale": slotScale.toFixed(3) } as CSSProperties}>
-          {slots.map((slot) => <span key={slot.id} className="vf-slot" data-slot={slot.id}><span className="vf-slot-label">{slot.label}</span><b className="vf-slot-value">{slot.value}</b></span>)}
+          {slots.map((slot) => <span key={slot.id} className="vf-slot" data-slot={slot.id} data-quality={playerQuality?.[slot.id]} aria-label={playerQuality?.[slot.id] === "stale" ? `${slot.label}: ${slot.value} · ${labels.stale}` : undefined} style={{ opacity: playerQuality?.[slot.id] === "stale" ? 0.6 : undefined }}><span className="vf-slot-label">{slot.label}</span><b className="vf-slot-value">{slot.value}</b></span>)}
         </div>
       )}
       {hasFooter && (
         <div className="vf-footer" data-session-footer>
-          {model.sessionLabel ? <span className="vf-footer-item"><b>{model.sessionLabel}{model.remainingText ? ` ${model.remainingText}` : ""}</b></span> : model.remainingText ? <span className="vf-footer-item"><b>{model.remainingText}</b></span> : null}
+          {model.sessionLabel ? <span className="vf-footer-item"><b>{sessionLabel}{model.remainingText ? ` ${model.remainingText}` : ""}</b></span> : model.remainingText ? <span className="vf-footer-item"><b>{model.remainingText}</b></span> : null}
           {model.ambientTempText ? <span className="vf-footer-item vf-footer-item--end">{labels.ambientTemp} <b>{model.ambientTempText}</b></span> : null}
           {model.trackTempText ? <span className="vf-footer-item">{labels.trackTemp} <b>{model.trackTempText}</b></span> : null}
           {model.windText ? <span className="vf-footer-item">{labels.wind} <b>{model.windText}</b></span> : null}

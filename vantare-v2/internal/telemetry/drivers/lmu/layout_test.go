@@ -42,6 +42,8 @@ func TestLMU13LayoutMatchesAuditedOffsetsAndSourceTypes(t *testing.T) {
 		count  int
 	}{
 		{lmu13Layout.Session.TrackName, scopeSession, 1632, sourceChar, 64},
+		{lmu13Layout.Session.RainFraction, scopeSession, 1852, sourceFloat64, 1},
+		{lmu13Layout.Session.TrackLength, scopeSession, 1720, sourceFloat64, 1},
 		{lmu13Layout.Session.SessionType, scopeSession, 1696, sourceInt32, 1},
 		{lmu13Layout.Session.CurrentTime, scopeSession, 1700, sourceFloat64, 1},
 		{lmu13Layout.Session.EndTime, scopeSession, 1708, sourceFloat64, 1},
@@ -92,6 +94,10 @@ func TestLMU13LayoutMatchesAuditedOffsetsAndSourceTypes(t *testing.T) {
 		{lmu13Layout.Telemetry.WheelDetachedFR, scopeTelemetryRow, 1286, sourceUint8, 1},
 		{lmu13Layout.Telemetry.WheelDetachedRL, scopeTelemetryRow, 1546, sourceUint8, 1},
 		{lmu13Layout.Telemetry.WheelDetachedRR, scopeTelemetryRow, 1806, sourceUint8, 1},
+		{lmu13Layout.Telemetry.TyreWearFL, scopeTelemetryRow, 1000, sourceFloat64, 1},
+		{lmu13Layout.Telemetry.TyreWearFR, scopeTelemetryRow, 1260, sourceFloat64, 1},
+		{lmu13Layout.Telemetry.TyreWearRL, scopeTelemetryRow, 1520, sourceFloat64, 1},
+		{lmu13Layout.Telemetry.TyreWearRR, scopeTelemetryRow, 1780, sourceFloat64, 1},
 	}
 
 	if lmu13Layout.Version != "1.3.0.0" || lmu13Layout.ObjectSize != 324820 {
@@ -122,9 +128,11 @@ func TestLMU13LayoutReadsPinnedTrackFixture(t *testing.T) {
 
 	assertLayoutString(t, buf, lmu13Layout.Session.TrackName, "Circuit de Barcelona")
 	assertLayoutInt64(t, buf, lmu13Layout.Session.SessionType, 1)
+	assertLayoutFloat(t, buf, lmu13Layout.Session.RainFraction, 0)
 	assertLayoutFloat(t, buf, lmu13Layout.Session.CurrentTime, 112.6)
 	assertLayoutFloat(t, buf, lmu13Layout.Session.EndTime, 3605)
 	assertLayoutInt64(t, buf, lmu13Layout.Session.MaximumLaps, 0)
+	assertLayoutFloat(t, buf, lmu13Layout.Session.TrackLength, 4655.10986328125)
 	assertLayoutInt64(t, buf, lmu13Layout.Session.VehicleCount, 44)
 
 	const playerRow = 43

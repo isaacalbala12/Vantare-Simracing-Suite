@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 import { DesignSystemResolutionError } from "./design-system-definition";
 import type { WidgetInstanceV3 } from "./profile-document";
 import { widgetTypeRegistry } from "./widget-registry";
@@ -11,6 +11,8 @@ import { resolveMotionLevel, useReducedMotion } from "./widget-motion";
 import { buildSettledRelativeViewModelV2 } from "../widget-types/relative/relative-view-model-v2";
 import { isRelativeRedlineTemplateId } from "../design-systems/vantare-endurance/relative/relative-endurance-settings";
 import type { RelativeViewModel } from "../widget-types/relative/relative-view-model";
+import { FastestLapPresentation } from "../widget-types/fastest-lap/FastestLapPresentation";
+import type { FastestLapViewModel } from "../widget-types/fastest-lap/fastest-lap-view-model";
 
 export type { WidgetDiagnostic, WidgetDiagnosticCollector } from "./widget-diagnostics";
 
@@ -22,6 +24,8 @@ export type WidgetVisualHostProps = {
   runtime?: WidgetRuntimeInput;
   /** Explicit visual-authoring fixture. Never accepted by a production build. */
   authoringModel?: WidgetViewModelBase;
+  /** Workshop transport may exercise transient notices on the Studio surface. */
+  authoringPlayback?: boolean;
   /** Pure presentation decision resolved by the native widget policy. */
   brandVisible?: boolean;
 };
@@ -79,6 +83,56 @@ function CommittedRedlineRelative(props: {
   return props.render(model);
 }
 
+type PreparedWidgetVisual =
+  | {
+      ok: true;
+      definition: ReturnType<typeof widgetTypeRegistry.get>;
+      content: Record<string, unknown>;
+      registration: ReturnType<typeof prepareWidgetVisualSettings>["registration"];
+      settings: Record<string, unknown>;
+    }
+  | { ok: false; code: string; message: string };
+
+// La preparacion estatica (registro, parseContent, migracion, merge y
+// parseSettings) depende unicamente del objeto widget; las notificaciones de
+// telemetria re-renderizan sin cambiarlo, asi que se memoiza por referencia.
+// Los widgets se actualizan por inmutabilidad (todo comando crea un objeto
+// nuevo), lo que mantiene la invalidacion correcta en cualquier edicion.
+function prepareWidgetVisual(widget: WidgetInstanceV3): PreparedWidgetVisual {
+  let definition;
+  try {
+    definition = widgetTypeRegistry.get(widget.type);
+  } catch (error) {
+    return {
+      ok: false,
+      code: "unknown-widget-type",
+      message: error instanceof Error ? error.message : "widget type not registered",
+    };
+  }
+
+  let content: Record<string, unknown>;
+  try {
+    content = definition.parseContent(widget.content);
+  } catch (error) {
+    return {
+      ok: false,
+      code: "invalid-content",
+      message: error instanceof Error ? error.message : "invalid widget content",
+    };
+  }
+
+  try {
+    const { registration, settings } = prepareWidgetVisualSettings(widget);
+    return { ok: true, definition, content, registration, settings };
+  } catch (error) {
+    return {
+      ok: false,
+      code: error instanceof DesignSystemResolutionError ? "unsupported-visual-pair" : "invalid-settings",
+      message: error instanceof Error ? error.message : "invalid widget settings",
+    };
+  }
+}
+
 export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
   const { widget, renderMode } = props;
   // Reactivo: si el sistema activa reduced-motion con el widget montado, el
@@ -86,35 +140,12 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
   // layout effect — sin esperar a que la telemetría empuje otro frame.
   const reducedMotion = useReducedMotion();
 
-  let definition;
-  try {
-    definition = widgetTypeRegistry.get(widget.type);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "widget type not registered";
-    reportDiagnostic(props, "unknown-widget-type", message);
-    return <HostDiagnostic widget={widget} code="unknown-widget-type" message={message} />;
+  const prepared = useMemo(() => prepareWidgetVisual(widget), [widget]);
+  if (!prepared.ok) {
+    reportDiagnostic(props, prepared.code, prepared.message);
+    return <HostDiagnostic widget={widget} code={prepared.code} message={prepared.message} />;
   }
-
-  let content: Record<string, unknown>;
-  try {
-    content = definition.parseContent(widget.content);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "invalid widget content";
-    reportDiagnostic(props, "invalid-content", message);
-    return <HostDiagnostic widget={widget} code="invalid-content" message={message} />;
-  }
-
-  let registration;
-  let settings: Record<string, unknown>;
-  try {
-    ({ registration, settings } = prepareWidgetVisualSettings(widget));
-  } catch (error) {
-    const code =
-      error instanceof DesignSystemResolutionError ? "unsupported-visual-pair" : "invalid-settings";
-    const message = error instanceof Error ? error.message : "invalid widget settings";
-    reportDiagnostic(props, code, message);
-    return <HostDiagnostic widget={widget} code={code} message={message} />;
-  }
+  const { definition, content, registration, settings } = prepared;
 
   const v2Entry = getOverlayV2ViewModelEntry(widget.type);
   const frame = props.runtime?.overlayV2Frame;
@@ -217,7 +248,11 @@ export function WidgetVisualHost(props: WidgetVisualHostProps): ReactNode {
         systemId={widget.visual.systemId}
         onError={(error) => reportDiagnostic(props, "renderer-exception", error.message)}
       >
-        <Renderer model={visualModel} settings={presentationSettings} renderMode={renderMode} layout={widget.layout} motion={motion} effects={effects} />
+        {widget.type === "fastest-lap"
+          ? <FastestLapPresentation key={widget.id} model={visualModel as FastestLapViewModel} renderMode={renderMode} authoringPlayback={import.meta.env.DEV && props.authoringPlayback}>
+              {(noticeModel) => <Renderer model={noticeModel} settings={presentationSettings} renderMode={renderMode} layout={widget.layout} motion={motion} effects={effects} />}
+            </FastestLapPresentation>
+          : <Renderer model={visualModel} settings={presentationSettings} renderMode={renderMode} layout={widget.layout} motion={motion} effects={effects} />}
       </WidgetRenderBoundary>
     </>
   );

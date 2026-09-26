@@ -17,6 +17,15 @@ import {
 afterEach(() => vi.useRealTimers());
 
 describe("OverlayFrame v2 store", () => {
+  it("accepts four bounded LMU tyre-wear fractions and rejects malformed values", () => {
+    const update = golden();
+    const frame = update.frame!;
+    const withWear = { ...update, frame: { ...frame, damage: { ...frame.damage, tyreWear: { q: "fresh", v: [1, 0.91, 0.87, 0] } } } };
+    expect(decodeOverlayUpdateV2(withWear).frame?.damage.tyreWear?.v).toEqual([1, 0.91, 0.87, 0]);
+    const malformed = { ...withWear, frame: { ...withWear.frame, damage: { ...withWear.frame.damage, tyreWear: { q: "fresh", v: [1, 0.91, 1.2, 0] } } } };
+    expect(() => decodeOverlayUpdateV2(malformed)).toThrow("frame.damage.tyreWear.v");
+  });
+
   it("includes upstream JSON parsing in ingestion diagnostics", () => {
     const text = JSON.stringify({events: [{name: OVERLAY_V2_SNAPSHOT_EVENT, data: golden()}]});
     let now = 0;
@@ -33,6 +42,7 @@ describe("OverlayFrame v2 store", () => {
 
   it("parses a pull response once while retaining strict immutable ingestion", () => {
     const update = golden();
+    const expected = decodeOverlayUpdateV2(update);
     const text = JSON.stringify({sessionId: "s", delivery: 1, events: [{name: OVERLAY_V2_SNAPSHOT_EVENT, data: update}]});
     const parse = vi.spyOn(JSON, "parse");
     try {
@@ -40,7 +50,7 @@ describe("OverlayFrame v2 store", () => {
       const owned = response.events[0]!.data;
       const store = createOverlayFrameV2Store();
       store.ingest(OVERLAY_V2_SNAPSHOT_EVENT, owned);
-      expect(store.getSnapshot().frame).toEqual(update.frame);
+      expect(store.getSnapshot().frame).toEqual(expected.frame);
       expect(parse).toHaveBeenCalledTimes(1);
       expect(Object.isFrozen(owned.frame?.standings[0])).toBe(true);
       expect(() => Object.assign(owned.source, {state: "error"})).toThrow();
@@ -62,7 +72,7 @@ describe("OverlayFrame v2 store", () => {
 
   it("decodes the generated Go contract strictly", () => {
     const update = golden();
-    expect(decodeOverlayUpdateV2(JSON.stringify(update))).toEqual(update);
+    expect(decodeOverlayUpdateV2(JSON.stringify(update))).toEqual(decodeOverlayUpdateV2(update));
     expect(() => decodeOverlayUpdateV2({ ...update, unexpected: true })).toThrow(
       "overlay-frame-v2:invalid-contract:update",
     );
@@ -75,7 +85,7 @@ describe("OverlayFrame v2 store", () => {
     expect(() => decodeOverlayUpdateV2(withoutBestLap)).toThrow(
       "overlay-frame-v2:invalid-contract:frame.standings[0]",
     );
-    for (const field of ["position", "groundPosition", "lastLap"] as const) {
+    for (const field of ["position", "bestLap", "lastLap", "lapDelta", "side"] as const) {
       const incomplete = JSON.parse(JSON.stringify(update)) as Record<string, unknown>;
       const frame = incomplete.frame as { relative: Record<string, unknown>[] };
       delete frame.relative[0]?.[field];
@@ -113,6 +123,47 @@ describe("OverlayFrame v2 store", () => {
     })).toThrow("overlay-frame-v2:invalid-contract:frame.capabilities.performance.reason");
   });
 
+  it.each(["relative", "relativeSettled", "relativeSameClass"] as const)("preserves signed lapDelta and its quality in %s independently of the time gap", (field) => {
+    const update = golden();
+    if (!update.frame) throw new Error("golden frame missing");
+    const values = [
+      { q: "fresh", v: -2 }, { q: "fresh", v: 0 }, { q: "fresh", v: 3 },
+      { q: "fresh" }, { q: "stale", v: -1 }, { q: "missing" }, { q: "invalid" },
+    ];
+    for (const lapDelta of values) {
+      const rows = update.frame[field].map((row, index) => index === 0
+        ? { ...row, gap: { q: "missing" }, lapDelta }
+        : row);
+      const decoded = decodeOverlayUpdateV2({ ...update, frame: { ...update.frame, [field]: rows } });
+      expect(decoded.frame?.[field][0]?.lapDelta).toEqual(lapDelta);
+      expect(decoded.frame?.[field][0]?.gap).toEqual({ q: "missing" });
+      expect(Object.isFrozen(decoded.frame?.[field][0]?.lapDelta)).toBe(true);
+    }
+  });
+
+  it.each(["relative", "relativeSettled", "relativeSameClass"] as const)("rejects missing or malformed lapDelta and unknown fields in %s", (field) => {
+    const update = golden();
+    if (!update.frame) throw new Error("golden frame missing");
+    const row = update.frame[field][0];
+    if (!row) throw new Error("golden Relative row missing");
+    const malformed: unknown[] = [
+      undefined, null, 1, {}, [], { v: 1 }, { q: "unknown", v: 1 },
+      { q: "fresh", v: "1" }, { q: "fresh", v: true }, { q: "fresh", v: null },
+      { q: "fresh", v: Number.NaN }, { q: "fresh", v: Number.POSITIVE_INFINITY },
+      { q: "missing", v: 0 }, { q: "fresh", v: 1, unexpected: true },
+    ];
+    const rejectedRows = [
+      ...malformed.map((lapDelta) => ({ ...row, lapDelta })),
+      { ...row, unexpected: true },
+    ];
+    for (const rejected of rejectedRows) {
+      expect(() => decodeOverlayUpdateV2({
+        ...update,
+        frame: { ...update.frame, [field]: [rejected, ...update.frame![field].slice(1)] },
+      })).toThrow(`overlay-frame-v2:invalid-contract:frame.${field}[0]`);
+    }
+  });
+
   it("requires and bounds both Relative windows to the canonical 8+player+8 contract", () => {
     const update = golden();
     const row = update.frame?.relative[0];
@@ -140,7 +191,7 @@ describe("OverlayFrame v2 store", () => {
       },
     })).not.toThrow();
 
-    for (const field of ["relative", "relativeSettled"] as const) {
+    for (const field of ["relative", "relativeSettled", "relativeSameClass"] as const) {
       expect(() => decodeOverlayUpdateV2({
         ...update,
         frame: { ...update.frame, [field]: [...seventeen, { ...row, id: `${field}-overflow` }] },
@@ -342,3 +393,14 @@ class FakeEventSource implements OverlayFrameV2EventSourceLike {
     this.listeners.get(type)?.({ data });
   }
 }
+
+it("validates compact standings quality and preserves missing legacy authority", () => {
+ const input=JSON.parse(JSON.stringify(decodeOverlayUpdateV2(golden()))) as OverlayUpdateV2;
+ const row=input.frame!.standings[0]!;
+ Object.assign(row,{quality:{q:"fresh",pit:"invalid",classGap:"missing"},classRef:1,interval:1.25,intervalLaps:0});
+ expect(decodeOverlayUpdateV2(input).frame!.standings[0]!.quality).toEqual({q:"fresh",pit:"invalid",classGap:"missing"});
+ Object.assign(row,{quality:{q:"fresh",pit:"invented"}});
+ expect(() => decodeOverlayUpdateV2(input)).toThrow();
+ Object.assign(row,{quality:undefined});
+ expect(decodeOverlayUpdateV2(input).frame!.standings[0]!.quality).toBeUndefined();
+});

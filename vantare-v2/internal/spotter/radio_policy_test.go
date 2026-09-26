@@ -252,7 +252,7 @@ func TestSpotterLateralClearsPreserveCurrentSideAtAllCapacities(t *testing.T) {
 						startSpotter(t, producer, bus, test.current, 1_401)
 					}
 
-					clock.now = 1_550
+					clock.now = 1_551
 					next, emit, err := producer.Evaluate(benchmarkObservation(t, test.after...))
 					if err != nil || !emit {
 						t.Fatalf("post-clear = %+v/%t/%v", next, emit, err)
@@ -301,7 +301,7 @@ func TestSpotterContextDoesNotCrossUnannouncedOccupations(t *testing.T) {
 			if err != nil || !emit || current.Intent != IntentCarRight {
 				t.Fatalf("unannounced left-to-right = %+v/%t/%v", current, emit, err)
 			}
-			clock.now = 1_551
+			clock.now = 1_552
 			next, emit, err := producer.Evaluate(benchmarkObservation(t, -2.8))
 			if err != nil || !emit || next.Intent != IntentCarRight {
 				t.Fatalf("crossed context = %+v/%t/%v, want current car-right", next, emit, err)
@@ -353,7 +353,7 @@ func TestSpotterDispatchedContextExpiresAtAntecedentDeadline(t *testing.T) {
 	if message, emitted, err := producer.Evaluate(benchmarkObservation(t)); err != nil || emitted {
 		t.Fatalf("clear scheduling = %+v/%t/%v", message, emitted, err)
 	}
-	clock.now = 1_550
+	clock.now = 1_551
 	clear, emit, err := producer.Evaluate(benchmarkObservation(t))
 	if err != nil || !emit || clear.Intent != IntentClearLeft {
 		t.Fatalf("clear = %+v/%t/%v", clear, emit, err)
@@ -373,7 +373,7 @@ func TestSpotterClearContextExpiryIsRevalidatedBeforeDispatch(t *testing.T) {
 	startSpotter(t, producer, bus, IntentCarLeft, 1_001)
 	clock.now = 1_400
 	_, _, _ = producer.Evaluate(benchmarkObservation(t))
-	clock.now = 1_550
+	clock.now = 1_551
 	clear, emit, err := producer.Evaluate(benchmarkObservation(t))
 	if err != nil || !emit || clear.Intent != IntentClearLeft {
 		t.Fatalf("clear = %+v/%t/%v", clear, emit, err)
@@ -406,6 +406,25 @@ func TestSpotterRejectsInvalidCanonicalIdentity(t *testing.T) {
 				t.Fatalf("invalid %s identity = %+v/%t/%v", name, message, emit, err)
 			}
 		})
+	}
+}
+
+func TestSpotterNotReadyCarriesOnlyBoundedReason(t *testing.T) {
+	t.Parallel()
+	_, producer, _ := newSpotterHarness(t, 4)
+	observation := benchmarkObservation(t, 2.8)
+	observation.Player.Orientation = engineer.Field[engineer.Orientation]{}
+
+	message, emit, err := producer.Evaluate(observation)
+	if !errors.Is(err, ErrObservationNotReady) || emit || message.ID != "" {
+		t.Fatalf("not-ready result = %+v/%t/%v", message, emit, err)
+	}
+	var notReady *ObservationNotReadyError
+	if !errors.As(err, &notReady) || notReady.Reason != UnavailableSpatial {
+		t.Fatalf("reason = %+v, want %q", notReady, UnavailableSpatial)
+	}
+	if err.Error() != ErrObservationNotReady.Error() {
+		t.Fatalf("error leaked detail: %q", err)
 	}
 }
 
@@ -453,7 +472,7 @@ func TestSpotterRadioBoundaryResetsDeliveryBeforeNewStateAtAllCapacities(t *test
 					if emit {
 						t.Fatalf("different state emitted inherited message: %+v", current)
 					}
-					clock.now += clearDelayMS
+					clock.now += clearDelayMS + 1
 					if message, emitted, evalErr := producer.Evaluate(after); evalErr != nil || emitted {
 						t.Fatalf("different state inherited clear: %+v/%t/%v", message, emitted, evalErr)
 					}
@@ -470,7 +489,7 @@ func TestSpotterRadioBoundaryResetsDeliveryBeforeNewStateAtAllCapacities(t *test
 				if message, emitted, evalErr := producer.Evaluate(empty); evalErr != nil || emitted {
 					t.Fatalf("clear scheduling = %+v/%t/%v", message, emitted, evalErr)
 				}
-				clock.now = 1_750
+				clock.now = 1_751
 				replacement, emitted, evalErr := producer.Evaluate(empty)
 				if evalErr != nil || !emitted || replacement.Intent != IntentAllClear {
 					t.Fatalf("previous lifecycle authorized clear: %+v/%t/%v", replacement, emitted, evalErr)
@@ -509,7 +528,7 @@ func TestSpotterRadioInheritedDeadlineBoundaryAtAllCapacities(t *testing.T) {
 				submitSpotter(t, bus, antecedent)
 				startSpotter(t, producer, bus, IntentCarLeft, 1_001)
 
-				clock.now = timing.now - clearDelayMS
+				clock.now = timing.now - clearDelayMS - 1
 				if message, emitted, evalErr := producer.Evaluate(benchmarkObservation(t)); evalErr != nil || emitted {
 					t.Fatalf("clear scheduling = %+v/%t/%v", message, emitted, evalErr)
 				}
@@ -578,7 +597,7 @@ func TestSpotterRadioUnstartedDecisionNeverAuthorizesClearAtAllCapacities(t *tes
 						t.Fatalf("clear scheduling = %+v/%t/%v", message, emitted, evalErr)
 					}
 				}
-				clock.now += clearDelayMS
+				clock.now += clearDelayMS + 1
 				replacement, emitted, evalErr := producer.Evaluate(benchmarkObservation(t))
 				if evalErr != nil || !emitted || replacement.Intent != IntentAllClear {
 					t.Fatalf("unstarted antecedent authorized clear: %+v/%t/%v", replacement, emitted, evalErr)

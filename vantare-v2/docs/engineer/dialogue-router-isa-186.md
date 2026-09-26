@@ -1,5 +1,18 @@
 # ISA-186 / ENG-15 — router determinista y diálogo confirmable
 
+> **Extensión de diseño (2026-09-20):** el
+> [ADR 0010](../adr/0010-engineer-cloud-dialogue-and-offline-parity.md) y la
+> [spec de paridad LMU](../specs/2026-09-19-crewchief-lmu-parity-design.md)
+> recogen la decisión de permitir propuestas de intent/herramienta del LLM
+> cloud validadas por código. Isaac aprobó su precisión contractual el
+> 2026-09-20 para planificación y primeras pruebas, no como implementación.
+> Esto sustituye para el nuevo programa la exclusión absoluta del LLM en
+> interpretación, no la autoridad determinista de hechos, slots, confirmaciones
+> o efectos. Todas las garantías de este router siguen vigentes; la nueva ruta
+> debe además ligar confirmación al readback efectivamente entregado de la
+> propuesta vigente. Los puertos falsos y pruebas textuales descritos aquí no
+> acreditan ese vínculo audible ni superan gates humanos o de acciones reales.
+
 ## Resultado y límite
 
 ENG-15 convierte el resultado textual validado por `engineer.commands.v1` en

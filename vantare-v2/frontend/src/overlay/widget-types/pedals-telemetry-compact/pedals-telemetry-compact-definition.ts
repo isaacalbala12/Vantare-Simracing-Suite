@@ -41,6 +41,7 @@ export const pedalsTelemetryCompactDefinition: WidgetTypeDefinition<
 > = {
   type: "pedals-telemetry-compact",
   labelKey: "studio.v3.widgetTypes.pedalsTelemetryCompact",
+  retired: true,
   capabilities: {
     inspectorSections: ["design", "appearance", "content", "behavior", "layout", "actions"],
     supportsAspectUnlock: true,

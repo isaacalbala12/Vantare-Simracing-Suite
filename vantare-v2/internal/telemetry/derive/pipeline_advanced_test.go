@@ -71,6 +71,7 @@ func TestPipelineDerivesSessionRemainingAndRelativeGaps(t *testing.T) {
 	}
 	state := core.ObservedState{
 		SourceTime:    derivedInput(25*time.Second, schema.FreshnessFresh),
+		TrackLength:   derivedInput(standings.LapDistance(2000), schema.FreshnessFresh),
 		EndTime:       derivedInput(session.EndTime(100), schema.FreshnessFresh),
 		PlayerPresent: derivedInput(true, schema.FreshnessFresh),
 		Vehicles: []core.VehicleState{

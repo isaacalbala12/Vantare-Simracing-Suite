@@ -20,7 +20,7 @@ concurrency:
 env:
   NODE_VERSION: "22"
   PNPM_VERSION: "9.1.0"
-  WAILS_VERSION: "v3.0.0-alpha.98-tui"
+  WAILS_VERSION: "v3.0.0-beta.24"
   VANTARE_DIR: "vantare-v2"
   # ISA-860 se integra primero en auditoria. Cambiar a `enforce` requiere
   # migrar las PR vivas y una identidad distinta para Code Owner review.
@@ -182,6 +182,7 @@ jobs:
         working-directory: ${{ env.VANTARE_DIR }}
         run: |
           go run ./tools/telemetry-contract-gen -check
+          if ($LASTEXITCODE -ne 0) { throw "telemetry contract generation failed" }
           git diff --exit-code -- frontend/src/generated/
 
       # ISA-118, ISA-172, ISA-173 and ISA-174 used to be carved out of these two
@@ -194,7 +195,7 @@ jobs:
 
       - name: Frontend tests
         working-directory: ${{ env.VANTARE_DIR }}/frontend
-        run: pnpm exec vitest run
+        run: pnpm test
 
       - name: Changed frontend lint
         working-directory: ${{ env.VANTARE_DIR }}/frontend

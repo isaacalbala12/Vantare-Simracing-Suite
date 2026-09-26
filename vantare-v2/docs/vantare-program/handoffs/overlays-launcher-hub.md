@@ -1,11 +1,137 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
-> **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
-> Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,
-> bloquear, entregar y verificar merge. [Contrato](../notion-transition.md).
-> Este handoff conserva evidencia técnica fechada; sus estados antiguos no
-> sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
+## 2026-09-26 · VAN-769 / GitHub #1381 · Integración inicial autorizada
 
+Isaac revisó la entrega de temas y fondos de Studio en Wails y autorizó expresamente integrar únicamente la [PR #1384](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1384) en `nightly`. La rama se reconcilió con `origin/nightly@d09829c4` sin conflictos de código. El candidato inicial `9ea9a341` pasó sus gates bloqueantes, pero el validador de roadmap en modo auditoría señaló un orden distinto de entregas porque el digest se había generado desde el artefacto de la rama. Se regeneró `roadmap.json` partiendo del JSON protegido de `d09829c4`; la comparación estricta del contrato y las pruebas del generador pasan. La aceptación incluye la tarjeta Próxima serie con la paleta activa; los widgets mantienen sus diseños. CI debe repetirse sobre la cabeza con el digest corregido antes del merge. Este registro no afirma integración antes de comprobar el SHA remoto y los gates del merge. La comprobación física en LMU/OBS sigue siendo trabajo de Nightly. La autorización no comprende `testers`, `master` ni una release.
+
+> **Seguimiento de widgets en [Asana](https://app.asana.com/0/1218742976551956/list), por instrucción de Isaac.**
+> GitHub Issues conserva el puente técnico y su estado de entrega.
+> Este handoff conserva evidencia técnica fechada; sus estados antiguos no
+> sustituyen el estado vivo ni autorizan nuevas tareas.
+
+## VAN-769 / GitHub #1381 — Temas de interfaz y fondos de Studio (2026-09-25)
+
+[VAN-769](https://app.notion.com/p/3e6e51695c6581abbcdff05e070a4a69)
+es la tarea viva del proyecto Hub / Orbit UI; [PR draft #1384](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1384)
+lleva la rama aislada `vantareapp/isa-1381-temas-paleta-ui` a revisión.
+Siete paletas con variantes claras/oscuras, modo Sistema, contraste, opacidad
+y fuentes se aplican al Hub y Studio sin modificar el diseño de los widgets.
+Studio ofrece `Tema actual`, catorce fondos fijos agrupados por paleta,
+Rejilla, Degradado, Negro y biblioteca propia; recuerda la selección manual.
+La tarjeta Próxima serie sigue los tokens de la paleta. En Wails real se
+comprobaron tarjeta Grises clara/oscura, escenario Grises claro/oscuro,
+selección fija Rosa/Oscuro y persistencia al volver a Studio; los widgets
+conservaron sus colores. Typecheck, build, lint, i18n, pruebas focales y
+presupuesto de frames pasaron. La suite completa tuvo 4.116 correctas,
+dos omitidas y cuatro fallos locales (tres timeouts de geometría bajo carga
+y una expectativa antigua corregida); las cuatro suites pasaron aisladas.
+En `503483ca` el quality ratchet detectó 13 hallazgos jscpd al editar una
+hoja con clones históricos; se movió la corrección de la tarjeta a la hoja
+de paletas y se unificó la regla del escenario. La comprobación local del
+ratchet arroja cero hallazgos nuevos. El gate frontend de Windows señaló
+tres traducciones huérfanas del antiguo selector y se retiraron; la auditoría
+i18n y 26 pruebas focales pasan tras el ajuste. CI del nuevo candidato
+pendiente. Sin merge, promoción ni release.
+
+
+
+## ISA-1390 — versión en la cabecera de Orbit (2026-09-25)
+
+[Notion VAN-768](https://app.notion.com/p/3e6e51695c6581f78d55e9801c25c6ab) y [puente técnico #1390](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1390). Rama aislada `vantareapp/isa-1390-orbit-version-header`, base `origin/nightly@f0ccfbf2`. El indicador verde decorativo se elimina de la cabecera contextual; la versión se muestra cuando llega del runtime. La ruta existente es `app:version` desde Go a HubApp y ContextColumn. `VERSION` y `main.version` coinciden en `0.1.0.7`; el empaquetado de Windows inyecta la etiqueta de la build, incluido su canal. No se introduce una versión fija en frontend.
+
+Prueba de regresión: la cabecera carece del indicador y acepta una versión nueva en el mismo montaje. Reproducción roja antes del cambio; después, 36/36 pruebas focales, typecheck, lint y build pasan. El primer intento de suite completa agotó el tiempo en dos tests visuales ajenos durante carga concurrente; ambos pasaron aislados (5/5). La repetición con dos workers pasó: 484 archivos, 4106 pruebas, 2 omitidas; la prueba aparte de presupuesto de frames pasó 4/4. El hito `orbit-v1-12` y su digest derivado reflejan el ajuste sin dar por completado todo el hito. La [PR #1391](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1391) se fusionó en `nightly` como `98c245bfb1a11ce240605dc78e26e9758477fa25`: SHA remoto y controles posteriores de promoción y bloqueo aprobados, incluida build Wails de CI. Pendiente comprobación visual en ventana Wails real; sin `testers`, `master` ni release.
+
+## ISA-1385 — Car Damage Numbers Eficiencia (2026-09-25)
+
+[Issue #1385](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1385). Isaac pidió adaptar la composición de cuatro filas del widget Crystal al fondo y la tipografía de Eficiencia. Rama/worktree aislados `vantareapp/isa-1385-car-damage-numbers-eficiencia` en `C:\tmp\vantare-isa1385-car-damage-numbers`. El trabajo local nació de `df6b4125` del mapa #1358, y antes del PR se reconcilió sobre `origin/nightly` `5c73013e`: el diff final contiene solo #1385.
+
+El renderer Eficiencia presenta Aero, Body, Susp y una sola fila Tyre, con el agregado de neumáticos ya usado por Crystal, preservando `showTyres`. Las filas usan Inter; Crystal no se modifica. Workshop revisado en `127.0.0.1:5173` a 140 × 148 con tres valores al 100 % y neumático ausente representado como «—». Isaac aceptó la composición de cuatro filas independientes. Por su preferencia no se hizo build tras cada iteración.
+
+Corrección tras la primera revisión de Isaac: el fondo del contenedor completo hacía que las filas parecieran un solo rectángulo. Se retiraron fondo, sombra y borde exterior; cada una de las cuatro filas tiene ahora su propio fondo y borde de Eficiencia, con espacio visible entre ellas. La revisión visual posterior en Workshop confirma cuatro recuadros independientes a 140 × 148. El ajuste afecta solo a CSS de Eficiencia; sin cambios de datos, Crystal o build.
+
+Auditoría para PR solicitada por Isaac: LMU lee `mDentSeverity[8]` del coche jugador, la fusión conserva frescura, Go publica `frame.damage.dents` y el registro de ViewModels V2 alimenta el renderer Eficiencia. Una prueba de contrato recorre el frame golden V2 hasta las cuatro filas. La revisión reprodujo y corrigió dos errores del ViewModel: cero daño observado se perdía como dato ausente, y una muestra antigua o fuente degradada podía aparecer como actual o ausente. Un `QValue` fresco sin ocho valores útiles ya no fabrica ocho ceros. Los porcentajes de Aero/Body/Susp siguen siendo la transformación existente `min(severidad/2, 1)`, no una calibración física nueva.
+
+Corrección solicitada por Isaac después de abrir la PR: el SDK local de LMU sí expone `TelemWheelV01.mWear` para FL/FR/RL/RR. `offsetof` con el propio header confirmó `+1000/+1260/+1520/+1780` en la fila. El lector valida 0..1 y transporta las cuatro fracciones con calidad propia por la fusión, el estado canónico y `frame.damage.tyreWear`; Car Damage Numbers muestra `max(1-mWear)` como desgaste de la peor rueda. La captura sanitizada preservará ahora estos bytes; las capturas históricas no los conservan, de modo que siguen sin acreditar la escala física. El golden del Workshop sí es una muestra de prueba declarada y enseña 13 % de desgaste; no se presenta como captura de LMU. Sin sesión LMU activa no hay prueba física de valores en carrera. La issue #1385 y el cuerpo de la PR draft explicitan el alcance revisado.
+
+Checks en la base reconciliada: `go test` de los paquetes LMU y Overlay V2, typecheck, lint frontend, build frontend y cuatro pruebas del presupuesto de frames pasaron. La suite completa de frontend aprobó 4098 pruebas y omitió 2, pero terminó roja porque `work/horizontal-standings-flags.visual.test.tsx` agotó 20 s al cerrar Chromium en `afterAll`; esa prueba ajena pasó aislada (5/5). No se presenta el conjunto como verde. La build final es única tras las iteraciones. Pendientes CI del PR y validación física LMU/Windows/OBS; sin merge, promoción ni release.
+
+[PR draft #1386](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1386) abierta hacia `nightly` con el diff exclusivo de #1385 y el fallo de la suite global declarado en la descripción. Rama remota publicada para revisión; CI y aceptación de la telemetría física siguen pendientes. No se ha autorizado ni realizado merge o promoción.
+
+Checks de la corrección `mWear`: `go test ./...` pasó; catálogo, parser LMU, sanitizador, frame y cadencia tienen pruebas focales verdes. Frontend: 29 pruebas focales y 4 de presupuesto de frame pasaron; lint, typecheck y una build final pasaron. La suite completa aprobó 4098 pruebas, omitió 2 y terminó roja por timeout de dos pruebas visuales ajenas (Endurance shell y clipping de Standings); ambas pasaron aisladas (5/5). Workshop en la misma URL muestra cuatro filas y 13 % en NEUM. sobre golden de demostración. El SDK y los tests de bytes prueban el cableado, pero aún no existe una captura física de `mWear` tomada en sesión activa tras esta admisión. El PR sigue draft, sin merge.
+
+25/09: Isaac autoriza expresamente integrar #1386 en `nightly` y acepta contrastar el desgaste con LMU en marcha después. Antes del merge, los controles remotos de promoción, gates bloqueantes, calidad y GitGuardian están verdes en `aeaa27a0`. La tarea [Notion VAN-767](https://app.notion.com/p/3e6e51695c65813fb751c943eb332000) registra esta decisión y el límite físico. Se clasifica #1385 como `roadmap:required` y se actualiza solo `milestones:functional-widget-design` y su digest derivado; el nuevo HEAD tendrá que superar CI antes de integrar. Este registro no declara todavía merge ni prueba física.
+
+## ISA-1355 — integración de datos, volantes y catálogo (2026-09-24)
+
+La [PR draft #1356](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1356) reúne las tres entregas coordinadas en [Asana · Pedals telemetry](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756738610082). Sobre `bf2b12e9` (volantes) y `82883459` (renombre/compatibilidad), el tercer commit incorpora con `cherry-pick -x` el parche de datos `fb8590878d46988def86b55c2c0aa4add32c497b`, revisado contra sus cinco pruebas y consumidores. Rama `vantareapp/isa-1355-lmu-steering-wheels`, misma base `nightly f50ab4ab`; no hay conflicto semántico ni conversión de perfiles.
+
+El ViewModel distingue ceros de señales ausentes/invalidas, limita pedales a 0–1 y elimina datos anteriores en conexión, detección o parada. El embrague oculto y la dirección opcional no degradan la calidad del widget. El compacto hereda el vaciado de instrumentos; la conversión compartida de velocidad descarta valores no finitos. El primer ratchet detectó dos emplazamientos de una normalización duplicada con Pedals: por autorización del orquestador, ambos reutilizan `pedalValue` con reglas exactamente equivalentes. Se conserva el comportamiento anterior de Pedals y no se cambian políticas ni baseline.
+
+Verificación final tras esa reutilización: 159 pruebas focales; frontend completo con Node 22.23.2, **484 archivos / 4098 PASS / 2 omitidas**; typecheck, lint y build PASS; ratchet PASS, **NEW=0, MOVED=0, policy_changed=false**. La suite emite el aviso conocido de cancelación de fetch al cerrar happy-dom, sin fallo. Se restauran los cinco PNG incidentales de Horizontal Standings. La revisión visual anterior del selector/nombres sigue aplicando: este commit solo modifica adaptación de datos y documentación.
+
+Límites: producción sigue sin señal de dirección validada y con posición V2 ausente; la rotación de Workshop proviene del fixture. Pendientes revisión del orquestador, aceptación visual de Isaac, CI remoto del tercer commit y validación física LMU/Windows/OBS. Los dos primeros commits ya pasaron CI. No se modifica Workshop 5178 ni se integra, promociona o publica una release.
+
+## ISA-1355 — Pedales avanzados y compatibilidad del compacto (2026-09-24)
+
+Ampliación de [Asana · Pedals telemetry](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756738610082) en la [PR draft #1356](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1356), segundo commit separado sobre `bf2b12e9`, misma rama/worktree aislados. Aprobado por el orquestador: el compacto sale de los catálogos de creación, pero conserva definición, manifests, IDs de diseños y contratos frontend/Go para perfiles guardados. No se convierte al principal porque sus banderas `showSpeed`/`showRpm`, tamaño y presentación iRacing son diferentes.
+
+`pedals-telemetry` se presenta como **Pedales avanzados**; `pedals-telemetry-compact` como **Pedales antiguos**. Etiquetas ES/EN/PT/IT, catálogo de añadir, nombres de tipo sin nombre personalizado en Orbit y rótulo Workshop actualizados. Los nombres que escribió el usuario se conservan. Hay 20 tipos seleccionables y 21 aceptados. Un enlace antiguo de Workshop al compacto sigue dibujándolo y muestra una opción deshabilitada/aviso; no lo ofrece desde las demás selecciones. El guardado no migra IDs ni borra ajustes. No se toca el Workshop 5178.
+
+Verificación: 483 archivos / 4093 pruebas aprobadas / 2 omitidas con Node 22.23.2; 109 pruebas focales y 103 adicionales tras el último ajuste de etiqueta. Perfiles mixtos V3→V4 y roundtrip conservan contenido, layout, visibilidad, memorias visuales, procedencia, política de rendimiento y volante Ligier; los tres sistemas antiguos renderizan en Studio/Desktop/OBS. Typecheck, lint, build y ratchet PASS (NEW=0, MOVED=0, sin cambios de política). Revisión en Safari 5188: nombre **Pedales avanzados**, volante visible y menú con 20 entradas sin compacto. Capturas locales `/tmp/vantare-wheel-review/pedals-advanced-renamed.png` y `pedals-advanced-catalogue.png`. La galería anterior contiene 32 figuras (5 filas de 6 y una de 2), verificadas contra los 31 IDs LMU más genérico.
+
+Pendientes: revisión final del orquestador, aceptación visual de Isaac, CI remoto del nuevo SHA y validación física LMU/Windows/OBS. La auditoría de telemetría va separada; no afirmar dirección física validada. Sin merge, promoción ni release.
+
+## ISA-1355 — volantes LMU intercambiables (2026-09-24)
+
+[Asana · Pedals telemetry](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756738610082), puente [#1355](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1355). Worker GPT-6 Astra Max, rama `vantareapp/isa-1355-lmu-steering-wheels`, worktree `vantare-lmu-steering-wheels`, base `nightly f50ab4ab`. [Diseño](../../plans/2026-09-24-lmu-steering-wheels.md) y [catálogo/evidencia](../../analysis/lmu-steering-wheels.md).
+
+El renderer productivo `PedalsAdvancedEfficiency` de `pedals-telemetry` incorpora 31 opciones LMU y conserva el genérico inicial. Apariencia persistente V4, selector de Studio y parámetro/control de Workshop, nombres comerciales comunes y etiquetas en cuatro idiomas. SVG propios simplificados: no se certifican réplicas exactas ni cada variante histórica. No se alteran datos, giro físico, nombres de widgets ni registro del compact; la auditoría y migración están en ramas de otros agentes.
+
+172 pruebas focales finales con idiomas; suite completa Node 22.23.2: 482 archivos / 4080 PASS / 2 omitidas. Typecheck, lint, build y ratchet PASS (NEW=0, MOVED=0, policy_changed=false). Node 26 alpha produjo errores de entorno en la primera suite; se repitió con el runtime estable sin debilitar pruebas. Revisión de Safari confirma selección Ferrari/BMW, tamaño y catálogo de 32 dibujos a 72 px. Preview aislado 5188; evidencia local temporal en `/tmp/vantare-wheel-review/`. Pendientes aceptación visual de Isaac, revisión independiente y validación física LMU/Windows/OBS; señal steering todavía ausente en la base. Preparado como candidato, sin merge a ningún canal.
+
+
+## ISA-1347 — contratos y correcciones de datos de widgets aceptados (2026-09-23)
+
+Seguimiento por instrucción explícita de Isaac en [Asana · Desarrollo](https://app.asana.com/0/1218742976551956/list). Correcciones Delta `1218777895248782`, Pedals `1218777754821855`, Standings `1218777832104952`, Relative `1218778048433037` y Horizontal `1218777895238689`, todas En curso y releídas tras actualizar. Se preserva la aceptación visual previa. [Puente #1347](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1347), base inicial `nightly 8b25d076`, rebasada linealmente sobre `origin/nightly@b725c402`, rama `vantareapp/isa-1347-widgets-data-contract`.
+
+[Contrato común](../../specs/2026-09-23-accepted-widgets-data-contract.md) y [plan](../../plans/isa-1347/PLAN.md). Tres workers GPT-6 en worktrees separados entregan correcciones; root integra y repite comprobaciones. Delta resuelve las tres referencias en Go; Pedals distingue ausencia de cero; Standings conserva calidad y referencias de clase/intervalo; Relative usa proximidad circular y progreso real para doblados; Horizontal conserva gaps en vueltas y ofrece el carrusel aceptado como control productivo. SOF fuera por decisión de Isaac. Bloque Vuelta ligado a vuelta actual del jugador, supuesto recomendado comunicado tras la consulta opcional.
+
+Humedad de pista REST 0–1 y severidad de lluvia nativa SHM 0–1 conectadas con caducidad por campo. [Autoridad meteorológica](../../analysis/isa-1347-weather-authority.md). Viento sin unidad probada, dirección y presión sin autoridad permanecen ausentes. Bandera REST requiere correlación positiva con una sesión activa. No confundir pruebas de fixtures con certificación del simulador activo.
+
+Producto validado en `95ad1dc3`, tras corregir los hallazgos de las revisiones independientes y el lector de posiciones Relative desconocidas. En ese árbol: frontend completo, 480 archivos, 4.037 PASS y 2 omitidas; Go focal de siete paquetes, tipos/generador, build frontend, build cruzado Windows, lint y ratchet aprobados (NEW=0, MOVED=0, policy_changed=false). Compactación sin pérdida ni aumento de presupuesto: 64.880 / 71.120 / 73.096 bytes. Backend/frontend requieren el mismo build; lector nuevo admite wire anterior. [Evidencia y límites](../../analysis/isa-1347-verification.md). Suite global Go en macOS sigue roja por fallos reproducidos en la base (diagnostics, SQLite y launcher), no se ocultan. La [PR #1352](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1352) se rebasó sobre `origin/nightly@b725c402` y se regeneró `roadmap.json`. El head remoto `c2999ac5` falló el gate compacto (1,906 ms frente a 1,5 ms). El siguiente head `5bf052c8` aprobó promoción, gates bloqueantes y GitGuardian, pero el ratchet reportó `jscpd NEW=2` en validaciones de forma repetidas. El ajuste local actual extrae `validQualityValueShape`; el scan directo solo conserva un duplicado cuyo hash ya figura en el baseline. Pruebas dirigidas 39/39; última muestra de rendimiento bajo carga: legacy 1,188 ms y compacto 1,440 ms; suite completa 481 archivos, 4.035 PASS y 2 omitidas al limitar Vitest a dos workers; build, typecheck y lint PASS. El CI remoto del seguimiento del ratchet aún está pendiente. Isaac solicitó explícitamente integrar la PR a Nightly el 2026-09-23; todavía no hay merge. Sin promoción adicional ni release. Próximo paso: publicar la corrección de duplicación, esperar todos los gates remotos y después continuar la verificación física en LMU/Windows/Desktop/OBS antes de cerrar las cinco correcciones de Asana.
+
+
+## ISA-1320 — Relative: movimiento discreto para conducción (2026-09-22)
+
+Seguimiento por decisión explícita de Isaac en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756738527745), En curso. Puente técnico [#1320](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1320). Base `nightly e6d7d2b5`, rama `vantareapp/isa-1320-relative-motion`.
+
+Isaac pide animaciones más suaves que Standings y elige «movimiento suave y una señal de color muy tenue». GPT-6 Sol implementa el renderer en worktree propio; GPT-6 Luna prepara escenas de Workshop aparte; GPT-6 Astra revisará el commit de producto independientemente. Deslizamiento de rivales sin rebote, jugador estable, cifras sin animación, fundidos breves al entrar/salir y color tenue únicamente ante cruce real. La telemetría ordinaria no debe reiniciar animaciones ni medir layout. Respetar modos de movimiento y limpiar efectos al cambiar sesión, fuente o geometría.
+
+La inspección inicial detecta reinicio de FLIP por cada modelo, ausencia de baseline inicial y descripciones de escenas que prometen efectos distintos del renderer. Se corrigen dentro de esta entrega. Implementación y escenas presentes en `c809d5e8`: deslizamiento de 220–300 ms, señal de color de hasta 4 %, entradas/salidas de 120 ms, huecos delante/detrás que estabilizan jugador y pie. Solo un cue por rival; cambios de cifras no reinician FLIP. Los cambios de tamaño o movimiento reaccionan aun conservando el mismo modelo. La revisión independiente GPT-6 Astra pasa 50 tests y comprobaciones WAAPI activas de StrictMode, escala 1,5, retarget, salida a mitad de movimiento y desmontaje. Root verifica 43 tests focales y comprueba los participantes visibles de todas las escenas en práctica, clasificación y carrera. La suite frontend completa del conjunto `c809d5e8` pasa 469 archivos y 3795 pruebas (2 omitidas). El refinamiento posterior `b7a19184` conserva opacidad en reentrada y cancela temporizadores; pasa 39 pruebas focales, typecheck, build, lint y ratchet (NEW=0, MOVED=0, policy_changed=false). La corrección `cf14f927` conserva también la opacidad en una segunda salida durante esa reentrada. Revisión independiente final GPT-6 Astra en `d869f521`: 7/7 pruebas Relative y diff limpio, sin hallazgos pendientes. Root repite build y ratchet sobre ese árbol final: PASS, NEW=0, MOVED=0, policy_changed=false; tipos y lint también pasan tras `cf14f927`. La suite completa antecede a esos refinamientos acotados; no se presenta como repetida sobre el último SHA. Pendiente aceptación visual de Isaac. El acceso automatizado al navegador ha estado bloqueado; no se afirma validación visual ni física. Sin autorización de integración para esta entrega. La PR #1306 de Standings permanece separada.
+
+### Idioma — integración verificada
+
+La PR [#1317](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1317) fue integrada por squash en `nightly` como `e6d7d2b5e58f55b82c0ed2f6a79667476d897086`, después de la aceptación de Isaac. Head fuente `86249c3a`; checks remotos de promoción, blocking gates, ratchet y GitGuardian aprobados. Árbol remoto coincide con la entrega. Asana `1218757534554194` registra integración y conserva pendiente la revisión física Windows/OBS que Isaac hará en nightly. No se promovió a testers/master.
+
+## ISA-1332 — Horizontal Standings: animaciones (2026-09-23)
+
+Seguimiento principal en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218756818225223), En curso por petición de Isaac. [Puente técnico #1332](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1332). Base `nightly e6d7d2b5`; rama `vantareapp/isa-1332-horizontal-motion`. [Plan](../../plans/2026-09-23-isa-1332-horizontal-motion.md).
+
+Isaac confirma Relative y Pedals; ambas revisiones se marcan completadas en Asana, sin confundir Pedals con Pedals telemetry ni aceptación con integración remota. El horizontal carece de animaciones en su renderer Eficiencia y usa una clave dependiente de la posición. Se implementan identidad canónica, movimiento horizontal discreto, fundidos de presencia y señal tenue de posición, con cifras estables y sin trabajo de animación por telemetría numérica. GPT-6 Sol trabaja renderer/VM/pruebas; GPT-6 Luna, escenas; el orquestador revisa y compone. Próximo paso: verificar e incorporar al preview combinado, preservando Delta/Standings/Relative. Sin merge ni certificación física.
+
+### ISA-1332 — renderer verificado
+
+Renderer/VM de GPT-6 Sol en `6c67ed73`: IDs canónicos, desplazamiento horizontal de 250–360 ms, fundidos de 120 ms y señal verde/roja al 5 % durante 450 ms. Cifras no inician efectos; 100 muestras quietas y durante movimiento/entrada no añaden mediciones, timers ni animaciones. Modos reducidos, retarget a escala 1,5, salida durante entrada y StrictMode cubiertos. Worker: 44 pruebas focales, tipos/build/lint de archivos modificados PASS. Root: suite frontend completa sobre el renderer y documentación, 469 archivos, 3790 PASS y 2 omitidas; el warning AbortError de cierre del entorno DOM no produjo fallo. Se retiraron únicamente cinco PNG de revisión regenerados incidentalmente por la suite, manteniendo las referencias versionadas.
+
+GPT-6 Astra revisa independientemente los ocho archivos y pasa 40 pruebas: sin hallazgos bloqueantes. [Informe](../../analysis/isa-1332/motion-review.md). Los efectos React siguen ejecutándose y retornan antes de medir/animar; no se promete coste CPU nulo. Sin inspección visual de navegador/WAAPI físico. Próximo paso: incorporar y comprobar las escenas y el preview combinado.
+
+### ISA-1332 — entrega preparada para revisión visual
+
+Escenas de GPT-6 Luna `8d6f1239`: Secuencia completa, Cruce de posiciones, Inversión rápida, Salida y reentrada y Cifras sin reordenar. Filtro Eficiencia y pasos exactos en pausa; 65 pruebas focales y tipos PASS. Root compone el candidato fuente `4fcafa59`, idéntico al árbol comprobado `511489f0`: frontend completo 469 archivos, 3794 PASS y 2 omitidas; lint, build/TypeScript y ratchet PASS (NEW=0, MOVED=0, policy_changed=false). Contrato de roadmap verificado contra la issue viva: únicamente `milestones:functional-widget-design`. No se tocaron reglas, dependencias ni código Go; no se repitieron pruebas globales Go por ese alcance frontend.
+
+GPT-6 Sol integra en una copia del preview y resuelve los conflictos conservando los filtros por sistema/sesión, los pasos exactos y todas las escenas Relative/Standings. Preview limpio `752bc0cc`: 188 pruebas focales del conjunto, tipos/build y diff limpio PASS. Root revisa el diff respecto a `d3aea8bc`: el CSS modificado se limita a Horizontal Standings, sin recuperar las transformaciones Delta retiradas. El servidor existente 5177 sigue en el mismo directorio; su checkout pasa a `752bc0cc` únicamente tras comprobar la composición. La apertura de la pestaña se solicitó a Codex y quedó encolada; no equivale a inspección visual.
+
+Revisión manual: [Workshop · Secuencia completa](http://127.0.0.1:5177/workshop?widget=broadcast-tower&system=vantare-functional&session=race&scene=broadcast-tower-overtake-sequence&frame=0&brand=off) → Reproducir. Revisar después Inversión rápida y Salida y reentrada; repetir práctica/clasificación y movimiento reducido. Asana Horizontal Standings sigue En curso hasta aceptación de Isaac. Relative y Pedals están completados por su confirmación. Fuente `vantareapp/isa-1332-horizontal-motion` desde nightly `e6d7d2b5`; publicación como PR draft, sin merge ni promoción. El seguimiento Asana conserva la URL/SHA y el estado remoto actual tras publicar. Sin certificación visual nativa ni Windows/OBS.
 
 ## ISA-1162 — enlace OBS restaurado al pie del dock del Studio (2026-09-11)
 
@@ -3029,3 +3155,213 @@ aislada a `nightly` (pendiente review/merge):
 - `plan.md` publica `functional-widget-design` y `widget-access-branding` como
   entregados; `roadmap.json` se regenera desde la base confiable. CI del SHA
   final y pertenencia al remoto Nightly son los últimos gates antes del cierre.
+
+## ISA-901 — centro de notificaciones y Spotter overlay-only (2026-09-15)
+
+- Candidato `vantareapp/isa-901-centro-notificaciones`, PR draft a `nightly`.
+  Depende de #900 (ya cerrada); paraguas #899. Sin merge ni promoción
+  implícita: la integración la autoriza Isaac.
+- `internal/notify.Center` es el store acotado (50) y la única autoridad de
+  avisos recientes; publica el snapshot completo en `notifications:center`
+  tras cada mutación y un webview reconectado pide `notifications:center:get`.
+  `revision` descarta entregas viejas. Contrato y matriz en ADR-0096.
+- Matriz por fuente: `updater`/`launcher` → hub+windows+history; `system`
+  (prueba manual) → hub+history sin Windows. Fuente silenciada aterriza leída
+  y sin toast. Acciones solo `navigate` con allowlist backend
+  (`settings:updates`, `launcher`): el frontend manda el id y el backend
+  revalida antes de emitir `notifications:center:navigate`.
+- Exclusión Spotter por construcción: `Source` es conjunto cerrado sin
+  `spotter`, así que `Publish` lo rechaza con `ErrSourceDenied`; ningún camino
+  del ingeniero toca el centro ni el toast. Su salida sigue siendo
+  overlay/subtítulos/audio.
+- `centerEmitter` reemplaza `notifyingEmitter`: `launcher:chain:done` ahora
+  produce registro del centro; `notify.Service.SendGated` es el canal Windows
+  (reutiliza preferencia+autorización+ventana oculta) en goroutine propia.
+  `LaunchFinished` quedó sin consumidores y se retiró.
+- UI: campana con badge en la topbar Orbit + panel (leído/limpiar/acción).
+  i18n en es/en/it/pt; las claves `notifications.record.*` las emite el
+  backend y un test de contrato cruza `notify_center.go` con los catálogos.
+- Evidencia: `go test -race ./internal/notify` PASS (un test de concurrencia
+  cazó y corrigió corrupción en el move-to-front del dedupe); 3600+ tests
+  frontend PASS; typecheck/lint/build web PASS; auditoría i18n 0 huérfanas;
+  `GOOS=windows go build ./cmd/vantare` PASS.
+- Pendiente humano: verificación visual de la campana en la app real
+  (Wails/WebView2) y toast Windows; son parte del paquete de validación beta.
+
+## ISA-1221 — recuperación del trabajo local de widgets (2026-09-22)
+
+- [Tarea principal VAN-41](https://app.notion.com/p/3dbe51695c658125b1c2efc198edfc94), proyecto Overlay Studio. Isaac pide subir al remoto los cambios locales pendientes.
+- Rama `vantareapp/isa-1221-widgets-local-sync`, basada en `origin/nightly@1e9932c4d8ca3d53a58d093449cfb840f7108e8f`. Snapshot `44a33047af0a05c71ad7d550fa4a9f60ae90d456` conserva el trabajo de `vantare-isa1221-workshop` sobre `c3e6e44c`; el checkout original y su índice permanecen intactos.
+- Recupera Delta, Relative (orden delante de cercano a lejano), Standings compacto/podio, Pedals Eficiencia/iRacing, Fuel Strategy, aliases Efficiency y controles de Workshop, con documentos y capturas locales. Conserva las optimizaciones vigentes de nightly en host, coordinador y geometría. Redline tower mantiene su prueba explícita de viewport; las previews ordinarias usan la envolvente externa.
+- Frontend con Node 22.23.2 y dependencias del lockfile: 466 suites PASS, 3766 pruebas PASS y 2 omitidas. Build (incluye TypeScript) y lint verificados. Go overlayv2: tests y vet PASS. Las pruebas globales Go fallan en macOS por launcher Windows y diagnósticos/sqlite; reproducido también en la base nightly para los fallos de diagnósticos/sqlite.
+- Calidad: FAIL, 55 nuevos hallazgos bloqueantes (34 Knip, 18 duplicaciones, 3 ciclos de dependencias). Sin relajación de reglas ni baseline. Inventario en `docs/engineer/audits/2026-09-22-widget-local-sync-quality.md`. La recuperación se publica como borrador, no como entrega certificada.
+- Pendiente: resolver calidad, CI del SHA publicado, revisión visual de Isaac y certificación LMU real. Sin merge, testers, master ni release. Roadmap required: `milestones:functional-widget-design`; el porcentaje del área no avanza por publicar un borrador; digest basado en la nightly confiable.
+
+### ISA-1221 — corrección de los avisos revisados (2026-09-22)
+
+- Continúa [VAN-41](https://app.notion.com/p/3dbe51695c658125b1c2efc198edfc94) / PR #1298. Corregidos los 55 avisos: ratchet PASS, NEW=0 y MOVED=0 en todos los analizadores, sin cambiar política/baseline/excepciones.
+- Resuelta además la aceptación de claves heredadas en IDs de perfiles; cobertura de normalizador y V3/V4 para sistema por defecto, widgets y memorias. Aliases y contratos persistidos conservados.
+- Suite frontend: 466 archivos, 3772 PASS y 2 omitidos. Build/TypeScript, lint y 69 focales finales PASS. Revisión independiente: sin bloqueantes, 83 pruebas PASS. Equivalencia estática CSS: 445 selectores activos sin cambios de declaraciones finales.
+- Informe completo y revisión previa en `docs/engineer/audits/2026-09-22-widget-local-sync-quality.md`. Sin nueva certificación visual ni LMU en vivo; PR en borrador, integración a nightly pendiente de aceptación.
+
+
+### ISA-1221 — integración inicial autorizada (2026-09-22)
+
+- Isaac autoriza expresamente integrar PR #1298 en nightly mediante subagente. La dependencia de CI #1302 / VAN-737 corrige la prueba negativa que asumía cambios de política en cualquier PR; mantiene los controles y cuenta con revisión independiente.
+- El candidato de widgets conserva el código revisado en `6c59caf2`; esta conciliación solo incorpora la dependencia de tooling y documentación de aceptación. El nuevo ajuste de animación Delta `e492aa88` está en otra rama y no forma parte de #1298; Isaac lo aprobó visualmente durante esta integración y se seguirá por separado.
+- Verificación remota de SHA/canal y checks en [VAN-41](https://app.notion.com/p/3dbe51695c658125b1c2efc198edfc94). La revisión visual continúa en Workshop y la certificación LMU activa permanece pendiente; sin testers/master/release.
+
+
+## 2026-09-22 · ISA-1315 inicio: idioma común sin trabajo por muestra
+
+Isaac aprobó compartir el idioma de la app con las etiquetas de widgets y exigió separar toda resolución de traducciones de la telemetría. Seguimiento de widgets en [Asana, En curso](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218757534554194), por su instrucción expresa; [#1315](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1315) conserva el puente CI. [Diseño y plan aprobado](../../plans/2026-09-22-isa-1315-widget-locale.md). Base nightly e41f703c, worktree aislado vantare-widget-locale, rama vantareapp/isa-1315-widget-locale. Próximo paso: implementación mediante worker y revisión independiente de persistencia/concurrencia. PR #1306 continúa separada; sin integración ni promoción de canales.
+
+
+### ISA-1315 · continuidad de la revisión GPT-6
+
+A petición expresa de Isaac, GPT-6 Sol retoma implementación y GPT-6 Astra revisa arquitectura y backend en checkout separado. El primer commit de implementación es 34bec633; no representa entrega final. La revisión detectó que la recuperación `.failed` podía aplicar tras reinicio un idioma rechazado: queda exigida corrección acotada y regresión. El frontend debe serializar elecciones rápidas porque Wails beta.24 ejecuta callbacks concurrentes.
+
+Base e41f703c + diseño67e9e9ce: frontend build PASS y quality PASS (NEW=0, MOVED=0). Fallos previos reproducidos en macOS: cmd/vantare depende de símbolos Windows; TestProfileRejectsAbsolutePathWindows devuelve404 en lugar de400. No se modifican esos fallos ajenos al alcance ni se presentan los controles globales Go como verdes. Próximo paso: completar frontend, comprobar los contadores con widgets reales y revisar el candidato final. Seguimiento principal sigue [Asana, En curso](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218757534554194).
+
+
+### ISA-1315 · cierre técnico de la rama
+
+Implementación de GPT-6 Sol en `34bec633`, `d4806bb9`, `8540c1b8` y `cc59e9fc`. GPT-6 Astra aprobó la infraestructura de `8540c1b8` después de corregir la recuperación `.failed`, la colisión de IDs entre ventanas, el rechazo de envío y los snapshots OBS inválidos. El último commit añade únicamente comprobaciones de contadores. El orquestador revisó el diff y la evidencia.
+
+Entrega: [PR draft #1317](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1317) a `nightly`, desde la base `e41f703c`. El seguimiento principal permanece en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218757534554194), En curso hasta la revisión visual de Isaac. No hubo integración remota ni promoción de canales. Los controles remotos se iniciaron al publicar; consultar la PR para su resultado actual.
+
+Cambios: preferencia UI nativa persistida en SettingsService y eventos de idioma en cmd/server; contexto I18n en Hub, Desktop, OBS y Workshop; catálogos y presentación de Eficiencia; pruebas de autoridad, reconexión, concurrencia y rendimiento. Sin dependencias nuevas, cambios de política de calidad o modificación de códigos de sesión/telemetría. El roadmap modifica únicamente `milestones:functional-widget-design` y su JSON se generó desde `e41f703c`. Fragmento ISA-1315 añadido.
+
+Evidencia:
+
+- Frontend completo sobre `8540c1b8`: 468 archivos, 3779 tests PASS y 2 omitidos; build y lint PASS. En `cc59e9fc`, dos casos de rendimiento y lint PASS.
+- WidgetVisualHost real: 100 frames conservan el nodo, las resoluciones de sesión, las cargas de diccionario, las lecturas/escrituras de almacenamiento y las suscripciones/mensajes Wails. Cambiar idioma sí cambia la etiqueta y conserva el montaje. No se afirma coste CPU nulo durante una selección de idioma.
+- Reviewer independiente: 10 archivos y 86 tests PASS; Go focal con `-race` PASS. Persistencia, sidecar genérico y reinicio/concurrencia verificados.
+- Quality sobre `cc59e9fc`: aggregate PASS, NEW=0, MOVED=0, policy_changed=false; todos los analizadores terminaron. Un intento previo con Node 26 falló al parsear dependency-cruiser; la ejecución válida usa Node 22.23.2. No se modificaron reglas o baselines.
+- `go test ./...` se interrumpió tras unos seis minutos esperando launcher.test; no está verde. cmd/vantare no compila en Mac por símbolos Windows. TestProfileRejectsAbsolutePathWindows y dos pruebas de DiagnosticsBridge fallan también en la base `e41f703c`, reproducido por el orquestador. No se amplió el alcance para ocultarlos o corregirlos aquí.
+- Preview local de GPT-6 Luna: `2be30c59` combina idioma con motion `317d31c4` (PR #1306) y conserva los cambios aceptados. Build PASS, 172 pruebas focales PASS y después dos pruebas de contadores PASS; árbol limpio. El servidor del preview está activo en el puerto 5177. El merge local del preview no representa integración remota.
+
+Límites: sin verificación física Windows/OBS ni visual automatizada, por la restricción de acceso del navegador; no se eludió por otra herramienta. Workshop autónomo comparte el idioma de su origen del navegador, sin prometer sincronía con una app nativa separada. El catálogo completado es Eficiencia; otros sistemas conservan textos pendientes. Sigue el comportamiento previo de mantener el catálogo anterior mientras se carga otro: puede haber un breve desfase entre etiquetas estáticas de widgets y texto del Hub en la primera selección. Próximo paso: revisar el selector de idioma en Workshop y la sincronía física con Desktop/OBS.
+
+## ISA-1221 — Standings Eficiencia: animación intermedia para conducción (2026-09-22)
+
+- Seguimiento [VAN-41](https://app.notion.com/p/3dbe51695c658125b1c2efc198edfc94). Isaac aprueba la opción intermedia propuesta, expresamente no broadcast. Diseño y plan en `docs/specs/2026-09-22-standings-motion-design.md` y `docs/specs/standings-motion/PLAN.md`.
+- Rama/worktree `vantareapp/isa-1221-standings-motion` / `vantare-standings-motion` desde nightly `1101f735`. Conserva el ajuste Delta aprobado `e492aa88` y los arreglos de harness `5df46ab9`, recuperados como dependencias en `433d0169`; sus ramas remotas originales permanecen intactas. La integración anterior #1298 ya está verificada y no se repite.
+- Renderer compartido: desplazamiento continuo desde el primer cambio, chip de puestos por posición canónica (de clase en Multiclass), barrido de mejor vuelta personal y récord morado, distintivo del más rápido, PIT con entrada/salida suave y FLIP ligado a su fila. Las cifras no se transforman y la geometría de la tabla permanece estable. Máximo tres avisos simultáneos con prioridad récord/posición/mejora personal.
+- La VM V2 deriva autoridad numérica fresh y el mejor piloto del campo configurado completo, antes de rowCount/ventana. Sin falsos eventos por recorte ni valores ausentes. El modo reducido conserva desplazamientos; minimal actualiza directo. Motor compartido con inicialización opcional de medidas y limpieza de layout antes de perder la referencia DOM. Standings conserva los handles de sus animaciones para cancelar fila, PIT y barrido también si React ya retiró los nodos por desconexión, error o cambio de ventana; poda los finalizados en cada actualización.
+- Workshop añade escenas de mejora personal, récord y secuencia combinada a las de posiciones/PIT. En práctica/clasificación los cambios de mejor vuelta vuelven a ordenar el ejemplo. No se modifica la producción Go ni el golden canónico.
+- Validación local final: 468 suites / 3810 tests PASS y 2 omitidos. Build/TypeScript y lint PASS. Revisión independiente final PASS, 64 tests / 4 suites; corrigió fallback a posición con vuelta oculta, transiciones CSS en stale y cancelación al desmontar o retirar filas. Las tres regresiones de desconexión/error/ventana fallaron antes del arreglo y pasan después; el reviewer las reprodujo independientemente. Ratchet final PASS: NEW=0/MOVED=0, policy_changed=false, base nightly `1101f735`; sin modificaciones de política/baseline.
+- Workshop en `127.0.0.1:5177` sirve el nuevo worktree. Pendiente revisión visual de Isaac y comprobación LMU real. Sin merge, testers/master ni release. Batallas y transiciones de la ventana quedan para la revisión siguiente.
+- Verificación manual: en Carrera, activar Mejor vuelta y Estado en boxes, seleccionar **Secuencia combinada · conducción** y pulsar **Reproducir**. Después revisar cada escena individual y las mejoras de vuelta en Práctica/Clasificación. Se comprobó HTTP 200 y el directorio real del proceso; no se declara validación visual automatizada porque el navegador está bloqueado por la política de seguridad de la sesión. Go no cambió; la certificación Windows/LMU queda fuera de la validación local de macOS.
+
+### Segundo bloque autorizado: batallas y ventana (2026-09-22)
+
+- Isaac valora positivamente el primer bloque y pide ejecutar ahora los dos pendientes. Continúa VAN-41 / PR #1306. Diseño ampliado y plan registrados en `05349705`; worker `standings_battles_window` en worktree aislado `vantare-standings-motion-worker`, orquestador en `vantare-standings-motion`. Misma nightly base `1101f735`, aún vigente; sin promoción de canal.
+- Implementado por el worker en `78115bd9`, consolidado como `ed8d1985`: batalla discreta de rivales consecutivos de la misma clase con gaps frescos, prioridad al jugador y umbrales 0,8/1,2 s; entrada/salida de filas de la ventana en 200 ms con recolocación FLIP y PIT ligado al piloto. La presencia conserva opacidad y posición durante interrupciones/reentrada, compensa escala y cancela sus recursos al invalidar continuidad. Las filas salientes quedan fuera del layout, accesibilidad y presupuesto de avisos. El motor admite preservar fades de forma opcional sin cambiar sus otros consumidores. Sin inferir autoridad de texto ni añadir dependencias/contrato Go.
+- Workshop añade **Batalla cercana · conducción** (`standings-functional-battle`) y **Entrada y salida de ventana** (`standings-functional-window`): siete escenas en total. La segunda cambia la ventana realmente visible mediante un ancla efímera, conserva posiciones canónicas y prueba también PIT. Seleccionar Carrera, Normal o Multiclase y pulsar **Reproducir** en cada una. El servidor 5177 sirve este worktree actualizado; directorio y HTTP 200 verificados.
+- Validación: 121 pruebas focales / 6 suites del worker PASS; revisión independiente final sin hallazgos y 152 pruebas / 7 suites PASS, incluida reproducción de entrada→salida→reentrada→salida. Suite completa del candidato: 468 archivos, 3832 PASS y 2 omitidos. Build/TypeScript y lint PASS. Ratchet PASS, NEW=0/MOVED=0, policy_changed=false contra nightly `1101f735`; sin modificar políticas/baselines. Roadmap actualizado en los cuatro idiomas y digest regenerado desde la misma base confiable; fragmento de changelog válido.
+- El candidato se publica en la misma PR #1306; SHA remoto y estado definitivo de CI se registran y releen en VAN-41 y el proyecto Overlay Studio. Pendiente revisión visual de Isaac y LMU real; navegador no disponible por la política de seguridad de la sesión. Standings sigue sin aceptación final. Sin merge/promoción/release de este bloque.
+- CI del primer bloque `88b27f63`: calidad/GitGuardian/promoción PASS. Blocking gates falló por timeout de `TestRuntimeRoutesActionsButKeepsThemDisabled` en voiceinput, sin cambios en ese paquete frente a nightly. Diez ejecuciones locales de esa prueba pasan (macOS); el rerun remoto único del mismo SHA pasó Go, frontend y Windows/Wails. Fallo intermitente inicial conservado como evidencia, sin editar backend ni relajar controles. Los cambios del segundo bloque requieren sus propios checks.
+
+### Harness: revisión conjunta de batalla y ventana (2026-09-22)
+
+- Isaac pide incluir las dos animaciones en el harness. Las escenas individuales ya estaban servidas; se amplía **Secuencia combinada · conducción**, que tenía seleccionada, de cinco a doce fotogramas. Después de vueltas, posiciones y PIT muestra acercamiento/batalla/separación y ventanas P1→P7→P9→P1 (corregidas tras la revisión inferior), conservando las posiciones y la mejor vuelta alcanzadas.
+- La escena de ventana también aplica su recorte de demostración en V1, que normalmente presenta filas fijas. Conserva el estilo y Normal/Multiclase elegidos; no cambia el renderer productivo. Corregido el cálculo del reloj del harness: los límites exactos a 15/30 Hz no retroceden una muestra por redondeo. Las regresiones de batalla y ventana en la secuencia combinada fallaron antes y pasan después de estos ajustes.
+- Validación focal: 170 pruebas / 13 suites de autoría PASS; global: 468 archivos / 3836 pruebas PASS y 2 omitidas. Build/TypeScript, lint y ratchet PASS (NEW=0/MOVED=0, policy_changed=false). El módulo servido por 5177 contiene la nueva secuencia. Roadmap en cuatro idiomas y digest desde nightly `1101f735` actualizados. El CI previo de `ce7c40b4` terminó completamente en verde; SHA remoto y checks propios del ajuste final se registran en VAN-41 / PR #1306. Revisión visual de Isaac y LMU real siguen pendientes.
+- Verificación manual: mantener Standings, Carrera y **Secuencia combinada · conducción**; pulsar **Reproducir** para empezar desde el principio. Con Mejor vuelta y Estado en boxes activos, revisar los doce pasos. Las escenas individuales siguen en el selector. Sin merge/promoción/release.
+
+### Revisión adversarial: pasos 8–12 del harness (2026-09-22)
+
+- **Afirmación revisada:** el último tramo de la secuencia combinada permite ver batalla y entrada/salida de la ventana con la selección de Isaac (Default, Normal, Carrera, 10 pilotos, alrededor de 4, gap/última vuelta/PIT/mejor vuelta).
+- **Refutado en `a079a948`:** P12 quedaba fuera de `rowCount=10`, desaparecía el jugador de referencia y el paso 12 repetía la ventana anterior; contador/leyenda se adelantaban medio intervalo a PIT/ventana; el marco centrado crecía 30 px y desplazaba toda la tarjeta 15 px; los gaps volvían a la base al empezar la ventana. Cuatro regresiones fallaron antes del arreglo. La revisión independiente `review_steps_8_12` reprodujo el salto con geometría explícita y no encontró recorte adicional con PIT activo; sus 45 pruebas previas no cubrían esta composición.
+- **Corrección `dde258cf`:** escenas P1→P7→P9→P1 y gaps conservados, contador/leyenda del paso actual, reproducción con timestamps ya muestreados y avance manual al fotograma exacto. El harness reserva sólo altura externa durante escenas con ventana, respeta tamaños explícitos y no modifica el renderer, motor o viewport productivo.
+- **Evidencia local:** 173 pruebas de autoría / 13 suites y 3839 globales / 468 archivos PASS (2 omitidas), build/TypeScript, lint y ratchet PASS (NEW=0/MOVED=0, policy_changed=false). Revisión independiente final PASS: 83 pruebas / 4 suites, reserva externa estable a escalas 0,3/1/2, tamaño explícito de 700×240 respetado y avance/reproducción de escenas de 1700 ms comprobados. **Veredicto técnico:** PASS acotado al harness, sin nuevos hallazgos. El servidor 5177 sirve el mismo worktree candidato; no se afirma inspección visual porque el control del navegador no pudo verificar la política del administrador y denegó acceso.
+- **Estado y límites:** candidato sobre nightly `1101f735`; durante la revisión nightly avanzó a `ae5a1482` por Wails beta.24 (#1309), sin cambios en estas animaciones. Esta entrega mantiene su base y no integra esa actualización de plataforma. Roadmap del candidato generado desde su base confiable explícita. Pendientes aceptación visual de Isaac, LMU real y la integración autorizada con la base vigente; sin merge/promoción/release.
+- **Revisión manual:** pulsar Reproducir y observar pasos 8–12; el paso 9 mantiene la distancia y activa PIT, 10 centra P7, 11 centra P9 y 12 vuelve a P1. Confirmar que el podio y el marco no saltan verticalmente, cada ventana tiene jugador visible y los pasos coinciden con lo que se muestra.
+
+### ISA-1320 — verificación y revisión manual
+
+Cambios de producto: `RelativeFunctional.tsx`, `relative-presentation.ts`, `use-relative-motion.ts`, estilos Relative y presupuesto presentacional en el ViewModel V2. El motor común añade inicialización y seguimiento optativos, preservando consumidores existentes. Escenas y controles de Workshop filtran los antiguos guiones de Relative para Eficiencia y ofrecen cruces en ambos sentidos, entrada/salida/reentrada, inversión de 180 ms, datos cambiantes con filas quietas y secuencia completa.
+
+Revisión manual: seleccionar Relative/Eficiencia → Animaciones → Secuencia completa → Reproducir; después probar Inversión rápida y Datos cambian, filas quietas. Comprobar jugador/pie estables, señal tenue solo en cruces y cifras sin pulso. Repetir con preferencia de movimiento reducido y diferentes escalas. Los fixtures no certifican conducción real ni Windows/OBS. El preview local conserva también Delta/Standings de la PR #1306; esa composición local no implica que #1306 esté integrada en nightly.
+
+Entrega de revisión publicada: [PR draft #1323](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1323), rama `vantareapp/isa-1320-relative-motion`, código `cf14f927`, sin merge. Preview local limpio `cf18f9d6` activo en `http://127.0.0.1:5177/workshop?widget=relative&system=vantare-functional&session=practice&scene=relative-functional-sequence&frame=0`; combina con `2be30c59` y conserva las correcciones aceptadas de Delta/Standings. Validación del conjunto: 185 pruebas focales, tipos y build PASS; después de retirar dos reglas Delta antiguas introducidas al resolver el CSS, 14 pruebas Delta PASS y diff de Delta sin regresión respecto al preview anterior. CI remoto de la PR en curso; controles locales aprobados. Asana Relative permanece En curso, pendiente de la valoración visual de Isaac.
+
+### ISA-1320 — revisión de captura de Isaac, 22:22
+
+La captura posterior a la entrega muestra un error en el guion: las escenas Eficiencia nombraban Bruni/Birch pero los asientos de la parrilla eran Nico Pino/Mikkel Jensen. `a7449ce8` corrige exclusivamente captions y claves de las seis escenas; conserva las escenas legacy. La regresión recorre cada muestra en práctica, clasificación y carrera y comprueba los nombres de los pilotos realmente visibles. 52 pruebas focales de escenas/Workshop, typecheck, lint y diff limpio PASS.
+
+También se observa un hueco antes del pie en el paso inicial que retira al segundo rival trasero. La reserva visual tiene un slot vacío, pero la base anterior ya fijaba el alto de la tabla y el pie mediante flex; eliminar ese slot por sí solo no elimina el espacio. Isaac concreta después que falta el sexto rival y no se recupera; la causa y corrección quedan registradas a continuación. No se considera Relative confirmado ni completado.
+
+
+### ISA-1320 — sexto rival recuperado en Workshop
+
+Isaac confirma que falta uno de los seis rivales configurados. Reproducción independiente sobre el preview `0b9dee71`: la ruta montada conserva a Jensen en el paso 6, pero solo muestra 6 filas totales en lugar de 7. La preparación del fixture recortaba a 3 delante + jugador + 3 detrás antes de aplicar cruces y ausencias; perdía los candidatos necesarios para rellenar la ventana.
+
+`956f6990` conserva el campo disponible en las escenas Relative antes de aplicar sus cambios. La selección productiva existente elige los tres rivales más cercanos por lado. Sin cambios de geometría, motor de animación ni telemetría productiva. Prueba permanente con un único WidgetVisualHost montado: nueve pasos, siete identidades únicas, salida/reentrada de Jensen y nodo del jugador estable. Fuente: 48 pruebas focales, tipos, build y lint PASS.
+
+Preview `f2cde704` incorpora solo ese ajuste sobre `0b9dee71`, conserva Delta/Standings y pasa 75 pruebas focales. Revisión independiente de la ruta Workshop completa con la URL del usuario: nueve pasos y saltos hacia atrás mantienen siete filas; la aserción que fallaba antes pasa después. Vite 5177 continúa sirviendo el ajuste sin reiniciar. Estas son pruebas DOM, no certificación visual. Asana sigue En curso hasta aceptación de Isaac; sin merge de #1323.
+
+
+### ISA-1320 — orden espacial junto al jugador
+
+Isaac señala los rivales invertidos, citando el 18 frente al 16 por detrás en la secuencia, frame4. Confirmado delante: el contrato V2 entrega cerca→lejos, pero la presentación lo pintaba igual de arriba abajo; dejaba el rival lejano junto al jugador. `2cb3e2a3` selecciona primero los rivales cercanos dentro del presupuesto y después invierte solo el grupo delantero para mostrar lejos→cerca→jugador. Detrás mantiene cerca→lejos; sin reordenar telemetría, posición de carrera ni datos por muestra.
+
+La prueba DOM de orden falla antes y pasa después. 66 pruebas focales, tipos, build y lint PASS. Revisión independiente de ruta completa en práctica, clasificación y carrera: nueve pasos y saltos hacia atrás mantienen seis rivales, con gaps descendentes de arriba abajo en ambos grupos. Se conserva la identidad del jugador y el arreglo del sexto rival.
+
+El ejemplo trasero requiere distinguir clasificación y distancia: frame4 asigna18=−5,1s,17=−7s,16=−8,9s, por lo que18 es el más cercano según esos datos. Se ha preguntado a Isaac por el criterio esperado; no se inventan gaps ni se invierte detrás para cumplir el número de posición. Pendiente su valoración visual; Asana En curso, sin merge.
+
+
+### ISA-1320 — señal de diferencia de vueltas en carrera
+
+Isaac autoriza una señal discreta para entender por qué un coche peor clasificado puede circular delante del jugador. [Plan](../../plans/2026-09-22-isa-1320-relative-lap-signal.md). Etiqueta junto al nombre: −N indica menos vueltas que el jugador y +N más; unidad V/L/V/G en es/en/pt/it y descripción accesible completa. Solo carrera, fuente live, fase fresh y diferencia entera vigente; jugador, cero, datos antiguos/inválidos/ausentes y otras sesiones no generan etiqueta.
+
+Se reutiliza `derive.VehicleGap.Laps`, derivada de los datos de clasificación `LapsBehindLeader` del simulador. `RelativeRowV2.lapDelta` conserva valor y calidad en immediate y settled, y su fingerprint publica cambios de valor/calidad. No se calcula una segunda diferencia desde CompletedLaps, LapDistance, posiciones, clases o gaps temporales. El renderer solo presenta el valor; etiqueta memoizada y diccionarios estáticos, sin temporizadores ni lectura de geometría nueva. La señal se describe como diferencia de vueltas de clasificación; no certifica por sí sola cada transición física al doblar en una sesión LMU real.
+
+Backend 661f1ea9 + 6fdf4fd8: suite overlayv2, vet, contrato generado y tests de calidad/signo/cadencia/settled PASS; root revisa diff y ejecuta con race las suites completas overlayv2 y derive, PASS. UI 6e635540 y unidad corregida eafc2858: primera revisión focal92PASS, revisión independiente renderer/window/motion29PASS. Verificación final de UI en d26a8cb7: 99 pruebas focales, tipos, build y lint PASS. Root ratchet PASS, NEW=0/MOVED=0 y policy_changed=false. El refinamiento 27df6697 retira un recorte innecesario de seis líneas para conservar el campo completo; 28 pruebas de escenas/ventana PASS. Root verifica además la ruta Workshop montada: cuatro pruebas PASS en carrera/práctica/clasificación y cambio manual de paso, con siete filas y nodo del jugador estable. La escena combinada conserva AndréP1/GiovinazziP4−1V; la escena específica de diferencias de vueltas utiliza una clasificación intermedia coherente para mostrar ambos signos. Pendiente revisión visual de Isaac; no merge ni certificación Windows/OBS.
+
+## ISA-1334 — integración conjunta de widgets Eficiencia (2026-09-23)
+
+Isaac autoriza integrar en `nightly` el trabajo del día: Standings con animación de conducción ([#1306](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1306), `317d31c4`), Relative con movimiento y diferencia de vueltas ([#1323](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1323), `2e8061f5`) y Horizontal Standings ([#1333](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1333), `340455d2`). La rama `vantareapp/isa-1334-widgets-day-integration` conserva los tres commits fuente mediante merges explícitos sobre `nightly` `e6d7d2b5`, sin promover a testers/master ni publicar una versión. Durante CI, `nightly` incorporó además Fastest Lap mediante #1330 (`4bb11fdb`); la rama de integración absorbió esa base sin sustituir el widget ni sus escenas, y regeneró el roadmap desde el nuevo SHA protegido.
+
+Los conflictos de Workshop, escenas y motor de movimiento se resuelven preservando filtros por sistema y sesión, el fotograma manual exacto, las animaciones de los tres widgets y las etiquetas traducidas. La comparación con el preview aceptado `752bc0cc` deja idéntico el código de widgets; solo añade la validación estricta de `RelativeRowV2.lapDelta` y la muestra faltante del benchmark. Los archivos de idioma/telemetría de producción no se sustituyen por fixtures. El roadmap deriva del plan candidato y del JSON protegido de la base `origin/nightly`.
+
+La aceptación visual de Relative y Standings ya consta en sus entregas. Quedan revisión visual de Horizontal Standings, comprobación física Windows/OBS y validación con telemetría LMU real para las señales descritas en los planes de origen. Esta integración no afirma esas pruebas. Seguimiento principal en [Asana ISA-1334](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218766733477999); la [issue #1334](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1334) conserva el contrato técnico de CI.
+
+
+## 2026-09-22 · ISA-1328 · Aviso de vuelta rápida, candidato para revisión
+
+Isaac pide convertir en producto el concepto morado aprobado en marketing. Seguimiento principal, por su instrucción expresa: [Asana · Widget · Aviso de vuelta rápida](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218762634127535); [GitHub #1328](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1328) sirve como puente CI. Base `nightly` `e6d7d2b5e58f55b82c0ed2f6a79667476d897086`; rama aislada `vantareapp/isa-1328-fastest-lap`. [Diseño y plan](../../plans/2026-09-22-isa-1328-fastest-lap.md).
+
+- Widget independiente `fastest-lap` de Eficiencia: cronómetro morado, panel oscuro, diagonales rojas, piloto y tiempo. Catálogo Studio, perfiles V3 y permisos Overlays Advanced; es/en/pt/it. Alcance inicial de clase propia, seleccionable sesión completa; duración 3–15 s (6 por defecto), piloto opcional.
+- Un renderer puro compartido por WidgetVisualHost. La presentación temporal local establece la referencia sin aviso al abrir, cambiar de sesión/epoch/alcance o reconectar. Solo mejoras observadas de tiempos frescos y positivos, a milisegundos; no empates, frames fuera de orden ni marcas heredadas al entrar/cambiar de piloto. Un único timer sustituible, sin polling, IPC, almacenamiento ni nuevas dependencias.
+- Se suscribe a cambios de tiempos/identidad por eventos incluso en el nivel mínimo de rendimiento. Posiciones/distancias sin cambios de tiempos no despiertan el widget. Sin benchmark físico ni afirmación de coste CPU cero.
+- Escena Workshop reproducible: baseline, mejora, caducidad, segunda mejora. El modo Studio muestra una previsualización persistente cuando hay una marca fresca; Desktop/OBS son temporales. Adelantar, retroceder y volver a reproducir reinician la referencia de demostración sin relajar el rechazo de muestras fuera de orden en producto.
+
+Evidencia: suite frontend completa (470 archivos, 3814 PASS, 2 omitidos); tras corregir el escenario, 44 pruebas focales PASS. Build/TypeScript y lint PASS. Go config y performance completos con `-race`, guardas de permisos y nuevo widget con `-race`, y `go vet` de paquetes modificados PASS. Quality PASS: NEW=0, MOVED=0, policy_changed=false. Roadmap modifica solo `milestones:functional-widget-design`; JSON generado con el script de la base y commits alcanzables desde `e6d7d2b5`. Fragmento ISA-1328.
+
+Verificación manual: navegador con componente real y datos de demostración; estado inicial silencioso, mejora visible 1:29.902, desaparición sin nuevas muestras, repetición tras retroceder, cambio es/en y composición 480×104 / previsualización 280×72. Preview local en `http://127.0.0.1:5188/workshop?widget=fastest-lap&system=vantare-functional&surface=studio&scene=fastest-lap-alert` (requiere servidor local activo).
+
+Límites: `go test -timeout 60s ./...` falla en macOS en cmd/vantare (símbolos Windows), launcher (timeout), ruta Windows, Diagnostics y SQLite; no se declara verde. `go vet ./...` también queda bloqueado por símbolos Windows; su ejecución focal y el ratchet Windows pasan. Pendientes revisión independiente y comprobación física LMU/Windows/OBS. Seguimiento en Asana permanece En curso con candidato entregado para revisión, porque el proyecto no tiene sección En revisión. No hay merge, promoción ni release; la siguiente acción es revisar el diseño y validar las señales en sesión real antes de autorizar integración.
+
+Entrega ISA-1328: [PR draft #1330](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1330), implementación `dbc35180`, rama publicada y adjunta a la tarea Codex. Los checks remotos se iniciaron al publicar; consultar el estado actual en la PR. Asana se actualiza con esta misma evidencia y queda sin completar, pendiente de aceptación.
+
+
+### 2026-09-23 · ISA-1328 · tamaño real, personal/clase y ciclo de animación
+
+Isaac conserva el diseño y pide tamaño editable, récord personal y de su clase, y corregir animaciones. Ajuste en la misma rama aislada y [PR draft #1330](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1330); seguimiento principal en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218762634127535). Sustituye la opción clase/sesión de la propuesta inicial por dos avisos activos por defecto. Mejor personal = sesión actual de la clasificación V2; si ambos récords coinciden, un único aviso de clase. Sin nueva autoridad de tiempos.
+
+- El viewport compartido entrega al renderer el ancho y alto reales, sin estirar la composición. Workshop ofrece controles visibles; mínimo 280×72, predeterminado 480×104. El perfil conserva layout y ambos controles de aviso.
+- Entrada reiniciada por ID de aviso, salida animada de 220 ms dentro de la duración configurada, un solo temporizador pendiente y limpieza en reinicios/desmontaje. Conserva motion off/minimal y prefers-reduced-motion.
+- Workshop distingue vista estática (Ver diseño) y reproducción temporal también en Studio. Fixture con personal, récord de rival de clase y doble récord; las etiquetas no adelantan eventos a mitad de fotograma.
+
+Evidencia actual: 470 archivos frontend PASS, 3832 pruebas y 2 omitidas; build/TypeScript y lint PASS. Quality PASS, NEW=0, MOVED=0, policy_changed=false. Prueba visual en navegador de 280×72 y 480×104, avisos personal/clase, prioridad de clase, reproducción automática en Studio y expiración sin nueva muestra. El aviso de fetch cancelado en teardown de happy-dom no causa fallo de suite (exit 0). Sin cambios Go; conserva la evidencia focal y los límites globales de macOS de la entrega anterior. Roadmap actualiza únicamente milestones:functional-widget-design y se regenera desde e6d7d2b5.
+
+Siguiente paso: aceptación visual de Isaac y validación independiente/LMU/Windows/OBS antes de autorizar integración. Asana permanece En curso y sin completar; no hay merge, promoción ni release.
+
+
+### 2026-09-23 · ISA-1328 · aceptación e integración inicial autorizada
+
+Isaac revisa los ajustes de tamaño, avisos personal/clase y animaciones en Workshop, los acepta y pide expresamente integrar la [PR #1330](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1330) en `nightly`. El código aceptado es `8411ecdb692e1444c110719c5834a2b46300c2fb`; este cierre solo registra la aceptación en documentación, roadmap y fragmento, sin cambiar producto.
+
+Se conserva la evidencia de 3832 pruebas frontend PASS (2 omitidas), build/TypeScript, lint y quality PASS. La incorporación se hace por PR normal con los controles remotos vigentes; el SHA de integración y su pertenencia a `origin/nightly` se registrarán y releerán en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218762634127535). No se declara un merge antes de verificarlo. No hay revisión externa registrada; la aceptación visual es de Isaac. La validación física LMU/Windows/OBS continúa en Nightly y no se presenta como ya superada. Esta autorización no incluye Testers, Master, una release o un anuncio público.

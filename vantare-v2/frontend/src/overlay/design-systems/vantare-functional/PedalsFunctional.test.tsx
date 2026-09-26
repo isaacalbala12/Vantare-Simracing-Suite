@@ -11,11 +11,23 @@ const model: PedalsViewModel = {
   type: "pedals", status: "ready",
   throttle: 0.85, brake: 0.2, clutch: 0,
   throttleText: "85%", brakeText: "20%", clutchText: "0%",
+  flag: "yellow", sessionPhase: "race",
 };
 
 describe("Functional Pedals", () => {
+  it("renders a missing channel as a placeholder while retaining valid channel measurements", () => {
+    const { container } = render(<PedalsFunctional model={{ ...model, status: "missing", brake: 0, brakeText: "—" }} settings={{}} renderMode="harness" />);
+    expect(container.querySelector('[data-pedal="brake"] .vf-pedal-value')?.textContent).toBe("—");
+    expect(container.querySelector('[data-pedal="clutch"] .vf-pedal-value')?.textContent).toBe("0%");
+    expect(container.querySelector('[data-pedal="throttle"] .vf-pedal-value')?.textContent).toBe("85%");
+    expect(container.querySelector('[data-pedal="brake"]')?.getAttribute("title")).toContain("—");
+  });
+
   it("renders the three channels with their model values", () => {
     const { container } = render(<PedalsFunctional model={model} settings={{}} renderMode="harness" />);
+    expect(container.querySelector(".vf-pedals")?.getAttribute("data-transparent")).toBe("false");
+    expect(container.querySelector(".vf-pedals")?.getAttribute("data-flag")).toBe("yellow");
+    expect(container.querySelector(".vf-pedals")?.getAttribute("data-session")).toBe("race");
     const pedal = (id: string) => container.querySelector(`[data-pedal="${id}"]`);
     expect(pedal("throttle")?.querySelector(".vf-pedal-value")?.textContent).toBe("85%");
     expect(pedal("brake")?.querySelector(".vf-pedal-value")?.textContent).toBe("20%");
@@ -43,5 +55,32 @@ describe("Functional Pedals", () => {
     expect(container.querySelector('[data-widget-system="vantare-functional"][data-widget-renderer="pedals"][data-status="ready"]')).not.toBeNull();
     expect(container.querySelectorAll(".vf-pedal")).toHaveLength(3);
     expect(container.querySelector('[data-testid="widget-host-diagnostic"]')).toBeNull();
+  });
+
+  it("keeps the background and overlay presentations isolated", () => {
+    const scenario = { widget: "pedals", system: "vantare-functional", variant: "default", state: "ready", session: "race", location: "track" } as const;
+    const runtime = buildWorkshopFrameV2(scenario);
+    const backgroundWidget = createScenarioWidget({ ...scenario, designId: "pedals-functional-signature" });
+    const overlayWidget = createScenarioWidget({ ...scenario, designId: "pedals-functional-overlay" });
+
+    const background = render(<WidgetVisualHost widget={backgroundWidget} runtime={runtime} renderMode="harness" />);
+    expect(background.container.querySelector(".vf-pedals")?.getAttribute("data-transparent")).toBe("false");
+    expect(background.container.querySelector(".vf-pedals")?.classList.contains("vf-pedals--overlay")).toBe(false);
+
+    background.unmount();
+    const overlay = render(<WidgetVisualHost widget={overlayWidget} runtime={runtime} renderMode="harness" />);
+    expect(overlay.container.querySelector(".vf-pedals")?.getAttribute("data-transparent")).toBe("true");
+    expect(overlay.container.querySelector(".vf-pedals")?.classList.contains("vf-pedals--overlay")).toBe(true);
+    expect(overlay.container.querySelectorAll(".vf-pedal")).toHaveLength(3);
+  });
+
+  it("keeps the green throttle channel independent from the race flag", () => {
+    const greenFlag = render(<PedalsFunctional model={{ ...model, flag: "green" }} settings={{}} renderMode="harness" />);
+    const yellowFlag = render(<PedalsFunctional model={{ ...model, flag: "yellow" }} settings={{}} renderMode="harness" />);
+
+    expect(greenFlag.container.querySelector(".vf-pedals")?.getAttribute("data-flag")).toBe("green");
+    expect(yellowFlag.container.querySelector(".vf-pedals")?.getAttribute("data-flag")).toBe("yellow");
+    expect(greenFlag.container.querySelector<HTMLElement>('[data-pedal="throttle"] .vf-pedal-fill')?.style.height).toBe("85%");
+    expect(yellowFlag.container.querySelector<HTMLElement>('[data-pedal="throttle"] .vf-pedal-fill')?.style.height).toBe("85%");
   });
 });

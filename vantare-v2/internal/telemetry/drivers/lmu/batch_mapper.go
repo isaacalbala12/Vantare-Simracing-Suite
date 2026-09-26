@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -279,17 +280,20 @@ func (state *batchMapperState) mapObservation(observation Observation) (telemetr
 			Identity: headerIdentity,
 		},
 		State: telemetrycore.ObservedState{
-			SourceTime:    observation.SourceTime,
-			EndTime:       observation.EndTime,
-			MaximumLaps:   observation.MaximumLaps,
-			TrackName:     observation.TrackName,
-			SessionType:   observation.SessionType,
-			VehicleCount:  observation.VehicleCount,
-			PlayerPresent: observation.PlayerPresent,
-			AmbientTemp:   observation.AmbientTemp,
-			TrackTemp:     observation.TrackTemp,
-			SessionFlag:   observation.SessionFlag,
-			Vehicles:      vehicles,
+			SourceTime:      observation.SourceTime,
+			EndTime:         observation.EndTime,
+			MaximumLaps:     observation.MaximumLaps,
+			TrackName:       observation.TrackName,
+			SessionType:     observation.SessionType,
+			VehicleCount:    observation.VehicleCount,
+			PlayerPresent:   observation.PlayerPresent,
+			AmbientTemp:     observation.AmbientTemp,
+			TrackTemp:       observation.TrackTemp,
+			RainFraction:    observation.RainFraction,
+			WetnessFraction: observation.WetnessFraction,
+			SessionFlag:     observation.SessionFlag,
+			Vehicles:        vehicles,
+			TrackLength:     observation.TrackLength,
 		},
 	}, nil
 }
@@ -298,9 +302,8 @@ func slotFingerprint(source VehicleObservation) identitypolicy.SlotFingerprint {
 	driverName, _ := usableField(source.DriverName)
 	class, _ := usableField(source.VehicleClass)
 	return identitypolicy.SlotFingerprint{
-		SourceKey: fmt.Sprint(source.SourceID),
-		Driver:    string(driverName),
-		Class:     string(class),
+		Driver: string(driverName),
+		Class:  string(class),
 	}
 }
 
@@ -390,6 +393,7 @@ func mapVehicle(source VehicleObservation, id identity.VehicleID, sessionID iden
 		LocalVelocity:    source.LocalVelocity,
 		Orientation:      source.Orientation,
 		Damage:           source.Damage,
+		TyreWear:         source.TyreWear,
 	}
 }
 
@@ -405,9 +409,19 @@ func usableField[T comparable](field schema.Field[T]) (T, bool) {
 }
 
 func sessionID(counter uint64) identity.SessionID {
-	return identity.SessionID(fmt.Sprintf("lmu-session-%d", counter))
+	var buf [32]byte
+	b := buf[:0]
+	b = append(b, "lmu-session-"...)
+	b = strconv.AppendUint(b, counter, 10)
+	return identity.SessionID(string(b))
 }
 
 func vehicleID(slot VehicleSourceID, generation uint64) identity.VehicleID {
-	return identity.VehicleID(fmt.Sprintf("lmu-slot-%d-generation-%d", slot, generation))
+	var buf [64]byte
+	b := buf[:0]
+	b = append(b, "lmu-slot-"...)
+	b = strconv.AppendInt(b, int64(slot), 10)
+	b = append(b, "-generation-"...)
+	b = strconv.AppendUint(b, generation, 10)
+	return identity.VehicleID(string(b))
 }

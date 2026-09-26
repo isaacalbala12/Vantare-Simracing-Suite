@@ -34,7 +34,7 @@ import {
   EMPTY_RACE_SCHEDULE_SNAPSHOT,
   type RaceScheduleStore,
 } from "../core/race-schedule-store";
-import { resolveStandingsFrameLayout } from "../widget-types/standings/standings-frame-layout";
+import { resolveStandingsFrameLayout, type StandingsFrameRuntime } from "../widget-types/standings/standings-frame-layout";
 
 export type RuntimeOverlaySurfaceProps = {
   document: ProfileDocumentV3;
@@ -173,6 +173,11 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
     : null;
 
   const origin = layoutOrigin ?? { x: 0, y: 0 };
+  const overlayFrame = telemetry.getOverlayFrame();
+  const overlaySource = telemetry.getOverlaySource();
+  const standingsRuntime: StandingsFrameRuntime | undefined = overlayFrame && overlaySource
+    ? { frame: overlayFrame, source: overlaySource }
+    : undefined;
   const effectiveWidgets = widgets.map((widget) => {
     const localLayout = {
       ...widget.layout,
@@ -186,6 +191,7 @@ export function RuntimeOverlaySurface(props: RuntimeOverlaySurfaceProps): React.
       layoutViewport.width,
       layoutViewport.height,
       brandVisible,
+      standingsRuntime,
     );
     return {
       ...widget,

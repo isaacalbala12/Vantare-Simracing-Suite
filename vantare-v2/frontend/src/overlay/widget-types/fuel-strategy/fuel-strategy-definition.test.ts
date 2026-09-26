@@ -13,4 +13,13 @@ describe("fuelStrategyDefinition", () => {
     expect(fuelStrategyDefinition.parseContent({ historyRows: 99 })).toMatchObject({ historyRows: 8 });
     expect(() => fuelStrategyDefinition.parseContent({ units: "gallons" })).toThrow(/units/i);
   });
+
+  it("exposes Fuel and Virtual Energy as an explicit content source", () => {
+    expect(fuelStrategyDefinition.parseContent({}).source).toBe("fuel");
+    expect(fuelStrategyDefinition.parseContent({ source: "virtual-energy" }).source).toBe("virtual-energy");
+    expect(() => fuelStrategyDefinition.parseContent({ source: "battery" })).toThrow(/source/i);
+    expect(fuelStrategyDefinition.inspector.content).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: "select", path: "source" }),
+    ]));
+  });
 });

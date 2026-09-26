@@ -4,7 +4,7 @@ import "testing"
 
 func TestSlotTrackerGraceAndFingerprint(t *testing.T) {
 	t.Parallel()
-	fingerprint := SlotFingerprint{SourceKey: "7", Driver: "A", Class: "GT3"}
+	fingerprint := SlotFingerprint{Driver: "A", Class: "GT3"}
 	tracker := NewSlotTracker[int](2)
 	if got := tracker.Observe(7, fingerprint, 1); got.Generation != 1 || !got.Bumped {
 		t.Fatalf("first Observe() = %+v", got)

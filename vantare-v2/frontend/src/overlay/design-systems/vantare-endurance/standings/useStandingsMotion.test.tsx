@@ -30,16 +30,16 @@ function row(partial: Partial<StandingsRowViewModel> & { id: string }): Standing
 }
 
 /**
- * Two GT3 cars `interval` apart. The class leader's own gap is treated as zero
- * by the derivation, so the follower's gap IS the interval between them.
+ * Two GT3 cars with explicit fresh absolute gaps: zero and `interval`.
  */
 function model(interval: number): StandingsViewModel {
   return modelWithRows([
-    row({ id: "ahead", position: 1, gapText: "+0.0" }),
+    row({ id: "ahead", position: 1, gapText: "+0.0", battleGapSeconds: 0.0 }),
     row({
       id: "behind",
       position: 2,
       gapText: `+${interval.toFixed(1)}`,
+      battleGapSeconds: interval,
       isPlayer: true,
     }),
   ]);
@@ -287,8 +287,8 @@ describe("battle teardown", () => {
 
   it("drops a race battle immediately when the session changes to qualifying", () => {
     const rows = [
-      row({ id: "ahead", position: 1, gapText: "+0.0" }),
-      row({ id: "player", position: 2, gapText: "+0.4", isPlayer: true }),
+      row({ id: "ahead", position: 1, gapText: "+0.0", battleGapSeconds: 0.0 }),
+      row({ id: "player", position: 2, gapText: "+0.4", battleGapSeconds: 0.4, isPlayer: true }),
     ];
     const { result, rerender } = renderMotion(modelWithRows(rows));
     expect(result.current.battles).toHaveLength(1);
@@ -300,19 +300,19 @@ describe("battle teardown", () => {
 
   it("dissolves the freshest pair after rapid battle changes", () => {
     const battleAhead = modelWithRows([
-      row({ id: "ahead", position: 1, gapText: "+0.0" }),
-      row({ id: "player", position: 2, gapText: "+0.4", isPlayer: true }),
-      row({ id: "behind", position: 3, gapText: "+2.0" }),
+      row({ id: "ahead", position: 1, gapText: "+0.0", battleGapSeconds: 0.0 }),
+      row({ id: "player", position: 2, gapText: "+0.4", battleGapSeconds: 0.4, isPlayer: true }),
+      row({ id: "behind", position: 3, gapText: "+2.0", battleGapSeconds: 2.0 }),
     ]);
     const battleBehind = modelWithRows([
-      row({ id: "ahead", position: 1, gapText: "+0.0" }),
-      row({ id: "player", position: 2, gapText: "+2.0", isPlayer: true }),
-      row({ id: "behind", position: 3, gapText: "+2.4" }),
+      row({ id: "ahead", position: 1, gapText: "+0.0", battleGapSeconds: 0.0 }),
+      row({ id: "player", position: 2, gapText: "+2.0", battleGapSeconds: 2.0, isPlayer: true }),
+      row({ id: "behind", position: 3, gapText: "+2.4", battleGapSeconds: 2.4 }),
     ]);
     const noBattle = modelWithRows([
-      row({ id: "ahead", position: 1, gapText: "+0.0" }),
-      row({ id: "player", position: 2, gapText: "+2.0", isPlayer: true }),
-      row({ id: "behind", position: 3, gapText: "+4.0" }),
+      row({ id: "ahead", position: 1, gapText: "+0.0", battleGapSeconds: 0.0 }),
+      row({ id: "player", position: 2, gapText: "+2.0", battleGapSeconds: 2.0, isPlayer: true }),
+      row({ id: "behind", position: 3, gapText: "+4.0", battleGapSeconds: 4.0 }),
     ]);
     const { result, rerender } = renderMotion(battleAhead);
 
@@ -331,9 +331,9 @@ describe("battle teardown", () => {
   it("never reports a dissolving battle alongside a newly selected closer battle", () => {
     const { result, rerender } = renderMotion(
       modelWithRows([
-        row({ id: "ahead", position: 1, gapText: "+0.0" }),
-        row({ id: "player", position: 2, gapText: "+0.4", isPlayer: true }),
-        row({ id: "behind", position: 3, gapText: "+2.0" }),
+        row({ id: "ahead", position: 1, gapText: "+0.0", battleGapSeconds: 0.0 }),
+        row({ id: "player", position: 2, gapText: "+0.4", battleGapSeconds: 0.4, isPlayer: true }),
+        row({ id: "behind", position: 3, gapText: "+2.0", battleGapSeconds: 2.0 }),
       ]),
     );
     expect(result.current.battles).toHaveLength(1);
@@ -341,9 +341,9 @@ describe("battle teardown", () => {
 
     rerender({
       value: modelWithRows([
-        row({ id: "ahead", position: 1, gapText: "+0.0" }),
-        row({ id: "player", position: 2, gapText: "+2.0", isPlayer: true }),
-        row({ id: "behind", position: 3, gapText: "+2.4" }),
+        row({ id: "ahead", position: 1, gapText: "+0.0", battleGapSeconds: 0.0 }),
+        row({ id: "player", position: 2, gapText: "+2.0", battleGapSeconds: 2.0, isPlayer: true }),
+        row({ id: "behind", position: 3, gapText: "+2.4", battleGapSeconds: 2.4 }),
       ]),
     });
 
@@ -354,8 +354,8 @@ describe("battle teardown", () => {
 
   it("does not report battle state when Gap is hidden, even if Interval is visible", () => {
     const rows = [
-      row({ id: "ahead", position: 1, gapText: "+0.0" }),
-      row({ id: "player", position: 2, gapText: "+0.4", intervalText: "+0.4", isPlayer: true }),
+      row({ id: "ahead", position: 1, gapText: "+0.0", battleGapSeconds: 0.0 }),
+      row({ id: "player", position: 2, gapText: "+0.4", battleGapSeconds: 0.4, intervalText: "+0.4", isPlayer: true }),
     ];
 
     const { result } = renderMotion(modelWithRows(rows, "RACE", ["interval"]));

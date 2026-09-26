@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../telemetry-transport/overlay-frame-v2-store";
 import {
   createTelemetryRateCoordinator,
   type TelemetryRateCoordinator,
@@ -52,7 +53,7 @@ export function createTestTelemetryCoordinator(): TelemetryRateCoordinator {
     },
   };
 
-  const update = JSON.parse(goldenV2Raw) as OverlayUpdateV2;
+  const update = structuredClone(decodeOverlayUpdateV2(JSON.parse(goldenV2Raw))) as OverlayUpdateV2;
   coordinator.setOverlayFrame(update.frame ?? undefined, update.source);
   return flushing;
 }

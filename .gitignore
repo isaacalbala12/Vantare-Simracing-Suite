@@ -78,3 +78,10 @@ standings_*.html
 vantare_*.html
 crewchief_overlay.html
 mockups/
+
+# Vantare quality tooling caches (FASE 1)
+tools/quality/.jscpd-out/
+tools/quality/.last-run.json
+tools/quality/.last-report.md
+tools/quality/.last-report.json
+tools/quality/.skills-cache/

@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../../telemetry-transport/overlay-frame-v2-store";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -5,12 +6,12 @@ import type { OverlayFrameV2, OverlayUpdateV2 } from "../../../generated/telemet
 import { buildPedalsViewModelV2, pedalsDisplayedValues } from "./pedals-view-model-v2";
 
 function golden(vehicles: number): OverlayUpdateV2 {
-  return JSON.parse(
-    readFileSync(
+  return structuredClone(decodeOverlayUpdateV2(
+    JSON.parse(readFileSync(
       path.resolve(process.cwd(), `../internal/telemetry/projection/overlayv2/testdata/overlay_v2_${vehicles}.golden.json`),
       "utf8",
-    ),
-  ) as OverlayUpdateV2;
+    )),
+  )) as OverlayUpdateV2;
 }
 
 function goldenFrame(): OverlayFrameV2 {
@@ -31,7 +32,7 @@ describe("pedals v2 view model", () => {
   it("construye modelo completo desde el frame v2", () => {
     const frame = goldenFrame();
     const model = buildPedalsViewModelV2(frame, { state: "live" }, {});
-    // golden 20: throttle 0.75, brake 0.125, clutch missing -> 0
+    // The golden clutch is fresh zero, legitimately omitted by Go omitempty.
     expect(model.status).toBe("ready");
     expect(model.throttle).toBeCloseTo(0.75, 9);
     expect(model.brake).toBeCloseTo(0.125, 9);
@@ -39,6 +40,48 @@ describe("pedals v2 view model", () => {
     expect(model.throttleText).toBe("75%");
     expect(model.brakeText).toBe("13%");
     expect(model.clutchText).toBe("0%");
+    expect(model.flag).toBe("unknown");
+    expect(model.sessionPhase).toBe("race");
+  });
+
+  it("consume la bandera y la fase de SessionV2 sin alterar los canales de pedal", () => {
+    const frame = buildSyntheticFrame({
+      throttle: { v: 0.75, q: "fresh" },
+      brake: { v: 0.125, q: "fresh" },
+      clutch: { v: 0.06, q: "fresh" },
+    });
+    const flagged = {
+      ...frame,
+      session: {
+        ...frame.session,
+        flag: { v: "yellow", q: "fresh" as const },
+        phase: { v: "race", q: "fresh" as const },
+      },
+    };
+    const model = buildPedalsViewModelV2(flagged, { state: "live" }, {});
+
+    expect(model.flag).toBe("yellow");
+    expect(model.sessionPhase).toBe("race");
+    expect(model.throttleText).toBe("75%");
+    expect(model.brakeText).toBe("13%");
+    expect(model.clutchText).toBe("6%");
+  });
+
+  it("no convierte una bandera ausente, inválida o stale en verde", () => {
+    const frame = buildSyntheticFrame();
+    const missing = buildPedalsViewModelV2(frame, { state: "live" }, {});
+    const invalid = buildPedalsViewModelV2({
+      ...frame,
+      session: { ...frame.session, flag: { v: "not-a-flag", q: "fresh" } },
+    }, { state: "live" }, {});
+    const stale = buildPedalsViewModelV2({
+      ...frame,
+      session: { ...frame.session, flag: { v: "yellow", q: "stale" } },
+    }, { state: "live" }, {});
+
+    expect(missing.flag).toBe("unknown");
+    expect(invalid.flag).toBe("unknown");
+    expect(stale.flag).toBe("unknown");
   });
 
   it("placeholders cuando faltan señales (q=missing)", () => {
@@ -48,11 +91,13 @@ describe("pedals v2 view model", () => {
       clutch: { q: "missing" },
     });
     const model = buildPedalsViewModelV2(frame, { state: "live" }, {});
-    // Sin señal el VM cae a 0% como v1 cuando snapshot.player.* era undefined.
+    expect(model.status).toBe("missing");
     expect(model.throttle).toBe(0);
     expect(model.brake).toBe(0);
     expect(model.clutch).toBe(0);
-    expect(model.throttleText).toBe("0%");
+    expect(model.throttleText).toBe("—");
+    expect(model.brakeText).toBe("—");
+    expect(model.clutchText).toBe("—");
   });
 
   it("propaga lifecycle del source", () => {
@@ -102,6 +147,8 @@ describe("pedals v2 view model", () => {
 
   it("expone proyección estable para comparación", () => {
     const displayed = pedalsDisplayedValues(buildPedalsViewModelV2(goldenFrame(), { state: "live" }, {}));
-    expect(Object.keys(displayed).sort()).toEqual(["brake", "clutch", "status", "throttle"]);
+    expect(Object.keys(displayed).sort()).toEqual(["brake", "clutch", "flag", "sessionPhase", "status", "throttle"]);
+    expect(displayed.flag).toBe("unknown");
+    expect(displayed.sessionPhase).toBe("race");
   });
 });

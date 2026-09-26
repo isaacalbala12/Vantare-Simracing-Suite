@@ -72,6 +72,38 @@ describe("StandingsFunctional brand decision", () => {
     expect(container.querySelectorAll("tbody td")).toHaveLength(model.columns.length);
   });
 
+  it("drops the logo gap with the bare session header when the brand is off", () => {
+    const { container } = render(
+      <StandingsFunctional
+        model={model}
+        settings={{ showSessionHeader: true, showBrand: false, brandVisible: false }}
+        renderMode="harness"
+      />,
+    );
+    const session = container.querySelector(".vf-session--bare");
+    expect(session).toBeTruthy();
+    expect(session?.querySelector(".vf-brand")).toBeNull();
+    expect(session?.querySelector(".vf-session-context")).toBeTruthy();
+  });
+
+  it("does not create a second header when the driver is shown as surname", () => {
+    const columns = [
+      { id: "position", metricId: "position", enabled: true, widthPreset: "sm" as const },
+      { id: "number", metricId: "driverNumber", enabled: true, widthPreset: "sm" as const },
+      { id: "name", metricId: "driverName", enabled: true, widthPreset: "sm" as const, format: { mode: "surname" as const } },
+      { id: "gap", metricId: "gap", enabled: true, widthPreset: "sm" as const },
+    ];
+    const { container } = render(
+      <StandingsFunctional
+        model={{ ...model, columns }}
+        settings={{ templateId: "signature" }}
+        renderMode="harness"
+      />,
+    );
+    expect(container.querySelectorAll(".vf-session")).toHaveLength(1);
+    expect(container.querySelector(".vf-session")?.parentElement?.tagName).toBe("TH");
+  });
+
   it("paid opt-in shows the brand while opt-out hides it with a visible header", () => {
     const on = render(
       <StandingsFunctional

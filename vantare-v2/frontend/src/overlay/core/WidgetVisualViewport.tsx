@@ -5,6 +5,7 @@ import {
   resolveWidgetVisualGeometry,
   resolveWidgetVisualGeometryForType,
 } from "./widget-visual-geometry";
+import { isEfficiencySystem } from "./design-system-names";
 
 type VisualLayoutSize = Pick<WidgetLayoutV3, "w" | "h">;
 type VisualSelection = Pick<WidgetVisualV3, "systemId" | "baseSettings" | "appearanceOverrides">;
@@ -29,8 +30,8 @@ export function WidgetVisualViewport(props: {
   children: ReactNode;
 }): React.ReactElement {
   const tower = isStandingsRedlineTowerVisual(props.widgetType, props.visual);
-  const fluidWidth = !tower && (isFluidRedlineStandings(props.widgetType, props.visual)
-    || (props.widgetType === "standings" && props.visual?.systemId === "vantare-functional"));
+  const fluidWidth = !tower && (props.widgetType === "fastest-lap" || isFluidRedlineStandings(props.widgetType, props.visual)
+    || (props.widgetType === "standings" && isEfficiencySystem(props.visual?.systemId)));
   const geometry = tower
     ? resolveWidgetVisualGeometry(props.layout, REDLINE_TOWER_BASE_WIDTH)
     : fluidWidth

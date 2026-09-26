@@ -1,6 +1,8 @@
+import { STANDINGS_WINDOW_AROUND_OPTIONS } from "./standings-window";
+import { functionalLabels } from "../../design-systems/vantare-functional/labels";
 import { useI18n } from '../../../i18n/I18nProvider';
 import type { CustomInspectorProps } from '../../core/inspector-control';
-import { Check, Field, Seg } from '../../../ui/orbit';
+import { Check, Field, Seg, Select } from '../../../ui/orbit';
 import {
   type WidgetColumnWidthPreset,
 } from '../shared/widget-column';
@@ -12,6 +14,7 @@ import {
   toggleStandingsColumn,
   updateStandingsColumn,
 } from './standings-content';
+import { DRIVER_NAME_FORMATS, type DriverNameFormat } from '../shared/driver-name';
 import {
   isStandingsRedlineWidget,
   isStandingsRedlineTowerVisual,
@@ -109,7 +112,7 @@ function OrderButton(props: {
 
 export function StandingsContentInspector(props: CustomInspectorProps): React.ReactElement {
   const { widget, disabled, onContentChange } = props;
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const content = parseStandingsContent(widget.content);
   const tower = isStandingsRedlineTowerVisual(widget.type, widget.visual);
   const redline = !tower && isStandingsRedlineWidget(widget);
@@ -133,19 +136,28 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
       >
         <div data-testid="studio-standings-row-count">
           <Field label={t('studio.inspector.content.rows')}>
-            <Seg
+            <Select
               label={t('studio.inspector.content.rows')}
               onChange={(next) => publish(updateRowCount(content, Number(next)))}
               options={STANDINGS_ROW_COUNT_OPTIONS.map((count) => ({
                 value: String(count),
                 label: String(count),
-                disabled,
               }))}
               value={String(content.rowCount)}
-              wide
+              disabled={disabled}
             />
           </Field>
         </div>
+
+        <Check checked={content.playerWindow === true} disabled={disabled} label={t('studio.inspector.content.playerWindow')}
+          onChange={() => publish({ ...content, playerWindow: !content.playerWindow })}>
+          {t('studio.inspector.content.playerWindow')}
+        </Check>
+        {content.playerWindow && <Field label={t('studio.inspector.content.windowAround')}>
+          <Select label={t('studio.inspector.content.windowAround')} disabled={disabled} value={String(content.windowAround ?? 4)}
+            options={STANDINGS_WINDOW_AROUND_OPTIONS.map(value => ({ value: String(value), label: String(value) }))}
+            onChange={next => publish(parseStandingsContent({ ...content, windowAround: Number(next) }))} />
+        </Field>}
 
         {redline ? (
           <p className="orbit-studio-cols__note" data-testid="studio-standings-redline-fixed-note">
@@ -167,7 +179,7 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
 
         {tower ? <p role="status" data-testid="studio-standings-tower-preview">{t('studio.inspector.content.towerPreview')}</p> : <ul className="orbit-studio-cols" data-testid="studio-standings-columns">
           {content.columns.map((column, index) => {
-            const name = templateLabel(column.id);
+            const name = functionalLabels[locale][column.metricId as keyof typeof functionalLabels.en] ?? templateLabel(column.id);
             const align = (column.style?.align ?? 'left') as AlignOption;
             const fixed = redline && REDLINE_FIXED_METRICS.has(column.metricId);
             const flexibleIndex = flexibleColumns.findIndex((entry) => entry.id === column.id);
@@ -187,7 +199,7 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
                   <Check
                     checked={fixed || column.enabled}
                     data-testid={`studio-standings-column-toggle-${column.id}`}
-                    disabled={disabled || fixed}
+                    disabled={disabled || fixed || column.metricId === "tireCompound"}
                     label={name}
                     onChange={() => publish(toggleStandingsColumn(content, column.id))}
                   >
@@ -243,6 +255,34 @@ export function StandingsContentInspector(props: CustomInspectorProps): React.Re
                       wide
                     />
                   </div>
+                  {column.metricId === 'driverName' && !fixed ? (
+                    <div
+                      className="orbit-studio-cols__seg"
+                      data-testid={`studio-standings-column-name-format-${column.id}`}
+                    >
+                      <Seg
+                        label={`${t('studio.inspector.content.nameFormat')} · ${name}`}
+                        onChange={(next) =>
+                          publish(
+                            updateStandingsColumn(content, column.id, {
+                              format: { mode: next },
+                            }),
+                          )
+                        }
+                        options={DRIVER_NAME_FORMATS.map((format) => ({
+                          value: format,
+                          label: t(`studio.inspector.content.nameFormat.${format}`),
+                          disabled,
+                        }))}
+                        value={
+                          DRIVER_NAME_FORMATS.includes(column.format?.mode as DriverNameFormat)
+                            ? (column.format?.mode as DriverNameFormat)
+                            : 'full'
+                        }
+                        wide
+                      />
+                    </div>
+                  ) : null}
                   {hasAlign(column) ? (
                     <div
                       className="orbit-studio-cols__seg"

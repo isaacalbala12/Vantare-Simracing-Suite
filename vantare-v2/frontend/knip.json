@@ -1,0 +1,44 @@
+{
+  "$schema": "https://unpkg.com/knip@6.34.0/schema/knip.json",
+  "entry": [
+    "src/main.tsx",
+    "src/overlay-main.tsx",
+    "src/calendar-visual-harness.tsx",
+    "src/orbit-engineer-harness.tsx",
+    "src/orbit-home-harness.tsx",
+    "src/orbit-launcher-harness.tsx",
+    "src/orbit-outside-harness.tsx",
+    "src/orbit-races-harness.tsx",
+    "src/orbit-roadmap-harness.tsx",
+    "src/orbit-settings-harness.tsx",
+    "src/orbit-shell-harness.tsx",
+    "src/orbit-strategy-harness.tsx",
+    "src/orbit-studio-harness.tsx",
+    "src/orbit-telemetry-harness.tsx",
+    "src/orbit-testing-harness.tsx",
+    "src/orbit-tokens-harness.tsx",
+    "src/ui-orbit-harness.tsx",
+    "src/overlay-harness/main.tsx",
+    "src/overlay-harness/studio-route-main.tsx",
+    "src/overlay-harness/studio-v3-main.tsx",
+    "src/overlay-harness/responsive-overlay-main.tsx",
+    "src/hub/settings/diagnostics/harness-main.tsx",
+    "src/test-setup.ts",
+    "scripts/**/*.{mjs,ts}",
+    "vite.config.ts",
+    "vite.calendar-harness.config.ts",
+    "vite.escala-harness.config.ts",
+    "vite.overlay-studio-harness.config.ts",
+    "overlay-studio-harness-vite-plugin.ts"
+  ],
+  "project": [
+    "src/**/*",
+    "scripts/**/*"
+  ],
+  "ignore": [
+    "src/generated/**",
+    "bindings/**"
+  ],
+  "ignoreBinaries": [],
+  "ignoreDependencies": []
+}

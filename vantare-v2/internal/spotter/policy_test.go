@@ -38,7 +38,7 @@ func TestSituationTransitionMatrixKeepsCurrentState(t *testing.T) {
 				}
 				// Clear transitions are delayed; a second observation fires them.
 				if !emitted {
-					intent, emitted = policy.Evaluate(1_650, after.left, after.right)
+					intent, emitted = policy.Evaluate(1_651, after.left, after.right)
 				}
 				if !emitted {
 					t.Fatalf("transition produced no current message")
@@ -90,7 +90,7 @@ func TestClearRequiresStartedAcknowledgement(t *testing.T) {
 				t.Fatalf("initial = %s", intent)
 			}
 			withoutACK.Evaluate(1_400, test.afterLeft, test.afterRight)
-			intent, ok := withoutACK.Evaluate(1_550, test.afterLeft, test.afterRight)
+			intent, ok := withoutACK.Evaluate(1_551, test.afterLeft, test.afterRight)
 			if !ok || intent != test.wantSafe {
 				t.Fatalf("without ACK = %q/%t, want %s", intent, ok, test.wantSafe)
 			}
@@ -101,7 +101,7 @@ func TestClearRequiresStartedAcknowledgement(t *testing.T) {
 				t.Fatal("started antecedent was rejected")
 			}
 			started.Evaluate(1_400, test.afterLeft, test.afterRight)
-			intent, ok = started.Evaluate(1_550, test.afterLeft, test.afterRight)
+			intent, ok = started.Evaluate(1_551, test.afterLeft, test.afterRight)
 			if !ok || intent != test.wantClear {
 				t.Fatalf("with ACK = %q/%t, want %s", intent, ok, test.wantClear)
 			}
@@ -124,7 +124,7 @@ func TestStillThereDoesNotRenewStartedContext(t *testing.T) {
 		t.Fatal("still-there was rejected")
 	}
 	policy.Evaluate(4_900, false, false)
-	intent, ok = policy.Evaluate(5_050, false, false)
+	intent, ok = policy.Evaluate(5_051, false, false)
 	if !ok || intent != IntentAllClear {
 		t.Fatalf("expired original context = %q/%t, want all-clear", intent, ok)
 	}

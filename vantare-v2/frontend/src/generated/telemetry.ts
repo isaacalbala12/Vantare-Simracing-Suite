@@ -18,6 +18,7 @@ export type OverlayQualityV2 = "fresh" | "invalid" | "missing" | "stale";
 export type OverlaySourceStateV2 = "connecting" | "degraded" | "detecting" | "error" | "live" | "stale" | "stopped" | "stopping";
 export type OverlaySpeedUnitV2 = "kph" | "mph" | "mps";
 export type OverlayTemperatureUnitV2 = "celsius" | "fahrenheit";
+export type OverlayWireQualityV2 = "f" | "i" | "m" | "s";
 export type ProductID = "analysis" | "engineer" | "strategy";
 export type SnapshotKind = "full";
 export type StatusState = "connecting" | "degraded" | "detecting" | "error" | "live" | "stale" | "stopped" | "stopping";
@@ -182,16 +183,25 @@ export interface OverlayControlsV2 {
   readonly history: OverlayControlsHistoryV2;
 }
 
+export interface OverlayDeltaReferenceViewV2 {
+  readonly authority?: OverlayAuthorityV2 | undefined;
+  readonly reference?: string | undefined;
+  readonly requested: string;
+  readonly seconds: OverlayQValue<number>;
+}
+
 export interface OverlayDeltaViewV2 {
   readonly authority?: OverlayAuthorityV2 | undefined;
   readonly available: readonly string[];
   readonly history: Overlayv2DeltaHistoryV2;
   readonly reference?: string | undefined;
+  readonly references?: readonly OverlayDeltaReferenceViewV2[] | undefined;
   readonly requested?: string | undefined;
   readonly seconds: OverlayQValue<number>;
   readonly trend?: string | undefined;
 }
 
+/** Normalized consumer model; use the corresponding Wire type for transport input. */
 export interface OverlayFrameV2 {
   readonly algorithm: number;
   readonly capabilities: OverlayCapabilitiesV2;
@@ -204,6 +214,7 @@ export interface OverlayFrameV2 {
   readonly generatedAt: string;
   readonly player: OverlayPlayerInstrumentsV2;
   readonly relative: readonly OverlayRelativeRowV2[];
+  readonly relativeSameClass: readonly OverlayRelativeRowV2[];
   readonly relativeSettled: readonly OverlayRelativeRowV2[];
   readonly sectionMask: number;
   readonly sequence: number;
@@ -241,6 +252,7 @@ export interface OverlayPlayerInstrumentsV2 {
   readonly clutch: OverlayQValue<number>;
   readonly gear: OverlayQValue<number>;
   readonly id?: string | undefined;
+  readonly lapNumber?: OverlayQValue<number> | undefined;
   readonly rpm: OverlayQValue<number>;
   readonly speed: OverlayQValue<number>;
   readonly steering: OverlayQValue<number>;
@@ -248,13 +260,15 @@ export interface OverlayPlayerInstrumentsV2 {
 }
 
 export interface OverlayRelativeRowV2 {
-  readonly authority: OverlayAuthorityV2;
+  readonly authority?: OverlayAuthorityV2 | undefined;
+  readonly bestLap: OverlayQValue<number>;
   readonly classId?: string | undefined;
   readonly gap: OverlayQValue<number>;
-  readonly groundPosition: OverlayQValue<Overlayv2GroundPositionV2>;
   readonly id: string;
+  readonly lapDelta: OverlayQValue<number>;
   readonly lastLap: OverlayQValue<number>;
   readonly name?: string | undefined;
+  readonly number?: string | undefined;
   readonly position: number;
   readonly side: string;
 }
@@ -280,21 +294,44 @@ export interface OverlaySpotterViewV2 {
   readonly right: OverlayQValue<boolean>;
 }
 
+/** Normalized consumer model; use the corresponding Wire type for transport input. */
 export interface OverlayStandingRowV2 {
   readonly bestLap: OverlayQValue<number>;
+  readonly classGap?: number | undefined;
+  readonly classGapLaps?: number | undefined;
   readonly classId?: string | undefined;
   readonly classPosition: number;
+  readonly classRef?: number | undefined;
   readonly driver?: string | undefined;
   readonly gap: OverlayQValue<number>;
   readonly gapLaps?: number | undefined;
   readonly groundPosition: OverlayQValue<Overlayv2GroundPositionV2>;
+  readonly interval?: number | undefined;
   readonly id: string;
-  readonly lapDistance: OverlayQValue<number>;
-  readonly laps?: number | undefined;
+  readonly intervalLaps?: number | undefined;
+  readonly lapDistance?: OverlayQValue<number> | null | undefined;
+  readonly laps: number;
   readonly lastLap: OverlayQValue<number>;
   readonly number?: string | undefined;
   readonly pit?: string | undefined;
   readonly position: number;
+  readonly quality?: Overlayv2StandingQualityV2 | undefined;
+}
+
+export interface OverlayStandingWireQualityV2 {
+  readonly b?: OverlayWireQualityV2 | undefined;
+  readonly classGap?: OverlayWireQualityV2 | undefined;
+  readonly classGapLaps?: OverlayWireQualityV2 | undefined;
+  readonly classPosition?: OverlayWireQualityV2 | undefined;
+  readonly g?: OverlayWireQualityV2 | undefined;
+  readonly gapLaps?: OverlayWireQualityV2 | undefined;
+  readonly interval?: OverlayWireQualityV2 | undefined;
+  readonly intervalLaps?: OverlayWireQualityV2 | undefined;
+  readonly l?: OverlayWireQualityV2 | undefined;
+  readonly laps?: OverlayWireQualityV2 | undefined;
+  readonly pit?: OverlayWireQualityV2 | undefined;
+  readonly position?: OverlayWireQualityV2 | undefined;
+  readonly q: OverlayWireQualityV2;
 }
 
 export interface OverlayUnitsV2 {
@@ -304,6 +341,7 @@ export interface OverlayUnitsV2 {
   readonly temperature: OverlayTemperatureUnitV2;
 }
 
+/** Normalized consumer model; use the corresponding Wire type for transport input. */
 export interface OverlayUpdateV2 {
   readonly frame: OverlayFrameV2 | null;
   readonly revision: number;
@@ -384,6 +422,7 @@ export interface Overlayv2DamageViewV2 {
   readonly dents: OverlayQValue<readonly number[]>;
   readonly detached: OverlayQValue<boolean>;
   readonly overheating: OverlayQValue<boolean>;
+  readonly tyreWear?: OverlayQValue<readonly number[]> | null | undefined;
   readonly wheelDetachedCount: OverlayQValue<number>;
 }
 
@@ -402,6 +441,22 @@ export interface Overlayv2FuelHistoryV2 {
 export interface Overlayv2GroundPositionV2 {
   readonly x: number;
   readonly z: number;
+}
+
+export interface Overlayv2StandingQualityV2 {
+  readonly bestLap?: OverlayQualityV2 | undefined;
+  readonly classGap?: OverlayQualityV2 | undefined;
+  readonly classGapLaps?: OverlayQualityV2 | undefined;
+  readonly classPosition?: OverlayQualityV2 | undefined;
+  readonly gap?: OverlayQualityV2 | undefined;
+  readonly gapLaps?: OverlayQualityV2 | undefined;
+  readonly interval?: OverlayQualityV2 | undefined;
+  readonly intervalLaps?: OverlayQualityV2 | undefined;
+  readonly laps?: OverlayQualityV2 | undefined;
+  readonly lastLap?: OverlayQualityV2 | undefined;
+  readonly pit?: OverlayQualityV2 | undefined;
+  readonly position?: OverlayQualityV2 | undefined;
+  readonly q: OverlayQualityV2;
 }
 
 export interface Overlayv2WeatherV2 {
@@ -437,6 +492,12 @@ export interface SpatialVector3 {
   readonly Y: number;
   readonly Z: number;
 }
+
+/** Transport input: scalar timings use q.q plus g/b/l overrides (gap/bestLap/lastLap). Codes f/s/m/i mean fresh/stale/missing/invalid. Legacy QValue cells remain accepted. */
+/** Wire aliases: q=quality, cg=classGap, cl=classGapLaps, cr=classRef, i=interval, il=intervalLaps. */
+export type OverlayStandingWireRowV2 = Omit<OverlayStandingRowV2, "gap" | "bestLap" | "lastLap"> & { readonly gap: number | OverlayQValue<number>; readonly bestLap: number | OverlayQValue<number>; readonly lastLap: number | OverlayQValue<number>; readonly q?: OverlayStandingWireQualityV2 | Overlayv2StandingQualityV2; readonly cg?: number; readonly cl?: number; readonly cr?: number; readonly i?: number; readonly il?: number };
+export type OverlayWireFrameV2 = Omit<OverlayFrameV2, "standings"> & { readonly standings: readonly OverlayStandingWireRowV2[] };
+export type OverlayWireUpdateV2 = Omit<OverlayUpdateV2, "frame"> & { readonly frame: OverlayWireFrameV2 | null };
 
 /** @deprecated Reserved for the F7 Engineer facts port; no live fact transport exists in F5. */
 export interface FactEnvelope {

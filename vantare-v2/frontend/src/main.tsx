@@ -6,9 +6,16 @@ import vantareV5 from "./themes/vantare-v5.json";
 import vantareLite from "./themes/vantare-lite.json";
 import vantareOrbit from "./themes/vantare-orbit.json";
 import { initializeDensity } from "./lib/density";
+import { initializeUiAppearance } from "./lib/ui-appearance";
 import { AppBootFallback } from "./AppBootFallback";
 const OverlayWorkshopDevRoute = import.meta.env.DEV
-  ? lazy(async () => ({ default: (await import("./overlay/authoring/OverlayWorkshopDevRoute")).OverlayWorkshopDevRoute }))
+  ? lazy(async () => {
+    const [{ OverlayWorkshopDevRoute }, { I18nProvider }] = await Promise.all([
+      import("./overlay/authoring/OverlayWorkshopDevRoute"),
+      import("./i18n/I18nProvider"),
+    ]);
+    return { default: () => <I18nProvider mode="browser"><OverlayWorkshopDevRoute /></I18nProvider> };
+  })
   : null;
 const AppRuntime = lazy(async () => ({ default: (await import("./AppShell")).AppRuntime }));
 
@@ -25,6 +32,7 @@ applyTheme(
       : v5Theme,
 );
 initializeDensity();
+initializeUiAppearance();
 
 export function App() {
   const path = window.location.pathname;

@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../../../telemetry-transport/overlay-frame-v2-store";
 // @vitest-environment node
 
 import { readFileSync } from "node:fs";
@@ -22,7 +23,7 @@ type State = "ready" | "missing";
 
 const widths = [280, 340, 419, 420] as const;
 const surfaces: readonly Surface[] = ["desktop", "studio", "obs"];
-const golden = JSON.parse(goldenV2Raw) as OverlayUpdateV2;
+const golden = structuredClone(decodeOverlayUpdateV2(JSON.parse(goldenV2Raw))) as OverlayUpdateV2;
 const expectedEffectiveWidth = 826;
 const expectedMetrics = [
   "position",

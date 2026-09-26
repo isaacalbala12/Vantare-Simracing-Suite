@@ -1,5 +1,10 @@
+import { steeringWheelNames } from "./steering-wheel-names";
+
 /** Catálogo `studio.*` do Command Orbit v0.3 (`docs/design/orbit-v03/14-i18n.md`). */
 export const studioOrbitPt: Record<string, string> = {
+  ...steeringWheelNames,
+  "overlay.inspector.efficiency.steeringWheel": "Volante",
+  "overlay.inspector.efficiency.steeringWheel.generic": "Genérico",
   "studio.inspector.content.towerPreview": "Tower Preview: composição fixa, ainda sem animações nem edição de colunas. As suas colunas são preservadas para outros designs. Marca e número só aparecem quando fornecidos pela fonte. Ajuste o tamanho na tela e o número de linhas aqui.",
   "studio.column.eyebrow": "Widgets",
   "studio.column.search": "Procurar widget…",
@@ -13,9 +18,8 @@ export const studioOrbitPt: Record<string, string> = {
   "studio.column.listAria": "Widgets do perfil",
 
   "studio.toolbar.background": "Fundo da tela",
-  "studio.toolbar.background.grid": "Grelha",
-  "studio.toolbar.background.gradient": "Gradiente",
-  "studio.toolbar.background.black": "Preto",
+  "studio.toolbar.background.themeGroup": "Tema",
+  "studio.toolbar.background.otherGroup": "Outros fundos",
   "studio.toolbar.wallpaper": "Fundo próprio",
   "studio.toolbar.wallpaper.title": "Fundos próprios",
   "studio.toolbar.wallpaper.add": "Adicionar imagem…",
@@ -98,9 +102,15 @@ export const studioOrbitPt: Record<string, string> = {
   "studio.inspector.design.system": "Sistema",
   "studio.inspector.design.variant": "Design",
   "studio.inspector.design.none": "Sem design aplicado",
+  "studio.inspector.content.playerWindow": "Pódio e janela do jogador",
+  "studio.inspector.content.windowAround": "Pilotos ao redor",
   "studio.inspector.content.rows": "Linhas",
   "studio.inspector.content.width": "Largura",
   "studio.inspector.content.align": "Alinhamento",
+  "studio.inspector.content.nameFormat": "Nome",
+  "studio.inspector.content.nameFormat.full": "Completo",
+  "studio.inspector.content.nameFormat.initial": "N. Apelido",
+  "studio.inspector.content.nameFormat.surname": "Apelido",
   "studio.inspector.content.align.left": "Esquerda",
   "studio.inspector.content.align.right": "Direita",
   "studio.inspector.content.width.sm": "Estreita",
@@ -148,8 +158,6 @@ export const studioOrbitPt: Record<string, string> = {
   "overlay.inspector.standings.showSessionHeader": "Mostrar cabeçalho de sessão",
   "overlay.inspector.standings.showBrand": "Mostrar marca Vantare",
   "overlay.inspector.brand.required": "Marca obrigatória: sempre visível neste plano",
-  "overlay.inspector.efficiency.headerFirst": "Dado 1 do cabeçalho",
-  "overlay.inspector.efficiency.headerSecond": "Dado 2 do cabeçalho",
   "overlay.inspector.efficiency.showSessionFooter": "Mostrar rodapé da sessão",
   "overlay.inspector.efficiency.footerFirst": "Dado 1 do rodapé",
   "overlay.inspector.efficiency.footerSecond": "Dado 2 do rodapé",

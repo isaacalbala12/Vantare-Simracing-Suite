@@ -18,15 +18,10 @@ import {
 describe("projection gaps", () => {
   it("freezes the V2 presentation gaps without consulting the V1 adapter", () => {
     expect(projectionGapsFor("standings").map((gap) => gap.field)).toEqual([
-      "rows[].driverNumber",
       "rows[].tireCompound",
     ]);
-    expect(projectionGapsFor("relative").map((gap) => gap.field)).toEqual([
-      "rows[].driverNumber",
-    ]);
-    expect(projectionGapsFor("delta").map((gap) => gap.field)).toEqual([
-      "bestLapText",
-    ]);
+    expect(projectionGapsFor("relative")).toEqual([]);
+    expect(projectionGapsFor("delta")).toEqual([]);
     expect(OVERLAY_V2_STANDINGS_DECLARED_GAPS).toEqual(expect.arrayContaining(
       projectionGapsFor("standings").map((gap) => gap.field),
     ));
@@ -38,9 +33,9 @@ describe("projection gaps", () => {
     ));
   });
 
-  it("warns about the car number, which both grids put on every row", () => {
+  it("does not declare connected car numbers as missing", () => {
     for (const widget of ["standings", "relative"] as const) {
-      expect(projectionGapsFor(widget).map((gap) => gap.field)).toContain("rows[].driverNumber");
+      expect(projectionGapsFor(widget).map((gap) => gap.field)).not.toContain("rows[].driverNumber");
     }
   });
 
@@ -56,7 +51,7 @@ describe("projection gaps", () => {
       source.overlayV2Frame!, source.overlayV2Source!, parseStandingsContent(standingsWidget.content),
     );
     expect(standings.rows.length).toBeGreaterThan(0);
-    expect(standings.rows.every((row) => row.driverNumber === "" && row.tireCompound === "")).toBe(true);
+    expect(standings.rows.every((row) => row.tireCompound === "")).toBe(true);
 
     const relativeWidget = createScenarioWidget({
       widget: "relative", system: "vantare-endurance", variant: "default",
@@ -67,7 +62,7 @@ describe("projection gaps", () => {
     expect(relative.rows.length).toBeGreaterThan(0);
     expect(relative.rows.every((row) => row.driverNumber === "")).toBe(true);
 
-    expect(buildDeltaViewModelV2(source.overlayV2Frame!, source.overlayV2Source!).bestLapText).toBe("—");
+    expect(buildDeltaViewModelV2(source.overlayV2Frame!, source.overlayV2Source!).bestLapText).toMatch(/^\d+:\d{2}\.\d{3}$/);
   });
 
   it("keys every entry to a registered widget type", () => {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import { deltaDefinition } from "../../../overlay/widget-types/delta/delta-definition";
-import { translate } from "../../../i18n/i18n";
+import { loadDictionary, translate, type Locale } from "../../../i18n/i18n";
 import { ORBIT_KEYS, orbitStore } from "../../orbit/orbit-store";
 import {
   appearanceSummary,
@@ -49,7 +49,23 @@ describe("studio-orbit-model", () => {
   });
 
   it("usa el id cuando el widget no tiene nombre", () => {
-    expect(widgetLabel(build({ name: "  " }))).toBe("delta-main");
+    expect(widgetLabel(build({ name: "  " }), t)).toBe("delta-main");
+  });
+
+  it.each([
+    ["es", "Pedales avanzados", "Pedales antiguos"],
+    ["en", "Advanced pedals", "Legacy pedals"],
+    ["pt", "Pedais avançados", "Pedais antigos"],
+    ["it", "Pedali avanzati", "Pedali precedenti"],
+  ] as const)("renombra los tipos de pedales en %s sin cambiar nombres guardados", async (locale, current, retired) => {
+    await loadDictionary(locale as Locale);
+    const localized = (key: string) => translate(locale, key);
+    const widget = build({ type: "pedals-telemetry", name: undefined });
+    const saved = JSON.stringify(widget);
+    expect(widgetLabel(widget, localized)).toBe(current);
+    expect(widgetLabel({ ...widget, type: "pedals-telemetry-compact" }, localized)).toBe(retired);
+    expect(widgetLabel({ ...widget, name: "Mi volante" }, localized)).toBe("Mi volante");
+    expect(JSON.stringify(widget)).toBe(saved);
   });
 
   it("resume el diseño con el sistema y la procedencia", () => {

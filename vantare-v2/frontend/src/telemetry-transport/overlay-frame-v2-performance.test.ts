@@ -1,9 +1,17 @@
-import { describe, expect, it } from "vitest";
-import { decodeOverlayUpdateV2 } from "./overlay-frame-v2-store";
+import { describe, expect, it, vi } from "vitest";
+import {
+  createOverlaySectionDecoder,
+  decodeOverlayUpdateV2,
+  parseOverlayPullJSON,
+  OVERLAY_V2_SNAPSHOT_EVENT,
+} from "./overlay-frame-v2-store";
 
 describe("OverlayFrame v2 parse budget", () => {
-  it("TestOverlayFrameV2ParsesUnderBudgetP99", () => {
-    const encoded = JSON.stringify(syntheticFullUpdate(104));
+  it.each(["legacy", "compact"])("TestOverlayFrameV2ParsesUnderBudgetP99 %s", (format) => {
+    const update = syntheticFullUpdate(104);
+    const encoded = JSON.stringify(format === "legacy" ? update : { ...update, frame: { ...update.frame,
+      standings: update.frame.standings.map(row => ({ ...row, q: { q: "f" }, gap: row.gap.v, bestLap: row.bestLap.v, lastLap: row.lastLap.v })),
+    } });
     for (let index = 0; index < 100; index += 1) decodeOverlayUpdateV2(encoded);
     // Three trials isolate the decoder from transient work in the shared test
     // runner. As in Go benchmarks, the best stable trial is the gate value.
@@ -21,6 +29,57 @@ describe("OverlayFrame v2 parse budget", () => {
     // regresion de coste real infla todos los lotes y rompe la mediana igual.
     expect(selected.cpuMedian).toBeLessThan(1.5);
   }, 60_000);
+});
+
+describe("OverlayFrame v2 section byte accounting", () => {
+  it("counts bootstrap versus small delta work before considering an optimization", () => {
+    const sessionId = "section-harness";
+    const bootstrap = JSON.stringify({
+      sessionId,
+      delivery: 1,
+      events: [{ name: OVERLAY_V2_SNAPSHOT_EVENT, data: syntheticFullUpdate(104) }],
+    });
+    const delta = JSON.stringify({
+      sessionId,
+      delivery: 2,
+      events: [{
+        name: OVERLAY_V2_SNAPSHOT_EVENT,
+        baseRevision: 1,
+        data: { revision: 2, source: { state: "live" }, frame: { sequence: 2 } },
+      }],
+    });
+    const decoder = createOverlaySectionDecoder();
+    const stringify = vi.spyOn(JSON, "stringify");
+    const encode = vi.spyOn(TextEncoder.prototype, "encode");
+    stringify.mockClear();
+    encode.mockClear();
+    decoder(bootstrap, { sessionId, ack: 0 });
+    const bootstrapWork = { stringify: stringify.mock.calls.length, encode: encode.mock.calls.length };
+    stringify.mockClear();
+    encode.mockClear();
+    decoder(delta, { sessionId, ack: 1 });
+    const deltaWork = { stringify: stringify.mock.calls.length, encode: encode.mock.calls.length };
+    stringify.mockRestore();
+    encode.mockRestore();
+
+    console.info(`OverlayFrame v2 section accounting bootstrap=${JSON.stringify(bootstrapWork)} delta=${JSON.stringify(deltaWork)} fullBytes=${new TextEncoder().encode(bootstrap).byteLength}`);
+    expect(bootstrapWork.stringify).toBeGreaterThan(0);
+    expect(deltaWork.stringify).toBeGreaterThan(0);
+    expect(deltaWork.stringify).toBeLessThan(bootstrapWork.stringify);
+    expect(deltaWork.encode).toBeLessThan(bootstrapWork.encode);
+  });
+
+  it("keeps the non-section bootstrap path free of frameFieldSizes work", () => {
+    const text = JSON.stringify({ events: [{ name: OVERLAY_V2_SNAPSHOT_EVENT, data: syntheticFullUpdate(44) }] });
+    const stringify = vi.spyOn(JSON, "stringify");
+    const encode = vi.spyOn(TextEncoder.prototype, "encode");
+    stringify.mockClear();
+    encode.mockClear();
+    parseOverlayPullJSON(text);
+    expect(stringify).not.toHaveBeenCalled();
+    stringify.mockRestore();
+    encode.mockRestore();
+  });
 });
 
 function measureTrial(encoded: string, operationsPerSample: number) {
@@ -72,7 +131,9 @@ function syntheticFullUpdate(vehicles: number) {
     id: row.id,
     position: row.position,
     gap: fresh((index - 8) * 0.25),
-    groundPosition: row.groundPosition,
+    lapDelta: fresh(0),
+    bestLap: row.bestLap,
+    number: "007",
     lastLap: row.lastLap,
     side: index < 8 ? "ahead" : index === 8 ? "player" : "behind",
     authority: "native" as const,
@@ -117,6 +178,7 @@ function syntheticFullUpdate(vehicles: number) {
       standings,
       relative,
       relativeSettled: relative,
+      relativeSameClass: relative,
       delta: { seconds: fresh(-0.245), reference: "best", requested: "best", available: ["best", "last"], trend: "gaining", authority: "derived", history: { q: "missing" } },
       fuel: { remaining: fresh(42), capacity: fresh(100), perLap: fresh(2.4), estimatedLaps: fresh(17.5), sessionLaps: fresh(79), requiredFuel: fresh(189.6), history: { q: "missing" } },
       spotter: { mode: "official", left: fresh(false), right: fresh(true) },

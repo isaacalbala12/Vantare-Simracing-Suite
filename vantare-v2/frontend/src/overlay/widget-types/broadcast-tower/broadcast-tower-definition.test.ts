@@ -6,7 +6,7 @@ describe("broadcastTowerDefinition", () => {
     const widget = broadcastTowerDefinition.createDefault("tower-1");
     expect(widget.type).toBe("broadcast-tower");
     expect(widget.behavior.updateHz).toBe(10);
-    expect(widget.content).toEqual({ rowCount: 5, showWeather: true, showSof: true });
+    expect(widget.content).toEqual({ rowCount: 5, showWeather: true, showSof: false });
   });
   it("starts as a full-width horizontal strip", () => {
     const widget = broadcastTowerDefinition.createDefault("tower-1");
@@ -17,6 +17,10 @@ describe("broadcastTowerDefinition", () => {
       minimumSize: { width: 340, height: 71 },
       resizeMode: "horizontal-only",
     });
+  });
+  it("imports old SOF settings safely without exposing an unavailable control", () => {
+    expect(broadcastTowerDefinition.parseContent({showSof:true}).showSof).toBe(false);
+    expect(broadcastTowerDefinition.inspector?.content?.some(control => control.id === "show-sof")).toBe(false);
   });
   it("clamps row count to the contract", () => {
     expect(broadcastTowerDefinition.parseContent({ rowCount: 99 })).toMatchObject({ rowCount: 10 });

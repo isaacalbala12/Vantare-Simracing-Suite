@@ -1,11 +1,13 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { WidgetVisualHost } from "../../core/WidgetVisualHost";
+import { I18nProvider } from "../../../i18n/I18nProvider";
 import { buildWorkshopFrameV2, createScenarioWidget } from "../../authoring/fixtures/authoring-v2-workshop-frame";
 import type { RelativeViewModel } from "../../widget-types/relative/relative-view-model";
 import { RelativeFunctional } from "./RelativeFunctional";
 
 afterEach(cleanup);
+afterEach(() => localStorage.clear());
 
 const model: RelativeViewModel = {
   type: "relative", status: "ready", rowHeightMode: "auto",
@@ -24,6 +26,58 @@ const model: RelativeViewModel = {
 };
 
 describe("Functional Relative", () => {
+  it("renders a neutral lap badge only for non-player integer differences in race", () => {
+    const race: RelativeViewModel = {
+      ...model,
+      sessionLabel: "RACE",
+      rows: model.rows.map((row) => ({
+        ...row,
+        lapDelta: row.id === "ahead" ? -1 : row.id === "behind" ? 2 : 0,
+      })),
+    };
+    const { container, getByLabelText } = render(<RelativeFunctional model={race} settings={{}} renderMode="harness" />);
+
+    expect(getByLabelText("1 vuelta menos que tú").textContent).toBe("−1 V");
+    expect(getByLabelText("2 vueltas más que tú").textContent).toBe("+2 V");
+    expect(container.querySelector('tr[data-player="true"] .vf-relative-lap-delta')).toBeNull();
+    expect(container.querySelectorAll(".vf-relative-lap-delta")).toHaveLength(2);
+  });
+
+  it.each([
+    ["PRÁCTICA", "ready", -1],
+    ["QUALIFYING", "ready", -1],
+    ["RACE", "stale", -1],
+    ["RACE", "ready", 0],
+    ["RACE", "ready", null],
+  ] as const)("does not render a lap badge for session=%s status=%s delta=%s", (sessionLabel, status, lapDelta) => {
+    const noBadge: RelativeViewModel = {
+      ...model,
+      sessionLabel,
+      status,
+      rows: model.rows.map((row) => ({ ...row, lapDelta })),
+    };
+    const { container } = render(<RelativeFunctional model={noBadge} settings={{}} renderMode="harness" />);
+    expect(container.querySelector(".vf-relative-lap-delta")).toBeNull();
+  });
+
+  it.each([
+    ["es", "1 vuelta menos que tú", "−1 V"],
+    ["en", "1 lap fewer than you", "−1 L"],
+    ["pt", "1 volta a menos que você", "−1 V"],
+    ["it", "1 giro in meno di te", "−1 G"],
+  ] as const)("localizes lap badge title and accessible name in %s", async (locale, title, value) => {
+    localStorage.setItem("vantare.locale", locale);
+    const race: RelativeViewModel = {
+      ...model,
+      sessionLabel: "RACE",
+      rows: model.rows.map((row) => ({ ...row, lapDelta: row.id === "ahead" ? -1 : null })),
+    };
+    const { findByLabelText } = render(
+      <I18nProvider><RelativeFunctional model={race} settings={{}} renderMode="harness" /></I18nProvider>,
+    );
+    expect((await findByLabelText(title)).textContent).toBe(value);
+  });
+
   it("renders rows only — no brand header, no column-label row — with the player band", () => {
     const { container } = render(<RelativeFunctional model={model} settings={{}} renderMode="harness" />);
     expect(container.querySelector(".vf-session")).toBeNull();
@@ -45,6 +99,23 @@ describe("Functional Relative", () => {
     expect(container.querySelector('td[data-metric="position"]')).toBeNull();
   });
 
+  it("associates the class marker with the position instead of the driver name", () => {
+    const withClass: RelativeViewModel = {
+      ...model,
+      columns: [
+        model.columns[0]!,
+        { id: "class", metricId: "class", enabled: true, widthPreset: "auto", style: { align: "center" } },
+        model.columns[2]!,
+      ],
+    };
+    const { container } = render(<RelativeFunctional model={withClass} settings={{}} renderMode="harness" />);
+
+    expect(container.querySelector('td[data-metric="position"] .vf-position-identity--with-class')).not.toBeNull();
+    expect(container.querySelector('td[data-metric="position"] .vf-position-identity .vf-class-tick')).not.toBeNull();
+    expect(container.querySelector('td[data-metric="class"] .vf-class-tick')).toBeNull();
+    expect(container.querySelector('td[data-metric="driverName"] .vf-class-tick')).toBeNull();
+  });
+
   it.each(["disconnected", "missing", "error"] as const)("labels %s and suppresses retained rows", (status) => {
     const { container, getByRole } = render(<RelativeFunctional model={{ ...model, status }} settings={{}} renderMode="harness" />);
     expect(getByRole("status").textContent).toBeTruthy();
@@ -58,11 +129,24 @@ describe("Functional Relative", () => {
   });
 
   it.each(["studio", "desktop", "obs", "harness"] as const)("renders through the shared host with V2 Workshop data on %s", (surface) => {
-    const scenario = { widget: "relative", system: "vantare-functional", variant: "relative-multiclass", state: "ready", session: "race", location: "track" } as const;
+    const scenario = { widget: "relative", system: "vantare-functional", variant: "default", state: "ready", session: "race", location: "track" } as const;
     const widget = createScenarioWidget({ ...scenario, designId: "relative-functional-signature" });
     const { container } = render(<WidgetVisualHost widget={widget} runtime={buildWorkshopFrameV2(scenario)} renderMode={surface} />);
     expect(container.querySelector('[data-widget-system="vantare-functional"][data-widget-renderer="relative"][data-status="ready"]')).not.toBeNull();
     expect(container.querySelector('tr[data-player="true"]')).not.toBeNull();
     expect(container.querySelector('[data-testid="widget-host-diagnostic"]')).toBeNull();
   });
+});
+
+it("marks only the stale lap cell while preserving fresh gap and lap badge", () => {
+  const { container } = render(<RelativeFunctional model={{ ...model, sessionLabel: "RACE", rows: model.rows.map((row) => ({
+    ...row, fieldQuality: { gap: "fresh", bestLap: "stale" }, lapDelta: row.isPlayer ? null : -1,
+  })) }} settings={{}} renderMode="harness" />);
+  const best = container.querySelector<HTMLElement>('[data-relative-row="ahead"] [data-metric="bestLap"]')!;
+  const gap = container.querySelector<HTMLElement>('[data-relative-row="ahead"] [data-metric="gap"]')!;
+  expect(best.dataset.quality).toBe("stale");
+  expect(best.style.opacity).toBe("0.6");
+  expect(gap.dataset.quality).toBe("fresh");
+  expect(gap.style.opacity).toBe("");
+  expect(container.querySelector('[data-relative-row="ahead"] .vf-relative-lap-delta')).not.toBeNull();
 });

@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../telemetry-transport/overlay-frame-v2-store";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -16,11 +17,12 @@ import { RelativeCrystal } from "./vantare-crystal/relative/RelativeCrystal";
 import { PedalsCrystal } from "./vantare-crystal/pedals/PedalsCrystal";
 import { StandingsFunctional } from "./vantare-functional/StandingsFunctional";
 import type { PedalsViewModel } from "../widget-types/pedals/pedals-view-model";
+import { countFunctionalStandingsClassBands } from "../widget-types/standings/functional-standings-multiclass";
 
 function goldenFrame(): OverlayFrameV2 {
-  return (JSON.parse(readFileSync(resolve(process.cwd(),
+  return (structuredClone(decodeOverlayUpdateV2(JSON.parse(readFileSync(resolve(process.cwd(),
     "../internal/telemetry/projection/overlayv2/testdata/overlay_v2_20.golden.json"),
-  "utf8")) as { frame: OverlayFrameV2 }).frame;
+  "utf8")))) as { frame: OverlayFrameV2 }).frame;
 }
 
 function crystalCss(): string {
@@ -99,6 +101,7 @@ it("mandatory brand band fits the calculated frame with hidden header/footer", a
     for (const templateId of ["signature", "broadcast"] as const) {
       const content = { ...createDefaultStandingsContent(), rowCount: 5 };
       const model = buildStandingsViewModelV2(frame, { state: "live" }, { ...content, classScope: "all-classes" });
+      const classBandCount = countFunctionalStandingsClassBands(model.rows, model.classificationMode);
       const widget = standingsDefinition.createDefault(`functional-${templateId}`);
       widget.visual.systemId = "vantare-functional";
 
@@ -123,7 +126,7 @@ it("mandatory brand band fits the calculated frame with hidden header/footer", a
       // slack (BackCompat/quirks tables neither inherit nor measure like the
       // product, which ships CSS1Compat). Do not relax limits from quirks data.
       const baselineSettings = { templateId, showSessionHeader: true, showSessionFooter: true };
-      const baselineSize = resolveFunctionalStandingsSize(content.columns, 5, baselineSettings);
+      const baselineSize = resolveFunctionalStandingsSize(content.columns, 5, baselineSettings, 30, classBandCount);
       const baseline = await renderFunctional(
         baselineSettings, baselineSize.width, baselineSize.height,
       );
@@ -146,7 +149,7 @@ it("mandatory brand band fits the calculated frame with hidden header/footer", a
         footerSecond: "none",
         brandVisible: true,
       };
-      const size = resolveFunctionalStandingsSize(content.columns, 5, settings);
+      const size = resolveFunctionalStandingsSize(content.columns, 5, settings, 30, classBandCount);
       const measured = await renderFunctional(settings, size.width, size.height);
       expect(measured.bandBox, `${templateId} brand band`).toBeTruthy();
       expectInside(measured.frameBox, measured.bandBox!, `${templateId} brand band`);

@@ -28,12 +28,242 @@ CrewChief, Pit Manager y wake word.
 
 ## Estado
 
+### 2026-09-23 — Reparación de rutas de audio Windows extraída para integración
+
+[VAN-760](https://app.notion.com/p/3e4e51695c65811689b6e260e5908ca0), puente #1350,
+extrae los tres archivos de audio de PR1340@88e42e1d sin alterar su contenido.
+La protección remota impide integrar PR1348 mientras falla el test heredado de
+medio ausente. Se integra primero esta reparación ya aceptada, después calidad
+y finalmente la pantalla, revalidando cada head. No cambia gates ni baselines.
+Las rutas inválidas fallan antes de PowerShell y conservan la reproducción actual;
+la cancelación mantiene prioridad. Revisión Luna y CI Windows de origen PASS;
+PR1351 integrada en nightly247db1c7 tras calidad y Windows completos SUCCESS. Audio acústico
+y LMU reales siguen pendientes.
+
+### 2026-09-23 — Corrección del rechazo de medios Windows
+
+VAN-752 / PR1340 desarrolló la comprobación de medio local, ahora integrada
+por PR1351 como prerrequisito separado, antes de iniciar
+PowerShell o sustituir el sonido actual. Contexto cancelado conserva prioridad;
+un fichero ausente devuelve el error de sistema de archivos, y una ruta vacía
+o no regular falla explícitamente. Se conservan los eventos WPF, el límite de
+ocho segundos, Stop y la espera del hijo. Windows RED demostrado en
+run35852357505/head2cdc6a1d antes del cambio. Compilación/vet cruzado y revisión
+Go sin P1/P2; resultado Windows final en Notion/PR. La corrección de calidad
+VAN-753/#1346 permanece en su PR de tooling; no se mezcla la política con producto.
+
+### 2026-09-23 — Pantalla funcional para pruebas Windows
+
+[VAN-752](https://app.notion.com/p/3e4e51695c6581a9a63bcf66960e60bc) / #1336,
+base nightly `8b25d076`. Isaac autoriza reconstruir la pantalla existente para
+pruebas, priorizando funcionalidad. [Microplan](../../engineer/test-ui-1336.md).
+Se sustituyen voz/volumen WebView y acciones sin efecto por estado observado,
+controles persistidos con confirmación, prueba del player Go y registro de las
+últimas 200 entregas seleccionadas. La preferencia de subtítulos se conserva
+separada de su estado efectivo por rendimiento. La prueba requiere Engineer
+desactivado; Enable/Stop/cancelación la interrumpen y no puede solaparse con radio.
+
+El registro fija el modo al seleccionar y observa publicación visual, lookup de
+caché y resultado del player. No cubre candidatos anteriores a selección ni
+salidas del rollback legacy. No exporta rutas de audio: los errores generales
+se redactan y permanecen en el log local. La vista previa JSON se congela antes
+de copiar/descargar. La página consulta cada segundo solo mientras está montada
+y bloquea cambios ante estado desactualizado. Cuatro idiomas.
+
+No cambia timings CrewChief ni incorpora T1/T2 sin integrar. P0 sí está en esta
+base mediante PR1311/e41f703c; la entrada anterior describe su entrega histórica.
+El harness prueba UI con datos sintéticos y no acredita audio físico ni LMU.
+Checks, revisión, head/PR/CI vigentes se registran en Notion y en el informe
+[de entrega](../../analysis/isa-1336-engineer-test-ui.md). El frontend global pasa
+3945 pruebas y el harness pasa en dos resoluciones. La dependencia de calidad
+[VAN-753](https://app.notion.com/p/3e4e51695c6581a8b409f12fcd1c3f39)
+se integró separadamente por PR1348 en nightlyf8ded356, tras Windows completo PASS
+y revisión explícita de política (NEW0/MOVED0, REVIEW_REQUIRED). La reparación
+de audio se integró antes por PR1351/247db1c7. Esta pantalla incorpora ambas
+bases sin cambios al código productivo revisado en 88e42e1d. La validación final
+y la integración autorizada de PR1340 se siguen en
+[VAN-759](https://app.notion.com/p/3e4e51695c658192a2def8aa6dc9fb2b).
+
+### 2026-09-22 — Composición revisada sobre Wails beta.24
+
+[VAN-742](https://app.notion.com/p/3e3e51695c6581a5aeb7ffca7dec48f6) / #1310
+actualiza PR1295, PR1300, PR1304 y PR1308 a nightly ae5a1482 y comprueba su
+convivencia en una rama propia. La unión conserva los cambios de producto;
+el replay compartido mantiene ausencia de pit_now y frontera estricta de
+clear. [Informe](../../analysis/isa-1310-engineer-joint-validation.md) con
+heads, resolución semántica y controles: probe original 8/9 corregidos y dos
+controles conservados; race/vet de siete paquetes y calidad PASS. Revisión
+independiente PASS acotado sin P1/P2. Los globales conservan fallos macOS de
+base y la intermitencia voiceinput registrada en VAN-741. Estado de CI Windows
+y head final en Notion y PR1311. Las entradas siguientes
+conservan evidencia histórica; sus bases y cifras no describen esta unión.
+Sin integración ni promoción. T0a sigue después de P0 integrado; escucha
+Windows/LMU, primer sonido y VAN-741 permanecen pendientes.
+
+2026-09-22 — [VAN-739](https://app.notion.com/p/3e3e51695c6581faa188fb4a1e8ca5eb)
+/ GitHub #1307 aborda las esperas artificiales del audio Windows, F1 de VAN-735.
+Microplan: [`repair-isa-1307.md`](../../engineer/repair-isa-1307.md).
+Base nightly1101. Contraste previo: CrewChief predeterminado usa NAudio/WAVEOUT
+con fin por PlaybackStopped; el margen de duración es solo timeout.
+El candidato implementa inicio y fin por eventos del player PowerShell/WPF
+existente, con cierre y errores explícitos, sin dependencias ni cambio de ACK.
+El CI previo 35737417800 demuestra éxito falso para un MP3 inexistente y
+fallos de eventos antes de reparar. Revisión independiente PASS acotado y
+40 paquetes focales, race/vet focal, compilación/vet Windows y calidad PASS.
+La prueba Stop exige muerte del hijo antes del timeout automático. Go global
+macOS conserva fallos ajenos detallados en el microplan, incluido un fixture
+voiceinput reproducido también en la base. Estado CI/SHA final en VAN-739. La escucha y latencia real siguen
+pendientes. Implementación local; reviewer reutilizado mientras Isaac conecta
+DeepSeek Harness. Las PR1295, 1300 y 1304 siguen separadas, sin integrar.
+
+
+2026-09-22 — [VAN-738](https://app.notion.com/p/3e3e51695c658171ac4cfd0e9498e642)
+/ GitHub #1303 continúa la reparación actual sobre la ruta activa de Spotter.
+Microplan: [`repair-isa-1303.md`](../../engineer/repair-isa-1303.md).
+El ciclo fijado es plan y contraste con CrewChief predeterminado → desarrollo
+con regresiones → segundo contraste con la misma fuente y revisión independiente.
+La fuente fijada exige deltas de velocidad mundo inferiores a 12 m/s en cada
+eje horizontal para admitir un solape nuevo, y clear estrictamente después de
+150 ms desde el primer vacío. La ocupación observada debe separarse del contexto
+de mensajes pendientes para revalidar el inicio y las reapariciones.
+Vantare usa velocidad canónica orientada; el estimador RF2 por historial, el
+modo oval, dos rivales en el mismo lado y audio físico permanecen fuera del corte.
+Base final `1101f735`, con VAN-737/#1302 y Widgets #1298 ya integradas desde sus
+tareas propietarias. VAN-736/#1300 (Fuel/Timings) y la PR documental aceptada
+#1295 siguen como candidatos separados, actualizados sobre esa misma base.
+Código `f81e98db`, aplicado como `552734e0`: únicamente productor y policy
+cambian producto. 41 paquetes focales, race, vet focal, build, calidad local y
+contrato roadmap PASS. Revisión independiente PASS acotado, sin P1/P2; repite
+los dos probes Spotter originales ahora verdes y conserva el control positivo.
+Clear a 1250 ms en la secuencia auditada. El replay mantiene sus 61 eventos:
+solo cambian 47 timestamps +1/+2 ms por dos ticks de 150 a 151 ms.
+Go/vet global tienen limitaciones macOS registradas en el microplan: base y
+candidato repiten 119 paquetes verdes y los mismos cuatro paquetes fallidos.
+CI remoto, PR y siguiente paso se mantienen en VAN-738. Sin integración ni promoción.
+
+### 2026-09-22 — Reparación del camino activo y ciclo de paridad
+
+[VAN-736](https://app.notion.com/p/3e3e51695c6581ed8370e2a4b5302ae6),
+puente GitHub #1299, repara primero Fuel y los silencios Timings del runtime
+actual. Isaac ya aceptó el diseño documental de PR #1295 y autorizó continuar
+con esta reparación; esa aceptación no afirma integración del candidato.
+El [microplan](../../engineer/repair-isa-1299.md) fija el ciclo por corte:
+plan y contraste CrewChief predeterminado → desarrollo con regresiones →
+segunda comparación contra la misma referencia y evidencia de límites.
+
+La ruta por defecto es `internal/families` → servicio → `internal/radio`;
+el antiguo monitor `internal/engineer/timings` no gobierna esa salida.
+La reparación exige carrera y pit usables para Timings, silencia el final
+cronometrado y cancela avisos todavía no iniciados al perder ese contexto.
+También exige EndTime usable; no deduce una carrera por vueltas de un dato
+ausente. El ACK final comparte el mutex de la actualización de contexto y
+recomprueba cancelación antes de registrar started y consumir cooldown.
+Fuel conserva avisos de litros y autonomía, pero retira la orden automática
+de parar que se disparaba con menos de cuatro vueltas sin necesidad demostrada.
+La orden correcta requiere vueltas restantes, armamento y punto de aviso que
+este corte no inventa. No se declara paridad completa Fuel ni Timings.
+
+Base del candidato: `nightly@1e9932c4d8ca3d53a58d093449cfb840f7108e8f`.
+Referencia CrewChief: `4c3865e09a347d4c806c0bc0cd66aae335fbc610`.
+La validación y las diferencias pendientes se registran en el microplan. Audio
+Windows, discrepancias Spotter y T0a/T0b → T1–T8 continúan en cortes propios
+según el plan aceptado. La espera del reproductor y los demás hallazgos están
+en [VAN-735](https://app.notion.com/p/3e3e51695c6581d8bc9cc694b5d59716).
+Revisión independiente del runtime hasta `50026e4f`: PASS acotado; 40 paquetes
+focales, race de cuatro, vet y calidad local PASS. La repetición de la auditoría
+resuelve 6 de 9 diferencias y conserva ambos controles. Go global reproduce
+los mismos cuatro paquetes fallidos de la base en macOS; no es PASS global.
+El CI de calidad tiene además el bloqueo separado
+[VAN-737](https://app.notion.com/p/3e3e51695c6581bc88fbda9b7d057975), pendiente.
+Las entradas siguientes conservan su carácter de evidencia histórica.
+
+### 2026-09-22 — Ciclo de comparación antes y después
+
+Isaac confirma que ya aceptó la PR documental #1295 y pide continuar reparando
+el ingeniero actual. [VAN-732](https://app.notion.com/p/3e1e51695c6581daa4cce76fca3a54bc)
+explicita en el [plan](../../engineer/PLAN.md#forma-de-ejecución) el ciclo por
+corte: plan y contraste CrewChief con ajustes predeterminados, desarrollo con
+regresiones y segundo contraste con la misma referencia. Se corrige además el
+diagnóstico: el camino por defecto es familias → servicio → radio; el monitor
+alpha sólo interviene en rollback legacy. La reparación de runtime pertenece
+a [VAN-736](https://app.notion.com/p/3e3e51695c6581ed8370e2a4b5302ae6) / #1299,
+en una rama distinta. Esta precisión no cambia el alcance documental de #1295
+ni declara cerradas T0a/T0b, la paridad completa o la integración del candidato.
+
+### 2026-09-20 — Diseño aprobado y plan ejecutable trazado en VAN-732
+
+La rama `vantareapp/isa-1294-crewchief-parity-plan`, antes llamada
+`codex/crewchief-lmu-parity-design`, sobre
+`origin/nightly@8a0620e8abe75914efed41de4117490f3e47a3b4`, contiene la
+[precisión contractual](../../specs/2026-09-19-crewchief-lmu-parity-design.md)
+y el [ADR 0010](../../adr/0010-engineer-cloud-dialogue-and-offline-parity.md),
+aprobados por Isaac el 2026-09-20 para planificación y primeras pruebas.
+Los commits `9cc51122` y `5f374b15` son evidencia de diseño/revisión, no
+implementación, aprobación de los detalles, paridad ni integración en Nightly.
+La segunda revisión separa redacción abierta de hechos canónicos y registra
+la brecha de nombre literal frente a identidad funcional. `DEV-NAME-001` queda
+resuelto por Isaac el 2026-09-20: cuando CrewChief pronuncia un nombre, Vantare
+debe cubrirlo con un fragmento local; una sustitución funcional es degradación
+segura pero FAIL de paridad. Los gates humanos anteriores permanecen pendientes
+donde no haya evidencia independiente.
+
+La pasada adversarial final sobre `7f2837f5` corrige la invalidación de
+plan/hash/audio al recomponer y la revalidación de cada bloque de una respuesta
+compuesta, conservando un terminal por job y sin renovar deadlines. Corrige
+también el filtro de posición de clase del resumen por vuelta de CrewChief:
+su nombre interno no demuestra una diferencia de vueltas. Explicita el avance
+de contadores aunque una muestra sea duplicada y la diferencia de “último”
+entre consulta y automático/STATUS tras retiradas. Son precisiones
+documentales aceptadas, no nuevo runtime ni un gate PASS.
+`DEC-FEEDBACK-P0-001` queda resuelta por Isaac el 2026-09-20: una salida P0
+activa nunca se interrumpe, atenúa ni mezcla. La UI acusa recepción en <=150 ms
+y un único ACK audible espera la primera oportunidad posterior a P0, sujeto a
+revalidación y descarte si el turno ya no está vigente o empezó la respuesta
+útil. La demora se registra `blocked_by_p0` y se evalúa en cohorte separada; no
+pausa deadlines ni altera la prioridad crítica.
+
+Isaac acepta el 2026-09-20 el riesgo residual del discurso generativo para
+primeras pruebas y exige reducirlo al máximo. Se añade el
+[diseño de persona y estilo nativo](../../specs/2026-09-20-engineer-persona-native-style-design.md):
+`calm_race_engineer`, packs escritos originalmente por locale, cápsula compacta,
+StyleGate local fail-closed y fallback canónico. Presupuesto inicial: modelo
+8K mínimo, entrada objetivo <2.000 tokens, máximo 3.000 y persona/estilo <=350.
+No existe máximo editorial de salida: la brevedad procede de normas/system
+prompt; una generación incompleta o fuera de deadline se descarta, no se trunca.
+
+Seguimiento verificado el 2026-09-20: [VAN-732](https://app.notion.com/p/3e1e51695c6581daa4cce76fca3a54bc)
+es la tarea ejecutable nativa del proyecto
+[Engineer / Spotter](https://app.notion.com/p/3dae51695c65811a8485ca41bc5c9a8e).
+Está vinculada al roadmap [Paridad casi completa con CrewChief](https://app.notion.com/p/3e0e51695c658121b9b7f6aca13ff789)
+y al puente técnico [GitHub #1294](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1294).
+La rama se renombra `vantareapp/isa-1294-crewchief-parity-plan` y conserva como
+base `origin/nightly@8a0620e8abe75914efed41de4117490f3e47a3b4`.
+
+El [plan ejecutable](../../engineer/PLAN.md) divide Timings en P0 y T0–T8.
+Identifica el monitor actual como alpha, fija el oráculo independiente, separa
+señal insuficiente de fallo de interpretación e integra desde el primer corte
+audible `FactBundle`, `UtterancePlan`, StyleGate, LLM cloud y fallback offline.
+La primera acción posterior es T0a, extracción reproducible del oráculo. T1,
+runtime y proveedor cloud permanecen bloqueados hasta cerrar/revisar T0 y crear
+sus tareas/puentes propios. #1294 no autoriza implementación ni promoción.
+
+### Evidencia histórica anterior (no estado de la revisión de paridad)
+
 ISA-940 conecta el nivel efectivo publicado por la política de rendimiento con
 la salida de Ingeniero: en niveles 4–5 invalida y bloquea subtítulos y toda
 presentación visual, pero conserva sin cambios la decisión y reproducción de
 audio. El cambio tiene regresión explícita `cero visual + un audio` y vuelve a
 habilitar la presentación al subir a 1–3. La comprobación humana de audio Wails
 real sigue pendiente; no sustituirla con el test Go.
+
+ISA-928 completa las brechas de configuración de la UI de Orbit: módulos,
+subtítulos, sensibilidad y salidas por familia se guardan en `app-settings.json`
+y se restauran antes de arrancar Engineer. El estado público separa fuente
+conectada de disponibilidad Spotter; Orbit muestra «Spotter no disponible» con
+un motivo acotado solo si faltan capacidad, jugador o geometría, y lo retira al
+recuperarse o desactivarse. No entra en toasts, centro ni historial global. La
+validación física Wails/LMU pertenece a los testers cuando el corte llegue a
+Nightly; esta rama no autoriza ni ejecuta esa promoción.
 
 ISA-719 / F5 añade tras `-engineer-voice-input` un carril experimental
 aislado. La corrección de la review adversarial cierra payloads por intent,
@@ -360,6 +590,7 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 
 | Estado | Issue |
 |---|---|
+| En revisión | ISA-928, persistencia de controles y aviso contextual de indisponibilidad; gate físico para testers de Nightly |
 | En revisión | ISA-719 / F5, carril experimental tras flag; backend WASAPI/Whisper y ENG-13 pendientes |
 | En revisión | ISA-718 / F4, PR draft #739, motor de cinco familias sobre radio.v1, rollback sin borrado hasta gate LMU humano |
 | En revisión | ISA-717 / F3, geometría única, productor Spotter P0 sobre radio.v1, cutover legacy reversible; gate LMU real pendiente de Isaac |
@@ -386,14 +617,22 @@ personalidades. Capabilities ausentes se documentan y no se simulan.
 | Cerrada técnicamente | ISA-109 / TC-08B, entrada pura completa sin wiring |
 | Cerradas técnicamente | ISA-110 / TC-08C, ISA-111 / TC-08D e ISA-112 / TC-08E |
 
-## Siguiente acción exacta
+## Siguiente acción histórica (no autoriza el corte de paridad)
 
-Revisar de nuevo la corrección adversarial de ISA-718 y ejecutar el gate LMU descrito en
-`docs/engineer/families-radio-isa-718.md`, además del gate Spotter de ISA-717.
-Hasta esa evidencia no se borra el stack legacy ni se declara validación LMU,
-integración en `nightly` o promoción.
+Revisar ISA-928 y, tras autorización de integración, dejar que los testers de
+Nightly ejecuten el gate LMU descrito en `docs/engineer/families-radio-isa-718.md`
+y el gate Spotter de ISA-717. Hasta esa evidencia no se borra el stack legacy
+ni se declara validación física LMU o promoción.
 
-## Última actualización
+## Actualizaciones históricas anteriores
+
+2026-08-28, ISA-928 añade persistencia focal a la configuración Engineer y un
+estado Spotter independiente de `connected`. La UI localizada muestra la
+indisponibilidad espacial sin publicar una notificación global y se recupera
+al volver datos usables. Los checks automatizados cubren migración, no
+sobrescritura de otros ajustes, razones sanitizadas y `connected=true` con
+Spotter no disponible. El gate físico queda asignado a testers de Nightly; sin
+merge ni promoción.
 
 2026-08-22, ronda final de review de ISA-719 / PR #756: la frontera radio
 rechaza y degrada toda respuesta con un valor fuera del rango/enum declarado,
@@ -659,3 +898,15 @@ wiring, sin retirada legacy y sin promoción.
 Spotter normal, fuel, penalties genéricas, laps, timings y pit entry/exit;
 las familias parciales o sin capability quedan explícitamente bloqueadas. El
 bridge temporal solo existe en replay y no puede alimentar el runtime entero.
+
+## 2026-09-23 — Corrección aislada de calidad para la pantalla Engineer
+
+[VAN-753](https://app.notion.com/p/3e4e51695c6581a8b409f12fcd1c3f39) / #1346
+separa la reparación del detector de PR1340. Eliminar la antigua CSS genera
+42 registros NEW de 27 identidades en diez fuentes sin cambios. La corrección
+exige igualdad de fuente en la procedencia del baseline confiable, base real
+y disco, conserva cada registro como REGROUPED visible y no altera baseline
+ni producto. Copias nuevas, fuentes modificadas, MOVED y política siguen
+bloqueando. [Diseño y evidencia](../../analysis/isa-1346-quality-clone-regroup.md).
+La PR de tooling requiere revisión por política; CI y SHA vigentes en Notion.
+Sin integración de canal ni release.

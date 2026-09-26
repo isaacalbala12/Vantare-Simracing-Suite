@@ -30,11 +30,6 @@ export function classPositionsById(model: StandingsViewModel): Map<string, numbe
   return positions;
 }
 
-function parseGapSeconds(row: StandingsRowViewModel): number | null {
-  const value = Number.parseFloat(row.gapText.replace(/[^\d.-]/g, ""));
-  return Number.isFinite(value) ? value : null;
-}
-
 function sessionBestHolder(model: StandingsViewModel): string | null {
   let bestId: string | null = null;
   let best: number | null = null;
@@ -162,9 +157,13 @@ export function deriveBattlePairs(
       if (ahead.pitText || behind.pitText) {
         continue;
       }
-      const aheadGap = index === 0 ? 0 : parseGapSeconds(ahead);
-      const behindGap = parseGapSeconds(behind);
-      if (aheadGap === null || behindGap === null) {
+      // Numeric authority uses the same absolute leader reference for both
+      // rows. Labels may be localized, lapped, or cropped away from the leader.
+      const aheadGap = ahead.battleGapSeconds;
+      const behindGap = behind.battleGapSeconds;
+      if (aheadGap === undefined || behindGap === undefined
+        || !Number.isFinite(aheadGap) || !Number.isFinite(behindGap)
+        || aheadGap < 0 || behindGap < 0) {
         continue;
       }
       const interval = behindGap - aheadGap;

@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../telemetry-transport/overlay-frame-v2-store";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ComponentProps } from "react";
@@ -49,7 +50,7 @@ let resizeObservers: ResizeObserverHarness[] = [];
 
 function createTelemetryRateCoordinator() {
   const coordinator = createBaseTelemetryRateCoordinator();
-  const update = JSON.parse(goldenV2Raw) as OverlayUpdateV2;
+  const update = structuredClone(decodeOverlayUpdateV2(JSON.parse(goldenV2Raw))) as OverlayUpdateV2;
   coordinator.setOverlayFrame(update.frame ?? undefined, update.source);
   return coordinator;
 }
@@ -136,7 +137,7 @@ function buildMaximumRedlineContent(): StandingsContent {
 describe("RuntimeOverlaySurface", () => {
   it.each(["desktop", "obs"] as const)("fits Functional modules and twenty rows from a legacy frame in %s", (renderMode) => {
     const coordinator = createBaseTelemetryRateCoordinator();
-    const update = JSON.parse(goldenV2TwentyRaw) as OverlayUpdateV2;
+    const update = structuredClone(decodeOverlayUpdateV2(JSON.parse(goldenV2TwentyRaw))) as OverlayUpdateV2;
     coordinator.setOverlayFrame(update.frame ?? undefined, update.source);
     const document = buildDocument();
     const widget = standingsDefinition.createDefault("functional");
@@ -148,8 +149,8 @@ describe("RuntimeOverlaySurface", () => {
     const frame = view.getByTestId("runtime-widget-frame");
     const viewport = view.getByTestId("runtime-widget-viewport-functional");
     expect(Number.parseFloat(frame.style.width)).toBeGreaterThan(340);
-    expect(frame.style.height).toBe("692px");
-    expect(frame.style.top).toBe("388px");
+    expect(frame.style.height).toBe("776px");
+    expect(frame.style.top).toBe("304px");
     expect(viewport.style.transform).toBe("scale(1)");
     expect(view.container.querySelectorAll('[data-widget-system="vantare-functional"] [data-standings-row]')).toHaveLength(20);
     expect(widget.layout.w).toBe(340);
@@ -162,7 +163,7 @@ describe("RuntimeOverlaySurface", () => {
   ] as const)(
     "shows the productive %s %s diagnostic with role=alert and a stable code",
     (renderMode, failure) => {
-      const update = JSON.parse(goldenV2Raw) as OverlayUpdateV2;
+      const update = structuredClone(decodeOverlayUpdateV2(JSON.parse(goldenV2Raw))) as OverlayUpdateV2;
       if (!update.frame) throw new Error("golden V2 frame missing");
       const coordinator = createBaseTelemetryRateCoordinator();
       coordinator.setOverlayFrame(
@@ -223,7 +224,7 @@ describe("RuntimeOverlaySurface", () => {
       measuredWidth = 1920;
       measuredHeight = 1080;
       const coordinator = createBaseTelemetryRateCoordinator();
-      const twentyCarUpdate = JSON.parse(goldenV2TwentyRaw) as OverlayUpdateV2;
+      const twentyCarUpdate = structuredClone(decodeOverlayUpdateV2(JSON.parse(goldenV2TwentyRaw))) as OverlayUpdateV2;
       coordinator.setOverlayFrame(twentyCarUpdate.frame ?? undefined, twentyCarUpdate.source);
       const document = buildDocument();
       const widget = standingsDefinition.createDefault(`standings-redline-${renderMode}-${persistedWidth}`);

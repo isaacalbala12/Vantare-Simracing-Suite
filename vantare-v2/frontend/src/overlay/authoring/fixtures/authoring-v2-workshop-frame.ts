@@ -1,3 +1,5 @@
+import { normalizeSteeringWheel, type SteeringWheelId } from "../../design-systems/vantare-functional/steering-wheels/catalog";
+import { rankDemoStandings, withFunctionalStandingsDemo } from "./functional-standings-demo";
 import crystalReferenceManifest from "../../../../testdata/crystal-reference/manifest.json";
 import type {
   OverlayControlsHistoryV2,
@@ -6,20 +8,42 @@ import type {
   OverlayQValue,
   OverlayRelativeRowV2,
   OverlayStandingRowV2,
+  Overlayv2DeltaHistoryV2,
 } from "../../../generated/telemetry";
 import type { DesignSystemId, WidgetInstanceV3, WidgetType } from "../../core/profile-document";
 import type { WidgetRuntimeInput } from "../../core/widget-definition";
+import { EFFICIENCY_SYSTEM_ID } from "../../core/design-system-names";
+import { normalizeRacingFlagsTextColor } from "../../design-systems/vantare-functional/racing-flags-settings";
 import {
   AUTHORING_V2_VARIANTS,
   buildAuthoringV2ScenarioRuntime,
   type AuthoringV2Variant,
 } from "./authoring-v2-scenario-fixture";
 import { buildAuthoringV2ScenarioWidget } from "./authoring-v2-scenario-widget";
-import { FUNCTIONAL_STUDY_DEFAULT_MODULES } from "../functional-study-options";
+import {
+  getEnabledRelativeColumns,
+  parseRelativeContent,
+  RELATIVE_RANGE_AHEAD,
+  RELATIVE_RANGE_BEHIND,
+  updateRelativeFilters,
+} from "../../widget-types/relative/relative-content";
+import {
+  computeRelativeConfiguredRowCount,
+  computeRelativeIntrinsicHeight,
+  computeRelativeIntrinsicWidth,
+} from "../../widget-types/relative/relative-renderer-helpers";
+import {
+  EFFICIENCY_RELATIVE_BASE_WIDTH,
+  resolveEfficiencyRelativeBaseHeight,
+  resolveEfficiencyRelativeSlotsWidth,
+} from "../../design-systems/vantare-efficiency/relative-layout";
+import { EFFICIENCY_STUDY_DEFAULT_MODULES } from "../efficiency-study-options";
+import { resolveStandingsMinimumSize } from "../../widget-types/standings/standings-frame-layout";
 import { applyWidgetDesign } from "../../core/widget-design";
 import { getOfficialDesign, listOfficialDesigns } from "../../design-systems/official-designs";
 import { getAnimationScene, sceneFrameAt } from "./animation-scenes";
-import type { SceneFrame } from "./animation-scenes";
+import type { SceneFrame, SceneOverride } from "./animation-scenes";
+import type { PedalsKnownFlag } from "../../widget-types/pedals/pedals-view-model";
 
 // Variantes dev de Workshop: transformaciones explícitas, deterministas y
 // acotadas sobre el golden canónico. La variante en sí declara el artificio;
@@ -28,7 +52,6 @@ export const WORKSHOP_V2_DEV_VARIANTS = [
   "standings-functional-study",
   "standings-stress60",
   "standings-replay",
-  "relative-multiclass",
   "pedals-zero",
   "pedals-full",
 ] as const;
@@ -36,10 +59,19 @@ export const WORKSHOP_V2_DEV_VARIANTS = [
 export type WorkshopV2DevVariant = (typeof WORKSHOP_V2_DEV_VARIANTS)[number];
 export type WorkshopV2Variant = AuthoringV2Variant | WorkshopV2DevVariant;
 
-export const WORKSHOP_V2_VARIANTS: readonly WorkshopV2Variant[] = [
+const WORKSHOP_V2_VARIANTS: readonly WorkshopV2Variant[] = [
   ...AUTHORING_V2_VARIANTS,
   ...WORKSHOP_V2_DEV_VARIANTS,
 ];
+
+// La presentación multiclass es el default del Relative dentro de Eficiencia.
+function usesRelativeStudyProjection(input: {
+  widget: WidgetType;
+  system: DesignSystemId;
+  variant: WorkshopV2Variant;
+}): boolean {
+  return input.widget === "relative" && input.system === EFFICIENCY_SYSTEM_ID && input.variant === "default";
+}
 
 const WORKSHOP_V2_VARIANT_SET: ReadonlySet<string> = new Set(WORKSHOP_V2_VARIANTS);
 
@@ -54,7 +86,6 @@ const DEV_SHAPE_VARIANT: Record<WorkshopV2DevVariant, AuthoringV2Variant> = {
   "standings-functional-study": "default",
   "standings-stress60": "default",
   "standings-replay": "standings-multiclass",
-  "relative-multiclass": "default",
   "pedals-zero": "default",
   "pedals-full": "default",
 };
@@ -66,12 +97,13 @@ function workshopDesignMeta(designId: string): { designId: string; width: number
 
 function shapeVariantFor(input: {
   widget: WidgetType;
+  system: DesignSystemId;
   variant: WorkshopV2Variant;
   sceneId?: string;
 }): AuthoringV2Variant {
   // La escena también da forma al widget: sin multiclass la escena de
   // fastest-lap entregaría la corona entre coches fuera de pantalla.
-  if (input.sceneId && input.widget === "standings") {
+  if (input.sceneId && input.widget === "standings" && input.system !== EFFICIENCY_SYSTEM_ID) {
     return "standings-multiclass";
   }
   if ((AUTHORING_V2_VARIANTS as readonly string[]).includes(input.variant)) {
@@ -89,10 +121,11 @@ export function createScenarioWidget(input: {
 }): WidgetInstanceV3 {
   const shape = shapeVariantFor(input);
   let widget = buildAuthoringV2ScenarioWidget({ widget: input.widget, system: input.system, variant: shape });
-  // La ventana dev multiclass del relative se presenta como en la referencia:
+  // La proyección multiclass del Relative se presenta como en la referencia:
   // solo posición, clase, nombre y gap — driverNumber y bestLap son huecos
   // declarados de la proyección y dibujarían columnas permanentes de "—".
-  if (input.widget === "relative" && input.variant === "relative-multiclass") {
+  // En Eficiencia esta es la forma canónica de `default`.
+  if (usesRelativeStudyProjection(input)) {
     const content = widget.content as Record<string, unknown>;
     const keep = new Set(["position", "class", "driverName", "gap"]);
     const columns = Array.isArray(content.columns)
@@ -138,6 +171,12 @@ export function buildWorkshopWidget(input: {
   brand?: "off";
   modules?: readonly string[];
   slots?: readonly string[];
+  ahead?: number;
+  behind?: number;
+  nameFormat?: "full" | "initial" | "surname";
+  rows?: number;
+  textColor?: string;
+  steeringWheel?: SteeringWheelId;
 }): WidgetInstanceV3 {
   let widget = createScenarioWidget({
     widget: input.widget,
@@ -151,12 +190,40 @@ export function buildWorkshopWidget(input: {
   // los perfiles guardados no los toca nunca el renderer al cambiar la sesión.
   // Solo Standings tiene columnas de vuelta — Delta/Pedals no llevan
   // content.columns (antes este bloque explotaba sobre ellos).
-  if (input.system === "vantare-functional" && input.widget === "standings" && input.variant === "default" && input.session !== "race") {
+  if (input.system === EFFICIENCY_SYSTEM_ID && input.widget === "standings" && input.variant === "default" && input.session !== "race") {
     const content = widget.content as Record<string, unknown>;
     const columns = Array.isArray(content.columns)
       ? (content.columns as Record<string, unknown>[]).map((column) => column.metricId === "lastLap" ? { ...column, enabled: false } : column.metricId === "bestLap" ? { ...column, enabled: true } : column)
       : content.columns;
     widget = { ...widget, content: { ...content, columns } };
+  }
+
+  // Formato del nombre de piloto: el mismo `format.mode` que edita Studio en
+  // la columna Piloto. Viaja por content.columns, nada fuera del contrato.
+  if (input.nameFormat && (input.widget === "standings" || input.widget === "relative")) {
+    const content = widget.content as Record<string, unknown>;
+    const columns = Array.isArray(content.columns)
+      ? (content.columns as Record<string, unknown>[]).map((column) =>
+          column.metricId === "driverName"
+            ? { ...column, format: { ...(column.format as Record<string, unknown> | undefined), mode: input.nameFormat } }
+            : column)
+      : content.columns;
+    widget = { ...widget, content: { ...content, columns } };
+  }
+
+  // Recuento de filas del Standings: el mismo `rowCount` que edita Studio;
+  // el view model recorta por él.
+  if (input.widget === "standings" && input.rows !== undefined) {
+    const content = widget.content as Record<string, unknown>;
+    widget = { ...widget, content: { ...content, rowCount: input.rows } };
+  }
+
+  // El formato de nombre y el recuento cambian el tamaño intrínseco: la caja
+  // se re-encaja después de aplicarlos — el encaje base de createScenarioWidget
+  // siempre vio el formato completo y el recuento por defecto.
+  if (input.widget === "standings" && input.system === EFFICIENCY_SYSTEM_ID
+      && (input.rows !== undefined || input.nameFormat !== undefined || input.variant === "standings-multiclass")) {
+    widget = fitStandingsMinimum(widget);
   }
 
   // El selector de marca del panel hace de autoridad local (en producción la
@@ -171,25 +238,57 @@ export function buildWorkshopWidget(input: {
     };
   }
 
-  // Módulos del estudio Standings: posición y piloto siempre visibles; el
-  // resto lo encienden los módulos elegidos. En el estudio cada columna toma
-  // ancho automático — el reparto lo decide el layout, no presets guardados.
-  if (input.system === "vantare-functional" && input.widget === "standings" && input.variant === "standings-functional-study") {
-    const modules = input.modules ?? FUNCTIONAL_STUDY_DEFAULT_MODULES;
+  if (input.widget === "racing-flags" && input.system === EFFICIENCY_SYSTEM_ID && input.textColor !== undefined) {
+    widget = {
+      ...widget,
+      visual: {
+        ...widget.visual,
+        appearanceOverrides: {
+          ...(widget.visual.appearanceOverrides ?? {}),
+          textColor: normalizeRacingFlagsTextColor(input.textColor),
+        },
+      },
+    };
+  }
+
+  if (input.widget === "pedals-telemetry" && input.system === EFFICIENCY_SYSTEM_ID && input.steeringWheel !== undefined) {
+    widget = {
+      ...widget,
+      visual: {
+        ...widget.visual,
+        appearanceOverrides: {
+          ...(widget.visual.appearanceOverrides ?? {}),
+          steeringWheel: normalizeSteeringWheel(input.steeringWheel),
+        },
+      },
+    };
+  }
+
+  // Módulos de Standings Eficiencia: posición y piloto siempre visibles; el
+  // resto lo encienden los módulos elegidos. La selección también aplica a la
+  // variante canónica `default`, que es la que expone el Workshop.
+  if (input.system === EFFICIENCY_SYSTEM_ID && input.widget === "standings"
+    && (input.variant === "standings-functional-study" || input.modules !== undefined)) {
+    const modules = input.modules ?? EFFICIENCY_STUDY_DEFAULT_MODULES;
     const content = widget.content as Record<string, unknown>;
     const columns = Array.isArray(content.columns)
       ? (content.columns as Record<string, unknown>[]).map((column) => ({
           ...column,
-          widthPreset: "auto" as const,
+          ...(input.variant === "standings-functional-study" ? { widthPreset: "auto" as const } : {}),
           enabled: column.metricId === "position" || column.metricId === "driverName" || modules.includes(String(column.metricId)),
         }))
       : content.columns;
-    // El estudio enseña siempre al menos 15 pilotos (decisión de Isaac).
-    widget = { ...widget, content: { ...content, columns, rowCount: 15 } };
+    // El estudio enseña siempre al menos 15 pilotos; la variante canónica
+    // conserva su recuento salvo que el selector Filas lo haya cambiado.
+    widget = { ...widget, content: { ...content, columns, ...(input.variant === "standings-functional-study" ? { rowCount: 15 } : {}) } };
+    // La altura derivada del estudio pertenece al widget que estamos
+    // construyendo, no a una corrección posterior del harness. Así el layout
+    // que recibe WidgetVisualHost sigue siendo la resolución real del profile.
+    widget = fitStandingsMinimum(widget);
   }
 
   // Huecos de datos del pie en standings/relative de Eficiencia.
-  if (input.slots && input.slots.length > 0 && input.system === "vantare-functional"
+  if (input.slots && input.slots.length > 0 && input.system === EFFICIENCY_SYSTEM_ID
     && (input.widget === "standings" || input.widget === "relative")) {
     widget = {
       ...widget,
@@ -198,6 +297,34 @@ export function buildWorkshopWidget(input: {
         appearanceOverrides: { ...(widget.visual.appearanceOverrides ?? {}), footerSlots: [...input.slots] },
       },
     };
+  }
+
+  // Ventana del relative: la caja se adapta al contenido, nunca al revés —
+  // la fila queda a su alto fijo y el marco crece o se encoge con las filas
+  // configuradas. En Eficiencia se re-encaja siempre (a escala 1 las filas
+  // miden 28px reales y las fichas no se encogen); en el resto de sistemas
+  // solo cuando la URL fija la ventana, para no pisar las medidas de
+  // manifiesto o diseño sin motivo.
+  if (input.widget === "relative") {
+    const next = updateRelativeFilters(parseRelativeContent(widget.content), {
+      ...(input.ahead !== undefined ? { rangeAhead: input.ahead } : {}),
+      ...(input.behind !== undefined ? { rangeBehind: input.behind } : {}),
+    });
+    widget = { ...widget, content: next };
+    const rows = computeRelativeConfiguredRowCount(next);
+    const settings = { ...widget.visual.baseSettings, ...widget.visual.appearanceOverrides };
+    if (input.system === EFFICIENCY_SYSTEM_ID) {
+      const w = Math.max(
+        EFFICIENCY_RELATIVE_BASE_WIDTH,
+        Math.ceil(resolveEfficiencyRelativeSlotsWidth(settings)),
+      );
+      const h = Math.ceil(resolveEfficiencyRelativeBaseHeight(rows, settings) * (w / EFFICIENCY_RELATIVE_BASE_WIDTH));
+      widget = { ...widget, layout: { ...widget.layout, w, h: next.rowHeightMode === "fill" ? Math.max(widget.layout.h, h) : h } };
+    } else if (input.ahead !== undefined || input.behind !== undefined) {
+      const w = computeRelativeIntrinsicWidth(getEnabledRelativeColumns(next));
+      const h = computeRelativeIntrinsicHeight(next.rowHeightMode, rows);
+      widget = { ...widget, layout: { ...widget.layout, w, h: next.rowHeightMode === "fill" ? Math.max(widget.layout.h, h) : h } };
+    }
   }
 
   return widget;
@@ -210,10 +337,19 @@ export type WorkshopV2Scenario = {
   widget: WidgetType;
   system: DesignSystemId;
   variant: WorkshopV2Variant;
+  /** Dev-only explicit SessionV2 flag probe for flag-aware widgets. */
+  flag?: PedalsKnownFlag;
   replayFrame?: number;
   sceneId?: string;
   sceneFrame?: number;
   sceneState?: SceneFrame;
+  /** Filas que la ventana de Relative deja delante/detrás del jugador. */
+  rangeAhead?: number;
+  rangeBehind?: number;
+  /** Filas declaradas por el Standings (1–30); el golden se completa en ciclo. */
+  standingRows?: number;
+  /** Posición del jugador en la parrilla de demostración del Workshop. */
+  playerPosition?: number;
 };
 
 // Calendario auxiliar dev migrado del mock legacy: no es telemetría, solo
@@ -251,6 +387,16 @@ const WORKSHOP_DEMO_GRID: readonly string[] = [
   "Maro Engel",           // 18 gte
   "Mikkel Jensen",        // 19 hypercar
   "Nico Pino",            // 20 lmp2
+  "Charlie Eastwood",     // 21 gte — filas extra del selector 1–30
+  "Robert Kubica",        // 22 hypercar
+  "Matthieu Vaxivière",   // 23 lmp2
+  "Valentino Rossi",      // 24 gte
+  "Jenson Button",        // 25 hypercar
+  "Bent Viscaal",         // 26 lmp2
+  "Rahel Frey",           // 27 gte
+  "Mick Schumacher",      // 28 hypercar
+  "Franco Colapinto",     // 29 lmp2
+  "Michelle Gatting",     // 30 gte
 ];
 
 // Trazas deterministas de un sector para input-telemetry: recta, frenada
@@ -281,6 +427,22 @@ function demoControlsHistory(quality: OverlayQualityV2): OverlayControlsHistoryV
   return { q: quality, capturedAtMS, throttle, brake, clutch, speedMPS: speed, rpm, gear };
 }
 
+// Serie delta determinista para delta-trace: 100 muestras a 20 Hz sobre 5 s
+// (la ventana por defecto enseña las últimas 4 s). Tendencia a la baja —
+// el piloto recorta — con ondulación de sector.
+const DEMO_DELTA_POINTS = 100;
+function demoDeltaHistory(quality: OverlayQualityV2): Overlayv2DeltaHistoryV2 {
+  const capturedAtMS: number[] = [];
+  const seconds: number[] = [];
+  const base = 1_757_900_000_000;
+  for (let i = 0; i < DEMO_DELTA_POINTS; i += 1) {
+    capturedAtMS.push(base + i * 50);
+    const drift = i / (DEMO_DELTA_POINTS - 1);
+    seconds.push(0.5 - drift * 0.3 + Math.sin(i / 5) * 0.07);
+  }
+  return { q: quality, capturedAtMS, seconds };
+}
+
 // Capa de demostración del Workshop: el golden canónico trae shape y cantidad
 // pero nombres vacíos ("Driver 0NN") y varios canales sin valor, que no sirven
 // para juzgar el diseño. Aquí se rellenan identidades y canales de muestra —
@@ -307,8 +469,32 @@ function withWorkshopDemo(frame: OverlayFrameV2, quality: OverlayQualityV2): Ove
       clutch: qualityValue(0.06, quality),
       steering: qualityValue(0.08, quality),
     },
-    delta: { ...frame.delta, seconds: qualityValue(0.214, quality) },
+    delta: {
+      ...frame.delta,
+      seconds: qualityValue(0.214, quality),
+      requested: "personal-best",
+      reference: "personal-best",
+      authority: "native",
+      available: ["personal-best", "session-best", "previous-lap"],
+      references: [
+        { requested: "personal-best", reference: "personal-best", seconds: qualityValue(0.214, quality), authority: "native" },
+        { requested: "session-best", reference: "session-best", seconds: qualityValue(-0.08, quality), authority: "derived" },
+        { requested: "previous-lap", reference: "previous-lap", seconds: qualityValue(0.43, quality), authority: "derived" },
+      ],
+      history: demoDeltaHistory(quality),
+    },
+    session: { ...frame.session, flag: qualityValue("green", quality) },
     controls: { history: demoControlsHistory(quality) },
+    fuel: {
+      ...frame.fuel,
+      perLap: qualityValue(2.14, quality),
+      requiredFuel: qualityValue(169.1, quality),
+      history: {
+        q: quality,
+        lap: [14, 15, 16, 17],
+        consumed: [2.21, 2.08, 2.26, 2.12],
+      },
+    },
     weather: {
       ...frame.weather,
       ambientC: qualityValue(21, quality),
@@ -319,6 +505,47 @@ function withWorkshopDemo(frame: OverlayFrameV2, quality: OverlayQualityV2): Ove
       wetnessPct: qualityValue(0, quality),
     },
   };
+}
+
+function withWorkshopRaceLapDeltas(frame: OverlayFrameV2, quality: OverlayQualityV2): OverlayFrameV2 {
+  const lapDeltaAtPosition = (position: number): OverlayQValue<number> =>
+    position === 4 ? qualityValue(-1, quality) : { q: "missing" };
+  return {
+    ...frame,
+    relative: frame.relative.map((row) => ({ ...row, lapDelta: lapDeltaAtPosition(row.position) })),
+    relativeSettled: frame.relativeSettled.map((row) => ({ ...row, lapDelta: lapDeltaAtPosition(row.position) })),
+  };
+}
+
+function withWorkshopRelativePositionSwap(
+  frame: OverlayFrameV2,
+  firstPosition: number,
+  secondPosition: number,
+): OverlayFrameV2 {
+  const firstClassPosition = frame.standings.find((row) => row.position === firstPosition)?.classPosition;
+  const secondClassPosition = frame.standings.find((row) => row.position === secondPosition)?.classPosition;
+  const swap = (position: number): number =>
+    position === firstPosition ? secondPosition : position === secondPosition ? firstPosition : position;
+  return {
+    ...frame,
+    standings: frame.standings
+      .map((row) => ({
+        ...row,
+        position: swap(row.position),
+        classPosition: row.position === firstPosition
+          ? secondClassPosition ?? row.classPosition
+          : row.position === secondPosition ? firstClassPosition ?? row.classPosition : row.classPosition,
+      }))
+      .sort((left, right) => left.position - right.position),
+    relative: frame.relative.map((row) => ({ ...row, position: swap(row.position) })),
+    relativeSettled: frame.relativeSettled.map((row) => ({ ...row, position: swap(row.position) })),
+  };
+}
+
+function withWorkshopPlayerPosition(frame: OverlayFrameV2, position: number): OverlayFrameV2 {
+  const target = frame.standings.find((row) => row.position === position);
+  if (!target) return frame;
+  return { ...frame, player: { ...frame.player, id: target.id } };
 }
 
 // Asiento posicional de cada piloto dev en la parrilla legacy: las tablas dev
@@ -424,25 +651,55 @@ function patchStandings(
   return out.sort((left, right) => left.position - right.position);
 }
 
-function stressStandings(rows: readonly OverlayStandingRowV2[]): OverlayStandingRowV2[] {
-  const out: OverlayStandingRowV2[] = [];
+// Repite la parrilla en ciclo hasta `count` filas: ids únicos por copia,
+// posición reenumerada y un salto de gap por vuelta para que las filas
+// extra no repliquen el "Leader" de la P1.
+function padStandings(rows: readonly OverlayStandingRowV2[], count: number): OverlayStandingRowV2[] {
+  const out: OverlayStandingRowV2[] = [...rows];
   const perClass = new Map<string, number>();
-  for (let copy = 0; copy < 3; copy++) {
-    rows.forEach((row) => {
+  out.forEach((row) => {
+    const classId = row.classId ?? "unknown";
+    perClass.set(classId, (perClass.get(classId) ?? 0) + 1);
+  });
+  for (let copy = 1; out.length < count; copy++) {
+    for (const row of rows) {
+      if (out.length >= count) break;
       const classId = row.classId ?? "unknown";
       perClass.set(classId, (perClass.get(classId) ?? 0) + 1);
+      const gap = typeof row.gap?.v === "number" ? row.gap.v + copy * 15 : row.gap;
       out.push({
         ...row,
-        id: copy === 0 ? row.id : `${row.id}#dev-${copy}`,
+        id: `${row.id}#dev-${copy}`,
+        gap: typeof gap === "number" ? { ...row.gap, v: gap } : row.gap,
         position: out.length + 1,
         classPosition: perClass.get(classId)!,
       });
-    });
+    }
   }
   return out;
 }
 
-const RELATIVE_DEV_GAPS = [5.5, 4.2, 1.8, 0.4, 0, -0.3, -2.6, -5.1];
+function stressStandings(rows: readonly OverlayStandingRowV2[]): OverlayStandingRowV2[] {
+  return padStandings(rows, rows.length * 3);
+}
+
+// Gaps dev por distancia al jugador (cerca→lejos). El golden ofrece 8 filas
+// por lado; más allá de los valores semilla la distancia crece a paso fijo
+// para que cualquier ventana 0–8 siga siendo determinista.
+const RELATIVE_DEV_GAP_AHEAD = [0.4, 1.8, 4.2, 5.5];
+const RELATIVE_DEV_GAP_BEHIND = [-0.3, -2.6, -5.1];
+
+function relativeDevGap(distance: number): number {
+  if (distance > 0) {
+    const base = RELATIVE_DEV_GAP_AHEAD[distance - 1];
+    return base ?? Math.round((5.5 + (distance - RELATIVE_DEV_GAP_AHEAD.length) * 1.7) * 100) / 100;
+  }
+  if (distance < 0) {
+    const base = RELATIVE_DEV_GAP_BEHIND[-distance - 1];
+    return base ?? Math.round((-5.1 - (-distance - RELATIVE_DEV_GAP_BEHIND.length) * 1.9) * 100) / 100;
+  }
+  return 0;
+}
 
 function sideForGap(gap: number, fallback: string): string {
   if (gap > 0) return "ahead";
@@ -450,25 +707,34 @@ function sideForGap(gap: number, fallback: string): string {
   return fallback;
 }
 
-// Ventana dev sobre el orden canónico: 4 ahead far→near, player, 3 behind
-// near→far. Una sola función para relative y relativeSettled.
+// Ventana dev sobre el orden canónico: N ahead near→far, player, M behind
+// near→far, con N/M configurables (por defecto 3/3, el default de producto).
+// Una sola función para relative y relativeSettled.
 function relativeDevWindow(
   rows: readonly OverlayRelativeRowV2[],
   playerId: string,
   quality: OverlayQualityV2,
+  aheadCount = 3,
+  behindCount = 3,
 ): OverlayRelativeRowV2[] {
   const gapValue = (row: OverlayRelativeRowV2): number => row.gap.v ?? 0;
   const ahead = rows
     .filter((row) => row.side === "ahead")
-    .sort((left, right) => gapValue(right) - gapValue(left));
+    .sort((left, right) => gapValue(left) - gapValue(right));
   const behind = rows.filter((row) => row.side === "behind");
   const player = rows.find((row) => row.id === playerId);
   if (!player) {
     throw new Error("authoring-v2-workshop-frame: relative sin fila del jugador");
   }
-  const window = [...ahead.slice(-4), player, ...behind.slice(0, 3)];
+  const aheadRows = ahead.slice(0, aheadCount);
+  const window = [...aheadRows, player, ...behind.slice(0, behindCount)];
+  const playerIndex = aheadRows.length;
   return window.map((row, index) => {
-    const gap = RELATIVE_DEV_GAPS[index]!;
+    const gap = row.id === playerId
+      ? 0
+      : row.side === "ahead"
+        ? relativeDevGap(index + 1)
+        : relativeDevGap(playerIndex - index);
     return {
       ...row,
       gap: qualityValue(gap, quality),
@@ -522,7 +788,7 @@ function warnDroppedScenePatches(
 
 function patchRelativeSection(
   rows: readonly OverlayRelativeRowV2[],
-  cars: Record<string, { timeGapToPlayer?: number; absent?: boolean }>,
+  cars: Record<string, SceneOverride>,
   quality: OverlayQualityV2,
   resolved?: Set<string>,
 ): OverlayRelativeRowV2[] {
@@ -531,13 +797,19 @@ function patchRelativeSection(
     const patch = key === undefined ? undefined : cars[key];
     if (key === undefined || !patch) return [row];
     resolved?.add(key);
-    // lapDistanceMeters no tiene campo en la fila V2: se ignora sin fingirlo.
     if (patch.absent) return [];
-    if (patch.timeGapToPlayer === undefined) return [row];
+    if (patch.timeGapToPlayer === undefined && patch.lapDelta === undefined && patch.lapDeltaQuality === undefined) return [row];
     return [{
       ...row,
-      gap: qualityValue(patch.timeGapToPlayer, quality),
-      side: sideForGap(patch.timeGapToPlayer, row.side),
+      ...(patch.timeGapToPlayer !== undefined ? {
+        gap: qualityValue(patch.timeGapToPlayer, quality),
+        side: sideForGap(patch.timeGapToPlayer, row.side),
+      } : {}),
+      ...(patch.lapDelta !== undefined || patch.lapDeltaQuality !== undefined ? {
+        lapDelta: patch.lapDelta === undefined
+          ? { q: patch.lapDeltaQuality ?? quality }
+          : qualityValue(patch.lapDelta, patch.lapDeltaQuality ?? quality),
+      } : {}),
     }];
   });
 }
@@ -547,7 +819,7 @@ function applyScene(
   scenario: WorkshopV2Scenario,
   quality: OverlayQualityV2,
 ): OverlayFrameV2 {
-  const scene = scenario.sceneId ? getAnimationScene(scenario.sceneId) : undefined;
+  const scene = scenario.sceneId ? getAnimationScene(scenario.sceneId, scenario.system, scenario.session) : undefined;
   if (!scene || scene.widget !== scenario.widget) return frame;
   const state = scenario.sceneState ?? sceneFrameAt(scene, scenario.sceneFrame ?? 0);
   let standings = frame.standings;
@@ -564,11 +836,18 @@ function applyScene(
       relative = patchRelativeSection(frame.relative, state.cars, quality, resolved);
       settled = patchRelativeSection(frame.relativeSettled, state.cars, quality, resolved);
       // La VM confía en el orden canónico del frame: tras un cruce hay que
-      // reordenar como haría Go — gap a jugador descendente (delante arriba,
-      // jugador en medio, detrás abajo), si no el cambio de lado no se ve.
-      const byGapDesc = (a: OverlayRelativeRowV2, b: OverlayRelativeRowV2) => (b.gap.v ?? 0) - (a.gap.v ?? 0);
-      relative = [...relative].sort(byGapDesc);
-      settled = [...settled].sort(byGapDesc);
+      // reordenar como haría Go — delante cerca→lejos, jugador en medio,
+      // detrás cerca→lejos — si no el cambio de lado no se ve.
+      const relativeOrder = (left: OverlayRelativeRowV2, right: OverlayRelativeRowV2) => {
+        const sideRank = (side: string) => side === "ahead" ? 0 : side === "player" ? 1 : 2;
+        const rankDelta = sideRank(left.side) - sideRank(right.side);
+        if (rankDelta !== 0) return rankDelta;
+        const leftGap = left.gap.v ?? 0;
+        const rightGap = right.gap.v ?? 0;
+        return left.side === "behind" ? rightGap - leftGap : leftGap - rightGap;
+      };
+      relative = [...relative].sort(relativeOrder);
+      settled = [...settled].sort(relativeOrder);
     } else {
       standings = standings.flatMap((row) => {
         const key = (row.driver && state.cars![row.driver] ? row.driver : undefined) ?? seatNameAt(STANDINGS_DEV_SEAT_BY_DRIVER, row.position);
@@ -583,18 +862,38 @@ function applyScene(
             ...(patch.timeBehindLeader !== undefined ? { gap: patch.timeBehindLeader } : {}),
             ...(patch.inPits !== undefined ? { pit: patch.inPits } : {}),
             ...(patch.bestLapTime !== undefined ? { bestLap: patch.bestLapTime } : {}),
+            ...(patch.bestLapImprovement !== undefined && row.bestLap?.v !== undefined
+              ? { bestLap: row.bestLap.v - patch.bestLapImprovement } : {}),
           }, quality) ?? row,
         ];
       });
       standings = [...standings].sort((left, right) => left.position - right.position);
+      if (scene.id.startsWith("standings-functional-")) {
+        if (scenario.session !== "race") {
+          standings = [...standings].sort((left, right) => (left.bestLap.v ?? Infinity) - (right.bestLap.v ?? Infinity));
+        }
+        standings = rankDemoStandings(standings).map((row, index) => ({
+          ...row, gap: state.cars?.[row.driver ?? ""]?.timeBehindLeader !== undefined
+            ? row.gap : frame.standings[index]!.gap,
+        }));
+      }
     }
     warnDroppedScenePatches(scene.id, Object.keys(state.cars), resolved);
   }
   let player = frame.player;
+  if (state.standingsWindowPosition !== undefined) {
+    const anchor = standings.find((row) => row.position === state.standingsWindowPosition);
+    if (anchor) player = { ...player, id: anchor.id };
+  }
   let delta = frame.delta;
   let session = frame.session;
   if (state.player?.deltaSeconds !== undefined) {
-    delta = { ...delta, seconds: qualityValue(state.player.deltaSeconds, quality) };
+    const seconds = qualityValue(state.player.deltaSeconds, quality);
+    delta = {
+      ...delta,
+      seconds,
+      references: delta.references?.map((entry) => entry.requested === delta.requested ? { ...entry, seconds } : entry),
+    };
   }
   if (state.player?.throttle !== undefined) {
     player = { ...player, throttle: qualityValue(state.player.throttle, quality) };
@@ -644,7 +943,40 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
     return runtime;
   }
   const quality: OverlayQualityV2 = source.state === "live" ? "fresh" : "stale";
-  let frame = withWorkshopDemo(base.overlayV2Frame!, quality);
+  // El selector de filas (1–30) puede pedir más coches de los que trae el
+  // golden de 20: se completa en ciclo antes del demo para que las filas
+  // extra también reciban nombre de la parrilla.
+  let baseFrame = base.overlayV2Frame!;
+  if (scenario.widget === "standings" && scenario.standingRows !== undefined
+    && baseFrame.standings.length < scenario.standingRows) {
+    baseFrame = { ...baseFrame, standings: padStandings(baseFrame.standings, scenario.standingRows) };
+  }
+  let frame = withWorkshopDemo(baseFrame, quality);
+  if (scenario.widget === "relative" && scenario.session === "race") {
+    frame = withWorkshopRaceLapDeltas(frame, quality);
+  }
+  const relativeScene = scenario.sceneId ? getAnimationScene(scenario.sceneId) : undefined;
+  if (scenario.widget === "relative" && relativeScene?.positionSwap) {
+    frame = withWorkshopRelativePositionSwap(frame, ...relativeScene.positionSwap);
+  }
+  if (scenario.widget === "pedals" || scenario.widget === "racing-flags") {
+    // Racing Flags keeps the vivid green demo state by default, while Pedals
+    // preserves the canonical missing flag unless the Workshop asks for an
+    // explicit probe. In both cases an explicit probe lets the harness inspect
+    // yellow and the other known SessionV2 flag values without inventing live
+    // telemetry.
+    frame = {
+      ...frame,
+      session: {
+        ...frame.session,
+        flag: scenario.flag === undefined
+          ? scenario.widget === "racing-flags"
+            ? qualityValue("green", quality)
+            : baseFrame.session.flag
+          : qualityValue(scenario.flag, quality),
+      },
+    };
+  }
   switch (scenario.variant) {
     case "standings-functional-study": {
       // Explicit visual-study data, never live telemetry. The original V2
@@ -680,15 +1012,6 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
       frame = { ...frame, standings: patchStandings(frame.standings, replayStepPatches(step), quality) };
       break;
     }
-    case "relative-multiclass": {
-      const playerId = frame.player.id ?? "";
-      frame = {
-        ...frame,
-        relative: relativeDevWindow(frame.relative, playerId, quality),
-        relativeSettled: relativeDevWindow(frame.relativeSettled, playerId, quality),
-      };
-      break;
-    }
     case "pedals-zero":
       frame = forcePedals(frame, 0, quality);
       break;
@@ -698,6 +1021,36 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
     default:
       break;
   }
+  // El default de Relative en Eficiencia usa una ventana multiclass
+  // determinista; no existe una variante alternativa para esta presentación.
+  if (usesRelativeStudyProjection(scenario)) {
+    const playerId = frame.player.id ?? "";
+    // Una escena puede sacar o cruzar un coche: la selección 3+3 la hace la
+    // VM después del parche, con el resto del campo disponible para rellenar
+    // el hueco. Recortar aquí dejaría permanentemente una fila sin rival.
+    const hasRelativeScene = scenario.sceneId && getAnimationScene(scenario.sceneId)?.widget === "relative";
+    const ahead = hasRelativeScene ? Number.POSITIVE_INFINITY : scenario.rangeAhead ?? RELATIVE_RANGE_AHEAD;
+    const behind = hasRelativeScene ? Number.POSITIVE_INFINITY : scenario.rangeBehind ?? RELATIVE_RANGE_BEHIND;
+    frame = {
+      ...frame,
+      relative: relativeDevWindow(frame.relative, playerId, quality, ahead, behind),
+      relativeSettled: relativeDevWindow(frame.relativeSettled, playerId, quality, ahead, behind),
+    };
+  }
+  if (scenario.widget === "standings" && scenario.playerPosition !== undefined) {
+    frame = withWorkshopPlayerPosition(frame, scenario.playerPosition);
+  }
+  if (scenario.widget === "standings" && scenario.system === EFFICIENCY_SYSTEM_ID
+    && (scenario.variant === "default" || scenario.variant === "standings-multiclass")) {
+    frame = withFunctionalStandingsDemo(frame, scenario, quality);
+  }
   frame = applyScene(frame, scenario, quality);
   return { ...runtime, overlayV2Frame: frame };
+}
+
+function fitStandingsMinimum(widget: WidgetInstanceV3): WidgetInstanceV3 {
+  const minimum = resolveStandingsMinimumSize(widget);
+  return minimum
+    ? { ...widget, layout: { ...widget.layout, w: minimum.width, h: minimum.height ?? widget.layout.h } }
+    : widget;
 }

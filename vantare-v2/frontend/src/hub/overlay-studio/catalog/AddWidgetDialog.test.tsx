@@ -87,6 +87,15 @@ describe("AddWidgetDialog", () => {
     expect(screen.getByTestId("studio-catalog-unavailable-delta").textContent).toContain("añadido");
   });
 
+  it("offers Advanced pedals with its translated name and no retired duplicate", () => {
+    const onAdd = vi.fn();
+    render(<AddWidgetDialog open policy={paidPolicy} onAdd={onAdd} onClose={vi.fn()} />);
+    expect(screen.getByTestId("studio-catalog-entry-pedals-telemetry").textContent).toContain("Pedales avanzados");
+    expect(screen.queryByTestId("studio-catalog-entry-pedals-telemetry-compact")).toBeNull();
+    fireEvent.click(screen.getByTestId("studio-catalog-add-pedals-telemetry"));
+    expect(onAdd).toHaveBeenCalledWith("pedals-telemetry");
+  });
+
   it("returns null when closed", () => {
     const { container } = render(
       <AddWidgetDialog open={false} policy={freePolicy} onAdd={vi.fn()} onClose={vi.fn()} />,

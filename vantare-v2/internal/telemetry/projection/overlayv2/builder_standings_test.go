@@ -55,8 +55,8 @@ func TestBuildStandingsResolvesTheFallbackOrderExplicitly(t *testing.T) {
 	if last.VehicleID != "vehicle-000" {
 		t.Fatalf("vehicle without position must sort last, got %q", last.VehicleID)
 	}
-	if last.Position != 4 {
-		t.Fatalf("fallback position = %d, want the resolved order index 4", last.Position)
+	if last.Position != 0 || effectiveStandingQuality(last.Quality.Position, last.Quality.Q) != QualityMissing {
+		t.Fatalf("unavailable position = %d, want 0 with missing quality", last.Position)
 	}
 	for index, row := range rows[:len(rows)-1] {
 		if row.Position != int32(index+2) {

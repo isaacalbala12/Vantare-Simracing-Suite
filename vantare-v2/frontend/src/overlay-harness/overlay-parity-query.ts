@@ -12,9 +12,9 @@ export type HarnessSystem = DesignSystemId;
 export type HarnessWidget = WidgetType;
 
 // Parity solo admite variantes de forma/contenido sobre datos canónicos V2.
-// Las que fabrican telemetría (relative-multiclass, standings-stress60,
-// standings-replay, pedals-zero, pedals-full) se rechazan como invalid
-// variant; siguen disponibles en Workshop sin tocar.
+// Las que fabrican telemetría (standings-stress60, standings-replay,
+// pedals-zero, pedals-full) se rechazan como invalid variant; no forman parte
+// del contrato de este harness.
 export type HarnessVariant = AuthoringV2Variant;
 
 const PARITY_VARIANTS: ReadonlySet<string> = new Set(AUTHORING_V2_VARIANTS);
@@ -43,11 +43,13 @@ const DEFAULT_QUERY: HarnessQuery = {
 };
 
 const DEFAULT_SYSTEM_BY_WIDGET: Partial<Record<HarnessWidget, HarnessSystem>> = {
+  "fastest-lap": "vantare-functional",
   "engineer-radio": "vantare-crystal",
   "track-map": "vantare-endurance",
 };
 
 const SYSTEMS = new Set<HarnessSystem>([
+  "vantare-functional",
   "vantare-original",
   "vantare-crystal",
   "vantare-endurance",
@@ -120,6 +122,9 @@ export function parseHarnessQuery(search: string): HarnessQuery | { error: strin
   }
   if (widget === "engineer-radio" && system !== "vantare-crystal") {
     return { error: "engineer-radio requires system=vantare-crystal" };
+  }
+  if (widget === "fastest-lap" && system !== "vantare-functional") {
+    return { error: "fastest-lap requires system=vantare-functional" };
   }
 
   return {

@@ -1,3 +1,4 @@
+import { decodeOverlayUpdateV2 } from "../../../telemetry-transport/overlay-frame-v2-store";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -23,24 +24,42 @@ describe("car damage v2 view model", () => {
     expect(model.suspension).toBe(1);
   });
 
-  it("leaves tyres undefined instead of inventing it", () => {
-    const model = buildCarDamageNumbersViewModelV2(goldenFrame(20), { state: "live" }, CONTENT);
+  it("leaves tyres undefined when the source has no observed tyre wear", () => {
+    const frame = goldenFrame(20);
+    const model = buildCarDamageNumbersViewModelV2(
+      { ...frame, damage: { ...frame.damage, tyreWear: undefined } },
+      { state: "live" }, CONTENT,
+    );
     expect(model.tyres).toBeUndefined();
-    expect(OVERLAY_V2_DAMAGE_DECLARED_GAPS).toEqual(expect.arrayContaining(["tyres"]));
+    expect(OVERLAY_V2_DAMAGE_DECLARED_GAPS).not.toContain("tyres");
     expect(OVERLAY_V2_DAMAGE_INTENTIONAL_DIFFERENCES).toEqual(
-      expect.arrayContaining(["body", "aero", "suspension"]),
+      expect.arrayContaining(["body", "aero", "suspension", "tyres"]),
     );
   });
 
-  it("maps fresh zero dents to missing and preserves invalid", () => {
+  it("maps four observed LMU tyre fractions to wear and keeps source quality", () => {
+    const frame = goldenFrame(20);
+    const withWear = {
+      ...frame,
+      damage: { ...frame.damage, tyreWear: { q: "fresh", v: [0.98, 0.91, 0.87, 0.93] } },
+    } as OverlayFrameV2;
+    const model = buildCarDamageNumbersViewModelV2(withWear, { state: "live" }, CONTENT);
+    expect(model.tyres?.map((wear) => Math.round(wear * 100))).toEqual([2, 9, 13, 7]);
+    expect(model.status).toBe("ready");
+    expect(buildCarDamageNumbersViewModelV2({ ...withWear, damage: { ...withWear.damage, tyreWear: { q: "stale", v: [0.98, 0.91, 0.87, 0.93] } } }, { state: "live" }, CONTENT).status).toBe("stale");
+    expect(buildCarDamageNumbersViewModelV2({ ...withWear, damage: { ...withWear.damage, tyreWear: { q: "invalid" } } }, { state: "live" }, CONTENT).tyres).toBeUndefined();
+  });
+
+  it("keeps observed zero damage distinct from missing damage", () => {
     const frame = goldenFrame(20);
     const zero = {
       ...frame,
       damage: { ...frame.damage, dents: { q: "fresh", v: [0, 0, 0, 0, 0, 0, 0, 0] } },
     } as OverlayFrameV2;
     const model = buildCarDamageNumbersViewModelV2(zero, { state: "live" }, CONTENT);
-    expect(model.body).toBeUndefined();
-    expect(model.aero).toBeUndefined();
+    expect(model.body).toBe(0);
+    expect(model.aero).toBe(0);
+    expect(model.suspension).toBe(0);
 
     const missing = buildCarDamageNumbersViewModelV2(
       { ...frame, damage: { ...frame.damage, dents: { q: "missing" } } },
@@ -48,12 +67,25 @@ describe("car damage v2 view model", () => {
       CONTENT,
     );
     expect(missing.body).toBeUndefined();
-    expect(missing.status).toBe("ready");
+    expect(missing.status).toBe("missing");
+    const absentValue = buildCarDamageNumbersViewModelV2(
+      { ...frame, damage: { ...frame.damage, dents: { q: "fresh" } } },
+      { state: "live" },
+      CONTENT,
+    );
+    expect(absentValue.body).toBeUndefined();
+    expect(absentValue.status).toBe("missing");
   });
 
   it("propagates the source lifecycle instead of rendering a stale dent as ready", () => {
     const frame = goldenFrame(20);
     expect(buildCarDamageNumbersViewModelV2(frame, { state: "stale" }, CONTENT).status).toBe("stale");
+    expect(buildCarDamageNumbersViewModelV2(frame, { state: "degraded" }, CONTENT).status).toBe("stale");
+    expect(buildCarDamageNumbersViewModelV2(
+      { ...frame, damage: { ...frame.damage, dents: { ...frame.damage.dents, q: "stale" } } },
+      { state: "live" },
+      CONTENT,
+    ).status).toBe("stale");
     const stopped = buildCarDamageNumbersViewModelV2(frame, { state: "stopped" }, CONTENT);
     expect(stopped.status).toBe("disconnected");
     expect(stopped.body).toBeUndefined();
@@ -69,9 +101,9 @@ describe("car damage v2 view model", () => {
 });
 
 function goldenFrame(vehicles: number): OverlayFrameV2 {
-  const update = JSON.parse(
-    readFileSync(path.resolve(process.cwd(), `../internal/telemetry/projection/overlayv2/testdata/overlay_v2_${vehicles}.golden.json`), "utf8"),
-  ) as OverlayUpdateV2;
+  const update = structuredClone(decodeOverlayUpdateV2(
+    JSON.parse(readFileSync(path.resolve(process.cwd(), `../internal/telemetry/projection/overlayv2/testdata/overlay_v2_${vehicles}.golden.json`), "utf8")),
+  )) as OverlayUpdateV2;
   if (!update.frame) throw new Error("golden frame missing");
   return update.frame;
 }

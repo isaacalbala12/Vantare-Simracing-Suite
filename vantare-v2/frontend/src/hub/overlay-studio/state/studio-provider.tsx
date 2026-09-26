@@ -25,19 +25,29 @@ import {
   createStudioStore,
   type StudioSeed,
 } from "./studio-document-store";
-import { isStudioHistoryDirty } from "./studio-history";
+import { selectStudioDirty } from "./studio-derived-selectors";
+import { orbitStore, ORBIT_KEYS } from "../../orbit/orbit-store";
+import { CANVAS_BACKGROUNDS } from "../canvas/canvas-backgrounds";
+import { findWallpaper, wallpaperIdOf } from "../canvas/studio-wallpapers";
 
 const DEFAULT_PREVIEW_STATE: StudioPreviewState = {
   source: "mock",
   mockSession: "practice",
   mockLocation: "track",
   zoom: "fit",
-  // El degradado se parece mas a lo que hay detras de un overlay en carrera que
-  // una rejilla plana, asi que juzgar contraste y legibilidad sobre el es mas
-  // fiel. La rejilla sigue disponible en el selector para alinear a ojo.
-  backgroundId: "gradient",
+  // El escenario sigue la paleta hasta que se elige otro fondo.
+  backgroundId: "theme",
   safeArea: false,
 };
+
+function initialPreviewState(): StudioPreviewState {
+  const saved = orbitStore.get(ORBIT_KEYS.studioBackground);
+  const backgroundId = saved && (
+    CANVAS_BACKGROUNDS.some((background) => background.id === saved) ||
+    findWallpaper(wallpaperIdOf(saved)) !== null
+  ) ? saved : "theme";
+  return { ...DEFAULT_PREVIEW_STATE, backgroundId };
+}
 
 export function StudioProvider(props: {
   client: StudioProfileClient;
@@ -68,7 +78,7 @@ export function StudioProvider(props: {
     [recoveryStorage],
   );
   store.configure({ widgetPolicy, client, initialFile, recoveryStore });
-  const [preview, setPreviewState] = useState<StudioPreviewState>(DEFAULT_PREVIEW_STATE);
+  const [preview, setPreviewState] = useState<StudioPreviewState>(initialPreviewState);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,7 +110,7 @@ export function StudioProvider(props: {
   // sesión no lo reprograman.
   const docState = useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot);
   const document = docState.history?.present ?? null;
-  const dirty = docState.history ? isStudioHistoryDirty(docState.history) : false;
+  const dirty = selectStudioDirty(docState.history);
 
   useEffect(() => {
     if (!recoveryStore || !document || !dirty) {
@@ -119,6 +129,9 @@ export function StudioProvider(props: {
   }, [recoveryStore, document, dirty, docState.revision, recoveryWriteDelayMs]);
 
   const setPreview = useCallback((patch: Partial<StudioPreviewState>) => {
+    if (patch.backgroundId !== undefined) {
+      orbitStore.set(ORBIT_KEYS.studioBackground, patch.backgroundId);
+    }
     setPreviewState((current) => ({ ...current, ...patch }));
   }, []);
 

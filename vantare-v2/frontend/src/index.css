@@ -1,6 +1,9 @@
 @import "./fonts.css";
 @import "tailwindcss";
 @import "./styles/orbit.tokens.css";
+@import "./styles/orbit.appearance.css";
+@import "./styles/orbit.appearance-palettes.css";
+@import "./styles/orbit.appearance-overrides.css";
 
 @theme {
   --font-sans: var(--v-font-sans);
@@ -394,7 +397,8 @@ body:not(.hub) #root {
 @import "./overlay/design-systems/vantare-original/tokens.css";
 @import "./overlay/design-systems/vantare-crystal/tokens.css";
 @import "./overlay/design-systems/vantare-endurance/tokens.css";
-@import "./overlay/design-systems/vantare-functional/tokens.css";
+@import "./overlay/design-systems/pedals-advanced.css";
+@import "./overlay/design-systems/vantare-efficiency/tokens.css";
 @import "./overlay/design-systems/vantare-iracing/iracing-tokens.css";
 @import "./overlay/design-systems/vantare-crystal/isa93-sections-07-08.css";
 @import "./overlay/design-systems/vantare-crystal/isa93-live-families.css";

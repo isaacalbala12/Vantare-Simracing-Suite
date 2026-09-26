@@ -3,48 +3,79 @@ import type { WidgetRendererProps } from "../../core/design-system-definition";
 import type { FuelStrategyViewModel } from "../../widget-types/fuel-strategy/fuel-strategy-view-model";
 import { functionalLabels } from "./labels";
 
+// Fuel Strategy en Eficiencia: misma composición que el diseño de referencia
+// (panel principal con nivel + consumo + proyección, panel de historial a la
+// derecha) traducida a los tokens funcionales — esquinas vivas, micro-labels
+// en mayúsculas y números tabulares.
 export function FuelStrategyFunctional({ model, effects }: WidgetRendererProps<FuelStrategyViewModel>) {
   const { locale } = useI18n();
   const labels = functionalLabels[locale];
-  const statusText = model.status !== "ready" ? labels[model.status] : undefined;
+  const source = model.source ?? "fuel";
+  const statusText = model.status !== "ready"
+    ? labels[model.status]
+    : model.sourceUnavailable
+      ? labels.virtualEnergyUnavailable
+      : undefined;
+  const liters = (value: number | undefined, decimals = 1) =>
+    value === undefined ? "—" : `${value.toFixed(decimals)} L`;
+  const percent = model.fuelPercent === undefined
+    ? undefined
+    : Math.max(0, Math.min(100, model.fuelPercent));
 
   return (
-    <section className="vf-fuel-strategy" data-widget-system="vantare-functional" data-widget-renderer="fuel-strategy" data-status={model.status} data-effects={effects}>
-      {statusText && <p className="vf-status" role="status">{statusText}</p>}
-      {model.statusMessage && model.status !== "stale" && <p className="vf-detail">{model.statusMessage}</p>}
-      <div className="vf-fuel-strategy-body" role="group" aria-label={labels.fuel}>
-        <div className="vf-fuel-strategy-primary">
-          <span className="vf-fuel-strategy-label">{labels.fuel}</span>
-          <b className="vf-fuel-strategy-value">{model.fuelLiters === undefined ? "—" : `${model.fuelLiters.toFixed(1)} L`}</b>
-        </div>
-        <div className="vf-fuel-strategy-grid">
-          <div className="vf-fuel-strategy-slot">
-            <span className="vf-fuel-strategy-slot-label">{labels.avg}</span>
-            <b className="vf-fuel-strategy-slot-value">{model.avgPerLap === undefined ? "—" : `${model.avgPerLap.toFixed(2)} L`}</b>
-          </div>
-          {model.showProjection && (
-            <>
-              <div className="vf-fuel-strategy-slot">
-                <span className="vf-fuel-strategy-slot-label">{labels.laps}</span>
-                <b className="vf-fuel-strategy-slot-value">{model.lapsRemaining === undefined ? "—" : model.lapsRemaining.toFixed(1)}</b>
-              </div>
-              <div className="vf-fuel-strategy-slot">
-                <span className="vf-fuel-strategy-slot-label">{labels.required}</span>
-                <b className="vf-fuel-strategy-slot-value">{model.requiredFuel === undefined ? "—" : `${model.requiredFuel.toFixed(1)} L`}</b>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-      {model.history.length > 0 && (
-        <div className="vf-fuel-strategy-history" role="list" aria-label={labels.history}>
-          {model.history.map((row, index) => (
-            <div key={index} className="vf-fuel-strategy-row" role="listitem">
-              <span className="vf-fuel-strategy-row-lap">{labels.currentLap} {row.lap}</span>
-              <b className="vf-fuel-strategy-row-value">{row.consumedLiters.toFixed(2)} L</b>
+    <section className="vf-fuel-strategy" data-widget-system="vantare-functional" data-widget-renderer="fuel-strategy" data-status={model.status} data-source={source} data-effects={effects}>
+      {statusText ? (
+        <p className="vf-status" role="status">{statusText}</p>
+      ) : (
+        <>
+          <div className="vf-fuel-main">
+            <div className="vf-fuel-head">
+              <span className="vf-fuel-label">{source === "virtual-energy" ? labels.virtualEnergy : labels.fuel}</span>
+              <b className="vf-fuel-value">{liters(model.fuelLiters)}</b>
             </div>
-          ))}
-        </div>
+            <div className="vf-fuel-bar" role="presentation">
+              <i style={{ width: `${percent ?? 0}%` }} />
+            </div>
+            <div className="vf-fuel-stats">
+              <span className="vf-fuel-stat">
+                <em className="vf-fuel-stat-label">{labels.avg}</em>
+                <b className="vf-fuel-stat-value">{liters(model.avgPerLap, 2)}</b>
+              </span>
+              {model.showProjection && (
+                <>
+                  <span className="vf-fuel-stat">
+                    <em className="vf-fuel-stat-label">{labels.laps}</em>
+                    <b className="vf-fuel-stat-value">{model.lapsRemaining === undefined ? "—" : model.lapsRemaining.toFixed(1)}</b>
+                  </span>
+                  <span className="vf-fuel-stat">
+                    <em className="vf-fuel-stat-label">{labels.required}</em>
+                    <b className="vf-fuel-stat-value vf-fuel-stat-value--req">{liters(model.requiredFuel)}</b>
+                  </span>
+                </>
+              )}
+            </div>
+            {model.showProjection && (
+              <footer className="vf-fuel-foot">
+                <span>{labels.estFinish}:</span>
+                <b>{model.requiredFuel === undefined ? "—" : `${liters(model.requiredFuel)} ${labels.required}`}</b>
+              </footer>
+            )}
+            {model.statusMessage && model.status !== "stale" && <p className="vf-detail">{model.statusMessage}</p>}
+          </div>
+          {model.history.length > 0 && (
+            <aside className="vf-fuel-history">
+              <span className="vf-fuel-history-title">{labels.history}</span>
+              <div className="vf-fuel-history-list" role="list">
+                {[...model.history].reverse().map((row) => (
+                  <div key={row.lap} className="vf-fuel-history-row" role="listitem">
+                    <span>{labels.currentLap} {row.lap}</span>
+                    <b>{liters(row.consumedLiters)}</b>
+                  </div>
+                ))}
+              </div>
+            </aside>
+          )}
+        </>
       )}
     </section>
   );

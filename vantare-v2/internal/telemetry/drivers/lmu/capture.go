@@ -1151,6 +1151,8 @@ func (sanitizer *FrameSanitizer) Sanitize(input []byte) ([]byte, error) {
 		lmu13Layout.Session.CurrentTime,
 		lmu13Layout.Session.EndTime,
 		lmu13Layout.Session.MaximumLaps,
+		lmu13Layout.Session.RainFraction,
+		lmu13Layout.Session.TrackLength,
 		lmu13Layout.Session.VehicleCount,
 	} {
 		copyLayoutField(output, input, field, 0)
@@ -1254,6 +1256,10 @@ func (sanitizer *FrameSanitizer) Sanitize(input []byte) ([]byte, error) {
 			lmu13Layout.Telemetry.WheelDetachedFR,
 			lmu13Layout.Telemetry.WheelDetachedRL,
 			lmu13Layout.Telemetry.WheelDetachedRR,
+			lmu13Layout.Telemetry.TyreWearFL,
+			lmu13Layout.Telemetry.TyreWearFR,
+			lmu13Layout.Telemetry.TyreWearRL,
+			lmu13Layout.Telemetry.TyreWearRR,
 		} {
 			copyLayoutField(output, input, field, base)
 		}

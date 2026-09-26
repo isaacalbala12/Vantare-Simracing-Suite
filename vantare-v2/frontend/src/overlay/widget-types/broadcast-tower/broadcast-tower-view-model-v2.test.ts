@@ -6,6 +6,7 @@ function frame(rows: number): OverlayFrameV2 {
   const standings = Array.from({ length: rows }, (_, index) => ({
     id: `vehicle-${String(index).padStart(3, "0")}`,
     position: index + 1,
+    quality: { q: "fresh" as const },
     classPosition: (index % 3) + 1,
     classId: index < 2 ? "hypercar" : "lmp2",
     driver: `Driver ${index}`,
@@ -22,7 +23,7 @@ function frame(rows: number): OverlayFrameV2 {
     contract: 2, algorithm: 1, epoch: 3, sequence: 2, sessionId: "s", generatedAt: "2026-08-19T12:00:02Z",
     units: { speed: "mps", temperature: "celsius", pressure: "kpa", fuel: "liters" },
     session: { track: { q: "fresh", v: "Sebring" }, phase: { q: "fresh", v: "race" }, flag: { q: "missing" }, remaining: { q: "fresh", v: 7198 }, maxLaps: { q: "fresh", v: 240 } },
-    player: { id: "vehicle-000", speed: { q: "fresh", v: 50 }, rpm: { q: "fresh", v: 7200 }, gear: { q: "fresh", v: 4 }, throttle: { q: "fresh", v: 0.75 }, brake: { q: "fresh", v: 0.1 }, clutch: { q: "fresh", v: 0 }, steering: { q: "missing" } },
+    player: { id: "vehicle-000", lapNumber: {q:"fresh",v:34}, speed: { q: "fresh", v: 50 }, rpm: { q: "fresh", v: 7200 }, gear: { q: "fresh", v: 4 }, throttle: { q: "fresh", v: 0.75 }, brake: { q: "fresh", v: 0.1 }, clutch: { q: "fresh", v: 0 }, steering: { q: "missing" } },
     controls: { history: { q: "fresh", throttle: [750], brake: [125], clutch: [0] } },
     standings: standings as unknown as OverlayFrameV2["standings"],
     relative: [],
@@ -39,9 +40,49 @@ describe("buildBroadcastTowerViewModelV2", () => {
     const model = buildBroadcastTowerViewModelV2(frame(12), { state: "live" } as OverlaySourceStatusV2, { rowCount: 5, showWeather: true, showSof: true });
     expect(model.rows).toHaveLength(5);
     expect(model.rows[0]).toMatchObject({ place: 1, isPlayer: true });
+    expect(model.rows[0].id).toBe("vehicle-000");
     expect(model.sessionLabel).toBe("RACE");
+    expect(model.flag).toBe("unknown");
     expect(model.trackTempC).toBeUndefined();
     expect(model.sof).toBeUndefined();
+  });
+
+  it("preserves canonical row IDs and resets presentation identity for session, epoch, and retry", () => {
+    const input = frame(3);
+    const source = { state: "live", retry: 0 } as OverlaySourceStatusV2;
+    const content = { rowCount: 3, showWeather: false, showSof: false };
+    const initial = buildBroadcastTowerViewModelV2(input, source, content);
+    expect(initial.rows.map((row) => row.id)).toEqual(["vehicle-000", "vehicle-001", "vehicle-002"]);
+    expect(initial.motionIdentity).toBe("s:3:0");
+    expect(Object.keys(initial)).not.toContain("motionIdentity");
+    const newEpoch = buildBroadcastTowerViewModelV2({ ...input, epoch: 4 }, source, content);
+    const newSession = buildBroadcastTowerViewModelV2({ ...input, sessionId: "other" }, source, content);
+    const retried = buildBroadcastTowerViewModelV2(input, { ...source, retry: 1 }, content);
+    expect([newEpoch.motionIdentity, newSession.motionIdentity, retried.motionIdentity]).toEqual(["s:4:0", "other:3:0", "s:3:1"]);
+  });
+
+  it.each([
+    ["green", "green"],
+    ["yellow", "yellow"],
+    ["blue", "blue"],
+    ["red", "red"],
+    ["white", "white"],
+    ["black", "black"],
+    ["checkered", "checkered"],
+    ["chequered", "checkered"],
+    ["not-a-flag", "unknown"],
+  ] as const)("projects a fresh session flag %s as %s", (raw, expected) => {
+    const input = frame(5);
+    input.session.flag = { q: "fresh", v: raw };
+    const model = buildBroadcastTowerViewModelV2(input, { state: "live" } as OverlaySourceStatusV2, { rowCount: 5, showWeather: false, showSof: false });
+    expect(model.flag).toBe(expected);
+  });
+
+  it("does not present a stale session flag as current", () => {
+    const input = frame(5);
+    input.session.flag = { q: "fresh", v: "yellow" };
+    const model = buildBroadcastTowerViewModelV2(input, { state: "stale" } as OverlaySourceStatusV2, { rowCount: 5, showWeather: false, showSof: false });
+    expect(model.flag).toBe("unknown");
   });
 
   it.each([0, -1, 1.5, Number.NaN, Number.POSITIVE_INFINITY, 2147483647])("does not expose invalid or unlimited max laps %s", (value) => {
@@ -67,4 +108,14 @@ describe("buildBroadcastTowerViewModelV2", () => {
     expect(model.status).toBe("error");
     expect(model.rows).toHaveLength(0);
   });
+});
+
+it("current player lap stays independent of completed standings laps and crop", () => {
+ const input=frame(12); input.player.id="vehicle-011"; input.player.lapNumber={q:"fresh",v:35};
+ const content={rowCount:3,showWeather:true,showSof:false};
+ expect(buildBroadcastTowerViewModelV2(input,{state:"live"},content).lap).toBe(35);
+ input.player.lapNumber={q:"stale",v:35};
+ expect(buildBroadcastTowerViewModelV2(input,{state:"live"},content).lap).toBeUndefined();
+ input.player.lapNumber={q:"fresh"};
+ expect(buildBroadcastTowerViewModelV2(input,{state:"live"},content).lap).toBe(0);
 });

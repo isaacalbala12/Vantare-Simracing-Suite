@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { I18nProvider } from "../i18n/I18nProvider";
 import { Events } from "@wailsio/runtime";
 import type { CalendarReminderPayload } from "../calendar/calendar-types";
 import { parseProfileDocumentV3, type ProfileDocumentV3 } from "./core/profile-document";
@@ -35,6 +36,10 @@ type CompositeGeneration = Readonly<{
 }>;
 
 export function CompositeApp() {
+  return <I18nProvider mode="native-consumer"><CompositeAppInner /></I18nProvider>;
+}
+
+function CompositeAppInner() {
   const [document, setDocument] = useState<ProfileDocumentV3 | null>(null);
   const [revision, setRevision] = useState("");
   const [layoutOrigin, setLayoutOrigin] = useState({ x: 0, y: 0 });

@@ -7,6 +7,7 @@ import { broadcastTowerDefinition } from "../../../overlay/widget-types/broadcas
 import { ALL_WIDGET_TYPES, type WidgetType, type WidgetInstanceV3 } from "../../../overlay/core/profile-document";
 import type { WidgetTypeDefinition } from "../../../overlay/core/widget-definition";
 import { getWidgetRequiredFeature } from "../../../overlay/core/widget-definition";
+import { pedalsTelemetryCompactDefinition } from "../../../overlay/widget-types/pedals-telemetry-compact/pedals-telemetry-compact-definition";
 import { WidgetTypeRegistry } from "../../../overlay/core/widget-registry";
 import {
   buildAddWidgetCommand,
@@ -109,8 +110,8 @@ function createTestDesignSystem(widgetTypes: readonly WidgetType[]): DesignSyste
 }
 
 describe("deriveStudioCatalog", () => {
-  it("keeps the 18 reference types plus the functional Engineer radio registration", () => {
-    expect(FINAL_WIDGET_CATALOG_CARDINALITY.widgetTypes).toEqual(ALL_WIDGET_TYPES);
+  it("keeps the complete catalog including Engineer radio and fastest lap", () => {
+    expect(FINAL_WIDGET_CATALOG_CARDINALITY.widgetTypes).toEqual(ALL_WIDGET_TYPES.filter((type) => type !== "pedals-telemetry-compact"));
     expect(FINAL_WIDGET_CATALOG_CARDINALITY.widgetTypes).toHaveLength(20);
     expect(FINAL_WIDGET_CATALOG_CARDINALITY.designExceptions.delta).toEqual(["delta-simple", "delta-bar"]);
     expect(FINAL_WIDGET_CATALOG_CARDINALITY.designExceptions["input-telemetry"]).toEqual([
@@ -124,7 +125,7 @@ describe("deriveStudioCatalog", () => {
 
   it("returns only registered widget types from the canonical registry", () => {
     const catalog = deriveStudioCatalog();
-    expect(catalog.map((entry) => entry.type)).toEqual(ALL_WIDGET_TYPES);
+    expect(catalog.map((entry) => entry.type)).toEqual(FINAL_WIDGET_CATALOG_CARDINALITY.widgetTypes);
     expect(catalog[0]).toMatchObject({
       labelKey: "overlay.widgets.delta",
       defaultSize: { width: 280, height: 96 },
@@ -185,6 +186,14 @@ describe("catalog access", () => {
 });
 
 describe("buildAddWidgetCommand", () => {
+  it("rejects adding the retired compact widget even through a stale catalogue action", () => {
+    expect(() => buildAddWidgetCommand({
+      session: "general", type: "pedals-telemetry-compact", widgets: [],
+      definition: pedalsTelemetryCompactDefinition,
+      layoutViewport: { width: 1920, height: 1080 },
+    })).toThrow(/retired/);
+  });
+
   it("creates widget/add with the next id and z-index", () => {
     const existing = [deltaDefinition.createDefault("delta-main")];
     existing[0]!.layout.zIndex = 3;

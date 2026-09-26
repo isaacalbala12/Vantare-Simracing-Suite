@@ -12,8 +12,8 @@ export const raceScheduleDefinition: WidgetTypeDefinition<RaceScheduleContent, R
   capabilities: {
     inspectorSections: ["design", "appearance", "content", "behavior", "layout", "actions"],
     supportsAspectUnlock: true,
-    minimumSize: { width: 390, height: 292 },
-    defaultSize: { width: 780, height: 583 },
+    minimumSize: { width: 390, height: 120 },
+    defaultSize: { width: 780, height: 340 },
     requiredFeature: getWidgetRequiredFeature("race-schedule"),
   },
   inspector: { content: [] },
@@ -21,7 +21,7 @@ export const raceScheduleDefinition: WidgetTypeDefinition<RaceScheduleContent, R
     return {
       id,
       type: "race-schedule",
-      layout: { x: 64, y: 64, w: 780, h: 583, zIndex: 0, aspectLocked: true },
+      layout: { x: 64, y: 64, w: 780, h: 340, zIndex: 0, aspectLocked: true },
       behavior: { enabled: true, updateHz: 1 },
       content: { ...defaults },
       visual: {

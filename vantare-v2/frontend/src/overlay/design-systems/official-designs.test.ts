@@ -48,6 +48,23 @@ describe("official-designs", () => {
     });
   });
 
+  it("offers the Functional Pedals background and overlay presentations", () => {
+    const presentations = listOfficialDesigns("pedals").filter((design) => design.systemId === "vantare-functional");
+    expect(presentations).toHaveLength(2);
+    expect(presentations[0]).toMatchObject({
+      id: "pedals-functional-signature",
+      name: "Con fondo",
+      isDefault: true,
+      visual: { transparentBackground: false },
+    });
+    expect(presentations[1]).toMatchObject({
+      id: "pedals-functional-overlay",
+      name: "Sin fondo · Solo barras",
+      visual: { transparentBackground: true },
+    });
+    expect(presentations[1]?.isDefault).toBeUndefined();
+  });
+
   it("registers both canonical Delta Crystal compositions", () => {
     expect(getOfficialDesign("delta-crystal-bar")).toMatchObject({
       widgetType: "delta",
@@ -114,6 +131,9 @@ describe("official-designs", () => {
       designSystemRegistry.get("vantare-iracing", 1).widgets.map((entry) => entry.widgetType),
     );
     const expectedPairs = widgetTypeRegistry.list().flatMap((definition) => {
+      if (definition.type === "fastest-lap") {
+        return ["fastest-lap:vantare-functional"];
+      }
       if (definition.type === "engineer-radio") {
         return [`${definition.type}:vantare-crystal`, `${definition.type}:vantare-functional`];
       }

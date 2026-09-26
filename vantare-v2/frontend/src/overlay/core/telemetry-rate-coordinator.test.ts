@@ -97,6 +97,28 @@ describe("createTelemetryRateCoordinator", () => {
     coordinator.dispose();
   });
 
+  it("wakes fastest-lap only for relevant timing or identity changes, even at minimum performance", () => {
+    const harness = controllableScheduler();
+    const coordinator = createTelemetryRateCoordinator({ createScheduler: harness.create, now: () => 0 });
+    const row = { id: "car", driver: "Isaac", classId: "GT3", laps: 2,
+      bestLap: { q: "fresh", v: 90 }, lastLap: { q: "fresh", v: 90 } };
+    const frame = (sequence: number, timing = row) => performanceFrame(sequence, 1, { "fastest-lap": "event" }, [timing], 5);
+    coordinator.setOverlayFrame(frame(1), { state: "live" });
+    const listener = vi.fn();
+    coordinator.subscribe("fastest-lap", listener);
+    coordinator.setOverlayFrame({ ...frame(2), standings: [{ ...row, overallPos: 2, lapDistance: 0.5 }] } as OverlayFrameV2, { state: "live" });
+    harness.tick();
+    expect(listener).not.toHaveBeenCalled();
+    const improved = { ...row, bestLap: { q: "fresh", v: 89 } };
+    coordinator.setOverlayFrame(frame(3, improved), { state: "live" });
+    harness.tick();
+    expect(listener).toHaveBeenCalledTimes(1);
+    coordinator.setOverlayFrame(frame(4, improved), { state: "live", retry: 1 });
+    harness.tick();
+    expect(listener).toHaveBeenCalledTimes(2);
+    coordinator.dispose();
+  });
+
   it("shares a single repaint loop for every subscriber whatever the requested hz", () => {
     const harness = controllableScheduler();
     const coordinator = createTelemetryRateCoordinator({ createScheduler: harness.create });
@@ -294,6 +316,55 @@ describe("createTelemetryRateCoordinator", () => {
     expect(harness.stops()).toBe(0);
     other();
     expect(harness.stops()).toBe(1);
+    coordinator.dispose();
+  });
+
+  it("compares source and capabilities without serializing every publication", () => {
+    const coordinator = createTelemetryRateCoordinator();
+    const stringify = vi.spyOn(JSON, "stringify");
+    const frame = performanceFrame(1, 40, { standings: "dirty" });
+
+    coordinator.setOverlayFrame(frame, { state: "live", ageMs: 0 });
+    const firstContext = coordinator.getOverlayRuntimeContext();
+    stringify.mockClear();
+    coordinator.setOverlayFrame(
+      { ...frame, sequence: 2 },
+      { state: "live", ageMs: 16 },
+    );
+
+    expect(stringify).not.toHaveBeenCalled();
+    expect(coordinator.getOverlayRuntimeContext()).toBe(firstContext);
+    coordinator.dispose();
+  });
+
+  it("keeps source age-only updates observable without waking an idle scheduler", () => {
+    const harness = controllableScheduler();
+    const coordinator = createTelemetryRateCoordinator({ createScheduler: harness.create });
+    const frame = performanceFrame(1, null, {});
+    coordinator.setOverlayFrame(frame, { state: "live", ageMs: 0 });
+    coordinator.setOverlayFrame(frame, { state: "live", ageMs: 250 });
+    expect(coordinator.getOverlaySource()?.ageMs).toBe(250);
+    expect(harness.starts()).toBe(0);
+    coordinator.dispose();
+  });
+
+  it.each([
+    ["null to omitted", null, undefined],
+    ["omitted to null", undefined, null],
+  ] as const)("preserves the wire distinction from %s performance policy", (_label, firstPolicy, secondPolicy) => {
+    const coordinator = createTelemetryRateCoordinator();
+    const frame = performanceFrame(1, null, {});
+    coordinator.setOverlayFrame({
+      ...frame,
+      capabilities: { ...frame.capabilities, performance: firstPolicy },
+    });
+    const firstContext = coordinator.getOverlayRuntimeContext();
+    coordinator.setOverlayFrame({
+      ...frame,
+      sequence: 2,
+      capabilities: { ...frame.capabilities, performance: secondPolicy },
+    });
+    expect(coordinator.getOverlayRuntimeContext()).not.toBe(firstContext);
     coordinator.dispose();
   });
 });

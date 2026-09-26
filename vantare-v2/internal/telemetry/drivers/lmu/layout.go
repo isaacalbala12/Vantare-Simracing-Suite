@@ -75,7 +75,9 @@ func (rows rowLayout) end() int {
 }
 
 type sessionLayout struct {
+	RainFraction layoutField
 	TrackName    layoutField
+	TrackLength  layoutField
 	SessionType  layoutField
 	CurrentTime  layoutField
 	EndTime      layoutField
@@ -130,6 +132,10 @@ type telemetryLayout struct {
 	WheelDetachedFR    layoutField
 	WheelDetachedRL    layoutField
 	WheelDetachedRR    layoutField
+	TyreWearFL         layoutField
+	TyreWearFR         layoutField
+	TyreWearRL         layoutField
+	TyreWearRR         layoutField
 }
 
 type layoutContract struct {
@@ -154,16 +160,20 @@ func telemetryField(name string, offset int, sourceType windowsSourceType, count
 	return layoutField{Name: name, Scope: scopeTelemetryRow, Offset: offset, Type: sourceType, Count: count}
 }
 
+const lmu13MaxScoringRows = 104
+
 // lmu13Layout is the closed allowlist proven by the two hash-pinned LMU 1.3
 // fixtures. Adding a field requires new provenance and a contract test; known
 // but excluded bytes deliberately have no field in this API.
 var lmu13Layout = layoutContract{
 	Version:       "1.3.0.0",
 	ObjectSize:    324820,
-	ScoringRows:   rowLayout{Base: 2192, Stride: 584, Maximum: 104},
-	TelemetryRows: rowLayout{Base: 128468, Stride: 1888, Maximum: 104},
+	ScoringRows:   rowLayout{Base: 2192, Stride: 584, Maximum: lmu13MaxScoringRows},
+	TelemetryRows: rowLayout{Base: 128468, Stride: 1888, Maximum: lmu13MaxScoringRows},
 	Session: sessionLayout{
+		RainFraction: sessionField("session.rain_fraction", 1852, sourceFloat64, 1),
 		TrackName:    sessionField("session.track_name", 1632, sourceChar, 64),
+		TrackLength:  sessionField("session.track_length", 1720, sourceFloat64, 1),
 		SessionType:  sessionField("session.type", 1696, sourceInt32, 1),
 		CurrentTime:  sessionField("session.current_time", 1700, sourceFloat64, 1),
 		EndTime:      sessionField("session.end_time", 1708, sourceFloat64, 1),
@@ -216,12 +226,20 @@ var lmu13Layout = layoutContract{
 		WheelDetachedFR:    telemetryField("telemetry.wheel_detached_fr", 1286, sourceUint8, 1),
 		WheelDetachedRL:    telemetryField("telemetry.wheel_detached_rl", 1546, sourceUint8, 1),
 		WheelDetachedRR:    telemetryField("telemetry.wheel_detached_rr", 1806, sourceUint8, 1),
+		// LMU SDK TelemInfoV01.mWheel[4] at +848, 260-byte stride;
+		// TelemWheelV01.mWear at +152 (Pack=4, fraction remaining).
+		TyreWearFL: telemetryField("telemetry.tyre_wear_fl", 1000, sourceFloat64, 1),
+		TyreWearFR: telemetryField("telemetry.tyre_wear_fr", 1260, sourceFloat64, 1),
+		TyreWearRL: telemetryField("telemetry.tyre_wear_rl", 1520, sourceFloat64, 1),
+		TyreWearRR: telemetryField("telemetry.tyre_wear_rr", 1780, sourceFloat64, 1),
 	},
 }
 
 func (layout layoutContract) admittedFields() []layoutField {
 	return []layoutField{
 		layout.Session.TrackName,
+		layout.Session.RainFraction,
+		layout.Session.TrackLength,
 		layout.Session.SessionType,
 		layout.Session.CurrentTime,
 		layout.Session.EndTime,
@@ -270,5 +288,9 @@ func (layout layoutContract) admittedFields() []layoutField {
 		layout.Telemetry.WheelDetachedFR,
 		layout.Telemetry.WheelDetachedRL,
 		layout.Telemetry.WheelDetachedRR,
+		layout.Telemetry.TyreWearFL,
+		layout.Telemetry.TyreWearFR,
+		layout.Telemetry.TyreWearRL,
+		layout.Telemetry.TyreWearRR,
 	}
 }

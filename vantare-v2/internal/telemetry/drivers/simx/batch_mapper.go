@@ -146,6 +146,7 @@ func (mapper *mapperState) mapObservation(observation Observation) (telemetrycor
 		State: telemetrycore.ObservedState{
 			SourceTime:    observation.SourceTime,
 			TrackName:     observation.TrackName,
+			TrackLength:   observation.TrackLength,
 			SessionType:   observation.SessionType,
 			VehicleCount:  observation.VehicleCount,
 			PlayerPresent: observation.PlayerPresent,

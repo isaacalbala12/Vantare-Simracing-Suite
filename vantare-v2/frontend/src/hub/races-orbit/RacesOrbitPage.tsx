@@ -18,7 +18,8 @@ import {
   type TimelineBlock,
 } from "../../ui/orbit";
 import { formatMessage } from "../orbit/format-message";
-import { formatCountdown, formatStartTime, nextStarts, repeatedHourOffset } from "../orbit/next-starts";
+import { appZoomShortcut } from "../orbit/app-zoom";
+import { formatCountdown, formatStartTime, nextStarts } from "../orbit/next-starts";
 import { useOrbitSlot } from "../orbit/use-orbit-slot";
 import {
   buildSeriesEntries,
@@ -26,33 +27,24 @@ import {
   dayAnchor,
   dayRows,
   filterByTier,
-  fitZoom,
   groupByHour,
   monthAnchor,
   monthDays,
-  pxPerHourOf,
-  readTimelinePrefs,
-  tickEveryMinFor,
-  TIER_COLOR,
   TIER_FILTERS,
-  TIER_INK,
   tierCounts,
   timelineRows,
-  timelineStart,
-  TIMELINE_RANGES,
   upcomingRows,
   weekAnchor,
   weekRows,
-  writeTimelinePrefs,
   type RaceSeriesEntry,
   type TierFilter,
-  type TimelineRange,
 } from "./races-orbit-model";
 import {
   RACES_CONTEXT_SLOT_ID,
   RACES_TOPBAR_SLOT_ID,
 } from "../components/orbit/orbit-slot-ids";
 import "../../styles/orbit-races.css";
+import "./calendar-visual.css";
 
 /** Huecos que la shell reserva para Carreras (briefing 06). Los ids viven en
     `orbit-slot-ids` para que la shell no importe la página entera. */
@@ -69,8 +61,9 @@ const NEXT_ROWS = 24;
 /** El detalle enseña las cuatro próximas horas de la serie (`13.3`). */
 const DETAIL_STARTS = 4;
 
-/** El eje del timeline siempre cubre 24 h; el zoom decide cuántas se ven. */
-const TIMELINE_SPAN_MIN = 1440;
+/** Solo salidas desde ahora hasta dentro de una hora. */
+const TIMELINE_SPAN_MIN = 60;
+const TIMELINE_ZOOM_STEP = 0.05;
 
 /** Ancho de eje asumido hasta que el kit mide el suyo (SSR y jsdom). */
 const AXIS_FALLBACK = 1100;
@@ -156,18 +149,20 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
   const [tier, setTier] = useState<TierFilter>("all");
   const [offset, setOffset] = useState(0);
   const [selection, setSelection] = useState<{ id: string | null; at: Date | null; target?: string }>(() => ({ id: null, at: null, target }));
+  const [detailClosed, setDetailClosed] = useState(false);
   // A new navigation destination starts a fresh selection, including its filter.
   // Adjust before painting so a hidden target cannot briefly show another series.
   if (selection.target !== target) {
     setSelection({ id: null, at: null, target });
     setTier("all");
+    setDetailClosed(false);
   }
   const picked = selection.target === target ? selection.id : null;
 
-  // Rango y zoom persistidos: se leen una sola vez, al montar.
-  const [range, setRange] = useState<TimelineRange>(() => readTimelinePrefs().range);
-  const [zoom, setZoom] = useState(() => readTimelinePrefs().zoom);
+  const [zoom, setZoom] = useState(1);
   const [axisWidth, setAxisWidth] = useState(AXIS_FALLBACK);
+  const timelineContainer = useRef<HTMLDivElement | null>(null);
+  const currentDaySlot = useRef<HTMLDivElement | null>(null);
 
   const entries = useMemo(() => buildSeriesEntries(calendar), [calendar]);
   const counts = useMemo(() => tierCounts(entries), [entries]);
@@ -175,10 +170,10 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
 
   // El `target` de la navegación preselecciona la serie mientras el usuario no
   // haya elegido otra: llegar desde el dial de Inicio abre ya su detalle.
-  const selectedId =
+  const selectedId = detailClosed ? null :
     picked ?? (target && entries.some((entry) => entry.id === target) ? target : null);
   const selected: RaceSeriesEntry | null =
-    visible.find((entry) => entry.id === selectedId) ?? visible[0] ?? null;
+    visible.find((entry) => entry.id === selectedId) ?? null;
 
   // An explicit instant belongs to its selected series and navigation target.
   // Revalidate against the current publication before displaying it.
@@ -190,6 +185,7 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
 
   const select = useCallback((id: string, at?: Date) => {
     setSelection({ id, at: at ?? null, target });
+    setDetailClosed(false);
   }, [target]);
 
   const changeView = useCallback((next: RacesView) => {
@@ -280,56 +276,76 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
     [clock, view, visible],
   );
   const dayBase = useMemo(() => dayAnchor(clock, offset), [clock, offset]);
+  const dayKey = dayBase.getTime();
+  useEffect(() => {
+    if (view === "day" && offset === 0) currentDaySlot.current?.scrollIntoView?.({ block: "center" });
+  }, [view, offset, dayKey]);
   const hours = useMemo(
     () => (view === "day" ? dayRows(visible, dayBase, clock, calendar?.events ?? [], calendar?.series) : []),
     [calendar?.events, calendar?.series, clock, dayBase, view, visible],
   );
   const monday = useMemo(() => weekAnchor(clock, offset), [clock, offset]);
   const week = useMemo(
-    () => (view === "week" ? weekRows(visible, monday, clock) : []),
+    () => (view === "week" ? weekRows(visible.filter((entry) => entry.eventKind !== "daily"), monday, clock) : []),
     [clock, monday, view, visible],
   );
+  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, index) => dayAnchor(monday, index)), [monday]);
   const first = useMemo(() => monthAnchor(clock, offset), [clock, offset]);
   const month = useMemo(
     () => (view === "month" ? monthDays(visible, first, clock, calendar?.events ?? [], calendar?.series) : []),
     [calendar?.events, calendar?.series, clock, first, view, visible],
   );
-  const tlStart = useMemo(() => timelineStart(clock), [clock]);
+  const tlStart = useMemo(() => new Date(Math.floor(clock.getTime() / 60_000) * 60_000), [clock]);
   const tlRows = useMemo(
-    () => (view === "timeline" ? timelineRows(visible, tlStart) : []),
+    () => (view === "timeline" ? timelineRows(visible, tlStart).filter((row) => row.starts.length > 0) : []),
     [tlStart, view, visible],
   );
 
-  // ── timeline · rango y zoom ────────────────────────────────────────────
-  const pxPerHour = pxPerHourOf(axisWidth, zoom);
-  const minPxPerHour = pxPerHourOf(axisWidth, 1);
-  const maxPxPerHour = pxPerHourOf(axisWidth, 4);
-  const tickEveryMin = tickEveryMinFor(pxPerHour);
+  // Una hora cabe completa; el zoom amplía su eje y habilita desplazamiento.
+  const minPxPerHour = Math.max(1, axisWidth);
+  const pxPerHour = minPxPerHour * zoom;
+  const maxPxPerHour = minPxPerHour * 4;
 
   const applyZoom = useCallback(
     (next: number) => {
-      const value = clampZoom(next);
-      setZoom(value);
-      writeTimelinePrefs({ range, zoom: value });
+      setZoom(clampZoom(next));
     },
-    [range],
+    [],
   );
 
-  const applyRange = useCallback((next: TimelineRange) => {
-    const value = fitZoom(next);
-    setRange(next);
-    setZoom(value);
-    writeTimelinePrefs({ range: next, zoom: value });
+  const stepTimelineZoom = useCallback((direction: -1 | 1) => {
+    setZoom((current) => clampZoom(Math.round((current + direction * TIMELINE_ZOOM_STEP) * 100) / 100));
   }, []);
+
+  useEffect(() => {
+    if (view !== "timeline") return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const shortcut = appZoomShortcut(event);
+      if (shortcut !== "increase" && shortcut !== "decrease") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      stepTimelineZoom(shortcut === "increase" ? 1 : -1);
+    };
+    window.addEventListener("keydown", onKeyDown, { capture: true });
+    return () => window.removeEventListener("keydown", onKeyDown, { capture: true });
+  }, [stepTimelineZoom, view]);
 
   const onAxisWidth = useCallback((px: number) => {
     if (px > 0) setAxisWidth(px);
   }, []);
 
   const onTimelineZoom = useCallback(
-    (nextPx: number) => applyZoom((nextPx / Math.max(1, minPxPerHour)) * 1),
-    [applyZoom, minPxPerHour],
+    (nextPx: number) => setZoom((current) => {
+      const direction = nextPx > current * minPxPerHour ? 1 : -1;
+      return clampZoom(Math.round((current + direction * TIMELINE_ZOOM_STEP) * 100) / 100);
+    }),
+    [minPxPerHour],
   );
+
+  const panTimeline = useCallback((direction: -1 | 1) => {
+    const scroller = timelineContainer.current?.querySelector<HTMLElement>(".orbit-tl");
+    if (scroller) scroller.scrollLeft += direction * pxPerHour / 4;
+  }, [pxPerHour]);
 
   const calendarTitle = (() => {
     if (view === "next") return t("races.nextTitle");
@@ -387,22 +403,29 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
 
   const timelineActions = (
     <span className="orbit-races__tl-controls" data-testid="orbit-races-tl-controls">
-      <Seg
-        className="orbit-races__tl-range"
-        label={t("races.timeline.rangeLabel")}
-        onChange={(value) => applyRange(Number(value) as TimelineRange)}
-        options={TIMELINE_RANGES.map((hours) => ({
-          value: String(hours),
-          label: formatMessage(t("races.timeline.hours"), { n: hours }),
-        }))}
-        value={String(range)}
-      />
+      <button
+        aria-label={t("races.nav.previous")}
+        className="orbit-icon-btn orbit-icon-btn--28"
+        data-testid="orbit-races-pan-left"
+        disabled={zoom === 1}
+        onClick={() => panTimeline(-1)}
+        type="button"
+      >‹</button>
+      <button
+        aria-label={t("races.nav.next")}
+        className="orbit-icon-btn orbit-icon-btn--28"
+        data-testid="orbit-races-pan-right"
+        disabled={zoom === 1}
+        onClick={() => panTimeline(1)}
+        type="button"
+      >›</button>
+      <output className="orbit-races__tl-zoom" aria-live="polite">{Number(zoom.toFixed(2))}×</output>
       <button
         aria-label={t("races.timeline.zoomOut")}
         className="orbit-icon-btn orbit-icon-btn--28"
         data-testid="orbit-races-zoom-out"
         data-tip={t("races.timeline.zoomOut")}
-        onClick={() => applyZoom(zoom / 1.25)}
+        onClick={() => stepTimelineZoom(-1)}
         type="button"
       >
         −
@@ -412,14 +435,14 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
         className="orbit-icon-btn orbit-icon-btn--28"
         data-testid="orbit-races-zoom-in"
         data-tip={t("races.timeline.zoomIn")}
-        onClick={() => applyZoom(zoom * 1.25)}
+        onClick={() => stepTimelineZoom(1)}
         type="button"
       >
         +
       </button>
       <Button
         data-testid="orbit-races-zoom-fit"
-        onClick={() => applyZoom(fitZoom(range))}
+        onClick={() => applyZoom(1)}
         size="sm"
       >
         {t("races.timeline.fit")}
@@ -563,7 +586,7 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
         />
       </header>
 
-      <div className="orbit-races__grid">
+      <div className="orbit-races__grid" data-detail={selected ? "open" : "closed"}>
         <Surface
           actions={
             view === "timeline"
@@ -583,7 +606,7 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
           title={calendarTitle}
         >
           {visible.length === 0 &&
-          !(view === "month" && month.some((cell) => cell.specials.length > 0)) &&
+          !(view === "month" && month.some((cell) => cell.specials.length > 0 || cell.specialSeries.length > 0)) &&
           !(view === "day" && hours.some((hour) => hour.specials.length > 0)) ? (
             <p className="orbit-races__empty">
               {entries.length === 0 ? t("races.empty") : t("races.emptyFiltered")}
@@ -615,6 +638,7 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
                     <button
                       aria-selected={isPickedRow(row.entry.id, row.at)}
                       className="orbit-races__nrow"
+                      data-kind={row.entry.eventKind}
                       data-followed={row.entry.followed ? "true" : undefined}
                       data-testid="orbit-races-next-row"
                       key={`${row.entry.id}-${row.at.getTime()}`}
@@ -622,7 +646,7 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
                       role="option"
                       type="button"
                     >
-                      <i aria-hidden="true" className="orbit-tier-dot" data-tier={row.entry.tier} />
+                      <i aria-hidden="true" className="orbit-tier-dot" data-kind={row.entry.eventKind} data-tier={row.entry.tier} />
                       <span className="orbit-races__nrow-copy">
                         <b>
                           {row.entry.name}
@@ -653,23 +677,23 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
             </div>
           ) : view === "day" ? (
             <div className="orbit-races__day" data-testid="orbit-races-day" role="grid">
-              {hours.map((hour) => (
-                <div className="orbit-races__day-line" key={hour.hour} role="row">
+              {hours.flatMap((hour) => [0, 15, 30, 45].map((minute) => (
+                <div className="orbit-races__day-line" data-testid="orbit-races-day-slot" key={`${hour.hour}-${minute}`} ref={hour.now && Math.floor(clock.getMinutes() / 15) * 15 === minute ? currentDaySlot : undefined} role="row">
                   <span
                     className="orbit-races__day-hour"
-                    data-now={hour.now ? "true" : undefined}
                     role="rowheader"
                   >
-                    {pad2(hour.hour)}:00
+                    {pad2(hour.hour)}:{pad2(minute)}
                   </span>
                   <span
                     className="orbit-races__day-cell"
-                    data-now={hour.now ? "true" : undefined}
                     role="gridcell"
                   >
-                    {hour.events.map((event) => (
+                    {hour.events.filter((event) => Math.floor(event.at.getMinutes() / 15) * 15 === minute).map((event) => (
                       <button
                         className="orbit-races__chip"
+                        data-kind={event.entry.eventKind}
+                        data-occurrence={`${event.entry.id}-${event.at.getTime()}`}
                         data-followed={event.entry.followed ? "true" : undefined}
                         data-past={event.at < clock ? "true" : undefined}
                         data-testid="orbit-races-ev-chip"
@@ -677,41 +701,42 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
                         onClick={() => select(event.entry.id, event.at)}
                         type="button"
                       >
-                        <i aria-hidden="true" className="orbit-tier-dot" data-tier={event.entry.tier} />
-                        <b>:{pad2(event.at.getMinutes())}{repeatedHourOffset(event.at)}</b>
+                        <i aria-hidden="true" className="orbit-tier-dot" data-kind={event.entry.eventKind} data-tier={event.entry.tier} />
+                        <b>{formatStartTime(event.at)}</b>
                         {event.entry.name}
                       </button>
                     ))}
-                    {hour.specials.map(({ event, at }) => (
+                    {hour.specials.filter(({ at }) => Math.floor(at.getMinutes() / 15) * 15 === minute).map(({ event, at }) => (
                       <span
                         className="orbit-races__chip"
+                        data-kind="special"
                         data-past={at < clock ? "true" : undefined}
                         data-testid="orbit-races-special-chip"
                         key={event.id}
                       >
-                        <b>:{pad2(at.getMinutes())}{repeatedHourOffset(at)}</b>
+                        <b>{formatStartTime(at)}</b>
                         {event.title}
                       </span>
                     ))}
                   </span>
                 </div>
-              ))}
+              )))}
             </div>
           ) : view === "week" ? (
             <div className="orbit-races__week" data-testid="orbit-races-week" role="grid">
               <div className="orbit-races__week-row" role="row">
                 <div className="orbit-races__week-head" role="columnheader" />
-                {(week[0]?.cells ?? []).map((cell) => (
-                  <div className="orbit-races__week-head" key={cell.day.getTime()} role="columnheader">
+                {weekDays.map((day) => (
+                  <div className="orbit-races__week-head" key={day.getTime()} role="columnheader">
                     <button
                       className="orbit-races__week-day"
                       data-testid="orbit-races-week-day"
-                      data-today={cell.today ? "true" : undefined}
-                      onClick={() => openDay(cell.day)}
+                      data-today={day.getTime() === dayAnchor(clock, 0).getTime() ? "true" : undefined}
+                      onClick={() => openDay(day)}
                       type="button"
                     >
-                      <span>{weekdayShort(cell.day)}</span>
-                      <b>{cell.day.getDate()}</b>
+                      <span>{weekdayShort(day)}</span>
+                      <b>{day.getDate()}</b>
                     </button>
                   </div>
                 ))}
@@ -724,7 +749,7 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
                     role="rowheader"
                     type="button"
                   >
-                    <i aria-hidden="true" className="orbit-tier-dot" data-tier={row.entry.tier} />
+                    <i aria-hidden="true" className="orbit-tier-dot" data-kind={row.entry.eventKind} data-tier={row.entry.tier} />
                     <b>{row.entry.name}</b>
                   </button>
                   {row.cells.map((cell) => (
@@ -743,6 +768,7 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
                           {cell.slots.map((slot) => (
                             <button
                               className="orbit-races__slot"
+                              data-kind={row.entry.eventKind}
                               data-followed={row.entry.followed ? "true" : undefined}
                               data-past={slot < clock ? "true" : undefined}
                               data-testid="orbit-races-week-slot"
@@ -794,6 +820,13 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
                       role="gridcell"
                     >
                       <button
+                        aria-label={cell.day.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                        className="orbit-races__month-cell-open"
+                        data-testid="orbit-races-month-cell-open"
+                        onClick={() => openDay(cell.day)}
+                        type="button"
+                      />
+                      <button
                         className="orbit-races__month-num"
                         data-testid="orbit-races-month-day"
                         onClick={() => openDay(cell.day)}
@@ -827,8 +860,19 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
                           })}
                         </button>
                       ))}
+                      {cell.specialSeries.slice(0, Math.max(0, MONTH_CHIPS - cell.weekly.length)).map((series) => (
+                        <button
+                          className="orbit-races__mev"
+                          data-kind="special"
+                          key={series.id}
+                          onClick={() => select(series.id)}
+                          type="button"
+                        >
+                          {formatMessage(t("races.month.weekly"), { name: series.name, n: series.slots })}
+                        </button>
+                      ))}
                       {cell.specials
-                        .slice(0, Math.max(0, MONTH_CHIPS - cell.weekly.length))
+                        .slice(0, Math.max(0, MONTH_CHIPS - cell.weekly.length - cell.specialSeries.length))
                         .map((special) => (
                           <button
                             className="orbit-races__mev"
@@ -840,7 +884,7 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
                             {special.title}
                           </button>
                         ))}
-                      {cell.weekly.length + cell.specials.length > MONTH_CHIPS ? (
+                      {cell.weekly.length + cell.specialSeries.length + cell.specials.length > MONTH_CHIPS ? (
                         <button
                           className="orbit-races__mev"
                           data-kind="more"
@@ -849,7 +893,7 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
                           type="button"
                         >
                           {formatMessage(t("races.week.more"), {
-                            n: cell.weekly.length + cell.specials.length - MONTH_CHIPS,
+                            n: cell.weekly.length + cell.specialSeries.length + cell.specials.length - MONTH_CHIPS,
                           })}
                         </button>
                       ) : null}
@@ -859,7 +903,8 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
               ))}
             </div>
           ) : (
-            <div className="orbit-races__timeline" data-testid="orbit-races-timeline">
+            <div className="orbit-races__timeline" data-testid="orbit-races-timeline" ref={timelineContainer}>
+              {tlRows.length === 0 ? <p className="orbit-races__empty">{t("races.timeline.empty")}</p> :
               <HorizontalTimeline
                 blocks={(row): TimelineBlock[] =>
                   row.starts.map((at) => {
@@ -868,20 +913,21 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
                     return {
                       id,
                       start: at,
-                      durationMin: row.blockMin,
-                      color: TIER_COLOR[row.entry.tier],
+                      durationMin: Math.min(row.blockMin, (tlStart.getTime() + TIMELINE_SPAN_MIN * 60_000 - at.getTime()) / 60_000),
+                      color: row.entry.eventKind === "special" ? "var(--orbit-calendar-special)"
+                        : row.entry.eventKind === "weekly" ? "var(--orbit-calendar-weekly)"
+                          : "var(--orbit-calendar-daily)",
                       done: row.entry.followed,
-                      ink: TIER_INK[row.entry.tier],
+                      ink: "dark",
                       label: fits || id === selectedBlockId ? row.entry.name : undefined,
                       tip: `${row.entry.name} · ${formatStartTime(at)}`,
                     };
                   })
                 }
-                headWidth={210}
+                headWidth={190}
                 label={t("races.timelineTitle")}
                 maxPxPerHour={maxPxPerHour}
                 minPxPerHour={minPxPerHour}
-                now={clock}
                 onAxisWidth={onAxisWidth}
                 onBlock={(id) => {
                   const cut = id.lastIndexOf("-");
@@ -892,7 +938,7 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
                 pxPerHour={pxPerHour}
                 rowLabel={(row) => (
                   <>
-                    <i aria-hidden="true" className="orbit-tier-dot" data-tier={row.entry.tier} />
+                    <i aria-hidden="true" className="orbit-tier-dot" data-kind={row.entry.eventKind} data-tier={row.entry.tier} />
                     <span className="orbit-races__tl-copy">
                       <b>{row.entry.name}</b>
                       <span>
@@ -910,13 +956,20 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
                 selected={selectedBlockId}
                 spanMin={TIMELINE_SPAN_MIN}
                 start={tlStart}
-                tickEveryMin={tickEveryMin}
-              />
+                tickEveryMin={15}
+              />}
             </div>
           )}
         </Surface>
 
-        <Surface
+        {selected ? <Surface
+          actions={<button
+            aria-label={t("races.detail.close")}
+            className="orbit-icon-btn orbit-icon-btn--28"
+            data-testid="orbit-races-detail-close"
+            onClick={() => { setSelection({ id: null, at: null, target }); setDetailClosed(true); }}
+            type="button"
+          >×</button>}
           aria-label={t("races.detail.title")}
           as="aside"
           className="orbit-races__detail"
@@ -1019,7 +1072,7 @@ export function RacesOrbitPage({ calendar, target, now, refreshState = "idle", c
               )}
             </div>
           )}
-        </Surface>
+        </Surface> : null}
       </div>
     </div>
   );

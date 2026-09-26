@@ -202,6 +202,7 @@ func builderBatch(count int, sequence uint64) core.Batch {
 	vehicles[0].Clutch = builderPresent(schema.Ratio(0))
 	vehicles[0].Fuel = builderPresent(energy.Fuel{Amount: 42, Capacity: 100})
 	vehicles[0].Damage = builderPresent(damage.State{Dents: [8]damage.Severity{1, 2, 3, 4, 5, 6, 7, 8}, Overheating: false, Detached: false, WheelDetachedCount: 0})
+	vehicles[0].TyreWear = builderPresent([4]float64{0.98, 0.91, 0.87, 0.93})
 	received := time.Date(2026, 8, 19, 12, 0, 0, 0, time.UTC).Add(time.Duration(sequence) * time.Second)
 	sourceTime := builderPresent(time.Duration(sequence) * time.Second)
 	return core.Batch{
@@ -211,7 +212,8 @@ func builderBatch(count int, sequence uint64) core.Batch {
 		},
 		State: core.ObservedState{
 			SourceTime: sourceTime, EndTime: builderPresent(session.EndTime(7200)), MaximumLaps: builderPresent(session.MaximumLaps(0)),
-			TrackName: builderPresent("Sebring"), SessionType: builderPresent(session.TypeRace),
+			TrackLength: builderPresent(standings.LapDistance(float64(count) * 42.5)),
+			TrackName:   builderPresent("Sebring"), SessionType: builderPresent(session.TypeRace),
 			VehicleCount: builderPresent(schema.Count(count)), PlayerPresent: builderPresent(true), Vehicles: vehicles,
 		},
 	}

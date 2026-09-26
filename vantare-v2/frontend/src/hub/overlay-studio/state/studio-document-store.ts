@@ -16,6 +16,7 @@ import {
   markStudioHistorySaved,
   redoStudioHistory,
   undoStudioHistory,
+  documentsEqual,
   type StudioHistory,
 } from "./studio-history";
 import { StudioCommandError, type StudioCommand } from "./studio-command";
@@ -155,8 +156,7 @@ export function createStudioStore(seed: StudioSeed): StudioStore {
       const freshEqualsSeed =
         seeded &&
         !editedSinceCache &&
-        JSON.stringify(currentSeed!.history.present) ===
-          JSON.stringify(initial.history.present);
+        documentsEqual(currentSeed!.history.present, initial.history.present);
       if (freshEqualsSeed) {
         setState({
           revision: loaded.revision,

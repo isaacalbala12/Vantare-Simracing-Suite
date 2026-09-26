@@ -121,29 +121,17 @@
    El fondo no se interpola: así el estado seleccionado tampoco espera los
    130 ms del token global para resultar legible. */
 .orbit-rail__button:active:not([disabled]) {
-  background: rgba(213, 47, 73, 0.16);
-  color: #fff;
-  box-shadow: inset 0 0 0 1px rgba(240, 71, 85, 0.28);
+  background: rgba(var(--orbit-accent-rgb), 0.16);
+  color: var(--orbit-ink);
+  box-shadow: inset 0 0 0 1px rgba(var(--orbit-accent-rgb), 0.28);
   transform: scale(0.94);
   transition-duration: 0s;
 }
 
 .orbit-rail__button[aria-current="page"] {
-  color: #fff;
-  background: linear-gradient(135deg, rgba(213, 47, 73, 0.24), rgba(255, 106, 95, 0.07));
-  box-shadow: inset 0 0 0 1px rgba(240, 71, 85, 0.22);
-}
-
-/* barra izquierda 3×19 del estado activo */
-.orbit-rail__button[aria-current="page"]::before {
-  content: "";
-  position: absolute;
-  left: -10px;
-  width: 3px;
-  height: 19px;
-  border-radius: 0 5px 5px 0;
-  background: var(--orbit-red);
-  box-shadow: var(--orbit-glow-active);
+  color: var(--orbit-ink);
+  background: linear-gradient(135deg, rgba(var(--orbit-accent-rgb), 0.24), rgba(var(--orbit-accent-rgb), 0.07));
+  box-shadow: inset 0 0 0 1px rgba(var(--orbit-accent-rgb), 0.22);
 }
 
 .orbit-rail__button--locked {
@@ -282,20 +270,8 @@
 }
 
 .orbit-column__version {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   color: var(--orbit-ink-4);
   font: 11px var(--orbit-font-mono);
-}
-
-.orbit-column__version i {
-  width: 6.5px;
-  height: 6.5px;
-  border-radius: 50%;
-  background: var(--orbit-green);
-  box-shadow: 0 0 10px currentColor;
-  color: var(--orbit-green);
 }
 
 .orbit-column__collapse {
@@ -397,7 +373,7 @@
 
 .orbit-row:hover .orbit-row__copy b,
 .orbit-row--sel .orbit-row__copy b {
-  color: #fff;
+  color: var(--orbit-ink);
 }
 
 .orbit-when {
@@ -468,7 +444,7 @@
 .orbit-row:hover .orbit-play,
 .orbit-play:hover {
   color: #fff;
-  background: rgba(213, 47, 73, 0.2);
+  background: rgba(var(--orbit-accent-rgb), 0.2);
 }
 
 .orbit-state-chip {
@@ -503,7 +479,7 @@
   transition: var(--orbit-fast) var(--orbit-ease);
 }
 
-button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
+button.orbit-pill:hover { color: #fff; border-color: rgba(var(--orbit-accent-rgb), 0.25); }
 
 .orbit-pill[data-s="disconnected"] { color: var(--orbit-ink-4); }
 
@@ -547,7 +523,7 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
 }
 
 .orbit-btn--sm { height: var(--orbit-control-h-sm); }
-.orbit-btn:hover:not([disabled]) { color: #fff; background: rgba(255, 255, 255, 0.05); }
+.orbit-btn:hover:not([disabled]) { color: var(--orbit-ink); background: var(--orbit-surface-2); }
 .orbit-btn[disabled] { cursor: default; opacity: 0.55; }
 
 .orbit-btn--primary {
@@ -556,9 +532,9 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
   color: var(--orbit-primary-ink);
   box-shadow: var(--orbit-shadow-primary);
 }
-.orbit-btn--primary:hover:not([disabled]) { color: var(--orbit-primary-ink); background: #fff; }
+.orbit-btn--primary:hover:not([disabled]) { color: #fff; background: var(--orbit-carmine); }
 
-.orbit-btn--danger { color: var(--orbit-red); border-color: rgba(240, 71, 85, 0.3); }
+.orbit-btn--danger { color: var(--orbit-danger); border-color: rgba(var(--orbit-danger-rgb), 0.3); }
 
 .orbit-btn__dot {
   width: 6px;
@@ -659,15 +635,14 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
   align-items: center;
 }
 
-.orbit-update-news__panel {
+.orbit-update-news__panel,
+.orbit-notifications__panel {
   position: absolute;
   top: 100%;
   right: 0;
   z-index: var(--orbit-z-menu);
-  width: 380px;
   max-height: min(60vh, 520px);
   margin-top: 8px;
-  padding: 14px 15px 12px;
   overflow-y: auto;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 14px;
@@ -677,6 +652,16 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
   font-size: 12px;
   line-height: 1.5;
   text-align: left;
+}
+
+.orbit-update-news__panel {
+  width: 380px;
+  padding: 14px 15px 12px;
+}
+
+.orbit-notifications__panel {
+  width: 360px;
+  padding: 12px;
 }
 
 .orbit-update-news__panel::before {
@@ -762,6 +747,165 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
   margin: 12px 0 0;
   color: var(--orbit-ink-muted);
   font-size: 10.5px;
+}
+
+/* Centro de notificaciones (ISA-901): campana con badge en la topbar y panel
+   de avisos recientes. Misma superficie y sombra que el panel de novedades;
+   se abre por clic (no por hover) porque la lista es accionable. */
+.orbit-notifications {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.orbit-notifications__bell {
+  position: relative;
+  display: flex;
+}
+
+.orbit-notifications__badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--orbit-ember);
+  color: #16130c;
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 15px;
+  text-align: center;
+  pointer-events: none;
+}
+
+.orbit-notifications__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.orbit-notifications__title {
+  margin: 0;
+  color: var(--orbit-ink-4);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.orbit-notifications__tools {
+  display: flex;
+  gap: 4px;
+}
+
+.orbit-notifications__tool {
+  border: 0;
+  border-radius: 6px;
+  padding: 3px 7px;
+  background: transparent;
+  color: var(--orbit-ink-3);
+  font: inherit;
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.orbit-notifications__tool:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--orbit-ink);
+}
+
+.orbit-notifications__tool:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.orbit-notifications__empty {
+  margin: 6px 0;
+  color: var(--orbit-ink-muted);
+  font-size: 11px;
+}
+
+.orbit-notifications__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.orbit-notifications__list li + li {
+  margin-top: 4px;
+}
+
+.orbit-notifications__record {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  padding: 8px 9px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.orbit-notifications__record:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.orbit-notifications__dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.orbit-notifications__record.is-unread .orbit-notifications__dot {
+  background: var(--orbit-ember);
+}
+
+.orbit-notifications__record--error .orbit-notifications__dot {
+  background: #e0604f;
+}
+
+.orbit-notifications__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.orbit-notifications__record-title {
+  color: var(--orbit-ink);
+  font-weight: 600;
+}
+
+.orbit-notifications__record.is-unread .orbit-notifications__record-title {
+  color: var(--orbit-ink-4);
+}
+
+.orbit-notifications__text {
+  color: var(--orbit-ink-3);
+}
+
+.orbit-notifications__cause {
+  color: var(--orbit-ink-muted);
+  font-size: 10.5px;
+  overflow-wrap: anywhere;
+}
+
+.orbit-notifications__time {
+  flex: none;
+  margin-left: auto;
+  color: var(--orbit-ink-muted);
+  font-size: 10px;
 }
 
 .orbit-workspace {
@@ -899,7 +1043,7 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
 .orbit-palette__item:hover,
 .orbit-palette__item[data-selected="true"] {
   color: #fff;
-  background: linear-gradient(90deg, rgba(213, 47, 73, 0.14), rgba(213, 47, 73, 0.025));
+  background: linear-gradient(90deg, rgba(var(--orbit-accent-rgb), 0.14), rgba(var(--orbit-accent-rgb), 0.025));
 }
 
 .orbit-palette__item--locked { color: var(--orbit-ink-4); }
@@ -911,7 +1055,7 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(240, 71, 85, 0.25); }
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: rgba(213, 47, 73, 0.09);
+  background: rgba(var(--orbit-accent-rgb), 0.09);
   color: var(--orbit-coral);
 }
 

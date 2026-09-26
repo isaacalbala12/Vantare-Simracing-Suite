@@ -1,5 +1,22 @@
 # Handoff vivo — Strategy Planner
 
+## T22 · arnés visual v5 revalidado (2026-09-26)
+
+En la reconciliación `594c7ad4`, el navegador interno confirmó las pantallas
+de origen, preparación, reglas, Manual y Carrera con el mock señalado como tal.
+El contorno de Imola GP sigue ausente porque el harness usa `Imola`/`GP` y el
+catálogo sólo certifica el nombre LMU completo; E02 debe contrastar la identidad
+que entregue la sesión real, sin inventar un alias. La escala HTML de 0,911
+explica las anchuras internas observadas a 1280 px; no se reprodujo un
+desbordamiento físico del inspector.
+
+El script visual ya no exige un aviso de descarte al abrir un borrador intacto
+y permite escribir sus capturas fuera del repo. El recorrido corto de práctica
+y aceptación pasó; la matriz completa produjo 128 capturas temporales y 20
+variantes responsive ES/EN/PT/IT, sin errores ni fallos de anchura. Artefactos
+locales: `C:\tmp\strategy-visual-reconcile-20260926`. Esto es evidencia del
+arnés, no del backend Wails, DuckDB real ni aceptación visual humana.
+
 ## #1393/#1397 · reconciliación local con Nightly (2026-09-26)
 
 La rama aislada `vantareapp/isa-1393-nightly-reconcile` parte del candidato

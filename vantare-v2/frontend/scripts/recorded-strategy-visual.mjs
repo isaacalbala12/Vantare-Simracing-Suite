@@ -9,7 +9,7 @@ import { settle, stillPage } from './lib/orbit-still.mjs';
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const evidence = path.resolve(frontend, '../docs/strategy-planner/evidence/isa-1277-visual');
 const pass = process.env.RECORDED_VISUAL_PASS ?? 'pass-01';
-const output = path.join(evidence, pass);
+const output = process.env.RECORDED_VISUAL_OUTPUT ? path.resolve(process.env.RECORDED_VISUAL_OUTPUT) : path.join(evidence, pass);
 const port = Number.parseInt(process.env.RECORDED_VISUAL_PORT ?? '5208', 10);
 const baseUrl = `http://127.0.0.1:${port}/recorded-strategy-harness.html`;
 const clock = new Date('2026-09-15T12:05:00Z');
@@ -67,8 +67,7 @@ async function openSaved(page) {
   const open = page.locator('[data-testid="strategy-entry-saved"] section button').first();
   await open.waitFor(); await open.click();
   const dialog = page.getByRole('alertdialog');
-  await dialog.waitFor();
-  await dialog.getByRole('button').last().click();
+  if (await dialog.isVisible()) await dialog.getByRole('button').last().click();
   await page.locator('#recorded-tab-race').waitFor();
   await settle(page);
 }

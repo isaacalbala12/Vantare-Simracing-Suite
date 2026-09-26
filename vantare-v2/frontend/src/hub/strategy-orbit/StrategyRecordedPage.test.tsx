@@ -36,7 +36,7 @@ function setup(options?: { delayLibrary?: boolean; plans?: StrategyApplicationRe
 }
 it("opens manual preparation and saves a draft without invoking live or calculation commands", async () => {
   const { execute } = setup();
-  const manual = await screen.findByRole("button", { name: /strategy.entry.startManual/ });
+  const manual = (await screen.findAllByRole("button", { name: /strategy.entry.startManual/ }))[0];
   await waitFor(() => expect((manual as HTMLButtonElement).disabled).toBe(false));
   fireEvent.click(manual);
   expect(screen.queryByRole("combobox", { name: "strategy.journey.car" })).toBeNull();
@@ -74,7 +74,7 @@ it("keeps the unsaved menu draft when direct saved opening is cancelled, then re
   fireEvent.click(open);
   expect(screen.getByRole("alertdialog")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.cancel" }));
-  expect(screen.getByRole("button", { name: /strategy.entry.startManual/ })).toBeTruthy();
+  expect(screen.getAllByRole("button", { name: /strategy.entry.startManual/ })).toHaveLength(2);
   expect(execute.mock.calls.some(([command]) => command.operation === "open")).toBe(false);
   fireEvent.click(open);
   fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.leave" }));
@@ -111,7 +111,7 @@ it("prevents a pending reopen from replacing a newly started preparation", async
 });
 it("keeps preparation editable but waits for the native repository version before offering to save", async () => {
   const { execute, releaseLibrary } = setup({ delayLibrary: true });
-  const manual = await screen.findByRole("button", { name: /strategy.entry.startManual/ });
+  const manual = (await screen.findAllByRole("button", { name: /strategy.entry.startManual/ }))[0];
   await waitFor(() => expect((manual as HTMLButtonElement).disabled).toBe(false));
   fireEvent.click(manual);
   fireEvent.click((await screen.findAllByRole("button", { name: /strategy.entry.changeCombination/ }))[0]);

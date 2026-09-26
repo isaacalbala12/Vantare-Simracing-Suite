@@ -34,7 +34,7 @@ it("discovers recent candidates after StrictMode replays the mount effect", asyn
 it("returns from the origin menu to the existing manual preparation", async () => {
   const { discover } = setup();
   await waitFor(() => expect(discover).toHaveBeenCalledOnce());
-  const manual = await screen.findByRole<HTMLButtonElement>("button", { name: /strategy.entry.startManual/ });
+  const manual = (await screen.findAllByRole<HTMLButtonElement>("button", { name: /strategy.entry.startManual/ }))[0];
   await waitFor(() => expect(manual.disabled).toBe(false));
   fireEvent.click(manual);
   fireEvent.change(await screen.findByRole("spinbutton", { name: "strategy.entry.input.paceSeconds" }), { target: { value: "91" } });
@@ -45,7 +45,7 @@ it("returns from the origin menu to the existing manual preparation", async () =
 it("edits manual references in the race desk without requesting telemetry", async () => {
   const combination = { combinationId: "lmu:imola", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Car", carClass: "LMP2" };
   setup(7, false, [combination]);
-  const manual = await screen.findByRole<HTMLButtonElement>("button", { name: /strategy.entry.startManual/ });
+  const manual = (await screen.findAllByRole<HTMLButtonElement>("button", { name: /strategy.entry.startManual/ }))[0];
   await waitFor(() => expect(manual.disabled).toBe(false));
   fireEvent.click(manual);
   const context = await screen.findByRole("complementary", { name: "strategy.entry.circuitAndSource" });
@@ -73,7 +73,7 @@ it("adds a second verified session from the desk library without replacing the f
   vi.mocked(openRecordedSession).mockImplementation(async (_client, id) => id === second.id
     ? { ...session, candidateId: second.id, opened: { ...session.opened, sessionId: "handle-b" }, base: { ...session.base, sessionId: "source-b" }, revision: { ...session.revision, sessionId: "source-b" } }
     : session);
-  fireEvent.click(screen.getByRole("button", { name: "strategy.entry.openTelemetry" }));
+  fireEvent.click(screen.getAllByRole("button", { name: "strategy.entry.openTelemetry" })[0]);
   fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.discover" }));
   const library = screen.getByTestId("strategy-recorded-source-screen");
   const first = await within(library).findAllByRole("button", { name: "strategy.entry.useSession" });
@@ -113,7 +113,7 @@ it("opens the race desk at the editable race when preparation is incomplete", as
 });
 it("asks before discarding an unsaved manual preparation", async () => {
   const { onExit } = setup();
-  const manual = await screen.findByRole<HTMLButtonElement>("button", { name: /strategy.entry.startManual/ });
+  const manual = (await screen.findAllByRole<HTMLButtonElement>("button", { name: /strategy.entry.startManual/ }))[0];
   await waitFor(() => expect(manual.disabled).toBe(false));
   fireEvent.click(manual);
   expect(await screen.findByRole("heading", { name: "strategy.entry.yourRace" })).toBeTruthy();
@@ -153,7 +153,7 @@ function inspectionJourney() {
   return { ...view, execute, close, load, save, resolve, project, buildResponse, partial, current, drafts };
 }
 async function advanceToCombination() {
-  fireEvent.click(screen.getByRole("button", { name: "strategy.entry.openTelemetry" }));
+  fireEvent.click(screen.getAllByRole("button", { name: "strategy.entry.openTelemetry" })[0]);
   await screen.findByRole("button", { name: "strategy.recorded.discover" });
 }
 async function discoverAndOpen() {

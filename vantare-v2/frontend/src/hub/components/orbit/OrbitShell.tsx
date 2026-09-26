@@ -59,7 +59,6 @@ import {
   LAUNCHER_TOPBAR_SLOT_ID,
   RACES_CONTEXT_SLOT_ID,
   RACES_TOPBAR_SLOT_ID,
-  ROADMAP_CONTEXT_SLOT_ID,
   SETTINGS_CONTEXT_SLOT_ID,
   STRATEGY_CONTEXT_SLOT_ID,
   TELEMETRY_CONTEXT_SLOT_ID,
@@ -494,8 +493,6 @@ function OrbitShellBody({
       <div className="orbit-column__slot" id={STRATEGY_CONTEXT_SLOT_ID} />
     ) : activeView === 'telemetria' ? (
       <div className="orbit-column__slot" id={TELEMETRY_CONTEXT_SLOT_ID} />
-    ) : activeView === 'roadmap' ? (
-      <div className="orbit-column__slot" id={ROADMAP_CONTEXT_SLOT_ID} />
     ) : activeView === 'ajustes' ? (
       // En Ajustes la columna es solo la navegación de secciones: los bloques
       // persistentes ya los oculta `ContextColumn` (briefing 01).
@@ -695,7 +692,7 @@ function OrbitShellBody({
                 ) : activeView === 'telemetria' ? (
                   <TelemetryOrbitPage />
                 ) : activeView === 'roadmap' ? (
-                  <RoadmapOrbitPage channel={testingCenterChannel ?? 'stable'} />
+                  <RoadmapOrbitPage />
                 ) : activeView === 'ajustes' ? (
                   <SettingsOrbitPage target={navTarget} />
                 ) : activeView === 'testing' && testingCenterChannel ? (

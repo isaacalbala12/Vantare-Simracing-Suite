@@ -15,8 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Source order: vantare-v2/docs/roadmap/roadmap.json first, then the
-      # repository's open GitHub milestones, then an honest "no news" embed.
+      # Open GitHub milestones, then an honest "no news" embed.
       - name: Build development digest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

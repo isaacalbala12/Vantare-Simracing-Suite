@@ -1,0 +1,297 @@
+/* Paletas adicionales de Command Orbit. Cada par comparte acento, pero tiene
+   superficies y tintas propias para conservar la legibilidad en ambos modos. */
+:root:is([data-ui-palette="rose"], [data-ui-palette="grove"], [data-ui-palette="ember"], [data-ui-palette="mono"]) {
+  --orbit-featured-border: linear-gradient(115deg, rgba(var(--orbit-accent-rgb),.55), rgba(var(--orbit-accent-rgb),.18), var(--orbit-line));
+  --orbit-brand-gradient: linear-gradient(145deg, var(--orbit-coral), var(--orbit-carmine) 62%, var(--orbit-wine));
+  --orbit-selection-bg: linear-gradient(90deg, rgba(var(--orbit-accent-rgb),.2), rgba(var(--orbit-accent-rgb),.025));
+  --orbit-glow-active: 0 0 13px rgba(var(--orbit-accent-rgb),.5);
+}
+
+:root:is([data-ui-palette="rose"], [data-ui-palette="grove"], [data-ui-palette="ember"], [data-ui-palette="mono"])[data-ui-resolved-scheme="light"] {
+  --orbit-featured-border: linear-gradient(115deg, rgba(var(--orbit-accent-rgb),.4), rgba(var(--orbit-accent-rgb),.12), var(--orbit-line));
+  --orbit-selection-bg: linear-gradient(90deg, rgba(var(--orbit-accent-rgb),.13), rgba(var(--orbit-accent-rgb),.025));
+  --orbit-glow-active: 0 0 0 3px rgba(var(--orbit-accent-rgb),.2);
+}
+
+:root[data-ui-palette="rose"] {
+  --orbit-canvas: #1b1119;
+  --orbit-surface-0: #241720;
+  --orbit-surface-1: #2b1c28;
+  --orbit-surface-2: #352333;
+  --orbit-surface-3: #432d40;
+  --orbit-rail-bg: #1d131b;
+  --orbit-column-bg: #241822;
+  --orbit-panel-bg: rgba(40,26,37,.83);
+  --orbit-topbar-bg: rgba(27,17,25,.86);
+  --orbit-featured-bg: linear-gradient(#382437, #271a28);
+  --orbit-ink: #fff3f9;
+  --orbit-ink-2: #e1bbd0;
+  --orbit-ink-3: #c29ab1;
+  --orbit-ink-4: #ad88a0;
+  --orbit-ink-muted: #957489;
+  --orbit-line: rgba(255,208,235,.12);
+  --orbit-line-strong: rgba(255,208,235,.2);
+  --orbit-line-row: rgba(255,208,235,.08);
+  --orbit-carmine: #e163a3;
+  --orbit-accent-rgb: 225, 99, 163;
+  --orbit-red: #f184ba;
+  --orbit-coral: #ffb1d4;
+  --orbit-wine: #823554;
+  --orbit-primary-bg: #ffe1ef;
+  --orbit-primary-ink: #311525;
+}
+
+:root[data-ui-palette="rose"][data-ui-resolved-scheme="light"] {
+  --orbit-canvas: #fff7fa;
+  --orbit-surface-0: #fff;
+  --orbit-surface-1: #f9eaf2;
+  --orbit-surface-2: #f2dce8;
+  --orbit-surface-3: #e9c9da;
+  --orbit-rail-bg: #f8e9f1;
+  --orbit-column-bg: #fcf1f6;
+  --orbit-panel-bg: rgba(255,255,255,.88);
+  --orbit-topbar-bg: rgba(255,247,250,.88);
+  --orbit-featured-bg: linear-gradient(#fff, #f9eaf2);
+  --orbit-ink: #39212f;
+  --orbit-ink-2: #63495a;
+  --orbit-ink-3: #785e6f;
+  --orbit-ink-4: #876c7d;
+  --orbit-ink-muted: #9c8292;
+  --orbit-line: rgba(70,30,53,.13);
+  --orbit-line-strong: rgba(70,30,53,.22);
+  --orbit-line-row: rgba(70,30,53,.09);
+  --orbit-carmine: #a8316c;
+  --orbit-accent-rgb: 168, 49, 108;
+  --orbit-red: #b8437a;
+  --orbit-coral: #c35c8d;
+  --orbit-wine: #713050;
+  --orbit-primary-bg: #a8316c;
+  --orbit-primary-ink: #fff;
+}
+
+:root[data-ui-palette="grove"] {
+  --orbit-canvas: #101a15;
+  --orbit-surface-0: #16221b;
+  --orbit-surface-1: #1b2b22;
+  --orbit-surface-2: #23352a;
+  --orbit-surface-3: #2e4435;
+  --orbit-rail-bg: #111e17;
+  --orbit-column-bg: #17251d;
+  --orbit-panel-bg: rgba(24,41,31,.83);
+  --orbit-topbar-bg: rgba(16,26,21,.86);
+  --orbit-featured-bg: linear-gradient(#253d2e, #1a2a20);
+  --orbit-ink: #f1fbf2;
+  --orbit-ink-2: #bddbc5;
+  --orbit-ink-3: #98bea3;
+  --orbit-ink-4: #83ab8d;
+  --orbit-ink-muted: #6d9477;
+  --orbit-line: rgba(202,241,210,.12);
+  --orbit-line-strong: rgba(202,241,210,.2);
+  --orbit-line-row: rgba(202,241,210,.08);
+  --orbit-carmine: #64bd88;
+  --orbit-accent-rgb: 100, 189, 136;
+  --orbit-red: #83d7a2;
+  --orbit-coral: #b0e9be;
+  --orbit-wine: #285d42;
+  --orbit-primary-bg: #daf5df;
+  --orbit-primary-ink: #173222;
+}
+
+:root[data-ui-palette="grove"][data-ui-resolved-scheme="light"] {
+  --orbit-canvas: #f5faf5;
+  --orbit-surface-0: #fff;
+  --orbit-surface-1: #eaf4ec;
+  --orbit-surface-2: #dcebdd;
+  --orbit-surface-3: #c9dfcd;
+  --orbit-rail-bg: #e9f3eb;
+  --orbit-column-bg: #f0f7f1;
+  --orbit-panel-bg: rgba(255,255,255,.88);
+  --orbit-topbar-bg: rgba(245,250,245,.88);
+  --orbit-featured-bg: linear-gradient(#fff, #eaf4ec);
+  --orbit-ink: #193125;
+  --orbit-ink-2: #3e5c48;
+  --orbit-ink-3: #56715d;
+  --orbit-ink-4: #64806a;
+  --orbit-ink-muted: #819a86;
+  --orbit-line: rgba(25,66,39,.13);
+  --orbit-line-strong: rgba(25,66,39,.22);
+  --orbit-line-row: rgba(25,66,39,.09);
+  --orbit-carmine: #26714d;
+  --orbit-accent-rgb: 38, 113, 77;
+  --orbit-red: #318359;
+  --orbit-coral: #428d66;
+  --orbit-wine: #1c563a;
+  --orbit-primary-bg: #26714d;
+  --orbit-primary-ink: #fff;
+}
+
+:root[data-ui-palette="ember"] {
+  --orbit-canvas: #1d1511;
+  --orbit-surface-0: #281c17;
+  --orbit-surface-1: #30221b;
+  --orbit-surface-2: #3b2a20;
+  --orbit-surface-3: #49352a;
+  --orbit-rail-bg: #211711;
+  --orbit-column-bg: #281d17;
+  --orbit-panel-bg: rgba(45,31,24,.83);
+  --orbit-topbar-bg: rgba(29,21,17,.86);
+  --orbit-featured-bg: linear-gradient(#3c2b22, #2a1e18);
+  --orbit-ink: #fff6ed;
+  --orbit-ink-2: #e2c9b3;
+  --orbit-ink-3: #c5a98f;
+  --orbit-ink-4: #b99a7f;
+  --orbit-ink-muted: #987f6d;
+  --orbit-line: rgba(255,223,191,.12);
+  --orbit-line-strong: rgba(255,223,191,.2);
+  --orbit-line-row: rgba(255,223,191,.08);
+  --orbit-carmine: #de985e;
+  --orbit-accent-rgb: 222, 152, 94;
+  --orbit-red: #f0ad72;
+  --orbit-coral: #f9c99a;
+  --orbit-wine: #865339;
+  --orbit-primary-bg: #fbe5ca;
+  --orbit-primary-ink: #352217;
+}
+
+:root[data-ui-palette="ember"][data-ui-resolved-scheme="light"] {
+  --orbit-canvas: #fdf8f3;
+  --orbit-surface-0: #fff;
+  --orbit-surface-1: #f7eee4;
+  --orbit-surface-2: #efdfcf;
+  --orbit-surface-3: #e5ceb8;
+  --orbit-rail-bg: #f6ecdf;
+  --orbit-column-bg: #fbf3e9;
+  --orbit-panel-bg: rgba(255,255,255,.88);
+  --orbit-topbar-bg: rgba(253,248,243,.88);
+  --orbit-featured-bg: linear-gradient(#fff, #f7eee4);
+  --orbit-ink: #38291d;
+  --orbit-ink-2: #614e3c;
+  --orbit-ink-3: #7a6652;
+  --orbit-ink-4: #8b745e;
+  --orbit-ink-muted: #9d8976;
+  --orbit-line: rgba(75,48,24,.13);
+  --orbit-line-strong: rgba(75,48,24,.22);
+  --orbit-line-row: rgba(75,48,24,.09);
+  --orbit-carmine: #a65b30;
+  --orbit-accent-rgb: 166, 91, 48;
+  --orbit-red: #b76a39;
+  --orbit-coral: #c47e48;
+  --orbit-wine: #784426;
+  --orbit-primary-bg: #a65b30;
+  --orbit-primary-ink: #fff;
+}
+
+/* Todos los tokens cromáticos, incluidos los semánticos, son neutros. */
+:root[data-ui-palette="mono"] {
+  --orbit-canvas: #111111;
+  --orbit-surface-0: #191919;
+  --orbit-surface-1: #222222;
+  --orbit-surface-2: #2c2c2c;
+  --orbit-surface-3: #383838;
+  --orbit-rail-bg: #151515;
+  --orbit-column-bg: #1c1c1c;
+  --orbit-panel-bg: rgba(33,33,33,.83);
+  --orbit-topbar-bg: rgba(17,17,17,.86);
+  --orbit-featured-bg: linear-gradient(#303030, #202020);
+  --orbit-ink: #f4f4f4;
+  --orbit-ink-2: #d0d0d0;
+  --orbit-ink-3: #ababab;
+  --orbit-ink-4: #999999;
+  --orbit-ink-muted: #808080;
+  --orbit-line: rgba(255,255,255,.12);
+  --orbit-line-strong: rgba(255,255,255,.2);
+  --orbit-line-row: rgba(255,255,255,.08);
+  --orbit-carmine: #bdbdbd;
+  --orbit-accent-rgb: 189, 189, 189;
+  --orbit-red: #d0d0d0;
+  --orbit-danger: #e0e0e0;
+  --orbit-danger-rgb: 224, 224, 224;
+  --orbit-coral: #e4e4e4;
+  --orbit-ember: #c4c4c4;
+  --orbit-wine: #666666;
+  --orbit-green: #cecece;
+  --orbit-cyan: #c6c6c6;
+  --orbit-cyan-soft: #d8d8d8;
+  --orbit-tier-bronze: #a5a5a5;
+  --orbit-tier-silver: #c9c9c9;
+  --orbit-tier-gold: #e0e0e0;
+  --orbit-tyre-soft: #b5b5b5;
+  --orbit-tyre-medium: #cecece;
+  --orbit-tyre-hard: #e6e6e6;
+  --orbit-primary-bg: #e8e8e8;
+  --orbit-primary-ink: #171717;
+}
+
+:root[data-ui-palette="mono"][data-ui-resolved-scheme="light"] {
+  --orbit-canvas: #f5f5f5;
+  --orbit-surface-0: #fff;
+  --orbit-surface-1: #ececec;
+  --orbit-surface-2: #dfdfdf;
+  --orbit-surface-3: #cecece;
+  --orbit-rail-bg: #ebebeb;
+  --orbit-column-bg: #f1f1f1;
+  --orbit-panel-bg: rgba(255,255,255,.88);
+  --orbit-topbar-bg: rgba(245,245,245,.88);
+  --orbit-featured-bg: linear-gradient(#fff, #ececec);
+  --orbit-ink: #1d1d1d;
+  --orbit-ink-2: #484848;
+  --orbit-ink-3: #606060;
+  --orbit-ink-4: #707070;
+  --orbit-ink-muted: #858585;
+  --orbit-line: rgba(30,30,30,.14);
+  --orbit-line-strong: rgba(30,30,30,.24);
+  --orbit-line-row: rgba(30,30,30,.1);
+  --orbit-carmine: #555555;
+  --orbit-accent-rgb: 85, 85, 85;
+  --orbit-red: #494949;
+  --orbit-danger: #3a3a3a;
+  --orbit-danger-rgb: 58, 58, 58;
+  --orbit-coral: #777777;
+  --orbit-ember: #707070;
+  --orbit-wine: #353535;
+  --orbit-green: #4c4c4c;
+  --orbit-cyan: #515151;
+  --orbit-cyan-soft: #636363;
+  --orbit-tier-bronze: #656565;
+  --orbit-tier-silver: #8a8a8a;
+  --orbit-tier-gold: #505050;
+  --orbit-tyre-soft: #999999;
+  --orbit-tyre-medium: #777777;
+  --orbit-tyre-hard: #555555;
+  --orbit-primary-bg: #393939;
+  --orbit-primary-ink: #fff;
+}
+
+:root[data-ui-palette="mono"] .orbit-set-theme-card:not(:has(.orbit-set-theme[data-testid="orbit-settings-theme-mono"])) .orbit-set-theme {
+  filter: grayscale(1);
+}
+
+/* Inicio comparte estos colores con el resto de la interfaz. */
+.orbit-home .orbit-next-race {
+  border-color: var(--orbit-line-strong);
+  background: linear-gradient(
+    145deg,
+    color-mix(in srgb, var(--orbit-carmine) 28%, var(--orbit-surface-1)),
+    color-mix(in srgb, var(--orbit-carmine) 12%, var(--orbit-surface-0))
+  );
+  box-shadow: var(--orbit-shadow-featured), var(--orbit-inset-glass);
+  color: var(--orbit-ink);
+}
+
+.orbit-home .orbit-next-race__eyebrow,
+.orbit-home .orbit-next-race__time {
+  color: var(--orbit-coral);
+}
+
+.orbit-home .orbit-next-race__meta {
+  color: var(--orbit-ink-2);
+}
+
+.orbit-home .orbit-next-race__open {
+  background: var(--orbit-surface-2);
+  color: var(--orbit-ink);
+}
+
+.orbit-home .orbit-next-race__open:hover {
+  background: var(--orbit-surface-3);
+}

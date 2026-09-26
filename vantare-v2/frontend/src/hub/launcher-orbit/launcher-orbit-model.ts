@@ -192,7 +192,7 @@ export function chainSteps(
       name: app?.displayName ?? step.appId,
       g1: app?.gradientFrom ?? UNKNOWN_GRADIENT.g1,
       g2: app?.gradientTo ?? UNKNOWN_GRADIENT.g2,
-      delay: step.delay,
+      delay: index === 0 ? (profile.policy?.firstStepDelay ?? 0) : step.delay,
       status: stepStatus(chain, step.appId, index),
       iconUrl: app?.iconUrl,
       iconOverridePath: app?.iconOverridePath,
@@ -213,7 +213,8 @@ export function policyChips(policy: LaunchPolicy | undefined): PolicyChip[] {
   const chips: PolicyChip[] = [];
   if (policy.alreadyRunning === "reuse") chips.push({ key: "launcher.profile.policy.reuse" });
   if (policy.alreadyRunning === "restart") chips.push({ key: "launcher.profile.policy.restart" });
-  if (policy.failure === "continue") {
+  if (policy.failure === "continue") chips.push({ key: "launcher.profile.policy.continue" });
+  if (policy.retry !== "ask" && policy.maxRetries > 0) {
     chips.push({ key: "launcher.profile.policy.retry", params: { n: policy.maxRetries } });
   }
   if (policy.failure === "stop") chips.push({ key: "launcher.profile.policy.stop" });

@@ -1,5 +1,102 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## VAN-763 / ISA-1377 — roadmap gráfico (2026-09-25)
+
+[Tarea Notion VAN-763](https://app.notion.com/p/3e5e51695c6581debbcbfef649a86d59),
+[referencia GitHub #1377](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1377).
+Isaac corrigió el diseño el 2026-09-25: quiere línea temporal y varias vistas
+gráficas, y Codex actualizará el contenido cuando él lo indique por chat. No
+quiere un editor de formularios en la app. La publicación compartida debe verse
+para todos los usuarios. Rama aislada `vantareapp/isa-1377-roadmap-sencillo`,
+sincronizada con `origin/nightly`; la base exacta se registra en la tarea y
+en el PR porque el canal sigue avanzando.
+
+### Contenido inicial preparado desde Asana
+
+Isaac fijó las fechas de los objetivos de Vantare 0.1 y aclaró el 2026-09-26
+que las tareas no son círculos separados: el gran hito es la versión. La
+primera publicación está preparada en
+[VAN-763](https://app.notion.com/p/3e5e51695c6581debbcbfef649a86d59)
+con dos hitos, identificadores estables y textos en los cuatro idiomas:
+
+1. **Vantare 0.1 · 5 de octubre de 2026.** Objetivos del 1 de octubre:
+   revisar Billing y acceso, y pulir Ajustes y Cuenta. Objetivos del 5:
+   confirmar Widgets V16, afinar Calendario, revisar Launcher, presentar el
+   Roadmap y abrir la alfa del Ingeniero. Las compras opcionales desde el 12
+   de octubre quedan dentro del objetivo Billing.
+2. **Vantare 0.2 · siguiente versión, sin fecha de lanzamiento fijada.** Solo
+   tres objetivos: Ingeniero beta 0.2 tras el primer mes (objetivo 5 de
+   noviembre), Strategy Planner alpha y widgets semanales. No anunciar temas
+   de UI en este hito.
+
+Las fechas del 1 y el 5 de octubre se verificaron de nuevo en el proyecto
+Asana «Vantare · 0.1 Lanzamiento». El proyecto Asana «Vantare · 0.2» aún no
+registra los tres objetivos de producto ni una fecha de salida; su alcance
+público procede de la instrucción directa de Isaac. Widgets V16 tiene 16
+subtareas, cuatro marcadas como completadas y dos tituladas «Daños»; por ello
+la publicación dice «catálogo V16» sin afirmar 16 widgets distintos o
+entregados. El contenido aún no está publicado: la base Supabase de producción
+no tiene la tabla ni las funciones `visual_roadmap_*`, y la migración de esta
+PR no se ha aplicado. La ruta documentada exige probarla en un entorno de
+prueba y obtener autorización para integrar la PR en Nightly antes de activar
+el nuevo almacenamiento.
+
+La implementación local retira `plan.md`, JSON, digest, formulario y gate del
+roadmap anterior; la revisión actual reemplaza el editor por línea temporal,
+tablero y gráfico de distribución. Supabase conserva las publicaciones y expone
+solo lectura a la app; Codex publica a través de la conexión SQL privilegiada.
+Isaac precisó después que la línea temporal debe avanzar horizontalmente. La
+vista ahora conecta los hitos de izquierda a derecha y permite recorrerlos
+dentro del panel en escritorio y pantallas estrechas; las otras vistas no cambian.
+Después aprobó combinar el recorrido numerado de la tercera exploración visual
+con la limpieza de la segunda. La revisión en curso usa los hitos de la única
+publicación para numerar el recorrido y mostrar un solo detalle seleccionable;
+no añade datos de fases, fechas ni editor. Una captura del harness Orbit real a
+1920 y otra a 1280 px muestran la shell y el cambio de hito con datos de muestra.
+En este candidato, las 3 pruebas focales del roadmap, typecheck, build, lint y
+las 4 pruebas de presupuesto PASS. La suite unitaria amplia registró 4.047 PASS,
+2 omitidas y 2 timeouts en pruebas visuales ajenas al roadmap; sus ficheros
+focales pasan por separado (FunctionalClipping 4/4, HeadToHead 1/1). El gate
+remoto de `d23cad51` pasó (11m34s). Las capturas
+usan el mock de Wails y no prueban Supabase ni un runtime físico.
+La revisión horizontal pasó 4.049 pruebas frontend (2 omitidas), 4 pruebas de
+presupuesto, typecheck, build y lint. Dos capturas locales comprobaron la
+posición horizontal de los hitos y que la página no desborda a 1440 y 390 px.
+Checks de la revisión gráfica: frontend completo 481 archivos, 4.049 pruebas
+PASS y 2 omitidas; presupuesto de frames 4/4 PASS; auditoría i18n con 0
+ausentes y 0 huérfanas; typecheck, build y lint PASS; Go `./...` PASS. Tres
+capturas locales muestran las vistas con hitos del snapshot histórico anterior,
+solo como vista previa, sin publicar. Falta validar la migración SQL y la lectura
+compartida con Supabase real. El contenido inicial quedará vacío hasta la primera
+publicación técnicamente validada; no se importa el plan histórico automáticamente.
+
+[PR borrador #1380](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1380)
+contra `nightly`, HEAD previo `d23cad51`. El CI de ese HEAD pasó gates
+bloqueantes, promoción y GitGuardian; `quality-check` quedó
+`REVIEW_REQUIRED` por cambios intencionados en workflows y `package.json`,
+con NEW=0/MOVED=0. Siguiente acción: revisar el contenido y las rutas de
+política, validar Supabase en un entorno de prueba y obtener la autorización
+de Isaac antes de integrar en Nightly. Sin merge, migración, publicación ni release.
+
+El 2026-09-26 Isaac autorizó continuar con la PR y la migración. La revisión
+de las rutas de política confirma que se retiran el validador y el workflow del
+digest anterior, y el script visual ligado a ese roadmap; el gate de canales
+sigue activo. Nightly avanzó de nuevo y se incorporó a la rama, conservando la
+eliminación intencionada de `plan.md` y `roadmap.json`. La migración debe pasar
+primero por Supabase de prueba y una lectura con rol público antes de aplicarla
+al proyecto de producción. La publicación de los dos hitos se verifica aparte
+de la integración de código.
+
+La primera ejecución en `vantare-staging` descubrió que Supabase concede
+`EXECUTE` explícito a `anon`, `authenticated` y `service_role` al crear
+funciones públicas: revocar solo a `PUBLIC` dejaba publicable el RPC. La
+migración ahora revoca también esos roles en `visual_roadmap_publish` y
+`visual_roadmap_valid`, y mantiene la lectura de `visual_roadmap_current` para
+`anon` y `authenticated`. En staging se verificó que `anon` no puede publicar
+(SQLSTATE 42501) ni leer la tabla, sí lee el documento exacto por el RPC;
+dos publicaciones dejan una fila `published` y una `superseded`. El SQL de
+producción todavía no se ha aplicado.
+
 ## VAN-740 / ISA-1305 — Wails beta.24 aceptado para Nightly (2026-09-22)
 
 [Tarea Notion VAN-740](https://app.notion.com/p/3e3e51695c6581f7a1aae9d4db50ee38), puente técnico [GitHub #1305](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1305).
@@ -628,6 +725,89 @@ General, Apariencia, Idioma/región, Cuenta/licencia, Launcher, Overlays,
 Telemetría, Engineer/audio/voz, Strategy, Calendario, Hotkeys, Privacidad,
 Actualizaciones, Diagnóstico y Acerca de. Scope global/perfil explícito;
 import/export sin secretos; reset no borra datos sin selección.
+
+- ISA-1381 implementa en rama aislada paletas Vantare, Océano e Iris para toda
+  la interfaz, incluido el chrome de Overlay Studio, con modo claro, oscuro y
+  sistema independiente. Se guardan en claves locales nuevas; `vantare.theme`
+  y los diseños de widgets permanecen separados. La referencia visual son las
+  tres capturas de T3 Code aportadas el 2026-09-24. La revisión visual en
+  navegador mock comprobó Ajustes y Studio y los seis pares de tokens; 484
+  archivos de tests frontend y 4 presupuestos de frames pasaron. El PR draft
+  #1384 apunta a `nightly` desde `vantareapp/isa-1381-temas-paleta-ui`. Los
+  checks de calidad, ruta y gates, incluido el build Wails de CI, pasaron para
+  `dea1d926`. El 2026-09-25 se compiló la app Wails de producción desde ese
+  commit con el `.env.local` autorizado del checkout principal, sin copiarlo ni
+  mostrar sus valores; se retiró el archivo Go temporal de configuración tras
+  la build. En la ventana Wails real (1280×800) se comprobaron Ajustes en
+  Océano/Claro e Iris/Oscuro, y Overlay Studio con ambas combinaciones: el
+  chrome cambia y el diseño de los widgets se conserva. La vista del canvas
+  usó el modo Mock; esto no valida telemetría LMU, login ni licencia. Se detectó
+  un solapamiento de la cabecera de Studio con el selector de perfil, registrado
+  por separado como #1387. No hay promoción ni release.
+
+- El 2026-09-25 Isaac amplió #1381 con dos variantes visibles por paleta,
+  contraste, opacidad y tipografías, según nuevas capturas de T3 Code. La rama
+  añade la sección propia Ajustes → Apariencia y conserva Zoom, idioma y
+  densidad en Aplicación. El contraste ajusta texto secundario y bordes de
+  Command Orbit; la opacidad ajusta paneles y cabecera; fuentes de interfaz y
+  cifras tienen vista previa. Las preferencias nuevas son locales y no tocan
+  `vantare.theme` ni los renderizadores de widgets. Suite frontend: 484 archivos,
+  4.101 tests correctos, 2 omitidos y 4 presupuestos de frames correctos;
+  typecheck, build y lint correctos. En Wails de producción a 1280×800 se
+  revisaron Apariencia, Iris/Oscuro y los deslizadores a 120 %/100 %. El modo
+  Iris/Oscuro persistió tras cerrar y reabrir el mismo ejecutable Wails. La
+  compilación usó `.env.local` autorizado sin exponer valores. El gate CI de
+  `0f939835` falló en `TestPlayerScriptMediaEvents/ended` por timeout de Go,
+  fuera de los archivos modificados aquí. Para `1942ee1b`, los checks remotos
+  de calidad, ruta, gates, pruebas frontend y build Wails pasaron; la prueba
+  Go anterior también pasó en esa ejecución. El PR #1384 continúa draft y sin
+  promoción.
+
+- El 2026-09-25 Isaac pidió completar las paletas con Rosa, Bosque y Ámbar y
+  añadir Grises en variante clara y oscura. #1381 y el hito público se
+  ampliaron a siete paletas y catorce variantes; el selector se reparte en
+  filas para conservar su legibilidad a 1280×800. Grises usa tokens neutros
+  también para acentos y estados de la interfaz. Las vistas previas de otros
+  temas siguen mostrando sus colores para permitir elegirlos. En la app Wails
+  de producción se revisaron Grises/Claro, Grises/Oscuro, Rosa/Claro,
+  Bosque/Oscuro y Ámbar/Oscuro. En Overlay Studio con Grises/Oscuro, el chrome
+  es neutro y las vistas previas de widgets conservan sus colores originales.
+  Los tests focales (45), typecheck, build, lint, auditoría i18n y los cuatro
+  presupuestos de frames pasaron. En la suite completa pasaron 4.105 pruebas,
+  dos quedaron omitidas y una prueba visual de Chromium agotó su límite de
+  20 s mientras corrían build y lint; la misma prueba pasó aislada en 8,9 s.
+  La app se compiló usando el `.env.local` autorizado sin exponer sus valores.
+  En `3bcd253d` pasaron los checks remotos de ruta, quality ratchet y gates
+  bloqueantes, incluidos Go, frontend y build Wails de Windows (runs
+  `36162293379` y `36162293431`). El PR #1384 sigue draft, sin merge,
+  promoción ni release. La rama de issue se reconcilió después con
+  `nightly@f0ccfbf2` al avanzar la base; `plan.md` conservó los hitos de
+  ambas ramas y `roadmap.json` se regeneró desde esa base.
+
+- [VAN-769](https://app.notion.com/p/3e6e51695c6581abbcdff05e070a4a69)
+  gobierna el alcance y seguimiento vivo de #1381. El 2026-09-25 Isaac
+  amplió #1381 a los fondos del escenario de Overlay
+  Studio y pidió corregir la tarjeta Próxima serie de Inicio. El fondo
+  predeterminado `Tema actual` toma los tokens de la paleta y del modo
+  claro/oscuro; el selector de la toolbar agrupa las catorce variantes fijas
+  por paleta y conserva Rejilla, Degradado, Negro y los fondos propios. La
+  elección manual se guarda en este equipo y persiste al volver a abrir
+  Studio; si una imagen propia guardada ya no existe, vuelve a Tema actual.
+  Solo cambia el escenario, no el renderizado de los widgets. El subagente
+  corrigió la tarjeta Próxima serie mediante tokens de interfaz; el
+  orquestador revisó el diff y la comprobó en Wails con Grises/Claro y
+  Grises/Oscuro. También comprobó en Wails el lienzo de Grises/Claro y
+  Grises/Oscuro con widgets rojos intactos, los siete grupos del selector,
+  la selección fija Rosa/Oscuro y la persistencia de Vantare/Claro al salir
+  y volver a Studio. La compilación Wails usó el `.env.local` autorizado sin
+  exponer valores. Typecheck, build, lint, auditoría i18n, 52 pruebas focales
+  del Studio y cuatro presupuestos de frames pasaron. En la suite local
+  completa pasaron 4.116 pruebas y dos quedaron omitidas; tres pruebas de
+  geometría ajenas agotaron 20 s bajo carga paralela y la prueba de Canvas
+  todavía tenía la expectativa del fondo anterior. Tras corregir esa
+  expectativa, las cuatro suites afectadas pasaron aisladas con un solo
+  worker (25 pruebas). La rama sigue aislada y el PR #1384 sigue draft; no
+  hubo merge, promoción ni release.
 
 ISA-841 se implementó en la rama aislada
 `vantareapp/isa-841-zoom-global-interfaz` y se rebasó el 2026-08-28 sobre

@@ -169,7 +169,7 @@ func matchKnownApps(candidates []discoveredCandidate) map[string]app.LauncherApp
 				evidence.SteamAppID = known.SteamAppID
 			}
 			entry := knownAppEntry(known, evidence, "", "registry")
-			if known.LaunchMethod == "executable" && c.InstallLocation != "" {
+			if c.InstallLocation != "" {
 				executablePath := findFirstExisting(c.InstallLocation, known.ExecutableNames)
 				if executablePath == "" {
 					executablePath = findExecutableRecursive(c.InstallLocation, known.ExecutableNames, 3)

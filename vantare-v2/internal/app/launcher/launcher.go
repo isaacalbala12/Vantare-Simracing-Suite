@@ -40,18 +40,30 @@ const defaultChainCleanupDelay = 30 * time.Second
 // shared mutable state is wrapped by ChainRunner (its own mutex) and every
 // LauncherSettingsBackend is the slice of SettingsService the launcher needs.
 type Service struct {
-	settings           LauncherSettingsBackend
-	emit               Emitter
-	chain              *ChainRunner
-	revision           atomic.Uint64
-	activeMu           sync.Mutex
-	active             map[string]LauncherActiveChain
-	chainCleanupDelay  time.Duration
-	chainCleanupTimers map[string]*time.Timer
-	discoveryMu        sync.RWMutex
-	discovery          LauncherDiscovery
-	discoveryRunMu     sync.Mutex
-	discover           func() map[string]app.LauncherAppEntry
+	settings              LauncherSettingsBackend
+	emit                  Emitter
+	chain                 *ChainRunner
+	launchMu              sync.Mutex
+	revision              atomic.Uint64
+	activeMu              sync.Mutex
+	active                map[string]LauncherActiveChain
+	owned                 map[int]ownedProcess
+	inspectOwned          func(context.Context, ProcessIdentity) bool
+	retryStepIndices      map[string][]int
+	chainCleanupDelay     time.Duration
+	chainCleanupTimers    map[string]*time.Timer
+	discoveryMu           sync.RWMutex
+	discovery             LauncherDiscovery
+	discoveryProgressMu   sync.Mutex
+	lastDiscoveryProgress int
+	discoveryRunMu        sync.Mutex
+	discover              func() map[string]app.LauncherAppEntry
+}
+
+type ownedProcess struct {
+	appID     string
+	profileID string
+	identity  ProcessIdentity
 }
 
 type serviceEmitter struct {
@@ -60,10 +72,28 @@ type serviceEmitter struct {
 }
 
 func (e serviceEmitter) Emit(name string, data any) {
+	if name == "launcher:chain:step" {
+		if progress, ok := data.(ChainProgress); ok {
+			e.service.activeMu.Lock()
+			indices := e.service.retryStepIndices[progress.ProfileID]
+			if progress.StepIndex >= 0 && progress.StepIndex < len(indices) {
+				progress.StepIndex = indices[progress.StepIndex]
+			}
+			e.service.activeMu.Unlock()
+			data = progress
+		}
+	}
 	e.service.recordChainEvent(name, data)
 	e.downstream.Emit(name, data)
 	if name == "launcher:chain:step" || name == "launcher:chain:done" || name == "launcher:chain:error" {
 		e.downstream.Emit("launcher:snapshot", e.service.Snapshot())
+	}
+	if name == "launcher:chain:done" {
+		e.service.activeMu.Lock()
+		if progress, ok := data.(ChainProgress); ok {
+			delete(e.service.retryStepIndices, progress.ProfileID)
+		}
+		e.service.activeMu.Unlock()
 	}
 }
 
@@ -79,6 +109,8 @@ func NewService(settings LauncherSettingsBackend, emit Emitter, execFn execLaunc
 		settings:           settings,
 		emit:               emit,
 		active:             make(map[string]LauncherActiveChain),
+		owned:              make(map[int]ownedProcess),
+		retryStepIndices:   make(map[string][]int),
 		discovery:          LauncherDiscovery{},
 		chainCleanupDelay:  defaultChainCleanupDelay,
 		chainCleanupTimers: make(map[string]*time.Timer),
@@ -86,6 +118,24 @@ func NewService(settings LauncherSettingsBackend, emit Emitter, execFn execLaunc
 	}
 	s.chain = NewChainRunner(s.settings, serviceEmitter{service: s, downstream: emit}, execFn)
 	return s
+}
+
+// EnableRunningProcessDetection connects Windows process discovery to profile
+// execution. It is called before the production service starts any chain.
+func (s *Service) EnableRunningProcessDetection() {
+	s.chain.findRunning = FindRunningByExecutable
+	s.inspectOwned = func(ctx context.Context, identity ProcessIdentity) bool {
+		info, ok := DefaultProcessInspector().Find(ctx, identity)
+		return ok && ProcessIsReady(identity, info)
+	}
+	s.chain.ownedProcess = s.OwnedProcessIdentity
+	s.chain.closeOwned = func(ctx context.Context, appID string, identity ProcessIdentity) error {
+		if err := CloseProcess(ctx, DefaultProcessInspector(), identity); err != nil {
+			return err
+		}
+		s.ForgetStartedProcess(appID, identity.PID)
+		return nil
+	}
 }
 
 // SetDiscoverFunc overrides the discovery source used by DiscoverApps. A nil
@@ -103,16 +153,35 @@ func (s *Service) recordChainEvent(name string, data any) {
 	if !ok {
 		return
 	}
+	var started *ownedProcess
+	if name == "launcher:chain:step" && progress.Status == "done" && progress.Pid > 0 && progress.CreationTime != 0 {
+		if entry, exists := s.settings.GetLauncherApps()[progress.AppID]; exists && entry.LaunchMethod == "executable" &&
+			entry.ExecutablePath != "" && NormalizeExecutablePath(entry.ExecutablePath) == NormalizeExecutablePath(progress.ProcessPath) {
+			started = &ownedProcess{appID: progress.AppID, profileID: progress.ProfileID, identity: ProcessIdentity{
+				PID: progress.Pid, ExecutablePath: progress.ProcessPath, CreationTime: progress.CreationTime,
+			}}
+		}
+	}
 	terminal := false
 	s.activeMu.Lock()
+	if started != nil {
+		s.owned[progress.Pid] = *started
+	}
 	chain := s.active[progress.ProfileID]
+	if name == "launcher:chain:step" && (chain.Status == "done" || chain.Status == "failed") {
+		if _, retry := s.retryStepIndices[progress.ProfileID]; !retry {
+			chain = LauncherActiveChain{}
+		}
+	}
 	if chain.ProfileID == "" {
 		chain = LauncherActiveChain{ProfileID: progress.ProfileID, Status: "running", StartedAt: time.UnixMilli(progress.StartedAt)}
 	}
 	switch name {
 	case "launcher:chain:done":
 		terminal = true
-		if progress.Success {
+		if progress.Status == "stopped" || chain.Status == "stopped" {
+			chain.Status = "stopped"
+		} else if progress.Success {
 			chain.Status = "done"
 		} else {
 			chain.Status = "failed"
@@ -121,7 +190,9 @@ func (s *Service) recordChainEvent(name string, data any) {
 		terminal = true
 		chain.Status = "failed"
 	default:
-		chain.Status = progress.Status
+		if chain.Status != "stopped" {
+			chain.Status = "running"
+		}
 		for len(chain.Steps) <= progress.StepIndex {
 			chain.Steps = append(chain.Steps, LauncherActiveStep{})
 		}
@@ -172,6 +243,74 @@ func isTerminalChainStatus(status string) bool {
 // coupling to the concrete *app.SettingsService type.
 func (s *Service) Settings() LauncherSettingsBackend { return s.settings }
 
+// OwnedProcessIdentity returns a verified executable that this service launched
+// and successfully probed during the current session. Snapshot cleanup does
+// not erase this authority; close/restart must still recheck the live process.
+func (s *Service) OwnedProcessIdentity(appID string, pid int) (ProcessIdentity, bool) {
+	if pid <= 0 {
+		return ProcessIdentity{}, false
+	}
+	s.activeMu.Lock()
+	defer s.activeMu.Unlock()
+	owned, ok := s.owned[pid]
+	if !ok || owned.appID != appID {
+		return ProcessIdentity{}, false
+	}
+	return owned.identity, true
+}
+
+// RememberStartedProcess records a confirmed process created by an explicit
+// restart. A changed app path or incomplete identity cannot grant close rights.
+func (s *Service) RememberStartedProcess(appID string, identity ProcessIdentity) bool {
+	if identity.PID <= 0 || identity.CreationTime == 0 || identity.ExecutablePath == "" {
+		return false
+	}
+	entry, ok := s.settings.GetLauncherApps()[appID]
+	if !ok || entry.LaunchMethod != "executable" || NormalizeExecutablePath(entry.ExecutablePath) != NormalizeExecutablePath(identity.ExecutablePath) {
+		return false
+	}
+	s.activeMu.Lock()
+	s.owned[identity.PID] = ownedProcess{appID: appID, identity: identity}
+	s.activeMu.Unlock()
+	return true
+}
+
+// TransferStartedProcess keeps a profile's ownership when its app is
+// explicitly restarted. The old PID loses authority even if observation of
+// the replacement fails.
+func (s *Service) TransferStartedProcess(appID string, oldPID int, replacement ProcessIdentity) bool {
+	entry, ok := s.settings.GetLauncherApps()[appID]
+	valid := ok && entry.LaunchMethod == "executable" && replacement.PID > 0 && replacement.CreationTime != 0 &&
+		replacement.ExecutablePath != "" && NormalizeExecutablePath(entry.ExecutablePath) == NormalizeExecutablePath(replacement.ExecutablePath)
+	s.activeMu.Lock()
+	defer s.activeMu.Unlock()
+	previous, owned := s.owned[oldPID]
+	if !owned || previous.appID != appID {
+		return false
+	}
+	delete(s.owned, oldPID)
+	if !valid {
+		return false
+	}
+	s.owned[replacement.PID] = ownedProcess{appID: appID, profileID: previous.profileID, identity: replacement}
+	return true
+}
+
+// ForgetStartedProcess revokes process control after a successful close/restart.
+func (s *Service) ForgetStartedProcess(appID string, pid int) {
+	s.activeMu.Lock()
+	defer s.activeMu.Unlock()
+	if owned, ok := s.owned[pid]; ok && owned.appID == appID {
+		delete(s.owned, pid)
+	}
+}
+
+// OwnsStartedProcess reports only identities observed during this session.
+func (s *Service) OwnsStartedProcess(appID string, pid int) bool {
+	_, ok := s.OwnedProcessIdentity(appID, pid)
+	return ok
+}
+
 // Snapshot builds the complete launcher payload from the settings backend.
 // It is the only aggregate construction point for the frontend migration.
 func (s *Service) Snapshot() LauncherSnapshot {
@@ -221,6 +360,9 @@ func (s *Service) Snapshot() LauncherSnapshot {
 // BeginDiscovery marks the start of a discovery pass so the UI can keep the
 // first-run assistant closed until the resulting snapshot is complete.
 func (s *Service) BeginDiscovery() {
+	s.discoveryProgressMu.Lock()
+	s.lastDiscoveryProgress = 0
+	s.discoveryProgressMu.Unlock()
 	s.discoveryMu.Lock()
 	s.discovery = LauncherDiscovery{Scanning: true}
 	s.discoveryMu.Unlock()
@@ -229,11 +371,18 @@ func (s *Service) BeginDiscovery() {
 var ErrDiscoveryInProgress = errors.New("launcher discovery already in progress")
 
 func (s *Service) emitDiscoveryProgress(progress int, phase LauncherDiscoveryPhase, scanning bool, err error) {
+	s.discoveryProgressMu.Lock()
+	defer s.discoveryProgressMu.Unlock()
 	if progress < 0 {
 		progress = 0
 	}
 	if progress > 100 {
 		progress = 100
+	}
+	if progress < s.lastDiscoveryProgress {
+		progress = s.lastDiscoveryProgress
+	} else {
+		s.lastDiscoveryProgress = progress
 	}
 	var message *string
 	if err != nil {
@@ -351,6 +500,11 @@ func (s *Service) SaveProfile(profile app.LaunchProfile) error {
 	return SaveProfile(s.settings, profile)
 }
 
+// RestoreProfiles restores the exact snapshot if Windows autostart sync fails.
+func (s *Service) RestoreProfiles(profiles []app.LaunchProfile) error {
+	return s.settings.SetLauncherProfiles(profiles)
+}
+
 // DeleteProfile delegates to profiles.go.
 func (s *Service) DeleteProfile(id string) error {
 	return DeleteProfile(s.settings, id)
@@ -368,6 +522,8 @@ func (s *Service) DuplicateProfile(id, newID, newName string) error {
 // Returns ErrProfileNotFound when there is no profile with the given ID. The
 // chain runs on a goroutine (StartChain), so this call returns immediately.
 func (s *Service) LaunchProfile(ctx context.Context, profileID string) error {
+	s.launchMu.Lock()
+	defer s.launchMu.Unlock()
 	profiles := s.settings.GetLauncherProfiles()
 	var profile *app.LaunchProfile
 	for i := range profiles {
@@ -379,14 +535,177 @@ func (s *Service) LaunchProfile(ctx context.Context, profileID string) error {
 	if profile == nil {
 		return fmt.Errorf("%w: %s", ErrProfileNotFound, profileID)
 	}
-	s.chain.StartChain(ctx, *profile)
+	if len(profile.Steps) == 0 {
+		return fmt.Errorf("%w: profile has no steps", ErrInvalidConfig)
+	}
+	copy := *profile
+	copy.Steps = append([]app.LaunchStep(nil), profile.Steps...)
+	copy.Policy = app.NormalizeLaunchPolicy(profile.Policy)
+	s.activeMu.Lock()
+	previous, hadPrevious := s.retryStepIndices[profileID]
+	delete(s.retryStepIndices, profileID)
+	s.activeMu.Unlock()
+	if err := s.chain.StartChain(ctx, copy); err != nil {
+		s.activeMu.Lock()
+		if hadPrevious {
+			s.retryStepIndices[profileID] = previous
+		}
+		s.activeMu.Unlock()
+		return err
+	}
 	return nil
+}
+
+// CheckAutostartProfile avoids opening a chain at sign-in when its saved
+// profile or an executable needed for a step has disappeared.
+func (s *Service) CheckAutostartProfile(profileID string) error {
+	var profile *app.LaunchProfile
+	for _, candidate := range s.settings.GetLauncherProfiles() {
+		if candidate.ID == profileID {
+			copy := candidate
+			profile = &copy
+			break
+		}
+	}
+	if profile == nil {
+		return fmt.Errorf("%w: %s", ErrProfileNotFound, profileID)
+	}
+	if len(profile.Steps) == 0 {
+		return fmt.Errorf("%w: autostart profile has no steps", ErrInvalidConfig)
+	}
+	apps := s.settings.GetLauncherApps()
+	for _, step := range profile.Steps {
+		entry, ok := apps[step.AppID]
+		if !ok || (entry.LaunchMethod != "executable" && entry.LaunchMethod != "steam-uri") ||
+			(entry.LaunchMethod == "steam-uri" && entry.SteamAppID <= 0) || !fileExists(entry.ExecutablePath) {
+			return fmt.Errorf("%w: autostart app %q is unavailable", ErrInvalidConfig, step.AppID)
+		}
+	}
+	return nil
+}
+
+// RetryFailedProfile retries failed and unattempted steps from the most recent
+// failed chain. Completed steps are never launched a second time by this action.
+func (s *Service) RetryFailedProfile(ctx context.Context, profileID string) error {
+	s.launchMu.Lock()
+	defer s.launchMu.Unlock()
+	var profile *app.LaunchProfile
+	for _, candidate := range s.settings.GetLauncherProfiles() {
+		if candidate.ID == profileID {
+			copy := candidate
+			profile = &copy
+			break
+		}
+	}
+	if profile == nil {
+		return fmt.Errorf("%w: %s", ErrProfileNotFound, profileID)
+	}
+	s.activeMu.Lock()
+	completed, ok := s.active[profileID]
+	completed.Steps = append([]LauncherActiveStep(nil), completed.Steps...)
+	s.activeMu.Unlock()
+	if !ok {
+		return fmt.Errorf("%w: no recent chain for retry", ErrInvalidConfig)
+	}
+	retry, indices, err := retryProfile(*profile, completed)
+	if err != nil {
+		return err
+	}
+	s.activeMu.Lock()
+	previous, hadPrevious := s.retryStepIndices[profileID]
+	s.retryStepIndices[profileID] = indices
+	s.activeMu.Unlock()
+	if err := s.chain.StartChain(ctx, retry); err != nil {
+		s.activeMu.Lock()
+		if hadPrevious {
+			s.retryStepIndices[profileID] = previous
+		} else {
+			delete(s.retryStepIndices, profileID)
+		}
+		s.activeMu.Unlock()
+		return err
+	}
+	return nil
+}
+
+func (s *Service) ResolveDecision(id, action string, remember bool) (DecisionRequest, bool, error) {
+	remembered := false
+	request, err := s.chain.resolveDecisionWith(id, action, func(request DecisionRequest) error {
+		if !remember || (request.Kind != "failure" && request.Kind != "alreadyRunning" && request.Kind != "cancel") || action == "cancel" {
+			return nil
+		}
+		for _, profile := range s.settings.GetLauncherProfiles() {
+			if profile.ID != request.ProfileID {
+				continue
+			}
+			profile.Policy = app.NormalizeLaunchPolicy(profile.Policy)
+			if request.Kind == "failure" {
+				if action == "continue" {
+					profile.Policy.Failure = app.FailureContinue
+				} else {
+					profile.Policy.Failure = app.FailureStop
+				}
+			} else if request.Kind == "cancel" {
+				if action == "close-started" {
+					profile.Policy.Cancel = app.CancelCloseStarted
+				} else {
+					profile.Policy.Cancel = app.CancelLeave
+				}
+			} else if action == "reuse" {
+				profile.Policy.AlreadyRunning = app.AlreadyRunningReuse
+			} else {
+				profile.Policy.AlreadyRunning = app.AlreadyRunningRestart
+			}
+			if err := s.SaveProfile(profile); err != nil {
+				return err
+			}
+			remembered = true
+			return nil
+		}
+		return fmt.Errorf("%w: %s", ErrProfileNotFound, request.ProfileID)
+	})
+	return request, remembered, err
+}
+
+func retryProfile(profile app.LaunchProfile, completed LauncherActiveChain) (app.LaunchProfile, []int, error) {
+	if completed.ProfileID != profile.ID || completed.Status != "failed" {
+		return app.LaunchProfile{}, nil, fmt.Errorf("%w: retry requires a failed chain", ErrInvalidConfig)
+	}
+	retry := profile
+	retry.Steps = nil
+	retry.Policy = app.NormalizeLaunchPolicy(profile.Policy)
+	indices := make([]int, 0, len(profile.Steps))
+	for i, step := range profile.Steps {
+		if i < len(completed.Steps) && completed.Steps[i].AppID == step.AppID && completed.Steps[i].Status == "done" {
+			continue
+		}
+		if len(retry.Steps) == 0 && i > 0 {
+			retry.Policy.FirstStepDelay = step.Delay
+		}
+		retry.Steps = append(retry.Steps, step)
+		indices = append(indices, i)
+	}
+	if len(retry.Steps) == 0 {
+		return app.LaunchProfile{}, nil, fmt.Errorf("%w: no pending steps to retry", ErrInvalidConfig)
+	}
+	return retry, indices, nil
 }
 
 // CancelChain cancels the active launch chain for a profile, if any.
 func (s *Service) CancelChain(profileID string) bool {
-	cancelled := s.chain.CancelChain(profileID)
+	done, cancelled := s.chain.CancelChainAndWait(profileID)
 	if cancelled {
+		// Windows process creation times are FILETIME ticks (100 ns since 1601).
+		// This boundary prevents an answer to an old cancel prompt from closing
+		// a new run of the same profile.
+		cutoff := uint64(time.Now().UnixNano()/100) + 116444736000000000
+		policy := app.DefaultLaunchPolicy()
+		for _, profile := range s.settings.GetLauncherProfiles() {
+			if profile.ID == profileID {
+				policy = app.NormalizeLaunchPolicy(profile.Policy)
+				break
+			}
+		}
 		s.activeMu.Lock()
 		if chain, ok := s.active[profileID]; ok {
 			chain.Status = "stopped"
@@ -395,12 +714,127 @@ func (s *Service) CancelChain(profileID string) bool {
 		s.activeMu.Unlock()
 		s.scheduleChainCleanup(profileID)
 		s.emit.Emit("launcher:snapshot", s.Snapshot())
+		go func() {
+			<-done
+			s.applyCancelPolicy(profileID, policy.Cancel, cutoff)
+		}()
 	}
 	return cancelled
+}
+
+func (s *Service) ownedForProfile(profileID string) []ownedProcess {
+	s.activeMu.Lock()
+	defer s.activeMu.Unlock()
+	processes := make([]ownedProcess, 0)
+	for _, owned := range s.owned {
+		if owned.profileID == profileID {
+			processes = append(processes, owned)
+		}
+	}
+	return processes
+}
+
+func (s *Service) ownedStillRunning(ctx context.Context, process ownedProcess) bool {
+	if s.inspectOwned == nil || s.inspectOwned(ctx, process.identity) {
+		return true
+	}
+	s.ForgetStartedProcess(process.appID, process.identity.PID)
+	return false
+}
+
+func (s *Service) applyCancelPolicy(profileID string, policy app.CancelPolicy, cutoff uint64) {
+	select {
+	case <-s.chain.shutdown:
+		return // Exit policy now owns the decision for these processes.
+	default:
+	}
+	processes := make([]ownedProcess, 0)
+	ctx := context.Background()
+	for _, owned := range s.ownedForProfile(profileID) {
+		if owned.identity.CreationTime < cutoff && s.ownedStillRunning(ctx, owned) {
+			processes = append(processes, owned)
+		}
+	}
+	if s.chain.closeOwned == nil || len(processes) == 0 || policy == app.CancelLeave {
+		return
+	}
+	if policy == app.CancelAsk {
+		action := s.chain.requestDecision(context.Background(), profileID, "", "cancel", "¿Cerrar las aplicaciones iniciadas por este perfil?", []string{"leave", "close-started"})
+		if action != "close-started" {
+			return
+		}
+	}
+	select {
+	case <-s.chain.shutdown:
+		return
+	default:
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	for _, owned := range processes {
+		if err := s.chain.closeOwned(ctx, owned.appID, owned.identity); err != nil {
+			s.emit.Emit("launcher:error", map[string]any{"message": fmt.Sprintf("No se pudo cerrar %s: %v", owned.appID, err)})
+		}
+	}
 }
 
 // CancelAll cancels every active launch chain. Used by the Wails shutdown hook
 // to ensure no orphaned processes are left behind when the Hub closes.
 func (s *Service) CancelAll() {
 	s.chain.CancelAll()
+}
+
+func (s *Service) PendingDecisions() []DecisionRequest {
+	return s.chain.PendingDecisions()
+}
+
+// CloseOnExit applies each profile's exit policy after active launch chains
+// have stopped. A missing prompt defaults to leaving processes open.
+func (s *Service) CloseOnExit(ctx context.Context, ask func(int) bool) error {
+	if err := s.chain.CancelAllAndWait(ctx); err != nil {
+		return fmt.Errorf("launcher: wait for chains before exit: %w", err)
+	}
+	if s.chain.closeOwned == nil {
+		return nil
+	}
+	policies := make(map[string]app.ExitPolicy)
+	for _, profile := range s.settings.GetLauncherProfiles() {
+		policies[profile.ID] = app.NormalizeLaunchPolicy(profile.Policy).Exit
+	}
+	s.activeMu.Lock()
+	owned := make([]ownedProcess, 0, len(s.owned))
+	for _, process := range s.owned {
+		owned = append(owned, process)
+	}
+	s.activeMu.Unlock()
+	sort.Slice(owned, func(i, j int) bool { return owned[i].identity.PID < owned[j].identity.PID })
+	toClose := make([]ownedProcess, 0)
+	toAsk := make([]ownedProcess, 0)
+	for _, process := range owned {
+		if !s.ownedStillRunning(ctx, process) {
+			continue
+		}
+		switch policies[process.profileID] {
+		case app.ExitCloseStarted:
+			toClose = append(toClose, process)
+		case app.ExitLeave:
+			// The user's explicit leave policy wins.
+		default:
+			toAsk = append(toAsk, process)
+		}
+	}
+	if len(toAsk) > 0 && ask != nil && ask(len(toAsk)) {
+		toClose = append(toClose, toAsk...)
+	}
+	// The user may spend more than the shutdown budget answering the native
+	// prompt. Give the verified process closes their own bounded time afterward.
+	closeCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	var failures []error
+	for _, process := range toClose {
+		if err := s.chain.closeOwned(closeCtx, process.appID, process.identity); err != nil {
+			failures = append(failures, fmt.Errorf("%s PID %d: %w", process.appID, process.identity.PID, err))
+		}
+	}
+	return errors.Join(failures...)
 }

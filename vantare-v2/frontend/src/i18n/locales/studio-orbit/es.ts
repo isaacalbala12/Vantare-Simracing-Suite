@@ -18,9 +18,8 @@ export const studioOrbitEs: Record<string, string> = {
   "studio.column.listAria": "Widgets del perfil",
 
   "studio.toolbar.background": "Fondo del lienzo",
-  "studio.toolbar.background.grid": "Rejilla",
-  "studio.toolbar.background.gradient": "Degradado",
-  "studio.toolbar.background.black": "Negro",
+  "studio.toolbar.background.themeGroup": "Tema",
+  "studio.toolbar.background.otherGroup": "Otros fondos",
   "studio.toolbar.wallpaper": "Fondo propio",
   "studio.toolbar.wallpaper.title": "Fondos propios",
   "studio.toolbar.wallpaper.add": "Añadir imagen…",

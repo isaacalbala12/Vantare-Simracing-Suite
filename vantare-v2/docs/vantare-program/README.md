@@ -45,7 +45,7 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
 - `product-contract.md`: alcance, experiencia, licencias, privacidad e idiomas.
 - `project-map.md`: módulos, fronteras y caminos de datos; el estado operativo vive en Notion.
 - `execution-policy.md`: flujo Notion/Git, autonomía, reviews y promoción.
-- `../roadmap/plan.md`: fuente manual del planning y del roadmap público.
+- `../roadmap-maintenance.md`: actualización por Codex y publicación del roadmap gráfico.
 - `research-policy.md`: investigación de productos, repositorios y apps.
 - `handoff-template.md`: contrato común para los handoffs.
 - `handoffs/telemetry-core.md`: núcleo live y continuidad del programa de retirada V1, auditoría integral V2 y optimización medida.
@@ -82,8 +82,7 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
   issue conserva rama y worktree propios.
 - `develop` y `refactor` son historia y no reciben trabajo nuevo. Los checkouts
   historicos sucios se preservan hasta una limpieza trazada.
-- Los handoffs de este directorio, Notion y `../roadmap/plan.md` contienen
-  respectivamente la continuidad técnica, el estado operativo y el planning
-  público; este índice no duplica listas de issues que caducan.
+- Los handoffs de este directorio y Notion contienen la continuidad técnica y
+  el estado operativo; Codex actualiza el roadmap público cuando Isaac lo solicita.
 - Testing Center es un proyecto independiente y no se mezcla con la
   orquestacion de los modulos de producto salvo que una issue lo indique.

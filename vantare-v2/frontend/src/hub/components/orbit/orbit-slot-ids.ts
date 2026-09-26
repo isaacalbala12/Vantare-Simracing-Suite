@@ -12,5 +12,4 @@ export const RACES_CONTEXT_SLOT_ID = "orbit-races-context-slot";
 export const RACES_TOPBAR_SLOT_ID = "orbit-races-topbar-slot";
 export const STRATEGY_CONTEXT_SLOT_ID = "orbit-strategy-context-slot";
 export const TELEMETRY_CONTEXT_SLOT_ID = "orbit-telemetry-context-slot";
-export const ROADMAP_CONTEXT_SLOT_ID = "orbit-roadmap-context-slot";
 export const SETTINGS_CONTEXT_SLOT_ID = "orbit-settings-context-slot";

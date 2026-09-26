@@ -2,7 +2,6 @@ import importlib.util
 import json
 import pathlib
 import re
-import tempfile
 import unittest
 import urllib.error
 
@@ -113,90 +112,14 @@ class FragmentTests(unittest.TestCase):
 
 
 class DevelopmentDigestSourceTests(unittest.TestCase):
-    """The digest falls back roadmap -> open milestones -> honest silence."""
-
-    def _roadmap(self, payload):
-        path = pathlib.Path(tempfile.mkdtemp()) / "roadmap.json"
-        path.write_text(json.dumps(payload), encoding="utf-8")
-        return path
-
-    def _absent(self):
-        return pathlib.Path(tempfile.mkdtemp()) / "absent.json"
+    """The digest uses open milestones or honest silence."""
 
     def test_public_text_neutralizes_discord_mass_mentions(self):
         value = communications.sanitize_public_text("@everyone avance @here")
         self.assertNotIn("@everyone", value)
         self.assertNotIn("@here", value)
 
-    def test_roadmap_wins_and_tolerates_percentages_and_wrappers(self):
-        path = self._roadmap({"phases": [
-            {"title": "Telemetry Core", "status": "in_progress", "progress": 42,
-             "summary": "Contrato canonico en curso.", "url": "https://example.test/1"},
-            {"name": "Ya hecho", "state": "done", "progress": 1.0},
-        ]})
-        projects, source = communications.resolve_development_projects(roadmap_path=path)
-        self.assertEqual(source, communications.DEVELOPMENT_SOURCE_ROADMAP)
-        self.assertEqual([item["name"] for item in projects], ["Telemetry Core"])
-        self.assertAlmostEqual(projects[0]["progress"], 0.42)
-
-    def test_localized_fields_are_read_in_spanish(self):
-        path = self._roadmap({"phases": [{
-            "title": {"en": "Public beta", "es": "Beta publica"},
-            "summary": {"en": "Ships soon.", "es": "Sale pronto."},
-            "status": "in-progress",
-        }]})
-        projects, _ = communications.resolve_development_projects(roadmap_path=path)
-        self.assertEqual(projects[0]["name"], "Beta publica")
-        self.assertEqual(projects[0]["update"], "Sale pronto.")
-
-    def test_the_real_roadmap_file_still_feeds_the_digest(self):
-        """Guards against ISA-378's schema drifting away from this reader."""
-        path = (pathlib.Path(__file__).parents[3]
-                / "vantare-v2/docs/roadmap/roadmap.json")
-        if not path.is_file():
-            self.skipTest("roadmap.json not in this checkout")
-        projects = communications.load_roadmap_projects(path)
-        self.assertTrue(projects, "the real roadmap.json yields no active phase")
-        for project in projects:
-            self.assertTrue(project["name"].strip())
-            self.assertNotIn("{", project["name"])  # a locale map leaked through
-            self.assertTrue(0.0 <= project["progress"] <= 1.0)
-            self.assertTrue(project["update"].strip())
-
-    def test_phase_label_prefixes_the_name_without_duplicating_it(self):
-        path = self._roadmap({"phases": [
-            {"phaseLabel": {"es": "Fase 2"}, "title": {"es": "Pulido beta"}, "status": "in-progress"},
-            {"phaseLabel": "Fase 3", "title": "Fase 3 ya rotulada", "status": "in-progress"},
-        ]})
-        projects, _ = communications.resolve_development_projects(roadmap_path=path)
-        self.assertEqual(projects[0]["name"], "Fase 2 \u00b7 Pulido beta")
-        self.assertEqual(projects[1]["name"], "Fase 3 ya rotulada")
-
-    def test_only_in_progress_phases_reach_the_digest(self):
-        path = self._roadmap({"phases": [
-            {"title": "Hecha", "status": "done"},
-            {"title": "En curso", "status": "in-progress"},
-            {"title": "Planeada", "status": "planned"},
-            {"title": "Futura", "status": "future"},
-        ]})
-        projects, _ = communications.resolve_development_projects(roadmap_path=path)
-        self.assertEqual([item["name"] for item in projects], ["En curso"])
-
-    def test_roadmap_accepts_a_bare_list_and_done_over_total_progress(self):
-        path = self._roadmap([{"label": "Billing", "progress": {"done": 3, "total": 4}}])
-        projects, source = communications.resolve_development_projects(roadmap_path=path)
-        self.assertEqual(source, communications.DEVELOPMENT_SOURCE_ROADMAP)
-        self.assertAlmostEqual(projects[0]["progress"], 0.75)
-        self.assertIn("Desarrollo en curso", projects[0]["update"])
-
-    def test_unreadable_or_absent_roadmap_falls_through_instead_of_failing(self):
-        broken = self._roadmap([])
-        broken.write_text("{not json", encoding="utf-8")
-        for path in (self._absent(), broken):
-            with self.subTest(path=path.name):
-                self.assertEqual(communications.load_roadmap_projects(path), [])
-
-    def test_milestones_are_the_second_source_with_closed_over_total_progress(self):
+    def test_milestones_are_the_source_with_closed_over_total_progress(self):
         milestones = [{"title": "Overlay Studio V3", "state": "open", "description": "Paridad visual.",
                        "closed_issues": 2, "open_issues": 8, "html_url": "https://example.test/m/1",
                        "updated_at": "2026-08-01T00:00:00Z"}]
@@ -214,7 +137,7 @@ class DevelopmentDigestSourceTests(unittest.TestCase):
                 return False
 
         projects, source = communications.resolve_development_projects(
-            roadmap_path=self._absent(), token="t", repository="owner/repo",
+            token="t", repository="owner/repo",
             opener=lambda *args, **kwargs: _Response(),
         )
         self.assertEqual(source, communications.DEVELOPMENT_SOURCE_MILESTONES)
@@ -226,7 +149,7 @@ class DevelopmentDigestSourceTests(unittest.TestCase):
             raise urllib.error.URLError("offline")
 
         projects, source = communications.resolve_development_projects(
-            roadmap_path=self._absent(), token="t", repository="owner/repo", opener=_boom,
+            token="t", repository="owner/repo", opener=_boom,
         )
         self.assertEqual((projects, source), ([], communications.DEVELOPMENT_SOURCE_NONE))
 

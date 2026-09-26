@@ -2,6 +2,7 @@ import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import { initializeDensity } from './lib/density';
+import { initializeUiAppearance } from './lib/ui-appearance';
 import { applyTheme, type VantareTheme } from './lib/theme';
 import orbitThemeJson from './themes/vantare-orbit.json';
 import { I18nProvider } from './i18n/I18nProvider';
@@ -30,6 +31,7 @@ resetHubMockState(readHarnessSeed(window.location.search));
 
 applyTheme(orbitThemeJson as unknown as VantareTheme);
 initializeDensity();
+initializeUiAppearance();
 
 // Sin runtime ni Supabase configurado no hay sesión: se siembra una identidad de
 // prueba (con foto embebida) para que el avatar del rail se vea como en la app

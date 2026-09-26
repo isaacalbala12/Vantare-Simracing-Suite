@@ -85,10 +85,11 @@ export function estimateChainDuration(
   if (profile.avgChainDurationMs) return profile.avgChainDurationMs;
   if (profile.steps.length === 0) return 0;
   let totalMs = 0;
-  for (const step of profile.steps) {
+  for (const [index, step] of profile.steps.entries()) {
     const app = apps.find((a) => a.id === step.appId);
     const launchOverheadMs = app?.launchMethod === "steam-uri" ? 1000 : 2000;
-    totalMs += step.delay * 1000 + launchOverheadMs;
+    const delay = index === 0 ? (profile.policy?.firstStepDelay ?? 0) : step.delay;
+    totalMs += delay * 1000 + launchOverheadMs;
   }
   return totalMs;
 }
@@ -119,11 +120,22 @@ const RESERVED_HOTKEYS = new Set([
   "ctrl+l",
   "ctrl+k",
   "ctrl+j",
+  "alt+f4",
+  "alt+tab",
   "win+l",
 ]);
 
 export function isHotkeyAllowed(hotkey: string): boolean {
-  return !RESERVED_HOTKEYS.has(hotkey.toLowerCase().trim());
+  const combo = hotkey.toLowerCase().trim();
+  if (RESERVED_HOTKEYS.has(combo)) return false;
+  const parts = combo.split("+");
+  if (parts.length < 2) return false;
+  const modifiers = parts.slice(0, -1);
+  if (new Set(modifiers).size !== modifiers.length ||
+      modifiers.some((part) => !["ctrl", "alt", "shift", "win"].includes(part))) return false;
+  const key = parts.at(-1) ?? "";
+  return /^[a-z0-9]$/.test(key) || /^f(?:[1-9]|1[0-2])$/.test(key) ||
+    ["right", "left", "up", "down", "space", "enter", "escape", "tab", "backspace", "delete", "insert", "home", "end", "pageup", "pagedown"].includes(key);
 }
 
 /** Format a relative time string (e.g. "hace 10m", "hace 2h", "hace 3d"). */

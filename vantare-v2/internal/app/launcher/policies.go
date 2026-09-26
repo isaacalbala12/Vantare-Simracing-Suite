@@ -45,8 +45,19 @@ func RetryAttempts(policy app.RetryPolicy, maxRetries int) int {
 	if maxRetries > 3 {
 		maxRetries = 3
 	}
-	if policy == app.RetryAsk {
+	if policy != app.RetryFailed {
 		return 0
+	}
+	return maxRetries
+}
+
+// FullRetryAttempts caps the number of additional complete chain runs.
+func FullRetryAttempts(maxRetries int) int {
+	if maxRetries < 0 {
+		return 0
+	}
+	if maxRetries > 3 {
+		return 3
 	}
 	return maxRetries
 }

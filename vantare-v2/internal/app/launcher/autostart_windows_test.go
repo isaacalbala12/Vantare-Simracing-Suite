@@ -19,12 +19,22 @@ func TestParseLaunchFlag(t *testing.T) {
 		{[]string{"--launch"}, "", false},
 		{[]string{""}, "", false},
 		{[]string{"--other=foo"}, "", false},
+		{[]string{`--launch=creator" --other=bad`}, "", false},
 	}
 	for _, c := range cases {
 		id, ok := ParseLaunchFlag(c.args)
 		if id != c.wantID || ok != c.wantOK {
 			t.Errorf("ParseLaunchFlag(%v): got (%q, %v), want (%q, %v)", c.args, id, ok, c.wantID, c.wantOK)
 		}
+	}
+}
+
+func TestAutostartRejectsUnsafeProfileID(t *testing.T) {
+	if err := RegisterAutostart(`creator" --other=bad`); err == nil {
+		t.Fatal("unsafe profile ID must not enter the Run key command")
+	}
+	if err := UnregisterAutostart("missing-safe-id"); err != nil {
+		t.Fatalf("removing an absent autostart entry must be idempotent: %v", err)
 	}
 }
 

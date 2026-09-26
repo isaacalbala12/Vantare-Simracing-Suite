@@ -140,8 +140,13 @@ export const SETTINGS_SEARCH_INDEX: SettingsSearchEntry[] = [
   { section: "application", key: "settings.app.language" },
   { section: "application", key: "settings.app.density" },
   { section: "application", key: "settings.app.zoom" },
-  { section: "application", key: "settings.app.theme" },
-  { section: "application", key: "settings.app.reduceMotion" },
+  { section: "appearance", key: "settings.app.palette" },
+  { section: "appearance", key: "settings.app.scheme" },
+  { section: "appearance", key: "settings.app.contrast" },
+  { section: "appearance", key: "settings.app.glass" },
+  { section: "appearance", key: "settings.app.interfaceFont" },
+  { section: "appearance", key: "settings.app.monoFont" },
+  { section: "appearance", key: "settings.app.reduceMotion" },
 
   // Aplicación · sistema
   { section: "application", key: "settings.app.startup" },

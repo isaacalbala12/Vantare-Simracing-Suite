@@ -35,7 +35,16 @@ import {
   persistDensity,
   type Density,
 } from "../../lib/density";
-import { getStoredThemeId, persistThemeId, type ThemeId } from "../../lib/theme";
+import {
+  applyUiAppearance,
+  getStoredUiAppearance,
+  persistUiAppearance,
+  type UiAppearance,
+  type UiInterfaceFont,
+  type UiMonoFont,
+  type UiPalette,
+  type UiScheme,
+} from "../../lib/ui-appearance";
 import { isOpsMetrics, type OpsMetrics } from "../../lib/ops-metrics";
 import { formatMessage } from "../orbit/format-message";
 import {
@@ -98,11 +107,18 @@ import "../../styles/orbit-settings.css";
     para que la shell no importe la página entera. */
 export { SETTINGS_CONTEXT_SLOT_ID };
 
-const THEME_SWATCHES: { id: ThemeId; g1: string; g2: string }[] = [
-  { id: "vantare-orbit", g1: "#0d0e11", g2: "#d52f49" },
-  { id: "vantare-v5", g1: "#1a1a1f", g2: "#4a4a52" },
-  { id: "vantare-lite", g1: "#2a0d13", g2: "#ff6a5f" },
+const PALETTE_SWATCHES: { id: UiPalette; light: string; dark: string }[] = [
+  { id: "vantare", light: "#f6e8e8", dark: "#a91d3e" },
+  { id: "rose", light: "#f8dbe9", dark: "#a8316c" },
+  { id: "grove", light: "#dbf0e1", dark: "#26714d" },
+  { id: "ocean", light: "#d9eff5", dark: "#246a91" },
+  { id: "ember", light: "#f7e4d4", dark: "#a65b30" },
+  { id: "iris", light: "#e8def8", dark: "#6646a8" },
+  { id: "mono", light: "#e9e9e9", dark: "#303030" },
 ];
+const UI_SCHEMES: UiScheme[] = ["system", "light", "dark"];
+const INTERFACE_FONTS: UiInterfaceFont[] = ["inter", "segoe", "arial"];
+const MONO_FONTS: UiMonoFont[] = ["cascadia", "consolas", "courier"];
 
 const DENSITIES: Density[] = ["compact", "balanced", "comfortable"];
 
@@ -194,6 +210,7 @@ export function SettingsOrbitPage({ target }: SettingsOrbitPageProps) {
         {section === "application" ? (
           <ApplicationSection locale={locale} setLocale={setLocale} />
         ) : null}
+        {section === "appearance" ? <AppearanceSection /> : null}
         {section === "performance" ? <PerformanceSection /> : null}
         {section === "updates" ? <UpdatesSection /> : null}
         {section === "hotkeys" ? <HotkeysSection /> : null}
@@ -490,19 +507,152 @@ function SettingRow({
   hint,
   control,
   testid,
+  className,
 }: {
   title: string;
   hint: ReactNode;
   control: ReactNode;
   testid?: string;
+  className?: string;
 }) {
   return (
-    <div className="orbit-set-row" data-testid={testid}>
+    <div className={`orbit-set-row${className ? ` ${className}` : ""}`} data-testid={testid}>
       <span className="orbit-set-row__copy">
         <b>{title}</b>
         <span>{hint}</span>
       </span>
       {control}
+    </div>
+  );
+}
+
+function AppearanceSection() {
+  const { t } = useI18n();
+  const [appearance, setAppearance] = useState<UiAppearance>(() => getStoredUiAppearance());
+  const [reduce, setReduce] = useState<boolean>(() => getStoredReduceMotion());
+  const changeAppearance = useCallback((next: UiAppearance) => {
+    setAppearance(next);
+    applyUiAppearance(next);
+    persistUiAppearance(next);
+  }, []);
+  const changeReduce = useCallback((next: boolean) => {
+    setReduce(next);
+    applyReduceMotion(next);
+    persistReduceMotion(next);
+  }, []);
+
+  return (
+    <div className="orbit-set-appearance">
+      <Surface aria-label={t("settings.nav.appearance")} fill title={t("settings.nav.appearance")}>
+        <div className="orbit-set-group">
+          <SettingRow
+            className="orbit-set-row--palettes"
+            control={
+              <div className="orbit-set-themes" data-testid="orbit-settings-themes">
+                {PALETTE_SWATCHES.map((swatch) => (
+                  <div className="orbit-set-theme-card" key={swatch.id}>
+                    <button
+                      aria-label={t(`settings.app.palette.${swatch.id}`)}
+                      aria-pressed={appearance.palette === swatch.id}
+                      className="orbit-set-theme"
+                      data-testid={`orbit-settings-theme-${swatch.id}`}
+                      onClick={() => changeAppearance({ ...appearance, palette: swatch.id })}
+                      type="button"
+                    >
+                      <i
+                        aria-hidden="true"
+                        style={{ background: `linear-gradient(135deg, ${swatch.light} 50%, ${swatch.dark} 50%)` }}
+                      />
+                    </button>
+                    <span>{t(`settings.app.palette.${swatch.id}`)}</span>
+                    <div className="orbit-set-theme-variants">
+                      {(["light", "dark"] as const).map((scheme) => (
+                        <button
+                          aria-label={`${t(`settings.app.palette.${swatch.id}`)} · ${t(`settings.app.scheme.${scheme}`)}`}
+                          aria-pressed={appearance.palette === swatch.id && appearance.scheme === scheme}
+                          data-testid={`orbit-settings-theme-${swatch.id}-${scheme}`}
+                          key={scheme}
+                          onClick={() => changeAppearance({ ...appearance, palette: swatch.id, scheme })}
+                          style={{ background: scheme === "light" ? swatch.light : swatch.dark }}
+                          title={t(`settings.app.scheme.${scheme}`)}
+                          type="button"
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            }
+            hint={t("settings.app.paletteSub")}
+            title={t("settings.app.palette")}
+          />
+          <SettingRow
+            control={
+              <div className="orbit-set-schemes" data-testid="orbit-settings-schemes">
+                {UI_SCHEMES.map((scheme) => (
+                  <button
+                    aria-pressed={appearance.scheme === scheme}
+                    className="orbit-set-scheme"
+                    data-testid={`orbit-settings-scheme-${scheme}`}
+                    key={scheme}
+                    onClick={() => changeAppearance({ ...appearance, scheme })}
+                    type="button"
+                  >
+                    {t(`settings.app.scheme.${scheme}`)}
+                  </button>
+                ))}
+              </div>
+            }
+            hint={t("settings.app.schemeSub")}
+            title={t("settings.app.scheme")}
+          />
+          <SettingRow
+            control={
+              <div className="orbit-set-range">
+                <span>{appearance.contrast}%</span>
+                <input aria-label={t("settings.app.contrast")} id="orbit-settings-contrast" max="120" min="80" onChange={(event) => changeAppearance({ ...appearance, contrast: Number(event.target.value) })} type="range" value={appearance.contrast} />
+              </div>
+            }
+            hint={t("settings.app.contrastSub")}
+            testid="orbit-settings-contrast-row"
+            title={t("settings.app.contrast")}
+          />
+          <SettingRow
+            control={
+              <div className="orbit-set-range">
+                <span>{appearance.glassOpacity}%</span>
+                <input aria-label={t("settings.app.glass")} id="orbit-settings-glass" max="100" min="50" onChange={(event) => changeAppearance({ ...appearance, glassOpacity: Number(event.target.value) })} type="range" value={appearance.glassOpacity} />
+              </div>
+            }
+            hint={t("settings.app.glassSub")}
+            testid="orbit-settings-glass-row"
+            title={t("settings.app.glass")}
+          />
+          <SettingRow
+            control={<Select label={t("settings.app.interfaceFont")} onChange={(next) => changeAppearance({ ...appearance, interfaceFont: next as UiInterfaceFont })} options={INTERFACE_FONTS.map((value) => ({ value, label: t(`settings.app.interfaceFont.${value}`) }))} value={appearance.interfaceFont} width={168} />}
+            hint={t("settings.app.interfaceFontSub")}
+            testid="orbit-settings-interface-font"
+            title={t("settings.app.interfaceFont")}
+          />
+          <SettingRow
+            control={<Select label={t("settings.app.monoFont")} onChange={(next) => changeAppearance({ ...appearance, monoFont: next as UiMonoFont })} options={MONO_FONTS.map((value) => ({ value, label: t(`settings.app.monoFont.${value}`) }))} value={appearance.monoFont} width={168} />}
+            hint={t("settings.app.monoFontSub")}
+            testid="orbit-settings-mono-font"
+            title={t("settings.app.monoFont")}
+          />
+          <div className="orbit-set-font-preview" data-testid="orbit-settings-font-preview">
+            <span>{t("settings.app.fontPreview")}</span>
+            <code>01:23.456 · LMU / Vantare</code>
+          </div>
+          <SettingRow
+            control={<Toggle label={t("settings.app.reduceMotion")} onChange={changeReduce} pressed={reduce} />}
+            hint={t("settings.app.reduceMotionSub")}
+            testid="orbit-settings-reduce-motion"
+            title={t("settings.app.reduceMotion")}
+          />
+        </div>
+        <Note>{t("settings.app.appearanceNote")}</Note>
+      </Surface>
     </div>
   );
 }
@@ -521,8 +671,6 @@ function ApplicationSection({
   const notifications = app.appSettings.notifications ?? {};
 
   const [density, setDensity] = useState<Density>(() => getStoredDensity());
-  const [theme, setTheme] = useState<ThemeId>(() => getStoredThemeId());
-  const [reduce, setReduce] = useState<boolean>(() => getStoredReduceMotion());
   const [appZoom, setAppZoomState] = useState<AppZoom>(() => getStoredAppZoom());
 
   useEffect(() => subscribeAppZoom(setAppZoomState), []);
@@ -533,13 +681,6 @@ function ApplicationSection({
     applyDensity(next);
     persistDensity(next);
   }, []);
-
-  const changeReduce = useCallback((next: boolean) => {
-    setReduce(next);
-    applyReduceMotion(next);
-    persistReduceMotion(next);
-  }, []);
-
   const changeAppZoom = useCallback((next: AppZoom) => {
     setAppZoomState(setAppZoom(next));
   }, []);
@@ -641,47 +782,7 @@ function ApplicationSection({
             testid="orbit-settings-density"
             title={t("settings.app.density")}
           />
-          <SettingRow
-            control={
-              <div className="orbit-set-themes" data-testid="orbit-settings-themes">
-                {THEME_SWATCHES.map((swatch) => (
-                  <button
-                    aria-label={t(`settings.app.theme.${swatch.id}`)}
-                    aria-pressed={theme === swatch.id}
-                    className="orbit-set-theme"
-                    data-testid={`orbit-settings-theme-${swatch.id}`}
-                    key={swatch.id}
-                    onClick={() => {
-                      setTheme(swatch.id);
-                      persistThemeId(swatch.id);
-                    }}
-                    type="button"
-                  >
-                    <i
-                      aria-hidden="true"
-                      style={{ background: `linear-gradient(135deg, ${swatch.g1}, ${swatch.g2})` }}
-                    />
-                  </button>
-                ))}
-              </div>
-            }
-            hint={t("settings.app.themeSub")}
-            title={t("settings.app.theme")}
-          />
-          <SettingRow
-            control={
-              <Toggle
-                label={t("settings.app.reduceMotion")}
-                onChange={changeReduce}
-                pressed={reduce}
-              />
-            }
-            hint={t("settings.app.reduceMotionSub")}
-            testid="orbit-settings-reduce-motion"
-            title={t("settings.app.reduceMotion")}
-          />
         </div>
-        <Note>{t("settings.app.themeNote")}</Note>
       </Surface>
 
       <Surface aria-label={t("settings.app.system")} fill title={t("settings.app.system")}>

@@ -60,7 +60,7 @@ export const shellOrbitEn: Record<string, string> = {
   "shell.topbar.eyebrow.estrategia": "Planner",
   "shell.topbar.eyebrow.ingeniero": "Telemetry Core",
   "shell.topbar.eyebrow.telemetria": "Post-session analysis",
-  "shell.topbar.eyebrow.roadmap": "Versioned source",
+  "shell.topbar.eyebrow.roadmap": "Product",
   "shell.topbar.eyebrow.ajustes": "Local preferences",
   "shell.topbar.eyebrow.testing": "Quality",
 

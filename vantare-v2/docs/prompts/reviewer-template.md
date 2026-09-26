@@ -20,7 +20,7 @@ No edites archivos.
 
 Contexto:
 - Lee `AGENTS.md`.
-- Lee `docs/roadmap/plan.md`.
+- Lee la tarea Notion y el handoff vivo.
 - Lee los docs relevantes de la tarea.
 - Revisa el diff del worker.
 

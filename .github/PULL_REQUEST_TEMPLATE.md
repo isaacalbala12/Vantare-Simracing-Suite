@@ -16,12 +16,6 @@ ISA-<!-- numero extraido tambien de la rama vantareapp/isa-N-* -->
 
 <!-- Que cambia para el usuario o para la operacion. -->
 
-## Contrato de roadmap
-
-- Decisión en Notion y label de la referencia GitHub: `roadmap:required` / `roadmap:not-required`
-- IDs declarados y modificados: <!-- phases:id, areas:id, milestones:id -->
-- Motivo si no aplica: <!-- CI solo acepta su allowlist cerrada -->
-
 ## Evidencia
 
 - [ ] Tests focales
@@ -29,7 +23,6 @@ ISA-<!-- numero extraido tambien de la rama vantareapp/isa-N-* -->
 - [ ] Verificacion manual u omisión justificada
 - [ ] Notion actualizado y releído: estado, PR, checks, riesgos y siguiente paso
 - [ ] Handoff técnico enlazado a la tarea Notion
-- [ ] `plan.md` y `roadmap.json` coherentes cuando aplica
 
 ## Estado real
 

@@ -25,19 +25,6 @@ var (
 	procUnregisterHotKey = moduser32.NewProc("UnregisterHotKey")
 )
 
-// reservedCombos lists hotkey combinations that must not be assigned to any
-// profile because they conflict with OS or Hub-level shortcuts.
-var reservedCombos = map[string]bool{
-	"ctrl+c": true, "ctrl+v": true, "ctrl+x": true, "ctrl+z": true,
-	"alt+f4": true, "alt+tab": true, "win+l": true,
-}
-
-// IsHotkeyAllowed returns false if the given combo is a reserved system
-// shortcut that a profile hotkey must not override.
-func IsHotkeyAllowed(combo string) bool {
-	return !reservedCombos[strings.ToLower(combo)]
-}
-
 // ParseHotkeyString parses a user-facing hotkey string like "ctrl+shift+1"
 // into the Windows modifier flags and virtual key code.
 func ParseHotkeyString(s string) (modifiers uint32, vk uint32, err error) {

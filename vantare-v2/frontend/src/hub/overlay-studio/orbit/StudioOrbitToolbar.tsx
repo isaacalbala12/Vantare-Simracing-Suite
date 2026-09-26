@@ -3,10 +3,9 @@ import { useI18n } from "../../../i18n/I18nProvider";
 import { IconButton, Seg } from "../../../ui/orbit";
 import type { StudioPreviewState } from "../state/studio-store";
 import { StudioWallpaperPicker } from "./StudioWallpaperPicker";
+import { CANVAS_BACKGROUNDS, THEME_CANVAS_PALETTES, canvasBackgroundLabel } from "../canvas/canvas-backgrounds";
 import {
   nextZoom,
-  ORBIT_BACKGROUND_OPTIONS,
-  type OrbitBackgroundId,
 } from "./studio-orbit-model";
 
 /**
@@ -41,7 +40,7 @@ function ToolButton(props: {
 }
 
 /** Fondo al que vuelve el lienzo si se borra el propio que estaba puesto. */
-const FALLBACK_BACKGROUND_ID = "gradient";
+const FALLBACK_BACKGROUND_ID = "theme";
 
 export type StudioOrbitToolbarProps = {
   preview: StudioPreviewState;
@@ -72,17 +71,33 @@ export function StudioOrbitToolbar(props: StudioOrbitToolbarProps): React.ReactE
 
   return (
     <div className="orbit-studio-toolbar" data-testid="orbit-studio-toolbar">
-      <Seg<OrbitBackgroundId>
-        label={t("studio.toolbar.background")}
-        onChange={(value) => onPreviewChange({ backgroundId: value })}
-        options={ORBIT_BACKGROUND_OPTIONS.map((option) => ({
-          value: option.value,
-          label: t(option.labelKey),
-        }))}
-        // Con un fondo propio puesto no hay opcion de fabrica encendida: el
-        // grupo dice la verdad, y pulsar cualquiera de las tres vuelve a ella.
-        value={(preview.backgroundId as OrbitBackgroundId) ?? "grid"}
-      />
+      <label className="orbit-studio-toolbar__background">
+        <select
+          aria-label={t("studio.toolbar.background")}
+          data-testid="orbit-studio-background-select"
+          onChange={(event) => onPreviewChange({ backgroundId: event.target.value })}
+          value={preview.backgroundId}
+        >
+          {preview.backgroundId.startsWith("wallpaper:") ? (
+            <option value={preview.backgroundId}>{t("studio.toolbar.wallpaper")}</option>
+          ) : null}
+          <option value="theme">{t("studio.v3.canvas.background.theme")}</option>
+          {THEME_CANVAS_PALETTES.map((palette) => (
+            <optgroup key={palette} label={`${t("studio.toolbar.background.themeGroup")} ${t(`settings.app.palette.${palette}`)}`}>
+              {CANVAS_BACKGROUNDS.filter((background) => background.palette === palette).map((background) => (
+                <option key={background.id} value={background.id}>
+                  {canvasBackgroundLabel(background, t)}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+          <optgroup label={t("studio.toolbar.background.otherGroup")}>
+            {CANVAS_BACKGROUNDS.filter((background) => background.id !== "theme" && !background.palette).map((background) => (
+              <option key={background.id} value={background.id}>{canvasBackgroundLabel(background, t)}</option>
+            ))}
+          </optgroup>
+        </select>
+      </label>
 
       <StudioWallpaperPicker
         backgroundId={preview.backgroundId}

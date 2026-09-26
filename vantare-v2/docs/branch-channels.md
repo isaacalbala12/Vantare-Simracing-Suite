@@ -50,19 +50,11 @@ aplicable. Solo Isaac puede autorizar `testers` a `master`.
 
 ## Automatización
 
-### Contrato de roadmap
+### Roadmap público
 
-- Las ramas `vantareapp/isa-N-*` y los hotfix ISA validan la issue N y su
-  decision `roadmap:required`/`roadmap:not-required` antes del merge.
-- `bot/roadmap-digest` es una excepcion exacta hacia `nightly`: solo puede
-  cambiar `vantare-v2/docs/roadmap/roadmap.json`, derivado del plan y del
-  estado base confiable. No puede modificar `plan.md`, no se autoanuncia como
-  entrega y no tiene auto-merge.
-- En `merge_group` se revalida la coherencia del arbol sintetico; no se intenta
-  recuperar una rama ISA que el evento no expone.
-- La ruta usa `pull_request`, `push` y `merge_group` con permisos de lectura.
-  Nunca ejecuta el candidato con `pull_request_target` ni concede autoridad a
-  texto libre de la issue.
+El contenido se edita visualmente en la app: Owner guarda un borrador privado
+y lo publica para todos. No hay rama automática ni gate de archivos de roadmap.
+Las ramas de código siguen las validaciones de canal descritas aquí.
 
 La proteccion efectiva requiere que el check `Validate promotion path` siga
 siendo obligatorio y que los cambios en `.github/`, `AGENTS.md` y

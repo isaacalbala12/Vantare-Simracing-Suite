@@ -85,7 +85,7 @@ export function StrategyRecordedWorkflow({ eventId, repositoryVersion, repositor
   const sourceLabels: Record<string, string> = {};
   for (const session of flow.sessions.sessions) {
     const label = sessionLabels[session.candidateId];
-    if (label) sourceLabels[session.opened.sessionId] = label;
+    if (label) sourceLabels[session.revision.sessionId] = label;
   }
   const revisionKey = `${flow.sessions.corrections.editor?.session.opened.sessionId ?? "none"}:${flow.sessions.corrections.editor?.current.revision.revisionId ?? "none"}`;
   const manualOnly = flow.draft.mode === "manual" && flow.draft.sessions.length === 0 && !inspectionRequested;

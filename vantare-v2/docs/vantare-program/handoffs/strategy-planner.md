@@ -1,5 +1,25 @@
 # Handoff vivo — Strategy Planner
 
+## T22 · procedencia visible y edición de parada en el arnés (2026-09-26)
+
+Un recorrido en el navegador interno desde una sesión LMU simulada hasta
+calcular, mover un límite de stint y editar una parada encontró dos fallos.
+«Revisiones exactas utilizadas» mostraba «Archivo sin nombre disponible»
+aunque la sesión estaba abierta: la UI buscaba el nombre por handle temporal
+en vez del `sessionId` estable de la revisión. Ahora muestra el nombre de la
+sesión; un test de integración distingue expresamente ambos identificadores.
+Un borrador sin inventario físico hacía fallar el recálculo de parada porque
+el arnés inventaba cambio de neumáticos; también publicaba VE cuando la regla
+declaraba «No aplica». El mock ahora respeta esas dos ausencias. Sus dos
+pruebas fallaron antes del arreglo y pasan después, incluida la construcción
+de una comparación de parada. El recorrido visual con inventario comprobó
+recalcular Fuel 62,4→63 L y mostrar +3 s de coste, pero ese importe es del
+mock, **no** evidencia del solver real.
+
+Frontend completo: 532 archivos/4883 tests PASS (2 omitidos), presupuesto de
+frames 4 PASS, typecheck, lint y build PASS. La sesión de navegador sólo prueba
+UI y arnés; E01–E08 Wails/DuckDB real y T19–T21 permanecen pendientes.
+
 ## T22 · borradores recientes al volver al origen (2026-09-26)
 
 El arnés visual reprodujo un fallo de navegación: después de guardar una

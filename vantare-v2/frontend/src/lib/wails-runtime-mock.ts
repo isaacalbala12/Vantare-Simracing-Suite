@@ -560,6 +560,8 @@ function recordedHarnessCalculation(input: Record<string, unknown>) {
   const drivers = Array.isArray(input.drivers) ? input.drivers.map(readHarnessPayload) : [];
   const activeVariantId = typeof input.activeVariantId === "string" ? input.activeVariantId : "recorded-main";
   const totalLaps = Number.isSafeInteger(event.targetLaps) ? Number(event.targetLaps) : 69;
+  const hasTyreInventory = event.tyreInventory !== undefined;
+  const hasVirtualEnergy = readHarnessPayload(event.virtualEnergy).applicability === "applicable";
   const plans: Record<string, Record<string, unknown>> = {};
   for (const variant of variants) {
     const id = typeof variant.id === "string" ? variant.id : "recorded-main";
@@ -588,19 +590,20 @@ function recordedHarnessCalculation(input: Record<string, unknown>) {
       const fitment = { frontLeft: `${compound}-fl`, frontRight: `${compound}-fr`, rearLeft: `${compound}-rl`, rearRight: `${compound}-rr` };
       return {
         i: index, d: order[index % Math.max(1, order.length)] ?? "driver", laps: stintLaps,
-        fuel: Math.min(Number(event.tankLiters ?? 100), stintLaps * 2.71 + 2.2), virtualEnergy: Math.min(100, stintLaps * 3.45 + 4),
+        fuel: Math.min(Number(event.tankLiters ?? 100), stintLaps * 2.71 + 2.2),
+        ...(hasVirtualEnergy ? { virtualEnergy: Math.min(100, stintLaps * 3.45 + 4) } : {}),
         pace, start, end: clock, lap0, lap1, pitWindowLap: Math.max(lap0, lap1 - 2), pitWindowSeconds: clock - pace * 2,
         over: false, manual: id !== "recorded-main", savingLevel: "none", fuelSavedPerLap: 0, savingCostSeconds: 0,
-        compound, tyreFitment: fitment,
+        ...(hasTyreInventory ? { compound, tyreFitment: fitment } : {}),
       };
     });
     const stopDetails = stints.slice(0, -1).map((stint, index) => {
       const next = stints[index + 1];
       const override = readHarnessPayload(pitOverrides[index]);
       const fuelAdded = typeof override.fuelLiters === "number" ? override.fuelLiters : 62.4;
-      const veAdded = typeof override.vePercent === "number" ? override.vePercent : 78;
-      const changeTyres = typeof override.changeTyres === "boolean" ? override.changeTyres : true;
-      const compound = typeof override.compound === "string" ? override.compound : next.compound;
+      const veAdded = hasVirtualEnergy ? (typeof override.vePercent === "number" ? override.vePercent : 78) : 0;
+      const changeTyres = hasTyreInventory ? (typeof override.changeTyres === "boolean" ? override.changeTyres : true) : undefined;
+      const compound = hasTyreInventory ? (typeof override.compound === "string" ? override.compound : next.compound) : undefined;
       const transit = 22.4;
       const fuelService = fuelAdded / Number(readHarnessPayload(event.pitServices).refuelRateLPerS || 2.5);
       const veService = veAdded / Number(readHarnessPayload(event.pitServices).veRatePPerS || 4.5);
@@ -609,9 +612,10 @@ function recordedHarnessCalculation(input: Record<string, unknown>) {
       const total = transit + service;
       return {
         index, lap: stint.lap1, fuelInLiters: 2.2, fuelOutLiters: Math.min(Number(event.tankLiters ?? 100), 2.2 + fuelAdded),
-        virtualEnergyInPercent: 4, virtualEnergyOutPercent: Math.min(100, 4 + veAdded),
+        ...(hasVirtualEnergy ? { virtualEnergyInPercent: 4, virtualEnergyOutPercent: Math.min(100, 4 + veAdded) } : {}),
         pitLossSeconds: total, pitTransitSeconds: transit, pitServiceSeconds: service, pitOverlapSeconds: fuelService + veService + tyreService - service,
-        pitBreakdownAvailable: true, changeTyres, compound, tyreFitment: next.tyreFitment,
+        pitBreakdownAvailable: true,
+        ...(hasTyreInventory ? { changeTyres, compound, tyreFitment: next.tyreFitment } : {}),
       };
     });
     const drivingSeconds = stints.reduce((sum, stint) => sum + (stint.end - stint.start), 0);

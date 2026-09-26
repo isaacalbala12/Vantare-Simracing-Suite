@@ -47,6 +47,12 @@ export function useRecordedCalculation(
       expectedRepositoryVersion: repositoryVersion!, input,
     });
     if (current !== generation.current) return;
+    if (cancelRequested.current) {
+      cancelRequested.current = false;
+      active.current = undefined;
+      setState({ status: "cancelled", key: calculationKey });
+      return;
+    }
     if (!result.orbitCalculation?.plans[input.activeVariantId]) throw new Error("Strategy calculation result is missing its active plan");
     active.current = undefined;
     setState({ status: "success", key: calculationKey, input, result: result.orbitCalculation });
@@ -91,6 +97,12 @@ export function useRecordedCalculation(
         application as StrategyApplicationClient<unknown>, draft, repositoryVersion, prepareId, new Date().toISOString(),
       );
       if (current !== generation.current) return;
+      if (cancelRequested.current) {
+        cancelRequested.current = false;
+        active.current = undefined;
+        setState({ status: "cancelled", key: calculationKey });
+        return;
+      }
       const assessed = assessRecordedCalculation(draft, planning);
       if (assessed.status === "partial") {
         active.current = undefined;

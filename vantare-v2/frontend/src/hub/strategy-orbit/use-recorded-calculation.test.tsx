@@ -139,6 +139,42 @@ describe("useRecordedCalculation", () => {
     expect(cancel).toHaveBeenCalledWith(expect.stringMatching(/^recorded-prepare-/));
   });
 
+  it("does not calculate after a cancelled preparation succeeds late", async () => {
+    let resolve!: (value: StrategyApplicationResultV1<RecordedDraftPayload>) => void;
+    let pendingCommand!: StrategyApplicationCommandV1<RecordedDraftPayload>;
+    const execute = vi.fn((command: StrategyApplicationCommandV1<RecordedDraftPayload>) => {
+      pendingCommand = command;
+      return new Promise<StrategyApplicationResultV1<RecordedDraftPayload>>(done => { resolve = done; });
+    });
+    const application: StrategyApplicationClient<RecordedDraftPayload> = { execute, cancel: vi.fn(() => true), dispose: vi.fn() };
+    const { result: hook } = renderHook(() => useRecordedCalculation(draft, 7, application));
+    act(() => { void hook.current.calculate(); });
+    await waitFor(() => expect(hook.current.state.status).toBe("preparing"));
+    act(() => hook.current.cancel());
+    expect(hook.current.state.status).toBe("cancelling");
+    await act(async () => resolve(result(pendingCommand, { planningInputStatus: "available", planningInputs: planning((pendingCommand as Extract<typeof pendingCommand, { operation: "get_revision_planning_inputs" }>).generatedAt) })));
+    expect(hook.current.state.status).toBe("cancelled");
+    expect(execute).toHaveBeenCalledOnce();
+  });
+
+  it("does not publish a calculation that succeeds after cancellation", async () => {
+    const manual = { ...draft, mode: "manual" as const, sessions: [], manualInputs: { paceSeconds: 90, fuelLitersPerLap: 2 } };
+    let resolve!: (value: StrategyApplicationResultV1<RecordedDraftPayload>) => void;
+    let pendingCommand!: StrategyApplicationCommandV1<RecordedDraftPayload>;
+    const execute = vi.fn((command: StrategyApplicationCommandV1<RecordedDraftPayload>) => {
+      pendingCommand = command;
+      return new Promise<StrategyApplicationResultV1<RecordedDraftPayload>>(done => { resolve = done; });
+    });
+    const application: StrategyApplicationClient<RecordedDraftPayload> = { execute, cancel: vi.fn(() => true), dispose: vi.fn() };
+    const { result: hook } = renderHook(() => useRecordedCalculation(manual, 7, application));
+    act(() => { void hook.current.calculate(); });
+    await waitFor(() => expect(hook.current.state.status).toBe("calculating"));
+    act(() => hook.current.cancel());
+    expect(hook.current.state.status).toBe("cancelling");
+    await act(async () => resolve(result(pendingCommand, { orbitCalculation: { plans: { "recorded-main": {} as never }, comparisons: {} } })));
+    expect(hook.current.state.status).toBe("cancelled");
+  });
+
   it("discards a late preparation response after the draft changes", async () => {
     let resolve!: (value: StrategyApplicationResultV1<RecordedDraftPayload>) => void;
     let pendingCommand!: StrategyApplicationCommandV1<RecordedDraftPayload>;

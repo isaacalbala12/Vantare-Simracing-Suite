@@ -20,7 +20,7 @@ Cada app mantiene cuatro hechos independientes:
 - `catalogued`: existe en el catálogo oficial.
 - `found`: se encontró evidencia en registro, ruta conocida, Steam o override.
 - `installed`: existe un ejecutable válido o instalación Steam válida.
-- `launchable`: la app tiene un método v3 válido y puede lanzarse.
+- `launchable`: se ha encontrado su ejecutable y el launcher puede comprobar el arranque. Una instalación Steam sin ruta verificable conserva `installed`, pero no `launchable`.
 
 `detected` se conserva únicamente para compatibilidad de settings antiguos.
 
@@ -32,15 +32,17 @@ La prioridad runtime es override local → asset oficial local → extracción d
 
 Los perfiles se separan en `vantareProfiles` y `userProfiles`. El modo básico evita duplicados, rutas y argumentos por paso. El modo avanzado habilita repetición y `argsOverride`; la ruta global permanece en la app.
 
-Las políticas persistidas son `ask`, `reuse`/`restart`, `stop`/`continue`, `leave`/`close-started` y `ask`/`failed`/`all`, con `maxRetries` limitado a 3. Los argumentos se tokenizan sin shell y se rechazan NUL o comillas sin cerrar.
+Las políticas persistidas son `ask`, `reuse`/`restart`, `stop`/`continue`, `leave`/`close-started` y `ask`/`failed`/`all`, con `maxRetries` limitado a 3 y editable en el modo avanzado. `failed` reintenta cada paso fallido; `all` vuelve a ejecutar la cadena completa desde el primer paso tras un fallo. En el aviso de resultado, «Repetir pasos fallidos» reanuda los fallidos y no ejecutados, mientras «Repetir todos los pasos» inicia de nuevo el perfil completo. Los argumentos se tokenizan sin shell y se rechazan NUL o comillas sin cerrar.
 
-La identidad de proceso usa PID y ruta normalizada cuando están disponibles, con nombre de proceso como fallback. Close/restart exige identidad confirmada; nunca mata por nombre únicamente.
+Solo un perfil puede estar marcado para iniciar con Windows. Al seleccionar otro, el Launcher desactiva el anterior y sincroniza ambos valores Run; si falla el registro, restaura la configuración previa. Los ajustes antiguos con varios perfiles marcados se reducen al primero al arrancar, y los flags antiguos que ya estén en cola no lanzan los perfiles desactivados.
+
+La identidad de proceso usa PID, ruta normalizada y hora de creación observados. Close/restart exige los tres datos; nunca mata por nombre o PID únicamente. Un proceso ya abierto fuera de Vantare puede reutilizarse, pero no adquiere autoridad de cierre. El enlace de Steam solo inicia la solicitud: la cadena espera a observar el ejecutable del juego antes de marcar el paso como completado.
 
 ## Eventos vigentes
 
 Estado: `launcher:snapshot` solicitado con `launcher:snapshot:get`.
 
-Comandos: `launcher:apps:discover`, `launcher:app:add`, `launcher:app:remove`, `launcher:app:update`, `launcher:app:path:set`, `launcher:app:favorite`, `launcher:profile:save`, `launcher:profile:delete`, `launcher:profile:duplicate`, `launcher:profile:launch`, `launcher:profile:cancel`, `launcher:decision:resolve`, `launcher:app:close`, `launcher:app:restart`.
+Comandos: `launcher:apps:discover`, `launcher:app:add`, `launcher:app:remove`, `launcher:app:update`, `launcher:app:path:set`, `launcher:app:favorite`, `launcher:profile:save`, `launcher:profile:delete`, `launcher:profile:duplicate`, `launcher:profile:launch`, `launcher:profile:retry:failed`, `launcher:profile:retry:all`, `launcher:profile:cancel`, `launcher:decision:resolve`, `launcher:app:close`, `launcher:app:restart`.
 
 Los eventos agregados legacy de apps y perfiles ya no son emitidos por producción ni consumidos por la UI.
 

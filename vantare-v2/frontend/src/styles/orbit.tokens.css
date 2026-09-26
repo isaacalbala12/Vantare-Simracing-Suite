@@ -38,7 +38,10 @@
 
   /* acento y semánticos */
   --orbit-carmine: #d52f49;
+  --orbit-accent-rgb: 213, 47, 73;
   --orbit-red: #f04755;
+  --orbit-danger: #f04755;
+  --orbit-danger-rgb: 240, 71, 85;
   --orbit-coral: #ff6a5f;
   --orbit-ember: #ff9b57;
   --orbit-wine: #641526;

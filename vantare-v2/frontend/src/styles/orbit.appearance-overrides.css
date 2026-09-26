@@ -1,0 +1,219 @@
+/* Acentos de secciones con colores literales heredados. */
+
+/* orbit-home */
+:root[data-ui-palette] .orbit-home__command-icon {
+  box-shadow: 0 10px 26px rgba(var(--orbit-accent-rgb), 0.29), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+:root[data-ui-palette] .orbit-home__chip:hover {
+  border-color: rgba(var(--orbit-accent-rgb), 0.17);
+  background: rgba(var(--orbit-accent-rgb), 0.055);
+}
+
+/* orbit-kit */
+:root[data-ui-palette] .orbit-btn--ghost:hover:not([disabled]) {
+  border-color: rgba(var(--orbit-accent-rgb), 0.17);
+  background: rgba(var(--orbit-accent-rgb), 0.055);
+}
+:root[data-ui-palette] .orbit-btn--danger {
+  color: var(--orbit-danger);
+}
+:root[data-ui-palette] .orbit-btn--danger:hover:not([disabled]) {
+  background: rgba(var(--orbit-danger-rgb), 0.08);
+}
+:root[data-ui-palette] .orbit-btn__dot {
+  box-shadow: 0 0 12px rgba(var(--orbit-accent-rgb), 0.7);
+}
+:root[data-ui-palette] .orbit-icon-btn.is-on {
+  background: rgba(var(--orbit-accent-rgb), 0.14);
+  box-shadow: inset 0 0 0 1px rgba(var(--orbit-accent-rgb), 0.22);
+}
+:root[data-ui-palette] .orbit-icon-btn--danger:hover:not([disabled]) {
+  background: rgba(var(--orbit-danger-rgb), 0.12);
+  color: var(--orbit-danger);
+}
+:root[data-ui-palette] .orbit-seg {
+  border: 1px solid var(--orbit-line);
+  background: var(--orbit-surface-1);
+}
+:root[data-ui-palette] .orbit-seg__option[aria-pressed="true"] {
+  background: rgba(var(--orbit-accent-rgb), 0.16);
+  box-shadow: inset 0 0 0 1px rgba(var(--orbit-accent-rgb), 0.22);
+}
+:root[data-ui-palette] .orbit-toggle[aria-pressed="true"] {
+  border-color: var(--orbit-carmine);
+  background: var(--orbit-brand-gradient);
+  box-shadow: 0 0 13px rgba(var(--orbit-accent-rgb), 0.2);
+}
+:root[data-ui-palette] .orbit-toggle[aria-pressed="true"]::after {
+  background: var(--orbit-primary-ink);
+}
+:root[data-ui-palette] .orbit-chip--danger {
+  color: var(--orbit-danger);
+}
+:root[data-ui-palette] .orbit-state-chip--warn {
+  background: rgba(var(--orbit-accent-rgb), 0.08);
+}
+:root[data-ui-palette] .orbit-tyre-chip--soft {
+  background: rgba(var(--orbit-accent-rgb), 0.14);
+}
+:root[data-ui-palette] .orbit-note {
+  background: linear-gradient(110deg, rgba(255, 155, 87, 0.06), rgba(var(--orbit-accent-rgb), 0.02));
+}
+:root[data-ui-palette] .orbit-alert--danger {
+  border-color: rgba(var(--orbit-accent-rgb), 0.22);
+  background: rgba(var(--orbit-accent-rgb), 0.08);
+}
+:root[data-ui-palette] .orbit-menu__item:hover {
+  background: rgba(var(--orbit-accent-rgb), 0.12);
+}
+:root[data-ui-palette] .orbit-trace__delta-pos {
+  fill: rgba(var(--orbit-accent-rgb), 0.25);
+}
+:root[data-ui-palette] .orbit-corner-slot[data-over="true"],
+:root[data-ui-palette] .orbit-corner-slot[data-picked="true"],
+:root[data-ui-palette] .orbit-corner-slot:focus-visible {
+  background: rgba(var(--orbit-accent-rgb), 0.12);
+  box-shadow: 0 0 0 3px rgba(var(--orbit-accent-rgb), 0.18);
+}
+:root[data-ui-palette] .orbit-corner-slot__x:hover {
+  background: rgba(var(--orbit-accent-rgb), 0.25);
+}
+:root[data-ui-palette] .orbit-tyre-item[aria-pressed="true"] {
+  background: rgba(var(--orbit-accent-rgb), 0.1);
+  box-shadow: 0 0 0 3px rgba(var(--orbit-accent-rgb), 0.18);
+}
+:root[data-ui-palette] .orbit-tyre-item[data-used="true"] {
+  border-left: 3px solid rgba(var(--orbit-accent-rgb), 0.5);
+}
+:root[data-ui-palette] .orbit-fader b {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6), 0 0 0 3px rgba(var(--orbit-accent-rgb), 0.25);
+}
+
+/* orbit-launcher */
+:root[data-ui-palette] .orbit-launcher__profile--featured::before {
+  box-shadow: 0 0 18px rgba(var(--orbit-accent-rgb), 0.5);
+}
+:root[data-ui-palette] .orbit-launcher__create:hover {
+  border-color: rgba(var(--orbit-accent-rgb), 0.42);
+  background: rgba(var(--orbit-accent-rgb), 0.045);
+  box-shadow: 0 0 0 1px rgba(var(--orbit-accent-rgb), 0.08) inset;
+}
+:root[data-ui-palette] .orbit-launcher__create:focus-visible {
+  border-color: rgba(var(--orbit-accent-rgb), 0.42);
+}
+:root[data-ui-palette] .orbit-launcher__create:hover .orbit-launcher__create-ico,
+:root[data-ui-palette] .orbit-launcher__create:focus-visible .orbit-launcher__create-ico {
+  border-color: rgba(var(--orbit-accent-rgb), 0.45);
+}
+:root[data-ui-palette] .orbit-profile-editor__add:hover,
+:root[data-ui-palette] .orbit-profile-editor__add:focus-visible {
+  border-color: rgba(var(--orbit-accent-rgb), 0.42);
+}
+:root[data-ui-palette] .orbit-profile-editor__error {
+  color: var(--orbit-danger);
+}
+:root[data-ui-palette] .orbit-launcher__remove:hover:not(:disabled),
+:root[data-ui-palette] .orbit-launcher__remove:focus-visible {
+  color: var(--orbit-danger);
+}
+:root[data-ui-palette] .orbit-launcher__add-app:hover,
+:root[data-ui-palette] .orbit-launcher__add-app:focus-visible {
+  border-color: rgba(var(--orbit-accent-rgb), 0.42);
+}
+
+/* orbit-onboarding */
+:root[data-ui-palette] .orbit-welcome__role[aria-pressed="true"] {
+  background: rgba(var(--orbit-accent-rgb), 0.16);
+  box-shadow: inset 0 0 0 1px rgba(var(--orbit-accent-rgb), 0.22);
+}
+:root[data-ui-palette] .orbit-welcome__note--accent {
+  border-color: rgba(var(--orbit-accent-rgb), 0.22);
+  background: rgba(var(--orbit-accent-rgb), 0.08);
+}
+
+/* orbit-races */
+:root[data-ui-palette] .orbit-races__nrow[aria-selected="true"] {
+  background: rgba(var(--orbit-accent-rgb), 0.09);
+}
+:root[data-ui-palette] .orbit-races__day-hour[data-now="true"],
+:root[data-ui-palette] .orbit-races__day-cell[data-now="true"] {
+  background: linear-gradient(90deg, rgba(var(--orbit-accent-rgb), 0.06), transparent);
+}
+:root[data-ui-palette] .orbit-races__chip:hover {
+  border-color: rgba(var(--orbit-accent-rgb), 0.3);
+  background: rgba(var(--orbit-accent-rgb), 0.08);
+}
+:root[data-ui-palette] .orbit-races__week-cell[data-today="true"] {
+  background: rgba(var(--orbit-accent-rgb), 0.06);
+}
+:root[data-ui-palette] .orbit-races__slot:hover {
+  border-color: rgba(var(--orbit-accent-rgb), 0.3);
+  background: rgba(var(--orbit-accent-rgb), 0.12);
+}
+:root[data-ui-palette] .orbit-races__month-day[data-today="true"] .orbit-races__month-num {
+  box-shadow: 0 0 12px rgba(var(--orbit-accent-rgb), 0.5);
+}
+:root[data-ui-palette] .orbit-races__start--first kbd {
+  border-color: rgba(var(--orbit-accent-rgb), 0.3);
+}
+:root[data-ui-palette] .orbit-races__filter[aria-pressed="true"] {
+  background: rgba(var(--orbit-accent-rgb), 0.105);
+}
+
+/* orbit-roadmap */
+:root[data-ui-palette] .orbit-rm__stones li[data-state="active"]::before {
+  box-shadow: 0 0 10px rgba(var(--orbit-accent-rgb), 0.7);
+}
+/* orbit-strategy */
+:root[data-ui-palette] .orbit-analysis__plan-row .orbit-stat--hot .orbit-stat__v::after {
+  box-shadow: 0 0 10px rgba(var(--orbit-accent-rgb), 0.45);
+}
+:root[data-ui-palette] .orbit-analysis__class[data-own="true"] i {
+  box-shadow: 0 0 9px rgba(var(--orbit-accent-rgb), 0.55);
+}
+:root[data-ui-palette] .orbit-analysis__stop > header > span {
+  background: linear-gradient(150deg, rgba(var(--orbit-accent-rgb), 0.22), rgba(var(--orbit-accent-rgb), 0.06));
+  border: 1px solid rgba(var(--orbit-accent-rgb), 0.34);
+}
+
+/* orbit-telemetry */
+:root[data-ui-palette] .orbit-tel__sectors b[data-tone="loss"] {
+  color: var(--orbit-danger);
+}
+:root[data-ui-palette] .orbit-tel__legend [data-tone="loss"] i {
+  background: var(--orbit-danger);
+}
+:root[data-ui-palette] .orbit-tel-insight[data-tone="loss"] .orbit-tel-insight__ic {
+  color: var(--orbit-danger);
+}
+:root[data-ui-palette] .orbit-tel-insight[data-tone="loss"] .orbit-tel-insight__dv {
+  color: var(--orbit-danger);
+}
+
+/* orbit-testing */
+:root[data-ui-palette] .orbit-tc__error {
+  color: var(--orbit-danger);
+}
+
+/* Ajustes conserva sus estilos de sección; solo cambian los acentos de UI. */
+:root[data-ui-palette] .orbit-set-plan {
+  border-color: rgba(var(--orbit-accent-rgb), 0.2);
+  background: linear-gradient(135deg, rgba(var(--orbit-accent-rgb), 0.14), rgba(255, 155, 87, 0.04));
+}
+:root[data-ui-palette="mono"] .orbit-note {
+  background: linear-gradient(110deg, rgba(var(--orbit-accent-rgb), 0.06), rgba(var(--orbit-accent-rgb), 0.02));
+}
+:root[data-ui-palette="mono"] .orbit-set-plan {
+  background: linear-gradient(135deg, rgba(var(--orbit-accent-rgb), 0.14), rgba(var(--orbit-accent-rgb), 0.04));
+}
+:root[data-ui-palette] .orbit-set-theme {
+  border-color: var(--orbit-line);
+}
+:root[data-ui-palette] .orbit-set-channel[data-state="on"] {
+  border-color: rgba(var(--orbit-accent-rgb), 0.35);
+  background: linear-gradient(135deg, rgba(var(--orbit-accent-rgb), 0.09), var(--orbit-panel-bg));
+  box-shadow: 0 0 28px rgba(var(--orbit-accent-rgb), 0.08);
+}
+:root[data-ui-palette] .orbit-hk-row[data-recording="true"] {
+  box-shadow: inset 0 0 0 1px rgba(var(--orbit-accent-rgb), 0.45);
+}

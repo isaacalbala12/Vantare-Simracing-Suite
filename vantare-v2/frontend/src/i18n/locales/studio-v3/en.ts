@@ -177,6 +177,7 @@ export const studioV3En: Record<string, string> = {
   "studio.v3.canvas.background.grid": "Grid",
   "studio.v3.canvas.background.gradient": "Gradient",
   "studio.v3.canvas.background.black": "Black",
+  "studio.v3.canvas.background.theme": "Current theme",
   "studio.v3.widgetActions.duplicate": "Duplicate",
   "studio.v3.widgetActions.delete": "Delete",
   "studio.v3.widgetActions.center": "Center",

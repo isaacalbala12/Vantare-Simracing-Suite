@@ -265,11 +265,11 @@ export function HubApp() {
       <I18nProvider mode="native-hub">
         <LicenseGate>
           <HubErrorBoundary>
-            <ChainRunnerProvider>
-              <LauncherStoreProvider>
+            <LauncherStoreProvider>
+              <ChainRunnerProvider>
                 <HubShell />
-              </LauncherStoreProvider>
-            </ChainRunnerProvider>
+              </ChainRunnerProvider>
+            </LauncherStoreProvider>
           </HubErrorBoundary>
         </LicenseGate>
       </I18nProvider>

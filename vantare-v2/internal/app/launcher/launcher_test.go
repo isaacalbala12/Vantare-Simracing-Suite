@@ -117,6 +117,19 @@ func TestDiscoverAppsMergesWithoutLegacyEvents(t *testing.T) {
 	}
 }
 
+func TestDiscoveryProgressDoesNotRegressWhenWorkersFinishOutOfOrder(t *testing.T) {
+	emitter := &spyEmitter{}
+	svc := NewService(newBackendWithLMU(), emitter, nil)
+	svc.BeginDiscovery()
+	svc.emitDiscoveryProgress(81, DiscoveryResolvingIcons, true, nil)
+	svc.emitDiscoveryProgress(78, DiscoveryResolvingIcons, true, nil)
+	emitter.mu.Lock()
+	defer emitter.mu.Unlock()
+	if got := emitter.discovery[1].Progress; got != 81 {
+		t.Fatalf("later worker regressed progress to %d", got)
+	}
+}
+
 func TestServiceSnapshotTracksActiveChainProgress(t *testing.T) {
 	backend := newBackendWithLMU()
 	svc := NewService(backend, &spyEmitter{}, nil)
@@ -125,8 +138,57 @@ func TestServiceSnapshotTracksActiveChainProgress(t *testing.T) {
 	if len(snapshot.ActiveChains) != 1 {
 		t.Fatalf("expected one active chain, got %+v", snapshot.ActiveChains)
 	}
-	if snapshot.ActiveChains[0].Steps[0].PID != 42 || snapshot.ActiveChains[0].Status != "ready" {
+	if snapshot.ActiveChains[0].Steps[0].PID != 42 || snapshot.ActiveChains[0].Status != "running" {
 		t.Fatalf("unexpected active chain state: %+v", snapshot.ActiveChains[0])
+	}
+}
+
+func TestServiceOnlyOwnsPIDsFromItsLaunchEvents(t *testing.T) {
+	backend := newBackendWithLMU()
+	backend.apps["obs"] = app.LauncherAppEntry{ID: "obs", LaunchMethod: "executable", ExecutablePath: `C:\Apps\OBS\obs64.exe`}
+	svc := NewService(backend, &spyEmitter{}, nil)
+	if svc.OwnsStartedProcess("obs", 42) {
+		t.Fatal("arbitrary PID must not be owned")
+	}
+	svc.chain.emit.Emit("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 0, AppID: "obs", Status: "launching", Pid: 42, ProcessPath: `C:\Apps\OBS\obs64.exe`, CreationTime: 100})
+	if svc.OwnsStartedProcess("obs", 42) {
+		t.Fatal("an unprobed launch must not authorize close")
+	}
+	svc.chain.emit.Emit("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 0, AppID: "obs", Status: "failed", Pid: 42, ProcessPath: `C:\Apps\OBS\obs64.exe`, CreationTime: 100})
+	if svc.OwnsStartedProcess("obs", 42) {
+		t.Fatal("failed launch must not authorize process termination")
+	}
+	svc.chain.emit.Emit("launcher:chain:step", ChainProgress{ProfileID: "steam", StepIndex: 0, AppID: "lmu", Status: "done", Pid: 43, ProcessPath: `C:\Windows\System32\rundll32.exe`, CreationTime: 300})
+	if svc.OwnsStartedProcess("lmu", 43) {
+		t.Fatal("Steam URI handler PID is not the game and must never authorize close")
+	}
+	svc.chain.emit.Emit("launcher:chain:step", ChainProgress{ProfileID: "other", StepIndex: 0, AppID: "obs", Status: "done", Pid: 44, ProcessPath: `C:\Other\obs64.exe`, CreationTime: 400})
+	if svc.OwnsStartedProcess("obs", 44) {
+		t.Fatal("a different executable path must not become owned")
+	}
+	svc.chain.emit.Emit("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 0, AppID: "obs", Status: "done", Pid: 42, ProcessPath: `C:\Apps\OBS\obs64.exe`, CreationTime: 100})
+	identity, owned := svc.OwnedProcessIdentity("obs", 42)
+	if !owned || identity.CreationTime != 100 || svc.OwnsStartedProcess("lmu", 42) {
+		t.Fatalf("ownership must retain verified app, PID, path and creation time, got %+v owned=%v", identity, owned)
+	}
+	svc.activeMu.Lock()
+	delete(svc.active, "creator")
+	svc.activeMu.Unlock()
+	if !svc.OwnsStartedProcess("obs", 42) {
+		t.Fatal("snapshot cleanup must not discard process ownership")
+	}
+	svc.ForgetStartedProcess("obs", 42)
+	if svc.OwnsStartedProcess("obs", 42) {
+		t.Fatal("closed process must lose ownership")
+	}
+	if svc.RememberStartedProcess("obs", ProcessIdentity{PID: 55, ExecutablePath: `C:\Other\obs64.exe`, CreationTime: 500}) {
+		t.Fatal("restart with an unrelated executable must not become owned")
+	}
+	if svc.RememberStartedProcess("obs", ProcessIdentity{PID: 55, ExecutablePath: `C:\Apps\OBS\obs64.exe`}) {
+		t.Fatal("restart without a creation time must not become owned")
+	}
+	if !svc.RememberStartedProcess("obs", ProcessIdentity{PID: 55, ExecutablePath: `C:\Apps\OBS\obs64.exe`, CreationTime: 500}) || !svc.OwnsStartedProcess("obs", 55) {
+		t.Fatal("a confirmed restarted process must remain controllable")
 	}
 }
 
@@ -201,6 +263,182 @@ func TestProfilesCRUDRoundTrip(t *testing.T) {
 	if got := svc.ListProfiles(); len(got) != 0 {
 		t.Fatalf("expected 0 profiles after delete, got %d", len(got))
 	}
+}
+
+func TestAlreadyRunningDecisionCanBeRemembered(t *testing.T) {
+	backend := newBackendWithLMU()
+	backend.profiles = []app.LaunchProfile{{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}}}}
+	emit := &decisionEmitter{requests: make(chan DecisionRequest, 1)}
+	svc := NewService(backend, emit, nil)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	done := make(chan string, 1)
+	go func() {
+		done <- svc.chain.requestDecision(ctx, "creator", "lmu", "alreadyRunning", "already open", []string{"reuse", "cancel"})
+	}()
+	var request DecisionRequest
+	select {
+	case request = <-emit.requests:
+	case <-ctx.Done():
+		t.Fatal("running decision was not requested")
+	}
+	_, remembered, err := svc.ResolveDecision(request.DecisionID, "reuse", true)
+	if err != nil || !remembered {
+		t.Fatalf("remembered decision failed: remembered=%v err=%v", remembered, err)
+	}
+	select {
+	case got := <-done:
+		if got != "reuse" {
+			t.Fatalf("chain received %q", got)
+		}
+	case <-ctx.Done():
+		t.Fatal("running decision did not resume")
+	}
+	if got := app.NormalizeLaunchPolicy(svc.ListProfiles()[0].Policy).AlreadyRunning; got != app.AlreadyRunningReuse {
+		t.Fatalf("remembered running policy = %q", got)
+	}
+}
+
+func TestLaunchProfileRejectsEmptyChain(t *testing.T) {
+	backend := newBackendWithLMU()
+	backend.profiles = []app.LaunchProfile{{ID: "empty", Name: "Empty"}}
+	svc := NewService(backend, &spyEmitter{}, nil)
+	if err := svc.LaunchProfile(context.Background(), "empty"); err == nil {
+		t.Fatal("empty chain must not report a successful launch")
+	}
+}
+
+func TestRetryProfileSelectsFailedAndUnattemptedSteps(t *testing.T) {
+	profile := app.LaunchProfile{
+		ID: "creator", Name: "Creator",
+		Policy: &app.LaunchPolicy{FirstStepDelay: 7},
+		Steps:  []app.LaunchStep{{AppID: "lmu"}, {AppID: "obs", Delay: 2}, {AppID: "crewchief", Delay: 3}},
+	}
+	completed := LauncherActiveChain{ProfileID: "creator", Status: "failed", Steps: []LauncherActiveStep{
+		{AppID: "lmu", Status: "done"},
+		{AppID: "obs", Status: "failed"},
+	}}
+	retry, indices, err := retryProfile(profile, completed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(retry.Steps) != 2 || retry.Steps[0].AppID != "obs" || retry.Steps[1].AppID != "crewchief" {
+		t.Fatalf("retry launched completed or omitted pending steps: %+v", retry.Steps)
+	}
+	if len(indices) != 2 || indices[0] != 1 || indices[1] != 2 {
+		t.Fatalf("retry lost original step positions: %v", indices)
+	}
+	if retry.Policy.FirstStepDelay != 2 {
+		t.Fatalf("first retried step must keep its configured delay, got %d", retry.Policy.FirstStepDelay)
+	}
+}
+
+func TestRetryFailedProfileStartsOnlyPendingSteps(t *testing.T) {
+	backend := newBackendWithLMU()
+	backend.apps["obs"] = app.LauncherAppEntry{ID: "obs", DisplayName: "OBS", LaunchMethod: "executable", ExecutablePath: `C:\Windows\System32\cmd.exe`}
+	backend.profiles = []app.LaunchProfile{{
+		ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}, {AppID: "obs"}},
+	}}
+	emit := &blockingStepEmitter{entered: make(chan struct{}), release: make(chan struct{})}
+	svc := NewService(backend, emit, stubChainExec)
+	svc.recordChainEvent("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 0, AppID: "lmu", Status: "done"})
+	svc.recordChainEvent("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 1, AppID: "obs", Status: "failed"})
+	svc.recordChainEvent("launcher:chain:done", ChainProgress{ProfileID: "creator", Success: false})
+	if err := svc.RetryFailedProfile(context.Background(), "creator"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-emit.entered:
+	case <-time.After(time.Second):
+		close(emit.release)
+		t.Fatal("retry chain did not emit pending step")
+	}
+	snapshot := svc.Snapshot()
+	if len(snapshot.ActiveChains) != 1 || len(snapshot.ActiveChains[0].Steps) != 2 || snapshot.ActiveChains[0].Steps[0].AppID != "lmu" || snapshot.ActiveChains[0].Steps[0].Status != "done" || snapshot.ActiveChains[0].Steps[1].AppID != "obs" {
+		t.Fatalf("retry must start fresh with only the failed app, got %+v", snapshot.ActiveChains)
+	}
+	close(emit.release)
+	svc.CancelAll()
+}
+
+func TestFullRelaunchAfterFailureStartsAtFirstStep(t *testing.T) {
+	backend := newBackendWithLMU()
+	backend.apps["obs"] = app.LauncherAppEntry{ID: "obs", DisplayName: "OBS", LaunchMethod: "executable", ExecutablePath: `C:\Windows\System32\cmd.exe`}
+	backend.profiles = []app.LaunchProfile{{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}, {AppID: "obs"}}}}
+	emit := &blockingStepEmitter{entered: make(chan struct{}), release: make(chan struct{})}
+	svc := NewService(backend, emit, stubChainExec)
+	svc.recordChainEvent("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 0, AppID: "lmu", Status: "done"})
+	svc.recordChainEvent("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 1, AppID: "obs", Status: "failed"})
+	svc.recordChainEvent("launcher:chain:done", ChainProgress{ProfileID: "creator", Success: false})
+	if err := svc.LaunchProfile(context.Background(), "creator"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-emit.entered:
+	case <-time.After(time.Second):
+		close(emit.release)
+		t.Fatal("full relaunch did not start")
+	}
+	chains := svc.Snapshot().ActiveChains
+	if len(chains) != 1 || len(chains[0].Steps) != 1 || chains[0].Steps[0].AppID != "lmu" || chains[0].Steps[0].Status != "pending" {
+		t.Fatalf("full relaunch did not restart at first step: %+v", chains)
+	}
+	close(emit.release)
+	svc.CancelAll()
+}
+
+func TestDuplicateLaunchDoesNotFailRunningSnapshot(t *testing.T) {
+	backend := newBackendWithLMU()
+	backend.profiles = []app.LaunchProfile{{
+		ID: "creator", Name: "Creator", Policy: &app.LaunchPolicy{FirstStepDelay: 30},
+		Steps: []app.LaunchStep{{AppID: "lmu"}},
+	}}
+	emit := &blockingStepEmitter{entered: make(chan struct{}), release: make(chan struct{})}
+	svc := NewService(backend, emit, stubChainExec)
+	if err := svc.LaunchProfile(context.Background(), "creator"); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { close(emit.release); svc.CancelAll() }()
+	select {
+	case <-emit.entered:
+	case <-time.After(time.Second):
+		t.Fatal("first chain did not start")
+	}
+	if err := svc.LaunchProfile(context.Background(), "creator"); !errors.Is(err, ErrProfileInProgress) {
+		t.Fatalf("duplicate launch must report active profile, got %v", err)
+	}
+	chains := svc.Snapshot().ActiveChains
+	if len(chains) != 1 || chains[0].ProfileID != "creator" || chains[0].Status != "running" {
+		t.Fatalf("duplicate launch changed the running chain: %+v", chains)
+	}
+}
+
+func TestRepeatedRetryUsesLastAttemptInsteadOfFullProfile(t *testing.T) {
+	backend := newBackendWithLMU()
+	backend.apps["obs"] = app.LauncherAppEntry{ID: "obs", DisplayName: "OBS", LaunchMethod: "executable", ExecutablePath: `C:\Windows\System32\cmd.exe`}
+	backend.apps["crewchief"] = app.LauncherAppEntry{ID: "crewchief", DisplayName: "CrewChief", LaunchMethod: "executable", ExecutablePath: `C:\Windows\System32\cmd.exe`}
+	backend.profiles = []app.LaunchProfile{{ID: "creator", Name: "Creator", Steps: []app.LaunchStep{{AppID: "lmu"}, {AppID: "obs"}, {AppID: "crewchief"}}}}
+	emit := &blockingStepEmitter{entered: make(chan struct{}), release: make(chan struct{})}
+	svc := NewService(backend, emit, stubChainExec)
+	svc.recordChainEvent("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 0, AppID: "lmu", Status: "done"})
+	svc.recordChainEvent("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 1, AppID: "obs", Status: "done"})
+	svc.recordChainEvent("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 2, AppID: "crewchief", Status: "failed"})
+	svc.recordChainEvent("launcher:chain:done", ChainProgress{ProfileID: "creator", Success: false})
+	if err := svc.RetryFailedProfile(context.Background(), "creator"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-emit.entered:
+	case <-time.After(time.Second):
+		close(emit.release)
+		t.Fatal("second retry did not start")
+	}
+	chains := svc.Snapshot().ActiveChains
+	if len(chains) != 1 || len(chains[0].Steps) != 3 || chains[0].Steps[0].Status != "done" || chains[0].Steps[1].Status != "done" || chains[0].Steps[2].AppID != "crewchief" {
+		t.Fatalf("second retry relaunched earlier completed apps: %+v", chains)
+	}
+	close(emit.release)
+	svc.CancelAll()
 }
 
 func TestDuplicateProfileThroughService(t *testing.T) {
@@ -292,6 +530,23 @@ func TestCancelChainReturnsFalseWhenIdle(t *testing.T) {
 	}
 }
 
+func TestCancelledChainKeepsStoppedStatusWhenRunnerFinishes(t *testing.T) {
+	svc := NewService(newBackendWithLMU(), &spyEmitter{}, nil)
+	svc.recordChainEvent("launcher:chain:step", ChainProgress{ProfileID: "creator", StepIndex: 0, AppID: "lmu", Status: "pending"})
+	svc.activeMu.Lock()
+	chain := svc.active["creator"]
+	chain.Status = "stopped"
+	svc.active["creator"] = chain
+	svc.activeMu.Unlock()
+	svc.recordChainEvent("launcher:chain:done", ChainProgress{ProfileID: "creator", Status: "done", Success: false})
+	svc.activeMu.Lock()
+	got := svc.active["creator"].Status
+	svc.activeMu.Unlock()
+	if got != "stopped" {
+		t.Fatalf("cancelled chain must remain stopped after runner completion, got %q", got)
+	}
+}
+
 func TestTerminalChainIsCleanedUpAfterDelay(t *testing.T) {
 	backend := newBackendWithLMU()
 	svc := NewService(backend, &spyEmitter{}, nil)
@@ -328,7 +583,7 @@ func TestTerminalCleanupLeavesARelaunchedChainAlive(t *testing.T) {
 	// chain is still present: the timer must not drop a running chain.
 	time.Sleep(700 * time.Millisecond)
 	chains := svc.Snapshot().ActiveChains
-	if len(chains) != 1 || chains[0].Status != "launching" {
+	if len(chains) != 1 || chains[0].Status != "running" {
 		t.Fatalf("relaunched chain must survive the stale cleanup timer, got %+v", chains)
 	}
 }

@@ -10,9 +10,11 @@ replay factible también con consumo desfavorable. Caso pequeño comparado con
 oráculo exhaustivo, regresión de riesgo y `go test ./...`: PASS. El banco real
 posterior pasa en 36,76 s: 29 vueltas, dos paradas, optimalidad demostrada
 dentro del modelo y originales intactos. [Evidencia](../../strategy-planner/evidence/isa-1397/README.md).
-Commit local en la rama de issue; sin push, PR, CI remota, integración, promoción ni
-release de #1397. Esta prueba no sustituye E01–E08 Wails ni T19–T22
-empíricos y visuales.
+Commit `ea4b2683` en la rama de issue, publicada en `origin` sin PR. El
+candidato T22 base aún no tiene rama remota; abrir #1397 contra `nightly`
+mezclaría 1743 archivos de stack ajeno, por lo que la revisión queda pendiente
+de reconciliar la base. Sin CI remota, integración, promoción ni release.
+Esta prueba no sustituye E01–E08 Wails ni T19–T22 empíricos y visuales.
 
 ## T22 · banco Go real Hypercar sobre HEAD (2026-09-26)
 

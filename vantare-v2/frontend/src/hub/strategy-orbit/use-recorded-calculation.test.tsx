@@ -44,6 +44,9 @@ describe("useRecordedCalculation", () => {
       base_pace_seconds: { value: 90, provenance: { kind: "manual" }, confidence: { sampleSize: 0 } },
       fuel_per_lap_liters: { value: 2, provenance: { kind: "manual" }, confidence: { sampleSize: 0 } },
     } } } });
+    const input = execute.mock.calls[0][0].input;
+    expect(input?.event).toMatchObject({ raceKind: "laps", targetLaps: 4, virtualEnergy: { applicability: "not_applicable" } });
+    expect(input?.planningInputs?.overrides).not.toHaveProperty("ve_per_lap_percent");
   });
 
   it("keeps missing manual values partial and rejects stale telemetry references", () => {

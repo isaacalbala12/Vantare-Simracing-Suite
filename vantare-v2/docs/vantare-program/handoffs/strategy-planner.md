@@ -1,5 +1,19 @@
 # Handoff vivo — Strategy Planner
 
+## T22 · recorrido Manual en arnés visual (2026-09-26)
+
+En el navegador interno, el flujo Manual permitió elegir LMGT3/Ford Mustang
+GT3 e Imola GP, introducir ritmo 105 s y Fuel 2,8 L/vuelta, confirmar carrera
+de 60 min, combustible, paradas y piloto, elegir seco, abrir el plan y aceptar
+una revisión. Los controles y la navegación respondieron, pero el arnés
+`wails-runtime-mock.ts` devuelve un plan ilustrativo fijo: mostró 69 vueltas y
+energía virtual incluso después de fijar «No aplica». Ese resultado **no**
+acredita la aritmética, la duración ni la energía de producción. El código
+real `assessManualCalculation` omite la entrada VE al no aplicar y la
+evaluación Go tiene un test que exige no publicarla; E01 necesita contraste
+en Wails antes de declararse PASS. Se espera disponibilidad del PC para abrir
+la build localdev; no se abrió la app ni LMU en este recorrido.
+
 ## T22 · runtime verificado y bancos LMU sobre el merge (2026-09-26)
 
 En el candidato `057d9e77`, el preparador canónico instaló el runtime DuckDB

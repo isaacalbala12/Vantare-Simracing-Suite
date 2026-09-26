@@ -42,6 +42,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/license"
 	"github.com/vantare/overlays/v2/internal/notify"
 	"github.com/vantare/overlays/v2/internal/ops"
+	"github.com/vantare/overlays/v2/internal/roadmap"
 	"github.com/vantare/overlays/v2/internal/server"
 	"github.com/vantare/overlays/v2/internal/startup"
 	"github.com/vantare/overlays/v2/internal/storage"
@@ -2584,6 +2585,7 @@ func main() {
 	// its original validity; being offline does not make an expired schedule valid.
 	schedulePublisher := calendar.NewSchedulePublisher(supabaseURLResolved, supabaseAnonKeyResolved)
 	scheduleImportSvc := app.NewScheduleImportService(schedulePublisher, emitter)
+	roadmapSvc := roadmap.NewService(supabaseURLResolved, supabaseAnonKeyResolved)
 	calendarDiscordInbox, inboxErr := discordbot.NewInbox(filepath.Join(cfgDir, "calendar-discord-inbox.json"))
 	if inboxErr != nil {
 		log.Printf("warning: Discord calendar inbox unavailable: %v", inboxErr)
@@ -3793,6 +3795,21 @@ func main() {
 			return
 		}
 		emitter.Emit("schedule:discord:inbox", map[string]any{"candidates": candidates})
+	})
+
+	wailsApp.Event.On("roadmap:current:get", func(event *application.CustomEvent) {
+		var payload struct {
+			RequestID string `json:"requestId"`
+		}
+		decodeEventPayload(event, &payload)
+		go func() {
+			current, err := roadmapSvc.Current(ctx)
+			if err != nil {
+				emitter.Emit("roadmap:error", map[string]any{"requestId": payload.RequestID, "message": err.Error()})
+				return
+			}
+			emitter.Emit("roadmap:current", map[string]any{"requestId": payload.RequestID, "publication": current})
+		}()
 	})
 
 	wailsApp.Event.On("calendar:import", func(event *application.CustomEvent) {

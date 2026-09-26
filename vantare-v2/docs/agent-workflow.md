@@ -22,7 +22,7 @@
 
 > Flujo vigente desde ISA-120/121. Antes de actuar, lee
 > `docs/vantare-program/README.md`, `docs/vantare-program/execution-policy.md`,
-> `docs/branch-channels.md`, `docs/roadmap/plan.md` y el handoff vivo del proyecto.
+> `docs/branch-channels.md` y el handoff vivo del proyecto.
 
 ## Fuente operativa y aislamiento
 
@@ -47,33 +47,13 @@
 - `refactor` y `develop` se conservan como historia mientras tengan
   consumidores; no son bases nuevas ni se limpian para reutilizarlas.
 
-## Contrato de roadmap y puente técnico temporal
+## Roadmap público
 
-- La tarea Notion declara la decisión y los IDs de roadmap. Su referencia
-  GitHub conserva el contrato que CI consulta y exactamente una label:
-  `roadmap:required` o `roadmap:not-required`.
-- La rama canónica resuelve la referencia técnica de CI: `vantareapp/isa-N-*` consulta la
-  issue N del mismo repositorio. Un enlace escrito en la PR no la sustituye para el validador actual.
-  Esto no convierte GitHub en autoridad de seguimiento ni exime de actualizar Notion.
-- Una issue `required` incluye `Objetivo`, `Impacto en roadmap`, `IDs de
-  roadmap afectados` y `Cambio publico esperado`. Los IDs usan los tokens
-  exactos `phases:id`, `areas:id` o `milestones:id`.
-- El gate compara el plan base y candidato ya parseados, exige igualdad entre
-  IDs declarados y modificados, y reconstruye `roadmap.json` usando como
-  estado anterior unicamente el JSON protegido de la base. Solo incorpora
-  commits alcanzables desde el SHA base.
-- Una issue `not-required` solo admite tests, `testdata/` y Markdown en
-  `docs/analysis/`; no admite codigo productivo, tooling ni ningun cambio de
-  roadmap. Esta allowlist cerrada evita que el mismo agente se autoexima.
-- Los Issue Forms ayudan a crear el contrato desde la interfaz de GitHub. La
-  API puede saltarselos, de modo que CI vuelve a validar campos y labels.
-- Las promociones `nightly -> testers` y `testers -> master` comprueban la
-  coherencia global. `bot/roadmap-digest -> nightly` solo puede cambiar el
-  artefacto derivado. Las ramas `tc-*` siguen inertes y sin autoridad de
-  roadmap.
-- El check se ejecuta sin filtros de rutas y con permisos de solo lectura. No
-  usa `pull_request_target`, secretos de producto ni codigo descargado fuera
-  del arbol revisado.
+- La tarea Notion conserva alcance, decisiones y estado operativo.
+- Owner edita el roadmap en la app, guarda un borrador privado y lo publica
+  explícitamente. Solo la versión publicada es visible para todos los usuarios.
+- Los cambios de código siguen el flujo de rama, PR y CI; el contenido público
+  ya no requiere modificar archivos ni abrir una PR.
 
 Los Forms y la plantilla de PR se publican desde `master`, la rama
 predeterminada. `CODEOWNERS` solo bloquea de verdad cuando la proteccion remota
@@ -208,8 +188,8 @@ Debe buscar:
 2. Orquestador lee la tarea y el proyecto en Notion, las instrucciones actualizadas
    de nightly, `docs/vantare-program/` y el handoff técnico. Registra agente,
    Estado `En curso`, rama/base y siguiente paso en Notion.
-3. `docs/roadmap/plan.md` define el alcance y el estado público. Los tableros y
-   planes históricos solo se consultan como contexto; no eligen trabajo.
+3. Notion define el alcance. El roadmap público comunica una selección editorial
+   publicada desde la app; los planes históricos solo se consultan como contexto.
 4. Orquestador crea o identifica el miniplan vigente.
 5. Orquestador crea prompt worker.
 6. Worker implementa.
@@ -220,8 +200,8 @@ Debe buscar:
 11. Actualizar y releer Notion después de cada worker o cambio material. La
     entrega queda `En revisión` con PR, checks/omisiones, riesgos y siguiente paso.
     El handoff Git conserva evidencia técnica enlazada; no sustituye Notion. Si
-    cambia alcance, plan futuro o estado público, actualizar `docs/roadmap/plan.md`
-    en el mismo PR. El worker no promociona por su cuenta.
+    cambia alcance o plan futuro, actualizar Notion. Isaac decide cuándo
+    publicar un cambio en el roadmap visual. El worker no promociona por su cuenta.
 12. Tras la aprobación inicial de Isaac, la tarea de integración promueve la
     entrega a `nightly`.
 13. Después del feedback y sus correcciones, otra promoción lleva el conjunto
@@ -286,8 +266,7 @@ Una tarea esta terminada solo si:
 - tests actualizados si cambia comportamiento,
 - verificacion manual clara,
 - reviewer no encuentra criticos,
-- `docs/roadmap/plan.md` actualizado si cambia el alcance, el plan futuro o el
-  estado público; Notion contiene el estado, PR, SHA/canal, checks, limitaciones
+- Notion contiene el alcance, estado, PR, SHA/canal, checks, limitaciones
   y siguiente paso, con escritura verificada; el handoff Git enlaza esa tarea.
 - Si falla el acceso o la escritura en Notion, conservar evidencia, comunicar
   el bloqueo y pausar trabajo dependiente; no declarar seguimiento completado.

@@ -1,5 +1,102 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## VAN-763 / ISA-1377 — roadmap gráfico (2026-09-25)
+
+[Tarea Notion VAN-763](https://app.notion.com/p/3e5e51695c6581debbcbfef649a86d59),
+[referencia GitHub #1377](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1377).
+Isaac corrigió el diseño el 2026-09-25: quiere línea temporal y varias vistas
+gráficas, y Codex actualizará el contenido cuando él lo indique por chat. No
+quiere un editor de formularios en la app. La publicación compartida debe verse
+para todos los usuarios. Rama aislada `vantareapp/isa-1377-roadmap-sencillo`,
+sincronizada con `origin/nightly`; la base exacta se registra en la tarea y
+en el PR porque el canal sigue avanzando.
+
+### Contenido inicial preparado desde Asana
+
+Isaac fijó las fechas de los objetivos de Vantare 0.1 y aclaró el 2026-09-26
+que las tareas no son círculos separados: el gran hito es la versión. La
+primera publicación está preparada en
+[VAN-763](https://app.notion.com/p/3e5e51695c6581debbcbfef649a86d59)
+con dos hitos, identificadores estables y textos en los cuatro idiomas:
+
+1. **Vantare 0.1 · 5 de octubre de 2026.** Objetivos del 1 de octubre:
+   revisar Billing y acceso, y pulir Ajustes y Cuenta. Objetivos del 5:
+   confirmar Widgets V16, afinar Calendario, revisar Launcher, presentar el
+   Roadmap y abrir la alfa del Ingeniero. Las compras opcionales desde el 12
+   de octubre quedan dentro del objetivo Billing.
+2. **Vantare 0.2 · siguiente versión, sin fecha de lanzamiento fijada.** Solo
+   tres objetivos: Ingeniero beta 0.2 tras el primer mes (objetivo 5 de
+   noviembre), Strategy Planner alpha y widgets semanales. No anunciar temas
+   de UI en este hito.
+
+Las fechas del 1 y el 5 de octubre se verificaron de nuevo en el proyecto
+Asana «Vantare · 0.1 Lanzamiento». El proyecto Asana «Vantare · 0.2» aún no
+registra los tres objetivos de producto ni una fecha de salida; su alcance
+público procede de la instrucción directa de Isaac. Widgets V16 tiene 16
+subtareas, cuatro marcadas como completadas y dos tituladas «Daños»; por ello
+la publicación dice «catálogo V16» sin afirmar 16 widgets distintos o
+entregados. El contenido aún no está publicado: la base Supabase de producción
+no tiene la tabla ni las funciones `visual_roadmap_*`, y la migración de esta
+PR no se ha aplicado. La ruta documentada exige probarla en un entorno de
+prueba y obtener autorización para integrar la PR en Nightly antes de activar
+el nuevo almacenamiento.
+
+La implementación local retira `plan.md`, JSON, digest, formulario y gate del
+roadmap anterior; la revisión actual reemplaza el editor por línea temporal,
+tablero y gráfico de distribución. Supabase conserva las publicaciones y expone
+solo lectura a la app; Codex publica a través de la conexión SQL privilegiada.
+Isaac precisó después que la línea temporal debe avanzar horizontalmente. La
+vista ahora conecta los hitos de izquierda a derecha y permite recorrerlos
+dentro del panel en escritorio y pantallas estrechas; las otras vistas no cambian.
+Después aprobó combinar el recorrido numerado de la tercera exploración visual
+con la limpieza de la segunda. La revisión en curso usa los hitos de la única
+publicación para numerar el recorrido y mostrar un solo detalle seleccionable;
+no añade datos de fases, fechas ni editor. Una captura del harness Orbit real a
+1920 y otra a 1280 px muestran la shell y el cambio de hito con datos de muestra.
+En este candidato, las 3 pruebas focales del roadmap, typecheck, build, lint y
+las 4 pruebas de presupuesto PASS. La suite unitaria amplia registró 4.047 PASS,
+2 omitidas y 2 timeouts en pruebas visuales ajenas al roadmap; sus ficheros
+focales pasan por separado (FunctionalClipping 4/4, HeadToHead 1/1). El gate
+remoto de `d23cad51` pasó (11m34s). Las capturas
+usan el mock de Wails y no prueban Supabase ni un runtime físico.
+La revisión horizontal pasó 4.049 pruebas frontend (2 omitidas), 4 pruebas de
+presupuesto, typecheck, build y lint. Dos capturas locales comprobaron la
+posición horizontal de los hitos y que la página no desborda a 1440 y 390 px.
+Checks de la revisión gráfica: frontend completo 481 archivos, 4.049 pruebas
+PASS y 2 omitidas; presupuesto de frames 4/4 PASS; auditoría i18n con 0
+ausentes y 0 huérfanas; typecheck, build y lint PASS; Go `./...` PASS. Tres
+capturas locales muestran las vistas con hitos del snapshot histórico anterior,
+solo como vista previa, sin publicar. Falta validar la migración SQL y la lectura
+compartida con Supabase real. El contenido inicial quedará vacío hasta la primera
+publicación técnicamente validada; no se importa el plan histórico automáticamente.
+
+[PR borrador #1380](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1380)
+contra `nightly`, HEAD previo `d23cad51`. El CI de ese HEAD pasó gates
+bloqueantes, promoción y GitGuardian; `quality-check` quedó
+`REVIEW_REQUIRED` por cambios intencionados en workflows y `package.json`,
+con NEW=0/MOVED=0. Siguiente acción: revisar el contenido y las rutas de
+política, validar Supabase en un entorno de prueba y obtener la autorización
+de Isaac antes de integrar en Nightly. Sin merge, migración, publicación ni release.
+
+El 2026-09-26 Isaac autorizó continuar con la PR y la migración. La revisión
+de las rutas de política confirma que se retiran el validador y el workflow del
+digest anterior, y el script visual ligado a ese roadmap; el gate de canales
+sigue activo. Nightly avanzó de nuevo y se incorporó a la rama, conservando la
+eliminación intencionada de `plan.md` y `roadmap.json`. La migración debe pasar
+primero por Supabase de prueba y una lectura con rol público antes de aplicarla
+al proyecto de producción. La publicación de los dos hitos se verifica aparte
+de la integración de código.
+
+La primera ejecución en `vantare-staging` descubrió que Supabase concede
+`EXECUTE` explícito a `anon`, `authenticated` y `service_role` al crear
+funciones públicas: revocar solo a `PUBLIC` dejaba publicable el RPC. La
+migración ahora revoca también esos roles en `visual_roadmap_publish` y
+`visual_roadmap_valid`, y mantiene la lectura de `visual_roadmap_current` para
+`anon` y `authenticated`. En staging se verificó que `anon` no puede publicar
+(SQLSTATE 42501) ni leer la tabla, sí lee el documento exacto por el RPC;
+dos publicaciones dejan una fila `published` y una `superseded`. El SQL de
+producción todavía no se ha aplicado.
+
 ## VAN-740 / ISA-1305 — Wails beta.24 aceptado para Nightly (2026-09-22)
 
 [Tarea Notion VAN-740](https://app.notion.com/p/3e3e51695c6581f7a1aae9d4db50ee38), puente técnico [GitHub #1305](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1305).

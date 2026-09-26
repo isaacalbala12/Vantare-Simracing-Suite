@@ -40,13 +40,10 @@ El mismo texto es el que la app muestra al pasar el ratón por el aviso de actua
 
 ## Desarrollo activo
 
-El digest diario resuelve su fuente en cascada, siempre en lectura:
-
-1. `vantare-v2/docs/roadmap/roadmap.json` (lo genera `roadmap_digest.py`, ISA-378). Se publican solo las fases con estado `in-progress`; `done`, `planned` y `future` se descartan. El nombre es `phaseLabel · title`, el progreso viene de `progress` (0-100) y el texto de `summary`; los campos localizados se leen en español. Si el archivo no existe o no parsea, se pasa al siguiente nivel sin fallar.
-2. Milestones abiertos de GitHub del propio repositorio: el progreso es `closed/total` de sus issues y el texto es la descripción del milestone.
-3. Si no hay ninguna de las dos, se publica el embed honesto de "sin novedades".
-
-Solo se publican nombre, progreso, URL y el texto del propio milestone o fase; las menciones masivas se neutralizan. El workflow no escribe en ninguna fuente.
+El digest diario consulta en lectura los milestones abiertos de GitHub del propio
+repositorio. El progreso es `closed/total` de sus issues y el texto es la
+descripción del milestone. Si no hay milestones disponibles, publica el embed
+honesto de "sin novedades". El workflow no escribe en ninguna fuente.
 
 ## Sistema visual compartido
 

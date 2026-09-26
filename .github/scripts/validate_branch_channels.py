@@ -27,7 +27,6 @@ HOTFIX_BRANCH = re.compile(
     r"^vantareapp/hotfix-isa-(?P<number>[1-9][0-9]*)(?:-[a-z0-9]+(?:_[a-z0-9]+)*)*$"
 )
 TC_PREFIX = "vantareapp/tc-"
-ROADMAP_BOT_BRANCH = "bot/roadmap-digest"
 TC_HEX = re.compile(r"[0-9a-f]{12}")
 TC_SLUG = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 NIGHTLY_MERGE_GROUP_REF = re.compile(
@@ -107,8 +106,6 @@ def validate(
             f"promotion to {base!r} must come from {required_head!r}, got {head!r}"
         )
     if base == "nightly":
-        if head == ROADMAP_BOT_BRANCH:
-            return f"roadmap digest bot accepted: {head} -> nightly"
         if _is_tc_branch(head):
             if tc_attestation is None:
                 raise ValueError("trusted attestation required for automatic branch")

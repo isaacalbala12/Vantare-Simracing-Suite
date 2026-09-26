@@ -186,9 +186,8 @@ Antes del corte, importar el delta y registrar momento/SHA de la captura final.
   antiguos. Fallos de conexión dejan estado pendiente, nunca éxito supuesto.
 - Estado de trabajo y canal son campos separados. Aceptada/integrada en nightly
   no significa probada en testers, promocionada a master ni publicada.
-- `roadmap/plan.md` sigue siendo la fuente editorial pública y `roadmap.json` sigue
-  generado en PR. Notion propone decisiones; no escribe directamente al runtime
-  ni sustituye ese contrato por un feed de todas las tareas internas.
+- El roadmap público se edita y publica visualmente en la app por Owner.
+  Notion conserva las decisiones y el seguimiento interno; no publica por sí solo.
 - Los nombres de rama y fragmentos para tareas `VAN-N` deben estar implementados
   y probados antes de usarlos. No reutilizar `isa-N` con números Notion ni declarar
   que un prefijo todavía rechazado por CI funciona. El corte técnico fijará la

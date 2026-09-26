@@ -44,9 +44,8 @@ reciben promociones nuevas y sus cambios locales no se limpian ni reutilizan.
 - Cada proyecto tiene un único handoff vivo y se actualiza tras cada worker,
   decisión o cambio material. La continuidad operativa y el estado se actualizan
   y releen en Notion al empezar, bloquear, entregar y verificar merge; el
-  handoff Git conserva evidencia técnica enlazada. Los cambios de
-  alcance, plan futuro o estado público se reflejan también en
-  `../roadmap/plan.md` dentro del mismo PR.
+  handoff Git conserva evidencia técnica enlazada. Los cambios de alcance y
+  plan futuro se registran en Notion. Owner publica el roadmap desde la app.
 
 ## Delegacion y responsabilidad
 

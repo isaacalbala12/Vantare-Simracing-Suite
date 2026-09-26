@@ -1,5 +1,15 @@
 # Handoff vivo — Strategy Planner
 
+## T22 · build localdev corregida (2026-09-26)
+
+Se detectó que la compilación manual anterior llevaba canal `localdev` pero
+omitía el tag `vantare_localdev`, por lo que no activaba el acceso de desarrollo.
+Nunca se abrió. La receta oficial `scripts/build-local-development.ps1` generó
+el binario correcto de 46.396.928 bytes, SHA-256
+`0409E68F9C475649922044B00EF028DC8186A6380646B49AC787B0C3010AB8E8`;
+`go version -m` confirma `-tags=vantare_localdev`. Tests de tags localdev y
+production+localdev PASS. Sigue sin abrirse la app; E01–E08 pendientes.
+
 ## T22 · regla temporal sobre revisión LMU real (2026-09-26)
 
 El banco Go opt-in sobre S266 Algarve completó preparación, proyección,
@@ -21,12 +31,13 @@ incluye preparación/parser. [Evidencia](../../strategy-planner/evidence/isa-137
 Se conserva 128 MiB sólo como presupuesto provisional para S266; aún falta
 fuente independiente con muchas vueltas y medición Wails. #1375 sigue abierta;
 sin push, PR, CI, integración de canal, promoción ni release.
+
 ## T22 · candidato con T07d/T07e (2026-09-26)
 
 La rama #1393 incorporó localmente #1395 como `0665876b` y #1396 como
 `144880e7`. El frontend build y `go test ./...` pasan sobre ese HEAD. La build
-localdev nueva `bin/vantare-localdev.exe` tiene 44.106.752 bytes y SHA-256
-`9FBDEA728D39097621E8708C0C4CA5A57EC7C56071EED1988FF30E0226FBC449`.
+localdev vigente y su corrección de tag constan arriba; la compilación manual
+anterior no se usa.
 No se abrió la app nativa: E01–E08, DuckDB real y aceptación T22 siguen
 pendientes. [Evidencia](../../strategy-planner/evidence/isa-1393/candidate-2026-09-26.md).
 Sin push, PR, CI, integración de canal, promoción ni release.

@@ -15,15 +15,19 @@ en la mesa recorded. No hay cambio de canal.
   anterior al cherry-pick.
 - `CGO_ENABLED=0 wails3 build DEV=true`: PASS; esa receta genera
   `bin/vantare.exe` con canal `master`, por lo que no se usará para QA local.
-- `CGO_ENABLED=0 go build -buildvcs=false -gcflags=all=-l
-  -ldflags="-X main.buildChannel=localdev" -o bin/vantare-localdev.exe
-  ./cmd/vantare`: PASS tras la generación de frontend/bindings/config.
+- Una primera compilación manual con `-X main.buildChannel=localdev` omitió
+  el tag `vantare_localdev`: **no activaba el acceso de desarrollo**. No se
+  abrió y fue sustituida; el nombre/canal del binario no era prueba suficiente.
+- `go test -tags vantare_localdev ./cmd/vantare` y
+  `go test -tags production,vantare_localdev ./cmd/vantare`: PASS; producción
+  desactiva el acceso local.
+- `scripts/build-local-development.ps1`: PASS con frontend en modo localdev y
+  `go build -tags vantare_localdev`; `go version -m` confirma el tag embebido.
 
-El ejecutable localdev tiene **44.106.752 bytes**, SHA-256
-`9FBDEA728D39097621E8708C0C4CA5A57EC7C56071EED1988FF30E0226FBC449`.
-No se abrió. Tampoco se abrió un DuckDB ni se midió un cálculo con la ventana
-temporal: el resultado de los tests no certifica E01–E08, memoria de resistencia
-ni precisión empírica. Esas pruebas y la aceptación de Isaac siguen pendientes.
+El ejecutable localdev corregido tiene **46.396.928 bytes**, SHA-256
+`0409E68F9C475649922044B00EF028DC8186A6380646B49AC787B0C3010AB8E8`.
+No se abrió. El preflight de build por sí solo no certifica E01–E08, memoria
+de resistencia ni precisión empírica; el banco Go posterior se detalla abajo.
 
 Sin push, PR, CI remota, integración, promoción ni release.
 

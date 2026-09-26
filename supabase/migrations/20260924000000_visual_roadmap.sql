@@ -83,8 +83,13 @@ as $$
   from public.visual_roadmap r where r.status = 'published' limit 1;
 $$;
 
-revoke all on public.visual_roadmap from anon, authenticated;
-revoke all on function public.visual_roadmap_valid(jsonb) from public;
-revoke all on function public.visual_roadmap_publish(jsonb) from public;
-revoke all on function public.visual_roadmap_current() from public;
+-- Supabase grants new public functions to API roles by default. Revoking only
+-- PUBLIC leaves those explicit grants intact, including the publish RPC.
+revoke all on public.visual_roadmap from anon, authenticated, service_role;
+revoke all on function public.visual_roadmap_valid(jsonb)
+  from public, anon, authenticated, service_role;
+revoke all on function public.visual_roadmap_publish(jsonb)
+  from public, anon, authenticated, service_role;
+revoke all on function public.visual_roadmap_current()
+  from public, anon, authenticated, service_role;
 grant execute on function public.visual_roadmap_current() to anon, authenticated;

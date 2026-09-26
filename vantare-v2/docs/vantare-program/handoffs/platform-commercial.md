@@ -87,6 +87,16 @@ primero por Supabase de prueba y una lectura con rol público antes de aplicarla
 al proyecto de producción. La publicación de los dos hitos se verifica aparte
 de la integración de código.
 
+La primera ejecución en `vantare-staging` descubrió que Supabase concede
+`EXECUTE` explícito a `anon`, `authenticated` y `service_role` al crear
+funciones públicas: revocar solo a `PUBLIC` dejaba publicable el RPC. La
+migración ahora revoca también esos roles en `visual_roadmap_publish` y
+`visual_roadmap_valid`, y mantiene la lectura de `visual_roadmap_current` para
+`anon` y `authenticated`. En staging se verificó que `anon` no puede publicar
+(SQLSTATE 42501) ni leer la tabla, sí lee el documento exacto por el RPC;
+dos publicaciones dejan una fila `published` y una `superseded`. El SQL de
+producción todavía no se ha aplicado.
+
 ## VAN-740 / ISA-1305 — Wails beta.24 aceptado para Nightly (2026-09-22)
 
 [Tarea Notion VAN-740](https://app.notion.com/p/3e3e51695c6581f7a1aae9d4db50ee38), puente técnico [GitHub #1305](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1305).

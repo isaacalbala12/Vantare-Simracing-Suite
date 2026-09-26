@@ -1,5 +1,22 @@
 # ISA-1277 · revisión visual adversarial
 
+## Iteración v5 · umbral visual del harness (2026-09-26)
+
+`pass-v5-23-mobile-final` contiene 99 capturas del frontend productivo en
+harness, con ES/EN/PT/IT a 320/768/1024/1672 px. `responsive.json` registra
+16 casos sin desbordamiento horizontal, error de página ni foco perdido.
+En móvil, la elección Stint/Paradas ocupa una fila y conserva el selector de
+la parada o stint concreto; el contexto compacto permite leer circuito y
+coche en dos líneas. La entrada Manual tiene mayor presencia y las etiquetas
+de los editores son más legibles. La revisión adversarial independiente con
+GPT-6 Sol medium da **mínimo 9,1/10**, sin P1/P2 observables. Señala como P3
+opcional algunos textos auxiliares tenues en escritorio.
+
+Tests focales 11/11, auditoría i18n, typecheck/build, lint y diff check PASS.
+Esto supera el umbral visual >9 del harness, pero no equivale a aceptación de
+Isaac ni a paridad nativa Wails. El harness usa respuestas simuladas y no
+demuestra DuckDB real, precisión del cálculo ni los gates E01–E08 de T22.
+
 ## Iteración v5 responsive y recuperación (2026-09-26)
 
 La revisión independiente de `pass-v5-16-plan` puntuó como mínimo 7,4/10:

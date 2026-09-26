@@ -1,5 +1,18 @@
 # Handoff vivo — Strategy Planner
 
+## T18 v5 · umbral visual del harness superado (2026-09-26)
+
+`pass-v5-23-mobile-final` de #1277 conserva 99 capturas productivas en
+harness, 16 combinaciones ES/EN/PT/IT y 320/768/1024/1672 px sin overflow,
+errores de página ni foco perdido. La revisión adversarial independiente
+puntúa mínimo **9,1/10**, sin P1/P2; P3 opcional de textos auxiliares tenues.
+Entrada Manual, editores móviles y contexto de Plan se ajustaron sin cambiar
+el backend. Tests focales 11/11, i18n, typecheck/build, lint y diff check
+PASS. Queda pendiente aceptación de Isaac y contraste nativo Wails; el
+harness simula el cálculo. T22 E01–E08, calibración #1030 y demás objetivos
+del SDD permanecen abiertos. Sin app nativa, push, PR, CI, integración,
+promoción ni release.
+
 ## T18 v5 · responsive y recuperación (2026-09-26)
 
 La rama aislada #1277 avanza desde `157379f9`: acceso Manual visible a 320 px,

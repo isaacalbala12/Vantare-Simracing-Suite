@@ -24,8 +24,9 @@ en la mesa recorded. No hay cambio de canal.
 - `scripts/build-local-development.ps1`: PASS con frontend en modo localdev y
   `go build -tags vantare_localdev`; `go version -m` confirma el tag embebido.
 
-El ejecutable localdev corregido tiene **46.396.928 bytes**, SHA-256
-`0409E68F9C475649922044B00EF028DC8186A6380646B49AC787B0C3010AB8E8`.
+El ejecutable localdev corregido, regenerado tras la corrección del menú,
+tiene **46.396.928 bytes**, SHA-256
+`6199B68C1418E808C653B7EC92AA59FF7A52FEF504AB7C1288BE8C685A8012F3`.
 No se abrió. El preflight de build por sí solo no certifica E01–E08, memoria
 de resistencia ni precisión empírica; el banco Go posterior se detalla abajo.
 
@@ -71,6 +72,7 @@ se pudo adoptarla. También se verificó en el harness que la ventana de piloto
 
 Esto sólo valida navegación y persistencia del mock. La disponibilidad real de
 sesiones, el guardado y la adopción en Wails con DuckDB permanecen en E01–E08.
-El `vantare-localdev.exe` citado arriba se compiló antes de esta corrección
-frontend: debe regenerarse con el script oficial antes de la siguiente prueba
-nativa. Su SHA identifica la build anterior y no este HEAD.
+Se regeneró `vantare-localdev.exe` después del arreglo con
+`scripts/build-local-development.ps1`; el comando terminó PASS, y
+`go version -m` confirma `-tags=vantare_localdev`. El hash de arriba
+identifica esta nueva build. Aún no se ha abierto en Wails.

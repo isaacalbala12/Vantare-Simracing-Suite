@@ -10,8 +10,10 @@ typecheck, lint y build PASS. El navegador mostró la sesión lista y permitió
 adoptarla. La ventana 65–120 min también persistió al guardar y reabrir en
 mock. [Evidencia](../../strategy-planner/evidence/isa-1393/candidate-2026-09-26.md).
 E01–E08 Wails con DuckDB real siguen pendientes; sin push, PR, CI, integración,
-promoción ni release. El binario localdev citado abajo incorpora el frontend
-anterior; regenerarlo con el script oficial antes de probar Wails.
+promoción ni release. Binario localdev regenerado con este frontend:
+46.396.928 bytes, SHA-256
+`6199B68C1418E808C653B7EC92AA59FF7A52FEF504AB7C1288BE8C685A8012F3`;
+`go version -m` confirma `-tags=vantare_localdev`. No se abrió Wails.
 
 ## T22 · build localdev corregida (2026-09-26)
 

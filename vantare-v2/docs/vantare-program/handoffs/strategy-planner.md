@@ -1,5 +1,15 @@
 # Handoff vivo — Strategy Planner
 
+## ISA-1375 · ADR 0012 alineado con la proyección paginada (2026-09-26)
+
+La inspección del código confirmó que `deriveCorrectionSession` usa
+`DerivePagedCorrectedSession` para `ProjectCorrection` y para el catálogo.
+El ADR 0012 conservaba frases de la fase anterior que decían que la
+proyección aún materializaba la fuente; se actualizaron al estado local
+medido en Algarve. No se cambió código ni se elevó la cuota. Falta una fuente
+independiente con muchas vueltas, presupuesto general de memoria y Wails
+T22; #1375 continúa abierta. Sin push, PR, CI, integración o promoción.
+
 ## T18 v5 · 1280×720 incluido en la matriz (2026-09-26)
 
 `pass-v5-25-responsive-final` amplía el gate visual a 128 capturas y 20

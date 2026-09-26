@@ -1,14 +1,18 @@
 # ADR 0012 — lectura acotada para correcciones registradas
 
-Estado: **implementación parcial; no aceptada como soporte de resistencia**. ISA-1375, 2026-09-24. Complementa ADR 0010/0011 y el [contrato de correcciones](../strategy-planner/sdd/stint-boundary-corrections-t13.md).
+Estado: **ruta paginada implementada localmente; no aceptada como soporte de resistencia**. ISA-1375, actualizado 2026-09-26. Complementa ADR 0010/0011 y el [contrato de correcciones](../strategy-planner/sdd/stint-boundary-corrections-t13.md).
 
 La preparación productiva ya usa un resumen por visitas paginadas, con paridad
 completa en el banco real disponible. [Tres mediciones por versión](../strategy-planner/evidence/isa-1375/paged-preparation-2026-09-25.md)
-no muestran un pico menor y sí más tiempo por relectura. La cuota de muestras
-no se elevó. Preparación, inspección de vueltas y guardado ya usan el resumen
-paginado; la proyección aún materializa toda la fuente. Esta decisión sigue
-abierta hasta medir una fuente más larga y cerrar la proyección sin cambiar
-identidad ni correcciones.
+no muestran un pico menor y sí más tiempo por relectura en preparación. La cuota
+de muestras no se elevó. Preparación, inspección de vueltas, guardado y ambas
+entradas de proyección usan ahora el resumen/derivador paginado. En Algarve,
+la proyección paginada reprodujo los resultados de la ruta materializada y
+registró picos aislados de 50,0–94,3 MiB frente a 812,2 MiB en una ejecución
+materializada; las condiciones y repeticiones no permiten fijar una mejora
+universal. [Evidencia y límites](../strategy-planner/evidence/isa-1375/paged-preparation-2026-09-25.md).
+La decisión sigue abierta hasta medir una fuente independiente con muchas
+vueltas, fijar un presupuesto defendible y validar Wails T22.
 
 Las consultas de historial de correcciones sólo necesitan la identidad base.
 Dentro de una sesión abierta pueden reutilizar esa identidad tras una lectura
@@ -20,17 +24,18 @@ abierta, se pierde al cerrarla y nunca evita autorización, cancelación ni
 rechazo de una fuente cambiada. En ausencia de identidad guardada se produce
 una vez con el resumen paginado. Guardar lee únicamente las filas originales
 nombradas por la petición y, si mezcla escalares con familia o stint, deriva
-la validez efectiva en otra visita paginada. Proyectar sigue materializando.
+la validez efectiva en otra visita paginada. Proyectar utiliza ya el mismo
+derivador paginado para las dos entradas productivas.
 
-Para llevar la misma identidad exacta al resto del editor, el siguiente corte
-obtendrá únicamente las filas nombradas por un snapshot (máximo 256
-operaciones) desde el parser autorizado. Esas filas alimentarán el validador
+Para llevar la misma identidad exacta al resto del editor, el corte posterior
+obtuvo únicamente las filas nombradas por un snapshot (máximo 256
+operaciones) desde el parser autorizado. Esas filas alimentan el validador
 existente `ApplyMixedCorrectionSnapshot` junto al resumen original, sin
-aceptar objetivos ajenos a los canales que lee el análisis. Sólo después de
-probar paridad de snapshots y validez efectiva se aplicarán sus valores a las
+aceptar objetivos ajenos a los canales que lee el análisis. Tras probar
+paridad de snapshots y validez efectiva, sus valores se aplican a las
 páginas durante una nueva visita. Una corrección del reloj o de un evento
 debe conservar exactamente la semántica materializada; si no, la ruta nueva
-rechazará el caso en vez de emitir un resultado diferente. La inspección de
+rechaza el caso en vez de emitir un resultado diferente. La inspección de
 vueltas ya usa este recorrido: lee el resumen original, las filas nombradas
 por el snapshot y, si hay valores corregidos, otra visita paginada para la
 validez efectiva. El constructor puro de la página pública se comparte con
@@ -43,20 +48,26 @@ catálogo. Así, pasar de una página de vueltas a otra no recorre todas las
 señales de nuevo cuando no hay correcciones escalares. La respuesta pública
 desprende sus listas editables para no exponer el caché mutable.
 
-## Frontera pendiente de proyección
+## Frontera de proyección: plan ejecutado y límite restante
 
-La proyección es la última operación de este editor que entra en
+Los párrafos siguientes fijaron la secuencia previa al cambio. El derivador
+compartido paginado ya sustituye la materialización en `ProjectCorrection` y
+en la proyección conjunta del catálogo; los bancos de paridad y el recorrido
+LMU Algarve pasaron. Permanecen sin verificar crecimiento con una fuente de
+resistencia multivuelta, presupuesto general de memoria y Wails. Véase la
+[evidencia del corte productivo](../strategy-planner/evidence/isa-1375/paged-preparation-2026-09-25.md).
+
+La proyección era la última operación de este editor que entraba en
 `withCorrectionInput`. Tanto `ProjectCorrection` como la proyección conjunta
 del catálogo llaman a `deriveCorrectionSession`; sustituir sólo una entrada
-dejaría dos políticas de lectura para el mismo snapshot. El siguiente corte
-debe conservar un único derivador compartido y comparar su
+habría dejado dos políticas de lectura para el mismo snapshot. El corte
+conservó un único derivador compartido y comparó su
 `ProjectionSessionDerivations` completo con el materializado antes de cambiar
-ninguno de los dos llamadores.
+ambos llamadores.
 
-La validez efectiva paginada ya resuelve vueltas, familias y límites de stint,
-pero la derivación posterior aún consulta series originales/corregidas. El
-inventario concreto de observaciones que debe resolver un consumidor por
-páginas es:
+La validez efectiva paginada ya resolvía vueltas, familias y límites de stint,
+pero la derivación posterior aún consultaba series originales/corregidas. El
+inventario de observaciones que guió al consumidor por páginas fue:
 
 | Señal | Consultas exactas de la derivación actual |
 | --- | --- |
@@ -70,11 +81,11 @@ Las consultas sobre series ordenadas tienen desempates distintos: `valueAt`
 y `vectorValueAt` eligen el **último** valor de la marca temporal; la búsqueda
 de Fuel más cercano considera el anterior y el **primero** posterior y, ante
 igual distancia, prefiere el anterior. Una reducción a un valor por instante
-cambiaría resultados. La selección paginada deberá probar calidad/presencia,
+cambiaría resultados. La selección paginada debía probar calidad/presencia,
 marcas duplicadas, tolerancias, huecos, correcciones escalares y ausencia de
 señal contra la ruta actual. Si una fuente no permite conservar ese orden con
 memoria proporcional a vueltas, correcciones, eventos acotados y página, la
-ruta nueva debe rechazarla explícitamente; no se aceptará una proyección
+ruta nueva debe rechazarla explícitamente; no se acepta una proyección
 aproximada ni se elevará la cuota para aparentar resistencia.
 
 Orden de ejecución: primero un recolector de muestras de frontera y ventanas
@@ -82,7 +93,8 @@ de boxes alimentado por páginas ya alineadas; después paridad de las cuatro
 derivaciones y el modelo de proyección completo en fixtures y Algarve real;
 por último sustituir el derivador compartido en las dos entradas, medir pico
 por operación y buscar una fuente larga con muchas vueltas. Hasta pasar esas
-pruebas, la proyección productiva permanece materializada.
+pruebas, la proyección productiva debía permanecer materializada; esa
+sustitución se hizo después con paridad local, sin certificar resistencia.
 
 ## Contexto
 
@@ -101,10 +113,10 @@ Primero validar el reloj GPS con estado constante por canal y después consultar
 
 Esta es una secuencia de implementación, no permiso para cambiar resultados en bloque: (1) medir memoria/tiempo por operación; (2) aislar validación GPS y probar paridad, incluidos puentes inválidos; (3) producir validez y resúmenes por vuelta, con oráculo exhaustivo contra la ruta actual; (4) aplicar snapshots exactos y derivar proyección, probar replay/cancelación/limpieza; (5) medir fuente larga real y validar en Wails. Cada corte debe conservar la ruta anterior hasta demostrar igualdad o documentar una diferencia de cómputo versionada y aceptada.
 
-## Frontera de sustitución comprobada
+## Frontera de sustitución comprobada en el diagnóstico inicial
 
-`TelemetryAnalysisService.withCorrectionInput` es el punto común de preparación,
-inspección, guardado y proyección de revisiones. Hoy llama a
+`TelemetryAnalysisService.withCorrectionInput` era el punto común de preparación,
+inspección, guardado y proyección de revisiones. En el diagnóstico inicial llamaba a
 `ReadCorrectionInput` antes de ejecutar cualquiera de esas acciones, de modo
 que ninguna optimización posterior a la devolución de `CorrectionInput` puede
 acotar el pico de lectura. `DeriveCorrectedSession` vuelve a alinear y a

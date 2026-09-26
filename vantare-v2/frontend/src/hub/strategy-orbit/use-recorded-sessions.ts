@@ -79,7 +79,7 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
     pending.current = controller;
     setBusy(true);
     setError("");
-    try { await operation(controller.signal); return true; } catch (failure) {
+    try { await operation(controller.signal); controller.signal.throwIfAborted(); return true; } catch (failure) {
       if (alive.current && (!controller.signal.aborted || failure instanceof AggregateError)) {
         setError(failure instanceof Error ? failure.message : "unavailable");
       } else if (failure instanceof AggregateError) cleanupError.current();
@@ -115,12 +115,14 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
     }),
     selectFile: (path: string) => run(async signal => {
       const selected = await client.selectFile(path, signal);
+      signal.throwIfAborted();
       selectedFileIDs.current.add(selected.id);
       if (alive.current) setCandidates(previous => [selected, ...(previous ?? []).filter(item => item.id !== selected.id)]);
     }),
     recoverCopy: (sourceId: string) => run(async signal => {
       if (!revisions.some(ref => ref.sessionId === sourceId)) throw new Error("recorded_source_unavailable");
       const recovery = await client.recoverCopy(sourceId, signal);
+      signal.throwIfAborted();
       if (recovery.code !== "ready") throw new Error(recovery.code === "registry_failure" ? "recorded_copy_registry_failure" : `recorded_${recovery.code}`);
       const selected = recovery.candidate;
       selectedFileIDs.current.add(selected.id);
@@ -176,6 +178,7 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
     saveCopy: (session: RecordedSession, destinationDirectory: string) => run(async signal => {
       if (!owned.current.some(item => item.opened.sessionId === session.opened.sessionId)) throw new Error("recorded_source_unavailable");
       const result = await client.saveVerifiedCopy(session.opened.sessionId, destinationDirectory, signal);
+      signal.throwIfAborted();
       if (result.code !== "saved") throw new Error(`recorded_copy_${result.code}`);
       const copy = result.copy;
       if (copy.contentSha256 !== session.base.contentSha256 || copy.sizeBytes !== session.base.sizeBytes) throw new Error("recorded_copy_mismatch");

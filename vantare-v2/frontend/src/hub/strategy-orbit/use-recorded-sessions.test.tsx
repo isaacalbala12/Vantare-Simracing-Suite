@@ -12,6 +12,28 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); vi.useRealTimers(); });
 const candidate = { id: "candidate", state: "ready", size: 1024, modifiedAt: "2026-09-09T12:00:00Z", walPresent: false };
 const session = { candidateId: "candidate", combinationId: "combo", base: { sessionId: "source" }, opened: { sessionId: "handle", session: { metadata: [] } }, revision: { sessionId: "source", revisionId: "a".repeat(64), baseDigest: "b".repeat(64), snapshotId: "c".repeat(64) } } as RecordedSession;
 
+it("does not offer a file selected after its operation was cancelled", async () => {
+  let finish!: (selected: typeof candidate) => void;
+  const client = { selectFile: vi.fn(() => new Promise<typeof candidate>(resolve => { finish = resolve; })) } as unknown as AnalysisClient;
+  const { result } = renderHook(() => useRecordedSessions({ revisions: [], client, onApply: vi.fn(), onCleanupError: vi.fn() }));
+  let selecting!: Promise<boolean>;
+  act(() => { selecting = result.current.selectFile("C:\\kept\\race.duckdb"); });
+  act(() => result.current.cancel());
+  await act(async () => { finish(candidate); expect(await selecting).toBe(false); });
+  expect(result.current.candidates).toBeNull();
+});
+
+it("does not offer a recovered copy after recovery was cancelled", async () => {
+  let finish!: (recovery: { code: "ready"; candidate: typeof candidate }) => void;
+  const client = { recoverCopy: vi.fn(() => new Promise(resolve => { finish = resolve; })) } as unknown as AnalysisClient;
+  const { result } = renderHook(() => useRecordedSessions({ revisions: [session.revision], client, onApply: vi.fn(), onCleanupError: vi.fn() }));
+  let recovering!: Promise<boolean>;
+  act(() => { recovering = result.current.recoverCopy(session.revision.sessionId); });
+  act(() => result.current.cancel());
+  await act(async () => { finish({ code: "ready", candidate }); expect(await recovering).toBe(false); });
+  expect(result.current.candidates).toBeNull();
+});
+
 it("does not adopt a selected replacement file for a different saved source", async () => {
   const selected = { ...candidate, id: "selected" };
   const close = vi.fn().mockResolvedValue(undefined);

@@ -2,6 +2,10 @@
 
 ## T22 / E08 · cuota de cuatro sesiones en el controlador (2026-09-26)
 
+El intento de inspección por Vite en el navegador interno terminó en una
+pantalla negra porque faltaba el puente Wails y el pull recibió HTTP 404.
+Pestaña/servidor cerrados; no cuenta como QA E01–E08 ni cambia el estado nativo.
+
 La vista ya desactivaba el quinto botón, pero `open` informaba éxito silencioso
 al recibir directamente el quinto candidato. Un test rojo→verde verifica que
 se rechaza con causa, no abre un quinto handle y mantiene las cuatro sesiones;

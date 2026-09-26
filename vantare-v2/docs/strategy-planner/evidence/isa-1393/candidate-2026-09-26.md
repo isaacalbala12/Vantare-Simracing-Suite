@@ -174,3 +174,12 @@ tag `vantare_localdev` verificado. Esta es una prueba controlada del
 controlador/UI; la biblioteca real de cientos de fuentes, los cuatro handles
 y el quinto intento siguen pendientes de E08 en Wails. No se abrió la app
 ni hubo push, PR, CI, merge, promoción o release.
+
+## Límite del navegador de desarrollo
+
+Se abrió el frontend actual con Vite en `127.0.0.1:5173` dentro del navegador
+interno de Codex, sin ocupar la pantalla de Windows. La página quedó negra:
+el runtime Wails advirtió que el navegador sólo permite previews, rechazó una
+llamada nativa y el transporte de telemetría recibió HTTP 404. Se cerraron la
+pestaña y el servidor. Ese intento no valida ni invalida el flujo nativo de
+Strategy; no se usó como evidencia de E01–E08.

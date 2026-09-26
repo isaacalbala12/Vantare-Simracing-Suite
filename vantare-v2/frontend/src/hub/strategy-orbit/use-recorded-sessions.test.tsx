@@ -12,6 +12,27 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); vi.useRealTimers(); });
 const candidate = { id: "candidate", state: "ready", size: 1024, modifiedAt: "2026-09-09T12:00:00Z", walPresent: false };
 const session = { candidateId: "candidate", combinationId: "combo", base: { sessionId: "source" }, opened: { sessionId: "handle", session: { metadata: [] } }, revision: { sessionId: "source", revisionId: "a".repeat(64), baseDigest: "b".repeat(64), snapshotId: "c".repeat(64) } } as RecordedSession;
 
+it("rejects a fifth source with an explicit limit error", async () => {
+  const client = { close: vi.fn().mockResolvedValue(undefined) } as unknown as AnalysisClient;
+  vi.mocked(openRecordedSession).mockImplementation(async (_client, id) => ({
+    ...session, candidateId: id, opened: { ...session.opened, sessionId: `handle-${id}` },
+    revision: { ...session.revision, sessionId: `source-${id}` },
+  }));
+  const { result } = renderHook(() => useRecordedSessions({ revisions: [], client, onApply: vi.fn(), onCleanupError: vi.fn() }));
+  for (let index = 0; index < 4; index += 1) {
+    await act(() => result.current.open({ ...candidate, id: `candidate-${index}` }));
+  }
+  expect(result.current.sessions).toHaveLength(4);
+  let fifth!: boolean;
+  await act(async () => { fifth = await result.current.open({ ...candidate, id: "candidate-4" }); });
+  expect(fifth).toBe(false);
+  expect(result.current.error).toBe("recorded_source_limit");
+  expect(result.current.sessions).toHaveLength(4);
+  expect(openRecordedSession).toHaveBeenCalledTimes(4);
+  render(<StrategyRecordedSessionsView controller={result.current} t={key => key} />);
+  expect(screen.getByRole("alert").textContent).toBe("strategy.recorded.hint");
+});
+
 it("does not offer a file selected after its operation was cancelled", async () => {
   let finish!: (selected: typeof candidate) => void;
   const client = { selectFile: vi.fn(() => new Promise<typeof candidate>(resolve => { finish = resolve; })) } as unknown as AnalysisClient;

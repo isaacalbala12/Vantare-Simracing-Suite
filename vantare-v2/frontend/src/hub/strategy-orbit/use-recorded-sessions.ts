@@ -129,7 +129,8 @@ export function useRecordedSessions({ combinationId, revisions, client: supplied
       if (alive.current) setCandidates(previous => [selected, ...(previous ?? []).filter(item => item.id !== selected.id)]);
     }),
     open: (candidate: AnalysisCandidate) => run(async signal => {
-      if (owned.current.length >= 4 || candidate.state !== "ready" || candidate.walPresent || owned.current.some(item => item.candidateId === candidate.id)) return;
+      if (owned.current.length >= 4) throw new Error("recorded_source_limit");
+      if (candidate.state !== "ready" || candidate.walPresent || owned.current.some(item => item.candidateId === candidate.id)) return;
       const session = await openRecordedSession(client, candidate.id, combinationId, revisions, signal);
       await verifySelectedSource(candidate, session);
       if (signal.aborted || !alive.current || owned.current.some(item => item.revision.sessionId === session.revision.sessionId)) {

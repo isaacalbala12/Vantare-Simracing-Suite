@@ -29,6 +29,7 @@ export function StrategyRecordedSessionsView({ controller, onInspect, onChoose, 
   const errorMessage = !error ? null
     : error === "recorded_combination_unavailable" ? t("strategy.recorded.metadataUnavailable")
     : error === "recorded_pending_corrections" ? t("strategy.data.finishPending")
+    : error === "recorded_source_limit" ? t("strategy.recorded.hint")
     : error === "recorded_source_mismatch" ? t("strategy.recorded.sourceMismatch")
     : error === "recorded_revision_mismatch" ? t("strategy.recorded.revisionMismatch")
     : error === "recorded_original_present" ? t("strategy.recorded.originalPresent")

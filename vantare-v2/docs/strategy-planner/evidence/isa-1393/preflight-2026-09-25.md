@@ -1,5 +1,16 @@
 # T22 / ISA-1393 — preflight sin ventana nativa
 
+## Candidato con clima multipiloto incorporado (2026-09-26)
+
+El commit local `c2881fe4` incorpora #1239 en este candidato: ritmo y Fuel
+húmedos por piloto, con paridad solve/replay y rechazo de perfiles incompletos.
+La receta localdev regeneró `bin/vantare-localdev.exe` desde ese HEAD
+(46.385.152 bytes; SHA-256
+`ddbabf7b134e167eb4dcffcf888b0e938440c679a611a5939754d04f45492514`).
+`go test ./...` PASS en la composición; el runtime DuckDB v1.5.5 volvió a
+pasar smoke con el manifiesto confiado. Este binario reemplaza el anterior
+del preflight. No se abrió Wails ni se ejecutó E01–E08.
+
 ## Candidato actual preparado para Wails (2026-09-26)
 
 Desde HEAD local `a888f45b`, `scripts/build-local-development.ps1` pasó y

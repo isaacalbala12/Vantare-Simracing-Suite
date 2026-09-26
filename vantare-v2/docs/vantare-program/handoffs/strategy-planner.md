@@ -1,5 +1,14 @@
 # Handoff vivo — Strategy Planner
 
+## T22 · Candidato local con #1239 y build actual (2026-09-26)
+
+El candidato #1393 incorporó localmente #1239 como `c2881fe4`.
+`bin/vantare-localdev.exe` se regeneró desde ese HEAD: 46.385.152 bytes,
+SHA-256 `ddbabf7b134e167eb4dcffcf888b0e938440c679a611a5939754d04f45492514`.
+`go test ./...` y el smoke del runtime DuckDB PASS. La integración es sólo
+entre ramas aisladas; no hubo push, PR, CI ni promoción de canal. E01–E08
+Wails/LMU siguen pendientes de ejecutar sin interferir con el uso del PC.
+
 ## ISA-1239 · clima por piloto en rama aislada (2026-09-26)
 
 Sobre el candidato #1393 `65ced901`, la rama aislada #1239 reproduce el

@@ -160,6 +160,33 @@ func calculateOrbitWeather(ctx context.Context, input OrbitCalculationInput, dri
 	if err != nil {
 		return OrbitWeatherResult{}, calculationApplicationError(ErrorCalculationInvalid, "input.activeVariantId", err)
 	}
+	individualWetProfiles := 0
+	for _, profile := range solverInput.DriverProfiles {
+		wet := drivers[profile.DriverID].Wet
+		if wet.PaceSeconds != 0 || wet.FuelLitersPerLap != 0 {
+			if wet.PaceSeconds <= 0 || wet.FuelLitersPerLap <= 0 {
+				return OrbitWeatherResult{}, calculationApplicationError(ErrorCalculationInvalid, "input.weatherScenarios", ErrCalculationInvalid)
+			}
+			individualWetProfiles++
+		}
+	}
+	if individualWetProfiles > 0 && individualWetProfiles != len(solverInput.DriverProfiles) {
+		return OrbitWeatherResult{}, calculationApplicationError(ErrorCalculationInvalid, "input.weatherScenarios", ErrCalculationInvalid)
+	}
+	if individualWetProfiles > 0 {
+		wetParameters := &parameters[1]
+		wetParameters.DriverProfiles = make([]solver.WeatherDriverProfile, 0, len(solverInput.DriverProfiles))
+		for _, profile := range solverInput.DriverProfiles {
+			driver := drivers[profile.DriverID]
+			if driver.Dry.PaceSeconds <= 0 || driver.Wet.PaceSeconds <= 0 {
+				return OrbitWeatherResult{}, calculationApplicationError(ErrorCalculationInvalid, "input.weatherScenarios", ErrCalculationInvalid)
+			}
+			fuel := driver.Wet.FuelLitersPerLap
+			wetParameters.DriverProfiles = append(wetParameters.DriverProfiles, solver.WeatherDriverProfile{
+				DriverID: profile.DriverID, PaceDeltaSeconds: driver.Wet.PaceSeconds - driver.Dry.PaceSeconds, FuelPerLapLiters: &fuel,
+			})
+		}
+	}
 	solved, err := solver.SolveWeatherScenariosContext(
 		ctx,
 		solverInput,

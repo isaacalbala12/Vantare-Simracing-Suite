@@ -334,6 +334,63 @@ func TestCalculateOrbitWeatherChangesPlanAndPublishesRobustMetrics(t *testing.T)
 	}
 }
 
+func TestCalculateOrbitWeatherKeepsEachDriversWetPace(t *testing.T) {
+	laps := int64(6)
+	two, four, one := int64(2), int64(4), 1
+	now := time.Date(2026, 8, 22, 12, 0, 0, 0, time.UTC)
+	scenario := func(id string, rain float64) strategydocument.WeightedWeatherScenario {
+		progress := [5]weather.WeatherNodeProgress{weather.NodeStart, weather.Node25, weather.Node50, weather.Node75, weather.NodeFinish}
+		nodes := [5]weather.WeatherNode{}
+		for index := range nodes {
+			nodes[index] = weather.WeatherNode{Progress: progress[index], RainChance: rain, Sky: weather.SkyOvercast, AirTempC: 18, TrackTempC: 22}
+		}
+		return strategydocument.WeightedWeatherScenario{Weight: 0.5, Scenario: weather.WeatherScenarioV1{
+			ContractVersion: weather.ContractVersionWeatherScenarioV1,
+			ScenarioID:      id, CombinationID: "manual:event-1", GeneratedAt: now, Nodes: nodes,
+			Provenance: weather.CaptureProvenance{Source: "manual", CapturedAt: now, FreshUntil: now.Add(time.Minute), SessionType: "manual", SignalFreshness: "manual"},
+		}}
+	}
+	input := OrbitCalculationInput{
+		Event: OrbitCalculationEvent{RaceKind: "laps", TargetLaps: &laps, TankLiters: 6, PitLossSeconds: 10, Rules: &solver.EventRules{
+			MinPitStops: &one, DriverLimits: map[string]solver.DriverLimit{
+				"a": {MinLaps: &two, MaxLaps: &two}, "b": {MinLaps: &four, MaxLaps: &four},
+			},
+		}},
+		Drivers: []OrbitCalculationDriver{
+			{ID: "a", Dry: OrbitCalculationPace{PaceSeconds: 100, FuelLitersPerLap: 1}, Wet: OrbitCalculationPace{PaceSeconds: 110, FuelLitersPerLap: 1}},
+			{ID: "b", Dry: OrbitCalculationPace{PaceSeconds: 100, FuelLitersPerLap: 1}, Wet: OrbitCalculationPace{PaceSeconds: 130, FuelLitersPerLap: 1}},
+		},
+		Variants: []OrbitCalculationVariant{{ID: "fixed", Mode: "dry", Order: []string{"a", "b"}}}, ActiveVariantID: "fixed",
+		WeatherScenarios: []strategydocument.WeightedWeatherScenario{scenario("dry", 0), scenario("wet", 100)},
+	}
+	result, err := calculateOrbit(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Weather == nil || len(result.Weather.Plans) != 2 {
+		t.Fatalf("weather plans = %+v", result.Weather)
+	}
+	dry, wet := result.Weather.Plans[0], result.Weather.Plans[1]
+	if got := wet.TotalSeconds - dry.TotalSeconds; math.Abs(got-140) > 0.001 {
+		t.Fatalf("wet delta = %.3f s, want 2×10 + 4×30 = 140 s; dry=%+v wet=%+v", got, dry, wet)
+	}
+	planning := isa825OrbitInput().PlanningInputs
+	planning.Projection.RepresentativePaceByClimateBucket = map[strategyprojection.ClimateBucket]strategyprojection.RepresentativePaceFamily{
+		strategyprojection.ClimateBucketDry: {Presence: strategyprojection.PresenceValid, MedianLapSeconds: 90,
+			Provenance: strategyprojection.Provenance{Kind: strategyprojection.ProvenanceDerived, SourceID: "test:dry"},
+			Confidence: strategyprojection.Confidence{SampleSize: 6, ComputationVersion: "test.v1"}},
+	}
+	planning.Projection.FuelConsumption.MeanPerLap = 1
+	input.PlanningInputs = planning
+	projected, err := calculateOrbit(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := projected.Weather.Plans[1].TotalSeconds - projected.Weather.Plans[0].TotalSeconds; math.Abs(got-140) > 0.001 {
+		t.Fatalf("projection erased the individual wet deltas: got %.3f s", got)
+	}
+}
+
 func TestCalculateOrbitUsesGoEngineForGoldenPlan(t *testing.T) {
 	t.Parallel()
 	service := NewService[json.RawMessage](nil)

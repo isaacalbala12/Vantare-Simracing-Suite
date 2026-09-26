@@ -277,18 +277,26 @@ type WeatherPlanInput struct {
 }
 
 // WeatherBucketParameter es el fallback manual/reference por condicion. Los
-// consumos son punteros porque cero es un valor valido; si Projection publica
-// el mismo bucket, esa familia derivada es la autoridad y el fallback se omite.
-// CompoundPace reemplaza, vuelta a vuelta, los parametros globales declarados
-// para esos mismos compuestos.
+// consumos son punteros porque cero es un valor valido. Un perfil individual
+// prevalece para ese piloto; sin el, Projection prevalece sobre el promedio
+// del bucket. CompoundPace reemplaza los parametros globales de su compuesto.
 type WeatherBucketParameter struct {
 	Bucket           sp.ClimateBucket        `json:"bucket"`
 	PaceDeltaSeconds float64                 `json:"paceDeltaSeconds"`
 	FuelPerLapLiters *float64                `json:"fuelPerLapLiters,omitempty"`
 	VEPerLapPercent  *float64                `json:"vePerLapPercent,omitempty"`
+	DriverProfiles   []WeatherDriverProfile  `json:"driverProfiles,omitempty"`
 	CompoundPace     []CompoundPaceParameter `json:"compoundPace,omitempty"`
 	Provenance       sp.Provenance           `json:"provenance"`
 	Confidence       sp.Confidence           `json:"confidence"`
+}
+
+// WeatherDriverProfile replaces the fleet average for one identified driver
+// in this bucket. A missing fuel value still follows the usual bucket source.
+type WeatherDriverProfile struct {
+	DriverID         string   `json:"driverId"`
+	PaceDeltaSeconds float64  `json:"paceDeltaSeconds"`
+	FuelPerLapLiters *float64 `json:"fuelPerLapLiters,omitempty"`
 }
 
 // SavingCostParameter transporta niveles manuales o de referencia. El nivel
@@ -755,6 +763,7 @@ type WeatherBucketCostSource struct {
 	PaceDeltaSeconds float64                  `json:"paceDeltaSeconds"`
 	FuelPerLapLiters *float64                 `json:"fuelPerLapLiters,omitempty"`
 	VEPerLapPercent  *float64                 `json:"vePerLapPercent,omitempty"`
+	DriverProfiles   []WeatherDriverProfile   `json:"driverProfiles,omitempty"`
 	CompoundPace     []CompoundPaceCostSource `json:"compoundPace,omitempty"`
 	Provenance       sp.Provenance            `json:"provenance"`
 	Confidence       sp.Confidence            `json:"confidence"`

@@ -793,7 +793,7 @@ func appendStint(node searchNode, laps int64, input SolverInputV2, costs lapCost
 	next.green += stint.GreenSeconds
 	next.degradation += stint.DegradationSeconds
 	next.compound += compoundSeconds
-	weatherSeconds, weatherDegradation := costs.weather.weatherAdjustment(costs.compounds, node.tyre.compound, node.lap+1, laps)
+	weatherSeconds, weatherDegradation := costs.weather.weatherAdjustment(costs.compounds, node.tyre.compound, driver.id, node.lap+1, laps)
 	next.weather += weatherSeconds
 	next.degradation += weatherDegradation
 	if costs.compounds.enabled {
@@ -810,7 +810,7 @@ func appendStint(node searchNode, laps int64, input SolverInputV2, costs lapCost
 		fuelLevel := node.fuel
 		for offset := int64(0); offset < laps; offset++ {
 			next.fuelWeight += serviceValue(fuelLevel) * costs.fuelWeight.secondsPerLiter
-			fuelLevel -= costs.weather.resourcePerLap(ResourceFuel, node.lap+offset+1, driver.fuelPerLap) - saving.fuelSavedPerLap
+			fuelLevel -= costs.weather.resourcePerLap(ResourceFuel, node.lap+offset+1, driver.id, driver.fuelPerLap) - saving.fuelSavedPerLap
 		}
 	} else {
 		effectiveFuelPerLap := driver.fuelPerLap - saving.fuelSavedPerLap

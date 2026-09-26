@@ -31,8 +31,14 @@ type weatherBucketCost struct {
 	paceDelta float64
 	fuel      *int64
 	ve        *int64
+	drivers   map[string]weatherDriverCost
 	compounds compoundPaceCosts
 	source    WeatherBucketCostSource
+}
+
+type weatherDriverCost struct {
+	paceDelta float64
+	fuel      *int64
 }
 
 func normalizedThresholds(value RainChanceThresholds) RainChanceThresholds {
@@ -91,8 +97,46 @@ func newWeatherCostModel(input SolverInputV2) (weatherCostModel, error) {
 			source: WeatherBucketCostSource{
 				Bucket: parameter.Bucket, PaceDeltaSeconds: parameter.PaceDeltaSeconds,
 				FuelPerLapLiters: parameter.FuelPerLapLiters, VEPerLapPercent: parameter.VEPerLapPercent,
-				Provenance: parameter.Provenance, Confidence: parameter.Confidence,
+				DriverProfiles: append([]WeatherDriverProfile(nil), parameter.DriverProfiles...),
+				Provenance:     parameter.Provenance, Confidence: parameter.Confidence,
 			},
+		}
+		if len(parameter.DriverProfiles) > 0 {
+			if len(input.DriverProfiles) == 0 {
+				return weatherCostModel{}, fmt.Errorf("bucketParameters[%d].driverProfiles requires driverProfiles", index)
+			}
+			cost.drivers = make(map[string]weatherDriverCost, len(parameter.DriverProfiles))
+			for driverIndex, profile := range parameter.DriverProfiles {
+				if _, duplicate := cost.drivers[profile.DriverID]; duplicate || profile.DriverID == "" {
+					return weatherCostModel{}, fmt.Errorf("bucketParameters[%d].driverProfiles[%d].driverId is empty or duplicated", index, driverIndex)
+				}
+				basePace := 0.0
+				for _, driver := range input.DriverProfiles {
+					if driver.DriverID == profile.DriverID {
+						if driver.Manual != nil {
+							basePace = driver.Manual.BaseLapSeconds
+						} else if driver.Profile != nil {
+							basePace = driver.Profile.Pace.BaseSeconds
+						}
+						break
+					}
+				}
+				if basePace == 0 || !finite(profile.PaceDeltaSeconds) || basePace+profile.PaceDeltaSeconds <= 0 {
+					return weatherCostModel{}, fmt.Errorf("bucketParameters[%d].driverProfiles[%d].driverId or paceDeltaSeconds is invalid", index, driverIndex)
+				}
+				driverCost := weatherDriverCost{paceDelta: profile.PaceDeltaSeconds}
+				if profile.FuelPerLapLiters != nil {
+					fuel, err := serviceUnits("weather driver fuelPerLapLiters", *profile.FuelPerLapLiters)
+					if err != nil {
+						return weatherCostModel{}, err
+					}
+					driverCost.fuel = &fuel
+				}
+				cost.drivers[profile.DriverID] = driverCost
+			}
+			if len(cost.drivers) != len(input.DriverProfiles) {
+				return weatherCostModel{}, fmt.Errorf("bucketParameters[%d].driverProfiles must cover every driver", index)
+			}
 		}
 		var err error
 		if parameter.FuelPerLapLiters != nil {
@@ -211,11 +255,17 @@ func (model weatherCostModel) condition(lap int64) WeatherLapCondition {
 	return model.timeline[lap-1]
 }
 
-func (model weatherCostModel) resourcePerLap(kind ResourceKind, lap int64, fallback int64) int64 {
+func (model weatherCostModel) resourcePerLap(kind ResourceKind, lap int64, driverID string, fallback int64) int64 {
 	if !model.enabled {
 		return fallback
 	}
 	bucket := model.condition(lap).Bucket
+	parameter := model.parameters[bucket]
+	if kind == ResourceFuel {
+		if driver, ok := parameter.drivers[driverID]; ok && driver.fuel != nil {
+			return *driver.fuel
+		}
+	}
 	if model.projection != nil {
 		family := model.projection.FuelConsumption
 		if kind == ResourceVirtualEnergy {
@@ -230,7 +280,6 @@ func (model weatherCostModel) resourcePerLap(kind ResourceKind, lap int64, fallb
 			}
 		}
 	}
-	parameter := model.parameters[bucket]
 	if kind == ResourceFuel && parameter.fuel != nil {
 		return *parameter.fuel
 	}
@@ -244,8 +293,8 @@ func (model weatherCostModel) usage(startLap, laps int64, driver driverCost, sav
 	var fuel, ve int64
 	for offset := int64(0); offset < laps; offset++ {
 		lap := startLap + offset
-		lapFuel := model.resourcePerLap(ResourceFuel, lap, driver.fuelPerLap) - saving.fuelSavedPerLap
-		lapVE := model.resourcePerLap(ResourceVirtualEnergy, lap, driver.vePerLap) - saving.veSavedPerLap
+		lapFuel := model.resourcePerLap(ResourceFuel, lap, driver.id, driver.fuelPerLap) - saving.fuelSavedPerLap
+		lapVE := model.resourcePerLap(ResourceVirtualEnergy, lap, driver.id, driver.vePerLap) - saving.veSavedPerLap
 		if lapFuel < 0 || lapVE < 0 {
 			return 0, 0, fmt.Errorf("saving level %q exceeds consumption on lap %d", saving.level, lap)
 		}
@@ -293,7 +342,7 @@ func (model weatherCostModel) compoundAllowed(compound tyres.Compound, startLap,
 
 // weatherAdjustment devuelve solo el delta contra el modelo global; asi las
 // rutas sin clima conservan byte a byte las formulas F4-1..6.
-func (model weatherCostModel) weatherAdjustment(global compoundPaceCosts, compound tyres.Compound, startLap, laps int64) (float64, float64) {
+func (model weatherCostModel) weatherAdjustment(global compoundPaceCosts, compound tyres.Compound, driverID string, startLap, laps int64) (float64, float64) {
 	if !model.enabled {
 		return 0, 0
 	}
@@ -301,7 +350,11 @@ func (model weatherCostModel) weatherAdjustment(global compoundPaceCosts, compou
 	for offset := int64(0); offset < laps; offset++ {
 		condition := model.condition(startLap + offset)
 		parameter := model.parameters[condition.Bucket]
-		pace += parameter.paceDelta
+		if driver, ok := parameter.drivers[driverID]; ok {
+			pace += driver.paceDelta
+		} else {
+			pace += parameter.paceDelta
+		}
 		if !global.enabled || !parameter.compounds.enabled {
 			continue
 		}

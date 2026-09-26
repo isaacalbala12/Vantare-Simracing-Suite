@@ -1,5 +1,16 @@
 # Handoff vivo — Strategy Planner
 
+## ISA-1239 · clima por piloto en rama aislada (2026-09-26)
+
+Sobre el candidato #1393 `65ced901`, la rama aislada #1239 reproduce el
+promedio erróneo (+120 s frente a +140 s) y conserva los deltas húmedos
+individuales +10/+30 s y Fuel por piloto en solve/replay. Rechaza cobertura
+parcial y conserva el promedio legacy si no hay perfiles húmedos individuales.
+Tests focales y `go test ./...` PASS tras generar `frontend/dist`;
+frontend build y 44 tests de roadmap PASS. Wails/LMU y T19–T21 pendientes.
+La evidencia está en [#1239](../../strategy-planner/evidence/isa-1239/README.md).
+Sin push, PR, CI, integración, promoción ni release.
+
 ## T18/T22 · Suite frontend completa tras la entrada móvil (2026-09-26)
 
 La ejecución completa en el candidato #1393 reveló 17 tests rotos por

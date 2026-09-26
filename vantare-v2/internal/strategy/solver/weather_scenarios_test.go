@@ -217,6 +217,74 @@ func TestSolveV2ConsumesAnalysisClimateBucketPerLap(t *testing.T) {
 	}
 }
 
+func TestSolveAndReplayKeepDriverSpecificWetFuel(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 6
+	input.Formation.Seconds.Value = 0
+	input.FuelCapacityLiters.Value = 12
+	input.DriverProfiles = []DriverProfileInput{manualDriver("a", 100, 1), manualDriver("b", 100, 1)}
+	input.DriverSequence = []string{"a", "b"}
+	two, four := int64(2), int64(4)
+	input.EventRules.DriverLimits = map[string]DriverLimit{
+		"a": {MinLaps: &two, MaxLaps: &two}, "b": {MinLaps: &four, MaxLaps: &four},
+	}
+	aFuel, bFuel := 1.0, 3.0
+	wet := bucketParameter(sp.ClimateBucketWet, 0)
+	wet.DriverProfiles = []WeatherDriverProfile{
+		{DriverID: "a", PaceDeltaSeconds: 10, FuelPerLapLiters: &aFuel},
+		{DriverID: "b", PaceDeltaSeconds: 30, FuelPerLapLiters: &bFuel},
+	}
+	input.Weather = &WeatherPlanInput{Scenario: weatherScenario("wet", [5]float64{100, 100, 100, 100, 100}),
+		BucketParameters: []WeatherBucketParameter{bucketParameter(sp.ClimateBucketHumid, 0), wet}}
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Feasible || len(result.Best.PitStops) != 1 || result.Best.PitStops[0].FuelLiters != 2 {
+		t.Fatalf("driver-specific wet fuel should need 14 L total and a 2 L top-up: %+v", result)
+	}
+	replayed, feasible, err := evaluateDecisionV2(input, result.Best)
+	if err != nil || !feasible || math.Abs(replayed.TotalSeconds-result.Expected.TotalSeconds) > epsilon {
+		t.Fatalf("replay diverged from solve: feasible=%v err=%v replay=%+v solve=%+v", feasible, err, replayed, result.Expected)
+	}
+}
+
+func TestWetDriverProfilesChooseTheFasterDriverWithoutFixedOrder(t *testing.T) {
+	input := baseInputV2()
+	input.RaceLaps = 4
+	input.FuelCapacityLiters.Value = 10
+	input.DriverProfiles = []DriverProfileInput{manualDriver("b", 100, 1), manualDriver("a", 100, 1)}
+	wet := bucketParameter(sp.ClimateBucketWet, 20)
+	wet.DriverProfiles = []WeatherDriverProfile{
+		{DriverID: "a", PaceDeltaSeconds: 10}, {DriverID: "b", PaceDeltaSeconds: 30},
+	}
+	input.Weather = &WeatherPlanInput{Scenario: weatherScenario("wet", [5]float64{100, 100, 100, 100, 100}),
+		BucketParameters: []WeatherBucketParameter{bucketParameter(sp.ClimateBucketHumid, 0), wet}}
+	result, err := SolveV2(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Feasible || len(result.Best.Stints) != 1 || result.Best.Stints[0].Driver != "a" || math.Abs(result.Expected.WeatherSeconds-40) > epsilon {
+		t.Fatalf("wet solver ignored driver-specific pace: %+v", result)
+	}
+	replayed, feasible, err := evaluateDecisionV2(input, result.Best)
+	if err != nil || !feasible || math.Abs(replayed.TotalSeconds-result.Expected.TotalSeconds) > epsilon {
+		t.Fatalf("wet replay diverged: feasible=%v err=%v replay=%+v solve=%+v", feasible, err, replayed, result.Expected)
+	}
+}
+
+func TestWetDriverProfilesRejectPartialCoverage(t *testing.T) {
+	input := baseInputV2()
+	input.DriverProfiles = []DriverProfileInput{manualDriver("a", 100, 1), manualDriver("b", 100, 1)}
+	wet := bucketParameter(sp.ClimateBucketWet, 20)
+	wet.DriverProfiles = []WeatherDriverProfile{{DriverID: "a", PaceDeltaSeconds: 10}}
+	input.Weather = &WeatherPlanInput{Scenario: weatherScenario("wet", [5]float64{100, 100, 100, 100, 100}),
+		BucketParameters: []WeatherBucketParameter{bucketParameter(sp.ClimateBucketHumid, 0), wet}}
+	if _, err := SolveV2(input); err == nil {
+		t.Fatal("a missing driver weather profile silently used the fleet average")
+	}
+}
+
 func TestRainAtNode50PitsForWetsAndRobustBeatsDryPlanWhenRainArrivesEarly(t *testing.T) {
 	input, parameters := weatherBusinessInput(t)
 	dry := weatherScenario("dry", [5]float64{})

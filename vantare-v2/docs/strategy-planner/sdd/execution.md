@@ -2,6 +2,15 @@
 
 [Especificación](README.md) · [Aceptación](acceptance.md) · ISA-1091.
 
+## T02g · clima individual multipiloto, #1239, 2026-09-26
+
+El corte local de [#1239](../evidence/isa-1239/README.md) transporta al
+solver ritmo y Fuel húmedos por piloto y los conserva en solve y replay; una
+lista individual parcial se rechaza. La reproducción A +10 s / B +30 s con
+2 y 4 vueltas pasó de +120 s incorrectos a +140 s. El promedio sigue como
+fallback sólo sin perfiles húmedos individuales. Falta T22 Wails real y la
+calibración empírica T19–T21; este corte no certifica clima observado.
+
 ## T18 v5 · gate visual web, 2026-09-26
 
 La matriz final [`pass-v5-25-responsive-final`](../evidence/isa-1277-visual/pass-v5-25-responsive-final/README.md)

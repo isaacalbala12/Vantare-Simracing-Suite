@@ -614,10 +614,10 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - titulo.en: Complete Strategy Planner
 - titulo.pt: Strategy Planner completo
 - titulo.it: Strategy Planner completo
-- cuerpo: El planificador crea, compara, guarda, ejecuta y adapta estrategias para minimizar el tiempo total esperado y mostrar riesgos y alternativas, alimentado por datos reales de sesión.
-- cuerpo.en: The planner creates, compares, saves, executes and adapts strategies to minimise expected total time and show risks and alternatives, fed by real session data.
-- cuerpo.pt: O planeador cria, compara, grava, executa e adapta estratégias para minimizar o tempo total esperado e mostrar riscos e alternativas, alimentado por dados reais de sessão.
-- cuerpo.it: Il pianificatore crea, confronta, salva, esegue e adatta le strategie per minimizzare il tempo totale atteso e mostrare rischi e alternative, alimentato da dati di sessione reali.
+- cuerpo: El planificador crea, compara, guarda, ejecuta y adapta estrategias para minimizar el tiempo total esperado y mostrar riesgos y alternativas, alimentado por datos reales de sesión. El corte local #1239 conserva ritmo y consumo húmedos de cada piloto en solve y replay; el promedio sólo se usa sin perfiles individuales. Siguen pendientes validación Wails y calibración empírica.
+- cuerpo.en: The planner creates, compares, saves, executes and adapts strategies to minimise expected total time and show risks and alternatives, fed by real session data. Local work #1239 preserves each driver's wet pace and fuel in solve and replay; the average is used only without individual profiles. Wails validation and empirical calibration remain pending.
+- cuerpo.pt: O planeador cria, compara, grava, executa e adapta estratégias para minimizar o tempo total esperado e mostrar riscos e alternativas, alimentado por dados reais de sessão. O trabalho local #1239 conserva ritmo e consumo em piso molhado por piloto no cálculo e na reprodução; a média só é usada sem perfis individuais. Faltam validação Wails e calibração empírica.
+- cuerpo.it: Il pianificatore crea, confronta, salva, esegue e adatta le strategie per minimizzare il tempo totale atteso e mostrare rischi e alternative, alimentato da dati di sessione reali. Il lavoro locale #1239 conserva passo e consumo sul bagnato di ogni pilota nel calcolo e nel replay; la media si usa solo senza profili individuali. Restano la verifica Wails e la calibrazione empirica.
 - etiqueta: Plan
 - etiqueta.pt: Plano
 - etiqueta.it: Piano

@@ -1,5 +1,23 @@
 # Handoff vivo — Strategy Planner
 
+## T22 · reapertura de borrador sin fuente (2026-09-26)
+
+El backend de Strategy exige que Analysis mantenga abierta cada fuente de la
+revisión exacta para volver a derivar (`StrategyRevisionCatalog`); si se cierra,
+devuelve `ErrTelemetryAnalysisSessionUnknown`. La preparación ya avisaba de
+ello, pero el plan permitía pulsar «Calcular» y sólo después mostraba un error
+genérico. Ahora el plan impide ese cálculo, explica que hay que abrir las
+fuentes y ofrece acceso directo a la biblioteca/recuperación de copia. El
+test del componente falló antes del arreglo; el test del recorrido reabre un
+borrador y comprueba que no se pide ni proyección ni cálculo antes de abrir la
+fuente. La copia registrada sigue siendo una candidata: al abrirla se valida
+contra la revisión fijada, sin sustituirla silenciosamente.
+
+Frontend: 532 archivos/4884 tests PASS (2 omitidos) antes de añadir el test
+de integración; después, 21 tests focales PASS, presupuesto de frames 4 PASS,
+typecheck, lint y build PASS. Los checks no prueban recuperación con Wails ni
+DuckDB real; E01–E08 y T19–T21 siguen pendientes. No se abrió la app nativa.
+
 ## T22 · procedencia visible y edición de parada en el arnés (2026-09-26)
 
 Un recorrido en el navegador interno desde una sesión LMU simulada hasta

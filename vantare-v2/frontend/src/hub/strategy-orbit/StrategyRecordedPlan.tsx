@@ -78,12 +78,14 @@ function PlanResult({ plan, draft, t }: { readonly plan: StrategyOrbitCalculated
   </>;
 }
 
-export function StrategyRecordedPlan({ draft, state, acceptance, sourceLabels = {}, locked, onChange, onCalculate, onRecalculateStints, onRecalculatePits, onCancel, t }: {
+export function StrategyRecordedPlan({ draft, state, acceptance, sourceLabels = {}, sourceUnavailable = false, locked, onSources, onChange, onCalculate, onRecalculateStints, onRecalculatePits, onCancel, t }: {
   readonly draft: RecordedWizardDraft;
   readonly state: RecordedCalculationState;
   readonly acceptance: RecordedAcceptanceController;
   readonly sourceLabels?: Readonly<Record<string, string>>;
+  readonly sourceUnavailable?: boolean;
   readonly locked: boolean;
+  readonly onSources?: () => void;
   readonly onChange: (draft: RecordedWizardDraft) => void;
   readonly onCalculate: () => void;
   readonly onRecalculateStints: (constraints: readonly RecordedStintConstraint[]) => void;
@@ -180,6 +182,7 @@ export function StrategyRecordedPlan({ draft, state, acceptance, sourceLabels = 
     </div><CalculationStages state="blocked" manual={manual} t={t} />{pendingCourse}</div> : null}
     {planWorkspace}
     {!plan ? backToPlan : null}
+    {sourceUnavailable ? <div className="strategy-recorded-plan__message" role="status"><p>{t("strategy.entry.referenceOpenSources")}</p>{onSources ? <Button variant="ghost" disabled={locked || running} onClick={onSources}>{t("strategy.entry.openTelemetry")}</Button> : null}</div> : null}
     {state.status === "cancelled" ? <div className="strategy-recorded-plan__message" role="status"><strong>{t(title)}</strong><p>{t("strategy.calculation.cancelledHint")}</p></div> : null}
     {state.status === "error" ? <div className="strategy-recorded-plan__state"><div className="strategy-recorded-plan__message strategy-recorded-plan__message--error" role="alert" data-code={state.code} data-field={state.field}><strong>{t(manual ? "strategy.workspace.manualValidationHint" : "strategy.workspace.validationHint")}</strong><p>{t(state.code && errorKey[state.code] ? errorKey[state.code] : "strategy.calculation.errorHint")}</p></div><CalculationStages state="blocked" manual={manual} t={t} />{pendingCourse}</div> : null}
     {acceptance.state.status === "accepted" && !stintDirty && !pitDirty ? <p role="status">{t("strategy.plan.accepted")}</p> : null}
@@ -188,7 +191,7 @@ export function StrategyRecordedPlan({ draft, state, acceptance, sourceLabels = 
     {editor === "plan" ? <footer className="strategy-recorded-plan__actions">
       <small>{t("strategy.plan.saveSeparate")}</small>
       {running ? <Button variant="ghost" disabled={state.status === "cancelling"} onClick={onCancel}>{t("strategy.recorded.cancel")}</Button>
-        : <Button variant={state.status === "error" || state.status === "cancelled" || state.status === "partial" ? "primary" : "ghost"} disabled={locked || accepting || !draft.calculationMode} onClick={calculate}>{t(state.status === "error" || state.status === "cancelled" || state.status === "partial" ? "strategy.calculation.retry" : "strategy.workspace.calculate")}</Button>}
+        : <Button variant={state.status === "error" || state.status === "cancelled" || state.status === "partial" ? "primary" : "ghost"} disabled={locked || accepting || sourceUnavailable || !draft.calculationMode} onClick={calculate}>{t(state.status === "error" || state.status === "cancelled" || state.status === "partial" ? "strategy.calculation.retry" : "strategy.workspace.calculate")}</Button>}
       {plan ? <Button variant="primary" disabled={locked || stintDirty || pitDirty || accepting || acceptance.state.status === "accepted" || acceptance.state.status === "recovery" || acceptance.state.status === "error"} onClick={() => void acceptance.accept()}>{t(accepting ? "strategy.plan.accepting" : "strategy.plan.accept")}</Button> : null}
     </footer> : null}
   </section>;

@@ -50,6 +50,28 @@ it("discovers recent candidates when changing the origin of a reopened draft", a
   expect(await screen.findByRole("button", { name: /strategy.entry.useSession/ })).toBeTruthy();
   expect(discover).toHaveBeenCalledOnce();
 });
+it("keeps a reopened telemetry draft from calculating until its pinned source is opened", async () => {
+  const draft = { ...createRecordedWizardDraft(), mode: "automatic" as const, calculationMode: "dry" as const,
+    combination: { combinationId: "combo", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Car", carClass: "LMP2" },
+    sessions: [session.revision] };
+  const stored: StoredRecordedDraft = { repositoryVersion: 7, document: {
+    contractVersion: "strategy.v1", draftId: "recorded-draft:event", planId: "recorded-plan:event", variantId: "recorded-main",
+    name: "Saved telemetry race", mode: "assisted", capabilities: ["manual_inputs", "telemetry_import"], provenance: { kind: "manual", sourceId: "strategy-recorded-wizard" },
+    confidence: { level: "unknown" }, updatedAt: "2026-09-15T12:00:00Z",
+    payload: { contractVersion: RECORDED_DRAFT_VERSION, eventId: "event", draft },
+  } };
+  const execute = vi.fn();
+  const discover = vi.fn().mockResolvedValue([candidate]);
+  render(<StrategyRecordedWorkflow eventId="event" initial={stored} repositoryVersion={7} catalog={[]} catalogState="available" calendar={null}
+    application={{ execute, cancel: vi.fn(), dispose: vi.fn() } as unknown as StrategyApplicationClient<RecordedDraftPayload>}
+    analysis={{ discover, close: vi.fn() } as unknown as AnalysisClient} onExit={vi.fn()} onCleanupError={vi.fn()} t={key => key} />);
+  fireEvent.click(screen.getByRole("tab", { name: "strategy.data.tab.plan" }));
+  expect(screen.getByRole<HTMLButtonElement>("button", { name: "strategy.workspace.calculate" }).disabled).toBe(true);
+  expect(execute.mock.calls.some(([command]) => command.operation === "get_revision_planning_inputs" || command.operation === "calculate_orbit")).toBe(false);
+  fireEvent.click(screen.getByRole("button", { name: "strategy.entry.openTelemetry" }));
+  expect(await screen.findByTestId("strategy-recorded-source-screen")).toBeTruthy();
+  expect(discover).toHaveBeenCalledOnce();
+});
 it("returns from the origin menu to the existing manual preparation", async () => {
   const { discover } = setup();
   await waitFor(() => expect(discover).toHaveBeenCalledOnce());

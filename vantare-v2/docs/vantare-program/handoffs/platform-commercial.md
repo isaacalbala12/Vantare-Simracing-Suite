@@ -78,6 +78,15 @@ con NEW=0/MOVED=0. Siguiente acción: revisar el contenido y las rutas de
 política, validar Supabase en un entorno de prueba y obtener la autorización
 de Isaac antes de integrar en Nightly. Sin merge, migración, publicación ni release.
 
+El 2026-09-26 Isaac autorizó continuar con la PR y la migración. La revisión
+de las rutas de política confirma que se retiran el validador y el workflow del
+digest anterior, y el script visual ligado a ese roadmap; el gate de canales
+sigue activo. Nightly avanzó de nuevo y se incorporó a la rama, conservando la
+eliminación intencionada de `plan.md` y `roadmap.json`. La migración debe pasar
+primero por Supabase de prueba y una lectura con rol público antes de aplicarla
+al proyecto de producción. La publicación de los dos hitos se verifica aparte
+de la integración de código.
+
 ## VAN-740 / ISA-1305 — Wails beta.24 aceptado para Nightly (2026-09-22)
 
 [Tarea Notion VAN-740](https://app.notion.com/p/3e3e51695c6581f7a1aae9d4db50ee38), puente técnico [GitHub #1305](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1305).

@@ -2,6 +2,17 @@
 
 [Especificación](README.md) · [Aceptación](acceptance.md) · ISA-1091.
 
+## T07d · indisponibilidad temporal exacta, #1395, 2026-09-26
+
+SolverV2 acepta ventanas semiabiertas de segundos transcurridos desde el inicio
+de carrera en `driverLimits[id].unavailableTime`. Solve y replay comparan cada
+stint de conducción con el reloj real, que incluye formación y paradas; una
+parada puede atravesar la ventana sin ocupar al piloto. Las ventanas por vueltas
+se mantienen. El horario legacy en minutos del día no se transforma porque no
+tiene una referencia de salida y zona horaria inequívocas. La edición visual y
+su transporte al cálculo quedan como un corte posterior; este contrato local
+no certifica aún Wails ni telemetría LMU.
+
 ## T02g · clima individual multipiloto, #1239, 2026-09-26
 
 El corte local de [#1239](../evidence/isa-1239/README.md) transporta al

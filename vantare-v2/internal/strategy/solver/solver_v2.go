@@ -192,16 +192,24 @@ type PitWindow struct {
 }
 
 type DriverLimit struct {
-	MinLaps                  *int64              `json:"minLaps,omitempty"`
-	MaxLaps                  *int64              `json:"maxLaps,omitempty"`
-	MaxContinuousTimeSeconds *float64            `json:"maxContinuousTimeSeconds,omitempty"`
-	MaxTotalTimeSeconds      *float64            `json:"maxTotalTimeSeconds,omitempty"`
-	Unavailable              []UnavailableWindow `json:"unavailable,omitempty"`
+	MinLaps                  *int64                  `json:"minLaps,omitempty"`
+	MaxLaps                  *int64                  `json:"maxLaps,omitempty"`
+	MaxContinuousTimeSeconds *float64                `json:"maxContinuousTimeSeconds,omitempty"`
+	MaxTotalTimeSeconds      *float64                `json:"maxTotalTimeSeconds,omitempty"`
+	Unavailable              []UnavailableWindow     `json:"unavailable,omitempty"`
+	UnavailableTime          []UnavailableTimeWindow `json:"unavailableTime,omitempty"`
 }
 
 type UnavailableWindow struct {
 	FromLap int64 `json:"fromLap"`
 	ToLap   int64 `json:"toLap"`
+}
+
+// UnavailableTimeWindow uses seconds elapsed from race start, including
+// formation and pit time. Its interval is half-open [fromSeconds,toSeconds).
+type UnavailableTimeWindow struct {
+	FromSeconds float64 `json:"fromSeconds"`
+	ToSeconds   float64 `json:"toSeconds"`
 }
 
 // ComputeBudget es el presupuesto p95 de cómputo como parámetro (spec F1.3).

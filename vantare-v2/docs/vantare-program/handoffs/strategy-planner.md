@@ -1,5 +1,15 @@
 # Handoff vivo — Strategy Planner
 
+## ISA-1395 · ventanas temporales por piloto en SolverV2 (2026-09-26)
+
+La rama aislada #1395 añade indisponibilidad en segundos desde el inicio de
+carrera al mismo límite de piloto. Solve y replay rechazan solapamiento de
+conducción, cuentan formación y paradas, y conservan el límite por vueltas. La
+reproducción de tres vueltas con pilotos de 60/120 s selecciona rápido-lento-
+rápido usando las paradas; el horario legacy absoluto no se convierte. Falta
+editar y transportar este dato en la mesa v5, T22 Wails real y T19–T21. Sin
+push, PR, CI, integración, promoción ni release.
+
 ## T22 · Candidato local con #1239 y build actual (2026-09-26)
 
 El candidato #1393 incorporó localmente #1239 como `c2881fe4`.

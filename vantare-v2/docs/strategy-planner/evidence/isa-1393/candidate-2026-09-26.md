@@ -71,3 +71,6 @@ se pudo adoptarla. También se verificó en el harness que la ventana de piloto
 
 Esto sólo valida navegación y persistencia del mock. La disponibilidad real de
 sesiones, el guardado y la adopción en Wails con DuckDB permanecen en E01–E08.
+El `vantare-localdev.exe` citado arriba se compiló antes de esta corrección
+frontend: debe regenerarse con el script oficial antes de la siguiente prueba
+nativa. Su SHA identifica la build anterior y no este HEAD.

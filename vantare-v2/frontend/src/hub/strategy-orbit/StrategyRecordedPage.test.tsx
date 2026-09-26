@@ -12,21 +12,28 @@ vi.mock("./strategy-orbit-bridge", () => ({ createStrategyOrbitApplicationClient
 afterEach(() => { cleanup(); document.getElementById(STRATEGY_CONTEXT_SLOT_ID)?.remove(); });
 const combination = { combinationId: "lmu:imola", simId: "lmu", trackName: "Imola", trackLayout: "GP", carName: "Car", carClass: "LMP2", sessionCount: 1, raceCount: 1, lastActivity: "2026-09-10T00:00:00Z", climateBuckets: [], sessions: [] };
 const draft = { contractVersion: "strategy.v1" as const, draftId: "recorded-draft:existing", planId: "recorded-plan:existing", variantId: "recorded-main", name: "Saved Imola", mode: "manual" as const, updatedAt: "2026-09-10T00:00:00Z", capabilities: ["manual_inputs" as const], provenance: { kind: "manual" as const }, confidence: { level: "unknown" as const }, payload: { contractVersion: "strategy.recorded.draft.v1" as const, eventId: "existing", draft: { ...createRecordedWizardDraft(), combination, name: "Saved Imola" } } };
-function setup(options?: { delayLibrary?: boolean; plans?: StrategyApplicationResultV1<RecordedDraftPayload>["plans"]; catalogFails?: boolean }) {
+function setup(options?: { delayLibrary?: boolean; plans?: StrategyApplicationResultV1<RecordedDraftPayload>["plans"]; catalogFails?: boolean; persistCreates?: boolean }) {
   let releaseLibrary = () => {};
+  const plans = [...(options?.plans ?? [{ planId: draft.planId, variantId: draft.variantId, draftId: draft.draftId, name: draft.name, mode: draft.mode, updatedAt: draft.updatedAt, hasDraft: true, revisionCount: 0 }])];
+  let createdDraft: typeof draft | undefined;
   const libraryReady = options?.delayLibrary ? new Promise<void>(resolve => { releaseLibrary = resolve; }) : Promise.resolve();
   const execute = vi.fn(async (command: StrategyApplicationCommandV1<RecordedDraftPayload>): Promise<StrategyApplicationResultV1<RecordedDraftPayload>> => {
     const base = { protocolVersion: "strategy.application.v1" as const, commandId: command.commandId, repositoryVersion: 4, recoveredFromBackup: false, closed: false };
     switch (command.operation) {
-      case "list": await libraryReady; return { ...base, plans: options?.plans ?? [{ planId: draft.planId, variantId: draft.variantId, draftId: draft.draftId, name: draft.name, mode: draft.mode, updatedAt: draft.updatedAt, hasDraft: true, revisionCount: 0 }] };
+      case "list": await libraryReady; return { ...base, plans: [...plans] };
       case "list_session_combinations": if (options?.catalogFails) throw new Error("catalog unavailable"); return { ...base, sessionCatalogStatus: "available", sessionCombinations: [combination] };
       case "list_events": return { ...base, events: [] };
       case "open": if ("revision" in command && command.revision) return { ...base, revision: {
         contractVersion: "strategy.v1", hashAlgorithm: "sha256", sourceDraftId: draft.draftId, name: draft.name, mode: draft.mode,
         capabilities: [], provenance: { kind: "manual" }, confidence: { level: "unknown" }, createdAt: "2026-09-09T10:00:00Z",
         payload: { contractVersion: "strategy.orbit.revision.v1", calculatedPlan: { totalLaps: 71, total: 7420, stops: 2 } }, ...command.revision,
-      } as never }; return { ...base, draft };
-      case "create": return { ...base, draft: command.draft };
+      } as never }; return { ...base, draft: options?.persistCreates && command.draftId === createdDraft?.draftId ? createdDraft : draft };
+      case "create":
+        if (options?.persistCreates) {
+          createdDraft = command.draft as typeof draft;
+          plans.unshift({ planId: command.draft.planId, variantId: command.draft.variantId, draftId: command.draft.draftId, name: command.draft.name, mode: command.draft.mode, updatedAt: command.draft.updatedAt, hasDraft: true, revisionCount: 0 });
+        }
+        return { ...base, draft: command.draft };
       default: throw new Error(`Unexpected native operation ${command.operation}`);
     }
   });
@@ -54,6 +61,28 @@ it("opens manual preparation and saves a draft without invoking live or calculat
   expect(create).toMatchObject({ expectedRepositoryVersion: 4, draft: { payload: { draft: { combination: { combinationId: combination.combinationId }, race: { format: "timed" }, drivers: [], sessions: [] } } } });
   expect(execute.mock.calls.some(([command]) => command.operation === "calculate_orbit")).toBe(false);
   expect(screen.queryByTestId("orbit-strategy-form")).toBeNull();
+});
+it("refreshes saved drafts when returning to the origin menu after saving", async () => {
+  const { execute } = setup({ persistCreates: true });
+  fireEvent.click((await screen.findAllByRole("button", { name: /strategy.entry.startManual/ }))[0]);
+  fireEvent.click((await screen.findAllByRole("button", { name: /strategy.entry.changeCombination/ }))[0]);
+  const car = await screen.findByRole("combobox", { name: "strategy.journey.car" });
+  await waitFor(() => expect((car as HTMLSelectElement).disabled).toBe(false));
+  fireEvent.change(car, { target: { value: JSON.stringify([combination.carClass, combination.carName]) } });
+  fireEvent.change(screen.getByRole("combobox", { name: "strategy.journey.track" }), { target: { value: combination.combinationId } });
+  fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.save" }));
+  await screen.findByText("strategy.workspace.saved");
+  fireEvent.click(screen.getByRole("button", { name: "strategy.entry.changeSource" }));
+  const saved = await screen.findByTestId("strategy-entry-saved");
+  await waitFor(() => expect(within(saved).getAllByRole("button", { name: "strategy.workspace.open" })).toHaveLength(2));
+  expect(execute.mock.calls.filter(([command]) => command.operation === "list").length).toBeGreaterThanOrEqual(2);
+  const created = execute.mock.calls.map(([command]) => command).find(command => command.operation === "create");
+  if (!created || created.operation !== "create") throw new Error("Expected a created draft");
+  const row = within(saved).getByText(created.draft.name).closest("li");
+  if (!row) throw new Error("Expected the new draft in the saved list");
+  fireEvent.click(within(row).getByRole("button", { name: "strategy.workspace.open" }));
+  await screen.findByRole("tab", { name: "strategy.data.tab.race" });
+  expect(execute.mock.calls.findLast(([command]) => command.operation === "open")?.[0]).toMatchObject({ draftId: created.draft.draftId });
 });
 it("opens the saved library directly from an untouched entry menu", async () => {
   const { slot, execute } = setup();

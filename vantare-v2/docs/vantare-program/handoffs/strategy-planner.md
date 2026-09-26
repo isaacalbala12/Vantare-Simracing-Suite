@@ -1,5 +1,19 @@
 # Handoff vivo — Strategy Planner
 
+## T22 · borradores recientes al volver al origen (2026-09-26)
+
+El arnés visual reprodujo un fallo de navegación: después de guardar una
+preparación Manual, «Cambiar origen» mostraba una lista de borradores antigua,
+aunque «Ver todas» sí encontraba la nueva estrategia. La preparación ahora
+refresca la biblioteca al volver al menú. Un test de página falló antes del
+cambio y ahora verifica que el nuevo borrador aparece y se puede reabrir por
+su `draftId`. Frontend: 530 archivos/4880 tests PASS (2 omitidos), presupuesto
+de frames 4 PASS, typecheck, lint y build PASS; el test focal volvió a pasar
+tras ampliar la comprobación de reapertura. Las capturas del arnés usan un
+backend mock y no cuentan como E01–E08 nativo. Queda contrastar el mismo
+recorrido con la biblioteca real de Wails y un DuckDB real; ninguna sesión
+original se modificó.
+
 ## T22 · divergencia de integración con Nightly (2026-09-26)
 
 El candidato `1840d6c3` conserva como ancestro Nightly `5b6a0781`. El Nightly

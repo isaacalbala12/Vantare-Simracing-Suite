@@ -1,0 +1,166 @@
+.hub-window {
+  --hub-titlebar-h: 38px;
+  display: flex;
+  flex-direction: column;
+  width: calc(100vw / var(--orbit-zoom, 1));
+  height: calc(100vh / var(--orbit-zoom, 1));
+  overflow: hidden;
+  background: var(--orbit-canvas);
+}
+
+.hub-window__content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.hub-window__content .orbit-root {
+  height: 100%;
+}
+
+.hub-window__content .orbit-shell {
+  min-height: calc(790px - var(--hub-titlebar-h));
+}
+
+.hub-titlebar {
+  display: flex;
+  align-items: center;
+  flex: 0 0 var(--hub-titlebar-h);
+  height: var(--hub-titlebar-h);
+  color: var(--orbit-ink-2);
+  background: var(--orbit-rail-bg);
+  border-bottom: 1px solid var(--orbit-line);
+  font: 12px var(--orbit-font-sans);
+  user-select: none;
+  position: relative;
+  z-index: 10001;
+  app-region: drag;
+  --wails-draggable: drag;
+}
+
+.hub-titlebar__brand {
+  display: grid;
+  place-items: center;
+  width: var(--orbit-rail-w);
+  align-self: stretch;
+  font-weight: 750;
+  color: var(--orbit-ink);
+  border-right: 1px solid var(--orbit-line);
+}
+
+.hub-titlebar__menus,
+.hub-titlebar__controls {
+  display: flex;
+  align-items: stretch;
+  align-self: stretch;
+  app-region: no-drag;
+  --wails-draggable: no-drag;
+}
+
+.hub-titlebar__group {
+  position: relative;
+  display: flex;
+  app-region: no-drag;
+  --wails-draggable: no-drag;
+}
+
+.hub-titlebar__menu,
+.hub-titlebar__control {
+  appearance: none;
+  border: 0;
+  border-radius: 0;
+  color: inherit;
+  background: transparent;
+  cursor: default;
+  app-region: no-drag;
+  --wails-draggable: no-drag;
+}
+
+.hub-titlebar__menu {
+  padding: 0 12px;
+  font: inherit;
+}
+
+.hub-titlebar__menu:hover,
+.hub-titlebar__menu[aria-expanded="true"],
+.hub-titlebar__menu:focus-visible,
+.hub-titlebar__control:hover,
+.hub-titlebar__control:focus-visible {
+  color: var(--orbit-ink);
+  background: var(--orbit-surface-3);
+}
+
+.hub-titlebar__dropdown {
+  position: absolute;
+  top: calc(100% - 1px);
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  width: 238px;
+  padding: 5px;
+  color: var(--orbit-ink);
+  background: var(--orbit-surface-2);
+  border: 1px solid var(--orbit-line-strong);
+  border-radius: 8px;
+  box-shadow: var(--orbit-shadow-menu);
+  app-region: no-drag;
+  --wails-draggable: no-drag;
+}
+
+.hub-titlebar__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  width: 100%;
+  min-height: 27px;
+  padding: 4px 9px;
+  border: 0;
+  border-radius: 5px;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+  cursor: default;
+  app-region: no-drag;
+  --wails-draggable: no-drag;
+}
+
+.hub-titlebar__item:hover,
+.hub-titlebar__item:focus-visible {
+  background: var(--orbit-surface-3);
+}
+
+.hub-titlebar__shortcut {
+  color: var(--orbit-ink-3);
+  font-size: 11px;
+}
+
+.hub-titlebar__separator {
+  height: 1px;
+  margin: 5px 4px;
+  background: var(--orbit-line-strong);
+}
+
+.hub-titlebar__drag { flex: 1; }
+
+.hub-titlebar__control {
+  display: grid;
+  place-items: center;
+  width: 46px;
+}
+
+.hub-titlebar__control svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.35;
+}
+
+.hub-titlebar__control--close:hover,
+.hub-titlebar__control--close:focus-visible {
+  color: white;
+  background: #c42b35;
+}

@@ -344,13 +344,16 @@ func (f *fakeOverlayScreenResolver) GetByIndex(index int) *application.Screen {
 	return f.screens[index]
 }
 
-func TestHubWindowUsesNativeApplicationMenu(t *testing.T) {
+func TestHubWindowUsesIntegratedTitlebar(t *testing.T) {
 	options := hubWindowOptions("test-generation")
-	if options.Frameless {
-		t.Fatal("hub must keep native window controls")
+	if !options.Frameless {
+		t.Fatal("hub must allow the frontend to draw its titlebar")
 	}
-	if !options.UseApplicationMenu {
-		t.Fatal("hub must display its native application menu")
+	if options.UseApplicationMenu {
+		t.Fatal("hub must not show a second native menu bar")
+	}
+	if !options.Windows.NonClientRegionSupport {
+		t.Fatal("hub titlebar must keep native drag regions")
 	}
 }
 

@@ -1,6 +1,28 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
-## 2026-09-27 · VAN-774 / GitHub #1401 · Menú nativo del Hub en revisión
+## 2026-09-27 · VAN-774 / GitHub #1401 · Barra superior integrada y menús verticales
+
+Isaac corrigió la primera entrega: el menú nativo Wails aparecía en una fila
+separada y el popup de Edición se superponía hacia arriba. La rama aislada
+`vantareapp/isa-1401-native-hub-menu` sustituye sólo la presentación del Hub
+por una ventana sin marco con barra superior integrada. Archivo, Edición, Ver
+y Ayuda abren desplegables verticales justo bajo cada etiqueta; la barra
+incluye controles de minimizar, maximizar/restaurar y cerrar. Se conserva el
+menú global de macOS y el cuadro Acerca de Wails. La ventana de overlay y los
+widgets no cambian.
+
+La prueba de opciones de ventana falló antes de la corrección y pasó después.
+La suite frontend completa pasó (484 archivos, 4099 pruebas, 2 omitidas),
+así como `go test ./...`, typecheck, lint, auditoría i18n y build Windows
+con la configuración local autorizada integrada sin exponerla. En WebView2
+real se comprobó la geometría del menú (barra inferior 37 px; menú superior
+36 px), sus siete acciones verticales, Escape, selección/eliminación de texto
+y maximizar/restaurar. El arrastre físico de la ventana y el portapapeles
+siguen pendientes de comprobación manual; la automatización CDP no ejercita
+el camino no cliente de Windows. [PR draft #1402](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1402)
+en revisión, sin merge ni promoción.
+
+## 2026-09-27 · VAN-774 / GitHub #1401 · Primera entrega nativa, reemplazada
 
 [VAN-774](https://app.notion.com/p/3e7e51695c658187a28ccd917c30eb50)
 responde a la petición de Isaac de incorporar únicamente el menú nativo

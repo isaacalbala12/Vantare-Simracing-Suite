@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-25T22:26:22Z",
+  "generatedAt": "2026-09-25T22:36:51Z",
   "digest": {
     "lastCommit": "d09829c41ea2dabfdcb47182eb6d922e69232e54"
   },
@@ -2215,7 +2215,7 @@
         {
           "kind": "change",
           "scope": "",
-          "text": "ISA-1390 · Cabecera Orbit: versión sin punto verde"
+          "text": "ISA-1385 · Car Damage Numbers Eficiencia y telemetría LMU"
         },
         {
           "kind": "change",
@@ -2223,14 +2223,14 @@
           "text": "ISA-1382 · Calendario visual y zoom del Timeline"
         },
         {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-1385 · Car Damage Numbers Eficiencia y telemetría LMU"
-        },
-        {
           "kind": "docs",
           "scope": "hub",
           "text": "Registrar merge de la cabecera Orbit"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-1390 · Cabecera Orbit: versión sin punto verde"
         }
       ]
     },
@@ -2238,9 +2238,9 @@
       "date": "2026-09-24",
       "entries": [
         {
-          "kind": "change",
-          "scope": "",
-          "text": "Racing Flags: letra ampliada, centrada y negra por defecto"
+          "kind": "fix",
+          "scope": "widgets",
+          "text": "Validar datos y contratos de los cinco widgets aceptados"
         },
         {
           "kind": "feat",
@@ -2248,9 +2248,9 @@
           "text": "Pedales avanzados con datos revisados y volantes LMU"
         },
         {
-          "kind": "fix",
-          "scope": "widgets",
-          "text": "Validar datos y contratos de los cinco widgets aceptados"
+          "kind": "change",
+          "scope": "",
+          "text": "Racing Flags: letra ampliada, centrada y negra por defecto"
         }
       ]
     },

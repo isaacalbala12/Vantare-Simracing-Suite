@@ -1,5 +1,19 @@
 # Handoff vivo — Strategy Planner
 
+## T22 / E08 · cuota de cuatro sesiones en el controlador (2026-09-26)
+
+La vista ya desactivaba el quinto botón, pero `open` informaba éxito silencioso
+al recibir directamente el quinto candidato. Un test rojo→verde verifica que
+se rechaza con causa, no abre un quinto handle y mantiene las cuatro sesiones;
+la UI muestra el aviso traducido existente. Focal 20/20; frontend 493 archivos
+/ 4332 PASS (2 omitidos), typecheck, lint y build PASS.
+[Evidencia](../../strategy-planner/evidence/isa-1393/candidate-2026-09-26.md).
+Build localdev 46.397.440 bytes, SHA-256
+`52EC466241C681F61F58BA745B6BBE7A4EBED35532F8AAF92FE09112B00A2ECE`,
+tag `vantare_localdev` confirmado. Queda E08 con biblioteca y handles reales
+en Wails, además de E01–E07 y calibración; sin app nativa, push, PR, CI,
+integración, promoción ni release.
+
 ## T22 / E05 · selección recuperada tras cancelar (2026-09-26)
 
 Dos tests reprodujeron que `selectFile` y `recoverCopy` ofrecían una fuente

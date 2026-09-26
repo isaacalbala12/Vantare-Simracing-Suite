@@ -25,8 +25,8 @@ en la mesa recorded. No hay cambio de canal.
   `go build -tags vantare_localdev`; `go version -m` confirma el tag embebido.
 
 El ejecutable localdev corregido, regenerado tras las correcciones frontend,
-tiene **46.396.928 bytes**, SHA-256
-`BB5393301E5BE599E144FF3C346292F4AF3C2AF29B2D677F482EB04A7DF291EF`.
+tiene **46.397.440 bytes**, SHA-256
+`52EC466241C681F61F58BA745B6BBE7A4EBED35532F8AAF92FE09112B00A2ECE`.
 No se abrió. El preflight de build por sí solo no certifica E01–E08, memoria
 de resistencia ni precisión empírica; el banco Go posterior se detalla abajo.
 
@@ -157,3 +157,20 @@ SHA-256 `BB5393301E5BE599E144FF3C346292F4AF3C2AF29B2D677F482EB04A7DF291EF`,
 tag `vantare_localdev` confirmado. Son respuestas de test controladas; la
 cancelación y liberación del lector DuckDB real siguen pendientes de E05 Wails.
 No se abrió la app ni hubo push, PR, CI, merge, promoción o release.
+
+## E08 · quinta sesión rechazada también en el controlador
+
+La biblioteca desactivaba el botón cuando había cuatro sesiones, pero el
+controlador `open` devolvía `true` silenciosamente ante una quinta apertura
+directa. Una regresión con cinco candidatos lo reprodujo antes del cambio.
+Ahora el intento devuelve `false`, conserva exactamente las cuatro fuentes,
+no llama al lector para la quinta y presenta el aviso existente sobre el
+límite de cuatro sesiones. El test focal terminó 20/20 PASS.
+
+Frontend completo 493 archivos, 4332 PASS y dos omitidos; typecheck, lint y
+build PASS. La receta oficial localdev regeneró el candidato: 46.397.440
+bytes, SHA-256 `52EC466241C681F61F58BA745B6BBE7A4EBED35532F8AAF92FE09112B00A2ECE`,
+tag `vantare_localdev` verificado. Esta es una prueba controlada del
+controlador/UI; la biblioteca real de cientos de fuentes, los cuatro handles
+y el quinto intento siguen pendientes de E08 en Wails. No se abrió la app
+ni hubo push, PR, CI, merge, promoción o release.

@@ -1550,6 +1550,10 @@ func main() {
 	}
 
 	wailsApp := application.New(appOptions)
+	wailsApp.Menu.Set(hubNativeMenu(wailsApp.Menu.ShowAbout))
+	wailsApp.Event.On("hub:menu:about", func(*application.CustomEvent) {
+		wailsApp.Menu.ShowAbout()
+	})
 
 	emitter := &wailsEmitter{wailsApp: wailsApp}
 	appSettingsPath := filepath.Join(cfgDir, "app-settings.json")
@@ -4075,10 +4079,14 @@ func (w *wailsHubWindow) IsMinimised() bool { return w.w.IsMinimised() }
 
 func hubWindowOptions(generation string) application.WebviewWindowOptions {
 	return application.WebviewWindowOptions{
-		Title:          "Vantare Hub",
-		Width:          1280,
-		Height:         800,
-		Frameless:      false,
+		Title:              "Vantare Hub",
+		Width:              1280,
+		Height:             800,
+		Frameless:          true,
+		UseApplicationMenu: false,
+		Windows: application.WindowsWindow{
+			NonClientRegionSupport: true,
+		},
 		BackgroundType: application.BackgroundTypeSolid,
 		URL:            "/#/hub?hubGeneration=" + generation,
 		MinWidth:       900,

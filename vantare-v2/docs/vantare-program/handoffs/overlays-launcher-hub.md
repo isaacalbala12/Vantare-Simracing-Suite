@@ -1,5 +1,46 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## 2026-09-27 · VAN-774 / GitHub #1401 · Barra superior integrada y menús verticales
+
+Isaac corrigió la primera entrega: el menú nativo Wails aparecía en una fila
+separada y el popup de Edición se superponía hacia arriba. La rama aislada
+`vantareapp/isa-1401-native-hub-menu` sustituye sólo la presentación del Hub
+por una ventana sin marco con barra superior integrada. Archivo, Edición, Ver
+y Ayuda abren desplegables verticales justo bajo cada etiqueta; la barra
+incluye controles de minimizar, maximizar/restaurar y cerrar. Se conserva el
+menú global de macOS y el cuadro Acerca de Wails. La ventana de overlay y los
+widgets no cambian.
+
+La prueba de opciones de ventana falló antes de la corrección y pasó después.
+La suite frontend completa pasó (484 archivos, 4099 pruebas, 2 omitidas),
+así como `go test ./...`, typecheck, lint, auditoría i18n y build Windows
+con la configuración local autorizada integrada sin exponerla. En WebView2
+real se comprobó la geometría del menú (barra inferior 37 px; menú superior
+36 px), sus siete acciones verticales, Escape, selección/eliminación de texto
+y maximizar/restaurar. El arrastre físico de la ventana y el portapapeles
+siguen pendientes de comprobación manual; la automatización CDP no ejercita
+el camino no cliente de Windows. [PR draft #1402](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1402)
+en revisión, sin merge ni promoción.
+
+## 2026-09-27 · VAN-774 / GitHub #1401 · Primera entrega nativa, reemplazada
+
+[VAN-774](https://app.notion.com/p/3e7e51695c658187a28ccd917c30eb50)
+responde a la petición de Isaac de incorporar únicamente el menú nativo
+Archivo / Edición / Ver / Ayuda. La rama aislada
+`vantareapp/isa-1401-native-hub-menu` activa el menú de aplicación Wails sólo
+en la ventana Hub; mantiene el marco de Windows y deja la ventana de overlay
+sin menú. Incluye Salir, los comandos de texto nativos Cortar/Copiar/Pegar/
+Seleccionar todo, Pantalla completa y Acerca de Vantare. No añade flechas de
+historial ni controles de ventana personalizados.
+
+El test del Hub falló antes del cambio por `UseApplicationMenu=false` y pasa
+después. `go test ./...` y la build Wails Windows con configuración local
+autorizada pasan. El ejecutable arrancó y la API nativa de Windows confirmó
+cuatro menús y sus opciones en la ventana real; no se han pulsado las acciones
+de menú en esta comprobación. [PR draft #1402](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1402)
+abierta; pendientes CI y revisión de Isaac. Sin
+integración a `nightly`, `testers` o `master` ni release.
+
 ## 2026-09-26 · VAN-769 / GitHub #1381 · Integración inicial autorizada
 
 Isaac revisó la entrega de temas y fondos de Studio en Wails y autorizó expresamente integrar únicamente la [PR #1384](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1384) en `nightly`. La rama se reconcilió con `origin/nightly@d09829c4` sin conflictos de código. El candidato inicial `9ea9a341` pasó sus gates bloqueantes, pero el validador de roadmap en modo auditoría señaló un orden distinto de entregas porque el digest se había generado desde el artefacto de la rama. Se regeneró `roadmap.json` partiendo del JSON protegido de `d09829c4`; la comparación estricta del contrato y las pruebas del generador pasan. La aceptación incluye la tarjeta Próxima serie con la paleta activa; los widgets mantienen sus diseños. CI debe repetirse sobre la cabeza con el digest corregido antes del merge. Este registro no afirma integración antes de comprobar el SHA remoto y los gates del merge. La comprobación física en LMU/OBS sigue siendo trabajo de Nightly. La autorización no comprende `testers`, `master` ni una release.

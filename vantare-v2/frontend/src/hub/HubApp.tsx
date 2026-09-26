@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { Events } from '@wailsio/runtime';
 import { OrbitShell } from './components/orbit/OrbitShell';
+import { HubTitlebar } from './components/HubTitlebar';
 import { ORBIT_KEYS, orbitStore } from './orbit/orbit-store';
 import { getSettingsStore } from './settings/settings-store';
 import { initialSection } from './orbit/initial-view';
@@ -263,15 +264,20 @@ export function HubApp() {
   return (
     <LicenseProvider>
       <I18nProvider mode="native-hub">
-        <LicenseGate>
-          <HubErrorBoundary>
-            <LauncherStoreProvider>
-              <ChainRunnerProvider>
-                <HubShell />
-              </ChainRunnerProvider>
-            </LauncherStoreProvider>
-          </HubErrorBoundary>
-        </LicenseGate>
+        <div className="hub-window">
+          <HubTitlebar />
+          <div className="hub-window__content">
+            <LicenseGate>
+              <HubErrorBoundary>
+                <LauncherStoreProvider>
+                  <ChainRunnerProvider>
+                    <HubShell />
+                  </ChainRunnerProvider>
+                </LauncherStoreProvider>
+              </HubErrorBoundary>
+            </LicenseGate>
+          </div>
+        </div>
       </I18nProvider>
     </LicenseProvider>
   );

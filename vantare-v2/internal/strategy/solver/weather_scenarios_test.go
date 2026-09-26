@@ -223,6 +223,13 @@ func TestSolveAndReplayKeepDriverSpecificWetFuel(t *testing.T) {
 	input.Formation.Seconds.Value = 0
 	input.FuelCapacityLiters.Value = 12
 	input.DriverProfiles = []DriverProfileInput{manualDriver("a", 100, 1), manualDriver("b", 100, 1)}
+	input.Projection = curveProjection([]sp.PacePoint{pacePoint(1, 0, 10)}, 10, 0, 0)
+	input.Projection.FuelConsumption = sp.ResourceConsumptionFamily{
+		Presence: sp.PresenceValid, MeanPerLap: 1, RangeLower: 1, RangeUpper: 3,
+		Provenance:      sp.Provenance{Kind: sp.ProvenanceDerived, SourceID: "analysis:aggregate-climate"},
+		Confidence:      sp.Confidence{SampleSize: 20, ComputationVersion: "consumption-pace.v1"},
+		ByClimateBucket: map[sp.ClimateBucket]float64{sp.ClimateBucketDry: 1, sp.ClimateBucketWet: 2},
+	}
 	input.DriverSequence = []string{"a", "b"}
 	two, four := int64(2), int64(4)
 	input.EventRules.DriverLimits = map[string]DriverLimit{

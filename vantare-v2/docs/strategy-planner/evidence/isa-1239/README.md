@@ -29,6 +29,8 @@ capacidad es 12 L. `TestWetDriverProfilesChooseTheFasterDriverWithoutFixedOrder`
 verifica que el solver elige A bajo lluvia incluso si B aparece primero en la
 lista. Ambos comparan solve y replay. `TestWetDriverProfilesRejectPartialCoverage`
 custodia el rechazo de una lista incompleta.
+El caso de Fuel también incluye una proyección agregada húmeda de 2 L/vuelta:
+los valores explícitos A 1 L y B 3 L siguen prevaleciendo por identidad.
 
 ## Checks locales
 

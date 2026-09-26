@@ -21,7 +21,7 @@ export function useRecordedWorkflow({ eventId, repositoryVersion, initial, catal
   const [draft, setDraft] = useState<RecordedWizardDraft>(() => initial ? structuredClone(initial.document.payload.draft) : createRecordedWizardDraft());
   const [stored, setStored] = useState(initial);
   const [view, setView] = useState<"preparation" | "editor">(initial ? "editor" : "preparation");
-  const [dirty, setDirty] = useState(!initial);
+  const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const pending = useRef(false);

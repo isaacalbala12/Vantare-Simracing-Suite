@@ -55,11 +55,10 @@ it("opens manual preparation and saves a draft without invoking live or calculat
   expect(execute.mock.calls.some(([command]) => command.operation === "calculate_orbit")).toBe(false);
   expect(screen.queryByTestId("orbit-strategy-form")).toBeNull();
 });
-it("routes context navigation through discard protection and reopens a native saved draft", async () => {
+it("opens the saved library directly from an untouched entry menu", async () => {
   const { slot, execute } = setup();
   fireEvent.click(await within(slot).findByRole("button", { name: "strategy.home.saved" }));
-  expect(screen.getByRole("alertdialog")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.leave" }));
+  expect(screen.queryByRole("alertdialog")).toBeNull();
   const open = await screen.findByRole("button", { name: "strategy.workspace.open" });
   await waitFor(() => expect((open as HTMLButtonElement).disabled).toBe(false));
   fireEvent.click(open);
@@ -68,17 +67,12 @@ it("routes context navigation through discard protection and reopens a native sa
   expect(execute.mock.calls.some(([command]) => command.operation === "create")).toBe(false);
 });
 
-it("keeps the unsaved menu draft when direct saved opening is cancelled, then reopens only after confirmation", async () => {
+it("opens a saved draft directly from an untouched entry menu", async () => {
   const { execute } = setup();
   const open = await screen.findByRole("button", { name: "strategy.workspace.open" });
   fireEvent.click(open);
-  expect(screen.getByRole("alertdialog")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "strategy.recorded.cancel" }));
-  expect(screen.getAllByRole("button", { name: /strategy.entry.startManual/ })).toHaveLength(2);
-  expect(execute.mock.calls.some(([command]) => command.operation === "open")).toBe(false);
-  fireEvent.click(open);
-  fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.leave" }));
   await screen.findByText("strategy.workspace.saved");
+  expect(screen.queryByRole("alertdialog")).toBeNull();
   expect(execute.mock.calls.filter(([command]) => command.operation === "open")).toHaveLength(1);
 });
 
@@ -86,9 +80,8 @@ it("opens a saved plan's history from the menu without reading a revision until 
   const ref = { planId: "recorded-plan:history", variantId: "recorded-main", revisionId: "revision-a", contentHash: "a".repeat(64) };
   const { execute } = setup({ plans: [{ ...ref, name: "Historical Le Mans", mode: "manual", updatedAt: "2026-09-14T12:00:00Z", hasDraft: false, revisionCount: 1, revisionRefs: [ref], latestRevision: ref }] });
   fireEvent.click(await screen.findByRole("button", { name: "strategy.planHistory.open" }));
-  expect(screen.getByRole("alertdialog")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.leave" }));
   expect(await screen.findByTestId("strategy-plan-history")).toBeTruthy();
+  expect(screen.queryByRole("alertdialog")).toBeNull();
   expect(screen.queryByRole("heading", { name: "strategy.home.saved" })).toBeNull();
   expect(execute.mock.calls.filter(([command]) => command.operation === "open")).toHaveLength(0);
   fireEvent.click(screen.getByRole("button", { name: "strategy.planHistory.choose" }));
@@ -101,7 +94,6 @@ it("opens a saved plan's history from the menu without reading a revision until 
 it("prevents a pending reopen from replacing a newly started preparation", async () => {
   const { slot, execute } = setup();
   fireEvent.click(await within(slot).findByRole("button", { name: "strategy.home.saved" }));
-  fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.leave" }));
   const open = await screen.findByRole("button", { name: "strategy.workspace.open" });
   await waitFor(() => expect((open as HTMLButtonElement).disabled).toBe(false));
   execute.mockImplementationOnce(() => new Promise(() => {}));
@@ -134,7 +126,6 @@ it("offers saved history without a draft and only opens the explicitly chosen re
   const refB = { ...refA, revisionId: "revision-b", contentHash: "b".repeat(64) };
   const { slot, execute } = setup({ catalogFails: true, plans: [{ ...refA, name: "Historical Le Mans", mode: "manual", updatedAt: "2026-09-14T12:00:00Z", hasDraft: false, revisionCount: 2, revisionRefs: [refA, refB], latestRevision: refB }] });
   fireEvent.click(await within(slot).findByRole("button", { name: "strategy.home.saved" }));
-  fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.leave" }));
   expect(await screen.findByText("Historical Le Mans")).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "strategy.planHistory.open" }));
   expect(execute.mock.calls.filter(([command]) => command.operation === "open")).toHaveLength(0);

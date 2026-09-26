@@ -8,7 +8,7 @@ import { assertNoHorizontalOverflow } from "./orbit-overflow-assert.mjs";
 import { hideToasts, settle, stillPage } from "./lib/orbit-still.mjs";
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/porte/01-shell");
+const output = path.resolve(frontend, "../docs/design/orbit-v03/evidence/isa-1399-sidebar");
 const port = 5194;
 const url = `http://127.0.0.1:${port}/orbit-shell-harness.html`;
 const viewports = [
@@ -119,7 +119,7 @@ try {
     if (contract.scrollHeight > contract.innerHeight) {
       throw new Error(`${viewport.name}: la página hace scroll vertical (${contract.scrollHeight} > ${contract.innerHeight})`);
     }
-    if (contract.railWidth !== 81) throw new Error(`${viewport.name}: rail ${contract.railWidth}px, se esperaba 81px`);
+    if (contract.railWidth !== 64) throw new Error(`${viewport.name}: rail ${contract.railWidth}px, se esperaba 64px`);
     if (contract.columnWidth !== 296) throw new Error(`${viewport.name}: columna ${contract.columnWidth}px, se esperaba 296px`);
     if (contract.topbarHeight !== 70) throw new Error(`${viewport.name}: topbar ${contract.topbarHeight}px, se esperaba 70px`);
     if (contract.hasFoot) throw new Error(`${viewport.name}: la columna sigue pintando pie (D-R3-B-1 lo elimina)`);
@@ -132,6 +132,20 @@ try {
 
     await settle(page);
     await page.screenshot({ path: path.join(output, `orbit-shell-inicio-${viewport.name}.png`), fullPage: false });
+    if (viewport.name === "1920x900") {
+      for (const [palette, scheme] of [["mono", "light"], ["iris", "dark"]]) {
+        await page.evaluate(([nextPalette, nextScheme]) => {
+          document.documentElement.dataset.uiPalette = nextPalette;
+          document.documentElement.dataset.uiResolvedScheme = nextScheme;
+        }, [palette, scheme]);
+        const colors = await page.evaluate(() => ({
+          rail: getComputedStyle(document.querySelector(".orbit-rail")).backgroundColor,
+          column: getComputedStyle(document.querySelector(".orbit-column")).backgroundColor,
+        }));
+        if (colors.rail === colors.column) throw new Error(`${palette}/${scheme}: el rail y la columna se confunden`);
+        await page.screenshot({ path: path.join(output, `orbit-shell-${palette}-${scheme}.png`), fullPage: false });
+      }
+    }
     await page.close();
   }
 

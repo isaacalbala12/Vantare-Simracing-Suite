@@ -1,5 +1,23 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## 2026-09-27 · VAN-773 / GitHub #1399 · Sidebar Orbit en revisión visual
+
+[VAN-773](https://app.notion.com/p/3e7e51695c65814f9aaed7fe37aa704a)
+prueba una presentación más serena inspirada en el sidebar de Codex, sin
+cambiar destinos, permisos, datos, interacciones de plegado ni widgets. En la
+rama aislada `vantareapp/isa-1399-sidebar-codex-visual`, el rail mide 64 px,
+sus botones 44 px y la selección usa una superficie neutra; la columna
+contextual conserva 296 px y ordena título, rótulos y filas con menor ruido.
+Los estilos se limitan a la navegación y usan los tokens de paleta actuales.
+
+El harness Orbit pasa a 1920×1080 y 1920×900; conserva capturas de Grises
+clara e Iris oscura en `docs/design/orbit-v03/evidence/isa-1399-sidebar/`.
+Suite frontend completa: 4.096 PASS, 2 omitidas y presupuesto de frames 4
+PASS. Typecheck, lint y build frontend PASS. Wails Windows compiló con la
+configuración local autorizada y el ejecutable arrancó; las capturas proceden
+del harness, no de esa ventana. Pendiente valoración de Isaac y CI de la PR;
+sin integración a `nightly`, `testers` o `master` ni release.
+
 ## 2026-09-26 · VAN-769 / GitHub #1381 · Integración inicial autorizada
 
 Isaac revisó la entrega de temas y fondos de Studio en Wails y autorizó expresamente integrar únicamente la [PR #1384](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1384) en `nightly`. La rama se reconcilió con `origin/nightly@d09829c4` sin conflictos de código. El candidato inicial `9ea9a341` pasó sus gates bloqueantes, pero el validador de roadmap en modo auditoría señaló un orden distinto de entregas porque el digest se había generado desde el artefacto de la rama. Se regeneró `roadmap.json` partiendo del JSON protegido de `d09829c4`; la comparación estricta del contrato y las pruebas del generador pasan. La aceptación incluye la tarjeta Próxima serie con la paleta activa; los widgets mantienen sus diseños. CI debe repetirse sobre la cabeza con el digest corregido antes del merge. Este registro no afirma integración antes de comprobar el SHA remoto y los gates del merge. La comprobación física en LMU/OBS sigue siendo trabajo de Nightly. La autorización no comprende `testers`, `master` ni una release.

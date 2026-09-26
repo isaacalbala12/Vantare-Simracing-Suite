@@ -1,5 +1,15 @@
 # Handoff vivo — Strategy Planner
 
+## T22 · build localdev reconciliada (2026-09-26)
+
+Desde HEAD `7dbe34e3`, `scripts/build-local-development.ps1` compiló el
+frontend localdev (1197 módulos) y `bin/vantare-localdev.exe` (43.709.440 bytes,
+SHA-256 `2C3A8DDBDFEFB04233C4242FF721868CD9BF9F93C16511D9ED3412F7105DCBA8`).
+`go version -m` confirma Wails v3.0.0-beta.24, `-tags=vantare_localdev` y
+`-trimpath=true`. El binario está ignorado por Git. No se abrió: la build es
+preparación para E01–E08, no evidencia nativa ni validación de licencia de
+distribución.
+
 ## T22 · arnés visual v5 revalidado (2026-09-26)
 
 En la reconciliación `594c7ad4`, el navegador interno confirmó las pantallas

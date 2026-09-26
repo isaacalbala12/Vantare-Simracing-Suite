@@ -14,6 +14,13 @@ evaluación Go tiene un test que exige no publicarla; E01 necesita contraste
 en Wails antes de declararse PASS. Se espera disponibilidad del PC para abrir
 la build localdev; no se abrió la app ni LMU en este recorrido.
 
+Como contraste adicional, una petición JSON con la misma forma que emite
+`assessManualCalculation` atravesó el bridge Go sin proyección de telemetría:
+60 min, 105 s/vuelta, Fuel 2,8 L/vuelta, VE no aplicable y un piloto. El plan
+resultante quedó dentro de 34–36 vueltas y 3600–3750 s, respetó el ritmo
+manual y no publicó VE en stints ni paradas. El test focal y `go test ./...`
+pasaron. Sigue siendo una prueba de motor, no E01 nativo ni precisión empírica.
+
 ## T22 · runtime verificado y bancos LMU sobre el merge (2026-09-26)
 
 En el candidato `057d9e77`, el preparador canónico instaló el runtime DuckDB

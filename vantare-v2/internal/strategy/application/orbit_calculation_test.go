@@ -806,6 +806,52 @@ func TestJSONBridgeDispatchesOrbitCalculation(t *testing.T) {
 	}
 }
 
+func TestJSONBridgeCalculatesManualTimedRaceWithoutVirtualEnergy(t *testing.T) {
+	// Shape emitted by assessManualCalculation: no telemetry projection and no
+	// per-driver fallback pace. The manual overrides are the only references.
+	command := []byte(`{
+		"protocolVersion":"strategy.application.v1",
+		"commandId":"manual-timed",
+		"operation":"calculate_orbit",
+		"expectedRepositoryVersion":0,
+		"input":{
+			"event":{"raceKind":"time","durationMinutes":60,"tankLiters":100,"initialFuelLiters":100,"fuelReserveLiters":2,"virtualEnergy":{"applicability":"not_applicable"},"pitLossSeconds":30},
+			"drivers":[{"id":"driver","name":"Driver","paceDeltaSeconds":0}],
+			"variants":[{"id":"recorded-main","mode":"dry","driverOrderMode":"fixed","order":["driver"],"overrides":{}}],
+			"activeVariantId":"recorded-main",
+			"planningInputs":{"overrides":{
+				"base_pace_seconds":{"value":105,"presence":"valid","provenance":{"kind":"manual","sourceId":"user"},"confidence":{"sampleSize":0,"computationVersion":"manual.v1"}},
+				"fuel_per_lap_liters":{"value":2.8,"presence":"valid","provenance":{"kind":"manual","sourceId":"user"},"confidence":{"sampleSize":0,"computationVersion":"manual.v1"}}
+			}}
+		}
+	}`)
+	encoded, err := NewJSONBridge(NewService[json.RawMessage](nil)).Execute(context.Background(), command)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result Result[json.RawMessage]
+	if err := json.Unmarshal(encoded, &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.CommandID != "manual-timed" || result.OrbitCalculation == nil {
+		t.Fatalf("manual calculation response = %#v", result)
+	}
+	plan := result.OrbitCalculation.Plans["recorded-main"]
+	if plan.TotalLaps < 34 || plan.TotalLaps > 36 || plan.TotalSeconds < 3600 || plan.TotalSeconds > 3750 {
+		t.Fatalf("60-minute manual plan has an implausible horizon: %+v", plan)
+	}
+	for _, stint := range plan.Stints {
+		if stint.VirtualEnergy != nil || math.Abs(stint.Pace-105) > 1e-9 {
+			t.Fatalf("manual references were not respected: %+v", stint)
+		}
+	}
+	for _, stop := range plan.StopDetails {
+		if stop.VirtualEnergyInPercent != nil || stop.VirtualEnergyOutPercent != nil {
+			t.Fatalf("non-applicable virtual energy was published: %+v", stop)
+		}
+	}
+}
+
 func TestOrbitSolverBudgetScalesWithRaceSize(t *testing.T) {
 	t.Parallel()
 	for _, tc := range []struct {

@@ -1,5 +1,20 @@
 # Handoff vivo — Strategy Planner
 
+## T22 · entrada intacta sin aviso de descarte (2026-09-26)
+
+La revisión en navegador interno mostró que abrir un borrador desde el menú
+recién cargado pedía «Salir sin guardar» pese a no haber cambios. El workflow
+ahora nace limpio y sólo marca cambios al empezar Manual, adoptar una fuente o
+editar; el aviso sigue protegiendo una preparación manual modificada. Regresión
+roja antes y verde después, 25/25 tests focales, suite frontend 493 archivos /
+4327 PASS (2 omitidos), typecheck, lint y build PASS. El navegador confirmó la
+apertura directa del borrador. [Evidencia](../../strategy-planner/evidence/isa-1393/candidate-2026-09-26.md).
+WebView2 153.0.4234.48 instalado; la nueva build localdev lleva
+`-tags=vantare_localdev`, mide 46.396.928 bytes y tiene SHA-256
+`5F318D0E6333E82832B151D4DF2A727CBF07FB8338BDB2A630969378B95FF7F9`.
+No se abrió Wails: E01–E08, calibración y aceptación humana siguen pendientes.
+Sin push, PR, CI, integración, promoción ni release.
+
 ## T22 · energía conservada al reemplazar la misma fuente (2026-09-26)
 
 El harness reprodujo fallo de cálculo tras sustituir desde el menú una sesión

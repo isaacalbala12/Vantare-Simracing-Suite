@@ -24,9 +24,9 @@ en la mesa recorded. No hay cambio de canal.
 - `scripts/build-local-development.ps1`: PASS con frontend en modo localdev y
   `go build -tags vantare_localdev`; `go version -m` confirma el tag embebido.
 
-El ejecutable localdev corregido, regenerado tras ambas correcciones frontend,
+El ejecutable localdev corregido, regenerado tras las correcciones frontend,
 tiene **46.396.928 bytes**, SHA-256
-`0F120FD365343AF2312EED21706665E6BD92DA06CBDC313CA9EE38AFB78684FA`.
+`5F318D0E6333E82832B151D4DF2A727CBF07FB8338BDB2A630969378B95FF7F9`.
 No se abrió. El preflight de build por sí solo no certifica E01–E08, memoria
 de resistencia ni precisión empírica; el banco Go posterior se detalla abajo.
 
@@ -97,3 +97,26 @@ Frontend: 493 archivos/4327 PASS, 2 omitidos; typecheck, lint y build PASS.
 La receta localdev se ejecutó de nuevo tras esta corrección: PASS,
 46.396.928 bytes y `-tags=vantare_localdev` confirmado. El SHA-256 de arriba
 corresponde al frontend corregido. Aún falta abrirlo para T22 nativo.
+
+## Menú intacto y borradores guardados
+
+En el navegador interno, «Abrir borrador» desde la entrada recién cargada
+mostró «Salir de la preparación / Los cambios sin guardar se perderán» antes
+de abrirlo. `useRecordedWorkflow` marcaba como `dirty` el borrador nuevo y
+vacío desde el primer render. Dos pruebas que exigían apertura directa de
+borrador e historial fallaron antes del cambio; ahora el estado inicial es
+limpio. Adoptar telemetría, empezar Manual o editar continúa marcándolo como
+modificado, y la regresión de salida manual conserva el aviso de descarte.
+La recarga del harness seguida de «Abrir borrador» abrió Carrera directamente,
+sin diálogo; el runtime del navegador sigue siendo mock.
+
+Tests focales 25/25 PASS. Frontend completo: 493 archivos, 4327 PASS y dos
+omitidos; typecheck, lint y build PASS. El preflight de sólo lectura confirmó
+WebView2 Runtime 153.0.4234.48 y ningún proceso `vantare-localdev` activo.
+La receta oficial localdev regeneró el candidato desde este frontend: PASS,
+46.396.928 bytes, SHA-256
+`5F318D0E6333E82832B151D4DF2A727CBF07FB8338BDB2A630969378B95FF7F9`,
+tag `vantare_localdev` verificado con `go version -m`. El hash anterior de
+este documento quedó sustituido para el próximo recorrido Wails. No se abrió
+la ventana nativa ni se ejecutó E01–E08; sin push, PR, CI, merge, promoción
+ni release.

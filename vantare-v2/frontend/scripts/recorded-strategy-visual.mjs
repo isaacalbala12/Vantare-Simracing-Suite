@@ -214,8 +214,8 @@ async function captureMain(browser) {
 async function captureMatrix(browser) {
   const report = [];
   for (const locale of ['es', 'en', 'pt', 'it']) {
-    for (const width of [320, 768, 1024, 1672]) {
-      const run = await pageFor(browser, width, 941, locale);
+    for (const [width, height] of [[320, 941], [768, 941], [1024, 941], [1280, 720], [1672, 941]]) {
+      const run = await pageFor(browser, width, height, locale);
       const start = await widthContract(run.page);
       await screenshot(run.page, `matrix-${locale}-${width}-start`);
       await openSaved(run.page);
@@ -223,7 +223,7 @@ async function captureMatrix(browser) {
       const plan = await widthContract(run.page);
       await screenshot(run.page, `matrix-${locale}-${width}-plan`);
       const journeys = {};
-      if (width <= 768) {
+      if (width <= 768 || width === 1280) {
         await run.page.locator('#recorded-tab-data').click();
         await run.page.locator('#recorded-panel-data button').filter({ hasText: /fuentes|sources|fontes|fonti/i }).click();
         const drawer = run.page.getByTestId('strategy-recorded-source-screen');
@@ -262,8 +262,8 @@ async function captureMatrix(browser) {
         await screenshot(run.page, `matrix-${locale}-${width}-pit`);
       }
       const focused = await run.page.keyboard.press('Tab').then(() => run.page.evaluate(() => ({ tag: document.activeElement?.tagName, visible: document.activeElement ? getComputedStyle(document.activeElement).outlineStyle !== 'none' || getComputedStyle(document.activeElement).boxShadow !== 'none' : false })));
-      if (locale === 'es' && [320, 768, 1672].includes(width)) await screenshot(run.page, `matrix-${locale}-${width}-focus`);
-      report.push({ locale, width, start, plan, journeys, focused, errors: run.errors });
+      if (locale === 'es' && [320, 768, 1280, 1672].includes(width)) await screenshot(run.page, `matrix-${locale}-${width}-focus`);
+      report.push({ locale, width, height, start, plan, journeys, focused, errors: run.errors });
       await run.page.close();
     }
   }

@@ -2,6 +2,15 @@
 
 [Especificación](README.md) · [Aceptación](acceptance.md) · ISA-1091.
 
+## T18 v5 · gate visual web, 2026-09-26
+
+La matriz final [`pass-v5-25-responsive-final`](../evidence/isa-1277-visual/pass-v5-25-responsive-final/README.md)
+incluye 128 capturas y 20 combinaciones de idioma/tamaño, entre ellas
+1280×720 y 1672×941. La revisión adversarial independiente da mínimo
+9,1/10 sin P1/P2; geometría, foco y errores de página pasan. Este es el
+umbral visual del harness, no aceptación humana ni prueba Wails. T22 E01–E08
+y A19 siguen pendientes. La sección provisional siguiente es histórica.
+
 ## T18 v5 · corte visual provisional, 2026-09-25
 
 La [matriz v5](../evidence/isa-1277-visual/pass-v5-13/README.md) cubre 99

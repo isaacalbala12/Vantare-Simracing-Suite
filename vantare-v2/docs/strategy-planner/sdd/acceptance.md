@@ -112,6 +112,13 @@ se identifican como tales y nunca pasan por telemetría del usuario.
 
 ### Resultado local T18 — #1277
 
+La dirección vigente v5 tiene un gate visual web posterior:
+[`pass-v5-25-responsive-final`](../evidence/isa-1277-visual/pass-v5-25-responsive-final/README.md)
+con 128 capturas y 20 combinaciones, incluidas 1280×720 y 1672×941;
+revisión adversarial independiente mínimo 9,1/10 sin P1/P2. Esto cubre
+apariencia del harness, no aceptación de Isaac ni Wails/LMU. La evidencia
+A4 descrita debajo es antecedente histórico.
+
 La pasada final `evidence/isa-1277-visual/pass-23` contiene 18 estados principales
 y 72 variantes responsive en ES/EN/PT/IT. La primera ejecución Wails descubrió
 que la biblioteca lateral no pertenecía al recorrido y que una sola observación

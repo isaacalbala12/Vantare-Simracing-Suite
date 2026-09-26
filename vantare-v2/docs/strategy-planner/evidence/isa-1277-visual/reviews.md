@@ -1,5 +1,21 @@
 # ISA-1277 · revisión visual adversarial
 
+## Matriz v5 a 1280×720 y cierre del gate visual web (2026-09-26)
+
+`pass-v5-25-responsive-final` amplía la matriz a 1280×720 y contiene 128
+capturas del frontend productivo en harness. Son 20 combinaciones de cuatro
+idiomas y cinco tamaños (320, 768, 1024, 1280×720, 1672), sin overflow,
+errores de página ni foco perdido. La primera ampliación v5-24 mostró en
+portugués el contador de correcciones pegado al botón de preparar revisión;
+el corte final los apila con separación visible. La revisión adversarial
+independiente puntuó el pase final con **mínimo 9,1/10**, sin P1/P2; sólo
+permanece el P3 opcional de metadatos secundarios tenues en escritorio.
+Test de Datos, build/typecheck, lint y diff check PASS.
+
+El umbral visual >9 queda superado en el harness y se envió a Isaac el
+conjunto para revisión. Falta su aceptación y prueba visual nativa. El
+harness simula respuestas y no acredita Wails, lector DuckDB o precisión.
+
 ## Iteración v5 · umbral visual del harness (2026-09-26)
 
 `pass-v5-23-mobile-final` contiene 99 capturas del frontend productivo en

@@ -1,5 +1,17 @@
 # Handoff vivo — Strategy Planner
 
+## T18 v5 · 1280×720 incluido en la matriz (2026-09-26)
+
+`pass-v5-25-responsive-final` amplía el gate visual a 128 capturas y 20
+combinaciones ES/EN/PT/IT, incluidos 1280×720 y 1672×941. No registra
+overflow, errores ni foco perdido. La revisión adversarial independiente
+puntúa mínimo **9,1/10** sin P1/P2; el contacto entre contador y botón de
+revisión en portugués/1280 detectado en v5-24 se corrigió apilándolos.
+Test focal de Datos, typecheck/build, lint y diff check PASS. Umbral visual
+web >9 superado; aceptación de Isaac, Wails/LMU/DuckDB real y T22 E01–E08
+siguen pendientes. Sin app nativa, push, PR, CI, integración, promoción ni
+release.
+
 ## T18 v5 · umbral visual del harness superado (2026-09-26)
 
 `pass-v5-23-mobile-final` de #1277 conserva 99 capturas productivas en

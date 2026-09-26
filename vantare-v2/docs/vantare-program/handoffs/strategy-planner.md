@@ -1,5 +1,16 @@
 # Handoff vivo — Strategy Planner
 
+## T22 · divergencia de integración con Nightly (2026-09-26)
+
+El candidato `1840d6c3` conserva como ancestro Nightly `5b6a0781`. El Nightly
+observado en `050fe951` incorporó #1369 y #1380: este último retiró
+`docs/roadmap/plan.md`, el digest y sus pruebas, y cambió `AGENTS.md` hacia
+Notion/Supabase. Las instrucciones explícitas de Isaac para este trabajo aún
+fijan GitHub Issues y `plan.md`. No se fusionó esa divergencia ni se alteró el
+roadmap; requiere reconciliar el contrato antes de un PR final a Nightly.
+La rama de Strategy permanece limpia y aislada; E01–E08 pueden validarse sobre
+el ejecutable localdev ya preparado sin resolver primero la publicación.
+
 ## T22 · recorrido Manual en arnés visual (2026-09-26)
 
 En el navegador interno, el flujo Manual permitió elegir LMGT3/Ford Mustang

@@ -245,11 +245,16 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 	var simpleDecisions []DecisionVector
 	simple := false
 	onePitCertified := false
+	freeServiceCertified := false
 	if input.RaceDurationSeconds == nil && input.InitialFuelLiters == nil && input.InitialVEPercent == nil {
 		simpleDecisions, simple = simpleResourceDecisions(input, fuel, ve, paceCost, compoundPace, fuelWeight, saving, drivers, weatherCost)
 		if !simple {
 			simpleDecisions, onePitCertified = certifiedOnePitDecisions(input, fuel, ve, paceCost, compoundPace, fuelWeight, saving, drivers, weatherCost, tyreModel, envelope, riskActive)
 			simple = onePitCertified
+		}
+		if !simple {
+			simpleDecisions, freeServiceCertified = certifiedFreeServiceBoundDecisions(input, fuel, ve, paceCost, compoundPace, fuelWeight, saving, drivers, weatherCost, tyreModel, envelope, riskActive)
+			simple = freeServiceCertified
 		}
 	}
 	if simple {
@@ -571,6 +576,8 @@ func SolveV2Context(ctx context.Context, input SolverInputV2) (SolverResultV2, e
 			if simpleSolved {
 				if onePitCertified {
 					reason = SolverReason{Code: "optimal_after_one_pit_lower_bound", Message: "optimo exacto: una parada supera la cota optimista de cualquier plan con mas paradas"}
+				} else if freeServiceCertified {
+					reason = SolverReason{Code: "optimal_after_free_service_lower_bound", Message: "optimo dentro de la tolerancia del modelo: un plan factible alcanza la cota optimista con servicios gratuitos"}
 				} else {
 					reason = SolverReason{Code: "optimal_after_scalar_resource_bound", Message: "optimo exacto por la cota escalar de Fuel, VE y vida de neumatico"}
 				}

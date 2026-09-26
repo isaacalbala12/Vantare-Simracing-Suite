@@ -1,5 +1,19 @@
 # Handoff vivo — Strategy Planner
 
+## #1397 · certificado acotado para GT3 con VE (2026-09-26)
+
+En la rama aislada `vantareapp/isa-1397-gt3-ve-overflow` desde el candidato
+T22 `ef1d94c1`, el banco real S201 Sebring GT3→S026 Monza reprodujo
+`calculation_overflow` con Fuel y VE válidos. El cambio local usa una cota
+optimista de servicios gratuitos y sólo certifica un plan que la alcanza tras
+replay factible también con consumo desfavorable. Caso pequeño comparado con
+oráculo exhaustivo, regresión de riesgo y `go test ./...`: PASS. El banco real
+posterior pasa en 36,76 s: 29 vueltas, dos paradas, optimalidad demostrada
+dentro del modelo y originales intactos. [Evidencia](../../strategy-planner/evidence/isa-1397/README.md).
+Commit local en la rama de issue; sin push, PR, CI remota, integración, promoción ni
+release de #1397. Esta prueba no sustituye E01–E08 Wails ni T19–T22
+empíricos y visuales.
+
 ## T22 · banco Go real Hypercar sobre HEAD (2026-09-26)
 
 En `f95894a2`, S026 Monza Hypercar + S266 Algarve pasaron el banco opt-in

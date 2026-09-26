@@ -622,6 +622,22 @@ estar `in-progress`. `tipo` es `release`, `feature`, `fix` o `plan`.
 - etiqueta.pt: Plano
 - etiqueta.it: Piano
 
+### Cálculo registrado GT3 con energía virtual
+
+- id: strategy-gt3-ve-multipit-certificate
+- tipo: fix
+- titulo.en: Recorded GT3 calculation with virtual energy
+- titulo.pt: Cálculo registado GT3 com energia virtual
+- titulo.it: Calcolo registrato GT3 con energia virtual
+- cuerpo: El corte local #1397 evita el desbordamiento del cálculo para el caso GT3 real de Sebring: certifica un plan de dos paradas sólo cuando reproduce un resultado factible incluso con el consumo desfavorable y alcanza la cota optimista del modelo. El banco Go conserva los DuckDB originales; faltan integración y validación Wails y empírica.
+- cuerpo.en: Local #1397 avoids calculation overflow for a real Sebring GT3 case: it certifies a two-stop plan only when replay is feasible even under adverse consumption and reaches the model's optimistic bound. The Go bank preserves the original DuckDB files; integration, Wails and empirical validation remain open.
+- cuerpo.pt: O corte local #1397 evita o desbordamento do cálculo num caso GT3 real de Sebring: certifica duas paragens apenas quando a reprodução é viável mesmo com consumo desfavorável e atinge o limite otimista do modelo. O teste Go preserva os DuckDB originais; faltam integração e validação Wails e empírica.
+- cuerpo.it: Il lavoro locale #1397 evita l'overflow del calcolo in un caso GT3 reale di Sebring: certifica due soste solo quando il replay è fattibile anche con consumi sfavorevoli e raggiunge il limite ottimistico del modello. Il test Go preserva i DuckDB originali; restano integrazione e verifica Wails ed empirica.
+- etiqueta: Corrección
+- etiqueta.en: Fix
+- etiqueta.pt: Correção
+- etiqueta.it: Correzione
+
 ### Engineer Beta completo
 
 - id: engineer-beta

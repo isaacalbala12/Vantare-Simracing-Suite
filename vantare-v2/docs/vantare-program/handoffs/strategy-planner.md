@@ -1,5 +1,18 @@
 # Handoff vivo — Strategy Planner
 
+## T22 / E05 · respuesta posterior a cancelar (2026-09-26)
+
+Dos regresiones reprodujeron que una respuesta normal tardía tras pulsar
+«Cancelar» iniciaba el solve después de cancelar la preparación o publicaba
+como vigente un plan cancelado. El hook ahora descarta ambas respuestas y
+termina en `cancelled`. Test focal 12/12; frontend completo 493 archivos /
+4329 PASS (2 omitidos), typecheck, lint y build PASS.
+[Evidencia](../../strategy-planner/evidence/isa-1393/candidate-2026-09-26.md).
+Build localdev regenerada, 46.396.928 bytes, SHA-256
+`A90F29A551AF0CE73D7720C7F091076A21FC13B00B2F3E62675878A06614AACB`,
+tag `vantare_localdev` confirmado. Falta E05 Wails real y el resto de E01–E08;
+sin app nativa, push, PR, CI, integración, promoción ni release.
+
 ## T22 · entrada intacta sin aviso de descarte (2026-09-26)
 
 La revisión en navegador interno mostró que abrir un borrador desde el menú

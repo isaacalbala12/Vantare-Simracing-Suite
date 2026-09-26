@@ -26,7 +26,7 @@ en la mesa recorded. No hay cambio de canal.
 
 El ejecutable localdev corregido, regenerado tras las correcciones frontend,
 tiene **46.396.928 bytes**, SHA-256
-`5F318D0E6333E82832B151D4DF2A727CBF07FB8338BDB2A630969378B95FF7F9`.
+`A90F29A551AF0CE73D7720C7F091076A21FC13B00B2F3E62675878A06614AACB`.
 No se abrió. El preflight de build por sí solo no certifica E01–E08, memoria
 de resistencia ni precisión empírica; el banco Go posterior se detalla abajo.
 
@@ -120,3 +120,22 @@ tag `vantare_localdev` verificado con `go version -m`. El hash anterior de
 este documento quedó sustituido para el próximo recorrido Wails. No se abrió
 la ventana nativa ni se ejecutó E01–E08; sin push, PR, CI, merge, promoción
 ni release.
+
+## E05 · resultado tardío después de cancelar
+
+La revisión del hook de cálculo detectó que `application.cancel` podía devolver
+éxito y, aun así, la petición original terminar normalmente un instante después.
+En esa carrera el frontend empezaba `calculate_orbit` tras cancelar la
+preparación, o publicaba un plan tras cancelar el cálculo. Dos regresiones
+fallaron antes del arreglo con estados observados `calculating` y `success`.
+Ahora, al recibir una respuesta tardía tras cancelar, ambas fases publican
+`cancelled` y no despachan otro cálculo ni exponen el resultado como vigente.
+
+Test focal 12/12 PASS; suite frontend 493 archivos, 4329 PASS y 2 omitidos;
+typecheck, lint y build PASS. La receta localdev regeneró
+`bin/vantare-localdev.exe`: 46.396.928 bytes, SHA-256
+`A90F29A551AF0CE73D7720C7F091076A21FC13B00B2F3E62675878A06614AACB`,
+tag `vantare_localdev` verificado. Esta prueba usa respuestas controladas,
+no acredita que la cancelación real libere el reader ni la ventana Wails.
+E05 y E01–E08 siguen pendientes de recorrido nativo. No se abrió la app,
+ni hubo push, PR, CI, merge, promoción o release.

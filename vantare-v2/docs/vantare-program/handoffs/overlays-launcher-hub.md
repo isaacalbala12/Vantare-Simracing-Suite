@@ -1,5 +1,23 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## 2026-09-27 · VAN-774 / GitHub #1401 · Menú nativo del Hub en revisión
+
+[VAN-774](https://app.notion.com/p/3e7e51695c658187a28ccd917c30eb50)
+responde a la petición de Isaac de incorporar únicamente el menú nativo
+Archivo / Edición / Ver / Ayuda. La rama aislada
+`vantareapp/isa-1401-native-hub-menu` activa el menú de aplicación Wails sólo
+en la ventana Hub; mantiene el marco de Windows y deja la ventana de overlay
+sin menú. Incluye Salir, los comandos de texto nativos Cortar/Copiar/Pegar/
+Seleccionar todo, Pantalla completa y Acerca de Vantare. No añade flechas de
+historial ni controles de ventana personalizados.
+
+El test del Hub falló antes del cambio por `UseApplicationMenu=false` y pasa
+después. `go test ./...` y la build Wails Windows con configuración local
+autorizada pasan. El ejecutable arrancó y la API nativa de Windows confirmó
+cuatro menús y sus opciones en la ventana real; no se han pulsado las acciones
+de menú en esta comprobación. Pendientes PR draft, CI y revisión de Isaac; sin
+integración a `nightly`, `testers` o `master` ni release.
+
 ## 2026-09-26 · VAN-769 / GitHub #1381 · Integración inicial autorizada
 
 Isaac revisó la entrega de temas y fondos de Studio en Wails y autorizó expresamente integrar únicamente la [PR #1384](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1384) en `nightly`. La rama se reconcilió con `origin/nightly@d09829c4` sin conflictos de código. El candidato inicial `9ea9a341` pasó sus gates bloqueantes, pero el validador de roadmap en modo auditoría señaló un orden distinto de entregas porque el digest se había generado desde el artefacto de la rama. Se regeneró `roadmap.json` partiendo del JSON protegido de `d09829c4`; la comparación estricta del contrato y las pruebas del generador pasan. La aceptación incluye la tarjeta Próxima serie con la paleta activa; los widgets mantienen sus diseños. CI debe repetirse sobre la cabeza con el digest corregido antes del merge. Este registro no afirma integración antes de comprobar el SHA remoto y los gates del merge. La comprobación física en LMU/OBS sigue siendo trabajo de Nightly. La autorización no comprende `testers`, `master` ni una release.

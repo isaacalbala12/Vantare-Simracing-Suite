@@ -344,6 +344,49 @@ func (f *fakeOverlayScreenResolver) GetByIndex(index int) *application.Screen {
 	return f.screens[index]
 }
 
+func TestHubWindowUsesNativeApplicationMenu(t *testing.T) {
+	options := hubWindowOptions("test-generation")
+	if options.Frameless {
+		t.Fatal("hub must keep native window controls")
+	}
+	if !options.UseApplicationMenu {
+		t.Fatal("hub must display its native application menu")
+	}
+}
+
+func TestHubNativeMenuContainsOnlyUsefulWindowActions(t *testing.T) {
+	menu := hubNativeMenu(func() {})
+	for index, label := range []string{"Archivo", "Edición", "Ver", "Ayuda"} {
+		item := menu.ItemAt(index)
+		if item == nil || item.Label() != label || !item.IsSubmenu() {
+			t.Fatalf("menu %d: wanted submenu %q, got %v", index, label, item)
+		}
+	}
+	if menu.ItemAt(4) != nil {
+		t.Fatal("hub menu has an unexpected top-level section")
+	}
+	for _, item := range []struct {
+		role  application.Role
+		label string
+	}{
+		{application.Quit, "Salir"},
+		{application.Cut, "Cortar"},
+		{application.Copy, "Copiar"},
+		{application.Paste, "Pegar"},
+		{application.SelectAll, "Seleccionar todo"},
+		{application.ToggleFullscreen, "Pantalla completa"},
+	} {
+		got := menu.FindByRole(item.role)
+		if got == nil || got.Label() != item.label {
+			t.Errorf("role %v: wanted %q, got %v", item.role, item.label, got)
+		}
+	}
+	help := menu.FindByLabel("Ayuda").GetSubmenu()
+	if about := help.ItemAt(0); about == nil || about.Label() != "Acerca de Vantare" {
+		t.Fatalf("help menu: wanted Acerca de Vantare, got %v", about)
+	}
+}
+
 func TestOverlayWindowOptionsUseExactSelectedScreenBounds(t *testing.T) {
 	first := &application.Screen{ID: "first", Bounds: application.Rect{Width: 1920, Height: 1080}}
 	second := &application.Screen{ID: "second", Bounds: application.Rect{Width: 2560, Height: 1440}}
@@ -400,6 +443,9 @@ func TestOverlayWindowOptionsUseLegacyViewportDefault(t *testing.T) {
 	}
 	if options.Screen != screen {
 		t.Fatalf("screen=%p want exact pointer %p", options.Screen, screen)
+	}
+	if options.UseApplicationMenu {
+		t.Fatal("overlay window must not show the Hub application menu")
 	}
 }
 

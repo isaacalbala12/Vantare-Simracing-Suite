@@ -2359,7 +2359,307 @@ abortar ante fallo; cerrar solo procesos iniciados por Vantare; perfil LMU
 externo opt-in; autostart una vez; módulos con estado; estadísticas locales;
 catálogo firmado/cacheado.
 
-Debe auditarse qué commits están realmente integrados antes de nuevo trabajo.
+### Auditoría de lanzamiento · 2026-09-24
+
+[Issue #1368](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1368)
+revisa el `origin/nightly` verificado en `6df485fe`. Estado: **no apto para
+lanzamiento** hasta cerrar sus gates. La pantalla Orbit manda el perfil dentro
+de `{profile: ...}`, pero Wails lo deserializa como perfil directo; crear y
+guardar fallan y `launcher:error` no se muestra. El ejecutor no aplica las
+políticas de proceso ya abierto, cancelación, salida ni primera espera. El
+comando de decisión solo responde con un evento y no gobierna la cadena. El
+cierre/reinicio comprueba el PID sin confirmar ruta o nombre reales. Atajo e
+inicio con Windows se editan, pero el guardado Orbit no activa sus handlers;
+el gestor de atajos tampoco conecta una pulsación con el lanzamiento. La
+cancelación borra la exclusión mutua antes de terminar la cadena.
+
+Evidencia: `go test ./internal/app/launcher/...` y `go test ./cmd/vantare/...`
+pasaron; 108 pruebas frontend enfocadas y `pnpm build` pasaron. `pnpm test`
+global y `go test -race` amplio no son gates válidos en esta máquina por
+agotamiento de memoria/paginación; race también encontró un compilador C
+incompatible. No hubo prueba física Wails/Steam/LMU ni del instalador. El
+siguiente corte debe reproducir y corregir estos fallos, pasar CI y comprobar
+en Windows real creación, ejecución, errores, recuperación, procesos, atajos,
+autostart y las aplicaciones comprometidas para el lanzamiento.
+
+Avance de la rama `vantareapp/isa-1368-launcher-release-audit`: el perfil de
+Orbit se envía con la forma que deserializa Wails; crear solo abre un borrador
+y cancelar no deja un perfil vacío. `launcher:error` se presenta en Orbit y un
+perfil sin pasos no se puede lanzar. La primera espera se aplica y es
+cancelable; la cancelación conserva la exclusión de la cadena hasta que termina.
+El cierre/reinicio requiere un PID observado en la sesión y un ejecutable
+consultado al sistema; un paso fallido no autoriza cierre y reiniciar valida
+la ruta antes de tocar el proceso. El catálogo ya no anida botones. Las
+regresiones focales, typecheck, build y lint pasan. `go test -p 1 ./...` no
+concluyó: quedó esperando en el paquete `internal/app` mientras otra prueba
+DuckDB seguía activa en la máquina; se interrumpió esta ejecución sin atribuir
+el problema al Launcher. **Sigue sin aptitud de lanzamiento:** las políticas `ask`,
+`alreadyRunning`, `cancel` y `exit` aún no gobiernan el ejecutor; el atajo y
+autostart editados no se activan al guardar; falta Wails/Steam/LMU físico y
+comprobar el artefacto instalable. No hay promoción ni release.
+
+Segundo avance de #1368: los atajos de perfil se cargan al arrancar y se
+reconstruyen tras guardar/borrar usando el gestor global que sí despacha la
+pulsación. El guardado rechaza combinaciones reservadas o en conflicto con
+Hub/u otros perfiles; el editor también bloquea nombres vacíos y atajos no
+admitidos. El flag de inicio de Windows se sincroniza al guardar, con rollback
+del perfil si falla la escritura del Run key, y se retira antes de borrar el
+perfil; un perfil normal sin autostart no requiere acceso al registro. El
+primer delay ahora se edita en `policy.firstStepDelay` y se muestra igual que
+lo ejecuta Go. 13 archivos/117 pruebas Launcher, build, typecheck y lint
+locales pasan. El CI del primer commit pasó el gate bloqueante, pero el
+ratchet detectó 10 fragmentos CSS reagrupados; el estilo del aviso se movió a
+una hoja nueva para que el archivo histórico permanezca idéntico a la base.
+La repetición de CI de este último cambio está pendiente. El `--launch` del
+Run key sigue sin invocarse en el arranque y varias entradas de perfil pueden
+abrir varias instancias; hay decisión de producto solicitada. Atajos y Run key
+no tienen aún prueba física tras reinicio. **No apto para lanzamiento.**
+
+Seguimiento del 24-09-2026 en #1368: el ratchet remoto de `765ce2af` pasó.
+Se añadieron pruebas de rollback cuando el Run key falla al crear o borrar un
+perfil, y se alineó la lista de atajos reservados de Go con la interfaz.
+También se reprodujo un fallo de la cadena: una app ausente permitía seguir
+al siguiente paso pese a `failure: stop`; el test falló antes de corregirlo.
+`go test ./internal/app/launcher ./cmd/vantare -count=1` pasó después.
+El HEAD `ea46ba05` está publicado en la PR draft #1369; sus gates remotos
+siguen en curso. Persisten las decisiones y pruebas físicas indicadas arriba.
+Una prueba adicional reprodujo que el watchdog de Orbit marcaba una cadena
+como fallida a los 30 s durante una espera configurada de 60 s. La señal
+`pending` ahora lleva el delay previsto y el watchdog espera ese plazo más
+su margen habitual. Pruebas Go focales, 11 frontend, typecheck, build y lint
+pasaron localmente; falta el CI del nuevo HEAD y validación visual real.
+El toast que relanza la cadena completa ya lo dice explícitamente; el evento
+legacy aún se llama `retry:failed` y el reintento solo de pasos fallidos sigue
+pendiente de implementación en ese corte.
+
+Tercer avance de #1368: `a22ff8e8` pasó gates bloqueantes, ratchet,
+promoción de ruta y GitGuardian en la PR draft #1369. El reintento del toast
+ahora selecciona solo pasos fallidos y no ejecutados; conserva los índices del
+perfil original en snapshot/Orbit, de modo que una app ya completada sigue
+mostrándose como tal. Reintentos sucesivos tampoco relanzan pasos completos.
+Un intento simultáneo devuelve error sin sustituir el progreso de la cadena
+activa. Las pruebas Go del orquestador y `cmd/vantare` pasaron localmente;
+también 11 pruebas frontend, build y lint. El nuevo HEAD aún debe pasar CI.
+Siguen pendientes la aplicación completa de políticas, el autostart de una
+instancia y la comprobación física de Wails/Steam/LMU/instalador. **NO-GO.**
+
+Cuarto avance de #1368: el HEAD `d277fbc4` pasó los gates bloqueantes, pero
+el ratchet remoto falló por `staticcheck NEW=1` en Linux; el workflow no subió
+`.last-run.json` porque `upload-artifact` excluye archivos ocultos y el log
+solo muestra el conteo. No se considera gate verde. En la rama local, la
+política `failure: ask` ya pausa la cadena, emite una solicitud con acciones
+cerradas y plazo de 2 minutos, y `launcher:decision:resolve` reanuda solo
+con una acción ofrecida. La decisión recordada se guarda antes de reanudar;
+cancelación o plazo vencido detienen la cadena y retiran el diálogo. Orbit
+presenta la pregunta y el watchdog respeta el plazo. Un fallo en el último
+paso termina sin preguntar si se continúa. Las pruebas Go focales repetidas,
+13 frontend, typecheck, build y lint pasaron localmente. Falta publicar este
+corte, resolver el hallazgo nuevo del ratchet y verificarlo en Wails real.
+
+Quinto avance de #1368: `8a4e5978` pasó el gate bloqueante completo (Go,
+frontend, lint y build Wails Windows), promoción de ruta, GitGuardian y ratchet
+de calidad (NEW=0, policy_changed=false). Una regresión posterior reprodujo
+que cancelar un perfil acababa sobrescribiendo `stopped` por `failed`, y Orbit
+ofrecía reintentar una cancelación voluntaria. El runner ahora emite el estado
+`stopped`; servicio y UI lo conservan y no muestran el toast de fallo. Tests
+Go y frontend focales y typecheck pasaron; el CI de este nuevo corte queda
+pendiente. Persisten las políticas de cancelación y salida de procesos,
+proceso ya abierto, autostart de una sola instancia y pruebas físicas. **NO-GO.**
+
+El guardado ahora rechaza activar autostart en un perfil sin pasos. La
+regresión falló antes del cambio y pasó después junto con `go test` focal de
+Launcher y `cmd/vantare`. Los borradores vacíos siguen siendo guardables sin
+autostart. La semántica de varios perfiles de inicio sigue pendiente de la
+decisión de Isaac.
+
+Sexto avance de #1368: la autoridad de cierre/reinicio de un ejecutable ahora
+conserva el PID, la ruta observada y la hora de creación real del proceso
+durante toda la sesión del servicio. La limpieza visual a los 30 segundos ya
+no descarta esa autoridad; el cierre/reinicio vuelve a consultar el proceso
+vivo y rechaza un PID reciclado aunque apunte al mismo ejecutable. Solo se
+registra un paso ejecutable terminado correctamente y cuya ruta coincide con
+el catálogo; el PID de `rundll32` usado por Steam no se considera el juego.
+Cerrar o reiniciar revoca la identidad anterior. Tests Go focales pasaron en
+Windows. Falta CI del nuevo HEAD, prueba física de cierre/reinicio y resolver
+el comportamiento de procesos al cancelar o salir. **NO-GO.**
+
+Un reinicio explícito ahora observa la identidad de la instancia nueva y la
+registra para permitir un cierre posterior, solo si ruta y hora de creación
+coinciden con el catálogo. Si no puede observarla, la instancia nueva no
+adquiere autoridad de cierre. Durante las pruebas se reprodujo además una
+regresión del descubrimiento de iconos: workers concurrentes podían emitir
+81 % y después 78 %. El servicio serializa y mantiene monótono el progreso;
+el test falló antes del arreglo y pasó 10 repeticiones después. Go y vet
+focales pasan. Falta CI remoto del HEAD final y comprobación física.
+
+Séptimo avance de #1368 (candidato local, aún sin publicar): la cadena consulta
+los procesos Windows por ruta completa y hora de creación antes de aplicar
+`alreadyRunning`. Reutilizar no concede autoridad de cierre; reiniciar solo
+se ofrece si todas las instancias coinciden con identidades iniciadas y
+registradas por Vantare. La decisión `ask` pausa la cadena y permite recordar
+reutilizar o reiniciar. Los tests de proceso real y de decisiones pasan en
+Windows, pero todavía falta la prueba física de una aplicación externa.
+
+El paso `steam-uri` deja de dar éxito por abrir `rundll32`: exige conocer el
+ejecutable del juego, espera hasta 2 minutos para observar su proceso y
+devuelve fallo si no aparece. El PID del manejador URI no se presenta como
+PID del juego ni se registra como proceso propio. Discovery intenta resolver
+el ejecutable también desde la ubicación del registro; Steam puede figurar
+instalado sin que el perfil sea lanzable si falta esa ruta. Orbit mantiene el
+estado de lanzamiento durante la espera. Pruebas rojas antes del cambio para
+discovery/disponibilidad, Go focal y vet PASS; 16 pruebas frontend dirigidas,
+typecheck, build y lint PASS. `go test -race` no se completó por la opción de clang
+`-Qunused-arguments` que el `gcc.exe` local no admite. El corte publicado
+`f43225ea` pasó gates bloqueantes (incluido build Wails Windows), promoción
+de ruta, ratchet de calidad y GitGuardian. Siguen pendientes autostart de una
+instancia, políticas
+de cancelación/salida/reintentos y revisión física Wails/Steam/LMU/instalador.
+**NO-GO**, sin merge, promoción ni release.
+
+Octavo avance de #1368 (candidato local): al cancelar un perfil, el runner
+espera a registrar su último paso antes de aplicar la política. `leave`
+conserva las aplicaciones; `close-started` actúa solo sobre procesos asociados
+a ese perfil e identidades observadas; `ask` ofrece ambas opciones en Orbit,
+caduca dejando abiertas las apps y puede recordar la respuesta. Las pruebas
+de cancelación y del diálogo pasan. Un reinicio explícito conserva la
+asociación al perfil si la nueva identidad está verificada; revoca siempre el
+PID anterior. Una respuesta tardía solo puede cerrar procesos nacidos antes
+de la cancelación, aunque el perfil se relance mientras espera. Aún falta
+validar el cierre con procesos reales y completar la
+política independiente `exit`.
+
+Revisión del instalador: `project.nsi` enviaba cierre normal a Vantare y,
+tras cinco segundos, ejecutaba `taskkill /F` por nombre. Eso podía saltarse
+una decisión de salida y matar una instancia todavía abierta. El candidato
+solicita el cierre normal y aborta la instalación si el ejecutable sigue en
+uso tras el plazo de espera existente de diez segundos; no fuerza el cierre.
+Queda pendiente construir y probar el instalador real con Vantare abierto,
+incluida una respuesta lenta al aviso de salida.
+
+Revisión de ciclo de vida: el reinicio ya no ata la aplicación externa al
+contexto de Vantare; cerrar el Hub no la termina implícitamente cuando debe
+quedar abierta. El cierre explícito deja de usar `taskkill /T`, que podía
+alcanzar descendientes no iniciados directamente por Vantare, y actúa solo
+sobre el PID verificado. Los tests Go focales y vet pasan; falta comprobar
+este comportamiento con procesos reales durante la sesión visual acordada.
+
+Noveno avance de #1368 (candidato local): al cerrar Vantare se detienen y
+esperan las cadenas activas antes de decidir sobre los procesos que abrió
+esta sesión. Cada perfil aplica `exit: leave`, `close-started` o `ask`; la
+pregunta nativa de Windows propone cerrar solo identidades verificadas y deja
+las aplicaciones abiertas por defecto. Los procesos ya terminados no provocan
+un aviso. El cierre del Launcher se ejecuta al inicio del apagado, antes de
+consumir el presupuesto compartido de los demás servicios. El apagado anula
+las preguntas pendientes de cancelación y evita que una respuesta antigua
+aplique esa política después de asumir el control la política de salida.
+Las regresiones de salida, diálogo pendiente y exclusión de nuevas cadenas,
+`go test ./internal/app/launcher ./cmd/vantare -count=1 -timeout 90s` y
+`go vet` focal pasan. Falta publicar y verificar este HEAD en CI, además de
+probar el aviso y el cierre con Wails y procesos reales. El HEAD anterior
+`a27f2419` tiene ratchet, ruta y GitGuardian verdes; el gate bloqueante
+remoto continúa pendiente. **NO-GO**, sin merge, promoción ni release.
+
+Décimo avance de #1368 (candidato local): Orbit deja editar en modo avanzado
+las políticas ya operativas de aplicación abierta, fallo de paso,
+cancelación y salida. El formulario conserva las demás opciones al cambiar
+una política y ofrece etiquetas en es/en/pt/it. La regresión de controles
+ausentes falló primero y pasó después. Las 125 pruebas focales del Launcher,
+typecheck, build y lint frontend pasan. La suite frontend global se interrumpió
+tras timeouts de layout ajenos al Launcher al correr en paralelo con build y
+lint; las dos suites que fallaron pasaron aisladas (5 pruebas). Se espera el
+gate remoto para el veredicto de conjunto. La política de reintento sigue
+pendiente de concretar; Isaac tiene una pregunta abierta sobre qué debe
+significar `retry: all`. La UI y los procesos reales siguen sin revisión
+física; antes de computer use se avisará y esperará su confirmación.
+Una regresión posterior detectó que el editor dejaba guardar esperas
+fraccionarias aunque el contrato Go usa segundos enteros; ahora solo acepta
+enteros seguros no negativos. La prueba falló antes y pasó después con
+typecheck.
+
+Undécimo avance de #1368 (candidato local): el flag `--launch=<id>` se entrega
+ahora al Launcher al arrancar y Wails mantiene una sola instancia de Vantare.
+Las peticiones de otros valores Run recibidas mientras se cargan los ajustes
+se encolan y se procesan cuando el servicio está listo, conservando el orden;
+se descartan flags inválidos. Se sigue el contrato existente de múltiples
+perfiles marcados para inicio con Windows dentro de una instancia, sujeto a
+la respuesta de Isaac sobre esa preferencia. Si una cadena hace una pregunta
+antes de montar Orbit, el proveedor se suscribe y pide al backend las
+decisiones todavía pendientes; las resueltas no se reenvían. Las regresiones
+de cola y recuperación fallaron antes y pasan después. 126 pruebas focales
+Launcher frontend, Go focal, typecheck, build, lint y vet pasan. Faltan CI
+del HEAD publicado, arranque real de Windows y prueba de preguntas al entrar
+en el Hub. No se afirma aptitud de lanzamiento todavía.
+
+Duodécimo avance de #1368 (candidato local): el arranque con flag comprueba
+que el perfil aún existe y que cada paso apunta a un archivo local antes de
+abrir una cadena. Una ruta ausente o una carpeta se omiten con registro local,
+sin mostrar un error tardío al usuario. Si el perfil ya no existe, se retira
+su valor Run para que no reaparezca en cada inicio de Windows. La prueba del
+perfil obsoleto y las de ruta ausente/carpeta fallaron antes y pasan después;
+Go focal y vet pasan. El chequeo es de existencia/ruta, no certifica que el
+archivo sea un binario válido ni sustituye la prueba física del programa.
+
+Al revisar la instancia única se detectó que una segunda apertura manual,
+sin flag de perfil, se perdía si la primera instancia estaba minimizada.
+La segunda invocación vuelve a mostrar el Hub existente; si llega mientras
+se crea la ventana, la petición queda pendiente y se aplica una sola vez.
+La regresión falló antes y pasó después con Go focal y vet.
+
+El ratchet del HEAD `7cdbc9f4` encontró 10 duplicaciones CSS nuevas porque
+las reglas añadidas al editor modificaban `orbit-launcher.css`, cuyo encabezado
+histórico repite estilos de otras vistas. Las reglas nuevas viven ahora en
+`orbit-launcher-policy.css` y el archivo histórico recupera exactamente el
+contenido de la base. El mismo clasificador local de calidad devuelve
+`NEW=0` y 42 reagrupaciones verificadas por igualdad de blobs; las 10 del
+Launcher ya no son bloqueantes. Pasan 12 pruebas del editor, typecheck, build
+y lint. El HEAD publicado `0428a24b` pasó el ratchet remoto (NEW=0), el gate
+bloqueante completo (incluido build Wails Windows), la ruta de promoción y
+GitGuardian. **NO-GO** hasta resolver las decisiones de producto y verificar
+en Windows real el Hub, procesos, Steam/LMU y el instalador. Isaac pidió aviso
+y confirmación antes de la revisión mediante computer use; sigue pendiente.
+
+Decimotercer avance de #1368 (candidato en PR draft, 2026-09-25): Isaac decidió
+que solo un perfil puede iniciar con Windows y que `retry: all` repite todos
+los pasos desde el primero. El guardado desmarca los demás perfiles, sincroniza
+los valores Run y restaura la configuración anterior si falla el registro;
+al arrancar, los ajustes antiguos con varios perfiles marcados se reducen al
+primero. `retry: all` repite la cadena completa, mientras el aviso ofrece
+«Repetir todos los pasos» y «Repetir pasos fallidos» como acciones distintas.
+La revisión en navegador Codex detectó que Orbit no ofrecía la política de
+reintento en el editor avanzado; ya permite elegir `ask`/`failed`/`all` y
+de 1 a 3 intentos adicionales, con traducciones es/en/pt/it. La prueba
+falló antes del arreglo y pasa después. Los tests de regresión de perfil,
+rollback, migración, política y botones, los dos paquetes Go completos,
+typecheck y build frontend pasan localmente.
+La revisión posterior al primer push encontró que guardar un perfil normal
+volvía a sincronizar el Run de otro perfil ya marcado. La prueba reprodujo
+el fallo y el guardado ahora solo registra el perfil seleccionado y desregistra
+los que realmente pierden el inicio automático. Los dos paquetes Go vuelven
+a pasar tras la corrección.
+La cola de flags recibidos por la instancia única también comprueba el perfil
+seleccionado tras migrar los ajustes: un segundo valor Run antiguo no abre
+otra cadena. Se añadió la regresión de dos flags encolados en orden inverso.
+Los IDs de perfiles ya borrados siguen llegando al manejador previo para
+retirar su valor Run obsoleto; una regresión protege esa limpieza.
+Si el registro impide migrar dos perfiles marcados, la cola limita igualmente
+el lanzamiento al primero; el test reproduce ambos flags en orden inverso
+con los ajustes legacy todavía intactos.
+El HEAD de código `856b06eca8735cbc8179cbf045f272f8f3fe9acf` pasó el
+gate bloqueante remoto completo (Go, frontend y build Wails Windows), el
+ratchet, la ruta de promoción y GitGuardian. El handoff añade esta evidencia
+en un commit documental posterior, cuyos checks deben verificarse por separado.
+El commit documental `d817f55b24ad57a4012b352b80e1fec0444c2913` pasó
+también todos los checks de PR: gate bloqueante, ratchet, ruta de promoción y
+GitGuardian. Las cuatro suites locales del instalador Windows pasan: modelo
+transaccional NSIS, tamaño mínimo del ejecutable, preflight de release y
+empaquetado del runtime confiable. Usan fixtures; no se construyó ni instaló
+un candidato real porque este worktree carece de `bin/vantare.exe` y del
+runtime de release. El cambio documental que registra estas pruebas debe
+verificar sus propios checks remotos antes de considerarlos vigentes.
+La comprobación física de Wails/Steam/LMU/instalador sigue pendiente: Isaac
+prohibió por ahora usar computer use en el escritorio, pero permite una
+revisión del servidor en el navegador de Codex. **NO-GO** hasta tener esa
+evidencia física. Sin merge, promoción ni release.
 
 ## Hub
 
@@ -2372,7 +2672,7 @@ y recientes.
 - Overlay: revisar/rebasar PR #195, corregir ISA-311, congelar alcance el 14 de
   agosto y preparar RC0 Nightly para el 19 según el plan ISA-315. La promoción
   a Testers requiere issue y aprobación propias; no abrir otro reader LMU.
-- Launcher: crear LAU-AUDIT antes de nuevas features.
+- Launcher: resolver los gates de #1368 antes de nuevas features o promoción.
 - Hub: crear HUB-POLISH después de characterization visual.
 - Checks: harness real, Playwright, transparencias, responsive, capturas,
   frontend test/build; no regenerar baselines para esconder fallos.
@@ -3365,3 +3665,28 @@ Siguiente paso: aceptación visual de Isaac y validación independiente/LMU/Wind
 Isaac revisa los ajustes de tamaño, avisos personal/clase y animaciones en Workshop, los acepta y pide expresamente integrar la [PR #1330](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1330) en `nightly`. El código aceptado es `8411ecdb692e1444c110719c5834a2b46300c2fb`; este cierre solo registra la aceptación en documentación, roadmap y fragmento, sin cambiar producto.
 
 Se conserva la evidencia de 3832 pruebas frontend PASS (2 omitidas), build/TypeScript, lint y quality PASS. La incorporación se hace por PR normal con los controles remotos vigentes; el SHA de integración y su pertenencia a `origin/nightly` se registrarán y releerán en [Asana](https://app.asana.com/1/1210926733859493/project/1218742976551956/task/1218762634127535). No se declara un merge antes de verificarlo. No hay revisión externa registrada; la aceptación visual es de Isaac. La validación física LMU/Windows/OBS continúa en Nightly y no se presenta como ya superada. Esta autorización no incluye Testers, Master, una release o un anuncio público.
+
+## 2026-09-25 · ISA-1368 · revisión física del Launcher
+
+La [PR draft #1369](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1369) se inició sobre `nightly` `5c73013e` y se reconcilió con `f0ccfbf2` en su rama aislada, sin merge a un canal ni promoción. Isaac autorizó usar el PC para verificar el candidato y pidió un único perfil de inicio con Windows y dos acciones separadas: repetir todos los pasos desde el primero o solo los fallidos. El entorno de prueba usó `C:\tmp\vantare-launcher-qa-20260925` como directorio de trabajo; no reutilizó perfiles ni cambió el inicio con Windows del usuario.
+
+En el ejecutable Wails real se reprodujeron y corrigieron tres fallos de interfaz: las cinco políticas avanzadas carecían de etiqueta visible, el selector de aplicaciones quedaba debajo del cajón de edición y el diálogo/aviso de una cadena enseñaban IDs internos en vez de nombres. Pruebas de regresión fallaron antes del arreglo y pasaron después. La versión recompilada mostró las etiquetas, permitió guardar un perfil nuevo y mostró «Le Mans Ultimate» y «QA LMU ya abierto» en el diálogo y el aviso. LMU ya estaba abierto con PID 12340; elegir «Reutilizar» completó el perfil sin cambiar ese PID.
+
+Con dos copias controladas de un ejecutable de Windows en el directorio QA se guardó una cadena de dos pasos; se retiró solo la segunda copia para provocar un fallo real de apertura. Wails mostró el primer paso listo, el segundo fallido, el nombre correcto y los botones independientes «Repetir pasos fallidos» y «Repetir todos los pasos». Se pulsaron ambos, pero el proceso del primer paso termina demasiado rápido para certificar visualmente el alcance exacto de cada repetición; ese contrato queda cubierto por las regresiones Go. La interacción física posterior se detuvo cuando el control del PC detectó actividad del usuario. No se tocó LMU ni se reinició Windows.
+
+Evidencia local del nuevo candidato: `pnpm --dir frontend test` PASS (483 archivos, 4117 pruebas, 2 omitidas; presupuesto de 4 pruebas PASS), typecheck PASS, lint PASS, `wails3 task windows:package:all` PASS con ejecutable, ZIP e instalador 0.1.0.7 y SHA256 verificados. La primera ejecución global tuvo un timeout en una prueba de layout ajena al Launcher; pasó aislada y la segunda ejecución global pasó íntegra. El instalador y el binario creados están sin firma. Quedan pendientes la prueba física de instalación/actualización, el inicio real de sesión de Windows con un único perfil, hotkeys tras reinicio, cancelación/salida con procesos iniciados por Vantare y la validación remota del nuevo HEAD. El puerto HTTP de la app y varios hotkeys estaban ocupados por otra instancia de Vantare del usuario en el PC; no se considera prueba de esas funciones. Estado: NO-GO para lanzamiento; sin release.
+Comprobación adicional: `go test ./internal/app/launcher ./cmd/vantare` PASS tras la revisión física. El comportamiento de ambos alcances de repetición permanece en sus pruebas Go; la observación visual de un proceso instantáneo no sustituye esa evidencia.
+
+Al avanzar `nightly`, GitHub marcó la PR en conflicto y no generó los workflows de CI de los SHA `961a2558`/`52478296`. La rama incorporó los commits `446001dd` y `f0ccfbf2`; solo colisionó `roadmap.json`, que se regeneró desde el plan combinado y `origin/nightly` con el script oficial (`--check` PASS). En la base combinada pasan el build frontend, `go test ./...`, 52 pruebas focales de Launcher, 10 pruebas de layout aisladas y lint. La suite frontend global local se interrumpió con timeouts de layout y un fallo del proceso bajo carga simultánea de otros tests del PC; no se declara PASS. La CI del merge debe ejecutarse sobre el SHA definitivo. El paquete Wails examinado físicamente pertenece al código anterior al merge; no hay nueva prueba visual de los cambios entrantes de calendario/telemetría.
+
+CI de `9bf95ae2`: los gates de canal y seguridad pasaron; el ratchet de calidad encontró una duplicación nueva de CSS al modificar `orbit-kit.css`, y el gate funcional siguió hasta PASS. La regla de elevación del selector se trasladó al estilo local del componente; la hoja CSS compartida vuelve a coincidir exactamente con la base. La clasificación oficial de duplicados sobre el nuevo árbol da NEW=0 tras verificar la procedencia de 42 hallazgos reagrupados; 14 pruebas del selector, typecheck y lint PASS. Pendiente repetir CI sobre el commit de corrección. No se declara aptitud de lanzamiento mientras falten los controles físicos descritos arriba.
+
+CI de `cd031150` sobre `f0ccfbf2`: calidad, promoción, seguridad y gates bloqueantes PASS, incluidos build frontend, contrato TypeScript de telemetría, Go, pruebas frontend globales, lint de cambios y build Wails Windows. Antes de cerrar, `nightly` avanzó a `98c245bf` (cabecera Orbit) y la PR volvió a tener conflicto únicamente en el JSON generado del roadmap; se incorpora esa base y se regenera el artefacto oficial. Las pruebas físicas del instalador y de una sesión nueva de Windows siguen pendientes de coordinar con Isaac.
+
+CI de `0a8d2f74` sobre `98c245bf`: calidad, promoción, seguridad y gates bloqueantes PASS, incluidos build frontend, pruebas Go y frontend, lint de cambios y build Wails Windows. La PR #1369 está limpia y combinable, pero sigue draft y sin integrar. El estado de lanzamiento permanece NO-GO por las pruebas físicas pendientes, no por un fallo conocido de CI.
+
+El 2026-09-26, a petición de Isaac, la revisión adicional usó exclusivamente el navegador integrado de Codex con Vite y `VITE_RUNTIME_MOCK=mock` en `127.0.0.1:5173`, sin ocupar el escritorio. Se vieron Launcher, catálogo, perfiles, editor avanzado y las cinco políticas con etiquetas accesibles. El selector de reintentos apareció por encima del cajón y permitió elegir «Todos los pasos» con límite adicional; al crear un perfil se pudo añadir un paso y seleccionar OBS Studio. No hubo errores de consola. El mock solo responde a `launcher:snapshot:get`: Guardar/Lanzar no persistieron ni ejecutaron procesos, de modo que esta sesión no prueba backend, registro Run, hotkeys ni instalador. La shell conserva intencionalmente un suelo de 1180 px y scroll interno en una vista de 390 px; no se considera prueba móvil de aceptación del Launcher Windows. Se cerraron el tab de QA y el servidor. `nightly` avanzó por documentación a `d09829c4`, se incorporó con roadmap regenerado y CI de `3336422c` PASS en todos los gates obligatorios; PR draft limpia y combinable. Sigue NO-GO hasta las pruebas físicas acordadas.
+
+Isaac ofreció el PC tras reiniciar Windows. El arranque del sistema fue el 2026-09-26 a las 12:26:30; Vantare no estaba ejecutándose. Se encontró una entrada `HKCU\...\Run` llamada `Vantare.test-profile` que apuntaba a un `vantare.test.exe` temporal de `go-build` ya inexistente. Se verificó esa condición y se retiró solo esa entrada; quedaron cero entradas `Vantare.*`. Por tanto, este arranque no certifica el inicio automático de un perfil real. Desde el HEAD `d2900a12` se volvió a generar localmente el paquete oficial 0.1.0.7: ejecutable, ZIP, instalador y SHA256, con verificación de versión y runtime PASS; `git status` limpio tras el build. Ejecutable e instalador muestran `NotSigned`. La PR del mismo HEAD pasó todos los gates obligatorios. La prueba de instalación/actualización y la ejecución del candidato esperan la confirmación puntual exigida por computer-use; todavía no se han realizado. Estado comercial NO-GO, sin merge ni release.
+
+`nightly` avanzó a `5b6a0781` con ISA-1381 (apariencia), incluido su handoff y plan. Se incorporó a la rama de ISA-1368; el único conflicto fue `roadmap.json` generado, regenerado desde el plan combinado y `origin/nightly` con `--check` PASS. El frontend compiló y pasó el chequeo de tipos, las 129 pruebas focales del Launcher y `go test ./...` PASS en el árbol combinado. Este nuevo merge requiere sus propios gates de CI y un nuevo paquete para cualquier prueba física del HEAD final. La instalación previa conserva otro hash y mostró siete apps detectadas y dos perfiles oficiales, sin editar perfiles.

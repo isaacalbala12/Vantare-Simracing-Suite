@@ -841,23 +841,157 @@ func handleListProfiles(svc *launcher.Service, emitter app.EventEmitter) {
 
 // handleSaveProfile validates and persists a profile, then re-emits the full
 // profile list so the UI stays in sync.
-func handleSaveProfile(profile app.LaunchProfile, svc *launcher.Service, emitter app.EventEmitter) {
+func handleSaveProfile(profile app.LaunchProfile, svc *launcher.Service, emitter app.EventEmitter) bool {
+	return saveProfileWithAutostart(profile, svc, emitter, syncLauncherAutostart)
+}
+
+func syncLauncherAutostart(profileID string, enabled bool) error {
+	if enabled {
+		return launcher.RegisterAutostart(profileID)
+	}
+	return launcher.UnregisterAutostart(profileID)
+}
+
+func validateLauncherProfileHotkey(profile app.LaunchProfile, profiles []app.LaunchProfile, global map[string]string) error {
+	combo := strings.ToLower(strings.TrimSpace(profile.Hotkey))
+	if combo == "" {
+		return nil
+	}
+	if !launcher.IsHotkeyAllowed(combo) {
+		return fmt.Errorf("launcher: hotkey is reserved")
+	}
+	if _, _, err := app.ParseHotkeyCombo(combo); err != nil {
+		return fmt.Errorf("launcher: invalid hotkey: %w", err)
+	}
+	for _, used := range global {
+		if strings.EqualFold(strings.TrimSpace(used), combo) {
+			return fmt.Errorf("launcher: hotkey conflicts with a Hub shortcut")
+		}
+	}
+	for _, existing := range profiles {
+		if existing.ID != profile.ID && strings.EqualFold(strings.TrimSpace(existing.Hotkey), combo) {
+			return fmt.Errorf("launcher: hotkey conflicts with another profile")
+		}
+	}
+	return nil
+}
+
+func saveProfileWithAutostart(profile app.LaunchProfile, svc *launcher.Service, emitter app.EventEmitter, syncAutostart func(string, bool) error) bool {
+	before := svc.ListProfiles()
 	if err := svc.SaveProfile(profile); err != nil {
 		log.Printf("launcher:saveProfile error: %v", err)
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
-		return
+		return false
+	}
+	after := svc.ListProfiles()
+	oldStartup := make(map[string]bool, len(before))
+	newStartup := make(map[string]bool, len(after))
+	for _, existing := range before {
+		oldStartup[existing.ID] = existing.LaunchOnWindowsStartup
+	}
+	for _, saved := range after {
+		newStartup[saved.ID] = saved.LaunchOnWindowsStartup
+	}
+	type runChange struct {
+		id       string
+		previous bool
+	}
+	var changed []runChange
+	apply := func(id string, enabled bool) error {
+		changed = append(changed, runChange{id, oldStartup[id]})
+		return syncAutostart(id, enabled)
+	}
+	var syncErr error
+	for _, saved := range after {
+		if saved.ID == profile.ID && saved.LaunchOnWindowsStartup {
+			syncErr = apply(saved.ID, true)
+			if syncErr != nil {
+				break
+			}
+		}
+	}
+	if syncErr == nil {
+		for _, existing := range before {
+			if existing.LaunchOnWindowsStartup && !newStartup[existing.ID] {
+				syncErr = apply(existing.ID, false)
+				if syncErr != nil {
+					break
+				}
+			}
+		}
+	}
+	if syncErr != nil {
+		if err := svc.RestoreProfiles(before); err != nil {
+			log.Printf("launcher:saveProfile settings rollback error: %v", err)
+		}
+		for i := len(changed) - 1; i >= 0; i-- {
+			if err := syncAutostart(changed[i].id, changed[i].previous); err != nil {
+				log.Printf("launcher:saveProfile Run rollback error: %v", err)
+			}
+		}
+		log.Printf("launcher:saveProfile autostart error: %v", syncErr)
+		emitter.Emit("launcher:error", map[string]any{"message": syncErr.Error()})
+		return false
 	}
 	handleLauncherSnapshot(svc, emitter)
+	return true
+}
+
+// reconcileLauncherAutostart reduces legacy multi-profile settings to the
+// first enabled profile before synchronizing the Windows Run entries.
+func reconcileLauncherAutostart(svc *launcher.Service, emitter app.EventEmitter, syncAutostart func(string, bool) error) {
+	profiles := svc.ListProfiles()
+	for _, profile := range profiles {
+		if profile.LaunchOnWindowsStartup {
+			if !saveProfileWithAutostart(profile, svc, emitter, syncAutostart) {
+				return
+			}
+			break
+		}
+	}
+	for _, profile := range svc.ListProfiles() {
+		if err := syncAutostart(profile.ID, profile.LaunchOnWindowsStartup); err != nil {
+			log.Printf("launcher: startup autostart reconciliation for %q failed: %v", profile.ID, err)
+		}
+	}
 }
 
 // handleDeleteProfile removes a profile by ID and re-emits the remaining list.
-func handleDeleteProfile(id string, svc *launcher.Service, emitter app.EventEmitter) {
+func handleDeleteProfile(id string, svc *launcher.Service, emitter app.EventEmitter) bool {
+	return deleteProfileWithAutostart(id, svc, emitter, syncLauncherAutostart)
+}
+
+func deleteProfileWithAutostart(id string, svc *launcher.Service, emitter app.EventEmitter, syncAutostart func(string, bool) error) bool {
+	var previous *app.LaunchProfile
+	for _, profile := range svc.ListProfiles() {
+		if profile.ID == id {
+			copy := profile
+			previous = &copy
+			break
+		}
+	}
+	if previous == nil {
+		emitter.Emit("launcher:error", map[string]any{"message": "profile not found"})
+		return false
+	}
+	if previous.LaunchOnWindowsStartup {
+		if err := syncAutostart(id, false); err != nil {
+			emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+			return false
+		}
+	}
 	if err := svc.DeleteProfile(id); err != nil {
+		if previous.LaunchOnWindowsStartup {
+			if restoreErr := syncAutostart(id, true); restoreErr != nil {
+				log.Printf("launcher:deleteProfile autostart rollback error: %v", restoreErr)
+			}
+		}
 		log.Printf("launcher:deleteProfile error: %v", err)
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
-		return
+		return false
 	}
 	handleLauncherSnapshot(svc, emitter)
+	return true
 }
 
 // handleDuplicateProfile copies an existing profile into a new one with the
@@ -980,15 +1114,26 @@ func emitLauncherCommandError(emitter app.EventEmitter, err error) {
 	emitter.Emit("launcher:error", payload)
 }
 
-func handleResolveLauncherDecision(decisionID, action string, remember bool, emitter app.EventEmitter) {
+func handleResolveLauncherDecision(decisionID, action string, remember bool, svc *launcher.Service, emitter app.EventEmitter) {
 	if decisionID == "" || action == "" {
 		emitter.Emit("launcher:error", map[string]any{"code": "invalid_decision", "message": "decision id and action are required"})
 		return
 	}
+	request, remembered, err := svc.ResolveDecision(decisionID, action, remember)
+	if request.DecisionID == "" {
+		emitter.Emit("launcher:error", map[string]any{"code": "invalid_decision", "message": err.Error()})
+		return
+	}
+	if err != nil {
+		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+	}
+	if remembered {
+		handleLauncherSnapshot(svc, emitter)
+	}
 	emitter.Emit("launcher:decision:resolved", map[string]any{
 		"decisionId": decisionID,
 		"action":     action,
-		"remember":   remember,
+		"remember":   remembered,
 	})
 }
 
@@ -1006,13 +1151,9 @@ func launcherProcessIdentity(id string, pid int, svc *launcher.Service) (launche
 	if pid <= 0 {
 		return launcher.ProcessIdentity{}, fmt.Errorf("launcher: confirmed PID is required")
 	}
-	entry, ok := svc.Settings().GetLauncherApps()[id]
-	if !ok {
-		return launcher.ProcessIdentity{}, fmt.Errorf("launcher: app %q not found", id)
-	}
-	identity := launcher.ProcessIdentity{PID: pid, ExecutablePath: entry.ExecutablePath}
-	if known, ok := launcher.KnownAppsByID[id]; ok && len(known.ProcessNames) > 0 {
-		identity.ProcessName = known.ProcessNames[0]
+	identity, owned := svc.OwnedProcessIdentity(id, pid)
+	if !owned {
+		return launcher.ProcessIdentity{}, fmt.Errorf("launcher: process was not started by Vantare")
 	}
 	return identity, nil
 }
@@ -1026,6 +1167,7 @@ func handleCloseLauncherApp(id string, pid int, svc *launcher.Service, emitter a
 		emitter.Emit("launcher:error", map[string]any{"code": "process_close_failed", "message": err.Error(), "appId": id})
 		return
 	}
+	svc.ForgetStartedProcess(id, pid)
 	handleLauncherSnapshot(svc, emitter)
 }
 
@@ -1035,12 +1177,16 @@ func handleRestartLauncherApp(id string, pid int, svc *launcher.Service, emitter
 	if err == nil && !ok {
 		err = fmt.Errorf("launcher: app %q not found", id)
 	}
+	var restarted launcher.ProcessIdentity
 	if err == nil {
-		err = launcher.RestartProcess(ctx, launcher.DefaultProcessInspector(), identity, entry.ExecutablePath, nil)
+		restarted, err = launcher.RestartProcess(ctx, launcher.DefaultProcessInspector(), identity, entry.ExecutablePath, nil)
 	}
 	if err != nil {
 		emitter.Emit("launcher:error", map[string]any{"code": "process_restart_failed", "message": err.Error(), "appId": id})
 		return
+	}
+	if !svc.TransferStartedProcess(id, pid, restarted) && restarted.PID > 0 {
+		log.Printf("launcher: restarted process identity could not be retained for %q", id)
 	}
 	handleLauncherSnapshot(svc, emitter)
 }
@@ -1166,14 +1312,21 @@ func handleChainError(profileID string, stepIndex int, message string, svc *laun
 	}
 }
 
-// handleProfileRetryFailed re-launches a profile from scratch as a retry of
-// the entire chain. The frontend emits this when the user clicks
-// "Reintentar fallidos" in the native toast after a partial/failed chain.
+// handleProfileRetryFailed re-launches only failed and unattempted steps from
+// the latest failed chain.
 func handleProfileRetryFailed(profileID string, svc *launcher.Service, emitter app.EventEmitter, parentCtx context.Context) {
-	if err := svc.LaunchProfile(parentCtx, profileID); err != nil {
+	if err := svc.RetryFailedProfile(parentCtx, profileID); err != nil {
 		log.Printf("launcher:profile:retry:failed error: %v", err)
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
+	}
+}
+
+// handleProfileRetryAll starts the saved profile again from its first step.
+func handleProfileRetryAll(profileID string, svc *launcher.Service, emitter app.EventEmitter, parentCtx context.Context) {
+	if err := svc.LaunchProfile(parentCtx, profileID); err != nil {
+		log.Printf("launcher:profile:retry:all error: %v", err)
+		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 	}
 }
 
@@ -1189,45 +1342,42 @@ func handleProfileStatsSave(profileID string, durationMs int64, settingsSvc *app
 	emitter.Emit("launcher:profile:stats:saved", map[string]any{"profileId": profileID})
 }
 
-// handleProfileHotkeySet registers or unregisters a global Windows hotkey for
-// a profile. When combo is empty the existing hotkey (if any) is unregistered.
-// On registration failure (reserved combo, Windows conflict, or syscall error)
-// it emits launcher:profile:hotkey:error with the failure reason.
-func handleProfileHotkeySet(profileID, combo string, profileHkMgr *launcher.HotkeyManager, emitter app.EventEmitter, onChanged func(string, string)) {
-	if combo == "" {
-		profileHkMgr.Unregister(profileID)
-		emitter.Emit("launcher:profile:hotkey:set", map[string]any{"profileId": profileID, "combo": ""})
-		if onChanged != nil {
-			onChanged(profileID, combo)
+// The legacy hotkey command updates the same persisted profile as Orbit's
+// Save action. The caller rebuilds the Hub's working message-loop manager.
+func handleProfileHotkeySet(profileID, combo string, svc *launcher.Service, global map[string]string, emitter app.EventEmitter) bool {
+	for _, profile := range svc.ListProfiles() {
+		if profile.ID != profileID {
+			continue
 		}
-		return
+		profile.Hotkey = combo
+		if err := validateLauncherProfileHotkey(profile, svc.ListProfiles(), global); err != nil {
+			emitter.Emit("launcher:profile:hotkey:error", map[string]any{"profileId": profileID, "message": err.Error()})
+			return false
+		}
+		if !handleSaveProfile(profile, svc, emitter) {
+			return false
+		}
+		emitter.Emit("launcher:profile:hotkey:set", map[string]any{"profileId": profileID, "combo": combo})
+		return true
 	}
-	if err := profileHkMgr.Register(profileID, combo); err != nil {
-		log.Printf("launcher:profile:hotkey:set error: %v", err)
-		emitter.Emit("launcher:profile:hotkey:error", map[string]any{"profileId": profileID, "message": err.Error()})
-		return
-	}
-	emitter.Emit("launcher:profile:hotkey:set", map[string]any{"profileId": profileID, "combo": combo})
-	if onChanged != nil {
-		onChanged(profileID, combo)
-	}
+	emitter.Emit("launcher:profile:hotkey:error", map[string]any{"profileId": profileID, "message": "profile not found"})
+	return false
 }
 
 // handleAutostartToggle registers or unregisters a Windows Run key entry for
 // the given profile (Vantare.<profileID> => vantare.exe --launch=<profileID>).
-func handleAutostartToggle(profileID string, enabled bool, emitter app.EventEmitter) {
-	var err error
-	if enabled {
-		err = launcher.RegisterAutostart(profileID)
-	} else {
-		err = launcher.UnregisterAutostart(profileID)
-	}
-	if err != nil {
-		log.Printf("launcher:autostart:toggle error: %v", err)
-		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+func handleAutostartToggle(profileID string, enabled bool, svc *launcher.Service, emitter app.EventEmitter) {
+	for _, profile := range svc.ListProfiles() {
+		if profile.ID != profileID {
+			continue
+		}
+		profile.LaunchOnWindowsStartup = enabled
+		if handleSaveProfile(profile, svc, emitter) {
+			emitter.Emit("launcher:autostart:toggled", map[string]any{"profileId": profileID, "enabled": enabled})
+		}
 		return
 	}
-	emitter.Emit("launcher:autostart:toggled", map[string]any{"profileId": profileID, "enabled": enabled})
+	emitter.Emit("launcher:error", map[string]any{"message": "profile not found"})
 }
 
 // handleAppFavorite toggles the IsFavorite flag for a launcher app entry and
@@ -1248,15 +1398,43 @@ func handleAppFavorite(id string, favorite bool, settingsSvc *app.SettingsServic
 // When the flag is present and valid it launches the profile immediately via
 // the chain runner. This is the entry point for Windows autostart
 // (HKCU\...\Run → vantare.exe --launch=<id>).
-func handleLaunchFlag(args []string, settingsSvc *app.SettingsService, svc *launcher.Service, emitter app.EventEmitter) {
+func handleLaunchFlag(args []string, unregister func(string) error, svc *launcher.Service, emitter app.EventEmitter) {
 	id, ok := launcher.ParseLaunchFlag(args)
 	if !ok {
+		return
+	}
+	if err := svc.CheckAutostartProfile(id); err != nil {
+		if errors.Is(err, launcher.ErrProfileNotFound) && unregister != nil {
+			if removeErr := unregister(id); removeErr != nil {
+				log.Printf("launcher: remove obsolete autostart entry: %v", removeErr)
+			}
+		}
+		log.Printf("launcher: skipped unavailable startup profile %q: %v", id, err)
 		return
 	}
 	if err := svc.LaunchProfile(context.Background(), id); err != nil {
 		log.Printf("launcher:launch-flag error: %v", err)
 		emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
 		return
+	}
+}
+
+// replayAutostartFlag ignores stale Run flags queued before legacy settings
+// were reduced to a single enabled profile.
+func replayAutostartFlag(id string, svc *launcher.Service, launch func(string)) {
+	selected := ""
+	known := false
+	for _, profile := range svc.ListProfiles() {
+		if profile.ID == id {
+			known = true
+		}
+		if selected == "" && profile.LaunchOnWindowsStartup {
+			selected = profile.ID
+		}
+	}
+	// The existing flag handler removes Run values for deleted profiles.
+	if !known || id == selected {
+		launch(id)
 	}
 }
 
@@ -1336,9 +1514,21 @@ func main() {
 	// es un noop.
 	stopCPUProfile := startCPUProfile()
 	defer stopCPUProfile()
+	var launcherStartup launcherStartupQueue
+	launcherStartup.Offer(os.Args[1:])
 
 	appOptions := application.Options{
 		Name: "Vantare Simracing Suite",
+		SingleInstance: &application.SingleInstanceOptions{
+			UniqueID: "com.vantare.simracing-suite",
+			OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
+				if _, ok := launcher.ParseLaunchFlag(data.Args); ok {
+					launcherStartup.Offer(data.Args)
+				} else {
+					launcherStartup.Open()
+				}
+			},
+		},
 		Assets: application.AssetOptions{
 			Handler: application.BundledAssetFileServer(distFS),
 		},
@@ -1389,7 +1579,6 @@ func main() {
 	var engSvc *engineerservice.EngineerService
 	var engineerVoiceRuntime *engineerVoiceInputLane
 	var launcherSvc *launcher.Service
-	var profileHkMgr *launcher.HotkeyManager
 	var notifySvc *notify.Service
 	var notifyCenter *notify.Center
 	var diagnosticsBridge *app.DiagnosticsBridge
@@ -1405,6 +1594,12 @@ func main() {
 			shutdownCtx, cancelShutdown := context.WithTimeout(context.Background(), 8*time.Second)
 			defer cancelShutdown()
 			results := runShutdown(shutdownCtx, []shutdownStep{
+				{name: "launcher", stop: func(ctx context.Context) error {
+					if launcherSvc != nil {
+						return launcherSvc.CloseOnExit(ctx, askLauncherExitClose)
+					}
+					return nil
+				}},
 				{name: "overlay", stop: func(context.Context) error {
 					if overlayController != nil {
 						overlayController.Stop()
@@ -1459,12 +1654,6 @@ func main() {
 					}
 					return nil
 				}},
-				{name: "profile-hotkeys", stop: func(context.Context) error {
-					if profileHkMgr != nil {
-						profileHkMgr.Stop()
-					}
-					return nil
-				}},
 				{name: "engineer-bridge", stop: func(context.Context) error {
 					if engBridge != nil {
 						engBridge.Stop()
@@ -1474,12 +1663,6 @@ func main() {
 				{name: "engineer-voice-input", stop: func(ctx context.Context) error {
 					if engineerVoiceRuntime != nil {
 						return engineerVoiceRuntime.Stop(ctx)
-					}
-					return nil
-				}},
-				{name: "launcher", stop: func(context.Context) error {
-					if launcherSvc != nil {
-						launcherSvc.CancelAll()
 					}
 					return nil
 				}},
@@ -1706,6 +1889,7 @@ func main() {
 		_, duration := hubLifecycle.Open()
 		log.Printf("hub lifecycle: reopened in %s", duration)
 	}
+	launcherStartup.ReadyOpen(openHub)
 	wailsApp.Event.On("hub:open", func(*application.CustomEvent) { openHub() })
 	trayMenu := application.NewMenu()
 	trayMenu.Add("Abrir Vantare").OnClick(func(*application.Context) { openHub() })
@@ -2463,6 +2647,8 @@ func main() {
 		centerEmitter{downstream: emitter, center: notifyCenter, settings: settingsSvc},
 		exec.Command,
 	)
+	launcherSvc.EnableRunningProcessDetection()
+	reconcileLauncherAutostart(launcherSvc, emitter, syncLauncherAutostart)
 
 	// Diagnostics service
 	diagSvc := app.NewDiagnosticsService(version, cfgDir, profileSvc, settingsSvc, telemetrySourceStatus)
@@ -2561,7 +2747,9 @@ func main() {
 		settingsSvc.Settings(),
 		buildHotkeyActionMap(hubSvc, studioProfileSvc, overlayController, &overlayRunning, emitter),
 	)
-	profileHkMgr = launcher.NewHotkeyManager()
+	registerLauncherProfileHotkeys(hkMgr, settingsSvc.Settings(), func(id string) {
+		handleLaunchProfile(id, launcherSvc, emitter, ctx)
+	})
 
 	// updater:notify enciende el pill de actualizacion de la shell. Lo
 	// emite cualquier chequeo que confirma una version pendiente — el
@@ -2790,6 +2978,9 @@ func main() {
 			settingsSvc.Settings(),
 			buildHotkeyActionMap(hubSvc, studioProfileSvc, overlayController, &overlayRunning, emitter),
 		)
+		registerLauncherProfileHotkeys(replacement, settingsSvc.Settings(), func(id string) {
+			handleLaunchProfile(id, launcherSvc, emitter, ctx)
+		})
 		if err := replacement.Start(); err != nil {
 			log.Printf("warning: hotkey manager rebuild error: %v", err)
 		}
@@ -3170,6 +3361,12 @@ func main() {
 		_ = event
 		handleLauncherSnapshot(launcherSvc, emitter)
 	})
+	wailsApp.Event.On("launcher:decision:pending:get", func(event *application.CustomEvent) {
+		_ = event
+		for _, request := range launcherSvc.PendingDecisions() {
+			emitter.Emit("launcher:decision:required", request)
+		}
+	})
 
 	wailsApp.Event.On("launcher:app:add", func(event *application.CustomEvent) {
 		var entry app.LauncherAppEntry
@@ -3205,7 +3402,18 @@ func main() {
 				_ = json.Unmarshal(raw, &profile)
 			}
 		}
-		handleSaveProfile(profile, launcherSvc, emitter)
+		if err := validateLauncherProfileHotkey(profile, launcherSvc.ListProfiles(), settingsSvc.Settings().Hotkeys); err != nil {
+			emitter.Emit("launcher:error", map[string]any{"message": err.Error()})
+			return
+		}
+		if handleSaveProfile(profile, launcherSvc, emitter) {
+			rebuildHotkeys()
+			if engineerVoiceRuntime != nil {
+				if err := revalidateEngineerVoiceProfile(engineerVoiceRuntime, settingsSvc.Settings(), profile.ID, profile.Hotkey); err != nil {
+					log.Printf("engineer experimental voice-input PTT reservation unavailable after launcher profile save: %v", err)
+				}
+			}
+		}
 	})
 
 	wailsApp.Event.On("launcher:profile:delete", func(event *application.CustomEvent) {
@@ -3217,7 +3425,9 @@ func main() {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		handleDeleteProfile(payload.ID, launcherSvc, emitter)
+		if handleDeleteProfile(payload.ID, launcherSvc, emitter) {
+			rebuildHotkeys()
+		}
 	})
 
 	wailsApp.Event.On("launcher:profile:duplicate", func(event *application.CustomEvent) {
@@ -3269,7 +3479,7 @@ func main() {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		handleResolveLauncherDecision(payload.DecisionID, payload.Action, payload.Remember, emitter)
+		handleResolveLauncherDecision(payload.DecisionID, payload.Action, payload.Remember, launcherSvc, emitter)
 	})
 
 	wailsApp.Event.On("launcher:onboarding:complete", func(event *application.CustomEvent) {
@@ -3433,6 +3643,17 @@ func main() {
 		}
 		handleProfileRetryFailed(payload.ID, launcherSvc, emitter, ctx)
 	})
+	wailsApp.Event.On("launcher:profile:retry:all", func(event *application.CustomEvent) {
+		var payload struct {
+			ID string `json:"id"`
+		}
+		if event.Data != nil {
+			if raw, err := json.Marshal(event.Data); err == nil {
+				_ = json.Unmarshal(raw, &payload)
+			}
+		}
+		handleProfileRetryAll(payload.ID, launcherSvc, emitter, ctx)
+	})
 
 	wailsApp.Event.On("launcher:profile:stats:save", func(event *application.CustomEvent) {
 		var payload struct {
@@ -3457,14 +3678,14 @@ func main() {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		handleProfileHotkeySet(payload.ProfileID, payload.Combo, profileHkMgr, emitter, func(profileID, combo string) {
-			if engineerVoiceRuntime == nil {
-				return
+		if handleProfileHotkeySet(payload.ProfileID, payload.Combo, launcherSvc, settingsSvc.Settings().Hotkeys, emitter) {
+			rebuildHotkeys()
+			if engineerVoiceRuntime != nil {
+				if err := revalidateEngineerVoiceProfile(engineerVoiceRuntime, settingsSvc.Settings(), payload.ProfileID, payload.Combo); err != nil {
+					log.Printf("engineer experimental voice-input PTT reservation unavailable after launcher profile hotkey change: %v", err)
+				}
 			}
-			if err := revalidateEngineerVoiceProfile(engineerVoiceRuntime, settingsSvc.Settings(), profileID, combo); err != nil {
-				log.Printf("engineer experimental voice-input PTT reservation unavailable after launcher profile hotkey change: %v", err)
-			}
-		})
+		}
 	})
 
 	wailsApp.Event.On("launcher:autostart:toggle", func(event *application.CustomEvent) {
@@ -3477,7 +3698,7 @@ func main() {
 				_ = json.Unmarshal(raw, &payload)
 			}
 		}
-		handleAutostartToggle(payload.ProfileID, payload.Enabled, emitter)
+		handleAutostartToggle(payload.ProfileID, payload.Enabled, launcherSvc, emitter)
 	})
 
 	wailsApp.Event.On("launcher:app:favorite", func(event *application.CustomEvent) {
@@ -3673,6 +3894,11 @@ func main() {
 		}
 	})
 
+	launcherStartup.Ready(func(id string) {
+		replayAutostartFlag(id, launcherSvc, func(selected string) {
+			handleLaunchFlag([]string{"--launch=" + selected}, launcher.UnregisterAutostart, launcherSvc, emitter)
+		})
+	})
 	if err := wailsApp.Run(); err != nil {
 		// log.Fatal exits without running defers, so the capture is flushed
 		// here explicitly. Stopping twice is safe.
@@ -4367,6 +4593,40 @@ func configuredHotkeyManager(settings *app.AppSettings, actions map[string]func(
 		}
 	}
 	return manager
+}
+
+type launcherHotkeyRegistrar interface {
+	Register(name, combo string, action func()) error
+}
+
+// Profile hotkeys share the Hub's message loop, which owns RegisterHotKey and
+// dispatches key presses. Register them before Start on every rebuild.
+func registerLauncherProfileHotkeys(manager launcherHotkeyRegistrar, settings *app.AppSettings, launch func(string)) {
+	if manager == nil || settings == nil || launch == nil {
+		return
+	}
+	used := make(map[string]bool)
+	for _, combo := range settings.Hotkeys {
+		if combo != "" {
+			used[strings.ToLower(strings.TrimSpace(combo))] = true
+		}
+	}
+	for _, profile := range settings.LauncherProfiles {
+		combo := strings.ToLower(strings.TrimSpace(profile.Hotkey))
+		if combo == "" || len(profile.Steps) == 0 {
+			continue
+		}
+		if used[combo] {
+			log.Printf("launcher: profile hotkey %q conflicts with another shortcut", profile.ID)
+			continue
+		}
+		id := profile.ID
+		if err := manager.Register("launcher:"+id, combo, func() { launch(id) }); err != nil {
+			log.Printf("launcher: profile hotkey %q unavailable: %v", id, err)
+			continue
+		}
+		used[combo] = true
+	}
 }
 
 // decodeEventPayload reads a Wails custom event's data into a typed payload.

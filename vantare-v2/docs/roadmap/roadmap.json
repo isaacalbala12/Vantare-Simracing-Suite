@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-25T22:36:51Z",
+  "generatedAt": "2026-09-26T10:45:18Z",
   "digest": {
-    "lastCommit": "d09829c41ea2dabfdcb47182eb6d922e69232e54"
+    "lastCommit": "5b6a0781b480476aac2fae3c9b172fa1b15bbf59"
   },
   "phases": [
     {
@@ -108,10 +108,10 @@
           "it": "Licenze con credenziale offline e avvio dalla cache"
         },
         {
-          "es": "Launcher con detección de apps y cadenas de lanzamiento",
-          "en": "Launcher with app detection and launch chains",
-          "pt": "Launcher com deteção de apps e cadeias de lançamento",
-          "it": "Launcher con rilevamento app e catene di avvio"
+          "es": "Launcher con detección de apps, cadenas de lanzamiento y reintentos de perfil",
+          "en": "Launcher with app detection, launch chains and profile retries",
+          "pt": "Launcher com deteção de apps, cadeias de lançamento e novas tentativas de perfil",
+          "it": "Launcher con rilevamento app, catene di avvio e nuovi tentativi del profilo"
         },
         {
           "es": "Banco reproducible de huella por hardware para Vantare y el overlay",
@@ -2210,18 +2210,18 @@
   ],
   "delivered": [
     {
-      "date": "2026-09-25",
+      "date": "2026-09-26",
       "entries": [
         {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-1385 · Car Damage Numbers Eficiencia y telemetría LMU"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-1382 · Calendario visual y zoom del Timeline"
-        },
+          "kind": "feat",
+          "scope": "isa-1381",
+          "text": "Temas de interfaz y fondos de Studio"
+        }
+      ]
+    },
+    {
+      "date": "2026-09-25",
+      "entries": [
         {
           "kind": "docs",
           "scope": "hub",
@@ -2231,6 +2231,16 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-1390 · Cabecera Orbit: versión sin punto verde"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-1382 · Calendario visual y zoom del Timeline"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-1385 · Car Damage Numbers Eficiencia y telemetría LMU"
         }
       ]
     },
@@ -2238,9 +2248,9 @@
       "date": "2026-09-24",
       "entries": [
         {
-          "kind": "fix",
-          "scope": "widgets",
-          "text": "Validar datos y contratos de los cinco widgets aceptados"
+          "kind": "change",
+          "scope": "",
+          "text": "Racing Flags: letra ampliada, centrada y negra por defecto"
         },
         {
           "kind": "feat",
@@ -2248,9 +2258,9 @@
           "text": "Pedales avanzados con datos revisados y volantes LMU"
         },
         {
-          "kind": "change",
-          "scope": "",
-          "text": "Racing Flags: letra ampliada, centrada y negra por defecto"
+          "kind": "fix",
+          "scope": "widgets",
+          "text": "Validar datos y contratos de los cinco widgets aceptados"
         }
       ]
     },
@@ -2726,46 +2736,6 @@
           "kind": "feat",
           "scope": "settings",
           "text": "Añadir zoom global configurable"
-        }
-      ]
-    },
-    {
-      "date": "2026-08-27",
-      "entries": [
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-879 · Acotar telemetría Overlay en Wails/WebView2"
-        },
-        {
-          "kind": "feat",
-          "scope": "calendar",
-          "text": "Automate LMU Discord schedule with owner review"
-        },
-        {
-          "kind": "feat",
-          "scope": "release",
-          "text": "Notas de version legibles — exigir changelog para publicar y contarlo en el aviso"
-        },
-        {
-          "kind": "fix",
-          "scope": "updater",
-          "text": "Revision del sistema de actualizaciones — 6 fallos corregidos"
-        },
-        {
-          "kind": "feat",
-          "scope": "studio",
-          "text": "Fondos propios en el lienzo del Studio"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-861 · Promover Analysis y Strategy asistida a nightly"
-        },
-        {
-          "kind": "change",
-          "scope": "",
-          "text": "ISA-861 · Promover reader LMU y runtime Windows a nightly"
         }
       ]
     }

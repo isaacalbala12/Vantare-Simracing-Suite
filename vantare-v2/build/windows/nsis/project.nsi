@@ -105,30 +105,11 @@ FunctionEnd
 
 Function CloseVantareGracefully
 	DetailPrint "Cerrando Vantare..."
-	# First try a graceful WM_CLOSE (no /F). Wait up to 5 seconds for the app to close.
+	# Let Vantare complete its exit policy. If it remains open, abort the
+	# installation instead of bypassing the user's decision with /F.
 	nsExec::Exec 'taskkill /IM vantare.exe'
-	StrCpy $0 0
-	close_loop:
-		Sleep 1000
-		IntOp $0 $0 + 1
-		# Attempt to open the executable exclusively; if locked, the app is still running.
-		FileOpen $1 "$INSTDIR\${PRODUCT_EXECUTABLE}" a
-		IfErrors 0 close_done
-		IntCmp $0 5 close_force 0
-		Goto close_loop
-	close_force:
-		DetailPrint "Forzando cierre de Vantare..."
-		nsExec::Exec 'taskkill /F /IM vantare.exe'
-		Sleep 2000
-		Goto close_done
-	close_done:
-		# Close the test handle if we managed to open it.
-		IfErrors 0 close_close_handle
-		Goto close_return
-	close_close_handle:
-		FileClose $1
-	close_return:
-		DetailPrint "Vantare cerrado."
+	Call WaitWhileFileLocked
+	DetailPrint "Vantare cerrado."
 FunctionEnd
 
 Function WritePendingMarker

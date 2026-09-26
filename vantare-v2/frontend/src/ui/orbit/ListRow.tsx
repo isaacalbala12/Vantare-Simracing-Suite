@@ -14,6 +14,7 @@ export interface ListRowProps {
   role?: "option" | "button";
   ariaSelected?: boolean;
   className?: string;
+  as?: "button" | "div";
 }
 
 export function ListRow({
@@ -28,17 +29,18 @@ export function ListRow({
   role,
   ariaSelected,
   className,
+  as: Element = "button",
 }: ListRowProps) {
   const classes = cx("orbit-row", selected ? "orbit-row--sel" : null, next ? "orbit-row--next" : null, className);
 
   return (
-    <button
+    <Element
       aria-selected={ariaSelected}
       className={classes}
       draggable={draggable}
       onClick={onClick}
       role={role}
-      type="button"
+      {...(Element === "button" ? { type: "button" as const } : {})}
     >
       {leading}
       <span className="orbit-row__copy">
@@ -46,6 +48,6 @@ export function ListRow({
         {subtitle ? <span>{subtitle}</span> : null}
       </span>
       {trailing}
-    </button>
+    </Element>
   );
 }

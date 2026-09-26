@@ -82,7 +82,8 @@ describe("OrbitProfileEditor", () => {
     expect(onSave.mock.calls[0][0]).toMatchObject({
       id: "creator",
       name: "Retransmisión",
-      steps: [{ appId: "lmu", delay: 4 }],
+      steps: [{ appId: "lmu", delay: 0 }],
+      policy: { firstStepDelay: 4 },
     });
   });
 
@@ -143,11 +144,70 @@ describe("OrbitProfileEditor", () => {
     expect(onSave.mock.calls[0][0].hotkey).toBe("ctrl+alt+l");
   });
 
+  it("no guarda un atajo reservado ni un nombre vacío", () => {
+    setup();
+    fireEvent.click(screen.getByTestId("orbit-keycap-row"));
+    fireEvent.keyDown(window, { key: "F4", altKey: true });
+    expect((screen.getByTestId("orbit-profile-editor-save") as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByTestId("orbit-profile-editor-hotkey-clear"));
+    fireEvent.change(screen.getByTestId("orbit-profile-editor-name"), { target: { value: "  " } });
+    expect((screen.getByTestId("orbit-profile-editor-save") as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("no deja iniciar con Windows un perfil sin pasos", () => {
     setup({ ...PROFILE, steps: [] });
     const toggle = screen.getByRole("button", {
       name: "Iniciar con Windows",
     }) as HTMLButtonElement;
     expect(toggle.disabled).toBe(true);
+  });
+
+  it("permite configurar las políticas de ejecución y salida desde el modo avanzado", () => {
+    const { onSave } = setup();
+    fireEvent.click(screen.getByTestId("orbit-profile-editor-advanced-toggle"));
+    for (const label of [
+      "Si ya está abierta",
+      "Si falla un paso",
+      "Al cancelar",
+      "Al salir",
+      "Reintentos automáticos",
+    ]) {
+      expect(screen.getByText(label, { selector: "label" }).textContent).toBe(label);
+    }
+    fireEvent.click(screen.getByRole("combobox", { name: "Al salir" }));
+    fireEvent.click(screen.getByRole("option", { name: "Cerrar las iniciadas por Vantare" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Al cancelar" }));
+    fireEvent.click(screen.getByRole("option", { name: "Dejar abiertas" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Si ya está abierta" }));
+    fireEvent.click(screen.getByRole("option", { name: "Reutilizar" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Si falla un paso" }));
+    fireEvent.click(screen.getByRole("option", { name: "Detener la cadena" }));
+    fireEvent.click(screen.getByTestId("orbit-profile-editor-save"));
+    expect(onSave.mock.calls[0][0].policy).toMatchObject({
+      alreadyRunning: "reuse",
+      failure: "stop",
+      cancel: "leave",
+      exit: "close-started",
+    });
+  });
+
+  it("guarda el reintento de toda la cadena y su límite desde el modo avanzado", () => {
+    const { onSave } = setup();
+    fireEvent.click(screen.getByTestId("orbit-profile-editor-advanced-toggle"));
+    fireEvent.click(screen.getByRole("combobox", { name: "Reintentos automáticos" }));
+    fireEvent.click(screen.getByRole("option", { name: "Todos los pasos" }));
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Reintentos adicionales" }), {
+      target: { value: "2" },
+    });
+    fireEvent.click(screen.getByTestId("orbit-profile-editor-save"));
+    expect(onSave.mock.calls[0][0].policy).toMatchObject({ retry: "all", maxRetries: 2 });
+  });
+
+  it("rechaza esperas fraccionarias que el backend no puede guardar como segundos enteros", () => {
+    setup();
+    fireEvent.change(screen.getByTestId("orbit-editor-step-delay-0"), {
+      target: { value: "1.5" },
+    });
+    expect((screen.getByTestId("orbit-profile-editor-save") as HTMLButtonElement).disabled).toBe(true);
   });
 });

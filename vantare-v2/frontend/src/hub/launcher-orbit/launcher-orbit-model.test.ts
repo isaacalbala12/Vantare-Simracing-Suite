@@ -97,6 +97,11 @@ describe("launcher orbit · cadena", () => {
     expect(steps[0].name).toBe("Le Mans Ultimate");
   });
 
+  it("muestra la primera espera que realmente usa el ejecutor", () => {
+    const steps = chainSteps({ ...profile, policy: { alreadyRunning: "ask", failure: "ask", cancel: "ask", exit: "ask", retry: "ask", maxRetries: 0, firstStepDelay: 5 } }, apps);
+    expect(steps.map((step) => step.delay)).toEqual([5, 2]);
+  });
+
   it("cae a un paso legible cuando la app ya no está en el catálogo", () => {
     const orphan = chainSteps({ ...profile, steps: [{ appId: "moteC", delay: 1 }] }, apps);
     expect(orphan[0].abbreviation).toBe("MOT");
@@ -144,6 +149,7 @@ describe("launcher orbit · políticas y metadatos", () => {
       }),
     ).toEqual([
       { key: "launcher.profile.policy.reuse" },
+      { key: "launcher.profile.policy.continue" },
       { key: "launcher.profile.policy.retry", params: { n: 2 } },
       { key: "launcher.profile.policy.leave" },
     ]);
@@ -163,6 +169,12 @@ describe("launcher orbit · políticas y metadatos", () => {
       "launcher.profile.policy.restart",
       "launcher.profile.policy.stop",
       "launcher.profile.policy.closeStarted",
+    ]);
+  });
+
+  it("no anuncia reintentos cuando la política pide decisión", () => {
+    expect(policyChips({ alreadyRunning: "ask", failure: "continue", cancel: "ask", exit: "ask", retry: "ask", maxRetries: 2 })).toEqual([
+      { key: "launcher.profile.policy.continue" },
     ]);
   });
 

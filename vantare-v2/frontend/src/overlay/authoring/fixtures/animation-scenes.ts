@@ -37,7 +37,7 @@ export type SceneFrame = {
   /** The player's own telemetry for this frame. */
   player?: ScenePlayerOverride;
   /** Workshop-only spatial samples; the production radar uses LMU projection. */
-  radarCars?: readonly Readonly<{ id: string; x: number; z: number; overlap: boolean }>[];
+  radarCars?: readonly Readonly<{ id: string; x: number; z: number; overlap: boolean; lapped: boolean }>[];
   /** Session clock for this frame, when the animation depends on it. */
   remainingSeconds?: number;
   /** Review a different player-window anchor without changing any race positions. */
@@ -825,33 +825,33 @@ export const ANIMATION_SCENES: readonly AnimationScene[] = [
     widget: "radar",
     systems: ["vantare-functional"],
     label: "Tráfico cercano · cruce lateral",
-    watchFor: "Dos rivales se acercan por los lados, quedan en paralelo y se alejan. Las posiciones son una demostración; el radar real recibe muestras espaciales de LMU a 10 Hz.",
+    watchFor: "Dos rivales se acercan, pasan a color de proximidad y quedan en paralelo. El coche azul oscuro está doblado. Las posiciones y vueltas son una demostración; el radar real recibe telemetría LMU a 10 Hz.",
     frameMs: 1800,
     frames: [
       { caption: "Rival izquierdo delante y rival derecho detrás", radarCars: [
-        { id: "izquierda", x: 6, z: -24, overlap: false },
-        { id: "derecha", x: -6, z: 24, overlap: false },
-        { id: "frente", x: -1, z: -28, overlap: false },
+        { id: "izquierda", x: 6, z: -24, overlap: false, lapped: false },
+        { id: "derecha", x: -6, z: 24, overlap: false, lapped: false },
+        { id: "frente", x: -1, z: -28, overlap: false, lapped: true },
       ] },
       { caption: "Ambos se acercan al jugador", radarCars: [
-        { id: "izquierda", x: 6, z: -9, overlap: false },
-        { id: "derecha", x: -6, z: 10, overlap: false },
-        { id: "frente", x: -1, z: -22, overlap: false },
+        { id: "izquierda", x: 6, z: -9, overlap: false, lapped: false },
+        { id: "derecha", x: -6, z: 10, overlap: false, lapped: false },
+        { id: "frente", x: -1, z: -22, overlap: false, lapped: true },
       ] },
       { caption: "Dos coches en paralelo", radarCars: [
-        { id: "izquierda", x: 6, z: -2, overlap: true },
-        { id: "derecha", x: -6, z: 2, overlap: true },
-        { id: "frente", x: 1, z: -16, overlap: false },
+        { id: "izquierda", x: 6, z: -2, overlap: true, lapped: false },
+        { id: "derecha", x: -6, z: 2, overlap: true, lapped: false },
+        { id: "frente", x: 1, z: -16, overlap: false, lapped: true },
       ] },
       { caption: "Se despeja el espacio lateral", radarCars: [
-        { id: "izquierda", x: 6, z: 8, overlap: false },
-        { id: "derecha", x: -6, z: -9, overlap: false },
-        { id: "frente", x: 1, z: -10, overlap: false },
+        { id: "izquierda", x: 6, z: 8, overlap: false, lapped: false },
+        { id: "derecha", x: -6, z: -9, overlap: false, lapped: false },
+        { id: "frente", x: 1, z: -10, overlap: false, lapped: true },
       ] },
       { caption: "Los rivales se alejan", radarCars: [
-        { id: "izquierda", x: 6, z: 22, overlap: false },
-        { id: "derecha", x: -6, z: -23, overlap: false },
-        { id: "frente", x: 1, z: -5, overlap: false },
+        { id: "izquierda", x: 6, z: 22, overlap: false, lapped: false },
+        { id: "derecha", x: -6, z: -23, overlap: false, lapped: false },
+        { id: "frente", x: 1, z: -12, overlap: false, lapped: true },
       ] },
     ],
   },

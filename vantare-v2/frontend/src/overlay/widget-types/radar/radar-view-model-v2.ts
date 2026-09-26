@@ -4,7 +4,7 @@ import type { WidgetViewModelBase } from "../../core/widget-definition";
 export type RadarViewModel = WidgetViewModelBase & {
   type: "radar";
   available: boolean;
-  cars: readonly Readonly<{ id: string; x: number; z: number; overlap: boolean }>[];
+  cars: readonly Readonly<{ id: string; x: number; z: number; overlap: boolean; near: boolean; lapped: boolean }>[];
   leftOverlap: boolean;
   rightOverlap: boolean;
 };

@@ -79,6 +79,20 @@ func TestRadarMovementInvalidatesSpotterSection(t *testing.T) {
 	}
 }
 
+func TestRadarLapProgressInvalidatesSpotterSection(t *testing.T) {
+	before := dirtyFinalState(2)
+	after := dirtyFinalState(2)
+	after.Observed.Vehicles[1].CompletedLaps = builderPresent(standings.CompletedLaps(9))
+	if !dirtyDiff(before, after).Has(SectionSpotter) {
+		t.Fatal("lap count change did not rebuild radar colour")
+	}
+	after = dirtyFinalState(2)
+	after.Observed.TrackLength = builderPresent(standings.LapDistance(5000))
+	if !dirtyDiff(before, after).Has(SectionSpotter) {
+		t.Fatal("track length availability did not rebuild radar colour")
+	}
+}
+
 func TestStandingsDirtySignalIgnoresUnprojectedChanges(t *testing.T) {
 	t.Parallel()
 

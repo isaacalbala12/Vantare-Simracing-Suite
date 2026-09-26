@@ -823,7 +823,9 @@ function applyScene(
   if (!scene || scene.widget !== scenario.widget) return frame;
   const state = scenario.sceneState ?? sceneFrameAt(scene, scenario.sceneFrame ?? 0);
   if (scene.widget === "radar" && state.radarCars) {
-    return { ...frame, radar: { mode: "xyz", cars: state.radarCars } };
+    // Match the product's 10 m threshold while interpolating Workshop samples.
+    const cars = state.radarCars.map((car) => ({ ...car, near: car.x * car.x + car.z * car.z <= 100 }));
+    return { ...frame, radar: { mode: "xyz", cars } };
   }
   let standings = frame.standings;
   let relative = frame.relative;
@@ -958,9 +960,9 @@ export function buildWorkshopFrameV2(scenario: WorkshopV2Scenario): WidgetRuntim
   if (scenario.widget === "radar" && quality === "fresh") {
     // Workshop demonstration only: production positions come from the Go projection.
     frame = { ...frame, radar: { mode: "xyz", cars: [
-      { id: "car-left", x: 4, z: 0, overlap: true },
-      { id: "car-right", x: -8, z: 12, overlap: false },
-      { id: "car-ahead", x: 2, z: -20, overlap: false },
+      { id: "car-left", x: 4, z: 0, overlap: true, near: true, lapped: false },
+      { id: "car-right", x: -8, z: 12, overlap: false, near: false, lapped: false },
+      { id: "car-ahead", x: 2, z: -20, overlap: false, near: false, lapped: true },
     ] } };
   }
   if (scenario.widget === "relative" && scenario.session === "race") {

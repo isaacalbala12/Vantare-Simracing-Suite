@@ -3,7 +3,59 @@ package overlayv2
 import (
 	"math"
 	"testing"
+
+	"github.com/vantare/overlays/v2/internal/telemetry/derive"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
+
+func TestRadarMarksPhysicalProximity(t *testing.T) {
+	view := BuildRadar(spotterState(t, spotterPlayer{},
+		spotterOpponent{x: 6, z: 8},
+		spotterOpponent{x: 6, z: 8.1},
+	))
+	if len(view.Cars) != 2 || !view.Cars[0].Near || view.Cars[1].Near {
+		t.Fatalf("physical proximity threshold = %+v", view.Cars)
+	}
+}
+
+func TestRadarMarksOnlyConfirmedCarsLappedByPlayer(t *testing.T) {
+	tests := []struct {
+		name    string
+		prepare func(*derive.FinalState)
+		want    bool
+	}{
+		{"full lap behind", func(*derive.FinalState) {}, true},
+		{"timing line is not a full lap", func(state *derive.FinalState) {
+			state.Observed.Vehicles[0].LapDistance = builderPresent(standings.LapDistance(10))
+			state.Observed.Vehicles[1].LapDistance = builderPresent(standings.LapDistance(4990))
+		}, false},
+		{"stale lap count", func(state *derive.FinalState) {
+			state.Observed.Vehicles[1].CompletedLaps = builderField(t, standings.CompletedLaps(9), schema.FreshnessStale)
+		}, false},
+		{"missing track length", func(state *derive.FinalState) {
+			state.Observed.TrackLength = schema.MissingField[standings.LapDistance]()
+		}, false},
+		{"rival ahead", func(state *derive.FinalState) {
+			state.Observed.Vehicles[1].CompletedLaps = builderPresent(standings.CompletedLaps(11))
+		}, false},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			state := spotterState(t, spotterPlayer{}, spotterOpponent{x: 4, z: 0})
+			state.Observed.TrackLength = builderPresent(standings.LapDistance(5000))
+			state.Observed.Vehicles[0].CompletedLaps = builderPresent(standings.CompletedLaps(10))
+			state.Observed.Vehicles[0].LapDistance = builderPresent(standings.LapDistance(100))
+			state.Observed.Vehicles[1].CompletedLaps = builderPresent(standings.CompletedLaps(9))
+			state.Observed.Vehicles[1].LapDistance = builderPresent(standings.LapDistance(100))
+			test.prepare(&state)
+			view := BuildRadar(state)
+			if len(view.Cars) != 1 || view.Cars[0].Lapped != test.want {
+				t.Fatalf("radar lapped = %+v, want %v", view.Cars, test.want)
+			}
+		})
+	}
+}
 
 func TestRadarRotatesNearbyCarsIntoPlayerFrame(t *testing.T) {
 	view := BuildRadar(spotterState(t, spotterPlayer{yaw: math.Pi / 2},

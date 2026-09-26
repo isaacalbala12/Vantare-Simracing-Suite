@@ -384,6 +384,8 @@ type RadarCarV2 struct {
 	X       float64 `json:"x"`
 	Z       float64 `json:"z"`
 	Overlap bool    `json:"overlap"`
+	Near    bool    `json:"near"`
+	Lapped  bool    `json:"lapped"`
 }
 
 type DamageViewV2 struct {

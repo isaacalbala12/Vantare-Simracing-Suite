@@ -30,7 +30,9 @@ describe("scene interpolation", () => {
       system: "vantare-functional", variant: "default",
       sceneId: radarScene.id, sceneState: parallel,
     });
-    expect(runtime.overlayV2Frame?.radar.cars).toEqual(parallel.radarCars);
+    expect(runtime.overlayV2Frame?.radar.cars.map((car) => [car.id, car.near, car.lapped])).toEqual([
+      ["izquierda", true, false], ["derecha", true, false], ["frente", false, true],
+    ]);
     expect(runtime.overlayV2Frame?.radar.cars.filter((car) => car.overlap)).toHaveLength(2);
   });
   it("keeps the fastest-lap record discrete and restores the baseline at each complete loop", () => {

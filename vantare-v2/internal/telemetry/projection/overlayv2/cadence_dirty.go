@@ -114,6 +114,7 @@ func hashRadarVehicle(sum uint64, vehicle *core.VehicleState) uint64 {
 	sum = hashFieldBool(sum, vehicle.Player)
 	sum = hashFieldBool(sum, vehicle.InPit)
 	sum = hashFieldFloat(sum, vehicle.LapDistance)
+	sum = hashFieldInt32(sum, vehicle.CompletedLaps)
 	sum = hashQuality(sum, vehicle.WorldPosition)
 	if position, present := vehicle.WorldPosition.Value(); present {
 		sum = hashUint64(sum, math.Float64bits(position.X))

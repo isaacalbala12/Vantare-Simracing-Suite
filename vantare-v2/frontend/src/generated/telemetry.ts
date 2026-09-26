@@ -495,6 +495,8 @@ export interface SpatialPosition {
 
 export interface Overlayv2RadarCarV2 {
   readonly id: string;
+  readonly lapped: boolean;
+  readonly near: boolean;
   readonly overlap: boolean;
   readonly x: number;
   readonly z: number;

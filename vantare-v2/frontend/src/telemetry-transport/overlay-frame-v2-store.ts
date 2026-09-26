@@ -823,11 +823,13 @@ function radar(value: unknown, path: string): void {
   }
   for (const [index, car] of value.cars.entries()) {
     const carPath = `${path}.cars[${index}]`;
-    objectWithKeys(car, carPath, ["id", "x", "z", "overlap"]);
+    objectWithKeys(car, carPath, ["id", "x", "z", "overlap", "near", "lapped"]);
     nonEmptyString(car.id, `${carPath}.id`);
     if (typeof car.x !== "number" || !Number.isFinite(car.x) || Math.abs(car.x) > 30) invalid(`${carPath}.x`);
     if (typeof car.z !== "number" || !Number.isFinite(car.z) || Math.abs(car.z) > 30) invalid(`${carPath}.z`);
     if (typeof car.overlap !== "boolean") invalid(`${carPath}.overlap`);
+    if (typeof car.near !== "boolean") invalid(`${carPath}.near`);
+    if (typeof car.lapped !== "boolean") invalid(`${carPath}.lapped`);
     Object.freeze(car);
   }
   Object.freeze(value.cars);

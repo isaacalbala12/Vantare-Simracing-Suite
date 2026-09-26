@@ -685,7 +685,7 @@ func observeDirtySignals(header envelope.Header, final derive.FinalState, source
 		fuelPerLap:          final.Derived.Fuel.PerLap,
 		spatialMark:         schema.FreshnessMissing,
 		standingsMark:       hashFieldFloat(fnvOffset64, final.Observed.TrackLength),
-		radarMark:           fnvOffset64,
+		radarMark:           hashFieldFloat(fnvOffset64, final.Observed.TrackLength),
 	}
 	for index := range final.Observed.Vehicles {
 		current := &final.Observed.Vehicles[index]

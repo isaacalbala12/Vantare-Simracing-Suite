@@ -5,11 +5,14 @@ import (
 	"sort"
 
 	spottergeometry "github.com/vantare/overlays/v2/internal/spotter/geometry"
+	"github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema/standings"
 )
 
 const radarRangeM = 30.0
+const radarNearRangeM = 10.0
 const radarMaxCars = 16
 
 // BuildRadar publishes observed positions relative to the player's heading.
@@ -50,13 +53,16 @@ func BuildRadar(final derive.FinalState) RadarViewV2 {
 		}
 		aligned := spottergeometry.AlignOpponentXZ(yaw, playerPoint,
 			spottergeometry.Vec3{X: other.X, Y: other.Y, Z: other.Z})
-		if aligned.X*aligned.X+aligned.Z*aligned.Z > radarRangeM*radarRangeM {
+		distanceSquared := aligned.X*aligned.X + aligned.Z*aligned.Z
+		if distanceSquared > radarRangeM*radarRangeM {
 			continue
 		}
 		cars = append(cars, RadarCarV2{
 			ID: string(opponent.Identity.Vehicle), X: aligned.X, Z: aligned.Z,
 			Overlap: spottergeometry.ClassifyAlignedOverlap(aligned, false,
 				spottergeometry.DefaultOverlapConfig()).InOverlap,
+			Near:   distanceSquared <= radarNearRangeM*radarNearRangeM,
+			Lapped: radarCarLappedByPlayer(player, opponent, final.Observed.TrackLength),
 		})
 	}
 	sort.Slice(cars, func(i, j int) bool {
@@ -71,4 +77,22 @@ func BuildRadar(final derive.FinalState) RadarViewV2 {
 		cars = cars[:radarMaxCars]
 	}
 	return RadarViewV2{Mode: ModeXYZ, Cars: cars}
+}
+
+// A completed-lap counter changes at the timing line. Compare full race
+// progress so that crossing the line alone cannot mark a nearby car as lapped.
+func radarCarLappedByPlayer(player, opponent core.VehicleState, length schema.Field[standings.LapDistance]) bool {
+	track, trackOK := freshFinite(length)
+	playerDistance, playerDistanceOK := freshFinite(player.LapDistance)
+	opponentDistance, opponentDistanceOK := freshFinite(opponent.LapDistance)
+	playerLaps, playerLapsOK := player.CompletedLaps.Value()
+	opponentLaps, opponentLapsOK := opponent.CompletedLaps.Value()
+	if !trackOK || track <= 0 || !playerDistanceOK || !opponentDistanceOK ||
+		playerDistance < 0 || opponentDistance < 0 || playerDistance >= track || opponentDistance >= track ||
+		!playerLapsOK || !opponentLapsOK || playerLaps < 0 || opponentLaps < 0 ||
+		fieldQuality(player.CompletedLaps) != QualityFresh || fieldQuality(opponent.CompletedLaps) != QualityFresh {
+		return false
+	}
+	progress := float64(playerLaps-opponentLaps) + (playerDistance-opponentDistance)/track
+	return progress >= 1
 }

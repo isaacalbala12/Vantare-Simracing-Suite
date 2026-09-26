@@ -4,8 +4,8 @@ import { buildRadarViewModelV2 } from "./radar-view-model-v2";
 
 const live: OverlaySourceStatusV2 = { state: "live" };
 const frame = { radar: { mode: "xyz", cars: [
-  { id: "left", x: 5, z: 0, overlap: true },
-  { id: "right", x: -10, z: -5, overlap: false },
+  { id: "left", x: 5, z: 0, overlap: true, near: true, lapped: false },
+  { id: "right", x: -10, z: -5, overlap: false, near: false, lapped: true },
 ] } } as OverlayFrameV2;
 
 describe("radar view model", () => {

@@ -722,6 +722,9 @@
 .vf-radar-cross { fill: none; stroke: rgb(255 255 255 / 9%); stroke-width: 1; }
 .vf-radar-player { fill: #f5f5f5; stroke: rgb(12 14 17 / 90%); stroke-width: 2; }
 .vf-radar-car { fill: #76b7da; stroke: rgb(12 14 17 / 90%); stroke-width: 2; }
-.vf-radar-car[data-overlap="true"] { fill: #f09a52; }
+.vf-radar-car[data-lapped="true"] { fill: #35688f; }
+.vf-radar-car[data-near="true"] { fill: #f1c16c; }
+.vf-radar-car[data-lapped="true"][data-near="true"] { fill: #35688f; stroke: #f1c16c; stroke-width: 3; }
+.vf-radar-car[data-overlap="true"] { fill: #f09a52; stroke: rgb(12 14 17 / 90%); stroke-width: 2; }
 .vf-radar-side { fill: none; stroke: #f09a52; stroke-width: 5; stroke-linecap: round; }
 .vf-radar-unavailable { display: block; padding: 8px; color: #d5d5d8; font-size: 11px; text-align: center; }

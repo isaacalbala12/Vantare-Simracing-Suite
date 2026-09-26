@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-25T17:08:52Z",
+  "generatedAt": "2026-09-25T22:33:44Z",
   "digest": {
-    "lastCommit": "f0ccfbf203eb1463766e3ca5e7208ccb2bf38453"
+    "lastCommit": "d09829c41ea2dabfdcb47182eb6d922e69232e54"
   },
   "phases": [
     {
@@ -2107,10 +2107,10 @@
         "it": "Radar di prossimità"
       },
       "body": {
-        "es": "El radar Eficiencia dibuja hasta 16 coches a 30 metros alrededor del jugador con posiciones espaciales frescas de LMU, orientadas según su coche. Destaca los coches en paralelo mediante el criterio geométrico del Spotter, se oculta cuando faltan datos fiables y usa un widget transparente compartido entre Studio, Desktop, OBS y Workshop. La demostración de Workshop usa posiciones de ejemplo. La comprobación física en una sesión LMU activa queda pendiente.",
-        "en": "The Efficiency radar draws up to 16 cars within 30 metres of the player from fresh LMU spatial positions, aligned to the player's car. It highlights overlapping cars using Spotter geometry, hides when reliable data is unavailable, and shares one transparent widget across Studio, Desktop, OBS and Workshop. The Workshop preview uses example positions. Physical validation in a live LMU session remains pending.",
-        "pt": "O radar Eficiência mostra até 16 carros a 30 metros do jogador com posições espaciais recentes do LMU, alinhadas com o carro do jogador. Destaca carros lado a lado com a geometria do Spotter, oculta-se quando faltam dados fiáveis e partilha um widget transparente entre Studio, Desktop, OBS e Workshop. A pré-visualização do Workshop usa posições de exemplo. A validação física numa sessão LMU ativa permanece pendente.",
-        "it": "Il radar Efficienza mostra fino a 16 auto entro 30 metri dal giocatore usando posizioni spaziali recenti di LMU, allineate alla sua auto. Evidenzia le auto affiancate con la geometria dello Spotter, si nasconde quando mancano dati affidabili e condivide un widget trasparente tra Studio, Desktop, OBS e Workshop. L'anteprima Workshop usa posizioni di esempio. La verifica fisica in una sessione LMU attiva resta in sospeso."
+        "es": "El radar Eficiencia dibuja hasta 16 coches a 30 metros alrededor del jugador con posiciones espaciales frescas de LMU, orientadas según su coche. Cambia a ámbar a 10 metros, muestra en azul oscuro los coches doblados por el jugador cuando el progreso de vuelta es fiable y prioriza el aviso de solapamiento del Spotter. Se oculta cuando faltan posiciones fiables y usa un widget transparente compartido entre Studio, Desktop, OBS y Workshop. La demostración animada de Workshop usa posiciones de ejemplo. La comprobación física en una sesión LMU activa queda pendiente.",
+        "en": "The Efficiency radar draws up to 16 cars within 30 metres of the player from fresh LMU spatial positions, aligned to the player's car. Cars turn amber within 10 metres; cars a full lap behind the player appear dark blue when lap progress is reliable, while Spotter overlap warnings take priority. It hides when reliable positions are unavailable and shares one transparent widget across Studio, Desktop, OBS and Workshop. The animated Workshop preview uses example positions. Physical validation in a live LMU session remains pending.",
+        "pt": "O radar Eficiência mostra até 16 carros a 30 metros do jogador com posições espaciais recentes do LMU, alinhadas com o carro do jogador. Os carros ficam âmbar a menos de 10 metros; os carros uma volta atrás do jogador aparecem em azul escuro quando o progresso de volta é fiável, com prioridade para o aviso de sobreposição do Spotter. Oculta-se quando faltam posições fiáveis e partilha um widget transparente entre Studio, Desktop, OBS e Workshop. A pré-visualização animada do Workshop usa posições de exemplo. A validação física numa sessão LMU ativa permanece pendente.",
+        "it": "Il radar Efficienza mostra fino a 16 auto entro 30 metri dal giocatore usando posizioni spaziali recenti di LMU, allineate alla sua auto. Le auto diventano ambra entro 10 metri; quelle con un giro completo di ritardo sul giocatore appaiono blu scuro quando il progresso del giro è affidabile, con priorità all'avviso di sovrapposizione dello Spotter. Si nasconde quando mancano posizioni affidabili e condivide un widget trasparente tra Studio, Desktop, OBS e Workshop. L'anteprima animata del Workshop usa posizioni di esempio. La verifica fisica in una sessione LMU attiva resta in sospeso."
       },
       "label": {
         "es": "ISA-1388",
@@ -2221,6 +2221,16 @@
           "kind": "change",
           "scope": "",
           "text": "ISA-1385 · Car Damage Numbers Eficiencia y telemetría LMU"
+        },
+        {
+          "kind": "docs",
+          "scope": "hub",
+          "text": "Registrar merge de la cabecera Orbit"
+        },
+        {
+          "kind": "change",
+          "scope": "",
+          "text": "ISA-1390 · Cabecera Orbit: versión sin punto verde"
         }
       ]
     },

@@ -58,8 +58,9 @@ export function StrategyRecordedWorkflow({ eventId, repositoryVersion, repositor
   const [hasStarted, setHasStarted] = useState(Boolean(initial));
   const discoverLatest = useRef(flow.sessions.discover);
   useEffect(() => { discoverLatest.current = flow.sessions.discover; });
-  // A deferred first read survives StrictMode's setup/cleanup replay.
-  useEffect(() => { if (initial) return; const timer = globalThis.setTimeout(() => { void discoverLatest.current(); }, 0); return () => globalThis.clearTimeout(timer); }, [initial]);
+  // A deferred first read survives StrictMode's setup/cleanup replay. A saved
+  // draft starts in the editor, so its first read happens when the menu opens.
+  useEffect(() => { if (!menuOpen || flow.sessions.candidates !== null) return; const timer = globalThis.setTimeout(() => { void discoverLatest.current(); }, 0); return () => globalThis.clearTimeout(timer); }, [menuOpen, flow.sessions.candidates]);
   const [exitOpen, setExitOpen] = useState(false);
   const [exitAction, setExitAction] = useState<() => void>(() => onExit);
   const discover = () => { setLibraryOpen(true); void flow.sessions.discover(); };

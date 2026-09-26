@@ -1,5 +1,17 @@
 # Handoff vivo — Strategy Planner
 
+## T22 · menú de origen tras reabrir borrador (2026-09-26)
+
+El harness mock reprodujo «Buscando sesiones…» indefinido al cambiar origen
+desde un borrador reabierto: `discover` no se invocaba. La primera apertura del
+menú ahora inicia la búsqueda. Test de regresión rojo antes del arreglo;
+después 18/18 focales, frontend 493 archivos/4326 PASS (2 omitidos),
+typecheck, lint y build PASS. El navegador mostró la sesión lista y permitió
+adoptarla. La ventana 65–120 min también persistió al guardar y reabrir en
+mock. [Evidencia](../../strategy-planner/evidence/isa-1393/candidate-2026-09-26.md).
+E01–E08 Wails con DuckDB real siguen pendientes; sin push, PR, CI, integración,
+promoción ni release.
+
 ## T22 · build localdev corregida (2026-09-26)
 
 Se detectó que la compilación manual anterior llevaba canal `localdev` pero

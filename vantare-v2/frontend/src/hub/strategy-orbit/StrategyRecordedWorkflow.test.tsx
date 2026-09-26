@@ -5,9 +5,11 @@ import type { AnalysisClient, AnalysisSaveRequest } from "../../strategy/analysi
 import { parseAnalysisBase, parseAnalysisCandidates, parseAnalysisOpenedSession, parseAnalysisPage, parseCorrectionStoreResult } from "../../strategy/analysis-contract";
 import type { StrategyApplicationClient, StrategyApplicationCommandV1 } from "../../strategy/strategy-application-client";
 import type { RecordedDraftPayload } from "./strategy-recorded-payload";
+import { RECORDED_DRAFT_VERSION } from "./strategy-recorded-payload";
+import type { StoredRecordedDraft } from "./strategy-recorded-persistence";
 import { openRecordedSession, type RecordedSession } from "./strategy-recorded-session";
 import { StrategyRecordedWorkflow } from "./StrategyRecordedWorkflow";
-import type { RecordedCombination } from "./strategy-recorded-wizard";
+import { createRecordedWizardDraft, type RecordedCombination } from "./strategy-recorded-wizard";
 import { getHubSuspendBlockerReasons } from "../hub-suspend-guard";
 
 vi.mock("./strategy-recorded-session", () => ({ openRecordedSession: vi.fn() }));
@@ -28,6 +30,23 @@ function setup(version: number | undefined = 7, strict = false, catalog: Recorde
 }
 it("discovers recent candidates after StrictMode replays the mount effect", async () => {
   const { discover } = setup(7, true);
+  expect(await screen.findByRole("button", { name: /strategy.entry.useSession/ })).toBeTruthy();
+  expect(discover).toHaveBeenCalledOnce();
+});
+it("discovers recent candidates when changing the origin of a reopened draft", async () => {
+  const stored: StoredRecordedDraft = { repositoryVersion: 7, document: {
+    contractVersion: "strategy.v1", draftId: "recorded-draft:event", planId: "recorded-plan:event", variantId: "recorded-main",
+    name: "Saved race", mode: "manual", capabilities: ["manual_inputs"], provenance: { kind: "manual" },
+    confidence: { level: "unknown" }, updatedAt: "2026-09-15T12:00:00Z",
+    payload: { contractVersion: RECORDED_DRAFT_VERSION, eventId: "event", draft: createRecordedWizardDraft() },
+  } };
+  const discover = vi.fn().mockResolvedValue([candidate]);
+  const application = { execute: vi.fn(), cancel: vi.fn(), dispose: vi.fn() } as unknown as StrategyApplicationClient<RecordedDraftPayload>;
+  render(<StrategyRecordedWorkflow eventId="event" initial={stored} repositoryVersion={7} catalog={[]} catalogState="available" calendar={null}
+    application={application} analysis={{ discover, close: vi.fn() } as unknown as AnalysisClient} onExit={vi.fn()} onCleanupError={vi.fn()} t={key => key} />);
+  expect(discover).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "strategy.workspace.preparation" }));
+  fireEvent.click(screen.getByRole("button", { name: "strategy.entry.changeSource" }));
   expect(await screen.findByRole("button", { name: /strategy.entry.useSession/ })).toBeTruthy();
   expect(discover).toHaveBeenCalledOnce();
 });

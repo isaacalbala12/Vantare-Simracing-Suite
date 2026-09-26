@@ -55,3 +55,19 @@ seguían intactos. `go test ./...` pasó después de simplificar el test.
 Esto acredita transporte y aplicación Go de la regla sobre magnitudes LMU
 reales, no la precisión empírica del evento supuesto ni el recorrido Wails de
 la UI que edita esos minutos. E01–E08 y aceptación T22 permanecen abiertos.
+
+## Regresión del menú al reabrir un borrador
+
+En el harness de navegador con runtime mock, al reabrir un borrador y pulsar
+«Cambiar origen» el menú mostraba «Buscando sesiones…» sin iniciar `discover`.
+La lectura automática anterior sólo se programaba cuando no había borrador
+inicial. El test reprodujo la ausencia de sesión; ahora la primera apertura del
+menú inicia la búsqueda aunque el borrador haya sido reabierto. La prueba focal
+pasó 18/18; suite frontend 493 archivos y 4326 tests PASS (2 omitidos),
+typecheck, lint y build PASS. Tras recargar el harness, reabrir el borrador,
+volver a preparación y cambiar origen, apareció la sesión mock disponible y
+se pudo adoptarla. También se verificó en el harness que la ventana de piloto
+65–120 minutos permanecía tras guardar, salir y reabrir el borrador.
+
+Esto sólo valida navegación y persistencia del mock. La disponibilidad real de
+sesiones, el guardado y la adopción en Wails con DuckDB permanecen en E01–E08.

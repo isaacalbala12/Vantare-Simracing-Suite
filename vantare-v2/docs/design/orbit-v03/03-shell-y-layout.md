@@ -1,5 +1,11 @@
 # 03 · Shell y layout
 
+> ISA-1399 (prueba visual, 2026-09-27): el rail productivo pasa a 64 px con
+> botones de 44 px y selección sobre superficie neutra. La columna conserva
+> 296 px, pero usa rótulos en caja normal y filas contenidas. Los tamaños y
+> colores detallados debajo describen la referencia original de Orbit v0.3;
+> para esta prueba prevalecen los tokens y estilos productivos.
+
 ## 3.1 Estructura
 
 ```

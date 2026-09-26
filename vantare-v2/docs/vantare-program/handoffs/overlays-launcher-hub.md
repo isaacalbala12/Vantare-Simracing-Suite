@@ -1,9 +1,37 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## 2026-09-26 · VAN-769 / GitHub #1381 · Integración inicial autorizada
+
+Isaac revisó la entrega de temas y fondos de Studio en Wails y autorizó expresamente integrar únicamente la [PR #1384](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1384) en `nightly`. La rama se reconcilió con `origin/nightly@d09829c4` sin conflictos de código. El candidato inicial `9ea9a341` pasó sus gates bloqueantes, pero el validador de roadmap en modo auditoría señaló un orden distinto de entregas porque el digest se había generado desde el artefacto de la rama. Se regeneró `roadmap.json` partiendo del JSON protegido de `d09829c4`; la comparación estricta del contrato y las pruebas del generador pasan. La aceptación incluye la tarjeta Próxima serie con la paleta activa; los widgets mantienen sus diseños. CI debe repetirse sobre la cabeza con el digest corregido antes del merge. Este registro no afirma integración antes de comprobar el SHA remoto y los gates del merge. La comprobación física en LMU/OBS sigue siendo trabajo de Nightly. La autorización no comprende `testers`, `master` ni una release.
+
 > **Seguimiento de widgets en [Asana](https://app.asana.com/0/1218742976551956/list), por instrucción de Isaac.**
 > GitHub Issues conserva el puente técnico y su estado de entrega.
 > Este handoff conserva evidencia técnica fechada; sus estados antiguos no
 > sustituyen el estado vivo ni autorizan nuevas tareas.
+
+## VAN-769 / GitHub #1381 — Temas de interfaz y fondos de Studio (2026-09-25)
+
+[VAN-769](https://app.notion.com/p/3e6e51695c6581abbcdff05e070a4a69)
+es la tarea viva del proyecto Hub / Orbit UI; [PR draft #1384](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1384)
+lleva la rama aislada `vantareapp/isa-1381-temas-paleta-ui` a revisión.
+Siete paletas con variantes claras/oscuras, modo Sistema, contraste, opacidad
+y fuentes se aplican al Hub y Studio sin modificar el diseño de los widgets.
+Studio ofrece `Tema actual`, catorce fondos fijos agrupados por paleta,
+Rejilla, Degradado, Negro y biblioteca propia; recuerda la selección manual.
+La tarjeta Próxima serie sigue los tokens de la paleta. En Wails real se
+comprobaron tarjeta Grises clara/oscura, escenario Grises claro/oscuro,
+selección fija Rosa/Oscuro y persistencia al volver a Studio; los widgets
+conservaron sus colores. Typecheck, build, lint, i18n, pruebas focales y
+presupuesto de frames pasaron. La suite completa tuvo 4.116 correctas,
+dos omitidas y cuatro fallos locales (tres timeouts de geometría bajo carga
+y una expectativa antigua corregida); las cuatro suites pasaron aisladas.
+En `503483ca` el quality ratchet detectó 13 hallazgos jscpd al editar una
+hoja con clones históricos; se movió la corrección de la tarjeta a la hoja
+de paletas y se unificó la regla del escenario. La comprobación local del
+ratchet arroja cero hallazgos nuevos. El gate frontend de Windows señaló
+tres traducciones huérfanas del antiguo selector y se retiraron; la auditoría
+i18n y 26 pruebas focales pasan tras el ajuste. CI del nuevo candidato
+pendiente. Sin merge, promoción ni release.
 
 
 
@@ -3660,3 +3688,5 @@ CI de `0a8d2f74` sobre `98c245bf`: calidad, promoción, seguridad y gates bloque
 El 2026-09-26, a petición de Isaac, la revisión adicional usó exclusivamente el navegador integrado de Codex con Vite y `VITE_RUNTIME_MOCK=mock` en `127.0.0.1:5173`, sin ocupar el escritorio. Se vieron Launcher, catálogo, perfiles, editor avanzado y las cinco políticas con etiquetas accesibles. El selector de reintentos apareció por encima del cajón y permitió elegir «Todos los pasos» con límite adicional; al crear un perfil se pudo añadir un paso y seleccionar OBS Studio. No hubo errores de consola. El mock solo responde a `launcher:snapshot:get`: Guardar/Lanzar no persistieron ni ejecutaron procesos, de modo que esta sesión no prueba backend, registro Run, hotkeys ni instalador. La shell conserva intencionalmente un suelo de 1180 px y scroll interno en una vista de 390 px; no se considera prueba móvil de aceptación del Launcher Windows. Se cerraron el tab de QA y el servidor. `nightly` avanzó por documentación a `d09829c4`, se incorporó con roadmap regenerado y CI de `3336422c` PASS en todos los gates obligatorios; PR draft limpia y combinable. Sigue NO-GO hasta las pruebas físicas acordadas.
 
 Isaac ofreció el PC tras reiniciar Windows. El arranque del sistema fue el 2026-09-26 a las 12:26:30; Vantare no estaba ejecutándose. Se encontró una entrada `HKCU\...\Run` llamada `Vantare.test-profile` que apuntaba a un `vantare.test.exe` temporal de `go-build` ya inexistente. Se verificó esa condición y se retiró solo esa entrada; quedaron cero entradas `Vantare.*`. Por tanto, este arranque no certifica el inicio automático de un perfil real. Desde el HEAD `d2900a12` se volvió a generar localmente el paquete oficial 0.1.0.7: ejecutable, ZIP, instalador y SHA256, con verificación de versión y runtime PASS; `git status` limpio tras el build. Ejecutable e instalador muestran `NotSigned`. La PR del mismo HEAD pasó todos los gates obligatorios. La prueba de instalación/actualización y la ejecución del candidato esperan la confirmación puntual exigida por computer-use; todavía no se han realizado. Estado comercial NO-GO, sin merge ni release.
+
+`nightly` avanzó a `5b6a0781` con ISA-1381 (apariencia), incluido su handoff y plan. Se incorporó a la rama de ISA-1368; el único conflicto fue `roadmap.json` generado, regenerado desde el plan combinado y `origin/nightly` con `--check` PASS. El frontend compiló y pasó el chequeo de tipos, las 129 pruebas focales del Launcher y `go test ./...` PASS en el árbol combinado. Este nuevo merge requiere sus propios gates de CI y un nuevo paquete para cualquier prueba física del HEAD final. La instalación previa conserva otro hash y mostró siete apps detectadas y dos perfiles oficiales, sin editar perfiles.

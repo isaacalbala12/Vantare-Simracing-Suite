@@ -629,6 +629,89 @@ Telemetría, Engineer/audio/voz, Strategy, Calendario, Hotkeys, Privacidad,
 Actualizaciones, Diagnóstico y Acerca de. Scope global/perfil explícito;
 import/export sin secretos; reset no borra datos sin selección.
 
+- ISA-1381 implementa en rama aislada paletas Vantare, Océano e Iris para toda
+  la interfaz, incluido el chrome de Overlay Studio, con modo claro, oscuro y
+  sistema independiente. Se guardan en claves locales nuevas; `vantare.theme`
+  y los diseños de widgets permanecen separados. La referencia visual son las
+  tres capturas de T3 Code aportadas el 2026-09-24. La revisión visual en
+  navegador mock comprobó Ajustes y Studio y los seis pares de tokens; 484
+  archivos de tests frontend y 4 presupuestos de frames pasaron. El PR draft
+  #1384 apunta a `nightly` desde `vantareapp/isa-1381-temas-paleta-ui`. Los
+  checks de calidad, ruta y gates, incluido el build Wails de CI, pasaron para
+  `dea1d926`. El 2026-09-25 se compiló la app Wails de producción desde ese
+  commit con el `.env.local` autorizado del checkout principal, sin copiarlo ni
+  mostrar sus valores; se retiró el archivo Go temporal de configuración tras
+  la build. En la ventana Wails real (1280×800) se comprobaron Ajustes en
+  Océano/Claro e Iris/Oscuro, y Overlay Studio con ambas combinaciones: el
+  chrome cambia y el diseño de los widgets se conserva. La vista del canvas
+  usó el modo Mock; esto no valida telemetría LMU, login ni licencia. Se detectó
+  un solapamiento de la cabecera de Studio con el selector de perfil, registrado
+  por separado como #1387. No hay promoción ni release.
+
+- El 2026-09-25 Isaac amplió #1381 con dos variantes visibles por paleta,
+  contraste, opacidad y tipografías, según nuevas capturas de T3 Code. La rama
+  añade la sección propia Ajustes → Apariencia y conserva Zoom, idioma y
+  densidad en Aplicación. El contraste ajusta texto secundario y bordes de
+  Command Orbit; la opacidad ajusta paneles y cabecera; fuentes de interfaz y
+  cifras tienen vista previa. Las preferencias nuevas son locales y no tocan
+  `vantare.theme` ni los renderizadores de widgets. Suite frontend: 484 archivos,
+  4.101 tests correctos, 2 omitidos y 4 presupuestos de frames correctos;
+  typecheck, build y lint correctos. En Wails de producción a 1280×800 se
+  revisaron Apariencia, Iris/Oscuro y los deslizadores a 120 %/100 %. El modo
+  Iris/Oscuro persistió tras cerrar y reabrir el mismo ejecutable Wails. La
+  compilación usó `.env.local` autorizado sin exponer valores. El gate CI de
+  `0f939835` falló en `TestPlayerScriptMediaEvents/ended` por timeout de Go,
+  fuera de los archivos modificados aquí. Para `1942ee1b`, los checks remotos
+  de calidad, ruta, gates, pruebas frontend y build Wails pasaron; la prueba
+  Go anterior también pasó en esa ejecución. El PR #1384 continúa draft y sin
+  promoción.
+
+- El 2026-09-25 Isaac pidió completar las paletas con Rosa, Bosque y Ámbar y
+  añadir Grises en variante clara y oscura. #1381 y el hito público se
+  ampliaron a siete paletas y catorce variantes; el selector se reparte en
+  filas para conservar su legibilidad a 1280×800. Grises usa tokens neutros
+  también para acentos y estados de la interfaz. Las vistas previas de otros
+  temas siguen mostrando sus colores para permitir elegirlos. En la app Wails
+  de producción se revisaron Grises/Claro, Grises/Oscuro, Rosa/Claro,
+  Bosque/Oscuro y Ámbar/Oscuro. En Overlay Studio con Grises/Oscuro, el chrome
+  es neutro y las vistas previas de widgets conservan sus colores originales.
+  Los tests focales (45), typecheck, build, lint, auditoría i18n y los cuatro
+  presupuestos de frames pasaron. En la suite completa pasaron 4.105 pruebas,
+  dos quedaron omitidas y una prueba visual de Chromium agotó su límite de
+  20 s mientras corrían build y lint; la misma prueba pasó aislada en 8,9 s.
+  La app se compiló usando el `.env.local` autorizado sin exponer sus valores.
+  En `3bcd253d` pasaron los checks remotos de ruta, quality ratchet y gates
+  bloqueantes, incluidos Go, frontend y build Wails de Windows (runs
+  `36162293379` y `36162293431`). El PR #1384 sigue draft, sin merge,
+  promoción ni release. La rama de issue se reconcilió después con
+  `nightly@f0ccfbf2` al avanzar la base; `plan.md` conservó los hitos de
+  ambas ramas y `roadmap.json` se regeneró desde esa base.
+
+- [VAN-769](https://app.notion.com/p/3e6e51695c6581abbcdff05e070a4a69)
+  gobierna el alcance y seguimiento vivo de #1381. El 2026-09-25 Isaac
+  amplió #1381 a los fondos del escenario de Overlay
+  Studio y pidió corregir la tarjeta Próxima serie de Inicio. El fondo
+  predeterminado `Tema actual` toma los tokens de la paleta y del modo
+  claro/oscuro; el selector de la toolbar agrupa las catorce variantes fijas
+  por paleta y conserva Rejilla, Degradado, Negro y los fondos propios. La
+  elección manual se guarda en este equipo y persiste al volver a abrir
+  Studio; si una imagen propia guardada ya no existe, vuelve a Tema actual.
+  Solo cambia el escenario, no el renderizado de los widgets. El subagente
+  corrigió la tarjeta Próxima serie mediante tokens de interfaz; el
+  orquestador revisó el diff y la comprobó en Wails con Grises/Claro y
+  Grises/Oscuro. También comprobó en Wails el lienzo de Grises/Claro y
+  Grises/Oscuro con widgets rojos intactos, los siete grupos del selector,
+  la selección fija Rosa/Oscuro y la persistencia de Vantare/Claro al salir
+  y volver a Studio. La compilación Wails usó el `.env.local` autorizado sin
+  exponer valores. Typecheck, build, lint, auditoría i18n, 52 pruebas focales
+  del Studio y cuatro presupuestos de frames pasaron. En la suite local
+  completa pasaron 4.116 pruebas y dos quedaron omitidas; tres pruebas de
+  geometría ajenas agotaron 20 s bajo carga paralela y la prueba de Canvas
+  todavía tenía la expectativa del fondo anterior. Tras corregir esa
+  expectativa, las cuatro suites afectadas pasaron aisladas con un solo
+  worker (25 pruebas). La rama sigue aislada y el PR #1384 sigue draft; no
+  hubo merge, promoción ni release.
+
 ISA-841 se implementó en la rama aislada
 `vantareapp/isa-841-zoom-global-interfaz` y se rebasó el 2026-08-28 sobre
 `nightly@d9909aef4b9f2de2b3e61ed79a3a0fd98a91b73c`; PR #847 es su única ruta de

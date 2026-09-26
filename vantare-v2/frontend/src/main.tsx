@@ -6,6 +6,7 @@ import vantareV5 from "./themes/vantare-v5.json";
 import vantareLite from "./themes/vantare-lite.json";
 import vantareOrbit from "./themes/vantare-orbit.json";
 import { initializeDensity } from "./lib/density";
+import { initializeUiAppearance } from "./lib/ui-appearance";
 import { AppBootFallback } from "./AppBootFallback";
 const OverlayWorkshopDevRoute = import.meta.env.DEV
   ? lazy(async () => {
@@ -31,6 +32,7 @@ applyTheme(
       : v5Theme,
 );
 initializeDensity();
+initializeUiAppearance();
 
 export function App() {
   const path = window.location.pathname;

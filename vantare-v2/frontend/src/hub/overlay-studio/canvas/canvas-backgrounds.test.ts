@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   CANVAS_BACKGROUNDS,
+  THEME_CANVAS_PALETTES,
+  canvasBackgroundLabel,
   resolveCanvasBackground,
   resolveStageBackground,
   safeAreaInsets,
@@ -11,7 +13,12 @@ import { wallpaperBackgroundId, type StudioWallpaper } from "./studio-wallpapers
 
 describe("CANVAS_BACKGROUNDS", () => {
   it("registers local css backgrounds without remote URLs", () => {
-    expect(CANVAS_BACKGROUNDS.map((entry) => entry.id)).toEqual(["grid", "gradient", "solid-black"]);
+    expect(CANVAS_BACKGROUNDS.map((entry) => entry.id)).toEqual([
+      "theme", "grid", "gradient", "solid-black",
+      ...THEME_CANVAS_PALETTES.flatMap((palette) => [
+        `theme-${palette}-light`, `theme-${palette}-dark`,
+      ]),
+    ]);
     for (const background of CANVAS_BACKGROUNDS) {
       expect(background.kind).toBe("css");
       expect(background.className.startsWith("osv3-bg-")).toBe(true);
@@ -20,6 +27,14 @@ describe("CANVAS_BACKGROUNDS", () => {
       // mostraba identificadores en crudo.
       expect(background.labelKey.startsWith("studio.v3.canvas.background.")).toBe(true);
     }
+  });
+
+  it("labels both variants of every palette", () => {
+    const t = (key: string) => key;
+    expect(canvasBackgroundLabel(resolveCanvasBackground("theme-rose-light"), t))
+      .toBe("settings.app.palette.rose · settings.app.scheme.light");
+    expect(canvasBackgroundLabel(resolveCanvasBackground("theme-mono-dark"), t))
+      .toBe("settings.app.palette.mono · settings.app.scheme.dark");
   });
 });
 
@@ -38,8 +53,8 @@ describe("safeAreaInsets", () => {
 });
 
 describe("resolveCanvasBackground", () => {
-  it("falls back to grid for unknown ids", () => {
-    expect(resolveCanvasBackground("unknown").id).toBe("grid");
+  it("falls back to the current theme for unknown ids", () => {
+    expect(resolveCanvasBackground("unknown").id).toBe("theme");
   });
 });
 
@@ -63,9 +78,9 @@ describe("resolveStageBackground", () => {
     expect(resolved.style?.backgroundImage).toBe(`url("${wallpaper.dataUrl}")`);
   });
 
-  it("falls back to the grid when the wallpaper is gone", () => {
+  it("falls back to the current theme when the wallpaper is gone", () => {
     const resolved = resolveStageBackground(wallpaperBackgroundId("deleted"), null);
-    expect(resolved.className).toBe("osv3-bg-grid");
+    expect(resolved.className).toBe("osv3-bg-theme");
     expect(resolved.style).toBeUndefined();
   });
 });

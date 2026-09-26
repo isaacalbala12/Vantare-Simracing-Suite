@@ -1,5 +1,15 @@
 # Handoff vivo — Strategy Planner
 
+## T22 · candidato con T07d/T07e (2026-09-26)
+
+La rama #1393 incorporó localmente #1395 como `0665876b` y #1396 como
+`144880e7`. El frontend build y `go test ./...` pasan sobre ese HEAD. La build
+localdev nueva `bin/vantare-localdev.exe` tiene 44.106.752 bytes y SHA-256
+`9FBDEA728D39097621E8708C0C4CA5A57EC7C56071EED1988FF30E0226FBC449`.
+No se abrió la app nativa: E01–E08, DuckDB real y aceptación T22 siguen
+pendientes. [Evidencia](../../strategy-planner/evidence/isa-1393/candidate-2026-09-26.md).
+Sin push, PR, CI, integración de canal, promoción ni release.
+
 ## ISA-1396 · editor temporal por piloto (2026-09-26)
 
 Sobre #1395, la rama #1396 conecta la ventana en segundos de carrera con la
@@ -17,11 +27,11 @@ La rama aislada #1395 añade indisponibilidad en segundos desde el inicio de
 carrera al mismo límite de piloto. Solve y replay rechazan solapamiento de
 conducción, cuentan formación y paradas, y conservan el límite por vueltas. La
 reproducción de tres vueltas con pilotos de 60/120 s selecciona rápido-lento-
-rápido usando las paradas; el horario legacy absoluto no se convierte. Falta
-editar y transportar este dato en la mesa v5, T22 Wails real y T19–T21. Sin
+rápido usando las paradas; el horario legacy absoluto no se convierte. #1396
+ya edita y transporta este dato; faltan T22 Wails real y T19–T21. Sin
 push, PR, CI, integración, promoción ni release.
 
-## T22 · Candidato local con #1239 y build actual (2026-09-26)
+## T22 · Candidato local con #1239 y build previa (2026-09-26)
 
 El candidato #1393 incorporó localmente #1239 como `c2881fe4`.
 `bin/vantare-localdev.exe` se regeneró desde ese HEAD: 46.385.152 bytes,

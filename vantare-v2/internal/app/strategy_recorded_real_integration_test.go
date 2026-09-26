@@ -19,6 +19,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/strategy/coldstart"
 	strategydocument "github.com/vantare/overlays/v2/internal/strategy/document"
 	"github.com/vantare/overlays/v2/internal/strategy/repository"
+	"github.com/vantare/overlays/v2/internal/strategy/solver"
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis"
 	"github.com/vantare/overlays/v2/internal/telemetryanalysis/strategyprojection"
 )
@@ -426,14 +427,15 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 	if pacePresent && pace.Presence == "valid" && exact.FuelConsumption.Presence == "valid" {
 		// Controlled event assumptions exercise the real projection-to-solver path;
 		// they are not claimed to be the rules of this recorded LMU race.
+		calculationInput := strategyapplication.OrbitCalculationInput{
+			Event:           strategyapplication.OrbitCalculationEvent{DurationMinutes: 60, TankLiters: 90, PitLossSeconds: 40},
+			Drivers:         []strategyapplication.OrbitCalculationDriver{{ID: "observed-driver", Dry: strategyapplication.OrbitCalculationPace{PaceSeconds: pace.MedianLapSeconds, FuelLitersPerLap: exact.FuelConsumption.MeanPerLap}}},
+			Variants:        []strategyapplication.OrbitCalculationVariant{{ID: "real-source-plan", Mode: "dry", Order: []string{"observed-driver"}, Overrides: map[int]strategyapplication.OrbitCalculationOverride{}}},
+			ActiveVariantID: "real-source-plan", PlanningInputs: inputs.PlanningInputs,
+		}
 		calculated, calculateErr := strategy.CalculateOrbit(ctx, strategyapplication.CalculateOrbitCommand{
 			CommandHeader: strategyapplication.CommandHeader{ProtocolVersion: strategyapplication.ProtocolVersionV1, CommandID: "real-derived-calculate", Operation: strategyapplication.OperationCalculateOrbit, ExpectedRepositoryVersion: 1},
-			Input: strategyapplication.OrbitCalculationInput{
-				Event:           strategyapplication.OrbitCalculationEvent{DurationMinutes: 60, TankLiters: 90, PitLossSeconds: 40},
-				Drivers:         []strategyapplication.OrbitCalculationDriver{{ID: "observed-driver", Dry: strategyapplication.OrbitCalculationPace{PaceSeconds: pace.MedianLapSeconds, FuelLitersPerLap: exact.FuelConsumption.MeanPerLap}}},
-				Variants:        []strategyapplication.OrbitCalculationVariant{{ID: "real-source-plan", Mode: "dry", Order: []string{"observed-driver"}, Overrides: map[int]strategyapplication.OrbitCalculationOverride{}}},
-				ActiveVariantID: "real-source-plan", PlanningInputs: inputs.PlanningInputs,
-			},
+			Input:         calculationInput,
 		})
 		if calculateErr != nil || calculated.OrbitCalculation == nil {
 			t.Fatalf("real-source CalculateOrbit: %v", calculateErr)
@@ -444,6 +446,17 @@ func TestRecordedStrategyRealDuckDB(t *testing.T) {
 			t.Fatalf("calculation did not use exact real reference: %+v", plan)
 		}
 		t.Logf("real-reference Go calculation: laps=%d stops=%d optimality=%s", plan.TotalLaps, plan.Stops, plan.Optimality)
+		calculationInput.Event.Rules = &solver.EventRules{DriverLimits: map[string]solver.DriverLimit{
+			"observed-driver": {UnavailableTime: []solver.UnavailableTimeWindow{{FromSeconds: 0, ToSeconds: 7200}}},
+		}}
+		_, unavailableErr := strategy.CalculateOrbit(ctx, strategyapplication.CalculateOrbitCommand{
+			CommandHeader: strategyapplication.CommandHeader{ProtocolVersion: strategyapplication.ProtocolVersionV1, CommandID: "real-derived-unavailable", Operation: strategyapplication.OperationCalculateOrbit, ExpectedRepositoryVersion: 1},
+			Input:         calculationInput,
+		})
+		if !errors.Is(unavailableErr, strategyapplication.ErrCalculationInfeasible) {
+			t.Fatalf("real-source temporal driver limit was not applied: %v", unavailableErr)
+		}
+		t.Log("real-reference Go calculation rejects a driver unavailable for the full assumed event")
 	}
 	if err := svc.CloseSession(opened.SessionID); err != nil {
 		t.Fatal(err)

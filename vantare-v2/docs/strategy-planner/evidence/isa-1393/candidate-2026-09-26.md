@@ -26,3 +26,28 @@ temporal: el resultado de los tests no certifica E01–E08, memoria de resistenc
 ni precisión empírica. Esas pruebas y la aceptación de Isaac siguen pendientes.
 
 Sin push, PR, CI remota, integración, promoción ni release.
+
+## Cálculo con revisión LMU real y límite temporal
+
+El banco Go opt-in `TestRecordedStrategyRealDuckDB` abrió una copia autorizada
+de S266 Algarve (SHA-256
+`6b912640e5b68da087fbe86ce70401101edbdc89cb89cb93df30c9ef396d9362`)
+y una segunda fuente Monza para la verificación de identidad. No se usaron
+las carreras reservadas por #1030. El parser informó 71 eventos, 70 resets,
+66 vueltas completas y 70 fronteras válidas; la derivación paginada igualó
+la materializada y Strategy mantuvo la referencia exacta después de guardar
+otra revisión. La fuente proyectó ritmo seco **95,190 s** y Fuel **2,135
+L/vuelta**, ambos válidos; VE en LMP2 quedó no aplicable.
+
+Con reglas **supuestas para el test**, el mismo camino `CalculateOrbit`
+produjo 38 vueltas, cero paradas y `optimality=proven` dentro del modelo.
+Al repetirlo con el único piloto indisponible desde 0 hasta 7200 segundos,
+rechazó el cálculo como inviable. La segunda petición reutiliza exactamente
+la referencia real, los recursos y el evento anterior; sólo cambia la regla
+temporal. Tras ello pasó cierre, reapertura, restauración de revisiones e
+identidad/familias. El test terminó PASS en 221,88 s; ambos hashes originales
+seguían intactos. `go test ./...` pasó después de simplificar el test.
+
+Esto acredita transporte y aplicación Go de la regla sobre magnitudes LMU
+reales, no la precisión empírica del evento supuesto ni el recorrido Wails de
+la UI que edita esos minutos. E01–E08 y aceptación T22 permanecen abiertos.

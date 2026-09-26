@@ -1,5 +1,16 @@
 # Handoff vivo — Strategy Planner
 
+## T22 · regla temporal sobre revisión LMU real (2026-09-26)
+
+El banco Go opt-in sobre S266 Algarve completó preparación, proyección,
+revisión exacta, cálculo y reapertura. Para el evento supuesto de 60 minutos
+dio 38 vueltas/0 paradas; con el único piloto indisponible [0,7200) segundos,
+el mismo cálculo rechazó la variante como inviable. Ritmo 95,190 s, Fuel
+2,135 L/vuelta y hashes originales intactos. Test real 221,88 s y `go test
+./...` PASS. [Evidencia](../../strategy-planner/evidence/isa-1393/candidate-2026-09-26.md).
+No demuestra precisión empírica de esas reglas ni E01–E08 en Wails. Sin app
+nativa, push, PR, CI remota, integración de canal, promoción ni release.
+
 ## ISA-1375 · seis perfiles comparables de proyección (2026-09-26)
 
 S266 Algarve se proyectó tres veces por ruta desde el mismo binario de test

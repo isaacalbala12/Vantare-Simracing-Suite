@@ -24,9 +24,9 @@ en la mesa recorded. No hay cambio de canal.
 - `scripts/build-local-development.ps1`: PASS con frontend en modo localdev y
   `go build -tags vantare_localdev`; `go version -m` confirma el tag embebido.
 
-El ejecutable localdev corregido, regenerado tras la corrección del menú,
+El ejecutable localdev corregido, regenerado tras ambas correcciones frontend,
 tiene **46.396.928 bytes**, SHA-256
-`6199B68C1418E808C653B7EC92AA59FF7A52FEF504AB7C1288BE8C685A8012F3`.
+`0F120FD365343AF2312EED21706665E6BD92DA06CBDC313CA9EE38AFB78684FA`.
 No se abrió. El preflight de build por sí solo no certifica E01–E08, memoria
 de resistencia ni precisión empírica; el banco Go posterior se detalla abajo.
 
@@ -94,5 +94,6 @@ propuesta de 69 vueltas/2 paradas, ajuste de límite del stint 1 a vuelta 24,
 recalcular, añadir 63,4 L en parada 1, recalcular y aceptar la revisión. Son
 salidas deterministas del harness, **no** resultados empíricos ni Wails real.
 Frontend: 493 archivos/4327 PASS, 2 omitidos; typecheck, lint y build PASS.
-El binario localdev de hash citado arriba antecede esta segunda corrección y
-debe regenerarse antes de usarlo para T22 nativo.
+La receta localdev se ejecutó de nuevo tras esta corrección: PASS,
+46.396.928 bytes y `-tags=vantare_localdev` confirmado. El SHA-256 de arriba
+corresponde al frontend corregido. Aún falta abrirlo para T22 nativo.

@@ -9,9 +9,10 @@ reiniciaba VE a desconocida. Se conserva la regla confirmada sólo con
 verde después; frontend 493 archivos/4327 PASS (2 omitidos), typecheck, lint y
 build PASS. El mock completó selección, cálculo, cambios de stint y parada,
 recálculo y aceptación. [Evidencia](../../strategy-planner/evidence/isa-1393/candidate-2026-09-26.md).
-La build localdev anterior ya no contiene esta corrección; regenerarla. E01–E08
-nativos, exactitud empírica y aceptación humana pendientes. Sin push, PR, CI,
-integración, promoción ni release.
+La build localdev se regeneró después: 46.396.928 bytes, SHA-256
+`0F120FD365343AF2312EED21706665E6BD92DA06CBDC313CA9EE38AFB78684FA`,
+tag `vantare_localdev` confirmado. E01–E08 nativos, exactitud empírica y
+aceptación humana pendientes. Sin push, PR, CI, integración, promoción ni release.
 
 ## T22 · menú de origen tras reabrir borrador (2026-09-26)
 

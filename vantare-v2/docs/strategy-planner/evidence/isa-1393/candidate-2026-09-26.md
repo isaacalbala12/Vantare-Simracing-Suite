@@ -183,3 +183,23 @@ el runtime Wails advirtió que el navegador sólo permite previews, rechazó una
 llamada nativa y el transporte de telemetría recibió HTTP 404. Se cerraron la
 pestaña y el servidor. Ese intento no valida ni invalida el flujo nativo de
 Strategy; no se usó como evidencia de E01–E08.
+
+## Banco real Hypercar sobre el HEAD actual
+
+En `f95894a2`, el test opt-in `TestRecordedStrategyRealDuckDB` pasó con la
+fuente de preparación S026 Monza (Hypercar) y S266 Algarve como objetivo,
+ambas sin WAL. El manifiesto del runtime autorizado conservaba SHA-256
+`700201f90266ae6b829372d9989408c6b0efd86725a50980d46fc05adfc24869`.
+El banco terminó PASS en 191,30 s: abrió 98 canales, igualó la derivación
+paginada y materializada, proyectó 53 vueltas utilizables con ritmo seco
+97,559 s, Fuel 2,876 L/vuelta y VE 3,328 puntos/vuelta aplicable a Hypercar.
+Con reglas de evento supuestas, Go produjo 37 vueltas, una parada y
+`optimality=proven` dentro de ese modelo, y rechazó un piloto indisponible
+durante todo el evento supuesto. Guardó, restauró y reabrió revisiones exactas
+de clasificación, identidad y uso por familia. Los originales conservaron
+SHA-256 `08a1e626…5538` y `6b912640…9362`; no se creó WAL.
+
+Este banco verifica la cadena Go real y que VE no desaparece para Hypercar;
+no valida la UI, licencia/distribución, E01–E08 Wails, precisión empírica ni
+un evento real de 37 vueltas. Una sola duración no es un benchmark de
+rendimiento ni prueba de memoria de resistencia. No se abrió LMU o la app.

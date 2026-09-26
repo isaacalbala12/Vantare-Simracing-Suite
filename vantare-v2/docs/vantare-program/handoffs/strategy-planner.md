@@ -1,5 +1,18 @@
 # Handoff vivo — Strategy Planner
 
+## T22 · banco Go real Hypercar sobre HEAD (2026-09-26)
+
+En `f95894a2`, S026 Monza Hypercar + S266 Algarve pasaron el banco opt-in
+`TestRecordedStrategyRealDuckDB` en 191,30 s, con hashes originales intactos
+y sin WAL. Proyección paginada/materializada idéntica, 53 vueltas utilizables,
+ritmo seco 97,559 s, Fuel 2,876 L/vuelta y VE válida 3,328 puntos/vuelta.
+Go calculó 37 vueltas y una parada bajo evento supuesto, y comprobó
+revisiones exactas guardadas/restauradas/reabiertas. Es prueba del reader y
+flujo Go, no de Wails, UI, precisión empírica ni memoria de resistencia.
+[Evidencia](../../strategy-planner/evidence/isa-1393/candidate-2026-09-26.md).
+E01–E08 nativos y T19–T21 continúan pendientes; sin app/LMU, push, PR, CI,
+integración, promoción ni release.
+
 ## T22 / E08 · cuota de cuatro sesiones en el controlador (2026-09-26)
 
 El intento de inspección por Vite en el navegador interno terminó en una

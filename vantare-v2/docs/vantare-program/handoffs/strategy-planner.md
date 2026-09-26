@@ -1,5 +1,16 @@
 # Handoff vivo — Strategy Planner
 
+## ISA-1396 · editor temporal por piloto (2026-09-26)
+
+Sobre #1395, la rama #1396 conecta la ventana en segundos de carrera con la
+mesa de pilotos recorded. La UI la presenta en minutos; el borrador, su
+reapertura y la entrada exacta del cálculo conservan segundos. El horario
+legacy por hora del día no se transforma. Tests focales 76/76, suite frontend
+493 archivos/4325 PASS y 2 omitidos, typecheck, lint, build, auditoría i18n
+y 44 tests de roadmap PASS. El navegador interno con harness mock mostró la
+adición de 65–120 minutos en el editor; no certifica guardado Wails ni solve
+real. Falta T22 Wails real y la aceptación humana. Sin push, PR, CI ni promoción.
+
 ## ISA-1395 · ventanas temporales por piloto en SolverV2 (2026-09-26)
 
 La rama aislada #1395 añade indisponibilidad en segundos desde el inicio de

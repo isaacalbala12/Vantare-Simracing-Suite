@@ -123,3 +123,25 @@ it("adds, edits and removes inclusive unavailable lap windows without losing oth
   fireEvent.click(availability.getByRole("button", { name: "strategy.journey.driver.unavailable.remove 1" }));
   expect(changed.mock.lastCall?.[0].rules).toEqual({ minPitStops: 1, driverLimits: { primary: { maxLaps: 40 }, relay: { minLaps: 5 } } });
 });
+
+it("edits elapsed-minute unavailability separately from lap limits", () => {
+  const changed = vi.fn();
+  const initial = {
+    step: "drivers", mode: "manual", name: "", race: { format: "timed", durationMin: 180 }, drivers, sessions: [], invalidatedSessionCount: 0,
+    rules: { driverLimits: { primary: { maxLaps: 40, unavailable: [{ fromLap: 4, toLap: 4 }] } } },
+  } satisfies RecordedWizardDraft;
+  render(<Editor initial={initial} changed={changed} />);
+  const primary = within(screen.getByRole("region", { name: "strategy.journey.driver.label 1" }));
+  const availability = within(primary.getByRole("group", { name: "strategy.journey.driver.unavailableTime" }));
+  fireEvent.change(availability.getByRole("spinbutton", { name: "strategy.journey.driver.unavailableTime.newFromMinutes" }), { target: { value: "65" } });
+  fireEvent.change(availability.getByRole("spinbutton", { name: "strategy.journey.driver.unavailableTime.newToMinutes" }), { target: { value: "120" } });
+  fireEvent.click(availability.getByRole("button", { name: "strategy.journey.driver.unavailableTime.add" }));
+  expect(changed.mock.lastCall?.[0].rules?.driverLimits?.primary).toEqual({ maxLaps: 40, unavailable: [{ fromLap: 4, toLap: 4 }], unavailableTime: [{ fromSeconds: 3900, toSeconds: 7200 }] });
+  const first = within(availability.getByRole("group", { name: "strategy.journey.driver.unavailableTime.window.label 1" }));
+  fireEvent.change(first.getByRole("spinbutton", { name: "strategy.journey.driver.unavailableTime.fromMinutes" }), { target: { value: "" } });
+  expect(changed.mock.lastCall?.[0].rules?.driverLimits?.primary.unavailableTime).toEqual([{ fromSeconds: 3900, toSeconds: 7200 }]);
+  fireEvent.change(first.getByRole("spinbutton", { name: "strategy.journey.driver.unavailableTime.fromMinutes" }), { target: { value: "70" } });
+  expect(changed.mock.lastCall?.[0].rules?.driverLimits?.primary.unavailableTime).toEqual([{ fromSeconds: 4200, toSeconds: 7200 }]);
+  fireEvent.click(availability.getByRole("button", { name: "strategy.journey.driver.unavailableTime.remove 1" }));
+  expect(changed.mock.lastCall?.[0].rules?.driverLimits?.primary).toEqual({ maxLaps: 40, unavailable: [{ fromLap: 4, toLap: 4 }] });
+});

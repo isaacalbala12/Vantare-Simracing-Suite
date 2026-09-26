@@ -36,7 +36,11 @@ it.each([
   { unavailable: [{ fromLap: 0, toLap: 2 }] },
   { unavailable: [{ fromLap: 2.5, toLap: 4 }] },
   { unavailable: [{ fromLap: 5, toLap: 4 }] },
-])("rejects invalid driver lap limits while editing drivers: %j", limits => {
+  { unavailableTime: [{ fromSeconds: -1, toSeconds: 60 }] },
+  { unavailableTime: [{ fromSeconds: 3900, toSeconds: 3900 }] },
+  { unavailableTime: [{ fromSeconds: 7200, toSeconds: 3900 }] },
+  { unavailableTime: [{ fromSeconds: Number.NaN, toSeconds: 7200 }] },
+])("rejects invalid driver availability limits while editing drivers: %j", limits => {
   expect(recordedWizardErrors({ ...empty, drivers: [{ id: "a", name: "Alex" }], rules: { driverLimits: { a: limits } } }, "drivers")).toContain("rules");
 });
 it.each<RecordedWizardDraft["drivers"]>([

@@ -25,7 +25,7 @@ describe("recordedCalculationEvent", () => {
       initialFuelLiters: 0,
       fuelReserveLiters: 0,
       virtualEnergy: { applicability: "applicable", capacityPercent: 80, initialPercent: 0, reservePercent: 0 },
-      rules: { minPitStops: 1, requiredWindows: [{ fromLap: 10, toLap: 20 }, { fromLap: 30, toLap: 40 }], mandatoryCompounds: ["hard", "wet"], allowedCompoundsByClimate: { dry: ["hard", "wet"], wet: ["soft"] }, driverLimits: { driver: { minLaps: 12, maxLaps: 40, maxContinuousTimeSeconds: 1800, maxTotalTimeSeconds: 5400, unavailable: [{ fromLap: 4, toLap: 4 }, { fromLap: 20, toLap: 25 }] } } },
+      rules: { minPitStops: 1, requiredWindows: [{ fromLap: 10, toLap: 20 }, { fromLap: 30, toLap: 40 }], mandatoryCompounds: ["hard", "wet"], allowedCompoundsByClimate: { dry: ["hard", "wet"], wet: ["soft"] }, driverLimits: { driver: { minLaps: 12, maxLaps: 40, maxContinuousTimeSeconds: 1800, maxTotalTimeSeconds: 5400, unavailable: [{ fromLap: 4, toLap: 4 }, { fromLap: 20, toLap: 25 }], unavailableTime: [{ fromSeconds: 3900, toSeconds: 7200 }] } } },
     });
 
     expect(recordedCalculationEvent(source)).toEqual({
@@ -36,7 +36,7 @@ describe("recordedCalculationEvent", () => {
       fuelReserveLiters: 0,
       virtualEnergy: { applicability: "applicable", capacityPercent: 80, initialPercent: 0, reservePercent: 0 },
       pitLossSeconds: 32,
-      rules: { minPitStops: 1, requiredWindows: [{ fromLap: 10, toLap: 20 }, { fromLap: 30, toLap: 40 }], mandatoryCompounds: ["hard", "wet"], allowedCompoundsByClimate: { dry: ["hard", "wet"], wet: ["soft"] }, driverLimits: { driver: { minLaps: 12, maxLaps: 40, maxContinuousTimeSeconds: 1800, maxTotalTimeSeconds: 5400, unavailable: [{ fromLap: 4, toLap: 4 }, { fromLap: 20, toLap: 25 }] } } },
+      rules: { minPitStops: 1, requiredWindows: [{ fromLap: 10, toLap: 20 }, { fromLap: 30, toLap: 40 }], mandatoryCompounds: ["hard", "wet"], allowedCompoundsByClimate: { dry: ["hard", "wet"], wet: ["soft"] }, driverLimits: { driver: { minLaps: 12, maxLaps: 40, maxContinuousTimeSeconds: 1800, maxTotalTimeSeconds: 5400, unavailable: [{ fromLap: 4, toLap: 4 }, { fromLap: 20, toLap: 25 }], unavailableTime: [{ fromSeconds: 3900, toSeconds: 7200 }] } } },
     });
   });
 

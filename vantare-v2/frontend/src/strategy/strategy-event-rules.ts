@@ -10,11 +10,13 @@ export type StrategyEventRules = {
     readonly maxContinuousTimeSeconds?: number;
     readonly maxTotalTimeSeconds?: number;
     readonly unavailable?: readonly StrategyLapWindow[];
+    readonly unavailableTime?: readonly StrategyTimeWindow[];
   }>>;
   readonly allowedCompoundsByClimate?: Readonly<Partial<Record<"dry" | "humid" | "wet", readonly StrategyRuleCompound[]>>>;
 };
 
 type StrategyLapWindow = { readonly fromLap: number; readonly toLap: number };
+type StrategyTimeWindow = { readonly fromSeconds: number; readonly toSeconds: number };
 type StrategyRuleCompound = "soft" | "medium" | "hard" | "wet";
 
 export function validateStrategyEventRules(value: unknown, field: string): asserts value is StrategyEventRules {
@@ -58,6 +60,15 @@ export function validateStrategyEventRules(value: unknown, field: string): asser
         if (seconds !== undefined && (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds <= 0)) invalid();
       }
       if (limit.unavailable !== undefined) windows(limit.unavailable, 100000);
+      if (limit.unavailableTime !== undefined) {
+        if (!Array.isArray(limit.unavailableTime)) invalid();
+        for (const candidate of limit.unavailableTime as unknown[]) {
+          const window = record(candidate);
+          const from = window.fromSeconds;
+          const to = window.toSeconds;
+          if (typeof from !== "number" || typeof to !== "number" || !Number.isFinite(from) || !Number.isFinite(to) || from < 0 || to <= from) invalid();
+        }
+      }
     }
   }
   if (rules.allowedCompoundsByClimate !== undefined) {

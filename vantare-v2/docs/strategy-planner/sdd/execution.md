@@ -2,6 +2,15 @@
 
 [Especificación](README.md) · [Aceptación](acceptance.md) · ISA-1091.
 
+## T07e · edición de tiempo de carrera, #1396, 2026-09-26
+
+La mesa recorded edita minutos transcurridos desde el inicio de carrera por
+piloto y los custodia como segundos en `driverLimits[id].unavailableTime`.
+Validación, guardado/reapertura y el input exacto del cálculo conservan el mismo
+intervalo semiabierto. El editor por vueltas permanece separado. El horario
+legacy absoluto no se convierte; su fecha/zona horaria siguen sin contrato.
+Esta conexión local no reemplaza el gate nativo T22.
+
 ## T07d · indisponibilidad temporal exacta, #1395, 2026-09-26
 
 SolverV2 acepta ventanas semiabiertas de segundos transcurridos desde el inicio

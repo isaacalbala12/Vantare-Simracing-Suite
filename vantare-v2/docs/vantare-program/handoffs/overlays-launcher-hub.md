@@ -15,7 +15,8 @@ El test del Hub falló antes del cambio por `UseApplicationMenu=false` y pasa
 después. `go test ./...` y la build Wails Windows con configuración local
 autorizada pasan. El ejecutable arrancó y la API nativa de Windows confirmó
 cuatro menús y sus opciones en la ventana real; no se han pulsado las acciones
-de menú en esta comprobación. Pendientes PR draft, CI y revisión de Isaac; sin
+de menú en esta comprobación. [PR draft #1402](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1402)
+abierta; pendientes CI y revisión de Isaac. Sin
 integración a `nightly`, `testers` o `master` ni release.
 
 ## 2026-09-26 · VAN-769 / GitHub #1381 · Integración inicial autorizada

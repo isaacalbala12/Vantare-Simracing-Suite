@@ -1,9 +1,37 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## 2026-09-26 · VAN-769 / GitHub #1381 · Integración inicial autorizada
+
+Isaac revisó la entrega de temas y fondos de Studio en Wails y autorizó expresamente integrar únicamente la [PR #1384](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1384) en `nightly`. La rama se reconcilió con `origin/nightly@d09829c4` sin conflictos de código. El candidato inicial `9ea9a341` pasó sus gates bloqueantes, pero el validador de roadmap en modo auditoría señaló un orden distinto de entregas porque el digest se había generado desde el artefacto de la rama. Se regeneró `roadmap.json` partiendo del JSON protegido de `d09829c4`; la comparación estricta del contrato y las pruebas del generador pasan. La aceptación incluye la tarjeta Próxima serie con la paleta activa; los widgets mantienen sus diseños. CI debe repetirse sobre la cabeza con el digest corregido antes del merge. Este registro no afirma integración antes de comprobar el SHA remoto y los gates del merge. La comprobación física en LMU/OBS sigue siendo trabajo de Nightly. La autorización no comprende `testers`, `master` ni una release.
+
 > **Seguimiento de widgets en [Asana](https://app.asana.com/0/1218742976551956/list), por instrucción de Isaac.**
 > GitHub Issues conserva el puente técnico y su estado de entrega.
 > Este handoff conserva evidencia técnica fechada; sus estados antiguos no
 > sustituyen el estado vivo ni autorizan nuevas tareas.
+
+## VAN-769 / GitHub #1381 — Temas de interfaz y fondos de Studio (2026-09-25)
+
+[VAN-769](https://app.notion.com/p/3e6e51695c6581abbcdff05e070a4a69)
+es la tarea viva del proyecto Hub / Orbit UI; [PR draft #1384](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1384)
+lleva la rama aislada `vantareapp/isa-1381-temas-paleta-ui` a revisión.
+Siete paletas con variantes claras/oscuras, modo Sistema, contraste, opacidad
+y fuentes se aplican al Hub y Studio sin modificar el diseño de los widgets.
+Studio ofrece `Tema actual`, catorce fondos fijos agrupados por paleta,
+Rejilla, Degradado, Negro y biblioteca propia; recuerda la selección manual.
+La tarjeta Próxima serie sigue los tokens de la paleta. En Wails real se
+comprobaron tarjeta Grises clara/oscura, escenario Grises claro/oscuro,
+selección fija Rosa/Oscuro y persistencia al volver a Studio; los widgets
+conservaron sus colores. Typecheck, build, lint, i18n, pruebas focales y
+presupuesto de frames pasaron. La suite completa tuvo 4.116 correctas,
+dos omitidas y cuatro fallos locales (tres timeouts de geometría bajo carga
+y una expectativa antigua corregida); las cuatro suites pasaron aisladas.
+En `503483ca` el quality ratchet detectó 13 hallazgos jscpd al editar una
+hoja con clones históricos; se movió la corrección de la tarjeta a la hoja
+de paletas y se unificó la regla del escenario. La comprobación local del
+ratchet arroja cero hallazgos nuevos. El gate frontend de Windows señaló
+tres traducciones huérfanas del antiguo selector y se retiraron; la auditoría
+i18n y 26 pruebas focales pasan tras el ajuste. CI del nuevo candidato
+pendiente. Sin merge, promoción ni release.
 
 
 

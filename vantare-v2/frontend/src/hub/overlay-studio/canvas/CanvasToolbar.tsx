@@ -9,7 +9,7 @@ import { useI18n } from "../../../i18n/I18nProvider";
 import { useHubSuspendBlocker } from "../../hub-suspend-guard";
 import type { StudioPreviewState } from "../state/studio-store";
 import type { StudioMonitor } from "../state/studio-monitor-client";
-import { CANVAS_BACKGROUNDS } from "./canvas-backgrounds";
+import { CANVAS_BACKGROUNDS, canvasBackgroundLabel } from "./canvas-backgrounds";
 import {
   findLayoutViewportPreset,
   getLayoutViewportPreset,
@@ -304,7 +304,7 @@ export function CanvasToolbar(props: CanvasToolbarProps): React.ReactElement {
               >
                 {CANVAS_BACKGROUNDS.map((background) => (
                   <option key={background.id} value={background.id}>
-                    {t(background.labelKey)}
+                    {canvasBackgroundLabel(background, t)}
                   </option>
                 ))}
               </select>

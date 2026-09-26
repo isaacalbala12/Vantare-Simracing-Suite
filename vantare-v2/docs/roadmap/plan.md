@@ -1359,6 +1359,19 @@ se conservan aqui como hitos cumplidos; los demas siguen pendientes.
 - cuerpo.it: Le Impostazioni consentono di ingrandire o ridurre tutta l'app in sei passaggi, ripristinare la dimensione predefinita e usare Ctrl +, Ctrl −, Ctrl 0 o Ctrl + rotellina; la preferenza resta memorizzata su questo dispositivo e convive con l'adattamento responsive della finestra.
 - etiqueta: Feature
 
+### Paletas de la interfaz
+
+- id: ui-color-palettes
+- tipo: feature
+- titulo.en: Interface color palettes
+- titulo.pt: Paletas de cores da interface
+- titulo.it: Tavolozze colori dell'interfaccia
+- cuerpo: Ajustes ofrece siete paletas, Vantare, Rosa, Bosque, Océano, Ámbar, Iris y Grises, cada una con variante clara y oscura y apariencia según Windows. Grises mantiene neutros los acentos y estados de la interfaz. Contraste, opacidad de paneles y fuentes de interfaz y cifras tienen vista previa. Los cambios se aplican y recuerdan en Command Orbit y Overlay Studio, incluida la tarjeta Próxima serie. El fondo predeterminado del lienzo sigue el tema activo y el selector ofrece variantes claras y oscuras de cada paleta, además de los fondos clásicos y propios; los widgets conservan sus diseños.
+- cuerpo.en: Settings offers seven palettes, Vantare, Rose, Grove, Ocean, Ember, Iris and Grayscale, each with light and dark variants and Windows appearance. Grayscale keeps interface accents and states neutral. Contrast, panel opacity, and interface and numeric fonts have a preview. Changes apply and persist in Command Orbit and Overlay Studio, including the Next Race card. The stage background follows the active theme by default, while the selector offers light and dark variants of every palette alongside classic and custom backgrounds; widgets keep their own designs.
+- cuerpo.pt: As Definições oferecem sete paletas, Vantare, Rosa, Bosque, Oceano, Âmbar, Íris e Cinzentos, cada uma com variantes claras e escuras e aparência conforme o Windows. Cinzentos mantém neutros os acentos e estados da interface. Contraste, opacidade dos painéis e fontes da interface e dos números têm pré-visualização. As alterações aplicam-se e ficam guardadas no Command Orbit e Overlay Studio, incluindo o cartão Próxima série. O fundo predefinido do cenário segue o tema ativo e o seletor oferece variantes claras e escuras de cada paleta, além dos fundos clássicos e próprios; os widgets mantêm os seus designs.
+- cuerpo.it: Le Impostazioni offrono sette tavolozze, Vantare, Rosa, Bosco, Oceano, Ambra, Iris e Grigi, ciascuna con varianti chiare e scure e aspetto secondo Windows. Grigi mantiene neutri gli accenti e gli stati dell'interfaccia. Contrasto, opacità dei pannelli e caratteri per interfaccia e numeri hanno un'anteprima. Le modifiche si applicano e restano memorizzate in Command Orbit e Overlay Studio, inclusa la scheda Prossima gara. Lo sfondo predefinito della scena segue il tema attivo e il selettore offre varianti chiare e scure di ogni tavolozza, oltre agli sfondi classici e personali; i widget mantengono i propri design.
+- etiqueta: Feature
+
 ### Sistema de diseño Eficiencia
 
 - id: functional-widget-design

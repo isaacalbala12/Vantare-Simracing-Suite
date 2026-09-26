@@ -1,5 +1,15 @@
 # Handoff vivo — Strategy Planner
 
+## T18/T22 · Suite frontend completa tras la entrada móvil (2026-09-26)
+
+La ejecución completa en el candidato #1393 reveló 17 tests rotos por
+búsquedas ambiguas de acciones duplicadas para móvil/escritorio en Happy DOM.
+Se corrigieron sólo las búsquedas de dos archivos de tests (`b74741c3` en
+#1277, cherry-pick `f9ba0d75` en #1393). Focal 24/24 y suite completa
+493 archivos, 4320 tests PASS, 2 omitidos; `AbortError` de teardown con exit
+code 0. Build localdev y runtime verificaron antes. E01–E08 nativos continúan
+pendientes. Sin push, PR, CI, integración, promoción ni release.
+
 ## T22 · Candidato localdev actual listo para recorrido nativo (2026-09-26)
 
 En #1393, HEAD local `a888f45b`, la receta localdev regeneró

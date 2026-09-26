@@ -12,6 +12,15 @@ cinco miembros y smoke en este Windows x64: DuckDB v1.5.5, manifiesto SHA-256
 No se abrió la ventana nativa ni se ejecutó E01–E08; el binario anterior
 descrito abajo queda reemplazado para el siguiente recorrido.
 
+La suite frontend completa detectó después 17 fallos de búsqueda de botones
+en dos archivos de tests: el menú v5 contiene una acción para móvil y otra
+para escritorio, que Happy DOM enumera juntas aunque CSS sólo muestra una en
+cada anchura. Se ajustaron las búsquedas de esos tests en #1277 (`b74741c3`)
+y en este candidato (`f9ba0d75`), sin alterar la UI. El test focal pasó
+24/24; la repetición completa pasó **493 archivos, 4320 tests, 2 omitidos**.
+Happy DOM aún imprime un `AbortError` de cierre tras la suite, con exit code
+0 y todos los tests contados; no se presenta como fallo funcional nativo.
+
 ## Actualización del candidato integrado (2026-09-25)
 
 Tras incorporar el corte visual v5-13 y el inventario documental #1375, el

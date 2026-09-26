@@ -1,5 +1,15 @@
 # Handoff vivo — Strategy Planner
 
+## T22 · build localdev del candidato con GT3 (2026-09-26)
+
+Sobre HEAD `d457cf04`, `scripts/build-local-development.ps1` pasó con 1156
+módulos frontend y compiló `bin/vantare-localdev.exe` (46.383.104 bytes,
+SHA-256 `AFA0F454A9E199E3F755B176A39CC08C2B4961C1B51533FFB78E2FB7AD20A412`).
+`go version -m` confirma `-tags=vantare_localdev` y `-trimpath=true`.
+El tag activa acceso local sólo fuera de `production`. No se abrió la app:
+E01–E08 Wails, licencia de distribución, recursos y aceptación siguen
+pendientes. El binario queda ignorado por Git y la rama sigue limpia.
+
 ## #1397 · certificado acotado para GT3 con VE (2026-09-26)
 
 En la rama aislada `vantareapp/isa-1397-gt3-ve-overflow` desde el candidato

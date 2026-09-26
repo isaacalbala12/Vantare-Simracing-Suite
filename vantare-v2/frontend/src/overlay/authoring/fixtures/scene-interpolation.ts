@@ -98,7 +98,10 @@ export function interpolateSceneAt(scene: AnimationScene, elapsedMs: number, loo
   const nextIndex = (index + 1) % count;
   const from = scene.frames[index];
   const to = scene.frames[nextIndex];
-  const t = ease(Math.min(1, (clamped - index * scene.frameMs) / scene.frameMs));
+  const progress = Math.min(1, (clamped - index * scene.frameMs) / scene.frameMs);
+  // Radar cars keep moving through keyframes; easing each sample made them
+  // visibly brake and accelerate at every point of the demonstration.
+  const t = scene.widget === "radar" ? progress : ease(progress);
 
   const names = new Set([...Object.keys(from.cars ?? {}), ...Object.keys(to.cars ?? {})]);
   const cars: Record<string, SceneOverride> = {};
@@ -114,6 +117,12 @@ export function interpolateSceneAt(scene: AnimationScene, elapsedMs: number, loo
       ? lerp(from.remainingSeconds, to.remainingSeconds, t)
       : (to.remainingSeconds ?? from.remainingSeconds);
 
+  const nextRadarCars = new Map(to.radarCars?.map((car) => [car.id, car]));
+  const radarCars = from.radarCars?.map((car) => {
+    const next = nextRadarCars.get(car.id);
+    return next ? { ...car, x: lerp(car.x, next.x, t), z: lerp(car.z, next.z, t) } : car;
+  });
+
   return {
     keyframe: index,
     frame: {
@@ -121,6 +130,7 @@ export function interpolateSceneAt(scene: AnimationScene, elapsedMs: number, loo
       ...(Object.keys(cars).length > 0 ? { cars } : {}),
       ...(blendPlayer(from.player, to.player, t) ? { player: blendPlayer(from.player, to.player, t) } : {}),
       ...(remainingSeconds !== undefined ? { remainingSeconds } : {}),
+      ...(radarCars ? { radarCars } : {}),
       ...(from.standingsWindowPosition !== undefined ? { standingsWindowPosition: from.standingsWindowPosition } : {}),
     },
   };

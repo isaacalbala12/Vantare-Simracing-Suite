@@ -278,6 +278,14 @@ describe("OverlayWorkshopDevRoute", () => {
     expect(screen.getByTestId("workshop-scene-scrub")).toBeTruthy();
   });
 
+  it("starts the radar traffic demonstration continuously on a scene link", async () => {
+    render(<OverlayWorkshopDevRoute search="?widget=radar&system=vantare-functional&state=ready&surface=studio&scene=radar-nearby-traffic&frame=4" />);
+    await waitFor(() => expect(screen.getByTestId("workshop-scene-play").getAttribute("aria-pressed")).toBe("true"));
+    expect((screen.getByTestId("workshop-scene-loop") as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(screen.getByTestId("workshop-scene-play"));
+    expect(screen.getByTestId("workshop-scene-play").getAttribute("aria-pressed")).toBe("false");
+  });
+
   it("reviews the Functional Relative combined sequence by scrubbing or playing it", async () => {
     render(
       <OverlayWorkshopDevRoute search="?widget=relative&system=vantare-functional&variant=default&state=ready&surface=obs&scene=relative-functional-sequence&sceneFrame=0" />,
@@ -413,10 +421,10 @@ describe("OverlayWorkshopDevRoute", () => {
   });
 
   it("renders each default widget marker", async () => {
-    expect(ALL_WIDGET_TYPES).toHaveLength(21);
+    expect(ALL_WIDGET_TYPES).toHaveLength(22);
     for (const widget of ALL_WIDGET_TYPES) {
       cleanup();
-      const system = widget === "fastest-lap" ? "vantare-functional" : widget === "engineer-radio" ? "vantare-crystal" : widget === "track-map" ? "vantare-endurance" : "vantare-original";
+      const system = widget === "fastest-lap" || widget === "radar" ? "vantare-functional" : widget === "engineer-radio" ? "vantare-crystal" : widget === "track-map" ? "vantare-endurance" : "vantare-original";
       render(<OverlayWorkshopDevRoute search={`?widget=${widget}&system=${system}&state=ready&surface=obs`} />);
       await waitFor(() =>
         expect(document.querySelector(`[data-widget-renderer="${widget}"]`)).toBeTruthy(),

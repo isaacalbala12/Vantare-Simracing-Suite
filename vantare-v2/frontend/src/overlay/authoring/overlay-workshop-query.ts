@@ -113,7 +113,7 @@ const REDLINE_HEADERS = new Set(["current", "signature", "session", "compact"]);
 export function parseOverlayWorkshopQuery(search: string): OverlayWorkshopQuery | { error: string } {
   const params = new URLSearchParams(search.startsWith("?") ? search : `?${search}`);
   const widget = (params.get("widget") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.widget) as WidgetType;
-  const rawSystem = params.get("system") ?? (widget === "fastest-lap" ? EFFICIENCY_SYSTEM_ID : DEFAULT_OVERLAY_WORKSHOP_QUERY.system);
+  const rawSystem = params.get("system") ?? (widget === "fastest-lap" || widget === "radar" ? EFFICIENCY_SYSTEM_ID : DEFAULT_OVERLAY_WORKSHOP_QUERY.system);
   const system = normalizeDesignSystemId(rawSystem);
   const state = (params.get("state") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.state) as AuthoringV2Scenario["state"];
   const surface = (params.get("surface") ?? DEFAULT_OVERLAY_WORKSHOP_QUERY.surface) as OverlayWorkshopQuery["surface"];

@@ -1,0 +1,25 @@
+import type { WidgetRendererProps } from "../../core/design-system-definition";
+import type { RadarViewModel } from "../../widget-types/radar/radar-view-model-v2";
+
+const CENTER = 110;
+const SCALE = 3;
+
+export function RadarFunctional({ model, effects }: WidgetRendererProps<RadarViewModel>) {
+  return (
+    <section className="vf-radar" data-widget-system="vantare-functional" data-widget-renderer="radar" data-status={model.status} data-effects={effects}>
+      {model.available ? (
+        <svg className="vf-radar-canvas" viewBox="0 0 220 220" role="img" aria-label="Radar de proximidad" preserveAspectRatio="xMidYMid meet">
+          <path className="vf-radar-cross" d="M110 10V210 M10 110H210" />
+          {model.leftOverlap && <path className="vf-radar-side vf-radar-side-active" d="M92 94V126" />}
+          {model.rightOverlap && <path className="vf-radar-side vf-radar-side-active" d="M128 94V126" />}
+          <rect className="vf-radar-player" x="102" y="94" width="16" height="32" rx="5" />
+          {model.cars.map((car) => (
+            <rect key={car.id} className="vf-radar-car" data-overlap={car.overlap} data-near={car.near} data-lapped={car.lapped} x="-8" y="-16" width="16" height="32" rx="5" style={{ transform: `translate(${CENTER - car.x * SCALE}px, ${CENTER + car.z * SCALE}px)` }}>
+              <title>{car.id}</title>
+            </rect>
+          ))}
+        </svg>
+      ) : <span className="vf-radar-unavailable">Sin posición espacial</span>}
+    </section>
+  );
+}

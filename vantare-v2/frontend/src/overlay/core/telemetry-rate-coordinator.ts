@@ -197,6 +197,7 @@ export function createTelemetryRateCoordinator(
         units: overlayFrame.units,
       };
       case "broadcast-tower": case "track-map": return overlayFrame.standings;
+      case "radar": return overlayFrame.radar;
       case "fuel-strategy": return overlayFrame.fuel;
       case "car-damage-numbers": case "car-damage-visual": return overlayFrame.damage;
       case "track-weather": return overlayFrame.weather;

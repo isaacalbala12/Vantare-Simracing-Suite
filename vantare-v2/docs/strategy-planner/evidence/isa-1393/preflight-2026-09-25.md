@@ -1,5 +1,17 @@
 # T22 / ISA-1393 — preflight sin ventana nativa
 
+## Candidato actual preparado para Wails (2026-09-26)
+
+Desde HEAD local `a888f45b`, `scripts/build-local-development.ps1` pasó y
+regeneró `bin/vantare-localdev.exe` (46.374.912 bytes, SHA-256
+`23fdfaec400cea95f051be4279fd3b0c57249e57a53491dc4bfb4b099cdbf8d3`).
+Incluye el corte visual v5-25 y la corrección documental del ADR 0012. El
+runtime instalado `bin/runtime/telemetry/duckdb-v1` pasó verificación de sus
+cinco miembros y smoke en este Windows x64: DuckDB v1.5.5, manifiesto SHA-256
+`700201f90266ae6b829372d9989408c6b0efd86725a50980d46fc05adfc24869`.
+No se abrió la ventana nativa ni se ejecutó E01–E08; el binario anterior
+descrito abajo queda reemplazado para el siguiente recorrido.
+
 ## Actualización del candidato integrado (2026-09-25)
 
 Tras incorporar el corte visual v5-13 y el inventario documental #1375, el

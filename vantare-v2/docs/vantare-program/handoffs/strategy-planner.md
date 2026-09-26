@@ -1,5 +1,14 @@
 # Handoff vivo — Strategy Planner
 
+## T22 · Candidato localdev actual listo para recorrido nativo (2026-09-26)
+
+En #1393, HEAD local `a888f45b`, la receta localdev regeneró
+`bin/vantare-localdev.exe` (46.374.912 bytes; SHA-256
+`23fdfaec400cea95f051be4279fd3b0c57249e57a53491dc4bfb4b099cdbf8d3`).
+El runtime DuckDB v1.5.5 pasó verificación de cinco miembros y smoke con el
+manifiesto confiado. Es preparación sin GUI: E01–E08 y aceptación Wails real
+siguen pendientes. No hubo push, PR, CI, integración, promoción ni release.
+
 ## ISA-1375 · ADR 0012 alineado con la proyección paginada (2026-09-26)
 
 La inspección del código confirmó que `deriveCorrectionSession` usa

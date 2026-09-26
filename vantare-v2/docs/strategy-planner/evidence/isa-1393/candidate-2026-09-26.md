@@ -76,3 +76,23 @@ Se regeneró `vantare-localdev.exe` después del arreglo con
 `scripts/build-local-development.ps1`; el comando terminó PASS, y
 `go version -m` confirma `-tags=vantare_localdev`. El hash de arriba
 identifica esta nueva build. Aún no se ha abierto en Wails.
+
+## Regla de energía al sustituir una sesión
+
+El harness reprodujo un fallo distinto: al reabrir la carrera LMGT3, cambiar
+origen, elegir de nuevo la misma sesión y calcular, la UI mostraba un error
+genérico. Abrir esa misma revisión desde la biblioteca permitía calcular. La
+regresión de `useRecordedWorkflow` mostró la causa: la sustitución vaciaba la
+combinación antes de seleccionarla otra vez y convertía la regla VE confirmada
+(`applicable`, capacidad 100 %, inicial 96 %, reserva 4 %) en `unknown`, aunque
+coche y circuito seguían siendo los mismos. Ahora conserva la combinación
+verificada y su regla VE sólo si el `combinationId` coincide; cambiar a otra
+combinación reinicia la regla. El test falló antes y pasó después.
+
+El navegador interno con mock completó desde ese recorrido: selección,
+propuesta de 69 vueltas/2 paradas, ajuste de límite del stint 1 a vuelta 24,
+recalcular, añadir 63,4 L en parada 1, recalcular y aceptar la revisión. Son
+salidas deterministas del harness, **no** resultados empíricos ni Wails real.
+Frontend: 493 archivos/4327 PASS, 2 omitidos; typecheck, lint y build PASS.
+El binario localdev de hash citado arriba antecede esta segunda corrección y
+debe regenerarse antes de usarlo para T22 nativo.

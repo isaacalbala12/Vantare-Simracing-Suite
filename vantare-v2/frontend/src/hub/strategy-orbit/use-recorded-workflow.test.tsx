@@ -41,6 +41,20 @@ it("switches A → manual → B → A without stale revisions or retained handle
   expect(f.result.current.draft).toMatchObject({ name: "My race", combination: { combinationId: "combo" }, sessions: [session.revision] });
   expect(f.result.current.sessions.sessions).toHaveLength(1);
 });
+it("keeps confirmed energy rules only when the replacement has the same car and track", async () => {
+  const f = setup();
+  const gt3 = { ...session, combination: { ...session.combination!, carClass: "LMGT3" } };
+  const other = { ...session, candidateId: "other", combinationId: "other-combo", combination: { ...session.combination!, id: "other-combo", trackName: "Spa" }, opened: { sessionId: "other-handle" }, revision: { ...session.revision, sessionId: "other-source" } };
+  vi.mocked(openRecordedSession).mockImplementation(async (_client, id) => id === "other" ? other : gt3);
+  await act(() => f.result.current.sessions.openAndApply(candidate));
+  act(() => f.result.current.change({ ...f.result.current.draft, virtualEnergy: { applicability: "applicable", capacityPercent: 100, initialPercent: 96, reservePercent: 4 } }));
+  await act(() => f.result.current.sessions.openAndApply(candidate));
+  expect(f.result.current.draft.virtualEnergy).toEqual({ applicability: "applicable", capacityPercent: 100, initialPercent: 96, reservePercent: 4 });
+  expect(f.result.current.draft.sessions).toEqual([session.revision]);
+  await act(() => f.result.current.sessions.openAndApply({ ...candidate, id: "other" }));
+  expect(f.result.current.draft.virtualEnergy).toEqual({ applicability: "not_applicable" });
+  expect(f.result.current.draft.sessions).toEqual([other.revision]);
+});
 it("changes a manual draft to telemetry when a library source is applied", async () => {
   const f = setup();
   await act(() => f.result.current.startManual());

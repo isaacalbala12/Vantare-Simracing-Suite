@@ -1,5 +1,18 @@
 # Handoff vivo — Strategy Planner
 
+## T22 · energía conservada al reemplazar la misma fuente (2026-09-26)
+
+El harness reprodujo fallo de cálculo tras sustituir desde el menú una sesión
+LMGT3 por ella misma. `useRecordedWorkflow` descartaba la combinación y
+reiniciaba VE a desconocida. Se conserva la regla confirmada sólo con
+`combinationId` coincidente; otra combinación aún la reinicia. Test rojo antes,
+verde después; frontend 493 archivos/4327 PASS (2 omitidos), typecheck, lint y
+build PASS. El mock completó selección, cálculo, cambios de stint y parada,
+recálculo y aceptación. [Evidencia](../../strategy-planner/evidence/isa-1393/candidate-2026-09-26.md).
+La build localdev anterior ya no contiene esta corrección; regenerarla. E01–E08
+nativos, exactitud empírica y aceptación humana pendientes. Sin push, PR, CI,
+integración, promoción ni release.
+
 ## T22 · menú de origen tras reabrir borrador (2026-09-26)
 
 El harness mock reprodujo «Buscando sesiones…» indefinido al cambiar origen

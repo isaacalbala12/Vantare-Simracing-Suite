@@ -41,7 +41,8 @@ export function useRecordedWorkflow({ eventId, repositoryVersion, initial, catal
     onApply: async (selected, signal, replace = false) => {
       signal.throwIfAborted();
       if (pending.current) throw new Error("recorded_save_in_progress");
-      const base = replace ? { ...draft, combination: undefined, sessions: [], manualInputs: undefined, mode: "automatic" as const } : { ...draft, manualInputs: undefined, mode: "automatic" as const };
+      const sameCombination = draft.combination?.combinationId === selected[0]?.combinationId;
+      const base = replace ? { ...draft, combination: sameCombination ? draft.combination : undefined, sessions: [], manualInputs: undefined, mode: "automatic" as const } : { ...draft, manualInputs: undefined, mode: "automatic" as const };
       const next = applyRecordedSourceSelection(base, selected, catalog);
       signal.throwIfAborted();
       setDraft(next);

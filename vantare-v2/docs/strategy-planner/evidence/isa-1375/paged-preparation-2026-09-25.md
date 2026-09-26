@@ -1,5 +1,33 @@
 # ISA-1375 — preparación paginada, primer corte productivo
 
+## Repetición del perfil de proyección (2026-09-26)
+
+Se repitió la comparación sobre el HEAD `122214d0`, sin cambiar código ni
+cuotas. Se compiló una vez el test de `internal/app` y se ejecutó en seis
+procesos nuevos: tres con `ISA1375_PROJECTION_PROFILE=paged` y tres con
+`materialized`. Cada proceso abrió la misma fuente Algarve S266 de 71 eventos
+de vuelta (SHA-256 `6b912640e5b68da087fbe86ce70401101edbdc89cb89cb93df30c9ef396d9362`).
+Una fuente Monza distinta se usó sólo para satisfacer el descubrimiento de dos
+candidatos; no alimentó la proyección. El runtime autorizado y el test opt-in
+existentes validaron apertura, resultado y hashes antes/después. Se muestreó
+`WorkingSet64` del proceso de test cada 100 ms desde el arranque hasta salir;
+por ello el pico incluye preparación y parser, no sólo la función de proyección.
+
+| Ruta | Pico de proceso MiB, tres ejecuciones | Tiempo de proyección, s | Ritmo seco / Fuel |
+| --- | --- | --- | --- |
+| Paginada | 94,6 · 52,6 · 52,3 | 6,85 · 6,75 · 6,45 | 95,190 s · 2,135 L/vuelta |
+| Materializada | 777,7 · 805,6 · 777,2 | 2,22 · 2,52 · 2,25 | 95,190 s · 2,135 L/vuelta |
+
+Las seis ejecuciones terminaron con exit 0 y `TestRecordedStrategyRealDuckDB`
+PASS; los hashes de ambos archivos coincidieron al terminar cada una. El
+control materializado es la ruta anterior **del mismo binario**, no una versión
+distinta. La proyección paginada reduce el pico observado en esta fuente, a
+costa de relecturas y más tiempo. El presupuesto provisional de 128 MiB cubre
+estas tres ejecuciones de S266, pero no acredita una carrera de resistencia:
+ninguna fuente independiente disponible contiene muchas más vueltas, y falta
+medir el proceso Wails completo. No se eleva la cuota productiva ni se cierra
+#1375.
+
 ## Inventario adicional de fuentes locales (2026-09-25)
 
 Se enumeraron los `.duckdb` de `Le Mans Ultimate/UserData/Telemetry` sin

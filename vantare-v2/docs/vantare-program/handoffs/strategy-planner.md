@@ -1,5 +1,15 @@
 # Handoff vivo — Strategy Planner
 
+## ISA-1375 · seis perfiles comparables de proyección (2026-09-26)
+
+S266 Algarve se proyectó tres veces por ruta desde el mismo binario de test
+`122214d0`: paginada 52,3–94,6 MiB de pico de proceso y 6,45–6,85 s;
+materializada 777,2–805,6 MiB y 2,22–2,52 s. Las seis dieron ritmo seco
+95,190 s, Fuel 2,135 L/vuelta, PASS y hashes de originales intactos. El pico
+incluye preparación/parser. [Evidencia](../../strategy-planner/evidence/isa-1375/paged-preparation-2026-09-25.md).
+Se conserva 128 MiB sólo como presupuesto provisional para S266; aún falta
+fuente independiente con muchas vueltas y medición Wails. #1375 sigue abierta;
+sin push, PR, CI, integración de canal, promoción ni release.
 ## T22 · candidato con T07d/T07e (2026-09-26)
 
 La rama #1393 incorporó localmente #1395 como `0665876b` y #1396 como

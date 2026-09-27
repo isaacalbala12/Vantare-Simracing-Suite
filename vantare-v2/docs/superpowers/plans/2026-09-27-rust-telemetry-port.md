@@ -596,3 +596,18 @@ instancia duplicada, PID incorrecto, fallo de asociación y terminación sin
 proceso residual. No es todavía un supervisor conectado a Wails; faltan las
 colas, payloads reales, deadlines de I/O, configuración y reinicios. R04/R05
 siguen parciales y no se activa el backend Rust productivo.
+
+## 12. Primer corte R03/R08: oráculo y admisión LMU (2026-09-28)
+
+Se fijó un checkpoint del parser Go sobre el snapshot real LMU 1.3 de 44
+coches: SHA de entrada `959c51421529c6157371678d8db9bcbbdc8ab3780bd5557828f2bc0d2225e5ff`
+y SHA de la observación JSON completa con reloj fijo
+`2c61c6948e4dd1ecea4f4ae93bbc5eee1d40a4ad4bc4260ec88535cf379393c2`.
+El test Go falla si cambia la salida fijada. Rust admite la estructura LMU 1.3
+solo con evidencia de build verificada por el llamador, valida tamaño, recuento,
+texto de sesión, filas scoring/telemetry biyectivas y jugador único. Ambos
+lados prueban la fixture de 44 y rechazos por truncado, 105 vehículos, ID de
+telemetría duplicado, texto sin terminador y jugador duplicado. Esta admisión
+no porta aún los campos canónicos, REST, adquisición ni proyecciones; el
+snapshot aislado tampoco cumple R02 ni acredita el umbral CPU. R03/R08 siguen
+parciales.

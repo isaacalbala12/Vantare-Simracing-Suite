@@ -1,5 +1,26 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — primer parser Rust y oráculo Go (2026-09-28)
+
+Rust añadió admisión estructural del layout LMU 1.3 sin acceso live: tamaño,
+build admitida explícitamente, recuento 0–104, string de sesión, IDs scoring y
+telemetry biyectivos, valores de scoring necesarios para admitir una fila y
+jugador único. La fixture real estática de 44 coches pasa; alteraciones de
+tamaño, recuento, ID, string y jugador se rechazan. Un test Go fija el SHA de
+la observación completa del parser actual
+`2c61c6948e4dd1ecea4f4ae93bbc5eee1d40a4ad4bc4260ec88535cf379393c2`
+con reloj fijo, y verifica los mismos casos adversariales. R03/R08 son
+parciales: Rust aún no produce campos canónicos ni consume SHM/REST. No hay
+corpus temporal real 44/104, benchmark de ruta completa ni mejora del 50%
+acreditada. Go continúa como único backend productivo.
+
+La suite Go serial completa sin caché pasó; `cargo test --release --locked`
+8/8, formato, Clippy, build Windows release y el test conjunto Go/Rust del
+pipe pasaron. No se modificó frontend. La limitación de
+`go test -race` por toolchain C descrita abajo sigue vigente. Siguiente corte:
+captura/validación temporal real y expansión de parser/oráculo hasta la salida
+canónica, sin activar el backend antes de los gates.
+
 ## ISA-1403 — harness Windows Go/Rust conectado (2026-09-28)
 
 Tras la petición de continuar el port, se implementó un corte R05 en

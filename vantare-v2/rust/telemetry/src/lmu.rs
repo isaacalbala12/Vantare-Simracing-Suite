@@ -4,7 +4,7 @@
 #[cfg(windows)]
 pub mod reader;
 
-use crate::quality::Field;
+use crate::quality::{Field, Freshness};
 
 pub const OBJECT_OUT_SIZE: usize = 324_820;
 const MAX_VEHICLES: usize = 104;
@@ -61,6 +61,39 @@ pub struct VehicleFields {
     pub laps_behind_next: Field<i32>,
     pub time_behind_leader: Field<f64>,
     pub laps_behind_leader: Field<i32>,
+    pub world_position: Field<[f64; 3]>,
+    pub local_velocity: Field<[f64; 3]>,
+    pub orientation: Field<[[f64; 3]; 3]>,
+    pub fast: Option<FastTelemetry>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Fuel {
+    pub amount_liters: f64,
+    pub capacity_liters: f64,
+}
+
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct Damage {
+    pub dents: [u8; 8],
+    pub overheating: bool,
+    pub detached: bool,
+    pub wheel_detached_count: u8,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct FastTelemetry {
+    pub lap_number: Field<i32>,
+    pub gear: Field<i32>,
+    pub engine_rpm: Field<f64>,
+    pub speed_mps: Field<f64>,
+    pub throttle: Field<f64>,
+    pub brake: Field<f64>,
+    pub clutch: Field<f64>,
+    pub fuel: Field<Fuel>,
+    pub delta_best_seconds: Field<f64>,
+    pub tyre_wear: Field<[f64; 4]>,
+    pub damage: Field<Damage>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -143,13 +176,14 @@ pub fn admit_v13(buffer: &[u8], verified_build: &str) -> Result<AdmittedGrid, Ad
             }
         },
     };
-    let mut telemetry_ids = Vec::with_capacity(count);
+    let mut telemetry_rows = Vec::with_capacity(count);
     for index in 0..count {
-        let id = read_i32(buffer, TELEMETRY_BASE + index * TELEMETRY_STRIDE);
-        if id < 0 || telemetry_ids.contains(&id) {
+        let base = TELEMETRY_BASE + index * TELEMETRY_STRIDE;
+        let id = read_i32(buffer, base);
+        if id < 0 || telemetry_rows.iter().any(|(seen, _)| *seen == id) {
             return Err(AdmissionError::InvalidActiveGrid);
         }
-        telemetry_ids.push(id);
+        telemetry_rows.push((id, base));
     }
     let mut vehicles = Vec::with_capacity(count);
     let mut player_index = None;
@@ -177,8 +211,10 @@ pub fn admit_v13(buffer: &[u8], verified_build: &str) -> Result<AdmittedGrid, Ad
         let best = read_f64(buffer, base + 144);
         let last = read_f64(buffer, base + 168);
         let estimated = read_f64(buffer, base + 472);
+        let Some((_, telemetry_base)) = telemetry_rows.iter().find(|(seen, _)| *seen == id) else {
+            return Err(AdmissionError::InvalidActiveGrid);
+        };
         let valid = id >= 0
-            && telemetry_ids.contains(&id)
             && !vehicles
                 .iter()
                 .any(|row: &VehicleFields| row.source_id == id)
@@ -200,6 +236,27 @@ pub fn admit_v13(buffer: &[u8], verified_build: &str) -> Result<AdmittedGrid, Ad
             return Err(AdmissionError::InvalidActiveGrid);
         }
         let progress = read_f64(buffer, base + 464);
+        let scoring_position = read_vector_field(buffer, base + 264);
+        let scoring_velocity = read_vector_field(buffer, base + 288);
+        let scoring_orientation = read_orientation_field(buffer, base + 336);
+        let (world_position, local_velocity, orientation) = if player == 1 {
+            (
+                prefer_fresh(
+                    read_vector_field(buffer, *telemetry_base + 160),
+                    scoring_position,
+                ),
+                prefer_fresh(
+                    read_vector_field(buffer, *telemetry_base + 184),
+                    scoring_velocity,
+                ),
+                prefer_fresh(
+                    read_orientation_field(buffer, *telemetry_base + 232),
+                    scoring_orientation,
+                ),
+            )
+        } else {
+            (scoring_position, scoring_velocity, scoring_orientation)
+        };
         vehicles.push(VehicleFields {
             source_id: id,
             driver_name: Field::observed(driver.to_owned()),
@@ -229,6 +286,14 @@ pub fn admit_v13(buffer: &[u8], verified_build: &str) -> Result<AdmittedGrid, Ad
             laps_behind_next: Field::observed(read_i32(buffer, base + 240)),
             time_behind_leader: nonnegative_or_missing(time_leader),
             laps_behind_leader: Field::observed(read_i32(buffer, base + 252)),
+            world_position,
+            local_velocity,
+            orientation,
+            fast: if player == 1 {
+                Some(parse_fast_telemetry(buffer, *telemetry_base, best))
+            } else {
+                None
+            },
         });
     }
     normalize_lap_progress_evidence(&mut vehicles);
@@ -239,6 +304,168 @@ pub fn admit_v13(buffer: &[u8], verified_build: &str) -> Result<AdmittedGrid, Ad
         player_present: Field::observed(player_index.is_some()),
         session,
     })
+}
+
+fn read_vector_field(buffer: &[u8], base: usize) -> Field<[f64; 3]> {
+    let value = [
+        read_f64(buffer, base),
+        read_f64(buffer, base + 8),
+        read_f64(buffer, base + 16),
+    ];
+    if value.iter().all(|component| component.is_finite()) {
+        Field::observed(value)
+    } else {
+        Field::invalid_observed([0.0; 3])
+    }
+}
+
+fn read_orientation_field(buffer: &[u8], base: usize) -> Field<[[f64; 3]; 3]> {
+    let rows = [0, 24, 48].map(|offset| {
+        [
+            read_f64(buffer, base + offset),
+            read_f64(buffer, base + offset + 8),
+            read_f64(buffer, base + offset + 16),
+        ]
+    });
+    if !rows.iter().flatten().all(|value| value.is_finite()) {
+        return Field::invalid_observed([[0.0; 3]; 3]);
+    }
+    let dot = |left: &[f64; 3], right: &[f64; 3]| {
+        left[0] * right[0] + left[1] * right[1] + left[2] * right[2]
+    };
+    const TOLERANCE: f64 = 1e-3;
+    if rows
+        .iter()
+        .any(|row| (dot(row, row) - 1.0).abs() > TOLERANCE)
+        || (dot(&rows[0], &rows[1])).abs() > TOLERANCE
+        || (dot(&rows[0], &rows[2])).abs() > TOLERANCE
+        || (dot(&rows[1], &rows[2])).abs() > TOLERANCE
+    {
+        return Field::invalid_observed([[0.0; 3]; 3]);
+    }
+    let determinant = rows[0][0] * (rows[1][1] * rows[2][2] - rows[1][2] * rows[2][1])
+        - rows[0][1] * (rows[1][0] * rows[2][2] - rows[1][2] * rows[2][0])
+        + rows[0][2] * (rows[1][0] * rows[2][1] - rows[1][1] * rows[2][0]);
+    if (determinant - 1.0).abs() <= TOLERANCE {
+        Field::observed(rows)
+    } else {
+        Field::invalid_observed([[0.0; 3]; 3])
+    }
+}
+
+fn prefer_fresh<T>(preferred: Field<T>, fallback: Field<T>) -> Field<T> {
+    if matches!(
+        preferred,
+        Field::Present {
+            freshness: Freshness::Fresh,
+            ..
+        }
+    ) {
+        preferred
+    } else {
+        fallback
+    }
+}
+
+fn parse_fast_telemetry(buffer: &[u8], base: usize, best_lap: f64) -> FastTelemetry {
+    let lap = read_i32(buffer, base + 20);
+    let rpm = read_f64(buffer, base + 356);
+    let velocity = [
+        read_f64(buffer, base + 184),
+        read_f64(buffer, base + 192),
+        read_f64(buffer, base + 200),
+    ];
+    let speed = if velocity.iter().all(|value| value.is_finite()) {
+        let squared = velocity.iter().map(|value| value * value).sum::<f64>();
+        let speed = squared.sqrt();
+        if speed.is_finite() {
+            Field::observed(speed)
+        } else {
+            Field::invalid_observed(0.0)
+        }
+    } else {
+        Field::invalid_observed(0.0)
+    };
+    let fuel = Fuel {
+        amount_liters: read_f64(buffer, base + 524),
+        capacity_liters: read_f64(buffer, base + 608),
+    };
+    let fuel = if fuel.amount_liters.is_finite()
+        && fuel.capacity_liters.is_finite()
+        && fuel.capacity_liters > 0.0
+        && fuel.amount_liters >= 0.0
+        && fuel.amount_liters <= fuel.capacity_liters
+    {
+        Field::observed(fuel)
+    } else {
+        Field::invalid_observed(Fuel {
+            amount_liters: 0.0,
+            capacity_liters: 0.0,
+        })
+    };
+    let delta = read_f64(buffer, base + 696);
+    let delta_best_seconds = if !delta.is_finite() || delta.abs() >= 10_000.0 {
+        Field::invalid_observed(0.0)
+    } else if delta != 0.0 || best_lap > 0.0 {
+        Field::observed(delta)
+    } else {
+        Field::Missing
+    };
+    let wear = [1000, 1260, 1520, 1780].map(|offset| read_f64(buffer, base + offset));
+    let tyre_wear = if wear
+        .iter()
+        .all(|value| value.is_finite() && (0.0..=1.0).contains(value))
+    {
+        Field::observed(wear)
+    } else {
+        Field::invalid_observed([0.0; 4])
+    };
+    FastTelemetry {
+        lap_number: if lap >= 0 {
+            Field::observed(lap)
+        } else {
+            Field::invalid_observed(0)
+        },
+        gear: Field::observed(read_i32(buffer, base + 352)),
+        engine_rpm: if rpm.is_finite() && rpm >= 0.0 {
+            Field::observed(rpm)
+        } else {
+            Field::invalid_observed(0.0)
+        },
+        speed_mps: speed,
+        throttle: ratio_or_invalid(read_f64(buffer, base + 420)),
+        brake: ratio_or_invalid(read_f64(buffer, base + 428)),
+        clutch: ratio_or_invalid(read_f64(buffer, base + 444)),
+        fuel,
+        delta_best_seconds,
+        tyre_wear,
+        damage: read_damage_field(buffer, base),
+    }
+}
+
+fn read_damage_field(buffer: &[u8], base: usize) -> Field<Damage> {
+    let overheating = buffer[base + 541];
+    let detached = buffer[base + 542];
+    let wheels = [1026, 1286, 1546, 1806].map(|offset| buffer[base + offset]);
+    if overheating > 1 || detached > 1 || wheels.iter().any(|wheel| *wheel > 1) {
+        return Field::invalid_observed(Damage::default());
+    }
+    let mut dents = [0_u8; 8];
+    dents.copy_from_slice(&buffer[base + 544..base + 552]);
+    Field::observed(Damage {
+        dents,
+        overheating: overheating == 1,
+        detached: detached == 1,
+        wheel_detached_count: wheels.iter().copied().sum(),
+    })
+}
+
+fn ratio_or_invalid(value: f64) -> Field<f64> {
+    if value.is_finite() && (0.0..=1.0).contains(&value) {
+        Field::observed(value)
+    } else {
+        Field::invalid_observed(0.0)
+    }
 }
 
 fn positive_lap_time(value: f64) -> Field<f64> {
@@ -344,6 +571,26 @@ mod tests {
         assert_eq!(player.in_pit.value(), Some(&false));
         assert_eq!(player.best_lap_time, Field::Missing);
         assert_eq!(player.last_lap_time, Field::Missing);
+        assert_eq!(player.world_position.quality().1, Some(Freshness::Fresh));
+        assert_eq!(player.local_velocity.quality().1, Some(Freshness::Fresh));
+        assert_eq!(player.orientation.quality().1, Some(Freshness::Fresh));
+        let fast = player
+            .fast
+            .as_ref()
+            .expect("real fixture has player telemetry");
+        assert_eq!(fast.lap_number.value(), Some(&0));
+        assert_eq!(
+            fast.fuel.value().map(|fuel| fuel.capacity_liters),
+            Some(100.0)
+        );
+        assert_eq!(fast.damage.quality().1, Some(Freshness::Fresh));
+        assert_eq!(
+            grid.vehicles
+                .iter()
+                .filter(|row| row.fast.is_some())
+                .count(),
+            1
+        );
         assert_eq!(
             admit_v13(REAL_44, "1.4.1.3"),
             Err(AdmissionError::UnsupportedBuild)
@@ -385,6 +632,42 @@ mod tests {
         assert_eq!(
             duration_from_seconds(i64::MAX as f64 / 1_000_000_000.0),
             None
+        );
+    }
+
+    #[test]
+    fn player_fast_fields_keep_invalid_and_absent_distinct() {
+        let mut frame = REAL_44.to_vec();
+        let player_base = TELEMETRY_BASE + 43 * TELEMETRY_STRIDE;
+        frame[player_base + 356..player_base + 364].copy_from_slice(&f64::NAN.to_le_bytes());
+        frame[player_base + 420..player_base + 428].copy_from_slice(&1.5_f64.to_le_bytes());
+        frame[player_base + 696..player_base + 704].copy_from_slice(&(-0.245_f64).to_le_bytes());
+        frame[player_base + 1026] = 2;
+        let grid = admit_v13(&frame, "1.3.0.0").unwrap();
+        let fast = grid.vehicles[43].fast.as_ref().unwrap();
+        assert_eq!(fast.engine_rpm, Field::invalid_observed(0.0));
+        assert_eq!(fast.throttle, Field::invalid_observed(0.0));
+        assert_eq!(fast.delta_best_seconds, Field::observed(-0.245));
+        assert_eq!(fast.damage, Field::invalid_observed(Damage::default()));
+        assert!(grid.vehicles[0].fast.is_none());
+    }
+
+    #[test]
+    fn player_spatial_fields_fall_back_to_scoring_when_fast_vector_is_invalid() {
+        let mut frame = REAL_44.to_vec();
+        let player_telemetry = TELEMETRY_BASE + 43 * TELEMETRY_STRIDE;
+        frame[player_telemetry + 160..player_telemetry + 168]
+            .copy_from_slice(&f64::NAN.to_le_bytes());
+        let changed = admit_v13(&frame, "1.3.0.0").unwrap();
+        let player = &changed.vehicles[43];
+        assert_eq!(player.world_position.quality().1, Some(Freshness::Fresh));
+        assert_eq!(
+            player.world_position,
+            read_vector_field(&frame, SCORING_BASE + 43 * SCORING_STRIDE + 264)
+        );
+        assert_eq!(
+            player.fast.as_ref().unwrap().speed_mps.quality().1,
+            Some(Freshness::Fresh)
         );
     }
 

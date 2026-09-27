@@ -653,3 +653,16 @@ distancias distintas) igual que Go. La fixture real de 44 valida el jugador,
 ceros legítimos y tiempos de vuelta ausentes. Todavía faltan los campos
 espaciales, fast telemetry del jugador, damage, REST, fusion, identidad
 canónica y todos los productos; esta estructura no sale aún del harness.
+
+## 16. Campos rápidos y espaciales LMU 1.3 en Rust (2026-09-28)
+
+R08 ya correlaciona por ID la fila de telemetría del jugador con scoring y
+extrae vuelta, marcha, RPM, velocidad, pedales, combustible, delta, desgaste
+de neumáticos y daño. También valida posición, velocidad local y orientación
+de cada coche, prefiriendo los valores rápidos del jugador cuando son frescos
+y usando scoring cuando no lo son. Los casos adversariales preservan la
+diferencia entre ausente e inválido. Rust release (18 tests), formato y Clippy
+pasan sobre las fixtures estáticas existentes. Todavía no hay comparación
+campo por campo automatizada frente a Go, corpus temporal 44/104 SHM+REST,
+REST/fusión, salida canónica, integración productiva ni medición del objetivo
+de CPU. R08 sigue parcial y Go sigue siendo el único backend productivo.

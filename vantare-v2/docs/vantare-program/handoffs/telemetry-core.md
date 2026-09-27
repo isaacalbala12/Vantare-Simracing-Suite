@@ -1,5 +1,17 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — campos rápidos y espaciales LMU 1.3 en Rust (2026-09-28)
+
+R08 correlaciona por ID la telemetría del jugador con su fila scoring y
+extrae vuelta, marcha, RPM, velocidad, pedales, combustible, delta, desgaste
+de neumáticos y daño. Valida geometría y orientación de cada coche; para el
+jugador prefiere telemetría fresca y retrocede a scoring ante valor inválido.
+Las fixtures estáticas reales de 44 coches y menú y casos adversariales pasan
+en Rust release (18/18), formato y Clippy. R08 sigue parcial: faltan paridad
+automatizada campo por campo, corpus temporal SHM+REST de 44/104, REST/fusión,
+salida canónica e integración en productos. Go continúa productivo exclusivo;
+el umbral CPU 50% no está medido.
+
 ## ISA-1403 — filas scoring LMU 1.3 en Rust (2026-09-28)
 
 R08 añadió extracción de filas scoring con calidad de campo: nombres,

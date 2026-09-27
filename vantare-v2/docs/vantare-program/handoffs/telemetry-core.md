@@ -1,5 +1,90 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — inicio de ejecución R01/R04 (2026-09-27)
+
+Isaac autorizó iniciar el port. En el worktree aislado
+`vantareapp/isa-1403-rust-telemetry`, base `origin/nightly@355e9cfee`, se añadió
+[inventario inicial](../../telemetry-core/rust-port-inventory.md) del recorrido
+live y un esqueleto Rust bajo `rust/telemetry/`, con
+[framing IPC v1](../../telemetry-core/rust-ipc-v1.md). El ejecutable es inerte:
+solo informa su versión y sale con error si se intenta iniciar el runtime.
+Go continúa como única ruta productiva; no hay acceso Rust a LMU, named pipe,
+supervisor ni selección candidata.
+
+`cargo test --locked`: 5 pruebas PASS de framing, versiones, límite de 8 MiB y
+lectura/escritura parcial. El primer intento de formato falló porque faltaba
+`rustfmt` para la toolchain fijada; se instaló ese componente y `cargo fmt`
+pasó. También pasó Clippy con warnings como error tras instalar su componente,
+y `cargo run --locked -- --version` mostró `0.1.0`. No se han medido CPU/p99/RSS
+ni ejecutado LMU/Wails/OBS. R01 sigue
+parcial hasta resolver el destino de roadmap antes del PR; R04 sigue parcial
+hasta fijar límites numéricos restantes y conformidad Go. R02/104 temporal real
+continúa sin acreditarse. No se añadió ninguna crate externa.
+
+Siguiente corte: contrastar el inventario con consumidores/tests y acreditar
+corpus real temporal 44/104; completar límites de IPC y supervisor Windows
+antes de conectar el hijo. Mantener la issue #1403 sincronizada y no publicar
+una mejora de rendimiento sin el banco G0/G1/R.
+
+## ISA-1403 — diseño Rust confirmado y plan documental (2026-09-27)
+
+Isaac confirmó migrar el camino live completo a un proceso hijo Rust Windows
+amd64 y pidió a Astra max convertir el diseño en plan. La
+[issue #1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403)
+coordina este trabajo por instrucción explícita del chat. Se preparan el
+[plan R01–R28](../../superpowers/plans/2026-09-27-rust-telemetry-port.md) y la
+[ADR 0097](../../adr/0097-rust-telemetry-child-process.md), con revisión documental
+del orquestador completada. No se ha iniciado el port.
+
+Rust será único owner de LMU SHM/REST, fusión, estado, derivaciones y proyecciones.
+Go conserva Wails, servicios de producto y entrega. Replay Rust solo como harness
+de paridad; Analysis histórico y SQLite recording no conectado quedan fuera.
+No portar SimX; conservar neutralidad del Core con un pequeño driver solo de
+pruebas Rust. Named pipes locales restringidos y versionados, elección JSON vs
+binario medida, snapshots latest-wins, facts ordenados/resync, reinicios acotados
+y Go como rollback exclusivo temporal.
+
+Correcciones de la primera revisión incorporadas: Q4=C ya autoriza crates sin
+límite numérico cuando faciliten el port, sin pedir aprobación individual.
+Documentar necesidad, alternativa, licencia, seguridad, tamaño y versión; una
+dependencia que amplíe el alcance conserva su gate de alcance. Rxx y subcortes
+son el mapa técnico: cada issue ejecutable puede agrupar cortes coherentes con
+diff revisable, archivos previstos, tests y evidencia. Se elimina el límite
+rígido de archivos y la obligación de una issue por cada paso.
+
+Gate pendiente: capturas temporales LMU reales sanitizadas de 44 y 104 coches,
+Go actual/control Go equivalente/Rust+IPC+recepción Go, al menos 50% menos CPU
+en cada escenario frente al control equivalente, p99 no peor y RSS agregado
+≤110%. El fixture estático de 44 tiene SHA `959c51421529c6157371678d8db9bcbbdc8ab3780bd5557828f2bc0d2225e5ff`;
+no acredita una secuencia completa. La captura real de 104 sigue sin acreditarse;
+`BenchmarkEngineApply104` construye datos y no la sustituye. La sesión física
+LMU/Wails/OBS validará funcionalidad y permanece pendiente.
+
+Base/HEAD inicial `355e9cfee2fec3c27341fa96ec4e6a9297fab730`, rama
+`vantareapp/isa-1403-rust-telemetry`, worktree aislado
+`C:/Users/isaac/.codex/worktrees/isa-1403-rust-telemetry/Vantare-Overlays`, limpio
+al comenzar. Entrega documental: plan, ADR y esta entrada. No hay código, build,
+tests ni workflows modificados; no se han ejecutado tests de producto ni banco
+de CPU porque todavía no existe candidato. Sin commit/push/PR/CI nuevo,
+integración, promoción o release.
+
+Discrepancia trazada: las instrucciones de Isaac en el chat fijan GitHub y
+`docs/roadmap/plan.md`; esta base contiene AGENTS Notion y roadmap Supabase.
+`plan.md`, `roadmap.json` y el generador histórico no existen tras #1380
+(`1e4c26d5`). No se reconstruye el roadmap ni se publica Supabase: el roadmap
+público no está actualizado por este trabajo. R01 reconcilia el destino
+documental antes del PR de implementación. La nota Notion inferior es contexto
+del expediente; para ISA-1403 prevalece la instrucción explícita de esta sesión.
+
+Checks documentales: diff sin errores de whitespace, 51 enlaces locales y
+fences/codificación comprobados. #1403 continúa abierta y refleja las correcciones
+de la revisión documental completada por el orquestador. Su enlace
+de rama al plan está marcado como previsto hasta disponer de commit/push.
+
+Siguiente acción: agrupar R01–R03 en entregas coherentes y acreditar el corpus.
+El diseño confirmado
+no demuestra el gate ni autoriza una promoción a Nightly.
+
 > **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
 > Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,
 > bloquear, entregar y verificar merge. [Contrato](../notion-transition.md).

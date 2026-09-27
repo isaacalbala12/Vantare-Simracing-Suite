@@ -1,0 +1,15 @@
+[package]
+name = "vantare-telemetry"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+name = "vantare_telemetry"
+path = "src/lib.rs"
+
+[[bin]]
+name = "vantare-telemetry"
+path = "src/main.rs"
+
+[dependencies]

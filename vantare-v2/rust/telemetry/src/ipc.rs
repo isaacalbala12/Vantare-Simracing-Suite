@@ -164,6 +164,11 @@ mod tests {
             let kind = Kind::try_from(raw_kind).unwrap();
             let encoded = encode(kind, &[0, 1, 255]).unwrap();
             assert_eq!(
+                encoded,
+                [3, 0, 0, 0, 1, 0, raw_kind as u8, 0, 0, 1, 255],
+                "Go and Rust must use the same fixed wire bytes"
+            );
+            assert_eq!(
                 decode(&encoded).unwrap(),
                 Frame {
                     kind,

@@ -1,5 +1,23 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — framing Go/Rust conforme en harness (2026-09-27)
+
+Se añadió `internal/app/telemetryprocess/framing.go` como receptor wire Go
+versionado y acotado; sus tests y Rust comparan los mismos bytes fijos de los
+nueve tipos. Ambos lados rechazan versiones/tipos desconocidos, longitud mayor
+de 8 MiB, truncado y framing de buffer con bytes sobrantes. Go soporta
+lecturas/escrituras parciales y prueba el borde exacto. El paquete aún no
+lanza un proceso ni abre named pipes; Go sigue siendo el único runtime live.
+
+Verificación del corte: `go test -p 1 -count=1 ./...` PASS sin caché,
+`cargo test --locked --release` 5/5 PASS, `cargo fmt --all -- --check` PASS,
+`cargo clippy --locked --all-targets -- -D warnings` PASS y `git diff --check`
+PASS. No se repitió frontend porque no se modificó. R04 sigue parcial hasta
+los límites de lifecycle/payload y R02 sigue sin corpus temporal real de
+44/104. Sin LMU activo, paridad de producto, validación física o gate del 50%.
+La discrepancia del roadmap continúa bloqueando el PR según la instrucción
+explícita del chat. No se promocionó ni publicó nada.
+
 ## ISA-1403 — auditoría completa de pruebas disponibles (2026-09-27)
 
 La rama aislada permaneció en `76c561adeef3a9ffc1a220d6734acbf17a4b8b26`.

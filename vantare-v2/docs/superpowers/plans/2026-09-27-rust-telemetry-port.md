@@ -564,10 +564,21 @@ que exista el artefacto verificable correspondiente.
   del roadmap antes del primer PR; R02 debe acreditar corpus temporal real.
 - R04: `rust/telemetry/` contiene ejecutable inerte, toolchain fijada, lockfile
   sin crates externas y [framing IPC v1](../../telemetry-core/rust-ipc-v1.md).
-  La tabla de límites/compatibilidad y conformidad Go no están completas; no
+  La tabla de límites/compatibilidad y conformidad Go no estaban completas; no
   conectar el pipe ni declarar R04 terminado.
 - Verificación Rust local: `cargo fmt --check`, `cargo test --locked` (5 tests),
   `cargo clippy --locked --all-targets -- -D warnings` y
   `cargo run --locked -- --version` pasan. No hay gate de rendimiento medido.
 - La [issue #1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403)
   registra el inicio. Go sigue siendo la única ruta productiva.
+
+## 10. Continuación del framing (2026-09-27)
+
+Se añadió el receptor Go de framing bajo `internal/app/telemetryprocess/`.
+Rust y Go validan los mismos bytes wire fijos para los nueve tipos, rechazan
+versiones y tipos desconocidos, tramas incompletas, bytes sobrantes en decoder
+de buffer y payloads mayores de 8 MiB. Se probó el borde exacto y el I/O
+parcial. `go test -p 1 -count=1 ./...`, `cargo test --locked --release`,
+`cargo fmt --check` y Clippy pasaron. El receptor no abre un pipe ni inicia
+el hijo. La tabla de lifecycle y payload sigue pendiente, por lo que R04
+continúa parcial. No hay corpus temporal real 44/104 ni prueba del gate CPU.

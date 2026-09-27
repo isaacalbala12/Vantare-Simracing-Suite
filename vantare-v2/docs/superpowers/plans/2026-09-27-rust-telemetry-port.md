@@ -641,3 +641,15 @@ conecta los consumidores. La máquina local tiene instalado LMU `1.4.2.0`
 (FileVersion y ProductVersion del ejecutable), sin proceso LMU activo en esta
 verificación. La build instalada no está en la allowlist actual; no se usa
 para acreditar el corpus ni se añade sin captura y revisión de layout.
+
+## 15. Filas scoring LMU 1.3 en Rust (2026-09-28)
+
+R08 ya extrae las filas scoring válidas en orden de origen, con identidad de
+slot, nombres sanitizados del fixture, clase, posición, vueltas, sector,
+distancia, tiempo de progreso, tiempos de vuelta, box, penalizaciones y gaps.
+Conserva los sentinels negativos como ausencias, cero/false observados y
+normaliza el patrón sin evidencia de progreso (todos los tiempos cero con
+distancias distintas) igual que Go. La fixture real de 44 valida el jugador,
+ceros legítimos y tiempos de vuelta ausentes. Todavía faltan los campos
+espaciales, fast telemetry del jugador, damage, REST, fusion, identidad
+canónica y todos los productos; esta estructura no sale aún del harness.

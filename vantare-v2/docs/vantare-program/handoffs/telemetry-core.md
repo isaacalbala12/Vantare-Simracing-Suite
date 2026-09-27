@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — filas scoring LMU 1.3 en Rust (2026-09-28)
+
+R08 añadió extracción de filas scoring con calidad de campo: nombres,
+identidad de slot, posición, vueltas, sector, distancia/progreso, tiempos de
+vuelta, box, penalizaciones y gaps. Conserva cero observado frente a
+sentinels ausentes y la normalización Go del tiempo de progreso no fiable.
+La fixture real estática de 44 coches y casos adversariales pasan en Rust
+release (16/16) junto a Clippy. Quedan fast telemetry del jugador, geometría,
+damage, REST y el camino canónico/productos; no se conecta al runtime live.
+
 ## ISA-1403 — calidad y sesión Rust, evidencia de build local (2026-09-28)
 
 R07/R08 incorpora tipos de calidad Rust que distinguen ausente de cero,

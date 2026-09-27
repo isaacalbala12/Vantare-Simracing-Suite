@@ -24,11 +24,43 @@ pub enum AdmissionError {
 
 #[derive(Debug, PartialEq)]
 pub struct AdmittedGrid {
-    pub source_ids: Vec<i32>,
+    pub vehicles: Vec<VehicleFields>,
     pub player_index: Option<usize>,
     pub vehicle_count: Field<u32>,
     pub player_present: Field<bool>,
     pub session: SessionFields,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(u8)]
+pub enum Sector {
+    One = 1,
+    Two = 2,
+    Three = 3,
+}
+
+#[derive(Debug, PartialEq)]
+pub struct VehicleFields {
+    pub source_id: i32,
+    pub driver_name: Field<String>,
+    pub vehicle_name: Field<String>,
+    pub vehicle_class: Field<String>,
+    pub player: Field<bool>,
+    pub position: Field<i32>,
+    pub completed_laps: Field<i32>,
+    pub sector: Field<Sector>,
+    pub lap_distance: Field<f64>,
+    pub lap_progress_time: Field<f64>,
+    pub best_lap_time: Field<f64>,
+    pub last_lap_time: Field<f64>,
+    pub estimated_lap_time: Field<f64>,
+    pub in_pit: Field<bool>,
+    pub pit_stop_count: Field<i32>,
+    pub penalty_count: Field<i32>,
+    pub time_behind_next: Field<f64>,
+    pub laps_behind_next: Field<i32>,
+    pub time_behind_leader: Field<f64>,
+    pub laps_behind_leader: Field<i32>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -119,41 +151,89 @@ pub fn admit_v13(buffer: &[u8], verified_build: &str) -> Result<AdmittedGrid, Ad
         }
         telemetry_ids.push(id);
     }
-    let mut source_ids = Vec::with_capacity(count);
+    let mut vehicles = Vec::with_capacity(count);
     let mut player_index = None;
     for index in 0..count {
         let base = SCORING_BASE + index * SCORING_STRIDE;
         let id = read_i32(buffer, base);
+        let (Some(driver), Some(name), Some(class)) = (
+            read_c_string(&buffer[base + 4..base + 36]),
+            read_c_string(&buffer[base + 36..base + 100]),
+            read_c_string(&buffer[base + 200..base + 232]),
+        ) else {
+            return Err(AdmissionError::InvalidActiveGrid);
+        };
         let player = buffer[base + 196];
         let in_pit = buffer[base + 198];
+        let sector = match buffer[base + 102] {
+            0 => Sector::Three,
+            1 => Sector::One,
+            2 => Sector::Two,
+            _ => return Err(AdmissionError::InvalidActiveGrid),
+        };
+        let distance = read_f64(buffer, base + 104);
+        let time_next = read_f64(buffer, base + 232);
+        let time_leader = read_f64(buffer, base + 244);
+        let best = read_f64(buffer, base + 144);
+        let last = read_f64(buffer, base + 168);
+        let estimated = read_f64(buffer, base + 472);
         let valid = id >= 0
             && telemetry_ids.contains(&id)
-            && !source_ids.contains(&id)
-            && reasonable_c_string(&buffer[base + 4..base + 36])
-            && reasonable_c_string(&buffer[base + 36..base + 100])
-            && reasonable_c_string(&buffer[base + 200..base + 232])
+            && !vehicles
+                .iter()
+                .any(|row: &VehicleFields| row.source_id == id)
             && player <= 1
             && in_pit <= 1
             && read_i16(buffer, base + 100) >= 0
-            && (0..=2).contains(&(buffer[base + 102] as i8))
-            && read_f64(buffer, base + 104).is_finite()
+            && distance.is_finite()
             && (1..=MAX_VEHICLES as u8).contains(&buffer[base + 199])
             && read_i16(buffer, base + 192) >= 0
             && read_i16(buffer, base + 194) >= 0
-            && read_f64(buffer, base + 232).is_finite()
+            && time_next.is_finite()
             && read_i32(buffer, base + 240) >= 0
-            && read_f64(buffer, base + 244).is_finite()
+            && time_leader.is_finite()
             && read_i32(buffer, base + 252) >= 0
-            && [144, 168, 472]
-                .into_iter()
-                .all(|offset| read_f64(buffer, base + offset).is_finite());
+            && best.is_finite()
+            && last.is_finite()
+            && estimated.is_finite();
         if !valid || (player == 1 && player_index.replace(index).is_some()) {
             return Err(AdmissionError::InvalidActiveGrid);
         }
-        source_ids.push(id);
+        let progress = read_f64(buffer, base + 464);
+        vehicles.push(VehicleFields {
+            source_id: id,
+            driver_name: Field::observed(driver.to_owned()),
+            vehicle_name: Field::observed(name.to_owned()),
+            vehicle_class: Field::observed(class.to_owned()),
+            player: Field::observed(player == 1),
+            position: Field::observed(i32::from(buffer[base + 199])),
+            completed_laps: Field::observed(i32::from(read_i16(buffer, base + 100))),
+            sector: Field::observed(sector),
+            lap_distance: if distance >= 0.0 {
+                Field::observed(distance)
+            } else {
+                Field::Missing
+            },
+            lap_progress_time: if progress.is_finite() {
+                Field::observed(progress)
+            } else {
+                Field::invalid_observed(0.0)
+            },
+            best_lap_time: positive_lap_time(best),
+            last_lap_time: positive_lap_time(last),
+            estimated_lap_time: positive_lap_time(estimated),
+            in_pit: Field::observed(in_pit == 1),
+            pit_stop_count: Field::observed(i32::from(read_i16(buffer, base + 192))),
+            penalty_count: Field::observed(i32::from(read_i16(buffer, base + 194))),
+            time_behind_next: nonnegative_or_missing(time_next),
+            laps_behind_next: Field::observed(read_i32(buffer, base + 240)),
+            time_behind_leader: nonnegative_or_missing(time_leader),
+            laps_behind_leader: Field::observed(read_i32(buffer, base + 252)),
+        });
     }
+    normalize_lap_progress_evidence(&mut vehicles);
     Ok(AdmittedGrid {
-        source_ids,
+        vehicles,
         player_index,
         vehicle_count: Field::observed(count as u32),
         player_present: Field::observed(player_index.is_some()),
@@ -161,8 +241,46 @@ pub fn admit_v13(buffer: &[u8], verified_build: &str) -> Result<AdmittedGrid, Ad
     })
 }
 
-fn reasonable_c_string(bytes: &[u8]) -> bool {
-    read_c_string(bytes).is_some()
+fn positive_lap_time(value: f64) -> Field<f64> {
+    if value > 0.0 {
+        Field::observed(value)
+    } else {
+        Field::Missing
+    }
+}
+
+fn nonnegative_or_missing(value: f64) -> Field<f64> {
+    if value >= 0.0 {
+        Field::observed(value)
+    } else {
+        Field::Missing
+    }
+}
+
+fn normalize_lap_progress_evidence(rows: &mut [VehicleFields]) {
+    if rows.len() < 2
+        || rows
+            .iter()
+            .any(|row| row.lap_progress_time != Field::observed(0.0))
+    {
+        return;
+    }
+    let mut first = None;
+    let mut differs = false;
+    for row in rows.iter() {
+        if let Some(distance) = row.lap_distance.value() {
+            if let Some(previous) = first {
+                differs |= distance != previous;
+            } else {
+                first = Some(distance);
+            }
+        }
+    }
+    if differs {
+        for row in rows {
+            row.lap_progress_time = Field::Missing;
+        }
+    }
 }
 
 fn read_c_string(bytes: &[u8]) -> Option<&str> {
@@ -210,7 +328,7 @@ mod tests {
     #[test]
     fn real_fixture_admits_44_bijective_rows_and_one_player() {
         let grid = admit_v13(REAL_44, "1.3.0.0").unwrap();
-        assert_eq!(grid.source_ids.len(), 44);
+        assert_eq!(grid.vehicles.len(), 44);
         assert_eq!(grid.player_index, Some(43));
         assert_eq!(grid.vehicle_count.value(), Some(&44));
         assert_eq!(grid.player_present.value(), Some(&true));
@@ -218,6 +336,14 @@ mod tests {
         assert!(grid.session.source_time_ns.value().is_some());
         assert_eq!(grid.session.end_time_seconds.value(), Some(&3605.0));
         assert_eq!(grid.session.maximum_laps.value(), Some(&0));
+        let player = &grid.vehicles[43];
+        assert_eq!(player.player.value(), Some(&true));
+        assert_eq!(player.completed_laps.value(), Some(&0));
+        assert_eq!(player.pit_stop_count.value(), Some(&0));
+        assert_eq!(player.penalty_count.value(), Some(&0));
+        assert_eq!(player.in_pit.value(), Some(&false));
+        assert_eq!(player.best_lap_time, Field::Missing);
+        assert_eq!(player.last_lap_time, Field::Missing);
         assert_eq!(
             admit_v13(REAL_44, "1.4.1.3"),
             Err(AdmissionError::UnsupportedBuild)
@@ -227,7 +353,7 @@ mod tests {
     #[test]
     fn real_menu_fixture_preserves_observed_zero_and_false() {
         let grid = admit_v13(REAL_MENU, "1.3.0.0").unwrap();
-        assert!(grid.source_ids.is_empty());
+        assert!(grid.vehicles.is_empty());
         assert_eq!(grid.player_index, None);
         assert_eq!(grid.vehicle_count.value(), Some(&0));
         assert_eq!(grid.player_present.value(), Some(&false));
@@ -241,7 +367,7 @@ mod tests {
         frame[1_716..1_720].copy_from_slice(&(-1_i32).to_le_bytes());
         frame[1_852..1_860].copy_from_slice(&f64::NAN.to_le_bytes());
         let grid = admit_v13(&frame, "1.3.0.0").unwrap();
-        assert_eq!(grid.source_ids.len(), 44);
+        assert_eq!(grid.vehicles.len(), 44);
         assert_eq!(grid.session.source_time_ns, Field::invalid_observed(0));
         assert_eq!(grid.session.maximum_laps, Field::invalid_observed(0));
         assert_eq!(
@@ -291,6 +417,12 @@ mod tests {
         let first_player = 43;
         frame[SCORING_BASE + first_player * SCORING_STRIDE + 196] = 1;
         frame[SCORING_BASE + 196] = 1;
+        assert_eq!(
+            admit_v13(&frame, "1.3.0.0"),
+            Err(AdmissionError::InvalidActiveGrid)
+        );
+        frame.copy_from_slice(REAL_44);
+        frame[SCORING_BASE + 144..SCORING_BASE + 152].copy_from_slice(&f64::NAN.to_le_bytes());
         assert_eq!(
             admit_v13(&frame, "1.3.0.0"),
             Err(AdmissionError::InvalidActiveGrid)

@@ -1,5 +1,17 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — lector LMU Rust en mapping privado (2026-09-28)
+
+R08 avanza con un lector Win32 de `LMU_Data` que solicita vista completa
+`324820` bytes de solo lectura y obtiene un snapshot estable tras hasta tres
+comparaciones. La vista y el handle tienen un único owner y se liberan al
+cerrarlo. Tests Rust release sobre mapping privado pasan para lectura estable,
+recuperación de copia incoherente, rechazo de cambios continuos y mapping
+corto. Todavía no se ha conectado al proceso hijo ni se ha abierto el mapping
+real de LMU; no constituye captura o paridad live. El plan registra el detalle
+y las fuentes de las APIs Windows. Rust test release 11/11, Clippy, formato y
+build Windows release pasan. Go productivo y los gates pendientes se mantienen.
+
 ## ISA-1403 — primer parser Rust y oráculo Go (2026-09-28)
 
 Rust añadió admisión estructural del layout LMU 1.3 sin acceso live: tamaño,

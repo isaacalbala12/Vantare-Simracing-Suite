@@ -611,3 +611,19 @@ telemetría duplicado, texto sin terminador y jugador duplicado. Esta admisión
 no porta aún los campos canónicos, REST, adquisición ni proyecciones; el
 snapshot aislado tampoco cumple R02 ni acredita el umbral CPU. R03/R08 siguen
 parciales.
+
+## 13. Lector SHM Rust acotado (2026-09-28)
+
+R08 añade un owner Windows de `LMU_Data` en solo lectura. Abre el mapping por
+nombre, solicita exactamente `ObjectOutSize`, copia a un buffer del tamaño
+esperado y repite la copia como máximo tres veces hasta obtener dos snapshots
+idénticos. Un mapping más pequeño falla al mapear; un buffer de destino de
+tamaño incorrecto y una lectura siempre cambiante se rechazan. `Drop` libera
+vista y handle. La prueba usa mappings privados, sin abrir una segunda vista
+productiva de LMU. Sigue pendiente la evidencia de lectura física con LMU,
+cancelación del driver, conexión con el parser y el pipeline completo.
+
+Las firmas y el comportamiento de mapping se contrastaron con la documentación
+de Microsoft para [OpenFileMapping](https://learn.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-openfilemappingw),
+[MapViewOfFile](https://learn.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-mapviewoffile) y
+[CreateFileMapping](https://learn.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-createfilemappingw).

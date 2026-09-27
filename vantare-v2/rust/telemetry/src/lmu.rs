@@ -1,6 +1,9 @@
 //! Closed LMU 1.3 frame admission. A caller must supply independently verified
 //! build evidence; buffer shape alone never promotes an unknown game build.
 
+#[cfg(windows)]
+pub mod reader;
+
 pub const OBJECT_OUT_SIZE: usize = 324_820;
 const MAX_VEHICLES: usize = 104;
 const SCORING_BASE: usize = 2_192;

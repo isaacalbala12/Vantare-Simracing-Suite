@@ -21,6 +21,10 @@ parcial hasta resolver el destino de roadmap antes del PR; R04 sigue parcial
 hasta fijar límites numéricos restantes y conformidad Go. R02/104 temporal real
 continúa sin acreditarse. No se añadió ninguna crate externa.
 
+El corte inicial quedó en `3d410fc7150f6876e8aa6f5064b02a68d52f2fa0`, publicado
+en `origin/vantareapp/isa-1403-rust-telemetry` con árbol limpio. La issue #1403
+enlaza ese SHA. Sin PR ni CI de PR; ningún merge, promoción o release.
+
 Siguiente corte: contrastar el inventario con consumidores/tests y acreditar
 corpus real temporal 44/104; completar límites de IPC y supervisor Windows
 antes de conectar el hijo. Mantener la issue #1403 sincronizada y no publicar

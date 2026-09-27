@@ -1,5 +1,18 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — calidad y sesión Rust, evidencia de build local (2026-09-28)
+
+R07/R08 incorpora tipos de calidad Rust que distinguen ausente de cero,
+`false` e inválido, y el primer conjunto de campos de sesión LMU 1.3: pista,
+longitud, tipo, reloj de origen, fin, vueltas máximas y lluvia. Las fixtures
+reales estáticas de 44 coches y menú sin coches pasan, igual que transitorios
+de escalares y límites de duración. `cargo test --release --locked` 16/16,
+formato y Clippy pasan. No hay aún campos canónicos completos, REST, loop del
+driver ni producto Rust. LMU instalado localmente informa FileVersion y
+ProductVersion `1.4.2.0`; no había proceso activo y esta build no figura en la
+allowlist de layouts. No se ha atribuido una captura a ella. Go permanece
+como único backend productivo; faltan corpus real 44/104 y gate CPU 50%.
+
 ## ISA-1403 — lector LMU Rust en mapping privado (2026-09-28)
 
 R08 avanza con un lector Win32 de `LMU_Data` que solicita vista completa

@@ -627,3 +627,17 @@ Las firmas y el comportamiento de mapping se contrastaron con la documentación
 de Microsoft para [OpenFileMapping](https://learn.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-openfilemappingw),
 [MapViewOfFile](https://learn.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-mapviewoffile) y
 [CreateFileMapping](https://learn.microsoft.com/en-us/windows/win32/api/memoryapi/nf-memoryapi-createfilemappingw).
+
+## 14. Calidad y escalares de sesión Rust (2026-09-28)
+
+R07/R08 avanzan con `Field<T>` interno: ausente carece de valor, mientras cero,
+`false` e inválido conservan presencia y procedencia, como el contrato Go.
+La admisión LMU 1.3 publica recuento/jugador y track, longitud, tipo, reloj
+de origen, fin, vueltas máximas y lluvia con la calidad que aplica el parser
+Go. Las fixtures reales estáticas de pista (44) y menú (0) y casos de cuenta
+atrás, vueltas ilimitadas, lluvia NaN y overflow de duración pasan en Rust.
+El parser Rust aún no produce todas las filas/observaciones canónicas ni
+conecta los consumidores. La máquina local tiene instalado LMU `1.4.2.0`
+(FileVersion y ProductVersion del ejecutable), sin proceso LMU activo en esta
+verificación. La build instalada no está en la allowlist actual; no se usa
+para acreditar el corpus ni se añade sin captura y revisión de layout.

@@ -2,3 +2,4 @@
 
 pub mod ipc;
 pub mod lmu;
+pub mod quality;

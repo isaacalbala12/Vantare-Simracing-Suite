@@ -1,9 +1,50 @@
+use std::fs::OpenOptions;
+use std::io;
+
+use vantare_telemetry::ipc::{self, Kind};
+
 fn main() {
-    if std::env::args_os().skip(1).eq(["--version"]) {
+    let arguments: Vec<String> = std::env::args().skip(1).collect();
+    if arguments == ["--version"] {
         println!("vantare-telemetry {}", env!("CARGO_PKG_VERSION"));
+        return;
+    }
+
+    if let [pipe_flag, pipe_name, nonce_flag, nonce_text] = arguments.as_slice()
+        && pipe_flag == "--harness-pipe"
+        && nonce_flag == "--harness-nonce"
+    {
+        if let Err(error) = run_pipe_harness(pipe_name, nonce_text) {
+            eprintln!("vantare-telemetry: IPC harness failed: {error}");
+            std::process::exit(2);
+        }
         return;
     }
 
     eprintln!("vantare-telemetry: IPC runtime is not enabled");
     std::process::exit(2);
+}
+
+fn run_pipe_harness(pipe_name: &str, nonce_text: &str) -> io::Result<()> {
+    let nonce = ipc::parse_nonce_hex(nonce_text)
+        .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "invalid instance nonce"))?;
+    let suffix = pipe_name.strip_prefix(r"\\.\pipe\vantare-telemetry-");
+    if suffix.and_then(ipc::parse_nonce_hex) != Some(nonce) {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidInput,
+            "invalid pipe name",
+        ));
+    }
+    let mut pipe = OpenOptions::new().read(true).write(true).open(pipe_name)?;
+    ipc::write_frame(&mut pipe, Kind::Handshake, &ipc::handshake_payload(&nonce))
+        .map_err(|error| io::Error::other(format!("write handshake: {error:?}")))?;
+    let (kind, payload) = ipc::read_frame(&mut pipe)
+        .map_err(|error| io::Error::other(format!("read stop: {error:?}")))?;
+    if kind != Kind::Stop || !payload.is_empty() {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "expected empty Stop frame",
+        ));
+    }
+    Ok(())
 }

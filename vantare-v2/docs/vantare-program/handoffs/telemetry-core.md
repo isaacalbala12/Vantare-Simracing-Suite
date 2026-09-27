@@ -1,5 +1,31 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — harness Windows Go/Rust conectado (2026-09-28)
+
+Tras la petición de continuar el port, se implementó un corte R05 en
+`internal/app/telemetryprocess/` y `rust/telemetry/`. Go crea un named pipe
+restringido al SID de la sesión, rechaza remotos y segunda instancia, compara
+el PID real del cliente y usa un Job Object para poseer al hijo. Lanza el
+ejecutable suspendido, lo asigna al job y solo entonces lo reanuda, con entorno
+vacío. Rust tiene un modo de harness que hace Handshake con nonce/versión y
+espera Stop; no accede a LMU ni publica telemetría. La prueba conjunta con
+el binario Rust release pasó y verificó salida 0 mediante la sesión de harness
+Go. Tests Windows probaron deadline de conexión, PID equivocado, DACL efectiva,
+fallo de asignación, versión errónea y cierre del hijo sin proceso residual.
+La suite Go completa sin caché pasó con el binario Rust del test; Rust release,
+Clippy y formato también pasaron. Una repetición 20x detectó una carrera del
+propio test al leer el archivo marcador antes de terminar su escritura; se
+corrigió y la repetición 20x pasó. `go test -race` no llegó a compilar por
+toolchain C local: `gcc` no acepta `-Qunused-arguments` y `clang` no encuentra
+las cabeceras Windows/C de MinGW. No se presenta race como PASS.
+
+R04/R05 siguen parciales: sin integración Wails, payloads de producto,
+cola/facts, deadlines de lecturas/escrituras, reinicios ni límites por tipo.
+Los corpus SHM+REST temporales 44/104 y el gate CPU siguen pendientes. LMU
+está instalado localmente pero no había sesión activa; la superficie de
+computer use disponible no expuso apps nativas y el harness actual aún no
+permite validar una sesión LMU. Mantener Go productivo exclusivo.
+
 ## ISA-1403 — framing Go/Rust conforme en harness (2026-09-27)
 
 Se añadió `internal/app/telemetryprocess/framing.go` como receptor wire Go

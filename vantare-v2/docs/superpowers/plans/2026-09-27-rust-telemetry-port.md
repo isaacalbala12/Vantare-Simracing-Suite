@@ -582,3 +582,17 @@ parcial. `go test -p 1 -count=1 ./...`, `cargo test --locked --release`,
 `cargo fmt --check` y Clippy pasaron. El receptor no abre un pipe ni inicia
 el hijo. La tabla de lifecycle y payload sigue pendiente, por lo que R04
 continúa parcial. No hay corpus temporal real 44/104 ni prueba del gate CPU.
+
+## 11. Harness Windows Go/Rust (2026-09-28)
+
+El corte R05 avanza en el mismo worktree: Go reserva un named pipe local con
+DACL de sesión, nombre aleatorio, rechazo remoto, primera instancia única y
+comprobación del PID cliente. Arranca el hijo suspendido, lo asocia a un Job
+Object con cierre en cascada y solo entonces lo reanuda; el entorno del hijo
+es vacío. Rust implementa un modo de harness sin LMU que envía nonce y versión
+en Handshake y espera Stop. La prueba conjunta con el binario Rust `release`
+verificó handshake, Stop y salida 0. Tests Windows cubren timeout de conexión,
+instancia duplicada, PID incorrecto, fallo de asociación y terminación sin
+proceso residual. No es todavía un supervisor conectado a Wails; faltan las
+colas, payloads reales, deadlines de I/O, configuración y reinicios. R04/R05
+siguen parciales y no se activa el backend Rust productivo.

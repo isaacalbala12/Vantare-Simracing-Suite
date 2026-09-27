@@ -5,6 +5,8 @@ use std::io::{self, Read, Write};
 pub const VERSION: u16 = 1;
 pub const HEADER_LEN: usize = 8;
 pub const MAX_PAYLOAD_LEN: usize = 8 * 1024 * 1024;
+pub const HANDSHAKE_NONCE_LEN: usize = 16;
+pub const MAX_HELPER_VERSION_LEN: usize = 64;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(u16)]
@@ -126,6 +128,30 @@ pub fn write_frame(writer: &mut impl Write, kind: Kind, payload: &[u8]) -> Resul
     writer.write_all(&frame).map_err(|_| FrameError::Io)
 }
 
+/// A fixed nonce followed by a length-delimited Cargo package version.
+/// This is a local harness identity check, not a reusable bearer secret.
+pub fn handshake_payload(nonce: &[u8; HANDSHAKE_NONCE_LEN]) -> Vec<u8> {
+    let version = env!("CARGO_PKG_VERSION").as_bytes();
+    assert!(!version.is_empty() && version.len() <= MAX_HELPER_VERSION_LEN);
+    let mut payload = Vec::with_capacity(HANDSHAKE_NONCE_LEN + 1 + version.len());
+    payload.extend_from_slice(nonce);
+    payload.push(version.len() as u8);
+    payload.extend_from_slice(version);
+    payload
+}
+
+pub fn parse_nonce_hex(value: &str) -> Option<[u8; HANDSHAKE_NONCE_LEN]> {
+    if value.len() != HANDSHAKE_NONCE_LEN * 2 {
+        return None;
+    }
+    let mut result = [0_u8; HANDSHAKE_NONCE_LEN];
+    for (index, output) in result.iter_mut().enumerate() {
+        let pair = value.get(index * 2..index * 2 + 2)?;
+        *output = u8::from_str_radix(pair, 16).ok()?;
+    }
+    Some(result)
+}
+
 fn classify_io(error: io::Error, truncated: FrameError) -> FrameError {
     if error.kind() == io::ErrorKind::UnexpectedEof {
         truncated
@@ -238,6 +264,25 @@ mod tests {
         assert_eq!(
             read_frame(&mut Cursor::new(header)),
             Err(FrameError::PayloadTooLarge)
+        );
+    }
+
+    #[test]
+    fn handshake_has_nonce_and_version_and_rejects_bad_nonce_text() {
+        let nonce = [0xabu8; HANDSHAKE_NONCE_LEN];
+        let text = "ab".repeat(HANDSHAKE_NONCE_LEN);
+        assert_eq!(parse_nonce_hex(&text), Some(nonce));
+        assert_eq!(parse_nonce_hex(&text[..31]), None);
+        assert_eq!(parse_nonce_hex(&format!("{}zz", &text[..30])), None);
+        let payload = handshake_payload(&nonce);
+        assert_eq!(&payload[..HANDSHAKE_NONCE_LEN], &nonce);
+        assert_eq!(
+            payload[HANDSHAKE_NONCE_LEN] as usize + HANDSHAKE_NONCE_LEN + 1,
+            payload.len()
+        );
+        assert_eq!(
+            &payload[HANDSHAKE_NONCE_LEN + 1..],
+            env!("CARGO_PKG_VERSION").as_bytes()
         );
     }
 }

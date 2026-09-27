@@ -1,5 +1,34 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — auditoría completa de pruebas disponibles (2026-09-27)
+
+La rama aislada permaneció en `76c561adeef3a9ffc1a220d6734acbf17a4b8b26`.
+Se preparó el frontend con `pnpm --dir frontend install --frozen-lockfile`
+y su build pasó. `go test ./...` falló una vez en
+`TestCoordinatorWithSQLiteDrainsAndReleasesAllHandles` con
+`recording commit exceeded budget` bajo carga paralela; el test focal pasó
+3/3 y `go test -p 1 -count=1 ./...` pasó sin caché. El fallo inicial no se
+oculta ni se interpreta como una regresión Rust: SQLite recording está fuera
+del port y no fue modificado.
+
+`pnpm --dir frontend test`: 485 archivos/4109 tests unitarios PASS, 2 omitidos,
+más 4/4 del presupuesto Overlay. Uno de los omitidos, condicionado a
+`Australia/Lord_Howe`, pasó en una corrida focal con `TZ` correspondiente
+(15/15 en el archivo). El otro exige `CALENDAR_REAL_AUDIT_PATH` con 4596
+ocurrencias reales de Go; ese artefacto opt-in no existe en este worktree y no
+se inventó. Build, typecheck y lint frontend pasaron. Los cinco PNG generados
+por el test visual se restauraron al estado limpio anterior; no forman parte
+del port.
+
+`cargo test --locked --release` pasó 5/5; `cargo fmt --check` y
+`cargo clippy --locked --all-targets -- -D warnings` pasaron. Estos tests
+solo prueban el framing del esqueleto: no hay pipeline Rust productivo.
+No había proceso LMU activo ni corpus temporal SHM+REST real de 44/104 en
+el árbol inspeccionado. Por tanto siguen sin ejecutar paridad integral,
+sesión física LMU/Wails/OBS y gates CPU/p99/RSS. El port no está al 100%.
+La discrepancia del roadmap sigue pendiente antes del PR; sin PR/CI de PR,
+merge, promoción o release.
+
 ## ISA-1403 — inicio de ejecución R01/R04 (2026-09-27)
 
 Isaac autorizó iniciar el port. En el worktree aislado

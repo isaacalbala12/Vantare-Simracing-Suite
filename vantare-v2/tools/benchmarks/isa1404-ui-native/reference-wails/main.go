@@ -13,7 +13,7 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-//go:embed assets/dist/*
+//go:embed assets
 var assets embed.FS
 
 func main() {
@@ -27,7 +27,7 @@ func main() {
 	}
 	public, err := fs.Sub(assets, "assets/dist")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("build reference frontend before launch: %v", err)
 	}
 	app := application.New(application.Options{
 		Name:   "Vantare UI native bakeoff · Wails reference",

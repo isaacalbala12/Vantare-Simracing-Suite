@@ -1,6 +1,7 @@
 //! Product-neutral derivations from committed observed fields.
 
 pub mod controls;
+pub mod fuel;
 pub mod gaps;
 
 use crate::quality::{Field, Freshness, Provenance};

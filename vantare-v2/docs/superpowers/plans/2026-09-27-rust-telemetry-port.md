@@ -931,3 +931,15 @@ ausencia de jugador, calidad mixta, distancia inválida y publicación atómica
 en la fixture SHM de 44. Rust debug/release 71/71, Clippy y build release
 pasan. Falta comparar snapshots temporales completos con el oráculo Go y
 proyectar los gaps a Overlay/Engineer; el 50% CPU sigue sin acreditar.
+
+## 36. Consumo de combustible Rust candidato (2026-09-28)
+
+R13e adelanta el tracker neutral de consumo por vuelta porque el stint canónico
+ya está disponible. Sólo registra vueltas cerradas con lecturas fresh/observed,
+sin boxes ni repostaje; conserva una media de las últimas tres (configurable
+hasta diez) y un historial separado de 64. Un candidato clona su estado y
+no publica hasta el commit LMU. Tests Rust cubren ventana, límite, ownership,
+boxes, refuel, salto de vuelta, ausencia del jugador y reset de stint; la
+fixture SHM de 44 prueba preparación/publicación inicial. Rust release 75/75,
+formato, Clippy y build release pasan. R13d delta y la paridad temporal siguen
+pendientes, por lo que R13e tampoco queda certificado como salida de producto.

@@ -1,5 +1,11 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — consumo de combustible Rust candidato (2026-09-28)
+
+R13e calcula consumo medido por vuelta con media acotada e historial separado;
+se confirma con el lote LMU. Tests Rust release 75/75, formato, Clippy y build
+pasan. Plan sección 36; faltan delta, paridad temporal, proyecciones y gate CPU.
+
 ## ISA-1403 — gaps relativos Rust candidatos (2026-09-28)
 
 R13c calcula gaps de tiempo/vueltas neutrales en el candidato LMU y los

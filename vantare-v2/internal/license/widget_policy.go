@@ -55,6 +55,7 @@ type WidgetPolicy struct {
 	OverlaysAdvanced   bool
 	EngineerAI         bool
 	AllowedWidgetTypes string
+	VisibleWidgetTypes string
 	BrandCrystal       BrandRule
 	BrandEfficiency    BrandRule
 	BrandOriginal      BrandRule
@@ -69,6 +70,7 @@ type WidgetPolicyWire struct {
 	OverlaysAdvanced bool      `json:"overlaysAdvanced"`
 	EngineerAI       bool      `json:"engineerAI"`
 	AllowedWidgets   []string  `json:"allowedWidgets"`
+	VisibleWidgets   []string  `json:"visibleWidgets"`
 	BrandCrystal     BrandRule `json:"brandCrystal"`
 	BrandEfficiency  BrandRule `json:"brandEfficiency"`
 	BrandOriginal    BrandRule `json:"brandOriginal"`
@@ -83,12 +85,17 @@ func (p WidgetPolicy) ToWire() WidgetPolicyWire {
 	if p.AllowedWidgetTypes != "" {
 		allowed = strings.Split(p.AllowedWidgetTypes, ",")
 	}
+	visible := []string{}
+	if p.VisibleWidgetTypes != "" {
+		visible = strings.Split(p.VisibleWidgetTypes, ",")
+	}
 	wire := WidgetPolicyWire{
 		Revision:         p.Revision,
 		OverlaysBasic:    p.OverlaysBasic,
 		OverlaysAdvanced: p.OverlaysAdvanced,
 		EngineerAI:       p.EngineerAI,
 		AllowedWidgets:   allowed,
+		VisibleWidgets:   visible,
 		BrandCrystal:     p.BrandCrystal,
 		BrandEfficiency:  p.BrandEfficiency,
 		BrandOriginal:    p.BrandOriginal,
@@ -110,6 +117,7 @@ func sameAccessAndBrand(p, q WidgetPolicy) bool {
 		p.OverlaysAdvanced == q.OverlaysAdvanced &&
 		p.EngineerAI == q.EngineerAI &&
 		p.AllowedWidgetTypes == q.AllowedWidgetTypes &&
+		p.VisibleWidgetTypes == q.VisibleWidgetTypes &&
 		p.BrandCrystal == q.BrandCrystal &&
 		p.BrandEfficiency == q.BrandEfficiency &&
 		p.BrandOriginal == q.BrandOriginal
@@ -119,6 +127,7 @@ func freeWidgetPolicy() WidgetPolicy {
 	return WidgetPolicy{
 		OverlaysBasic:      true,
 		AllowedWidgetTypes: productWidgetMatrix.allowedIDs(widgetEffective{}),
+		VisibleWidgetTypes: productWidgetMatrix.visibleIDs(widgetEffective{}),
 		BrandCrystal:       BrandRequired,
 		BrandEfficiency:    BrandRequired,
 		BrandOriginal:      BrandNone,
@@ -300,6 +309,7 @@ func decideWidgetPolicy(eff widgetEffective) WidgetPolicy {
 		return policy
 	}
 	policy.AllowedWidgetTypes = productWidgetMatrix.allowedIDs(eff)
+	policy.VisibleWidgetTypes = productWidgetMatrix.visibleIDs(eff)
 	label := ClassifyPlan(eff.entitlements)
 	hasSuiteCap := hasWidgetCapability(eff.caps, CapabilityPro) ||
 		hasWidgetCapability(eff.caps, CapabilityLaunchV1)

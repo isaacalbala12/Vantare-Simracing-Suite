@@ -24,6 +24,7 @@ export type WidgetPolicyWire = {
   overlaysAdvanced: boolean;
   engineerAI: boolean;
   allowedWidgets?: WidgetType[];
+  visibleWidgets?: WidgetType[];
   brandCrystal: WidgetBrandMode;
   brandEfficiency: WidgetBrandMode;
   brandOriginal: WidgetBrandMode;
@@ -56,6 +57,7 @@ export function parseWidgetPolicyWire(input: unknown): WidgetPolicyWire | null {
     overlaysAdvanced,
     engineerAI,
     allowedWidgets,
+    visibleWidgets,
     brandCrystal,
     brandEfficiency,
     brandOriginal,
@@ -90,6 +92,14 @@ export function parseWidgetPolicyWire(input: unknown): WidgetPolicyWire | null {
       return null;
     }
     wire.allowedWidgets = allowedWidgets as WidgetType[];
+  }
+  if (visibleWidgets !== undefined) {
+    if (!Array.isArray(visibleWidgets) ||
+        visibleWidgets.some((id) => typeof id !== "string" || !WIDGET_TYPES.has(id as WidgetType)) ||
+        new Set(visibleWidgets).size !== visibleWidgets.length) {
+      return null;
+    }
+    wire.visibleWidgets = visibleWidgets as WidgetType[];
   }
   if (validUntil !== undefined) {
     if (typeof validUntil !== "string" || Number.isNaN(Date.parse(validUntil))) {
@@ -159,6 +169,9 @@ export function isWidgetTypeAllowed(
   nowMs: number = Date.now(),
 ): boolean {
   const effective = resolveEffectiveWidgetPolicy(policy, nowMs);
+  if (effective?.visibleWidgets !== undefined && !effective.visibleWidgets.includes(type)) {
+    return false;
+  }
   if (effective?.allowedWidgets !== undefined) {
     return effective.allowedWidgets.includes(type);
   }
@@ -169,6 +182,17 @@ export function isWidgetTypeAllowed(
     return false;
   }
   return isFeatureAllowed(policy, required, nowMs);
+}
+
+/** La visibilidad del catálogo es independiente del derecho de uso. */
+export function isWidgetTypeVisible(
+  policy: WidgetPolicyWire | null | undefined,
+  type: WidgetType,
+  nowMs: number = Date.now(),
+): boolean {
+  const effective = resolveEffectiveWidgetPolicy(policy, nowMs);
+  if (!effective) return type === "standings" || type === "pedals";
+  return effective.visibleWidgets === undefined || effective.visibleWidgets.includes(type);
 }
 
 /**

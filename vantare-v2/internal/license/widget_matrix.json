@@ -1,159 +1,181 @@
 {
-  "version": 1,
+  "version": 2,
   "widgets": [
     {
       "id": "delta",
       "free": false,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     },
     {
       "id": "standings",
       "free": true,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     },
     {
       "id": "relative",
       "free": false,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     },
     {
       "id": "pedals",
       "free": true,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     },
     {
       "id": "broadcast-tower",
       "free": false,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     },
     {
       "id": "fuel-strategy",
       "free": false,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     },
     {
       "id": "pedals-telemetry",
       "free": false,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     },
     {
       "id": "pedals-telemetry-compact",
       "free": false,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     },
     {
       "id": "racing-flags",
       "free": false,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     },
     {
       "id": "fastest-lap",
       "free": false,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     },
     {
       "id": "delta-trace",
       "free": false,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     },
     {
       "id": "race-schedule",
       "free": false,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     },
     {
       "id": "head-to-head",
       "free": false,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     },
     {
       "id": "delta-advanced",
       "free": false,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     },
     {
       "id": "input-telemetry",
       "free": false,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     },
     {
       "id": "multiclass-relative",
       "free": false,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     },
     {
       "id": "track-weather",
       "free": false,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     },
     {
       "id": "car-damage-visual",
       "free": false,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     },
     {
       "id": "car-damage-numbers",
       "free": false,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     },
     {
       "id": "engineer-radio",
       "free": false,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     },
     {
       "id": "track-map",
       "free": false,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     },
     {
       "id": "radar",
       "free": false,
       "pro": true,
       "proPlus": true,
-      "launch": true
+      "launch": true,
+      "visibility": "public"
     }
   ]
 }

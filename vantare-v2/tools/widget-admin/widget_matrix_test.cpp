@@ -19,6 +19,29 @@ private slots:
         QVERIFY2(WidgetMatrix::parse(matrix.serialize(), copy, error), qPrintable(error));
         QCOMPARE(copy.widgets[2].id, QStringLiteral("delta"));
         QVERIFY(copy.widgets[2].pro);
+        QCOMPARE(copy.widgets[2].visibility, QStringLiteral("public"));
+    }
+
+    void testerVisibilityRoundTrip() {
+        const QByteArray source = R"({"version":2,"widgets":[
+            {"id":"standings","visibility":"public","free":true,"pro":true,"proPlus":true,"launch":true},
+            {"id":"pedals","visibility":"public","free":true,"pro":true,"proPlus":true,"launch":true},
+            {"id":"radar","visibility":"testers","free":false,"pro":true,"proPlus":true,"launch":true}
+        ]})";
+        WidgetMatrix matrix;
+        QString error;
+        QVERIFY2(WidgetMatrix::parse(source, matrix, error), qPrintable(error));
+        QCOMPARE(matrix.widgets[2].visibility, QStringLiteral("testers"));
+        WidgetMatrix copy;
+        QVERIFY2(WidgetMatrix::parse(matrix.serialize(), copy, error), qPrintable(error));
+        QCOMPARE(copy.widgets[2].visibility, QStringLiteral("testers"));
+        copy.widgets[2].visibility = QStringLiteral("private");
+        QVERIFY(!copy.validate(error));
+        copy.widgets[2].visibility = QStringLiteral("testers");
+        copy.widgets[0].visibility = QStringLiteral("testers");
+        QVERIFY(!copy.validate(error));
+        const QByteArray oldVersion = QByteArray(source).replace("\"version\":2", "\"version\":1");
+        QVERIFY(!WidgetMatrix::parse(oldVersion, copy, error));
     }
 
     void rejectsInvalidRights() {

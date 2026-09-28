@@ -10,6 +10,7 @@ struct WidgetAccessRow {
     bool pro = false;
     bool proPlus = false;
     bool launch = false;
+    QString visibility = QStringLiteral("public");
 };
 
 class WidgetMatrix {

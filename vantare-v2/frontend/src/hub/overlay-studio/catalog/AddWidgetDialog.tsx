@@ -1,6 +1,7 @@
 import type { StudioPolicy } from "../access/studio-access";
 import { useI18n } from "../../../i18n/I18nProvider";
 import type { WidgetType } from "../../../overlay/core/profile-document";
+import { isWidgetTypeVisible } from "../../../overlay/core/widget-policy";
 import {
   canAddCatalogEntry,
   deriveStudioCatalog,
@@ -54,7 +55,7 @@ export function AddWidgetDialog(props: AddWidgetDialogProps): React.ReactElement
           {t("studio.v3.catalog.description")}
         </p>
         <div className="osv3-catalog-dialog__list">
-          {catalog.map((entry) => {
+          {catalog.filter((entry) => isWidgetTypeVisible(policy, entry.type)).map((entry) => {
             const canAdd = canAddCatalogEntry(policy, entry);
             const unavailable = unavailableTypes.includes(entry.type);
             return (

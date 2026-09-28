@@ -13,11 +13,12 @@ import (
 var widgetMatrixSource []byte
 
 type widgetMatrixRow struct {
-	ID      string `json:"id"`
-	Free    bool   `json:"free"`
-	Pro     bool   `json:"pro"`
-	ProPlus bool   `json:"proPlus"`
-	Launch  bool   `json:"launch"`
+	ID         string `json:"id"`
+	Visibility string `json:"visibility,omitempty"`
+	Free       bool   `json:"free"`
+	Pro        bool   `json:"pro"`
+	ProPlus    bool   `json:"proPlus"`
+	Launch     bool   `json:"launch"`
 }
 
 type widgetMatrix struct {
@@ -32,20 +33,33 @@ func parseWidgetMatrix(source []byte) (widgetMatrix, error) {
 	if err := json.Unmarshal(source, &matrix); err != nil {
 		return widgetMatrix{}, fmt.Errorf("parse widget matrix: %w", err)
 	}
-	if matrix.Version != 1 || len(matrix.Widgets) == 0 {
-		return widgetMatrix{}, fmt.Errorf("widget matrix requires version 1 and nonempty widgets")
+	if (matrix.Version != 1 && matrix.Version != 2) || len(matrix.Widgets) == 0 {
+		return widgetMatrix{}, fmt.Errorf("widget matrix requires version 1 or 2 and nonempty widgets")
 	}
 	seen := make(map[string]bool, len(matrix.Widgets))
-	for _, row := range matrix.Widgets {
+	for i := range matrix.Widgets {
+		row := &matrix.Widgets[i]
+		if matrix.Version == 1 {
+			if row.Visibility != "" {
+				return widgetMatrix{}, fmt.Errorf("widget %q has visibility in version 1", row.ID)
+			}
+			row.Visibility = "public"
+		}
 		if !widgetIDPattern.MatchString(row.ID) || seen[row.ID] {
 			return widgetMatrix{}, fmt.Errorf("invalid or repeated widget ID %q", row.ID)
 		}
 		seen[row.ID] = true
+		if matrix.Version == 2 && row.Visibility != "public" && row.Visibility != "testers" {
+			return widgetMatrix{}, fmt.Errorf("widget %q has invalid visibility %q", row.ID, row.Visibility)
+		}
 		if (row.Free && (!row.Pro || !row.ProPlus || !row.Launch)) || (row.Pro && !row.ProPlus) {
 			return widgetMatrix{}, fmt.Errorf("widget %q violates license hierarchy", row.ID)
 		}
 		if (row.ID == "standings" || row.ID == "pedals") && !row.Free {
 			return widgetMatrix{}, fmt.Errorf("widget %q must remain free", row.ID)
+		}
+		if (row.ID == "standings" || row.ID == "pedals") && row.Visibility == "testers" {
+			return widgetMatrix{}, fmt.Errorf("widget %q must remain public", row.ID)
 		}
 	}
 	if !seen["standings"] || !seen["pedals"] {
@@ -79,6 +93,9 @@ func (m widgetMatrix) allowedIDs(eff widgetEffective) string {
 
 	allowed := make([]string, 0, len(m.Widgets))
 	for _, row := range m.Widgets {
+		if row.Visibility == "testers" && !operational {
+			continue
+		}
 		// Legacy module entitlements retain their narrower access. They never
 		// bypass a widget explicitly disabled for Pro in the versioned matrix.
 		legacyModule := row.Pro && ((moduleOverlays && row.ID != "engineer-radio") ||
@@ -90,6 +107,18 @@ func (m widgetMatrix) allowedIDs(eff widgetEffective) string {
 	}
 	sort.Strings(allowed)
 	return strings.Join(allowed, ",")
+}
+
+func (m widgetMatrix) visibleIDs(eff widgetEffective) string {
+	operational := len(eff.roles) > 0
+	visible := make([]string, 0, len(m.Widgets))
+	for _, row := range m.Widgets {
+		if row.Visibility != "testers" || operational {
+			visible = append(visible, row.ID)
+		}
+	}
+	sort.Strings(visible)
+	return strings.Join(visible, ",")
 }
 
 // AllowsWidget is the server-side decision for saves. Empty lists are denied;

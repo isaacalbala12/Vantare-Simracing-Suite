@@ -2,6 +2,7 @@ package license
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 )
@@ -49,6 +50,64 @@ func TestWidgetMatrixDistinguishesVerifiedPlans(t *testing.T) {
 	launchStored := &Result{State: StateActive, Capabilities: []Capability{CapabilityLaunchV1}}
 	if got := matrix.allowedIDs(effectiveWidgetAuthority(launchStored, widgetPolicyNow)); got != "pedals,radar,standings" {
 		t.Fatalf("Launch capability projected to suite = %q, want only Launch rights", got)
+	}
+}
+
+func TestWidgetMatrixTesterVisibilityIndependentOfLicense(t *testing.T) {
+	source := []byte(`{"version":2,"widgets":[
+		{"id":"standings","visibility":"public","free":true,"pro":true,"proPlus":true,"launch":true},
+		{"id":"pedals","visibility":"public","free":true,"pro":true,"proPlus":true,"launch":true},
+		{"id":"radar","visibility":"testers","free":false,"pro":true,"proPlus":true,"launch":true}
+	]}`)
+	matrix, err := parseWidgetMatrix(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	paid := widgetEffective{caps: []Capability{CapabilityPro}}
+	if got := matrix.allowedIDs(paid); got != "pedals,standings" {
+		t.Fatalf("paid allowed = %q", got)
+	}
+	if got := matrix.visibleIDs(paid); got != "pedals,standings" {
+		t.Fatalf("paid visible = %q", got)
+	}
+	tester := widgetEffective{roles: []OperationalRole{OperationalRoleTester}}
+	if got := matrix.allowedIDs(tester); got != "pedals,radar,standings" {
+		t.Fatalf("tester allowed = %q", got)
+	}
+	if got := matrix.visibleIDs(tester); got != "pedals,radar,standings" {
+		t.Fatalf("tester visible = %q", got)
+	}
+	stored := &Result{
+		State:            StateActive,
+		OperationalRoles: []OperationalRole{OperationalRoleTester},
+		VerifiedGrants:   []VerifiedGrant{{Key: CapabilityOperationalTester, ExpiresAt: widgetPolicyNow.Add(time.Hour)}},
+	}
+	if got := matrix.visibleIDs(effectiveWidgetAuthority(stored, widgetPolicyNow)); got != "pedals,radar,standings" {
+		t.Fatalf("verified tester visible = %q", got)
+	}
+	if got := matrix.visibleIDs(effectiveWidgetAuthority(stored, widgetPolicyNow.Add(time.Hour))); got != "pedals,standings" {
+		t.Fatalf("expired tester visible = %q", got)
+	}
+	for _, invalid := range []string{"", "private", "Testers"} {
+		bad := strings.Replace(string(source), `"visibility":"testers"`, `"visibility":"`+invalid+`"`, 1)
+		if _, err := parseWidgetMatrix([]byte(bad)); err == nil {
+			t.Fatalf("accepted visibility %q", invalid)
+		}
+	}
+	badFree := strings.Replace(string(source), `"id":"standings","visibility":"public"`, `"id":"standings","visibility":"testers"`, 1)
+	if _, err := parseWidgetMatrix([]byte(badFree)); err == nil {
+		t.Fatal("accepted hidden Standings")
+	}
+}
+
+func TestWidgetPolicyWireCarriesVisibilityDecision(t *testing.T) {
+	policy := WidgetPolicy{AllowedWidgetTypes: "pedals,standings", VisibleWidgetTypes: "pedals,standings"}
+	wire := policy.ToWire()
+	if len(wire.VisibleWidgets) != 2 || wire.VisibleWidgets[0] != "pedals" {
+		t.Fatalf("visible widgets = %v", wire.VisibleWidgets)
+	}
+	if sameAccessAndBrand(policy, WidgetPolicy{AllowedWidgetTypes: policy.AllowedWidgetTypes, VisibleWidgetTypes: "pedals"}) {
+		t.Fatal("visibility change did not advance the effective policy")
 	}
 }
 

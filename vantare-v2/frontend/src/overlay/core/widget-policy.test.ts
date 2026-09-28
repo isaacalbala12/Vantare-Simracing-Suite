@@ -3,6 +3,7 @@ import type { WidgetInstanceV3 } from "./profile-document";
 import {
   isWidgetPolicyExpired,
   isWidgetTypeAllowed,
+  isWidgetTypeVisible,
   parseWidgetPolicyWire,
   readBrandPreference,
   resolveBrandMode,
@@ -87,6 +88,13 @@ describe("parseWidgetPolicyWire", () => {
     expect(parseWidgetPolicyWire({ ...freeWire, allowedWidgets: ["standings", "pedals"] })?.allowedWidgets)
       .toEqual(["standings", "pedals"]);
   });
+
+  it("validates the separate catalog visibility list", () => {
+    expect(parseWidgetPolicyWire({ ...freeWire, visibleWidgets: ["radar", "radar"] })).toBeNull();
+    expect(parseWidgetPolicyWire({ ...freeWire, visibleWidgets: ["unknown"] })).toBeNull();
+    expect(parseWidgetPolicyWire({ ...freeWire, visibleWidgets: ["standings", "pedals"] })?.visibleWidgets)
+      .toEqual(["standings", "pedals"]);
+  });
 });
 
 describe("isWidgetPolicyExpired", () => {
@@ -121,6 +129,13 @@ describe("resolveEffectiveWidgetPolicy", () => {
 });
 
 describe("isWidgetTypeAllowed", () => {
+  it("does not allow tester-only widgets from a broad license right", () => {
+    const publicPolicy = { ...paidWire, visibleWidgets: ["standings", "pedals"] as WidgetPolicyWire["visibleWidgets"] };
+    expect(isWidgetTypeVisible(publicPolicy, "delta")).toBe(false);
+    expect(isWidgetTypeAllowed(publicPolicy, "delta")).toBe(false);
+    expect(isWidgetTypeVisible(paidWire, "delta")).toBe(true);
+    expect(isWidgetTypeVisible(null, "delta")).toBe(false);
+  });
   it("uses per-widget rights ahead of broad module rights", () => {
     const selective = { ...paidWire, allowedWidgets: ["standings", "pedals", "relative"] as WidgetPolicyWire["allowedWidgets"] };
     expect(isWidgetTypeAllowed(selective, "relative")).toBe(true);

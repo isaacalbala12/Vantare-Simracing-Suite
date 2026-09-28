@@ -1,5 +1,40 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## 2026-09-28 · VAN-775 / GitHub #1404 · Comparación UI nativa aislada
+
+Isaac mantiene el objetivo de portar UI y overlays a renderizado nativo en
+Windows, con Go como núcleo inicial, pero acotó la investigación ejecutable a
+Rust y C++/Qt. La rama aislada `vantareapp/isa-1404-ui-native-bakeoff` parte
+de `origin/nightly@355e9cfe`; el checkout de integración permanece intacto.
+El protocolo local se actualizó a v1.1 y la evidencia reproducible de esta
+entrega vive en `tools/benchmarks/isa1404-ui-native/RESULTADOS.md`. Se midió la
+misma escena LMU sanitizada en Wails, Qt Quick y Slint (3 rondas Release) y se
+hicieron cribas cortas de Qt Widgets, egui, Iced y GPUI. Qt Quick redujo la
+memoria privada comprometida de 222,15 a 78,48 MiB en P01 (solo control) y de
+304,89 a 148,31 MiB en P02 (control minimizado más overlay visible). Es una
+reducción del 65 % y 51 % respectivamente en estos prototipos, no de la app
+completa. La cifra previa de 200,16 a 70,48 MiB correspondía únicamente al
+overlay aislado y queda identificada como diagnóstico. OBS capturó los tres
+overlays principales. El
+renderer Qt histórico volvió a fallar su gate stress104 y GPUI publicado no
+abrió una ventana fiable en este Windows. Ningún stack se ha aprobado para el
+port productivo; sigue pendiente una pantalla compleja, integración Go, DPI
+físico y OBS con Vantare productiva, licencia de módulos y baseline de la app
+completa. P03 añadió OBS grabando 1280×720/30 fps con entradas de audio
+silenciadas: memoria privada de UI 309,32/148,36/412,71 MiB para
+Wails/Qt Quick/Slint, y alrededor de 580 MiB del proceso OBS en los tres.
+Qt Quick redujo la memoria privada de la UI un 52 % frente a Wails en esta
+escena, pero UI + OBS solo un 18 %; la CPU UI + OBS fue 1,581/1,391/1,793 %.
+Se validaron doce capturas y un vídeo sin pista de audio. DWM y el juego real
+no son atribuibles con esta prueba. Sin merge ni promoción de canal por esta
+investigación.
+
+La entrega está en [PR borrador #1409](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1409).
+La primera ejecución remota de calidad encontró que el probe Wails dependía
+de `assets/dist` generado localmente; se corrigió el embed para que un checkout
+limpio compile y se reprodujo `go test` sin ese directorio. Los gates deben
+verificarse sobre el último HEAD de la PR antes de aceptar la entrega.
+
 ## 2026-09-26 · VAN-769 / GitHub #1381 · Integración inicial autorizada
 
 Isaac revisó la entrega de temas y fondos de Studio en Wails y autorizó expresamente integrar únicamente la [PR #1384](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1384) en `nightly`. La rama se reconcilió con `origin/nightly@d09829c4` sin conflictos de código. El candidato inicial `9ea9a341` pasó sus gates bloqueantes, pero el validador de roadmap en modo auditoría señaló un orden distinto de entregas porque el digest se había generado desde el artefacto de la rama. Se regeneró `roadmap.json` partiendo del JSON protegido de `d09829c4`; la comparación estricta del contrato y las pruebas del generador pasan. La aceptación incluye la tarjeta Próxima serie con la paleta activa; los widgets mantienen sus diseños. CI debe repetirse sobre la cabeza con el digest corregido antes del merge. Este registro no afirma integración antes de comprobar el SHA remoto y los gates del merge. La comprobación física en LMU/OBS sigue siendo trabajo de Nightly. La autorización no comprende `testers`, `master` ni una release.

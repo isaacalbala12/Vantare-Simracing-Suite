@@ -1,0 +1,69 @@
+import { CheckBox, LineEdit } from "std-widgets.slint";
+
+export struct DriverRow {
+    position: int,
+    driver: string,
+    vehicle-class: string,
+    gap: string,
+    pit: bool,
+    player: bool,
+}
+
+component Standings inherits Rectangle {
+    in property <[DriverRow]> rows;
+    in property <bool> show-gap;
+    in property <int> tick;
+    width: 540px;
+    height: 406px;
+    background: #f0090d11;
+    border-color: #397dd9ff;
+    border-width: 1px;
+    VerticalLayout {
+        spacing: 0px;
+        Rectangle {
+            height: 42px;
+            background: transparent;
+            HorizontalLayout {
+                padding-left: 14px; padding-right: 14px; spacing: 12px;
+                Text { text: "VANTARE"; color: #82e9ff; font-weight: 700; letter-spacing: 1.6px; vertical-alignment: center; }
+                Text { text: "STANDINGS"; color: #aab5bc; font-weight: 700; vertical-alignment: center; }
+                Rectangle { horizontal-stretch: 1; background: transparent; }
+                Rectangle { width: 7px; height: 7px; border-radius: 4px; background: #63efff; opacity: 0.35 + Math.mod(root.tick, 10) / 20; }
+            }
+        }
+        for row in root.rows: Rectangle {
+            height: 42px;
+            background: row.player ? #3e29c5e8 : transparent;
+            border-color: #12ffffff;
+            border-width: 1px;
+            HorizontalLayout {
+                padding-left: 12px; padding-right: 12px; spacing: 0px;
+                Text { width: 48px; text: row.position; color: row.player ? #75ecff : #dce4e8; font-weight: 700; vertical-alignment: center; }
+                Text { horizontal-stretch: 1; text: row.driver; color: #f2f5f7; vertical-alignment: center; }
+                Text { width: 100px; text: row.vehicle-class; color: #7cdce9; font-size: 11px; vertical-alignment: center; }
+                Text { visible: root.show-gap; width: root.show-gap ? 94px : 0px; text: row.gap; color: #b8c1c7; horizontal-alignment: right; vertical-alignment: center; }
+            }
+        }
+    }
+}
+
+export component MainWindow inherits Window {
+    in property <bool> overlay-mode;
+    in-out property <bool> show-gap: true;
+    in property <[DriverRow]> rows;
+    in-out property <int> tick: 0;
+    title: root.overlay-mode ? "Vantare Bakeoff · Slint Overlay" : "Vantare Bakeoff · Slint Control";
+    width: root.overlay-mode ? 560px : 720px;
+    height: root.overlay-mode ? 430px : 650px;
+    no-frame: root.overlay-mode;
+    background: root.overlay-mode ? transparent : #0b0e12;
+    if root.overlay-mode: Standings { x: 10px; y: 10px; rows: root.rows; show-gap: root.show-gap; tick: root.tick; }
+    if !root.overlay-mode: VerticalLayout {
+        x: 30px; y: 24px; width: 660px; height: 610px; spacing: 12px;
+        Text { text: "Vantare UI bakeoff"; color: #f2f5f7; font-size: 26px; font-weight: 700; }
+        Text { text: "Rust 1.95 · Slint 1.18.1 · Community License"; color: #91a0aa; }
+        LineEdit { width: 430px; text: "Barcelona · LMU"; accessible-label: "Nombre de sesión"; }
+        CheckBox { text: "Mostrar intervalo"; checked <=> root.show-gap; accessible-label: "Mostrar intervalo"; }
+        Standings { rows: root.rows; show-gap: root.show-gap; tick: root.tick; }
+    }
+}

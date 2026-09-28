@@ -245,9 +245,11 @@ y sus avisos LGPL; antes de elegir Slint, su licencia y atribución aplicables.
 El [inventario preliminar de la carpeta Qt](evidence/qt-package-license-inventory.md)
 coteja las DLL copiadas con los SBOM de esta instalación: 77 de 83 coinciden
 por SHA-256 y declaran la opción LGPLv3. Los 383 QML coinciden también con la
-instalación y tienen cabecera SPDX con esa opción; seis DLL, imágenes,
-traducciones y avisos de terceros aún necesitan auditoría. No acredita una distribución
-gratuita conforme a licencia.
+instalación y tienen cabecera SPDX con esa opción. Un cotejo posterior
+identificó las 804 imágenes PNG en el SBOM de origen de Qt, todas con opción
+LGPLv3, y rastreó el origen local de las seis DLL. Siguen abiertos los avisos,
+traducciones y condiciones de redistribución de los componentes no Qt. No
+acredita una distribución gratuita conforme a licencia.
 
 Para la prueba de caída y vuelta, se inicia `host -port <puerto>` y luego
 cada cliente con `--expect-rows 44 --expect-snapshots 2`. Tras el primer

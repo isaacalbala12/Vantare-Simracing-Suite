@@ -46,10 +46,17 @@ auditoría de módulos/licencias final.
 El inventario del paquete en `tools/native-ui/evidence/qt-package-license-inventory.md`
 identifica 77 de 83 DLL mediante SBOM de Qt 6.10.2 y SHA-256: esas 77
 declaran una opción LGPLv3. Los 383 QML copiados son idénticos a los de Qt
-y conservan cabecera SPDX con opción LGPLv3. Seis DLL, imágenes, traducciones,
-avisos de terceros y
-obligaciones de redistribución siguen sin cerrar; no se certifica el coste de
+y conservan cabecera SPDX con opción LGPLv3. Las seis DLL adicionales,
+imágenes, traducciones, avisos de terceros y obligaciones de redistribución
+quedaron pendientes en ese primer cotejo; no se certifica el coste de
 licencia de un instalador productivo.
+Un cotejo posterior identificó las 804 PNG del paquete en el SBOM de origen
+de Qt por SHA-1; todas incluyen la opción LGPLv3, aunque el propio SBOM deja
+`LicenseConcluded: NOASSERTION`. Las seis DLL restantes ya tienen procedencia
+local verificada por SHA-256: cinco del `bin` de Qt y `dxcompiler.dll` del SDK
+Vulkan instalado. Qt atribuye `opengl32sw.dll` a Mesa llvmpipe. Quedan la
+licencia y avisos completos de los runtimes, el compilador DXC y las
+traducciones, más la prueba de un paquete final en Windows sin SDK.
 
 Continúa la comparación [#1404](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1409), todavía en PR borrador. La rama
 `vantareapp/isa-1410-native-go-product-trial` parte de

@@ -31,12 +31,35 @@ Las seis DLL sin correspondencia en los SBOM inspeccionados son
 también contiene 383 ficheros `.qml`, 804 `.png` y 32 traducciones `.qm`.
 Los 383 QML son copias SHA-256 idénticas a los instalados y todos conservan
 una cabecera SPDX con opción `LGPL-3.0-only`. Las imágenes no tienen una
-cabecera equivalente. Las traducciones copiadas no coinciden por hash con
+cabecera equivalente. Las 804 PNG son copias SHA-256 idénticas a la instalación;
+sus SHA-1 coinciden con 804 entradas del SBOM de **origen**
+`qtdeclarative-6.10.2.source.spdx` (780 FluentWinUI3, 18 Windows y seis
+Universal). Todas esas entradas incluyen `LGPL-3.0-only` en
+`LicenseInfoInFile`, pero declaran `LicenseConcluded: NOASSERTION`: el
+cotejo identifica procedencia y opción de licencia, no sustituye los avisos
+exigibles ni una decisión de licencia para distribuir. Las traducciones
+copiadas no coinciden por hash con
 las `.qm` homónimas de la instalación; el cotejo simple no basta para
 certificar su procedencia y licencias completas. El cotejo de DLL
-**no cubre** imágenes, traducciones ni avisos de terceros. Qt
+**no cubre** traducciones ni avisos de terceros. Qt
 [documenta licencias de terceros](https://doc.qt.io/qt-6.10/licenses-used-in-qt.html)
 y recomienda atribuir solo los componentes que realmente se distribuyen.
+
+Un `windeployqt --dry-run --list mapping` del mismo ejecutable localizó la
+fuente exacta de las seis DLL por SHA-256. Cinco proceden del directorio `bin`
+de la instalación Qt 6.10.2; `dxcompiler.dll` procede de
+`C:\VulkanSDK\1.4.350.0\Bin` y tiene firma Authenticode válida de LunarG.
+Entre las cinco de Qt están los tres runtimes MinGW, `D3Dcompiler_47.dll` y
+`opengl32sw.dll`. Qt [identifica este último como Mesa llvmpipe](https://doc.qt.io/qt-6.10/qt-attribution-llvmpipe.html)
+y publica sus avisos MIT/Boost. Microsoft [documenta la redistribución local](https://learn.microsoft.com/en-us/windows/win32/directx-sdk--august-2009-)
+de `D3Dcompiler_47.dll`. El origen de `dxcompiler.dll` en este paquete depende
+del SDK Vulkan instalado en esta máquina; no se ha probado que esa copia y los
+runtimes MinGW satisfagan todos los términos de redistribución de Vantare.
+La [guía de despliegue de Qt](https://doc.qt.io/qt-6.10/windows-deployment.html)
+explica que `windeployqt` toma por defecto el runtime del compilador y ofrece
+opciones para excluir los compiladores D3D/DXC, traducciones y OpenGL software;
+antes de eliminar componentes hay que comprobar el paquete resultante en
+Windows sin Qt ni SDK instalados.
 
 Para repetir el cotejo, enumerar las DLL del paquete, buscar cada nombre en
 `<Qt 6.10.2>/sbom/*.spdx.json` → `files[].fileName`, leer

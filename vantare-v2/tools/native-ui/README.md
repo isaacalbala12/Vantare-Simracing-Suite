@@ -364,6 +364,36 @@ atribuir el coste al toolkit. El resultado tampoco mide cambios reales de
 44 coches ni acredita el objetivo de CPU de Vantare completa. La memoria
 GPU local continúa sin corroboración independiente.
 
+Se corrigió después esa sustitución en el cliente Slint del ensayo: conserva
+los tres modelos y modifica solo las filas que cambian. El tamaño de la lista
+puede cambiar sin perder el modelo. Con las mismas capturas, instrumento y
+orden rotado, las [nueve mediciones de 44 coches](evidence/recorded-load-44-model-diff-results.json)
+resultaron así (medianas de tres rondas):
+
+| 44 coches, modelo Slint estable | CPU media (% de un núcleo) | Working set mediano | Memoria privada mediana |
+| --- | ---: | ---: | ---: |
+| Wails | 6,53 % | 450,9 MiB | 315,6 MiB |
+| Qt Quick | 5,23 % | 137,3 MiB | 153,3 MiB |
+| Rust/Slint | 3,41 % | 144,4 MiB | 296,3 MiB |
+
+En la escena fija, Slint pasó de 11,49 % a 3,41 % de un núcleo y de 166,3 a
+144,4 MiB de working set. Esta diferencia identifica un coste importante de
+la implementación inicial, **no** una propiedad general del toolkit. Como
+las mismas 44 filas se repiten, la nueva versión evita casi todas las
+notificaciones de cambio: no se debe extrapolar a 44 coches evolucionando.
+Los [nueve smokes de 44 coches](evidence/recorded-burst-44-model-diff-results.json)
+recibieron al menos diez snapshots en control, editor y overlay.
+
+La [secuencia de pista y boxes](evidence/recorded-load-model-diff-results.json)
+sí cambia sus tres estados reales de una fila. Allí las medianas de CPU
+Wails/Qt/Slint fueron 6,82/4,85/4,25 % de un núcleo; working set
+438,3/131,4/159,6 MiB. Los [nueve smokes de esa secuencia](evidence/recorded-burst-model-diff-results.json)
+pasaron. El script de inspección física confirmó marcha 0 en boxes y 1 al
+salir con la versión nueva de Slint. Ninguna escena prueba aún la meta de
+20 % de CPU o RAM en Vantare completa. La memoria privada de Slint se
+mantiene cerca de Wails, y el contador GPU local no tiene corroboración
+independiente.
+
 ```powershell
 ./tools/native-ui/inspect-recorded-updates-windows.ps1 -Mode editor -Scene standings-44 -Cycles 100 -IntervalMilliseconds 100 -ExpectedRows 44 -ExpectedSnapshots 10
 ./tools/native-ui/measure-recorded-windows.ps1 -Rounds 3 -Samples 8 -Scene standings-44

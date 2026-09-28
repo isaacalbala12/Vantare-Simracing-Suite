@@ -1,0 +1,83 @@
+[
+  {
+    "Mode": "control",
+    "Scene": "pit-sequence",
+    "Candidate": "Qt",
+    "ExitCode": 0,
+    "ExpectedRows": 1,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "control",
+    "Scene": "pit-sequence",
+    "Candidate": "Slint",
+    "ExitCode": 0,
+    "ExpectedRows": 1,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "control",
+    "Scene": "pit-sequence",
+    "Candidate": "Wails",
+    "ExitCode": 0,
+    "ExpectedRows": 1,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "editor",
+    "Scene": "pit-sequence",
+    "Candidate": "Qt",
+    "ExitCode": 0,
+    "ExpectedRows": 1,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "editor",
+    "Scene": "pit-sequence",
+    "Candidate": "Slint",
+    "ExitCode": 0,
+    "ExpectedRows": 1,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "editor",
+    "Scene": "pit-sequence",
+    "Candidate": "Wails",
+    "ExitCode": 0,
+    "ExpectedRows": 1,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "overlay",
+    "Scene": "pit-sequence",
+    "Candidate": "Qt",
+    "ExitCode": 0,
+    "ExpectedRows": 1,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "overlay",
+    "Scene": "pit-sequence",
+    "Candidate": "Slint",
+    "ExitCode": 0,
+    "ExpectedRows": 1,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "overlay",
+    "Scene": "pit-sequence",
+    "Candidate": "Wails",
+    "ExitCode": 0,
+    "ExpectedRows": 1,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  }
+]

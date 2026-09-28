@@ -1,5 +1,5 @@
 use serde_json::Value;
-use slint::{ComponentHandle, ModelRc, SharedString, Timer, TimerMode, VecModel};
+use slint::{ComponentHandle, Model, ModelRc, SharedString, Timer, TimerMode, VecModel};
 use std::{
     env,
     io::{BufRead, BufReader, Write},
@@ -150,6 +150,18 @@ struct ViewData {
     rpm: SharedString,
     gear: SharedString,
     session_id: SharedString,
+}
+
+fn update_model<T: Clone + PartialEq + 'static>(model: &VecModel<T>, values: Vec<T>) {
+    if model.row_count() != values.len() {
+        model.set_vec(values);
+        return;
+    }
+    for (index, value) in values.into_iter().enumerate() {
+        if model.row_data(index).as_ref() != Some(&value) {
+            model.set_row_data(index, value);
+        }
+    }
 }
 
 enum FeedEvent {
@@ -322,6 +334,12 @@ fn run() -> Result<(), String> {
     let ui = MainWindow::new().map_err(|e| e.to_string())?;
     ui.set_overlay_mode(opt.overlay);
     ui.set_editor_mode(opt.editor);
+    let rows_model = Rc::new(VecModel::<DriverRow>::default());
+    let overlay_rows_model = Rc::new(VecModel::<DriverRow>::default());
+    let relative_model = Rc::new(VecModel::<RelativeRow>::default());
+    ui.set_rows(ModelRc::from(rows_model.clone()));
+    ui.set_overlay_rows(ModelRc::from(overlay_rows_model.clone()));
+    ui.set_relative_rows(ModelRc::from(relative_model.clone()));
     if opt.overlay {
         overlay_window();
     }
@@ -348,9 +366,9 @@ fn run() -> Result<(), String> {
                 if let Ok(data) = parse_snapshot(&v) {
                     let count = data.rows.len();
                     let overlay_rows: Vec<_> = data.rows.iter().take(10).cloned().collect();
-                    ui.set_rows(ModelRc::from(Rc::new(VecModel::from(data.rows))));
-                    ui.set_overlay_rows(ModelRc::from(Rc::new(VecModel::from(overlay_rows))));
-                    ui.set_relative_rows(ModelRc::from(Rc::new(VecModel::from(data.relative))));
+                    update_model(&rows_model, data.rows);
+                    update_model(&overlay_rows_model, overlay_rows);
+                    update_model(&relative_model, data.relative);
                     ui.set_source_state(data.state);
                     ui.set_track(data.track);
                     ui.set_speed(data.speed);

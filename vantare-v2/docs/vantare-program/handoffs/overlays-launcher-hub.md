@@ -2,6 +2,19 @@
 
 ## 2026-09-28 · VAN-776 / GitHub #1410 · Host Go nativo aislado
 
+El ensayo Slint dejó de reconstruir tres modelos enteros en cada snapshot:
+ahora mantiene sus modelos y actualiza solo filas distintas. Compilación,
+test, clippy y 18 smokes Windows de control/editor/overlay pasaron; la
+inspección física de la secuencia de boxes volvió a mostrar marchas 0 y 1.
+En tres rondas rotadas de 44 coches repetidos, medianas de CPU por núcleo
+Wails/Qt/Slint 6,53/5,23/3,41 % y working set 450,9/137,3/144,4 MiB.
+Con la secuencia cambiante de una fila fueron 6,82/4,85/4,25 % y
+438,3/131,4/159,6 MiB. Los cuatro JSON nuevos, método y límites están en
+`tools/native-ui/README.md`. La antigua penalización CPU de Slint provenía
+en buena parte del cliente de ensayo; la escena de 44 coches sigue fija y
+la memoria privada Slint continúa cercana a Wails. Sin elección de stack,
+prueba de Vantare completa ni promoción.
+
 La segunda carga repetida usa una captura LMU 1.3.0 real de 44 coches,
 sin alterar sus filas. Control/editor/overlay de Qt, Slint y Wails
 recibieron diez snapshots (9/9). Tres rondas rotadas de editor más host Go

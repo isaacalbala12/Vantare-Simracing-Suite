@@ -1,0 +1,83 @@
+[
+  {
+    "Mode": "control",
+    "Scene": "standings-44",
+    "Candidate": "Qt",
+    "ExitCode": 0,
+    "ExpectedRows": 44,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "control",
+    "Scene": "standings-44",
+    "Candidate": "Slint",
+    "ExitCode": 0,
+    "ExpectedRows": 44,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "control",
+    "Scene": "standings-44",
+    "Candidate": "Wails",
+    "ExitCode": 0,
+    "ExpectedRows": 44,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "editor",
+    "Scene": "standings-44",
+    "Candidate": "Qt",
+    "ExitCode": 0,
+    "ExpectedRows": 44,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "editor",
+    "Scene": "standings-44",
+    "Candidate": "Slint",
+    "ExitCode": 0,
+    "ExpectedRows": 44,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "editor",
+    "Scene": "standings-44",
+    "Candidate": "Wails",
+    "ExitCode": 0,
+    "ExpectedRows": 44,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "overlay",
+    "Scene": "standings-44",
+    "Candidate": "Qt",
+    "ExitCode": 0,
+    "ExpectedRows": 44,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "overlay",
+    "Scene": "standings-44",
+    "Candidate": "Slint",
+    "ExitCode": 0,
+    "ExpectedRows": 44,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "overlay",
+    "Scene": "standings-44",
+    "Candidate": "Wails",
+    "ExitCode": 0,
+    "ExpectedRows": 44,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  }
+]

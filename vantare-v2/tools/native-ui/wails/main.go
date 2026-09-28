@@ -50,6 +50,7 @@ func main() {
 	mode := flag.String("mode", "control", "control, editor or overlay")
 	autoClose := flag.Duration("auto-close", 0, "close automatically after this duration")
 	expectRows := flag.Int("expect-rows", 0, "require this many Go standings rows before closing")
+	debugPort := flag.Uint("debug-port", 0, "optional loopback CDP port for visual trial inspection")
 	flag.Parse()
 
 	endpoint, err := loopbackEndpoint(*endpointFlag)
@@ -58,6 +59,9 @@ func main() {
 	}
 	if *mode != "control" && *mode != "editor" && *mode != "overlay" {
 		log.Fatalf("unsupported mode %q", *mode)
+	}
+	if *debugPort > 65535 {
+		log.Fatal("debug port must be between 0 and 65535")
 	}
 	public, err := fs.Sub(assets, "assets/dist")
 	if err != nil {
@@ -110,9 +114,16 @@ func main() {
 		}
 	}()
 	baseURL := "http://" + listener.Addr().String()
-	app := application.New(application.Options{
+	appOptions := application.Options{
 		Name: "Vantare Native Go Trial Wails Baseline",
-	})
+	}
+	if *debugPort > 0 {
+		appOptions.Windows.AdditionalBrowserArgs = []string{
+			"--remote-debugging-address=127.0.0.1",
+			fmt.Sprintf("--remote-debugging-port=%d", *debugPort),
+		}
+	}
+	app := application.New(appOptions)
 	options := application.WebviewWindowOptions{
 		Title: "Vantare Native Trial Wails Control",
 		Width: 1060, Height: 720, URL: baseURL + "/?mode=" + *mode,

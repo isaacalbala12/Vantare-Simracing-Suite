@@ -36,6 +36,9 @@ MiB. El script reproducible y la memoria privada están en `tools/native-ui/`.
 Esto no prueba ahorro de CPU ni el objetivo de 20 % para Vantare completa:
 faltan carga dinámica, repetición, interacción, GPU y paridad de producto.
 `go test ./...` pasó localmente después de añadir la referencia.
+Una inspección CDP opcional del editor Wails confirmó los seis controles
+locales y produjo una captura de la página revisada. No es prueba física de
+foco ni de OBS, y Qt/Slint aún necesitan interacción equivalente.
 La tarea [VAN-776](https://app.notion.com/p/3e9e51695c65810fb2bdd73aae4b555d?pvs=204)
 conserva el alcance y pendientes: interacción y persistencia de editor,
 actualización de datos, OBS y baseline del producto completo. No se eligió

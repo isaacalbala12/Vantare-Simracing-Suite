@@ -87,6 +87,15 @@ la recepción de la captura. El modo overlay es una ventana sin marco, superior,
 transparente y click-through por configuración; su composición real y OBS
 siguen pendientes de inspección física.
 
+Para inspeccionar el editor Wails, se puede iniciar con `-mode editor
+-debug-port 9223 -auto-close 60s` y ejecutar
+`node tools/native-ui/wails/inspect.cjs 9223`. El puerto CDP solo se abre si se
+pide explícitamente y queda en loopback. La inspección comprobó 44 filas y
+todos los controles locales (título, filas, opacidad, acento, Relative y
+restablecimiento). Guardó una [captura de la página](evidence/wails-go-editor.png)
+desde WebView2, revisada visualmente; no sustituye una prueba de interacción
+física, foco o OBS.
+
 ## Medición local preliminar
 
 Windows 11 25H2, WebView2 153, Go 1.26.4, Qt 6.10.2, Slint 1.18.1. Una sola
@@ -110,7 +119,7 @@ respectivamente. Estas son mediciones de una escena pequeña, con una sola
 pasada y sin paridad completa de Vantare. Working set suma páginas compartidas
 entre procesos y no equivale a RAM exclusiva. La CPU en reposo osciló cerca de
 cero y no permite afirmar un ahorro de CPU ni el objetivo del 20 % en la app.
-Faltan carga dinámica, interacción, GPU, picos de inicio, repetición estadística
+Faltan carga dinámica, interacción física Qt/Slint, GPU, picos de inicio, repetición estadística
 y una referencia del producto completo.
 
 ## Licencia sin coste de licencia

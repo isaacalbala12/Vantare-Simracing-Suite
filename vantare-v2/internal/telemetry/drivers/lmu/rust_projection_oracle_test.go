@@ -47,13 +47,15 @@ func TestRustProjectionGoOracleStatic44(t *testing.T) {
 		t.Fatal("no final state")
 	}
 	want, err := json.Marshal(struct {
-		Session overlayv2.SessionV2           `json:"session"`
-		Player  overlayv2.PlayerInstrumentsV2 `json:"player"`
-	}{overlayv2.BuildSession(state), overlayv2.BuildPlayerInstruments(state, overlayv2.DefaultPreferencesV2())})
+		Session  overlayv2.SessionV2           `json:"session"`
+		Player   overlayv2.PlayerInstrumentsV2 `json:"player"`
+		Weather  overlayv2.WeatherV2           `json:"weather"`
+		Controls overlayv2.ControlsV2          `json:"controls"`
+	}{overlayv2.BuildSession(state), overlayv2.BuildPlayerInstruments(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildWeather(state), overlayv2.BuildControls(state)})
 	if err != nil {
 		t.Fatal(err)
 	}
-	path := filepath.Join("..", "..", "..", "..", "rust", "telemetry", "testdata", "overlay-session-player-go-v1.json")
+	path := filepath.Join("..", "..", "..", "..", "rust", "telemetry", "testdata", "overlay-core-slices-go-v1.json")
 	if os.Getenv("VANTARE_PROJECTION_ORACLE_UPDATE") == "1" {
 		if err := os.WriteFile(path, append(want, '\n'), 0644); err != nil {
 			t.Fatal(err)

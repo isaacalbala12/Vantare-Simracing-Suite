@@ -995,9 +995,22 @@ paridad extremo a extremo. Los demás productos y el gate CPU siguen abiertos.
 
 Un test Go reproduce parser, fusión, mapper, reducer y derivación sobre el
 fixture LMU 1.3 real estático de 44 y fija los slices Session/Player de
-Overlay V2 en `rust/telemetry/testdata/overlay-session-player-go-v1.json`
-(SHA-256 `0ddacc8200a3d8a9f96fa58ab483d2986dff1f2b20d899efa62967901b0eb730`).
+Overlay V2 en un oráculo JSON, ampliado en la sección 41.
 Rust compara todas sus celdas, incluidas calidad, cero omitido en wire,
 ausencia, identidad y valores. `go test ./...`, Rust release 87/87, Clippy,
 formato y build release pasan. Es una muestra estática: no certifica paridad
 temporal 44/104, R15a completo, IPC, runtime físico ni el 50% CPU.
+
+## 41. Clima y controles Overlay Rust (2026-09-28)
+
+El oráculo Go/Rust estático de 44 cubre ahora Session, Player, Weather y
+Controls en `rust/telemetry/testdata/overlay-core-slices-go-v1.json`
+(SHA-256 `d6723e535891fda6cb0427ba31ea2a247e65a60fb2c24b92b61ad59f353d6bfa`).
+Rust proyecta ambiente/pista/lluvia/humedad con la calidad de cada fuente,
+mantiene viento/dirección/presión missing y publica controles en arrays
+alineados: timestamp Unix ms absoluto, pedales cuantizados por mil y calidad
+individual para velocidad/RPM/marcha. Una prueba adicional cubre redondeo,
+instante anterior a epoch, stale/invalid/missing y supresión de series
+invalid. Rust release 88/88, formato, Clippy, build release y `go test ./...`
+pasan. La captura es una muestra única real de 44; no demuestra continuidad
+temporal real, 104, salida IPC, R15b/R15c completos ni el gate CPU.

@@ -1,6 +1,7 @@
-//! Product projection begins with the Overlay V2 session and player slices.
+//! Product projection of verified Overlay V2 slices from canonical Rust state.
 
 use crate::core::{self, SessionFlag};
+use crate::derive::controls::{ControlHistory, HistoryFreshness};
 use crate::lmu::SessionType;
 use crate::lmu::pipeline::LmuVehicleState;
 use crate::quality::{Field, Freshness};
@@ -138,11 +139,93 @@ pub fn player(batch: &core::Batch<SessionType, LmuVehicleState>, unit: SpeedUnit
     result
 }
 
+#[derive(Debug, PartialEq)]
+pub struct Weather {
+    pub ambient_c: QValue<f64>,
+    pub track_c: QValue<f64>,
+    pub rain_percent: QValue<f64>,
+    pub wetness_pct: QValue<f64>,
+    pub wind_kph: QValue<f64>,
+    pub wind_dir: QValue<String>,
+    pub pressure_hpa: QValue<f64>,
+}
+
+pub fn weather(batch: &core::Batch<SessionType, LmuVehicleState>) -> Weather {
+    Weather {
+        ambient_c: project(&batch.state.ambient_temp_c, |value| *value),
+        track_c: project(&batch.state.track_temp_c, |value| *value),
+        rain_percent: project(&batch.state.rain_fraction, |value| *value * 100.0),
+        wetness_pct: project(&batch.state.wetness_fraction, |value| *value * 100.0),
+        wind_kph: QValue::missing(),
+        wind_dir: QValue::missing(),
+        pressure_hpa: QValue::missing(),
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub struct Controls {
+    pub quality: Quality,
+    pub captured_at_ms: Vec<i64>,
+    pub throttle: Vec<i16>,
+    pub brake: Vec<i16>,
+    pub clutch: Vec<i16>,
+    pub speed_mps: Vec<QValue<f64>>,
+    pub rpm: Vec<QValue<f64>>,
+    pub gear: Vec<QValue<i32>>,
+}
+
+fn pedal_per_mille(value: f64) -> i16 {
+    if !value.is_finite() || value <= 0.0 {
+        0
+    } else if value >= 1.0 {
+        1000
+    } else {
+        (value * 1000.0).round() as i16
+    }
+}
+
+pub fn controls(history: &ControlHistory) -> Controls {
+    let quality = match history.freshness {
+        HistoryFreshness::Fresh => Quality::Fresh,
+        HistoryFreshness::Stale => Quality::Stale,
+        HistoryFreshness::Missing => Quality::Missing,
+        HistoryFreshness::Invalid => Quality::Invalid,
+    };
+    let mut view = Controls {
+        quality,
+        captured_at_ms: Vec::new(),
+        throttle: Vec::new(),
+        brake: Vec::new(),
+        clutch: Vec::new(),
+        speed_mps: Vec::new(),
+        rpm: Vec::new(),
+        gear: Vec::new(),
+    };
+    if matches!(quality, Quality::Missing | Quality::Invalid) {
+        return view;
+    }
+    for sample in &history.samples {
+        view.captured_at_ms
+            .push(sample.captured_utc_ns.div_euclid(1_000_000));
+        view.throttle.push(pedal_per_mille(sample.throttle));
+        view.brake.push(pedal_per_mille(sample.brake));
+        view.clutch.push(pedal_per_mille(sample.clutch));
+        view.speed_mps
+            .push(project(&sample.speed_mps, |value| *value));
+        view.rpm.push(project(&sample.engine_rpm, |value| *value));
+        view.gear.push(project(&sample.gear, |value| *value));
+    }
+    view
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::Cursor;
+    use crate::derive::controls::ControlSample;
     use crate::engine::Engine;
     use crate::lmu::mapper::ClockChange;
+    use crate::quality::Provenance;
     use serde_json::{Map, Value, json};
 
     const REAL_44: &[u8] = include_bytes!("../../../testdata/lmu-fixture.bin");
@@ -181,6 +264,47 @@ mod tests {
         assert_eq!(missing, QValue::missing());
     }
 
+    #[test]
+    fn controls_keep_aligned_motion_quality_and_absolute_milliseconds() {
+        let sample = ControlSample {
+            cursor: Cursor {
+                epoch: 1,
+                sequence: 1,
+            },
+            captured_utc_ns: -1,
+            vehicle_id: "player".into(),
+            throttle: 0.4565,
+            brake: 0.0,
+            clutch: 1.0,
+            speed_mps: Field::Present {
+                value: 50.0,
+                provenance: Provenance::Observed,
+                freshness: Freshness::Stale,
+            },
+            engine_rpm: Field::invalid_observed(0.0),
+            gear: Field::Missing,
+        };
+        let history = ControlHistory {
+            freshness: HistoryFreshness::Fresh,
+            samples: vec![sample],
+        };
+        let view = controls(&history);
+        assert_eq!(view.captured_at_ms, [-1]);
+        assert_eq!(view.throttle, [457]);
+        assert_eq!(view.brake, [0]);
+        assert_eq!(view.clutch, [1000]);
+        assert_eq!(view.speed_mps[0].quality, Quality::Stale);
+        assert_eq!(view.rpm[0].quality, Quality::Invalid);
+        assert_eq!(view.gear[0].quality, Quality::Missing);
+        assert_eq!(view.speed_mps.len(), view.gear.len());
+        let invalid = controls(&ControlHistory {
+            freshness: HistoryFreshness::Invalid,
+            samples: history.samples,
+        });
+        assert_eq!(invalid.quality, Quality::Invalid);
+        assert!(invalid.captured_at_ms.is_empty());
+    }
+
     fn wire_value<T: Clone + Default + PartialEq + Into<Value>>(field: &QValue<T>) -> Value {
         let mut object = Map::new();
         if let Some(value) = &field.value
@@ -199,17 +323,25 @@ mod tests {
     }
 
     #[test]
-    fn static_44_session_player_match_go_projection_oracle() {
-        let golden: Value = serde_json::from_slice(include_bytes!(
-            "../testdata/overlay-session-player-go-v1.json"
-        ))
-        .unwrap();
+    fn static_44_core_slices_match_go_projection_oracle() {
+        let golden: Value =
+            serde_json::from_slice(include_bytes!("../testdata/overlay-core-slices-go-v1.json"))
+                .unwrap();
         let engine = Engine::new(30, 15).unwrap();
         let prepared = engine
-            .prepare(REAL_44, "1.3.0.0", 100, 100, 1_000, ClockChange::Continuous)
+            .prepare(
+                REAL_44,
+                "1.3.0.0",
+                100,
+                100,
+                100_000_000_000,
+                ClockChange::Continuous,
+            )
             .unwrap();
         let session = session(prepared.batch(), prepared.session_remaining());
         let player = player(prepared.batch(), SpeedUnit::Mps);
+        let weather = weather(prepared.batch());
+        let controls = controls(prepared.controls_history());
         let actual = json!({
             "session": {
                 "track": wire_value(&session.track), "phase": wire_value(&session.phase),
@@ -222,6 +354,27 @@ mod tests {
                 "gear": wire_value(&player.gear), "throttle": wire_value(&player.throttle),
                 "brake": wire_value(&player.brake), "clutch": wire_value(&player.clutch),
                 "steering": wire_value(&player.steering),
+            },
+            "weather": {
+                "ambientC": wire_value(&weather.ambient_c), "trackC": wire_value(&weather.track_c),
+                "rainPercent": wire_value(&weather.rain_percent), "wetnessPct": wire_value(&weather.wetness_pct),
+                "windKph": wire_value(&weather.wind_kph), "windDir": wire_value(&weather.wind_dir),
+                "pressureHpa": wire_value(&weather.pressure_hpa),
+            },
+            "controls": {
+                "history": {
+                    "q": match controls.quality {
+                        Quality::Fresh => "fresh", Quality::Stale => "stale",
+                        Quality::Missing => "missing", Quality::Invalid => "invalid",
+                    },
+                    "capturedAtMS": controls.captured_at_ms,
+                    "throttle": controls.throttle,
+                    "brake": controls.brake,
+                    "clutch": controls.clutch,
+                    "speedMPS": controls.speed_mps.iter().map(wire_value).collect::<Vec<_>>(),
+                    "rpm": controls.rpm.iter().map(wire_value).collect::<Vec<_>>(),
+                    "gear": controls.gear.iter().map(wire_value).collect::<Vec<_>>(),
+                }
             }
         });
         assert_eq!(actual, golden);

@@ -109,6 +109,9 @@ impl EngineCandidate {
     pub fn session_remaining(&self) -> &crate::quality::Field<f64> {
         self.pipeline.session_remaining()
     }
+    pub fn controls_history(&self) -> &crate::derive::controls::ControlHistory {
+        self.pipeline.controls_history()
+    }
     pub fn facts(&self) -> &[crate::core::session::SessionFact] {
         self.pipeline.facts()
     }

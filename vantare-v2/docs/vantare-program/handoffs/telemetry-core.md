@@ -1,11 +1,22 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — clima y controles Overlay Rust con oráculo Go (2026-09-28)
+
+El oráculo estático real de 44 ahora cubre Session, Player, Weather y
+Controls; SHA-256 JSON
+`d6723e535891fda6cb0427ba31ea2a247e65a60fb2c24b92b61ad59f353d6bfa`.
+Rust proyecta clima sin inventar viento/presión y controles con pedales
+por mil, tiempos absolutos y calidad independiente por movimiento. Rust
+release 88/88, Clippy, formato, build y `go test ./...` pasan. R15b/R15c
+siguen parciales: faltan salidas IPC y paridad temporal real 44/104, entre
+otros. Plan sección 41. Go sigue productivo.
+
 ## ISA-1403 — oráculo Go de sesión/piloto Overlay (2026-09-28)
 
 La proyección Rust inicial coincide campo a campo con el builder Go sobre
-el fixture LMU 1.3 real estático de 44. El test Go fija el JSON del oráculo
-(SHA-256 `0ddacc8200a3d8a9f96fa58ab483d2986dff1f2b20d899efa62967901b0eb730`)
-y el test Rust compara calidad, presencia, cero, valores e ID. `go test ./...`
+el fixture LMU 1.3 real estático de 44. El test Go fija el JSON del oráculo,
+ampliado posteriormente con clima y controles; el test Rust compara calidad,
+presencia, cero, valores e ID. `go test ./...`
 pasa; Rust release 87/87, Clippy, formato y build pasan. No cubre secuencia
 temporal SHM+REST, 104, IPC ni sesión física. Plan sección 40.
 

@@ -6,18 +6,19 @@ ApplicationWindow {
     id: root
     required property bool overlayMode
     required property bool editorMode
+    required property bool efficiencyMode
     property string previewTitle: "STANDINGS"
     property int previewRows: 8
     property int previewOpacity: 90
     property bool previewRelative: true
     property string previewAccent: "Turquesa"
     readonly property color editorAccent: previewAccent === "Ámbar" ? "#efb955" : (previewAccent === "Blanco" ? "#e8f0f4" : "#5fe1ee")
-    width: overlayMode ? 520 : (editorMode ? 1280 : 1060)
-    height: overlayMode ? 500 : 720
+    width: efficiencyMode ? 428 : (overlayMode ? 520 : (editorMode ? 1280 : 1060))
+    height: efficiencyMode ? 364 : (overlayMode ? 500 : 720)
     visible: false
-    title: overlayMode ? "Vantare Native Trial Overlay" : (editorMode ? "Vantare Native Trial Editor" : "Vantare Native Trial Control")
-    color: overlayMode ? "transparent" : "#090d13"
-    background: Rectangle { color: root.overlayMode ? "transparent" : "#090d13" }
+    title: efficiencyMode ? "Vantare · Standings Eficiencia" : (overlayMode ? "Vantare Native Trial Overlay" : (editorMode ? "Vantare Native Trial Editor" : "Vantare Native Trial Control"))
+    color: overlayMode || efficiencyMode ? "transparent" : "#090d13"
+    background: Rectangle { color: root.overlayMode || root.efficiencyMode ? "transparent" : "#090d13" }
     readonly property color ink: "#e8f0f4"
     readonly property color muted: "#91a6b3"
     readonly property color accent: "#5fe1ee"
@@ -174,7 +175,58 @@ ApplicationWindow {
 
     Loader {
         anchors.fill: parent
-        sourceComponent: root.overlayMode ? overlayContent : controlContent
+        sourceComponent: root.efficiencyMode ? efficiencyContent : (root.overlayMode ? overlayContent : controlContent)
+    }
+
+    Component {
+        id: efficiencyContent
+        Rectangle {
+            width: 428; height: 364; color: "#de111214"; radius: 6
+            Column {
+                anchors.fill: parent
+                spacing: 0
+                Rectangle {
+                    width: 428; height: 42; color: "#e618191b"
+                    Row {
+                        anchors.fill: parent
+                        anchors.leftMargin: 8
+                        spacing: 0
+                        Text { width: 85; height: 42; verticalAlignment: Text.AlignVCenter; text: "VANTARE"; color: "#e32530"; font.pixelSize: 12; font.bold: true }
+                        Text { width: 95; height: 42; verticalAlignment: Text.AlignVCenter; text: "CARRERA " + feed.efficiencyClock; color: "#f5f5f5"; font.pixelSize: 11; font.bold: true }
+                        Rectangle { width: 48; height: 27; anchors.verticalCenter: parent.verticalCenter; color: "#c1121f"; radius: 3
+                            Text { anchors.centerIn: parent; text: feed.efficiencyClass.slice(0, 3); color: "white"; font.pixelSize: 10; font.bold: true }
+                        }
+                        Text { width: 105; height: 42; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter; text: "AL LÍDER"; color: "#bdbfc4"; font.pixelSize: 9; font.bold: true }
+                        Text { width: 87; height: 42; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignRight; text: "MEJOR V."; color: "#bdbfc4"; font.pixelSize: 9; font.bold: true }
+                    }
+                }
+                Item {
+                    width: 428; height: 300; clip: true
+                    Repeater {
+                        model: feed.efficiencyRows
+                        delegate: Rectangle {
+                            required property var modelData
+                            required property int index
+                            y: index * 30
+                            width: 428; height: 30
+                            color: modelData.player ? "#ab343538" : (modelData.position <= 3 ? "#77191a1c" : "transparent")
+                            Rectangle { anchors.bottom: parent.bottom; width: parent.width; height: 1; color: "#292a2d" }
+                            Rectangle { visible: modelData.player; x: 3; y: 5; width: 2; height: 20; color: "#ed2431" }
+                            Row {
+                                anchors.fill: parent
+                                Text { width: 30; height: 30; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter; text: modelData.position; color: "#b9bbc1"; font.pixelSize: 14 }
+                                Text { width: 236; height: 30; verticalAlignment: Text.AlignVCenter; leftPadding: 8; text: modelData.driver + (modelData.player ? "  TÚ" : ""); color: "#f5f5f5"; font.pixelSize: 14; font.bold: true; elide: Text.ElideRight }
+                                Text { width: 86; height: 30; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter; text: modelData.gap; color: "#f5f5f5"; font.pixelSize: 14 }
+                                Text { width: 76; height: 30; verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignRight; rightPadding: 8; text: modelData.bestLap; color: "#e6e5e9"; font.pixelSize: 14 }
+                            }
+                        }
+                    }
+                }
+                Rectangle { width: 428; height: 22; color: "#e618191b"
+                    Text { anchors.centerIn: parent; width: parent.width - 16; horizontalAlignment: Text.AlignHCenter; elide: Text.ElideRight; text: feed.efficiencyFooter; color: "#b9b9bd"; font.pixelSize: 10; font.bold: true }
+                }
+            }
+        }
     }
 
     Component {

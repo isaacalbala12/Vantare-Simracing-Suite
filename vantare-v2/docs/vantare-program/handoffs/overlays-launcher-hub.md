@@ -1,6 +1,26 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
-## 2026-09-28 · VAN-776 / GitHub #1410 · Host Go nativo aislado
+## 2026-09-29 · VAN-776 / GitHub #1410 · Host Go nativo aislado
+
+Isaac amplió el corte final: se rehizo en GPUI y Qt Quick la vista aislada
+del Standings Eficiencia/Signature, con las mismas diez filas, geometría,
+paleta translúcida y fuente Go. Las ventanas se inspeccionaron sobre LMU aún
+en pista. GPUI suprime repintados sin cambios y Qt evita notificaciones de
+lista idéntica; el instrumento separa UI de UI+Go. En tres rondas intercaladas
+de 44 coches fijos, CPU UI mediana Qt/GPUI 1,86/2,20 % de un núcleo; working
+set 90,5/58,5 MiB y privada 72,1/44,5 MiB. Qt consumió menos CPU visual en
+las tres rondas; GPUI menos RAM. Al forzar repintado en cada snapshot, GPUI
+subió de 2,20 a 3,52 % de CPU UI mediana; en Qt, 1,86 sin forzar frente a
+1,82 % forzado con rondas de signo opuesto, por lo que su ahorro no queda
+demostrado. Con pista/boxes/salida de una fila, CPU UI Qt/GPUI 2,01/2,56 %,
+working set 89,4/57,4 MiB y privada 72,9/43,4 MiB. Método, doce registros
+fijos y seis cambiantes,
+con carencias de paridad en `tools/native-ui/README.md`. Las capturas se descartaron porque
+incluían texto ajeno al widget; el smoke sin captura recibió 44 filas y diez
+snapshots en ambos clientes. Este corte sustituye el veredicto del editor
+genérico como comparación de widget; no selecciona stack ni acredita el
+ahorro del 20 % global. Sigue faltando una parrilla cambiante de 44 coches,
+OBS/GPUI, DPI y producto completo. Sin merge ni promoción.
 
 Última prueba solicitada por Isaac: GPUI oficial fijado en `72d28c32`
 abrió ventana Windows y recibió 44 filas y diez snapshots del mismo host Go.

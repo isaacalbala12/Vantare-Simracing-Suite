@@ -62,6 +62,7 @@ try {
     $measurements = @()
     for ($index = 0; $index -lt $Samples; $index++) {
         $roots = @($process.Id) + $ExtraProcessIds
+        $clientLive = @(Get-TrialProcesses $process.Id)
         $live = @($roots | ForEach-Object { Get-TrialProcesses $_ } | Sort-Object Id -Unique)
         if (-not $live) { throw 'Trial exited during measurement' }
         $ids = [System.Collections.Generic.HashSet[int]]::new()
@@ -78,6 +79,9 @@ try {
             WorkingSetMiB = [math]::Round((($live | Measure-Object WorkingSet64 -Sum).Sum / 1MB), 1)
             PrivateMiB = [math]::Round((($live | Measure-Object PrivateMemorySize64 -Sum).Sum / 1MB), 1)
             CpuSeconds = ($live | Measure-Object CPU -Sum).Sum
+            ClientCpuSeconds = ($clientLive | Measure-Object CPU -Sum).Sum
+            ClientWorkingSetMiB = [math]::Round((($clientLive | Measure-Object WorkingSet64 -Sum).Sum / 1MB), 1)
+            ClientPrivateMiB = [math]::Round((($clientLive | Measure-Object PrivateMemorySize64 -Sum).Sum / 1MB), 1)
             Processes = $live.Count
             ProcessNames = (($live | ForEach-Object ProcessName | Sort-Object -Unique) -join ',')
             GpuLocalMiB = [math]::Round($gpuBytes / 1MB, 1)
@@ -92,6 +96,7 @@ try {
     $last = $measurements[-1]
     $duration = ($last.Time - $first.Time) / [System.Diagnostics.Stopwatch]::Frequency
     $oneCore = (($last.CpuSeconds - $first.CpuSeconds) / $duration) * 100
+    $clientOneCore = (($last.ClientCpuSeconds - $first.ClientCpuSeconds) / $duration) * 100
     $result = [pscustomobject]@{
         Executable = (Split-Path -Leaf $Executable)
         Mode = $Label
@@ -102,6 +107,9 @@ try {
         AdapterBeforeMiB = $adapterBefore
         PeakWorkingSetMiB = ($ordered | Measure-Object -Maximum).Maximum
         MeanCpuOneCorePercent = [math]::Round($oneCore, 2)
+        MeanClientCpuOneCorePercent = [math]::Round($clientOneCore, 2)
+        MedianClientWorkingSetMiB = Get-Median ([double[]] $measurements.ClientWorkingSetMiB)
+        MedianClientPrivateMiB = Get-Median ([double[]] $measurements.ClientPrivateMiB)
         MeanCpuMachinePercent = [math]::Round($oneCore / [Environment]::ProcessorCount, 3)
         ProcessCount = $last.Processes
         ProcessNames = $last.ProcessNames

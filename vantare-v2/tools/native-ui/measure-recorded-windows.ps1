@@ -3,11 +3,17 @@ param(
     [int] $Samples = 8,
     [int] $PortBase = 54710,
     [ValidateSet('pit-sequence', 'standings-44')] [string] $Scene = 'pit-sequence',
-    [ValidateSet('baseline', 'gpui-qt')] [string] $Comparison = 'baseline'
+    [ValidateSet('baseline', 'gpui-qt')] [string] $Comparison = 'baseline',
+    [ValidateSet('editor', 'efficiency')] [string] $Mode = 'editor',
+    [switch] $ForceWidgetRefresh,
+    [switch] $RefreshSweep
 )
 
 $ErrorActionPreference = 'Stop'
 if ($Rounds -lt 1 -or $Samples -lt 2) { throw 'Rounds and Samples must be positive; Samples must be at least 2' }
+if ($Mode -eq 'efficiency' -and $Comparison -ne 'gpui-qt') { throw 'Efficiency mode compares GPUI and Qt only' }
+if ($ForceWidgetRefresh -and $Mode -ne 'efficiency') { throw 'Forced widget refresh requires efficiency mode' }
+if ($RefreshSweep -and ($Mode -ne 'efficiency' -or $Comparison -ne 'gpui-qt' -or $ForceWidgetRefresh)) { throw 'Refresh sweep requires GPUI/Qt efficiency without ForceWidgetRefresh' }
 
 $hostExe = Join-Path $PSScriptRoot 'out/host-recorded.exe'
 $fixtureRoot = Join-Path $PSScriptRoot '../../testdata'
@@ -19,6 +25,14 @@ $allClients = @(
     [pscustomobject]@{ Name = 'GPUI'; Exe = (Join-Path $PSScriptRoot 'gpui/target/release/vantare-native-go-gpui.exe'); Flag = '--endpoint'; ModeFlag = '--mode' }
 )
 $clients = if ($Comparison -eq 'gpui-qt') { @($allClients | Where-Object Name -In @('Qt', 'GPUI')) } else { @($allClients | Where-Object Name -In @('Wails', 'Qt', 'Slint')) }
+if ($RefreshSweep) {
+    $clients = @($clients | ForEach-Object {
+        $candidate = $_
+        foreach ($forced in @($false, $true)) {
+            [pscustomobject]@{ Name = $candidate.Name; Exe = $candidate.Exe; Flag = $candidate.Flag; ModeFlag = $candidate.ModeFlag; Force = $forced }
+        }
+    })
+}
 if ($PortBase -lt 1 -or $PortBase + $Rounds * $clients.Count - 1 -gt 65535) { throw 'Port range is invalid' }
 foreach ($path in @($hostExe, $measure) + @($clients | ForEach-Object Exe)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Missing trial file: $path" }
@@ -54,8 +68,9 @@ for ($round = 0; $round -lt $Rounds; $round++) {
             }
             if (-not $ready) { throw "Recorded Go host did not listen on port $port" }
             $endpoint = "http://127.0.0.1:$port/telemetry/overlay-v2/projection"
-            $arguments = @($candidate.Flag, $endpoint, $candidate.ModeFlag, 'editor')
-            $sample = & $measure -Executable $candidate.Exe -Arguments $arguments -Label editor -ExtraProcessIds @($hostProcess.Id) -WarmupSeconds 3 -Samples $Samples | ConvertFrom-Json
+            $arguments = @($candidate.Flag, $endpoint, $candidate.ModeFlag, $Mode)
+            if ($ForceWidgetRefresh -or $candidate.Force) { $arguments += '--force-widget-refresh' }
+            $sample = & $measure -Executable $candidate.Exe -Arguments $arguments -Label $Mode -ExtraProcessIds @($hostProcess.Id) -WarmupSeconds 3 -Samples $Samples | ConvertFrom-Json
             if ($null -eq $sample -or $hostProcess.HasExited) { throw "Trial ended early: $($candidate.Name), round $($round + 1)" }
         } finally {
             if (-not $hostProcess.HasExited) {
@@ -72,11 +87,16 @@ for ($round = 0; $round -lt $Rounds; $round++) {
             Round = $round + 1
             Position = $position + 1
             Scene = $Scene
+            Mode = $Mode
+            ForceWidgetRefresh = [bool] ($ForceWidgetRefresh -or $candidate.Force)
             Candidate = $candidate.Name
             RecordedFramesAtLeast = 100
             MedianWorkingSetMiB = $sample.MedianWorkingSetMiB
             MedianPrivateMiB = $sample.MedianPrivateMiB
             MeanCpuOneCorePercent = $sample.MeanCpuOneCorePercent
+            MeanClientCpuOneCorePercent = $sample.MeanClientCpuOneCorePercent
+            MedianClientWorkingSetMiB = $sample.MedianClientWorkingSetMiB
+            MedianClientPrivateMiB = $sample.MedianClientPrivateMiB
             MeanCpuMachinePercent = $sample.MeanCpuMachinePercent
             MedianGpuLocalMiB = $sample.MedianGpuLocalMiB
             ProcessCount = $sample.ProcessCount

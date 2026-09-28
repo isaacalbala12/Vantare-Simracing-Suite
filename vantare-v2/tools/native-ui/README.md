@@ -442,6 +442,88 @@ cargo build --release --manifest-path tools/native-ui/gpui/Cargo.toml
 ./tools/native-ui/measure-recorded-windows.ps1 -Comparison gpui-qt -Scene standings-44 -Rounds 3 -Samples 8
 ```
 
+### Standings Eficiencia: GPUI y Qt Quick optimizados · 29/09/2026
+
+La comparación anterior de editores no era una prueba final del widget: su
+inspector GPUI solo era visual y las superficies tenían costes distintos.
+Isaac pidió rehacerla con **Standings Eficiencia/Signature**. Se fijó una
+configuración visual común de 428 × 364 px (cabecera integrada de 42 px,
+diez filas de 30 px y pie de 22 px), columnas posición/piloto/gap/mejor
+vuelta, jugador resaltado, tres primeras filas tonales, acento rojo y fondo
+translúcido. Geometría y formato provienen de
+`StandingsFunctional.tsx`, `tokens.css`, `functional-standings-layout.ts` y
+`standings-formatting.ts`, con la
+[referencia visual Eficiencia](../../design-evidence/functional/standings-joined-final.png)
+como contraste; ambos clientes reciben **el mismo SSE Go**.
+Se inspeccionaron visualmente ambas ventanas sobre LMU, pero las capturas
+incluían texto de la sesión de fondo y se descartaron para no publicarlo.
+[`inspect-efficiency-windows.ps1`](inspect-efficiency-windows.ps1) comprueba
+que ambos ejecutables reciben 44 filas y diez snapshots sin capturar pantalla.
+La captura de 44 coches tiene gaps y mejores vueltas sin
+calidad válida, por lo que se muestran guiones; ningún tiempo fue inventado.
+
+La ruta específica del widget solo materializa las diez filas visibles.
+GPUI evita `cx.notify()` si filas, reloj, clase y pie no cambian y consulta
+la cola cada 50 ms, con margen frente al replay de 100 ms; Qt evita emitir
+`efficiencyChanged` si la misma vista llega repetida. Ambos conservan por separado el
+contador de snapshots para el smoke. El parser respeta calidad ausente,
+formatea tiempos con la precisión del producto y conserva el `LÍDER` de la
+primera posición. La medición separa el proceso UI del conjunto UI+Go.
+El modo Eficiencia usa la política visual sin blur: permite comparar el
+renderizado translúcido sin cargar a uno de los candidatos con un efecto
+distinto. No incluye aún el logo como imagen, la cinta de bandera, el rail
+PIT, las animaciones, la selección de clase ni la ventana contextual del
+producto. Por ello las capturas son **aproximaciones del diseño**, no una
+paridad de píxel ni de comportamiento completo. El área cliente es 428 ×
+364 px en los dos; DWM reporta 444 × 372 px para el marco invisible GPUI.
+
+Con 44 coches reales sanitizados **fijos** repetidos a 100 ms artificiales,
+se intercalaron cuatro variantes (Qt y GPUI, cada uno con y sin repintado
+forzado), tres rondas y ocho muestras de un segundo por ejecución. Las
+medianas de las variantes optimizadas en
+[los doce registros brutos](evidence/recorded-load-44-efficiency-refresh-sweep-results.json)
+son:
+
+| 44 coches fijos | CPU UI (% de un núcleo) | Working set UI | Privada UI | CPU UI+Go | Working set UI+Go |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| C++/Qt Quick | 1,86 % | 90,5 MiB | 72,1 MiB | 4,55 % | 123,3 MiB |
+| Rust/GPUI | 2,20 % | 58,5 MiB | 44,5 MiB | 5,07 % | 90,8 MiB |
+
+Qt gastó menos CPU visual en las tres rondas; GPUI ahorró 35,4 % de working
+set y 38,3 % de memoria privada visual frente a Qt. La CPU del conjunto
+varió más por el host común; no se atribuye esa variación al toolkit. Frente
+al repintado forzado, la mediana de CPU UI GPUI bajó de 3,52 a 2,20 %
+(37,5 %). En Qt, la mediana visual fue 1,82 % con repintado forzado y
+1,86 % sin él; las rondas variaron de dirección, por lo que un ahorro de CPU
+de esa supresión **no queda demostrado**.
+El repintado forzado es una opción de diagnóstico, no la configuración de
+uso. Ambos ejecutables se mantuvieron por encima de LMU durante las medidas;
+el ensayo anterior de editores no controlaba esta equivalencia.
+La secuencia real de pista/boxes/salida, con **una sola fila cambiante**,
+produjo otras seis mediciones
+([datos brutos](evidence/recorded-load-pit-efficiency-gpui-qt-results.json)):
+
+| Pista/boxes/salida | CPU UI (% de un núcleo) | Working set UI | Privada UI | CPU UI+Go |
+| --- | ---: | ---: | ---: | ---: |
+| C++/Qt Quick | 2,01 % | 89,4 MiB | 72,9 MiB | 2,39 % |
+| Rust/GPUI | 2,56 % | 57,4 MiB | 43,4 MiB | 2,85 % |
+
+Qt volvió a usar menos CPU visual y GPUI menos RAM en las tres rondas.
+Esta segunda escena comprueba la ruta de actualizaciones, pero no representa
+una parrilla de 44 coches evolucionando ni una sesión viva de LMU 1.4.2.0.
+El contador GPU local de Windows sigue sin fuente independiente, y aún
+faltan OBS/GPUI, DPI mixto y medición del producto completo. No se elige
+stack ni se acredita el 20 % global con estos prototipos.
+
+```powershell
+cargo test --release --manifest-path tools/native-ui/gpui/Cargo.toml
+cargo clippy --release --manifest-path tools/native-ui/gpui/Cargo.toml -- -D warnings
+cmake --build tools/native-ui/out/qtquick --config Release
+./tools/native-ui/inspect-efficiency-windows.ps1
+./tools/native-ui/measure-recorded-windows.ps1 -Comparison gpui-qt -Mode efficiency -Scene standings-44 -RefreshSweep -Rounds 3 -Samples 8
+./tools/native-ui/measure-recorded-windows.ps1 -Comparison gpui-qt -Mode efficiency -Scene pit-sequence -Rounds 3 -Samples 8
+```
+
 ### Reconexión de la referencia Wails
 
 Con Wails abierto antes que el host Go, el proxy del ensayo respondía 502.

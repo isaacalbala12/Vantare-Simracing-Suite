@@ -220,6 +220,44 @@ No hubo grabación OBS en esta serie ni telemetría que cambiase; antes de elegi
 stack siguen haciendo falta carga real, GPU validada con otra herramienta y
 paridad del producto completo.
 
+### Comprobación adicional del contador GPU · 28/09/2026
+
+Con el mismo host Go caliente y la captura LMU 1.3.0 real sanitizada, se
+midió también `\GPU Adapter Memory(*)\Dedicated Usage`: total del adaptador
+antes, durante y después de abrir **solo** un editor cada vez. La diferencia
+de cada prueba es el valor mediano durante la ventana menos la media de los
+valores previos y posteriores. Hubo tres rondas en orden rotado
+Wails→Qt→Slint, Qt→Slint→Wails y Slint→Wails→Qt; cada ventana tuvo tres
+segundos de calentamiento y cinco muestras. El host común permaneció abierto
+y queda fuera del working set y memoria privada de las ventanas.
+
+| Editor fijo · mediana de tres rondas | Aumento total del adaptador | `GPU Process Memory` local | Working set de ventana y descendientes |
+| --- | ---: | ---: | ---: |
+| Wails/React | 50,8 MiB (45,3–51,0) | 44,6 MiB | 395,8 MiB |
+| Qt Quick | 37,7 MiB (37,0–39,6) | 35,1 MiB | 95,5 MiB |
+| Rust/Slint | 102,3 MiB (99,9–106,6) | 102,3 MiB | 110,5 MiB |
+
+[Las nueve filas](evidence/gpu-adapter-static-results.csv) incluyen los
+valores antes/durante/después, memoria privada, CPU y procesos. La deriva
+máxima entre antes y después fue 12,5 MiB (Wails), 5,3 MiB (Qt) y 8,2 MiB
+(Slint). Las dos lecturas mantienen el mismo orden en esta escena; el total
+del adaptador incluye **otras aplicaciones** y ambos contadores dependen de
+Windows/WDDM, así que no son una medición independiente de VRAM física ni
+prueba del consumo GPU de Vantare completa. La CPU siguió próxima a cero.
+Una primera ejecución se descartó porque había incluido PID 0 en la suma de
+procesos; `measure-windows.ps1` ahora rechaza IDs adicionales no positivos.
+
+Para repetirla con el host de captura en `127.0.0.1:54677`, las tres ventanas
+Release ya compiladas y el paquete Qt reducido presentes:
+
+```powershell
+./tools/native-ui/measure-gpu-adapter-windows.ps1 -Port 54677 -Rounds 3
+```
+
+Este ensayo no usa LMU 1.4.2.0 ni datos que cambien. El siguiente gate de
+rendimiento sigue siendo la comparación con proyección viva, el producto
+completo y una fuente GPU adicional que no dependa de los mismos contadores.
+
 ## Licencia sin coste de licencia
 
 El prototipo Qt enlaza Core, Gui, Network, Quick y QuickControls2. La

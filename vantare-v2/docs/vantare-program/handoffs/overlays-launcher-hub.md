@@ -102,6 +102,21 @@ revisión automática rechazó preparar una copia con estilos retirados, así qu
 el paquete no se modificó ni se hizo un nuevo smoke. Detalle en
 `tools/native-ui/evidence/qt-package-license-inventory.md`.
 
+Con el mismo host Go y la escena fija se hicieron otras tres rondas, esta
+vez midiendo también el aumento de memoria dedicada total de los adaptadores
+GPU antes/durante/después. Medianas Wails/Qt/Slint: 50,8/37,7/102,3 MiB;
+working set de las ventanas: 395,8/95,5/110,5 MiB. El orden rotó y los
+valores están en `tools/native-ui/evidence/gpu-adapter-static-results.csv`;
+el método en `tools/native-ui/README.md`. El contador total incluye otras
+aplicaciones y sigue dependiendo de Windows/WDDM; confirma el orden de esta
+escena, pero no mide de forma independiente la VRAM física. No demuestra
+ahorro del 20 % de CPU ni paridad de la aplicación completa. Se corrigió el
+instrumento para rechazar el PID 0 después de descartar una prueba inválida.
+El HEAD de solo documentación `09473af6` pasó calidad y seguridad, pero el
+gate bloqueante remoto falló en dos tests de `voiceinput` sin archivos Go
+modificados; esos tests pasaron localmente de forma dirigida. Se comprobará
+de nuevo el nuevo HEAD, sin dar la CI por verde de antemano.
+
 Continúa la comparación [#1404](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1409), todavía en PR borrador. La rama
 `vantareapp/isa-1410-native-go-product-trial` parte de
 `origin/nightly@355e9cfe` en worktree propio. Un host de investigación usa la

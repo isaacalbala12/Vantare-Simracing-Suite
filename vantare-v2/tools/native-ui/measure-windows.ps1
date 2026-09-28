@@ -5,11 +5,30 @@ param(
     [string] $QtBin,
     [int] $WarmupSeconds = 3,
     [int] $Samples = 8,
-    [int[]] $ExtraProcessIds = @()
+    [int[]] $ExtraProcessIds = @(),
+    [switch] $MeasureAdapterDedicated
 )
 
 $ErrorActionPreference = 'Stop'
+if ($Samples -lt 2) { throw 'Samples must be at least 2' }
+if (@($ExtraProcessIds | Where-Object { $_ -le 0 }).Count -gt 0) {
+    throw 'ExtraProcessIds must contain only positive process IDs'
+}
 if ($QtBin) { $env:PATH = "$QtBin;$env:PATH" }
+$adapterCounter = '\GPU Adapter Memory(*)\Dedicated Usage'
+function Get-AdapterDedicatedMiB {
+    $samples = @(Get-Counter $adapterCounter -ErrorAction Stop).CounterSamples
+    if (-not $samples) { throw 'No GPU adapter memory counters available' }
+    return [math]::Round((($samples | Measure-Object CookedValue -Sum).Sum / 1MB), 1)
+}
+function Get-Median([double[]] $Values) {
+    $ordered = @($Values | Sort-Object)
+    return $ordered[[int] [math]::Floor($ordered.Count / 2)]
+}
+$adapterBefore = $null
+if ($MeasureAdapterDedicated) {
+    $adapterBefore = Get-Median ([double[]] @(1..3 | ForEach-Object { Get-AdapterDedicatedMiB }))
+}
 $startInfo = [System.Diagnostics.ProcessStartInfo]::new((Resolve-Path -LiteralPath $Executable).Path)
 $startInfo.UseShellExecute = $false
 $startInfo.CreateNoWindow = $true
@@ -62,6 +81,7 @@ try {
             Processes = $live.Count
             ProcessNames = (($live | ForEach-Object ProcessName | Sort-Object -Unique) -join ',')
             GpuLocalMiB = [math]::Round($gpuBytes / 1MB, 1)
+            AdapterDedicatedMiB = if ($MeasureAdapterDedicated) { Get-AdapterDedicatedMiB } else { $null }
         }
         Start-Sleep -Seconds 1
     }
@@ -72,12 +92,14 @@ try {
     $last = $measurements[-1]
     $duration = ($last.Time - $first.Time) / [System.Diagnostics.Stopwatch]::Frequency
     $oneCore = (($last.CpuSeconds - $first.CpuSeconds) / $duration) * 100
-    [pscustomobject]@{
+    $result = [pscustomobject]@{
         Executable = (Split-Path -Leaf $Executable)
         Mode = $Label
         MedianWorkingSetMiB = $ordered[[int] [math]::Floor($ordered.Count / 2)]
         MedianPrivateMiB = $privateOrdered[[int] [math]::Floor($privateOrdered.Count / 2)]
         MedianGpuLocalMiB = $gpuOrdered[[int] [math]::Floor($gpuOrdered.Count / 2)]
+        MedianAdapterDedicatedMiB = if ($MeasureAdapterDedicated) { Get-Median ([double[]] $measurements.AdapterDedicatedMiB) } else { $null }
+        AdapterBeforeMiB = $adapterBefore
         PeakWorkingSetMiB = ($ordered | Measure-Object -Maximum).Maximum
         MeanCpuOneCorePercent = [math]::Round($oneCore, 2)
         MeanCpuMachinePercent = [math]::Round($oneCore / [Environment]::ProcessorCount, 3)
@@ -85,7 +107,7 @@ try {
         ProcessNames = $last.ProcessNames
         ExtraProcessIds = $ExtraProcessIds
         Samples = $Samples
-    } | ConvertTo-Json -Compress
+    }
 } finally {
     if (-not $process.HasExited) {
         $process.Kill($true)
@@ -93,3 +115,7 @@ try {
     }
     $process.Dispose()
 }
+if ($MeasureAdapterDedicated) {
+    $result | Add-Member -NotePropertyName AdapterAfterMiB -NotePropertyValue (Get-Median ([double[]] @(1..3 | ForEach-Object { Get-AdapterDedicatedMiB })))
+}
+$result | ConvertTo-Json -Compress

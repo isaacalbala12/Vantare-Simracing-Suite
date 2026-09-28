@@ -1,7 +1,7 @@
 //! Deadline-bound Windows named-pipe client I/O. Each pending operation owns
 //! its event and buffer until Windows reports completion, even after cancel.
 
-use std::io::{self, Read, Write};
+use std::io;
 use std::ptr::{null, null_mut};
 use std::time::Instant;
 
@@ -13,7 +13,10 @@ use windows_sys::Win32::Storage::FileSystem::{
     CreateFileW, FILE_FLAG_OVERLAPPED, OPEN_EXISTING, ReadFile, WriteFile,
 };
 use windows_sys::Win32::System::IO::{CancelIoEx, GetOverlappedResult, OVERLAPPED};
+use windows_sys::Win32::System::Pipes::PeekNamedPipe;
 use windows_sys::Win32::System::Threading::{CreateEventW, WaitForSingleObject};
+
+use super::{HEADER_LEN, Kind, MAX_PAYLOAD_LEN, VERSION};
 
 struct Event(HANDLE);
 
@@ -82,6 +85,46 @@ impl DeadlinePipe {
         Ok(())
     }
 
+    /// Polls without reserving a payload while idle. Once any byte is
+    /// available, the whole frame must arrive by `deadline` or this pipe is
+    /// considered broken; callers must close it after an error.
+    pub fn read_frame_if_available(&mut self, deadline: Instant) -> io::Result<Option<Vec<u8>>> {
+        let mut available = 0;
+        // SAFETY: only the out count is supplied; no payload is copied.
+        if unsafe {
+            PeekNamedPipe(
+                self.0,
+                null_mut(),
+                0,
+                null_mut(),
+                &mut available,
+                null_mut(),
+            )
+        } == 0
+        {
+            return Err(io::Error::last_os_error());
+        }
+        if available == 0 {
+            return Ok(None);
+        }
+        let mut header = [0_u8; HEADER_LEN];
+        self.read_exact_until(&mut header, deadline)?;
+        let length = u32::from_le_bytes(header[..4].try_into().expect("fixed header")) as usize;
+        let version = u16::from_le_bytes(header[4..6].try_into().expect("fixed header"));
+        let kind = Kind::try_from(u16::from_le_bytes(
+            header[6..8].try_into().expect("fixed header"),
+        ))
+        .map_err(|_| io::ErrorKind::InvalidData)?;
+        if version != VERSION || length > MAX_PAYLOAD_LEN || length > kind.max_payload() {
+            return Err(io::ErrorKind::InvalidData.into());
+        }
+        let mut frame = Vec::with_capacity(HEADER_LEN + length);
+        frame.extend_from_slice(&header);
+        frame.resize(HEADER_LEN + length, 0);
+        self.read_exact_until(&mut frame[HEADER_LEN..], deadline)?;
+        Ok(Some(frame))
+    }
+
     fn transfer(
         &self,
         buffer: *mut u8,
@@ -118,8 +161,13 @@ impl DeadlinePipe {
                 // SAFETY: cancelling is followed by a blocking reap, keeping
                 // buffer, OVERLAPPED and event valid until the kernel is done.
                 unsafe { CancelIoEx(self.0, &overlapped) };
-                let mut discarded = 0;
-                unsafe { GetOverlappedResult(self.0, &overlapped, &mut discarded, 1) };
+                let mut completed = 0;
+                // Cancellation can race a successful transfer. Preserve its
+                // byte count; discarding it would desynchronise framing.
+                let reaped = unsafe { GetOverlappedResult(self.0, &overlapped, &mut completed, 1) };
+                if reaped != 0 {
+                    return Ok(completed as usize);
+                }
                 return if wait == WAIT_TIMEOUT {
                     Err(io::ErrorKind::TimedOut.into())
                 } else {
@@ -140,34 +188,5 @@ impl Drop for DeadlinePipe {
     fn drop(&mut self) {
         // SAFETY: all operations finish before each method returns.
         unsafe { CloseHandle(self.0) };
-    }
-}
-
-pub struct PipeReadUntil<'a> {
-    pub pipe: &'a mut DeadlinePipe,
-    pub deadline: Instant,
-}
-
-impl Read for PipeReadUntil<'_> {
-    fn read(&mut self, output: &mut [u8]) -> io::Result<usize> {
-        if output.is_empty() {
-            return Ok(0);
-        }
-        self.pipe
-            .transfer(output.as_mut_ptr(), output.len(), self.deadline, false)
-    }
-}
-
-impl Write for PipeReadUntil<'_> {
-    fn write(&mut self, input: &[u8]) -> io::Result<usize> {
-        if input.is_empty() {
-            return Ok(0);
-        }
-        self.pipe
-            .transfer(input.as_ptr().cast_mut(), input.len(), self.deadline, true)
-    }
-
-    fn flush(&mut self) -> io::Result<()> {
-        Ok(())
     }
 }

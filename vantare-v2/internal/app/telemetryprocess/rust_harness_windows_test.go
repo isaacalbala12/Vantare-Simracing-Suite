@@ -4,9 +4,11 @@ package telemetryprocess
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -30,6 +32,106 @@ func TestRustChildPipeHandshakeAndStop(t *testing.T) {
 	}
 	if err := session.close(); err != nil {
 		t.Fatalf("second close: %v", err)
+	}
+}
+
+func TestRustCandidateRejectsOversizedHeaderBeforePayload(t *testing.T) {
+	executable := os.Getenv("VANTARE_TELEMETRY_RUST_TEST_HELPER")
+	if executable == "" {
+		t.Skip("set VANTARE_TELEMETRY_RUST_TEST_HELPER after cargo build")
+	}
+	pipe, err := newLocalPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	child, err := startInJob(executable, "--candidate-pipe", pipe.name,
+		"--candidate-nonce", hex.EncodeToString(pipe.nonce[:]))
+	if err != nil {
+		_ = pipe.close()
+		t.Fatal(err)
+	}
+	defer child.close()
+	if err := pipe.acceptChild(context.Background(), child.pid); err != nil {
+		_ = pipe.close()
+		t.Fatal(err)
+	}
+	file := os.NewFile(uintptr(pipe.handle), "telemetry-oversized-pipe")
+	defer file.Close()
+	if err := file.SetDeadline(time.Now().Add(4 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	frame, err := ReadFrame(file)
+	if err != nil {
+		t.Fatalf("read handshake: %v", err)
+	}
+	if err := verifyHandshake(frame, pipe.nonce, "0.1.0"); err != nil {
+		t.Fatal(err)
+	}
+	var header [8]byte
+	binary.LittleEndian.PutUint32(header[:4], 64<<10+1)
+	binary.LittleEndian.PutUint16(header[4:6], 1)
+	binary.LittleEndian.PutUint16(header[6:8], uint16(KindConfiguration))
+	if _, err := file.Write(header[:]); err != nil {
+		t.Fatalf("send header: %v", err)
+	}
+	result, err := windows.WaitForSingleObject(child.process, 2_000)
+	if err != nil || result != windows.WAIT_OBJECT_0 {
+		t.Fatalf("oversized header did not terminate child before payload: wait=%d error=%v", result, err)
+	}
+	var exitCode uint32
+	if err := windows.GetExitCodeProcess(child.process, &exitCode); err != nil || exitCode == 0 {
+		t.Fatalf("oversized header exit code=%d error=%v", exitCode, err)
+	}
+}
+
+// Run only while a locally observed LMU build is outside Rust's closed
+// allowlist. It proves the candidate child refuses acquisition after config.
+func TestRustCandidateRejectsUnknownBuildOptIn(t *testing.T) {
+	executable := os.Getenv("VANTARE_TELEMETRY_RUST_TEST_HELPER")
+	if executable == "" || os.Getenv("VANTARE_LMU_UNKNOWN_BUILD_TEST") != "1" {
+		t.Skip("requires release Rust child and an observed unsupported LMU build")
+	}
+	pipe, err := newLocalPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	child, err := startInJob(executable, "--candidate-pipe", pipe.name,
+		"--candidate-nonce", hex.EncodeToString(pipe.nonce[:]))
+	if err != nil {
+		_ = pipe.close()
+		t.Fatal(err)
+	}
+	defer child.close()
+	if err := pipe.acceptChild(context.Background(), child.pid); err != nil {
+		_ = pipe.close()
+		t.Fatal(err)
+	}
+	file := os.NewFile(uintptr(pipe.handle), "telemetry-candidate-pipe")
+	defer file.Close()
+	if err := file.SetDeadline(time.Now().Add(4 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	frame, err := ReadFrame(file)
+	if err != nil {
+		t.Fatalf("read handshake: %v", err)
+	}
+	if err := verifyHandshake(frame, pipe.nonce, "0.1.0"); err != nil {
+		t.Fatal(err)
+	}
+	configuration, err := os.ReadFile(filepath.Join("..", "..", "..", "rust", "telemetry", "testdata", "configuration-frame-go-v1.bin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := file.Write(configuration); err != nil {
+		t.Fatalf("send configuration: %v", err)
+	}
+	result, err := windows.WaitForSingleObject(child.process, 4_000)
+	if err != nil || result != windows.WAIT_OBJECT_0 {
+		t.Fatalf("unknown-build child did not exit: wait=%d error=%v", result, err)
+	}
+	var exitCode uint32
+	if err := windows.GetExitCodeProcess(child.process, &exitCode); err != nil || exitCode == 0 {
+		t.Fatalf("unknown-build exit code=%d error=%v", exitCode, err)
 	}
 }
 

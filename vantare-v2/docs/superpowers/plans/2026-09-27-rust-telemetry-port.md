@@ -1757,3 +1757,28 @@ de layout/ABI y errores de lifetime. Licencia MIT OR Apache-2.0, versión
 fijada en lockfile; añade `windows-link 0.2.1` al build. Su coste de tamaño
 y CPU se medirá en R21/R22. Esto aún no conecta el reader/writer de
 producción ni el loop live; R05/R19, corpus 44/104 y gate CPU siguen abiertos.
+
+## 92. Loop candidato Rust por pipe aislado (2026-09-28)
+
+El ejecutable acepta `--candidate-pipe` solo con nonce/nombre vinculados al
+pipe reservado por Go. Tras Handshake exige Configuration completa y válida
+antes de abrir LMU; `Acquisition` rechaza build no admitida. Para builds
+admitidas, el loop consulta controles disponibles, aplica Configuration,
+FactAck y replay, toma ticks SHM nominales de 60 Hz, deposita batches en la
+cola acotada y escribe con plazo. Stop se devuelve solo después del cierre
+del poller REST. La ruta no tiene selector ni consumidores Wails y no se
+activa al arrancar normalmente.
+
+El lector `PeekNamedPipe` valida versión, tipo y límite por mensaje desde
+los ocho bytes de cabecera antes de reservar el payload. Si un timeout de
+cancelación coincide con una transferencia completa, conserva el número de
+bytes para no corromper el framing. Pruebas cruzadas Windows confirman el
+rechazo de una cabecera Configuration de 64 KiB+1 sin enviar cuerpo y la
+salida del candidato al recibir configuración con LMU físico 1.4.2.0 aún
+no admitido. El harness Handshake/Stop y timeout sigue pasando. Rust release
+150/150, Clippy y build release pasan.
+
+Es un loop candidato **sin prueba live en una build admitida**, sin Status,
+watchdog, presupuesto de reinicio ni consumidores. El writer es síncrono;
+una escritura lenta detiene ticks y vence a los 2 s. No cumple R05/R19 ni
+los gates de paridad, corpus 44/104 y CPU; Go sigue owner productivo.

@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — loop candidato Rust aislado (2026-09-28)
+
+`--candidate-pipe` usa handshake, configuración validada, `Acquisition`,
+agenda 60 Hz, cola y writer con plazo; lee controles por `PeekNamedPipe` y
+cierra REST antes de devolver Stop. No existe selector Wails/Go ni
+supervisor productivo para esa ruta. Tests Windows confirman rechazo de
+cabecera Configuration sobredimensionada sin payload y rechazo físico de
+LMU 1.4.2.0, además de Handshake/Stop y timeout del harness. Rust
+release 150/150 y Clippy pasan. Falta validar un loop live con build
+admitida y añadir Status/watchdog, reinicios, corpus 44/104 y CPU. Plan §92.
+
 ## VAN-778 / ISA-1403 — I/O overlapped con plazo en el cliente Rust (2026-09-28)
 
 El harness principal Rust abre el named pipe Windows con

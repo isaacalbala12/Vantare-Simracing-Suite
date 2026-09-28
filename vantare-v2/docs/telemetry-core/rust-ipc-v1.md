@@ -185,6 +185,16 @@ El test cruzado con Go confirma intercambio normal y salida del hijo sin
 Stop ni cierre previo del servidor. La ruta productiva todavía no usa este
 transporte, no hay watchdog ni deadlines por frame live.
 
+Una ruta explícita `--candidate-pipe` ya lee Configuration y controles,
+adquiere LMU para builds exactas admitidas, entrega batches por el pipe y
+responde Stop tras cerrar REST. El host Go aún no la selecciona desde Wails.
+El lector consulta disponibilidad sin reservar memoria, valida los ocho
+bytes de cabecera antes del payload y abandona el pipe si una trama parcial
+vence el plazo. Un test Windows envía solo la cabecera de Configuration de
+64 KiB+1 y el hijo sale antes de recibir cuerpo. Otro test opt-in confirma
+el rechazo de LMU 1.4.2.0 tras configuración, sin prometer loop live para
+esa build. Faltan Status/watchdog, reinicio y prueba live admitida.
+
 ## Límites de diseño para completar antes de R05/R19
 
 | Recurso | Límite inicial | Evidencia/estado |

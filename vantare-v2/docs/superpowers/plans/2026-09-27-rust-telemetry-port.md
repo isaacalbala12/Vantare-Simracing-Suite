@@ -1316,3 +1316,19 @@ inyecta un único archivo auditado. R18 sigue parcial: faltan corpus
 temporal 44/104, replay de cambio de demanda/reconnect/facts, salida a
 consumidores reales, writer/ACK/resync. R19/R21/R25 y LMU físico
 pendientes. Go sigue productivo.
+
+## 62. Admisión estructural de LMU 1.4.0.0 y 1.4.1.3 (2026-09-28)
+
+El parser Rust admite exactamente las builds 1.3.0.0, 1.4.0.0 y
+1.4.1.3. Para las dos builds 1.4 se verifican las capturas sanitizadas
+reales de menú y pista ya pinneadas por Go. La captura de 1.4.1.3
+contiene 18 vehículos y jugador presente; su menú contiene cero y
+jugador ausente. Los tests rechazan builds vecinas y 1.4.2.0. Rust
+release 114/114, Clippy todos los targets/features, formato y `go test
+./...` pasan.
+
+Esta admisión comprueba el layout de Shared Memory con evidencia de
+build suministrada por el llamador. Go exige también REST para las
+builds 1.4; Rust aún debe imponer esa correlación antes de considerarse
+fuente productiva. La versión 1.4.2.0 instalada no tiene capturas
+pinneadas y permanece cerrada. Go sigue como owner; R19/R25 pendientes.

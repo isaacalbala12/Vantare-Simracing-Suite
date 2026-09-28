@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — admisión estructural LMU 1.4 (2026-09-28)
+
+Rust admite las builds exactas 1.4.0.0 y 1.4.1.3 a partir de las
+capturas sanitizadas de menú/pista ya pinneadas en Go. Rechaza versiones
+vecinas y 1.4.2.0. Rust release 114/114, Clippy, formato y `go test
+./...` pasan. Falta imponer la correlación REST obligatoria de 1.4
+antes de cualquier uso productivo; 1.4.2.0 requiere evidencia propia.
+Go sigue como único owner. Plan sección 62.
+
 ## ISA-1403 — replay Rust→Go por pipe Windows (2026-09-28)
 
 El helper `replay-harness` lanzó Rust bajo Job Object/pipe seguro; Go

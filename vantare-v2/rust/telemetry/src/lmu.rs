@@ -1,4 +1,4 @@
-//! Closed LMU 1.3 frame admission. A caller must supply independently verified
+//! Closed LMU frame admission. A caller must supply independently verified
 //! build evidence; buffer shape alone never promotes an unknown game build.
 
 pub mod fusion;
@@ -127,7 +127,7 @@ pub fn admit_v13(buffer: &[u8], verified_build: &str) -> Result<AdmittedGrid, Ad
     if buffer.len() < OBJECT_OUT_SIZE {
         return Err(AdmissionError::ShortBuffer);
     }
-    if verified_build != "1.3.0.0" {
+    if !matches!(verified_build, "1.3.0.0" | "1.4.0.0" | "1.4.1.3") {
         return Err(AdmissionError::UnsupportedBuild);
     }
     let count = read_i32(buffer, 1_736);
@@ -557,6 +557,43 @@ mod tests {
 
     const REAL_44: &[u8] = include_bytes!("../../../testdata/lmu-fixture.bin");
     const REAL_MENU: &[u8] = include_bytes!("../../../testdata/lmu-menu-fixture.bin");
+    const REAL_1413_TRACK: &[u8] =
+        include_bytes!("../../../testdata/lmu-1.4.1.3-track-fixture.bin");
+    const REAL_1413_MENU: &[u8] = include_bytes!("../../../testdata/lmu-1.4.1.3-menu-fixture.bin");
+    const REAL_1400_TRACK: &[u8] = include_bytes!("../../../testdata/lmu-1.4-track-fixture.bin");
+    const REAL_1400_MENU: &[u8] = include_bytes!("../../../testdata/lmu-1.4-menu-fixture.bin");
+
+    #[test]
+    fn pinned_1400_frames_admit_only_the_exact_build() {
+        let track = admit_v13(REAL_1400_TRACK, "1.4.0.0").unwrap();
+        assert!(!track.vehicles.is_empty());
+        assert!(track.player_index.is_some());
+        let menu = admit_v13(REAL_1400_MENU, "1.4.0.0").unwrap();
+        assert!(menu.vehicles.is_empty());
+        assert_eq!(menu.player_index, None);
+        for build in ["1.4.0.1", "1.4.1.0", "1.4.2.0"] {
+            assert_eq!(
+                admit_v13(REAL_1400_TRACK, build),
+                Err(AdmissionError::UnsupportedBuild)
+            );
+        }
+    }
+
+    #[test]
+    fn pinned_1413_frames_admit_only_the_exact_build() {
+        let track = admit_v13(REAL_1413_TRACK, "1.4.1.3").unwrap();
+        assert_eq!(track.vehicles.len(), 18);
+        assert!(track.player_index.is_some());
+        let menu = admit_v13(REAL_1413_MENU, "1.4.1.3").unwrap();
+        assert!(menu.vehicles.is_empty());
+        assert_eq!(menu.player_index, None);
+        for build in ["1.4.1.2", "1.4.1.4", "1.4.2.0"] {
+            assert_eq!(
+                admit_v13(REAL_1413_TRACK, build),
+                Err(AdmissionError::UnsupportedBuild)
+            );
+        }
+    }
 
     #[test]
     fn real_fixture_admits_44_bijective_rows_and_one_player() {
@@ -596,10 +633,6 @@ mod tests {
                 .filter(|row| row.fast.is_some())
                 .count(),
             1
-        );
-        assert_eq!(
-            admit_v13(REAL_44, "1.4.1.3"),
-            Err(AdmissionError::UnsupportedBuild)
         );
     }
 

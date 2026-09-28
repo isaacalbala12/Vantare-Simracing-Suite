@@ -2,6 +2,17 @@
 
 ## 2026-09-28 · VAN-776 / GitHub #1410 · Host Go nativo aislado
 
+En la revisión visual del replay se halló un fallo común a los tres clientes
+de ensayo: el contrato Overlay V2 omite `v` para un cero válido y conserva
+`q=fresh`, pero las ventanas mostraban `—` para marcha 0 y rpm 0. Qt Quick,
+Slint y la referencia Wails ya muestran el cero. El test Go verifica la
+secuencia real de marchas `1 → 0 → 1`; el ensayo Windows
+`tools/native-ui/inspect-recorded-render-windows.ps1` lee el texto accesible
+de pit y salida. El intervalo predeterminado del replay es ahora 6 s y puede
+ampliarse con `-recorded-interval` para dar tiempo de arranque a las ventanas.
+Esto no mide CPU, no valida el producto completo ni admite LMU 1.4.2.0.
+Isaac prefiere mantener LMU en pista; sigue pendiente la captura de menú.
+
 Isaac dejó LMU abierto para continuar la comparación. Se verificó el proceso
 LMU 1.4.2.0, REST con tiempo de sesión creciente y el mapping `LMU_Data`.
 El capturador sanitizado existente obtuvo cuatro pares de muestras en pista,

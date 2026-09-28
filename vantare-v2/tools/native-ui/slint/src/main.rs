@@ -121,6 +121,22 @@ fn value_text(v: &Value, suffix: &str) -> SharedString {
     }
 }
 
+fn number_text(v: &Value, suffix: &str) -> SharedString {
+    if matches!(
+        v.get("q").and_then(Value::as_str),
+        Some("missing" | "invalid")
+    ) {
+        return "—".into();
+    }
+    match v.get("v") {
+        Some(Value::Number(n)) => format!("{n}{suffix}").into(),
+        None if matches!(v.get("q").and_then(Value::as_str), Some("fresh" | "stale")) => {
+            format!("0{suffix}").into()
+        }
+        _ => "—".into(),
+    }
+}
+
 fn str_field(v: &Value, k: &str) -> String {
     v.get(k).and_then(Value::as_str).unwrap_or_default().into()
 }
@@ -179,9 +195,9 @@ fn parse_snapshot(v: &Value) -> Result<ViewData, String> {
             .unwrap_or_default()
             .into(),
         track: value_text(&frame["session"]["track"], ""),
-        speed: value_text(&frame["player"]["speed"], " m/s"),
-        rpm: value_text(&frame["player"]["rpm"], " rpm"),
-        gear: value_text(&frame["player"]["gear"], ""),
+        speed: number_text(&frame["player"]["speed"], " m/s"),
+        rpm: number_text(&frame["player"]["rpm"], " rpm"),
+        gear: number_text(&frame["player"]["gear"], ""),
         session_id: str_field(frame, "sessionId").into(),
     })
 }
@@ -375,5 +391,18 @@ fn main() {
     if let Err(e) = run() {
         eprintln!("{e}");
         std::process::exit(2);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::number_text;
+    use serde_json::json;
+
+    #[test]
+    fn fresh_omitted_zero_is_displayed_as_zero() {
+        assert_eq!(number_text(&json!({"q": "fresh"}), " rpm"), "0 rpm");
+        assert_eq!(number_text(&json!({"q": "missing"}), " rpm"), "—");
+        assert_eq!(number_text(&json!({"q": "fresh", "v": 2}), ""), "2");
     }
 }

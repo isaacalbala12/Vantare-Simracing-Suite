@@ -19,6 +19,8 @@ import (
 
 // These are three distinct, real LMU 1.4.0.0 frames already pinned by the
 // driver's menu/track/pit sequence test. Replay changes only their delivery time.
+const recordedInterval = 6 * time.Second
+
 var recordedFrames = []struct {
 	name   string
 	digest string
@@ -53,7 +55,10 @@ func loadRecordedFrames(root string) ([]lmu.Observation, error) {
 	return observations, nil
 }
 
-func runRecorded(ctx context.Context, root string, port uint) error {
+func runRecorded(ctx context.Context, root string, port uint, interval time.Duration) error {
+	if interval <= 0 {
+		return fmt.Errorf("recorded interval must be positive")
+	}
 	if port > 65535 {
 		return errors.New("port must be between 0 and 65535")
 	}
@@ -87,13 +92,13 @@ func runRecorded(ctx context.Context, root string, port uint) error {
 		if index > 0 {
 			select {
 			case <-ctx.Done():
-			case <-time.After(4 * time.Second):
+			case <-time.After(interval):
 			}
 		}
 		if ctx.Err() != nil {
 			break
 		}
-		if err := sink.WriteObservation(ctx, fusion.Merge(time.Now().UTC(), time.Duration(index)*4*time.Second, observation)); err != nil {
+		if err := sink.WriteObservation(ctx, fusion.Merge(time.Now().UTC(), time.Duration(index)*interval, observation)); err != nil {
 			result = fmt.Errorf("publish recorded LMU frame %s: %w", recordedFrames[index].name, err)
 			break
 		}

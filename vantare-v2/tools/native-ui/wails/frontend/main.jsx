@@ -10,6 +10,11 @@ function fieldText(field, suffix = '') {
   return String(field.v) + suffix;
 }
 
+function numberText(field, suffix = '') {
+  if (!field || (field.q !== 'fresh' && field.q !== 'stale')) return '—';
+  return String(field.v === undefined ? 0 : field.v) + suffix;
+}
+
 function Standings({rows, playerId, compact = false}) {
   return <section className={'standings ' + (compact ? 'compact' : '')}>
     <h2>STANDINGS · {rows.length} coches</h2>
@@ -86,8 +91,8 @@ function App() {
     <header className="top"><b>VANTARE</b><span>Native Go trial</span><em>{status.toUpperCase()}</em></header>
     <div className="cards">
       <div><small>CIRCUITO</small><strong>{fieldText(session.track)}</strong></div>
-      <div><small>PILOTO · VELOCIDAD</small><strong>{fieldText(player.speed, ' m/s')}</strong></div>
-      <div><small>MOTOR · MARCHA</small><strong>{fieldText(player.rpm, ' rpm')} · {fieldText(player.gear)}</strong></div>
+      <div><small>PILOTO · VELOCIDAD</small><strong>{numberText(player.speed, ' m/s')}</strong></div>
+      <div><small>MOTOR · MARCHA</small><strong>{numberText(player.rpm, ' rpm')} · {numberText(player.gear)}</strong></div>
     </div>
     <div className="panels">
       <Standings rows={rows} playerId={player.id}/>

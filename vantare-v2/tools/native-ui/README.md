@@ -264,8 +264,11 @@ El modo aislado `host -recorded` usa tres frames distintos de LMU 1.4.0.0
 capturados y sanitizados: pre-pit en pista, pit y salida. Verifica cada SHA-256
 antes de arrancar el servidor, exige evidencia exacta de build y pasa los
 frames por Fusion, BatchMapper, Reducer, Pipeline, CachedProjector y SSE. La
-espera de cuatro segundos **solo pauta el replay**: no representa la cadencia
-original de LMU, una sesión viva ni una carga suficiente para comparar CPU.
+espera predeterminada de seis segundos **solo pauta el replay**: no
+representa la cadencia original de LMU, una sesión viva ni una carga
+suficiente para comparar CPU.
+`-recorded-interval` permite ampliar esa espera para inspección visual sin
+modificar los bytes de las capturas.
 El test Go comprueba que la proyección cambia `track → pit → track` y rechaza
 una captura alterada.
 
@@ -278,6 +281,15 @@ el código de salida de la ventana no verifica cada píxel ni que los tres
 clientes muestren visualmente el estado pit. Esta prueba tampoco habilita
 LMU 1.4.2.0 en producción.
 
+El wire compacto omite `v` cuando una magnitud válida vale cero; `q=fresh`
+la distingue de un valor ausente. Los tres renderizadores del ensayo ahora
+muestran `0` en ese caso. El ensayo de ventana
+[`inspect-recorded-render-windows.ps1`](inspect-recorded-render-windows.ps1)
+comprueba mediante UI Automation la marcha `0` en pit y `1` en salida en el
+modo control. Lee texto real de la ventana, no píxeles; tampoco demuestra
+paridad visual del producto ni rendimiento con LMU en vivo.
+[Seis lecturas](evidence/recorded-render-results.csv) pasaron en este Windows.
+
 Con los ejecutables Release de Qt y Slint, y el frontend Wails del ensayo
 compilados como se indica arriba, se reproduce así desde `vantare-v2/`:
 
@@ -285,6 +297,9 @@ compilados como se indica arriba, se reproduce así desde `vantare-v2/`:
 go test ./tools/native-ui/host -run TestRecordedLMU -count=1
 go build -o tools/native-ui/out/host-recorded.exe ./tools/native-ui/host
 ./tools/native-ui/inspect-recorded-updates-windows.ps1 -Mode editor
+./tools/native-ui/inspect-recorded-render-windows.ps1 -Candidate qt
+./tools/native-ui/inspect-recorded-render-windows.ps1 -Candidate slint
+./tools/native-ui/inspect-recorded-render-windows.ps1 -Candidate wails
 ```
 
 ## Licencia sin coste de licencia

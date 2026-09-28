@@ -28,8 +28,8 @@ ApplicationWindow {
     }
 
     function numberText(field, digits, suffix) {
-        if (!field || field.v === undefined || field.q === "missing" || field.q === "invalid") return "—"
-        return Number(field.v).toFixed(digits) + (suffix || "")
+        if (!field || (field.q !== "fresh" && field.q !== "stale")) return "—"
+        return Number(field.v === undefined ? 0 : field.v).toFixed(digits) + (suffix || "")
     }
 
     component StandingsList: Rectangle {
@@ -236,7 +236,7 @@ ApplicationWindow {
                     Layout.fillWidth: true; Layout.preferredHeight: 90; color: "#15212b"; radius: 8
                     Column { anchors.fill: parent; anchors.margins: 12; spacing: 8
                         Label { text: "MOTOR · MARCHA"; color: root.muted; font.pixelSize: 11 }
-                        Label { text: root.numberText(feed.player.rpm, 0, " rpm") + "  ·  " + root.valueText(feed.player.gear); color: root.ink; font.pixelSize: 20; font.bold: true }
+                        Label { text: root.numberText(feed.player.rpm, 0, " rpm") + "  ·  " + root.numberText(feed.player.gear, 0, ""); color: root.ink; font.pixelSize: 20; font.bold: true }
                     }
                 }
             }

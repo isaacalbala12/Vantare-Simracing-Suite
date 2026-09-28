@@ -32,8 +32,9 @@ func TestRecordedLMUFramesChangeTheGoOverlayProjection(t *testing.T) {
 	sink := newLiveSink(lmu.New(), publisher)
 	fusion := new(lmu.Fusion)
 	var pitStates []string
+	var gears []int32
 	for index, observation := range observations {
-		if err := sink.WriteObservation(context.Background(), fusion.Merge(time.Now().UTC(), time.Duration(index)*4*time.Second, observation)); err != nil {
+		if err := sink.WriteObservation(context.Background(), fusion.Merge(time.Now().UTC(), time.Duration(index)*recordedInterval, observation)); err != nil {
 			t.Fatalf("publish recorded frame %d: %v", index, err)
 		}
 		event, ok := publisher.ReplaySnapshot()
@@ -48,9 +49,16 @@ func TestRecordedLMUFramesChangeTheGoOverlayProjection(t *testing.T) {
 			t.Fatalf("recorded frame %d standings: %+v", index, update.Frame)
 		}
 		pitStates = append(pitStates, update.Frame.Standings[0].PitState)
+		gears = append(gears, update.Frame.Player.Gear.V)
+		if update.Frame.Player.Gear.Q != overlayv2.QualityFresh {
+			t.Fatalf("recorded frame %d gear quality = %s", index, update.Frame.Player.Gear.Q)
+		}
 	}
 	if want := []string{overlayv2.PitStateTrack, overlayv2.PitStatePit, overlayv2.PitStateTrack}; !reflect.DeepEqual(pitStates, want) {
 		t.Fatalf("real LMU pit sequence = %v, want %v", pitStates, want)
+	}
+	if want := []int32{1, 0, 1}; !reflect.DeepEqual(gears, want) {
+		t.Fatalf("real LMU gear sequence = %v, want %v", gears, want)
 	}
 }
 

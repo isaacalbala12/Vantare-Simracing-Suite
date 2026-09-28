@@ -59,6 +59,26 @@ topmost. La salida 0 confirma el contrato y la carga de 44 filas; no demuestra
 por sí sola paridad visual, transparencia física ni captura en OBS. Con un
 endpoint desconectado, ambos clientes terminan con código 6 tras cinco segundos.
 
+## Licencia sin coste de licencia
+
+El prototipo Qt enlaza Core, Gui, Network, Quick y QuickControls2. La
+[documentación de Qt 6.10](https://doc.qt.io/qt-6.10/licensing.html) distingue
+los módulos disponibles bajo LGPLv3 de los que solo ofrece bajo GPLv3;
+[Qt Quick](https://doc.qt.io/qt-6.10/qtquick-index.html) y
+[Qt Quick Controls](https://doc.qt.io/qt-6.10/qtquickcontrols-index.html)
+declaran LGPLv3 como opción. Antes de distribuir una app con Qt sin pagar
+licencia, hay que comprobar todos los módulos y artefactos realmente
+desplegados y satisfacer las
+[obligaciones LGPL de Qt](https://www.qt.io/development/open-source-lgpl-obligations),
+incluida la posibilidad de sustituir/re-enlazar las bibliotecas Qt.
+
+El paquete usado aquí, Slint 1.18.1, declara
+`GPL-3.0-only OR LicenseRef-Slint-Royalty-free-2.0 OR LicenseRef-Slint-Software-3.0`.
+La [licencia comunitaria de escritorio de Slint](https://slint.dev/get-started)
+se ofrece sin pago con atribución. La distribución final y sus avisos deben
+revisarse antes de escoger stack; esta prueba local no certifica cumplimiento
+legal ni selecciona licencia para Vantare.
+
 Para la prueba de caída y vuelta, se inicia `host -port <puerto>` y luego
 cada cliente con `--expect-rows 44 --expect-snapshots 2`. Tras el primer
 snapshot se detiene el host y se reinicia en el mismo puerto. Ambos clientes

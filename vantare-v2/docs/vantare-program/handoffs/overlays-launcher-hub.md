@@ -17,6 +17,9 @@ Con puerto loopback fijo, ambas variantes arrancaron antes que el host y
 recibieron después la proyección. Con `--expect-snapshots 2`, permanecieron
 abiertas tras detener el host ya conectado y salieron con código 0 después de
 reiniciarlo y recibir un segundo snapshot. Sigue pendiente telemetría viva.
+La documentación del corte identifica las opciones sin pago de Qt LGPLv3 y
+Slint Community con atribución; ambas requieren auditoría de licencia y
+empaquetado antes de distribuir Vantare, sin dar por elegida ninguna.
 La tarea [VAN-776](https://app.notion.com/p/3e9e51695c65810fb2bdd73aae4b555d?pvs=204)
 conserva el alcance y pendientes: pantalla de edición compleja,
 actualización de datos, OBS y baseline de proceso completo. No se eligió

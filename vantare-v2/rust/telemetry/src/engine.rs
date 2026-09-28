@@ -129,6 +129,14 @@ impl Engine {
     pub fn current(&self) -> Option<&core::Batch<SessionType, LmuVehicleState>> {
         self.pipeline.current()
     }
+
+    pub fn source_health(&self, now_ns: u64) -> Option<(u64, bool)> {
+        self.pipeline.current()?;
+        Some((
+            self.freshness_gate.source_age_ns(now_ns)?,
+            self.freshness_gate.is_stale_at(now_ns),
+        ))
+    }
 }
 
 impl EngineCandidate {

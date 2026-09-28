@@ -68,6 +68,12 @@ impl Acquisition {
         handle_control_frame(&mut self.assembler, frame, queue)
     }
 
+    pub fn source_health(&self) -> Option<(u64, bool)> {
+        self.assembler
+            .engine()
+            .source_health(elapsed_ns(self.started))
+    }
+
     /// One SHM tick. REST is consumed only from the last completed poll; a
     /// slow endpoint cannot delay this read. The caller owns bounded delivery.
     pub fn tick(&mut self) -> Result<Vec<Vec<u8>>, AcquisitionError> {
@@ -236,6 +242,11 @@ mod tests {
         assert_eq!(
             assembler.engine().current().unwrap().state.vehicles.len(),
             44
+        );
+        assert_eq!(assembler.engine().source_health(200), Some((0, false)));
+        assert_eq!(
+            assembler.engine().source_health(500_000_200),
+            Some((500_000_000, true))
         );
     }
 

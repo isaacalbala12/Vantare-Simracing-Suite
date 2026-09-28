@@ -193,7 +193,12 @@ bytes de cabecera antes del payload y abandona el pipe si una trama parcial
 vence el plazo. Un test Windows envía solo la cabecera de Configuration de
 64 KiB+1 y el hijo sale antes de recibir cuerpo. Otro test opt-in confirma
 el rechazo de LMU 1.4.2.0 tras configuración, sin prometer loop live para
-esa build. Faltan Status/watchdog, reinicio y prueba live admitida.
+esa build. El candidato emite Status consecutivo cada 250 ms: connecting
+sin fuente confirmada, live con edad monotónica desde el último avance SHM
+y stale desde 500 ms sin avance o durante recuperación. La edad no deriva
+de las lecturas repetidas. Tests Rust fijan el umbral y la fixture real
+estática de 44; falta observar Status en un pipe live admitido y conectar
+el watchdog/reinicio Go. La salud REST todavía no cambia el estado.
 
 ## Límites de diseño para completar antes de R05/R19
 
@@ -201,17 +206,18 @@ esa build. Faltan Status/watchdog, reinicio y prueba live admitida.
 | --- | ---: | --- |
 | Snapshot wire | 8 MiB | Techo provisional implementado y probado. Falta máximo real con 104 coches y límite específico por producto. |
 | Control wire por tipo | Handshake 81 B; Configuration 64 KiB; ACK 256 B; Fact 4 KiB; FactAck/Resync/Replay 128 B; Status 256 B; Stop 0 B | Rust y Go rechazan desde la cabecera antes de reservar payload y al codificar; tests por tipo y pipes Windows. |
-| Snapshot pendiente | 1 lote de hasta 3 productos | `WriterQueue` sustituye el lote anterior de solo snapshots; el ensamblador entrega todos los productos demandados por tick. El writer de pipe aún no consume la cola. |
+| Snapshot pendiente | 1 lote de hasta 3 productos | `WriterQueue` sustituye el lote anterior de solo snapshots; el candidato entrega los productos demandados al writer síncrono. Falta medirlo bajo consumidor lento. |
 | Cola de eventos | 8 lotes; 64 facts; 16 MiB total incluidas snapshots | `WriterQueue` valida el lote entero antes de insertarlo; ACK/facts/resync/Stop conservan orden. Saturación devuelve error explícito y exige cierre/resync del owner. |
 | Facts pendientes | 64 | Retención/ACK IPC probados en replay y receptor Go; falta entrega productiva y recuperación. |
 | Callback Engineer | 250 ms | Valor por defecto Go actual, no un timeout IPC ya implementado. |
-| Adquisición LMU SHM | 60 Hz nominal | Valor Go actual, no una frecuencia lograda en Rust. |
-| Watchdog de fuente | 1 s | Valor Go actual; heartbeat de proceso tendrá reloj separado. |
+| Adquisición LMU SHM | 60 Hz nominal | Agenda implementada en candidato Rust; frecuencia real y coste aún no medidos. |
+| Heartbeat hijo | 250 ms | Status secuencial en candidato; fuente medida por reloj monotónico propio. Sin test live admitido. |
+| Watchdog de fuente | 1 s | Valor Go actual; watchdog del proceso Rust no conectado. |
 | Aceptación de pipe | 2 s | Implementado y probado con deadline en Windows. |
 | Cierre de hijo | 2 s | Implementado con Job Object y probado en Windows; falta matriz completa de fallos. |
 
-Profundidad de control, heartbeat, deadline de escritura bajo carga, retención de facts, presupuesto de reinicios y cierre del runtime productivo requieren tests adicionales y quedan **sin fijar** en este corte. Los 2 s de cierre del harness no certifican el cierre del pipeline live. R04/R05 no se marcan completos hasta que la tabla productiva sea numérica y esté protegida por pruebas de frontera. No se activa una ruta productiva con esa tabla incompleta.
+Profundidad de control, deadline de escritura bajo carga, retención de facts, presupuesto de reinicios y cierre del runtime productivo requieren tests adicionales y quedan **sin fijar** en este corte. Los 2 s de cierre del harness no certifican el cierre del pipeline live. R04/R05 no se marcan completos hasta que la tabla productiva sea numérica y esté protegida por pruebas de frontera. No se activa una ruta productiva con esa tabla incompleta.
 
 ## Dependencias
 
-El esqueleto usa solo la biblioteca estándar de Rust; el framing Go usa solo su biblioteca estándar. `Cargo.lock` fija el paquete local; no se incorporó ninguna crate externa. Rust se fija en `1.95.0` para el target `x86_64-pc-windows-msvc`; `cargo test --locked` y `go test ./internal/app/telemetryprocess` comprueban framing, versión, límites, bytes wire e I/O parcial.
+Rust usa `serde`, `serde_json`, `time`, `ureq` y `windows-sys` solo para Windows; `Cargo.lock` fija sus versiones. `windows-sys 0.61.2` aporta llamadas Win32 tipadas para I/O overlapped y añade `windows-link 0.2.1`; ambas licencias son MIT OR Apache-2.0. El framing Go usa la biblioteca estándar. Rust se fija en `1.95.0` para `x86_64-pc-windows-msvc`; `cargo test --locked`, Clippy y los tests Windows Go↔Rust comprueban framing, límites, handshake, timeout y rechazo de cabecera sobredimensionada. El coste de dependencias queda para R21/R22.

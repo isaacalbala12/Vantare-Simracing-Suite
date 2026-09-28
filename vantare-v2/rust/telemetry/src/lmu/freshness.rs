@@ -16,6 +16,18 @@ impl FreshnessGate {
         self.previous_source_ns
     }
 
+    pub fn source_age_ns(&self, elapsed_ns: u64) -> Option<u64> {
+        self.unchanged_since_ns
+            .map(|advanced_at| elapsed_ns.saturating_sub(advanced_at))
+    }
+
+    pub fn is_stale_at(&self, elapsed_ns: u64) -> bool {
+        self.stale
+            || self
+                .source_age_ns(elapsed_ns)
+                .is_some_and(|age| age >= STALL_LIMIT_NS)
+    }
+
     /// Elapsed time is monotonic within one source run. A reset reanchors the
     /// gate instead of inferring a stall from a negative elapsed duration.
     pub fn observe(&mut self, elapsed_ns: u64, source_ns: i64) -> bool {
@@ -111,6 +123,21 @@ mod tests {
         assert!(gate.observe(1_600 * MS, 1_200_000_000));
         assert!(gate.observe(100 * MS, 1_200_000_000));
         assert!(gate.observe(600 * MS, 1_200_000_000));
+    }
+
+    #[test]
+    fn health_age_uses_source_progress_not_read_frequency() {
+        let mut gate = FreshnessGate::default();
+        assert_eq!(gate.source_age_ns(0), None);
+        assert!(!gate.is_stale_at(0));
+        assert!(!gate.observe(100 * MS, SECOND));
+        assert_eq!(gate.source_age_ns(499 * MS), Some(399 * MS));
+        assert!(!gate.is_stale_at(599 * MS));
+        assert!(gate.is_stale_at(600 * MS));
+        assert!(gate.observe(600 * MS, SECOND));
+        assert!(gate.observe(650 * MS, SECOND + 50 * MS as i64));
+        assert_eq!(gate.source_age_ns(650 * MS), Some(0));
+        assert!(gate.is_stale_at(650 * MS));
     }
 
     #[test]

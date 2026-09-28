@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — Status del reloj SHM Rust (2026-09-28)
+
+El candidato emite heartbeat secuencial cada 250 ms: Connecting sin
+observación confirmada, Live con edad de progresión SHM y Stale tras
+500 ms o durante recuperación. La edad usa el reloj monotónico del hijo,
+no la frecuencia de lecturas. Tests de límites y fixture real estática 44,
+Rust release 151/151 y Clippy pasan. Falta probar Status en pipe live,
+watchdog/reinicio Go, degradación REST y build LMU admitida en ejecución;
+Go permanece owner productivo. Plan §93.
+
 ## VAN-778 / ISA-1403 — loop candidato Rust aislado (2026-09-28)
 
 `--candidate-pipe` usa handshake, configuración validada, `Acquisition`,

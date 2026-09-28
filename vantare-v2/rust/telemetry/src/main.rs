@@ -6,6 +6,8 @@ use std::time::{Duration, Instant};
 use vantare_telemetry::ipc::pipe_windows::DeadlinePipe;
 #[cfg(windows)]
 use vantare_telemetry::ipc::queue::WriterQueue;
+#[cfg(windows)]
+use vantare_telemetry::ipc::status::{self, State, Status};
 use vantare_telemetry::ipc::{self, Kind};
 #[cfg(windows)]
 use vantare_telemetry::lmu::{acquisition::Acquisition, cadence::TickCadence};
@@ -123,6 +125,8 @@ fn run_candidate_loop(
         .handle_control_frame(&first, &mut queue)
         .map_err(|error| io::Error::other(format!("configure LMU: {error:?}")))?;
     let mut cadence = TickCadence::new(Instant::now());
+    let mut next_status = Instant::now() + Duration::from_millis(250);
+    let mut heartbeat = 0_u64;
     loop {
         for _ in 0..8 {
             let Some(frame) =
@@ -142,6 +146,26 @@ fn run_candidate_loop(
         acquisition
             .tick_into_queue_if_due(&mut cadence, Instant::now(), &mut queue)
             .map_err(|error| io::Error::other(format!("LMU tick: {error:?}")))?;
+        if Instant::now() >= next_status {
+            heartbeat = heartbeat
+                .checked_add(1)
+                .ok_or_else(|| io::Error::other("heartbeat exhausted"))?;
+            let (state, source_age_ns) = match acquisition.source_health() {
+                None => (State::Connecting, None),
+                Some((age, true)) => (State::Stale, Some(age)),
+                Some((age, false)) => (State::Live, Some(age)),
+            };
+            let frame = status::encode(Status {
+                heartbeat,
+                state,
+                source_age_ns,
+            })
+            .map_err(|error| io::Error::other(format!("encode Status: {error:?}")))?;
+            queue
+                .push_batch(vec![frame])
+                .map_err(|error| io::Error::other(format!("queue Status: {error:?}")))?;
+            next_status = Instant::now() + Duration::from_millis(250);
+        }
         while let Some(batch) = queue.pop_batch() {
             for frame in batch {
                 pipe.write_all_until(&frame, Instant::now() + Duration::from_secs(2))?;

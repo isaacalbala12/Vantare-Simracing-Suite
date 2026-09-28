@@ -1782,3 +1782,18 @@ Es un loop candidato **sin prueba live en una build admitida**, sin Status,
 watchdog, presupuesto de reinicio ni consumidores. El writer es síncrono;
 una escritura lenta detiene ticks y vence a los 2 s. No cumple R05/R19 ni
 los gates de paridad, corpus 44/104 y CPU; Go sigue owner productivo.
+
+## 93. Heartbeat candidato basado en progreso SHM (2026-09-28)
+
+`FreshnessGate` expone edad monotónica desde el último avance del reloj de
+origen y estado stale con el umbral de 500 ms y la histéresis existente.
+El candidato emite `Status` cada 250 ms con secuencia consecutiva:
+`connecting` antes de un batch confirmado, `live` con edad de fuente si
+progresa, `stale` si el reloj se congela o continúa en recuperación. El
+test de fuente usa la captura real estática de 44 y comprueba edad cero y
+stale a 500 ms; otro protege el borde de progresión/recuperación. Rust
+release 151/151, Clippy, formato y build pasan.
+
+Status todavía no se ha observado desde un loop live con build admitida;
+no mide degradación REST, ni existe watchdog/reinicio conectado en Go.
+Este corte no cierra R05/R19 ni el gate de paridad o CPU.

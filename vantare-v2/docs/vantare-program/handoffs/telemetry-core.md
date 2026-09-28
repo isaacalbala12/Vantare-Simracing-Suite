@@ -1,5 +1,17 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — decodificación REST Rust inicial (2026-09-28)
+
+R09 comienza con un decoder JSON limitado a 4 MiB para `standings` y
+`sessionInfo`, conservando tipos, calidad por campo, números de coche con
+ceros iniciales y exclusión de slots duplicados. Usa `serde_json` bloqueado
+en `Cargo.lock`; la necesidad, alternativa, dependencias y licencias están
+en la sección 17 del plan, conforme a Q4=C. Cinco pruebas Rust nuevas pasan
+(23/23 en release), pero sus cuerpos JSON no son captura live. Se prueba
+caducidad monotónica de campos e identidades, aún sin poller HTTP que la use.
+Faltan adquisición HTTP, fusión y salida canónica; R09 sigue parcial.
+El backend Go continúa productivo, sin gate CPU 50% acreditado.
+
 ## ISA-1403 — campos rápidos y espaciales LMU 1.3 en Rust (2026-09-28)
 
 R08 correlaciona por ID la telemetría del jugador con su fila scoring y

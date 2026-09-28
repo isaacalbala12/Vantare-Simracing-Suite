@@ -666,3 +666,24 @@ pasan sobre las fixtures estáticas existentes. Todavía no hay comparación
 campo por campo automatizada frente a Go, corpus temporal 44/104 SHM+REST,
 REST/fusión, salida canónica, integración productiva ni medición del objetivo
 de CPU. R08 sigue parcial y Go sigue siendo el único backend productivo.
+
+## 17. Primer corte de decodificación REST Rust (2026-09-28)
+
+R09 inicia con decodificación acotada (4 MiB) de `standings` y `sessionInfo`.
+Valida tipos del documento antes de publicar, conserva cero/false frente a
+ausente e inválido, mantiene el número de coche como string y descarta slots
+duplicados. Los sensores de temperatura y humedad se validan por separado;
+el amarillo global solo se afirma para 2–5. Tipos temporales prueban TTL
+monotónico, preservan inválido/ausente y descartan identidades caducadas; aún
+no los conecta un poller HTTP. No hay fusión ni salida canónica. Los cuerpos de prueba reproducen
+casos de los tests Go; no son captura live ni acreditan R02.
+
+Se incorpora `serde_json 1.0.151` bloqueado en `Cargo.lock` bajo la
+autorización Q4=C ya registrada para crates justificadas. Es necesario para
+validar JSON REST con un parser mantenido y límites de entrada; Rust std no
+ofrece parser JSON. Un parser propio sería más código y más superficie de
+errores. Dependencias runtime: `serde_core`, `itoa`, `memchr` y `zmij`, con
+licencias MIT/Apache-2.0, Unlicense/MIT o MIT según `cargo metadata` local.
+Riesgos: asignaciones de `Value`, actualización de supply chain y equivalencia
+de casos límite; se miden y revisan antes del gate CPU y del backend candidato.
+Rust release (23 tests), formato y Clippy pasan en este corte.

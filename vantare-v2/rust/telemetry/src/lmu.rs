@@ -3,6 +3,7 @@
 
 #[cfg(windows)]
 pub mod reader;
+pub mod rest;
 
 use crate::quality::{Field, Freshness};
 

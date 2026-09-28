@@ -96,8 +96,7 @@ export component MainWindow inherits Window {
         Text { x: 12px; y: 39px; text: "Título del overlay"; color: #91a6b3; }
         LineEdit {
             x: 12px; y: 56px; width: parent.width - 24px; height: 30px;
-            text: root.preview-title;
-            edited(value) => { root.preview-title = value; }
+            text <=> root.preview-title;
         }
         Text { x: 12px; y: 96px; text: "Filas visibles: " + root.preview-rows; color: #91a6b3; }
         Slider {

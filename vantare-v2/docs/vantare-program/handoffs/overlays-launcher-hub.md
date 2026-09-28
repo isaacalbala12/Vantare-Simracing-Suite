@@ -23,7 +23,7 @@ empaquetado antes de distribuir Vantare, sin dar por elegida ninguna.
 Qt Quick y Rust/Slint ahora incluyen modo editor local con inspector de título,
 filas, opacidad, acento y Relative sobre la misma captura Go. La captura Qt de
 editor está revisada en `tools/native-ui/evidence/qt-go-editor.png`; Rust pasó
-compilación y smoke de 44 filas, pero falta inspección visual. Este borrador no
+compilación y smoke de 44 filas. Este borrador no
 persiste ni controla un overlay de producto.
 La referencia Wails/React de control, editor y overlay recibió igualmente las
 44 filas y falla con código 6 cuando el host no está disponible. Para entregar
@@ -37,8 +37,12 @@ Esto no prueba ahorro de CPU ni el objetivo de 20 % para Vantare completa:
 faltan carga dinámica, repetición, interacción, GPU y paridad de producto.
 `go test ./...` pasó localmente después de añadir la referencia.
 Una inspección CDP opcional del editor Wails confirmó los seis controles
-locales y produjo una captura de la página revisada. No es prueba física de
-foco ni de OBS, y Qt/Slint aún necesitan interacción equivalente.
+locales y produjo una captura de la página revisada. En Qt y Slint, Windows
+UI Automation verificó el rótulo de 44 coches, la escritura por teclado y el
+restablecimiento con un clic real; hay capturas propias revisadas. Se descubrió
+y corrigió un fallo Slint: la vista previa se restablecía, pero el campo de
+título conservaba el texto anterior; ahora tiene vinculación bidireccional.
+Estas pruebas no sustituyen foco/clic de overlay ni OBS.
 La tarea [VAN-776](https://app.notion.com/p/3e9e51695c65810fb2bdd73aae4b555d?pvs=204)
 conserva el alcance y pendientes: interacción y persistencia de editor,
 actualización de datos, OBS y baseline del producto completo. No se eligió

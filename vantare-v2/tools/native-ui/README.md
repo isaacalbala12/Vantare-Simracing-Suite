@@ -96,6 +96,21 @@ restablecimiento). Guardó una [captura de la página](evidence/wails-go-editor.
 desde WebView2, revisada visualmente; no sustituye una prueba de interacción
 física, foco o OBS.
 
+`inspect-editor-windows.ps1` abre Qt o Slint en modo editor con el mismo
+endpoint, verifica el rótulo de 44 coches, escribe `NATIVE` mediante teclado,
+captura la ventana y pulsa físicamente Restablecer. Ambos volvieron a
+`STANDINGS`. Ejemplos:
+
+```powershell
+./tools/native-ui/inspect-editor-windows.ps1 -Candidate qt -Endpoint "http://127.0.0.1:<puerto>/telemetry/overlay-v2/projection" -QtBin "<ruta a Qt 6.10/mingw_64/bin>"
+./tools/native-ui/inspect-editor-windows.ps1 -Candidate slint -Endpoint "http://127.0.0.1:<puerto>/telemetry/overlay-v2/projection"
+```
+
+Las capturas de [Qt](evidence/qt-go-editor-interaction.png) y
+[Slint](evidence/slint-go-editor-interaction.png) fueron revisadas. La primera
+pasada Slint reveló que Restablecer cambiaba la vista previa pero dejaba el
+campo de título antiguo; `text <=> root.preview-title` corrigió ese fallo.
+
 ## Medición local preliminar
 
 Windows 11 25H2, WebView2 153, Go 1.26.4, Qt 6.10.2, Slint 1.18.1. Una sola
@@ -119,7 +134,7 @@ respectivamente. Estas son mediciones de una escena pequeña, con una sola
 pasada y sin paridad completa de Vantare. Working set suma páginas compartidas
 entre procesos y no equivale a RAM exclusiva. La CPU en reposo osciló cerca de
 cero y no permite afirmar un ahorro de CPU ni el objetivo del 20 % en la app.
-Faltan carga dinámica, interacción física Qt/Slint, GPU, picos de inicio, repetición estadística
+Faltan carga dinámica, interacción física completa Qt/Slint, GPU, picos de inicio, repetición estadística
 y una referencia del producto completo.
 
 ## Licencia sin coste de licencia

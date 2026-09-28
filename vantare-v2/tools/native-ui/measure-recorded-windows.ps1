@@ -2,21 +2,24 @@ param(
     [int] $Rounds = 3,
     [int] $Samples = 8,
     [int] $PortBase = 54710,
-    [ValidateSet('pit-sequence', 'standings-44')] [string] $Scene = 'pit-sequence'
+    [ValidateSet('pit-sequence', 'standings-44')] [string] $Scene = 'pit-sequence',
+    [ValidateSet('baseline', 'gpui-qt')] [string] $Comparison = 'baseline'
 )
 
 $ErrorActionPreference = 'Stop'
 if ($Rounds -lt 1 -or $Samples -lt 2) { throw 'Rounds and Samples must be positive; Samples must be at least 2' }
-if ($PortBase -lt 1 -or $PortBase + $Rounds * 3 - 1 -gt 65535) { throw 'Port range is invalid' }
 
 $hostExe = Join-Path $PSScriptRoot 'out/host-recorded.exe'
 $fixtureRoot = Join-Path $PSScriptRoot '../../testdata'
 $measure = Join-Path $PSScriptRoot 'measure-windows.ps1'
-$clients = @(
+$allClients = @(
     [pscustomobject]@{ Name = 'Wails'; Exe = (Join-Path $PSScriptRoot 'out/wails/vantare-native-go-wails.exe'); Flag = '-endpoint'; ModeFlag = '-mode' }
     [pscustomobject]@{ Name = 'Qt'; Exe = (Join-Path $PSScriptRoot 'out/package-qt-trimmed/vantare-native-go-qt.exe'); Flag = '--endpoint'; ModeFlag = '--mode' }
     [pscustomobject]@{ Name = 'Slint'; Exe = (Join-Path $PSScriptRoot 'slint/target/release/vantare-native-go-slint.exe'); Flag = '--endpoint'; ModeFlag = '--mode' }
+    [pscustomobject]@{ Name = 'GPUI'; Exe = (Join-Path $PSScriptRoot 'gpui/target/release/vantare-native-go-gpui.exe'); Flag = '--endpoint'; ModeFlag = '--mode' }
 )
+$clients = if ($Comparison -eq 'gpui-qt') { @($allClients | Where-Object Name -In @('Qt', 'GPUI')) } else { @($allClients | Where-Object Name -In @('Wails', 'Qt', 'Slint')) }
+if ($PortBase -lt 1 -or $PortBase + $Rounds * $clients.Count - 1 -gt 65535) { throw 'Port range is invalid' }
 foreach ($path in @($hostExe, $measure) + @($clients | ForEach-Object Exe)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { throw "Missing trial file: $path" }
 }

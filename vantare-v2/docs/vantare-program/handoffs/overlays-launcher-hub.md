@@ -2,6 +2,18 @@
 
 ## 2026-09-28 · VAN-776 / GitHub #1410 · Host Go nativo aislado
 
+Última prueba solicitada por Isaac: GPUI oficial fijado en `72d28c32`
+abrió ventana Windows y recibió 44 filas y diez snapshots del mismo host Go.
+El editor visual se acercó a las áreas principales de Qt; su inspector
+todavía no es interactivo y no hay overlay GPUI validado. En tres rondas
+alternadas de editor + host Go con 44 coches fijos, medianas GPUI/Qt de CPU
+por núcleo 9,13/4,36 %, working set 94,5/138,2 MiB y memoria privada
+120,9/154,2 MiB. GPUI ahorra RAM, Qt usa menos de la mitad de CPU y tiene
+editor/overlay físicamente comprobados. Captura, seis mediciones y límites
+en `tools/native-ui/README.md`. Esta comparación no certifica Vantare
+completa ni selecciona todavía una arquitectura de migración. Sin otras
+variantes abiertas.
+
 El ensayo Slint dejó de reconstruir tres modelos enteros en cada snapshot:
 ahora mantiene sus modelos y actualiza solo filas distintas. Compilación,
 test, clippy y 18 smokes Windows de control/editor/overlay pasaron; la

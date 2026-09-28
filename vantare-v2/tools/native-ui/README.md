@@ -399,6 +399,49 @@ independiente.
 ./tools/native-ui/measure-recorded-windows.ps1 -Rounds 3 -Samples 8 -Scene standings-44
 ```
 
+### Última comparación directa: GPUI frente a Qt Quick · 28/09/2026
+
+Isaac pidió una última prueba de la parte visual entre Rust/GPUI y C++/Qt.
+El GPUI 0.2.2 publicado no había abierto ventana en la criba anterior; esta
+prueba fija la [revisión oficial de Zed](https://github.com/zed-industries/zed/tree/72d28c32c2ba77a579e1c02f984654518552124b/crates/gpui)
+`72d28c32`, incluido `gpui_platform` para Win32. La ventana abrió en
+Windows y recibió 44 filas y diez snapshots del host Go con salida 0.
+Su `Cargo.lock` incluye 664 paquetes: es un coste de dependencia del ensayo,
+no una dependencia añadida al producto.
+
+El editor GPUI dibuja las mismas áreas visuales principales que Qt (tarjetas
+de circuito/velocidad/motor, Standings, Relative e inspector), con la misma
+captura LMU 1.3.0 sanitizada. Se revisó la [captura GPUI](evidence/gpui-go-editor.png)
+junto a la [captura Qt](evidence/qt-go-editor.png). El inspector GPUI es
+**solo visual**: no tiene controles editables ni se comprobó overlay
+transparente/clic/OBS en esta variante. La paridad funcional sigue a favor del
+prototipo Qt y estas cifras no deben interpretarse como comparación de producto
+terminado.
+
+Con `measure-recorded-windows.ps1 -Comparison gpui-qt -Scene standings-44`
+se midió editor + host Go durante tres rondas alternadas, ocho muestras por
+ronda y al menos 100 publicaciones por ejecución. La captura de 44 coches se
+repite sin alterar filas a 100 ms artificiales. [Resultados brutos](evidence/recorded-load-44-gpui-qt-results.json):
+
+| Editor + Go, 44 coches fijos | CPU media (% de un núcleo) | Working set mediano | Memoria privada mediana |
+| --- | ---: | ---: | ---: |
+| Qt Quick/C++ | 4,36 % | 138,2 MiB | 154,2 MiB |
+| Rust/GPUI | 9,13 % | 94,5 MiB | 120,9 MiB |
+
+GPUI redujo el working set un 31,6 % frente a Qt, pero consumió un 109,4 %
+más CPU en la mediana. En las tres rondas GPUI ocupó menos RAM y más CPU que
+Qt. La escena estática, el inspector no interactivo y la ausencia de overlay
+GPUI impiden extrapolar la diferencia a Vantare completa. El contador GPU
+local tampoco está corroborado. Para este corte, **Qt Quick sigue siendo el
+candidato más completo y con menor CPU frente a GPUI**; GPUI conserva una
+ventaja de RAM que necesitaría una implementación equivalente para decidir una
+migración. No se abre otra variante en esta comparación.
+
+```powershell
+cargo build --release --manifest-path tools/native-ui/gpui/Cargo.toml
+./tools/native-ui/measure-recorded-windows.ps1 -Comparison gpui-qt -Scene standings-44 -Rounds 3 -Samples 8
+```
+
 ### Reconexión de la referencia Wails
 
 Con Wails abierto antes que el host Go, el proxy del ensayo respondía 502.

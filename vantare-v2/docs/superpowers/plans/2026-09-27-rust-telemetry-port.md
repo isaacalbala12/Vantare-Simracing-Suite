@@ -1159,3 +1159,17 @@ Rust release 101/101, Clippy, formato, build release y `go test ./...`
 pasan. Las secciones aún se ensamblan en el test, no en una ruta IPC
 productiva; faltan memoización, Engineer/Strategy, corpus temporal real
 44/104, sesión física y gate CPU del 50%.
+
+## 52. Builder Rust reutilizable de secciones Overlay (2026-09-28)
+
+`projection/frame.rs::build_sections` construye desde un candidato Rust
+las secciones completas de Overlay V2 con source y preferencias explícitas.
+Ya no depende del ensamblado de valores del test. El oráculo Go/Rust incluye
+dos updates completos del mismo snapshot real estático de 44: unidades por
+defecto y preferencias alternativas km/h, galones US, Fahrenheit/psi en
+metadata y previous-lap (SHA-256 JSON
+`7f520f9a465aad91771352874489c65d286eedea9faa2a1b7d032cb78b2bed7d`).
+Rust release 101/101, Clippy, formato, build release y `go test ./...`
+pasan. El builder todavía no tiene caché ni salida IPC; su uso productivo
+y el gate causal CPU requieren la ruta completa y corpus real temporal
+44/104. Go sigue productivo; Engineer/Strategy y sesión física pendientes.

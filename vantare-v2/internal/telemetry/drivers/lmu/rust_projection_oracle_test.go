@@ -58,6 +58,14 @@ func TestRustProjectionGoOracleStatic44(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	fullAlternate, err := overlayv2.ProjectV2(final, source, overlayv2.PreferencesV2{
+		Speed: overlayv2.SpeedUnitKPH, Temperature: overlayv2.TemperatureUnitFahrenheit,
+		Pressure: overlayv2.PressureUnitPSI, Fuel: overlayv2.FuelUnitGallonsUS,
+		DeltaReference: overlayv2.DeltaReferencePreviousLap,
+	}, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
 	want, err := json.Marshal(struct {
 		Session                overlayv2.SessionV2           `json:"session"`
 		Player                 overlayv2.PlayerInstrumentsV2 `json:"player"`
@@ -74,7 +82,8 @@ func TestRustProjectionGoOracleStatic44(t *testing.T) {
 		CapabilityAvailability map[string]overlayv2.Quality  `json:"capabilityAvailability"`
 		Capabilities           overlayv2.CapabilitiesV2      `json:"capabilities"`
 		Full                   overlayv2.UpdateV2            `json:"full"`
-	}{overlayv2.BuildSession(state), overlayv2.BuildPlayerInstruments(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildWeather(state), overlayv2.BuildControls(state), overlayv2.BuildDamage(state), overlayv2.BuildFuel(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildDelta(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildStandings(state), overlayv2.BuildRelative(state), overlayv2.BuildRelativeSameClass(state), overlayv2.BuildSpotter(state), overlayv2.BuildRadar(state), capabilities.Available, capabilities, full})
+		FullAlternate          overlayv2.UpdateV2            `json:"fullAlternate"`
+	}{overlayv2.BuildSession(state), overlayv2.BuildPlayerInstruments(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildWeather(state), overlayv2.BuildControls(state), overlayv2.BuildDamage(state), overlayv2.BuildFuel(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildDelta(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildStandings(state), overlayv2.BuildRelative(state), overlayv2.BuildRelativeSameClass(state), overlayv2.BuildSpotter(state), overlayv2.BuildRadar(state), capabilities.Available, capabilities, full, fullAlternate})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -612,8 +612,17 @@ mod tests {
             history.remove("capturedAtMS");
             history.remove("seconds");
         }
+        let projected =
+            frame::build_sections(&prepared, &capability_source, frame::Preferences::default())
+                .unwrap();
+        let mut expected_sections = actual.clone();
+        expected_sections
+            .as_object_mut()
+            .unwrap()
+            .remove("capabilityAvailability");
+        assert_eq!(projected, expected_sections);
         let full = frame::wrap_full(
-            &actual,
+            &projected,
             frame::Metadata {
                 revision: 1,
                 state: "live",
@@ -634,6 +643,38 @@ mod tests {
         .unwrap();
         assert_eq!(full, golden["full"]);
         actual["full"] = full;
+        let alternate_sections = frame::build_sections(
+            &prepared,
+            &capability_source,
+            frame::Preferences {
+                speed: SpeedUnit::Kph,
+                fuel: FuelUnit::GallonsUs,
+                delta_reference: "previous-lap",
+            },
+        )
+        .unwrap();
+        let full_alternate = frame::wrap_full(
+            &alternate_sections,
+            frame::Metadata {
+                revision: 2,
+                state: "live",
+                retry: 0,
+                age_ms: 0,
+                degraded_reason: "",
+                epoch: prepared.batch().cursor.epoch,
+                sequence: prepared.batch().cursor.sequence,
+                section_mask: frame::ALL_SECTIONS_MASK,
+                session_id: &prepared.batch().session_id,
+                generated_at: "1970-01-01T00:01:40Z",
+                speed_unit: "kph",
+                temperature_unit: "fahrenheit",
+                pressure_unit: "psi",
+                fuel_unit: "gallons-us",
+            },
+        )
+        .unwrap();
+        assert_eq!(full_alternate, golden["fullAlternate"]);
+        actual["fullAlternate"] = full_alternate;
         assert_eq!(actual["fuel"], golden["fuel"]);
         assert_eq!(actual["capabilities"], golden["capabilities"]);
         assert_eq!(actual, golden);

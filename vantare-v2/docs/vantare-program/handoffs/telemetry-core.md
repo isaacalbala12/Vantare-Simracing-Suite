@@ -1,5 +1,17 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — builder Rust de secciones Overlay reutilizable (2026-09-28)
+
+`projection/frame.rs::build_sections` proyecta todas las secciones del
+candidato Rust con source/preferencias explícitas; `wrap_full` produce el
+update V2. Paridad Go/Rust de dos updates completos, uno por defecto y otro
+km/h/galones/previous-lap, sobre captura real estática de 44 (SHA-256 JSON
+`7f520f9a465aad91771352874489c65d286eedea9faa2a1b7d032cb78b2bed7d`).
+Rust release 101/101, Clippy, formato, build release y `go test ./...`
+pasan. Falta memoización, IPC, salida productiva, Engineer/Strategy, corpus
+temporal real 44/104, sesión física y gate CPU. Go sigue productivo.
+Plan sección 52.
+
 ## ISA-1403 — update Overlay V2 completo en el oráculo (2026-09-28)
 
 `projection/frame.rs` envuelve los slices Rust y metadatos en UpdateV2 y

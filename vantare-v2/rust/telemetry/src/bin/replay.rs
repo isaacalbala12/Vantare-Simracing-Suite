@@ -78,10 +78,8 @@ fn run(pipe_name: &str, nonce_text: &str, fixture_path: &str) -> io::Result<()> 
                 .map_err(|error| io::Error::other(format!("replay request: {error:?}")))?;
             let request = ipc::encode(kind, &payload)
                 .map_err(|error| io::Error::other(format!("replay request frame: {error:?}")))?;
-            let cursor = ipc::fact_replay::decode_frame(&request)
-                .map_err(|error| io::Error::other(format!("decode replay request: {error:?}")))?;
             let FactReplay::Frames(replay) = assembly
-                .replay_fact_frames_after(cursor)
+                .replay_fact_request_frame(&request)
                 .map_err(|error| io::Error::other(format!("replay fact: {error:?}")))?
             else {
                 return Err(io::Error::new(
@@ -108,10 +106,8 @@ fn run(pipe_name: &str, nonce_text: &str, fixture_path: &str) -> io::Result<()> 
         .map_err(|error| io::Error::other(format!("stale replay request: {error:?}")))?;
     let request = ipc::encode(kind, &payload)
         .map_err(|error| io::Error::other(format!("stale replay frame: {error:?}")))?;
-    let cursor = ipc::fact_replay::decode_frame(&request)
-        .map_err(|error| io::Error::other(format!("decode stale replay: {error:?}")))?;
     let FactReplay::Resync(boundary) = assembly
-        .replay_fact_frames_after(cursor)
+        .replay_fact_request_frame(&request)
         .map_err(|error| io::Error::other(format!("stale replay: {error:?}")))?
     else {
         return Err(io::Error::new(

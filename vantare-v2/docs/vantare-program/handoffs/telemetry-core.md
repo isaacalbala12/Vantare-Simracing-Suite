@@ -1,5 +1,13 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — replay validado por Assembler (2026-09-28)
+
+El ensamblador Rust acepta `FactReplayRequest` como frame completo,
+valida la petición y devuelve frames exactos o resync; el helper de
+pipe utiliza la misma ruta. Rust release 123/123, Clippy y replay
+Windows Go/Rust pasan. Pendiente conexión al loop productivo y
+bootstrap/reconexión. Plan sección 74; Go sigue owner.
+
 ## ISA-1403 — resync por pipe tras cursor viejo (2026-09-28)
 
 El helper Rust recibió otra solicitud Go tras quitar demanda Engineer;

@@ -11,6 +11,7 @@ use crate::ipc::{
     fact::{self, FactEncodeError},
     fact_ack::{self, FactAckError},
     fact_delivery::FactDeliveryLog,
+    fact_replay::{self, ReplayRequestError},
     resync::{self, ResyncError},
     snapshot::{self, ProductMetadata, SnapshotError},
 };
@@ -30,6 +31,7 @@ pub enum AssemblyError {
     Snapshot(SnapshotError),
     Fact(FactEncodeError),
     FactAck(FactAckError),
+    FactReplay(ReplayRequestError),
     Resync(ResyncError),
 }
 
@@ -107,6 +109,11 @@ impl Assembler {
             )),
             Err(error) => Err(AssemblyError::FactLog(error)),
         }
+    }
+
+    pub fn replay_fact_request_frame(&self, frame: &[u8]) -> Result<FactReplay<'_>, AssemblyError> {
+        let cursor = fact_replay::decode_frame(frame).map_err(AssemblyError::FactReplay)?;
+        self.replay_fact_frames_after(cursor)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -376,6 +383,20 @@ mod tests {
         };
         assert_eq!(replay.len(), 1);
         assert_eq!(ipc::decode(replay[0]).unwrap().kind, ipc::Kind::Fact);
+        let request = ipc::encode(
+            ipc::Kind::FactReplayRequest,
+            br#"{"stream":15,"sequence":0}"#,
+        )
+        .unwrap();
+        assert!(matches!(
+            assembler.replay_fact_request_frame(&request).unwrap(),
+            FactReplay::Frames(frames) if frames.len() == 1 && frames[0] == replay[0]
+        ));
+        let wrong = ipc::encode(ipc::Kind::FactAck, br#"{"stream":15,"sequence":1}"#).unwrap();
+        assert!(matches!(
+            assembler.replay_fact_request_frame(&wrong),
+            Err(AssemblyError::FactReplay(ReplayRequestError::WrongKind))
+        ));
         assert_eq!(
             assembler.acknowledge_fact_frame(FACT_ACK).unwrap(),
             high_water

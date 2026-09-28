@@ -1485,3 +1485,12 @@ ya ha descartado ese intervalo y responde `KindResyncRequired` con
 solo después intercambia Stop; la prueba de hijo release y pipe real
 pasa. Es señal de pérdida comprobada, no recuperación: aún faltan
 bootstrap del consumidor, continuidad en reconexión y dispatcher live.
+
+## 74. Entrada de replay validada en Assembler (2026-09-28)
+
+`Assembler::replay_fact_request_frame` valida el kind, esquema, tamaño y
+cursor IPC antes de consultar la ventana de facts; devuelve frames
+exactos o `ResyncRequired`. El helper Windows usa esa misma entrada en
+ambos recorridos y el test Rust rechaza un kind ajeno. Rust release
+123/123, Clippy y pipe Go/Rust pasan. La entrada aún no está conectada
+al loop productivo ni soluciona bootstrap/reconexión.

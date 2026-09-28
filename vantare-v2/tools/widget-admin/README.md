@@ -2,10 +2,12 @@
 
 Aplicación de escritorio en C++ y Qt Widgets para preparar la matriz de widgets por licencia. No usa WebView2, no se conecta a Billing y no publica cambios remotos.
 
+![Vista de la matriz Free en Qt Widgets](evidence/widgets-free.png)
+
 ## Uso
 
 1. Abre `internal/license/widget_matrix.json` desde la aplicación o pásalo como primer argumento.
-2. Marca los widgets disponibles en Free, Pro, Pro Plus y Launch Edition. El selector «Vista previa» muestra cuáles quedarían visibles con candado para cada licencia. La búsqueda no altera permisos.
+2. Elige Free, Pro, Pro Plus o Launch Edition en la barra lateral o en sus tarjetas. La tabla permite marcar derechos, buscar widgets y filtrar disponibles o bloqueados; el panel derecho muestra la vista previa con candados. La búsqueda y los filtros no alteran permisos.
 3. Pulsa «Guardar propuesta…». Se genera otro JSON; el archivo de origen queda intacto.
 4. Revisa la propuesta en una issue/PR, reemplaza la matriz versionada con el contenido aprobado y ejecuta las pruebas de Go y frontend. Solo una versión posterior de Vantare aplica el cambio.
 

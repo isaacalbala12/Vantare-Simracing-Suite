@@ -58,7 +58,7 @@ ventana Qt para inspección visual; [control](evidence/qt-go-control.png) y
 [overlay](evidence/qt-go-overlay.png) y
 [editor](evidence/qt-go-editor.png) son capturas de este corte. El píxel de
 esquina del overlay conserva alpha 0 en la captura propia. La composición y el
-paso del clic en Windows se prueban más abajo; OBS sigue pendiente.
+paso del clic en Windows se prueban más abajo.
 
 Con Rust estable y Cargo, en otra terminal con el mismo host Go activo:
 
@@ -71,8 +71,8 @@ tools/native-ui/slint/target/release/vantare-native-go-slint.exe --endpoint "htt
 
 El cliente Rust usa Slint 1.18.1 y ventanas Win32 para click-through y
 topmost. La salida 0 confirma el contrato y la carga de 44 filas; no demuestra
-por sí sola paridad visual, transparencia física ni captura en OBS. La prueba
-física de composición y clic aparece más abajo. Con un
+por sí sola paridad visual, transparencia física ni captura en OBS. Las pruebas
+físicas de composición, clic y captura aparecen más abajo. Con un
 endpoint desconectado, ambos clientes terminan con código 6 tras cinco segundos.
 
 Para reproducir la referencia Wails, primero construye el frontend y después
@@ -88,8 +88,8 @@ tools/native-ui/out/wails/vantare-native-go-wails.exe -endpoint "http://127.0.0.
 `-mode` admite también `control` y `overlay`; los tres confirmaron 44 filas.
 `-expect-rows` espera hasta diez segundos y devuelve 6 si la vista no confirma
 la recepción de la captura. El modo overlay es una ventana sin marco, superior,
-transparente y click-through por configuración; su composición se inspeccionó
-en este escritorio Windows, pero OBS sigue pendiente.
+transparente y click-through por configuración; su composición y captura OBS
+se inspeccionaron en este escritorio Windows.
 
 Para inspeccionar el editor Wails, se puede iniciar con `-mode editor
 -debug-port 9223 -auto-close 60s` y ejecutar
@@ -133,8 +133,20 @@ inferior no había obtenido el foco; ahora el script exige esa precondición.
 En tres rondas consecutivas con la captura Go, Qt Quick, Slint y Wails
 devolvieron `CornerRespondsToUnderlay`, `ClickThrough`,
 `ForegroundPreserved` y `HitIsUnderlay` verdaderos. Esto verifica composición
-y ratón en este escritorio Windows; aún no verifica OBS, otras escalas DPI ni
-el empaquetado. [Resultados completos](evidence/overlay-functional-results.csv).
+y ratón en este escritorio Windows; la captura OBS se comprueba por separado.
+Quedan otras escalas DPI y el empaquetado. [Resultados completos](evidence/overlay-functional-results.csv).
+
+OBS 32.1.2, en modo portátil aislado, capturó cada ventana mediante una fuente
+`window_capture` seleccionada por su título. Se usó el
+[`obs_capture.py` de la comparación #1409](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1409)
+con WebSocket local, fuente y escena distintas por candidato. Los tres PNG
+fueron revisados y muestran las filas procedentes del host Go: [Qt](evidence/obs-qt-go.png),
+[Slint](evidence/obs-slint-go.png) y [Wails](evidence/obs-wails-go.png).
+`GetSourceScreenshot` conservó alfa parcial en la esquina de los tres archivos
+(185, 162 y 157, respectivamente, sobre 255); las ventanas seleccionadas y
+tamaños constan en [los resultados](evidence/obs-capture-results.csv). Esto
+acredita captura de ventana, no grabación sostenida, mezcla en una escena real,
+rendimiento con OBS ni prueba LMU activa.
 
 ## Medición local preliminar
 
@@ -193,7 +205,7 @@ segundo snapshot. En este modo el timeout es de quince segundos.
 La captura fija no prueba actualización continua,
 rendimiento de Vantare completa ni ahorro del 20 %. El editor prueba controles
 y vista previa locales; falta persistencia de producto,
-DPI físico, OBS, empaquetado y licencia de módulos Qt. Los
+DPI físico, grabación y medición con OBS, empaquetado y licencia de módulos Qt. Los
 clientes nativos reintentan la conexión: ambas variantes recibieron 44 filas cuando
 arrancaron antes que el host y volvieron a recibirlas tras reiniciarlo. Falta
 probar cambios de telemetría en vivo. No se debe usar esta escena para elegir

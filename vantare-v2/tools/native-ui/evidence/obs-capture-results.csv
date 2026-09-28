@@ -1,0 +1,4 @@
+"Candidate","OBS","Window","Width","Height","CornerAlpha","Bytes"
+"qt","32.1.2","[vantare-native-go-qt.exe]: Vantare Native Trial Overlay","560","430","185","44379"
+"slint","32.1.2","[vantare-native-go-slint.exe]: Vantare Native Trial Slint Overlay","560","430","162","41038"
+"wails","32.1.2","[vantare-native-go-wails.exe]: Vantare Native Trial Wails Overlay","560","430","157","38915"

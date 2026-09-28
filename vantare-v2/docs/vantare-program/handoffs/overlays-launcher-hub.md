@@ -10,7 +10,10 @@ primer instrumento produjo falsos negativos Qt cuando la ventana inferior no
 tenía foco; ahora exige esa precondición. La prueba descubrió un fallo real
 Slint: los estilos se aplicaban a una ventana auxiliar de 16×16, no al overlay
 de 520×500. Se corrigió la selección y se añadió `WS_EX_LAYERED` para el paso
-de clics. No hay aún evidencia OBS, DPI múltiple ni telemetría cambiante.
+de clics. OBS 32.1.2 portátil capturó por título las tres ventanas de overlay
+con las filas Go; las capturas revisadas conservan alfa parcial. Hay PNG y
+metadatos acotados en `tools/native-ui/evidence/`. Aún faltan grabación y
+medición con OBS, DPI múltiple y telemetría cambiante.
 
 Continúa la comparación [#1404](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1409), todavía en PR borrador. La rama
 `vantareapp/isa-1410-native-go-product-trial` parte de
@@ -22,7 +25,8 @@ del mismo contrato SSE; las variantes Rust control/overlay salieron con código
 0 en el smoke y con código 6 ante un endpoint desconectado. Capturas Qt
 locales revisadas en `tools/native-ui/evidence/`. `go test ./...` y build
 frontend pasaron. El overlay conserva alpha cero en una esquina de su captura
-propia. Esto no equivale a prueba OBS, DPI físico ni una sesión LMU activa.
+propia. Esa captura por sí sola no equivale a prueba OBS, DPI físico ni una
+sesión LMU activa; la captura OBS aislada se documenta arriba.
 Con puerto loopback fijo, ambas variantes arrancaron antes que el host y
 recibieron después la proyección. Con `--expect-snapshots 2`, permanecieron
 abiertas tras detener el host ya conectado y salieron con código 0 después de
@@ -58,7 +62,7 @@ error. Un test reprodujo el fallo y ahora el host fuerza el cierre de esa
 conexión solo después de intentar el apagado con gracia. `go test ./...` pasó.
 La tarea [VAN-776](https://app.notion.com/p/3e9e51695c65810fb2bdd73aae4b555d?pvs=204)
 conserva el alcance y pendientes: interacción y persistencia de editor,
-actualización de datos, OBS y baseline del producto completo. No se eligió
+actualización de datos, grabación/medición OBS y baseline del producto completo. No se eligió
 stack, cambió el runtime productivo ni promovió ningún canal.
 
 ## 2026-09-26 · VAN-769 / GitHub #1381 · Integración inicial autorizada

@@ -109,7 +109,7 @@ export const studioV3Pt: Record<string, string> = {
     "Licença bloqueada. Renova o teu acesso para adicionar este widget.",
   "studio.v3.catalog.lock.advancedOverlays":
     "Requer licença Overlays avançados. Podes pré-visualizá-lo no canvas.",
-  "studio.v3.catalog.lock.generic": "Requer uma licença superior para adicionar este widget.",
+  "studio.v3.catalog.lock.generic": "Precisas de uma licença que inclua este widget.",
   "studio.v3.catalog.title": "Adicionar widget",
   "studio.v3.catalog.description":
     "O catálogo deriva do registo V3. Os widgets premium continuam visíveis para pré-visualizar.",

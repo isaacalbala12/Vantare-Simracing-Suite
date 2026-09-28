@@ -52,6 +52,18 @@ func guardSuitePolicy() license.WidgetPolicy {
 	return policy
 }
 
+func TestGuardUsesPerWidgetRightsBeforeBroadModuleRights(t *testing.T) {
+	policy := guardSuitePolicy()
+	policy.AllowedWidgetTypes = "pedals,relative,standings"
+	if err := checkStudioProfileSave(policy, guardDoc(), guardDoc(guardWidget("relative-main", "relative"))); err != nil {
+		t.Fatalf("relative should remain available: %v", err)
+	}
+	denied := guardDeniedIDs(t, checkStudioProfileSave(policy, guardDoc(), guardDoc(guardWidget("delta-main", "delta"))))
+	if len(denied) != 1 || denied[0] != "delta-main" {
+		t.Fatalf("denied = %v, want delta-main", denied)
+	}
+}
+
 func guardDeniedIDs(t *testing.T, err error) []string {
 	t.Helper()
 	if err == nil {

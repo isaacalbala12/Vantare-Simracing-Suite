@@ -51,6 +51,7 @@ const (
 	WidgetTypeCarDamageNumbers       WidgetTypeV3 = "car-damage-numbers"
 	WidgetTypeEngineerRadio          WidgetTypeV3 = "engineer-radio"
 	WidgetTypeTrackMap               WidgetTypeV3 = "track-map"
+	WidgetTypeRadar                  WidgetTypeV3 = "radar"
 )
 
 type DesignSystemID string

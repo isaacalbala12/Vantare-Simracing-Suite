@@ -22,6 +22,9 @@ function lockMessage(entry: StudioCatalogEntry, policy: StudioPolicy, t: (key: s
   if (gate.reason === "blocked-license") {
     return t("studio.v3.catalog.lock.blockedLicense");
   }
+  if (policy?.allowedWidgets !== undefined) {
+    return t("studio.v3.catalog.lock.generic");
+  }
   if (entry.requiredFeature === "overlays.advanced") {
     return t("studio.v3.catalog.lock.advancedOverlays");
   }

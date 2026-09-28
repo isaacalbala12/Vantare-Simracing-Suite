@@ -1,0 +1,159 @@
+{
+  "version": 1,
+  "widgets": [
+    {
+      "id": "delta",
+      "free": false,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    },
+    {
+      "id": "standings",
+      "free": true,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    },
+    {
+      "id": "relative",
+      "free": false,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    },
+    {
+      "id": "pedals",
+      "free": true,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    },
+    {
+      "id": "broadcast-tower",
+      "free": false,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    },
+    {
+      "id": "fuel-strategy",
+      "free": false,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    },
+    {
+      "id": "pedals-telemetry",
+      "free": false,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    },
+    {
+      "id": "pedals-telemetry-compact",
+      "free": false,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    },
+    {
+      "id": "racing-flags",
+      "free": false,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    },
+    {
+      "id": "fastest-lap",
+      "free": false,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    },
+    {
+      "id": "delta-trace",
+      "free": false,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    },
+    {
+      "id": "race-schedule",
+      "free": false,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    },
+    {
+      "id": "head-to-head",
+      "free": false,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    },
+    {
+      "id": "delta-advanced",
+      "free": false,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    },
+    {
+      "id": "input-telemetry",
+      "free": false,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    },
+    {
+      "id": "multiclass-relative",
+      "free": false,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    },
+    {
+      "id": "track-weather",
+      "free": false,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    },
+    {
+      "id": "car-damage-visual",
+      "free": false,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    },
+    {
+      "id": "car-damage-numbers",
+      "free": false,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    },
+    {
+      "id": "engineer-radio",
+      "free": false,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    },
+    {
+      "id": "track-map",
+      "free": false,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    },
+    {
+      "id": "radar",
+      "free": false,
+      "pro": true,
+      "proPlus": true,
+      "launch": true
+    }
+  ]
+}

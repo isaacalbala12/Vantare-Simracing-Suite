@@ -80,6 +80,13 @@ describe("parseWidgetPolicyWire", () => {
     const wire = { ...freeWire, validUntil: "2026-09-11T00:00:00Z" };
     expect(parseWidgetPolicyWire(wire)).toEqual(wire);
   });
+
+  it("rejects unknown or repeated widget IDs in the native allowlist", () => {
+    expect(parseWidgetPolicyWire({ ...freeWire, allowedWidgets: ["delta", "delta"] })).toBeNull();
+    expect(parseWidgetPolicyWire({ ...freeWire, allowedWidgets: ["unknown"] })).toBeNull();
+    expect(parseWidgetPolicyWire({ ...freeWire, allowedWidgets: ["standings", "pedals"] })?.allowedWidgets)
+      .toEqual(["standings", "pedals"]);
+  });
 });
 
 describe("isWidgetPolicyExpired", () => {
@@ -114,6 +121,11 @@ describe("resolveEffectiveWidgetPolicy", () => {
 });
 
 describe("isWidgetTypeAllowed", () => {
+  it("uses per-widget rights ahead of broad module rights", () => {
+    const selective = { ...paidWire, allowedWidgets: ["standings", "pedals", "relative"] as WidgetPolicyWire["allowedWidgets"] };
+    expect(isWidgetTypeAllowed(selective, "relative")).toBe(true);
+    expect(isWidgetTypeAllowed(selective, "delta")).toBe(false);
+  });
   it("fail-safe without a policy: standings/pedals available, premium blocked", () => {
     expect(isWidgetTypeAllowed(null, "standings")).toBe(true);
     expect(isWidgetTypeAllowed(null, "pedals")).toBe(true);

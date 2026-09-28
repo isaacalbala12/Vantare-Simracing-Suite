@@ -1,5 +1,6 @@
 import { getWidgetRequiredFeature } from "./widget-definition";
 import type { FeatureId } from "../../lib/access-policy";
+import { WIDGET_TYPES } from "./profile-document";
 import type {
   DesignSystemId,
   WidgetInstanceV3,
@@ -22,6 +23,7 @@ export type WidgetPolicyWire = {
   overlaysBasic: boolean;
   overlaysAdvanced: boolean;
   engineerAI: boolean;
+  allowedWidgets?: WidgetType[];
   brandCrystal: WidgetBrandMode;
   brandEfficiency: WidgetBrandMode;
   brandOriginal: WidgetBrandMode;
@@ -53,6 +55,7 @@ export function parseWidgetPolicyWire(input: unknown): WidgetPolicyWire | null {
     overlaysBasic,
     overlaysAdvanced,
     engineerAI,
+    allowedWidgets,
     brandCrystal,
     brandEfficiency,
     brandOriginal,
@@ -80,6 +83,14 @@ export function parseWidgetPolicyWire(input: unknown): WidgetPolicyWire | null {
     brandEfficiency,
     brandOriginal,
   };
+  if (allowedWidgets !== undefined) {
+    if (!Array.isArray(allowedWidgets) ||
+        allowedWidgets.some((id) => typeof id !== "string" || !WIDGET_TYPES.has(id as WidgetType)) ||
+        new Set(allowedWidgets).size !== allowedWidgets.length) {
+      return null;
+    }
+    wire.allowedWidgets = allowedWidgets as WidgetType[];
+  }
   if (validUntil !== undefined) {
     if (typeof validUntil !== "string" || Number.isNaN(Date.parse(validUntil))) {
       return null;
@@ -147,6 +158,10 @@ export function isWidgetTypeAllowed(
   type: WidgetType,
   nowMs: number = Date.now(),
 ): boolean {
+  const effective = resolveEffectiveWidgetPolicy(policy, nowMs);
+  if (effective?.allowedWidgets !== undefined) {
+    return effective.allowedWidgets.includes(type);
+  }
   let required: ReturnType<typeof getWidgetRequiredFeature>;
   try {
     required = getWidgetRequiredFeature(type);

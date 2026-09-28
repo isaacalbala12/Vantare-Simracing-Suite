@@ -16,6 +16,77 @@ func grantLaunchPerpetual() VerifiedGrant {
 	return VerifiedGrant{Key: CapabilityLaunchV1, Perpetual: true}
 }
 
+func TestWidgetMatrixDistinguishesVerifiedPlans(t *testing.T) {
+	source := []byte(`{"version":1,"widgets":[
+		{"id":"standings","free":true,"pro":true,"proPlus":true,"launch":true},
+		{"id":"pedals","free":true,"pro":true,"proPlus":true,"launch":true},
+		{"id":"delta","free":false,"pro":false,"proPlus":true,"launch":false},
+		{"id":"relative","free":false,"pro":true,"proPlus":true,"launch":false},
+		{"id":"radar","free":false,"pro":false,"proPlus":false,"launch":true}
+	]}`)
+	matrix, err := parseWidgetMatrix(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name string
+		eff  widgetEffective
+		want string
+	}{
+		{"free", widgetEffective{}, "pedals,standings"},
+		{"pro", widgetEffective{state: StateActive, caps: []Capability{CapabilityPro}}, "pedals,relative,standings"},
+		{"pro plus", widgetEffective{state: StateActive, caps: []Capability{CapabilityPro, CapabilityNightly}}, "delta,pedals,relative,standings"},
+		{"launch", widgetEffective{state: StateActive, caps: []Capability{CapabilityLaunchV1}}, "pedals,radar,standings"},
+		{"pro and launch", widgetEffective{state: StateActive, caps: []Capability{CapabilityPro, CapabilityLaunchV1}}, "pedals,radar,relative,standings"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := matrix.allowedIDs(tc.eff); got != tc.want {
+				t.Fatalf("allowed = %q, want %q", got, tc.want)
+			}
+		})
+	}
+	launchStored := &Result{State: StateActive, Capabilities: []Capability{CapabilityLaunchV1}}
+	if got := matrix.allowedIDs(effectiveWidgetAuthority(launchStored, widgetPolicyNow)); got != "pedals,radar,standings" {
+		t.Fatalf("Launch capability projected to suite = %q, want only Launch rights", got)
+	}
+}
+
+func TestWidgetMatrixProPlusRightsExpireWithNightlyGrant(t *testing.T) {
+	matrix := widgetMatrix{Version: 1, Widgets: []widgetMatrixRow{
+		{ID: "standings", Free: true, Pro: true, ProPlus: true, Launch: true},
+		{ID: "pedals", Free: true, Pro: true, ProPlus: true, Launch: true},
+		{ID: "delta", ProPlus: true},
+	}}
+	stored := &Result{
+		State:        StateActive,
+		Capabilities: []Capability{CapabilityPro, CapabilityNightly},
+		VerifiedGrants: []VerifiedGrant{
+			{Key: CapabilityPro, ExpiresAt: widgetPolicyNow.Add(2 * time.Hour)},
+			{Key: CapabilityNightly, ExpiresAt: widgetPolicyNow.Add(time.Hour)},
+		},
+	}
+	if got := matrix.allowedIDs(effectiveWidgetAuthority(stored, widgetPolicyNow)); got != "delta,pedals,standings" {
+		t.Fatalf("before Nightly deadline = %q", got)
+	}
+	if got := matrix.allowedIDs(effectiveWidgetAuthority(stored, widgetPolicyNow.Add(time.Hour))); got != "pedals,standings" {
+		t.Fatalf("after Nightly deadline = %q", got)
+	}
+}
+
+func TestWidgetMatrixRejectsBrokenCommercialContract(t *testing.T) {
+	cases := []string{
+		`{"version":1,"widgets":[{"id":"standings","free":false}]}`,
+		`{"version":1,"widgets":[{"id":"standings","free":true,"pro":true,"proPlus":true,"launch":true},{"id":"pedals","free":true,"pro":true,"proPlus":true,"launch":true},{"id":"delta","pro":true}]}`,
+		`{"version":1,"widgets":[{"id":"standings","free":true,"pro":true,"proPlus":true,"launch":true},{"id":"pedals","free":true,"pro":true,"proPlus":true,"launch":true},{"id":"pedals"}]}`,
+	}
+	for _, source := range cases {
+		if _, err := parseWidgetMatrix([]byte(source)); err == nil {
+			t.Fatalf("accepted invalid matrix: %s", source)
+		}
+	}
+}
+
 func TestWidgetPolicyCapabilitiesWithoutEntitlementsGrantSuite(t *testing.T) {
 	res := &Result{
 		State:          StateActive,

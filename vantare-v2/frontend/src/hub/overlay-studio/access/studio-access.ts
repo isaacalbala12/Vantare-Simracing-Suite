@@ -16,7 +16,6 @@ import {
   resolveDesignRequiredFeature,
   type WidgetDesignV1,
 } from '../../../overlay/core/widget-design';
-import { getWidgetRequiredFeature } from '../../../overlay/core/widget-definition';
 import type { FeatureGate, FeatureId } from '../../../lib/access-policy';
 import type { StudioCommand } from '../state/studio-command';
 import { resolveSessionLayout } from '../state/session-layouts';
@@ -60,11 +59,8 @@ const SESSION_LAYOUT_TYPES: readonly SessionLayoutType[] = [
   'endurance',
 ];
 
-function collectRequiredFeatures(widget?: WidgetInstanceV3, design?: WidgetDesignV1): FeatureId[] {
+function collectRequiredFeatures(design?: WidgetDesignV1): FeatureId[] {
   const features = new Set<FeatureId>();
-  if (widget) {
-    features.add(getWidgetRequiredFeature(widget.type));
-  }
   const designFeature = design ? resolveDesignRequiredFeature(design) : undefined;
   if (designFeature) {
     features.add(designFeature);
@@ -97,7 +93,11 @@ export function getStudioMutationGate(input: {
     return { allowed: true };
   }
 
-  for (const feature of collectRequiredFeatures(input.widget, input.design)) {
+  if (input.widget && !isWidgetTypeAllowed(input.policy, input.widget.type)) {
+    return { allowed: false, reason: 'upgrade' };
+  }
+
+  for (const feature of collectRequiredFeatures(input.design)) {
     if (!isFeatureAllowed(input.policy, feature)) {
       return { allowed: false, reason: 'upgrade' };
     }

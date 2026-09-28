@@ -72,6 +72,20 @@ describe("AddWidgetDialog", () => {
     expect(screen.queryByTestId("studio-catalog-add-relative")).toBeNull();
   });
 
+  it("uses the widget matrix even when broad advanced access is true", () => {
+    render(
+      <AddWidgetDialog
+        open
+        policy={{ ...paidPolicy, allowedWidgets: ["standings", "pedals", "relative"] }}
+        onAdd={vi.fn()}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.getByTestId("studio-catalog-add-relative")).toBeTruthy();
+    expect(screen.getByTestId("studio-catalog-lock-delta").textContent)
+      .toContain("licencia que incluya este widget");
+  });
+
   it("does not offer another delta when the active layout already has one", () => {
     render(
       <AddWidgetDialog

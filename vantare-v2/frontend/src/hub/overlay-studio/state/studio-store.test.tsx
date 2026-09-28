@@ -240,7 +240,7 @@ describe("StudioProvider", () => {
     expect(result.current.lastError).toBeNull();
   });
 
-  it("rethrows unexpected access-check errors without converting them to a notice", async () => {
+  it("rejects an unregistered widget type without changing its content", async () => {
     const client = createMockClient(buildDocument());
     const { result } = renderHook(() => useStudioDocument(), { wrapper: wrapper(client) });
     await waitFor(() => expect(result.current.document).not.toBeNull());
@@ -248,23 +248,19 @@ describe("StudioProvider", () => {
     recovered.layouts.general.widgets[0]!.type = "unregistered" as WidgetInstanceV3["type"];
     act(() => result.current.acceptRecovery(recovered));
 
-    let caught: unknown;
-    try {
-      act(() => {
-        result.current.dispatch({
-          type: "widget/content",
-          session: "general",
-          widgetIds: ["delta-main"],
-          content: { mode: "unexpected-access-error" },
-        });
+    act(() => {
+      result.current.dispatch({
+        type: "widget/content",
+        session: "general",
+        widgetIds: ["delta-main"],
+        content: { mode: "unexpected-access-error" },
       });
-    } catch (error) {
-      caught = error;
-    }
+    });
 
-    expect(caught).toBeInstanceOf(Error);
-    expect((caught as Error).message).toContain("No feature gate registered");
-    expect(result.current.accessNotice).toBeNull();
+    expect(result.current.document?.layouts.general.widgets[0]?.content).toEqual(
+      recovered.layouts.general.widgets[0]?.content,
+    );
+    expect(result.current.accessNotice).not.toBeNull();
   });
 
   it("switches sessions and selection without mutating unrelated layouts", async () => {

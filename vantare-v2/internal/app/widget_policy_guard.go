@@ -52,7 +52,7 @@ func widgetRequiredFeature(widgetType config.WidgetTypeV3) (widgetPolicyFeature,
 		"racing-flags", "fastest-lap", "broadcast-tower", "head-to-head", "input-telemetry",
 		"multiclass-relative", "delta-advanced", "fuel-strategy", "delta-trace",
 		"race-schedule", "track-weather", "car-damage-visual", "car-damage-numbers",
-		"track-map":
+		"track-map", "radar":
 		return widgetFeatureAdvanced, true
 	default:
 		return widgetFeatureAdvanced, false
@@ -70,6 +70,14 @@ func widgetFeatureAllowed(policy license.WidgetPolicy, feature widgetPolicyFeatu
 	default:
 		return false
 	}
+}
+
+func widgetTypeAllowedForGuard(policy license.WidgetPolicy, widgetType config.WidgetTypeV3, feature widgetPolicyFeature) bool {
+	if policy.AllowedWidgetTypes != "" {
+		return policy.AllowsWidget(string(widgetType))
+	}
+	// Older hand-built policy values in existing tests predate the matrix.
+	return widgetFeatureAllowed(policy, feature)
 }
 
 func marshalWidgetForPolicy(widget config.WidgetInstanceV3, withoutLayout bool) (string, bool) {
@@ -132,7 +140,7 @@ func checkStudioProfileSave(policy license.WidgetPolicy, saved, incoming *config
 				continue
 			}
 			feature, known := widgetRequiredFeature(widget.Type)
-			if !known || !widgetFeatureAllowed(policy, feature) {
+			if !known || !widgetTypeAllowedForGuard(policy, widget.Type, feature) {
 				// Layout-only moves of blocked widgets stay allowed, as do
 				// identical unknown future types (preserved but frozen).
 				if existed && widgetsEqualForPolicy(previous, widget, true) {
@@ -245,7 +253,7 @@ func checkLegacyProfileSave(policy license.WidgetPolicy, saved, incoming *config
 				continue
 			}
 			feature, known := legacyWidgetFeature(widget.Type)
-			if !known || !widgetFeatureAllowed(policy, feature) {
+			if !known || !widgetTypeAllowedForGuard(policy, config.WidgetTypeV3(widget.Type), feature) {
 				if existed && legacyWidgetsEqualForPolicy(previous, widget, true) {
 					continue
 				}
@@ -267,7 +275,7 @@ func checkLegacyProfileSave(policy license.WidgetPolicy, saved, incoming *config
 			}
 		}
 		feature, known := legacyWidgetFeature(variant.WidgetType)
-		if !known || !widgetFeatureAllowed(policy, feature) {
+		if !known || !widgetTypeAllowedForGuard(policy, config.WidgetTypeV3(variant.WidgetType), feature) {
 			denied[variant.ID] = struct{}{}
 		}
 	}

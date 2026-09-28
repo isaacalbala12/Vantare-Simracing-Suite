@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — ensamblador transaccional Rust (2026-09-28)
+
+`assembly.rs` aplica configuración Go revisionada en frontera de commit:
+codifica Overlay/Engineer/Strategy/facts según demanda, instala el lote y
+solo entonces devuelve ACK. La prueba con captura estática real de 44
+demuestra retry tras rechazo, cambio de demanda a solo Strategy y ACK
+único. Rust release 112/112, Clippy, formato, build y `go test ./...`
+pasan. Falta unir lector LMU/REST, pipe, colas, FactAck/resync y receptores
+productivos; Go sigue como único owner. Plan sección 60.
+
 ## ISA-1403 — primer Fact IPC Engineer Rust→Go (2026-09-28)
 
 Rust emite un `KindFact` Engineer V1 con metadata/cursor propios y fecha

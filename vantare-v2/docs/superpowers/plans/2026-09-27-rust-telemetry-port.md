@@ -1281,3 +1281,20 @@ añade cinco paquetes transitivos, todos MIT/Apache-2.0. Sustituye un
 calendario manual propio y queda fijado en `Cargo.lock`. Rust release
 111/111, Clippy, formato, build y prueba Go focal pasan. **No hay ACK,
 retención IPC ni resync productivos**; Go sigue como owner.
+
+## 60. Ensamblado transaccional Rust con demanda (2026-09-28)
+
+`assembly.rs` reúne la configuración revisionada Go, el candidato LMU,
+proyecciones Overlay/Engineer/Strategy y frames IPC. Proyecta y codifica
+antes de `Engine.commit`; solo tras el commit instala la configuración y
+devuelve `ConfigurationAck` seguido de salidas. Un batch inválido deja la
+revisión pendiente y permite retry. La prueba de replay sobre captura
+real estática de 44 comprueba ACK único, Overlay+Engineer+fact con la
+configuración inicial y solo Strategy tras cambiar demanda. Rechaza
+revisión igual o anterior. Rust release 112/112, Clippy, formato, build
+release y `go test ./...` pasan.
+
+Es un ensamblador puro: aún no tiene lector live, pipe productivo,
+writer acotado, FactAck/resync, cache/cadencia de Overlay, políticas de
+fallo ni Go publisher conectado. Por ello R18/R19 y el gate CPU siguen
+pendientes; Go continúa como único owner productivo.

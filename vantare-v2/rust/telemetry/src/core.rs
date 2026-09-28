@@ -1,5 +1,7 @@
 //! Simulator-neutral owned batch and candidate/commit reducer.
 
+pub mod facts;
+
 use std::sync::Arc;
 
 use crate::quality::{Field, Freshness};

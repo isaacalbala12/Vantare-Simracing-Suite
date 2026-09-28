@@ -821,3 +821,14 @@ formato, Clippy y build pasan. El payload sigue limitado a `VehicleFields`
 parcial, el evento es todavía una identidad local fija y faltan observación
 canónica completa, loop de adquisición, productos e IPC productivo. No hay
 paridad de reducer Go/Rust ni gate CPU 50% acreditados.
+
+## 27. Retención ordenada de facts Rust inicial (2026-09-28)
+
+R12 empieza por un historial neutral acotado a 256 facts, con cursor de stream
+y secuencia independiente del snapshot. La inserción por lote rechaza exceso
+sin adelantar el high-water mark. Tras expulsión, un cursor que pide datos
+perdidos recibe `ResyncRequired` con primer y siguiente número; un stream
+ajeno o cursor futuro se rechaza. Dos pruebas cubren orden, replay, expulsión,
+resync y rechazo transaccional. Rust release 50/50, formato y Clippy pasan.
+Todavía no genera los ocho tipos de `SessionFact`, no coordina identidad o
+stint, no se conecta al reducer/IPC ni demuestra paridad de facts Go.

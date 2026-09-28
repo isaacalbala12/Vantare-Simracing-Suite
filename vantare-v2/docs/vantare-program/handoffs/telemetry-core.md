@@ -1,5 +1,13 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — retención ordenada de facts Rust inicial (2026-09-28)
+
+R12 añade un historial neutral de hasta 256 facts por stream, con secuencia
+independiente y resync explícito cuando se perdió el tramo solicitado. Rechaza
+lotes excesivos, cursores futuros y streams ajenos sin avanzar estado. Rust
+release 50/50, formato y Clippy pasan. Falta generar hechos de sesión,
+identidad/stint, integración con reducer/IPC y paridad Go. Plan sección 27.
+
 ## ISA-1403 — núcleo neutral y pipeline LMU candidato (2026-09-28)
 
 R11 separa `core::Batch<T>` y `Reducer<T>` del simulador. El pipeline LMU

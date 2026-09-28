@@ -1,0 +1,55 @@
+# VAN-776 · host Go y UI nativa de investigación
+
+Este corte comprueba una frontera concreta: una ventana Qt Quick recibe el
+contrato Overlay V2 de Go por SSE sin iniciar Wails ni WebView2. No cambia el
+runtime de Vantare ni selecciona el stack final. Continúa la [comparación
+VAN-775](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1409).
+
+## Datos y arquitectura del corte
+
+`host` verifica el SHA-256 de `testdata/lmu-fixture.bin`, captura LMU real
+sanitizada. Usa el parser LMU con evidencia de build 1.3.0, Fusion,
+BatchMapper, Reducer, Pipeline, CachedProjector y el servidor SSE de producción.
+Publica una sola proyección observada de 44 coches. No inventa ticks ni simula
+telemetría viva: el estado `live` describe la captura original, no una sesión
+LMU activa en este equipo.
+
+`qtquick` consume `GET /telemetry/overlay-v2/projection` solo por loopback y
+muestra sesión, instrumentos, 44 filas de Standings y Relative. El overlay usa
+una ventana transparente sin foco y click-through. El host y las ventanas son
+procesos separados para que la futura medición incluya el coste de cada uno.
+
+## Reproducción Windows
+
+Desde `vantare-v2/`, con Go, CMake, MinGW y Qt 6.10 disponibles:
+
+```powershell
+go test ./tools/native-ui/host ./internal/telemetry/drivers/lmu
+go run ./tools/native-ui/host -fixture testdata/lmu-fixture.bin
+```
+
+El host imprime su URL local con puerto asignado. En otra terminal:
+
+```powershell
+cmake -S tools/native-ui/qtquick -B tools/native-ui/out/qtquick -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="<ruta a Qt 6.10/mingw_64>"
+cmake --build tools/native-ui/out/qtquick -j 4
+tools/native-ui/out/qtquick/vantare-native-go-qt.exe --endpoint "http://127.0.0.1:<puerto>/telemetry/overlay-v2/projection" --mode control --expect-rows 44
+tools/native-ui/out/qtquick/vantare-native-go-qt.exe --endpoint "http://127.0.0.1:<puerto>/telemetry/overlay-v2/projection" --mode overlay --expect-rows 44
+```
+
+`--expect-rows 44` termina con código 0 al recibir las 44 filas de Go, o 6
+tras cinco segundos si no llegan. `--screenshot <ruta.png>` guarda solo la
+ventana Qt para inspección visual; [control](evidence/qt-go-control.png) y
+[overlay](evidence/qt-go-overlay.png) son capturas de este corte. El píxel de
+esquina del overlay conserva alpha 0 en la captura propia; falta certificar
+composición y captura física en OBS.
+
+## Límites y siguiente prueba
+
+La captura fija no prueba actualización continua, reconexión semántica,
+rendimiento de Vantare completa ni ahorro del 20 %. Faltan cliente Rust/Slint
+equivalente, una pantalla de edición compleja, comparación con baseline Wails
+al mismo trabajo, DPI físico, OBS, empaquetado y licencia de módulos Qt. El
+actual cliente Qt reintenta la conexión, pero esa conducta aún no tiene prueba
+de interrupción y reanudación. No se debe usar esta escena para elegir
+arquitectura productiva.

@@ -1,6 +1,7 @@
 //! Product-neutral derivations from committed observed fields.
 
 pub mod controls;
+pub mod delta;
 pub mod fuel;
 pub mod gaps;
 

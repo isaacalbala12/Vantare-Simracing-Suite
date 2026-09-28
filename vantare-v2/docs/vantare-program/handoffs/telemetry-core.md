@@ -1,5 +1,13 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — delta Rust con oráculo temporal Go (2026-09-28)
+
+R13d prepara/commitea delta nativo y de vuelta en Rust. La traza real LMU 1.4
+de 1.846 muestras coincide muestra a muestra con el tracker Go mediante un
+oráculo fijado y verificado por test Go. Rust debug/release 81/81, formato,
+Clippy, build y `go test ./...` pasan. Plan sección 37: faltan replay temporal
+SHM+REST 44/104, proyecciones/IPC, prueba física y 50% CPU.
+
 ## ISA-1403 — consumo de combustible Rust candidato (2026-09-28)
 
 R13e calcula consumo medido por vuelta con media acotada e historial separado;

@@ -943,3 +943,22 @@ boxes, refuel, salto de vuelta, ausencia del jugador y reset de stint; la
 fixture SHM de 44 prueba preparación/publicación inicial. Rust release 75/75,
 formato, Clippy y build release pasan. R13d delta y la paridad temporal siguen
 pendientes, por lo que R13e tampoco queda certificado como salida de producto.
+
+## 37. Delta de vuelta Rust y oráculo temporal Go (2026-09-28)
+
+R13d incorpora el tracker neutral de delta del jugador: referencia de mejor
+vuelta completa, interpolación por distancia, delta nativo observado, vuelta
+previa, historial acotado y tolerancia al orden de reset de distancia/número
+de vuelta de LMU. Se prepara como candidato y se confirma con el lote. El
+oráculo estático `rust/telemetry/testdata/delta-go-oracle-v1.json` se obtuvo
+del tracker Go sobre la traza sanitizada LMU 1.4 de 1.846 muestras (SHA-256
+`d8f01beee1380d771e5e29de5dfa9e5de72517e1bf447bc14881ee44df7fe938`).
+El oráculo tiene SHA-256
+`b54aa64b726b59f84608596420dd0629a53185c67f1b404e558f951af848d9c0`.
+Un test Go verifica que el oráculo sigue coincidiendo con su tracker; un test
+Rust compara cada muestra en frescura, presencia/valor de delta, referencia,
+ventana pública, mejor sesión, vuelta previa y mejor personal. Tests Rust
+debug/release 81/81, formato, Clippy y build release pasan; `go test ./...`
+pasa. Esta prueba cubre la derivación sobre una traza real, no un replay
+temporal SHM+REST de 44/104 ni la salida productiva. Continúan pendientes
+proyecciones/IPC, 104 real, sesión física y gate CPU causal del 50%.

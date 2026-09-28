@@ -34,6 +34,8 @@ pub struct Pipeline {
     gaps: Option<derive::gaps::GapSet>,
     fuel_tracker: derive::fuel::FuelTracker,
     fuel_usage: Option<derive::fuel::FuelUsage>,
+    delta_tracker: derive::delta::SelfDeltaTracker,
+    delta: Option<derive::delta::SelfDelta>,
 }
 
 pub struct PipelineCandidate {
@@ -45,6 +47,8 @@ pub struct PipelineCandidate {
     gaps: derive::gaps::GapSet,
     fuel_tracker: derive::fuel::FuelTracker,
     fuel_usage: derive::fuel::FuelUsage,
+    delta_tracker: derive::delta::SelfDeltaTracker,
+    delta: derive::delta::SelfDelta,
 }
 
 impl Pipeline {
@@ -60,6 +64,8 @@ impl Pipeline {
             gaps: None,
             fuel_tracker: derive::fuel::FuelTracker::default(),
             fuel_usage: None,
+            delta_tracker: derive::delta::SelfDeltaTracker::default(),
+            delta: None,
         })
     }
 
@@ -173,6 +179,7 @@ impl Pipeline {
             &reduced.batch().state.track_length,
         );
         let (fuel_tracker, fuel_usage) = self.fuel_tracker.prepare(reduced.batch());
+        let (delta_tracker, delta) = self.delta_tracker.prepare(reduced.batch(), occurred_utc_ns);
         self.validate_fact_batch(session.facts())?;
         Ok(PipelineCandidate {
             mapper,
@@ -183,6 +190,8 @@ impl Pipeline {
             gaps,
             fuel_tracker,
             fuel_usage,
+            delta_tracker,
+            delta,
         })
     }
 
@@ -210,6 +219,8 @@ impl Pipeline {
         self.gaps = Some(candidate.gaps);
         self.fuel_tracker = candidate.fuel_tracker;
         self.fuel_usage = Some(candidate.fuel_usage);
+        self.delta_tracker = candidate.delta_tracker;
+        self.delta = Some(candidate.delta);
         Ok(self.reducer.current().expect("commit installed a batch"))
     }
 
@@ -231,6 +242,10 @@ impl Pipeline {
 
     pub fn fuel_usage(&self) -> Option<&derive::fuel::FuelUsage> {
         self.fuel_usage.as_ref()
+    }
+
+    pub fn delta(&self) -> Option<&derive::delta::SelfDelta> {
+        self.delta.as_ref()
     }
 
     pub fn facts(&self) -> &[SessionFact] {
@@ -330,6 +345,10 @@ impl PipelineCandidate {
 
     pub fn fuel_usage(&self) -> &derive::fuel::FuelUsage {
         &self.fuel_usage
+    }
+
+    pub fn delta(&self) -> &derive::delta::SelfDelta {
+        &self.delta
     }
 
     pub fn facts(&self) -> &[SessionFact] {
@@ -749,6 +768,7 @@ mod tests {
         assert!(pipeline.gaps().is_none());
         assert!(candidate.fuel_usage().history.is_empty());
         assert!(pipeline.fuel_usage().is_none());
+        assert!(pipeline.delta().is_none());
         for vehicle in &candidate.batch().state.vehicles {
             assert_eq!(
                 vehicle.driver_id,
@@ -788,6 +808,7 @@ mod tests {
         pipeline.commit(candidate).unwrap();
         assert_eq!(pipeline.gaps().unwrap().vehicles.len(), 44);
         assert!(pipeline.fuel_usage().is_some());
+        assert!(pipeline.delta().is_some());
         assert!(
             pipeline
                 .current()

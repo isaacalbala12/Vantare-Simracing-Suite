@@ -50,6 +50,7 @@ func main() {
 	mode := flag.String("mode", "control", "control, editor or overlay")
 	autoClose := flag.Duration("auto-close", 0, "close automatically after this duration")
 	expectRows := flag.Int("expect-rows", 0, "require this many Go standings rows before closing")
+	expectSnapshots := flag.Int("expect-snapshots", 1, "require this many distinct Go revisions before closing")
 	debugPort := flag.Uint("debug-port", 0, "optional loopback CDP port for visual trial inspection")
 	flag.Parse()
 
@@ -63,6 +64,9 @@ func main() {
 	if *debugPort > 65535 {
 		log.Fatal("debug port must be between 0 and 65535")
 	}
+	if *expectSnapshots < 1 || (*expectSnapshots > 1 && *expectRows < 1) {
+		log.Fatal("-expect-snapshots must be positive and requires -expect-rows")
+	}
 	public, err := fs.Sub(assets, "assets/dist")
 	if err != nil {
 		log.Fatalf("build Wails trial frontend before launch: %v", err)
@@ -75,7 +79,7 @@ func main() {
 		log.Printf("projection request: %s", request.URL)
 		proxy.ServeHTTP(writer, request)
 	})
-	ready := make(chan int, 1)
+	ready := make(chan int, 16)
 	mux.HandleFunc("/native-trial/ready", func(writer http.ResponseWriter, request *http.Request) {
 		log.Printf("ready request: %s", request.Method)
 		if request.Method != http.MethodPost {
@@ -148,12 +152,25 @@ func main() {
 	var matched atomic.Bool
 	if *expectRows > 0 {
 		go func() {
-			select {
-			case rows := <-ready:
-				matched.Store(rows == *expectRows)
-			case <-time.After(10 * time.Second):
-				log.Printf("timed out waiting for %d Go rows in WebView", *expectRows)
+			timer := time.NewTimer(15 * time.Second)
+			defer timer.Stop()
+			seen := 0
+			for seen < *expectSnapshots {
+				select {
+				case rows := <-ready:
+					if rows != *expectRows {
+						log.Printf("WebView rendered %d rows, want %d", rows, *expectRows)
+						window.Close()
+						return
+					}
+					seen++
+				case <-timer.C:
+					log.Printf("timed out waiting for %d distinct Go snapshots", *expectSnapshots)
+					window.Close()
+					return
+				}
 			}
+			matched.Store(true)
 			window.Close()
 		}()
 	}

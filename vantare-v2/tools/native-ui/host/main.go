@@ -131,13 +131,20 @@ func newHandler(update overlayv2.UpdateV2) (http.Handler, func(), error) {
 func main() {
 	fixturePath := flag.String("fixture", "testdata/lmu-fixture.bin", "path to the pinned sanitized LMU capture")
 	live := flag.Bool("live", false, "read the active LMU session through the production Go driver")
+	recorded := flag.Bool("recorded", false, "replay three pinned, sanitized LMU 1.4.0.0 frames")
+	fixtureRoot := flag.String("fixture-root", "testdata", "directory containing pinned LMU captures for recorded replay")
 	port := flag.Uint("port", 0, "loopback port; 0 assigns an available port")
 	flag.Parse()
+	if *live && *recorded {
+		log.Fatal("-live and -recorded cannot be combined")
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 	var err error
 	if *live {
 		err = runLive(ctx, *port)
+	} else if *recorded {
+		err = runRecorded(ctx, *fixtureRoot, *port)
 	} else {
 		err = run(ctx, *fixturePath, *port)
 	}

@@ -116,6 +116,17 @@ El HEAD de solo documentación `09473af6` pasó calidad y seguridad, pero el
 gate bloqueante remoto falló en dos tests de `voiceinput` sin archivos Go
 modificados; esos tests pasaron localmente de forma dirigida. Se comprobará
 de nuevo el nuevo HEAD, sin dar la CI por verde de antemano.
+El siguiente HEAD `dc8279c1` pasó todos los gates remotos: bloqueo, calidad,
+seguridad y ruta de ramas. Con el mismo host aislado se añadió un replay
+acotado de tres capturas LMU 1.4.0.0 reales, sanitizadas y fijadas por SHA:
+pre-pit, pit y salida. Un test Go confirmó la secuencia de proyección
+`track → pit → track` y el rechazo de un frame alterado. Control, editor y
+overlay Qt/Slint/Wails recibieron tres snapshots en Windows: nueve salidas
+con código 0, registradas en `tools/native-ui/evidence/recorded-update-results.csv`.
+El intervalo de cuatro segundos es del ensayo, no del simulador; las ventanas
+no prueban cada cambio visual ni el coste bajo telemetría viva. La CI del
+próximo HEAD todavía no está verificada. LMU 1.4.2.0 no se admitió ni se
+interrumpió la sesión para obtener el menú.
 
 Continúa la comparación [#1404](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1409), todavía en PR borrador. La rama
 `vantareapp/isa-1410-native-go-product-trial` parte de

@@ -258,6 +258,35 @@ Este ensayo no usa LMU 1.4.2.0 ni datos que cambien. El siguiente gate de
 rendimiento sigue siendo la comparación con proyección viva, el producto
 completo y una fuente GPU adicional que no dependa de los mismos contadores.
 
+### Actualización de las tres UI con capturas reales · 28/09/2026
+
+El modo aislado `host -recorded` usa tres frames distintos de LMU 1.4.0.0
+capturados y sanitizados: pre-pit en pista, pit y salida. Verifica cada SHA-256
+antes de arrancar el servidor, exige evidencia exacta de build y pasa los
+frames por Fusion, BatchMapper, Reducer, Pipeline, CachedProjector y SSE. La
+espera de cuatro segundos **solo pauta el replay**: no representa la cadencia
+original de LMU, una sesión viva ni una carga suficiente para comparar CPU.
+El test Go comprueba que la proyección cambia `track → pit → track` y rechaza
+una captura alterada.
+
+El [ensayo Windows](inspect-recorded-updates-windows.ps1) abrió cada candidato
+en control, editor y overlay. Los nueve procesos terminaron con código 0 tras
+recibir tres snapshots con una fila. [Resultados](evidence/recorded-update-results.csv).
+Qt y Slint cuentan eventos válidos; la referencia Wails cuenta revisiones
+distintas. La prueba Go demuestra que el origen contiene cambios reales, pero
+el código de salida de la ventana no verifica cada píxel ni que los tres
+clientes muestren visualmente el estado pit. Esta prueba tampoco habilita
+LMU 1.4.2.0 en producción.
+
+Con los ejecutables Release de Qt y Slint, y el frontend Wails del ensayo
+compilados como se indica arriba, se reproduce así desde `vantare-v2/`:
+
+```powershell
+go test ./tools/native-ui/host -run TestRecordedLMU -count=1
+go build -o tools/native-ui/out/host-recorded.exe ./tools/native-ui/host
+./tools/native-ui/inspect-recorded-updates-windows.ps1 -Mode editor
+```
+
 ## Licencia sin coste de licencia
 
 El prototipo Qt enlaza Core, Gui, Network, Quick y QuickControls2. La

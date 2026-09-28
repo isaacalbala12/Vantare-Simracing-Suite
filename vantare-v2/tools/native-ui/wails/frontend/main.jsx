@@ -51,7 +51,7 @@ function Editor({rows, relative}) {
 function App() {
   const [update, setUpdate] = useState(null);
   const [status, setStatus] = useState('connecting');
-  const reported = useRef(false);
+  const reported = useRef(new Set());
   useEffect(() => {
     const stream = new EventSource('/telemetry/overlay-v2/projection');
     stream.addEventListener('telemetry:overlay-v2:snapshot', event => {
@@ -71,8 +71,9 @@ function App() {
   const player = frame.player || {};
   const session = frame.session || {};
   useEffect(() => {
-    if (reported.current || !update || !new URLSearchParams(location.search).has('expectRows')) return;
-    reported.current = true;
+    if (!update || !new URLSearchParams(location.search).has('expectRows') ||
+        !Number.isInteger(update.revision) || reported.current.has(update.revision)) return;
+    reported.current.add(update.revision);
     requestAnimationFrame(() => fetch('/native-trial/ready', {
       method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({rows: rows.length}),
     }));

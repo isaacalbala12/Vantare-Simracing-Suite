@@ -20,8 +20,13 @@ reiniciarlo y recibir un segundo snapshot. Sigue pendiente telemetría viva.
 La documentación del corte identifica las opciones sin pago de Qt LGPLv3 y
 Slint Community con atribución; ambas requieren auditoría de licencia y
 empaquetado antes de distribuir Vantare, sin dar por elegida ninguna.
+Qt Quick y Rust/Slint ahora incluyen modo editor local con inspector de título,
+filas, opacidad, acento y Relative sobre la misma captura Go. La captura Qt de
+editor está revisada en `tools/native-ui/evidence/qt-go-editor.png`; Rust pasó
+compilación y smoke de 44 filas, pero falta inspección visual. Este borrador no
+persiste ni controla un overlay de producto.
 La tarea [VAN-776](https://app.notion.com/p/3e9e51695c65810fb2bdd73aae4b555d?pvs=204)
-conserva el alcance y pendientes: pantalla de edición compleja,
+conserva el alcance y pendientes: interacción y persistencia de editor,
 actualización de datos, OBS y baseline de proceso completo. No se eligió
 stack, cambió el runtime productivo ni promovió ningún canal.
 

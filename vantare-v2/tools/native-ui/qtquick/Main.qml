@@ -5,10 +5,17 @@ import QtQuick.Layouts
 ApplicationWindow {
     id: root
     required property bool overlayMode
-    width: overlayMode ? 520 : 1060
+    required property bool editorMode
+    property string previewTitle: "STANDINGS"
+    property int previewRows: 8
+    property int previewOpacity: 90
+    property bool previewRelative: true
+    property string previewAccent: "Turquesa"
+    readonly property color editorAccent: previewAccent === "Ámbar" ? "#efb955" : (previewAccent === "Blanco" ? "#e8f0f4" : "#5fe1ee")
+    width: overlayMode ? 520 : (editorMode ? 1280 : 1060)
     height: overlayMode ? 500 : 720
     visible: false
-    title: overlayMode ? "Vantare Native Trial Overlay" : "Vantare Native Trial Control"
+    title: overlayMode ? "Vantare Native Trial Overlay" : (editorMode ? "Vantare Native Trial Editor" : "Vantare Native Trial Control")
     color: overlayMode ? "transparent" : "#090d13"
     readonly property color ink: "#e8f0f4"
     readonly property color muted: "#91a6b3"
@@ -64,6 +71,101 @@ ApplicationWindow {
                         Label { text: modelData.classId || "—"; color: root.muted; Layout.preferredWidth: 100 }
                         Label { text: modelData.laps; color: root.muted; Layout.preferredWidth: 35; horizontalAlignment: Text.AlignRight }
                     }
+                }
+            }
+        }
+    }
+
+    component EditorPanel: Rectangle {
+        color: "#15212b"
+        radius: 8
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 7
+            Label { text: "EDITOR · BORRADOR LOCAL"; color: root.accent; font.bold: true; Layout.fillWidth: true }
+            Label { text: "Título del overlay"; color: root.muted }
+            TextField {
+                id: titleField
+                text: root.previewTitle
+                maximumLength: 32
+                Layout.fillWidth: true
+                onTextEdited: root.previewTitle = text
+            }
+            Label { text: "Filas visibles: " + root.previewRows; color: root.muted }
+            SpinBox {
+                from: 4; to: 10; value: root.previewRows
+                Layout.fillWidth: true
+                onValueModified: root.previewRows = value
+            }
+            Label { text: "Opacidad: " + root.previewOpacity + "%"; color: root.muted }
+            Slider {
+                from: 40; to: 100; stepSize: 5; value: root.previewOpacity
+                Layout.fillWidth: true
+                onMoved: root.previewOpacity = Math.round(value)
+            }
+            Label { text: "Color de acento"; color: root.muted }
+            ComboBox {
+                model: ["Turquesa", "Ámbar", "Blanco"]
+                currentIndex: model.indexOf(root.previewAccent)
+                Layout.fillWidth: true
+                onActivated: root.previewAccent = currentText
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                Switch {
+                    checked: root.previewRelative
+                    onToggled: root.previewRelative = checked
+                }
+                Label { text: "Mostrar Relative"; color: root.muted; Layout.fillWidth: true }
+            }
+            Label { text: "VISTA PREVIA"; color: root.muted; font.bold: true }
+            Rectangle {
+                color: "#090d13"
+                radius: 6
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                clip: true
+                Column {
+                    anchors.fill: parent
+                    anchors.margins: 9
+                    spacing: 2
+                    opacity: root.previewOpacity / 100
+                    Label { text: root.previewTitle; color: root.editorAccent; font.bold: true }
+                    Repeater {
+                        model: feed.standings.slice(0, root.previewRows)
+                        delegate: Label {
+                            required property var modelData
+                            width: parent.width
+                            height: 17
+                            text: modelData.position + "   " + (modelData.driver || modelData.id)
+                            color: root.ink
+                            elide: Text.ElideRight
+                        }
+                    }
+                    Label {
+                        visible: root.previewRelative
+                        text: "RELATIVE · " + feed.relative.length + " coches"
+                        color: root.editorAccent
+                    }
+                }
+            }
+            Button {
+                id: resetButton
+                text: "Restablecer borrador"
+                Layout.fillWidth: true
+                contentItem: Label {
+                    text: resetButton.text
+                    color: "#101820"
+                    horizontalAlignment: Text.AlignHCenter
+                    verticalAlignment: Text.AlignVCenter
+                }
+                onClicked: {
+                    root.previewTitle = "STANDINGS"
+                    root.previewRows = 8
+                    root.previewOpacity = 90
+                    root.previewRelative = true
+                    root.previewAccent = "Turquesa"
                 }
             }
         }
@@ -144,7 +246,7 @@ ApplicationWindow {
                 spacing: 12
                 StandingsList { Layout.fillWidth: true; Layout.fillHeight: true }
                 Rectangle {
-                    Layout.preferredWidth: 290
+                    Layout.preferredWidth: root.editorMode ? 250 : 290
                     Layout.fillHeight: true
                     color: "#15212b"
                     radius: 8
@@ -168,6 +270,11 @@ ApplicationWindow {
                         }
                         Label { text: "Sesión: " + feed.sessionId; color: root.muted; elide: Text.ElideMiddle; Layout.fillWidth: true }
                     }
+                }
+                EditorPanel {
+                    visible: root.editorMode
+                    Layout.preferredWidth: root.editorMode ? 300 : 0
+                    Layout.fillHeight: true
                 }
             }
         }

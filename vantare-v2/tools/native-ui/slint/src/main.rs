@@ -17,6 +17,7 @@ const MAX_EVENT: usize = 4 * 1024 * 1024;
 struct Options {
     address: SocketAddr,
     overlay: bool,
+    editor: bool,
     expected: Option<usize>,
     expected_snapshots: usize,
     close_ms: Option<u64>,
@@ -24,7 +25,8 @@ struct Options {
 
 fn options() -> Result<Options, String> {
     let args: Vec<_> = env::args().skip(1).collect();
-    let (mut endpoint, mut overlay, mut expected, mut close_ms) = (None, false, None, None);
+    let (mut endpoint, mut overlay, mut editor, mut expected, mut close_ms) =
+        (None, false, false, None, None);
     let mut expected_snapshots = 1;
     let mut i = 0;
     while i < args.len() {
@@ -35,11 +37,12 @@ fn options() -> Result<Options, String> {
             }
             "--mode" => {
                 i += 1;
-                overlay = match args.get(i).map(String::as_str) {
-                    Some("overlay") => true,
-                    Some("control") => false,
+                match args.get(i).map(String::as_str) {
+                    Some("overlay") => overlay = true,
+                    Some("editor") => editor = true,
+                    Some("control") => {}
                     _ => return Err("invalid --mode".into()),
-                };
+                }
             }
             "--expect-rows" => {
                 i += 1;
@@ -69,7 +72,7 @@ fn options() -> Result<Options, String> {
             }
             "--help" | "-h" => {
                 println!(
-                    "--endpoint http://127.0.0.1:<port>{ROUTE} [--mode control|overlay] [--expect-rows 44] [--expect-snapshots N] [--auto-close-ms N]"
+                    "--endpoint http://127.0.0.1:<port>{ROUTE} [--mode control|editor|overlay] [--expect-rows 44] [--expect-snapshots N] [--auto-close-ms N]"
                 );
                 std::process::exit(0);
             }
@@ -97,6 +100,7 @@ fn options() -> Result<Options, String> {
     Ok(Options {
         address,
         overlay,
+        editor,
         expected,
         expected_snapshots,
         close_ms,
@@ -294,6 +298,7 @@ fn run() -> Result<(), String> {
     let opt = options()?;
     let ui = MainWindow::new().map_err(|e| e.to_string())?;
     ui.set_overlay_mode(opt.overlay);
+    ui.set_editor_mode(opt.editor);
     if opt.overlay {
         overlay_window();
     }

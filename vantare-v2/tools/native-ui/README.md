@@ -15,7 +15,11 @@ telemetría viva: el estado `live` describe la captura original, no una sesión
 LMU activa en este equipo.
 
 `qtquick` y `slint` consumen `GET /telemetry/overlay-v2/projection` solo por
-loopback y muestran sesión, instrumentos, 44 filas de Standings y Relative. Los overlays usan
+loopback y muestran sesión, instrumentos, 44 filas de Standings y Relative. El
+modo `editor` añade un inspector nativo con título, número de filas, opacidad,
+acento y visibilidad de Relative, además de una vista previa alimentada por
+la misma captura Go. Es un borrador local sin persistencia ni efecto sobre el
+overlay separado. Los overlays usan
 una ventana transparente sin foco y click-through. El host y las ventanas son
 procesos separados para que la futura medición incluya el coste de cada uno.
 
@@ -36,13 +40,15 @@ la ventana antes que el host en ese mismo puerto. En otra terminal:
 cmake -S tools/native-ui/qtquick -B tools/native-ui/out/qtquick -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="<ruta a Qt 6.10/mingw_64>"
 cmake --build tools/native-ui/out/qtquick -j 4
 tools/native-ui/out/qtquick/vantare-native-go-qt.exe --endpoint "http://127.0.0.1:<puerto>/telemetry/overlay-v2/projection" --mode control --expect-rows 44
+tools/native-ui/out/qtquick/vantare-native-go-qt.exe --endpoint "http://127.0.0.1:<puerto>/telemetry/overlay-v2/projection" --mode editor --expect-rows 44
 tools/native-ui/out/qtquick/vantare-native-go-qt.exe --endpoint "http://127.0.0.1:<puerto>/telemetry/overlay-v2/projection" --mode overlay --expect-rows 44
 ```
 
 `--expect-rows 44` termina con código 0 al recibir las 44 filas de Go, o 6
 tras cinco segundos si no llegan. `--screenshot <ruta.png>` guarda solo la
 ventana Qt para inspección visual; [control](evidence/qt-go-control.png) y
-[overlay](evidence/qt-go-overlay.png) son capturas de este corte. El píxel de
+[overlay](evidence/qt-go-overlay.png) y
+[editor](evidence/qt-go-editor.png) son capturas de este corte. El píxel de
 esquina del overlay conserva alpha 0 en la captura propia; falta certificar
 composición y captura física en OBS.
 
@@ -51,6 +57,7 @@ Con Rust estable y Cargo, en otra terminal con el mismo host Go activo:
 ```powershell
 cargo build --release --manifest-path tools/native-ui/slint/Cargo.toml
 tools/native-ui/slint/target/release/vantare-native-go-slint.exe --endpoint "http://127.0.0.1:<puerto>/telemetry/overlay-v2/projection" --mode control --expect-rows 44
+tools/native-ui/slint/target/release/vantare-native-go-slint.exe --endpoint "http://127.0.0.1:<puerto>/telemetry/overlay-v2/projection" --mode editor --expect-rows 44
 tools/native-ui/slint/target/release/vantare-native-go-slint.exe --endpoint "http://127.0.0.1:<puerto>/telemetry/overlay-v2/projection" --mode overlay --expect-rows 44
 ```
 
@@ -87,8 +94,10 @@ segundo snapshot. En este modo el timeout es de quince segundos.
 
 ## Límites y siguiente prueba
 
-La captura fija no prueba actualización continua, reconexión semántica,
-rendimiento de Vantare completa ni ahorro del 20 %. Faltan una pantalla de edición compleja, comparación con baseline Wails
+La captura fija no prueba actualización continua,
+rendimiento de Vantare completa ni ahorro del 20 %. El editor prueba controles
+y vista previa locales; faltan interacción y persistencia de producto,
+comparación con baseline Wails
 al mismo trabajo, DPI físico, OBS, empaquetado y licencia de módulos Qt. El
 clientes reintentan la conexión: ambas variantes recibieron 44 filas cuando
 arrancaron antes que el host y volvieron a recibirlas tras reiniciarlo. Falta

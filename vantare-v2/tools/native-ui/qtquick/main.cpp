@@ -142,7 +142,7 @@ int main(int argc, char **argv) {
     QCommandLineParser parser;
     parser.addHelpOption();
     parser.addOption({"endpoint", "Loopback Overlay V2 SSE endpoint", "url"});
-    parser.addOption({"mode", "control or overlay", "mode", "control"});
+    parser.addOption({"mode", "control, editor or overlay", "mode", "control"});
     parser.addOption({"auto-close-ms", "Close automatically after milliseconds", "ms", "0"});
     parser.addOption({"screenshot", "Save this Qt window as a PNG after 1200 ms", "path"});
     parser.addOption({"expect-rows", "Exit successfully after receiving this many Go standings rows", "count", "0"});
@@ -156,11 +156,12 @@ int main(int argc, char **argv) {
         return 2;
     }
     const bool overlay = parser.value("mode") == QStringLiteral("overlay");
-    if (!overlay && parser.value("mode") != QStringLiteral("control")) return 2;
+    const bool editor = parser.value("mode") == QStringLiteral("editor");
+    if (!overlay && !editor && parser.value("mode") != QStringLiteral("control")) return 2;
     OverlayFeed feed(endpoint);
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty(QStringLiteral("feed"), &feed);
-    engine.setInitialProperties({{QStringLiteral("overlayMode"), overlay}});
+    engine.setInitialProperties({{QStringLiteral("overlayMode"), overlay}, {QStringLiteral("editorMode"), editor}});
     engine.loadFromModule(QStringLiteral("Vantare.NativeGoTrial"), QStringLiteral("Main"));
     if (engine.rootObjects().isEmpty()) return 3;
     auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());

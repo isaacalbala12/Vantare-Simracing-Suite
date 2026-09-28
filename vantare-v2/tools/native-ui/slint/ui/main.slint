@@ -1,4 +1,4 @@
-import { ListView } from "std-widgets.slint";
+import { Button, CheckBox, ComboBox, LineEdit, ListView, Slider } from "std-widgets.slint";
 
 export struct DriverRow {
     position: int,
@@ -33,6 +33,7 @@ component Standings inherits Rectangle {
 
 export component MainWindow inherits Window {
     in property <bool> overlay-mode;
+    in property <bool> editor-mode;
     in property <[DriverRow]> rows;
     in property <[DriverRow]> overlay-rows;
     in property <[RelativeRow]> relative-rows;
@@ -42,8 +43,13 @@ export component MainWindow inherits Window {
     in property <string> rpm: "—";
     in property <string> gear: "—";
     in property <string> session-id: "";
-    title: overlay-mode ? "Vantare Native Trial Slint Overlay" : "Vantare Native Trial Slint Control";
-    width: overlay-mode ? 520px : 1060px;
+    in-out property <string> preview-title: "STANDINGS";
+    in-out property <int> preview-rows: 8;
+    in-out property <int> preview-opacity: 90;
+    in-out property <bool> preview-relative: true;
+    in-out property <string> preview-accent: "Turquesa";
+    title: overlay-mode ? "Vantare Native Trial Slint Overlay" : (editor-mode ? "Vantare Native Trial Slint Editor" : "Vantare Native Trial Slint Control");
+    width: overlay-mode ? 520px : (editor-mode ? 1280px : 1060px);
     height: overlay-mode ? 500px : 720px;
     no-frame: overlay-mode;
     background: overlay-mode ? transparent : #090d13;
@@ -74,14 +80,83 @@ export component MainWindow inherits Window {
         Text { x: 12px; y: 13px; text: "MOTOR · MARCHA"; color: #91a6b3; font-size: 11px; }
         Text { x: 12px; y: 43px; text: root.rpm + "  ·  " + root.gear; color: #e8f0f4; font-size: 20px; font-weight: 700; }
     }
-    if !overlay-mode: Standings { x: 18px; y: 168px; width: 722px; height: 534px; rows: root.rows; }
+    if !overlay-mode: Standings { x: 18px; y: 168px; width: editor-mode ? 650px : 722px; height: 534px; rows: root.rows; }
     if !overlay-mode: Rectangle {
-        x: 754px; y: 168px; width: 288px; height: 534px; background: #15212b; border-radius: 8px;
+        x: editor-mode ? 682px : 754px; y: 168px; width: editor-mode ? 266px : 288px; height: 534px; background: #15212b; border-radius: 8px;
         Text { x: 12px; y: 12px; text: "RELATIVE"; color: #5fe1ee; font-weight: 700; }
         ListView {
             x: 12px; y: 43px; width: parent.width - 24px; height: parent.height - 77px;
             for row in root.relative-rows: Text { height: 28px; text: row.position + "  " + row.driver; color: #e8f0f4; }
         }
         Text { x: 12px; y: parent.height - 25px; width: parent.width - 24px; text: "Sesión: " + root.session-id; color: #91a6b3; overflow: elide; }
+    }
+    if editor-mode: Rectangle {
+        x: 962px; y: 168px; width: 300px; height: 534px; background: #15212b; border-radius: 8px;
+        Text { x: 12px; y: 12px; text: "EDITOR · BORRADOR LOCAL"; color: #5fe1ee; font-weight: 700; }
+        Text { x: 12px; y: 39px; text: "Título del overlay"; color: #91a6b3; }
+        LineEdit {
+            x: 12px; y: 56px; width: parent.width - 24px; height: 30px;
+            text: root.preview-title;
+            edited(value) => { root.preview-title = value; }
+        }
+        Text { x: 12px; y: 96px; text: "Filas visibles: " + root.preview-rows; color: #91a6b3; }
+        Slider {
+            x: 12px; y: 113px; width: parent.width - 24px; height: 27px;
+            minimum: 4; maximum: 10; step: 1; value: root.preview-rows;
+            changed(value) => { root.preview-rows = Math.round(value); }
+        }
+        Text { x: 12px; y: 148px; text: "Opacidad: " + root.preview-opacity + "%"; color: #91a6b3; }
+        Slider {
+            x: 12px; y: 165px; width: parent.width - 24px; height: 27px;
+            minimum: 40; maximum: 100; step: 5; value: root.preview-opacity;
+            changed(value) => { root.preview-opacity = Math.round(value); }
+        }
+        Text { x: 12px; y: 200px; text: "Color de acento"; color: #91a6b3; }
+        ComboBox {
+            x: 12px; y: 218px; width: parent.width - 24px; height: 28px;
+            model: ["Turquesa", "Ámbar", "Blanco"]; current-value: root.preview-accent;
+            selected(value) => { root.preview-accent = value; }
+        }
+        CheckBox {
+            x: 12px; y: 252px; width: parent.width - 24px; height: 27px;
+            text: "Mostrar Relative"; checked: root.preview-relative;
+            toggled() => { root.preview-relative = self.checked; }
+        }
+        Text { x: 12px; y: 284px; text: "VISTA PREVIA"; color: #91a6b3; font-weight: 700; }
+        Rectangle {
+            x: 12px; y: 306px; width: parent.width - 24px; height: 170px;
+            background: #090d13; border-radius: 6px; clip: true;
+            Rectangle {
+                x: 0px; y: 0px; width: parent.width; height: parent.height;
+                background: transparent; opacity: root.preview-opacity / 100;
+                Text {
+                    x: 8px; y: 6px; text: root.preview-title;
+                    color: root.preview-accent == "Ámbar" ? #efb955 : (root.preview-accent == "Blanco" ? #e8f0f4 : #5fe1ee);
+                    font-weight: 700;
+                }
+                for row[index] in root.overlay-rows: Text {
+                    x: 8px; y: 26px + index * 17px; width: parent.width - 16px; height: 17px;
+                    visible: index < root.preview-rows;
+                    text: row.position + "   " + row.driver; color: #e8f0f4; overflow: elide;
+                }
+                Text {
+                    x: 8px; y: 26px + root.preview-rows * 17px;
+                    visible: root.preview-relative;
+                    text: "RELATIVE · " + root.relative-rows.length + " coches";
+                    color: root.preview-accent == "Ámbar" ? #efb955 : (root.preview-accent == "Blanco" ? #e8f0f4 : #5fe1ee);
+                }
+            }
+        }
+        Button {
+            x: 12px; y: 488px; width: parent.width - 24px; height: 32px;
+            text: "Restablecer borrador";
+            clicked() => {
+                root.preview-title = "STANDINGS";
+                root.preview-rows = 8;
+                root.preview-opacity = 90;
+                root.preview-relative = true;
+                root.preview-accent = "Turquesa";
+            }
+        }
     }
 }

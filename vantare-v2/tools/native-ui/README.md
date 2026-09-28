@@ -327,6 +327,19 @@ completo ni una sesión LMU viva.
 
 ## Licencia sin coste de licencia
 
+El paquete Qt reducido local se cotejó ahora contra el mapeo íntegro de
+`windeployqt`: 1.324 archivos de Qt idénticos por SHA-256, el backend
+OpenSSL omitido expresamente y el ejecutable del ensayo adicional (1.325
+archivos y 73,86 MiB en total). El backend Schannel permanece. Qt
+[permite esta exclusión en Windows](https://doc.qt.io/qt-6.10/ssl.html) si no
+se requieren funciones propias de OpenSSL; este ensayo usa solo HTTP local.
+Control, editor y overlay siguieron recibiendo tres snapshots por candidato. El
+[auditor](audit-qt-package-windows.ps1) y el
+[resultado](evidence/qt-trimmed-provenance-results.csv) permiten repetir el
+cotejo. La [matriz de procedencia](evidence/qt-package-license-inventory.md)
+mantiene separados los hashes de la revisión de avisos y obligaciones que
+faltan antes de distribuir.
+
 El prototipo Qt enlaza Core, Gui, Network, Quick y QuickControls2. La
 [documentación de Qt 6.10](https://doc.qt.io/qt-6.10/licensing.html) distingue
 los módulos disponibles bajo LGPLv3 de los que solo ofrece bajo GPLv3;
@@ -369,7 +382,7 @@ identificó las 804 imágenes PNG en el SBOM de origen de Qt, todas con opción
 LGPLv3, y rastreó el origen local de las seis DLL. Siguen abiertos los avisos,
 traducciones y condiciones de redistribución de los componentes no Qt. No
 acredita una distribución gratuita conforme a licencia.
-Una carpeta de prueba reducida, sin traducciones, DXC ni OpenGL software,
+La copia de prueba reducida previa, sin traducciones, DXC ni OpenGL software,
 ocupó 73,9 MiB/1.325 archivos; control, editor y overlay recibieron las 44
 filas con Qt/Vulkan fuera del `PATH`. Se revisaron capturas propias del
 [editor](evidence/qt-trimmed-editor.png) y

@@ -119,6 +119,36 @@ por el SBOM dentro de la misma instalación Qt. Los nombres son una pista;
 el hash es la comprobación de identidad. La prueba anterior encontró 83 DLL,
 77 coincidencias exactas y seis sin mapa.
 
+## Cotejo íntegro del paquete reducido · 28/09/2026
+
+Un `windeployqt --dry-run --list mapping` con las mismas opciones del paquete
+reducido enumeró 1.325 destinos. El paquete local incluye 1.324 de ellos y
+omite `tls/qopensslbackend.dll`; añade el ejecutable del ensayo. Esto es una
+**exclusión explícita**, no una copia incompleta accidental: el cliente de
+este ensayo solo abre un endpoint HTTP en loopback y conserva
+`tls/qschannelbackend.dll`. La [documentación de Qt 6.10](https://doc.qt.io/qt-6.10/ssl.html)
+permite distribuir solo Schannel en Windows si no se requieren funciones
+adicionales de OpenSSL. No se ha probado una ruta HTTPS del producto.
+
+El [auditor reproducible](../audit-qt-package-windows.ps1) comprobó ahora
+los 1.325 destinos mapeados: 1.324 tienen fuente y destino existentes con
+SHA-256 idéntico, y la única omisión permitida es el backend OpenSSL. Sin
+`-OmitOpenSSL` el auditor rechaza el paquete. Este contiene 1.325 archivos,
+81 DLL y 77.443.639 bytes (73,86 MiB). El editor volvió a recibir tres
+snapshots del host Go en cada uno de los modos control, editor y overlay
+con capturas reales sanitizadas; Qt, Slint y Wails terminaron con código 0
+en los nueve smokes. [Resultado acotado](qt-trimmed-provenance-results.csv).
+
+```powershell
+./tools/native-ui/audit-qt-package-windows.ps1 -QtRoot '<raíz de Qt 6.10.2/mingw_64>' -OmitOpenSSL
+```
+
+La diferencia frente a los 73,88 MiB antes registrados es el ejecutable
+recompilado después; el inventario de dependencias sigue siendo de 1.325
+archivos. El cotejo demuestra procedencia binaria con una omisión declarada;
+no acredita avisos, licencias de terceros, rutas TLS del producto ni
+funcionamiento en Windows limpio.
+
 ## Gate para una distribución sin pago de licencia Qt
 
 Cerrar el conjunto de ficheros **realmente** distribuido, sus dependencias y

@@ -2,6 +2,16 @@
 
 ## 2026-09-28 · VAN-776 / GitHub #1410 · Host Go nativo aislado
 
+El paquete Qt reducido local se cotejó contra el `windeployqt --dry-run` de
+la misma instalación 6.10.2. De 1.325 destinos mapeados, 1.324 coinciden
+byte a byte con Qt; `tls/qopensslbackend.dll` es la única omisión declarada,
+permitida por Qt para Windows cuando basta Schannel. El ejecutable es el
+único archivo adicional. El paquete actual suma 1.325 archivos, 81 DLL y
+73,86 MiB; control, editor y overlay recibieron de nuevo tres snapshots por
+candidato. Evidencia y límites en
+`tools/native-ui/evidence/qt-trimmed-provenance-results.csv`. Esto no prueba
+HTTPS del producto, no cierra licencias ni avisos, ni acredita Windows limpio.
+
 La referencia Wails del ensayo fallaba al arrancar antes del host Go: el
 proxy devolvía 502 y el `EventSource` quedaba cerrado con cero filas. Se
 reprodujo en la ventana Windows antes de corregirlo. El cliente ahora reabre

@@ -1,8 +1,9 @@
 # VAN-776 · host Go y UI nativa de investigación
 
 Este corte comprueba una frontera concreta: ventanas Qt Quick y Rust/Slint reciben el
-contrato Overlay V2 de Go por SSE sin iniciar Wails ni WebView2. No cambia el
-runtime de Vantare ni selecciona el stack final. Continúa la [comparación
+contrato Overlay V2 de Go por SSE sin iniciar Wails ni WebView2. Una tercera
+ventana Wails/React usa el mismo host y las mismas vistas como referencia local.
+No cambia el runtime de Vantare ni selecciona el stack final. Continúa la [comparación
 VAN-775](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1409).
 
 ## Datos y arquitectura del corte
@@ -21,7 +22,11 @@ acento y visibilidad de Relative, además de una vista previa alimentada por
 la misma captura Go. Es un borrador local sin persistencia ni efecto sobre el
 overlay separado. Los overlays usan
 una ventana transparente sin foco y click-through. El host y las ventanas son
-procesos separados para que la futura medición incluya el coste de cada uno.
+procesos separados para que la medición incluya el coste de cada uno. La
+referencia Wails usa el Wails v3 beta ya presente en el repositorio. Sirve
+React desde un puerto local temporal y retransmite SSE hacia el host Go: el
+servidor de assets embebido de Wails no entregó el primer evento de un stream
+abierto en esta prueba. Este servidor local pertenece solo al ensayo.
 
 ## Reproducción Windows
 
@@ -66,6 +71,48 @@ topmost. La salida 0 confirma el contrato y la carga de 44 filas; no demuestra
 por sí sola paridad visual, transparencia física ni captura en OBS. Con un
 endpoint desconectado, ambos clientes terminan con código 6 tras cinco segundos.
 
+Para reproducir la referencia Wails, primero construye el frontend y después
+el ejecutable Go, con el mismo host de captura en ejecución:
+
+```powershell
+pnpm --dir frontend exec vite build --config ../tools/native-ui/wails/vite.config.mjs
+go test ./tools/native-ui/wails
+go build -o tools/native-ui/out/wails/vantare-native-go-wails.exe ./tools/native-ui/wails
+tools/native-ui/out/wails/vantare-native-go-wails.exe -endpoint "http://127.0.0.1:<puerto>/telemetry/overlay-v2/projection" -mode editor -expect-rows 44
+```
+
+`-mode` admite también `control` y `overlay`; los tres confirmaron 44 filas.
+`-expect-rows` espera hasta diez segundos y devuelve 6 si la vista no confirma
+la recepción de la captura. El modo overlay es una ventana sin marco, superior,
+transparente y click-through por configuración; su composición real y OBS
+siguen pendientes de inspección física.
+
+## Medición local preliminar
+
+Windows 11 25H2, WebView2 153, Go 1.26.4, Qt 6.10.2, Slint 1.18.1. Una sola
+captura fija de 44 coches, sin telemetría que cambie. Ejecutables Release,
+mismo host Go aislado; cada ventana se abrió individualmente y se cerró antes
+de medir la siguiente. El script [`measure-windows.ps1`](measure-windows.ps1)
+cuenta la ventana y todos sus procesos hijos, incluidos los de WebView2;
+después de dos segundos de calentamiento tomó cinco muestras separadas por un
+segundo. El host común consumía 20,6 MiB de working set y 52,3 MiB privados y
+no está incluido en la tabla.
+
+| Vista editor | Working set mediano | Memoria privada mediana | Procesos |
+| --- | ---: | ---: | ---: |
+| Wails/React | 397,2 MiB | 249,2 MiB | 8 |
+| Qt Quick | 91,8 MiB | 87,6 MiB | 2 |
+| Rust/Slint | 109,2 MiB | 239,0 MiB | 2 |
+
+En la misma pasada, control midió 389,2 / 90,1 / 107,5 MiB y overlay
+388,5 / 82,6 / 106,1 MiB de working set para Wails / Qt / Slint,
+respectivamente. Estas son mediciones de una escena pequeña, con una sola
+pasada y sin paridad completa de Vantare. Working set suma páginas compartidas
+entre procesos y no equivale a RAM exclusiva. La CPU en reposo osciló cerca de
+cero y no permite afirmar un ahorro de CPU ni el objetivo del 20 % en la app.
+Faltan carga dinámica, interacción, GPU, picos de inicio, repetición estadística
+y una referencia del producto completo.
+
 ## Licencia sin coste de licencia
 
 El prototipo Qt enlaza Core, Gui, Network, Quick y QuickControls2. La
@@ -97,9 +144,8 @@ segundo snapshot. En este modo el timeout es de quince segundos.
 La captura fija no prueba actualización continua,
 rendimiento de Vantare completa ni ahorro del 20 %. El editor prueba controles
 y vista previa locales; faltan interacción y persistencia de producto,
-comparación con baseline Wails
-al mismo trabajo, DPI físico, OBS, empaquetado y licencia de módulos Qt. El
-clientes reintentan la conexión: ambas variantes recibieron 44 filas cuando
+DPI físico, OBS, empaquetado y licencia de módulos Qt. Los
+clientes nativos reintentan la conexión: ambas variantes recibieron 44 filas cuando
 arrancaron antes que el host y volvieron a recibirlas tras reiniciarlo. Falta
 probar cambios de telemetría en vivo. No se debe usar esta escena para elegir
 arquitectura productiva.

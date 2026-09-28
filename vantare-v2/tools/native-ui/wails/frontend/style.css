@@ -1,0 +1,45 @@
+:root{font-family:"Segoe UI",sans-serif;color:#e8f0f4;background:#090d13;color-scheme:dark}
+:root.overlay{background:transparent}
+*{box-sizing:border-box}
+html,body,#root{margin:0;width:100%;height:100%;overflow:hidden}
+.app{width:100%;height:100%;padding:18px;background:#090d13;display:flex;flex-direction:column;gap:14px}
+.top{display:flex;align-items:center;height:32px;gap:9px}
+.top b{font-size:23px;letter-spacing:2px;color:#5fe1ee}
+.top span{font-size:19px;color:#91a6b3}
+.top em{margin-left:auto;font-size:12px;color:#5fe1ee;font-style:normal;font-weight:700}
+.cards{display:flex;height:90px;flex:none;gap:12px}
+.cards>div{flex:1;min-width:0;background:#15212b;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:12px}
+.cards small{font-size:11px;color:#91a6b3}
+.cards strong{font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.panels{display:flex;gap:12px;flex:1;min-height:0}
+.standings{flex:1;min-width:0;border:1px solid #31515c;border-radius:8px;background:#101820;display:flex;flex-direction:column;overflow:hidden}
+h2{margin:0;font-size:13px;letter-spacing:1px;color:#5fe1ee}
+.standings h2{padding:13px 10px;flex:none}
+.rows{overflow:auto;flex:1;min-height:0}
+.standing-row{display:grid;grid-template-columns:36px minmax(0,1fr) 105px 36px;align-items:center;gap:8px;height:33px;padding:0 8px;background:#132029;font-size:12px}
+.standing-row:nth-child(even){background:#101b23}
+.standing-row.player{background:#253f49}
+.standing-row strong{color:#5fe1ee}
+.standing-row span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.standing-row small{font-size:11px;color:#91a6b3}
+.relative{width:290px;flex:none;background:#15212b;border-radius:8px;padding:12px;display:flex;flex-direction:column;min-height:0}
+.relative-rows{overflow:auto;flex:1;margin-top:16px;font-size:12px}
+.relative-rows>div{height:28px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.relative footer{font-size:11px;color:#91a6b3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.editing .relative{width:250px}
+.editor{width:300px;flex:none;background:#15212b;border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:7px;font-size:12px}
+.editor label{display:flex;flex-direction:column;gap:5px;color:#91a6b3}
+.editor input:not([type]),.editor select{height:30px;padding:4px;background:#e8f0f4;color:#101820;border:0;border-radius:3px}
+.editor input[type=range]{width:100%}
+.editor .toggle{flex-direction:row;align-items:center}
+.editor h3{margin:5px 0 0;font-size:12px;color:#91a6b3}
+.preview{height:170px;background:#090d13;border-radius:6px;padding:7px;overflow:hidden;flex:1;min-height:0}
+.preview b{display:block;font-size:12px}
+.preview-row{height:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.editor button{height:32px;flex:none;background:#e8f0f4;color:#101820;border:0;border-radius:4px}
+.overlay-shell{height:100%;background:transparent;display:flex;flex-direction:column;gap:4px}
+.overlay-shell header{height:44px;flex:none;border:1px solid #31515c;border-radius:8px;background:#ed101820;display:flex;align-items:center;justify-content:space-between;padding:0 10px}
+.overlay-shell header b{font-size:13px;letter-spacing:2px;color:#5fe1ee}
+.overlay-shell header span{font-size:12px}
+.overlay-shell .standings{background:#ed101820}
+.overlay-shell .standing-row{height:37px}

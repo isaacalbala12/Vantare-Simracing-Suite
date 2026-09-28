@@ -25,9 +25,20 @@ filas, opacidad, acento y Relative sobre la misma captura Go. La captura Qt de
 editor está revisada en `tools/native-ui/evidence/qt-go-editor.png`; Rust pasó
 compilación y smoke de 44 filas, pero falta inspección visual. Este borrador no
 persiste ni controla un overlay de producto.
+La referencia Wails/React de control, editor y overlay recibió igualmente las
+44 filas y falla con código 6 cuando el host no está disponible. Para entregar
+SSE al WebView usa un servidor de assets temporal en loopback: el servidor de
+assets embebido retuvo el primer evento de la conexión abierta en el ensayo.
+Con la escena de editor fija, una pasada Windows de 5 muestras tras 2 s de
+calentamiento midió working set mediano de 397,2 MiB (Wails y WebView2),
+91,8 MiB (Qt Quick) y 109,2 MiB (Slint), sin sumar el host Go común de 20,6
+MiB. El script reproducible y la memoria privada están en `tools/native-ui/`.
+Esto no prueba ahorro de CPU ni el objetivo de 20 % para Vantare completa:
+faltan carga dinámica, repetición, interacción, GPU y paridad de producto.
+`go test ./...` pasó localmente después de añadir la referencia.
 La tarea [VAN-776](https://app.notion.com/p/3e9e51695c65810fb2bdd73aae4b555d?pvs=204)
 conserva el alcance y pendientes: interacción y persistencia de editor,
-actualización de datos, OBS y baseline de proceso completo. No se eligió
+actualización de datos, OBS y baseline del producto completo. No se eligió
 stack, cambió el runtime productivo ni promovió ningún canal.
 
 ## 2026-09-26 · VAN-769 / GitHub #1381 · Integración inicial autorizada

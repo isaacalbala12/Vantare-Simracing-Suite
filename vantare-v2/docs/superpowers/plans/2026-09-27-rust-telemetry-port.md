@@ -737,3 +737,18 @@ reloj de fuente; todavía debe conectarse al driver. Son tests de contrato de
 join, no corpus temporal real de REST ni aceptación R02. Faltan arbitraje de
 todos los campos equivalentes, diagnósticos de conflicto, salida canónica y
 paridad de replay. Rust release 33/33, formato y Clippy pasan.
+
+## 21. Arbitraje inicial de escalares SHM/REST (2026-09-28)
+
+Rust resuelve campos equivalentes por calidad fresh, stale e inválida, con
+SHM como fuente preferida dentro de cada nivel; registra fuente, fallback y
+conflicto. Solo clona el valor elegido. El reloj de fuente compara tiempos
+proyectados al instante de fusión con tolerancia de 500 ms. La proyección de
+sesión cubre reloj, pista, tipo, recuento y presencia del jugador. La del
+jugador cubre posición, vueltas y paradas, y exige una fila de jugador SHM
+antes de considerar REST; en menú permanece ausente. Los tests comprueban
+prioridad, degradación, conflicto y menú sobre la fixture SHM estática y REST
+de prueba. Falta publicar una observación canónica completa, decisiones de
+todos los campos, campos de clima, envejecimiento integral de filas y replay
+temporal 44/104. El gate CPU sigue sin medición.
+Rust release 37/37, formato, Clippy y build Windows release pasan.

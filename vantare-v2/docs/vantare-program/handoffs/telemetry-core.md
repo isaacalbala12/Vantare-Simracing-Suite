@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — arbitraje escalar Rust inicial (2026-09-28)
+
+La fusión parcial prioriza fresh/stale/inválido y SHM sobre REST a igual
+calidad, con fuente/fallback/conflicto. Solo clona el valor elegido; el reloj
+de sesión compara tiempos proyectados con 500 ms de tolerancia. Sesión y
+jugador tienen proyecciones iniciales; REST no puede crear un jugador cuando
+SHM está en menú. Pruebas con SHM real estático y REST de prueba pasan.
+Rust release 37/37, formato, Clippy y build pasan.
+Faltan observación canónica completa, clima, filas envejecidas, replay real,
+productos e IPC; Go sigue productivo.
+
 ## ISA-1403 — join REST/SHM de número de coche (2026-09-28)
 
 R09 añade unión conservadora de número de coche a una fila SHM existente:

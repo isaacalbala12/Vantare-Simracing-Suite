@@ -134,6 +134,14 @@ impl RestCache {
         self.car_numbers_started_ns
     }
 
+    pub(crate) fn standings_updated_ns(&self) -> Option<u64> {
+        self.standings_updated_ns
+    }
+
+    pub(crate) fn session_updated_ns(&self) -> Option<u64> {
+        self.session_updated_ns
+    }
+
     /// Sequential poll with an injected monotonic clock. Cancellation is
     /// checked between requests; an in-flight call remains deadline-bounded.
     pub fn poll_once(

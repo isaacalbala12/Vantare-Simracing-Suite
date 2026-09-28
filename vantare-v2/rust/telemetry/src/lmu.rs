@@ -28,7 +28,7 @@ pub enum AdmissionError {
 pub struct AdmittedGrid {
     pub vehicles: Vec<VehicleFields>,
     pub player_index: Option<usize>,
-    pub vehicle_count: Field<u32>,
+    pub vehicle_count: Field<i32>,
     pub player_present: Field<bool>,
     pub session: SessionFields,
 }
@@ -304,7 +304,7 @@ pub fn admit_v13(buffer: &[u8], verified_build: &str) -> Result<AdmittedGrid, Ad
     Ok(AdmittedGrid {
         vehicles,
         player_index,
-        vehicle_count: Field::observed(count as u32),
+        vehicle_count: Field::observed(count as i32),
         player_present: Field::observed(player_index.is_some()),
         session,
     })

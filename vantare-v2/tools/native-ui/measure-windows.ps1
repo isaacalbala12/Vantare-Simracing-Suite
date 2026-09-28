@@ -4,7 +4,8 @@ param(
     [Parameter(Mandatory)] [string] $Label,
     [string] $QtBin,
     [int] $WarmupSeconds = 3,
-    [int] $Samples = 8
+    [int] $Samples = 8,
+    [int[]] $ExtraProcessIds = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -41,8 +42,18 @@ try {
     if ($process.HasExited) { throw "Trial exited during warmup with code $($process.ExitCode)" }
     $measurements = @()
     for ($index = 0; $index -lt $Samples; $index++) {
-        $live = @(Get-TrialProcesses $process.Id)
+        $roots = @($process.Id) + $ExtraProcessIds
+        $live = @($roots | ForEach-Object { Get-TrialProcesses $_ } | Sort-Object Id -Unique)
         if (-not $live) { throw 'Trial exited during measurement' }
+        $ids = [System.Collections.Generic.HashSet[int]]::new()
+        foreach ($item in $live) { [void] $ids.Add($item.Id) }
+        $gpuBytes = 0.0
+        $gpuCounters = Get-Counter '\GPU Process Memory(*)\Local Usage' -ErrorAction Stop
+        foreach ($counter in $gpuCounters.CounterSamples) {
+            if ($counter.Path -match 'pid_(\d+)_' -and $ids.Contains([int] $Matches[1])) {
+                $gpuBytes += $counter.CookedValue
+            }
+        }
         $measurements += [pscustomobject]@{
             Time = [System.Diagnostics.Stopwatch]::GetTimestamp()
             WorkingSetMiB = [math]::Round((($live | Measure-Object WorkingSet64 -Sum).Sum / 1MB), 1)
@@ -50,11 +61,13 @@ try {
             CpuSeconds = ($live | Measure-Object CPU -Sum).Sum
             Processes = $live.Count
             ProcessNames = (($live | ForEach-Object ProcessName | Sort-Object -Unique) -join ',')
+            GpuLocalMiB = [math]::Round($gpuBytes / 1MB, 1)
         }
         Start-Sleep -Seconds 1
     }
     $ordered = @($measurements.WorkingSetMiB | Sort-Object)
     $privateOrdered = @($measurements.PrivateMiB | Sort-Object)
+    $gpuOrdered = @($measurements.GpuLocalMiB | Sort-Object)
     $first = $measurements[0]
     $last = $measurements[-1]
     $duration = ($last.Time - $first.Time) / [System.Diagnostics.Stopwatch]::Frequency
@@ -64,11 +77,13 @@ try {
         Mode = $Label
         MedianWorkingSetMiB = $ordered[[int] [math]::Floor($ordered.Count / 2)]
         MedianPrivateMiB = $privateOrdered[[int] [math]::Floor($privateOrdered.Count / 2)]
+        MedianGpuLocalMiB = $gpuOrdered[[int] [math]::Floor($gpuOrdered.Count / 2)]
         PeakWorkingSetMiB = ($ordered | Measure-Object -Maximum).Maximum
         MeanCpuOneCorePercent = [math]::Round($oneCore, 2)
         MeanCpuMachinePercent = [math]::Round($oneCore / [Environment]::ProcessorCount, 3)
         ProcessCount = $last.Processes
         ProcessNames = $last.ProcessNames
+        ExtraProcessIds = $ExtraProcessIds
         Samples = $Samples
     } | ConvertTo-Json -Compress
 } finally {

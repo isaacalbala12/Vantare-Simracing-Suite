@@ -171,8 +171,40 @@ respectivamente. Estas son mediciones de una escena pequeña, con una sola
 pasada y sin paridad completa de Vantare. Working set suma páginas compartidas
 entre procesos y no equivale a RAM exclusiva. La CPU en reposo osciló cerca de
 cero y no permite afirmar un ahorro de CPU ni el objetivo del 20 % en la app.
-Faltan carga dinámica, persistencia del editor, GPU, picos de inicio, repetición estadística
+Faltan carga dinámica, persistencia del editor, validación GPU, picos de inicio, repetición estadística
 y una referencia del producto completo.
+
+Una segunda serie de tres rondas rotó el orden de candidatos y sumó el árbol
+de cada editor al mismo host Go ya calentado, incluido su proceso de consola.
+Cada ronda tomó cinco muestras tras tres segundos de calentamiento. El script
+`measure-windows.ps1` ahora acepta `-ExtraProcessIds` y recoge `GPU Process
+Memory(*)\Local Usage` de los PID del árbol. El host medía unos 66 MiB de
+working set al final de esta serie; por eso los totales no se comparan
+directamente con la tabla anterior, que lo excluía y lo midió recién iniciado.
+Con el host en un puerto fijo, un ejemplo de la medición Qt es:
+
+```powershell
+$port = 54682
+$goHostPid = (Get-NetTCPConnection -LocalPort $port -State Listen).OwningProcess
+./tools/native-ui/measure-windows.ps1 -Executable tools/native-ui/out/qtquick/vantare-native-go-qt.exe -Arguments @('--endpoint',"http://127.0.0.1:$port/telemetry/overlay-v2/projection",'--mode','editor') -Label editor -QtBin '<ruta a Qt 6.10/mingw_64/bin>' -ExtraProcessIds $goHostPid -WarmupSeconds 3 -Samples 5
+```
+
+| Editor + Go, mediana de tres rondas | Working set | Memoria privada | GPU local atribuida |
+| --- | ---: | ---: | ---: |
+| Wails/React | 457,3 MiB | 290,7 MiB | 44,6 MiB |
+| Qt Quick | 160,3 MiB | 141,7 MiB | 35,1 MiB |
+| Rust/Slint | 175,5 MiB | 291,1 MiB | 102,3 MiB |
+
+[Las nueve filas](evidence/full-tree-static-results.csv) muestran también CPU,
+picos y procesos. Qt redujo un 65 % el working set y un 51 % la memoria
+privada frente a Wails en **este editor fijo**; Slint redujo un 62 % el
+working set, pero no la memoria privada y su contador GPU local fue mayor.
+Los porcentajes de CPU medidos fueron 0–0,044 % de la máquina, demasiado
+pequeños para acreditar ahorro. Los contadores GPU son diagnósticos, no una
+medida definitiva de VRAM: [Microsoft documenta casos de valores incorrectos](https://learn.microsoft.com/en-us/troubleshoot/windows-client/performance/gpu-process-memory-counters-report-wrong-value).
+No hubo grabación OBS en esta serie ni telemetría que cambiase; antes de elegir
+stack siguen haciendo falta carga real, GPU validada con otra herramienta y
+paridad del producto completo.
 
 ## Licencia sin coste de licencia
 

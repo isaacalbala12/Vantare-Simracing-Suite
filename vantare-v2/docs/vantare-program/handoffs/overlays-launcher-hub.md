@@ -14,6 +14,16 @@ de clics. OBS 32.1.2 portátil capturó por título las tres ventanas de overlay
 con las filas Go; las capturas revisadas conservan alfa parcial. Hay PNG y
 metadatos acotados en `tools/native-ui/evidence/`. Aún faltan grabación y
 medición con OBS, DPI múltiple y telemetría cambiante.
+Tres rondas adicionales del editor fijo incluyeron el árbol de cada UI, el
+host Go calentado y memoria GPU local por PID, con orden rotado. Medianas de
+working set Wails/Qt/Slint: 457,3/160,3/175,5 MiB; memoria privada:
+290,7/141,7/291,1 MiB; contador GPU local: 44,6/35,1/102,3 MiB. Qt reduce
+working set y memoria privada en esta escena, pero Slint no reduce la segunda
+y el contador GPU le favorece menos. CPU de reposo 0–0,044 % de máquina no
+permite conclusión. Microsoft advierte posibles errores de este contador;
+falta verificación GPU independiente, carga cambiante y producto completo.
+Método y nueve filas en `tools/native-ui/README.md` y
+`tools/native-ui/evidence/full-tree-static-results.csv`.
 
 Continúa la comparación [#1404](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1409), todavía en PR borrador. La rama
 `vantareapp/isa-1410-native-go-product-trial` parte de

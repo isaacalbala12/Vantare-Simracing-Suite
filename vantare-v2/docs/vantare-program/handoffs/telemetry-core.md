@@ -1,5 +1,13 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — tiempo restante en candidato LMU (2026-09-28)
+
+El pipeline calcula `session.remaining` desde reloj fusionado y fin SHM,
+pero solo lo publica al aceptar el commit del batch/mapper. Un candidato
+obsoleto no cambia el valor derivado; prueba con fixture SHM real estática
+de 44. Rust release 53/53, formato y Clippy pasan. Faltan ObservedState
+completo, engine, IPC, productos y gates de paridad/CPU. Plan sección 29.
+
 ## ISA-1403 — session.remaining Rust aislado (2026-09-28)
 
 R13a inicia con derivación pura de tiempo restante que conserva unidades,

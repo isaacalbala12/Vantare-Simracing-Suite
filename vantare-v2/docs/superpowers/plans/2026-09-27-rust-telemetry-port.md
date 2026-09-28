@@ -844,3 +844,13 @@ procedencia incorrecta y tiempo negativo. Rust release 52/52, formato y
 Clippy pasan; el test Go de referencia también pasa. Sigue aislada: faltan
 ObservedState canónico, engine atómico y proyecciones. R13a no equivale a
 paridad end-to-end ni al gate CPU.
+
+## 29. Tiempo restante en commit LMU candidato (2026-09-28)
+
+El pipeline LMU prepara `session.remaining` a partir del reloj fusionado y
+del fin SHM, y publica ese campo solo tras aceptar el mismo candidato de
+identidad y reducer. Un candidato antiguo rechazado conserva tanto el batch
+como el último tiempo restante. La prueba usa la fixture SHM real estática
+de 44 y cambia el fin de sesión del candidato rechazado. Rust release 53/53,
+formato y Clippy pasan. Esta integración es interna al candidato: no hay
+ObservedState completo, engine, IPC ni consumidor; R13a/R14 siguen parciales.

@@ -3,6 +3,8 @@
 use super::mapper::{ClockChange, IdentityMapper, MapError, MapperCandidate};
 use super::{AdmittedGrid, VehicleFields, fusion::FusedSession};
 use crate::core;
+use crate::derive;
+use crate::quality::Field;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum PipelineError {
@@ -14,11 +16,13 @@ pub enum PipelineError {
 pub struct Pipeline {
     mapper: IdentityMapper,
     reducer: core::Reducer<VehicleFields>,
+    session_remaining: Option<Field<f64>>,
 }
 
 pub struct PipelineCandidate {
     mapper: MapperCandidate,
     reduced: core::Candidate<VehicleFields>,
+    session_remaining: Field<f64>,
 }
 
 impl Pipeline {
@@ -26,6 +30,7 @@ impl Pipeline {
         Self {
             mapper: IdentityMapper::new(slot_grace_frames),
             reducer: core::Reducer::new(),
+            session_remaining: None,
         }
     }
 
@@ -40,6 +45,8 @@ impl Pipeline {
             .prepare(&grid, fused, clock_change)
             .map_err(PipelineError::Mapping)?
             .split();
+        let session_remaining =
+            derive::session_remaining(&fused.source_time_ns.field, &grid.session.end_time_seconds);
         if grid.vehicles.len() != identity.vehicles.len()
             || !grid
                 .vehicles
@@ -70,7 +77,11 @@ impl Pipeline {
             .reducer
             .prepare(batch)
             .map_err(PipelineError::Reduction)?;
-        Ok(PipelineCandidate { mapper, reduced })
+        Ok(PipelineCandidate {
+            mapper,
+            reduced,
+            session_remaining,
+        })
     }
 
     pub fn commit(
@@ -79,17 +90,26 @@ impl Pipeline {
     ) -> Result<&core::Batch<VehicleFields>, core::Reject> {
         self.reducer.commit(candidate.reduced)?;
         self.mapper.commit_candidate(candidate.mapper);
+        self.session_remaining = Some(candidate.session_remaining);
         Ok(self.reducer.current().expect("commit installed a batch"))
     }
 
     pub fn current(&self) -> Option<&core::Batch<VehicleFields>> {
         self.reducer.current()
     }
+
+    pub fn session_remaining(&self) -> Option<&Field<f64>> {
+        self.session_remaining.as_ref()
+    }
 }
 
 impl PipelineCandidate {
     pub fn batch(&self) -> &core::Batch<VehicleFields> {
         self.reduced.batch()
+    }
+
+    pub fn session_remaining(&self) -> &Field<f64> {
+        &self.session_remaining
     }
 }
 
@@ -103,7 +123,6 @@ impl Default for Pipeline {
 mod tests {
     use super::*;
     use crate::lmu::{admit_v13, fusion::fuse_session, rest::RestCache};
-    use crate::quality::Field;
 
     const REAL_44: &[u8] = include_bytes!("../../../../testdata/lmu-fixture.bin");
 
@@ -118,8 +137,11 @@ mod tests {
             .unwrap();
         assert_eq!(candidate.batch().vehicles.len(), 44);
         assert_eq!(candidate.batch().cursor.sequence, 1);
+        let expected_remaining = candidate.session_remaining().clone();
         assert!(pipeline.current().is_none());
+        assert!(pipeline.session_remaining().is_none());
         pipeline.commit(candidate).unwrap();
+        assert_eq!(pipeline.session_remaining(), Some(&expected_remaining));
 
         let grid = admit_v13(REAL_44, "1.3.0.0").unwrap();
         let mut invalid = fuse_session(&grid, 100, &rest, 100);
@@ -129,6 +151,7 @@ mod tests {
             Err(PipelineError::Mapping(MapError::InvalidGrid))
         ));
         assert_eq!(pipeline.current().unwrap().cursor.sequence, 1);
+        assert_eq!(pipeline.session_remaining(), Some(&expected_remaining));
 
         let grid = admit_v13(REAL_44, "1.3.0.0").unwrap();
         let fused = fuse_session(&grid, 100, &rest, 100);
@@ -161,5 +184,27 @@ mod tests {
             .prepare(grid, &fused, ClockChange::Continuous)
             .unwrap();
         assert_eq!(candidate.batch().cursor.sequence, 1);
+    }
+
+    #[test]
+    fn stale_commit_does_not_publish_a_new_derived_value() {
+        let rest = RestCache::default();
+        let mut pipeline = Pipeline::default();
+        let first_grid = admit_v13(REAL_44, "1.3.0.0").unwrap();
+        let first_fused = fuse_session(&first_grid, 100, &rest, 100);
+        let first = pipeline
+            .prepare(first_grid, &first_fused, ClockChange::Continuous)
+            .unwrap();
+        let mut stale_grid = admit_v13(REAL_44, "1.3.0.0").unwrap();
+        stale_grid.session.end_time_seconds = Field::observed(999.0);
+        let stale_fused = fuse_session(&stale_grid, 100, &rest, 100);
+        let stale = pipeline
+            .prepare(stale_grid, &stale_fused, ClockChange::Continuous)
+            .unwrap();
+        let expected = first.session_remaining().clone();
+        pipeline.commit(first).unwrap();
+        assert!(matches!(pipeline.commit(stale), Err(core::Reject::Stale)));
+        assert_eq!(pipeline.session_remaining(), Some(&expected));
+        assert_eq!(pipeline.current().unwrap().cursor.sequence, 1);
     }
 }

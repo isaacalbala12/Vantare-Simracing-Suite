@@ -5,6 +5,62 @@ use serde_json::{Value, json};
 use super::{FrameError, Kind};
 
 pub const PRODUCT_OVERLAY_V2: &str = "overlay-v2";
+pub const PRODUCT_ENGINEER_V1: &str = "engineer-v1";
+pub const PRODUCT_STRATEGY_V1: &str = "strategy-v1";
+
+pub struct ProductMetadata<'a> {
+    pub epoch: u64,
+    pub sequence: u64,
+    pub captured_at: &'a str,
+}
+
+/// Wraps a complete Engineer or Strategy observation with the canonical
+/// metadata supplied by the committed batch clock. Publication remains gated
+/// by the future runtime supervisor and consumer demand.
+pub fn encode_observation(
+    product: &str,
+    payload: &Value,
+    metadata: ProductMetadata<'_>,
+) -> Result<Vec<u8>, SnapshotError> {
+    if !matches!(product, PRODUCT_ENGINEER_V1 | PRODUCT_STRATEGY_V1)
+        || metadata.epoch == 0
+        || metadata.sequence == 0
+        || metadata.captured_at.is_empty()
+        || payload
+            .get("capabilities")
+            .and_then(Value::as_array)
+            .is_none()
+        || payload.get("player").and_then(Value::as_object).is_none()
+        || (product == PRODUCT_ENGINEER_V1
+            && payload.get("vehicles").and_then(Value::as_array).is_none())
+    {
+        return Err(SnapshotError::InvalidUpdate);
+    }
+    let mut snapshot = payload.clone();
+    let Some(object) = snapshot.as_object_mut() else {
+        return Err(SnapshotError::InvalidUpdate);
+    };
+    if [
+        "canonicalVersion",
+        "projectionVersion",
+        "epoch",
+        "sequence",
+        "capturedAt",
+    ]
+    .iter()
+    .any(|key| object.contains_key(*key))
+    {
+        return Err(SnapshotError::InvalidUpdate);
+    }
+    object.insert("canonicalVersion".into(), json!(1));
+    object.insert("projectionVersion".into(), json!(1));
+    object.insert("epoch".into(), json!(metadata.epoch));
+    object.insert("sequence".into(), json!(metadata.sequence));
+    object.insert("capturedAt".into(), json!(metadata.captured_at));
+    let payload = serde_json::to_vec(&json!({"product": product, "snapshot": snapshot}))
+        .map_err(|_| SnapshotError::InvalidUpdate)?;
+    super::encode(Kind::Snapshot, &payload).map_err(SnapshotError::Frame)
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SnapshotError {
@@ -121,5 +177,60 @@ mod tests {
         update["frame"]["sectionMask"] = json!(2047);
         update["frame"].as_object_mut().unwrap().remove("fuel");
         assert_eq!(encode_overlay(&update), Err(SnapshotError::InvalidUpdate));
+    }
+
+    #[test]
+    fn real_static_44_engineer_and_strategy_snapshot_frames() {
+        let golden: Value = serde_json::from_slice(include_bytes!(
+            "../../testdata/overlay-core-slices-go-v1.json"
+        ))
+        .unwrap();
+        for (product, key, file) in [
+            (
+                PRODUCT_ENGINEER_V1,
+                "engineer",
+                "engineer-snapshot-frame-rust-v1.bin",
+            ),
+            (
+                PRODUCT_STRATEGY_V1,
+                "strategy",
+                "strategy-snapshot-frame-rust-v1.bin",
+            ),
+        ] {
+            let frame = encode_observation(
+                product,
+                &golden[key],
+                ProductMetadata {
+                    epoch: 1,
+                    sequence: 1,
+                    captured_at: "1970-01-01T00:01:40Z",
+                },
+            )
+            .unwrap();
+            let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("testdata")
+                .join(file);
+            if std::env::var("VANTARE_IPC_ORACLE_UPDATE").as_deref() == Ok("1") {
+                std::fs::write(&path, &frame).unwrap();
+            }
+            assert_eq!(std::fs::read(&path).unwrap(), frame);
+            let decoded = super::super::decode(&frame).unwrap();
+            assert_eq!(decoded.kind, Kind::Snapshot);
+            let wire: Value = serde_json::from_slice(decoded.payload).unwrap();
+            assert_eq!(wire["product"], product);
+            assert_eq!(wire["snapshot"]["player"], golden[key]["player"]);
+        }
+        assert_eq!(
+            encode_observation(
+                "unknown",
+                &golden["strategy"],
+                ProductMetadata {
+                    epoch: 1,
+                    sequence: 1,
+                    captured_at: "1970-01-01T00:01:40Z",
+                }
+            ),
+            Err(SnapshotError::InvalidUpdate)
+        );
     }
 }

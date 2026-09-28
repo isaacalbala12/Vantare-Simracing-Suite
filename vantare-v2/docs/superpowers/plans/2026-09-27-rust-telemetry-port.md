@@ -1231,3 +1231,18 @@ pasan. R16 sigue parcial: metadata, facts, status, adaptador receptor, IPC,
 backpressure y consumo real pendientes. R17 también requiere metadata/IPC
 y demanda. Corpus temporal real 44/104, sesión física y gate CPU del 50%
 pendientes. Go sigue productivo.
+
+## 57. Snapshots IPC Engineer/Strategy Rust→Go (2026-09-28)
+
+Rust envuelve ambos payloads en `KindSnapshot` con producto, versiones
+canónica/proyección v1, cursor y `capturedAt`. Go decodifica a los tipos de
+producto y rechaza producto, campos extra, versiones, cursor o fecha
+inválidos. Los frames cruzados de la captura estática real de 44 son
+Engineer 150 575 bytes (SHA-256
+`5c276dca4996139e704866e24b91144b14fd2cf92078dc2a7fd024fba8696e54`)
+y Strategy 1 525 bytes (SHA-256
+`f170c22604450d2247f790b07458f3ad861254846f0dd9089cd80ccdad85aea8`).
+Rust release 110/110, Clippy, formato, build release y `go test ./...`
+pasan. Los frames son prototipos JSON: la copia del payload y 150 KiB de
+Engineer exigen medición y posible codec distinto en R21. Sin publicación,
+demanda, facts, status ni ACK productivos. Go sigue como owner.

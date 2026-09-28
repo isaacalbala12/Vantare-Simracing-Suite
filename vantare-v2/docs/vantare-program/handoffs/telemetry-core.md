@@ -1,5 +1,18 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — Snapshot IPC Engineer/Strategy Rust→Go (2026-09-28)
+
+Go decodifica los sobres y payloads completos enviados por Rust con
+metadata v1, cursor y fecha; rechaza producto/esquema/cursor inválido.
+Frames estáticos reales de 44: Engineer 150 575 bytes SHA-256
+`5c276dca4996139e704866e24b91144b14fd2cf92078dc2a7fd024fba8696e54`,
+Strategy 1 525 bytes SHA-256
+`f170c22604450d2247f790b07458f3ad861254846f0dd9089cd80ccdad85aea8`.
+Rust release 110/110, Clippy, formato, build release y `go test ./...`
+pasan. Prototipo aún inerte: falta ruta runtime, facts/status, demanda,
+backpressure y benchmark codec para Engineer. Go sigue productivo; faltan
+corpus temporal real 44/104, sesión física y gate CPU. Plan sección 57.
+
 ## ISA-1403 — Engineer V1 full grid Go/Rust (2026-09-28)
 
 La observación Rust de Engineer preserva calidad, orden y 44 vehículos;

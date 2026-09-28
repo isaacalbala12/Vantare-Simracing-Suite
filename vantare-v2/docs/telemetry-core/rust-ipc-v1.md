@@ -11,7 +11,7 @@ Una trama es `length:u32 LE | version:u16 LE | kind:u16 LE | payload[length]`. L
 | Handshake | 1 | Harness: nonce de instancia de 16 bytes, longitud de versión `u8` (1–64) y versión UTF-8 exacta del paquete Rust. Las capabilities productivas aún no están definidas. |
 | Configuration | 2 | JSON cerrado v1 con revisión, consumidores, cadencias en ns, preferencias y source/capabilities |
 | ConfigurationAck | 3 | JSON `revision`, `epoch`, `sequence`; se emitirá tras aplicar en frontera de lote |
-| Snapshot | 4 | Prototipo Overlay V2 JSON: sobre `{"product":"overlay-v2","update":UpdateV2}`; Engineer/Strategy y codec final pendientes |
+| Snapshot | 4 | Prototipos JSON: `{"product":"overlay-v2","update":UpdateV2}` y `{"product":"engineer-v1"|"strategy-v1","snapshot":SnapshotV1}`; publicación y codec final pendientes |
 | Fact | 5 | Hecho ordenado y cursor; payload por definir |
 | FactAck | 6 | Confirmación tras retener; payload por definir |
 | ResyncRequired | 7 | Laguna irrecuperable y bootstrap; payload por definir |
@@ -36,6 +36,20 @@ producidos por el encoder Rust desde el oráculo real estático de 44 y
 decodificados por Go como el mismo `UpdateV2`; SHA-256
 `15d1328fb1f8a5774ea8986f234a222b8bc25f8b9ea42a257c3adb1389dcb82f`.
 La captura sigue siendo un instante, sin 104 ni temporalidad SHM+REST.
+
+## Snapshot Engineer/Strategy v1 inicial (2026-09-28)
+
+Rust envuelve los payloads de producto con `canonicalVersion=1`,
+`projectionVersion=1`, cursor y `capturedAt`; Go decodifica estrictamente a
+`engineer.SnapshotV1` o `strategy.SnapshotV1`, comprueba versiones, cursor,
+fecha RFC3339Nano, producto y esquema. Frames reales estáticos de 44:
+`engineer-snapshot-frame-rust-v1.bin` 150 575 bytes, SHA-256
+`5c276dca4996139e704866e24b91144b14fd2cf92078dc2a7fd024fba8696e54`;
+`strategy-snapshot-frame-rust-v1.bin` 1 525 bytes, SHA-256
+`f170c22604450d2247f790b07458f3ad861254846f0dd9089cd80ccdad85aea8`.
+La salida Engineer JSON clona el valor antes del framing; R21 medirá y
+comparará codec, copia y entrega completa antes de elegir transporte. El
+receptor aún no recibe estos frames desde un hijo productivo.
 
 ## Configuration/ACK v1 inicial (2026-09-28)
 

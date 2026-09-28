@@ -26,7 +26,6 @@
 .orbit-set__head-copy {
   flex: 1;
   min-width: 0;
-  animation: orbit-tab-in var(--orbit-enter, 0.26s) var(--orbit-ease) both;
 }
 
 .orbit-set__head-copy h2 {
@@ -56,8 +55,6 @@
   margin-top: 18px;
   padding-bottom: 4px;
   overflow-y: auto;
-  /* `tab-in` del catálogo de motion (`07-motion.md`): 0→1 con 6px de subida. */
-  animation: orbit-tab-in var(--orbit-enter, 0.26s) var(--orbit-ease) both;
 }
 
 /* ------------------------------------------------------ CALENDARIO LMU */
@@ -117,17 +114,6 @@
 .orbit-set-schedule__series-meta {
   justify-content: flex-end;
   flex-shrink: 0;
-}
-
-@keyframes orbit-tab-in {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
 }
 
 .orbit-set__grid2 {
@@ -576,7 +562,6 @@
   cursor: pointer;
   text-align: left;
   transition: var(--orbit-fast) var(--orbit-ease);
-  animation: orbit-tab-in var(--orbit-enter, 0.28s) var(--orbit-ease) both;
 }
 
 .orbit-set-channel:hover:not([aria-disabled="true"]) {
@@ -669,7 +654,6 @@
   text-align: left;
   transition: border-color var(--orbit-fast) var(--orbit-ease), box-shadow var(--orbit-fast) var(--orbit-ease),
     transform var(--orbit-fast) var(--orbit-ease);
-  animation: orbit-tab-in var(--orbit-enter, 0.28s) var(--orbit-ease) both;
 }
 
 .orbit-set-perf__card--level {

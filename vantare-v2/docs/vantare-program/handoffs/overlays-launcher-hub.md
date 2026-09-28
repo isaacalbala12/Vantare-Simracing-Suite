@@ -12,8 +12,7 @@ navegador dio RED antes del cambio y PASS después, incluida una pestaña intern
 de Ajustes. Frontend:
 486 archivos/4113 pruebas PASS (2 omitidas), typecheck, build y lint PASS.
 Falta verificar la sensación de navegación y el tiempo de datos en Wails real
-con sesión; el harness usa runtime simulado. Implementación `a16b170b` en
-[PR draft #1407](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1407)
+con sesión; el harness usa runtime simulado. [PR draft #1407](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1407)
 hacia `nightly`; sin integración ni promoción.
 
 ## 2026-09-26 · VAN-769 / GitHub #1381 · Integración inicial autorizada

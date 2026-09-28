@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — primeras proyecciones Overlay V2 Rust (2026-09-28)
+
+R15a parcial proyecta sesión y piloto desde el candidato Rust: calidad y
+presencia por campo, fase canónica, bandera sólo positiva, unidades de
+velocidad y ausencia de steering no disponible. Fixture real estática de 44
+y casos invalid/missing probados. Rust debug/release 86/86, Clippy, formato y
+build release pasan. Todavía faltan capabilities, wire JSON/IPC, receptor Go,
+resto de secciones, paridad temporal 44/104, prueba física y 50% CPU. Plan
+sección 39; Go sigue productivo.
+
 ## ISA-1403 — motor LMU Rust con candidato integrado (2026-09-28)
 
 R14 reúne admisión SHM, unión conservadora de números de coche REST,

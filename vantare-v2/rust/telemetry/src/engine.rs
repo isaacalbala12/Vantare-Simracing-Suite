@@ -106,6 +106,9 @@ impl EngineCandidate {
     pub fn batch(&self) -> &core::Batch<SessionType, LmuVehicleState> {
         self.pipeline.batch()
     }
+    pub fn session_remaining(&self) -> &crate::quality::Field<f64> {
+        self.pipeline.session_remaining()
+    }
     pub fn facts(&self) -> &[crate::core::session::SessionFact] {
         self.pipeline.facts()
     }

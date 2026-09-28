@@ -977,3 +977,16 @@ Clippy y build release pasan. Todavía no hay fuente temporal SHM+REST real
 44/104 ni ruta IPC/productiva, por lo que el port y el gate CPU 50% siguen
 abiertos. El siguiente corte debe proyectar el lote al contrato de producto
 y conectar el protocolo de proceso conservando la propiedad del candidato.
+
+## 39. Proyección inicial de sesión y piloto Rust (2026-09-28)
+
+R15a parcial añade proyecciones puras para los slices Session y Player de
+Overlay V2. Cada valor conserva ausencia, cero presente, stale e invalid;
+la fase emplea los nombres canónicos, la bandera sólo afirma amarillo con
+evidencia y steering permanece missing. El piloto usa el marcador canónico
+sin aceptar uno invalid; lapNumber sólo se publica con jugador fresh. Las
+conversiones de velocidad conservan m/s, km/h y mph del builder Go. Tests
+Rust sobre fixture real estática 44 y valores invalid/missing; debug/release
+86/86, formato, Clippy y build release pasan. No se declara R15a completo:
+faltan capabilities, serialización Overlay V2, mensaje IPC, receptor Go y
+paridad extremo a extremo. Los demás productos y el gate CPU siguen abiertos.

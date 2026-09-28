@@ -5,4 +5,5 @@ pub mod derive;
 pub mod engine;
 pub mod ipc;
 pub mod lmu;
+pub mod projection;
 pub mod quality;

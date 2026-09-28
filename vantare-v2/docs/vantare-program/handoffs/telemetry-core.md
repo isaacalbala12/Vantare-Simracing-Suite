@@ -1,5 +1,13 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — session.remaining Rust aislado (2026-09-28)
+
+R13a inicia con derivación pura de tiempo restante que conserva unidades,
+calidad, ausencia, invalidez y cero del test Go. Rust release 52/52, formato
+y Clippy pasan; test Go específico pasa. La función no está conectada al
+estado canónico ni a productos/IPC; paridad completa y CPU siguen pendientes.
+Plan sección 28.
+
 ## ISA-1403 — retención ordenada de facts Rust inicial (2026-09-28)
 
 R12 añade un historial neutral de hasta 256 facts por stream, con secuencia

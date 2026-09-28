@@ -1,5 +1,17 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — auditoría temporal y replay de 47 coches (2026-09-29)
+
+La auditoría Go opt-in del corpus externo ELMS 2025 comprobó los 16 hashes,
+ocho relojes crecientes, 47 coches y jugador en SHM, y REST live correlacionado.
+Un test Rust opt-in recorrió los mismos ocho SHM reales y obtuvo ocho commits
+con Overlay, Engineer y Strategy; ambos tests rechazaron el corpus al pedir
+44 coches. `go test ./...`, 154 tests Rust + replay, Clippy y formato pasan.
+Rust no audita los hashes en su test: primero se ejecuta la auditoría Go.
+Tampoco se ha comparado todavía todo el contenido de los productos ni se ha
+reproducido el REST temporal en Rust. El corte es diagnóstico de 47 coches,
+no el gate de 44/104 o CPU. Go sigue productivo. Plan §99.
+
 ## VAN-778 / ISA-1403 — 47 coches reales y ráfagas de demanda (2026-09-29)
 
 La práctica ELMS 2025 real en LMU 1.4.2.0 entregó ocho pares temporales

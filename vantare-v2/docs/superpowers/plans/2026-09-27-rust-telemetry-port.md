@@ -1896,3 +1896,25 @@ focales y `go test ./...` pasan tras el último ajuste.
 No hay evidencia aún de paridad temporal Go/Rust, CPU total ≤ 0,50 en 44 y
 104, p99/RSS, integración Wails/OBS ni retirada de Go. El candidato sigue
 aislado.
+
+## 99. Auditoría temporal Go y replay Rust de 47 coches (2026-09-29)
+
+`TestRustPortTemporalCorpusAuditOptIn` verifica en el corpus externo ELMS
+2025 los 16 SHA-256, ocho muestras, build exacta, nombres e índices,
+cronología de captura y reloj SHM, 47 filas y jugador en el parser Go,
+además del estado live y conteo del REST sanitizado. El test Rust
+`external_real_temporal_shm_reaches_all_rust_products` recorre los mismos
+ocho SHM reales: el parser admite 47 filas y reloj creciente, el ensamblador
+confirma ocho commits y produce Overlay, Engineer y Strategy con el conteo
+esperado. La auditoría Go debe ejecutarse antes del replay Rust para validar
+los hashes; Rust no verifica por sí mismo los digests ni consume el REST
+sanitizado en este test.
+
+Ambos tests pasan con `LMU_TEMPORAL_CORPUS` apuntando al directorio externo y
+`LMU_TEMPORAL_EXPECTED_VEHICLES=47`; ambos fallan si se exige falsamente 44.
+La suite completa Go, 154 tests Rust más el replay temporal, Clippy y formato
+Rust pasan. `cargo test --all-targets` se interrumpió después de los tests al
+entrar en benchmarks de larga duración; la suite se repitió con `--lib --test
+temporal_corpus` y pasó. Estas pruebas todavía no comparan todos los campos
+ni las salidas Go/Rust entre sí; el REST Rust, la paridad completa, los corpus
+44/104 y el gate CPU total siguen pendientes. Go continúa productivo.

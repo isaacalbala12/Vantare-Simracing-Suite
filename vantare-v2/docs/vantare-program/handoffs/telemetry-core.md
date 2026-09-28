@@ -1,5 +1,13 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — benchmark diagnóstico SHM estático (2026-09-28)
+
+Se añadió benchmark Rust reproducible del parser con fixture real estática de
+44 coches. Medianas locales: Rust 15 255,1 ns/op; Go existente 32 451 ns/op.
+No se presenta como gate CPU 50%: Rust aún no emite `Observation` completa y
+faltan REST, fusión/core/IPC, productos, CPU/RSS y corpus temporal 44/104.
+El plan sección 23 conserva comandos y límites de la comparación.
+
 ## ISA-1403 — clima REST acotado por sesión (2026-09-28)
 
 La fusión Rust conserva lluvia SHM y proyecta temperatura ambiente/pista,

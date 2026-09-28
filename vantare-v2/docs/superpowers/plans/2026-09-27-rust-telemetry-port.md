@@ -764,3 +764,19 @@ inválido, cero, amarillo, floor y stale. Aún no está conectada al loop del
 driver ni a los productos; la congelación de reloj de fuente y paridad live
 siguen pendientes.
 Rust release 38/38, formato, Clippy y build pasan.
+
+## 23. Diagnóstico de coste del parser estático (2026-09-28)
+
+Se añade `cargo bench --locked --bench parse_lmu` sin dependencias nuevas.
+Cronometra solo admisión Rust de la fixture SHM real estática de 44 coches,
+con 10 000 iteraciones de calentamiento y 100 000 medidas. En esta máquina
+Windows/AMD Ryzen 7 3700X, tres corridas posteriores dieron 15 255,1;
+15 319,4; 15 231,7 ns/op (mediana 15 255,1). El benchmark Go existente
+`BenchmarkParseTrackFixture` con 100 000 iteraciones y `-cpu=1` dio
+28 875; 34 855; 32 451 ns/op (mediana 32 451), 155 allocs/op. La razón
+de medianas de tiempo de pared es 0,470, pero las salidas del parser no son
+todavía equivalentes: Go construye `Observation` completa y Rust devuelve
+`AdmittedGrid` parcial. Tampoco incluye SHM estable/REST/fusión/core/IPC,
+consumidores, CPU de ambos procesos, RSS ni corpus temporal real 44/104.
+**No constituye un PASS del objetivo CPU 50%.** Solo orienta el trabajo de
+paridad y optimización; el gate R20 exige ruta productiva comparable.

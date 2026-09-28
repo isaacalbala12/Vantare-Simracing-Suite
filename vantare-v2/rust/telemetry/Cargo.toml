@@ -12,6 +12,10 @@ path = "src/lib.rs"
 name = "vantare-telemetry"
 path = "src/main.rs"
 
+[[bench]]
+name = "parse_lmu"
+harness = false
+
 [dependencies]
 serde_json = "1.0"
 ureq = { version = "3.4", default-features = false }

@@ -23,6 +23,36 @@ func TestCandidateRestartBudgetExhaustsAfterThreeFailedStarts(t *testing.T) {
 	}
 }
 
+func TestCandidatePolicyBurstUsesLatestRevision(t *testing.T) {
+	configuration := liveCandidateConfiguration(t)
+	queue := make(chan ConfigurationV1, 2)
+	var updates <-chan ConfigurationV1 = queue
+	intermediate := configuration
+	intermediate.Revision++
+	intermediate.Consumers = ConsumersV1{Strategy: true}
+	latest := intermediate
+	latest.Revision++
+	latest.Consumers = ConsumersV1{OverlayV2: true}
+	queue <- intermediate
+	queue <- latest
+	if err := receiveCandidateUpdates(&configuration, &updates); err != nil {
+		t.Fatal(err)
+	}
+	if configuration.Revision != latest.Revision || configuration.Consumers != latest.Consumers {
+		t.Fatalf("queued policy = revision %d, consumers %+v; want latest %+v", configuration.Revision, configuration.Consumers, latest)
+	}
+}
+
+func TestCandidatePolicyBurstRejectsInvalidRevision(t *testing.T) {
+	configuration := liveCandidateConfiguration(t)
+	queue := make(chan ConfigurationV1, 1)
+	var updates <-chan ConfigurationV1 = queue
+	queue <- configuration
+	if err := receiveCandidateUpdates(&configuration, &updates); !errors.Is(err, ErrReceiverProtocol) {
+		t.Fatalf("duplicate revision = %v", err)
+	}
+}
+
 func liveCandidateConfiguration(t *testing.T) ConfigurationV1 {
 	t.Helper()
 	wire, err := os.ReadFile(filepath.Join("..", "..", "..", "rust", "telemetry", "testdata", "configuration-frame-go-v1.bin"))
@@ -172,5 +202,51 @@ func TestCandidateSupervisorAppliesStrategyUpdateOptIn(t *testing.T) {
 	}, func(error) { disconnected++ })
 	if err != nil || firstACK != 1 || secondACK != 1 || strategy == 0 || disconnected != 0 {
 		t.Fatalf("live update result=%v ack=%d/%d strategy=%d disconnect=%d", err, firstACK, secondACK, strategy, disconnected)
+	}
+}
+
+func TestCandidateSupervisorCoalescesLivePolicyBurstOptIn(t *testing.T) {
+	executable := os.Getenv("VANTARE_TELEMETRY_RUST_TEST_HELPER")
+	if executable == "" || os.Getenv("VANTARE_LMU_LIVE_CANDIDATE_TRACK_TEST") != "1" {
+		t.Skip("requires release Rust child and running pinned LMU on track")
+	}
+	configuration := liveCandidateConfiguration(t)
+	intermediate := configuration
+	intermediate.Revision++
+	intermediate.Consumers = ConsumersV1{OverlayV2: true}
+	latest := intermediate
+	latest.Revision++
+	latest.Consumers = ConsumersV1{Strategy: true}
+	updates := make(chan ConfigurationV1, 2)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var firstACK, latestACK, strategy int
+	err := RunCandidateWithUpdates(ctx, executable, configuration, updates, func(event ReceivedV1) error {
+		if event.Configuration != nil {
+			switch event.Configuration.Revision {
+			case configuration.Revision:
+				firstACK++
+				updates <- intermediate
+				updates <- latest
+			case latest.Revision:
+				latestACK++
+			default:
+				t.Fatalf("superseded policy was ACKed: revision=%d", event.Configuration.Revision)
+			}
+		}
+		if event.Strategy != nil {
+			if latestACK != 1 || event.Strategy.Player.ID == "" {
+				t.Fatal("Strategy arrived before latest ACK or without player")
+			}
+			strategy++
+			cancel()
+		}
+		if latestACK != 0 && (event.Overlay != nil || event.Engineer != nil) {
+			t.Fatal("withdrawn product arrived after latest ACK")
+		}
+		return nil
+	}, func(err error) { t.Errorf("unexpected candidate restart: %v", err) })
+	if err != nil || firstACK != 1 || latestACK != 1 || strategy == 0 {
+		t.Fatalf("policy burst result=%v ack=%d/%d strategy=%d", err, firstACK, latestACK, strategy)
 	}
 }

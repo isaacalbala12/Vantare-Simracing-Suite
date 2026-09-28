@@ -1,7 +1,7 @@
 # ISA-1403 — Plan de migración del runtime live de telemetría a Rust
 
 Fecha: 2026-09-27. Versión del plan: 1.3. Estado: diseño confirmado por Isaac;
-implementación parcial hasta el corte 88.
+implementación parcial hasta el corte 98.
 **Paridad, integración live y gates pendientes.**
 
 - Tarea operativa: [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748), proyecto Telemetry Core. [GitHub #1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403) es el puente técnico de CI.
@@ -12,7 +12,8 @@ implementación parcial hasta el corte 88.
 - Continuidad única: [handoff Telemetry Core](../../vantare-program/handoffs/telemetry-core.md).
 
 Este documento guía tareas coherentes y verificables. El ejecutable Rust
-principal permanece inerte: no activa LMU, retira Go ni promociona una rama.
+principal solo activa LMU mediante un pipe candidato explícito; no se
+selecciona en Wails, retira Go ni promociona una rama.
 Cada tarea ejecutable puede agrupar varios cortes técnicos
 coherentes y registra su base exacta, dueño, archivos previstos, pruebas y
 evidencia antes de editar. Los identificadores `Rxx` son el mapa técnico del
@@ -1871,3 +1872,27 @@ Strategy-only y el producto por el supervisor, y cierra el proceso tras
 cancelación. Falta conectar el lifecycle de consumidores Wails y comprobar
 cambios muy rápidos/política inválida. Estos tests no acreditan paridad de
 Strategy frente a Go, corpus 44/104 ni gate de CPU. Go sigue productivo.
+
+## 98. ELMS 2025 real y ráfagas de política (2026-09-29)
+
+LMU 1.4.2.0 entró en práctica ELMS 2025 en Le Mans con **47** coches. El
+capturador produjo ocho pares SHM+REST sanitizados y correlacionados, con
+reloj SHM 140000..145400 ms y 47 vehículos estables; el manifiesto externo
+`C:\tmp\isa-1403-lmu-1420-47-elms2025-temporal\manifest.json` tiene SHA-256
+`2a736015aaed721264fa4407cd9158f8dc3c0802bd9b5c485ff9fbe59a959f93`
+y los 16 digests de payload coinciden. Es diagnóstico de 47, no el corpus
+exigido de 44 o 104.
+
+El candidato Rust recibió sobre la pista real ACK, dos Status `live`, entre
+29 y 30 Overlay/Engineer con **47** filas, reconfiguración Strategy y Stop
+limpio. Cinco repeticiones de los cinco tests físicos pasaron. Una primera
+repetición expuso `ERROR_IO_INCOMPLETE` al consultar la conexión overlapped
+tras señal del evento; el servidor conserva la operación y reintenta dentro
+del plazo de dos segundos. El supervisor ahora drena una ráfaga de revisiones
+antes de enviarlas: la prueba física x5 vio ACK inicial y final, sin ACK de la
+revisión intermedia ni productos retirados después del ACK final. Tests
+focales y `go test ./...` pasan tras el último ajuste.
+
+No hay evidencia aún de paridad temporal Go/Rust, CPU total ≤ 0,50 en 44 y
+104, p99/RSS, integración Wails/OBS ni retirada de Go. El candidato sigue
+aislado.

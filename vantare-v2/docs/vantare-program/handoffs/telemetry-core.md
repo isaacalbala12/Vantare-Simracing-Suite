@@ -1,5 +1,19 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — 47 coches reales y ráfagas de demanda (2026-09-29)
+
+La práctica ELMS 2025 real en LMU 1.4.2.0 entregó ocho pares temporales
+SHM+REST sanitizados con 47 coches estables; los 16 hashes concuerdan con
+el manifiesto externo SHA-256 `2a736015aaed721264fa4407cd9158f8dc3c0802bd9b5c485ff9fbe59a959f93`.
+El candidato Rust produjo ACK, Status live, Overlay/Engineer de 47 filas,
+Strategy tras nueva configuración y Stop limpio; cinco repeticiones físicas
+pasaron. El supervisor agrupa revisiones en espera para no publicar una
+configuración ya superada y tolera `ERROR_IO_INCOMPLETE` transitorio en el
+connect overlapped, siempre con plazo. Una prueba física x5 exige ACK solo
+de la política inicial y final. `go test ./...` pasa tras el ajuste.
+Plan §98. Go sigue productivo; faltan corpus 44/104 reales,
+paridad temporal, gate de CPU, Wails/OBS y retirada.
+
 ## VAN-778 / ISA-1403 — reconfiguración Strategy física (2026-09-28)
 
 Con LMU 1.4.2.0 en práctica real de 43 coches, el mismo hijo Rust pasó de

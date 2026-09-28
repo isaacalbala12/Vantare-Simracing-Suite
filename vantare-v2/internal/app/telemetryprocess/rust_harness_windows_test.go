@@ -10,6 +10,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 	"time"
 
@@ -72,6 +73,13 @@ func TestRustCandidateLiveLMUOptIn(t *testing.T) {
 	}
 	var ack, statuses, overlays, engineers int
 	track := os.Getenv("VANTARE_LMU_LIVE_CANDIDATE_TRACK_TEST") == "1"
+	expectedVehicles := 43
+	if value := os.Getenv("VANTARE_LMU_EXPECTED_VEHICLES"); value != "" {
+		expectedVehicles, err = strconv.Atoi(value)
+		if err != nil || expectedVehicles < 1 || expectedVehicles > 104 {
+			t.Fatalf("invalid VANTARE_LMU_EXPECTED_VEHICLES=%q", value)
+		}
+	}
 	for statuses < 2 || track && (ack == 0 || overlays == 0 || engineers == 0) {
 		frame, err := ReadFrame(file)
 		if err != nil {
@@ -97,14 +105,14 @@ func TestRustCandidateLiveLMUOptIn(t *testing.T) {
 			if track && event.Overlay.Frame == nil {
 				t.Fatal("track overlay has no frame")
 			}
-			if track && len(event.Overlay.Frame.Standings) != 43 {
-				t.Fatalf("track overlay standings = %d", len(event.Overlay.Frame.Standings))
+			if track && len(event.Overlay.Frame.Standings) != expectedVehicles {
+				t.Fatalf("track overlay standings = %d, want %d", len(event.Overlay.Frame.Standings), expectedVehicles)
 			}
 			overlays++
 		}
 		if event.Engineer != nil {
-			if track && len(event.Engineer.Vehicles) != 43 {
-				t.Fatalf("track engineer vehicles = %d", len(event.Engineer.Vehicles))
+			if track && len(event.Engineer.Vehicles) != expectedVehicles {
+				t.Fatalf("track engineer vehicles = %d, want %d", len(event.Engineer.Vehicles), expectedVehicles)
 			}
 			engineers++
 		}

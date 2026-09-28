@@ -1,6 +1,11 @@
 # ISA-1403 — Framing IPC v1 inicial
 
-Estado: framing Go/Rust y un harness Windows de hijo Rust conectado a named pipe. El harness solo realiza Handshake → Stop; no adquiere LMU ni se integra en Wails. La versión `1` identifica el framing local, no el esquema canónico ni las versiones de Overlay/Engineer/Strategy. La elección de codec para payload permanece abierta al benchmark JSON/binario de R06/R21.
+Estado: framing Go/Rust y candidato Windows con adquisición LMU física,
+Handshake, Configuration/ACK, Status, Snapshot, Fact/ACK y Stop sobre named
+pipe. El supervisor Go lo ejecuta solo en pruebas opt-in y aún no lo
+selecciona Wails. La versión `1` identifica el framing local, no el esquema
+canónico ni las versiones de Overlay/Engineer/Strategy. La elección de codec
+para payload permanece abierta al benchmark JSON/binario de R06/R21.
 
 ## Framing implementado
 

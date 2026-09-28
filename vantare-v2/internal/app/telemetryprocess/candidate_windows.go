@@ -106,6 +106,9 @@ func runCandidateOnceWithUpdates(ctx context.Context, executable string, configu
 		return err
 	}
 	receiver := NewReceiver()
+	if err := receiveCandidateUpdates(configuration, updates); err != nil {
+		return err
+	}
 	configured, err := receiver.Configure(*configuration)
 	if err != nil {
 		return err
@@ -121,18 +124,8 @@ func runCandidateOnceWithUpdates(ctx context.Context, executable string, configu
 		if ctx.Err() != nil {
 			return stopCandidate(file, child)
 		}
-		if updates != nil && *updates != nil {
-			select {
-			case requested, open := <-*updates:
-				if !open {
-					*updates = nil
-				} else if requested.Revision <= configuration.Revision {
-					return ErrReceiverProtocol
-				} else {
-					*configuration = requested
-				}
-			default:
-			}
+		if err := receiveCandidateUpdates(configuration, updates); err != nil {
+			return err
 		}
 		if receiver.pending == nil && receiver.active != nil && configuration.Revision > receiver.active.Revision {
 			frame, err := receiver.Configure(*configuration)
@@ -184,6 +177,33 @@ func runCandidateOnceWithUpdates(ctx context.Context, executable string, configu
 			return fmt.Errorf("deliver Rust candidate event: %w", err)
 		}
 	}
+}
+
+// receiveCandidateUpdates drains a burst before a new policy is sent, so a
+// superseded revision cannot publish products between two queued requests.
+func receiveCandidateUpdates(configuration *ConfigurationV1, updates *<-chan ConfigurationV1) error {
+	if updates == nil {
+		return nil
+	}
+	for *updates != nil {
+		select {
+		case requested, open := <-*updates:
+			if !open {
+				*updates = nil
+				return nil
+			}
+			if requested.Revision <= configuration.Revision {
+				return ErrReceiverProtocol
+			}
+			if _, err := EncodeConfiguration(requested); err != nil {
+				return err
+			}
+			*configuration = requested
+		default:
+			return nil
+		}
+	}
+	return nil
 }
 
 func stopCandidate(file *os.File, child *childProcess) error {

@@ -138,6 +138,12 @@ func (pipe *localPipe) acceptChild(ctx context.Context, expected uint32) error {
 		if result == windows.WAIT_OBJECT_0 {
 			var transferred uint32
 			if err := windows.GetOverlappedResult(pipe.handle, &overlapped, &transferred, false); err != nil {
+				if errors.Is(err, windows.ERROR_IO_INCOMPLETE) {
+					// We observed an incomplete result after this event signaled.
+					// Keep the operation alive and retry within the accept deadline.
+					time.Sleep(time.Millisecond)
+					continue
+				}
 				return fmt.Errorf("complete telemetry pipe connection: %w", err)
 			}
 			return pipe.verifyClientPID(expected)

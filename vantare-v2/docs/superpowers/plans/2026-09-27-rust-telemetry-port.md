@@ -920,3 +920,14 @@ coordinador usa estos IDs canónicos para detectar DriverChanged y avanzar el
 stint. Tests Rust validan identidades de los 44 vehículos y cambio de piloto;
 debug 68/68, formato y Clippy pasan. Sigue pendiente comparar secuencias
 temporales completas y proyecciones externas contra Go.
+
+## 35. Distancias relativas Rust candidatas (2026-09-28)
+
+R13c añade la derivación neutral de gaps de tiempo y vueltas. Reproduce la
+distancia de progreso relativa al jugador, el ajuste circular con el tiempo
+estimado de vuelta y la independencia entre calidad temporal y clasificación.
+Las pruebas Rust recorren los cinco casos de cruce de meta del oráculo Go,
+ausencia de jugador, calidad mixta, distancia inválida y publicación atómica
+en la fixture SHM de 44. Rust debug/release 71/71, Clippy y build release
+pasan. Falta comparar snapshots temporales completos con el oráculo Go y
+proyectar los gaps a Overlay/Engineer; el 50% CPU sigue sin acreditar.

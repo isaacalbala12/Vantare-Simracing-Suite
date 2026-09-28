@@ -31,6 +31,7 @@ pub struct Pipeline {
     last_facts: Vec<SessionFact>,
     session_remaining: Option<Field<f64>>,
     controls_history: Option<derive::controls::ControlHistory>,
+    gaps: Option<derive::gaps::GapSet>,
 }
 
 pub struct PipelineCandidate {
@@ -39,6 +40,7 @@ pub struct PipelineCandidate {
     session: SessionCandidate,
     session_remaining: Field<f64>,
     controls_history: derive::controls::ControlHistory,
+    gaps: derive::gaps::GapSet,
 }
 
 impl Pipeline {
@@ -51,6 +53,7 @@ impl Pipeline {
             last_facts: Vec::new(),
             session_remaining: None,
             controls_history: None,
+            gaps: None,
         })
     }
 
@@ -157,6 +160,12 @@ impl Pipeline {
             occurred_utc_ns,
             derive::controls::MAX_CONTROLS_HISTORY,
         );
+        let gaps = derive::gaps::derive(
+            reduced.batch().player_id.as_deref(),
+            &reduced.batch().state.player_present,
+            &reduced.batch().state.vehicles,
+            &reduced.batch().state.track_length,
+        );
         self.validate_fact_batch(session.facts())?;
         Ok(PipelineCandidate {
             mapper,
@@ -164,6 +173,7 @@ impl Pipeline {
             session,
             session_remaining,
             controls_history,
+            gaps,
         })
     }
 
@@ -188,6 +198,7 @@ impl Pipeline {
         self.mapper.commit_candidate(candidate.mapper);
         self.session_remaining = Some(candidate.session_remaining);
         self.controls_history = Some(candidate.controls_history);
+        self.gaps = Some(candidate.gaps);
         Ok(self.reducer.current().expect("commit installed a batch"))
     }
 
@@ -201,6 +212,10 @@ impl Pipeline {
 
     pub fn controls_history(&self) -> Option<&derive::controls::ControlHistory> {
         self.controls_history.as_ref()
+    }
+
+    pub fn gaps(&self) -> Option<&derive::gaps::GapSet> {
+        self.gaps.as_ref()
     }
 
     pub fn facts(&self) -> &[SessionFact] {
@@ -292,6 +307,10 @@ impl PipelineCandidate {
 
     pub fn controls_history(&self) -> &derive::controls::ControlHistory {
         &self.controls_history
+    }
+
+    pub fn gaps(&self) -> &derive::gaps::GapSet {
+        &self.gaps
     }
 
     pub fn facts(&self) -> &[SessionFact] {
@@ -707,6 +726,8 @@ mod tests {
             .prepare(grid, &fused, &weather, ClockChange::Continuous, 100)
             .unwrap();
         assert_eq!(candidate.batch().state.vehicles.len(), 44);
+        assert_eq!(candidate.gaps().vehicles.len(), 44);
+        assert!(pipeline.gaps().is_none());
         for vehicle in &candidate.batch().state.vehicles {
             assert_eq!(
                 vehicle.driver_id,
@@ -744,6 +765,7 @@ mod tests {
         assert!(pipeline.current().is_none());
         assert!(pipeline.session_remaining().is_none());
         pipeline.commit(candidate).unwrap();
+        assert_eq!(pipeline.gaps().unwrap().vehicles.len(), 44);
         assert!(
             pipeline
                 .current()

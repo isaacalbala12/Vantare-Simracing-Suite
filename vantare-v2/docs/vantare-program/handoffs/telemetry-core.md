@@ -1,5 +1,12 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — gaps relativos Rust candidatos (2026-09-28)
+
+R13c calcula gaps de tiempo/vueltas neutrales en el candidato LMU y los
+publica con el lote. Casos de cruce de meta Go, calidad independiente y fixture
+44 verificados; Rust debug/release 71/71, Clippy y build pasan. Plan sección
+35; faltan oráculo temporal, proyecciones y CPU causal.
+
 ## ISA-1403 — DriverID/TeamID canónicos Rust (2026-09-28)
 
 El lote LMU conserva DriverID usable y TeamID vacío equivalente a Go; el

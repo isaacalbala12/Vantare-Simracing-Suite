@@ -107,13 +107,14 @@ frecuencia verificadas. [Relojes Windows](https://learn.microsoft.com/en-us/wind
   Pruebas de commit atómico, drivers neutrales, consumidores lentos, fallos de
   fuente/IPC, reinicio, cierre y boundedness.
 - CPU de Rust **más IPC y recepción/entrega Go** al menos 50% menor que Go de
-  algoritmo equivalente en cada escenario de 44 y 104 coches. Comparación
+  algoritmo equivalente en un escenario temporal real de al menos 46 coches. Comparación
   obligatoria adicional con Go actual; misma máquina, frecuencias, consumidores
   y trabajo. p99 no peor y RSS agregado como máximo 110% de la base equivalente.
   Las fórmulas, corridas, ruido y evidencia se fijan en el plan.
-- Corpus temporal real acreditado en ambos tamaños. El fixture estático de 44
-  y el benchmark construido de 104 no sustituyen esa evidencia. Hoy no se ha
-  acreditado la captura real de 104 en este worktree.
+- Corpus temporal real acreditado con al menos 46 coches. El fixture estático
+  de 44 y el benchmark construido de 104 no sustituyen esa evidencia. Isaac
+  retiró el requisito de dos tamaños separados el 2026-09-29; el límite de
+  capacidad de 104 vehículos del protocolo sigue siendo un contrato técnico.
 - Sesión física LMU/Wails/OBS funcional, build/CI Windows, packaging de la pareja
   y rollback verificado. Repetir los gates afectados sobre el binario final
   después de retirar Go; no heredar resultados de un candidato diferente.

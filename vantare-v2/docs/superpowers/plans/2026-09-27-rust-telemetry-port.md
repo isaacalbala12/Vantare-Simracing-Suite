@@ -1,7 +1,7 @@
 # ISA-1403 — Plan de migración del runtime live de telemetría a Rust
 
-Fecha: 2026-09-27. Versión del plan: 1.3. Estado: diseño confirmado por Isaac;
-implementación parcial hasta el corte 98.
+Fecha: 2026-09-27. Versión del plan: 1.4. Estado: diseño confirmado por Isaac;
+implementación parcial hasta el corte 99. Alcance de corpus revisado el 2026-09-29.
 **Paridad, integración live y gates pendientes.**
 
 - Tarea operativa: [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748), proyecto Telemetry Core. [GitHub #1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403) es el puente técnico de CI.
@@ -37,7 +37,7 @@ conservar sus datos, calidad, orden, cadencias y contratos.
 | IPC por named pipes | Local, acceso restringido, versión explícita; comparar JSON y un candidato binario antes de elegir. |
 | Estado y hechos diferentes | Estado completo latest-wins; facts ordenados con cursor, retención limitada y resync explícito. |
 | Fallo del hijo | Desconectado visible y reinicios acotados. El rollback Go es exclusivo y temporal; nunca dos adquisiciones LMU. |
-| Gate de rendimiento | Al menos 50% menos CPU en **cada** escenario real de 44 y 104 coches frente a Go equivalente; p99 no peor y RSS agregado como máximo 110% de su base. |
+| Gate de rendimiento | Al menos 50% menos CPU en un escenario temporal real de **al menos 46 coches** frente a Go equivalente; p99 no peor y RSS agregado como máximo 110% de su base. |
 | Validación física | LMU/Wails/OBS verifica funcionalidad. No sustituye el benchmark controlado ni demuestra por sí sola ahorro de CPU. |
 | Crates autorizadas en Q4=C | Isaac autoriza usarlas sin límite numérico cuando faciliten este port; documentar necesidad, alternativa, licencia, seguridad, tamaño y versión de cada una. Una ampliación del alcance conserva su gate propio. |
 
@@ -220,13 +220,17 @@ El archivo [lmu-fixture.bin](../../../testdata/lmu-fixture.bin) existe, su SHA-2
 verificado es `959c51421529c6157371678d8db9bcbbdc8ab3780bd5557828f2bc0d2225e5ff`
 y los [tests del mapper](../../../internal/telemetry/drivers/lmu/batch_mapper_test.go)
 esperan 44 vehículos. Es un snapshot útil para parsers, **no una secuencia temporal
-que cubra todo el gate**. R02 debe acreditar también la secuencia real de 44.
+que cubra todo el gate**. R02 requiere un corpus temporal real de al menos 46.
 
-No se ha acreditado una captura real de 104 vehículos en este worktree.
+Isaac retiró el requisito de escenarios separados de 44 y 104 vehículos el
+2026-09-29: **un escenario real de al menos 46 coches basta para la aceptación**.
+El corpus temporal ELMS 2025 de 47 coches es el candidato actual; sus ocho
+muestras no sustituyen una duración suficiente para el banco G0/G1/R ni la
+paridad de todas las salidas. No se ha acreditado una captura real de 104
+vehículos en este worktree, pero ya no bloquea por su tamaño.
 [BenchmarkEngineApply104](../../../internal/telemetry/engine/benchmark_test.go)
 construye un `benchmarkBatch`; aumentar filas, repetir coches o renombrar ese
-lote no satisface el gate. Si no se consigue la captura real, se conserva el
-avance técnico y el port queda pendiente de aceptación, sin rebajar el umbral.
+lote no satisface el gate.
 
 Cada corpus requiere manifiesto con procedencia LMU, build/layout, SHA del
 capturador, fecha/zona, SHM/REST y tiempos relativos, duración, frecuencia,
@@ -262,7 +266,7 @@ No regenerar goldens desde Rust para dar por resuelta una diferencia con Go.
 Un bug previo reproducido se registra como issue aparte; su corrección no se
 mezcla silenciosamente con el port.
 
-### Tres brazos y dos escenarios obligatorios
+### Tres brazos y un escenario real obligatorio
 
 | Brazo | Trabajo contado |
 | --- | --- |
@@ -270,7 +274,9 @@ mezcla silenciosamente con el port.
 | G1: Go equivalente | Mismas estructuras/algoritmos relevantes que Rust, conservando la misma salida. Cambios solo para control experimental, sin activar una feature ajena. |
 | R: Rust + Go | Adquisición/parse/fusión/Core/derive/projection Rust, encoding, escritura/lectura IPC, decode/validación y entrega Go hasta la misma frontera que G0/G1. Contar ambos procesos. |
 
-Medir 44 y 104 separadamente; ninguna media conjunta puede compensar un fallo.
+Medir en el mismo corpus temporal real de al menos 46 coches los tres brazos;
+no combinar escenarios para ocultar un fallo. Los límites de capacidad del
+parser y del transporte siguen cubriendo hasta 104 vehículos por contrato.
 El baseline de aceptación es **G1 equivalente**; G0 es comparación obligatoria
 para mostrar el efecto frente al producto actual y separar algoritmo/lenguaje.
 Registrar también cualquier regresión de R frente a G0 para revisión.
@@ -294,7 +300,7 @@ leídos/aceptados/rechazados, snapshots coalescidos y facts para detectar ahorro
 por pérdida de trabajo.
 
 Primero ejecutar A/A para comprobar ruido y resolución del banco. Después al
-menos cinco bloques intercalados G0/G1/R por corpus, con orden alternado,
+menos cinco bloques intercalados G0/G1/R sobre el corpus de aceptación, con orden alternado,
 calentamiento común y ventanas de igual duración; fijar esos parámetros en
 R03 antes de ver resultados Rust. No ejecutar builds, tests u otros bancos en
 paralelo. Conservar todas las corridas, incluyendo las invalidadas y su causa.
@@ -314,7 +320,7 @@ si el gate falla, se perfila y propone un corte acotado, sin un bucle indefinido
 de optimización ni cambio unilateral del umbral.
 
 El benchmark de codecs de R06 es preliminar. La decisión final usa todo R en
-R21/R24: JSON y binario sobre las mismas proyecciones y ambos tamaños, CPU de
+R21/R24: JSON y binario sobre las mismas proyecciones y el corpus aceptado, CPU de
 ambos extremos, p99, RSS, bytes, complejidad, dependencias y diagnóstico. Si no
 hay mejora repetible del binario, preferir JSON por sencillez. Si ninguno cumple
 el gate, no se activa Rust por asumir que el lenguaje debería ahorrar.
@@ -334,12 +340,13 @@ un worker no basta.
 | Corte | Dependencia | Entrega, archivos previstos y aceptación | Verificación de salida |
 | --- | --- | --- | --- |
 | R01 Inventario congelado | Plan revisado | `docs/telemetry-core/rust-port-inventory.md` y manifiesto de base/configuración. Tabla símbolo→owner futuro→consumidor→test, contratos/cadencias/límites, y resolución del destino de roadmap antes del PR. Registrar repositorio, rama, SHA y discrepancias de base. | Revisión contra wiring/callers reales; rutas comprobadas; mapa completo del camino live y lista protegida Analysis/recording. |
-| R02 Corpus temporal | R01 | `testdata/rust-port/manifest.json`, índice y herramientas de captura sanitizada acotadas. Acreditar secuencias SHM+REST de 44 y 104 reales, con hashing, temporalidad, privacidad y conteo. Captura 104 pendiente explícita hasta obtenerla. | Validar manifest y hashes, leer con parser Go, contrastar conteos/estado con LMU. Fallar si falta corpus; no convertir `Skip` en PASS. |
+| R02 Corpus temporal | R01 | `testdata/rust-port/manifest.json`, índice y herramientas de captura sanitizada acotadas. Acreditar secuencia SHM+REST real de al menos 46 coches, con hashing, temporalidad, privacidad y conteo. El corpus ELMS 2025 de 47 es candidato; completar duración y estados exigidos por el banco. | Validar manifest y hashes, leer con parser Go, contrastar conteos/estado con LMU. Fallar si falta corpus; no convertir `Skip` en PASS. |
 | R03 Oráculo y banco Go | R01; R02 para medir | Herramienta bajo `tools/telemetry-port-parity/` y banco bajo `scripts/bench/`; separar entregas si sus responsabilidades o tamaño impiden una revisión clara. Registrar salidas tipadas por etapa, G0, receptores, CPU/p99/RSS, A/A, método estadístico y duración fijados. | Repetición determinista de goldens; banco rechaza salida omitida/digest incorrecto/corrida incompleta; informe G0 con crudos. |
 
 **Checkpoint F0:** contratos de salida congelados y banco capaz de detectar
-diferencias. Sin 104 real se puede construir paridad con el corpus disponible,
-pero los gates de selección final y cierre permanecen pendientes.
+diferencias. El corpus real de 47 coches habilita paridad diagnóstica; los
+gates de selección final y cierre permanecen pendientes por duración, paridad
+completa e integración.
 
 ### F1 — Ejecutable mínimo y frontera Windows
 
@@ -384,7 +391,7 @@ manteniendo una revisión clara de cada resultado.
 | R15b Controles/history | R15a | `projection/overlay/controls.rs` + test | Misma ventana/timestamps, cadencia y calidad para Pedals/Input Telemetry. |
 | R15c Fuel/damage/weather | R15b | Builders y tests bajo `projection/overlay/`, con evidencia por builder | Golden y ausencia/invalid exactos; separar la entrega si el alcance o diff lo requiere. |
 | R15d Delta | R15c | `projection/overlay/delta.rs` + test | Misma referencia, modo y semántica del widget actual. |
-| R15e Standings/relative | R15d | Builders y tests con evidencia por resultado | Orden, clases, gaps, selección, 44/104 y cambios sin identidad nueva; revisar cada builder como subcorte técnico. |
+| R15e Standings/relative | R15d | Builders y tests con evidencia por resultado | Orden, clases, gaps, selección, corpus real ≥46 y cambios sin identidad nueva; revisar cada builder como subcorte técnico. |
 | R15f Espacio/spotter/radar | R15e | Builders espaciales y tests en cortes acotados | Geometría, orientación, frescura, límites y capacidades coinciden con Go y ADR de producto; incluir pruebas ISA-1388. |
 | R15g Scheduler y cachés | R15f | `projection/overlay/cadence.rs` y tests | Demanda/dirty/valores que envejecen; conservar tabla efectiva y secciones, sin omitir cambios por coalescing ni reapertura. |
 | R16 Engineer | R14; R06 | `projection/engineer/`, adaptador receptor Go y tests en cortes por snapshot/facts/status | `ObservationSnapshotV1`, facts y status reales, capabilities y boundary; oráculo/replay de Engineer y prueba de consumidor lento. La lógica de radio/Spotter de producto permanece en Go. |
@@ -400,7 +407,7 @@ un frame visual. El oráculo Go no es una dependencia productiva del ejecutable 
 | R18 Ensamblado con replay | R15g–R17 | Entrada Rust y ensamblado receptor en harness; cambios acotados bajo `tools/telemetry-port-parity/`. Salida externa completa a Publisher/Engineer/Strategy con configuración real. | Paridad de corpus entero, bootstrap/reconnect/facts; CPU preliminar de ruta completa incluye encode/decode y entrega Go. |
 | R19 Composición de candidato | R05, R18 | Fachada de backend en `internal/app/`, selección temporal en `cmd/vantare/main.go` y tests de lifecycle. Rust explícito en build aislada; Go por defecto hasta gates. | Un solo owner, start/stop idempotentes, cambio de política/demanda confirmado, apertura/cierre Studio/Desktop/OBS, Strategy OFF conserva ausencia de trabajo. |
 | R20 Fallos y observabilidad | R19 | Supervisor/IPC y tests de fallo; métricas sanitizadas de proceso, colas, edad, rechazos, restart y resync. Agrupar por objetivo verificable y separar fronteras si el diff deja de ser revisable. | Matriz de §6, incluyendo crash durante entrega de facts, peer colgado, cola llena, suspensión, Stop concurrente y replay tras nueva instancia; ninguna pérdida silenciosa ni estado fresh congelado. |
-| R21 Formato y Go equivalente | R18, R20; R02 completo | Comparar JSON/binario en la ruta completa y construir G1 documentando cada diferencia algorítmica de G0. Elegir un codec de producción y registrar decisión/evidencia en ADR; retirar prototipo no elegido del producto. | Ambos corpus y mismos productos/frecuencias; paridad G0/G1/R; CPU/p99/RSS de ambos extremos. Selección justificada, sin promesa del gate final. |
+| R21 Formato y Go equivalente | R18, R20; R02 completo | Comparar JSON/binario en la ruta completa y construir G1 documentando cada diferencia algorítmica de G0. Elegir un codec de producción y registrar decisión/evidencia en ADR; retirar prototipo no elegido del producto. | Mismo corpus real ≥46 y mismos productos/frecuencias; paridad G0/G1/R; CPU/p99/RSS de ambos extremos. Selección justificada, sin promesa del gate final. |
 
 **Checkpoint F4:** candidato listo para empaquetar y probar físicamente. La
 elección de codec es una salida medible, no una preferencia de lenguaje.
@@ -413,7 +420,7 @@ elección de codec es una salida medible, no una preferencia de lenguaje.
 | R23a Packaging | R22 | Scripts existentes de instalador/portable/checksums y manifest de helper, acotados en la issue. Host+hijo salen del mismo build y se actualizan/revierten juntos. | Instalación, portable, actualizar y volver a build anterior en entorno aislado sin Rust instalado; falta/corrupción/versión incorrecta del hijo falla explícita. Sin publicar release. |
 | R23b CI | R22 | `.github/workflows/branch-channel-gates.yml` y gate Rust/paridad Windows asociado. Checks de contrato, tests, build y artifact completeness en SHA exacto. | Ejecutar el workflow real sobre PR draft cuando exista; ninguna omisión/Skip de corpus requerido cuenta como éxito. No cambiar rulesets, secretos, permisos ni activar promociones. |
 | R24 Funcionalidad física y soak | R20, R23a | Informe en `docs/telemetry-core/evidence/isa-1403/`, manifiesto de binarios/logs sanitizados y checklist §6. | Sesión LMU/Wails/OBS con menú/garaje/pista/tráfico/boxes/sesión/reconnect/cierre; replay soak de dos horas lógicas y sesión física con duración registrada. Consumidores y canales verificados; prueba física pendiente hasta realizarla. |
-| R25 Gate de CPU final | R21–R24; corpus 44/104 completo | Crudos G0/G1/R, hashes, configuración, método y resumen reproducible de §4 sobre el candidato empaquetado. | Los tres límites pasan en cada corpus, paridad intacta y evidencia repetida. Revisión del banco independiente. Si falta 104 real o un gate falla, mantener Go como opción productiva. |
+| R25 Gate de CPU final | R21–R24; corpus real ≥46 completo | Crudos G0/G1/R, hashes, configuración, método y resumen reproducible de §4 sobre el candidato empaquetado. | Los tres límites pasan en el corpus aceptado, paridad intacta y evidencia repetida. Revisión del banco independiente. Si un gate falla, mantener Go como opción productiva. |
 
 El target MSVC dispone de herramientas host y exige Windows 10 o posterior;
 registrar la versión concreta elegida de Rust y Build Tools en R22.
@@ -1918,3 +1925,15 @@ entrar en benchmarks de larga duración; la suite se repitió con `--lib --test
 temporal_corpus` y pasó. Estas pruebas todavía no comparan todos los campos
 ni las salidas Go/Rust entre sí; el REST Rust, la paridad completa, los corpus
 44/104 y el gate CPU total siguen pendientes. Go continúa productivo.
+
+## 100. Alcance de corpus aceptado por Isaac (2026-09-29)
+
+Isaac sustituyó el requisito de dos escenarios separados de 44 y 104 coches
+por **un escenario temporal real de al menos 46 coches**. LMU mostró 46 en la
+selección ELMS 2026 y SHM+REST publicaron 47 al incluir al jugador. La
+secuencia real ELMS 2025 de 47 coches ya auditada satisface el tamaño mínimo;
+el gate sigue pendiente por paridad de todos los campos y productos, duración
+y medición completa G0/G1/R, CPU ≤ 0,50, p99 y RSS. El soporte técnico hasta
+104 vehículos permanece como límite del parser/IPC, no como corpus obligatorio
+de rendimiento. Las referencias a 44/104 en los cortes históricos §6–99
+conservan el estado de sus fechas y no rigen la aceptación tras esta decisión.

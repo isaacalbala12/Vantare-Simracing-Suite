@@ -1,5 +1,17 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — alcance de corpus revisado (2026-09-29)
+
+Isaac acepta un escenario temporal **real de al menos 46 coches** para la
+paridad y el gate de rendimiento; ya no exige los dos escenarios separados
+de 44 y 104. LMU ELMS 2026 mostró 46 en la configuración y publicó 47
+vehículos con el jugador en SHM y REST. La secuencia ELMS 2025 de ocho pares
+reales con 47 coches y 16 hashes auditados pasa el umbral de tamaño, pero
+todavía no prueba duración suficiente, paridad completa ni CPU ≤ 0,50,
+p99 y RSS. El parser y el IPC conservan el límite técnico de 104; las notas
+históricas posteriores a este bloque describen el criterio antiguo en la
+fecha en que se escribieron. Plan v1.4 §4 y ADR 0097; Go sigue productivo.
+
 ## VAN-778 / ISA-1403 — auditoría temporal y replay de 47 coches (2026-09-29)
 
 La auditoría Go opt-in del corpus externo ELMS 2025 comprobó los 16 hashes,

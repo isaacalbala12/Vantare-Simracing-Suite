@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — frescura del origen Rust (2026-09-28)
+
+Rust porta la histéresis Go del reloj LMU (stale a 500 ms detenido;
+fresh tras 2 s sostenidos) y la protege con secuencias de borde y la
+cadencia irregular de 54 coches IA. Rust release 132/132, Clippy,
+formato y build pasan. Aún falta aplicarla a todos los campos antes del
+commit live; no hay publicación Rust ni gate CPU final. Plan sección 79,
+[VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
 ## VAN-778 / ISA-1403 — copia Overlay retirada (2026-09-28)
 
 `wrap_full` mueve el árbol de secciones y source al sobre final sin

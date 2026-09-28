@@ -1,6 +1,7 @@
 //! Closed LMU frame admission. A caller must supply independently verified
 //! build evidence; buffer shape alone never promotes an unknown game build.
 
+pub mod freshness;
 pub mod fusion;
 pub mod mapper;
 pub mod pipeline;

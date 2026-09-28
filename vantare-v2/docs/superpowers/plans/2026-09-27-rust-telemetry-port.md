@@ -1550,3 +1550,18 @@ Es una mejora local de la ruta Overlay sobre un único frame real estático,
 no una comparación de CPU de proceso ni el gate ≥50%. El coste principal
 restante del banco es la proyección de secciones; antes de otra optimización
 se necesita corpus temporal 44/104 y el loop productivo.
+
+## 79. Gate de frescura del reloj LMU en Rust (2026-09-28)
+
+El driver Go entra en stale a los 500 ms sin avance del reloj de origen
+y no vuelve a fresh hasta dos segundos de avances sostenidos. Rust porta
+esa máquina de estados pura, con tests de los límites exactos, reinicio
+de recuperación por otra parada, reloj congelado, rebobinado del reloj
+monótono y la cadencia irregular auditada con 54 coches IA. Rust release
+132/132, Clippy, formato y build release pasan.
+
+El gate todavía no se conecta a las calidades de todos los campos del
+frame ni al loop Rust. Por ello un snapshot congelado no puede publicarse
+productivamente desde este corte; Go sigue owner. La siguiente frontera
+es aplicar la marca stale antes del commit y probarla con frames temporales
+reales sin degradar Missing/Invalid.

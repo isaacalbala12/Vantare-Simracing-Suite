@@ -709,3 +709,17 @@ MIT o MIT/Apache-2.0. Riesgos pendientes: dependencia adicional, tamaño,
 latencia de cierre del I/O bloqueante y paridad de cancelación. Antes de
 conectar el runtime, el cierre debe probar su límite y la comparación CPU/RSS
 debe incluir el coste del cliente; no se atribuye aquí la mejora del 50%.
+
+## 19. Poll REST aislado y cache transaccional (2026-09-28)
+
+R09 une transporte y decodificación en un `poll_once` secuencial con reloj
+monotónico inyectado y comprobación de cancelación antes y entre endpoints.
+Cada endpoint reemplaza sus campos solo tras decodificación completa; una
+respuesta malformada cambia salud y deja envejecer los valores anteriores.
+El TTL conserva calidad inválida/ausente, marca stale los valores frescos y
+descarta números de coche al caducar desde el inicio de su solicitud.
+Tests locales verifican ambos endpoints, cancelación intermedia y un poll
+malformado tras uno válido. Rust release 30/30, formato y Clippy pasan.
+El I/O bloqueante en curso termina por el deadline de 750 ms; todavía no hay
+loop de cadencia/backoff, cancelación inmediata del socket ni salida del
+cache hacia fusión/core/IPC. Este poll aislado no certifica la paridad live.

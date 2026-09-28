@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — poll REST y cache transaccional Rust (2026-09-28)
+
+R09 conecta transporte y decoder en un poll secuencial aislado. Un endpoint
+malformado cambia salud sin reemplazar sus campos; valores anteriores caducan
+por reloj monotónico, y car numbers se descartan según inicio de solicitud.
+La cancelación evita iniciar el segundo endpoint, con hasta 750 ms aún
+posibles para una llamada en curso. Rust release 30/30, formato y Clippy
+pasan. Faltan loop de cadencia/backoff, cancelación inmediata de socket,
+fusión/core/IPC y pruebas con corpus temporal real 44/104. Go sigue productivo.
+
 ## ISA-1403 — transporte REST loopback inicial (2026-09-28)
 
 R09 añade cliente HTTP Rust con host/rutas fijos, sin proxy ni redirects,

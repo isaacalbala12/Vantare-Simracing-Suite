@@ -90,16 +90,8 @@ pub struct TimedField<T> {
 
 impl<T> TimedField<T> {
     pub fn age(&mut self, now_ns: u64, ttl_ns: u64) {
-        let Some(updated) = self.updated_ns else {
-            return;
-        };
-        if now_ns >= updated && now_ns - updated <= ttl_ns {
-            return;
-        }
-        if let Field::Present { freshness, .. } = &mut self.field
-            && *freshness == Freshness::Fresh
-        {
-            *freshness = Freshness::Stale;
+        if let Some(updated) = self.updated_ns {
+            stale_field(&mut self.field, updated, now_ns, ttl_ns);
         }
     }
 }
@@ -110,13 +102,147 @@ pub struct TimedCarNumbers {
     pub request_started_ns: Option<u64>,
 }
 
+/// Each endpoint commits only after complete decode. A failed poll updates
+/// health while the prior values age from their original response stamp.
+#[derive(Debug)]
+pub struct RestCache {
+    pub standings_status: EndpointStatus,
+    pub session_status: EndpointStatus,
+    pub standings: Option<StandingsFields>,
+    pub session: Option<SessionInfoFields>,
+    standings_updated_ns: Option<u64>,
+    session_updated_ns: Option<u64>,
+    car_numbers_started_ns: Option<u64>,
+}
+
+impl Default for RestCache {
+    fn default() -> Self {
+        Self {
+            standings_status: EndpointStatus::Unknown,
+            session_status: EndpointStatus::Unknown,
+            standings: None,
+            session: None,
+            standings_updated_ns: None,
+            session_updated_ns: None,
+            car_numbers_started_ns: None,
+        }
+    }
+}
+
+impl RestCache {
+    /// Sequential poll with an injected monotonic clock. Cancellation is
+    /// checked between requests; an in-flight call remains deadline-bounded.
+    pub fn poll_once(
+        &mut self,
+        client: &http::Client,
+        elapsed_ns: impl Fn() -> u64,
+        cancelled: impl Fn() -> bool,
+        ttl_ns: u64,
+    ) -> Option<RestStatus> {
+        if cancelled() {
+            return None;
+        }
+        let started = elapsed_ns();
+        let response = client.fetch(http::Endpoint::Standings);
+        let received = elapsed_ns();
+        if response.status == EndpointStatus::Fresh {
+            self.accept_standings(&response.body, started, received);
+        } else {
+            self.standings_status = response.status;
+        }
+        if cancelled() {
+            self.age(elapsed_ns(), ttl_ns);
+            return None;
+        }
+        let response = client.fetch(http::Endpoint::SessionInfo);
+        let received = elapsed_ns();
+        if response.status == EndpointStatus::Fresh {
+            self.accept_session(&response.body, received);
+        } else {
+            self.session_status = response.status;
+        }
+        self.age(elapsed_ns(), ttl_ns);
+        (!cancelled()).then(|| self.status())
+    }
+
+    pub fn accept_standings(&mut self, body: &[u8], started_ns: u64, received_ns: u64) {
+        match decode_standings(body) {
+            Ok(fields) => {
+                self.standings = Some(fields);
+                self.standings_updated_ns = Some(received_ns);
+                self.car_numbers_started_ns = Some(started_ns);
+                self.standings_status = EndpointStatus::Fresh;
+            }
+            Err(DecodeError::Empty) => self.standings_status = EndpointStatus::Empty,
+            Err(_) => self.standings_status = EndpointStatus::Malformed,
+        }
+    }
+
+    pub fn accept_session(&mut self, body: &[u8], received_ns: u64) {
+        match decode_session_info(body) {
+            Ok(fields) => {
+                self.session = Some(fields);
+                self.session_updated_ns = Some(received_ns);
+                self.session_status = EndpointStatus::Fresh;
+            }
+            Err(DecodeError::Empty) => self.session_status = EndpointStatus::Empty,
+            Err(_) => self.session_status = EndpointStatus::Malformed,
+        }
+    }
+
+    pub fn age(&mut self, now_ns: u64, ttl_ns: u64) {
+        if let (Some(fields), Some(updated)) = (&mut self.standings, self.standings_updated_ns) {
+            stale_field(&mut fields.player_present, updated, now_ns, ttl_ns);
+            stale_field(&mut fields.player_position, updated, now_ns, ttl_ns);
+            stale_field(&mut fields.completed_laps, updated, now_ns, ttl_ns);
+            stale_field(&mut fields.pit_stop_count, updated, now_ns, ttl_ns);
+            if expired(self.car_numbers_started_ns, now_ns, ttl_ns) {
+                fields.car_numbers.clear();
+            }
+            if expired(Some(updated), now_ns, ttl_ns)
+                && self.standings_status != EndpointStatus::Unsupported
+            {
+                self.standings_status = EndpointStatus::Stale;
+            }
+        }
+        if let (Some(fields), Some(updated)) = (&mut self.session, self.session_updated_ns) {
+            stale_field(&mut fields.track_name, updated, now_ns, ttl_ns);
+            stale_field(&mut fields.source_time_ns, updated, now_ns, ttl_ns);
+            stale_field(&mut fields.session_type, updated, now_ns, ttl_ns);
+            stale_field(&mut fields.vehicle_count, updated, now_ns, ttl_ns);
+            stale_field(&mut fields.ambient_temp_c, updated, now_ns, ttl_ns);
+            stale_field(&mut fields.track_temp_c, updated, now_ns, ttl_ns);
+            stale_field(&mut fields.wetness_fraction, updated, now_ns, ttl_ns);
+            stale_field(&mut fields.global_yellow, updated, now_ns, ttl_ns);
+            if expired(Some(updated), now_ns, ttl_ns)
+                && self.session_status != EndpointStatus::Unsupported
+            {
+                self.session_status = EndpointStatus::Stale;
+            }
+        }
+    }
+
+    pub fn status(&self) -> RestStatus {
+        overall_status(self.standings_status, self.session_status)
+    }
+}
+
+fn expired(updated_ns: Option<u64>, now_ns: u64, ttl_ns: u64) -> bool {
+    updated_ns.is_none_or(|updated| now_ns < updated || now_ns - updated > ttl_ns)
+}
+
+fn stale_field<T>(field: &mut Field<T>, updated_ns: u64, now_ns: u64, ttl_ns: u64) {
+    if expired(Some(updated_ns), now_ns, ttl_ns)
+        && let Field::Present { freshness, .. } = field
+        && *freshness == Freshness::Fresh
+    {
+        *freshness = Freshness::Stale;
+    }
+}
+
 impl TimedCarNumbers {
     pub fn age(&mut self, now_ns: u64, ttl_ns: u64) {
-        let Some(started) = self.request_started_ns else {
-            self.rows.clear();
-            return;
-        };
-        if now_ns < started || now_ns - started > ttl_ns {
+        if expired(self.request_started_ns, now_ns, ttl_ns) {
             self.rows.clear();
         }
     }
@@ -455,5 +581,58 @@ mod tests {
         assert_eq!(overall_status(E::Offline, E::Offline), RestStatus::Offline);
         assert_eq!(overall_status(E::Timeout, E::Fresh), RestStatus::Timeout);
         assert_eq!(overall_status(E::Timeout, E::Stale), RestStatus::Stale);
+    }
+
+    #[test]
+    fn cache_rejects_bad_poll_without_replacing_last_good_values() {
+        let mut cache = RestCache::default();
+        cache.accept_standings(
+            br#"[{"slotID":0,"carNumber":"007","vehicleName":"A","player":true,"position":3}]"#,
+            90,
+            100,
+        );
+        cache.accept_session(br#"{"trackName":"A","currentEventTime":42}"#, 110);
+        assert_eq!(cache.status(), RestStatus::Live);
+        cache.accept_standings(br#"[{"position":"bad"}]"#, 120, 130);
+        cache.accept_session(br#"{"currentEventTime":-1}"#, 130);
+        assert_eq!(cache.status(), RestStatus::Partial);
+        assert_eq!(
+            cache.standings.as_ref().unwrap().player_position,
+            Field::observed(3)
+        );
+        assert_eq!(
+            cache.session.as_ref().unwrap().source_time_ns,
+            Field::observed(42_000_000_000)
+        );
+
+        cache.age(110, 20);
+        assert_eq!(cache.standings.as_ref().unwrap().car_numbers.len(), 1);
+        cache.age(111, 20);
+        assert!(cache.standings.as_ref().unwrap().car_numbers.is_empty());
+        assert_eq!(
+            cache.standings.as_ref().unwrap().player_position,
+            Field::observed(3)
+        );
+        cache.age(121, 20);
+        assert_eq!(
+            cache
+                .standings
+                .as_ref()
+                .unwrap()
+                .player_position
+                .quality()
+                .1,
+            Some(Freshness::Stale)
+        );
+        assert_eq!(
+            cache.session.as_ref().unwrap().source_time_ns.quality().1,
+            Some(Freshness::Fresh)
+        );
+        assert_eq!(cache.status(), RestStatus::Stale);
+        cache.age(131, 20);
+        assert_eq!(
+            cache.session.as_ref().unwrap().source_time_ns.quality().1,
+            Some(Freshness::Stale)
+        );
     }
 }

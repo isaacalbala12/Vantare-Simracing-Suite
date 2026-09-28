@@ -219,4 +219,74 @@ mod tests {
         assert_eq!(response.status, EndpointStatus::Timeout);
         assert!(response.body.is_empty());
     }
+
+    #[test]
+    fn one_poll_commits_both_decoded_endpoints() {
+        use crate::lmu::rest::{RestCache, RestStatus};
+        use crate::quality::Field;
+        use std::sync::atomic::{AtomicU64, Ordering};
+
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = std::thread::spawn(move || {
+            for _ in 0..2 {
+                let (mut socket, _) = listener.accept().unwrap();
+                let request = read_request_line(&socket);
+                let body: &[u8] = if request.starts_with("GET /rest/watch/standings ") {
+                    br#"[{"player":true,"position":3,"lapsCompleted":8,"pitstops":1}]"#
+                } else {
+                    assert!(request.starts_with("GET /rest/watch/sessionInfo "));
+                    br#"{"trackName":"A","session":"RACE1","numberOfVehicles":21,"currentEventTime":42}"#
+                };
+                let header = format!(
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                    body.len()
+                );
+                socket.write_all(header.as_bytes()).unwrap();
+                socket.write_all(body).unwrap();
+            }
+        });
+        let clock = AtomicU64::new(100);
+        let mut cache = RestCache::default();
+        let status = cache.poll_once(
+            &Client::new(port),
+            || clock.fetch_add(1, Ordering::Relaxed),
+            || false,
+            2_000_000_000,
+        );
+        server.join().unwrap();
+        assert_eq!(status, Some(RestStatus::Live));
+        assert_eq!(
+            cache.standings.as_ref().unwrap().player_position,
+            Field::observed(3)
+        );
+        assert_eq!(
+            cache.session.as_ref().unwrap().source_time_ns,
+            Field::observed(42_000_000_000)
+        );
+    }
+
+    #[test]
+    fn cancelled_poll_does_not_request_second_endpoint() {
+        use crate::lmu::rest::RestCache;
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        let (port, server) = serve_once("200 OK", br#"[{"player":true}]"#);
+        let checks = AtomicUsize::new(0);
+        let mut cache = RestCache::default();
+        let status = cache.poll_once(
+            &Client::new(port),
+            || 100,
+            || checks.fetch_add(1, Ordering::Relaxed) > 0,
+            2_000_000_000,
+        );
+        assert_eq!(status, None);
+        assert!(
+            server
+                .join()
+                .unwrap()
+                .starts_with("GET /rest/watch/standings ")
+        );
+        assert!(cache.session.is_none());
+    }
 }

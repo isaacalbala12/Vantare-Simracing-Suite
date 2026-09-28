@@ -338,6 +338,37 @@ go build -o tools/native-ui/out/host-recorded.exe ./tools/native-ui/host
 ./tools/native-ui/measure-recorded-windows.ps1 -Rounds 3 -Samples 8
 ```
 
+### Carga densa fija de 44 coches · 28/09/2026
+
+La misma ruta del host puede repetir la captura LMU 1.3.0 real y sanitizada
+de 44 coches, también fijada por SHA-256. El test Go comprueba 44 filas y
+revisiones sucesivas; control, editor y overlay de Qt, Slint y Wails
+recibieron diez snapshots en [nueve ejecuciones](evidence/recorded-burst-44-results.json).
+Es una **captura fija repetida**: las filas no evolucionan como en LMU vivo.
+
+El [mismo instrumento](measure-recorded-windows.ps1), con host reiniciado y
+orden rotado, produjo [nueve mediciones](evidence/recorded-load-44-results.json).
+Medianas de tres rondas de editor más host Go, ocho muestras por ejecución:
+
+| 44 coches repetidos | CPU media (% de un núcleo) | Working set mediano | Memoria privada mediana |
+| --- | ---: | ---: | ---: |
+| Wails | 6,80 % | 454,7 MiB | 317,2 MiB |
+| Qt Quick | 4,55 % | 138,5 MiB | 155,1 MiB |
+| Rust/Slint | 11,49 % | 166,3 MiB | 298,1 MiB |
+
+Qt redujo la mediana de CPU un 33,1 % frente a Wails en esta escena;
+Slint la superó un 69,0 %. Las tres rondas mantuvieron el mismo orden
+relativo de CPU. El prototipo Slint sustituye tres modelos de datos por
+snapshot, por lo que hace falta perfilar o mejorar ese cliente antes de
+atribuir el coste al toolkit. El resultado tampoco mide cambios reales de
+44 coches ni acredita el objetivo de CPU de Vantare completa. La memoria
+GPU local continúa sin corroboración independiente.
+
+```powershell
+./tools/native-ui/inspect-recorded-updates-windows.ps1 -Mode editor -Scene standings-44 -Cycles 100 -IntervalMilliseconds 100 -ExpectedRows 44 -ExpectedSnapshots 10
+./tools/native-ui/measure-recorded-windows.ps1 -Rounds 3 -Samples 8 -Scene standings-44
+```
+
 ### Reconexión de la referencia Wails
 
 Con Wails abierto antes que el host Go, el proxy del ensayo respondía 502.

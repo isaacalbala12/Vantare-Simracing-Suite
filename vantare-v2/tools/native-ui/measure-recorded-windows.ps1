@@ -1,7 +1,8 @@
 param(
     [int] $Rounds = 3,
     [int] $Samples = 8,
-    [int] $PortBase = 54710
+    [int] $PortBase = 54710,
+    [ValidateSet('pit-sequence', 'standings-44')] [string] $Scene = 'pit-sequence'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -33,7 +34,7 @@ for ($round = 0; $round -lt $Rounds; $round++) {
         $info.CreateNoWindow = $true
         $info.RedirectStandardOutput = $true
         $info.RedirectStandardError = $true
-        foreach ($argument in @('-recorded', '-fixture-root', $fixtureRoot, '-port', "$port", '-recorded-cycles', '1000', '-recorded-interval', '100ms')) {
+        foreach ($argument in @('-recorded', '-recorded-scene', $Scene, '-fixture-root', $fixtureRoot, '-port', "$port", '-recorded-cycles', '1000', '-recorded-interval', '100ms')) {
             [void] $info.ArgumentList.Add($argument)
         }
         $hostProcess = [System.Diagnostics.Process]::Start($info)
@@ -67,6 +68,7 @@ for ($round = 0; $round -lt $Rounds; $round++) {
         $results += [pscustomobject]@{
             Round = $round + 1
             Position = $position + 1
+            Scene = $Scene
             Candidate = $candidate.Name
             RecordedFramesAtLeast = 100
             MedianWorkingSetMiB = $sample.MedianWorkingSetMiB

@@ -10,7 +10,8 @@
     "MeanCpuMachinePercent": 0.535,
     "MedianGpuLocalMiB": 41.1,
     "ProcessCount": 10,
-    "Samples": 8
+    "Samples": 8,
+    "Scene": "pit-sequence"
   },
   {
     "Round": 1,
@@ -23,7 +24,8 @@
     "MeanCpuMachinePercent": 0.216,
     "MedianGpuLocalMiB": 37.1,
     "ProcessCount": 4,
-    "Samples": 8
+    "Samples": 8,
+    "Scene": "pit-sequence"
   },
   {
     "Round": 1,
@@ -36,7 +38,8 @@
     "MeanCpuMachinePercent": 0.376,
     "MedianGpuLocalMiB": 103.3,
     "ProcessCount": 4,
-    "Samples": 8
+    "Samples": 8,
+    "Scene": "pit-sequence"
   },
   {
     "Round": 2,
@@ -49,7 +52,8 @@
     "MeanCpuMachinePercent": 0.344,
     "MedianGpuLocalMiB": 38.1,
     "ProcessCount": 4,
-    "Samples": 8
+    "Samples": 8,
+    "Scene": "pit-sequence"
   },
   {
     "Round": 2,
@@ -62,7 +66,8 @@
     "MeanCpuMachinePercent": 0.271,
     "MedianGpuLocalMiB": 103.3,
     "ProcessCount": 4,
-    "Samples": 8
+    "Samples": 8,
+    "Scene": "pit-sequence"
   },
   {
     "Round": 2,
@@ -75,7 +80,8 @@
     "MeanCpuMachinePercent": 0.336,
     "MedianGpuLocalMiB": 41.1,
     "ProcessCount": 10,
-    "Samples": 8
+    "Samples": 8,
+    "Scene": "pit-sequence"
   },
   {
     "Round": 3,
@@ -88,7 +94,8 @@
     "MeanCpuMachinePercent": 0.348,
     "MedianGpuLocalMiB": 103.3,
     "ProcessCount": 4,
-    "Samples": 8
+    "Samples": 8,
+    "Scene": "pit-sequence"
   },
   {
     "Round": 3,
@@ -101,7 +108,8 @@
     "MeanCpuMachinePercent": 0.464,
     "MedianGpuLocalMiB": 45.6,
     "ProcessCount": 10,
-    "Samples": 8
+    "Samples": 8,
+    "Scene": "pit-sequence"
   },
   {
     "Round": 3,
@@ -114,6 +122,7 @@
     "MeanCpuMachinePercent": 0.289,
     "MedianGpuLocalMiB": 37.1,
     "ProcessCount": 4,
-    "Samples": 8
+    "Samples": 8,
+    "Scene": "pit-sequence"
   }
 ]

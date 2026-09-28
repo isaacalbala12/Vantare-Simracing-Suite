@@ -2,6 +2,17 @@
 
 ## 2026-09-28 · VAN-776 / GitHub #1410 · Host Go nativo aislado
 
+La segunda carga repetida usa una captura LMU 1.3.0 real de 44 coches,
+sin alterar sus filas. Control/editor/overlay de Qt, Slint y Wails
+recibieron diez snapshots (9/9). Tres rondas rotadas de editor más host Go
+dieron medianas de CPU por núcleo Wails/Qt/Slint 6,80/4,55/11,49 % y
+working set 454,7/138,5/166,3 MiB. Qt quedó por debajo de Wails en las
+tres rondas; Slint por encima. Slint sustituye tres modelos en cada evento:
+su coste requiere perfilado antes de atribuirlo al toolkit. La captura es
+fija, no telemetría viva. Método y límites en `tools/native-ui/README.md`;
+resultados en `tools/native-ui/evidence/recorded-burst-44-results.json` y
+`recorded-load-44-results.json`. Esto tampoco acredita el 20 % en Vantare.
+
 La carga sostenida del ensayo repite, sin alterar, tres capturas reales LMU
 1.4.0.0 de una fila a intervalos artificiales de 100 ms. Nueve ventanas
 (control/editor/overlay × Qt/Slint/Wails) recibieron al menos diez

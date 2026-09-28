@@ -131,9 +131,10 @@ func newHandler(update overlayv2.UpdateV2) (http.Handler, func(), error) {
 func main() {
 	fixturePath := flag.String("fixture", "testdata/lmu-fixture.bin", "path to the pinned sanitized LMU capture")
 	live := flag.Bool("live", false, "read the active LMU session through the production Go driver")
-	recorded := flag.Bool("recorded", false, "replay three pinned, sanitized LMU 1.4.0.0 frames")
+	recorded := flag.Bool("recorded", false, "replay pinned, sanitized LMU frames")
+	recordedScene := flag.String("recorded-scene", "pit-sequence", "recorded scene: pit-sequence or standings-44")
 	recordedIntervalFlag := flag.Duration("recorded-interval", recordedInterval, "interval between recorded frames")
-	recordedCycles := flag.Int("recorded-cycles", 1, "repeat the three real recorded frames for a sustained trial")
+	recordedCycles := flag.Int("recorded-cycles", 1, "repeat the selected real frame sequence for a sustained trial")
 	fixtureRoot := flag.String("fixture-root", "testdata", "directory containing pinned LMU captures for recorded replay")
 	port := flag.Uint("port", 0, "loopback port; 0 assigns an available port")
 	flag.Parse()
@@ -146,7 +147,7 @@ func main() {
 	if *live {
 		err = runLive(ctx, *port)
 	} else if *recorded {
-		err = runRecorded(ctx, *fixtureRoot, *port, *recordedIntervalFlag, *recordedCycles)
+		err = runRecorded(ctx, *fixtureRoot, *port, *recordedIntervalFlag, *recordedCycles, *recordedScene)
 	} else {
 		err = run(ctx, *fixturePath, *port)
 	}

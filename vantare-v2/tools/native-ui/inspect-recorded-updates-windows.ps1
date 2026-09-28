@@ -1,15 +1,17 @@
 param(
     [ValidateSet('control', 'editor', 'overlay')] [string] $Mode = 'editor',
     [int] $Port = 54678,
+    [ValidateSet('pit-sequence', 'standings-44')] [string] $Scene = 'pit-sequence',
     [int] $Cycles = 1,
     [int] $IntervalMilliseconds = 6000,
+    [int] $ExpectedRows = 1,
     [int] $ExpectedSnapshots = 3
 )
 
 $ErrorActionPreference = 'Stop'
 if ($Port -lt 1 -or $Port -gt 65535) { throw 'Port must be between 1 and 65535' }
-if ($Cycles -lt 1 -or $IntervalMilliseconds -lt 1 -or $ExpectedSnapshots -lt 1) {
-    throw 'Cycles, IntervalMilliseconds and ExpectedSnapshots must be positive'
+if ($Cycles -lt 1 -or $IntervalMilliseconds -lt 1 -or $ExpectedRows -lt 1 -or $ExpectedSnapshots -lt 1) {
+    throw 'Cycles, IntervalMilliseconds, ExpectedRows and ExpectedSnapshots must be positive'
 }
 if (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue) {
     throw "Port $Port is already in use"
@@ -33,7 +35,7 @@ $endpoint = "http://127.0.0.1:$Port/telemetry/overlay-v2/projection"
 $hostProcess = $null
 $clients = @()
 try {
-    $hostProcess = Start-TrialProcess $hostExe @('-recorded', '-fixture-root', (Join-Path $PSScriptRoot '../../testdata'), '-port', "$Port", '-recorded-cycles', "$Cycles", '-recorded-interval', "${IntervalMilliseconds}ms")
+    $hostProcess = Start-TrialProcess $hostExe @('-recorded', '-recorded-scene', $Scene, '-fixture-root', (Join-Path $PSScriptRoot '../../testdata'), '-port', "$Port", '-recorded-cycles', "$Cycles", '-recorded-interval', "${IntervalMilliseconds}ms")
     $ready = $false
     for ($attempt = 0; $attempt -lt 50; $attempt++) {
         if ($hostProcess.HasExited) { throw "Recorded host exited with code $($hostProcess.ExitCode)" }
@@ -49,17 +51,17 @@ try {
         [pscustomobject]@{
             Name = 'Qt'
             Exe = Join-Path $PSScriptRoot 'out/package-qt-trimmed/vantare-native-go-qt.exe'
-            Args = @('--endpoint', $endpoint, '--mode', $Mode, '--expect-rows', '1', '--expect-snapshots', "$ExpectedSnapshots")
+            Args = @('--endpoint', $endpoint, '--mode', $Mode, '--expect-rows', "$ExpectedRows", '--expect-snapshots', "$ExpectedSnapshots")
         }
         [pscustomobject]@{
             Name = 'Slint'
             Exe = Join-Path $PSScriptRoot 'slint/target/release/vantare-native-go-slint.exe'
-            Args = @('--endpoint', $endpoint, '--mode', $Mode, '--expect-rows', '1', '--expect-snapshots', "$ExpectedSnapshots")
+            Args = @('--endpoint', $endpoint, '--mode', $Mode, '--expect-rows', "$ExpectedRows", '--expect-snapshots', "$ExpectedSnapshots")
         }
         [pscustomobject]@{
             Name = 'Wails'
             Exe = Join-Path $PSScriptRoot 'out/wails/vantare-native-go-wails.exe'
-            Args = @('-endpoint', $endpoint, '-mode', $Mode, '-expect-rows', '1', '-expect-snapshots', "$ExpectedSnapshots")
+            Args = @('-endpoint', $endpoint, '-mode', $Mode, '-expect-rows', "$ExpectedRows", '-expect-snapshots', "$ExpectedSnapshots")
         }
     )
     foreach ($variant in $variants) {
@@ -78,9 +80,10 @@ try {
         $stderr = $client.Process.StandardError.ReadToEnd()
         $result += [pscustomobject]@{
             Mode = $Mode
+            Scene = $Scene
             Candidate = $client.Name
             ExitCode = $client.Process.ExitCode
-            ExpectedRows = 1
+            ExpectedRows = $ExpectedRows
             ExpectedSnapshots = $ExpectedSnapshots
             Error = if ($client.Process.ExitCode -eq 0) { '' } else { ($stdout + $stderr).Trim() }
         }

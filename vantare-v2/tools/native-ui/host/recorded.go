@@ -55,7 +55,26 @@ func loadRecordedFrames(root string) ([]lmu.Observation, error) {
 	return observations, nil
 }
 
-func runRecorded(ctx context.Context, root string, port uint, interval time.Duration, cycles int) error {
+func loadRecordedStandings(root string) ([]lmu.Observation, error) {
+	input, err := os.ReadFile(filepath.Join(root, "lmu-fixture.bin"))
+	if err != nil {
+		return nil, fmt.Errorf("read sanitized LMU standings frame: %w", err)
+	}
+	digest := sha256.Sum256(input)
+	if hex.EncodeToString(digest[:]) != fixtureSHA256 {
+		return nil, errors.New("sanitized LMU standings frame digest mismatch")
+	}
+	observation, err := lmu.ParseWithBuild(input, time.Now().UTC(), lmu.BuildEvidence{FileVersion: "1.3.0"})
+	if err != nil {
+		return nil, fmt.Errorf("parse sanitized LMU standings frame: %w", err)
+	}
+	if observation.Compatibility != lmu.CompatibilityKnown {
+		return nil, errors.New("sanitized LMU standings frame is not compatible")
+	}
+	return []lmu.Observation{observation}, nil
+}
+
+func runRecorded(ctx context.Context, root string, port uint, interval time.Duration, cycles int, scene string) error {
 	if interval <= 0 {
 		return fmt.Errorf("recorded interval must be positive")
 	}
@@ -65,7 +84,21 @@ func runRecorded(ctx context.Context, root string, port uint, interval time.Dura
 	if port > 65535 {
 		return errors.New("port must be between 0 and 65535")
 	}
-	observations, err := loadRecordedFrames(root)
+	var observations []lmu.Observation
+	var names []string
+	var err error
+	switch scene {
+	case "pit-sequence":
+		observations, err = loadRecordedFrames(root)
+		for _, frame := range recordedFrames {
+			names = append(names, frame.name)
+		}
+	case "standings-44":
+		observations, err = loadRecordedStandings(root)
+		names = []string{"lmu-fixture.bin"}
+	default:
+		return fmt.Errorf("unknown recorded scene %q", scene)
+	}
 	if err != nil {
 		return err
 	}
@@ -103,7 +136,7 @@ func runRecorded(ctx context.Context, root string, port uint, interval time.Dura
 		}
 		frame := index % len(observations)
 		if err := sink.WriteObservation(ctx, fusion.Merge(time.Now().UTC(), time.Duration(index)*interval, observations[frame])); err != nil {
-			result = fmt.Errorf("publish recorded LMU frame %s: %w", recordedFrames[frame].name, err)
+			result = fmt.Errorf("publish recorded LMU frame %s: %w", names[frame], err)
 			break
 		}
 		if cycles == 1 || (index+1)%100 == 0 {

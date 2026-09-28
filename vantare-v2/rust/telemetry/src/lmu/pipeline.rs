@@ -6,6 +6,8 @@ use super::{
     fusion::{FusedSession, FusedWeather},
 };
 use crate::core;
+use crate::core::facts::{Fact, FactCursor, FactError, FactLog, MAX_RETAINED_FACTS};
+use crate::core::session::{SessionCandidate, SessionCoordinator, SessionError, SessionFact};
 use crate::derive;
 use crate::quality::Field;
 
@@ -14,6 +16,9 @@ pub enum PipelineError {
     Mapping(MapError),
     IdentityMismatch,
     Reduction(core::Reject),
+    Session(SessionError),
+    Fact(FactError),
+    FactSequenceMismatch,
 }
 
 pub type LmuVehicleState = core::VehicleState<Sector, Fuel, Damage>;
@@ -21,22 +26,29 @@ pub type LmuVehicleState = core::VehicleState<Sector, Fuel, Damage>;
 pub struct Pipeline {
     mapper: IdentityMapper,
     reducer: core::Reducer<SessionType, LmuVehicleState>,
+    session: SessionCoordinator,
+    fact_log: FactLog<SessionFact>,
+    last_facts: Vec<SessionFact>,
     session_remaining: Option<Field<f64>>,
 }
 
 pub struct PipelineCandidate {
     mapper: MapperCandidate,
     reduced: core::Candidate<SessionType, LmuVehicleState>,
+    session: SessionCandidate,
     session_remaining: Field<f64>,
 }
 
 impl Pipeline {
-    pub fn new(slot_grace_frames: u64) -> Self {
-        Self {
+    pub fn new(slot_grace_frames: u64, fact_stream_id: u64) -> Result<Self, FactError> {
+        Ok(Self {
             mapper: IdentityMapper::new(slot_grace_frames),
             reducer: core::Reducer::new(),
+            session: SessionCoordinator::default(),
+            fact_log: FactLog::new(fact_stream_id, MAX_RETAINED_FACTS)?,
+            last_facts: Vec::new(),
             session_remaining: None,
-        }
+        })
     }
 
     pub fn prepare(
@@ -45,6 +57,7 @@ impl Pipeline {
         fused: &FusedSession,
         weather: &FusedWeather,
         clock_change: ClockChange,
+        occurred_utc_ns: i64,
     ) -> Result<PipelineCandidate, PipelineError> {
         let (mapper, identity) = self
             .mapper
@@ -113,9 +126,15 @@ impl Pipeline {
             .reducer
             .prepare(batch)
             .map_err(PipelineError::Reduction)?;
+        let session = self
+            .session
+            .prepare(reduced.batch(), occurred_utc_ns)
+            .map_err(PipelineError::Session)?;
+        self.validate_fact_batch(session.facts())?;
         Ok(PipelineCandidate {
             mapper,
             reduced,
+            session,
             session_remaining,
         })
     }
@@ -123,8 +142,21 @@ impl Pipeline {
     pub fn commit(
         &mut self,
         candidate: PipelineCandidate,
-    ) -> Result<&core::Batch<SessionType, LmuVehicleState>, core::Reject> {
-        self.reducer.commit(candidate.reduced)?;
+    ) -> Result<&core::Batch<SessionType, LmuVehicleState>, PipelineError> {
+        self.session
+            .validate_candidate(&candidate.session)
+            .map_err(PipelineError::Session)?;
+        self.validate_fact_batch(candidate.session.facts())?;
+        self.reducer
+            .commit(candidate.reduced)
+            .map_err(PipelineError::Reduction)?;
+        self.last_facts = self
+            .session
+            .commit(candidate.session)
+            .map_err(PipelineError::Session)?;
+        self.fact_log
+            .append_batch(self.last_facts.clone())
+            .map_err(PipelineError::Fact)?;
         self.mapper.commit_candidate(candidate.mapper);
         self.session_remaining = Some(candidate.session_remaining);
         Ok(self.reducer.current().expect("commit installed a batch"))
@@ -137,6 +169,83 @@ impl Pipeline {
     pub fn session_remaining(&self) -> Option<&Field<f64>> {
         self.session_remaining.as_ref()
     }
+
+    pub fn facts(&self) -> &[SessionFact] {
+        &self.last_facts
+    }
+
+    pub fn fact_high_water(&self) -> FactCursor {
+        self.fact_log.high_water()
+    }
+
+    pub fn replay_facts_after(
+        &self,
+        cursor: FactCursor,
+    ) -> Result<Vec<&Fact<SessionFact>>, FactError> {
+        self.fact_log.after(cursor)
+    }
+
+    fn validate_fact_batch(&self, facts: &[SessionFact]) -> Result<(), PipelineError> {
+        self.fact_log
+            .can_append(facts.len())
+            .map_err(PipelineError::Fact)?;
+        if facts.is_empty() {
+            return Ok(());
+        }
+        let next = self
+            .fact_log
+            .high_water()
+            .sequence
+            .checked_add(1)
+            .ok_or(PipelineError::Fact(FactError::SequenceExhausted))?;
+        if facts
+            .iter()
+            .enumerate()
+            .any(|(index, fact)| fact.sequence != next + index as u64)
+        {
+            return Err(PipelineError::FactSequenceMismatch);
+        }
+        Ok(())
+    }
+
+    pub fn set_connected(
+        &mut self,
+        connected: bool,
+        occurred_utc_ns: i64,
+    ) -> Result<&[SessionFact], PipelineError> {
+        let candidate = self
+            .session
+            .prepare_connection(connected, occurred_utc_ns)
+            .map_err(PipelineError::Session)?;
+        self.commit_session_transition(candidate)
+    }
+
+    pub fn end_session(&mut self, occurred_utc_ns: i64) -> Result<&[SessionFact], PipelineError> {
+        let candidate = self
+            .session
+            .prepare_end(occurred_utc_ns)
+            .map_err(PipelineError::Session)?;
+        self.commit_session_transition(candidate)
+    }
+
+    fn commit_session_transition(
+        &mut self,
+        candidate: Option<SessionCandidate>,
+    ) -> Result<&[SessionFact], PipelineError> {
+        self.last_facts = match candidate {
+            Some(candidate) => {
+                self.validate_fact_batch(candidate.facts())?;
+                self.session
+                    .commit(candidate)
+                    .map_err(PipelineError::Session)?
+            }
+            None => Vec::new(),
+        };
+        self.fact_log
+            .append_batch(self.last_facts.clone())
+            .map_err(PipelineError::Fact)?;
+        Ok(&self.last_facts)
+    }
 }
 
 impl PipelineCandidate {
@@ -146,6 +255,10 @@ impl PipelineCandidate {
 
     pub fn session_remaining(&self) -> &Field<f64> {
         &self.session_remaining
+    }
+
+    pub fn facts(&self) -> &[SessionFact] {
+        self.session.facts()
     }
 }
 
@@ -240,15 +353,17 @@ fn map_vehicle(source: VehicleFields) -> LmuVehicleState {
     }
 }
 
+#[cfg(test)]
 impl Default for Pipeline {
     fn default() -> Self {
-        Self::new(super::mapper::DEFAULT_SLOT_GRACE_FRAMES)
+        Self::new(super::mapper::DEFAULT_SLOT_GRACE_FRAMES, 1).unwrap()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::session::FactKind;
     use crate::lmu::{
         admit_v13,
         fusion::{fuse_session, fuse_weather},
@@ -262,6 +377,86 @@ mod tests {
     }
 
     #[test]
+    fn productive_constructor_requires_nonzero_fact_stream() {
+        assert!(matches!(
+            Pipeline::new(30, 0),
+            Err(FactError::InvalidConfiguration)
+        ));
+    }
+
+    #[test]
+    fn connection_fact_invalidates_prepared_frame_before_reducer_commit() {
+        let rest = RestCache::default();
+        let mut pipeline = Pipeline::default();
+        let first = admit_v13(REAL_44, "1.3.0.0").unwrap();
+        let first_fused = fuse_session(&first, 100, &rest, 100);
+        let first_weather = fixture_weather(&first);
+        pipeline
+            .commit(
+                pipeline
+                    .prepare(
+                        first,
+                        &first_fused,
+                        &first_weather,
+                        ClockChange::Continuous,
+                        100,
+                    )
+                    .unwrap(),
+            )
+            .unwrap();
+        let second = admit_v13(REAL_44, "1.3.0.0").unwrap();
+        let second_fused = fuse_session(&second, 100, &rest, 100);
+        let second_weather = fixture_weather(&second);
+        let prepared = pipeline
+            .prepare(
+                second,
+                &second_fused,
+                &second_weather,
+                ClockChange::Continuous,
+                200,
+            )
+            .unwrap();
+        pipeline.set_connected(false, 150).unwrap();
+        assert!(matches!(
+            pipeline.commit(prepared),
+            Err(PipelineError::Session(SessionError::StaleCandidate))
+        ));
+        assert_eq!(pipeline.current().unwrap().cursor.sequence, 1);
+        assert_eq!(pipeline.fact_high_water().sequence, 2);
+    }
+
+    #[test]
+    fn lost_fact_window_demands_resync_without_changing_observed_state() {
+        let rest = RestCache::default();
+        let mut pipeline = Pipeline::default();
+        let grid = admit_v13(REAL_44, "1.3.0.0").unwrap();
+        let fused = fuse_session(&grid, 100, &rest, 100);
+        let weather = fixture_weather(&grid);
+        pipeline
+            .commit(
+                pipeline
+                    .prepare(grid, &fused, &weather, ClockChange::Continuous, 100)
+                    .unwrap(),
+            )
+            .unwrap();
+        for step in 0..260 {
+            pipeline.set_connected(step % 2 == 1, 200 + step).unwrap();
+        }
+        assert_eq!(pipeline.fact_high_water().sequence, 261);
+        assert!(matches!(
+            pipeline.replay_facts_after(FactCursor {
+                stream: 1,
+                sequence: 0
+            }),
+            Err(FactError::ResyncRequired {
+                first: 6,
+                next: 262
+            })
+        ));
+        assert_eq!(pipeline.current().unwrap().cursor.sequence, 1);
+    }
+
+    #[test]
     fn admitted_grid_commits_atomically_and_rejects_bad_retry() {
         let rest = RestCache::default();
         let mut pipeline = Pipeline::default();
@@ -269,7 +464,7 @@ mod tests {
         let fused = fuse_session(&grid, 100, &rest, 100);
         let weather = fixture_weather(&grid);
         let candidate = pipeline
-            .prepare(grid, &fused, &weather, ClockChange::Continuous)
+            .prepare(grid, &fused, &weather, ClockChange::Continuous, 100)
             .unwrap();
         assert_eq!(candidate.batch().state.vehicles.len(), 44);
         assert_eq!(candidate.batch().state.track_name, fused.track_name.field);
@@ -288,9 +483,12 @@ mod tests {
         ));
         assert_eq!(candidate.batch().cursor.sequence, 1);
         let expected_remaining = candidate.session_remaining().clone();
+        assert_eq!(candidate.facts().len(), 1);
+        assert_eq!(candidate.facts()[0].kind, FactKind::SessionStarted);
         assert!(pipeline.current().is_none());
         assert!(pipeline.session_remaining().is_none());
         pipeline.commit(candidate).unwrap();
+        assert_eq!(pipeline.facts()[0].sequence, 1);
         assert_eq!(pipeline.session_remaining(), Some(&expected_remaining));
 
         let grid = admit_v13(REAL_44, "1.3.0.0").unwrap();
@@ -298,7 +496,7 @@ mod tests {
         invalid.vehicle_count.field = Field::observed(43);
         let weather = fixture_weather(&grid);
         assert!(matches!(
-            pipeline.prepare(grid, &invalid, &weather, ClockChange::Continuous),
+            pipeline.prepare(grid, &invalid, &weather, ClockChange::Continuous, 100),
             Err(PipelineError::Mapping(MapError::InvalidGrid))
         ));
         assert_eq!(pipeline.current().unwrap().cursor.sequence, 1);
@@ -308,11 +506,13 @@ mod tests {
         let fused = fuse_session(&grid, 100, &rest, 100);
         let weather = fixture_weather(&grid);
         let candidate = pipeline
-            .prepare(grid, &fused, &weather, ClockChange::Continuous)
+            .prepare(grid, &fused, &weather, ClockChange::Continuous, 100)
             .unwrap();
         assert_eq!(candidate.batch().cursor.sequence, 2);
+        assert!(candidate.facts().is_empty());
         pipeline.commit(candidate).unwrap();
         assert_eq!(pipeline.current().unwrap().cursor.sequence, 2);
+        assert!(pipeline.facts().is_empty());
     }
 
     #[test]
@@ -324,18 +524,18 @@ mod tests {
         let fused = fuse_session(&grid, 100, &rest, 100);
         let weather = fixture_weather(&grid);
         let candidate = first
-            .prepare(grid, &fused, &weather, ClockChange::Continuous)
+            .prepare(grid, &fused, &weather, ClockChange::Continuous, 100)
             .unwrap();
         assert!(matches!(
             other.commit(candidate),
-            Err(core::Reject::WrongReducer)
+            Err(PipelineError::Session(SessionError::WrongCoordinator))
         ));
         assert!(other.current().is_none());
         let grid = admit_v13(REAL_44, "1.3.0.0").unwrap();
         let fused = fuse_session(&grid, 100, &rest, 100);
         let weather = fixture_weather(&grid);
         let candidate = other
-            .prepare(grid, &fused, &weather, ClockChange::Continuous)
+            .prepare(grid, &fused, &weather, ClockChange::Continuous, 100)
             .unwrap();
         assert_eq!(candidate.batch().cursor.sequence, 1);
     }
@@ -353,6 +553,7 @@ mod tests {
                 &first_fused,
                 &first_weather,
                 ClockChange::Continuous,
+                100,
             )
             .unwrap();
         let mut stale_grid = admit_v13(REAL_44, "1.3.0.0").unwrap();
@@ -365,11 +566,15 @@ mod tests {
                 &stale_fused,
                 &stale_weather,
                 ClockChange::Continuous,
+                100,
             )
             .unwrap();
         let expected = first.session_remaining().clone();
         pipeline.commit(first).unwrap();
-        assert!(matches!(pipeline.commit(stale), Err(core::Reject::Stale)));
+        assert!(matches!(
+            pipeline.commit(stale),
+            Err(PipelineError::Session(SessionError::StaleCandidate))
+        ));
         assert_eq!(pipeline.session_remaining(), Some(&expected));
         assert_eq!(pipeline.current().unwrap().cursor.sequence, 1);
     }
@@ -382,7 +587,7 @@ mod tests {
         weather.global_yellow = Field::observed(true);
         let pipeline = Pipeline::default();
         let candidate = pipeline
-            .prepare(grid, &fused, &weather, ClockChange::Continuous)
+            .prepare(grid, &fused, &weather, ClockChange::Continuous, 100)
             .unwrap();
         assert_eq!(
             candidate.batch().state.session_flag.value(),
@@ -402,7 +607,7 @@ mod tests {
         let fused = fuse_session(&grid, 100, &RestCache::default(), 100);
         let weather = fixture_weather(&grid);
         let candidate = Pipeline::default()
-            .prepare(grid, &fused, &weather, ClockChange::Continuous)
+            .prepare(grid, &fused, &weather, ClockChange::Continuous, 100)
             .unwrap();
         let vehicles = &candidate.batch().state.vehicles;
         assert_eq!(vehicles[player_index].value.speed_mps, expected_speed);
@@ -413,5 +618,149 @@ mod tests {
             assert!(matches!(vehicles[0].value.speed_mps, Field::Missing));
             assert!(matches!(vehicles[0].value.fuel, Field::Missing));
         }
+    }
+
+    #[test]
+    fn fact_overflow_rejects_whole_lmu_candidate_and_retry_keeps_cursor() {
+        let rest = RestCache::default();
+        let mut pipeline = Pipeline::default();
+        let first_grid = admit_v13(REAL_44, "1.3.0.0").unwrap();
+        let first_fused = fuse_session(&first_grid, 100, &rest, 100);
+        let first_weather = fixture_weather(&first_grid);
+        pipeline
+            .commit(
+                pipeline
+                    .prepare(
+                        first_grid,
+                        &first_fused,
+                        &first_weather,
+                        ClockChange::Continuous,
+                        100,
+                    )
+                    .unwrap(),
+            )
+            .unwrap();
+        let mut over = admit_v13(REAL_44, "1.3.0.0").unwrap();
+        over.vehicles[0].completed_laps = Field::observed(100_000);
+        let over_fused = fuse_session(&over, 100, &rest, 100);
+        let over_weather = fixture_weather(&over);
+        assert!(matches!(
+            pipeline.prepare(
+                over,
+                &over_fused,
+                &over_weather,
+                ClockChange::Continuous,
+                200
+            ),
+            Err(PipelineError::Session(SessionError::FactBatchOverflow))
+        ));
+        assert_eq!(pipeline.current().unwrap().cursor.sequence, 1);
+        assert_eq!(pipeline.facts()[0].kind, FactKind::SessionStarted);
+        let retry = admit_v13(REAL_44, "1.3.0.0").unwrap();
+        let retry_fused = fuse_session(&retry, 100, &rest, 100);
+        let retry_weather = fixture_weather(&retry);
+        let candidate = pipeline
+            .prepare(
+                retry,
+                &retry_fused,
+                &retry_weather,
+                ClockChange::Continuous,
+                200,
+            )
+            .unwrap();
+        assert_eq!(candidate.batch().cursor.sequence, 2);
+        pipeline.commit(candidate).unwrap();
+    }
+
+    #[test]
+    fn real_grid_reconnect_and_explicit_end_preserve_fact_order() {
+        let rest = RestCache::default();
+        let mut pipeline = Pipeline::default();
+        let first = admit_v13(REAL_44, "1.3.0.0").unwrap();
+        let first_fused = fuse_session(&first, 100, &rest, 100);
+        let first_weather = fixture_weather(&first);
+        pipeline
+            .commit(
+                pipeline
+                    .prepare(
+                        first,
+                        &first_fused,
+                        &first_weather,
+                        ClockChange::Continuous,
+                        100,
+                    )
+                    .unwrap(),
+            )
+            .unwrap();
+        assert_eq!(pipeline.facts()[0].kind, FactKind::SessionStarted);
+        assert_eq!(
+            pipeline.fact_high_water(),
+            FactCursor {
+                stream: 1,
+                sequence: 1
+            }
+        );
+        assert_eq!(
+            pipeline.set_connected(false, 200).unwrap()[0].kind,
+            FactKind::ConnectionLost
+        );
+        assert!(pipeline.set_connected(false, 201).unwrap().is_empty());
+        assert_eq!(pipeline.fact_high_water().sequence, 2);
+        assert_eq!(
+            pipeline.set_connected(true, 300).unwrap()[0].kind,
+            FactKind::ConnectionRecovered
+        );
+        let next = admit_v13(REAL_44, "1.3.0.0").unwrap();
+        let next_fused = fuse_session(&next, 100, &rest, 100);
+        let next_weather = fixture_weather(&next);
+        pipeline
+            .commit(
+                pipeline
+                    .prepare(
+                        next,
+                        &next_fused,
+                        &next_weather,
+                        ClockChange::Continuous,
+                        400,
+                    )
+                    .unwrap(),
+            )
+            .unwrap();
+        assert_eq!(pipeline.current().unwrap().cursor.sequence, 2);
+        assert!(pipeline.facts().is_empty());
+        assert_eq!(
+            pipeline.end_session(500).unwrap()[0].kind,
+            FactKind::SessionEnded
+        );
+        assert!(pipeline.end_session(501).unwrap().is_empty());
+        let facts = pipeline
+            .replay_facts_after(FactCursor {
+                stream: 1,
+                sequence: 0,
+            })
+            .unwrap();
+        assert_eq!(
+            facts.iter().map(|fact| fact.value.kind).collect::<Vec<_>>(),
+            vec![
+                FactKind::SessionStarted,
+                FactKind::ConnectionLost,
+                FactKind::ConnectionRecovered,
+                FactKind::SessionEnded
+            ]
+        );
+        assert_eq!(
+            facts
+                .iter()
+                .map(|fact| fact.cursor.sequence)
+                .collect::<Vec<_>>(),
+            vec![1, 2, 3, 4]
+        );
+        assert!(matches!(
+            pipeline.replay_facts_after(FactCursor {
+                stream: 2,
+                sequence: 0
+            }),
+            Err(FactError::ForeignStream)
+        ));
     }
 }

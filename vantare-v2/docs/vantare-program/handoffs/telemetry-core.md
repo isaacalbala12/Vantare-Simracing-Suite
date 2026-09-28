@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — facts de sesión Rust conectados al pipeline (2026-09-28)
+
+R12 ahora prepara/commitea sesión, stint y hechos de vueltas/boxes/piloto,
+conexión y cierre; la secuencia ordenada se retiene hasta 256 hechos por
+stream con resync explícito. El pipeline LMU rechaza overflow y candidatos
+obsoletos antes del commit del reducer y mapper. Rust debug/release 65/65,
+formato, Clippy y build pasan; Go core/engine/LMU de referencia pasan. Plan
+sección 31 detalla límites: faltan paridad temporal real, stint en snapshot,
+ACK/IPC productivo, derivaciones y proyecciones. Go sigue productivo; 50% CPU
+sin acreditar.
+
 ## ISA-1403 — estado observado Rust ampliado (2026-09-28)
 
 El batch neutral ahora posee campos de sesión/clima y un vehículo con todos

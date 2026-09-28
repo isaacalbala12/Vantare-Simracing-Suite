@@ -869,3 +869,22 @@ build release pasan. La forma del estado ya cubre los campos Go, pero no
 demuestra todavía paridad de valores temporal o de identidad: siguen
 pendientes team/driver/stint, diagnósticos de fusión, facts, derivaciones,
 proyecciones, IPC productivo y corpus real 44/104. El gate CPU sigue abierto.
+
+## 31. Coordinación de sesión y facts Rust integrada (2026-09-28)
+
+R12 incorpora `SessionCoordinator` neutral: prepara y confirma hechos de
+inicio/fin de sesión, cambio de piloto, vueltas, entrada/salida de boxes y
+pérdida/recuperación de conexión. Mantiene secuencia propia, stint por
+vehículo, high-water de vueltas y hasta 512 identidades con expulsión
+determinista de ausentes. Los errores de cursor, capacidad, secuencia y
+candidato obsoleto no adelantan estado. El pipeline LMU prepara coordinador,
+reducer, mapper y derivación antes de publicar; un rechazo posterior permite
+reintentar el mismo cursor. Los facts se retienen en una ventana de 256 con
+stream explícito, orden y `ResyncRequired` cuando se solicita una parte
+perdida. Tests Rust cubren el orden de hechos contra la matriz Go, reconexión,
+cierre, overflow, retry, retención y fixture SHM real estática de 44; Rust
+debug/release 65/65, formato, Clippy y build release pasan. Go core/engine/LMU
+de referencia pasan. Aún faltan paridad byte a byte/temporal de facts sobre
+corpus real, exponer stint en el snapshot canónico, coordinación de salida
+IPC con ACK y las derivaciones/proyecciones restantes. No certifica R12/R14
+completos ni el gate CPU del 50%.

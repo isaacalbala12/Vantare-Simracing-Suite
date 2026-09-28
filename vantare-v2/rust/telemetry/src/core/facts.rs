@@ -47,9 +47,7 @@ impl<T> FactLog<T> {
     }
 
     pub fn append_batch(&mut self, values: Vec<T>) -> Result<Option<FactCursor>, FactError> {
-        if values.len() > self.capacity {
-            return Err(FactError::BatchTooLarge);
-        }
+        self.can_append(values.len())?;
         let count = u64::try_from(values.len()).map_err(|_| FactError::SequenceExhausted)?;
         let end = self
             .next
@@ -76,6 +74,17 @@ impl<T> FactLog<T> {
             stream: self.stream,
             sequence: end - 1,
         }))
+    }
+
+    pub fn can_append(&self, count: usize) -> Result<(), FactError> {
+        if count > self.capacity {
+            return Err(FactError::BatchTooLarge);
+        }
+        let count = u64::try_from(count).map_err(|_| FactError::SequenceExhausted)?;
+        self.next
+            .checked_add(count)
+            .ok_or(FactError::SequenceExhausted)?;
+        Ok(())
     }
 
     /// A zero sequence starts a fresh subscription; older gaps require resync.

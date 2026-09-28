@@ -1,6 +1,7 @@
 //! Simulator-neutral owned batch and candidate/commit reducer.
 
 pub mod facts;
+pub mod session;
 
 use std::sync::Arc;
 

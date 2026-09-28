@@ -2,6 +2,19 @@
 
 ## 2026-09-28 · VAN-776 / GitHub #1410 · Host Go nativo aislado
 
+El candidato `0f26b35a` pasó los gates remotos bloqueantes, calidad, seguridad
+y ruta de promoción; permanece en PR borrador y sin integrar. Se examinó la
+persistencia existente de Studio: `StudioProfileService` conserva revisión,
+archivo de sesión y escritura V4. Un ensayo local con un perfil de ejemplo
+confirmó guardado, conflicto 409 y lectura tras reiniciar el host Go. La
+conexión experimental a los tres editores compiló, pero la revisión automática
+rechazó la inspección física de esos controles (`blocked by policy`). Por su
+coste frente al alcance reducido y la falta de prueba de interacción, se
+retiró todo ese código no publicado; `0f26b35a` sigue siendo la implementación
+de la PR y el editor sigue sin persistencia. También se rechazó iniciar una
+grabación OBS; la captura de ventana descrita abajo sí se completó. No se
+modificaron perfiles reales. La tarea VAN-776 conserva los gates pendientes.
+
 Nueva prueba Windows de overlay con el mismo host Go: `inspect-overlay-windows.ps1`
 sitúa una ventana inferior real, la activa y alterna magenta/verde para
 comprobar composición; además verifica clic, hit test y foco. Qt Quick,

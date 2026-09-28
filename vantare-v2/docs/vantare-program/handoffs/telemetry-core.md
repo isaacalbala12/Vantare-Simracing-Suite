@@ -1,5 +1,20 @@
 # Handoff vivo — Telemetry Core
 
+## 2026-09-28 · VAN-777 / GitHub #1412 · LMU 1.4.2.0 en diagnóstico
+
+LMU 1.4.2.0 estuvo activo en práctica de Circuit de la Sarthe. Cuatro
+capturas sanitizadas de pista confirmaron 18 coches, jugador presente, REST
+`live` y reloj de origen creciente (215,0 → 246,4 → 249,0 → 251,8 s). La
+tarea [VAN-777](https://app.notion.com/p/3e9e51695c65813ba4e8c2c8aa013dd1?pvs=204)
+usa [GitHub #1412](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1412)
+como puente técnico. Su rama `vantareapp/isa-1412-lmu-1420-compatibility`
+admite solo el par exacto 1.4.2.0 en el capturador diagnóstico y conserva en
+`testdata` un par de fixtures sanitizados de pista con SHA-256 verificados.
+El test comprueba 18 coches y que el parser de producción **sigue rechazando**
+1.4.2.0. Falta la captura de menú y la revisión de los cuatro fixtures antes
+de pinnear y admitir la build en producción. No hay evidencia aún de Overlay
+V2 vivo con 1.4.2.0, ni aprobación para integrar la rama.
+
 > **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
 > Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,
 > bloquear, entregar y verificar merge. [Contrato](../notion-transition.md).

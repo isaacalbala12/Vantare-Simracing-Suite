@@ -251,6 +251,9 @@ func TestDiagnosticCandidateProfileOnlyAcceptsExactLMU14Pair(t *testing.T) {
 		{name: "normalized pair", evidence: BuildEvidence{FileVersion: "1.4.0", ProductVersion: "1,4,0,0"}, version: diagnosticLMUVersion, ok: true},
 		{name: "exact 1.4.1.3 pair", evidence: BuildEvidence{FileVersion: "1.4.1.3", ProductVersion: "1.4.1.3"}, version: diagnosticLMUVersion1, ok: true},
 		{name: "normalized 1.4.1.3 pair", evidence: BuildEvidence{FileVersion: "1.4.1.3", ProductVersion: "1,4,1,3"}, version: diagnosticLMUVersion1, ok: true},
+		{name: "exact 1.4.2.0 pair", evidence: BuildEvidence{FileVersion: "1.4.2.0", ProductVersion: "1.4.2.0"}, version: diagnosticLMUVersion2, ok: true},
+		{name: "1.4.2.0 file only", evidence: BuildEvidence{FileVersion: "1.4.2.0"}},
+		{name: "1.4.2.0 contradictory", evidence: BuildEvidence{FileVersion: "1.4.2.0", ProductVersion: "1.4.1.3"}},
 		{name: "1.4.1.3 file only", evidence: BuildEvidence{FileVersion: "1.4.1.3"}},
 		{name: "1.4.1.3 contradictory", evidence: BuildEvidence{FileVersion: "1.4.1.3", ProductVersion: "1.4.0.0"}},
 		{name: "unpinned 1.4.1.0 sibling", evidence: BuildEvidence{FileVersion: "1.4.1.0", ProductVersion: "1.4.1.0"}},
@@ -290,6 +293,7 @@ func TestBuildProfilesGateEveryOffsetField(t *testing.T) {
 		{name: "product contradicts file", build: BuildEvidence{FileVersion: "1.3.0.0", ProductVersion: "1.4.0.0"}, unknown: unavailableFingerprint},
 		{name: "absent", build: BuildEvidence{}, unknown: unavailableFingerprint},
 		{name: "not allowlisted", build: BuildEvidence{FileVersion: "1.4.0.0"}, unknown: "LMU_Data/size=324820/evidence=unsupported;build=1.4.0.0"},
+		{name: "diagnostic 1.4.2.0 remains unsupported", build: BuildEvidence{FileVersion: "1.4.2.0", ProductVersion: "1.4.2.0"}, unknown: "LMU_Data/size=324820/evidence=unsupported;build=1.4.2.0"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			got, err := parseWithBuild(fixture, time.Now(), tt.build)
@@ -392,6 +396,55 @@ func TestLMU1413PinnedFixturesMatchSanitizedArtifactsAndReplay(t *testing.T) {
 				t.Fatalf("schema=%q status=%q", document.Schema, document.Status)
 			}
 		})
+	}
+}
+
+func TestLMU1420DiagnosticTrackFixtureRemainsUnadmitted(t *testing.T) {
+	root := filepath.Join("..", "..", "..", "..", "testdata")
+	shared, err := os.ReadFile(filepath.Join(root, "lmu-1.4.2.0-track-fixture.bin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if digest := sha256.Sum256(shared); hex.EncodeToString(digest[:]) != "7ddd923cddcc2653f2ceee5c6e6c26bbb8d28a7df80e59bb1791b4f49e1c8ae5" {
+		t.Fatal("diagnostic track fixture digest changed")
+	}
+	assertOnlyAllowedDiagnosticBytes(t, shared, shared)
+	build := BuildEvidence{FileVersion: diagnosticLMUVersion2, ProductVersion: diagnosticLMUVersion2}
+	profile, ok := diagnosticCandidateProfile(build)
+	if !ok {
+		t.Fatal("exact 1.4.2.0 build was not admitted for diagnostic capture")
+	}
+	diagnostic, err := parseWithProfile(shared, time.Unix(1, 0).UTC(), profile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	player, present := diagnostic.PlayerPresent.Value()
+	vehicles, countPresent := diagnostic.VehicleCount.Value()
+	if !present || !player || !countPresent || int(vehicles) != 18 {
+		t.Fatalf("diagnostic player=%v,%v vehicles=%v,%v", player, present, vehicles, countPresent)
+	}
+	production, err := parseWithBuild(shared, time.Unix(1, 0).UTC(), build)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if production.Compatibility != CompatibilityUnknown {
+		t.Fatalf("unverified build admitted in production: %v", production.Compatibility)
+	}
+	assertNoPublishedFields(t, production)
+
+	rest, err := os.ReadFile(filepath.Join(root, "lmu-1.4.2.0-rest-track-fixture.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if digest := sha256.Sum256(rest); hex.EncodeToString(digest[:]) != "53d2722743187f7366a1a504f57c741903c5bc67d6624b302cba454c3efb6e6f" {
+		t.Fatal("diagnostic REST fixture digest changed")
+	}
+	var document diagnosticRESTDocument
+	if err := json.Unmarshal(rest, &document); err != nil {
+		t.Fatal(err)
+	}
+	if document.Schema != "vantare.lmu-rest-overlap.v1" || document.Status != "live" {
+		t.Fatalf("diagnostic REST schema=%q status=%q", document.Schema, document.Status)
 	}
 }
 

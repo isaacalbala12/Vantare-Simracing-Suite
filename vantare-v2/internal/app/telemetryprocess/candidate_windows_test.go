@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 )
 
 func TestCandidateRestartBudgetExhaustsAfterThreeFailedStarts(t *testing.T) {
@@ -68,6 +70,49 @@ func liveCandidateConfiguration(t *testing.T) ConfigurationV1 {
 		t.Fatal(err)
 	}
 	return configuration
+}
+
+// The real Publisher is the next product boundary after the IPC receiver.
+// A decoded Rust snapshot must fit its existing Overlay V2 payload contract.
+func TestCandidateOverlayReachesPublisherLiveLMUOptIn(t *testing.T) {
+	executable := os.Getenv("VANTARE_TELEMETRY_RUST_TEST_HELPER")
+	if executable == "" || os.Getenv("VANTARE_LMU_LIVE_CANDIDATE_TEST") != "1" || os.Getenv("VANTARE_LMU_LIVE_CANDIDATE_TRACK_TEST") != "1" {
+		t.Skip("requires release Rust child and pinned LMU on track")
+	}
+	registry, err := telemetrytransport.NewPublisherRegistry(telemetrytransport.PublisherConfig{Product: telemetrytransport.ProductOverlayV2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisher, release, err := registry.RegisterConsumer(telemetrytransport.ProductOverlayV2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	var overlays, engineers, disconnects int
+	err = RunCandidate(ctx, executable, liveCandidateConfiguration(t), func(event ReceivedV1) error {
+		if event.Overlay != nil {
+			if len(event.Overlay.Frame.Standings) != 47 {
+				return errors.New("Rust Overlay did not contain the real 47-car grid")
+			}
+			if err := publisher.PublishSnapshot(event.Overlay.DeliveryRevision, *event.Overlay); err != nil {
+				return err
+			}
+			overlays++
+		}
+		if event.Engineer != nil {
+			engineers++
+		}
+		if overlays >= 2 && engineers >= 2 {
+			cancel()
+		}
+		return nil
+	}, func(error) { disconnects++ })
+	if err != nil || disconnects != 0 || overlays < 2 || engineers < 2 {
+		t.Fatalf("real Rust publisher delivery: error=%v disconnects=%d overlay=%d engineer=%d", err, disconnects, overlays, engineers)
+	}
+	t.Logf("published %d real Rust Overlay snapshots to the product publisher, latest bytes=%d", overlays, publisher.Metrics().SnapshotBytes)
 }
 
 func TestCandidateSupervisorLiveLMUOptIn(t *testing.T) {

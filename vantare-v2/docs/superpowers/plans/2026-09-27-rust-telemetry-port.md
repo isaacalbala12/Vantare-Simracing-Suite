@@ -1937,3 +1937,14 @@ y medición completa G0/G1/R, CPU ≤ 0,50, p99 y RSS. El soporte técnico hasta
 104 vehículos permanece como límite del parser/IPC, no como corpus obligatorio
 de rendimiento. Las referencias a 44/104 en los cortes históricos §6–99
 conservan el estado de sus fechas y no rigen la aceptación tras esta decisión.
+
+## 101. Rust Overlay alcanza el Publisher de producto (2026-09-29)
+
+Una prueba física opt-in conecta el candidato Rust al `Receiver` Go y entrega
+dos snapshots Overlay V2 reales de 47 coches al `PublisherRegistry` existente,
+con un consumidor registrado. Cinco repeticiones pasaron sin desconexión;
+los dos payloads por corrida sumaron entre 62.689 y 62.798 bytes, dentro del
+límite de 72 KiB de Overlay V2. Engineer también produjo al menos dos
+snapshots por corrida. `go test ./...` pasó. Esta ruta aún es de prueba:
+Wails/OBS no seleccionan el hijo Rust. Falta adaptar la identidad completa
+de Engineer y entregar sus facts al servicio antes de activar R19.

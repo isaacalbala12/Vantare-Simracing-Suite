@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — Overlay Rust en el Publisher real (2026-09-29)
+
+Prueba opt-in física con LMU 1.4.2.0 y 47 coches: el hijo Rust pasó por el
+Receiver Go y publicó dos Overlay V2 en el `PublisherRegistry` de producto;
+cinco repeticiones pasaron y cada par ocupó 62.689–62.798 bytes frente al
+tope de 72 KiB. Engineer emitió dos snapshots por corrida. `go test ./...`
+pasó. El test no selecciona Rust en Wails/OBS. Para conectar Engineer al
+servicio falta transportar la identidad completa de sesión y drenar facts
+del receptor después del ACK. Go conserva el runtime productivo. Plan §101.
+
 ## VAN-778 / ISA-1403 — alcance de corpus revisado (2026-09-29)
 
 Isaac acepta un escenario temporal **real de al menos 46 coches** para la

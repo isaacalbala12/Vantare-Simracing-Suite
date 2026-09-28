@@ -32,6 +32,7 @@ Principio: el movimiento **explica** (aparece, se recoloca, confirma) y nunca de
 - Chevrón de acordeón rota 180° en 200 ms.
 - Bloques del timeline y arcos del donut se recolocan animados cuando cambia el plan (no saltan).
 - Barra activa del rail/nav aparece sin animación (instantánea): la navegación debe sentirse inmediata.
+- En el workspace del Hub `--orbit-enter` vale 0 s: pestañas y paneles aparecen completos en el primer fotograma, sin desplazarse al entrar.
 
 ## Reglas
 1. Nada dura más de 450 ms salvo pulsos de estado (1.4–2.2 s) y el dial.

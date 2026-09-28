@@ -14,7 +14,9 @@ el test opt-in del driver aún devuelve
 `evidence=unsupported;build=1.4.2.0`. La evidencia está en
 `tools/native-ui/evidence/lmu-1420-live-diagnostic.md`. Falta la muestra de
 menú, los fixtures pinneados y su validación antes de conectar esta sesión al
-host Overlay V2 y medir UI/CPU con datos cambiantes. La PR sigue en borrador.
+host Overlay V2 y medir UI/CPU con datos cambiantes. Isaac prefiere mantener
+la sesión actual en pista; no se interrumpirá para obtener el menú. La PR
+sigue en borrador.
 
 El host aislado ahora tiene modo `-live`, conectado al driver Go, BatchMapper,
 Reducer, Pipeline, CachedProjector y SSE existentes. Una prueba con la captura
@@ -137,6 +139,23 @@ La tarea [VAN-776](https://app.notion.com/p/3e9e51695c65810fb2bdd73aae4b555d?pvs
 conserva el alcance y pendientes: interacción y persistencia de editor,
 actualización de datos, grabación/medición OBS y baseline del producto completo. No se eligió
 stack, cambió el runtime productivo ni promovió ningún canal.
+## 2026-09-28 · ISA-1406 · Navegación Orbit sin salto
+
+El harness de la shell reprodujo en Inicio → Ajustes un primer fotograma con
+panel y cabecera a opacidad cero y columna contextual vacía. La causa visual
+era la animación vertical de entrada y la resolución de portales después del
+pintado. La rama `vantareapp/isa-1406-hub-navegacion-sin-salto`, basada en
+`origin/nightly@355e9cfe`, resuelve los portales antes de pintar y fija la
+entrada de vistas a 0 s, incluida Ajustes y Testing Center. La prueba de
+navegador dio RED antes del cambio y PASS después, incluida una pestaña interna
+de Ajustes. Frontend:
+486 archivos/4113 pruebas PASS (2 omitidas), typecheck, build y lint PASS.
+Falta verificar la sensación de navegación y el tiempo de datos en Wails real
+con sesión; el harness usa runtime simulado. [PR draft #1407](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1407)
+hacia `nightly`; sin integración ni promoción.
+
+Esta sección refleja el estado previo del PR #1407. `origin/nightly@c4c7a5ce`
+ya contiene su integración; la validación física de Wails sigue pendiente.
 
 ## 2026-09-26 · VAN-769 / GitHub #1381 · Integración inicial autorizada
 

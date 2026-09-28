@@ -90,6 +90,18 @@ Se revisaron capturas propias del editor y overlay de ese paquete reducido;
 el overlay mantiene alfa 0 en la esquina. Están en `tools/native-ui/evidence/`
 y no equivalen a una nueva prueba OBS de ese paquete.
 
+El HEAD `1e6662ac`, reconciliado con `origin/nightly@c4c7a5ce`, pasó tests Go,
+4.109 pruebas frontend, presupuesto 4/4, build, lint y CI remota. La calidad
+falló una primera vez por un hallazgo `go-mod-tidy` no reproducible y pasó
+al repetir el mismo SHA sin cambios. Una auditoría posterior de solo lectura
+del paquete Qt reducido cotejó por SHA-256 sus cuatro DLL externas con Qt y
+MinGW, encontró los textos GCC/winpthreads en la instalación del compilador
+y confirmó que el paquete de prueba no incluye avisos. Conserva 792 PNG del
+estilo FluentWinUI3; no se ha demostrado que sea seguro retirarlo. La
+revisión automática rechazó preparar una copia con estilos retirados, así que
+el paquete no se modificó ni se hizo un nuevo smoke. Detalle en
+`tools/native-ui/evidence/qt-package-license-inventory.md`.
+
 Continúa la comparación [#1404](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1409), todavía en PR borrador. La rama
 `vantareapp/isa-1410-native-go-product-trial` parte de
 `origin/nightly@355e9cfe` en worktree propio. Un host de investigación usa la

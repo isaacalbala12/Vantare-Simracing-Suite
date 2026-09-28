@@ -79,6 +79,39 @@ cero en la esquina (520×500 píxeles). Ambas se revisaron visualmente después
 de obtenerlas con `--screenshot`, con el host Go activo y el `PATH` limitado
 a Windows. No prueban captura OBS ni composición física del paquete reducido.
 
+## Procedencia comprobada del paquete reducido · 28/09/2026
+
+Una segunda lectura, sin alterar el paquete, confirma 1.325 archivos/73,88 MiB
+y 81 DLL: las 77 DLL Qt del cotejo anterior y estas cuatro DLL externas. Los
+SHA-256 del paquete coinciden tanto con `6.10.2/mingw_64/bin` como con
+`Tools/mingw1310_64/bin` para los tres runtimes MinGW. El compilador D3D
+coincide con `6.10.2/mingw_64/bin`, no con el directorio del compilador.
+
+| DLL externa | SHA-256 del paquete | Procedencia comprobada |
+| --- | --- | --- |
+| `libgcc_s_seh-1.dll` | `5e27589147caa6d7a30f4cc058a14c455dc62233901ffff9a1797ede425e9f86` | Qt 6.10.2 y MinGW 13.1.0 |
+| `libstdc++-6.dll` | `8013488c5528bad7966ca07f3ea2e7a9b743cacb258fe76b46a326f821cc83b0` | Qt 6.10.2 y MinGW 13.1.0 |
+| `libwinpthread-1.dll` | `c7c7dced65fff71c7bb61f80c771c562f533d26d72722d9d6091129a3b03d5ce` | Qt 6.10.2 y MinGW 13.1.0 |
+| `D3Dcompiler_47.dll` | `e994847e01a6f1e4cbdc5a864616ac262f67ee4f14db194984661a8d927ab7f4` | Qt 6.10.2 |
+
+La instalación del compilador incluye `licenses/gcc/COPYING.RUNTIME`
+(excepción de runtime GCC 3.1), `licenses/gcc/COPYING3.LIB` y
+`licenses/winpthreads/COPYING` (permiso y obligación de conservar el aviso).
+[GNU delimita la excepción a bibliotecas con el aviso aplicable](https://www.gnu.org/licenses/gcc-exception-3.1.en.html)
+y [Qt documenta la copia del runtime del compilador](https://doc.qt.io/qt-6.10/windows-deployment.html).
+La carpeta de prueba no contiene ficheros cuyo nombre sea licencia, aviso,
+`COPYING` o atribución: antes de distribuir habría que seleccionar y añadir
+los textos exigibles para los componentes realmente incluidos. Este cotejo
+identifica origen y textos candidatos, pero no resuelve por sí solo las
+obligaciones legales de la app ni del instalador.
+
+El paquete aún incluye 792 PNG en `qml/QtQuick/Controls/FluentWinUI3`
+(845 ficheros, 5,18 MiB en ese directorio), aunque este prototipo solo importa
+`QtQuick.Controls` y [Qt selecciona Windows por defecto en Windows](https://doc.qt.io/qt-6.10/qtquickcontrols-styles.html).
+No se ha probado un paquete sin ese estilo: su presencia es una oportunidad
+de reducción, no ahorro acreditado ni permiso para excluirlo sin comprobar
+arranque, editor, overlay y rutas de respaldo.
+
 Para repetir el cotejo, enumerar las DLL del paquete, buscar cada nombre en
 `<Qt 6.10.2>/sbom/*.spdx.json` → `files[].fileName`, leer
 `licenseConcluded` y comparar SHA-256 de la DLL copiada con la ruta indicada

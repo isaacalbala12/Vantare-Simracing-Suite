@@ -1,5 +1,17 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — ventana relativa Overlay Rust (2026-09-28)
+
+R15e parcial incluye Relative y RelativeSameClass con vecinos por distancia
+física, máximo 8/8 y clase filtrada antes del límite. El oráculo Go/Rust
+estático real de 44 coincide (SHA-256 JSON
+`99705484494795a817a749bee22ed6e1d58bf82325ffda5db728524846e6392c`).
+Regresiones separadas cubren media vuelta, clase, ausencia de longitud y
+piloto, y gap temporal con signo incoherente. Rust release 94/94, Clippy,
+formato, build release y `go test ./...` pasan. Go sigue productivo. Faltan
+104 y paridad temporal reales, IPC, proyecciones restantes, sesión física y
+gate CPU del 50%. Plan sección 46.
+
 ## ISA-1403 — clasificación Overlay Rust de 44 coches (2026-09-28)
 
 R15e parcial proyecta las 44 filas reales con orden estable, posiciones y

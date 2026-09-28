@@ -1072,3 +1072,18 @@ Una prueba sobre una copia del lote real cubre cruce de meta, vuelta
 completa y distancia ausente. Rust release 92/92, Clippy, formato, build
 release y `go test ./...` pasan. No hay corpus real 104 ni comparación
 temporal, Relative, IPC o prueba física; el gate CPU sigue abierto.
+
+## 46. Ventana relativa Overlay Rust (2026-09-28)
+
+`projection/relative.rs` selecciona vecinos por el arco físico más corto,
+con empate de media vuelta delante, empate de posición por ID, límites 8/8
+y filtro de clase antes del límite. La ausencia de longitud válida conserva
+solo el piloto; la ausencia del piloto deja la ventana vacía. El gap temporal
+derivado solo informa el campo visible: no elimina vecinos, y un signo
+incoherente queda invalid. El oráculo Go/Rust de la captura real estática de
+44 coincide para Relative y RelativeSameClass (SHA-256 JSON
+`99705484494795a817a749bee22ed6e1d58bf82325ffda5db728524846e6392c`).
+Dos pruebas adicionales sobre copias del lote real cubren arcos, clase,
+ausencia y signo temporal. Rust release 94/94, Clippy, formato, build release
+y `go test ./...` pasan. Go sigue productivo. Siguen abiertos 104 y paridad
+temporal reales, IPC, demás proyecciones, sesión física y gate CPU del 50%.

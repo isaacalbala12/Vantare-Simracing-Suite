@@ -115,6 +115,9 @@ impl EngineCandidate {
     pub fn fuel_usage(&self) -> &crate::derive::fuel::FuelUsage {
         self.pipeline.fuel_usage()
     }
+    pub fn gaps(&self) -> &crate::derive::gaps::GapSet {
+        self.pipeline.gaps()
+    }
     pub fn delta(&self) -> &crate::derive::delta::SelfDelta {
         self.pipeline.delta()
     }

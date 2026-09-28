@@ -136,6 +136,25 @@ mod tests {
     use super::*;
     use std::sync::atomic::{AtomicU64, Ordering};
 
+    #[test]
+    fn live_lmu_menu_snapshot_is_stable_but_unpinned_build_stays_closed() {
+        if std::env::var_os("VANTARE_LMU_LIVE_READER_TEST").is_none() {
+            return;
+        }
+        let mapping = Mapping::open_lmu().expect("LMU_Data mapping is open");
+        let mut frame = vec![0; OBJECT_OUT_SIZE];
+        let mut scratch = vec![0; OBJECT_OUT_SIZE];
+        mapping
+            .read_stable(&mut frame, &mut scratch, MAX_STABLE_COMPARISONS)
+            .expect("LMU_Data stabilizes");
+        let vehicle_count = i32::from_le_bytes(frame[1_736..1_740].try_into().unwrap());
+        assert_eq!(vehicle_count, 0, "LMU must be at the main menu");
+        assert_eq!(
+            super::super::admit_v13(&frame, "1.4.2.0"),
+            Err(super::super::AdmissionError::UnsupportedBuild)
+        );
+    }
+
     const PAGE_READWRITE: u32 = 0x04;
     const FILE_MAP_WRITE: u32 = 0x0002;
     static TEST_ID: AtomicU64 = AtomicU64::new(0);

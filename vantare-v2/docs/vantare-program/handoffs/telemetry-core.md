@@ -1,12 +1,23 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — diagnóstico LMU 1.4.2.0 en menú (2026-09-28)
+
+LMU local reporta 1.4.2.0. Go lo admite solo como candidato exacto de
+diagnóstico, nunca como build productiva. Se capturaron Shared Memory
+sanitizada (menú vacío, SHA-256 `0567b69abf96ecf4c63594293e29151bd802d6e52f30b5d5ccfb68c36e8aa4e0`)
+y REST vacío concordante (SHA-256 `d135d375a4bd23f9b2f891177e5542551aa27cbbce9ff5d296ed61469524e4bc`)
+en `C:\tmp\vantare-lmu-1420-diagnostic`, fuera del repo. Rust leyó
+`LMU_Data` real estable y rechazó 1.4.2.0; falta pista y corpus
+temporal. Computer Use no expone el juego como app nativa en este host.
+Go sigue owner. Plan sección 63.
+
 ## ISA-1403 — admisión estructural LMU 1.4 (2026-09-28)
 
 Rust admite las builds exactas 1.4.0.0 y 1.4.1.3 a partir de las
 capturas sanitizadas de menú/pista ya pinneadas en Go. Rechaza versiones
 vecinas y 1.4.2.0. Rust release 114/114, Clippy, formato y `go test
-./...` pasan. Falta imponer la correlación REST obligatoria de 1.4
-antes de cualquier uso productivo; 1.4.2.0 requiere evidencia propia.
+./...` pasan. Go pinnea también REST para 1.4; el runtime Rust aún no
+verifica un manifiesto equivalente. 1.4.2.0 requiere evidencia de pista.
 Go sigue como único owner. Plan sección 62.
 
 ## ISA-1403 — replay Rust→Go por pipe Windows (2026-09-28)

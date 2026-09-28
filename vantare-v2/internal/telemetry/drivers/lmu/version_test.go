@@ -251,6 +251,9 @@ func TestDiagnosticCandidateProfileOnlyAcceptsExactLMU14Pair(t *testing.T) {
 		{name: "normalized pair", evidence: BuildEvidence{FileVersion: "1.4.0", ProductVersion: "1,4,0,0"}, version: diagnosticLMUVersion, ok: true},
 		{name: "exact 1.4.1.3 pair", evidence: BuildEvidence{FileVersion: "1.4.1.3", ProductVersion: "1.4.1.3"}, version: diagnosticLMUVersion1, ok: true},
 		{name: "normalized 1.4.1.3 pair", evidence: BuildEvidence{FileVersion: "1.4.1.3", ProductVersion: "1,4,1,3"}, version: diagnosticLMUVersion1, ok: true},
+		{name: "exact 1.4.2.0 pair", evidence: BuildEvidence{FileVersion: "1.4.2.0", ProductVersion: "1.4.2.0"}, version: "1.4.2.0", ok: true},
+		{name: "1.4.2.0 file only", evidence: BuildEvidence{FileVersion: "1.4.2.0"}},
+		{name: "unpinned 1.4.2.1 sibling", evidence: BuildEvidence{FileVersion: "1.4.2.1", ProductVersion: "1.4.2.1"}},
 		{name: "1.4.1.3 file only", evidence: BuildEvidence{FileVersion: "1.4.1.3"}},
 		{name: "1.4.1.3 contradictory", evidence: BuildEvidence{FileVersion: "1.4.1.3", ProductVersion: "1.4.0.0"}},
 		{name: "unpinned 1.4.1.0 sibling", evidence: BuildEvidence{FileVersion: "1.4.1.0", ProductVersion: "1.4.1.0"}},
@@ -416,5 +419,15 @@ func TestLMU1413IsASupportedBuild(t *testing.T) {
 		if _, ok := partial.supportedVersion(); ok {
 			t.Fatalf("evidence admitted: %#v", partial)
 		}
+	}
+}
+
+func TestLMU1420DiagnosticCandidateIsNotProductionSupported(t *testing.T) {
+	evidence := BuildEvidence{FileVersion: "1.4.2.0", ProductVersion: "1.4.2.0"}
+	if version, supported := evidence.supportedVersion(); supported || version != "" {
+		t.Fatalf("unsupported diagnostic build promoted: %q,%v", version, supported)
+	}
+	if hasPinnedSanitizedFixtures("1.4.2.0") {
+		t.Fatal("diagnostic build unexpectedly has complete pinned fixtures")
 	}
 }

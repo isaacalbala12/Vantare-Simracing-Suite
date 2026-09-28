@@ -1328,7 +1328,25 @@ release 114/114, Clippy todos los targets/features, formato y `go test
 ./...` pasan.
 
 Esta admisión comprueba el layout de Shared Memory con evidencia de
-build suministrada por el llamador. Go exige también REST para las
-builds 1.4; Rust aún debe imponer esa correlación antes de considerarse
-fuente productiva. La versión 1.4.2.0 instalada no tiene capturas
+build suministrada por el llamador. Go pinnea también las capturas REST
+para las builds 1.4; Rust aún no verifica un manifiesto equivalente de
+evidencia al iniciar el runtime. La versión 1.4.2.0 instalada no tiene capturas
 pinneadas y permanece cerrada. Go sigue como owner; R19/R25 pendientes.
+
+## 63. Diagnóstico físico inicial de LMU 1.4.2.0 (2026-09-28)
+
+La instalación local y el proceso abierto informan `FileVersion` y
+`ProductVersion` 1.4.2.0. Se añadió la build solo al conjunto exacto de
+candidatos de diagnóstico de Go: no entró en `supportedLMUVersions` ni
+en la admisión productiva Rust. El harness existente capturó en el menú
+un frame de Shared Memory sanitizado con cero vehículos/jugador ausente,
+SHA-256 `0567b69abf96ecf4c63594293e29151bd802d6e52f30b5d5ccfb68c36e8aa4e0`,
+y REST vacío concordante, SHA-256
+`d135d375a4bd23f9b2f891177e5542551aa27cbbce9ff5d296ed61469524e4bc`.
+Los archivos están en `C:\tmp\vantare-lmu-1420-diagnostic`, fuera del
+repositorio; no se pinnean como soporte porque falta la captura de pista.
+El lector Rust abrió `LMU_Data` real, obtuvo un snapshot estable del
+menú y confirmó que 1.4.2.0 sigue rechazado. Computer Use no expone
+el juego como app nativa en este host; la transición a pista aún no
+está verificada. Quedan pendientes captura de pista 1.4.2.0 y corpus
+temporal 44/104 SHM+REST.

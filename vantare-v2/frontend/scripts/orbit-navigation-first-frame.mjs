@@ -35,12 +35,17 @@ try {
       observer.disconnect();
       const head = view.querySelector(".orbit-set__head-copy");
       const panel = view.querySelector(".orbit-set__panel");
+      const offsetY = (element) => {
+        if (!element) return null;
+        const transform = getComputedStyle(element).transform;
+        return transform === "none" ? 0 : new DOMMatrix(transform).m42;
+      };
       resolve({
         context: document.querySelector(".orbit-column__context")?.textContent?.trim() ?? "",
         headOpacity: head ? getComputedStyle(head).opacity : null,
         panelOpacity: panel ? getComputedStyle(panel).opacity : null,
-        headTransform: head ? getComputedStyle(head).transform : null,
-        panelTransform: panel ? getComputedStyle(panel).transform : null,
+        headOffsetY: offsetY(head),
+        panelOffsetY: offsetY(panel),
       });
     });
     observer.observe(document.body, { childList: true, subtree: true });
@@ -50,17 +55,18 @@ try {
   assert.ok(firstFrame.context.includes("Secciones"), "context column must paint with the page");
   assert.equal(firstFrame.headOpacity, "1", "page heading must be visible on first paint");
   assert.equal(firstFrame.panelOpacity, "1", "page panel must be visible on first paint");
-  assert.equal(firstFrame.headTransform, "none", "heading must not jump vertically");
-  assert.equal(firstFrame.panelTransform, "none", "panel must not jump vertically");
+  assert.equal(firstFrame.headOffsetY, 0, "heading must not jump vertically");
+  assert.equal(firstFrame.panelOffsetY, 0, "panel must not jump vertically");
 
   await page.getByTestId("orbit-settings-context").getByText("Rendimiento", { exact: true }).click();
   const performancePanel = page.getByTestId("orbit-settings-panel-performance");
   await performancePanel.waitFor();
   const switchedPanel = await performancePanel.evaluate((element) => ({
     opacity: getComputedStyle(element).opacity,
-    transform: getComputedStyle(element).transform,
+    offsetY: getComputedStyle(element).transform === "none"
+      ? 0 : new DOMMatrix(getComputedStyle(element).transform).m42,
   }));
-  assert.deepEqual(switchedPanel, { opacity: "1", transform: "none" },
+  assert.deepEqual(switchedPanel, { opacity: "1", offsetY: 0 },
     "switching Settings tabs must not restart a hidden or moving panel");
   console.log("Orbit navigation first frame PASS");
 } finally {

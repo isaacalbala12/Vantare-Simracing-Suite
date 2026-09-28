@@ -6,9 +6,10 @@ El harness de la shell reprodujo en Inicio → Ajustes un primer fotograma con
 panel y cabecera a opacidad cero y columna contextual vacía. La causa visual
 era la animación vertical de entrada y la resolución de portales después del
 pintado. La rama `vantareapp/isa-1406-hub-navegacion-sin-salto`, basada en
-`origin/nightly@355e9cfe`, resuelve los portales antes de pintar y retira esa
-entrada de Ajustes y Testing Center. La prueba de navegador dio RED antes del
-cambio y PASS después, incluida una pestaña interna de Ajustes. Frontend:
+`origin/nightly@355e9cfe`, resuelve los portales antes de pintar y fija la
+entrada de vistas a 0 s, incluida Ajustes y Testing Center. La prueba de
+navegador dio RED antes del cambio y PASS después, incluida una pestaña interna
+de Ajustes. Frontend:
 486 archivos/4113 pruebas PASS (2 omitidas), typecheck, build y lint PASS.
 Falta verificar la sensación de navegación y el tiempo de datos en Wails real
 con sesión; el harness usa runtime simulado. Implementación `a16b170b` en

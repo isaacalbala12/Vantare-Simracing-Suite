@@ -880,6 +880,8 @@ button.orbit-pill:hover { color: #fff; border-color: rgba(var(--orbit-accent-rgb
   position: relative;
   flex: 1;
   min-height: 0;
+  /* El destino se pinta completo en el primer fotograma de la navegación. */
+  --orbit-enter: 0s;
   /* El espacio de trabajo nunca hace scroll horizontal: la rejilla ya cabe y lo
      único que sobresalía era el halo decorativo del hero de Inicio, que sacaba
      una barra al pie de la ventana. Lo que sí deba desplazarse en X lo declara

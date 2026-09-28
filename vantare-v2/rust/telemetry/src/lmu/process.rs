@@ -245,7 +245,7 @@ mod tests {
     }
 
     #[test]
-    fn installed_running_lmu_evidence_is_diagnostic_only() {
+    fn installed_running_lmu_evidence_is_exactly_supported() {
         if std::env::var_os("VANTARE_LMU_LIVE_PROCESS_TEST").is_none() {
             return;
         }
@@ -257,7 +257,7 @@ mod tests {
         );
         assert_eq!(running.evidence.file_version, "1.4.2.0");
         assert_eq!(running.evidence.product_version, "1.4.2.0");
-        assert_eq!(running.evidence.exact_supported_build(), None);
+        assert_eq!(running.evidence.exact_supported_build(), Some("1.4.2.0"));
         running.ensure_alive().expect("LMU still running");
     }
 
@@ -272,6 +272,9 @@ mod tests {
         source
             .read_stable(&mut frame, &mut scratch)
             .expect("stable live LMU snapshot");
-        assert_eq!(source.build.evidence.exact_supported_build(), None);
+        assert_eq!(
+            source.build.evidence.exact_supported_build(),
+            Some("1.4.2.0")
+        );
     }
 }

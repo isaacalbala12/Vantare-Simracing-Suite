@@ -57,6 +57,15 @@ var supportedLMUVersions = map[string]pinnedFixtureEvidence{
 		restTrackSHA256: "79f7691e70d936546ec09c4555fda170b6d44e513aced2ae67aecd1c22e92e1e",
 		requireREST:     true,
 	},
+	// Fresh menu and live 43-car track were captured from the exact 1.4.2.0
+	// executable. The four sanitized artifacts are checked in version_test.go.
+	diagnosticLMUVersion2: {
+		menuSHA256:      "0567b69abf96ecf4c63594293e29151bd802d6e52f30b5d5ccfb68c36e8aa4e0",
+		trackSHA256:     "707dceb31dd94167b2817e47a6d546bf0c187378ae24c5403e7ed28eb05a5e39",
+		restMenuSHA256:  "340e95de868d252e0b99173c59e18012a253d79319fb71084717ef6a33a03033",
+		restTrackSHA256: "fd3222b339894dfb29c2a32e58530d09b26d0caf12f89980a7904bdd859cabcb",
+		requireREST:     true,
+	},
 }
 
 type BuildEvidence struct {

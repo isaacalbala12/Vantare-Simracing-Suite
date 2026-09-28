@@ -187,7 +187,7 @@ pub struct SessionFields {
 }
 
 fn supports_build(build: &str) -> bool {
-    matches!(build, "1.3.0.0" | "1.4.0.0" | "1.4.1.3")
+    matches!(build, "1.3.0.0" | "1.4.0.0" | "1.4.1.3" | "1.4.2.0")
 }
 
 pub fn admit_v13(buffer: &[u8], verified_build: &str) -> Result<AdmittedGrid, AdmissionError> {
@@ -627,6 +627,9 @@ mod tests {
     const REAL_1413_TRACK: &[u8] =
         include_bytes!("../../../testdata/lmu-1.4.1.3-track-fixture.bin");
     const REAL_1413_MENU: &[u8] = include_bytes!("../../../testdata/lmu-1.4.1.3-menu-fixture.bin");
+    const REAL_1420_TRACK: &[u8] =
+        include_bytes!("../../../testdata/lmu-1.4.2.0-track-fixture.bin");
+    const REAL_1420_MENU: &[u8] = include_bytes!("../../../testdata/lmu-1.4.2.0-menu-fixture.bin");
     const REAL_1400_TRACK: &[u8] = include_bytes!("../../../testdata/lmu-1.4-track-fixture.bin");
     const REAL_1400_MENU: &[u8] = include_bytes!("../../../testdata/lmu-1.4-menu-fixture.bin");
 
@@ -638,7 +641,7 @@ mod tests {
         let menu = admit_v13(REAL_1400_MENU, "1.4.0.0").unwrap();
         assert!(menu.vehicles.is_empty());
         assert_eq!(menu.player_index, None);
-        for build in ["1.4.0.1", "1.4.1.0", "1.4.2.0"] {
+        for build in ["1.4.0.1", "1.4.1.0", "1.4.2.1"] {
             assert_eq!(
                 admit_v13(REAL_1400_TRACK, build),
                 Err(AdmissionError::UnsupportedBuild)
@@ -654,12 +657,26 @@ mod tests {
         let menu = admit_v13(REAL_1413_MENU, "1.4.1.3").unwrap();
         assert!(menu.vehicles.is_empty());
         assert_eq!(menu.player_index, None);
-        for build in ["1.4.1.2", "1.4.1.4", "1.4.2.0"] {
+        for build in ["1.4.1.2", "1.4.1.4", "1.4.2.1"] {
             assert_eq!(
                 admit_v13(REAL_1413_TRACK, build),
                 Err(AdmissionError::UnsupportedBuild)
             );
         }
+    }
+
+    #[test]
+    fn pinned_1420_menu_and_43_car_track_admit_exact_build() {
+        let track = admit_v13(REAL_1420_TRACK, "1.4.2.0").unwrap();
+        assert_eq!(track.vehicles.len(), 43);
+        assert!(track.player_index.is_some());
+        let menu = admit_v13(REAL_1420_MENU, "1.4.2.0").unwrap();
+        assert!(menu.vehicles.is_empty());
+        assert_eq!(menu.player_index, None);
+        assert_eq!(
+            admit_v13(REAL_1420_TRACK, "1.4.2.1"),
+            Err(AdmissionError::UnsupportedBuild)
+        );
     }
 
     #[test]

@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -14,6 +15,134 @@ import (
 
 	"golang.org/x/sys/windows"
 )
+
+// Opt-in physical gate: the installed LMU must be running on the exact pinned
+// build. This reads the Rust candidate, without selecting it for Wails users.
+func TestRustCandidateLiveLMUOptIn(t *testing.T) {
+	executable := os.Getenv("VANTARE_TELEMETRY_RUST_TEST_HELPER")
+	if executable == "" || os.Getenv("VANTARE_LMU_LIVE_CANDIDATE_TEST") != "1" {
+		t.Skip("requires release Rust child and running pinned LMU")
+	}
+	pipe, err := newLocalPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	child, err := startInJob(executable, "--candidate-pipe", pipe.name,
+		"--candidate-nonce", hex.EncodeToString(pipe.nonce[:]))
+	if err != nil {
+		_ = pipe.close()
+		t.Fatal(err)
+	}
+	defer child.close()
+	if err := pipe.acceptChild(context.Background(), child.pid); err != nil {
+		_ = pipe.close()
+		t.Fatal(err)
+	}
+	file := os.NewFile(uintptr(pipe.handle), "telemetry-live-candidate-pipe")
+	defer file.Close()
+	if err := file.SetDeadline(time.Now().Add(8 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	handshake, err := ReadFrame(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyHandshake(handshake, pipe.nonce, "0.1.0"); err != nil {
+		t.Fatal(err)
+	}
+	wire, err := os.ReadFile(filepath.Join("..", "..", "..", "rust", "telemetry", "testdata", "configuration-frame-go-v1.bin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	oracle, err := DecodeFrame(wire)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var configuration ConfigurationV1
+	if err := json.Unmarshal(oracle.Payload, &configuration); err != nil {
+		t.Fatal(err)
+	}
+	receiver := NewReceiver()
+	configured, err := receiver.Configure(configuration)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteFrame(file, configured); err != nil {
+		t.Fatal(err)
+	}
+	var ack, statuses, overlays, engineers int
+	track := os.Getenv("VANTARE_LMU_LIVE_CANDIDATE_TRACK_TEST") == "1"
+	for statuses < 2 || track && (ack == 0 || overlays == 0 || engineers == 0) {
+		frame, err := ReadFrame(file)
+		if err != nil {
+			t.Fatalf("candidate frame after ack=%d status=%d overlay=%d engineer=%d: %v", ack, statuses, overlays, engineers, err)
+		}
+		event, err := receiver.Accept(frame)
+		if err != nil {
+			t.Fatalf("candidate frame kind=%d: %v", frame.Kind, err)
+		}
+		if event.Configuration != nil {
+			ack++
+		}
+		if event.Status != nil {
+			if !track && event.Status.State != "connecting" {
+				t.Fatalf("menu status = %s", event.Status.State)
+			}
+			if track && event.Status.State != "live" {
+				t.Fatalf("track status = %s", event.Status.State)
+			}
+			statuses++
+		}
+		if event.Overlay != nil {
+			if track && event.Overlay.Frame == nil {
+				t.Fatal("track overlay has no frame")
+			}
+			if track && len(event.Overlay.Frame.Standings) != 43 {
+				t.Fatalf("track overlay standings = %d", len(event.Overlay.Frame.Standings))
+			}
+			overlays++
+		}
+		if event.Engineer != nil {
+			if track && len(event.Engineer.Vehicles) != 43 {
+				t.Fatalf("track engineer vehicles = %d", len(event.Engineer.Vehicles))
+			}
+			engineers++
+		}
+		if event.FactACK != nil {
+			if err := WriteFrame(file, *event.FactACK); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if !track && (ack != 0 || overlays != 0 || engineers != 0) {
+		t.Fatalf("menu published a session: ack=%d overlay=%d engineer=%d", ack, overlays, engineers)
+	}
+	if err := WriteFrame(file, Frame{Kind: KindStop}); err != nil {
+		t.Fatal(err)
+	}
+	for {
+		frame, err := ReadFrame(file)
+		if err != nil {
+			t.Fatalf("candidate Stop: %v", err)
+		}
+		event, err := receiver.Accept(frame)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if event.Stopped {
+			break
+		}
+	}
+	result, err := windows.WaitForSingleObject(child.process, 2_000)
+	if err != nil || result != windows.WAIT_OBJECT_0 {
+		t.Fatalf("candidate did not exit cleanly: wait=%d error=%v", result, err)
+	}
+	var exitCode uint32
+	if err := windows.GetExitCodeProcess(child.process, &exitCode); err != nil || exitCode != 0 {
+		t.Fatalf("candidate exit=%d error=%v", exitCode, err)
+	}
+	t.Logf("physical Rust candidate: ACK=%d status=%d overlay=%d engineer=%d, clean Stop", ack, statuses, overlays, engineers)
+}
 
 // Run with VANTARE_TELEMETRY_RUST_TEST_HELPER pointing to the release binary.
 // This is a separate cross-language gate after cargo build, not part of Go's

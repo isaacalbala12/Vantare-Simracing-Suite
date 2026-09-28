@@ -137,7 +137,7 @@ mod tests {
     use std::sync::atomic::{AtomicU64, Ordering};
 
     #[test]
-    fn live_lmu_menu_snapshot_is_stable_but_unpinned_build_stays_closed() {
+    fn live_lmu_menu_snapshot_is_stable_and_exact_build_is_admitted() {
         if std::env::var_os("VANTARE_LMU_LIVE_READER_TEST").is_none() {
             return;
         }
@@ -149,10 +149,9 @@ mod tests {
             .expect("LMU_Data stabilizes");
         let vehicle_count = i32::from_le_bytes(frame[1_736..1_740].try_into().unwrap());
         assert_eq!(vehicle_count, 0, "LMU must be at the main menu");
-        assert_eq!(
-            super::super::admit_v13(&frame, "1.4.2.0"),
-            Err(super::super::AdmissionError::UnsupportedBuild)
-        );
+        let grid = super::super::admit_v13(&frame, "1.4.2.0").unwrap();
+        assert!(grid.vehicles.is_empty());
+        assert_eq!(grid.player_index, None);
     }
 
     const PAGE_READWRITE: u32 = 0x04;

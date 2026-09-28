@@ -422,12 +422,77 @@ func TestLMU1413IsASupportedBuild(t *testing.T) {
 	}
 }
 
-func TestLMU1420DiagnosticCandidateIsNotProductionSupported(t *testing.T) {
+func TestLMU1420PinnedFixturesAndAdmission(t *testing.T) {
 	evidence := BuildEvidence{FileVersion: "1.4.2.0", ProductVersion: "1.4.2.0"}
-	if version, supported := evidence.supportedVersion(); supported || version != "" {
-		t.Fatalf("unsupported diagnostic build promoted: %q,%v", version, supported)
+	if version, supported := evidence.supportedVersion(); !supported || version != diagnosticLMUVersion2 {
+		t.Fatalf("supportedVersion() = %q,%v", version, supported)
 	}
-	if hasPinnedSanitizedFixtures("1.4.2.0") {
-		t.Fatal("diagnostic build unexpectedly has complete pinned fixtures")
+	pinned := supportedLMUVersions[diagnosticLMUVersion2]
+	if !pinned.pinned() || !pinned.requireREST {
+		t.Fatalf("incomplete pinned evidence: %#v", pinned)
+	}
+	root := filepath.Join("..", "..", "..", "..", "testdata")
+	for _, fixture := range []struct{ file, hash string }{
+		{"lmu-1.4.2.0-menu-fixture.bin", pinned.menuSHA256},
+		{"lmu-1.4.2.0-track-fixture.bin", pinned.trackSHA256},
+		{"lmu-1.4.2.0-rest-menu-fixture.json", pinned.restMenuSHA256},
+		{"lmu-1.4.2.0-rest-track-fixture.json", pinned.restTrackSHA256},
+	} {
+		payload, err := os.ReadFile(filepath.Join(root, fixture.file))
+		if err != nil {
+			t.Fatal(err)
+		}
+		digest := sha256.Sum256(payload)
+		if got := hex.EncodeToString(digest[:]); got != fixture.hash {
+			t.Fatalf("%s digest = %s", fixture.file, got)
+		}
+	}
+	for _, tc := range []struct {
+		file     string
+		vehicles int32
+		player   bool
+	}{
+		{"lmu-1.4.2.0-menu-fixture.bin", 0, false},
+		{"lmu-1.4.2.0-track-fixture.bin", 43, true},
+	} {
+		payload, err := os.ReadFile(filepath.Join(root, tc.file))
+		if err != nil {
+			t.Fatal(err)
+		}
+		assertOnlyAllowedDiagnosticBytes(t, payload, payload)
+		observation, err := parseWithBuild(payload, time.Unix(1, 0).UTC(), evidence)
+		if err != nil {
+			t.Fatal(err)
+		}
+		player, playerPresent := observation.PlayerPresent.Value()
+		vehicles, vehiclesPresent := observation.VehicleCount.Value()
+		if observation.Compatibility != CompatibilityKnown || !playerPresent || player != tc.player || !vehiclesPresent || int32(vehicles) != tc.vehicles {
+			t.Fatalf("%s compatibility=%v player=%v,%v vehicles=%v,%v", tc.file, observation.Compatibility, player, playerPresent, vehicles, vehiclesPresent)
+		}
+	}
+	for _, tc := range []struct{ file, status string }{
+		{"lmu-1.4.2.0-rest-menu-fixture.json", "empty"},
+		{"lmu-1.4.2.0-rest-track-fixture.json", "live"},
+	} {
+		payload, err := os.ReadFile(filepath.Join(root, tc.file))
+		if err != nil {
+			t.Fatal(err)
+		}
+		var document diagnosticRESTDocument
+		if err := json.Unmarshal(payload, &document); err != nil {
+			t.Fatal(err)
+		}
+		if document.Schema != "vantare.lmu-rest-overlap.v1" || document.Status != tc.status {
+			t.Fatalf("%s schema=%q status=%q", tc.file, document.Schema, document.Status)
+		}
+	}
+	for _, partial := range []BuildEvidence{
+		{FileVersion: "1.4.2.0"}, {ProductVersion: "1.4.2.0"},
+		{FileVersion: "1.4.2.0", ProductVersion: "1.4.1.3"},
+		{FileVersion: "1.4.2.1", ProductVersion: "1.4.2.1"},
+	} {
+		if _, supported := partial.supportedVersion(); supported {
+			t.Fatalf("admitted %#v", partial)
+		}
 	}
 }

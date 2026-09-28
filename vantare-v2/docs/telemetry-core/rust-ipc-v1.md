@@ -191,13 +191,16 @@ responde Stop tras cerrar REST. El host Go aún no la selecciona desde Wails.
 El lector consulta disponibilidad sin reservar memoria, valida los ocho
 bytes de cabecera antes del payload y abandona el pipe si una trama parcial
 vence el plazo. Un test Windows envía solo la cabecera de Configuration de
-64 KiB+1 y el hijo sale antes de recibir cuerpo. Otro test opt-in confirma
-el rechazo de LMU 1.4.2.0 tras configuración, sin prometer loop live para
-esa build. El candidato emite Status consecutivo cada 250 ms: connecting
+64 KiB+1 y el hijo sale antes de recibir cuerpo. LMU 1.4.2.0 está
+admitida por capturas sanitizadas reales de menú y pista (43 coches) con
+sus pares REST y hashes fijados. Un test opt-in ejecutó el candidato
+contra LMU físico: menú sin sesión publica connecting sin ACK ni snapshots;
+pista entrega ACK, Overlay y Engineer de 43 coches, Status live y Stop limpio.
+El candidato emite Status consecutivo cada 250 ms: connecting
 sin fuente confirmada, live con edad monotónica desde el último avance SHM
 y stale desde 500 ms sin avance o durante recuperación. La edad no deriva
 de las lecturas repetidas. Tests Rust fijan el umbral y la fixture real
-estática de 44; falta observar Status en un pipe live admitido y conectar
+estática de 44; falta conectar
 el watchdog/reinicio Go. La salud REST todavía no cambia el estado.
 
 ## Límites de diseño para completar antes de R05/R19

@@ -1,5 +1,19 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — LMU 1.4.2.0 exacto y candidato físico (2026-09-28)
+
+Go y Rust admiten ahora exactamente 1.4.2.0 a partir de cuatro capturas
+reales sanitizadas y hashes fijados: menú fresco y práctica WEC 2024 de
+**43** coches, cada una con SHM y REST. El menú sin sesión ya no tumba el
+candidato Rust: publica Status connecting sin ACK ni snapshot; una sesión
+previa queda intacta y envejece. En pista, el test opt-in Windows confirmó
+Handshake, Configuration ACK, Status live, Overlay y Engineer con 43 filas
+y Stop/salida limpios (29 batches de cada producto en ~0,55 s). Rust release
+154/154, Go completo, Clippy y formato pasan. La ruta sigue aislada: Go
+continúa como owner productivo y no hay selector Wails, watchdog/reinicio,
+prueba OBS ni corpus temporal real de 44/104, paridad y CPU total ≤ 0,50.
+Plan §94.
+
 ## VAN-778 / ISA-1403 — Status del reloj SHM Rust (2026-09-28)
 
 El candidato emite heartbeat secuencial cada 250 ms: Connecting sin

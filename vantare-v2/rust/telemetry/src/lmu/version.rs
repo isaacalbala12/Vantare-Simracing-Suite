@@ -115,7 +115,7 @@ mod tests {
     #[test]
     fn file_and_product_must_match_an_exact_pinned_build() {
         assert_eq!(format_version(1 << 16 | 4, 1 << 16 | 3), "1.4.1.3");
-        for version in ["1.3.0.0", "1.4.0.0", "1.4.1.3"] {
+        for version in ["1.3.0.0", "1.4.0.0", "1.4.1.3", "1.4.2.0"] {
             let evidence = BuildEvidence {
                 file_version: version.into(),
                 product_version: version.into(),
@@ -123,7 +123,7 @@ mod tests {
             assert_eq!(evidence.exact_supported_build(), Some(version));
         }
         for (file, product) in [
-            ("1.4.2.0", "1.4.2.0"),
+            ("1.4.2.1", "1.4.2.1"),
             ("1.4.1.3", "1.4.0.0"),
             ("1.4.1.2", "1.4.1.2"),
         ] {
@@ -136,13 +136,13 @@ mod tests {
     }
 
     #[test]
-    fn installed_lmu_version_is_diagnostic_only() {
+    fn installed_lmu_version_is_exactly_supported() {
         let Some(path) = std::env::var_os("VANTARE_LMU_EXE_TEST_PATH") else {
             return;
         };
         let evidence = read_file_version(Path::new(&path)).expect("installed LMU version resource");
         assert_eq!(evidence.file_version, "1.4.2.0");
         assert_eq!(evidence.product_version, "1.4.2.0");
-        assert_eq!(evidence.exact_supported_build(), None);
+        assert_eq!(evidence.exact_supported_build(), Some("1.4.2.0"));
     }
 }

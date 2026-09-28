@@ -198,7 +198,7 @@ mod tests {
         engine.commit(first).unwrap();
         assert_eq!(engine.current().unwrap().cursor.sequence, 1);
         assert!(matches!(
-            engine.prepare(REAL_44, "1.4.2.0", 200, 200, 2_000),
+            engine.prepare(REAL_44, "1.4.2.1", 200, 200, 2_000),
             Err(EngineError::Admission(AdmissionError::UnsupportedBuild))
         ));
         let retry = engine.prepare(REAL_44, "1.3.0.0", 200, 200, 2_000).unwrap();

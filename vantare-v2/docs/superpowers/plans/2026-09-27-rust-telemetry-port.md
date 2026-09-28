@@ -1797,3 +1797,27 @@ release 151/151, Clippy, formato y build pasan.
 Status todavía no se ha observado desde un loop live con build admitida;
 no mide degradación REST, ni existe watchdog/reinicio conectado en Go.
 Este corte no cierra R05/R19 ni el gate de paridad o CPU.
+
+## 94. Admisión exacta LMU 1.4.2.0 y prueba física del candidato (2026-09-28)
+
+Se fijaron en `testdata/` las capturas sanitizadas de menú fresco y pista
+WEC 2024 de **43** vehículos con SHM y REST. Go verifica los cuatro SHA-256,
+el parser y el esquema REST; Rust admite exclusivamente la pareja
+FileVersion/ProductVersion `1.4.2.0` y rechaza builds vecinas. El frame real
+de menú no contiene sesión válida: la adquisición Rust lo reconoce solo
+tras validarlo estructuralmente, no crea batch ni hace caer el proceso.
+Así `Status` permanece `connecting` antes de una sesión y un estado previo
+puede envejecer a `stale` al salir de pista.
+
+La prueba opt-in Go↔Rust con LMU físico 1.4.2.0 confirmó en menú dos
+heartbeats consecutivos sin ACK ni snapshots y Stop limpio. En una práctica
+real de 43 coches confirmó ACK, dos Status `live`, 29 lotes Overlay y
+29 Engineer con 43 vehículos cada uno, FactACK si aparece un Fact y Stop
+limpio. La adquisición Rust directa también pasó en el proceso real.
+Rust release 154/154, Clippy, formato, build y `go test ./...` pasan.
+
+La prueba no demuestra las parrillas temporales exigidas de 44/104,
+paridad de todos los productos, coste de CPU de ambos procesos ni ejecución
+Wails/OBS. El hijo candidato sigue sin supervisor, watchdog o activación de
+consumidores Go; Go continúa como dueño productivo. R05/R19 y el gate de
+migración permanecen abiertos.

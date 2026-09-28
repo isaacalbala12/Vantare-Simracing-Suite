@@ -1,0 +1,61 @@
+{
+  "schema": "vantare.lmu-rest-overlap.v1",
+  "captured_at_utc": "2026-09-28T19:17:05.2511917Z",
+  "status": "live",
+  "endpoints": {
+    "standings": {
+      "status": "fresh",
+      "last_attempt_utc": "2026-09-28T19:17:05.2444386Z",
+      "last_success_utc": "2026-09-28T19:17:05.2490803Z"
+    },
+    "session_info": {
+      "status": "fresh",
+      "last_attempt_utc": "2026-09-28T19:17:05.2501409Z",
+      "last_success_utc": "2026-09-28T19:17:05.2511917Z"
+    }
+  },
+  "session": {
+    "track": {
+      "freshness": "fresh",
+      "updated_utc": "2026-09-28T19:17:05.2511917Z",
+      "value": "Track-01"
+    },
+    "source_time_seconds": {
+      "freshness": "fresh",
+      "updated_utc": "2026-09-28T19:17:05.2511917Z",
+      "value": 114.6
+    },
+    "type": {
+      "freshness": "fresh",
+      "updated_utc": "2026-09-28T19:17:05.2511917Z",
+      "value": "practice"
+    },
+    "vehicle_count": {
+      "freshness": "fresh",
+      "updated_utc": "2026-09-28T19:17:05.2511917Z",
+      "value": 43
+    }
+  },
+  "player": {
+    "present": {
+      "freshness": "fresh",
+      "updated_utc": "2026-09-28T19:17:05.2490803Z",
+      "value": true
+    },
+    "position": {
+      "freshness": "fresh",
+      "updated_utc": "2026-09-28T19:17:05.2490803Z",
+      "value": 34
+    },
+    "completed_laps": {
+      "freshness": "fresh",
+      "updated_utc": "2026-09-28T19:17:05.2490803Z",
+      "value": 0
+    },
+    "pit_stop_count": {
+      "freshness": "fresh",
+      "updated_utc": "2026-09-28T19:17:05.2490803Z",
+      "value": 0
+    }
+  }
+}

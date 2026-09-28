@@ -4,10 +4,10 @@
 use std::io;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use super::OBJECT_OUT_SIZE;
 use super::cadence::TickCadence;
 use super::process::RunningSource;
 use super::rest::poller::Poller;
+use super::{OBJECT_OUT_SIZE, admit_v13};
 use crate::assembly::{Assembler, AssemblyError, FactReplay};
 use crate::ipc::queue::{QueueError, WriterQueue};
 use crate::ipc::{self, Kind};
@@ -171,11 +171,29 @@ fn acquire_tick(
     occurred_utc_ns: impl Fn() -> Result<i64, AcquisitionError>,
 ) -> Result<Vec<Vec<u8>>, AcquisitionError> {
     read(frame, scratch).map_err(AcquisitionError::Io)?;
+    // A real LMU menu has no session to map. Keep the last committed state
+    // untouched so the source-age gate can mark it stale after leaving track.
+    // Validate this narrow shape before suppressing it; malformed frames fail.
+    if idle_menu_frame(frame, build) {
+        return Ok(Vec::new());
+    }
     let shared_received_ns = elapsed_ns();
     let now_ns = elapsed_ns();
     assembler
         .apply(frame, build, shared_received_ns, now_ns, occurred_utc_ns()?)
         .map_err(AcquisitionError::Assembly)
+}
+
+fn idle_menu_frame(frame: &[u8], build: &str) -> bool {
+    if frame.len() < OBJECT_OUT_SIZE
+        || i32::from_le_bytes(frame[1_736..1_740].try_into().unwrap()) != 0
+        || i32::from_le_bytes(frame[1_696..1_700].try_into().unwrap()) != 0
+        || f64::from_le_bytes(frame[1_700..1_708].try_into().unwrap()) != 0.0
+    {
+        return false;
+    }
+    admit_v13(frame, build)
+        .is_ok_and(|grid| grid.vehicles.is_empty() && grid.player_index.is_none())
 }
 
 fn elapsed_ns(start: Instant) -> u64 {
@@ -196,6 +214,8 @@ mod tests {
     use crate::ipc::{self, Kind};
 
     const REAL_44: &[u8] = include_bytes!("../../../../testdata/lmu-fixture.bin");
+    const REAL_1420_MENU: &[u8] =
+        include_bytes!("../../../../testdata/lmu-1.4.2.0-menu-fixture.bin");
     const CONFIG: &[u8] = include_bytes!("../../testdata/configuration-frame-go-v1.bin");
 
     #[test]
@@ -251,14 +271,62 @@ mod tests {
     }
 
     #[test]
-    fn installed_unknown_lmu_build_cannot_start_acquisition() {
+    fn installed_exact_lmu_build_can_start_acquisition() {
         if std::env::var_os("VANTARE_LMU_LIVE_PROCESS_TEST").is_none() {
             return;
         }
-        assert!(matches!(
-            Acquisition::open(30, 15),
-            Err(AcquisitionError::UnsupportedBuild)
-        ));
+        assert!(Acquisition::open(30, 15).is_ok());
+    }
+
+    #[test]
+    fn installed_exact_lmu_build_produces_configured_tick() {
+        if std::env::var_os("VANTARE_LMU_LIVE_PROCESS_TEST").is_none() {
+            return;
+        }
+        let mut acquisition = Acquisition::open(30, 15).unwrap();
+        acquisition.configure(CONFIG).unwrap();
+        let frames = acquisition.tick().unwrap();
+        if idle_menu_frame(&acquisition.frame, "1.4.2.0") {
+            assert!(frames.is_empty());
+            assert!(acquisition.source_health().is_none());
+        } else {
+            assert_eq!(
+                ipc::decode(&frames[0]).unwrap().kind,
+                Kind::ConfigurationAck
+            );
+            assert!(
+                frames
+                    .iter()
+                    .any(|frame| ipc::decode(frame).unwrap().kind == Kind::Snapshot)
+            );
+            assert!(acquisition.source_health().is_some());
+        }
+        acquisition.shutdown().unwrap();
+    }
+
+    #[test]
+    fn genuine_menu_is_idle_without_committing_or_masking_invalid_frames() {
+        let mut assembler = Assembler::new(30, 15).unwrap();
+        assembler.configure(CONFIG).unwrap();
+        let mut frame = vec![0; OBJECT_OUT_SIZE];
+        let mut scratch = vec![0; OBJECT_OUT_SIZE];
+        let frames = acquire_tick(
+            &mut assembler,
+            &mut frame,
+            &mut scratch,
+            "1.4.2.0",
+            |destination, _| {
+                destination.copy_from_slice(REAL_1420_MENU);
+                Ok(())
+            },
+            || 100,
+            || Ok(1_000_000_000),
+        )
+        .unwrap();
+        assert!(frames.is_empty());
+        assert!(assembler.engine().current().is_none());
+        frame[1_632..1_696].fill(0xff);
+        assert!(!idle_menu_frame(&frame, "1.4.2.0"));
     }
 
     #[test]

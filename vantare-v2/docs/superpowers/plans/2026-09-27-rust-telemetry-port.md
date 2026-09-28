@@ -1854,3 +1854,20 @@ cierra el proceso. No se usaron frames sintéticos como evidencia física.
 Siguen pendientes crash externo, peer colgado, suspensión/reanudación,
 saturación de cola, resync tras reinicio, consumidores Wails, corpus real
 temporal 44/104 y gate de CPU/paridad. Go continúa como dueño productivo.
+
+## 97. Cambio de demanda Strategy en LMU físico (2026-09-28)
+
+El test opt-in del pipe candidato usa LMU 1.4.2.0 con 43 coches. Después
+de recibir ACK, Status y snapshots Overlay/Engineer, envía una Configuration
+con revisión mayor que solicita exclusivamente Strategy. `Receiver` valida
+el segundo ACK, y Strategy llega con identidad del jugador y pista observada;
+ningún Overlay/Engineer vuelve a aceptarse después del ACK. El mismo proceso
+cierra con Stop y código cero.
+
+El supervisor Go aislado `RunCandidateWithUpdates` acepta revisiones por
+canal, espera el ACK anterior antes de aplicar la más reciente y conserva
+esa demanda para un reinicio. Una segunda prueba física recibe el ACK de
+Strategy-only y el producto por el supervisor, y cierra el proceso tras
+cancelación. Falta conectar el lifecycle de consumidores Wails y comprobar
+cambios muy rápidos/política inválida. Estos tests no acreditan paridad de
+Strategy frente a Go, corpus 44/104 ni gate de CPU. Go sigue productivo.

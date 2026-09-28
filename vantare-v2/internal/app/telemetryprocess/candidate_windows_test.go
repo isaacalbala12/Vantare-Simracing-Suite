@@ -132,3 +132,45 @@ func TestCandidateWatchdogRejectsSlowConsumerOptIn(t *testing.T) {
 		t.Fatalf("slow consumer watchdog = %v, delayed=%v", err, delayed)
 	}
 }
+
+func TestCandidateSupervisorAppliesStrategyUpdateOptIn(t *testing.T) {
+	executable := os.Getenv("VANTARE_TELEMETRY_RUST_TEST_HELPER")
+	if executable == "" || os.Getenv("VANTARE_LMU_LIVE_CANDIDATE_TRACK_TEST") != "1" {
+		t.Skip("requires release Rust child and running pinned LMU on the 43-car track")
+	}
+	configuration := liveCandidateConfiguration(t)
+	updates := make(chan ConfigurationV1, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var firstACK, secondACK, strategy, disconnected int
+	err := RunCandidateWithUpdates(ctx, executable, configuration, updates, func(event ReceivedV1) error {
+		if event.Configuration != nil {
+			switch event.Configuration.Revision {
+			case configuration.Revision:
+				firstACK++
+				next := configuration
+				next.Revision++
+				next.Consumers = ConsumersV1{Strategy: true}
+				updates <- next
+			case configuration.Revision + 1:
+				secondACK++
+			default:
+				t.Fatalf("unexpected revision %d", event.Configuration.Revision)
+			}
+		}
+		if event.Strategy != nil {
+			if secondACK == 0 || event.Strategy.Player.ID == "" {
+				t.Fatal("Strategy before ACK or player identity")
+			}
+			strategy++
+			cancel()
+		}
+		if secondACK != 0 && (event.Overlay != nil || event.Engineer != nil) {
+			t.Fatal("withdrawn product after Strategy ACK")
+		}
+		return nil
+	}, func(error) { disconnected++ })
+	if err != nil || firstACK != 1 || secondACK != 1 || strategy == 0 || disconnected != 0 {
+		t.Fatalf("live update result=%v ack=%d/%d strategy=%d disconnect=%d", err, firstACK, secondACK, strategy, disconnected)
+	}
+}

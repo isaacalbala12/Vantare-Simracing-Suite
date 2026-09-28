@@ -196,6 +196,10 @@ admitida por capturas sanitizadas reales de menú y pista (43 coches) con
 sus pares REST y hashes fijados. Un test opt-in ejecutó el candidato
 contra LMU físico: menú sin sesión publica connecting sin ACK ni snapshots;
 pista entrega ACK, Overlay y Engineer de 43 coches, Status live y Stop limpio.
+La misma sesión acepta Configuration de revisión mayor para retirar esos
+productos y activar Strategy; Go valida el segundo ACK antes de publicar
+Strategy. El supervisor aislado conserva la demanda más reciente entre
+reinicios y aplica cambios solo después de la barrera del ACK previo.
 El candidato emite Status consecutivo cada 250 ms: connecting
 sin fuente confirmada, live con edad monotónica desde el último avance SHM
 y stale desde 500 ms sin avance o durante recuperación. La edad no deriva

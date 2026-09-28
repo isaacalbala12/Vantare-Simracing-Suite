@@ -25,6 +25,14 @@ var ErrCandidateRestartLimit = errors.New("Rust telemetry restart budget exhaust
 // selected by the Wails runtime until the migration gates are satisfied.
 func RunCandidate(ctx context.Context, executable string, configuration ConfigurationV1,
 	deliver func(ReceivedV1) error, disconnected func(error)) error {
+	return RunCandidateWithUpdates(ctx, executable, configuration, nil, deliver, disconnected)
+}
+
+// RunCandidateWithUpdates applies the newest requested policy only after the
+// previous revision is ACKed. A restart starts from the latest requested
+// revision and a fresh Receiver; product selection is still gated elsewhere.
+func RunCandidateWithUpdates(ctx context.Context, executable string, configuration ConfigurationV1,
+	updates <-chan ConfigurationV1, deliver func(ReceivedV1) error, disconnected func(error)) error {
 	if ctx == nil || deliver == nil || disconnected == nil {
 		return errors.New("Rust telemetry candidate requires context and callbacks")
 	}
@@ -33,7 +41,7 @@ func RunCandidate(ctx context.Context, executable string, configuration Configur
 		if err := ctx.Err(); err != nil {
 			return nil
 		}
-		err := runCandidateOnce(ctx, executable, configuration, deliver)
+		err := runCandidateOnceWithUpdates(ctx, executable, &configuration, &updates, deliver)
 		if ctx.Err() != nil {
 			return err
 		}
@@ -65,6 +73,11 @@ func RunCandidate(ctx context.Context, executable string, configuration Configur
 
 func runCandidateOnce(ctx context.Context, executable string, configuration ConfigurationV1,
 	deliver func(ReceivedV1) error) error {
+	return runCandidateOnceWithUpdates(ctx, executable, &configuration, nil, deliver)
+}
+
+func runCandidateOnceWithUpdates(ctx context.Context, executable string, configuration *ConfigurationV1,
+	updates *<-chan ConfigurationV1, deliver func(ReceivedV1) error) error {
 	pipe, err := newLocalPipe()
 	if err != nil {
 		return err
@@ -93,7 +106,7 @@ func runCandidateOnce(ctx context.Context, executable string, configuration Conf
 		return err
 	}
 	receiver := NewReceiver()
-	configured, err := receiver.Configure(configuration)
+	configured, err := receiver.Configure(*configuration)
 	if err != nil {
 		return err
 	}
@@ -107,6 +120,31 @@ func runCandidateOnce(ctx context.Context, executable string, configuration Conf
 	for {
 		if ctx.Err() != nil {
 			return stopCandidate(file, child)
+		}
+		if updates != nil && *updates != nil {
+			select {
+			case requested, open := <-*updates:
+				if !open {
+					*updates = nil
+				} else if requested.Revision <= configuration.Revision {
+					return ErrReceiverProtocol
+				} else {
+					*configuration = requested
+				}
+			default:
+			}
+		}
+		if receiver.pending == nil && receiver.active != nil && configuration.Revision > receiver.active.Revision {
+			frame, err := receiver.Configure(*configuration)
+			if err != nil {
+				return err
+			}
+			if err := file.SetWriteDeadline(time.Now().Add(childShutdownTimeout)); err != nil {
+				return err
+			}
+			if err := WriteFrame(file, frame); err != nil {
+				return fmt.Errorf("update Rust candidate configuration: %w", err)
+			}
 		}
 		if time.Since(lastHeartbeat) >= candidateHeartbeatTimeout {
 			return ErrCandidateHeartbeatTimeout

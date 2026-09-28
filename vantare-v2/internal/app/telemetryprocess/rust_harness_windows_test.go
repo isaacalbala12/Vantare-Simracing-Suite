@@ -117,6 +117,50 @@ func TestRustCandidateLiveLMUOptIn(t *testing.T) {
 	if !track && (ack != 0 || overlays != 0 || engineers != 0) {
 		t.Fatalf("menu published a session: ack=%d overlay=%d engineer=%d", ack, overlays, engineers)
 	}
+	if track {
+		next := configuration
+		next.Revision++
+		next.Consumers = ConsumersV1{Strategy: true}
+		nextFrame, err := receiver.Configure(next)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := WriteFrame(file, nextFrame); err != nil {
+			t.Fatal(err)
+		}
+		var nextACK, strategy int
+		for nextACK == 0 || strategy == 0 {
+			frame, err := ReadFrame(file)
+			if err != nil {
+				t.Fatalf("live Strategy reconfiguration: ack=%d strategy=%d: %v", nextACK, strategy, err)
+			}
+			event, err := receiver.Accept(frame)
+			if err != nil {
+				t.Fatalf("live Strategy frame kind=%d: %v", frame.Kind, err)
+			}
+			if event.Configuration != nil {
+				if event.Configuration.Revision != next.Revision {
+					t.Fatalf("reconfiguration revision=%d want=%d", event.Configuration.Revision, next.Revision)
+				}
+				nextACK++
+			}
+			if event.Strategy != nil {
+				if nextACK == 0 || event.Strategy.Player.ID == "" || event.Strategy.TrackName.Value == "" {
+					t.Fatal("Strategy published without ACK, player identity or track")
+				}
+				strategy++
+			}
+			if nextACK != 0 && (event.Overlay != nil || event.Engineer != nil) {
+				t.Fatal("withdrawn product arrived after Strategy ACK")
+			}
+			if event.FactACK != nil {
+				if err := WriteFrame(file, *event.FactACK); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		t.Logf("physical Strategy-only reconfiguration: ACK=%d Strategy=%d", nextACK, strategy)
+	}
 	if err := WriteFrame(file, Frame{Kind: KindStop}); err != nil {
 		t.Fatal(err)
 	}

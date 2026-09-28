@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — reconfiguración Strategy física (2026-09-28)
+
+Con LMU 1.4.2.0 en práctica real de 43 coches, el mismo hijo Rust pasó de
+demanda Overlay+Engineer a Strategy-only por el pipe. Go recibió ACK de la
+revisión siguiente, Strategy con identidad de jugador y pista, y ningún
+producto retirado tras el ACK; Stop/salida siguieron limpios. El supervisor
+Go aislado `RunCandidateWithUpdates` aplica revisiones posteriores solo al
+confirmarse la anterior, conserva la demanda más reciente entre reinicios y
+pasó la misma reconfiguración física. Falta conectar y probar el lifecycle
+de consumidores Wails. Plan §97.
+
 ## VAN-778 / ISA-1403 — fallos de consumidor y watchdog físico (2026-09-28)
 
 La prueba opt-in con LMU 1.4.2.0 real de 43 coches rechaza el primer Overlay

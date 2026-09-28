@@ -1,5 +1,18 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — Configuration/ACK IPC cruzados (2026-09-28)
+
+Go produce configuración cerrada de 660 bytes decodificada por Rust; Rust
+produce ACK de 46 bytes decodificado por Go. SHA-256 respectivamente
+`b5278d342721972e751ba6ce32099f5c96edf9573843d2742c0817819b76bd32`
+y `4f18830ddc9ccfd0be5d56406ee49efb824e335777edc0c413253ddeefefeff2`.
+Rust release 105/105, Clippy, formato, build release y `go test ./...`
+pasan. Se añadió `serde 1.0.229` directa/derive, ya transitiva; licencia
+MIT/Apache-2.0 y tamaño release actual 150 528 bytes. **Todavía no hay
+aplicación en frontera de batch ni emisión runtime del ACK**. Go sigue
+productivo; faltan supervisor, facts, Engineer/Strategy, corpus temporal
+real 44/104, sesión física y gate CPU. Plan sección 54 y contrato IPC.
+
 ## ISA-1403 — primer Snapshot IPC Overlay Rust→Go (2026-09-28)
 
 El frame binario `KindSnapshot` Overlay V2 de 24 353 bytes se genera en

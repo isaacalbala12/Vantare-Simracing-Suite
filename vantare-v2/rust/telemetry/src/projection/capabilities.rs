@@ -1,5 +1,6 @@
 //! Observed quality of LMU Overlay V2 capabilities.
 
+use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
 use super::{Quality, SpeedUnit, player, session};
@@ -99,7 +100,8 @@ pub fn availability(
     })
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Modes {
     pub spatial: Vec<String>,
     pub delta: Vec<String>,
@@ -107,18 +109,21 @@ pub struct Modes {
     pub gaps: String,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Performance {
     pub level: u8,
     pub mode: String,
     pub effects: String,
     pub raf_cap: Option<i32>,
     pub widget_hz: Map<String, Value>,
+    #[serde(default)]
     pub reason: String,
     pub source_hz: f64,
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Source {
     pub descriptor_capabilities: Vec<String>,
     pub modes: Modes,

@@ -17,5 +17,6 @@ name = "parse_lmu"
 harness = false
 
 [dependencies]
+serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["float_roundtrip"] }
 ureq = { version = "3.4", default-features = false }

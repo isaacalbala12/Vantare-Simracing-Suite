@@ -1,5 +1,7 @@
 //! Deterministic Overlay V2 section cadence; the caller supplies monotonic time.
 
+use serde::{Deserialize, Serialize};
+
 pub const SECTION_COUNT: usize = 11;
 pub const ALL_SECTIONS_MASK: u16 = (1 << SECTION_COUNT) - 1;
 
@@ -45,7 +47,8 @@ impl Section {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Cadence {
     pub fast_ns: i64,
     pub mid_ns: i64,

@@ -1186,3 +1186,19 @@ pasan. R06 sigue parcial: faltan configuración, ACK, facts, colas, plazos,
 codec comparado y receptor conectado a Wails. Go sigue como único owner
 productivo; faltan corpus temporal real 44/104, Engineer/Strategy, sesión
 física y gate CPU del 50%.
+
+## 54. Configuración y ACK IPC cruzados (2026-09-28)
+
+Go codifica Configuration v1 completa y Rust la deserializa con esquema
+cerrado y límites de 64 KiB; Rust codifica ACK con revisión/cursor y Go lo
+decodifica bajo 256 bytes. Fijados frames cruzados Go→Rust (660 bytes,
+SHA-256 `b5278d342721972e751ba6ce32099f5c96edf9573843d2742c0817819b76bd32`)
+y Rust→Go (46 bytes, SHA-256
+`4f18830ddc9ccfd0be5d56406ee49efb824e335777edc0c413253ddeefefeff2`).
+`serde 1.0.229` queda directa con derive para el contrato cerrado: ya era
+transitiva, licencia MIT/Apache-2.0, alternativa manual más frágil; tamaño
+release actual 150 528 bytes, coste causal pendiente de R21. Rust release
+105/105, Clippy, formato, build release y `go test ./...` pasan. **ACK aún
+no se emite ni aplica en la frontera de batch**; faltan lifecycle, demanda
+productiva, facts, Engineer/Strategy, corpus temporal real 44/104, sesión
+física y gate CPU del 50%. Go sigue productivo.

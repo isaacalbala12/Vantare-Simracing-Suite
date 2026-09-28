@@ -9,8 +9,8 @@ Una trama es `length:u32 LE | version:u16 LE | kind:u16 LE | payload[length]`. L
 | Tipo | ID | Uso previsto |
 | --- | ---: | --- |
 | Handshake | 1 | Harness: nonce de instancia de 16 bytes, longitud de versión `u8` (1–64) y versión UTF-8 exacta del paquete Rust. Las capabilities productivas aún no están definidas. |
-| Configuration | 2 | Demanda, configuración y revisión; payload por definir |
-| ConfigurationAck | 3 | Aplicación de revisión; payload por definir |
+| Configuration | 2 | JSON cerrado v1 con revisión, consumidores, cadencias en ns, preferencias y source/capabilities |
+| ConfigurationAck | 3 | JSON `revision`, `epoch`, `sequence`; se emitirá tras aplicar en frontera de lote |
 | Snapshot | 4 | Prototipo Overlay V2 JSON: sobre `{"product":"overlay-v2","update":UpdateV2}`; Engineer/Strategy y codec final pendientes |
 | Fact | 5 | Hecho ordenado y cursor; payload por definir |
 | FactAck | 6 | Confirmación tras retener; payload por definir |
@@ -36,6 +36,33 @@ producidos por el encoder Rust desde el oráculo real estático de 44 y
 decodificados por Go como el mismo `UpdateV2`; SHA-256
 `15d1328fb1f8a5774ea8986f234a222b8bc25f8b9ea42a257c3adb1389dcb82f`.
 La captura sigue siendo un instante, sin 104 ni temporalidad SHM+REST.
+
+## Configuration/ACK v1 inicial (2026-09-28)
+
+Go codifica una configuración completa con `revision > 0`, `consumers`
+(`overlayV2`, `engineer`, `strategy`), las nueve cadencias efectivas en
+nanosegundos no negativos, preferencias de unidades/referencia y el source
+de capacidades/modos/política. Los arrays/mapas opcionales de source se
+normalizan a `[]`/`{}`. El payload se limita a 64 KiB antes de escribir;
+Rust rechaza versión/tipo, JSON/campos extra, revisión, cadencia, preferencias
+y tamaño inválidos. Un ACK contiene revisión y cursor canónico positivos y
+se limita a 256 bytes; Go lo decodifica estrictamente. **Todavía no existe
+aplicación ni emisión del ACK en runtime**: el código fija el contrato y
+la semántica prevista es confirmar solo después del commit de frontera.
+
+Los frames cruzados son `configuration-frame-go-v1.bin` (660 bytes, SHA-256
+`b5278d342721972e751ba6ce32099f5c96edf9573843d2742c0817819b76bd32`)
+y `configuration-ack-frame-rust-v1.bin` (46 bytes, SHA-256
+`4f18830ddc9ccfd0be5d56406ee49efb824e335777edc0c413253ddeefefeff2`).
+Las pruebas de ambos lados verifican sus límites y valores.
+
+`serde 1.0.229` se declara ahora dependencia directa para deserializar el
+contrato cerrado con `deny_unknown_fields`; ya era transitiva de
+`serde_json`. Alternativa: inspección manual de `Value`, más código y riesgo
+de omisiones. Licencia `MIT OR Apache-2.0` según `cargo metadata` local;
+`serde_derive` añade macros al build, sin uso en runtime por el binario
+inactivo. El ejecutable release actual mide 150 528 bytes; el efecto causal
+de tamaño y CPU se medirá sobre la ruta productiva en R21/R22.
 
 ## Harness Windows actual
 

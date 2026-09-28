@@ -1,5 +1,6 @@
 //! Versioned, bounded framing shared by all future local pipe messages.
 
+pub mod configuration;
 pub mod snapshot;
 
 use std::io::{self, Read, Write};

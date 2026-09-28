@@ -9,6 +9,8 @@ reference-wails/assets/dist/
 evidence/raw/
 evidence/obs/sandbox/
 evidence/performance-smoke*/
+evidence/performance-combined*/
+evidence/performance-control/
 evidence/performance/
 evidence/performance-qt-corrected/
 evidence/functional/*.json

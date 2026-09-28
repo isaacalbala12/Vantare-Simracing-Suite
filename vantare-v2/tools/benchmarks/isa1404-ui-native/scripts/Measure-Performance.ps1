@@ -4,7 +4,7 @@ param(
     [int]$MeasureSeconds = 60,
     [int]$HiddenSeconds = 20,
     [int]$GpuSeconds = 60,
-    [ValidateSet("control", "overlay")]
+    [ValidateSet("control", "overlay", "combined")]
     [string]$Mode = "overlay",
     [ValidateSet("wails", "qtquick", "slint")]
     [string[]]$CandidateNames = @("wails", "qtquick", "slint"),
@@ -17,6 +17,8 @@ using System;
 using System.Runtime.InteropServices;
 public static class NativePerformance {
     [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, int command);
+    [DllImport("user32.dll")] public static extern bool IsIconic(IntPtr hWnd);
+    [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr hWnd);
     [StructLayout(LayoutKind.Sequential)]
     private struct PROCESS_MEMORY_COUNTERS_EX2 {
         public uint cb, PageFaultCount;
@@ -90,7 +92,15 @@ function Get-Percentile([double[]]$Values, [double]$Percentile) {
     return [double]$sorted[[Math]::Max(0, [Math]::Min($sorted.Count - 1, $index))]
 }
 
-function Measure-ProcessTree([int]$RootId, [int]$Seconds, [string]$State) {
+function Get-InstanceIds([int[]]$RootIds) {
+    $ids = [Collections.Generic.HashSet[int]]::new()
+    foreach ($rootId in $RootIds) {
+        foreach ($id in @(Get-DescendantIds $rootId)) { $null = $ids.Add([int]$id) }
+    }
+    return @($ids)
+}
+
+function Measure-ProcessTree([int[]]$RootIds, [int]$Seconds, [string]$State) {
     $samples = @()
     $previousCpu = $null
     $previousTime = $null
@@ -101,9 +111,9 @@ function Measure-ProcessTree([int]$RootId, [int]$Seconds, [string]$State) {
     $deadline = [DateTime]::UtcNow.AddSeconds($Seconds)
     while ([DateTime]::UtcNow -lt $deadline) {
         $sampleStarted = [DateTime]::UtcNow
-        $ids = @(Get-DescendantIds $RootId)
+        $ids = @(Get-InstanceIds $RootIds)
         $processes = @($ids | ForEach-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue })
-        if ($processes.Count -eq 0) { throw "process tree $RootId disappeared during $State measurement" }
+        if ($processes.Count -eq 0) { throw "process set $($RootIds -join ',') disappeared during $State measurement" }
         $cpu = [double](($processes | ForEach-Object { $_.TotalProcessorTime.TotalSeconds } | Measure-Object -Sum).Sum)
         $working = [double](($processes | Measure-Object -Property WorkingSet64 -Sum).Sum)
         $private = [double](($processes | Measure-Object -Property PrivateMemorySize64 -Sum).Sum)
@@ -188,18 +198,32 @@ $allRuns = @()
 foreach ($candidate in $candidates) {
     for ($run = 1; $run -le $Runs; $run++) {
         Write-Host "$($candidate.Name) run $run/${Runs}: warmup ${WarmupSeconds}s"
-        $launch = Start-Candidate $candidate
+        $launches = @()
         try {
+            if ($Mode -eq "combined") {
+                $candidate.Arguments = if ($candidate.Name -eq "wails") { @("-mode", "control") } else { @("--mode", "control") }
+                $control = Start-Candidate $candidate
+                $launches += $control
+                [NativePerformance]::ShowWindow($control.Handle, 6) | Out-Null
+                if (-not [NativePerformance]::IsIconic($control.Handle)) { throw "$($candidate.Name) control did not minimize" }
+                $candidate.Arguments = if ($candidate.Name -eq "wails") { @("-mode", "overlay") } else { @("--mode", "overlay") }
+            }
+            $launch = Start-Candidate $candidate
+            $launches += $launch
+            if ($Mode -eq "combined" -and -not [NativePerformance]::IsWindowVisible($launch.Handle)) { throw "$($candidate.Name) overlay is not visible" }
+            $rootIds = [int[]]@($launches | ForEach-Object { $_.Process.Id })
             Start-Sleep -Seconds $WarmupSeconds
-            $visibleMeasurement = Measure-ProcessTree $launch.Process.Id $MeasureSeconds "visible"
-            [NativePerformance]::ShowWindow($launch.Handle, 0) | Out-Null
+            $visibleMeasurement = Measure-ProcessTree $rootIds $MeasureSeconds "visible"
+            foreach ($instance in $launches) { [NativePerformance]::ShowWindow($instance.Handle, 0) | Out-Null }
             Start-Sleep -Seconds 2
-            $hiddenMeasurement = Measure-ProcessTree $launch.Process.Id $HiddenSeconds "hidden"
+            $hiddenMeasurement = Measure-ProcessTree $rootIds $HiddenSeconds "hidden"
             $visible = @($visibleMeasurement.Samples)
             $hidden = @($hiddenMeasurement.Samples)
             $runEvidence = [pscustomobject]@{
                 Candidate = $candidate.Name
                 Run = $run
+                Mode = $Mode
+                ProcessIds = $rootIds
                 StartupMilliseconds = $launch.StartupMilliseconds
                 Visible = Summarize-Samples $visibleMeasurement
                 Hidden = Summarize-Samples $hiddenMeasurement
@@ -208,17 +232,28 @@ foreach ($candidate in $candidates) {
             }
             $allRuns += $runEvidence
             $runEvidence | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 (Join-Path $OutputDirectory "$($candidate.Name)-run-$run.json")
-        } finally { Stop-Tree $launch.Process }
+        } finally { foreach ($instance in $launches) { Stop-Tree $instance.Process } }
     }
 }
 
 $gpuResults = @()
 foreach ($candidate in $candidates) {
     Write-Host "$($candidate.Name) GPU: warmup ${WarmupSeconds}s, measure ${GpuSeconds}s"
-    $launch = Start-Candidate $candidate
+    $launches = @()
     try {
+        if ($Mode -eq "combined") {
+            $candidate.Arguments = if ($candidate.Name -eq "wails") { @("-mode", "control") } else { @("--mode", "control") }
+            $control = Start-Candidate $candidate
+            $launches += $control
+            [NativePerformance]::ShowWindow($control.Handle, 6) | Out-Null
+            if (-not [NativePerformance]::IsIconic($control.Handle)) { throw "$($candidate.Name) control did not minimize" }
+            $candidate.Arguments = if ($candidate.Name -eq "wails") { @("-mode", "overlay") } else { @("--mode", "overlay") }
+        }
+        $launch = Start-Candidate $candidate
+        $launches += $launch
+        if ($Mode -eq "combined" -and -not [NativePerformance]::IsWindowVisible($launch.Handle)) { throw "$($candidate.Name) overlay is not visible" }
         Start-Sleep -Seconds $WarmupSeconds
-        $ids = [int[]]@(Get-DescendantIds $launch.Process.Id)
+        $ids = [int[]]@(Get-InstanceIds ([int[]]@($launches | ForEach-Object { $_.Process.Id })))
         $samples = Measure-Gpu $ids $GpuSeconds
         $engine = [double[]]@($samples | ForEach-Object EnginePercentSum)
         $memory = [double[]]@($samples | ForEach-Object DedicatedBytes)
@@ -232,7 +267,7 @@ foreach ($candidate in $candidates) {
             DedicatedP95Bytes = Get-Percentile $memory 95
             Raw = $samples
         }
-    } finally { Stop-Tree $launch.Process }
+    } finally { foreach ($instance in $launches) { Stop-Tree $instance.Process } }
 }
 
 $packages = foreach ($candidate in $candidates) {

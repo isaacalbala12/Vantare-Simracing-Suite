@@ -1,15 +1,36 @@
 {
-  "schema": "vantare.isa1404.native-ui-summary.v1",
+  "schema": "vantare.isa1404.native-ui-summary.v2",
   "base": "355e9cfee2fec3c27341fa96ec4e6a9297fab730",
   "date": "2026-09-27/28",
   "platform": "Windows, 16 logical processors",
   "fixtureSha256": "959c51421529c6157371678d8db9bcbbdc8ab3780bd5557828f2bc0d2225e5ff",
-  "method": {"runs": 3, "warmupSeconds": 30, "visibleSeconds": 60, "hiddenSeconds": 20, "mode": "overlay"},
-  "measurements": [
-    {"candidate": "wails", "cpuPercent": 0.279368, "privateMiB": 200.1561, "privateWorkingSetMiB": 94.6134, "totalWorkingSetMiB": 377.2839, "gpuDedicatedMiB": 24.5742, "startupMs": 489.4681, "deployedMiB": 11.4551, "maxProcessCount": 7},
-    {"candidate": "qtquick", "cpuPercent": 0.104714, "privateMiB": 70.4828, "privateWorkingSetMiB": 30.0160, "totalWorkingSetMiB": 85.3913, "gpuDedicatedMiB": 18.8242, "startupMs": 535.1860, "deployedMiB": 121.0018, "maxProcessCount": 2},
-    {"candidate": "slint", "cpuPercent": 0.244248, "privateMiB": 204.5978, "privateWorkingSetMiB": 61.4230, "totalWorkingSetMiB": 102.5571, "gpuDedicatedMiB": 92.2539, "startupMs": 567.7042, "deployedMiB": 13.0898, "maxProcessCount": 2}
+  "method": {"runsPerScenario": 3, "warmupSeconds": 30, "visibleSeconds": 60, "hiddenSeconds": 20, "gpuSeconds": 60},
+  "scenarios": [
+    {
+      "id": "P01-control-visible",
+      "measurements": [
+        {"candidate": "wails", "cpuPercent": 0.245019, "privateMiB": 222.1474, "privateWorkingSetMiB": 111.6441, "gpuDedicatedMiB": 25.5742, "maxProcessCount": 7, "privateMiBByRun": [225.44, 220.60, 220.40]},
+        {"candidate": "qtquick", "cpuPercent": 0.104866, "privateMiB": 78.4783, "privateWorkingSetMiB": 33.0986, "gpuDedicatedMiB": 26.0742, "maxProcessCount": 2, "privateMiBByRun": [79.16, 77.96, 78.32]},
+        {"candidate": "slint", "cpuPercent": 0.245118, "privateMiB": 208.5444, "privateWorkingSetMiB": 64.1091, "gpuDedicatedMiB": 96.2539, "maxProcessCount": 2, "privateMiBByRun": [208.64, 208.45, 208.54]}
+      ]
+    },
+    {
+      "id": "P02-control-minimized-plus-overlay-visible",
+      "measurements": [
+        {"candidate": "wails", "cpuPercent": 0.244764, "privateMiB": 304.8918, "privateWorkingSetMiB": 137.7753, "gpuDedicatedMiB": 26.5742, "maxProcessCount": 9, "privateMiBByRun": [304.43, 300.59, 309.66]},
+        {"candidate": "qtquick", "cpuPercent": 0.070001, "privateMiB": 148.3142, "privateWorkingSetMiB": 62.7733, "gpuDedicatedMiB": 43.3984, "maxProcessCount": 4, "privateMiBByRun": [148.18, 147.26, 149.50]},
+        {"candidate": "slint", "cpuPercent": 0.559830, "privateMiB": 411.2195, "privateWorkingSetMiB": 124.6225, "gpuDedicatedMiB": 188.5078, "maxProcessCount": 4, "privateMiBByRun": [409.12, 413.46, 411.08]}
+      ]
+    },
+    {
+      "id": "diagnostic-overlay-only-not-P02",
+      "measurements": [
+        {"candidate": "wails", "cpuPercent": 0.279368, "privateMiB": 200.1561, "privateWorkingSetMiB": 94.6134, "gpuDedicatedMiB": 24.5742, "maxProcessCount": 7},
+        {"candidate": "qtquick", "cpuPercent": 0.104714, "privateMiB": 70.4828, "privateWorkingSetMiB": 30.0160, "gpuDedicatedMiB": 18.8242, "maxProcessCount": 2},
+        {"candidate": "slint", "cpuPercent": 0.244248, "privateMiB": 204.5978, "privateWorkingSetMiB": 61.4230, "gpuDedicatedMiB": 92.2539, "maxProcessCount": 2}
+      ]
+    }
   ],
-  "invalidated": "The first Qt Quick measurement had a stopped QML pulse and was repeated; no values from it are included.",
+  "invalidated": "The first Qt Quick overlay-only measurement had a stopped QML pulse and was repeated; no values from it are included.",
   "historicalQt": {"sourceCommit": "b11ce4168d9eb50e324bc2a5597778cc8f356494", "repetitions": 2, "fullModelApplyP95Ms": 21.1961, "stress104ModelApplyP95Ms": 153.04, "status": "FAIL in historical renderer only"}
 }

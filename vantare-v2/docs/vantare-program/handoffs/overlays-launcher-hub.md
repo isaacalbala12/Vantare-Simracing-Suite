@@ -10,14 +10,18 @@ El protocolo local se actualizó a v1.1 y la evidencia reproducible de esta
 entrega vive en `tools/benchmarks/isa1404-ui-native/RESULTADOS.md`. Se midió la
 misma escena LMU sanitizada en Wails, Qt Quick y Slint (3 rondas Release) y se
 hicieron cribas cortas de Qt Widgets, egui, Iced y GPUI. Qt Quick redujo la
-memoria privada comprometida de 200,16 a 70,48 MiB en esta escena; no demuestra
-un ahorro de la app completa. OBS capturó los tres overlays principales. El
+memoria privada comprometida de 222,15 a 78,48 MiB en P01 (solo control) y de
+304,89 a 148,31 MiB en P02 (control minimizado más overlay visible). Es una
+reducción del 65 % y 51 % respectivamente en estos prototipos, no de la app
+completa. La cifra previa de 200,16 a 70,48 MiB correspondía únicamente al
+overlay aislado y queda identificada como diagnóstico. OBS capturó los tres
+overlays principales. El
 renderer Qt histórico volvió a fallar su gate stress104 y GPUI publicado no
 abrió una ventana fiable en este Windows. Ningún stack se ha aprobado para el
 port productivo; sigue pendiente una pantalla compleja, integración Go, DPI
 físico y OBS con Vantare productiva, licencia de módulos y baseline de la app
-completa. Sin merge ni
-promoción de canal por esta investigación.
+completa. P03, el coste incremental de OBS, no se midió. Sin merge ni promoción
+de canal por esta investigación.
 
 La entrega está en [PR borrador #1409](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1409).
 La primera ejecución remota de calidad encontró que el probe Wails dependía

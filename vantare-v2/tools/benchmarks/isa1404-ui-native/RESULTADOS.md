@@ -14,20 +14,60 @@ El hash y procedencia de la captura constan en `shared/fixture.json`. La escena
 no tiene rivales cercanos para un Radar; no se inventaron filas para incluirlo.
 
 Windows, 16 procesadores lógicos; builds Release. Se midieron tres arranques
-independientes por candidato, con 30 s de calentamiento, 60 s visibles y 20 s
-ocultos. CPU = porcentaje de la capacidad total de los 16 procesadores; memoria
+independientes por candidato y escenario, con 30 s de calentamiento, 60 s
+visibles y 20 s ocultos. P01 mantiene el control visible y el overlay cerrado;
+P02 minimiza el control y muestra el overlay. Los dos programas de cada P02
+permanecen separados de la misma forma en los tres candidatos. CPU = porcentaje
+de la capacidad total de los 16 procesadores; memoria
 privada comprometida y working set privado = suma del árbol de procesos. Working
 set total incluye páginas compartidas y no debe leerse como RAM exclusiva. El
 muestreo de CPU de un segundo cuantiza valores tan pequeños y limita las
 comparaciones porcentuales. El tamaño Qt es el despliegue generado por
-`windeployqt` sin reducción de módulos. Scripts: `scripts/Measure-Performance.ps1`,
-`scripts/Test-Functional.ps1`, `scripts/Test-Scale.ps1` y `scripts/Test-OBS.ps1`.
+`windeployqt` sin reducción de módulos. Script: `scripts/Measure-Performance.ps1`.
+Pruebas funcionales: `scripts/Test-Functional.ps1`,
+`scripts/Test-Scale.ps1` y `scripts/Test-OBS.ps1`.
 Las capturas muestran diferencias visuales reales: Wails tiene cabecera de
 columnas, Qt Quick la omite y Slint traza separadores más brillantes. Por eso
 las cifras no aíslan perfectamente el motor de renderizado; tampoco miden una
 UI de complejidad equivalente a la suite futura.
 
-| Escena overlay visible, media de tres rondas | Wails/WebView2 | C++/Qt Quick | Rust/Slint |
+| P01 · Control visible, overlay cerrado; media de 3 rondas | Wails/WebView2 | C++/Qt Quick | Rust/Slint |
+|---|---:|---:|---:|
+| CPU total | 0,245 % | 0,105 % | 0,245 % |
+| Memoria privada comprometida | 222,15 MiB | 78,48 MiB | 208,54 MiB |
+| Working set privado | 111,64 MiB | 33,10 MiB | 64,11 MiB |
+| GPU dedicada atribuida | 25,57 MiB | 26,07 MiB | 96,25 MiB |
+| Procesos máximos | 7 | 2 | 2 |
+
+| P02 · Control minimizado + overlay visible; media de 3 rondas | Wails/WebView2 | C++/Qt Quick | Rust/Slint |
+|---|---:|---:|---:|
+| CPU total | 0,245 % | 0,070 % | 0,560 % |
+| Memoria privada comprometida | 304,89 MiB | 148,31 MiB | 411,22 MiB |
+| Working set privado | 137,78 MiB | 62,77 MiB | 124,62 MiB |
+| GPU dedicada atribuida | 26,57 MiB | 43,40 MiB | 188,51 MiB |
+| Procesos máximos | 9 | 4 | 4 |
+
+En P01, Qt Quick redujo memoria privada comprometida un 65 % y working set
+privado un 70 % frente a Wails. En P02 las reducciones fueron 51 % y 54 %.
+La memoria GPU atribuida de Qt Quick en P02, sin embargo, fue 16,82 MiB mayor
+que la de Wails. Slint consumió ~35 % más memoria privada comprometida y más
+CPU que Wails en P02. La CPU de Qt Quick fue 0,175 puntos porcentuales menor
+que Wails en P02, unos 28 ms de CPU por segundo en este equipo; una de las tres
+rondas Qt redondeó a 0 % por la granularidad de la muestra. Las medias no
+permiten afirmar una mejora porcentual estable de CPU en la app completa.
+
+Las rondas individuales de memoria privada P02 fueron Wails
+300,59–309,66 MiB, Qt Quick 147,26–149,50 MiB y Slint 409,12–413,46 MiB.
+Los 2 PID raíz de P02 representan control y overlay; el árbol máximo incluye
+sus procesos auxiliares. Una versión productiva con dos ventanas en un solo
+proceso podría consumir distinto. P03 (coste adicional de OBS), frametimes de
+juego y una pantalla compleja no se han medido; OBS sí capturó los overlays
+en F08.
+
+La primera tabla publicada en la PR medía solo el overlay, no P02. Se conserva
+como diagnóstico separado, nunca como consumo del conjunto:
+
+| Overlay aislado; media de 3 rondas | Wails/WebView2 | C++/Qt Quick | Rust/Slint |
 |---|---:|---:|---:|
 | CPU total | 0,279 % | 0,105 % | 0,244 % |
 | Memoria privada comprometida | 200,16 MiB | 70,48 MiB | 204,60 MiB |
@@ -38,18 +78,16 @@ UI de complejidad equivalente a la suite futura.
 | Despliegue observado | 11,46 MiB | 121,00 MiB | 13,09 MiB |
 | Máximo de procesos del árbol | 7 | 2 | 2 |
 
-Qt Quick redujo en esta escena un 65 % la memoria privada comprometida y un
-68 % el working set privado frente a la referencia. Su CPU fue ~0,17 puntos
-porcentuales menor; la cifra relativa (~63 %) es frágil por la escala de
-muestreo. Slint redujo el working set privado ~35 %, pero no redujo la memoria
-privada comprometida. Ninguna cifra demuestra todavía una reducción del 20 %
-de la **app completa** ni predice el coste de futuras pantallas y gráficos.
+El overlay aislado no representa el coste normal de Vantare. Ninguna de estas
+cifras demuestra todavía una reducción del 20 % de la **app completa** ni
+predice el coste de futuras pantallas y gráficos.
 
-La primera medición Qt quedó inválida: la ventana Win32 aparecía visible, pero
+La primera medición Qt del overlay aislado quedó inválida: la ventana Win32 aparecía visible, pero
 el `root.visible` de QML seguía falso y el pulso estaba detenido. Se reparó el
 arranque con `window->show()` y se repitieron tres rondas. La fila Qt válida
 procede exclusivamente de `evidence/performance-qt-corrected/`.
-`evidence/summary.json` conserva un resumen portable. Las trazas de cada
+`evidence/summary.json` conserva un resumen portable de P01, P02 y el
+diagnóstico de overlay aislado. Las trazas de cada
 ronda y los metadatos con rutas/identificador local de máquina permanecen
 ignorados en este worktree; para repetirlas están los scripts y la captura
 de entrada, no se deben tratar los resúmenes como muestras crudas.
@@ -116,8 +154,9 @@ incapaz ni de que el prototipo pequeño ya pueda sustituirlo.
 ## Decisión que sí permite la evidencia
 
 Qt Quick merece la siguiente prueba de producto: mantiene la dirección C++
-gratuita bajo cumplimiento de licencia y mostró el mejor consumo en la escena
-medida. Slint sigue siendo el candidato Rust más cercano al comparador completo;
+gratuita bajo cumplimiento de licencia y mostró menor memoria privada y CPU
+en P01 y P02, aunque P02 atribuyó más memoria GPU que a Wails. Slint sigue
+siendo el candidato Rust más cercano al comparador completo;
 Iced y egui quedan como alternativas viables para estudios concretos. GPUI
 queda abierto a una prueba Windows desde fuente, sin tratarlo como finalista
 funcional hoy. **No se selecciona stack definitivo ni se inicia el port** con

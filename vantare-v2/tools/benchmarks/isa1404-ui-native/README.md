@@ -63,3 +63,11 @@ cmake --build out/qtwidgets -j 4
 Los comandos de la comparación principal y el hardware usado están en
 `RESULTADOS.md`. Los SDK, binarios, sesiones OBS portátiles y salidas temporales
 permanecen fuera de Git.
+
+La medición usa `scripts/Measure-Performance.ps1` con `-Mode control` para P01
+(control visible, overlay cerrado) y `-Mode combined` para P02 (control
+minimizado, overlay visible). El modo `overlay` mide solo una ventana y sirve
+como diagnóstico; no sustituye P02. Cada escenario requiere tres rondas
+independientes y el script comprueba que las ventanas estén en el estado
+esperado. `RESULTADOS.md` recoge las cifras y las limitaciones; P03, el coste
+incremental de OBS, sigue sin medirse.

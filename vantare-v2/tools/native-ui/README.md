@@ -302,6 +302,42 @@ go build -o tools/native-ui/out/host-recorded.exe ./tools/native-ui/host
 ./tools/native-ui/inspect-recorded-render-windows.ps1 -Candidate wails
 ```
 
+### Carga repetida de tres capturas reales · 28/09/2026
+
+El host de ensayo acepta `-recorded-cycles` para repetir las tres capturas
+LMU 1.4.0.0 fijadas por SHA, sin generar ni modificar datos de coches. La
+cadencia de 100 ms es artificial y las capturas solo contienen una fila:
+sirve para exigir actualizaciones sostenidas, **no** reproduce la carga ni
+la cadencia de LMU en vivo. En Windows, control, editor y overlay de Qt,
+Slint y Wails recibieron al menos diez snapshots en nueve ejecuciones.
+[Los nueve resultados](evidence/recorded-burst-results.json) quedan fijados;
+el modo anterior de un solo ciclo siguió pasando.
+
+[`measure-recorded-windows.ps1`](measure-recorded-windows.ps1) reinicia el
+host Go por candidato, rota el orden en tres rondas y mide editor más host:
+ocho muestras por ejecución, tres segundos de calentamiento y publicación
+comprobada de al menos 100 frames reales repetidos. Medianas de las tres
+rondas en [los nueve registros](evidence/recorded-load-results.json):
+
+| Editor + Go, replay repetido | CPU media (% de un núcleo) | Working set mediano | Memoria privada mediana |
+| --- | ---: | ---: | ---: |
+| Wails | 7,43 % | 438,1 MiB | 294,4 MiB |
+| Qt Quick | 4,63 % | 131,2 MiB | 146,9 MiB |
+| Rust/Slint | 5,58 % | 159,6 MiB | 295,1 MiB |
+
+Frente a Wails, las medianas de CPU son 37,7 % menores con Qt y 24,9 %
+menores con Slint **en esta prueba**. La CPU varió entre rondas; en la
+segunda Qt registró 5,50 % y Wails 5,37 %. La carga de una fila, la
+repetición de solo tres estados y la duración corta impiden extrapolar
+estos porcentajes a Vantare completa o acreditar el objetivo del 20 %.
+El contador GPU local sigue siendo diagnóstico, sin fuente independiente.
+
+```powershell
+go build -o tools/native-ui/out/host-recorded.exe ./tools/native-ui/host
+./tools/native-ui/inspect-recorded-updates-windows.ps1 -Mode editor -Cycles 100 -IntervalMilliseconds 100 -ExpectedSnapshots 10
+./tools/native-ui/measure-recorded-windows.ps1 -Rounds 3 -Samples 8
+```
+
 ### Reconexión de la referencia Wails
 
 Con Wails abierto antes que el host Go, el proxy del ensayo respondía 502.

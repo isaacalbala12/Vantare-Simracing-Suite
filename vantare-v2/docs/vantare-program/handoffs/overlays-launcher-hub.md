@@ -2,6 +2,18 @@
 
 ## 2026-09-28 · VAN-776 / GitHub #1410 · Host Go nativo aislado
 
+La carga sostenida del ensayo repite, sin alterar, tres capturas reales LMU
+1.4.0.0 de una fila a intervalos artificiales de 100 ms. Nueve ventanas
+(control/editor/overlay × Qt/Slint/Wails) recibieron al menos diez
+snapshots. En tres rondas rotadas del editor más host Go, las medianas de
+CPU por núcleo fueron Wails 7,43 %, Qt 4,63 % y Slint 5,58 %; working set
+438,1/131,2/159,6 MiB. La segunda ronda invirtió Qt/Wails en CPU, y la
+carga no representa LMU vivo ni Vantare completa. Método y nueve filas en
+`tools/native-ui/measure-recorded-windows.ps1` y
+`tools/native-ui/evidence/recorded-load-results.json`; el smoke está en
+`tools/native-ui/evidence/recorded-burst-results.json`. Falta la prueba viva
+compatible para evaluar el objetivo del 20 % en el producto.
+
 El paquete Qt reducido local se cotejó contra el `windeployqt --dry-run` de
 la misma instalación 6.10.2. De 1.325 destinos mapeados, 1.324 coinciden
 byte a byte con Qt; `tls/qopensslbackend.dll` es la única omisión declarada,

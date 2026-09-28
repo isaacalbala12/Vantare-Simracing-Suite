@@ -133,6 +133,7 @@ func main() {
 	live := flag.Bool("live", false, "read the active LMU session through the production Go driver")
 	recorded := flag.Bool("recorded", false, "replay three pinned, sanitized LMU 1.4.0.0 frames")
 	recordedIntervalFlag := flag.Duration("recorded-interval", recordedInterval, "interval between recorded frames")
+	recordedCycles := flag.Int("recorded-cycles", 1, "repeat the three real recorded frames for a sustained trial")
 	fixtureRoot := flag.String("fixture-root", "testdata", "directory containing pinned LMU captures for recorded replay")
 	port := flag.Uint("port", 0, "loopback port; 0 assigns an available port")
 	flag.Parse()
@@ -145,7 +146,7 @@ func main() {
 	if *live {
 		err = runLive(ctx, *port)
 	} else if *recorded {
-		err = runRecorded(ctx, *fixtureRoot, *port, *recordedIntervalFlag)
+		err = runRecorded(ctx, *fixtureRoot, *port, *recordedIntervalFlag, *recordedCycles)
 	} else {
 		err = run(ctx, *fixturePath, *port)
 	}

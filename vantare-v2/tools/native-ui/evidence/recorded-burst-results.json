@@ -1,0 +1,74 @@
+[
+  {
+    "Mode": "control",
+    "Candidate": "Qt",
+    "ExitCode": 0,
+    "ExpectedRows": 1,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "control",
+    "Candidate": "Slint",
+    "ExitCode": 0,
+    "ExpectedRows": 1,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "control",
+    "Candidate": "Wails",
+    "ExitCode": 0,
+    "ExpectedRows": 1,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "editor",
+    "Candidate": "Qt",
+    "ExitCode": 0,
+    "ExpectedRows": 1,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "editor",
+    "Candidate": "Slint",
+    "ExitCode": 0,
+    "ExpectedRows": 1,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "editor",
+    "Candidate": "Wails",
+    "ExitCode": 0,
+    "ExpectedRows": 1,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "overlay",
+    "Candidate": "Qt",
+    "ExitCode": 0,
+    "ExpectedRows": 1,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "overlay",
+    "Candidate": "Slint",
+    "ExitCode": 0,
+    "ExpectedRows": 1,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  },
+  {
+    "Mode": "overlay",
+    "Candidate": "Wails",
+    "ExitCode": 0,
+    "ExpectedRows": 1,
+    "ExpectedSnapshots": 10,
+    "Error": ""
+  }
+]

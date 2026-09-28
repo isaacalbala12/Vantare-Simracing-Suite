@@ -55,9 +55,12 @@ func loadRecordedFrames(root string) ([]lmu.Observation, error) {
 	return observations, nil
 }
 
-func runRecorded(ctx context.Context, root string, port uint, interval time.Duration) error {
+func runRecorded(ctx context.Context, root string, port uint, interval time.Duration, cycles int) error {
 	if interval <= 0 {
 		return fmt.Errorf("recorded interval must be positive")
+	}
+	if cycles <= 0 {
+		return fmt.Errorf("recorded cycles must be positive")
 	}
 	if port > 65535 {
 		return errors.New("port must be between 0 and 65535")
@@ -88,7 +91,7 @@ func runRecorded(ctx context.Context, root string, port uint, interval time.Dura
 	sink := newLiveSink(lmu.New(), publisher)
 	fusion := new(lmu.Fusion)
 	var result error
-	for index, observation := range observations {
+	for index := 0; index < len(observations)*cycles; index++ {
 		if index > 0 {
 			select {
 			case <-ctx.Done():
@@ -98,11 +101,14 @@ func runRecorded(ctx context.Context, root string, port uint, interval time.Dura
 		if ctx.Err() != nil {
 			break
 		}
-		if err := sink.WriteObservation(ctx, fusion.Merge(time.Now().UTC(), time.Duration(index)*interval, observation)); err != nil {
-			result = fmt.Errorf("publish recorded LMU frame %s: %w", recordedFrames[index].name, err)
+		frame := index % len(observations)
+		if err := sink.WriteObservation(ctx, fusion.Merge(time.Now().UTC(), time.Duration(index)*interval, observations[frame])); err != nil {
+			result = fmt.Errorf("publish recorded LMU frame %s: %w", recordedFrames[frame].name, err)
 			break
 		}
-		fmt.Printf("native UI recorded Go snapshot %d/%d\n", index+1, len(observations))
+		if cycles == 1 || (index+1)%100 == 0 {
+			fmt.Printf("native UI recorded Go snapshot %d/%d\n", index+1, len(observations)*cycles)
+		}
 	}
 	if result == nil && ctx.Err() == nil {
 		select {

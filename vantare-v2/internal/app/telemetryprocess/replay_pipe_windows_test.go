@@ -67,18 +67,10 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 		t.Fatal(err)
 	}
 	var acknowledgements, overlaySnapshots, engineerSnapshots, facts int
-	complete := false
-	for range 12 {
+	for range 4 {
 		frame, err := ReadFrame(file)
 		if err != nil {
 			t.Fatal(err)
-		}
-		if frame.Kind == KindStop {
-			if len(frame.Payload) != 0 {
-				t.Fatal("replay completion has payload")
-			}
-			complete = true
-			break
 		}
 		switch frame.Kind {
 		case KindConfigurationAck:
@@ -119,8 +111,41 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 			t.Fatalf("unexpected replay kind %v", frame.Kind)
 		}
 	}
-	if !complete || acknowledgements != 1 || overlaySnapshots != 1 || engineerSnapshots != 1 || facts == 0 {
-		t.Fatalf("replay outputs: complete=%v ack=%d overlay=%d engineer=%d facts=%d", complete, acknowledgements, overlaySnapshots, engineerSnapshots, facts)
+	if acknowledgements != 1 || overlaySnapshots != 1 || engineerSnapshots != 1 || facts != 1 {
+		t.Fatalf("first batch: ack=%d overlay=%d engineer=%d facts=%d", acknowledgements, overlaySnapshots, engineerSnapshots, facts)
+	}
+	var next ConfigurationV1
+	if err := json.Unmarshal(configuration.Payload, &next); err != nil {
+		t.Fatal(err)
+	}
+	next.Revision = 8
+	next.Consumers = ConsumersV1{Strategy: true}
+	nextFrame, err := EncodeConfiguration(next)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteFrame(file, nextFrame); err != nil {
+		t.Fatal(err)
+	}
+	secondAck, err := ReadFrame(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ack, err := DecodeConfigurationAck(secondAck)
+	if err != nil || ack.Revision != 8 || ack.Epoch != 1 || ack.Sequence != 2 {
+		t.Fatalf("second configuration ACK = %+v, %v", ack, err)
+	}
+	strategyFrame, err := ReadFrame(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	strategy, err := DecodeStrategySnapshot(strategyFrame)
+	if err != nil || strategy.Metadata.Epoch != 1 || strategy.Metadata.Sequence != 2 {
+		t.Fatalf("Strategy-only second batch invalid: %v", err)
+	}
+	completion, err := ReadFrame(file)
+	if err != nil || completion.Kind != KindStop || len(completion.Payload) != 0 {
+		t.Fatalf("replay completion = %+v, %v", completion, err)
 	}
 	if err := WriteFrame(file, Frame{Kind: KindStop}); err != nil {
 		t.Fatal(err)

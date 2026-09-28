@@ -1350,3 +1350,15 @@ menú y confirmó que 1.4.2.0 sigue rechazado. Computer Use no expone
 el juego como app nativa en este host; la transición a pista aún no
 está verificada. Quedan pendientes captura de pista 1.4.2.0 y corpus
 temporal 44/104 SHM+REST.
+
+## 64. Cambio de demanda por pipe real Go/Rust (2026-09-28)
+
+El replay Windows ejecuta dos lotes consecutivos en el mismo hijo y
+pipe. Go configura primero Overlay+Engineer, recibe ACK de revisión 7,
+ambos snapshots de 44 y un fact. Después envía revisión 8 con solo
+Strategy; Rust confirma cursor `(epoch=1, sequence=2)` y Go decodifica
+únicamente Strategy antes de Stop/salida limpia. El test cruzado
+`TestRustReplayPipeDeliversDemandedProductsAndFact` pasó con el binario
+release `replay-harness` real. Demuestra cambio de demanda y ACK en
+frontera de lote bajo IPC Windows; sigue usando la misma captura
+auditada estática, sin poll LMU, backpressure ni consumidores finales.

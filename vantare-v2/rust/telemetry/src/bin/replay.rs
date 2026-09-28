@@ -43,34 +43,36 @@ fn run(pipe_name: &str, nonce_text: &str, fixture_path: &str) -> io::Result<()> 
     let mut pipe = OpenOptions::new().read(true).write(true).open(pipe_name)?;
     ipc::write_frame(&mut pipe, Kind::Handshake, &ipc::handshake_payload(&nonce))
         .map_err(|error| io::Error::other(format!("handshake: {error:?}")))?;
-    let (kind, configuration) = ipc::read_frame(&mut pipe)
-        .map_err(|error| io::Error::other(format!("configuration: {error:?}")))?;
-    if kind != Kind::Configuration {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "expected Configuration",
-        ));
-    }
-    let frame = ipc::encode(kind, &configuration)
-        .map_err(|error| io::Error::other(format!("configuration frame: {error:?}")))?;
     let mut assembly =
         Assembler::new(30, 15).map_err(|error| io::Error::other(format!("assembly: {error:?}")))?;
-    assembly
-        .configure(&frame)
-        .map_err(|error| io::Error::other(format!("configure: {error:?}")))?;
     let fixture = fs::read(fixture_path)?;
-    let frames = assembly
-        .apply(
-            &fixture,
-            "1.3.0.0",
-            100,
-            100,
-            100_000_000_000,
-            ClockChange::Continuous,
-        )
-        .map_err(|error| io::Error::other(format!("apply: {error:?}")))?;
-    for frame in frames {
-        pipe.write_all(&frame)?;
+    for sequence in 1..=2 {
+        let (kind, configuration) = ipc::read_frame(&mut pipe)
+            .map_err(|error| io::Error::other(format!("configuration: {error:?}")))?;
+        if kind != Kind::Configuration {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "expected Configuration",
+            ));
+        }
+        let frame = ipc::encode(kind, &configuration)
+            .map_err(|error| io::Error::other(format!("configuration frame: {error:?}")))?;
+        assembly
+            .configure(&frame)
+            .map_err(|error| io::Error::other(format!("configure: {error:?}")))?;
+        let frames = assembly
+            .apply(
+                &fixture,
+                "1.3.0.0",
+                100 * sequence,
+                100 * sequence,
+                100_000_000_000 + i64::try_from(sequence).unwrap(),
+                ClockChange::Continuous,
+            )
+            .map_err(|error| io::Error::other(format!("apply: {error:?}")))?;
+        for frame in frames {
+            pipe.write_all(&frame)?;
+        }
     }
     ipc::write_frame(&mut pipe, Kind::Stop, &[])
         .map_err(|error| io::Error::other(format!("end replay: {error:?}")))?;

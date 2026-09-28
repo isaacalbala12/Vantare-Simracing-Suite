@@ -1,5 +1,13 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — demanda revisada por pipe Go/Rust (2026-09-28)
+
+El replay Windows con hijo Rust real aplica dos configuraciones en el
+mismo pipe: revisión 7 entrega Overlay+Engineer+fact, revisión 8
+entrega solo Strategy y ACK del cursor siguiente. Go decodifica ambas
+fases y Stop cierra el hijo; test focal pasa. Es fixture estática de 44,
+no LMU live ni consumidor productivo. Plan sección 64; Go sigue owner.
+
 ## ISA-1403 — diagnóstico LMU 1.4.2.0 en menú (2026-09-28)
 
 LMU local reporta 1.4.2.0. Go lo admite solo como candidato exacto de

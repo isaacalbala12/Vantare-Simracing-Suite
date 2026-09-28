@@ -1421,3 +1421,16 @@ provee el cursor de su fixture; la composición productiva aún debe
 obtenerlo de una frontera de configuración/bootstrap verificada.
 Faltan conexión a Engineer productivo, política de consumidor lento,
 ResyncRequired wire y supervisor live. Go sigue owner.
+
+## 69. Frontera ResyncRequired Rust→Go (2026-09-28)
+
+Cuando el cursor del receptor queda detrás de los 64 facts retenidos,
+`Assembler` produce `KindResyncRequired` con `stream`, `first` y `next`.
+Go decodifica el esquema cerrado y rechaza kind, rango, campos extra o
+payload de más de 128 bytes. El frame de oráculo mide 41 bytes,
+SHA-256 `45112bfa9c976c3043adda11852c304f2dd9c089bd8113231c469ed3eb1c13f8`.
+Una prueba de ensamblado confirma que, al retirar demanda Engineer,
+un cursor anterior recibe el mensaje y no un replay engañoso. Las
+pruebas de ambos lenguajes y el replay por pipe existente pasan.
+Faltan solicitud de replay/reconnect, bootstrap tras resync y ruta
+productiva de publicación/consumo. Go sigue owner.

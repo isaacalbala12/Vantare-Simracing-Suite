@@ -3,7 +3,7 @@
 use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
 
-use vantare_telemetry::assembly::Assembler;
+use vantare_telemetry::assembly::{Assembler, FactReplay};
 use vantare_telemetry::core::facts::FactCursor;
 use vantare_telemetry::ipc::{self, Kind};
 use vantare_telemetry::lmu::mapper::ClockChange;
@@ -75,13 +75,19 @@ fn run(pipe_name: &str, nonce_text: &str, fixture_path: &str) -> io::Result<()> 
             pipe.write_all(&frame)?;
         }
         if sequence == 1 {
-            for frame in assembly
+            let FactReplay::Frames(replay) = assembly
                 .replay_fact_frames_after(FactCursor {
                     stream: 15,
                     sequence: 0,
                 })
                 .map_err(|error| io::Error::other(format!("replay fact: {error:?}")))?
-            {
+            else {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "unexpected resync",
+                ));
+            };
+            for frame in replay {
                 pipe.write_all(frame)?;
             }
             let (kind, payload) = ipc::read_frame(&mut pipe)

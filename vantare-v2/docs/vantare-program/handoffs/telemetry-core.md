@@ -1,5 +1,13 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — ResyncRequired Rust→Go cerrado (2026-09-28)
+
+Rust convierte una pérdida de ventana Fact en `KindResyncRequired`
+con stream/first/next; Go valida el frame cruzado de 41 bytes y
+rechaza rangos/esquema inválidos. Al retirar Engineer, un cursor viejo
+recibe resync explícito. Falta replay solicitado, bootstrap y conexión
+productiva. Plan sección 69; Go owner.
+
 ## ISA-1403 — retentor Go de facts con límite (2026-09-28)
 
 Go retiene hasta 64 facts pendientes y 64 payloads wire recientes,

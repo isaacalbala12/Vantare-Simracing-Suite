@@ -14,7 +14,7 @@ Una trama es `length:u32 LE | version:u16 LE | kind:u16 LE | payload[length]`. L
 | Snapshot | 4 | Prototipos JSON: `{"product":"overlay-v2","update":UpdateV2}` y `{"product":"engineer-v1"|"strategy-v1","snapshot":SnapshotV1}`; publicación y codec final pendientes |
 | Fact | 5 | Prototipo Engineer V1 JSON con stream de entrega, metadata canónica, secuencia de fact y UTC RFC3339; retención productiva/resync pendientes |
 | FactAck | 6 | JSON cerrado `{stream,sequence}` tras retener; Rust poda el prefijo confirmado. Probado en replay, sin receptor productivo |
-| ResyncRequired | 7 | Laguna irrecuperable y bootstrap; payload por definir |
+| ResyncRequired | 7 | JSON cerrado `{stream,first,next}` para laguna irrecuperable; bootstrap productivo pendiente |
 | Status | 8 | Estado de fuente y salud de proceso; payload por definir |
 | Stop | 9 | Cierre solicitado; payload por definir |
 
@@ -69,10 +69,16 @@ emitir facts reales.
 
 Rust conserva hasta 64 frames Fact exactos para replay. Valida la
 secuencia antes del commit; un ACK elimina solo el prefijo confirmado.
-Si el cursor queda fuera de la ventana devuelve un error de resync
-explícito al supervisor futuro. En el replay Windows el mismo frame se
-envía dos veces y Go confirma una sola copia. Aún no hay mensaje
-`ResyncRequired` ni solicitud de replay en reconexión productiva.
+Si el cursor queda fuera de la ventana, `Assembler` produce un mensaje
+de resync explícito. En el replay Windows el mismo frame se
+envía dos veces y Go confirma una sola copia. Aún no hay solicitud de
+replay en reconexión productiva.
+
+`KindResyncRequired` ya lleva `stream`, primer fact aún retenido y
+siguiente secuencia. Rust lo emite al perder el rango o retirar demanda;
+Go valida el frame de 41 bytes, SHA-256
+`45112bfa9c976c3043adda11852c304f2dd9c089bd8113231c469ed3eb1c13f8`.
+La recuperación con bootstrap aún requiere supervisor productivo.
 
 La recepción Go usa `FactRetainer` en el replay: 64 facts pendientes,
 64 payloads recientes para deduplicar, rechazo explícito de hueco,

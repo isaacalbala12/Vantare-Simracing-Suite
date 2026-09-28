@@ -11,6 +11,7 @@ use crate::ipc::{
     fact::{self, FactEncodeError},
     fact_ack::{self, FactAckError},
     fact_delivery::FactDeliveryLog,
+    resync::{self, ResyncError},
     snapshot::{self, ProductMetadata, SnapshotError},
 };
 use crate::lmu::mapper::ClockChange;
@@ -29,6 +30,12 @@ pub enum AssemblyError {
     Snapshot(SnapshotError),
     Fact(FactEncodeError),
     FactAck(FactAckError),
+    Resync(ResyncError),
+}
+
+pub enum FactReplay<'a> {
+    Frames(Vec<&'a [u8]>),
+    Resync(Vec<u8>),
 }
 
 pub struct Assembler {
@@ -92,10 +99,14 @@ impl Assembler {
     pub fn replay_fact_frames_after(
         &self,
         cursor: FactCursor,
-    ) -> Result<Vec<&[u8]>, AssemblyError> {
-        self.fact_delivery
-            .replay_after(cursor)
-            .map_err(AssemblyError::FactLog)
+    ) -> Result<FactReplay<'_>, AssemblyError> {
+        match self.fact_delivery.replay_after(cursor) {
+            Ok(frames) => Ok(FactReplay::Frames(frames)),
+            Err(FactError::ResyncRequired { first, next }) => Ok(FactReplay::Resync(
+                resync::encode(cursor.stream, first, next).map_err(AssemblyError::Resync)?,
+            )),
+            Err(error) => Err(AssemblyError::FactLog(error)),
+        }
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -349,24 +360,25 @@ mod tests {
                 sequence: 1
             }
         );
-        let replay = assembler
+        let FactReplay::Frames(replay) = assembler
             .replay_fact_frames_after(FactCursor {
                 stream: 15,
                 sequence: 0,
             })
-            .unwrap();
+            .unwrap()
+        else {
+            panic!("retained first fact must replay");
+        };
         assert_eq!(replay.len(), 1);
         assert_eq!(ipc::decode(replay[0]).unwrap().kind, ipc::Kind::Fact);
         assert_eq!(
             assembler.acknowledge_fact_frame(FACT_ACK).unwrap(),
             high_water
         );
-        assert!(
-            assembler
-                .replay_fact_frames_after(high_water)
-                .unwrap()
-                .is_empty()
-        );
+        assert!(matches!(
+            assembler.replay_fact_frames_after(high_water).unwrap(),
+            FactReplay::Frames(frames) if frames.is_empty()
+        ));
         assert!(
             assembler
                 .engine()
@@ -412,6 +424,20 @@ mod tests {
         assert_eq!(strategy.kind, ipc::Kind::Snapshot);
         let strategy: Value = serde_json::from_slice(strategy.payload).unwrap();
         assert_eq!(strategy["product"], "strategy-v1");
+        let FactReplay::Resync(boundary) = assembler
+            .replay_fact_frames_after(FactCursor {
+                stream: 15,
+                sequence: 0,
+            })
+            .unwrap()
+        else {
+            panic!("old subscriber must resync after Engineer demand ends");
+        };
+        let boundary = ipc::decode(&boundary).unwrap();
+        assert_eq!(boundary.kind, ipc::Kind::ResyncRequired);
+        let boundary: Value = serde_json::from_slice(boundary.payload).unwrap();
+        assert_eq!(boundary["first"], 2);
+        assert_eq!(boundary["next"], 2);
         let third = assembler
             .apply(
                 REAL_44,

@@ -1,4 +1,4 @@
-// The native UI host is an isolated replay probe. It never starts Wails.
+// The native UI host is an isolated probe. It never starts Wails.
 package main
 
 import (
@@ -130,11 +130,18 @@ func newHandler(update overlayv2.UpdateV2) (http.Handler, func(), error) {
 
 func main() {
 	fixturePath := flag.String("fixture", "testdata/lmu-fixture.bin", "path to the pinned sanitized LMU capture")
+	live := flag.Bool("live", false, "read the active LMU session through the production Go driver")
 	port := flag.Uint("port", 0, "loopback port; 0 assigns an available port")
 	flag.Parse()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	if err := run(ctx, *fixturePath, *port); err != nil {
+	var err error
+	if *live {
+		err = runLive(ctx, *port)
+	} else {
+		err = run(ctx, *fixturePath, *port)
+	}
+	if err != nil {
 		log.Fatal(err)
 	}
 }

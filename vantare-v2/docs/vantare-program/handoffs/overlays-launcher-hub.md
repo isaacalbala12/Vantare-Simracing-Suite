@@ -16,6 +16,13 @@ el test opt-in del driver aún devuelve
 menú, los fixtures pinneados y su validación antes de conectar esta sesión al
 host Overlay V2 y medir UI/CPU con datos cambiantes. La PR sigue en borrador.
 
+El host aislado ahora tiene modo `-live`, conectado al driver Go, BatchMapper,
+Reducer, Pipeline, CachedProjector y SSE existentes. Una prueba con la captura
+1.3.0 pinneada confirmó 44 filas por esta ruta. Al abrirlo contra LMU 1.4.2.0
+real salió con error explícito `evidence=unsupported` antes de publicar datos;
+no reutilizó el frame fijo ni simuló ticks. La prueba de actualizaciones en
+Qt/Slint/Wails espera que VAN-777 admita la build con evidencia completa.
+
 El candidato `0f26b35a` pasó los gates remotos bloqueantes, calidad, seguridad
 y ruta de promoción; permanece en PR borrador y sin integrar. Se examinó la
 persistencia existente de Studio: `StudioProfileService` conserva revisión,

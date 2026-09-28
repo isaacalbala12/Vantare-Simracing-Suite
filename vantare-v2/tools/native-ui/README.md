@@ -20,6 +20,15 @@ Publica una sola proyección observada de 44 coches. No inventa ticks ni simula
 telemetría viva: el estado `live` describe la captura original, no una sesión
 LMU activa en este equipo.
 
+El host ofrece además `go run ./tools/native-ui/host -live`: lee el driver LMU
+real, pasa sus observaciones por BatchMapper, Reducer, Pipeline y CachedProjector
+y publica cada proyección Overlay V2 por el mismo SSE. Rechaza explícitamente
+una build sin fixtures pinneados. Con LMU 1.4.2.0 en pista, la ejecución acabó
+con `evidence=unsupported;build=1.4.2.0`; no se atribuye a este modo ninguna
+medición de UI viva todavía. El test del host alimenta esa ruta con la captura
+real pinneada 1.3.0 y comprueba las 44 filas publicadas, pero una captura fija
+no demuestra actualización ni rendimiento con la sesión actual.
+
 `qtquick` y `slint` consumen `GET /telemetry/overlay-v2/projection` solo por
 loopback y muestran sesión, instrumentos, 44 filas de Standings y Relative. El
 modo `editor` añade un inspector nativo con título, número de filas, opacidad,

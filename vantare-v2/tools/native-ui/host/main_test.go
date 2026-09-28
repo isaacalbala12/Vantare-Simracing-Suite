@@ -14,8 +14,49 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
+	"github.com/vantare/overlays/v2/internal/telemetry/drivers/lmu"
 	overlayv2 "github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2"
 )
+
+func TestLiveSinkPublishesPinnedLMUObservation(t *testing.T) {
+	fixture := filepath.Join("..", "..", "..", "testdata", "lmu-fixture.bin")
+	input, err := os.ReadFile(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	observed, err := lmu.ParseWithBuild(input, time.Now().UTC(), lmu.BuildEvidence{FileVersion: "1.3.0"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	observation := new(lmu.Fusion).Merge(observed.ReceivedUTC, 0, observed)
+	registry, err := telemetrytransport.NewPublisherRegistry(telemetrytransport.PublisherConfig{Product: telemetrytransport.ProductOverlayV2})
+	if err != nil {
+		t.Fatal(err)
+	}
+	publisher, release, err := registry.RegisterConsumer(telemetrytransport.ProductOverlayV2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer release()
+	if err := newLiveSink(lmu.New(), publisher).WriteObservation(t.Context(), observation); err != nil {
+		t.Fatal(err)
+	}
+	event, ok := publisher.ReplaySnapshot()
+	if !ok {
+		t.Fatal("live sink published no Overlay V2 snapshot")
+	}
+	var update overlayv2.UpdateV2
+	if err := json.Unmarshal(event.Data, &update); err != nil {
+		t.Fatal(err)
+	}
+	if update.Frame == nil {
+		t.Fatal("live sink snapshot has no frame")
+	}
+	if len(update.Frame.Standings) != 44 {
+		t.Fatalf("live sink standings = %d", len(update.Frame.Standings))
+	}
+}
 
 func TestSanitizedLMUFrameReachesNativeSSEContract(t *testing.T) {
 	fixture := filepath.Join("..", "..", "..", "testdata", "lmu-fixture.bin")

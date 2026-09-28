@@ -1,7 +1,7 @@
 # ISA-1403 — Plan de migración del runtime live de telemetría a Rust
 
 Fecha: 2026-09-27. Versión del plan: 1.3. Estado: diseño confirmado por Isaac;
-implementación parcial hasta el corte 87.
+implementación parcial hasta el corte 88.
 **Paridad, integración live y gates pendientes.**
 
 - Tarea operativa: [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748), proyecto Telemetry Core. [GitHub #1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403) es el puente técnico de CI.
@@ -1689,3 +1689,18 @@ de 60 Hz y la pausa de cinco slots. Rust release 144/144 y Clippy pasan.
 
 Todavía no hay loop del proceso hijo ni writer/pipe productivo; la agenda
 es un componente listo para ese loop. Go conserva la propiedad live.
+
+## 88. Cola Rust acotada para el writer futuro (2026-09-28)
+
+`WriterQueue` recibe cada salida de `Assembler` atómicamente: conserva
+hasta ocho lotes con control/facts en orden y hasta 64 facts, y sustituye
+el lote pendiente de solo snapshots (hasta tres productos). El total
+pendiente no excede 16 MiB; al rebasar capacidad rechaza el lote completo
+con error explícito. `Acquisition::tick_into_queue_if_due` conecta la agenda
+y el batch al handoff sin ocultar saturación. Pruebas cubren orden,
+coalescing, límites de bytes/facts/lotes y entrada del frame real estático
+de 44 coches. Rust release 149/149, Clippy y formato pasan.
+
+El writer de pipe todavía no consume esta cola; overflow exige que el
+owner cierre/resincronice. Faltan plazos de escritura, supervisor, corpus
+temporal real 44/104 y gate de CPU. Go sigue como owner productivo.

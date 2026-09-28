@@ -9,6 +9,7 @@ use super::cadence::TickCadence;
 use super::process::RunningSource;
 use super::rest::poller::Poller;
 use crate::assembly::{Assembler, AssemblyError};
+use crate::ipc::queue::{QueueError, WriterQueue};
 
 #[derive(Debug)]
 pub enum AcquisitionError {
@@ -16,6 +17,7 @@ pub enum AcquisitionError {
     UnsupportedBuild,
     Clock,
     Assembly(AssemblyError),
+    Queue(QueueError),
 }
 
 pub struct Acquisition {
@@ -87,6 +89,21 @@ impl Acquisition {
             return Ok(None);
         }
         self.tick().map(Some)
+    }
+
+    /// A full writer queue is an explicit failure after canonical commit;
+    /// the owner must restart/resync instead of losing a Fact silently.
+    pub fn tick_into_queue_if_due(
+        &mut self,
+        cadence: &mut TickCadence,
+        now: Instant,
+        queue: &mut WriterQueue,
+    ) -> Result<bool, AcquisitionError> {
+        let Some(frames) = self.tick_if_due(cadence, now)? else {
+            return Ok(false);
+        };
+        queue.push_batch(frames).map_err(AcquisitionError::Queue)?;
+        Ok(true)
     }
 
     pub fn shutdown(&mut self) -> Result<(), AcquisitionError> {

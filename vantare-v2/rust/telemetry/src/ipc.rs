@@ -5,6 +5,7 @@ pub mod fact;
 pub mod fact_ack;
 pub mod fact_delivery;
 pub mod fact_replay;
+pub mod queue;
 pub mod resync;
 pub mod snapshot;
 pub mod status;

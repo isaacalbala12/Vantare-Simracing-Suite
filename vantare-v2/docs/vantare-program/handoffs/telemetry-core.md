@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — cola Rust acotada (2026-09-28)
+
+`WriterQueue` conserva ACK/facts en orden (ocho lotes, 64 facts),
+reemplaza el estado pendiente y limita el total a 16 MiB; saturación
+rechaza el lote completo. La adquisición puede depositar sus ticks en
+ella; prueba con frame real estático de 44 y límites, Rust release
+149/149, Clippy y formato pasan. Falta el writer de pipe, plazos,
+supervisor y corpus temporal 44/104; Go sigue owner. Plan §88,
+[VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
 ## VAN-778 / ISA-1403 — agenda SHM monotónica (2026-09-28)
 
 Rust tiene una cadencia de 60 Hz con reloj monotónico que omite slots

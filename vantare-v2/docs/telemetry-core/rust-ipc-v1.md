@@ -178,7 +178,8 @@ writer/supervisor productivo. El ejecutable principal se compila sin
 | --- | ---: | --- |
 | Snapshot wire | 8 MiB | Techo provisional implementado y probado. Falta máximo real con 104 coches y límite específico por producto. |
 | Control wire por tipo | Handshake 81 B; Configuration 64 KiB; ACK 256 B; Fact 4 KiB; FactAck/Resync/Replay 128 B; Status 256 B; Stop 0 B | Rust y Go rechazan desde la cabecera antes de reservar payload y al codificar; tests por tipo y pipes Windows. |
-| Snapshot pendiente | 1 por producto | Diseño del plan; aún no hay writer/cola. |
+| Snapshot pendiente | 1 lote de hasta 3 productos | `WriterQueue` sustituye el lote anterior de solo snapshots; el ensamblador entrega todos los productos demandados por tick. El writer de pipe aún no consume la cola. |
+| Cola de eventos | 8 lotes; 64 facts; 16 MiB total incluidas snapshots | `WriterQueue` valida el lote entero antes de insertarlo; ACK/facts/resync/Stop conservan orden. Saturación devuelve error explícito y exige cierre/resync del owner. |
 | Facts pendientes | 64 | Retención/ACK IPC probados en replay y receptor Go; falta entrega productiva y recuperación. |
 | Callback Engineer | 250 ms | Valor por defecto Go actual, no un timeout IPC ya implementado. |
 | Adquisición LMU SHM | 60 Hz nominal | Valor Go actual, no una frecuencia lograda en Rust. |

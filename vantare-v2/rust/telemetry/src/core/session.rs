@@ -592,6 +592,7 @@ mod tests {
                     .into_iter()
                     .map(|(id, driver, laps, pit)| Vehicle {
                         id: id.to_owned(),
+                        stint_id: None,
                         value: Life {
                             driver: driver.to_owned(),
                             laps: Field::observed(laps),

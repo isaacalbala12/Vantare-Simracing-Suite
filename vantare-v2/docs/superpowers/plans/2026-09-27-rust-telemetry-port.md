@@ -900,3 +900,13 @@ commit del lote. Tests Rust sobre la fixture SHM de 44 validan 121 commits,
 evicción, cero presente, campo de movimiento ausente y rechazo invalid sin
 alterar la historia. Rust 67/67 en debug; Clippy pasa. Este corte todavía no
 conecta el historial con la proyección Overlay ni demuestra el gate CPU.
+
+## 33. Stint del vehículo en el lote canónico Rust (2026-09-28)
+
+El candidato LMU ahora prepara el coordinador de sesión antes del reducer y
+anota cada vehículo con el stint calculado; el commit confirma ambos estados.
+La fixture SHM de 44 demuestra que los 44 stints aparecen en el lote preparado
+y publicado, y que un cambio de piloto conserva el VehicleID mientras avanza
+el stint y emite DriverChanged. Rust debug/release 68/68 y Clippy pasan.
+Continúan pendientes TeamID/DriverID explícitos en el tipo canónico, paridad
+temporal Go/Rust y las salidas productivas; no se acredita aún el gate CPU.

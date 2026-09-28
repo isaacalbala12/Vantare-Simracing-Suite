@@ -88,6 +88,7 @@ impl Pipeline {
             .zip(identity.vehicles)
             .map(|(value, id)| core::Vehicle {
                 id: id.vehicle_id,
+                stint_id: None,
                 value: map_vehicle(value),
             })
             .collect();
@@ -118,13 +119,20 @@ impl Pipeline {
             vehicles,
             track_length: session.track_length,
         };
-        let batch = core::Batch {
+        let mut batch = core::Batch {
             event_id: "lmu-event-1".to_owned(),
             session_id: identity.session_id,
             player_id: identity.player_id,
             cursor: identity.cursor,
             state,
         };
+        let session = self
+            .session
+            .prepare(&batch, occurred_utc_ns)
+            .map_err(PipelineError::Session)?;
+        for vehicle in &mut batch.state.vehicles {
+            vehicle.stint_id = session.stint_id(&vehicle.id).map(str::to_owned);
+        }
         let reduced = self
             .reducer
             .prepare(batch)
@@ -136,10 +144,6 @@ impl Pipeline {
             occurred_utc_ns,
             derive::controls::MAX_CONTROLS_HISTORY,
         );
-        let session = self
-            .session
-            .prepare(reduced.batch(), occurred_utc_ns)
-            .map_err(PipelineError::Session)?;
         self.validate_fact_batch(session.facts())?;
         Ok(PipelineCandidate {
             mapper,
@@ -548,6 +552,65 @@ mod tests {
     }
 
     #[test]
+    fn driver_change_publishes_new_stint_with_same_vehicle_id() {
+        let rest = RestCache::default();
+        let mut pipeline = Pipeline::default();
+        let first = admit_v13(REAL_44, "1.3.0.0").unwrap();
+        let fused = fuse_session(&first, 100, &rest, 100);
+        let weather = fixture_weather(&first);
+        pipeline
+            .commit(
+                pipeline
+                    .prepare(first, &fused, &weather, ClockChange::Continuous, 100)
+                    .unwrap(),
+            )
+            .unwrap();
+        let player_id = pipeline.current().unwrap().player_id.clone().unwrap();
+        let mut changed = admit_v13(REAL_44, "1.3.0.0").unwrap();
+        let player = changed
+            .vehicles
+            .iter_mut()
+            .find(|car| car.player.value() == Some(&true))
+            .unwrap();
+        player.driver_name = Field::observed("replacement-driver".to_owned());
+        let fused = fuse_session(&changed, 100, &rest, 100);
+        let weather = fixture_weather(&changed);
+        let candidate = pipeline
+            .prepare(changed, &fused, &weather, ClockChange::Continuous, 200)
+            .unwrap();
+        let vehicle = candidate
+            .batch()
+            .state
+            .vehicles
+            .iter()
+            .find(|car| car.id == player_id)
+            .unwrap();
+        assert_eq!(
+            vehicle.stint_id.as_deref(),
+            Some(format!("{}/{player_id}/stint-2", candidate.batch().session_id).as_str())
+        );
+        assert!(
+            candidate
+                .facts()
+                .iter()
+                .any(|fact| fact.kind == FactKind::DriverChanged)
+        );
+        pipeline.commit(candidate).unwrap();
+        let current = pipeline.current().unwrap();
+        assert_eq!(
+            current
+                .state
+                .vehicles
+                .iter()
+                .find(|car| car.id == player_id)
+                .unwrap()
+                .stint_id
+                .as_deref(),
+            Some(format!("{}/{player_id}/stint-2", current.session_id).as_str())
+        );
+    }
+
+    #[test]
     fn connection_fact_invalidates_prepared_frame_before_reducer_commit() {
         let rest = RestCache::default();
         let mut pipeline = Pipeline::default();
@@ -630,6 +693,12 @@ mod tests {
             .prepare(grid, &fused, &weather, ClockChange::Continuous, 100)
             .unwrap();
         assert_eq!(candidate.batch().state.vehicles.len(), 44);
+        for vehicle in &candidate.batch().state.vehicles {
+            assert_eq!(
+                vehicle.stint_id.as_deref(),
+                Some(format!("{}/{}/stint-1", candidate.batch().session_id, vehicle.id).as_str())
+            );
+        }
         assert_eq!(candidate.batch().state.track_name, fused.track_name.field);
         assert_eq!(
             candidate.batch().state.session_type,
@@ -651,6 +720,15 @@ mod tests {
         assert!(pipeline.current().is_none());
         assert!(pipeline.session_remaining().is_none());
         pipeline.commit(candidate).unwrap();
+        assert!(
+            pipeline
+                .current()
+                .unwrap()
+                .state
+                .vehicles
+                .iter()
+                .all(|vehicle| vehicle.stint_id.is_some())
+        );
         assert_eq!(pipeline.facts()[0].sequence, 1);
         assert_eq!(pipeline.session_remaining(), Some(&expected_remaining));
 

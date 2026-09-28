@@ -1,5 +1,12 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — stint en lote canónico Rust (2026-09-28)
+
+El pipeline anota el stint del coordinador en cada vehículo antes de preparar
+el reducer. Fixture 44 y cambio de piloto verificados; Rust debug/release
+68/68 y Clippy pasan. Plan sección 33 registra TeamID/DriverID, paridad
+temporal y CPU aún pendientes.
+
 ## ISA-1403 — historial de controles Rust candidato (2026-09-28)
 
 R13b ahora genera una ventana owned de hasta 120 muestras del jugador con

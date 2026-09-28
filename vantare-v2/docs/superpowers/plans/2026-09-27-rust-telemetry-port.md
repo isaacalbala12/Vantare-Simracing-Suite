@@ -1532,3 +1532,21 @@ sí solo que el nombre global `LMU_Data` pertenezca a ese PID. Falta la
 evidencia REST de build y la validación temporal de pista; 1.4.2.0 sigue
 sin admitirse. No hay loop, dispatcher, receptor ni gate global del 50%.
 Go conserva la propiedad productiva.
+
+## 78. Eliminar copia completa al envolver Overlay (2026-09-28)
+
+El banco estático real de 44 coches aisló `frame::build_sections`,
+`wrap_full` y la codificación. Antes del cambio, Overlay solo costó
+aproximadamente 1,34–1,50 ms/lote en las tandas cercanas; después de
+construir el `UpdateV2` moviendo `frame` y `source` al mapa exterior,
+0,91–0,96 ms/lote. En el mismo perfil diagnóstico posterior,
+`build_sections` costó 0,66–0,69 ms, codificar el update ya construido
+0,07 ms y clonar+envolver se redujo a 0,28–0,30 ms, dominado por el
+clon deliberado del propio banco. La salida del ensamblador pasó 129/129
+pruebas Rust, Clippy/formato y el replay Windows Go↔Rust de Configuration,
+ACK, Overlay, Engineer, Fact y Stop.
+
+Es una mejora local de la ruta Overlay sobre un único frame real estático,
+no una comparación de CPU de proceso ni el gate ≥50%. El coste principal
+restante del banco es la proyección de secciones; antes de otra optimización
+se necesita corpus temporal 44/104 y el loop productivo.

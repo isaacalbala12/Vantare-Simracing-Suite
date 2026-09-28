@@ -305,7 +305,11 @@ pub fn wrap_full(sections: Value, metadata: Metadata<'_>) -> Result<Value, Frame
     if !metadata.degraded_reason.is_empty() {
         source.insert("reason".into(), json!(metadata.degraded_reason));
     }
-    Ok(json!({"revision": metadata.revision, "source": source, "frame": frame}))
+    let mut update = Map::new();
+    update.insert("revision".into(), json!(metadata.revision));
+    update.insert("source".into(), Value::Object(source));
+    update.insert("frame".into(), Value::Object(frame));
+    Ok(Value::Object(update))
 }
 
 #[cfg(test)]

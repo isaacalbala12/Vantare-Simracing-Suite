@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — copia Overlay retirada (2026-09-28)
+
+`wrap_full` mueve el árbol de secciones y source al sobre final sin
+clonar el frame completo. En el banco real estático de 44 coches,
+Overlay solo bajó de aproximadamente 1,34–1,50 a 0,91–0,96 ms/lote;
+129/129 pruebas Rust, Clippy/formato y replay Windows Go↔Rust pasan.
+No equivale al gate de CPU ≥50%: faltan runtime, corpus temporal real
+44/104 y medición de CPU/p99/RSS. Plan sección 78 y tarea
+[VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
 ## VAN-778 / ISA-1403 — ciclo de vida LMU_Data (2026-09-28)
 
 Rust retiene el handle del proceso LMU junto a una única vista de

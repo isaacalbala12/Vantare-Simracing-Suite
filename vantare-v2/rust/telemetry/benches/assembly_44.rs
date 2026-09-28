@@ -6,9 +6,11 @@ use std::time::Instant;
 
 use serde_json::Value;
 use vantare_telemetry::assembly::Assembler;
+use vantare_telemetry::engine::Engine;
 use vantare_telemetry::ipc::snapshot;
 use vantare_telemetry::ipc::{self, Kind};
 use vantare_telemetry::lmu::mapper::ClockChange;
+use vantare_telemetry::projection::frame;
 
 const FRAME: &[u8] = include_bytes!("../../../testdata/lmu-fixture.bin");
 const CONFIG: &[u8] = include_bytes!("../testdata/configuration-frame-go-v1.bin");
@@ -66,7 +68,128 @@ fn main() {
     measure("engineer-only", &configuration(false, true, false));
     measure("strategy-only", &configuration(false, false, true));
     measure("overlay+engineer", &configuration(true, true, false));
+    measure_overlay_projection();
     measure_overlay_encoding();
+}
+
+fn measure_overlay_projection() {
+    let configured = ipc::configuration::decode_frame(CONFIG).expect("Go configuration");
+    let preferences = configured.preferences.projection().expect("preferences");
+    let mut engine = Engine::new(30, 15).expect("engine");
+    let settled_ticks = (WARMUP + ITERATIONS * 5) as u64;
+    for tick in 1..=settled_ticks {
+        let candidate = engine
+            .prepare(
+                FRAME,
+                "1.3.0.0",
+                tick * 1_000_000,
+                tick * 1_000_000,
+                100_000_000_000 + tick as i64 * 1_000_000,
+                ClockChange::Continuous,
+            )
+            .expect("candidate");
+        engine.commit(candidate).expect("commit");
+    }
+    let candidate = engine
+        .prepare(
+            FRAME,
+            "1.3.0.0",
+            (settled_ticks + 1) * 1_000_000,
+            (settled_ticks + 1) * 1_000_000,
+            100_000_000_000 + (settled_ticks + 1) as i64 * 1_000_000,
+            ClockChange::Continuous,
+        )
+        .expect("candidate");
+    for run in 1..=5 {
+        let start = Instant::now();
+        for _ in 0..ITERATIONS {
+            black_box(
+                frame::build_sections(&candidate, &configured.source, preferences)
+                    .expect("overlay sections"),
+            );
+        }
+        println!(
+            "Rust Overlay projection static44 run {run}: {:.1} us/op ({} iterations)",
+            start.elapsed().as_secs_f64() * 1_000_000.0 / ITERATIONS as f64,
+            ITERATIONS
+        );
+    }
+    let metadata = frame::Metadata {
+        revision: settled_ticks + 1,
+        state: "live",
+        retry: 0,
+        age_ms: 0,
+        degraded_reason: "",
+        epoch: candidate.batch().cursor.epoch,
+        sequence: candidate.batch().cursor.sequence,
+        section_mask: frame::ALL_SECTIONS_MASK,
+        session_id: &candidate.batch().session_id,
+        generated_at: "1970-01-01T00:01:40Z",
+        speed_unit: &configured.preferences.speed,
+        temperature_unit: &configured.preferences.temperature,
+        pressure_unit: &configured.preferences.pressure,
+        fuel_unit: &configured.preferences.fuel,
+    };
+    let sections = frame::build_sections(&candidate, &configured.source, preferences).unwrap();
+    for run in 1..=5 {
+        let start = Instant::now();
+        for _ in 0..ITERATIONS {
+            black_box(sections.clone());
+        }
+        println!(
+            "Rust Overlay sections clone static44 run {run}: {:.1} us/op ({} iterations)",
+            start.elapsed().as_secs_f64() * 1_000_000.0 / ITERATIONS as f64,
+            ITERATIONS
+        );
+    }
+    let settled_update = frame::wrap_full(sections.clone(), metadata).unwrap();
+    for run in 1..=5 {
+        let start = Instant::now();
+        for _ in 0..ITERATIONS {
+            black_box(frame::wrap_full(sections.clone(), metadata).unwrap());
+        }
+        println!(
+            "Rust Overlay sections clone+wrap static44 run {run}: {:.1} us/op ({} iterations)",
+            start.elapsed().as_secs_f64() * 1_000_000.0 / ITERATIONS as f64,
+            ITERATIONS
+        );
+    }
+    for run in 1..=5 {
+        let start = Instant::now();
+        for _ in 0..ITERATIONS {
+            black_box(snapshot::encode_overlay(&settled_update).unwrap());
+        }
+        println!(
+            "Rust Overlay settled encode static44 run {run}: {:.1} us/op ({} iterations)",
+            start.elapsed().as_secs_f64() * 1_000_000.0 / ITERATIONS as f64,
+            ITERATIONS
+        );
+    }
+    for run in 1..=5 {
+        let start = Instant::now();
+        for _ in 0..ITERATIONS {
+            black_box(sections["relative"].clone());
+        }
+        println!(
+            "Rust Overlay relative clone static44 run {run}: {:.1} us/op ({} iterations)",
+            start.elapsed().as_secs_f64() * 1_000_000.0 / ITERATIONS as f64,
+            ITERATIONS
+        );
+    }
+    for run in 1..=5 {
+        let start = Instant::now();
+        for _ in 0..ITERATIONS {
+            let sections =
+                frame::build_sections(&candidate, &configured.source, preferences).unwrap();
+            let update = frame::wrap_full(sections, metadata).unwrap();
+            black_box(snapshot::encode_overlay(&update).unwrap());
+        }
+        println!(
+            "Rust Overlay project+wrap+encode static44 run {run}: {:.1} us/op ({} iterations)",
+            start.elapsed().as_secs_f64() * 1_000_000.0 / ITERATIONS as f64,
+            ITERATIONS
+        );
+    }
 }
 
 fn measure_overlay_encoding() {

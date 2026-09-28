@@ -2,6 +2,17 @@
 
 ## 2026-09-28 · VAN-776 / GitHub #1410 · Host Go nativo aislado
 
+La referencia Wails del ensayo fallaba al arrancar antes del host Go: el
+proxy devolvía 502 y el `EventSource` quedaba cerrado con cero filas. Se
+reprodujo en la ventana Windows antes de corregirlo. El cliente ahora reabre
+solo las conexiones cerradas; en tres rondas posteriores mostró
+`RECONNECTING` sin host, 44 filas al arrancarlo, `RECONNECTING` tras pararlo
+y 44 filas después del reinicio. El script y los tiempos están en
+`tools/native-ui/inspect-wails-late-host-windows.ps1` y
+`tools/native-ui/evidence/wails-reconnect-results.csv`. El smoke de tres
+snapshots siguió pasando en control, editor y overlay de los tres candidatos.
+La captura fija es LMU 1.3.0 sanitizada; no acredita LMU 1.4.2.0 en vivo.
+
 En la revisión visual del replay se halló un fallo común a los tres clientes
 de ensayo: el contrato Overlay V2 omite `v` para un cero válido y conserva
 `q=fresh`, pero las ventanas mostraban `—` para marcha 0 y rpm 0. Qt Quick,

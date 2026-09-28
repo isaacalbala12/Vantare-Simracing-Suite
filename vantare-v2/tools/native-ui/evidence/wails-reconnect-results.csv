@@ -1,0 +1,4 @@
+Round,BeforeHost,AfterHost,AfterStop,AfterRestart,InitialConnectMs,RestartMs
+1,RECONNECTING 0 rows,44 rows,RECONNECTING,44 rows,947,3111
+2,RECONNECTING 0 rows,44 rows,RECONNECTING,44 rows,922,3073
+3,RECONNECTING 0 rows,44 rows,RECONNECTING,44 rows,927,3129

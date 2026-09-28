@@ -302,6 +302,29 @@ go build -o tools/native-ui/out/host-recorded.exe ./tools/native-ui/host
 ./tools/native-ui/inspect-recorded-render-windows.ps1 -Candidate wails
 ```
 
+### Reconexión de la referencia Wails
+
+Con Wails abierto antes que el host Go, el proxy del ensayo respondía 502.
+La ventana mostraba `RECONNECTING` pero conservaba cero filas incluso después
+de arrancar el host: un `EventSource` cerrado por una respuesta distinta de
+200 no reintenta por sí solo, según el
+[estándar HTML](https://html.spec.whatwg.org/multipage/server-sent-events.html#the-eventsource-interface).
+El cliente de referencia vuelve a abrirlo tras ese cierre, y deja al navegador
+gestionar las desconexiones temporales que aún están en estado `CONNECTING`.
+
+[`inspect-wails-late-host-windows.ps1`](inspect-wails-late-host-windows.ps1)
+abre la ventana sin host y exige `RECONNECTING` con cero filas; arranca después
+el host con una captura LMU 1.3.0 real sanitizada y exige 44 filas; detiene el
+host, exige otra vez `RECONNECTING`, lo reinicia y comprueba que la vista
+recupera las 44 filas. Pasó tres rondas físicas en Windows, registradas en
+[`wails-reconnect-results.csv`](evidence/wails-reconnect-results.csv). Este
+check valida el baseline Wails del ensayo, no la reconexión del producto
+completo ni una sesión LMU viva.
+
+```powershell
+./tools/native-ui/inspect-wails-late-host-windows.ps1
+```
+
 ## Licencia sin coste de licencia
 
 El prototipo Qt enlaza Core, Gui, Network, Quick y QuickControls2. La

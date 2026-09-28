@@ -58,17 +58,29 @@ function App() {
   const [status, setStatus] = useState('connecting');
   const reported = useRef(new Set());
   useEffect(() => {
-    const stream = new EventSource('/telemetry/overlay-v2/projection');
-    stream.addEventListener('telemetry:overlay-v2:snapshot', event => {
-      try {
-        const received = JSON.parse(event.data);
-        if (received.frame?.contract !== 2) { setStatus('invalid Go snapshot'); return; }
-        setUpdate(received);
-        setStatus(received.source?.state || 'live');
-      } catch { setStatus('invalid Go snapshot'); }
-    });
-    stream.onerror = () => setStatus('reconnecting');
-    return () => stream.close();
+    let stream;
+    let retryTimer;
+    let disposed = false;
+    const connect = () => {
+      if (disposed) return;
+      stream = new EventSource('/telemetry/overlay-v2/projection');
+      stream.addEventListener('telemetry:overlay-v2:snapshot', event => {
+        try {
+          const received = JSON.parse(event.data);
+          if (received.frame?.contract !== 2) { setStatus('invalid Go snapshot'); return; }
+          setUpdate(received);
+          setStatus(received.source?.state || 'live');
+        } catch { setStatus('invalid Go snapshot'); }
+      });
+      stream.onerror = () => {
+        setStatus('reconnecting');
+        if (stream.readyState === EventSource.CLOSED && !disposed) {
+          retryTimer = setTimeout(connect, 1000);
+        }
+      };
+    };
+    connect();
+    return () => { disposed = true; clearTimeout(retryTimer); stream?.close(); };
   }, []);
   const frame = update?.frame || {};
   const rows = frame.standings || [];

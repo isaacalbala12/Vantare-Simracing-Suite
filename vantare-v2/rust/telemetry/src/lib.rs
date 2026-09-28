@@ -2,6 +2,7 @@
 
 pub mod core;
 pub mod derive;
+pub mod engine;
 pub mod ipc;
 pub mod lmu;
 pub mod quality;

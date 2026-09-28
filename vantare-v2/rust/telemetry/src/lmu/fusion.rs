@@ -306,7 +306,7 @@ fn projected_time(input: (&Field<i64>, Option<u64>), now_ns: u64) -> Option<i64>
     value.checked_add(i64::try_from(now_ns - received).ok()?)
 }
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct SessionFloor {
     last: Option<(String, SessionType)>,
     floor_ns: Option<u64>,

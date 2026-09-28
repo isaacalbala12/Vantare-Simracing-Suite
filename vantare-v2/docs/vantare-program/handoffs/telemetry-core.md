@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — motor LMU Rust con candidato integrado (2026-09-28)
+
+R14 reúne admisión SHM, unión conservadora de números de coche REST,
+fusión de sesión/clima/jugador, identidades, hechos y derivaciones en un
+candidato que solo se publica tras commit. El fixture real estático de 44
+demuestra rechazo de build, reintento sin avance, fallback REST del jugador
+sin crear rivales y rechazo de candidato antiguo. Rust debug/release 84/84,
+formato, Clippy y build release pasan. Go sigue como ruta productiva: faltan
+fuente temporal SHM+REST real 44/104, proyecciones/IPC, sesión física y gate
+CPU 50%. Plan sección 38.
+
 ## ISA-1403 — delta Rust con oráculo temporal Go (2026-09-28)
 
 R13d prepara/commitea delta nativo y de vuelta en Rust. La traza real LMU 1.4

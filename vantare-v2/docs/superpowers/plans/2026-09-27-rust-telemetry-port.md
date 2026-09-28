@@ -962,3 +962,18 @@ debug/release 81/81, formato, Clippy y build release pasan; `go test ./...`
 pasa. Esta prueba cubre la derivación sobre una traza real, no un replay
 temporal SHM+REST de 44/104 ni la salida productiva. Continúan pendientes
 proyecciones/IPC, 104 real, sesión física y gate CPU causal del 50%.
+
+## 38. Motor integrado LMU Rust candidato (2026-09-28)
+
+R14 incorpora `engine.rs` como punto de entrada puro del frame LMU. Admite
+el build verificado, prepara una copia del suelo de sesión, une números de
+coche sólo a vehículos SHM equivalentes, fusiona sesión/clima/jugador y
+prepara el pipeline canónico. El commit publica el lote y confirma el suelo
+de sesión; un fallo de admisión o un candidato obsoleto no avanza cursor.
+La fixture SHM real estática de 44 prueba el recorrido integrado, el rechazo
+del build LMU 1.4.2.0, el fallback REST de vueltas del jugador sin crear
+rivales y el rechazo de candidato viejo. Rust debug/release 84/84, formato,
+Clippy y build release pasan. Todavía no hay fuente temporal SHM+REST real
+44/104 ni ruta IPC/productiva, por lo que el port y el gate CPU 50% siguen
+abiertos. El siguiente corte debe proyectar el lote al contrato de producto
+y conectar el protocolo de proceso conservando la propiedad del candidato.

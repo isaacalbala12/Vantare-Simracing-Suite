@@ -6,6 +6,8 @@ param(
     [int]$GpuSeconds = 60,
     [ValidateSet("control", "overlay", "combined")]
     [string]$Mode = "overlay",
+    [switch]$CaptureWithObs,
+    [int]$ObsPort = 4468,
     [ValidateSet("wails", "qtquick", "slint")]
     [string[]]$CandidateNames = @("wails", "qtquick", "slint"),
     [string]$OutputDirectory = (Join-Path $PSScriptRoot "..\evidence\performance")
@@ -44,6 +46,8 @@ $benchmarkRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $outRoot = Join-Path $benchmarkRoot "out"
 New-Item -ItemType Directory -Force $OutputDirectory | Out-Null
 $logicalProcessors = [Environment]::ProcessorCount
+if ($CaptureWithObs -and $Mode -ne "combined") { throw "OBS capture requires -Mode combined" }
+if ($CaptureWithObs) { Get-Command ffmpeg, ffprobe -ErrorAction Stop | Out-Null }
 
 $candidates = @(
     [pscustomobject]@{ Name = "wails"; Directory = $outRoot; Executable = "vantare-wails-reference.exe"; Arguments = @("-mode", $Mode); PackageDirectory = $null },
@@ -100,6 +104,106 @@ function Get-InstanceIds([int[]]$RootIds) {
     return @($ids)
 }
 
+function Get-ProcessFootprint([int[]]$RootIds) {
+    $ids = @(Get-InstanceIds $RootIds)
+    $processes = @($ids | ForEach-Object { Get-Process -Id $_ -ErrorAction SilentlyContinue })
+    if ($processes.Count -eq 0) { throw "process set $($RootIds -join ',') disappeared" }
+    $cpuSeconds = 0.0
+    $privateWorkingSet = 0.0
+    $privateWorkingSetAvailable = $true
+    foreach ($item in $processes) {
+        $processorTime = $item.TotalProcessorTime
+        if ($null -ne $processorTime) {
+            $cpuSeconds += $processorTime.TotalSeconds
+        } else {
+            $row = Get-CimInstance Win32_Process -Filter "ProcessId = $($item.Id)"
+            if ($null -eq $row) { throw "CPU time unavailable for process $($item.Id)" }
+            $cpuSeconds += ([double]$row.KernelModeTime + [double]$row.UserModeTime) / 10000000.0
+        }
+        if ($null -ne $item.Handle) {
+            $privateWorkingSet += [NativePerformance]::GetPrivateWorkingSet($item.Handle)
+        } else { $privateWorkingSetAvailable = $false }
+    }
+    return [pscustomobject]@{
+        Timestamp = [DateTime]::UtcNow
+        CpuSeconds = $cpuSeconds
+        PrivateBytes = [double](($processes | Measure-Object -Property PrivateMemorySize64 -Sum).Sum)
+        PrivateWorkingSetBytes = if ($privateWorkingSetAvailable) { $privateWorkingSet } else { $null }
+        ProcessCount = $processes.Count
+    }
+}
+
+function Get-FootprintDelta([object]$Before, [object]$After) {
+    $seconds = [Math]::Max(0.001, ($After.Timestamp - $Before.Timestamp).TotalSeconds)
+    $cpuSeconds = [Math]::Max(0.0, $After.CpuSeconds - $Before.CpuSeconds)
+    return [pscustomobject]@{
+        CpuPercent = 100.0 * $cpuSeconds / ($seconds * $logicalProcessors)
+        CpuSeconds = $cpuSeconds
+        WallSeconds = $seconds
+        PrivateMeanMiB = ($Before.PrivateBytes + $After.PrivateBytes) / 2MB
+        PrivateWorkingSetMeanMiB = if ($null -ne $Before.PrivateWorkingSetBytes -and $null -ne $After.PrivateWorkingSetBytes) { ($Before.PrivateWorkingSetBytes + $After.PrivateWorkingSetBytes) / 2MB } else { $null }
+        ProcessCountMax = [Math]::Max($Before.ProcessCount, $After.ProcessCount)
+    }
+}
+
+function Start-PortableObs {
+    $portableRoot = Join-Path $benchmarkRoot "evidence\obs\sandbox\portable-obs"
+    $executable = Join-Path $portableRoot "bin\64bit\obs64.exe"
+    if (-not (Test-Path $executable)) { throw "Portable OBS missing; run Test-OBS.ps1 first" }
+    $config = Join-Path $portableRoot "config\obs-studio\plugin_config\obs-websocket"
+    New-Item -ItemType Directory -Force $config | Out-Null
+    @{ server_enabled = $true; server_port = $ObsPort; auth_required = $false; first_load = $false } |
+        ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $config "config.json")
+    $process = Start-Process -FilePath $executable -ArgumentList "--portable", "--multi", "--disable-shutdown-check", "--disable-updater", "--minimize-to-tray" -WorkingDirectory (Split-Path $executable) -WindowStyle Hidden -PassThru
+    $deadline = [DateTime]::UtcNow.AddSeconds(30)
+    $ready = $false
+    do {
+        Start-Sleep -Milliseconds 250
+        try {
+            $client = [Net.Sockets.TcpClient]::new()
+            $client.Connect("127.0.0.1", $ObsPort)
+            $client.Dispose()
+            $ready = $true
+        } catch { if ($null -ne $client) { $client.Dispose() } }
+        $process.Refresh()
+    } until ($ready -or $process.HasExited -or [DateTime]::UtcNow -gt $deadline)
+    if (-not $ready) { Stop-Tree $process; throw "portable OBS websocket did not start" }
+    return $process
+}
+
+function Set-ObsCapture([object]$Candidate, [string]$ScreenshotPath) {
+    $titles = @{ wails = "Wails Overlay"; qtquick = "Qt Quick Overlay"; slint = "Slint Overlay" }
+    & python (Join-Path $PSScriptRoot "obs_capture.py") --port $ObsPort --title $titles[$Candidate.Name] --output $ScreenshotPath --scene "ISA-1404-P03" --input "Vantare P03 overlay"
+    if ($LASTEXITCODE -ne 0 -or -not (Test-Path $ScreenshotPath)) { throw "OBS capture failed for $($Candidate.Name)" }
+}
+
+function Invoke-ObsRecord([string]$Action) {
+    $arguments = @((Join-Path $PSScriptRoot "obs_record.py"), "--port", "$ObsPort", "--action", $Action)
+    if ($Action -eq "start") { $arguments += @("--directory", (Resolve-Path $OutputDirectory).Path) }
+    $json = & python @arguments
+    if ($LASTEXITCODE -ne 0) { throw "OBS $Action recording request failed" }
+    return ($json | ConvertFrom-Json)
+}
+
+function Save-VideoOnlyRecording([object]$Stopped) {
+    $directory = (Resolve-Path $OutputDirectory).Path
+    $source = (Resolve-Path -LiteralPath $Stopped.recordingOutput.outputPath).Path
+    if (-not $source.StartsWith($directory + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "OBS recording escaped benchmark output directory"
+    }
+    $target = Join-Path $directory "video-only.mp4"
+    if (Test-Path -LiteralPath $target) { throw "video-only.mp4 already exists" }
+    & ffmpeg -nostdin -v error -i $source -map 0:v:0 -c copy -an $target
+    if ($LASTEXITCODE -ne 0) { throw "video-only remux failed" }
+    $streams = @(& ffprobe -v error -show_entries stream=codec_type -of csv=p=0 $target)
+    if ($LASTEXITCODE -ne 0 -or ($streams -join ",") -ne "video") { throw "video-only verification failed" }
+    $duration = & ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 $target
+    if ($LASTEXITCODE -ne 0 -or [double]::Parse($duration, [Globalization.CultureInfo]::InvariantCulture) -le 0) { throw "recording duration unavailable" }
+    Remove-Item -LiteralPath $source
+    [pscustomobject]@{ VideoOnly = "video-only.mp4"; DurationSeconds = [double]::Parse($duration, [Globalization.CultureInfo]::InvariantCulture); AudioRemoved = $true } |
+        ConvertTo-Json | Set-Content -Encoding utf8 (Join-Path $directory "video-only-check.json")
+}
+
 function Measure-ProcessTree([int[]]$RootIds, [int]$Seconds, [string]$State) {
     $samples = @()
     $previousCpu = $null
@@ -123,7 +227,7 @@ function Measure-ProcessTree([int[]]$RootIds, [int]$Seconds, [string]$State) {
         $cpuPercent = $null
         if ($null -ne $previousCpu) {
             $elapsed = ($sampleStarted - $previousTime).TotalSeconds
-            if ($elapsed -gt 0) { $cpuPercent = [Math]::Max(0, (($cpu - $previousCpu) / $elapsed) * 100.0 / $logicalProcessors) }
+            if ($elapsed -gt 0) { $cpuPercent = [Math]::Max(0.0, (($cpu - $previousCpu) / $elapsed) * 100.0 / $logicalProcessors) }
         }
         $samples += [pscustomobject]@{
             Timestamp = $sampleStarted.ToString("o")
@@ -176,27 +280,40 @@ function Summarize-Samples([object]$Measurement) {
     }
 }
 
-function Measure-Gpu([int[]]$ProcessIds, [int]$Seconds) {
+function Measure-Gpu([int[]]$ProcessIds, [int]$Seconds, [int[]]$ObsProcessIds = @(), [int[]]$DwmProcessIds = @()) {
     $counter = Get-Counter -Counter "\GPU Engine(*)\Utilization Percentage", "\GPU Process Memory(*)\Dedicated Usage" -SampleInterval 1 -MaxSamples $Seconds
     $groups = $counter.CounterSamples | Group-Object Timestamp
     $samples = foreach ($group in $groups) {
         $engine = 0.0
         $dedicated = 0.0
+        $obsDedicated = 0.0
+        $dwmDedicated = 0.0
         foreach ($sample in $group.Group) {
             $matchedId = $null
             if ($sample.InstanceName -match "^pid_(\d+)_") { $matchedId = [int]$Matches[1] }
-            if ($null -eq $matchedId -or $matchedId -notin $ProcessIds) { continue }
-            if ($sample.Path -like "*GPU Engine*") { $engine += [Math]::Max(0, [double]$sample.CookedValue) }
-            elseif ($sample.Path -like "*GPU Process Memory*") { $dedicated += [Math]::Max(0, [double]$sample.CookedValue) }
+            if ($null -eq $matchedId) { continue }
+            if ($matchedId -in $ProcessIds) {
+                if ($sample.Path -like "*GPU Engine*") { $engine += [Math]::Max(0.0, [double]$sample.CookedValue) }
+                elseif ($sample.Path -like "*GPU Process Memory*") { $dedicated += [Math]::Max(0.0, [double]$sample.CookedValue) }
+            } elseif ($sample.Path -like "*GPU Process Memory*") {
+                if ($matchedId -in $ObsProcessIds) { $obsDedicated += [Math]::Max(0.0, [double]$sample.CookedValue) }
+                elseif ($matchedId -in $DwmProcessIds) { $dwmDedicated += [Math]::Max(0.0, [double]$sample.CookedValue) }
+            }
         }
-        [pscustomobject]@{ Timestamp = $group.Name; EnginePercentSum = $engine; DedicatedBytes = $dedicated }
+        [pscustomobject]@{ Timestamp = $group.Name; EnginePercentSum = $engine; DedicatedBytes = $dedicated; ObsDedicatedBytes = $obsDedicated; DwmDedicatedBytes = $dwmDedicated }
     }
     return @($samples)
 }
 
+$obsProcess = if ($CaptureWithObs) { Start-PortableObs } else { $null }
+$recordingStarted = $false
+try {
 $allRuns = @()
-foreach ($candidate in $candidates) {
-    for ($run = 1; $run -le $Runs; $run++) {
+for ($run = 1; $run -le $Runs; $run++) {
+    $runCandidates = if ($CaptureWithObs) {
+        for ($index = 0; $index -lt $candidates.Count; $index++) { $candidates[($index + $run - 1) % $candidates.Count] }
+    } else { $candidates }
+    foreach ($candidate in $runCandidates) {
         Write-Host "$($candidate.Name) run $run/${Runs}: warmup ${WarmupSeconds}s"
         $launches = @()
         try {
@@ -212,8 +329,25 @@ foreach ($candidate in $candidates) {
             $launches += $launch
             if ($Mode -eq "combined" -and -not [NativePerformance]::IsWindowVisible($launch.Handle)) { throw "$($candidate.Name) overlay is not visible" }
             $rootIds = [int[]]@($launches | ForEach-Object { $_.Process.Id })
+            if ($CaptureWithObs) {
+                Set-ObsCapture $candidate (Join-Path $OutputDirectory "$($candidate.Name)-obs-run-$run.png")
+                if (-not $recordingStarted) {
+                    $recordingMetadata = Invoke-ObsRecord "start"
+                    $recordingStarted = $true
+                } elseif (-not (Invoke-ObsRecord "status").recordStatus.outputActive) { throw "OBS recording stopped before $($candidate.Name) run $run" }
+                $dwmIds = [int[]]@(Get-Process -Name dwm -ErrorAction Stop | Where-Object SessionId -eq ([Diagnostics.Process]::GetCurrentProcess().SessionId) | ForEach-Object Id)
+                if ($dwmIds.Count -eq 0) { throw "DWM process for this session not found" }
+            }
             Start-Sleep -Seconds $WarmupSeconds
+            if ($CaptureWithObs) {
+                $obsBefore = Get-ProcessFootprint ([int[]]@($obsProcess.Id))
+                $dwmBefore = Get-ProcessFootprint $dwmIds
+            }
             $visibleMeasurement = Measure-ProcessTree $rootIds $MeasureSeconds "visible"
+            if ($CaptureWithObs) {
+                $obsAfter = Get-ProcessFootprint ([int[]]@($obsProcess.Id))
+                $dwmAfter = Get-ProcessFootprint $dwmIds
+            }
             foreach ($instance in $launches) { [NativePerformance]::ShowWindow($instance.Handle, 0) | Out-Null }
             Start-Sleep -Seconds 2
             $hiddenMeasurement = Measure-ProcessTree $rootIds $HiddenSeconds "hidden"
@@ -227,6 +361,8 @@ foreach ($candidate in $candidates) {
                 StartupMilliseconds = $launch.StartupMilliseconds
                 Visible = Summarize-Samples $visibleMeasurement
                 Hidden = Summarize-Samples $hiddenMeasurement
+                ObsVisible = if ($CaptureWithObs) { Get-FootprintDelta $obsBefore $obsAfter } else { $null }
+                DwmVisible = if ($CaptureWithObs) { Get-FootprintDelta $dwmBefore $dwmAfter } else { $null }
                 RawVisible = $visible
                 RawHidden = $hidden
             }
@@ -240,6 +376,7 @@ $gpuResults = @()
 foreach ($candidate in $candidates) {
     Write-Host "$($candidate.Name) GPU: warmup ${WarmupSeconds}s, measure ${GpuSeconds}s"
     $launches = @()
+    $dwmIds = [int[]]@()
     try {
         if ($Mode -eq "combined") {
             $candidate.Arguments = if ($candidate.Name -eq "wails") { @("-mode", "control") } else { @("--mode", "control") }
@@ -252,11 +389,19 @@ foreach ($candidate in $candidates) {
         $launch = Start-Candidate $candidate
         $launches += $launch
         if ($Mode -eq "combined" -and -not [NativePerformance]::IsWindowVisible($launch.Handle)) { throw "$($candidate.Name) overlay is not visible" }
+        if ($CaptureWithObs) {
+            Set-ObsCapture $candidate (Join-Path $OutputDirectory "$($candidate.Name)-obs-gpu.png")
+            if (-not (Invoke-ObsRecord "status").recordStatus.outputActive) { throw "OBS recording stopped before $($candidate.Name) GPU measurement" }
+            $dwmIds = [int[]]@(Get-Process -Name dwm -ErrorAction Stop | Where-Object SessionId -eq ([Diagnostics.Process]::GetCurrentProcess().SessionId) | ForEach-Object Id)
+        }
         Start-Sleep -Seconds $WarmupSeconds
         $ids = [int[]]@(Get-InstanceIds ([int[]]@($launches | ForEach-Object { $_.Process.Id })))
-        $samples = Measure-Gpu $ids $GpuSeconds
+        $obsIds = if ($CaptureWithObs) { [int[]]@(Get-InstanceIds ([int[]]@($obsProcess.Id))) } else { [int[]]@() }
+        $samples = Measure-Gpu $ids $GpuSeconds $obsIds $dwmIds
         $engine = [double[]]@($samples | ForEach-Object EnginePercentSum)
         $memory = [double[]]@($samples | ForEach-Object DedicatedBytes)
+        $obsMemory = [double[]]@($samples | ForEach-Object ObsDedicatedBytes)
+        $dwmMemory = [double[]]@($samples | ForEach-Object DwmDedicatedBytes)
         $gpuResults += [pscustomobject]@{
             Candidate = $candidate.Name
             ProcessIds = $ids
@@ -265,6 +410,8 @@ foreach ($candidate in $candidates) {
             EngineP95PercentSum = Get-Percentile $engine 95
             DedicatedMeanBytes = [double](($memory | Measure-Object -Average).Average)
             DedicatedP95Bytes = Get-Percentile $memory 95
+            ObsDedicatedMeanBytes = [double](($obsMemory | Measure-Object -Average).Average)
+            DwmDedicatedMeanBytes = [double](($dwmMemory | Measure-Object -Average).Average)
             Raw = $samples
         }
     } finally { foreach ($instance in $launches) { Stop-Tree $instance.Process } }
@@ -295,6 +442,13 @@ $summary = foreach ($candidate in $candidates) {
         HiddenPrivateWorkingSetMeanMiB = [double](($runsForCandidate.Hidden.PrivateWorkingSetMeanBytes | Measure-Object -Average).Average) / 1MB
         GpuEngineMeanPercentSum = $gpu.EngineMeanPercentSum
         GpuDedicatedMeanMiB = $gpu.DedicatedMeanBytes / 1MB
+        ObsCpuMeanPercent = if ($CaptureWithObs) { [double](($runsForCandidate.ObsVisible.CpuPercent | Measure-Object -Average).Average) } else { $null }
+        ObsPrivateMeanMiB = if ($CaptureWithObs) { [double](($runsForCandidate.ObsVisible.PrivateMeanMiB | Measure-Object -Average).Average) } else { $null }
+        ObsPrivateWorkingSetMeanMiB = if ($CaptureWithObs) { [double](($runsForCandidate.ObsVisible.PrivateWorkingSetMeanMiB | Measure-Object -Average).Average) } else { $null }
+        ObsGpuDedicatedMeanMiB = if ($CaptureWithObs) { $gpu.ObsDedicatedMeanBytes / 1MB } else { $null }
+        DwmCpuMeanPercent = if ($CaptureWithObs) { [double](($runsForCandidate.DwmVisible.CpuPercent | Measure-Object -Average).Average) } else { $null }
+        DwmPrivateMeanMiB = if ($CaptureWithObs) { [double](($runsForCandidate.DwmVisible.PrivateMeanMiB | Measure-Object -Average).Average) } else { $null }
+        DwmGpuDedicatedMeanMiB = if ($CaptureWithObs) { $gpu.DwmDedicatedMeanBytes / 1MB } else { $null }
         ProcessCountMax = [double](($runsForCandidate.Visible.ProcessCountMax | Measure-Object -Maximum).Maximum)
         HandlesMean = [double](($runsForCandidate.Visible.HandlesMean | Measure-Object -Average).Average)
         ExecutableMiB = $package.ExecutableBytes / 1MB
@@ -302,7 +456,18 @@ $summary = foreach ($candidate in $candidates) {
     }
 }
 
-[pscustomobject]@{ Machine = [pscustomobject]@{ ComputerName = $env:COMPUTERNAME; LogicalProcessors = $logicalProcessors; Timestamp = [DateTime]::UtcNow.ToString("o") }; Parameters = [pscustomobject]@{ Mode = $Mode; Runs = $Runs; WarmupSeconds = $WarmupSeconds; MeasureSeconds = $MeasureSeconds; HiddenSeconds = $HiddenSeconds; GpuSeconds = $GpuSeconds }; Runs = $allRuns; Gpu = $gpuResults; Packages = $packages; Summary = $summary } |
+[pscustomobject]@{ Machine = [pscustomobject]@{ ComputerName = $env:COMPUTERNAME; LogicalProcessors = $logicalProcessors; Timestamp = [DateTime]::UtcNow.ToString("o") }; Parameters = [pscustomobject]@{ Mode = $Mode; CaptureWithObs = [bool]$CaptureWithObs; Runs = $Runs; WarmupSeconds = $WarmupSeconds; MeasureSeconds = $MeasureSeconds; HiddenSeconds = $HiddenSeconds; GpuSeconds = $GpuSeconds }; ObsRecording = $recordingMetadata; Runs = $allRuns; Gpu = $gpuResults; Packages = $packages; Summary = $summary } |
     ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 (Join-Path $OutputDirectory "performance-results.json")
 $summary | Export-Csv -NoTypeInformation -Encoding utf8 (Join-Path $OutputDirectory "performance-summary.csv")
 $summary | Format-Table Candidate, StartupMeanMs, VisibleCpuMeanPercent, VisiblePrivateMeanMiB, HiddenCpuMeanPercent, GpuEngineMeanPercentSum, ProcessCountMax, DeployedMiB -AutoSize
+} finally {
+    if ($null -ne $obsProcess) {
+        try {
+            if ($CaptureWithObs) {
+                $stopped = Invoke-ObsRecord "stop"
+                $stopped | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 (Join-Path $OutputDirectory "obs-recording-stop.json")
+                if ($null -ne $stopped.recordingOutput.outputPath) { Save-VideoOnlyRecording $stopped }
+            }
+        } finally { Stop-Tree $obsProcess }
+    }
+}

@@ -10,6 +10,7 @@ evidence/raw/
 evidence/obs/sandbox/
 evidence/performance-smoke*/
 evidence/performance-combined*/
+evidence/performance-obs*/
 evidence/performance-control/
 evidence/performance/
 evidence/performance-qt-corrected/

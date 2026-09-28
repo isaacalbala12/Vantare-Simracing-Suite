@@ -17,7 +17,12 @@ Windows, 16 procesadores lógicos; builds Release. Se midieron tres arranques
 independientes por candidato y escenario, con 30 s de calentamiento, 60 s
 visibles y 20 s ocultos. P01 mantiene el control visible y el overlay cerrado;
 P02 minimiza el control y muestra el overlay. Los dos programas de cada P02
-permanecen separados de la misma forma en los tres candidatos. CPU = porcentaje
+permanecen separados de la misma forma en los tres candidatos. P03 mantiene
+ambas ventanas y graba su overlay mediante OBS Studio 32.1.2/WGC, H.264
+1280×720 a 30 fps. Cada una de las tres rondas por candidato conserva el
+mismo calentamiento y medición; el orden rota entre rondas. Las entradas de
+audio de la copia portátil se silencian y se retira la pista de audio del
+vídeo local retenido. CPU = porcentaje
 de la capacidad total de los 16 procesadores; memoria
 privada comprometida y working set privado = suma del árbol de procesos. Working
 set total incluye páginas compartidas y no debe leerse como RAM exclusiva. El
@@ -60,9 +65,51 @@ Las rondas individuales de memoria privada P02 fueron Wails
 300,59–309,66 MiB, Qt Quick 147,26–149,50 MiB y Slint 409,12–413,46 MiB.
 Los 2 PID raíz de P02 representan control y overlay; el árbol máximo incluye
 sus procesos auxiliares. Una versión productiva con dos ventanas en un solo
-proceso podría consumir distinto. P03 (coste adicional de OBS), frametimes de
-juego y una pantalla compleja no se han medido; OBS sí capturó los overlays
-en F08.
+proceso podría consumir distinto.
+
+| P03 · P02 con OBS grabando; media de 3 rondas | Wails/WebView2 | C++/Qt Quick | Rust/Slint |
+|---|---:|---:|---:|
+| CPU de la UI | 0,245 % | 0,105 % | 0,525 % |
+| Memoria privada de la UI | 309,32 MiB | 148,36 MiB | 412,71 MiB |
+| Working set privado de la UI | 139,56 MiB | 63,02 MiB | 125,49 MiB |
+| GPU dedicada atribuida a la UI | 34,57 MiB | 45,90 MiB | 188,51 MiB |
+| CPU de OBS | 1,336 % | 1,286 % | 1,268 % |
+| Memoria privada de OBS | 580,21 MiB | 579,90 MiB | 580,57 MiB |
+| Working set privado de OBS | 304,35 MiB | 293,49 MiB | 293,42 MiB |
+| GPU dedicada atribuida a OBS | 192,21 MiB | 194,54 MiB | 195,79 MiB |
+| CPU UI + OBS, sin DWM | 1,581 % | 1,391 % | 1,793 % |
+| Memoria privada UI + OBS | 889,53 MiB | 728,27 MiB | 993,29 MiB |
+
+En P03, Qt Quick usó un 52 % menos memoria privada que Wails **en la UI**.
+Al sumar el proceso OBS compartido, la diferencia fue un 18 % en memoria
+privada y un 12 % en CPU. Esto no constituye una predicción del ahorro con
+Vantare completa: se grabó una escena pequeña, sin núcleo Go productivo ni
+juego, con codificación de vídeo en la CPU. OBS consumió alrededor de
+580 MiB de memoria privada y 1,27–1,34 % de CPU total en los tres casos.
+La memoria GPU atribuida a Qt Quick siguió siendo mayor que la de Wails.
+
+La CPU de DWM observada fue 0,451 %, 0,436 % y 0,765 % respectivamente; su
+memoria GPU rondó 2,5 GiB. DWM compone **todo el escritorio**: estos valores
+no son atribuibles a cada prototipo ni se suman al total UI + OBS. Windows no
+expuso el working set privado de DWM en esta sesión. Las rondas Qt variaron
+entre 146,97 y 149,15 MiB de memoria privada de UI; OBS permaneció entre
+579,29 y 581,22 MiB de memoria privada en las nueve rondas. Las diferencias
+de CPU pequeñas no superan el ruido y la resolución de esta prueba.
+
+OBS mantuvo activa una grabación de 1.338,8 s. Se verificó el vídeo H.264
+decodificable, sin pista de audio en la copia local, y doce capturas no vacías
+con la ventana esperada. Tres fotogramas del vídeo grabado permiten comprobar
+visualmente [Wails](evidence/obs-recorded/wails-recorded.png),
+[Qt Quick](evidence/obs-recorded/qtquick-recorded.png) y
+[Slint](evidence/obs-recorded/slint-recorded.png). El vídeo completo y las
+trazas por ronda permanecen ignorados en este worktree. Las primeras dos
+pasadas P03 se descartaron: una solo mostraba previsualización sin salida de
+grabación activa; la otra redondeaba a enteros la CPU de OBS. Solo la tercera,
+con audio silenciado y el cálculo corregido, alimenta esta tabla.
+
+Frametimes de juego y una pantalla compleja no se han medido. La fase oculta
+de 20 s es un diagnóstico de estos programas; no certifica la política de
+suspensión del futuro runtime productivo.
 
 La primera tabla publicada en la PR medía solo el overlay, no P02. Se conserva
 como diagnóstico separado, nunca como consumo del conjunto:
@@ -86,7 +133,7 @@ La primera medición Qt del overlay aislado quedó inválida: la ventana Win32 a
 el `root.visible` de QML seguía falso y el pulso estaba detenido. Se reparó el
 arranque con `window->show()` y se repitieron tres rondas. La fila Qt válida
 procede exclusivamente de `evidence/performance-qt-corrected/`.
-`evidence/summary.json` conserva un resumen portable de P01, P02 y el
+`evidence/summary.json` conserva un resumen portable de P01, P02, P03 y el
 diagnóstico de overlay aislado. Las trazas de cada
 ronda y los metadatos con rutas/identificador local de máquina permanecen
 ignorados en este worktree; para repetirlas están los scripts y la captura

@@ -69,5 +69,10 @@ La medición usa `scripts/Measure-Performance.ps1` con `-Mode control` para P01
 minimizado, overlay visible). El modo `overlay` mide solo una ventana y sirve
 como diagnóstico; no sustituye P02. Cada escenario requiere tres rondas
 independientes y el script comprueba que las ventanas estén en el estado
-esperado. `RESULTADOS.md` recoge las cifras y las limitaciones; P03, el coste
-incremental de OBS, sigue sin medirse.
+esperado. P03 usa `-Mode combined -CaptureWithObs`, después de ejecutar
+`scripts/Test-OBS.ps1` una vez para preparar la copia portátil de OBS. Requiere
+Python con `websockets` y `ffmpeg`/`ffprobe` disponibles en el equipo de prueba.
+El script silencia las entradas de audio de esa copia, exige grabación activa,
+alterna el orden de los candidatos, conserva los datos brutos localmente y
+retira la pista de audio del vídeo antes de guardarlo como `video-only.mp4`.
+`RESULTADOS.md` recoge las cifras y las limitaciones.

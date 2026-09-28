@@ -20,8 +20,14 @@ renderer Qt histórico volvió a fallar su gate stress104 y GPUI publicado no
 abrió una ventana fiable en este Windows. Ningún stack se ha aprobado para el
 port productivo; sigue pendiente una pantalla compleja, integración Go, DPI
 físico y OBS con Vantare productiva, licencia de módulos y baseline de la app
-completa. P03, el coste incremental de OBS, no se midió. Sin merge ni promoción
-de canal por esta investigación.
+completa. P03 añadió OBS grabando 1280×720/30 fps con entradas de audio
+silenciadas: memoria privada de UI 309,32/148,36/412,71 MiB para
+Wails/Qt Quick/Slint, y alrededor de 580 MiB del proceso OBS en los tres.
+Qt Quick redujo la memoria privada de la UI un 52 % frente a Wails en esta
+escena, pero UI + OBS solo un 18 %; la CPU UI + OBS fue 1,581/1,391/1,793 %.
+Se validaron doce capturas y un vídeo sin pista de audio. DWM y el juego real
+no son atribuibles con esta prueba. Sin merge ni promoción de canal por esta
+investigación.
 
 La entrega está en [PR borrador #1409](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1409).
 La primera ejecución remota de calidad encontró que el probe Wails dependía

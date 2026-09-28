@@ -1,10 +1,11 @@
 {
-  "schema": "vantare.isa1404.native-ui-summary.v2",
+  "schema": "vantare.isa1404.native-ui-summary.v3",
   "base": "355e9cfee2fec3c27341fa96ec4e6a9297fab730",
   "date": "2026-09-27/28",
   "platform": "Windows, 16 logical processors",
   "fixtureSha256": "959c51421529c6157371678d8db9bcbbdc8ab3780bd5557828f2bc0d2225e5ff",
   "method": {"runsPerScenario": 3, "warmupSeconds": 30, "visibleSeconds": 60, "hiddenSeconds": 20, "gpuSeconds": 60},
+  "obsRecording": {"scenario": "P03", "version": "32.1.2", "capture": "Windows Graphics Capture", "output": "H.264 1280x720 30fps", "mutedInputs": 6, "audioTrackRetained": false, "verifiedVideoDurationSeconds": 1338.8333, "rawData": "ignored locally"},
   "scenarios": [
     {
       "id": "P01-control-visible",
@@ -20,6 +21,14 @@
         {"candidate": "wails", "cpuPercent": 0.244764, "privateMiB": 304.8918, "privateWorkingSetMiB": 137.7753, "gpuDedicatedMiB": 26.5742, "maxProcessCount": 9, "privateMiBByRun": [304.43, 300.59, 309.66]},
         {"candidate": "qtquick", "cpuPercent": 0.070001, "privateMiB": 148.3142, "privateWorkingSetMiB": 62.7733, "gpuDedicatedMiB": 43.3984, "maxProcessCount": 4, "privateMiBByRun": [148.18, 147.26, 149.50]},
         {"candidate": "slint", "cpuPercent": 0.559830, "privateMiB": 411.2195, "privateWorkingSetMiB": 124.6225, "gpuDedicatedMiB": 188.5078, "maxProcessCount": 4, "privateMiBByRun": [409.12, 413.46, 411.08]}
+      ]
+    },
+    {
+      "id": "P03-control-minimized-plus-overlay-OBS-recording",
+      "measurements": [
+        {"candidate": "wails", "cpuPercent": 0.244932, "privateMiB": 309.3190, "privateWorkingSetMiB": 139.5566, "gpuDedicatedMiB": 34.5742, "obsCpuPercent": 1.336448, "obsPrivateMiB": 580.2122, "obsPrivateWorkingSetMiB": 304.3457, "obsGpuDedicatedMiB": 192.2096, "dwmCpuPercent": 0.450697, "maxProcessCount": 9, "privateMiBByRun": [309.36, 310.55, 308.04], "obsCpuPercentByRun": [1.370520, 1.333869, 1.304954]},
+        {"candidate": "qtquick", "cpuPercent": 0.104864, "privateMiB": 148.3646, "privateWorkingSetMiB": 63.0240, "gpuDedicatedMiB": 45.8984, "obsCpuPercent": 1.285959, "obsPrivateMiB": 579.9030, "obsPrivateWorkingSetMiB": 293.4948, "obsGpuDedicatedMiB": 194.5430, "dwmCpuPercent": 0.435815, "maxProcessCount": 4, "privateMiBByRun": [149.15, 148.98, 146.97], "obsCpuPercentByRun": [1.356334, 1.141302, 1.360241]},
+        {"candidate": "slint", "cpuPercent": 0.524519, "privateMiB": 412.7118, "privateWorkingSetMiB": 125.4862, "gpuDedicatedMiB": 188.5078, "obsCpuPercent": 1.268087, "obsPrivateMiB": 580.5736, "obsPrivateWorkingSetMiB": 293.4173, "obsGpuDedicatedMiB": 195.7930, "dwmCpuPercent": 0.765322, "maxProcessCount": 4, "privateMiBByRun": [412.66, 412.70, 412.78], "obsCpuPercentByRun": [1.260646, 1.258439, 1.285176]}
       ]
     },
     {

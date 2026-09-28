@@ -63,11 +63,19 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := WriteFrame(file, configuration); err != nil {
+	var initial ConfigurationV1
+	if err := json.Unmarshal(configuration.Payload, &initial); err != nil {
+		t.Fatal(err)
+	}
+	receiver := NewReceiver()
+	configured, err := receiver.Configure(initial)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteFrame(file, configured); err != nil {
 		t.Fatal(err)
 	}
 	var acknowledgements, overlaySnapshots, engineerSnapshots, facts int
-	var retainer *FactRetainer
 	var baseline FactAckV1
 	var factACK Frame
 	var newlyRetained int
@@ -85,51 +93,39 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		event, err := receiver.Accept(frame)
+		if err != nil {
+			t.Fatal(err)
+		}
 		switch frame.Kind {
 		case KindConfigurationAck:
-			ack, err := DecodeConfigurationAck(frame)
-			if err != nil || ack.Revision != 7 || ack.Epoch != 1 || ack.Sequence != 1 || ack.FactStream == 0 || ack.FactSequence != 0 {
-				t.Fatalf("configuration ACK = %+v, %v", ack, err)
+			ack := event.Configuration
+			if ack == nil || ack.Revision != 7 || ack.Epoch != 1 || ack.Sequence != 1 || ack.FactStream == 0 || ack.FactSequence != 0 {
+				t.Fatalf("configuration ACK = %+v", ack)
 			}
 			baseline = FactAckV1{Stream: ack.FactStream, Sequence: ack.FactSequence}
-			retainer, err = NewFactRetainer(MaxRetainedEngineerFacts, baseline)
-			if err != nil {
-				t.Fatal(err)
-			}
 			acknowledgements++
 		case KindSnapshot:
-			var product struct {
-				Product string `json:"product"`
-			}
-			if err := json.Unmarshal(frame.Payload, &product); err != nil {
-				t.Fatal(err)
-			}
-			switch product.Product {
-			case ProductOverlayV2:
-				update, err := DecodeOverlaySnapshot(frame)
-				if err != nil || update.Frame == nil || len(update.Frame.Standings) != 44 {
-					t.Fatalf("Overlay snapshot invalid: %v", err)
+			switch {
+			case event.Overlay != nil:
+				if event.Overlay.Frame == nil || len(event.Overlay.Frame.Standings) != 44 {
+					t.Fatal("Overlay snapshot invalid")
 				}
 				overlaySnapshots++
-			case ProductEngineerV1:
-				observation, err := DecodeEngineerSnapshot(frame)
-				if err != nil || len(observation.Vehicles) != 44 {
-					t.Fatalf("Engineer snapshot invalid: %v", err)
+			case event.Engineer != nil:
+				if len(event.Engineer.Vehicles) != 44 {
+					t.Fatal("Engineer snapshot invalid")
 				}
 				engineerSnapshots++
 			default:
-				t.Fatalf("unrequested product %q", product.Product)
+				t.Fatal("unrequested product")
 			}
 		case KindFact:
-			if retainer == nil {
+			if event.FactACK == nil {
 				t.Fatal("fact preceded configuration ACK baseline")
 			}
-			ack, added, err := retainer.Retain(frame)
-			if err != nil {
-				t.Fatal(err)
-			}
-			factACK = ack
-			if added {
+			factACK = *event.FactACK
+			if event.FactAdded {
 				newlyRetained++
 			}
 			facts++
@@ -140,20 +136,17 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 	if acknowledgements != 1 || overlaySnapshots != 1 || engineerSnapshots != 1 || facts != 2 {
 		t.Fatalf("first batch: ack=%d overlay=%d engineer=%d facts=%d", acknowledgements, overlaySnapshots, engineerSnapshots, facts)
 	}
-	retainedFacts := retainer.Drain()
+	retainedFacts := receiver.DrainFacts()
 	if newlyRetained != 1 || len(retainedFacts) != 1 || uint64(retainedFacts[0].Fact.Sequence) != 1 {
 		t.Fatalf("retained new=%d count=%d", newlyRetained, len(retainedFacts))
 	}
 	if err := WriteFrame(file, factACK); err != nil {
 		t.Fatal(err)
 	}
-	var next ConfigurationV1
-	if err := json.Unmarshal(configuration.Payload, &next); err != nil {
-		t.Fatal(err)
-	}
+	next := initial
 	next.Revision = 8
 	next.Consumers = ConsumersV1{Strategy: true}
-	nextFrame, err := EncodeConfiguration(next)
+	nextFrame, err := receiver.Configure(next)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,16 +157,16 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ack, err := DecodeConfigurationAck(secondAck)
-	if err != nil || ack.Revision != 8 || ack.Epoch != 1 || ack.Sequence != 2 || ack.FactStream != 15 || ack.FactSequence != 1 {
-		t.Fatalf("second configuration ACK = %+v, %v", ack, err)
+	secondEvent, err := receiver.Accept(secondAck)
+	if err != nil || secondEvent.Configuration == nil || secondEvent.Configuration.Revision != 8 || secondEvent.Configuration.Epoch != 1 || secondEvent.Configuration.Sequence != 2 || secondEvent.Configuration.FactStream != 15 || secondEvent.Configuration.FactSequence != 1 {
+		t.Fatalf("second configuration ACK = %+v, %v", secondEvent.Configuration, err)
 	}
 	strategyFrame, err := ReadFrame(file)
 	if err != nil {
 		t.Fatal(err)
 	}
-	strategy, err := DecodeStrategySnapshot(strategyFrame)
-	if err != nil || strategy.Metadata.Epoch != 1 || strategy.Metadata.Sequence != 2 {
+	strategyEvent, err := receiver.Accept(strategyFrame)
+	if err != nil || strategyEvent.Strategy == nil || strategyEvent.Strategy.Metadata.Epoch != 1 || strategyEvent.Strategy.Metadata.Sequence != 2 {
 		t.Fatalf("Strategy-only second batch invalid: %v", err)
 	}
 	staleRequest, err := EncodeFactReplayRequest(baseline)
@@ -187,13 +180,17 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resync, err := DecodeResyncRequired(resyncFrame)
-	if err != nil || resync.Stream != 15 || resync.First != 2 || resync.Next != 2 {
-		t.Fatalf("stale replay boundary = (%+v, %v)", resync, err)
+	resyncEvent, err := receiver.Accept(resyncFrame)
+	if err != nil || resyncEvent.Resync == nil || resyncEvent.Resync.Stream != 15 || resyncEvent.Resync.First != 2 || resyncEvent.Resync.Next != 2 {
+		t.Fatalf("stale replay boundary = (%+v, %v)", resyncEvent.Resync, err)
 	}
 	completion, err := ReadFrame(file)
 	if err != nil || completion.Kind != KindStop || len(completion.Payload) != 0 {
 		t.Fatalf("replay completion = %+v, %v", completion, err)
+	}
+	completedEvent, err := receiver.Accept(completion)
+	if err != nil || !completedEvent.Stopped {
+		t.Fatalf("receiver completion = %+v, %v", completedEvent, err)
 	}
 	if err := WriteFrame(file, Frame{Kind: KindStop}); err != nil {
 		t.Fatal(err)

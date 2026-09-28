@@ -1,7 +1,7 @@
 # ISA-1403 — Plan de migración del runtime live de telemetría a Rust
 
 Fecha: 2026-09-27. Versión del plan: 1.3. Estado: diseño confirmado por Isaac;
-implementación parcial hasta el corte 77.
+implementación parcial hasta el corte 85.
 **Paridad, integración live y gates pendientes.**
 
 - Tarea operativa: [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748), proyecto Telemetry Core. [GitHub #1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403) es el puente técnico de CI.
@@ -1648,3 +1648,19 @@ Clippy, formato, build y replay de pipe Windows pasan.
 Este paso no ejecuta aún la cadencia de 60 Hz ni entrega frames por
 pipe; falta writer/receptor/supervisor con backpressure y Stop,
 remanente congelado, corpus temporal 44/104 y gate de CPU.
+
+## 85. Receptor Go validado por pipe Rust (2026-09-28)
+
+`telemetryprocess.Receiver` acepta mensajes de una instancia verificada:
+configuración y ACK con revisión/cursor, snapshots demandados y ordenados
+por producto, facts retenidos con ACK y supresión de duplicados, Status,
+ResyncRequired y Stop terminal. Rechaza mensajes anteriores al ACK,
+producto no demandado, cursor duplicado, baseline de facts regresivo y
+mensajes posteriores a Stop. El test Windows ejecuta el helper Rust de
+replay por named pipe y pasa sus frames por este receptor, incluido el
+cambio Overlay/Engineer a Strategy y el resync. Pruebas adversariales con
+goldens Rust y `go test ./...` pasan.
+
+El receptor aún no está conectado al runtime de Wails. El proceso Rust
+principal continúa inerte; faltan loop 60 Hz, writer/reader con límites,
+supervisor, consumidores reales, captura temporal 44/104 y gate CPU.

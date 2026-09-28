@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — receptor Go del contrato Rust (2026-09-28)
+
+`telemetryprocess.Receiver` valida ACK/revisión/cursor, demanda y orden
+de cada producto, retención de facts, Status, resync y Stop terminal.
+El replay del hijo Rust por pipe Windows ya pasa por este receptor;
+goldens y pruebas adversariales, más `go test ./...`, pasan. No está
+conectado a Wails ni sustituye al owner Go. Siguiente: límites IPC,
+loop y writer/reader productivos, después supervisor y consumidores;
+capturar 44/104 temporal y medir CPU total antes del cambio de owner.
+Plan §85, [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
 ## VAN-778 / ISA-1403 — tick de adquisición LMU/REST (2026-09-28)
 
 Rust une el proceso/mapping retenidos, buffers SHM, último REST, relojes

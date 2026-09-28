@@ -1,5 +1,6 @@
 //! Product projection of verified Overlay V2 slices from canonical Rust state.
 
+pub mod delta;
 pub mod fuel;
 
 use crate::core::{self, SessionFlag};
@@ -285,6 +286,7 @@ pub fn damage(batch: &core::Batch<SessionType, LmuVehicleState>) -> Damage {
 
 #[cfg(test)]
 mod tests {
+    use super::delta;
     use super::fuel::{self, FuelUnit};
     use super::*;
     use crate::core::Cursor;
@@ -418,6 +420,20 @@ mod tests {
         value
     }
 
+    fn wire_delta_reference(view: &delta::ReferenceView) -> Value {
+        let mut value = json!({
+            "requested": view.requested, "reference": view.reference,
+            "seconds": wire_float(&view.seconds), "authority": view.authority,
+        });
+        if view.reference.is_none() {
+            value.as_object_mut().unwrap().remove("reference");
+        }
+        if view.authority.is_none() {
+            value.as_object_mut().unwrap().remove("authority");
+        }
+        value
+    }
+
     #[test]
     fn static_44_core_slices_match_go_projection_oracle() {
         let golden: Value =
@@ -445,6 +461,7 @@ mod tests {
             prepared.fuel_usage(),
             FuelUnit::Litres,
         );
+        let delta = delta::build(prepared.delta(), "personal-best");
         let mut actual = json!({
             "session": {
                 "track": wire_value(&session.track), "phase": wire_value(&session.phase),
@@ -499,6 +516,20 @@ mod tests {
                     "lap": fuel.history_lap,
                     "consumed": fuel.history_consumed,
                 }
+            },
+            "delta": {
+                "references": delta.references.iter().map(wire_delta_reference).collect::<Vec<_>>(),
+                "seconds": wire_float(&delta.seconds), "reference": delta.reference,
+                "requested": delta.requested, "available": delta.available,
+                "authority": delta.authority,
+                "history": {
+                    "q": match delta.history_quality {
+                        Quality::Fresh => "fresh", Quality::Stale => "stale",
+                        Quality::Missing => "missing", Quality::Invalid => "invalid",
+                    },
+                    "capturedAtMS": delta.history_captured_at_ms,
+                    "seconds": delta.history_seconds,
+                }
             }
         });
         if damage.tyre_wear.is_none() {
@@ -511,6 +542,17 @@ mod tests {
             let history = actual["fuel"]["history"].as_object_mut().unwrap();
             history.remove("lap");
             history.remove("consumed");
+        }
+        if delta.reference.is_none() {
+            actual["delta"].as_object_mut().unwrap().remove("reference");
+        }
+        if delta.authority.is_none() {
+            actual["delta"].as_object_mut().unwrap().remove("authority");
+        }
+        if delta.history_captured_at_ms.is_empty() {
+            let history = actual["delta"]["history"].as_object_mut().unwrap();
+            history.remove("capturedAtMS");
+            history.remove("seconds");
         }
         assert_eq!(actual["fuel"], golden["fuel"]);
         assert_eq!(actual, golden);

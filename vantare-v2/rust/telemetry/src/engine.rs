@@ -115,6 +115,9 @@ impl EngineCandidate {
     pub fn fuel_usage(&self) -> &crate::derive::fuel::FuelUsage {
         self.pipeline.fuel_usage()
     }
+    pub fn delta(&self) -> &crate::derive::delta::SelfDelta {
+        self.pipeline.delta()
+    }
     pub fn facts(&self) -> &[crate::core::session::SessionFact] {
         self.pipeline.facts()
     }

@@ -53,7 +53,8 @@ func TestRustProjectionGoOracleStatic44(t *testing.T) {
 		Controls overlayv2.ControlsV2          `json:"controls"`
 		Damage   overlayv2.DamageViewV2        `json:"damage"`
 		Fuel     overlayv2.FuelViewV2          `json:"fuel"`
-	}{overlayv2.BuildSession(state), overlayv2.BuildPlayerInstruments(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildWeather(state), overlayv2.BuildControls(state), overlayv2.BuildDamage(state), overlayv2.BuildFuel(state, overlayv2.DefaultPreferencesV2())})
+		Delta    overlayv2.DeltaViewV2         `json:"delta"`
+	}{overlayv2.BuildSession(state), overlayv2.BuildPlayerInstruments(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildWeather(state), overlayv2.BuildControls(state), overlayv2.BuildDamage(state), overlayv2.BuildFuel(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildDelta(state, overlayv2.DefaultPreferencesV2())})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,11 +1,21 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — referencias Delta Overlay Rust (2026-09-28)
+
+R15d proyecta las tres referencias independientes y el fallback priorizado,
+autoridad native/derived, calidad, petición efectiva e historial absoluto.
+El oráculo Go/Rust estático de 44 incluye ahora Delta (SHA-256 JSON
+`d445cc2e816c57f6e3a51a03b22508389362b602f723962b0a4a1b0e35e7af03`);
+esa muestra no trae referencia usable, por lo que una prueba de contrato
+cubre referencias presentes y ausencia. Rust release 91/91, Clippy, formato,
+build y `go test ./...` pasan. Faltan resto de Overlay, Engineer/Strategy,
+IPC, paridad temporal real 44/104, sesión física y 50% CPU. Plan sección 44.
+
 ## ISA-1403 — combustible Overlay Rust y precisión decimal (2026-09-28)
 
 La proyección Fuel Rust usa el consumo canónico por vuelta, prioridad
 depósito/sesión, requiredFuel e historial alineado en litros o galones US.
-El oráculo Go/Rust real estático 44 incluye Fuel (SHA-256
-`32b4befe23b33f6749000bfe371a5c187a0b41f576f4736d468547caceff9d8a`).
+El oráculo Go/Rust real estático 44 incluyó Fuel y después Delta.
 `serde_json` existente activa `float_roundtrip`: evita perder un ULP al
 parsear el decimal observado 99.58657327772369; medir su coste en el gate
 CPU final. Rust release 90/90, Clippy, formato, build y `go test ./...`

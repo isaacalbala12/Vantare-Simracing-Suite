@@ -1034,8 +1034,7 @@ por el tracker Rust. Conserva la prioridad Go: vueltas permitidas por el
 depósito cuando existe PerLap usable y, en otro caso, vueltas restantes de
 sesión; requiredFuel usa PerLap por SessionLaps, nunca EstimatedLaps. La
 presentación convierte litros a galones US una vez y alinea el historial
-por vuelta. El oráculo real estático de 44 incluye Fuel (SHA-256 JSON
-`32b4befe23b33f6749000bfe371a5c187a0b41f576f4736d468547caceff9d8a`).
+por vuelta. El oráculo real estático de 44 incluyó Fuel y después Delta.
 El test detectó que el parseo decimal por defecto de `serde_json` perdía un
 ULP frente al valor binario Go `99.58657327772369`; se activó la feature
 `float_roundtrip` de la misma crate fijada para preservar el valor exacto.
@@ -1044,3 +1043,18 @@ CPU del runtime completo; sigue sin medición causal. Rust release 90/90,
 formato, Clippy, build release y `go test ./...` pasan. R15c y el port
 completo siguen abiertos por la paridad temporal, IPC, productos restantes,
 sesión física y gate del 50%.
+
+## 44. Referencias e historial Delta Overlay Rust (2026-09-28)
+
+`projection/delta.rs` resuelve las tres referencias personal-best,
+session-best y previous-lap de forma independiente, con fallback común
+priorizado y autoridad native/derived explícita. Conserva petición y
+referencia efectiva, calidad, disponibilidad, serie acotada de 120 muestras
+y tiempos Unix ms absolutos. El oráculo Go/Rust estático real de 44 incluye
+Delta (SHA-256 JSON
+`d445cc2e816c57f6e3a51a03b22508389362b602f723962b0a4a1b0e35e7af03`);
+esa captura no tiene referencia usable, así que una prueba separada cubre
+referencias presentes, fallback, autoridad y ausencia sin afirmar que sea
+evidencia de pista. Rust release 91/91, Clippy, formato, build release y
+`go test ./...` pasan. R15d aún requiere ruta completa, paridad temporal
+real, 104, IPC y widgets vivos; el gate CPU y sesión física siguen abiertos.

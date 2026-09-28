@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — Spotter y Radar espacial Overlay Rust (2026-09-28)
+
+R15e parcial incorpora Spotter y Radar con geometría X/Z compartida y
+calidad/ausencia explícitas. El oráculo Go/Rust estático real de 44 coincide
+(SHA-256 JSON `11c209efc4823994df587d06f878497de1543606b88fd98a3f5d26276265834e`).
+La captura carece de rivales cercanos; una prueba sobre copia del lote real
+cubre solapamiento, dirección, cruce de meta frente a vuelta completa y pose
+ausente. Rust release 95/95, Clippy, formato, build release y `go test ./...`
+pasan. Go sigue productivo. Faltan corpus temporal real 44/104, IPC,
+proyecciones restantes, sesión física y gate CPU del 50%. Plan sección 47.
+
 ## ISA-1403 — ventana relativa Overlay Rust (2026-09-28)
 
 R15e parcial incluye Relative y RelativeSameClass con vecinos por distancia

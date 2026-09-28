@@ -3,6 +3,7 @@
 pub mod delta;
 pub mod fuel;
 pub mod relative;
+pub mod spatial;
 pub mod standings;
 
 use crate::core::{self, SessionFlag};
@@ -291,6 +292,7 @@ mod tests {
     use super::delta;
     use super::fuel::{self, FuelUnit};
     use super::relative;
+    use super::spatial;
     use super::standings;
     use super::*;
     use crate::core::Cursor;
@@ -469,6 +471,8 @@ mod tests {
         let standings = standings::build(prepared.batch());
         let relative = relative::build(prepared.batch(), prepared.gaps(), false);
         let relative_same_class = relative::build(prepared.batch(), prepared.gaps(), true);
+        let spotter = spatial::spotter(prepared.batch());
+        let radar = spatial::radar(prepared.batch());
         assert_eq!(standings.len(), 44);
         let mut actual = json!({
             "session": {
@@ -542,6 +546,8 @@ mod tests {
             "standings": standings.iter().map(standings::Standing::to_wire).collect::<Vec<_>>(),
             "relative": relative,
             "relativeSameClass": relative_same_class,
+            "spotter": spotter,
+            "radar": radar,
         });
         if damage.tyre_wear.is_none() {
             actual["damage"].as_object_mut().unwrap().remove("tyreWear");

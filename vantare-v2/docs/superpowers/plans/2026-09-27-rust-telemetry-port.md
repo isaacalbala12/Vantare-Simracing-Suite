@@ -1087,3 +1087,19 @@ Dos pruebas adicionales sobre copias del lote real cubren arcos, clase,
 ausencia y signo temporal. Rust release 94/94, Clippy, formato, build release
 y `go test ./...` pasan. Go sigue productivo. Siguen abiertos 104 y paridad
 temporal reales, IPC, demás proyecciones, sesión física y gate CPU del 50%.
+
+## 47. Spotter y Radar espacial Overlay Rust (2026-09-28)
+
+`projection/spatial.rs` comparte rotación X/Z y umbrales de solapamiento para
+Spotter y Radar. Conserva la distinción entre carretera libre y posición del
+piloto no disponible; silencia Spotter en pit o a menos de 10 m/s observados.
+Radar exige pose fresca, filtra pit, altura y radio, ordena por distancia y
+limita a 16. La marca de doblado exige progreso real de al menos una vuelta,
+no el mero cruce de meta. El oráculo Go/Rust sobre la captura real estática
+de 44 coincide en Spotter y Radar (SHA-256 JSON
+`11c209efc4823994df587d06f878497de1543606b88fd98a3f5d26276265834e`).
+Esa captura no contiene rivales cercanos; una prueba con posiciones mutadas
+en una copia del lote real cubre solapamiento, dirección, doblado y ausencia.
+Rust release 95/95, Clippy, formato y build release pasan; `go test ./...`
+pasa. Go sigue productivo. Faltan corpus temporal real 44/104, IPC, demás
+productos, prueba física y gate CPU del 50%.

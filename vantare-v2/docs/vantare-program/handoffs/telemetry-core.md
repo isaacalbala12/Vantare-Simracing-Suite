@@ -1,11 +1,21 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — clasificación Overlay Rust de 44 coches (2026-09-28)
+
+R15e parcial proyecta las 44 filas reales con orden estable, posiciones y
+líder por clase, intervalo/gap y calidad compacta por campo. El oráculo
+Go/Rust estático completo de Standings coincide (SHA-256 JSON
+`a4592203d56b7432705d79292e4e727e00cf756f07e3ed71d6a2154341aa130c`).
+Una regresión cubre cruce de meta, vuelta completa y progreso ausente.
+Rust release 92/92, Clippy, formato, build y `go test ./...` pasan. Aún
+faltan Relative, 104 real, paridad temporal, IPC, demás productos y 50% CPU.
+Plan sección 45. Go sigue productivo.
+
 ## ISA-1403 — referencias Delta Overlay Rust (2026-09-28)
 
 R15d proyecta las tres referencias independientes y el fallback priorizado,
 autoridad native/derived, calidad, petición efectiva e historial absoluto.
-El oráculo Go/Rust estático de 44 incluye ahora Delta (SHA-256 JSON
-`d445cc2e816c57f6e3a51a03b22508389362b602f723962b0a4a1b0e35e7af03`);
+El oráculo Go/Rust estático de 44 incluyó Delta y después Standings;
 esa muestra no trae referencia usable, por lo que una prueba de contrato
 cubre referencias presentes y ausencia. Rust release 91/91, Clippy, formato,
 build y `go test ./...` pasan. Faltan resto de Overlay, Engineer/Strategy,

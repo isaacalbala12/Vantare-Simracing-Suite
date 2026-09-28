@@ -47,14 +47,15 @@ func TestRustProjectionGoOracleStatic44(t *testing.T) {
 		t.Fatal("no final state")
 	}
 	want, err := json.Marshal(struct {
-		Session  overlayv2.SessionV2           `json:"session"`
-		Player   overlayv2.PlayerInstrumentsV2 `json:"player"`
-		Weather  overlayv2.WeatherV2           `json:"weather"`
-		Controls overlayv2.ControlsV2          `json:"controls"`
-		Damage   overlayv2.DamageViewV2        `json:"damage"`
-		Fuel     overlayv2.FuelViewV2          `json:"fuel"`
-		Delta    overlayv2.DeltaViewV2         `json:"delta"`
-	}{overlayv2.BuildSession(state), overlayv2.BuildPlayerInstruments(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildWeather(state), overlayv2.BuildControls(state), overlayv2.BuildDamage(state), overlayv2.BuildFuel(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildDelta(state, overlayv2.DefaultPreferencesV2())})
+		Session   overlayv2.SessionV2           `json:"session"`
+		Player    overlayv2.PlayerInstrumentsV2 `json:"player"`
+		Weather   overlayv2.WeatherV2           `json:"weather"`
+		Controls  overlayv2.ControlsV2          `json:"controls"`
+		Damage    overlayv2.DamageViewV2        `json:"damage"`
+		Fuel      overlayv2.FuelViewV2          `json:"fuel"`
+		Delta     overlayv2.DeltaViewV2         `json:"delta"`
+		Standings []overlayv2.StandingRowV2     `json:"standings"`
+	}{overlayv2.BuildSession(state), overlayv2.BuildPlayerInstruments(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildWeather(state), overlayv2.BuildControls(state), overlayv2.BuildDamage(state), overlayv2.BuildFuel(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildDelta(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildStandings(state)})
 	if err != nil {
 		t.Fatal(err)
 	}

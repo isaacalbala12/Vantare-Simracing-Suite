@@ -18,7 +18,7 @@ pub enum SessionFlag {
     Yellow,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Vehicle<T> {
     pub id: String,
     pub driver_id: String,
@@ -27,7 +27,7 @@ pub struct Vehicle<T> {
     pub value: T,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct VehicleState<S, F, D> {
     pub driver_name: Field<String>,
     pub name: Field<String>,
@@ -65,7 +65,7 @@ pub struct VehicleState<S, F, D> {
     pub tyre_wear: Field<[f64; 4]>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ObservedState<S, V> {
     pub source_time_ns: Field<i64>,
     pub end_time_seconds: Field<f64>,
@@ -83,7 +83,7 @@ pub struct ObservedState<S, V> {
     pub track_length: Field<f64>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Batch<S, V> {
     pub event_id: String,
     pub session_id: String,

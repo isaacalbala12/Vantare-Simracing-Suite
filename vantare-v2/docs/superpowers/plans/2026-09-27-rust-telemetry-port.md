@@ -1050,11 +1050,25 @@ sesión física y gate del 50%.
 session-best y previous-lap de forma independiente, con fallback común
 priorizado y autoridad native/derived explícita. Conserva petición y
 referencia efectiva, calidad, disponibilidad, serie acotada de 120 muestras
-y tiempos Unix ms absolutos. El oráculo Go/Rust estático real de 44 incluye
-Delta (SHA-256 JSON
-`d445cc2e816c57f6e3a51a03b22508389362b602f723962b0a4a1b0e35e7af03`);
+y tiempos Unix ms absolutos. El oráculo Go/Rust estático real de 44 incluyó
+Delta y después Standings;
 esa captura no tiene referencia usable, así que una prueba separada cubre
 referencias presentes, fallback, autoridad y ausencia sin afirmar que sea
 evidencia de pista. Rust release 91/91, Clippy, formato, build release y
 `go test ./...` pasan. R15d aún requiere ruta completa, paridad temporal
 real, 104, IPC y widgets vivos; el gate CPU y sesión física siguen abiertos.
+
+## 45. Clasificación Overlay Rust de 44 coches (2026-09-28)
+
+`projection/standings.rs` ordena establemente por posición usable y
+conserva ausencia/calidad por campo. Agrupa clases por identificador
+normalizado, calcula posición y referencia del líder de clase, y distingue
+cruce de meta de vuelta completa antes de comparar gaps nativos. Emite el
+wire compacto V2 con calidad base y overrides, incluyendo timing, pit,
+distancia espacial, nombres y números de coche. Las 44 filas del fixture
+SHM real coinciden con `BuildStandings` Go en el oráculo JSON (SHA-256
+`a4592203d56b7432705d79292e4e727e00cf756f07e3ed71d6a2154341aa130c`).
+Una prueba sobre una copia del lote real cubre cruce de meta, vuelta
+completa y distancia ausente. Rust release 92/92, Clippy, formato, build
+release y `go test ./...` pasan. No hay corpus real 104 ni comparación
+temporal, Relative, IPC o prueba física; el gate CPU sigue abierto.

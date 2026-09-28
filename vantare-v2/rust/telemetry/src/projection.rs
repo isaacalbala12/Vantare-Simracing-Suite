@@ -2,6 +2,7 @@
 
 pub mod delta;
 pub mod fuel;
+pub mod standings;
 
 use crate::core::{self, SessionFlag};
 use crate::derive::controls::{ControlHistory, HistoryFreshness};
@@ -288,6 +289,7 @@ pub fn damage(batch: &core::Batch<SessionType, LmuVehicleState>) -> Damage {
 mod tests {
     use super::delta;
     use super::fuel::{self, FuelUnit};
+    use super::standings;
     use super::*;
     use crate::core::Cursor;
     use crate::derive::controls::ControlSample;
@@ -462,6 +464,8 @@ mod tests {
             FuelUnit::Litres,
         );
         let delta = delta::build(prepared.delta(), "personal-best");
+        let standings = standings::build(prepared.batch());
+        assert_eq!(standings.len(), 44);
         let mut actual = json!({
             "session": {
                 "track": wire_value(&session.track), "phase": wire_value(&session.phase),
@@ -530,7 +534,8 @@ mod tests {
                     "capturedAtMS": delta.history_captured_at_ms,
                     "seconds": delta.history_seconds,
                 }
-            }
+            },
+            "standings": standings.iter().map(standings::Standing::to_wire).collect::<Vec<_>>(),
         });
         if damage.tyre_wear.is_none() {
             actual["damage"].as_object_mut().unwrap().remove("tyreWear");

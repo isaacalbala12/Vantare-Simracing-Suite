@@ -1821,3 +1821,21 @@ paridad de todos los productos, coste de CPU de ambos procesos ni ejecución
 Wails/OBS. El hijo candidato sigue sin supervisor, watchdog o activación de
 consumidores Go; Go continúa como dueño productivo. R05/R19 y el gate de
 migración permanecen abiertos.
+
+## 95. Supervisor Go aislado del candidato Rust (2026-09-28)
+
+`internal/app/telemetryprocess/RunCandidate` crea por intento un pipe local
+con nonce y DACL, Job Object, handshake verificado y receptor de instancia.
+Valida los Status secuenciales, entrega ACK de Fact y aplica al transporte
+un watchdog de un segundo desde el último Status, aunque lleguen snapshots.
+El callback `disconnected` debe retirar cualquier estado publicado antes de
+otro hijo. Tres fallos en 60 s agotan el presupuesto; hay esperas acotadas
+de 250 y 500 ms y un error estable. La cancelación manda Stop, espera la
+respuesta y confirma salida del proceso en dos segundos.
+
+La prueba física opt-in con LMU 1.4.2.0 y 43 coches recibió dos Status,
+ACK, ~30 Overlay y ~30 Engineer y cerró limpio. Otro test comprueba los tres
+arranques fallidos. El supervisor aún no lo selecciona Wails; faltan pruebas
+de fallo de hijo vivo, heartbeat perdido, consumidor lento, suspensión,
+resync y publicación de estado degradado antes de R05/R19. Go sigue owner;
+44/104, paridad completa y gate CPU total siguen abiertos.

@@ -1,5 +1,18 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — supervisor Go del candidato aislado (2026-09-28)
+
+`RunCandidate` abre un pipe y un Job Object nuevos por instancia, valida
+Handshake y Configuration, recibe Status/snapshots/facts con `Receiver`,
+ACKea facts y exige latido dentro de un segundo incluso si siguen llegando
+snapshots. Ante fallo llama `disconnected` antes de cualquier reinicio,
+limita a tres fallos en 60 s con esperas de 250/500 ms y devuelve un error
+estable al agotar el presupuesto. Cancelación envía Stop y espera salida
+limpia. Test físico con LMU 1.4.2.0 y pista de 43 coches confirmó dos Status,
+ACK y ~30 lotes de cada producto antes de Stop; tres arranques fallidos
+agotan el presupuesto en test. No está conectado a Wails ni consumidores;
+Go continúa como owner productivo. Plan §95.
+
 ## VAN-778 / ISA-1403 — LMU 1.4.2.0 exacto y candidato físico (2026-09-28)
 
 Go y Rust admiten ahora exactamente 1.4.2.0 a partir de cuatro capturas

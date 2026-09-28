@@ -214,12 +214,14 @@ el watchdog/reinicio Go. La salud REST todavía no cambia el estado.
 | Facts pendientes | 64 | Retención/ACK IPC probados en replay y receptor Go; falta entrega productiva y recuperación. |
 | Callback Engineer | 250 ms | Valor por defecto Go actual, no un timeout IPC ya implementado. |
 | Adquisición LMU SHM | 60 Hz nominal | Agenda implementada en candidato Rust; frecuencia real y coste aún no medidos. |
-| Heartbeat hijo | 250 ms | Status secuencial en candidato; fuente medida por reloj monotónico propio. Sin test live admitido. |
-| Watchdog de fuente | 1 s | Valor Go actual; watchdog del proceso Rust no conectado. |
+| Heartbeat hijo | 250 ms | Status secuencial en candidato; probado en menú y pista reales de LMU 1.4.2.0. |
+| Watchdog del hijo | 1 s sin Status | Supervisor Go aislado comprueba tiempo de llegada aun si recibe snapshots; no está conectado a Wails. |
+| Reinicio del hijo | 3 fallos por 60 s; espera 250/500 ms | Supervisor Go crea pipe, Job Object, Receiver e identidad de stream nuevos; agota el presupuesto con error estable. Test de tres arranques fallidos y cierre físico pasan. |
+| Watchdog de fuente | 1 s | Valor Go actual; el candidato emite sourceAgeNs, aún sin entrega productiva. |
 | Aceptación de pipe | 2 s | Implementado y probado con deadline en Windows. |
 | Cierre de hijo | 2 s | Implementado con Job Object y probado en Windows; falta matriz completa de fallos. |
 
-Profundidad de control, deadline de escritura bajo carga, retención de facts, presupuesto de reinicios y cierre del runtime productivo requieren tests adicionales y quedan **sin fijar** en este corte. Los 2 s de cierre del harness no certifican el cierre del pipeline live. R04/R05 no se marcan completos hasta que la tabla productiva sea numérica y esté protegida por pruebas de frontera. No se activa una ruta productiva con esa tabla incompleta.
+Profundidad de control, deadline de escritura bajo carga, retención de facts y cierre del runtime productivo requieren tests adicionales. Los 2 s de cierre del candidato pasan con LMU físico, pero no acreditan todos los fallos del pipeline live. R04/R05 no se marcan completos hasta que la tabla productiva sea numérica y esté protegida por pruebas de frontera. No se activa una ruta productiva con esa tabla incompleta.
 
 ## Dependencias
 

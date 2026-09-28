@@ -176,6 +176,21 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 	if err != nil || strategy.Metadata.Epoch != 1 || strategy.Metadata.Sequence != 2 {
 		t.Fatalf("Strategy-only second batch invalid: %v", err)
 	}
+	staleRequest, err := EncodeFactReplayRequest(baseline)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteFrame(file, staleRequest); err != nil {
+		t.Fatal(err)
+	}
+	resyncFrame, err := ReadFrame(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resync, err := DecodeResyncRequired(resyncFrame)
+	if err != nil || resync.Stream != 15 || resync.First != 2 || resync.Next != 2 {
+		t.Fatalf("stale replay boundary = (%+v, %v)", resync, err)
+	}
 	completion, err := ReadFrame(file)
 	if err != nil || completion.Kind != KindStop || len(completion.Payload) != 0 {
 		t.Fatalf("replay completion = %+v, %v", completion, err)

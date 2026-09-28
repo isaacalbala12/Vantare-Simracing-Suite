@@ -104,6 +104,22 @@ fn run(pipe_name: &str, nonce_text: &str, fixture_path: &str) -> io::Result<()> 
             }
         }
     }
+    let (kind, payload) = ipc::read_frame(&mut pipe)
+        .map_err(|error| io::Error::other(format!("stale replay request: {error:?}")))?;
+    let request = ipc::encode(kind, &payload)
+        .map_err(|error| io::Error::other(format!("stale replay frame: {error:?}")))?;
+    let cursor = ipc::fact_replay::decode_frame(&request)
+        .map_err(|error| io::Error::other(format!("decode stale replay: {error:?}")))?;
+    let FactReplay::Resync(boundary) = assembly
+        .replay_fact_frames_after(cursor)
+        .map_err(|error| io::Error::other(format!("stale replay: {error:?}")))?
+    else {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "expected resync",
+        ));
+    };
+    pipe.write_all(&boundary)?;
     ipc::write_frame(&mut pipe, Kind::Stop, &[])
         .map_err(|error| io::Error::other(format!("end replay: {error:?}")))?;
     let (kind, payload) = ipc::read_frame(&mut pipe)

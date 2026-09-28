@@ -1475,3 +1475,13 @@ enviar FactAck. La prueba con el hijo release y el pipe real pasa; Rust
 release 123/123 y Go focal pasan. Sigue faltando el dispatcher productivo,
 reconexión, respuesta ResyncRequired ante pérdida de ventana en pipe y
 bootstrap de consumidor. Go aún es el owner de telemetría productiva.
+
+## 73. ResyncRequired tras replay tardío en pipe (2026-09-28)
+
+El mismo replay Windows solicita un cursor `(stream=15,sequence=0)`
+después de retirar demanda Engineer y confirmar el lote Strategy. Rust
+ya ha descartado ese intervalo y responde `KindResyncRequired` con
+`(stream=15,first=2,next=2)`. Go decodifica estrictamente el límite y
+solo después intercambia Stop; la prueba de hijo release y pipe real
+pasa. Es señal de pérdida comprobada, no recuperación: aún faltan
+bootstrap del consumidor, continuidad en reconexión y dispatcher live.

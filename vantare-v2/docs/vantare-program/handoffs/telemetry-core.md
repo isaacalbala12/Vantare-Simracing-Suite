@@ -1,5 +1,13 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — resync por pipe tras cursor viejo (2026-09-28)
+
+El helper Rust recibió otra solicitud Go tras quitar demanda Engineer;
+respondió `ResyncRequired (stream=15,first=2,next=2)` en pipe Windows
+real y Go validó el límite antes de Stop. Test cruzado pasa. Falta
+bootstrap de consumidor y reconexión productiva; Go sigue owner.
+Plan sección 73.
+
 ## ISA-1403 — solicitud explícita de replay Fact (2026-09-28)
 
 Go codifica `KindFactReplayRequest=10` desde el baseline del ACK y Rust

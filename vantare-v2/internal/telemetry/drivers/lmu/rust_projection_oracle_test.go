@@ -78,3 +78,47 @@ func TestRustProjectionGoOracleStatic44(t *testing.T) {
 		t.Fatal("Go projection differs from pinned Rust port oracle")
 	}
 }
+
+// Pins cadence decisions independently of product data so Rust can compare
+// the exact section mask for hot policy, safety and clock discontinuity.
+func TestRustCadenceGoOracle(t *testing.T) {
+	scheduler := overlayv2.NewSectionScheduler(overlayv2.DefaultSectionCadence())
+	origin := time.Unix(100, 0)
+	plans := make([]uint16, 240)
+	for tick := range plans {
+		if tick == 80 {
+			scheduler.SetCadence(overlayv2.SectionCadence{Fast: 150 * time.Millisecond, Mid: 300 * time.Millisecond, Slow: 750 * time.Millisecond, Relative: 500 * time.Millisecond, DirtyCeiling: time.Second})
+		}
+		dirty := overlayv2.DirtySet(0)
+		if tick%37 == 0 {
+			dirty = dirty.Mark(overlayv2.SectionStandings)
+		}
+		if tick == 150 || tick == 160 {
+			// Go has no exported safety constructor; an all-dirty discontinuity
+			// exercises both safety bits at the same time.
+			dirty = overlayv2.AllDirty()
+		}
+		now := origin.Add(time.Duration(tick) * (time.Second / 60))
+		if tick == 200 {
+			now = origin.Add(-time.Second)
+		}
+		plans[tick] = uint16(scheduler.Plan(now, dirty))
+	}
+	want, err := json.Marshal(plans)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join("..", "..", "..", "..", "rust", "telemetry", "testdata", "overlay-cadence-go-v1.json")
+	if os.Getenv("VANTARE_PROJECTION_ORACLE_UPDATE") == "1" {
+		if err := os.WriteFile(path, append(want, '\n'), 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	golden, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(bytes.TrimSpace(golden), want) {
+		t.Fatal("Go cadence differs from pinned Rust port oracle")
+	}
+}

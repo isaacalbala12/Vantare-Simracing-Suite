@@ -1,5 +1,6 @@
 //! Product projection of verified Overlay V2 slices from canonical Rust state.
 
+pub mod cadence;
 pub mod capabilities;
 pub mod delta;
 pub mod fuel;

@@ -1117,3 +1117,15 @@ El `CapabilitiesV2` completo aún requiere los descriptor capabilities,
 modes y política efectiva provenientes de la composición Go por IPC. Go
 sigue productivo; faltan también corpus real temporal 44/104, resto de
 productos, sesión física y gate CPU del 50%.
+
+## 49. Scheduler de secciones Overlay Rust (2026-09-28)
+
+`projection/cadence.rs` porta las once secciones y sus tiers, overrides,
+dirty ceiling, invalidación de seguridad para Session/Spotter, cambio de
+política en el siguiente tick y recuperación tras reloj regresivo. Un
+oráculo Go de 240 ticks fija exactamente la máscara de decisión en Rust
+(SHA-256 `3f6ba5cb96fe8072a16d851c60eb8800d5c4ca20a6fa098e6ad6bf913996862f`).
+Rust release 99/99, Clippy, formato, build release y `go test ./...` pasan.
+R15g sigue parcial: faltan memoización de secciones, dirty signals reales,
+frame completo, demanda y publicación IPC. Go sigue productivo; quedan
+corpus temporal real 44/104, Engineer/Strategy, sesión física y gate CPU.

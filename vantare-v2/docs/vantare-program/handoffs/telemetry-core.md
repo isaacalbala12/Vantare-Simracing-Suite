@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — scheduler de secciones Overlay Rust (2026-09-28)
+
+R15g parcial porta la decisión determinista de once secciones, tiers,
+overrides, dirty ceiling, seguridad, política hot y reloj regresivo. El
+oráculo Go de 240 ticks coincide con Rust (SHA-256
+`3f6ba5cb96fe8072a16d851c60eb8800d5c4ca20a6fa098e6ad6bf913996862f`).
+Rust release 99/99, Clippy, formato, build release y `go test ./...` pasan.
+Faltan dirty signals/memoización/frame/IPC, productos Engineer/Strategy,
+corpus temporal real 44/104, sesión física y gate CPU. Go sigue productivo.
+Plan sección 49.
+
 ## ISA-1403 — disponibilidad de capacidades Overlay Rust (2026-09-28)
 
 R15a/R15f parcial calcula en Rust la calidad observada de las diez

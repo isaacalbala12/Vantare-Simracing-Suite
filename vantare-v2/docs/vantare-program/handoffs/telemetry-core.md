@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — ciclo de vida LMU_Data (2026-09-28)
+
+Rust retiene el handle del proceso LMU junto a una única vista de
+`LMU_Data` y comprueba salida antes y después de cada lectura estable.
+Prueba Windows de proceso vivo→cerrado y lectura opt-in del LMU activo
+1.4.2.0 pasan; Rust release 129/129, formato y Clippy pasan. No se ha
+admitido 1.4.2.0 ni probado que el mapping global pertenezca al PID;
+faltan REST/build, loop y consumidores productivos y corpus temporal
+44/104. Go sigue owner. Plan sección 77, tarea [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
 ## VAN-778 / ISA-1403 — versión del proceso LMU real (2026-09-28)
 
 La tarea operativa [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748)

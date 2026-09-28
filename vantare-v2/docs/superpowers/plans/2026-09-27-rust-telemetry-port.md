@@ -1523,3 +1523,22 @@ Falta vincular durante todo el loop el PID a `LMU_Data` y su frescura,
 verificar el manifiesto REST de la build y completar adquisición,
 supervisión y consumidores productivos. Este corte es diagnóstico y no
 activa el backend Rust.
+
+## 77. Handle LMU retenido junto al mapping (2026-09-28)
+
+`RunningSource` conserva el handle del proceso y una única vista de
+`LMU_Data` durante la lectura. Abre ambos recursos en ese orden y consulta
+la señal de salida del proceso antes y después de copiar dos snapshots
+idénticos. Si el productor se cierra, rechaza la lectura sin reutilizar un
+PID reciclado. La prueba Windows verifica la transición vivo→cerrado con
+un proceso hijo controlado; la prueba opt-in leyó `LMU_Data` del LMU real
+1.4.2.0 con el handle retenido. La primera ejecución de la prueba detectó
+que `PROCESS_QUERY_LIMITED_INFORMATION` no daba derecho a esperar el
+handle; se añadió el derecho mínimo `SYNCHRONIZE` y pasó. Rust release
+129/129, formato y Clippy pasan.
+
+Esto protege el ciclo de vida de la lectura, pero Windows no acredita por
+sí solo que el nombre global `LMU_Data` pertenezca a ese PID. Falta la
+evidencia REST de build y la validación temporal de pista; 1.4.2.0 sigue
+sin admitirse. No hay loop, dispatcher, receptor ni gate global del 50%.
+Go conserva la propiedad productiva.

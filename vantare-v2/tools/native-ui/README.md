@@ -6,6 +6,11 @@ ventana Wails/React usa el mismo host y las mismas vistas como referencia local.
 No cambia el runtime de Vantare ni selecciona el stack final. Continúa la [comparación
 VAN-775](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1409).
 
+LMU 1.4.2.0 estuvo disponible el 28/09/2026: el diagnóstico opt-in capturó
+cuatro muestras reales sanitizadas con 18 coches y reloj cambiante. La versión
+sigue fuera de la lista productiva del driver Go; aún no hay proyección Overlay
+V2 viva para comparar las tres UI. [Evidencia y límite](evidence/lmu-1420-live-diagnostic.md).
+
 ## Datos y arquitectura del corte
 
 `host` verifica el SHA-256 de `testdata/lmu-fixture.bin`, captura LMU real

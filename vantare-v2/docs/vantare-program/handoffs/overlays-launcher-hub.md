@@ -2,6 +2,20 @@
 
 ## 2026-09-28 · VAN-776 / GitHub #1410 · Host Go nativo aislado
 
+Isaac dejó LMU abierto para continuar la comparación. Se verificó el proceso
+LMU 1.4.2.0, REST con tiempo de sesión creciente y el mapping `LMU_Data`.
+El capturador sanitizado existente obtuvo cuatro pares de muestras en pista,
+con jugador presente, 18 coches y reloj de origen 215,0 → 246,4 → 249,0 →
+251,8 s. La entrada diagnóstica exacta para 1.4.2.0 vive en la tarea separada
+[VAN-777](https://app.notion.com/p/3e9e51695c65813ba4e8c2c8aa013dd1?pvs=204)
+([PR borrador #1413](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1413)),
+no en esta PR. La entrada no admite la build en producción:
+el test opt-in del driver aún devuelve
+`evidence=unsupported;build=1.4.2.0`. La evidencia está en
+`tools/native-ui/evidence/lmu-1420-live-diagnostic.md`. Falta la muestra de
+menú, los fixtures pinneados y su validación antes de conectar esta sesión al
+host Overlay V2 y medir UI/CPU con datos cambiantes. La PR sigue en borrador.
+
 El candidato `0f26b35a` pasó los gates remotos bloqueantes, calidad, seguridad
 y ruta de promoción; permanece en PR borrador y sin integrar. Se examinó la
 persistencia existente de Studio: `StudioProfileService` conserva revisión,

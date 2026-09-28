@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — replay Rust→Go por pipe Windows (2026-09-28)
+
+El helper `replay-harness` lanzó Rust bajo Job Object/pipe seguro; Go
+comprobó handshake/PID/nonce y decodificó configuración ACK, Overlay,
+Engineer y fact del lote auditado estático de 44. Stop y salida limpia
+verificados; handshake del binario release de producto pasó aparte.
+Rust release 112/112, Clippy all-targets/all-features, formato, build
+release y `go test ./...` pasan. El helper es solo de test, sin acceso
+live a LMU. Faltan temporal 44/104, consumidores, colas/FactAck/resync,
+runtime productivo, LMU físico y gate CPU. Plan sección 61.
+
 ## ISA-1403 — ensamblador transaccional Rust (2026-09-28)
 
 `assembly.rs` aplica configuración Go revisionada en frontera de commit:

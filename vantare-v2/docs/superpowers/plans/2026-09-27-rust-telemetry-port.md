@@ -1298,3 +1298,21 @@ Es un ensamblador puro: aún no tiene lector live, pipe productivo,
 writer acotado, FactAck/resync, cache/cadencia de Overlay, políticas de
 fallo ni Go publisher conectado. Por ello R18/R19 y el gate CPU siguen
 pendientes; Go continúa como único owner productivo.
+
+## 61. Replay cruzado por named pipe Windows (2026-09-28)
+
+El binario `vantare-telemetry-replay`, compilable solo con la feature
+`replay-harness`, ejercita `Assembler` con la captura auditada estática
+de 44. Go crea el pipe de sesión, lanza el hijo bajo Job Object, verifica
+handshake/nonce/PID, envía Configuration y decodifica un ACK, Overlay,
+Engineer y facts. El test `TestRustReplayPipeDeliversDemandedProductsAndFact`
+pasó físicamente en Windows; el hijo salió tras Stop. Las dos pruebas del
+handshake del binario de producto también pasaron con release real.
+`go test ./...`, Rust release 112/112, Clippy de todos los targets/features,
+formato y build release pasaron.
+
+El helper no forma parte del ejecutable productivo ni lee `LMU_Data`;
+inyecta un único archivo auditado. R18 sigue parcial: faltan corpus
+temporal 44/104, replay de cambio de demanda/reconnect/facts, salida a
+consumidores reales, writer/ACK/resync. R19/R21/R25 y LMU físico
+pendientes. Go sigue productivo.

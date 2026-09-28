@@ -99,6 +99,16 @@ Go genera 16 bytes aleatorios por instancia y reserva `\\.\pipe\vantare-telemetr
 
 Estas garantías están probadas en el harness, no conectadas todavía al runtime productivo: faltan plazos de lectura/escritura y su cancelación bajo carga, colas/snapshots/facts, reinicios, configuración, bootstrap y supervisión desde Wails. `TestRustChildPipeHandshakeAndStop` requiere `VANTARE_TELEMETRY_RUST_TEST_HELPER` apuntando al binario `cargo build --release --locked --target x86_64-pc-windows-msvc`; una ejecución con `Skip` no acredita este gate.
 
+Un segundo ejecutable **solo de test**, `vantare-telemetry-replay`, se
+compila con `cargo build --locked --release --features replay-harness --bin
+vantare-telemetry-replay`. `TestRustReplayPipeDeliversDemandedProductsAndFact`
+requiere `VANTARE_TELEMETRY_REPLAY_TEST_HELPER` apuntando a ese `.exe`.
+Go envía Configuration por un pipe real y recibe ACK, Overlay, Engineer y
+fact desde `Assembler` sobre el fixture auditado estático de 44, seguido
+de Stop. Pasó en Windows el 2026-09-28; no equivale a LMU live ni al
+writer/supervisor productivo. El ejecutable principal se compila sin
+`replay-harness` y no incluye este camino.
+
 ## Límites de diseño para completar antes de R05/R19
 
 | Recurso | Límite inicial | Evidencia/estado |

@@ -12,6 +12,14 @@ path = "src/lib.rs"
 name = "vantare-telemetry"
 path = "src/main.rs"
 
+[[bin]]
+name = "vantare-telemetry-replay"
+path = "src/bin/replay.rs"
+required-features = ["replay-harness"]
+
+[features]
+replay-harness = []
+
 [[bench]]
 name = "parse_lmu"
 harness = false

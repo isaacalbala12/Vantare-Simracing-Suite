@@ -11,13 +11,15 @@ como puente técnico. Su rama `vantareapp/isa-1412-lmu-1420-compatibility`
 admite solo el par exacto 1.4.2.0 en el capturador diagnóstico y conserva en
 `testdata` un par de fixtures sanitizados de pista con SHA-256 verificados.
 El test comprueba 18 coches y que el parser de producción **sigue rechazando**
-1.4.2.0. Falta la captura de menú y la revisión de los cuatro fixtures antes
-de pinnear y admitir la build en producción. No hay evidencia aún de Overlay
-V2 vivo con 1.4.2.0, ni aprobación para integrar la rama. El corte está en
+1.4.2.0. Isaac prefiere mantener la sesión actual en pista: no se saldrá al
+menú para obtener la captura pendiente. Faltan esa captura y la revisión de los
+cuatro fixtures antes de pinnear y admitir la build en producción. No hay
+evidencia aún de Overlay V2 vivo con 1.4.2.0, ni aprobación para integrar la rama. El corte está en
 [PR borrador #1413](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1413),
-commit `96a52b9c`; `pnpm --dir frontend build`, `go test ./...` y la captura
+commit `135538a6`; `pnpm --dir frontend build`, `go test ./...` y la captura
 diagnóstica opt-in en pista pasaron. La primera pasada Go sin `frontend/dist`
-falló en setup y se repitió tras construir el frontend. CI remota pendiente.
+falló en setup y se repitió tras construir el frontend. Los gates remotos de
+`135538a6` pasaron; cualquier commit posterior requiere comprobar de nuevo su CI.
 
 > **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
 > Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,

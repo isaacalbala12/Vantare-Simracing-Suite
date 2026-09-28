@@ -89,6 +89,18 @@ func TestCandidateOverlayReachesPublisherLiveLMUOptIn(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer release()
+	manifest, err := engineer.NewManifest([]engineer.Capability{
+		{ID: engineer.CapabilitySession, State: engineer.CapabilitySupported},
+		{ID: engineer.CapabilityStandings, State: engineer.CapabilitySupported},
+		{ID: engineer.CapabilityControls, State: engineer.CapabilitySupported},
+		{ID: engineer.CapabilityPit, State: engineer.CapabilitySupported},
+		{ID: engineer.CapabilityFuel, State: engineer.CapabilitySupported},
+		{ID: engineer.CapabilityGaps, State: engineer.CapabilitySupported},
+		{ID: engineer.CapabilitySpatial, State: engineer.CapabilitySupported},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 	var overlays, engineers, facts, disconnects int
@@ -106,6 +118,10 @@ func TestCandidateOverlayReachesPublisherLiveLMUOptIn(t *testing.T) {
 			if event.EngineerIdentity == nil || !(engineer.Context{Epoch: uint64(event.Engineer.Epoch), Identity: *event.EngineerIdentity}).Complete() ||
 				engineer.VehicleID(event.Engineer.Player.ID) != event.EngineerIdentity.Vehicle {
 				return errors.New("Rust Engineer snapshot has no matching complete identity")
+			}
+			observation, err := event.EngineerObservation(manifest)
+			if err != nil || len(observation.Vehicles) != 47 || !observation.Context.Complete() {
+				return errors.New("Rust Engineer snapshot cannot enter the product observation contract")
 			}
 			engineers++
 		}

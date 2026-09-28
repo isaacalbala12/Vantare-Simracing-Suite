@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — contrato Engineer desde snapshot Rust (2026-09-29)
+
+El receptor Go puede convertir el snapshot Engineer Rust con identidad
+completa a `ObservationSnapshotV1` mediante el adaptador de producto existente;
+los replay antiguos sin identidad no cruzan esa frontera. La comparación con
+la observación Go y cinco pruebas físicas LMU 1.4.2.0 / 47 coches pasaron.
+`go test ./...` pasó, incluido el control de llamadores productivos. Falta
+conectar el servicio en Wails con status y facts recuperables, y después medir
+paridad y rendimiento. Plan §104; Go sigue productivo.
+
 ## VAN-778 / ISA-1403 — identidad Engineer Rust por IPC (2026-09-29)
 
 El candidato Rust adjunta identidad de evento, sesión, jugador, equipo y

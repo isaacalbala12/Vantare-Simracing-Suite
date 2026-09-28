@@ -1974,3 +1974,15 @@ validación de identidad completa junto a Overlay y el fact `session.started`.
 actualizar el banco de diagnóstico. Falta adaptar el DTO al contrato de
 `EngineerProjectionConsumer`, entregar status/facts con recuperación y medir
 el gate de rendimiento de la ruta final.
+
+## 104. Snapshot Rust convertido al contrato Engineer (2026-09-29)
+
+`AdaptSnapshotV1` reutiliza el adaptador Engineer existente para convertir un
+snapshot IPC validado y su identidad confirmada en `ObservationSnapshotV1`.
+`ReceivedV1.EngineerObservation` impide que un replay sin identidad entre al
+servicio. Un test compara la observación adaptada con la proyección Go
+productiva y otro comprueba cinco veces, con LMU 1.4.2.0 y 47 coches, que los
+snapshots Rust atraviesan esta frontera con 47 vehículos y contexto completo.
+`go test ./...` pasó después de satisfacer el control arquitectónico de
+llamadores productivos. El servicio Engineer aún no consume estos eventos en
+Wails; faltan status, facts recuperables y selección exclusiva del hijo Rust.

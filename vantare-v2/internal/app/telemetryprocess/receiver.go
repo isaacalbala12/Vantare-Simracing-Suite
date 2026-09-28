@@ -37,6 +37,15 @@ type ReceivedV1 struct {
 	Stopped          bool
 }
 
+// EngineerObservation prepares a validated Rust snapshot for the existing
+// product consumer. Replay frames without identity cannot cross this boundary.
+func (event ReceivedV1) EngineerObservation(manifest engineer.Manifest) (engineer.ObservationSnapshotV1, error) {
+	if event.Engineer == nil || event.EngineerIdentity == nil {
+		return engineer.ObservationSnapshotV1{}, ErrInvalidObservationSnapshot
+	}
+	return engineer.AdaptSnapshotV1(*event.Engineer, *event.EngineerIdentity, manifest)
+}
+
 // Receiver is scoped to one verified child instance. The host writes the
 // Configuration returned by Configure, then feeds incoming frames to Accept.
 // It never reconstructs canonical telemetry in Go.

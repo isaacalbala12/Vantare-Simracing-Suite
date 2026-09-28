@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — I/O overlapped con plazo en el cliente Rust (2026-09-28)
+
+El harness principal Rust abre el named pipe Windows con
+`FILE_FLAG_OVERLAPPED`, usa evento por operación y cancela/recoge la
+lectura pendiente antes de soltar memoria al vencer dos segundos. Pruebas
+de pipe Go↔Rust confirman Handshake/Stop y salida autónoma sin Stop;
+Rust release 150/150, Clippy, formato y build pasan. `windows-sys 0.61.2`
+es dependencia solo Windows para llamadas Win32 tipadas, licencia MIT/Apache-2.0.
+El binario principal sigue inerte fuera del harness; faltan loop live,
+reader/writer de producción y supervisión. Plan §91.
+
 ## VAN-778 / ISA-1403 — control del host en adquisición Rust (2026-09-28)
 
 `Acquisition::handle_control_frame` admite exclusivamente Configuration,

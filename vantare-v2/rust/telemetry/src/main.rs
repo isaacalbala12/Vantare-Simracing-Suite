@@ -1,6 +1,9 @@
-use std::fs::OpenOptions;
 use std::io;
+#[cfg(windows)]
+use std::time::{Duration, Instant};
 
+#[cfg(windows)]
+use vantare_telemetry::ipc::pipe_windows::{DeadlinePipe, PipeReadUntil};
 use vantare_telemetry::ipc::{self, Kind};
 
 fn main() {
@@ -25,6 +28,7 @@ fn main() {
     std::process::exit(2);
 }
 
+#[cfg(windows)]
 fn run_pipe_harness(pipe_name: &str, nonce_text: &str) -> io::Result<()> {
     let nonce = ipc::parse_nonce_hex(nonce_text)
         .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "invalid instance nonce"))?;
@@ -35,11 +39,15 @@ fn run_pipe_harness(pipe_name: &str, nonce_text: &str) -> io::Result<()> {
             "invalid pipe name",
         ));
     }
-    let mut pipe = OpenOptions::new().read(true).write(true).open(pipe_name)?;
-    ipc::write_frame(&mut pipe, Kind::Handshake, &ipc::handshake_payload(&nonce))
-        .map_err(|error| io::Error::other(format!("write handshake: {error:?}")))?;
-    let (kind, payload) = ipc::read_frame(&mut pipe)
-        .map_err(|error| io::Error::other(format!("read stop: {error:?}")))?;
+    let mut pipe = DeadlinePipe::open(pipe_name)?;
+    let handshake = ipc::encode(Kind::Handshake, &ipc::handshake_payload(&nonce))
+        .map_err(|error| io::Error::other(format!("encode handshake: {error:?}")))?;
+    pipe.write_all_until(&handshake, Instant::now() + Duration::from_secs(2))?;
+    let (kind, payload) = ipc::read_frame(&mut PipeReadUntil {
+        pipe: &mut pipe,
+        deadline: Instant::now() + Duration::from_secs(2),
+    })
+    .map_err(|error| io::Error::other(format!("read stop: {error:?}")))?;
     if ipc::status::decode_stop(ipc::Frame {
         kind,
         payload: &payload,
@@ -52,4 +60,12 @@ fn run_pipe_harness(pipe_name: &str, nonce_text: &str) -> io::Result<()> {
         ));
     }
     Ok(())
+}
+
+#[cfg(not(windows))]
+fn run_pipe_harness(_: &str, _: &str) -> io::Result<()> {
+    Err(io::Error::new(
+        io::ErrorKind::Unsupported,
+        "Windows required",
+    ))
 }

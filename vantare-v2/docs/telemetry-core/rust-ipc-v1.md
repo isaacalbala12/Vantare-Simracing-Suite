@@ -178,6 +178,13 @@ o ResyncRequired y propaga saturación. Stop corresponde al loop exterior.
 La prueba unitaria del despacho usa un Fact real estático de 44 coches; aún
 no existe reader/writer de pipe live que lo invoque.
 
+El harness principal Rust usa ahora I/O Win32 overlapped con límite de dos
+segundos para Handshake/Stop. Cada operación conserva OVERLAPPED, evento y
+buffer hasta `GetOverlappedResult`, incluso tras `CancelIoEx` por timeout.
+El test cruzado con Go confirma intercambio normal y salida del hijo sin
+Stop ni cierre previo del servidor. La ruta productiva todavía no usa este
+transporte, no hay watchdog ni deadlines por frame live.
+
 ## Límites de diseño para completar antes de R05/R19
 
 | Recurso | Límite inicial | Evidencia/estado |

@@ -1739,3 +1739,21 @@ rechazan en esta frontera; el loop exterior gestionará Stop. Rust release
 
 Este componente no lee el pipe todavía ni habilita LMU 1.4.2.0. R05 y R19
 siguen abiertos, así como el corpus 44/104 y el gate de CPU total.
+
+## 91. Transporte Win32 con plazo probado en harness (2026-09-28)
+
+El cliente Rust usa `FILE_FLAG_OVERLAPPED` para abrir el named pipe local;
+cada `ReadFile`/`WriteFile` tiene evento propio. En timeout llama
+`CancelIoEx` y espera `GetOverlappedResult` antes de liberar buffer,
+OVERLAPPED o evento. El harness principal limita Handshake y Stop a 2 s.
+Las pruebas Windows Go↔Rust comprueban el intercambio normal y que el hijo
+sale por sí mismo sin Stop mientras el servidor conserva el pipe abierto.
+Rust release 150/150, Clippy, formato y build release pasan.
+
+La nueva dependencia `windows-sys 0.61.2` es solo Windows y expone APIs
+tipadas del sistema que `std::fs::File` no ofrece con cancelación segura
+de una operación overlapped. Alternativa: FFI Win32 manual con mayor riesgo
+de layout/ABI y errores de lifetime. Licencia MIT OR Apache-2.0, versión
+fijada en lockfile; añade `windows-link 0.2.1` al build. Su coste de tamaño
+y CPU se medirá en R21/R22. Esto aún no conecta el reader/writer de
+producción ni el loop live; R05/R19, corpus 44/104 y gate CPU siguen abiertos.

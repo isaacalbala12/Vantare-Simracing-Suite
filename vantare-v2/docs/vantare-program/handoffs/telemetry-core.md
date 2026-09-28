@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — Status y Stop IPC v1 cerrados (2026-09-28)
+
+Rust codifica y valida el heartbeat/estado de fuente sin payload de simulador;
+Go decodifica el mismo wire y ambos exigen Stop vacío. Rust release 136/136,
+Clippy, formato, build, Go completo y los dos pipes Windows pasan. Contrato y
+límites documentados en `docs/telemetry-core/rust-ipc-v1.md`. Este corte no conecta
+heartbeat, watchdog ni cierre productivo; Go sigue owner. Plan §81,
+[VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
 ## VAN-778 / ISA-1403 — stale transaccional del frame (2026-09-28)
 
 Rust aplica el gate de frescura a todos los campos SHM presentes antes

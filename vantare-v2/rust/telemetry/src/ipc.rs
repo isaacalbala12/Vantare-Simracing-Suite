@@ -7,6 +7,7 @@ pub mod fact_delivery;
 pub mod fact_replay;
 pub mod resync;
 pub mod snapshot;
+pub mod status;
 
 use std::io::{self, Read, Write};
 

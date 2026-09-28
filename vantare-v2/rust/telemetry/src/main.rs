@@ -40,7 +40,12 @@ fn run_pipe_harness(pipe_name: &str, nonce_text: &str) -> io::Result<()> {
         .map_err(|error| io::Error::other(format!("write handshake: {error:?}")))?;
     let (kind, payload) = ipc::read_frame(&mut pipe)
         .map_err(|error| io::Error::other(format!("read stop: {error:?}")))?;
-    if kind != Kind::Stop || !payload.is_empty() {
+    if ipc::status::decode_stop(ipc::Frame {
+        kind,
+        payload: &payload,
+    })
+    .is_err()
+    {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
             "expected empty Stop frame",

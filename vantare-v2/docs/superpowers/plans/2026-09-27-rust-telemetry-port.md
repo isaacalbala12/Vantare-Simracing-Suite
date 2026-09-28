@@ -1581,3 +1581,20 @@ Windows Go↔Rust y `go test ./...` pasan.
 Faltan el loop de adquisición, la supresión del remanente congelado
 post-sesión según REST, recuperación física y corpus temporal real 44/104.
 No hay publicación Rust productiva ni gate global de CPU; Go sigue owner.
+
+## 81. Contrato IPC de salud y cierre (2026-09-28)
+
+`Status` v1 queda como JSON cerrado de hasta 256 bytes con heartbeat
+positivo, estado limitado a los ocho estados de fuente y edad monotónica
+obligatoria (`null` sin fuente observada). Rust lo codifica y valida; Go
+lo decodifica y un tracker por instancia exige secuencia desde 1 sin
+huecos, duplicados ni retrocesos. `Stop` exige payload vacío en ambos lenguajes y el harness
+Rust usa ese validador. Los tests comprueban wire común, valores y
+campos ausentes/extra, tamaño, secuencia, estado desconocido y Stop
+no vacío. Rust release 136/136, Clippy, formato, build, Go completo
+y ambos pipes Windows pasan. El contrato vive en
+`docs/telemetry-core/rust-ipc-v1.md`.
+
+No hay emisor/receptor Status productivo, watchdog ni plazos bajo carga;
+R04/R05 siguen incompletos. Go sigue owner y faltan el loop live,
+corpus temporal 44/104 y gates globales.

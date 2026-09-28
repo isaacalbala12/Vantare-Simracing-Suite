@@ -15,11 +15,30 @@ Una trama es `length:u32 LE | version:u16 LE | kind:u16 LE | payload[length]`. L
 | Fact | 5 | Prototipo Engineer V1 JSON con stream de entrega, metadata canónica, secuencia de fact y UTC RFC3339; retención productiva/resync pendientes |
 | FactAck | 6 | JSON cerrado `{stream,sequence}` tras retener; Rust poda el prefijo confirmado. Probado en replay, sin receptor productivo |
 | ResyncRequired | 7 | JSON cerrado `{stream,first,next}` para laguna irrecuperable; bootstrap productivo pendiente |
-| Status | 8 | Estado de fuente y salud de proceso; payload por definir |
-| Stop | 9 | Cierre solicitado; payload por definir |
+| Status | 8 | JSON cerrado de heartbeat y estado de fuente, máximo 256 bytes; contrato abajo |
+| Stop | 9 | Cierre solicitado; payload exactamente vacío |
 | FactReplayRequest | 10 | JSON cerrado `{stream,sequence}`: Go solicita frames posteriores a su cursor; `sequence=0` permite el primer replay |
 
 El límite de 8 MiB es un techo defensivo inicial para un solo mensaje, no una medición ni autorización para emitir frames de ese tamaño. R06 medirá el máximo real de cada producto con 104 coches y fijará límites por tipo antes de conectar el pipe. Ningún payload externo se acepta aún en el runtime productivo. El protocolo falla cerrado si la versión o el tipo no coinciden.
+
+## Status y Stop v1 (2026-09-28)
+
+`Status` lleva exactamente `{"heartbeat":u64,"state":string,"sourceAgeNs":u64|null}`.
+`heartbeat` empieza en 1 y avanza exactamente de uno en uno por mensaje
+emitido por el hijo; Go dispone de un tracker por instancia que rechaza
+huecos, retrocesos y duplicados. Los estados
+admitidos son `detecting`, `connecting`, `live`, `degraded`, `stale`, `error`,
+`stopping` y `stopped`. `sourceAgeNs` es obligatorio: número para
+`live`/`degraded`/`stale`, `null` para los demás. Mide la edad de la fuente
+con reloj monotónico del hijo; Go mide aparte la llegada del heartbeat con
+su propio reloj monotónico. Un Status no prueba por sí solo que avance SHM.
+Rust codifica y valida el sobre; Go lo decodifica estrictamente. No hay aún
+emisor ni receptor productivo, deadline ni watchdog conectado. El wire fijo
+para `live` con heartbeat 1 y edad 0 tiene 46 bytes de payload.
+
+`Stop` acepta únicamente cero bytes de payload. El harness Rust usa el mismo
+validador que el futuro runtime; Go dispone de validador equivalente. Stop
+solicita cierre, sin prometer un ACK o un plazo que todavía no se implementa.
 
 ## Snapshot Overlay V2 inicial (2026-09-28)
 

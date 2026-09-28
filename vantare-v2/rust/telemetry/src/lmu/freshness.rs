@@ -3,7 +3,7 @@
 pub const STALL_LIMIT_NS: u64 = 500_000_000;
 pub const RECOVERY_WINDOW_NS: u64 = 2_000_000_000;
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct FreshnessGate {
     previous_source_ns: i64,
     unchanged_since_ns: Option<u64>,

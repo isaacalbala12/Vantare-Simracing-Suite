@@ -1565,3 +1565,19 @@ frame ni al loop Rust. Por ello un snapshot congelado no puede publicarse
 productivamente desde este corte; Go sigue owner. La siguiente frontera
 es aplicar la marca stale antes del commit y probarla con frames temporales
 reales sin degradar Missing/Invalid.
+
+## 80. Propagación transaccional de stale (2026-09-28)
+
+La admisión Rust ahora marca stale en todos los campos presentes de
+sesión, grid, vehículo y telemetría rápida cuando el reloj LMU queda
+detenido, sin cambiar valores, procedencia, Missing ni Invalid. El
+`Engine` clona el gate al preparar un candidato y solo confirma su
+estado al confirmar el lote. Una prueba sobre el frame real de 44 recorre
+todos los campos y otra demuestra stale en origen/velocidad tras 500 ms,
+además de que descartar el candidato stale no contamina el siguiente
+candidato fresco. Rust release 135/135, Clippy, formato, replay de pipe
+Windows Go↔Rust y `go test ./...` pasan.
+
+Faltan el loop de adquisición, la supresión del remanente congelado
+post-sesión según REST, recuperación física y corpus temporal real 44/104.
+No hay publicación Rust productiva ni gate global de CPU; Go sigue owner.

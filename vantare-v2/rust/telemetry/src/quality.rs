@@ -61,6 +61,14 @@ impl<T> Field<T> {
             } => (Some(*provenance), Some(*freshness)),
         }
     }
+
+    pub fn mark_stale(&mut self) {
+        if let Self::Present { freshness, .. } = self
+            && *freshness != Freshness::Invalid
+        {
+            *freshness = Freshness::Stale;
+        }
+    }
 }
 
 #[cfg(test)]
@@ -89,5 +97,19 @@ mod tests {
             invalid.quality(),
             (Some(Provenance::Observed), Some(Freshness::Invalid))
         );
+    }
+
+    #[test]
+    fn stale_preserves_missing_invalid_and_values() {
+        let mut missing: Field<i32> = Field::Missing;
+        let mut invalid = Field::invalid_observed(0_i32);
+        let mut zero = Field::observed(0_i32);
+        missing.mark_stale();
+        invalid.mark_stale();
+        zero.mark_stale();
+        assert_eq!(missing, Field::Missing);
+        assert_eq!(invalid, Field::invalid_observed(0));
+        assert_eq!(zero.value(), Some(&0));
+        assert_eq!(zero.quality().1, Some(Freshness::Stale));
     }
 }

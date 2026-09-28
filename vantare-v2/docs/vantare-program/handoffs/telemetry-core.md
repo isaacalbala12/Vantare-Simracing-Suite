@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — stale transaccional del frame (2026-09-28)
+
+Rust aplica el gate de frescura a todos los campos SHM presentes antes
+del commit, conserva Missing/Invalid y solo avanza el gate tras confirmar
+el candidato. Tests sobre el frame real 44, Rust release 135/135,
+Clippy/formato, replay de pipe Windows y `go test ./...` pasan. Aún
+faltan loop, supresión del remanente post-sesión con REST, corpus temporal
+44/104 y gates globales. Go sigue owner. Plan sección 80,
+[VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
 ## VAN-778 / ISA-1403 — frescura del origen Rust (2026-09-28)
 
 Rust porta la histéresis Go del reloj LMU (stale a 500 ms detenido;

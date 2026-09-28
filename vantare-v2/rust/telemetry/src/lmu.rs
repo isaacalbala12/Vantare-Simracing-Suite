@@ -40,6 +40,61 @@ pub struct AdmittedGrid {
     pub session: SessionFields,
 }
 
+impl AdmittedGrid {
+    /// Expire every SHM observation together when the producer clock stalls.
+    /// Missing and structurally invalid fields retain their original quality.
+    pub fn mark_stale(&mut self) {
+        self.vehicle_count.mark_stale();
+        self.player_present.mark_stale();
+        let session = &mut self.session;
+        session.track_name.mark_stale();
+        session.track_length.mark_stale();
+        session.session_type.mark_stale();
+        session.source_time_ns.mark_stale();
+        session.end_time_seconds.mark_stale();
+        session.maximum_laps.mark_stale();
+        session.rain_fraction.mark_stale();
+        for vehicle in &mut self.vehicles {
+            vehicle.driver_name.mark_stale();
+            vehicle.vehicle_name.mark_stale();
+            vehicle.vehicle_class.mark_stale();
+            vehicle.car_number.mark_stale();
+            vehicle.player.mark_stale();
+            vehicle.position.mark_stale();
+            vehicle.completed_laps.mark_stale();
+            vehicle.sector.mark_stale();
+            vehicle.lap_distance.mark_stale();
+            vehicle.lap_progress_time.mark_stale();
+            vehicle.best_lap_time.mark_stale();
+            vehicle.last_lap_time.mark_stale();
+            vehicle.estimated_lap_time.mark_stale();
+            vehicle.in_pit.mark_stale();
+            vehicle.pit_stop_count.mark_stale();
+            vehicle.penalty_count.mark_stale();
+            vehicle.time_behind_next.mark_stale();
+            vehicle.laps_behind_next.mark_stale();
+            vehicle.time_behind_leader.mark_stale();
+            vehicle.laps_behind_leader.mark_stale();
+            vehicle.world_position.mark_stale();
+            vehicle.local_velocity.mark_stale();
+            vehicle.orientation.mark_stale();
+            if let Some(fast) = vehicle.fast.as_mut() {
+                fast.lap_number.mark_stale();
+                fast.gear.mark_stale();
+                fast.engine_rpm.mark_stale();
+                fast.speed_mps.mark_stale();
+                fast.throttle.mark_stale();
+                fast.brake.mark_stale();
+                fast.clutch.mark_stale();
+                fast.fuel.mark_stale();
+                fast.delta_best_seconds.mark_stale();
+                fast.tyre_wear.mark_stale();
+                fast.damage.mark_stale();
+            }
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(u8)]
 pub enum Sector {
@@ -643,6 +698,82 @@ mod tests {
                 .count(),
             1
         );
+    }
+
+    #[test]
+    fn stalled_source_expires_every_observation_without_losing_values() {
+        macro_rules! check {
+            ($before:expr, $after:expr) => {{
+                let before = &$before;
+                let after = &$after;
+                assert_eq!(before.value(), after.value());
+                let (provenance, freshness) = before.quality();
+                let expected = match freshness {
+                    Some(Freshness::Fresh | Freshness::Stale) => Some(Freshness::Stale),
+                    other => other,
+                };
+                assert_eq!(after.quality(), (provenance, expected));
+            }};
+        }
+        let before = admit_v13(REAL_44, "1.3.0.0").unwrap();
+        let mut after = admit_v13(REAL_44, "1.3.0.0").unwrap();
+        after.mark_stale();
+        check!(before.vehicle_count, after.vehicle_count);
+        check!(before.player_present, after.player_present);
+        let (a, b) = (&before.session, &after.session);
+        check!(a.track_name, b.track_name);
+        check!(a.track_length, b.track_length);
+        check!(a.session_type, b.session_type);
+        check!(a.source_time_ns, b.source_time_ns);
+        check!(a.end_time_seconds, b.end_time_seconds);
+        check!(a.maximum_laps, b.maximum_laps);
+        check!(a.rain_fraction, b.rain_fraction);
+        for (a, b) in before.vehicles.iter().zip(&after.vehicles) {
+            check!(a.driver_name, b.driver_name);
+            check!(a.vehicle_name, b.vehicle_name);
+            check!(a.vehicle_class, b.vehicle_class);
+            check!(a.car_number, b.car_number);
+            check!(a.player, b.player);
+            check!(a.position, b.position);
+            check!(a.completed_laps, b.completed_laps);
+            check!(a.sector, b.sector);
+            check!(a.lap_distance, b.lap_distance);
+            check!(a.lap_progress_time, b.lap_progress_time);
+            check!(a.best_lap_time, b.best_lap_time);
+            check!(a.last_lap_time, b.last_lap_time);
+            check!(a.estimated_lap_time, b.estimated_lap_time);
+            check!(a.in_pit, b.in_pit);
+            check!(a.pit_stop_count, b.pit_stop_count);
+            check!(a.penalty_count, b.penalty_count);
+            check!(a.time_behind_next, b.time_behind_next);
+            check!(a.laps_behind_next, b.laps_behind_next);
+            check!(a.time_behind_leader, b.time_behind_leader);
+            check!(a.laps_behind_leader, b.laps_behind_leader);
+            check!(a.world_position, b.world_position);
+            check!(a.local_velocity, b.local_velocity);
+            check!(a.orientation, b.orientation);
+            if let (Some(a), Some(b)) = (&a.fast, &b.fast) {
+                check!(a.lap_number, b.lap_number);
+                check!(a.gear, b.gear);
+                check!(a.engine_rpm, b.engine_rpm);
+                check!(a.speed_mps, b.speed_mps);
+                check!(a.throttle, b.throttle);
+                check!(a.brake, b.brake);
+                check!(a.clutch, b.clutch);
+                check!(a.fuel, b.fuel);
+                check!(a.delta_best_seconds, b.delta_best_seconds);
+                check!(a.tyre_wear, b.tyre_wear);
+                check!(a.damage, b.damage);
+            } else {
+                assert!(a.fast.is_none() && b.fast.is_none());
+            }
+        }
+        let mut menu = admit_v13(REAL_MENU, "1.3.0.0").unwrap();
+        menu.mark_stale();
+        assert_eq!(menu.vehicle_count.value(), Some(&0));
+        assert_eq!(menu.player_present.value(), Some(&false));
+        assert_eq!(menu.vehicle_count.quality().1, Some(Freshness::Stale));
+        assert_eq!(menu.session.rain_fraction, Field::Missing);
     }
 
     #[test]

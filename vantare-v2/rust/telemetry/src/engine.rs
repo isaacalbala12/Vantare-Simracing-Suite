@@ -3,11 +3,13 @@
 use crate::core;
 use crate::core::facts::FactCursor;
 use crate::core::facts::FactError;
+use crate::lmu::freshness::FreshnessGate;
 use crate::lmu::fusion::{self, SessionFloor};
 use crate::lmu::mapper::ClockChange;
 use crate::lmu::pipeline::{LmuVehicleState, Pipeline, PipelineCandidate, PipelineError};
 use crate::lmu::rest::RestCache;
 use crate::lmu::{self, AdmissionError, SessionType};
+use crate::quality::{Field, Freshness};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum EngineError {
@@ -19,11 +21,13 @@ pub struct Engine {
     pipeline: Pipeline,
     rest: RestCache,
     floor: SessionFloor,
+    freshness_gate: FreshnessGate,
 }
 
 pub struct EngineCandidate {
     pipeline: PipelineCandidate,
     floor: SessionFloor,
+    freshness_gate: FreshnessGate,
 }
 
 impl Engine {
@@ -32,6 +36,7 @@ impl Engine {
             pipeline: Pipeline::new(slot_grace_frames, fact_stream_id)?,
             rest: RestCache::default(),
             floor: SessionFloor::default(),
+            freshness_gate: FreshnessGate::default(),
         })
     }
 
@@ -57,6 +62,16 @@ impl Engine {
     ) -> Result<EngineCandidate, EngineError> {
         let mut grid =
             lmu::admit_v13(shared_bytes, verified_build).map_err(EngineError::Admission)?;
+        let mut freshness_gate = self.freshness_gate.clone();
+        if let Field::Present {
+            value: source_ns,
+            freshness: Freshness::Fresh,
+            ..
+        } = &grid.session.source_time_ns
+            && freshness_gate.observe(now_ns, *source_ns)
+        {
+            grid.mark_stale();
+        }
         let mut floor = self.floor.clone();
         floor.observe_shm(
             &grid,
@@ -85,7 +100,11 @@ impl Engine {
             .pipeline
             .prepare(grid, &fused, &weather, clock_change, occurred_utc_ns)
             .map_err(EngineError::Pipeline)?;
-        Ok(EngineCandidate { pipeline, floor })
+        Ok(EngineCandidate {
+            pipeline,
+            floor,
+            freshness_gate,
+        })
     }
 
     pub fn commit(
@@ -96,6 +115,7 @@ impl Engine {
             .commit(candidate.pipeline)
             .map_err(EngineError::Pipeline)?;
         self.floor = candidate.floor;
+        self.freshness_gate = candidate.freshness_gate;
         Ok(self
             .pipeline
             .current()
@@ -179,6 +199,66 @@ mod tests {
         assert_eq!(retry.batch().cursor.sequence, 2);
         assert!(retry.facts().is_empty());
         engine.commit(retry).unwrap();
+        assert_eq!(engine.current().unwrap().cursor.sequence, 2);
+    }
+
+    #[test]
+    fn stalled_source_expires_candidate_but_rejected_candidate_does_not_advance_gate() {
+        let mut engine = Engine::new(30, 7).unwrap();
+        let first = engine
+            .prepare(
+                REAL_44,
+                "1.3.0.0",
+                0,
+                0,
+                1_000_000_000,
+                ClockChange::Continuous,
+            )
+            .unwrap();
+        engine.commit(first).unwrap();
+        let stalled = engine
+            .prepare(
+                REAL_44,
+                "1.3.0.0",
+                500_000_000,
+                500_000_000,
+                1_500_000_000,
+                ClockChange::Continuous,
+            )
+            .unwrap();
+        assert_eq!(
+            stalled.batch().state.source_time_ns.quality().1,
+            Some(Freshness::Stale)
+        );
+        let player_id = stalled.batch().player_id.as_ref().unwrap();
+        let player = stalled
+            .batch()
+            .state
+            .vehicles
+            .iter()
+            .find(|vehicle| &vehicle.id == player_id)
+            .unwrap();
+        assert_eq!(player.value.speed_mps.quality().1, Some(Freshness::Stale));
+        drop(stalled);
+
+        let mut resumed = REAL_44.to_vec();
+        let source_seconds = f64::from_le_bytes(resumed[1_700..1_708].try_into().unwrap());
+        resumed[1_700..1_708].copy_from_slice(&(source_seconds + 1.0).to_le_bytes());
+        let candidate = engine
+            .prepare(
+                &resumed,
+                "1.3.0.0",
+                600_000_000,
+                600_000_000,
+                1_600_000_000,
+                ClockChange::Continuous,
+            )
+            .unwrap();
+        assert_eq!(
+            candidate.batch().state.source_time_ns.quality().1,
+            Some(Freshness::Fresh)
+        );
+        engine.commit(candidate).unwrap();
         assert_eq!(engine.current().unwrap().cursor.sequence, 2);
     }
 

@@ -68,9 +68,19 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 	}
 	var acknowledgements, overlaySnapshots, engineerSnapshots, facts int
 	var retainer *FactRetainer
+	var baseline FactAckV1
 	var factACK Frame
 	var newlyRetained int
-	for range 5 {
+	for index := range 5 {
+		if index == 4 {
+			request, err := EncodeFactReplayRequest(baseline)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := WriteFrame(file, request); err != nil {
+				t.Fatal(err)
+			}
+		}
 		frame, err := ReadFrame(file)
 		if err != nil {
 			t.Fatal(err)
@@ -81,7 +91,8 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 			if err != nil || ack.Revision != 7 || ack.Epoch != 1 || ack.Sequence != 1 || ack.FactStream == 0 || ack.FactSequence != 0 {
 				t.Fatalf("configuration ACK = %+v, %v", ack, err)
 			}
-			retainer, err = NewFactRetainer(MaxRetainedEngineerFacts, FactAckV1{Stream: ack.FactStream, Sequence: ack.FactSequence})
+			baseline = FactAckV1{Stream: ack.FactStream, Sequence: ack.FactSequence}
+			retainer, err = NewFactRetainer(MaxRetainedEngineerFacts, baseline)
 			if err != nil {
 				t.Fatal(err)
 			}

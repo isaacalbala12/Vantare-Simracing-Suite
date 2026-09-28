@@ -1463,3 +1463,15 @@ FactAck y cambio de demanda; pasa. El oráculo wire Rust mide 79 bytes,
 SHA-256 `ee637a9d799f77548edb31ef77d399a72ef9e68888247b3791b9b69ec39f5d71`.
 Reconfiguración con facts pendientes, replay solicitado y bootstrap
 tras resync siguen pendientes; Go permanece owner productivo.
+
+## 72. Replay solicitado Go→Rust por pipe Windows (2026-09-28)
+
+El protocolo incorpora `KindFactReplayRequest=10`, JSON cerrado
+`{stream,sequence}` de hasta 128 bytes; secuencia cero es válida, stream
+cero y esquema ajeno fallan. En el replay Windows, Go recibe ACK y el
+primer Fact, pide explícitamente los frames posteriores al baseline del
+ACK, Rust devuelve los bytes exactos retenidos y Go deduplica antes de
+enviar FactAck. La prueba con el hijo release y el pipe real pasa; Rust
+release 123/123 y Go focal pasan. Sigue faltando el dispatcher productivo,
+reconexión, respuesta ResyncRequired ante pérdida de ventana en pipe y
+bootstrap de consumidor. Go aún es el owner de telemetría productiva.

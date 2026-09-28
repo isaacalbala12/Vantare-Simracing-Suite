@@ -4,7 +4,7 @@ Estado: framing Go/Rust y un harness Windows de hijo Rust conectado a named pipe
 
 ## Framing implementado
 
-Una trama es `length:u32 LE | version:u16 LE | kind:u16 LE | payload[length]`. La longitud cuenta solo el payload. El encabezado tiene 8 bytes; Rust y Go rechazan longitud mayor de **8 MiB** antes de reservar memoria, versión distinta de `1`, tipo desconocido, EOF dentro de encabezado/payload y bytes sobrantes en el decoder de una trama completa. Sus lectores/escritores soportan I/O parcial; todavía no establecen plazo ni cancelación de pipe. El decoder de buffer exige exactamente una trama; el lector de stream consume una trama y deja las siguientes para llamadas posteriores. Los dos lados prueban los mismos bytes wire fijos para los nueve tipos.
+Una trama es `length:u32 LE | version:u16 LE | kind:u16 LE | payload[length]`. La longitud cuenta solo el payload. El encabezado tiene 8 bytes; Rust y Go rechazan longitud mayor de **8 MiB** antes de reservar memoria, versión distinta de `1`, tipo desconocido, EOF dentro de encabezado/payload y bytes sobrantes en el decoder de una trama completa. Sus lectores/escritores soportan I/O parcial; todavía no establecen plazo ni cancelación de pipe. El decoder de buffer exige exactamente una trama; el lector de stream consume una trama y deja las siguientes para llamadas posteriores. Los dos lados prueban los mismos bytes wire fijos para los diez tipos.
 
 | Tipo | ID | Uso previsto |
 | --- | ---: | --- |
@@ -17,6 +17,7 @@ Una trama es `length:u32 LE | version:u16 LE | kind:u16 LE | payload[length]`. L
 | ResyncRequired | 7 | JSON cerrado `{stream,first,next}` para laguna irrecuperable; bootstrap productivo pendiente |
 | Status | 8 | Estado de fuente y salud de proceso; payload por definir |
 | Stop | 9 | Cierre solicitado; payload por definir |
+| FactReplayRequest | 10 | JSON cerrado `{stream,sequence}`: Go solicita frames posteriores a su cursor; `sequence=0` permite el primer replay |
 
 El límite de 8 MiB es un techo defensivo inicial para un solo mensaje, no una medición ni autorización para emitir frames de ese tamaño. R06 medirá el máximo real de cada producto con 104 coches y fijará límites por tipo antes de conectar el pipe. Ningún payload externo se acepta aún en el runtime productivo. El protocolo falla cerrado si la versión o el tipo no coinciden.
 
@@ -72,7 +73,10 @@ secuencia antes del commit; un ACK elimina solo el prefijo confirmado.
 Si el cursor queda fuera de la ventana, `Assembler` produce un mensaje
 de resync explícito. En el replay Windows el mismo frame se
 envía dos veces y Go confirma una sola copia. Aún no hay solicitud de
-replay en reconexión productiva.
+replay en reconexión productiva. El helper Windows acepta una solicitud
+`FactReplayRequest` del Go host y devuelve el frame exacto retenido;
+Go comprueba deduplicación y envía FactAck. El runtime productivo aún
+no consume esta solicitud ni automatiza reconexión.
 
 El ACK de configuración fija el stream y la última secuencia Fact ya
 consolidada por el motor canónico antes del lote que instala esa configuración. Go crea el

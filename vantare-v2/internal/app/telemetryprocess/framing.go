@@ -27,6 +27,7 @@ const (
 	KindResyncRequired
 	KindStatus
 	KindStop
+	KindFactReplayRequest
 )
 
 var (
@@ -44,7 +45,7 @@ type Frame struct {
 }
 
 func validKind(kind FrameKind) bool {
-	return kind >= KindHandshake && kind <= KindStop
+	return kind >= KindHandshake && kind <= KindFactReplayRequest
 }
 
 func parseHeader(header []byte) (FrameKind, int, error) {

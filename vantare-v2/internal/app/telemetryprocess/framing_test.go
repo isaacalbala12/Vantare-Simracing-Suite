@@ -22,7 +22,7 @@ func (reader shortReader) Read(data []byte) (int, error) {
 }
 
 func TestWireFrameConformsToRustV1(t *testing.T) {
-	for kind := KindHandshake; kind <= KindStop; kind++ {
+	for kind := KindHandshake; kind <= KindFactReplayRequest; kind++ {
 		frame := Frame{Kind: kind, Payload: []byte{0, 1, 255}}
 		// Fixed protocol bytes: length u32 LE, version u16 LE, kind u16 LE.
 		want := []byte{3, 0, 0, 0, 1, 0, byte(kind), 0, 0, 1, 255}

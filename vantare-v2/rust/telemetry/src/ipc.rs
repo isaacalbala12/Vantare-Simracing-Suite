@@ -4,6 +4,7 @@ pub mod configuration;
 pub mod fact;
 pub mod fact_ack;
 pub mod fact_delivery;
+pub mod fact_replay;
 pub mod resync;
 pub mod snapshot;
 
@@ -27,6 +28,7 @@ pub enum Kind {
     ResyncRequired = 7,
     Status = 8,
     Stop = 9,
+    FactReplayRequest = 10,
 }
 
 impl TryFrom<u16> for Kind {
@@ -43,6 +45,7 @@ impl TryFrom<u16> for Kind {
             7 => Ok(Self::ResyncRequired),
             8 => Ok(Self::Status),
             9 => Ok(Self::Stop),
+            10 => Ok(Self::FactReplayRequest),
             _ => Err(FrameError::UnknownKind),
         }
     }
@@ -193,7 +196,7 @@ mod tests {
 
     #[test]
     fn round_trip_each_message_kind() {
-        for raw_kind in 1..=9 {
+        for raw_kind in 1..=10 {
             let kind = Kind::try_from(raw_kind).unwrap();
             let encoded = encode(kind, &[0, 1, 255]).unwrap();
             assert_eq!(
@@ -232,7 +235,7 @@ mod tests {
         let mut unknown_kind = valid;
         unknown_kind[6..8].copy_from_slice(&0_u16.to_le_bytes());
         assert_eq!(decode(&unknown_kind), Err(FrameError::UnknownKind));
-        assert_eq!(Kind::try_from(10), Err(FrameError::UnknownKind));
+        assert_eq!(Kind::try_from(11), Err(FrameError::UnknownKind));
     }
 
     #[test]

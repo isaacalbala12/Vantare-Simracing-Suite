@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — solicitud explícita de replay Fact (2026-09-28)
+
+Go codifica `KindFactReplayRequest=10` desde el baseline del ACK y Rust
+valida stream/cursor/esquema antes de consultar los frames retenidos.
+El helper release y pipe Windows respondieron al request con el Fact
+exacto; Go lo deduplicó y devolvió FactAck. Prueba cruzada pasa. Faltan
+dispatcher productivo, reconexión, resync en pipe y bootstrap.
+Plan sección 72; Go sigue owner.
+
 ## ISA-1403 — ACK con línea base Fact real (2026-09-28)
 
 El ACK Rust lleva `factStream` y `factSequence` del high-water anterior

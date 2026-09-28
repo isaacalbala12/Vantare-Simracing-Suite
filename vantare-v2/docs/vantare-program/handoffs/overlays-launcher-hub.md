@@ -43,6 +43,11 @@ Qt y cerró con código 0. Slint y Wails tienen ejecutables de 14,0 y 17,2 MiB,
 respectivamente, y el host Go separado mide 18,5 MiB; Wails depende además
 del runtime WebView2 instalado. Son tamaños de ensayo sin instalador ni
 auditoría de módulos/licencias final.
+El inventario del paquete en `tools/native-ui/evidence/qt-package-license-inventory.md`
+identifica 77 de 83 DLL mediante SBOM de Qt 6.10.2 y SHA-256: esas 77
+declaran una opción LGPLv3. Seis DLL, recursos QML, avisos de terceros y
+obligaciones de redistribución siguen sin cerrar; no se certifica el coste de
+licencia de un instalador productivo.
 
 Continúa la comparación [#1404](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1409), todavía en PR borrador. La rama
 `vantareapp/isa-1410-native-go-product-trial` parte de

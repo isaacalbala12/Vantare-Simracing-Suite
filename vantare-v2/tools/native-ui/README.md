@@ -238,6 +238,11 @@ el host Go separado mide 18,5 MiB. Wails además necesita WebView2 instalado,
 y estos tamaños por sí solos no comparan el coste instalado ni el cumplimiento
 de distribución. Antes de elegir Qt habrá que cerrar el conjunto de módulos
 y sus avisos LGPL; antes de elegir Slint, su licencia y atribución aplicables.
+El [inventario preliminar de la carpeta Qt](evidence/qt-package-license-inventory.md)
+coteja las DLL copiadas con los SBOM de esta instalación: 77 de 83 coinciden
+por SHA-256 y declaran la opción LGPLv3; seis DLL, los recursos QML y los
+avisos de terceros aún necesitan auditoría. No acredita una distribución
+gratuita conforme a licencia.
 
 Para la prueba de caída y vuelta, se inicia `host -port <puerto>` y luego
 cada cliente con `--expect-rows 44 --expect-snapshots 2`. Tras el primer

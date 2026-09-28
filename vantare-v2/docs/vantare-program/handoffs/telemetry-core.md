@@ -1,5 +1,17 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — disponibilidad de capacidades Overlay Rust (2026-09-28)
+
+R15a/R15f parcial calcula en Rust la calidad observada de las diez
+capacidades LMU. Coincide con el mapa `available` Go sobre el snapshot real
+estático de 44 (SHA-256 JSON
+`b3f533192600b288fd4e83ed1c6be74d2b724745add8402adb2fede218c85369`).
+Rust release 96/96, Clippy, formato, build release y `go test ./...` pasan.
+El contrato completo de capabilities necesita descriptor, modes y política
+de rendimiento de la composición Go por IPC. Go sigue productivo; faltan
+corpus temporal real 44/104, productos restantes, sesión física y gate CPU
+del 50%. Plan sección 48.
+
 ## ISA-1403 — Spotter y Radar espacial Overlay Rust (2026-09-28)
 
 R15e parcial incorpora Spotter y Radar con geometría X/Z compartida y

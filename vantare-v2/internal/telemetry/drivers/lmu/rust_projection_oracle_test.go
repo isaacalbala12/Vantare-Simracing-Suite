@@ -47,19 +47,20 @@ func TestRustProjectionGoOracleStatic44(t *testing.T) {
 		t.Fatal("no final state")
 	}
 	want, err := json.Marshal(struct {
-		Session           overlayv2.SessionV2           `json:"session"`
-		Player            overlayv2.PlayerInstrumentsV2 `json:"player"`
-		Weather           overlayv2.WeatherV2           `json:"weather"`
-		Controls          overlayv2.ControlsV2          `json:"controls"`
-		Damage            overlayv2.DamageViewV2        `json:"damage"`
-		Fuel              overlayv2.FuelViewV2          `json:"fuel"`
-		Delta             overlayv2.DeltaViewV2         `json:"delta"`
-		Standings         []overlayv2.StandingRowV2     `json:"standings"`
-		Relative          []overlayv2.RelativeRowV2     `json:"relative"`
-		RelativeSameClass []overlayv2.RelativeRowV2     `json:"relativeSameClass"`
-		Spotter           overlayv2.SpotterViewV2       `json:"spotter"`
-		Radar             overlayv2.RadarViewV2         `json:"radar"`
-	}{overlayv2.BuildSession(state), overlayv2.BuildPlayerInstruments(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildWeather(state), overlayv2.BuildControls(state), overlayv2.BuildDamage(state), overlayv2.BuildFuel(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildDelta(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildStandings(state), overlayv2.BuildRelative(state), overlayv2.BuildRelativeSameClass(state), overlayv2.BuildSpotter(state), overlayv2.BuildRadar(state)})
+		Session                overlayv2.SessionV2           `json:"session"`
+		Player                 overlayv2.PlayerInstrumentsV2 `json:"player"`
+		Weather                overlayv2.WeatherV2           `json:"weather"`
+		Controls               overlayv2.ControlsV2          `json:"controls"`
+		Damage                 overlayv2.DamageViewV2        `json:"damage"`
+		Fuel                   overlayv2.FuelViewV2          `json:"fuel"`
+		Delta                  overlayv2.DeltaViewV2         `json:"delta"`
+		Standings              []overlayv2.StandingRowV2     `json:"standings"`
+		Relative               []overlayv2.RelativeRowV2     `json:"relative"`
+		RelativeSameClass      []overlayv2.RelativeRowV2     `json:"relativeSameClass"`
+		Spotter                overlayv2.SpotterViewV2       `json:"spotter"`
+		Radar                  overlayv2.RadarViewV2         `json:"radar"`
+		CapabilityAvailability map[string]overlayv2.Quality  `json:"capabilityAvailability"`
+	}{overlayv2.BuildSession(state), overlayv2.BuildPlayerInstruments(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildWeather(state), overlayv2.BuildControls(state), overlayv2.BuildDamage(state), overlayv2.BuildFuel(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildDelta(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildStandings(state), overlayv2.BuildRelative(state), overlayv2.BuildRelativeSameClass(state), overlayv2.BuildSpotter(state), overlayv2.BuildRadar(state), overlayv2.BuildCapabilities(state, overlayv2.SourceContextV2{DescriptorCapabilities: []string{"shared-memory", "rest"}}).Available})
 	if err != nil {
 		t.Fatal(err)
 	}

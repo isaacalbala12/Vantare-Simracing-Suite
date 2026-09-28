@@ -1,5 +1,6 @@
 //! Product projection of verified Overlay V2 slices from canonical Rust state.
 
+pub mod capabilities;
 pub mod delta;
 pub mod fuel;
 pub mod relative;
@@ -289,6 +290,7 @@ pub fn damage(batch: &core::Batch<SessionType, LmuVehicleState>) -> Damage {
 
 #[cfg(test)]
 mod tests {
+    use super::capabilities;
     use super::delta;
     use super::fuel::{self, FuelUnit};
     use super::relative;
@@ -473,6 +475,12 @@ mod tests {
         let relative_same_class = relative::build(prepared.batch(), prepared.gaps(), true);
         let spotter = spatial::spotter(prepared.batch());
         let radar = spatial::radar(prepared.batch());
+        let capability_availability = capabilities::availability(
+            prepared.batch(),
+            prepared.session_remaining(),
+            prepared.gaps(),
+            prepared.delta(),
+        );
         assert_eq!(standings.len(), 44);
         let mut actual = json!({
             "session": {
@@ -548,6 +556,7 @@ mod tests {
             "relativeSameClass": relative_same_class,
             "spotter": spotter,
             "radar": radar,
+            "capabilityAvailability": capability_availability,
         });
         if damage.tyre_wear.is_none() {
             actual["damage"].as_object_mut().unwrap().remove("tyreWear");

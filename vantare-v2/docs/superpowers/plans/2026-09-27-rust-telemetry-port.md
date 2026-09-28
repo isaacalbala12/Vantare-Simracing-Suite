@@ -1103,3 +1103,17 @@ en una copia del lote real cubre solapamiento, dirección, doblado y ausencia.
 Rust release 95/95, Clippy, formato y build release pasan; `go test ./...`
 pasa. Go sigue productivo. Faltan corpus temporal real 44/104, IPC, demás
 productos, prueba física y gate CPU del 50%.
+
+## 48. Disponibilidad de capacidades Overlay Rust (2026-09-28)
+
+`projection/capabilities.rs` calcula la calidad observada de las diez
+capacidades declaradas por LMU shared-memory/REST desde el lote, sesión,
+gaps y delta Rust. Conserva la prioridad fresh > stale > invalid > missing,
+incluida la selección de Fuel y Damage del piloto. El oráculo Go/Rust de la
+captura real estática de 44 coincide en el mapa `available` (SHA-256 JSON
+`b3f533192600b288fd4e83ed1c6be74d2b724745add8402adb2fede218c85369`).
+Rust release 96/96, Clippy, formato, build release y `go test ./...` pasan.
+El `CapabilitiesV2` completo aún requiere los descriptor capabilities,
+modes y política efectiva provenientes de la composición Go por IPC. Go
+sigue productivo; faltan también corpus real temporal 44/104, resto de
+productos, sesión física y gate CPU del 50%.

@@ -28,8 +28,13 @@ build ni de redistribución.
 Las seis DLL sin correspondencia en los SBOM inspeccionados son
 `D3Dcompiler_47.dll`, `dxcompiler.dll`, `libgcc_s_seh-1.dll`,
 `libstdc++-6.dll`, `libwinpthread-1.dll` y `opengl32sw.dll`. El paquete
-también contiene 383 ficheros `.qml`, 804 `.png` y 32 traducciones `.qm`;
-el cotejo de DLL **no cubre** sus licencias ni avisos de terceros. Qt
+también contiene 383 ficheros `.qml`, 804 `.png` y 32 traducciones `.qm`.
+Los 383 QML son copias SHA-256 idénticas a los instalados y todos conservan
+una cabecera SPDX con opción `LGPL-3.0-only`. Las imágenes no tienen una
+cabecera equivalente. Las traducciones copiadas no coinciden por hash con
+las `.qm` homónimas de la instalación; el cotejo simple no basta para
+certificar su procedencia y licencias completas. El cotejo de DLL
+**no cubre** imágenes, traducciones ni avisos de terceros. Qt
 [documenta licencias de terceros](https://doc.qt.io/qt-6.10/licenses-used-in-qt.html)
 y recomienda atribuir solo los componentes que realmente se distribuyen.
 

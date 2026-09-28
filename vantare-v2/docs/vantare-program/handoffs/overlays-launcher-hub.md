@@ -45,7 +45,9 @@ del runtime WebView2 instalado. Son tamaños de ensayo sin instalador ni
 auditoría de módulos/licencias final.
 El inventario del paquete en `tools/native-ui/evidence/qt-package-license-inventory.md`
 identifica 77 de 83 DLL mediante SBOM de Qt 6.10.2 y SHA-256: esas 77
-declaran una opción LGPLv3. Seis DLL, recursos QML, avisos de terceros y
+declaran una opción LGPLv3. Los 383 QML copiados son idénticos a los de Qt
+y conservan cabecera SPDX con opción LGPLv3. Seis DLL, imágenes, traducciones,
+avisos de terceros y
 obligaciones de redistribución siguen sin cerrar; no se certifica el coste de
 licencia de un instalador productivo.
 

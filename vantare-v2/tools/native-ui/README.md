@@ -222,7 +222,11 @@ incluida la posibilidad de sustituir/re-enlazar las bibliotecas Qt.
 El paquete usado aquí, Slint 1.18.1, declara
 `GPL-3.0-only OR LicenseRef-Slint-Royalty-free-2.0 OR LicenseRef-Slint-Software-3.0`.
 La [licencia comunitaria de escritorio de Slint](https://slint.dev/get-started)
-se ofrece sin pago con atribución. La distribución final y sus avisos deben
+se ofrece sin pago con atribución. La
+[licencia Royalty-free 2.0](https://slint.dev/agreements/slint-royalty-free-license.pdf)
+permite una app de escritorio con `AboutSlint` accesible desde Acerca de o
+con el distintivo en una web pública visible; no cubre sistemas embebidos.
+La distribución final y sus avisos deben
 revisarse antes de escoger stack; esta prueba local no certifica cumplimiento
 legal ni selecciona licencia para Vantare.
 
@@ -240,8 +244,9 @@ de distribución. Antes de elegir Qt habrá que cerrar el conjunto de módulos
 y sus avisos LGPL; antes de elegir Slint, su licencia y atribución aplicables.
 El [inventario preliminar de la carpeta Qt](evidence/qt-package-license-inventory.md)
 coteja las DLL copiadas con los SBOM de esta instalación: 77 de 83 coinciden
-por SHA-256 y declaran la opción LGPLv3; seis DLL, los recursos QML y los
-avisos de terceros aún necesitan auditoría. No acredita una distribución
+por SHA-256 y declaran la opción LGPLv3. Los 383 QML coinciden también con la
+instalación y tienen cabecera SPDX con esa opción; seis DLL, imágenes,
+traducciones y avisos de terceros aún necesitan auditoría. No acredita una distribución
 gratuita conforme a licencia.
 
 Para la prueba de caída y vuelta, se inicia `host -port <puerto>` y luego

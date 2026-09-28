@@ -3,6 +3,7 @@
 pub mod cadence;
 pub mod capabilities;
 pub mod delta;
+pub mod frame;
 pub mod fuel;
 pub mod relative;
 pub mod spatial;
@@ -293,6 +294,7 @@ pub fn damage(batch: &core::Batch<SessionType, LmuVehicleState>) -> Damage {
 mod tests {
     use super::capabilities;
     use super::delta;
+    use super::frame;
     use super::fuel::{self, FuelUnit};
     use super::relative;
     use super::spatial;
@@ -610,6 +612,28 @@ mod tests {
             history.remove("capturedAtMS");
             history.remove("seconds");
         }
+        let full = frame::wrap_full(
+            &actual,
+            frame::Metadata {
+                revision: 1,
+                state: "live",
+                retry: 0,
+                age_ms: 0,
+                degraded_reason: "",
+                epoch: prepared.batch().cursor.epoch,
+                sequence: prepared.batch().cursor.sequence,
+                section_mask: frame::ALL_SECTIONS_MASK,
+                session_id: &prepared.batch().session_id,
+                generated_at: "1970-01-01T00:01:40Z",
+                speed_unit: "mps",
+                temperature_unit: "celsius",
+                pressure_unit: "kpa",
+                fuel_unit: "liters",
+            },
+        )
+        .unwrap();
+        assert_eq!(full, golden["full"]);
+        actual["full"] = full;
         assert_eq!(actual["fuel"], golden["fuel"]);
         assert_eq!(actual["capabilities"], golden["capabilities"]);
         assert_eq!(actual, golden);

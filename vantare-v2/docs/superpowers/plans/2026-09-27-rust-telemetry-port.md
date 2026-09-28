@@ -1144,3 +1144,18 @@ inválida. Rust release 100/100, Clippy, formato, build release y
 `go test ./...` pasan. La composición todavía no envía estos parámetros
 por IPC; Go sigue productivo. Faltan frame completo, resto de productos,
 corpus temporal real 44/104, sesión física y gate CPU del 50%.
+
+## 51. Ensamblado del update Overlay V2 completo (2026-09-28)
+
+`projection/frame.rs` envuelve secciones Rust en `UpdateV2/FrameV2` con
+contrato/algoritmo 2, cursor, máscara de once secciones, sesión, instante,
+unidades, estado y revisión. Rechaza secciones ausentes, estado desconocido
+y bits de máscara ajenos. El bootstrap usa Relative inmediata también como
+RelativeSettled, igual que el `ProjectV2` de referencia; el proyector con
+historia deberá reemplazarla antes del runtime productivo. La salida
+completa Go/Rust coincide sobre la captura real estática de 44 (SHA-256 JSON
+`984892c24c24af57a66e4179c77844534d16006e640809bb440df39a7d324f2a`).
+Rust release 101/101, Clippy, formato, build release y `go test ./...`
+pasan. Las secciones aún se ensamblan en el test, no en una ruta IPC
+productiva; faltan memoización, Engineer/Strategy, corpus temporal real
+44/104, sesión física y gate CPU del 50%.

@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — update Overlay V2 completo en el oráculo (2026-09-28)
+
+`projection/frame.rs` envuelve los slices Rust y metadatos en UpdateV2 y
+coincide con `ProjectV2` Go sobre el snapshot real estático de 44 (SHA-256
+JSON `984892c24c24af57a66e4179c77844534d16006e640809bb440df39a7d324f2a`).
+Rechaza fuente/mascara inválida y secciones ausentes. Rust release 101/101,
+Clippy, formato, build release y `go test ./...` pasan. Es aún un ensamblado
+de test; el bootstrap RelativeSettled se sustituirá por la ruta con historia.
+Go sigue productivo. Faltan secciones productivas/IPC, Engineer/Strategy,
+corpus temporal real 44/104, sesión física y gate CPU. Plan sección 51.
+
 ## ISA-1403 — objeto completo de capacidades Overlay Rust (2026-09-28)
 
 R15a/R15f amplía el mapa de disponibilidad a `CapabilitiesV2` completo:

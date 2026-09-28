@@ -1839,3 +1839,18 @@ arranques fallidos. El supervisor aún no lo selecciona Wails; faltan pruebas
 de fallo de hijo vivo, heartbeat perdido, consumidor lento, suspensión,
 resync y publicación de estado degradado antes de R05/R19. Go sigue owner;
 44/104, paridad completa y gate CPU total siguen abiertos.
+
+## 96. Fallo de consumidor y watchdog con hijo físico (2026-09-28)
+
+Dos pruebas opt-in ejercitan el supervisor Go contra el candidato Rust y la
+práctica real LMU 1.4.2.0 de 43 coches. Al rechazar el primer Overlay, cada
+instancia termina; el callback de desconexión precede el siguiente ACK, los
+tres Fact streams son distintos y el tercer fallo agota el presupuesto.
+`ErrCandidateRestartLimit` conserva como causa el error del consumidor.
+Si un callback retiene la entrega más de un segundo mientras el hijo sigue
+vivo, el watchdog retorna `ErrCandidateHeartbeatTimeout` y el Job Object
+cierra el proceso. No se usaron frames sintéticos como evidencia física.
+
+Siguen pendientes crash externo, peer colgado, suspensión/reanudación,
+saturación de cola, resync tras reinicio, consumidores Wails, corpus real
+temporal 44/104 y gate de CPU/paridad. Go continúa como dueño productivo.

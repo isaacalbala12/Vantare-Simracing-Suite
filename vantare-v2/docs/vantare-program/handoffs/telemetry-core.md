@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — fallos de consumidor y watchdog físico (2026-09-28)
+
+La prueba opt-in con LMU 1.4.2.0 real de 43 coches rechaza el primer Overlay
+en cada instancia: el supervisor avisa de desconexión antes del siguiente
+arranque, usa tres Fact streams distintos y devuelve el error de presupuesto
+tras el tercer fallo. Otra prueba retiene el callback real más de un segundo
+y comprueba `ErrCandidateHeartbeatTimeout`. El error final conserva también
+la causa original. No acredita aún crash externo, suspensión, backpressure
+del pipe ni consumidores Wails. Plan §96; Go sigue owner productivo.
+
 ## VAN-778 / ISA-1403 — supervisor Go del candidato aislado (2026-09-28)
 
 `RunCandidate` abre un pipe y un Job Object nuevos por instancia, valida

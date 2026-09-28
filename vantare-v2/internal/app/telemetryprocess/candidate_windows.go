@@ -50,7 +50,7 @@ func RunCandidate(ctx context.Context, executable string, configuration Configur
 		}
 		failures = append(kept, now)
 		if len(failures) >= candidateRestartLimit {
-			return fmt.Errorf("%w: %v", ErrCandidateRestartLimit, err)
+			return errors.Join(ErrCandidateRestartLimit, err)
 		}
 		backoff := time.Duration(len(failures)) * 250 * time.Millisecond
 		timer := time.NewTimer(backoff)

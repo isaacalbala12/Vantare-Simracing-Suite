@@ -1,5 +1,13 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — replay exacto y ventana de 64 facts (2026-09-28)
+
+Rust retiene frames Fact exactos hasta 64, valida lote antes de commit,
+poda tras ACK y declara resync cuando un cursor queda fuera de ventana.
+En pipe Windows reenvió el mismo fact y Go verificó bytes idénticos,
+retuvo una copia y confirmó. Falta retentor Go productivo, solicitud
+de replay, mensaje ResyncRequired y writer. Plan sección 67; Go owner.
+
 ## ISA-1403 — FactAck cruzado y poda de retención (2026-09-28)
 
 Cada fact Rust identifica stream; Go lo retiene en el replay y devuelve

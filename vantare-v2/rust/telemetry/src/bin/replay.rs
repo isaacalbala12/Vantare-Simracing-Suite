@@ -4,6 +4,7 @@ use std::fs::{self, OpenOptions};
 use std::io::{self, Write};
 
 use vantare_telemetry::assembly::Assembler;
+use vantare_telemetry::core::facts::FactCursor;
 use vantare_telemetry::ipc::{self, Kind};
 use vantare_telemetry::lmu::mapper::ClockChange;
 
@@ -74,6 +75,15 @@ fn run(pipe_name: &str, nonce_text: &str, fixture_path: &str) -> io::Result<()> 
             pipe.write_all(&frame)?;
         }
         if sequence == 1 {
+            for frame in assembly
+                .replay_fact_frames_after(FactCursor {
+                    stream: 15,
+                    sequence: 0,
+                })
+                .map_err(|error| io::Error::other(format!("replay fact: {error:?}")))?
+            {
+                pipe.write_all(frame)?;
+            }
             let (kind, payload) = ipc::read_frame(&mut pipe)
                 .map_err(|error| io::Error::other(format!("fact ACK: {error:?}")))?;
             let frame = ipc::encode(kind, &payload)

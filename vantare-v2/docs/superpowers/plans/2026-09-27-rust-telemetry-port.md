@@ -1389,3 +1389,16 @@ el nuevo fact Rust lleva SHA-256
 `36e11bd1f14e1e55fcaedf843eca93a575099bd6a371c46394597dfb4734311a`.
 Es contrato y replay de test: falta retención productiva Go, reconexión,
 overflow/resync y cola del writer. Go sigue como owner.
+
+## 67. Ventana acotada de replay exacto de facts (2026-09-28)
+
+`FactDeliveryLog` conserva hasta 64 frames IPC exactos ya emitidos,
+incluida su metadata original. Antes del commit canónico valida la
+secuencia y el tamaño del lote; después registra los bytes codificados.
+ACK poda el prefijo, un cursor anterior a la ventana devuelve
+`ResyncRequired {first,next}`, y una fase sin demanda Engineer retira
+su intervalo para impedir replay de facts que nadie solicitó. El
+replay Windows envía un duplicado byte a byte del primer fact; Go lo
+detecta, retiene una sola copia y devuelve ACK. El test cruzado pasa.
+Faltan mensaje IPC `ResyncRequired`, solicitud de replay en reconexión,
+deduplicador/retentor Go productivo y writer acotado. Go sigue owner.

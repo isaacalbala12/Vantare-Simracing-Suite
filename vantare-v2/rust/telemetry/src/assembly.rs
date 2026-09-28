@@ -10,6 +10,7 @@ use crate::ipc::{
     configuration::{Ack, Configuration, ConfigurationError},
     fact::{self, FactEncodeError},
     fact_ack::{self, FactAckError},
+    fact_delivery::FactDeliveryLog,
     snapshot::{self, ProductMetadata, SnapshotError},
 };
 use crate::lmu::mapper::ClockChange;
@@ -35,6 +36,7 @@ pub struct Assembler {
     active: Option<Configuration>,
     pending: Option<Configuration>,
     delivery_revision: u64,
+    fact_delivery: FactDeliveryLog,
 }
 
 impl Assembler {
@@ -45,6 +47,7 @@ impl Assembler {
             active: None,
             pending: None,
             delivery_revision: 0,
+            fact_delivery: FactDeliveryLog::new(fact_stream_id).map_err(AssemblyError::FactLog)?,
         })
     }
 
@@ -71,14 +74,28 @@ impl Assembler {
     }
 
     pub fn acknowledge_fact(&mut self, cursor: FactCursor) -> Result<FactCursor, AssemblyError> {
-        self.engine
+        let confirmed = self
+            .engine
             .acknowledge_fact(cursor)
-            .map_err(AssemblyError::FactLog)
+            .map_err(AssemblyError::FactLog)?;
+        self.fact_delivery
+            .acknowledge(cursor)
+            .map_err(AssemblyError::FactLog)?;
+        Ok(confirmed)
     }
 
     pub fn acknowledge_fact_frame(&mut self, frame: &[u8]) -> Result<FactCursor, AssemblyError> {
         let cursor = fact_ack::decode_frame(frame).map_err(AssemblyError::FactAck)?;
         self.acknowledge_fact(cursor)
+    }
+
+    pub fn replay_fact_frames_after(
+        &self,
+        cursor: FactCursor,
+    ) -> Result<Vec<&[u8]>, AssemblyError> {
+        self.fact_delivery
+            .replay_after(cursor)
+            .map_err(AssemblyError::FactLog)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -122,6 +139,7 @@ impl Assembler {
             captured_at: &captured_at,
         };
         let mut prepared = Vec::new();
+        let mut retained_facts = Vec::new();
         if config.consumers.overlay_v2 {
             let preferences = config
                 .preferences
@@ -160,9 +178,10 @@ impl Assembler {
             );
             for fact in candidate.facts() {
                 let stream = self.engine.pipeline().fact_high_water().stream;
-                prepared.push(
-                    fact::encode_engineer(fact, stream, metadata).map_err(AssemblyError::Fact)?,
-                );
+                let frame =
+                    fact::encode_engineer(fact, stream, metadata).map_err(AssemblyError::Fact)?;
+                retained_facts.push((fact.sequence, frame.clone()));
+                prepared.push(frame);
             }
         }
         if config.consumers.strategy {
@@ -184,9 +203,18 @@ impl Assembler {
         } else {
             None
         };
+        self.fact_delivery
+            .validate_batch(&retained_facts)
+            .map_err(AssemblyError::FactLog)?;
         self.engine
             .commit(candidate)
             .map_err(AssemblyError::Engine)?;
+        if config.consumers.engineer {
+            self.fact_delivery.commit(retained_facts);
+        } else {
+            self.fact_delivery
+                .advance_suppressed(self.engine.pipeline().fact_high_water().sequence);
+        }
         if self.pending.is_some() {
             self.active = self.pending.take();
         }
@@ -321,9 +349,23 @@ mod tests {
                 sequence: 1
             }
         );
+        let replay = assembler
+            .replay_fact_frames_after(FactCursor {
+                stream: 15,
+                sequence: 0,
+            })
+            .unwrap();
+        assert_eq!(replay.len(), 1);
+        assert_eq!(ipc::decode(replay[0]).unwrap().kind, ipc::Kind::Fact);
         assert_eq!(
             assembler.acknowledge_fact_frame(FACT_ACK).unwrap(),
             high_water
+        );
+        assert!(
+            assembler
+                .replay_fact_frames_after(high_water)
+                .unwrap()
+                .is_empty()
         );
         assert!(
             assembler

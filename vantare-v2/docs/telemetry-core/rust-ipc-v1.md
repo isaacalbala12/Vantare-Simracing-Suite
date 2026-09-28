@@ -67,6 +67,13 @@ publica en runtime**: FactAck y poda están probados solo en el replay;
 retención productiva, resync y backpressure quedan pendientes antes de
 emitir facts reales.
 
+Rust conserva hasta 64 frames Fact exactos para replay. Valida la
+secuencia antes del commit; un ACK elimina solo el prefijo confirmado.
+Si el cursor queda fuera de la ventana devuelve un error de resync
+explícito al supervisor futuro. En el replay Windows el mismo frame se
+envía dos veces y Go confirma una sola copia. Aún no hay mensaje
+`ResyncRequired` ni solicitud de replay en reconexión productiva.
+
 El frame `fact-ack-frame-go-v1.bin` mide 34 bytes, SHA-256
 `51c63a1a3611792f1294426f86ef7e4899cbe60c5d3a8cb23487aad3a765fd0f`.
 Go lo emite tras almacenar el fact en el test de pipe; Rust valida

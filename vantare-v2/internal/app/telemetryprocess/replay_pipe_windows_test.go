@@ -3,6 +3,7 @@
 package telemetryprocess
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -70,7 +71,8 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 	var acknowledgements, overlaySnapshots, engineerSnapshots, facts int
 	var factStream uint64
 	var retainedFacts []engineer.FactEnvelopeV1
-	for range 4 {
+	var firstFactPayload []byte
+	for range 5 {
 		frame, err := ReadFrame(file)
 		if err != nil {
 			t.Fatal(err)
@@ -111,13 +113,18 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 				t.Fatal(err)
 			}
 			factStream = stream
-			retainedFacts = append(retainedFacts, fact)
+			if len(firstFactPayload) == 0 {
+				firstFactPayload = append([]byte(nil), frame.Payload...)
+				retainedFacts = append(retainedFacts, fact)
+			} else if !bytes.Equal(firstFactPayload, frame.Payload) {
+				t.Fatal("replayed fact differs from original wire payload")
+			}
 			facts++
 		default:
 			t.Fatalf("unexpected replay kind %v", frame.Kind)
 		}
 	}
-	if acknowledgements != 1 || overlaySnapshots != 1 || engineerSnapshots != 1 || facts != 1 {
+	if acknowledgements != 1 || overlaySnapshots != 1 || engineerSnapshots != 1 || facts != 2 {
 		t.Fatalf("first batch: ack=%d overlay=%d engineer=%d facts=%d", acknowledgements, overlaySnapshots, engineerSnapshots, facts)
 	}
 	if factStream != 15 || len(retainedFacts) != 1 {

@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — tick de adquisición LMU/REST (2026-09-28)
+
+Rust une el proceso/mapping retenidos, buffers SHM, último REST, relojes
+y `Assembler` en un paso de adquisición. Build desconocido se rechaza
+antes de arrancar REST; lectura fallida no confirma cursor. Test con
+frame real estático de 44 y prueba opt-in de LMU en menú 1.4.2.0
+pasan. Rust release 142/142, Clippy, formato, build y pipe Windows
+pasan. Falta el loop 60 Hz, entrega IPC productiva, supresión de
+remanente y corpus temporal 44/104; Go sigue owner. Plan §84,
+[VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
 ## VAN-778 / ISA-1403 — polling REST desacoplado de SHM (2026-09-28)
 
 Rust tiene un worker REST loopback con slot de último resultado,

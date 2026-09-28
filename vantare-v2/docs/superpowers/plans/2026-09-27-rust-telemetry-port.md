@@ -1630,3 +1630,21 @@ la segunda petición. Rust release 140/140, Clippy, formato, build y
 replay de pipe Windows pasan. No son capturas REST reales ni prueba temporal
 de 44/104. Falta el loop de adquisición, supresión de remanente,
 writer/receptor y gate CPU; Go sigue owner.
+
+## 84. Paso de adquisición LMU/REST al ensamblador (2026-09-28)
+
+`lmu/acquisition.rs` retiene el proceso LMU, una vista SHM y dos
+buffers reutilizables; rechaza builds no fijados antes de arrancar
+REST. Cada `tick` toma el último resultado REST sin I/O de red, lee
+SHM de forma estable con el proceso vivo, toma tiempos monotónico y
+UTC y entrega los bytes al `Assembler` transaccional. Un fallo de
+lectura no confirma batch ni cursor. Test con frame real estático de
+44 y configuración Go comprueba ACK y batch; test opt-in contra LMU
+activo 1.4.2.0 confirma que la adquisición no se abre para ese build.
+La prueba física es diagnóstica de menú, no valida pista ni vincula
+el mapping global inequívocamente al PID. Rust release 142/142,
+Clippy, formato, build y replay de pipe Windows pasan.
+
+Este paso no ejecuta aún la cadencia de 60 Hz ni entrega frames por
+pipe; falta writer/receptor/supervisor con backpressure y Stop,
+remanente congelado, corpus temporal 44/104 y gate de CPU.

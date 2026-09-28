@@ -9,6 +9,7 @@ pub const PRODUCT_OVERLAY_V2: &str = "overlay-v2";
 pub const PRODUCT_ENGINEER_V1: &str = "engineer-v1";
 pub const PRODUCT_STRATEGY_V1: &str = "strategy-v1";
 
+#[derive(Clone, Copy)]
 pub struct ProductMetadata<'a> {
     pub epoch: u64,
     pub sequence: u64,

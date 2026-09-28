@@ -12,7 +12,7 @@ Una trama es `length:u32 LE | version:u16 LE | kind:u16 LE | payload[length]`. L
 | Configuration | 2 | JSON cerrado v1 con revisión, consumidores, cadencias en ns, preferencias y source/capabilities |
 | ConfigurationAck | 3 | JSON `revision`, `epoch`, `sequence`; se emitirá tras aplicar en frontera de lote |
 | Snapshot | 4 | Prototipos JSON: `{"product":"overlay-v2","update":UpdateV2}` y `{"product":"engineer-v1"|"strategy-v1","snapshot":SnapshotV1}`; publicación y codec final pendientes |
-| Fact | 5 | Hecho ordenado y cursor; payload por definir |
+| Fact | 5 | Prototipo Engineer V1 JSON con metadata canónica, secuencia de fact y UTC RFC3339; ACK/retención/resync pendientes |
 | FactAck | 6 | Confirmación tras retener; payload por definir |
 | ResyncRequired | 7 | Laguna irrecuperable y bootstrap; payload por definir |
 | Status | 8 | Estado de fuente y salud de proceso; payload por definir |
@@ -51,6 +51,20 @@ La salida Engineer actual usa un `EngineerView` tipado para construir
 directamente JSON y framing sin mapas `Value` por campo; R21 medirá y
 comparará codec, copia y entrega completa antes de elegir transporte. El
 receptor aún no recibe estos frames desde un hijo productivo.
+
+## Fact Engineer v1 inicial (2026-09-28)
+
+Rust envuelve `FactEnvelopeV1` en `KindFact` con
+`{"product":"engineer-v1","fact":FactEnvelopeV1}`. Metadata lleva el
+cursor canónico; `fact.sequence` ordena hechos independientemente.
+`occurredAt` proviene del instante UTC canónico y se convierte con
+`time 0.3.55`/RFC3339; el decoder Go exige tipo, producto, versiones,
+cursores positivos, kind conocido y ambas fechas válidas. El frame
+`engineer-fact-frame-rust-v1.bin` de 254 bytes, SHA-256
+`51dd2476d3d1d4f32bca6c4ad52274d156b769d70314632e87f0e302270e22bc`,
+coincide con el proyector Go de una vuelta completada. El código **no
+confirma recepción ni publica en runtime**: FactAck, retención, resync y
+backpressure quedan pendientes antes de emitir facts reales.
 
 ## Configuration/ACK v1 inicial (2026-09-28)
 

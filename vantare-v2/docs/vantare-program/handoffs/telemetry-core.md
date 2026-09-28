@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — primer Fact IPC Engineer Rust→Go (2026-09-28)
+
+Rust emite un `KindFact` Engineer V1 con metadata/cursor propios y fecha
+UTC RFC3339; Go lo decodifica y el caso de vuelta completada coincide con
+su proyector. Frame 254 bytes SHA-256
+`51dd2476d3d1d4f32bca6c4ad52274d156b769d70314632e87f0e302270e22bc`.
+`time 0.3.55` y cinco transitivas quedan fijadas para el formato, todas
+MIT/Apache-2.0. Rust release 111/111, Clippy, formato y build; Go focal
+pasó. Falta ACK/retención/resync y ruta runtime; Go sigue productivo.
+Plan sección 59, contrato IPC actualizado.
+
 ## ISA-1403 — medición Engineer y ruta tipada (2026-09-28)
 
 La proyección Engineer basada en JSON dinámico tardaba 2.97–3.51 ms por

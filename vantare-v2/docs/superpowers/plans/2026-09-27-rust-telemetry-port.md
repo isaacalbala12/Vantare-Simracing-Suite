@@ -1265,3 +1265,19 @@ temporalidad, 104 coches, múltiples productos, colas ni CPU de proceso.
 No acredita el gate final de ≥50%; R21/R25 exigirán ruta completa y
 corpus reales. Rust release 110/110, Clippy, formato y build pasan; Go
 cross-frame focal pasa. Go sigue productivo.
+
+## 59. Primer Fact IPC Engineer Rust→Go (2026-09-28)
+
+Rust proyecta los ocho `FactKind` a Engineer V1, convierte el instante UTC
+de nanosegundos Unix a RFC3339 y emite `KindFact` con dos cursores:
+metadata canónica y secuencia propia del fact. Go decodifica con esquema
+cerrado y rechaza kind, producto, versión, cursor o fecha inválidos.
+El ejemplo de vuelta completada Rust coincide exactamente con
+`engineer.ProjectFactV1` de Go; frame de 254 bytes SHA-256
+`51dd2476d3d1d4f32bca6c4ad52274d156b769d70314632e87f0e302270e22bc`.
+`time 0.3.55` con solo `formatting` aporta conversión UTC/RFC3339
+verificada en la [documentación oficial de time](https://docs.rs/time/0.3.55/time/struct.OffsetDateTime.html);
+añade cinco paquetes transitivos, todos MIT/Apache-2.0. Sustituye un
+calendario manual propio y queda fijado en `Cargo.lock`. Rust release
+111/111, Clippy, formato, build y prueba Go focal pasan. **No hay ACK,
+retención IPC ni resync productivos**; Go sigue como owner.

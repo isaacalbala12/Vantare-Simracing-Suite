@@ -1506,3 +1506,20 @@ confirmó FileVersion=ProductVersion=1.4.2.0, aún sin admisión. Rust
 release 125/125, Clippy y Go completo pasan. El lector recibe una ruta:
 todavía falta enlazarla de forma verificable al proceso que produce
 `LMU_Data` y al manifiesto REST. No habilita adquisición productiva.
+
+## 76. Evidencia de build del proceso LMU en ejecución (2026-09-28)
+
+Rust enumera procesos Windows por nombre exacto, rechaza más de un LMU,
+abre el PID con derecho mínimo de consulta, obtiene la ruta desde el
+handle del proceso y lee FileVersion/ProductVersion de ese ejecutable.
+No toma una instalación encontrada en disco como si fuera el productor
+activo. Handles de snapshot/proceso se cierran por RAII. La prueba opt-in
+en este host identificó el LMU activo y confirmó 1.4.2.0 en ambos
+campos, todavía no admitida; Rust release 127/127, formato y Clippy
+pasan. El registro operativo vigente es [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748),
+con GitHub #1403 como puente técnico.
+
+Falta vincular durante todo el loop el PID a `LMU_Data` y su frescura,
+verificar el manifiesto REST de la build y completar adquisición,
+supervisión y consumidores productivos. Este corte es diagnóstico y no
+activa el backend Rust.

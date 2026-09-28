@@ -5,6 +5,8 @@ pub mod fusion;
 pub mod mapper;
 pub mod pipeline;
 #[cfg(windows)]
+pub mod process;
+#[cfg(windows)]
 pub mod reader;
 pub mod rest;
 #[cfg(windows)]

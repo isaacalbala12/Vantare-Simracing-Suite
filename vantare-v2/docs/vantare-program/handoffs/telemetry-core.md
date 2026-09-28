@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — versión del proceso LMU real (2026-09-28)
+
+La tarea operativa [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748)
+reconcilia GitHub #1403 bajo el proyecto Telemetry Core. Rust resuelve
+PID y ruta desde el proceso LMU en ejecución, lee su versión y rechaza
+procesos duplicados o ruta inaccesible. Prueba física opt-in: LMU activo
+1.4.2.0, aún sin admisión. Rust release 127/127, formato y Clippy pasan.
+Quedan pendientes enlace persistente PID/LMU_Data, REST por build,
+runtime y consumidores; Go sigue owner. Plan sección 76.
+
 ## ISA-1403 — versión LMU Windows leída por Rust (2026-09-28)
 
 Rust consulta FileVersion/ProductVersion del recurso fijo del ejecutable

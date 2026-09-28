@@ -1,6 +1,8 @@
 //! Bounded decoding of LMU's two REST endpoint bodies. Polling and freshness
 //! ownership are separate; decoding never creates a rival vehicle from REST.
 
+pub mod http;
+
 use std::collections::HashMap;
 
 use serde_json::{Map, Value};
@@ -15,6 +17,40 @@ pub enum DecodeError {
     Empty,
     TooLarge,
     Malformed,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum EndpointStatus {
+    Unknown,
+    Fresh,
+    Empty,
+    Unsupported,
+    Offline,
+    Timeout,
+    Malformed,
+    Stale,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum RestStatus {
+    Live,
+    Partial,
+    Unsupported,
+    Offline,
+    Timeout,
+    Stale,
+}
+
+pub fn overall_status(standings: EndpointStatus, session: EndpointStatus) -> RestStatus {
+    use EndpointStatus as E;
+    match (standings, session) {
+        (E::Fresh, E::Fresh) => RestStatus::Live,
+        (E::Stale, _) | (_, E::Stale) => RestStatus::Stale,
+        (E::Unsupported, E::Unsupported) => RestStatus::Unsupported,
+        (E::Offline, E::Offline) => RestStatus::Offline,
+        (E::Timeout, _) | (_, E::Timeout) => RestStatus::Timeout,
+        _ => RestStatus::Partial,
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -405,5 +441,19 @@ mod tests {
         assert_eq!(numbers.rows.len(), 1);
         numbers.age(121, 20);
         assert!(numbers.rows.is_empty());
+    }
+
+    #[test]
+    fn endpoint_health_preserves_partial_and_failure_precedence() {
+        use EndpointStatus as E;
+        assert_eq!(overall_status(E::Fresh, E::Fresh), RestStatus::Live);
+        assert_eq!(overall_status(E::Fresh, E::Malformed), RestStatus::Partial);
+        assert_eq!(
+            overall_status(E::Unsupported, E::Unsupported),
+            RestStatus::Unsupported
+        );
+        assert_eq!(overall_status(E::Offline, E::Offline), RestStatus::Offline);
+        assert_eq!(overall_status(E::Timeout, E::Fresh), RestStatus::Timeout);
+        assert_eq!(overall_status(E::Timeout, E::Stale), RestStatus::Stale);
     }
 }

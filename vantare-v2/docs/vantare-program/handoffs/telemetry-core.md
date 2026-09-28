@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — transporte REST loopback inicial (2026-09-28)
+
+R09 añade cliente HTTP Rust con host/rutas fijos, sin proxy ni redirects,
+deadline total de 750 ms y límite 4 MiB. Tests con servidor local verifican
+la ruta, respuesta válida, 404, redirect, exceso de cuerpo y deadline ante
+servidor bloqueado. Rust release pasa 27/27, formato y Clippy. Se añade `ureq`
+sin TLS ni features por defecto, con elección y licencias registradas en la
+sección 18 del plan bajo Q4=C. Este cliente todavía no tiene loop cancelable,
+cache conectada, fusión ni publicación al host Go; Go sigue productivo.
+
 ## ISA-1403 — decodificación REST Rust inicial (2026-09-28)
 
 R09 comienza con un decoder JSON limitado a 4 MiB para `standings` y

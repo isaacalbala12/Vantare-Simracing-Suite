@@ -687,3 +687,25 @@ licencias MIT/Apache-2.0, Unlicense/MIT o MIT según `cargo metadata` local.
 Riesgos: asignaciones de `Value`, actualización de supply chain y equivalencia
 de casos límite; se miden y revisan antes del gate CPU y del backend candidato.
 Rust release (23 tests), formato y Clippy pasan en este corte.
+
+## 18. Transporte REST loopback aislado (2026-09-28)
+
+R09 añade un cliente HTTP bloqueante solo para `127.0.0.1`, puerto LMU
+`6397` (inyectable en tests), dos rutas fijas, sin proxy ni seguimiento de
+redirecciones, con deadline total de 750 ms y lectura acotada a 4 MiB + 1.
+Clasifica estados HTTP/timeout/errores sin publicar cuerpos fallidos. Los
+tests locales comprueban rutas, 404, rechazo de redirect, límite de cuerpo y
+timeout de un servidor bloqueado; Rust release (27/27), formato y Clippy pasan.
+Todavía no existe loop de polling con cancelación, cache/TTL conectada, ni
+consumo de datos por el proceso hijo; el cliente no es backend productivo.
+
+`ureq 3.4.2` (sin features por defecto/TLS) se añade bajo Q4=C. Se eligió
+para HTTP/1.1 loopback con conexión reutilizable, timeouts y manejo de
+respuestas; Rust std no incluye HTTP. Implementarlo a mano o mediante FFI
+WinHTTP aumentaría el código de protocolo/unsafe. El árbol runtime bloqueado
+añade `ureq-proto`, `http`, `httparse`, `bytes`, `base64`, `log`,
+`percent-encoding` y `utf8-zero`; `cargo metadata` local reporta licencias
+MIT o MIT/Apache-2.0. Riesgos pendientes: dependencia adicional, tamaño,
+latencia de cierre del I/O bloqueante y paridad de cancelación. Antes de
+conectar el runtime, el cierre debe probar su límite y la comparación CPU/RSS
+debe incluir el coste del cliente; no se atribuye aquí la mejora del 50%.

@@ -1,5 +1,20 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## 2026-09-28 · ISA-1406 · Navegación Orbit sin salto
+
+El harness de la shell reprodujo en Inicio → Ajustes un primer fotograma con
+panel y cabecera a opacidad cero y columna contextual vacía. La causa visual
+era la animación vertical de entrada y la resolución de portales después del
+pintado. La rama `vantareapp/isa-1406-hub-navegacion-sin-salto`, basada en
+`origin/nightly@355e9cfe`, resuelve los portales antes de pintar y fija la
+entrada de vistas a 0 s, incluida Ajustes y Testing Center. La prueba de
+navegador dio RED antes del cambio y PASS después, incluida una pestaña interna
+de Ajustes. Frontend:
+486 archivos/4113 pruebas PASS (2 omitidas), typecheck, build y lint PASS.
+Falta verificar la sensación de navegación y el tiempo de datos en Wails real
+con sesión; el harness usa runtime simulado. [PR draft #1407](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1407)
+hacia `nightly`; sin integración ni promoción.
+
 ## 2026-09-26 · VAN-769 / GitHub #1381 · Integración inicial autorizada
 
 Isaac revisó la entrega de temas y fondos de Studio en Wails y autorizó expresamente integrar únicamente la [PR #1384](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1384) en `nightly`. La rama se reconcilió con `origin/nightly@d09829c4` sin conflictos de código. El candidato inicial `9ea9a341` pasó sus gates bloqueantes, pero el validador de roadmap en modo auditoría señaló un orden distinto de entregas porque el digest se había generado desde el artefacto de la rama. Se regeneró `roadmap.json` partiendo del JSON protegido de `d09829c4`; la comparación estricta del contrato y las pruebas del generador pasan. La aceptación incluye la tarjeta Próxima serie con la paleta activa; los widgets mantienen sus diseños. CI debe repetirse sobre la cabeza con el digest corregido antes del merge. Este registro no afirma integración antes de comprobar el SHA remoto y los gates del merge. La comprobación física en LMU/OBS sigue siendo trabajo de Nightly. La autorización no comprende `testers`, `master` ni una release.

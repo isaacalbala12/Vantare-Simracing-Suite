@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — banco 44 y copia eliminada de Overlay (2026-09-28)
+
+Banco release de ensamblado Rust sobre la captura real estática de 44,
+separado por demanda. `wrap_full` consume secciones y el encoder Overlay
+serializa el update prestado sin clonarlo. Prueba pareada de la etapa de
+codificación: 46–57 µs frente a 327–375 µs con bytes idénticos; el
+ensamblado Overlay completo dio 1,2–1,5 ms/lote en dos ejecuciones.
+No acredita ≥50% de CPU frente a Go: faltan corpus temporal 44/104,
+runtime y gate CPU/p99/RSS comparable. Plan sección 70; Go sigue owner.
+
 ## ISA-1403 — ResyncRequired Rust→Go cerrado (2026-09-28)
 
 Rust convierte una pérdida de ventana Fact en `KindResyncRequired`

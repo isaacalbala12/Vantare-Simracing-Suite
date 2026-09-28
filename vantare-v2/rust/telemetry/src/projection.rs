@@ -624,7 +624,7 @@ mod tests {
             .remove("capabilityAvailability");
         assert_eq!(projected, expected_sections);
         let full = frame::wrap_full(
-            &projected,
+            projected,
             frame::Metadata {
                 revision: 1,
                 state: "live",
@@ -656,7 +656,7 @@ mod tests {
         )
         .unwrap();
         let full_alternate = frame::wrap_full(
-            &alternate_sections,
+            alternate_sections,
             frame::Metadata {
                 revision: 2,
                 state: "live",

@@ -236,7 +236,7 @@ pub struct Metadata<'a> {
 /// Wraps the eleven Rust-owned sections into the product's full snapshot.
 /// RelativeSettled is the bootstrap view; the stateful settler replaces it
 /// when the cached projector is integrated.
-pub fn wrap_full(sections: &Value, metadata: Metadata<'_>) -> Result<Value, FrameError> {
+pub fn wrap_full(sections: Value, metadata: Metadata<'_>) -> Result<Value, FrameError> {
     if !matches!(
         metadata.state,
         "stopped"
@@ -253,6 +253,9 @@ pub fn wrap_full(sections: &Value, metadata: Metadata<'_>) -> Result<Value, Fram
     if metadata.section_mask & !ALL_SECTIONS_MASK != 0 {
         return Err(FrameError::InvalidSectionMask);
     }
+    let Value::Object(mut sections) = sections else {
+        return Err(FrameError::MissingSection);
+    };
     let mut frame = Map::new();
     for name in [
         "session",
@@ -269,12 +272,12 @@ pub fn wrap_full(sections: &Value, metadata: Metadata<'_>) -> Result<Value, Fram
         "weather",
         "capabilities",
     ] {
-        let Some(value) = sections.get(name) else {
+        let Some(value) = sections.remove(name) else {
             return Err(FrameError::MissingSection);
         };
-        frame.insert(name.into(), value.clone());
+        frame.insert(name.into(), value);
     }
-    frame.insert("relativeSettled".into(), sections["relative"].clone());
+    frame.insert("relativeSettled".into(), frame["relative"].clone());
     frame.insert("contract".into(), json!(2));
     frame.insert("algorithm".into(), json!(2));
     frame.insert("epoch".into(), json!(metadata.epoch));
@@ -327,16 +330,16 @@ mod tests {
             pressure_unit: "kpa",
             fuel_unit: "liters",
         };
-        assert_eq!(wrap_full(&json!({}), meta), Err(FrameError::MissingSection));
+        assert_eq!(wrap_full(json!({}), meta), Err(FrameError::MissingSection));
         meta.state = "unknown";
         assert_eq!(
-            wrap_full(&json!({}), meta),
+            wrap_full(json!({}), meta),
             Err(FrameError::InvalidSourceState)
         );
         meta.state = "live";
         meta.section_mask = ALL_SECTIONS_MASK | (1 << 15);
         assert_eq!(
-            wrap_full(&json!({}), meta),
+            wrap_full(json!({}), meta),
             Err(FrameError::InvalidSectionMask)
         );
     }

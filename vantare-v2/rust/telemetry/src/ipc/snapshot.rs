@@ -23,6 +23,12 @@ struct TypedEnvelope<'a, T: Serialize> {
 }
 
 #[derive(Serialize)]
+struct OverlayEnvelope<'a> {
+    product: &'static str,
+    update: &'a Value,
+}
+
+#[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct TypedSnapshot<'a, T: Serialize> {
     canonical_version: u8,
@@ -167,8 +173,11 @@ pub fn encode_overlay(update: &Value) -> Result<Vec<u8>, SnapshotError> {
     ) {
         return Err(SnapshotError::InvalidSourceState);
     }
-    let payload = serde_json::to_vec(&json!({"product": PRODUCT_OVERLAY_V2, "update": update}))
-        .map_err(|_| SnapshotError::InvalidUpdate)?;
+    let payload = serde_json::to_vec(&OverlayEnvelope {
+        product: PRODUCT_OVERLAY_V2,
+        update,
+    })
+    .map_err(|_| SnapshotError::InvalidUpdate)?;
     super::encode(Kind::Snapshot, &payload).map_err(SnapshotError::Frame)
 }
 

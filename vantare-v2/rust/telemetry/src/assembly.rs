@@ -159,7 +159,7 @@ impl Assembler {
             let sections = frame::build_sections(&candidate, &config.source, preferences)
                 .map_err(AssemblyError::Overlay)?;
             let update = frame::wrap_full(
-                &sections,
+                sections,
                 frame::Metadata {
                     revision: next_revision,
                     state: "live",

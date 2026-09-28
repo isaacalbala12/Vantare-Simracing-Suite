@@ -1434,3 +1434,19 @@ un cursor anterior recibe el mensaje y no un replay engañoso. Las
 pruebas de ambos lenguajes y el replay por pipe existente pasan.
 Faltan solicitud de replay/reconnect, bootstrap tras resync y ruta
 productiva de publicación/consumo. Go sigue owner.
+
+## 70. Banco Rust de ensamblado 44 y serialización Overlay (2026-09-28)
+
+`cargo bench --locked --bench assembly_44` mide cinco tandas de 500
+lotes por demanda sobre la captura real sanitizada y estática de 44.
+Incluye parseo, candidato, proyección y IPC en Rust, pero excluye
+adquisición LMU/REST, entrega Go y CPU de proceso. El primer banco dio
+Overlay solo 2,2–2,5 ms/lote. Tras eliminar copias del árbol JSON en
+`wrap_full` y serializar el update por referencia, dio 1,2–1,5 ms/lote
+en dos ejecuciones posteriores; la variación de máquina impide tratar
+esa diferencia entre ejecuciones como gate definitivo. En la misma
+ejecución, el subbanco pareado codificó exactamente los mismos bytes:
+46–57 µs/lote por referencia frente a 327–375 µs/lote copiando el
+árbol. Es una mejora concreta de esa etapa, no el objetivo global de
+CPU ≥50% frente a Go. Faltan captura temporal real 44/104 SHM+REST,
+medición CPU/p99/RSS comparable y el runtime productivo Rust.

@@ -174,7 +174,6 @@ mod tests {
     use super::*;
     use crate::derive::fuel::FuelLapSample;
     use crate::engine::Engine;
-    use crate::lmu::mapper::ClockChange;
     use crate::quality::Provenance;
 
     const REAL_44: &[u8] = include_bytes!("../../../../testdata/lmu-fixture.bin");
@@ -183,14 +182,7 @@ mod tests {
     fn measured_consumption_takes_fuel_basis_and_converts_history_once() {
         let engine = Engine::new(30, 19).unwrap();
         let candidate = engine
-            .prepare(
-                REAL_44,
-                "1.3.0.0",
-                100,
-                100,
-                100_000_000_000,
-                ClockChange::Continuous,
-            )
+            .prepare(REAL_44, "1.3.0.0", 100, 100, 100_000_000_000)
             .unwrap();
         let mut usage = candidate.fuel_usage().clone();
         usage.per_lap_liters = Field::Present {

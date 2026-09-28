@@ -87,6 +87,41 @@ pub enum ClockChange {
     Wrap,
 }
 
+impl ClockChange {
+    pub fn classify(previous_ns: i64, current_ns: i64) -> Self {
+        if previous_ns <= 0 || current_ns >= previous_ns {
+            Self::Continuous
+        } else if previous_ns >= 24 * 60 * 60 * 1_000_000_000 && current_ns < 60 * 1_000_000_000 {
+            Self::Wrap
+        } else {
+            Self::Reset
+        }
+    }
+}
+
+#[cfg(test)]
+mod clock_tests {
+    use super::ClockChange;
+
+    #[test]
+    fn go_source_clock_boundaries_are_classified_without_wall_time() {
+        const SECOND: i64 = 1_000_000_000;
+        const MINUTE: i64 = 60 * SECOND;
+        const DAY: i64 = 24 * 60 * MINUTE;
+        for (previous, current, expected) in [
+            (0, 10 * SECOND, ClockChange::Continuous),
+            (10 * SECOND, 10 * SECOND, ClockChange::Continuous),
+            (10 * SECOND, 11 * SECOND, ClockChange::Continuous),
+            (10 * SECOND, 9 * SECOND, ClockChange::Reset),
+            (DAY - 1, 0, ClockChange::Reset),
+            (DAY, MINUTE - 1, ClockChange::Wrap),
+            (DAY, MINUTE, ClockChange::Reset),
+        ] {
+            assert_eq!(ClockChange::classify(previous, current), expected);
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MapError {
     InvalidSession,
@@ -205,16 +240,8 @@ impl IdentityMapper {
         if let Some(source_time) = usable(&session.source_time_ns.field) {
             if let Some(previous) = candidate.last_source_time_ns
                 && change == ClockChange::Continuous
-                && previous > 0
-                && *source_time < previous
             {
-                change = if previous >= 24 * 60 * 60 * 1_000_000_000
-                    && *source_time < 60 * 1_000_000_000
-                {
-                    ClockChange::Wrap
-                } else {
-                    ClockChange::Reset
-                };
+                change = ClockChange::classify(previous, *source_time);
             }
             candidate.last_source_time_ns = Some(*source_time);
         }

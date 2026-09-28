@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — reloj SHM clasificado dentro del motor (2026-09-28)
+
+`Engine` clasifica automáticamente continuidad, reset y wrap desde el
+último reloj confirmado; `Assembler::apply` ya no depende de una etiqueta
+del llamador. Un candidato descartado no altera esa historia. Tests de
+bordes y frame real 44, Rust release 138/138, Clippy/formato/build y
+replay de pipe Windows pasan. Aún faltan loop live, REST productivo,
+remanente congelado y corpus temporal 44/104; Go sigue owner. Plan §82,
+[VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
 ## VAN-778 / ISA-1403 — Status y Stop IPC v1 cerrados (2026-09-28)
 
 Rust codifica y valida el heartbeat/estado de fuente sin payload de simulador;

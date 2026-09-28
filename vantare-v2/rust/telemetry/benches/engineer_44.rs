@@ -6,7 +6,6 @@ use std::time::Instant;
 
 use vantare_telemetry::engine::Engine;
 use vantare_telemetry::ipc::snapshot::{ProductMetadata, encode_engineer_typed};
-use vantare_telemetry::lmu::mapper::ClockChange;
 use vantare_telemetry::projection::engineer;
 
 const FRAME: &[u8] = include_bytes!("../../../testdata/lmu-fixture.bin");
@@ -33,14 +32,7 @@ fn measure(label: &str, mut operation: impl FnMut()) {
 fn main() {
     let engine = Engine::new(30, 15).expect("engine");
     let prepared = engine
-        .prepare(
-            FRAME,
-            "1.3.0.0",
-            100,
-            100,
-            100_000_000_000,
-            ClockChange::Continuous,
-        )
+        .prepare(FRAME, "1.3.0.0", 100, 100, 100_000_000_000)
         .expect("audited fixture");
     measure("project", || {
         black_box(engineer::build_typed(

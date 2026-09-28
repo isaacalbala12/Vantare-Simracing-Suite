@@ -58,20 +58,24 @@ impl Engine {
         shared_received_ns: u64,
         now_ns: u64,
         occurred_utc_ns: i64,
-        clock_change: ClockChange,
     ) -> Result<EngineCandidate, EngineError> {
         let mut grid =
             lmu::admit_v13(shared_bytes, verified_build).map_err(EngineError::Admission)?;
         let mut freshness_gate = self.freshness_gate.clone();
-        if let Field::Present {
+        let clock_change = if let Field::Present {
             value: source_ns,
             freshness: Freshness::Fresh,
             ..
         } = &grid.session.source_time_ns
-            && freshness_gate.observe(now_ns, *source_ns)
         {
-            grid.mark_stale();
-        }
+            let change = ClockChange::classify(freshness_gate.previous_source_ns(), *source_ns);
+            if freshness_gate.observe(now_ns, *source_ns) {
+                grid.mark_stale();
+            }
+            change
+        } else {
+            ClockChange::Continuous
+        };
         let mut floor = self.floor.clone();
         floor.observe_shm(
             &grid,
@@ -168,9 +172,7 @@ mod tests {
             ("1.4.1.3", REAL_1413_TRACK, 18_usize),
         ] {
             let mut engine = Engine::new(30, 7).unwrap();
-            let candidate = engine
-                .prepare(bytes, build, 100, 100, 1_000, ClockChange::Continuous)
-                .unwrap();
+            let candidate = engine.prepare(bytes, build, 100, 100, 1_000).unwrap();
             assert_eq!(candidate.batch().state.vehicles.len(), vehicles, "{build}");
             assert!(candidate.batch().player_id.is_some(), "{build}");
             engine.commit(candidate).unwrap();
@@ -181,21 +183,17 @@ mod tests {
     #[test]
     fn real_grid_prepares_all_stages_without_publishing_and_retries_after_rejection() {
         let mut engine = Engine::new(30, 7).unwrap();
-        let first = engine
-            .prepare(REAL_44, "1.3.0.0", 100, 100, 1_000, ClockChange::Continuous)
-            .unwrap();
+        let first = engine.prepare(REAL_44, "1.3.0.0", 100, 100, 1_000).unwrap();
         assert_eq!(first.batch().state.vehicles.len(), 44);
         assert_eq!(first.facts()[0].kind, FactKind::SessionStarted);
         assert!(engine.current().is_none());
         engine.commit(first).unwrap();
         assert_eq!(engine.current().unwrap().cursor.sequence, 1);
         assert!(matches!(
-            engine.prepare(REAL_44, "1.4.2.0", 200, 200, 2_000, ClockChange::Continuous),
+            engine.prepare(REAL_44, "1.4.2.0", 200, 200, 2_000),
             Err(EngineError::Admission(AdmissionError::UnsupportedBuild))
         ));
-        let retry = engine
-            .prepare(REAL_44, "1.3.0.0", 200, 200, 2_000, ClockChange::Continuous)
-            .unwrap();
+        let retry = engine.prepare(REAL_44, "1.3.0.0", 200, 200, 2_000).unwrap();
         assert_eq!(retry.batch().cursor.sequence, 2);
         assert!(retry.facts().is_empty());
         engine.commit(retry).unwrap();
@@ -206,25 +204,11 @@ mod tests {
     fn stalled_source_expires_candidate_but_rejected_candidate_does_not_advance_gate() {
         let mut engine = Engine::new(30, 7).unwrap();
         let first = engine
-            .prepare(
-                REAL_44,
-                "1.3.0.0",
-                0,
-                0,
-                1_000_000_000,
-                ClockChange::Continuous,
-            )
+            .prepare(REAL_44, "1.3.0.0", 0, 0, 1_000_000_000)
             .unwrap();
         engine.commit(first).unwrap();
         let stalled = engine
-            .prepare(
-                REAL_44,
-                "1.3.0.0",
-                500_000_000,
-                500_000_000,
-                1_500_000_000,
-                ClockChange::Continuous,
-            )
+            .prepare(REAL_44, "1.3.0.0", 500_000_000, 500_000_000, 1_500_000_000)
             .unwrap();
         assert_eq!(
             stalled.batch().state.source_time_ns.quality().1,
@@ -245,14 +229,7 @@ mod tests {
         let source_seconds = f64::from_le_bytes(resumed[1_700..1_708].try_into().unwrap());
         resumed[1_700..1_708].copy_from_slice(&(source_seconds + 1.0).to_le_bytes());
         let candidate = engine
-            .prepare(
-                &resumed,
-                "1.3.0.0",
-                600_000_000,
-                600_000_000,
-                1_600_000_000,
-                ClockChange::Continuous,
-            )
+            .prepare(&resumed, "1.3.0.0", 600_000_000, 600_000_000, 1_600_000_000)
             .unwrap();
         assert_eq!(
             candidate.batch().state.source_time_ns.quality().1,
@@ -271,14 +248,7 @@ mod tests {
             600_000_000,
         );
         let prepared = engine
-            .prepare(
-                REAL_44,
-                "1.3.0.0",
-                100,
-                600_000_000,
-                1_000,
-                ClockChange::Continuous,
-            )
+            .prepare(REAL_44, "1.3.0.0", 100, 600_000_000, 1_000)
             .unwrap();
         assert_eq!(prepared.batch().state.vehicles.len(), 44);
         let player_id = prepared.batch().player_id.as_ref().unwrap();
@@ -297,14 +267,37 @@ mod tests {
     #[test]
     fn stale_candidate_cannot_replace_committed_state() {
         let mut engine = Engine::new(30, 11).unwrap();
-        let stale = engine
-            .prepare(REAL_44, "1.3.0.0", 100, 100, 1_000, ClockChange::Continuous)
-            .unwrap();
-        let first = engine
-            .prepare(REAL_44, "1.3.0.0", 100, 100, 1_000, ClockChange::Continuous)
-            .unwrap();
+        let stale = engine.prepare(REAL_44, "1.3.0.0", 100, 100, 1_000).unwrap();
+        let first = engine.prepare(REAL_44, "1.3.0.0", 100, 100, 1_000).unwrap();
         engine.commit(first).unwrap();
         assert!(engine.commit(stale).is_err());
         assert_eq!(engine.current().unwrap().cursor.sequence, 1);
+    }
+
+    #[test]
+    fn reset_is_classified_from_committed_source_clock_only() {
+        let mut engine = Engine::new(30, 12).unwrap();
+        let first = engine.prepare(REAL_44, "1.3.0.0", 100, 100, 1_000).unwrap();
+        let original_epoch = first.batch().cursor.epoch;
+        engine.commit(first).unwrap();
+
+        let mut rewound = REAL_44.to_vec();
+        let source_seconds = f64::from_le_bytes(rewound[1_700..1_708].try_into().unwrap());
+        rewound[1_700..1_708].copy_from_slice(&(source_seconds - 1.0).to_le_bytes());
+        let discarded = engine
+            .prepare(&rewound, "1.3.0.0", 200, 200, 2_000)
+            .unwrap();
+        assert!(discarded.batch().cursor.epoch > original_epoch);
+        drop(discarded);
+
+        let retry_original = engine.prepare(REAL_44, "1.3.0.0", 200, 200, 2_000).unwrap();
+        assert_eq!(retry_original.batch().cursor.epoch, original_epoch);
+        drop(retry_original);
+
+        let accepted = engine
+            .prepare(&rewound, "1.3.0.0", 200, 200, 2_000)
+            .unwrap();
+        engine.commit(accepted).unwrap();
+        assert!(engine.current().unwrap().cursor.epoch > original_epoch);
     }
 }

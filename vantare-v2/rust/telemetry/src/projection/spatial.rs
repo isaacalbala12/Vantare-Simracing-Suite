@@ -239,7 +239,6 @@ pub fn radar(batch: &core::Batch<SessionType, LmuVehicleState>) -> Value {
 mod tests {
     use super::*;
     use crate::engine::Engine;
-    use crate::lmu::mapper::ClockChange;
 
     const REAL_44: &[u8] = include_bytes!("../../../../testdata/lmu-fixture.bin");
 
@@ -247,14 +246,7 @@ mod tests {
     fn populated_spatial_views_classify_side_and_full_lap_from_real_batch_copy() {
         let engine = Engine::new(30, 25).unwrap();
         let candidate = engine
-            .prepare(
-                REAL_44,
-                "1.3.0.0",
-                100,
-                100,
-                100_000_000_000,
-                ClockChange::Continuous,
-            )
+            .prepare(REAL_44, "1.3.0.0", 100, 100, 100_000_000_000)
             .unwrap();
         let mut batch = candidate.batch().clone();
         let player_id = batch.player_id.clone().unwrap();

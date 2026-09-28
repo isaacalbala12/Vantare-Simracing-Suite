@@ -15,7 +15,6 @@ use crate::ipc::{
     resync::{self, ResyncError},
     snapshot::{self, ProductMetadata, SnapshotError},
 };
-use crate::lmu::mapper::ClockChange;
 use crate::projection::{engineer, frame, strategy};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -124,7 +123,6 @@ impl Assembler {
         shared_received_ns: u64,
         now_ns: u64,
         occurred_utc_ns: i64,
-        clock_change: ClockChange,
     ) -> Result<Vec<Vec<u8>>, AssemblyError> {
         let config = self
             .pending
@@ -143,7 +141,6 @@ impl Assembler {
                 shared_received_ns,
                 now_ns,
                 occurred_utc_ns,
-                clock_change,
             )
             .map_err(AssemblyError::Engine)?;
         let batch = candidate.batch();
@@ -268,14 +265,7 @@ mod tests {
             let mut assembler = Assembler::new(30, 15).unwrap();
             assembler.configure(CONFIG).unwrap();
             let frames = assembler
-                .apply(
-                    bytes,
-                    build,
-                    100,
-                    100,
-                    100_000_000_000,
-                    ClockChange::Continuous,
-                )
+                .apply(bytes, build, 100, 100, 100_000_000_000)
                 .unwrap();
             let decoded: Vec<_> = frames
                 .iter()
@@ -306,14 +296,7 @@ mod tests {
     fn rejected_batch_does_not_ack_or_commit_then_retries_all_demanded_products() {
         let mut assembler = Assembler::new(30, 15).unwrap();
         assert_eq!(
-            assembler.apply(
-                REAL_44,
-                "1.3.0.0",
-                100,
-                100,
-                100_000_000_000,
-                ClockChange::Continuous
-            ),
+            assembler.apply(REAL_44, "1.3.0.0", 100, 100, 100_000_000_000),
             Err(AssemblyError::MissingConfiguration)
         );
         assembler.configure(CONFIG).unwrap();
@@ -322,26 +305,12 @@ mod tests {
             Err(AssemblyError::StaleConfiguration)
         ));
         assert!(matches!(
-            assembler.apply(
-                &REAL_44[..100],
-                "1.3.0.0",
-                100,
-                100,
-                100_000_000_000,
-                ClockChange::Continuous
-            ),
+            assembler.apply(&REAL_44[..100], "1.3.0.0", 100, 100, 100_000_000_000),
             Err(AssemblyError::Engine(_))
         ));
         assert!(assembler.engine().current().is_none());
         let frames = assembler
-            .apply(
-                REAL_44,
-                "1.3.0.0",
-                100,
-                100,
-                100_000_000_000,
-                ClockChange::Continuous,
-            )
+            .apply(REAL_44, "1.3.0.0", 100, 100, 100_000_000_000)
             .unwrap();
         assert!(assembler.engine().current().is_some());
         let decoded: Vec<_> = frames
@@ -432,14 +401,7 @@ mod tests {
         .unwrap();
         assembler.configure(&configuration).unwrap();
         let next_frames = assembler
-            .apply(
-                REAL_44,
-                "1.3.0.0",
-                200,
-                200,
-                101_000_000_000,
-                ClockChange::Continuous,
-            )
+            .apply(REAL_44, "1.3.0.0", 200, 200, 101_000_000_000)
             .unwrap();
         assert_eq!(next_frames.len(), 2);
         let ack = ipc::decode(&next_frames[0]).unwrap();
@@ -467,14 +429,7 @@ mod tests {
         assert_eq!(boundary["first"], 2);
         assert_eq!(boundary["next"], 2);
         let third = assembler
-            .apply(
-                REAL_44,
-                "1.3.0.0",
-                300,
-                300,
-                102_000_000_000,
-                ClockChange::Continuous,
-            )
+            .apply(REAL_44, "1.3.0.0", 300, 300, 102_000_000_000)
             .unwrap();
         assert_eq!(third.len(), 1);
         assert_eq!(ipc::decode(&third[0]).unwrap().kind, ipc::Kind::Snapshot);

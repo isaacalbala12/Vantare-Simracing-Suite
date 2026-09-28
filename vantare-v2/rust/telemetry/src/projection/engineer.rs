@@ -392,7 +392,6 @@ pub fn build(
 mod tests {
     use super::*;
     use crate::engine::Engine;
-    use crate::lmu::mapper::ClockChange;
     use serde_json::json;
 
     const REAL_44: &[u8] = include_bytes!("../../../../testdata/lmu-fixture.bin");
@@ -405,14 +404,7 @@ mod tests {
         .unwrap();
         let engine = Engine::new(30, 15).unwrap();
         let prepared = engine
-            .prepare(
-                REAL_44,
-                "1.3.0.0",
-                100,
-                100,
-                100_000_000_000,
-                ClockChange::Continuous,
-            )
+            .prepare(REAL_44, "1.3.0.0", 100, 100, 100_000_000_000)
             .unwrap();
         let actual = build(
             prepared.batch(),
@@ -437,14 +429,7 @@ mod tests {
     fn absent_player_and_invalid_session_keep_explicit_quality() {
         let engine = Engine::new(30, 15).unwrap();
         let prepared = engine
-            .prepare(
-                REAL_44,
-                "1.3.0.0",
-                100,
-                100,
-                100_000_000_000,
-                ClockChange::Continuous,
-            )
+            .prepare(REAL_44, "1.3.0.0", 100, 100, 100_000_000_000)
             .unwrap();
         let mut batch = prepared.batch().clone();
         batch.player_id = Some("not-in-grid".into());

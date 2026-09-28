@@ -5,7 +5,6 @@ use std::io::{self, Write};
 
 use vantare_telemetry::assembly::{Assembler, FactReplay};
 use vantare_telemetry::ipc::{self, Kind};
-use vantare_telemetry::lmu::mapper::ClockChange;
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -67,7 +66,6 @@ fn run(pipe_name: &str, nonce_text: &str, fixture_path: &str) -> io::Result<()> 
                 100 * sequence,
                 100 * sequence,
                 100_000_000_000 + i64::try_from(sequence).unwrap(),
-                ClockChange::Continuous,
             )
             .map_err(|error| io::Error::other(format!("apply: {error:?}")))?;
         for frame in frames {

@@ -364,7 +364,6 @@ impl Standing {
 mod tests {
     use super::*;
     use crate::engine::Engine;
-    use crate::lmu::mapper::ClockChange;
 
     const REAL_44: &[u8] = include_bytes!("../../../../testdata/lmu-fixture.bin");
 
@@ -372,14 +371,7 @@ mod tests {
     fn class_gap_distinguishes_timing_line_from_full_lap() {
         let engine = Engine::new(30, 23).unwrap();
         let candidate = engine
-            .prepare(
-                REAL_44,
-                "1.3.0.0",
-                100,
-                100,
-                100_000_000_000,
-                ClockChange::Continuous,
-            )
+            .prepare(REAL_44, "1.3.0.0", 100, 100, 100_000_000_000)
             .unwrap();
         let mut batch = candidate.batch().clone();
         let initial = build(&batch);

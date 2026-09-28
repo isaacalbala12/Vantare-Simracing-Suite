@@ -9,7 +9,6 @@ use vantare_telemetry::assembly::Assembler;
 use vantare_telemetry::engine::Engine;
 use vantare_telemetry::ipc::snapshot;
 use vantare_telemetry::ipc::{self, Kind};
-use vantare_telemetry::lmu::mapper::ClockChange;
 use vantare_telemetry::projection::frame;
 
 const FRAME: &[u8] = include_bytes!("../../../testdata/lmu-fixture.bin");
@@ -41,7 +40,6 @@ fn measure(label: &str, config: &[u8]) {
                     tick * 1_000_000,
                     tick * 1_000_000,
                     stamp,
-                    ClockChange::Continuous,
                 )
                 .expect("static frame batch"),
         );
@@ -85,7 +83,6 @@ fn measure_overlay_projection() {
                 tick * 1_000_000,
                 tick * 1_000_000,
                 100_000_000_000 + tick as i64 * 1_000_000,
-                ClockChange::Continuous,
             )
             .expect("candidate");
         engine.commit(candidate).expect("commit");
@@ -97,7 +94,6 @@ fn measure_overlay_projection() {
             (settled_ticks + 1) * 1_000_000,
             (settled_ticks + 1) * 1_000_000,
             100_000_000_000 + (settled_ticks + 1) as i64 * 1_000_000,
-            ClockChange::Continuous,
         )
         .expect("candidate");
     for run in 1..=5 {
@@ -198,14 +194,7 @@ fn measure_overlay_encoding() {
         .configure(&configuration(true, false, false))
         .expect("configuration");
     let frames = assembly
-        .apply(
-            FRAME,
-            "1.3.0.0",
-            1_000_000,
-            1_000_000,
-            100_000_000_000,
-            ClockChange::Continuous,
-        )
+        .apply(FRAME, "1.3.0.0", 1_000_000, 1_000_000, 100_000_000_000)
         .expect("static frame batch");
     let decoded = ipc::decode(&frames[1]).expect("overlay snapshot frame");
     let wire: Value = serde_json::from_slice(decoded.payload).expect("overlay JSON");

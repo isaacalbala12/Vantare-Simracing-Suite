@@ -12,6 +12,10 @@ pub struct FreshnessGate {
 }
 
 impl FreshnessGate {
+    pub fn previous_source_ns(&self) -> i64 {
+        self.previous_source_ns
+    }
+
     /// Elapsed time is monotonic within one source run. A reset reanchors the
     /// gate instead of inferring a stall from a negative elapsed duration.
     pub fn observe(&mut self, elapsed_ns: u64, source_ns: i64) -> bool {

@@ -1598,3 +1598,18 @@ y ambos pipes Windows pasan. El contrato vive en
 No hay emisor/receptor Status productivo, watchdog ni plazos bajo carga;
 R04/R05 siguen incompletos. Go sigue owner y faltan el loop live,
 corpus temporal 44/104 y gates globales.
+
+## 82. Clasificación interna del reloj SHM (2026-09-28)
+
+`Engine` obtiene `Continuous`/`Reset`/`Wrap` del reloj de origen del
+frame admitido y del último reloj confirmado por su gate. El llamador
+de `Assembler::apply` ya no inventa un `ClockChange`; mapper reutiliza
+el mismo clasificador para su fallback sobre la sesión fusionada. El
+candidato descartado no altera el reloj previo ni la identidad. Pruebas
+del borde de 24 h/1 min y de rebobinado en el frame real 44 acreditan
+esa continuidad; Rust release 138/138, Clippy, formato, build y pipe
+Go↔Rust pasan. Go productivo continúa como owner.
+
+El loop live todavía debe aportar los relojes monotónico y UTC, lectura
+SHM estable, REST y transporte acotado. Corpus temporal real 44/104,
+supresión del remanente post-sesión y gate CPU siguen pendientes.

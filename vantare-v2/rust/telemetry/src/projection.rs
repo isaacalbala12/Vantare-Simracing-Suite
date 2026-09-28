@@ -305,7 +305,6 @@ mod tests {
     use crate::core::Cursor;
     use crate::derive::controls::ControlSample;
     use crate::engine::Engine;
-    use crate::lmu::mapper::ClockChange;
     use crate::quality::Provenance;
     use serde_json::{Map, Value, json};
 
@@ -314,9 +313,7 @@ mod tests {
     #[test]
     fn real_grid_projects_session_and_player_without_inventing_steering_or_flag() {
         let engine = Engine::new(30, 15).unwrap();
-        let prepared = engine
-            .prepare(REAL_44, "1.3.0.0", 100, 100, 1_000, ClockChange::Continuous)
-            .unwrap();
+        let prepared = engine.prepare(REAL_44, "1.3.0.0", 100, 100, 1_000).unwrap();
         let session = session(prepared.batch(), prepared.session_remaining());
         assert_eq!(session.flag.quality, Quality::Missing);
         assert_eq!(session.track.quality, Quality::Fresh);
@@ -454,14 +451,7 @@ mod tests {
                 .unwrap();
         let engine = Engine::new(30, 15).unwrap();
         let prepared = engine
-            .prepare(
-                REAL_44,
-                "1.3.0.0",
-                100,
-                100,
-                100_000_000_000,
-                ClockChange::Continuous,
-            )
+            .prepare(REAL_44, "1.3.0.0", 100, 100, 100_000_000_000)
             .unwrap();
         let session = session(prepared.batch(), prepared.session_remaining());
         let player = player(prepared.batch(), SpeedUnit::Mps);

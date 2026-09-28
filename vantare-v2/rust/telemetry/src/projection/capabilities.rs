@@ -224,7 +224,6 @@ pub fn build(
 mod tests {
     use super::*;
     use crate::engine::Engine;
-    use crate::lmu::mapper::ClockChange;
 
     const REAL_44: &[u8] = include_bytes!("../../../../testdata/lmu-fixture.bin");
 
@@ -240,14 +239,7 @@ mod tests {
     fn descriptor_restricts_supported_capabilities_and_invalid_rate_is_rejected() {
         let engine = Engine::new(30, 26).unwrap();
         let candidate = engine
-            .prepare(
-                REAL_44,
-                "1.3.0.0",
-                100,
-                100,
-                100_000_000_000,
-                ClockChange::Continuous,
-            )
+            .prepare(REAL_44, "1.3.0.0", 100, 100, 100_000_000_000)
             .unwrap();
         let mut source = Source {
             descriptor_capabilities: vec!["rest".into(), "rest".into(), "unknown".into()],

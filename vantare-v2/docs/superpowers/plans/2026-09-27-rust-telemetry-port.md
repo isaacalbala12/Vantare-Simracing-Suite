@@ -1960,3 +1960,17 @@ snapshots Engineer por repetición. `go test ./...` pasó. Todavía no existe
 entrega al `EngineerProjectionConsumer` productivo ni garantía de replay de
 facts tras fallo del callback o reinicio del hijo; la activación requiere
 resolver ese límite junto con identidad, status y resync.
+
+## 103. Identidad Engineer por el pipe candidato (2026-09-29)
+
+Rust adjunta al sobre Engineer live la identidad confirmada del batch:
+evento, sesión, vehículo jugador, equipo y conductor. Go la conserva en el
+evento recibido, comprueba que los campos obligatorios están presentes y que
+el vehículo coincide con `snapshot.player.id`. Los fixtures históricos sin
+identidad siguen siendo legibles para replay, pero no autorizan la entrega al
+servicio Engineer. La prueba física x5 con LMU 1.4.2.0 y 47 coches pasó la
+validación de identidad completa junto a Overlay y el fact `session.started`.
+`go test ./...`, 154 tests Rust, build release, Clippy y formato pasan tras
+actualizar el banco de diagnóstico. Falta adaptar el DTO al contrato de
+`EngineerProjectionConsumer`, entregar status/facts con recuperación y medir
+el gate de rendimiento de la ruta final.

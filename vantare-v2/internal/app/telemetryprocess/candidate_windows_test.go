@@ -103,6 +103,10 @@ func TestCandidateOverlayReachesPublisherLiveLMUOptIn(t *testing.T) {
 			overlays++
 		}
 		if event.Engineer != nil {
+			if event.EngineerIdentity == nil || !(engineer.Context{Epoch: uint64(event.Engineer.Epoch), Identity: *event.EngineerIdentity}).Complete() ||
+				engineer.VehicleID(event.Engineer.Player.ID) != event.EngineerIdentity.Vehicle {
+				return errors.New("Rust Engineer snapshot has no matching complete identity")
+			}
 			engineers++
 		}
 		for _, fact := range event.Facts {

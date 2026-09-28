@@ -5,7 +5,7 @@ use std::hint::black_box;
 use std::time::Instant;
 
 use vantare_telemetry::engine::Engine;
-use vantare_telemetry::ipc::snapshot::{ProductMetadata, encode_engineer_typed};
+use vantare_telemetry::ipc::snapshot::{EngineerIdentity, ProductMetadata, encode_engineer_typed};
 use vantare_telemetry::projection::engineer;
 
 const FRAME: &[u8] = include_bytes!("../../../testdata/lmu-fixture.bin");
@@ -55,6 +55,21 @@ fn main() {
             prepared.session_remaining(),
             prepared.gaps(),
         );
+        let batch = prepared.batch();
+        let identity = batch.player_id.as_deref().and_then(|player_id| {
+            batch
+                .state
+                .vehicles
+                .iter()
+                .find(|vehicle| vehicle.id == player_id)
+                .map(|vehicle| EngineerIdentity {
+                    event: &batch.event_id,
+                    session: &batch.session_id,
+                    vehicle: player_id,
+                    team: &vehicle.team_id,
+                    driver: &vehicle.driver_id,
+                })
+        });
         black_box(
             encode_engineer_typed(
                 &value,
@@ -63,6 +78,7 @@ fn main() {
                     sequence: 1,
                     captured_at: "1970-01-01T00:01:40Z",
                 },
+                identity,
             )
             .expect("frame"),
         );

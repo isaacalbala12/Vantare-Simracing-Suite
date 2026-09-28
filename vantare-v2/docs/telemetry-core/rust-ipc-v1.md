@@ -77,6 +77,14 @@ directamente JSON y framing sin mapas `Value` por campo; R21 medirá y
 comparará codec, copia y entrega completa antes de elegir transporte. El
 receptor aún no recibe estos frames desde un hijo productivo.
 
+En el candidato live, el sobre Engineer incluye además `identity` con
+`event`, `session`, `vehicle`, `team` y `driver` tomados del batch confirmado.
+El receptor Go conserva esa identidad y exige evento, sesión, vehículo y
+conductor no vacíos y el mismo vehículo que `snapshot.player.id`; team puede
+estar vacío. Los oráculos estáticos anteriores no llevan `identity` y siguen
+siendo legibles para replay, pero no bastan para conectar el servicio
+Engineer productivo. Strategy mantiene el sobre sin identidad.
+
 ## Fact Engineer v1 inicial (2026-09-28)
 
 Rust envuelve `FactEnvelopeV1` en `KindFact` con

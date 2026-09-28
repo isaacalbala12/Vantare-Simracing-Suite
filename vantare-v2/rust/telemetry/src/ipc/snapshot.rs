@@ -19,7 +19,18 @@ pub struct ProductMetadata<'a> {
 #[derive(Serialize)]
 struct TypedEnvelope<'a, T: Serialize> {
     product: &'static str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    identity: Option<EngineerIdentity<'a>>,
     snapshot: TypedSnapshot<'a, T>,
+}
+
+#[derive(Clone, Copy, Serialize)]
+pub struct EngineerIdentity<'a> {
+    pub event: &'a str,
+    pub session: &'a str,
+    pub vehicle: &'a str,
+    pub team: &'a str,
+    pub driver: &'a str,
 }
 
 #[derive(Serialize)]
@@ -45,12 +56,14 @@ struct TypedSnapshot<'a, T: Serialize> {
 pub fn encode_engineer_typed(
     payload: &crate::projection::engineer::EngineerView<'_>,
     metadata: ProductMetadata<'_>,
+    identity: Option<EngineerIdentity<'_>>,
 ) -> Result<Vec<u8>, SnapshotError> {
     if metadata.epoch == 0 || metadata.sequence == 0 || metadata.captured_at.is_empty() {
         return Err(SnapshotError::InvalidUpdate);
     }
     let envelope = TypedEnvelope {
         product: PRODUCT_ENGINEER_V1,
+        identity,
         snapshot: TypedSnapshot {
             canonical_version: 1,
             projection_version: 1,
@@ -268,7 +281,7 @@ mod tests {
                     prepared.session_remaining(),
                     prepared.gaps(),
                 );
-                encode_engineer_typed(&view, metadata).unwrap()
+                encode_engineer_typed(&view, metadata, None).unwrap()
             } else {
                 encode_observation(product, &golden[key], metadata).unwrap()
             };

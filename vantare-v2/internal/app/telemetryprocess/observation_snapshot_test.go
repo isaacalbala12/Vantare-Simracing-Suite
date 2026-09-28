@@ -88,3 +88,53 @@ func TestDecodeObservationSnapshotsRejectWrongProductSchemaAndCursor(t *testing.
 		}
 	}
 }
+
+func TestDecodeEngineerSnapshotIdentity(t *testing.T) {
+	wire, err := os.ReadFile(filepath.Join("..", "..", "..", "rust", "telemetry", "testdata", "engineer-snapshot-frame-rust-v1.bin"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	frame, err := DecodeFrame(wire)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var envelope map[string]json.RawMessage
+	if err := json.Unmarshal(frame.Payload, &envelope); err != nil {
+		t.Fatal(err)
+	}
+	snapshot, err := DecodeEngineerSnapshot(frame)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name     string
+		vehicle  string
+		driver   string
+		wantFail bool
+	}{
+		{"complete", string(snapshot.Player.ID), "driver-1", false},
+		{"missing driver", string(snapshot.Player.ID), "", true},
+		{"wrong player", "other-vehicle", "driver-1", true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			identity, err := json.Marshal(map[string]string{"event": "lmu-event-1", "session": "lmu-session-1", "vehicle": test.vehicle, "driver": test.driver})
+			if err != nil {
+				t.Fatal(err)
+			}
+			envelope["identity"] = identity
+			payload, err := json.Marshal(envelope)
+			if err != nil {
+				t.Fatal(err)
+			}
+			frame.Payload = payload
+			_, got, err := DecodeEngineerSnapshotWithIdentity(frame)
+			if test.wantFail {
+				if !errors.Is(err, ErrInvalidObservationSnapshot) {
+					t.Fatalf("incomplete identity error = %v", err)
+				}
+			} else if err != nil || got == nil || got.Driver != "driver-1" {
+				t.Fatalf("complete identity = %+v, %v", got, err)
+			}
+		})
+	}
+}

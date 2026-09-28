@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — identidad Engineer Rust por IPC (2026-09-29)
+
+El candidato Rust adjunta identidad de evento, sesión, jugador, equipo y
+conductor a Engineer; Go comprueba identidad completa y jugador coincidente.
+La prueba física LMU 1.4.2.0 de 47 coches pasó cinco veces con Overlay V2,
+Engineer y `session.started`. `go test ./...`, 154 tests Rust, build release,
+Clippy y formato pasaron. Los fixtures anteriores sin identidad son solo
+replay; falta adaptar y entregar al servicio Engineer productivo, asegurar
+recuperación de facts/status y completar Wails/OBS y gates de rendimiento.
+Plan §103; Go sigue productivo.
+
 ## VAN-778 / ISA-1403 — facts Rust llegan al callback Go (2026-09-29)
 
 El supervisor entrega al callback los facts nuevos retenidos tras el ACK.

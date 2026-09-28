@@ -24,16 +24,17 @@ func (cursor receiverCursor) after(previous receiverCursor) bool {
 // ReceivedV1 holds one validated child message. FactACK must be written to
 // the child after Retain succeeds; facts stay in Receiver until DrainFacts.
 type ReceivedV1 struct {
-	Configuration *ConfigurationAckV1
-	Overlay       *overlayv2.UpdateV2
-	Engineer      *engineer.SnapshotV1
-	Strategy      *strategy.SnapshotV1
-	Status        *StatusV1
-	Resync        *ResyncRequiredV1
-	FactACK       *Frame
-	FactAdded     bool
-	Facts         []engineer.FactEnvelopeV1
-	Stopped       bool
+	Configuration    *ConfigurationAckV1
+	Overlay          *overlayv2.UpdateV2
+	Engineer         *engineer.SnapshotV1
+	EngineerIdentity *engineer.Identity
+	Strategy         *strategy.SnapshotV1
+	Status           *StatusV1
+	Resync           *ResyncRequiredV1
+	FactACK          *Frame
+	FactAdded        bool
+	Facts            []engineer.FactEnvelopeV1
+	Stopped          bool
 }
 
 // Receiver is scoped to one verified child instance. The host writes the
@@ -168,12 +169,13 @@ func (receiver *Receiver) acceptSnapshot(frame Frame) (ReceivedV1, error) {
 		if !receiver.active.Consumers.Engineer {
 			return ReceivedV1{}, ErrReceiverProtocol
 		}
-		snapshot, err := DecodeEngineerSnapshot(frame)
+		snapshot, identity, err := DecodeEngineerSnapshotWithIdentity(frame)
 		if err != nil {
 			return ReceivedV1{}, err
 		}
 		cursor = receiverCursor{epoch: uint64(snapshot.Metadata.Epoch), sequence: uint64(snapshot.Metadata.Sequence)}
 		event.Engineer = &snapshot
+		event.EngineerIdentity = identity
 	case ProductStrategyV1:
 		if !receiver.active.Consumers.Strategy {
 			return ReceivedV1{}, ErrReceiverProtocol

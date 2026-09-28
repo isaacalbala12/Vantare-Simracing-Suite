@@ -13,7 +13,7 @@ use crate::ipc::{
     fact_delivery::FactDeliveryLog,
     fact_replay::{self, ReplayRequestError},
     resync::{self, ResyncError},
-    snapshot::{self, ProductMetadata, SnapshotError},
+    snapshot::{self, EngineerIdentity, ProductMetadata, SnapshotError},
 };
 use crate::lmu::rest::RestCache;
 use crate::projection::{engineer, frame, strategy};
@@ -192,8 +192,22 @@ impl Assembler {
         if config.consumers.engineer {
             let view =
                 engineer::build_typed(batch, candidate.session_remaining(), candidate.gaps());
+            let identity = batch.player_id.as_deref().and_then(|player_id| {
+                batch
+                    .state
+                    .vehicles
+                    .iter()
+                    .find(|vehicle| vehicle.id == player_id)
+                    .map(|vehicle| EngineerIdentity {
+                        event: &batch.event_id,
+                        session: &batch.session_id,
+                        vehicle: player_id,
+                        team: &vehicle.team_id,
+                        driver: &vehicle.driver_id,
+                    })
+            });
             prepared.push(
-                snapshot::encode_engineer_typed(&view, metadata)
+                snapshot::encode_engineer_typed(&view, metadata, identity)
                     .map_err(AssemblyError::Snapshot)?,
             );
             for fact in candidate.facts() {

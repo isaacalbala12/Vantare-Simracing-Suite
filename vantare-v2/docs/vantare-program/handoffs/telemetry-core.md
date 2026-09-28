@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — estado observado Rust ampliado (2026-09-28)
+
+El batch neutral ahora posee campos de sesión/clima y un vehículo con todos
+los campos observados de Go, incluido el payload rápido del jugador. LMU
+mueve las filas al estado; rivales conservan los campos rápidos ausentes y
+el flag solo afirma amarillo con evidencia positiva. Rust debug/release
+55/55, formato, Clippy y build pasan. Faltan identidades completas,
+paridad temporal de valores, facts, derivaciones restantes, proyecciones e
+IPC productivo; 50% CPU sin acreditar. Plan sección 30. Go sigue productivo.
+
 ## ISA-1403 — tiempo restante en candidato LMU (2026-09-28)
 
 El pipeline calcula `session.remaining` desde reloj fusionado y fin SHM,

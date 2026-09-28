@@ -12,6 +12,11 @@ pub struct Cursor {
     pub sequence: u64,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SessionFlag {
+    Yellow,
+}
+
 #[derive(Debug)]
 pub struct Vehicle<T> {
     pub id: String,
@@ -19,13 +24,68 @@ pub struct Vehicle<T> {
 }
 
 #[derive(Debug)]
-pub struct Batch<T> {
+pub struct VehicleState<S, F, D> {
+    pub driver_name: Field<String>,
+    pub name: Field<String>,
+    pub vehicle_class: Field<String>,
+    pub car_number: Field<String>,
+    pub player: Field<bool>,
+    pub sector: Field<S>,
+    pub lap_distance: Field<f64>,
+    pub lap_progress_time: Field<f64>,
+    pub best_lap_time: Field<f64>,
+    pub last_lap_time: Field<f64>,
+    pub estimated_lap_time: Field<f64>,
+    pub lap_number: Field<i32>,
+    pub gear: Field<i32>,
+    pub engine_rpm: Field<f64>,
+    pub speed_mps: Field<f64>,
+    pub throttle: Field<f64>,
+    pub brake: Field<f64>,
+    pub clutch: Field<f64>,
+    pub position: Field<i32>,
+    pub completed_laps: Field<i32>,
+    pub in_pit: Field<bool>,
+    pub pit_stop_count: Field<i32>,
+    pub penalty_count: Field<i32>,
+    pub time_behind_leader: Field<f64>,
+    pub laps_behind_leader: Field<i32>,
+    pub time_behind_next: Field<f64>,
+    pub laps_behind_next: Field<i32>,
+    pub fuel: Field<F>,
+    pub delta_best: Field<f64>,
+    pub world_position: Field<[f64; 3]>,
+    pub local_velocity: Field<[f64; 3]>,
+    pub orientation: Field<[[f64; 3]; 3]>,
+    pub damage: Field<D>,
+    pub tyre_wear: Field<[f64; 4]>,
+}
+
+#[derive(Debug)]
+pub struct ObservedState<S, V> {
+    pub source_time_ns: Field<i64>,
+    pub end_time_seconds: Field<f64>,
+    pub maximum_laps: Field<i32>,
+    pub track_name: Field<String>,
+    pub session_type: Field<S>,
+    pub vehicle_count: Field<i32>,
+    pub player_present: Field<bool>,
+    pub ambient_temp_c: Field<f64>,
+    pub track_temp_c: Field<f64>,
+    pub rain_fraction: Field<f64>,
+    pub wetness_fraction: Field<f64>,
+    pub session_flag: Field<SessionFlag>,
+    pub vehicles: Vec<Vehicle<V>>,
+    pub track_length: Field<f64>,
+}
+
+#[derive(Debug)]
+pub struct Batch<S, V> {
     pub event_id: String,
     pub session_id: String,
     pub player_id: Option<String>,
     pub cursor: Cursor,
-    pub vehicle_count: Field<i32>,
-    pub vehicles: Vec<Vehicle<T>>,
+    pub state: ObservedState<S, V>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -43,17 +103,17 @@ pub enum Reject {
     WrongReducer,
 }
 
-pub struct Reducer<T> {
+pub struct Reducer<S, V> {
     token: Arc<()>,
-    current: Option<Batch<T>>,
+    current: Option<Batch<S, V>>,
 }
 
-pub struct Candidate<T> {
+pub struct Candidate<S, V> {
     token: Arc<()>,
-    batch: Batch<T>,
+    batch: Batch<S, V>,
 }
 
-impl<T> Reducer<T> {
+impl<S, V> Reducer<S, V> {
     pub fn new() -> Self {
         Self {
             token: Arc::new(()),
@@ -61,7 +121,7 @@ impl<T> Reducer<T> {
         }
     }
 
-    pub fn prepare(&self, batch: Batch<T>) -> Result<Candidate<T>, Reject> {
+    pub fn prepare(&self, batch: Batch<S, V>) -> Result<Candidate<S, V>, Reject> {
         self.validate(&batch)?;
         Ok(Candidate {
             token: self.token.clone(),
@@ -69,7 +129,7 @@ impl<T> Reducer<T> {
         })
     }
 
-    fn validate(&self, batch: &Batch<T>) -> Result<(), Reject> {
+    fn validate(&self, batch: &Batch<S, V>) -> Result<(), Reject> {
         if batch.event_id.is_empty() || batch.session_id.is_empty() {
             return Err(Reject::IncompleteIdentity);
         }
@@ -85,14 +145,14 @@ impl<T> Reducer<T> {
         }
         if let Field::Present {
             value, freshness, ..
-        } = &batch.vehicle_count
+        } = &batch.state.vehicle_count
             && *freshness != Freshness::Invalid
-            && (*value < 0 || *value as usize != batch.vehicles.len())
+            && (*value < 0 || *value as usize != batch.state.vehicles.len())
         {
             return Err(Reject::VehicleCountMismatch);
         }
-        let mut ids = Vec::with_capacity(batch.vehicles.len());
-        for vehicle in &batch.vehicles {
+        let mut ids = Vec::with_capacity(batch.state.vehicles.len());
+        for vehicle in &batch.state.vehicles {
             if vehicle.id.is_empty() {
                 return Err(Reject::MissingVehicleId);
             }
@@ -105,7 +165,7 @@ impl<T> Reducer<T> {
         Ok(())
     }
 
-    pub fn commit(&mut self, candidate: Candidate<T>) -> Result<(), Reject> {
+    pub fn commit(&mut self, candidate: Candidate<S, V>) -> Result<(), Reject> {
         if !Arc::ptr_eq(&self.token, &candidate.token) {
             return Err(Reject::WrongReducer);
         }
@@ -114,19 +174,19 @@ impl<T> Reducer<T> {
         Ok(())
     }
 
-    pub fn current(&self) -> Option<&Batch<T>> {
+    pub fn current(&self) -> Option<&Batch<S, V>> {
         self.current.as_ref()
     }
 }
 
-impl<T> Default for Reducer<T> {
+impl<S, V> Default for Reducer<S, V> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<T> Candidate<T> {
-    pub fn batch(&self) -> &Batch<T> {
+impl<S, V> Candidate<S, V> {
+    pub fn batch(&self) -> &Batch<S, V> {
         &self.batch
     }
 }
@@ -164,23 +224,37 @@ fn validate_cursor(current: Option<Cursor>, next: Cursor) -> Result<(), Reject> 
 mod tests {
     use super::*;
 
-    fn batch(sequence: u64) -> Batch<()> {
+    fn batch(sequence: u64) -> Batch<(), ()> {
         Batch {
             event_id: "event".to_owned(),
             session_id: "session".to_owned(),
             player_id: None,
             cursor: Cursor { epoch: 1, sequence },
-            vehicle_count: Field::observed(2),
-            vehicles: vec![
-                Vehicle {
-                    id: "a".to_owned(),
-                    value: (),
-                },
-                Vehicle {
-                    id: "b".to_owned(),
-                    value: (),
-                },
-            ],
+            state: ObservedState {
+                source_time_ns: Field::Missing,
+                end_time_seconds: Field::Missing,
+                maximum_laps: Field::Missing,
+                track_name: Field::Missing,
+                session_type: Field::Missing,
+                vehicle_count: Field::observed(2),
+                player_present: Field::Missing,
+                ambient_temp_c: Field::Missing,
+                track_temp_c: Field::Missing,
+                rain_fraction: Field::Missing,
+                wetness_fraction: Field::Missing,
+                session_flag: Field::Missing,
+                vehicles: vec![
+                    Vehicle {
+                        id: "a".to_owned(),
+                        value: (),
+                    },
+                    Vehicle {
+                        id: "b".to_owned(),
+                        value: (),
+                    },
+                ],
+                track_length: Field::Missing,
+            },
         }
     }
 
@@ -188,7 +262,7 @@ mod tests {
     fn invalid_batch_does_not_advance_reducer() {
         let mut reducer = Reducer::new();
         let mut invalid = batch(1);
-        invalid.vehicle_count = Field::observed(3);
+        invalid.state.vehicle_count = Field::observed(3);
         assert!(matches!(
             reducer.prepare(invalid),
             Err(Reject::VehicleCountMismatch)

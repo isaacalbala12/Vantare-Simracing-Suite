@@ -854,3 +854,18 @@ como el último tiempo restante. La prueba usa la fixture SHM real estática
 de 44 y cambia el fin de sesión del candidato rechazado. Rust release 53/53,
 formato y Clippy pasan. Esta integración es interna al candidato: no hay
 ObservedState completo, engine, IPC ni consumidor; R13a/R14 siguen parciales.
+
+## 30. Estado observado owned de sesión y vehículos (2026-09-28)
+
+R11 amplía el batch neutral Rust con los campos de `ObservedState` de Go:
+tiempos, pista, tipo, recuento, presencia, clima, flag y longitud, además de
+un `VehicleState` con todos los campos observados de la fila y los campos
+rápidos del jugador. El adaptador LMU mueve la fila admitida al estado owned
+sin copiarla; los campos rápidos de rivales quedan `Missing`. El flag de
+sesión solo publica `Yellow` ante evidencia positiva. Dos tests nuevos usan
+la fixture SHM real estática de 44 para verificar el mapping y la ausencia
+de campos rápidos de rivales. Rust debug/release 55/55, formato, Clippy y
+build release pasan. La forma del estado ya cubre los campos Go, pero no
+demuestra todavía paridad de valores temporal o de identidad: siguen
+pendientes team/driver/stint, diagnósticos de fusión, facts, derivaciones,
+proyecciones, IPC productivo y corpus real 44/104. El gate CPU sigue abierto.

@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — control del host en adquisición Rust (2026-09-28)
+
+`Acquisition::handle_control_frame` admite exclusivamente Configuration,
+FactAck y FactReplayRequest ya encuadrados. El replay entra en la cola
+acotada; después del ACK, pedir el cursor podado devuelve ResyncRequired.
+Test con fact producido desde la fixture real estática de 44, Rust release
+150/150, Clippy y formato pasan. Aún falta el reader real de pipe que llame
+esta ruta, writer con deadline, loop y supervisor; Go sigue owner. Plan §90.
+
 ## VAN-778 / ISA-1403 — captura temporal LMU 1.4.2.0 (2026-09-28)
 
 Práctica offline real en Circuit de la Sarthe con parrilla WEC 2024:

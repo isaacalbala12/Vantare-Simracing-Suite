@@ -172,6 +172,12 @@ después llega Stop. Pasó en Windows el 2026-09-28; no equivale a LMU live ni a
 writer/supervisor productivo. El ejecutable principal se compila sin
 `replay-harness` y no incluye este camino.
 
+`Acquisition::handle_control_frame` prepara el despacho del futuro reader:
+acepta Configuration, FactAck y FactReplayRequest validados, encola el replay
+o ResyncRequired y propaga saturación. Stop corresponde al loop exterior.
+La prueba unitaria del despacho usa un Fact real estático de 44 coches; aún
+no existe reader/writer de pipe live que lo invoque.
+
 ## Límites de diseño para completar antes de R05/R19
 
 | Recurso | Límite inicial | Evidencia/estado |

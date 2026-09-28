@@ -1725,3 +1725,17 @@ Esta evidencia **no** cubre R02: la meta exige secuencias reales de 44 y
 104 vehículos y el gate de CPU de ambos procesos. La build 1.4.2.0 sigue
 siendo candidata de diagnóstico y no figura en la allowlist productiva Go
 ni Rust. El principal Rust continúa sin loop live ni conexión Wails.
+
+## 90. Despacho cerrado de control del host en Rust (2026-09-28)
+
+`Acquisition::handle_control_frame` despacha solo Configuration, FactAck y
+FactReplayRequest desde un frame IPC validado. El replay de facts o
+ResyncRequired se deposita en la cola acotada como un lote ordenado; un
+overflow se devuelve al owner como error explícito. El test usa un fact
+derivado de la captura real estática de 44: replay desde cursor cero,
+ACK y resync al pedir un cursor ya podado. Stop y cualquier otro tipo se
+rechazan en esta frontera; el loop exterior gestionará Stop. Rust release
+150/150, Clippy y formato pasan.
+
+Este componente no lee el pipe todavía ni habilita LMU 1.4.2.0. R05 y R19
+siguen abiertos, así como el corpus 44/104 y el gate de CPU total.

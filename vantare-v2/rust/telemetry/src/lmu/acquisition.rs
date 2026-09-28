@@ -8,8 +8,9 @@ use super::OBJECT_OUT_SIZE;
 use super::cadence::TickCadence;
 use super::process::RunningSource;
 use super::rest::poller::Poller;
-use crate::assembly::{Assembler, AssemblyError};
+use crate::assembly::{Assembler, AssemblyError, FactReplay};
 use crate::ipc::queue::{QueueError, WriterQueue};
+use crate::ipc::{self, Kind};
 
 #[derive(Debug)]
 pub enum AcquisitionError {
@@ -18,6 +19,7 @@ pub enum AcquisitionError {
     Clock,
     Assembly(AssemblyError),
     Queue(QueueError),
+    InvalidControl,
 }
 
 pub struct Acquisition {
@@ -54,6 +56,16 @@ impl Acquisition {
         self.assembler
             .configure(frame)
             .map_err(AcquisitionError::Assembly)
+    }
+
+    /// Applies only host-to-child control frames. Replay is queued as one
+    /// ordered event; saturation is fatal to this instance, not a lost Fact.
+    pub fn handle_control_frame(
+        &mut self,
+        frame: &[u8],
+        queue: &mut WriterQueue,
+    ) -> Result<(), AcquisitionError> {
+        handle_control_frame(&mut self.assembler, frame, queue)
     }
 
     /// One SHM tick. REST is consumed only from the last completed poll; a
@@ -110,6 +122,36 @@ impl Acquisition {
         self.rest.shutdown().map_err(|_| {
             AcquisitionError::Io(io::Error::other("REST poller panicked during shutdown"))
         })
+    }
+}
+
+fn handle_control_frame(
+    assembler: &mut Assembler,
+    frame: &[u8],
+    queue: &mut WriterQueue,
+) -> Result<(), AcquisitionError> {
+    let kind = ipc::decode(frame)
+        .map_err(|_| AcquisitionError::InvalidControl)?
+        .kind;
+    match kind {
+        Kind::Configuration => assembler
+            .configure(frame)
+            .map_err(AcquisitionError::Assembly),
+        Kind::FactAck => assembler
+            .acknowledge_fact_frame(frame)
+            .map(|_| ())
+            .map_err(AcquisitionError::Assembly),
+        Kind::FactReplayRequest => {
+            let replay = assembler
+                .replay_fact_request_frame(frame)
+                .map_err(AcquisitionError::Assembly)?;
+            let frames = match replay {
+                FactReplay::Frames(frames) => frames.into_iter().map(<[u8]>::to_vec).collect(),
+                FactReplay::Resync(frame) => vec![frame],
+            };
+            queue.push_batch(frames).map_err(AcquisitionError::Queue)
+        }
+        _ => Err(AcquisitionError::InvalidControl),
     }
 }
 
@@ -205,6 +247,41 @@ mod tests {
         assert!(matches!(
             Acquisition::open(30, 15),
             Err(AcquisitionError::UnsupportedBuild)
+        ));
+    }
+
+    #[test]
+    fn host_control_replays_and_acknowledges_real_fact_in_order() {
+        let mut assembler = Assembler::new(30, 15).unwrap();
+        let mut queue = WriterQueue::new();
+        handle_control_frame(&mut assembler, CONFIG, &mut queue).unwrap();
+        let produced = assembler
+            .apply(REAL_44, "1.3.0.0", 100, 100, 1_000_000_000)
+            .unwrap();
+        assert!(
+            produced
+                .iter()
+                .any(|frame| ipc::decode(frame).unwrap().kind == Kind::Fact)
+        );
+        let request =
+            ipc::encode(Kind::FactReplayRequest, br#"{"stream":15,"sequence":0}"#).unwrap();
+        handle_control_frame(&mut assembler, &request, &mut queue).unwrap();
+        let replay = queue.pop_batch().unwrap();
+        assert_eq!(replay.len(), 1);
+        assert_eq!(ipc::decode(&replay[0]).unwrap().kind, Kind::Fact);
+        let ack = ipc::encode(Kind::FactAck, br#"{"stream":15,"sequence":1}"#).unwrap();
+        handle_control_frame(&mut assembler, &ack, &mut queue).unwrap();
+        handle_control_frame(&mut assembler, &request, &mut queue).unwrap();
+        let resync = queue.pop_batch().unwrap();
+        assert_eq!(resync.len(), 1);
+        assert_eq!(ipc::decode(&resync[0]).unwrap().kind, Kind::ResyncRequired);
+        assert!(matches!(
+            handle_control_frame(
+                &mut assembler,
+                &ipc::encode(Kind::Stop, &[]).unwrap(),
+                &mut queue
+            ),
+            Err(AcquisitionError::InvalidControl)
         ));
     }
 }

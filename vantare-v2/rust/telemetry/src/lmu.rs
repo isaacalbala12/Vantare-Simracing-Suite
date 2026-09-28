@@ -2,6 +2,7 @@
 //! build evidence; buffer shape alone never promotes an unknown game build.
 
 pub mod fusion;
+pub mod mapper;
 #[cfg(windows)]
 pub mod reader;
 pub mod rest;

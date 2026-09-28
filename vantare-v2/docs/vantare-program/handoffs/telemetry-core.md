@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — identidad/cursor Rust iniciales (2026-09-28)
+
+R10 añade tracker de slots con gracia/generation y mapper de identidad que
+prepara estado candidato y solo avanza tras commit. Valida sesión, recuento y
+jugador; diferencia reset de reloj de wrap. Tests cubren ausencia/reapertura,
+retry tras rechazo y fronteras de sesión/epoch con fixture SHM real estática.
+Faltan `core.Batch`, sink/reducer, piloto/team/stint y replay temporal real;
+Go sigue productivo. Plan sección 24 detalla límites.
+Rust release 42/42, formato, Clippy y build pasan.
+
 ## ISA-1403 — benchmark diagnóstico SHM estático (2026-09-28)
 
 Se añadió benchmark Rust reproducible del parser con fixture real estática de

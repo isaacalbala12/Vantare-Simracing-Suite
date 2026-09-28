@@ -780,3 +780,18 @@ todavía equivalentes: Go construye `Observation` completa y Rust devuelve
 consumidores, CPU de ambos procesos, RSS ni corpus temporal real 44/104.
 **No constituye un PASS del objetivo CPU 50%.** Solo orienta el trabajo de
 paridad y optimización; el gate R20 exige ruta productiva comparable.
+
+## 24. Identidad y cursor Rust iniciales (2026-09-28)
+
+R10 incorpora el seguimiento de slot con gracia de 30 frames por defecto,
+fingerprint de piloto/clase y generation. Un mapper de identidad de larga
+vida prepara una copia candidata y solo avanza sesión, frame, generaciones y
+cursor cuando su llamante hace commit tras aceptar el batch. Rechaza sesión,
+recuento y jugador incoherentes sin alterar estado. Diferencia reset de reloj
+(sesión y epoch nuevos) de wrap de 24 h (solo epoch), y protege el contador de
+overflow. Tests comprueban reapertura, cambio de fingerprint, rechazo/retry,
+cambio de pista, reset y wrap sobre la fixture SHM estática real de 44.
+Todavía no construye el `core.Batch` completo ni conecta sink/reducer; no
+demuestra replay temporal, identidad de pilotos/teams/stints ni paridad de
+productos. R10 sigue parcial.
+Rust release 42/42, formato, Clippy y build pasan.

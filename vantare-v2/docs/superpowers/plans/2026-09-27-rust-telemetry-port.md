@@ -1239,10 +1239,29 @@ canónica/proyección v1, cursor y `capturedAt`. Go decodifica a los tipos de
 producto y rechaza producto, campos extra, versiones, cursor o fecha
 inválidos. Los frames cruzados de la captura estática real de 44 son
 Engineer 150 575 bytes (SHA-256
-`5c276dca4996139e704866e24b91144b14fd2cf92078dc2a7fd024fba8696e54`)
+`06e67d8a97edafe1a674070c320bb91543df0d86cc281d076318f92da0859e23`)
 y Strategy 1 525 bytes (SHA-256
 `f170c22604450d2247f790b07458f3ad861254846f0dd9089cd80ccdad85aea8`).
 Rust release 110/110, Clippy, formato, build release y `go test ./...`
 pasan. Los frames son prototipos JSON: la copia del payload y 150 KiB de
 Engineer exigen medición y posible codec distinto en R21. Sin publicación,
 demanda, facts, status ni ACK productivos. Go sigue como owner.
+
+## 58. Medición y representación tipada Engineer (2026-09-28)
+
+La primera implementación `serde_json::Value` costaba 2.97–3.51 ms por
+proyección del grid real estático de 44. El benchmark Go equivalente de
+`ProjectV1` registró 79.6–84.1 µs y proyección+JSON 475.5–545.2 µs en
+cinco repeticiones (`GOMAXPROCS=1`, Ryzen 7 3700X). Se sustituyó la ruta
+Engineer por `EngineerView` tipado, que toma prestados los strings y
+serializa campos directamente; conserva el oráculo y Go decodifica el
+frame Rust completo. En cinco repeticiones del mismo lote estático Rust
+midió 10.7–31.4 µs para proyección, 182.1–186.6 µs para proyección+JSON
+y 184.6–200.8 µs con metadata+framing IPC. El frame tipado mide 150 575
+bytes, SHA-256
+`06e67d8a97edafe1a674070c320bb91543df0d86cc281d076318f92da0859e23`.
+Es **diagnóstico de una captura estática**, sin adquisición, Go decode,
+temporalidad, 104 coches, múltiples productos, colas ni CPU de proceso.
+No acredita el gate final de ≥50%; R21/R25 exigirán ruta completa y
+corpus reales. Rust release 110/110, Clippy, formato y build pasan; Go
+cross-frame focal pasa. Go sigue productivo.

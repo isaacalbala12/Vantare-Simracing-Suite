@@ -1,11 +1,24 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — medición Engineer y ruta tipada (2026-09-28)
+
+La proyección Engineer basada en JSON dinámico tardaba 2.97–3.51 ms por
+captura estática real de 44; la versión tipada tarda 10.7–31.4 µs y
+182.1–186.6 µs junto con JSON. Go comparable: 79.6–84.1 µs para
+proyección y 475.5–545.2 µs con JSON, cinco repeticiones en Ryzen 7
+3700X. El frame Rust tipado completo conserva paridad Go: 150 575 bytes,
+SHA-256 `06e67d8a97edafe1a674070c320bb91543df0d86cc281d076318f92da0859e23`.
+Es diagnóstico estático, no el gate ≥50% de CPU completo. Rust release
+110/110, Clippy, formato, build y Go cross-frame focal pasan. Go sigue
+productivo; faltan temporal 44/104, runtime/consumidores y LMU físico.
+Plan sección 58.
+
 ## ISA-1403 — Snapshot IPC Engineer/Strategy Rust→Go (2026-09-28)
 
 Go decodifica los sobres y payloads completos enviados por Rust con
 metadata v1, cursor y fecha; rechaza producto/esquema/cursor inválido.
 Frames estáticos reales de 44: Engineer 150 575 bytes SHA-256
-`5c276dca4996139e704866e24b91144b14fd2cf92078dc2a7fd024fba8696e54`,
+`06e67d8a97edafe1a674070c320bb91543df0d86cc281d076318f92da0859e23`,
 Strategy 1 525 bytes SHA-256
 `f170c22604450d2247f790b07458f3ad861254846f0dd9089cd80ccdad85aea8`.
 Rust release 110/110, Clippy, formato, build release y `go test ./...`

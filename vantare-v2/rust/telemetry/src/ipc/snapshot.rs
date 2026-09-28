@@ -1,5 +1,6 @@
 //! Overlay V2 Snapshot payload v1 carried by the bounded IPC frame.
 
+use serde::Serialize;
 use serde_json::{Value, json};
 
 use super::{FrameError, Kind};
@@ -12,6 +13,48 @@ pub struct ProductMetadata<'a> {
     pub epoch: u64,
     pub sequence: u64,
     pub captured_at: &'a str,
+}
+
+#[derive(Serialize)]
+struct TypedEnvelope<'a, T: Serialize> {
+    product: &'static str,
+    snapshot: TypedSnapshot<'a, T>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TypedSnapshot<'a, T: Serialize> {
+    canonical_version: u8,
+    projection_version: u8,
+    epoch: u64,
+    sequence: u64,
+    captured_at: &'a str,
+    #[serde(flatten)]
+    payload: &'a T,
+}
+
+/// Serializes the borrowed, typed Engineer grid directly. This avoids the
+/// per-field serde_json::Value allocation path in the hot publisher.
+pub fn encode_engineer_typed(
+    payload: &crate::projection::engineer::EngineerView<'_>,
+    metadata: ProductMetadata<'_>,
+) -> Result<Vec<u8>, SnapshotError> {
+    if metadata.epoch == 0 || metadata.sequence == 0 || metadata.captured_at.is_empty() {
+        return Err(SnapshotError::InvalidUpdate);
+    }
+    let envelope = TypedEnvelope {
+        product: PRODUCT_ENGINEER_V1,
+        snapshot: TypedSnapshot {
+            canonical_version: 1,
+            projection_version: 1,
+            epoch: metadata.epoch,
+            sequence: metadata.sequence,
+            captured_at: metadata.captured_at,
+            payload,
+        },
+    };
+    let payload = serde_json::to_vec(&envelope).map_err(|_| SnapshotError::InvalidUpdate)?;
+    super::encode(Kind::Snapshot, &payload).map_err(SnapshotError::Frame)
 }
 
 /// Wraps a complete Engineer or Strategy observation with the canonical
@@ -131,6 +174,9 @@ pub fn encode_overlay(update: &Value) -> Result<Vec<u8>, SnapshotError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::engine::Engine;
+    use crate::lmu::mapper::ClockChange;
+    use crate::projection::engineer;
 
     #[test]
     fn real_static_44_full_update_survives_snapshot_frame() {
@@ -197,16 +243,33 @@ mod tests {
                 "strategy-snapshot-frame-rust-v1.bin",
             ),
         ] {
-            let frame = encode_observation(
-                product,
-                &golden[key],
-                ProductMetadata {
-                    epoch: 1,
-                    sequence: 1,
-                    captured_at: "1970-01-01T00:01:40Z",
-                },
-            )
-            .unwrap();
+            let metadata = ProductMetadata {
+                epoch: 1,
+                sequence: 1,
+                captured_at: "1970-01-01T00:01:40Z",
+            };
+            let frame = if product == PRODUCT_ENGINEER_V1 {
+                const REAL_44: &[u8] = include_bytes!("../../../../testdata/lmu-fixture.bin");
+                let engine = Engine::new(30, 15).unwrap();
+                let prepared = engine
+                    .prepare(
+                        REAL_44,
+                        "1.3.0.0",
+                        100,
+                        100,
+                        100_000_000_000,
+                        ClockChange::Continuous,
+                    )
+                    .unwrap();
+                let view = engineer::build_typed(
+                    prepared.batch(),
+                    prepared.session_remaining(),
+                    prepared.gaps(),
+                );
+                encode_engineer_typed(&view, metadata).unwrap()
+            } else {
+                encode_observation(product, &golden[key], metadata).unwrap()
+            };
             let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("testdata")
                 .join(file);

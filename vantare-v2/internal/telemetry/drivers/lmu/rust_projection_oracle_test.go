@@ -114,6 +114,55 @@ func TestRustProjectionGoOracleStatic44(t *testing.T) {
 	}
 }
 
+// Diagnostic projector timing on the same audited static 44-car capture as
+// the Rust benchmark. It excludes acquisition, IPC, decode and temporal churn.
+func BenchmarkRustPortGoEngineerStatic44(b *testing.B) {
+	input, err := os.ReadFile(filepath.Join("..", "..", "..", "..", "testdata", "lmu-fixture.bin"))
+	if err != nil {
+		b.Fatal(err)
+	}
+	parsed, err := parseSupported(input, time.Unix(100, 0).UTC())
+	if err != nil {
+		b.Fatal(err)
+	}
+	fused := new(Fusion).Merge(parsed.ReceivedUTC, 0, parsed)
+	mapper := NewBatchMapper()
+	reducer := telemetrycore.NewReducer()
+	pipeline := derive.NewPipeline(derive.Config{})
+	var final envelope.Snapshot[derive.FinalState]
+	sink := telemetrycore.BatchSinkFunc(func(_ context.Context, batch telemetrycore.Batch) error {
+		observed, err := reducer.Apply(batch)
+		if err != nil {
+			return err
+		}
+		final, err = pipeline.Apply(context.Background(), observed)
+		return err
+	})
+	if err := mapper.WriteObservation(context.Background(), fused, sink); err != nil {
+		b.Fatal(err)
+	}
+	b.Run("project", func(b *testing.B) {
+		b.ReportAllocs()
+		for b.Loop() {
+			if _, err := engineer.ProjectV1(final); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+	b.Run("project_json", func(b *testing.B) {
+		b.ReportAllocs()
+		for b.Loop() {
+			projected, err := engineer.ProjectV1(final)
+			if err != nil {
+				b.Fatal(err)
+			}
+			if _, err := json.Marshal(projected.PayloadV1); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
+}
+
 // Pins cadence decisions independently of product data so Rust can compare
 // the exact section mask for hot policy, safety and clock discontinuity.
 func TestRustCadenceGoOracle(t *testing.T) {

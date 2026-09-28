@@ -44,10 +44,11 @@ Rust envuelve los payloads de producto con `canonicalVersion=1`,
 `engineer.SnapshotV1` o `strategy.SnapshotV1`, comprueba versiones, cursor,
 fecha RFC3339Nano, producto y esquema. Frames reales estáticos de 44:
 `engineer-snapshot-frame-rust-v1.bin` 150 575 bytes, SHA-256
-`5c276dca4996139e704866e24b91144b14fd2cf92078dc2a7fd024fba8696e54`;
+`06e67d8a97edafe1a674070c320bb91543df0d86cc281d076318f92da0859e23`;
 `strategy-snapshot-frame-rust-v1.bin` 1 525 bytes, SHA-256
 `f170c22604450d2247f790b07458f3ad861254846f0dd9089cd80ccdad85aea8`.
-La salida Engineer JSON clona el valor antes del framing; R21 medirá y
+La salida Engineer actual usa un `EngineerView` tipado para construir
+directamente JSON y framing sin mapas `Value` por campo; R21 medirá y
 comparará codec, copia y entrega completa antes de elegir transporte. El
 receptor aún no recibe estos frames desde un hijo productivo.
 

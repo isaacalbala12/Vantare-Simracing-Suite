@@ -66,7 +66,10 @@ func buildUpdate(ctx context.Context, fixturePath string) (overlayv2.UpdateV2, e
 	return update, nil
 }
 
-func run(ctx context.Context, fixturePath string) error {
+func run(ctx context.Context, fixturePath string, port uint) error {
+	if port > 65535 {
+		return errors.New("port must be between 0 and 65535")
+	}
 	update, err := buildUpdate(ctx, fixturePath)
 	if err != nil {
 		return err
@@ -76,7 +79,7 @@ func run(ctx context.Context, fixturePath string) error {
 		return err
 	}
 	defer release()
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
 	if err != nil {
 		return fmt.Errorf("listen on loopback: %w", err)
 	}
@@ -119,10 +122,11 @@ func newHandler(update overlayv2.UpdateV2) (http.Handler, func(), error) {
 
 func main() {
 	fixturePath := flag.String("fixture", "testdata/lmu-fixture.bin", "path to the pinned sanitized LMU capture")
+	port := flag.Uint("port", 0, "loopback port; 0 assigns an available port")
 	flag.Parse()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	if err := run(ctx, *fixturePath); err != nil {
+	if err := run(ctx, *fixturePath, *port); err != nil {
 		log.Fatal(err)
 	}
 }

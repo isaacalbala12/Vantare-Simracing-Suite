@@ -28,7 +28,9 @@ go test ./tools/native-ui/host ./internal/telemetry/drivers/lmu
 go run ./tools/native-ui/host -fixture testdata/lmu-fixture.bin
 ```
 
-El host imprime su URL local con puerto asignado. En otra terminal:
+El host imprime su URL local con puerto asignado. Para probar un arranque
+tardío del host se puede usar `-port 54677`, siempre en loopback, y arrancar
+la ventana antes que el host en ese mismo puerto. En otra terminal:
 
 ```powershell
 cmake -S tools/native-ui/qtquick -B tools/native-ui/out/qtquick -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="<ruta a Qt 6.10/mingw_64>"
@@ -62,6 +64,7 @@ endpoint desconectado, ambos clientes terminan con código 6 tras cinco segundos
 La captura fija no prueba actualización continua, reconexión semántica,
 rendimiento de Vantare completa ni ahorro del 20 %. Faltan una pantalla de edición compleja, comparación con baseline Wails
 al mismo trabajo, DPI físico, OBS, empaquetado y licencia de módulos Qt. El
-actuales clientes reintentan la conexión, pero esa conducta aún no tiene prueba
-de interrupción y reanudación. No se debe usar esta escena para elegir
+clientes reintentan la conexión: ambas variantes recibieron 44 filas cuando
+arrancaron antes que el host. Falta probar corte y reanudación de un host ya
+conectado. No se debe usar esta escena para elegir
 arquitectura productiva.

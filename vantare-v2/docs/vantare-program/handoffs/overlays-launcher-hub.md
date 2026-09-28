@@ -13,6 +13,9 @@ del mismo contrato SSE; las variantes Rust control/overlay salieron con código
 locales revisadas en `tools/native-ui/evidence/`. `go test ./...` y build
 frontend pasaron. El overlay conserva alpha cero en una esquina de su captura
 propia. Esto no equivale a prueba OBS, DPI físico ni una sesión LMU activa.
+Con puerto loopback fijo, ambas variantes arrancaron antes que el host y
+recibieron después la proyección; falta probar caída y vuelta de un host ya
+conectado.
 La tarea [VAN-776](https://app.notion.com/p/3e9e51695c65810fb2bdd73aae4b555d?pvs=204)
 conserva el alcance y pendientes: pantalla de edición compleja,
 actualización/reconexión, OBS y baseline de proceso completo. No se eligió

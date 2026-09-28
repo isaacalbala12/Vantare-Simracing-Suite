@@ -1,6 +1,7 @@
 //! Closed LMU 1.3 frame admission. A caller must supply independently verified
 //! build evidence; buffer shape alone never promotes an unknown game build.
 
+pub mod fusion;
 #[cfg(windows)]
 pub mod reader;
 pub mod rest;
@@ -46,6 +47,7 @@ pub struct VehicleFields {
     pub driver_name: Field<String>,
     pub vehicle_name: Field<String>,
     pub vehicle_class: Field<String>,
+    pub car_number: Field<String>,
     pub player: Field<bool>,
     pub position: Field<i32>,
     pub completed_laps: Field<i32>,
@@ -263,6 +265,7 @@ pub fn admit_v13(buffer: &[u8], verified_build: &str) -> Result<AdmittedGrid, Ad
             driver_name: Field::observed(driver.to_owned()),
             vehicle_name: Field::observed(name.to_owned()),
             vehicle_class: Field::observed(class.to_owned()),
+            car_number: Field::Missing,
             player: Field::observed(player == 1),
             position: Field::observed(i32::from(buffer[base + 199])),
             completed_laps: Field::observed(i32::from(read_i16(buffer, base + 100))),

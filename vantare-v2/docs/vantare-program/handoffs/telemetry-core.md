@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — join REST/SHM de número de coche (2026-09-28)
+
+R09 añade unión conservadora de número de coche a una fila SHM existente:
+slot único, etiqueta coincidente, TTL y floor de sesión recibido. No crea
+filas y borra un número anterior cuando deja de cumplir. Un estado aislado
+eleva el floor por cambio fresco de pista/tipo o reset, pendiente de conexión
+al driver. Tres tests usan la fixture SHM real de 44 con REST de prueba; no
+acreditan corpus temporal REST. Faltan arbitraje escalar, replay y salida canónica. Go
+continúa productivo.
+
 ## ISA-1403 — poll REST y cache transaccional Rust (2026-09-28)
 
 R09 conecta transporte y decoder en un poll secuencial aislado. Un endpoint

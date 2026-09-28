@@ -723,3 +723,17 @@ malformado tras uno válido. Rust release 30/30, formato y Clippy pasan.
 El I/O bloqueante en curso termina por el deadline de 750 ms; todavía no hay
 loop de cadencia/backoff, cancelación inmediata del socket ni salida del
 cache hacia fusión/core/IPC. Este poll aislado no certifica la paridad live.
+
+## 20. Primer join REST/SHM de identidad (2026-09-28)
+
+La fusión Rust inicial solo añade car number a filas ya admitidas por SHM.
+Requiere slot inequívoco, etiqueta de vehículo coincidente, poll REST dentro
+de 2 s y solicitud iniciada después del floor de sesión que recibe del
+orquestador. Nunca crea filas; cada nueva unión borra primero números antiguos.
+Dos tests usan la fixture SHM real de 44 con REST de prueba y verifican
+coincidencia, slot inexistente, sesión nueva, nombre distinto y TTL. Un estado
+aislado eleva el floor al cambiar la firma fresca pista/tipo o ante reset del
+reloj de fuente; todavía debe conectarse al driver. Son tests de contrato de
+join, no corpus temporal real de REST ni aceptación R02. Faltan arbitraje de
+todos los campos equivalentes, diagnósticos de conflicto, salida canónica y
+paridad de replay. Rust release 33/33, formato y Clippy pasan.

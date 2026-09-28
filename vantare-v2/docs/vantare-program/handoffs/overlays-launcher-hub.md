@@ -24,6 +24,12 @@ permite conclusión. Microsoft advierte posibles errores de este contador;
 falta verificación GPU independiente, carga cambiante y producto completo.
 Método y nueve filas en `tools/native-ui/README.md` y
 `tools/native-ui/evidence/full-tree-static-results.csv`.
+Ensayo de empaquetado Windows: `windeployqt 6.10.2` por defecto produjo
+1.359 archivos/121,1 MiB para Qt Quick; el editor abrió fuera del `PATH` de
+Qt y cerró con código 0. Slint y Wails tienen ejecutables de 14,0 y 17,2 MiB,
+respectivamente, y el host Go separado mide 18,5 MiB; Wails depende además
+del runtime WebView2 instalado. Son tamaños de ensayo sin instalador ni
+auditoría de módulos/licencias final.
 
 Continúa la comparación [#1404](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1409), todavía en PR borrador. La rama
 `vantareapp/isa-1410-native-go-product-trial` parte de

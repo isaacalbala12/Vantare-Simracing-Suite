@@ -226,6 +226,19 @@ se ofrece sin pago con atribución. La distribución final y sus avisos deben
 revisarse antes de escoger stack; esta prueba local no certifica cumplimiento
 legal ni selecciona licencia para Vantare.
 
+Como ensayo de empaquetado Windows, `windeployqt 6.10.2 --release --qmldir
+tools/native-ui/qtquick --compiler-runtime` copió el ejecutable Qt y sus
+dependencias detectadas a un directorio aislado. Resultaron 1.359 archivos y
+121,1 MiB; el ejecutable empaquetado abrió el editor y cerró con código 0 sin
+añadir Qt al `PATH` del proceso. El despliegue por defecto incluyó varios
+estilos de Qt Quick Controls, traducciones y plugins: es una cota de este
+ensayo, no un paquete optimizado ni una lista de licencia aprobada. El
+ejecutable Rust/Slint mide 14,0 MiB y el Wails 17,2 MiB, ambos sin instalador;
+el host Go separado mide 18,5 MiB. Wails además necesita WebView2 instalado,
+y estos tamaños por sí solos no comparan el coste instalado ni el cumplimiento
+de distribución. Antes de elegir Qt habrá que cerrar el conjunto de módulos
+y sus avisos LGPL; antes de elegir Slint, su licencia y atribución aplicables.
+
 Para la prueba de caída y vuelta, se inicia `host -port <puerto>` y luego
 cada cliente con `--expect-rows 44 --expect-snapshots 2`. Tras el primer
 snapshot se detiene el host y se reinicia en el mismo puerto. Ambos clientes

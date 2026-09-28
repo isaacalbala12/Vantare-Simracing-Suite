@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — Strategy V1 payload Go/Rust (2026-09-28)
+
+La proyección Rust de sesión/progreso/pit/combustible preserva calidad y
+coincide con Go sobre la captura estática real de 44; oráculo JSON completo
+SHA-256 `f0aada0af73369906f7e5d361b9253efb901bb5e292d81d6b5e7e07c929afbd6`.
+Rust release 107/107, Clippy, formato, build release y `go test ./...`
+pasan. R17 parcial: falta metadata/IPC, gating de demanda y temporalidad.
+Engineer, supervisor, corpus real temporal 44/104, sesión física y gate
+CPU del 50% pendientes. Go sigue productivo. Plan sección 55.
+
 ## ISA-1403 — Configuration/ACK IPC cruzados (2026-09-28)
 
 Go produce configuración cerrada de 660 bytes decodificada por Rust; Rust

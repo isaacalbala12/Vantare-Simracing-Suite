@@ -8,6 +8,7 @@ pub mod fuel;
 pub mod relative;
 pub mod spatial;
 pub mod standings;
+pub mod strategy;
 
 use crate::core::{self, SessionFlag};
 use crate::derive::controls::{ControlHistory, HistoryFreshness};
@@ -675,6 +676,7 @@ mod tests {
         .unwrap();
         assert_eq!(full_alternate, golden["fullAlternate"]);
         actual["fullAlternate"] = full_alternate;
+        actual["strategy"] = strategy::build(prepared.batch(), prepared.session_remaining());
         assert_eq!(actual["fuel"], golden["fuel"]);
         assert_eq!(actual["capabilities"], golden["capabilities"]);
         assert_eq!(actual, golden);

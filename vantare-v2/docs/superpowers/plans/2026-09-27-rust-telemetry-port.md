@@ -1202,3 +1202,17 @@ release actual 150 528 bytes, coste causal pendiente de R21. Rust release
 no se emite ni aplica en la frontera de batch**; faltan lifecycle, demanda
 productiva, facts, Engineer/Strategy, corpus temporal real 44/104, sesión
 física y gate CPU del 50%. Go sigue productivo.
+
+## 55. Strategy V1: payload de observación Go/Rust (2026-09-28)
+
+`projection/strategy.rs` proyecta sesión, progreso, pit y combustible desde
+el candidato Rust, con presencia, procedencia y frescura intactas. No
+inventa energía virtual, neumáticos ni clima. El oráculo Go de la captura
+real estática de 44 incluye ahora `strategy` y el payload Rust coincide
+(SHA-256 del JSON completo
+`f0aada0af73369906f7e5d361b9253efb901bb5e292d81d6b5e7e07c929afbd6`).
+Hay una prueba adicional para vehículo ausente y campo inválido.
+Rust release 107/107, Clippy, formato, build release y `go test ./...`
+pasan. R17 sigue parcial: faltan metadata/IPC, demanda real y replay
+temporal; Engineer, supervisor, corpus temporal 44/104, sesión física y
+gate CPU del 50% siguen pendientes. Go sigue productivo.

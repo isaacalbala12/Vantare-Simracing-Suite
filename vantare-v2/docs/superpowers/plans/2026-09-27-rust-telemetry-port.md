@@ -1402,3 +1402,22 @@ replay Windows envía un duplicado byte a byte del primer fact; Go lo
 detecta, retiene una sola copia y devuelve ACK. El test cruzado pasa.
 Faltan mensaje IPC `ResyncRequired`, solicitud de replay en reconexión,
 deduplicador/retentor Go productivo y writer acotado. Go sigue owner.
+
+## 68. Retención Go y límite de Fact (2026-09-28)
+
+`FactRetainer` Go conserva hasta 64 facts pendientes por hijo, junto
+con 64 payloads recientes para detectar duplicados byte a byte. Solo
+devuelve FactAck tras almacenar un fact nuevo; para un duplicado
+idéntico devuelve el ACK del último cursor, sin duplicar la entrega.
+Rechaza stream cambiado, secuencia con hueco, mismo cursor con bytes
+distintos, duplicado fuera de ventana y cola llena; todos sin ACK.
+`Drain` transfiere los facts ordenados al consumidor futuro. Rust y Go
+limitan cada payload Fact a 4 KiB antes de codificar o aceptar, de
+modo que la ventana wire está acotada. El replay Windows usa el
+retentor real Go y confirma un único fact tras el duplicado; pasa.
+El constructor exige stream y cursor inicial de suscripción: un
+primer fact posterior a ese cursor se rechaza como hueco. El replay
+provee el cursor de su fixture; la composición productiva aún debe
+obtenerlo de una frontera de configuración/bootstrap verificada.
+Faltan conexión a Engineer productivo, política de consumidor lento,
+ResyncRequired wire y supervisor live. Go sigue owner.

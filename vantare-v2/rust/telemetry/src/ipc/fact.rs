@@ -7,11 +7,13 @@ use super::{FrameError, Kind, snapshot::ProductMetadata};
 use crate::core::session::{FactKind, SessionFact};
 
 pub const PRODUCT_ENGINEER_V1: &str = "engineer-v1";
+pub const MAX_FACT_PAYLOAD: usize = 4 << 10;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FactEncodeError {
     InvalidCursor,
     InvalidOccurredAt,
+    TooLarge,
     Json,
     Frame(FrameError),
 }
@@ -90,6 +92,9 @@ pub fn encode_engineer(
         },
     };
     let payload = serde_json::to_vec(&wire).map_err(|_| FactEncodeError::Json)?;
+    if payload.len() > MAX_FACT_PAYLOAD {
+        return Err(FactEncodeError::TooLarge);
+    }
     super::encode(Kind::Fact, &payload).map_err(FactEncodeError::Frame)
 }
 
@@ -135,6 +140,12 @@ mod tests {
         assert_eq!(value["fact"]["fact"]["kind"], "lap.completed");
         assert_eq!(value["fact"]["fact"]["occurredAt"], "2026-07-28T09:01:00Z");
         assert_eq!(value["fact"]["fact"]["lap"], 7);
+        let mut oversized = fact.clone();
+        oversized.identity.vehicle_id = Some("x".repeat(MAX_FACT_PAYLOAD));
+        assert_eq!(
+            encode_engineer(&oversized, 15, metadata),
+            Err(FactEncodeError::TooLarge)
+        );
         assert_eq!(
             encode_engineer(
                 &SessionFact {

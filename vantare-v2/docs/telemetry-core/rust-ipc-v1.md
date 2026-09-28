@@ -74,6 +74,16 @@ explícito al supervisor futuro. En el replay Windows el mismo frame se
 envía dos veces y Go confirma una sola copia. Aún no hay mensaje
 `ResyncRequired` ni solicitud de replay en reconexión productiva.
 
+La recepción Go usa `FactRetainer` en el replay: 64 facts pendientes,
+64 payloads recientes para deduplicar, rechazo explícito de hueco,
+conflicto, stream ajeno y saturación, sin ACK ante rechazo. `Drain`
+transfiere en orden. El payload de un Fact tiene máximo **4 KiB** tanto
+en el encoder Rust como en el decoder Go; el ACK conserva 128 bytes
+como límite propio. Aún no está conectado al consumidor Engineer de
+la app. El retentor exige un cursor inicial de stream/suscripción;
+sin él rechaza incluso el primer salto. El runtime deberá establecer
+ese cursor desde un bootstrap/configuración confirmados.
+
 El frame `fact-ack-frame-go-v1.bin` mide 34 bytes, SHA-256
 `51c63a1a3611792f1294426f86ef7e4899cbe60c5d3a8cb23487aad3a765fd0f`.
 Go lo emite tras almacenar el fact en el test de pipe; Rust valida

@@ -13,6 +13,8 @@ import (
 
 var ErrInvalidEngineerFact = errors.New("telemetry IPC engineer fact is invalid")
 
+const MaxEngineerFactPayload = 4 << 10
+
 // DecodeEngineerFact validates one ordered fact; the caller must retain it
 // before sending FactAck. This decoder does not acknowledge or coalesce facts.
 func DecodeEngineerFact(frame Frame) (engineer.FactEnvelopeV1, error) {
@@ -21,7 +23,7 @@ func DecodeEngineerFact(frame Frame) (engineer.FactEnvelopeV1, error) {
 }
 
 func DecodeEngineerFactWithStream(frame Frame) (uint64, engineer.FactEnvelopeV1, error) {
-	if frame.Kind != KindFact {
+	if frame.Kind != KindFact || len(frame.Payload) > MaxEngineerFactPayload {
 		return 0, engineer.FactEnvelopeV1{}, ErrInvalidEngineerFact
 	}
 	var payload struct {

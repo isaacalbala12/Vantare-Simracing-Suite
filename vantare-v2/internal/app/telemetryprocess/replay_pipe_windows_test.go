@@ -3,7 +3,6 @@
 package telemetryprocess
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -12,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	"golang.org/x/sys/windows"
 )
 
@@ -69,9 +67,12 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 		t.Fatal(err)
 	}
 	var acknowledgements, overlaySnapshots, engineerSnapshots, facts int
-	var factStream uint64
-	var retainedFacts []engineer.FactEnvelopeV1
-	var firstFactPayload []byte
+	retainer, err := NewFactRetainer(MaxRetainedEngineerFacts, FactAckV1{Stream: 15, Sequence: 0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var factACK Frame
+	var newlyRetained int
 	for range 5 {
 		frame, err := ReadFrame(file)
 		if err != nil {
@@ -108,16 +109,13 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 				t.Fatalf("unrequested product %q", product.Product)
 			}
 		case KindFact:
-			stream, fact, err := DecodeEngineerFactWithStream(frame)
+			ack, added, err := retainer.Retain(frame)
 			if err != nil {
 				t.Fatal(err)
 			}
-			factStream = stream
-			if len(firstFactPayload) == 0 {
-				firstFactPayload = append([]byte(nil), frame.Payload...)
-				retainedFacts = append(retainedFacts, fact)
-			} else if !bytes.Equal(firstFactPayload, frame.Payload) {
-				t.Fatal("replayed fact differs from original wire payload")
+			factACK = ack
+			if added {
+				newlyRetained++
 			}
 			facts++
 		default:
@@ -127,12 +125,9 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 	if acknowledgements != 1 || overlaySnapshots != 1 || engineerSnapshots != 1 || facts != 2 {
 		t.Fatalf("first batch: ack=%d overlay=%d engineer=%d facts=%d", acknowledgements, overlaySnapshots, engineerSnapshots, facts)
 	}
-	if factStream != 15 || len(retainedFacts) != 1 {
-		t.Fatalf("retained fact stream=%d count=%d", factStream, len(retainedFacts))
-	}
-	factACK, err := EncodeFactAck(FactAckV1{Stream: factStream, Sequence: uint64(retainedFacts[0].Fact.Sequence)})
-	if err != nil {
-		t.Fatal(err)
+	retainedFacts := retainer.Drain()
+	if newlyRetained != 1 || len(retainedFacts) != 1 || uint64(retainedFacts[0].Fact.Sequence) != 1 {
+		t.Fatalf("retained new=%d count=%d", newlyRetained, len(retainedFacts))
 	}
 	if err := WriteFrame(file, factACK); err != nil {
 		t.Fatal(err)

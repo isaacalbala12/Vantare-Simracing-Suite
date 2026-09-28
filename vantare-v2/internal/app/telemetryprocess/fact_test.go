@@ -58,6 +58,7 @@ func TestDecodeRustEngineerFactFrame(t *testing.T) {
 func TestDecodeEngineerFactRejectsWrongKindSchemaAndCursor(t *testing.T) {
 	for _, frame := range []Frame{
 		{Kind: KindSnapshot, Payload: []byte(`{}`)},
+		{Kind: KindFact, Payload: make([]byte, MaxEngineerFactPayload+1)},
 		{Kind: KindFact, Payload: []byte(`{"product":"other","fact":{}}`)},
 		{Kind: KindFact, Payload: []byte(`{"product":"engineer-v1","stream":15,"fact":{},"extra":1}`)},
 		{Kind: KindFact, Payload: []byte(`{"product":"engineer-v1","stream":0,"fact":{}}`)},

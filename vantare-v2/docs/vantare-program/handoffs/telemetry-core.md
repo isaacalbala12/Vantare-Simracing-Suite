@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — retentor Go de facts con límite (2026-09-28)
+
+Go retiene hasta 64 facts pendientes y 64 payloads wire recientes,
+deduplica bytes idénticos y solo confirma lo almacenado. Stream ajeno,
+hueco, conflicto, overflow y duplicado fuera de ventana fallan sin
+ACK. Exige cursor inicial; bootstrap productivo debe proporcionarlo.
+Rust/Go limitan Fact a 4 KiB. Replay Windows usa el retentor y
+pasa. Falta conexión al consumidor Engineer productivo, resync wire y
+supervisor live. Plan sección 68; Go owner.
+
 ## ISA-1403 — replay exacto y ventana de 64 facts (2026-09-28)
 
 Rust retiene frames Fact exactos hasta 64, valida lote antes de commit,

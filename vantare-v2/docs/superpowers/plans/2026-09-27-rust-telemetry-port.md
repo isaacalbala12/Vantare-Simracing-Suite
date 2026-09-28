@@ -1022,8 +1022,25 @@ Transporta ocho dents, calentamiento, desprendimiento, número de ruedas
 desprendidas y desgaste de cuatro neumáticos con calidad independiente.
 Damage invalid conserva calidad invalid sin inventar payload; tyreWear puede
 estar ausente aun si Damage existe. El oráculo Go/Rust sobre la captura real
-estática de 44 amplía el JSON a Damage (SHA-256
-`62ea3cd0bb48b432f4f633048e577752367b983e6d71177a967a4d90edac2f25`).
+estática de 44 amplió el JSON a Damage; el corte siguiente añadió Fuel.
 Rust release 88/88, Clippy, formato, build release y `go test ./...` pasan.
 Faltan las demás secciones, paridad temporal real 44/104, IPC productivo,
 sesión física y 50% CPU.
+
+## 43. Combustible Overlay Rust y fidelidad decimal (2026-09-28)
+
+`projection/fuel.rs` lee el Fuel observado del piloto y el consumo medido
+por el tracker Rust. Conserva la prioridad Go: vueltas permitidas por el
+depósito cuando existe PerLap usable y, en otro caso, vueltas restantes de
+sesión; requiredFuel usa PerLap por SessionLaps, nunca EstimatedLaps. La
+presentación convierte litros a galones US una vez y alinea el historial
+por vuelta. El oráculo real estático de 44 incluye Fuel (SHA-256 JSON
+`32b4befe23b33f6749000bfe371a5c187a0b41f576f4736d468547caceff9d8a`).
+El test detectó que el parseo decimal por defecto de `serde_json` perdía un
+ULP frente al valor binario Go `99.58657327772369`; se activó la feature
+`float_roundtrip` de la misma crate fijada para preservar el valor exacto.
+No se añadió una dependencia. El coste de esa feature se contará en el gate
+CPU del runtime completo; sigue sin medición causal. Rust release 90/90,
+formato, Clippy, build release y `go test ./...` pasan. R15c y el port
+completo siguen abiertos por la paridad temporal, IPC, productos restantes,
+sesión física y gate del 50%.

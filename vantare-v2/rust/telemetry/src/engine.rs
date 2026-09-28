@@ -112,6 +112,9 @@ impl EngineCandidate {
     pub fn controls_history(&self) -> &crate::derive::controls::ControlHistory {
         self.pipeline.controls_history()
     }
+    pub fn fuel_usage(&self) -> &crate::derive::fuel::FuelUsage {
+        self.pipeline.fuel_usage()
+    }
     pub fn facts(&self) -> &[crate::core::session::SessionFact] {
         self.pipeline.facts()
     }

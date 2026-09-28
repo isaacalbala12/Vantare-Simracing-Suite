@@ -1,5 +1,7 @@
 //! Product projection of verified Overlay V2 slices from canonical Rust state.
 
+pub mod fuel;
+
 use crate::core::{self, SessionFlag};
 use crate::derive::controls::{ControlHistory, HistoryFreshness};
 use crate::lmu::SessionType;
@@ -283,6 +285,7 @@ pub fn damage(batch: &core::Batch<SessionType, LmuVehicleState>) -> Damage {
 
 #[cfg(test)]
 mod tests {
+    use super::fuel::{self, FuelUnit};
     use super::*;
     use crate::core::Cursor;
     use crate::derive::controls::ControlSample;
@@ -325,6 +328,12 @@ mod tests {
         );
         let missing: QValue<i32> = project(&Field::<i32>::Missing, |value| *value);
         assert_eq!(missing, QValue::missing());
+    }
+
+    #[test]
+    fn json_decimal_parsing_retains_the_go_fuel_observation() {
+        let parsed: f64 = serde_json::from_str("99.58657327772369").unwrap();
+        assert_eq!(parsed.to_bits(), 99.58657327772369_f64.to_bits());
     }
 
     #[test]
@@ -397,6 +406,18 @@ mod tests {
         value
     }
 
+    fn wire_float(field: &QValue<f64>) -> Value {
+        let mut value = wire_value(field);
+        if let Some(number) = value.get("v").and_then(Value::as_f64)
+            && number.fract() == 0.0
+            && number >= i64::MIN as f64
+            && number < i64::MAX as f64
+        {
+            value["v"] = json!(number as i64);
+        }
+        value
+    }
+
     #[test]
     fn static_44_core_slices_match_go_projection_oracle() {
         let golden: Value =
@@ -418,6 +439,12 @@ mod tests {
         let weather = weather(prepared.batch());
         let controls = controls(prepared.controls_history());
         let damage = damage(prepared.batch());
+        let fuel = fuel::build(
+            prepared.batch(),
+            prepared.session_remaining(),
+            prepared.fuel_usage(),
+            FuelUnit::Litres,
+        );
         let mut actual = json!({
             "session": {
                 "track": wire_value(&session.track), "phase": wire_value(&session.phase),
@@ -458,11 +485,34 @@ mod tests {
                 "detached": wire_value(&damage.detached),
                 "wheelDetachedCount": wire_value(&damage.wheel_detached_count),
                 "tyreWear": damage.tyre_wear.as_ref().map(wire_float_array),
+            },
+            "fuel": {
+                "remaining": wire_float(&fuel.remaining), "capacity": wire_float(&fuel.capacity),
+                "perLap": wire_float(&fuel.per_lap), "estimatedLaps": wire_float(&fuel.estimated_laps),
+                "basis": fuel.basis, "sessionLaps": wire_float(&fuel.session_laps),
+                "requiredFuel": wire_float(&fuel.required_fuel),
+                "history": {
+                    "q": match fuel.history_quality {
+                        Quality::Fresh => "fresh", Quality::Stale => "stale",
+                        Quality::Missing => "missing", Quality::Invalid => "invalid",
+                    },
+                    "lap": fuel.history_lap,
+                    "consumed": fuel.history_consumed,
+                }
             }
         });
         if damage.tyre_wear.is_none() {
             actual["damage"].as_object_mut().unwrap().remove("tyreWear");
         }
+        if fuel.basis.is_none() {
+            actual["fuel"].as_object_mut().unwrap().remove("basis");
+        }
+        if fuel.history_lap.is_empty() {
+            let history = actual["fuel"]["history"].as_object_mut().unwrap();
+            history.remove("lap");
+            history.remove("consumed");
+        }
+        assert_eq!(actual["fuel"], golden["fuel"]);
         assert_eq!(actual, golden);
     }
 }

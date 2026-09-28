@@ -1,11 +1,22 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — combustible Overlay Rust y precisión decimal (2026-09-28)
+
+La proyección Fuel Rust usa el consumo canónico por vuelta, prioridad
+depósito/sesión, requiredFuel e historial alineado en litros o galones US.
+El oráculo Go/Rust real estático 44 incluye Fuel (SHA-256
+`32b4befe23b33f6749000bfe371a5c187a0b41f576f4736d468547caceff9d8a`).
+`serde_json` existente activa `float_roundtrip`: evita perder un ULP al
+parsear el decimal observado 99.58657327772369; medir su coste en el gate
+CPU final. Rust release 90/90, Clippy, formato, build y `go test ./...`
+pasan. Falta consumo temporal real, secciones restantes, IPC y 50% CPU.
+Plan sección 43. Go sigue productivo.
+
 ## ISA-1403 — daño Overlay Rust y oráculo ampliado (2026-09-28)
 
 Rust proyecta daño y desgaste del piloto con calidad independiente, ausencia
 explícita y los ocho dents del contrato. El oráculo Go/Rust real estático de
-44 ahora incluye Damage; JSON SHA-256
-`62ea3cd0bb48b432f4f633048e577752367b983e6d71177a967a4d90edac2f25`.
+44 incluyó Damage y después se amplió con Fuel.
 Go completo, Rust release 88/88, Clippy, formato y build pasan. Faltan fuel,
 delta, standings, espacial, Engineer/Strategy, IPC y gates físicos/CPU.
 Plan sección 42. Go sigue productivo.

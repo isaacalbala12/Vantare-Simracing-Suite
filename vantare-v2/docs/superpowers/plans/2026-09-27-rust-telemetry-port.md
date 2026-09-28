@@ -808,3 +808,16 @@ otro reducer. Esta estructura aún transporta `AdmittedGrid` parcial, no el
 `ObservedState` canónico completo de Go; carece de productos y salida IPC.
 Por tanto R11 sigue parcial y no acredita paridad de reducer end-to-end.
 Rust release 45/45, formato, Clippy y build pasan.
+
+## 26. Núcleo neutral y adaptación LMU transaccional (2026-09-28)
+
+El reducer R11 ya recibe `Batch<T>` propio del núcleo, sin depender del
+formato LMU. El adaptador LMU prepara juntos la identidad y el batch owned;
+solo hace commit de la identidad después de que el reducer acepta el batch.
+Revalida el candidato en commit para impedir que una preparación antigua
+sobrescriba un estado más reciente. La fixture real estática de 44 prueba
+commit, rechazo/retry y candidato de otro pipeline. Rust release 48/48,
+formato, Clippy y build pasan. El payload sigue limitado a `VehicleFields`
+parcial, el evento es todavía una identidad local fija y faltan observación
+canónica completa, loop de adquisición, productos e IPC productivo. No hay
+paridad de reducer Go/Rust ni gate CPU 50% acreditados.

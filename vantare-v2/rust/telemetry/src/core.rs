@@ -1,18 +1,29 @@
-//! Owned candidate/commit boundary for complete LMU identity batches.
-//! Product projections and the full canonical field set remain future work.
+//! Simulator-neutral owned batch and candidate/commit reducer.
 
-use crate::lmu::{
-    AdmittedGrid,
-    mapper::{Cursor, IdentityBatch},
-};
-use crate::quality::{Field, Freshness};
 use std::sync::Arc;
 
+use crate::quality::{Field, Freshness};
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub struct Cursor {
+    pub epoch: u64,
+    pub sequence: u64,
+}
+
 #[derive(Debug)]
-pub struct Batch {
+pub struct Vehicle<T> {
+    pub id: String,
+    pub value: T,
+}
+
+#[derive(Debug)]
+pub struct Batch<T> {
     pub event_id: String,
-    pub identity: IdentityBatch,
-    pub grid: AdmittedGrid,
+    pub session_id: String,
+    pub player_id: Option<String>,
+    pub cursor: Cursor,
+    pub vehicle_count: Field<i32>,
+    pub vehicles: Vec<Vehicle<T>>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -25,23 +36,22 @@ pub enum Reject {
     InvalidEpochReset,
     RunIdentityChanged,
     VehicleCountMismatch,
-    VehicleMappingMismatch,
     MissingVehicleId,
     DuplicateVehicleId,
     WrongReducer,
 }
 
-pub struct Reducer {
+pub struct Reducer<T> {
     token: Arc<()>,
-    current: Option<Batch>,
+    current: Option<Batch<T>>,
 }
 
-pub struct Candidate {
+pub struct Candidate<T> {
     token: Arc<()>,
-    batch: Batch,
+    batch: Batch<T>,
 }
 
-impl Reducer {
+impl<T> Reducer<T> {
     pub fn new() -> Self {
         Self {
             token: Arc::new(()),
@@ -49,69 +59,73 @@ impl Reducer {
         }
     }
 
-    pub fn prepare(&self, batch: Batch) -> Result<Candidate, Reject> {
-        if batch.event_id.is_empty() || batch.identity.session_id.is_empty() {
-            return Err(Reject::IncompleteIdentity);
-        }
-        validate_cursor(
-            self.current.as_ref().map(|current| current.identity.cursor),
-            batch.identity.cursor,
-        )?;
-        if let Some(current) = &self.current
-            && current.identity.cursor.epoch == batch.identity.cursor.epoch
-            && (current.event_id != batch.event_id
-                || current.identity.session_id != batch.identity.session_id)
-        {
-            return Err(Reject::RunIdentityChanged);
-        }
-        let count = &batch.grid.vehicle_count;
-        if let Field::Present {
-            value, freshness, ..
-        } = count
-            && *freshness != Freshness::Invalid
-            && (*value < 0 || *value as usize != batch.grid.vehicles.len())
-        {
-            return Err(Reject::VehicleCountMismatch);
-        }
-        if batch.identity.vehicles.len() != batch.grid.vehicles.len() {
-            return Err(Reject::VehicleMappingMismatch);
-        }
-        let mut ids = Vec::with_capacity(batch.identity.vehicles.len());
-        for (mapped, source) in batch.identity.vehicles.iter().zip(&batch.grid.vehicles) {
-            if mapped.source_id != source.source_id {
-                return Err(Reject::VehicleMappingMismatch);
-            }
-            if mapped.vehicle_id.is_empty() {
-                return Err(Reject::MissingVehicleId);
-            }
-            ids.push(mapped.vehicle_id.as_str());
-        }
-        ids.sort_unstable();
-        if ids.windows(2).any(|pair| pair[0] == pair[1]) {
-            return Err(Reject::DuplicateVehicleId);
-        }
+    pub fn prepare(&self, batch: Batch<T>) -> Result<Candidate<T>, Reject> {
+        self.validate(&batch)?;
         Ok(Candidate {
             token: self.token.clone(),
             batch,
         })
     }
 
-    pub fn commit(&mut self, candidate: Candidate) -> Result<(), Reject> {
+    fn validate(&self, batch: &Batch<T>) -> Result<(), Reject> {
+        if batch.event_id.is_empty() || batch.session_id.is_empty() {
+            return Err(Reject::IncompleteIdentity);
+        }
+        validate_cursor(
+            self.current.as_ref().map(|current| current.cursor),
+            batch.cursor,
+        )?;
+        if let Some(current) = &self.current
+            && current.cursor.epoch == batch.cursor.epoch
+            && (current.event_id != batch.event_id || current.session_id != batch.session_id)
+        {
+            return Err(Reject::RunIdentityChanged);
+        }
+        if let Field::Present {
+            value, freshness, ..
+        } = &batch.vehicle_count
+            && *freshness != Freshness::Invalid
+            && (*value < 0 || *value as usize != batch.vehicles.len())
+        {
+            return Err(Reject::VehicleCountMismatch);
+        }
+        let mut ids = Vec::with_capacity(batch.vehicles.len());
+        for vehicle in &batch.vehicles {
+            if vehicle.id.is_empty() {
+                return Err(Reject::MissingVehicleId);
+            }
+            ids.push(vehicle.id.as_str());
+        }
+        ids.sort_unstable();
+        if ids.windows(2).any(|pair| pair[0] == pair[1]) {
+            return Err(Reject::DuplicateVehicleId);
+        }
+        Ok(())
+    }
+
+    pub fn commit(&mut self, candidate: Candidate<T>) -> Result<(), Reject> {
         if !Arc::ptr_eq(&self.token, &candidate.token) {
             return Err(Reject::WrongReducer);
         }
+        self.validate(&candidate.batch)?;
         self.current = Some(candidate.batch);
         Ok(())
     }
 
-    pub fn current(&self) -> Option<&Batch> {
+    pub fn current(&self) -> Option<&Batch<T>> {
         self.current.as_ref()
     }
 }
 
-impl Default for Reducer {
+impl<T> Default for Reducer<T> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<T> Candidate<T> {
+    pub fn batch(&self) -> &Batch<T> {
+        &self.batch
     }
 }
 
@@ -147,55 +161,54 @@ fn validate_cursor(current: Option<Cursor>, next: Cursor) -> Result<(), Reject> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lmu::{
-        admit_v13,
-        fusion::fuse_session,
-        mapper::{ClockChange, IdentityMapper},
-        rest::RestCache,
-    };
 
-    const REAL_44: &[u8] = include_bytes!("../../../testdata/lmu-fixture.bin");
-
-    fn batch(mapper: &IdentityMapper) -> Batch {
-        let grid = admit_v13(REAL_44, "1.3.0.0").unwrap();
-        let fused = fuse_session(&grid, 100, &RestCache::default(), 100);
-        let prepared = mapper
-            .prepare(&grid, &fused, ClockChange::Continuous)
-            .unwrap();
+    fn batch(sequence: u64) -> Batch<()> {
         Batch {
-            event_id: "lmu-event-1".to_owned(),
-            identity: prepared.batch,
-            grid,
+            event_id: "event".to_owned(),
+            session_id: "session".to_owned(),
+            player_id: None,
+            cursor: Cursor { epoch: 1, sequence },
+            vehicle_count: Field::observed(2),
+            vehicles: vec![
+                Vehicle {
+                    id: "a".to_owned(),
+                    value: (),
+                },
+                Vehicle {
+                    id: "b".to_owned(),
+                    value: (),
+                },
+            ],
         }
     }
 
     #[test]
-    fn reducer_rejects_bad_candidates_without_advancing_current() {
-        let mapper = IdentityMapper::new(30);
+    fn invalid_batch_does_not_advance_reducer() {
         let mut reducer = Reducer::new();
-        let mut invalid = batch(&mapper);
-        invalid.grid.vehicle_count = Field::observed(43);
+        let mut invalid = batch(1);
+        invalid.vehicle_count = Field::observed(3);
         assert!(matches!(
             reducer.prepare(invalid),
             Err(Reject::VehicleCountMismatch)
         ));
         assert!(reducer.current().is_none());
-        let first = reducer.prepare(batch(&mapper)).unwrap();
+        let first = reducer.prepare(batch(1)).unwrap();
         assert!(reducer.current().is_none());
         reducer.commit(first).unwrap();
         assert_eq!(
-            reducer.current().unwrap().identity.cursor,
+            reducer.current().unwrap().cursor,
             Cursor {
                 epoch: 1,
                 sequence: 1
             }
         );
+        assert!(matches!(reducer.prepare(batch(1)), Err(Reject::Stale)));
         assert!(matches!(
-            reducer.prepare(batch(&mapper)),
-            Err(Reject::Stale)
+            reducer.prepare(batch(3)),
+            Err(Reject::SequenceGap)
         ));
         assert_eq!(
-            reducer.current().unwrap().identity.cursor,
+            reducer.current().unwrap().cursor,
             Cursor {
                 epoch: 1,
                 sequence: 1
@@ -204,31 +217,36 @@ mod tests {
     }
 
     #[test]
-    fn reducer_detects_sequence_and_identity_errors_before_commit() {
-        let mapper = IdentityMapper::new(30);
+    fn epoch_and_identity_are_validated() {
         let mut reducer = Reducer::new();
-        reducer
-            .commit(reducer.prepare(batch(&mapper)).unwrap())
-            .unwrap();
-        let mut gap = batch(&mapper);
-        gap.identity.cursor.sequence = 3;
-        assert!(matches!(reducer.prepare(gap), Err(Reject::SequenceGap)));
-        let mut run_change = batch(&mapper);
-        run_change.identity.cursor.sequence = 2;
-        run_change.identity.session_id = "other".to_owned();
+        reducer.commit(reducer.prepare(batch(1)).unwrap()).unwrap();
+        let mut changed = batch(2);
+        changed.session_id = "other".to_owned();
         assert!(matches!(
-            reducer.prepare(run_change),
+            reducer.prepare(changed),
             Err(Reject::RunIdentityChanged)
         ));
+        let mut new_epoch = batch(1);
+        new_epoch.cursor.epoch = 2;
+        assert!(reducer.prepare(new_epoch).is_ok());
     }
 
     #[test]
-    fn candidate_cannot_be_committed_to_another_reducer() {
-        let mapper = IdentityMapper::new(30);
+    fn candidate_belongs_to_its_reducer() {
         let first = Reducer::new();
-        let mut second = Reducer::new();
-        let prepared = first.prepare(batch(&mapper)).unwrap();
-        assert_eq!(second.commit(prepared), Err(Reject::WrongReducer));
-        assert!(second.current().is_none());
+        let mut other = Reducer::new();
+        let candidate = first.prepare(batch(1)).unwrap();
+        assert_eq!(other.commit(candidate), Err(Reject::WrongReducer));
+        assert!(other.current().is_none());
+    }
+
+    #[test]
+    fn old_candidate_cannot_overwrite_new_commit() {
+        let mut reducer = Reducer::new();
+        let first = reducer.prepare(batch(1)).unwrap();
+        let stale = reducer.prepare(batch(1)).unwrap();
+        reducer.commit(first).unwrap();
+        assert_eq!(reducer.commit(stale), Err(Reject::Stale));
+        assert_eq!(reducer.current().unwrap().cursor.sequence, 1);
     }
 }

@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 
 use super::{AdmittedGrid, SessionType, fusion::FusedSession};
+use crate::core::Cursor;
 use crate::quality::{Field, Freshness};
 
 pub const DEFAULT_SLOT_GRACE_FRAMES: u64 = 30;
@@ -94,12 +95,6 @@ pub enum MapError {
     Exhausted,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
-pub struct Cursor {
-    pub epoch: u64,
-    pub sequence: u64,
-}
-
 #[derive(Debug, Eq, PartialEq)]
 pub struct VehicleIdentity {
     pub source_id: i32,
@@ -137,6 +132,21 @@ pub struct IdentityMapper {
 pub struct PreparedIdentity {
     candidate: MapperState,
     pub batch: IdentityBatch,
+}
+
+pub struct MapperCandidate {
+    candidate: MapperState,
+}
+
+impl PreparedIdentity {
+    pub fn split(self) -> (MapperCandidate, IdentityBatch) {
+        (
+            MapperCandidate {
+                candidate: self.candidate,
+            },
+            self.batch,
+        )
+    }
 }
 
 impl IdentityMapper {
@@ -268,6 +278,10 @@ impl IdentityMapper {
     }
 
     pub fn commit(&mut self, prepared: PreparedIdentity) {
+        self.state = prepared.candidate;
+    }
+
+    pub fn commit_candidate(&mut self, prepared: MapperCandidate) {
         self.state = prepared.candidate;
     }
 }

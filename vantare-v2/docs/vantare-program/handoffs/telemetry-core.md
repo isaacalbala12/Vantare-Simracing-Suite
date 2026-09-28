@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — núcleo neutral y pipeline LMU candidato (2026-09-28)
+
+R11 separa `core::Batch<T>` y `Reducer<T>` del simulador. El pipeline LMU
+prepara identidad y batch owned, valida los source IDs alineados y publica
+ambos estados solo tras commit aceptado. Una preparación antigua no puede
+sobrescribir una secuencia posterior. Pruebas sobre fixture SHM real estática
+de 44 verifican commit, rechazo/retry y candidato ajeno. Rust release 48/48,
+formato, Clippy y build pasan. Sigue faltando `ObservedState` canónico,
+adquisición continua, productos, IPC y paridad de replay/CPU; Go sigue
+productivo. Plan sección 26.
+
 ## ISA-1403 — frontera reducer Rust inicial (2026-09-28)
 
 R11 incorpora reducer puro con validación de cursor, identidad de sesión,

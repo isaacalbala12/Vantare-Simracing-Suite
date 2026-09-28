@@ -6,7 +6,11 @@ use crate::core::Batch;
 use crate::lmu::{Fuel, Sector, SessionType, pipeline::LmuVehicleState};
 use crate::quality::{Field, Freshness, Provenance};
 
-fn field<T>(source: &Field<T>, empty: Value, convert: impl FnOnce(&T) -> Value) -> Value {
+pub(crate) fn field<T>(
+    source: &Field<T>,
+    empty: Value,
+    convert: impl FnOnce(&T) -> Value,
+) -> Value {
     match source {
         Field::Missing => json!({"present": false, "value": empty,
             "provenance": "unknown", "freshness": "missing"}),
@@ -42,11 +46,11 @@ fn field<T>(source: &Field<T>, empty: Value, convert: impl FnOnce(&T) -> Value) 
     }
 }
 
-fn available(value: &Value) -> bool {
+pub(crate) fn available(value: &Value) -> bool {
     value["present"] == true && value["freshness"] != "invalid"
 }
 
-fn session_name(value: &SessionType) -> &'static str {
+pub(crate) fn session_name(value: &SessionType) -> &'static str {
     match value {
         SessionType::Practice => "practice",
         SessionType::Qualifying => "qualifying",

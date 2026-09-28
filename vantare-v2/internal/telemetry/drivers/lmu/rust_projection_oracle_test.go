@@ -11,6 +11,7 @@ import (
 
 	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
 	"github.com/vantare/overlays/v2/internal/telemetry/derive"
+	"github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema/envelope"
@@ -71,7 +72,12 @@ func TestRustProjectionGoOracleStatic44(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	engineerSnapshot, err := engineer.ProjectV1(final)
+	if err != nil {
+		t.Fatal(err)
+	}
 	want, err := json.Marshal(struct {
+		Engineer               engineer.PayloadV1            `json:"engineer"`
 		Strategy               strategy.PayloadV1            `json:"strategy"`
 		Session                overlayv2.SessionV2           `json:"session"`
 		Player                 overlayv2.PlayerInstrumentsV2 `json:"player"`
@@ -89,7 +95,7 @@ func TestRustProjectionGoOracleStatic44(t *testing.T) {
 		Capabilities           overlayv2.CapabilitiesV2      `json:"capabilities"`
 		Full                   overlayv2.UpdateV2            `json:"full"`
 		FullAlternate          overlayv2.UpdateV2            `json:"fullAlternate"`
-	}{strategySnapshot.PayloadV1, overlayv2.BuildSession(state), overlayv2.BuildPlayerInstruments(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildWeather(state), overlayv2.BuildControls(state), overlayv2.BuildDamage(state), overlayv2.BuildFuel(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildDelta(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildStandings(state), overlayv2.BuildRelative(state), overlayv2.BuildRelativeSameClass(state), overlayv2.BuildSpotter(state), overlayv2.BuildRadar(state), capabilities.Available, capabilities, full, fullAlternate})
+	}{engineerSnapshot.PayloadV1, strategySnapshot.PayloadV1, overlayv2.BuildSession(state), overlayv2.BuildPlayerInstruments(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildWeather(state), overlayv2.BuildControls(state), overlayv2.BuildDamage(state), overlayv2.BuildFuel(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildDelta(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildStandings(state), overlayv2.BuildRelative(state), overlayv2.BuildRelativeSameClass(state), overlayv2.BuildSpotter(state), overlayv2.BuildRadar(state), capabilities.Available, capabilities, full, fullAlternate})
 	if err != nil {
 		t.Fatal(err)
 	}

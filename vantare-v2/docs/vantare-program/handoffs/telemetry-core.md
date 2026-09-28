@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — Engineer V1 full grid Go/Rust (2026-09-28)
+
+La observación Rust de Engineer preserva calidad, orden y 44 vehículos;
+incluye sesión, controles, standings, pit, combustible, gaps y geometría.
+Paridad Go/Rust sobre captura real estática de 44, SHA-256 JSON completo
+`6eb534d00df3f2c86e9be7671e47c4ddee7ccee63c0d5a0ebc062b53f4a9fb87`.
+Rust release 109/109, Clippy, formato, build release y `go test ./...`
+pasan. R16 sigue parcial: metadata/facts/status/receptor/IPC/backpressure;
+R17 metadata/IPC/demanda. Go sigue productivo; faltan supervisor, corpus
+real temporal 44/104, sesión física y gate CPU del 50%. Plan sección 56.
+
 ## ISA-1403 — Strategy V1 payload Go/Rust (2026-09-28)
 
 La proyección Rust de sesión/progreso/pit/combustible preserva calidad y

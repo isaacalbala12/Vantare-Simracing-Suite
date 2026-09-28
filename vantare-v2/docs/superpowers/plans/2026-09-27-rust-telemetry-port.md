@@ -1216,3 +1216,18 @@ Rust release 107/107, Clippy, formato, build release y `go test ./...`
 pasan. R17 sigue parcial: faltan metadata/IPC, demanda real y replay
 temporal; Engineer, supervisor, corpus temporal 44/104, sesión física y
 gate CPU del 50% siguen pendientes. Go sigue productivo.
+
+## 56. Engineer V1: observación del grid completo Go/Rust (2026-09-28)
+
+`projection/engineer.rs` porta el payload de observación Engineer V1:
+sesión, 44 vehículos en orden canónico, jugador, controles, clasificación,
+pit, combustible, gaps y geometría con presencia/procedencia/frescura.
+El oráculo Go/Rust del JSON completo de la captura real estática de 44
+coincide (SHA-256
+`6eb534d00df3f2c86e9be7671e47c4ddee7ccee63c0d5a0ebc062b53f4a9fb87`).
+Una prueba adicional preserva jugador ausente y calidad inválida.
+Rust release 109/109, Clippy, formato, build release y `go test ./...`
+pasan. R16 sigue parcial: metadata, facts, status, adaptador receptor, IPC,
+backpressure y consumo real pendientes. R17 también requiere metadata/IPC
+y demanda. Corpus temporal real 44/104, sesión física y gate CPU del 50%
+pendientes. Go sigue productivo.

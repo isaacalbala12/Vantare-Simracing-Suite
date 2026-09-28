@@ -3,6 +3,7 @@
 pub mod cadence;
 pub mod capabilities;
 pub mod delta;
+pub mod engineer;
 pub mod frame;
 pub mod fuel;
 pub mod relative;
@@ -677,6 +678,11 @@ mod tests {
         assert_eq!(full_alternate, golden["fullAlternate"]);
         actual["fullAlternate"] = full_alternate;
         actual["strategy"] = strategy::build(prepared.batch(), prepared.session_remaining());
+        actual["engineer"] = engineer::build(
+            prepared.batch(),
+            prepared.session_remaining(),
+            prepared.gaps(),
+        );
         assert_eq!(actual["fuel"], golden["fuel"]);
         assert_eq!(actual["capabilities"], golden["capabilities"]);
         assert_eq!(actual, golden);

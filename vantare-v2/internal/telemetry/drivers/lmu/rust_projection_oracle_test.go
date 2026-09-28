@@ -46,6 +46,13 @@ func TestRustProjectionGoOracleStatic44(t *testing.T) {
 	if !ok {
 		t.Fatal("no final state")
 	}
+	rafCap := 40
+	source := overlayv2.SourceContextV2{
+		DescriptorCapabilities: []string{"shared-memory", "rest"},
+		Modes:                  overlayv2.CapabilityModesV2{Spatial: []string{"xyz"}, Delta: []string{"personal-best"}, Standings: overlayv2.ModeOfficial, Gaps: overlayv2.ModeReconstructed},
+		Performance:            overlayv2.PerformanceV2{Level: 9, Mode: "unknown", Effects: "unknown", RafCap: &rafCap, WidgetHz: map[string]json.RawMessage{"pedals": []byte("40")}, Reason: "unknown", SourceHz: 60},
+	}
+	capabilities := overlayv2.BuildCapabilities(state, source)
 	want, err := json.Marshal(struct {
 		Session                overlayv2.SessionV2           `json:"session"`
 		Player                 overlayv2.PlayerInstrumentsV2 `json:"player"`
@@ -60,7 +67,8 @@ func TestRustProjectionGoOracleStatic44(t *testing.T) {
 		Spotter                overlayv2.SpotterViewV2       `json:"spotter"`
 		Radar                  overlayv2.RadarViewV2         `json:"radar"`
 		CapabilityAvailability map[string]overlayv2.Quality  `json:"capabilityAvailability"`
-	}{overlayv2.BuildSession(state), overlayv2.BuildPlayerInstruments(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildWeather(state), overlayv2.BuildControls(state), overlayv2.BuildDamage(state), overlayv2.BuildFuel(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildDelta(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildStandings(state), overlayv2.BuildRelative(state), overlayv2.BuildRelativeSameClass(state), overlayv2.BuildSpotter(state), overlayv2.BuildRadar(state), overlayv2.BuildCapabilities(state, overlayv2.SourceContextV2{DescriptorCapabilities: []string{"shared-memory", "rest"}}).Available})
+		Capabilities           overlayv2.CapabilitiesV2      `json:"capabilities"`
+	}{overlayv2.BuildSession(state), overlayv2.BuildPlayerInstruments(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildWeather(state), overlayv2.BuildControls(state), overlayv2.BuildDamage(state), overlayv2.BuildFuel(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildDelta(state, overlayv2.DefaultPreferencesV2()), overlayv2.BuildStandings(state), overlayv2.BuildRelative(state), overlayv2.BuildRelativeSameClass(state), overlayv2.BuildSpotter(state), overlayv2.BuildRadar(state), capabilities.Available, capabilities})
 	if err != nil {
 		t.Fatal(err)
 	}

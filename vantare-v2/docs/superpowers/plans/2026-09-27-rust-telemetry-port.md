@@ -1129,3 +1129,18 @@ Rust release 99/99, Clippy, formato, build release y `go test ./...` pasan.
 R15g sigue parcial: faltan memoización de secciones, dirty signals reales,
 frame completo, demanda y publicación IPC. Go sigue productivo; quedan
 corpus temporal real 44/104, Engineer/Strategy, sesión física y gate CPU.
+
+## 50. Objeto completo de capacidades Overlay Rust (2026-09-28)
+
+`projection/capabilities.rs` ensambla `CapabilitiesV2`: deduplica y ordena
+las capacidades declaradas por el driver, restringe `available` a ellas,
+republica modos resueltos por la composición y normaliza la política de
+rendimiento con las mismas reglas Go. Rechaza `sourceHz` no finito antes de
+serializar. El oráculo Go/Rust de la captura real estática de 44 coincide en
+el objeto completo (SHA-256 JSON
+`a7b87727504d09043b4882f6b1d7d360d366951243f854040a3696300c4c9af0`).
+Una prueba aparte cubre descriptor REST limitado, deduplicación y tasa
+inválida. Rust release 100/100, Clippy, formato, build release y
+`go test ./...` pasan. La composición todavía no envía estos parámetros
+por IPC; Go sigue productivo. Faltan frame completo, resto de productos,
+corpus temporal real 44/104, sesión física y gate CPU del 50%.

@@ -1,6 +1,6 @@
 //! Observed quality of LMU Overlay V2 capabilities.
 
-use serde_json::{Value, json};
+use serde_json::{Map, Value, json};
 
 use super::{Quality, SpeedUnit, player, session};
 use crate::core;
@@ -99,9 +99,129 @@ pub fn availability(
     })
 }
 
+#[derive(Clone, Debug, Default)]
+pub struct Modes {
+    pub spatial: Vec<String>,
+    pub delta: Vec<String>,
+    pub standings: String,
+    pub gaps: String,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct Performance {
+    pub level: u8,
+    pub mode: String,
+    pub effects: String,
+    pub raf_cap: Option<i32>,
+    pub widget_hz: Map<String, Value>,
+    pub reason: String,
+    pub source_hz: f64,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct Source {
+    pub descriptor_capabilities: Vec<String>,
+    pub modes: Modes,
+    pub performance: Performance,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CapabilityError {
+    InvalidSourceHz,
+}
+
+/// Product capability declaration and effective host policy. The host sends
+/// source data; Rust resolves observed availability and normalizes the wire.
+pub fn build(
+    batch: &core::Batch<SessionType, LmuVehicleState>,
+    remaining: &Field<f64>,
+    gaps: &GapSet,
+    delta: &SelfDelta,
+    source: &Source,
+) -> Result<Value, CapabilityError> {
+    if !source.performance.source_hz.is_finite() {
+        return Err(CapabilityError::InvalidSourceHz);
+    }
+    let mut supported = Vec::new();
+    for descriptor in &source.descriptor_capabilities {
+        match descriptor.as_str() {
+            "shared-memory" => supported.extend([
+                "session",
+                "controls",
+                "standings",
+                "gaps",
+                "fuel",
+                "delta",
+                "spatial.longitudinal",
+                "spatial.lateral",
+                "spotter",
+                "damage",
+            ]),
+            "rest" => supported.push("session"),
+            _ => {}
+        }
+    }
+    supported.sort_unstable();
+    supported.dedup();
+    let observed = availability(batch, remaining, gaps, delta);
+    let mut available = Map::new();
+    for id in &supported {
+        available.insert((*id).into(), observed[*id].clone());
+    }
+    let performance = &source.performance;
+    let level = if (1..=5).contains(&performance.level) {
+        performance.level
+    } else {
+        3
+    };
+    let mode = match performance.mode.as_str() {
+        "manual" | "custom" | "auto" => performance.mode.as_str(),
+        _ => "manual",
+    };
+    let effects = match performance.effects.as_str() {
+        "full" | "noBlur" | "flat" => performance.effects.as_str(),
+        _ => "noBlur",
+    };
+    let reason = match performance.reason.as_str() {
+        "" | "cpu" | "frametime" | "user" | "vr" | "unavailable" => performance.reason.as_str(),
+        _ => "unavailable",
+    };
+    let source_hz = if performance.source_hz.is_finite()
+        && performance.source_hz.fract() == 0.0
+        && performance.source_hz >= i64::MIN as f64
+        && performance.source_hz < i64::MAX as f64
+    {
+        json!(performance.source_hz as i64)
+    } else {
+        json!(performance.source_hz)
+    };
+    let mut policy = json!({
+        "level": level, "mode": mode, "effects": effects,
+        "rafCap": performance.raf_cap, "widgetHz": performance.widget_hz,
+        "sourceHz": source_hz,
+    });
+    if !reason.is_empty() {
+        policy["reason"] = json!(reason);
+    }
+    Ok(json!({
+        "supported": supported, "available": available,
+        "modes": {
+            "spatial": source.modes.spatial,
+            "delta": source.modes.delta,
+            "standings": if source.modes.standings.is_empty() { "none" } else { &source.modes.standings },
+            "gaps": if source.modes.gaps.is_empty() { "none" } else { &source.modes.gaps },
+        },
+        "performance": policy,
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::engine::Engine;
+    use crate::lmu::mapper::ClockChange;
+
+    const REAL_44: &[u8] = include_bytes!("../../../../testdata/lmu-fixture.bin");
 
     #[test]
     fn availability_prefers_fresh_then_stale_then_invalid_over_missing() {
@@ -109,5 +229,46 @@ mod tests {
         assert_eq!(best([Quality::Invalid, Quality::Stale]), Quality::Stale);
         assert_eq!(best([Quality::Stale, Quality::Fresh]), Quality::Fresh);
         assert_eq!(best([Quality::Missing]), Quality::Missing);
+    }
+
+    #[test]
+    fn descriptor_restricts_supported_capabilities_and_invalid_rate_is_rejected() {
+        let engine = Engine::new(30, 26).unwrap();
+        let candidate = engine
+            .prepare(
+                REAL_44,
+                "1.3.0.0",
+                100,
+                100,
+                100_000_000_000,
+                ClockChange::Continuous,
+            )
+            .unwrap();
+        let mut source = Source {
+            descriptor_capabilities: vec!["rest".into(), "rest".into(), "unknown".into()],
+            ..Source::default()
+        };
+        let view = build(
+            candidate.batch(),
+            candidate.session_remaining(),
+            candidate.gaps(),
+            candidate.delta(),
+            &source,
+        )
+        .unwrap();
+        assert_eq!(view["supported"], json!(["session"]));
+        assert_eq!(view["available"], json!({"session":"fresh"}));
+        assert_eq!(view["modes"]["standings"], "none");
+        source.performance.source_hz = f64::NAN;
+        assert_eq!(
+            build(
+                candidate.batch(),
+                candidate.session_remaining(),
+                candidate.gaps(),
+                candidate.delta(),
+                &source
+            ),
+            Err(CapabilityError::InvalidSourceHz)
+        );
     }
 }

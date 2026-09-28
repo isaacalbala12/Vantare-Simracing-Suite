@@ -1,5 +1,17 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — objeto completo de capacidades Overlay Rust (2026-09-28)
+
+R15a/R15f amplía el mapa de disponibilidad a `CapabilitiesV2` completo:
+descriptores deduplicados, modos de fuente y política normalizada. El
+oráculo Go/Rust estático real de 44 coincide (SHA-256 JSON
+`a7b87727504d09043b4882f6b1d7d360d366951243f854040a3696300c4c9af0`).
+Un test cubre REST solo, deduplicación y `sourceHz` inválido. Rust release
+100/100, Clippy, formato, build release y `go test ./...` pasan. El host aún
+no proporciona source/preferencias a Rust por IPC; Go sigue productivo.
+Faltan frame/IPC completos, Engineer/Strategy, corpus temporal real 44/104,
+sesión física y gate CPU. Plan sección 50.
+
 ## ISA-1403 — scheduler de secciones Overlay Rust (2026-09-28)
 
 R15g parcial porta la decisión determinista de once secciones, tiers,

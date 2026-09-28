@@ -482,6 +482,34 @@ mod tests {
             prepared.gaps(),
             prepared.delta(),
         );
+        let mut widget_hz = Map::new();
+        widget_hz.insert("pedals".into(), json!(40));
+        let capability_source = capabilities::Source {
+            descriptor_capabilities: vec!["shared-memory".into(), "rest".into()],
+            modes: capabilities::Modes {
+                spatial: vec!["xyz".into()],
+                delta: vec!["personal-best".into()],
+                standings: "official".into(),
+                gaps: "reconstructed".into(),
+            },
+            performance: capabilities::Performance {
+                level: 9,
+                mode: "unknown".into(),
+                effects: "unknown".into(),
+                raf_cap: Some(40),
+                widget_hz,
+                reason: "unknown".into(),
+                source_hz: 60.0,
+            },
+        };
+        let capabilities = capabilities::build(
+            prepared.batch(),
+            prepared.session_remaining(),
+            prepared.gaps(),
+            prepared.delta(),
+            &capability_source,
+        )
+        .unwrap();
         assert_eq!(standings.len(), 44);
         let mut actual = json!({
             "session": {
@@ -558,6 +586,7 @@ mod tests {
             "spotter": spotter,
             "radar": radar,
             "capabilityAvailability": capability_availability,
+            "capabilities": capabilities,
         });
         if damage.tyre_wear.is_none() {
             actual["damage"].as_object_mut().unwrap().remove("tyreWear");
@@ -582,6 +611,7 @@ mod tests {
             history.remove("seconds");
         }
         assert_eq!(actual["fuel"], golden["fuel"]);
+        assert_eq!(actual["capabilities"], golden["capabilities"]);
         assert_eq!(actual, golden);
     }
 }

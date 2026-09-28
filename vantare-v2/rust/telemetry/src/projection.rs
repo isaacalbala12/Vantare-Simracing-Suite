@@ -143,6 +143,7 @@ mod tests {
     use super::*;
     use crate::engine::Engine;
     use crate::lmu::mapper::ClockChange;
+    use serde_json::{Map, Value, json};
 
     const REAL_44: &[u8] = include_bytes!("../../../testdata/lmu-fixture.bin");
 
@@ -178,5 +179,51 @@ mod tests {
         );
         let missing: QValue<i32> = project(&Field::<i32>::Missing, |value| *value);
         assert_eq!(missing, QValue::missing());
+    }
+
+    fn wire_value<T: Clone + Default + PartialEq + Into<Value>>(field: &QValue<T>) -> Value {
+        let mut object = Map::new();
+        if let Some(value) = &field.value
+            && *value != T::default()
+        {
+            object.insert("v".into(), value.clone().into());
+        }
+        let quality = match field.quality {
+            Quality::Fresh => "fresh",
+            Quality::Stale => "stale",
+            Quality::Missing => "missing",
+            Quality::Invalid => "invalid",
+        };
+        object.insert("q".into(), Value::from(quality));
+        Value::Object(object)
+    }
+
+    #[test]
+    fn static_44_session_player_match_go_projection_oracle() {
+        let golden: Value = serde_json::from_slice(include_bytes!(
+            "../testdata/overlay-session-player-go-v1.json"
+        ))
+        .unwrap();
+        let engine = Engine::new(30, 15).unwrap();
+        let prepared = engine
+            .prepare(REAL_44, "1.3.0.0", 100, 100, 1_000, ClockChange::Continuous)
+            .unwrap();
+        let session = session(prepared.batch(), prepared.session_remaining());
+        let player = player(prepared.batch(), SpeedUnit::Mps);
+        let actual = json!({
+            "session": {
+                "track": wire_value(&session.track), "phase": wire_value(&session.phase),
+                "flag": wire_value(&session.flag), "remaining": wire_value(&session.remaining_seconds),
+                "maxLaps": wire_value(&session.maximum_laps),
+            },
+            "player": {
+                "lapNumber": wire_value(&player.lap_number), "id": player.vehicle_id,
+                "speed": wire_value(&player.speed), "rpm": wire_value(&player.rpm),
+                "gear": wire_value(&player.gear), "throttle": wire_value(&player.throttle),
+                "brake": wire_value(&player.brake), "clutch": wire_value(&player.clutch),
+                "steering": wire_value(&player.steering),
+            }
+        });
+        assert_eq!(actual, golden);
     }
 }

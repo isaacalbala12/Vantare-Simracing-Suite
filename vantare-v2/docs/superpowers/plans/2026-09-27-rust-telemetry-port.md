@@ -990,3 +990,14 @@ Rust sobre fixture real estática 44 y valores invalid/missing; debug/release
 86/86, formato, Clippy y build release pasan. No se declara R15a completo:
 faltan capabilities, serialización Overlay V2, mensaje IPC, receptor Go y
 paridad extremo a extremo. Los demás productos y el gate CPU siguen abiertos.
+
+## 40. Oráculo estático de proyección Go/Rust (2026-09-28)
+
+Un test Go reproduce parser, fusión, mapper, reducer y derivación sobre el
+fixture LMU 1.3 real estático de 44 y fija los slices Session/Player de
+Overlay V2 en `rust/telemetry/testdata/overlay-session-player-go-v1.json`
+(SHA-256 `0ddacc8200a3d8a9f96fa58ab483d2986dff1f2b20d899efa62967901b0eb730`).
+Rust compara todas sus celdas, incluidas calidad, cero omitido en wire,
+ausencia, identidad y valores. `go test ./...`, Rust release 87/87, Clippy,
+formato y build release pasan. Es una muestra estática: no certifica paridad
+temporal 44/104, R15a completo, IPC, runtime físico ni el 50% CPU.

@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — oráculo Go de sesión/piloto Overlay (2026-09-28)
+
+La proyección Rust inicial coincide campo a campo con el builder Go sobre
+el fixture LMU 1.3 real estático de 44. El test Go fija el JSON del oráculo
+(SHA-256 `0ddacc8200a3d8a9f96fa58ab483d2986dff1f2b20d899efa62967901b0eb730`)
+y el test Rust compara calidad, presencia, cero, valores e ID. `go test ./...`
+pasa; Rust release 87/87, Clippy, formato y build pasan. No cubre secuencia
+temporal SHM+REST, 104, IPC ni sesión física. Plan sección 40.
+
 ## ISA-1403 — primeras proyecciones Overlay V2 Rust (2026-09-28)
 
 R15a parcial proyecta sesión y piloto desde el candidato Rust: calidad y

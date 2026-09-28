@@ -178,7 +178,7 @@ public:
         mainLayout->addSpacing(24);
         mainLayout->addWidget(label(QStringLiteral("Widgets y licencias"), "title", main));
         mainLayout->addSpacing(5);
-        auto *intro = label(QStringLiteral("Define licencias y visibilidad. Los widgets solo para testers se ocultan al público; los demás muestran candado si la licencia no los incluye."), "muted", main);
+        auto *intro = label(QStringLiteral("Define licencias y visibilidad por rol operativo: Público, Tester o Nightly Tester. Los widgets públicos sin licencia muestran candado."), "muted", main);
         intro->setWordWrap(true);
         mainLayout->addWidget(intro);
         mainLayout->addSpacing(23);
@@ -228,7 +228,7 @@ public:
         table_->setColumnCount(7);
         table_->setHorizontalHeaderLabels({QStringLiteral("WIDGET"), QStringLiteral("FREE"),
             QStringLiteral("PRO"), QStringLiteral("PRO PLUS"), QStringLiteral("LAUNCH"),
-            QStringLiteral("PÚBLICO"), QStringLiteral("VISTA")});
+            QStringLiteral("VISIBILIDAD"), QStringLiteral("VISTA")});
         table_->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Stretch);
         for (int column = 1; column <= 4; ++column)
             table_->horizontalHeader()->setSectionResizeMode(column, QHeaderView::Fixed);
@@ -237,7 +237,7 @@ public:
         table_->setColumnWidth(3, 94);
         table_->setColumnWidth(4, 85);
         table_->horizontalHeader()->setSectionResizeMode(5, QHeaderView::Fixed);
-        table_->setColumnWidth(5, 94);
+        table_->setColumnWidth(5, 148);
         table_->horizontalHeader()->setSectionResizeMode(6, QHeaderView::Fixed);
         table_->setColumnWidth(6, 105);
         table_->verticalHeader()->setVisible(false);
@@ -260,13 +260,14 @@ public:
         previewTier_ = label(QString(), "previewTier", previewPanel);
         previewLayout->addWidget(previewTier_);
         audience_ = new QComboBox(previewPanel);
-        audience_->addItems({QStringLiteral("Usuario normal"), QStringLiteral("Tester / Owner")});
+        audience_->addItems({QStringLiteral("Usuario normal"), QStringLiteral("Tester"),
+            QStringLiteral("Nightly Tester"), QStringLiteral("Owner")});
         previewLayout->addWidget(audience_);
         previewCount_ = label(QString(), "metric", previewPanel);
         previewLayout->addWidget(previewCount_);
         previewLayout->addWidget(label(QStringLiteral("widgets disponibles"), "muted", previewPanel));
         previewLayout->addSpacing(7);
-        auto *previewHint = label(QStringLiteral("Los widgets públicos sin licencia muestran candado. Los de prueba desaparecen para usuarios normales."), "muted", previewPanel);
+        auto *previewHint = label(QStringLiteral("Tester ve Público y Tester. Nightly Tester añade los widgets Nightly. Owner ve todos."), "muted", previewPanel);
         previewHint->setWordWrap(true);
         previewLayout->addWidget(previewHint);
         previewLayout->addSpacing(6);
@@ -307,7 +308,7 @@ public:
         connect(filter_, &QComboBox::currentIndexChanged, this, [this] { refreshPreview(); });
         connect(audience_, &QComboBox::currentIndexChanged, this, [this] { refreshPreview(); });
         connect(table_, &QTableWidget::itemChanged, this, [this](QTableWidgetItem *item) {
-            if (loading_ || item->column() < 1 || item->column() > 5) return;
+            if (loading_ || item->column() < 1 || item->column() > 4) return;
             auto &row = matrix_.widgets[item->row()];
             const bool allowed = item->checkState() == Qt::Checked;
             switch (item->column()) {
@@ -315,7 +316,6 @@ public:
             case 2: row.pro = allowed; break;
             case 3: row.proPlus = allowed; break;
             case 4: row.launch = allowed; break;
-            case 5: row.visibility = allowed ? QStringLiteral("public") : QStringLiteral("testers"); break;
             }
             refreshPreview();
         });
@@ -354,11 +354,17 @@ public:
                 cell->setTextAlignment(Qt::AlignCenter);
                 table_->setItem(rowIndex, column, cell);
             }
-            auto *visibility = new QTableWidgetItem();
-            visibility->setFlags(Qt::ItemIsEnabled | Qt::ItemIsUserCheckable | Qt::ItemIsSelectable);
-            visibility->setCheckState(row.visibility == QStringLiteral("public") ? Qt::Checked : Qt::Unchecked);
-            visibility->setToolTip(QStringLiteral("Desmarca para mostrar este widget solo a testers y Owner."));
-            table_->setItem(rowIndex, 5, visibility);
+            auto *visibility = new QComboBox(table_);
+            visibility->addItem(QStringLiteral("Público"), QStringLiteral("public"));
+            visibility->addItem(QStringLiteral("Tester"), QStringLiteral("testers"));
+            visibility->addItem(QStringLiteral("Nightly Tester"), QStringLiteral("nightly_testers"));
+            visibility->setCurrentIndex(visibility->findData(row.visibility));
+            table_->setCellWidget(rowIndex, 5, visibility);
+            connect(visibility, &QComboBox::currentIndexChanged, this, [this, rowIndex, visibility] {
+                if (loading_) return;
+                matrix_.widgets[rowIndex].visibility = visibility->currentData().toString();
+                refreshPreview();
+            });
             auto *preview = new QTableWidgetItem();
             preview->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled);
             table_->setItem(rowIndex, 6, preview);
@@ -389,11 +395,14 @@ private:
         const bool hasOriginal = !original_.isEmpty() && WidgetMatrix::parse(original_, initial, error);
         for (qsizetype i = 0; i < matrix_.widgets.size(); ++i) {
             const auto &row = matrix_.widgets[i];
-            const bool visible = row.visibility == QStringLiteral("public") || audience_->currentIndex() == 1;
+            const int audience = audience_->currentIndex();
+            const bool visible = row.visibility == QStringLiteral("public") ||
+                (row.visibility == QStringLiteral("testers") && audience >= 1) ||
+                (row.visibility == QStringLiteral("nightly_testers") && audience >= 2);
             if (visible) ++visibleCount;
             for (int tier = 0; tier < tierCount; ++tier)
-                if (visible && (audience_->currentIndex() == 1 || allowedForTier(row, tier))) ++counts[tier];
-            const bool allowed = audience_->currentIndex() == 1 || allowedForTier(row, selectedTier_);
+                if (visible && (audience > 0 || allowedForTier(row, tier))) ++counts[tier];
+            const bool allowed = audience > 0 || allowedForTier(row, selectedTier_);
             auto *previewCell = table_->item(i, 6);
             previewCell->setText(!visible ? QStringLiteral("Oculto") : allowed ? QStringLiteral("Disponible") : QStringLiteral("Candado"));
             previewCell->setForeground(visible && allowed ? QColor(QStringLiteral("#82d49e")) : QColor(QStringLiteral("#f0a0ab")));

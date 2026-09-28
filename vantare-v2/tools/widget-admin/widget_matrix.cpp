@@ -71,12 +71,13 @@ bool WidgetMatrix::validate(QString &error) const {
     QSet<QString> seen;
     const QRegularExpression idPattern(QStringLiteral("^[a-z0-9]+(?:-[a-z0-9]+)*$"));
     for (const auto &row : widgets) {
-	    if (!idPattern.match(row.id).hasMatch() || seen.contains(row.id)) {
+        if (!idPattern.match(row.id).hasMatch() || seen.contains(row.id)) {
             error = QStringLiteral("ID vacío o repetido: %1").arg(row.id);
             return false;
         }
         seen.insert(row.id);
-        if (row.visibility != QStringLiteral("public") && row.visibility != QStringLiteral("testers")) {
+        if (row.visibility != QStringLiteral("public") && row.visibility != QStringLiteral("testers") &&
+            row.visibility != QStringLiteral("nightly_testers")) {
             error = QStringLiteral("Visibilidad inválida para %1.").arg(row.id);
             return false;
         }

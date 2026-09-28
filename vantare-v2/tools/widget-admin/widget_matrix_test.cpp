@@ -44,6 +44,22 @@ private slots:
         QVERIFY(!WidgetMatrix::parse(oldVersion, copy, error));
     }
 
+    void nightlyTesterVisibilityRoundTrip() {
+        const QByteArray source = R"({"version":2,"widgets":[
+            {"id":"standings","visibility":"public","free":true,"pro":true,"proPlus":true,"launch":true},
+            {"id":"pedals","visibility":"public","free":true,"pro":true,"proPlus":true,"launch":true},
+            {"id":"delta","visibility":"nightly_testers","free":false,"pro":true,"proPlus":true,"launch":true}
+        ]})";
+        WidgetMatrix matrix;
+        QString error;
+        QVERIFY2(WidgetMatrix::parse(source, matrix, error), qPrintable(error));
+        WidgetMatrix copy;
+        QVERIFY2(WidgetMatrix::parse(matrix.serialize(), copy, error), qPrintable(error));
+        QCOMPARE(copy.widgets[2].visibility, QStringLiteral("nightly_testers"));
+        copy.widgets[0].visibility = QStringLiteral("nightly_testers");
+        QVERIFY(!copy.validate(error));
+    }
+
     void rejectsInvalidRights() {
         WidgetMatrix matrix;
         matrix.widgets = {

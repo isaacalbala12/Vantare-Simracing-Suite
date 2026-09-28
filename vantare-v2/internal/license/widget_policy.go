@@ -313,7 +313,7 @@ func decideWidgetPolicy(eff widgetEffective) WidgetPolicy {
 	label := ClassifyPlan(eff.entitlements)
 	hasSuiteCap := hasWidgetCapability(eff.caps, CapabilityPro) ||
 		hasWidgetCapability(eff.caps, CapabilityLaunchV1)
-	hasOperational := len(eff.roles) > 0
+	hasOperational := widgetAudienceLevel(eff.roles) > 0
 	if label == PlanPaidOverlays || label == PlanSuite || hasSuiteCap || hasOperational {
 		policy.OverlaysAdvanced = true
 	}

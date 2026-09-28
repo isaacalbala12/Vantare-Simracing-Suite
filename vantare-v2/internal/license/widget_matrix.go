@@ -49,7 +49,7 @@ func parseWidgetMatrix(source []byte) (widgetMatrix, error) {
 			return widgetMatrix{}, fmt.Errorf("invalid or repeated widget ID %q", row.ID)
 		}
 		seen[row.ID] = true
-		if matrix.Version == 2 && row.Visibility != "public" && row.Visibility != "testers" {
+		if matrix.Version == 2 && row.Visibility != "public" && row.Visibility != "testers" && row.Visibility != "nightly_testers" {
 			return widgetMatrix{}, fmt.Errorf("widget %q has invalid visibility %q", row.ID, row.Visibility)
 		}
 		if (row.Free && (!row.Pro || !row.ProPlus || !row.Launch)) || (row.Pro && !row.ProPlus) {
@@ -58,7 +58,7 @@ func parseWidgetMatrix(source []byte) (widgetMatrix, error) {
 		if (row.ID == "standings" || row.ID == "pedals") && !row.Free {
 			return widgetMatrix{}, fmt.Errorf("widget %q must remain free", row.ID)
 		}
-		if (row.ID == "standings" || row.ID == "pedals") && row.Visibility == "testers" {
+		if (row.ID == "standings" || row.ID == "pedals") && row.Visibility != "public" {
 			return widgetMatrix{}, fmt.Errorf("widget %q must remain public", row.ID)
 		}
 	}
@@ -80,6 +80,38 @@ func mustWidgetMatrix() widgetMatrix {
 
 var productWidgetMatrix = mustWidgetMatrix()
 
+func widgetAudienceLevel(roles []OperationalRole) int {
+	level := 0
+	for _, role := range roles {
+		switch role {
+		case OperationalRoleTester:
+			if level < 1 {
+				level = 1
+			}
+		case OperationalRoleNightlyTester:
+			if level < 2 {
+				level = 2
+			}
+		case OperationalRoleOwner:
+			return 3
+		}
+	}
+	return level
+}
+
+func widgetVisibleTo(row widgetMatrixRow, audience int) bool {
+	switch row.Visibility {
+	case "", "public":
+		return true
+	case "testers":
+		return audience >= 1
+	case "nightly_testers":
+		return audience >= 2
+	default:
+		return false
+	}
+}
+
 func (m widgetMatrix) allowedIDs(eff widgetEffective) string {
 	label := ClassifyPlan(eff.entitlements)
 	launch := hasWidgetCapability(eff.caps, CapabilityLaunchV1)
@@ -87,13 +119,14 @@ func (m widgetMatrix) allowedIDs(eff widgetEffective) string {
 	// projection as Pro rights when Launch has its own matrix column.
 	pro := hasWidgetCapability(eff.caps, CapabilityPro) || (label == PlanSuite && !launch)
 	proPlus := pro && hasWidgetCapability(eff.caps, CapabilityNightly)
-	operational := len(eff.roles) > 0
+	audience := widgetAudienceLevel(eff.roles)
+	operational := audience > 0
 	moduleOverlays := label == PlanPaidOverlays
 	moduleEngineer := label == PlanPaidEngineer
 
 	allowed := make([]string, 0, len(m.Widgets))
 	for _, row := range m.Widgets {
-		if row.Visibility == "testers" && !operational {
+		if !widgetVisibleTo(row, audience) {
 			continue
 		}
 		// Legacy module entitlements retain their narrower access. They never
@@ -110,10 +143,10 @@ func (m widgetMatrix) allowedIDs(eff widgetEffective) string {
 }
 
 func (m widgetMatrix) visibleIDs(eff widgetEffective) string {
-	operational := len(eff.roles) > 0
+	audience := widgetAudienceLevel(eff.roles)
 	visible := make([]string, 0, len(m.Widgets))
 	for _, row := range m.Widgets {
-		if row.Visibility != "testers" || operational {
+		if widgetVisibleTo(row, audience) {
 			visible = append(visible, row.ID)
 		}
 	}

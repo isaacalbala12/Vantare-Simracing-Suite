@@ -100,6 +100,52 @@ func TestWidgetMatrixTesterVisibilityIndependentOfLicense(t *testing.T) {
 	}
 }
 
+func TestWidgetMatrixNightlyTesterVisibility(t *testing.T) {
+	source := []byte(`{"version":2,"widgets":[
+		{"id":"standings","visibility":"public","free":true,"pro":true,"proPlus":true,"launch":true},
+		{"id":"pedals","visibility":"public","free":true,"pro":true,"proPlus":true,"launch":true},
+		{"id":"radar","visibility":"testers","pro":true,"proPlus":true,"launch":true},
+		{"id":"delta","visibility":"nightly_testers","pro":true,"proPlus":true,"launch":true}
+	]}`)
+	matrix, err := parseWidgetMatrix(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name string
+		eff  widgetEffective
+		want string
+	}{
+		{"public free", widgetEffective{}, "pedals,standings"},
+		{"pro plus with testers channel", widgetEffective{caps: []Capability{CapabilityPro, CapabilityNightly, CapabilityTesters}}, "pedals,standings"},
+		{"tester", widgetEffective{roles: []OperationalRole{OperationalRoleTester}}, "pedals,radar,standings"},
+		{"nightly tester", widgetEffective{roles: []OperationalRole{OperationalRoleNightlyTester}}, "delta,pedals,radar,standings"},
+		{"owner", widgetEffective{roles: []OperationalRole{OperationalRoleOwner}}, "delta,pedals,radar,standings"},
+		{"unknown role", widgetEffective{roles: []OperationalRole{"unknown"}}, "pedals,standings"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := matrix.visibleIDs(tc.eff); got != tc.want {
+				t.Fatalf("visible = %q, want %q", got, tc.want)
+			}
+			if got := matrix.allowedIDs(tc.eff); got != tc.want {
+				t.Fatalf("allowed = %q, want %q", got, tc.want)
+			}
+		})
+	}
+	stored := &Result{
+		State:            StateActive,
+		OperationalRoles: []OperationalRole{OperationalRoleNightlyTester},
+		VerifiedGrants:   []VerifiedGrant{{Key: CapabilityOperationalNightlyTester, ExpiresAt: widgetPolicyNow.Add(time.Hour)}},
+	}
+	if got := matrix.visibleIDs(effectiveWidgetAuthority(stored, widgetPolicyNow)); got != "delta,pedals,radar,standings" {
+		t.Fatalf("verified nightly tester visible = %q", got)
+	}
+	if got := matrix.allowedIDs(effectiveWidgetAuthority(stored, widgetPolicyNow.Add(time.Hour))); got != "pedals,standings" {
+		t.Fatalf("expired nightly tester allowed = %q", got)
+	}
+}
+
 func TestWidgetPolicyWireCarriesVisibilityDecision(t *testing.T) {
 	policy := WidgetPolicy{AllowedWidgetTypes: "pedals,standings", VisibleWidgetTypes: "pedals,standings"}
 	wire := policy.ToWire()

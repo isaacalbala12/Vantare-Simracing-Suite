@@ -1494,3 +1494,15 @@ exactos o `ResyncRequired`. El helper Windows usa esa misma entrada en
 ambos recorridos y el test Rust rechaza un kind ajeno. Rust release
 123/123, Clippy y pipe Go/Rust pasan. La entrada aún no está conectada
 al loop productivo ni soluciona bootstrap/reconexión.
+
+## 75. Evidencia de versión Windows leída por Rust (2026-09-28)
+
+`lmu/version.rs` consulta `VS_FIXEDFILEINFO` del ejecutable con la API
+Windows y extrae FileVersion y ProductVersion. Ambos deben coincidir con
+una build exacta admitida por el mismo predicado del parser: 1.3.0.0,
+1.4.0.0 o 1.4.1.3. Rechaza 1.4.2.0, versiones vecinas y pares
+contradictorios. La prueba opt-in leyó el ejecutable LMU instalado y
+confirmó FileVersion=ProductVersion=1.4.2.0, aún sin admisión. Rust
+release 125/125, Clippy y Go completo pasan. El lector recibe una ruta:
+todavía falta enlazarla de forma verificable al proceso que produce
+`LMU_Data` y al manifiesto REST. No habilita adquisición productiva.

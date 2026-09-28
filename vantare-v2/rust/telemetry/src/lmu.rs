@@ -7,6 +7,8 @@ pub mod pipeline;
 #[cfg(windows)]
 pub mod reader;
 pub mod rest;
+#[cfg(windows)]
+pub mod version;
 
 use crate::quality::{Field, Freshness};
 
@@ -123,11 +125,15 @@ pub struct SessionFields {
     pub rain_fraction: Field<f64>,
 }
 
+fn supports_build(build: &str) -> bool {
+    matches!(build, "1.3.0.0" | "1.4.0.0" | "1.4.1.3")
+}
+
 pub fn admit_v13(buffer: &[u8], verified_build: &str) -> Result<AdmittedGrid, AdmissionError> {
     if buffer.len() < OBJECT_OUT_SIZE {
         return Err(AdmissionError::ShortBuffer);
     }
-    if !matches!(verified_build, "1.3.0.0" | "1.4.0.0" | "1.4.1.3") {
+    if !supports_build(verified_build) {
         return Err(AdmissionError::UnsupportedBuild);
     }
     let count = read_i32(buffer, 1_736);

@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — versión LMU Windows leída por Rust (2026-09-28)
+
+Rust consulta FileVersion/ProductVersion del recurso fijo del ejecutable
+y usa el mismo allowlist exacto que su parser. Prueba opt-in sobre LMU
+instalado confirmó 1.4.2.0 en ambos campos y rechazo de admisión;
+Rust release 125/125, Clippy y Go completo pasan. Falta enlazar la
+ruta al proceso dueño de `LMU_Data` y a evidencia REST antes del runtime.
+Plan sección 75; Go sigue owner.
+
 ## ISA-1403 — replay validado por Assembler (2026-09-28)
 
 El ensamblador Rust acepta `FactReplayRequest` como frame completo,

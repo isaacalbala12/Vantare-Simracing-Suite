@@ -32,6 +32,7 @@ type ReceivedV1 struct {
 	Resync        *ResyncRequiredV1
 	FactACK       *Frame
 	FactAdded     bool
+	Facts         []engineer.FactEnvelopeV1
 	Stopped       bool
 }
 

@@ -1948,3 +1948,15 @@ límite de 72 KiB de Overlay V2. Engineer también produjo al menos dos
 snapshots por corrida. `go test ./...` pasó. Esta ruta aún es de prueba:
 Wails/OBS no seleccionan el hijo Rust. Falta adaptar la identidad completa
 de Engineer y entregar sus facts al servicio antes de activar R19.
+
+## 102. Entrega de facts del candidato al host (2026-09-29)
+
+El supervisor expone en `ReceivedV1.Facts` cada fact nuevo retenido por el
+receptor, después de enviar el ACK al hijo y antes de invocar el consumidor.
+Los duplicados no vuelven a salir. La prueba opt-in física contra LMU 1.4.2.0
+con 47 coches recibió exactamente un `session.started` de secuencia 1 por
+instancia en cinco repeticiones, además de dos publicaciones Overlay V2 y dos
+snapshots Engineer por repetición. `go test ./...` pasó. Todavía no existe
+entrega al `EngineerProjectionConsumer` productivo ni garantía de replay de
+facts tras fallo del callback o reinicio del hijo; la activación requiere
+resolver ese límite junto con identidad, status y resync.

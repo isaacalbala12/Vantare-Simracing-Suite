@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
+	"github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 )
 
 func TestCandidateRestartBudgetExhaustsAfterThreeFailedStarts(t *testing.T) {
@@ -90,7 +91,7 @@ func TestCandidateOverlayReachesPublisherLiveLMUOptIn(t *testing.T) {
 	defer release()
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
-	var overlays, engineers, disconnects int
+	var overlays, engineers, facts, disconnects int
 	err = RunCandidate(ctx, executable, liveCandidateConfiguration(t), func(event ReceivedV1) error {
 		if event.Overlay != nil {
 			if len(event.Overlay.Frame.Standings) != 47 {
@@ -104,15 +105,21 @@ func TestCandidateOverlayReachesPublisherLiveLMUOptIn(t *testing.T) {
 		if event.Engineer != nil {
 			engineers++
 		}
-		if overlays >= 2 && engineers >= 2 {
+		for _, fact := range event.Facts {
+			if fact.Fact.Kind != engineer.FactSessionStarted || fact.Fact.Sequence != 1 {
+				return errors.New("Rust delivered an unexpected or duplicate Engineer fact")
+			}
+			facts++
+		}
+		if overlays >= 2 && engineers >= 2 && facts >= 1 {
 			cancel()
 		}
 		return nil
 	}, func(error) { disconnects++ })
-	if err != nil || disconnects != 0 || overlays < 2 || engineers < 2 {
-		t.Fatalf("real Rust publisher delivery: error=%v disconnects=%d overlay=%d engineer=%d", err, disconnects, overlays, engineers)
+	if err != nil || disconnects != 0 || overlays < 2 || engineers < 2 || facts < 1 {
+		t.Fatalf("real Rust publisher delivery: error=%v disconnects=%d overlay=%d engineer=%d facts=%d", err, disconnects, overlays, engineers, facts)
 	}
-	t.Logf("published %d real Rust Overlay snapshots to the product publisher, latest bytes=%d", overlays, publisher.Metrics().SnapshotBytes)
+	t.Logf("published %d real Rust Overlay snapshots to the product publisher, latest bytes=%d, facts=%d", overlays, publisher.Metrics().SnapshotBytes, facts)
 }
 
 func TestCandidateSupervisorLiveLMUOptIn(t *testing.T) {

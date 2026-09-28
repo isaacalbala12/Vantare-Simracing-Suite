@@ -172,6 +172,9 @@ func runCandidateOnceWithUpdates(ctx context.Context, executable string, configu
 			if err := WriteFrame(file, *event.FactACK); err != nil {
 				return fmt.Errorf("acknowledge Rust candidate Fact: %w", err)
 			}
+			if event.FactAdded {
+				event.Facts = receiver.DrainFacts()
+			}
 		}
 		if err := deliver(event); err != nil {
 			return fmt.Errorf("deliver Rust candidate event: %w", err)

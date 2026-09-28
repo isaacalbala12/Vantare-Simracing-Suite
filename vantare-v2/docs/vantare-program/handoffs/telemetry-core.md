@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — facts Rust llegan al callback Go (2026-09-29)
+
+El supervisor entrega al callback los facts nuevos retenidos tras el ACK.
+Contra LMU 1.4.2.0 con 47 coches, cinco corridas recibieron una sola vez
+`session.started` (secuencia 1) y publicaron dos Overlay V2 por corrida;
+`go test ./...` pasó. Falta identidad completa en Engineer, conectar el
+servicio productivo y resolver replay/resync ante fallo o reinicio antes de
+seleccionar Rust en Wails. Plan §102; Go sigue productivo.
+
 ## VAN-778 / ISA-1403 — Overlay Rust en el Publisher real (2026-09-29)
 
 Prueba opt-in física con LMU 1.4.2.0 y 47 coches: el hijo Rust pasó por el

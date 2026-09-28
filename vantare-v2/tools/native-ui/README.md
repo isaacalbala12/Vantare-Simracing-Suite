@@ -27,6 +27,9 @@ referencia Wails usa el Wails v3 beta ya presente en el repositorio. Sirve
 React desde un puerto local temporal y retransmite SSE hacia el host Go: el
 servidor de assets embebido de Wails no entregó el primer evento de un stream
 abierto en esta prueba. Este servidor local pertenece solo al ensayo.
+Al detener el host con un SSE aún conectado, primero intenta cerrar con gracia
+durante dos segundos y después fuerza el cierre de conexiones remanentes;
+un test reprodujo el timeout anterior y verifica esta salida limpia.
 
 ## Reproducción Windows
 

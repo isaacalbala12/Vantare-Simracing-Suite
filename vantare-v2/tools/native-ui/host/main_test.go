@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -90,5 +91,40 @@ func TestHostRejectsMissingCapture(t *testing.T) {
 	_, err := buildUpdate(context.Background(), filepath.Join(t.TempDir(), "missing.bin"))
 	if !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("missing capture = %v, want os.ErrNotExist", err)
+	}
+}
+
+func TestStopHostWithOpenSSEClient(t *testing.T) {
+	server := &http.Server{Handler: http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		writer.Header().Set("Content-Type", "text/event-stream")
+		writer.WriteHeader(http.StatusOK)
+		writer.(http.Flusher).Flush()
+		<-request.Context().Done()
+	})}
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := server.Close(); err != nil {
+			t.Errorf("close test host: %v", err)
+		}
+	})
+	serveErr := make(chan error, 1)
+	go func() { serveErr <- server.Serve(listener) }()
+	client := &http.Client{Timeout: time.Second}
+	response, err := client.Get("http://" + listener.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("SSE response: %d", response.StatusCode)
+	}
+	if err := stopHTTPServer(server, 50*time.Millisecond); err != nil {
+		t.Fatalf("stop host with connected SSE client: %v", err)
+	}
+	if err := <-serveErr; !errors.Is(err, http.ErrServerClosed) {
+		t.Fatalf("test host Serve returned %v", err)
 	}
 }

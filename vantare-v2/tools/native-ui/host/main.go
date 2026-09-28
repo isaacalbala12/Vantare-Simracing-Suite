@@ -90,9 +90,7 @@ func run(ctx context.Context, fixturePath string, port uint) error {
 	fmt.Printf("native UI Go host: http://%s\n", listener.Addr())
 	select {
 	case <-ctx.Done():
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		if err := stopHTTPServer(httpServer, 2*time.Second); err != nil {
 			return fmt.Errorf("stop native UI Go host: %w", err)
 		}
 		return nil
@@ -102,6 +100,16 @@ func run(ctx context.Context, fixturePath string, port uint) error {
 		}
 		return fmt.Errorf("serve native UI Go host: %w", err)
 	}
+}
+
+func stopHTTPServer(server *http.Server, timeout time.Duration) error {
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	err := server.Shutdown(shutdownCtx)
+	if errors.Is(err, context.DeadlineExceeded) {
+		return server.Close()
+	}
+	return err
 }
 
 func newHandler(update overlayv2.UpdateV2) (http.Handler, func(), error) {

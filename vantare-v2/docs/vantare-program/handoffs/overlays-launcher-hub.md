@@ -43,6 +43,9 @@ restablecimiento con un clic real; hay capturas propias revisadas. Se descubrió
 y corrigió un fallo Slint: la vista previa se restablecía, pero el campo de
 título conservaba el texto anterior; ahora tiene vinculación bidireccional.
 Estas pruebas no sustituyen foco/clic de overlay ni OBS.
+El cierre del host con un cliente SSE persistente agotaba el plazo y salía con
+error. Un test reprodujo el fallo y ahora el host fuerza el cierre de esa
+conexión solo después de intentar el apagado con gracia. `go test ./...` pasó.
 La tarea [VAN-776](https://app.notion.com/p/3e9e51695c65810fb2bdd73aae4b555d?pvs=204)
 conserva el alcance y pendientes: interacción y persistencia de editor,
 actualización de datos, OBS y baseline del producto completo. No se eligió

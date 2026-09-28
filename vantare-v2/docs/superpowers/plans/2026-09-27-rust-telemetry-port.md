@@ -1704,3 +1704,24 @@ de 44 coches. Rust release 149/149, Clippy y formato pasan.
 El writer de pipe todavía no consume esta cola; overflow exige que el
 owner cierre/resincronice. Faltan plazos de escritura, supervisor, corpus
 temporal real 44/104 y gate de CPU. Go sigue como owner productivo.
+
+## 89. Diagnóstico temporal físico LMU 1.4.2.0 (2026-09-28)
+
+En una práctica offline real se observaron primero 18 vehículos con un
+Hypercar WEC 2026 y después **43**, no 44, con parrilla Hypercar/LMP2 WEC
+2024 en Circuit de la Sarthe. Los dos pares SHM+REST estáticos se capturaron
+con el lector opt-in sanitizado; tras finalizar una sesión, el lector de menú
+rechazó el remanente SHM congelado en vez de declararlo una sesión válida.
+
+`TestCaptureLMUTemporalOptIn` añade captura acotada con un solo sanitizador
+para mantener aliases estables, ocho pares SHM+REST correlacionados, reloj
+SHM estrictamente creciente, jugador presente y recuento estable. El corpus
+diagnóstico externo `C:\tmp\isa-1403-lmu-1420-43-temporal` tiene 8 muestras,
+17 archivos, 16 hashes concordantes, reloj 230000..235400 ms y 43 vehículos;
+la comprobación del REST no encontró el nombre real del usuario. Los bytes
+crudos no se persisten. `go test ./...` pasa.
+
+Esta evidencia **no** cubre R02: la meta exige secuencias reales de 44 y
+104 vehículos y el gate de CPU de ambos procesos. La build 1.4.2.0 sigue
+siendo candidata de diagnóstico y no figura en la allowlist productiva Go
+ni Rust. El principal Rust continúa sin loop live ni conexión Wails.

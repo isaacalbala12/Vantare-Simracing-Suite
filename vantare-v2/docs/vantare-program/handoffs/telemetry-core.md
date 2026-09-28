@@ -1,5 +1,20 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — captura temporal LMU 1.4.2.0 (2026-09-28)
+
+Práctica offline real en Circuit de la Sarthe con parrilla WEC 2024:
+SHM y REST confirmaron **43** vehículos, incluido el jugador. El lector
+opt-in `TestCaptureLMUTemporalOptIn` conserva un sanitizador entre muestras,
+exige reloj SHM creciente y correlación REST y guarda ocho pares y un
+manifiesto con hashes en `C:\tmp\isa-1403-lmu-1420-43-temporal`.
+Ocho relojes distintos, 16 hashes correctos y ninguna coincidencia del
+nombre real del usuario en los REST; `go test ./...` pasa. También se
+capturó pista de 18 vehículos en 1.4.2.0. Tras abandonar la sesión,
+el capture de menú rechazó correctamente el remanente SHM congelado.
+Estos diagnósticos no son el corpus requerido de **44 y 104** ni habilitan
+la build 1.4.2.0 productivamente. Go sigue owner; Rust live y el gate de
+CPU siguen pendientes. Plan §89.
+
 ## VAN-778 / ISA-1403 — cola Rust acotada (2026-09-28)
 
 `WriterQueue` conserva ACK/facts en orden (ocho lotes, 64 facts),

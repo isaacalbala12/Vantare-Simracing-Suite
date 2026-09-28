@@ -4,12 +4,136 @@ package lmu
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 )
+
+// TestCaptureLMUTemporalOptIn collects a bounded, correlated SHM/REST sequence.
+// The sanitizer is shared by all frames so aliases remain stable across time.
+// Output is diagnostic until the required 44/104-car scenarios are observed.
+func TestCaptureLMUTemporalOptIn(t *testing.T) {
+	if os.Getenv("LMU_CAPTURE_TEMPORAL") != "1" {
+		t.Skip("set LMU_CAPTURE_TEMPORAL=1 with LMU on track")
+	}
+	out := strings.TrimSpace(os.Getenv("LMU_CAPTURE_OUT"))
+	if out == "" {
+		t.Fatal("set LMU_CAPTURE_OUT to a new directory")
+	}
+	evidence, err := readLMUBuildEvidence()
+	if err != nil {
+		t.Fatalf("read build: %v", err)
+	}
+	sanitizer, err := newDiagnosticFrameSanitizer(evidence)
+	if err != nil {
+		t.Fatalf("diagnostic build: %v", err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+	defer cancel()
+	live, err := CaptureSanitizedSharedMemory(ctx)
+	if err != nil {
+		t.Fatalf("live session: %v", err)
+	}
+	clear(live.payload)
+	reader, err := openSharedMemory()
+	if err != nil {
+		t.Fatalf("open mapping: %v", err)
+	}
+	defer func() {
+		if err := reader.Close(); err != nil {
+			t.Errorf("close mapping: %v", err)
+		}
+	}()
+	input := make([]byte, ObjectOutSize)
+	scratch := make([]byte, ObjectOutSize)
+	defer clear(input)
+	defer clear(scratch)
+	type sample struct {
+		Index      int    `json:"index"`
+		AtUTC      string `json:"atUtc"`
+		SourceMS   int64  `json:"sourceMs"`
+		Vehicles   int    `json:"vehicles"`
+		SharedFile string `json:"sharedFile"`
+		SharedSHA  string `json:"sharedSha256"`
+		RESTFile   string `json:"restFile"`
+		RESTSHA    string `json:"restSha256"`
+	}
+	manifest := struct {
+		Build   string   `json:"build"`
+		Samples []sample `json:"samples"`
+	}{Build: evidence.FileVersion}
+	type pair struct{ shared, rest DiagnosticCaptureArtifact }
+	pairs := make([]pair, 0, 8)
+	var previous time.Duration
+	var vehicleCount int
+	for index := range 8 {
+		if index > 0 {
+			timer := time.NewTimer(750 * time.Millisecond)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				t.Fatalf("capture deadline: %v", ctx.Err())
+			case <-timer.C:
+			}
+		}
+		if err := readStable(ctx, reader, input, scratch, defaultStableComparisons); err != nil {
+			t.Fatalf("stable frame %d: %v", index, err)
+		}
+		shared, err := buildSharedMemoryDiagnosticArtifact(input, time.Now().Round(0).UTC(), sanitizer)
+		if err != nil {
+			t.Fatalf("sanitize frame %d: %v", index, err)
+		}
+		observation, err := parseDiagnosticSharedMemoryArtifact(shared)
+		if err != nil {
+			t.Fatalf("parse frame %d: %v", index, err)
+		}
+		current, ok := observation.SourceTime.Value()
+		if !ok || (index > 0 && current <= previous) {
+			t.Fatalf("source clock did not advance at frame %d", index)
+		}
+		previous = current
+		vehicles, ok := observation.VehicleCount.Value()
+		player, playerOK := observation.PlayerPresent.Value()
+		if !ok || !playerOK || !player || vehicles < 1 || (index > 0 && int(vehicles) != vehicleCount) {
+			t.Fatalf("live grid changed or player absent at frame %d", index)
+		}
+		vehicleCount = int(vehicles)
+		rest, err := CaptureSanitizedREST(ctx, shared)
+		if err != nil {
+			t.Fatalf("correlated REST frame %d: %v", index, err)
+		}
+		pairs = append(pairs, pair{shared, rest})
+		manifest.Samples = append(manifest.Samples, sample{
+			Index: index, AtUTC: shared.CapturedAtUTC().Format(time.RFC3339Nano),
+			SourceMS: current.Milliseconds(), Vehicles: int(vehicles),
+			SharedFile: fmt.Sprintf("%03d-shm.bin", index), SharedSHA: shared.SHA256(),
+			RESTFile: fmt.Sprintf("%03d-rest.json", index), RESTSHA: rest.SHA256(),
+		})
+	}
+	if err := os.Mkdir(out, 0o700); err != nil {
+		t.Fatalf("create new output directory: %v", err)
+	}
+	for index, item := range pairs {
+		entry := manifest.Samples[index]
+		if err := WriteSanitizedCapturePair(filepath.Join(out, entry.SharedFile), item.shared, filepath.Join(out, entry.RESTFile), item.rest); err != nil {
+			t.Fatalf("write sanitized pair %d: %v", index, err)
+		}
+		clear(item.shared.payload)
+		clear(item.rest.payload)
+	}
+	data, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		t.Fatalf("marshal manifest: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(out, "manifest.json"), append(data, '\n'), 0o600); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+	t.Logf("captured %d sanitized correlated samples, build=%s vehicles=%d, source_time=%d..%dms", len(pairs), evidence.FileVersion, vehicleCount, manifest.Samples[0].SourceMS, manifest.Samples[len(pairs)-1].SourceMS)
+}
 
 // TestCaptureLMUFixturesOptIn is a collection tool, not an assertion of
 // compatibility: it never fails on unknown digests. It captures the sanitized

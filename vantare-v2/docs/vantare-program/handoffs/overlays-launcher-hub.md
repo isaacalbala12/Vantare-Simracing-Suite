@@ -14,9 +14,16 @@ memoria privada comprometida de 200,16 a 70,48 MiB en esta escena; no demuestra
 un ahorro de la app completa. OBS capturó los tres overlays principales. El
 renderer Qt histórico volvió a fallar su gate stress104 y GPUI publicado no
 abrió una ventana fiable en este Windows. Ningún stack se ha aprobado para el
-port productivo; sigue pendiente una pantalla compleja, integración Go, DPI y
-OBS físicos, licencia de módulos y baseline de Vantare completa. Sin merge ni
+port productivo; sigue pendiente una pantalla compleja, integración Go, DPI
+físico y OBS con Vantare productiva, licencia de módulos y baseline de la app
+completa. Sin merge ni
 promoción de canal por esta investigación.
+
+La entrega está en [PR borrador #1409](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1409).
+La primera ejecución remota de calidad encontró que el probe Wails dependía
+de `assets/dist` generado localmente; se corrigió el embed para que un checkout
+limpio compile y se reprodujo `go test` sin ese directorio. Los gates deben
+verificarse sobre el último HEAD de la PR antes de aceptar la entrega.
 
 ## 2026-09-26 · VAN-769 / GitHub #1381 · Integración inicial autorizada
 

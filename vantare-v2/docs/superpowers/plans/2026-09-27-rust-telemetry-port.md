@@ -1,7 +1,7 @@
 # ISA-1403 — Plan de migración del runtime live de telemetría a Rust
 
 Fecha: 2026-09-27. Versión del plan: 1.3. Estado: diseño confirmado por Isaac;
-implementación parcial hasta el corte 86.
+implementación parcial hasta el corte 87.
 **Paridad, integración live y gates pendientes.**
 
 - Tarea operativa: [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748), proyecto Telemetry Core. [GitHub #1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403) es el puente técnico de CI.
@@ -1677,3 +1677,15 @@ formato, build release, `go test ./...` y ambos pipes Windows pasan.
 No cierra R04/R05: falta medir Snapshot con 104 coches reales, los plazos
 de lectura/escritura, cola acotada, heartbeat y presupuesto de reinicio.
 El loop live y la sustitución productiva de Go siguen pendientes.
+
+## 87. Cadencia monotónica del tick SHM (2026-09-28)
+
+`TickCadence` usa el mismo intervalo nominal de Go (`time.Second/60`)
+desde un origen monotónico. Si una iteración llega tarde, habilita una sola
+lectura y salta los slots vencidos: no publica ráfagas de muestras antiguas.
+`Acquisition::tick_if_due` usa esa agenda y deja intacta la adquisición
+cuando aún no vence. Un test con tiempos controlados comprueba los bordes
+de 60 Hz y la pausa de cinco slots. Rust release 144/144 y Clippy pasan.
+
+Todavía no hay loop del proceso hijo ni writer/pipe productivo; la agenda
+es un componente listo para ese loop. Go conserva la propiedad live.

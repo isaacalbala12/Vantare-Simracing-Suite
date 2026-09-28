@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — agenda SHM monotónica (2026-09-28)
+
+Rust tiene una cadencia de 60 Hz con reloj monotónico que omite slots
+perdidos sin acumular lecturas; `Acquisition::tick_if_due` la aplica antes
+de SHM. Test con tiempo controlado, Rust release 144/144 y Clippy pasan.
+El proceso hijo todavía no ejecuta el loop ni entrega IPC; Go sigue owner.
+Siguiente: loop, writer/reader y supervisor acotados. Plan §87,
+[VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
 ## VAN-778 / ISA-1403 — límites IPC antes de reservar (2026-09-28)
 
 Go y Rust aplican máximos por tipo de mensaje de control en la cabecera

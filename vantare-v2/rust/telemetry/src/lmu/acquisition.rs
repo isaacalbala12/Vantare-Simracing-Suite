@@ -5,6 +5,7 @@ use std::io;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use super::OBJECT_OUT_SIZE;
+use super::cadence::TickCadence;
 use super::process::RunningSource;
 use super::rest::poller::Poller;
 use crate::assembly::{Assembler, AssemblyError};
@@ -73,6 +74,19 @@ impl Acquisition {
             || elapsed_ns(self.started),
             utc_ns,
         )
+    }
+
+    /// At most one SHM read per due slot. A delayed pipe consumer cannot
+    /// cause a burst of old samples when the caller resumes this loop.
+    pub fn tick_if_due(
+        &mut self,
+        cadence: &mut TickCadence,
+        now: Instant,
+    ) -> Result<Option<Vec<Vec<u8>>>, AcquisitionError> {
+        if !cadence.take_due(now) {
+            return Ok(None);
+        }
+        self.tick().map(Some)
     }
 
     pub fn shutdown(&mut self) -> Result<(), AcquisitionError> {

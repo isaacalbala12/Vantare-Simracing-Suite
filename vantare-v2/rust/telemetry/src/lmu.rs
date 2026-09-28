@@ -3,6 +3,7 @@
 
 #[cfg(windows)]
 pub mod acquisition;
+pub mod cadence;
 pub mod freshness;
 pub mod fusion;
 pub mod mapper;

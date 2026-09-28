@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — clima REST acotado por sesión (2026-09-28)
+
+La fusión Rust conserva lluvia SHM y proyecta temperatura ambiente/pista,
+humedad y amarillo REST con calidad independiente. El floor de sesión elimina
+señales REST anteriores a la frontera, incluso dentro de TTL. La prueba usa
+SHM real estático y REST de prueba; no sustituye replay ni captura live.
+Faltan loop del driver, congelación de reloj, productos y salida canónica.
+Rust release 38/38, formato, Clippy y build pasan.
+
 ## ISA-1403 — arbitraje escalar Rust inicial (2026-09-28)
 
 La fusión parcial prioriza fresh/stale/inválido y SHM sobre REST a igual

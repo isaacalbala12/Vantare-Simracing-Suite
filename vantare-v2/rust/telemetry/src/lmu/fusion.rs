@@ -110,6 +110,81 @@ pub struct FusedPlayer {
     pub pit_stop_count: Choice<i32>,
 }
 
+#[derive(Debug, PartialEq)]
+pub struct FusedWeather {
+    pub rain_fraction: Field<f64>,
+    pub ambient_temp_c: Field<f64>,
+    pub track_temp_c: Field<f64>,
+    pub wetness_fraction: Field<f64>,
+    pub global_yellow: Field<bool>,
+}
+
+pub fn fuse_weather(
+    grid: &AdmittedGrid,
+    shared_updated_ns: u64,
+    rest: &RestCache,
+    now_ns: u64,
+    session_floor_ns: Option<u64>,
+) -> FusedWeather {
+    let rest_session = rest.session.as_ref();
+    let stamp = rest.session_updated_ns();
+    let missing_float = Field::Missing;
+    let missing_flag = Field::Missing;
+    FusedWeather {
+        rain_fraction: scoped_field(
+            &grid.session.rain_fraction,
+            Some(shared_updated_ns),
+            now_ns,
+            DEFAULT_SHM_TTL_NS,
+            None,
+        ),
+        ambient_temp_c: scoped_field(
+            rest_session.map_or(&missing_float, |value| &value.ambient_temp_c),
+            stamp,
+            now_ns,
+            DEFAULT_REST_TTL_NS,
+            session_floor_ns,
+        ),
+        track_temp_c: scoped_field(
+            rest_session.map_or(&missing_float, |value| &value.track_temp_c),
+            stamp,
+            now_ns,
+            DEFAULT_REST_TTL_NS,
+            session_floor_ns,
+        ),
+        wetness_fraction: scoped_field(
+            rest_session.map_or(&missing_float, |value| &value.wetness_fraction),
+            stamp,
+            now_ns,
+            DEFAULT_REST_TTL_NS,
+            session_floor_ns,
+        ),
+        global_yellow: scoped_field(
+            rest_session.map_or(&missing_flag, |value| &value.global_yellow),
+            stamp,
+            now_ns,
+            DEFAULT_REST_TTL_NS,
+            session_floor_ns,
+        ),
+    }
+}
+
+fn scoped_field<T: Clone>(
+    field: &Field<T>,
+    updated_ns: Option<u64>,
+    now_ns: u64,
+    ttl_ns: u64,
+    session_floor_ns: Option<u64>,
+) -> Field<T> {
+    if session_floor_ns.is_some_and(|floor| updated_ns.is_some_and(|updated| updated < floor)) {
+        return Field::Missing;
+    }
+    match effective_freshness(field, updated_ns, now_ns, ttl_ns) {
+        Some(freshness) => clone_with_freshness(field, freshness),
+        None => Field::Missing,
+    }
+}
+
 pub fn fuse_player(
     grid: &AdmittedGrid,
     shared_updated_ns: u64,
@@ -509,5 +584,27 @@ mod tests {
         assert_eq!(no_player.position.field, Field::Missing);
         assert_eq!(no_player.completed_laps.field, Field::Missing);
         assert_eq!(no_player.pit_stop_count.field, Field::Missing);
+    }
+
+    #[test]
+    fn weather_join_is_field_independent_and_scoped_to_session_floor() {
+        let grid = admit_v13(REAL_44, "1.3.0.0").unwrap();
+        let mut rest = RestCache::default();
+        rest.accept_session(
+            br#"{"ambientTemp":"hot","trackTemp":31,"averagePathWetness":0,"yellowFlagState":3}"#,
+            100,
+        );
+        let fused = fuse_weather(&grid, 100, &rest, 200, None);
+        assert_eq!(fused.ambient_temp_c, Field::invalid_observed(0.0));
+        assert_eq!(fused.track_temp_c, Field::observed(31.0));
+        assert_eq!(fused.wetness_fraction, Field::observed(0.0));
+        assert_eq!(fused.global_yellow, Field::observed(true));
+        let scoped = fuse_weather(&grid, 100, &rest, 200, Some(101));
+        assert_eq!(scoped.ambient_temp_c, Field::Missing);
+        assert_eq!(scoped.track_temp_c, Field::Missing);
+        assert_eq!(scoped.global_yellow, Field::Missing);
+        let stale = fuse_weather(&grid, 100, &rest, DEFAULT_REST_TTL_NS + 101, None);
+        assert_eq!(stale.track_temp_c.quality().1, Some(Freshness::Stale));
+        assert_eq!(stale.ambient_temp_c.quality().1, Some(Freshness::Invalid));
     }
 }

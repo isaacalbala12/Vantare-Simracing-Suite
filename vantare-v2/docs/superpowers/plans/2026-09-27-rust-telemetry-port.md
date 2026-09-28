@@ -752,3 +752,15 @@ de prueba. Falta publicar una observación canónica completa, decisiones de
 todos los campos, campos de clima, envejecimiento integral de filas y replay
 temporal 44/104. El gate CPU sigue sin medición.
 Rust release 37/37, formato, Clippy y build Windows release pasan.
+
+## 22. Clima REST ligado a sesión (2026-09-28)
+
+La proyección de clima Rust conserva la lluvia nativa SHM y añade ambiente,
+pista, humedad y bandera amarilla de REST con calidad independiente. El floor
+de sesión retira todos los campos REST de una solicitud anterior al cambio de
+sesión, incluso dentro del TTL; invalidez de un sensor no contamina a los
+demás. Una prueba con la fixture SHM estática y cuerpo REST de prueba cubre
+inválido, cero, amarillo, floor y stale. Aún no está conectada al loop del
+driver ni a los productos; la congelación de reloj de fuente y paridad live
+siguen pendientes.
+Rust release 38/38, formato, Clippy y build pasan.

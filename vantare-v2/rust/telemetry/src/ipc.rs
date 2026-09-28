@@ -52,6 +52,23 @@ impl TryFrom<u16> for Kind {
     }
 }
 
+impl Kind {
+    fn max_payload(self) -> usize {
+        match self {
+            Self::Handshake => HANDSHAKE_NONCE_LEN + 1 + MAX_HELPER_VERSION_LEN,
+            Self::Configuration => configuration::MAX_CONFIGURATION_PAYLOAD,
+            Self::ConfigurationAck => configuration::MAX_ACK_PAYLOAD,
+            Self::Snapshot => MAX_PAYLOAD_LEN,
+            Self::Fact => fact::MAX_FACT_PAYLOAD,
+            Self::FactAck => fact_ack::MAX_FACT_ACK_PAYLOAD,
+            Self::ResyncRequired => resync::MAX_RESYNC_PAYLOAD,
+            Self::Status => status::MAX_STATUS_PAYLOAD,
+            Self::Stop => 0,
+            Self::FactReplayRequest => fact_replay::MAX_REPLAY_REQUEST_PAYLOAD,
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum FrameError {
     IncompleteHeader,
@@ -70,7 +87,7 @@ pub struct Frame<'a> {
 }
 
 pub fn encode(kind: Kind, payload: &[u8]) -> Result<Vec<u8>, FrameError> {
-    if payload.len() > MAX_PAYLOAD_LEN {
+    if payload.len() > kind.max_payload() {
         return Err(FrameError::PayloadTooLarge);
     }
     let mut frame = Vec::with_capacity(HEADER_LEN + payload.len());
@@ -96,6 +113,9 @@ pub fn decode(input: &[u8]) -> Result<Frame<'_>, FrameError> {
     let kind = Kind::try_from(u16::from_le_bytes(
         header[6..8].try_into().expect("fixed header"),
     ))?;
+    if length > kind.max_payload() {
+        return Err(FrameError::PayloadTooLarge);
+    }
     let expected = HEADER_LEN + length;
     if input.len() < expected {
         return Err(FrameError::IncompletePayload);
@@ -127,6 +147,9 @@ pub fn read_frame(reader: &mut impl Read) -> Result<(Kind, Vec<u8>), FrameError>
     let kind = Kind::try_from(u16::from_le_bytes(
         header[6..8].try_into().expect("fixed header"),
     ))?;
+    if length > kind.max_payload() {
+        return Err(FrameError::PayloadTooLarge);
+    }
     let mut payload = vec![0_u8; length];
     reader
         .read_exact(&mut payload)
@@ -199,19 +222,22 @@ mod tests {
     fn round_trip_each_message_kind() {
         for raw_kind in 1..=10 {
             let kind = Kind::try_from(raw_kind).unwrap();
-            let encoded = encode(kind, &[0, 1, 255]).unwrap();
+            let payload: &[u8] = if kind == Kind::Stop {
+                &[]
+            } else {
+                &[0, 1, 255]
+            };
+            let encoded = encode(kind, payload).unwrap();
             assert_eq!(
                 encoded,
-                [3, 0, 0, 0, 1, 0, raw_kind as u8, 0, 0, 1, 255],
+                [
+                    &[payload.len() as u8, 0, 0, 0, 1, 0, raw_kind as u8, 0][..],
+                    payload,
+                ]
+                .concat(),
                 "Go and Rust must use the same fixed wire bytes"
             );
-            assert_eq!(
-                decode(&encoded).unwrap(),
-                Frame {
-                    kind,
-                    payload: &[0, 1, 255]
-                }
-            );
+            assert_eq!(decode(&encoded).unwrap(), Frame { kind, payload });
         }
     }
 
@@ -276,6 +302,35 @@ mod tests {
             read_frame(&mut Cursor::new(header)),
             Err(FrameError::PayloadTooLarge)
         );
+    }
+
+    #[test]
+    fn control_limits_apply_before_allocation_and_on_write() {
+        for kind in [
+            Kind::Handshake,
+            Kind::Configuration,
+            Kind::ConfigurationAck,
+            Kind::Fact,
+            Kind::FactAck,
+            Kind::ResyncRequired,
+            Kind::Status,
+            Kind::Stop,
+            Kind::FactReplayRequest,
+        ] {
+            let mut header = [0_u8; HEADER_LEN];
+            header[..4].copy_from_slice(&((kind.max_payload() + 1) as u32).to_le_bytes());
+            header[4..6].copy_from_slice(&VERSION.to_le_bytes());
+            header[6..8].copy_from_slice(&(kind as u16).to_le_bytes());
+            assert_eq!(
+                read_frame(&mut Cursor::new(header)),
+                Err(FrameError::PayloadTooLarge)
+            );
+            assert_eq!(decode(&header), Err(FrameError::PayloadTooLarge));
+            assert_eq!(
+                encode(kind, &vec![0; kind.max_payload() + 1]),
+                Err(FrameError::PayloadTooLarge)
+            );
+        }
     }
 
     #[test]

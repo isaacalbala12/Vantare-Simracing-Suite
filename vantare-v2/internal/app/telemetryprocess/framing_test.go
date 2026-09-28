@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
-	"reflect"
 	"testing"
 )
 
@@ -24,8 +23,12 @@ func (reader shortReader) Read(data []byte) (int, error) {
 func TestWireFrameConformsToRustV1(t *testing.T) {
 	for kind := KindHandshake; kind <= KindFactReplayRequest; kind++ {
 		frame := Frame{Kind: kind, Payload: []byte{0, 1, 255}}
+		if kind == KindStop {
+			frame.Payload = nil
+		}
 		// Fixed protocol bytes: length u32 LE, version u16 LE, kind u16 LE.
-		want := []byte{3, 0, 0, 0, 1, 0, byte(kind), 0, 0, 1, 255}
+		want := []byte{byte(len(frame.Payload)), 0, 0, 0, 1, 0, byte(kind), 0}
+		want = append(want, frame.Payload...)
 		var writer shortWriter
 		if err := WriteFrame(&writer, frame); err != nil {
 			t.Fatalf("kind %d write: %v", kind, err)
@@ -34,12 +37,43 @@ func TestWireFrameConformsToRustV1(t *testing.T) {
 			t.Fatalf("kind %d wire = %v, want %v", kind, writer.Bytes(), want)
 		}
 		decoded, err := DecodeFrame(want)
-		if err != nil || !reflect.DeepEqual(decoded, frame) {
+		if err != nil || decoded.Kind != frame.Kind || !bytes.Equal(decoded.Payload, frame.Payload) {
 			t.Fatalf("kind %d decode = (%v, %v)", kind, decoded, err)
 		}
 		streamed, err := ReadFrame(shortReader{bytes.NewReader(want)})
-		if err != nil || !reflect.DeepEqual(streamed, frame) {
+		if err != nil || streamed.Kind != frame.Kind || !bytes.Equal(streamed.Payload, frame.Payload) {
 			t.Fatalf("kind %d stream = (%v, %v)", kind, streamed, err)
+		}
+	}
+}
+
+func TestFrameRejectsOversizedControlBeforePayloadRead(t *testing.T) {
+	for _, test := range []struct {
+		kind FrameKind
+		max  int
+	}{
+		{KindHandshake, 81},
+		{KindConfiguration, MaxConfigurationPayload},
+		{KindConfigurationAck, 256},
+		{KindFact, MaxEngineerFactPayload},
+		{KindFactAck, 128},
+		{KindResyncRequired, 128},
+		{KindStatus, 256},
+		{KindStop, 0},
+		{KindFactReplayRequest, 128},
+	} {
+		header := make([]byte, FrameHeaderSize)
+		binary.LittleEndian.PutUint32(header[:4], uint32(test.max+1))
+		binary.LittleEndian.PutUint16(header[4:6], FrameVersion)
+		binary.LittleEndian.PutUint16(header[6:8], uint16(test.kind))
+		if _, err := ReadFrame(bytes.NewReader(header)); !errors.Is(err, ErrPayloadTooLarge) {
+			t.Fatalf("kind %d stream: %v", test.kind, err)
+		}
+		if _, err := DecodeFrame(header); !errors.Is(err, ErrPayloadTooLarge) {
+			t.Fatalf("kind %d decode: %v", test.kind, err)
+		}
+		if err := WriteFrame(io.Discard, Frame{Kind: test.kind, Payload: make([]byte, test.max+1)}); !errors.Is(err, ErrPayloadTooLarge) {
+			t.Fatalf("kind %d write: %v", test.kind, err)
 		}
 	}
 }

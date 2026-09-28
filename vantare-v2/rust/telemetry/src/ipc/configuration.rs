@@ -226,14 +226,12 @@ mod tests {
             decode_frame(&malformed),
             Err(ConfigurationError::InvalidPreference)
         ));
-        let oversized = super::super::encode(
-            Kind::Configuration,
-            &vec![b' '; MAX_CONFIGURATION_PAYLOAD + 1],
-        )
-        .unwrap();
         assert!(matches!(
-            decode_frame(&oversized),
-            Err(ConfigurationError::TooLarge)
+            super::super::encode(
+                Kind::Configuration,
+                &vec![b' '; MAX_CONFIGURATION_PAYLOAD + 1]
+            ),
+            Err(super::super::FrameError::PayloadTooLarge)
         ));
     }
 }

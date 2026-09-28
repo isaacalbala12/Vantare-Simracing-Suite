@@ -1,7 +1,7 @@
 # ISA-1403 — Plan de migración del runtime live de telemetría a Rust
 
 Fecha: 2026-09-27. Versión del plan: 1.3. Estado: diseño confirmado por Isaac;
-implementación parcial hasta el corte 85.
+implementación parcial hasta el corte 86.
 **Paridad, integración live y gates pendientes.**
 
 - Tarea operativa: [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748), proyecto Telemetry Core. [GitHub #1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403) es el puente técnico de CI.
@@ -1664,3 +1664,16 @@ goldens Rust y `go test ./...` pasan.
 El receptor aún no está conectado al runtime de Wails. El proceso Rust
 principal continúa inerte; faltan loop 60 Hz, writer/reader con límites,
 supervisor, consumidores reales, captura temporal 44/104 y gate CPU.
+
+## 86. Límites de framing por tipo antes de reservar (2026-09-28)
+
+Go y Rust aplican desde la cabecera el máximo de cada mensaje de control:
+Handshake 81 B, Configuration 64 KiB, ACK 256 B, Fact 4 KiB,
+FactAck/Resync/Replay 128 B, Status 256 B y Stop vacío. También rechazan
+la codificación sobredimensionada; Snapshot conserva el techo provisional
+de 8 MiB. Pruebas de borde por tipo, 143/143 Rust release, Clippy,
+formato, build release, `go test ./...` y ambos pipes Windows pasan.
+
+No cierra R04/R05: falta medir Snapshot con 104 coches reales, los plazos
+de lectura/escritura, cola acotada, heartbeat y presupuesto de reinicio.
+El loop live y la sustitución productiva de Go siguen pendientes.

@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — límites IPC antes de reservar (2026-09-28)
+
+Go y Rust aplican máximos por tipo de mensaje de control en la cabecera
+y al escribir, incluido Stop vacío. Snapshot conserva 8 MiB provisional
+hasta capturar 104 coches reales. Rust release 143/143, Clippy, formato,
+build, Go completo y ambos pipes Windows pasan. Falta completar R04/R05
+con plazos, colas, heartbeat y reinicio; el runtime productivo sigue Go.
+Plan §86, [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
 ## VAN-778 / ISA-1403 — receptor Go del contrato Rust (2026-09-28)
 
 `telemetryprocess.Receiver` valida ACK/revisión/cursor, demanda y orden

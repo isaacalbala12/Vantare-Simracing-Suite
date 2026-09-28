@@ -73,11 +73,12 @@ mod tests {
                 Err(ReplayRequestError::InvalidPayload)
             );
         }
-        let oversized = super::super::encode(
-            Kind::FactReplayRequest,
-            &[b' '; MAX_REPLAY_REQUEST_PAYLOAD + 1],
-        )
-        .unwrap();
-        assert_eq!(decode_frame(&oversized), Err(ReplayRequestError::TooLarge));
+        assert_eq!(
+            super::super::encode(
+                Kind::FactReplayRequest,
+                &[b' '; MAX_REPLAY_REQUEST_PAYLOAD + 1]
+            ),
+            Err(super::super::FrameError::PayloadTooLarge)
+        );
     }
 }

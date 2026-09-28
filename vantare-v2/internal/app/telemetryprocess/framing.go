@@ -48,6 +48,27 @@ func validKind(kind FrameKind) bool {
 	return kind >= KindHandshake && kind <= KindFactReplayRequest
 }
 
+func maxKindPayload(kind FrameKind) int {
+	switch kind {
+	case KindHandshake:
+		return 16 + 1 + 64
+	case KindConfiguration:
+		return MaxConfigurationPayload
+	case KindConfigurationAck, KindStatus:
+		return 256
+	case KindSnapshot:
+		return MaxFramePayload
+	case KindFact:
+		return MaxEngineerFactPayload
+	case KindFactAck, KindResyncRequired, KindFactReplayRequest:
+		return 128
+	case KindStop:
+		return 0
+	default:
+		return 0
+	}
+}
+
 func parseHeader(header []byte) (FrameKind, int, error) {
 	length := int(binary.LittleEndian.Uint32(header[:4]))
 	if length > MaxFramePayload {
@@ -59,6 +80,9 @@ func parseHeader(header []byte) (FrameKind, int, error) {
 	kind := FrameKind(binary.LittleEndian.Uint16(header[6:8]))
 	if !validKind(kind) {
 		return 0, 0, ErrUnknownKind
+	}
+	if length > maxKindPayload(kind) {
+		return 0, 0, ErrPayloadTooLarge
 	}
 	return kind, length, nil
 }
@@ -105,11 +129,11 @@ func ReadFrame(reader io.Reader) (Frame, error) {
 }
 
 func WriteFrame(writer io.Writer, frame Frame) error {
-	if len(frame.Payload) > MaxFramePayload {
-		return ErrPayloadTooLarge
-	}
 	if !validKind(frame.Kind) {
 		return ErrUnknownKind
+	}
+	if len(frame.Payload) > maxKindPayload(frame.Kind) {
+		return ErrPayloadTooLarge
 	}
 	var header [FrameHeaderSize]byte
 	binary.LittleEndian.PutUint32(header[:4], uint32(len(frame.Payload)))

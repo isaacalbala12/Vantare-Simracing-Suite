@@ -4,7 +4,7 @@ Estado: framing Go/Rust y un harness Windows de hijo Rust conectado a named pipe
 
 ## Framing implementado
 
-Una trama es `length:u32 LE | version:u16 LE | kind:u16 LE | payload[length]`. La longitud cuenta solo el payload. El encabezado tiene 8 bytes; Rust y Go rechazan longitud mayor de **8 MiB** antes de reservar memoria, versión distinta de `1`, tipo desconocido, EOF dentro de encabezado/payload y bytes sobrantes en el decoder de una trama completa. Sus lectores/escritores soportan I/O parcial; todavía no establecen plazo ni cancelación de pipe. El decoder de buffer exige exactamente una trama; el lector de stream consume una trama y deja las siguientes para llamadas posteriores. Los dos lados prueban los mismos bytes wire fijos para los diez tipos.
+Una trama es `length:u32 LE | version:u16 LE | kind:u16 LE | payload[length]`. La longitud cuenta solo el payload. El encabezado tiene 8 bytes; Rust y Go rechazan longitudes superiores al límite de cada tipo antes de reservar memoria, versión distinta de `1`, tipo desconocido, EOF dentro de encabezado/payload y bytes sobrantes en el decoder de una trama completa. Sus lectores/escritores soportan I/O parcial; todavía no establecen plazo ni cancelación de pipe. El decoder de buffer exige exactamente una trama; el lector de stream consume una trama y deja las siguientes para llamadas posteriores. Los dos lados prueban los mismos bytes wire fijos para los diez tipos.
 
 | Tipo | ID | Uso previsto |
 | --- | ---: | --- |
@@ -19,7 +19,7 @@ Una trama es `length:u32 LE | version:u16 LE | kind:u16 LE | payload[length]`. L
 | Stop | 9 | Cierre solicitado; payload exactamente vacío |
 | FactReplayRequest | 10 | JSON cerrado `{stream,sequence}`: Go solicita frames posteriores a su cursor; `sequence=0` permite el primer replay |
 
-El límite de 8 MiB es un techo defensivo inicial para un solo mensaje, no una medición ni autorización para emitir frames de ese tamaño. R06 medirá el máximo real de cada producto con 104 coches y fijará límites por tipo antes de conectar el pipe. Ningún payload externo se acepta aún en el runtime productivo. El protocolo falla cerrado si la versión o el tipo no coinciden.
+Snapshot conserva 8 MiB como techo defensivo provisional, no como medición ni autorización para emitir frames de ese tamaño. Los otros tipos tienen límites por tipo. R06 medirá el máximo real de cada producto con 104 coches y fijará límites específicos de Snapshot antes de conectar el pipe. Ningún payload externo se acepta aún en el runtime productivo. El protocolo falla cerrado si la versión o el tipo no coinciden.
 
 ## Status y Stop v1 (2026-09-28)
 
@@ -176,9 +176,10 @@ writer/supervisor productivo. El ejecutable principal se compila sin
 
 | Recurso | Límite inicial | Evidencia/estado |
 | --- | ---: | --- |
-| Longitud wire de una trama | 8 MiB | Implementado y probado en Rust y Go en el borde exacto. Falta máximo real con 104 coches. |
+| Snapshot wire | 8 MiB | Techo provisional implementado y probado. Falta máximo real con 104 coches y límite específico por producto. |
+| Control wire por tipo | Handshake 81 B; Configuration 64 KiB; ACK 256 B; Fact 4 KiB; FactAck/Resync/Replay 128 B; Status 256 B; Stop 0 B | Rust y Go rechazan desde la cabecera antes de reservar payload y al codificar; tests por tipo y pipes Windows. |
 | Snapshot pendiente | 1 por producto | Diseño del plan; aún no hay writer/cola. |
-| Facts pendientes | 64 | Referencia al valor por defecto de `EngineerFactQueueCapacity`; la retención y ACK del IPC aún no están implementados. |
+| Facts pendientes | 64 | Retención/ACK IPC probados en replay y receptor Go; falta entrega productiva y recuperación. |
 | Callback Engineer | 250 ms | Valor por defecto Go actual, no un timeout IPC ya implementado. |
 | Adquisición LMU SHM | 60 Hz nominal | Valor Go actual, no una frecuencia lograda en Rust. |
 | Watchdog de fuente | 1 s | Valor Go actual; heartbeat de proceso tendrá reloj separado. |

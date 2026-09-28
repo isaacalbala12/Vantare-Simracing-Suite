@@ -795,3 +795,16 @@ Todavía no construye el `core.Batch` completo ni conecta sink/reducer; no
 demuestra replay temporal, identidad de pilotos/teams/stints ni paridad de
 productos. R10 sigue parcial.
 Rust release 42/42, formato, Clippy y build pasan.
+
+## 25. Frontera candidate/commit del reducer Rust (2026-09-28)
+
+R11 inicia con un reducer puro que recibe un batch owned de identidades y
+grid LMU, valida cursor inicial, secuencia/epoch, sesión/evento, recuento,
+alineación y duplicados de IDs antes de preparar candidato. Un candidato
+rechazado no avanza estado; commit solo acepta candidatos del mismo reducer.
+El estado publicado queda owned e inmutable a través de `current`. Pruebas
+reproducen rechazo precommit, duplicate/out-of-order, huecos y candidato de
+otro reducer. Esta estructura aún transporta `AdmittedGrid` parcial, no el
+`ObservedState` canónico completo de Go; carece de productos y salida IPC.
+Por tanto R11 sigue parcial y no acredita paridad de reducer end-to-end.
+Rust release 45/45, formato, Clippy y build pasan.

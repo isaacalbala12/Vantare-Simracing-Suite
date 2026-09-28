@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — frontera reducer Rust inicial (2026-09-28)
+
+R11 incorpora reducer puro con validación de cursor, identidad de sesión,
+recuento y IDs antes de candidate/commit. Rechazo no adelanta estado; un
+candidato de otro reducer no puede publicarse. Tests cubren esas fronteras.
+El batch aún contiene el grid LMU parcial, no el `ObservedState` completo ni
+productos/IPC. Go sigue productivo; sección 25 del plan registra el límite.
+Rust release 45/45, formato, Clippy y build pasan.
+
 ## ISA-1403 — identidad/cursor Rust iniciales (2026-09-28)
 
 R10 añade tracker de slots con gracia/generation y mapper de identidad que

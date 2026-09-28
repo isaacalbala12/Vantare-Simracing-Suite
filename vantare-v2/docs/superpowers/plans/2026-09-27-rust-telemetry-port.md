@@ -1362,3 +1362,14 @@ Strategy; Rust confirma cursor `(epoch=1, sequence=2)` y Go decodifica
 release `replay-harness` real. Demuestra cambio de demanda y ACK en
 frontera de lote bajo IPC Windows; sigue usando la misma captura
 auditada estática, sin poll LMU, backpressure ni consumidores finales.
+
+## 65. Lote completo Rust sobre pistas pinneadas 1.4 (2026-09-28)
+
+El motor Rust prepara y confirma lotes canónicos de las capturas
+reales sanitizadas de pista 1.4.0.0 (38 vehículos) y 1.4.1.3 (18).
+El ensamblador, con la configuración Go auditada, emite ACK y los
+snapshots completos Overlay y Engineer para ambos grids; los tests
+comprueban producto y cardinalidad. Esto amplía el gate desde admisión
+de bytes hasta candidato, proyección y codificación para 1.4.
+No demuestra REST live, secuencia temporal ni publicación real. Go
+sigue siendo el único owner productivo.

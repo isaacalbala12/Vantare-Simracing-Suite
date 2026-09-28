@@ -1,5 +1,12 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — lote Rust completo con pistas 1.4 pinneadas (2026-09-28)
+
+Rust preparó/confirmó lotes de pista 1.4.0.0 (38 vehículos) y
+1.4.1.3 (18) y emitió ACK, Overlay y Engineer completos desde la
+configuración Go auditada. Es replay estático sanitizado, no REST live
+ni salida productiva. Plan sección 65; Go sigue owner.
+
 ## ISA-1403 — demanda revisada por pipe Go/Rust (2026-09-28)
 
 El replay Windows con hijo Rust real aplica dos configuraciones en el

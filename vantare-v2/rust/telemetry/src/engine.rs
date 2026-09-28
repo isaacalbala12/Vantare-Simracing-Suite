@@ -132,6 +132,26 @@ mod tests {
     use crate::core::session::FactKind;
 
     const REAL_44: &[u8] = include_bytes!("../../../testdata/lmu-fixture.bin");
+    const REAL_1400_TRACK: &[u8] = include_bytes!("../../../testdata/lmu-1.4-track-fixture.bin");
+    const REAL_1413_TRACK: &[u8] =
+        include_bytes!("../../../testdata/lmu-1.4.1.3-track-fixture.bin");
+
+    #[test]
+    fn pinned_14_track_frames_prepare_full_canonical_batches() {
+        for (build, bytes, vehicles) in [
+            ("1.4.0.0", REAL_1400_TRACK, 38_usize),
+            ("1.4.1.3", REAL_1413_TRACK, 18_usize),
+        ] {
+            let mut engine = Engine::new(30, 7).unwrap();
+            let candidate = engine
+                .prepare(bytes, build, 100, 100, 1_000, ClockChange::Continuous)
+                .unwrap();
+            assert_eq!(candidate.batch().state.vehicles.len(), vehicles, "{build}");
+            assert!(candidate.batch().player_id.is_some(), "{build}");
+            engine.commit(candidate).unwrap();
+            assert_eq!(engine.current().unwrap().cursor.sequence, 1, "{build}");
+        }
+    }
 
     #[test]
     fn real_grid_prepares_all_stages_without_publishing_and_retries_after_rejection() {

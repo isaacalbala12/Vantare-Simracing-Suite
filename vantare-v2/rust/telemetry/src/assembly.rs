@@ -188,7 +188,53 @@ mod tests {
     use serde_json::Value;
 
     const REAL_44: &[u8] = include_bytes!("../../../testdata/lmu-fixture.bin");
+    const REAL_1400_TRACK: &[u8] = include_bytes!("../../../testdata/lmu-1.4-track-fixture.bin");
+    const REAL_1413_TRACK: &[u8] =
+        include_bytes!("../../../testdata/lmu-1.4.1.3-track-fixture.bin");
     const CONFIG: &[u8] = include_bytes!("../testdata/configuration-frame-go-v1.bin");
+
+    #[test]
+    fn pinned_14_tracks_reach_demanded_overlay_and_engineer_snapshots() {
+        for (build, bytes, count) in [
+            ("1.4.0.0", REAL_1400_TRACK, 38),
+            ("1.4.1.3", REAL_1413_TRACK, 18),
+        ] {
+            let mut assembler = Assembler::new(30, 15).unwrap();
+            assembler.configure(CONFIG).unwrap();
+            let frames = assembler
+                .apply(
+                    bytes,
+                    build,
+                    100,
+                    100,
+                    100_000_000_000,
+                    ClockChange::Continuous,
+                )
+                .unwrap();
+            let decoded: Vec<_> = frames
+                .iter()
+                .map(|frame| ipc::decode(frame).unwrap())
+                .collect();
+            assert_eq!(decoded[0].kind, ipc::Kind::ConfigurationAck, "{build}");
+            let overlay: Value = serde_json::from_slice(decoded[1].payload).unwrap();
+            assert_eq!(overlay["product"], "overlay-v2", "{build}");
+            assert_eq!(
+                overlay["update"]["frame"]["standings"]
+                    .as_array()
+                    .unwrap()
+                    .len(),
+                count,
+                "{build}"
+            );
+            let engineer: Value = serde_json::from_slice(decoded[2].payload).unwrap();
+            assert_eq!(engineer["product"], "engineer-v1", "{build}");
+            assert_eq!(
+                engineer["snapshot"]["vehicles"].as_array().unwrap().len(),
+                count,
+                "{build}"
+            );
+        }
+    }
 
     #[test]
     fn rejected_batch_does_not_ack_or_commit_then_retries_all_demanded_products() {

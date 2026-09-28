@@ -238,12 +238,12 @@ fn stream_once(address: SocketAddr, tx: &mpsc::Sender<FeedEvent>) -> Result<(), 
 
 #[cfg(windows)]
 fn overlay_window() {
-    use windows_sys::Win32::Foundation::{HWND, LPARAM};
+    use windows_sys::Win32::Foundation::{HWND, LPARAM, RECT};
     use windows_sys::Win32::UI::WindowsAndMessaging::{
-        EnumWindows, GWL_EXSTYLE, GetWindowLongPtrW, GetWindowThreadProcessId, HWND_TOPMOST,
-        IsWindowVisible, SW_SHOWNOACTIVATE, SWP_FRAMECHANGED, SWP_NOACTIVATE, SWP_NOMOVE,
-        SWP_NOSIZE, SWP_SHOWWINDOW, SetWindowLongPtrW, SetWindowPos, ShowWindow, WS_EX_APPWINDOW,
-        WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT,
+        EnumWindows, GWL_EXSTYLE, GetWindowLongPtrW, GetWindowRect, GetWindowThreadProcessId,
+        HWND_TOPMOST, IsWindowVisible, SW_SHOWNOACTIVATE, SWP_FRAMECHANGED, SWP_NOACTIVATE,
+        SWP_NOMOVE, SWP_NOSIZE, SWP_SHOWWINDOW, SetWindowLongPtrW, SetWindowPos, ShowWindow,
+        WS_EX_APPWINDOW, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TOOLWINDOW, WS_EX_TRANSPARENT,
     };
     struct Search {
         pid: u32,
@@ -253,7 +253,13 @@ fn overlay_window() {
         let s = unsafe { &mut *(param as *mut Search) };
         let mut pid = 0;
         unsafe { GetWindowThreadProcessId(hwnd, &mut pid) };
-        if pid == s.pid && unsafe { IsWindowVisible(hwnd) } != 0 {
+        let mut rect = RECT::default();
+        if pid == s.pid
+            && unsafe { IsWindowVisible(hwnd) } != 0
+            && unsafe { GetWindowRect(hwnd, &mut rect) } != 0
+            && rect.right - rect.left >= 400
+            && rect.bottom - rect.top >= 400
+        {
             s.hwnd = hwnd;
             return 0;
         }
@@ -273,6 +279,7 @@ fn overlay_window() {
                     GWL_EXSTYLE,
                     (style
                         | WS_EX_NOACTIVATE as isize
+                        | WS_EX_LAYERED as isize
                         | WS_EX_TRANSPARENT as isize
                         | WS_EX_APPWINDOW as isize)
                         & !(WS_EX_TOOLWINDOW as isize),

@@ -57,8 +57,8 @@ tras cinco segundos si no llegan. `--screenshot <ruta.png>` guarda solo la
 ventana Qt para inspección visual; [control](evidence/qt-go-control.png) y
 [overlay](evidence/qt-go-overlay.png) y
 [editor](evidence/qt-go-editor.png) son capturas de este corte. El píxel de
-esquina del overlay conserva alpha 0 en la captura propia; falta certificar
-composición y captura física en OBS.
+esquina del overlay conserva alpha 0 en la captura propia. La composición y el
+paso del clic en Windows se prueban más abajo; OBS sigue pendiente.
 
 Con Rust estable y Cargo, en otra terminal con el mismo host Go activo:
 
@@ -71,7 +71,8 @@ tools/native-ui/slint/target/release/vantare-native-go-slint.exe --endpoint "htt
 
 El cliente Rust usa Slint 1.18.1 y ventanas Win32 para click-through y
 topmost. La salida 0 confirma el contrato y la carga de 44 filas; no demuestra
-por sí sola paridad visual, transparencia física ni captura en OBS. Con un
+por sí sola paridad visual, transparencia física ni captura en OBS. La prueba
+física de composición y clic aparece más abajo. Con un
 endpoint desconectado, ambos clientes terminan con código 6 tras cinco segundos.
 
 Para reproducir la referencia Wails, primero construye el frontend y después
@@ -87,8 +88,8 @@ tools/native-ui/out/wails/vantare-native-go-wails.exe -endpoint "http://127.0.0.
 `-mode` admite también `control` y `overlay`; los tres confirmaron 44 filas.
 `-expect-rows` espera hasta diez segundos y devuelve 6 si la vista no confirma
 la recepción de la captura. El modo overlay es una ventana sin marco, superior,
-transparente y click-through por configuración; su composición real y OBS
-siguen pendientes de inspección física.
+transparente y click-through por configuración; su composición se inspeccionó
+en este escritorio Windows, pero OBS sigue pendiente.
 
 Para inspeccionar el editor Wails, se puede iniciar con `-mode editor
 -debug-port 9223 -auto-close 60s` y ejecutar
@@ -114,6 +115,27 @@ Las capturas de [Qt](evidence/qt-go-editor-interaction.png) y
 pasada Slint reveló que Restablecer cambiaba la vista previa pero dejaba el
 campo de título antiguo; `text <=> root.preview-title` corrigió ese fallo.
 
+`inspect-overlay-windows.ps1` abre los tres overlays con el host Go activo,
+coloca una ventana real debajo, la activa con un clic y comprueba que el color
+de una esquina cambia al cambiar el fondo, que otro clic llega a la ventana
+inferior y que el foco no se pierde. El ensayo inicial detectó que Slint
+aplicaba los estilos Win32 a una ventana auxiliar de 16×16 en vez de la de
+520×500. Se corrigió la selección y se añadió `WS_EX_LAYERED`, necesario para
+el hit testing de ventanas superiores con `WS_EX_TRANSPARENT` según
+[Microsoft](https://learn.microsoft.com/en-us/windows/win32/dwm/bestpractices-ovw).
+La primera instrumentación de Qt dio falsos negativos porque la ventana
+inferior no había obtenido el foco; ahora el script exige esa precondición.
+
+```powershell
+./tools/native-ui/inspect-overlay-windows.ps1 -Endpoint "http://127.0.0.1:<puerto>/telemetry/overlay-v2/projection" -QtBin "<ruta a Qt 6.10/mingw_64/bin>"
+```
+
+En tres rondas consecutivas con la captura Go, Qt Quick, Slint y Wails
+devolvieron `CornerRespondsToUnderlay`, `ClickThrough`,
+`ForegroundPreserved` y `HitIsUnderlay` verdaderos. Esto verifica composición
+y ratón en este escritorio Windows; aún no verifica OBS, otras escalas DPI ni
+el empaquetado. [Resultados completos](evidence/overlay-functional-results.csv).
+
 ## Medición local preliminar
 
 Windows 11 25H2, WebView2 153, Go 1.26.4, Qt 6.10.2, Slint 1.18.1. Una sola
@@ -137,7 +159,7 @@ respectivamente. Estas son mediciones de una escena pequeña, con una sola
 pasada y sin paridad completa de Vantare. Working set suma páginas compartidas
 entre procesos y no equivale a RAM exclusiva. La CPU en reposo osciló cerca de
 cero y no permite afirmar un ahorro de CPU ni el objetivo del 20 % en la app.
-Faltan carga dinámica, interacción física completa Qt/Slint, GPU, picos de inicio, repetición estadística
+Faltan carga dinámica, persistencia del editor, GPU, picos de inicio, repetición estadística
 y una referencia del producto completo.
 
 ## Licencia sin coste de licencia
@@ -170,7 +192,7 @@ segundo snapshot. En este modo el timeout es de quince segundos.
 
 La captura fija no prueba actualización continua,
 rendimiento de Vantare completa ni ahorro del 20 %. El editor prueba controles
-y vista previa locales; faltan interacción y persistencia de producto,
+y vista previa locales; falta persistencia de producto,
 DPI físico, OBS, empaquetado y licencia de módulos Qt. Los
 clientes nativos reintentan la conexión: ambas variantes recibieron 44 filas cuando
 arrancaron antes que el host y volvieron a recibirlas tras reiniciarlo. Falta

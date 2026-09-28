@@ -17,6 +17,7 @@ ApplicationWindow {
     visible: false
     title: overlayMode ? "Vantare Native Trial Overlay" : (editorMode ? "Vantare Native Trial Editor" : "Vantare Native Trial Control")
     color: overlayMode ? "transparent" : "#090d13"
+    background: Rectangle { color: root.overlayMode ? "transparent" : "#090d13" }
     readonly property color ink: "#e8f0f4"
     readonly property color muted: "#91a6b3"
     readonly property color accent: "#5fe1ee"

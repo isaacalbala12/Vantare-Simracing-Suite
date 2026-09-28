@@ -2,6 +2,16 @@
 
 ## 2026-09-28 · VAN-776 / GitHub #1410 · Host Go nativo aislado
 
+Nueva prueba Windows de overlay con el mismo host Go: `inspect-overlay-windows.ps1`
+sitúa una ventana inferior real, la activa y alterna magenta/verde para
+comprobar composición; además verifica clic, hit test y foco. Qt Quick,
+Slint y Wails pasaron los cuatro criterios en tres rondas consecutivas. El
+primer instrumento produjo falsos negativos Qt cuando la ventana inferior no
+tenía foco; ahora exige esa precondición. La prueba descubrió un fallo real
+Slint: los estilos se aplicaban a una ventana auxiliar de 16×16, no al overlay
+de 520×500. Se corrigió la selección y se añadió `WS_EX_LAYERED` para el paso
+de clics. No hay aún evidencia OBS, DPI múltiple ni telemetría cambiante.
+
 Continúa la comparación [#1404](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1409), todavía en PR borrador. La rama
 `vantareapp/isa-1410-native-go-product-trial` parte de
 `origin/nightly@355e9cfe` en worktree propio. Un host de investigación usa la
@@ -42,7 +52,7 @@ UI Automation verificó el rótulo de 44 coches, la escritura por teclado y el
 restablecimiento con un clic real; hay capturas propias revisadas. Se descubrió
 y corrigió un fallo Slint: la vista previa se restablecía, pero el campo de
 título conservaba el texto anterior; ahora tiene vinculación bidireccional.
-Estas pruebas no sustituyen foco/clic de overlay ni OBS.
+Las pruebas del editor no sustituyen OBS ni persistencia de producto.
 El cierre del host con un cliente SSE persistente agotaba el plazo y salía con
 error. Un test reprodujo el fallo y ahora el host fuerza el cierre de esa
 conexión solo después de intentar el apagado con gracia. `go test ./...` pasó.

@@ -86,10 +86,23 @@ impl Pipeline {
         let vehicles = source_vehicles
             .into_iter()
             .zip(identity.vehicles)
-            .map(|(value, id)| core::Vehicle {
-                id: id.vehicle_id,
-                stint_id: None,
-                value: map_vehicle(value),
+            .map(|(value, id)| {
+                let driver_id = match &value.driver_name {
+                    Field::Present {
+                        value,
+                        freshness:
+                            crate::quality::Freshness::Fresh | crate::quality::Freshness::Stale,
+                        ..
+                    } => value.clone(),
+                    _ => String::new(),
+                };
+                core::Vehicle {
+                    id: id.vehicle_id,
+                    driver_id,
+                    team_id: String::new(),
+                    stint_id: None,
+                    value: map_vehicle(value),
+                }
             })
             .collect();
         let state = core::ObservedState {
@@ -585,6 +598,7 @@ mod tests {
             .iter()
             .find(|car| car.id == player_id)
             .unwrap();
+        assert_eq!(vehicle.driver_id, "replacement-driver");
         assert_eq!(
             vehicle.stint_id.as_deref(),
             Some(format!("{}/{player_id}/stint-2", candidate.batch().session_id).as_str())
@@ -694,6 +708,16 @@ mod tests {
             .unwrap();
         assert_eq!(candidate.batch().state.vehicles.len(), 44);
         for vehicle in &candidate.batch().state.vehicles {
+            assert_eq!(
+                vehicle.driver_id,
+                vehicle
+                    .value
+                    .driver_name
+                    .value()
+                    .cloned()
+                    .unwrap_or_default()
+            );
+            assert!(vehicle.team_id.is_empty());
             assert_eq!(
                 vehicle.stint_id.as_deref(),
                 Some(format!("{}/{}/stint-1", candidate.batch().session_id, vehicle.id).as_str())

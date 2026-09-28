@@ -1,5 +1,11 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — DriverID/TeamID canónicos Rust (2026-09-28)
+
+El lote LMU conserva DriverID usable y TeamID vacío equivalente a Go; el
+coordinador usa ambos para hechos y stint. Rust debug 68/68, formato y Clippy
+pasan. Plan sección 34; paridad temporal y producto siguen pendientes.
+
 ## ISA-1403 — stint en lote canónico Rust (2026-09-28)
 
 El pipeline anota el stint del coordinador en cada vehículo antes de preparar

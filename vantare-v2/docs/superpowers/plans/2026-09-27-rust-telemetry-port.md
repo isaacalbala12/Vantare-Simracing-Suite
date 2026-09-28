@@ -910,3 +910,13 @@ y publicado, y que un cambio de piloto conserva el VehicleID mientras avanza
 el stint y emite DriverChanged. Rust debug/release 68/68 y Clippy pasan.
 Continúan pendientes TeamID/DriverID explícitos en el tipo canónico, paridad
 temporal Go/Rust y las salidas productivas; no se acredita aún el gate CPU.
+
+## 34. DriverID y TeamID explícitos en el lote Rust (2026-09-28)
+
+Cada vehículo Rust expone `driver_id` y `team_id` además de VehicleID y
+StintID. El mapper LMU toma DriverID del nombre usable, conserva vacío cuando
+está ausente o inválido y deja TeamID vacío como el mapper Go actual. El
+coordinador usa estos IDs canónicos para detectar DriverChanged y avanzar el
+stint. Tests Rust validan identidades de los 44 vehículos y cambio de piloto;
+debug 68/68, formato y Clippy pasan. Sigue pendiente comparar secuencias
+temporales completas y proyecciones externas contra Go.

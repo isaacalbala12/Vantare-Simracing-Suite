@@ -10,18 +10,11 @@ pub const DEFAULT_MAX_FACT_BATCH: usize = 256;
 pub const DEFAULT_MAX_VEHICLE_HISTORY: usize = 512;
 
 pub trait LifecycleSignals {
-    fn driver_name(&self) -> Option<&str>;
-    fn team_id(&self) -> Option<&str> {
-        None
-    }
     fn completed_laps(&self) -> Option<i32>;
     fn in_pit(&self) -> Option<bool>;
 }
 
 impl<S, F, D> LifecycleSignals for VehicleState<S, F, D> {
-    fn driver_name(&self) -> Option<&str> {
-        usable(&self.driver_name).map(String::as_str)
-    }
     fn completed_laps(&self) -> Option<i32> {
         usable(&self.completed_laps).copied()
     }
@@ -221,8 +214,8 @@ impl SessionCoordinator {
         let mut staged = Vec::with_capacity(batch.state.vehicles.len());
         for vehicle in &batch.state.vehicles {
             let previous = next.vehicles.get(&vehicle.id);
-            let driver = vehicle.value.driver_name().unwrap_or_default().to_owned();
-            let team = vehicle.value.team_id().unwrap_or_default().to_owned();
+            let driver = vehicle.driver_id.clone();
+            let team = vehicle.team_id.clone();
             let mut generation = previous.map_or(1, |history| history.stint_generation);
             if previous.is_some_and(|history| {
                 history.identity.driver_id != driver || history.identity.team_id != team
@@ -544,15 +537,11 @@ mod tests {
     use crate::core::{ObservedState, Vehicle};
 
     struct Life {
-        driver: String,
         laps: Field<i32>,
         pit: Field<bool>,
     }
 
     impl LifecycleSignals for Life {
-        fn driver_name(&self) -> Option<&str> {
-            Some(&self.driver)
-        }
         fn completed_laps(&self) -> Option<i32> {
             usable(&self.laps).copied()
         }
@@ -592,9 +581,10 @@ mod tests {
                     .into_iter()
                     .map(|(id, driver, laps, pit)| Vehicle {
                         id: id.to_owned(),
+                        driver_id: driver.to_owned(),
+                        team_id: String::new(),
                         stint_id: None,
                         value: Life {
-                            driver: driver.to_owned(),
                             laps: Field::observed(laps),
                             pit: Field::observed(pit),
                         },

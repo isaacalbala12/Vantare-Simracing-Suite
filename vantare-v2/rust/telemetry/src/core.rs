@@ -21,6 +21,8 @@ pub enum SessionFlag {
 #[derive(Debug)]
 pub struct Vehicle<T> {
     pub id: String,
+    pub driver_id: String,
+    pub team_id: String,
     pub stint_id: Option<String>,
     pub value: T,
 }
@@ -248,11 +250,15 @@ mod tests {
                 vehicles: vec![
                     Vehicle {
                         id: "a".to_owned(),
+                        driver_id: String::new(),
+                        team_id: String::new(),
                         stint_id: None,
                         value: (),
                     },
                     Vehicle {
                         id: "b".to_owned(),
+                        driver_id: String::new(),
+                        team_id: String::new(),
                         stint_id: None,
                         value: (),
                     },

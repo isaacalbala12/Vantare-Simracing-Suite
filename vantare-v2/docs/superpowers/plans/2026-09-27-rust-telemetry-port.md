@@ -888,3 +888,15 @@ de referencia pasan. Aún faltan paridad byte a byte/temporal de facts sobre
 corpus real, exponer stint en el snapshot canónico, coordinación de salida
 IPC con ACK y las derivaciones/proyecciones restantes. No certifica R12/R14
 completos ni el gate CPU del 50%.
+
+## 32. Historial de controles Rust candidato (2026-09-28)
+
+R13b incorpora `controls.history` al candidato LMU: toma solo pedales frescos
+del vehículo jugador, guarda cursor y hora UTC recibida, transporta calidad
+individual de velocidad/RPM/marcha, conserva muestras ante ausencias o pedales
+stale/invalid y reinicia en cambio de epoch. El límite canónico es 120
+muestras; cada candidato posee su propia ventana y se publica solo tras el
+commit del lote. Tests Rust sobre la fixture SHM de 44 validan 121 commits,
+evicción, cero presente, campo de movimiento ausente y rechazo invalid sin
+alterar la historia. Rust 67/67 en debug; Clippy pasa. Este corte todavía no
+conecta el historial con la proyección Overlay ni demuestra el gate CPU.

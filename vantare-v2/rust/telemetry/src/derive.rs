@@ -1,5 +1,7 @@
 //! Product-neutral derivations from committed observed fields.
 
+pub mod controls;
+
 use crate::quality::{Field, Freshness, Provenance};
 
 /// Go's session.remaining v1 contract. Source time is nanoseconds; end and

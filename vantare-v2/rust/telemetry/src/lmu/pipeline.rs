@@ -30,6 +30,7 @@ pub struct Pipeline {
     fact_log: FactLog<SessionFact>,
     last_facts: Vec<SessionFact>,
     session_remaining: Option<Field<f64>>,
+    controls_history: Option<derive::controls::ControlHistory>,
 }
 
 pub struct PipelineCandidate {
@@ -37,6 +38,7 @@ pub struct PipelineCandidate {
     reduced: core::Candidate<SessionType, LmuVehicleState>,
     session: SessionCandidate,
     session_remaining: Field<f64>,
+    controls_history: derive::controls::ControlHistory,
 }
 
 impl Pipeline {
@@ -48,6 +50,7 @@ impl Pipeline {
             fact_log: FactLog::new(fact_stream_id, MAX_RETAINED_FACTS)?,
             last_facts: Vec::new(),
             session_remaining: None,
+            controls_history: None,
         })
     }
 
@@ -126,6 +129,13 @@ impl Pipeline {
             .reducer
             .prepare(batch)
             .map_err(PipelineError::Reduction)?;
+        let controls_history = derive::controls::prepare(
+            self.controls_history.as_ref(),
+            self.reducer.current().map(|batch| batch.cursor),
+            reduced.batch(),
+            occurred_utc_ns,
+            derive::controls::MAX_CONTROLS_HISTORY,
+        );
         let session = self
             .session
             .prepare(reduced.batch(), occurred_utc_ns)
@@ -136,6 +146,7 @@ impl Pipeline {
             reduced,
             session,
             session_remaining,
+            controls_history,
         })
     }
 
@@ -159,6 +170,7 @@ impl Pipeline {
             .map_err(PipelineError::Fact)?;
         self.mapper.commit_candidate(candidate.mapper);
         self.session_remaining = Some(candidate.session_remaining);
+        self.controls_history = Some(candidate.controls_history);
         Ok(self.reducer.current().expect("commit installed a batch"))
     }
 
@@ -168,6 +180,10 @@ impl Pipeline {
 
     pub fn session_remaining(&self) -> Option<&Field<f64>> {
         self.session_remaining.as_ref()
+    }
+
+    pub fn controls_history(&self) -> Option<&derive::controls::ControlHistory> {
+        self.controls_history.as_ref()
     }
 
     pub fn facts(&self) -> &[SessionFact] {
@@ -255,6 +271,10 @@ impl PipelineCandidate {
 
     pub fn session_remaining(&self) -> &Field<f64> {
         &self.session_remaining
+    }
+
+    pub fn controls_history(&self) -> &derive::controls::ControlHistory {
+        &self.controls_history
     }
 
     pub fn facts(&self) -> &[SessionFact] {
@@ -364,6 +384,7 @@ impl Default for Pipeline {
 mod tests {
     use super::*;
     use crate::core::session::FactKind;
+    use crate::derive::controls::HistoryFreshness;
     use crate::lmu::{
         admit_v13,
         fusion::{fuse_session, fuse_weather},
@@ -374,6 +395,148 @@ mod tests {
 
     fn fixture_weather(grid: &AdmittedGrid) -> FusedWeather {
         fuse_weather(grid, 100, &RestCache::default(), 100, None)
+    }
+
+    #[test]
+    fn controls_history_is_owned_bounded_and_committed_with_grid() {
+        let rest = RestCache::default();
+        let mut pipeline = Pipeline::default();
+        for sequence in 1..=121 {
+            let mut grid = admit_v13(REAL_44, "1.3.0.0").unwrap();
+            let player = grid
+                .vehicles
+                .iter_mut()
+                .find(|car| car.player.value() == Some(&true))
+                .unwrap();
+            let fast = player.fast.as_mut().unwrap();
+            fast.throttle = Field::observed(sequence as f64 / 121.0);
+            fast.brake = Field::observed(0.0);
+            fast.clutch = Field::observed(0.0);
+            let fused = fuse_session(&grid, 100, &rest, 100);
+            let weather = fixture_weather(&grid);
+            let candidate = pipeline
+                .prepare(grid, &fused, &weather, ClockChange::Continuous, sequence)
+                .unwrap();
+            assert_eq!(
+                candidate.controls_history().samples.len(),
+                sequence.min(120) as usize
+            );
+            assert_eq!(
+                pipeline
+                    .controls_history()
+                    .map(|history| history.samples.len()),
+                if sequence == 1 {
+                    None
+                } else {
+                    Some((sequence - 1).min(120) as usize)
+                }
+            );
+            pipeline.commit(candidate).unwrap();
+        }
+        let history = pipeline.controls_history().unwrap();
+        assert_eq!(history.samples.len(), 120);
+        assert_eq!(history.samples[0].cursor.sequence, 2);
+        assert_eq!(history.samples[119].captured_utc_ns, 121);
+        assert_eq!(history.samples[119].brake, 0.0);
+    }
+
+    #[test]
+    fn invalid_controls_keep_last_owned_history_and_quality() {
+        let rest = RestCache::default();
+        let mut pipeline = Pipeline::default();
+        let mut first = admit_v13(REAL_44, "1.3.0.0").unwrap();
+        let player = first
+            .vehicles
+            .iter_mut()
+            .find(|car| car.player.value() == Some(&true))
+            .unwrap();
+        let fast = player.fast.as_mut().unwrap();
+        fast.throttle = Field::observed(0.0);
+        fast.brake = Field::observed(0.0);
+        fast.clutch = Field::observed(0.0);
+        fast.speed_mps = Field::Missing;
+        let fused = fuse_session(&first, 100, &rest, 100);
+        let weather = fixture_weather(&first);
+        pipeline
+            .commit(
+                pipeline
+                    .prepare(first, &fused, &weather, ClockChange::Continuous, 100)
+                    .unwrap(),
+            )
+            .unwrap();
+        assert_eq!(pipeline.controls_history().unwrap().samples.len(), 1);
+        assert_eq!(
+            pipeline.controls_history().unwrap().samples[0].speed_mps,
+            Field::Missing
+        );
+        let mut second = admit_v13(REAL_44, "1.3.0.0").unwrap();
+        let player = second
+            .vehicles
+            .iter_mut()
+            .find(|car| car.player.value() == Some(&true))
+            .unwrap();
+        let fast = player.fast.as_mut().unwrap();
+        fast.throttle = Field::invalid_observed(0.8);
+        fast.brake = Field::observed(0.0);
+        fast.clutch = Field::observed(0.0);
+        let fused = fuse_session(&second, 100, &rest, 100);
+        let weather = fixture_weather(&second);
+        let candidate = pipeline
+            .prepare(second, &fused, &weather, ClockChange::Continuous, 200)
+            .unwrap();
+        assert_eq!(
+            candidate.controls_history().freshness,
+            HistoryFreshness::Invalid
+        );
+        assert_eq!(candidate.controls_history().samples.len(), 1);
+        pipeline.commit(candidate).unwrap();
+        assert_eq!(
+            pipeline.controls_history().unwrap().samples[0].captured_utc_ns,
+            100
+        );
+        let mut third = admit_v13(REAL_44, "1.3.0.0").unwrap();
+        let player = third
+            .vehicles
+            .iter_mut()
+            .find(|car| car.player.value() == Some(&true))
+            .unwrap();
+        let fast = player.fast.as_mut().unwrap();
+        fast.throttle = Field::Present {
+            value: 0.5,
+            provenance: crate::quality::Provenance::Observed,
+            freshness: crate::quality::Freshness::Stale,
+        };
+        fast.brake = Field::observed(0.0);
+        fast.clutch = Field::observed(0.0);
+        let fused = fuse_session(&third, 100, &rest, 100);
+        let weather = fixture_weather(&third);
+        let candidate = pipeline
+            .prepare(third, &fused, &weather, ClockChange::Continuous, 300)
+            .unwrap();
+        assert_eq!(
+            candidate.controls_history().freshness,
+            HistoryFreshness::Stale
+        );
+        assert_eq!(candidate.controls_history().samples.len(), 1);
+        pipeline.commit(candidate).unwrap();
+        let mut reset = admit_v13(REAL_44, "1.3.0.0").unwrap();
+        let player = reset
+            .vehicles
+            .iter_mut()
+            .find(|car| car.player.value() == Some(&true))
+            .unwrap();
+        let fast = player.fast.as_mut().unwrap();
+        fast.throttle = Field::observed(0.0);
+        fast.brake = Field::observed(0.0);
+        fast.clutch = Field::observed(0.0);
+        let fused = fuse_session(&reset, 100, &rest, 100);
+        let weather = fixture_weather(&reset);
+        let candidate = pipeline
+            .prepare(reset, &fused, &weather, ClockChange::Wrap, 400)
+            .unwrap();
+        assert_eq!(candidate.controls_history().samples.len(), 1);
+        assert_eq!(candidate.controls_history().samples[0].cursor.epoch, 2);
+        pipeline.commit(candidate).unwrap();
     }
 
     #[test]

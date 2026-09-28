@@ -1,5 +1,12 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — historial de controles Rust candidato (2026-09-28)
+
+R13b ahora genera una ventana owned de hasta 120 muestras del jugador con
+cursor, UTC y calidad separada para movimiento; se confirma junto al lote.
+Rust debug 67/67 y Clippy pasan. La sección 32 del plan registra pruebas y
+límites: aún faltan proyección Overlay, parity temporal, CPU y ruta productiva.
+
 ## ISA-1403 — facts de sesión Rust conectados al pipeline (2026-09-28)
 
 R12 ahora prepara/commitea sesión, stint y hechos de vueltas/boxes/piloto,

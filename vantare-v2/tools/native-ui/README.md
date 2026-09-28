@@ -250,6 +250,9 @@ identificó las 804 imágenes PNG en el SBOM de origen de Qt, todas con opción
 LGPLv3, y rastreó el origen local de las seis DLL. Siguen abiertos los avisos,
 traducciones y condiciones de redistribución de los componentes no Qt. No
 acredita una distribución gratuita conforme a licencia.
+Una carpeta de prueba reducida, sin traducciones, DXC ni OpenGL software,
+ocupó 73,9 MiB/1.325 archivos; control, editor y overlay recibieron las 44
+filas con Qt/Vulkan fuera del `PATH`. El inventario explica sus límites.
 
 Para la prueba de caída y vuelta, se inicia `host -port <puerto>` y luego
 cada cliente con `--expect-rows 44 --expect-snapshots 2`. Tras el primer

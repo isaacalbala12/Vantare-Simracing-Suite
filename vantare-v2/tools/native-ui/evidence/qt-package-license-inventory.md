@@ -61,6 +61,17 @@ opciones para excluir los compiladores D3D/DXC, traducciones y OpenGL software;
 antes de eliminar componentes hay que comprobar el paquete resultante en
 Windows sin Qt ni SDK instalados.
 
+Se creó una segunda carpeta ignorada por Git con `windeployqt --release
+--qmldir tools/native-ui/qtquick --compiler-runtime --no-translations
+--no-system-dxc-compiler --no-opengl-sw`. Tiene 1.325 archivos y 73,9 MiB,
+frente a 1.359 archivos y 121,1 MiB del despliegue por defecto: 47,2 MiB
+menos. No contiene `.qm`, `dxcompiler.dll` ni `opengl32sw.dll`. Con el `PATH`
+del cliente limitado a directorios Windows y el mismo host Go de captura real
+sanitizada, los modos control, editor y overlay recibieron 44 filas y
+terminaron con código 0. Esto comprueba arranque local y contrato SSE, pero
+no la captura OBS, todas las rutas gráficas, otros sistemas Windows ni una
+instalación limpia; tampoco resuelve los avisos de los componentes restantes.
+
 Para repetir el cotejo, enumerar las DLL del paquete, buscar cada nombre en
 `<Qt 6.10.2>/sbom/*.spdx.json` → `files[].fileName`, leer
 `licenseConcluded` y comparar SHA-256 de la DLL copiada con la ruta indicada

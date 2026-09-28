@@ -63,6 +63,10 @@ control, editor y overlay pasaron el smoke de 44 filas con Qt/Vulkan fuera
 del `PATH`. Sigue pendiente el ensayo en un Windows realmente limpio y la
 auditoría del conjunto final de licencias y avisos.
 
+Se revisaron capturas propias del editor y overlay de ese paquete reducido;
+el overlay mantiene alfa 0 en la esquina. Están en `tools/native-ui/evidence/`
+y no equivalen a una nueva prueba OBS de ese paquete.
+
 Continúa la comparación [#1404](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1409), todavía en PR borrador. La rama
 `vantareapp/isa-1410-native-go-product-trial` parte de
 `origin/nightly@355e9cfe` en worktree propio. Un host de investigación usa la

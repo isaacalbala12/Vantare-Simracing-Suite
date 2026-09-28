@@ -252,7 +252,10 @@ traducciones y condiciones de redistribución de los componentes no Qt. No
 acredita una distribución gratuita conforme a licencia.
 Una carpeta de prueba reducida, sin traducciones, DXC ni OpenGL software,
 ocupó 73,9 MiB/1.325 archivos; control, editor y overlay recibieron las 44
-filas con Qt/Vulkan fuera del `PATH`. El inventario explica sus límites.
+filas con Qt/Vulkan fuera del `PATH`. Se revisaron capturas propias del
+[editor](evidence/qt-trimmed-editor.png) y
+[overlay](evidence/qt-trimmed-overlay.png), este último con alfa cero en la
+esquina. El inventario explica sus límites.
 
 Para la prueba de caída y vuelta, se inicia `host -port <puerto>` y luego
 cada cliente con `--expect-rows 44 --expect-snapshots 2`. Tras el primer

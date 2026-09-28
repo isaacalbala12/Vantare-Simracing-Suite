@@ -72,6 +72,13 @@ terminaron con código 0. Esto comprueba arranque local y contrato SSE, pero
 no la captura OBS, todas las rutas gráficas, otros sistemas Windows ni una
 instalación limpia; tampoco resuelve los avisos de los componentes restantes.
 
+Una captura propia adicional del [editor reducido](qt-trimmed-editor.png)
+muestra las 44 filas, el inspector y la vista previa; la del
+[overlay reducido](qt-trimmed-overlay.png) muestra las filas y conserva alfa
+cero en la esquina (520×500 píxeles). Ambas se revisaron visualmente después
+de obtenerlas con `--screenshot`, con el host Go activo y el `PATH` limitado
+a Windows. No prueban captura OBS ni composición física del paquete reducido.
+
 Para repetir el cotejo, enumerar las DLL del paquete, buscar cada nombre en
 `<Qt 6.10.2>/sbom/*.spdx.json` → `files[].fileName`, leer
 `licenseConcluded` y comparar SHA-256 de la DLL copiada con la ruta indicada

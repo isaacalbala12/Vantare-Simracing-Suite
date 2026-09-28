@@ -1173,3 +1173,16 @@ Rust release 101/101, Clippy, formato, build release y `go test ./...`
 pasan. El builder todavía no tiene caché ni salida IPC; su uso productivo
 y el gate causal CPU requieren la ruta completa y corpus real temporal
 44/104. Go sigue productivo; Engineer/Strategy y sesión física pendientes.
+
+## 53. Primer Snapshot IPC Overlay Rust→Go (2026-09-28)
+
+Rust serializa el update Overlay V2 completo en un `KindSnapshot` de framing
+v1 con sobre JSON de producto; Go lo decodifica estrictamente a `UpdateV2`.
+Un frame binario de 24 353 bytes generado por Rust desde la captura real
+estática de 44 coincide en Go con el oráculo de producto (SHA-256
+`15d1328fb1f8a5774ea8986f234a222b8bc25f8b9ea42a257c3adb1389dcb82f`).
+Rust release 103/103, Clippy, formato, build release y `go test ./...`
+pasan. R06 sigue parcial: faltan configuración, ACK, facts, colas, plazos,
+codec comparado y receptor conectado a Wails. Go sigue como único owner
+productivo; faltan corpus temporal real 44/104, Engineer/Strategy, sesión
+física y gate CPU del 50%.

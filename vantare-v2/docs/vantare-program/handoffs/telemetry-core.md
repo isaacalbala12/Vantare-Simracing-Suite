@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — primer Snapshot IPC Overlay Rust→Go (2026-09-28)
+
+El frame binario `KindSnapshot` Overlay V2 de 24 353 bytes se genera en
+Rust y Go lo decodifica al mismo `UpdateV2` del oráculo estático real de 44
+(SHA-256 `15d1328fb1f8a5774ea8986f234a222b8bc25f8b9ea42a257c3adb1389dcb82f`).
+Rust release 103/103, Clippy, formato, build release y `go test ./...`
+pasan. Es un payload inicial de R06: falta conectar pipe/supervisor al
+runtime, configuración/ACK/facts, codec final, Engineer/Strategy, corpus
+temporal real 44/104, sesión física y gate CPU. Go sigue productivo.
+Plan sección 53; contrato `docs/telemetry-core/rust-ipc-v1.md` actualizado.
+
 ## ISA-1403 — builder Rust de secciones Overlay reutilizable (2026-09-28)
 
 `projection/frame.rs::build_sections` proyecta todas las secciones del

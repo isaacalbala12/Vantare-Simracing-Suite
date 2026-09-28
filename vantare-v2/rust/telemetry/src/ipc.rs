@@ -1,5 +1,7 @@
 //! Versioned, bounded framing shared by all future local pipe messages.
 
+pub mod snapshot;
+
 use std::io::{self, Read, Write};
 
 pub const VERSION: u16 = 1;

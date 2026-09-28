@@ -11,14 +11,31 @@ Una trama es `length:u32 LE | version:u16 LE | kind:u16 LE | payload[length]`. L
 | Handshake | 1 | Harness: nonce de instancia de 16 bytes, longitud de versión `u8` (1–64) y versión UTF-8 exacta del paquete Rust. Las capabilities productivas aún no están definidas. |
 | Configuration | 2 | Demanda, configuración y revisión; payload por definir |
 | ConfigurationAck | 3 | Aplicación de revisión; payload por definir |
-| Snapshot | 4 | Estado completo por producto; payload por definir |
+| Snapshot | 4 | Prototipo Overlay V2 JSON: sobre `{"product":"overlay-v2","update":UpdateV2}`; Engineer/Strategy y codec final pendientes |
 | Fact | 5 | Hecho ordenado y cursor; payload por definir |
 | FactAck | 6 | Confirmación tras retener; payload por definir |
 | ResyncRequired | 7 | Laguna irrecuperable y bootstrap; payload por definir |
 | Status | 8 | Estado de fuente y salud de proceso; payload por definir |
 | Stop | 9 | Cierre solicitado; payload por definir |
 
-El límite de 8 MiB es un techo defensivo inicial para un solo mensaje, no una medición ni autorización para emitir frames de ese tamaño. R06 medirá el máximo real de cada producto con 104 coches y fijará límites por tipo antes de conectar el pipe. Ningún payload externo se acepta aún. El protocolo falla cerrado si la versión o el tipo no coinciden.
+El límite de 8 MiB es un techo defensivo inicial para un solo mensaje, no una medición ni autorización para emitir frames de ese tamaño. R06 medirá el máximo real de cada producto con 104 coches y fijará límites por tipo antes de conectar el pipe. Ningún payload externo se acepta aún en el runtime productivo. El protocolo falla cerrado si la versión o el tipo no coinciden.
+
+## Snapshot Overlay V2 inicial (2026-09-28)
+
+El payload JSON de `KindSnapshot` lleva exactamente `product` y `update`.
+`product` es `overlay-v2`; `update` es el contrato `UpdateV2` completo, cuyo
+`frame.contract` y `frame.algorithm` valen `2`. Rust exige las secciones
+Overlay presentes y comprueba estado de fuente y máscara antes de emitir;
+el framing aplica el límite de 8 MiB. Go decodifica el sobre y el update
+sin campos desconocidos, exige un único JSON, el producto, versión, estado
+y máscara conocidos. Este payload es un prototipo de R06, no el codec final
+R21 ni una ruta productiva.
+
+`rust/telemetry/testdata/overlay-snapshot-frame-rust-v1.bin` son 24 353 bytes
+producidos por el encoder Rust desde el oráculo real estático de 44 y
+decodificados por Go como el mismo `UpdateV2`; SHA-256
+`15d1328fb1f8a5774ea8986f234a222b8bc25f8b9ea42a257c3adb1389dcb82f`.
+La captura sigue siendo un instante, sin 104 ni temporalidad SHM+REST.
 
 ## Harness Windows actual
 

@@ -86,10 +86,10 @@ func TestConfigurationAckRejectsIncompleteOrUnknown(t *testing.T) {
 		t.Fatal(err)
 	}
 	rustAck, err := DecodeConfigurationAck(rustFrame)
-	if err != nil || rustAck != (ConfigurationAckV1{Revision: 7, Epoch: 1, Sequence: 42}) {
+	if err != nil || rustAck != (ConfigurationAckV1{Revision: 7, Epoch: 1, Sequence: 42, FactStream: 15}) {
 		t.Fatalf("Rust ack = (%+v, %v)", rustAck, err)
 	}
-	valid := Frame{Kind: KindConfigurationAck, Payload: []byte(`{"revision":7,"epoch":1,"sequence":42}`)}
+	valid := Frame{Kind: KindConfigurationAck, Payload: []byte(`{"revision":7,"epoch":1,"sequence":42,"factStream":15,"factSequence":0}`)}
 	ack, err := DecodeConfigurationAck(valid)
 	if err != nil || ack.Revision != 7 || ack.Sequence != 42 {
 		t.Fatalf("ack = (%+v, %v)", ack, err)
@@ -97,6 +97,9 @@ func TestConfigurationAckRejectsIncompleteOrUnknown(t *testing.T) {
 	for _, frame := range []Frame{
 		{Kind: KindStatus, Payload: valid.Payload},
 		{Kind: KindConfigurationAck, Payload: []byte(`{"revision":0,"epoch":1,"sequence":42}`)},
+		{Kind: KindConfigurationAck, Payload: []byte(`{"revision":7,"epoch":1,"sequence":42,"factStream":15}`)},
+		{Kind: KindConfigurationAck, Payload: []byte(`{"revision":7,"epoch":1,"sequence":42,"factStream":15,"factSequence":null}`)},
+		{Kind: KindConfigurationAck, Payload: []byte(`{"revision":7,"epoch":1,"sequence":42,"factStream":0,"factSequence":0}`)},
 		{Kind: KindConfigurationAck, Payload: []byte(`{"revision":7,"epoch":1,"sequence":42,"unknown":1}`)},
 		{Kind: KindConfigurationAck, Payload: []byte(`{"revision":7,"epoch":1,"sequence":42} trailing`)},
 	} {

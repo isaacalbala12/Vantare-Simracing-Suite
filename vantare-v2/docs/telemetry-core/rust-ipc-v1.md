@@ -10,7 +10,7 @@ Una trama es `length:u32 LE | version:u16 LE | kind:u16 LE | payload[length]`. L
 | --- | ---: | --- |
 | Handshake | 1 | Harness: nonce de instancia de 16 bytes, longitud de versión `u8` (1–64) y versión UTF-8 exacta del paquete Rust. Las capabilities productivas aún no están definidas. |
 | Configuration | 2 | JSON cerrado v1 con revisión, consumidores, cadencias en ns, preferencias y source/capabilities |
-| ConfigurationAck | 3 | JSON `revision`, `epoch`, `sequence`; se emitirá tras aplicar en frontera de lote |
+| ConfigurationAck | 3 | JSON cerrado `revision`, `epoch`, `sequence`, `factStream`, `factSequence`; el cursor de facts es la línea base anterior al lote confirmado |
 | Snapshot | 4 | Prototipos JSON: `{"product":"overlay-v2","update":UpdateV2}` y `{"product":"engineer-v1"|"strategy-v1","snapshot":SnapshotV1}`; publicación y codec final pendientes |
 | Fact | 5 | Prototipo Engineer V1 JSON con stream de entrega, metadata canónica, secuencia de fact y UTC RFC3339; retención productiva/resync pendientes |
 | FactAck | 6 | JSON cerrado `{stream,sequence}` tras retener; Rust poda el prefijo confirmado. Probado en replay, sin receptor productivo |
@@ -73,6 +73,13 @@ Si el cursor queda fuera de la ventana, `Assembler` produce un mensaje
 de resync explícito. En el replay Windows el mismo frame se
 envía dos veces y Go confirma una sola copia. Aún no hay solicitud de
 replay en reconexión productiva.
+
+El ACK de configuración fija el stream y la última secuencia Fact ya
+consolidada por el motor canónico antes del lote que instala esa configuración. Go crea el
+`FactRetainer` desde esos campos antes de aceptar el primer Fact del
+lote. `factSequence=0` es válido; `factStream=0` se rechaza. Al cambiar
+demanda, un ACK nuevo comunica la línea base actual y evita adivinarla
+desde un fixture. No hay todavía bootstrap/reconexión productivos.
 
 `KindResyncRequired` ya lleva `stream`, primer fact aún retenido y
 siguiente secuencia. Rust lo emite al perder el rango o retirar demanda;

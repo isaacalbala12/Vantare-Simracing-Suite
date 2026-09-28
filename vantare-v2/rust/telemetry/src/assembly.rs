@@ -203,11 +203,14 @@ impl Assembler {
             );
         }
         let ack = if self.pending.is_some() {
+            let fact_baseline = self.engine.pipeline().fact_high_water();
             Some(
                 ipc::configuration::encode_ack(Ack {
                     revision: config.revision,
                     epoch: batch.cursor.epoch,
                     sequence: batch.cursor.sequence,
+                    fact_stream: fact_baseline.stream,
+                    fact_sequence: fact_baseline.sequence,
                 })
                 .map_err(AssemblyError::Configuration)?,
             )
@@ -341,6 +344,8 @@ mod tests {
         assert_eq!(decoded[0].kind, ipc::Kind::ConfigurationAck);
         let ack: Value = serde_json::from_slice(decoded[0].payload).unwrap();
         assert_eq!(ack["revision"], 7);
+        assert_eq!(ack["factStream"], 15);
+        assert_eq!(ack["factSequence"], 0);
         assert_eq!(decoded[1].kind, ipc::Kind::Snapshot);
         let overlay: Value = serde_json::from_slice(decoded[1].payload).unwrap();
         assert_eq!(overlay["product"], "overlay-v2");
@@ -420,6 +425,8 @@ mod tests {
         assert_eq!(ack.kind, ipc::Kind::ConfigurationAck);
         let ack: Value = serde_json::from_slice(ack.payload).unwrap();
         assert_eq!(ack["revision"], 8);
+        assert_eq!(ack["factStream"], 15);
+        assert_eq!(ack["factSequence"], 1);
         let strategy = ipc::decode(&next_frames[1]).unwrap();
         assert_eq!(strategy.kind, ipc::Kind::Snapshot);
         let strategy: Value = serde_json::from_slice(strategy.payload).unwrap();

@@ -1450,3 +1450,16 @@ ejecución, el subbanco pareado codificó exactamente los mismos bytes:
 árbol. Es una mejora concreta de esa etapa, no el objetivo global de
 CPU ≥50% frente a Go. Faltan captura temporal real 44/104 SHM+REST,
 medición CPU/p99/RSS comparable y el runtime productivo Rust.
+
+## 71. Línea base Fact en ConfigurationAck (2026-09-28)
+
+Rust añade `factStream` y `factSequence` al ACK de configuración. El
+cursor es el high-water del motor antes de confirmar el lote nuevo:
+revisión 7 entrega `(15,0)` antes de su primer Fact, revisión 8 entrega
+`(15,1)` tras el Fact previo. Go exige ambos campos, admite secuencia
+cero y crea el retentor desde el primer ACK recibido, sin cursor fijo
+de fixture. El replay real de pipe Windows verifica ACK, retención,
+FactAck y cambio de demanda; pasa. El oráculo wire Rust mide 79 bytes,
+SHA-256 `ee637a9d799f77548edb31ef77d399a72ef9e68888247b3791b9b69ec39f5d71`.
+Reconfiguración con facts pendientes, replay solicitado y bootstrap
+tras resync siguen pendientes; Go permanece owner productivo.

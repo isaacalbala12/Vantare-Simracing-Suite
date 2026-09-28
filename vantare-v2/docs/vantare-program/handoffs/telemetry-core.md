@@ -1,5 +1,15 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — ACK con línea base Fact real (2026-09-28)
+
+El ACK Rust lleva `factStream` y `factSequence` del high-water anterior
+al lote; Go los valida y crea el retentor desde el primer ACK. Replay
+Windows cruzado confirma `(15,0)` y después `(15,1)`, FactAck y demanda
+revisada. Oráculo wire 79 bytes, SHA-256
+`ee637a9d799f77548edb31ef77d399a72ef9e68888247b3791b9b69ec39f5d71`.
+Faltan reconfiguración con pendientes, reconexión/resync y conexión
+productiva. Plan sección 71; Go sigue owner.
+
 ## ISA-1403 — banco 44 y copia eliminada de Overlay (2026-09-28)
 
 Banco release de ensamblado Rust sobre la captura real estática de 44,

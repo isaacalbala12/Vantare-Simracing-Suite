@@ -67,10 +67,7 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 		t.Fatal(err)
 	}
 	var acknowledgements, overlaySnapshots, engineerSnapshots, facts int
-	retainer, err := NewFactRetainer(MaxRetainedEngineerFacts, FactAckV1{Stream: 15, Sequence: 0})
-	if err != nil {
-		t.Fatal(err)
-	}
+	var retainer *FactRetainer
 	var factACK Frame
 	var newlyRetained int
 	for range 5 {
@@ -81,8 +78,12 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 		switch frame.Kind {
 		case KindConfigurationAck:
 			ack, err := DecodeConfigurationAck(frame)
-			if err != nil || ack.Revision != 7 || ack.Epoch != 1 || ack.Sequence != 1 {
+			if err != nil || ack.Revision != 7 || ack.Epoch != 1 || ack.Sequence != 1 || ack.FactStream == 0 || ack.FactSequence != 0 {
 				t.Fatalf("configuration ACK = %+v, %v", ack, err)
+			}
+			retainer, err = NewFactRetainer(MaxRetainedEngineerFacts, FactAckV1{Stream: ack.FactStream, Sequence: ack.FactSequence})
+			if err != nil {
+				t.Fatal(err)
 			}
 			acknowledgements++
 		case KindSnapshot:
@@ -109,6 +110,9 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 				t.Fatalf("unrequested product %q", product.Product)
 			}
 		case KindFact:
+			if retainer == nil {
+				t.Fatal("fact preceded configuration ACK baseline")
+			}
 			ack, added, err := retainer.Retain(frame)
 			if err != nil {
 				t.Fatal(err)
@@ -150,7 +154,7 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 		t.Fatal(err)
 	}
 	ack, err := DecodeConfigurationAck(secondAck)
-	if err != nil || ack.Revision != 8 || ack.Epoch != 1 || ack.Sequence != 2 {
+	if err != nil || ack.Revision != 8 || ack.Epoch != 1 || ack.Sequence != 2 || ack.FactStream != 15 || ack.FactSequence != 1 {
 		t.Fatalf("second configuration ACK = %+v, %v", ack, err)
 	}
 	strategyFrame, err := ReadFrame(file)

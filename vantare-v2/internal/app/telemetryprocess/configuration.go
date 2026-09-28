@@ -92,9 +92,11 @@ func validPreferences(value PreferencesV1) bool {
 }
 
 type ConfigurationAckV1 struct {
-	Revision uint64 `json:"revision"`
-	Epoch    uint64 `json:"epoch"`
-	Sequence uint64 `json:"sequence"`
+	Revision     uint64 `json:"revision"`
+	Epoch        uint64 `json:"epoch"`
+	Sequence     uint64 `json:"sequence"`
+	FactStream   uint64 `json:"factStream"`
+	FactSequence uint64 `json:"factSequence"`
 }
 
 func DecodeConfigurationAck(frame Frame) (ConfigurationAckV1, error) {
@@ -111,7 +113,14 @@ func DecodeConfigurationAck(frame Frame) (ConfigurationAckV1, error) {
 	if err := decoder.Decode(&extra); !errors.Is(err, io.EOF) {
 		return ConfigurationAckV1{}, ErrInvalidConfiguration
 	}
-	if ack.Revision == 0 || ack.Epoch == 0 || ack.Sequence == 0 {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(frame.Payload, &fields); err != nil {
+		return ConfigurationAckV1{}, ErrInvalidConfiguration
+	}
+	if sequence, ok := fields["factSequence"]; !ok || string(sequence) == "null" {
+		return ConfigurationAckV1{}, ErrInvalidConfiguration
+	}
+	if ack.Revision == 0 || ack.Epoch == 0 || ack.Sequence == 0 || ack.FactStream == 0 {
 		return ConfigurationAckV1{}, ErrInvalidConfiguration
 	}
 	return ack, nil

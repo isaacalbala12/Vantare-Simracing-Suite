@@ -131,10 +131,12 @@ pub struct Ack {
     pub revision: u64,
     pub epoch: u64,
     pub sequence: u64,
+    pub fact_stream: u64,
+    pub fact_sequence: u64,
 }
 
 pub fn encode_ack(ack: Ack) -> Result<Vec<u8>, ConfigurationError> {
-    if ack.revision == 0 || ack.epoch == 0 || ack.sequence == 0 {
+    if ack.revision == 0 || ack.epoch == 0 || ack.sequence == 0 || ack.fact_stream == 0 {
         return Err(ConfigurationError::InvalidAck);
     }
     let payload = serde_json::to_vec(&ack).map_err(|_| ConfigurationError::InvalidJson)?;
@@ -179,6 +181,8 @@ mod tests {
             revision: 7,
             epoch: 1,
             sequence: 42,
+            fact_stream: 15,
+            fact_sequence: 0,
         })
         .unwrap();
         let path = concat!(

@@ -1,22 +1,22 @@
 # ISA-1403 — Plan de migración del runtime live de telemetría a Rust
 
-Fecha: 2026-09-27. Versión del plan: 1.2. Estado: diseño confirmado por Isaac;
-revisión documental completada e implementación inicial R01/R04 en curso.
+Fecha: 2026-09-27. Versión del plan: 1.3. Estado: diseño confirmado por Isaac;
+implementación parcial hasta el corte 77.
 **Paridad, integración live y gates pendientes.**
 
-- Issue coordinadora: [GitHub #1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403), proyecto Telemetry Core, label `area:telemetria-core`.
+- Tarea operativa: [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748), proyecto Telemetry Core. [GitHub #1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403) es el puente técnico de CI.
 - Rama documental: `vantareapp/isa-1403-rust-telemetry`.
 - Base verificada del worktree: `origin/nightly@355e9cfee2fec3c27341fa96ec4e6a9297fab730`.
 - Worktree: `C:/Users/isaac/.codex/worktrees/isa-1403-rust-telemetry/Vantare-Overlays`.
 - Decisión arquitectónica: [ADR 0097](../../adr/0097-rust-telemetry-child-process.md).
 - Continuidad única: [handoff Telemetry Core](../../vantare-program/handoffs/telemetry-core.md).
 
-Este documento guía issues coherentes y verificables. El esqueleto Rust inicial
-permanece inerte: no activa LMU, retira Go, instala crates externas ni
-promociona una rama. Cada issue ejecutable puede agrupar varios cortes técnicos
+Este documento guía tareas coherentes y verificables. El ejecutable Rust
+principal permanece inerte: no activa LMU, retira Go ni promociona una rama.
+Cada tarea ejecutable puede agrupar varios cortes técnicos
 coherentes y registra su base exacta, dueño, archivos previstos, pruebas y
 evidencia antes de editar. Los identificadores `Rxx` son el mapa técnico del
-plan; no imponen una issue por paso ni representan issues ya creadas.
+plan; no imponen una tarea por paso ni representan tareas ya creadas.
 
 ## 1. Resultado y alcance confirmado
 
@@ -81,25 +81,15 @@ es investigación previa de un tramo del mapper. No acredita este port ni el 50%
 Su lección metodológica se conserva: comparar también Go con el mismo algoritmo
 para no atribuir al lenguaje una mejora de estructuras de datos.
 
-### Discrepancia de seguimiento y roadmap
+### Seguimiento y roadmap vigentes
 
-Las instrucciones AGENTS aportadas explícitamente por Isaac en este chat fijan
-GitHub Issues y `docs/roadmap/plan.md`. Los AGENTS del árbol fijan Notion, y
-[roadmap-maintenance.md](../../roadmap-maintenance.md) describe publicación
-compartida en Supabase. La instrucción explícita reciente gobierna esta tarea.
-
-En `355e9cfe` no existen `vantare-v2/docs/roadmap/plan.md`, `roadmap.json` ni el
-generador histórico `.github/scripts/roadmap_digest.py`; la eliminación aparece
-en `1e4c26d51cba21876a2db16433a4e785b8d94929` (#1380). No se reconstruye el
-roadmap antiguo ni se publica Supabase desde esta entrega. **El roadmap público
-no queda actualizado.** R01 debe reconciliar el destino documental con el
-orquestador antes del primer PR de implementación. Esa reconciliación no exige
-rehacer el diseño confirmado ni bloquear la revisión del presente plan.
-
-Contenido de roadmap propuesto para esa reconciliación: «Migración del núcleo de
-telemetría a Rust», estado planificado, con paridad pendiente y mejora del 50%
-como objetivo por demostrar. No anunciar una mejora entregada, fecha o porcentaje
-de progreso sin evidencia.
+La tarea [VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748)
+y su proyecto Telemetry Core son la autoridad operativa según el AGENTS actual
+del repositorio. GitHub #1403 conserva el puente técnico de rama, código y CI.
+El roadmap público se mantiene por el flujo Notion/Supabase descrito en
+[roadmap-maintenance.md](../../roadmap-maintenance.md); este port aún no acredita
+la mejora del 50% ni una entrega comercial. El antiguo `docs/roadmap/plan.md`
+no existe en esta base y no se reconstruye.
 
 ## 3. Arquitectura a construir
 

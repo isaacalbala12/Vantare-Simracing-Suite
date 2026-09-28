@@ -59,12 +59,18 @@ topmost. La salida 0 confirma el contrato y la carga de 44 filas; no demuestra
 por sí sola paridad visual, transparencia física ni captura en OBS. Con un
 endpoint desconectado, ambos clientes terminan con código 6 tras cinco segundos.
 
+Para la prueba de caída y vuelta, se inicia `host -port <puerto>` y luego
+cada cliente con `--expect-rows 44 --expect-snapshots 2`. Tras el primer
+snapshot se detiene el host y se reinicia en el mismo puerto. Ambos clientes
+permanecieron abiertos durante el corte y salieron con código 0 tras el
+segundo snapshot. En este modo el timeout es de quince segundos.
+
 ## Límites y siguiente prueba
 
 La captura fija no prueba actualización continua, reconexión semántica,
 rendimiento de Vantare completa ni ahorro del 20 %. Faltan una pantalla de edición compleja, comparación con baseline Wails
 al mismo trabajo, DPI físico, OBS, empaquetado y licencia de módulos Qt. El
 clientes reintentan la conexión: ambas variantes recibieron 44 filas cuando
-arrancaron antes que el host. Falta probar corte y reanudación de un host ya
-conectado. No se debe usar esta escena para elegir
+arrancaron antes que el host y volvieron a recibirlas tras reiniciarlo. Falta
+probar cambios de telemetría en vivo. No se debe usar esta escena para elegir
 arquitectura productiva.

@@ -39,6 +39,7 @@ public:
     QVariantMap session() const { return session_; }
     QString state() const { return state_; }
     QString sessionId() const { return sessionId_; }
+    int snapshotCount() const { return snapshotCount_; }
 
 signals:
     void changed();
@@ -87,6 +88,7 @@ private:
                 session_ = frame.value(QStringLiteral("session")).toObject().toVariantMap();
                 sessionId_ = frame.value(QStringLiteral("sessionId")).toString();
                 state_ = root.value(QStringLiteral("source")).toObject().value(QStringLiteral("state")).toString();
+                ++snapshotCount_;
                 emit changed();
             }
         });
@@ -108,6 +110,7 @@ private:
     QVariantMap session_;
     QString state_ = QStringLiteral("connecting");
     QString sessionId_;
+    int snapshotCount_ = 0;
 };
 
 static bool showOverlay(QQuickWindow *window) {
@@ -143,6 +146,7 @@ int main(int argc, char **argv) {
     parser.addOption({"auto-close-ms", "Close automatically after milliseconds", "ms", "0"});
     parser.addOption({"screenshot", "Save this Qt window as a PNG after 1200 ms", "path"});
     parser.addOption({"expect-rows", "Exit successfully after receiving this many Go standings rows", "count", "0"});
+    parser.addOption({"expect-snapshots", "Require this many Go snapshots; use 2 for a restart probe", "count", "1"});
     parser.process(app);
     const QUrl endpoint(parser.value("endpoint"));
     if (!endpoint.isValid() || endpoint.scheme() != QStringLiteral("http") ||
@@ -177,12 +181,16 @@ int main(int argc, char **argv) {
     if (ok && closeMS > 0) QTimer::singleShot(closeMS, &app, &QCoreApplication::quit);
     const int expectedRows = parser.value("expect-rows").toInt(&ok);
     if (!ok || expectedRows < 0) return 2;
+    const int expectedSnapshots = parser.value("expect-snapshots").toInt(&ok);
+    if (!ok || expectedSnapshots < 1) return 2;
     if (expectedRows > 0) {
-        QObject::connect(&feed, &OverlayFeed::changed, &app, [&feed, expectedRows, &app] {
-            if (feed.standings().size() == expectedRows) QTimer::singleShot(0, &app, &QCoreApplication::quit);
+        QObject::connect(&feed, &OverlayFeed::changed, &app, [&feed, expectedRows, expectedSnapshots, &app] {
+            if (feed.standings().size() == expectedRows && feed.snapshotCount() >= expectedSnapshots)
+                QTimer::singleShot(0, &app, &QCoreApplication::quit);
         });
-        QTimer::singleShot(5000, &app, [&feed, expectedRows] {
-            if (feed.standings().size() != expectedRows) QCoreApplication::exit(6);
+        QTimer::singleShot(expectedSnapshots > 1 ? 15000 : 5000, &app, [&feed, expectedRows, expectedSnapshots] {
+            if (feed.standings().size() != expectedRows || feed.snapshotCount() < expectedSnapshots)
+                QCoreApplication::exit(6);
         });
     }
     return app.exec();

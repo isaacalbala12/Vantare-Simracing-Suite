@@ -14,11 +14,12 @@ locales revisadas en `tools/native-ui/evidence/`. `go test ./...` y build
 frontend pasaron. El overlay conserva alpha cero en una esquina de su captura
 propia. Esto no equivale a prueba OBS, DPI físico ni una sesión LMU activa.
 Con puerto loopback fijo, ambas variantes arrancaron antes que el host y
-recibieron después la proyección; falta probar caída y vuelta de un host ya
-conectado.
+recibieron después la proyección. Con `--expect-snapshots 2`, permanecieron
+abiertas tras detener el host ya conectado y salieron con código 0 después de
+reiniciarlo y recibir un segundo snapshot. Sigue pendiente telemetría viva.
 La tarea [VAN-776](https://app.notion.com/p/3e9e51695c65810fb2bdd73aae4b555d?pvs=204)
 conserva el alcance y pendientes: pantalla de edición compleja,
-actualización/reconexión, OBS y baseline de proceso completo. No se eligió
+actualización de datos, OBS y baseline de proceso completo. No se eligió
 stack, cambió el runtime productivo ni promovió ningún canal.
 
 ## 2026-09-26 · VAN-769 / GitHub #1381 · Integración inicial autorizada

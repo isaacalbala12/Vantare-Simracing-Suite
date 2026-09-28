@@ -18,12 +18,14 @@ struct Options {
     address: SocketAddr,
     overlay: bool,
     expected: Option<usize>,
+    expected_snapshots: usize,
     close_ms: Option<u64>,
 }
 
 fn options() -> Result<Options, String> {
     let args: Vec<_> = env::args().skip(1).collect();
     let (mut endpoint, mut overlay, mut expected, mut close_ms) = (None, false, None, None);
+    let mut expected_snapshots = 1;
     let mut i = 0;
     while i < args.len() {
         match args[i].as_str() {
@@ -48,6 +50,14 @@ fn options() -> Result<Options, String> {
                         .map_err(|_| "invalid --expect-rows")?,
                 );
             }
+            "--expect-snapshots" => {
+                i += 1;
+                expected_snapshots = args
+                    .get(i)
+                    .ok_or("missing --expect-snapshots value")?
+                    .parse()
+                    .map_err(|_| "invalid --expect-snapshots")?;
+            }
             "--auto-close-ms" => {
                 i += 1;
                 close_ms = Some(
@@ -59,7 +69,7 @@ fn options() -> Result<Options, String> {
             }
             "--help" | "-h" => {
                 println!(
-                    "--endpoint http://127.0.0.1:<port>{ROUTE} [--mode control|overlay] [--expect-rows 44] [--auto-close-ms N]"
+                    "--endpoint http://127.0.0.1:<port>{ROUTE} [--mode control|overlay] [--expect-rows 44] [--expect-snapshots N] [--auto-close-ms N]"
                 );
                 std::process::exit(0);
             }
@@ -81,10 +91,14 @@ fn options() -> Result<Options, String> {
     if !address.ip().is_loopback() || address.port() == 0 {
         return Err("endpoint must use loopback and a nonzero port".into());
     }
+    if expected_snapshots == 0 || (expected_snapshots > 1 && expected.is_none()) {
+        return Err("--expect-snapshots requires --expect-rows and a positive count".into());
+    }
     Ok(Options {
         address,
         overlay,
         expected,
+        expected_snapshots,
         close_ms,
     })
 }
@@ -295,6 +309,7 @@ fn run() -> Result<(), String> {
     });
     let feed_timer = Timer::default();
     let weak = ui.as_weak();
+    let mut seen_snapshots = 0;
     feed_timer.start(TimerMode::Repeated, Duration::from_millis(30), move || {
         if let Some(ui) = weak.upgrade() {
             while let Ok(event) = rx.try_recv() {
@@ -315,6 +330,9 @@ fn run() -> Result<(), String> {
                     ui.set_gear(data.gear);
                     ui.set_session_id(data.session_id);
                     if opt.expected == Some(count) {
+                        seen_snapshots += 1;
+                    }
+                    if seen_snapshots >= opt.expected_snapshots && opt.expected == Some(count) {
                         let _ = slint::quit_event_loop();
                     }
                 } else {
@@ -331,7 +349,8 @@ fn run() -> Result<(), String> {
     }
     let timeout_timer = Timer::default();
     if opt.expected.is_some() {
-        timeout_timer.start(TimerMode::SingleShot, Duration::from_secs(5), || {
+        let timeout = if opt.expected_snapshots > 1 { 15 } else { 5 };
+        timeout_timer.start(TimerMode::SingleShot, Duration::from_secs(timeout), || {
             std::process::exit(6)
         });
     }

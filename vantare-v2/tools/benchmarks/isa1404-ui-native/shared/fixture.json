@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "source": {
+    "path": "testdata/lmu-fixture.json",
+    "sha256": "959c51421529c6157371678d8db9bcbbdc8ab3780bd5557828f2bc0d2225e5ff",
+    "capture": {
+      "state": "track",
+      "capturedAt": "legacy capture; exact timestamp unavailable",
+      "provenance": "fixture introduced by commit 5586c80; sanitized in ISA-30",
+      "lmuVersion": "1.3.0 inferred from raw gameVersion=13000",
+      "fingerprint": "LMU_Data/324820/telemetry-1888/scoring-584"
+    },
+    "sanitization": {
+      "version": "numeric-whitelist-v1",
+      "policy": "zero-filled buffer plus audited numeric and spatial fields; identities replaced with deterministic aliases"
+    }
+  },
+  "scene": {
+    "id": "standings-player-window",
+    "updateHz": 20,
+    "rows": [
+      {"position": 5, "driver": "driver-023", "vehicleClass": "GT3", "gapSeconds": 13.741775512695312, "pit": false, "player": false},
+      {"position": 6, "driver": "driver-035", "vehicleClass": "LMP3", "gapSeconds": 31.627864837646484, "pit": false, "player": false},
+      {"position": 7, "driver": "driver-016", "vehicleClass": "LMP2_ELMS", "gapSeconds": 48.90707778930664, "pit": false, "player": false},
+      {"position": 8, "driver": "driver-025", "vehicleClass": "GT3", "gapSeconds": 49.519859313964844, "pit": false, "player": false},
+      {"position": 9, "driver": "player", "vehicleClass": "LMP3", "gapSeconds": 66.63520812988281, "pit": false, "player": true},
+      {"position": 10, "driver": "driver-030", "vehicleClass": "GT3", "gapSeconds": 72.0693588256836, "pit": false, "player": false},
+      {"position": 11, "driver": "driver-031", "vehicleClass": "GT3", "gapSeconds": 81.24064636230469, "pit": true, "player": false},
+      {"position": 12, "driver": "driver-037", "vehicleClass": "LMP3", "gapSeconds": 81.25155639648438, "pit": true, "player": false}
+    ]
+  }
+}

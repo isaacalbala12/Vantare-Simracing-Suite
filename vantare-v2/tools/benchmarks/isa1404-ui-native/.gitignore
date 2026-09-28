@@ -1,0 +1,17 @@
+.toolchains/
+out/
+**/build/
+**/target/
+egui-rust/Cargo.lock
+iced-rust/Cargo.lock
+gpui-rust/Cargo.lock
+reference-wails/assets/dist/
+evidence/raw/
+evidence/obs/sandbox/
+evidence/performance-smoke*/
+evidence/performance/
+evidence/performance-qt-corrected/
+evidence/functional/*.json
+evidence/functional/slint-overlay.png
+evidence/scale/*.json
+evidence/obs/*.json

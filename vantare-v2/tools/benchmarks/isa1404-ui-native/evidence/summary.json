@@ -1,0 +1,15 @@
+{
+  "schema": "vantare.isa1404.native-ui-summary.v1",
+  "base": "355e9cfee2fec3c27341fa96ec4e6a9297fab730",
+  "date": "2026-09-27/28",
+  "platform": "Windows, 16 logical processors",
+  "fixtureSha256": "959c51421529c6157371678d8db9bcbbdc8ab3780bd5557828f2bc0d2225e5ff",
+  "method": {"runs": 3, "warmupSeconds": 30, "visibleSeconds": 60, "hiddenSeconds": 20, "mode": "overlay"},
+  "measurements": [
+    {"candidate": "wails", "cpuPercent": 0.279368, "privateMiB": 200.1561, "privateWorkingSetMiB": 94.6134, "totalWorkingSetMiB": 377.2839, "gpuDedicatedMiB": 24.5742, "startupMs": 489.4681, "deployedMiB": 11.4551, "maxProcessCount": 7},
+    {"candidate": "qtquick", "cpuPercent": 0.104714, "privateMiB": 70.4828, "privateWorkingSetMiB": 30.0160, "totalWorkingSetMiB": 85.3913, "gpuDedicatedMiB": 18.8242, "startupMs": 535.1860, "deployedMiB": 121.0018, "maxProcessCount": 2},
+    {"candidate": "slint", "cpuPercent": 0.244248, "privateMiB": 204.5978, "privateWorkingSetMiB": 61.4230, "totalWorkingSetMiB": 102.5571, "gpuDedicatedMiB": 92.2539, "startupMs": 567.7042, "deployedMiB": 13.0898, "maxProcessCount": 2}
+  ],
+  "invalidated": "The first Qt Quick measurement had a stopped QML pulse and was repeated; no values from it are included.",
+  "historicalQt": {"sourceCommit": "b11ce4168d9eb50e324bc2a5597778cc8f356494", "repetitions": 2, "fullModelApplyP95Ms": 21.1961, "stress104ModelApplyP95Ms": 153.04, "status": "FAIL in historical renderer only"}
+}

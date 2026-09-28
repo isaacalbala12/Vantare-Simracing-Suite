@@ -1,5 +1,23 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## 2026-09-28 · VAN-775 / GitHub #1404 · Comparación UI nativa aislada
+
+Isaac mantiene el objetivo de portar UI y overlays a renderizado nativo en
+Windows, con Go como núcleo inicial, pero acotó la investigación ejecutable a
+Rust y C++/Qt. La rama aislada `vantareapp/isa-1404-ui-native-bakeoff` parte
+de `origin/nightly@355e9cfe`; el checkout de integración permanece intacto.
+El protocolo local se actualizó a v1.1 y la evidencia reproducible de esta
+entrega vive en `tools/benchmarks/isa1404-ui-native/RESULTADOS.md`. Se midió la
+misma escena LMU sanitizada en Wails, Qt Quick y Slint (3 rondas Release) y se
+hicieron cribas cortas de Qt Widgets, egui, Iced y GPUI. Qt Quick redujo la
+memoria privada comprometida de 200,16 a 70,48 MiB en esta escena; no demuestra
+un ahorro de la app completa. OBS capturó los tres overlays principales. El
+renderer Qt histórico volvió a fallar su gate stress104 y GPUI publicado no
+abrió una ventana fiable en este Windows. Ningún stack se ha aprobado para el
+port productivo; sigue pendiente una pantalla compleja, integración Go, DPI y
+OBS físicos, licencia de módulos y baseline de Vantare completa. Sin merge ni
+promoción de canal por esta investigación.
+
 ## 2026-09-26 · VAN-769 / GitHub #1381 · Integración inicial autorizada
 
 Isaac revisó la entrega de temas y fondos de Studio en Wails y autorizó expresamente integrar únicamente la [PR #1384](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1384) en `nightly`. La rama se reconcilió con `origin/nightly@d09829c4` sin conflictos de código. El candidato inicial `9ea9a341` pasó sus gates bloqueantes, pero el validador de roadmap en modo auditoría señaló un orden distinto de entregas porque el digest se había generado desde el artefacto de la rama. Se regeneró `roadmap.json` partiendo del JSON protegido de `d09829c4`; la comparación estricta del contrato y las pruebas del generador pasan. La aceptación incluye la tarjeta Próxima serie con la paleta activa; los widgets mantienen sus diseños. CI debe repetirse sobre la cabeza con el digest corregido antes del merge. Este registro no afirma integración antes de comprobar el SHA remoto y los gates del merge. La comprobación física en LMU/OBS sigue siendo trabajo de Nightly. La autorización no comprende `testers`, `master` ni una release.

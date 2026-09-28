@@ -1,6 +1,6 @@
 # VAN-776 · host Go y UI nativa de investigación
 
-Este corte comprueba una frontera concreta: una ventana Qt Quick recibe el
+Este corte comprueba una frontera concreta: ventanas Qt Quick y Rust/Slint reciben el
 contrato Overlay V2 de Go por SSE sin iniciar Wails ni WebView2. No cambia el
 runtime de Vantare ni selecciona el stack final. Continúa la [comparación
 VAN-775](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1409).
@@ -14,8 +14,8 @@ Publica una sola proyección observada de 44 coches. No inventa ticks ni simula
 telemetría viva: el estado `live` describe la captura original, no una sesión
 LMU activa en este equipo.
 
-`qtquick` consume `GET /telemetry/overlay-v2/projection` solo por loopback y
-muestra sesión, instrumentos, 44 filas de Standings y Relative. El overlay usa
+`qtquick` y `slint` consumen `GET /telemetry/overlay-v2/projection` solo por
+loopback y muestran sesión, instrumentos, 44 filas de Standings y Relative. Los overlays usan
 una ventana transparente sin foco y click-through. El host y las ventanas son
 procesos separados para que la futura medición incluya el coste de cada uno.
 
@@ -44,12 +44,24 @@ ventana Qt para inspección visual; [control](evidence/qt-go-control.png) y
 esquina del overlay conserva alpha 0 en la captura propia; falta certificar
 composición y captura física en OBS.
 
+Con Rust estable y Cargo, en otra terminal con el mismo host Go activo:
+
+```powershell
+cargo build --release --manifest-path tools/native-ui/slint/Cargo.toml
+tools/native-ui/slint/target/release/vantare-native-go-slint.exe --endpoint "http://127.0.0.1:<puerto>/telemetry/overlay-v2/projection" --mode control --expect-rows 44
+tools/native-ui/slint/target/release/vantare-native-go-slint.exe --endpoint "http://127.0.0.1:<puerto>/telemetry/overlay-v2/projection" --mode overlay --expect-rows 44
+```
+
+El cliente Rust usa Slint 1.18.1 y ventanas Win32 para click-through y
+topmost. La salida 0 confirma el contrato y la carga de 44 filas; no demuestra
+por sí sola paridad visual, transparencia física ni captura en OBS. Con un
+endpoint desconectado, ambos clientes terminan con código 6 tras cinco segundos.
+
 ## Límites y siguiente prueba
 
 La captura fija no prueba actualización continua, reconexión semántica,
-rendimiento de Vantare completa ni ahorro del 20 %. Faltan cliente Rust/Slint
-equivalente, una pantalla de edición compleja, comparación con baseline Wails
+rendimiento de Vantare completa ni ahorro del 20 %. Faltan una pantalla de edición compleja, comparación con baseline Wails
 al mismo trabajo, DPI físico, OBS, empaquetado y licencia de módulos Qt. El
-actual cliente Qt reintenta la conexión, pero esa conducta aún no tiene prueba
+actuales clientes reintentan la conexión, pero esa conducta aún no tiene prueba
 de interrupción y reanudación. No se debe usar esta escena para elegir
 arquitectura productiva.

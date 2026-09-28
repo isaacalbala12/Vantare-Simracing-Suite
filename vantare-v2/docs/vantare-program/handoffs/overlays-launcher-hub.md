@@ -7,12 +7,14 @@ Continúa la comparación [#1404](https://github.com/isaacalbala12/Vantare-Simra
 `origin/nightly@355e9cfe` en worktree propio. Un host de investigación usa la
 captura LMU real sanitizada y el pipeline Go (parser, fusión, reductor,
 derivación, proyector y SSE) para publicar Overlay V2 sin Wails/WebView2.
-La ventana Qt Quick de control y el overlay recibieron las 44 filas; capturas
+Las ventanas Qt Quick y Rust/Slint de control y overlay recibieron las 44 filas
+del mismo contrato SSE; las variantes Rust control/overlay salieron con código
+0 en el smoke y con código 6 ante un endpoint desconectado. Capturas Qt
 locales revisadas en `tools/native-ui/evidence/`. `go test ./...` y build
 frontend pasaron. El overlay conserva alpha cero en una esquina de su captura
 propia. Esto no equivale a prueba OBS, DPI físico ni una sesión LMU activa.
 La tarea [VAN-776](https://app.notion.com/p/3e9e51695c65810fb2bdd73aae4b555d?pvs=204)
-conserva el alcance y pendientes: Rust/Slint, pantalla de edición compleja,
+conserva el alcance y pendientes: pantalla de edición compleja,
 actualización/reconexión, OBS y baseline de proceso completo. No se eligió
 stack, cambió el runtime productivo ni promovió ningún canal.
 

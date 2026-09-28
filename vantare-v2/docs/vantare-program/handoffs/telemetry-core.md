@@ -1,5 +1,17 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — polling REST desacoplado de SHM (2026-09-28)
+
+Rust tiene un worker REST loopback con slot de último resultado,
+backoff 250 ms–2 s, TTL de 2 s y cierre acotado por los deadlines
+HTTP. El consumidor puede incorporar el resultado a la cache de
+`Assembler` sin esperar a la red. Tests con servidor REST local y
+frame SHM real estático de 44 llegan al batch, y un endpoint colgado
+se cancela en el primer deadline. Rust release 140/140, Clippy/formato,
+build y replay Windows pasan. No hay loop live ni receptor Go;
+Go conserva propiedad productiva. Plan §83,
+[VAN-778](https://app.notion.com/p/3e9e51695c6581e38939fb943b184748).
+
 ## VAN-778 / ISA-1403 — reloj SHM clasificado dentro del motor (2026-09-28)
 
 `Engine` clasifica automáticamente continuidad, reset y wrap desde el

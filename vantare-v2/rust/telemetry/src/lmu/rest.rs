@@ -2,6 +2,7 @@
 //! ownership are separate; decoding never creates a rival vehicle from REST.
 
 pub mod http;
+pub mod poller;
 
 use std::collections::HashMap;
 

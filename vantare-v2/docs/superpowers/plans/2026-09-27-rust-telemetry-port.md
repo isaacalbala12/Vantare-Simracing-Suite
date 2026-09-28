@@ -1613,3 +1613,20 @@ Go↔Rust pasan. Go productivo continúa como owner.
 El loop live todavía debe aportar los relojes monotónico y UTC, lectura
 SHM estable, REST y transporte acotado. Corpus temporal real 44/104,
 supresión del remanente post-sesión y gate CPU siguen pendientes.
+
+## 83. Poller REST Rust independiente de SHM (2026-09-28)
+
+`lmu/rest/poller.rs` ejecuta los dos endpoints loopback en un worker
+con deadline existente de 750 ms por petición, cadencia inicial de
+250 ms, backoff limitado a 2 s y cancelación entre peticiones.
+Guarda solo el último resultado completo en un slot reemplazable;
+la adquisición lo toma sin esperar a HTTP y envejece la cache cada
+tick con TTL de 2 s. El cierre despierta el worker y espera su salida.
+`Assembler` expone solo la cache REST de su `Engine` para integrar ese
+resultado sin otro owner canónico. Un test usa servidor local y frame
+SHM real estático de 44 hasta el batch ensamblado; otro mantiene
+colgado el primer endpoint y verifica cierre dentro de 2 s sin lanzar
+la segunda petición. Rust release 140/140, Clippy, formato, build y
+replay de pipe Windows pasan. No son capturas REST reales ni prueba temporal
+de 44/104. Falta el loop de adquisición, supresión de remanente,
+writer/receptor y gate CPU; Go sigue owner.

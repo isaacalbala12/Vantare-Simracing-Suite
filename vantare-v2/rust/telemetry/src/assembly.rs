@@ -15,6 +15,7 @@ use crate::ipc::{
     resync::{self, ResyncError},
     snapshot::{self, ProductMetadata, SnapshotError},
 };
+use crate::lmu::rest::RestCache;
 use crate::projection::{engineer, frame, strategy};
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -79,6 +80,10 @@ impl Assembler {
 
     pub fn engine(&self) -> &Engine {
         &self.engine
+    }
+
+    pub fn rest_cache_mut(&mut self) -> &mut RestCache {
+        self.engine.rest_cache_mut()
     }
 
     pub fn acknowledge_fact(&mut self, cursor: FactCursor) -> Result<FactCursor, AssemblyError> {

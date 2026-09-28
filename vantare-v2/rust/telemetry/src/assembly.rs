@@ -1,14 +1,15 @@
 //! Pure candidate/commit assembly for demand-gated product IPC frames.
-//! The later live supervisor owns acquisition, writer queues and FactAck.
+//! The later live supervisor owns acquisition, writer queues and ACK delivery.
 
 use time::{OffsetDateTime, format_description::well_known::Rfc3339};
 
-use crate::core::facts::FactError;
+use crate::core::facts::{FactCursor, FactError};
 use crate::engine::{Engine, EngineError};
 use crate::ipc::{
     self,
     configuration::{Ack, Configuration, ConfigurationError},
     fact::{self, FactEncodeError},
+    fact_ack::{self, FactAckError},
     snapshot::{self, ProductMetadata, SnapshotError},
 };
 use crate::lmu::mapper::ClockChange;
@@ -26,6 +27,7 @@ pub enum AssemblyError {
     Overlay(frame::FrameError),
     Snapshot(SnapshotError),
     Fact(FactEncodeError),
+    FactAck(FactAckError),
 }
 
 pub struct Assembler {
@@ -66,6 +68,17 @@ impl Assembler {
 
     pub fn engine(&self) -> &Engine {
         &self.engine
+    }
+
+    pub fn acknowledge_fact(&mut self, cursor: FactCursor) -> Result<FactCursor, AssemblyError> {
+        self.engine
+            .acknowledge_fact(cursor)
+            .map_err(AssemblyError::FactLog)
+    }
+
+    pub fn acknowledge_fact_frame(&mut self, frame: &[u8]) -> Result<FactCursor, AssemblyError> {
+        let cursor = fact_ack::decode_frame(frame).map_err(AssemblyError::FactAck)?;
+        self.acknowledge_fact(cursor)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -146,7 +159,10 @@ impl Assembler {
                     .map_err(AssemblyError::Snapshot)?,
             );
             for fact in candidate.facts() {
-                prepared.push(fact::encode_engineer(fact, metadata).map_err(AssemblyError::Fact)?);
+                let stream = self.engine.pipeline().fact_high_water().stream;
+                prepared.push(
+                    fact::encode_engineer(fact, stream, metadata).map_err(AssemblyError::Fact)?,
+                );
             }
         }
         if config.consumers.strategy {
@@ -192,6 +208,7 @@ mod tests {
     const REAL_1413_TRACK: &[u8] =
         include_bytes!("../../../testdata/lmu-1.4.1.3-track-fixture.bin");
     const CONFIG: &[u8] = include_bytes!("../testdata/configuration-frame-go-v1.bin");
+    const FACT_ACK: &[u8] = include_bytes!("../testdata/fact-ack-frame-go-v1.bin");
 
     #[test]
     fn pinned_14_tracks_reach_demanded_overlay_and_engineer_snapshots() {
@@ -296,6 +313,26 @@ mod tests {
             44
         );
         assert!(decoded.iter().any(|frame| frame.kind == ipc::Kind::Fact));
+        let high_water = assembler.engine().pipeline().fact_high_water();
+        assert_eq!(
+            high_water,
+            FactCursor {
+                stream: 15,
+                sequence: 1
+            }
+        );
+        assert_eq!(
+            assembler.acknowledge_fact_frame(FACT_ACK).unwrap(),
+            high_water
+        );
+        assert!(
+            assembler
+                .engine()
+                .pipeline()
+                .replay_facts_after(high_water)
+                .unwrap()
+                .is_empty()
+        );
         assert!(!decoded.iter().any(|frame| {
             serde_json::from_slice::<Value>(frame.payload)
                 .ok()

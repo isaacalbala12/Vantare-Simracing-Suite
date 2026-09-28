@@ -1,6 +1,7 @@
 //! One candidate owns the admitted LMU frame and all dependent state changes.
 
 use crate::core;
+use crate::core::facts::FactCursor;
 use crate::core::facts::FactError;
 use crate::lmu::fusion::{self, SessionFloor};
 use crate::lmu::mapper::ClockChange;
@@ -39,6 +40,10 @@ impl Engine {
     }
     pub fn pipeline(&self) -> &Pipeline {
         &self.pipeline
+    }
+
+    pub fn acknowledge_fact(&mut self, cursor: FactCursor) -> Result<FactCursor, FactError> {
+        self.pipeline.acknowledge_fact(cursor)
     }
 
     pub fn prepare(

@@ -73,6 +73,18 @@ fn run(pipe_name: &str, nonce_text: &str, fixture_path: &str) -> io::Result<()> 
         for frame in frames {
             pipe.write_all(&frame)?;
         }
+        if sequence == 1 {
+            let (kind, payload) = ipc::read_frame(&mut pipe)
+                .map_err(|error| io::Error::other(format!("fact ACK: {error:?}")))?;
+            let frame = ipc::encode(kind, &payload)
+                .map_err(|error| io::Error::other(format!("fact ACK frame: {error:?}")))?;
+            let acknowledged = assembly
+                .acknowledge_fact_frame(&frame)
+                .map_err(|error| io::Error::other(format!("acknowledge fact: {error:?}")))?;
+            if acknowledged.stream != 15 || acknowledged.sequence != 1 {
+                return Err(io::Error::new(io::ErrorKind::InvalidData, "wrong fact ACK"));
+            }
+        }
     }
     ipc::write_frame(&mut pipe, Kind::Stop, &[])
         .map_err(|error| io::Error::other(format!("end replay: {error:?}")))?;

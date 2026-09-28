@@ -19,6 +19,7 @@ pub enum FactEncodeError {
 #[derive(Serialize)]
 struct Wire<'a> {
     product: &'static str,
+    stream: u64,
     fact: FactEnvelope<'a>,
 }
 
@@ -45,9 +46,11 @@ struct FactValue<'a> {
 
 pub fn encode_engineer(
     fact: &SessionFact,
+    stream: u64,
     metadata: ProductMetadata<'_>,
 ) -> Result<Vec<u8>, FactEncodeError> {
-    if metadata.epoch == 0
+    if stream == 0
+        || metadata.epoch == 0
         || metadata.sequence == 0
         || metadata.captured_at.is_empty()
         || fact.sequence == 0
@@ -70,6 +73,7 @@ pub fn encode_engineer(
     };
     let wire = Wire {
         product: PRODUCT_ENGINEER_V1,
+        stream,
         fact: FactEnvelope {
             canonical_version: 1,
             projection_version: 1,
@@ -116,7 +120,7 @@ mod tests {
             sequence: 5,
             captured_at: "2026-07-28T09:00:00Z",
         };
-        let frame = encode_engineer(&fact, metadata).unwrap();
+        let frame = encode_engineer(&fact, 15, metadata).unwrap();
         let path = concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/testdata/engineer-fact-frame-rust-v1.bin"
@@ -137,6 +141,7 @@ mod tests {
                     sequence: 0,
                     ..fact
                 },
+                15,
                 metadata
             ),
             Err(FactEncodeError::InvalidCursor)

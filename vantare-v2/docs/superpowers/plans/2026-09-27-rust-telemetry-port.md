@@ -1373,3 +1373,19 @@ comprueban producto y cardinalidad. Esto amplía el gate desde admisión
 de bytes hasta candidato, proyección y codificación para 1.4.
 No demuestra REST live, secuencia temporal ni publicación real. Go
 sigue siendo el único owner productivo.
+
+## 66. FactAck de retención Go→Rust por pipe (2026-09-28)
+
+El sobre IPC de cada fact incluye ahora `stream`, distinto del cursor
+canónico y de la secuencia del fact. Go decodifica ese stream y emite
+`KindFactAck {stream,sequence}` solo tras retener el fact. Rust valida
+el esquema cerrado y su `FactLog` descarta únicamente los facts
+confirmados: rechaza stream ajeno y secuencia futura, acepta ACK
+duplicado/anterior sin retroceder. El replay Windows probó la secuencia
+completa fact→retención Go→ACK→poda Rust antes del cambio de demanda.
+El frame Go de ACK mide 34 bytes, SHA-256
+`51c63a1a3611792f1294426f86ef7e4899cbe60c5d3a8cb23487aad3a765fd0f`;
+el nuevo fact Rust lleva SHA-256
+`36e11bd1f14e1e55fcaedf843eca93a575099bd6a371c46394597dfb4734311a`.
+Es contrato y replay de test: falta retención productiva Go, reconexión,
+overflow/resync y cola del writer. Go sigue como owner.

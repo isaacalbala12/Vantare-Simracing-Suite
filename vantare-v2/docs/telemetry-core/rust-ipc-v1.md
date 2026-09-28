@@ -12,8 +12,8 @@ Una trama es `length:u32 LE | version:u16 LE | kind:u16 LE | payload[length]`. L
 | Configuration | 2 | JSON cerrado v1 con revisión, consumidores, cadencias en ns, preferencias y source/capabilities |
 | ConfigurationAck | 3 | JSON `revision`, `epoch`, `sequence`; se emitirá tras aplicar en frontera de lote |
 | Snapshot | 4 | Prototipos JSON: `{"product":"overlay-v2","update":UpdateV2}` y `{"product":"engineer-v1"|"strategy-v1","snapshot":SnapshotV1}`; publicación y codec final pendientes |
-| Fact | 5 | Prototipo Engineer V1 JSON con metadata canónica, secuencia de fact y UTC RFC3339; ACK/retención/resync pendientes |
-| FactAck | 6 | Confirmación tras retener; payload por definir |
+| Fact | 5 | Prototipo Engineer V1 JSON con stream de entrega, metadata canónica, secuencia de fact y UTC RFC3339; retención productiva/resync pendientes |
+| FactAck | 6 | JSON cerrado `{stream,sequence}` tras retener; Rust poda el prefijo confirmado. Probado en replay, sin receptor productivo |
 | ResyncRequired | 7 | Laguna irrecuperable y bootstrap; payload por definir |
 | Status | 8 | Estado de fuente y salud de proceso; payload por definir |
 | Stop | 9 | Cierre solicitado; payload por definir |
@@ -55,16 +55,23 @@ receptor aún no recibe estos frames desde un hijo productivo.
 ## Fact Engineer v1 inicial (2026-09-28)
 
 Rust envuelve `FactEnvelopeV1` en `KindFact` con
-`{"product":"engineer-v1","fact":FactEnvelopeV1}`. Metadata lleva el
+`{"product":"engineer-v1","stream":u64,"fact":FactEnvelopeV1}`. Metadata lleva el
 cursor canónico; `fact.sequence` ordena hechos independientemente.
 `occurredAt` proviene del instante UTC canónico y se convierte con
 `time 0.3.55`/RFC3339; el decoder Go exige tipo, producto, versiones,
 cursores positivos, kind conocido y ambas fechas válidas. El frame
-`engineer-fact-frame-rust-v1.bin` de 254 bytes, SHA-256
-`51dd2476d3d1d4f32bca6c4ad52274d156b769d70314632e87f0e302270e22bc`,
+`engineer-fact-frame-rust-v1.bin`, SHA-256
+`36e11bd1f14e1e55fcaedf843eca93a575099bd6a371c46394597dfb4734311a`,
 coincide con el proyector Go de una vuelta completada. El código **no
-confirma recepción ni publica en runtime**: FactAck, retención, resync y
-backpressure quedan pendientes antes de emitir facts reales.
+publica en runtime**: FactAck y poda están probados solo en el replay;
+retención productiva, resync y backpressure quedan pendientes antes de
+emitir facts reales.
+
+El frame `fact-ack-frame-go-v1.bin` mide 34 bytes, SHA-256
+`51c63a1a3611792f1294426f86ef7e4899cbe60c5d3a8cb23487aad3a765fd0f`.
+Go lo emite tras almacenar el fact en el test de pipe; Rust valida
+stream/sequence y poda únicamente el prefijo confirmado. ACK duplicado
+o anterior no retrocede; stream ajeno o secuencia futura se rechazan.
 
 ## Configuration/ACK v1 inicial (2026-09-28)
 
@@ -104,8 +111,9 @@ compila con `cargo build --locked --release --features replay-harness --bin
 vantare-telemetry-replay`. `TestRustReplayPipeDeliversDemandedProductsAndFact`
 requiere `VANTARE_TELEMETRY_REPLAY_TEST_HELPER` apuntando a ese `.exe`.
 Go envía Configuration por un pipe real y recibe ACK, Overlay, Engineer y
-fact desde `Assembler` sobre el fixture auditado estático de 44, seguido
-de una segunda Configuration que demanda solo Strategy. Rust confirma
+fact desde `Assembler` sobre el fixture auditado estático de 44. Tras
+retener el fact, Go envía FactAck y Rust poda ese prefijo. Sigue una
+segunda Configuration que demanda solo Strategy. Rust confirma
 la revisión 8 en el cursor siguiente y Go decodifica solo ese snapshot;
 después llega Stop. Pasó en Windows el 2026-09-28; no equivale a LMU live ni al
 writer/supervisor productivo. El ejecutable principal se compila sin

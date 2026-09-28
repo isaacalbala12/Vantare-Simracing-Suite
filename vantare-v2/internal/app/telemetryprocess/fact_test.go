@@ -24,9 +24,12 @@ func TestDecodeRustEngineerFactFrame(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := DecodeEngineerFact(frame)
+	stream, got, err := DecodeEngineerFactWithStream(frame)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if stream != 15 {
+		t.Fatalf("fact stream = %d, want 15", stream)
 	}
 	if got.CanonicalVersion != 1 || got.ProjectionVersion != 1 || got.Epoch != 3 || got.Sequence != 5 ||
 		got.CapturedAt != "2026-07-28T09:00:00Z" || got.Fact.Sequence != 12 ||
@@ -56,9 +59,10 @@ func TestDecodeEngineerFactRejectsWrongKindSchemaAndCursor(t *testing.T) {
 	for _, frame := range []Frame{
 		{Kind: KindSnapshot, Payload: []byte(`{}`)},
 		{Kind: KindFact, Payload: []byte(`{"product":"other","fact":{}}`)},
-		{Kind: KindFact, Payload: []byte(`{"product":"engineer-v1","fact":{},"extra":1}`)},
-		{Kind: KindFact, Payload: []byte(`{"product":"engineer-v1","fact":{"canonicalVersion":1,"projectionVersion":1,"epoch":1,"sequence":1,"capturedAt":"2026-07-28T09:00:00Z","fact":{"sequence":0,"kind":"lap.completed","occurredAt":"2026-07-28T09:01:00Z"}}}`)},
-		{Kind: KindFact, Payload: []byte(`{"product":"engineer-v1","fact":{"canonicalVersion":1,"projectionVersion":1,"epoch":1,"sequence":1,"capturedAt":"2026-07-28T09:00:00Z","fact":{"sequence":1,"kind":"unknown","occurredAt":"2026-07-28T09:01:00Z"}}}`)},
+		{Kind: KindFact, Payload: []byte(`{"product":"engineer-v1","stream":15,"fact":{},"extra":1}`)},
+		{Kind: KindFact, Payload: []byte(`{"product":"engineer-v1","stream":0,"fact":{}}`)},
+		{Kind: KindFact, Payload: []byte(`{"product":"engineer-v1","stream":15,"fact":{"canonicalVersion":1,"projectionVersion":1,"epoch":1,"sequence":1,"capturedAt":"2026-07-28T09:00:00Z","fact":{"sequence":0,"kind":"lap.completed","occurredAt":"2026-07-28T09:01:00Z"}}}`)},
+		{Kind: KindFact, Payload: []byte(`{"product":"engineer-v1","stream":15,"fact":{"canonicalVersion":1,"projectionVersion":1,"epoch":1,"sequence":1,"capturedAt":"2026-07-28T09:00:00Z","fact":{"sequence":1,"kind":"unknown","occurredAt":"2026-07-28T09:01:00Z"}}}`)},
 	} {
 		if _, err := DecodeEngineerFact(frame); !errors.Is(err, ErrInvalidEngineerFact) {
 			t.Fatalf("malformed fact error = %v", err)

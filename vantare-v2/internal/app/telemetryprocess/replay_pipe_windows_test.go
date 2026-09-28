@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	"golang.org/x/sys/windows"
 )
 
@@ -67,6 +68,8 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 		t.Fatal(err)
 	}
 	var acknowledgements, overlaySnapshots, engineerSnapshots, facts int
+	var factStream uint64
+	var retainedFacts []engineer.FactEnvelopeV1
 	for range 4 {
 		frame, err := ReadFrame(file)
 		if err != nil {
@@ -103,9 +106,12 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 				t.Fatalf("unrequested product %q", product.Product)
 			}
 		case KindFact:
-			if _, err := DecodeEngineerFact(frame); err != nil {
+			stream, fact, err := DecodeEngineerFactWithStream(frame)
+			if err != nil {
 				t.Fatal(err)
 			}
+			factStream = stream
+			retainedFacts = append(retainedFacts, fact)
 			facts++
 		default:
 			t.Fatalf("unexpected replay kind %v", frame.Kind)
@@ -113,6 +119,16 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 	}
 	if acknowledgements != 1 || overlaySnapshots != 1 || engineerSnapshots != 1 || facts != 1 {
 		t.Fatalf("first batch: ack=%d overlay=%d engineer=%d facts=%d", acknowledgements, overlaySnapshots, engineerSnapshots, facts)
+	}
+	if factStream != 15 || len(retainedFacts) != 1 {
+		t.Fatalf("retained fact stream=%d count=%d", factStream, len(retainedFacts))
+	}
+	factACK, err := EncodeFactAck(FactAckV1{Stream: factStream, Sequence: uint64(retainedFacts[0].Fact.Sequence)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteFrame(file, factACK); err != nil {
+		t.Fatal(err)
 	}
 	var next ConfigurationV1
 	if err := json.Unmarshal(configuration.Payload, &next); err != nil {

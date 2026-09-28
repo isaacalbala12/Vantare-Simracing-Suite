@@ -30,6 +30,7 @@ pub struct FactLog<T> {
     stream: u64,
     capacity: usize,
     next: u64,
+    acknowledged: u64,
     retained: VecDeque<Fact<T>>,
 }
 
@@ -42,6 +43,7 @@ impl<T> FactLog<T> {
             stream,
             capacity,
             next: 1,
+            acknowledged: 0,
             retained: VecDeque::with_capacity(capacity),
         })
     }
@@ -116,6 +118,38 @@ impl<T> FactLog<T> {
         FactCursor {
             stream: self.stream,
             sequence: self.next - 1,
+        }
+    }
+
+    /// The receiver acknowledges only after retaining the fact. A
+    /// duplicate or older ACK is harmless; a foreign or future one is not.
+    pub fn acknowledge(&mut self, cursor: FactCursor) -> Result<FactCursor, FactError> {
+        if cursor.stream != self.stream {
+            return Err(FactError::ForeignStream);
+        }
+        if cursor.sequence >= self.next {
+            return Err(FactError::FutureCursor);
+        }
+        if cursor.sequence > self.acknowledged {
+            self.acknowledged = cursor.sequence;
+            while self
+                .retained
+                .front()
+                .is_some_and(|fact| fact.cursor.sequence <= cursor.sequence)
+            {
+                self.retained.pop_front();
+            }
+        }
+        Ok(FactCursor {
+            stream: self.stream,
+            sequence: self.acknowledged,
+        })
+    }
+
+    pub fn acknowledged(&self) -> FactCursor {
+        FactCursor {
+            stream: self.stream,
+            sequence: self.acknowledged,
         }
     }
 }
@@ -193,6 +227,58 @@ mod tests {
             })
             .unwrap_err(),
             FactError::FutureCursor
+        );
+    }
+
+    #[test]
+    fn ack_prunes_only_confirmed_facts_and_rejects_wrong_cursors() {
+        let mut log = FactLog::new(9, 3).unwrap();
+        log.append_batch(vec!["a", "b", "c"]).unwrap();
+        assert_eq!(
+            log.acknowledge(FactCursor {
+                stream: 10,
+                sequence: 2
+            }),
+            Err(FactError::ForeignStream)
+        );
+        assert_eq!(
+            log.acknowledge(FactCursor {
+                stream: 9,
+                sequence: 4
+            }),
+            Err(FactError::FutureCursor)
+        );
+        assert_eq!(log.acknowledged().sequence, 0);
+        let ack = log
+            .acknowledge(FactCursor {
+                stream: 9,
+                sequence: 2,
+            })
+            .unwrap();
+        assert_eq!(ack.sequence, 2);
+        assert_eq!(
+            log.after(ack)
+                .unwrap()
+                .iter()
+                .map(|fact| fact.value)
+                .collect::<Vec<_>>(),
+            vec!["c"]
+        );
+        assert_eq!(
+            log.acknowledge(FactCursor {
+                stream: 9,
+                sequence: 1
+            })
+            .unwrap(),
+            ack
+        );
+        assert_eq!(
+            log.after(FactCursor {
+                stream: 9,
+                sequence: 0
+            })
+            .unwrap_err(),
+            FactError::ResyncRequired { first: 3, next: 4 }
         );
     }
 }

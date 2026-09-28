@@ -256,6 +256,14 @@ impl Pipeline {
         self.fact_log.high_water()
     }
 
+    pub fn acknowledge_fact(&mut self, cursor: FactCursor) -> Result<FactCursor, FactError> {
+        self.fact_log.acknowledge(cursor)
+    }
+
+    pub fn acknowledged_fact(&self) -> FactCursor {
+        self.fact_log.acknowledged()
+    }
+
     pub fn replay_facts_after(
         &self,
         cursor: FactCursor,

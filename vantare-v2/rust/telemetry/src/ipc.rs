@@ -2,6 +2,7 @@
 
 pub mod configuration;
 pub mod fact;
+pub mod fact_ack;
 pub mod snapshot;
 
 use std::io::{self, Read, Write};

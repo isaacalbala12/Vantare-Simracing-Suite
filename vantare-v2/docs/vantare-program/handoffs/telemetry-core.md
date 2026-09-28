@@ -1,5 +1,12 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — FactAck cruzado y poda de retención (2026-09-28)
+
+Cada fact Rust identifica stream; Go lo retiene en el replay y devuelve
+FactAck por el pipe. Rust rechaza cursor ajeno/futuro y poda solo el
+prefijo confirmado. Frames Go/Rust fijados por oráculos; faltan cola,
+resync y retención productiva Go. Plan sección 66. Go sigue owner.
+
 ## ISA-1403 — lote Rust completo con pistas 1.4 pinneadas (2026-09-28)
 
 Rust preparó/confirmó lotes de pista 1.4.0.0 (38 vehículos) y

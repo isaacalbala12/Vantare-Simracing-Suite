@@ -1003,9 +1003,9 @@ temporal 44/104, R15a completo, IPC, runtime físico ni el 50% CPU.
 
 ## 41. Clima y controles Overlay Rust (2026-09-28)
 
-El oráculo Go/Rust estático de 44 cubre ahora Session, Player, Weather y
-Controls en `rust/telemetry/testdata/overlay-core-slices-go-v1.json`
-(SHA-256 `d6723e535891fda6cb0427ba31ea2a247e65a60fb2c24b92b61ad59f353d6bfa`).
+El oráculo Go/Rust estático de 44 cubrió Session, Player, Weather y
+Controls en `rust/telemetry/testdata/overlay-core-slices-go-v1.json`,
+ampliado después con Damage.
 Rust proyecta ambiente/pista/lluvia/humedad con la calidad de cada fuente,
 mantiene viento/dirección/presión missing y publica controles en arrays
 alineados: timestamp Unix ms absoluto, pedales cuantizados por mil y calidad
@@ -1014,3 +1014,16 @@ instante anterior a epoch, stale/invalid/missing y supresión de series
 invalid. Rust release 88/88, formato, Clippy, build release y `go test ./...`
 pasan. La captura es una muestra única real de 44; no demuestra continuidad
 temporal real, 104, salida IPC, R15b/R15c completos ni el gate CPU.
+
+## 42. Daño y desgaste Overlay Rust (2026-09-28)
+
+La proyección Rust de Damage selecciona sólo al piloto canónico usable.
+Transporta ocho dents, calentamiento, desprendimiento, número de ruedas
+desprendidas y desgaste de cuatro neumáticos con calidad independiente.
+Damage invalid conserva calidad invalid sin inventar payload; tyreWear puede
+estar ausente aun si Damage existe. El oráculo Go/Rust sobre la captura real
+estática de 44 amplía el JSON a Damage (SHA-256
+`62ea3cd0bb48b432f4f633048e577752367b983e6d71177a967a4d90edac2f25`).
+Rust release 88/88, Clippy, formato, build release y `go test ./...` pasan.
+Faltan las demás secciones, paridad temporal real 44/104, IPC productivo,
+sesión física y 50% CPU.

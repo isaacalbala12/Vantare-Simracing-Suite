@@ -1,10 +1,19 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — daño Overlay Rust y oráculo ampliado (2026-09-28)
+
+Rust proyecta daño y desgaste del piloto con calidad independiente, ausencia
+explícita y los ocho dents del contrato. El oráculo Go/Rust real estático de
+44 ahora incluye Damage; JSON SHA-256
+`62ea3cd0bb48b432f4f633048e577752367b983e6d71177a967a4d90edac2f25`.
+Go completo, Rust release 88/88, Clippy, formato y build pasan. Faltan fuel,
+delta, standings, espacial, Engineer/Strategy, IPC y gates físicos/CPU.
+Plan sección 42. Go sigue productivo.
+
 ## ISA-1403 — clima y controles Overlay Rust con oráculo Go (2026-09-28)
 
-El oráculo estático real de 44 ahora cubre Session, Player, Weather y
-Controls; SHA-256 JSON
-`d6723e535891fda6cb0427ba31ea2a247e65a60fb2c24b92b61ad59f353d6bfa`.
+El oráculo estático real de 44 cubrió Session, Player, Weather y
+Controls; después se amplió con Damage en el corte siguiente.
 Rust proyecta clima sin inventar viento/presión y controles con pedales
 por mil, tiempos absolutos y calidad independiente por movimiento. Rust
 release 88/88, Clippy, formato, build y `go test ./...` pasan. R15b/R15c

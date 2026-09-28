@@ -218,6 +218,69 @@ pub fn controls(history: &ControlHistory) -> Controls {
     view
 }
 
+#[derive(Debug, PartialEq)]
+pub struct Damage {
+    pub dents: QValue<Vec<u16>>,
+    pub overheating: QValue<bool>,
+    pub detached: QValue<bool>,
+    pub wheel_detached_count: QValue<u8>,
+    pub tyre_wear: Option<QValue<Vec<f64>>>,
+}
+
+pub fn damage(batch: &core::Batch<SessionType, LmuVehicleState>) -> Damage {
+    let mut result = Damage {
+        dents: QValue::missing(),
+        overheating: QValue::missing(),
+        detached: QValue::missing(),
+        wheel_detached_count: QValue::missing(),
+        tyre_wear: None,
+    };
+    for current in &batch.state.vehicles {
+        let Field::Present {
+            value: true,
+            freshness,
+            ..
+        } = &current.value.player
+        else {
+            continue;
+        };
+        if *freshness == Freshness::Invalid {
+            continue;
+        }
+        result.tyre_wear = match &current.value.tyre_wear {
+            Field::Missing => None,
+            Field::Present {
+                freshness: Freshness::Invalid,
+                ..
+            } => Some(QValue {
+                value: None,
+                quality: Quality::Invalid,
+            }),
+            field => Some(project(field, |value| value.to_vec())),
+        };
+        match &current.value.damage {
+            Field::Missing => {}
+            Field::Present {
+                freshness: Freshness::Invalid,
+                ..
+            } => {
+                result.dents.quality = Quality::Invalid;
+                result.overheating.quality = Quality::Invalid;
+                result.detached.quality = Quality::Invalid;
+                result.wheel_detached_count.quality = Quality::Invalid;
+            }
+            field => {
+                result.dents = project(field, |value| value.dents.map(u16::from).to_vec());
+                result.overheating = project(field, |value| value.overheating);
+                result.detached = project(field, |value| value.detached);
+                result.wheel_detached_count = project(field, |value| value.wheel_detached_count);
+            }
+        }
+        break;
+    }
+    result
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -322,6 +385,18 @@ mod tests {
         Value::Object(object)
     }
 
+    fn wire_float_array(field: &QValue<Vec<f64>>) -> Value {
+        let mut value = wire_value(field);
+        if let Some(values) = value.get_mut("v").and_then(Value::as_array_mut) {
+            for element in values {
+                if element.as_f64() == Some(0.0) {
+                    *element = json!(0);
+                }
+            }
+        }
+        value
+    }
+
     #[test]
     fn static_44_core_slices_match_go_projection_oracle() {
         let golden: Value =
@@ -342,7 +417,8 @@ mod tests {
         let player = player(prepared.batch(), SpeedUnit::Mps);
         let weather = weather(prepared.batch());
         let controls = controls(prepared.controls_history());
-        let actual = json!({
+        let damage = damage(prepared.batch());
+        let mut actual = json!({
             "session": {
                 "track": wire_value(&session.track), "phase": wire_value(&session.phase),
                 "flag": wire_value(&session.flag), "remaining": wire_value(&session.remaining_seconds),
@@ -375,8 +451,18 @@ mod tests {
                     "rpm": controls.rpm.iter().map(wire_value).collect::<Vec<_>>(),
                     "gear": controls.gear.iter().map(wire_value).collect::<Vec<_>>(),
                 }
+            },
+            "damage": {
+                "dents": wire_value(&damage.dents),
+                "overheating": wire_value(&damage.overheating),
+                "detached": wire_value(&damage.detached),
+                "wheelDetachedCount": wire_value(&damage.wheel_detached_count),
+                "tyreWear": damage.tyre_wear.as_ref().map(wire_float_array),
             }
         });
+        if damage.tyre_wear.is_none() {
+            actual["damage"].as_object_mut().unwrap().remove("tyreWear");
+        }
         assert_eq!(actual, golden);
     }
 }

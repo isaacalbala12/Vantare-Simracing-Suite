@@ -13,7 +13,11 @@ admite solo el par exacto 1.4.2.0 en el capturador diagnóstico y conserva en
 El test comprueba 18 coches y que el parser de producción **sigue rechazando**
 1.4.2.0. Falta la captura de menú y la revisión de los cuatro fixtures antes
 de pinnear y admitir la build en producción. No hay evidencia aún de Overlay
-V2 vivo con 1.4.2.0, ni aprobación para integrar la rama.
+V2 vivo con 1.4.2.0, ni aprobación para integrar la rama. El corte está en
+[PR borrador #1413](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1413),
+commit `96a52b9c`; `pnpm --dir frontend build`, `go test ./...` y la captura
+diagnóstica opt-in en pista pasaron. La primera pasada Go sin `frontend/dist`
+falló en setup y se repitió tras construir el frontend. CI remota pendiente.
 
 > **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
 > Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,

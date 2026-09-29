@@ -2282,3 +2282,16 @@ de política pasa tres veces ahora con **cero reinicios**; Engineer/Strategy y
 la recuperación por rechazo de fact pasan también. `go test ./...`, vet focal,
 Staticcheck focal sin avisos nuevos y `git diff --check` pasaron. R21/R25
 siguen abiertos; ninguna medición se presenta como gate final.
+
+## 123. Crash físico tras fact aceptado (2026-09-29)
+
+Un test opt-in espera un fact Engineer realmente aceptado y un snapshot
+Strategy con LMU 1.4.2.0 en pista y 47 vehículos. Identifica exclusivamente
+el hijo de su propio proceso de test, verifica su ruta absoluta y lo termina.
+El supervisor observa el cierre inesperado, declara a Engineer un límite de
+facts con la última secuencia aceptada y lanza un nuevo hijo. Strategy vuelve
+a publicar y el siguiente fact llega con una época superior a la anterior.
+Cinco repeticiones físicas pasaron; el test cierra el runtime y no deja un
+segundo lector LMU. Es una prueba del camino de crash y resync explícito,
+**no de replay durable de los facts del proceso terminado**. Siguen pendientes
+peer colgado, cola llena, suspensión, Stop concurrente y banco R21/R25.

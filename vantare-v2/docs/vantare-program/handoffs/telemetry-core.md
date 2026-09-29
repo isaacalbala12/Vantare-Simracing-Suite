@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — crash físico después de un fact (2026-09-29)
+
+LMU 1.4.2.0 con 47 vehículos: el test acepta un fact Engineer y un snapshot
+Strategy, mata solo al hijo Rust de ruta y padre verificados, y exige límite
+de facts, reconexión, nuevo Strategy y nuevo fact en época posterior. Pasó
+cinco veces y Stop no dejó otro lector. La pérdida potencial del proceso
+terminado queda explícita; no se ha demostrado replay durable. R20 conserva
+peer colgado, cola llena, suspensión y Stop concurrente; R21/R25 aún deben
+resolver codec, CPU/p99/RSS. Go productivo por defecto, PR #1415 draft sin
+merge. Plan §123.
+
 ## VAN-778 / ISA-1403 — coste IPC y baseline de facts corregido (2026-09-29)
 
 El perfil físico de 15 s atribuyó la mayor parte del CPU del receptor Rust a

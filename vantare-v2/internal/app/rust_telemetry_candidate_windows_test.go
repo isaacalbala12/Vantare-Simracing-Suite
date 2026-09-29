@@ -7,9 +7,11 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
+	"unsafe"
 
 	performancepolicy "github.com/vantare/overlays/v2/internal/app/performance"
 	"github.com/vantare/overlays/v2/internal/app/telemetryprocess"
@@ -21,6 +23,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2"
 	strategyprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
 	"github.com/vantare/overlays/v2/internal/telemetry/schema"
+	"golang.org/x/sys/windows"
 )
 
 type rustCandidateEngineerProbe struct {
@@ -391,5 +394,141 @@ func TestRustCandidateRecoversAfterFactRejectionLiveLMUOptIn(t *testing.T) {
 	}
 	if runtime.SourceStatus().ReconnectAttempt == 0 {
 		t.Fatal("Rust child restarted without an observable reconnect attempt")
+	}
+}
+
+func TestRustCandidateCrashAfterAcceptedFactLiveLMUOptIn(t *testing.T) {
+	executable := os.Getenv("VANTARE_TELEMETRY_RUST_TEST_HELPER")
+	if executable == "" || os.Getenv("VANTARE_LMU_LIVE_CANDIDATE_TEST") != "1" || os.Getenv("VANTARE_LMU_LIVE_CANDIDATE_TRACK_TEST") != "1" {
+		t.Skip("requires release Rust child and LMU on track")
+	}
+	probe := &rustCandidateEngineerProbe{
+		observations: make(chan engineerprojection.ObservationSnapshotV1, 1),
+		facts:        make(chan engineerprojection.FactEnvelopeV1, 2),
+		boundaries:   make(chan engineerprojection.FactResyncRequiredError, 1),
+	}
+	runtime, err := NewRustTelemetryCandidateRuntime(RustTelemetryCandidateConfig{
+		Enabled: true, Executable: executable, Engineer: probe, StrategyPublicTransport: true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(t.Context(), 12*time.Second)
+	defer cancel()
+	subscription, err := runtime.StrategyHub().Subscribe(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer subscription.Close()
+	if err := runtime.Start(ctx); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		stopCtx, stopCancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer stopCancel()
+		if err := runtime.Stop(stopCtx); err != nil {
+			t.Errorf("Rust candidate Stop: %v", err)
+		}
+	}()
+	var firstFact engineerprojection.FactEnvelopeV1
+	select {
+	case firstFact = <-probe.facts:
+	case <-ctx.Done():
+		t.Fatalf("no initial Engineer fact: %v", ctx.Err())
+	}
+	firstEpoch := nextRustCandidateStrategyEpoch(t, ctx, subscription)
+	ticker := time.NewTicker(10 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		runtime.mu.Lock()
+		accepted := runtime.lastFact >= firstFact.Fact.Sequence
+		runtime.mu.Unlock()
+		if accepted {
+			break
+		}
+		select {
+		case <-ticker.C:
+		case <-ctx.Done():
+			t.Fatalf("fact not accepted before crash: %v", ctx.Err())
+		}
+	}
+	if err := terminateOwnedRustChild(executable); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case boundary := <-probe.boundaries:
+		if boundary.Previous != firstFact.Fact.Sequence {
+			t.Fatalf("fact loss boundary = %+v, previous fact=%d", boundary, firstFact.Fact.Sequence)
+		}
+	case <-ctx.Done():
+		t.Fatalf("no explicit fact loss boundary: %v", ctx.Err())
+	}
+	for {
+		nextEpoch := nextRustCandidateStrategyEpoch(t, ctx, subscription)
+		if nextEpoch > firstEpoch {
+			break
+		}
+	}
+	if runtime.SourceStatus().ReconnectAttempt == 0 {
+		t.Fatal("crashed Rust child did not report reconnection")
+	}
+	select {
+	case nextFact := <-probe.facts:
+		if nextFact.Epoch <= firstFact.Epoch {
+			t.Fatalf("new child fact epoch %d did not advance past %d", nextFact.Epoch, firstFact.Epoch)
+		}
+	case <-ctx.Done():
+		t.Fatalf("new Rust child did not deliver Engineer fact: %v", ctx.Err())
+	}
+}
+
+func nextRustCandidateStrategyEpoch(t *testing.T, ctx context.Context, subscription *telemetrytransport.Subscription) schema.Epoch {
+	t.Helper()
+	for {
+		event, err := subscription.Next(ctx)
+		if err != nil {
+			t.Fatalf("wait for Rust Strategy snapshot: %v", err)
+		}
+		if event.Kind != telemetrytransport.EventSnapshot {
+			continue
+		}
+		var snapshot telemetrytransport.Envelope
+		if err := json.Unmarshal(event.Data, &snapshot); err != nil {
+			t.Fatal(err)
+		}
+		return snapshot.Epoch
+	}
+}
+
+func terminateOwnedRustChild(executable string) error {
+	snapshot, err := windows.CreateToolhelp32Snapshot(windows.TH32CS_SNAPPROCESS, 0)
+	if err != nil {
+		return err
+	}
+	defer windows.CloseHandle(snapshot)
+	entry := windows.ProcessEntry32{Size: uint32(unsafe.Sizeof(windows.ProcessEntry32{}))}
+	if err := windows.Process32First(snapshot, &entry); err != nil {
+		return err
+	}
+	for {
+		if entry.ParentProcessID == uint32(os.Getpid()) && strings.EqualFold(windows.UTF16ToString(entry.ExeFile[:]), "vantare-telemetry.exe") {
+			process, err := windows.OpenProcess(windows.PROCESS_TERMINATE|windows.PROCESS_QUERY_LIMITED_INFORMATION, false, entry.ProcessID)
+			if err != nil {
+				return err
+			}
+			defer windows.CloseHandle(process)
+			path := make([]uint16, windows.MAX_LONG_PATH)
+			length := uint32(len(path))
+			if err := windows.QueryFullProcessImageName(process, 0, &path[0], &length); err != nil {
+				return err
+			}
+			if !strings.EqualFold(windows.UTF16ToString(path[:length]), executable) {
+				return errors.New("test child path did not match requested Rust binary")
+			}
+			return windows.TerminateProcess(process, 111)
+		}
+		if err := windows.Process32Next(snapshot, &entry); err != nil {
+			return errors.New("test-owned Rust child not found")
+		}
 	}
 }

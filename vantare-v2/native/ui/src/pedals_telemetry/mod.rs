@@ -258,6 +258,32 @@ mod tests {
     use vantare_domain::{Player, Quality};
 
     #[test]
+    fn frozen_workshop_scene_decodes_to_the_visible_product_values() {
+        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/pedals-telemetry.snapshot.json"
+        ))
+        .expect("escena Workshop en DTO v3");
+        let prefs = Preferences::default();
+        let vm = pedals_telemetry::project(&snapshot, prefs);
+        assert_eq!(vm.status, Status::Ready);
+        assert_eq!(vm.pedals, [Some(0.06), Some(0.13), Some(0.75)]);
+        assert_eq!(
+            (
+                vm.gear.as_str(),
+                vm.speed.as_str(),
+                vm.speed_unit.as_str(),
+                vm.rpm.as_str()
+            ),
+            ("4", "180", "km/h", "7.2k")
+        );
+        let mut widget = Widget::new(prefs);
+        assert!(widget.ingest(&snapshot, prefs));
+        assert_eq!(widget.size(), (300.0, 112.0));
+        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        assert!(!widget.ingest(&snapshot, prefs));
+    }
+
+    #[test]
     fn transitions_end_and_missing_inputs_clear_without_a_zero_tween() {
         let prefs = Preferences::default();
         let mut widget = Widget::new(prefs);

@@ -47,6 +47,7 @@ haya animación pide fotogramas).
 
 ## Paridad visual
 
+Con `VANTARE_STANDINGS_LEGACY` presente,
 `parity.ps1 -Parity <tools/native-ui/parity>` captura la escena `standings-44`
 con la feature `parity-capture` (dos pasadas GDI negro/blanco) y la compara con
 `reference/standings-44.png` con `diff.py`. Resultado en esta fase: 3,68 %
@@ -115,20 +116,83 @@ es idéntica a la anterior: 0 px distintos con umbral 0, sin máscaras.
    `cargo test --workspace -j 4`; además verificar captura y comparación de su
    widget. Informar el porcentaje real y cualquier límite al orquestador.
 
-**Regresión histórica de Standings (474 × 364).** No confundir con la referencia
-de fase 2 (`reference/standings.png`, 440 × 664, 20 filas y otros datos). Para
-reproducir 3,6752 % con el Workshop genérico:
+**Standings de fase 2 (#1427).** El modo predeterminado reproduce Signature:
+440 × 664, capacidad de 20 filas, clase del jugador, posiciones globales,
+última vuelta y sin rail PIT. La escena `fixtures/standings.snapshot.json`
+conserva los 20 coches de `reference/standings.geometry.json`; el filtro muestra
+los siete Hypercar, dejando libre la altura reservada por el documento Wails.
+Los gaps usan las señales de clase existentes, incluidos los guiones cuando
+faltan datos y la diferencia de una vuelta. El pie conserva Sebring y ≈79.
 
 ```powershell
-.\ui\compare.ps1 -Widget standings -Scene ui/fixtures/standings-44.snapshot.json -Reference C:\tmp\vantare-parity-wails\vantare-v2\tools\native-ui\parity\reference\standings-44.png
+# Desde native/, sin VANTARE_STANDINGS_LEGACY en el entorno:
+$cargoExe = (Get-Command cargo.exe).Source
+# Limitar también el -j 4 interno del comparador compartido.
+function cargo {
+    $limited = @($args)
+    for ($i = 0; $i -lt $limited.Count - 1; $i++) {
+        if ($limited[$i] -eq '-j') { $limited[$i + 1] = '2' }
+    }
+    & $cargoExe @limited
+}
+.\ui\compare.ps1 -Widget standings -MaxPercent 4
 ```
 
-También sigue funcionando `vantare-overlays --parity-capture <png>`. Las escenas
+**Regresión histórica de Standings (474 × 364).** La escena explícita es
+`fixtures/standings-legacy.snapshot.json`. Se conserva `standings-44.snapshot.json`
+como alias idéntico porque `app.rs` lo incluye en una prueba fuera del alcance
+de este worker; una prueba en `standings/` comprueba su igualdad. La preferencia
+`VANTARE_STANDINGS_LEGACY` presente selecciona la configuración histórica:
+clasificación global, 10 filas, mejor vuelta y rail PIT. El nombre de la escena
+no decide el modo. Eliminar la variable restaura Signature.
+
+```powershell
+# Usar el mismo wrapper de cargo del bloque anterior.
+$env:VANTARE_STANDINGS_LEGACY = '1'
+try {
+    .\ui\compare.ps1 -Widget standings -Scene ui/fixtures/standings-legacy.snapshot.json -Reference C:\tmp\vantare-parity-wails\vantare-v2\tools\native-ui\parity\reference\standings-44.png -MaxPercent 4
+} finally {
+    Remove-Item Env:VANTARE_STANDINGS_LEGACY
+}
+```
+
+La ruta antigua `vantare-overlays --parity-capture <png>` y `parity.ps1` necesitan
+esa misma preferencia para mantener su escena histórica. Los tests cubren
+los dos tamaños, columnas, filtro por ID de clase, cambio de jugador, gaps
+faltantes/obsoletos, vueltas de diferencia y repintados de ambas configuraciones.
+No se toca ningún `model.rs`, el kit Eficiencia, IPC, runtime ni otros widgets.
+No se añaden dependencias ni señales al modelo común.
+
+Validación de Standings (2026-09-30): fase 2 = 10705/292160 px (3,6641 %),
+histórica = 6341/172536 px (3,6752 %); ambas PASS con umbral por canal 8 y
+límite 4 %, sin máscaras. Capturas en `C:/tmp/vw2-standings2-evidence/`,
+subdirectorios `phase2` y `legacy`, con hashes en `parity.json`. Gates PASS:
+`cargo fmt --check`, `cargo clippy --workspace --all-targets -j 2 -- -D warnings`
+y `cargo test --workspace -j 2` (400 pruebas del harness, 0 fallos, 4 omitidas
+porque requieren LMU/ACC live; también pasan las pruebas de procesos). Salida
+de tests en `C:/tmp/vw2-standings2-evidence/tests.log`. El primer build usó
+artefactos de domain obsoletos; tras recompilarlo pasó la captura sin tocar otros módulos.
+El comparador compartido invoca Cargo con `-j 4`; para respetar el límite del
+encargo se ejecuta con un wrapper local de `cargo` que sustituye ese argumento
+por `-j 2`, sin cambiar el script compartido. Las capturas se serializan mediante
+su mutex global. Los PNG y logs quedan fuera del árbol de código.
+
+Límites: preferencias de presentación por proceso, aún sin editor de configuración
+nativo por instancia; `Vm::from_domain` conserva el cálculo histórico de posiciones
+de clase por orden y la lectura de números desde texto para las animaciones.
+La paridad de estas fotos no demuestra telemetría live, OBS, DPI mixto ni estados
+en movimiento. Estos aspectos requieren la revisión y pruebas del orquestador.
+Notion no está disponible según el encargo: reconciliación pendiente por el
+orquestador. Entrega local en `vantareapp/isa-1427-w-standings2`, base `13dc3b22`,
+sin push, PR, CI remoto, integración ni promoción.
+
+Registro de infraestructura previo (2026-09-29): las escenas
 `standings`, `radar` y `pedals` reconstruyen los canales que domain representa
 del runtime congelado. El radar aún deriva el solapamiento (a 4 m exactos difiere
 del booleano del demo) y no representa `lapped`; estos límites del porte visual
-existente no se resuelven en esta infraestructura. La configuración/altura de
-Standings de fase 2 tampoco se porta aquí.
+existente no se resuelven en esta infraestructura. El tamaño de Standings de
+fase 2 se corrige en la entrega anterior del 2026-09-30; los valores de este
+registro corresponden a la base de infraestructura.
 
 Seguimiento de este lote: [GitHub #1427](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1427),
 base `c0cd37e7`, rama `vantareapp/isa-1427-f2-infra`. Notion no disponible según
@@ -140,7 +204,7 @@ Validación de infraestructura (2026-09-29): Workshop `standings-44` =
 con umbral 0. Capturas de fase 2: radar 220 × 220, 8,2665 %; pedales 120 × 160,
 8,5104 % (ambos superan el límite de 4 % y el script sale con 1). Standings de
 fase 2 detecta tamaño distinto (474 × 364 frente a 440 × 664, salida 2).
-Son límites pendientes de los portes, no gates de paridad aprobados.
+Eran límites pendientes de los portes, no gates de paridad aprobados en esa base.
 
 ## Una ventana por monitor
 

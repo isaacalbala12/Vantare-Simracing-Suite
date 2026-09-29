@@ -2221,3 +2221,20 @@ OBS. R19 continúa parcial hasta probar apertura/cierre de las tres superficies
 en una app visible. R20 debe demostrar reinicio, secuencias y recuperación de
 facts; R23 empaquetado; R25 CPU total ≤50% de Go con p99/RSS. No se habilita
 Rust por defecto ni se retira Go con este corte.
+
+## 120. Cursores tras reinicio del hijo (2026-09-29)
+
+El receptor IPC valida cada instancia con sus cursores Rust originales. Tras
+una desconexión, el adaptador del producto declara un límite de facts si ya
+había aceptado alguno y traduce la nueva época del hijo a una época posterior
+a la última publicada. Overlay, Engineer, Strategy y facts comparten la misma
+traducción; el ACK al hijo conserva el cursor Rust. Una regresión reproduce
+dos snapshots Strategy separados por un reinicio con época Rust 1 en ambos y
+demuestra dos publicaciones aceptadas. Otras pruebas cubren todos los
+productos, reinicio antes del primer producto y límite de facts.
+
+`go test ./internal/app` focal pasó. La CI del SHA anterior detectó cuatro
+avisos Staticcheck nuevos de capitalización; este corte los corrige y debe
+repetir el ratchet remoto. R20 sigue parcial: faltan crash real durante facts,
+replay/resync de nueva instancia, colas, suspensión, Stop concurrente y
+observabilidad acotada. No atribuir a esta prueba un recovery físico completo.

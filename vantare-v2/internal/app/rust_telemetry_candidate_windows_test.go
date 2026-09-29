@@ -12,14 +12,21 @@ import (
 	"time"
 
 	performancepolicy "github.com/vantare/overlays/v2/internal/app/performance"
+	"github.com/vantare/overlays/v2/internal/app/telemetryprocess"
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
+	telemetrycore "github.com/vantare/overlays/v2/internal/telemetry/core"
+	"github.com/vantare/overlays/v2/internal/telemetry/driver"
+	"github.com/vantare/overlays/v2/internal/telemetry/projection"
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2"
+	strategyprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 )
 
 type rustCandidateEngineerProbe struct {
 	observations chan engineerprojection.ObservationSnapshotV1
 	facts        chan engineerprojection.FactEnvelopeV1
+	boundaries   chan engineerprojection.FactResyncRequiredError
 	available    atomic.Bool
 	rejections   atomic.Int64
 }
@@ -50,7 +57,10 @@ func (probe *rustCandidateEngineerProbe) ConsumeFact(value engineerprojection.Fa
 	}
 	return nil
 }
-func (*rustCandidateEngineerProbe) ConsumeFactBoundary(*engineerprojection.FactResyncRequiredError) error {
+func (probe *rustCandidateEngineerProbe) ConsumeFactBoundary(boundary *engineerprojection.FactResyncRequiredError) error {
+	if probe.boundaries != nil {
+		probe.boundaries <- *boundary
+	}
 	return nil
 }
 
@@ -70,6 +80,111 @@ func TestRustCandidateDisabledLifecycleIsTerminal(t *testing.T) {
 	}
 	if err := runtime.Start(t.Context()); !errors.Is(err, ErrRustCandidateLifecycle) {
 		t.Fatalf("restart after Stop = %v", err)
+	}
+}
+
+func TestRustCandidateRestartAdvancesAllProductEpochs(t *testing.T) {
+	runtime := &RustTelemetryCandidateRuntime{lastEpoch: 4, lastFact: telemetrycore.FactSequence(9), newChild: true}
+	if err := runtime.translateEpoch(&telemetryprocess.ReceivedV1{
+		Configuration: &telemetryprocess.ConfigurationAckV1{Epoch: 1},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if runtime.lastFact != 0 {
+		t.Fatal("old child fact cursor survived restart")
+	}
+	event := telemetryprocess.ReceivedV1{
+		Overlay:  &overlayv2.UpdateV2{Frame: &overlayv2.FrameV2{StreamEpoch: 1}},
+		Engineer: &engineerprojection.SnapshotV1{Metadata: projection.Metadata{Epoch: schema.Epoch(1)}},
+		Strategy: &strategyprojection.SnapshotV1{Metadata: projection.Metadata{Epoch: schema.Epoch(1)}},
+		Facts:    []engineerprojection.FactEnvelopeV1{{Metadata: projection.Metadata{Epoch: schema.Epoch(1)}}},
+	}
+	if err := runtime.translateEpoch(&event); err != nil {
+		t.Fatal(err)
+	}
+	if event.Overlay.Frame.StreamEpoch != 5 || event.Engineer.Epoch != 5 || event.Strategy.Epoch != 5 || event.Facts[0].Epoch != 5 {
+		t.Fatalf("product cursors did not advance together: %+v", event)
+	}
+	if runtime.lastEpoch != 5 {
+		t.Fatalf("last epoch = %d", runtime.lastEpoch)
+	}
+	if err := runtime.translateEpoch(&telemetryprocess.ReceivedV1{
+		Strategy: &strategyprojection.SnapshotV1{Metadata: projection.Metadata{Epoch: schema.Epoch(2)}},
+	}); err != nil || runtime.lastEpoch != 6 {
+		t.Fatalf("session epoch after restart = %d, %v", runtime.lastEpoch, err)
+	}
+}
+
+func TestRustCandidateRestartBeforeFirstProductKeepsChildEpoch(t *testing.T) {
+	runtime := &RustTelemetryCandidateRuntime{newChild: true}
+	if err := runtime.translateEpoch(&telemetryprocess.ReceivedV1{
+		Configuration: &telemetryprocess.ConfigurationAckV1{Epoch: 2},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	event := telemetryprocess.ReceivedV1{
+		Strategy: &strategyprojection.SnapshotV1{Metadata: projection.Metadata{Epoch: schema.Epoch(2)}},
+	}
+	if err := runtime.translateEpoch(&event); err != nil || event.Strategy.Epoch != 2 {
+		t.Fatalf("first product epoch = %d, %v", event.Strategy.Epoch, err)
+	}
+}
+
+func TestRustCandidateDisconnectDeclaresFactLossBeforeRestart(t *testing.T) {
+	probe := &rustCandidateEngineerProbe{boundaries: make(chan engineerprojection.FactResyncRequiredError, 1)}
+	runtime, err := NewRustTelemetryCandidateRuntime(RustTelemetryCandidateConfig{Engineer: probe})
+	if err != nil {
+		t.Fatal(err)
+	}
+	runtime.lastEpoch = 3
+	runtime.lastFact = 8
+	runtime.handleDisconnected(errors.New("test child crash"))
+	select {
+	case boundary := <-probe.boundaries:
+		if boundary.Previous != 8 || boundary.Next != 0 {
+			t.Fatalf("fact loss boundary = %+v", boundary)
+		}
+	default:
+		t.Fatal("missing Engineer fact loss boundary")
+	}
+	runtime.mu.Lock()
+	defer runtime.mu.Unlock()
+	if !runtime.newChild || runtime.attempt != 1 || runtime.status != driver.StateError {
+		t.Fatalf("disconnect state: newChild=%v attempt=%d state=%v", runtime.newChild, runtime.attempt, runtime.status)
+	}
+}
+
+func TestRustCandidateStrategyResumesAfterChildEpochReset(t *testing.T) {
+	runtime, err := NewRustTelemetryCandidateRuntime(RustTelemetryCandidateConfig{StrategyPublicTransport: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runtime.setStatus(driver.StateDetecting, 0, 0); err != nil {
+		t.Fatal(err)
+	}
+	metadata := projection.Metadata{
+		CanonicalVersion:  schema.CanonicalVersionV1,
+		ProjectionVersion: strategyprojection.CurrentVersion,
+		Epoch:             1, Sequence: 1, CapturedAt: time.Now().UTC().Format(time.RFC3339Nano),
+	}
+	if err := runtime.deliver(telemetryprocess.ReceivedV1{
+		Strategy: &strategyprojection.SnapshotV1{Metadata: metadata},
+	}); err != nil {
+		t.Fatalf("first Strategy snapshot: %v", err)
+	}
+	runtime.handleDisconnected(errors.New("test child restart"))
+	if err := runtime.deliver(telemetryprocess.ReceivedV1{
+		Configuration: &telemetryprocess.ConfigurationAckV1{Epoch: 1},
+	}); err != nil {
+		t.Fatalf("new child configuration: %v", err)
+	}
+	if err := runtime.deliver(telemetryprocess.ReceivedV1{
+		Strategy: &strategyprojection.SnapshotV1{Metadata: metadata},
+	}); err != nil {
+		t.Fatalf("Strategy snapshot after restart: %v", err)
+	}
+	if got := runtime.StrategyHub().Metrics().SnapshotPublications; got != 2 {
+		t.Fatalf("Strategy snapshots after restart = %d", got)
 	}
 }
 

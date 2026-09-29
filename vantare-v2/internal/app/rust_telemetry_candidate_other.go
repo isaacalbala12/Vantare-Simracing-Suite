@@ -11,7 +11,7 @@ import (
 	"github.com/vantare/overlays/v2/internal/telemetry/driver"
 )
 
-var ErrRustCandidateLifecycle = errors.New("Rust telemetry candidate requires Windows")
+var ErrRustCandidateLifecycle = errors.New("rust telemetry candidate requires Windows")
 
 type RustTelemetryCandidateConfig struct {
 	Executable              string

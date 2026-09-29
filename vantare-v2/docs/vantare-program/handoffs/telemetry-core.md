@@ -1,5 +1,17 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — épocas al reiniciar el hijo, R20 parcial (2026-09-29)
+
+El IPC conserva el cursor Rust para validación y ACK; el adaptador productivo
+traduce a una época creciente cuando el supervisor arranca otro hijo. Los
+cuatro productos usan la misma traducción y Engineer recibe un límite de
+facts si el hijo anterior ya había entregado alguno. Regresiones cubren
+Strategy tras reinicio, cursores conjuntos y límite de facts; focal Go pasó.
+Queda ensayo físico de crash/replay, colas, suspensión y Stop concurrente.
+Cuatro avisos Staticcheck nuevos detectados por la CI de `901b4df1` se
+corrigieron aquí; falta verificar el nuevo SHA remoto. Go continúa por defecto,
+PR #1415 draft y sin promoción. Plan §120.
+
 ## VAN-778 / ISA-1403 — candidato integrado parcial R19 (2026-09-29)
 
 `-telemetry-rust-candidate` selecciona el hijo Rust con ruta absoluta antes de

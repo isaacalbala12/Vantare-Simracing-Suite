@@ -23,9 +23,10 @@ import (
 	engineerprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/engineer"
 	"github.com/vantare/overlays/v2/internal/telemetry/projection/overlayv2"
 	strategyprojection "github.com/vantare/overlays/v2/internal/telemetry/projection/strategy"
+	"github.com/vantare/overlays/v2/internal/telemetry/schema"
 )
 
-var ErrRustCandidateLifecycle = errors.New("Rust telemetry candidate lifecycle is invalid")
+var ErrRustCandidateLifecycle = errors.New("rust telemetry candidate lifecycle is invalid")
 
 // RustTelemetryCandidateConfig selects the isolated Windows candidate. No Go
 // simulator is constructed or started on this path.
@@ -59,6 +60,10 @@ type RustTelemetryCandidateRuntime struct {
 	wailsDone    chan struct{}
 	runErr       error
 	updates      chan telemetryprocess.ConfigurationV1
+	epochOffset  uint64
+	lastEpoch    uint64
+	newChild     bool
+	lastFact     telemetrycore.FactSequence
 }
 
 func NewRustTelemetryCandidateRuntime(config RustTelemetryCandidateConfig) (*RustTelemetryCandidateRuntime, error) {
@@ -75,7 +80,7 @@ func NewRustTelemetryCandidateRuntime(config RustTelemetryCandidateConfig) (*Rus
 		Product: telemetrytransport.ProductOverlayV2, SectionEncoding: config.OverlaySections,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Rust Overlay publisher: %w", err)
+		return nil, fmt.Errorf("rust Overlay publisher: %w", err)
 	}
 	set, err := capability.Resolve(DefaultTelemetrySimulator().Capabilities, nil)
 	if err != nil {
@@ -83,7 +88,7 @@ func NewRustTelemetryCandidateRuntime(config RustTelemetryCandidateConfig) (*Rus
 	}
 	manifest, err := engineerprojection.NewManifest(engineerCapabilities(set))
 	if err != nil {
-		return nil, fmt.Errorf("Rust Engineer manifest: %w", err)
+		return nil, fmt.Errorf("rust Engineer manifest: %w", err)
 	}
 	var strategy *telemetrytransport.Hub
 	if config.StrategyPublicTransport {
@@ -241,14 +246,7 @@ func (runtime *RustTelemetryCandidateRuntime) run(ctx context.Context, initial t
 			}
 		}
 	}()
-	err := telemetryprocess.RunCandidateWithUpdates(ctx, runtime.config.Executable, initial, runtime.updates, runtime.deliver, func(error) {
-		runtime.mu.Lock()
-		attempt := runtime.attempt + 1
-		runtime.mu.Unlock()
-		if statusErr := runtime.setStatus(driver.StateError, attempt, 0); statusErr != nil {
-			log.Printf("Rust telemetry disconnect status delivery: %v", statusErr)
-		}
-	})
+	err := telemetryprocess.RunCandidateWithUpdates(ctx, runtime.config.Executable, initial, runtime.updates, runtime.deliver, runtime.handleDisconnected)
 	terminal := ctx.Err() == nil && err != nil
 	runtime.cancel()
 	<-refreshDone
@@ -259,6 +257,23 @@ func (runtime *RustTelemetryCandidateRuntime) run(ctx context.Context, initial t
 		if statusErr := runtime.setStatus(driver.StateError, runtime.SourceStatus().ReconnectAttempt, 0); statusErr != nil {
 			log.Printf("Rust telemetry terminal status delivery: %v", statusErr)
 		}
+	}
+}
+
+func (runtime *RustTelemetryCandidateRuntime) handleDisconnected(cause error) {
+	runtime.mu.Lock()
+	attempt := runtime.attempt + 1
+	runtime.newChild = true
+	lastFact := runtime.lastFact
+	runtime.mu.Unlock()
+	if lastFact != 0 && runtime.config.Engineer != nil {
+		if boundaryErr := runtime.config.Engineer.ConsumeFactBoundary(&engineerprojection.FactResyncRequiredError{Previous: lastFact}); boundaryErr != nil {
+			log.Printf("Rust telemetry fact boundary after disconnect: %v", boundaryErr)
+		}
+	}
+	log.Printf("Rust telemetry child disconnected: %v", cause)
+	if statusErr := runtime.setStatus(driver.StateError, attempt, 0); statusErr != nil {
+		log.Printf("Rust telemetry disconnect status delivery: %v", statusErr)
 	}
 }
 
@@ -310,6 +325,9 @@ func (runtime *RustTelemetryCandidateRuntime) configurationLocked(revision uint6
 }
 
 func (runtime *RustTelemetryCandidateRuntime) deliver(event telemetryprocess.ReceivedV1) error {
+	if err := runtime.translateEpoch(&event); err != nil {
+		return err
+	}
 	if event.Status != nil {
 		state, err := rustCandidateDriverState(event.Status.State)
 		if err != nil {
@@ -389,11 +407,78 @@ func (runtime *RustTelemetryCandidateRuntime) deliver(event telemetryprocess.Rec
 		if err := runtime.config.Engineer.ConsumeFact(fact); err != nil {
 			return err
 		}
+		runtime.mu.Lock()
+		runtime.lastFact = fact.Fact.Sequence
+		runtime.mu.Unlock()
 	}
 	if event.Resync != nil && runtime.config.Engineer != nil {
 		return runtime.config.Engineer.ConsumeFactBoundary(&engineerprojection.FactResyncRequiredError{
 			Previous: telemetrycore.FactSequence(event.Resync.First - 1), Next: telemetrycore.FactSequence(event.Resync.Next),
 		})
+	}
+	return nil
+}
+
+// The child starts its epoch at one on each process launch. Product consumers
+// stay alive across a supervisor restart, so their cursor must keep moving
+// forward. The translation applies only after the IPC receiver validated the
+// original child stream and does not change fact ACKs sent back to Rust.
+func (runtime *RustTelemetryCandidateRuntime) translateEpoch(event *telemetryprocess.ReceivedV1) error {
+	runtime.mu.Lock()
+	defer runtime.mu.Unlock()
+	if event.Configuration != nil && runtime.newChild {
+		if event.Configuration.Epoch == 0 || runtime.lastEpoch == ^uint64(0) {
+			return ErrRustCandidateLifecycle
+		}
+		if runtime.lastEpoch != 0 {
+			if event.Configuration.Epoch > runtime.lastEpoch+1 {
+				return ErrRustCandidateLifecycle
+			}
+			runtime.epochOffset = runtime.lastEpoch + 1 - event.Configuration.Epoch
+		}
+		runtime.newChild = false
+		runtime.lastFact = 0
+	}
+	mapEpoch := func(raw uint64) (uint64, error) {
+		if raw == 0 || raw > ^uint64(0)-runtime.epochOffset {
+			return 0, ErrRustCandidateLifecycle
+		}
+		mapped := raw + runtime.epochOffset
+		if mapped < runtime.lastEpoch {
+			return 0, ErrRustCandidateLifecycle
+		}
+		if mapped > runtime.lastEpoch {
+			runtime.lastEpoch = mapped
+		}
+		return mapped, nil
+	}
+	if event.Overlay != nil && event.Overlay.Frame != nil {
+		mapped, err := mapEpoch(event.Overlay.Frame.StreamEpoch)
+		if err != nil {
+			return err
+		}
+		event.Overlay.Frame.StreamEpoch = mapped
+	}
+	if event.Engineer != nil {
+		mapped, err := mapEpoch(uint64(event.Engineer.Metadata.Epoch))
+		if err != nil {
+			return err
+		}
+		event.Engineer.Metadata.Epoch = schema.Epoch(mapped)
+	}
+	if event.Strategy != nil {
+		mapped, err := mapEpoch(uint64(event.Strategy.Metadata.Epoch))
+		if err != nil {
+			return err
+		}
+		event.Strategy.Metadata.Epoch = schema.Epoch(mapped)
+	}
+	for index := range event.Facts {
+		mapped, err := mapEpoch(uint64(event.Facts[index].Metadata.Epoch))
+		if err != nil {
+			return err
+		}
+		event.Facts[index].Metadata.Epoch = schema.Epoch(mapped)
 	}
 	return nil
 }

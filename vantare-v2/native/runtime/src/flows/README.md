@@ -1,10 +1,34 @@
-# Flujos mínimos — ISA-1425 / ADR 0099 §2
+# Flujos de eventos — ISA-1425 / ISA-1428 / ADR 0099 §2
 
 Prueba de frontera interna del runtime; no hay transporte IPC, consumidor
 Engineer ni flag CLI. `Core::new` deja recording desactivado.
 `Core::with_flows(epoch, retention, Some(path))` es el opt-in de recording.
 La época la inyecta el propietario y debe crecer al reiniciar; no se lee reloj
 de pared.
+
+Fase 3 añade `Journal::set_recording(Some(path) | None)` y
+`recording_status()` (`Disabled`, `Active`, `Degraded(ErrorKind)`). Apertura,
+cambio de modo y `persist()` hacen I/O: el propietario debe ejecutarlos fuera
+de adquisición. No hay escritura en `observe`. Desactivar no hace flush y
+conserva acceso de lectura al prefijo confirmado, sin grabar eventos nuevos.
+Un solo archivo por journal; no se permite cambiar ruta perdiendo ese acceso.
+Activar estando activo es idempotente, sin descartar eventos pendientes.
+
+Activar tarde o reactivar escribe y sincroniza `[2, index, epoch]`, base de
+segmento, antes de grabar nuevos eventos v1. Nunca persiste retroactivamente
+el tramo desactivado. Una base no confirma un evento: `durable_cursor()` sigue
+siendo el último evento efectivamente sincronizado. En el núcleo vivo el
+consumidor recupera los tramos volátiles aún retenidos; tras perderlos, la
+lectura del archivo declara `RecordingDisabled` hasta la siguiente base.
+Una base seguida de reinicio puede dar dos fronteras (recording y época).
+
+Fallos de apertura, append, fsync o retención pendiente producen estado
+degradado; no hay retry automático de escritura incierta. La reactivación
+explícita reabre y sincroniza el prefijo legible, y fija otra base. Las fotos
+y los eventos en memoria siguen funcionando. El test de disco lleno inyecta
+el código de sistema 112 (Windows) en append y fsync, sobre fichero real;
+no llena físicamente un disco. La cola rota y el handle sin permiso de
+escritura también se prueban con archivos reales.
 
 ## Eventos
 
@@ -148,11 +172,11 @@ LMU/OBS físico, caída de Windows, latencia ni presupuestos de rendimiento.
 Para reproducir las pruebas de este módulo, desde `native/`:
 
 ```powershell
-cargo test -p vantare-runtime --lib flows -j 4
+cargo test -p vantare-runtime --lib flows -j 2
 ```
 
 Los gates globales son `cargo fmt --check`,
-`cargo clippy --workspace --all-targets -j 4 -- -D warnings` y
-`cargo test --workspace -j 4`. Las dos pruebas live LMU del workspace siguen
+`cargo clippy --workspace --all-targets -j 2 -- -D warnings` y
+`cargo test --workspace -j 2`. Las pruebas live LMU/ACC del workspace siguen
 ignoradas por defecto y requieren el juego en marcha; no las sustituye este
 módulo. El orquestador mantiene el handoff vivo y revisa el diff completo.

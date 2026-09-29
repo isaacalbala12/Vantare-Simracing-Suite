@@ -145,3 +145,8 @@ Registrar resultados y tests ignorados; los tests físicos ignorados no son PASS
   (2m51s de compilación); test workspace offline `-j 2` exit 0 (7m41s de
   compilación). 4 pruebas live ignoradas (2 runtime, 1 grabadora LMU, 1 ACC);
   arquitectura, corpus/oráculo y los 7 escenarios de lifecycle PASS.
+- Corte 1: PASS fmt, clippy workspace/all-targets offline `-j 2 -D warnings`
+  (4,45 s), test workspace offline `-j 2` exit 0 (387 PASS contando lifecycle,
+  4 live ignorados; compilación incremental 20,88 s). Focal: 22 flujos PASS.
+  Se corrigió el nombre del getter señalado por clippy; ninguna supresión.
+  Dependencias de terceros nuevas: 0. `set_recording` conserva la API existente.

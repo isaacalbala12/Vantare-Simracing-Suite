@@ -32,6 +32,15 @@ pub enum GapReason {
     CoreRestart,
     Retention,
     InvalidCursor,
+    RecordingDisabled,
+}
+
+/// Degradar recording no detiene fotos ni el journal volátil.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RecordingStatus {
+    Disabled,
+    Active,
+    Degraded(io::ErrorKind),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -91,6 +100,7 @@ pub struct Journal {
     retention: usize,
     events: VecDeque<PitEvent>,
     recording: Option<Recording>,
+    recording_status: RecordingStatus,
 }
 
 impl Journal {
@@ -102,6 +112,7 @@ impl Journal {
             retention: DEFAULT_RETENTION,
             events: VecDeque::new(),
             recording: None,
+            recording_status: RecordingStatus::Disabled,
         }
     }
 
@@ -116,7 +127,7 @@ impl Journal {
         let recording = recording.map(Recording::open).transpose()?;
         if recording
             .as_ref()
-            .is_some_and(|r| r.last().is_some_and(|c| c.epoch >= epoch))
+            .is_some_and(|r| r.watermark().is_some_and(|c| c.epoch >= epoch))
         {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidInput,
@@ -125,7 +136,7 @@ impl Journal {
         }
         let index = recording
             .as_ref()
-            .and_then(Recording::last)
+            .and_then(Recording::watermark)
             .map_or(0, |c| c.index);
         let start = Cursor { epoch, index };
         Ok(Self {
@@ -133,6 +144,11 @@ impl Journal {
             start,
             retention,
             events: VecDeque::new(),
+            recording_status: if recording.is_some() {
+                RecordingStatus::Active
+            } else {
+                RecordingStatus::Disabled
+            },
             recording,
         })
     }
@@ -144,7 +160,47 @@ impl Journal {
 
     /// Durabilidad confirmada únicamente por `sync_all`, nunca por observar.
     pub fn durable_cursor(&self) -> Option<Cursor> {
-        self.recording.as_ref().and_then(Recording::last)
+        self.recording.as_ref().and_then(Recording::durable_event)
+    }
+
+    pub fn recording_status(&self) -> RecordingStatus {
+        self.recording_status
+    }
+
+    /// Opt-in/out fuera de adquisición. Activar tarde NO persiste el tramo
+    /// volátil anterior. Un solo fichero por journal conserva los confirmados.
+    /// Desactivar conserva el archivo para recuperación, sin escribir nada.
+    pub fn set_recording(&mut self, path: Option<&Path>) -> io::Result<()> {
+        let Some(path) = path else {
+            self.recording_status = RecordingStatus::Disabled;
+            return Ok(());
+        };
+        if let Some(recording) = &self.recording {
+            if recording.path() != path {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "un solo fichero de recording por journal",
+                ));
+            }
+            if self.recording_status == RecordingStatus::Active {
+                return Ok(());
+            }
+        }
+        let result = Recording::open(path).and_then(|mut recording| {
+            recording.begin(self.tail)?;
+            Ok(recording)
+        });
+        match result {
+            Ok(recording) => {
+                self.recording = Some(recording);
+                self.recording_status = RecordingStatus::Active;
+                Ok(())
+            }
+            Err(error) => {
+                self.recording_status = RecordingStatus::Degraded(error.kind());
+                Err(error)
+            }
+        }
     }
 
     /// Persiste la cola y confirma durabilidad. Sin recording devuelve `None`.
@@ -152,11 +208,24 @@ impl Journal {
     /// una historia incompleta como si fuera continua. Un error de disco también
     /// se devuelve; el núcleo sigue publicando fotos y eventos volátiles.
     pub fn persist(&mut self) -> io::Result<Option<Cursor>> {
+        match self.recording_status {
+            RecordingStatus::Disabled => return Ok(None),
+            RecordingStatus::Degraded(kind) => {
+                return Err(io::Error::new(
+                    kind,
+                    "recording degradado; reactivar explícitamente",
+                ));
+            }
+            RecordingStatus::Active => {}
+        }
         let Some(recording) = &mut self.recording else {
             return Ok(None);
         };
-        recording.persist(&self.events)?;
-        Ok(recording.last())
+        if let Err(error) = recording.persist(&self.events) {
+            self.recording_status = RecordingStatus::Degraded(error.kind());
+            return Err(error);
+        }
+        Ok(recording.durable_event())
     }
 
     pub(crate) fn observe(&mut self, previous: &Snapshot, next: &Snapshot) {
@@ -175,7 +244,16 @@ impl Journal {
         if before.id != after.id || was_in_pits == in_pits {
             return;
         }
-        self.tail.index += 1;
+        let Some(index) = self
+            .tail
+            .index
+            .checked_add(1)
+            .filter(|index| *index < u64::MAX)
+        else {
+            self.recording_status = RecordingStatus::Degraded(io::ErrorKind::InvalidData);
+            return;
+        };
+        self.tail.index = index;
         if self.events.len() == self.retention {
             self.events.pop_front();
         }
@@ -197,15 +275,22 @@ impl Journal {
     }
 
     fn read(&self, cursor: Cursor) -> io::Result<Option<Delivery>> {
+        // En el núcleo vivo también se recuperan tramos no grabados que aún
+        // estén retenidos. Las bases de disco solo saltan huecos ya perdidos.
+        if cursor.epoch == self.tail.epoch
+            && let Some(event) = self
+                .events
+                .iter()
+                .find(|event| cursor.index.checked_add(1) == Some(event.cursor.index))
+        {
+            return Ok(Some(Delivery::Event(*event)));
+        }
         // Un cursor de una época anterior puede recuperar su prefijo durable.
         if let Some(recording) = &self.recording {
             match recording.read(cursor, self.start)? {
                 super::recording::Read::Event(event) => return Ok(Some(Delivery::Event(event))),
-                super::recording::Read::Boundary(resume_at) => {
-                    return Ok(Some(Delivery::Gap {
-                        reason: GapReason::CoreRestart,
-                        resume_at,
-                    }));
+                super::recording::Read::Boundary(reason, resume_at) => {
+                    return Ok(Some(Delivery::Gap { reason, resume_at }));
                 }
                 super::recording::Read::Invalid => {
                     if cursor.epoch != self.tail.epoch {
@@ -242,6 +327,67 @@ impl Journal {
                 Ok(Some(Delivery::Event(*event)))
             }
             _ => Ok(Some(self.gap(GapReason::Retention))),
+        }
+    }
+}
+
+#[cfg(test)]
+mod failure_tests {
+    use super::*;
+    use crate::flows::tests::{TestFile, photo};
+
+    #[test]
+    fn disk_full_and_failed_sync_degrade_without_confirming_or_stopping_memory() {
+        // Inyección del error de sistema de disco lleno en append y fsync.
+        // No llena un disco real; el fichero y el journal sí son productivos.
+        let full = if cfg!(windows) { 112 } else { 28 };
+        for sync in [false, true] {
+            let file = TestFile::new();
+            let mut journal = Journal::open(1, 2, Some(&file.0)).unwrap();
+            let before = Snapshot {
+                epoch: 1,
+                sequence: 1,
+                state: photo(1, false).state,
+                ..Snapshot::default()
+            };
+            let after = Snapshot {
+                epoch: 1,
+                sequence: 2,
+                state: photo(2, true).state,
+                ..Snapshot::default()
+            };
+            journal.observe(&before, &after);
+            let recording = journal.recording.as_mut().unwrap();
+            if sync {
+                recording.fail_sync = Some(full);
+            } else {
+                recording.fail_write = Some(full);
+            }
+            let error = journal.persist().unwrap_err();
+            assert_eq!(error.raw_os_error(), Some(full));
+            assert_eq!(
+                journal.recording_status(),
+                RecordingStatus::Degraded(error.kind())
+            );
+            assert_eq!(journal.durable_cursor(), None);
+            assert!(journal.persist().is_err(), "no retry incierto");
+            let mut consumer = Consumer::new(Cursor { epoch: 1, index: 0 });
+            assert!(matches!(
+                consumer.poll(&journal).unwrap(),
+                Some(Delivery::Event(_))
+            ));
+            journal.observe(
+                &after,
+                &Snapshot {
+                    sequence: 3,
+                    ..before
+                },
+            );
+            consumer.ack();
+            assert!(matches!(
+                consumer.poll(&journal).unwrap(),
+                Some(Delivery::Event(_))
+            ));
         }
     }
 }

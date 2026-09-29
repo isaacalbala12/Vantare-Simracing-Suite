@@ -23,6 +23,7 @@
 mod app;
 #[cfg(feature = "parity-capture")]
 pub mod capture;
+pub mod efficiency;
 mod overlay;
 mod pedals;
 mod radar;
@@ -30,6 +31,5 @@ pub mod source;
 pub mod standings;
 #[cfg(feature = "paint-stats")]
 mod stats;
-mod text;
 
 pub use app::{Kind, layout_row, run, run_placed};

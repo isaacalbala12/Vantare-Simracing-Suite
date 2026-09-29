@@ -5,8 +5,8 @@
 use gpui::{App, BorderStyle, Corners, Edges, Window, px, quad};
 use vantare_domain::{Capability, radar::ViewModel};
 
-use crate::standings::view::{col, paint_rect, rect};
-use crate::text::{self, Ink};
+use crate::efficiency::text::{self, ink};
+use crate::efficiency::{col, paint_rect, rect, tokens};
 
 pub const SIZE: (f32, f32) = (220.0, 220.0);
 const CENTER: f32 = 110.0;
@@ -31,12 +31,7 @@ fn paint_car(window: &mut Window, cx: f32, cy: f32, fill: u32) {
 
 pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     if vm.capability < Capability::WithData {
-        let ink = Ink {
-            size: 11.0,
-            weight: 500.0,
-            tracking: 0.0,
-            color: col(0xd5d5d8, 1.0),
-        };
+        let ink = ink(11.0, 500.0, 0.0, col(0xd5d5d8, 1.0));
         let message = "Sin posición espacial";
         let x = (SIZE.0 - text::width(window, message, &ink)) / 2.0;
         text::draw(
@@ -66,7 +61,7 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
             ));
         }
     }
-    paint_car(window, CENTER, CENTER, 0xf5f5f5);
+    paint_car(window, CENTER, CENTER, tokens::INK);
     for car in &vm.cars {
         let fill = if car.overlap { 0xf09a52 } else { 0x76b7da };
         // `right_m` crece a la derecha y `ahead_m` hacia delante (arriba en pantalla).

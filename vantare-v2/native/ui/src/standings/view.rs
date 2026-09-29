@@ -6,10 +6,11 @@
 
 use super::model::{self, Align, Config, Labels, Metric, Plan, ROW_HEIGHT, Row, Status, Vm};
 use super::motion::{Frame, RowVis};
-use crate::text::{self, Ink};
+use crate::efficiency::text::{self, ink};
+use crate::efficiency::{self, paint_rect, rect, tokens};
 use gpui::{
-    App, BorderStyle, Bounds, BoxShadow, ContentMask, Corners, Edges, Hsla, PathBuilder, Pixels,
-    Point, Rgba, Window, fill, linear_color_stop, linear_gradient, point, px, quad, size,
+    App, BorderStyle, BoxShadow, ContentMask, Corners, Edges, Hsla, PathBuilder, Pixels, Point,
+    Window, fill, linear_color_stop, linear_gradient, point, px, quad,
 };
 use std::{
     cell::{Cell, RefCell},
@@ -47,35 +48,12 @@ fn with_opacity<R>(value: f32, f: impl FnOnce() -> R) -> R {
     result
 }
 
-pub fn col(hex: u32, alpha: f32) -> Hsla {
-    Rgba {
-        r: ((hex >> 16) & 0xff) as f32 / 255.0,
-        g: ((hex >> 8) & 0xff) as f32 / 255.0,
-        b: (hex & 0xff) as f32 / 255.0,
-        a: alpha * opacity(),
-    }
-    .into()
+fn col(hex: u32, alpha: f32) -> Hsla {
+    efficiency::col(hex, alpha * opacity())
 }
 
 fn transparent() -> Hsla {
     col(0x000000, 0.0)
-}
-
-/// Chrome ajusta a pixel redondeando la mitad hacia arriba; GPUI la redondea
-/// hacia cero (10,5 -> 10), asi que los bordes se ajustan aqui.
-fn snap(value: f32) -> f32 {
-    (value + 0.5).floor()
-}
-
-pub(crate) fn rect(x: f32, y: f32, w: f32, h: f32) -> Bounds<Pixels> {
-    let (ox, oy) = text::origin();
-    let (x, y) = (x + ox, y + oy);
-    let (left, top) = (snap(x), snap(y));
-    let (right, bottom) = (snap(x + w).max(left), snap(y + h).max(top));
-    Bounds::new(
-        point(px(left), px(top)),
-        size(px(right - left), px(bottom - top)),
-    )
 }
 
 fn pt(x: f32, y: f32) -> Point<Pixels> {
@@ -99,12 +77,6 @@ fn flag_rgb(flag: Option<&FlagKind>) -> u32 {
 // ---------------------------------------------------------------------------
 // Primitivas
 // ---------------------------------------------------------------------------
-
-pub(crate) fn paint_rect(window: &mut Window, x: f32, y: f32, w: f32, h: f32, color: Hsla) {
-    if w > 0.0 && h > 0.0 {
-        window.paint_quad(fill(rect(x, y, w, h), color));
-    }
-}
 
 /// Recorta un poligono convexo por el semiplano `nx*x + ny*y >= d`.
 fn clip_half_plane(poly: &[(f32, f32)], nx: f32, ny: f32, d: f32) -> Vec<(f32, f32)> {
@@ -223,15 +195,6 @@ fn paint_flag_ribbon(window: &mut Window, flag: Option<&FlagKind>, width: f32) {
 // Texto de celdas
 // ---------------------------------------------------------------------------
 
-fn ink(size: f32, weight: f32, tracking_em: f32, color: Hsla) -> Ink {
-    Ink {
-        size,
-        weight,
-        tracking: tracking_em * size,
-        color,
-    }
-}
-
 /// Coloca un texto de una linea `line_height` dentro de una caja alineada en
 /// horizontal; devuelve el x del borde izquierdo del texto.
 fn aligned_x(align: Align, left: f32, width: f32, text_width: f32) -> f32 {
@@ -275,17 +238,10 @@ pub fn paint(scene: &Scene, window: &mut Window, cx: &mut App) {
     // Panel: fondo + degradado de 120 grados (solo el primer tramo, el resto
     // suma menos de 1 % de blanco).
     let panel = rect(0.0, 0.0, width, height);
+    efficiency::paint_panel(window, width, height, 0.87);
     window.paint_quad(quad(
         panel,
-        Corners::all(px(6.0)),
-        col(0x101113, 0.87),
-        Edges::all(px(0.0)),
-        transparent(),
-        BorderStyle::default(),
-    ));
-    window.paint_quad(quad(
-        panel,
-        Corners::all(px(6.0)),
+        Corners::all(px(tokens::RADIUS)),
         linear_gradient(
             120.0,
             linear_color_stop(col(0xffffff, 0.03), 0.0),
@@ -307,19 +263,12 @@ pub fn paint(scene: &Scene, window: &mut Window, cx: &mut App) {
     paint_footer(scene, &labels, window, cx);
 
     // Marco interior (::after): 1 px blanco 12 %, arriba 24 %.
-    window.paint_quad(quad(
-        panel,
-        Corners::all(px(6.0)),
-        transparent(),
-        Edges::all(px(1.0)),
-        col(0xffffff, 0.12),
-        BorderStyle::default(),
-    ));
+    efficiency::paint_frame(window, width, height);
     window.paint_quad(quad(
         rect(0.0, 0.0, width, 6.0),
         Corners {
-            top_left: px(6.0),
-            top_right: px(6.0),
+            top_left: px(tokens::RADIUS),
+            top_right: px(tokens::RADIUS),
             bottom_right: px(0.0),
             bottom_left: px(0.0),
         },
@@ -382,7 +331,7 @@ fn paint_table(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut App
             head_top + head_height - 1.0,
             tw,
             1.0,
-            col(0xf5f5f5, 0.10),
+            col(tokens::INK, 0.10),
         );
     }
     for &(first, span, tx, tw) in &th {
@@ -441,7 +390,7 @@ fn paint_session_header(
     let mid = top + model::SESSION_HEADER_HEIGHT / 2.0;
     if plan.brand_visible {
         paint_logo(window, cx, x, mid - 12.0);
-        let brand = ink(12.0, 700.0, 0.075, col(0xf5f5f5, 1.0));
+        let brand = ink(12.0, 700.0, 0.075, col(tokens::INK, 1.0));
         let base = text::baseline(mid - 6.0, 12.0, 12.0).round();
         text::draw(window, cx, "VANTARE", x + 24.0 + 6.0, base, &brand);
         x += 24.0 + 6.0 + text::width(window, "VANTARE", &brand) + 8.0;
@@ -468,9 +417,9 @@ fn paint_session_header(
         -0.025,
         col(
             if vm.status == Status::Stale {
-                0xb9b9bd
+                tokens::MUTED
             } else {
-                0xf5f5f5
+                tokens::INK
             },
             1.0,
         ),
@@ -481,7 +430,14 @@ fn paint_session_header(
     let context_w = 10.0 + type_w.max(clock_w);
     let context_h = 7.0 + 4.0 + text::css_normal_line(15.0);
     let context_top = mid - context_h / 2.0;
-    paint_rect(window, x, context_top, 1.0, context_h, col(0xf5f5f5, 0.23));
+    paint_rect(
+        window,
+        x,
+        context_top,
+        1.0,
+        context_h,
+        col(tokens::INK, 0.23),
+    );
     let text_x = x + 1.0 + 10.0;
     text::draw(
         window,
@@ -634,7 +590,7 @@ fn paint_column_label(
     let vm = &scene.vm;
     let label = labels.metric(column.metric, vm.pace_session);
     let color = if vm.pace_session && column.metric == Metric::BestLap {
-        col(0xf5f5f5, 1.0)
+        col(tokens::INK, 1.0)
     } else {
         col(0xbdbfc4, 1.0)
     };
@@ -676,7 +632,7 @@ fn paint_column_label(
                 label_top + label_h - 1.0,
                 17.0,
                 1.0,
-                col(0xf5f5f5, 0.35),
+                col(tokens::INK, 0.35),
             );
         },
     );
@@ -714,7 +670,7 @@ fn paint_row(
             ));
         }
         if vis.flash > 0.0 {
-            let base = if vis.flash_up { 0x7fb686 } else { 0xd95360 };
+            let base = if vis.flash_up { 0x7fb686 } else { tokens::LOSS };
             paint_rect(
                 window,
                 0.0,
@@ -744,7 +700,7 @@ fn paint_row(
                     top + ROW_HEIGHT - 1.0,
                     width,
                     1.0,
-                    col(0xf5f5f5, 0.10),
+                    col(tokens::INK, 0.10),
                 );
             }
         }
@@ -820,14 +776,14 @@ fn paint_cell(
             text::draw(window, cx, &row.driver_number, tx, base_for(11.0), &i);
         }
         Metric::DriverName => {
-            let i = ink(14.0, 700.0, -0.025, col(0xf5f5f5, 1.0));
+            let i = ink(14.0, 700.0, -0.025, col(tokens::INK, 1.0));
             let name = row.driver_name.to_uppercase();
             let avail = cw - 16.0 - 19.0 - 7.0;
             let shown = text::fit(window, &name, &i, avail);
             text::draw(window, cx, &shown, x + 8.0, base_for(14.0), &i);
             // Chip de cambio de posicion (+n / -n).
             if let Some((chip, alpha)) = &vis.chip {
-                let ci = ink(9.0, 700.0, -0.039, col(0xf5f5f5, *alpha));
+                let ci = ink(9.0, 700.0, -0.039, col(tokens::INK, *alpha));
                 let w = text::width(window, chip, &ci);
                 let cx0 = x + 8.0 + avail + 7.0 + 19.0 - w;
                 text::draw(window, cx, chip, cx0, base_for(9.0), &ci);
@@ -850,7 +806,7 @@ fn paint_cell(
             let (weight, color) = if pace {
                 (500.0, col(0xbdbdc2, 1.0))
             } else {
-                (650.0, col(0xf5f5f5, 1.0))
+                (650.0, col(tokens::INK, 1.0))
             };
             let i = ink(14.0, weight, -0.025, color);
             if let Some((number, unit)) = split_seconds(&value) {
@@ -881,11 +837,11 @@ fn paint_cell(
                 _ => (row.vehicle_class.clone(), false),
             };
             let (weight, color) = if is_lap && pace && column.metric == Metric::BestLap {
-                (650.0, col(0xf5f5f5, 1.0))
+                (650.0, col(tokens::INK, 1.0))
             } else if is_lap {
                 (600.0, col(0xe6e5e9, 1.0))
             } else {
-                (650.0, col(0xf5f5f5, 1.0))
+                (650.0, col(tokens::INK, 1.0))
             };
             let color = if column.metric == Metric::BestLap && is_best {
                 col(0xc9b1e9, 1.0)
@@ -988,7 +944,7 @@ fn paint_footer(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut Ap
     // El flex del producto deja el pie en 342,06 (0,94 px solapado con la tabla).
     let top = height - 21.94;
     paint_rect(window, 0.0, top, width, 21.94, col(0x000000, 0.15));
-    paint_rect(window, 0.0, top, width, 1.0, col(0xf5f5f5, 0.10));
+    paint_rect(window, 0.0, top, width, 1.0, col(tokens::INK, 0.10));
     let label_ink = ink(7.0, 600.0, 0.055, col(0xa7a9b0, 1.0));
     let value_ink = ink(10.0, 600.0, -0.015, col(0xe8e8ed, 1.0));
     let mut items = Vec::new();
@@ -1119,6 +1075,19 @@ fn paint_pit_rail(scene: &Scene, window: &mut Window, cx: &mut App) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn row_opacity_multiplies_alpha_without_affecting_other_widgets() {
+        with_opacity(0.5, || {
+            assert_eq!(col(tokens::INK, 0.8).a, 0.4);
+            with_opacity(0.5, || {
+                assert_eq!(col(tokens::INK, 0.8).a, 0.2);
+            });
+            assert_eq!(col(tokens::INK, 0.8).a, 0.4);
+            assert_eq!(efficiency::col(tokens::INK, 0.8).a, 0.8);
+        });
+        assert_eq!(col(tokens::INK, 0.8).a, 0.8);
+    }
 
     #[test]
     fn split_seconds_matches_the_production_regex() {

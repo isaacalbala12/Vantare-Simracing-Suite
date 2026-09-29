@@ -7,12 +7,17 @@ click-through, sin foco, sin marco DWM, DPI), el texto Inter con `letter-spacing
 
 ```powershell
 cd vantare-v2/native
-cargo run -p vantare-ui --release --bin vantare-overlays -- 4   # 1, 4 o 22 ventanas
+cargo run -p vantare-ui --release --bin vantare-overlays -- 4   # 1, 4 o 22 ventanas; datos del núcleo (pipe)
+cargo run -p vantare-ui --release --bin vantare-overlays -- 4 --fuente local   # sin núcleo
 ```
 
-Sin IPC todavía, el binario se alimenta de `source::local_feed()` (carrera
-sintética a 30 Hz). Para conectar el `Subscriber` de `ipc`, pasar su
-`flume::Receiver<Arc<Snapshot>>` a `vantare_ui::run` en lugar de `local_feed()`.
+El binario recibe los datos con `--fuente local|pipe[:<nombre>]`:
+
+- `pipe` (por defecto): `source::pipe_feed` conecta un `ipc::Subscriber` al
+  named pipe del núcleo (`vantare-core`; sin nombre, el mismo por defecto, con
+  el SID del usuario), reconecta solo y reenvía la foto más reciente a
+  `vantare_ui::run`. Los widgets no saben de dónde viene.
+- `local`: `source::local_feed()`, carrera sintética a 30 Hz, sin núcleo.
 
 Cada ventana proyecta la instantánea con el `ViewModel` de `domain` y solo
 repinta cuando ese ViewModel cambia (Standings: solo lo que se dibuja; mientras

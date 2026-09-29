@@ -1,6 +1,9 @@
-//! Proceso de overlays. Uso: `vantare-overlays [1|4|22] [--ventanas por-widget|una]`
+//! Proceso de overlays. Uso:
+//! `vantare-overlays [1|4|22] [--ventanas por-widget|una] [--fuente local|pipe[:<nombre>]]`
 //! abre ese número de widgets (campaña de medición), cada uno en su ventana
-//! (`por-widget`, por defecto) o todos en una ventana por monitor (`una`). Con la
+//! (`por-widget`, por defecto) o todos en una ventana por monitor (`una`), con los
+//! datos del núcleo por su named pipe (`pipe`, por defecto, con el nombre por
+//! defecto de `vantare-core`) o de una carrera sintética (`local`). Con la
 //! feature `parity-capture`, `vantare-overlays --parity-capture <png>` captura
 //! Standings con la escena fija.
 
@@ -9,20 +12,45 @@ use std::process::ExitCode;
 use vantare_domain::format::Preferences;
 use vantare_ui::Grouping;
 
-/// Sin número, un widget; si no, exactamente 1, 4 o 22. `--ventanas` es opcional.
-fn parse(args: &[String]) -> Option<(usize, Grouping)> {
-    let (mut count, mut grouping) = (None, Grouping::PerWidget);
+const USAGE: &str =
+    "uso: vantare-overlays [1|4|22] [--ventanas por-widget|una] [--fuente local|pipe[:<nombre>]]";
+
+#[derive(Debug, PartialEq)]
+enum Feed {
+    Local,
+    /// `None`: el nombre por defecto del usuario.
+    Pipe(Option<String>),
+}
+
+impl std::str::FromStr for Feed {
+    type Err = ();
+
+    fn from_str(text: &str) -> Result<Self, ()> {
+        match text.split_once(':') {
+            None if text == "local" => Ok(Self::Local),
+            None if text == "pipe" => Ok(Self::Pipe(None)),
+            Some(("pipe", name)) if !name.is_empty() => Ok(Self::Pipe(Some(name.into()))),
+            _ => Err(()),
+        }
+    }
+}
+
+/// Sin número, un widget; si no, exactamente 1, 4 o 22. Las opciones son opcionales.
+fn parse(args: &[String]) -> Option<(usize, Grouping, Feed)> {
+    let (mut count, mut grouping, mut feed) = (None, Grouping::PerWidget, Feed::Pipe(None));
     let mut args = args.iter();
     while let Some(arg) = args.next() {
         if arg == "--ventanas" {
             grouping = args.next()?.parse().ok()?;
+        } else if arg == "--fuente" {
+            feed = args.next()?.parse().ok()?;
         } else if count.is_none() {
             count = Some(arg.parse().ok().filter(|n| matches!(n, 1 | 4 | 22))?);
         } else {
             return None;
         }
     }
-    Some((count.unwrap_or(1), grouping))
+    Some((count.unwrap_or(1), grouping, feed))
 }
 
 fn main() -> ExitCode {
@@ -33,20 +61,31 @@ fn main() -> ExitCode {
     {
         return vantare_ui::capture::run(path.into());
     }
-    let Some((windows, grouping)) = parse(&args) else {
-        eprintln!("uso: vantare-overlays [1|4|22] [--ventanas por-widget|una]");
+    let Some((windows, grouping, feed)) = parse(&args) else {
+        eprintln!("{USAGE}");
         return ExitCode::from(2);
     };
-    // Mientras el IPC no esté integrado: fuente local de prueba. Aquí se
-    // enchufará el receptor del `Subscriber` de `ipc`.
-    let snapshots = vantare_ui::source::local_feed();
+    let snapshots = match feed {
+        Feed::Local => Ok(vantare_ui::source::local_feed()),
+        Feed::Pipe(name) => name
+            .map_or_else(vantare_ipc::default_pipe_name, Ok)
+            .map_err(Into::into)
+            .and_then(|name| vantare_ui::source::pipe_feed(&name)),
+    };
+    let snapshots = match snapshots {
+        Ok(snapshots) => snapshots,
+        Err(error) => {
+            eprintln!("vantare-overlays: {error}");
+            return ExitCode::FAILURE;
+        }
+    };
     vantare_ui::run(windows, grouping, snapshots, Preferences::default());
     ExitCode::SUCCESS
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{Grouping, parse};
+    use super::{Feed, Grouping, parse};
 
     fn args(list: &[&str]) -> Vec<String> {
         list.iter().map(|s| (*s).into()).collect()
@@ -54,20 +93,33 @@ mod tests {
 
     #[test]
     fn only_the_measured_window_counts_and_known_groupings_are_accepted() {
-        assert_eq!(parse(&args(&[])), Some((1, Grouping::PerWidget)));
-        assert_eq!(parse(&args(&["4"])), Some((4, Grouping::PerWidget)));
+        let pipe = || Feed::Pipe(None);
+        assert_eq!(parse(&args(&[])), Some((1, Grouping::PerWidget, pipe())));
+        assert_eq!(parse(&args(&["4"])), Some((4, Grouping::PerWidget, pipe())));
         assert_eq!(
             parse(&args(&["22", "--ventanas", "una"])),
-            Some((22, Grouping::OneWindow))
+            Some((22, Grouping::OneWindow, pipe()))
         );
         assert_eq!(
             parse(&args(&["--ventanas", "una", "4"])),
-            Some((4, Grouping::OneWindow))
+            Some((4, Grouping::OneWindow, pipe()))
         );
         assert_eq!(parse(&args(&["3"])), None);
         assert_eq!(parse(&args(&["x"])), None);
         assert_eq!(parse(&args(&["1", "4"])), None);
         assert_eq!(parse(&args(&["--ventanas"])), None);
         assert_eq!(parse(&args(&["--ventanas", "dos"])), None);
+    }
+
+    #[test]
+    fn the_source_is_local_or_a_pipe_with_an_optional_name() {
+        let feed = |text: &str| parse(&args(&["--fuente", text])).map(|(_, _, feed)| feed);
+        assert_eq!(feed("local"), Some(Feed::Local));
+        assert_eq!(feed("pipe"), Some(Feed::Pipe(None)));
+        assert_eq!(feed("pipe:mio"), Some(Feed::Pipe(Some("mio".into()))));
+        assert_eq!(feed("pipe:"), None);
+        assert_eq!(feed("local:x"), None);
+        assert_eq!(feed("tcp"), None);
+        assert_eq!(parse(&args(&["--fuente"])), None);
     }
 }

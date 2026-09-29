@@ -1,5 +1,11 @@
 # ADR 0097 — Telemetry Core live en un proceso hijo Rust
 
+> La decisión de Isaac del 2026-09-29 amplía el port a la distribución live y
+> sustituye el gate de CPU de esta ADR. La autoridad vigente para esos puntos es
+> [ADR 0098](0098-rust-end-to-end-live-telemetry.md). El texto siguiente conserva
+> el diseño y las mediciones anteriores como historia; no describe la frontera
+> final aprobada.
+
 Fecha: 2026-09-27. Issue: [ISA-1403](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1403).
 
 ## Estado y autoridad

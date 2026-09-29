@@ -2,6 +2,7 @@
 
 pub mod assembly;
 pub mod core;
+pub mod delivery;
 pub mod derive;
 pub mod engine;
 pub mod ipc;

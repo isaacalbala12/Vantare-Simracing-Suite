@@ -1,5 +1,64 @@
 # Handoff vivo — Telemetry Core
 
+## ISA-1403 — dirección nueva: telemetría live y entrega Rust (2026-09-29)
+
+Isaac confirmó que esta issue debe sustituir **todo el camino live de
+telemetría Go, incluida la entrega a Overlay, Engineer y Strategy**, y
+optimizar Rust en rondas medidas. Wails y los demás servicios de producto Go
+permanecen; no se porta toda la aplicación. [ADR 0098](../../adr/0098-rust-end-to-end-live-telemetry.md)
+y el [plan vigente](../../superpowers/plans/2026-09-29-rust-live-telemetry-end-to-end.md)
+sustituyen la frontera de entrega Go y el gate fijo de CPU de ADR 0097/R01–R28.
+El anterior 50% no acredita ni bloquea por sí solo esta nueva arquitectura.
+Ninguna mejora de rendimiento total está aún demostrada.
+
+El primer corte de entrega añadido en `rust/telemetry/src/delivery.rs` porta
+solo el estado de pull Overlay: sesión por ventana, ACK/replay, última versión,
+parches por secciones y cierre. Los tests usan los golden de 1/20/44/104 coches
+y comprueban también consumidor lento, cambio de sesión y epoch. Pasaron
+`cargo test --release --locked` (173 tests unitarios Rust y las integraciones
+del paquete), `cargo clippy --all-targets --locked -- -D warnings` y
+`go test ./...`. Este módulo aún no tiene caller en el helper: el producto sigue
+usando el pull y PublisherRegistry Go. No existe todavía banco pareado del
+camino final ni rondas de optimización atribuibles a la ruta Rust completa.
+
+El corte `4a2120f1` cerró el productor LMU47 comprimido y añadió una prueba
+opt-in Go de la misma fuente aislada. En esta sesión pasó con 3902 lotes y
+productos por consumidor, 3 facts y 7,15625 s CPU Go en ~61 s. El brazo
+Rust+Go con `bench-harness` pasó con 3872 productos por consumidor, 242
+estados y 7,875 + 8,46875 s CPU; otra corrida perfilada dio 3890 productos y
+7,75 + 8,046875 s. Las cuentas y fronteras difieren: son diagnósticos, no un
+ratio pareado ni prueba de ahorro. La primera tentativa Rust sin
+`bench-harness` falló por argumento de banco no disponible; se recompiló y
+repitió con éxito. `go test ./...`, tests focales y `git diff --check`
+pasaron para el corte de código.
+
+`docs/roadmap/plan.md` se ha restaurado como registro manual por instrucción
+de Isaac. La app aún usa la publicación Supabase de #1380; falta una decisión
+de integración del roadmap antes de afirmar que esta entrada es pública.
+El PR #1415 sigue draft y el CI remoto del SHA `fce96fc0` tenía el ratchet de
+calidad en FAIL por `policy_changed: True` del workflow; no se ha verificado
+CI del nuevo SHA. E1 tiene un inventario inicial y E2 un módulo Rust aislado;
+faltan el cableado de entrega, Engineer/Strategy/OBS, recuperación, banco
+final y prueba física LMU/Wails/OBS. Go sigue siendo
+la ruta productiva, sin merge, promoción ni release.
+
+## VAN-778 / ISA-1403 — ruta Go sobre la misma fuente aislada (2026-09-29)
+
+El productor ahora comprime cada SHM después de verificar el hash original y
+lo descomprime antes de la copia al mapping. Esto evitó agotar la memoria
+virtual de Windows al precargar ~1,17 GB crudos; durante la prueba se observaron
+~78 MiB residentes en el productor. La prueba opt-in Go abrió el mismo mapping
+privado con el lector productivo, consultó los endpoints REST locales y recorrió
+driver, fusión, mapper, reducer, derivaciones y las tres proyecciones: 3903 lotes,
+3903 Overlay/Engineer/Strategy y 3 facts en ~61 s, 5,25 s CPU del proceso Go.
+El brazo R con este productor comprimido repitió PASS: 3890 entregas por
+producto, 242 estados, 61,21 s y 7,59375 s CPU Go + 6,296875 s Rust.
+
+**No comparar estos CPU como G0/R:** la prueba Go aún no incluye las mismas
+fronteras de serialización, recepción y entrega que R, y sus cuentas difieren.
+Faltan el banco pareado G0/G1/R, p99, RSS, A/A y cinco bloques. Go continúa
+productivo, PR #1415 draft y sin promoción.
+
 ## VAN-778 / ISA-1403 — adquisición Rust sobre fuente LMU47 aislada (2026-09-29)
 
 Un productor de prueba carga y verifica los 3839 archivos del corpus físico de

@@ -1,5 +1,12 @@
 # ISA-1403 — Plan de migración del runtime live de telemetría a Rust
 
+> **Plan histórico de la arquitectura híbrida.** Isaac amplió el objetivo el
+> 2026-09-29: Rust debe poseer también la entrega live y se optimizará por
+> rondas medidas. El [plan vigente](2026-09-29-rust-live-telemetry-end-to-end.md)
+> sustituye los cortes de entrega Go y el gate `CPU_R/CPU_G1 <= 0,50` de este
+> documento. Los contratos, corpus y resultados anteriores siguen siendo
+> evidencia, no aprobación de la arquitectura final.
+
 Fecha: 2026-09-27. Versión del plan: 1.4. Estado: diseño confirmado por Isaac;
 implementación parcial hasta el corte 118. Alcance de corpus revisado el 2026-09-29.
 **Paridad, integración live y gates pendientes.**
@@ -361,6 +368,16 @@ corrida produjo 3890 entregas por consumidor y 7,609375 s CPU Go +
 7,171875 s CPU Rust en 61,05 s de recepción. Es solo el brazo R diagnóstico: el
 muestreo autónomo no da exactamente un producto por evento del archivo, y aún
 faltan G0/G1, p99/RSS, A/A y los cinco bloques intercalados de §4.
+
+El productor pasó a precargar SHM comprimida después de auditar cada hash
+original; descomprime antes de publicarla para no agotar la memoria virtual.
+Una prueba Go sobre la misma fuente privada recorrió driver, mapper, Core,
+derive y las tres proyecciones: 3903 lotes/productos en ~61 s y 5,25 s CPU Go.
+R repetido con ese productor entregó 3890 productos/consumidor en 61,21 s,
+7,59375 s CPU Go y 6,296875 s CPU Rust. **No forman un ratio G0/R:** la ruta
+Go aún omite las fronteras de serialización y entrega equivalentes al receptor
+de R, y las cuentas de salida difieren. El banco deberá cerrar esas fronteras
+antes de aplicar el criterio estadístico.
 
 ### F1 — Ejecutable mínimo y frontera Windows
 

@@ -67,4 +67,5 @@ widgets! {
     DeltaTrace => delta_trace: "delta-trace",
     TrackMap => track_map: "track-map",
     TrackWeather => track_weather: "track-weather",
+    CarDamageNumbers => car_damage_numbers: "car-damage-numbers",
 }

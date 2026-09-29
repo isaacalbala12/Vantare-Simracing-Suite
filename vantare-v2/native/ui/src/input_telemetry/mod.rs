@@ -222,8 +222,9 @@ fn paint_bars(
                     Corners {
                         top_left: px(3.0),
                         top_right: px(3.0),
-                        bottom_left: px(0.0),
-                        bottom_right: px(0.0),
+                        // overflow:hidden de la pista recorta el pie del relleno.
+                        bottom_left: px(3.0),
+                        bottom_right: px(3.0),
                     },
                     col(color, 1.0),
                     Edges::all(px(0.0)),
@@ -288,6 +289,22 @@ fn paint_label(label: &str, middle: f32, top: f32, window: &mut Window, cx: &mut
 mod tests {
     use super::*;
     use vantare_domain::{Player, Quality};
+
+    #[test]
+    fn reconstructed_workshop_scene_keeps_the_frozen_available_channels()
+    -> Result<(), vantare_ipc::Error> {
+        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/input-telemetry.snapshot.json"
+        ))?;
+        let vm = vantare_domain::input_telemetry::project(&snapshot, Preferences::default());
+        assert_eq!(vm.status_text, None);
+        assert_eq!(
+            (vm.gear.as_str(), vm.speed.as_str(), vm.rpm.as_str()),
+            ("4", "180 KPH", "7200")
+        );
+        assert_eq!(vm.pedals, [Some(6.0), Some(13.0), Some(75.0)]);
+        Ok(())
+    }
 
     #[test]
     fn transition_is_linear_bounded_and_does_not_animate_missing_data() {

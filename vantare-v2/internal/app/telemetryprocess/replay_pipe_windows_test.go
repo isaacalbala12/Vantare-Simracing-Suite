@@ -80,6 +80,7 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 	var baseline FactAckV1
 	var factACK Frame
 	var newlyRetained int
+	var deliveredFacts []uint64
 	for index := range 5 {
 		if index == 4 {
 			request, err := EncodeFactReplayRequest(baseline)
@@ -128,6 +129,9 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 			factACK = *event.FactACK
 			if event.FactAdded {
 				newlyRetained++
+				for _, fact := range event.Facts {
+					deliveredFacts = append(deliveredFacts, uint64(fact.Fact.Sequence))
+				}
 			}
 			facts++
 		default:
@@ -137,9 +141,8 @@ func TestRustReplayPipeDeliversDemandedProductsAndFact(t *testing.T) {
 	if acknowledgements != 1 || overlaySnapshots != 1 || engineerSnapshots != 1 || facts != 2 {
 		t.Fatalf("first batch: ack=%d overlay=%d engineer=%d facts=%d", acknowledgements, overlaySnapshots, engineerSnapshots, facts)
 	}
-	retainedFacts := receiver.DrainFacts()
-	if newlyRetained != 1 || len(retainedFacts) != 1 || uint64(retainedFacts[0].Fact.Sequence) != 1 {
-		t.Fatalf("retained new=%d count=%d", newlyRetained, len(retainedFacts))
+	if newlyRetained != 1 || len(deliveredFacts) != 1 || deliveredFacts[0] != 1 {
+		t.Fatalf("accepted new=%d sequences=%v", newlyRetained, deliveredFacts)
 	}
 	if err := WriteFrame(file, factACK); err != nil {
 		t.Fatal(err)

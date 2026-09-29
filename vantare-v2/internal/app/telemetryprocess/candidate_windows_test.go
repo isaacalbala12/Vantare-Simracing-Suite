@@ -116,7 +116,7 @@ func TestCandidateAcknowledgesFactOnlyAfterConsumerAccepts(t *testing.T) {
 				t.Fatal(err)
 			}
 			var delivered, acknowledged bool
-			err = deliverCandidateEvent(receiver, event, func(got ReceivedV1) error {
+			err = deliverCandidateEvent(event, func(got ReceivedV1) error {
 				if acknowledged || len(got.Facts) != 1 || got.Facts[0].Fact.Sequence != 12 {
 					t.Fatalf("fact reached consumer after ACK or with wrong payload: %+v", got.Facts)
 				}

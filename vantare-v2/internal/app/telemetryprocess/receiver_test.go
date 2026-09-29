@@ -56,18 +56,12 @@ func TestReceiverRejectsUnrequestedAndStaleProducts(t *testing.T) {
 	}
 	fact := receiverFixture(t, "engineer-fact-frame-rust-v1.bin")
 	first, err := receiver.Accept(fact)
-	if err != nil || !first.FactAdded || first.FactACK == nil {
+	if err != nil || !first.FactAdded || first.FactACK == nil || len(first.Facts) != 1 {
 		t.Fatalf("first fact = %+v, %v", first, err)
 	}
 	duplicate, err := receiver.Accept(fact)
-	if err != nil || duplicate.FactAdded || duplicate.FactACK == nil {
+	if err != nil || duplicate.FactAdded || duplicate.FactACK == nil || len(duplicate.Facts) != 0 {
 		t.Fatalf("duplicate fact = %+v, %v", duplicate, err)
-	}
-	if facts := receiver.DrainFacts(); len(facts) != 1 {
-		t.Fatalf("retained facts = %d", len(facts))
-	}
-	if facts := receiver.DrainFacts(); len(facts) != 0 {
-		t.Fatalf("redelivered facts = %d", len(facts))
 	}
 	policy.Revision++
 	policy.Consumers = ConsumersV1{Strategy: true}

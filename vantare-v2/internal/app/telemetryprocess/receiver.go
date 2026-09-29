@@ -23,7 +23,7 @@ func (cursor receiverCursor) after(previous receiverCursor) bool {
 }
 
 // ReceivedV1 holds one validated child message. FactACK must be written to
-// the child after Retain and successful delivery; facts stay in Receiver until DrainFacts.
+// the child only after the product callback accepts the fact.
 type ReceivedV1 struct {
 	Configuration    *ConfigurationAckV1
 	Overlay          *overlayv2.UpdateV2
@@ -55,7 +55,7 @@ type Receiver struct {
 	pending      *ConfigurationV1
 	ack          receiverCursor
 	lastProducts map[string]receiverCursor
-	facts        *FactRetainer
+	facts        *factAcceptance
 	status       StatusTracker
 	needsResync  bool
 	stopped      bool
@@ -96,11 +96,15 @@ func (receiver *Receiver) Accept(frame Frame) (ReceivedV1, error) {
 		if receiver.active == nil || !receiver.active.Consumers.Engineer || receiver.facts == nil || receiver.needsResync {
 			return ReceivedV1{}, ErrReceiverProtocol
 		}
-		ack, added, err := receiver.facts.Retain(frame)
+		fact, ack, added, err := receiver.facts.accept(frame)
 		if err != nil {
 			return ReceivedV1{}, err
 		}
-		return ReceivedV1{FactACK: &ack, FactAdded: added}, nil
+		event := ReceivedV1{FactACK: &ack, FactAdded: added}
+		if added {
+			event.Facts = []engineer.FactEnvelopeV1{fact}
+		}
+		return event, nil
 	case KindResyncRequired:
 		if receiver.facts == nil {
 			return ReceivedV1{}, ErrReceiverProtocol
@@ -139,7 +143,7 @@ func (receiver *Receiver) acceptConfiguration(frame Frame) (ReceivedV1, error) {
 			ack.Revision, ack.Epoch, ack.Sequence, receiver.pending.Revision, receiver.ack.epoch, receiver.ack.sequence)
 	}
 	if receiver.facts == nil {
-		receiver.facts, err = NewFactRetainer(MaxRetainedEngineerFacts, FactAckV1{Stream: ack.FactStream, Sequence: ack.FactSequence})
+		receiver.facts, err = newFactAcceptance(FactAckV1{Stream: ack.FactStream, Sequence: ack.FactSequence})
 		if err != nil {
 			return ReceivedV1{}, err
 		}
@@ -148,7 +152,7 @@ func (receiver *Receiver) acceptConfiguration(frame Frame) (ReceivedV1, error) {
 	} else if receiver.active != nil && !receiver.active.Consumers.Engineer {
 		// Facts produced while Engineer is not demanded are intentionally
 		// suppressed by Rust. The next ACK is their new explicit baseline.
-		receiver.facts, err = NewFactRetainer(MaxRetainedEngineerFacts, FactAckV1{Stream: ack.FactStream, Sequence: ack.FactSequence})
+		receiver.facts, err = newFactAcceptance(FactAckV1{Stream: ack.FactStream, Sequence: ack.FactSequence})
 		if err != nil {
 			return ReceivedV1{}, err
 		}
@@ -253,11 +257,4 @@ func snapshotProduct(payload []byte) (string, error) {
 		return "", fmt.Errorf("%w: snapshot envelope: %v", ErrReceiverProtocol, err)
 	}
 	return envelope.Product, nil
-}
-
-func (receiver *Receiver) DrainFacts() []engineer.FactEnvelopeV1 {
-	if receiver.facts == nil {
-		return nil
-	}
-	return receiver.facts.Drain()
 }

@@ -237,7 +237,7 @@ func runCandidateOnceWithCodec(ctx context.Context, executable string, configura
 		if event.Status != nil {
 			lastHeartbeat = time.Now()
 		}
-		if err := deliverCandidateEvent(receiver, event, deliver, func(ack Frame) error {
+		if err := deliverCandidateEvent(event, deliver, func(ack Frame) error {
 			return write(ack)
 		}); err != nil {
 			return err
@@ -248,11 +248,8 @@ func runCandidateOnceWithCodec(ctx context.Context, executable string, configura
 // A FactACK confirms that the product callback accepted every fact in this
 // event. It must never precede delivery, even though a child restart still
 // needs a separate replay boundary for unacknowledged facts.
-func deliverCandidateEvent(receiver *Receiver, event ReceivedV1,
+func deliverCandidateEvent(event ReceivedV1,
 	deliver func(ReceivedV1) error, acknowledge func(Frame) error) error {
-	if event.FactACK != nil && event.FactAdded {
-		event.Facts = receiver.DrainFacts()
-	}
 	if err := deliver(event); err != nil {
 		return fmt.Errorf("deliver Rust candidate event: %w", err)
 	}

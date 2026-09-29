@@ -169,7 +169,7 @@ func runRustHighRateCorpusPipe(t *testing.T, engineerBinary bool) [sha256.Size]b
 			}
 		}
 		if event.FactACK != nil {
-			retained := receiver.DrainFacts()
+			retained := event.Facts
 			if len(retained) != 1 {
 				t.Fatalf("invalid fact delivery count at frame %d: %d", frameCount, len(retained))
 			}

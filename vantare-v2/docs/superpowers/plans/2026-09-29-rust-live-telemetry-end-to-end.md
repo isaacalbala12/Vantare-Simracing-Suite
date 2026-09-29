@@ -123,6 +123,9 @@ el próximo helper y rechaza cursores regresivos; no reescribe productos.
 También se retiró `PublisherRegistry` del runtime Rust: sus sesiones de pull
 son la única demanda y selección de Overlay en esa ruta. La prueba física
 optativa se adaptó al pull real, pendiente de ejecutarse con LMU en pista.
+El receptor Go dejó de retener facts de producto: un ledger acotado verifica
+el ACK del pipe y la entrega ocurre antes del ACK. Rust conserva historial y
+replay. El replay por named pipe y las pruebas de rechazo/duplicado pasaron.
 
 **Todavía no se alcanza E5/E6:** Go conserva el receptor de Engineer/Strategy,
 status/facts y código live histórico; falta probar la

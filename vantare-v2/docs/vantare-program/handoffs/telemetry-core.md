@@ -22,6 +22,13 @@ snapshot del runtime Rust; la demanda Overlay procede solo de sesiones de
 pull Rust. Studio HTTP y pull directo con el helper Rust real pasaron sin LMU.
 La prueba optativa de pista ahora usa pull Rust en vez del publisher Go, pero
 no se ejecutó porque LMU no estaba abierto.
+El receptor Go dejó de conservar una segunda cola de facts de producto.
+`factAcceptance` solo verifica stream, secuencia y duplicados exactos en una
+ventana de 64 ACK; cada fact va directamente al callback de Engineer y el ACK
+se escribe tras aceptación. Rust sigue siendo dueño de la retención y replay.
+Pasaron la prueba de rechazo del consumidor, la de duplicados/gaps y el
+replay real por named pipe con binario Rust. El corpus temporal LMU47 no se
+repitió en este corte porque sus variables de ruta no estaban configuradas.
 
 El build prepara `runtime/telemetry/rust-live-v1/vantare-telemetry.exe`.
 Instalador NSIS y ZIP portable se construyeron/verificaron localmente, junto a
@@ -32,7 +39,8 @@ porque ejecutaba bancos largos no necesarios para este cambio; sus unitarios
 habían pasado y se ejecutaron después Clippy y el test del binario. No se
 instaló ni publicó el paquete.
 
-Faltan: retirar Go del receptor/estado de Engineer y Strategy, facts y
+Faltan: retirar Go del receptor/estado de Engineer y Strategy y el ledger de
+ACK del protocolo (si puede simplificarse sin perder deduplicación); retirar
 el motor live histórico con consumidores cero; validar LMU pista, Wails y OBS
 físicos, CI del SHA final y banco pareado CPU/p99/RSS. La presencia del helper
 Rust en el instalador no demuestra todavía paridad ni ganancia total. No hay

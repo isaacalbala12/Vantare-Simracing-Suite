@@ -159,7 +159,7 @@ func TestRustTemporalCorpusPipeOptIn(t *testing.T) {
 			}
 		}
 		if event.FactACK != nil {
-			retained := receiver.DrainFacts()
+			retained := event.Facts
 			for _, item := range retained {
 				facts++
 				if uint64(item.Fact.Sequence) != uint64(facts) {

@@ -1,0 +1,396 @@
+{
+  "purpose": "Preliminary UI-only static-state comparison; no Wails, Go or LMU",
+  "frontend_ref": "origin/nightly@c4c7a5ceb60995db191078aca03085a1e56a063e",
+  "rust_ref": "vantareapp/isa-1414-rust-egui-hub-foundation",
+  "viewport": "1920x1080 @ deviceScaleFactor 1",
+  "logical_processors": 16,
+  "versions": {
+    "python": "3.12.10",
+    "psutil": "7.2.2",
+    "playwright_python": "1.60.0"
+  },
+  "runs": [
+    {
+      "kind": "chromium-react-harness",
+      "pid": 6308,
+      "idle": {
+        "duration_seconds": 10,
+        "cpu_core_percent": 3.281,
+        "uss_mib_median": 247.94,
+        "rss_mib_sum_median": 617.5,
+        "private_commit_mib_median": 379.21,
+        "process_count_median": 10.0,
+        "system_cpu_percent_median": 17.1,
+        "points": [
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 258.05078125,
+            "rss_mib_sum": 627.59375,
+            "private_commit_mib": 417.80078125,
+            "processes": 10,
+            "system_cpu_percent": 31.0
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 258.12109375,
+            "rss_mib_sum": 627.68359375,
+            "private_commit_mib": 418.05859375,
+            "processes": 10,
+            "system_cpu_percent": 11.5
+          },
+          {
+            "cpu_seconds": 0.03125,
+            "uss_mib": 247.51171875,
+            "rss_mib_sum": 617.16015625,
+            "private_commit_mib": 379.140625,
+            "processes": 10,
+            "system_cpu_percent": 12.1
+          },
+          {
+            "cpu_seconds": 0.078125,
+            "uss_mib": 247.58203125,
+            "rss_mib_sum": 617.24609375,
+            "private_commit_mib": 379.1484375,
+            "processes": 10,
+            "system_cpu_percent": 15.5
+          },
+          {
+            "cpu_seconds": 0.0625,
+            "uss_mib": 247.62890625,
+            "rss_mib_sum": 617.3046875,
+            "private_commit_mib": 379.1953125,
+            "processes": 10,
+            "system_cpu_percent": 15.3
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 247.71875,
+            "rss_mib_sum": 617.421875,
+            "private_commit_mib": 379.22265625,
+            "processes": 10,
+            "system_cpu_percent": 14.1
+          },
+          {
+            "cpu_seconds": 0.140625,
+            "uss_mib": 247.25390625,
+            "rss_mib_sum": 616.97265625,
+            "private_commit_mib": 377.5625,
+            "processes": 10,
+            "system_cpu_percent": 21.6
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 248.16015625,
+            "rss_mib_sum": 617.5859375,
+            "private_commit_mib": 379.1015625,
+            "processes": 10,
+            "system_cpu_percent": 39.6
+          },
+          {
+            "cpu_seconds": 0.015625,
+            "uss_mib": 249.68359375,
+            "rss_mib_sum": 619.42578125,
+            "private_commit_mib": 379.71484375,
+            "processes": 10,
+            "system_cpu_percent": 21.0
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 249.6953125,
+            "rss_mib_sum": 619.4375,
+            "private_commit_mib": 379.7265625,
+            "processes": 10,
+            "system_cpu_percent": 18.7
+          }
+        ]
+      }
+    },
+    {
+      "kind": "egui-release",
+      "wgpu_backend": "opengl",
+      "pid": 26084,
+      "idle": {
+        "duration_seconds": 10,
+        "cpu_core_percent": 0.0,
+        "uss_mib_median": 94.37,
+        "rss_mib_sum_median": 138.71,
+        "private_commit_mib_median": 318.29,
+        "process_count_median": 1.0,
+        "system_cpu_percent_median": 22.15,
+        "points": [
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 94.37109375,
+            "rss_mib_sum": 138.70703125,
+            "private_commit_mib": 318.28515625,
+            "processes": 1,
+            "system_cpu_percent": 22.2
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 94.37109375,
+            "rss_mib_sum": 138.70703125,
+            "private_commit_mib": 318.28515625,
+            "processes": 1,
+            "system_cpu_percent": 26.3
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 94.37109375,
+            "rss_mib_sum": 138.70703125,
+            "private_commit_mib": 318.28515625,
+            "processes": 1,
+            "system_cpu_percent": 28.2
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 94.37109375,
+            "rss_mib_sum": 138.70703125,
+            "private_commit_mib": 318.28515625,
+            "processes": 1,
+            "system_cpu_percent": 31.4
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 94.37109375,
+            "rss_mib_sum": 138.70703125,
+            "private_commit_mib": 318.28515625,
+            "processes": 1,
+            "system_cpu_percent": 37.4
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 94.37109375,
+            "rss_mib_sum": 138.70703125,
+            "private_commit_mib": 318.28515625,
+            "processes": 1,
+            "system_cpu_percent": 21.4
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 94.37109375,
+            "rss_mib_sum": 138.70703125,
+            "private_commit_mib": 318.28515625,
+            "processes": 1,
+            "system_cpu_percent": 21.5
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 94.37109375,
+            "rss_mib_sum": 138.70703125,
+            "private_commit_mib": 318.28515625,
+            "processes": 1,
+            "system_cpu_percent": 19.0
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 94.37109375,
+            "rss_mib_sum": 138.70703125,
+            "private_commit_mib": 318.28515625,
+            "processes": 1,
+            "system_cpu_percent": 22.1
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 94.37109375,
+            "rss_mib_sum": 138.70703125,
+            "private_commit_mib": 318.28515625,
+            "processes": 1,
+            "system_cpu_percent": 19.6
+          }
+        ]
+      }
+    },
+    {
+      "kind": "egui-release",
+      "wgpu_backend": "opengl",
+      "pid": 17972,
+      "idle": {
+        "duration_seconds": 10,
+        "cpu_core_percent": 0.0,
+        "uss_mib_median": 75.04,
+        "rss_mib_sum_median": 110.35,
+        "private_commit_mib_median": 289.1,
+        "process_count_median": 1.0,
+        "system_cpu_percent_median": 12.35,
+        "points": [
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 75.03515625,
+            "rss_mib_sum": 110.3515625,
+            "private_commit_mib": 289.1015625,
+            "processes": 1,
+            "system_cpu_percent": 18.8
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 75.03515625,
+            "rss_mib_sum": 110.3515625,
+            "private_commit_mib": 289.1015625,
+            "processes": 1,
+            "system_cpu_percent": 11.7
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 75.03515625,
+            "rss_mib_sum": 110.3515625,
+            "private_commit_mib": 289.1015625,
+            "processes": 1,
+            "system_cpu_percent": 12.2
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 75.03515625,
+            "rss_mib_sum": 110.3515625,
+            "private_commit_mib": 289.1015625,
+            "processes": 1,
+            "system_cpu_percent": 10.6
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 75.03515625,
+            "rss_mib_sum": 110.3515625,
+            "private_commit_mib": 289.1015625,
+            "processes": 1,
+            "system_cpu_percent": 12.5
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 75.03515625,
+            "rss_mib_sum": 110.3515625,
+            "private_commit_mib": 289.1015625,
+            "processes": 1,
+            "system_cpu_percent": 12.5
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 75.03515625,
+            "rss_mib_sum": 110.3515625,
+            "private_commit_mib": 289.1015625,
+            "processes": 1,
+            "system_cpu_percent": 12.5
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 75.03515625,
+            "rss_mib_sum": 110.3515625,
+            "private_commit_mib": 289.1015625,
+            "processes": 1,
+            "system_cpu_percent": 10.4
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 75.03515625,
+            "rss_mib_sum": 110.3515625,
+            "private_commit_mib": 289.1015625,
+            "processes": 1,
+            "system_cpu_percent": 10.5
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 75.03515625,
+            "rss_mib_sum": 110.3515625,
+            "private_commit_mib": 289.1015625,
+            "processes": 1,
+            "system_cpu_percent": 12.8
+          }
+        ]
+      }
+    },
+    {
+      "kind": "chromium-react-harness",
+      "pid": 23620,
+      "idle": {
+        "duration_seconds": 10,
+        "cpu_core_percent": 1.875,
+        "uss_mib_median": 248.16,
+        "rss_mib_sum_median": 620.08,
+        "private_commit_mib_median": 382.19,
+        "process_count_median": 10.0,
+        "system_cpu_percent_median": 15.25,
+        "points": [
+          {
+            "cpu_seconds": 0.015625,
+            "uss_mib": 259.6328125,
+            "rss_mib_sum": 631.41015625,
+            "private_commit_mib": 424.3125,
+            "processes": 10,
+            "system_cpu_percent": 26.9
+          },
+          {
+            "cpu_seconds": 0.015625,
+            "uss_mib": 259.703125,
+            "rss_mib_sum": 631.5,
+            "private_commit_mib": 424.3203125,
+            "processes": 10,
+            "system_cpu_percent": 11.8
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 247.98046875,
+            "rss_mib_sum": 619.86328125,
+            "private_commit_mib": 382.16015625,
+            "processes": 10,
+            "system_cpu_percent": 10.1
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 248.0703125,
+            "rss_mib_sum": 619.96875,
+            "private_commit_mib": 382.16015625,
+            "processes": 10,
+            "system_cpu_percent": 12.2
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 248.1328125,
+            "rss_mib_sum": 620.03125,
+            "private_commit_mib": 382.16015625,
+            "processes": 10,
+            "system_cpu_percent": 16.7
+          },
+          {
+            "cpu_seconds": 0.015625,
+            "uss_mib": 248.1953125,
+            "rss_mib_sum": 620.1328125,
+            "private_commit_mib": 382.22265625,
+            "processes": 10,
+            "system_cpu_percent": 21.7
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 247.68359375,
+            "rss_mib_sum": 619.6484375,
+            "private_commit_mib": 380.234375,
+            "processes": 10,
+            "system_cpu_percent": 21.0
+          },
+          {
+            "cpu_seconds": 0.03125,
+            "uss_mib": 247.765625,
+            "rss_mib_sum": 619.73046875,
+            "private_commit_mib": 380.5,
+            "processes": 10,
+            "system_cpu_percent": 15.0
+          },
+          {
+            "cpu_seconds": 0.109375,
+            "uss_mib": 250.35546875,
+            "rss_mib_sum": 622.43359375,
+            "private_commit_mib": 382.33203125,
+            "processes": 10,
+            "system_cpu_percent": 15.5
+          },
+          {
+            "cpu_seconds": 0,
+            "uss_mib": 250.36328125,
+            "rss_mib_sum": 622.44140625,
+            "private_commit_mib": 382.33984375,
+            "processes": 10,
+            "system_cpu_percent": 11.8
+          }
+        ]
+      }
+    }
+  ]
+}

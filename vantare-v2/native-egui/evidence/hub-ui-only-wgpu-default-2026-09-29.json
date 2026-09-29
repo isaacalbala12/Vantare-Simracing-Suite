@@ -1,0 +1,206 @@
+{
+  "purpose": "Preliminary UI-only static-state comparison; no Wails, Go or LMU",
+  "frontend_ref": "origin/nightly@c4c7a5ceb60995db191078aca03085a1e56a063e",
+  "rust_ref": "vantareapp/isa-1414-rust-egui-hub-foundation",
+  "viewport": "1920x1080 @ deviceScaleFactor 1",
+  "logical_processors": 16,
+  "versions": {
+    "python": "3.12.10",
+    "psutil": "7.2.2",
+    "playwright_python": "1.60.0"
+  },
+  "runs": [
+    {
+      "kind": "egui-release",
+      "wgpu_backend": "default",
+      "pid": 21616,
+      "idle": {
+        "duration_seconds": 10,
+        "cpu_core_percent": 99.531,
+        "uss_mib_median": 133.63,
+        "rss_mib_sum_median": 187.83,
+        "private_commit_mib_median": 532.25,
+        "process_count_median": 1.0,
+        "system_cpu_percent_median": 29.95,
+        "points": [
+          {
+            "cpu_seconds": 1.0,
+            "uss_mib": 133.6328125,
+            "rss_mib_sum": 187.83203125,
+            "private_commit_mib": 532.25,
+            "processes": 1,
+            "system_cpu_percent": 29.0
+          },
+          {
+            "cpu_seconds": 1.0,
+            "uss_mib": 133.6328125,
+            "rss_mib_sum": 187.83203125,
+            "private_commit_mib": 532.25,
+            "processes": 1,
+            "system_cpu_percent": 26.8
+          },
+          {
+            "cpu_seconds": 0.96875,
+            "uss_mib": 133.6328125,
+            "rss_mib_sum": 187.83203125,
+            "private_commit_mib": 532.25,
+            "processes": 1,
+            "system_cpu_percent": 34.2
+          },
+          {
+            "cpu_seconds": 1.0,
+            "uss_mib": 133.6328125,
+            "rss_mib_sum": 187.83203125,
+            "private_commit_mib": 532.25,
+            "processes": 1,
+            "system_cpu_percent": 36.9
+          },
+          {
+            "cpu_seconds": 1.0,
+            "uss_mib": 133.6328125,
+            "rss_mib_sum": 187.83203125,
+            "private_commit_mib": 532.25,
+            "processes": 1,
+            "system_cpu_percent": 27.7
+          },
+          {
+            "cpu_seconds": 0.96875,
+            "uss_mib": 133.6328125,
+            "rss_mib_sum": 187.83203125,
+            "private_commit_mib": 532.25,
+            "processes": 1,
+            "system_cpu_percent": 27.2
+          },
+          {
+            "cpu_seconds": 1.0,
+            "uss_mib": 133.6328125,
+            "rss_mib_sum": 187.83203125,
+            "private_commit_mib": 532.25,
+            "processes": 1,
+            "system_cpu_percent": 29.0
+          },
+          {
+            "cpu_seconds": 1.015625,
+            "uss_mib": 133.6328125,
+            "rss_mib_sum": 187.83203125,
+            "private_commit_mib": 532.25,
+            "processes": 1,
+            "system_cpu_percent": 32.8
+          },
+          {
+            "cpu_seconds": 1.0,
+            "uss_mib": 133.6328125,
+            "rss_mib_sum": 187.83203125,
+            "private_commit_mib": 532.25,
+            "processes": 1,
+            "system_cpu_percent": 33.0
+          },
+          {
+            "cpu_seconds": 1.0,
+            "uss_mib": 133.6328125,
+            "rss_mib_sum": 187.83203125,
+            "private_commit_mib": 532.25,
+            "processes": 1,
+            "system_cpu_percent": 30.9
+          }
+        ]
+      }
+    },
+    {
+      "kind": "egui-release",
+      "wgpu_backend": "default",
+      "pid": 22392,
+      "idle": {
+        "duration_seconds": 10,
+        "cpu_core_percent": 99.531,
+        "uss_mib_median": 134.03,
+        "rss_mib_sum_median": 188.25,
+        "private_commit_mib_median": 534.91,
+        "process_count_median": 1.0,
+        "system_cpu_percent_median": 23.65,
+        "points": [
+          {
+            "cpu_seconds": 1.015625,
+            "uss_mib": 134.03125,
+            "rss_mib_sum": 188.24609375,
+            "private_commit_mib": 534.91015625,
+            "processes": 1,
+            "system_cpu_percent": 27.3
+          },
+          {
+            "cpu_seconds": 0.96875,
+            "uss_mib": 134.03125,
+            "rss_mib_sum": 188.24609375,
+            "private_commit_mib": 534.91015625,
+            "processes": 1,
+            "system_cpu_percent": 23.6
+          },
+          {
+            "cpu_seconds": 1.0,
+            "uss_mib": 134.03125,
+            "rss_mib_sum": 188.24609375,
+            "private_commit_mib": 534.91015625,
+            "processes": 1,
+            "system_cpu_percent": 26.5
+          },
+          {
+            "cpu_seconds": 1.0,
+            "uss_mib": 134.03125,
+            "rss_mib_sum": 188.24609375,
+            "private_commit_mib": 534.91015625,
+            "processes": 1,
+            "system_cpu_percent": 23.7
+          },
+          {
+            "cpu_seconds": 1.0,
+            "uss_mib": 134.03125,
+            "rss_mib_sum": 188.24609375,
+            "private_commit_mib": 534.91015625,
+            "processes": 1,
+            "system_cpu_percent": 18.0
+          },
+          {
+            "cpu_seconds": 0.984375,
+            "uss_mib": 134.03125,
+            "rss_mib_sum": 188.24609375,
+            "private_commit_mib": 534.91015625,
+            "processes": 1,
+            "system_cpu_percent": 25.9
+          },
+          {
+            "cpu_seconds": 1.0,
+            "uss_mib": 134.03125,
+            "rss_mib_sum": 188.24609375,
+            "private_commit_mib": 534.91015625,
+            "processes": 1,
+            "system_cpu_percent": 26.7
+          },
+          {
+            "cpu_seconds": 1.0,
+            "uss_mib": 134.03125,
+            "rss_mib_sum": 188.24609375,
+            "private_commit_mib": 534.91015625,
+            "processes": 1,
+            "system_cpu_percent": 23.6
+          },
+          {
+            "cpu_seconds": 1.0,
+            "uss_mib": 134.03125,
+            "rss_mib_sum": 188.24609375,
+            "private_commit_mib": 534.91015625,
+            "processes": 1,
+            "system_cpu_percent": 18.3
+          },
+          {
+            "cpu_seconds": 0.984375,
+            "uss_mib": 134.03125,
+            "rss_mib_sum": 188.24609375,
+            "private_commit_mib": 534.91015625,
+            "processes": 1,
+            "system_cpu_percent": 19.1
+          }
+        ]
+      }
+    }
+  ]
+}

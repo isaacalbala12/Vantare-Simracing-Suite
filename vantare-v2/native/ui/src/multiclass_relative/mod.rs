@@ -180,6 +180,34 @@ mod tests {
     use crate::source;
 
     #[test]
+    fn frozen_workshop_scene_preserves_identity_and_unavailable_relative_gaps() {
+        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/multiclass-relative.snapshot.json"
+        ))
+        .expect("escena DTO v3");
+        assert_eq!(snapshot.state.cars.len(), 20);
+        let vm =
+            multiclass_relative::project(&snapshot, Preferences::default(), Content::default());
+        let expected = [
+            ("1", "HC", "André Lotterer", "0.0"),
+            ("2", "LMP", "Ben Hanley", "—"),
+            ("3", "GTE", "Kévin Estre", "—"),
+            ("4", "HC", "Antonio Giovinazzi", "—"),
+            ("5", "LMP", "Filipe Albuquerque", "—"),
+        ];
+        assert_eq!(vm.rows.len(), expected.len());
+        for (row, (place, class, name, gap)) in vm.rows.iter().zip(expected) {
+            assert_eq!(
+                (&*row.place, &*row.class_label, &*row.name, &*row.gap),
+                (place, class, name, gap)
+            );
+            assert_eq!(row.number, "—");
+        }
+        assert!(vm.rows[0].is_player);
+        assert_eq!(vm.status, None);
+    }
+
+    #[test]
     fn snapshot_metadata_and_unrendered_signals_do_not_repaint() {
         let prefs = Preferences::default();
         let mut widget = Widget::new(prefs);

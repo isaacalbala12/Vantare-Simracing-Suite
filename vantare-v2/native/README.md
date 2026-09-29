@@ -58,10 +58,13 @@ cargo run -p vantare-ui --release --bin vantare-overlays -- 4
   sale por la fuerza. Con stdin cerrado o nulo desde el arranque termina al
   instante. Al acabar un replay sigue sirviendo la última foto (obsoleta).
 
-`vantare-overlays [1|4|22] [--ventanas por-widget|una] [--fuente
-local|pipe[:<nombre>]]`: `pipe` (por defecto, con el nombre por defecto del
-núcleo) recibe del núcleo; `local` usa una carrera sintética, sin núcleo. Ver
+`vantare-overlays [1|4|22] [--fuente local|pipe[:<nombre>]]` (una ventana por
+monitor con todos los widgets): `pipe` (por defecto, con el nombre por defecto
+del núcleo) recibe del núcleo; `local` usa una carrera sintética, sin núcleo. Ver
 [`ui/README.md`](ui/README.md).
+
+Para desarrollar widgets sin núcleo, `ui/workshop.ps1` abre `vantare-workshop` con una
+escena LMU fija y la recompila al guardar (ver `ui/README.md`, «Workshop»).
 
 ## Ciclo de vida: `vantare`
 

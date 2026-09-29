@@ -33,6 +33,27 @@ pub use subscriber::Subscriber;
 
 use std::fmt;
 
+use vantare_domain::Snapshot;
+
+/// La foto como la lleva el cable (DTO versionado, JSON): sirve para guardar una
+/// escena fija, p. ej. una captura real para probar widgets sin núcleo.
+///
+/// # Errors
+/// Nunca en la práctica: el DTO siempre se serializa; queda `Result` por la API.
+pub fn snapshot_to_json(snapshot: &Snapshot) -> Result<String, Error> {
+    Ok(serde_json::to_string(&dto::SnapshotDto::from(snapshot))?)
+}
+
+/// Lee una foto guardada con [`snapshot_to_json`].
+///
+/// # Errors
+/// [`Error::Json`] si el texto no es un DTO, [`Error::Version`] si es de una
+/// versión que este extremo no entiende, [`Error::Protocol`] si algún valor no
+/// se admite.
+pub fn snapshot_from_json(text: &str) -> Result<Snapshot, Error> {
+    Snapshot::try_from(serde_json::from_str::<dto::SnapshotDto>(text)?)
+}
+
 #[derive(Debug)]
 pub enum Error {
     Io(std::io::Error),
@@ -89,5 +110,30 @@ impl From<std::io::Error> for Error {
 impl From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Self {
         Self::Json(e)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::codec::tests::rich_snapshot;
+
+    #[test]
+    fn a_saved_snapshot_reads_back_identical() {
+        let snapshot = rich_snapshot(7, 42);
+        let text = snapshot_to_json(&snapshot).expect("serializa");
+        assert_eq!(snapshot_from_json(&text).expect("lee"), snapshot);
+    }
+
+    #[test]
+    fn text_that_is_not_a_snapshot_or_is_from_the_future_is_rejected() {
+        assert!(matches!(snapshot_from_json("{}"), Err(Error::Json(_))));
+        let future = snapshot_to_json(&rich_snapshot(1, 1))
+            .expect("serializa")
+            .replacen("\"version\":1", "\"version\":999", 1);
+        assert!(matches!(
+            snapshot_from_json(&future),
+            Err(Error::Version { got: 999 })
+        ));
     }
 }

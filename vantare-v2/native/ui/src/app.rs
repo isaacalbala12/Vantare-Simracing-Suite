@@ -9,7 +9,7 @@ use std::time::{Duration, Instant};
 use gpui::{
     App, Bounds, Context, Entity, IntoElement, Pixels, Render, StyleRefinement, Window,
     WindowBackgroundAppearance, WindowBounds, WindowKind, WindowOptions, canvas, div, point,
-    prelude::*, px, size,
+    prelude::*, px,
 };
 use vantare_domain::format::Preferences;
 use vantare_domain::{Snapshot, pedals, radar, standings};
@@ -23,10 +23,43 @@ use crate::standings::{
 use crate::{pedals as pedals_view, radar as radar_view, text};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Kind {
+pub enum Kind {
     Standings,
     Radar,
     Pedals,
+}
+
+impl std::str::FromStr for Kind {
+    type Err = ();
+
+    fn from_str(text: &str) -> Result<Self, ()> {
+        match text {
+            "standings" => Ok(Self::Standings),
+            "radar" => Ok(Self::Radar),
+            "pedals" => Ok(Self::Pedals),
+            _ => Err(()),
+        }
+    }
+}
+
+impl Kind {
+    /// Tamaño del widget (px) con su contenido inicial.
+    fn size(self) -> (f32, f32) {
+        Overlay::new(self, Preferences::default()).wanted_size()
+    }
+}
+
+/// Coloca los widgets en una fila que empieza en `origin`, separados 20 px.
+pub fn layout_row(kinds: &[Kind], origin: (f32, f32)) -> Vec<(Kind, (f32, f32))> {
+    let mut x = origin.0;
+    kinds
+        .iter()
+        .map(|&kind| {
+            let at = (x, origin.1);
+            x += kind.size().0 + 20.0;
+            (kind, at)
+        })
+        .collect()
 }
 
 struct Standings {
@@ -99,7 +132,7 @@ impl Overlay {
         }
     }
 
-    fn wanted_size(&self) -> (f32, f32) {
+    pub(crate) fn wanted_size(&self) -> (f32, f32) {
         match &self.widget {
             Widget::Standings(s) => (s.config.width + model::PIT_RAIL_WIDTH, s.config.height),
             Widget::Radar(_) => radar_view::SIZE,
@@ -266,48 +299,11 @@ fn attach(hwnd: &mut Option<Hwnd>, window: &Window, origin: (f32, f32)) {
     }
 }
 
-/// Modo por-widget: la ventana es del widget y sigue su tamaño (el alto de
-/// Standings depende de las filas visibles, SPEC §7). Se redimensiona por
-/// Win32: `Window::resize` de GPUI volvería a sumar el marco de sistema.
-pub(crate) struct Single {
-    widget: Entity<Overlay>,
-    origin: (f32, f32),
-    hwnd: Option<Hwnd>,
-    size: (f32, f32),
-}
-
-impl Single {
-    #[cfg(feature = "parity-capture")]
-    pub(crate) fn hwnd(&self) -> Option<Hwnd> {
-        self.hwnd
-    }
-}
-
-impl Render for Single {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        #[cfg(feature = "paint-stats")]
-        crate::stats::frame();
-        attach(&mut self.hwnd, window, self.origin);
-        let wanted = self.widget.read(cx).wanted_size();
-        if self.size != wanted {
-            self.size = wanted;
-            if let Some(hwnd) = self.hwnd {
-                let scale = window.scale_factor();
-                overlay::resize(
-                    hwnd,
-                    (wanted.0 * scale).round() as i32,
-                    (wanted.1 * scale).round() as i32,
-                );
-            }
-        }
-        div().size_full().child(self.widget.clone())
-    }
-}
-
-/// Modo una-ventana: una ventana del tamaño del monitor con todos sus widgets
-/// dentro, en su posición. Los widgets van en vistas cacheadas: cuando uno
-/// cambia, GPUI vuelve a pintar solo ese y reutiliza las primitivas de los demás
-/// (ver README, «Repintado en la ventana grande»).
+/// Una ventana del tamaño del monitor con todos sus widgets dentro, en su
+/// posición. Los widgets van en vistas cacheadas: cuando uno cambia, GPUI vuelve
+/// a pintar solo ese y reutiliza las primitivas de los demás (ver README,
+/// «Repintado en la ventana grande»). La ventana no cambia de tamaño: el alto de
+/// Standings, que depende de las filas visibles, lo gobierna el propio widget.
 struct Screen {
     widgets: Vec<(Entity<Overlay>, (f32, f32))>,
     origin: (f32, f32),
@@ -352,28 +348,6 @@ fn popup(bounds: Bounds<Pixels>) -> WindowOptions {
     }
 }
 
-/// Abre una ventana overlay en `origin` (px de pantalla) para el widget `kind`.
-pub(crate) fn open_window(
-    cx: &mut App,
-    kind: Kind,
-    prefs: Preferences,
-    origin: (f32, f32),
-) -> gpui::Result<(Entity<Overlay>, Entity<Single>)> {
-    let widget = cx.new(|_| Overlay::new(kind, prefs));
-    let (w, h) = widget.read(cx).wanted_size();
-    let bounds = Bounds::new(point(px(origin.0), px(origin.1)), size(px(w), px(h)));
-    let root = widget.clone();
-    let handle = cx.open_window(popup(bounds), move |_, cx| {
-        cx.new(|_| Single {
-            widget: root,
-            origin,
-            hwnd: None,
-            size: (w, h),
-        })
-    })?;
-    Ok((widget, handle.entity(cx)?))
-}
-
 type Placed = Vec<(Kind, (f32, f32))>;
 
 /// Reparte los widgets (posición global) entre los monitores: cada uno recibe
@@ -394,7 +368,7 @@ fn partition(monitors: &[Bounds<Pixels>], placed: &[(Kind, (f32, f32))]) -> Vec<
 
 /// Abre una ventana por monitor que tenga widgets y devuelve los widgets
 /// creados. Los monitores sin widgets no reciben ventana.
-fn open_screens(
+pub(crate) fn open_screens(
     cx: &mut App,
     placed: &[(Kind, (f32, f32))],
     prefs: Preferences,
@@ -444,28 +418,6 @@ pub(crate) fn init(cx: &mut App) -> bool {
     }
 }
 
-/// Cómo se agrupan los widgets en ventanas del sistema. Los widgets y sus
-/// posiciones son los mismos en ambos modos.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Grouping {
-    /// Una ventana por widget.
-    PerWidget,
-    /// Una ventana por monitor, del tamaño del monitor.
-    OneWindow,
-}
-
-impl std::str::FromStr for Grouping {
-    type Err = ();
-
-    fn from_str(text: &str) -> Result<Self, ()> {
-        match text {
-            "por-widget" => Ok(Self::PerWidget),
-            "una" => Ok(Self::OneWindow),
-            _ => Err(()),
-        }
-    }
-}
-
 /// Reparte los widgets (Standings, Radar, Pedals, ... en ese orden) y los
 /// escalona en pantalla. Solo para la campaña de medición: el colocado real
 /// vendrá de la configuración de layout.
@@ -493,11 +445,16 @@ fn origin_of(index: usize) -> (f32, f32) {
     )
 }
 
-/// Abre `windows` widgets agrupados según `grouping` y reenvía cada `Snapshot`
-/// del canal a todos. Vuelve cuando se cierra la última ventana.
-pub fn run(
-    windows: usize,
-    grouping: Grouping,
+/// Abre `windows` widgets, una ventana por monitor con widgets, y reenvía cada
+/// `Snapshot` del canal a todos. Vuelve cuando se cierra la última ventana.
+pub fn run(windows: usize, snapshots: flume::Receiver<Arc<Snapshot>>, prefs: Preferences) {
+    let placed = (0..windows).map(|i| (kind_of(i), origin_of(i))).collect();
+    run_placed(placed, snapshots, prefs);
+}
+
+/// Como [`run`], con los widgets y sus posiciones (px globales de pantalla) dados.
+pub fn run_placed(
+    placed: Vec<(Kind, (f32, f32))>,
     snapshots: flume::Receiver<Arc<Snapshot>>,
     prefs: Preferences,
 ) {
@@ -507,22 +464,7 @@ pub fn run(
         }
         #[cfg(feature = "paint-stats")]
         crate::stats::report();
-        let placed: Vec<_> = (0..windows).map(|i| (kind_of(i), origin_of(i))).collect();
-        let widgets: Vec<Entity<Overlay>> = match grouping {
-            Grouping::PerWidget => placed
-                .iter()
-                .filter_map(
-                    |&(kind, origin)| match open_window(cx, kind, prefs, origin) {
-                        Ok((widget, _)) => Some(widget),
-                        Err(error) => {
-                            eprintln!("no se pudo abrir la ventana de {kind:?}: {error}");
-                            None
-                        }
-                    },
-                )
-                .collect(),
-            Grouping::OneWindow => open_screens(cx, &placed, prefs),
-        };
+        let widgets = open_screens(cx, &placed, prefs);
         let views: Vec<_> = widgets.iter().map(Entity::downgrade).collect();
         cx.on_window_closed(|cx, _| {
             if cx.windows().is_empty() {
@@ -546,6 +488,7 @@ pub fn run(
 mod tests {
     use super::*;
     use crate::source;
+    use gpui::size;
 
     #[test]
     fn standings_repaint_only_when_what_is_drawn_changes() {
@@ -641,12 +584,5 @@ mod tests {
         );
         assert_eq!(parts[1], [(Kind::Radar, (80.0, 50.0))]);
         assert!(parts[2].is_empty(), "sin widgets no hay ventana");
-    }
-
-    #[test]
-    fn grouping_names_are_the_cli_ones() {
-        assert_eq!("por-widget".parse(), Ok(Grouping::PerWidget));
-        assert_eq!("una".parse(), Ok(Grouping::OneWindow));
-        assert_eq!("dos".parse::<Grouping>(), Err(()));
     }
 }

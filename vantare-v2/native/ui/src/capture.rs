@@ -16,7 +16,7 @@ use std::time::Duration;
 use gpui::{App, AsyncApp, Entity};
 use vantare_domain::format::Preferences;
 
-use crate::app::{self, Kind, Overlay, Single};
+use crate::app::{self, Kind, Overlay};
 use crate::overlay::{Hwnd, ffi};
 use crate::source;
 use crate::standings::view::col;
@@ -77,22 +77,22 @@ mod gdi {
     }
 }
 
-/// Copia BGRA de la región cliente tal como la compone DWM en pantalla.
-fn capture_client(hwnd: Hwnd) -> Option<(u32, u32, Vec<u8>)> {
+/// Copia BGRA de la esquina superior izquierda (`w` x `h` px) de la región
+/// cliente tal como la compone DWM en pantalla: el widget está en (0, 0) de una
+/// ventana del tamaño del monitor.
+fn capture_client(hwnd: Hwnd, w: i32, h: i32) -> Option<(u32, u32, Vec<u8>)> {
     use gdi::{
         BitBlt, BitmapInfoHeader, CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC,
         DeleteObject, GetDC, GetDIBits, ReleaseDC, SelectObject,
     };
     const SRCCOPY: u32 = 0x00CC_0020;
     const CAPTUREBLT: u32 = 0x4000_0000;
-    let (mut client, mut origin) = (ffi::Rect::default(), ffi::Point::default());
-    // SAFETY: `hwnd` es un HWND vivo de este proceso; los punteros son de locales
-    // que viven durante la llamada.
+    let mut origin = ffi::Point::default();
+    // SAFETY: `hwnd` es un HWND vivo de este proceso; el puntero es de un local
+    // que vive durante la llamada.
     unsafe {
-        ffi::GetClientRect(hwnd, &raw mut client);
         ffi::ClientToScreen(hwnd, &raw mut origin);
     }
-    let (w, h) = (client.right - client.left, client.bottom - client.top);
     if w <= 0 || h <= 0 {
         return None;
     }
@@ -189,14 +189,15 @@ async fn sleep(cx: &AsyncApp, ms: u64) {
 }
 
 /// Espera a que la ventana exista y el movimiento termine; devuelve su HWND.
-async fn settled(
-    cx: &mut AsyncApp,
-    root: &Entity<Single>,
-    view: &Entity<Overlay>,
-) -> Result<Hwnd, String> {
+async fn settled(cx: &mut AsyncApp, view: &Entity<Overlay>) -> Result<Hwnd, String> {
     for _ in 0..200 {
         sleep(cx, 50).await;
-        let hwnd = root.read_with(cx, |v, _| v.hwnd());
+        let window = cx.update(|cx| cx.windows().first().copied());
+        let hwnd = window.and_then(|w| {
+            w.update(cx, |_, window, _| crate::overlay::hwnd_of(window))
+                .ok()
+                .flatten()
+        });
         let animating = view.read_with(cx, |v, _| v.animating());
         if let (Some(hwnd), false) = (hwnd, animating) {
             return Ok(hwnd);
@@ -212,6 +213,7 @@ async fn pass(
     cx: &mut AsyncApp,
     view: &Entity<Overlay>,
     hwnd: Hwnd,
+    size: (i32, i32),
     level: u8,
 ) -> Result<(u32, u32, Vec<u8>), String> {
     let color = col(u32::from(level) * 0x0001_0101, 1.0);
@@ -222,7 +224,7 @@ async fn pass(
     let mut last = None;
     for _ in 0..60 {
         sleep(cx, 120).await;
-        if let Some((w, h, pixels)) = capture_client(hwnd) {
+        if let Some((w, h, pixels)) = capture_client(hwnd, size.0, size.1) {
             let at = (3 * w as usize + w as usize - 4) * 4;
             if pixels[at..at + 3].iter().all(|c| c.abs_diff(level) <= 1) {
                 return Ok((w, h, pixels));
@@ -235,13 +237,10 @@ async fn pass(
     ))
 }
 
-async fn capture(
-    mut cx: AsyncApp,
-    root: Entity<Single>,
-    view: Entity<Overlay>,
-    path: PathBuf,
-) -> Result<(), String> {
-    let hwnd = settled(&mut cx, &root, &view).await?;
+async fn capture(mut cx: AsyncApp, view: Entity<Overlay>, path: PathBuf) -> Result<(), String> {
+    let hwnd = settled(&mut cx, &view).await?;
+    let (w, h) = view.read_with(&cx, |v, _| v.wanted_size());
+    let size = (w as i32, h as i32);
     // La referencia son píxeles físicos a 100 % de DPI (SPEC §7).
     // SAFETY: `hwnd` es el HWND vivo de la ventana; la llamada no toma punteros.
     let dpi = unsafe { gdi::GetDpiForWindow(hwnd) };
@@ -251,8 +250,8 @@ async fn capture(
         ));
     }
     sleep(&cx, 200).await;
-    let (w, h, black) = pass(&mut cx, &view, hwnd, 0).await?;
-    let (_, _, white) = pass(&mut cx, &view, hwnd, 255).await?;
+    let (w, h, black) = pass(&mut cx, &view, hwnd, size, 0).await?;
+    let (_, _, white) = pass(&mut cx, &view, hwnd, size, 255).await?;
     write_png(&path, w, h, &solve_alpha(&black, &white))?;
     println!("captura {} ({w}x{h} px)", path.display());
     Ok(())
@@ -267,19 +266,17 @@ pub fn run(path: PathBuf) -> ExitCode {
             flag.set(true);
             return;
         }
-        let (view, root) =
-            match app::open_window(cx, Kind::Standings, Preferences::default(), (20.0, 20.0)) {
-                Ok(opened) => opened,
-                Err(error) => {
-                    eprintln!("no se pudo abrir la ventana: {error}");
-                    flag.set(true);
-                    cx.quit();
-                    return;
-                }
-            };
+        // El widget en la esquina del monitor principal: se captura solo su rectángulo.
+        let placed = [(Kind::Standings, (0.0, 0.0))];
+        let Some(view) = app::open_screens(cx, &placed, Preferences::default()).pop() else {
+            eprintln!("no se pudo abrir la ventana");
+            flag.set(true);
+            cx.quit();
+            return;
+        };
         view.update(cx, |v, cx| v.ingest(&source::fixed(), cx));
         cx.spawn(async move |cx| {
-            let result = capture(cx.clone(), root, view, path).await;
+            let result = capture(cx.clone(), view, path).await;
             if let Err(error) = &result {
                 eprintln!("{error}");
                 flag.set(true);

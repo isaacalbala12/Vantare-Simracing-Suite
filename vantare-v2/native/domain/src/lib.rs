@@ -8,6 +8,7 @@
 #![forbid(unsafe_code)]
 
 mod adapter;
+pub mod broadcast_tower;
 mod capability;
 mod flag;
 pub mod format;

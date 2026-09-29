@@ -1,5 +1,28 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — perfil receptor con LMU47 (2026-09-29)
+
+En dos ventanas consecutivas de 15 s con LMU 1.4.2.0 y 47 coches, el probe
+perfilado entregó 908 actualizaciones por producto para Rust+Go VTE1 y 958
+para Go. Rust+Go consumió 4,9375 s CPU total (3,4375 host + 1,5 hijo),
+frente a 1,921875 s Go; p99 Engineer 5,4153 frente a 2,2138 ms. El perfil
+de CPU del host Rust acumuló 3,35 s de muestras: 1,67 s en
+`DecodeOverlaySnapshot`, 1,09 s dentro de `StandingRowV2.UnmarshalJSON` y
+0,29 s en `PublishSnapshot`. Perfiles externos:
+`C:/tmp/isa-1403-rust-host-1a6b4f9e.pprof` (SHA-256
+`85528441e24879f933bb26b2dc9a6c2b79d8aa991639d7d74200faf1e756454e`)
+y `C:/tmp/isa-1403-go-host-1a6b4f9e.pprof` (SHA-256
+`bb6b58f7b855a10e41b3db2486e3fadaee7d6ab35fc8e2b07ae95721ad7b8dae`).
+
+El perfilador cambia el coste y la memoria observados; las cadencias siguen
+sin ser equivalentes y no hay replay inmutable G0/G1/R. Esta evidencia
+localiza el codec Overlay como primer coste del host, sin acreditar el gate
+de rendimiento. El siguiente corte debe reducir ese coste conservando
+validación y paridad, y medir por separado los eventos emitidos y entregados.
+Un único escenario temporal real de al menos 46 coches sigue siendo suficiente;
+los 47 de LMU cumplen el tamaño, pero faltan los demás gates. Go continúa por
+defecto y PR #1415 sigue draft, sin promoción.
+
 ## VAN-778 / ISA-1403 — decoder numérico y pareja física (2026-09-29)
 
 El decoder Go de tiempos compactos Standings usa el parser numérico directo

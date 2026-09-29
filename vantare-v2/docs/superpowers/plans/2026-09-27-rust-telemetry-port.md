@@ -2572,3 +2572,21 @@ Rust+Go VTE1 dio 5,4375 s, RSS 37.924.864 B, p99 5,7002 ms y 908.
 No es el banco G0/G1/R ni demuestra mejora física del decoder: las
 cadencias y las ventanas siguen distintas. R21 debe reducir trabajo de
 producto/IPC y conservar equivalencia estricta antes del gate final.
+
+## 140. Perfil del receptor live con el umbral ≥46 (2026-09-29)
+
+El umbral de aceptación permanece en **un escenario temporal real de al menos
+46 coches**; LMU 1.4.2.0 mostró 47 en las dos ventanas siguientes. El probe
+físico perfilado de 15 s produjo Go 1,921875 s CPU y 958 entregas/producto,
+frente a Rust+Go VTE1 4,9375 s CPU (3,4375 host + 1,5 hijo) y 908 entregas.
+El p99 Engineer fue 2,2138 ms Go y 5,4153 ms Rust+Go. El perfil del host
+Rust acumuló 3,35 s de muestras: 1,67 s en `DecodeOverlaySnapshot`, 1,09 s
+de ellos en filas Standings y 0,29 s en publicación Overlay. Se conserva fuera
+del repo en `C:/tmp/isa-1403-rust-host-1a6b4f9e.pprof` (SHA-256
+`85528441e24879f933bb26b2dc9a6c2b79d8aa991639d7d74200faf1e756454e`).
+El perfil Go emparejado está en `C:/tmp/isa-1403-go-host-1a6b4f9e.pprof`
+(SHA-256 `bb6b58f7b855a10e41b3db2486e3fadaee7d6ab35fc8e2b07ae95721ad7b8dae`).
+Perfilado, ventanas live y cadencias desiguales impiden usar esos números como
+G0/G1/R o comparar RSS. R21 debe reducir primero el coste demostrado del
+codec Overlay sin perder validación, registrar emisión frente a entrega y
+repetir en un corpus temporal equivalente.

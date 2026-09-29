@@ -45,6 +45,8 @@ pub(super) struct SessionUpdate {
     pub(super) phase: u8,
     pub(super) elapsed: f64,
     pub(super) end: f64,
+    pub(super) rain: f64,
+    pub(super) wetness: f64,
 }
 
 pub(super) enum Message {
@@ -184,14 +186,8 @@ pub(super) fn parse(bytes: &[u8]) -> io::Result<Message> {
 }
 
 fn read_session(r: &mut Reader<'_>) -> io::Result<Message> {
-    let session = SessionUpdate {
-        event: r.u16()?,
-        index: r.u16()?,
-        kind: r.u8()?,
-        phase: r.u8()?,
-        elapsed: r.f32()? / 1000.0,
-        end: r.f32()? / 1000.0,
-    };
+    let (event, index, kind, phase) = (r.u16()?, r.u16()?, r.u8()?, r.u8()?);
+    let (elapsed, end) = (r.f32()? / 1000.0, r.f32()? / 1000.0);
     r.i32()?; // focused car
     for _ in 0..3 {
         r.text()?;
@@ -199,9 +195,21 @@ fn read_session(r: &mut Reader<'_>) -> io::Result<Message> {
     if r.u8()? > 0 {
         r.take(8)?;
     } // replay clocks
-    r.take(9)?; // time of day, temperatures, weather
+    r.take(7)?; // time of day, temperatures, clouds; temperaturas desde physics.
+    // SDK Kunos v4: RainLevel/Wetness = byte / 10, fracciones, no porcentajes.
+    let rain = f64::from(r.u8()?) / 10.0;
+    let wetness = f64::from(r.u8()?) / 10.0;
     lap(r)?;
-    Ok(Message::Session(session))
+    Ok(Message::Session(SessionUpdate {
+        event,
+        index,
+        kind,
+        phase,
+        elapsed,
+        end,
+        rain,
+        wetness,
+    }))
 }
 
 fn read_car(r: &mut Reader<'_>) -> io::Result<Message> {

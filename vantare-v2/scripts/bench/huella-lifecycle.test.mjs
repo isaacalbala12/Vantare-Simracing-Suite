@@ -356,3 +356,14 @@ test("Read-PresentMonFrames lee frames v2 y cuenta los perdidos", { skip: proces
   `], { encoding: "utf8" }).trim();
   assert.equal(out, "2/1/15.8548/16.2337");
 });
+
+test("el runner intercalado alterna A0/A1 en orden ABBA con los mismos bloques por condición", { skip: process.platform !== "win32" }, async () => {
+  const runner = await readFile(new URL("./huella-intercalado.ps1", import.meta.url), "utf8");
+  const slice = runner.slice(runner.indexOf("$blocks = @("), runner.indexOf("function Invoke-Block"));
+  const out = execFileSync("pwsh", ["-NoProfile", "-Command", `
+    $Bloques = 8; $runDir = 'x'
+    ${slice}
+    $blocks.condition -join ','
+  `], { encoding: "utf8" }).trim();
+  assert.equal(out, "A0,A1,A1,A0,A0,A1,A1,A0");
+});

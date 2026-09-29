@@ -216,13 +216,37 @@ func (quality *StandingQualityV2) UnmarshalJSON(data []byte) error {
 		return err
 	}
 	var value StandingQualityV2
-	targets := map[string]*Quality{"q": &value.Q, "gap": &value.Gap, "bestLap": &value.BestLap, "lastLap": &value.LastLap, "position": &value.Position, "classPosition": &value.ClassPosition, "pit": &value.Pit, "laps": &value.Laps, "gapLaps": &value.GapLaps, "classGap": &value.ClassGap, "classGapLaps": &value.ClassGapLaps, "interval": &value.Interval, "intervalLaps": &value.IntervalLaps}
 	for key, raw := range fields {
-		if alias := map[string]string{"g": "gap", "b": "bestLap", "l": "lastLap"}[key]; alias != "" {
-			key = alias
+		var target *Quality
+		switch key {
+		case "q":
+			target = &value.Q
+		case "g", "gap":
+			target = &value.Gap
+		case "b", "bestLap":
+			target = &value.BestLap
+		case "l", "lastLap":
+			target = &value.LastLap
+		case "position":
+			target = &value.Position
+		case "classPosition":
+			target = &value.ClassPosition
+		case "pit":
+			target = &value.Pit
+		case "laps":
+			target = &value.Laps
+		case "gapLaps":
+			target = &value.GapLaps
+		case "classGap":
+			target = &value.ClassGap
+		case "classGapLaps":
+			target = &value.ClassGapLaps
+		case "interval":
+			target = &value.Interval
+		case "intervalLaps":
+			target = &value.IntervalLaps
 		}
-		target, ok := targets[key]
-		if !ok || *target != "" {
+		if target == nil || *target != "" {
 			return fmt.Errorf("unknown or duplicate standing quality %s", key)
 		}
 		switch raw {

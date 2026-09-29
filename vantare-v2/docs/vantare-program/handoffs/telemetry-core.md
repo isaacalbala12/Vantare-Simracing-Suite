@@ -1,5 +1,16 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — coste del decoder Overlay (2026-09-29)
+
+En el fixture Rust estático, el decoder Go original midió 0,972–0,999 ms/frame,
+316,9 kB y 2331 asignaciones. `GOEXPERIMENT=jsonv2` dio 0,714–0,718 ms,
+263,8 kB y 1020 asignaciones, con el test del oráculo verde; es experimental
+y no se activó en producción. El perfil CPU atribuyó 1,62 s acumulados a
+`StandingRowV2.UnmarshalJSON` sobre 4,21 s muestreados. Se eliminó la tabla
+de punteros recreada por cada `StandingQualityV2`: 0,924–0,951 ms/frame,
+287,7 kB y 2155 asignaciones. `go test ./...` pasó. Es una mejora local
+para el brazo G1, no el gate de CPU total; Rust sigue candidato y Go default.
+
 ## VAN-778 / ISA-1403 — stub no Windows compilable (2026-09-29)
 
 `main.rs` corregido: el stub no Windows recibe el tercer argumento del

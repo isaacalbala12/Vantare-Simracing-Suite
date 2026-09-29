@@ -2429,3 +2429,15 @@ el target estándar `x86_64-unknown-linux-gnu` localmente, `cargo check
 --locked --target x86_64-unknown-linux-gnu --all-targets` y Clippy para el
 mismo target con `-D warnings` pasan. Es una comprobación de compilación,
 no ejecución Linux ni soporte de adquisición LMU fuera de Windows.
+
+## 132. Perfil del decoder Overlay y microoptimización Go (2026-09-29)
+
+Sobre el mismo fixture Rust estático, tres muestras baseline midieron
+0,972–0,999 ms/frame, ~317 kB y 2331 asignaciones. La API experimental
+`GOEXPERIMENT=jsonv2` dio 0,714–0,718 ms, ~264 kB y 1020 asignaciones;
+el test del oráculo pasó, pero no se habilitó esa API experimental. Un perfil
+CPU ubicó 1,62 de 4,21 s muestreados acumulados en el unmarshal de filas
+standings. Sustituir la tabla de punteros construida por calidad por un
+switch en el decodificador Go conservó las pruebas y dio 0,924–0,951
+ms/frame, ~288 kB y 2155 asignaciones. `go test ./...` pasó. El efecto es
+pequeño frente al coste del pipeline completo; no acredita R21 ni el 50 %.

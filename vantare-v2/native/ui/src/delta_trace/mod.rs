@@ -171,6 +171,25 @@ mod tests {
         assert!(matches!(widget.frame(prefs).1, Wake::Idle));
     }
 
+    #[test]
+    fn reference_scene_preserves_the_scalar_without_fabricating_history() {
+        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/delta-trace.snapshot.json"
+        ))
+        .expect("escena Workshop reconstruida en DTO v3");
+        assert_eq!(
+            snapshot.state.player.map(|player| player.delta_best_s),
+            Some(Quality::Reliable(0.214))
+        );
+        let mut widget = Widget::new(Preferences::default());
+        assert!(widget.ingest(&snapshot, Preferences::default()));
+        // La referencia muestra +0.257 desde el último punto de su historia.
+        // Snapshot solo representa el escalar +0.214, nunca sustituirlo a mano.
+        assert_eq!(widget.vm.current_text, "+0.214");
+        assert_eq!(widget.vm.trend_text, "DESCONOCIDO");
+        assert!(matches!(widget.frame(Preferences::default()).1, Wake::Idle));
+    }
+
     #[cfg(feature = "parity-capture")]
     #[test]
     fn a_static_widget_never_keeps_capture_waiting_for_animation() {

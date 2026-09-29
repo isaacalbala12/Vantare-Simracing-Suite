@@ -226,8 +226,10 @@ que cubra todo el gate**. R02 requiere un corpus temporal real de al menos 46.
 
 Isaac retiró el requisito de escenarios separados de 44 y 104 vehículos el
 2026-09-29: **un escenario real de al menos 46 coches basta para la aceptación**.
-El corpus temporal ELMS 2025 de 47 coches es el candidato actual; sus ocho
-muestras no sustituyen una duración suficiente para el banco G0/G1/R ni la
+El [corpus temporal LMU47 de 60 s](../../../testdata/rust-port/README.md)
+contiene 3600 lecturas SHM y 239 REST con tiempos de petición reales, hashes
+por evento y auditoría obligatoria en Go/CI Windows. Cumple el umbral de tamaño
+y cadencia de entrada R02, pero aún no sustituye el banco G0/G1/R ni la
 paridad de todas las salidas. No se ha acreditado una captura real de 104
 vehículos en este worktree, pero ya no bloquea por su tamaño.
 [BenchmarkEngineApply104](../../../internal/telemetry/engine/benchmark_test.go)
@@ -342,7 +344,7 @@ un worker no basta.
 | Corte | Dependencia | Entrega, archivos previstos y aceptación | Verificación de salida |
 | --- | --- | --- | --- |
 | R01 Inventario congelado | Plan revisado | `docs/telemetry-core/rust-port-inventory.md` y manifiesto de base/configuración. Tabla símbolo→owner futuro→consumidor→test, contratos/cadencias/límites, y resolución del destino de roadmap antes del PR. Registrar repositorio, rama, SHA y discrepancias de base. | Revisión contra wiring/callers reales; rutas comprobadas; mapa completo del camino live y lista protegida Analysis/recording. |
-| R02 Corpus temporal | R01 | `testdata/rust-port/manifest.json`, índice y herramientas de captura sanitizada acotadas. Acreditar secuencia SHM+REST real de al menos 46 coches, con hashing, temporalidad, privacidad y conteo. El corpus ELMS 2025 de 47 es candidato; completar duración y estados exigidos por el banco. | Validar manifest y hashes, leer con parser Go, contrastar conteos/estado con LMU. Fallar si falta corpus; no convertir `Skip` en PASS. |
+| R02 Corpus temporal | R01 | `testdata/rust-port/lmu47-high-rate-60s.tar.gz`, manifiesto interno y herramientas de captura sanitizada. La captura LMU 1.4.2.0 de 47 coches tiene 3600 SHM y 239 REST en 60 s con tiempos reales, hash por archivo y sanitización. Falta demostrar que los estados cubiertos bastan para toda la matriz de recuperación. | Auditoría Go de orden/reloj/hashes/parser y test obligatorio del archivo comprimido en Windows pasan; replay G0/G1/R y estados de fallo siguen pendientes. |
 | R03 Oráculo y banco Go | R01; R02 para medir | Herramienta bajo `tools/telemetry-port-parity/` y banco bajo `scripts/bench/`; separar entregas si sus responsabilidades o tamaño impiden una revisión clara. Registrar salidas tipadas por etapa, G0, receptores, CPU/p99/RSS, A/A, método estadístico y duración fijados. | Repetición determinista de goldens; banco rechaza salida omitida/digest incorrecto/corrida incompleta; informe G0 con crudos. |
 
 **Checkpoint F0:** contratos de salida congelados y banco capaz de detectar

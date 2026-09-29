@@ -1,5 +1,27 @@
 # Handoff vivo — Telemetry Core
 
+## VAN-778 / ISA-1403 — corpus temporal real LMU47 60 Hz/4 Hz (2026-09-29)
+
+El capturador opt-in independiente escribió en disco solo frames SHM
+reconstruidos por el sanitizador y cuerpos REST admitidos; registró para REST
+inicio/fin de ambos endpoints. Una prueba física LMU 1.4.2.0 con 47 coches
+capturó 3600 SHM y 239 REST durante 59,983 s de pared, con avance de 60 s del
+reloj de origen. La auditoría externa de orden, tiempos, 3839 hashes y parser
+Go pasó. Archivo versionado de 23.477.704 B:
+`testdata/rust-port/lmu47-high-rate-60s.tar.gz`, SHA-256
+`c5b827ce1cfa558e732da934f11eb0f83f5dfb9e8a3c793f4d3f65ef8ca2a01c`;
+manifest interno SHA-256
+`9d86e6c3b865f7b736023dd0eb5c2715d0b6dce6e39c64d9b0544c1549cb6a60`.
+Un test Windows obligatorio verifica el archivo y cada evento sin extraer
+1,17 GB en CI. [Procedimiento y límites](../../../testdata/rust-port/README.md).
+
+R02 ya dispone de entrada real temporal con el tamaño y las frecuencias
+necesarios para iniciar G0/G1/R. La sesión cubre pista estable: menú, boxes,
+reconnect y fallos requieren pruebas físicas adicionales. El banco aún debe
+reproducir los tiempos registrados en ambas implementaciones y medir CPU
+total, p99 y RSS; esta captura por sí sola no acredita paridad ni el 50%.
+Go sigue productivo y PR #1415 draft, sin merge/promoción.
+
 ## VAN-778 / ISA-1403 — coste de claves Standings y codec Engineer (2026-09-29)
 
 El detector de alias legacy de `StandingRowV2` inspeccionaba todo el JSON de

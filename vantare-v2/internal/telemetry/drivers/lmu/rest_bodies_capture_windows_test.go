@@ -18,30 +18,49 @@ import (
 // unknown endpoint fields never leave memory; slot aliases match the SHM
 // sanitizer that has already processed this sample.
 func captureSanitizedRESTBodies(ctx context.Context, sanitizer *FrameSanitizer) ([]byte, error) {
+	result, err := captureSanitizedRESTBodiesTimed(ctx, sanitizer)
+	return result.body, err
+}
+
+type timedRESTBodies struct {
+	body               []byte
+	standingsStarted   time.Time
+	standingsCompleted time.Time
+	sessionStarted     time.Time
+	sessionCompleted   time.Time
+}
+
+func captureSanitizedRESTBodiesTimed(ctx context.Context, sanitizer *FrameSanitizer) (timedRESTBodies, error) {
+	var result timedRESTBodies
 	cfg := normalizeRESTConfig(defaultRESTConfig(), time.Now, nil)
+	result.standingsStarted = time.Now().Round(0).UTC()
 	standings := fetchREST(ctx, cfg, standingsEndpoint)
+	result.standingsCompleted = time.Now().Round(0).UTC()
 	defer clear(standings.body)
 	if standings.status != RESTEndpointFresh {
-		return nil, fmt.Errorf("standings status %d", standings.status)
+		return result, fmt.Errorf("standings status %d", standings.status)
 	}
+	result.sessionStarted = time.Now().Round(0).UTC()
 	session := fetchREST(ctx, cfg, sessionInfoEndpoint)
+	result.sessionCompleted = time.Now().Round(0).UTC()
 	defer clear(session.body)
 	if session.status != RESTEndpointFresh {
-		return nil, fmt.Errorf("sessionInfo status %d", session.status)
+		return result, fmt.Errorf("sessionInfo status %d", session.status)
 	}
 	safeStandings, err := sanitizeRESTStandings(standings.body, sanitizer)
 	if err != nil {
-		return nil, err
+		return result, err
 	}
 	safeSession, err := sanitizeRESTSession(session.body)
 	if err != nil {
-		return nil, err
+		return result, err
 	}
-	return json.Marshal(struct {
+	result.body, err = json.Marshal(struct {
 		Schema      string          `json:"schema"`
 		Standings   json.RawMessage `json:"standings"`
 		SessionInfo json.RawMessage `json:"sessionInfo"`
 	}{sanitizedRESTBodiesSchema, safeStandings, safeSession})
+	return result, err
 }
 
 func sanitizeRESTStandings(body []byte, sanitizer *FrameSanitizer) ([]byte, error) {

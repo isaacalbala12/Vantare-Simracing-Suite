@@ -143,6 +143,24 @@ mod tests {
     use vantare_domain::{Capability, Damage, Player, Quality};
 
     #[test]
+    fn reconstructed_workshop_scene_matches_the_frozen_display_values() {
+        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/car-damage-numbers.snapshot.json"
+        ))
+        .expect("escena reconstruida en el DTO v3 vigente");
+        let prefs = Preferences::default();
+        let vm = car_damage_numbers::project(&snapshot, prefs, true);
+        assert_eq!(vm.values, ["100%", "100%", "100%", "13%"]);
+        assert_eq!(vm.status_text, None);
+        let mut widget = Widget::new(prefs);
+        assert!(widget.ingest(&snapshot, prefs));
+        assert_eq!(widget.size(), SIZE);
+        assert!(matches!(widget.frame(prefs).1, Wake::Idle));
+        #[cfg(feature = "parity-capture")]
+        assert!(!widget.animating());
+    }
+
+    #[test]
     fn redraws_only_display_changes_and_never_schedules_animation() {
         let prefs = Preferences::default();
         let mut widget = Widget::new(prefs);

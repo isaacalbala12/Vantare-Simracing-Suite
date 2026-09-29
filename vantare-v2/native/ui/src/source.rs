@@ -58,6 +58,8 @@ fn all_fresh() -> Capabilities {
         delta: fresh,
         sectors: fresh,
         lap_progress: fresh,
+        weather: fresh,
+        damage: fresh,
     }
 }
 

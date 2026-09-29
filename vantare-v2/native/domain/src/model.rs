@@ -61,6 +61,24 @@ pub struct Session {
     /// Duración de la sesión en vueltas; `Unavailable` si es por tiempo.
     pub laps_total: Quality<u32>,
     pub track_length_m: Quality<f64>,
+    pub weather: Weather,
+}
+
+/// Clima de la sesión, en unidades SI. Cada señal puede faltar por separado.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Weather {
+    pub air_temperature_k: Quality<f64>,
+    pub track_temperature_k: Quality<f64>,
+    pub wind_speed_mps: Quality<f64>,
+    /// Dirección de procedencia: 0 = norte, π/2 = este, sentido horario.
+    /// El adaptador normaliza a [0, 2π); no es el yaw del coche.
+    pub wind_direction_rad: Quality<f64>,
+    /// Intensidad de lluvia, fracción 0–1.
+    pub rain: Quality<f64>,
+    /// Humedad de la pista: 0 = seca, 1 = completamente mojada.
+    pub track_wetness: Quality<f64>,
+    /// Presión atmosférica en pascales.
+    pub pressure_pa: Quality<f64>,
 }
 
 /// Distancia a otro coche: por tiempo, o por vueltas completas si es mayor.
@@ -141,10 +159,26 @@ pub struct Fuel {
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Damage {
+    /// Integridad 0–1: 1 = intacto, 0 = totalmente dañado. Para mostrar daño,
+    /// la proyección usa `1 - integridad`, nunca invierte el dato del modelo.
+    pub aero: Quality<f64>,
+    /// Misma convención de integridad que `aero`.
+    pub body: Quality<f64>,
+    /// Misma convención de integridad que `aero`.
+    pub suspension: Quality<f64>,
+    /// Goma restante 0–1: 1 = nuevo, 0 = totalmente gastado. Orden fijo:
+    /// delantero izquierdo, delantero derecho, trasero izquierdo, trasero derecho.
+    /// La proyección muestra desgaste como `1 - goma restante`.
+    pub tyre_wear: [Quality<f64>; 4],
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Player {
     pub car: CarId,
     pub telemetry: Telemetry,
     pub fuel: Fuel,
+    pub damage: Damage,
     /// Diferencia con la mejor vuelta propia en este punto de la vuelta;
     /// negativo = más rápido. Nativo si el simulador lo da; si no, derivado.
     pub delta_best_s: Quality<f64>,

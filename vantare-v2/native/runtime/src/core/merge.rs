@@ -5,8 +5,8 @@ use std::collections::HashSet;
 use std::mem;
 
 use vantare_domain::{
-    Capabilities, Capability, Car, CarId, Fuel, Gap, Observation, Player, Pose, Quality, Session,
-    SessionId, Snapshot, State, Telemetry,
+    Capabilities, Capability, Car, CarId, Damage, Fuel, Gap, Observation, Player, Pose, Quality,
+    Session, SessionId, Snapshot, State, Telemetry, Weather,
 };
 
 use super::derive::derive;
@@ -138,6 +138,8 @@ pub(super) fn degrade(state: &mut State) {
         delta,
         sectors,
         lap_progress,
+        weather,
+        damage,
     } = capabilities;
     for capability in [
         session_clock,
@@ -153,6 +155,8 @@ pub(super) fn degrade(state: &mut State) {
         delta,
         sectors,
         lap_progress,
+        weather,
+        damage,
     ] {
         if *capability == Capability::Fresh {
             *capability = Capability::WithData;
@@ -168,6 +172,7 @@ pub(super) fn degrade(state: &mut State) {
         laps_remaining,
         laps_total,
         track_length_m,
+        weather,
     } = session;
     make_stale(kind);
     make_stale(state);
@@ -177,6 +182,7 @@ pub(super) fn degrade(state: &mut State) {
     make_stale(laps_remaining);
     make_stale(laps_total);
     make_stale(track_length_m);
+    degrade_weather(weather);
     make_stale(flags);
     cars.iter_mut().for_each(degrade_car);
     if let Some(player) = player {
@@ -224,6 +230,13 @@ fn degrade_car(car: &mut Car) {
 }
 
 fn degrade_player(player: &mut Player) {
+    let Player {
+        car: _,
+        telemetry,
+        fuel,
+        damage,
+        delta_best_s,
+    } = player;
     let Telemetry {
         throttle,
         brake,
@@ -231,7 +244,7 @@ fn degrade_player(player: &mut Player) {
         gear,
         speed_mps,
         engine_speed_rad_s,
-    } = &mut player.telemetry;
+    } = telemetry;
     make_stale(throttle);
     make_stale(brake);
     make_stale(clutch);
@@ -243,12 +256,41 @@ fn degrade_player(player: &mut Player) {
         capacity_l,
         per_lap_l,
         laps_left,
-    } = &mut player.fuel;
+    } = fuel;
     make_stale(level_l);
     make_stale(capacity_l);
     make_stale(per_lap_l);
     make_stale(laps_left);
-    make_stale(&mut player.delta_best_s);
+    make_stale(delta_best_s);
+    let Damage {
+        aero,
+        body,
+        suspension,
+        tyre_wear,
+    } = damage;
+    make_stale(aero);
+    make_stale(body);
+    make_stale(suspension);
+    tyre_wear.iter_mut().for_each(make_stale);
+}
+
+fn degrade_weather(weather: &mut Weather) {
+    let Weather {
+        air_temperature_k,
+        track_temperature_k,
+        wind_speed_mps,
+        wind_direction_rad,
+        rain,
+        track_wetness,
+        pressure_pa,
+    } = weather;
+    make_stale(air_temperature_k);
+    make_stale(track_temperature_k);
+    make_stale(wind_speed_mps);
+    make_stale(wind_direction_rad);
+    make_stale(rain);
+    make_stale(track_wetness);
+    make_stale(pressure_pa);
 }
 
 fn make_stale<T>(quality: &mut Quality<T>) {
@@ -268,6 +310,7 @@ fn sanitize(state: &mut State) {
     finite(&mut session.elapsed_s);
     finite(&mut session.remaining_s);
     finite(&mut session.track_length_m);
+    sanitize_weather(&mut session.weather);
     for car in &mut state.cars {
         finite(&mut car.last_lap_s);
         finite(&mut car.best_lap_s);
@@ -296,7 +339,46 @@ fn sanitize(state: &mut State) {
         finite(&mut player.fuel.per_lap_l);
         finite(&mut player.fuel.laps_left);
         finite(&mut player.delta_best_s);
+        let Damage {
+            aero,
+            body,
+            suspension,
+            tyre_wear,
+        } = &mut player.damage;
+        fraction(aero);
+        fraction(body);
+        fraction(suspension);
+        tyre_wear.iter_mut().for_each(fraction);
     }
+}
+
+fn sanitize_weather(weather: &mut Weather) {
+    let Weather {
+        air_temperature_k,
+        track_temperature_k,
+        wind_speed_mps,
+        wind_direction_rad,
+        rain,
+        track_wetness,
+        pressure_pa,
+    } = weather;
+    for quality in [
+        air_temperature_k,
+        track_temperature_k,
+        wind_speed_mps,
+        pressure_pa,
+    ] {
+        keep_if(quality, |v| v.is_finite() && *v >= 0.0);
+    }
+    keep_if(wind_direction_rad, |v| {
+        (0.0..std::f64::consts::TAU).contains(v)
+    });
+    fraction(rain);
+    fraction(track_wetness);
+}
+
+fn fraction(quality: &mut Quality<f64>) {
+    keep_if(quality, |v| (0.0..=1.0).contains(v));
 }
 
 fn finite_gap(gap: &Gap) -> bool {
@@ -441,6 +523,125 @@ mod tests {
             Quality::Unavailable,
             "coche de jugador nuevo: la memoria se descarta"
         );
+    }
+
+    #[test]
+    fn weather_and_damage_defaults_are_unavailable() {
+        let mut obs = observation(vec![car(1, 1)]);
+        obs.state.player = Some(Player::default());
+        let snapshot = merge(None, obs, 1, &mut Trackers::default()).unwrap();
+        assert_eq!(snapshot.state.session.weather, Weather::default());
+        assert_eq!(snapshot.state.player.unwrap().damage, Damage::default());
+        assert_eq!(snapshot.state.capabilities.weather, Capability::Unsupported);
+        assert_eq!(snapshot.state.capabilities.damage, Capability::Unsupported);
+    }
+
+    fn weather_with(value: Quality<f64>) -> Weather {
+        Weather {
+            air_temperature_k: value,
+            track_temperature_k: value,
+            wind_speed_mps: value,
+            wind_direction_rad: value,
+            rain: value,
+            track_wetness: value,
+            pressure_pa: value,
+        }
+    }
+
+    fn damage_with(value: Quality<f64>) -> Damage {
+        Damage {
+            aero: value,
+            body: value,
+            suspension: value,
+            tyre_wear: [value; 4],
+        }
+    }
+
+    #[test]
+    fn weather_and_damage_degrade_all_fields_without_losing_values() {
+        for quality in [
+            Quality::Reliable(0.5),
+            Quality::Estimated(0.5),
+            Quality::Stale(0.5),
+            Quality::Unavailable,
+        ] {
+            let mut obs = observation(vec![car(1, 1)]);
+            obs.state.capabilities.weather = Capability::Fresh;
+            obs.state.capabilities.damage = Capability::Fresh;
+            obs.state.session.weather = weather_with(quality);
+            obs.state.player = Some(Player {
+                damage: damage_with(quality),
+                ..Player::default()
+            });
+            let fresh = merge(None, obs, 1, &mut Trackers::default()).unwrap();
+            let old = stale(&fresh);
+            let expected = match quality {
+                Quality::Unavailable => Quality::Unavailable,
+                _ => Quality::Stale(0.5),
+            };
+            assert_eq!(old.state.session.weather, weather_with(expected));
+            assert_eq!(old.state.player.unwrap().damage, damage_with(expected));
+            assert_eq!(old.state.capabilities.weather, Capability::WithData);
+            assert_eq!(old.state.capabilities.damage, Capability::WithData);
+            assert_eq!(fresh.state.session.weather, weather_with(quality));
+            assert_eq!(fresh.state.player.unwrap().damage, damage_with(quality));
+        }
+    }
+
+    #[test]
+    fn invalid_weather_and_damage_are_absent_in_every_quality() {
+        for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -1.0] {
+            for quality in [
+                Quality::Reliable(value),
+                Quality::Estimated(value),
+                Quality::Stale(value),
+            ] {
+                let mut obs = observation(vec![car(1, 1)]);
+                obs.state.session.weather = weather_with(quality);
+                obs.state.player = Some(Player {
+                    damage: damage_with(quality),
+                    ..Player::default()
+                });
+                let snapshot = merge(None, obs, 1, &mut Trackers::default()).unwrap();
+                assert_eq!(snapshot.state.session.weather, Weather::default());
+                assert_eq!(snapshot.state.player.unwrap().damage, Damage::default());
+            }
+        }
+    }
+
+    #[test]
+    fn weather_and_damage_bounds_reject_without_clamping() {
+        for value in [0.0, 1.0, 1.01] {
+            let quality = Quality::Reliable(value);
+            let mut obs = observation(vec![car(1, 1)]);
+            obs.state.session.weather = weather_with(quality);
+            obs.state.player = Some(Player {
+                damage: damage_with(quality),
+                ..Player::default()
+            });
+            let snapshot = merge(None, obs, 1, &mut Trackers::default()).unwrap();
+            let expected = if value <= 1.0 {
+                quality
+            } else {
+                Quality::Unavailable
+            };
+            let weather = snapshot.state.session.weather;
+            assert_eq!(weather.rain, expected);
+            assert_eq!(weather.track_wetness, expected);
+            assert_eq!(weather.air_temperature_k, quality);
+            assert_eq!(weather.track_temperature_k, quality);
+            assert_eq!(weather.wind_speed_mps, quality);
+            assert_eq!(weather.wind_direction_rad, quality);
+            assert_eq!(weather.pressure_pa, quality);
+            assert_eq!(snapshot.state.player.unwrap().damage, damage_with(expected));
+        }
+        for value in [std::f64::consts::TAU, 7.0] {
+            let mut weather = weather_with(Quality::Reliable(0.5));
+            weather.wind_direction_rad = Quality::Reliable(value);
+            sanitize_weather(&mut weather);
+            assert_eq!(weather.wind_direction_rad, Quality::Unavailable);
+            assert_eq!(weather.rain, Quality::Reliable(0.5));
+        }
     }
 
     #[test]

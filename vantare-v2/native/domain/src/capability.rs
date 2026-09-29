@@ -39,4 +39,8 @@ pub struct Capabilities {
     pub sectors: Capability,
     /// Distancia y tiempo dentro de la vuelta en curso.
     pub lap_progress: Capability,
+    /// Clima y estado de la pista.
+    pub weather: Capability,
+    /// Integridad del jugador y goma restante por neumático.
+    pub damage: Capability,
 }

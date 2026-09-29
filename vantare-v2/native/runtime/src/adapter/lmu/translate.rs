@@ -308,6 +308,7 @@ impl Translator {
             laps_remaining: Quality::Unavailable,
             laps_total: quality(frame.maximum_laps, stale),
             track_length_m: quality(frame.track_length_m, stale),
+            ..Session::default()
         }
     }
 }
@@ -337,6 +338,7 @@ fn player(vehicle: &Vehicle, car: CarId, stale: bool) -> Player {
                 .filter(|delta| *delta != 0.0 || vehicle.best_lap_s.is_some()),
             stale,
         ),
+        ..Player::default()
     }
 }
 
@@ -402,6 +404,7 @@ fn capabilities(
                 .any(|car| has(&car.lap_distance_m) || has(&car.lap_elapsed_s)),
             stale,
         ),
+        ..Capabilities::default()
     }
 }
 

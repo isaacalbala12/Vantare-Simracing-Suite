@@ -12,7 +12,7 @@ use crate::dto::{self, SnapshotDto};
 
 pub(crate) const MAX_MESSAGE: usize = 1 << 20;
 /// Versiones de DTO que este extremo sabe hablar.
-const MIN_VERSION: u32 = 1;
+const MIN_VERSION: u32 = dto::VERSION;
 const MAX_VERSION: u32 = dto::VERSION;
 
 /// Posición de una foto en la línea de tiempo de un productor.
@@ -115,16 +115,15 @@ pub(crate) mod tests {
     use std::time::Duration;
 
     use vantare_domain::{
-        Capabilities, Capability, Car, CarId, Class, ClassId, Driver, DriverId, Flag, FlagKind,
-        FlagScope, Fuel, Gap, Origin, Player, Pose, Quality, Session, SessionId, SessionKind,
-        SessionState, Source, SourceKind, State, Telemetry,
+        Capabilities, Capability, Car, CarId, Class, ClassId, Damage, Driver, DriverId, Flag,
+        FlagKind, FlagScope, Fuel, Gap, Origin, Player, Pose, Quality, Session, SessionId,
+        SessionKind, SessionState, Source, SourceKind, State, Telemetry, Weather,
     };
 
     use super::*;
 
-    /// Foto que ejercita todas las variantes del modelo.
-    pub(crate) fn rich_snapshot(epoch: u64, sequence: u64) -> Snapshot {
-        let car = |id: u32| Car {
+    fn rich_car(id: u32) -> Car {
+        Car {
             id: CarId(id),
             number: format!("{id}"),
             driver: Driver {
@@ -154,7 +153,11 @@ pub(crate) mod tests {
                 y_m: 1e-9,
                 yaw_rad: 3.25,
             }),
-        };
+        }
+    }
+
+    /// Foto que ejercita todas las variantes del modelo.
+    pub(crate) fn rich_snapshot(epoch: u64, sequence: u64) -> Snapshot {
         Snapshot {
             epoch,
             sequence,
@@ -173,6 +176,8 @@ pub(crate) mod tests {
                     gaps: Capability::Supported,
                     fuel: Capability::Fresh,
                     lap_progress: Capability::WithData,
+                    weather: Capability::Fresh,
+                    damage: Capability::WithData,
                     ..Capabilities::default()
                 },
                 session: Session {
@@ -185,6 +190,15 @@ pub(crate) mod tests {
                     laps_remaining: Quality::Unavailable,
                     laps_total: Quality::Reliable(24),
                     track_length_m: Quality::Reliable(13_626.0),
+                    weather: Weather {
+                        air_temperature_k: Quality::Reliable(295.15),
+                        track_temperature_k: Quality::Estimated(308.15),
+                        wind_speed_mps: Quality::Reliable(5.0),
+                        wind_direction_rad: Quality::Stale(std::f64::consts::FRAC_PI_2),
+                        rain: Quality::Reliable(0.25),
+                        track_wetness: Quality::Estimated(0.5),
+                        pressure_pa: Quality::Reliable(101_325.0),
+                    },
                 },
                 flags: Quality::Reliable(vec![
                     Flag {
@@ -196,7 +210,7 @@ pub(crate) mod tests {
                         scope: FlagScope::Car(CarId(7)),
                     },
                 ]),
-                cars: vec![car(1), car(2)],
+                cars: vec![rich_car(1), rich_car(2)],
                 player: Some(Player {
                     car: CarId(2),
                     telemetry: Telemetry {
@@ -210,6 +224,17 @@ pub(crate) mod tests {
                         ..Fuel::default()
                     },
                     delta_best_s: Quality::Reliable(-0.125),
+                    damage: Damage {
+                        aero: Quality::Reliable(0.9),
+                        body: Quality::Estimated(0.8),
+                        suspension: Quality::Stale(0.7),
+                        tyre_wear: [
+                            Quality::Reliable(1.0),
+                            Quality::Estimated(0.75),
+                            Quality::Stale(0.5),
+                            Quality::Reliable(0.25),
+                        ],
+                    },
                 }),
             },
         }
@@ -237,6 +262,53 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn weather_and_damage_fields_are_required_and_tyres_have_four_slots() {
+        let json = serde_json::to_value(SnapshotDto::from(&rich_snapshot(1, 1))).unwrap();
+        for (section, fields) in [
+            (
+                "session",
+                &[
+                    "weather_air_temperature_k",
+                    "weather_track_temperature_k",
+                    "weather_wind_speed_mps",
+                    "weather_wind_direction_rad",
+                    "weather_rain",
+                    "weather_track_wetness",
+                    "weather_pressure_pa",
+                ][..],
+            ),
+            (
+                "player",
+                &[
+                    "damage_aero",
+                    "damage_body",
+                    "damage_suspension",
+                    "damage_tyre_wear",
+                ][..],
+            ),
+            ("capabilities", &["weather", "damage"][..]),
+        ] {
+            for field in fields {
+                let mut missing = json.clone();
+                missing["state"][section]
+                    .as_object_mut()
+                    .unwrap()
+                    .remove(*field);
+                assert!(
+                    serde_json::from_value::<SnapshotDto>(missing).is_err(),
+                    "{field}"
+                );
+            }
+        }
+        for count in [3, 5] {
+            let mut malformed = json.clone();
+            malformed["state"]["player"]["damage_tyre_wear"] =
+                serde_json::json!(vec!["unavailable"; count]);
+            assert!(serde_json::from_value::<SnapshotDto>(malformed).is_err());
+        }
+    }
+
+    #[test]
     fn a_simulator_name_outside_the_table_decodes_as_unknown() {
         let mut json = serde_json::to_value(SnapshotDto::from(&rich_snapshot(1, 1))).unwrap();
         assert_eq!(json["origin"]["simulator"], "lmu");
@@ -251,17 +323,22 @@ pub(crate) mod tests {
 
     #[test]
     fn incompatible_dto_version_is_refused() {
-        let mut dto = SnapshotDto::from(&Snapshot::default());
-        dto.version = dto::VERSION + 1;
-        assert!(matches!(
-            Snapshot::try_from(dto),
-            Err(Error::Version { got }) if got == dto::VERSION + 1
-        ));
+        for version in [dto::VERSION - 1, dto::VERSION + 1] {
+            let mut dto = SnapshotDto::from(&Snapshot::default());
+            dto.version = version;
+            assert!(matches!(
+                Snapshot::try_from(dto),
+                Err(Error::Version { got }) if got == version
+            ));
+        }
     }
 
     #[test]
     fn negotiation_picks_the_highest_common_version() {
-        assert_eq!(negotiate(1, 1), Some(1));
+        assert_eq!(negotiate(1, 1), None);
+        assert_eq!(negotiate(1, dto::VERSION - 1), None);
+        assert!(!supports(dto::VERSION - 1));
+        assert!(supports(dto::VERSION));
         assert_eq!(negotiate(1, 9), Some(dto::VERSION));
         assert_eq!(negotiate(dto::VERSION + 1, dto::VERSION + 2), None);
         assert_eq!(negotiate(0, 0), None);

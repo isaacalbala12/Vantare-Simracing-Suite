@@ -10,7 +10,7 @@ use vantare_domain as d;
 use crate::Error;
 
 /// Versión del DTO. Se sube al cambiar el esquema de forma incompatible.
-pub(crate) const VERSION: u32 = 2;
+pub(crate) const VERSION: u32 = 3;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct SnapshotDto {
@@ -69,6 +69,8 @@ struct CapabilitiesDto {
     delta: CapabilityDto,
     sectors: CapabilityDto,
     lap_progress: CapabilityDto,
+    weather: CapabilityDto,
+    damage: CapabilityDto,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -91,6 +93,13 @@ struct SessionDto {
     laps_remaining: QualityDto<u32>,
     laps_total: QualityDto<u32>,
     track_length_m: QualityDto<f64>,
+    weather_air_temperature_k: QualityDto<f64>,
+    weather_track_temperature_k: QualityDto<f64>,
+    weather_wind_speed_mps: QualityDto<f64>,
+    weather_wind_direction_rad: QualityDto<f64>,
+    weather_rain: QualityDto<f64>,
+    weather_track_wetness: QualityDto<f64>,
+    weather_pressure_pa: QualityDto<f64>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -190,6 +199,10 @@ struct PlayerDto {
     fuel_per_lap_l: QualityDto<f64>,
     fuel_laps_left: QualityDto<f64>,
     delta_best_s: QualityDto<f64>,
+    damage_aero: QualityDto<f64>,
+    damage_body: QualityDto<f64>,
+    damage_suspension: QualityDto<f64>,
+    damage_tyre_wear: [QualityDto<f64>; 4],
 }
 
 // --- dominio → DTO ---------------------------------------------------------
@@ -263,6 +276,13 @@ fn session(s: &d::Session) -> SessionDto {
         laps_remaining: q(&s.laps_remaining, copied),
         laps_total: q(&s.laps_total, copied),
         track_length_m: q(&s.track_length_m, copied),
+        weather_air_temperature_k: q(&s.weather.air_temperature_k, copied),
+        weather_track_temperature_k: q(&s.weather.track_temperature_k, copied),
+        weather_wind_speed_mps: q(&s.weather.wind_speed_mps, copied),
+        weather_wind_direction_rad: q(&s.weather.wind_direction_rad, copied),
+        weather_rain: q(&s.weather.rain, copied),
+        weather_track_wetness: q(&s.weather.track_wetness, copied),
+        weather_pressure_pa: q(&s.weather.pressure_pa, copied),
     }
 }
 
@@ -310,6 +330,10 @@ fn player(p: &d::Player) -> PlayerDto {
         fuel_per_lap_l: q(&p.fuel.per_lap_l, copied),
         fuel_laps_left: q(&p.fuel.laps_left, copied),
         delta_best_s: q(&p.delta_best_s, copied),
+        damage_aero: q(&p.damage.aero, copied),
+        damage_body: q(&p.damage.body, copied),
+        damage_suspension: q(&p.damage.suspension, copied),
+        damage_tyre_wear: p.damage.tyre_wear.map(|v| q(&v, copied)),
     }
 }
 
@@ -344,6 +368,8 @@ impl From<&d::Snapshot> for SnapshotDto {
                     delta: cap(c.delta),
                     sectors: cap(c.sectors),
                     lap_progress: cap(c.lap_progress),
+                    weather: cap(c.weather),
+                    damage: cap(c.damage),
                 },
                 session: session(&s.state.session),
                 flags: q(&s.state.flags, |fs| fs.iter().map(flag).collect()),
@@ -425,6 +451,15 @@ fn usession(s: SessionDto) -> d::Session {
         laps_remaining: uq(s.laps_remaining, id),
         laps_total: uq(s.laps_total, id),
         track_length_m: uq(s.track_length_m, id),
+        weather: d::Weather {
+            air_temperature_k: uq(s.weather_air_temperature_k, id),
+            track_temperature_k: uq(s.weather_track_temperature_k, id),
+            wind_speed_mps: uq(s.weather_wind_speed_mps, id),
+            wind_direction_rad: uq(s.weather_wind_direction_rad, id),
+            rain: uq(s.weather_rain, id),
+            track_wetness: uq(s.weather_track_wetness, id),
+            pressure_pa: uq(s.weather_pressure_pa, id),
+        },
     }
 }
 
@@ -480,6 +515,12 @@ fn uplayer(p: PlayerDto) -> d::Player {
             laps_left: uq(p.fuel_laps_left, id),
         },
         delta_best_s: uq(p.delta_best_s, id),
+        damage: d::Damage {
+            aero: uq(p.damage_aero, id),
+            body: uq(p.damage_body, id),
+            suspension: uq(p.damage_suspension, id),
+            tyre_wear: p.damage_tyre_wear.map(|v| uq(v, id)),
+        },
     }
 }
 
@@ -521,6 +562,8 @@ impl TryFrom<SnapshotDto> for d::Snapshot {
                     delta: ucap(c.delta),
                     sectors: ucap(c.sectors),
                     lap_progress: ucap(c.lap_progress),
+                    weather: ucap(c.weather),
+                    damage: ucap(c.damage),
                 },
                 session: usession(s.session),
                 flags: uq(s.flags, |fs| fs.into_iter().map(uflag).collect()),

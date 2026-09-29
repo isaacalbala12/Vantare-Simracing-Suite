@@ -144,7 +144,8 @@ fn the_44_car_practice_fixture_becomes_the_expected_observation() {
         "el consumo por vuelta lo deriva el núcleo"
     );
     assert!(matches!(player.fuel.laps_left, Quality::Unavailable));
-    assert!(reliable(player.delta_best_s).abs() < f64::EPSILON);
+    // Delta 0 sin mejor vuelta: LMU aún no tiene referencia.
+    assert!(matches!(player.delta_best_s, Quality::Unavailable));
     let player_car = state.player_car().expect("coche del jugador");
     assert_eq!(reliable(player_car.current_sector), 0);
     assert!((reliable(player_car.lap_distance_m) - 1_068.229_614_257_812_5).abs() < 1e-9);
@@ -164,12 +165,12 @@ fn the_44_car_practice_fixture_becomes_the_expected_observation() {
         caps.driver_inputs,
         caps.powertrain,
         caps.fuel,
-        caps.delta,
         caps.sectors,
         caps.lap_progress,
     ] {
         assert_eq!(fresh, Capability::Fresh);
     }
+    assert_eq!(caps.delta, Capability::Supported);
     assert_eq!(
         caps.flags,
         Capability::Supported,
@@ -248,7 +249,8 @@ fn the_1_4_2_0_track_fixture_reports_lap_progress_fuel_and_track_length() {
     let player = state.player.expect("el fixture tiene jugador");
     assert!((reliable(player.fuel.level_l) - 97.0).abs() < f64::EPSILON);
     assert!((reliable(player.fuel.capacity_l) - 110.0).abs() < f64::EPSILON);
-    assert!(reliable(player.delta_best_s).abs() < f64::EPSILON);
+    // Delta 0 sin mejor vuelta: LMU aún no tiene referencia.
+    assert!(matches!(player.delta_best_s, Quality::Unavailable));
     let car = state.player_car().expect("coche del jugador");
     assert_eq!(reliable(car.current_sector), 0);
     assert!((reliable(car.lap_distance_m) - 104.055_343_627_929_69).abs() < 1e-9);
@@ -261,7 +263,7 @@ fn the_1_4_2_0_track_fixture_reports_lap_progress_fuel_and_track_length() {
         (caps.fuel, caps.delta, caps.sectors, caps.lap_progress),
         (
             Capability::Fresh,
-            Capability::Fresh,
+            Capability::Supported,
             Capability::Fresh,
             Capability::Fresh
         )
@@ -603,7 +605,8 @@ fn assert_corpus_phase_one_signals(observation: &Observation) {
     let player = observation.state.player.expect("jugador");
     assert!((reliable(player.fuel.level_l) - 50.0).abs() < f64::EPSILON);
     assert!((reliable(player.fuel.capacity_l) - 75.0).abs() < f64::EPSILON);
-    assert!(reliable(player.delta_best_s).abs() < f64::EPSILON);
+    // Delta 0 sin mejor vuelta: LMU aún no tiene referencia.
+    assert!(matches!(player.delta_best_s, Quality::Unavailable));
     assert!(matches!(
         observation.state.session.laps_total,
         Quality::Unavailable

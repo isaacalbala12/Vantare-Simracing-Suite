@@ -328,7 +328,14 @@ fn player(vehicle: &Vehicle, car: CarId, stale: bool) -> Player {
             capacity_l: quality(inputs.fuel_capacity_l, stale),
             ..Fuel::default()
         }),
-        delta_best_s: quality(inputs.and_then(|inputs| inputs.delta_best_s), stale),
+        // LMU escribe 0 mientras no hay mejor vuelta: sin referencia no es un
+        // delta, y un 0 fiable taparía el delta que deriva el núcleo.
+        delta_best_s: quality(
+            inputs
+                .and_then(|inputs| inputs.delta_best_s)
+                .filter(|delta| *delta != 0.0 || vehicle.best_lap_s.is_some()),
+            stale,
+        ),
     }
 }
 
@@ -644,13 +651,12 @@ mod tests {
         // `per_lap_l` y `laps_left` los deriva el núcleo.
         assert!(matches!(player.fuel.per_lap_l, Quality::Unavailable));
         assert!(matches!(player.fuel.laps_left, Quality::Unavailable));
-        assert!(
-            matches!(player.delta_best_s, Quality::Reliable(delta) if delta.abs() < f64::EPSILON)
-        );
+        // El fixture trae delta 0 sin mejor vuelta: no es un delta.
+        assert!(matches!(player.delta_best_s, Quality::Unavailable));
         let caps = observation.state.capabilities;
         assert_eq!(
             (caps.fuel, caps.delta),
-            (Capability::Fresh, Capability::Fresh)
+            (Capability::Fresh, Capability::Supported)
         );
 
         // Nivel por encima de la capacidad: el par entero es inválido.
@@ -741,12 +747,13 @@ mod tests {
             caps.driver_inputs,
             caps.powertrain,
             caps.fuel,
-            caps.delta,
             caps.sectors,
             caps.lap_progress,
         ] {
             assert_eq!(declared, Capability::WithData);
         }
+        // Sin mejor vuelta, el delta nunca tuvo dato.
+        assert_eq!(caps.delta, Capability::Supported);
         // Los valores no cambian, solo su calidad.
         assert_eq!(ids(&stale), ids(&fresh));
         assert_eq!(stale.state.cars[0].pose.current(), None);

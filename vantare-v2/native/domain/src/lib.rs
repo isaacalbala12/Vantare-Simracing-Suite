@@ -13,6 +13,7 @@ pub mod delta;
 pub mod car_damage_visual;
 mod flag;
 pub mod format;
+pub mod input_telemetry;
 mod model;
 pub mod pedals;
 mod quality;

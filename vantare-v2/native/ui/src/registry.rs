@@ -61,4 +61,5 @@ widgets! {
     Pedals => pedals: "pedals",
     Delta => delta: "delta",
     CarDamageVisual => car_damage_visual: "car-damage-visual",
+    InputTelemetry => input_telemetry: "input-telemetry",
 }

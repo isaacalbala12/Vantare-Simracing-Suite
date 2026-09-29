@@ -25,7 +25,7 @@ Push-Location (Split-Path $PSScriptRoot)
 try {
     cargo build -q -p vantare-ui --features parity-capture --bin vantare-workshop -j 4
     if ($LASTEXITCODE -ne 0) { throw 'la compilación falló' }
-    $exe = Join-Path (Get-Location) 'target\debugantare-workshop.exe'
+    $exe = Join-Path (Get-Location) 'target/debug/vantare-workshop.exe'
     # Captura del escritorio real: varios workers en paralelo solaparían sus
     # ventanas, así que solo captura uno a la vez en toda la máquina.
     $mutex = [System.Threading.Mutex]::new($false, 'Global\VantareParityCapture')

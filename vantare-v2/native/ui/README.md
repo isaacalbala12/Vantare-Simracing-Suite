@@ -83,7 +83,7 @@ es idéntica a la anterior: 0 px distintos con umbral 0, sin máscaras.
    `lib.rs`, los binarios ni los contadores. El nombre CLI debe coincidir con
    `reference/<nombre>.png`; el módulo Rust usa guiones bajos.
 4. Crear `ui/fixtures/<nombre>.snapshot.json` en el DTO vigente de
-   `ipc::snapshot_from_json` (ahora `version: 2`); partir de una de las escenas
+   `ipc::snapshot_from_json` (ahora `version: 3`); partir de una de las escenas
    versionadas. Reproducir **los datos de ese widget** de
    `tools/widget-reference/scene.tsx`: Workshop `default/race/track/ready`.
    `ui/reference/<nombre>.geometry.json` conserva su `runtime.overlayV2Frame`,
@@ -96,10 +96,12 @@ es idéntica a la anterior: 0 px distintos con umbral 0, sin máscaras.
    al 100 % (la captura rechaza otro DPI y rectángulos mayores que el monitor):
 
    ```powershell
-   cargo run -p vantare-ui --features parity-capture --bin vantare-workshop -j 4 -- --widget fuel-strategy --escena ui/fixtures/fuel-strategy.snapshot.json --captura C:\tmp\fuel-strategy.png
    .\ui\compare.ps1 -Widget fuel-strategy -MaxPercent 4
    ```
 
+   Captura siempre con `compare.ps1`: compila y captura bajo un mutex global
+   (`Global\VantareParityCapture`), así varios workers en paralelo no solapan
+   sus ventanas. No lances la captura del Workshop a mano.
    `compare.ps1` usa por defecto la escena y `ui/reference/<nombre>.png`, imprime
    porcentaje (umbral por canal 8, RGBA premultiplicado, sin máscaras) y guarda
    candidato/diff en `%TEMP%\vantare-parity\<nombre>`. Falla si falta un fichero,

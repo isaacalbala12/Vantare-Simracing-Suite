@@ -131,7 +131,7 @@ léela antes de planificar o delegar.
   estrictamente necesario o para fijar la dirección al inicio de un plan.
 - **Orquestador y optimizador: Opus 5.5 (medio).** Planifica, reparte, optimiza,
   hace el diseño visual nuevo y revisa todo lo que entregan los workers.
-- **Ejecutor principal: Sonnet 5.5 (high).** Código a gran escala y réplicas o
+- **Ejecutor principal: Sonnet 5.5 (medio).** Código a gran escala y réplicas o
   paridad de diseños existentes; no diseño visual nuevo.
 - **Worker barato: DeepSeek V4.1 Flash** (DeepSeek Harness / opencode-go) **y
   Muse Spark 1.3** (free y, al agotarse, contributor), **ambos en max.** Tareas
